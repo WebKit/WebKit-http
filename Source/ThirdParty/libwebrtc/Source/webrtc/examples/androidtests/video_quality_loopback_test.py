@@ -81,8 +81,6 @@ def _ParseArgs():
   parser = argparse.ArgumentParser(description='Start loopback video analysis.')
   parser.add_argument('build_dir_android',
       help='The path to the build directory for Android.')
-  parser.add_argument('--build_dir_x86',
-      help='The path to the build directory for building locally.')
   parser.add_argument('--temp_dir',
       help='A temporary directory to put the output.')
   parser.add_argument('--adb-path', help='Path to adb binary.', default='adb')
@@ -90,13 +88,12 @@ def _ParseArgs():
                       help='Number of times to retry the test on Android.')
   parser.add_argument('--isolated-script-test-perf-output',
       help='Where to store perf results in chartjson format.', default=None)
-
+  parser.add_argument('--isolated-script-test-output', default=None,
+      help='Path to output an empty JSON file which Chromium infra requires.')
   args, unknown_args = parser.parse_known_args()
 
   # Ignore Chromium-specific flags
   parser = argparse.ArgumentParser()
-  parser.add_argument('--isolated-script-test-output',
-                      type=str, default=None)
   parser.add_argument('--test-launcher-summary-output',
                       type=str, default=None)
 
@@ -192,21 +189,14 @@ def RunTest(android_device, adb_path, build_dir, temp_dir, num_retries,
 
   # Run comparison script.
   compare_script = os.path.join(SRC_DIR, 'rtc_tools', 'compare_videos.py')
-  frame_analyzer = os.path.join(TOOLCHAIN_DIR, 'frame_analyzer')
-  zxing_path = os.path.join(TOOLCHAIN_DIR, 'zxing')
-  stats_file_ref = os.path.join(temp_dir, 'stats_ref.txt')
-  stats_file_test = os.path.join(temp_dir, 'stats_test.txt')
+  frame_analyzer = os.path.join(build_dir, 'frame_analyzer_host')
 
   args = [
       '--ref_video', reference_video_yuv,
       '--test_video', test_video_yuv,
       '--yuv_frame_width', '640',
       '--yuv_frame_height', '360',
-      '--stats_file_ref', stats_file_ref,
-      '--stats_file_test', stats_file_test,
       '--frame_analyzer', frame_analyzer,
-      '--ffmpeg_path', ffmpeg_path,
-      '--zxing_path', zxing_path,
   ]
   if chartjson_result_file:
     args.extend(['--chartjson_result_file', chartjson_result_file])
@@ -238,7 +228,10 @@ def main():
 
     utils.RemoveDirectory(temp_dir)
 
+  if args.isolated_script_test_output:
+    with open(args.isolated_script_test_output, 'w') as f:
+      f.write('{"version": 3}')
+
 
 if __name__ == '__main__':
   sys.exit(main())
-

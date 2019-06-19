@@ -31,8 +31,13 @@
 #include "DeprecatedGlobalSettings.h"
 #include "HashTools.h"
 #include "RuntimeEnabledFeatures.h"
+#include <wtf/IsoMallocInlines.h>
+#include <wtf/Optional.h>
+#include <wtf/Variant.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(CSSStyleDeclaration);
 
 namespace {
 
@@ -144,7 +149,7 @@ struct CSSPropertyInfo {
     bool hadPixelOrPosPrefix;
 };
 
-static CSSPropertyInfo parseJavaScriptCSSPropertyName(const AtomicString& propertyName)
+static CSSPropertyInfo parseJavaScriptCSSPropertyName(const AtomString& propertyName)
 {
     using CSSPropertyInfoMap = HashMap<String, CSSPropertyInfo>;
     static NeverDestroyed<CSSPropertyInfoMap> propertyInfoCache;
@@ -235,31 +240,34 @@ static CSSPropertyInfo parseJavaScriptCSSPropertyName(const AtomicString& proper
     *bufferPtr = '\0';
 
     unsigned outputLength = bufferPtr - buffer;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     cssPropertyNameIOSAliasing(buffer, name, outputLength);
 #endif
 
     auto* hashTableEntry = findProperty(name, outputLength);
     if (auto propertyID = hashTableEntry ? hashTableEntry->id : 0) {
-        propertyInfo.hadPixelOrPosPrefix = hadPixelOrPosPrefix;
-        propertyInfo.propertyID = static_cast<CSSPropertyID>(propertyID);
-        propertyInfoCache.get().add(propertyNameString, propertyInfo);
+        auto id = static_cast<CSSPropertyID>(propertyID);
+        if (isEnabledCSSProperty(id)) {
+            propertyInfo.hadPixelOrPosPrefix = hadPixelOrPosPrefix;
+            propertyInfo.propertyID = id;
+            propertyInfoCache.get().add(propertyNameString, propertyInfo);
+        }
     }
     return propertyInfo;
 }
 
 }
 
-CSSPropertyID CSSStyleDeclaration::getCSSPropertyIDFromJavaScriptPropertyName(const AtomicString& propertyName)
+CSSPropertyID CSSStyleDeclaration::getCSSPropertyIDFromJavaScriptPropertyName(const AtomString& propertyName)
 {
     return parseJavaScriptCSSPropertyName(propertyName).propertyID;
 }
 
-std::optional<Variant<String, double>> CSSStyleDeclaration::namedItem(const AtomicString& propertyName)
+Optional<Variant<String, double>> CSSStyleDeclaration::namedItem(const AtomString& propertyName)
 {
     auto propertyInfo = parseJavaScriptCSSPropertyName(propertyName);
     if (!propertyInfo.propertyID)
-        return std::nullopt;
+        return WTF::nullopt;
 
     auto value = getPropertyCSSValueInternal(propertyInfo.propertyID);
     if (!value) {
@@ -277,7 +285,7 @@ std::optional<Variant<String, double>> CSSStyleDeclaration::namedItem(const Atom
     return Variant<String, double> { value->cssText() };
 }
 
-ExceptionOr<void> CSSStyleDeclaration::setNamedItem(const AtomicString& propertyName, String value, bool& propertySupported)
+ExceptionOr<void> CSSStyleDeclaration::setNamedItem(const AtomString& propertyName, String value, bool& propertySupported)
 {
     auto propertyInfo = parseJavaScriptCSSPropertyName(propertyName);
     if (!propertyInfo.propertyID) {
@@ -306,23 +314,27 @@ ExceptionOr<void> CSSStyleDeclaration::setNamedItem(const AtomicString& property
     return { };
 }
 
-Vector<AtomicString> CSSStyleDeclaration::supportedPropertyNames() const
+Vector<AtomString> CSSStyleDeclaration::supportedPropertyNames() const
 {
-    static const AtomicString* const cssPropertyNames = [] {
+    static unsigned numNames = 0;
+    static const AtomString* const cssPropertyNames = [] {
         String names[numCSSProperties];
-        for (int i = 0; i < numCSSProperties; ++i)
-            names[i] = getJSPropertyName(static_cast<CSSPropertyID>(firstCSSProperty + i));
-        std::sort(&names[0], &names[numCSSProperties], WTF::codePointCompareLessThan);
-        auto* identifiers = new AtomicString[numCSSProperties];
-        for (int i = 0; i < numCSSProperties; ++i)
+        for (int i = 0; i < numCSSProperties; ++i) {
+            CSSPropertyID id = static_cast<CSSPropertyID>(firstCSSProperty + i);
+            if (isEnabledCSSProperty(id))
+                names[numNames++] = getJSPropertyName(id);
+        }
+        std::sort(&names[0], &names[numNames], WTF::codePointCompareLessThan);
+        auto* identifiers = new AtomString[numNames];
+        for (unsigned i = 0; i < numNames; ++i)
             identifiers[i] = names[i];
         return identifiers;
     }();
 
-    Vector<AtomicString> result;
-    result.reserveInitialCapacity(numCSSProperties);
+    Vector<AtomString> result;
+    result.reserveInitialCapacity(numNames);
 
-    for (unsigned i = 0; i < numCSSProperties; ++i)
+    for (unsigned i = 0; i < numNames; ++i)
         result.uncheckedAppend(cssPropertyNames[i]);
 
     return result;

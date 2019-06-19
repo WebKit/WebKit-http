@@ -65,6 +65,9 @@ public:
     void setOutOfMemoryError() { m_outOfMemoryError = true; }
     bool isOutOfMemoryError() const { return m_outOfMemoryError; }
 
+    void setNativeGetterTypeError() { m_nativeGetterTypeError = true; }
+    bool isNativeGetterTypeError() const { return m_nativeGetterTypeError; }
+
     JS_EXPORT_PRIVATE String sanitizedToString(ExecState*);
     
     Vector<StackFrame>* stackTrace() { return m_stackTrace.get(); }
@@ -72,10 +75,10 @@ public:
     bool materializeErrorInfoIfNeeded(VM&);
     bool materializeErrorInfoIfNeeded(VM&, PropertyName);
 
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess mode>
     static IsoSubspace* subspaceFor(VM& vm)
     {
-        return &vm.errorInstanceSpace;
+        return vm.errorInstanceSpace<mode>();
     }
 
     void finalizeUnconditionally(VM&);
@@ -105,6 +108,7 @@ protected:
     bool m_stackOverflowError { false };
     bool m_outOfMemoryError { false };
     bool m_errorInfoMaterialized { false };
+    bool m_nativeGetterTypeError { false };
 };
 
 } // namespace JSC

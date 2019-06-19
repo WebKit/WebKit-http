@@ -70,6 +70,10 @@ public:
     // Deprecated. Use the NumberRespectingIntegers FormattingFlag instead.
     WTF_EXPORT_PRIVATE TextStream& operator<<(const FormatNumberRespectingIntegers&);
 
+#ifdef __OBJC__
+    WTF_EXPORT_PRIVATE TextStream& operator<<(id<NSObject>);
+#endif
+
     FormattingFlags formattingFlags() const { return m_formattingFlags; }
     void setFormattingFlags(FormattingFlags flags) { m_formattingFlags = flags; }
 
@@ -100,6 +104,22 @@ public:
     TextStream& operator<<(TextStream& (*func)(TextStream&))
     {
         return (*func)(*this);
+    }
+
+    struct Repeat {
+        Repeat(unsigned inWidth, char inCharacter)
+            : width(inWidth), character(inCharacter)
+        { }
+        unsigned width { 0 };
+        char character { ' ' };
+    };
+
+    TextStream& operator<<(const Repeat& repeated)
+    {
+        for (unsigned i = 0; i < repeated.width; ++i)
+            m_text.append(repeated.character);
+
+        return *this;
     }
 
     class IndentScope {
@@ -161,6 +181,20 @@ TextStream& operator<<(TextStream& ts, const Vector<Item>& vector)
             ts << ", ";
     }
 
+    return ts << "]";
+}
+
+template<typename Option>
+TextStream& operator<<(TextStream& ts, const OptionSet<Option>& options)
+{
+    ts << "[";
+    bool needComma = false;
+    for (auto option : options) {
+        if (needComma)
+            ts << ", ";
+        needComma = true;
+        ts << option;
+    }
     return ts << "]";
 }
 

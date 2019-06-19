@@ -56,10 +56,13 @@
     font-size: 11px;
 
     padding: 11px 6px;
-    margin-bottom: 6px;
 
     border-bottom: 1px solid var(--border-color);
     background-color: hsl(50, 100%, 94%);
+}
+
+.sidebar > .panel.navigation.debugger .warning-banner + .warning-banner {
+    display: none;
 }
 
 .sidebar > .panel.navigation.debugger .tree-outline.single-thread > .item.thread {
@@ -67,15 +70,7 @@
 }
 
 .sidebar > .panel.navigation.debugger .tree-outline.single-thread {
-    --tree-outline-single-thread-margin-start: -10px;
-}
-
-body[dir=ltr] .sidebar > .panel.navigation.debugger .tree-outline.single-thread {
-    margin-left: var(--tree-outline-single-thread-margin-start);
-}
-
-body[dir=rtl] .sidebar > .panel.navigation.debugger .tree-outline.single-thread {
-    margin-right: var(--tree-outline-single-thread-margin-start);
+    -webkit-margin-start: -10px;
 }
 
 .sidebar > .panel.navigation.debugger .warning-banner > a {
@@ -107,24 +102,11 @@ body[dir=rtl] .sidebar > .panel.navigation.debugger .tree-outline.single-thread 
     border-bottom: none;
 }
 
-.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node .titles {
-    top: 3px;
-    font-family: Menlo, monospace;
+.sidebar > .panel.navigation.debugger > .content > .breakpoints .tree-outline .item.event-target-window .icon {
+    content: url(../Images/TypeObject.svg);
 }
 
-.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node .icon {
-    content: url(../Images/DOMElement.svg);
-}
-
-.sidebar > .panel.navigation.debugger .details-section.dom-breakpoints .item.dom-node:not(:hover, .selected) .status .go-to-arrow {
-    display: none;
-}
-
-.sidebar > .panel.navigation.debugger .details-section.xhr-breakpoints .item.breakpoint .subtitle {
-    font-family: Menlo, monospace;
-}
-
-@media (prefers-dark-interface) {
+@media (prefers-color-scheme: dark) {
     .sidebar > .panel.navigation.debugger .warning-banner {
         background-color: var(--yellow-highlight-background-color);
         color: var(--yellow-highlight-text-color);

@@ -36,6 +36,7 @@
 #import "WebProcessCreationParameters.h"
 #import <CoreFoundation/CFURL.h>
 #import <Foundation/NSBundle.h>
+#import <WebCore/PlatformKeyboardEvent.h>
 #import <dlfcn.h>
 #import <objc/runtime.h>
 #import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
@@ -50,6 +51,27 @@
 
 namespace WebKit {
 using namespace WebCore;
+
+#if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+static NSEventModifierFlags currentModifierFlags(id self, SEL _cmd)
+{
+    auto currentModifiers = PlatformKeyboardEvent::currentStateOfModifierKeys();
+    NSEventModifierFlags modifiers = 0;
+    
+    if (currentModifiers.contains(PlatformEvent::Modifier::ShiftKey))
+        modifiers |= NSEventModifierFlagShift;
+    if (currentModifiers.contains(PlatformEvent::Modifier::ControlKey))
+        modifiers |= NSEventModifierFlagControl;
+    if (currentModifiers.contains(PlatformEvent::Modifier::AltKey))
+        modifiers |= NSEventModifierFlagOption;
+    if (currentModifiers.contains(PlatformEvent::Modifier::MetaKey))
+        modifiers |= NSEventModifierFlagCommand;
+    if (currentModifiers.contains(PlatformEvent::Modifier::CapsLockKey))
+        modifiers |= NSEventModifierFlagCapsLock;
+    
+    return modifiers;
+}
+#endif
 
 bool InjectedBundle::initialize(const WebProcessCreationParameters& parameters, API::Object* initializationUserData)
 {
@@ -98,7 +120,6 @@ bool InjectedBundle::initialize(const WebProcessCreationParameters& parameters, 
         }
     }
 
-#if WK_API_ENABLED
     if (parameters.bundleParameterData) {
         auto bundleParameterData = adoptNS([[NSData alloc] initWithBytesNoCopy:const_cast<void*>(static_cast<const void*>(parameters.bundleParameterData->bytes())) length:parameters.bundleParameterData->size() freeWhenDone:NO]);
 
@@ -115,6 +136,11 @@ bool InjectedBundle::initialize(const WebProcessCreationParameters& parameters, 
         ASSERT(!m_bundleParameters);
         m_bundleParameters = adoptNS([[WKWebProcessBundleParameters alloc] initWithDictionary:dictionary]);
     }
+    
+#if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    // Swizzle [NSEvent modiferFlags], since it always returns 0 when the WindowServer is blocked.
+    Method method = class_getClassMethod([NSEvent class], @selector(modifierFlags));
+    method_setImplementation(method, reinterpret_cast<IMP>(currentModifierFlags));
 #endif
     
     if (!initializeFunction)
@@ -126,7 +152,6 @@ bool InjectedBundle::initialize(const WebProcessCreationParameters& parameters, 
         return true;
     }
 
-#if WK_API_ENABLED
     // Otherwise, look to see if the bundle has a principal class
     Class principalClass = [m_platformBundle principalClass];
     if (!principalClass) {
@@ -156,12 +181,8 @@ bool InjectedBundle::initialize(const WebProcessCreationParameters& parameters, 
     }
 
     return true;
-#else
-    return false;
-#endif
 }
 
-#if WK_API_ENABLED
 WKWebProcessBundleParameters *InjectedBundle::bundleParameters()
 {
     // We must not return nil even if no parameters are currently set, in order to allow the client
@@ -205,11 +226,9 @@ NSSet* InjectedBundle::classesForCoder()
 
     return m_classesForCoder.get();
 }
-#endif
 
 void InjectedBundle::setBundleParameter(const String& key, const IPC::DataReference& value)
 {
-#if WK_API_ENABLED
     auto bundleParameterData = adoptNS([[NSData alloc] initWithBytesNoCopy:const_cast<void*>(static_cast<const void*>(value.data())) length:value.size() freeWhenDone:NO]);
 
     auto unarchiver = secureUnarchiverFromData(bundleParameterData.get());
@@ -226,12 +245,10 @@ void InjectedBundle::setBundleParameter(const String& key, const IPC::DataRefere
         m_bundleParameters = adoptNS([[WKWebProcessBundleParameters alloc] initWithDictionary:[NSDictionary dictionary]]);
 
     [m_bundleParameters setParameter:parameter forKey:key];
-#endif
 }
 
 void InjectedBundle::setBundleParameters(const IPC::DataReference& value)
 {
-#if WK_API_ENABLED
     auto bundleParametersData = adoptNS([[NSData alloc] initWithBytesNoCopy:const_cast<void*>(static_cast<const void*>(value.data())) length:value.size() freeWhenDone:NO]);
 
     auto unarchiver = secureUnarchiverFromData(bundleParametersData.get());
@@ -252,7 +269,6 @@ void InjectedBundle::setBundleParameters(const IPC::DataReference& value)
     }
 
     [m_bundleParameters setParametersForKeyWithDictionary:parameters];
-#endif
 }
 
 } // namespace WebKit

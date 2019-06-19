@@ -51,7 +51,7 @@
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
-#import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/RunLoop.h>
 
 using namespace WebCore;
@@ -104,7 +104,7 @@ extern "C" {
 
 + (void)initialize
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
@@ -477,8 +477,7 @@ extern "C" {
     }
 
     if (_proxy) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         if (_softwareRenderer) {
             if ([NSGraphicsContext currentContextDrawingToScreen]) {
                 _softwareRenderer->render((CGContextRef)[[NSGraphicsContext currentContext] graphicsPort], NSRectToCGRect(rect));
@@ -488,7 +487,7 @@ extern "C" {
         } else if (_snapshotting && [self supportsSnapshotting]) {
             _proxy->snapshot(reinterpret_cast<CGContextRef>([[NSGraphicsContext currentContext] graphicsPort]), [self bounds].size.width, [self bounds].size.height);
         }
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
 
         return;
     }

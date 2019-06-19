@@ -10,6 +10,10 @@
 
 #include "api/candidate.h"
 
+#include "rtc_base/helpers.h"
+#include "rtc_base/ipaddress.h"
+#include "rtc_base/strings/string_builder.h"
+
 namespace cricket {
 
 Candidate::Candidate()
@@ -68,7 +72,7 @@ bool Candidate::MatchesForRemoval(const Candidate& c) const {
 }
 
 std::string Candidate::ToStringInternal(bool sensitive) const {
-  std::ostringstream ost;
+  rtc::StringBuilder ost;
   std::string address =
       sensitive ? address_.ToSensitiveString() : address_.ToString();
   ost << "Cand[" << transport_name_ << ":" << foundation_ << ":" << component_
@@ -76,7 +80,7 @@ std::string Candidate::ToStringInternal(bool sensitive) const {
       << ":" << related_address_.ToString() << ":" << username_ << ":"
       << password_ << ":" << network_id_ << ":" << network_cost_ << ":"
       << generation_ << "]";
-  return ost.str();
+  return ost.Release();
 }
 
 uint32_t Candidate::GetPriority(uint32_t type_preference,
@@ -119,6 +123,21 @@ bool Candidate::operator==(const Candidate& o) const {
 
 bool Candidate::operator!=(const Candidate& o) const {
   return !(*this == o);
+}
+
+Candidate Candidate::ToSanitizedCopy(bool use_hostname_address,
+                                     bool filter_related_address) const {
+  Candidate copy(*this);
+  if (use_hostname_address) {
+    rtc::SocketAddress hostname_only_addr(address().hostname(),
+                                          address().port());
+    copy.set_address(hostname_only_addr);
+  }
+  if (filter_related_address) {
+    copy.set_related_address(
+        rtc::EmptySocketAddressWithFamily(copy.address().family()));
+  }
+  return copy;
 }
 
 }  // namespace cricket

@@ -1,5 +1,4 @@
 include_rules = [
-  "+WebRTC",
   "+api",
   "+common_video",
   "+media",
@@ -8,6 +7,7 @@ include_rules = [
   "+modules/audio_processing",
   "+p2p",
   "+pc",
-  "+sdk/objc/Framework/Native/api",
+  "+sdk/objc",
+  "+system_wrappers/include",
   "+third_party/libyuv",
 ]

@@ -46,7 +46,7 @@ FontPlatformData FontCustomPlatformData::fontPlatformData(const FontDescription&
     FontOrientation orientation = fontDescription.orientation();
     FontWidthVariant widthVariant = fontDescription.widthVariant();
     RetainPtr<CTFontRef> font = adoptCF(CTFontCreateWithFontDescriptor(modifiedFontDescriptor.get(), size, nullptr));
-    font = preparePlatformFont(font.get(), fontDescription, &fontFaceFeatures, &fontFaceVariantSettings, fontFaceCapabilities, fontDescription.computedSize());
+    font = preparePlatformFont(font.get(), fontDescription, &fontFaceFeatures, &fontFaceVariantSettings, fontFaceCapabilities);
     ASSERT(font);
     return FontPlatformData(font.get(), size, bold, italic, orientation, widthVariant, fontDescription.textRenderingMode());
 }
@@ -56,7 +56,7 @@ std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffe
     RetainPtr<CFDataRef> bufferData = buffer.createCFData();
 
     RetainPtr<CTFontDescriptorRef> fontDescriptor;
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
     auto array = adoptCF(CTFontManagerCreateFontDescriptorsFromData(bufferData.get()));
     if (!array)
         return nullptr;

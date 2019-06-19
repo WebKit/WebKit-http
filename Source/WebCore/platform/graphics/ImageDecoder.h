@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,13 +55,14 @@ public:
     virtual size_t bytesDecodedToDetermineProperties() const = 0;
 
     virtual EncodedDataStatus encodedDataStatus() const = 0;
+    virtual void setEncodedDataStatusChangeCallback(WTF::Function<void(EncodedDataStatus)>&&) { }
     virtual bool isSizeAvailable() const { return encodedDataStatus() >= EncodedDataStatus::SizeAvailable; }
     virtual IntSize size() const = 0;
     virtual size_t frameCount() const = 0;
     virtual RepetitionCount repetitionCount() const = 0;
     virtual String uti() const { return emptyString(); }
     virtual String filenameExtension() const = 0;
-    virtual std::optional<IntPoint> hotSpot() const = 0;
+    virtual Optional<IntPoint> hotSpot() const = 0;
 
     virtual IntSize frameSizeAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default) const = 0;
     virtual bool frameIsCompleteAtIndex(size_t) const = 0;
@@ -78,6 +79,10 @@ public:
     virtual void setData(SharedBuffer&, bool allDataReceived) = 0;
     virtual bool isAllDataReceived() const = 0;
     virtual void clearFrameBufferCache(size_t) = 0;
+
+#if USE(DIRECT2D)
+    virtual void setTargetContext(ID2D1RenderTarget*) = 0;
+#endif
 
 protected:
     ImageDecoder() = default;

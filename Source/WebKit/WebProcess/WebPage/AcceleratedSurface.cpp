@@ -33,12 +33,12 @@
 #include "AcceleratedSurfaceWayland.h"
 #endif
 
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#if PLATFORM(X11)
 #include "AcceleratedSurfaceX11.h"
 #endif
 
-#if PLATFORM(WPE)
-#include "AcceleratedSurfaceWPE.h"
+#if USE(WPE_RENDERER)
+#include "AcceleratedSurfaceLibWPE.h"
 #endif
 
 namespace WebKit {
@@ -48,16 +48,21 @@ std::unique_ptr<AcceleratedSurface> AcceleratedSurface::create(WebPage& webPage,
 {
 #if PLATFORM(WAYLAND)
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
+#if USE(WPE_RENDERER)
+        return AcceleratedSurfaceLibWPE::create(webPage, client);
+#else
         return AcceleratedSurfaceWayland::create(webPage, client);
 #endif
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#endif
+#if PLATFORM(X11)
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::X11)
         return AcceleratedSurfaceX11::create(webPage, client);
 #endif
-#if PLATFORM(WPE)
+#if USE(LIBWPE)
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::WPE)
-        return AcceleratedSurfaceWPE::create(webPage, client);
+        return AcceleratedSurfaceLibWPE::create(webPage, client);
 #endif
+    RELEASE_ASSERT_NOT_REACHED();
     return nullptr;
 }
 
@@ -69,7 +74,7 @@ AcceleratedSurface::AcceleratedSurface(WebPage& webPage, Client& client)
     m_size.scale(m_webPage.deviceScaleFactor());
 }
 
-bool AcceleratedSurface::resize(const IntSize& size)
+bool AcceleratedSurface::hostResize(const IntSize& size)
 {
     IntSize scaledSize(size);
     scaledSize.scale(m_webPage.deviceScaleFactor());

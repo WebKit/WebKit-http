@@ -26,8 +26,6 @@
 #import "config.h"
 #import "_WKThumbnailViewInternal.h"
 
-#if WK_API_ENABLED
-
 #if PLATFORM(MAC)
 
 #import "ImageOptions.h"
@@ -44,7 +42,9 @@
 // FIXME: We should switch to the low-resolution scale if a view we have high-resolution tiles for repaints.
 
 @implementation _WKThumbnailView {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     RetainPtr<WKView> _wkView;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     RetainPtr<WKWebView> _wkWebView;
     WebKit::WebPageProxy* _webPageProxy;
 
@@ -55,7 +55,7 @@
     CGFloat _lastSnapshotScale;
     CGSize _lastSnapshotMaximumSize;
 
-    RetainPtr<NSColor *> _overrideBackgroundColor;
+    RetainPtr<NSColor> _overrideBackgroundColor;
 }
 
 @synthesize snapshotSize=_snapshotSize;
@@ -75,6 +75,7 @@
     return self;
 }
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 - (instancetype)initWithFrame:(NSRect)frame fromWKView:(WKView *)wkView
 {
     if (!(self = [self initWithFrame:frame]))
@@ -87,6 +88,7 @@
 
     return self;
 }
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (instancetype)initWithFrame:(NSRect)frame fromWKWebView:(WKWebView *)webView
 {
@@ -289,5 +291,3 @@
 @end
 
 #endif // PLATFORM(MAC)
-
-#endif // WK_API_ENABLED

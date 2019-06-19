@@ -33,7 +33,7 @@
 #include "BAssert.h"
 #include "BPlatform.h"
 #include "Mutex.h"
-#include "PerProcess.h"
+#include "StaticPerProcess.h"
 #include "VMAllocate.h"
 #include <mutex>
 
@@ -44,12 +44,8 @@
 #endif
 
 #if BOS(DARWIN)
-typedef struct __CCRandom* CCRandomRef;
-
-extern "C" {
-extern const CCRandomRef kCCRandomDefault;
-int CCRandomCopyBytes(CCRandomRef rnd, void *bytes, size_t count);
-}
+#include <CommonCrypto/CommonCryptoError.h>
+#include <CommonCrypto/CommonRandom.h>
 #endif
 
 namespace bmalloc {
@@ -63,7 +59,7 @@ public:
     uint8_t s[256];
 };
 
-class ARC4RandomNumberGenerator {
+class ARC4RandomNumberGenerator : public StaticPerProcess<ARC4RandomNumberGenerator> {
 public:
     ARC4RandomNumberGenerator(const std::lock_guard<Mutex>&);
 
@@ -78,8 +74,9 @@ private:
 
     ARC4Stream m_stream;
     int m_count;
-    Mutex m_mutex;
 };
+DECLARE_STATIC_PER_PROCESS_STORAGE(ARC4RandomNumberGenerator);
+DEFINE_STATIC_PER_PROCESS_STORAGE(ARC4RandomNumberGenerator);
 
 ARC4Stream::ARC4Stream()
 {
@@ -113,7 +110,7 @@ void ARC4RandomNumberGenerator::stir()
     size_t length = sizeof(randomness);
 
 #if BOS(DARWIN)
-    RELEASE_BASSERT(!CCRandomCopyBytes(kCCRandomDefault, randomness, length));
+    RELEASE_BASSERT(!CCRandomGenerateBytes(randomness, length));
 #else
     static std::once_flag onceFlag;
     static int fd;
@@ -167,7 +164,7 @@ uint8_t ARC4RandomNumberGenerator::getByte()
 
 void ARC4RandomNumberGenerator::randomValues(void* buffer, size_t length)
 {
-    std::lock_guard<Mutex> lock(m_mutex);
+    std::lock_guard<Mutex> lock(mutex());
 
     unsigned char* result = reinterpret_cast<unsigned char*>(buffer);
     stirIfNeeded();
@@ -180,7 +177,7 @@ void ARC4RandomNumberGenerator::randomValues(void* buffer, size_t length)
 
 void cryptoRandom(void* buffer, size_t length)
 {
-    PerProcess<ARC4RandomNumberGenerator>::get()->randomValues(buffer, length);
+    ARC4RandomNumberGenerator::get()->randomValues(buffer, length);
 }
 
 } // namespace bmalloc

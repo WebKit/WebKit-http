@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #pragma once
@@ -29,19 +29,17 @@
 
 namespace JSC {
 
-void InferredValue::finalizeUnconditionally(VM& vm)
+template<typename JSCellType>
+void InferredValue<JSCellType>::finalizeUnconditionally(VM& vm)
 {
-    JSValue value = m_value.get();
-    
-    if (value && value.isCell()) {
-        if (Heap::isMarked(value.asCell()))
+    JSCellType* value = inferredValue();
+
+    if (value) {
+        if (vm.heap.isMarked(value))
             return;
-        
+
         invalidate(vm, StringFireDetail("InferredValue clean-up during GC"));
     }
-    
-    vm.inferredValuesWithFinalizers.remove(this);
 }
 
 } // namespace JSC
-

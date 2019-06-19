@@ -27,6 +27,7 @@
 
 #include "WebProcessSupplement.h"
 #include <wtf/Noncopyable.h>
+#include <wtf/WallTime.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -50,11 +51,11 @@ public:
 
     Vector<WebCore::SecurityOriginData> getMediaKeyOrigins();
     void deleteMediaKeyEntriesForOrigin(const WebCore::SecurityOriginData&);
-    void deleteMediaKeyEntriesModifiedBetweenDates(double startDate, double endDate);
+    void deleteMediaKeyEntriesModifiedBetweenDates(WallTime startDate, WallTime endDate);
     void deleteAllMediaKeyEntries();
 
 private:
-    void initialize(const WebProcessCreationParameters&) override;
+    void setWebsiteDataStore(const WebProcessDataStoreParameters&) override;
 
     String m_mediaKeyStorageDirectory;
 };

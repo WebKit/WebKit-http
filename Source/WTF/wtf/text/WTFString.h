@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef WTFString_h
-#define WTFString_h
+#pragma once
 
 // This file would be called String.h, but that conflicts with <string.h>
 // on systems without case-sensitive file systems.
@@ -33,6 +32,10 @@
 
 #ifdef __OBJC__
 #include <objc/objc.h>
+#endif
+
+#if OS(WINDOWS)
+#include <wtf/text/win/WCharStringExtras.h>
 #endif
 
 #if PLATFORM(QT)
@@ -117,8 +120,8 @@ public:
     String(Ref<StringImpl>&&);
     String(RefPtr<StringImpl>&&);
 
-    String(Ref<AtomicStringImpl>&&);
-    String(RefPtr<AtomicStringImpl>&&);
+    String(Ref<AtomStringImpl>&&);
+    String(RefPtr<AtomStringImpl>&&);
 
     String(StaticStringImpl&);
     String(StaticStringImpl*);
@@ -127,12 +130,10 @@ public:
     WTF_EXPORT_PRIVATE String(ASCIILiteral);
 
     // Construct a string from a constant string literal.
-    // This constructor is the "big" version, as it put the length in the function call and generate bigger code.
+    // This is the "big" version: puts the length in the function call and generates bigger code.
     enum ConstructFromLiteralTag { ConstructFromLiteral };
     template<unsigned characterCount> String(const char (&characters)[characterCount], ConstructFromLiteralTag) : m_impl(StringImpl::createFromLiteral<characterCount>(characters)) { }
 
-    // FIXME: Why do we have to define these explicitly given that we just want the default versions?
-    // We have verified empirically that we do.
     String(const String&) = default;
     String(String&&) = default;
     String& operator=(const String&) = default;
@@ -182,11 +183,12 @@ public:
     WTF_EXPORT_PRIVATE static String number(unsigned long);
     WTF_EXPORT_PRIVATE static String number(long long);
     WTF_EXPORT_PRIVATE static String number(unsigned long long);
+    WTF_EXPORT_PRIVATE static String number(float);
+    WTF_EXPORT_PRIVATE static String number(double);
 
-    WTF_EXPORT_PRIVATE static String number(double, unsigned precision = 6, TrailingZerosTruncatingPolicy = TruncateTrailingZeros);
-
-    // Number to String conversion following the ECMAScript definition.
-    WTF_EXPORT_PRIVATE static String numberToStringECMAScript(double);
+    WTF_EXPORT_PRIVATE static String numberToStringFixedPrecision(float, unsigned precision = 6, TrailingZerosTruncatingPolicy = TruncateTrailingZeros);
+    WTF_EXPORT_PRIVATE static String numberToStringFixedPrecision(double, unsigned precision = 6, TrailingZerosTruncatingPolicy = TruncateTrailingZeros);
+    WTF_EXPORT_PRIVATE static String numberToStringFixedWidth(float, unsigned decimalPlaces);
     WTF_EXPORT_PRIVATE static String numberToStringFixedWidth(double, unsigned decimalPlaces);
 
     // Find a single character or string, also with match function & latin1 forms.
@@ -201,8 +203,8 @@ public:
     size_t find(const LChar* string, unsigned start = 0) const { return m_impl ? m_impl->find(string, start) : notFound; }
 
     // Find the last instance of a single character or string.
-    size_t reverseFind(UChar character, unsigned start = std::numeric_limits<unsigned>::max()) const { return m_impl ? m_impl->reverseFind(character, start) : notFound; }
-    size_t reverseFind(const String& string, unsigned start = std::numeric_limits<unsigned>::max()) const { return m_impl ? m_impl->reverseFind(string.impl(), start) : notFound; }
+    size_t reverseFind(UChar character, unsigned start = MaxLength) const { return m_impl ? m_impl->reverseFind(character, start) : notFound; }
+    size_t reverseFind(const String& string, unsigned start = MaxLength) const { return m_impl ? m_impl->reverseFind(string.impl(), start) : notFound; }
 
     WTF_EXPORT_PRIVATE Vector<UChar> charactersWithNullTermination() const;
 
@@ -244,8 +246,8 @@ public:
     WTF_EXPORT_PRIVATE void truncate(unsigned length);
     WTF_EXPORT_PRIVATE void remove(unsigned position, unsigned length = 1);
 
-    WTF_EXPORT_PRIVATE String substring(unsigned position, unsigned length = std::numeric_limits<unsigned>::max()) const;
-    WTF_EXPORT_PRIVATE String substringSharingImpl(unsigned position, unsigned length = std::numeric_limits<unsigned>::max()) const;
+    WTF_EXPORT_PRIVATE String substring(unsigned position, unsigned length = MaxLength) const;
+    WTF_EXPORT_PRIVATE String substringSharingImpl(unsigned position, unsigned length = MaxLength) const;
     String left(unsigned length) const { return substring(0, length); }
     String right(unsigned length) const { return substring(this->length() - length, length); }
 
@@ -254,8 +256,8 @@ public:
     WTF_EXPORT_PRIVATE String convertToLowercaseWithoutLocale() const;
     WTF_EXPORT_PRIVATE String convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(unsigned) const;
     WTF_EXPORT_PRIVATE String convertToUppercaseWithoutLocale() const;
-    WTF_EXPORT_PRIVATE String convertToLowercaseWithLocale(const AtomicString& localeIdentifier) const;
-    WTF_EXPORT_PRIVATE String convertToUppercaseWithLocale(const AtomicString& localeIdentifier) const;
+    WTF_EXPORT_PRIVATE String convertToLowercaseWithLocale(const AtomString& localeIdentifier) const;
+    WTF_EXPORT_PRIVATE String convertToUppercaseWithLocale(const AtomString& localeIdentifier) const;
 
     WTF_EXPORT_PRIVATE String stripWhiteSpace() const;
     WTF_EXPORT_PRIVATE String simplifyWhiteSpace() const;
@@ -267,8 +269,6 @@ public:
     // Returns the string with case folded for case insensitive comparison.
     // Use convertToASCIILowercase instead if ASCII case insensitive comparison is desired.
     WTF_EXPORT_PRIVATE String foldCase() const;
-
-    WTF_EXPORT_PRIVATE static String format(const char *, ...) WTF_ATTRIBUTE_PRINTF(1, 2);
 
     // Returns an uninitialized string. The characters needs to be written
     // into the buffer returned in data before the returned string is used.
@@ -337,6 +337,18 @@ public:
     WTF_EXPORT_PRIVATE operator QString() const;
 #endif
 
+#if OS(WINDOWS)
+#if U_ICU_VERSION_MAJOR_NUM >= 59
+    String(const wchar_t* characters, unsigned length)
+        : String(ucharFrom(characters), length) { }
+
+    String(const wchar_t* characters)
+        : String(ucharFrom(characters)) { }
+#endif
+
+    WTF_EXPORT_PRIVATE Vector<wchar_t> wideCharacters() const;
+#endif
+
     WTF_EXPORT_PRIVATE static String make8BitFrom16BitSource(const UChar*, size_t);
     template<size_t inlineCapacity> static String make8BitFrom16BitSource(const Vector<UChar, inlineCapacity>&);
 
@@ -376,6 +388,8 @@ public:
     // Turns this String empty if the StringImpl is not referenced by anyone else.
     // This is useful for clearing String-based caches.
     void clearImplIfNotShared();
+
+    static constexpr unsigned MaxLength = StringImpl::MaxLength;
 
 private:
     template<typename CharacterType> void removeInternal(const CharacterType*, unsigned, unsigned);
@@ -434,8 +448,9 @@ bool codePointCompareLessThan(const String&, const String&);
 
 template<typename CharacterType> void appendNumber(Vector<CharacterType>&, unsigned char number);
 
-// Shared global empty string.
+// Shared global empty and null string.
 WTF_EXPORT_PRIVATE const String& emptyString();
+WTF_EXPORT_PRIVATE const String& nullString();
 
 template<typename> struct DefaultHash;
 template<> struct DefaultHash<String> { using Hash = StringHash; };
@@ -472,12 +487,12 @@ inline String::String(RefPtr<StringImpl>&& string)
 {
 }
 
-inline String::String(Ref<AtomicStringImpl>&& string)
+inline String::String(Ref<AtomStringImpl>&& string)
     : m_impl(WTFMove(string))
 {
 }
 
-inline String::String(RefPtr<AtomicStringImpl>&& string)
+inline String::String(RefPtr<AtomStringImpl>&& string)
     : m_impl(WTFMove(string))
 {
 }
@@ -642,6 +657,15 @@ template<unsigned length> inline bool startsWithLettersIgnoringASCIICase(const S
     return startsWithLettersIgnoringASCIICase(string.impl(), lowercaseLetters);
 }
 
+inline namespace StringLiterals {
+
+inline String operator"" _str(const char* characters, size_t)
+{
+    return ASCIILiteral::fromLiteralUnsafe(characters);
+}
+
+} // inline StringLiterals
+
 } // namespace WTF
 
 using WTF::KeepTrailingZeros;
@@ -660,12 +684,11 @@ using WTF::charactersToUInt64Strict;
 using WTF::charactersToUInt;
 using WTF::charactersToUIntStrict;
 using WTF::emptyString;
+using WTF::nullString;
 using WTF::equal;
 using WTF::find;
 using WTF::isAllSpecialCharacters;
 using WTF::isSpaceOrNewline;
 using WTF::reverseFind;
 
-#include <wtf/text/AtomicString.h>
-
-#endif
+#include <wtf/text/AtomString.h>

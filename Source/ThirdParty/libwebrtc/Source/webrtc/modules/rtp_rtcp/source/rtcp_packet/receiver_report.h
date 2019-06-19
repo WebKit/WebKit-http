@@ -11,6 +11,8 @@
 #ifndef MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_RECEIVER_REPORT_H_
 #define MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_RECEIVER_REPORT_H_
 
+#include <stddef.h>
+#include <stdint.h>
 #include <vector>
 
 #include "modules/rtp_rtcp/source/rtcp_packet.h"
@@ -26,6 +28,7 @@ class ReceiverReport : public RtcpPacket {
   static constexpr size_t kMaxNumberOfReportBlocks = 0x1f;
 
   ReceiverReport();
+  ReceiverReport(const ReceiverReport&);
   ~ReceiverReport() override;
 
   // Parse assumes header is already parsed and validated.

@@ -27,9 +27,12 @@
 #include "AbstractDOMWindow.h"
 
 #include "HTTPParsers.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(AbstractDOMWindow);
 
 HashMap<GlobalWindowIdentifier, AbstractDOMWindow*>& AbstractDOMWindow::allWindows()
 {
@@ -40,7 +43,6 @@ HashMap<GlobalWindowIdentifier, AbstractDOMWindow*>& AbstractDOMWindow::allWindo
 
 AbstractDOMWindow::AbstractDOMWindow(GlobalWindowIdentifier&& identifier)
     : m_identifier(WTFMove(identifier))
-    , m_crossOriginWindowPolicy(CrossOriginWindowPolicy::Allow)
 {
     ASSERT(!allWindows().contains(identifier));
     allWindows().add(identifier, this);

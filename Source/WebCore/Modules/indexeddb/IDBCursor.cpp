@@ -41,9 +41,12 @@
 #include <JavaScriptCore/HeapInlines.h>
 #include <JavaScriptCore/JSCJSValueInlines.h>
 #include <JavaScriptCore/StrongInlines.h>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 using namespace JSC;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(IDBCursor);
 
 Ref<IDBCursor> IDBCursor::create(IDBObjectStore& objectStore, const IDBCursorInfo& info)
 {
@@ -124,18 +127,18 @@ ExceptionOr<Ref<IDBRequest>> IDBCursor::update(ExecState& state, JSValue value)
     if (usesInLineKeys) {
         RefPtr<IDBKey> keyPathKey = maybeCreateIDBKeyFromScriptValueAndKeyPath(state, value, optionalKeyPath.value());
         IDBKeyData keyPathKeyData(keyPathKey.get());
-        if (!keyPathKey || keyPathKeyData != m_currentPrimaryKeyData)
+        if (!keyPathKey || keyPathKeyData != m_primaryKeyData)
             return Exception { DataError, "Failed to execute 'update' on 'IDBCursor': The effective object store of this cursor uses in-line keys and evaluating the key path of the value parameter results in a different value than the cursor's effective key."_s };
     }
 
-    auto putResult = effectiveObjectStore().putForCursorUpdate(state, value, m_currentPrimaryKey.get());
+    auto putResult = effectiveObjectStore().putForCursorUpdate(state, value, m_primaryKey.copyRef());
     if (putResult.hasException())
         return putResult.releaseException();
 
     auto request = putResult.releaseReturnValue();
     request->setSource(*this);
 
-    return WTFMove(request);
+    return request;
 }
 
 ExceptionOr<void> IDBCursor::advance(unsigned count)
@@ -197,16 +200,16 @@ ExceptionOr<void> IDBCursor::continuePrimaryKey(ExecState& state, JSValue keyVal
     IDBKeyData keyData = { key.get() };
     IDBKeyData primaryKeyData = { primaryKey.get() };
 
-    if (keyData < m_currentKeyData && direction == IndexedDB::CursorDirection::Next)
+    if (keyData < m_keyData && direction == IndexedDB::CursorDirection::Next)
         return Exception { DataError, "Failed to execute 'continuePrimaryKey' on 'IDBCursor': The first parameter is less than this cursor's position and this cursor's direction is \"next\"."_s };
 
-    if (keyData > m_currentKeyData && direction == IndexedDB::CursorDirection::Prev)
+    if (keyData > m_keyData && direction == IndexedDB::CursorDirection::Prev)
         return Exception { DataError, "Failed to execute 'continuePrimaryKey' on 'IDBCursor': The first parameter is greater than this cursor's position and this cursor's direction is \"prev\"."_s };
 
-    if (keyData == m_currentKeyData) {
-        if (primaryKeyData <= m_currentPrimaryKeyData && direction == IndexedDB::CursorDirection::Next)
+    if (keyData == m_keyData) {
+        if (primaryKeyData <= m_primaryKeyData && direction == IndexedDB::CursorDirection::Next)
             return Exception { DataError, "Failed to execute 'continuePrimaryKey' on 'IDBCursor': The key parameters represent a position less-than-or-equal-to this cursor's position and this cursor's direction is \"next\"."_s };
-        if (primaryKeyData >= m_currentPrimaryKeyData && direction == IndexedDB::CursorDirection::Prev)
+        if (primaryKeyData >= m_primaryKeyData && direction == IndexedDB::CursorDirection::Prev)
             return Exception { DataError, "Failed to execute 'continuePrimaryKey' on 'IDBCursor': The key parameters represent a position greater-than-or-equal-to this cursor's position and this cursor's direction is \"prev\"."_s };
     }
 
@@ -247,10 +250,10 @@ ExceptionOr<void> IDBCursor::continueFunction(const IDBKeyData& key)
         return Exception { DataError, "Failed to execute 'continue' on 'IDBCursor': The parameter is not a valid key."_s };
 
     if (m_info.isDirectionForward()) {
-        if (!key.isNull() && key.compare(m_currentKeyData) <= 0)
+        if (!key.isNull() && key.compare(m_keyData) <= 0)
             return Exception { DataError, "Failed to execute 'continue' on 'IDBCursor': The parameter is less than or equal to this cursor's position."_s };
     } else {
-        if (!key.isNull() && key.compare(m_currentKeyData) >= 0)
+        if (!key.isNull() && key.compare(m_keyData) >= 0)
             return Exception { DataError, "Failed to execute 'continue' on 'IDBCursor': The parameter is greater than or equal to this cursor's position."_s };
     }
 
@@ -299,55 +302,62 @@ ExceptionOr<Ref<WebCore::IDBRequest>> IDBCursor::deleteFunction(ExecState& state
     if (!isKeyCursorWithValue())
         return Exception { InvalidStateError, "Failed to execute 'delete' on 'IDBCursor': The cursor is a key cursor."_s };
 
-    auto result = effectiveObjectStore().deleteFunction(state, m_currentPrimaryKey.get());
+    auto result = effectiveObjectStore().deleteFunction(state, IDBKeyRange::create(m_primaryKey.copyRef()).ptr());
     if (result.hasException())
         return result.releaseException();
 
     auto request = result.releaseReturnValue();
     request->setSource(*this);
 
-    return WTFMove(request);
+    return request;
 }
 
-void IDBCursor::setGetResult(IDBRequest& request, const IDBGetResult& getResult)
+bool IDBCursor::setGetResult(IDBRequest& request, const IDBGetResult& getResult)
 {
     LOG(IndexedDB, "IDBCursor::setGetResult - current key %s", getResult.keyData().loggingString().substring(0, 100).utf8().data());
     ASSERT(&effectiveObjectStore().transaction().database().originThread() == &Thread::current());
 
     auto* context = request.scriptExecutionContext();
     if (!context)
-        return;
+        return false;
 
-    auto* exec = context->execState();
-    if (!exec)
-        return;
+    VM& vm = context->vm();
+    JSLockHolder lock(vm);
+
+    m_keyWrapper = { };
+    m_primaryKeyWrapper = { };
+    m_valueWrapper = { };
 
     if (!getResult.isDefined()) {
-        m_currentKey = { };
-        m_currentKeyData = { };
-        m_currentPrimaryKey = { };
-        m_currentPrimaryKeyData = { };
-        m_currentValue = { };
+        m_keyData = { };
+        m_key = nullptr;
+        m_primaryKeyData = { };
+        m_primaryKey = nullptr;
+        m_value = { };
 
         m_gotValue = false;
-        return;
+        return false;
     }
 
-    auto& vm = context->vm();
+    m_keyData = getResult.keyData();
+    m_key = m_keyData.maybeCreateIDBKey();
+    m_primaryKeyData = getResult.primaryKeyData();
+    m_primaryKey = m_primaryKeyData.maybeCreateIDBKey();
 
-    // FIXME: This conversion should be done lazily, when script needs the JSValues, so that global object
-    // of the IDBCursor wrapper can be used, rather than the lexicalGlobalObject.
-    m_currentKey = { vm, toJS(*exec, *exec->lexicalGlobalObject(), getResult.keyData().maybeCreateIDBKey().get()) };
-    m_currentKeyData = getResult.keyData();
-    m_currentPrimaryKey = { vm, toJS(*exec, *exec->lexicalGlobalObject(), getResult.primaryKeyData().maybeCreateIDBKey().get()) };
-    m_currentPrimaryKeyData = getResult.primaryKeyData();
-
-    if (isKeyCursorWithValue())
-        m_currentValue = { vm, deserializeIDBValueToJSValue(*exec, getResult.value()) };
-    else
-        m_currentValue = { };
+    if (isKeyCursorWithValue()) {
+        m_value = getResult.value();
+        m_keyPath = getResult.keyPath();
+    }
 
     m_gotValue = true;
+    return true;
+}
+
+void IDBCursor::clearWrappers()
+{
+    m_keyWrapper.clear();
+    m_primaryKeyWrapper.clear();
+    m_valueWrapper.clear();
 }
 
 } // namespace WebCore

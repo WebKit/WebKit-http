@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "WebVisiblePosition.h"
 #import "WebVisiblePositionInternal.h"
@@ -421,7 +421,7 @@ static inline SelectionDirection toSelectionDirection(WebTextAdjustmentDirection
     Node* node = p.deepEquivalent().anchorNode();
     Document& document = node->document();
     
-    const auto& markers = document.markers().markersFor(node, DocumentMarker::DictationPhraseWithAlternatives);
+    const auto& markers = document.markers().markersFor(*node, DocumentMarker::DictationPhraseWithAlternatives);
     if (markers.isEmpty())
         return nil;
         
@@ -433,8 +433,8 @@ static inline SelectionDirection toSelectionDirection(WebTextAdjustmentDirection
             for (size_t j = 0; j < markerAlternatives.size(); j++)
                 [(NSMutableArray *)*alternatives addObject:(NSString *)(markerAlternatives[j])];
                 
-            RefPtr<Range> range = Range::create(document, node, marker->startOffset(), node, marker->endOffset());
-            return kit(range.get());
+            auto range = Range::create(document, node, marker->startOffset(), node, marker->endOffset());
+            return kit(range.ptr());
         }
     }
         
@@ -455,15 +455,15 @@ static inline SelectionDirection toSelectionDirection(WebTextAdjustmentDirection
     Node* node = p.deepEquivalent().anchorNode();
     Document& document = node->document();
     
-    const auto& markers = document.markers().markersFor(node, DocumentMarker::Spelling);
+    const auto& markers = document.markers().markersFor(*node, DocumentMarker::Spelling);
     if (markers.isEmpty())
         return nil;
     
     for (size_t i = 0; i < markers.size(); i++) {
         const DocumentMarker* marker = markers[i];
         if (marker->startOffset() <= offset && marker->endOffset() >= offset) {
-            RefPtr<Range> range = Range::create(document, node, marker->startOffset(), node, marker->endOffset());
-            return kit(range.get());
+            auto range = Range::create(document, node, marker->startOffset(), node, marker->endOffset());
+            return kit(range.ptr());
         }
     }
     
@@ -622,4 +622,4 @@ static inline SelectionDirection toSelectionDirection(WebTextAdjustmentDirection
 
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

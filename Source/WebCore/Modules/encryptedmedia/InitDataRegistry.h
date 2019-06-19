@@ -33,8 +33,8 @@
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
-#include <wtf/text/AtomicString.h>
-#include <wtf/text/AtomicStringHash.h>
+#include <wtf/text/AtomString.h>
+#include <wtf/text/AtomStringHash.h>
 
 namespace WebCore {
 
@@ -45,23 +45,23 @@ public:
     WEBCORE_EXPORT static InitDataRegistry& shared();
     friend class NeverDestroyed<InitDataRegistry>;
 
-    RefPtr<SharedBuffer> sanitizeInitData(const AtomicString& initDataType, const SharedBuffer&);
-    WEBCORE_EXPORT std::optional<Vector<Ref<SharedBuffer>>> extractKeyIDs(const AtomicString& initDataType, const SharedBuffer&);
+    RefPtr<SharedBuffer> sanitizeInitData(const AtomString& initDataType, const SharedBuffer&);
+    WEBCORE_EXPORT Optional<Vector<Ref<SharedBuffer>>> extractKeyIDs(const AtomString& initDataType, const SharedBuffer&);
 
     struct InitDataTypeCallbacks {
         using SanitizeInitDataCallback = Function<RefPtr<SharedBuffer>(const SharedBuffer&)>;
-        using ExtractKeyIDsCallback = Function<std::optional<Vector<Ref<SharedBuffer>>>(const SharedBuffer&)>;
+        using ExtractKeyIDsCallback = Function<Optional<Vector<Ref<SharedBuffer>>>(const SharedBuffer&)>;
 
         SanitizeInitDataCallback sanitizeInitData;
         ExtractKeyIDsCallback extractKeyIDs;
     };
-    void registerInitDataType(const AtomicString& initDataType, InitDataTypeCallbacks&&);
+    void registerInitDataType(const AtomString& initDataType, InitDataTypeCallbacks&&);
 
 private:
     InitDataRegistry();
     ~InitDataRegistry();
 
-    HashMap<AtomicString, InitDataTypeCallbacks> m_types;
+    HashMap<AtomString, InitDataTypeCallbacks> m_types;
 };
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "JSCPoison.h"
 #include "JSDestructibleObject.h"
 #include "JSObject.h"
 #include "WasmMemory.h"
@@ -43,7 +42,7 @@ class JSWebAssemblyMemory final : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess>
     static CompleteSubspace* subspaceFor(VM& vm)
     {
         // We hold onto a lot of memory, so it makes a lot of sense to be swept eagerly.
@@ -67,9 +66,9 @@ private:
     static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 
-    PoisonedRef<JSWebAssemblyMemoryPoison, Wasm::Memory> m_memory;
-    PoisonedWriteBarrier<JSWebAssemblyMemoryPoison, JSArrayBuffer> m_bufferWrapper;
-    PoisonedRefPtr<JSWebAssemblyMemoryPoison, ArrayBuffer> m_buffer;
+    Ref<Wasm::Memory> m_memory;
+    WriteBarrier<JSArrayBuffer> m_bufferWrapper;
+    RefPtr<ArrayBuffer> m_buffer;
 };
 
 } // namespace JSC

@@ -28,12 +28,11 @@
 #include <WebCore/Node.h>
 #include <WebCore/RenderObject.h>
 #include <WebCore/SharedBuffer.h>
-#include <WebCore/URL.h>
+#include <wtf/URL.h>
 #include <wtf/text/WTFString.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 WebHitTestResultData::WebHitTestResultData()
 {
@@ -160,7 +159,7 @@ bool WebHitTestResultData::decode(IPC::Decoder& decoder, WebHitTestResultData& h
         return false;
 
     if (hasLinkTextIndicator) {
-        std::optional<WebCore::TextIndicatorData> indicatorData;
+        Optional<WebCore::TextIndicatorData> indicatorData;
         decoder >> indicatorData;
         if (!indicatorData)
             return false;

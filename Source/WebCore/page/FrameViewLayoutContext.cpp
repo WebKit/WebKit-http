@@ -32,17 +32,18 @@
 #include "FrameView.h"
 #include "InspectorInstrumentation.h"
 #include "LayoutDisallowedScope.h"
-#include "LayoutState.h"
 #include "Logging.h"
 #include "RenderElement.h"
+#include "RenderLayoutState.h"
 #include "RenderView.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScriptDisallowedScope.h"
 #include "Settings.h"
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 #include "FormattingState.h"
 #include "LayoutContainer.h"
-#include "LayoutContext.h"
+#include "LayoutState.h"
 #include "LayoutTreeBuilder.h"
 #endif
 
@@ -55,12 +56,18 @@ namespace WebCore {
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 static void layoutUsingFormattingContext(const RenderView& renderView)
 {
+    if (!RuntimeEnabledFeatures::sharedFeatures().layoutFormattingContextEnabled())
+        return;
     auto initialContainingBlock = Layout::TreeBuilder::createLayoutTree(renderView);
-    auto layoutContext = std::make_unique<Layout::LayoutContext>();
-    layoutContext->initializeRoot(*initialContainingBlock, renderView.size());
-    layoutContext->setInQuirksMode(renderView.document().inQuirksMode());
-    layoutContext->updateLayout();
-    layoutContext->verifyAndOutputMismatchingLayoutTree(renderView);
+    auto layoutState = std::make_unique<Layout::LayoutState>(*initialContainingBlock);
+    auto quirksMode = Layout::LayoutState::QuirksMode::No;
+    if (renderView.document().inLimitedQuirksMode())
+        quirksMode = Layout::LayoutState::QuirksMode::Limited;
+    else if (renderView.document().inQuirksMode())
+        quirksMode = Layout::LayoutState::QuirksMode::Yes;
+    layoutState->setQuirksMode(quirksMode);
+    layoutState->updateLayout();
+    layoutState->verifyAndOutputMismatchingLayoutTree(renderView);
 } 
 #endif
 
@@ -114,21 +121,21 @@ public:
         : m_view(layoutContext.view())
         , m_nestedState(layoutContext.m_layoutNestedState, layoutContext.m_layoutNestedState == FrameViewLayoutContext::LayoutNestedState::NotInLayout ? FrameViewLayoutContext::LayoutNestedState::NotNested : FrameViewLayoutContext::LayoutNestedState::Nested)
         , m_schedulingIsEnabled(layoutContext.m_layoutSchedulingIsEnabled, false)
-        , m_inProgrammaticScroll(layoutContext.view().inProgrammaticScroll())
+        , m_previousScrollType(layoutContext.view().currentScrollType())
     {
-        m_view.setInProgrammaticScroll(true);
+        m_view.setCurrentScrollType(ScrollType::Programmatic);
     }
         
     ~LayoutScope()
     {
-        m_view.setInProgrammaticScroll(m_inProgrammaticScroll);
+        m_view.setCurrentScrollType(m_previousScrollType);
     }
         
 private:
     FrameView& m_view;
     SetForScope<FrameViewLayoutContext::LayoutNestedState> m_nestedState;
     SetForScope<bool> m_schedulingIsEnabled;
-    bool m_inProgrammaticScroll { false };
+    ScrollType m_previousScrollType;
 };
 
 FrameViewLayoutContext::FrameViewLayoutContext(FrameView& frameView)
@@ -146,7 +153,7 @@ void FrameViewLayoutContext::layout()
 {
     LOG_WITH_STREAM(Layout, stream << "FrameView " << &view() << " FrameViewLayoutContext::layout() with size " << view().layoutSize());
 
-    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(!frame().document()->inRenderTreeUpdate() || ScriptDisallowedScope::LayoutAssertionDisableScope::shouldDisable());
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(!frame().document()->inRenderTreeUpdate());
     ASSERT(LayoutDisallowedScope::isLayoutAllowed());
     ASSERT(!view().isPainting());
     ASSERT(frame().view() == &view());
@@ -172,7 +179,7 @@ void FrameViewLayoutContext::layout()
     if (m_firstLayout && !frame().ownerElement())
         LOG(Layout, "FrameView %p elapsed time before first layout: %.3fs", this, document()->timeSinceDocumentCreation().value());
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (view().updateFixedPositionLayoutRect() && subtreeLayoutRoot())
         convertSubtreeLayoutToFullLayout();
 #endif
@@ -209,7 +216,7 @@ void FrameViewLayoutContext::layout()
 #endif
         layoutRoot->layout();
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
-    layoutUsingFormattingContext(*renderView());
+        layoutUsingFormattingContext(*renderView());
 #endif
         ++m_layoutCount;
 #if ENABLE(TEXT_AUTOSIZING)
@@ -311,7 +318,7 @@ bool FrameViewLayoutContext::needsLayout() const
         || (m_disableSetNeedsLayoutCount && m_setNeedsLayoutWasDeferred);
 }
 
-void FrameViewLayoutContext::setNeedsLayout()
+void FrameViewLayoutContext::setNeedsLayoutAfterViewConfigurationChange()
 {
     if (m_disableSetNeedsLayoutCount) {
         m_setNeedsLayoutWasDeferred = true;
@@ -319,8 +326,9 @@ void FrameViewLayoutContext::setNeedsLayout()
     }
 
     if (auto* renderView = this->renderView()) {
-        ASSERT(!renderView->inHitTesting());
+        ASSERT(!frame().document()->inHitTesting());
         renderView->setNeedsLayout();
+        scheduleLayout();
     }
 }
 
@@ -455,6 +463,11 @@ void FrameViewLayoutContext::layoutTimerFired()
     layout();
 }
 
+RenderElement* FrameViewLayoutContext::subtreeLayoutRoot() const
+{
+    return m_subtreeLayoutRoot.get();
+}
+
 void FrameViewLayoutContext::convertSubtreeLayoutToFullLayout()
 {
     ASSERT(subtreeLayoutRoot());
@@ -488,15 +501,16 @@ bool FrameViewLayoutContext::canPerformLayout() const
 void FrameViewLayoutContext::applyTextSizingIfNeeded(RenderElement& layoutRoot)
 {
     auto& settings = layoutRoot.settings();
-    if (!settings.textAutosizingEnabled() || renderView()->printing())
+    bool idempotentMode = settings.textAutosizingUsesIdempotentMode();
+    if (!settings.textAutosizingEnabled() || idempotentMode || renderView()->printing())
         return;
     auto minimumZoomFontSize = settings.minimumZoomFontSize();
-    if (!minimumZoomFontSize)
+    if (!idempotentMode && !minimumZoomFontSize)
         return;
     auto textAutosizingWidth = layoutRoot.page().textAutosizingWidth();
     if (auto overrideWidth = settings.textAutosizingWindowSizeOverride().width())
         textAutosizingWidth = overrideWidth;
-    if (!textAutosizingWidth)
+    if (!idempotentMode && !textAutosizingWidth)
         return;
     layoutRoot.adjustComputedFontSizesOnBlocks(minimumZoomFontSize, textAutosizingWidth);
     if (!layoutRoot.needsLayout())
@@ -582,7 +596,7 @@ bool FrameViewLayoutContext::layoutDeltaMatches(const LayoutSize& delta)
 }
 #endif
 
-LayoutState* FrameViewLayoutContext::layoutState() const
+RenderLayoutState* FrameViewLayoutContext::layoutState() const
 {
     if (m_layoutStateStack.isEmpty())
         return nullptr;
@@ -594,14 +608,14 @@ void FrameViewLayoutContext::pushLayoutState(RenderElement& root)
     ASSERT(!m_paintOffsetCacheDisableCount);
     ASSERT(!layoutState());
 
-    m_layoutStateStack.append(std::make_unique<LayoutState>(root));
+    m_layoutStateStack.append(std::make_unique<RenderLayoutState>(root));
 }
 
 bool FrameViewLayoutContext::pushLayoutStateForPaginationIfNeeded(RenderBlockFlow& layoutRoot)
 {
     if (layoutState())
         return false;
-    m_layoutStateStack.append(std::make_unique<LayoutState>(layoutRoot, LayoutState::IsPaginated::Yes));
+    m_layoutStateStack.append(std::make_unique<RenderLayoutState>(layoutRoot, RenderLayoutState::IsPaginated::Yes));
     return true;
 }
     
@@ -611,7 +625,7 @@ bool FrameViewLayoutContext::pushLayoutState(RenderBox& renderer, const LayoutSi
     auto* layoutState = this->layoutState();
     if (!layoutState || !needsFullRepaint() || layoutState->isPaginated() || renderer.enclosingFragmentedFlow()
         || layoutState->lineGrid() || (renderer.style().lineGrid() != RenderStyle::initialLineGrid() && renderer.isRenderBlockFlow())) {
-        m_layoutStateStack.append(std::make_unique<LayoutState>(m_layoutStateStack, renderer, offset, pageHeight, pageHeightChanged));
+        m_layoutStateStack.append(std::make_unique<RenderLayoutState>(m_layoutStateStack, renderer, offset, pageHeight, pageHeightChanged));
         return true;
     }
     return false;
@@ -621,7 +635,7 @@ void FrameViewLayoutContext::popLayoutState()
 {
     m_layoutStateStack.removeLast();
 }
-    
+
 #ifndef NDEBUG
 void FrameViewLayoutContext::checkLayoutState()
 {

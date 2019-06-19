@@ -58,6 +58,7 @@ enum TestConfidence { "high", "kinda-low" };
     static readonly attribute long     staticReadOnlyLongAttr;
     static attribute DOMString         staticStringAttr;
     static readonly attribute TestSubObjConstructor TestSubObj;
+    [CallWith=Document] static readonly attribute TestObj testStaticReadonlyObj;
     attribute TestEnumType enumAttr;
     attribute byte byteAttr;
     attribute octet octetAttr;
@@ -89,6 +90,9 @@ enum TestConfidence { "high", "kinda-low" };
 
     attribute TestEnumTypeWithAlternateImplementationName implementationEnumAttr;
 
+    [SecureContext, ContextAllowsMediaDevices] readonly attribute MediaDevices mediaDevices;
+    [SecureContext, ContextHasServiceWorkerScheme] readonly attribute ServiceWorker serviceWorkers;
+
     // WK_ucfirst, WK_lcfirst exceptional cases.
     attribute TestObj                  XMLObjAttr;
     attribute boolean                  create;
@@ -110,6 +114,8 @@ enum TestConfidence { "high", "kinda-low" };
     [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature&TestFeature1] attribute DOMString enabledAtRuntimeAttribute;
     [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] void enabledAtRuntimeOperation(DOMString testParam);
     [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] void enabledAtRuntimeOperation(long testParam);
+    [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] static void enabledAtRuntimeOperationStatic(long testParam);
+    [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] static attribute DOMString enabledAtRuntimeAttributeStatic;
 
     [EnabledForWorld=someWorld, EnabledAtRuntime=TestFeature] void enabledInSpecificWorldWhenRuntimeFeatureEnabled(long testParam);
     [EnabledForWorld=someWorld] void worldSpecificMethod(long testParam);
@@ -189,23 +195,23 @@ enum TestConfidence { "high", "kinda-low" };
     [ImplementedAs=onfoo] attribute EventHandler onwebkitfoo;
 
     // 'CallWith' extended attribute
-    [CallWith=ScriptState] void withScriptStateVoid();
-    [CallWith=ScriptState] TestObj withScriptStateObj();
-    [CallWith=ScriptState, MayThrowException] void withScriptStateVoidException();
-    [CallWith=ScriptState, MayThrowException] TestObj withScriptStateObjException();
+    [CallWith=ExecState] void withExecStateVoid();
+    [CallWith=ExecState] TestObj withExecStateObj();
+    [CallWith=ExecState, MayThrowException] void withExecStateVoidException();
+    [CallWith=ExecState, MayThrowException] TestObj withExecStateObjException();
     [CallWith=ScriptExecutionContext] void withScriptExecutionContext();
-    [CallWith=ScriptExecutionContext&ScriptState] void withScriptExecutionContextAndScriptState();
-    [CallWith=ScriptExecutionContext&ScriptState, MayThrowException] TestObj withScriptExecutionContextAndScriptStateObjException();
-    [CallWith=  ScriptExecutionContext  &  ScriptState  ] TestObj withScriptExecutionContextAndScriptStateWithSpaces();
+    [CallWith=ScriptExecutionContext&ExecState] void withScriptExecutionContextAndExecState();
+    [CallWith=ScriptExecutionContext&ExecState, MayThrowException] TestObj withScriptExecutionContextAndExecStateObjException();
+    [CallWith=  ScriptExecutionContext  &  ExecState  ] TestObj withScriptExecutionContextAndExecStateWithSpaces();
     [CallWith=Document] void withDocumentArgument();
     [CallWith=IncumbentDocument] void withCallerDocumentArgument();
     [CallWith=IncumbentWindow] void withCallerWindowArgument();
 
-    [CallWith=ScriptState] attribute long withScriptStateAttribute;
-    [CallWith=ScriptState, SetterCallWith=ActiveWindow&FirstWindow] attribute long withCallWithAndSetterCallWithAttribute;
+    [CallWith=ExecState] attribute long withExecStateAttribute;
+    [CallWith=ExecState, SetterCallWith=ActiveWindow&FirstWindow] attribute long withCallWithAndSetterCallWithAttribute;
     [CallWith=ScriptExecutionContext] attribute TestObj withScriptExecutionContextAttribute;
-    [CallWith=ScriptExecutionContext&ScriptState] attribute TestObj withScriptExecutionContextAndScriptStateAttribute;
-    [CallWith=  ScriptExecutionContext  &  ScriptState  ] attribute TestObj withScriptExecutionContextAndScriptStateWithSpacesAttribute;
+    [CallWith=ScriptExecutionContext&ExecState] attribute TestObj withScriptExecutionContextAndExecStateAttribute;
+    [CallWith=  ScriptExecutionContext  &  ExecState  ] attribute TestObj withScriptExecutionContextAndExecStateWithSpacesAttribute;
 
     // Optional parameters.
     void    methodWithOptionalArg(optional long opt);
@@ -214,15 +220,15 @@ enum TestConfidence { "high", "kinda-low" };
     void    methodWithNonOptionalArgAndTwoOptionalArgs(long nonOpt, optional long opt1, optional long opt2);
     void    methodWithOptionalString(optional DOMString str);
     void    methodWithOptionalUSVString(optional USVString str);
-    void    methodWithOptionalAtomicString(optional [AtomicString] DOMString str);
+    void    methodWithOptionalAtomicString(optional [AtomString] DOMString str);
     void    methodWithOptionalStringAndDefaultValue(optional DOMString str = "foo");
-    void    methodWithOptionalAtomicStringAndDefaultValue(optional [AtomicString] DOMString str = "foo");
+    void    methodWithOptionalAtomicStringAndDefaultValue(optional [AtomString] DOMString str = "foo");
     void    methodWithOptionalStringIsNull(optional DOMString str = null);
     void    methodWithOptionalStringIsUndefined(optional DOMString str = "undefined");
-    void    methodWithOptionalAtomicStringIsNull(optional [AtomicString] DOMString str = null);
+    void    methodWithOptionalAtomicStringIsNull(optional [AtomString] DOMString str = null);
     void    methodWithOptionalStringIsEmptyString(optional DOMString str = "");
     void    methodWithOptionalUSVStringIsEmptyString(optional USVString str = "");
-    void    methodWithOptionalAtomicStringIsEmptyString(optional [AtomicString] DOMString str = "");
+    void    methodWithOptionalAtomicStringIsEmptyString(optional [AtomString] DOMString str = "");
     void    methodWithOptionalDoubleIsNaN(optional unrestricted double number = NaN);
     void    methodWithOptionalFloatIsNaN(optional unrestricted float number = NaN);
     void    methodWithOptionalLongLong(optional long long number);
@@ -273,7 +279,8 @@ enum TestConfidence { "high", "kinda-low" };
 
     [CachedAttribute] readonly attribute any cachedAttribute1;
     [CachedAttribute] readonly attribute any cachedAttribute2;
-    
+    [CachedAttribute, Conditional=CONDITION] readonly attribute any cachedAttribute3;
+
     attribute any anyAttribute;
     attribute object objectAttribute;
 
@@ -337,7 +344,7 @@ enum TestConfidence { "high", "kinda-low" };
 
     void methodWithAndWithoutNullableSequence(sequence<unsigned long> arrayArg, sequence<unsigned long>? nullableArrayArg);
 
-    Element? getElementById([RequiresExistingAtomicString] DOMString elementId);
+    Element? getElementById([RequiresExistingAtomString] DOMString elementId);
 
     [CheckSecurityForNode] readonly attribute Document contentDocument;
     [CheckSecurityForNode, MayThrowException] SVGDocument getSVGDocument();
@@ -397,7 +404,7 @@ enum TestConfidence { "high", "kinda-low" };
 
     readonly attribute Promise<void> testReadOnlyVoidPromiseAttribute;
     readonly attribute Promise<TestNode> testReadOnlyPromiseAttribute;
-    
+
     // Promise function
     Promise<void> testPromiseFunction();
     Promise<void> testPromiseFunctionWithFloatArgument(float a);
@@ -431,7 +438,7 @@ enum TestConfidence { "high", "kinda-low" };
     serializer = {create, readOnlyStringAttr, enumAttr, longAttr};
 
     void bufferSourceParameter(BufferSource data);
-    
+
     legacycaller void legacyCallerNamed(long param);
     legacycaller long (DOMString param);
     legacycaller void ();

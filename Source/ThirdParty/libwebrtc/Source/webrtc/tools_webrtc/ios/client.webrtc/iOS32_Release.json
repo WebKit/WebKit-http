@@ -1,8 +1,9 @@
 {
   "comments": [
-    "Builder for 32-bit devices."
+    "Builder for 32-bit devices.",
+    "NOTE: Update cache entry in cr-buildbucket.cfg when changing xcode version."
   ],
-  "xcode version": "8.0",
+  "xcode build version": "10l232m",
   "gn_args": [
     "goma_dir=\"$(goma_dir)\"",
     "dcheck_always_on=true",
@@ -15,7 +16,7 @@
   ],
   "additional_compile_targets": [ "all" ],
   "configuration": "Release",
-  "sdk": "iphoneos10.0",
+  "sdk": "iphoneos10.3",
   "tests": [
   ]
 }

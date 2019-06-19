@@ -33,14 +33,11 @@
 #include "SecurityOrigin.h"
 #include "ServiceWorkerIdentifier.h"
 #include <wtf/RefPtr.h>
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 
 namespace WebCore {
 
-namespace ContentExtensions {
-struct BlockedStatus;
-}
-
+struct ContentRuleListResults;
 class Document;
 class FrameLoader;
 struct ServiceWorkerRegistrationData;
@@ -50,7 +47,7 @@ bool isRequestCrossOrigin(SecurityOrigin*, const URL& requestURL, const Resource
 
 class CachedResourceRequest {
 public:
-    CachedResourceRequest(ResourceRequest&&, const ResourceLoaderOptions&, std::optional<ResourceLoadPriority> = std::nullopt, String&& charset = String());
+    CachedResourceRequest(ResourceRequest&&, const ResourceLoaderOptions&, Optional<ResourceLoadPriority> = WTF::nullopt, String&& charset = String());
 
     ResourceRequest&& releaseResourceRequest() { return WTFMove(m_resourceRequest); }
     const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
@@ -62,12 +59,12 @@ public:
     const ResourceLoaderOptions& options() const { return m_options; }
     void setOptions(const ResourceLoaderOptions& options) { m_options = options; }
 
-    const std::optional<ResourceLoadPriority>& priority() const { return m_priority; }
-    void setPriority(std::optional<ResourceLoadPriority>&& priority) { m_priority = WTFMove(priority); }
+    const Optional<ResourceLoadPriority>& priority() const { return m_priority; }
+    void setPriority(Optional<ResourceLoadPriority>&& priority) { m_priority = WTFMove(priority); }
 
     void setInitiator(Element&);
-    void setInitiator(const AtomicString& name);
-    const AtomicString& initiatorName() const;
+    void setInitiator(const AtomString& name);
+    const AtomString& initiatorName() const;
 
     bool allowsCaching() const { return m_options.cachingPolicy == CachingPolicy::AllowCaching; }
     void setCachingPolicy(CachingPolicy policy) { m_options.cachingPolicy = policy;  }
@@ -91,7 +88,7 @@ public:
 
     void removeFragmentIdentifierIfNeeded();
 #if ENABLE(CONTENT_EXTENSIONS)
-    void applyBlockedStatus(const ContentExtensions::BlockedStatus&, Page*);
+    void applyResults(ContentRuleListResults&&, Page*);
 #endif
     void setDomainForCachePartition(Document&);
     void setDomainForCachePartition(const String&);
@@ -110,16 +107,16 @@ public:
 #if ENABLE(SERVICE_WORKER)
     void setClientIdentifierIfNeeded(DocumentIdentifier);
     void setSelectedServiceWorkerRegistrationIdentifierIfNeeded(ServiceWorkerRegistrationIdentifier);
-    void setNavigationServiceWorkerRegistrationData(const std::optional<ServiceWorkerRegistrationData>&);
+    void setNavigationServiceWorkerRegistrationData(const Optional<ServiceWorkerRegistrationData>&);
 #endif
 
 private:
     ResourceRequest m_resourceRequest;
     String m_charset;
     ResourceLoaderOptions m_options;
-    std::optional<ResourceLoadPriority> m_priority;
+    Optional<ResourceLoadPriority> m_priority;
     RefPtr<Element> m_initiatorElement;
-    AtomicString m_initiatorName;
+    AtomString m_initiatorName;
     RefPtr<SecurityOrigin> m_origin;
     String m_fragmentIdentifier;
     bool m_isLinkPreload { false };

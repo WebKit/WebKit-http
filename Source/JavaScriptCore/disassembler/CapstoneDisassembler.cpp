@@ -44,9 +44,6 @@ bool tryToDisassemble(const MacroAssemblerCodePtr<DisassemblyPtrTag>& codePtr, s
 #elif CPU(X86_64)
     if (cs_open(CS_ARCH_X86, CS_MODE_64, &handle) != CS_ERR_OK)
         return false;
-#elif CPU(ARM_TRADITIONAL)
-    if (cs_open(CS_ARCH_ARM, CS_MODE_ARM, &handle) != CS_ERR_OK)
-        return false;
 #elif CPU(ARM_THUMB2)
     if (cs_open(CS_ARCH_ARM, CS_MODE_THUMB, &handle) != CS_ERR_OK)
         return false;
@@ -67,7 +64,7 @@ bool tryToDisassemble(const MacroAssemblerCodePtr<DisassemblyPtrTag>& codePtr, s
     }
 #endif
 
-    size_t count = cs_disasm(handle, codePtr.untaggedExecutableAddress<unsigned char*>(), size, codePtr.untaggedExecutableAddress<uintptr_t>(), 0, &instructions);
+    size_t count = cs_disasm(handle, codePtr.dataLocation<unsigned char*>(), size, codePtr.dataLocation<uintptr_t>(), 0, &instructions);
     if (count > 0) {
         for (size_t i = 0; i < count; ++i) {
             auto& instruction = instructions[i];

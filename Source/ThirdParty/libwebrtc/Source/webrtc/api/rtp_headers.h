@@ -12,19 +12,17 @@
 #define API_RTP_HEADERS_H_
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
-#include <string>
-#include <vector>
 
 #include "absl/types/optional.h"
 #include "api/array_view.h"
+#include "api/video/hdr_metadata.h"
 #include "api/video/video_content_type.h"
+#include "api/video/video_frame_marking.h"
 #include "api/video/video_rotation.h"
 #include "api/video/video_timing.h"
-
 #include "common_types.h"  // NOLINT(build/include)
-#include "rtc_base/checks.h"
-#include "rtc_base/deprecation.h"
 
 namespace webrtc {
 
@@ -116,6 +114,9 @@ struct RTPHeaderExtension {
   bool has_video_timing;
   VideoSendTiming video_timing;
 
+  bool has_frame_marking;
+  FrameMarking frame_marking;
+
   PlayoutDelay playout_delay = {-1, -1};
 
   // For identification of a stream when ssrc is not signaled. See
@@ -127,6 +128,8 @@ struct RTPHeaderExtension {
   // For identifying the media section used to interpret this RTP packet. See
   // https://tools.ietf.org/html/draft-ietf-mmusic-sdp-bundle-negotiation-38
   Mid mid;
+
+  absl::optional<HdrMetadata> hdr_metadata;
 };
 
 struct RTPHeader {

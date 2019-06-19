@@ -36,8 +36,6 @@
 #import <wtf/RetainPtr.h>
 #import <wtf/text/WTFString.h>
 
-#if WK_API_ENABLED
-
 static bool readyToContinue;
 static bool receivedScriptMessage;
 static RetainPtr<WKScriptMessage> lastScriptMessage;
@@ -55,6 +53,103 @@ static RetainPtr<WKScriptMessage> lastScriptMessage;
 
 @end
 
+TEST(WKWebView, LocalStorageProcessCrashes)
+{
+    readyToContinue = false;
+    [[WKWebsiteDataStore defaultDataStore] removeDataOfTypes:[WKWebsiteDataStore allWebsiteDataTypes] modifiedSince:[NSDate distantPast] completionHandler:^() {
+        readyToContinue = true;
+    }];
+    TestWebKitAPI::Util::run(&readyToContinue);
+
+    RetainPtr<LocalStorageMessageHandler> handler = adoptNS([[LocalStorageMessageHandler alloc] init]);
+    RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [[configuration userContentController] addScriptMessageHandler:handler.get() name:@"testHandler"];
+    [configuration _setAllowUniversalAccessFromFileURLs:YES];
+    RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
+    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"local-storage-process-crashes" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    [webView loadRequest:request];
+
+    receivedScriptMessage = false;
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+    EXPECT_WK_STREQ(@"local:storage", [lastScriptMessage body]);
+
+    receivedScriptMessage = false;
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+    EXPECT_WK_STREQ(@"session:storage", [lastScriptMessage body]);
+
+    [configuration.get().processPool _terminateNetworkProcess];
+
+    receivedScriptMessage = false;
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+    EXPECT_WK_STREQ(@"Network Process Crashed", [lastScriptMessage body]);
+
+    readyToContinue = false;
+    [webView evaluateJavaScript:@"window.localStorage.getItem('local')" completionHandler:^(id result, NSError *) {
+        EXPECT_TRUE([@"storage" isEqualToString:result]);
+        readyToContinue = true;
+    }];
+    TestWebKitAPI::Util::run(&readyToContinue);
+
+    readyToContinue = false;
+    [webView evaluateJavaScript:@"window.sessionStorage.getItem('session')" completionHandler:^(id result, NSError *) {
+        EXPECT_TRUE([@"storage" isEqualToString:result]);
+        readyToContinue = true;
+    }];
+    TestWebKitAPI::Util::run(&readyToContinue);
+}
+
+TEST(WKWebView, LocalStorageProcessSuspends)
+{
+    readyToContinue = false;
+    [[WKWebsiteDataStore defaultDataStore] removeDataOfTypes:[WKWebsiteDataStore allWebsiteDataTypes] modifiedSince:[NSDate distantPast] completionHandler:^() {
+        readyToContinue = true;
+    }];
+    TestWebKitAPI::Util::run(&readyToContinue);
+
+    RetainPtr<LocalStorageMessageHandler> handler = adoptNS([[LocalStorageMessageHandler alloc] init]);
+    RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    [[configuration userContentController] addScriptMessageHandler:handler.get() name:@"testHandler"];
+    RetainPtr<WKProcessPool> processPool = adoptNS([[WKProcessPool alloc] init]);
+    [configuration setProcessPool:processPool.get()];
+    [configuration _setAllowUniversalAccessFromFileURLs:YES];
+
+    RetainPtr<WKWebView> webView1 = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
+    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"local-storage-process-suspends-1" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    [webView1 loadRequest:request];
+
+    receivedScriptMessage = false;
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+    EXPECT_WK_STREQ(@"value", [lastScriptMessage body]);
+    
+    RetainPtr<WKWebView> webView2 = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
+    request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"local-storage-process-suspends-2" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    [webView2 loadRequest:request];
+
+    receivedScriptMessage = false;
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+    EXPECT_WK_STREQ(@"value", [lastScriptMessage body]);
+
+    [processPool.get() _sendNetworkProcessWillSuspendImminently];
+
+    readyToContinue = false;
+    [webView1 evaluateJavaScript:@"window.localStorage.setItem('key', 'newValue')" completionHandler:^(id, NSError *) {
+        readyToContinue = true;
+    }];
+    TestWebKitAPI::Util::run(&readyToContinue);
+    
+    readyToContinue = false;
+    [webView2 evaluateJavaScript:@"window.localStorage.getItem('key')" completionHandler:^(id result, NSError *) {
+        EXPECT_WK_STREQ(@"value", result);
+        readyToContinue = true;
+    }];
+    TestWebKitAPI::Util::run(&readyToContinue);
+    
+    [processPool.get() _sendNetworkProcessDidResume];
+
+    receivedScriptMessage = false;
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+    EXPECT_WK_STREQ(@"newValue", [lastScriptMessage body]);
+}
 
 TEST(WKWebView, LocalStorageEmptyString)
 {
@@ -103,6 +198,3 @@ TEST(WKWebView, LocalStorageEmptyString)
     RetainPtr<NSString> string2 = (NSString *)[lastScriptMessage body];
     EXPECT_WK_STREQ(@"", string2.get());
 }
-
-#endif
-

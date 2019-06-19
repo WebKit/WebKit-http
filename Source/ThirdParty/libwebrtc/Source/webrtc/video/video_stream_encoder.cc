@@ -15,8 +15,10 @@
 #include <numeric>
 #include <utility>
 
+#include "api/video/encoded_image.h"
 #include "api/video/i420_buffer.h"
-#include "common_video/include/video_frame.h"
+#include "api/video/video_bitrate_allocator_factory.h"
+#include "modules/video_coding/codecs/vp9/svc_rate_allocator.h"
 #include "modules/video_coding/include/video_codec_initializer.h"
 #include "modules/video_coding/include/video_coding.h"
 #include "rtc_base/arraysize.h"
@@ -24,6 +26,7 @@
 #include "rtc_base/experiments/quality_scaling_experiment.h"
 #include "rtc_base/location.h"
 #include "rtc_base/logging.h"
+#include "rtc_base/strings/string_builder.h"
 #include "rtc_base/system/fallthrough.h"
 #include "rtc_base/timeutils.h"
 #include "rtc_base/trace_event.h"
@@ -37,7 +40,6 @@ namespace {
 // Time interval for logging frame counts.
 const int64_t kFrameLogIntervalMs = 60000;
 const int kMinFramerateFps = 2;
-const int kMaxFramerateFps = 120;
 
 // Time to keep a single cached pending frame in paused state.
 const int64_t kPendingFrameTimeoutMs = 1000;
@@ -119,7 +121,8 @@ class VideoStreamEncoder::VideoSourceProxy {
   explicit VideoSourceProxy(VideoStreamEncoder* video_stream_encoder)
       : video_stream_encoder_(video_stream_encoder),
         degradation_preference_(DegradationPreference::DISABLED),
-        source_(nullptr) {}
+        source_(nullptr),
+        max_framerate_(std::numeric_limits<int>::max()) {}
 
   void SetSource(rtc::VideoSourceInterface<VideoFrame>* source,
                  const DegradationPreference& degradation_preference) {
@@ -146,11 +149,27 @@ class VideoStreamEncoder::VideoSourceProxy {
     source->AddOrUpdateSink(video_stream_encoder_, wants);
   }
 
+  void SetMaxFramerate(int max_framerate) {
+    RTC_DCHECK_GT(max_framerate, 0);
+    rtc::CritScope lock(&crit_);
+    if (max_framerate == max_framerate_)
+      return;
+
+    RTC_LOG(LS_INFO) << "Set max framerate: " << max_framerate;
+    max_framerate_ = max_framerate;
+    if (source_) {
+      source_->AddOrUpdateSink(video_stream_encoder_,
+                               GetActiveSinkWantsInternal());
+    }
+  }
+
   void SetWantsRotationApplied(bool rotation_applied) {
     rtc::CritScope lock(&crit_);
     sink_wants_.rotation_applied = rotation_applied;
-    if (source_)
-      source_->AddOrUpdateSink(video_stream_encoder_, sink_wants_);
+    if (source_) {
+      source_->AddOrUpdateSink(video_stream_encoder_,
+                               GetActiveSinkWantsInternal());
+    }
   }
 
   rtc::VideoSinkWants GetActiveSinkWants() {
@@ -164,7 +183,8 @@ class VideoStreamEncoder::VideoSourceProxy {
     sink_wants_.target_pixel_count.reset();
     sink_wants_.max_framerate_fps = std::numeric_limits<int>::max();
     if (source_)
-      source_->AddOrUpdateSink(video_stream_encoder_, sink_wants_);
+      source_->AddOrUpdateSink(video_stream_encoder_,
+                               GetActiveSinkWantsInternal());
   }
 
   bool RequestResolutionLowerThan(int pixel_count,
@@ -307,6 +327,8 @@ class VideoStreamEncoder::VideoSourceProxy {
         wants.target_pixel_count.reset();
         wants.max_framerate_fps = std::numeric_limits<int>::max();
     }
+    // Limit to configured max framerate.
+    wants.max_framerate_fps = std::min(max_framerate_, wants.max_framerate_fps);
     return wants;
   }
 
@@ -316,6 +338,7 @@ class VideoStreamEncoder::VideoSourceProxy {
   rtc::VideoSinkWants sink_wants_ RTC_GUARDED_BY(&crit_);
   DegradationPreference degradation_preference_ RTC_GUARDED_BY(&crit_);
   rtc::VideoSourceInterface<VideoFrame>* source_ RTC_GUARDED_BY(&crit_);
+  int max_framerate_ RTC_GUARDED_BY(&crit_);
 
   RTC_DISALLOW_COPY_AND_ASSIGN(VideoSourceProxy);
 };
@@ -342,6 +365,8 @@ VideoStreamEncoder::VideoStreamEncoder(
       max_framerate_(-1),
       pending_encoder_reconfiguration_(false),
       pending_encoder_creation_(false),
+      crop_width_(0),
+      crop_height_(0),
       encoder_start_bitrate_bps_(0),
       max_data_payload_length_(0),
       last_observed_bitrate_bps_(0),
@@ -355,6 +380,7 @@ VideoStreamEncoder::VideoStreamEncoder(
       last_frame_log_ms_(clock_->TimeInMilliseconds()),
       captured_frame_count_(0),
       dropped_frame_count_(0),
+      pending_frame_post_time_us_(0),
       bitrate_observer_(nullptr),
       encoder_queue_("EncoderQueue") {
   RTC_DCHECK(encoder_stats_observer);
@@ -510,31 +536,23 @@ void VideoStreamEncoder::ReconfigureEncoder() {
   crop_height_ = last_frame_info_->height - highest_stream_height;
 
   VideoCodec codec;
-  if (!VideoCodecInitializer::SetupCodec(encoder_config_, streams, &codec,
-                                         &rate_allocator_)) {
+  if (!VideoCodecInitializer::SetupCodec(encoder_config_, streams, &codec)) {
     RTC_LOG(LS_ERROR) << "Failed to create encoder configuration.";
   }
 
+  rate_allocator_ =
+      settings_.bitrate_allocator_factory->CreateVideoBitrateAllocator(codec);
+  RTC_CHECK(rate_allocator_) << "Failed to create bitrate allocator.";
+
   // Set min_bitrate_bps, max_bitrate_bps, and max padding bit rate for VP9.
   if (encoder_config_.codec_type == kVideoCodecVP9) {
-    RTC_DCHECK_EQ(1U, streams.size());
-    int max_encoder_bitrate_kbps = 0;
-    for (int i = 0; i < codec.VP9()->numberOfSpatialLayers; ++i) {
-      max_encoder_bitrate_kbps += codec.spatialLayers[i].maxBitrate;
-    }
     // Lower max bitrate to the level codec actually can produce.
-    streams[0].max_bitrate_bps =
-        std::min(streams[0].max_bitrate_bps, max_encoder_bitrate_kbps * 1000);
+    streams[0].max_bitrate_bps = std::min<int>(
+        streams[0].max_bitrate_bps, SvcRateAllocator::GetMaxBitrateBps(codec));
     streams[0].min_bitrate_bps = codec.spatialLayers[0].minBitrate * 1000;
-    // Pass along the value of maximum padding bit rate from
-    // spatialLayers[].targetBitrate to streams[0].target_bitrate_bps.
-    // TODO(ssilkin): There should be some margin between max padding bitrate
-    // and max encoder bitrate. With the current logic they can be equal.
+    // target_bitrate_bps specifies the maximum padding bitrate.
     streams[0].target_bitrate_bps =
-        std::min(static_cast<unsigned int>(streams[0].max_bitrate_bps),
-                 codec.spatialLayers[codec.VP9()->numberOfSpatialLayers - 1]
-                         .targetBitrate *
-                     1000);
+        SvcRateAllocator::GetPaddingBitrateBps(codec);
   }
 
   codec.startBitrate =
@@ -542,7 +560,13 @@ void VideoStreamEncoder::ReconfigureEncoder() {
   codec.startBitrate = std::min(codec.startBitrate, codec.maxBitrate);
   codec.expect_encode_from_texture = last_frame_info_->is_texture;
   max_framerate_ = codec.maxFramerate;
-  RTC_DCHECK_LE(max_framerate_, kMaxFramerateFps);
+
+  // Inform source about max configured framerate.
+  int max_framerate = 0;
+  for (const auto& stream : streams) {
+    max_framerate = std::max(stream.max_framerate, max_framerate);
+  }
+  source_proxy_->SetMaxFramerate(max_framerate);
 
   // Keep the same encoder, as long as the video_format is unchanged.
   if (pending_encoder_creation_) {
@@ -602,7 +626,7 @@ void VideoStreamEncoder::ReconfigureEncoder() {
 
 void VideoStreamEncoder::ConfigureQualityScaler() {
   RTC_DCHECK_RUN_ON(&encoder_queue_);
-  const auto scaling_settings = encoder_->GetScalingSettings();
+  const auto scaling_settings = encoder_->GetEncoderInfo().scaling_settings;
   const bool quality_scaling_allowed =
       IsResolutionScalingEnabled(degradation_preference_) &&
       scaling_settings.thresholds;
@@ -860,7 +884,15 @@ void VideoStreamEncoder::EncodeVideoFrame(const VideoFrame& video_frame,
 
   overuse_detector_->FrameCaptured(out_frame, time_when_posted_us);
 
-  video_sender_.AddVideoFrame(out_frame, nullptr);
+  // Encoder metadata needs to be updated before encode complete callback.
+  VideoEncoder::EncoderInfo info = encoder_->GetEncoderInfo();
+  if (info.implementation_name != encoder_info_.implementation_name) {
+    encoder_stats_observer_->OnEncoderImplementationChanged(
+        info.implementation_name);
+  }
+  encoder_info_ = info;
+
+  video_sender_.AddVideoFrame(out_frame, nullptr, encoder_info_);
 }
 
 void VideoStreamEncoder::SendKeyFrame() {
@@ -887,7 +919,7 @@ EncodedImageCallback::Result VideoStreamEncoder::OnEncodedImage(
       sink_->OnEncodedImage(encoded_image, codec_specific_info, fragmentation);
 
   int64_t time_sent_us = rtc::TimeMicros();
-  uint32_t timestamp = encoded_image._timeStamp;
+  uint32_t timestamp = encoded_image.Timestamp();
   const int qp = encoded_image.qp_;
   int64_t capture_time_us =
       encoded_image.capture_time_ms_ * rtc::kNumMicrosecsPerMillisec;
@@ -1058,7 +1090,7 @@ void VideoStreamEncoder::AdaptDown(AdaptReason reason) {
       bool min_pixels_reached = false;
       if (!source_proxy_->RequestResolutionLowerThan(
               adaptation_request.input_pixel_count_,
-              encoder_->GetScalingSettings().min_pixels_per_frame,
+              encoder_->GetEncoderInfo().scaling_settings.min_pixels_per_frame,
               &min_pixels_reached)) {
         if (min_pixels_reached)
           encoder_stats_observer_->OnMinPixelLimitReached();
@@ -1237,10 +1269,10 @@ VideoStreamEncoder::AdaptCounter::AdaptCounter() {
 VideoStreamEncoder::AdaptCounter::~AdaptCounter() {}
 
 std::string VideoStreamEncoder::AdaptCounter::ToString() const {
-  std::stringstream ss;
+  rtc::StringBuilder ss;
   ss << "Downgrade counts: fps: {" << ToString(fps_counters_);
   ss << "}, resolution: {" << ToString(resolution_counters_) << "}";
-  return ss.str();
+  return ss.Release();
 }
 
 VideoStreamEncoderObserver::AdaptationSteps
@@ -1330,11 +1362,11 @@ void VideoStreamEncoder::AdaptCounter::MoveCount(std::vector<int>* counters,
 
 std::string VideoStreamEncoder::AdaptCounter::ToString(
     const std::vector<int>& counters) const {
-  std::stringstream ss;
+  rtc::StringBuilder ss;
   for (size_t reason = 0; reason < kScaleReasonSize; ++reason) {
     ss << (reason ? " cpu" : "quality") << ":" << counters[reason];
   }
-  return ss.str();
+  return ss.Release();
 }
 
 }  // namespace webrtc

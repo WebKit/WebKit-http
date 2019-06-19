@@ -55,9 +55,9 @@ JSCustomElementInterface::JSCustomElementInterface(const QualifiedName& name, JS
 
 JSCustomElementInterface::~JSCustomElementInterface() = default;
 
-static RefPtr<Element> constructCustomElementSynchronously(Document&, VM&, ExecState&, JSObject* constructor, const AtomicString& localName);
+static RefPtr<Element> constructCustomElementSynchronously(Document&, VM&, ExecState&, JSObject* constructor, const AtomString& localName);
 
-Ref<Element> JSCustomElementInterface::constructElementWithFallback(Document& document, const AtomicString& localName)
+Ref<Element> JSCustomElementInterface::constructElementWithFallback(Document& document, const AtomString& localName)
 {
     if (auto element = tryToConstructCustomElement(document, localName))
         return element.releaseNonNull();
@@ -66,7 +66,7 @@ Ref<Element> JSCustomElementInterface::constructElementWithFallback(Document& do
     element->setIsCustomElementUpgradeCandidate();
     element->setIsFailedCustomElement(*this);
 
-    return WTFMove(element);
+    return element;
 }
 
 Ref<Element> JSCustomElementInterface::constructElementWithFallback(Document& document, const QualifiedName& name)
@@ -81,10 +81,10 @@ Ref<Element> JSCustomElementInterface::constructElementWithFallback(Document& do
     element->setIsCustomElementUpgradeCandidate();
     element->setIsFailedCustomElement(*this);
 
-    return WTFMove(element);
+    return element;
 }
 
-RefPtr<Element> JSCustomElementInterface::tryToConstructCustomElement(Document& document, const AtomicString& localName)
+RefPtr<Element> JSCustomElementInterface::tryToConstructCustomElement(Document& document, const AtomString& localName)
 {
     if (!canInvokeCallback())
         return nullptr;
@@ -114,7 +114,7 @@ RefPtr<Element> JSCustomElementInterface::tryToConstructCustomElement(Document& 
 
 // https://dom.spec.whatwg.org/#concept-create-element
 // 6. 1. If the synchronous custom elements flag is set
-static RefPtr<Element> constructCustomElementSynchronously(Document& document, VM& vm, ExecState& state, JSObject* constructor, const AtomicString& localName)
+static RefPtr<Element> constructCustomElementSynchronously(Document& document, VM& vm, ExecState& state, JSObject* constructor, const AtomString& localName)
 {
     auto scope = DECLARE_THROW_SCOPE(vm);
     ConstructData constructData;
@@ -214,7 +214,7 @@ void JSCustomElementInterface::upgradeElement(Element& element)
     Element* wrappedElement = JSElement::toWrapped(vm, returnedElement);
     if (!wrappedElement || wrappedElement != &element) {
         element.setIsFailedCustomElement(*this);
-        reportException(state, createDOMException(state, InvalidStateError, "Custom element constructor failed to upgrade an element"));
+        reportException(state, createDOMException(state, TypeError, "Custom element constructor returned a wrong element"));
         return;
     }
     element.setIsDefinedCustomElement(*this);
@@ -300,7 +300,7 @@ void JSCustomElementInterface::setAttributeChangedCallback(JSC::JSObject* callba
         m_observedAttributes.add(name);
 }
 
-void JSCustomElementInterface::invokeAttributeChangedCallback(Element& element, const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)
+void JSCustomElementInterface::invokeAttributeChangedCallback(Element& element, const QualifiedName& attributeName, const AtomString& oldValue, const AtomString& newValue)
 {
     invokeCallback(element, m_attributeChangedCallback.get(), [&](ExecState* state, JSDOMGlobalObject*, MarkedArgumentBuffer& args) {
         args.append(toJS<IDLDOMString>(*state, attributeName.localName()));

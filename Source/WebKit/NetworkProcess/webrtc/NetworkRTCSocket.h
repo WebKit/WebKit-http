@@ -31,7 +31,7 @@
 
 #include <WebCore/LibWebRTCMacros.h>
 #include <webrtc/rtc_base/asyncpacketsocket.h>
-#include <webrtc/rtc_base/sigslot.h>
+#include <webrtc/rtc_base/third_party/sigslot/sigslot.h>
 
 namespace IPC {
 class Connection;
@@ -42,8 +42,8 @@ namespace rtc {
 class AsyncPacketSocket;
 class SocketAddress;
 struct PacketOptions;
-struct PacketTime;
 struct SentPacket;
+typedef int64_t PacketTime;
 }
 
 namespace WebCore {

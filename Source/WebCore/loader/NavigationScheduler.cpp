@@ -91,7 +91,7 @@ public:
 
     virtual bool shouldStartTimer(Frame&) { return true; }
     virtual void didStartTimer(Frame&, Timer&) { }
-    virtual void didStopTimer(Frame&, bool /* newLoadInProgress */) { }
+    virtual void didStopTimer(Frame&, NewLoadInProgress) { }
 
     double delay() const { return m_delay; }
     LockHistory lockHistory() const { return m_lockHistory; }
@@ -137,7 +137,7 @@ protected:
         frame.loader().clientRedirected(m_url, delay(), WallTime::now() + timer.nextFireInterval(), lockBackForwardList());
     }
 
-    void didStopTimer(Frame& frame, bool newLoadInProgress) override
+    void didStopTimer(Frame& frame, NewLoadInProgress newLoadInProgress) override
     {
         if (!m_haveToldClient)
             return;
@@ -193,8 +193,17 @@ public:
 
 class ScheduledLocationChange : public ScheduledURLNavigation {
 public:
-    ScheduledLocationChange(Document& initiatingDocument, SecurityOrigin* securityOrigin, const URL& url, const String& referrer, LockHistory lockHistory, LockBackForwardList lockBackForwardList, bool duringLoad)
-        : ScheduledURLNavigation(initiatingDocument, 0.0, securityOrigin, url, referrer, lockHistory, lockBackForwardList, duringLoad, true) { }
+    ScheduledLocationChange(Document& initiatingDocument, SecurityOrigin* securityOrigin, const URL& url, const String& referrer, LockHistory lockHistory, LockBackForwardList lockBackForwardList, bool duringLoad, CompletionHandler<void()>&& completionHandler)
+        : ScheduledURLNavigation(initiatingDocument, 0.0, securityOrigin, url, referrer, lockHistory, lockBackForwardList, duringLoad, true)
+        , m_completionHandler(WTFMove(completionHandler))
+    {
+    }
+
+    ~ScheduledLocationChange()
+    {
+        if (m_completionHandler)
+            m_completionHandler();
+    }
 
     void fire(Frame& frame) override
     {
@@ -203,8 +212,13 @@ public:
         ResourceRequest resourceRequest { url(), referrer(), ResourceRequestCachePolicy::UseProtocolCachePolicy };
         FrameLoadRequest frameLoadRequest { initiatingDocument(), *securityOrigin(), resourceRequest, "_self", lockHistory(), lockBackForwardList(), MaybeSendReferrer, AllowNavigationToInvalidURL::No, NewFrameOpenerPolicy::Allow, shouldOpenExternalURLs(), initiatedByMainFrame() };
 
+        auto completionHandler = WTFMove(m_completionHandler);
         frame.loader().changeLocation(WTFMove(frameLoadRequest));
+        completionHandler();
     }
+
+private:
+    CompletionHandler<void()> m_completionHandler;
 };
 
 class ScheduledRefresh : public ScheduledURLNavigation {
@@ -287,7 +301,7 @@ public:
         frame.loader().clientRedirected(m_submission->requestURL(), delay(), WallTime::now() + timer.nextFireInterval(), lockBackForwardList());
     }
 
-    void didStopTimer(Frame& frame, bool newLoadInProgress) override
+    void didStopTimer(Frame& frame, NewLoadInProgress newLoadInProgress) override
     {
         if (!m_haveToldClient)
             return;
@@ -366,7 +380,7 @@ inline bool NavigationScheduler::shouldScheduleNavigation(const URL& url) const
 {
     if (!shouldScheduleNavigation())
         return false;
-    if (protocolIsJavaScript(url))
+    if (WTF::protocolIsJavaScript(url))
         return true;
     return NavigationDisabler::isNavigationAllowed(m_frame);
 }
@@ -405,10 +419,10 @@ LockBackForwardList NavigationScheduler::mustLockBackForwardList(Frame& targetFr
     return LockBackForwardList::No;
 }
 
-void NavigationScheduler::scheduleLocationChange(Document& initiatingDocument, SecurityOrigin& securityOrigin, const URL& url, const String& referrer, LockHistory lockHistory, LockBackForwardList lockBackForwardList)
+void NavigationScheduler::scheduleLocationChange(Document& initiatingDocument, SecurityOrigin& securityOrigin, const URL& url, const String& referrer, LockHistory lockHistory, LockBackForwardList lockBackForwardList, CompletionHandler<void()>&& completionHandler)
 {
     if (!shouldScheduleNavigation(url))
-        return;
+        return completionHandler();
 
     if (lockBackForwardList == LockBackForwardList::No)
         lockBackForwardList = mustLockBackForwardList(m_frame);
@@ -424,14 +438,14 @@ void NavigationScheduler::scheduleLocationChange(Document& initiatingDocument, S
         
         FrameLoadRequest frameLoadRequest { initiatingDocument, securityOrigin, resourceRequest, "_self"_s, lockHistory, lockBackForwardList, MaybeSendReferrer, AllowNavigationToInvalidURL::No, NewFrameOpenerPolicy::Allow, initiatingDocument.shouldOpenExternalURLsPolicyToPropagate(), initiatedByMainFrame };
         loader.changeLocation(WTFMove(frameLoadRequest));
-        return;
+        return completionHandler();
     }
 
     // Handle a location change of a page with no document as a special case.
     // This may happen when a frame changes the location of another frame.
     bool duringLoad = !loader.stateMachine().committedFirstRealDocumentLoad();
 
-    schedule(std::make_unique<ScheduledLocationChange>(initiatingDocument, &securityOrigin, url, referrer, lockHistory, lockBackForwardList, duringLoad));
+    schedule(std::make_unique<ScheduledLocationChange>(initiatingDocument, &securityOrigin, url, referrer, lockHistory, lockBackForwardList, duringLoad, WTFMove(completionHandler)));
 }
 
 void NavigationScheduler::scheduleFormSubmission(Ref<FormSubmission>&& submission)
@@ -477,7 +491,8 @@ void NavigationScheduler::scheduleHistoryNavigation(int steps)
     // Invalid history navigations (such as history.forward() during a new load) have the side effect of cancelling any scheduled
     // redirects. We also avoid the possibility of cancelling the current load by avoiding the scheduled redirection altogether.
     BackForwardController& backForward = m_frame.page()->backForward();
-    if (steps > backForward.forwardCount() || -steps > backForward.backCount()) {
+    if ((steps > 0 && static_cast<unsigned>(steps) > backForward.forwardCount())
+        || (steps < 0 && static_cast<unsigned>(-steps) > backForward.backCount())) {
         cancel();
         return;
     }
@@ -554,15 +569,15 @@ void NavigationScheduler::startTimer()
     m_redirect->didStartTimer(m_frame, m_timer); // m_redirect may be null on return (e.g. the client canceled the load)
 }
 
-void NavigationScheduler::cancel(bool newLoadInProgress)
+void NavigationScheduler::cancel(NewLoadInProgress newLoadInProgress)
 {
-    LOG(History, "NavigationScheduler %p cancel(newLoadInProgress=%d)", this, newLoadInProgress);
+    LOG(History, "NavigationScheduler %p cancel(newLoadInProgress=%d)", this, newLoadInProgress == NewLoadInProgress::Yes);
 
     if (m_timer.isActive())
         InspectorInstrumentation::frameClearedScheduledNavigation(m_frame);
     m_timer.stop();
 
-    if (std::unique_ptr<ScheduledNavigation> redirect = WTFMove(m_redirect))
+    if (auto redirect = WTFMove(m_redirect))
         redirect->didStopTimer(m_frame, newLoadInProgress);
 }
 

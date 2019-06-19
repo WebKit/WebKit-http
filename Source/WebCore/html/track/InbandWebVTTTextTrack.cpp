@@ -32,9 +32,12 @@
 #include "Logging.h"
 #include "VTTCue.h"
 #include "VTTRegionList.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(InbandWebVTTTextTrack);
 
 inline InbandWebVTTTextTrack::InbandWebVTTTextTrack(ScriptExecutionContext& context, TextTrackClient& client, InbandTextTrackPrivate& trackPrivate)
     : InbandTextTrack(context, client, trackPrivate)
@@ -72,11 +75,11 @@ void InbandWebVTTTextTrack::newCuesParsed()
     for (auto& cueData : cues) {
         auto vttCue = VTTCue::create(*scriptExecutionContext(), *cueData);
         if (hasCue(vttCue.ptr(), TextTrackCue::IgnoreDuration)) {
-            DEBUG_LOG(LOGIDENTIFIER, "ignoring already added cue: ", vttCue.get());
+            INFO_LOG(LOGIDENTIFIER, "ignoring already added cue: ", vttCue.get());
             return;
         }
 
-        DEBUG_LOG(LOGIDENTIFIER, vttCue.get());
+        INFO_LOG(LOGIDENTIFIER, vttCue.get());
 
         addCue(WTFMove(vttCue));
     }
@@ -90,6 +93,10 @@ void InbandWebVTTTextTrack::newRegionsParsed()
         region->setTrack(this);
         regions()->add(region.releaseNonNull());
     }
+}
+
+void InbandWebVTTTextTrack::newStyleSheetsParsed()
+{
 }
 
 void InbandWebVTTTextTrack::fileFailedToParse()

@@ -161,7 +161,7 @@ class PortTest(unittest.TestCase):
 
     def test_additional_platform_directory(self):
         port = self.make_port(port_name='foo')
-        port.default_baseline_search_path = lambda: ['LayoutTests/platform/foo']
+        port.default_baseline_search_path = lambda **kwargs: ['LayoutTests/platform/foo']
         test_file = 'fast/test.html'
 
         # No additional platform directory
@@ -187,7 +187,7 @@ class PortTest(unittest.TestCase):
 
     def test_nonexistant_expectations(self):
         port = self.make_port(port_name='foo')
-        port.expectations_files = lambda: ['/mock-checkout/LayoutTests/platform/exists/TestExpectations', '/mock-checkout/LayoutTests/platform/nonexistant/TestExpectations']
+        port.expectations_files = lambda **kwargs: ['/mock-checkout/LayoutTests/platform/exists/TestExpectations', '/mock-checkout/LayoutTests/platform/nonexistant/TestExpectations']
         port._filesystem.write_text_file('/mock-checkout/LayoutTests/platform/exists/TestExpectations', '')
         self.assertEqual('\n'.join(port.expectations_dict().keys()), '/mock-checkout/LayoutTests/platform/exists/TestExpectations')
 
@@ -225,9 +225,8 @@ class PortTest(unittest.TestCase):
     def test_uses_test_expectations_file(self):
         port = self.make_port(port_name='foo')
         port.port_name = 'foo'
-        port.path_to_test_expectations_file = lambda: '/mock-results/TestExpectations'
         self.assertFalse(port.uses_test_expectations_file())
-        port._filesystem = MockFileSystem({'/mock-results/TestExpectations': ''})
+        port._filesystem = MockFileSystem({'/mock-checkout/LayoutTests/platform/foo/TestExpectations': ''})
         self.assertTrue(port.uses_test_expectations_file())
 
     def test_find_no_paths_specified(self):
@@ -410,6 +409,23 @@ class PortTest(unittest.TestCase):
         port._filesystem.maybe_make_directory(jhbuild_path)
         self.assertTrue(port._filesystem.isdir(jhbuild_path))
         self.assertTrue(port._should_use_jhbuild())
+
+    def test_ref_tests_platform_directory(self):
+        port = self.make_port(port_name='foo')
+        port.default_baseline_search_path = lambda **kwargs: ['/mock-checkout/LayoutTests/platform/foo']
+        port._filesystem.write_text_file('/mock-checkout/LayoutTests/fast/ref-expected.html', 'foo')
+
+        # No platform directory
+        self.assertEqual(
+            [('==', '/mock-checkout/LayoutTests/fast/ref-expected.html')],
+            port.reference_files('fast/ref.html'),
+        )
+
+        port._filesystem.write_text_file('/mock-checkout/LayoutTests/platform/foo/fast/ref-expected-mismatch.html', 'foo-plat')
+        self.assertEqual(
+            [('!=', '/mock-checkout/LayoutTests/platform/foo/fast/ref-expected-mismatch.html')],
+            port.reference_files('fast/ref.html'),
+        )
 
 
 class NaturalCompareTest(unittest.TestCase):

@@ -1,0 +1,30 @@
+<!DOCTYPE html><!-- webkit-test-runner [ experimental:WebGPUEnabled=true ] -->
+<meta charset=utf-8>
+<title>Create a basic GPUBindGroup.</title>
+<body>
+<script src="js/webgpu-functions.js"></script>
+<script src="../resources/testharness.js"></script>
+<script src="../resources/testharnessreport.js"></script>
+<script>
+promise_test(async () => {
+    const device = await getBasicDevice();
+
+    // GPUBindGroupLayoutBindings
+    // FIXME: Also test sampled texture bindings. 
+    const bufferLayoutBinding = {
+        binding: 1,
+        visibility: GPUShaderStageBit.VERTEX,
+        type: "storage-buffer"
+    };
+
+    const bindGroupLayout = device.createBindGroupLayout({ bindings: [bufferLayoutBinding] });
+
+    const buffer = device.createBuffer({ size: 16, usage: GPUBufferUsage.STORAGE });
+    const bufferBinding = { buffer: buffer, size: 16 };
+    const bindGroupBinding = { binding: 1, resource: bufferBinding };
+
+    const bindGroup = device.createBindGroup({ layout: bindGroupLayout, bindings: [bindGroupBinding]});
+    assert_true(bindGroup instanceof GPUBindGroup, "GPUBindGroup successfully created.")
+}, "Create a basic GPUBindGroup via GPUDevice.")
+</script>
+</body>

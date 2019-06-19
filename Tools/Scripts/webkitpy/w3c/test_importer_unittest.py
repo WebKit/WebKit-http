@@ -25,6 +25,7 @@
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 
+import os
 import unittest
 
 from webkitpy.common.host_mock import MockHost
@@ -209,6 +210,22 @@ class TestImporterTest(unittest.TestCase):
         self.assertFalse(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/dir-to-skip/dir-to-not-import/test-to-not-import.html'))
         self.assertFalse(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/dir-to-skip/test-to-skip.html'))
 
+    def test_checkout_directory(self):
+        FAKE_FILES = {
+            '/mock-checkout/WebKitBuild2/w3c-tests/web-platform-tests/existing-test.html': '',
+            '/mock-checkout/WebKitBuild2/w3c-tests/csswg-tests/test.html': '1',
+        }
+
+        FAKE_FILES.update(FAKE_REPOSITORY)
+
+        os.environ['WEBKIT_OUTPUTDIR'] = '/mock-checkout/WebKitBuild2'
+        try:
+            fs = self.import_downloaded_tests(['--no-fetch', '--import-all', '-d', 'w3c'], FAKE_FILES)
+        finally:
+            del os.environ['WEBKIT_OUTPUTDIR']
+
+        self.assertTrue(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/existing-test.html'))
+
     def test_clean_directory_option(self):
         FAKE_FILES = {
             '/mock-checkout/LayoutTests/w3c/web-platform-tests/.gitattributes': '-1',
@@ -304,3 +321,28 @@ class TestImporterTest(unittest.TestCase):
         fs = self.import_downloaded_tests(['--no-fetch', '--import-all', '-d', 'w3c'], FAKE_FILES)
         self.assertFalse(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/new-manual.html'))
         self.assertEquals(tests_options, fs.read_text_file('/mock-checkout/LayoutTests/tests-options.json'))
+
+    def test_webkit_test_runner_options(self):
+        FAKE_FILES = {
+            '/mock-checkout/WebKitBuild/w3c-tests/csswg-tests/t/test.html': '<!doctype html><script src="/resources/testharness.js"></script><script src="/resources/testharnessreport.js"></script>',
+            '/mock-checkout/WebKitBuild/w3c-tests/web-platform-tests/css/test.html': '<!doctype html>\n<script src="/resources/testharness.js"></script><script src="/resources/testharnessreport.js"></script>',
+            '/mock-checkout/LayoutTests/w3c/web-platform-tests/css/test.html': '<!-- doctype html --><!-- webkit-test-runner [ dummy ] -->',
+            '/mock-checkout/WebKitBuild/w3c-tests/web-platform-tests/t/test.html': '<!doctype html><script src="/resources/testharness.js"></script><script src="/resources/testharnessreport.js"></script>',
+            '/mock-checkout/LayoutTests/w3c/web-platform-tests/t/test.html': '<!-- doctype html --><!-- webkit-test-runner [ dummy ] -->',
+            '/mock-checkout/WebKitBuild/w3c-tests/web-platform-tests/t/test.any.js': 'test(() => {}, "empty")',
+            '/mock-checkout/LayoutTests/w3c/web-platform-tests/t/test.any.html': '<!-- This file is required for WebKit test infrastructure to run the templated test --><!-- webkit-test-runner [ dummy ] -->',
+            '/mock-checkout/Source/WebCore/css/CSSProperties.json': '',
+            '/mock-checkout/Source/WebCore/css/CSSValueKeywords.in': '',
+        }
+        FAKE_FILES.update(FAKE_REPOSITORY)
+
+        fs = self.import_downloaded_tests(['--no-fetch', '--import-all', '-d', 'w3c'], FAKE_FILES)
+
+        self.assertTrue(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/css/test.html'))
+        self.assertTrue(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/test.html'))
+        self.assertTrue(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/test.any.html'))
+        self.assertTrue(fs.exists('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/test.any.worker.html'))
+        self.assertTrue('<!-- webkit-test-runner [ dummy ] -->' in fs.read_text_file('/mock-checkout/LayoutTests/w3c/web-platform-tests/css/test.html').split('\n')[0])
+        self.assertTrue('<!-- webkit-test-runner [ dummy ] -->' in fs.read_text_file('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/test.html').split('\n')[0])
+        self.assertTrue('<!-- webkit-test-runner [ dummy ] -->' in fs.read_text_file('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/test.any.html').split('\n')[0])
+        self.assertFalse('<!-- webkit-test-runner [ dummy ] -->' in fs.read_text_file('/mock-checkout/LayoutTests/w3c/web-platform-tests/t/test.any.worker.html').split('\n')[0])

@@ -38,11 +38,13 @@ class HTMLDocumentParser;
 class ScriptElement;
 
 struct CustomElementConstructionData {
-    CustomElementConstructionData(Ref<JSCustomElementInterface>&&, const AtomicString& name, Vector<Attribute>&&);
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
+
+    CustomElementConstructionData(Ref<JSCustomElementInterface>&&, const AtomString& name, Vector<Attribute>&&);
     ~CustomElementConstructionData();
 
     Ref<JSCustomElementInterface> elementInterface;
-    AtomicString name;
+    AtomString name;
     Vector<Attribute> attributes;
 };
 
@@ -104,7 +106,7 @@ private:
 
     bool isParsingFragmentOrTemplateContents() const;
 
-#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS)
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS_FAMILY)
     void insertPhoneNumberLink(const String&);
     void linkifyPhoneNumbers(const String&);
 #endif
@@ -141,7 +143,7 @@ private:
 
     void processFakeStartTag(const QualifiedName&, Vector<Attribute>&& attributes = Vector<Attribute>());
     void processFakeEndTag(const QualifiedName&);
-    void processFakeEndTag(const AtomicString&);
+    void processFakeEndTag(const AtomString&);
     void processFakeCharacters(const String&);
     void processFakePEndTagIfPInButtonScope();
 

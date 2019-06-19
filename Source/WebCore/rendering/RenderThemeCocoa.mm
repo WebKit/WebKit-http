@@ -27,20 +27,12 @@
 #import "RenderThemeCocoa.h"
 
 #import "GraphicsContextCG.h"
+#import "HTMLInputElement.h"
 #import "RenderText.h"
 
 #if ENABLE(APPLE_PAY)
 
-#import <pal/spi/cocoa/PassKitSPI.h>
-#import <wtf/SoftLinking.h>
-
-#if PLATFORM(MAC)
-SOFT_LINK_PRIVATE_FRAMEWORK(PassKit);
-#else
-SOFT_LINK_FRAMEWORK(PassKit);
-#endif
-
-SOFT_LINK_MAY_FAIL(PassKit, PKDrawApplePayButton, void, (CGContextRef context, CGRect drawRect, CGFloat scale, PKPaymentButtonType type, PKPaymentButtonStyle style, NSString *languageCode), (context, drawRect, scale, type, style, languageCode));
+#import <pal/cocoa/PassKitSoftLink.h>
 
 #endif // ENABLE(APPLE_PAY)
 
@@ -51,31 +43,9 @@ SOFT_LINK_MAY_FAIL(PassKit, PKDrawApplePayButton, void, (CGContextRef context, C
 
 namespace WebCore {
 
-void RenderThemeCocoa::drawLineForDocumentMarker(const RenderText& renderer, GraphicsContext& context, const FloatPoint& origin, float width, DocumentMarkerLineStyle style)
+bool RenderThemeCocoa::shouldHaveCapsLockIndicator(const HTMLInputElement& element) const
 {
-    if (context.paintingDisabled())
-        return;
-
-    auto circleColor = colorForMarkerLineStyle(style, renderer.page().useSystemAppearance() && renderer.page().useDarkAppearance());
-
-    // Center the underline and ensure we only draw entire dots.
-    FloatPoint offsetPoint = origin;
-    float widthMod = fmodf(width, cMisspellingLinePatternWidth);
-    if (cMisspellingLinePatternWidth - widthMod > cMisspellingLinePatternGapWidth) {
-        float gapIncludeWidth = 0;
-        if (width > cMisspellingLinePatternWidth)
-            gapIncludeWidth = cMisspellingLinePatternGapWidth;
-        offsetPoint.move(floor((widthMod + gapIncludeWidth) / 2), 0);
-        width -= widthMod;
-    }
-
-    CGContextRef platformContext = context.platformContext();
-    CGContextStateSaver stateSaver { platformContext };
-    CGContextSetFillColorWithColor(platformContext, circleColor);
-    for (int x = 0; x < width; x += cMisspellingLinePatternWidth)
-        CGContextAddEllipseInRect(platformContext, CGRectMake(offsetPoint.x() + x, offsetPoint.y(), cMisspellingLineThickness, cMisspellingLineThickness));
-    CGContextSetCompositeOperation(platformContext, kCGCompositeSover);
-    CGContextFillPath(platformContext);
+    return element.isPasswordField();
 }
 
 #if ENABLE(APPLE_PAY)
@@ -114,8 +84,6 @@ static PKPaymentButtonType toPKPaymentButtonType(ApplePayButtonType type)
         return PKPaymentButtonTypeBuy;
     case ApplePayButtonType::SetUp:
         return PKPaymentButtonTypeSetUp;
-    case ApplePayButtonType::InStore:
-        return PKPaymentButtonTypeInStore;
     case ApplePayButtonType::Donate:
         return PKPaymentButtonTypeDonate;
 #if ENABLE(APPLE_PAY_SESSION_V4)
@@ -131,9 +99,6 @@ static PKPaymentButtonType toPKPaymentButtonType(ApplePayButtonType type)
 
 bool RenderThemeCocoa::paintApplePayButton(const RenderObject& renderer, const PaintInfo& paintInfo, const IntRect& paintRect)
 {
-    if (!canLoadPKDrawApplePayButton())
-        return false;
-
     GraphicsContextStateSaver stateSaver(paintInfo.context());
 
     paintInfo.context().setShouldSmoothFonts(true);

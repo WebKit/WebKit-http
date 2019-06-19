@@ -34,9 +34,10 @@
 #include "CurlContext.h"
 #include "SocketStreamHandle.h"
 #include <pal/SessionID.h>
+#include <wtf/Function.h>
 #include <wtf/Lock.h>
+#include <wtf/MessageQueue.h>
 #include <wtf/RefCounted.h>
-#include <wtf/Seconds.h>
 #include <wtf/StreamBuffer.h>
 #include <wtf/Threading.h>
 #include <wtf/UniqueArray.h>
@@ -44,36 +45,43 @@
 namespace WebCore {
 
 class SocketStreamHandleClient;
+class StorageSessionProvider;
 
 class SocketStreamHandleImpl : public SocketStreamHandle {
 public:
-    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID, const String&, SourceApplicationAuditToken&&) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
+    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID, const String&, SourceApplicationAuditToken&&, const StorageSessionProvider* provider) { return adoptRef(*new SocketStreamHandleImpl(url, client, provider)); }
 
     virtual ~SocketStreamHandleImpl();
 
     WEBCORE_EXPORT void platformSend(const uint8_t* data, size_t length, Function<void(bool)>&&) final;
-    WEBCORE_EXPORT void platformSendHandshake(const uint8_t* data, size_t length, const std::optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
+    WEBCORE_EXPORT void platformSendHandshake(const uint8_t* data, size_t length, const Optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
     WEBCORE_EXPORT void platformClose() final;
 
 private:
-    WEBCORE_EXPORT SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
+    WEBCORE_EXPORT SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&, const StorageSessionProvider*);
 
     size_t bufferedAmount() final;
-    std::optional<size_t> platformSendInternal(const uint8_t*, size_t);
+    Optional<size_t> platformSendInternal(const uint8_t*, size_t);
     bool sendPendingData();
 
     void threadEntryPoint();
     void handleError(CURLcode);
     void stopThread();
 
-    static const size_t kWriteBufferSize = 4 * 1024;
+    void callOnWorkerThread(Function<void()>&&);
+    void executeTasks();
+
     static const size_t kReadBufferSize = 4 * 1024;
 
+    RefPtr<const StorageSessionProvider> m_storageSessionProvider;
     RefPtr<Thread> m_workerThread;
     std::atomic<bool> m_running { true };
 
-    std::atomic<size_t> m_writeBufferSize { 0 };
-    size_t m_writeBufferOffset;
+    MessageQueue<Function<void()>> m_taskQueue;
+
+    bool m_hasPendingWriteData { false };
+    size_t m_writeBufferSize { 0 };
+    size_t m_writeBufferOffset { 0 };
     UniqueArray<uint8_t> m_writeBuffer;
 
     StreamBuffer<uint8_t, 1024 * 1024> m_buffer;

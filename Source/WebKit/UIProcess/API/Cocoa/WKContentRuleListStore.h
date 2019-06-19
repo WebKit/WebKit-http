@@ -25,13 +25,11 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 @class WKContentRuleList;
 
-WK_CLASS_AVAILABLE(macosx(10.13), ios(11.0))
+WK_CLASS_AVAILABLE(macos(10.13), ios(11.0))
 @interface WKContentRuleListStore : NSObject
 
 + (instancetype)defaultStore;
@@ -43,5 +41,3 @@ WK_CLASS_AVAILABLE(macosx(10.13), ios(11.0))
 - (void)getAvailableContentRuleListIdentifiers:(void (^)(NSArray<NSString *>*))completionHandler;
 
 @end
-
-#endif // WK_API_ENABLED

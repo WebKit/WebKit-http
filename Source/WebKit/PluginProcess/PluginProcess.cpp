@@ -30,7 +30,7 @@
 
 #include "ArgumentCoders.h"
 #include "Attachment.h"
-#include "ChildProcessMessages.h"
+#include "AuxiliaryProcessMessages.h"
 #include "NetscapePlugin.h"
 #include "NetscapePluginModule.h"
 #include "PluginProcessConnectionMessages.h"
@@ -39,6 +39,7 @@
 #include "WebProcessConnection.h"
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
+#include <unistd.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ProcessPrivilege.h>
@@ -48,9 +49,14 @@
 #include <crt_externs.h>
 #endif
 
+namespace WebKit {
+
 using namespace WebCore;
 
-namespace WebKit {
+NO_RETURN static void callExit(IPC::Connection*)
+{
+    _exit(EXIT_SUCCESS);
+}
 
 PluginProcess& PluginProcess::singleton()
 {
@@ -70,12 +76,21 @@ PluginProcess::~PluginProcess()
 {
 }
 
-void PluginProcess::initializeProcess(const ChildProcessInitializationParameters& parameters)
+void PluginProcess::initializeProcess(const AuxiliaryProcessInitializationParameters& parameters)
 {
     WTF::setProcessPrivileges(allPrivileges());
     WebCore::NetworkStorageSession::permitProcessToUseCookieAPI(true);
     m_pluginPath = parameters.extraInitializationData.get("plugin-path");
     platformInitializeProcess(parameters);
+}
+
+void PluginProcess::initializeConnection(IPC::Connection* connection)
+{
+    AuxiliaryProcess::initializeConnection(connection);
+
+    // We call _exit() directly from the background queue in case the main thread is unresponsive
+    // and AuxiliaryProcess::didClose() does not get called.
+    connection->setDidCloseOnConnectionWorkQueueCallback(callExit);
 }
 
 void PluginProcess::removeWebProcessConnection(WebProcessConnection* webProcessConnection)
@@ -118,8 +133,8 @@ bool PluginProcess::shouldTerminate()
 void PluginProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
 #if OS(LINUX)
-    if (decoder.messageReceiverName() == Messages::ChildProcess::messageReceiverName()) {
-        ChildProcess::didReceiveMessage(connection, decoder);
+    if (decoder.messageReceiverName() == Messages::AuxiliaryProcess::messageReceiverName()) {
+        AuxiliaryProcess::didReceiveMessage(connection, decoder);
         return;
     }
 #endif
@@ -238,11 +253,11 @@ void PluginProcess::minimumLifetimeTimerFired()
 }
 
 #if !PLATFORM(COCOA)
-void PluginProcess::initializeProcessName(const ChildProcessInitializationParameters&)
+void PluginProcess::initializeProcessName(const AuxiliaryProcessInitializationParameters&)
 {
 }
 
-void PluginProcess::initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&)
+void PluginProcess::initializeSandbox(const AuxiliaryProcessInitializationParameters&, SandboxInitializationParameters&)
 {
 }
 #endif

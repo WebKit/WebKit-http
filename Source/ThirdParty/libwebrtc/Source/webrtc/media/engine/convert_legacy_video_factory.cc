@@ -10,10 +10,12 @@
 
 #include "media/engine/convert_legacy_video_factory.h"
 
+#include <string>
 #include <utility>
 #include <vector>
 
 #include "absl/memory/memory.h"
+#include "absl/strings/match.h"
 #include "api/video_codecs/video_decoder_factory.h"
 #include "api/video_codecs/video_decoder_software_fallback_wrapper.h"
 #include "api/video_codecs/video_encoder_factory.h"
@@ -129,7 +131,7 @@ class EncoderAdapter : public webrtc::VideoEncoderFactory {
     if (IsFormatSupported(internal_encoder_factory_->GetSupportedFormats(),
                           format)) {
       internal_encoder =
-          CodecNamesEq(format.name.c_str(), kVp8CodecName)
+          absl::EqualsIgnoreCase(format.name, kVp8CodecName)
               ? absl::make_unique<webrtc::VP8EncoderSimulcastProxy>(
                     internal_encoder_factory_.get(), format)
               : internal_encoder_factory_->CreateVideoEncoder(format);
@@ -140,7 +142,7 @@ class EncoderAdapter : public webrtc::VideoEncoderFactory {
     if (IsFormatSupported(external_encoder_factory_->GetSupportedFormats(),
                           format)) {
       external_encoder =
-          CodecNamesEq(format.name.c_str(), kVp8CodecName)
+          absl::EqualsIgnoreCase(format.name, kVp8CodecName)
               ? absl::make_unique<webrtc::SimulcastEncoderAdapter>(
                     external_encoder_factory_.get(), format)
               : external_encoder_factory_->CreateVideoEncoder(format);
@@ -186,9 +188,15 @@ class CricketToWebRtcDecoderFactory : public webrtc::VideoDecoderFactory {
 
   std::unique_ptr<webrtc::VideoDecoder> CreateVideoDecoder(
       const webrtc::SdpVideoFormat& format) override {
+    return LegacyCreateVideoDecoder(format, /* receive_stream_id= */ "");
+  }
+
+  std::unique_ptr<webrtc::VideoDecoder> LegacyCreateVideoDecoder(
+      const webrtc::SdpVideoFormat& format,
+      const std::string& receive_stream_id) override {
     if (external_decoder_factory_ != nullptr) {
       return CreateScopedVideoDecoder(external_decoder_factory_.get(),
-                                      VideoCodec(format), {});
+                                      VideoCodec(format), {receive_stream_id});
     }
     return nullptr;
   }
@@ -214,13 +222,14 @@ class DecoderAdapter : public webrtc::VideoDecoderFactory {
             absl::make_unique<CricketToWebRtcDecoderFactory>(
                 std::move(external_decoder_factory))) {}
 
-  explicit DecoderAdapter(
-      std::unique_ptr<webrtc::VideoDecoderFactory> external_decoder_factory)
-      : internal_decoder_factory_(new webrtc::InternalDecoderFactory()),
-        external_decoder_factory_(std::move(external_decoder_factory)) {}
-
   std::unique_ptr<webrtc::VideoDecoder> CreateVideoDecoder(
       const webrtc::SdpVideoFormat& format) override {
+    return LegacyCreateVideoDecoder(format, /* receive_stream_id= */ "");
+  }
+
+  std::unique_ptr<webrtc::VideoDecoder> LegacyCreateVideoDecoder(
+      const webrtc::SdpVideoFormat& format,
+      const std::string& receive_stream_id) override {
     std::unique_ptr<webrtc::VideoDecoder> internal_decoder;
     if (IsFormatSupported(internal_decoder_factory_->GetSupportedFormats(),
                           format)) {
@@ -229,7 +238,8 @@ class DecoderAdapter : public webrtc::VideoDecoderFactory {
 
     std::unique_ptr<webrtc::VideoDecoder> external_decoder = nullptr;
     if (external_decoder_factory_ != nullptr) {
-      external_decoder = external_decoder_factory_->CreateVideoDecoder(format);
+      external_decoder = external_decoder_factory_->LegacyCreateVideoDecoder(
+          format, receive_stream_id);
     }
 
     if (internal_decoder && external_decoder) {
@@ -270,20 +280,8 @@ std::unique_ptr<webrtc::VideoEncoderFactory> ConvertVideoEncoderFactory(
       new EncoderAdapter(std::move(external_encoder_factory)));
 }
 
-std::unique_ptr<webrtc::VideoEncoderFactory> ConvertVideoEncoderFactory(
-    std::unique_ptr<webrtc::VideoEncoderFactory> external_encoder_factory) {
-  return std::unique_ptr<webrtc::VideoEncoderFactory>(
-      new EncoderAdapter(std::move(external_encoder_factory)));
-}
-
 std::unique_ptr<webrtc::VideoDecoderFactory> ConvertVideoDecoderFactory(
     std::unique_ptr<WebRtcVideoDecoderFactory> external_decoder_factory) {
-  return std::unique_ptr<webrtc::VideoDecoderFactory>(
-      new DecoderAdapter(std::move(external_decoder_factory)));
-}
-
-std::unique_ptr<webrtc::VideoDecoderFactory> ConvertVideoDecoderFactory(
-    std::unique_ptr<webrtc::VideoDecoderFactory> external_decoder_factory) {
   return std::unique_ptr<webrtc::VideoDecoderFactory>(
       new DecoderAdapter(std::move(external_decoder_factory)));
 }

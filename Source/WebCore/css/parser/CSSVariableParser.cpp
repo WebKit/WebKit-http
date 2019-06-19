@@ -177,7 +177,7 @@ bool CSSVariableParser::containsValidVariableReferences(CSSParserTokenRange rang
     return type == CSSValueInternalVariableValue && hasReferences && !hasAtApplyRule;
 }
 
-RefPtr<CSSCustomPropertyValue> CSSVariableParser::parseDeclarationValue(const AtomicString& variableName, CSSParserTokenRange range, const CSSParserContext& parserContext)
+RefPtr<CSSCustomPropertyValue> CSSVariableParser::parseDeclarationValue(const AtomString& variableName, CSSParserTokenRange range, const CSSParserContext& parserContext)
 {
     if (range.atEnd())
         return nullptr;
@@ -189,8 +189,8 @@ RefPtr<CSSCustomPropertyValue> CSSVariableParser::parseDeclarationValue(const At
     if (type == CSSValueInvalid)
         return nullptr;
     if (type == CSSValueInternalVariableValue)
-        return CSSCustomPropertyValue::createWithVariableData(variableName, CSSVariableData::create(range, hasReferences || hasAtApplyRule));
-    return CSSCustomPropertyValue::createWithID(variableName, type);
+        return CSSCustomPropertyValue::createUnresolved(variableName, CSSVariableReferenceValue::create(range));
+    return CSSCustomPropertyValue::createUnresolved(variableName, type);
 }
 
 } // namespace WebCore

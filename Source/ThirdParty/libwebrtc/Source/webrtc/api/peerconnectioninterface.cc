@@ -159,6 +159,11 @@ RTCError PeerConnectionInterface::SetBitrate(
   return SetBitrate(bitrate);
 }
 
+PeerConnectionInterface::PeerConnectionState
+PeerConnectionInterface::peer_connection_state() {
+  return PeerConnectionInterface::PeerConnectionState::kNew;
+}
+
 bool PeerConnectionInterface::StartRtcEventLog(rtc::PlatformFile file,
                                                int64_t max_size_bytes) {
   return false;
@@ -191,16 +196,6 @@ PeerConnectionFactoryDependencies::PeerConnectionFactoryDependencies(
 
 PeerConnectionFactoryDependencies::~PeerConnectionFactoryDependencies() =
     default;
-
-rtc::scoped_refptr<PeerConnectionInterface>
-PeerConnectionFactoryInterface::CreatePeerConnection(
-    const PeerConnectionInterface::RTCConfiguration& configuration,
-    const MediaConstraintsInterface* constraints,
-    std::unique_ptr<cricket::PortAllocator> allocator,
-    std::unique_ptr<rtc::RTCCertificateGeneratorInterface> cert_generator,
-    PeerConnectionObserver* observer) {
-  return nullptr;
-}
 
 rtc::scoped_refptr<PeerConnectionInterface>
 PeerConnectionFactoryInterface::CreatePeerConnection(
@@ -245,14 +240,6 @@ rtc::scoped_refptr<VideoTrackSourceInterface>
 PeerConnectionFactoryInterface::CreateVideoSource(
     cricket::VideoCapturer* capturer) {
   return CreateVideoSource(std::unique_ptr<cricket::VideoCapturer>(capturer));
-}
-
-rtc::scoped_refptr<VideoTrackSourceInterface>
-PeerConnectionFactoryInterface::CreateVideoSource(
-    cricket::VideoCapturer* capturer,
-    const MediaConstraintsInterface* constraints) {
-  return CreateVideoSource(std::unique_ptr<cricket::VideoCapturer>(capturer),
-                           constraints);
 }
 
 }  // namespace webrtc

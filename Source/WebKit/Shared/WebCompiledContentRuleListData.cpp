@@ -29,6 +29,8 @@
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include "ArgumentCoders.h"
+#include "DataReference.h"
+#include "SharedBufferDataReference.h"
 
 namespace WebKit {
 
@@ -49,34 +51,70 @@ void WebCompiledContentRuleListData::encode(IPC::Encoder& encoder) const
     encoder << topURLFiltersBytecodeSize;
 }
 
-std::optional<WebCompiledContentRuleListData> WebCompiledContentRuleListData::decode(IPC::Decoder& decoder)
+Optional<WebCompiledContentRuleListData> WebCompiledContentRuleListData::decode(IPC::Decoder& decoder)
 {
-    WebCompiledContentRuleListData compiledContentRuleListData;
     SharedMemory::Handle handle;
     if (!decoder.decode(handle))
-        return std::nullopt;
-    compiledContentRuleListData.data = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
+        return WTF::nullopt;
+    RefPtr<SharedMemory> data = SharedMemory::map(handle, SharedMemory::Protection::ReadOnly);
 
-    if (!decoder.decode(compiledContentRuleListData.conditionsApplyOnlyToDomainOffset))
-        return std::nullopt;
-    if (!decoder.decode(compiledContentRuleListData.actionsOffset))
-        return std::nullopt;
-    if (!decoder.decode(compiledContentRuleListData.actionsSize))
-        return std::nullopt;
-    if (!decoder.decode(compiledContentRuleListData.filtersWithoutConditionsBytecodeOffset))
-        return std::nullopt;
-    if (!decoder.decode(compiledContentRuleListData.filtersWithoutConditionsBytecodeSize))
-        return std::nullopt;
-    if (!decoder.decode(compiledContentRuleListData.filtersWithConditionsBytecodeOffset))
-        return std::nullopt;
-    if (!decoder.decode(compiledContentRuleListData.filtersWithConditionsBytecodeSize))
-        return std::nullopt;
-    if (!decoder.decode(compiledContentRuleListData.topURLFiltersBytecodeOffset))
-        return std::nullopt;
-    if (!decoder.decode(compiledContentRuleListData.topURLFiltersBytecodeSize))
-        return std::nullopt;
+    Optional<unsigned> conditionsApplyOnlyToDomainOffset;
+    decoder >> conditionsApplyOnlyToDomainOffset;
+    if (!conditionsApplyOnlyToDomainOffset)
+        return WTF::nullopt;
 
-    return WTFMove(compiledContentRuleListData);
+    Optional<unsigned> actionsOffset;
+    decoder >> actionsOffset;
+    if (!actionsOffset)
+        return WTF::nullopt;
+
+    Optional<unsigned> actionsSize;
+    decoder >> actionsSize;
+    if (!actionsSize)
+        return WTF::nullopt;
+
+    Optional<unsigned> filtersWithoutConditionsBytecodeOffset;
+    decoder >> filtersWithoutConditionsBytecodeOffset;
+    if (!filtersWithoutConditionsBytecodeOffset)
+        return WTF::nullopt;
+
+    Optional<unsigned> filtersWithoutConditionsBytecodeSize;
+    decoder >> filtersWithoutConditionsBytecodeSize;
+    if (!filtersWithoutConditionsBytecodeSize)
+        return WTF::nullopt;
+
+    Optional<unsigned> filtersWithConditionsBytecodeOffset;
+    decoder >> filtersWithConditionsBytecodeOffset;
+    if (!filtersWithConditionsBytecodeOffset)
+        return WTF::nullopt;
+
+    Optional<unsigned> filtersWithConditionsBytecodeSize;
+    decoder >> filtersWithConditionsBytecodeSize;
+    if (!filtersWithConditionsBytecodeSize)
+        return WTF::nullopt;
+
+    Optional<unsigned> topURLFiltersBytecodeOffset;
+    decoder >> topURLFiltersBytecodeOffset;
+    if (!topURLFiltersBytecodeOffset)
+        return WTF::nullopt;
+
+    Optional<unsigned> topURLFiltersBytecodeSize;
+    decoder >> topURLFiltersBytecodeSize;
+    if (!topURLFiltersBytecodeSize)
+        return WTF::nullopt;
+
+    return {{
+        WTFMove(data),
+        WTFMove(*conditionsApplyOnlyToDomainOffset),
+        WTFMove(*actionsOffset),
+        WTFMove(*actionsSize),
+        WTFMove(*filtersWithoutConditionsBytecodeOffset),
+        WTFMove(*filtersWithoutConditionsBytecodeSize),
+        WTFMove(*filtersWithConditionsBytecodeOffset),
+        WTFMove(*filtersWithConditionsBytecodeSize),
+        WTFMove(*topURLFiltersBytecodeOffset),
+        WTFMove(*topURLFiltersBytecodeSize)
+    }};
 }
 
 } // namespace WebKit

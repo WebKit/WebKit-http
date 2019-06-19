@@ -148,7 +148,7 @@ LayoutUnit RenderMultiColumnSet::heightAdjustedForSetOffset(LayoutUnit height) c
     LayoutUnit contentLogicalTop = logicalTop() - multicolBlock.borderAndPaddingBefore();
 
     height -= contentLogicalTop;
-    return std::max(height, LayoutUnit::fromPixel(1)); // Let's avoid zero height, as that would probably cause an infinite amount of columns to be created.
+    return std::max(height, 1_lu); // Let's avoid zero height, as that would probably cause an infinite amount of columns to be created.
 }
 
 LayoutUnit RenderMultiColumnSet::pageLogicalTopForOffset(LayoutUnit offset) const
@@ -420,7 +420,7 @@ LayoutUnit RenderMultiColumnSet::calculateMaxColumnHeight() const
     LayoutUnit availableHeight = multiColumnFlow()->columnHeightAvailable();
     LayoutUnit maxColumnHeight = availableHeight ? availableHeight : RenderFragmentedFlow::maxLogicalHeight();
     if (!multicolStyle.logicalMaxHeight().isUndefined())
-        maxColumnHeight = std::min(maxColumnHeight, multicolBlock->computeContentLogicalHeight(MaxSize, multicolStyle.logicalMaxHeight(), std::nullopt).value_or(maxColumnHeight));
+        maxColumnHeight = std::min(maxColumnHeight, multicolBlock->computeContentLogicalHeight(MaxSize, multicolStyle.logicalMaxHeight(), WTF::nullopt).valueOr(maxColumnHeight));
     return heightAdjustedForSetOffset(maxColumnHeight);
 }
 
@@ -584,7 +584,7 @@ void RenderMultiColumnSet::paintColumnRules(PaintInfo& paintInfo, const LayoutPo
     const Color& ruleColor = blockStyle.visitedDependentColorWithColorFilter(CSSPropertyColumnRuleColor);
     bool ruleTransparent = blockStyle.columnRuleIsTransparent();
     BorderStyle ruleStyle = collapsedBorderStyle(blockStyle.columnRuleStyle());
-    LayoutUnit ruleThickness = blockStyle.columnRuleWidth();
+    LayoutUnit ruleThickness { blockStyle.columnRuleWidth() };
     LayoutUnit colGap = columnGap();
     bool renderRule = ruleStyle > BorderStyle::Hidden && !ruleTransparent;
     if (!renderRule)
@@ -598,9 +598,9 @@ void RenderMultiColumnSet::paintColumnRules(PaintInfo& paintInfo, const LayoutPo
 
     if (fragmentedFlow->progressionIsInline()) {
         bool leftToRight = style().isLeftToRightDirection() ^ fragmentedFlow->progressionIsReversed();
-        LayoutUnit currLogicalLeftOffset = leftToRight ? LayoutUnit() : contentLogicalWidth();
+        LayoutUnit currLogicalLeftOffset = leftToRight ? 0_lu : contentLogicalWidth();
         LayoutUnit ruleAdd = logicalLeftOffsetForContent();
-        LayoutUnit ruleLogicalLeft = leftToRight ? LayoutUnit() : contentLogicalWidth();
+        LayoutUnit ruleLogicalLeft = leftToRight ? 0_lu : contentLogicalWidth();
         LayoutUnit inlineDirectionSize = computedColumnWidth();
         BoxSide boxSide = isHorizontalWritingMode()
             ? leftToRight ? BSLeft : BSRight
@@ -630,9 +630,9 @@ void RenderMultiColumnSet::paintColumnRules(PaintInfo& paintInfo, const LayoutPo
         }
     } else {
         bool topToBottom = !style().isFlippedBlocksWritingMode() ^ fragmentedFlow->progressionIsReversed();
-        LayoutUnit ruleLeft = isHorizontalWritingMode() ? LayoutUnit() : colGap / 2 - colGap - ruleThickness / 2;
+        LayoutUnit ruleLeft = isHorizontalWritingMode() ? 0_lu : colGap / 2 - colGap - ruleThickness / 2;
         LayoutUnit ruleWidth = isHorizontalWritingMode() ? contentWidth() : ruleThickness;
-        LayoutUnit ruleTop = isHorizontalWritingMode() ? colGap / 2 - colGap - ruleThickness / 2 : LayoutUnit();
+        LayoutUnit ruleTop = isHorizontalWritingMode() ? colGap / 2 - colGap - ruleThickness / 2 : 0_lu;
         LayoutUnit ruleHeight = isHorizontalWritingMode() ? ruleThickness : contentHeight();
         LayoutRect ruleRect(ruleLeft, ruleTop, ruleWidth, ruleHeight);
 
@@ -647,7 +647,7 @@ void RenderMultiColumnSet::paintColumnRules(PaintInfo& paintInfo, const LayoutPo
 
         BoxSide boxSide = isHorizontalWritingMode() ? topToBottom ? BSTop : BSBottom : topToBottom ? BSLeft : BSRight;
 
-        LayoutSize step(0, topToBottom ? computedColumnHeight() + colGap : -(computedColumnHeight() + colGap));
+        LayoutSize step(0_lu, topToBottom ? computedColumnHeight() + colGap : -(computedColumnHeight() + colGap));
         if (!isHorizontalWritingMode())
             step = step.transposedSize();
 
@@ -703,7 +703,7 @@ LayoutUnit RenderMultiColumnSet::initialBlockOffsetForPainting() const
     bool progressionReversed = multiColumnFlow()->progressionIsReversed();
     bool progressionIsInline = multiColumnFlow()->progressionIsInline();
     
-    LayoutUnit result = 0;
+    LayoutUnit result;
     if (!progressionIsInline && progressionReversed) {
         LayoutRect colRect = columnRectAt(0);
         result = isHorizontalWritingMode() ? colRect.y() : colRect.x();
@@ -785,7 +785,7 @@ void RenderMultiColumnSet::collectLayerFragments(LayerFragments& fragments, cons
         // We also need to intersect the dirty rect. We have to apply a translation and shift based off
         // our column index.
         LayoutSize translationOffset;
-        LayoutUnit inlineOffset = progressionIsInline ? i * (colLogicalWidth + colGap) : LayoutUnit();
+        LayoutUnit inlineOffset = progressionIsInline ? i * (colLogicalWidth + colGap) : 0_lu;
         
         bool leftToRight = style().isLeftToRightDirection() ^ progressionReversed;
         if (!leftToRight) {
@@ -915,7 +915,7 @@ LayoutPoint RenderMultiColumnSet::translateFragmentPointToFragmentedFlow(const L
                         // no next column, this still maps to just after this column.
                         else if (point.y() >= gapAndColumnRect.maxY()) {
                             point = gapAndColumnRect.location();
-                            point.move(0, gapAndColumnRect.height());
+                            point.move(0_lu, gapAndColumnRect.height());
                         }
                     } else {
                         if (point.x() < colRect.x())
@@ -944,7 +944,7 @@ LayoutPoint RenderMultiColumnSet::translateFragmentPointToFragmentedFlow(const L
                         // no next column, this still maps to just after this column.
                         else if (point.x() >= gapAndColumnRect.maxX()) {
                             point = gapAndColumnRect.location();
-                            point.move(gapAndColumnRect.width(), 0);
+                            point.move(gapAndColumnRect.width(), 0_lu);
                         }
                     } else {
                         if (point.y() < colRect.y())

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,7 @@
 
 #import "ApplePayPaymentContact.h"
 #import <Contacts/Contacts.h>
-#import <pal/spi/cocoa/PassKitSPI.h>
+#import <pal/cocoa/PassKitSoftLink.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/text/StringBuilder.h>
 
@@ -38,19 +38,11 @@ SOFT_LINK_FRAMEWORK(Contacts)
 SOFT_LINK_CLASS(Contacts, CNMutablePostalAddress)
 SOFT_LINK_CLASS(Contacts, CNPhoneNumber)
 
-#if PLATFORM(MAC)
-SOFT_LINK_PRIVATE_FRAMEWORK(PassKit)
-#else
-SOFT_LINK_FRAMEWORK(PassKit)
-#endif
-
-SOFT_LINK_CLASS(PassKit, PKContact)
-
 namespace WebCore {
 
 static NSString *subLocality(CNPostalAddress *address)
 {
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
     if (![address respondsToSelector:@selector(subLocality)])
         return nil;
@@ -64,7 +56,7 @@ static NSString *subLocality(CNPostalAddress *address)
 
 static void setSubLocality(CNMutablePostalAddress *address, NSString *subLocality)
 {
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
     if (![address respondsToSelector:@selector(setSubLocality:)])
         return;
@@ -78,7 +70,7 @@ static void setSubLocality(CNMutablePostalAddress *address, NSString *subLocalit
 
 static NSString *subAdministrativeArea(CNPostalAddress *address)
 {
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
     if (![address respondsToSelector:@selector(subAdministrativeArea)])
         return nil;
@@ -92,7 +84,7 @@ static NSString *subAdministrativeArea(CNPostalAddress *address)
 
 static void setSubAdministrativeArea(CNMutablePostalAddress *address, NSString *subAdministrativeArea)
 {
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
     if (![address respondsToSelector:@selector(setSubAdministrativeArea:)])
         return;
@@ -106,7 +98,7 @@ static void setSubAdministrativeArea(CNMutablePostalAddress *address, NSString *
 
 static RetainPtr<PKContact> convert(unsigned version, const ApplePayPaymentContact& contact)
 {
-    auto result = adoptNS([allocPKContactInstance() init]);
+    auto result = adoptNS([PAL::allocPKContactInstance() init]);
 
     NSString *familyName = nil;
     NSString *phoneticFamilyName = nil;
@@ -216,6 +208,15 @@ static ApplePayPaymentContact convert(unsigned version, PKContact *contact)
     return result;
 }
 
+PaymentContact::PaymentContact() = default;
+
+PaymentContact::PaymentContact(RetainPtr<PKContact>&& pkContact)
+    : m_pkContact { WTFMove(pkContact) }
+{
+}
+
+PaymentContact::~PaymentContact() = default;
+
 PaymentContact PaymentContact::fromApplePayPaymentContact(unsigned version, const ApplePayPaymentContact& contact)
 {
     return PaymentContact(convert(version, contact).get());
@@ -224,6 +225,11 @@ PaymentContact PaymentContact::fromApplePayPaymentContact(unsigned version, cons
 ApplePayPaymentContact PaymentContact::toApplePayPaymentContact(unsigned version) const
 {
     return convert(version, m_pkContact.get());
+}
+
+PKContact *PaymentContact::pkContact() const
+{
+    return m_pkContact.get();
 }
 
 }

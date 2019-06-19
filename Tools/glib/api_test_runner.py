@@ -17,7 +17,6 @@
 # the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 # Boston, MA 02110-1301, USA.
 
-import subprocess
 import os
 import errno
 import sys
@@ -32,17 +31,30 @@ from webkitpy.common.host import Host
 from webkitpy.common.test_expectations import TestExpectations
 from webkitpy.common.timeout_context import Timeout
 
+if os.name == 'posix' and sys.version_info[0] < 3:
+    try:
+        import subprocess32 as subprocess
+    except ImportError:
+        import subprocess
+else:
+    import subprocess
 
 class TestRunner(object):
-    TEST_DIRS = []
+    TEST_TARGETS = []
 
     def __init__(self, port, options, tests=[]):
         self._options = options
 
-        self._build_type = "Debug" if self._options.debug else "Release"
-        common.set_build_types((self._build_type,))
         self._port = Host().port_factory.get(port)
         self._driver = self._create_driver()
+
+        if self._options.debug:
+            self._build_type = "Debug"
+        elif self._options.release:
+            self._build_type = "Release"
+        else:
+            self._build_type = self._port.default_configuration()
+        common.set_build_types((self._build_type,))
 
         self._programs_path = common.binary_build_path()
         expectations_file = os.path.join(common.top_level_path(), "Tools", "TestWebKitAPI", "glib", "TestExpectations.json")
@@ -77,9 +89,12 @@ class TestRunner(object):
             return tests
 
         tests = []
-        for test_dir in self.TEST_DIRS:
-            absolute_test_dir = os.path.join(self._test_programs_base_dir(), test_dir)
-            tests.extend(self._get_tests_from_dir(absolute_test_dir))
+        for test_target in self.TEST_TARGETS:
+            absolute_test_target = os.path.join(self._test_programs_base_dir(), test_target)
+            if test_target.lower().startswith("test") and os.path.isfile(absolute_test_target) and os.access(absolute_test_target, os.X_OK):
+                tests.append(absolute_test_target)
+            else:
+                tests.extend(self._get_tests_from_dir(absolute_test_target))
         return tests
 
     def _create_driver(self, port_options=[]):
@@ -151,6 +166,33 @@ class TestRunner(object):
 
         return GLibTestRunner(test_program, timeout, is_slow_test, timeout * 10).run(skipped=self._test_cases_to_skip(test_program), env=self._test_env)
 
+    def _run_test_qt(self, test_program):
+        env = self._test_env
+        env['XDG_SESSION_TYPE'] = 'wayland'
+        env['QML2_IMPORT_PATH'] = common.library_build_path('qml')
+
+        name = os.path.basename(test_program)
+        if not hasattr(subprocess, 'TimeoutExpired'):
+            print("Can't run WPEQt test in Python2 without subprocess32")
+            return {name: "FAIL"}
+
+        try:
+            output = subprocess.check_output([test_program, ], stderr=subprocess.STDOUT,
+                                             env=env, timeout=self._options.timeout)
+        except subprocess.CalledProcessError, exc:
+            print(exc.output)
+            if exc.returncode > 0:
+                result = "FAIL"
+            elif exc.returncode < 0:
+                result = "CRASH"
+        except subprocess.TimeoutExpired, exp:
+            result = "TIMEOUT"
+            print(exp.output)
+        else:
+            result = "PASS"
+            print("**PASS** %s" % name)
+        return {name: result}
+
     def _get_tests_from_google_test_suite(self, test_program):
         try:
             output = subprocess.check_output([test_program, '--gtest_list_tests'], env=self._test_env)
@@ -216,12 +258,18 @@ class TestRunner(object):
     def is_google_test(self, test_program):
         raise NotImplementedError
 
+    def is_qt_test(self, test_program):
+        raise NotImplementedError
+
     def _run_test(self, test_program):
         if self.is_glib_test(test_program):
             return self._run_test_glib(test_program)
 
         if self.is_google_test(test_program):
             return self._run_google_test_suite(test_program)
+
+        if self.is_qt_test(test_program):
+            return self._run_test_qt(test_program)
 
         return {}
 

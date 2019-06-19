@@ -12,12 +12,15 @@
 #define MODULES_RTP_RTCP_INCLUDE_RECEIVE_STATISTICS_H_
 
 #include <map>
+#include <memory>
 #include <vector>
 
+#include "call/rtp_packet_sink_interface.h"
 #include "modules/include/module.h"
 #include "modules/include/module_common_types.h"
 #include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
 #include "modules/rtp_rtcp/source/rtcp_packet/report_block.h"
+#include "rtc_base/deprecation.h"
 
 namespace webrtc {
 
@@ -36,17 +39,7 @@ class StreamStatistician {
  public:
   virtual ~StreamStatistician();
 
-  // If |update_fraction_lost| is true, |fraction_lost| will be recomputed
-  // between now and the last time |update_fraction_lost| was true. Otherwise
-  // the last-computed value of |fraction_lost| will be returned.
-  //
-  // |update_fraction_lost| should be true any time an RTCP SR or RR is being
-  // generated, since RFC3550 defines it as the fraction of packets lost since
-  // the previous SR or RR packet was sent.
-  //
-  // Aside from |fraction_lost|, every other value will be freshly computed.
-  virtual bool GetStatistics(RtcpStatistics* statistics,
-                             bool update_fraction_lost) = 0;
+  virtual bool GetStatistics(RtcpStatistics* statistics, bool reset) = 0;
   virtual void GetDataCounters(size_t* bytes_received,
                                uint32_t* packets_received) const = 0;
 
@@ -55,40 +48,33 @@ class StreamStatistician {
       StreamDataCounters* data_counters) const = 0;
 
   virtual uint32_t BitrateReceived() const = 0;
-
-  // Returns true if the packet with RTP header |header| is likely to be a
-  // retransmitted packet, false otherwise.
-  virtual bool IsRetransmitOfOldPacket(const RTPHeader& header) const = 0;
 };
 
-class ReceiveStatistics : public ReceiveStatisticsProvider {
+class ReceiveStatistics : public ReceiveStatisticsProvider,
+                          public RtpPacketSinkInterface {
  public:
   ~ReceiveStatistics() override = default;
 
-  static ReceiveStatistics* Create(Clock* clock);
+  static ReceiveStatistics* Create(Clock* clock) {
+    return Create(clock, nullptr, nullptr).release();
+  }
 
-  // Updates the receive statistics with this packet.
-  virtual void IncomingPacket(const RTPHeader& rtp_header,
-                              size_t packet_length,
-                              bool retransmitted) = 0;
+  static std::unique_ptr<ReceiveStatistics> Create(
+      Clock* clock,
+      RtcpStatisticsCallback* rtcp_callback,
+      StreamDataCountersCallback* rtp_callback);
 
   // Increment counter for number of FEC packets received.
-  virtual void FecPacketReceived(const RTPHeader& header,
-                                 size_t packet_length) = 0;
+  virtual void FecPacketReceived(const RtpPacketReceived& packet) = 0;
 
   // Returns a pointer to the statistician of an ssrc.
   virtual StreamStatistician* GetStatistician(uint32_t ssrc) const = 0;
 
   // Sets the max reordering threshold in number of packets.
   virtual void SetMaxReorderingThreshold(int max_reordering_threshold) = 0;
-
-  // Called on new RTCP stats creation.
-  virtual void RegisterRtcpStatisticsCallback(
-      RtcpStatisticsCallback* callback) = 0;
-
-  // Called on new RTP stats creation.
-  virtual void RegisterRtpStatisticsCallback(
-      StreamDataCountersCallback* callback) = 0;
+  // Detect retransmissions, enabling updates of the retransmitted counters. The
+  // default is false.
+  virtual void EnableRetransmitDetection(uint32_t ssrc, bool enable) = 0;
 };
 
 }  // namespace webrtc

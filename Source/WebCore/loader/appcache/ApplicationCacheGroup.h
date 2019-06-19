@@ -27,10 +27,10 @@
 
 #include "ApplicationCacheResourceLoader.h"
 #include "DOMApplicationCache.h"
-#include "URL.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
+#include <wtf/URL.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -94,10 +94,10 @@ public:
     void disassociateDocumentLoader(DocumentLoader&);
 
 private:
-    static void postListenerTask(const AtomicString& eventType, const HashSet<DocumentLoader*>& set) { postListenerTask(eventType, 0, 0, set); }
-    static void postListenerTask(const AtomicString& eventType, DocumentLoader& loader)  { postListenerTask(eventType, 0, 0, loader); }
-    static void postListenerTask(const AtomicString& eventType, int progressTotal, int progressDone, const HashSet<DocumentLoader*>&);
-    static void postListenerTask(const AtomicString& eventType, int progressTotal, int progressDone, DocumentLoader&);
+    static void postListenerTask(const AtomString& eventType, const HashSet<DocumentLoader*>& set) { postListenerTask(eventType, 0, 0, set); }
+    static void postListenerTask(const AtomString& eventType, DocumentLoader& loader)  { postListenerTask(eventType, 0, 0, loader); }
+    static void postListenerTask(const AtomString& eventType, int progressTotal, int progressDone, const HashSet<DocumentLoader*>&);
+    static void postListenerTask(const AtomString& eventType, int progressTotal, int progressDone, DocumentLoader&);
 
     void scheduleReachedMaxAppCacheSizeCallback();
 

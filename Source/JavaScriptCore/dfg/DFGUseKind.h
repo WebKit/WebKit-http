@@ -102,7 +102,7 @@ inline SpeculatedType typeFilterFor(UseKind useKind)
     case KnownInt32Use:
         return SpecInt32Only;
     case Int52RepUse:
-        return SpecAnyInt;
+        return SpecInt52Any;
     case AnyIntUse:
         return SpecInt32Only | SpecAnyIntAsDouble;
     case NumberUse:
@@ -119,9 +119,8 @@ inline SpeculatedType typeFilterFor(UseKind useKind)
     case KnownBooleanUse:
         return SpecBoolean;
     case CellUse:
-        return SpecCellCheck;
     case KnownCellUse:
-        return SpecCell;
+        return SpecCellCheck;
     case CellOrOtherUse:
         return SpecCellCheck | SpecOther;
     case ObjectUse:
@@ -269,27 +268,9 @@ inline bool isCell(UseKind kind)
     }
 }
 
-// Returns true if it uses structure in a way that could be clobbered by
-// things that change the structure.
-inline bool usesStructure(UseKind kind)
-{
-    switch (kind) {
-    case StringObjectUse:
-    case StringOrStringObjectUse:
-        return true;
-    default:
-        return false;
-    }
-}
-
 // Returns true if we've already guaranteed the type 
 inline bool alreadyChecked(UseKind kind, SpeculatedType type)
 {
-    // If the check involves the structure then we need to know more than just the type to be sure
-    // that the check is done.
-    if (usesStructure(kind))
-        return false;
-    
     return !(type & ~typeFilterFor(kind));
 }
 

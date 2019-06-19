@@ -33,7 +33,6 @@ namespace WebCore {
 
 class ContextMenu;
 class Image;
-class URL;
 
 enum ContextMenuAction {
     ContextMenuItemTagNoAction,
@@ -73,6 +72,7 @@ enum ContextMenuAction {
     ContextMenuItemTagUnicodeInsertZWSMark,
     ContextMenuItemTagUnicodeInsertZWJMark,
     ContextMenuItemTagUnicodeInsertZWNJMark,
+    ContextMenuItemTagInsertEmoji,
 #endif
     ContextMenuItemTagSpellingGuess,
     ContextMenuItemTagNoGuessesFound,

@@ -39,13 +39,13 @@ namespace WebCore {
 namespace Layout {
 
 class FormattingState;
-class LayoutContext;
+class LayoutState;
 
 // FloatingState holds the floating boxes per formatting context.
 class FloatingState : public RefCounted<FloatingState> {
     WTF_MAKE_ISO_ALLOCATED(FloatingState);
 public:
-    static Ref<FloatingState> create(LayoutContext& layoutContext, const Box& formattingContextRoot) { return adoptRef(*new FloatingState(layoutContext, formattingContextRoot)); }
+    static Ref<FloatingState> create(LayoutState& layoutState, const Box& formattingContextRoot) { return adoptRef(*new FloatingState(layoutState, formattingContextRoot)); }
 
     void append(const Box& layoutBox);
     void remove(const Box& layoutBox);
@@ -54,9 +54,16 @@ public:
 
     const Box& root() const { return *m_formattingContextRoot; }
 
-    std::optional<LayoutUnit> leftBottom(const Box& formattingContextRoot) const;
-    std::optional<LayoutUnit> rightBottom(const Box& formattingContextRoot) const;
-    std::optional<LayoutUnit> bottom(const Box& formattingContextRoot) const;
+    Optional<PositionInContextRoot> top(const Box& formattingContextRoot) const;
+    Optional<PositionInContextRoot> leftBottom(const Box& formattingContextRoot) const;
+    Optional<PositionInContextRoot> rightBottom(const Box& formattingContextRoot) const;
+    Optional<PositionInContextRoot> bottom(const Box& formattingContextRoot) const;
+
+    struct Constraints {
+        Optional<PointInContextRoot> left;
+        Optional<PointInContextRoot> right;
+    };
+    Constraints constraints(PositionInContextRoot verticalPosition, const Box& formattingContextRoot) const;
 
     class FloatItem {
     public:
@@ -65,10 +72,10 @@ public:
         bool operator==(const Box& layoutBox) const { return m_layoutBox.get() == &layoutBox; }
 
         bool isLeftPositioned() const { return m_layoutBox->isLeftFloatingPositioned(); }
-        bool inFormattingContext(const Box&) const;
+        bool isDescendantOfFormattingRoot(const Box&) const;
 
-        Display::Box::Rect rectWithMargin() const { return m_absoluteDisplayBox.rectWithMargin(); }
-        PositionInContextRoot bottom() const { return m_absoluteDisplayBox.bottom(); }
+        Display::Rect rectWithMargin() const { return m_absoluteDisplayBox.rectWithMargin(); }
+        PositionInContextRoot bottom() const { return { m_absoluteDisplayBox.bottom() }; }
 
     private:
         WeakPtr<const Box> m_layoutBox;
@@ -80,39 +87,41 @@ public:
 
 private:
     friend class FloatingContext;
-    FloatingState(LayoutContext&, const Box& formattingContextRoot);
+    FloatingState(LayoutState&, const Box& formattingContextRoot);
 
-    LayoutContext& layoutContext() const { return m_layoutContext; }
+    LayoutState& layoutState() const { return m_layoutState; }
 
-    std::optional<LayoutUnit> bottom(const Box& formattingContextRoot, Clear) const;
+    Optional<PositionInContextRoot> bottom(const Box& formattingContextRoot, Clear) const;
 
-    LayoutContext& m_layoutContext;
+    LayoutState& m_layoutState;
     WeakPtr<const Box> m_formattingContextRoot;
     FloatList m_floats;
 };
 
-inline std::optional<LayoutUnit> FloatingState::leftBottom(const Box& formattingContextRoot) const
+inline Optional<PositionInContextRoot> FloatingState::leftBottom(const Box& formattingContextRoot) const
 { 
     ASSERT(formattingContextRoot.establishesFormattingContext());
     return bottom(formattingContextRoot, Clear::Left);
 }
 
-inline std::optional<LayoutUnit> FloatingState::rightBottom(const Box& formattingContextRoot) const
+inline Optional<PositionInContextRoot> FloatingState::rightBottom(const Box& formattingContextRoot) const
 {
     ASSERT(formattingContextRoot.establishesFormattingContext());
     return bottom(formattingContextRoot, Clear::Right);
 }
 
-inline std::optional<LayoutUnit> FloatingState::bottom(const Box& formattingContextRoot) const
+inline Optional<PositionInContextRoot> FloatingState::bottom(const Box& formattingContextRoot) const
 {
     ASSERT(formattingContextRoot.establishesFormattingContext());
     return bottom(formattingContextRoot, Clear::Both);
 }
 
-inline bool FloatingState::FloatItem::inFormattingContext(const Box& formattingContextRoot) const
+inline bool FloatingState::FloatItem::isDescendantOfFormattingRoot(const Box& formattingContextRoot) const
 {
     ASSERT(formattingContextRoot.establishesFormattingContext());
-    return &m_layoutBox->formattingContextRoot() == &formattingContextRoot;
+    if (!is<Container>(formattingContextRoot))
+        return false;
+    return m_layoutBox->isContainingBlockDescendantOf(downcast<Container>(formattingContextRoot));
 }
 
 }

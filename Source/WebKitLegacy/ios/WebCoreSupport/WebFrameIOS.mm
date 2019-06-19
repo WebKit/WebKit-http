@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "WebFrameIOS.h"
 
@@ -533,10 +533,10 @@ using namespace WebCore;
 {
     Frame *frame = [self coreFrame];
     switch (frame->editor().baseWritingDirectionForSelectionStart()) {
-    case LeftToRightWritingDirection:
+    case WritingDirection::LeftToRight:
         return WKWritingDirectionLeftToRight;
 
-    case RightToLeftWritingDirection:
+    case WritingDirection::RightToLeft:
         return WKWritingDirectionRightToLeft;
 
     default:
@@ -573,16 +573,16 @@ using namespace WebCore;
     if (!frame->selection().selection().isContentEditable())
         return;
     
-    WritingDirection wcDirection = LeftToRightWritingDirection;
+    auto wcDirection = WritingDirection::LeftToRight;
     switch (direction) {
         case WKWritingDirectionNatural:
-            wcDirection = NaturalWritingDirection;
+            wcDirection = WritingDirection::Natural;
             break;
         case WKWritingDirectionLeftToRight:
-            wcDirection = LeftToRightWritingDirection;
+            wcDirection = WritingDirection::LeftToRight;
             break;
         case WKWritingDirectionRightToLeft:
-            wcDirection = RightToLeftWritingDirection;
+            wcDirection = WritingDirection::RightToLeft;
             break;
         default:
             ASSERT_NOT_REACHED();
@@ -950,4 +950,4 @@ static VisiblePosition SimpleSmartExtendEnd(const VisiblePosition& start, const 
 
 @end
 
-#endif  // PLATFORM(IOS)
+#endif  // PLATFORM(IOS_FAMILY)

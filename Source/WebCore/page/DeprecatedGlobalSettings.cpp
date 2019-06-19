@@ -31,14 +31,6 @@
 #include "RuntimeApplicationChecks.h"
 #include <wtf/NeverDestroyed.h>
 
-#if ENABLE(MEDIA_STREAM)
-#include "MockRealtimeMediaSourceCenter.h"
-
-#if USE(AVFOUNDATION)
-#include "RealtimeMediaSourceCenterMac.h"
-#endif
-#endif
-
 namespace WebCore {
 
 #if USE(AVFOUNDATION)
@@ -54,11 +46,6 @@ bool DeprecatedGlobalSettings::gMockScrollbarsEnabled = false;
 bool DeprecatedGlobalSettings::gUsesOverlayScrollbars = false;
 bool DeprecatedGlobalSettings::gMockScrollAnimatorEnabled = false;
 
-#if ENABLE(MEDIA_STREAM)
-bool DeprecatedGlobalSettings::gMockCaptureDevicesEnabled = false;
-bool DeprecatedGlobalSettings::gMediaCaptureRequiresSecureConnection = true;
-#endif
-
 #if PLATFORM(WIN)
 bool DeprecatedGlobalSettings::gShouldUseHighResolutionTimers = true;
 #endif
@@ -68,7 +55,7 @@ bool DeprecatedGlobalSettings::gLowPowerVideoAudioBufferSizeEnabled = false;
 bool DeprecatedGlobalSettings::gResourceLoadStatisticsEnabledEnabled = false;
 bool DeprecatedGlobalSettings::gAllowsAnySSLCertificate = false;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 bool DeprecatedGlobalSettings::gNetworkDataUsageTrackingEnabled = false;
 bool DeprecatedGlobalSettings::gAVKitEnabled = false;
 bool DeprecatedGlobalSettings::gShouldOptOutOfNetworkStateObservation = false;
@@ -113,29 +100,6 @@ void DeprecatedGlobalSettings::setGStreamerEnabled(bool enabled)
 #if ENABLE(VIDEO)
     HTMLMediaElement::resetMediaEngines();
 #endif
-}
-#endif
-
-#if ENABLE(MEDIA_STREAM)
-bool DeprecatedGlobalSettings::mockCaptureDevicesEnabled()
-{
-    return gMockCaptureDevicesEnabled;
-}
-
-void DeprecatedGlobalSettings::setMockCaptureDevicesEnabled(bool enabled)
-{
-    gMockCaptureDevicesEnabled = enabled;
-    MockRealtimeMediaSourceCenter::setMockRealtimeMediaSourceCenterEnabled(enabled);
-}
-
-bool DeprecatedGlobalSettings::mediaCaptureRequiresSecureConnection()
-{
-    return gMediaCaptureRequiresSecureConnection;
-}
-
-void DeprecatedGlobalSettings::setMediaCaptureRequiresSecureConnection(bool mediaCaptureRequiresSecureConnection)
-{
-    gMediaCaptureRequiresSecureConnection = mediaCaptureRequiresSecureConnection;
 }
 #endif
 
@@ -195,7 +159,7 @@ void DeprecatedGlobalSettings::setResourceLoadStatisticsEnabled(bool flag)
     gResourceLoadStatisticsEnabledEnabled = flag;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 void DeprecatedGlobalSettings::setAudioSessionCategoryOverride(unsigned sessionCategory)
 {
     AudioSession::sharedSession().setCategoryOverride(static_cast<AudioSession::CategoryType>(sessionCategory));
@@ -237,7 +201,7 @@ bool DeprecatedGlobalSettings::globalConstRedeclarationShouldThrow()
 {
 #if PLATFORM(MAC)
     return !MacApplication::isIBooks();
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     return !IOSApplication::isIBooks();
 #else
     return true;

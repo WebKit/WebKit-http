@@ -29,16 +29,67 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "LayoutBox.h"
+#include "RenderStyle.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 namespace Layout {
 
-Replaced::Replaced(const LayoutBox&)
+WTF_MAKE_ISO_ALLOCATED_IMPL(Replaced);
+
+Replaced::Replaced(const Box& layoutBox)
+    : m_layoutBox(makeWeakPtr(layoutBox))
 {
 }
 
-}
+bool Replaced::hasIntrinsicWidth() const
+{
+    return m_intrinsicSize || m_layoutBox->style().logicalWidth().isIntrinsic();
 }
 
+bool Replaced::hasIntrinsicHeight() const
+{
+    return m_intrinsicSize || m_layoutBox->style().logicalHeight().isIntrinsic();
+}
+
+bool Replaced::hasIntrinsicRatio() const
+{
+    if (!hasAspectRatio())
+        return false;
+    return m_intrinsicSize || m_intrinsicRatio;
+}
+
+LayoutUnit Replaced::intrinsicWidth() const
+{
+    ASSERT(hasIntrinsicWidth());
+    if (m_intrinsicSize)
+        return m_intrinsicSize->width();
+    return LayoutUnit(m_layoutBox->style().logicalWidth().value());
+}
+
+LayoutUnit Replaced::intrinsicHeight() const
+{
+    ASSERT(hasIntrinsicHeight());
+    if (m_intrinsicSize)
+        return m_intrinsicSize->height();
+    return LayoutUnit(m_layoutBox->style().logicalHeight().value());
+}
+
+LayoutUnit Replaced::intrinsicRatio() const
+{
+    ASSERT(hasIntrinsicRatio() || (hasIntrinsicWidth() && hasIntrinsicHeight()));
+    if (m_intrinsicRatio)
+        return *m_intrinsicRatio;
+    if (m_intrinsicSize && m_intrinsicSize->height())
+        return m_intrinsicSize->width() / m_intrinsicSize->height();
+    return 1;
+}
+
+bool Replaced::hasAspectRatio() const
+{
+    return m_layoutBox->isImage() || m_layoutBox->style().aspectRatioType() == AspectRatioType::FromIntrinsic;
+}
+
+}
+}
 #endif

@@ -664,17 +664,17 @@ void ApplicationCacheGroup::didFailLoadingManifest(ApplicationCacheResourceLoade
         break;
     case ApplicationCacheResourceLoader::Error::NotFound:
         InspectorInstrumentation::didFailLoading(m_frame, m_frame->loader().documentLoader(), m_currentResourceIdentifier, m_frame->loader().cancelledError(m_manifestLoader->resource()->resourceRequest()));
-        m_frame->document()->addConsoleMessage(MessageSource::AppCache, MessageLevel::Error, makeString("Application Cache manifest could not be fetched, because the manifest had a ", String::number(m_manifestLoader->resource()->response().httpStatusCode()), " response."));
+        m_frame->document()->addConsoleMessage(MessageSource::AppCache, MessageLevel::Error, makeString("Application Cache manifest could not be fetched, because the manifest had a ", m_manifestLoader->resource()->response().httpStatusCode(), " response."));
         manifestNotFound();
         break;
     case ApplicationCacheResourceLoader::Error::NotOK:
         InspectorInstrumentation::didFailLoading(m_frame, m_frame->loader().documentLoader(), m_currentResourceIdentifier, m_frame->loader().cancelledError(m_manifestLoader->resource()->resourceRequest()));
-        m_frame->document()->addConsoleMessage(MessageSource::AppCache, MessageLevel::Error, makeString("Application Cache manifest could not be fetched, because the manifest had a ", String::number(m_manifestLoader->resource()->response().httpStatusCode()), " response."));
+        m_frame->document()->addConsoleMessage(MessageSource::AppCache, MessageLevel::Error, makeString("Application Cache manifest could not be fetched, because the manifest had a ", m_manifestLoader->resource()->response().httpStatusCode(), " response."));
         cacheUpdateFailed();
         break;
     case ApplicationCacheResourceLoader::Error::RedirectForbidden:
         InspectorInstrumentation::didFailLoading(m_frame, m_frame->loader().documentLoader(), m_currentResourceIdentifier, m_frame->loader().cancelledError(m_manifestLoader->resource()->resourceRequest()));
-        m_frame->document()->addConsoleMessage(MessageSource::AppCache, MessageLevel::Error, makeString("Application Cache manifest could not be fetched, because a redirection was attempted."));
+        m_frame->document()->addConsoleMessage(MessageSource::AppCache, MessageLevel::Error, "Application Cache manifest could not be fetched, because a redirection was attempted."_s);
         cacheUpdateFailed();
         break;
     case ApplicationCacheResourceLoader::Error::CannotCreateResource:
@@ -896,7 +896,7 @@ void ApplicationCacheGroup::startLoadingEntry()
     ASSERT(!m_manifestLoader);
     ASSERT(!m_entryLoader);
 
-    auto request = createRequest(URL { ParsedURLString, firstPendingEntryURL }, m_newestCache ? m_newestCache->resourceForURL(firstPendingEntryURL) : nullptr);
+    auto request = createRequest(URL { { }, firstPendingEntryURL }, m_newestCache ? m_newestCache->resourceForURL(firstPendingEntryURL) : nullptr);
 
     m_currentResourceIdentifier = m_frame->page()->progress().createUniqueIdentifier();
     InspectorInstrumentation::willSendRequest(m_frame, m_currentResourceIdentifier, m_frame->loader().documentLoader(), request, ResourceResponse { });
@@ -937,7 +937,7 @@ void ApplicationCacheGroup::deliverDelayedMainResources()
 void ApplicationCacheGroup::addEntry(const String& url, unsigned type)
 {
     ASSERT(m_cacheBeingUpdated);
-    ASSERT(!URL(ParsedURLString, url).hasFragmentIdentifier());
+    ASSERT(!URL({ }, url).hasFragmentIdentifier());
 
     // Don't add the URL if we already have an master resource in the cache
     // (i.e., the main resource finished loading before the manifest).
@@ -1000,13 +1000,13 @@ void ApplicationCacheGroup::scheduleReachedMaxAppCacheSizeCallback()
     // The timer will delete itself once it fires.
 }
 
-void ApplicationCacheGroup::postListenerTask(const AtomicString& eventType, int progressTotal, int progressDone, const HashSet<DocumentLoader*>& loaderSet)
+void ApplicationCacheGroup::postListenerTask(const AtomString& eventType, int progressTotal, int progressDone, const HashSet<DocumentLoader*>& loaderSet)
 {
     for (auto& loader : loaderSet)
         postListenerTask(eventType, progressTotal, progressDone, *loader);
 }
 
-void ApplicationCacheGroup::postListenerTask(const AtomicString& eventType, int progressTotal, int progressDone, DocumentLoader& loader)
+void ApplicationCacheGroup::postListenerTask(const AtomString& eventType, int progressTotal, int progressDone, DocumentLoader& loader)
 {
     auto* frame = loader.frame();
     if (!frame)

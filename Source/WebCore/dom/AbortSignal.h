@@ -27,14 +27,17 @@
 
 #include "ContextDestructionObserver.h"
 #include "EventTarget.h"
+#include <wtf/Function.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
 class ScriptExecutionContext;
 
-class AbortSignal final : public RefCounted<AbortSignal>, public EventTargetWithInlineData, private ContextDestructionObserver {
+class AbortSignal final : public RefCounted<AbortSignal>, public EventTargetWithInlineData, public CanMakeWeakPtr<AbortSignal>, private ContextDestructionObserver {
+    WTF_MAKE_ISO_ALLOCATED(AbortSignal);
 public:
     static Ref<AbortSignal> create(ScriptExecutionContext&);
 
@@ -45,6 +48,11 @@ public:
     using RefCounted::ref;
     using RefCounted::deref;
 
+    using Algorithm = WTF::Function<void()>;
+    void addAlgorithm(Algorithm&& algorithm) { m_algorithms.append(WTFMove(algorithm)); }
+
+    void follow(AbortSignal&);
+
 private:
     explicit AbortSignal(ScriptExecutionContext&);
 
@@ -54,6 +62,7 @@ private:
     void derefEventTarget() final { deref(); }
     
     bool m_aborted { false };
+    Vector<Algorithm> m_algorithms;
 };
 
 }

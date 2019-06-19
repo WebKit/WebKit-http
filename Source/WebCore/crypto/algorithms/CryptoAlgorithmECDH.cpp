@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CryptoAlgorithmECDH.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CryptoAlgorithmEcKeyParams.h"
 #include "CryptoAlgorithmEcdhKeyDeriveParams.h"
@@ -96,7 +96,7 @@ void CryptoAlgorithmECDH::deriveBits(const CryptoAlgorithmParameters& parameters
         return;
     }
 
-    auto unifiedCallback = [callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback)](std::optional<Vector<uint8_t>>&& derivedKey, size_t length) mutable {
+    auto unifiedCallback = [callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback)](Optional<Vector<uint8_t>>&& derivedKey, size_t length) mutable {
         if (!derivedKey) {
             exceptionCallback(OperationError);
             return;
@@ -237,4 +237,4 @@ void CryptoAlgorithmECDH::exportKey(CryptoKeyFormat format, Ref<CryptoKey>&& key
 
 } // namespace WebCore
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

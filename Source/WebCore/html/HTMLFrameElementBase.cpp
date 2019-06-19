@@ -37,8 +37,8 @@
 #include "ScriptController.h"
 #include "Settings.h"
 #include "SubframeLoader.h"
-#include "URL.h"
 #include <wtf/IsoMallocInlines.h>
+#include <wtf/URL.h>
 
 namespace WebCore {
 
@@ -71,9 +71,9 @@ bool HTMLFrameElementBase::isURLAllowed(const URL& completeURL) const
     if (completeURL.isEmpty())
         return true;
 
-    if (protocolIsJavaScript(completeURL)) {
+    if (WTF::protocolIsJavaScript(completeURL)) {
         RefPtr<Document> contentDoc = this->contentDocument();
-        if (contentDoc && !ScriptController::canAccessFromCurrentOrigin(contentDoc->frame()))
+        if (contentDoc && !ScriptController::canAccessFromCurrentOrigin(contentDoc->frame(), document()))
             return false;
     }
 
@@ -90,7 +90,7 @@ void HTMLFrameElementBase::openURL(LockHistory lockHistory, LockBackForwardList 
         return;
 
     if (m_URL.isEmpty())
-        m_URL = blankURL().string();
+        m_URL = WTF::blankURL().string();
 
     RefPtr<Frame> parentFrame = document().frame();
     if (!parentFrame)
@@ -103,7 +103,7 @@ void HTMLFrameElementBase::openURL(LockHistory lockHistory, LockBackForwardList 
     parentFrame->loader().subframeLoader().requestFrame(*this, m_URL, frameName, lockHistory, lockBackForwardList);
 }
 
-void HTMLFrameElementBase::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLFrameElementBase::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == srcdocAttr)
         setLocation("about:srcdoc");
@@ -162,7 +162,7 @@ void HTMLFrameElementBase::didAttachRenderers()
 URL HTMLFrameElementBase::location() const
 {
     if (hasAttributeWithoutSynchronization(srcdocAttr))
-        return URL(ParsedURLString, "about:srcdoc");
+        return URL({ }, "about:srcdoc");
     return document().completeURL(attributeWithoutSynchronization(srcAttr));
 }
 
@@ -171,7 +171,7 @@ void HTMLFrameElementBase::setLocation(const String& str)
     if (document().settings().needsAcrobatFrameReloadingQuirk() && m_URL == str)
         return;
 
-    m_URL = AtomicString(str);
+    m_URL = AtomString(str);
 
     if (isConnected())
         openURL(LockHistory::No, LockBackForwardList::No);
@@ -179,7 +179,7 @@ void HTMLFrameElementBase::setLocation(const String& str)
 
 void HTMLFrameElementBase::setLocation(JSC::ExecState& state, const String& newLocation)
 {
-    if (protocolIsJavaScript(stripLeadingAndTrailingHTMLSpaces(newLocation))) {
+    if (WTF::protocolIsJavaScript(stripLeadingAndTrailingHTMLSpaces(newLocation))) {
         if (!BindingSecurity::shouldAllowAccessToNode(state, contentDocument()))
             return;
     }

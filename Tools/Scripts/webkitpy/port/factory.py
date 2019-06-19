@@ -1,5 +1,5 @@
 # Copyright (C) 2010 Google Inc. All rights reserved.
-# Copyright (C) 2013 Apple Inc. All rights reserved.
+# Copyright (C) 2013-2018 Apple Inc. All rights reserved.
 # Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
 #
 # Redistribution and use in source and binary forms, with or without
@@ -47,6 +47,12 @@ def platform_options(use_globs=False):
         optparse.make_option('--ios-simulator', action='store_const', dest='platform',
             const=('ios-simulator'),
             help=('Alias for --platform=ios-simulator')),
+        optparse.make_option('--iphone-simulator', action='store_const', dest='platform',
+            const=('iphone-simulator'),
+            help=('Alias for --platform=iphone-simulator')),
+        optparse.make_option('--ipad-simulator', action='store_const', dest='platform',
+            const=('ipad-simulator'),
+            help=('Alias for --platform=ipad-simulator')),
         optparse.make_option('--simulator', action='store_const', dest='platform',
             const=('ios-simulator'),
             help=('DEPRECATED alias for --platform=ios-simulator')),
@@ -93,7 +99,11 @@ class PortFactory(object):
     PORT_CLASSES = (
         'gtk.GtkPort',
         'ios_simulator.IOSSimulatorPort',
+        'ios_simulator.IPhoneSimulatorPort',
+        'ios_simulator.IPadSimulatorPort',
         'ios_device.IOSDevicePort',
+        'watch_simulator.WatchSimulatorPort',
+        'watch_device.WatchDevicePort',
         'jsc_only.JscOnlyPort',
         'mac.MacPort',
         'mock_drt.MockDRTPort',

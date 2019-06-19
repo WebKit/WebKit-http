@@ -29,8 +29,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
@@ -42,7 +40,5 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @property (readonly) NSURLResponse *response;
 
 @end
-
-#endif // WK_API_ENABLED
 
 #endif // defined(__OBJC__)

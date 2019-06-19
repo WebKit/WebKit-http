@@ -11,7 +11,6 @@
 #include <memory>
 #include <string>
 #include "rtc_base/gunit.h"
-#include "rtc_base/httpserver.h"
 #include "rtc_base/proxyserver.h"
 #include "rtc_base/socketadapters.h"
 #include "rtc_base/testclient.h"
@@ -19,23 +18,18 @@
 #include "rtc_base/virtualsocketserver.h"
 
 using rtc::Socket;
-using rtc::Thread;
 using rtc::SocketAddress;
 
 static const SocketAddress kSocksProxyIntAddr("1.2.3.4", 1080);
 static const SocketAddress kSocksProxyExtAddr("1.2.3.5", 0);
-static const SocketAddress kHttpsProxyIntAddr("1.2.3.4", 443);
-static const SocketAddress kHttpsProxyExtAddr("1.2.3.5", 0);
 static const SocketAddress kBogusProxyIntAddr("1.2.3.4", 999);
 
-// Sets up a virtual socket server and HTTPS/SOCKS5 proxy servers.
+// Sets up a virtual socket server and a SOCKS5 proxy server.
 class ProxyTest : public testing::Test {
  public:
   ProxyTest() : ss_(new rtc::VirtualSocketServer()), thread_(ss_.get()) {
     socks_.reset(new rtc::SocksProxyServer(ss_.get(), kSocksProxyIntAddr,
                                            ss_.get(), kSocksProxyExtAddr));
-    https_.reset(new rtc::HttpListenServer());
-    https_->Listen(kHttpsProxyIntAddr);
   }
 
   rtc::SocketServer* ss() { return ss_.get(); }
@@ -44,8 +38,6 @@ class ProxyTest : public testing::Test {
   std::unique_ptr<rtc::SocketServer> ss_;
   rtc::AutoSocketServerThread thread_;
   std::unique_ptr<rtc::SocksProxyServer> socks_;
-  // TODO: Make this a real HTTPS proxy server.
-  std::unique_ptr<rtc::HttpListenServer> https_;
 };
 
 // Tests whether we can use a SOCKS5 proxy to connect to a server.
@@ -56,7 +48,8 @@ TEST_F(ProxyTest, TestSocks5Connect) {
       socket, kSocksProxyIntAddr, "", rtc::CryptString());
   // TODO: IPv6-ize these tests when proxy supports IPv6.
 
-  rtc::TestEchoServer server(Thread::Current(), SocketAddress(INADDR_ANY, 0));
+  rtc::TestEchoServer server(rtc::Thread::Current(),
+                             SocketAddress(INADDR_ANY, 0));
 
   std::unique_ptr<rtc::AsyncTCPSocket> packet_socket(
       rtc::AsyncTCPSocket::Create(proxy_socket, SocketAddress(INADDR_ANY, 0),

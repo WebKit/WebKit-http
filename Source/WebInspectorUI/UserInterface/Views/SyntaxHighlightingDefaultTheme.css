@@ -27,7 +27,7 @@
 
 .cm-s-default,
 .syntax-highlighted {
-    color: black;
+    color: var(--text-color);
 
     font-family: Menlo, monospace;
     font-size: 11px;
@@ -82,12 +82,14 @@
 .cm-s-default .cm-link,
 .syntax-highlighted a {
     text-decoration: none;
-    cursor: pointer;
 }
 
-.cm-s-default .cm-link:hover,
+.read-only.cm-s-default .cm-link:hover,
+.mac-platform.meta-key-pressed :not(.read-only).cm-s-default .cm-link:hover,
+:not(.mac-platform).control-key-pressed :not(.read-only).cm-s-default .cm-link:hover,
 .syntax-highlighted a:hover {
     text-decoration: underline;
+    cursor: pointer;
 }
 
 .supports-find-banner.showing-find-banner.syntax-highlighted .search-result,
@@ -123,4 +125,36 @@
 
 .cm-s-default .basic-block-has-not-executed.cm-m-xml.cm-attribute {
     color: rgb(201, 192, 166);
+}
+
+@media (prefers-color-scheme: dark) {
+    .CodeMirror {
+        color: var(--text-color);
+    }
+
+    .cm-s-default,
+    .CodeMirror {
+        background-color: var(--background-color-code);
+    }
+
+    .cm-s-default .cm-attribute {
+        color: hsl(222, 100%, 72%);
+    }
+
+    .cm-s-default .cm-m-xml.cm-attribute,
+    .syntax-highlighted .html-attribute-name {
+        color: hsl(27, 100%, 80%);
+    }
+
+    .cm-s-default .cm-meta {
+        color: hsl(0, 0%, 60%);
+    }
+
+    .cm-s-default .cm-variable-3 {
+        color: hsl(160, 69%, 64%);
+    }
+
+    .cm-s-default .cm-builtin {
+        color: hsl(218, 64%, 76%);
+    }
 }

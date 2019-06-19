@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2005-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -20,8 +20,7 @@
 
 // RefPtr is documented at http://webkit.org/coding/RefPtr.html
 
-#ifndef WTF_RefPtr_h
-#define WTF_RefPtr_h
+#pragma once
 
 #include <algorithm>
 #include <utility>
@@ -272,17 +271,9 @@ inline bool is(const RefPtr<ArgType, PtrTraits>& source)
     return is<ExpectedType>(source.get());
 }
 
-template<typename Poison, typename T> struct PoisonedPtrTraits;
-
-template<typename Poison, typename T>
-using PoisonedRefPtr = RefPtr<T, PoisonedPtrTraits<Poison, T>>;
-
 } // namespace WTF
 
-using WTF::PoisonedRefPtr;
 using WTF::RefPtr;
 using WTF::adoptRef;
 using WTF::makeRefPtr;
 using WTF::static_pointer_cast;
-
-#endif // WTF_RefPtr_h

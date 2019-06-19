@@ -26,6 +26,7 @@
 #include "config.h"
 #include "PlatformUtilities.h"
 
+#include <WebKit/WKContextConfigurationRef.h>
 #include <wtf/StdLibExtras.h>
 
 namespace TestWebKitAPI {
@@ -35,21 +36,21 @@ namespace Util {
 
 WKContextRef createContextWithInjectedBundle()
 {
-    WKRetainPtr<WKStringRef> injectedBundlePath(AdoptWK, createInjectedBundlePath());
-    WKContextRef context = WKContextCreateWithInjectedBundlePath(injectedBundlePath.get());
-
-    return context;
+    WKRetainPtr<WKStringRef> injectedBundlePath = adoptWK(createInjectedBundlePath());
+    auto configuration = adoptWK(WKContextConfigurationCreate());
+    WKContextConfigurationSetInjectedBundlePath(configuration.get(), injectedBundlePath.get());
+    return WKContextCreateWithConfiguration(configuration.get());
 }
 
 WKDictionaryRef createInitializationDictionaryForInjectedBundleTest(const std::string& testName, WKTypeRef userData)
 {
     WKMutableDictionaryRef initializationDictionary = WKMutableDictionaryCreate();
 
-    WKRetainPtr<WKStringRef> testNameKey(AdoptWK, WKStringCreateWithUTF8CString("TestName"));
-    WKRetainPtr<WKStringRef> testNameString(AdoptWK, WKStringCreateWithUTF8CString(testName.c_str()));
+    WKRetainPtr<WKStringRef> testNameKey = adoptWK(WKStringCreateWithUTF8CString("TestName"));
+    WKRetainPtr<WKStringRef> testNameString = adoptWK(WKStringCreateWithUTF8CString(testName.c_str()));
     WKDictionarySetItem(initializationDictionary, testNameKey.get(), testNameString.get());
 
-    WKRetainPtr<WKStringRef> userDataKey(AdoptWK, WKStringCreateWithUTF8CString("UserData"));
+    WKRetainPtr<WKStringRef> userDataKey = adoptWK(WKStringCreateWithUTF8CString("UserData"));
     WKDictionarySetItem(initializationDictionary, userDataKey.get(), userData);
 
     return initializationDictionary;
@@ -59,7 +60,7 @@ WKContextRef createContextForInjectedBundleTest(const std::string& testName, WKT
 {
     WKContextRef context = createContextWithInjectedBundle();
 
-    WKRetainPtr<WKDictionaryRef> initializationDictionary(AdoptWK, createInitializationDictionaryForInjectedBundleTest(testName, userData));
+    WKRetainPtr<WKDictionaryRef> initializationDictionary = adoptWK(createInitializationDictionaryForInjectedBundleTest(testName, userData));
     WKContextSetInitializationUserDataForInjectedBundle(context, initializationDictionary.get());
 
     return context;
@@ -80,7 +81,7 @@ std::string toSTD(WKRetainPtr<WKStringRef> string)
 
 WKRetainPtr<WKStringRef> toWK(const char* utf8String)
 {
-    return WKRetainPtr<WKStringRef>(AdoptWK, WKStringCreateWithUTF8CString(utf8String));
+    return adoptWK(WKStringCreateWithUTF8CString(utf8String));
 }
 
 #endif // WK_HAVE_C_SPI

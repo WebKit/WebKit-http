@@ -103,8 +103,8 @@ class GtkPort(Port):
             return self.default_timeout_ms()
         return super(GtkPort, self).driver_stop_timeout()
 
-    def setup_test_run(self, device_class=None):
-        super(GtkPort, self).setup_test_run(device_class)
+    def setup_test_run(self, device_type=None):
+        super(GtkPort, self).setup_test_run(device_type)
         self._pulseaudio_sanitizer.unload_pulseaudio_module()
 
         if self.get_option("leaks"):
@@ -127,6 +127,7 @@ class GtkPort(Port):
         self._copy_value_from_environ_if_set(environment, 'GST_DEBUG')
         self._copy_value_from_environ_if_set(environment, 'GST_DEBUG_DUMP_DOT_DIR')
         self._copy_value_from_environ_if_set(environment, 'GST_DEBUG_FILE')
+        self._copy_value_from_environ_if_set(environment, 'GST_DEBUG_NO_COLOR')
 
         # Configure the software libgl renderer if jhbuild ready and we test inside a virtualized window system
         if self._driver_class() in [XvfbDriver, WestonDriver] and (self._should_use_jhbuild() or self._is_flatpak()):
@@ -209,10 +210,10 @@ class GtkPort(Port):
         search_paths.extend(self.get_option("additional_platform_directory", []))
         return search_paths
 
-    def default_baseline_search_path(self):
+    def default_baseline_search_path(self, **kwargs):
         return map(self._webkit_baseline_path, self._search_paths())
 
-    def _port_specific_expectations_files(self):
+    def _port_specific_expectations_files(self, **kwargs):
         return [self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in reversed(self._search_paths())]
 
     def print_leaks_summary(self):

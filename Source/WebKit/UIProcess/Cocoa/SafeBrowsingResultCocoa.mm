@@ -31,7 +31,7 @@
 namespace WebKit {
 
 #if HAVE(SAFE_BROWSING)
-SafeBrowsingResult::SafeBrowsingResult(WebCore::URL&& url, SSBServiceLookupResult *result)
+SafeBrowsingResult::SafeBrowsingResult(URL&& url, SSBServiceLookupResult *result)
     : m_url(WTFMove(url))
     , m_provider([result provider])
     , m_isPhishing([result isPhishing])

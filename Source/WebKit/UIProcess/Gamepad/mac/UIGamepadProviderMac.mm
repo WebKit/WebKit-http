@@ -41,13 +41,13 @@ WebPageProxy* UIGamepadProvider::platformWebPageProxyForGamepadInput()
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
     auto responder = [[NSApp keyWindow] firstResponder];
 
-#if WK_API_ENABLED
     if ([responder isKindOfClass:[WKWebView class]])
         return ((WKWebView *)responder)->_page.get();
-#endif
 
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if ([responder isKindOfClass:[WKView class]])
         return toImpl(((WKView *)responder).pageRef);
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     return nullptr;
 }

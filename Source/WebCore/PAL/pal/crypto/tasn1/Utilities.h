@@ -27,8 +27,7 @@
 #pragma once
 
 #include <libtasn1.h>
-#include <wtf/Optional.h>
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
 
 namespace PAL {
 namespace TASN1 {
@@ -57,8 +56,8 @@ private:
 
 bool createStructure(const char* elementName, asn1_node* root);
 bool decodeStructure(asn1_node* root, const char* elementName, const Vector<uint8_t>& data);
-std::optional<Vector<uint8_t>> elementData(asn1_node root, const char* elementName);
-std::optional<Vector<uint8_t>> encodedData(asn1_node root, const char* elementName);
+Optional<Vector<uint8_t>> elementData(asn1_node root, const char* elementName);
+Optional<Vector<uint8_t>> encodedData(asn1_node root, const char* elementName);
 bool writeElement(asn1_node root, const char* elementName, const void* data, size_t dataSize);
 
 } // namespace TASN1

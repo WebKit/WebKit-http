@@ -52,11 +52,10 @@ WI.HeapSnapshotInstanceDataGridNode = class HeapSnapshotInstanceDataGridNode ext
 
     static logHeapSnapshotNode(node)
     {
-        let heapObjectIdentifier = node.id;
-        let shouldRevealConsole = true;
-        let text = WI.UIString("Heap Snapshot Object (%s)").format("@" + heapObjectIdentifier);
-
         node.shortestGCRootPath((gcRootPath) => {
+            let text = WI.UIString("Heap Snapshot Object (%s)").format("@" + node.id);
+            let addSpecialUserLogClass = !gcRootPath.length;
+
             if (gcRootPath.length) {
                 gcRootPath = gcRootPath.slice().reverse();
                 let windowIndex = gcRootPath.findIndex((x) => {
@@ -73,19 +72,23 @@ WI.HeapSnapshotInstanceDataGridNode = class HeapSnapshotInstanceDataGridNode ext
                         heapSnapshotRootPath = heapSnapshotRootPath.appendEdge(component);
                 }
 
-                if (!heapSnapshotRootPath.isFullPathImpossible())
+                if (heapSnapshotRootPath.isFullPathImpossible())
+                    addSpecialUserLogClass = true;
+                else
                     text = heapSnapshotRootPath.fullPath;
             }
 
+            const shouldRevealConsole = true;
+
             if (node.className === "string") {
-                HeapAgent.getPreview(heapObjectIdentifier, function(error, string, functionDetails, objectPreviewPayload) {
+                HeapAgent.getPreview(node.id, function(error, string, functionDetails, objectPreviewPayload) {
                     let remoteObject = error ? WI.RemoteObject.fromPrimitiveValue(undefined) : WI.RemoteObject.fromPrimitiveValue(string);
-                    WI.consoleLogViewController.appendImmediateExecutionWithResult(text, remoteObject, shouldRevealConsole);
+                    WI.consoleLogViewController.appendImmediateExecutionWithResult(text, remoteObject, addSpecialUserLogClass, shouldRevealConsole);
                 });
             } else {
-                HeapAgent.getRemoteObject(heapObjectIdentifier, WI.RuntimeManager.ConsoleObjectGroup, function(error, remoteObjectPayload) {
+                HeapAgent.getRemoteObject(node.id, WI.RuntimeManager.ConsoleObjectGroup, function(error, remoteObjectPayload) {
                     let remoteObject = error ? WI.RemoteObject.fromPrimitiveValue(undefined) : WI.RemoteObject.fromPayload(remoteObjectPayload, WI.assumingMainTarget());
-                    WI.consoleLogViewController.appendImmediateExecutionWithResult(text, remoteObject, shouldRevealConsole);
+                    WI.consoleLogViewController.appendImmediateExecutionWithResult(text, remoteObject, addSpecialUserLogClass, shouldRevealConsole);
                 });
             }
         });
@@ -146,12 +149,12 @@ WI.HeapSnapshotInstanceDataGridNode = class HeapSnapshotInstanceDataGridNode ext
             return Number.bytesToString(this._node.size);
 
         if (columnIdentifier === "className") {
-            let {className, id, internal} = this._node;
+            let {className, id, internal, isObjectType} = this._node;
             let containerElement = document.createElement("span");
             containerElement.addEventListener("contextmenu", this._contextMenuHandler.bind(this));
 
             let iconElement = containerElement.appendChild(document.createElement("img"));
-            iconElement.classList.add("icon", WI.HeapSnapshotClusterContentView.iconStyleClassNameForClassName(className, internal));
+            iconElement.classList.add("icon", WI.HeapSnapshotClusterContentView.iconStyleClassNameForClassName(className, internal, isObjectType));
 
             if (this._edge) {
                 let nameElement = containerElement.appendChild(document.createElement("span"));
@@ -410,7 +413,7 @@ WI.HeapSnapshotInstanceDataGridNode = class HeapSnapshotInstanceDataGridNode ext
             containerElement.classList.add("node");
 
             let iconElement = containerElement.appendChild(document.createElement("img"));
-            iconElement.classList.add("icon", WI.HeapSnapshotClusterContentView.iconStyleClassNameForClassName(node.className, node.internal));
+            iconElement.classList.add("icon", WI.HeapSnapshotClusterContentView.iconStyleClassNameForClassName(node.className, node.internal, node.isObjectType));
 
             let classNameElement = containerElement.appendChild(document.createElement("span"));
             classNameElement.textContent = sanitizeClassName(node.className) + " ";

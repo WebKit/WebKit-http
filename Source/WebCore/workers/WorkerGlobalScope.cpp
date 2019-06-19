@@ -50,9 +50,12 @@
 #include "WorkerThread.h"
 #include <JavaScriptCore/ScriptArguments.h>
 #include <JavaScriptCore/ScriptCallStack.h>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 using namespace Inspector;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(WorkerGlobalScope);
 
 WorkerGlobalScope::WorkerGlobalScope(const URL& url, Ref<SecurityOrigin>&& origin, const String& identifier, const String& userAgent, bool isOnline, WorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, PAL::SessionID sessionID)
     : m_url(url)
@@ -61,7 +64,7 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, Ref<SecurityOrigin>&& origi
     , m_thread(thread)
     , m_script(std::make_unique<WorkerScriptController>(this))
     , m_inspectorController(std::make_unique<WorkerInspectorController>(*this))
-    , m_microtaskQueue(std::make_unique<MicrotaskQueue>())
+    , m_microtaskQueue(std::make_unique<MicrotaskQueue>(m_script->vm()))
     , m_isOnline(isOnline)
     , m_shouldBypassMainWorldContentSecurityPolicy(shouldBypassMainWorldContentSecurityPolicy)
     , m_eventQueue(*this)
@@ -70,7 +73,7 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, Ref<SecurityOrigin>&& origi
     , m_connectionProxy(connectionProxy)
 #endif
     , m_socketProvider(socketProvider)
-    , m_performance(Performance::create(*this, timeOrigin))
+    , m_performance(Performance::create(this, timeOrigin))
     , m_sessionID(sessionID)
 {
 #if !ENABLE(INDEXED_DATABASE)
@@ -112,6 +115,9 @@ void WorkerGlobalScope::prepareForTermination()
 #endif
 
     stopActiveDOMObjects();
+
+    if (m_cacheStorageConnection)
+        m_cacheStorageConnection->clearPendingRequests();
 
     m_inspectorController->workerTerminating();
 
@@ -312,7 +318,7 @@ ExceptionOr<void> WorkerGlobalScope::importScripts(const Vector<String>& urls)
         InspectorInstrumentation::scriptImported(*this, scriptLoader->identifier(), scriptLoader->script());
 
         NakedPtr<JSC::Exception> exception;
-        m_script->evaluate(ScriptSourceCode(scriptLoader->script(), scriptLoader->responseURL()), exception);
+        m_script->evaluate(ScriptSourceCode(scriptLoader->script(), URL(scriptLoader->responseURL())), exception);
         if (exception) {
             m_script->setException(exception);
             return { };
@@ -377,7 +383,7 @@ WorkerEventQueue& WorkerGlobalScope::eventQueue() const
     return m_eventQueue;
 }
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 bool WorkerGlobalScope::wrapCryptoKey(const Vector<uint8_t>& key, Vector<uint8_t>& wrappedKey)
 {
@@ -416,12 +422,12 @@ bool WorkerGlobalScope::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vecto
     return result;
 }
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)
 
 Crypto& WorkerGlobalScope::crypto()
 {
     if (!m_crypto)
-        m_crypto = Crypto::create(*this);
+        m_crypto = Crypto::create(this);
     return *m_crypto;
 }
 

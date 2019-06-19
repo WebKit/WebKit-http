@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2007, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2007, 2008 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -30,7 +30,6 @@
 #include "RenderObject.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGText.h"
-#include "SVGDocumentExtensions.h"
 #include "SVGNames.h"
 #include "SVGPoint.h"
 #include "SVGRect.h"
@@ -47,7 +46,11 @@ SVGTextContentElement::SVGTextContentElement(const QualifiedName& tagName, Docum
     : SVGGraphicsElement(tagName, document)
     , SVGExternalResourcesRequired(this)
 {
-    registerAttributes();
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::textLengthAttr, &SVGTextContentElement::m_textLength>();
+        PropertyRegistry::registerProperty<SVGNames::lengthAdjustAttr, SVGLengthAdjustType, &SVGTextContentElement::m_lengthAdjust>();
+    });
 }
 
 unsigned SVGTextContentElement::getNumberOfChars()
@@ -145,7 +148,7 @@ bool SVGTextContentElement::isPresentationAttribute(const QualifiedName& name) c
     return SVGGraphicsElement::isPresentationAttribute(name);
 }
 
-void SVGTextContentElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
+void SVGTextContentElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomString& value, MutableStyleProperties& style)
 {
     if (name.matches(XMLNames::spaceAttr)) {
         if (value == "preserve")
@@ -158,25 +161,16 @@ void SVGTextContentElement::collectStyleForPresentationAttribute(const Qualified
     SVGGraphicsElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
-void SVGTextContentElement::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute(SVGAnimatedCustomLengthAttributeAccessor::singleton<SVGNames::textLengthAttr, &SVGTextContentElement::m_textLength>());
-    registry.registerAttribute<SVGNames::lengthAdjustAttr, SVGLengthAdjustType, &SVGTextContentElement::m_lengthAdjust>();
-}
-
-void SVGTextContentElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void SVGTextContentElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::lengthAdjustAttr) {
         auto propertyValue = SVGPropertyTraits<SVGLengthAdjustType>::fromString(value);
         if (propertyValue > 0)
-            m_lengthAdjust.setValue(propertyValue);
+            m_lengthAdjust->setBaseValInternal<SVGLengthAdjustType>(propertyValue);
     } else if (name == SVGNames::textLengthAttr)
-        m_textLength.setValue(SVGLengthValue::construct(LengthModeOther, value, parseError, ForbidNegativeLengths));
+        m_textLength->setBaseValInternal(SVGLengthValue::construct(LengthModeOther, value, parseError, ForbidNegativeLengths));
 
     reportAttributeParsingError(parseError, name, value);
 
@@ -186,9 +180,9 @@ void SVGTextContentElement::parseAttribute(const QualifiedName& name, const Atom
 
 void SVGTextContentElement::svgAttributeChanged(const QualifiedName& attrName)
 {
-    if (isKnownAttribute(attrName)) {
+    if (PropertyRegistry::isKnownAttribute(attrName)) {
         if (attrName == SVGNames::textLengthAttr)
-            m_specifiedTextLength = m_textLength.value();
+            m_specifiedTextLength = m_textLength->baseVal()->value();
 
         if (auto renderer = this->renderer()) {
             InstanceInvalidationGuard guard(*this);
@@ -199,6 +193,14 @@ void SVGTextContentElement::svgAttributeChanged(const QualifiedName& attrName)
 
     SVGGraphicsElement::svgAttributeChanged(attrName);
     SVGExternalResourcesRequired::svgAttributeChanged(attrName);
+}
+
+SVGAnimatedLength& SVGTextContentElement::textLengthAnimated()
+{
+    static NeverDestroyed<SVGLengthValue> defaultTextLength(LengthModeOther);
+    if (m_textLength->baseVal()->value() == defaultTextLength)
+        m_textLength->baseVal()->value().newValueSpecifiedUnits(LengthTypeNumber, getComputedTextLength());
+    return m_textLength;
 }
 
 bool SVGTextContentElement::selfHasRelativeLengths() const

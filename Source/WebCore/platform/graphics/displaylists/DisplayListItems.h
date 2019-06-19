@@ -77,7 +77,7 @@ enum class ItemType {
     DrawRect,
     DrawLine,
     DrawLinesForText,
-    DrawLineForDocumentMarker,
+    DrawDotsForDocumentMarker,
     DrawEllipse,
     DrawPath,
     DrawFocusRingPath,
@@ -174,12 +174,12 @@ public:
 
     // Return bounds of this drawing operation in local coordinates.
     // Does not include effets of transform, shadow etc in the state.
-    virtual std::optional<FloatRect> localBounds(const GraphicsContext&) const { return std::nullopt; }
+    virtual Optional<FloatRect> localBounds(const GraphicsContext&) const { return WTF::nullopt; }
 
 private:
     bool isDrawingItem() const override { return true; }
 
-    std::optional<FloatRect> m_extent; // In base coordinates, taking shadows and transforms into account.
+    Optional<FloatRect> m_extent; // In base coordinates, taking shadows and transforms into account.
 };
 
 class Save : public Item {
@@ -545,7 +545,7 @@ private:
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override;
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override;
 
     GlyphBuffer generateGlyphBuffer() const;
 
@@ -574,7 +574,7 @@ private:
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destination; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destination; }
 
     mutable Ref<Image> m_image; // FIXME: Drawing images can cause their animations to progress. This shouldn't have to be mutable.
     FloatRect m_destination;
@@ -601,7 +601,7 @@ private:
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destination; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destination; }
 
     mutable Ref<Image> m_image; // FIXME: Drawing images can cause their animations to progress. This shouldn't have to be mutable.
     FloatRect m_destination;
@@ -627,7 +627,7 @@ private:
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destination; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destination; }
 
     mutable Ref<Image> m_image; // FIXME: Drawing images can cause their animations to progress. This shouldn't have to be mutable.
     FloatRect m_destination;
@@ -654,7 +654,7 @@ private:
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destination; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destination; }
 
 #if USE(CG)
     RetainPtr<CGImageRef> m_image;
@@ -689,7 +689,7 @@ private:
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destination; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_destination; }
 
     mutable Ref<Image> m_image; // FIXME: Drawing images can cause their animations to progress. This shouldn't have to be mutable.
     AffineTransform m_patternTransform;
@@ -758,7 +758,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
 
     FloatRect m_rect;
     float m_borderThickness;
@@ -783,7 +783,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override;
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override;
 
     FloatPoint m_point1;
     FloatPoint m_point2;
@@ -791,26 +791,27 @@ private:
 
 class DrawLinesForText : public DrawingItem {
 public:
-    static Ref<DrawLinesForText> create(const FloatPoint& blockLocation, const FloatSize& localAnchor, const DashArray& widths, bool printing, bool doubleLines, float strokeWidth)
+    static Ref<DrawLinesForText> create(const FloatPoint& blockLocation, const FloatSize& localAnchor, float thickness, const DashArray& widths, bool printing, bool doubleLines)
     {
-        return adoptRef(*new DrawLinesForText(blockLocation, localAnchor, widths, printing, doubleLines, strokeWidth));
+        return adoptRef(*new DrawLinesForText(blockLocation, localAnchor, thickness, widths, printing, doubleLines));
     }
 
     void setBlockLocation(const FloatPoint& blockLocation) { m_blockLocation = blockLocation; }
     const FloatPoint& blockLocation() const { return m_blockLocation; }
     const FloatSize& localAnchor() const { return m_localAnchor; }
     FloatPoint point() const { return m_blockLocation + m_localAnchor; }
+    float thickness() const { return m_thickness; }
     const DashArray& widths() const { return m_widths; }
     bool isPrinting() const { return m_printing; }
     bool doubleLines() const { return m_doubleLines; }
 
 private:
-    DrawLinesForText(const FloatPoint& blockLocation, const FloatSize& localAnchor, const DashArray& widths, bool printing, bool doubleLines, float strokeWidth)
+    DrawLinesForText(const FloatPoint& blockLocation, const FloatSize& localAnchor, float thickness, const DashArray& widths, bool printing, bool doubleLines)
         : DrawingItem(ItemType::DrawLinesForText)
         , m_blockLocation(blockLocation)
         , m_localAnchor(localAnchor)
         , m_widths(widths)
-        , m_strokeWidth(strokeWidth)
+        , m_thickness(thickness)
         , m_printing(printing)
         , m_doubleLines(doubleLines)
     {
@@ -818,41 +819,38 @@ private:
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override;
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override;
 
     FloatPoint m_blockLocation;
     FloatSize m_localAnchor;
     DashArray m_widths;
-    float m_strokeWidth;
+    float m_thickness;
     bool m_printing;
     bool m_doubleLines;
 };
 
-class DrawLineForDocumentMarker : public DrawingItem {
+class DrawDotsForDocumentMarker : public DrawingItem {
 public:
-    static Ref<DrawLineForDocumentMarker> create(const FloatPoint& point, float width, DocumentMarkerLineStyle style)
+    static Ref<DrawDotsForDocumentMarker> create(const FloatRect& rect, DocumentMarkerLineStyle style)
     {
-        return adoptRef(*new DrawLineForDocumentMarker(point, width, style));
+        return adoptRef(*new DrawDotsForDocumentMarker(rect, style));
     }
 
-    FloatPoint point() const { return m_point; }
-    float width() const { return m_width; }
+    FloatRect rect() const { return m_rect; }
 
 private:
-    DrawLineForDocumentMarker(const FloatPoint& point, float width, DocumentMarkerLineStyle style)
-        : DrawingItem(ItemType::DrawLineForDocumentMarker)
-        , m_point(point)
-        , m_width(width)
+    DrawDotsForDocumentMarker(const FloatRect& rect, DocumentMarkerLineStyle style)
+        : DrawingItem(ItemType::DrawDotsForDocumentMarker)
+        , m_rect(rect)
         , m_style(style)
     {
     }
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override;
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override;
 
-    FloatPoint m_point;
-    float m_width;
+    FloatRect m_rect;
     DocumentMarkerLineStyle m_style;
 };
 
@@ -873,7 +871,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
 
     FloatRect m_rect;
 };
@@ -896,7 +894,7 @@ private:
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_path.fastBoundingRect(); }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_path.fastBoundingRect(); }
 
     const Path m_path;
 };
@@ -925,7 +923,7 @@ private:
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override;
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override;
 
     const Path m_path;
     float m_width;
@@ -957,7 +955,7 @@ private:
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override;
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override;
 
     Vector<FloatRect> m_rects;
     float m_width;
@@ -982,7 +980,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
 
     FloatRect m_rect;
 };
@@ -1007,7 +1005,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
 
     FloatRect m_rect;
     Color m_color;
@@ -1031,7 +1029,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
 
     FloatRect m_rect;
     mutable Ref<Gradient> m_gradient; // FIXME: Make this not mutable
@@ -1060,7 +1058,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
 
     FloatRect m_rect;
     Color m_color;
@@ -1089,7 +1087,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect.rect(); }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect.rect(); }
 
     FloatRoundedRect m_rect;
     Color m_color;
@@ -1117,7 +1115,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
 
     FloatRect m_rect;
     FloatRoundedRect m_roundedHoleRect;
@@ -1141,7 +1139,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_path.fastBoundingRect(); }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_path.fastBoundingRect(); }
 
     const Path m_path;
 };
@@ -1164,7 +1162,7 @@ private:
 
     void apply(GraphicsContext&) const override;
 
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
 
     FloatRect m_rect;
 };
@@ -1188,7 +1186,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override;
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override;
 
     FloatRect m_rect;
     float m_lineWidth;
@@ -1211,7 +1209,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override;
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override;
 
     const Path m_path;
     FloatPoint m_blockLocation;
@@ -1234,7 +1232,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override;
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override;
 
     FloatRect m_rect;
 };
@@ -1256,7 +1254,7 @@ private:
     }
 
     void apply(GraphicsContext&) const override;
-    std::optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
+    Optional<FloatRect> localBounds(const GraphicsContext&) const override { return m_rect; }
 
     FloatRect m_rect;
 };
@@ -1360,7 +1358,7 @@ SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawPattern)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawRect)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawLine)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawLinesForText)
-SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawLineForDocumentMarker)
+SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawDotsForDocumentMarker)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawEllipse)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawPath)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(DrawFocusRingPath)

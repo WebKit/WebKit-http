@@ -3,37 +3,25 @@ find_library(QUARTZ_LIBRARY Quartz)
 add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks)
 add_definitions(-iframework ${APPLICATIONSERVICES_LIBRARY}/Versions/Current/Frameworks)
 
-list(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
-    "${DERIVED_SOURCES_WEBKITLEGACY_DIR}"
-    "${CMAKE_SOURCE_DIR}/WebKitLibraries"
-)
-
-list(APPEND WebKitLegacy_SYSTEM_INCLUDE_DIRECTORIES
-    mac
-    mac/Carbon
-    mac/DefaultDelegates
-    mac/DOM
-    mac/History
-    mac/icu
-    mac/Misc
-    mac/Panels
-    mac/Plugins
-    mac/Plugins/Hosted
-    mac/Storage
-    mac/WebCoreSupport
-    mac/WebInspector
-    mac/WebView
+list(APPEND WebKitLegacy_PRIVATE_INCLUDE_DIRECTORIES
+    "${WEBKITLEGACY_DIR}/mac"
+    "${WEBKITLEGACY_DIR}/mac/Carbon"
+    "${WEBKITLEGACY_DIR}/mac/DefaultDelegates"
+    "${WEBKITLEGACY_DIR}/mac/DOM"
+    "${WEBKITLEGACY_DIR}/mac/History"
+    "${WEBKITLEGACY_DIR}/mac/icu"
+    "${WEBKITLEGACY_DIR}/mac/Misc"
+    "${WEBKITLEGACY_DIR}/mac/Panels"
+    "${WEBKITLEGACY_DIR}/mac/Plugins"
+    "${WEBKITLEGACY_DIR}/mac/Plugins/Hosted"
+    "${WEBKITLEGACY_DIR}/mac/Storage"
+    "${WEBKITLEGACY_DIR}/mac/WebCoreSupport"
+    "${WEBKITLEGACY_DIR}/mac/WebInspector"
+    "${WEBKITLEGACY_DIR}/mac/WebView"
 )
 
 list(APPEND WebKitLegacy_SOURCES
     cf/WebCoreSupport/WebInspectorClientCF.cpp
-
-    mac/Carbon/CarbonUtils.m
-    mac/Carbon/CarbonWindowAdapter.mm
-    mac/Carbon/CarbonWindowContentView.m
-    mac/Carbon/CarbonWindowFrame.m
-    mac/Carbon/HIViewAdapter.m
-    mac/Carbon/HIWebView.mm
 
     mac/DOM/DOM.mm
     mac/DOM/DOMAbstractView.mm
@@ -271,7 +259,6 @@ list(APPEND WebKitLegacy_SOURCES
     mac/WebCoreSupport/WebProgressTrackerClient.mm
     mac/WebCoreSupport/WebSecurityOrigin.mm
     mac/WebCoreSupport/WebSelectionServiceController.mm
-    mac/WebCoreSupport/WebUserMediaClient.mm
     mac/WebCoreSupport/WebValidationMessageClient.mm
     mac/WebCoreSupport/WebVisitedLinkStore.mm
 
@@ -344,8 +331,6 @@ set(WebKitLegacy_FORWARDING_HEADERS_FILES
 
     mac/Storage/WebDatabaseManagerPrivate.h
 
-    mac/WebCoreSupport/WebKeyGenerator.h
-
     mac/WebInspector/WebInspector.h
 
     mac/WebView/WebFrame.h
@@ -409,48 +394,41 @@ file(COPY
     mac/Plugins/Hosted/WebKitPluginHost.defs
     mac/Plugins/Hosted/WebKitPluginHostTypes.defs
     mac/Plugins/Hosted/WebKitPluginHostTypes.h
-DESTINATION ${DERIVED_SOURCES_WEBKITLEGACY_DIR})
+DESTINATION ${WebKitLegacy_DERIVED_SOURCES_DIR})
 
 add_custom_command(
     OUTPUT
-        ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginAgentReplyServer.c
-        ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginAgentReplyUser.c
-        ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginAgentServer.c
-        ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginAgentUser.c
-        ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginHostServer.c
-        ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginHostUser.c
+        ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginAgentReplyServer.c
+        ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginAgentReplyUser.c
+        ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginAgentServer.c
+        ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginAgentUser.c
+        ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginHostServer.c
+        ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginHostUser.c
     DEPENDS mac/Plugins/Hosted/WebKitPluginAgent.defs mac/Plugins/Hosted/WebKitPluginHost.defs
-    WORKING_DIRECTORY ${DERIVED_SOURCES_WEBKITLEGACY_DIR}
+    WORKING_DIRECTORY ${WebKitLegacy_DERIVED_SOURCES_DIR}
     COMMAND mig -I.. WebKitPluginAgent.defs WebKitPluginAgentReply.defs WebKitPluginHost.defs
     VERBATIM)
 add_custom_command(
     OUTPUT
-        ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginClientServer.c
-        ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginClientUser.c
+        ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginClientServer.c
+        ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginClientUser.c
     DEPENDS mac/Plugins/Hosted/WebKitPluginClient.defs
-    WORKING_DIRECTORY ${DERIVED_SOURCES_WEBKITLEGACY_DIR}
+    WORKING_DIRECTORY ${WebKitLegacy_DERIVED_SOURCES_DIR}
     COMMAND mig -I.. -sheader WebKitPluginClientServer.h WebKitPluginClient.defs
     VERBATIM)
 list(APPEND WebKitLegacy_SOURCES
-    ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginAgentUser.c
-    ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginClientServer.c
-    ${DERIVED_SOURCES_WEBKITLEGACY_DIR}/WebKitPluginHostUser.c
+    ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginAgentUser.c
+    ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginClientServer.c
+    ${WebKitLegacy_DERIVED_SOURCES_DIR}/WebKitPluginHostUser.c
 )
 
-WEBKIT_CREATE_FORWARDING_HEADERS(WebKitLegacy DIRECTORIES ${WebKitLegacy_FORWARDING_HEADERS_DIRECTORIES} FILES ${WebKitLegacy_FORWARDING_HEADERS_FILES})
-
-# FIXME: Forwarding headers should be copies of actual headers.
-file(GLOB ObjCHeaders ${WEBCORE_DIR}/plugins/*.h)
-list(APPEND ObjCHeaders
-    WebKitAvailability.h
-    WebScriptObject.h
+WEBKIT_MAKE_FORWARDING_HEADERS(WebKitLegacy
+    TARGET_NAME WebKitLegacyFrameworkHeaders
+    DESTINATION ${WebKitLegacy_FRAMEWORK_HEADERS_DIR}/WebKitLegacy
+    FILES ${WebKitLegacy_FORWARDING_HEADERS_FILES}
+    FLATTENED
 )
-foreach (_file ${ObjCHeaders})
-    get_filename_component(_name ${_file} NAME)
-    if (NOT EXISTS ${FORWARDING_HEADERS_DIR}/WebKitLegacy/${_name})
-        file(WRITE ${FORWARDING_HEADERS_DIR}/WebKitLegacy/${_name} "#import <WebCore/${_name}>")
-    endif ()
-endforeach ()
+add_dependencies(WebKitLegacyFrameworkHeaders WebCorePrivateFrameworkHeaders)
 
 set(WebKitLegacy_OUTPUT_NAME WebKitLegacy)
 

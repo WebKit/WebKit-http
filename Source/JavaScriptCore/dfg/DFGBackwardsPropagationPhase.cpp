@@ -110,7 +110,8 @@ private:
             return isWithinPowerOfTwoForConstant<power>(node);
         }
             
-        case BitAnd: {
+        case ValueBitAnd:
+        case ArithBitAnd: {
             if (power > 31)
                 return true;
             
@@ -118,8 +119,10 @@ private:
                 || isWithinPowerOfTwoNonRecursive<power>(node->child2().node());
         }
             
-        case BitOr:
-        case BitXor:
+        case ArithBitOr:
+        case ArithBitXor:
+        case ValueBitOr:
+        case ValueBitXor:
         case BitLShift: {
             return power > 31;
         }
@@ -207,9 +210,21 @@ private:
         case CheckVarargs:
             break;
             
-        case BitAnd:
-        case BitOr:
-        case BitXor:
+        case ValueBitNot:
+        case ArithBitNot: {
+            flags |= NodeBytecodeUsesAsInt;
+            flags &= ~(NodeBytecodeUsesAsNumber | NodeBytecodeNeedsNegZero | NodeBytecodeUsesAsOther);
+            flags &= ~NodeBytecodeUsesAsArrayIndex;
+            node->child1()->mergeFlags(flags);
+            break;
+        }
+
+        case ArithBitAnd:
+        case ArithBitOr:
+        case ArithBitXor:
+        case ValueBitAnd:
+        case ValueBitOr:
+        case ValueBitXor:
         case BitRShift:
         case BitLShift:
         case BitURShift:
@@ -261,7 +276,7 @@ private:
         case ValueAdd: {
             if (isNotNegZero(node->child1().node()) || isNotNegZero(node->child2().node()))
                 flags &= ~NodeBytecodeNeedsNegZero;
-            if (node->child1()->hasNumberResult() || node->child2()->hasNumberResult())
+            if (node->child1()->hasNumericResult() || node->child2()->hasNumericResult() || node->child1()->hasNumberResult() || node->child2()->hasNumberResult())
                 flags &= ~NodeBytecodeUsesAsOther;
             if (!isWithinPowerOfTwo<32>(node->child1()) && !isWithinPowerOfTwo<32>(node->child2()))
                 flags |= NodeBytecodeUsesAsNumber;
@@ -315,6 +330,7 @@ private:
             break;
         }
             
+        case ValueMul:
         case ArithMul: {
             // As soon as a multiply happens, we can easily end up in the part
             // of the double domain where the point at which you do truncation
@@ -337,6 +353,7 @@ private:
             break;
         }
             
+        case ValueDiv:
         case ArithDiv: {
             flags |= NodeBytecodeUsesAsNumber | NodeBytecodeNeedsNegZero;
             flags &= ~NodeBytecodeUsesAsOther;
@@ -346,6 +363,7 @@ private:
             break;
         }
             
+        case ValueMod:
         case ArithMod: {
             flags |= NodeBytecodeUsesAsNumber;
             flags &= ~NodeBytecodeUsesAsOther;

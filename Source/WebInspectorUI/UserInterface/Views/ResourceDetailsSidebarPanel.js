@@ -82,16 +82,7 @@ WI.ResourceDetailsSidebarPanel = class ResourceDetailsSidebarPanel extends WI.De
             return;
 
         if (this._resource && this._needsToRemoveResourceEventListeners) {
-            this._resource.removeEventListener(WI.Resource.Event.URLDidChange, this._refreshURL, this);
-            this._resource.removeEventListener(WI.Resource.Event.MIMETypeDidChange, this._refreshMIMEType, this);
-            this._resource.removeEventListener(WI.Resource.Event.TypeDidChange, this._refreshResourceType, this);
-            this._resource.removeEventListener(WI.Resource.Event.LoadingDidFail, this._refreshErrorReason, this);
-            this._resource.removeEventListener(WI.Resource.Event.RequestHeadersDidChange, this._refreshRequestHeaders, this);
-            this._resource.removeEventListener(WI.Resource.Event.ResponseReceived, this._refreshRequestAndResponse, this);
-            this._resource.removeEventListener(WI.Resource.Event.CacheStatusDidChange, this._refreshRequestAndResponse, this);
-            this._resource.removeEventListener(WI.Resource.Event.SizeDidChange, this._refreshDecodedSize, this);
-            this._resource.removeEventListener(WI.Resource.Event.TransferSizeDidChange, this._refreshTransferSize, this);
-            this._resource.removeEventListener(WI.Resource.Event.InitiatedResourcesDidChange, this._refreshRelatedResourcesSection, this);
+            this._resource.removeEventListener(null, null, this);
 
             this._needsToRemoveResourceEventListeners = false;
         }
@@ -99,7 +90,7 @@ WI.ResourceDetailsSidebarPanel = class ResourceDetailsSidebarPanel extends WI.De
         this._resource = resource;
 
         if (this._resource) {
-            if (this.parentSidebar)
+            if (this.didInitialLayout)
                 this._applyResourceEventListeners();
             else
                 this._needsToApplyResourceEventListeners = true;
@@ -356,7 +347,7 @@ WI.ResourceDetailsSidebarPanel = class ResourceDetailsSidebarPanel extends WI.De
         this._requestMethodRow.value = this._resource.requestMethod || emDash;
 
         // COMPATIBILITY(iOS 10.3): Network load metrics were not previously available.
-        if (window.NetworkAgent && NetworkAgent.hasEventParameter("loadingFinished", "metrics")) {
+        if (InspectorBackend.domains.Network.hasEventParameter("loadingFinished", "metrics")) {
             let protocolDisplayName = WI.Resource.displayNameForProtocol(this._resource.protocol);
             this._protocolRow.value = protocolDisplayName || emDash;
             this._protocolRow.tooltip = protocolDisplayName ? this._resource.protocol : "";
@@ -614,6 +605,12 @@ WI.ResourceDetailsSidebarPanel = class ResourceDetailsSidebarPanel extends WI.De
 
     _applyResourceEventListeners()
     {
+        if (!this._refreshRelatedResourcesSectionThrottler) {
+            this._refreshRelatedResourcesSectionThrottler = new Throttler(() => {
+                this._refreshRelatedResourcesSection();
+            }, 250);
+        }
+
         this._resource.addEventListener(WI.Resource.Event.URLDidChange, this._refreshURL, this);
         this._resource.addEventListener(WI.Resource.Event.MIMETypeDidChange, this._refreshMIMEType, this);
         this._resource.addEventListener(WI.Resource.Event.TypeDidChange, this._refreshResourceType, this);
@@ -621,9 +618,12 @@ WI.ResourceDetailsSidebarPanel = class ResourceDetailsSidebarPanel extends WI.De
         this._resource.addEventListener(WI.Resource.Event.RequestHeadersDidChange, this._refreshRequestHeaders, this);
         this._resource.addEventListener(WI.Resource.Event.ResponseReceived, this._refreshRequestAndResponse, this);
         this._resource.addEventListener(WI.Resource.Event.CacheStatusDidChange, this._refreshRequestAndResponse, this);
+        this._resource.addEventListener(WI.Resource.Event.MetricsDidChange, this._refreshRequestAndResponse, this);
         this._resource.addEventListener(WI.Resource.Event.SizeDidChange, this._refreshDecodedSize, this);
         this._resource.addEventListener(WI.Resource.Event.TransferSizeDidChange, this._refreshTransferSize, this);
-        this._resource.addEventListener(WI.Resource.Event.InitiatedResourcesDidChange, this._refreshRelatedResourcesSection, this);
+        this._resource.addEventListener(WI.Resource.Event.InitiatedResourcesDidChange, () => {
+            this._refreshRelatedResourcesSectionThrottler.fire();
+        }, this);
 
         this._needsToRemoveResourceEventListeners = true;
     }

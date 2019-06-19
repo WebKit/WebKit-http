@@ -25,8 +25,6 @@
 
 #include "config.h"
 
-#if WK_API_ENABLED
-
 #import "PlatformUtilities.h"
 #import "TestURLSchemeHandler.h"
 #import "TestWKWebView.h"
@@ -321,18 +319,16 @@ TEST(PasteMixedContent, CopyAndPasteWithCustomPasteboardDataOnly)
     [destination synchronouslyLoadHTMLString:markupForDestination baseURL:[NSURL URLWithString:@"same://"]];
     [destination paste:nil];
     EXPECT_WK_STREQ("bar", [destination stringByEvaluatingJavaScript:@"document.querySelector('input').value"]);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     EXPECT_TRUE([destination canPerformAction:@selector(paste:) withSender:nil]);
 #endif
 
     [destination synchronouslyLoadHTMLString:markupForDestination baseURL:[NSURL URLWithString:@"different://"]];
     [destination paste:nil];
     EXPECT_WK_STREQ("", [destination stringByEvaluatingJavaScript:@"document.querySelector('input').value"]);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     EXPECT_FALSE([destination canPerformAction:@selector(paste:) withSender:nil]);
 #endif
 }
 
 } // namespace TestWebKitAPI
-
-#endif // WK_API_ENABLED

@@ -37,7 +37,10 @@ struct StaticValueEntry {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     StaticValueEntry(JSObjectGetPropertyCallback _getProperty, JSObjectSetPropertyCallback _setProperty, JSPropertyAttributes _attributes, String& propertyName)
-    : getProperty(_getProperty), setProperty(_setProperty), attributes(_attributes), propertyNameRef(OpaqueJSString::create(propertyName))
+        : getProperty(_getProperty)
+        , setProperty(_setProperty)
+        , attributes(_attributes)
+        , propertyNameRef(OpaqueJSString::tryCreate(propertyName))
     {
     }
     
@@ -118,7 +121,7 @@ private:
 
     OpaqueJSClassContextData& contextData(JSC::ExecState*);
 
-    // Strings in these data members should not be put into any AtomicStringTable.
+    // Strings in these data members should not be put into any AtomStringTable.
     String m_className;
     std::unique_ptr<OpaqueJSClassStaticValuesTable> m_staticValues;
     std::unique_ptr<OpaqueJSClassStaticFunctionsTable> m_staticFunctions;

@@ -33,9 +33,10 @@ WI.CompletionSuggestionsView = class CompletionSuggestionsView extends WI.Object
         this._preventBlur = preventBlur || false;
 
         this._selectedIndex = NaN;
-        this._anchorBounds = null;
+        this._moveIntervalIdentifier = null;
 
         this._element = document.createElement("div");
+        this._element.setAttribute("dir", "ltr");
         this._element.classList.add("completion-suggestions", WI.Popover.IgnoreAutoDismissClassName);
 
         this._containerElement = document.createElement("div");
@@ -67,7 +68,7 @@ WI.CompletionSuggestionsView = class CompletionSuggestionsView extends WI.Object
     {
         var selectedItemElement = this._selectedItemElement;
         if (selectedItemElement)
-            selectedItemElement.classList.remove(WI.CompletionSuggestionsView.SelectedItemStyleClassName);
+            selectedItemElement.classList.remove("selected");
 
         this._selectedIndex = index;
 
@@ -75,7 +76,7 @@ WI.CompletionSuggestionsView = class CompletionSuggestionsView extends WI.Object
         if (!selectedItemElement)
             return;
 
-        selectedItemElement.classList.add(WI.CompletionSuggestionsView.SelectedItemStyleClassName);
+        selectedItemElement.classList.add("selected");
         selectedItemElement.scrollIntoViewIfNeeded(false);
     }
 
@@ -112,6 +113,8 @@ WI.CompletionSuggestionsView = class CompletionSuggestionsView extends WI.Object
 
     show(anchorBounds)
     {
+        let scrollTop = this._containerElement.scrollTop;
+
         // Measure the container so we can know the intrinsic size of the items.
         this._containerElement.style.position = "absolute";
         document.body.appendChild(this._containerElement);
@@ -156,38 +159,28 @@ WI.CompletionSuggestionsView = class CompletionSuggestionsView extends WI.Object
         this._element.style.height = height + "px";
 
         document.body.appendChild(this._element);
-    }
 
-    showUntilAnchorMoves(getAnchorBounds)
-    {
-        this._anchorBounds = getAnchorBounds();
-        if (!this._anchorBounds) {
-            this.hide();
-            return;
-        }
-
-        this.show(this._anchorBounds);
-
-        let hideWhenMoved = () => {
-            let anchorBounds = getAnchorBounds();
-            if (!anchorBounds || !anchorBounds.equals(this._anchorBounds))
-                this.hide();
-        };
-
-        if (this._hideWhenMovedIdentifier)
-            clearInterval(this._hideWhenMovedIdentifier);
-
-        this._hideWhenMovedIdentifier = setInterval(hideWhenMoved, 200);
+        if (scrollTop)
+            this._containerElement.scrollTop = scrollTop;
     }
 
     hide()
     {
         this._element.remove();
-        this._anchorBounds = null;
-        if (this._hideWhenMovedIdentifier) {
-            clearInterval(this._hideWhenMovedIdentifier);
-            this._hideWhenMovedIdentifier = 0;
-        }
+        this._stopMoveTimer();
+    }
+
+    hideWhenElementMoves(element)
+    {
+        this._stopMoveTimer();
+        let initialClientRect = element.getBoundingClientRect();
+
+        this._moveIntervalIdentifier = setInterval(() => {
+            let clientRect = element.getBoundingClientRect();
+            if (clientRect.x !== initialClientRect.x || clientRect.y !== initialClientRect.y)
+                this.hide();
+        }, 200);
+
     }
 
     update(completions, selectedIndex)
@@ -199,10 +192,9 @@ WI.CompletionSuggestionsView = class CompletionSuggestionsView extends WI.Object
 
         for (var i = 0; i < completions.length; ++i) {
             var itemElement = document.createElement("div");
-            itemElement.className = WI.CompletionSuggestionsView.ItemElementStyleClassName;
+            itemElement.classList.add("item");
+            itemElement.classList.toggle("selected", i === this._selectedIndex);
             itemElement.textContent = completions[i];
-            if (i === this._selectedIndex)
-                itemElement.classList.add(WI.CompletionSuggestionsView.SelectedItemStyleClassName);
             this._containerElement.appendChild(itemElement);
 
             if (this._delegate && typeof this._delegate.completionSuggestionsViewCustomizeCompletionElement === "function")
@@ -245,7 +237,7 @@ WI.CompletionSuggestionsView = class CompletionSuggestionsView extends WI.Object
         if (event.button !== 0)
             return;
 
-        var itemElement = event.target.enclosingNodeOrSelfWithClass(WI.CompletionSuggestionsView.ItemElementStyleClassName);
+        let itemElement = event.target.closest(".item");
         console.assert(itemElement);
         if (!itemElement)
             return;
@@ -253,7 +245,13 @@ WI.CompletionSuggestionsView = class CompletionSuggestionsView extends WI.Object
         if (this._delegate && typeof this._delegate.completionSuggestionsClickedCompletion === "function")
             this._delegate.completionSuggestionsClickedCompletion(this, itemElement.textContent);
     }
-};
 
-WI.CompletionSuggestionsView.ItemElementStyleClassName = "item";
-WI.CompletionSuggestionsView.SelectedItemStyleClassName = "selected";
+    _stopMoveTimer()
+    {
+        if (!this._moveIntervalIdentifier)
+            return;
+
+        clearInterval(this._moveIntervalIdentifier);
+        this._moveIntervalIdentifier = null;
+    }
+};

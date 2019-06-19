@@ -48,6 +48,10 @@ WI.Canvas = class Canvas extends WI.Object
         this._nextShaderProgramDisplayNumber = 1;
 
         this._requestNodePromise = null;
+
+        this._recordingState = WI.Canvas.RecordingState.Inactive;
+        this._recordingFrames = [];
+        this._recordingBufferUsed = 0;
     }
 
     // Static
@@ -71,12 +75,15 @@ WI.Canvas = class Canvas extends WI.Object
         case CanvasAgent.ContextType.WebGPU:
             contextType = WI.Canvas.ContextType.WebGPU;
             break;
+        case CanvasAgent.ContextType.WebMetal:
+            contextType = WI.Canvas.ContextType.WebMetal;
+            break;
         default:
             console.error("Invalid canvas context type", payload.contextType);
         }
 
         return new WI.Canvas(payload.canvasId, contextType, {
-            domNode: payload.nodeId ? WI.domTreeManager.nodeForId(payload.nodeId) : null,
+            domNode: payload.nodeId ? WI.domManager.nodeForId(payload.nodeId) : null,
             cssCanvasName: payload.cssCanvasName,
             contextAttributes: payload.contextAttributes,
             memoryCost: payload.memoryCost,
@@ -96,7 +103,9 @@ WI.Canvas = class Canvas extends WI.Object
         case WI.Canvas.ContextType.WebGL2:
             return WI.unlocalizedString("WebGL2");
         case WI.Canvas.ContextType.WebGPU:
-            return WI.unlocalizedString("WebGPU");
+            return WI.unlocalizedString("Web GPU");
+        case WI.Canvas.ContextType.WebMetal:
+            return WI.unlocalizedString("WebMetal");
         default:
             console.error("Invalid canvas context type", contextType);
         }
@@ -117,10 +126,12 @@ WI.Canvas = class Canvas extends WI.Object
     get backtrace() { return this._backtrace; }
     get shaderProgramCollection() { return this._shaderProgramCollection; }
     get recordingCollection() { return this._recordingCollection; }
+    get recordingFrameCount() { return this._recordingFrames.length; }
+    get recordingBufferUsed() { return this._recordingBufferUsed; }
 
-    get isRecording()
+    get recordingActive()
     {
-        return WI.canvasManager.recordingCanvas === this;
+        return this._recordingState !== WI.Canvas.RecordingState.Inactive;
     }
 
     get memoryCost()
@@ -141,7 +152,7 @@ WI.Canvas = class Canvas extends WI.Object
     get displayName()
     {
         if (this._cssCanvasName)
-            return WI.UIString("CSS canvas “%s”").format(this._cssCanvasName);
+            return WI.UIString("CSS canvas \u201C%s\u201D").format(this._cssCanvasName);
 
         if (this._domNode) {
             let idSelector = this._domNode.escapedIdSelector;
@@ -158,10 +169,10 @@ WI.Canvas = class Canvas extends WI.Object
     {
         if (!this._requestNodePromise) {
             this._requestNodePromise = new Promise((resolve, reject) => {
-                WI.domTreeManager.ensureDocument();
+                WI.domManager.ensureDocument();
 
                 CanvasAgent.requestNode(this._identifier).then((result) => {
-                    this._domNode = WI.domTreeManager.nodeForId(result.nodeId);
+                    this._domNode = WI.domManager.nodeForId(result.nodeId);
                     if (!this._domNode) {
                         reject(`No DOM node for identifier: ${result.nodeId}.`);
                         return;
@@ -191,7 +202,7 @@ WI.Canvas = class Canvas extends WI.Object
             return;
         }
 
-        WI.domTreeManager.ensureDocument();
+        WI.domManager.ensureDocument();
 
         CanvasAgent.requestCSSCanvasClientNodes(this._identifier, (error, clientNodeIds) => {
             if (error) {
@@ -200,7 +211,7 @@ WI.Canvas = class Canvas extends WI.Object
             }
 
             clientNodeIds = Array.isArray(clientNodeIds) ? clientNodeIds : [];
-            this._cssCanvasClientNodes = clientNodeIds.map((clientNodeId) => WI.domTreeManager.nodeForId(clientNodeId));
+            this._cssCanvasClientNodes = clientNodeIds.map((clientNodeId) => WI.domManager.nodeForId(clientNodeId));
             callback(this._cssCanvasClientNodes);
         });
     }
@@ -257,6 +268,47 @@ WI.Canvas = class Canvas extends WI.Object
         });
     }
 
+    startRecording(singleFrame)
+    {
+        let handleStartRecording = (error) => {
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            this._recordingState = WI.Canvas.RecordingState.ActiveFrontend;
+
+            // COMPATIBILITY (iOS 12.1): Canvas.event.recordingStarted did not exist yet
+            if (InspectorBackend.domains.Canvas.hasEvent("recordingStarted"))
+                return;
+
+            this._recordingFrames = [];
+            this._recordingBufferUsed = 0;
+
+            this.dispatchEventToListeners(WI.Canvas.Event.RecordingStarted);
+        };
+
+        // COMPATIBILITY (iOS 12.1): `frameCount` did not exist yet.
+        if (InspectorBackend.domains.Canvas.startRecording.supports("singleFrame")) {
+            CanvasAgent.startRecording(this._identifier, singleFrame, handleStartRecording);
+            return;
+        }
+
+        if (singleFrame) {
+            const frameCount = 1;
+            CanvasAgent.startRecording(this._identifier, frameCount, handleStartRecording);
+        } else
+            CanvasAgent.startRecording(this._identifier, handleStartRecording);
+    }
+
+    stopRecording()
+    {
+        CanvasAgent.stopRecording(this._identifier, (error) => {
+            if (error)
+                console.error(error);
+        });
+    }
+
     saveIdentityToCookie(cookie)
     {
         if (this._cssCanvasName)
@@ -287,6 +339,61 @@ WI.Canvas = class Canvas extends WI.Object
         this.dispatchEventToListeners(WI.Canvas.Event.CSSCanvasClientNodesChanged);
     }
 
+    recordingStarted(initiator)
+    {
+        // Called from WI.CanvasManager.
+
+        if (initiator === RecordingAgent.Initiator.Console)
+            this._recordingState = WI.Canvas.RecordingState.ActiveConsole;
+        else if (initiator === RecordingAgent.Initiator.AutoCapture)
+            this._recordingState = WI.Canvas.RecordingState.ActiveAutoCapture;
+        else {
+            console.assert(initiator === RecordingAgent.Initiator.Frontend);
+            this._recordingState = WI.Canvas.RecordingState.ActiveFrontend;
+        }
+
+        this._recordingFrames = [];
+        this._recordingBufferUsed = 0;
+
+        this.dispatchEventToListeners(WI.Canvas.Event.RecordingStarted);
+    }
+
+    recordingProgress(framesPayload, bufferUsed)
+    {
+        // Called from WI.CanvasManager.
+
+        this._recordingFrames.push(...framesPayload.map(WI.RecordingFrame.fromPayload));
+
+        this._recordingBufferUsed = bufferUsed;
+
+        this.dispatchEventToListeners(WI.Canvas.Event.RecordingProgress);
+    }
+
+    recordingFinished(recordingPayload)
+    {
+        // Called from WI.CanvasManager.
+
+        let initiatedByUser = this._recordingState === WI.Canvas.RecordingState.ActiveFrontend;
+
+        // COMPATIBILITY (iOS 12.1): Canvas.event.recordingStarted did not exist yet
+        if (!initiatedByUser && !InspectorBackend.domains.Canvas.hasEvent("recordingStarted"))
+            initiatedByUser = !!this.recordingActive;
+
+        let recording = recordingPayload ? WI.Recording.fromPayload(recordingPayload, this._recordingFrames) : null;
+        if (recording) {
+            recording.source = this;
+            recording.createDisplayName(recordingPayload.name);
+
+            this._recordingCollection.add(recording);
+        }
+
+        this._recordingState = WI.Canvas.RecordingState.Inactive;
+        this._recordingFrames = [];
+        this._recordingBufferUsed = 0;
+
+        this.dispatchEventToListeners(WI.Canvas.Event.RecordingStopped, {recording, initiatedByUser});
+    }
+
     nextShaderProgramDisplayNumber()
     {
         // Called from WI.ShaderProgram.
@@ -306,10 +413,21 @@ WI.Canvas.ContextType = {
     WebGL: "webgl",
     WebGL2: "webgl2",
     WebGPU: "webgpu",
+    WebMetal: "webmetal",
+};
+
+WI.Canvas.RecordingState = {
+    Inactive: "canvas-recording-state-inactive",
+    ActiveFrontend: "canvas-recording-state-active-frontend",
+    ActiveConsole: "canvas-recording-state-active-console",
+    ActiveAutoCapture: "canvas-recording-state-active-auto-capture",
 };
 
 WI.Canvas.Event = {
     MemoryChanged: "canvas-memory-changed",
     ExtensionEnabled: "canvas-extension-enabled",
     CSSCanvasClientNodesChanged: "canvas-css-canvas-client-nodes-changed",
+    RecordingStarted: "canvas-recording-started",
+    RecordingProgress: "canvas-recording-progress",
+    RecordingStopped: "canvas-recording-stopped",
 };

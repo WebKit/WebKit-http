@@ -29,12 +29,11 @@
 #include "LibWebRTCMacros.h"
 #include "RTCDataChannelHandler.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+ALLOW_UNUSED_PARAMETERS_BEGIN
 
 #include <webrtc/api/datachannelinterface.h>
 
-#pragma GCC diagnostic pop
+ALLOW_UNUSED_PARAMETERS_END
 
 namespace webrtc {
 struct DataChannelInit;
@@ -48,6 +47,7 @@ struct RTCDataChannelInit;
 class ScriptExecutionContext;
 
 class LibWebRTCDataChannelHandler final : public RTCDataChannelHandler, private webrtc::DataChannelObserver {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit LibWebRTCDataChannelHandler(rtc::scoped_refptr<webrtc::DataChannelInterface>&& channel) : m_channel(WTFMove(channel)) { ASSERT(m_channel); }
     ~LibWebRTCDataChannelHandler();
@@ -58,6 +58,7 @@ public:
 private:
     // RTCDataChannelHandler API
     void setClient(RTCDataChannelHandlerClient&) final;
+    void checkState();
     bool sendStringData(const String&) final;
     bool sendRawData(const char*, size_t) final;
     void close() final;

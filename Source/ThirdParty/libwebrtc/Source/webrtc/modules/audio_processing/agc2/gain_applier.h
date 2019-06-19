@@ -11,6 +11,8 @@
 #ifndef MODULES_AUDIO_PROCESSING_AGC2_GAIN_APPLIER_H_
 #define MODULES_AUDIO_PROCESSING_AGC2_GAIN_APPLIER_H_
 
+#include <stddef.h>
+
 #include "modules/audio_processing/include/audio_frame_view.h"
 
 namespace webrtc {
@@ -20,6 +22,7 @@ class GainApplier {
 
   void ApplyGain(AudioFrameView<float> signal);
   void SetGainFactor(float gain_factor);
+  float GetGainFactor() const { return current_gain_factor_; };
 
  private:
   void Initialize(size_t samples_per_channel);

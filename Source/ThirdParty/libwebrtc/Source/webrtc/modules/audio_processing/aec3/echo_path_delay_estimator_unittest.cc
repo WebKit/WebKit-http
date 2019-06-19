@@ -11,7 +11,6 @@
 #include "modules/audio_processing/aec3/echo_path_delay_estimator.h"
 
 #include <algorithm>
-#include <sstream>
 #include <string>
 
 #include "api/audio/echo_canceller3_config.h"
@@ -20,16 +19,17 @@
 #include "modules/audio_processing/logging/apm_data_dumper.h"
 #include "modules/audio_processing/test/echo_canceller_test_tools.h"
 #include "rtc_base/random.h"
+#include "rtc_base/strings/string_builder.h"
 #include "test/gtest.h"
 
 namespace webrtc {
 namespace {
 
 std::string ProduceDebugText(size_t delay, size_t down_sampling_factor) {
-  std::ostringstream ss;
+  rtc::StringBuilder ss;
   ss << "Delay: " << delay;
   ss << ", Down sampling factor: " << down_sampling_factor;
-  return ss.str();
+  return ss.Release();
 }
 
 }  // namespace
@@ -39,7 +39,7 @@ TEST(EchoPathDelayEstimator, BasicApiCalls) {
   ApmDataDumper data_dumper(0);
   EchoCanceller3Config config;
   std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
-      RenderDelayBuffer::Create(config, 3));
+      RenderDelayBuffer::Create2(config, 3));
   EchoPathDelayEstimator estimator(&data_dumper, config);
   std::vector<std::vector<float>> render(3, std::vector<float>(kBlockSize));
   std::vector<float> capture(kBlockSize);
@@ -64,12 +64,9 @@ TEST(EchoPathDelayEstimator, DelayEstimation) {
     config.delay.num_filters = 10;
     for (size_t delay_samples : {30, 64, 150, 200, 800, 4000}) {
       SCOPED_TRACE(ProduceDebugText(delay_samples, down_sampling_factor));
-
-      config.delay.api_call_jitter_blocks = 5;
       std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
-          RenderDelayBuffer::Create(config, 3));
-      DelayBuffer<float> signal_delay_buffer(
-          delay_samples + 2 * config.delay.api_call_jitter_blocks * 64);
+          RenderDelayBuffer::Create2(config, 3));
+      DelayBuffer<float> signal_delay_buffer(delay_samples);
       EchoPathDelayEstimator estimator(&data_dumper, config);
 
       absl::optional<DelayEstimate> estimated_delay_samples;
@@ -97,9 +94,7 @@ TEST(EchoPathDelayEstimator, DelayEstimation) {
         // domain.
         size_t delay_ds = delay_samples / down_sampling_factor;
         size_t estimated_delay_ds =
-            (estimated_delay_samples->delay -
-             (config.delay.api_call_jitter_blocks + 1) * 64) /
-            down_sampling_factor;
+            estimated_delay_samples->delay / down_sampling_factor;
         EXPECT_NEAR(delay_ds, estimated_delay_ds, 1);
       } else {
         ADD_FAILURE();
@@ -118,7 +113,7 @@ TEST(EchoPathDelayEstimator, NoDelayEstimatesForLowLevelRenderSignals) {
   ApmDataDumper data_dumper(0);
   EchoPathDelayEstimator estimator(&data_dumper, config);
   std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
-      RenderDelayBuffer::Create(EchoCanceller3Config(), 3));
+      RenderDelayBuffer::Create2(EchoCanceller3Config(), 3));
   for (size_t k = 0; k < 100; ++k) {
     RandomizeSampleVector(&random_generator, render[0]);
     for (auto& render_k : render[0]) {
@@ -142,7 +137,7 @@ TEST(EchoPathDelayEstimator, DISABLED_WrongRenderBlockSize) {
   EchoCanceller3Config config;
   EchoPathDelayEstimator estimator(&data_dumper, config);
   std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
-      RenderDelayBuffer::Create(config, 3));
+      RenderDelayBuffer::Create2(config, 3));
   std::vector<float> capture(kBlockSize);
   EXPECT_DEATH(estimator.EstimateDelay(
                    render_delay_buffer->GetDownsampledRenderBuffer(), capture),
@@ -157,7 +152,7 @@ TEST(EchoPathDelayEstimator, WrongCaptureBlockSize) {
   EchoCanceller3Config config;
   EchoPathDelayEstimator estimator(&data_dumper, config);
   std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
-      RenderDelayBuffer::Create(config, 3));
+      RenderDelayBuffer::Create2(config, 3));
   std::vector<float> capture(std::vector<float>(kBlockSize - 1));
   EXPECT_DEATH(estimator.EstimateDelay(
                    render_delay_buffer->GetDownsampledRenderBuffer(), capture),

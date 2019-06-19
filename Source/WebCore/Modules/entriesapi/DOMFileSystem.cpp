@@ -27,16 +27,19 @@
 #include "DOMFileSystem.h"
 
 #include "File.h"
-#include "FileMetadata.h"
-#include "FileSystem.h"
 #include "FileSystemDirectoryEntry.h"
 #include "FileSystemFileEntry.h"
 #include "ScriptExecutionContext.h"
 #include <wtf/CrossThreadCopier.h>
+#include <wtf/FileMetadata.h>
+#include <wtf/FileSystem.h>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/UUID.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(DOMFileSystem);
 
 struct ListedChild {
     String filename;
@@ -60,7 +63,7 @@ static ExceptionOr<Vector<ListedChild>> listDirectoryWithMetadata(const String& 
             continue;
         listedChildren.uncheckedAppend(ListedChild { FileSystem::pathGetFileName(childPath), metadata.value().type });
     }
-    return WTFMove(listedChildren);
+    return listedChildren;
 }
 
 static ExceptionOr<Vector<Ref<FileSystemEntry>>> toFileSystemEntries(ScriptExecutionContext& context, DOMFileSystem& fileSystem, ExceptionOr<Vector<ListedChild>>&& listedChildren, const String& parentVirtualPath)
@@ -84,7 +87,7 @@ static ExceptionOr<Vector<Ref<FileSystemEntry>>> toFileSystemEntries(ScriptExecu
             break;
         }
     }
-    return WTFMove(entries);
+    return entries;
 }
 
 // https://wicg.github.io/entries-api/#name
@@ -177,11 +180,11 @@ static ExceptionOr<String> validatePathIsExpectedType(const String& fullPath, St
     return WTFMove(virtualPath);
 }
 
-static std::optional<FileMetadata::Type> fileType(const String& fullPath)
+static Optional<FileMetadata::Type> fileType(const String& fullPath)
 {
     auto metadata = FileSystem::fileMetadata(fullPath);
     if (!metadata || metadata.value().isHidden)
-        return std::nullopt;
+        return WTF::nullopt;
     return metadata.value().type;
 }
 

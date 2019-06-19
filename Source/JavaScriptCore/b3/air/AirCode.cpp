@@ -28,6 +28,7 @@
 
 #if ENABLE(B3_JIT)
 
+#include "AirAllocateRegistersAndStackAndGenerateCode.h"
 #include "AirCCallSpecial.h"
 #include "AirCFG.h"
 #include "AllowMacroScratchRegisterUsageIf.h"
@@ -78,8 +79,9 @@ Code::Code(Procedure& proc)
                         calleeSaveRegs.append(reg);
                 });
             if (Options::airRandomizeRegs()) {
-                shuffleVector(volatileRegs, [&] (unsigned limit) { return m_weakRandom.getUint32(limit); });
-                shuffleVector(calleeSaveRegs, [&] (unsigned limit) { return m_weakRandom.getUint32(limit); });
+                WeakRandom random(Options::airRandomizeRegsSeed() ? Options::airRandomizeRegsSeed() : m_weakRandom.getUint32());
+                shuffleVector(volatileRegs, [&] (unsigned limit) { return random.getUint32(limit); });
+                shuffleVector(calleeSaveRegs, [&] (unsigned limit) { return random.getUint32(limit); });
             }
             Vector<Reg> result;
             result.appendVector(volatileRegs);
@@ -95,6 +97,11 @@ Code::Code(Procedure& proc)
 
 Code::~Code()
 {
+}
+
+void Code::emitDefaultPrologue(CCallHelpers& jit)
+{
+    defaultPrologueGenerator(jit, *this);
 }
 
 void Code::setRegsInPriorityOrder(Bank bank, const Vector<Reg>& regs)
@@ -192,14 +199,14 @@ bool Code::isEntrypoint(BasicBlock* block) const
     return false;
 }
 
-std::optional<unsigned> Code::entrypointIndex(BasicBlock* block) const
+Optional<unsigned> Code::entrypointIndex(BasicBlock* block) const
 {
     RELEASE_ASSERT(m_entrypoints.size());
     for (unsigned i = 0; i < m_entrypoints.size(); ++i) {
         if (m_entrypoints[i].block() == block)
             return i;
     }
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 void Code::setCalleeSaveRegisterAtOffsetList(RegisterAtOffsetList&& registerAtOffsetList, StackSlot* slot)

@@ -245,7 +245,7 @@ WI.RemoteObject = class RemoteObject
             return;
         }
 
-        if (!RuntimeAgent.getPreview) {
+        if (!this._target.RuntimeAgent.getPreview) {
             this._failedToLoadPreview = true;
             callback(null);
             return;
@@ -263,14 +263,14 @@ WI.RemoteObject = class RemoteObject
         });
     }
 
-    getOwnPropertyDescriptors(callback)
+    getPropertyDescriptors(callback, options = {})
     {
-        this._getPropertyDescriptors(true, callback);
-    }
+        if (!this._objectId || this._isSymbol() || this._isFakeObject()) {
+            callback([]);
+            return;
+        }
 
-    getAllPropertyDescriptors(callback)
-    {
-        this._getPropertyDescriptors(false, callback);
+        this._target.RuntimeAgent.getProperties(this._objectId, options.ownProperties, options.generatePreview, this._getPropertyDescriptorsResolver.bind(this, callback));
     }
 
     getDisplayablePropertyDescriptors(callback)
@@ -282,7 +282,7 @@ WI.RemoteObject = class RemoteObject
 
         // COMPATIBILITY (iOS 8): RuntimeAgent.getDisplayableProperties did not exist.
         // Here we do our best to reimplement it by getting all properties and reducing them down.
-        if (!RuntimeAgent.getDisplayableProperties) {
+        if (!this._target.RuntimeAgent.getDisplayableProperties) {
             this._target.RuntimeAgent.getProperties(this._objectId, function(error, allProperties) {
                 var ownOrGetterPropertiesList = [];
                 if (allProperties) {
@@ -329,7 +329,7 @@ WI.RemoteObject = class RemoteObject
 
         // COMPATIBILITY (iOS 8): RuntimeAgent.getProperties did not support ownerAndGetterProperties.
         // Here we do our best to reimplement it by getting all properties and reducing them down.
-        if (!RuntimeAgent.getDisplayableProperties) {
+        if (!this._target.RuntimeAgent.getDisplayableProperties) {
             this._target.RuntimeAgent.getProperties(this._objectId, function(error, allProperties) {
                 var ownOrGetterPropertiesList = [];
                 if (allProperties) {
@@ -457,7 +457,7 @@ WI.RemoteObject = class RemoteObject
     pushNodeToFrontend(callback)
     {
         if (this._objectId)
-            WI.domTreeManager.pushNodeToFrontend(this._objectId, callback);
+            WI.domManager.pushNodeToFrontend(this._objectId, callback);
         else
             callback(0);
     }
@@ -610,7 +610,7 @@ WI.RemoteObject = class RemoteObject
 
         this._target.DebuggerAgent.getFunctionDetails(this._objectId, (error, response) => {
             if (error) {
-                result.reject(error);
+                result.resolve(WI.RemoteObject.SourceCodeLocationPromise.NoSourceFound);
                 return;
             }
 
@@ -649,29 +649,6 @@ WI.RemoteObject = class RemoteObject
     _weakCollectionObjectGroup()
     {
         return JSON.stringify(this._objectId) + "-" + this._subtype;
-    }
-
-    _getPropertyDescriptors(ownProperties, callback)
-    {
-        if (!this._objectId || this._isSymbol() || this._isFakeObject()) {
-            callback([]);
-            return;
-        }
-
-        this._target.RuntimeAgent.getProperties(this._objectId, ownProperties, true, this._getPropertyDescriptorsResolver.bind(this, callback));
-    }
-
-    getOwnPropertyDescriptorsAsObject(callback)
-    {
-        this.getOwnPropertyDescriptors(function(properties) {
-            var propertiesResult = {};
-            var internalPropertiesResult = {};
-            for (var propertyDescriptor of properties) {
-                var object = propertyDescriptor.isInternalProperty ? internalPropertiesResult : propertiesResult;
-                object[propertyDescriptor.name] = propertyDescriptor;
-            }
-            callback(propertiesResult, internalPropertiesResult);
-        });
     }
 
     _getPropertyDescriptorsResolver(callback, error, properties, internalProperties)

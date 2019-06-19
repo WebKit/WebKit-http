@@ -51,11 +51,11 @@ public:
         int wheelDeltaY { 0 }; // Deprecated.
     };
 
-    static Ref<WheelEvent> create(const AtomicString& type, const Init&);
+    static Ref<WheelEvent> create(const AtomString& type, const Init&);
 
     WEBCORE_EXPORT void initWebKitWheelEvent(int rawDeltaX, int rawDeltaY, RefPtr<WindowProxy>&&, int screenX, int screenY, int pageX, int pageY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey);
 
-    const std::optional<PlatformWheelEvent>& underlyingPlatformEvent() const { return m_underlyingPlatformEvent; }
+    const Optional<PlatformWheelEvent>& underlyingPlatformEvent() const { return m_underlyingPlatformEvent; }
 
     double deltaX() const { return m_deltaX; } // Positive when scrolling right.
     double deltaY() const { return m_deltaY; } // Positive when scrolling down.
@@ -74,7 +74,7 @@ public:
 
 private:
     WheelEvent();
-    WheelEvent(const AtomicString&, const Init&);
+    WheelEvent(const AtomString&, const Init&);
     WheelEvent(const PlatformWheelEvent&, RefPtr<WindowProxy>&&);
 
     EventInterface eventInterface() const final;
@@ -86,7 +86,7 @@ private:
     double m_deltaY { 0 };
     double m_deltaZ { 0 };
     unsigned m_deltaMode { DOM_DELTA_PIXEL };
-    std::optional<PlatformWheelEvent> m_underlyingPlatformEvent;
+    Optional<PlatformWheelEvent> m_underlyingPlatformEvent;
 };
 
 } // namespace WebCore

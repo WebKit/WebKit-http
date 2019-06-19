@@ -25,17 +25,14 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 typedef NS_OPTIONS(NSUInteger, _WKRenderingProgressEvents) {
     _WKRenderingProgressEventFirstLayout = 1 << 0,
-    _WKRenderingProgressEventFirstVisuallyNonEmptyLayout WK_API_AVAILABLE(macosx(10.11), ios(9.0)) = 1 << 1,
+    _WKRenderingProgressEventFirstVisuallyNonEmptyLayout WK_API_AVAILABLE(macos(10.11), ios(9.0)) = 1 << 1,
     _WKRenderingProgressEventFirstPaintWithSignificantArea = 1 << 2,
-    _WKRenderingProgressEventReachedSessionRestorationRenderTreeSizeThreshold WK_API_AVAILABLE(macosx(10.11), ios(9.0)) = 1 << 3,
-    _WKRenderingProgressEventFirstLayoutAfterSuppressedIncrementalRendering WK_API_AVAILABLE(macosx(10.11), ios(9.0)) = 1 << 4,
-    _WKRenderingProgressEventFirstPaintAfterSuppressedIncrementalRendering WK_API_AVAILABLE(macosx(10.11), ios(9.0)) = 1 << 5,
-    _WKRenderingProgressEventFirstPaint WK_API_AVAILABLE(macosx(10.11), ios(9.0)) = 1 << 6,
-    _WKRenderingProgressEventDidRenderSignificantAmountOfText WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA)) = 1 << 7,
-} WK_API_AVAILABLE(macosx(10.10), ios(8.0));
-
-#endif
+    _WKRenderingProgressEventReachedSessionRestorationRenderTreeSizeThreshold WK_API_AVAILABLE(macos(10.11), ios(9.0)) = 1 << 3,
+    _WKRenderingProgressEventFirstLayoutAfterSuppressedIncrementalRendering WK_API_AVAILABLE(macos(10.11), ios(9.0)) = 1 << 4,
+    _WKRenderingProgressEventFirstPaintAfterSuppressedIncrementalRendering WK_API_AVAILABLE(macos(10.11), ios(9.0)) = 1 << 5,
+    _WKRenderingProgressEventFirstPaint WK_API_AVAILABLE(macos(10.11), ios(9.0)) = 1 << 6,
+    _WKRenderingProgressEventDidRenderSignificantAmountOfText WK_API_AVAILABLE(macos(10.14), ios(12.0)) = 1 << 7,
+    _WKRenderingProgressEventFirstMeaningfulPaint WK_API_AVAILABLE(macos(10.14.4), ios(12.2)) = 1 << 8,
+} WK_API_AVAILABLE(macos(10.10), ios(8.0));

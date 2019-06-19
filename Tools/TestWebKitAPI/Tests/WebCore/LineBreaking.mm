@@ -25,10 +25,8 @@
 
 #include "config.h"
 
-#if WK_API_ENABLED
-
-#import "PlatformUtilities.h"
 #import "TestNavigationDelegate.h"
+#import "Utilities.h"
 #import <unicode/ubrk.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Vector.h>
@@ -333,6 +331,3 @@ TEST(WebKit, LineBreaking19)
     };
     testAFewStrings(testStrings);
 }
-
-
-#endif

@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Google Inc.  All rights reserved.
@@ -41,26 +42,30 @@
 #include <wtf/UniqueArray.h>
 #include <wtf/glib/GRefPtr.h>
 
+typedef struct _GIOStream GIOStream;
+typedef struct _GObject GObject;
+
 namespace WebCore {
 
 class SocketStreamError;
 class SocketStreamHandleClient;
+class StorageSessionProvider;
 
 class SocketStreamHandleImpl final : public SocketStreamHandle {
 public:
-    static Ref<SocketStreamHandleImpl> create(const URL&, SocketStreamHandleClient&, PAL::SessionID, const String&, SourceApplicationAuditToken&&);
+    static Ref<SocketStreamHandleImpl> create(const URL&, SocketStreamHandleClient&, PAL::SessionID, const String&, SourceApplicationAuditToken&&, const StorageSessionProvider*);
     virtual ~SocketStreamHandleImpl();
 
     const URL& url() const { return m_url; }
 
     void platformSend(const uint8_t* data, size_t length, Function<void(bool)>&&) final;
-    void platformSendHandshake(const uint8_t* data, size_t length, const std::optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
+    void platformSendHandshake(const uint8_t* data, size_t length, const Optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
     void platformClose() final;
 private:
-    SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
+    SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&, const StorageSessionProvider*);
 
     size_t bufferedAmount() final;
-    std::optional<size_t> platformSendInternal(const uint8_t*, size_t);
+    Optional<size_t> platformSendInternal(const uint8_t*, size_t);
     bool sendPendingData();
 
     void beginWaitingForSocketWritability();
@@ -75,6 +80,8 @@ private:
     void didFail(SocketStreamError&&);
     void writeReady();
 
+    RefPtr<const StorageSessionProvider> m_storageSessionProvider;
+    
     GRefPtr<GIOStream> m_stream;
     GRefPtr<GInputStream> m_inputStream;
     GRefPtr<GPollableOutputStream> m_outputStream;

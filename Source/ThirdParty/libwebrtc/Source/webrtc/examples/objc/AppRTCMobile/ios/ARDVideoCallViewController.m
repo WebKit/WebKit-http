@@ -10,23 +10,24 @@
 
 #import "ARDVideoCallViewController.h"
 
-#import "WebRTC/RTCAudioSession.h"
-#import "WebRTC/RTCCameraVideoCapturer.h"
+#import <WebRTC/RTCAudioSession.h>
+#import <WebRTC/RTCCameraVideoCapturer.h>
+#import <WebRTC/RTCDispatcher.h>
+#import <WebRTC/RTCLogging.h>
+#import <WebRTC/RTCMediaConstraints.h>
 
 #import "ARDAppClient.h"
 #import "ARDCaptureController.h"
 #import "ARDFileCaptureController.h"
 #import "ARDSettingsModel.h"
 #import "ARDVideoCallView.h"
-#import "WebRTC/RTCDispatcher.h"
-#import "WebRTC/RTCLogging.h"
-#import "WebRTC/RTCMediaConstraints.h"
 
 @interface ARDVideoCallViewController () <ARDAppClientDelegate,
                                           ARDVideoCallViewDelegate,
                                           RTCAudioSessionDelegate>
 @property(nonatomic, strong) RTCVideoTrack *remoteVideoTrack;
 @property(nonatomic, readonly) ARDVideoCallView *videoCallView;
+@property(nonatomic, assign) AVAudioSessionPortOverride portOverride;
 @end
 
 @implementation ARDVideoCallViewController {
@@ -34,12 +35,12 @@
   RTCVideoTrack *_remoteVideoTrack;
   ARDCaptureController *_captureController;
   ARDFileCaptureController *_fileCaptureController NS_AVAILABLE_IOS(10);
-  AVAudioSessionPortOverride _portOverride;
 }
 
 @synthesize videoCallView = _videoCallView;
 @synthesize remoteVideoTrack = _remoteVideoTrack;
 @synthesize delegate = _delegate;
+@synthesize portOverride = _portOverride;
 
 - (instancetype)initForRoom:(NSString *)room
                  isLoopback:(BOOL)isLoopback
@@ -168,7 +169,7 @@
     [session lockForConfiguration];
     NSError *error = nil;
     if ([session overrideOutputAudioPort:override error:&error]) {
-      _portOverride = override;
+      self.portOverride = override;
     } else {
       RTCLogError(@"Error overriding output port: %@",
                   error.localizedDescription);

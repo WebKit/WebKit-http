@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2016 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #include "CodeCache.h"
 
 #include "IndirectEvalExecutable.h"
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace JSC {
 
@@ -43,59 +44,67 @@ void CodeCacheMap::pruneSlowCase()
 
     while (m_size > m_capacity || !canPruneQuickly()) {
         MapType::iterator it = m_map.begin();
+
+        writeCodeBlock(*it->value.cell->vm(), it->key, it->value);
+
         m_size -= it->key.length();
         m_map.remove(it);
     }
 }
 
 template <class UnlinkedCodeBlockType, class ExecutableType>
-UnlinkedCodeBlockType* CodeCache::getUnlinkedGlobalCodeBlock(VM& vm, ExecutableType* executable, const SourceCode& source, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, DebuggerMode debuggerMode, ParserError& error, EvalContextType evalContextType)
+UnlinkedCodeBlockType* CodeCache::getUnlinkedGlobalCodeBlock(VM& vm, ExecutableType* executable, const SourceCode& source, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, OptionSet<CodeGenerationMode> codeGenerationMode, ParserError& error, EvalContextType evalContextType)
 {
     DerivedContextType derivedContextType = executable->derivedContextType();
     bool isArrowFunctionContext = executable->isArrowFunctionContext();
     SourceCodeKey key(
         source, String(), CacheTypes<UnlinkedCodeBlockType>::codeType, strictMode, scriptMode, 
-        derivedContextType, evalContextType, isArrowFunctionContext, debuggerMode, 
-        vm.typeProfiler() ? TypeProfilerEnabled::Yes : TypeProfilerEnabled::No, 
-        vm.controlFlowProfiler() ? ControlFlowProfilerEnabled::Yes : ControlFlowProfilerEnabled::No);
-    SourceCodeValue* cache = m_sourceCode.findCacheAndUpdateAge(key);
-    if (cache && Options::useCodeCache()) {
-        UnlinkedCodeBlockType* unlinkedCodeBlock = jsCast<UnlinkedCodeBlockType*>(cache->cell.get());
+        derivedContextType, evalContextType, isArrowFunctionContext, codeGenerationMode,
+        WTF::nullopt);
+    UnlinkedCodeBlockType* unlinkedCodeBlock = m_sourceCode.findCacheAndUpdateAge<UnlinkedCodeBlockType>(vm, key);
+    if (unlinkedCodeBlock && Options::useCodeCache()) {
         unsigned lineCount = unlinkedCodeBlock->lineCount();
         unsigned startColumn = unlinkedCodeBlock->startColumn() + source.startColumn().oneBasedInt();
         bool endColumnIsOnStartLine = !lineCount;
         unsigned endColumn = unlinkedCodeBlock->endColumn() + (endColumnIsOnStartLine ? startColumn : 1);
         executable->recordParse(unlinkedCodeBlock->codeFeatures(), unlinkedCodeBlock->hasCapturedVariables(), source.firstLine().oneBasedInt() + lineCount, endColumn);
-        source.provider()->setSourceURLDirective(unlinkedCodeBlock->sourceURLDirective());
-        source.provider()->setSourceMappingURLDirective(unlinkedCodeBlock->sourceMappingURLDirective());
+        if (!unlinkedCodeBlock->sourceURLDirective().isNull())
+            source.provider()->setSourceURLDirective(unlinkedCodeBlock->sourceURLDirective());
+        if (!unlinkedCodeBlock->sourceMappingURLDirective().isNull())
+            source.provider()->setSourceMappingURLDirective(unlinkedCodeBlock->sourceMappingURLDirective());
         return unlinkedCodeBlock;
     }
-    
-    VariableEnvironment variablesUnderTDZ;
-    UnlinkedCodeBlockType* unlinkedCodeBlock = generateUnlinkedCodeBlock<UnlinkedCodeBlockType, ExecutableType>(vm, executable, source, strictMode, scriptMode, debuggerMode, error, evalContextType, &variablesUnderTDZ);
 
-    if (unlinkedCodeBlock && Options::useCodeCache())
+    VariableEnvironment variablesUnderTDZ;
+    unlinkedCodeBlock = generateUnlinkedCodeBlock<UnlinkedCodeBlockType, ExecutableType>(vm, executable, source, strictMode, scriptMode, codeGenerationMode, error, evalContextType, &variablesUnderTDZ);
+
+    if (unlinkedCodeBlock && Options::useCodeCache()) {
         m_sourceCode.addCache(key, SourceCodeValue(vm, unlinkedCodeBlock, m_sourceCode.age()));
+
+        key.source().provider().cacheBytecode([&] {
+            return encodeCodeBlock(vm, key, unlinkedCodeBlock);
+        });
+    }
 
     return unlinkedCodeBlock;
 }
 
-UnlinkedProgramCodeBlock* CodeCache::getUnlinkedProgramCodeBlock(VM& vm, ProgramExecutable* executable, const SourceCode& source, JSParserStrictMode strictMode, DebuggerMode debuggerMode, ParserError& error)
+UnlinkedProgramCodeBlock* CodeCache::getUnlinkedProgramCodeBlock(VM& vm, ProgramExecutable* executable, const SourceCode& source, JSParserStrictMode strictMode, OptionSet<CodeGenerationMode> codeGenerationMode, ParserError& error)
 {
-    return getUnlinkedGlobalCodeBlock<UnlinkedProgramCodeBlock>(vm, executable, source, strictMode, JSParserScriptMode::Classic, debuggerMode, error, EvalContextType::None);
+    return getUnlinkedGlobalCodeBlock<UnlinkedProgramCodeBlock>(vm, executable, source, strictMode, JSParserScriptMode::Classic, codeGenerationMode, error, EvalContextType::None);
 }
 
-UnlinkedEvalCodeBlock* CodeCache::getUnlinkedEvalCodeBlock(VM& vm, IndirectEvalExecutable* executable, const SourceCode& source, JSParserStrictMode strictMode, DebuggerMode debuggerMode, ParserError& error, EvalContextType evalContextType)
+UnlinkedEvalCodeBlock* CodeCache::getUnlinkedEvalCodeBlock(VM& vm, IndirectEvalExecutable* executable, const SourceCode& source, JSParserStrictMode strictMode, OptionSet<CodeGenerationMode> codeGenerationMode, ParserError& error, EvalContextType evalContextType)
 {
-    return getUnlinkedGlobalCodeBlock<UnlinkedEvalCodeBlock>(vm, executable, source, strictMode, JSParserScriptMode::Classic, debuggerMode, error, evalContextType);
+    return getUnlinkedGlobalCodeBlock<UnlinkedEvalCodeBlock>(vm, executable, source, strictMode, JSParserScriptMode::Classic, codeGenerationMode, error, evalContextType);
 }
 
-UnlinkedModuleProgramCodeBlock* CodeCache::getUnlinkedModuleProgramCodeBlock(VM& vm, ModuleProgramExecutable* executable, const SourceCode& source, DebuggerMode debuggerMode, ParserError& error)
+UnlinkedModuleProgramCodeBlock* CodeCache::getUnlinkedModuleProgramCodeBlock(VM& vm, ModuleProgramExecutable* executable, const SourceCode& source, OptionSet<CodeGenerationMode> codeGenerationMode, ParserError& error)
 {
-    return getUnlinkedGlobalCodeBlock<UnlinkedModuleProgramCodeBlock>(vm, executable, source, JSParserStrictMode::Strict, JSParserScriptMode::Module, debuggerMode, error, EvalContextType::None);
+    return getUnlinkedGlobalCodeBlock<UnlinkedModuleProgramCodeBlock>(vm, executable, source, JSParserStrictMode::Strict, JSParserScriptMode::Module, codeGenerationMode, error, EvalContextType::None);
 }
 
-UnlinkedFunctionExecutable* CodeCache::getUnlinkedGlobalFunctionExecutable(VM& vm, const Identifier& name, const SourceCode& source, DebuggerMode debuggerMode, ParserError& error)
+UnlinkedFunctionExecutable* CodeCache::getUnlinkedGlobalFunctionExecutable(VM& vm, const Identifier& name, const SourceCode& source, OptionSet<CodeGenerationMode> codeGenerationMode, Optional<int> functionConstructorParametersEndPosition, ParserError& error)
 {
     bool isArrowFunctionContext = false;
     SourceCodeKey key(
@@ -105,37 +114,26 @@ UnlinkedFunctionExecutable* CodeCache::getUnlinkedGlobalFunctionExecutable(VM& v
         DerivedContextType::None,
         EvalContextType::None,
         isArrowFunctionContext,
-        debuggerMode, 
-        vm.typeProfiler() ? TypeProfilerEnabled::Yes : TypeProfilerEnabled::No, 
-        vm.controlFlowProfiler() ? ControlFlowProfilerEnabled::Yes : ControlFlowProfilerEnabled::No);
-    SourceCodeValue* cache = m_sourceCode.findCacheAndUpdateAge(key);
-    if (cache && Options::useCodeCache()) {
-        UnlinkedFunctionExecutable* executable = jsCast<UnlinkedFunctionExecutable*>(cache->cell.get());
-        source.provider()->setSourceURLDirective(executable->sourceURLDirective());
-        source.provider()->setSourceMappingURLDirective(executable->sourceMappingURLDirective());
+        codeGenerationMode,
+        functionConstructorParametersEndPosition);
+    UnlinkedFunctionExecutable* executable = m_sourceCode.findCacheAndUpdateAge<UnlinkedFunctionExecutable>(vm, key);
+    if (executable && Options::useCodeCache()) {
+        if (!executable->sourceURLDirective().isNull())
+            source.provider()->setSourceURLDirective(executable->sourceURLDirective());
+        if (!executable->sourceMappingURLDirective().isNull())
+            source.provider()->setSourceMappingURLDirective(executable->sourceMappingURLDirective());
         return executable;
     }
 
     JSTextPosition positionBeforeLastNewline;
-    std::unique_ptr<ProgramNode> program = parse<ProgramNode>(
-        &vm, source, Identifier(), JSParserBuiltinMode::NotBuiltin,
-        JSParserStrictMode::NotStrict, JSParserScriptMode::Classic, SourceParseMode::ProgramMode, SuperBinding::NotNeeded,
-        error, &positionBeforeLastNewline);
+    std::unique_ptr<ProgramNode> program = parseFunctionForFunctionConstructor(vm, source, error, &positionBeforeLastNewline, functionConstructorParametersEndPosition);
     if (!program) {
         RELEASE_ASSERT(error.isValid());
         return nullptr;
     }
 
     // This function assumes an input string that would result in a single function declaration.
-    StatementNode* statement = program->singleStatement();
-    if (UNLIKELY(!statement)) {
-        JSToken token;
-        error = ParserError(ParserError::SyntaxError, ParserError::SyntaxErrorIrrecoverable, token, "Parser error", -1);
-        return nullptr;
-    }
-    ASSERT(statement->isBlock());
-
-    StatementNode* funcDecl = static_cast<BlockNode*>(statement)->singleStatement();
+    StatementNode* funcDecl = program->singleStatement();
     if (UNLIKELY(!funcDecl)) {
         JSToken token;
         error = ParserError(ParserError::SyntaxError, ParserError::SyntaxErrorIrrecoverable, token, "Parser error", -1);
@@ -152,16 +150,85 @@ UnlinkedFunctionExecutable* CodeCache::getUnlinkedGlobalFunctionExecutable(VM& v
     metadata->setEndPosition(positionBeforeLastNewline);
     // The Function constructor only has access to global variables, so no variables will be under TDZ unless they're
     // in the global lexical environment, which we always TDZ check accesses from.
-    VariableEnvironment emptyTDZVariables;
     ConstructAbility constructAbility = constructAbilityForParseMode(metadata->parseMode());
-    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, metadata, UnlinkedNormalFunction, constructAbility, JSParserScriptMode::Classic, emptyTDZVariables, DerivedContextType::None);
+    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, metadata, UnlinkedNormalFunction, constructAbility, JSParserScriptMode::Classic, WTF::nullopt, DerivedContextType::None);
 
-    functionExecutable->setSourceURLDirective(source.provider()->sourceURL());
-    functionExecutable->setSourceMappingURLDirective(source.provider()->sourceMappingURL());
+    if (!source.provider()->sourceURLDirective().isNull())
+        functionExecutable->setSourceURLDirective(source.provider()->sourceURLDirective());
+    if (!source.provider()->sourceMappingURLDirective().isNull())
+        functionExecutable->setSourceMappingURLDirective(source.provider()->sourceMappingURLDirective());
 
     if (Options::useCodeCache())
         m_sourceCode.addCache(key, SourceCodeValue(vm, functionExecutable, m_sourceCode.age()));
     return functionExecutable;
+}
+
+void CodeCache::updateCache(const UnlinkedFunctionExecutable* executable, const SourceCode& parentSource, CodeSpecializationKind kind, const UnlinkedFunctionCodeBlock* codeBlock)
+{
+    parentSource.provider()->updateCache(executable, parentSource, kind, codeBlock);
+}
+
+void CodeCache::write(VM& vm)
+{
+    for (auto& it : m_sourceCode)
+        writeCodeBlock(vm, it.key, it.value);
+}
+
+void generateUnlinkedCodeBlockForFunctions(VM& vm, UnlinkedCodeBlock* unlinkedCodeBlock, const SourceCode& parentSource, OptionSet<CodeGenerationMode> codeGenerationMode, ParserError& error)
+{
+    auto generate = [&](UnlinkedFunctionExecutable* unlinkedExecutable, CodeSpecializationKind constructorKind) {
+        if (constructorKind == CodeForConstruct && SourceParseModeSet(SourceParseMode::AsyncArrowFunctionMode, SourceParseMode::AsyncMethodMode, SourceParseMode::AsyncFunctionMode).contains(unlinkedExecutable->parseMode()))
+            return;
+
+        SourceCode source = unlinkedExecutable->linkedSourceCode(parentSource);
+        UnlinkedFunctionCodeBlock* unlinkedFunctionCodeBlock = unlinkedExecutable->unlinkedCodeBlockFor(vm, source, constructorKind, codeGenerationMode, error, unlinkedExecutable->parseMode());
+        if (unlinkedFunctionCodeBlock)
+            generateUnlinkedCodeBlockForFunctions(vm, unlinkedFunctionCodeBlock, source, codeGenerationMode, error);
+    };
+
+    // FIXME: We should also generate CodeBlocks for CodeForConstruct
+    // https://bugs.webkit.org/show_bug.cgi?id=193823
+    for (unsigned i = 0; i < unlinkedCodeBlock->numberOfFunctionDecls(); i++)
+        generate(unlinkedCodeBlock->functionDecl(i), CodeForCall);
+    for (unsigned i = 0; i < unlinkedCodeBlock->numberOfFunctionExprs(); i++)
+        generate(unlinkedCodeBlock->functionExpr(i), CodeForCall);
+}
+
+void writeCodeBlock(VM& vm, const SourceCodeKey& key, const SourceCodeValue& value)
+{
+    UnlinkedCodeBlock* codeBlock = jsDynamicCast<UnlinkedCodeBlock*>(vm, value.cell.get());
+    if (!codeBlock)
+        return;
+
+    key.source().provider().commitCachedBytecode();
+}
+
+static SourceCodeKey sourceCodeKeyForSerializedBytecode(VM&, const SourceCode& sourceCode, SourceCodeType codeType, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, OptionSet<CodeGenerationMode> codeGenerationMode)
+{
+    return SourceCodeKey(
+        sourceCode, String(), codeType, strictMode, scriptMode,
+        DerivedContextType::None, EvalContextType::None, false, codeGenerationMode,
+        WTF::nullopt);
+}
+
+SourceCodeKey sourceCodeKeyForSerializedProgram(VM& vm, const SourceCode& sourceCode)
+{
+    JSParserStrictMode strictMode = JSParserStrictMode::NotStrict;
+    JSParserScriptMode scriptMode = JSParserScriptMode::Classic;
+    return sourceCodeKeyForSerializedBytecode(vm, sourceCode, SourceCodeType::ProgramType, strictMode, scriptMode, { });
+}
+
+SourceCodeKey sourceCodeKeyForSerializedModule(VM& vm, const SourceCode& sourceCode)
+{
+    JSParserStrictMode strictMode = JSParserStrictMode::Strict;
+    JSParserScriptMode scriptMode = JSParserScriptMode::Module;
+    return sourceCodeKeyForSerializedBytecode(vm, sourceCode, SourceCodeType::ModuleType, strictMode, scriptMode, { });
+}
+
+RefPtr<CachedBytecode> serializeBytecode(VM& vm, UnlinkedCodeBlock* codeBlock, const SourceCode& source, SourceCodeType codeType, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, int fd, BytecodeCacheError& error, OptionSet<CodeGenerationMode> codeGenerationMode)
+{
+    return encodeCodeBlock(vm,
+        sourceCodeKeyForSerializedBytecode(vm, source, codeType, strictMode, scriptMode, codeGenerationMode), codeBlock, fd, error);
 }
 
 }

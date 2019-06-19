@@ -64,14 +64,14 @@ template<> JSString* convertEnumerationToJS(ExecState& state, TestCallbackInterf
     return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
-template<> std::optional<TestCallbackInterface::Enum> parseEnumeration<TestCallbackInterface::Enum>(ExecState& state, JSValue value)
+template<> Optional<TestCallbackInterface::Enum> parseEnumeration<TestCallbackInterface::Enum>(ExecState& state, JSValue value)
 {
     auto stringValue = value.toWTFString(&state);
     if (stringValue == "value1")
         return TestCallbackInterface::Enum::Value1;
     if (stringValue == "value2")
         return TestCallbackInterface::Enum::Value2;
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 template<> const char* expectedEnumerationValues<TestCallbackInterface::Enum>()
@@ -361,7 +361,7 @@ CallbackResult<typename IDLDOMString::ImplementationType> JSTestCallbackInterfac
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     auto returnValue = convert<IDLDOMString>(state, jsResult);
     RETURN_IF_EXCEPTION(throwScope, CallbackResultType::ExceptionThrown);
-    return WTFMove(returnValue);
+    return returnValue;
 }
 
 CallbackResult<typename IDLDOMString::ImplementationType> JSTestCallbackInterface::callbackThatRethrowsExceptions(typename IDLEnumeration<TestCallbackInterface::Enum>::ParameterType enumParam)
@@ -392,7 +392,7 @@ CallbackResult<typename IDLDOMString::ImplementationType> JSTestCallbackInterfac
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     auto returnValue = convert<IDLDOMString>(state, jsResult);
     RETURN_IF_EXCEPTION(throwScope, CallbackResultType::ExceptionThrown);
-    return WTFMove(returnValue);
+    return returnValue;
 }
 
 CallbackResult<typename IDLDOMString::ImplementationType> JSTestCallbackInterface::callbackThatSkipsInvokeCheck(typename IDLDictionary<TestCallbackInterface::Dictionary>::ParameterType dictionaryParam)
@@ -419,7 +419,7 @@ CallbackResult<typename IDLDOMString::ImplementationType> JSTestCallbackInterfac
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     auto returnValue = convert<IDLDOMString>(state, jsResult);
     RETURN_IF_EXCEPTION(throwScope, CallbackResultType::ExceptionThrown);
-    return WTFMove(returnValue);
+    return returnValue;
 }
 
 CallbackResult<typename IDLDOMString::ImplementationType> JSTestCallbackInterface::callbackWithThisObject(typename IDLInterface<TestNode>::ParameterType thisObject, typename IDLInterface<TestObj>::ParameterType testObjParam)
@@ -449,7 +449,7 @@ CallbackResult<typename IDLDOMString::ImplementationType> JSTestCallbackInterfac
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     auto returnValue = convert<IDLDOMString>(state, jsResult);
     RETURN_IF_EXCEPTION(throwScope, CallbackResultType::ExceptionThrown);
-    return WTFMove(returnValue);
+    return returnValue;
 }
 
 JSC::JSValue toJS(TestCallbackInterface& impl)

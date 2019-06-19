@@ -24,6 +24,7 @@
 #include "InitializeThreading.h"
 #include "JSCInlines.h"
 #include "JSGlobalObject.h"
+#include "YarrFlags.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,7 +54,6 @@
 const int MaxLineLength = 100 * 1024;
 
 using namespace JSC;
-using namespace WTF;
 
 struct CommandLine {
     CommandLine()
@@ -338,11 +338,18 @@ static RegExp* parseRegExpLine(VM& vm, char* line, int lineLength, const char** 
 
     ++i;
 
-    RegExp* r = RegExp::create(vm, pattern.toString(), regExpFlags(line + i));
+    auto flags = Yarr::parseFlags(line + i);
+    if (!flags) {
+        *regexpError = Yarr::errorMessage(Yarr::ErrorCode::InvalidRegularExpressionFlags);
+        return nullptr;
+    }
+
+    RegExp* r = RegExp::create(vm, pattern.toString(), flags.value());
     if (!r->isValid()) {
         *regexpError = r->errorMessage();
         return nullptr;
     }
+
     return r;
 }
 

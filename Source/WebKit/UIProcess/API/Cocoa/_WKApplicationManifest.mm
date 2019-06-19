@@ -26,8 +26,6 @@
 #import "config.h"
 #import "_WKApplicationManifestInternal.h"
 
-#if WK_API_ENABLED
-
 #import <WebCore/ApplicationManifest.h>
 #import <WebCore/ApplicationManifestParser.h>
 #import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
@@ -54,9 +52,9 @@
         WTF::String(name),
         WTF::String(shortName),
         WTF::String(description),
-        WebCore::URL(scopeURL),
+        URL(scopeURL),
         static_cast<WebCore::ApplicationManifest::Display>(display),
-        WebCore::URL(startURL)
+        URL(startURL)
     };
 
     API::Object::constructInWrapper<API::ApplicationManifest>(self, WTFMove(coreApplicationManifest));
@@ -83,7 +81,7 @@
 
 + (_WKApplicationManifest *)applicationManifestFromJSON:(NSString *)json manifestURL:(NSURL *)manifestURL documentURL:(NSURL *)documentURL
 {
-    auto manifest = WebCore::ApplicationManifestParser::parse(WTF::String(json), WebCore::URL(manifestURL), WebCore::URL(documentURL));
+    auto manifest = WebCore::ApplicationManifestParser::parse(WTF::String(json), URL(manifestURL), URL(documentURL));
     return wrapper(API::ApplicationManifest::create(manifest));
 }
 
@@ -193,5 +191,3 @@ static NSString *nullableNSString(const WTF::String& string)
 #endif // ENABLE(APPLICATION_MANIFEST)
 
 @end
-
-#endif // WK_API_ENABLED

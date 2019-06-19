@@ -28,6 +28,7 @@
 #if PLATFORM(MAC)
 
 #include "WheelEventDeltaFilter.h"
+#include <wtf/MonotonicTime.h>
 #include <wtf/RetainPtr.h>
 
 OBJC_CLASS _NSScrollingPredominantAxisFilter;

@@ -35,7 +35,7 @@
 #include <wtf/HashSet.h>
 #include <wtf/UniqueRef.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "Timer.h"
 #include "ViewportArguments.h"
 #include "VisibleSelection.h"
@@ -89,11 +89,10 @@ class RenderWidget;
 class ScriptController;
 class SecurityOrigin;
 class Settings;
-class URL;
 class VisiblePosition;
 class Widget;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 enum {
     OverflowScrollNone = 0,
     OverflowScrollLeft = 1 << 0,
@@ -107,14 +106,16 @@ using NodeQualifier = Function<Node* (const HitTestResult&, Node* terminationNod
 #endif
 
 enum {
-    LayerTreeFlagsIncludeDebugInfo = 1 << 0,
-    LayerTreeFlagsIncludeVisibleRects = 1 << 1,
-    LayerTreeFlagsIncludeTileCaches = 1 << 2,
-    LayerTreeFlagsIncludeRepaintRects = 1 << 3,
-    LayerTreeFlagsIncludePaintingPhases = 1 << 4,
-    LayerTreeFlagsIncludeContentLayers = 1 << 5,
-    LayerTreeFlagsIncludeAcceleratesDrawing = 1 << 6,
-    LayerTreeFlagsIncludeBackingStoreAttached = 1 << 7,
+    LayerTreeFlagsIncludeDebugInfo              = 1 << 0,
+    LayerTreeFlagsIncludeVisibleRects           = 1 << 1,
+    LayerTreeFlagsIncludeTileCaches             = 1 << 2,
+    LayerTreeFlagsIncludeRepaintRects           = 1 << 3,
+    LayerTreeFlagsIncludePaintingPhases         = 1 << 4,
+    LayerTreeFlagsIncludeContentLayers          = 1 << 5,
+    LayerTreeFlagsIncludeAcceleratesDrawing     = 1 << 6,
+    LayerTreeFlagsIncludeBackingStoreAttached   = 1 << 7,
+    LayerTreeFlagsIncludeRootLayerProperties    = 1 << 8,
+    LayerTreeFlagsIncludeEventRegion            = 1 << 9,
 };
 typedef unsigned LayerTreeFlags;
 
@@ -124,12 +125,12 @@ public:
     WEBCORE_EXPORT static Ref<Frame> create(Page*, HTMLFrameOwnerElement*, FrameLoaderClient*);
 
     WEBCORE_EXPORT void init();
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Creates <html><body style="..."></body></html> doing minimal amount of work.
     WEBCORE_EXPORT void initWithSimpleHTMLDocument(const String& style, const URL&);
 #endif
     WEBCORE_EXPORT void setView(RefPtr<FrameView>&&);
-    WEBCORE_EXPORT void createView(const IntSize&, const Color& backgroundColor, bool transparent,
+    WEBCORE_EXPORT void createView(const IntSize&, const Optional<Color>& backgroundColor,
         const IntSize& fixedLayoutSize, const IntRect& fixedVisibleContentRect,
         bool useFixedLayout = false, ScrollbarMode = ScrollbarAuto, bool horizontalLock = false,
         ScrollbarMode = ScrollbarAuto, bool verticalLock = false);
@@ -173,6 +174,11 @@ public:
 
     bool documentIsBeingReplaced() const { return m_documentIsBeingReplaced; }
 
+    bool hasHadUserInteraction() const { return m_hasHadUserInteraction; }
+    void setHasHadUserInteraction() { m_hasHadUserInteraction = true; }
+
+    bool requestDOMPasteAccess();
+
 // ======== All public functions below this point are candidates to move out of Frame into another class. ========
 
     WEBCORE_EXPORT void injectUserScripts(UserScriptInjectionTime);
@@ -207,12 +213,13 @@ public:
     NSArray *dataDetectionResults() const { return m_dataDetectionResults.get(); }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     const ViewportArguments& viewportArguments() const;
     WEBCORE_EXPORT void setViewportArguments(const ViewportArguments&);
 
     WEBCORE_EXPORT Node* deepestNodeAtLocation(const FloatPoint& viewportLocation);
     WEBCORE_EXPORT Node* nodeRespondingToClickEvents(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation, SecurityOrigin* = nullptr);
+    WEBCORE_EXPORT Node* nodeRespondingToDoubleClickEvent(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation);
     WEBCORE_EXPORT Node* nodeRespondingToScrollWheelEvents(const FloatPoint& viewportLocation);
 
     WEBCORE_EXPORT NSArray *wordsInCurrentParagraph() const;
@@ -251,10 +258,7 @@ public:
     String searchForLabelsBeforeElement(const Vector<String>& labels, Element*, size_t* resultDistance, bool* resultIsInCellAbove);
     String matchLabelsAgainstElement(const Vector<String>& labels, Element*);
 
-#if PLATFORM(IOS)
-    // Scroll the selection in an overflow layer.
-    void scrollOverflowLayer(RenderLayer*, const IntRect& visibleRect, const IntRect& exposeRect);
-
+#if PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT int preferredHeight() const;
     WEBCORE_EXPORT void updateLayout() const;
     WEBCORE_EXPORT NSRect caretRect();
@@ -322,22 +326,15 @@ private:
 #if ENABLE(DATA_DETECTION)
     RetainPtr<NSArray> m_dataDetectionResults;
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void betterApproximateNode(const IntPoint& testPoint, const NodeQualifier&, Node*& best, Node* failedNode, IntPoint& bestPoint, IntRect& bestRect, const IntRect& testRect);
     bool hitTestResultAtViewportLocation(const FloatPoint& viewportLocation, HitTestResult&, IntPoint& center);
     Node* qualifyingNodeAtViewportLocation(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation, const NodeQualifier&, bool shouldApproximate);
 
-    void overflowAutoScrollTimerFired();
-    void startOverflowAutoScroll(const IntPoint&);
-    int checkOverflowScroll(OverflowScrollAction);
-
     void setTimersPausedInternal(bool);
 
-    Timer m_overflowAutoScrollTimer;
-    float m_overflowAutoScrollDelta;
-    IntPoint m_overflowAutoScrollPos;
     ViewportArguments m_viewportArguments;
-    bool m_selectionChangeCallbacksDisabled;
+    bool m_selectionChangeCallbacksDisabled { false };
     VisibleSelection m_rangedSelectionBase;
     VisibleSelection m_rangedSelectionInitialExtent;
 #endif
@@ -345,10 +342,11 @@ private:
     float m_pageZoomFactor;
     float m_textZoomFactor;
 
-    int m_activeDOMObjectsAndAnimationsSuspendedCount;
+    int m_activeDOMObjectsAndAnimationsSuspendedCount { 0 };
     bool m_documentIsBeingReplaced { false };
     unsigned m_navigationDisableCount { 0 };
     unsigned m_selfOnlyRefCount { 0 };
+    bool m_hasHadUserInteraction { false };
 
 protected:
     UniqueRef<EventHandler> m_eventHandler;

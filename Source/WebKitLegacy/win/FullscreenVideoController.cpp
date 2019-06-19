@@ -39,16 +39,15 @@
 #include <WebCore/HWndDC.h>
 #include <WebCore/Page.h>
 #include <WebCore/TextRun.h>
-#include <WebKitSystemInterface/WebKitSystemInterface.h>
 #include <windowsx.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 #if USE(CA)
 #include <WebCore/PlatformCALayerClient.h>
 #include <WebCore/PlatformCALayerWin.h>
 #endif
 
-using namespace std;
 using namespace WebCore;
 
 static const Seconds timerInterval { 33_ms };
@@ -172,7 +171,7 @@ void HUDSlider::drag(const IntPoint& point, bool start)
             m_dragStartOffset = m_rect.location().x() + m_buttonSize / 2;
     }
 
-    m_buttonPosition = max(0, min(m_rect.width() - m_buttonSize, point.x() - m_dragStartOffset));
+    m_buttonPosition = std::max(0, std::min(m_rect.width() - m_buttonSize, point.x() - m_dragStartOffset));
 }
 
 #if USE(CA)
@@ -472,14 +471,9 @@ static String timeToString(float time)
     int hours = seconds / (60 * 60);
     int minutes = (seconds / 60) % 60;
     seconds %= 60;
-
-    if (hours) {
-        if (hours > 9)
-            return String::format("%s%02d:%02d:%02d", (time < 0 ? "-" : ""), hours, minutes, seconds);
-        return String::format("%s%01d:%02d:%02d", (time < 0 ? "-" : ""), hours, minutes, seconds);
-    }
-
-    return String::format("%s%02d:%02d", (time < 0 ? "-" : ""), minutes, seconds);
+    if (hours)
+        return makeString((time < 0 ? "-" : ""), hours, ':', pad('0', 2, minutes), ':', pad('0', 2, seconds));
+    return makeString((time < 0 ? "-" : ""), pad('0', 2, minutes), ':', pad('0', 2, seconds));
 }
 
 void FullscreenVideoController::draw()

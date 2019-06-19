@@ -60,6 +60,7 @@ my %defines = map { $_ => 1 } split(/ /, $defines);
 
 my @names;
 my @internalProprerties;
+my %runtimeFlags;
 my $numPredefinedProperties = 2;
 my %nameIsInherited;
 my %nameIsHighPriority;
@@ -199,6 +200,8 @@ sub addProperty($$)
                 } elsif ($codegenOptionName eq "internal-only") {
                     # internal-only properties exist to make it easier to parse compound properties (e.g. background-repeat) as if they were shorthands.
                     push @internalProprerties, $name
+                } elsif ($codegenOptionName eq "runtime-flag") {
+                    $runtimeFlags{$name} = $codegenProperties->{"runtime-flag"};
                 } else {
                     die "Unrecognized codegen property \"$codegenOptionName\" for $name property.";
                 }
@@ -243,17 +246,13 @@ print GPERF << "EOF";
 #include \"CSSProperty.h\"
 #include \"CSSPropertyNames.h\"
 #include \"HashTools.h\"
+#include "RuntimeEnabledFeatures.h"
+#include <wtf/ASCIICType.h>
+#include <wtf/text/AtomString.h>
+#include <wtf/text/WTFString.h>
 #include <string.h>
 
-#include <wtf/ASCIICType.h>
-#include <wtf/text/AtomicString.h>
-#include <wtf/text/WTFString.h>
-
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored \"-Wunknown-pragmas\"
-#pragma clang diagnostic ignored \"-Wimplicit-fallthrough\"
-#endif
+IGNORE_WARNINGS_BEGIN(\"implicit-fallthrough\")
 
 // Older versions of gperf like to use the `register` keyword.
 #define register
@@ -325,6 +324,22 @@ print GPERF << "EOF";
     }
 }
 
+bool isEnabledCSSProperty(const CSSPropertyID id)
+{
+    switch (id) {
+EOF
+
+foreach my $name (keys %runtimeFlags) {
+  print GPERF "    case CSSPropertyID::CSSProperty" . $nameToId{$name} . ":\n";
+  print GPERF "        return RuntimeEnabledFeatures::sharedFeatures()." . $runtimeFlags{$name} . "Enabled();\n";
+}
+
+print GPERF << "EOF";
+    default:
+        return true;
+    }
+}
+
 const char* getPropertyName(CSSPropertyID id)
 {
     if (id < firstCSSProperty)
@@ -335,7 +350,7 @@ const char* getPropertyName(CSSPropertyID id)
     return propertyNameStrings[index];
 }
 
-const AtomicString& getPropertyNameAtomicString(CSSPropertyID id)
+const AtomString& getPropertyNameAtomString(CSSPropertyID id)
 {
     if (id < firstCSSProperty)
         return nullAtom();
@@ -343,11 +358,11 @@ const AtomicString& getPropertyNameAtomicString(CSSPropertyID id)
     if (index >= numCSSProperties)
         return nullAtom();
 
-    static AtomicString* propertyStrings = new AtomicString[numCSSProperties]; // Intentionally never destroyed.
-    AtomicString& propertyString = propertyStrings[index];
+    static AtomString* propertyStrings = new AtomString[numCSSProperties]; // Intentionally never destroyed.
+    AtomString& propertyString = propertyStrings[index];
     if (propertyString.isNull()) {
         const char* propertyName = propertyNameStrings[index];
-        propertyString = AtomicString(propertyName, strlen(propertyName), AtomicString::ConstructFromLiteral);
+        propertyString = AtomString(propertyName, strlen(propertyName), AtomString::ConstructFromLiteral);
     }
     return propertyString;
 }
@@ -355,7 +370,7 @@ const AtomicString& getPropertyNameAtomicString(CSSPropertyID id)
 String getPropertyNameString(CSSPropertyID id)
 {
     // We share the StringImpl with the AtomicStrings.
-    return getPropertyNameAtomicString(id).string();
+    return getPropertyNameAtomString(id).string();
 }
 
 String getJSPropertyName(CSSPropertyID id)
@@ -401,11 +416,28 @@ bool CSSProperty::isInheritedProperty(CSSPropertyID id)
     return isInheritedPropertyTable[id];
 }
 
+Vector<String> CSSProperty::aliasesForProperty(CSSPropertyID id)
+{
+    switch (id) {
+EOF
+
+for my $name (@names) {
+    if (!$nameToAliases{$name}) {
+        next;
+    }
+    print GPERF "    case CSSPropertyID::CSSProperty" . $nameToId{$name} . ":\n";
+    print GPERF "        return { \"" . join("\"_s, \"", @{$nameToAliases{$name}}) . "\"_s };\n";
+}
+
+print GPERF << "EOF";
+    default:
+        return { };
+    }
+}
+
 } // namespace WebCore
 
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
+IGNORE_WARNINGS_END
 EOF
 
 close GPERF;
@@ -453,8 +485,9 @@ print HEADER "const CSSPropertyID lastHighPriorityProperty = CSSProperty" . $nam
 print HEADER << "EOF";
 
 bool isInternalCSSProperty(const CSSPropertyID);
+bool isEnabledCSSProperty(const CSSPropertyID);
 const char* getPropertyName(CSSPropertyID);
-const WTF::AtomicString& getPropertyNameAtomicString(CSSPropertyID id);
+const WTF::AtomString& getPropertyNameAtomString(CSSPropertyID id);
 WTF::String getPropertyNameString(CSSPropertyID id);
 WTF::String getJSPropertyName(CSSPropertyID);
 
@@ -470,7 +503,6 @@ namespace WTF {
 template<> struct DefaultHash<WebCore::CSSPropertyID> { typedef IntHash<unsigned> Hash; };
 template<> struct HashTraits<WebCore::CSSPropertyID> : GenericHashTraits<WebCore::CSSPropertyID> {
     static const bool emptyValueIsZero = true;
-    static const bool needsDestruction = false;
     static void constructDeletedValue(WebCore::CSSPropertyID& slot) { slot = static_cast<WebCore::CSSPropertyID>(WebCore::lastCSSProperty + 1); }
     static bool isDeletedValue(WebCore::CSSPropertyID value) { return value == (WebCore::lastCSSProperty + 1); }
 };
@@ -1010,12 +1042,21 @@ foreach my $name (@names) {
 print STYLEBUILDER << "EOF";
 };
 
-void StyleBuilder::applyProperty(CSSPropertyID property, StyleResolver& styleResolver, CSSValue& value, bool isInitial, bool isInherit)
+void StyleBuilder::applyProperty(CSSPropertyID property, StyleResolver& styleResolver, CSSValue& value, bool isInitial, bool isInherit, const CSSRegisteredCustomProperty* registered)
 {
     switch (property) {
     case CSSPropertyInvalid:
-    case CSSPropertyCustom:
         break;
+    case CSSPropertyCustom: {
+        auto& customProperty = downcast<CSSCustomPropertyValue>(value);
+        if (isInitial)
+            StyleBuilderCustom::applyInitialCustomProperty(styleResolver, registered, customProperty.name());
+        else if (isInherit)
+            StyleBuilderCustom::applyInheritCustomProperty(styleResolver, registered, customProperty.name());
+        else
+            StyleBuilderCustom::applyValueCustomProperty(styleResolver, registered, customProperty);
+        break;
+    }
 EOF
 
 foreach my $name (@names) {

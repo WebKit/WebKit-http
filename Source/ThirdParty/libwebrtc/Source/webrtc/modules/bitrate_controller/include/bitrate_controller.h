@@ -15,15 +15,17 @@
 #ifndef MODULES_BITRATE_CONTROLLER_INCLUDE_BITRATE_CONTROLLER_H_
 #define MODULES_BITRATE_CONTROLLER_INCLUDE_BITRATE_CONTROLLER_H_
 
-#include <map>
+#include <stddef.h>
+#include <stdint.h>
 
 #include "modules/congestion_controller/goog_cc/delay_based_bwe.h"
 #include "modules/include/module.h"
-#include "modules/pacing/paced_sender.h"
 #include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
+#include "rtc_base/deprecation.h"
 
 namespace webrtc {
 
+class Clock;
 class RtcEventLog;
 
 // Deprecated
@@ -91,8 +93,6 @@ class BitrateController : public Module, public RtcpBandwidthObserver {
   // Gets the available payload bandwidth in bits per second. Note that
   // this bandwidth excludes packet headers.
   virtual bool AvailableBandwidth(uint32_t* bandwidth) const = 0;
-
-  virtual void SetReservedBitrate(uint32_t reserved_bitrate_bps) = 0;
 
   virtual bool GetNetworkParameters(uint32_t* bitrate,
                                     uint8_t* fraction_loss,

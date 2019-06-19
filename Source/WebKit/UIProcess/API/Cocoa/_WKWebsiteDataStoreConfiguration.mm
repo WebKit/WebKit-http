@@ -24,9 +24,7 @@
  */
 
 #import "config.h"
-#import "_WKWebsiteDataStoreConfiguration.h"
-
-#if WK_API_ENABLED
+#import "_WKWebsiteDataStoreConfigurationInternal.h"
 
 #import <wtf/RetainPtr.h>
 
@@ -36,118 +34,192 @@ static void checkURLArgument(NSURL *url)
         [NSException raise:NSInvalidArgumentException format:@"%@ is not a file URL", url];
 }
 
-@implementation _WKWebsiteDataStoreConfiguration {
-    RetainPtr<NSURL> _webStorageDirectoryURL;
-    RetainPtr<NSURL> _indexedDBDatabaseDirectoryURL;
-    RetainPtr<NSURL> _webSQLDatabaseDirectoryURL;
-    RetainPtr<NSURL> _cookieStorageFileURL;
-    RetainPtr<NSURL> _resourceLoadStatisticsDirectoryURL;
-    RetainPtr<NSURL> _cacheStorageDirectoryURL;
-    RetainPtr<NSURL> _serviceWorkerRegistrationDirectoryURL;
-    RetainPtr<NSString> _sourceApplicationBundleIdentifier;
-    RetainPtr<NSString> _sourceApplicationSecondaryIdentifier;
+@implementation _WKWebsiteDataStoreConfiguration
+
+- (instancetype)init
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    _configuration->setPersistent(true);
+
+    return self;
+}
+
+- (instancetype)initNonPersistentConfiguration
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    _configuration->setPersistent(false);
+
+    return self;
+}
+
+- (BOOL)isPersistent
+{
+    return _configuration->isPersistent();
 }
 
 - (NSURL *)_webStorageDirectory
 {
-    return _webStorageDirectoryURL.get();
+    return [NSURL fileURLWithPath:_configuration->webStorageDirectory() isDirectory:YES];
 }
 
 - (void)_setWebStorageDirectory:(NSURL *)url
 {
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set _webStorageDirectory on a non-persistent _WKWebsiteDataStoreConfiguration."];
     checkURLArgument(url);
-    _webStorageDirectoryURL = adoptNS([url copy]);
+    _configuration->setWebStorageDirectory(url.path);
 }
 
 - (NSURL *)_indexedDBDatabaseDirectory
 {
-    return _indexedDBDatabaseDirectoryURL.get();
+    return [NSURL fileURLWithPath:_configuration->indexedDBDatabaseDirectory() isDirectory:YES];
 }
 
 - (void)_setIndexedDBDatabaseDirectory:(NSURL *)url
 {
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set _indexedDBDatabaseDirectory on a non-persistent _WKWebsiteDataStoreConfiguration."];
     checkURLArgument(url);
-    _indexedDBDatabaseDirectoryURL = adoptNS([url copy]);
+    _configuration->setIndexedDBDatabaseDirectory(url.path);
 }
 
 - (NSURL *)_webSQLDatabaseDirectory
 {
-    return _webSQLDatabaseDirectoryURL.get();
+    return [NSURL fileURLWithPath:_configuration->webSQLDatabaseDirectory() isDirectory:YES];
 }
 
 - (void)_setWebSQLDatabaseDirectory:(NSURL *)url
 {
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set _webSQLDatabaseDirectory on a non-persistent _WKWebsiteDataStoreConfiguration."];
     checkURLArgument(url);
-    _webSQLDatabaseDirectoryURL = adoptNS([url copy]);
+    _configuration->setWebSQLDatabaseDirectory(url.path);
+}
+
+- (NSURL *)httpProxy
+{
+    return _configuration->httpProxy();
+}
+
+- (void)setHTTPProxy:(NSURL *)proxy
+{
+    _configuration->setHTTPProxy(proxy);
+}
+
+- (NSURL *)httpsProxy
+{
+    return _configuration->httpsProxy();
+}
+
+- (void)setHTTPSProxy:(NSURL *)proxy
+{
+    _configuration->setHTTPSProxy(proxy);
 }
 
 - (NSURL *)_cookieStorageFile
 {
-    return _cookieStorageFileURL.get();
+    return [NSURL fileURLWithPath:_configuration->cookieStorageFile() isDirectory:NO];
 }
 
 - (void)_setCookieStorageFile:(NSURL *)url
 {
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set _cookieStorageFile on a non-persistent _WKWebsiteDataStoreConfiguration."];
     checkURLArgument(url);
     if ([url hasDirectoryPath])
         [NSException raise:NSInvalidArgumentException format:@"The cookie storage path must point to a file, not a directory."];
 
-    _cookieStorageFileURL = adoptNS([url copy]);
+    _configuration->setCookieStorageFile(url.path);
 }
 
 - (NSURL *)_resourceLoadStatisticsDirectory
 {
-    return _resourceLoadStatisticsDirectoryURL.get();
+    return [NSURL fileURLWithPath:_configuration->resourceLoadStatisticsDirectory() isDirectory:YES];
 }
 
 - (void)_setResourceLoadStatisticsDirectory:(NSURL *)url
 {
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set _resourceLoadStatisticsDirectory on a non-persistent _WKWebsiteDataStoreConfiguration."];
     checkURLArgument(url);
-    _resourceLoadStatisticsDirectoryURL = adoptNS([url copy]);
+    _configuration->setResourceLoadStatisticsDirectory(url.path);
 }
 
 - (NSURL *)_cacheStorageDirectory
 {
-    return _cacheStorageDirectoryURL.get();
+    return [NSURL fileURLWithPath:_configuration->cacheStorageDirectory() isDirectory:YES];
 }
 
 - (void)_setCacheStorageDirectory:(NSURL *)url
 {
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set _cacheStorageDirectory on a non-persistent _WKWebsiteDataStoreConfiguration."];
     checkURLArgument(url);
-    _cacheStorageDirectoryURL = adoptNS([url copy]);
+    _configuration->setCacheStorageDirectory(url.path);
 }
 
 - (NSURL *)_serviceWorkerRegistrationDirectory
 {
-    return _serviceWorkerRegistrationDirectoryURL.get();
+    return [NSURL fileURLWithPath:_configuration->serviceWorkerRegistrationDirectory() isDirectory:YES];
 }
 
 - (void)_setServiceWorkerRegistrationDirectory:(NSURL *)url
 {
+    if (!_configuration->isPersistent())
+        [NSException raise:NSInvalidArgumentException format:@"Cannot set _serviceWorkerRegistrationDirectory on a non-persistent _WKWebsiteDataStoreConfiguration."];
     checkURLArgument(url);
-    _serviceWorkerRegistrationDirectoryURL = adoptNS([url copy]);
+    _configuration->setServiceWorkerRegistrationDirectory(url.path);
 }
 
 - (void)setSourceApplicationBundleIdentifier:(NSString *)identifier
 {
-    _sourceApplicationBundleIdentifier = identifier;
+    _configuration->setSourceApplicationBundleIdentifier(identifier);
 }
 
 - (NSString *)sourceApplicationBundleIdentifier
 {
-    return _sourceApplicationBundleIdentifier.get();
+    return _configuration->sourceApplicationBundleIdentifier();
 }
 
 - (NSString *)sourceApplicationSecondaryIdentifier
 {
-    return _sourceApplicationSecondaryIdentifier.get();
+    return _configuration->sourceApplicationSecondaryIdentifier();
 }
 
 - (void)setSourceApplicationSecondaryIdentifier:(NSString *)identifier
 {
-    _sourceApplicationSecondaryIdentifier = identifier;
+    _configuration->setSourceApplicationSecondaryIdentifier(identifier);
+}
+
+- (BOOL)deviceManagementRestrictionsEnabled
+{
+    return _configuration->deviceManagementRestrictionsEnabled();
+}
+
+- (void)setDeviceManagementRestrictionsEnabled:(BOOL)enabled
+{
+    _configuration->setDeviceManagementRestrictionsEnabled(enabled);
+}
+
+- (BOOL)allLoadsBlockedByDeviceManagementRestrictionsForTesting
+{
+    return _configuration->allLoadsBlockedByDeviceManagementRestrictionsForTesting();
+}
+
+- (void)setAllLoadsBlockedByDeviceManagementRestrictionsForTesting:(BOOL)blocked
+{
+    _configuration->setAllLoadsBlockedByDeviceManagementRestrictionsForTesting(blocked);
+}
+
+- (API::Object&)_apiObject
+{
+    return *_configuration;
 }
 
 @end
-
-#endif

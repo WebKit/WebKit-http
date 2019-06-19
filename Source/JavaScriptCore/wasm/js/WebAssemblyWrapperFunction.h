@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,15 +40,15 @@ public:
 
     const static unsigned StructureFlags = Base::StructureFlags;
 
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess mode>
     static IsoSubspace* subspaceFor(VM& vm)
     {
-        return &vm.webAssemblyWrapperFunctionSpace;
+        return vm.webAssemblyWrapperFunctionSpace<mode>();
     }
 
     DECLARE_INFO;
 
-    static WebAssemblyWrapperFunction* create(VM&, JSGlobalObject*, JSObject*, unsigned importIndex, JSWebAssemblyInstance*, Wasm::SignatureIndex);
+    static WebAssemblyWrapperFunction* create(VM&, JSGlobalObject*, Structure*, JSObject*, unsigned importIndex, JSWebAssemblyInstance*, Wasm::SignatureIndex);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     Wasm::SignatureIndex signatureIndex() const { return m_importableFunction.signatureIndex; }
@@ -64,7 +64,7 @@ protected:
 private:
     WebAssemblyWrapperFunction(VM&, JSGlobalObject*, Structure*, WasmToWasmImportableFunction);
 
-    PoisonedWriteBarrier<WebAssemblyWrapperFunctionPoison, JSObject> m_function;
+    WriteBarrier<JSObject> m_function;
     // It's safe to just hold the raw WasmToWasmImportableFunction because we have a reference
     // to our Instance, which points to the CodeBlock, which points to the Module
     // that exported us, which ensures that the actual Signature/code doesn't get deallocated.

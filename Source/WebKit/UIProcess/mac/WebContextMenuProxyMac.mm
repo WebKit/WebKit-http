@@ -138,7 +138,8 @@
         return;
     }
 
-    WebKit::WebContextMenuItemData item(WebCore::ActionType, static_cast<WebCore::ContextMenuAction>([sender tag]), [sender title], [sender isEnabled], [sender state] == NSControlStateValueOn);
+    ASSERT(!sender || [sender isKindOfClass:NSMenuItem.class]);
+    WebKit::WebContextMenuItemData item(WebCore::ActionType, static_cast<WebCore::ContextMenuAction>([sender tag]), [sender title], [sender isEnabled], [(NSMenuItem *)sender state] == NSControlStateValueOn);
     if (representedObject) {
         ASSERT([representedObject isKindOfClass:[WKUserDataWrapper class]]);
         item.setUserData([static_cast<WKUserDataWrapper *>(representedObject) userData]);
@@ -192,12 +193,8 @@ void WebContextMenuProxyMac::setupServicesMenu()
         auto cgImage = image->makeCGImage();
         auto nsImage = adoptNS([[NSImage alloc] initWithCGImage:cgImage.get() size:image->size()]);
 
-#ifdef __LP64__
         auto itemProvider = adoptNS([[NSItemProvider alloc] initWithItem:[nsImage TIFFRepresentation] typeIdentifier:(__bridge NSString *)kUTTypeTIFF]);
         items = @[ itemProvider.get() ];
-#else
-        items = @[ ];
-#endif
     } else if (!m_context.controlledSelectionData().isEmpty()) {
         auto selectionData = adoptNS([[NSData alloc] initWithBytes:static_cast<const void*>(m_context.controlledSelectionData().data()) length:m_context.controlledSelectionData().size()]);
         auto selection = adoptNS([[NSAttributedString alloc] initWithRTFD:selectionData.get() documentAttributes:nil]);
@@ -270,13 +267,13 @@ RetainPtr<NSMenuItem> WebContextMenuProxyMac::createShareMenuItem()
     auto items = adoptNS([[NSMutableArray alloc] init]);
 
     if (!hitTestData.absoluteLinkURL.isEmpty()) {
-        auto absoluteLinkURL = URL(ParsedURLString, hitTestData.absoluteLinkURL);
+        auto absoluteLinkURL = URL({ }, hitTestData.absoluteLinkURL);
         if (!absoluteLinkURL.isEmpty())
             [items addObject:(NSURL *)absoluteLinkURL];
     }
 
     if (hitTestData.isDownloadableMedia && !hitTestData.absoluteMediaURL.isEmpty()) {
-        auto downloadableMediaURL = URL(ParsedURLString, hitTestData.absoluteMediaURL);
+        auto downloadableMediaURL = URL({ }, hitTestData.absoluteMediaURL);
         if (!downloadableMediaURL.isEmpty())
             [items addObject:(NSURL *)downloadableMediaURL];
     }
@@ -306,9 +303,7 @@ RetainPtr<NSMenuItem> WebContextMenuProxyMac::createShareMenuItem()
     // Setting the picker lets the delegate retain it to keep it alive, but this picker is kept alive by the menu item.
     [[WKSharingServicePickerDelegate sharedSharingServicePickerDelegate] setPicker:nil];
 
-#if WK_API_ENABLED
     [item setIdentifier:_WKMenuItemIdentifierShareMenu];
-#endif
 
     return item;
 }
@@ -344,7 +339,6 @@ RetainPtr<NSMenu> WebContextMenuProxyMac::createContextMenuFromItems(const Vecto
 static NSString *menuItemIdentifier(const WebCore::ContextMenuAction action)
 {
     switch (action) {
-#if WK_API_ENABLED
     case ContextMenuItemTagCopy:
         return _WKMenuItemIdentifierCopy;
 
@@ -416,7 +410,6 @@ static NSString *menuItemIdentifier(const WebCore::ContextMenuAction action)
 
     case ContextMenuItemTagSpeechMenu:
         return _WKMenuItemIdentifierSpeechMenu;
-#endif
 
     default:
         return nil;

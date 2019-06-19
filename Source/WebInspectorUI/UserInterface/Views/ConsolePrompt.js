@@ -33,13 +33,13 @@ WI.ConsolePrompt = class ConsolePrompt extends WI.View
 
         this.element.classList.add("console-prompt", WI.SyntaxHighlightedStyleClassName);
 
+        this.element.appendChild(WI.ImageUtilities.useSVGSymbol("Images/UserInputPrompt.svg", "glyph"));
+
         this._delegate = delegate || null;
 
         this._codeMirror = WI.CodeMirrorEditor.create(this.element, {
             lineWrapping: true,
             mode: {name: mimeType, globalVars: true},
-            indentWithTabs: true,
-            indentUnit: 4,
             matchBrackets: true
         });
 
@@ -142,9 +142,11 @@ WI.ConsolePrompt = class ConsolePrompt extends WI.View
         return !!this.text;
     }
 
-    layout()
+    sizeDidChange()
     {
-        if (this.layoutReason === WI.View.LayoutReason.Resize && this.text)
+        super.sizeDidChange();
+
+        if (this.text)
             this._codeMirror.refresh();
     }
 

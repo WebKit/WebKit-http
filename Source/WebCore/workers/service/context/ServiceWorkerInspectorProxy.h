@@ -28,6 +28,7 @@
 #if ENABLE(SERVICE_WORKER)
 
 #include <wtf/Forward.h>
+#include <wtf/Noncopyable.h>
 
 // All of these methods should be called on the Main Thread.
 // Used to send messages to the WorkerInspector on the WorkerThread.
@@ -49,8 +50,8 @@ public:
 
     void serviceWorkerTerminated();
 
-    void connectToWorker(Inspector::FrontendChannel*);
-    void disconnectFromWorker(Inspector::FrontendChannel*);
+    void connectToWorker(Inspector::FrontendChannel&);
+    void disconnectFromWorker(Inspector::FrontendChannel&);
     void sendMessageToWorker(const String&);
     void sendMessageFromWorkerToFrontend(const String&);
 

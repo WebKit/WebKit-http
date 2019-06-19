@@ -20,12 +20,12 @@
  */
 
 #include "config.h"
-#include "TextBreakIterator.h"
+#include <wtf/text/TextBreakIterator.h>
 
-#include "LineBreakIteratorPoolICU.h"
-#include "TextBreakIteratorInternalICU.h"
-#include "UTextProviderLatin1.h"
-#include "UTextProviderUTF16.h"
+#include <wtf/text/LineBreakIteratorPoolICU.h>
+#include <wtf/text/TextBreakIteratorInternalICU.h>
+#include <wtf/text/icu/UTextProviderLatin1.h>
+#include <wtf/text/icu/UTextProviderUTF16.h>
 #include <atomic>
 #include <mutex>
 #include <unicode/ubrk.h>
@@ -33,9 +33,9 @@
 
 namespace WTF {
 
-#if !PLATFORM(MAC) && !PLATFORM(IOS)
+#if !PLATFORM(MAC) && !PLATFORM(IOS_FAMILY)
 
-static Variant<TextBreakIteratorICU, TextBreakIteratorPlatform> mapModeToBackingIterator(StringView string, TextBreakIterator::Mode mode, const AtomicString& locale)
+static Variant<TextBreakIteratorICU, TextBreakIteratorPlatform> mapModeToBackingIterator(StringView string, TextBreakIterator::Mode mode, const AtomString& locale)
 {
     switch (mode) {
     case TextBreakIterator::Mode::Line:
@@ -50,7 +50,7 @@ static Variant<TextBreakIteratorICU, TextBreakIteratorPlatform> mapModeToBacking
     }
 }
 
-TextBreakIterator::TextBreakIterator(StringView string, Mode mode, const AtomicString& locale)
+TextBreakIterator::TextBreakIterator(StringView string, Mode mode, const AtomString& locale)
     : m_backing(mapModeToBackingIterator(string, mode, locale))
     , m_mode(mode)
     , m_locale(locale)
@@ -171,7 +171,7 @@ UBreakIterator* sentenceBreakIterator(StringView string)
     return setTextForIterator(*staticSentenceBreakIterator, string);
 }
 
-UBreakIterator* acquireLineBreakIterator(StringView string, const AtomicString& locale, const UChar* priorContext, unsigned priorContextLength, LineBreakIteratorMode mode)
+UBreakIterator* acquireLineBreakIterator(StringView string, const AtomString& locale, const UChar* priorContext, unsigned priorContextLength, LineBreakIteratorMode mode)
 {
     UBreakIterator* iterator = LineBreakIteratorPool::sharedPool().take(locale, mode);
     if (!iterator)
@@ -187,7 +187,7 @@ void releaseLineBreakIterator(UBreakIterator* iterator)
     LineBreakIteratorPool::sharedPool().put(iterator);
 }
 
-UBreakIterator* openLineBreakIterator(const AtomicString& locale)
+UBreakIterator* openLineBreakIterator(const AtomString& locale)
 {
     bool localeIsEmpty = locale.isEmpty();
     UErrorCode openStatus = U_ZERO_ERROR;

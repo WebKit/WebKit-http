@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,12 +22,20 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
+
 enum DeviceOrientation {
     "portrait",
     "portrait-upsidedown",
     "landscape-left",
     "landscape-right"
+};
+
+enum ModifierKey {
+    "alt",
+    "capsLock",
+    "ctrl",
+    "meta", // Command key on Mac and iOS
+    "shift"
 };
 
 interface UIScriptController {
@@ -44,10 +52,11 @@ interface UIScriptController {
 
     // Interaction.
     // These functions post events asynchronously. The callback is fired when the events have been dispatched, but any
-    // resulting behavior may also be asynchronous.
+    // resulting behavior may also be asynchronous. Points are in "global" (WKWebView) coordinates.
     void touchDownAtPoint(long x, long y, long touchCount, object callback);
     void liftUpAtPoint(long x, long y, long touchCount, object callback);
     void singleTapAtPoint(long x, long y, object callback);
+    void singleTapAtPointWithModifiers(long x, long y, object modifierArray, object callback);
     void doubleTapAtPoint(long x, long y, object callback);
     void dragFromPointToPoint(long startX, long startY, long endX, long endY, double durationSeconds, object callback);
 
@@ -57,11 +66,13 @@ interface UIScriptController {
     void stylusMoveToPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, object callback);
     void stylusUpAtPoint(long x, long y, object callback);
     void stylusTapAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, object callback);
+    void stylusTapAtPointWithModifiers(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, object modifierArray, object callback);
 
     void enterText(DOMString text);
     void typeCharacterUsingHardwareKeyboard(DOMString character, object callback);
-    void keyDownUsingHardwareKeyboard(DOMString character, object callback);
-    void keyUpUsingHardwareKeyboard(DOMString character, object callback);
+
+    void keyDown(DOMString character, object modifierArray);
+    void toggleCapsLock(object callback);
 
     // eventsJSON describes a series of user events in JSON form. For the keys, see HIDEventGenerator.mm.
     // For example, this JSON describes a touch down followed by a touch up (i.e. a single tap).
@@ -176,6 +187,8 @@ interface UIScriptController {
     // Equivalent of pressing the Done button in the form accessory bar.
     void dismissFormAccessoryView();
 
+    void dismissFilePicker(object callback);
+
     readonly attribute DOMString textContentType;
 
     // Form control handling
@@ -194,7 +207,7 @@ interface UIScriptController {
     void setTimePickerValue(long hour, long minute);
 
     // Share sheet
-    void invokeShareSheetWithResolution(boolean resolved);
+    void setShareSheetCompletesImmediatelyWithResolution(boolean resolved);
 
     // <datalist>
     readonly attribute boolean isShowingDataListSuggestions;
@@ -210,17 +223,44 @@ interface UIScriptController {
     // These callbacks also work for the form accessory views.
     attribute object didShowKeyboardCallback;
     attribute object didHideKeyboardCallback;
+    readonly attribute boolean isShowingKeyboard;
+
+    attribute object didShowMenuCallback;
+    attribute object didHideMenuCallback;
+    readonly attribute boolean isDismissingMenu;
+    readonly attribute boolean isShowingMenu;
+    readonly attribute object menuRect;
+    object rectForMenuAction(DOMString action);
+
+    readonly attribute boolean isShowingPopover;
+    attribute object willPresentPopoverCallback;
+    attribute object didDismissPopoverCallback;
 
     attribute object willBeginZoomingCallback;
     attribute object didEndZoomingCallback;
 
     void zoomToScale(double scale, object callback);
 
+    void setViewScale(double scale);
+    void setMinimumEffectiveWidth(double effectiveWidth);
+    void setAllowsViewportShrinkToFit(boolean allows);
+
+    void resignFirstResponder();
+    readonly attribute boolean isPresentingModally;
+
+    readonly attribute double contentOffsetX;
+    readonly attribute double contentOffsetY;
+
+    attribute boolean scrollUpdatesDisabled; // Turns off notifications back to the web process after scrolls (used for testing scrolling tree).
+
     void scrollToOffset(long x, long y); // Initiate an animated scroll in the UI process.
     attribute object didEndScrollingCallback;
 
     void immediateScrollToOffset(long x, long y); // Set the scroll position in the UI process without animation.
     void immediateZoomToScale(double scale); // Set the zoom scale in the UI process without animation.
+
+    // Find the scroller for the given point in content ("absolute") coordinates, and do an immediate scroll.
+    void immediateScrollElementAtContentPointToOffset(long x, long y, long xOffset, long yOffset);
 
     // View state
     readonly attribute double zoomScale;
@@ -233,12 +273,17 @@ interface UIScriptController {
 
     readonly attribute object contentVisibleRect; // Returned object has 'left', 'top', 'width', 'height' properties.
 
-    readonly attribute object selectionRangeViewRects; // An array of objects with 'left', 'top', 'width', and 'height' properties.
+    readonly attribute object textSelectionRangeRects; // An array of objects with 'left', 'top', 'width', and 'height' properties.
     readonly attribute object textSelectionCaretRect; // An object with 'left', 'top', 'width', 'height' properties.
     readonly attribute object selectionStartGrabberViewRect;
     readonly attribute object selectionEndGrabberViewRect;
-
+    readonly attribute object selectionCaretViewRect;
+    readonly attribute object selectionRangeViewRects;
+    readonly attribute object calendarType;
+    void setDefaultCalendarType(DOMString calendarIdentifier);
     readonly attribute object inputViewBounds;
+
+    void setKeyboardInputModeIdentifier(DOMString identifier);
 
     void replaceTextAtRange(DOMString text, long location, long length);
     void removeAllDynamicDictionaries();
@@ -266,4 +311,14 @@ interface UIScriptController {
     void firstResponderSuppressionForWebView(boolean shouldSuppress);
     void makeWindowContentViewFirstResponder();
     readonly attribute boolean isWindowContentViewFirstResponder;
+
+    void setHardwareKeyboardAttached(boolean attached);
+
+    object attachmentInfo(DOMString attachmentIdentifier);
+
+    // Editing
+    void drawSquareInEditableImage();
+    readonly attribute long numberOfStrokesInEditableImage;
+    readonly attribute DOMString lastUndoLabel;
+    readonly attribute DOMString firstRedoLabel;
 };

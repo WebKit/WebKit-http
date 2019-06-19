@@ -27,7 +27,6 @@
 
 #include "ConcurrentJSLock.h"
 #include "Structure.h"
-#include <wtf/SegmentedVector.h>
 
 namespace JSC {
 
@@ -58,7 +57,9 @@ const ArrayModes Uint32ArrayMode = 1 << 27;
 const ArrayModes Float32ArrayMode = 1 << 28;
 const ArrayModes Float64ArrayMode = 1 << 29;
 
-inline constexpr ArrayModes asArrayModes(IndexingType indexingMode)
+JS_EXPORT_PRIVATE extern const ArrayModes typedArrayModes[NumberOfTypedArrayTypesExcludingDataView];
+
+constexpr ArrayModes asArrayModesIgnoringTypedArrays(IndexingType indexingMode)
 {
     return static_cast<unsigned>(1) << static_cast<unsigned>(indexingMode);
 }
@@ -76,12 +77,12 @@ inline constexpr ArrayModes asArrayModes(IndexingType indexingMode)
     )
 
 #define ALL_NON_ARRAY_ARRAY_MODES                       \
-    (asArrayModes(NonArray)                             \
-    | asArrayModes(NonArrayWithInt32)                   \
-    | asArrayModes(NonArrayWithDouble)                  \
-    | asArrayModes(NonArrayWithContiguous)              \
-    | asArrayModes(NonArrayWithArrayStorage)            \
-    | asArrayModes(NonArrayWithSlowPutArrayStorage)     \
+    (asArrayModesIgnoringTypedArrays(NonArray)                             \
+    | asArrayModesIgnoringTypedArrays(NonArrayWithInt32)                   \
+    | asArrayModesIgnoringTypedArrays(NonArrayWithDouble)                  \
+    | asArrayModesIgnoringTypedArrays(NonArrayWithContiguous)              \
+    | asArrayModesIgnoringTypedArrays(NonArrayWithArrayStorage)            \
+    | asArrayModesIgnoringTypedArrays(NonArrayWithSlowPutArrayStorage)     \
     | ALL_TYPED_ARRAY_MODES)
 
 #define ALL_COPY_ON_WRITE_ARRAY_MODES                   \
@@ -90,13 +91,13 @@ inline constexpr ArrayModes asArrayModes(IndexingType indexingMode)
     | CopyOnWriteArrayWithContiguousArrayMode)
 
 #define ALL_WRITABLE_ARRAY_ARRAY_MODES                  \
-    (asArrayModes(ArrayClass)                           \
-    | asArrayModes(ArrayWithUndecided)                  \
-    | asArrayModes(ArrayWithInt32)                      \
-    | asArrayModes(ArrayWithDouble)                     \
-    | asArrayModes(ArrayWithContiguous)                 \
-    | asArrayModes(ArrayWithArrayStorage)               \
-    | asArrayModes(ArrayWithSlowPutArrayStorage))
+    (asArrayModesIgnoringTypedArrays(ArrayClass)                           \
+    | asArrayModesIgnoringTypedArrays(ArrayWithUndecided)                  \
+    | asArrayModesIgnoringTypedArrays(ArrayWithInt32)                      \
+    | asArrayModesIgnoringTypedArrays(ArrayWithDouble)                     \
+    | asArrayModesIgnoringTypedArrays(ArrayWithContiguous)                 \
+    | asArrayModesIgnoringTypedArrays(ArrayWithArrayStorage)               \
+    | asArrayModesIgnoringTypedArrays(ArrayWithSlowPutArrayStorage))
 
 #define ALL_ARRAY_ARRAY_MODES                           \
     (ALL_WRITABLE_ARRAY_ARRAY_MODES                     \
@@ -104,33 +105,12 @@ inline constexpr ArrayModes asArrayModes(IndexingType indexingMode)
 
 #define ALL_ARRAY_MODES (ALL_NON_ARRAY_ARRAY_MODES | ALL_ARRAY_ARRAY_MODES)
 
-inline ArrayModes arrayModeFromStructure(Structure* structure)
+inline ArrayModes arrayModesFromStructure(Structure* structure)
 {
-    switch (structure->classInfo()->typedArrayStorageType) {
-    case TypeInt8:
-        return Int8ArrayMode;
-    case TypeUint8:
-        return Uint8ArrayMode;
-    case TypeUint8Clamped:
-        return Uint8ClampedArrayMode;
-    case TypeInt16:
-        return Int16ArrayMode;
-    case TypeUint16:
-        return Uint16ArrayMode;
-    case TypeInt32:
-        return Int32ArrayMode;
-    case TypeUint32:
-        return Uint32ArrayMode;
-    case TypeFloat32:
-        return Float32ArrayMode;
-    case TypeFloat64:
-        return Float64ArrayMode;
-    case TypeDataView:
-    case NotTypedArray:
-        break;
-    }
-
-    return asArrayModes(structure->indexingMode());
+    JSType type = structure->typeInfo().type();
+    if (isTypedArrayType(type))
+        return typedArrayModes[type - FirstTypedArrayType];
+    return asArrayModesIgnoringTypedArrays(structure->indexingMode());
 }
 
 void dumpArrayModes(PrintStream&, ArrayModes);
@@ -156,37 +136,37 @@ inline bool arrayModesAlreadyChecked(ArrayModes proven, ArrayModes expected)
     return (expected | proven) == expected;
 }
 
-inline bool arrayModesInclude(ArrayModes arrayModes, IndexingType shape)
+inline bool arrayModesIncludeIgnoringTypedArrays(ArrayModes arrayModes, IndexingType shape)
 {
-    ArrayModes modes = asArrayModes(NonArray | shape) | asArrayModes(ArrayClass | shape);
+    ArrayModes modes = asArrayModesIgnoringTypedArrays(NonArray | shape) | asArrayModesIgnoringTypedArrays(ArrayClass | shape);
     if (hasInt32(shape) || hasDouble(shape) || hasContiguous(shape))
-        modes |= asArrayModes(ArrayClass | shape | CopyOnWrite);
+        modes |= asArrayModesIgnoringTypedArrays(ArrayClass | shape | CopyOnWrite);
     return !!(arrayModes & modes);
 }
 
 inline bool shouldUseSlowPutArrayStorage(ArrayModes arrayModes)
 {
-    return arrayModesInclude(arrayModes, SlowPutArrayStorageShape);
+    return arrayModesIncludeIgnoringTypedArrays(arrayModes, SlowPutArrayStorageShape);
 }
 
 inline bool shouldUseFastArrayStorage(ArrayModes arrayModes)
 {
-    return arrayModesInclude(arrayModes, ArrayStorageShape);
+    return arrayModesIncludeIgnoringTypedArrays(arrayModes, ArrayStorageShape);
 }
 
 inline bool shouldUseContiguous(ArrayModes arrayModes)
 {
-    return arrayModesInclude(arrayModes, ContiguousShape);
+    return arrayModesIncludeIgnoringTypedArrays(arrayModes, ContiguousShape);
 }
 
 inline bool shouldUseDouble(ArrayModes arrayModes)
 {
-    return arrayModesInclude(arrayModes, DoubleShape);
+    return arrayModesIncludeIgnoringTypedArrays(arrayModes, DoubleShape);
 }
 
 inline bool shouldUseInt32(ArrayModes arrayModes)
 {
-    return arrayModesInclude(arrayModes, Int32Shape);
+    return arrayModesIncludeIgnoringTypedArrays(arrayModes, Int32Shape);
 }
 
 inline bool hasSeenArray(ArrayModes arrayModes)
@@ -210,21 +190,15 @@ inline bool hasSeenCopyOnWriteArray(ArrayModes arrayModes)
 }
 
 class ArrayProfile {
+    friend class CodeBlock;
+
 public:
-    ArrayProfile()
-        : ArrayProfile(std::numeric_limits<unsigned>::max())
-    {
-    }
-    
-    explicit ArrayProfile(unsigned bytecodeOffset)
-        : m_bytecodeOffset(bytecodeOffset)
-        , m_mayInterceptIndexedAccesses(false)
+    explicit ArrayProfile()
+        : m_mayInterceptIndexedAccesses(false)
         , m_usesOriginalArrayStructures(true)
         , m_didPerformFirstRunPruning(false)
     {
     }
-    
-    unsigned bytecodeOffset() const { return m_bytecodeOffset; }
     
     StructureID* addressOfLastSeenStructureID() { return &m_lastSeenStructureID; }
     ArrayModes* addressOfArrayModes() { return &m_observedArrayModes; }
@@ -255,16 +229,11 @@ public:
     CString briefDescription(const ConcurrentJSLocker&, CodeBlock*);
     CString briefDescriptionWithoutUpdating(const ConcurrentJSLocker&);
     
-#if !ASSERT_DISABLED
-    inline bool isValid() const { return m_typeName == s_typeName; }
-#endif
-
 private:
     friend class LLIntOffsetsExtractor;
     
     static Structure* polymorphicStructure() { return static_cast<Structure*>(reinterpret_cast<void*>(1)); }
     
-    unsigned m_bytecodeOffset;
     StructureID m_lastSeenStructureID { 0 };
     bool m_mayStoreToHole { false }; // This flag may become overloaded to indicate other special cases that were encountered during array access, as it depends on indexing type. Since we currently have basically just one indexing type (two variants of ArrayStorage), this flag for now just means exactly what its name implies.
     bool m_outOfBounds { false };
@@ -272,13 +241,7 @@ private:
     bool m_usesOriginalArrayStructures : 1;
     bool m_didPerformFirstRunPruning : 1;
     ArrayModes m_observedArrayModes { 0 };
-
-#if !ASSERT_DISABLED
-    static const char* const s_typeName;
-    const char* m_typeName { s_typeName };
-#endif
 };
-
-typedef SegmentedVector<ArrayProfile, 4> ArrayProfileVector;
+static_assert(sizeof(ArrayProfile) == 12);
 
 } // namespace JSC

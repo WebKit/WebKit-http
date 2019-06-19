@@ -38,7 +38,8 @@ namespace WebCore {
 class BaseCheckableInputType : public InputType {
 protected:
     explicit BaseCheckableInputType(HTMLInputElement& element) : InputType(element) { }
-    void handleKeydownEvent(KeyboardEvent&) override;
+    ShouldCallBaseEventHandler handleKeydownEvent(KeyboardEvent&) override;
+    void fireInputAndChangeEvents();
 
 private:
     FormControlState saveFormControlState() const override;

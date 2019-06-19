@@ -25,13 +25,13 @@
  
  messages -> WebCookieManager {
     void GetHostnamesWithCookies(PAL::SessionID sessionID, WebKit::CallbackID callbackID)
-    void DeleteCookiesForHostname(PAL::SessionID sessionID, String hostname)
+    void DeleteCookiesForHostnames(PAL::SessionID sessionID, Vector<String> hostnames)
     void DeleteAllCookies(PAL::SessionID sessionID)
 
-    void SetCookie(PAL::SessionID sessionID, struct WebCore::Cookie cookie, WebKit::CallbackID callbackID)
-    void SetCookies(PAL::SessionID sessionID, Vector<WebCore::Cookie> cookies, WebCore::URL url, WebCore::URL mainDocumentURL, WebKit::CallbackID callbackID)
+    void SetCookie(PAL::SessionID sessionID, Vector<WebCore::Cookie> cookie, WebKit::CallbackID callbackID)
+    void SetCookies(PAL::SessionID sessionID, Vector<WebCore::Cookie> cookies, URL url, URL mainDocumentURL, WebKit::CallbackID callbackID)
     void GetAllCookies(PAL::SessionID sessionID, WebKit::CallbackID callbackID)
-    void GetCookies(PAL::SessionID sessionID, WebCore::URL url, WebKit::CallbackID callbackID)
+    void GetCookies(PAL::SessionID sessionID, URL url, WebKit::CallbackID callbackID)
     void DeleteCookie(PAL::SessionID sessionID, struct WebCore::Cookie cookie, WebKit::CallbackID callbackID)
     void DeleteAllCookiesModifiedSince(PAL::SessionID sessionID, WallTime time, WebKit::CallbackID callbackID)
 
@@ -42,6 +42,6 @@
     void StopObservingCookieChanges(PAL::SessionID sessionID)
 
 #if USE(SOUP)
-    SetCookiePersistentStorage(String storagePath, uint32_t storageType)
+    void SetCookiePersistentStorage(PAL::SessionID sessionID, String storagePath, enum:bool WebKit::SoupCookiePersistentStorageType storageType)
 #endif
 }

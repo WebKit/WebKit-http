@@ -25,24 +25,40 @@
 
 #pragma once
 
-#include "ArgumentCoders.h"
+#include "SandboxExtension.h"
+#include <WebCore/RegistrableDomain.h>
 #include <pal/SessionID.h>
-#include <wtf/EnumTraits.h>
+#include <wtf/Seconds.h>
+#include <wtf/URL.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(COCOA)
-#include "ArgumentCodersCF.h"
+#if USE(SOUP)
+#include "SoupCookiePersistentStorageType.h"
 #endif
 
+#if USE(CURL)
+#include <WebCore/CurlProxySettings.h>
+#endif
+
+namespace IPC {
+class Encoder;
+class Decoder;
+}
+
+#if PLATFORM(COCOA)
+extern "C" CFStringRef const WebKit2HTTPProxyDefaultsKey;
+extern "C" CFStringRef const WebKit2HTTPSProxyDefaultsKey;
+#endif
+    
 namespace WebKit {
 
-class LegacyCustomProtocolManager;
+enum class AllowsCellularAccess : bool { No, Yes };
+enum class AllowsTLSFallback : bool { No, Yes };
 
-enum class AllowsCellularAccess { No, Yes };
-    
 struct NetworkSessionCreationParameters {
     void encode(IPC::Encoder&) const;
-    static std::optional<NetworkSessionCreationParameters> decode(IPC::Decoder&);
+    static Optional<NetworkSessionCreationParameters> decode(IPC::Decoder&);
+    static NetworkSessionCreationParameters privateSessionParameters(const PAL::SessionID&);
     
     PAL::SessionID sessionID { PAL::SessionID::defaultSessionID() };
     String boundInterfaceIdentifier;
@@ -51,73 +67,31 @@ struct NetworkSessionCreationParameters {
     RetainPtr<CFDictionaryRef> proxyConfiguration;
     String sourceApplicationBundleIdentifier;
     String sourceApplicationSecondaryIdentifier;
+    AllowsTLSFallback allowsTLSFallback { AllowsTLSFallback::Yes };
+    bool shouldLogCookieInformation { false };
+    Seconds loadThrottleLatency;
+    URL httpProxy;
+    URL httpsProxy;
 #endif
+#if USE(SOUP)
+    String cookiePersistentStoragePath;
+    SoupCookiePersistentStorageType cookiePersistentStorageType { SoupCookiePersistentStorageType::Text };
+#endif
+#if USE(CURL)
+    String cookiePersistentStorageFile;
+    WebCore::CurlProxySettings proxySettings;
+#endif
+    String resourceLoadStatisticsDirectory;
+    SandboxExtension::Handle resourceLoadStatisticsDirectoryExtensionHandle;
+    bool enableResourceLoadStatistics { false };
+    bool shouldIncludeLocalhostInResourceLoadStatistics { true };
+    bool enableResourceLoadStatisticsDebugMode { false };
+    bool deviceManagementRestrictionsEnabled { false };
+    bool allLoadsBlockedByDeviceManagementRestrictionsForTesting { false };
+    WebCore::RegistrableDomain resourceLoadStatisticsManualPrevalentResource { };
+
+    String localStorageDirectory;
+    SandboxExtension::Handle localStorageDirectoryExtensionHandle;
 };
-
-inline void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
-{
-    encoder << sessionID;
-    encoder << boundInterfaceIdentifier;
-    encoder << allowsCellularAccess;
-#if PLATFORM(COCOA)
-    IPC::encode(encoder, proxyConfiguration.get());
-    encoder << sourceApplicationBundleIdentifier;
-    encoder << sourceApplicationSecondaryIdentifier;
-#endif
-}
-
-inline std::optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::decode(IPC::Decoder& decoder)
-{
-    PAL::SessionID sessionID;
-    if (!decoder.decode(sessionID))
-        return std::nullopt;
-
-    std::optional<String> boundInterfaceIdentifier;
-    decoder >> boundInterfaceIdentifier;
-    if (!boundInterfaceIdentifier)
-        return std::nullopt;
-
-    std::optional<AllowsCellularAccess> allowsCellularAccess;
-    decoder >> allowsCellularAccess;
-    if (!allowsCellularAccess)
-        return std::nullopt;
-
-#if PLATFORM(COCOA)
-    RetainPtr<CFDictionaryRef> proxyConfiguration;
-    if (!IPC::decode(decoder, proxyConfiguration))
-        return std::nullopt;
-    
-    std::optional<String> sourceApplicationBundleIdentifier;
-    decoder >> sourceApplicationBundleIdentifier;
-    if (!sourceApplicationBundleIdentifier)
-        return std::nullopt;
-    
-    std::optional<String> sourceApplicationSecondaryIdentifier;
-    decoder >> sourceApplicationSecondaryIdentifier;
-    if (!sourceApplicationSecondaryIdentifier)
-        return std::nullopt;
-#endif
-    
-    return {{
-        sessionID
-        , WTFMove(*boundInterfaceIdentifier)
-        , WTFMove(*allowsCellularAccess)
-#if PLATFORM(COCOA)
-        , WTFMove(proxyConfiguration)
-        , WTFMove(*sourceApplicationBundleIdentifier)
-        , WTFMove(*sourceApplicationSecondaryIdentifier)
-#endif
-    }};
-}
 
 } // namespace WebKit
-
-namespace WTF {
-template<> struct EnumTraits<WebKit::AllowsCellularAccess> {
-    using values = EnumValues<
-        WebKit::AllowsCellularAccess,
-        WebKit::AllowsCellularAccess::No,
-        WebKit::AllowsCellularAccess::Yes
-    >;
-};
-}

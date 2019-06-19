@@ -66,8 +66,8 @@ public:
     void clearBackForwardList();
     void clearPersistentUserStyleSheet();
     bool callShouldCloseOnWebView();
-    JSStringRef copyDecodedHostName(JSStringRef name);
-    JSStringRef copyEncodedHostName(JSStringRef name);
+    JSRetainPtr<JSStringRef> copyDecodedHostName(JSStringRef name);
+    JSRetainPtr<JSStringRef> copyEncodedHostName(JSStringRef name);
     void dispatchPendingLoadRequests();
     void display();
     void displayAndTrackRepaints();
@@ -83,7 +83,7 @@ public:
     int numberOfPendingGeolocationPermissionRequests();
     bool isGeolocationProviderActive();
     void overridePreference(JSStringRef key, JSStringRef value);
-    JSStringRef pathToLocalResource(JSContextRef, JSStringRef url);
+    JSRetainPtr<JSStringRef> pathToLocalResource(JSContextRef, JSStringRef url);
     void queueBackNavigation(int howFarBackward);
     void queueForwardNavigation(int howFarForward);
     void queueLoad(JSStringRef url, JSStringRef target);
@@ -106,6 +106,7 @@ public:
     void setDomainRelaxationForbiddenForURLScheme(bool forbidden, JSStringRef scheme);
     void setDefersLoading(bool);
     void setIconDatabaseEnabled(bool);
+    void setIDBPerOriginQuota(uint64_t);
     void setJavaScriptCanAccessClipboard(bool flag);
     void setAutomaticLinkDetectionEnabled(bool flag);
     void setMainFrameIsFirstResponder(bool flag);
@@ -117,14 +118,13 @@ public:
     void setPopupBlockingEnabled(bool);
     void setPrivateBrowsingEnabled(bool);
     void setTabKeyCyclesThroughElements(bool);
-    void setUseDashboardCompatibilityMode(bool flag);
     void setUserStyleSheetEnabled(bool flag);
     void setUserStyleSheetLocation(JSStringRef path);
     void setValueForUser(JSContextRef, JSValueRef nodeObject, JSStringRef value);
     void setXSSAuditorEnabled(bool flag);
     void setSpatialNavigationEnabled(bool);
     void setScrollbarPolicy(JSStringRef orientation, JSStringRef policy);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void setTelephoneNumberParsingEnabled(bool enable);
     void setPagePaused(bool paused);
 #endif
@@ -154,6 +154,9 @@ public:
     void denyWebNotificationPermission(JSStringRef origin);
     void removeAllWebNotificationPermissions();
     void simulateWebNotificationClick(JSValueRef notification);
+
+    void setRenderTreeDumpOptions(unsigned);
+    unsigned renderTreeDumpOptions() const { return m_renderTreeDumpOptions; }
 
     bool dumpAsAudio() const { return m_dumpAsAudio; }
     void setDumpAsAudio(bool dumpAsAudio) { m_dumpAsAudio = dumpAsAudio; }
@@ -271,7 +274,8 @@ public:
 
     bool alwaysAcceptCookies() const { return m_alwaysAcceptCookies; }
     void setAlwaysAcceptCookies(bool);
-    
+    void setOnlyAcceptFirstPartyCookies(bool);
+
     bool rejectsProtectionSpaceAndContinueForAuthenticationChallenges() const { return m_rejectsProtectionSpaceAndContinueForAuthenticationChallenges; }
     void setRejectsProtectionSpaceAndContinueForAuthenticationChallenges(bool value) { m_rejectsProtectionSpaceAndContinueForAuthenticationChallenges = value; }
     
@@ -319,7 +323,7 @@ public:
     void showWebInspector();
     void closeWebInspector();
     void evaluateInWebInspector(JSStringRef script);
-    JSStringRef inspectorTestStubURL();
+    JSRetainPtr<JSStringRef> inspectorTestStubURL();
 
     void evaluateScriptInIsolatedWorld(unsigned worldID, JSObjectRef globalObject, JSStringRef script);
     void evaluateScriptInIsolatedWorldAndReturnValue(unsigned worldID, JSObjectRef globalObject, JSStringRef script);
@@ -381,6 +385,11 @@ public:
     const std::vector<std::string>& openPanelFiles() const { return m_openPanelFiles; }
     void setOpenPanelFiles(JSContextRef, JSValueRef);
 
+#if PLATFORM(IOS_FAMILY)
+    const std::vector<char>& openPanelFilesMediaIcon() const { return m_openPanelFilesMediaIcon; }
+    void setOpenPanelFilesMediaIcon(JSContextRef, JSValueRef);
+#endif
+
     bool didCancelClientRedirect() const { return m_didCancelClientRedirect; }
     void setDidCancelClientRedirect(bool value) { m_didCancelClientRedirect = value; }
 
@@ -398,61 +407,64 @@ private:
 
     void setGeolocationPermissionCommon(bool allow);
 
-    bool m_disallowIncreaseForApplicationCacheQuota;
-    bool m_dumpApplicationCacheDelegateCallbacks;
-    bool m_dumpAsAudio;
-    bool m_dumpAsPDF;
-    bool m_dumpAsText;
-    bool m_dumpBackForwardList;
-    bool m_dumpChildFrameScrollPositions;
-    bool m_dumpChildFramesAsText;
-    bool m_dumpDOMAsWebArchive;
-    bool m_dumpDatabaseCallbacks;
-    bool m_dumpEditingCallbacks;
-    bool m_dumpFrameLoadCallbacks;
-    bool m_dumpProgressFinishedCallback;
-    bool m_dumpUserGestureInFrameLoadCallbacks;
-    bool m_dumpHistoryDelegateCallbacks;
-    bool m_dumpResourceLoadCallbacks;
-    bool m_dumpResourceResponseMIMETypes;
-    bool m_dumpSelectionRect;
-    bool m_dumpSourceAsWebArchive;
-    bool m_dumpStatusCallbacks;
-    bool m_dumpTitleChanges;
-    bool m_dumpVisitedLinksCallback;
-    bool m_dumpWillCacheResponse;
-    bool m_generatePixelResults;
-    bool m_callCloseOnWebViews;
-    bool m_canOpenWindows;
-    bool m_closeRemainingWindowsWhenComplete;
-    bool m_newWindowsCopyBackForwardList;
-    bool m_stopProvisionalFrameLoads;
-    bool m_testOnscreen;
-    bool m_testRepaint;
-    bool m_testRepaintSweepHorizontally;
-    bool m_waitToDump; // True if waitUntilDone() has been called, but notifyDone() has not yet been called.
-    bool m_willSendRequestReturnsNull;
-    bool m_willSendRequestReturnsNullOnRedirect;
-    bool m_windowIsKey;
-    bool m_alwaysAcceptCookies;
-    bool m_globalFlag;
-    bool m_isGeolocationPermissionSet;
-    bool m_geolocationPermission;
-    bool m_rejectsProtectionSpaceAndContinueForAuthenticationChallenges;
-    bool m_handlesAuthenticationChallenges;
-    bool m_isPrinting;
-    bool m_useDeferredFrameLoading;
-    bool m_shouldPaintBrokenImage;
-    bool m_shouldStayOnPageAfterHandlingBeforeUnload;
+    bool m_disallowIncreaseForApplicationCacheQuota { false };
+    bool m_dumpApplicationCacheDelegateCallbacks { false };
+    bool m_dumpAsAudio { false };
+    bool m_dumpAsPDF { false };
+    bool m_dumpAsText { false };
+    bool m_dumpBackForwardList { false };
+    bool m_dumpChildFrameScrollPositions { false };
+    bool m_dumpChildFramesAsText { false };
+    bool m_dumpDOMAsWebArchive { false };
+    bool m_dumpDatabaseCallbacks { false };
+    bool m_dumpEditingCallbacks { false };
+    bool m_dumpFrameLoadCallbacks { false };
+    bool m_dumpProgressFinishedCallback { false };
+    bool m_dumpUserGestureInFrameLoadCallbacks { false };
+    bool m_dumpHistoryDelegateCallbacks { false };
+    bool m_dumpResourceLoadCallbacks { false };
+    bool m_dumpResourceResponseMIMETypes { false };
+    bool m_dumpSelectionRect { false };
+    bool m_dumpSourceAsWebArchive { false };
+    bool m_dumpStatusCallbacks { false };
+    bool m_dumpTitleChanges { false };
+    bool m_dumpVisitedLinksCallback { false };
+    bool m_dumpWillCacheResponse { false };
+    bool m_generatePixelResults { true };
+    bool m_callCloseOnWebViews { true };
+    bool m_canOpenWindows { false };
+    bool m_closeRemainingWindowsWhenComplete { true };
+    bool m_newWindowsCopyBackForwardList { false };
+    bool m_stopProvisionalFrameLoads { false };
+    bool m_testOnscreen { false };
+    bool m_testRepaint { false };
+    bool m_testRepaintSweepHorizontally { false };
+    bool m_waitToDump  { false }; // True if waitUntilDone() has been called, but notifyDone() has not yet been called.
+    bool m_willSendRequestReturnsNull { false };
+    bool m_willSendRequestReturnsNullOnRedirect { false };
+    bool m_windowIsKey { true };
+    bool m_alwaysAcceptCookies { false };
+    bool m_globalFlag { false };
+    bool m_isGeolocationPermissionSet { false };
+    bool m_geolocationPermission { false };
+    bool m_rejectsProtectionSpaceAndContinueForAuthenticationChallenges { false };
+    bool m_handlesAuthenticationChallenges { false };
+    bool m_isPrinting { false };
+    bool m_useDeferredFrameLoading { false };
+    bool m_shouldPaintBrokenImage { true };
+    bool m_shouldStayOnPageAfterHandlingBeforeUnload { false };
     // FIXME 81697: This variable most likely will be removed once we have migrated the tests from fast/notifications to http/tests/notifications.
-    bool m_areLegacyWebNotificationPermissionRequestsIgnored;
-    bool m_customFullScreenBehavior;
-    bool m_hasPendingWebNotificationClick;
+    bool m_areLegacyWebNotificationPermissionRequestsIgnored { false };
+    bool m_customFullScreenBehavior { false };
+    bool m_hasPendingWebNotificationClick { false };
     bool m_dumpJSConsoleLogInStdErr { false };
     bool m_didCancelClientRedirect { false };
 
-    double m_databaseDefaultQuota;
-    double m_databaseMaxQuota;
+    double m_databaseDefaultQuota { -1 };
+    double m_databaseMaxQuota { -1 };
+
+    int m_timeout { 0 };
+    unsigned m_renderTreeDumpOptions { 0 };
 
     std::string m_authenticationUsername;
     std::string m_authenticationPassword; 
@@ -476,10 +488,11 @@ private:
     UIScriptInvocationData* m_pendingUIScriptInvocationData { nullptr };
 
     std::vector<std::string> m_openPanelFiles;
+#if PLATFORM(IOS_FAMILY)
+    std::vector<char> m_openPanelFilesMediaIcon;
+#endif
 
     static JSClassRef getJSClass();
     static JSStaticValue* staticValues();
     static JSStaticFunction* staticFunctions();
-
-    int m_timeout;
 };

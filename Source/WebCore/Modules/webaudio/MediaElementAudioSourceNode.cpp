@@ -32,6 +32,7 @@
 #include "AudioNodeOutput.h"
 #include "Logging.h"
 #include "MediaPlayer.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Locker.h>
 
 // These are somewhat arbitrary limits, but we need to do some kind of sanity-checking.
@@ -39,6 +40,8 @@ const unsigned minSampleRate = 8000;
 const unsigned maxSampleRate = 192000;
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(MediaElementAudioSourceNode);
 
 Ref<MediaElementAudioSourceNode> MediaElementAudioSourceNode::create(AudioContext& context, HTMLMediaElement& mediaElement)
 {
@@ -51,10 +54,10 @@ MediaElementAudioSourceNode::MediaElementAudioSourceNode(AudioContext& context, 
     , m_sourceNumberOfChannels(0)
     , m_sourceSampleRate(0)
 {
+    setNodeType(NodeTypeMediaElementAudioSource);
+
     // Default to stereo. This could change depending on what the media element .src is set to.
     addOutput(std::make_unique<AudioNodeOutput>(this, 2));
-
-    setNodeType(NodeTypeMediaElementAudioSource);
 
     initialize();
 }
@@ -110,10 +113,8 @@ bool MediaElementAudioSourceNode::wouldTaintOrigin()
     if (m_mediaElement->didPassCORSAccessCheck())
         return false;
 
-    if (auto* scriptExecutionContext = context().scriptExecutionContext()) {
-        if (auto* origin = scriptExecutionContext->securityOrigin())
-            return m_mediaElement->wouldTaintOrigin(*origin);
-    }
+    if (auto* origin = context().origin())
+        return m_mediaElement->wouldTaintOrigin(*origin);
 
     return true;
 }

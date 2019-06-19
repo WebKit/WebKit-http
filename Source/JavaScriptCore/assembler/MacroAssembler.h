@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,20 +35,15 @@
 #include "MacroAssemblerARMv7.h"
 namespace JSC { typedef MacroAssemblerARMv7 MacroAssemblerBase; };
 
-#elif CPU(ARM64E) && __has_include(<WebKitAdditions/MacroAssemblerARM64E.h>)
+#elif CPU(ARM64E)
 #define TARGET_ASSEMBLER ARM64EAssembler
 #define TARGET_MACROASSEMBLER MacroAssemblerARM64E
-#include <WebKitAdditions/MacroAssemblerARM64E.h>
+#include "MacroAssemblerARM64E.h"
 
 #elif CPU(ARM64)
 #define TARGET_ASSEMBLER ARM64Assembler
 #define TARGET_MACROASSEMBLER MacroAssemblerARM64
 #include "MacroAssemblerARM64.h"
-
-#elif CPU(ARM_TRADITIONAL)
-#define TARGET_ASSEMBLER ARMAssembler
-#define TARGET_MACROASSEMBLER MacroAssemblerARM
-#include "MacroAssemblerARM.h"
 
 #elif CPU(MIPS)
 #define TARGET_ASSEMBLER MIPSAssembler
@@ -142,7 +137,7 @@ public:
     using MacroAssemblerBase::and32;
     using MacroAssemblerBase::branchAdd32;
     using MacroAssemblerBase::branchMul32;
-#if CPU(ARM64) || CPU(ARM_THUMB2) || CPU(ARM_TRADITIONAL) || CPU(X86_64) || CPU(MIPS)
+#if CPU(ARM64) || CPU(ARM_THUMB2) || CPU(X86_64) || CPU(MIPS)
     using MacroAssemblerBase::branchPtr;
 #endif
     using MacroAssemblerBase::branchSub32;
@@ -434,7 +429,6 @@ public:
         return PatchableJump(branch32WithPatch(cond, left, dataLabel, initialRightValue));
     }
 
-#if !CPU(ARM_TRADITIONAL)
     PatchableJump patchableJump()
     {
         return PatchableJump(jump());
@@ -459,7 +453,6 @@ public:
     {
         return PatchableJump(branch32(cond, address, imm));
     }
-#endif
 #endif
 
     void jump(Label target)
@@ -1272,7 +1265,7 @@ public:
 
         // First off we'll special case common, "safe" values to avoid hurting
         // performance too much
-        uintptr_t value = imm.asTrustedImmPtr().asIntptr();
+        uint64_t value = imm.asTrustedImmPtr().asIntptr();
         switch (value) {
         case 0xffff:
         case 0xffffff:
@@ -1293,7 +1286,7 @@ public:
         if (!shouldConsiderBlinding())
             return false;
 
-        return shouldBlindPointerForSpecificArch(value);
+        return shouldBlindPointerForSpecificArch(static_cast<uintptr_t>(value));
     }
 
     uint8_t generateRotationSeed(size_t widthInBits)
@@ -1566,7 +1559,7 @@ public:
     BlindedImm32 additionBlindedConstant(Imm32 imm)
     {
         // The addition immediate may be used as a pointer offset. Keep aligned based on "imm".
-        static uint32_t maskTable[4] = { 0xfffffffc, 0xffffffff, 0xfffffffe, 0xffffffff };
+        static const uint32_t maskTable[4] = { 0xfffffffc, 0xffffffff, 0xfffffffe, 0xffffffff };
 
         uint32_t baseValue = imm.asTrustedImm32().m_value;
         uint32_t key = keyForConstant(baseValue) & maskTable[baseValue & 3];
@@ -1909,6 +1902,15 @@ public:
     void urshift32(RegisterID src, Imm32 amount, RegisterID dest)
     {
         urshift32(src, trustedImm32ForShift(amount), dest);
+    }
+
+    void mul32(TrustedImm32 imm, RegisterID src, RegisterID dest)
+    {
+        if (hasOneBitSet(imm.m_value)) {
+            lshift32(src, TrustedImm32(getLSBSet(imm.m_value)), dest);
+            return;
+        }
+        MacroAssemblerBase::mul32(imm, src, dest);
     }
 
     // If the result jump is taken that means the assert passed.

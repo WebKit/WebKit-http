@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -84,7 +84,7 @@ inline void StructureTransitionTable::setSingleTransition(Structure* structure)
     if (WeakImpl* impl = this->weakImpl())
         WeakSet::deallocate(impl);
     WeakImpl* impl = WeakSet::allocate(structure, &singleSlotTransitionWeakOwner(), this);
-    m_data = PoisonedWeakImplPtr(impl).bits() | UsingSingleSlotFlag;
+    m_data = bitwise_cast<intptr_t>(impl) | UsingSingleSlotFlag;
 }
 
 bool StructureTransitionTable::contains(UniquedStringImpl* rep, unsigned attributes) const
@@ -371,15 +371,11 @@ PropertyTable* Structure::materializePropertyTable(VM& vm, bool setPropertyTable
     if (setPropertyTable)
         this->setPropertyTable(vm, table);
 
-    InferredTypeTable* typeTable = m_inferredTypeTable.get();
-
     for (size_t i = structures.size(); i--;) {
         structure = structures[i];
         if (!structure->m_nameInPrevious)
             continue;
         PropertyMapEntry entry(structure->m_nameInPrevious.get(), structure->m_offset, structure->attributesInPrevious());
-        if (typeTable && typeTable->get(structure->m_nameInPrevious.get()))
-            entry.hasInferredType = true;
         table->add(entry, m_offset, PropertyTable::PropertyOffsetMustNotChange);
     }
     
@@ -503,7 +499,6 @@ Structure* Structure::addNewPropertyTransition(VM& vm, Structure* structure, Pro
     transition->setAttributesInPrevious(attributes);
     transition->setPropertyTable(vm, structure->takePropertyTableOrCloneIfPinned(vm));
     transition->m_offset = structure->m_offset;
-    transition->m_inferredTypeTable.setMayBeNull(vm, transition, structure->m_inferredTypeTable.get());
 
     offset = transition->add(vm, propertyName, attributes);
 
@@ -515,6 +510,7 @@ Structure* Structure::addNewPropertyTransition(VM& vm, Structure* structure, Pro
     checkOffset(transition->m_offset, transition->inlineCapacity());
     {
         ConcurrentJSLocker locker(structure->m_lock);
+        DeferGC deferGC(vm.heap);
         structure->m_transitionTable.add(vm, transition);
     }
     transition->checkOffsetConsistency();
@@ -536,12 +532,6 @@ Structure* Structure::removePropertyTransition(VM& vm, Structure* structure, Pro
     //   structure that had a pinned table. That logic would also have to be changed to handle cached
     //   removals.
     //
-    // - InferredTypeTable assumes that removal has never happened. This is important since if we could
-    //   remove a property and then re-add it later, then the "absence means top" optimization wouldn't
-    //   work anymore, unless removal also either poisoned type inference (by doing something equivalent to
-    //   hasBeenDictionary) or by strongly marking the entry as Top by ensuring that it is not absent, but
-    //   instead, has a null entry.
-    
     ASSERT(!structure->isUncacheableDictionary());
 
     Structure* transition = toUncacheableDictionaryTransition(vm, structure);
@@ -788,10 +778,10 @@ Structure* Structure::flattenDictionaryStructure(VM& vm, JSObject* object)
             (inlineCapacity() - inlineSize()) * sizeof(EncodedJSValue));
 
         Butterfly* butterfly = object->butterfly();
-        memset(
-            butterfly->base(butterfly->indexingHeader()->preCapacity(this), beforeOutOfLineCapacity),
-            0,
-            (beforeOutOfLineCapacity - outOfLineSize()) * sizeof(EncodedJSValue));
+        size_t preCapacity = butterfly->indexingHeader()->preCapacity(this);
+        void* base = butterfly->base(preCapacity, beforeOutOfLineCapacity);
+        void* startOfPropertyStorageSlots = reinterpret_cast<EncodedJSValue*>(base) + preCapacity;
+        memset(startOfPropertyStorageSlots, 0, (beforeOutOfLineCapacity - outOfLineSize()) * sizeof(EncodedJSValue));
         checkOffsetConsistency();
     }
 
@@ -890,43 +880,6 @@ void Structure::startWatchingInternalProperties(VM& vm)
         startWatchingPropertyForReplacements(vm, vm.propertyNames->valueOf);
     }
     setDidWatchInternalProperties(true);
-}
-
-void Structure::willStoreValueSlow(
-    VM& vm, PropertyName propertyName, JSValue value, bool shouldOptimize,
-    InferredTypeTable::StoredPropertyAge age)
-{
-    ASSERT(!isCompilationThread());
-    ASSERT(structure(vm)->classInfo() == info());
-    ASSERT(!hasBeenDictionary());
-
-    ASSERT_WITH_MESSAGE(VM::canUseJIT(), "We don't want to use memory for inferred types unless we're using the JIT.");
-
-    // Create the inferred type table before doing anything else, so that we don't GC after we have already
-    // grabbed a pointer into the property map.
-    InferredTypeTable* table = m_inferredTypeTable.get();
-    if (!table) {
-        table = InferredTypeTable::create(vm);
-        WTF::storeStoreFence();
-        m_inferredTypeTable.set(vm, this, table);
-    }
-
-    // This only works if we've got a property table.
-    PropertyTable* propertyTable = ensurePropertyTable(vm);
-    
-    // We must be calling this after having created the given property or confirmed that it was present
-    // already, so the property must be present.
-    PropertyMapEntry* entry = propertyTable->get(propertyName.uid());
-    ASSERT(entry);
-    
-    if (shouldOptimize)
-        entry->hasInferredType = table->willStoreValue(vm, propertyName, value, age);
-    else {
-        table->makeTop(vm, propertyName, age);
-        entry->hasInferredType = false;
-    }
-    
-    propertyTable->use(); // This makes it safe to use entry above.
 }
 
 #if DUMP_PROPERTYMAP_STATS
@@ -1099,24 +1052,23 @@ void Structure::visitChildren(JSCell* cell, SlotVisitor& visitor)
         visitor.append(thisObject->m_propertyTableUnsafe);
     else if (thisObject->m_propertyTableUnsafe)
         thisObject->m_propertyTableUnsafe.clear();
-
-    visitor.append(thisObject->m_inferredTypeTable);
 }
 
-bool Structure::isCheapDuringGC()
+bool Structure::isCheapDuringGC(VM& vm)
 {
     // FIXME: We could make this even safer by returning false if this structure's property table
     // has any large property names.
     // https://bugs.webkit.org/show_bug.cgi?id=157334
     
-    return (!m_globalObject || Heap::isMarked(m_globalObject.get()))
-        && (hasPolyProto() || !storedPrototypeObject() || Heap::isMarked(storedPrototypeObject()));
+    return (!m_globalObject || vm.heap.isMarked(m_globalObject.get()))
+        && (hasPolyProto() || !storedPrototypeObject() || vm.heap.isMarked(storedPrototypeObject()));
 }
 
 bool Structure::markIfCheap(SlotVisitor& visitor)
 {
-    if (!isCheapDuringGC())
-        return Heap::isMarked(this);
+    VM& vm = visitor.vm();
+    if (!isCheapDuringGC(vm))
+        return vm.heap.isMarked(this);
     
     visitor.appendUnbarriered(this);
     return true;
@@ -1252,17 +1204,7 @@ JSPropertyNameEnumerator* Structure::cachedPropertyNameEnumerator() const
 
 bool Structure::canCachePropertyNameEnumerator() const
 {
-    auto canCache = [] (const Structure* structure) {
-        if (structure->isDictionary())
-            return false;
-        if (hasIndexedProperties(structure->indexingType()))
-            return false;
-        if (structure->typeInfo().overridesGetPropertyNames())
-            return false;
-        return true;
-    };
-
-    if (!canCache(this))
+    if (!this->canCacheOwnKeys())
         return false;
 
     StructureChain* structureChain = m_cachedPrototypeChain.get();
@@ -1271,7 +1213,7 @@ bool Structure::canCachePropertyNameEnumerator() const
     while (true) {
         if (!structure->get())
             return true;
-        if (!canCache(structure->get()))
+        if (!structure->get()->canCacheOwnKeys())
             return false;
         structure++;
     }

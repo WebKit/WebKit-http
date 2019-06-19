@@ -32,116 +32,121 @@ namespace JSC {
         friend struct OperandTypes;
 
         using Type = uint8_t;
-        static const Type TypeInt32 = 1;
-        static const Type TypeMaybeNumber = 0x02;
-        static const Type TypeMaybeString = 0x04;
-        static const Type TypeMaybeNull   = 0x08;
-        static const Type TypeMaybeBool   = 0x10;
-        static const Type TypeMaybeBigInt = 0x20;
-        static const Type TypeMaybeOther  = 0x40;
+        static constexpr Type TypeInt32       = 0x1 << 0;
+        static constexpr Type TypeMaybeNumber = 0x1 << 1;
+        static constexpr Type TypeMaybeString = 0x1 << 2;
+        static constexpr Type TypeMaybeBigInt = 0x1 << 3;
+        static constexpr Type TypeMaybeNull   = 0x1 << 4;
+        static constexpr Type TypeMaybeBool   = 0x1 << 5;
+        static constexpr Type TypeMaybeOther  = 0x1 << 6;
 
-        static const Type TypeBits = TypeMaybeNumber | TypeMaybeString | TypeMaybeNull | TypeMaybeBool | TypeMaybeBigInt | TypeMaybeOther;
+        static constexpr Type TypeBits = TypeMaybeNumber | TypeMaybeString | TypeMaybeBigInt | TypeMaybeNull | TypeMaybeBool | TypeMaybeOther;
 
     public:
-        static const int numBitsNeeded = 7;
+        static constexpr int numBitsNeeded = 7;
         static_assert((TypeBits & ((1 << numBitsNeeded) - 1)) == TypeBits, "This is necessary for correctness.");
 
-        explicit ResultType(Type type)
+        constexpr explicit ResultType(Type type)
             : m_bits(type)
         {
         }
 
-        bool isInt32() const
+        constexpr bool isInt32() const
         {
             return m_bits & TypeInt32;
         }
 
-        bool definitelyIsNumber() const
+        constexpr bool definitelyIsNumber() const
         {
             return (m_bits & TypeBits) == TypeMaybeNumber;
         }
         
-        bool definitelyIsString() const
+        constexpr bool definitelyIsString() const
         {
             return (m_bits & TypeBits) == TypeMaybeString;
         }
 
-        bool definitelyIsBoolean() const
+        constexpr bool definitelyIsBoolean() const
         {
             return (m_bits & TypeBits) == TypeMaybeBool;
         }
 
-        bool definitelyIsBigInt() const
+        constexpr bool definitelyIsBigInt() const
         {
             return (m_bits & TypeBits) == TypeMaybeBigInt;
         }
 
-        bool mightBeNumber() const
+        constexpr bool mightBeNumber() const
         {
             return m_bits & TypeMaybeNumber;
         }
 
-        bool isNotNumber() const
+        constexpr bool isNotNumber() const
         {
             return !mightBeNumber();
         }
         
-        bool mightBeBigInt() const
+        constexpr bool mightBeBigInt() const
         {
             return m_bits & TypeMaybeBigInt;
         }
 
-        bool isNotBigInt() const
+        constexpr bool isNotBigInt() const
         {
             return !mightBeBigInt();
         }
         
-        static ResultType nullType()
+        static constexpr ResultType nullType()
         {
             return ResultType(TypeMaybeNull);
         }
         
-        static ResultType booleanType()
+        static constexpr ResultType booleanType()
         {
             return ResultType(TypeMaybeBool);
         }
         
-        static ResultType numberType()
+        static constexpr ResultType numberType()
         {
             return ResultType(TypeMaybeNumber);
         }
         
-        static ResultType numberTypeIsInt32()
+        static constexpr ResultType numberTypeIsInt32()
         {
             return ResultType(TypeInt32 | TypeMaybeNumber);
         }
         
-        static ResultType stringOrNumberType()
+        static constexpr ResultType stringOrNumberType()
         {
             return ResultType(TypeMaybeNumber | TypeMaybeString);
         }
         
-        static ResultType addResultType()
+        static constexpr ResultType addResultType()
         {
             return ResultType(TypeMaybeNumber | TypeMaybeString | TypeMaybeBigInt);
         }
         
-        static ResultType stringType()
+        static constexpr ResultType stringType()
         {
             return ResultType(TypeMaybeString);
         }
         
-        static ResultType bigIntType()
+        static constexpr ResultType bigIntType()
         {
             return ResultType(TypeMaybeBigInt);
         }
         
-        static ResultType unknownType()
+        static constexpr ResultType bigIntOrInt32Type()
+        {
+            return ResultType(TypeMaybeBigInt | TypeInt32);
+        }
+
+        static constexpr ResultType unknownType()
         {
             return ResultType(TypeBits);
         }
         
-        static ResultType forAdd(ResultType op1, ResultType op2)
+        static constexpr ResultType forAdd(ResultType op1, ResultType op2)
         {
             if (op1.definitelyIsNumber() && op2.definitelyIsNumber())
                 return numberType();
@@ -154,7 +159,7 @@ namespace JSC {
 
         // Unlike in C, a logical op produces the value of the
         // last expression evaluated (and not true or false).
-        static ResultType forLogicalOp(ResultType op1, ResultType op2)
+        static constexpr ResultType forLogicalOp(ResultType op1, ResultType op2)
         {
             if (op1.definitelyIsBoolean() && op2.definitelyIsBoolean())
                 return booleanType();
@@ -167,12 +172,19 @@ namespace JSC {
             return unknownType();
         }
 
-        static ResultType forBitOp()
+        static constexpr ResultType forBitOp()
         {
-            return numberTypeIsInt32();
+            return bigIntOrInt32Type();
         }
 
-        Type bits() const { return m_bits; }
+        constexpr Type bits() const { return m_bits; }
+
+        void dump(PrintStream& out) const
+        {
+            // FIXME: more meaningful information
+            // https://bugs.webkit.org/show_bug.cgi?id=190930
+            out.print(bits());
+        }
 
     private:
         Type m_bits;
@@ -182,40 +194,37 @@ namespace JSC {
     {
         OperandTypes(ResultType first = ResultType::unknownType(), ResultType second = ResultType::unknownType())
         {
-            // We have to initialize one of the int to ensure that
-            // the entire struct is initialized.
-            m_u.i = 0;
-            m_u.rds.first = first.m_bits;
-            m_u.rds.second = second.m_bits;
+            m_first = first.m_bits;
+            m_second = second.m_bits;
         }
         
-        union {
-            struct {
-                ResultType::Type first;
-                ResultType::Type second;
-            } rds;
-            int i;
-        } m_u;
+        ResultType::Type m_first;
+        ResultType::Type m_second;
 
-        ResultType first()
+        ResultType first() const
         {
-            return ResultType(m_u.rds.first);
+            return ResultType(m_first);
         }
 
-        ResultType second()
+        ResultType second() const
         {
-            return ResultType(m_u.rds.second);
+            return ResultType(m_second);
         }
 
-        int toInt()
+        uint16_t bits()
         {
-            return m_u.i;
+            static_assert(sizeof(OperandTypes) == sizeof(uint16_t));
+            return bitwise_cast<uint16_t>(*this);
         }
-        static OperandTypes fromInt(int value)
+
+        static OperandTypes fromBits(uint16_t bits)
         {
-            OperandTypes types;
-            types.m_u.i = value;
-            return types;
+            return bitwise_cast<OperandTypes>(bits);
+        }
+
+        void dump(PrintStream& out) const
+        {
+            out.print("OperandTypes(", first(),  ", ", second(), ")");
         }
     };
 

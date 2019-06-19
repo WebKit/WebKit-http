@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -57,7 +57,6 @@
 #include <wtf/text/CString.h>
 
 #if PLATFORM(WIN)
-#include <WebKitSystemInterface/WebKitSystemInterface.h>
 #include <process.h>
 
 // FIXME: Remove this declaration once it's in WebKitSupportLibrary.
@@ -118,6 +117,20 @@ static inline CFStringRef shouldSniffConnectionProperty()
 #endif
 }
 
+#if PLATFORM(WIN)
+static void setClientCertificateInSSLProperties(CFMutableDictionaryRef sslProps, CFDataRef certData)
+{
+    if (!sslProps || !certData)
+        return;
+    CFMutableDictionaryRef certDict = CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    if (!certDict)
+        return;
+    CFDictionarySetValue(certDict, _kCFWindowsSSLLocalCert, certData);
+    CFDictionarySetValue(sslProps, _kCFStreamPropertyWindowsSSLCertInfo, certDict);
+    CFRelease(certDict);
+}
+#endif
+
 void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool shouldContentSniff, bool shouldContentEncodingSniff, MessageQueue<Function<void()>>* messageQueue, CFDictionaryRef clientProperties)
 {
     if ((!d->m_user.isEmpty() || !d->m_pass.isEmpty()) && !firstRequest().url().protocolIsInHTTPFamily()) {
@@ -136,12 +149,12 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
         if (d->m_user.isEmpty() && d->m_pass.isEmpty()) {
             // <rdar://problem/7174050> - For URLs that match the paths of those previously challenged for HTTP Basic authentication, 
             // try and reuse the credential preemptively, as allowed by RFC 2617.
-            d->m_initialCredential = d->m_context->storageSession().credentialStorage().get(partition, firstRequest().url());
+            d->m_initialCredential = d->m_context->storageSession()->credentialStorage().get(partition, firstRequest().url());
         } else {
             // If there is already a protection space known for the URL, update stored credentials before sending a request.
             // This makes it possible to implement logout by sending an XMLHttpRequest with known incorrect credentials, and aborting it immediately
             // (so that an authentication dialog doesn't pop up).
-            d->m_context->storageSession().credentialStorage().set(partition, Credential(d->m_user, d->m_pass, CredentialPersistenceNone), firstRequest().url());
+            d->m_context->storageSession()->credentialStorage().set(partition, Credential(d->m_user, d->m_pass, CredentialPersistenceNone), firstRequest().url());
         }
     }
         
@@ -166,17 +179,16 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
 
     RetainPtr<CFMutableDictionaryRef> sslProps;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     sslProps = adoptCF(ResourceHandle::createSSLPropertiesFromNSURLRequest(firstRequest()));
 #else
     if (allowsAnyHTTPSCertificateHosts().contains(firstRequest().url().host().toString())) {
         sslProps = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         CFDictionaryAddValue(sslProps.get(), kCFStreamSSLAllowsAnyRoot, kCFBooleanTrue);
         CFDictionaryAddValue(sslProps.get(), kCFStreamSSLAllowsExpiredRoots, kCFBooleanTrue);
         CFDictionaryAddValue(sslProps.get(), kCFStreamSSLAllowsExpiredCertificates, kCFBooleanTrue);
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
 #if !PLATFORM(WIN) // <rdar://problem/33993462> - Disabling validation of certificate chain breaks SSL on Windows.
         CFDictionaryAddValue(sslProps.get(), kCFStreamSSLValidatesCertificateChain, kCFBooleanFalse);
 #endif
@@ -187,10 +199,10 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
         if (!sslProps)
             sslProps = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
 #if PLATFORM(WIN)
-        wkSetClientCertificateInSSLProperties(sslProps.get(), (clientCert->value).get());
+        setClientCertificateInSSLProperties(sslProps.get(), (clientCert->value).get());
 #endif
     }
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
     if (sslProps)
         CFURLRequestSetSSLProperties(request.get(), sslProps.get());
@@ -234,10 +246,9 @@ void ResourceHandle::createCFURLConnection(bool shouldUseCredentialStorage, bool
     if (shouldUseCredentialStorage)
         client.shouldUseCredentialStorage = 0;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     d->m_connection = adoptCF(CFURLConnectionCreateWithProperties(0, request.get(), reinterpret_cast<CFURLConnectionClient*>(&client), propertiesDictionary.get()));
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 bool ResourceHandle::start()
@@ -250,7 +261,7 @@ bool ResourceHandle::start()
     if (!d->m_context->isValid())
         return false;
 
-    d->m_storageSession = d->m_context->storageSession().platformSession();
+    d->m_storageSession = d->m_context->storageSession()->platformSession();
 
     bool shouldUseCredentialStorage = !client() || client()->shouldUseCredentialStorage(this);
 
@@ -296,7 +307,7 @@ void ResourceHandle::willSendRequest(ResourceRequest&& request, ResourceResponse
         // Only consider applying authentication credentials if this is actually a redirect and the redirect
         // URL didn't include credentials of its own.
         if (d->m_user.isEmpty() && d->m_pass.isEmpty() && !redirectResponse.isNull()) {
-            Credential credential = d->m_context->storageSession().credentialStorage().get(partition, request.url());
+            Credential credential = d->m_context->storageSession()->credentialStorage().get(partition, request.url());
             if (!credential.isEmpty()) {
                 d->m_initialCredential = credential;
                 
@@ -371,7 +382,7 @@ bool ResourceHandle::tryHandlePasswordBasedAuthentication(const AuthenticationCh
         URL urlToStore;
         if (challenge.failureResponse().httpStatusCode() == 401)
             urlToStore = challenge.failureResponse().url();
-        d->m_context->storageSession().credentialStorage().set(partition, credential, challenge.protectionSpace(), urlToStore);
+        d->m_context->storageSession()->credentialStorage().set(partition, credential, challenge.protectionSpace(), urlToStore);
         
         CFURLConnectionUseCredential(d->m_connection.get(), cfCredential.get(), challenge.cfURLAuthChallengeRef());
         d->m_user = String();
@@ -385,16 +396,16 @@ bool ResourceHandle::tryHandlePasswordBasedAuthentication(const AuthenticationCh
             // The stored credential wasn't accepted, stop using it.
             // There is a race condition here, since a different credential might have already been stored by another ResourceHandle,
             // but the observable effect should be very minor, if any.
-            d->m_context->storageSession().credentialStorage().remove(partition, challenge.protectionSpace());
+            d->m_context->storageSession()->credentialStorage().remove(partition, challenge.protectionSpace());
         }
 
         if (!challenge.previousFailureCount()) {
-            Credential credential = d->m_context->storageSession().credentialStorage().get(partition, challenge.protectionSpace());
+            Credential credential = d->m_context->storageSession()->credentialStorage().get(partition, challenge.protectionSpace());
             if (!credential.isEmpty() && credential != d->m_initialCredential) {
                 ASSERT(credential.persistence() == CredentialPersistenceNone);
                 if (challenge.failureResponse().httpStatusCode() == 401) {
                     // Store the credential back, possibly adding it as a default for this directory.
-                    d->m_context->storageSession().credentialStorage().set(partition, credential, challenge.protectionSpace(), challenge.failureResponse().url());
+                    d->m_context->storageSession()->credentialStorage().set(partition, credential, challenge.protectionSpace(), challenge.failureResponse().url());
                 }
 #if PLATFORM(COCOA)
                 CFURLConnectionUseCredential(d->m_connection.get(), credential.cfCredential(), challenge.cfURLAuthChallengeRef());
@@ -444,7 +455,7 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge
         if (challenge.failureResponse().httpStatusCode() == 401)
             urlToStore = challenge.failureResponse().url(); 
 
-        d->m_context->storageSession().credentialStorage().set(firstRequest().cachePartition(), webCredential, challenge.protectionSpace(), urlToStore);
+        d->m_context->storageSession()->credentialStorage().set(firstRequest().cachePartition(), webCredential, challenge.protectionSpace(), urlToStore);
 
         if (d->m_connection) {
 #if PLATFORM(COCOA)
@@ -560,7 +571,7 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     bool shouldContentEncodingSniff = true;
     RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &client, defersLoading, shouldContentSniff, shouldContentEncodingSniff));
 
-    handle->d->m_storageSession = context->storageSession().platformSession();
+    handle->d->m_storageSession = context->storageSession()->platformSession();
 
     if (handle->d->m_scheduledFailureType != NoFailure) {
         error = context->blockedError(request);
@@ -585,7 +596,7 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
             while (true)
                 CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1E30, true);
         });
-        sem.wait(TimeWithDynamicClockType(WallTime::infinity()));
+        sem.wait();
     }
     CFURLConnectionScheduleWithRunLoop(handle->connection(), runLoop, kCFRunLoopDefaultMode);
     CFURLConnectionScheduleDownloadWithRunLoop(handle->connection(), runLoop, kCFRunLoopDefaultMode);

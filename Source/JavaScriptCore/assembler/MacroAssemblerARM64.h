@@ -53,9 +53,9 @@ public:
 protected:
     static const ARM64Registers::FPRegisterID fpTempRegister = ARM64Registers::q31;
     static const Assembler::SetFlags S = Assembler::S;
-    static const intptr_t maskHalfWord0 = 0xffffl;
-    static const intptr_t maskHalfWord1 = 0xffff0000l;
-    static const intptr_t maskUpperWord = 0xffffffff00000000l;
+    static const int64_t maskHalfWord0 = 0xffffl;
+    static const int64_t maskHalfWord1 = 0xffff0000l;
+    static const int64_t maskUpperWord = 0xffffffff00000000l;
 
     static constexpr size_t INSTRUCTION_SIZE = 4;
 
@@ -79,12 +79,12 @@ public:
     static const Assembler::JumpType DefaultJump = Assembler::JumpNoConditionFixedSize;
 
     Vector<LinkRecord, 0, UnsafeVectorOverflow>& jumpsToLink() { return m_assembler.jumpsToLink(); }
-    void* unlinkedCode() { return m_assembler.unlinkedCode(); }
     static bool canCompact(JumpType jumpType) { return Assembler::canCompact(jumpType); }
     static JumpLinkType computeJumpType(JumpType jumpType, const uint8_t* from, const uint8_t* to) { return Assembler::computeJumpType(jumpType, from, to); }
     static JumpLinkType computeJumpType(LinkRecord& record, const uint8_t* from, const uint8_t* to) { return Assembler::computeJumpType(record, from, to); }
     static int jumpSizeDelta(JumpType jumpType, JumpLinkType jumpLinkType) { return Assembler::jumpSizeDelta(jumpType, jumpLinkType); }
-    static void link(LinkRecord& record, uint8_t* from, const uint8_t* fromInstruction, uint8_t* to) { return Assembler::link(record, from, fromInstruction, to); }
+    template <typename CopyFunction>
+    static void link(LinkRecord& record, uint8_t* from, const uint8_t* fromInstruction, uint8_t* to, CopyFunction copy) { return Assembler::link(record, from, fromInstruction, to, copy); }
 
     static const Scale ScalePtr = TimesEight;
 
@@ -1045,6 +1045,11 @@ public:
         xor64(dataTempRegister, dest);
     }
 
+    void not32(RegisterID srcDest)
+    {
+        m_assembler.mvn<32>(srcDest, srcDest);
+    }
+
     void not32(RegisterID src, RegisterID dest)
     {
         m_assembler.mvn<32>(dest, src);
@@ -1533,6 +1538,16 @@ public:
         signExtend32ToPtr(TrustedImm32(address.offset), getCachedMemoryTempRegisterIDAndInvalidate());
         m_assembler.add<64>(memoryTempRegister, memoryTempRegister, address.index, Assembler::UXTX, address.scale);
         m_assembler.strh(src, address.base, memoryTempRegister);
+    }
+
+    void storeZero16(ImplicitAddress address)
+    {
+        store16(ARM64Registers::zr, address);
+    }
+
+    void storeZero16(BaseIndex address)
+    {
+        store16(ARM64Registers::zr, address);
     }
 
     void store8(RegisterID src, BaseIndex address)
@@ -2444,7 +2459,7 @@ public:
     void moveDoubleConditionally32(RelationalCondition cond, RegisterID left, RegisterID right, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
     {
         m_assembler.cmp<32>(left, right);
-        m_assembler.fcsel<32>(dest, thenCase, elseCase, ARM64Condition(cond));
+        m_assembler.fcsel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
     }
 
     void moveDoubleConditionally32(RelationalCondition cond, RegisterID left, TrustedImm32 right, FPRegisterID thenCase, FPRegisterID elseCase, FPRegisterID dest)
@@ -2509,6 +2524,15 @@ public:
     {
         m_assembler.tst<64>(left, right);
         m_assembler.fcsel<64>(dest, thenCase, elseCase, ARM64Condition(cond));
+    }
+
+    // Bit field operations:
+
+    // destBitOffset is the top bit of the destination where the bits should be copied to. Zero is the lowest order bit.
+    void bitFieldInsert64(RegisterID source, unsigned destBitOffset, unsigned width, RegisterID dest)
+    {
+        ASSERT(width <= 64 - destBitOffset && destBitOffset < 64);
+        m_assembler.bfi<64>(dest, source, destBitOffset, width);
     }
 
     // Forwards / external control flow operations:
@@ -3758,6 +3782,23 @@ public:
     {
         m_assembler.eor<64>(dest, src, src);
     }
+
+    ALWAYS_INLINE static bool supportsDoubleToInt32ConversionUsingJavaScriptSemantics()
+    {
+#if HAVE(FJCVTZS_INSTRUCTION)
+        return true;
+#else
+        if (s_jscvtCheckState == CPUIDCheckState::NotChecked)
+            collectCPUFeatures();
+
+        return s_jscvtCheckState == CPUIDCheckState::Set;
+#endif
+    }
+
+    void convertDoubleToInt32UsingJavaScriptSemantics(FPRegisterID src, RegisterID dest)
+    {
+        m_assembler.fjcvtzs(dest, src); // This zero extends.
+    }
     
 #if ENABLE(FAST_TLS_JIT)
     // This will use scratch registers if the offset is not legal.
@@ -3813,7 +3854,7 @@ public:
         return static_cast<RelationalCondition>(Assembler::invert(static_cast<Assembler::Condition>(cond)));
     }
 
-    static std::optional<ResultCondition> commuteCompareToZeroIntoTest(RelationalCondition cond)
+    static Optional<ResultCondition> commuteCompareToZeroIntoTest(RelationalCondition cond)
     {
         switch (cond) {
         case Equal:
@@ -3826,7 +3867,7 @@ public:
             return PositiveOrZero;
             break;
         default:
-            return std::nullopt;
+            return WTF::nullopt;
         }
     }
 
@@ -3992,11 +4033,6 @@ protected:
         return m_cachedMemoryTempRegister;
     }
 
-    ALWAYS_INLINE bool isInIntRange(intptr_t value)
-    {
-        return value == ((value << 32) >> 32);
-    }
-
     template<typename ImmediateType, typename rawType>
     void moveInternal(ImmediateType imm, RegisterID dest)
     {
@@ -4131,7 +4167,7 @@ protected:
             if (dest == memoryTempRegister)
                 cachedMemoryTempRegister().invalidate();
 
-            if (isInIntRange(addressDelta)) {
+            if (isInt<32>(addressDelta)) {
                 if (Assembler::canEncodeSImmOffset(addressDelta)) {
                     m_assembler.ldur<datasize>(dest,  memoryTempRegister, addressDelta);
                     return;
@@ -4168,7 +4204,7 @@ protected:
             intptr_t addressAsInt = reinterpret_cast<intptr_t>(address);
             intptr_t addressDelta = addressAsInt - currentRegisterContents;
 
-            if (isInIntRange(addressDelta)) {
+            if (isInt<32>(addressDelta)) {
                 if (Assembler::canEncodeSImmOffset(addressDelta)) {
                     m_assembler.stur<datasize>(src, memoryTempRegister, addressDelta);
                     return;

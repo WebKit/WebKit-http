@@ -21,7 +21,11 @@
 #include "config.h"
 #include "HTMLOptionsCollection.h"
 
+#include <wtf/IsoMallocInlines.h>
+
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLOptionsCollection);
 
 HTMLOptionsCollection::HTMLOptionsCollection(HTMLSelectElement& select)
     : CachedHTMLCollection<HTMLOptionsCollection, CollectionTypeTraits<SelectOptions>::traversalType>(select, SelectOptions)
@@ -33,7 +37,7 @@ Ref<HTMLOptionsCollection> HTMLOptionsCollection::create(HTMLSelectElement& sele
     return adoptRef(*new HTMLOptionsCollection(select));
 }
 
-ExceptionOr<void> HTMLOptionsCollection::add(const OptionOrOptGroupElement& element, const std::optional<HTMLElementOrInt>& before)
+ExceptionOr<void> HTMLOptionsCollection::add(const OptionOrOptGroupElement& element, const Optional<HTMLElementOrInt>& before)
 {
     return selectElement().add(element, before);
 }

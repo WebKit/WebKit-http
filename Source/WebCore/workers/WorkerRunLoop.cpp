@@ -49,24 +49,24 @@ namespace WebCore {
 class WorkerSharedTimer final : public SharedTimer {
 public:
     // SharedTimer interface.
-    void setFiredFunction(WTF::Function<void()>&& function) override { m_sharedTimerFunction = WTFMove(function); }
-    void setFireInterval(Seconds interval) override { m_nextFireTime = interval + WallTime::now(); }
-    void stop() override { m_nextFireTime = WallTime(); }
+    void setFiredFunction(WTF::Function<void()>&& function) final { m_sharedTimerFunction = WTFMove(function); }
+    void setFireInterval(Seconds interval) final { m_nextFireTime = MonotonicTime::now() + interval; }
+    void stop() final { m_nextFireTime = MonotonicTime { }; }
 
     bool isActive() { return m_sharedTimerFunction && m_nextFireTime; }
-    WallTime fireTime() { return m_nextFireTime; }
+    Seconds fireTimeDelay() { return std::max(0_s, m_nextFireTime - MonotonicTime::now()); }
     void fire() { m_sharedTimerFunction(); }
 
 private:
     WTF::Function<void()> m_sharedTimerFunction;
-    WallTime m_nextFireTime;
+    MonotonicTime m_nextFireTime;
 };
 
 class ModePredicate {
 public:
-    ModePredicate(const String& mode)
-        : m_mode(mode)
-        , m_defaultMode(mode == WorkerRunLoop::defaultMode())
+    explicit ModePredicate(String&& mode)
+        : m_mode(WTFMove(mode))
+        , m_defaultMode(m_mode == WorkerRunLoop::defaultMode())
     {
     }
 
@@ -87,8 +87,6 @@ private:
 
 WorkerRunLoop::WorkerRunLoop()
     : m_sharedTimer(std::make_unique<WorkerSharedTimer>())
-    , m_nestedCount(0)
-    , m_uniqueId(0)
 {
 }
 
@@ -102,7 +100,7 @@ String WorkerRunLoop::defaultMode()
     return String();
 }
 
-String WorkerRunLoop::debuggerMode()
+static String debuggerMode()
 {
     return "debugger"_s;
 }
@@ -110,12 +108,16 @@ String WorkerRunLoop::debuggerMode()
 class RunLoopSetup {
     WTF_MAKE_NONCOPYABLE(RunLoopSetup);
 public:
-    RunLoopSetup(WorkerRunLoop& runLoop)
+    enum class IsForDebugging { No, Yes };
+    RunLoopSetup(WorkerRunLoop& runLoop, IsForDebugging isForDebugging)
         : m_runLoop(runLoop)
+        , m_isForDebugging(isForDebugging)
     {
         if (!m_runLoop.m_nestedCount)
             threadGlobalData().threadTimers().setSharedTimer(m_runLoop.m_sharedTimer.get());
         m_runLoop.m_nestedCount++;
+        if (m_isForDebugging == IsForDebugging::Yes)
+            m_runLoop.m_debugCount++;
     }
 
     ~RunLoopSetup()
@@ -123,14 +125,17 @@ public:
         m_runLoop.m_nestedCount--;
         if (!m_runLoop.m_nestedCount)
             threadGlobalData().threadTimers().setSharedTimer(nullptr);
+        if (m_isForDebugging == IsForDebugging::Yes)
+            m_runLoop.m_debugCount--;
     }
 private:
     WorkerRunLoop& m_runLoop;
+    IsForDebugging m_isForDebugging { IsForDebugging::No };
 };
 
 void WorkerRunLoop::run(WorkerGlobalScope* context)
 {
-    RunLoopSetup setup(*this);
+    RunLoopSetup setup(*this, RunLoopSetup::IsForDebugging::No);
     ModePredicate modePredicate(defaultMode());
     MessageQueueWaitResult result;
     do {
@@ -139,10 +144,17 @@ void WorkerRunLoop::run(WorkerGlobalScope* context)
     runCleanupTasks(context);
 }
 
+MessageQueueWaitResult WorkerRunLoop::runInDebuggerMode(WorkerGlobalScope& context)
+{
+    RunLoopSetup setup(*this, RunLoopSetup::IsForDebugging::Yes);
+    return runInMode(&context, ModePredicate { debuggerMode() }, WaitForMessage);
+}
+
 MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, const String& mode, WaitMode waitMode)
 {
-    RunLoopSetup setup(*this);
-    ModePredicate modePredicate(mode);
+    ASSERT(mode != debuggerMode());
+    RunLoopSetup setup(*this, RunLoopSetup::IsForDebugging::No);
+    ModePredicate modePredicate(String { mode });
     MessageQueueWaitResult result = runInMode(context, modePredicate, waitMode);
     return result;
 }
@@ -155,7 +167,7 @@ MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, cons
     JSC::JSRunLoopTimer::TimerNotificationCallback timerAddedTask = WTF::createSharedTask<JSC::JSRunLoopTimer::TimerNotificationType>([this] {
         // We don't actually do anything here, we just want to loop around runInMode
         // to both recalculate our deadline and to potentially run the run loop.
-        this->postTask([](ScriptExecutionContext&) { }); 
+        this->postTask([](ScriptExecutionContext&) { });
     });
 
 #if USE(GLIB)
@@ -164,28 +176,23 @@ MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, cons
         g_main_context_iteration(mainContext, FALSE);
 #endif
 
-    WallTime deadline = WallTime::infinity();
+    Seconds timeoutDelay = Seconds::infinity();
 
 #if USE(CF)
     CFAbsoluteTime nextCFRunLoopTimerFireDate = CFRunLoopGetNextTimerFireDate(CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
     double timeUntilNextCFRunLoopTimerInSeconds = nextCFRunLoopTimerFireDate - CFAbsoluteTimeGetCurrent();
-    deadline = WallTime::now() + std::max(0_s, Seconds(timeUntilNextCFRunLoopTimerInSeconds));
+    timeoutDelay = std::max(0_s, Seconds(timeUntilNextCFRunLoopTimerInSeconds));
 #endif
 
-    WallTime absoluteTime;
-    if (waitMode == WaitForMessage) {
-        if (predicate.isDefaultMode() && m_sharedTimer->isActive())
-            absoluteTime = std::min(deadline, m_sharedTimer->fireTime());
-        else
-            absoluteTime = deadline;
-    }
+    if (waitMode == WaitForMessage && predicate.isDefaultMode() && m_sharedTimer->isActive())
+        timeoutDelay = std::min(timeoutDelay, m_sharedTimer->fireTimeDelay());
 
     if (WorkerScriptController* script = context->script()) {
         script->releaseHeapAccess();
         script->addTimerSetNotification(timerAddedTask);
     }
     MessageQueueWaitResult result;
-    auto task = m_messageQueue.waitForMessageFilteredWithTimeout(result, predicate, absoluteTime);
+    auto task = m_messageQueue.waitForMessageFilteredWithTimeout(result, predicate, timeoutDelay);
     if (WorkerScriptController* script = context->script()) {
         script->acquireHeapAccess();
         script->removeTimerSetNotification(timerAddedTask);
@@ -202,7 +209,7 @@ MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, cons
         break;
 
     case MessageQueueTimeout:
-        if (!context->isClosing() && !isNested())
+        if (!context->isClosing() && !isBeingDebugged())
             m_sharedTimer->fire();
         break;
     }
@@ -249,6 +256,11 @@ void WorkerRunLoop::postTaskAndTerminate(ScriptExecutionContext::Task&& task)
 void WorkerRunLoop::postTaskForMode(ScriptExecutionContext::Task&& task, const String& mode)
 {
     m_messageQueue.append(std::make_unique<Task>(WTFMove(task), mode));
+}
+
+void WorkerRunLoop::postDebuggerTask(ScriptExecutionContext::Task&& task)
+{
+    postTaskForMode(WTFMove(task), debuggerMode());
 }
 
 void WorkerRunLoop::Task::performTask(WorkerGlobalScope* context)

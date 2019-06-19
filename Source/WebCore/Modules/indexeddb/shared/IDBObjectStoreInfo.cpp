@@ -35,7 +35,7 @@ IDBObjectStoreInfo::IDBObjectStoreInfo()
 {
 }
 
-IDBObjectStoreInfo::IDBObjectStoreInfo(uint64_t identifier, const String& name, std::optional<IDBKeyPath>&& keyPath, bool autoIncrement)
+IDBObjectStoreInfo::IDBObjectStoreInfo(uint64_t identifier, const String& name, Optional<IDBKeyPath>&& keyPath, bool autoIncrement)
     : m_identifier(identifier)
     , m_name(name)
     , m_keyPath(WTFMove(keyPath))
@@ -153,7 +153,7 @@ String IDBObjectStoreInfo::loggingString(int indent) const
 
 String IDBObjectStoreInfo::condensedLoggingString() const
 {
-    return String::format("<OS: %s (%" PRIu64 ")>", m_name.utf8().data(), m_identifier);
+    return makeString("<OS: ", m_name, " (", m_identifier, ")>");
 }
 
 #endif

@@ -37,7 +37,8 @@
 #define WIRServiceEnabledNotification           "com.apple.webinspectord.enabled"
 #define WIRServiceDisabledNotification          "com.apple.webinspectord.disabled"
 #define WIRAutomaticInspectionEnabledState      "com.apple.webinspectord.automatic_inspection_enabled"
-
+#define WIRRemoteAutomationEnabledNotification  "com.apple.webinspectord.remote_automation_enabled"
+#define WIRRemoteAutomationDisabledNotification "com.apple.webinspectord.remote_automation_disabled"
 
 #define WIRApplicationIdentifierKey             @"WIRApplicationIdentifierKey"
 #define WIRApplicationBundleIdentifierKey       @"WIRApplicationBundleIdentifierKey"
@@ -68,6 +69,7 @@
 #define WIRListingMessage                       @"WIRListingMessage"
 #define WIRListingKey                           @"WIRListingKey"
 #define WIRRemoteAutomationEnabledKey           @"WIRRemoteAutomationEnabledKey"
+#define WIRAutomationAvailabilityKey            @"WIRAutomationAvailabilityKey"
 #define WIRDestinationKey                       @"WIRDestinationKey"
 #define WIRConnectionDiedMessage                @"WIRConnectionDiedMessage"
 #define WIRTypeKey                              @"WIRTypeKey"
@@ -76,6 +78,11 @@
 #define WIRTypeWeb                              @"WIRTypeWeb"
 #define WIRTypeAutomation                       @"WIRTypeAutomation"
 #define WIRAutomaticallyPause                   @"WIRAutomaticallyPause"
+
+// Allowed values for WIRAutomationAvailabilityKey.
+#define WIRAutomationAvailabilityNotAvailable     @"WIRAutomationAvailabilityNotAvailable"
+#define WIRAutomationAvailabilityAvailable        @"WIRAutomationAvailabilityAvailable"
+#define WIRAutomationAvailabilityUnknown          @"WIRAutomationAvailabilityUnknown"
 
 #define WIRAutomaticInspectionEnabledKey           @"WIRAutomaticInspectionEnabledKey"
 #define WIRAutomaticInspectionSessionIdentifierKey @"WIRAutomaticInspectionSessionIdentifierKey"

@@ -29,14 +29,16 @@
 
 namespace JSC {
 
+class CachedEvalCodeBlock;
+
 class UnlinkedEvalCodeBlock final : public UnlinkedGlobalCodeBlock {
 public:
     typedef UnlinkedGlobalCodeBlock Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
-    static UnlinkedEvalCodeBlock* create(VM* vm, const ExecutableInfo& info, DebuggerMode debuggerMode)
+    static UnlinkedEvalCodeBlock* create(VM* vm, const ExecutableInfo& info, OptionSet<CodeGenerationMode> codeGenerationMode)
     {
-        UnlinkedEvalCodeBlock* instance = new (NotNull, allocateCell<UnlinkedEvalCodeBlock>(vm->heap)) UnlinkedEvalCodeBlock(vm, vm->unlinkedEvalCodeBlockStructure.get(), info, debuggerMode);
+        UnlinkedEvalCodeBlock* instance = new (NotNull, allocateCell<UnlinkedEvalCodeBlock>(vm->heap)) UnlinkedEvalCodeBlock(vm, vm->unlinkedEvalCodeBlockStructure.get(), info, codeGenerationMode);
         instance->finishCreation(*vm);
         return instance;
     }
@@ -59,10 +61,14 @@ public:
         m_functionHoistingCandidates = WTFMove(functionHoistingCandidates);
     }
 private:
-    UnlinkedEvalCodeBlock(VM* vm, Structure* structure, const ExecutableInfo& info, DebuggerMode debuggerMode)
-        : Base(vm, structure, EvalCode, info, debuggerMode)
+    friend CachedEvalCodeBlock;
+
+    UnlinkedEvalCodeBlock(VM* vm, Structure* structure, const ExecutableInfo& info, OptionSet<CodeGenerationMode> codeGenerationMode)
+        : Base(vm, structure, EvalCode, info, codeGenerationMode)
     {
     }
+
+    UnlinkedEvalCodeBlock(Decoder&, const CachedEvalCodeBlock&);
 
     Vector<Identifier, 0, UnsafeVectorOverflow> m_variables;
     Vector<Identifier, 0, UnsafeVectorOverflow> m_functionHoistingCandidates;

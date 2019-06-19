@@ -35,10 +35,8 @@
 #import <WebCore/PlatformCALayerCocoa.h>
 #import <WebCore/WebCoreCALayerExtras.h>
 #import <wtf/RetainPtr.h>
-#import <wtf/SoftLinking.h>
 
-SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
-SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVPlayerLayer)
+#import <pal/cocoa/AVFoundationSoftLink.h>
 
 namespace WebKit {
 using namespace WebCore;
@@ -48,7 +46,7 @@ static NSString * const platformCALayerPointer = @"WKPlatformCALayer";
 Ref<PlatformCALayerRemote> PlatformCALayerRemoteCustom::create(PlatformLayer *platformLayer, PlatformCALayerClient* owner, RemoteLayerTreeContext& context)
 {
     auto layer = adoptRef(*new PlatformCALayerRemoteCustom(PlatformCALayerCocoa::layerTypeForPlatformLayer(platformLayer), platformLayer, owner, context));
-    context.layerWasCreated(layer.get(), layer->layerType());
+    context.layerDidEnterContext(layer.get(), layer->layerType());
     return WTFMove(layer);
 }
 
@@ -61,8 +59,12 @@ PlatformCALayerRemoteCustom::PlatformCALayerRemoteCustom(LayerType layerType, Pl
         break;
 #if HAVE(OUT_OF_PROCESS_LAYER_HOSTING)
     case LayerHostingMode::OutOfProcess:
-        m_layerHostingContext = LayerHostingContext::createForExternalHostingProcess();
-#if PLATFORM(IOS)
+        m_layerHostingContext = LayerHostingContext::createForExternalHostingProcess({
+#if PLATFORM(IOS_FAMILY)
+            context.canShowWhileLocked()
+#endif
+        });
+#if PLATFORM(IOS_FAMILY)
         if (layerType == LayerTypeAVPlayerLayer) {
             float scaleFactor = context.deviceScaleFactor();
             // Set a scale factor here to make convertRect:toLayer:nil take scale factor into account. <rdar://problem/18316542>.
@@ -100,13 +102,13 @@ uint32_t PlatformCALayerRemoteCustom::hostingContextID()
 
 Ref<WebCore::PlatformCALayer> PlatformCALayerRemoteCustom::clone(PlatformCALayerClient* owner) const
 {
-    RetainPtr<CALayer *> clonedLayer;
+    RetainPtr<CALayer> clonedLayer;
     bool copyContents = true;
 
     if (layerType() == LayerTypeAVPlayerLayer) {
         
-        if ([platformLayer() isKindOfClass:getAVPlayerLayerClass()]) {
-            clonedLayer = adoptNS([allocAVPlayerLayerInstance() init]);
+        if ([platformLayer() isKindOfClass:PAL::getAVPlayerLayerClass()]) {
+            clonedLayer = adoptNS([PAL::allocAVPlayerLayerInstance() init]);
 
             AVPlayerLayer *destinationPlayerLayer = static_cast<AVPlayerLayer *>(clonedLayer.get());
             AVPlayerLayer *sourcePlayerLayer = static_cast<AVPlayerLayer *>(platformLayer());
@@ -126,7 +128,7 @@ Ref<WebCore::PlatformCALayer> PlatformCALayerRemoteCustom::clone(PlatformCALayer
     }
 
     auto clone = adoptRef(*new PlatformCALayerRemoteCustom(layerType(), clonedLayer.get(), owner, *context()));
-    context()->layerWasCreated(clone.get(), clone->layerType());
+    context()->layerDidEnterContext(clone.get(), clone->layerType());
 
     updateClonedLayerProperties(clone.get(), copyContents);
 

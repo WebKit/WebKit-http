@@ -32,6 +32,7 @@
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
 #include "CachedResourceRequestInitiators.h"
+#include "CustomHeaderFields.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
 
@@ -102,7 +103,7 @@ void ApplicationManifestLoader::stopLoading()
     }
 }
 
-std::optional<ApplicationManifest>& ApplicationManifestLoader::processManifest()
+Optional<ApplicationManifest>& ApplicationManifestLoader::processManifest()
 {
     if (!m_processedManifest && m_resource) {
         auto manifestURL = m_url;

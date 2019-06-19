@@ -40,18 +40,17 @@
 #endif
 
 namespace WebCore {
-class URL;
 struct Cookie;
 }
 
 namespace WebKit {
 
-class ChildProcess;
+class NetworkProcess;
 
 class WebCookieManager : public NetworkProcessSupplement, public IPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebCookieManager);
 public:
-    WebCookieManager(ChildProcess&);
+    WebCookieManager(NetworkProcess&);
     ~WebCookieManager();
 
     static const char* supplementName();
@@ -59,9 +58,7 @@ public:
     void setHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy, OptionalCallbackID);
 
 #if USE(SOUP)
-    void setCookiePersistentStorage(const String& storagePath, uint32_t storageType);
-#elif USE(CURL)
-    void setCookiePersistentStorage(const String& storagePath);
+    void setCookiePersistentStorage(PAL::SessionID, const String& storagePath, SoupCookiePersistentStorageType);
 #endif
 
     void notifyCookiesDidChange(PAL::SessionID);
@@ -73,14 +70,14 @@ private:
     void getHostnamesWithCookies(PAL::SessionID, CallbackID);
 
     void deleteCookie(PAL::SessionID, const WebCore::Cookie&, CallbackID);
-    void deleteCookiesForHostname(PAL::SessionID, const String&);
+    void deleteCookiesForHostnames(PAL::SessionID, const Vector<String>&);
     void deleteAllCookies(PAL::SessionID);
     void deleteAllCookiesModifiedSince(PAL::SessionID, WallTime, CallbackID);
 
-    void setCookie(PAL::SessionID, const WebCore::Cookie&, CallbackID);
-    void setCookies(PAL::SessionID, const Vector<WebCore::Cookie>&, const WebCore::URL&, const WebCore::URL& mainDocumentURL, CallbackID);
+    void setCookie(PAL::SessionID, const Vector<WebCore::Cookie>&, CallbackID);
+    void setCookies(PAL::SessionID, const Vector<WebCore::Cookie>&, const URL&, const URL& mainDocumentURL, CallbackID);
     void getAllCookies(PAL::SessionID, CallbackID);
-    void getCookies(PAL::SessionID, const WebCore::URL&, CallbackID);
+    void getCookies(PAL::SessionID, const URL&, CallbackID);
 
     void platformSetHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy);
     void getHTTPCookieAcceptPolicy(CallbackID);
@@ -89,7 +86,7 @@ private:
     void startObservingCookieChanges(PAL::SessionID);
     void stopObservingCookieChanges(PAL::SessionID);
 
-    ChildProcess& m_process;
+    NetworkProcess& m_process;
 };
 
 } // namespace WebKit

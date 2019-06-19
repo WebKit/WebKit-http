@@ -53,12 +53,10 @@ class Frame;
 class HTMLFrameOwnerElement;
 class IntPoint;
 class IntRect;
-class URL;
 }
 
 namespace WebKit {
 
-class InjectedBundleFileHandle;
 class InjectedBundleHitTestResult;
 class InjectedBundleNodeHandle;
 class InjectedBundleRangeHandle;
@@ -85,9 +83,9 @@ public:
     uint64_t frameID() const { return m_frameID; }
 
     enum class ForNavigationAction { No, Yes };
-    uint64_t setUpPolicyListener(WebCore::FramePolicyFunction&&, ForNavigationAction);
+    uint64_t setUpPolicyListener(WebCore::PolicyCheckIdentifier, WebCore::FramePolicyFunction&&, ForNavigationAction);
     void invalidatePolicyListener();
-    void didReceivePolicyDecision(uint64_t listenerID, WebCore::PolicyAction, uint64_t navigationID, DownloadID, std::optional<WebsitePoliciesData>&&);
+    void didReceivePolicyDecision(uint64_t listenerID, WebCore::PolicyCheckIdentifier, WebCore::PolicyAction, uint64_t navigationID, DownloadID, Optional<WebsitePoliciesData>&&);
 
     uint64_t setUpWillSubmitFormListener(CompletionHandler<void()>&&);
     void continueWillSubmitForm(uint64_t);
@@ -106,7 +104,7 @@ public:
     // WKBundleFrame API and SPI functions
     bool isMainFrame() const;
     String name() const;
-    WebCore::URL url() const;
+    URL url() const;
     WebCore::CertificateInfo certificateInfo() const;
     String innerText() const;
     bool isFrameSet() const;
@@ -133,7 +131,6 @@ public:
 
     JSValueRef jsWrapperForWorld(InjectedBundleNodeHandle*, InjectedBundleScriptWorld*);
     JSValueRef jsWrapperForWorld(InjectedBundleRangeHandle*, InjectedBundleScriptWorld*);
-    JSValueRef jsWrapperForWorld(InjectedBundleFileHandle*, InjectedBundleScriptWorld*);
 
     static String counterValue(JSObjectRef element);
 
@@ -141,11 +138,11 @@ public:
     
     unsigned pendingUnloadCount() const;
     
-    bool allowsFollowingLink(const WebCore::URL&) const;
+    bool allowsFollowingLink(const URL&) const;
 
     String provisionalURL() const;
-    String suggestedFilenameForResourceWithURL(const WebCore::URL&) const;
-    String mimeTypeForResourceWithURL(const WebCore::URL&) const;
+    String suggestedFilenameForResourceWithURL(const URL&) const;
+    String mimeTypeForResourceWithURL(const URL&) const;
 
     void setTextDirection(const String&);
 
@@ -169,7 +166,7 @@ public:
 
     RefPtr<ShareableBitmap> createSelectionSnapshot() const;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     uint64_t firstLayerTreeTransactionIDAfterDidCommitLoad() const { return m_firstLayerTreeTransactionIDAfterDidCommitLoad; }
     void setFirstLayerTreeTransactionIDAfterDidCommitLoad(uint64_t transactionID) { m_firstLayerTreeTransactionIDAfterDidCommitLoad = transactionID; }
 #endif
@@ -181,6 +178,7 @@ private:
     WebCore::Frame* m_coreFrame { nullptr };
 
     uint64_t m_policyListenerID { 0 };
+    Optional<WebCore::PolicyCheckIdentifier> m_policyIdentifier;
     WebCore::FramePolicyFunction m_policyFunction;
     ForNavigationAction m_policyFunctionForNavigationAction { ForNavigationAction::No };
     HashMap<uint64_t, CompletionHandler<void()>> m_willSubmitFormCompletionHandlers;
@@ -191,7 +189,7 @@ private:
     
     uint64_t m_frameID { 0 };
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     uint64_t m_firstLayerTreeTransactionIDAfterDidCommitLoad { 0 };
 #endif
 };

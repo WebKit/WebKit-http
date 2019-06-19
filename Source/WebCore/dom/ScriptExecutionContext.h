@@ -68,7 +68,6 @@ class RejectedPromiseTracker;
 class ResourceRequest;
 class SecurityOrigin;
 class SocketProvider;
-class URL;
 
 #if ENABLE(SERVICE_WORKER)
 class ServiceWorker;
@@ -89,6 +88,7 @@ public:
 
     virtual bool isDocument() const { return false; }
     virtual bool isWorkerGlobalScope() const { return false; }
+    virtual bool isWorkletGlobalScope() const { return false; }
 
     virtual bool isContextThread() const { return true; }
     virtual bool isJSExecutionForbidden() const = 0;
@@ -224,7 +224,7 @@ public:
     DatabaseContext* databaseContext() { return m_databaseContext.get(); }
     void setDatabaseContext(DatabaseContext*);
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
     virtual bool wrapCryptoKey(const Vector<uint8_t>& key, Vector<uint8_t>& wrappedKey) = 0;
     virtual bool unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t>& key) = 0;
 #endif
@@ -244,8 +244,9 @@ public:
     WEBCORE_EXPORT String domainForCachePartition() const;
     void setDomainForCachePartition(String&& domain) { m_domainForCachePartition = WTFMove(domain); }
 
+    bool allowsMediaDevices() const;
+    bool hasServiceWorkerScheme() const;
 #if ENABLE(SERVICE_WORKER)
-    bool hasServiceWorkerScheme();
     ServiceWorker* activeServiceWorker() const;
     void setActiveServiceWorker(RefPtr<ServiceWorker>&&);
 

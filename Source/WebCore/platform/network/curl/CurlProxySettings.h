@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "URL.h"
+#include <wtf/URL.h>
 #include <wtf/text/WTFString.h>
 
 #define kCURLAUTH_DIGEST_IE    (((unsigned long) 1) << 4)
@@ -35,7 +35,7 @@ namespace WebCore {
 
 class CurlProxySettings {
 public:
-    enum class Mode {
+    enum class Mode : uint8_t {
         Default,
         NoProxy,
         Custom

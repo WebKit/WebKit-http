@@ -13,12 +13,12 @@
 #include <utility>
 
 #include "common_video/h264/h264_common.h"
-#include "modules/include/module_common_types.h"
 #include "modules/video_coding/include/video_codec_interface.h"
 #include "modules/video_coding/include/video_error_codes.h"
 #include "modules/video_coding/utility/vp8_header_parser.h"
 #include "modules/video_coding/utility/vp9_uncompressed_header_parser.h"
 #include "rtc_base/logging.h"
+#include "rtc_base/timeutils.h"
 #include "sdk/android/generated_video_jni/jni/VideoEncoderWrapper_jni.h"
 #include "sdk/android/generated_video_jni/jni/VideoEncoder_jni.h"
 #include "sdk/android/native_api/jni/class_loader.h"
@@ -32,8 +32,6 @@ namespace jni {
 VideoEncoderWrapper::VideoEncoderWrapper(JNIEnv* jni,
                                          const JavaRef<jobject>& j_encoder)
     : encoder_(jni, j_encoder), int_array_class_(GetClass(jni, "[I")) {
-  implementation_name_ = GetImplementationName(jni);
-
   initialized_ = false;
   num_resets_ = 0;
 }
@@ -70,7 +68,9 @@ int32_t VideoEncoderWrapper::InitEncodeInternal(JNIEnv* jni) {
   ScopedJavaLocalRef<jobject> settings = Java_Settings_Constructor(
       jni, number_of_cores_, codec_settings_.width, codec_settings_.height,
       static_cast<int>(codec_settings_.startBitrate),
-      static_cast<int>(codec_settings_.maxFramerate), automatic_resize_on);
+      static_cast<int>(codec_settings_.maxFramerate),
+      static_cast<int>(codec_settings_.numberOfSimulcastStreams),
+      automatic_resize_on);
 
   ScopedJavaLocalRef<jobject> callback =
       Java_VideoEncoderWrapper_createEncoderCallback(jni,
@@ -79,6 +79,10 @@ int32_t VideoEncoderWrapper::InitEncodeInternal(JNIEnv* jni) {
   int32_t status = JavaToNativeVideoCodecStatus(
       jni, Java_VideoEncoder_initEncode(jni, encoder_, settings, callback));
   RTC_LOG(LS_INFO) << "initEncode: " << status;
+
+  encoder_info_.supports_native_handle = true;
+  encoder_info_.implementation_name = GetImplementationName(jni);
+  encoder_info_.scaling_settings = GetScalingSettingsInternal(jni);
 
   if (status == WEBRTC_VIDEO_CODEC_OK) {
     initialized_ = true;
@@ -134,14 +138,6 @@ int32_t VideoEncoderWrapper::Encode(
   return HandleReturnCode(jni, ret, "encode");
 }
 
-int32_t VideoEncoderWrapper::SetChannelParameters(uint32_t packet_loss,
-                                                  int64_t rtt) {
-  JNIEnv* jni = AttachCurrentThreadIfNeeded();
-  ScopedJavaLocalRef<jobject> ret = Java_VideoEncoder_setChannelParameters(
-      jni, encoder_, (jshort)packet_loss, (jlong)rtt);
-  return HandleReturnCode(jni, ret, "setChannelParameters");
-}
-
 int32_t VideoEncoderWrapper::SetRateAllocation(
     const VideoBitrateAllocation& allocation,
     uint32_t framerate) {
@@ -154,9 +150,12 @@ int32_t VideoEncoderWrapper::SetRateAllocation(
   return HandleReturnCode(jni, ret, "setRateAllocation");
 }
 
-VideoEncoderWrapper::ScalingSettings VideoEncoderWrapper::GetScalingSettings()
-    const {
-  JNIEnv* jni = AttachCurrentThreadIfNeeded();
+VideoEncoder::EncoderInfo VideoEncoderWrapper::GetEncoderInfo() const {
+  return encoder_info_;
+}
+
+VideoEncoderWrapper::ScalingSettings
+VideoEncoderWrapper::GetScalingSettingsInternal(JNIEnv* jni) const {
   ScopedJavaLocalRef<jobject> j_scaling_settings =
       Java_VideoEncoder_getScalingSettings(jni, encoder_);
   bool isOn =
@@ -202,14 +201,6 @@ VideoEncoderWrapper::ScalingSettings VideoEncoderWrapper::GetScalingSettings()
     default:
       return ScalingSettings::kOff;
   }
-}
-
-bool VideoEncoderWrapper::SupportsNativeHandle() const {
-  return true;
-}
-
-const char* VideoEncoderWrapper::ImplementationName() const {
-  return implementation_name_.c_str();
 }
 
 void VideoEncoderWrapper::OnEncodedFrame(JNIEnv* jni,
@@ -274,7 +265,7 @@ void VideoEncoderWrapper::OnEncodedFrame(JNIEnv* jni,
                          task_buffer.size(), task_buffer.size());
       frame._encodedWidth = encoded_width;
       frame._encodedHeight = encoded_height;
-      frame._timeStamp = frame_extra_info.timestamp_rtp;
+      frame.SetTimestamp(frame_extra_info.timestamp_rtp);
       frame.capture_time_ms_ = capture_time_ns / rtc::kNumNanosecsPerMillisec;
       frame._frameType = (FrameType)frame_type;
       frame.rotation_ = (VideoRotation)rotation;
@@ -383,12 +374,10 @@ CodecSpecificInfo VideoEncoderWrapper::ParseCodecSpecificInfo(
   CodecSpecificInfo info;
   memset(&info, 0, sizeof(info));
   info.codecType = codec_settings_.codecType;
-  info.codec_name = implementation_name_.c_str();
 
   switch (codec_settings_.codecType) {
     case kVideoCodecVP8:
       info.codecSpecific.VP8.nonReference = false;
-      info.codecSpecific.VP8.simulcastIdx = 0;
       info.codecSpecific.VP8.temporalIdx = kNoTemporalIdx;
       info.codecSpecific.VP8.layerSync = false;
       info.codecSpecific.VP8.keyIdx = kNoKeyIdx;
@@ -401,7 +390,6 @@ CodecSpecificInfo VideoEncoderWrapper::ParseCodecSpecificInfo(
       info.codecSpecific.VP9.flexible_mode = false;
       info.codecSpecific.VP9.ss_data_available = key_frame ? true : false;
       info.codecSpecific.VP9.temporal_idx = kNoTemporalIdx;
-      info.codecSpecific.VP9.spatial_idx = kNoSpatialIdx;
       info.codecSpecific.VP9.temporal_up_switch = true;
       info.codecSpecific.VP9.inter_layer_predicted = false;
       info.codecSpecific.VP9.gof_idx =

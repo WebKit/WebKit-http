@@ -32,9 +32,9 @@
 
 #include "PluginProcessCreationParameters.h"
 #include "ProcessExecutablePath.h"
-#include <WebCore/FileSystem.h>
 #include <WebCore/PlatformDisplay.h>
 #include <sys/wait.h>
+#include <wtf/FileSystem.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -50,7 +50,7 @@
 namespace WebKit {
 using namespace WebCore;
 
-void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions, const PluginProcessAttributes& pluginProcessAttributes)
+void PluginProcessProxy::platformGetLaunchOptionsWithAttributes(ProcessLauncher::LaunchOptions& launchOptions, const PluginProcessAttributes& pluginProcessAttributes)
 {
     launchOptions.processType = ProcessLauncher::ProcessType::Plugin64;
 

@@ -29,7 +29,6 @@
 #include "AnimationUtilities.h"
 #include "HashTools.h"
 #include <wtf/Assertions.h>
-#include <wtf/DecimalNumber.h>
 #include <wtf/HexNumber.h>
 #include <wtf/MathExtras.h>
 #include <wtf/text/StringBuilder.h>
@@ -378,10 +377,7 @@ String Color::cssText() const
     builder.appendNumber(static_cast<unsigned char>(blue()));
     if (colorHasAlpha) {
         builder.appendLiteral(", ");
-
-        NumberToStringBuffer buffer;
-        bool shouldTruncateTrailingZeros = true;
-        builder.append(numberToFixedPrecisionString(alpha() / 255.0f, 6, buffer, shouldTruncateTrailingZeros));
+        builder.appendFixedPrecisionNumber(alpha() / 255.0f);
     }
         
     builder.append(')');
@@ -392,8 +388,8 @@ String Color::nameForRenderTreeAsText() const
 {
     // FIXME: Handle ExtendedColors.
     if (alpha() < 0xFF)
-        return String::format("#%02X%02X%02X%02X", red(), green(), blue(), alpha());
-    return String::format("#%02X%02X%02X", red(), green(), blue());
+        return makeString('#', hex(red(), 2), hex(green(), 2), hex(blue(), 2), hex(alpha(), 2));
+    return makeString('#', hex(red(), 2), hex(green(), 2), hex(blue(), 2));
 }
 
 Color Color::light() const
@@ -517,7 +513,7 @@ Color Color::colorWithAlpha(float alpha) const
     if (isExtended())
         return Color { m_colorData.extendedColor->red(), m_colorData.extendedColor->green(), m_colorData.extendedColor->blue(), alpha, m_colorData.extendedColor->colorSpace() };
 
-    int newAlpha = alpha * 255;
+    int newAlpha = alpha * 255; // Why doesn't this use colorFloatToRGBAByte() like colorWithOverrideAlpha()?
 
     Color result = { red(), green(), blue(), newAlpha };
     if (isSemantic())
@@ -546,7 +542,7 @@ void Color::getHSL(double& hue, double& saturation, double& lightness) const
 {
     // http://en.wikipedia.org/wiki/HSL_color_space. This is a direct copy of
     // the algorithm therein, although it's 360^o based and we end up wanting
-    // [0...1) based. It's clearer if we stick to 360^o until the end.
+    // [0...6) based. It's clearer if we stick to 360^o until the end.
     double r = static_cast<double>(red()) / 255.0;
     double g = static_cast<double>(green()) / 255.0;
     double b = static_cast<double>(blue()) / 255.0;
@@ -566,8 +562,8 @@ void Color::getHSL(double& hue, double& saturation, double& lightness) const
     if (hue >= 360.0)
         hue -= 360.0;
 
-    // makeRGBAFromHSLA assumes that hue is in [0...1).
-    hue /= 360.0;
+    // makeRGBAFromHSLA assumes that hue is in [0...6).
+    hue /= 60.0;
 
     lightness = 0.5 * (max + min);
     if (!chroma)

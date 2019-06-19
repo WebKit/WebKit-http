@@ -33,8 +33,8 @@
 namespace WebCore {
 
 class ImageQualityController;
-class LayoutState;
 class RenderLayerCompositor;
+class RenderLayoutState;
 class RenderQuote;
 
 class RenderView final : public RenderBlockFlow {
@@ -42,9 +42,6 @@ class RenderView final : public RenderBlockFlow {
 public:
     RenderView(Document&, RenderStyle&&);
     virtual ~RenderView();
-
-    WEBCORE_EXPORT bool hitTest(const HitTestRequest&, HitTestResult&);
-    bool hitTest(const HitTestRequest&, const HitTestLocation&, HitTestResult&);
 
     const char* renderName() const override { return "RenderView"; }
 
@@ -72,7 +69,7 @@ public:
     FrameView& frameView() const { return m_frameView; }
 
     LayoutRect visualOverflowRect() const override;
-    LayoutRect computeRectForRepaint(const LayoutRect&, const RenderLayerModelObject* repaintContainer, RepaintContext = { }) const override;
+    Optional<LayoutRect> computeVisibleRectInContainer(const LayoutRect&, const RenderLayerModelObject* container, VisibleRectContext) const override;
     void repaintRootContents();
     void repaintViewRectangle(const LayoutRect&) const;
     void repaintViewAndCompositedLayers();
@@ -166,7 +163,7 @@ public:
     void updateVisibleViewportRect(const IntRect&);
     void registerForVisibleInViewportCallback(RenderElement&);
     void unregisterForVisibleInViewportCallback(RenderElement&);
-    void resumePausedImageAnimationsIfNeeded(IntRect visibleRect);
+    void resumePausedImageAnimationsIfNeeded(const IntRect& visibleRect);
     void addRendererWithPausedImageAnimations(RenderElement&, CachedImage&);
     void removeRendererWithPausedImageAnimations(RenderElement&);
     void removeRendererWithPausedImageAnimations(RenderElement&, CachedImage&);
@@ -194,10 +191,6 @@ public:
     const HashSet<const RenderBox*>& boxesWithScrollSnapPositions() { return m_boxesWithScrollSnapPositions; }
 #endif
 
-#if !ASSERT_DISABLED
-    bool inHitTesting() const { return m_inHitTesting; }
-#endif
-
 protected:
     void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags, bool* wasFixed) const override;
     const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const override;
@@ -210,7 +203,7 @@ private:
     bool shouldRepaint(const LayoutRect&) const;
     void flushAccumulatedRepaintRegion() const;
 
-    void layoutContent(const LayoutState&);
+    void layoutContent(const RenderLayoutState&);
 
     bool isScrollableOrRubberbandableBox() const override;
 
@@ -242,7 +235,7 @@ private:
     HashSet<RenderBox*> m_renderersNeedingLazyRepaint;
 
     std::unique_ptr<ImageQualityController> m_imageQualityController;
-    std::optional<LayoutSize> m_pageLogicalSize;
+    Optional<LayoutSize> m_pageLogicalSize;
     bool m_pageLogicalHeightChanged { false };
     std::unique_ptr<RenderLayerCompositor> m_compositor;
 
@@ -253,9 +246,6 @@ private:
     bool m_hasSoftwareFilters { false };
     bool m_usesFirstLineRules { false };
     bool m_usesFirstLetterRules { false };
-#if !ASSERT_DISABLED
-    bool m_inHitTesting { false };
-#endif
 
     HashMap<RenderElement*, Vector<CachedImage*>> m_renderersWithPausedImageAnimation;
     HashSet<RenderElement*> m_visibleInViewportRenderers;

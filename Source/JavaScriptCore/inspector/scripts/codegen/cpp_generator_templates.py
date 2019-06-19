@@ -196,6 +196,7 @@ ${outParameterAssignments}
 
     FrontendDispatcherDomainDispatcherDeclaration = (
 """${classAndExportMacro} ${domainName}FrontendDispatcher {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     ${domainName}FrontendDispatcher(FrontendRouter& frontendRouter) : m_frontendRouter(frontendRouter) { }
 ${eventDeclarations}
@@ -229,8 +230,9 @@ private:
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
             COMPILE_ASSERT(sizeof(${objectType}) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<JSON::Object> result = m_result.releaseNonNull();
-            return WTFMove(*reinterpret_cast<Ref<${objectType}>*>(&result));
+            Ref<JSON::Object> jsonResult = m_result.releaseNonNull();
+            auto result = WTFMove(*reinterpret_cast<Ref<${objectType}>*>(&jsonResult));
+            return result;
         }
     };
 

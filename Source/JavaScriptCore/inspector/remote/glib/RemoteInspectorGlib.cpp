@@ -57,7 +57,7 @@ RemoteInspector::RemoteInspector()
 
 void RemoteInspector::start()
 {
-    std::lock_guard<Lock> lock(m_mutex);
+    LockHolder lock(m_mutex);
 
     if (m_enabled)
         return;
@@ -79,7 +79,7 @@ void RemoteInspector::start()
             if (GRefPtr<GDBusConnection> connection = adoptGRef(g_dbus_connection_new_for_address_finish(result, &error.outPtr())))
                 inspector->setupConnection(WTFMove(connection));
             else if (!g_error_matches(error.get(), G_IO_ERROR, G_IO_ERROR_CANCELLED))
-                WTFLogAlways("RemoteInspector failed to connect to inspector server at: %s: %s", g_getenv("WEBKIT_INSPECTOR_SERVER"), error->message);
+                g_warning("RemoteInspector failed to connect to inspector server at: %s: %s", g_getenv("WEBKIT_INSPECTOR_SERVER"), error->message);
     }, this);
 }
 
@@ -156,7 +156,7 @@ const GDBusInterfaceVTable RemoteInspector::s_interfaceVTable = {
 
 void RemoteInspector::setupConnection(GRefPtr<GDBusConnection>&& connection)
 {
-    std::lock_guard<Lock> lock(m_mutex);
+    LockHolder lock(m_mutex);
 
     ASSERT(connection);
     ASSERT(!m_dbusConnection);
@@ -178,7 +178,7 @@ static void dbusConnectionCallAsyncReadyCallback(GObject* source, GAsyncResult* 
     GUniqueOutPtr<GError> error;
     GRefPtr<GVariant> resultVariant = adoptGRef(g_dbus_connection_call_finish(G_DBUS_CONNECTION(source), result, &error.outPtr()));
     if (!resultVariant && !g_error_matches(error.get(), G_IO_ERROR, G_IO_ERROR_CANCELLED))
-        WTFLogAlways("RemoteInspector failed to send DBus message: %s", error->message);
+        g_warning("RemoteInspector failed to send DBus message: %s", error->message);
 }
 
 TargetListing RemoteInspector::listingForInspectionTarget(const RemoteInspectionTarget& target) const
@@ -234,32 +234,10 @@ void RemoteInspector::pushListingsSoon()
     m_pushScheduled = true;
 
     RunLoop::current().dispatch([this] {
-        std::lock_guard<Lock> lock(m_mutex);
+        LockHolder lock(m_mutex);
         if (m_pushScheduled)
             pushListingsNow();
     });
-}
-
-void RemoteInspector::updateAutomaticInspectionCandidate(RemoteInspectionTarget* target)
-{
-    std::lock_guard<Lock> lock(m_mutex);
-
-    ASSERT(target);
-    unsigned targetIdentifier = target->targetIdentifier();
-    if (!targetIdentifier)
-        return;
-
-    auto result = m_targetMap.set(targetIdentifier, target);
-    ASSERT_UNUSED(result, !result.isNewEntry);
-
-    // If the target has just allowed remote control, then the listing won't exist yet.
-    // If the target has no identifier remove the old listing.
-    if (auto targetListing = listingForTarget(*target))
-        m_targetListingMap.set(targetIdentifier, targetListing);
-    else
-        m_targetListingMap.remove(targetIdentifier);
-    // FIXME: Implement automatic inspection.
-    pushListingsSoon();
 }
 
 void RemoteInspector::sendAutomaticInspectionCandidateMessage()
@@ -272,9 +250,9 @@ void RemoteInspector::sendAutomaticInspectionCandidateMessage()
     // FIXME: Implement automatic inspection.
 }
 
-void RemoteInspector::sendMessageToRemote(unsigned targetIdentifier, const String& message)
+void RemoteInspector::sendMessageToRemote(TargetID targetIdentifier, const String& message)
 {
-    std::lock_guard<Lock> lock(m_mutex);
+    LockHolder lock(m_mutex);
     if (!m_dbusConnection)
         return;
 
@@ -287,21 +265,20 @@ void RemoteInspector::sendMessageToRemote(unsigned targetIdentifier, const Strin
 
 void RemoteInspector::receivedGetTargetListMessage()
 {
-    std::lock_guard<Lock> lock(m_mutex);
+    LockHolder lock(m_mutex);
     pushListingsNow();
 }
 
-void RemoteInspector::receivedSetupMessage(unsigned targetIdentifier)
+void RemoteInspector::receivedSetupMessage(TargetID targetIdentifier)
 {
-    std::lock_guard<Lock> lock(m_mutex);
     setup(targetIdentifier);
 }
 
-void RemoteInspector::receivedDataMessage(unsigned targetIdentifier, const char* message)
+void RemoteInspector::receivedDataMessage(TargetID targetIdentifier, const char* message)
 {
     RefPtr<RemoteConnectionToTarget> connectionToTarget;
     {
-        std::lock_guard<Lock> lock(m_mutex);
+        LockHolder lock(m_mutex);
         connectionToTarget = m_targetConnectionMap.get(targetIdentifier);
         if (!connectionToTarget)
             return;
@@ -309,11 +286,11 @@ void RemoteInspector::receivedDataMessage(unsigned targetIdentifier, const char*
     connectionToTarget->sendMessageToTarget(String::fromUTF8(message));
 }
 
-void RemoteInspector::receivedCloseMessage(unsigned targetIdentifier)
+void RemoteInspector::receivedCloseMessage(TargetID targetIdentifier)
 {
     RefPtr<RemoteConnectionToTarget> connectionToTarget;
     {
-        std::lock_guard<Lock> lock(m_mutex);
+        LockHolder lock(m_mutex);
         RemoteControllableTarget* target = m_targetMap.get(targetIdentifier);
         if (!target)
             return;
@@ -326,11 +303,15 @@ void RemoteInspector::receivedCloseMessage(unsigned targetIdentifier)
         connectionToTarget->close();
 }
 
-void RemoteInspector::setup(unsigned targetIdentifier)
+void RemoteInspector::setup(TargetID targetIdentifier)
 {
-    RemoteControllableTarget* target = m_targetMap.get(targetIdentifier);
-    if (!target)
-        return;
+    RemoteControllableTarget* target;
+    {
+        LockHolder lock(m_mutex);
+        target = m_targetMap.get(targetIdentifier);
+        if (!target)
+            return;
+    }
 
     auto connectionToTarget = adoptRef(*new RemoteConnectionToTarget(*target));
     ASSERT(is<RemoteInspectionTarget>(target) || is<RemoteAutomationTarget>(target));
@@ -338,12 +319,14 @@ void RemoteInspector::setup(unsigned targetIdentifier)
         connectionToTarget->close();
         return;
     }
+
+    LockHolder lock(m_mutex);
     m_targetConnectionMap.set(targetIdentifier, WTFMove(connectionToTarget));
 
     updateHasActiveDebugSession();
 }
 
-void RemoteInspector::sendMessageToTarget(unsigned targetIdentifier, const char* message)
+void RemoteInspector::sendMessageToTarget(TargetID targetIdentifier, const char* message)
 {
     if (auto connectionToTarget = m_targetConnectionMap.get(targetIdentifier))
         connectionToTarget->sendMessageToTarget(String::fromUTF8(message));

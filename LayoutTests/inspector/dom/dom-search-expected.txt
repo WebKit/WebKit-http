@@ -17,11 +17,42 @@ body.inside-iframe
 Count: 2
 body.main-frame
 body.inside-iframe
+=== Query: "bOdY" ===
+Count: 2
+body.main-frame
+body.inside-iframe
+=== Query: "<bOdY" ===
+Count: 2
+body.main-frame
+body.inside-iframe
+=== Query: "bOdY>" ===
+Count: 2
+body.main-frame
+body.inside-iframe
+=== Query: "<bOdY>" ===
+Count: 2
+body.main-frame
+body.inside-iframe
+=== Query: "BODY" ===
+Count: 2
+body.main-frame
+body.inside-iframe
+=== Query: "<BODY" ===
+Count: 2
+body.main-frame
+body.inside-iframe
+=== Query: "BODY>" ===
+Count: 2
+body.main-frame
+body.inside-iframe
 === Query: "<BODY>" ===
 Count: 2
 body.main-frame
 body.inside-iframe
 === Query: "onload" ===
+Count: 1
+body.main-frame
+=== Query: "oNLoAd" ===
 Count: 1
 body.main-frame
 === Query: "ONLOAD" ===
@@ -33,16 +64,46 @@ body.main-frame
 === Query: "\"runTest()" ===
 Count: 1
 body.main-frame
+=== Query: "runTest()\"" ===
+Count: 1
+body.main-frame
 === Query: "\"runTest()\"" ===
 Count: 1
 body.main-frame
-=== Query: "runTest()\"" ===
+=== Query: "runtest()" ===
+Count: 1
+body.main-frame
+=== Query: "\"runtest()" ===
+Count: 1
+body.main-frame
+=== Query: "runtest()\"" ===
+Count: 1
+body.main-frame
+=== Query: "\"runtest()\"" ===
+Count: 1
+body.main-frame
+=== Query: "rUnTeSt()" ===
+Count: 1
+body.main-frame
+=== Query: "\"rUnTeSt()" ===
+Count: 1
+body.main-frame
+=== Query: "rUnTeSt()\"" ===
+Count: 1
+body.main-frame
+=== Query: "\"rUnTeSt()\"" ===
 Count: 1
 body.main-frame
 === Query: "RUNTEST()" ===
 Count: 1
 body.main-frame
-=== Query: "runtest()" ===
+=== Query: "\"RUNTEST()" ===
+Count: 1
+body.main-frame
+=== Query: "RUNTEST()\"" ===
+Count: 1
+body.main-frame
+=== Query: "\"RUNTEST()\"" ===
 Count: 1
 body.main-frame
 === Query: ".body-inside-iframe" ===

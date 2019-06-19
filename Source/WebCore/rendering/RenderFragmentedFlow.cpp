@@ -33,7 +33,6 @@
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
 #include "InlineElementBox.h"
-#include "LayoutState.h"
 #include "Node.h"
 #include "PODIntervalTree.h"
 #include "RenderBoxFragmentInfo.h"
@@ -41,6 +40,7 @@
 #include "RenderInline.h"
 #include "RenderLayer.h"
 #include "RenderLayerCompositor.h"
+#include "RenderLayoutState.h"
 #include "RenderTableCell.h"
 #include "RenderTableSection.h"
 #include "RenderTheme.h"
@@ -111,8 +111,8 @@ void RenderFragmentedFlow::validateFragments()
         m_fragmentsHaveUniformLogicalHeight = true;
 
         if (hasFragments()) {
-            LayoutUnit previousFragmentLogicalWidth = 0;
-            LayoutUnit previousFragmentLogicalHeight = 0;
+            LayoutUnit previousFragmentLogicalWidth;
+            LayoutUnit previousFragmentLogicalHeight;
             bool firstFragmentVisited = false;
             
             for (auto& fragment : m_fragmentList) {
@@ -168,7 +168,7 @@ void RenderFragmentedFlow::updateLogicalWidth()
     // If the fragments have non-uniform logical widths, then insert inset information for the RenderFragmentedFlow.
     for (auto& fragment : m_fragmentList) {
         LayoutUnit fragmentLogicalWidth = fragment->pageLogicalWidth();
-        LayoutUnit logicalLeft = style().direction() == TextDirection::LTR ? LayoutUnit() : logicalWidth - fragmentLogicalWidth;
+        LayoutUnit logicalLeft = style().direction() == TextDirection::LTR ? 0_lu : logicalWidth - fragmentLogicalWidth;
         fragment->setRenderBoxFragmentInfo(this, logicalLeft, fragmentLogicalWidth, false);
     }
 }
@@ -288,11 +288,11 @@ LayoutPoint RenderFragmentedFlow::adjustedPositionRelativeToOffsetParent(const R
             if (is<RenderBox>(boxModelObject)) {
                 // Use borderBoxRectInFragment to account for variations such as percentage margins.
                 LayoutRect borderBoxRect = downcast<RenderBox>(boxModelObject).borderBoxRectInFragment(startFragment, RenderBox::DoNotCacheRenderBoxFragmentInfo);
-                referencePoint.move(borderBoxRect.location().x(), 0);
+                referencePoint.move(borderBoxRect.location().x(), 0_lu);
             }
             
             // Get the logical top coordinate of the current object.
-            LayoutUnit top = 0;
+            LayoutUnit top;
             if (is<RenderBlock>(boxModelObject))
                 top = downcast<RenderBlock>(boxModelObject).offsetFromLogicalTopOfFirstPage();
             else {
@@ -314,9 +314,9 @@ LayoutPoint RenderFragmentedFlow::adjustedPositionRelativeToOffsetParent(const R
             // Since the top has been overridden, check if the
             // relative/sticky positioning must be reconsidered.
             if (boxModelObject.isRelativelyPositioned())
-                referencePoint.move(0, boxModelObject.relativePositionOffset().height());
+                referencePoint.move(0_lu, boxModelObject.relativePositionOffset().height());
             else if (boxModelObject.isStickilyPositioned())
-                referencePoint.move(0, boxModelObject.stickyPositionOffset().height());
+                referencePoint.move(0_lu, boxModelObject.stickyPositionOffset().height());
         }
         
         // Since we're looking for the offset relative to the body, we must also
@@ -330,7 +330,7 @@ LayoutPoint RenderFragmentedFlow::adjustedPositionRelativeToOffsetParent(const R
 LayoutUnit RenderFragmentedFlow::pageLogicalTopForOffset(LayoutUnit offset) const
 {
     RenderFragmentContainer* fragment = fragmentAtBlockOffset(0, offset, false);
-    return fragment ? fragment->pageLogicalTopForOffset(offset) : LayoutUnit();
+    return fragment ? fragment->pageLogicalTopForOffset(offset) : 0_lu;
 }
 
 LayoutUnit RenderFragmentedFlow::pageLogicalWidthForOffset(LayoutUnit offset) const
@@ -780,14 +780,14 @@ void RenderFragmentedFlow::markFragmentsForOverflowLayoutIfNeeded()
 
 void RenderFragmentedFlow::updateFragmentsFragmentedFlowPortionRect()
 {
-    LayoutUnit logicalHeight = 0;
+    LayoutUnit logicalHeight;
     // FIXME: Optimize not to clear the interval all the time. This implies manually managing the tree nodes lifecycle.
     m_fragmentIntervalTree.clear();
     for (auto& fragment : m_fragmentList) {
         LayoutUnit fragmentLogicalWidth = fragment->pageLogicalWidth();
         LayoutUnit fragmentLogicalHeight = std::min<LayoutUnit>(RenderFragmentedFlow::maxLogicalHeight() - logicalHeight, fragment->logicalHeightOfAllFragmentedFlowContent());
 
-        LayoutRect fragmentRect(style().direction() == TextDirection::LTR ? LayoutUnit() : logicalWidth() - fragmentLogicalWidth, logicalHeight, fragmentLogicalWidth, fragmentLogicalHeight);
+        LayoutRect fragmentRect(style().direction() == TextDirection::LTR ? 0_lu : logicalWidth() - fragmentLogicalWidth, logicalHeight, fragmentLogicalWidth, fragmentLogicalHeight);
 
         fragment->setFragmentedFlowPortionRect(isHorizontalWritingMode() ? fragmentRect : fragmentRect.transposedRect());
 
@@ -852,7 +852,7 @@ LayoutRect RenderFragmentedFlow::fragmentsBoundingBox(const LayoutRect& layerBou
 LayoutUnit RenderFragmentedFlow::offsetFromLogicalTopOfFirstFragment(const RenderBlock* currentBlock) const
 {
     // As a last resort, take the slow path.
-    LayoutRect blockRect(0, 0, currentBlock->width(), currentBlock->height());
+    LayoutRect blockRect(0_lu, 0_lu, currentBlock->width(), currentBlock->height());
     while (currentBlock && !is<RenderView>(*currentBlock) && !currentBlock->isRenderFragmentedFlow()) {
         RenderBlock* containerBlock = currentBlock->containingBlock();
         ASSERT(containerBlock);

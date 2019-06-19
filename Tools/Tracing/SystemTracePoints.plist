@@ -45,6 +45,18 @@
              </dict>
              <dict>
                  <key>Name</key>
+                 <string>Dump JIT Memory</string>
+                 <key>Type</key>
+                 <string>Interval</string>
+                 <key>Component</key>
+                 <string>47</string>
+                 <key>CodeBegin</key>
+                 <string>2507</string>
+                 <key>CodeEnd</key>
+                 <string>2508</string>
+             </dict>
+             <dict>
+                 <key>Name</key>
                  <string>Main Resource Load</string>
                  <key>Type</key>
                  <string>Interval</string>
@@ -172,7 +184,7 @@
              </dict>
              <dict>
                  <key>Name</key>
-                 <string>Update touch event regions</string>
+                 <string>Update event rects</string>
                  <key>Type</key>
                  <string>Interval</string>
                  <key>Component</key>
@@ -202,7 +214,51 @@
                  <key>Component</key>
                  <string>47</string>
                  <key>Code</key>
+                 <string>5025</string>
+             </dict>
+             <dict>
+                 <key>Name</key>
+                 <string>Build event regions</string>
+                 <key>Type</key>
+                 <string>Interval</string>
+                 <key>Component</key>
+                 <string>47</string>
+                 <key>CodeBegin</key>
                  <string>5026</string>
+                 <key>CodeEnd</key>
+                 <string>5027</string>
+             </dict>
+             <dict>
+                 <key>Name</key>
+                 <string>Schedule rendering update</string>
+                 <key>Type</key>
+                 <string>Impulse</string>
+                 <key>Component</key>
+                 <string>47</string>
+                 <key>Code</key>
+                 <string>5028</string>
+             </dict>
+             <dict>
+                 <key>Name</key>
+                 <string>Trigger rendering update</string>
+                 <key>Type</key>
+                 <string>Impulse</string>
+                 <key>Component</key>
+                 <string>47</string>
+                 <key>Code</key>
+                 <string>5029</string>
+             </dict>
+             <dict>
+                 <key>Name</key>
+                 <string>Rendering update</string>
+                 <key>Type</key>
+                 <string>Interval</string>
+                 <key>Component</key>
+                 <string>47</string>
+                 <key>CodeBegin</key>
+                 <string>5030</string>
+                 <key>CodeEnd</key>
+                 <string>5031</string>
              </dict>
              <dict>
                  <key>Name</key>

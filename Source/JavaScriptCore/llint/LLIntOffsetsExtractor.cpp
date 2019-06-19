@@ -20,12 +20,14 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
 
+#include "ArithProfile.h"
 #include "ArrayProfile.h"
+#include "BytecodeIndices.h"
 #include "BytecodeStructs.h"
 #include "CodeBlock.h"
 #include "CommonSlowPaths.h"
@@ -33,6 +35,7 @@
 #include "DirectEvalExecutable.h"
 #include "EvalExecutable.h"
 #include "Exception.h"
+#include "GetByIdMetadata.h"
 #include "Heap.h"
 #include "IndirectEvalExecutable.h"
 #include "Interpreter.h"
@@ -48,9 +51,12 @@
 #include "JSString.h"
 #include "JSTypeInfo.h"
 #include "JumpTable.h"
+#include "LLIntData.h"
 #include "LLIntOfflineAsmConfig.h"
 #include "MarkedSpace.h"
+#include "MaxFrameExtentForSlowPathCall.h"
 #include "NativeExecutable.h"
+#include "PutByIdFlags.h"
 #include "ProtoCallFrame.h"
 #include "ShadowChicken.h"
 #include "Structure.h"
@@ -60,6 +66,7 @@
 #include "VM.h"
 #include "ValueProfile.h"
 #include "Watchdog.h"
+#include <stdio.h>
 #include <wtf/text/StringImpl.h>
 
 namespace JSC {
@@ -67,6 +74,10 @@ namespace JSC {
 #define OFFLINE_ASM_OFFSETOF(clazz, field) (static_cast<unsigned>(OBJECT_OFFSETOF(clazz, field)))
 
 class LLIntOffsetsExtractor {
+    // These types are useful since we can't use '<...>' syntax in LLInt offsets extraction. e.g. Vector<int>::m_data
+    using Vector = WTF::Vector<int>;
+    using RefCountedArray = WTF::RefCountedArray<int>;
+
 public:
     static const int64_t* dummy();
 };
@@ -80,7 +91,7 @@ const int64_t* LLIntOffsetsExtractor::dummy()
 // classes friends with LLIntOffsetsExtractor, and include the header here, to get the C++
 // compiler to kindly step aside and yield to our best intentions.
 #include "LLIntDesiredOffsets.h"
-    return extractorTable;
+    return offsetExtractorTable;
 }
 
 } // namespace JSC

@@ -32,11 +32,14 @@
 #include "GlyphPage.h"
 
 #include "CairoUtilities.h"
+#include "CharacterProperties.h"
 #include "Font.h"
+#include "FontCascade.h"
 #include "UTF16UChar32Iterator.h"
 #include <cairo-ft.h>
 #include <cairo.h>
 #include <fontconfig/fcfreetype.h>
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -51,6 +54,14 @@ bool GlyphPage::fill(UChar* buffer, unsigned bufferLength)
     if (!face)
         return false;
 
+    WTF::Optional<Glyph> zeroWidthSpaceGlyphValue;
+    auto zeroWidthSpaceGlyph =
+        [&] {
+            if (!zeroWidthSpaceGlyphValue)
+                zeroWidthSpaceGlyphValue = FcFreeTypeCharIndex(face, zeroWidthSpace);
+            return *zeroWidthSpaceGlyphValue;
+        };
+
     bool haveGlyphs = false;
     UTF16UChar32Iterator iterator(buffer, bufferLength);
     for (unsigned i = 0; i < GlyphPage::size; i++) {
@@ -58,7 +69,11 @@ bool GlyphPage::fill(UChar* buffer, unsigned bufferLength)
         if (character == iterator.end())
             break;
 
-        Glyph glyph = FcFreeTypeCharIndex(face, character);
+        Glyph glyph = FcFreeTypeCharIndex(face, FontCascade::treatAsSpace(character) ? space : character);
+        // If the font doesn't support a Default_Ignorable character, replace it with zero with space.
+        if (!glyph && (isDefaultIgnorableCodePoint(character) || isControlCharacter(character)))
+            glyph = zeroWidthSpaceGlyph();
+
         if (!glyph)
             setGlyphForIndex(i, 0);
         else {

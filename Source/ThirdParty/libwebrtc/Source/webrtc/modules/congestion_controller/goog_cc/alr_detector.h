@@ -11,10 +11,11 @@
 #ifndef MODULES_CONGESTION_CONTROLLER_GOOG_CC_ALR_DETECTOR_H_
 #define MODULES_CONGESTION_CONTROLLER_GOOG_CC_ALR_DETECTOR_H_
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include "absl/types/optional.h"
-#include "common_types.h"  // NOLINT(build/include)
 #include "modules/pacing/interval_budget.h"
-#include "rtc_base/rate_statistics.h"
 
 namespace webrtc {
 
@@ -55,6 +56,7 @@ class AlrDetector {
   void UpdateBudgetWithBytesSent(size_t bytes_sent);
 
  private:
+  friend class GoogCcStatePrinter;
   int bandwidth_usage_percent_;
   int alr_start_budget_level_percent_;
   int alr_stop_budget_level_percent_;

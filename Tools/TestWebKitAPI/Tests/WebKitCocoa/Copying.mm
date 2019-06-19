@@ -25,8 +25,6 @@
 
 #import "config.h"
 
-#if WK_API_ENABLED
-
 #import <wtf/RetainPtr.h>
 
 TEST(Copying, WKPreferences)
@@ -35,7 +33,7 @@ TEST(Copying, WKPreferences)
     RetainPtr<WKPreferences> a = adoptNS([[WKPreferences alloc] init]);
     [a setMinimumFontSize:10];
     [a setJavaScriptEnabled:NO];
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     [a setJavaScriptCanOpenWindowsAutomatically:YES];
 #else
     [a setJavaScriptCanOpenWindowsAutomatically:NO];
@@ -58,7 +56,7 @@ TEST(Copying, WKPreferences)
     // Change all defaults on the copied instance.
     [b setMinimumFontSize:13];
     [b setJavaScriptEnabled:YES];
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     [b setJavaScriptCanOpenWindowsAutomatically:NO];
 #else
     [b setJavaScriptCanOpenWindowsAutomatically:YES];
@@ -78,5 +76,3 @@ TEST(Copying, WKPreferences)
 #endif
 
 }
-
-#endif

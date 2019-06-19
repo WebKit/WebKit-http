@@ -71,6 +71,8 @@ class CommitSet extends DataModelObject {
     ownerCommitForRepository(repository) { return this._repositoryToCommitOwnerMap.get(repository); }
     topLevelRepositories() { return Repository.sortByNamePreferringOnesWithURL(this._repositories.filter((repository) => !this.ownerRevisionForRepository(repository))); }
     ownedRepositoriesForOwnerRepository(repository) { return this._ownerRepositoryToOwnedRepositoriesMap.get(repository); }
+    commitsWithTestability() { return this.commits().filter((commit) => !!commit.testability()); }
+    commits() { return  Array.from(this._repositoryToCommitMap.values()); }
 
     revisionForRepository(repository)
     {
@@ -281,7 +283,7 @@ class MeasurementCommitSet extends CommitSet {
                 continue;
 
             // FIXME: Add a flag to remember the fact this commit log is incomplete.
-            const commit = CommitLog.ensureSingleton(commitId, {repository, revision, order, time});
+            const commit = CommitLog.ensureSingleton(commitId, {id: commitId, repository, revision, order, time});
             this._repositoryToCommitMap.set(repository, commit);
             this._repositories.push(repository);
         }
@@ -386,6 +388,9 @@ class IntermediateCommitSet {
             fetchingPromises.push(this._fetchCommitLogAndOwnedCommits(repository, commit.revision()));
         return Promise.all(fetchingPromises);
     }
+
+    commitsWithTestability() { return this.commits().filter((commit) => !!commit.testability()); }
+    commits() { return  Array.from(this._commitByRepository.values()); }
 
     _fetchCommitLogAndOwnedCommits(repository, revision)
     {

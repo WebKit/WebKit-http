@@ -25,7 +25,7 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED && TARGET_OS_IPHONE
+#if TARGET_OS_IPHONE
 
 #import <Foundation/NSObject.h>
 
@@ -33,7 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @class _WKGeolocationPosition;
 
-WK_API_AVAILABLE(macosx(10.13), ios(11.0))
+WK_API_AVAILABLE(macos(10.13), ios(11.0))
 @protocol _WKGeolocationCoreLocationListener <NSObject>
 - (void)geolocationAuthorizationGranted;
 - (void)geolocationAuthorizationDenied;
@@ -42,7 +42,7 @@ WK_API_AVAILABLE(macosx(10.13), ios(11.0))
 - (void)resetGeolocation;
 @end
 
-WK_API_AVAILABLE(macosx(10.13), ios(11.0))
+WK_API_AVAILABLE(macos(10.13), ios(11.0))
 @protocol _WKGeolocationCoreLocationProvider <NSObject>
 - (void)setListener:(id <_WKGeolocationCoreLocationListener>)listener;
 - (void)requestGeolocationAuthorization;
@@ -53,4 +53,4 @@ WK_API_AVAILABLE(macosx(10.13), ios(11.0))
 
 NS_ASSUME_NONNULL_END
 
-#endif // WK_API_ENABLED && TARGET_OS_IPHONE
+#endif // TARGET_OS_IPHONE

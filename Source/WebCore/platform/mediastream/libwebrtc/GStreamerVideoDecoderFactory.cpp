@@ -29,11 +29,14 @@
 #include "webrtc/media/base/codec.h"
 #include "webrtc/modules/video_coding/codecs/h264/include/h264.h"
 #include "webrtc/modules/video_coding/codecs/vp8/include/vp8.h"
+#include "webrtc/modules/video_coding/codecs/vp8/libvpx_vp8_decoder.h"
 #include "webrtc/modules/video_coding/include/video_codec_interface.h"
 #include <gst/app/gstappsink.h>
 #include <gst/app/gstappsrc.h>
 #include <gst/video/video.h>
 #include <mutex>
+#include <wtf/Lock.h>
+#include <wtf/StdMap.h>
 #include <wtf/glib/RunLoopSourcePriority.h>
 #include <wtf/text/WTFString.h>
 
@@ -42,10 +45,17 @@ GST_DEBUG_CATEGORY(webkit_webrtcdec_debug);
 
 namespace WebCore {
 
+typedef struct {
+    uint64_t timestamp;
+    int64_t renderTimeMs;
+} InputTimestamps;
+
 class GStreamerVideoDecoder : public webrtc::VideoDecoder {
 public:
     GStreamerVideoDecoder()
         : m_pictureId(0)
+        , m_width(0)
+        , m_height(0)
         , m_firstBufferPts(GST_CLOCK_TIME_NONE)
         , m_firstBufferDts(GST_CLOCK_TIME_NONE)
     {
@@ -72,12 +82,17 @@ public:
         return gst_element_factory_make(factoryName, name.get());
     }
 
-    int32_t InitDecode(const webrtc::VideoCodec*, int32_t)
+    int32_t InitDecode(const webrtc::VideoCodec* codecSettings, int32_t) override
     {
         m_src = makeElement("appsrc");
 
         auto capsfilter = CreateFilter();
         auto decoder = makeElement("decodebin");
+
+        if (codecSettings) {
+            m_width = codecSettings->width;
+            m_height = codecSettings->height;
+        }
 
         // Make the decoder output "parsed" frames only and let the main decodebin
         // do the real decoding. This allows us to have optimized decoding/rendering
@@ -155,19 +170,23 @@ public:
         if (!GST_CLOCK_TIME_IS_VALID(m_firstBufferPts)) {
             GRefPtr<GstPad> srcpad = adoptGRef(gst_element_get_static_pad(m_src, "src"));
             m_firstBufferPts = (static_cast<guint64>(renderTimeMs)) * GST_MSECOND;
-            m_firstBufferDts = (static_cast<guint64>(inputImage._timeStamp)) * GST_MSECOND;
+            m_firstBufferDts = (static_cast<guint64>(inputImage.Timestamp())) * GST_MSECOND;
         }
 
         // FIXME- Use a GstBufferPool.
-        auto buffer = gst_buffer_new_wrapped(g_memdup(inputImage._buffer, inputImage._size),
-            inputImage._size);
-        GST_BUFFER_DTS(buffer) = (static_cast<guint64>(inputImage._timeStamp) * GST_MSECOND) - m_firstBufferDts;
-        GST_BUFFER_PTS(buffer) = (static_cast<guint64>(renderTimeMs) * GST_MSECOND) - m_firstBufferPts;
-        m_dtsPtsMap[GST_BUFFER_PTS(buffer)] = inputImage._timeStamp;
+        auto buffer = adoptGRef(gst_buffer_new_wrapped(g_memdup(inputImage._buffer, inputImage._size),
+            inputImage._size));
+        GST_BUFFER_DTS(buffer.get()) = (static_cast<guint64>(inputImage.Timestamp()) * GST_MSECOND) - m_firstBufferDts;
+        GST_BUFFER_PTS(buffer.get()) = (static_cast<guint64>(renderTimeMs) * GST_MSECOND) - m_firstBufferPts;
+        {
+            auto locker = holdLock(m_bufferMapLock);
+            InputTimestamps timestamps = {inputImage.Timestamp(), renderTimeMs};
+            m_dtsPtsMap[GST_BUFFER_PTS(buffer.get())] = timestamps;
+        }
 
-        GST_LOG_OBJECT(pipeline(), "%ld Decoding: %" GST_PTR_FORMAT, renderTimeMs, buffer);
-        switch (gst_app_src_push_sample(GST_APP_SRC(m_src),
-            gst_sample_new(buffer, GetCapsForFrame(inputImage), nullptr, nullptr))) {
+        GST_LOG_OBJECT(pipeline(), "%ld Decoding: %" GST_PTR_FORMAT, renderTimeMs, buffer.get());
+        auto sample = adoptGRef(gst_sample_new(buffer.get(), GetCapsForFrame(inputImage), nullptr, nullptr));
+        switch (gst_app_src_push_sample(GST_APP_SRC(m_src), sample.get())) {
         case GST_FLOW_OK:
             return WEBRTC_VIDEO_CODEC_OK;
         case GST_FLOW_FLUSHING:
@@ -177,12 +196,12 @@ public:
         }
     }
 
-    GstCaps* GetCapsForFrame(const webrtc::EncodedImage& image)
+    virtual GstCaps* GetCapsForFrame(const webrtc::EncodedImage& image)
     {
         if (!m_caps) {
             m_caps = adoptGRef(gst_caps_new_simple(Caps(),
-                "width", G_TYPE_INT, image._encodedWidth,
-                "height", G_TYPE_INT, image._encodedHeight,
+                "width", G_TYPE_INT, image._encodedWidth ? image._encodedWidth : m_width,
+                "height", G_TYPE_INT, image._encodedHeight ? image._encodedHeight : m_height,
                 nullptr));
         }
 
@@ -203,19 +222,26 @@ public:
         return webrtc::SdpVideoFormat(Name());
     }
 
-    bool HasGstDecoder()
+    static GRefPtr<GstElementFactory> GstDecoderFactory(const char *capsStr)
     {
-
         auto all_decoders = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECODER,
             GST_RANK_MARGINAL);
-        auto caps = adoptGRef(gst_caps_from_string(Caps()));
+        auto caps = adoptGRef(gst_caps_from_string(capsStr));
         auto decoders = gst_element_factory_list_filter(all_decoders,
             caps.get(), GST_PAD_SINK, FALSE);
 
         gst_plugin_feature_list_free(all_decoders);
+        GRefPtr<GstElementFactory> res;
+        if (decoders)
+            res = GST_ELEMENT_FACTORY(decoders->data);
         gst_plugin_feature_list_free(decoders);
 
-        return decoders != nullptr;
+        return res;
+    }
+
+    bool HasGstDecoder()
+    {
+        return GstDecoderFactory(Caps());
     }
 
     GstFlowReturn newSampleCallback(GstElement* sink)
@@ -223,11 +249,16 @@ public:
         auto sample = gst_app_sink_pull_sample(GST_APP_SINK(sink));
         auto buffer = gst_sample_get_buffer(sample);
 
+        m_bufferMapLock.lock();
         // Make sure that the frame.timestamp == previsouly input_frame._timeStamp
         // as it is required by the VideoDecoder baseclass.
-        GST_BUFFER_DTS(buffer) = m_dtsPtsMap[GST_BUFFER_PTS(buffer)];
+        auto timestamps = m_dtsPtsMap[GST_BUFFER_PTS(buffer)];
         m_dtsPtsMap.erase(GST_BUFFER_PTS(buffer));
-        auto frame(LibWebRTCVideoFrameFromGStreamerSample(sample, webrtc::kVideoRotation_0));
+        m_bufferMapLock.unlock();
+
+        auto frame(LibWebRTCVideoFrameFromGStreamerSample(sample, webrtc::kVideoRotation_0,
+            timestamps.timestamp, timestamps.renderTimeMs));
+
         GST_BUFFER_DTS(buffer) = GST_CLOCK_TIME_NONE;
         GST_LOG_OBJECT(pipeline(), "Output decoded frame! %d -> %" GST_PTR_FORMAT,
             frame->timestamp(), buffer);
@@ -245,6 +276,8 @@ public:
 protected:
     GRefPtr<GstCaps> m_caps;
     gint m_pictureId;
+    gint m_width;
+    gint m_height;
 
 private:
     static GstFlowReturn newSampleCallbackTramp(GstElement* sink, GStreamerVideoDecoder* enc)
@@ -258,7 +291,8 @@ private:
     GstVideoInfo m_info;
     webrtc::DecodedImageCallback* m_imageReadyCb;
 
-    std::map<GstClockTime, GstClockTime> m_dtsPtsMap;
+    Lock m_bufferMapLock;
+    StdMap<GstClockTime, InputTimestamps> m_dtsPtsMap;
     GstClockTime m_firstBufferPts;
     GstClockTime m_firstBufferDts;
 };
@@ -266,9 +300,56 @@ private:
 class H264Decoder : public GStreamerVideoDecoder {
 public:
     H264Decoder() { }
+
+    int32_t InitDecode(const webrtc::VideoCodec* codecInfo, int32_t nCores) final
+    {
+        if (codecInfo && codecInfo->codecType != webrtc::kVideoCodecH264)
+            return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
+
+        m_profile = nullptr;
+        if (codecInfo) {
+            auto h264Info = codecInfo->H264();
+
+            switch (h264Info.profile) {
+            case webrtc::H264::kProfileConstrainedBaseline:
+                m_profile = "constrained-baseline";
+                break;
+            case webrtc::H264::kProfileBaseline:
+                m_profile = "baseline";
+                break;
+            case webrtc::H264::kProfileMain:
+                m_profile = "main";
+                break;
+            case webrtc::H264::kProfileConstrainedHigh:
+                m_profile = "constrained-high";
+                break;
+            case webrtc::H264::kProfileHigh:
+                m_profile = "high";
+                break;
+            }
+        }
+
+        return GStreamerVideoDecoder::InitDecode(codecInfo, nCores);
+    }
+
+    GstCaps* GetCapsForFrame(const webrtc::EncodedImage& image) final
+    {
+        if (!m_caps) {
+            m_caps = adoptGRef(gst_caps_new_simple(Caps(),
+                "width", G_TYPE_INT, image._encodedWidth ? image._encodedWidth : m_width,
+                "height", G_TYPE_INT, image._encodedHeight ? image._encodedHeight : m_height,
+                "alignment", G_TYPE_STRING, "au",
+                nullptr));
+        }
+
+        return m_caps.get();
+    }
     const gchar* Caps() final { return "video/x-h264"; }
     const gchar* Name() final { return cricket::kH264CodecName; }
     webrtc::VideoCodecType CodecType() final { return webrtc::kVideoCodecH264; }
+
+private:
+    const gchar* m_profile;
 };
 
 class VP8Decoder : public GStreamerVideoDecoder {
@@ -277,16 +358,28 @@ public:
     const gchar* Caps() final { return "video/x-vp8"; }
     const gchar* Name() final { return cricket::kVp8CodecName; }
     webrtc::VideoCodecType CodecType() final { return webrtc::kVideoCodecVP8; }
+    static std::unique_ptr<webrtc::VideoDecoder> Create()
+    {
+        auto factory = GstDecoderFactory("video/x-vp8");
+
+        if (factory && !g_strcmp0(GST_OBJECT_NAME(GST_OBJECT(factory.get())), "vp8dec")) {
+            GST_INFO("Our best GStreamer VP8 decoder is vp8dec, better use the one from LibWebRTC");
+
+            return std::unique_ptr<webrtc::VideoDecoder>(new webrtc::LibvpxVp8Decoder());
+        }
+
+        return std::unique_ptr<webrtc::VideoDecoder>(new VP8Decoder());
+    }
 };
 
 std::unique_ptr<webrtc::VideoDecoder> GStreamerVideoDecoderFactory::CreateVideoDecoder(const webrtc::SdpVideoFormat& format)
 {
-    GStreamerVideoDecoder* dec;
+    webrtc::VideoDecoder* dec;
 
     if (format.name == cricket::kH264CodecName)
         dec = new H264Decoder();
     else if (format.name == cricket::kVp8CodecName)
-        dec = new VP8Decoder();
+        return VP8Decoder::Create();
     else {
         GST_ERROR("Could not create decoder for %s", format.name.c_str());
 

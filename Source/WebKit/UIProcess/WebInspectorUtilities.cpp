@@ -33,6 +33,7 @@
 #include "WebProcessProxy.h"
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebKit {
 
@@ -57,17 +58,17 @@ unsigned inspectorLevelForPage(WebPageProxy* page)
 
 String inspectorPageGroupIdentifierForPage(WebPageProxy* page)
 {
-    return String::format("__WebInspectorPageGroupLevel%u__", inspectorLevelForPage(page));
+    return makeString("__WebInspectorPageGroupLevel", inspectorLevelForPage(page), "__");
 }
 
-void trackInspectorPage(WebPageProxy* page)
+void trackInspectorPage(WebPageProxy* inspectorPage, WebPageProxy* inspectedPage)
 {
-    pageLevelMap().set(page, inspectorLevelForPage(page));
+    pageLevelMap().set(inspectorPage, inspectorLevelForPage(inspectedPage));
 }
 
-void untrackInspectorPage(WebPageProxy* page)
+void untrackInspectorPage(WebPageProxy* inspectorPage)
 {
-    pageLevelMap().remove(page);
+    pageLevelMap().remove(inspectorPage);
 }
 
 static WebProcessPool* s_mainInspectorProcessPool;
@@ -81,6 +82,8 @@ WebProcessPool& inspectorProcessPool(unsigned inspectionLevel)
     if (!pool) {
         auto configuration = API::ProcessPoolConfiguration::createWithLegacyOptions();
         pool = &WebProcessPool::create(configuration.get()).leakRef();
+        // Do not delay process launch for inspector pages as inspector pages do not know how to transition from a terminated process.
+        pool->disableDelayedWebProcessLaunch();
     }
     return *pool;
 }

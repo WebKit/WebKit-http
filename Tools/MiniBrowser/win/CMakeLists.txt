@@ -1,8 +1,9 @@
 set(MiniBrowser_INCLUDE_DIRECTORIES
-    "${FORWARDING_HEADERS_DIR}"
-    "${FORWARDING_HEADERS_DIR}/WebKitLegacy"
-    "${CMAKE_SOURCE_DIR}"
-    "${CMAKE_SOURCE_DIR}/Source"
+    ${PAL_FRAMEWORK_HEADERS_DIR}
+    ${WebCore_PRIVATE_FRAMEWORK_HEADERS_DIR}
+    ${WebKitLegacy_FRAMEWORK_HEADERS_DIR}
+    ${WebKit_FRAMEWORK_HEADERS_DIR}
+    ${WebKit_PRIVATE_FRAMEWORK_HEADERS_DIR}
 )
 
 set(MiniBrowser_SOURCES
@@ -24,7 +25,7 @@ set(MiniBrowser_SOURCES
 
 set(MiniBrowser_LIBRARIES
     DbgHelp
-    WTF
+    WebKit::WTF
     WebKitLegacy
     WebKitLegacyGUID
     comctl32

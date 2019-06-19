@@ -41,12 +41,6 @@
 #import <wtf/SoftLinking.h>
 #import <wtf/UUID.h>
 
-SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
-SOFT_LINK_CLASS(AVFoundation, AVURLAsset)
-SOFT_LINK_CLASS(AVFoundation, AVAssetResourceLoadingRequest)
-#define AVURLAsset getAVURLAssetClass()
-#define AVAssetResourceLoadingRequest getAVAssetResourceLoadingRequest()
-
 namespace WebCore {
 
 CDMSessionAVFoundationObjC::CDMSessionAVFoundationObjC(MediaPlayerPrivateAVFoundationObjC* parent, LegacyCDMSessionClient* client)
@@ -99,9 +93,9 @@ RefPtr<Uint8Array> CDMSessionAVFoundationObjC::generateKeyRequest(const String& 
     systemCode = 0;
     destinationURL = String();
 
-    RefPtr<ArrayBuffer> keyRequestBuffer = ArrayBuffer::create([keyRequest.get() bytes], [keyRequest.get() length]);
+    auto keyRequestBuffer = ArrayBuffer::create([keyRequest.get() bytes], [keyRequest.get() length]);
     unsigned byteLength = keyRequestBuffer->byteLength();
-    return Uint8Array::create(WTFMove(keyRequestBuffer), 0, byteLength);
+    return Uint8Array::tryCreate(WTFMove(keyRequestBuffer), 0, byteLength);
 }
 
 void CDMSessionAVFoundationObjC::releaseKeys()

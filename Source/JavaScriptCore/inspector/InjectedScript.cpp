@@ -33,9 +33,11 @@
 #include "InjectedScript.h"
 
 #include "JSCInlines.h"
+#include "JSLock.h"
 #include "ScriptFunctionCall.h"
 #include "ScriptObject.h"
 #include <wtf/JSONValues.h>
+#include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -54,7 +56,20 @@ InjectedScript::~InjectedScript()
 {
 }
 
-void InjectedScript::evaluate(ErrorString& errorString, const String& expression, const String& objectGroup, bool includeCommandLineAPI, bool returnByValue, bool generatePreview, bool saveResult, RefPtr<Protocol::Runtime::RemoteObject>& result, bool& wasThrown, std::optional<int>& savedResultIndex)
+void InjectedScript::execute(ErrorString& errorString, const String& functionString, ExecuteOptions&& options, RefPtr<Protocol::Runtime::RemoteObject>& result, Optional<bool>& wasThrown, Optional<int>& savedResultIndex)
+{
+    Deprecated::ScriptFunctionCall function(injectedScriptObject(), "execute"_s, inspectorEnvironment()->functionCallHandler());
+    function.appendArgument(functionString);
+    function.appendArgument(options.objectGroup);
+    function.appendArgument(options.includeCommandLineAPI);
+    function.appendArgument(options.returnByValue);
+    function.appendArgument(options.generatePreview);
+    function.appendArgument(options.saveResult);
+    function.appendArgument(arrayFromVector(WTFMove(options.args)));
+    makeEvalCall(errorString, function, result, wasThrown, savedResultIndex);
+}
+
+void InjectedScript::evaluate(ErrorString& errorString, const String& expression, const String& objectGroup, bool includeCommandLineAPI, bool returnByValue, bool generatePreview, bool saveResult, RefPtr<Protocol::Runtime::RemoteObject>& result, Optional<bool>& wasThrown, Optional<int>& savedResultIndex)
 {
     Deprecated::ScriptFunctionCall function(injectedScriptObject(), "evaluate"_s, inspectorEnvironment()->functionCallHandler());
     function.appendArgument(expression);
@@ -66,7 +81,17 @@ void InjectedScript::evaluate(ErrorString& errorString, const String& expression
     makeEvalCall(errorString, function, result, wasThrown, savedResultIndex);
 }
 
-void InjectedScript::callFunctionOn(ErrorString& errorString, const String& objectId, const String& expression, const String& arguments, bool returnByValue, bool generatePreview, RefPtr<Protocol::Runtime::RemoteObject>& result, bool& wasThrown)
+void InjectedScript::awaitPromise(const String& promiseObjectId, bool returnByValue, bool generatePreview, bool saveResult, AsyncCallCallback&& callback)
+{
+    Deprecated::ScriptFunctionCall function(injectedScriptObject(), "awaitPromise"_s, inspectorEnvironment()->functionCallHandler());
+    function.appendArgument(promiseObjectId);
+    function.appendArgument(returnByValue);
+    function.appendArgument(generatePreview);
+    function.appendArgument(saveResult);
+    makeAsyncCall(function, WTFMove(callback));
+}
+
+void InjectedScript::callFunctionOn(ErrorString& errorString, const String& objectId, const String& expression, const String& arguments, bool returnByValue, bool generatePreview, RefPtr<Protocol::Runtime::RemoteObject>& result, Optional<bool>& wasThrown)
 {
     Deprecated::ScriptFunctionCall function(injectedScriptObject(), "callFunctionOn"_s, inspectorEnvironment()->functionCallHandler());
     function.appendArgument(objectId);
@@ -74,12 +99,13 @@ void InjectedScript::callFunctionOn(ErrorString& errorString, const String& obje
     function.appendArgument(arguments);
     function.appendArgument(returnByValue);
     function.appendArgument(generatePreview);
-    
-    std::optional<int> unused;
-    makeEvalCall(errorString, function, result, wasThrown, unused);
+
+    Optional<int> savedResultIndex;
+    makeEvalCall(errorString, function, result, wasThrown, savedResultIndex);
+    ASSERT(!savedResultIndex);
 }
 
-void InjectedScript::evaluateOnCallFrame(ErrorString& errorString, JSC::JSValue callFrames, const String& callFrameId, const String& expression, const String& objectGroup, bool includeCommandLineAPI, bool returnByValue, bool generatePreview, bool saveResult, RefPtr<Protocol::Runtime::RemoteObject>& result, bool& wasThrown, std::optional<int>& savedResultIndex)
+void InjectedScript::evaluateOnCallFrame(ErrorString& errorString, JSC::JSValue callFrames, const String& callFrameId, const String& expression, const String& objectGroup, bool includeCommandLineAPI, bool returnByValue, bool generatePreview, bool saveResult, RefPtr<Protocol::Runtime::RemoteObject>& result, Optional<bool>& wasThrown, Optional<int>& savedResultIndex)
 {
     Deprecated::ScriptFunctionCall function(injectedScriptObject(), "evaluateOnCallFrame"_s, inspectorEnvironment()->functionCallHandler());
     function.appendArgument(callFrames);
@@ -202,7 +228,7 @@ void InjectedScript::getCollectionEntries(ErrorString& errorString, const String
     entries = BindingTraits<JSON::ArrayOf<Protocol::Runtime::CollectionEntry>>::runtimeCast(WTFMove(result));
 }
 
-void InjectedScript::saveResult(ErrorString& errorString, const String& callArgumentJSON, std::optional<int>& savedResultIndex)
+void InjectedScript::saveResult(ErrorString& errorString, const String& callArgumentJSON, Optional<int>& savedResultIndex)
 {
     Deprecated::ScriptFunctionCall function(injectedScriptObject(), "saveResult"_s, inspectorEnvironment()->functionCallHandler());
     function.appendArgument(callArgumentJSON);
@@ -321,6 +347,21 @@ RefPtr<Protocol::Runtime::ObjectPreview> InjectedScript::previewValue(JSC::JSVal
     return BindingTraits<Protocol::Runtime::ObjectPreview>::runtimeCast(resultObject);
 }
 
+void InjectedScript::setEventValue(JSC::JSValue value)
+{
+    ASSERT(!hasNoValue());
+    Deprecated::ScriptFunctionCall function(injectedScriptObject(), "setEventValue"_s, inspectorEnvironment()->functionCallHandler());
+    function.appendArgument(value);
+    makeCall(function);
+}
+
+void InjectedScript::clearEventValue()
+{
+    ASSERT(!hasNoValue());
+    Deprecated::ScriptFunctionCall function(injectedScriptObject(), "clearEventValue"_s, inspectorEnvironment()->functionCallHandler());
+    makeCall(function);
+}
+
 void InjectedScript::setExceptionValue(JSC::JSValue value)
 {
     ASSERT(!hasNoValue());
@@ -373,6 +414,24 @@ void InjectedScript::releaseObjectGroup(const String& objectGroup)
     bool hadException = false;
     callFunctionWithEvalEnabled(releaseFunction, hadException);
     ASSERT(!hadException);
+}
+
+JSC::JSValue InjectedScript::arrayFromVector(Vector<JSC::JSValue>&& vector)
+{
+    JSC::ExecState* execState = scriptState();
+    if (!execState)
+        return JSC::jsUndefined();
+
+    JSC::JSLockHolder lock(execState);
+
+    JSC::JSArray* array = JSC::constructEmptyArray(execState, nullptr);
+    if (!array)
+        return JSC::jsUndefined();
+
+    for (auto& item : vector)
+        array->putDirectIndex(execState, array->length(), item);
+
+    return array;
 }
 
 } // namespace Inspector

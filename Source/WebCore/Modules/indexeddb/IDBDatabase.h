@@ -45,7 +45,8 @@ class IDBTransactionInfo;
 
 struct EventNames;
 
-class IDBDatabase : public ThreadSafeRefCounted<IDBDatabase>, public EventTargetWithInlineData, public IDBActiveDOMObject {
+class IDBDatabase final : public ThreadSafeRefCounted<IDBDatabase>, public EventTargetWithInlineData, public IDBActiveDOMObject {
+    WTF_MAKE_ISO_ALLOCATED(IDBDatabase);
 public:
     static Ref<IDBDatabase> create(ScriptExecutionContext&, IDBClient::IDBConnectionProxy&, const IDBResultData&);
 
@@ -54,10 +55,10 @@ public:
     // IDBDatabase IDL
     const String name() const;
     uint64_t version() const;
-    RefPtr<DOMStringList> objectStoreNames() const;
+    Ref<DOMStringList> objectStoreNames() const;
 
     struct ObjectStoreParameters {
-        std::optional<IDBKeyPath> keyPath;
+        Optional<IDBKeyPath> keyPath;
         bool autoIncrement;
     };
 

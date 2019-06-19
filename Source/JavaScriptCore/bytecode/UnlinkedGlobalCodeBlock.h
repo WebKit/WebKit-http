@@ -34,8 +34,14 @@ public:
     typedef UnlinkedCodeBlock Base;
 
 protected:
-    UnlinkedGlobalCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info, DebuggerMode debuggerMode)
-        : Base(vm, structure, codeType, info, debuggerMode)
+    UnlinkedGlobalCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info, OptionSet<CodeGenerationMode> codeGenerationMode)
+        : Base(vm, structure, codeType, info, codeGenerationMode)
+    {
+    }
+
+    template<typename CodeBlockType>
+    UnlinkedGlobalCodeBlock(Decoder& decoder, Structure* structure, const CachedCodeBlock<CodeBlockType>& cachedCodeBlock)
+        : Base(decoder, structure, cachedCodeBlock)
     {
     }
 };

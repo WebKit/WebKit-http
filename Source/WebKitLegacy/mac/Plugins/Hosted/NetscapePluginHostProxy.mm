@@ -125,7 +125,7 @@ NetscapePluginHostProxy::NetscapePluginHostProxy(mach_port_t clientPort, mach_po
     
     CFRunLoopAddSource(CFRunLoopGetCurrent(), deathPortSource.get(), kCFRunLoopDefaultMode);
     
-    m_clientPortSource = adoptCF(MSHCreateMIGServerSource(nullptr, 0, reinterpret_cast<mig_subsystem_t>(const_cast<struct WKWebKitPluginClient_subsystem*>(&WKWebKitPluginClient_subsystem)), 0, m_clientPort, nullptr));
+    m_clientPortSource = adoptCF(MSHCreateMIGServerSource(nullptr, 0, reinterpret_cast<mig_subsystem_t>(const_cast<struct WKWebKitPluginClient_subsystem*>(&WKWebKitPluginClient_subsystem)), kMSHDoNotCreateSendRightOption, m_clientPort, nullptr));
     CFRunLoopAddSource(CFRunLoopGetCurrent(), m_clientPortSource.get(), kCFRunLoopDefaultMode);
     CFRunLoopAddSource(CFRunLoopGetCurrent(), m_clientPortSource.get(), (CFStringRef)NSEventTrackingRunLoopMode);
 }
@@ -134,11 +134,10 @@ NetscapePluginHostProxy::~NetscapePluginHostProxy()
 {
     pluginProxyMap().remove(m_clientPort);
 
-    // Free the port set
     if (m_portSet) {
         mach_port_extract_member(mach_task_self(), m_clientPort, m_portSet);
         mach_port_extract_member(mach_task_self(), CFMachPortGetPort(m_deadNameNotificationPort.get()), m_portSet);
-        mach_port_destroy(mach_task_self(), m_portSet);
+        mach_port_mod_refs(mach_task_self(), m_portSet, MACH_PORT_RIGHT_PORT_SET, -1);
         m_portSet = MACH_PORT_NULL;
     }
     
@@ -341,32 +340,29 @@ bool NetscapePluginHostProxy::processRequests()
 
 void NetscapePluginHostProxy::makeCurrentProcessFrontProcess()
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     ProcessSerialNumber psn;
     GetCurrentProcess(&psn);
     SetFrontProcess(&psn);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 void NetscapePluginHostProxy::makePluginHostProcessFrontProcess() const
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     SetFrontProcess(&m_pluginHostPSN);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 bool NetscapePluginHostProxy::isPluginHostProcessFrontProcess() const
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     ProcessSerialNumber frontProcess;
     GetFrontProcess(&frontProcess);
 
     Boolean isSameProcess = 0;
     SameProcess(&frontProcess, &m_pluginHostPSN, &isSameProcess);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     return isSameProcess;
 }

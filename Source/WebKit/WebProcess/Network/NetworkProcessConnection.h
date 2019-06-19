@@ -28,6 +28,8 @@
 
 #include "Connection.h"
 #include "ShareableResource.h"
+#include "WebIDBConnectionToServer.h"
+#include <WebCore/ServiceWorkerTypes.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -47,6 +49,8 @@ class ResourceResponse;
 
 namespace WebKit {
 
+class WebSWClientConnection;
+
 typedef uint64_t ResourceLoadIdentifier;
 
 class NetworkProcessConnection : public RefCounted<NetworkProcessConnection>, IPC::Connection::Client {
@@ -61,7 +65,20 @@ public:
 
     void didReceiveNetworkProcessConnectionMessage(IPC::Connection&, IPC::Decoder&);
 
-    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void (const Vector<String>& filePaths)>&& completionHandler);
+    void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, CompletionHandler<void(Vector<String>&& filePaths)>&&);
+
+#if ENABLE(INDEXED_DATABASE)
+    WebIDBConnectionToServer* existingIDBConnectionToServerForIdentifier(uint64_t identifier) const { return m_webIDBConnectionsByIdentifier.get(identifier); };
+    WebIDBConnectionToServer& idbConnectionToServerForSession(PAL::SessionID);
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    WebSWClientConnection* existingServiceWorkerConnectionForSession(PAL::SessionID sessionID) { return m_swConnectionsBySession.get(sessionID); }
+    WebSWClientConnection& serviceWorkerConnectionForSession(PAL::SessionID);
+
+    WebCore::SWServerConnectionIdentifier initializeSWClientConnection(WebSWClientConnection&);
+    void removeSWClientConnection(WebSWClientConnection&);
+#endif
 
 private:
     NetworkProcessConnection(IPC::Connection::Identifier);
@@ -72,7 +89,6 @@ private:
     void didClose(IPC::Connection&) override;
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
-    void didWriteBlobsToTemporaryFiles(uint64_t requestIdentifier, const Vector<String>& filenames);
     void didFinishPingLoad(uint64_t pingLoadIdentifier, WebCore::ResourceError&&, WebCore::ResourceResponse&&);
     void didFinishPreconnection(uint64_t preconnectionIdentifier, WebCore::ResourceError&&);
     void setOnLineState(bool isOnLine);
@@ -85,7 +101,15 @@ private:
     // The connection from the web process to the network process.
     Ref<IPC::Connection> m_connection;
 
-    HashMap<uint64_t, Function<void (const Vector<String>&)>> m_writeBlobToFileCompletionHandlers;
+#if ENABLE(INDEXED_DATABASE)
+    HashMap<PAL::SessionID, RefPtr<WebIDBConnectionToServer>> m_webIDBConnectionsBySession;
+    HashMap<uint64_t, RefPtr<WebIDBConnectionToServer>> m_webIDBConnectionsByIdentifier;
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    HashMap<PAL::SessionID, RefPtr<WebSWClientConnection>> m_swConnectionsBySession;
+    HashMap<WebCore::SWServerConnectionIdentifier, WebSWClientConnection*> m_swConnectionsByIdentifier;
+#endif
 };
 
 } // namespace WebKit

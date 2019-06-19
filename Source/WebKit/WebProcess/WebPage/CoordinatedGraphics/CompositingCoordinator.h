@@ -40,6 +40,7 @@
 
 namespace Nicosia {
 class PaintingEngine;
+class SceneIntegration;
 }
 
 namespace WebCore {
@@ -60,6 +61,7 @@ public:
         virtual void didFlushRootLayer(const WebCore::FloatRect& visibleContentRect) = 0;
         virtual void notifyFlushRequired() = 0;
         virtual void commitSceneState(const WebCore::CoordinatedGraphicsState&) = 0;
+        virtual RefPtr<Nicosia::SceneIntegration> sceneIntegration() = 0;
     };
 
     CompositingCoordinator(WebCore::Page*, CompositingCoordinator::Client&);
@@ -103,7 +105,7 @@ private:
     void syncLayerState() override;
 
     // GraphicsLayerFactory
-    std::unique_ptr<WebCore::GraphicsLayer> createGraphicsLayer(WebCore::GraphicsLayer::Type, WebCore::GraphicsLayerClient&) override;
+    Ref<WebCore::GraphicsLayer> createGraphicsLayer(WebCore::GraphicsLayer::Type, WebCore::GraphicsLayerClient&) override;
 
     void initializeRootCompositingLayerIfNeeded();
 
@@ -114,7 +116,7 @@ private:
     WebCore::Page* m_page;
     CompositingCoordinator::Client& m_client;
 
-    std::unique_ptr<WebCore::GraphicsLayer> m_rootLayer;
+    RefPtr<WebCore::GraphicsLayer> m_rootLayer;
     WebCore::GraphicsLayer* m_rootCompositingLayer { nullptr };
     WebCore::GraphicsLayer* m_overlayCompositingLayer { nullptr };
 

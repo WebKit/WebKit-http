@@ -36,13 +36,10 @@
 #import <objc/runtime.h>
 #import <pal/system/SleepDisabler.h>
 #import <wtf/RetainPtr.h>
-#import <wtf/SoftLinking.h>
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#import <pal/cocoa/AVFoundationSoftLink.h>
 
-SOFT_LINK_FRAMEWORK(AVFoundation)
-SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 
 @interface WebVideoFullscreenWindow : NSWindow<NSAnimationDelegate> {
     SEL _controllerActionOnAnimationEnd;
@@ -119,7 +116,7 @@ SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
 
     auto contentView = [[self fullscreenWindow] contentView];
 
-    auto layer = adoptNS([allocAVPlayerLayerInstance() init]);
+    auto layer = adoptNS([PAL::allocAVPlayerLayerInstance() init]);
     [layer setPlayer:player];
 
     [contentView setLayer:layer.get()];
@@ -148,7 +145,7 @@ SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
 - (void)windowDidExitFullscreen
 {
     CALayer *layer = [[[self window] contentView] layer];
-    if ([layer isKindOfClass:getAVPlayerLayerClass()])
+    if ([layer isKindOfClass:PAL::getAVPlayerLayerClass()])
         [[(AVPlayerLayer *)layer player] removeObserver:self forKeyPath:@"rate"];
 
     [self clearFadeAnimation];
@@ -509,6 +506,6 @@ static NSWindow *createBackgroundFullscreenWindow(NSRect frame, int level)
 
 @end
 
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 #endif

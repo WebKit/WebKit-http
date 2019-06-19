@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,10 +26,21 @@
 #include "config.h"
 #include "NetworkSession.h"
 
-#include "NetworkDataTask.h"
+#include "AdClickAttributionManager.h"
+#include "NetworkProcess.h"
+#include "NetworkProcessProxyMessages.h"
+#include "NetworkResourceLoadParameters.h"
+#include "NetworkResourceLoader.h"
+#include "PingLoad.h"
+#include "StorageManager.h"
+#include "WebPageProxy.h"
+#include "WebPageProxyMessages.h"
+#include "WebProcessProxy.h"
+#include "WebSocketTask.h"
+#include <WebCore/AdClickAttribution.h>
+#include <WebCore/CookieJar.h>
 #include <WebCore/NetworkStorageSession.h>
-#include <wtf/MainThread.h>
-#include <wtf/RunLoop.h>
+#include <WebCore/ResourceRequest.h>
 
 #if PLATFORM(COCOA)
 #include "NetworkSessionCocoa.h"
@@ -44,39 +55,168 @@
 namespace WebKit {
 using namespace WebCore;
 
-Ref<NetworkSession> NetworkSession::create(NetworkSessionCreationParameters&& parameters)
+Ref<NetworkSession> NetworkSession::create(NetworkProcess& networkProcess, NetworkSessionCreationParameters&& parameters)
 {
 #if PLATFORM(COCOA)
-    return NetworkSessionCocoa::create(WTFMove(parameters));
+    return NetworkSessionCocoa::create(networkProcess, WTFMove(parameters));
 #endif
 #if USE(SOUP)
-    return NetworkSessionSoup::create(WTFMove(parameters));
+    return NetworkSessionSoup::create(networkProcess, WTFMove(parameters));
 #endif
 #if USE(CURL)
-    return NetworkSessionCurl::create(WTFMove(parameters));
+    return NetworkSessionCurl::create(networkProcess, WTFMove(parameters));
 #endif
 }
 
 NetworkStorageSession& NetworkSession::networkStorageSession() const
 {
-    auto* storageSession = NetworkStorageSession::storageSession(m_sessionID);
+    auto* storageSession = m_networkProcess->storageSession(m_sessionID);
     RELEASE_ASSERT(storageSession);
     return *storageSession;
 }
 
-NetworkSession::NetworkSession(PAL::SessionID sessionID)
+NetworkSession::NetworkSession(NetworkProcess& networkProcess, PAL::SessionID sessionID, const String& localStorageDirectory, SandboxExtension::Handle& handle)
     : m_sessionID(sessionID)
+    , m_networkProcess(networkProcess)
+    , m_adClickAttribution(makeUniqueRef<AdClickAttributionManager>(sessionID))
+    , m_storageManager(StorageManager::create(localStorageDirectory))
 {
+    SandboxExtension::consumePermanently(handle);
+    m_adClickAttribution->setPingLoadFunction([this, weakThis = makeWeakPtr(this)](NetworkResourceLoadParameters&& loadParameters, CompletionHandler<void(const WebCore::ResourceError&, const WebCore::ResourceResponse&)>&& completionHandler) {
+        if (!weakThis)
+            return;
+        // PingLoad manages its own lifetime, deleting itself when its purpose has been fulfilled.
+        new PingLoad(m_networkProcess, WTFMove(loadParameters), WTFMove(completionHandler));
+    });
 }
 
 NetworkSession::~NetworkSession()
 {
+    m_storageManager->resume();
+    m_storageManager->waitUntilWritesFinished();
 }
 
 void NetworkSession::invalidateAndCancel()
 {
     for (auto* task : m_dataTaskSet)
         task->invalidateAndCancel();
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    if (m_resourceLoadStatistics)
+        m_resourceLoadStatistics->invalidateAndCancel();
+#endif
+#if !ASSERT_DISABLED
+    m_isInvalidated = true;
+#endif
+}
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+void NetworkSession::setResourceLoadStatisticsEnabled(bool enable)
+{
+    ASSERT(!m_isInvalidated);
+    if (!enable) {
+        m_resourceLoadStatistics = nullptr;
+        return;
+    }
+
+    if (m_resourceLoadStatistics)
+        return;
+
+    // FIXME(193728): Support ResourceLoadStatistics for ephemeral sessions, too.
+    if (m_sessionID.isEphemeral())
+        return;
+
+    m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(*this, m_resourceLoadStatisticsDirectory, m_shouldIncludeLocalhostInResourceLoadStatistics);
+
+    if (m_enableResourceLoadStatisticsDebugMode == EnableResourceLoadStatisticsDebugMode::Yes)
+        m_resourceLoadStatistics->setResourceLoadStatisticsDebugMode(true, [] { });
+    // This should always be forwarded since debug mode may be enabled at runtime.
+    if (!m_resourceLoadStatisticsManualPrevalentResource.isEmpty())
+        m_resourceLoadStatistics->setPrevalentResourceForDebugMode(m_resourceLoadStatisticsManualPrevalentResource, [] { });
+}
+
+void NetworkSession::notifyResourceLoadStatisticsProcessed()
+{
+    m_networkProcess->parentProcessConnection()->send(Messages::NetworkProcessProxy::NotifyResourceLoadStatisticsProcessed(), 0);
+}
+
+void NetworkSession::logDiagnosticMessageWithValue(const String& message, const String& description, unsigned value, unsigned significantFigures, WebCore::ShouldSample shouldSample)
+{
+    m_networkProcess->parentProcessConnection()->send(Messages::WebPageProxy::LogDiagnosticMessageWithValue(message, description, value, significantFigures, shouldSample), 0);
+}
+
+void NetworkSession::notifyPageStatisticsTelemetryFinished(unsigned totalPrevalentResources, unsigned totalPrevalentResourcesWithUserInteraction, unsigned top3SubframeUnderTopFrameOrigins)
+{
+    m_networkProcess->parentProcessConnection()->send(Messages::NetworkProcessProxy::NotifyResourceLoadStatisticsTelemetryFinished(totalPrevalentResources, totalPrevalentResourcesWithUserInteraction, top3SubframeUnderTopFrameOrigins), 0);
+}
+
+void NetworkSession::deleteWebsiteDataForRegistrableDomains(OptionSet<WebsiteDataType> dataTypes, HashMap<RegistrableDomain, WebsiteDataToRemove>&& domains, bool shouldNotifyPage, CompletionHandler<void(const HashSet<RegistrableDomain>&)>&& completionHandler)
+{
+    m_networkProcess->deleteWebsiteDataForRegistrableDomains(m_sessionID, dataTypes, WTFMove(domains), shouldNotifyPage, WTFMove(completionHandler));
+}
+
+void NetworkSession::registrableDomainsWithWebsiteData(OptionSet<WebsiteDataType> dataTypes, bool shouldNotifyPage, CompletionHandler<void(HashSet<RegistrableDomain>&&)>&& completionHandler)
+{
+    m_networkProcess->registrableDomainsWithWebsiteData(m_sessionID, dataTypes, shouldNotifyPage, WTFMove(completionHandler));
+}
+#endif // ENABLE(RESOURCE_LOAD_STATISTICS)
+
+void NetworkSession::storeAdClickAttribution(WebCore::AdClickAttribution&& adClickAttribution)
+{
+    m_adClickAttribution->storeUnconverted(WTFMove(adClickAttribution));
+}
+
+void NetworkSession::handleAdClickAttributionConversion(AdClickAttribution::Conversion&& conversion, const URL& requestURL, const WebCore::ResourceRequest& redirectRequest)
+{
+    m_adClickAttribution->handleConversion(WTFMove(conversion), requestURL, redirectRequest);
+}
+
+void NetworkSession::dumpAdClickAttribution(CompletionHandler<void(String)>&& completionHandler)
+{
+    m_adClickAttribution->toString(WTFMove(completionHandler));
+}
+
+void NetworkSession::clearAdClickAttribution()
+{
+    m_adClickAttribution->clear();
+}
+
+void NetworkSession::clearAdClickAttributionForRegistrableDomain(WebCore::RegistrableDomain&& domain)
+{
+    m_adClickAttribution->clearForRegistrableDomain(WTFMove(domain));
+}
+
+void NetworkSession::setAdClickAttributionOverrideTimerForTesting(bool value)
+{
+    m_adClickAttribution->setOverrideTimerForTesting(value);
+}
+
+void NetworkSession::setAdClickAttributionConversionURLForTesting(URL&& url)
+{
+    m_adClickAttribution->setConversionURLForTesting(WTFMove(url));
+}
+
+void NetworkSession::markAdClickAttributionsAsExpiredForTesting()
+{
+    m_adClickAttribution->markAllUnconvertedAsExpiredForTesting();
+}
+
+void NetworkSession::addKeptAliveLoad(Ref<NetworkResourceLoader>&& loader)
+{
+    ASSERT(m_sessionID == loader->sessionID());
+    ASSERT(!m_keptAliveLoads.contains(loader));
+    m_keptAliveLoads.add(WTFMove(loader));
+}
+
+void NetworkSession::removeKeptAliveLoad(NetworkResourceLoader& loader)
+{
+    ASSERT(m_sessionID == loader.sessionID());
+    ASSERT(m_keptAliveLoads.contains(loader));
+    m_keptAliveLoads.remove(loader);
+}
+
+std::unique_ptr<WebSocketTask> NetworkSession::createWebSocketTask(NetworkSocketChannel&, const WebCore::ResourceRequest&, const String& protocol)
+{
+    return nullptr;
 }
 
 } // namespace WebKit

@@ -60,3 +60,14 @@ body[dir=rtl] .sidebar > .panel.dom-node-details .details-section.dom-node-event
     opacity: 0;
     -webkit-appearance: none;
 }
+
+@media (prefers-color-scheme: dark) {
+    .sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter:hover {
+        filter: brightness(1.25);
+    }
+}
+
+.sidebar > .panel.dom-node-details .details-section.dom-node-associated-data > .content .row {
+    -webkit-margin-start: 6px;
+    margin-bottom: 4px;
+}

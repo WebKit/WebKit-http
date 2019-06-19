@@ -34,59 +34,35 @@
 
 namespace JSC {
 
-class SmallStringsStorage {
-    WTF_MAKE_NONCOPYABLE(SmallStringsStorage); WTF_MAKE_FAST_ALLOCATED;
-public:
-    SmallStringsStorage();
-
-    StringImpl& rep(unsigned char character)
-    {
-        return *m_reps[character].get();
-    }
-
-private:
-    static const unsigned singleCharacterStringCount = maxSingleCharacterString + 1;
-
-    RefPtr<StringImpl> m_reps[singleCharacterStringCount];
-};
-
-SmallStringsStorage::SmallStringsStorage()
-{
-    LChar* characterBuffer = 0;
-    auto baseString = StringImpl::createUninitialized(singleCharacterStringCount, characterBuffer);
-    for (unsigned i = 0; i < singleCharacterStringCount; ++i) {
-        characterBuffer[i] = i;
-        m_reps[i] = AtomicStringImpl::add(StringImpl::createSubstringSharingImpl(baseString.get(), i, 1).ptr());
-    }
-}
-
 SmallStrings::SmallStrings()
-    : m_emptyString(0)
-#define JSC_COMMON_STRINGS_ATTRIBUTE_INITIALIZE(name) , m_##name(0)
-    JSC_COMMON_STRINGS_EACH_NAME(JSC_COMMON_STRINGS_ATTRIBUTE_INITIALIZE)
-#undef JSC_COMMON_STRINGS_ATTRIBUTE_INITIALIZE
-    , m_objectStringStart(nullptr)
-    , m_nullObjectString(nullptr)
-    , m_undefinedObjectString(nullptr)
-    , m_needsToBeVisited(true)
 {
     COMPILE_ASSERT(singleCharacterStringCount == sizeof(m_singleCharacterStrings) / sizeof(m_singleCharacterStrings[0]), IsNumCharactersConstInSyncWithClassUsage);
 
     for (unsigned i = 0; i < singleCharacterStringCount; ++i)
-        m_singleCharacterStrings[i] = 0;
+        m_singleCharacterStrings[i] = nullptr;
 }
 
 void SmallStrings::initializeCommonStrings(VM& vm)
 {
-    createEmptyString(&vm);
-    for (unsigned i = 0; i <= maxSingleCharacterString; ++i)
-        createSingleCharacterString(&vm, i);
+    ASSERT(!m_emptyString);
+    m_emptyString = JSString::createEmptyString(vm);
+    ASSERT(m_needsToBeVisited);
+
+    for (unsigned i = 0; i < singleCharacterStringCount; ++i) {
+        ASSERT(!m_singleCharacterStrings[i]);
+        const LChar string[] = { static_cast<LChar>(i) };
+        m_singleCharacterStrings[i] = JSString::createHasOtherOwner(vm, AtomStringImpl::add(string, 1).releaseNonNull());
+        ASSERT(m_needsToBeVisited);
+    }
+
 #define JSC_COMMON_STRINGS_ATTRIBUTE_INITIALIZE(name) initialize(&vm, m_##name, #name);
     JSC_COMMON_STRINGS_EACH_NAME(JSC_COMMON_STRINGS_ATTRIBUTE_INITIALIZE)
 #undef JSC_COMMON_STRINGS_ATTRIBUTE_INITIALIZE
     initialize(&vm, m_objectStringStart, "[object ");
     initialize(&vm, m_nullObjectString, "[object Null]");
     initialize(&vm, m_undefinedObjectString, "[object Undefined]");
+
+    setIsInitialized(true);
 }
 
 void SmallStrings::visitStrongReferences(SlotVisitor& visitor)
@@ -107,32 +83,17 @@ SmallStrings::~SmallStrings()
 {
 }
 
-void SmallStrings::createEmptyString(VM* vm)
+Ref<StringImpl> SmallStrings::singleCharacterStringRep(unsigned char character)
 {
-    ASSERT(!m_emptyString);
-    m_emptyString = JSString::createHasOtherOwner(*vm, *StringImpl::empty());
-    ASSERT(m_needsToBeVisited);
-}
-
-void SmallStrings::createSingleCharacterString(VM* vm, unsigned char character)
-{
-    if (!m_storage)
-        m_storage = std::make_unique<SmallStringsStorage>();
-    ASSERT(!m_singleCharacterStrings[character]);
-    m_singleCharacterStrings[character] = JSString::createHasOtherOwner(*vm, m_storage->rep(character));
-    ASSERT(m_needsToBeVisited);
-}
-
-StringImpl& SmallStrings::singleCharacterStringRep(unsigned char character)
-{
-    if (!m_storage)
-        m_storage = std::make_unique<SmallStringsStorage>();
-    return m_storage->rep(character);
+    if (LIKELY(m_isInitialized))
+        return *const_cast<StringImpl*>(m_singleCharacterStrings[character]->tryGetValueImpl());
+    const LChar string[] = { static_cast<LChar>(character) };
+    return AtomStringImpl::add(string, 1).releaseNonNull();
 }
 
 void SmallStrings::initialize(VM* vm, JSString*& string, const char* value)
 {
-    string = JSString::create(*vm, AtomicStringImpl::add(value).releaseNonNull());
+    string = JSString::create(*vm, AtomStringImpl::add(value).releaseNonNull());
     ASSERT(m_needsToBeVisited);
 }
 

@@ -53,7 +53,7 @@ static JSObjectRef callAsConstructor(JSContextRef callerContext, JSObjectRef con
 
 const ClassInfo JSCCallbackFunction::s_info = { "CallbackFunction", &InternalFunction::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSCCallbackFunction) };
 
-JSCCallbackFunction* JSCCallbackFunction::create(VM& vm, JSGlobalObject* globalObject, const String& name, Type type, JSCClass* jscClass, GRefPtr<GClosure>&& closure, GType returnType, std::optional<Vector<GType>>&& parameters)
+JSCCallbackFunction* JSCCallbackFunction::create(VM& vm, JSGlobalObject* globalObject, const String& name, Type type, JSCClass* jscClass, GRefPtr<GClosure>&& closure, GType returnType, Optional<Vector<GType>>&& parameters)
 {
     Structure* structure = globalObject->glibCallbackFunctionStructure();
     JSCCallbackFunction* function = new (NotNull, allocateCell<JSCCallbackFunction>(vm.heap)) JSCCallbackFunction(vm, structure, type, jscClass, WTFMove(closure), returnType, WTFMove(parameters));
@@ -61,7 +61,7 @@ JSCCallbackFunction* JSCCallbackFunction::create(VM& vm, JSGlobalObject* globalO
     return function;
 }
 
-JSCCallbackFunction::JSCCallbackFunction(VM& vm, Structure* structure, Type type, JSCClass* jscClass, GRefPtr<GClosure>&& closure, GType returnType, std::optional<Vector<GType>>&& parameters)
+JSCCallbackFunction::JSCCallbackFunction(VM& vm, Structure* structure, Type type, JSCClass* jscClass, GRefPtr<GClosure>&& closure, GType returnType, Optional<Vector<GType>>&& parameters)
     : InternalFunction(vm, structure, APICallbackFunction::call<JSCCallbackFunction>, type == Type::Constructor ? APICallbackFunction::construct<JSCCallbackFunction> : nullptr)
     , m_functionCallback(callAsFunction)
     , m_constructCallback(callAsConstructor)
@@ -204,18 +204,17 @@ JSObjectRef JSCCallbackFunction::construct(JSContextRef callerContext, size_t ar
 
     switch (g_type_fundamental(G_VALUE_TYPE(&returnValue))) {
     case G_TYPE_POINTER:
+    case G_TYPE_BOXED:
     case G_TYPE_OBJECT:
-        if (auto* ptr = returnValue.data[0].v_pointer) {
-            auto* retval = jscClassGetOrCreateJSWrapper(m_class.get(), ptr);
-            g_value_unset(&returnValue);
-            return toRef(retval);
-        }
+        if (auto* ptr = returnValue.data[0].v_pointer)
+            return toRef(jscClassGetOrCreateJSWrapper(m_class.get(), context.get(), ptr));
         *exception = toRef(JSC::createTypeError(toJS(jsContext), "constructor returned null"_s));
         break;
     default:
         *exception = toRef(JSC::createTypeError(toJS(jsContext), makeString("invalid type ", g_type_name(G_VALUE_TYPE(&returnValue)), " returned by constructor")));
         break;
     }
+    g_value_unset(&returnValue);
     return nullptr;
 }
 

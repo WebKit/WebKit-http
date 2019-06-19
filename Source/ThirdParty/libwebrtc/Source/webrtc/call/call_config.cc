@@ -10,11 +10,16 @@
 
 #include "call/call_config.h"
 
+#include "rtc_base/checks.h"
+
 namespace webrtc {
 
 CallConfig::CallConfig(RtcEventLog* event_log) : event_log(event_log) {
   RTC_DCHECK(event_log);
 }
+
+CallConfig::CallConfig(const CallConfig& config) = default;
+
 CallConfig::~CallConfig() = default;
 
 }  // namespace webrtc

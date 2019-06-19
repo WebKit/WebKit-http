@@ -27,7 +27,7 @@
 #include "JSDOMPromiseDeferred.h"
 #include "Timer.h"
 #include <wtf/Vector.h>
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 
 namespace WebCore {
 
@@ -83,7 +83,7 @@ protected:
 
 private:
     virtual void dispatchLoadEvent() = 0;
-    virtual String sourceURI(const AtomicString&) const = 0;
+    virtual String sourceURI(const AtomString&) const = 0;
 
     void updatedHasPendingEvent();
 
@@ -110,7 +110,7 @@ private:
     CachedResourceHandle<CachedImage> m_image;
     Timer m_derefElementTimer;
     RefPtr<Element> m_protectedElement;
-    AtomicString m_failedLoadURL;
+    AtomString m_failedLoadURL;
     Vector<RefPtr<DeferredPromise>, 1> m_decodingPromises;
     bool m_hasPendingBeforeLoadEvent : 1;
     bool m_hasPendingLoadEvent : 1;

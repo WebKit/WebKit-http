@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-static bool encodeImage(cairo_surface_t* surface, const String& mimeType, std::optional<double> quality, GUniqueOutPtr<gchar>& buffer, gsize& bufferSize)
+static bool encodeImage(cairo_surface_t* surface, const String& mimeType, Optional<double> quality, GUniqueOutPtr<gchar>& buffer, gsize& bufferSize)
 {
     // List of supported image encoding types comes from the GdkPixbuf documentation.
     // http://developer.gnome.org/gdk-pixbuf/stable/gdk-pixbuf-File-saving.html#gdk-pixbuf-save-to-bufferv
@@ -67,7 +67,7 @@ static bool encodeImage(cairo_surface_t* surface, const String& mimeType, std::o
 
     GUniqueOutPtr<GError> error;
     if (type == "jpeg" && quality && *quality >= 0.0 && *quality <= 1.0) {
-        String qualityString = String::format("%d", static_cast<int>(*quality * 100.0 + 0.5));
+        String qualityString = String::number(static_cast<int>(*quality * 100.0 + 0.5));
         gdk_pixbuf_save_to_buffer(pixbuf.get(), &buffer.outPtr(), &bufferSize, type.utf8().data(), &error.outPtr(), "quality", qualityString.utf8().data(), NULL);
     } else
         gdk_pixbuf_save_to_buffer(pixbuf.get(), &buffer.outPtr(), &bufferSize, type.utf8().data(), &error.outPtr(), NULL);
@@ -75,7 +75,7 @@ static bool encodeImage(cairo_surface_t* surface, const String& mimeType, std::o
     return !error;
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, PreserveResolution) const
+String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, PreserveResolution) const
 {
     Vector<uint8_t> imageData = toData(mimeType, quality);
     if (imageData.isEmpty())
@@ -87,7 +87,7 @@ String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> qual
     return "data:" + mimeType + ";base64," + base64Data;
 }
 
-Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> quality) const
+Vector<uint8_t> ImageBuffer::toData(const String& mimeType, Optional<double> quality) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 

@@ -35,7 +35,7 @@
 #import <dispatch/dispatch.h>
 #import <wtf/Optional.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <wtf/ios/WebCoreThread.h>
 #endif
 
@@ -53,7 +53,7 @@ static void RemoteTargetHandleRunSourceGlobal(void*)
 
     RemoteTargetQueue queueCopy;
     {
-        std::lock_guard<Lock> lock(rwiQueueMutex);
+        LockHolder lock(rwiQueueMutex);
         queueCopy = *rwiQueue;
         rwiQueue->clear();
     }
@@ -68,7 +68,7 @@ static void RemoteTargetQueueTaskOnGlobalQueue(void (^task)())
     ASSERT(rwiQueue);
 
     {
-        std::lock_guard<Lock> lock(rwiQueueMutex);
+        LockHolder lock(rwiQueueMutex);
         rwiQueue->append(task);
     }
 
@@ -97,7 +97,7 @@ static void RemoteTargetHandleRunSourceWithInfo(void* info)
 
     RemoteTargetQueue queueCopy;
     {
-        std::lock_guard<Lock> lock(connectionToTarget->queueMutex());
+        LockHolder lock(connectionToTarget->queueMutex());
         queueCopy = connectionToTarget->queue();
         connectionToTarget->clearQueue();
     }
@@ -120,9 +120,9 @@ RemoteConnectionToTarget::~RemoteConnectionToTarget()
     teardownRunLoop();
 }
 
-std::optional<unsigned> RemoteConnectionToTarget::targetIdentifier() const
+Optional<TargetID> RemoteConnectionToTarget::targetIdentifier() const
 {
-    return m_target ? std::optional<unsigned>(m_target->targetIdentifier()) : std::nullopt;
+    return m_target ? Optional<TargetID>(m_target->targetIdentifier()) : WTF::nullopt;
 }
 
 NSString *RemoteConnectionToTarget::connectionIdentifier() const
@@ -142,7 +142,7 @@ void RemoteConnectionToTarget::dispatchAsyncOnTarget(void (^block)())
         return;
     }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (WebCoreWebThreadIsEnabled && WebCoreWebThreadIsEnabled()) {
         WebCoreWebThreadRun(block);
         return;
@@ -154,30 +154,30 @@ void RemoteConnectionToTarget::dispatchAsyncOnTarget(void (^block)())
 
 bool RemoteConnectionToTarget::setup(bool isAutomaticInspection, bool automaticallyPause)
 {
-    std::lock_guard<Lock> lock(m_targetMutex);
+    LockHolder lock(m_targetMutex);
 
     if (!m_target)
         return false;
 
-    unsigned targetIdentifier = this->targetIdentifier().value_or(0);
+    auto targetIdentifier = this->targetIdentifier().valueOr(0);
     
     ref();
     dispatchAsyncOnTarget(^{
         {
-            std::lock_guard<Lock> lock(m_targetMutex);
+            LockHolder lock(m_targetMutex);
 
             if (!m_target || !m_target->remoteControlAllowed()) {
                 RemoteInspector::singleton().setupFailed(targetIdentifier);
                 m_target = nullptr;
             } else if (is<RemoteInspectionTarget>(m_target)) {
                 auto castedTarget = downcast<RemoteInspectionTarget>(m_target);
-                castedTarget->connect(this, isAutomaticInspection, automaticallyPause);
+                castedTarget->connect(*this, isAutomaticInspection, automaticallyPause);
                 m_connected = true;
 
                 RemoteInspector::singleton().updateTargetListing(targetIdentifier);
             } else if (is<RemoteAutomationTarget>(m_target)) {
                 auto castedTarget = downcast<RemoteAutomationTarget>(m_target);
-                castedTarget->connect(this);
+                castedTarget->connect(*this);
                 m_connected = true;
 
                 RemoteInspector::singleton().updateTargetListing(targetIdentifier);
@@ -191,22 +191,22 @@ bool RemoteConnectionToTarget::setup(bool isAutomaticInspection, bool automatica
 
 void RemoteConnectionToTarget::targetClosed()
 {
-    std::lock_guard<Lock> lock(m_targetMutex);
+    LockHolder lock(m_targetMutex);
 
     m_target = nullptr;
 }
 
 void RemoteConnectionToTarget::close()
 {
-    unsigned targetIdentifier = m_target ? m_target->targetIdentifier() : 0;
+    auto targetIdentifier = m_target ? m_target->targetIdentifier() : 0;
     
     ref();
     dispatchAsyncOnTarget(^{
         {
-            std::lock_guard<Lock> lock(m_targetMutex);
+            LockHolder lock(m_targetMutex);
             if (m_target) {
                 if (m_connected)
-                    m_target->disconnect(this);
+                    m_target->disconnect(*this);
 
                 m_target = nullptr;
                 
@@ -224,7 +224,7 @@ void RemoteConnectionToTarget::sendMessageToTarget(NSString *message)
         {
             RemoteControllableTarget* target = nullptr;
             {
-                std::lock_guard<Lock> lock(m_targetMutex);
+                LockHolder lock(m_targetMutex);
                 if (!m_target)
                     return;
                 target = m_target;
@@ -278,7 +278,7 @@ void RemoteConnectionToTarget::queueTaskOnPrivateRunLoop(void (^block)())
     ASSERT(m_runLoop);
 
     {
-        std::lock_guard<Lock> lock(m_queueMutex);
+        LockHolder lock(m_queueMutex);
         m_queue.append(block);
     }
 

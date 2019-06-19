@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 
+#include "absl/memory/memory.h"
 #include "p2p/base/port.h"
 #include "p2p/base/stunrequest.h"
 #include "rtc_base/asyncpacketsocket.h"
@@ -35,42 +36,45 @@ static const int HIGH_COST_PORT_KEEPALIVE_LIFETIME = 2 * 60 * 1000;
 // Communicates using the address on the outside of a NAT.
 class UDPPort : public Port {
  public:
-  static UDPPort* Create(rtc::Thread* thread,
-                         rtc::PacketSocketFactory* factory,
-                         rtc::Network* network,
-                         rtc::AsyncPacketSocket* socket,
-                         const std::string& username,
-                         const std::string& password,
-                         const std::string& origin,
-                         bool emit_local_for_anyaddress,
-                         absl::optional<int> stun_keepalive_interval) {
-    UDPPort* port = new UDPPort(thread, factory, network, socket, username,
-                                password, origin, emit_local_for_anyaddress);
+  static std::unique_ptr<UDPPort> Create(
+      rtc::Thread* thread,
+      rtc::PacketSocketFactory* factory,
+      rtc::Network* network,
+      rtc::AsyncPacketSocket* socket,
+      const std::string& username,
+      const std::string& password,
+      const std::string& origin,
+      bool emit_local_for_anyaddress,
+      absl::optional<int> stun_keepalive_interval) {
+    // Using `new` to access a non-public constructor.
+    auto port = absl::WrapUnique(new UDPPort(thread, factory, network, socket,
+                                             username, password, origin,
+                                             emit_local_for_anyaddress));
     port->set_stun_keepalive_delay(stun_keepalive_interval);
     if (!port->Init()) {
-      delete port;
-      port = NULL;
+      return nullptr;
     }
     return port;
   }
 
-  static UDPPort* Create(rtc::Thread* thread,
-                         rtc::PacketSocketFactory* factory,
-                         rtc::Network* network,
-                         uint16_t min_port,
-                         uint16_t max_port,
-                         const std::string& username,
-                         const std::string& password,
-                         const std::string& origin,
-                         bool emit_local_for_anyaddress,
-                         absl::optional<int> stun_keepalive_interval) {
-    UDPPort* port =
+  static std::unique_ptr<UDPPort> Create(
+      rtc::Thread* thread,
+      rtc::PacketSocketFactory* factory,
+      rtc::Network* network,
+      uint16_t min_port,
+      uint16_t max_port,
+      const std::string& username,
+      const std::string& password,
+      const std::string& origin,
+      bool emit_local_for_anyaddress,
+      absl::optional<int> stun_keepalive_interval) {
+    // Using `new` to access a non-public constructor.
+    auto port = absl::WrapUnique(
         new UDPPort(thread, factory, network, min_port, max_port, username,
-                    password, origin, emit_local_for_anyaddress);
+                    password, origin, emit_local_for_anyaddress));
     port->set_stun_keepalive_delay(stun_keepalive_interval);
     if (!port->Init()) {
-      delete port;
-      port = NULL;
+      return nullptr;
     }
     return port;
   }
@@ -100,7 +104,7 @@ class UDPPort : public Port {
                             const char* data,
                             size_t size,
                             const rtc::SocketAddress& remote_addr,
-                            const rtc::PacketTime& packet_time) override;
+                            int64_t packet_time_us) override;
 
   bool SupportsProtocol(const std::string& protocol) const override;
   ProtocolType GetProtocol() const override;
@@ -152,12 +156,18 @@ class UDPPort : public Port {
 
   void UpdateNetworkCost() override;
 
+  rtc::DiffServCodePoint StunDscpValue() const override;
+
   void OnLocalAddressReady(rtc::AsyncPacketSocket* socket,
                            const rtc::SocketAddress& address);
+
+  void PostAddAddress(bool is_final) override;
+
   void OnReadPacket(rtc::AsyncPacketSocket* socket,
-                    const char* data, size_t size,
+                    const char* data,
+                    size_t size,
                     const rtc::SocketAddress& remote_addr,
-                    const rtc::PacketTime& packet_time);
+                    const int64_t& packet_time_us);
 
   void OnSentPacket(rtc::AsyncPacketSocket* socket,
                     const rtc::SentPacket& sent_packet) override;
@@ -242,10 +252,12 @@ class UDPPort : public Port {
   StunRequestManager requests_;
   rtc::AsyncPacketSocket* socket_;
   int error_;
+  int send_error_count_ = 0;
   std::unique_ptr<AddressResolver> resolver_;
   bool ready_;
   int stun_keepalive_delay_;
   int stun_keepalive_lifetime_ = INFINITE_LIFETIME;
+  rtc::DiffServCodePoint dscp_;
 
   StunStats stats_;
 
@@ -258,16 +270,17 @@ class UDPPort : public Port {
 
 class StunPort : public UDPPort {
  public:
-  static StunPort* Create(rtc::Thread* thread,
-                          rtc::PacketSocketFactory* factory,
-                          rtc::Network* network,
-                          uint16_t min_port,
-                          uint16_t max_port,
-                          const std::string& username,
-                          const std::string& password,
-                          const ServerAddresses& servers,
-                          const std::string& origin,
-                          absl::optional<int> stun_keepalive_interval);
+  static std::unique_ptr<StunPort> Create(
+      rtc::Thread* thread,
+      rtc::PacketSocketFactory* factory,
+      rtc::Network* network,
+      uint16_t min_port,
+      uint16_t max_port,
+      const std::string& username,
+      const std::string& password,
+      const ServerAddresses& servers,
+      const std::string& origin,
+      absl::optional<int> stun_keepalive_interval);
 
   void PrepareAddress() override;
 

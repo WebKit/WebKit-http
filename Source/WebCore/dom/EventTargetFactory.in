@@ -21,6 +21,7 @@ MediaController conditional=VIDEO
 MediaDevices conditional=MEDIA_STREAM
 MediaKeySession conditional=ENCRYPTED_MEDIA
 MediaRemoteControls conditional=MEDIA_SESSION
+MediaRecorder conditional=MEDIA_STREAM
 MediaSource conditional=MEDIA_SOURCE
 MediaStream conditional=MEDIA_STREAM
 MediaStreamTrack conditional=MEDIA_STREAM
@@ -51,6 +52,7 @@ WebAnimation
 WebKitMediaKeySession conditional=LEGACY_ENCRYPTED_MEDIA
 WebSocket
 Worker
+WorkletGlobalScope conditional=CSS_PAINTING_API
 XMLHttpRequest
 XMLHttpRequestUpload
 

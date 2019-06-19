@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "WebUIKitSupport.h"
 
@@ -41,12 +41,6 @@
 #import <wtf/spi/darwin/dyldSPI.h>
 
 using namespace WebCore;
-
-static inline bool linkedOnOrAfterIOS5()
-{
-    static bool s_linkedOnOrAfterIOS5 = dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_5_0;
-    return s_linkedOnOrAfterIOS5;
-}
 
 // See <rdar://problem/7902473> Optimize WebLocalizedString for why we do this on a background thread on a timer callback
 static void LoadWebLocalizedStringsTimerCallback(CFRunLoopTimerRef timer, void *info)
@@ -85,7 +79,6 @@ void WebKitInitialize(void)
     
     // This needs to be called before any requests are made in the process, <rdar://problem/9691871>
     WebCore::initializeHTTPConnectionSettingsOnStartup();
-    WebCore::enableURLSchemeCanonicalization(linkedOnOrAfterIOS5());
 }
 
 void WebKitSetIsClassic(BOOL flag)
@@ -110,7 +103,7 @@ int WebKitGetLastLineBreakInBuffer(UChar *characters, int position, int length)
 
 const char *WebKitPlatformSystemRootDirectory(void)
 {
-#if PLATFORM(IOS_SIMULATOR)
+#if PLATFORM(IOS_FAMILY_SIMULATOR)
     static const char *platformSystemRootDirectory = nil;
     if (!platformSystemRootDirectory) {
         char *simulatorRoot = getenv("IPHONE_SIMULATOR_ROOT");
@@ -161,4 +154,4 @@ CGPathRef WebKitCreatePathWithShrinkWrappedRects(NSArray* cgRects, CGFloat radiu
     return CGPathRetain(PathUtilities::pathWithShrinkWrappedRects(rects, radius).platformPath());
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

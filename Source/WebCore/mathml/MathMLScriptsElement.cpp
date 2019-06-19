@@ -38,22 +38,22 @@ WTF_MAKE_ISO_ALLOCATED_IMPL(MathMLScriptsElement);
 
 using namespace MathMLNames;
 
-static ScriptType scriptTypeOf(const QualifiedName& tagName)
+static MathMLScriptsElement::ScriptType scriptTypeOf(const QualifiedName& tagName)
 {
     if (tagName == msubTag)
-        return ScriptType::Sub;
+        return MathMLScriptsElement::ScriptType::Sub;
     if (tagName == msupTag)
-        return ScriptType::Super;
+        return MathMLScriptsElement::ScriptType::Super;
     if (tagName == msubsupTag)
-        return ScriptType::SubSup;
+        return MathMLScriptsElement::ScriptType::SubSup;
     if (tagName == munderTag)
-        return ScriptType::Under;
+        return MathMLScriptsElement::ScriptType::Under;
     if (tagName == moverTag)
-        return ScriptType::Over;
+        return MathMLScriptsElement::ScriptType::Over;
     if (tagName == munderoverTag)
-        return ScriptType::UnderOver;
+        return MathMLScriptsElement::ScriptType::UnderOver;
     ASSERT(tagName == mmultiscriptsTag);
-    return ScriptType::Multiscripts;
+    return MathMLScriptsElement::ScriptType::Multiscripts;
 }
 
 MathMLScriptsElement::MathMLScriptsElement(const QualifiedName& tagName, Document& document)
@@ -77,12 +77,12 @@ const MathMLElement::Length& MathMLScriptsElement::superscriptShift()
     return cachedMathMLLength(superscriptshiftAttr, m_superscriptShift);
 }
 
-void MathMLScriptsElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void MathMLScriptsElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == subscriptshiftAttr)
-        m_subscriptShift = std::nullopt;
+        m_subscriptShift = WTF::nullopt;
     else if (name == superscriptshiftAttr)
-        m_superscriptShift = std::nullopt;
+        m_superscriptShift = WTF::nullopt;
 
     MathMLElement::parseAttribute(name, value);
 }

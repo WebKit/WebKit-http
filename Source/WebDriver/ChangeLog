@@ -1,3 +1,352 @@
+2019-06-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r245567): [GTK][WPE] [2.25.1] WebKitWebDriver gets installed as WebDriver
+        https://bugs.webkit.org/show_bug.cgi?id=198480
+
+        Reviewed by Michael Catanzaro.
+
+        We are now using the WEBKIT_EXECUTABLE macro that uses target_OUTPUT_NAME variable, but we define
+        taget_Process_OUTPUT_NAME.
+
+        * PlatformGTK.cmake:
+        * PlatformWPE.cmake:
+
+2019-05-31  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add WebKit::WTF target
+        https://bugs.webkit.org/show_bug.cgi?id=198400
+
+        Reviewed by Konstantin Tokarev.
+
+        Use the WebKit::WTF target.
+
+        * CMakeLists.txt:
+
+2019-05-21  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Build WebDriver
+        https://bugs.webkit.org/show_bug.cgi?id=198056
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add the platform and source files to get WinCairo to compile a WebDriver executable.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake: Added.
+        * Session.cpp:
+        (WebDriver::Session::go):
+        (WebDriver::Session::getCurrentURL):
+        (WebDriver::Session::back):
+        (WebDriver::Session::forward):
+        (WebDriver::Session::refresh):
+        (WebDriver::Session::getTitle):
+        (WebDriver::Session::switchToFrame):
+        (WebDriver::Session::switchToParentFrame):
+        (WebDriver::Session::setWindowRect):
+        (WebDriver::Session::maximizeWindow):
+        (WebDriver::Session::minimizeWindow):
+        (WebDriver::Session::fullscreenWindow):
+        (WebDriver::Session::findElements):
+        (WebDriver::Session::getActiveElement):
+        (WebDriver::Session::isElementSelected):
+        (WebDriver::Session::getElementText):
+        (WebDriver::Session::getElementTagName):
+        (WebDriver::Session::getElementRect):
+        (WebDriver::Session::isElementEnabled):
+        (WebDriver::Session::isElementDisplayed):
+        (WebDriver::Session::getElementAttribute):
+        (WebDriver::Session::getElementProperty):
+        (WebDriver::Session::getElementCSSValue):
+        (WebDriver::Session::elementClick):
+        (WebDriver::Session::elementClear):
+        (WebDriver::Session::elementSendKeys):
+        (WebDriver::Session::executeScript):
+        (WebDriver::Session::getAllCookies):
+        (WebDriver::Session::addCookie):
+        (WebDriver::Session::deleteCookie):
+        (WebDriver::Session::deleteAllCookies):
+        (WebDriver::Session::performActions):
+        (WebDriver::Session::takeScreenshot):
+        With nested lambdas MSVC believes the this pointer is for the enclosing lambda. Use a
+        protectedThis in the enclosing lambda and then use protectedThis.copyRef() in the nested
+        lambda.
+
+        * socket/HTTPServerSocket.cpp: Added.
+        (WebDriver::HTTPServer::listen):
+        (WebDriver::HTTPServer::disconnect):
+        Add stubs for HTTPServer when using a raw socket.
+
+        * socket/SessionHostSocket.cpp: Added.
+        (WebDriver::SessionHost::~SessionHost):
+        (WebDriver::SessionHost::connectToBrowser):
+        (WebDriver::SessionHost::isConnected const):
+        (WebDriver::SessionHost::startAutomationSession):
+        (WebDriver::SessionHost::sendMessageToBackend):
+        Add stubs for SessionHost when using a raw socket.
+
+        * win/WebDriverServiceWin.cpp: Added.
+        (WebDriver::WebDriverService::platformCapabilities):
+        (WebDriver::WebDriverService::platformCompareBrowserVersions):
+        (WebDriver::WebDriverService::platformValidateCapability const):
+        (WebDriver::WebDriverService::platformMatchCapability const):
+        (WebDriver::WebDriverService::platformParseCapabilities const):
+        Add stubs for WebDriverService on Windows.
+
+2019-05-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use builtin FindICU
+        https://bugs.webkit.org/show_bug.cgi?id=197934
+
+        Reviewed by Michael Catanzaro.
+
+        Remove uses of ICU_INCLUDE_DIRS and ICU_LIBRARIES.
+
+        * PlatformWPE.cmake:
+
+2019-04-14  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] JavaScriptCore derived sources should only be referenced inside JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=196742
+
+        Reviewed by Konstantin Tokarev.
+
+        Don't set JavaScriptCore_SCRIPTS_DIR now that it is set within WebKitFS.
+
+        * CMakeLists.txt:
+
+2019-04-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r243833.
+        https://bugs.webkit.org/show_bug.cgi?id=196645
+
+        This change breaks build of WPE and GTK ports (Requested by
+        annulen on #webkit).
+
+        Reverted changeset:
+
+        "[CMake][WTF] Mirror XCode header directories"
+        https://bugs.webkit.org/show_bug.cgi?id=191662
+        https://trac.webkit.org/changeset/243833
+
+2019-04-03  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][WTF] Mirror XCode header directories
+        https://bugs.webkit.org/show_bug.cgi?id=191662
+
+        Reviewed by Konstantin Tokarev.
+
+        Use WTFFramework as a dependency.
+
+        * CMakeLists.txt:
+
+2019-03-04  Karl Leplat  <karl.leplat_ext@softathome.com>
+
+        WebDriver: fix String not terminated with null caracter
+        https://bugs.webkit.org/show_bug.cgi?id=195274
+
+        Reviewed by Carlos Garcia Campos.
+
+        This has been detected by an exception returned by the function
+        evaluateJavaScriptFunction with the message :
+        [native code]: JS ERROR SyntaxError: Unexpected keyword 'function'. Expected ')' to end a compound expression.
+        keyword 'function' has been initialized with a string that come from char array, not a null-terminated string.
+
+        * Session.cpp:
+        (WebDriver::Session::fullscreenWindow):
+        (WebDriver::Session::findElements):
+        (WebDriver::Session::isElementSelected):
+        (WebDriver::Session::isElementDisplayed):
+        (WebDriver::Session::getElementAttribute):
+        (WebDriver::Session::elementClear):
+
+2019-01-31  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed speculative WPE build fix.
+
+        * CMakeLists.txt: Include the WebKitCommon file, as is normally done in
+        standalone CMakeLists.txt files.
+
+2019-01-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] WebDriver: race condition when session starts
+        https://bugs.webkit.org/show_bug.cgi?id=194086
+
+        Reviewed by Philippe Normand.
+
+        This is causing flakiness in the bots, I can only reproduce it locally when my CPUs are at 100%. The thing
+        is that sometimes we receive an empty target list right after the connection is established because
+        RemoteInspector::setClient() calls pushListingsSoon() before a target has been registered. Most of the times the
+        target is registered before the listing is pushed, but it can happen that when pushed, the listing is still
+        empty. After the target is registered an empty target list means the connection was lost, so we clear the
+        connection and target. We need to ensure we do that only after the target has been registered.
+
+        * glib/SessionHostGlib.cpp:
+
+2019-01-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: POST commands require a valid parameters object
+        https://bugs.webkit.org/show_bug.cgi?id=193906
+
+        Reviewed by Michael Catanzaro.
+
+        We are not failing when http body is empty.
+
+        Fixes tests: imported/w3c/webdriver/tests/set_window_rect/set.py::test_null_parameter_value
+                     imported/w3c/webdriver/tests/set_timeouts/set.py::test_null_parameter_value
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::handleRequest):
+
+2019-01-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: element click command should handle user prompts
+        https://bugs.webkit.org/show_bug.cgi?id=193139
+
+        Reviewed by Michael Catanzaro.
+
+        * Session.cpp:
+        (WebDriver::Session::elementClick): Handle user prompts.
+
+2019-01-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] WebDriver: browser close not correctly detected on session close in some cases
+        https://bugs.webkit.org/show_bug.cgi?id=193104
+
+        Reviewed by Michael Catanzaro.
+
+        This happens when the dbus connection is closed right before the response to SendMessageToBackend message is
+        going to be sent. In that case, g_dbus_connection_call async ready handler generates an error before the close
+        signal is emitted. Then, the close commands try to handle the error checking if SessionHost::isConnected(), but
+        it still returns true, because the browser is still alive, but the dbus connection has been closed.
+
+        * glib/SessionHostGlib.cpp:
+        (WebDriver::SessionHost::isConnected const): Session is connected when launching or when dbus connection hasn't
+        been closed.
+
+2018-12-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] WebDriver: dbusConnectionClosedCallback can be called after SessionHost has been deleted
+        https://bugs.webkit.org/show_bug.cgi?id=192976
+
+        Reviewed by Alejandro G. Castro.
+
+        Disconnect DBus connection signals using SessionHost as user data in SessionHost destructor.
+
+        * glib/SessionHostGlib.cpp:
+        (WebDriver::SessionHost::~SessionHost):
+
+2018-12-20  Chris Dumez  <cdumez@apple.com>
+
+        Use Optional::valueOr() instead of Optional::value_or()
+        https://bugs.webkit.org/show_bug.cgi?id=192933
+
+        Reviewed by Geoffrey Garen.
+
+        * Session.cpp:
+        (WebDriver::Session::handleUnexpectedAlertOpen):
+        (WebDriver::Session::computeElementLayout):
+        (WebDriver::Session::selectOptionElement):
+        (WebDriver::builtAutomationCookie):
+        (WebDriver::Session::takeScreenshot):
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::sendResponse const):
+        (WebDriver::WebDriverService::createSession):
+
+2018-12-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: Session::findElements should handle user prompts
+        https://bugs.webkit.org/show_bug.cgi?id=192928
+
+        Reviewed by Michael Catanzaro.
+
+        All user prompt tests for commands using Session::findElements are failing because of this.
+
+        * Session.cpp:
+        (WebDriver::Session::findElements):
+
+2018-12-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebDriver: tests in imported/w3c/webdriver/tests/element_clear/user_prompts.py are failing
+        https://bugs.webkit.org/show_bug.cgi?id=192927
+
+        Reviewed by Michael Catanzaro.
+
+        Handle user prompts in element clear command.
+
+        * Session.cpp:
+        (WebDriver::Session::elementClear):
+
+2018-12-19  Chris Dumez  <cdumez@apple.com>
+
+        wtf/Optional.h: move-constructor and move-assignment operator should disengage the value being moved from
+        https://bugs.webkit.org/show_bug.cgi?id=192728
+        <rdar://problem/46746779>
+
+        Reviewed by Geoff Garen.
+
+        * :
+
+2018-11-29  Tomas Popela  <tpopela@redhat.com>
+
+        [WebDriver] Fix clang warnings in Session.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=192077
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Session.cpp:
+        (WebDriver::Session::dismissAndNotifyAlert):
+        (WebDriver::Session::acceptAndNotifyAlert):
+        (WebDriver::Session::reportUnexpectedAlertOpen):
+        (WebDriver::Session::getCurrentURL):
+        (WebDriver::Session::getTitle):
+        (WebDriver::Session::getWindowHandle):
+        (WebDriver::Session::getWindowHandles):
+        (WebDriver::Session::getToplevelBrowsingContextRect):
+        (WebDriver::Session::computeElementLayout):
+        (WebDriver::Session::isElementSelected):
+        (WebDriver::Session::getElementText):
+        (WebDriver::Session::getElementTagName):
+        (WebDriver::Session::getElementRect):
+        (WebDriver::Session::isElementEnabled):
+        (WebDriver::Session::isElementDisplayed):
+        (WebDriver::Session::getElementAttribute):
+        (WebDriver::Session::getElementProperty):
+        (WebDriver::Session::getElementCSSValue):
+        (WebDriver::Session::selectOptionElement):
+        (WebDriver::Session::elementClick):
+        (WebDriver::Session::elementClear):
+        (WebDriver::Session::handleScriptResult):
+        (WebDriver::Session::performMouseInteraction):
+        (WebDriver::Session::performKeyboardInteractions):
+        (WebDriver::Session::getAllCookies):
+        (WebDriver::Session::getNamedCookie):
+        (WebDriver::Session::addCookie):
+        (WebDriver::Session::deleteCookie):
+        (WebDriver::Session::deleteAllCookies):
+        (WebDriver::Session::performActions):
+        (WebDriver::Session::releaseActions):
+        (WebDriver::Session::dismissAlert):
+        (WebDriver::Session::acceptAlert):
+        (WebDriver::Session::getAlertText):
+        (WebDriver::Session::sendAlertText):
+        (WebDriver::Session::takeScreenshot):
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::deleteSession):
+
+2018-11-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] WebDriver: support validating and parsing the 'certificates' capability
+        https://bugs.webkit.org/show_bug.cgi?id=191014
+
+        Reviewed by Michael Catanzaro.
+
+        Adopt the same approach as in the GTK's WebDriverService implementation
+        for validating and parsing the 'certificates' WebDriver capability.
+
+        * wpe/WebDriverServiceWPE.cpp:
+        (WebDriver::WebDriverService::platformValidateCapability const):
+        (WebDriver::WebDriverService::platformParseCapabilities const):
+
 2018-08-13  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         WebDriver: do not try to set the caret when focusing non text element in send keys command

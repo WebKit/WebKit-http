@@ -65,12 +65,12 @@ public:
     }
 
     Vector<LinkRecord, 0, UnsafeVectorOverflow>& jumpsToLink() { return m_assembler.jumpsToLink(); }
-    void* unlinkedCode() { return m_assembler.unlinkedCode(); }
     static bool canCompact(JumpType jumpType) { return ARMv7Assembler::canCompact(jumpType); }
     static JumpLinkType computeJumpType(JumpType jumpType, const uint8_t* from, const uint8_t* to) { return ARMv7Assembler::computeJumpType(jumpType, from, to); }
     static JumpLinkType computeJumpType(LinkRecord& record, const uint8_t* from, const uint8_t* to) { return ARMv7Assembler::computeJumpType(record, from, to); }
     static int jumpSizeDelta(JumpType jumpType, JumpLinkType jumpLinkType) { return ARMv7Assembler::jumpSizeDelta(jumpType, jumpLinkType); }
-    static void link(LinkRecord& record, uint8_t* from, const uint8_t* fromInstruction, uint8_t* to) { return ARMv7Assembler::link(record, from, fromInstruction, to); }
+    template <typename CopyFunction>
+    static void link(LinkRecord& record, uint8_t* from, const uint8_t* fromInstruction, uint8_t* to, CopyFunction copy) { return ARMv7Assembler::link(record, from, fromInstruction, to, copy); }
 
     struct ArmAddress {
         enum AddressType {
@@ -177,14 +177,14 @@ public:
 
     void add32(TrustedImm32 imm, RegisterID src, RegisterID dest)
     {
-        ARMThumbImmediate armImm = ARMThumbImmediate::makeUInt12OrEncodedImm(imm.m_value);
-
-        // For adds with stack pointer destination, moving the src first to sp is
-        // needed to avoid unpredictable instruction
+        // For adds with stack pointer destination avoid unpredictable instruction
         if (dest == ARMRegisters::sp && src != dest) {
-            move(src, ARMRegisters::sp);
-            src = ARMRegisters::sp;
+            add32(imm, src, dataTempRegister);
+            move(dataTempRegister, dest);
+            return;
         }
+
+        ARMThumbImmediate armImm = ARMThumbImmediate::makeUInt12OrEncodedImm(imm.m_value);
 
         if (armImm.isValid())
             m_assembler.add(dest, src, armImm);
@@ -578,6 +578,10 @@ public:
             xor32(imm, dest, dest);
     }
     
+    void not32(RegisterID srcDest)
+    {
+        m_assembler.mvn(srcDest, srcDest);
+    }
 
     // Memory access operations:
     //
@@ -1248,9 +1252,13 @@ public:
         m_assembler.vcvt_signedToFloatingPoint(fpTempRegister, fpTempRegisterAsSingle());
         failureCases.append(branchDouble(DoubleNotEqualOrUnordered, src, fpTempRegister));
 
-        // If the result is zero, it might have been -0.0, and the double comparison won't catch this!
-        if (negZeroCheck)
-            failureCases.append(branchTest32(Zero, dest));
+        // Test for negative zero.
+        if (negZeroCheck) {
+            Jump valueIsNonZero = branchTest32(NonZero, dest);
+            m_assembler.vmov(dataTempRegister, ARMRegisters::asSingleUpper(src));
+            failureCases.append(branch32(LessThan, dataTempRegister, TrustedImm32(0)));
+            valueIsNonZero.link(this);
+        }
     }
 
     Jump branchDoubleNonZero(FPRegisterID reg, FPRegisterID)

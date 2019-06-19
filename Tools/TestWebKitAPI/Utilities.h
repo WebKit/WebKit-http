@@ -32,7 +32,7 @@ namespace Util {
 void run(bool* done);
 
 // Runs a platform runloop `count` number of spins.
-void spinRunLoop(uint64_t count);
+void spinRunLoop(uint64_t count = 1);
 
 // Runs a platform runloop until the amount of seconds has passed.
 void sleep(double seconds);

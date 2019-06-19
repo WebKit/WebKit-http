@@ -184,6 +184,9 @@ public:
         Vector<const NaturalLoop*> loopStack;
         bool changed = false;
         for (BasicBlock* block : m_graph.blocksInPreOrder()) {
+            if (!block->cfaHasVisited)
+                continue;
+
             const NaturalLoop* loop = m_graph.m_ssaNaturalLoops->innerMostLoopOf(block);
             if (!loop)
                 continue;
@@ -210,6 +213,8 @@ public:
             
             for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
                 Node*& nodeRef = block->at(nodeIndex);
+                if (nodeRef->op() == ForceOSRExit)
+                    break;
                 for (unsigned stackIndex = loopStack.size(); stackIndex--;)
                     changed |= attemptHoist(block, nodeRef, loopStack[stackIndex]);
             }
@@ -237,6 +242,7 @@ private:
         }
         
         m_state.initializeTo(data.preHeader);
+        ASSERT(m_state.isValid());
         NodeOrigin originalOrigin = node->origin;
         bool canSpeculateBlindly = !m_graph.hasGlobalExitSite(originalOrigin.semantic, HoistingFailed);
 
@@ -258,10 +264,27 @@ private:
         };
 
         auto updateAbstractState = [&] {
+            auto invalidate = [&] (const NaturalLoop* loop) {
+                LoopData& data = m_data[loop->index()];
+                data.preHeader->cfaDidFinish = false;
+
+                for (unsigned bodyIndex = loop->size(); bodyIndex--;) {
+                    BasicBlock* block = loop->at(bodyIndex);
+                    if (block != data.preHeader)
+                        block->cfaHasVisited = false;
+                    block->cfaDidFinish = false;
+                }
+            };
+
             // We can trust what AI proves about edge proof statuses when hoisting to the preheader.
             m_state.trustEdgeProofs();
-            for (unsigned i = 0; i < hoistedNodes.size(); ++i)
-                m_interpreter.execute(hoistedNodes[i]);
+            for (unsigned i = 0; i < hoistedNodes.size(); ++i) {
+                if (!m_interpreter.execute(hoistedNodes[i])) {
+                    invalidate(loop);
+                    return;
+                }
+            }
+
             // However, when walking various inner loops below, the proof status of
             // an edge may be trivially true, even if it's not true in the preheader
             // we hoist to. We don't allow the below node executions to change the
@@ -295,8 +318,12 @@ private:
                 if (subPreHeader == data.preHeader)
                     continue;
                 m_state.initializeTo(subPreHeader);
-                for (unsigned i = 0; i < hoistedNodes.size(); ++i)
-                    m_interpreter.execute(hoistedNodes[i]);
+                for (unsigned i = 0; i < hoistedNodes.size(); ++i) {
+                    if (!m_interpreter.execute(hoistedNodes[i])) {
+                        invalidate(subLoop);
+                        break;
+                    }
+                }
             }
         };
         

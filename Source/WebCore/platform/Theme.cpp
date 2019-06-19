@@ -29,6 +29,7 @@
 #include "GraphicsContext.h"
 #include "LengthBox.h"
 #include "LengthSize.h"
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -37,9 +38,9 @@ int Theme::baselinePositionAdjustment(ControlPart) const
     return 0;
 }
 
-std::optional<FontCascadeDescription> Theme::controlFont(ControlPart, const FontCascade&, float) const
+Optional<FontCascadeDescription> Theme::controlFont(ControlPart, const FontCascade&, float) const
 {
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 LengthSize Theme::controlSize(ControlPart, const FontCascade&, const LengthSize& zoomedSize, float) const

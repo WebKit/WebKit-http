@@ -49,6 +49,7 @@ public:
     InjectedScriptManager(InspectorEnvironment&, Ref<InjectedScriptHost>&&);
     virtual ~InjectedScriptManager();
 
+    virtual void connect();
     virtual void disconnect();
     virtual void discardInjectedScripts();
 
@@ -60,6 +61,7 @@ public:
     int injectedScriptIdFor(JSC::ExecState*);
     InjectedScript injectedScriptForObjectId(const String& objectId);
     void releaseObjectGroup(const String& objectGroup);
+    void clearEventValue();
     void clearExceptionValue();
 
 protected:

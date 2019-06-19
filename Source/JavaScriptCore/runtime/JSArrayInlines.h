@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "ArrayPrototype.h"
 #include "Error.h"
 #include "JSArray.h"
 #include "JSCellInlines.h"
@@ -70,17 +71,36 @@ inline bool JSArray::canFastCopy(VM& vm, JSArray* otherArray)
     return true;
 }
 
+inline bool JSArray::canDoFastIndexedAccess(VM& vm)
+{
+    JSGlobalObject* globalObject = this->globalObject();
+    if (!globalObject->arrayPrototypeChainIsSane())
+        return false;
+
+    Structure* structure = this->structure(vm);
+    // This is the fast case. Many arrays will be an original array.
+    if (globalObject->isOriginalArrayStructure(structure))
+        return true;
+
+    if (structure->mayInterceptIndexedAccesses())
+        return false;
+
+    if (getPrototypeDirect(vm) != globalObject->arrayPrototype())
+        return false;
+
+    return true;
+}
+
 ALWAYS_INLINE double toLength(ExecState* exec, JSObject* obj)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    if (isJSArray(obj))
+    if (LIKELY(isJSArray(obj)))
         return jsCast<JSArray*>(obj)->length();
 
     JSValue lengthValue = obj->get(exec, vm.propertyNames->length);
     RETURN_IF_EXCEPTION(scope, PNaN);
-    scope.release();
-    return lengthValue.toLength(exec);
+    RELEASE_AND_RETURN(scope, lengthValue.toLength(exec));
 }
 
 ALWAYS_INLINE void JSArray::pushInline(ExecState* exec, JSValue value)
@@ -192,8 +212,10 @@ ALWAYS_INLINE void JSArray::pushInline(ExecState* exec, JSValue value)
     case ArrayWithSlowPutArrayStorage: {
         unsigned oldLength = length();
         bool putResult = false;
-        if (attemptToInterceptPutByIndexOnHole(exec, oldLength, value, true, putResult)) {
-            if (!scope.exception() && oldLength < 0xFFFFFFFFu) {
+        bool result = attemptToInterceptPutByIndexOnHole(exec, oldLength, value, true, putResult);
+        RETURN_IF_EXCEPTION(scope, void());
+        if (result) {
+            if (oldLength < 0xFFFFFFFFu) {
                 scope.release();
                 setLength(exec, oldLength + 1, true);
             }

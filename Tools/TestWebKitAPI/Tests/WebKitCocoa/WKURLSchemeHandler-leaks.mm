@@ -39,8 +39,6 @@
 #import <wtf/RetainPtr.h>
 #import <wtf/Vector.h>
 
-#if WK_API_ENABLED
-
 @interface WKWebView (TestingSecrets)
 + (size_t)_webURLSchemeTaskInstanceCount;
 + (size_t)_apiURLSchemeTaskInstanceCount;
@@ -80,7 +78,7 @@ static void runUntilTasksInFlight(size_t count)
 
 auto e = EPERM;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 // This test is sometimes timing out on iOS (rdar://problem/33665676).
 TEST(URLSchemeHandler, DISABLED_Leaks1)
 #else
@@ -159,5 +157,4 @@ TEST(URLSchemeHandler, Leaks3)
     runUntilTasksInFlight(0);
 }
 
-#endif // WK_API_ENABLED
 #endif // NDEBUG

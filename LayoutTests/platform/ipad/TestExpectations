@@ -1,0 +1,37 @@
+# iPads don't zoom when form elements are focused
+fast/visual-viewport/ios/caret-after-focus-in-fixed.html [ Skip ]
+
+# These tests are designed for iPhone and crash on iPad
+media/modern-media-controls/media-documents/media-document-audio-ios-sizing.html [ Skip ]
+media/modern-media-controls/media-documents/media-document-video-iphone-sizing.html [ Skip ]
+
+# This test is iPad-specific
+media/modern-media-controls/media-documents/media-document-video-ipad-sizing.html [ Pass ]
+
+webkit.org/b/194221 fast/forms/datalist/datalist-textinput-suggestions-order.html [ Failure ]
+webkit.org/b/194221 fast/forms/datalist/datalist-show-hide.html [ Skip ]
+
+webkit.org/b/193970 compositing/ios/overflow-scroll-update-overlap.html [ ImageOnlyFailure ]
+
+webkit.org/b/194228 fast/media/invalid-media-query-list.html [ ImageOnlyFailure ]
+
+webkit.org/b/194234 media/modern-media-controls/media-documents/background-color-and-centering.html [ ImageOnlyFailure ]
+
+webkit.org/b/193971 editing/selection/ios/selection-handles-in-readonly-input.html [ Skip ]
+
+webkit.org/b/165311 platform/ipad/media/modern-media-controls/pip-support/pip-support-tap.html [ Skip ]
+
+webkit.org/b/194223 media/controls-strict.html [ Failure ]
+webkit.org/b/194223 media/controls-without-preload.html [ Skip ]
+webkit.org/b/194223 media/video-controls-rendering.html [ Failure ]
+webkit.org/b/194223 media/video-zoom-controls.html [ Failure ]
+
+webkit.org/b/194226 quicklook/word-legacy.html [ Failure ]
+webkit.org/b/194226 quicklook/word.html [ Failure ]
+
+webkit.org/b/194259 fast/events/ios/rotation/basic-rotation.html [ Skip ]
+webkit.org/b/194259 fast/events/ios/rotation/layout-viewport-during-rotation.html [ Skip ]
+webkit.org/b/194259 fast/events/ios/rotation/layout-viewport-during-safari-type-rotation.html [ Skip ]
+webkit.org/b/194259 fast/events/ios/rotation/resize-iframe-after-orientation-change.html [ Skip ]
+webkit.org/b/194259 fast/events/ios/rotation/safari-like-rotation.html [ Skip ]
+webkit.org/b/194259 fast/events/ios/viewport-no-width-value-allows-double-tap.html [ Skip ]

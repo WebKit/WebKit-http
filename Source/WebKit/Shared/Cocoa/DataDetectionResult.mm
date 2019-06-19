@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
 #import "config.h"
 #import "DataDetectionResult.h"
 
-#import "ArgumentCodersCF.h"
+#import "ArgumentCodersCocoa.h"
 #import "WebCoreArgumentCoders.h"
 #import <pal/spi/cocoa/DataDetectorsCoreSPI.h>
 #import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
@@ -41,27 +41,18 @@ namespace WebKit {
 
 void DataDetectionResult::encode(IPC::Encoder& encoder) const
 {
-    auto archiver = secureArchiver();
-    [archiver encodeObject:results.get() forKey:@"dataDetectorResults"];
-    IPC::encode(encoder, (__bridge CFDataRef)archiver.get().encodedData);
+    encoder << results;
 }
 
-bool DataDetectionResult::decode(IPC::Decoder& decoder, DataDetectionResult& result)
+Optional<DataDetectionResult> DataDetectionResult::decode(IPC::Decoder& decoder)
 {
-    RetainPtr<CFDataRef> data;
-    if (!IPC::decode(decoder, data))
-        return false;
+    auto results = IPC::decode<NSArray>(decoder, @[ [NSArray class], getDDScannerResultClass() ]);
+    if (!results)
+        return WTF::nullopt;
 
-    auto unarchiver = secureUnarchiverFromData((__bridge NSData *)data.get());
-    @try {
-        result.results = [unarchiver decodeObjectOfClasses:[NSSet setWithArray:@[ [NSArray class], getDDScannerResultClass()] ] forKey:@"dataDetectorResults"];
-    } @catch (NSException *exception) {
-        LOG_ERROR("Failed to decode NSArray of DDScanResult: %@", exception);
-        return false;
-    }
-    
-    [unarchiver finishDecoding];
-    return true;
+    DataDetectionResult result;
+    result.results = WTFMove(*results);
+    return { WTFMove(result) };
 }
 #endif
 

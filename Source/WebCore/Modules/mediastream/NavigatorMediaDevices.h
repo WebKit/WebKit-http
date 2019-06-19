@@ -37,17 +37,17 @@
 
 namespace WebCore {
 
-class Frame;
 class MediaDevices;
 class Navigator;
 
 class NavigatorMediaDevices : public Supplement<Navigator>, public DOMWindowProperty {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit NavigatorMediaDevices(Frame*);
+    explicit NavigatorMediaDevices(DOMWindow*);
     virtual ~NavigatorMediaDevices();
     static NavigatorMediaDevices* from(Navigator*);
 
-    static MediaDevices* mediaDevices(Navigator&);
+    WEBCORE_TESTSUPPORT_EXPORT static MediaDevices* mediaDevices(Navigator&);
     MediaDevices* mediaDevices() const;
 
 private:

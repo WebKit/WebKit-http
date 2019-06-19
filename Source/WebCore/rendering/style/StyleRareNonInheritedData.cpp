@@ -26,6 +26,7 @@
 #include "RenderCounter.h"
 #include "RenderStyle.h"
 #include "ShadowData.h"
+#include "StyleCustomPropertyData.h"
 #include "StyleFilterData.h"
 #include "StyleTransformData.h"
 #include "StyleImage.h"
@@ -75,8 +76,9 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , justifyContent(RenderStyle::initialContentAlignment())
     , justifyItems(RenderStyle::initialJustifyItems())
     , justifySelf(RenderStyle::initialSelfAlignment())
-#if ENABLE(TOUCH_EVENTS)
-    , touchAction(static_cast<unsigned>(RenderStyle::initialTouchAction()))
+    , customProperties(StyleCustomPropertyData::create())
+#if ENABLE(POINTER_EVENTS)
+    , touchActions(static_cast<unsigned>(RenderStyle::initialTouchActions()))
 #endif
     , pageSizeType(PAGE_SIZE_AUTO)
     , transformStyle3D(static_cast<unsigned>(RenderStyle::initialTransformStyle3D()))
@@ -167,8 +169,10 @@ inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonIn
     , justifyContent(o.justifyContent)
     , justifyItems(o.justifyItems)
     , justifySelf(o.justifySelf)
-#if ENABLE(TOUCH_EVENTS)
-    , touchAction(o.touchAction)
+    , customProperties(o.customProperties)
+    , customPaintWatchedProperties(o.customPaintWatchedProperties ? std::make_unique<HashSet<String>>(*o.customPaintWatchedProperties) : nullptr)
+#if ENABLE(POINTER_EVENTS)
+    , touchActions(o.touchActions)
 #endif
     , pageSizeType(o.pageSizeType)
     , transformStyle3D(o.transformStyle3D)
@@ -219,9 +223,6 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && perspectiveOriginY == o.perspectiveOriginY
         && lineClamp == o.lineClamp
         && initialLetter == o.initialLetter
-#if ENABLE(DASHBOARD_SUPPORT)
-        && dashboardRegions == o.dashboardRegions
-#endif
         && deprecatedFlexibleBox == o.deprecatedFlexibleBox
         && flexibleBox == o.flexibleBox
         && marquee == o.marquee
@@ -268,6 +269,9 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && justifyContent == o.justifyContent
         && justifyItems == o.justifyItems
         && justifySelf == o.justifySelf
+        && customProperties == o.customProperties
+        && ((customPaintWatchedProperties && o.customPaintWatchedProperties && *customPaintWatchedProperties == *o.customPaintWatchedProperties)
+            || (!customPaintWatchedProperties && !o.customPaintWatchedProperties))
         && pageSizeType == o.pageSizeType
         && transformStyle3D == o.transformStyle3D
         && backfaceVisibility == o.backfaceVisibility
@@ -279,8 +283,8 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && borderFit == o.borderFit
         && textCombine == o.textCombine
         && textDecorationStyle == o.textDecorationStyle
-#if ENABLE(TOUCH_EVENTS)
-        && touchAction == o.touchAction
+#if ENABLE(POINTER_EVENTS)
+        && touchActions == o.touchActions
 #endif
 #if ENABLE(CSS_COMPOSITING)
         && effectiveBlendMode == o.effectiveBlendMode

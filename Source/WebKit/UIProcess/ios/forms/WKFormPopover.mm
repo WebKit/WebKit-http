@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WKFormPopover.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "UIKitSPI.h"
 #import "WKContentView.h"
@@ -36,8 +36,7 @@
 
 using namespace WebKit;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 
 @implementation WKFormRotatingAccessoryPopover
 
@@ -143,7 +142,7 @@ using namespace WebKit;
                           permittedArrowDirections:directions
                                           animated:animated];
     } else {
-        CGRect boundingBoxOfDOMNode = _view.assistedNodeInformation.elementRect;
+        CGRect boundingBoxOfDOMNode = _view.focusedElementInformation.elementRect;
         [_popoverController presentPopoverFromRect:CGRectIntegral(boundingBoxOfDOMNode)
                                             inView:_view
                           permittedArrowDirections:directions
@@ -168,7 +167,9 @@ using namespace WebKit;
     [self presentPopoverAnimated:NO];
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)popoverControllerDidDismissPopover:(UIPopoverController *)popoverController
+IGNORE_WARNINGS_END
 {
     if (_isRotating)
         return;
@@ -178,6 +179,6 @@ using namespace WebKit;
 
 @end
 
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

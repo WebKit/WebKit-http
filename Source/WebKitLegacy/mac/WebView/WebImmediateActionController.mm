@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -256,17 +256,17 @@ using namespace WebCore;
     NSURL *url = _hitTestResult.absoluteLinkURL();
     NSString *absoluteURLString = [url absoluteString];
     if (url && _hitTestResult.URLElement()) {
-        if (protocolIs(absoluteURLString, "mailto")) {
+        if (WTF::protocolIs(absoluteURLString, "mailto")) {
             _type = WebImmediateActionMailtoLink;
             return [self _animationControllerForDataDetectedLink];
         }
 
-        if (protocolIs(absoluteURLString, "tel")) {
+        if (WTF::protocolIs(absoluteURLString, "tel")) {
             _type = WebImmediateActionTelLink;
             return [self _animationControllerForDataDetectedLink];
         }
 
-        if (WebCore::protocolIsInHTTPFamily(absoluteURLString)) {
+        if (WTF::protocolIsInHTTPFamily(absoluteURLString)) {
             _type = WebImmediateActionLinkPreview;
 
             RefPtr<Range> linkRange = rangeOfContents(*_hitTestResult.URLElement());
@@ -547,7 +547,7 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
 
 - (id<NSImmediateActionAnimationController>)_animationControllerForText
 {
-    if (!getLULookupDefinitionModuleClass())
+    if (!PAL::getLULookupDefinitionModuleClass())
         return nil;
 
     Node* node = _hitTestResult.innerNode();

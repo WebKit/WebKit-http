@@ -11,6 +11,8 @@
 #include "modules/audio_processing/aec3/aec3_fft.h"
 
 #include <algorithm>
+#include <functional>
+#include <iterator>
 
 #include "rtc_base/checks.h"
 

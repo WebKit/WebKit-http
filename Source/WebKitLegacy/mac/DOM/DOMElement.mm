@@ -81,13 +81,13 @@ DOMElement *kit(WebCore::Element* value)
 - (int)offsetLeft
 {
     WebCore::JSMainThreadNullState state;
-    return unwrap(*self).offsetLeft();
+    return unwrap(*self).offsetLeftForBindings();
 }
 
 - (int)offsetTop
 {
     WebCore::JSMainThreadNullState state;
-    return unwrap(*self).offsetTop();
+    return unwrap(*self).offsetTopForBindings();
 }
 
 - (int)offsetWidth
@@ -165,7 +165,7 @@ DOMElement *kit(WebCore::Element* value)
 - (DOMElement *)offsetParent
 {
     WebCore::JSMainThreadNullState state;
-    return kit(unwrap(*self).bindingsOffsetParent());
+    return kit(unwrap(*self).offsetParentForBindings());
 }
 
 - (NSString *)innerHTML
@@ -264,7 +264,7 @@ DOMElement *kit(WebCore::Element* value)
     return unwrap(*self).childElementCount();
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (CGRect)boundsInRootViewSpace
 {
     WebCore::JSMainThreadNullState state;

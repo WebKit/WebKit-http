@@ -11,20 +11,25 @@
 #ifndef MODULES_PACING_PACED_SENDER_H_
 #define MODULES_PACING_PACED_SENDER_H_
 
+#include <stddef.h>
+#include <stdint.h>
 #include <memory>
 
 #include "absl/types/optional.h"
+#include "api/transport/network_types.h"
+#include "modules/pacing/bitrate_prober.h"
+#include "modules/pacing/interval_budget.h"
 #include "modules/pacing/pacer.h"
-#include "modules/pacing/packet_queue_interface.h"
+#include "modules/pacing/round_robin_packet_queue.h"
+#include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
+#include "modules/utility/include/process_thread.h"
 #include "rtc_base/criticalsection.h"
 #include "rtc_base/thread_annotations.h"
 
 namespace webrtc {
 class AlrDetector;
-class BitrateProber;
 class Clock;
 class RtcEventLog;
-class IntervalBudget;
 
 class PacedSender : public Pacer {
  public:
@@ -64,11 +69,6 @@ class PacedSender : public Pacer {
   PacedSender(const Clock* clock,
               PacketSender* packet_sender,
               RtcEventLog* event_log);
-
-  PacedSender(const Clock* clock,
-              PacketSender* packet_sender,
-              RtcEventLog* event_log,
-              std::unique_ptr<PacketQueueInterface> packets);
 
   ~PacedSender() override;
 
@@ -143,20 +143,27 @@ class PacedSender : public Pacer {
   void SetQueueTimeLimit(int limit_ms);
 
  private:
+  int64_t UpdateTimeAndGetElapsedMs(int64_t now_us)
+      RTC_EXCLUSIVE_LOCKS_REQUIRED(critsect_);
+  bool ShouldSendKeepalive(int64_t at_time_us) const
+      RTC_EXCLUSIVE_LOCKS_REQUIRED(critsect_);
+
   // Updates the number of bytes that can be sent for the next time interval.
   void UpdateBudgetWithElapsedTime(int64_t delta_time_in_ms)
       RTC_EXCLUSIVE_LOCKS_REQUIRED(critsect_);
   void UpdateBudgetWithBytesSent(size_t bytes)
       RTC_EXCLUSIVE_LOCKS_REQUIRED(critsect_);
 
-  bool SendPacket(const PacketQueueInterface::Packet& packet,
-                  const PacedPacketInfo& cluster_info)
+  const RoundRobinPacketQueue::Packet* GetPendingPacket(
+      const PacedPacketInfo& pacing_info)
       RTC_EXCLUSIVE_LOCKS_REQUIRED(critsect_);
-  size_t SendPadding(size_t padding_needed, const PacedPacketInfo& cluster_info)
+  void OnPacketSent(const RoundRobinPacketQueue::Packet* packet)
+      RTC_EXCLUSIVE_LOCKS_REQUIRED(critsect_);
+  void OnPaddingSent(size_t padding_sent)
       RTC_EXCLUSIVE_LOCKS_REQUIRED(critsect_);
 
-  void OnBytesSent(size_t bytes_sent) RTC_EXCLUSIVE_LOCKS_REQUIRED(critsect_);
   bool Congested() const RTC_EXCLUSIVE_LOCKS_REQUIRED(critsect_);
+  int64_t TimeMilliseconds() const RTC_EXCLUSIVE_LOCKS_REQUIRED(critsect_);
 
   const Clock* const clock_;
   PacketSender* const packet_sender_;
@@ -165,19 +172,21 @@ class PacedSender : public Pacer {
   const bool drain_large_queues_;
   const bool send_padding_if_silent_;
   const bool video_blocks_audio_;
+
   rtc::CriticalSection critsect_;
+  // TODO(webrtc:9716): Remove this when we are certain clocks are monotonic.
+  // The last millisecond timestamp returned by |clock_|.
+  mutable int64_t last_timestamp_ms_ RTC_GUARDED_BY(critsect_);
   bool paused_ RTC_GUARDED_BY(critsect_);
   // This is the media budget, keeping track of how many bits of media
   // we can pace out during the current interval.
-  const std::unique_ptr<IntervalBudget> media_budget_
-      RTC_PT_GUARDED_BY(critsect_);
+  IntervalBudget media_budget_ RTC_GUARDED_BY(critsect_);
   // This is the padding budget, keeping track of how many bits of padding we're
   // allowed to send out during the current interval. This budget will be
   // utilized when there's no media to send.
-  const std::unique_ptr<IntervalBudget> padding_budget_
-      RTC_PT_GUARDED_BY(critsect_);
+  IntervalBudget padding_budget_ RTC_GUARDED_BY(critsect_);
 
-  const std::unique_ptr<BitrateProber> prober_ RTC_PT_GUARDED_BY(critsect_);
+  BitrateProber prober_ RTC_GUARDED_BY(critsect_);
   bool probing_send_failure_ RTC_GUARDED_BY(critsect_);
   // Actual configured bitrates (media_budget_ may temporarily be higher in
   // order to meet pace time constraint).
@@ -190,8 +199,7 @@ class PacedSender : public Pacer {
   int64_t last_send_time_us_ RTC_GUARDED_BY(critsect_);
   int64_t first_sent_packet_ms_ RTC_GUARDED_BY(critsect_);
 
-  const std::unique_ptr<PacketQueueInterface> packets_
-      RTC_PT_GUARDED_BY(critsect_);
+  RoundRobinPacketQueue packets_ RTC_GUARDED_BY(critsect_);
   uint64_t packet_counter_ RTC_GUARDED_BY(critsect_);
 
   int64_t congestion_window_bytes_ RTC_GUARDED_BY(critsect_) =

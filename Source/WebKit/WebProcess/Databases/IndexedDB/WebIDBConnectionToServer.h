@@ -44,7 +44,7 @@ public:
 
     WebCore::IDBClient::IDBConnectionToServer& coreConnectionToServer();
     uint64_t identifier() const final { return m_identifier; }
-    uint64_t messageSenderDestinationID() final { return m_identifier; }
+    uint64_t messageSenderDestinationID() const final { return m_identifier; }
 
     // IDBConnectionToServerDelegate
     void deleteDatabase(const WebCore::IDBRequestData&) final;
@@ -79,7 +79,7 @@ public:
     void ref() override { RefCounted<WebIDBConnectionToServer>::ref(); }
     void deref() override { RefCounted<WebIDBConnectionToServer>::deref(); }
 
-    // Messages received from StorageProcess
+    // Messages received from Network Process
     void didDeleteDatabase(const WebCore::IDBResultData&);
     void didOpenDatabase(const WebCore::IDBResultData&);
     void didAbortTransaction(const WebCore::IDBResourceIdentifier& transactionIdentifier, const WebCore::IDBError&);
@@ -111,7 +111,7 @@ public:
 private:
     WebIDBConnectionToServer(PAL::SessionID);
 
-    IPC::Connection* messageSenderConnection() final;
+    IPC::Connection* messageSenderConnection() const final;
 
     uint64_t m_identifier { 0 };
     bool m_isOpenInServer { false };

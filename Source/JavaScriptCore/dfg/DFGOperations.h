@@ -43,11 +43,15 @@ EncodedJSValue JIT_OPERATION operationStringFromCharCodeUntyped(ExecState*, Enco
 // These routines provide callbacks out to C++ implementations of operations too complex to JIT.
 JSCell* JIT_OPERATION operationCallObjectConstructor(ExecState*, JSGlobalObject*, EncodedJSValue encodedTarget) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationToObject(ExecState*, JSGlobalObject*, EncodedJSValue encodedTarget, UniquedStringImpl*) WTF_INTERNAL;
+JSArray* JIT_OPERATION operationObjectKeys(ExecState*, EncodedJSValue) WTF_INTERNAL;
+JSArray* JIT_OPERATION operationObjectKeysObject(ExecState*, JSObject*) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationObjectCreate(ExecState*, EncodedJSValue) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationObjectCreateObject(ExecState*, JSObject*) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationCreateThis(ExecState*, JSObject* constructor, uint32_t inlineCapacity) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationToThis(ExecState*, EncodedJSValue encodedOp1) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationToThisStrict(ExecState*, EncodedJSValue encodedOp1) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueMod(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValueBitNot(ExecState*, EncodedJSValue encodedOp1) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueBitAnd(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueBitOr(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueBitXor(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
@@ -56,6 +60,7 @@ EncodedJSValue JIT_OPERATION operationValueBitRShift(ExecState*, EncodedJSValue 
 EncodedJSValue JIT_OPERATION operationValueBitURShift(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueAddNotNumber(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationValueDiv(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
+EncodedJSValue JIT_OPERATION operationValuePow(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
 double JIT_OPERATION operationArithAbs(ExecState*, EncodedJSValue encodedOp1) WTF_INTERNAL;
 uint32_t JIT_OPERATION operationArithClz32(ExecState*, EncodedJSValue encodedOp1) WTF_INTERNAL;
 double JIT_OPERATION operationArithFRound(ExecState*, EncodedJSValue encodedOp1) WTF_INTERNAL;
@@ -163,6 +168,16 @@ size_t JIT_OPERATION operationRegExpTestString(ExecState*, JSGlobalObject*, RegE
 size_t JIT_OPERATION operationRegExpTest(ExecState*, JSGlobalObject*, RegExpObject*, EncodedJSValue) WTF_INTERNAL;
 size_t JIT_OPERATION operationRegExpTestGeneric(ExecState*, JSGlobalObject*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
 size_t JIT_OPERATION operationCompareStrictEqCell(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationSubBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationMulBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationModBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationDivBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationPowBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationBitAndBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationBitNotBigInt(ExecState*, JSCell* op1) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationBitOrBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationAddBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
+JSCell* JIT_OPERATION operationBitXorBigInt(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
 size_t JIT_OPERATION operationSameValue(ExecState*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationCreateActivationDirect(ExecState*, Structure*, JSScope*, SymbolTable*, EncodedJSValue);
 JSCell* JIT_OPERATION operationCreateDirectArguments(ExecState*, Structure*, uint32_t length, uint32_t minCapacity);
@@ -193,6 +208,7 @@ StringImpl* JIT_OPERATION operationResolveRope(ExecState*, JSString*);
 JSString* JIT_OPERATION operationSingleCharacterString(ExecState*, int32_t);
 
 JSCell* JIT_OPERATION operationStringSubstr(ExecState*, JSCell*, int32_t, int32_t);
+JSCell* JIT_OPERATION operationStringSlice(ExecState*, JSCell*, int32_t, int32_t);
 JSString* JIT_OPERATION operationStringValueOf(ExecState*, EncodedJSValue);
 JSString* JIT_OPERATION operationToLowerCase(ExecState*, JSString*, uint32_t);
 
@@ -212,6 +228,8 @@ EncodedJSValue JIT_OPERATION operationParseIntStringNoRadix(ExecState*, JSString
 EncodedJSValue JIT_OPERATION operationParseIntString(ExecState*, JSString*, int32_t);
 EncodedJSValue JIT_OPERATION operationParseIntGeneric(ExecState*, EncodedJSValue, int32_t);
 
+Symbol* JIT_OPERATION operationNewSymbol(ExecState*);
+Symbol* JIT_OPERATION operationNewSymbolWithDescription(ExecState*, JSString*);
 JSCell* JIT_OPERATION operationNewStringObject(ExecState*, JSString*, Structure*);
 JSString* JIT_OPERATION operationToStringOnCell(ExecState*, JSCell*);
 JSString* JIT_OPERATION operationToString(ExecState*, EncodedJSValue);
@@ -254,7 +272,8 @@ JSCell* JIT_OPERATION operationCreateFixedArray(ExecState*, unsigned length);
 JSCell* JIT_OPERATION operationResolveScope(ExecState*, JSScope*, UniquedStringImpl*);
 EncodedJSValue JIT_OPERATION operationResolveScopeForHoistingFuncDeclInEval(ExecState*, JSScope*, UniquedStringImpl*);
 EncodedJSValue JIT_OPERATION operationGetDynamicVar(ExecState*, JSObject* scope, UniquedStringImpl*, unsigned);
-void JIT_OPERATION operationPutDynamicVar(ExecState*, JSObject* scope, EncodedJSValue, UniquedStringImpl*, unsigned);
+void JIT_OPERATION operationPutDynamicVarStrict(ExecState*, JSObject* scope, EncodedJSValue, UniquedStringImpl*, unsigned);
+void JIT_OPERATION operationPutDynamicVarNonStrict(ExecState*, JSObject* scope, EncodedJSValue, UniquedStringImpl*, unsigned);
 
 int64_t JIT_OPERATION operationConvertBoxedDoubleToInt52(EncodedJSValue);
 int64_t JIT_OPERATION operationConvertDoubleToInt52(double);

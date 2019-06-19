@@ -30,8 +30,9 @@
 #pragma once
 
 #include "FrameLoaderTypes.h"
-#include "LayoutMilestones.h"
+#include "LayoutMilestone.h"
 #include "LinkIcon.h"
+#include "PageIdentifier.h"
 #include <functional>
 #include <wtf/Forward.h>
 #include <wtf/WallTime.h>
@@ -100,17 +101,17 @@ class ResourceResponse;
 class SecurityOrigin;
 class SharedBuffer;
 class SubstituteData;
-class URL;
 class Widget;
 
+enum class LockBackForwardList : bool;
 enum class PolicyDecisionMode;
-enum class ShouldSkipSafeBrowsingCheck;
 
 struct StringWithDirection;
 
-typedef WTF::Function<void (PolicyAction)> FramePolicyFunction;
+typedef WTF::Function<void (PolicyAction, PolicyCheckIdentifier)> FramePolicyFunction;
 
 class WEBCORE_EXPORT FrameLoaderClient {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     // An inline function cannot be the first non-abstract virtual function declared
     // in the class as it results in the vtable being generated as a weak symbol.
@@ -126,11 +127,11 @@ public:
 
     virtual void makeRepresentation(DocumentLoader*) = 0;
 
-    virtual std::optional<uint64_t> pageID() const = 0;
-    virtual std::optional<uint64_t> frameID() const = 0;
+    virtual Optional<PageIdentifier> pageID() const = 0;
+    virtual Optional<uint64_t> frameID() const = 0;
     virtual PAL::SessionID sessionID() const = 0;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Returns true if the client forced the layout.
     virtual bool forceLayoutOnRestoreFromPageCache() = 0;
 #endif
@@ -150,7 +151,7 @@ public:
     virtual bool canAuthenticateAgainstProtectionSpace(DocumentLoader*, unsigned long identifier, const ProtectionSpace&) = 0;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual RetainPtr<CFDictionaryRef> connectionProperties(DocumentLoader*, unsigned long identifier) = 0;
 #endif
 
@@ -164,7 +165,7 @@ public:
     virtual void dispatchDidReceiveServerRedirectForProvisionalLoad() = 0;
     virtual void dispatchDidChangeProvisionalURL() { }
     virtual void dispatchDidCancelClientRedirect() = 0;
-    virtual void dispatchWillPerformClientRedirect(const URL&, double interval, WallTime fireDate) = 0;
+    virtual void dispatchWillPerformClientRedirect(const URL&, double interval, WallTime fireDate, LockBackForwardList) = 0;
     virtual void dispatchDidChangeMainDocument() { }
     virtual void dispatchWillChangeDocument(const URL&, const URL&) { }
     virtual void dispatchDidNavigateWithinPage() { }
@@ -176,24 +177,25 @@ public:
     virtual void dispatchDidReceiveIcon() { }
     virtual void dispatchDidStartProvisionalLoad() = 0;
     virtual void dispatchDidReceiveTitle(const StringWithDirection&) = 0;
-    virtual void dispatchDidCommitLoad(std::optional<HasInsecureContent>) = 0;
-    virtual void dispatchDidFailProvisionalLoad(const ResourceError&) = 0;
+    virtual void dispatchDidCommitLoad(Optional<HasInsecureContent>) = 0;
+    virtual void dispatchDidFailProvisionalLoad(const ResourceError&, WillContinueLoading) = 0;
     virtual void dispatchDidFailLoad(const ResourceError&) = 0;
     virtual void dispatchDidFinishDocumentLoad() = 0;
     virtual void dispatchDidFinishLoad() = 0;
+    virtual void dispatchDidExplicitOpen(const URL&) { }
 #if ENABLE(DATA_DETECTION)
     virtual void dispatchDidFinishDataDetection(NSArray *detectionResults) = 0;
 #endif
 
     virtual void dispatchDidLayout() { }
-    virtual void dispatchDidReachLayoutMilestone(LayoutMilestones) { }
+    virtual void dispatchDidReachLayoutMilestone(OptionSet<LayoutMilestone>) { }
 
     virtual Frame* dispatchCreatePage(const NavigationAction&) = 0;
     virtual void dispatchShow() = 0;
 
-    virtual void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction&&) = 0;
-    virtual void dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String& frameName, FramePolicyFunction&&) = 0;
-    virtual void dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, const ResourceResponse& redirectResponse, FormState*, PolicyDecisionMode, ShouldSkipSafeBrowsingCheck, FramePolicyFunction&&) = 0;
+    virtual void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, PolicyCheckIdentifier, const String& downloadAttribute, FramePolicyFunction&&) = 0;
+    virtual void dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String& frameName, PolicyCheckIdentifier, FramePolicyFunction&&) = 0;
+    virtual void dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, const ResourceResponse& redirectResponse, FormState*, PolicyDecisionMode, PolicyCheckIdentifier, FramePolicyFunction&&) = 0;
     virtual void cancelPolicyCheck() = 0;
 
     virtual void dispatchUnableToImplementPolicy(const ResourceError&) = 0;
@@ -220,8 +222,7 @@ public:
     virtual void updateGlobalHistory() = 0;
     virtual void updateGlobalHistoryRedirectLinks() = 0;
 
-    virtual bool shouldGoToHistoryItem(HistoryItem*) const = 0;
-    virtual void updateGlobalHistoryItemForPage() { }
+    virtual bool shouldGoToHistoryItem(HistoryItem&) const = 0;
 
     // This frame has set its opener to null, disowning it for the lifetime of the frame.
     // See http://html.spec.whatwg.org/#dom-opener.
@@ -276,7 +277,7 @@ public:
     
     virtual void savePlatformDataToCachedFrame(CachedFrame*) = 0;
     virtual void transitionToCommittedFromCachedFrame(CachedFrame*) = 0;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual void didRestoreFrameHierarchyForCachedFrame() = 0;
 #endif
     virtual void transitionToCommittedForNewPage() = 0;
@@ -289,9 +290,8 @@ public:
     virtual bool canCachePage() const = 0;
     virtual void convertMainResourceLoadToDownload(DocumentLoader*, PAL::SessionID, const ResourceRequest&, const ResourceResponse&) = 0;
 
-    virtual RefPtr<Frame> createFrame(const URL&, const String& name, HTMLFrameOwnerElement&, const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight) = 0;
+    virtual RefPtr<Frame> createFrame(const URL&, const String& name, HTMLFrameOwnerElement&, const String& referrer) = 0;
     virtual RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool loadManually) = 0;
-    virtual void recreatePlugin(Widget*) = 0;
     virtual void redirectDataToPlugin(Widget&) = 0;
 
     virtual RefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement&, const URL& baseURL, const Vector<String>& paramNames, const Vector<String>& paramValues) = 0;
@@ -372,10 +372,10 @@ public:
     virtual void didCreateWindow(DOMWindow&) { }
 
 #if ENABLE(APPLICATION_MANIFEST)
-    virtual void finishedLoadingApplicationManifest(uint64_t, const std::optional<ApplicationManifest>&) { }
+    virtual void finishedLoadingApplicationManifest(uint64_t, const Optional<ApplicationManifest>&) { }
 #endif
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     virtual bool hasFrameSpecificStorageAccess() { return false; }
     virtual void setHasFrameSpecificStorageAccess(bool) { }
 #endif

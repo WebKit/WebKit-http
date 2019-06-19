@@ -23,14 +23,27 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(MAC)
+#pragma once
+
+#if PLATFORM(COCOA)
 
 #include "DictionaryPopupInfo.h"
-#include <pal/spi/mac/NSImmediateActionGestureRecognizerSPI.h>
+#if PLATFORM(MAC)
+#import <pal/spi/mac/NSImmediateActionGestureRecognizerSPI.h>
+#endif // PLATFORM(MAC)
 #include <wtf/Function.h>
 
 OBJC_CLASS NSView;
+OBJC_CLASS UIView;
 OBJC_CLASS PDFSelection;
+
+#if PLATFORM(MAC)
+typedef id <NSImmediateActionAnimationController> WKRevealController;
+using RevealView = NSView;
+#else
+typedef id WKRevealController;
+using RevealView = UIView;
+#endif // PLATFORM(MAC)
 
 namespace WebCore {
 
@@ -46,10 +59,13 @@ public:
 
     // FIXME: Should move/unify dictionaryPopupInfoForRange here too.
 
-    WEBCORE_EXPORT static void showPopup(const DictionaryPopupInfo&, NSView *, const WTF::Function<void(TextIndicator&)>& textIndicatorInstallationCallback, const WTF::Function<FloatRect(FloatRect)>& rootViewToViewConversionCallback = nullptr);
+    WEBCORE_EXPORT static void showPopup(const DictionaryPopupInfo&, RevealView *, const WTF::Function<void(TextIndicator&)>& textIndicatorInstallationCallback, const WTF::Function<FloatRect(FloatRect)>& rootViewToViewConversionCallback = nullptr, WTF::Function<void()>&& clearTextIndicator = nullptr);
     WEBCORE_EXPORT static void hidePopup();
-
-    WEBCORE_EXPORT static id <NSImmediateActionAnimationController> animationControllerForPopup(const DictionaryPopupInfo&, NSView *, const WTF::Function<void(TextIndicator&)>& textIndicatorInstallationCallback, const WTF::Function<FloatRect(FloatRect)>& rootViewToViewConversionCallback = nullptr);
+    
+#if PLATFORM(MAC)
+    WEBCORE_EXPORT static WKRevealController animationControllerForPopup(const DictionaryPopupInfo&, NSView *, const WTF::Function<void(TextIndicator&)>& textIndicatorInstallationCallback, const WTF::Function<FloatRect(FloatRect)>& rootViewToViewConversionCallback = nullptr, WTF::Function<void()>&& clearTextIndicator = nullptr);
+#endif // PLATFORM(MAC)
+    
 };
 
 } // namespace WebCore

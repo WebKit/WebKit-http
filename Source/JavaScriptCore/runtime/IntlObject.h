@@ -44,15 +44,15 @@ class IntlPluralRulesPrototype;
 class IntlObject final : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
+    static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
 
-    static IntlObject* create(VM&, JSGlobalObject*, Structure*);
+    static IntlObject* create(VM&, Structure*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_INFO;
 
 protected:
-    void finishCreation(VM&, JSGlobalObject*);
+    void finishCreation(VM&);
 
 private:
     IntlObject(VM&, Structure*);

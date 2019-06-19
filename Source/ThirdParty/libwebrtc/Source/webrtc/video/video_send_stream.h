@@ -20,7 +20,6 @@
 #include "call/bitrate_allocator.h"
 #include "call/video_receive_stream.h"
 #include "call/video_send_stream.h"
-#include "common_video/libyuv/include/webrtc_libyuv.h"
 #include "rtc_base/criticalsection.h"
 #include "rtc_base/event.h"
 #include "rtc_base/task_queue.h"
@@ -60,7 +59,7 @@ class VideoSendStream : public webrtc::VideoSendStream {
       rtc::TaskQueue* worker_queue,
       CallStats* call_stats,
       RtpTransportControllerSendInterface* transport,
-      BitrateAllocator* bitrate_allocator,
+      BitrateAllocatorInterface* bitrate_allocator,
       SendDelayStats* send_delay_stats,
       RtcEventLog* event_log,
       VideoSendStream::Config config,
@@ -85,19 +84,8 @@ class VideoSendStream : public webrtc::VideoSendStream {
   void ReconfigureVideoEncoder(VideoEncoderConfig) override;
   Stats GetStats() override;
 
-  // Takes ownership of each file, is responsible for closing them later.
-  // Calling this method will close and finalize any current logs.
-  // Giving rtc::kInvalidPlatformFileValue in any position disables logging
-  // for the corresponding stream.
-  // If a frame to be written would make the log too large the write fails and
-  // the log is closed and finalized. A |byte_limit| of 0 means no limit.
-  void EnableEncodedFrameRecording(const std::vector<rtc::PlatformFile>& files,
-                                   size_t byte_limit) override;
-
   void StopPermanentlyAndGetRtpStates(RtpStateMap* rtp_state_map,
                                       RtpPayloadStateMap* payload_state_map);
-
-  void SetTransportOverhead(size_t transport_overhead_per_packet);
 
  private:
   friend class test::VideoSendStreamPeer;

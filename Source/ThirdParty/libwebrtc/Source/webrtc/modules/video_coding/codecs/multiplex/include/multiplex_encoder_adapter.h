@@ -18,7 +18,7 @@
 #include "api/video_codecs/sdp_video_format.h"
 #include "api/video_codecs/video_encoder.h"
 #include "api/video_codecs/video_encoder_factory.h"
-#include "modules/video_coding/codecs/multiplex/include/multiplex_encoded_image_packer.h"
+#include "modules/video_coding/codecs/multiplex/multiplex_encoded_image_packer.h"
 #include "modules/video_coding/include/video_codec_interface.h"
 #include "rtc_base/criticalsection.h"
 
@@ -32,7 +32,7 @@ enum AlphaCodecStream {
 
 class MultiplexEncoderAdapter : public VideoEncoder {
  public:
-  // |factory| is not owned and expected to outlive this class' lifetime.
+  // |factory| is not owned and expected to outlive this class.
   MultiplexEncoderAdapter(VideoEncoderFactory* factory,
                           const SdpVideoFormat& associated_format,
                           bool supports_augmenting_data = false);
@@ -46,11 +46,10 @@ class MultiplexEncoderAdapter : public VideoEncoder {
              const CodecSpecificInfo* codec_specific_info,
              const std::vector<FrameType>* frame_types) override;
   int RegisterEncodeCompleteCallback(EncodedImageCallback* callback) override;
-  int SetChannelParameters(uint32_t packet_loss, int64_t rtt) override;
   int SetRateAllocation(const VideoBitrateAllocation& bitrate,
                         uint32_t new_framerate) override;
   int Release() override;
-  const char* ImplementationName() const override;
+  EncoderInfo GetEncoderInfo() const override;
 
   EncodedImageCallback::Result OnEncodedImage(
       AlphaCodecStream stream_idx,
@@ -81,6 +80,8 @@ class MultiplexEncoderAdapter : public VideoEncoder {
 
   const bool supports_augmented_data_;
   int augmenting_data_size_ = 0;
+
+  EncoderInfo encoder_info_;
 };
 
 }  // namespace webrtc

@@ -9,10 +9,13 @@
 accessibility/ios-simulator [ Pass ]
 displaylists [ Pass ]
 http/tests/quicklook [ Pass ]
-media/controls/ipad [ Pass ]
 media/ios [ Pass ]
 quicklook [ Pass ]
+swipe [ Pass ]
 
+fast/media/ios [ Pass ]
+
+fast/forms/textarea/ios [ Pass ]
 fast/text-autosizing/ios [ Pass ]
 fast/zooming/ios [ Pass ]
 http/tests/preload/viewport [ Pass ]
@@ -36,7 +39,7 @@ http/tests/fullscreen
 compositing/no-compositing-when-fulll-screen-is-present.html
 
 # WebGPU is not enabled on iOS Simulator.
-fast/canvas/webgpu
+webgpu [ Skip ]
 inspector/canvas/create-context-webgpu.html [ Skip ]
 inspector/canvas/resolveCanvasContext-webgpu.html [ Skip ]
 
@@ -125,6 +128,7 @@ compositing/plugins
 http/tests/plugins
 fast/frames/sandboxed-iframe-plugins.html
 fast/loader/reload-zero-byte-plugin.html
+http/tests/download/convert-cached-load-to-download.html
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-affects-child.html
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-invalid.html
 http/tests/security/contentSecurityPolicy/1.1/plugintypes-mismatched-data.html
@@ -189,7 +193,10 @@ platform/ios/ios/fast/forms/range-input-touches.html [ Skip ]
 platform/ios/ios/fast/text/data-detectors/phone-disabled.html [ Skip ]
 platform/ios/ios/fast/text/data-detectors/phone.html [ Skip ]
 platform/ios/ios/touch [ Skip ]
+platform/iphone-7/fast/events/touch [ Skip ]
 media/modern-media-controls/css/pointer-events-none.html [ Skip ]
+
+platform/ipad/fast/forms [ Skip ]
 
 # Codecs not supported
 media/media-can-play-ogg.html [ WontFix ]
@@ -217,10 +224,7 @@ fast/history/page-cache-media-source-closed-2.html [ Skip ]
 fast/history/page-cache-media-source-closed.html [ Skip ]
 fast/history/page-cache-media-source-opened.html [ Skip ]
 fast/history/page-cache-removed-source-buffer.html [ Skip ]
-
-# TODO Animation triggers not supported
-animations/trigger-container-scroll-boundaries.html [ Failure ]
-legacy-animation-engine/animations/trigger-container-scroll-boundaries.html [ Failure ]
+imported/w3c/web-platform-tests/fetch/api/basic/mediasource.window.html [ Skip ]
 
 # Quota API is not supported on iOS
 storage/domstorage/quota.html
@@ -264,6 +268,12 @@ fast/images/animated-webp-expected.html
 editing/pasteboard/datatransfer-items-drop-plaintext-file.html [ Skip ]
 editing/pasteboard/drag-link-with-data-transfer-adds-trusted-link-to-pasteboard.html [ Skip ]
 editing/selection/drag-to-contenteditable-iframe.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-mixed-editability-1.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-mixed-editability-2.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-mixed-editability-3.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-mixed-editability-4.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-mixed-editability-5.html [ Skip ]
+editing/selection/selection-across-shadow-boundaries-user-select-all-1.html [ Skip ]
 fast/events/bogus-dropEffect-effectAllowed.html [ Skip ]
 fast/events/clear-drag-state.html [ Skip ]
 fast/events/clear-edit-drag-state.html [ Skip ]
@@ -284,6 +294,7 @@ fast/events/drag-dataTransferItemList.html [ Skip ]
 fast/events/drag-display-none-element.html [ Skip ]
 fast/events/drag-file-crash.html [ Skip ]
 fast/events/drag-image-filename.html [ Skip ]
+fast/events/drag-image-with-border-image.html [ Skip ]
 fast/events/drag-in-frames.html [ Skip ]
 fast/events/drag-and-drop-link.html [ Skip ]
 fast/events/drag-and-drop-link-into-focused-contenteditable.html [ Skip ]
@@ -531,6 +542,7 @@ fast/events/selectstart-by-double-triple-clicks.html [ Skip ]
 fast/events/selectstart-by-drag.html [ Skip ]
 fast/events/selectstart-by-single-click-with-shift.html [ Skip ]
 fast/events/selectstart-prevent-selection-on-right-click.html [ Skip ]
+fast/events/selectstart-prevent-default-should-not-focus-input.html [ Skip ]
 fast/events/shadow-event-path-2.html [ Skip ]
 fast/events/shadow-event-path.html [ Skip ]
 fast/events/shift-drag-selection-on-image-triggers-drag-n-drop.html [ Skip ]
@@ -666,6 +678,7 @@ fast/replaced/image-map-bug16782.html [ Skip ]
 fast/replaced/image-map.html [ Skip ]
 fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Skip ]
 fast/scrolling/overflow-scroll-past-max.html [ Skip ]
+fast/scrolling/momentum-scroll-with-borders.html [ Skip ]
 fast/scrolling/scroll-animator-basic-events.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-clicked.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
@@ -683,6 +696,9 @@ fast/selectors/hover-strict.html [ Skip ]
 fast/selectors/not-active-hover-quirks.html [ Skip ]
 fast/selectors/not-active-hover-strict.html [ Skip ]
 fast/shapes/shape-outside-floats/shape-outside-clip-path-selection.html [ Skip ]
+fast/shadow-dom/mouseenter-mouseleave-across-shadow-boundary.html [ Skip ]
+fast/shadow-dom/mouseenter-mouseleave-inside-shadow-tree.html [ Skip ]
+fast/shadow-dom/mouseenter-mouseleave-on-slot-parent.html [ Skip ]
 fast/table/hittest-self-painting.html [ Skip ]
 fast/text/atsui-pointtooffset-calls-cg.html [ Skip ]
 fast/text/atsui-rtl-override-selection.html [ Skip ]
@@ -775,8 +791,6 @@ editing/inserting/typing-space-to-trigger-smart-link.html [ Skip ]
 editing/inserting/smart-link-when-caret-is-moved-before-URL.html [ Skip ]
 editing/inserting/smart-quote-with-all-configurations.html [ Skip ]
 
-webkit.org/b/148695 fast/shadow-dom [ Pass ]
-
 # No tab navigation support on iOS
 fast/shadow-dom/focus-on-iframe.html [ Failure ]
 webkit.org/b/116046 fast/events/sequential-focus-navigation-starting-point.html [ Skip ]
@@ -793,6 +807,7 @@ fast/text/complex-small-caps-non-bmp-capitalize.html [ Skip ]
 fast/text/all-small-caps-whitespace.html [ Skip ]
 
 # These tests rely on EventSender.keydown(), which is not supported on iOS
+compositing/fixed-with-main-thread-scrolling.html [ Skip ]
 editing/caret/emoji.html [ WontFix ]
 editing/deleting/5729680.html [ Skip ]
 editing/deleting/delete-by-word-001.html [ Skip ]
@@ -892,6 +907,7 @@ fast/events/tab-focus-link-in-canvas.html [ Skip ]
 fast/events/tab-imagemap.html [ Skip ]
 fast/events/tab-test-not-visible-imagemap.html [ Skip ]
 fast/events/tabindex-focus-chain.html [ Skip ]
+fast/forms/access-key-shadow-and-ordering.html [ Skip ]
 fast/forms/access-key-case-insensitive.html [ Skip ]
 fast/forms/access-key-for-all-elements.html [ Skip ]
 fast/forms/access-key-mutated.html [ Skip ]
@@ -1010,6 +1026,7 @@ editing/pasteboard/get-data-text-plain-drop.html [ Skip ]
 editing/pasteboard/text-selection.html [ Skip ]
 fast/css/affected-by-hover-after-style-change.html [ Skip ]
 fast/css/ancestor-of-hovered-element-removed.html [ Skip ]
+fast/css/display-contents-hover-active.html [ Skip ]
 fast/css-generated-content/hover-inline.html [ Skip ]
 fast/css/hover-active-drag.html [ Skip ]
 fast/css/hover-affects-ancestor.html [ Skip ]
@@ -1120,6 +1137,12 @@ fast/viewport/ios/viewport-fit-cover.html [ Pass ]
 fast/viewport/ios/viewport-fit-auto.html [ Pass ]
 fast/css/variables/env/ios [ Pass ]
 
+# Dark mode not supported on iOS
+css-dark-mode [ Skip ]
+
+# Test Dark Mode CSS support for light mode on older systems.
+css-dark-mode/older-systems [ Pass ]
+
 ###
 # Known failures
 ##
@@ -1137,7 +1160,6 @@ svg/clip-path/clip-path-line-use-before-defined.svg [ ImageOnlyFailure ]
 
 # SVG
 webkit.org/b/137574 svg/dom/SVGAnimatedAngle.html [ Skip ] # Pass, Crash
-webkit.org/b/137574 svg/css/arrow-with-shadow.svg [ Skip ] # Pass, Crash
 
 # Canvas tests that fail:
 webkit.org/b/137530 canvas/philip/tests/2d.composite.operation.clear.html [ Failure ]
@@ -1330,7 +1352,6 @@ webkit.org/b/178963 fast/css/sticky/sticky-writing-mode-vertical-rl.html [ Image
 # editing/deleting tests to triage
 editing/deleting/delete-all-text-in-text-field-assertion.html [ Failure ]
 editing/deleting/delete-cell-contents.html [ Failure ]
-editing/deleting/smart-delete-002.html [ Failure ]
 editing/deleting/smart-delete-across-editable-boundaries.html [ Failure ]
 editing/deleting/smart-editing-disabled-mac.html [ Failure ]
 
@@ -1345,6 +1366,8 @@ webkit.org/b/180267 editing/execCommand/remove-formatting-2.html [ Failure ]
 webkit.org/b/180269 editing/execCommand/toggle-link-mac.html [ Failure ]
 webkit.org/b/180269 editing/execCommand/toggle-unlink-mac.html
 webkit.org/b/180269 editing/execCommand/unlink.html [ Failure ]
+
+webkit.org/b/188020 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage.html [ Pass Failure ]
 
 webkit.org/b/180275 editing/caret/color-span-inside-editable-background.html [ ImageOnlyFailure ]
 webkit.org/b/180725 editing/caret/color-span-inside-editable.html [ ImageOnlyFailure ]
@@ -1371,11 +1394,6 @@ scrollbars/scrolling-by-page-on-keyboard-spacebar.html [ Failure ]
 
 # JavaScript tests that fail:
 js/dom/dom-static-property-for-in-iteration.html [ Failure ]
-
-# Page overlay tests that fail:
-pageoverlay/overlay-large-document-scrolled.html [ Failure ]
-pageoverlay/overlay-large-document.html [ Failure ]
-webkit.org/b/153337 pageoverlay/overlay-installation.html [ Pass Failure ]
 
 # These tests require an OpenType MATH font on the Apple bots.
 webkit.org/b/160161 mathml/opentype/vertical.html [ Skip ]
@@ -1430,6 +1448,8 @@ webkit.org/b/181752 storage/indexeddb/modern/transaction-scheduler-6.html [ Skip
 webkit.org/b/181752 storage/indexeddb/odd-strings.html [ Skip ]
 webkit.org/b/181752 storage/indexeddb/transaction-coordination-within-database.html [ Skip ]
 webkit.org/b/181752 storage/indexeddb/transaction-starvation.html [ Skip ]
+webkit.org/b/176078 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-onnegotiationneeded.html [ Pass Failure ]
+
 
 # SVG tests that fail:
 svg/W3C-SVG-1.1-SE/text-intro-02-b.svg [ Failure ]
@@ -1454,7 +1474,6 @@ svg/carto.net/textbox.svg [ Failure ]
 svg/carto.net/window.svg [ Failure ]
 svg/custom/altglyph.svg [ Failure ]
 svg/custom/getscreenctm-in-mixed-content2.xhtml [ Failure ]
-svg/custom/simple-text-double-shadow.svg [ Failure ]
 svg/custom/svg-fonts-in-text-controls.html [ Failure ]
 svg/custom/zero-path-square-cap-rendering.svg [ Failure ]
 svg/filters/feDisplacementMap-filterUnits.svg [ ImageOnlyFailure ]
@@ -1519,10 +1538,6 @@ svg/zoom/text/zoom-svg-float-border-padding.xml [ Failure ]
 transforms/3d/point-mapping/3d-point-mapping-3.html [ Failure ]
 transforms/3d/point-mapping/3d-point-mapping-overlapping.html [ Failure ]
 
-# Scrolling coordinator tests that fail:
-scrollingcoordinator/non-fast-scrollable-region-scaled-iframe.html [ Failure ]
-scrollingcoordinator/non-fast-scrollable-region-transformed-iframe.html [ Failure ]
-
 # Userscript tests that fail:
 userscripts/user-script-plugin-document.html [ Failure ]
 
@@ -1542,8 +1557,6 @@ http/tests/webarchive/test-css-url-encoding.html
 
 # XMLHttpRequest tests that fail:
 http/tests/xmlhttprequest/basic-auth-nopassword.html [ Failure ]
-http/tests/xmlhttprequest/default-content-type-dashboard.html [ Failure ]
-http/tests/xmlhttprequest/head-redirection.html [ Failure ]
 
 # DeviceMotion tests that time out:
 fast/dom/DeviceMotion/no-page-cache.html
@@ -1593,7 +1606,6 @@ fast/dom/HTMLHeadElement/textInHead5.html [ Failure ]
 fast/dom/HTMLImageElement/sizes/image-sizes-1x.html [ Failure ]
 fast/dom/HTMLInputElement/input-slider-update-styled.html [ Failure ]
 fast/dom/HTMLInputElement/input-slider-update.html [ Failure ]
-fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Failure ]
 fast/dom/Range/getBoundingClientRect.html [ Failure ]
 fast/dom/Range/getClientRects.html [ Failure ]
 fast/dom/Range/range-expand.html [ Failure ]
@@ -1655,16 +1667,6 @@ fast/forms/autofocus-opera-003.html [ Failure ]
 fast/forms/button-inner-block-reuse.html [ Failure ]
 fast/forms/button-with-float.html [ ImageOnlyFailure ]
 
-# <input type=color> is not supported on iOS.
-fast/forms/color/input-color-onchange-event.html [ Failure ]
-fast/forms/color/input-color-readonly.html [ Failure ]
-fast/forms/color/input-value-sanitization-color.html [ Failure ]
-fast/forms/color/color-setrangetext.html [ Failure ]
-
-fast/forms/datalist/datalist-fallback-content.html [ ImageOnlyFailure ]
-fast/forms/datalist/datalist-nonoption-child.html [ Failure ]
-fast/forms/datalist/datalist.html [ Failure ]
-fast/forms/datalist/input-appearance-range-with-datalist-zoomed.html [ Failure ]
 fast/forms/datalist/input-list.html [ Failure ]
 fast/forms/datetime/ValidityState-rangeOverflow-datetime.html [ Failure ]
 fast/forms/datetime/ValidityState-rangeUnderflow-datetime.html [ Failure ]
@@ -1685,9 +1687,7 @@ fast/forms/hidpi-textfield-background-bleeding.html [ ImageOnlyFailure ]
 fast/forms/input-baseline.html [ Failure ]
 fast/forms/input-live-pseudo-selectors.html [ Failure ]
 fast/forms/input-no-renderer.html [ Failure ]
-fast/forms/input-select-webkit-user-select-none.html [ Failure ]
 fast/forms/input-set-composition-scroll.html [ Failure ]
-fast/forms/input-textarea-padding-match.html [ ImageOnlyFailure ]
 fast/forms/listbox-clip.html [ Failure ]
 fast/forms/listbox-selection-2.html [ Failure ]
 fast/forms/listbox-selection-3.html [ Failure ]
@@ -1710,12 +1710,9 @@ fast/forms/select-live-pseudo-selectors.html [ Failure ]
 fast/forms/select-overflow-scroll-inherited.html [ Failure ]
 fast/forms/select-overflow-scroll.html [ Failure ]
 fast/forms/select/option-selecting.html [ Failure ]
-fast/forms/shadow-tree-exposure.html [ Failure ]
 fast/forms/textarea-input-event.html [ Failure ]
 fast/forms/textarea-live-pseudo-selectors.html [ Failure ]
 fast/forms/textarea-metrics.html [ Failure ]
-fast/forms/textarea-placeholder-wrapping.html [ ImageOnlyFailure ]
-fast/forms/textarea-set-defaultvalue-after-value.html [ Failure ]
 fast/forms/textfield-overflow-by-value-update.html [ Failure ]
 fast/frames/calculate-fixed.html [ Failure ]
 fast/frames/calculate-order.html [ Failure ]
@@ -1935,6 +1932,7 @@ fast/body-propagation/overflow/001.html
 fast/borders/0px-borders.html
 fast/box-decoration-break/box-decoration-break-rendering.html
 fast/box-shadow/border-radius-big.html
+fast/box-shadow/box-shadow-with-zero-radius.html [ ImageOnlyFailure ]
 
 # <rdar://problem/19226186> ASSERT(m_mainThreadLoader) fails in WorkerThreadableLoader::MainThreadBridge::MainThreadBridge()
 fast/workers/stress-js-execution.html
@@ -1971,9 +1969,6 @@ fast/parser/residual-style-hang.html
 # <rdar://problem/19226623> ASSERT(isIdentifierStart<CharacterType>()) fails in CSSParser::parseIdentifier()
 fast/css/css-selector-text.html
 
-# <rdar://problem/19226679> ASSERT(m_isValid == valid()) fails in HTMLFormControlElement::isValidFormControlElement()
-fast/forms/datalist/datalist-child-validation.html
-
 # <rdar://problem/19227549> ASSERT(!m_webFrame->_private->provisionalURL) fails in WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
 fast/forms/validation-message-user-modify.html
 
@@ -1982,18 +1977,6 @@ fast/dom/location-new-window-no-crash.html
 
 # <rdar://problem/19017693> ASSERTION FAILED: [[dataSource webFrame] dataSource] || [[dataSource webFrame] provisionalDataSource] in -[ResourceLoadDelegate webView:identifierForInitialRequest:fromDataSource:]
 fast/events/message-port-inactive-document.html
-
-# <rdar://problem/19551640> ASSERT([_overflowScrollViews containsObject:view] || [_overflowScrollViewsPendingInsertion containsObject:view]) fails in UIWebBrowserView.m
-compositing/overflow/iframe-inside-overflow-clipping.html
-compositing/overflow/nested-scrolling.html
-compositing/overflow/overflow-auto-with-touch-toggle.html
-compositing/overflow/overflow-auto-with-touch.html
-compositing/overflow/overflow-overlay-with-touch.html
-compositing/overflow/remove-overflow-crash.html
-compositing/overflow/scrolling-content-clip-to-viewport.html
-compositing/overflow/scrolling-without-painting.html
-compositing/overflow/textarea-scroll-touch.html
-compositing/overflow/updating-scrolling-content.html
 
 # Failures as of 01/16/2015:
 http/tests/misc/favicon-as-image.html [ Failure ]
@@ -2014,17 +1997,6 @@ editing/undo/undo-combined-delete-boundary.html [ Failure Pass ]
 editing/undo/undo-combined-delete.html [ Pass Failure ]
 editing/undo/undo-forward-delete-boundary.html [ Pass Failure ]
 editing/undo/undo-forward-delete.html [ Pass Failure ]
-
-# Sputnik tests that are flaky:
-sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A1.4_T2.html
-sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A2.1_T2.html
-sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A2.4_T2.html
-
-# Sputnik tests that fail:
-sputnik/Unicode/Unicode_510/S7.6_A3.1.html [ Failure ]
-sputnik/Unicode/Unicode_510/S7.6_A3.2.html [ Failure ]
-sputnik/Unicode/Unicode_510/S7.6_A5.3_T1.html [ Failure ]
-sputnik/Unicode/Unicode_510/S7.6_A5.3_T2.html [ Failure ]
 
 # storage tests that fail:
 storage/websql/sql-error-codes.html [ Failure ]
@@ -2135,6 +2107,9 @@ editing/pasteboard/paste-noscript.html [ Failure ]
 editing/pasteboard/paste-visible-script.html [ Failure ]
 editing/pasteboard/paste-wrapped-blockquote-into-nonblockquote.html [ Failure ]
 
+# Not able to select select element on iOS
+editing/pasteboard/4944770-2.html [ Failure ]
+
 # Failing pasteboard to triage
 editing/pasteboard/4242293-1.html [ Failure ]
 editing/pasteboard/5780697-2.html [ Failure ]
@@ -2143,7 +2118,6 @@ editing/pasteboard/copy-backslash-with-euc.html [ Failure ]
 editing/pasteboard/copy-in-password-field.html [ Failure ]
 editing/pasteboard/copy-inside-h1-preserves-h1.html [ Failure ]
 editing/pasteboard/copy-text-with-backgroundcolor.html [ Failure ]
-editing/pasteboard/copy-two-pasteboard-types-both-work.html [ Failure ]
 webkit.org/b/177961 editing/pasteboard/data-transfer-items.html [ Skip ]
 editing/pasteboard/dataTransfer-setData-getData.html [ Failure ]
 editing/pasteboard/display-block-on-spans.html [ Failure ]
@@ -2163,18 +2137,11 @@ editing/pasteboard/paste-before-tab-span.html [ Failure ]
 editing/pasteboard/paste-blockquote-3.html [ Failure ]
 editing/pasteboard/paste-global-selection.html [ Failure ]
 editing/pasteboard/paste-list-004.html [ Failure ]
-editing/pasteboard/paste-placeholder-input.html [ Failure ]
 editing/pasteboard/paste-plaintext-user-select-none.html [ Failure ]
 editing/pasteboard/paste-sanitize-crash-1.html [ Failure ]
 editing/pasteboard/paste-sanitize-crash-2.html [ Failure ]
 editing/pasteboard/paste-text-events.html [ Failure ]
-editing/pasteboard/smart-paste-001.html [ Failure ]
-editing/pasteboard/smart-paste-002.html [ Failure ]
-editing/pasteboard/smart-paste-003.html [ Failure ]
-editing/pasteboard/smart-paste-004.html [ Failure ]
-editing/pasteboard/smart-paste-005.html [ Failure ]
-editing/pasteboard/smart-paste-007.html [ Failure ]
-editing/pasteboard/smart-paste-008.html [ Failure ]
+
 
 # Local pasteboard is not implemented on iOS, so pasteboard tests used to be all disabled.
 
@@ -2254,6 +2221,9 @@ webkit.org/b/148806 imported/w3c/web-platform-tests/css/css-multicol/multicol-ru
 webkit.org/b/148806 imported/w3c/web-platform-tests/css/css-multicol/multicol-shorthand-001.xht [ ImageOnlyFailure ]
 webkit.org/b/148806 imported/w3c/web-platform-tests/css/css-multicol/multicol-span-all-block-sibling-003.xht [ ImageOnlyFailure ]
 webkit.org/b/148806 imported/w3c/web-platform-tests/css/css-multicol/multicol-span-all-margin-nested-firstchild-001.xht [ ImageOnlyFailure ]
+
+# Enable "phone number linkifying" test for iOS
+fast/dom/linkify-phone-numbers.html [ Pass ]
 
 # Enable "aria-current" test for iOS
 webkit.org/b/149297 accessibility/aria-current.html [ Pass ]
@@ -2488,6 +2458,7 @@ webkit.org/b/142969 editing/spelling/copy-paste-crash.html
 platform/ios/media/video-interruption-suspendunderlock.html [ Skip ]
 
 media/accessibility-closed-captions-has-aria-owns.html
+media/airplay-allows-buffering.html
 media/airplay-autoplay.html
 media/airplay-target-availability.html
 media/audio-delete-while-slider-thumb-clicked.html
@@ -2505,7 +2476,6 @@ media/media-fullscreen-inline.html
 
 webkit.org/b/136708 media/media-fullscreen-not-in-document.html
 
-media/document-level-media-user-gesture-quirk.html
 media/media-controls-accessibility.html [ Timeout ]
 media/media-fullscreen-return-to-inline.html
 media/no-autoplay-with-user-gesture-requirement.html
@@ -2650,6 +2620,9 @@ webkit.org/b/163755 imported/w3c/web-platform-tests/css/css-shapes [ Skip ]
 
 webkit.org/b/5991 imported/w3c/web-platform-tests/css/cssom-view/scrolling-quirks-vs-nonquirks.html [ Failure ]
 
+webkit.org/b/149264 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-subframe-root.html [ Failure ]
+webkit.org/b/149264 imported/w3c/web-platform-tests/css/cssom-view/scroll-behavior-subframe-window.html [ Failure ]
+
 # Variation fonts are not implemented earlier than iOS 11.
 fast/text/variations [ Pass Failure ImageOnlyFailure ]
 animations/font-variations [ Pass Failure ImageOnlyFailure Timeout ]
@@ -2699,10 +2672,6 @@ webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 # <rdar://problem/30610988>
 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin-worker.html [ Failure ]
 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin.html [ Failure ]
-imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-worker.html [ Failure ]
-imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.html [ Failure ]
-imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-worker.html [ Failure ]
-imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location.html [ Failure ]
 
 # rdar://problem/23643423
 [ Debug ] fast/frames/exponential-frames.html [ Skip ]
@@ -2808,6 +2777,9 @@ fast/canvas/webgl/texImage2D-mse-flipY-true.html [ Skip ]
 fast/canvas/webgl/texImage2D-video-flipY-false.html [ Skip ]
 fast/canvas/webgl/texImage2D-video-flipY-true.html [ Skip ]
 
+# rendering to floating point FBOs not supported on iOS
+fast/canvas/webgl/readPixels-float.html [ Skip ]
+
 # Skipped on iOS since UIHelper.activateAt() doesn't produce a user gesture that ITP captures on iOS
 webkit.org/b/174120 http/tests/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Skip ]
 http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html [ Skip ]
@@ -2824,11 +2796,13 @@ http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.
 http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html [ Pass ]
 http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html [ Pass ]
 http/tests/storageAccess/deny-storage-access-under-opener.html [ Pass ]
-http/tests/storageAccess/grant-storage-access-under-opener.html [ Pass ]
+http/tests/storageAccess/deny-storage-access-under-opener-if-auto-dismiss.html [ Pass ]
+http/tests/resourceLoadStatistics/cap-cache-max-age-for-prevalent-resource.html [ Pass ]
 
 # Skipped in general expectations since they only work on iOS and Mac, WK2.
 http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Pass ]
 http/tests/security/strip-referrer-to-origin-for-third-party-requests-in-private-mode.html [ Pass ]
+media/deactivate-audio-session.html [ Pass ]
 
 webkit.org/b/175273 imported/w3c/web-platform-tests/html/browsers/windows/noreferrer-window-name.html [ Failure ]
 
@@ -2996,7 +2970,6 @@ media/modern-media-controls/fullscreen-support/fullscreen-support-press.html [ S
 media/modern-media-controls/media-controller/ios/media-controller-ios-only-enable-tap-gesture-recognizer-with-fades-when-idle.html [ Skip ]
 media/modern-media-controls/media-controller/ios/media-controller-stop-updates-in-fullscreen.html [ Skip ]
 media/modern-media-controls/mute-support/mute-support-press-on-button.html [ Skip ]
-media/modern-media-controls/pip-support/ipad/pip-support-tap.html [ Skip ]
 media/modern-media-controls/placard-support/ipad [ Skip ]
 media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ Skip ]
 media/modern-media-controls/seek-backward-support [ Skip ]
@@ -3037,6 +3010,7 @@ media/modern-media-controls/media-controller/media-controller-click-on-video-bac
 media/modern-media-controls/media-controller/media-controller-space-bar-toggle-playback.html [ Skip ]
 media/modern-media-controls/media-documents/media-document-audio-mac-sizing.html [ Skip ]
 media/modern-media-controls/media-documents/media-document-video-mac-sizing.html [ Skip ]
+media/modern-media-controls/media-documents/media-document-video-ipad-sizing.html [ Skip ]
 media/modern-media-controls/pip-support [ Skip ]
 media/modern-media-controls/playback-support/playback-support-button-click.html [ Skip ]
 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
@@ -3046,8 +3020,6 @@ media/modern-media-controls/text-tracks [ Skip ]
 media/modern-media-controls/tracks-panel [ Skip ]
 media/modern-media-controls/tracks-support [ Skip ]
 media/modern-media-controls/volume-support [ Skip ]
-
-media/modern-media-controls/pip-support/ipad [ Pass ]
 
 webkit.org/b/178127 media/modern-media-controls/media-controller/media-controller-video-with-only-audio.html [ Skip ]
 
@@ -3073,9 +3045,9 @@ webkit.org/b/182592 webgl/webgl-texture-image-buffer-reuse.html [ Skip ]
 
 webkit.org/b/181612 [ Debug ] webanimations/animation-opacity-animation-crash.html [ Pass Failure ]
 
-webkit.org/b/182850 [ Release ] editing/pasteboard/data-transfer-set-data-sanitizes-html-when-copying-in-null-origin.html [ Skip ]
+webkit.org/b/182850 editing/pasteboard/data-transfer-set-data-sanitizes-html-when-copying-in-null-origin.html [ Skip ]
 
-webkit.org/b/183219 [ Release ] editing/pasteboard/data-transfer-get-data-on-pasting-html-uses-blob-url.html [ Skip ]
+webkit.org/b/183219 editing/pasteboard/data-transfer-get-data-on-pasting-html-uses-blob-url.html [ Skip ]
 
 webkit.org/b/173928 storage/websql/database-lock-after-reload.html [ Pass Failure ]
 
@@ -3099,6 +3071,11 @@ webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/i18n/css3-text-
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/i18n/css3-text-line-break-opclns-115.html [ ImageOnlyFailure ]
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/i18n/css3-text-line-break-opclns-116.html [ ImageOnlyFailure ]
 webkit.org/b/183258 imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-006.html [ ImageOnlyFailure ]
+webkit.org/b/196169 imported/w3c/web-platform-tests/css/css-text/overflow-wrap/overflow-wrap-break-word-003.html [ ImageOnlyFailure ]
+
+imported/w3c/web-platform-tests/css/css-text/white-space/textarea-break-spaces-001.html [ ImageOnlyFailure ]
+webkit.org/b/197970 imported/w3c/web-platform-tests/css/css-text/white-space/break-spaces-010.html [ ImageOnlyFailure ]
+webkit.org/b/198543 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-anywhere-001.html [ ImageOnlyFailure ]
 
 # unsupported
 fast/dynamic/mail-autosize-viewport-unit.html [ Failure ]
@@ -3115,13 +3092,22 @@ fast/block/block-only/margin-left-right-sizing.html [ Failure ]
 fast/block/block-only/margin-sibling-collapse-propagated.html [ Failure ]
 fast/block/block-only/relative-auto-with-parent-offset.html [ Failure ]
 fast/block/block-only/absolute-position-min-max-height.html [ Failure ]
+fast/block/basic/inline-content-with-floating-image.html [ Failure ]
+fast/block/basic/inline-content-with-floating-images2.html [ Failure ]
+fast/inline/simple-intruding-float1.html [ Failure ]
+fast/inline/simple-intruding-floats2.html [ Failure ]
+fast/inline/simple-intruding-floats3.html [ Failure ]
+fast/inline/simple-inline-block.html [ Failure ]
+fast/inline/simple-shrink-to-fit-inline-block.html [ Failure ]
+fast/inline/simple-inline-inflow-positioned.html [ Failure ]
+fast/inline/simple-inline-with-out-of-flow-descendant.html [ Failure ]
+fast/block/basic/height-percentage-simple.html [ Failure ]
+fast/block/basic/child-block-level-box-with-height-percent.html [ Failure ]
+fast/block/basic/quirk-mode-percent-height.html [ Failure ]
 
 # Datalist
-webkit.org/b/186714 fast/forms/datalist/datalist-show-hide.html [ Skip ]
 webkit.org/b/186714 fast/forms/datalist/datalist-textinput-keydown.html [ Skip ]
-fast/forms/datalist/datalist-searchinput-appearance.html [ Skip ]
-fast/forms/datalist/datalist-textinput-appearance.html  [ Skip ]
-fast/forms/datalist/datalist-textinput-suggestions-order.html [ Skip ]
+webkit.org/b/190613 fast/forms/datalist/update-range-with-datalist.html [ Skip ]
 
 # We are only accepting GLSL3 for macOS. 
 webkit.org/b/187982 webgl/2.0.0/conformance2/glsl3 [ Skip ]
@@ -3131,6 +3117,136 @@ webkit.org/b/188285 platform/mac/media/audio-session-category-video-paused.html 
 
 webkit.org/b/188578 svg/custom/scrolling-embedded-svg-file-image-repaint-problem.html [ Pass Failure ]
 
-webkit.org/b/188762 fast/writing-mode/english-rl-text-with-spelling-marker.html [ ImageOnlyFailure ]
-
 webkit.org/b/128312 media/video-load-preload-metadata.html [ Pass Failure ]
+
+webkit.org/b/188070 imported/w3c/web-platform-tests/streams/piping/error-propagation-backward.html [ Pass Failure ]
+
+webkit.org/b/189726 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-mixed-content-to-inscope.https.html [ Pass Failure ]
+webkit.org/b/189726 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-mixed-content-to-outscope.https.html [ Pass Failure ]
+
+webkit.org/b/189727 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https.html [ Pass Failure ]
+
+webkit.org/b/187557 media/media-fragments/TC0005.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0006.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0009.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0011.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0014.html [ Pass Failure ]
+webkit.org/b/187522 media/media-fragments/TC0015.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0024.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0035.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0036.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0037.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0038.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0039.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0051.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0052.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0053.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0054.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0055.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0059.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0072.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0078.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0079.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0085.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0086.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0087.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0088.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0089.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0090.html [ Pass Failure ]
+webkit.org/b/187557 media/media-fragments/TC0091.html [ Pass Failure ]
+
+webkit.org/b/189598 compositing/backing/backing-store-attachment-fill-forwards-animation.html [ Pass Failure ]
+
+webkit.org/b/190032 animations/stop-animation-on-suspend.html [ Failure ]
+
+http/tests/cookies/same-site [ Pass ]
+
+# FIXME: Mark as Pass once <rdar://problem/47165939> is fixed.
+http/tests/cookies/only-accept-first-party-cookies.html [ Skip ]
+
+system-preview [ Pass ]
+
+editing/selection/character-granularity-rect.html [ Pass ]
+
+# < iOS12 doesn't support the CG needed for Conic Gradients
+http/wpt/css/css-images-4/conic-gradient-parsing.html [ Pass ]
+fast/gradients/conic-repeating.html [ Pass ]
+fast/gradients/conic.html [ Pass ]
+fast/gradients/conic-off-center.html [ Pass ]
+fast/gradients/conic-center-outside-box.html [ Pass ]
+fast/gradients/conic-extended-stops.html [ Pass ]
+fast/gradients/conic-from-angle.html [ Pass ]
+fast/gradients/conic-repeating-last-stop.html [ Pass ]
+fast/gradients/conic-gradient-alpha.html [ Pass ]
+fast/gradients/conic-gradient-extended-stops.html [ Pass ]
+fast/gradients/conic-gradient.html [ Pass ]
+fast/gradients/conic-two-hints.html [ Pass ]
+
+# <rdar://problem/36455339> LayoutTest compositing/ios/overflow-scroll-touch-tiles.html is a flaky failure
+compositing/ios/overflow-scroll-touch-tiles.html [ Pass Failure ]
+
+# <rdar://problem/36639117> REGRESSION: LayoutTest svg/custom/subpaths-moveto-only-rendering.svg is failing
+svg/custom/subpaths-moveto-only-rendering.svg [ Failure ]
+
+# <rdar://problem/37406043> LayoutTest fast/events/focusing-element-with-tabindex-by-tap-or-click.html is a flaky failure
+fast/events/focusing-element-with-tabindex-by-tap-or-click.html [ Pass Failure ]
+
+# <rdar://problem/40952038> quicklook/keynote.html and quicklook/pages.html are failing with a 0.09% image diff
+quicklook/keynote.html [ ImageOnlyFailure ]
+quicklook/pages.html [ ImageOnlyFailure ]
+
+# <rdar://problem/41546587> REGRESSION: LayoutTest compositing/contents-scale/non-decomposable-matrix.html is failing
+compositing/contents-scale/non-decomposable-matrix.html [ ImageOnlyFailure ]
+
+# <rdar://problem/41546970> REGRESSION: LayoutTest media/media-fullscreen-loop-inline.html is a flaky timeout
+media/media-fullscreen-loop-inline.html [ Pass Timeout ]
+
+webkit.org/b/187618 [ Release ] media/media-fullscreen-pause-inline.html [ Pass Failure ]
+
+# Disabled globally.
+http/tests/xmlhttprequest/gzip-content-type-no-content-encoding.html [ Pass ]
+
+webkit.org/b/173041 http/tests/websocket/tests/hybi/handshake-ok-with-legacy-sec-websocket-response-headers.html [ Pass Failure ]
+
+# WK2 spelling dot test infrastructure isn't hooked up on iOS
+webkit.org/b/190764 editing/spelling/spelling-dots-repaint.html [ Skip ]
+webkit.org/b/190764 editing/spelling/spelling-dots-position.html [ Skip ]
+webkit.org/b/190764 editing/spelling/spelling-dots-position-2.html [ Skip ]
+webkit.org/b/190764 editing/spelling/spelling-dots-position-3.html [ Skip ]
+
+webkit.org/b/192279 imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html [ Pass Failure ]
+
+webkit.org/b/192250 imported/w3c/web-platform-tests/service-workers/service-worker/update-missing-import-scripts.https.html [ Pass Failure ]
+
+webkit.org/b/192398 imported/w3c/web-platform-tests/service-workers/service-worker/update-registration-with-type.https.html [ Pass Failure ]
+
+webkit.org/b/191704 imported/w3c/web-platform-tests/service-workers/service-worker/windowclient-navigate.https.html [ Pass Failure ]
+
+webkit.org/b/193955 compositing/iframes/remove-reinsert-webview-with-iframe.html [ Skip ]
+
+webkit.org/b/153337 pageoverlay/overlay-installation.html [ Pass Failure ]
+webkit.org/b/153337 pageoverlay/overlay-large-document-scrolled.html [ Pass Failure ]
+webkit.org/b/153337 pageoverlay/overlay-large-document.html [ Pass Failure ]
+
+# FIXME: Unskip the following test once we have the fix for <rdar://problem/45970040>.
+fast/events/touch/ios/touch-events-with-modifiers.html [ Skip ]
+fast/events/touch/ios/mouse-events-with-modifiers.html [ Skip ]
+fast/events/touch/ios/pointer-events-with-modifiers.html [ Skip ]
+
+webkit.org/b/191707 imported/w3c/web-platform-tests/webrtc/simplecall-no-ssrcs.https.html [ Skip ]
+webkit.org/b/191707 imported/w3c/web-platform-tests/webrtc/simplecall.https.html [ Skip ]
+
+webkit.org/b/191711 quicklook/numbers.html [ ImageOnlyFailure ]
+
+webkit.org/b/197473 imported/w3c/web-platform-tests/resource-timing/resource-timing-level1.sub.html [ Pass Failure ]
+
+webkit.org/b/175678 media/W3C/video/events/event_progress.html [ Pass Failure ]
+
+# These tests depend on the implementation of "modern compatibility mode" in WebKitAdditions.
+platform/ipad/fast/css/webkit-overflow-scrolling-parsing-modern-compatibility-mode.html [ Skip ]
+fast/scrolling/ipad/overflow-scrolling-touch-enabled-stacking-modern-compatibility-mode.html [ Skip ]
+
+webkit.org/b/197778 [ Debug ] webgl/2.0.0/conformance2/attribs/gl-vertexattribipointer.html [ Slow ]
+
+# Was unskipped, but now has missing results in iOS . Skipping on iOS only.
+media/controls-after-reload.html [ Skip ]

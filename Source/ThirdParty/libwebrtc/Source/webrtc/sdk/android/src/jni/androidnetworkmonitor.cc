@@ -19,6 +19,8 @@
 #include "rtc_base/bind.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/ipaddress.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/strings/string_builder.h"
 #include "sdk/android/generated_base_jni/jni/NetworkMonitorAutoDetect_jni.h"
 #include "sdk/android/generated_base_jni/jni/NetworkMonitor_jni.h"
 #include "sdk/android/native_api/jni/java_types.h"
@@ -152,7 +154,7 @@ NetworkInformation& NetworkInformation::operator=(NetworkInformation&&) =
     default;
 
 std::string NetworkInformation::ToString() const {
-  std::stringstream ss;
+  rtc::StringBuilder ss;
   ss << "NetInfo[name " << interface_name << "; handle " << handle << "; type "
      << type;
   if (type == NETWORK_VPN) {
@@ -163,7 +165,7 @@ std::string NetworkInformation::ToString() const {
     ss << " " << address.ToString();
   }
   ss << "]";
-  return ss.str();
+  return ss.Release();
 }
 
 AndroidNetworkMonitor::AndroidNetworkMonitor(

@@ -417,6 +417,13 @@ webkit_settings_set_enable_media_stream                        (WebKitSettings *
                                                                 gboolean        enabled);
 
 WEBKIT_API gboolean
+webkit_settings_get_enable_mock_capture_devices                (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_enable_mock_capture_devices                (WebKitSettings *settings,
+                                                                gboolean        enabled);
+
+WEBKIT_API gboolean
 webkit_settings_get_enable_spatial_navigation                  (WebKitSettings *settings);
 
 WEBKIT_API void
@@ -465,11 +472,32 @@ WEBKIT_API void
 webkit_settings_set_hardware_acceleration_policy               (WebKitSettings *settings,
                                                                 WebKitHardwareAccelerationPolicy policy);
 
+WEBKIT_API gboolean
+webkit_settings_get_enable_back_forward_navigation_gestures    (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_enable_back_forward_navigation_gestures    (WebKitSettings *settings,
+                                                                gboolean        enabled);
+
 WEBKIT_API guint32
 webkit_settings_font_size_to_points                            (guint32 pixels);
 
 WEBKIT_API guint32
 webkit_settings_font_size_to_pixels                            (guint32 points);
+
+WEBKIT_API gboolean
+webkit_settings_get_enable_javascript_markup                   (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_enable_javascript_markup                   (WebKitSettings *settings,
+                                                                gboolean        enabled);
+
+WEBKIT_API gboolean
+webkit_settings_get_enable_media                               (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_enable_media                               (WebKitSettings *settings,
+                                                                gboolean        enabled);
 
 G_END_DECLS
 

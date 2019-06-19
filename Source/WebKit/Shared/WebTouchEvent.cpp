@@ -26,13 +26,13 @@
 #include "config.h"
 #include "WebEvent.h"
 
-#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
+#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS_FAMILY)
 
 #include "ArgumentCoders.h"
 
 namespace WebKit {
 
-WebTouchEvent::WebTouchEvent(WebEvent::Type type, Vector<WebPlatformTouchPoint>&& touchPoints, Modifiers modifiers, WallTime timestamp)
+WebTouchEvent::WebTouchEvent(WebEvent::Type type, Vector<WebPlatformTouchPoint>&& touchPoints, OptionSet<Modifier> modifiers, WallTime timestamp)
     : WebEvent(type, modifiers, timestamp)
     , m_touchPoints(WTFMove(touchPoints))
 {
@@ -64,4 +64,4 @@ bool WebTouchEvent::isTouchEventType(Type type)
     
 } // namespace WebKit
 
-#endif // ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
+#endif // ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS_FAMILY)

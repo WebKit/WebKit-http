@@ -34,13 +34,13 @@ String CSSCubicBezierTimingFunctionValue::customCSSText() const
 {
     StringBuilder builder;
     builder.appendLiteral("cubic-bezier(");
-    builder.appendNumber(m_x1);
+    builder.appendFixedPrecisionNumber(m_x1);
     builder.appendLiteral(", ");
-    builder.appendNumber(m_y1);
+    builder.appendFixedPrecisionNumber(m_y1);
     builder.appendLiteral(", ");
-    builder.appendNumber(m_x2);
+    builder.appendFixedPrecisionNumber(m_x2);
     builder.appendLiteral(", ");
-    builder.appendNumber(m_y2);
+    builder.appendFixedPrecisionNumber(m_y2);
     builder.append(')');    
     return builder.toString();
 }
@@ -67,31 +67,17 @@ bool CSSStepsTimingFunctionValue::equals(const CSSStepsTimingFunctionValue& othe
     return m_steps == other.m_steps && m_stepAtStart == other.m_stepAtStart;
 }
 
-String CSSFramesTimingFunctionValue::customCSSText() const
-{
-    StringBuilder builder;
-    builder.appendLiteral("frames(");
-    builder.appendNumber(m_frames);
-    builder.appendLiteral(")");
-    return builder.toString();
-}
-
-bool CSSFramesTimingFunctionValue::equals(const CSSFramesTimingFunctionValue& other) const
-{
-    return m_frames == other.m_frames;
-}
-
 String CSSSpringTimingFunctionValue::customCSSText() const
 {
     StringBuilder builder;
     builder.appendLiteral("spring(");
-    builder.appendNumber(m_mass);
+    builder.appendFixedPrecisionNumber(m_mass);
     builder.append(' ');
-    builder.appendNumber(m_stiffness);
+    builder.appendFixedPrecisionNumber(m_stiffness);
     builder.append(' ');
-    builder.appendNumber(m_damping);
+    builder.appendFixedPrecisionNumber(m_damping);
     builder.append(' ');
-    builder.appendNumber(m_initialVelocity);
+    builder.appendFixedPrecisionNumber(m_initialVelocity);
     builder.append(')');
     return builder.toString();
 }

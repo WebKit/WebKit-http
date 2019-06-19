@@ -26,9 +26,9 @@
 #include "config.h"
 #include "WKFormColorPicker.h"
 
-#if ENABLE(INPUT_TYPE_COLOR) && PLATFORM(IOS)
+#if ENABLE(INPUT_TYPE_COLOR) && PLATFORM(IOS_FAMILY)
 
-#import "AssistedNodeInformation.h"
+#import "FocusedElementInformation.h"
 #import "UIKitSPI.h"
 #import "WKContentViewInteraction.h"
 #import "WKFormPopover.h"
@@ -179,7 +179,7 @@ using namespace WebKit;
     if (currentUserInterfaceIdiomIsPad())
         colorPickerSize = CGSizeMake(pickerWidthForPopover, pickerWidthForPopover);
     else {
-        CGSize keyboardSize = [UIKeyboard defaultSizeForInterfaceOrientation:[UIApp interfaceOrientation]];
+        auto keyboardSize = [UIKeyboard defaultSizeForInterfaceOrientation:view.interfaceOrientation];
         colorPickerSize = CGSizeMake(keyboardSize.width, keyboardSize.height + additionalKeyboardAffordance);
     }
 
@@ -196,11 +196,11 @@ using namespace WebKit;
     NSArray<NSArray<UIColor *> *> *topColorMatrix = [[self class] defaultTopColorMatrix];
 
 #if ENABLE(DATALIST_ELEMENT)
-    size_t numColorSuggestions = view.assistedNodeInformation.suggestedColors.size();
+    size_t numColorSuggestions = view.focusedElementInformation.suggestedColors.size();
     if (numColorSuggestions) {
         NSMutableArray<UIColor *> *colors = [NSMutableArray array];
         for (size_t i = 0; i < std::min(numColorSuggestions, maxColorSuggestions); i++) {
-            WebCore::Color color = view.assistedNodeInformation.suggestedColors[i];
+            WebCore::Color color = view.focusedElementInformation.suggestedColors[i];
             [colors addObject:[UIColor colorWithCGColor:cachedCGColor(color)]];
         }
         topColorMatrix = @[ colors ];
@@ -263,7 +263,7 @@ using namespace WebKit;
 - (void)setControlValueFromUIColor:(UIColor *)uiColor
 {
     WebCore::Color color(uiColor.CGColor);
-    [_view page]->setAssistedNodeValue(color.serialized());
+    [_view page]->setFocusedElementValue(color.serialized());
 }
 
 #pragma mark WKFormControl
@@ -316,4 +316,4 @@ using namespace WebKit;
 
 @end
 
-#endif // ENABLE(INPUT_TYPE_COLOR) && PLATFORM(IOS)
+#endif // ENABLE(INPUT_TYPE_COLOR) && PLATFORM(IOS_FAMILY)

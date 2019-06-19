@@ -47,12 +47,12 @@ struct KeypressCommand;
 typedef union _GdkEvent GdkEvent;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include <wtf/RetainPtr.h>
 OBJC_CLASS WebEvent;
 #endif
 
-#if PLATFORM(WPE)
+#if USE(LIBWPE)
 struct wpe_input_keyboard_event;
 #endif
 
@@ -69,15 +69,17 @@ namespace WebKit {
 class NativeWebKeyboardEvent : public WebKeyboardEvent {
 public:
 #if USE(APPKIT)
+    // FIXME: Share iOS's HandledByInputMethod enum here instead of passing a boolean.
     NativeWebKeyboardEvent(NSEvent *, bool handledByInputMethod, bool replacesSoftSpace, const Vector<WebCore::KeypressCommand>&);
 #elif PLATFORM(QT)
     explicit NativeWebKeyboardEvent(QKeyEvent*);
 #elif PLATFORM(GTK)
     NativeWebKeyboardEvent(const NativeWebKeyboardEvent&);
     NativeWebKeyboardEvent(GdkEvent*, const WebCore::CompositionResults&, InputMethodFilter::EventFakedForComposition, Vector<String>&& commands);
-#elif PLATFORM(IOS)
-    NativeWebKeyboardEvent(::WebEvent *);
-#elif PLATFORM(WPE)
+#elif PLATFORM(IOS_FAMILY)
+    enum class HandledByInputMethod : bool { No, Yes };
+    NativeWebKeyboardEvent(::WebEvent *, HandledByInputMethod);
+#elif USE(LIBWPE)
     NativeWebKeyboardEvent(struct wpe_input_keyboard_event*);
 #elif PLATFORM(WIN)
     NativeWebKeyboardEvent(HWND, UINT message, WPARAM, LPARAM);
@@ -91,7 +93,7 @@ public:
     GdkEvent* nativeEvent() const { return m_nativeEvent.get(); }
     const WebCore::CompositionResults& compositionResults() const  { return m_compositionResults; }
     bool isFakeEventForComposition() const { return m_fakeEventForComposition; }
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     ::WebEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #elif PLATFORM(WIN)
     const MSG* nativeEvent() const { return &m_nativeEvent; }
@@ -108,7 +110,7 @@ private:
     GUniquePtr<GdkEvent> m_nativeEvent;
     WebCore::CompositionResults m_compositionResults;
     bool m_fakeEventForComposition;
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     RetainPtr<::WebEvent> m_nativeEvent;
 #elif PLATFORM(WIN)
     MSG m_nativeEvent;

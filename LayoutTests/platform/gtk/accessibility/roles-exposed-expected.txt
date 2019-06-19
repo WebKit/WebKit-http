@@ -80,7 +80,7 @@ legend
       AXRole: AXLabel
       
 footer
-      AXRole: AXFooter
+      AXRole: AXLandmarkContentInfo
       
 form
       AXRole: AXForm
@@ -744,6 +744,9 @@ div[role=menuitemcheckbox]
       
 div[role=menuitemradio]
       AXRole: AXRadioMenuItem
+      
+div[role=meter]
+      AXRole: AXLevelIndicator
       
 div[role=navigation]
       AXRole: AXLandmarkNavigation

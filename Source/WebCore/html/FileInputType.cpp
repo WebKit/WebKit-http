@@ -30,7 +30,6 @@
 #include "File.h"
 #include "FileList.h"
 #include "FileListCreator.h"
-#include "FileSystem.h"
 #include "FormController.h"
 #include "Frame.h"
 #include "HTMLInputElement.h"
@@ -43,6 +42,7 @@
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "UserGestureIndicator.h"
+#include <wtf/FileSystem.h>
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/text/StringBuilder.h>
@@ -89,8 +89,8 @@ Ref<UploadButtonElement> UploadButtonElement::createForMultiple(Document& docume
 UploadButtonElement::UploadButtonElement(Document& document)
     : HTMLInputElement(inputTag, document, 0, false)
 {
-    setType(AtomicString("button", AtomicString::ConstructFromLiteral));
-    setPseudo(AtomicString("-webkit-file-upload-button", AtomicString::ConstructFromLiteral));
+    setType(AtomString("button", AtomString::ConstructFromLiteral));
+    setPseudo(AtomString("-webkit-file-upload-button", AtomString::ConstructFromLiteral));
 }
 
 FileInputType::FileInputType(HTMLInputElement& element)
@@ -125,7 +125,7 @@ Vector<FileChooserFileInfo> FileInputType::filesFromFormControlState(const FormC
     return files;
 }
 
-const AtomicString& FileInputType::formControlType() const
+const AtomString& FileInputType::formControlType() const
 {
     return InputTypeNames::file();
 }
@@ -419,7 +419,7 @@ void FileInputType::filesChosen(const Vector<FileChooserFileInfo>& paths, const 
         m_fileListCreator = nullptr;
     });
 
-    if (icon)
+    if (icon && !m_fileList->isEmpty())
         iconLoaded(icon);
 }
 

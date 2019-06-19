@@ -34,7 +34,7 @@ namespace JSC {
 inline JSFunction* JSFunction::createWithInvalidatedReallocationWatchpoint(
     VM& vm, FunctionExecutable* executable, JSScope* scope)
 {
-    ASSERT(executable->singletonFunction()->hasBeenInvalidated());
+    ASSERT(executable->singleton().hasBeenInvalidated());
     return createImpl(vm, executable, scope, selectStructureForNewFuncExp(scope->globalObject(vm), executable));
 }
 
@@ -66,6 +66,11 @@ inline Intrinsic JSFunction::intrinsic() const
 inline bool JSFunction::isBuiltinFunction() const
 {
     return !isHostFunction() && jsExecutable()->isBuiltinFunction();
+}
+
+inline bool JSFunction::isAnonymousBuiltinFunction() const
+{
+    return !isHostFunction() && jsExecutable()->isAnonymousBuiltinFunction();
 }
 
 inline bool JSFunction::isHostOrBuiltinFunction() const
@@ -110,8 +115,16 @@ inline bool JSFunction::hasReifiedName() const
 
 inline bool JSFunction::canUseAllocationProfile()
 {
-    if (isHostFunction())
-        return false;
+    if (isHostOrBuiltinFunction()) {
+        if (isHostFunction())
+            return false;
+
+        VM& vm = globalObject()->vm();
+        unsigned attributes;
+        JSValue prototype = getDirect(vm, vm.propertyNames->prototype, attributes);
+        if (!prototype || (attributes & PropertyAttribute::AccessorOrCustomAccessorOrValue))
+            return false;
+    }
 
     // If we don't have a prototype property, we're not guaranteed it's
     // non-configurable. For example, user code can define the prototype

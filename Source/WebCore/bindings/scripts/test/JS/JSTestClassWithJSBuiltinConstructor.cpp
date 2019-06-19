@@ -27,12 +27,12 @@
 #include "JSDOMWrapperCache.h"
 #include "ScriptExecutionContext.h"
 #include "TestClassWithJSBuiltinConstructorBuiltins.h"
-#include "URL.h"
 #include <JavaScriptCore/FunctionPrototype.h>
 #include <JavaScriptCore/HeapSnapshotBuilder.h>
 #include <JavaScriptCore/JSCInlines.h>
 #include <wtf/GetPtr.h>
 #include <wtf/PointerPreparations.h>
+#include <wtf/URL.h>
 
 
 namespace WebCore {
@@ -168,7 +168,7 @@ void JSTestClassWithJSBuiltinConstructor::heapSnapshot(JSCell* cell, HeapSnapsho
     auto* thisObject = jsCast<JSTestClassWithJSBuiltinConstructor*>(cell);
     builder.setWrappedObjectForCell(cell, &thisObject->wrapped());
     if (thisObject->scriptExecutionContext())
-        builder.setLabelForCell(cell, String::format("url %s", thisObject->scriptExecutionContext()->url().string().utf8().data()));
+        builder.setLabelForCell(cell, "url " + thisObject->scriptExecutionContext()->url().string());
     Base::heapSnapshot(cell, builder);
 }
 

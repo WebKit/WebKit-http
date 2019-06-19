@@ -88,13 +88,14 @@
 #include "GStreamerCommon.h"
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "ScriptController.h"
 #include "Settings.h"
 #endif
 
 #include <JavaScriptCore/ArrayBuffer.h>
 #include <wtf/Atomics.h>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/MainThread.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
@@ -104,7 +105,9 @@ const unsigned MaxPeriodicWaveLength = 4096;
 
 namespace WebCore {
 
-#define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(document()->page() && document()->page()->isAlwaysOnLoggingAllowed(), Media, "%p - AudioContext::" fmt, this, ##__VA_ARGS__)
+WTF_MAKE_ISO_ALLOCATED_IMPL(AudioContext);
+
+#define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(document() && document()->page() && document()->page()->isAlwaysOnLoggingAllowed(), Media, "%p - AudioContext::" fmt, this, ##__VA_ARGS__)
     
 bool AudioContext::isSampleRateRangeGood(float sampleRate)
 {
@@ -130,7 +133,11 @@ RefPtr<AudioContext> AudioContext::create(Document& document)
 
 // Constructor for rendering to the audio hardware.
 AudioContext::AudioContext(Document& document)
-    : ActiveDOMObject(&document)
+    : ActiveDOMObject(document)
+#if !RELEASE_LOG_DISABLED
+    , m_logger(document.logger())
+    , m_logIdentifier(uniqueLogIdentifier())
+#endif
     , m_mediaSession(PlatformMediaSession::create(*this))
     , m_eventQueue(std::make_unique<GenericEventQueue>(*this))
 {
@@ -140,11 +147,18 @@ AudioContext::AudioContext(Document& document)
 
     // Initialize the destination node's muted state to match the page's current muted state.
     pageMutedStateDidChange();
+
+    document.addAudioProducer(*this);
+    document.registerForVisibilityStateChangedCallbacks(*this);
 }
 
 // Constructor for offline (non-realtime) rendering.
 AudioContext::AudioContext(Document& document, unsigned numberOfChannels, size_t numberOfFrames, float sampleRate)
-    : ActiveDOMObject(&document)
+    : ActiveDOMObject(document)
+#if !RELEASE_LOG_DISABLED
+    , m_logger(document.logger())
+    , m_logIdentifier(uniqueLogIdentifier())
+#endif
     , m_isOfflineContext(true)
     , m_mediaSession(PlatformMediaSession::create(*this))
     , m_eventQueue(std::make_unique<GenericEventQueue>(*this))
@@ -160,12 +174,13 @@ void AudioContext::constructCommon()
 {
     // According to spec AudioContext must die only after page navigate.
     // Lets mark it as ActiveDOMObject with pending activity and unmark it in clear method.
-    setPendingActivity(this);
+    setPendingActivity(*this);
 
     FFTFrame::initialize();
     
     m_listener = AudioListener::create();
 
+    ASSERT(document());
     if (document()->audioPlaybackRequiresUserGesture())
         addBehaviorRestriction(RequireUserGestureForAudioStartRestriction);
     else
@@ -191,10 +206,17 @@ AudioContext::~AudioContext()
         m_renderingAutomaticPullNodes.resize(m_automaticPullNodes.size());
     ASSERT(m_renderingAutomaticPullNodes.isEmpty());
     // FIXME: Can we assert that m_deferredFinishDerefList is empty?
+
+    if (!isOfflineContext() && scriptExecutionContext()) {
+        document()->removeAudioProducer(*this);
+        document()->unregisterForVisibilityStateChangedCallbacks(*this);
+    }
 }
 
 void AudioContext::lazyInitialize()
 {
+    ASSERT(!m_isStopScheduled);
+
     if (m_isInitialized)
         return;
 
@@ -207,9 +229,6 @@ void AudioContext::lazyInitialize()
         m_destinationNode->initialize();
 
         if (!isOfflineContext()) {
-            document()->addAudioProducer(this);
-            document()->registerForVisibilityStateChangedCallbacks(this);
-
             // This starts the audio thread. The destination node's provideInput() method will now be called repeatedly to render audio.
             // Each time provideInput() is called, a portion of the audio stream is rendered. Let's call this time period a "render quantum".
             // NOTE: for now default AudioContext does not need an explicit startRendering() call from JavaScript.
@@ -235,26 +254,26 @@ void AudioContext::clear()
     } while (m_nodesToDelete.size());
 
     // It was set in constructCommon.
-    unsetPendingActivity(this);
+    unsetPendingActivity(*this);
 }
 
 void AudioContext::uninitialize()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
 
     if (!m_isInitialized)
         return;
 
     // This stops the audio thread and all audio rendering.
-    m_destinationNode->uninitialize();
+    if (m_destinationNode)
+        m_destinationNode->uninitialize();
 
     // Don't allow the context to initialize a second time after it's already been explicitly uninitialized.
     m_isAudioThreadFinished = true;
 
     if (!isOfflineContext()) {
-        document()->removeAudioProducer(this);
-        document()->unregisterForVisibilityStateChangedCallbacks(this);
-
         ASSERT(s_hardwareContextCount);
         --s_hardwareContextCount;
 
@@ -303,6 +322,8 @@ void AudioContext::setState(State state)
 
 void AudioContext::stop()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
 
     // Usually ScriptExecutionContext calls stop twice.
@@ -310,20 +331,13 @@ void AudioContext::stop()
         return;
     m_isStopScheduled = true;
 
+    ASSERT(document());
     document()->updateIsPlayingMedia();
 
     m_eventQueue->close();
 
-    // Don't call uninitialize() immediately here because the ScriptExecutionContext is in the middle
-    // of dealing with all of its ActiveDOMObjects at this point. uninitialize() can de-reference other
-    // ActiveDOMObjects so let's schedule uninitialize() to be called later.
-    // FIXME: see if there's a more direct way to handle this issue.
-    // FIXME: This sounds very wrong. The whole idea of stop() is that it stops everything, and if we
-    // schedule some observable work for later, the work likely happens at an inappropriate time.
-    callOnMainThread([this] {
-        uninitialize();
-        clear();
-    });
+    uninitialize();
+    clear();
 }
 
 bool AudioContext::canSuspendForDocumentSuspension() const
@@ -339,7 +353,6 @@ const char* AudioContext::activeDOMObjectName() const
 
 Document* AudioContext::document() const
 {
-    ASSERT(m_scriptExecutionContext);
     return downcast<Document>(m_scriptExecutionContext);
 }
 
@@ -371,7 +384,7 @@ bool AudioContext::isSuspended() const
 void AudioContext::visibilityStateChanged()
 {
     // Do not suspend if audio is audible.
-    if (mediaState() == MediaProducer::IsPlayingAudio)
+    if (!document() || mediaState() == MediaProducer::IsPlayingAudio || m_isStopScheduled)
         return;
 
     if (document()->hidden()) {
@@ -419,11 +432,17 @@ void AudioContext::decodeAudioData(Ref<ArrayBuffer>&& audioData, RefPtr<AudioBuf
     m_audioDecoder.decodeAsync(WTFMove(audioData), sampleRate(), WTFMove(successCallback), WTFMove(errorCallback));
 }
 
-Ref<AudioBufferSourceNode> AudioContext::createBufferSource()
+ExceptionOr<Ref<AudioBufferSourceNode>> AudioContext::createBufferSource()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+
     ASSERT(isMainThread());
+
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
-    Ref<AudioBufferSourceNode> node = AudioBufferSourceNode::create(*this, m_destinationNode->sampleRate());
+    Ref<AudioBufferSourceNode> node = AudioBufferSourceNode::create(*this, sampleRate());
 
     // Because this is an AudioScheduledSourceNode, the context keeps a reference until it has finished playing.
     // When this happens, AudioScheduledSourceNode::finish() calls AudioContext::notifyNodeFinishedProcessing().
@@ -436,18 +455,21 @@ Ref<AudioBufferSourceNode> AudioContext::createBufferSource()
 
 ExceptionOr<Ref<MediaElementAudioSourceNode>> AudioContext::createMediaElementSource(HTMLMediaElement& mediaElement)
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+
     ASSERT(isMainThread());
-    lazyInitialize();
-    
-    if (mediaElement.audioSourceNode())
+
+    if (m_isStopScheduled || mediaElement.audioSourceNode())
         return Exception { InvalidStateError };
+
+    lazyInitialize();
 
     auto node = MediaElementAudioSourceNode::create(*this, mediaElement);
 
     mediaElement.setAudioSourceNode(node.ptr());
 
     refNode(node.get()); // context keeps reference until node is disconnected
-    return WTFMove(node);
+    return node;
 }
 
 #endif
@@ -456,7 +478,12 @@ ExceptionOr<Ref<MediaElementAudioSourceNode>> AudioContext::createMediaElementSo
 
 ExceptionOr<Ref<MediaStreamAudioSourceNode>> AudioContext::createMediaStreamSource(MediaStream& mediaStream)
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
 
     auto audioTracks = mediaStream.getAudioTracks();
     if (audioTracks.isEmpty())
@@ -478,11 +505,14 @@ ExceptionOr<Ref<MediaStreamAudioSourceNode>> AudioContext::createMediaStreamSour
     node->setFormat(2, sampleRate());
 
     refNode(node); // context keeps reference until node is disconnected
-    return WTFMove(node);
+    return node;
 }
 
-Ref<MediaStreamAudioDestinationNode> AudioContext::createMediaStreamDestination()
+ExceptionOr<Ref<MediaStreamAudioDestinationNode>> AudioContext::createMediaStreamDestination()
 {
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     // FIXME: Add support for an optional argument which specifies the number of channels.
     // FIXME: The default should probably be stereo instead of mono.
     return MediaStreamAudioDestinationNode::create(*this, 1);
@@ -492,7 +522,13 @@ Ref<MediaStreamAudioDestinationNode> AudioContext::createMediaStreamDestination(
 
 ExceptionOr<Ref<ScriptProcessorNode>> AudioContext::createScriptProcessor(size_t bufferSize, size_t numberOfInputChannels, size_t numberOfOutputChannels)
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
 
     // W3C Editor's Draft 06 June 2017
@@ -542,73 +578,119 @@ ExceptionOr<Ref<ScriptProcessorNode>> AudioContext::createScriptProcessor(size_t
     if (numberOfOutputChannels > maxNumberOfChannels())
         return Exception { NotSupportedError };
 
-    auto node = ScriptProcessorNode::create(*this, m_destinationNode->sampleRate(), bufferSize, numberOfInputChannels, numberOfOutputChannels);
+    auto node = ScriptProcessorNode::create(*this, sampleRate(), bufferSize, numberOfInputChannels, numberOfOutputChannels);
 
     refNode(node); // context keeps reference until we stop making javascript rendering callbacks
-    return WTFMove(node);
+    return node;
 }
 
-Ref<BiquadFilterNode> AudioContext::createBiquadFilter()
+ExceptionOr<Ref<BiquadFilterNode>> AudioContext::createBiquadFilter()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
-    return BiquadFilterNode::create(*this, m_destinationNode->sampleRate());
+
+    return BiquadFilterNode::create(*this, sampleRate());
 }
 
-Ref<WaveShaperNode> AudioContext::createWaveShaper()
+ExceptionOr<Ref<WaveShaperNode>> AudioContext::createWaveShaper()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
     return WaveShaperNode::create(*this);
 }
 
-Ref<PannerNode> AudioContext::createPanner()
+ExceptionOr<Ref<PannerNode>> AudioContext::createPanner()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
-    return PannerNode::create(*this, m_destinationNode->sampleRate());
+    return PannerNode::create(*this, sampleRate());
 }
 
-Ref<ConvolverNode> AudioContext::createConvolver()
+ExceptionOr<Ref<ConvolverNode>> AudioContext::createConvolver()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
-    return ConvolverNode::create(*this, m_destinationNode->sampleRate());
+    return ConvolverNode::create(*this, sampleRate());
 }
 
-Ref<DynamicsCompressorNode> AudioContext::createDynamicsCompressor()
+ExceptionOr<Ref<DynamicsCompressorNode>> AudioContext::createDynamicsCompressor()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
-    return DynamicsCompressorNode::create(*this, m_destinationNode->sampleRate());
+    return DynamicsCompressorNode::create(*this, sampleRate());
 }
 
-Ref<AnalyserNode> AudioContext::createAnalyser()
+ExceptionOr<Ref<AnalyserNode>> AudioContext::createAnalyser()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
-    return AnalyserNode::create(*this, m_destinationNode->sampleRate());
+    return AnalyserNode::create(*this, sampleRate());
 }
 
-Ref<GainNode> AudioContext::createGain()
+ExceptionOr<Ref<GainNode>> AudioContext::createGain()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
-    return GainNode::create(*this, m_destinationNode->sampleRate());
+    return GainNode::create(*this, sampleRate());
 }
 
 ExceptionOr<Ref<DelayNode>> AudioContext::createDelay(double maxDelayTime)
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
-    return DelayNode::create(*this, m_destinationNode->sampleRate(), maxDelayTime);
+    return DelayNode::create(*this, sampleRate(), maxDelayTime);
 }
 
 ExceptionOr<Ref<ChannelSplitterNode>> AudioContext::createChannelSplitter(size_t numberOfOutputs)
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
-    auto node = ChannelSplitterNode::create(*this, m_destinationNode->sampleRate(), numberOfOutputs);
+    auto node = ChannelSplitterNode::create(*this, sampleRate(), numberOfOutputs);
     if (!node)
         return Exception { IndexSizeError };
     return node.releaseNonNull();
@@ -616,20 +698,30 @@ ExceptionOr<Ref<ChannelSplitterNode>> AudioContext::createChannelSplitter(size_t
 
 ExceptionOr<Ref<ChannelMergerNode>> AudioContext::createChannelMerger(size_t numberOfInputs)
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
-    auto node = ChannelMergerNode::create(*this, m_destinationNode->sampleRate(), numberOfInputs);
+    auto node = ChannelMergerNode::create(*this, sampleRate(), numberOfInputs);
     if (!node)
         return Exception { IndexSizeError };
     return node.releaseNonNull();
 }
 
-Ref<OscillatorNode> AudioContext::createOscillator()
+ExceptionOr<Ref<OscillatorNode>> AudioContext::createOscillator()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     lazyInitialize();
 
-    Ref<OscillatorNode> node = OscillatorNode::create(*this, m_destinationNode->sampleRate());
+    Ref<OscillatorNode> node = OscillatorNode::create(*this, sampleRate());
 
     // Because this is an AudioScheduledSourceNode, the context keeps a reference until it has finished playing.
     // When this happens, AudioScheduledSourceNode::finish() calls AudioContext::notifyNodeFinishedProcessing().
@@ -640,7 +732,12 @@ Ref<OscillatorNode> AudioContext::createOscillator()
 
 ExceptionOr<Ref<PeriodicWave>> AudioContext::createPeriodicWave(Float32Array& real, Float32Array& imaginary)
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     ASSERT(isMainThread());
+    if (m_isStopScheduled)
+        return Exception { InvalidStateError };
+
     if (real.length() != imaginary.length() || (real.length() > MaxPeriodicWaveLength) || !real.length())
         return Exception { IndexSizeError };
     lazyInitialize();
@@ -824,14 +921,14 @@ void AudioContext::handleDeferredFinishDerefs()
     m_deferredFinishDerefList.clear();
 }
 
-void AudioContext::markForDeletion(AudioNode* node)
+void AudioContext::markForDeletion(AudioNode& node)
 {
     ASSERT(isGraphOwner());
 
     if (isAudioThreadFinished())
-        m_nodesToDelete.append(node);
+        m_nodesToDelete.append(&node);
     else
-        m_nodesMarkedForDeletion.append(node);
+        m_nodesMarkedForDeletion.append(&node);
 
     // This is probably the best time for us to remove the node from automatic pull list,
     // since all connections are gone and we hold the graph lock. Then when handlePostRenderTasks()
@@ -928,19 +1025,19 @@ void AudioContext::handleDirtyAudioNodeOutputs()
     m_dirtyAudioNodeOutputs.clear();
 }
 
-void AudioContext::addAutomaticPullNode(AudioNode* node)
+void AudioContext::addAutomaticPullNode(AudioNode& node)
 {
     ASSERT(isGraphOwner());
 
-    if (m_automaticPullNodes.add(node).isNewEntry)
+    if (m_automaticPullNodes.add(&node).isNewEntry)
         m_automaticPullNodesNeedUpdating = true;
 }
 
-void AudioContext::removeAutomaticPullNode(AudioNode* node)
+void AudioContext::removeAutomaticPullNode(AudioNode& node)
 {
     ASSERT(isGraphOwner());
 
-    if (m_automaticPullNodes.remove(node))
+    if (m_automaticPullNodes.remove(&node))
         m_automaticPullNodesNeedUpdating = true;
 }
 
@@ -970,7 +1067,7 @@ void AudioContext::processAutomaticPullNodes(size_t framesToProcess)
 
 ScriptExecutionContext* AudioContext::scriptExecutionContext() const
 {
-    return m_isStopScheduled ? 0 : ActiveDOMObject::scriptExecutionContext();
+    return ActiveDOMObject::scriptExecutionContext();
 }
 
 void AudioContext::nodeWillBeginPlayback()
@@ -988,26 +1085,38 @@ void AudioContext::nodeWillBeginPlayback()
 
 bool AudioContext::willBeginPlayback()
 {
+    if (!document())
+        return false;
+
     if (userGestureRequiredForAudioStart()) {
-        if (!processingUserGestureForMedia() && !document()->isCapturing())
+        if (!processingUserGestureForMedia() && !document()->isCapturing()) {
+            ALWAYS_LOG(LOGIDENTIFIER, "returning false, not processing user gesture or capturing");
             return false;
+        }
         removeBehaviorRestriction(AudioContext::RequireUserGestureForAudioStartRestriction);
     }
 
     if (pageConsentRequiredForAudioStart()) {
         Page* page = document()->page();
         if (page && !page->canStartMedia()) {
-            document()->addMediaCanStartListener(this);
+            document()->addMediaCanStartListener(*this);
+            ALWAYS_LOG(LOGIDENTIFIER, "returning false, page doesn't allow media to start");
             return false;
         }
         removeBehaviorRestriction(AudioContext::RequirePageConsentForAudioStartRestriction);
     }
-
-    return m_mediaSession->clientWillBeginPlayback();
+    
+    auto willBegin = m_mediaSession->clientWillBeginPlayback();
+    ALWAYS_LOG(LOGIDENTIFIER, "returning ", willBegin);
+    
+    return willBegin;
 }
 
 bool AudioContext::willPausePlayback()
 {
+    if (!document())
+        return false;
+
     if (userGestureRequiredForAudioStart()) {
         if (!processingUserGestureForMedia())
             return false;
@@ -1017,7 +1126,7 @@ bool AudioContext::willPausePlayback()
     if (pageConsentRequiredForAudioStart()) {
         Page* page = document()->page();
         if (page && !page->canStartMedia()) {
-            document()->addMediaCanStartListener(this);
+            document()->addMediaCanStartListener(*this);
             return false;
         }
         removeBehaviorRestriction(AudioContext::RequirePageConsentForAudioStartRestriction);
@@ -1028,7 +1137,8 @@ bool AudioContext::willPausePlayback()
 
 void AudioContext::startRendering()
 {
-    if (!willBeginPlayback())
+    ALWAYS_LOG(LOGIDENTIFIER);
+    if (m_isStopScheduled || !willBeginPlayback())
         return;
 
     destination()->startRendering();
@@ -1052,7 +1162,7 @@ MediaProducer::MediaStateFlags AudioContext::mediaState() const
 
 void AudioContext::pageMutedStateDidChange()
 {
-    if (m_destinationNode && document()->page())
+    if (m_destinationNode && document() && document()->page())
         m_destinationNode->setMuted(document()->page()->isAudioMuted());
 }
 
@@ -1071,7 +1181,9 @@ void AudioContext::fireCompletionEvent()
     ASSERT(isMainThread());
     if (!isMainThread())
         return;
-        
+
+    ALWAYS_LOG(LOGIDENTIFIER);
+    
     AudioBuffer* renderedBuffer = m_renderTarget.get();
     setState(State::Closed);
 
@@ -1080,7 +1192,7 @@ void AudioContext::fireCompletionEvent()
         return;
 
     // Avoid firing the event if the document has already gone away.
-    if (scriptExecutionContext()) {
+    if (!m_isStopScheduled) {
         // Call the offline rendering completion event listener.
         m_eventQueue->enqueueEvent(OfflineAudioCompletionEvent::create(renderedBuffer));
     }
@@ -1098,7 +1210,7 @@ void AudioContext::decrementActiveSourceCount()
 
 void AudioContext::suspend(DOMPromiseDeferred<void>&& promise)
 {
-    if (isOfflineContext()) {
+    if (isOfflineContext() || m_isStopScheduled) {
         promise.reject(InvalidStateError);
         return;
     }
@@ -1127,7 +1239,7 @@ void AudioContext::suspend(DOMPromiseDeferred<void>&& promise)
 
 void AudioContext::resume(DOMPromiseDeferred<void>&& promise)
 {
-    if (isOfflineContext()) {
+    if (isOfflineContext() || m_isStopScheduled) {
         promise.reject(InvalidStateError);
         return;
     }
@@ -1156,7 +1268,7 @@ void AudioContext::resume(DOMPromiseDeferred<void>&& promise)
 
 void AudioContext::close(DOMPromiseDeferred<void>&& promise)
 {
-    if (isOfflineContext()) {
+    if (isOfflineContext() || m_isStopScheduled) {
         promise.reject(InvalidStateError);
         return;
     }
@@ -1216,6 +1328,31 @@ void AudioContext::mayResumePlayback(bool shouldResume)
     });
 }
 
+void AudioContext::postTask(WTF::Function<void()>&& task)
+{
+    if (m_isStopScheduled)
+        return;
+
+    m_scriptExecutionContext->postTask(WTFMove(task));
+}
+
+const SecurityOrigin* AudioContext::origin() const
+{
+    return m_scriptExecutionContext ? m_scriptExecutionContext->securityOrigin() : nullptr;
+}
+
+void AudioContext::addConsoleMessage(MessageSource source, MessageLevel level, const String& message)
+{
+    if (m_scriptExecutionContext)
+        m_scriptExecutionContext->addConsoleMessage(source, level, message);
+}
+
+#if !RELEASE_LOG_DISABLED
+WTFLogChannel& AudioContext::logChannel() const
+{
+    return LogMedia;
+}
+#endif
 
 } // namespace WebCore
 

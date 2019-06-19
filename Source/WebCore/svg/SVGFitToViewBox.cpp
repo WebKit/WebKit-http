@@ -34,30 +34,26 @@
 
 namespace WebCore {
 
-SVGFitToViewBox::SVGFitToViewBox(SVGElement* contextElement, AnimatedPropertyState animatedState)
-    : m_attributeOwnerProxy(*this, *contextElement, animatedState)
+SVGFitToViewBox::SVGFitToViewBox(SVGElement* contextElement, SVGPropertyAccess access)
+    : m_viewBox(SVGAnimatedRect::create(contextElement, access))
+    , m_preserveAspectRatio(SVGAnimatedPreserveAspectRatio::create(contextElement, access))
 {
-    registerAttributes();
-}
-
-void SVGFitToViewBox::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::viewBoxAttr, &SVGFitToViewBox::m_viewBox>();
-    registry.registerAttribute<SVGNames::preserveAspectRatioAttr, &SVGFitToViewBox::m_preserveAspectRatio>();
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::viewBoxAttr, &SVGFitToViewBox::m_viewBox>();
+        PropertyRegistry::registerProperty<SVGNames::preserveAspectRatioAttr, &SVGFitToViewBox::m_preserveAspectRatio>();
+    });
 }
 
 void SVGFitToViewBox::setViewBox(const FloatRect& viewBox)
 {
-    m_viewBox.setValue(viewBox);
+    m_viewBox->setBaseValInternal(viewBox);
     m_isViewBoxValid = true;
 }
 
 void SVGFitToViewBox::resetViewBox()
 {
-    m_viewBox.resetValue();
+    m_viewBox->setBaseValInternal({ });
     m_isViewBoxValid = false;
 }
 
@@ -67,7 +63,7 @@ void SVGFitToViewBox::reset()
     resetPreserveAspectRatio();
 }
 
-bool SVGFitToViewBox::parseAttribute(const QualifiedName& name, const AtomicString& value)
+bool SVGFitToViewBox::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == SVGNames::viewBoxAttr) {
         FloatRect viewBox;
@@ -88,7 +84,7 @@ bool SVGFitToViewBox::parseAttribute(const QualifiedName& name, const AtomicStri
     return false;
 }
 
-bool SVGFitToViewBox::parseViewBox(const AtomicString& value, FloatRect& viewBox)
+bool SVGFitToViewBox::parseViewBox(const AtomString& value, FloatRect& viewBox)
 {
     auto upconvertedCharacters = StringView(value).upconvertedCharacters();
     const UChar* characters = upconvertedCharacters;
@@ -108,7 +104,7 @@ bool SVGFitToViewBox::parseViewBox(const UChar*& c, const UChar* end, FloatRect&
     bool valid = parseNumber(c, end, x) && parseNumber(c, end, y) && parseNumber(c, end, width) && parseNumber(c, end, height, false);
 
     if (validate) {
-        Document& document = m_attributeOwnerProxy.element().document();
+        Document& document = m_viewBox->contextElement()->document();
 
         if (!valid) {
             document.accessSVGExtensions().reportWarning("Problem parsing viewBox=\"" + str + "\"");

@@ -48,11 +48,6 @@ static NSString* const WebAutomaticDashSubstitutionEnabled = @"WebAutomaticDashS
 static NSString* const WebAutomaticLinkDetectionEnabled = @"WebAutomaticLinkDetectionEnabled";
 static NSString* const WebAutomaticTextReplacementEnabled = @"WebAutomaticTextReplacementEnabled";
 
-// FIXME: this needs to be removed and replaced with NSTextCheckingSuppressInitialCapitalizationKey as soon as
-// rdar://problem/26800924 is fixed.
-
-static NSString* const WebTextCheckingSuppressInitialCapitalizationKey = @"SuppressInitialCapitalization";
-
 namespace WebKit {
 using namespace WebCore;
 
@@ -326,13 +321,10 @@ Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(SpellDocumentTag sp
     Vector<TextCheckingResult> results;
 
     RetainPtr<NSString> textString = text.createNSStringWithoutCopying();
-    NSDictionary *options = nil;
-#if HAVE(ADVANCED_SPELL_CHECKING)
-    options = @{ NSTextCheckingInsertionPointKey : @(insertionPoint),
-                 WebTextCheckingSuppressInitialCapitalizationKey : @(!initialCapitalizationEnabled) };
-#else
-    options = @{ WebTextCheckingSuppressInitialCapitalizationKey : @(!initialCapitalizationEnabled) };
-#endif
+    NSDictionary *options = @{
+        NSTextCheckingInsertionPointKey : @(insertionPoint),
+        NSTextCheckingSuppressInitialCapitalizationKey : @(!initialCapitalizationEnabled)
+    };
     NSArray *incomingResults = [[NSSpellChecker sharedSpellChecker] checkString:textString.get()
                                                                           range:NSMakeRange(0, text.length())
                                                                           types:nsTextCheckingTypes(checkingTypes) | NSTextCheckingTypeOrthography
@@ -468,13 +460,10 @@ void TextChecker::getGuessesForWord(SpellDocumentTag spellDocumentTag, const Str
     NSString* language = nil;
     NSOrthography* orthography = nil;
     NSSpellChecker *checker = [NSSpellChecker sharedSpellChecker];
-    NSDictionary *options = nil;
-#if HAVE(ADVANCED_SPELL_CHECKING)
-    options = @{ NSTextCheckingInsertionPointKey : @(insertionPoint),
-                 WebTextCheckingSuppressInitialCapitalizationKey : @(!initialCapitalizationEnabled) };
-#else
-    options = @{ WebTextCheckingSuppressInitialCapitalizationKey : @(!initialCapitalizationEnabled) };
-#endif
+    NSDictionary *options = @{
+        NSTextCheckingInsertionPointKey : @(insertionPoint),
+        NSTextCheckingSuppressInitialCapitalizationKey : @(!initialCapitalizationEnabled)
+    };
     if (context.length()) {
         [checker checkString:context range:NSMakeRange(0, context.length()) types:NSTextCheckingTypeOrthography options:options inSpellDocumentWithTag:spellDocumentTag orthography:&orthography wordCount:0];
         language = [checker languageForWordRange:NSMakeRange(0, context.length()) inString:context orthography:orthography];

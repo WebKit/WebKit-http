@@ -75,8 +75,9 @@ public:
         LayerTypeShapeLayer,
         LayerTypeLightSystemBackdropLayer,
         LayerTypeDarkSystemBackdropLayer,
-        LayerTypeScrollingLayer,
-        LayerTypeCustom
+        LayerTypeScrollContainerLayer,
+        LayerTypeEditableImageLayer,
+        LayerTypeCustom,
     };
     enum FilterType { Linear, Nearest, Trilinear };
 
@@ -97,6 +98,8 @@ public:
     virtual PlatformLayer* platformLayer() const { return m_layer.get(); }
 
     bool usesTiledBackingLayer() const { return layerType() == LayerTypePageTiledBackingLayer || layerType() == LayerTypeTiledBackingLayer; }
+
+    bool isPageTiledBackingLayer() const { return layerType() == LayerTypePageTiledBackingLayer; }
 
     PlatformCALayerClient* owner() const { return m_owner; }
     virtual void setOwner(PlatformCALayerClient* owner) { m_owner = owner; }
@@ -232,9 +235,13 @@ public:
 
     virtual WindRule shapeWindRule() const = 0;
     virtual void setShapeWindRule(WindRule) = 0;
+
+    virtual void setEventRegion(const EventRegion&) = 0;
     
     virtual GraphicsLayer::CustomAppearance customAppearance() const = 0;
     virtual void updateCustomAppearance(GraphicsLayer::CustomAppearance) = 0;
+
+    virtual GraphicsLayer::EmbeddedViewID embeddedViewID() const = 0;
 
     virtual TiledBacking* tiledBacking() = 0;
 
@@ -251,7 +258,7 @@ public:
     virtual String layerTreeAsString() const = 0;
 #endif // PLATFORM(WIN)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool isWebLayer();
     void setBoundsOnMainThread(CGRect);
     void setPositionOnMainThread(CGPoint);

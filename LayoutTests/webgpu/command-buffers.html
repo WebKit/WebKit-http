@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<script src="js/webgpu-functions.js"></script>
+<script src="../resources/testharness.js"></script>
+<script src="../resources/testharnessreport.js"></script>
+<script>
+promise_test(async () => {
+    const device = await getBasicDevice();
+    const commandEncoder = device.createCommandEncoder();
+    assert_true(commandEncoder instanceof GPUCommandEncoder, "Successfully created GPUCommandEncoder.");
+}, "Create a default GPUCommandEncoder.");
+
+// FIXME: createCommandEncoder should take a GPUCommandEncoderDescriptor, which is currently an empty dictionary.
+</script>
+</html>

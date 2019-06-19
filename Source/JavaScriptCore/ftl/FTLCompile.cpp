@@ -34,6 +34,7 @@
 #include "B3ProcedureInlines.h"
 #include "B3StackSlot.h"
 #include "B3Value.h"
+#include "B3ValueInlines.h"
 #include "CodeBlockWithJITType.h"
 #include "CCallHelpers.h"
 #include "DFGCommon.h"
@@ -79,7 +80,7 @@ void compile(State& state, Safepoint::Result& safepointResult)
     std::unique_ptr<RegisterAtOffsetList> registerOffsets =
         std::make_unique<RegisterAtOffsetList>(state.proc->calleeSaveRegisterAtOffsetList());
     if (shouldDumpDisassembly())
-        dataLog("Unwind info for ", CodeBlockWithJITType(codeBlock, JITCode::FTLJIT), ": ", *registerOffsets, "\n");
+        dataLog("Unwind info for ", CodeBlockWithJITType(codeBlock, JITType::FTLJIT), ": ", *registerOffsets, "\n");
     codeBlock->setCalleeSaveRegisters(WTFMove(registerOffsets));
     ASSERT(!(state.proc->frameSize() % sizeof(EncodedJSValue)));
     state.jitCode->common.frameRegisterCount = state.proc->frameSize() / sizeof(EncodedJSValue);
@@ -168,7 +169,7 @@ void compile(State& state, Safepoint::Result& safepointResult)
     if (B3::Air::Disassembler* disassembler = state.proc->code().disassembler()) {
         PrintStream& out = WTF::dataFile();
 
-        out.print("Generated ", state.graph.m_plan.mode(), " code for ", CodeBlockWithJITType(state.graph.m_codeBlock, JITCode::FTLJIT), ", instruction count = ", state.graph.m_codeBlock->instructionCount(), ":\n");
+        out.print("Generated ", state.graph.m_plan.mode(), " code for ", CodeBlockWithJITType(state.graph.m_codeBlock, JITType::FTLJIT), ", instructions size = ", state.graph.m_codeBlock->instructionsSize(), ":\n");
 
         LinkBuffer& linkBuffer = *state.finalizer->b3CodeLinkBuffer;
         B3::Value* currentB3Value = nullptr;

@@ -22,6 +22,8 @@
 #include "config.h"
 #include "Microtasks.h"
 
+#include "CommonVM.h"
+#include "WorkerGlobalScope.h"
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/SetForScope.h>
@@ -33,8 +35,9 @@ void Microtask::removeSelfFromQueue(MicrotaskQueue& queue)
     queue.remove(*this);
 }
 
-MicrotaskQueue::MicrotaskQueue()
-    : m_timer(*this, &MicrotaskQueue::timerFired)
+MicrotaskQueue::MicrotaskQueue(JSC::VM& vm)
+    : m_vm(makeRef(vm))
+    , m_timer(*this, &MicrotaskQueue::timerFired)
 {
 }
 
@@ -43,7 +46,7 @@ MicrotaskQueue::~MicrotaskQueue() = default;
 MicrotaskQueue& MicrotaskQueue::mainThreadQueue()
 {
     ASSERT(isMainThread());
-    static NeverDestroyed<MicrotaskQueue> queue;
+    static NeverDestroyed<MicrotaskQueue> queue(commonVM());
     return queue;
 }
 
@@ -86,6 +89,7 @@ void MicrotaskQueue::performMicrotaskCheckpoint()
         return;
 
     SetForScope<bool> change(m_performingMicrotaskCheckpoint, true);
+    JSC::JSLockHolder locker(vm());
 
     Vector<std::unique_ptr<Microtask>> toKeep;
     while (!m_microtaskQueue.isEmpty()) {
@@ -102,6 +106,7 @@ void MicrotaskQueue::performMicrotaskCheckpoint()
         }
     }
 
+    vm().finalizeSynchronousJSExecution();
     m_microtaskQueue = WTFMove(toKeep);
 }
 

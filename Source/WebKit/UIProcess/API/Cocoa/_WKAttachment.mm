@@ -26,8 +26,6 @@
 #import "config.h"
 #import "_WKAttachment.h"
 
-#if WK_API_ENABLED
-
 #import "APIAttachment.h"
 #import "WKErrorPrivate.h"
 #import "_WKAttachmentInternal.h"
@@ -35,7 +33,7 @@
 #import <WebCore/SharedBuffer.h>
 #import <wtf/BlockPtr.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <MobileCoreServices/MobileCoreServices.h>
 #endif
 
@@ -104,6 +102,13 @@ static const NSInteger InvalidAttachmentErrorCode = 2;
 
 @implementation _WKAttachment
 
+- (void)dealloc
+{
+    _attachment->~Attachment();
+
+    [super dealloc];
+}
+
 - (API::Object&)_apiObject
 {
     return *_attachment;
@@ -125,7 +130,8 @@ static const NSInteger InvalidAttachmentErrorCode = 2;
 - (void)setFileWrapper:(NSFileWrapper *)fileWrapper contentType:(NSString *)contentType completion:(void (^)(NSError *))completionHandler
 {
     if (!_attachment->isValid()) {
-        completionHandler([NSError errorWithDomain:WKErrorDomain code:InvalidAttachmentErrorCode userInfo:nil]);
+        if (completionHandler)
+            completionHandler([NSError errorWithDomain:WKErrorDomain code:InvalidAttachmentErrorCode userInfo:nil]);
         return;
     }
 
@@ -168,5 +174,3 @@ static const NSInteger InvalidAttachmentErrorCode = 2;
 }
 
 @end
-
-#endif // WK_API_ENABLED

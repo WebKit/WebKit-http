@@ -75,7 +75,7 @@ WI.BreakpointPopoverController = class BreakpointPopoverController extends WI.Ob
         };
 
         if (WI.debuggerManager.isBreakpointEditable(breakpoint))
-            contextMenu.appendItem(WI.UIString("Edit Breakpoint…"), editBreakpoint);
+            contextMenu.appendItem(WI.UIString("Edit Breakpoint\u2026"), editBreakpoint);
 
         if (breakpoint.autoContinue && !breakpoint.disabled) {
             contextMenu.appendItem(WI.UIString("Disable Breakpoint"), toggleBreakpoint);
@@ -173,7 +173,7 @@ WI.BreakpointPopoverController = class BreakpointPopoverController extends WI.Ob
         // COMPATIBILITY (iOS 9): Legacy backends don't support breakpoint ignore count. Since support
         // can't be tested directly, check for CSS.getSupportedSystemFontFamilyNames.
         // FIXME: Use explicit version checking once https://webkit.org/b/148680 is fixed.
-        if (CSSAgent.getSupportedSystemFontFamilyNames) {
+        if (InspectorBackend.domains.CSS.getSupportedSystemFontFamilyNames) {
             let ignoreCountRow = table.appendChild(document.createElement("tr"));
             let ignoreCountHeader = ignoreCountRow.appendChild(document.createElement("th"));
             let ignoreCountLabel = ignoreCountHeader.appendChild(document.createElement("label"));
@@ -291,7 +291,7 @@ WI.BreakpointPopoverController = class BreakpointPopoverController extends WI.Ob
         this._popoverContentElement.classList.add(WI.BreakpointPopoverController.WidePopoverClassName);
         this._actionsContainer.removeChildren();
 
-        let newAction = this._breakpoint.createAction(WI.Breakpoint.DefaultBreakpointActionType);
+        let newAction = this._breakpoint.createAction(WI.BreakpointAction.Type.Log);
         let newBreakpointActionView = new WI.BreakpointActionView(newAction, this);
         this._popoverActionsInsertBreakpointActionView(newBreakpointActionView, -1);
         this._popoverOptionsRowElement.classList.remove(WI.BreakpointPopoverController.HiddenStyleClassName);

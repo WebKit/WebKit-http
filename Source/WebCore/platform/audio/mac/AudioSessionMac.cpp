@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,6 +53,7 @@ static AudioDeviceID defaultDevice()
 }
 
 class AudioSessionPrivate {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     AudioSessionPrivate(bool mutedState)
         : lastMutedState(mutedState) { }
@@ -72,7 +73,7 @@ AudioSession::CategoryType AudioSession::category() const
     return m_private->category;
 }
 
-void AudioSession::setCategory(CategoryType category)
+void AudioSession::setCategory(CategoryType category, RouteSharingPolicy)
 {
     m_private->category = category;
 }
@@ -126,7 +127,7 @@ size_t AudioSession::numberOfOutputChannels() const
     return 0;
 }
 
-bool AudioSession::tryToSetActive(bool)
+bool AudioSession::tryToSetActiveInternal(bool)
 {
     notImplemented();
     return true;

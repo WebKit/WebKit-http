@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebInspectorProxy.h"
 
+#include <WebCore/CertificateInfo.h>
 #include <WebCore/NotImplemented.h>
 #include <wtf/text/WTFString.h>
 
@@ -81,6 +82,11 @@ void WebInspectorProxy::platformInspectedURLChanged(const String&)
     notImplemented();
 }
 
+void WebInspectorProxy::platformShowCertificate(const WebCore::CertificateInfo&)
+{
+    notImplemented();
+}
+
 String WebInspectorProxy::inspectorPageURL()
 {
     return String("resource:///org/webkit/inspector/UserInterface/Main.html");
@@ -124,6 +130,11 @@ void WebInspectorProxy::platformSetAttachedWindowHeight(unsigned)
 }
 
 void WebInspectorProxy::platformSetAttachedWindowWidth(unsigned)
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformSetSheetRect(const FloatRect&)
 {
     notImplemented();
 }

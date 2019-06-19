@@ -30,6 +30,7 @@
 #include "SpringSolver.h"
 #include "StyleProperties.h"
 #include "UnitBezier.h"
+#include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/text/TextStream.h>
 
 namespace WebCore {
@@ -48,11 +49,6 @@ TextStream& operator<<(TextStream& ts, const TimingFunction& timingFunction)
     case TimingFunction::StepsFunction: {
         auto& function = downcast<StepsTimingFunction>(timingFunction);
         ts << "steps(" << function.numberOfSteps() << ", " << (function.stepAtStart() ? "start" : "end") << ")";
-        break;
-    }
-    case TimingFunction::FramesFunction: {
-        auto& function = downcast<FramesTimingFunction>(timingFunction);
-        ts << "frames(" << function.numberOfFrames() << ")";
         break;
     }
     case TimingFunction::SpringFunction: {
@@ -100,16 +96,6 @@ double TimingFunction::transformTime(double inputTime, double duration, bool bef
         // 6. The output progress value is current step / steps.
         return currentStep / steps;
     }
-    case TimingFunction::FramesFunction: {
-        // https://drafts.csswg.org/css-timing/#frames-timing-functions
-        auto& function = downcast<FramesTimingFunction>(*this);
-        auto numberOfFrames = function.numberOfFrames();
-        ASSERT(numberOfFrames > 1);
-        auto outputTime = std::floor(inputTime * numberOfFrames) / (numberOfFrames - 1);
-        if (inputTime <= 1 && outputTime > 1)
-            return 1;
-        return outputTime;
-    }
     case TimingFunction::SpringFunction: {
         auto& function = downcast<SpringTimingFunction>(*this);
         return SpringSolver(function.mass(), function.stiffness(), function.damping(), function.initialVelocity()).solve(inputTime * duration);
@@ -133,7 +119,7 @@ ExceptionOr<RefPtr<TimingFunction>> TimingFunction::createFromCSSText(const Stri
 
     if (auto cssValue = styleProperties->getPropertyCSSValue(CSSPropertyAnimationTimingFunction)) {
         if (auto timingFunction = createFromCSSValue(*cssValue.get()))
-            return WTFMove(timingFunction);
+            return timingFunction;
     }
     
     return Exception { TypeError };
@@ -170,10 +156,6 @@ RefPtr<TimingFunction> TimingFunction::createFromCSSValue(const CSSValue& value)
         auto& stepsTimingFunction = downcast<CSSStepsTimingFunctionValue>(value);
         return StepsTimingFunction::create(stepsTimingFunction.numberOfSteps(), stepsTimingFunction.stepAtStart());
     }
-    if (is<CSSFramesTimingFunctionValue>(value)) {
-        auto& framesTimingFunction = downcast<CSSFramesTimingFunctionValue>(value);
-        return FramesTimingFunction::create(framesTimingFunction.numberOfFrames());
-    }
     if (is<CSSSpringTimingFunctionValue>(value)) {
         auto& springTimingFunction = downcast<CSSSpringTimingFunctionValue>(value);
         return SpringTimingFunction::create(springTimingFunction.mass(), springTimingFunction.stiffness(), springTimingFunction.damping(), springTimingFunction.initialVelocity());
@@ -194,13 +176,13 @@ String TimingFunction::cssText() const
             return "ease-out";
         if (function.x1() == 0.42 && !function.y1() && function.x2() == 0.58 && function.y2() == 1.0)
             return "ease-in-out";
-        return String::format("cubic-bezier(%g, %g, %g, %g)", function.x1(), function.y1(), function.x2(), function.y2());
+        return makeString("cubic-bezier(", function.x1(), ", ", function.y1(), ", ", function.x2(), ", ", function.y2(), ')');
     }
 
     if (m_type == TimingFunction::StepsFunction) {
         auto& function = downcast<StepsTimingFunction>(*this);
         if (!function.stepAtStart())
-            return String::format("steps(%d)", function.numberOfSteps());
+            return makeString("steps(", function.numberOfSteps(), ')');
     }
 
     TextStream stream;

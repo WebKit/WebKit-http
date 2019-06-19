@@ -14,12 +14,17 @@
 
 #include "modules/audio_coding/neteq/packet_buffer.h"
 
-#include <algorithm>  // find_if()
+#include <algorithm>
+#include <list>
+#include <memory>
+#include <type_traits>
+#include <utility>
 
 #include "api/audio_codecs/audio_decoder.h"
 #include "modules/audio_coding/neteq/decoder_database.h"
 #include "modules/audio_coding/neteq/statistics_calculator.h"
 #include "modules/audio_coding/neteq/tick_timer.h"
+#include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 
 namespace webrtc {
@@ -91,6 +96,7 @@ int PacketBuffer::InsertPacket(Packet&& packet, StatisticsCalculator* stats) {
   if (buffer_.size() >= max_number_of_packets_) {
     // Buffer is full. Flush it.
     Flush();
+    stats->FlushedPacketBuffer();
     RTC_LOG(LS_WARNING) << "Packet buffer flushed";
     return_val = kFlushed;
   }
@@ -291,11 +297,6 @@ bool PacketBuffer::ContainsDtxOrCngPacket(
     }
   }
   return false;
-}
-
-void PacketBuffer::BufferStat(int* num_packets, int* max_num_packets) const {
-  *num_packets = static_cast<int>(buffer_.size());
-  *max_num_packets = static_cast<int>(max_number_of_packets_);
 }
 
 }  // namespace webrtc

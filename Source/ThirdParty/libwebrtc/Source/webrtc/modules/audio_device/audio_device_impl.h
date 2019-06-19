@@ -13,19 +13,18 @@
 
 #if defined(WEBRTC_INCLUDE_INTERNAL_AUDIO_DEVICE)
 
+#include <stdint.h>
 #include <memory>
 
 #include "modules/audio_device/audio_device_buffer.h"
 #include "modules/audio_device/include/audio_device.h"
-#include "rtc_base/checks.h"
-#include "rtc_base/criticalsection.h"
 
 namespace webrtc {
 
 class AudioDeviceGeneric;
 class AudioManager;
 
-class AudioDeviceModuleImpl : public AudioDeviceModule {
+class AudioDeviceModuleImpl : public AudioDeviceModuleForTest {
  public:
   enum PlatformType {
     kPlatformNotSupported = 0,
@@ -147,6 +146,11 @@ class AudioDeviceModuleImpl : public AudioDeviceModule {
   }
 #endif
   AudioDeviceBuffer* GetAudioDeviceBuffer() { return &audio_device_buffer_; }
+
+  int RestartPlayoutInternally() override { return -1; }
+  int RestartRecordingInternally() override { return -1; }
+  int SetPlayoutSampleRate(uint32_t sample_rate) override { return -1; }
+  int SetRecordingSampleRate(uint32_t sample_rate) override { return -1; }
 
  private:
   PlatformType Platform() const;

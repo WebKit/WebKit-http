@@ -27,7 +27,7 @@
 #ifndef FELightingNEON_h
 #define FELightingNEON_h
 
-#if CPU(ARM_NEON) && CPU(ARM_TRADITIONAL) && COMPILER(GCC_OR_CLANG)
+#if CPU(ARM_NEON) && CPU(ARM_TRADITIONAL) && COMPILER(GCC_COMPATIBLE)
 
 #include "FELighting.h"
 #include "PointLightSource.h"
@@ -144,9 +144,9 @@ inline void FELighting::platformApplyNeon(const LightingData& data, const LightS
             neonData.flags |= FLAG_CONE_EXPONENT_IS_1;
     } else {
         ASSERT(m_lightSource->type() == LS_DISTANT);
-        floatArguments.lightX = paintingData.lightVector.x();
-        floatArguments.lightY = paintingData.lightVector.y();
-        floatArguments.lightZ = paintingData.lightVector.z();
+        floatArguments.lightX = paintingData.initialLightingData.lightVector.x();
+        floatArguments.lightY = paintingData.initialLightingData.lightVector.y();
+        floatArguments.lightZ = paintingData.initialLightingData.lightVector.z();
         floatArguments.padding2 = 1;
     }
 
@@ -196,6 +196,6 @@ inline void FELighting::platformApplyNeon(const LightingData& data, const LightS
 
 } // namespace WebCore
 
-#endif // CPU(ARM_NEON) && COMPILER(GCC_OR_CLANG)
+#endif // CPU(ARM_NEON) && COMPILER(GCC_COMPATIBLE)
 
 #endif // FELightingNEON_h

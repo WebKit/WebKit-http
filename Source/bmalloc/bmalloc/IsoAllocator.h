@@ -32,6 +32,8 @@ namespace bmalloc {
 template<typename Config> class IsoPage;
 template<typename Config> class IsoHeapImpl;
 
+enum class AllocationMode : uint8_t { Init, Fast, Shared };
+
 template<typename Config>
 class IsoAllocator {
 public:

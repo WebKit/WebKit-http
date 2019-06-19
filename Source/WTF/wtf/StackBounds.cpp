@@ -19,7 +19,8 @@
  */
 
 #include "config.h"
-#include "StackBounds.h"
+#include <wtf/StackBounds.h>
+
 #include <mutex>
 #include <wtf/NoTailCalls.h>
 
@@ -50,17 +51,17 @@ ALWAYS_INLINE StackBounds::StackDirection StackBounds::stackDirection()
     return StackDirection::Downward;
 }
 #else
-static NEVER_INLINE NOT_TAIL_CALLED StackBounds::StackDirection testStackDirection2(volatile const int* pointer)
+static NEVER_INLINE NOT_TAIL_CALLED StackBounds::StackDirection testStackDirection2(volatile const uint8_t* pointer)
 {
-    volatile int stackValue = 42;
-    return (pointer < &stackValue) ? StackBounds::StackDirection::Upward : StackBounds::StackDirection::Downward;
+    volatile uint8_t* stackValue = bitwise_cast<uint8_t*>(currentStackPointer());
+    return (pointer < stackValue) ? StackBounds::StackDirection::Upward : StackBounds::StackDirection::Downward;
 }
 
 static NEVER_INLINE NOT_TAIL_CALLED StackBounds::StackDirection testStackDirection()
 {
     NO_TAIL_CALLS();
-    volatile int stackValue = 42;
-    return testStackDirection2(&stackValue);
+    volatile uint8_t* stackValue = bitwise_cast<uint8_t*>(currentStackPointer());
+    return testStackDirection2(stackValue);
 }
 
 NEVER_INLINE StackBounds::StackDirection StackBounds::stackDirection()
@@ -144,6 +145,7 @@ StackBounds StackBounds::newThreadStackBounds(PlatformThreadHandle thread)
     // If stack grows up, origin and bound in this code should be swapped.
     if (stackDirection() == StackDirection::Upward)
         std::swap(origin, bound);
+
     return StackBounds { origin, bound };
 }
 
@@ -159,7 +161,7 @@ StackBounds StackBounds::currentThreadStackBoundsInternal()
 StackBounds StackBounds::currentThreadStackBoundsInternal()
 {
     ASSERT(stackDirection() == StackDirection::Downward);
-    MEMORY_BASIC_INFORMATION stackOrigin = { 0 };
+    MEMORY_BASIC_INFORMATION stackOrigin { };
     VirtualQuery(&stackOrigin, &stackOrigin, sizeof(stackOrigin));
     // stackOrigin.AllocationBase points to the reserved stack memory base address.
 

@@ -27,23 +27,34 @@
 #include "config.h"
 #include "NetworkProcess.h"
 
-#include "ChildProcessMain.h"
+#include "AuxiliaryProcessMain.h"
 #include "NetworkProcessMainUnix.h"
 #include <WebCore/NetworkStorageSession.h>
 
 namespace WebKit {
 
-class NetworkProcessMain final: public ChildProcessMainBase {
+static RefPtr<NetworkProcess> globalNetworkProcess;
+
+class NetworkProcessMain final: public AuxiliaryProcessMainBase {
 public:
     void platformFinalize() override
     {
-        WebCore::NetworkStorageSession::defaultStorageSession().clearSoupNetworkSessionAndCookieStorage();
+        // Needed to destroy the SoupSession and SoupCookieJar, e.g. to avoid
+        // leaking SQLite temporary journaling files.
+        globalNetworkProcess->defaultStorageSession().clearSoupNetworkSession();
     }
 };
 
+template<>
+void initializeAuxiliaryProcess<NetworkProcess>(AuxiliaryProcessInitializationParameters&& parameters)
+{
+    static NeverDestroyed<NetworkProcess> networkProcess(WTFMove(parameters));
+    globalNetworkProcess = &networkProcess.get();
+}
+    
 int NetworkProcessMainUnix(int argc, char** argv)
 {
-    return ChildProcessMain<NetworkProcess, NetworkProcessMain>(argc, argv);
+    return AuxiliaryProcessMain<NetworkProcess, NetworkProcessMain>(argc, argv);
 }
 
 } // namespace WebKit

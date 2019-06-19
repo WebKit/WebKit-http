@@ -28,6 +28,7 @@
 #include "VREyeParameters.h"
 #include "VRPlatformDisplay.h"
 #include "VRPose.h"
+#include <JavaScriptCore/TypedArrayInlines.h>
 
 namespace WebCore {
 
@@ -38,9 +39,8 @@ VRFrameData::VRFrameData()
 
 static Ref<Float32Array> matrixToArray(const TransformationMatrix& matrix)
 {
-    TransformationMatrix::FloatMatrix4 columnMajorMatrix;
-    matrix.toColumnMajorFloatArray(columnMajorMatrix);
-    return Float32Array::create(columnMajorMatrix, 16).releaseNonNull();
+    auto columnMajorMatrix = matrix.toColumnMajorFloatArray();
+    return Float32Array::create(columnMajorMatrix.data(), 16);
 }
 
 Ref<Float32Array> VRFrameData::leftProjectionMatrix() const
@@ -129,8 +129,8 @@ void VRFrameData::update(const VRPlatformTrackingInfo& trackingInfo, const VREye
     m_timestamp = trackingInfo.timestamp;
     m_pose->update(trackingInfo);
 
-    auto rotationMatrix = rotationMatrixFromQuaternion(trackingInfo.orientation.value_or(VRPlatformTrackingInfo::Quaternion(0, 0, 0, 1)));
-    FloatPoint3D position = trackingInfo.position.value_or(FloatPoint3D(0, 0, 0));
+    auto rotationMatrix = rotationMatrixFromQuaternion(trackingInfo.orientation.valueOr(VRPlatformTrackingInfo::Quaternion(0, 0, 0, 1)));
+    FloatPoint3D position = trackingInfo.position.valueOr(FloatPoint3D(0, 0, 0));
     rotationMatrix.translate3d(-position.x(), -position.y(), -position.z());
 
     m_leftViewMatrix = rotationMatrix;

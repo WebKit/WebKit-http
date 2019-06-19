@@ -31,12 +31,14 @@
 
 namespace WebCore {
 
+class AdClickAttribution;
 class DOMTokenList;
 
 // Link relation bitmask values.
 enum class Relation {
     NoReferrer = 1 << 0,
     NoOpener = 1 << 1,
+    Opener = 1 << 2,
 };
 
 class HTMLAnchorElement : public HTMLElement, public URLUtils<HTMLAnchorElement> {
@@ -48,9 +50,9 @@ public:
     virtual ~HTMLAnchorElement();
 
     WEBCORE_EXPORT URL href() const;
-    void setHref(const AtomicString&);
+    void setHref(const AtomString&);
 
-    const AtomicString& name() const;
+    const AtomString& name() const;
 
     WEBCORE_EXPORT String origin() const;
 
@@ -64,7 +66,6 @@ public:
     bool hasRel(Relation) const;
     
     SharedStringHash visitedLinkHash() const;
-    void invalidateCachedVisitedLinkHash() { m_cachedVisitedLinkHash = 0; }
 
     WEBCORE_EXPORT DOMTokenList& relList() const;
 
@@ -75,7 +76,7 @@ public:
 protected:
     HTMLAnchorElement(const QualifiedName&, Document&);
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomString&) override;
 
 private:
     bool supportsFocus() const override;
@@ -90,7 +91,11 @@ private:
     int tabIndex() const final;
     bool draggable() const final;
 
+    String effectiveTarget() const;
+
     void sendPings(const URL& destinationURL);
+
+    Optional<AdClickAttribution> parseAdClickAttribution() const;
 
     void handleClick(Event&);
 
@@ -109,16 +114,19 @@ private:
     bool m_hasRootEditableElementForSelectionOnMouseDown;
     bool m_wasShiftKeyDownOnMouseDown;
     OptionSet<Relation> m_linkRelations;
-    mutable SharedStringHash m_cachedVisitedLinkHash;
+
+    // This is computed only once and must not be affected by subsequent URL changes.
+    mutable Optional<SharedStringHash> m_storedVisitedLinkHash;
 
     mutable std::unique_ptr<DOMTokenList> m_relList;
 };
 
 inline SharedStringHash HTMLAnchorElement::visitedLinkHash() const
 {
-    if (!m_cachedVisitedLinkHash)
-        m_cachedVisitedLinkHash = computeVisitedLinkHash(document().baseURL(), attributeWithoutSynchronization(HTMLNames::hrefAttr));
-    return m_cachedVisitedLinkHash; 
+    ASSERT(isLink());
+    if (!m_storedVisitedLinkHash)
+        m_storedVisitedLinkHash = computeVisitedLinkHash(document().baseURL(), attributeWithoutSynchronization(HTMLNames::hrefAttr));
+    return *m_storedVisitedLinkHash;
 }
 
 // Functions shared with the other anchor elements (i.e., SVG).

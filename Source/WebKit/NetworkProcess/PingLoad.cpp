@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,10 +26,12 @@
 #include "config.h"
 #include "PingLoad.h"
 
+#include "AuthenticationChallengeDisposition.h"
 #include "AuthenticationManager.h"
 #include "Logging.h"
+#include "NetworkConnectionToWebProcess.h"
 #include "NetworkLoadChecker.h"
-#include "SessionTracker.h"
+#include "NetworkProcess.h"
 #include "WebErrors.h"
 
 #define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(m_parameters.sessionID.isAlwaysOnLoggingAllowed(), Network, "%p - PingLoad::" fmt, this, ##__VA_ARGS__)
@@ -38,11 +40,31 @@ namespace WebKit {
 
 using namespace WebCore;
 
-PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, WTF::CompletionHandler<void(const ResourceError&, const ResourceResponse&)>&& completionHandler)
+PingLoad::PingLoad(NetworkProcess& networkProcess, NetworkResourceLoadParameters&& parameters, CompletionHandler<void(const ResourceError&, const ResourceResponse&)>&& completionHandler)
     : m_parameters(WTFMove(parameters))
     , m_completionHandler(WTFMove(completionHandler))
     , m_timeoutTimer(*this, &PingLoad::timeoutTimerFired)
-    , m_networkLoadChecker(makeUniqueRef<NetworkLoadChecker>(FetchOptions { m_parameters.options}, m_parameters.sessionID, m_parameters.webPageID, m_parameters.webFrameID, WTFMove(m_parameters.originalRequestHeaders), URL { m_parameters.request.url() }, m_parameters.sourceOrigin.copyRef(), m_parameters.preflightPolicy, m_parameters.request.httpReferrer()))
+    , m_networkLoadChecker(makeUniqueRef<NetworkLoadChecker>(networkProcess, FetchOptions { m_parameters.options}, m_parameters.sessionID, m_parameters.webPageID, m_parameters.webFrameID, WTFMove(m_parameters.originalRequestHeaders), URL { m_parameters.request.url() }, m_parameters.sourceOrigin.copyRef(), m_parameters.preflightPolicy, m_parameters.request.httpReferrer()))
+{
+    initialize(networkProcess);
+}
+
+PingLoad::PingLoad(NetworkConnectionToWebProcess& connection, NetworkProcess& networkProcess, NetworkResourceLoadParameters&& parameters, CompletionHandler<void(const ResourceError&, const ResourceResponse&)>&& completionHandler)
+    : m_parameters(WTFMove(parameters))
+    , m_completionHandler(WTFMove(completionHandler))
+    , m_timeoutTimer(*this, &PingLoad::timeoutTimerFired)
+    , m_networkLoadChecker(makeUniqueRef<NetworkLoadChecker>(networkProcess, FetchOptions { m_parameters.options}, m_parameters.sessionID, m_parameters.webPageID, m_parameters.webFrameID, WTFMove(m_parameters.originalRequestHeaders), URL { m_parameters.request.url() }, m_parameters.sourceOrigin.copyRef(), m_parameters.preflightPolicy, m_parameters.request.httpReferrer()))
+    , m_blobFiles(connection.resolveBlobReferences(m_parameters))
+{
+    for (auto& file : m_blobFiles) {
+        if (file)
+            file->prepareForFileAccess();
+    }
+
+    initialize(networkProcess);
+}
+
+void PingLoad::initialize(NetworkProcess& networkProcess)
 {
     m_networkLoadChecker->enableContentExtensionsCheck();
     if (m_parameters.cspResponseHeaders)
@@ -55,12 +77,21 @@ PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, WTF::CompletionHa
     // Set a very generous timeout, just in case.
     m_timeoutTimer.startOneShot(60000_s);
 
-    m_networkLoadChecker->check(ResourceRequest { m_parameters.request }, nullptr, [this] (auto&& result) {
-        if (!result.has_value()) {
-            this->didFinish(result.error());
+    m_networkLoadChecker->check(ResourceRequest { m_parameters.request }, nullptr, [this, weakThis = makeWeakPtr(*this), networkProcess = makeRef(networkProcess)] (auto&& result) {
+        if (!weakThis)
             return;
-        }
-        this->loadRequest(WTFMove(result.value()));
+        WTF::switchOn(result,
+            [this] (ResourceError& error) {
+                this->didFinish(error);
+            },
+            [] (NetworkLoadChecker::RedirectionTriplet& triplet) {
+                // We should never send a synthetic redirect for PingLoads.
+                ASSERT_NOT_REACHED();
+            },
+            [&] (ResourceRequest& request) {
+                this->loadRequest(networkProcess, WTFMove(request));
+            }
+        );
     });
 }
 
@@ -71,6 +102,10 @@ PingLoad::~PingLoad()
         m_task->clearClient();
         m_task->cancel();
     }
+    for (auto& file : m_blobFiles) {
+        if (file)
+            file->revokeFileAccess();
+    }
 }
 
 void PingLoad::didFinish(const ResourceError& error, const ResourceResponse& response)
@@ -79,10 +114,10 @@ void PingLoad::didFinish(const ResourceError& error, const ResourceResponse& res
     delete this;
 }
 
-void PingLoad::loadRequest(ResourceRequest&& request)
+void PingLoad::loadRequest(NetworkProcess& networkProcess, ResourceRequest&& request)
 {
     RELEASE_LOG_IF_ALLOWED("startNetworkLoad");
-    if (auto* networkSession = SessionTracker::networkSession(m_parameters.sessionID)) {
+    if (auto* networkSession = networkProcess.networkSession(m_parameters.sessionID)) {
         auto loadParameters = m_parameters;
         loadParameters.request = WTFMove(request);
         m_task = NetworkDataTask::create(*networkSession, *this, WTFMove(loadParameters));
@@ -100,8 +135,6 @@ void PingLoad::willPerformHTTPRedirection(ResourceResponse&& redirectResponse, R
             return;
         }
         auto request = WTFMove(result->redirectRequest);
-        m_networkLoadChecker->prepareRedirectedRequest(request);
-
         if (!request.url().protocolIsInHTTPFamily()) {
             this->didFinish(ResourceError { String { }, 0, request.url(), "Redirection to URL with a scheme that is not HTTP(S)"_s, ResourceError::Type::AccessControl });
             return;
@@ -111,9 +144,13 @@ void PingLoad::willPerformHTTPRedirection(ResourceResponse&& redirectResponse, R
     });
 }
 
-void PingLoad::didReceiveChallenge(AuthenticationChallenge&&, ChallengeCompletionHandler&& completionHandler)
+void PingLoad::didReceiveChallenge(AuthenticationChallenge&& challenge, ChallengeCompletionHandler&& completionHandler)
 {
     RELEASE_LOG_IF_ALLOWED("didReceiveChallenge");
+    if (challenge.protectionSpace().authenticationScheme() == ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested) {
+        completionHandler(AuthenticationChallengeDisposition::PerformDefaultHandling, { });
+        return;
+    }
     auto weakThis = makeWeakPtr(*this);
     completionHandler(AuthenticationChallengeDisposition::Cancel, { });
     if (!weakThis)
@@ -121,9 +158,9 @@ void PingLoad::didReceiveChallenge(AuthenticationChallenge&&, ChallengeCompletio
     didFinish(ResourceError { String(), 0, currentURL(), "Failed HTTP authentication"_s, ResourceError::Type::AccessControl });
 }
 
-void PingLoad::didReceiveResponseNetworkSession(ResourceResponse&& response, ResponseCompletionHandler&& completionHandler)
+void PingLoad::didReceiveResponse(ResourceResponse&& response, ResponseCompletionHandler&& completionHandler)
 {
-    RELEASE_LOG_IF_ALLOWED("didReceiveResponseNetworkSession - httpStatusCode: %d", response.httpStatusCode());
+    RELEASE_LOG_IF_ALLOWED("didReceiveResponse - httpStatusCode: %d", response.httpStatusCode());
     auto weakThis = makeWeakPtr(*this);
     completionHandler(PolicyAction::Ignore);
     if (!weakThis)
@@ -161,6 +198,12 @@ void PingLoad::cannotShowURL()
 {
     RELEASE_LOG_IF_ALLOWED("cannotShowURL");
     didFinish(cannotShowURLError(ResourceRequest { currentURL() }));
+}
+
+void PingLoad::wasBlockedByRestrictions()
+{
+    RELEASE_LOG_IF_ALLOWED("wasBlockedByRestrictions");
+    didFinish(wasBlockedByRestrictionsError(ResourceRequest { currentURL() }));
 }
 
 void PingLoad::timeoutTimerFired()

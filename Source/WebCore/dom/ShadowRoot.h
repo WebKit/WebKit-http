@@ -35,6 +35,7 @@ namespace WebCore {
 
 class HTMLSlotElement;
 class SlotAssignment;
+class StyleSheetList;
 
 class ShadowRoot final : public DocumentFragment, public TreeScope {
     WTF_MAKE_ISO_ALLOCATED(ShadowRoot);
@@ -54,6 +55,7 @@ public:
     using TreeScope::rootNode;
 
     Style::Scope& styleScope();
+    StyleSheetList& styleSheets();
 
     bool resetStyleInheritance() const { return m_resetStyleInheritance; }
     void setResetStyleInheritance(bool);
@@ -73,9 +75,9 @@ public:
 
     HTMLSlotElement* findAssignedSlot(const Node&);
 
-    void renameSlotElement(HTMLSlotElement&, const AtomicString& oldName, const AtomicString& newName);
-    void addSlotElementByName(const AtomicString&, HTMLSlotElement&);
-    void removeSlotElementByName(const AtomicString&, HTMLSlotElement&, ContainerNode& oldParentOfRemovedTree);
+    void renameSlotElement(HTMLSlotElement&, const AtomString& oldName, const AtomString& newName);
+    void addSlotElementByName(const AtomString&, HTMLSlotElement&);
+    void removeSlotElementByName(const AtomString&, HTMLSlotElement&, ContainerNode& oldParentOfRemovedTree);
     void slotFallbackDidChange(HTMLSlotElement&);
     void resolveSlotsBeforeNodeInsertionOrRemoval();
     void willRemoveAllChildren(ContainerNode&);
@@ -83,7 +85,7 @@ public:
     void didRemoveAllChildrenOfShadowHost();
     void didChangeDefaultSlot();
     void hostChildElementDidChange(const Element&);
-    void hostChildElementDidChangeSlotAttribute(Element&, const AtomicString& oldValue, const AtomicString& newValue);
+    void hostChildElementDidChangeSlotAttribute(Element&, const AtomString& oldValue, const AtomString& newValue);
 
     const Vector<Node*>* assignedNodesForSlot(const HTMLSlotElement&);
 
@@ -95,9 +97,6 @@ protected:
 
     ShadowRoot(Document&, std::unique_ptr<SlotAssignment>&&);
 
-    // FIXME: This shouldn't happen. https://bugs.webkit.org/show_bug.cgi?id=88834
-    bool isOrphan() const { return !m_host; }
-
 private:
     bool childTypeAllowed(NodeType) const override;
 
@@ -106,11 +105,14 @@ private:
     Node::InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) override;
     void removedFromAncestor(RemovalType, ContainerNode& insertionPoint) override;
 
+    void childrenChanged(const ChildChange&) override;
+
     bool m_resetStyleInheritance { false };
     bool m_hasBegunDeletingDetachedChildren { false };
     ShadowRootMode m_type { ShadowRootMode::UserAgent };
 
     Element* m_host { nullptr };
+    RefPtr<StyleSheetList> m_styleSheetList;
 
     std::unique_ptr<Style::Scope> m_styleScope;
     std::unique_ptr<SlotAssignment> m_slotAssignment;

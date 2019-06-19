@@ -95,7 +95,7 @@ void AccessibilitySlider::addChildren()
         m_children.append(&thumb);
 }
 
-const AtomicString& AccessibilitySlider::getAttribute(const QualifiedName& attribute) const
+const AtomString& AccessibilitySlider::getAttribute(const QualifiedName& attribute) const
 {
     return inputElement()->getAttribute(attribute);
 }
@@ -128,9 +128,6 @@ float AccessibilitySlider::minValueForRange() const
 
 void AccessibilitySlider::setValue(const String& value)
 {
-    if (dispatchAccessibleSetValueEvent(value))
-        return;
-
     HTMLInputElement* input = inputElement();
     
     if (input->value() == value)

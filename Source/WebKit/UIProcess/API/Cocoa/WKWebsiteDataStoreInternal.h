@@ -25,8 +25,6 @@
 
 #import "WKWebsiteDataStorePrivate.h"
 
-#if WK_API_ENABLED
-
 #import "APIWebsiteDataStore.h"
 #import "WKObject.h"
 
@@ -41,7 +39,6 @@ template<> struct WrapperTraits<API::WebsiteDataStore> {
 @interface WKWebsiteDataStore () <WKObject> {
 @package
     API::ObjectStorage<API::WebsiteDataStore> _websiteDataStore;
+    RetainPtr<id <_WKWebsiteDataStoreDelegate> > _delegate;
 }
 @end
-
-#endif // WK_API_ENABLED

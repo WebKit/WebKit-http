@@ -68,8 +68,6 @@ public:
 
     ScrollbarControlSize scrollbarControlSizeForPart(ControlPart) final { return SmallScrollbar; }
 
-    void platformColorsDidChange() final;
-
     int minimumMenuListSize(const RenderStyle&) const final;
 
     void adjustSliderThumbSize(RenderStyle&, const Element*) const final;
@@ -164,8 +162,6 @@ private:
     bool supportsClosedCaptioning() const final { return true; }
 #endif
 
-    bool shouldHaveCapsLockIndicator(const HTMLInputElement&) const final;
-
     bool paintSnapshottedPluginOverlay(const RenderObject&, const PaintInfo&, const IntRect&) final;
 
 #if ENABLE(ATTACHMENT_ELEMENT)
@@ -174,16 +170,10 @@ private:
     bool paintAttachment(const RenderObject&, const PaintInfo&, const IntRect&) final;
 #endif
 
-    bool usingDarkAppearance(const RenderObject&) const final;
-
 private:
     String fileListNameForWidth(const FileList*, const FontCascade&, int width, bool multipleFilesAllowed) const final;
 
     Color systemColor(CSSValueID, OptionSet<StyleColor::Options>) const final;
-
-    CGColorRef colorForMarkerLineStyle(DocumentMarkerLineStyle, bool useDarkMode) override;
-
-    ColorCache& colorCache(OptionSet<StyleColor::Options>) const final;
 
     void purgeCaches() final;
 
@@ -261,8 +251,6 @@ private:
 
     bool m_isSliderThumbHorizontalPressed { false };
     bool m_isSliderThumbVerticalPressed { false };
-
-    mutable ColorCache m_darkColorCache;
 
     RetainPtr<WebCoreRenderThemeNotificationObserver> m_notificationObserver;
 

@@ -27,8 +27,8 @@
 #include "RenderMultiColumnFlow.h"
 
 #include "HitTestResult.h"
-#include "LayoutState.h"
 #include "RenderIterator.h"
+#include "RenderLayoutState.h"
 #include "RenderMultiColumnSet.h"
 #include "RenderMultiColumnSpannerPlaceholder.h"
 #include "RenderTreeBuilder.h"
@@ -93,23 +93,23 @@ RenderBox* RenderMultiColumnFlow::firstColumnSetOrSpanner() const
 
 RenderBox* RenderMultiColumnFlow::nextColumnSetOrSpannerSiblingOf(const RenderBox* child)
 {
-    if (!child)
-        return nullptr;
-    if (RenderObject* sibling = child->nextSibling())
-        return downcast<RenderBox>(sibling);
-    return nullptr;
+    return child ? child->nextSiblingBox() : nullptr;
 }
 
 RenderBox* RenderMultiColumnFlow::previousColumnSetOrSpannerSiblingOf(const RenderBox* child)
 {
     if (!child)
         return nullptr;
-    if (RenderObject* sibling = child->previousSibling()) {
-        if (is<RenderFragmentedFlow>(*sibling))
-            return nullptr;
-        return downcast<RenderBox>(sibling);
+    if (auto* sibling = child->previousSiblingBox()) {
+        if (!is<RenderFragmentedFlow>(*sibling))
+            return sibling;
     }
     return nullptr;
+}
+
+RenderMultiColumnSpannerPlaceholder* RenderMultiColumnFlow::findColumnSpannerPlaceholder(RenderBox* spanner) const
+{
+    return m_spannerMap->get(spanner).get();
 }
 
 void RenderMultiColumnFlow::layout()
@@ -260,7 +260,7 @@ bool RenderMultiColumnFlow::addForcedFragmentBreak(const RenderBlock* block, Lay
     if (auto* multicolSet = downcast<RenderMultiColumnSet>(fragmentAtBlockOffset(block, offset))) {
         multicolSet->addForcedBreak(offset);
         if (offsetBreakAdjustment)
-            *offsetBreakAdjustment = pageLogicalHeightForOffset(offset) ? pageRemainingLogicalHeightForOffset(offset, IncludePageBoundary) : LayoutUnit::fromPixel(0);
+            *offsetBreakAdjustment = pageLogicalHeightForOffset(offset) ? pageRemainingLogicalHeightForOffset(offset, IncludePageBoundary) : 0_lu;
         return true;
     }
     return false;
@@ -365,9 +365,9 @@ LayoutSize RenderMultiColumnFlow::physicalTranslationOffsetFromFlowToFragment(co
             columnRect.setWidth(portionRect.width());
         columnSet->flipForWritingMode(columnRect);
         if (isHorizontalWritingMode())
-            translationOffset.move(0, columnRect.y() - portionRect.y() - physicalDeltaFromPortionBottom);
+            translationOffset.move(0_lu, columnRect.y() - portionRect.y() - physicalDeltaFromPortionBottom);
         else
-            translationOffset.move(columnRect.x() - portionRect.x() - physicalDeltaFromPortionBottom, 0);
+            translationOffset.move(columnRect.x() - portionRect.x() - physicalDeltaFromPortionBottom, 0_lu);
     }
     
     return LayoutSize(translationOffset.x(), translationOffset.y());

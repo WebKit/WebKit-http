@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if WK_HAVE_C_SPI && WK_API_ENABLED
+#if WK_HAVE_C_SPI
 
 #import "PlatformUtilities.h"
 #import "Test.h"
@@ -42,7 +42,7 @@ public:
     void SetUp() override
     {
         configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
-        WKRetainPtr<WKContextRef> context(AdoptWK, TestWebKitAPI::Util::createContextForInjectedBundleTest("InternalsInjectedBundleTest"));
+        WKRetainPtr<WKContextRef> context = adoptWK(TestWebKitAPI::Util::createContextForInjectedBundleTest("InternalsInjectedBundleTest"));
         configuration.get().processPool = (WKProcessPool *)context.get();
         configuration.get().preferences._lowPowerVideoAudioBufferSizeEnabled = YES;
     }
@@ -109,4 +109,4 @@ TEST_F(PreferredAudioBufferSize, VideoWithAudioAndWebAudio)
     runPlayingTestWithPageNamed(@"video-with-audio-and-web-audio", 128);
 }
 
-#endif // WK_HAVE_C_SPI && WK_API_ENABLED
+#endif // WK_HAVE_C_SPI

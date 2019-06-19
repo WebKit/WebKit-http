@@ -69,18 +69,18 @@ Structure* SparseArrayValueMap::createStructure(VM& vm, JSGlobalObject* globalOb
 SparseArrayValueMap::AddResult SparseArrayValueMap::add(JSObject* array, unsigned i)
 {
     AddResult result;
-    size_t capacity;
+    size_t increasedCapacity = 0;
     {
         auto locker = holdLock(cellLock());
         result = m_map.add(i, SparseArrayEntry());
-        capacity = m_map.capacity();
+        size_t capacity = m_map.capacity();
+        if (capacity > m_reportedCapacity) {
+            increasedCapacity = capacity - m_reportedCapacity;
+            m_reportedCapacity = capacity;
+        }
     }
-    if (capacity > m_reportedCapacity) {
-        // FIXME: Adopt reportExtraMemoryVisited, and switch to reportExtraMemoryAllocated.
-        // https://bugs.webkit.org/show_bug.cgi?id=142595
-        Heap::heap(array)->deprecatedReportExtraMemory((capacity - m_reportedCapacity) * (sizeof(unsigned) + sizeof(WriteBarrier<Unknown>)));
-        m_reportedCapacity = capacity;
-    }
+    if (increasedCapacity)
+        Heap::heap(array)->reportExtraMemoryAllocated(increasedCapacity * sizeof(Map::KeyValuePairType));
     return result;
 }
 
@@ -113,8 +113,7 @@ bool SparseArrayValueMap::putEntry(ExecState* exec, JSObject* array, unsigned i,
         return typeError(exec, scope, shouldThrow, ReadonlyPropertyWriteError);
     }
     
-    scope.release();
-    return entry.put(exec, array, this, value, shouldThrow);
+    RELEASE_AND_RETURN(scope, entry.put(exec, array, this, value, shouldThrow));
 }
 
 bool SparseArrayValueMap::putDirect(ExecState* exec, JSObject* array, unsigned i, JSValue value, unsigned attributes, PutDirectIndexMode mode)
@@ -204,8 +203,7 @@ bool SparseArrayEntry::put(ExecState* exec, JSValue thisValue, SparseArrayValueM
         return true;
     }
 
-    scope.release();
-    return callSetter(exec, thisValue, Base::get(), value, shouldThrow ? StrictMode : NotStrictMode);
+    RELEASE_AND_RETURN(scope, callSetter(exec, thisValue, Base::get(), value, shouldThrow ? StrictMode : NotStrictMode));
 }
 
 JSValue SparseArrayEntry::getNonSparseMode() const
@@ -214,15 +212,16 @@ JSValue SparseArrayEntry::getNonSparseMode() const
     return Base::get();
 }
 
-void SparseArrayValueMap::visitChildren(JSCell* thisObject, SlotVisitor& visitor)
+void SparseArrayValueMap::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
-    Base::visitChildren(thisObject, visitor);
-
-    auto locker = holdLock(thisObject->cellLock());
-    SparseArrayValueMap* thisMap = jsCast<SparseArrayValueMap*>(thisObject);
-    iterator end = thisMap->m_map.end();
-    for (iterator it = thisMap->m_map.begin(); it != end; ++it)
-        visitor.append(it->value.asValue());
+    Base::visitChildren(cell, visitor);
+    SparseArrayValueMap* thisObject = jsCast<SparseArrayValueMap*>(cell);
+    {
+        auto locker = holdLock(thisObject->cellLock());
+        for (auto& entry : thisObject->m_map)
+            visitor.append(entry.value.asValue());
+    }
+    visitor.reportExtraMemoryVisited(thisObject->m_reportedCapacity * sizeof(Map::KeyValuePairType));
 }
 
 } // namespace JSC

@@ -63,9 +63,10 @@ private:
 
     WebCore::GraphicsLayerFactory* graphicsLayerFactory() override;
     void setRootCompositingLayer(WebCore::GraphicsLayer*) override;
+    void scheduleInitialDeferredPaint() override;
     void scheduleCompositingLayerFlush() override;
     void scheduleCompositingLayerFlushImmediately() override;
-    void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
+    void attachViewOverlayGraphicsLayer(WebCore::GraphicsLayer*) override;
 
     void addTransactionCallbackID(CallbackID) override;
 
@@ -79,24 +80,26 @@ private:
     bool supportsAsyncScrolling() override { return true; }
 
     void setLayerTreeStateIsFrozen(bool) override;
+    bool layerTreeStateIsFrozen() const override { return m_isFlushingSuspended; }
+    bool layerFlushThrottlingIsActive() const override { return m_isThrottlingLayerFlushes && m_layerFlushTimer.isActive(); }
 
     void forceRepaint() override;
     bool forceRepaintAsync(CallbackID) override { return false; }
 
-    void setViewExposedRect(std::optional<WebCore::FloatRect>) override;
-    std::optional<WebCore::FloatRect> viewExposedRect() const override { return m_scrolledViewExposedRect; }
+    void setViewExposedRect(Optional<WebCore::FloatRect>) override;
+    Optional<WebCore::FloatRect> viewExposedRect() const override { return m_scrolledViewExposedRect; }
 
     void acceleratedAnimationDidStart(uint64_t layerID, const String& key, MonotonicTime startTime) override;
     void acceleratedAnimationDidEnd(uint64_t layerID, const String& key) override;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WebCore::FloatRect exposedContentRect() const override;
     void setExposedContentRect(const WebCore::FloatRect&) override;
 #endif
 
     void didUpdate() override;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void setDeviceScaleFactor(float) override;
 #endif
 
@@ -106,11 +109,12 @@ private:
 
     bool adjustLayerFlushThrottling(WebCore::LayerFlushThrottleState::Flags) override;
 
-    bool dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones) override;
+    bool addMilestonesToDispatch(OptionSet<WebCore::LayoutMilestone>) override;
 
     void updateScrolledExposedRect();
     void updateRootLayers();
 
+    void addCommitHandlers();
     void flushLayers();
 
     WebCore::TiledBacking* mainFrameTiledBacking() const;
@@ -118,6 +122,8 @@ private:
     uint64_t takeNextTransactionID() { return ++m_currentTransactionID; }
 
     bool markLayersVolatileImmediatelyIfPossible() override;
+
+    void adoptLayersFromDrawingArea(DrawingArea&) override;
 
     class BackingStoreFlusher : public ThreadSafeRefCounted<BackingStoreFlusher> {
     public:
@@ -137,16 +143,17 @@ private:
     };
 
     std::unique_ptr<RemoteLayerTreeContext> m_remoteLayerTreeContext;
-    std::unique_ptr<WebCore::GraphicsLayer> m_rootLayer;
+    Ref<WebCore::GraphicsLayer> m_rootLayer;
 
     WebCore::IntSize m_viewSize;
 
-    std::optional<WebCore::FloatRect> m_viewExposedRect;
-    std::optional<WebCore::FloatRect> m_scrolledViewExposedRect;
+    Optional<WebCore::FloatRect> m_viewExposedRect;
+    Optional<WebCore::FloatRect> m_scrolledViewExposedRect;
 
     WebCore::Timer m_layerFlushTimer;
     bool m_isFlushingSuspended { false };
     bool m_hasDeferredFlush { false };
+    bool m_flushingInitialDeferredPaint { false };
     bool m_isThrottlingLayerFlushes { false };
     bool m_isLayerFlushThrottlingTemporarilyDisabledForInteraction { false };
     bool m_isInitialThrottledLayerFlush { false };
@@ -154,6 +161,7 @@ private:
     bool m_waitingForBackingStoreSwap { false };
     bool m_hadFlushDeferredWhileWaitingForBackingStoreSwap { false };
     bool m_nextFlushIsForImmediatePaint { false };
+    bool m_inFlushLayers { false };
 
     dispatch_queue_t m_commitQueue;
     RefPtr<BackingStoreFlusher> m_pendingBackingStoreFlusher;
@@ -165,11 +173,17 @@ private:
     Vector<RemoteLayerTreeTransaction::TransactionCallbackID> m_pendingCallbackIDs;
     ActivityStateChangeID m_activityStateChangeID { ActivityStateChangeAsynchronous };
 
-    WebCore::LayoutMilestones m_pendingNewlyReachedLayoutMilestones { 0 };
+    OptionSet<WebCore::LayoutMilestone> m_pendingNewlyReachedPaintingMilestones;
 
-    WebCore::GraphicsLayer* m_contentLayer { nullptr };
-    WebCore::GraphicsLayer* m_viewOverlayRootLayer { nullptr };
+    RefPtr<WebCore::GraphicsLayer> m_contentLayer;
+    RefPtr<WebCore::GraphicsLayer> m_viewOverlayRootLayer;
 };
+
+inline bool RemoteLayerTreeDrawingArea::addMilestonesToDispatch(OptionSet<WebCore::LayoutMilestone> paintMilestones)
+{
+    m_pendingNewlyReachedPaintingMilestones.add(paintMilestones);
+    return true;
+}
 
 } // namespace WebKit
 

@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 #import "WebContextMenuClient.h"
 
@@ -54,9 +54,9 @@
 #import <WebCore/RenderObject.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
-#import <WebCore/URL.h>
 #import <WebKitLegacy/DOMPrivate.h>
 #import <pal/spi/mac/NSSharingServicePickerSPI.h>
+#import <wtf/URL.h>
 
 using namespace WebCore;
 
@@ -207,8 +207,8 @@ RetainPtr<NSImage> WebContextMenuClient::imageForCurrentSharingServicePickerItem
         return nil;
 
     VisibleSelection oldSelection = frameView->frame().selection().selection();
-    RefPtr<Range> range = Range::create(node->document(), Position(node, Position::PositionIsBeforeAnchor), Position(node, Position::PositionIsAfterAnchor));
-    frameView->frame().selection().setSelection(VisibleSelection(*range), FrameSelection::DoNotSetFocus);
+    auto range = Range::create(node->document(), Position(node, Position::PositionIsBeforeAnchor), Position(node, Position::PositionIsAfterAnchor));
+    frameView->frame().selection().setSelection(VisibleSelection(range.get()), FrameSelection::DoNotSetFocus);
 
     OptionSet<PaintBehavior> oldPaintBehavior = frameView->paintBehavior();
     frameView->setPaintBehavior(PaintBehavior::SelectionOnly);
@@ -278,4 +278,4 @@ void WebContextMenuClient::showContextMenu()
     }
 }
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)

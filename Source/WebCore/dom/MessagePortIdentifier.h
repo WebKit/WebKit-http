@@ -25,9 +25,9 @@
 
 #pragma once
 
-#include "Process.h"
+#include "ProcessIdentifier.h"
 #include <wtf/Hasher.h>
-#include <wtf/text/WTFString.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
 
@@ -39,7 +39,7 @@ struct MessagePortIdentifier {
     unsigned hash() const;
 
     template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static std::optional<MessagePortIdentifier> decode(Decoder&);
+    template<class Decoder> static Optional<MessagePortIdentifier> decode(Decoder&);
 
 #if !LOG_DISABLED
     String logString() const;
@@ -58,17 +58,17 @@ void MessagePortIdentifier::encode(Encoder& encoder) const
 }
 
 template<class Decoder>
-std::optional<MessagePortIdentifier> MessagePortIdentifier::decode(Decoder& decoder)
+Optional<MessagePortIdentifier> MessagePortIdentifier::decode(Decoder& decoder)
 {
-    std::optional<ProcessIdentifier> processIdentifier;
+    Optional<ProcessIdentifier> processIdentifier;
     decoder >> processIdentifier;
     if (!processIdentifier)
-        return std::nullopt;
+        return WTF::nullopt;
 
-    std::optional<ObjectIdentifier<PortIdentifierType>> portIdentifier;
+    Optional<ObjectIdentifier<PortIdentifierType>> portIdentifier;
     decoder >> portIdentifier;
     if (!portIdentifier)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return { { WTFMove(*processIdentifier), WTFMove(*portIdentifier) } };
 }
@@ -79,10 +79,12 @@ inline unsigned MessagePortIdentifier::hash() const
 }
 
 #if !LOG_DISABLED
+
 inline String MessagePortIdentifier::logString() const
 {
-    return makeString(String::number(processIdentifier.toUInt64()), "-", String::number(portIdentifier.toUInt64()));
+    return makeString(processIdentifier.toUInt64(), '-', portIdentifier.toUInt64());
 }
+
 #endif
 
 } // namespace WebCore

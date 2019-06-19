@@ -150,10 +150,22 @@ static float cpuUsage()
     return clampTo<float>(usage, 0, 100);
 }
 
-void ResourceUsageThread::platformThreadBody(JSC::VM* vm, ResourceUsageData& data)
+void ResourceUsageThread::platformSaveStateBeforeStarting()
+{
+}
+
+void ResourceUsageThread::platformCollectCPUData(JSC::VM*, ResourceUsageData& data)
 {
     data.cpu = cpuUsage();
 
+    // FIXME: Exclude the ResourceUsage thread.
+    // FIXME: Exclude the SamplingProfiler thread.
+    // FIXME: Classify usage per thread.
+    data.cpuExcludingDebuggerThreads = data.cpu;
+}
+
+void ResourceUsageThread::platformCollectMemoryData(JSC::VM* vm, ResourceUsageData& data)
+{
     ProcessMemoryStatus memoryStatus;
     currentProcessMemoryStatus(memoryStatus);
     data.totalDirtySize = memoryStatus.resident - memoryStatus.shared;
@@ -169,9 +181,8 @@ void ResourceUsageThread::platformThreadBody(JSC::VM* vm, ResourceUsageData& dat
 
     data.totalExternalSize = currentGCOwnedExternal;
 
-    auto now = MonotonicTime::now();
-    data.timeOfNextEdenCollection = now + vm->heap.edenActivityCallback()->timeUntilFire().value_or(Seconds(std::numeric_limits<double>::infinity()));
-    data.timeOfNextFullCollection = now + vm->heap.fullActivityCallback()->timeUntilFire().value_or(Seconds(std::numeric_limits<double>::infinity()));
+    data.timeOfNextEdenCollection = data.timestamp + vm->heap.edenActivityCallback()->timeUntilFire().valueOr(Seconds(std::numeric_limits<double>::infinity()));
+    data.timeOfNextFullCollection = data.timestamp + vm->heap.fullActivityCallback()->timeUntilFire().valueOr(Seconds(std::numeric_limits<double>::infinity()));
 }
 
 } // namespace WebCore

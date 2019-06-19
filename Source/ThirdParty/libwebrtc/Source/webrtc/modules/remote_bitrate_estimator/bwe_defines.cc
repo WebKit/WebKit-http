@@ -26,12 +26,16 @@ int GetMinBitrateBps() {
   return kMinBitrateBps;
 }
 
+DataRate GetMinBitrate() {
+  return DataRate::bps(GetMinBitrateBps());
+}
+
 }  // namespace congestion_controller
 
 RateControlInput::RateControlInput(
     BandwidthUsage bw_state,
-    const absl::optional<uint32_t>& estimated_throughput_bps)
-    : bw_state(bw_state), estimated_throughput_bps(estimated_throughput_bps) {}
+    const absl::optional<DataRate>& estimated_throughput)
+    : bw_state(bw_state), estimated_throughput(estimated_throughput) {}
 
 RateControlInput::~RateControlInput() = default;
 

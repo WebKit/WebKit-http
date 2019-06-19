@@ -74,7 +74,7 @@ constexpr int kDefaultBytesPerFrame =
 constexpr int kDefaultQp = 2;
 }  // namespace
 
-using BufferFlags = TemporalLayers::BufferFlags;
+using BufferFlags = Vp8TemporalLayers::BufferFlags;
 
 TEST(TemporalLayersTest, 2Layers) {
   constexpr int kNumLayers = 2;
@@ -114,10 +114,10 @@ TEST(TemporalLayersTest, 2Layers) {
 
   uint32_t timestamp = 0;
   for (int i = 0; i < 16; ++i) {
-    TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
+    Vp8TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
     EXPECT_EQ(expected_flags[i], LibvpxVp8Encoder::EncodeFlags(tl_config)) << i;
-    tl.PopulateCodecSpecific(i == 0, tl_config, &vp8_info, timestamp);
-    tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+    tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, i == 0, kDefaultQp,
+                    &vp8_info);
     EXPECT_TRUE(checker.CheckTemporalConfig(i == 0, tl_config));
     EXPECT_EQ(expected_temporal_idx[i], vp8_info.temporalIdx);
     EXPECT_EQ(expected_temporal_idx[i], tl_config.packetizer_temporal_idx);
@@ -166,10 +166,10 @@ TEST(TemporalLayersTest, 3Layers) {
 
   unsigned int timestamp = 0;
   for (int i = 0; i < 16; ++i) {
-    TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
+    Vp8TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
     EXPECT_EQ(expected_flags[i], LibvpxVp8Encoder::EncodeFlags(tl_config)) << i;
-    tl.PopulateCodecSpecific(i == 0, tl_config, &vp8_info, timestamp);
-    tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+    tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, i == 0, kDefaultQp,
+                    &vp8_info);
     EXPECT_TRUE(checker.CheckTemporalConfig(i == 0, tl_config));
     EXPECT_EQ(expected_temporal_idx[i], vp8_info.temporalIdx);
     EXPECT_EQ(expected_temporal_idx[i], tl_config.packetizer_temporal_idx);
@@ -207,10 +207,10 @@ TEST(TemporalLayersTest, Alternative3Layers) {
 
   unsigned int timestamp = 0;
   for (int i = 0; i < 8; ++i) {
-    TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
+    Vp8TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
     EXPECT_EQ(expected_flags[i], LibvpxVp8Encoder::EncodeFlags(tl_config)) << i;
-    tl.PopulateCodecSpecific(i == 0, tl_config, &vp8_info, timestamp);
-    tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+    tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, i == 0, kDefaultQp,
+                    &vp8_info);
     EXPECT_TRUE(checker.CheckTemporalConfig(i == 0, tl_config));
     EXPECT_EQ(expected_temporal_idx[i], vp8_info.temporalIdx);
     EXPECT_EQ(expected_temporal_idx[i], tl_config.packetizer_temporal_idx);
@@ -238,29 +238,29 @@ TEST(TemporalLayersTest, SearchOrder) {
 
   // Start with a key-frame. tl_config flags can be ignored.
   uint32_t timestamp = 0;
-  TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
-  tl.PopulateCodecSpecific(true, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  Vp8TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, true, kDefaultQp,
+                  &vp8_info);
 
   // TL2 frame. First one only references TL0. Updates altref.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
   EXPECT_EQ(tl_config.first_reference, Vp8BufferReference::kLast);
   EXPECT_EQ(tl_config.second_reference, Vp8BufferReference::kNone);
 
   // TL1 frame. Can only reference TL0. Updated golden.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
   EXPECT_EQ(tl_config.first_reference, Vp8BufferReference::kLast);
   EXPECT_EQ(tl_config.second_reference, Vp8BufferReference::kNone);
 
   // TL2 frame. Can reference all three buffers. Golden was the last to be
   // updated, the next to last was altref.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
   EXPECT_EQ(tl_config.first_reference, Vp8BufferReference::kGolden);
   EXPECT_EQ(tl_config.second_reference, Vp8BufferReference::kAltref);
 }
@@ -282,26 +282,26 @@ TEST(TemporalLayersTest, SearchOrderWithDrop) {
 
   // Start with a key-frame. tl_config flags can be ignored.
   uint32_t timestamp = 0;
-  TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
-  tl.PopulateCodecSpecific(true, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  Vp8TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, true, kDefaultQp,
+                  &vp8_info);
 
   // TL2 frame. First one only references TL0. Updates altref.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
   EXPECT_EQ(tl_config.first_reference, Vp8BufferReference::kLast);
   EXPECT_EQ(tl_config.second_reference, Vp8BufferReference::kNone);
 
   // Dropped TL1 frame. Can only reference TL0. Should have updated golden.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.FrameEncoded(timestamp, 0, 0);
+  tl.OnEncodeDone(timestamp, 0, false, 0, nullptr);
 
   // TL2 frame. Can normally reference all three buffers, but golden has not
   // been populated this cycle. Altref was last to be updated, before that last.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
   EXPECT_EQ(tl_config.first_reference, Vp8BufferReference::kAltref);
   EXPECT_EQ(tl_config.second_reference, Vp8BufferReference::kLast);
 }
@@ -343,10 +343,10 @@ TEST(TemporalLayersTest, 4Layers) {
 
   uint32_t timestamp = 0;
   for (int i = 0; i < 16; ++i) {
-    TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
+    Vp8TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
     EXPECT_EQ(expected_flags[i], LibvpxVp8Encoder::EncodeFlags(tl_config)) << i;
-    tl.PopulateCodecSpecific(i == 0, tl_config, &vp8_info, timestamp);
-    tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+    tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, i == 0, kDefaultQp,
+                    &vp8_info);
     EXPECT_TRUE(checker.CheckTemporalConfig(i == 0, tl_config));
     EXPECT_EQ(expected_temporal_idx[i], vp8_info.temporalIdx);
     EXPECT_EQ(expected_temporal_idx[i], tl_config.packetizer_temporal_idx);
@@ -373,23 +373,23 @@ TEST(TemporalLayersTest, DoesNotReferenceDroppedFrames) {
 
   // Start with a keyframe.
   uint32_t timestamp = 0;
-  TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
-  tl.PopulateCodecSpecific(true, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  Vp8TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, true, kDefaultQp,
+                  &vp8_info);
 
   // Dropped TL2 frame.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.FrameEncoded(timestamp, 0, 0);
+  tl.OnEncodeDone(timestamp, 0, false, 0, nullptr);
 
   // Dropped TL1 frame.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.FrameEncoded(timestamp, 0, 0);
+  tl.OnEncodeDone(timestamp, 0, false, 0, nullptr);
 
   // TL2 frame. Can reference all three buffers, valid since golden and altref
   // both contain the last keyframe.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
   EXPECT_TRUE(tl_config.last_buffer_flags & BufferFlags::kReference);
   EXPECT_TRUE(tl_config.golden_buffer_flags & BufferFlags::kReference);
   EXPECT_TRUE(tl_config.arf_buffer_flags & BufferFlags::kReference);
@@ -398,24 +398,24 @@ TEST(TemporalLayersTest, DoesNotReferenceDroppedFrames) {
 
   // TL0 base layer frame, updating and referencing last.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
 
   // TL2 frame, updating altref.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
 
   // TL1 frame, updating golden.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
 
   // TL2 frame. Can still reference all buffer since they have been update this
   // cycle.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
   EXPECT_TRUE(tl_config.last_buffer_flags & BufferFlags::kReference);
   EXPECT_TRUE(tl_config.golden_buffer_flags & BufferFlags::kReference);
   EXPECT_TRUE(tl_config.arf_buffer_flags & BufferFlags::kReference);
@@ -424,22 +424,22 @@ TEST(TemporalLayersTest, DoesNotReferenceDroppedFrames) {
 
   // TL0 base layer frame, updating and referencing last.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
 
   // Dropped TL2 frame.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.FrameEncoded(timestamp, 0, 0);
+  tl.OnEncodeDone(timestamp, 0, false, 0, nullptr);
 
   // Dropped TL1 frame.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.FrameEncoded(timestamp, 0, 0);
+  tl.OnEncodeDone(timestamp, 0, false, 0, nullptr);
 
   // TL2 frame. This time golden and altref contain data from the previous cycle
   // and cannot be referenced.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
   EXPECT_TRUE(tl_config.last_buffer_flags & BufferFlags::kReference);
   EXPECT_FALSE(tl_config.golden_buffer_flags & BufferFlags::kReference);
   EXPECT_FALSE(tl_config.arf_buffer_flags & BufferFlags::kReference);
@@ -460,26 +460,26 @@ TEST(TemporalLayersTest, DoesNotReferenceUnlessGuaranteedToExist) {
 
   // Start with a keyframe.
   uint32_t timestamp = 0;
-  TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
-  tl.PopulateCodecSpecific(true, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  Vp8TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, true, kDefaultQp,
+                  &vp8_info);
 
   // Do a full cycle of the pattern.
   for (int i = 0; i < 7; ++i) {
     tl_config = tl.UpdateLayerConfig(++timestamp);
-    tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-    tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+    tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                    &vp8_info);
   }
 
   // TL0 base layer frame, starting the cycle over.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
 
   // TL2 frame.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
 
   // Encoder has a hiccup and builds a queue, so frame encoding is delayed.
   // TL1 frame, updating golden.
@@ -498,14 +498,14 @@ TEST(TemporalLayersTest, DoesNotReferenceUnlessGuaranteedToExist) {
   // The previous four enqueued frames finally get encoded, and the updated
   // buffers are now OK to reference.
   // Enqueued TL1 frame ready.
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
   // Enqueued TL2 frame.
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, ++timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(++timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
   // Enqueued TL0 frame.
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, ++timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(++timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
 
   // TL2 frame, all buffers are now in a known good state, OK to reference.
   tl_config = tl.UpdateLayerConfig(++timestamp + 1);
@@ -530,26 +530,26 @@ TEST(TemporalLayersTest, DoesNotReferenceUnlessGuaranteedToExistLongDelay) {
 
   // Start with a keyframe.
   uint32_t timestamp = 0;
-  TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
-  tl.PopulateCodecSpecific(true, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  Vp8TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, true, kDefaultQp,
+                  &vp8_info);
 
   // Do a full cycle of the pattern.
   for (int i = 0; i < 3; ++i) {
     tl_config = tl.UpdateLayerConfig(++timestamp);
-    tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-    tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+    tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                    &vp8_info);
   }
 
   // TL0 base layer frame, starting the cycle over.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
 
   // TL2 frame.
   tl_config = tl.UpdateLayerConfig(++timestamp);
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
 
   // Encoder has a hiccup and builds a queue, so frame encoding is delayed.
   // Encoded, but delayed frames in TL 1, 2.
@@ -563,11 +563,11 @@ TEST(TemporalLayersTest, DoesNotReferenceUnlessGuaranteedToExistLongDelay) {
   tl_config = tl.UpdateLayerConfig(timestamp + 4);
 
   // TL1 frame from last cycle is ready.
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp + 1);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp + 1, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
   // TL2 frame from last cycle is ready.
-  tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp + 2);
-  tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+  tl.OnEncodeDone(timestamp + 2, kDefaultBytesPerFrame, false, kDefaultQp,
+                  &vp8_info);
 
   // TL2 frame, that should be referencing all buffers, but altref and golden
   // haven not been updated this cycle. (Don't be fooled by the late frames from
@@ -610,11 +610,12 @@ TEST(TemporalLayersTest, KeyFrame) {
     for (int j = 1; j <= i; ++j) {
       // Since last frame was always a keyframe and thus index 0 in the pattern,
       // this loop starts at index 1.
-      TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
+      Vp8TemporalLayers::FrameConfig tl_config =
+          tl.UpdateLayerConfig(timestamp);
       EXPECT_EQ(expected_flags[j], LibvpxVp8Encoder::EncodeFlags(tl_config))
           << j;
-      tl.PopulateCodecSpecific(false, tl_config, &vp8_info, timestamp);
-      tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+      tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, false, kDefaultQp,
+                      &vp8_info);
       EXPECT_TRUE(checker.CheckTemporalConfig(false, tl_config));
       EXPECT_EQ(expected_temporal_idx[j], tl_config.packetizer_temporal_idx);
       EXPECT_EQ(expected_temporal_idx[j], tl_config.encoder_layer_id);
@@ -622,9 +623,9 @@ TEST(TemporalLayersTest, KeyFrame) {
       timestamp += 3000;
     }
 
-    TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
-    tl.PopulateCodecSpecific(true, tl_config, &vp8_info, timestamp);
-    tl.FrameEncoded(timestamp, kDefaultBytesPerFrame, kDefaultQp);
+    Vp8TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp);
+    tl.OnEncodeDone(timestamp, kDefaultBytesPerFrame, true, kDefaultQp,
+                    &vp8_info);
     EXPECT_TRUE(vp8_info.layerSync) << "Key frame should be marked layer sync.";
     EXPECT_EQ(0, vp8_info.temporalIdx)
         << "Key frame should always be packetized as layer 0";
@@ -652,9 +653,9 @@ class TemporalLayersReferenceTest : public ::testing::TestWithParam<int> {
     bool sync;
   };
 
-  bool UpdateSyncRefState(const TemporalLayers::BufferFlags& flags,
+  bool UpdateSyncRefState(const Vp8TemporalLayers::BufferFlags& flags,
                           BufferState* buffer_state) {
-    if (flags & TemporalLayers::kReference) {
+    if (flags & Vp8TemporalLayers::kReference) {
       if (buffer_state->temporal_idx == -1)
         return true;  // References key-frame.
       if (buffer_state->temporal_idx == 0) {
@@ -668,10 +669,10 @@ class TemporalLayersReferenceTest : public ::testing::TestWithParam<int> {
     return true;  // No reference, does not affect sync frame status.
   }
 
-  void ValidateReference(const TemporalLayers::BufferFlags& flags,
+  void ValidateReference(const Vp8TemporalLayers::BufferFlags& flags,
                          const BufferState& buffer_state,
                          int temporal_layer) {
-    if (flags & TemporalLayers::kReference) {
+    if (flags & Vp8TemporalLayers::kReference) {
       if (temporal_layer > 0 && buffer_state.timestamp > 0) {
         // Check that high layer reference does not go past last sync frame.
         EXPECT_GE(buffer_state.timestamp, last_sync_timestamp_);
@@ -709,10 +710,11 @@ TEST_P(TemporalLayersReferenceTest, ValidFrameConfigs) {
   // (any). If a given buffer is never updated, it is legal to reference it
   // even for sync frames. In order to be general, don't assume TL0 always
   // updates |last|.
-  std::vector<TemporalLayers::FrameConfig> tl_configs(kMaxPatternLength);
+  std::vector<Vp8TemporalLayers::FrameConfig> tl_configs(kMaxPatternLength);
   for (int i = 0; i < kMaxPatternLength; ++i) {
-    TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp_);
-    tl.PopulateCodecSpecific(i == 0, tl_config, &vp8_specifics, timestamp_);
+    Vp8TemporalLayers::FrameConfig tl_config = tl.UpdateLayerConfig(timestamp_);
+    tl.OnEncodeDone(timestamp_, kDefaultBytesPerFrame, i == 0, kDefaultQp,
+                    &vp8_specifics);
     ++timestamp_;
     EXPECT_FALSE(tl_config.drop_frame);
     tl_configs.push_back(tl_config);
@@ -751,11 +753,11 @@ TEST_P(TemporalLayersReferenceTest, ValidFrameConfigs) {
 
     // Update the current layer state.
     BufferState state = {temporal_idx, timestamp_, is_sync_frame};
-    if (tl_config.last_buffer_flags & TemporalLayers::kUpdate)
+    if (tl_config.last_buffer_flags & Vp8TemporalLayers::kUpdate)
       last_state = state;
-    if (tl_config.golden_buffer_flags & TemporalLayers::kUpdate)
+    if (tl_config.golden_buffer_flags & Vp8TemporalLayers::kUpdate)
       golden_state = state;
-    if (tl_config.arf_buffer_flags & TemporalLayers::kUpdate)
+    if (tl_config.arf_buffer_flags & Vp8TemporalLayers::kUpdate)
       altref_state = state;
   }
 }

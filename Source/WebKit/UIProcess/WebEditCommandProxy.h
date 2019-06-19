@@ -26,10 +26,13 @@
 #pragma once
 
 #include "APIObject.h"
+#include "WebUndoStepID.h"
 #include <WebCore/EditAction.h>
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/WeakPtr.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebKit {
 
@@ -37,28 +40,26 @@ class WebPageProxy;
 
 class WebEditCommandProxy : public API::ObjectImpl<API::Object::Type::EditCommandProxy> {
 public:
-    static Ref<WebEditCommandProxy> create(uint64_t commandID, WebCore::EditAction editAction, WebPageProxy* page)
+    static Ref<WebEditCommandProxy> create(WebUndoStepID commandID, const String& label, WebPageProxy& page)
     {
-        return adoptRef(*new WebEditCommandProxy(commandID, editAction, page));
+        return adoptRef(*new WebEditCommandProxy(commandID, label, page));
     }
     ~WebEditCommandProxy();
 
-    uint64_t commandID() const { return m_commandID; }
-    WebCore::EditAction editAction() const { return m_editAction; }
+    WebUndoStepID commandID() const { return m_commandID; }
+    String label() const { return m_label; }
 
-    void invalidate() { m_page = 0; }
+    void invalidate() { m_page.clear(); }
 
     void unapply();
     void reapply();
 
-    static String nameForEditAction(WebCore::EditAction);
-
 private:
-    WebEditCommandProxy(uint64_t commandID, WebCore::EditAction, WebPageProxy*);
+    WebEditCommandProxy(WebUndoStepID commandID, const String& label, WebPageProxy&);
 
-    uint64_t m_commandID;
-    WebCore::EditAction m_editAction;
-    WebPageProxy* m_page;
+    WebUndoStepID m_commandID;
+    String m_label;
+    WeakPtr<WebPageProxy> m_page;
 };
 
 } // namespace WebKit

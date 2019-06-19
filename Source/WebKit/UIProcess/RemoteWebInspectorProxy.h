@@ -27,6 +27,7 @@
 
 #include "APIObject.h"
 #include "MessageReceiver.h"
+#include <WebCore/FloatRect.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/RetainPtr.h>
@@ -40,9 +41,14 @@ OBJC_CLASS WKRemoteWebInspectorProxyObjCAdapter;
 OBJC_CLASS WKWebView;
 #endif
 
+namespace WebCore {
+class CertificateInfo;
+}
+
 namespace WebKit {
 
 class WebPageProxy;
+class WebView;
 
 class RemoteWebInspectorProxyClient {
 public:
@@ -75,10 +81,19 @@ public:
 #if PLATFORM(MAC)
     NSWindow *window() const { return m_window.get(); }
     WKWebView *webView() const;
+
+    const WebCore::FloatRect& sheetRect() const { return m_sheetRect; }
 #endif
 
 #if PLATFORM(GTK)
     void updateWindowTitle(const CString&);
+#endif
+
+#if PLATFORM(WIN_CAIRO)
+    LRESULT sizeChange();
+    LRESULT onClose();
+
+    static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 #endif
 
     void closeFromCrash();
@@ -91,11 +106,14 @@ private:
 
     // RemoteWebInspectorProxy messages.
     void frontendDidClose();
+    void reopen();
     void bringToFront();
     void save(const String& filename, const String& content, bool base64Encoded, bool forceSaveAs);
     void append(const String& filename, const String& content);
+    void setSheetRect(const WebCore::FloatRect&);
     void startWindowDrag();
     void openInNewTab(const String& url);
+    void showCertificate(const WebCore::CertificateInfo&);
     void sendMessageToBackend(const String& message);
 
     void createFrontendPageAndWindow();
@@ -107,21 +125,31 @@ private:
     void platformBringToFront();
     void platformSave(const String& filename, const String& content, bool base64Encoded, bool forceSaveAs);
     void platformAppend(const String& filename, const String& content);
+    void platformSetSheetRect(const WebCore::FloatRect&);
     void platformStartWindowDrag();
     void platformOpenInNewTab(const String& url);
+    void platformShowCertificate(const WebCore::CertificateInfo&);
 
     RemoteWebInspectorProxyClient* m_client { nullptr };
     WebPageProxy* m_inspectorPage { nullptr };
+
+    String m_debuggableType;
+    String m_backendCommandsURL;
 
 #if PLATFORM(MAC)
     RetainPtr<WKInspectorViewController> m_inspectorView;
     RetainPtr<NSWindow> m_window;
     RetainPtr<WKRemoteWebInspectorProxyObjCAdapter> m_objCAdapter;
     HashMap<String, RetainPtr<NSURL>> m_suggestedToActualURLMap;
+    WebCore::FloatRect m_sheetRect;
 #endif
 #if PLATFORM(GTK)
     GtkWidget* m_webView { nullptr };
     GtkWidget* m_window { nullptr };
+#endif
+#if PLATFORM(WIN_CAIRO)
+    HWND m_frontendHandle;
+    RefPtr<WebView> m_webView;
 #endif
 };
 

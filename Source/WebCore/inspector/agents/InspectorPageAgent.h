@@ -49,7 +49,6 @@ class InspectorOverlay;
 class Page;
 class RenderObject;
 class SharedBuffer;
-class URL;
 
 typedef String ErrorString;
 
@@ -77,20 +76,24 @@ public:
     };
 
     static bool sharedBufferContent(RefPtr<SharedBuffer>&&, const String& textEncodingName, bool withBase64Encode, String* result);
+    static Vector<CachedResource*> cachedResourcesForFrame(Frame*);
     static void resourceContent(ErrorString&, Frame*, const URL&, String* result, bool* base64Encoded);
     static String sourceMapURLForResource(CachedResource*);
-
     static CachedResource* cachedResource(Frame*, const URL&);
     static Inspector::Protocol::Page::ResourceType resourceTypeJSON(ResourceType);
     static ResourceType inspectorResourceType(CachedResource::Type);
     static ResourceType inspectorResourceType(const CachedResource&);
     static Inspector::Protocol::Page::ResourceType cachedResourceTypeJSON(const CachedResource&);
+    static Frame* findFrameWithSecurityOrigin(Page&, const String& originRawString);
+    static DocumentLoader* assertDocumentLoader(ErrorString&, Frame*);
 
     // Page API for InspectorFrontend
     void enable(ErrorString&) final;
     void disable(ErrorString&) final;
     void reload(ErrorString&, const bool* optionalReloadFromOrigin, const bool* optionalRevalidateAllResources) final;
     void navigate(ErrorString&, const String& url) final;
+    void overrideUserAgent(ErrorString&, const String* value) final;
+    void overrideSetting(ErrorString&, const String& setting, const bool* value) final;
     void getCookies(ErrorString&, RefPtr<JSON::ArrayOf<Inspector::Protocol::Page::Cookie>>& cookies) final;
     void deleteCookie(ErrorString&, const String& cookieName, const String& url) final;
     void getResourceTree(ErrorString&, RefPtr<Inspector::Protocol::Page::FrameResourceTree>&) final;
@@ -100,6 +103,7 @@ public:
     void setShowRulers(ErrorString&, bool) final;
     void setShowPaintRects(ErrorString&, bool show) final;
     void setEmulatedMedia(ErrorString&, const String&) final;
+    void setForcedAppearance(ErrorString&, const String&) final;
     void getCompositingBordersVisible(ErrorString&, bool* out_param) final;
     void setCompositingBordersVisible(ErrorString&, bool) final;
     void snapshotNode(ErrorString&, int nodeId, String* outDataURL) final;
@@ -116,6 +120,8 @@ public:
     void frameStoppedLoading(Frame&);
     void frameScheduledNavigation(Frame&, Seconds delay);
     void frameClearedScheduledNavigation(Frame&);
+    void defaultAppearanceDidChange(bool useDarkAppearance);
+    void applyUserAgentOverride(String&);
     void applyEmulatedMedia(String&);
     void didPaint(RenderObject&, const LayoutRect&);
     void didLayout();
@@ -127,15 +133,10 @@ public:
     void willDestroyFrontendAndBackend(Inspector::DisconnectReason) final;
 
     // Cross-agents API
-    Page& page() { return m_page; }
-    Frame& mainFrame();
     Frame* frameForId(const String& frameId);
     WEBCORE_EXPORT String frameId(Frame*);
-    bool hasIdForFrame(Frame*) const;
     String loaderId(DocumentLoader*);
-    Frame* findFrameWithSecurityOrigin(const String& originRawString);
     Frame* assertFrame(ErrorString&, const String& frameId);
-    static DocumentLoader* assertDocumentLoader(ErrorString&, Frame*);
 
 private:
     double timestamp();
@@ -149,17 +150,18 @@ private:
     std::unique_ptr<Inspector::PageFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::PageBackendDispatcher> m_backendDispatcher;
 
-    Page& m_page;
+    Page& m_inspectedPage;
     InspectorClient* m_client { nullptr };
     InspectorOverlay* m_overlay { nullptr };
 
     HashMap<Frame*, String> m_frameToIdentifier;
     HashMap<String, Frame*> m_identifierToFrame;
     HashMap<DocumentLoader*, String> m_loaderToIdentifier;
-    bool m_enabled { false };
+    String m_userAgentOverride;
+    String m_emulatedMedia;
+    String m_forcedAppearance;
     bool m_isFirstLayoutAfterOnLoad { false };
     bool m_showPaintRects { false };
-    String m_emulatedMedia;
 };
 
 } // namespace WebCore

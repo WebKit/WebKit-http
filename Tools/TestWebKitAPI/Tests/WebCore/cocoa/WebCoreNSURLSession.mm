@@ -25,9 +25,9 @@
 
 #import "config.h"
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
-#import "PlatformUtilities.h"
+#import "Utilities.h"
 #import <JavaScriptCore/InitializeThreading.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoadRequest.h>
@@ -113,7 +113,7 @@ public:
 
     virtual void SetUp()
     {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         JSC::initializeThreading();
 #endif
         view = [[WebView alloc] initWithFrame:NSZeroRect];

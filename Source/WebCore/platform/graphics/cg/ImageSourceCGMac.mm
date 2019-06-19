@@ -30,18 +30,18 @@
 #import <wtf/RetainPtr.h>
 #import <wtf/text/WTFString.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <MobileCoreServices/MobileCoreServices.h>
 #endif
 
 namespace WebCore {
 
-String MIMETypeForImageSourceType(const String& uti)
+String MIMETypeForImageType(const String& uti)
 {
     return MIMETypeFromUTI(uti);
 }
 
-String preferredExtensionForImageSourceType(const String& uti)
+String preferredExtensionForImageType(const String& uti)
 {
     return adoptCF(UTTypeCopyPreferredTagWithClass(uti.createCFString().get(), kUTTagClassFilenameExtension)).get();
 }

@@ -140,16 +140,10 @@ class FakePeerConnectionBase : public PeerConnectionInternal {
   }
 
   void CreateOffer(CreateSessionDescriptionObserver* observer,
-                   const MediaConstraintsInterface* constraints) override {}
-
-  void CreateOffer(CreateSessionDescriptionObserver* observer,
                    const RTCOfferAnswerOptions& options) override {}
 
   void CreateAnswer(CreateSessionDescriptionObserver* observer,
                     const RTCOfferAnswerOptions& options) override {}
-
-  void CreateAnswer(CreateSessionDescriptionObserver* observer,
-                    const MediaConstraintsInterface* constraints) override {}
 
   void SetLocalDescription(SetSessionDescriptionObserver* observer,
                            SessionDescriptionInterface* desc) override {}
@@ -235,11 +229,9 @@ class FakePeerConnectionBase : public PeerConnectionInternal {
     return {};
   }
 
-  bool GetLocalTrackIdBySsrc(uint32_t ssrc, std::string* track_id) override {
-    return false;
-  }
-  bool GetRemoteTrackIdBySsrc(uint32_t ssrc, std::string* track_id) override {
-    return false;
+  absl::string_view GetLocalTrackIdBySsrc(uint32_t ssrc) override { return {}; }
+  absl::string_view GetRemoteTrackIdBySsrc(uint32_t ssrc) override {
+    return {};
   }
 
   sigslot::signal1<DataChannel*>& SignalDataChannelCreated() override {

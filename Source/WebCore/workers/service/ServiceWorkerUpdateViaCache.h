@@ -27,11 +27,11 @@
 
 #if ENABLE(SERVICE_WORKER)
 
-#include <wtf/EnumTraits.h>
+#include <wtf/Forward.h>
 
 namespace WebCore {
 
-enum class ServiceWorkerUpdateViaCache {
+enum class ServiceWorkerUpdateViaCache : uint8_t {
     Imports,
     All,
     None,

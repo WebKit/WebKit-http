@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2006, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,9 +21,6 @@
 
 #pragma once
 
-#include "SVGAnimatedBoolean.h"
-#include "SVGAnimatedLength.h"
-#include "SVGAnimatedString.h"
 #include "SVGElement.h"
 #include "SVGExternalResourcesRequired.h"
 #include "SVGTests.h"
@@ -43,22 +40,19 @@ public:
     void addClient(CSSCursorImageValue&);
     void removeClient(CSSCursorImageValue&);
 
-    const SVGLengthValue& x() const { return m_x.currentValue(attributeOwnerProxy()); }
-    const SVGLengthValue& y() const { return m_y.currentValue(attributeOwnerProxy()); }
+    const SVGLengthValue& x() const { return m_x->currentValue(); }
+    const SVGLengthValue& y() const { return m_y->currentValue(); }
 
-    RefPtr<SVGAnimatedLength> xAnimated() { return m_x.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLength> yAnimated() { return m_y.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedLength& xAnimated() { return m_x; }
+    SVGAnimatedLength& yAnimated() { return m_y; }
 
 private:
     SVGCursorElement(const QualifiedName&, Document&);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGCursorElement, SVGElement, SVGExternalResourcesRequired, SVGTests, SVGURIReference>;
-    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
-    static void registerAttributes();
-
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGCursorElement, SVGElement, SVGExternalResourcesRequired, SVGTests, SVGURIReference>;
+    const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
+    
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
     void svgAttributeChanged(const QualifiedName&) final;
 
     bool isValid() const final { return SVGTests::isValid(); }
@@ -66,9 +60,9 @@ private:
 
     void addSubresourceAttributeURLs(ListHashSet<URL>&) const final;
 
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
-    SVGAnimatedLengthAttribute m_x { LengthModeWidth };
-    SVGAnimatedLengthAttribute m_y { LengthModeHeight };
+    PropertyRegistry m_propertyRegistry { *this };
+    Ref<SVGAnimatedLength> m_x { SVGAnimatedLength::create(this, LengthModeWidth) };
+    Ref<SVGAnimatedLength> m_y { SVGAnimatedLength::create(this, LengthModeHeight) };
     HashSet<CSSCursorImageValue*> m_clients;
 };
 

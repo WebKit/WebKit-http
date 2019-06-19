@@ -24,11 +24,12 @@
  */
 
 #include "config.h"
-#include "CPUTime.h"
+#include <wtf/CPUTime.h>
 
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <time.h>
+#include <wtf/Optional.h>
 
 namespace WTF {
 
@@ -37,7 +38,7 @@ static Seconds timevalToSeconds(const struct timeval& value)
     return Seconds(value.tv_sec) + Seconds::fromMicroseconds(value.tv_usec);
 }
 
-std::optional<CPUTime> CPUTime::get()
+Optional<CPUTime> CPUTime::get()
 {
     struct rusage resource { };
     int ret = getrusage(RUSAGE_SELF, &resource);

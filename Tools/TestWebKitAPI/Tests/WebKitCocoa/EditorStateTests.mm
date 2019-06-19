@@ -25,17 +25,62 @@
 
 #include "config.h"
 
-#if WK_API_ENABLED
-
 #import "EditingTestHarness.h"
 #import "PlatformUtilities.h"
 #import "TestWKWebView.h"
 #import <WebKit/WKWebViewPrivate.h>
+#import <wtf/Vector.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import "UIKitSPI.h"
 #import <UIKit/UIKit.h>
 #endif
+
+static void* const SelectionAttributesObservationContext = (void*)&SelectionAttributesObservationContext;
+
+@interface SelectionChangeObserver : NSObject
+- (instancetype)initWithWebView:(TestWKWebView *)webView;
+@property (nonatomic, readonly) TestWKWebView *webView;
+@property (nonatomic, readonly) _WKSelectionAttributes currentSelectionAttributes;
+@end
+
+@implementation SelectionChangeObserver {
+    RetainPtr<TestWKWebView> _webView;
+    Vector<_WKSelectionAttributes> _observedSelectionAttributes;
+}
+
+- (instancetype)initWithWebView:(TestWKWebView *)webView
+{
+    if (!(self = [super init]))
+        return nil;
+
+    _webView = webView;
+    [_webView addObserver:self forKeyPath:@"_selectionAttributes" options:NSKeyValueObservingOptionOld | NSKeyValueObservingOptionNew context:SelectionAttributesObservationContext];
+    return self;
+}
+
+- (TestWKWebView *)webView
+{
+    return _webView.get();
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey, id> *)change context:(void *)context
+{
+    if (context == SelectionAttributesObservationContext) {
+        if (!_observedSelectionAttributes.isEmpty())
+            EXPECT_EQ(_observedSelectionAttributes.last(), [change[NSKeyValueChangeOldKey] unsignedIntValue]);
+        _observedSelectionAttributes.append([change[NSKeyValueChangeNewKey] unsignedIntValue]);
+        return;
+    }
+    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+}
+
+- (_WKSelectionAttributes)currentSelectionAttributes
+{
+    return _observedSelectionAttributes.isEmpty() ? _WKSelectionAttributeNoSelection : _observedSelectionAttributes.last();
+}
+
+@end
 
 namespace TestWebKitAPI {
 
@@ -234,7 +279,7 @@ TEST(EditorStateTests, TypingAttributeLinkColor)
     EXPECT_WK_STREQ("https://www.apple.com/", [[testHarness webView] stringByEvaluatingJavaScript:@"document.querySelector('a').href"]);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 static void checkContentViewHasTextWithFailureDescription(TestWKWebView *webView, BOOL expectedToHaveText, NSString *description)
 {
@@ -304,6 +349,7 @@ TEST(EditorStateTests, CaretColorInContentEditable)
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
     [webView synchronouslyLoadHTMLString:@"<body style=\"caret-color: red;\" contenteditable=\"true\"></body>"];
     [webView stringByEvaluatingJavaScript:@"document.body.focus()"];
+    [webView waitForNextPresentationUpdate];
     UIView<UITextInputTraits_Private> *textInput = (UIView<UITextInputTraits_Private> *) [webView textInputContentView];
     UIColor *insertionPointColor = textInput.insertionPointColor;
     UIColor *redColor = [UIColor redColor];
@@ -312,8 +358,46 @@ TEST(EditorStateTests, CaretColorInContentEditable)
     auto cgRedColor = adoptCF(CGColorCreateCopyByMatchingToColorSpace(colorSpace.get(), kCGRenderingIntentDefault, redColor.CGColor, NULL));
     EXPECT_TRUE(CGColorEqualToColor(cgInsertionPointColor.get(), cgRedColor.get()));
 }
-#endif
+
+TEST(EditorStateTests, ObserveSelectionAttributeChanges)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    auto editor = adoptNS([[EditingTestHarness alloc] initWithWebView:webView.get()]);
+    [webView _setEditable:YES];
+    [webView synchronouslyLoadHTMLString:@"<body></body>"];
+
+    auto observer = adoptNS([[SelectionChangeObserver alloc] initWithWebView:webView.get()]);
+
+    [webView evaluateJavaScript:@"document.body.focus()" completionHandler:nil];
+    [webView waitForNextPresentationUpdate];
+    EXPECT_EQ(_WKSelectionAttributeIsCaret | _WKSelectionAttributeAtStartOfSentence, [observer currentSelectionAttributes]);
+
+    [editor insertText:@"Hello"];
+    EXPECT_EQ(_WKSelectionAttributeIsCaret, [observer currentSelectionAttributes]);
+
+    [editor insertText:@"."];
+    EXPECT_EQ(_WKSelectionAttributeIsCaret | _WKSelectionAttributeAtStartOfSentence, [observer currentSelectionAttributes]);
+
+    [editor moveBackward];
+    EXPECT_EQ(_WKSelectionAttributeIsCaret, [observer currentSelectionAttributes]);
+
+    [editor moveForward];
+    EXPECT_EQ(_WKSelectionAttributeIsCaret | _WKSelectionAttributeAtStartOfSentence, [observer currentSelectionAttributes]);
+
+    [editor deleteBackwards];
+    EXPECT_EQ(_WKSelectionAttributeIsCaret, [observer currentSelectionAttributes]);
+
+    [editor insertParagraph];
+    EXPECT_EQ(_WKSelectionAttributeIsCaret | _WKSelectionAttributeAtStartOfSentence, [observer currentSelectionAttributes]);
+
+    [editor selectAll];
+    EXPECT_EQ(_WKSelectionAttributeIsRange | _WKSelectionAttributeAtStartOfSentence, [observer currentSelectionAttributes]);
+
+    [webView evaluateJavaScript:@"getSelection().removeAllRanges()" completionHandler:nil];
+    [webView waitForNextPresentationUpdate];
+    EXPECT_EQ(_WKSelectionAttributeNoSelection, [observer currentSelectionAttributes]);
+}
+
+#endif // PLATFORM(IOS_FAMILY)
 
 } // namespace TestWebKitAPI
-
-#endif // WK_API_ENABLED

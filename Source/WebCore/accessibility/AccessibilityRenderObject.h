@@ -80,7 +80,7 @@ public:
     bool canSetTextRangeAttributes() const override;
     bool canSetExpandedAttribute() const override;
 
-    void setAccessibleName(const AtomicString&) override;
+    void setAccessibleName(const AtomString&) override;
     
     // Provides common logic used by all elements when determining isIgnored.
     AccessibilityObjectInclusion defaultObjectInclusion() const override;
@@ -106,7 +106,7 @@ public:
     bool ariaRoleHasPresentationalChildren() const override;
     
     // Should be called on the root accessibility object to kick off a hit test.
-    AccessibilityObject* accessibilityHitTest(const IntPoint&) const override;
+    AccessibilityObjectInterface* accessibilityHitTest(const IntPoint&) const override;
 
     Element* anchorElement() const override;
     
@@ -134,7 +134,7 @@ public:
     String text() const override;
     int textLength() const override;
     String selectedText() const override;
-    const AtomicString& accessKey() const override;
+    const AtomString& accessKey() const override;
     virtual const String& actionVerb() const;
     Widget* widget() const override;
     Widget* widgetForAttachmentView() const override;
@@ -168,7 +168,6 @@ public:
     VisiblePositionRange visiblePositionRangeForLine(unsigned) const override;
     IntRect boundsForVisiblePositionRange(const VisiblePositionRange&) const override;
     IntRect boundsForRange(const RefPtr<Range>) const override;
-    IntRect boundsForRects(LayoutRect&, LayoutRect&, RefPtr<Range>) const;
     void setSelectedVisiblePositionRange(const VisiblePositionRange&) const override;
     bool isVisiblePositionRangeInDifferentDocument(const VisiblePositionRange&) const;
     bool hasPopup() const override;
@@ -200,6 +199,7 @@ public:
     AccessibilityRole roleValueForMSAA() const override;
 
     String passwordFieldValue() const override;
+    void titleElementText(Vector<AccessibilityText>&) const override;
 
 protected:
     explicit AccessibilityRenderObject(RenderObject*);
@@ -239,17 +239,18 @@ private:
     AccessibilityObject* internalLinkElement() const;
     AccessibilityObject* accessibilityImageMapHitTest(HTMLAreaElement*, const IntPoint&) const;
     AccessibilityObject* accessibilityParentForImageMap(HTMLMapElement*) const;
-    AccessibilityObject* elementAccessibilityHitTest(const IntPoint&) const override;
+    AccessibilityObjectInterface* elementAccessibilityHitTest(const IntPoint&) const override;
 
     bool renderObjectIsObservable(RenderObject&) const;
     RenderObject* renderParentObject() const;
     bool isDescendantOfElementType(const QualifiedName& tagName) const;
-    
+    bool isDescendantOfElementType(const HashSet<QualifiedName>&) const;
+
     bool isSVGImage() const;
     void detachRemoteSVGRoot();
     enum CreationChoice { Create, Retrieve };
     AccessibilitySVGRoot* remoteSVGRootElement(CreationChoice createIfNecessary) const;
-    AccessibilityObject* remoteSVGElementHitTest(const IntPoint&) const;
+    AccessibilityObjectInterface* remoteSVGElementHitTest(const IntPoint&) const;
     void offsetBoundingBoxForRemoteSVGElement(LayoutRect&) const;
     bool supportsPath() const override;
 
@@ -282,8 +283,18 @@ private:
 
     bool shouldGetTextFromNode(AccessibilityTextUnderElementMode) const;
 
+#if ENABLE(APPLE_PAY)
+    bool isApplePayButton() const;
+    ApplePayButtonType applePayButtonType() const;
+    String applePayButtonDescription() const;
+#endif
+
     RenderObject* targetElementForActiveDescendant(const QualifiedName&, AccessibilityObject*) const;
     bool canHavePlainText() const;
+    // Special handling of click point for links.
+    IntPoint linkClickPoint();
+    // Rects utilities.
+    static IntRect boundsForRects(LayoutRect const&, LayoutRect const&, RefPtr<Range> const&);
 };
 
 } // namespace WebCore

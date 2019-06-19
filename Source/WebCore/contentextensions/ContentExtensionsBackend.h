@@ -37,13 +37,11 @@ namespace WebCore {
 
 class DocumentLoader;
 class ResourceRequest;
-class URL;
-
-struct ResourceLoadInfo;
 
 namespace ContentExtensions {
 
 class CompiledContentExtension;
+struct ResourceLoadInfo;
 
 // The ContentExtensionsBackend is the internal model of all the content extensions.
 //
@@ -61,15 +59,15 @@ public:
     WEBCORE_EXPORT void removeAllContentExtensions();
 
     // - Internal WebCore Interface.
-    WEBCORE_EXPORT std::pair<Vector<Action>, Vector<String>> actionsForResourceLoad(const ResourceLoadInfo&) const;
+    WEBCORE_EXPORT Vector<ActionsFromContentRuleList> actionsForResourceLoad(const ResourceLoadInfo&) const;
     WEBCORE_EXPORT StyleSheetContents* globalDisplayNoneStyleSheet(const String& identifier) const;
 
-    BlockedStatus processContentExtensionRulesForLoad(const URL&, ResourceType, DocumentLoader& initiatingDocumentLoader);
-    WEBCORE_EXPORT BlockedStatus processContentExtensionRulesForPingLoad(const URL&, const URL& mainDocumentURL);
+    ContentRuleListResults processContentRuleListsForLoad(const URL&, OptionSet<ResourceType>, DocumentLoader& initiatingDocumentLoader);
+    WEBCORE_EXPORT ContentRuleListResults processContentRuleListsForPingLoad(const URL&, const URL& mainDocumentURL);
 
     static const String& displayNoneCSSRule();
 
-    void forEach(const WTF::Function<void(const String&, ContentExtension&)>&);
+    void forEach(const Function<void(const String&, ContentExtension&)>&);
 
 private:
     HashMap<String, Ref<ContentExtension>> m_contentExtensions;

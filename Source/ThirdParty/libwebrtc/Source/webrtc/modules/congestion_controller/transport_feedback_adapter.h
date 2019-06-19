@@ -14,6 +14,7 @@
 #include <deque>
 #include <vector>
 
+#include "api/transport/network_types.h"
 #include "modules/congestion_controller/rtp/send_time_history.h"
 #include "rtc_base/criticalsection.h"
 #include "rtc_base/thread_annotations.h"
@@ -28,10 +29,12 @@ namespace rtcp {
 class TransportFeedback;
 }  // namespace rtcp
 
-class TransportFeedbackAdapter {
+// Deprecated, use version in
+// modules/congeestion_controller/rtp/transport_feedback_adapter.h
+class LegacyTransportFeedbackAdapter {
  public:
-  explicit TransportFeedbackAdapter(const Clock* clock);
-  virtual ~TransportFeedbackAdapter();
+  explicit LegacyTransportFeedbackAdapter(const Clock* clock);
+  virtual ~LegacyTransportFeedbackAdapter();
 
   void RegisterPacketFeedbackObserver(PacketFeedbackObserver* observer);
   void DeRegisterPacketFeedbackObserver(PacketFeedbackObserver* observer);

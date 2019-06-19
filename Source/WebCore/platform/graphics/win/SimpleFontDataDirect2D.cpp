@@ -34,6 +34,7 @@
 #include "GlyphPage.h"
 #include "GraphicsContext.h"
 #include "HWndDC.h"
+#include "NotImplemented.h"
 #include <comutil.h>
 #include <dwrite.h>
 #include <mlang.h>
@@ -206,8 +207,6 @@ float Font::platformWidthForGlyph(Glyph glyph) const
     if (m_platformData.useGDI())
         return widthForGDIGlyph(glyph);
 
-    ASSERT(glyph);
-
     auto font = m_platformData.dwFont();
     RELEASE_ASSERT(font);
 
@@ -228,6 +227,12 @@ float Font::platformWidthForGlyph(Glyph glyph) const
     float width = scaleEmToUnits(widthInEm, unitsPerEm) * pointSize;
 
     return width + m_syntheticBoldOffset;
+}
+
+Path Font::platformPathForGlyph(Glyph) const
+{
+    notImplemented();
+    return Path();
 }
 
 }

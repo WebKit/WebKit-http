@@ -1,5 +1,5 @@
 # Copyright (C) 2011 Google Inc. All rights reserved.
-# Copyright (c) 2015, 2016 Apple Inc. All rights reserved.
+# Copyright (c) 2015-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -251,20 +251,40 @@ class Driver(object):
             crashed_pid=self._crashed_pid, crash_log=crash_log, pid=pid)
 
     def do_post_tests_work(self):
-        if not self._port.get_option('world_leaks'):
-            return None
-
         if not self._server_process:
             return None
 
-        _log.debug('Checking for world leaks...')
-        self._server_process.write('#CHECK FOR WORLD LEAKS\n')
-        deadline = time.time() + 20
-        block = self._read_block(deadline, '', wait_for_stderr_eof=True)
+        if self._port.get_option('leaks'):
+            _log.debug('Gathering child processes...')
+            self._server_process.write('#LIST CHILD PROCESSES\n')
+            deadline = time.time() + 20
+            block = self._read_block(deadline, '', wait_for_stderr_eof=True)
+            self._server_process.set_child_processes(self._parse_child_processes_output(block.decoded_content))
 
-        _log.debug('World leak result: %s' % (block.decoded_content))
+        if self._port.get_option('world_leaks'):
+            _log.debug('Checking for world leaks...')
+            self._server_process.write('#CHECK FOR WORLD LEAKS\n')
+            deadline = time.time() + 20
+            block = self._read_block(deadline, '', wait_for_stderr_eof=True)
 
-        return self._parse_world_leaks_output(block.decoded_content)
+            _log.debug('World leak result: %s' % (block.decoded_content))
+
+            return self._parse_world_leaks_output(block.decoded_content)
+
+        return None
+
+    @staticmethod
+    def _parse_child_processes_output(output):
+        child_processes = defaultdict(list)
+
+        for line in output.splitlines():
+            m = re.match('^([^:]+): ([0-9]+)$', line)
+            if m:
+                process_name = m.group(1)
+                process_id = m.group(2)
+                child_processes[process_name].append(process_id)
+
+        return child_processes
 
     def _parse_world_leaks_output(self, output):
         tests_with_world_leaks = defaultdict(list)
@@ -367,7 +387,7 @@ class Driver(object):
             return True
         if self._server_process.has_crashed():
             self._crashed_process_name = self._server_process.process_name()
-            self._crashed_pid = self._server_process.pid()
+            self._crashed_pid = self._server_process.system_pid()
             return True
         return False
 
@@ -515,7 +535,7 @@ class Driver(object):
         crashed_check = error_line.rstrip('\r\n')
         if crashed_check == "#CRASHED":
             self._crashed_process_name = self._server_process.process_name()
-            self._crashed_pid = self._server_process.pid()
+            self._crashed_pid = self._server_process.system_pid()
             return True
         elif error_line.startswith("#CRASHED - "):
             match = re.match('#CRASHED - (\S+)', error_line)
@@ -545,7 +565,10 @@ class Driver(object):
         elif self.is_web_platform_test(driver_input.test_name) or self.is_webkit_specific_web_platform_test(driver_input.test_name) or self.is_http_test(driver_input.test_name):
             command = self.test_to_uri(driver_input.test_name)
             command += "'--absolutePath'"
-            command += self._port.abspath_for_test(driver_input.test_name, self._target_host)
+            absPath = self._port.abspath_for_test(driver_input.test_name, self._target_host)
+            if sys.platform == 'cygwin':
+                absPath = path.cygpath(absPath)
+            command += absPath
         else:
             command = self._port.abspath_for_test(driver_input.test_name, self._target_host)
             if sys.platform == 'cygwin':
@@ -670,7 +693,7 @@ class Driver(object):
 
         if asan_violation_detected and not self._crashed_process_name:
             self._crashed_process_name = self._server_process.process_name()
-            self._crashed_pid = self._server_process.pid()
+            self._crashed_pid = self._server_process.system_pid()
 
         block.decode_content()
         return block
@@ -718,6 +741,10 @@ class DriverProxy(object):
 
     def _make_driver(self, pixel_tests):
         return self._driver_instance_constructor(self._port, self._worker_number, pixel_tests, self._no_timeout)
+
+    @property
+    def host(self):
+        return self._driver._target_host
 
     # FIXME: this should be a @classmethod (or implemented on Port instead).
     def is_http_test(self, test_name):

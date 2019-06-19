@@ -36,11 +36,16 @@
 
 #include "DeprecatedGlobalSettings.h"
 #include "Logging.h"
+#include "NetworkStorageSession.h"
+#include "ResourceError.h"
 #include "SocketStreamError.h"
 #include "SocketStreamHandleClient.h"
-#include "URL.h"
+#include "SoupNetworkSession.h"
+#include "StorageSessionProvider.h"
+#include "URLSoup.h"
 #include <gio/gio.h>
 #include <glib.h>
+#include <wtf/URL.h>
 #include <wtf/Vector.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/glib/RunLoopSourcePriority.h>
@@ -77,22 +82,21 @@ static void socketClientEventCallback(GSocketClient*, GSocketClientEvent event, 
 }
 #endif
 
-Ref<SocketStreamHandleImpl> SocketStreamHandleImpl::create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID sessionID, const String&, SourceApplicationAuditToken&&)
+Ref<SocketStreamHandleImpl> SocketStreamHandleImpl::create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID, const String&, SourceApplicationAuditToken&&, const StorageSessionProvider* storageSessionProvider)
 {
-    Ref<SocketStreamHandleImpl> socket = adoptRef(*new SocketStreamHandleImpl(url, client));
+    Ref<SocketStreamHandleImpl> socket = adoptRef(*new SocketStreamHandleImpl(url, client, storageSessionProvider));
 
 #if SOUP_CHECK_VERSION(2, 61, 90)
-    auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID);
+    auto* networkStorageSession = storageSessionProvider ? storageSessionProvider->storageSession() : nullptr;
     if (!networkStorageSession)
         return socket;
 
-    auto uri = url.createSoupURI();
+    auto uri = urlToSoupURI(url);
     Ref<SocketStreamHandle> protectedSocketStreamHandle = socket.copyRef();
-    soup_session_connect_async(networkStorageSession->getOrCreateSoupNetworkSession().soupSession(), uri.get(), socket->m_cancellable.get(),
+    soup_session_connect_async(networkStorageSession->soupNetworkSession().soupSession(), uri.get(), socket->m_cancellable.get(),
         url.protocolIs("wss") ? reinterpret_cast<SoupSessionConnectProgressCallback>(connectProgressCallback) : nullptr,
         reinterpret_cast<GAsyncReadyCallback>(connectedCallback), &protectedSocketStreamHandle.leakRef());
 #else
-    UNUSED_PARAM(sessionID);
     unsigned port = url.port() ? url.port().value() : (url.protocolIs("wss") ? 443 : 80);
     GRefPtr<GSocketClient> socketClient = adoptGRef(g_socket_client_new());
     if (url.protocolIs("wss")) {
@@ -107,8 +111,9 @@ Ref<SocketStreamHandleImpl> SocketStreamHandleImpl::create(const URL& url, Socke
     return socket;
 }
 
-SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client)
+SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client, const StorageSessionProvider* provider)
     : SocketStreamHandle(url, client)
+    , m_storageSessionProvider(provider)
     , m_cancellable(adoptGRef(g_cancellable_new()))
 {
     LOG(Network, "SocketStreamHandle %p new client %p", this, &m_client);
@@ -212,7 +217,7 @@ void SocketStreamHandleImpl::writeReady()
     sendPendingData();
 }
 
-std::optional<size_t> SocketStreamHandleImpl::platformSendInternal(const uint8_t* data, size_t length)
+Optional<size_t> SocketStreamHandleImpl::platformSendInternal(const uint8_t* data, size_t length)
 {
     LOG(Network, "SocketStreamHandle %p platformSend", this);
     if (!m_outputStream || !data)
@@ -225,7 +230,7 @@ std::optional<size_t> SocketStreamHandleImpl::platformSendInternal(const uint8_t
             beginWaitingForSocketWritability();
         else
             didFail(SocketStreamError(error->code, String(), error->message));
-        return std::nullopt;
+        return WTF::nullopt;
     }
 
     // If we did not send all the bytes we were given, we know that
@@ -234,7 +239,7 @@ std::optional<size_t> SocketStreamHandleImpl::platformSendInternal(const uint8_t
         beginWaitingForSocketWritability();
 
     if (written == -1)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return static_cast<size_t>(written);
 }

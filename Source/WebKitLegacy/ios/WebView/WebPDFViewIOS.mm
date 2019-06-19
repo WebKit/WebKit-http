@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "WebPDFViewIOS.h"
 #import "WebDataSourceInternal.h"
@@ -34,8 +34,7 @@
 #import "WebPDFDocumentExtras.h"
 #import "WebPDFViewPlaceholder.h"
 #import <JavaScriptCore/JSContextRef.h>
-#import <JavaScriptCore/JSStringRef.h>
-#import <JavaScriptCore/JSStringRefCF.h>
+#import <JavaScriptCore/OpaqueJSString.h>
 #import <WebCore/Color.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoader.h>
@@ -321,19 +320,13 @@ static CGColorRef createCGColorWithDeviceWhite(CGFloat white, CGFloat alpha)
 
     NSArray *scripts = allScriptsInPDFDocument(_PDFDocument);
 
-    NSUInteger scriptCount = [scripts count];
-    if (!scriptCount)
+    if (![scripts count])
         return;
 
     JSGlobalContextRef ctx = JSGlobalContextCreate(0);
     JSObjectRef jsPDFDoc = makeJSPDFDoc(ctx, dataSource);
-
-    for (NSUInteger i = 0; i < scriptCount; ++i) {
-        JSStringRef script = JSStringCreateWithCFString((CFStringRef)[scripts objectAtIndex:i]);
-        JSEvaluateScript(ctx, script, jsPDFDoc, 0, 0, 0);
-        JSStringRelease(script);
-    }
-
+    for (NSString *script in scripts)
+        JSEvaluateScript(ctx, OpaqueJSString::tryCreate(script).get(), jsPDFDoc, nullptr, 0, nullptr);
     JSGlobalContextRelease(ctx);
 
     [self setNeedsDisplay:YES];
@@ -403,4 +396,4 @@ static int comparePageRects(const void *key, const void *array)
     return CGRectGetMinY(*keyRect) > CGRectGetMaxY(*arrayRect) ? 1 : -1;
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

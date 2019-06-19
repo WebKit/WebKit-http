@@ -38,8 +38,15 @@ namespace Layout {
 class BlockFormattingState : public FormattingState {
     WTF_MAKE_ISO_ALLOCATED(BlockFormattingState);
 public:
-    BlockFormattingState(Ref<FloatingState>&&, const LayoutContext&);
+    BlockFormattingState(Ref<FloatingState>&&, LayoutState&);
     virtual ~BlockFormattingState();
+
+    void setPositiveAndNegativeVerticalMargin(const Box& layoutBox, PositiveAndNegativeVerticalMargin verticalMargin) { m_positiveAndNegativeVerticalMargin.set(&layoutBox, verticalMargin); }
+    bool hasPositiveAndNegativeVerticalMargin(const Box& layoutBox) const { return m_positiveAndNegativeVerticalMargin.contains(&layoutBox); }
+    PositiveAndNegativeVerticalMargin positiveAndNegativeVerticalMargin(const Box& layoutBox) const { return m_positiveAndNegativeVerticalMargin.get(&layoutBox); }
+
+private:
+    HashMap<const Box*, PositiveAndNegativeVerticalMargin> m_positiveAndNegativeVerticalMargin;
 };
 
 }

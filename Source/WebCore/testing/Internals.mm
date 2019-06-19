@@ -32,25 +32,20 @@
 #import "EventHandler.h"
 #import "HitTestResult.h"
 #import "Range.h"
-#import "WebCoreNSURLExtras.h"
-#import <wtf/SoftLinking.h>
-
-#if PLATFORM(IOS)
-SOFT_LINK_FRAMEWORK(UIKit)
-SOFT_LINK(UIKit, UIAccessibilityIsReduceMotionEnabled, BOOL, (void), ())
-#endif
+#import <pal/ios/UIKitSoftLink.h>
+#import <wtf/cocoa/NSURLExtras.h>
 
 namespace WebCore {
 
 String Internals::userVisibleString(const DOMURL& url)
 {
-    return WebCore::userVisibleString(url.href());
+    return WTF::userVisibleString(url.href());
 }
 
 bool Internals::userPrefersReducedMotion() const
 {
-#if PLATFORM(IOS)
-    return UIAccessibilityIsReduceMotionEnabled();
+#if PLATFORM(IOS_FAMILY)
+    return PAL::softLink_UIKit_UIAccessibilityIsReduceMotionEnabled();
 #else
     return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceMotion];
 #endif

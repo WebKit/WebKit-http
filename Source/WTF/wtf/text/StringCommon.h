@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StringCommon_h
-#define StringCommon_h
+#pragma once
 
 #include <algorithm>
 #include <unicode/uchar.h>
@@ -167,7 +166,7 @@ ALWAYS_INLINE bool equal(const UChar* aUChar, const UChar* bUChar, unsigned leng
 
     return true;
 }
-#elif PLATFORM(IOS) && WTF_ARM_ARCH_AT_LEAST(7) && !ASAN_ENABLED
+#elif PLATFORM(IOS_FAMILY) && WTF_ARM_ARCH_AT_LEAST(7) && !ASAN_ENABLED
 ALWAYS_INLINE bool equal(const LChar* a, const LChar* b, unsigned length)
 {
     bool isEqual = false;
@@ -467,6 +466,14 @@ size_t findIgnoringASCIICase(const SearchCharacterType* source, const MatchChara
     return notFound;
 }
 
+inline size_t findIgnoringASCIICaseWithoutLength(const char* source, const char* matchCharacters)
+{
+    unsigned searchLength = strlen(source);
+    unsigned matchLength = strlen(matchCharacters);
+
+    return matchLength < searchLength ? findIgnoringASCIICase(source, matchCharacters, 0, searchLength, matchLength) : notFound;
+}
+
 template<typename StringClassA, typename StringClassB>
 size_t findIgnoringASCIICase(const StringClassA& source, const StringClassB& stringToFind, unsigned startOffset)
 {
@@ -659,5 +666,3 @@ template<unsigned lowercaseLettersLength> inline bool equalLettersIgnoringASCIIC
 
 using WTF::equalIgnoringASCIICase;
 using WTF::equalLettersIgnoringASCIICase;
-
-#endif

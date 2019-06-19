@@ -28,6 +28,7 @@
 
 #if HAVE(ACCESSIBILITY) && PLATFORM(MAC)
 
+#import "AXIsolatedTreeNode.h"
 #import "AccessibilityObject.h"
 #import "AccessibilityTable.h"
 #import "RenderObject.h"
@@ -35,7 +36,7 @@
 #import <pal/spi/mac/NSAccessibilitySPI.h>
 
 #if USE(APPLE_INTERNAL_SDK)
-#include <HIServices/AccessibilityPriv.h>
+#include <ApplicationServices/ApplicationServicesPriv.h>
 #endif
 
 #ifndef NSAccessibilityLiveRegionChangedNotification
@@ -237,6 +238,16 @@ void AXObjectCache::detachWrapper(AccessibilityObject* obj, AccessibilityDetachm
     obj->setWrapper(nullptr);
 }
 
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+void AXObjectCache::associateIsolatedTreeNode(AccessibilityObject& object, AXIsolatedTreeNode& node, AXIsolatedTreeID treeID)
+{
+    auto wrapper = object.wrapper();
+    ASSERT(wrapper);
+    wrapper.isolatedTreeIdentifier = treeID;
+    node.setWrapper(wrapper);
+}
+#endif
+
 void AXObjectCache::attachWrapper(AccessibilityObject* obj)
 {
     RetainPtr<WebAccessibilityObjectWrapper> wrapper = adoptNS([[WebAccessibilityObjectWrapper alloc] initWithAccessibilityObject:obj]);
@@ -250,22 +261,27 @@ void AXObjectCache::setShouldRepostNotificationsForTests(bool value)
     axShouldRepostNotificationsForTests = value;
 }
 
-static void AXPostNotificationWithUserInfo(AccessibilityObjectWrapper *object, NSString *notification, id userInfo)
+static void AXPostNotificationWithUserInfo(AccessibilityObjectWrapper *object, NSString *notification, id userInfo, bool skipSystemNotification = false)
 {
     if (id associatedPluginParent = [object associatedPluginParent])
         object = associatedPluginParent;
-    
-    NSAccessibilityPostNotificationWithUserInfo(object, notification, userInfo);
+
     // To simplify monitoring for notifications in tests, repost as a simple NSNotification instead of forcing test infrastucture to setup an IPC client and do all the translation between WebCore types and platform specific IPC types and back
     if (UNLIKELY(axShouldRepostNotificationsForTests))
         [object accessibilityPostedNotification:notification userInfo:userInfo];
+
+    if (skipSystemNotification)
+        return;
+
+    NSAccessibilityPostNotificationWithUserInfo(object, notification, userInfo);
 }
 
 void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, AXNotification notification)
 {
     if (!obj)
         return;
-    
+
+    bool skipSystemNotification = false;
     // Some notifications are unique to Safari and do not have NSAccessibility equivalents.
     NSString *macNotification;
     switch (notification) {
@@ -293,6 +309,11 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, AXNotific
             break;
         case AXLoadComplete:
             macNotification = @"AXLoadComplete";
+            // Frame loading events are handled by the UIProcess on macOS to improve reliability.
+            // On macOS, before notifications are allowed by AppKit to be sent to clients, you need to have a client (e.g. VoiceOver)
+            // register for that notification. Because these new processes appear before VO has a chance to register, it will often
+            // miss AXLoadComplete notifications. By moving them to the UIProcess, we can eliminate that issue.
+            skipSystemNotification = true;
             break;
         case AXInvalidStatusChanged:
             macNotification = @"AXInvalidStatusChanged";
@@ -337,6 +358,12 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, AXNotific
         case AXMenuListItemSelected:
             macNotification = (id)kAXMenuItemSelectedNotification;
             break;
+        case AXPressDidSucceed:
+            macNotification = @"AXPressDidSucceed";
+            break;
+        case AXPressDidFail:
+            macNotification = @"AXPressDidFail";
+            break;
         case AXMenuOpened:
             macNotification = (id)kAXMenuOpenedNotification;
             break;
@@ -346,12 +373,11 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* obj, AXNotific
     
     // NSAccessibilityPostNotification will call this method, (but not when running DRT), so ASSERT here to make sure it does not crash.
     // https://bugs.webkit.org/show_bug.cgi?id=46662
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     ASSERT([obj->wrapper() accessibilityIsIgnored] || true);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
-    AXPostNotificationWithUserInfo(obj->wrapper(), macNotification, nil);
+    AXPostNotificationWithUserInfo(obj->wrapper(), macNotification, nil, skipSystemNotification);
 }
 
 void AXObjectCache::postTextStateChangePlatformNotification(AccessibilityObject* object, const AXTextStateChangeIntent& intent, const VisibleSelection& selection)
@@ -400,9 +426,11 @@ void AXObjectCache::postTextStateChangePlatformNotification(AccessibilityObject*
     if (id wrapper = object->wrapper())
         [userInfo setObject:wrapper forKey:NSAccessibilityTextChangeElement];
 
-    AXPostNotificationWithUserInfo(rootWebArea()->wrapper(), NSAccessibilitySelectedTextChangedNotification, userInfo);
-    if (rootWebArea()->wrapper() != object->wrapper())
-        AXPostNotificationWithUserInfo(object->wrapper(), NSAccessibilitySelectedTextChangedNotification, userInfo);
+    if (auto root = rootWebArea()) {
+        AXPostNotificationWithUserInfo(rootWebArea()->wrapper(), NSAccessibilitySelectedTextChangedNotification, userInfo);
+        if (root->wrapper() != object->wrapper())
+            AXPostNotificationWithUserInfo(object->wrapper(), NSAccessibilitySelectedTextChangedNotification, userInfo);
+    }
 
     [userInfo release];
 }
@@ -511,11 +539,21 @@ void AXObjectCache::platformHandleFocusedUIElementChanged(Node*, Node*)
 {
     NSAccessibilityHandleFocusChanged();
     // AXFocusChanged is a test specific notification name and not something a real AT will be listening for
-    if (UNLIKELY(axShouldRepostNotificationsForTests))
-        [rootWebArea()->wrapper() accessibilityPostedNotification:@"AXFocusChanged" userInfo:nil];
+    if (UNLIKELY(!axShouldRepostNotificationsForTests))
+        return;
+
+    auto* rootWebArea = this->rootWebArea();
+    if (!rootWebArea)
+        return;
+
+    [rootWebArea->wrapper() accessibilityPostedNotification:@"AXFocusChanged" userInfo:nil];
 }
 
 void AXObjectCache::handleScrolledToAnchor(const Node*)
+{
+}
+
+void AXObjectCache::platformPerformDeferredCacheUpdate()
 {
 }
 

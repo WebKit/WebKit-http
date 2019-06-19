@@ -54,10 +54,8 @@ function installDependenciesWithBrew {
 
     brew install autoconf \
          automake \
-         bison \
          cmake \
          enchant \
-         flex \
          gettext \
          gobject-introspection \
          intltool \
@@ -93,9 +91,8 @@ function installDependenciesWithApt {
         automake \
         autopoint \
         autotools-dev \
-        bison \
+        bubblewrap \
         cmake \
-        flex \
         gawk \
         geoclue-2.0 \
         gnome-common \
@@ -131,10 +128,11 @@ function installDependenciesWithApt {
         $(aptIfElse libpng-dev libpng12-dev) \
         libpulse-dev \
         librsvg2-dev \
+        libseccomp-dev \
         libsecret-1-dev \
         libsoup2.4-dev \
         libsqlite3-dev \
-        libsrtp0-dev \
+        libsrtp2-dev \
         libtasn1-6-dev \
         libtheora-dev \
         libtool \
@@ -160,12 +158,14 @@ function installDependenciesWithApt {
         gdb \
         libapache2-mod-bw \
         libapache2-mod-php \
+        php-json \
         libcgi-pm-perl \
         libgpg-error-dev \
         psmisc \
         pulseaudio-utils \
         python-gi \
         python-psutil \
+        python-yaml \
         ruby \
         ruby-json \
         ruby-highline \
@@ -174,6 +174,8 @@ function installDependenciesWithApt {
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \
+        bison \
+        flex \
         git \
         gobject-introspection \
         gsettings-desktop-schemas-dev \
@@ -196,8 +198,10 @@ function installDependenciesWithApt {
         libp11-kit-dev \
         libpciaccess-dev \
         libproxy-dev \
+        libpsl-dev \
         libssl-dev \
         libtiff5-dev \
+        libunistring-dev \
         libv4l-dev \
         libxcb-composite0-dev \
         libxcb-xfixes0-dev \
@@ -209,6 +213,7 @@ function installDependenciesWithApt {
         libudev-dev \
         libxml-libxml-perl \
         python-dev \
+        python3-setuptools \
         ragel \
         x11proto-bigreqs-dev \
         x11proto-composite-dev \
@@ -239,13 +244,12 @@ function installDependenciesWithPacman {
         alsa-lib \
         autoconf \
         automake \
-        bison \
+        bubblewrap \
         cmake \
         libedit \
         libffi \
         file \
         findutils \
-        flex \
         gawk \
         gcc \
         gettext \
@@ -291,6 +295,7 @@ function installDependenciesWithPacman {
         libpng \
         libpulse \
         librsvg \
+        libseccomp \
         libsecret \
         libsoup \
         libsrtp \
@@ -326,6 +331,7 @@ function installDependenciesWithPacman {
         pulseaudio \
         python-gobject \
         python2-psutil \
+        python2-yaml \
         ruby \
         weston \
         xorg-server-xvfb"
@@ -333,7 +339,9 @@ function installDependenciesWithPacman {
     # These are dependencies necessary for building the jhbuild.
     # Note: Could not find libegl-mesa
     packages="$packages \
+        bison \
         expat \
+        flex \
         git \
         gnutls \
         gobject-introspection \
@@ -349,7 +357,9 @@ function installDependenciesWithPacman {
         p11-kit \
         libpciaccess \
         libproxy \
+        libpsl \
         libtiff \
+        libunistring-dev \
         libxfixes \
         libxfont2 \
         libxcb \
@@ -360,6 +370,7 @@ function installDependenciesWithPacman {
         perl-xml-libxml\
         python2 \
         python2-lxml \
+        python-setuptools \
         ragel \
         bigreqsproto \
         compositeproto \
@@ -410,11 +421,10 @@ function installDependenciesWithDnf {
         alsa-lib-devel \
         autoconf \
         automake \
-        bison \
+        bubblewrap \
         cairo-devel \
         cmake \
         enchant-devel \
-        flex \
         gcc-c++ \
         geoclue2-devel \
         gettext-devel \
@@ -441,6 +451,7 @@ function installDependenciesWithDnf {
         libmount-devel \
         libnotify-devel \
         libpng-devel \
+        libseccomp-devel \
         libsecret-devel \
         libsoup-devel \
         libsrtp-devel \
@@ -482,10 +493,12 @@ function installDependenciesWithDnf {
         mod_ssl \
         perl-CGI \
         php \
+        php-json \
         psmisc \
         pulseaudio-utils \
         pygobject3-base \
         python2-psutil \
+        python2-yaml \
         ruby \
         rubygem-json \
         rubygem-highline \
@@ -494,9 +507,11 @@ function installDependenciesWithDnf {
 
     # These are dependencies necessary for building the jhbuild.
     packages="$packages \
+        bison \
         cups-devel \
         docbook-utils \
         expat-devel \
+        flex \
         git \
         gnutls-devel \
         gobject-introspection \
@@ -513,7 +528,9 @@ function installDependenciesWithDnf {
         libp11-devel \
         libpciaccess-devel \
         libproxy-devel \
+        libpsl-devel \
         libtiff-devel \
+        libunistring-devel \
         libxcb-devel \
         libxkbfile-devel \
         libxkbcommon-x11-devel \
@@ -521,6 +538,7 @@ function installDependenciesWithDnf {
         mtdev-devel \
         orc-devel \
         perl-XML-LibXML \
+        python3-setuptools \
         ragel \
         systemd-devel \
         xorg-x11-font-utils \

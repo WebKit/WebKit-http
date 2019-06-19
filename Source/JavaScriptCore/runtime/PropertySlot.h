@@ -43,6 +43,9 @@ enum class PropertyAttribute : unsigned {
     DontDelete        = 1 << 3,  // property can't be deleted
     Accessor          = 1 << 4,  // property is a getter/setter
     CustomAccessor    = 1 << 5,
+    CustomValue       = 1 << 6,
+    CustomAccessorOrValue = CustomAccessor | CustomValue,
+    AccessorOrCustomAccessorOrValue = Accessor | CustomAccessor | CustomValue,
 
     // Things that are used by static hashtables are not in the attributes byte in PropertyMapEntry.
     Function          = 1 << 8,  // property is a function - only used by static hashtables
@@ -185,11 +188,11 @@ public:
         return m_watchpointSet;
     }
 
-    std::optional<DOMAttributeAnnotation> domAttribute() const
+    Optional<DOMAttributeAnnotation> domAttribute() const
     {
         if (m_additionalDataType == AdditionalDataType::DOMAttribute)
             return m_additionalData.domAttribute;
-        return std::nullopt;
+        return WTF::nullopt;
     }
 
     struct ModuleNamespaceSlot {
@@ -197,11 +200,11 @@ public:
         unsigned scopeOffset;
     };
 
-    std::optional<ModuleNamespaceSlot> moduleNamespaceSlot() const
+    Optional<ModuleNamespaceSlot> moduleNamespaceSlot() const
     {
         if (m_additionalDataType == AdditionalDataType::ModuleNamespace)
             return m_additionalData.moduleNamespaceSlot;
-        return std::nullopt;
+        return WTF::nullopt;
     }
 
     void setValue(JSObject* slotBase, unsigned attributes, JSValue value)
@@ -299,6 +302,7 @@ public:
     void setCustomGetterSetter(JSObject* slotBase, unsigned attributes, CustomGetterSetter* getterSetter)
     {
         ASSERT(attributes == attributesForStructure(attributes));
+        ASSERT(attributes & PropertyAttribute::CustomAccessor);
 
         disableCaching();
 
@@ -370,7 +374,6 @@ private:
     JS_EXPORT_PRIVATE JSValue customGetter(ExecState*, PropertyName) const;
     JS_EXPORT_PRIVATE JSValue customAccessorGetter(ExecState*, PropertyName) const;
 
-    unsigned m_attributes;
     union {
         EncodedJSValue value;
         struct {
@@ -384,6 +387,7 @@ private:
         } customAccessor;
     } m_data;
 
+    unsigned m_attributes;
     PropertyOffset m_offset;
     JSValue m_thisValue;
     JSObject* m_slotBase;
@@ -392,11 +396,11 @@ private:
     PropertyType m_propertyType;
     InternalMethodType m_internalMethodType;
     AdditionalDataType m_additionalDataType;
+    bool m_isTaintedByOpaqueObject;
     union {
         DOMAttributeAnnotation domAttribute;
         ModuleNamespaceSlot moduleNamespaceSlot;
     } m_additionalData;
-    bool m_isTaintedByOpaqueObject;
 };
 
 ALWAYS_INLINE JSValue PropertySlot::getValue(ExecState* exec, PropertyName propertyName) const

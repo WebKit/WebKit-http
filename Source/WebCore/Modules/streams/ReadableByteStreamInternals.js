@@ -26,23 +26,6 @@
 // @conditional=ENABLE(STREAMS_API)
 // @internal
 
-function privateInitializeReadableStreamBYOBReader(stream)
-{
-    "use strict";
-
-    if (!@isReadableStream(stream))
-        @throwTypeError("ReadableStreamBYOBReader needs a ReadableStream");
-    if (!@isReadableByteStreamController(@getByIdDirectPrivate(stream, "readableStreamController")))
-        @throwTypeError("ReadableStreamBYOBReader needs a ReadableByteStreamController");
-    if (@isReadableStreamLocked(stream))
-        @throwTypeError("ReadableStream is locked");
-
-    @readableStreamReaderGenericInitialize(this, stream);
-    @putByIdDirectPrivate(this, "readIntoRequests", []);
-
-    return this;
-}
-
 function privateInitializeReadableByteStreamController(stream, underlyingByteSource, highWaterMark)
 {
     "use strict";
@@ -71,7 +54,7 @@ function privateInitializeReadableByteStreamController(stream, underlyingByteSou
     let autoAllocateChunkSize = underlyingByteSource.autoAllocateChunkSize;
     if (autoAllocateChunkSize !== @undefined) {
         autoAllocateChunkSize = @toNumber(autoAllocateChunkSize);
-        if (autoAllocateChunkSize <= 0 || autoAllocateChunkSize === @Number.POSITIVE_INFINITY || autoAllocateChunkSize === @Number.NEGATIVE_INFINITY)
+        if (autoAllocateChunkSize <= 0 || autoAllocateChunkSize === @Infinity || autoAllocateChunkSize === -@Infinity)
             @throwRangeError("autoAllocateChunkSize value is negative or equal to positive or negative infinity");
     }
     @putByIdDirectPrivate(this, "autoAllocateChunkSize", autoAllocateChunkSize);
@@ -166,7 +149,7 @@ function readableByteStreamControllerClose(controller)
     var pendingPullIntos = @getByIdDirectPrivate(controller, "pendingPullIntos");
     if (pendingPullIntos.length > 0) {
         if (pendingPullIntos[0].bytesFilled > 0) {
-            const e = new @TypeError("Close requested while there remain pending bytes");
+            const e = @makeTypeError("Close requested while there remain pending bytes");
             @readableByteStreamControllerError(controller, e);
             throw e;
         }
@@ -398,7 +381,7 @@ function readableByteStreamControllerRespond(controller, bytesWritten)
 
     bytesWritten = @toNumber(bytesWritten);
 
-    if (@isNaN(bytesWritten) || bytesWritten === @Number.POSITIVE_INFINITY || bytesWritten < 0 )
+    if (@isNaN(bytesWritten) || bytesWritten === @Infinity || bytesWritten < 0 )
         @throwRangeError("bytesWritten has an incorrect value");
 
     @assert(@getByIdDirectPrivate(controller, "pendingPullIntos").length > 0);
@@ -665,7 +648,7 @@ function readableByteStreamControllerPullInto(controller, view)
             return @Promise.@resolve({ value: filledView, done: false });
         }
         if (@getByIdDirectPrivate(controller, "closeRequested")) {
-            const e = new @TypeError("Closing stream has been requested");
+            const e = @makeTypeError("Closing stream has been requested");
             @readableByteStreamControllerError(controller, e);
             return @Promise.@reject(e);
         }

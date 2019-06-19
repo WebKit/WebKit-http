@@ -12,7 +12,6 @@
 #define MODULES_AUDIO_CODING_NETEQ_DECISION_LOGIC_H_
 
 #include "modules/audio_coding/neteq/defines.h"
-#include "modules/audio_coding/neteq/include/neteq.h"
 #include "modules/audio_coding/neteq/tick_timer.h"
 #include "rtc_base/constructormagic.h"
 
@@ -109,6 +108,10 @@ class DecisionLogic final {
   }
   void set_prev_time_scale(bool value) { prev_time_scale_ = value; }
 
+  int postpone_decoding_level_for_test() const {
+    return postpone_decoding_level_;
+  }
+
  private:
   // The value 5 sets maximum time-stretch rate to about 100 ms/s.
   static const int kMinTimescaleInterval = 5;
@@ -181,7 +184,7 @@ class DecisionLogic final {
   bool disallow_time_stretching_;
   std::unique_ptr<TickTimer::Countdown> timescale_countdown_;
   int num_consecutive_expands_;
-  const bool postpone_decoding_after_expand_;
+  const int postpone_decoding_level_;
 
   RTC_DISALLOW_COPY_AND_ASSIGN(DecisionLogic);
 };

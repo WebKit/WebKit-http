@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 Dirk Schulze <krit@webkit.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,8 +21,6 @@
 #pragma once
 
 #include "FEMorphology.h"
-#include "SVGAnimatedEnumeration.h"
-#include "SVGAnimatedNumber.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
 
 namespace WebCore {
@@ -63,39 +61,33 @@ public:
 
     void setRadius(float radiusX, float radiusY);
 
-    String in1() const { return m_in1.currentValue(attributeOwnerProxy()); }
-    MorphologyOperatorType svgOperator() const { return m_svgOperator.currentValue(attributeOwnerProxy()); }
-    float radiusX() const { return m_radiusX.currentValue(attributeOwnerProxy()); }
-    float radiusY() const { return m_radiusY.currentValue(attributeOwnerProxy()); }
+    String in1() const { return m_in1->currentValue(); }
+    MorphologyOperatorType svgOperator() const { return m_svgOperator->currentValue<MorphologyOperatorType>(); }
+    float radiusX() const { return m_radiusX->currentValue(); }
+    float radiusY() const { return m_radiusY->currentValue(); }
 
-    RefPtr<SVGAnimatedString> in1Animated() { return m_in1.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedEnumeration> svgOperatorAnimated() { return m_svgOperator.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedNumber> radiusXAnimated() { return m_radiusX.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedNumber> radiusYAnimated() { return m_radiusY.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedString& in1Animated() { return m_in1; }
+    SVGAnimatedEnumeration& svgOperatorAnimated() { return m_svgOperator; }
+    SVGAnimatedNumber& radiusXAnimated() { return m_radiusX; }
+    SVGAnimatedNumber& radiusYAnimated() { return m_radiusY; }
 
 private:
     SVGFEMorphologyElement(const QualifiedName&, Document&);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGFEMorphologyElement, SVGFilterPrimitiveStandardAttributes>;
-    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
-    static void registerAttributes();
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGFEMorphologyElement, SVGFilterPrimitiveStandardAttributes>;
+    const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
 
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
 
     bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&) override;
-    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
+    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) const override;
 
-    static const AtomicString& radiusXIdentifier();
-    static const AtomicString& radiusYIdentifier();
-
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
-    SVGAnimatedStringAttribute m_in1;
-    SVGAnimatedEnumerationAttribute<MorphologyOperatorType> m_svgOperator { FEMORPHOLOGY_OPERATOR_ERODE };
-    SVGAnimatedNumberAttribute m_radiusX;
-    SVGAnimatedNumberAttribute m_radiusY;
+    PropertyRegistry m_propertyRegistry { *this };
+    Ref<SVGAnimatedString> m_in1 { SVGAnimatedString::create(this) };
+    Ref<SVGAnimatedEnumeration> m_svgOperator { SVGAnimatedEnumeration::create(this, FEMORPHOLOGY_OPERATOR_ERODE) };
+    Ref<SVGAnimatedNumber> m_radiusX { SVGAnimatedNumber::create(this) };
+    Ref<SVGAnimatedNumber> m_radiusY { SVGAnimatedNumber::create(this) };
 };
 
 } // namespace WebCore

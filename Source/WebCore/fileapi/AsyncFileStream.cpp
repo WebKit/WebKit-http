@@ -34,7 +34,6 @@
 
 #include "FileStream.h"
 #include "FileStreamClient.h"
-#include "URL.h"
 #include <mutex>
 #include <wtf/AutodrainedPool.h>
 #include <wtf/Function.h>
@@ -42,10 +41,13 @@
 #include <wtf/MessageQueue.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Threading.h>
+#include <wtf/URL.h>
 
 namespace WebCore {
 
 struct AsyncFileStream::Internals {
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
+
     explicit Internals(FileStreamClient&);
 
     FileStream stream;
@@ -134,7 +136,7 @@ void AsyncFileStream::perform(WTF::Function<WTF::Function<void(FileStreamClient&
     });
 }
 
-void AsyncFileStream::getSize(const String& path, double expectedModificationTime)
+void AsyncFileStream::getSize(const String& path, Optional<WallTime> expectedModificationTime)
 {
     // FIXME: Explicit return type here and in all the other cases like this below is a workaround for a deficiency
     // in the Windows compiler at the time of this writing. Could remove it if that is resolved.

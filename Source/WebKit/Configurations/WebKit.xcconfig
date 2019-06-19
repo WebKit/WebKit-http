@@ -53,14 +53,18 @@ WK_ASSERTION_SERVICES_LDFLAGS_cocoatouch = -framework AssertionServices;
 WK_CARBON_LDFLAGS = $(WK_CARBON_LDFLAGS_$(WK_PLATFORM_NAME));
 WK_CARBON_LDFLAGS_macosx = -framework Carbon;
 
-WK_CORE_PDF_LDFLAGS = $(WK_CORE_PDF_LDFLAGS_$(WK_COCOA_TOUCH));
-WK_CORE_PDF_LDFLAGS_cocoatouch = -framework CorePDF;
+WK_CORE_PDF_LDFLAGS = $(WK_CORE_PDF_LDFLAGS_$(WK_PLATFORM_NAME));
+WK_CORE_PDF_LDFLAGS_iphoneos = -framework CorePDF;
+WK_CORE_PDF_LDFLAGS_iphonesimulator = -framework CorePDF;
 
 WK_CORE_PREDICTION_LDFLAGS = $(WK_CORE_PREDICTION_LDFLAGS_$(WK_HAVE_CORE_PREDICTION));
 WK_CORE_PREDICTION_LDFLAGS_YES = $(WK_MACOS_WEAK_FRAMEWORK) CorePrediction;
 
 WK_CORE_SERVICES_LDFLAGS = $(WK_CORE_SERVICES_LDFLAGS_$(WK_PLATFORM_NAME));
 WK_CORE_SERVICES_LDFLAGS_macosx = -framework CoreServices;
+
+WK_DEVICE_IDENTITY_LDFLAGS = $(WK_DEVICE_IDENTITY_LDFLAGS_$(WK_HAVE_DEVICE_IDENTITY));
+WK_DEVICE_IDENTITY_LDFLAGS_YES = -framework DeviceIdentity;
 
 WK_GRAPHICS_SERVICES_LDFLAGS = $(WK_GRAPHICS_SERVICES_LDFLAGS_$(WK_COCOA_TOUCH));
 WK_GRAPHICS_SERVICES_LDFLAGS_cocoatouch = -framework GraphicsServices;
@@ -97,20 +101,22 @@ WK_OPENGL_LDFLAGS_macosx = -framework OpenGL;
 
 WK_PDFKIT_LDFLAGS = $(WK_PDFKIT_LDFLAGS_$(WK_PLATFORM_NAME));
 WK_PDFKIT_LDFLAGS_iphoneos = -framework PDFKit;
-WK_PDFKIT_LDFLAGS_iphonesimulator = $(WK_PDFKIT_LDFLAGS_iphoneos);
 WK_PDFKIT_LDFLAGS_iphoneos[sdk=iphone*11.*] = ;
+WK_PDFKIT_LDFLAGS_iphonesimulator = $(WK_PDFKIT_LDFLAGS_iphoneos);
 WK_PDFKIT_LDFLAGS_iphonesimulator[sdk=iphone*11.*] = ;
-
-WK_PROXIMITY_NETWORKING_LDFLAGS = $(WK_PROXIMITY_NETWORKING_LDFLAGS_$(WK_PLATFORM_NAME));
-WK_PROXIMITY_NETWORKING_LDFLAGS_watchos = -framework IDS -framework MobileWiFi -framework SystemConfiguration -framework WirelessCoexManager;
 
 WK_SAFE_BROWSING_LDFLAGS = $(WK_SAFE_BROWSING_LDFLAGS_$(WK_PLATFORM_NAME));
 WK_SAFE_BROWSING_LDFLAGS_iphoneos = -framework SafariSafeBrowsing;
-WK_SAFE_BROWSING_LDFLAGS_iphonesimulator = -framework SafariSafeBrowsing;
 WK_SAFE_BROWSING_LDFLAGS_iphoneos[sdk=iphone*10.*] = ;
+WK_SAFE_BROWSING_LDFLAGS_iphonesimulator = -framework SafariSafeBrowsing;
 WK_SAFE_BROWSING_LDFLAGS_iphonesimulator[sdk=iphone*10.*] = ;
+WK_SAFE_BROWSING_LDFLAGS_watchos = -framework SafariSafeBrowsing;
+WK_SAFE_BROWSING_LDFLAGS_watchsimulator = -framework SafariSafeBrowsing;
 WK_SAFE_BROWSING_LDFLAGS_macosx = $(WK_SAFE_BROWSING_LDFLAGS$(WK_MACOS_1013));
 WK_SAFE_BROWSING_LDFLAGS_MACOS_SINCE_1013 = -weak_framework SafariSafeBrowsing;
+
+WK_SECURITY_INTERFACE_LDFLAGS = $(WK_SECURITY_INTERFACE_LDFLAGS_$(WK_PLATFORM_NAME));
+WK_SECURITY_INTERFACE_LDFLAGS_macosx = -framework SecurityInterface;
 
 WK_UIKIT_LDFLAGS = $(WK_UIKIT_LDFLAGS_$(WK_COCOA_TOUCH));
 WK_UIKIT_LDFLAGS_cocoatouch = -framework UIKit;
@@ -118,7 +124,17 @@ WK_UIKIT_LDFLAGS_cocoatouch = -framework UIKit;
 WK_URL_FORMATTING_LDFLAGS = $(WK_URL_FORMATTING_LDFLAGS_$(WK_HAVE_URL_FORMATTING));
 WK_URL_FORMATTING_LDFLAGS_YES = -framework URLFormatting;
 
-FRAMEWORK_AND_LIBRARY_LDFLAGS = -lobjc -framework CFNetwork -framework CoreAudio -framework CoreFoundation -framework CoreGraphics -framework CoreText -framework Foundation -framework ImageIO -framework IOKit -framework WebKitLegacy -lnetwork $(WK_ACCESSIBILITY_LDFLAGS) $(WK_APPKIT_LDFLAGS) $(WK_ASSERTION_SERVICES_LDFLAGS) $(WK_CARBON_LDFLAGS) $(WK_CORE_PDF_LDFLAGS) $(WK_CORE_PREDICTION_LDFLAGS) $(WK_CORE_SERVICES_LDFLAGS) $(WK_GRAPHICS_SERVICES_LDFLAGS) $(WK_IOSURFACE_LDFLAGS) $(WK_LIBSANDBOX_LDFLAGS) $(WK_LIBWEBRTC_LDFLAGS) $(WK_MOBILE_CORE_SERVICES_LDFLAGS) $(WK_MOBILE_GESTALT_LDFLAGS) $(WK_OPENGL_LDFLAGS) $(WK_PDFKIT_LDFLAGS) $(WK_PROXIMITY_NETWORKING_LDFLAGS) $(WK_SAFE_BROWSING_LDFLAGS) $(WK_UIKIT_LDFLAGS) $(WK_URL_FORMATTING_LDFLAGS);
+WK_WEBINSPECTORUI_LDFLAGS = $(WK_WEBINSPECTORUI_LDFLAGS_$(WK_PLATFORM_NAME));
+WK_WEBINSPECTORUI_LDFLAGS_macosx = -weak_framework WebInspectorUI;
+
+WK_AUTHKIT_LDFLAGS = $(WK_AUTHKIT_LDFLAGS_$(WK_PLATFORM_NAME));
+WK_AUTHKIT_LDFLAGS_iphoneos = $(WK_AUTHKIT_LDFLAGS$(WK_IOS_13));
+WK_AUTHKIT_LDFLAGS_iphonesimulator = $(WK_AUTHKIT_LDFLAGS$(WK_IOS_13));
+WK_AUTHKIT_LDFLAGS_IOS_SINCE_13 = -framework AuthKit;
+WK_AUTHKIT_LDFLAGS_macosx = $(WK_AUTHKIT_LDFLAGS$(WK_MACOS_1015));
+WK_AUTHKIT_LDFLAGS_MACOS_SINCE_1015 = -framework AuthKit;
+
+FRAMEWORK_AND_LIBRARY_LDFLAGS = -lobjc -framework CFNetwork -framework CoreAudio -framework CoreFoundation -framework CoreGraphics -framework CoreText -framework Foundation -framework ImageIO -framework IOKit -framework WebKitLegacy -lnetwork $(WK_ACCESSIBILITY_LDFLAGS) $(WK_APPKIT_LDFLAGS) $(WK_ASSERTION_SERVICES_LDFLAGS) $(WK_AUTHKIT_LDFLAGS) $(WK_CARBON_LDFLAGS) $(WK_CORE_PDF_LDFLAGS) $(WK_CORE_PREDICTION_LDFLAGS) $(WK_CORE_SERVICES_LDFLAGS) $(WK_DEVICE_IDENTITY_LDFLAGS) $(WK_GRAPHICS_SERVICES_LDFLAGS) $(WK_IOSURFACE_LDFLAGS) $(WK_LIBSANDBOX_LDFLAGS) $(WK_LIBWEBRTC_LDFLAGS) $(WK_MOBILE_CORE_SERVICES_LDFLAGS) $(WK_MOBILE_GESTALT_LDFLAGS) $(WK_OPENGL_LDFLAGS) $(WK_PDFKIT_LDFLAGS) $(WK_SAFE_BROWSING_LDFLAGS) $(WK_SECURITY_INTERFACE_LDFLAGS) $(WK_UIKIT_LDFLAGS) $(WK_URL_FORMATTING_LDFLAGS) $(WK_WEBINSPECTORUI_LDFLAGS);
 
 // Prevent C++ standard library basic_stringstream, operator new, delete and their related exception types from being exported as weak symbols.
 UNEXPORTED_SYMBOL_LDFLAGS = -Wl,-unexported_symbol -Wl,__ZTISt9bad_alloc -Wl,-unexported_symbol -Wl,__ZTISt9exception -Wl,-unexported_symbol -Wl,__ZTSSt9bad_alloc -Wl,-unexported_symbol -Wl,__ZTSSt9exception -Wl,-unexported_symbol -Wl,__ZdlPvS_ -Wl,-unexported_symbol -Wl,__ZnwmPv -Wl,-unexported_symbol -Wl,__Znwm -Wl,-unexported_symbol -Wl,__ZNSt3__18functionIFvN7WebCore12PolicyActionEEEC2EOS4_ -Wl,-unexported_symbol -Wl,__ZNSt3__18functionIFvN7WebCore12PolicyActionEEEC1EOS4_ -Wl,-unexported_symbol -Wl,__ZNSt3__18functionIFvN7WebCore12PolicyActionEEEaSEDn -Wl,-unexported_symbol -Wl,__ZNKSt3__18functionIFvN7WebCore12PolicyActionEEEclES2_ -Wl,-unexported_symbol -Wl,__ZNSt3__18functionIFvN7WebCore12PolicyActionEEE4swapERS4_ -Wl,-unexported_symbol -Wl,__ZNSt3__18functionIFvN7WebCore12PolicyActionEEEC1ERKS4_ -Wl,-unexported_symbol -Wl,__ZNSt3__18functionIFvN7WebCore12PolicyActionEEEC2ERKS4_ -Wl,-unexported_symbol -Wl,__ZNSt3__18functionIFvN7WebCore12PolicyActionEEED1Ev -Wl,-unexported_symbol -Wl,__ZNSt3__18functionIFvN7WebCore12PolicyActionEEED2Ev -Wl,-unexported_symbol -Wl,__ZNSt3__18functionIFvN7WebCore12PolicyActionEEEaSERKS4_ -Wl,-unexported_symbol -Wl,__ZTVNSt3__117bad_function_callE -Wl,-unexported_symbol -Wl,__ZTCNSt3__118basic_stringstreamIcNS_11char_traitsIcEENS_9allocatorIcEEEE0_NS_13basic_istreamIcS2_EE -Wl,-unexported_symbol -Wl,__ZTCNSt3__118basic_stringstreamIcNS_11char_traitsIcEENS_9allocatorIcEEEE0_NS_14basic_iostreamIcS2_EE -Wl,-unexported_symbol -Wl,__ZTCNSt3__118basic_stringstreamIcNS_11char_traitsIcEENS_9allocatorIcEEEE16_NS_13basic_ostreamIcS2_EE -Wl,-unexported_symbol -Wl,__ZTTNSt3__118basic_stringstreamIcNS_11char_traitsIcEENS_9allocatorIcEEEE -Wl,-unexported_symbol -Wl,__ZTVNSt3__115basic_stringbufIcNS_11char_traitsIcEENS_9allocatorIcEEEE -Wl,-unexported_symbol -Wl,__ZTVNSt3__118basic_stringstreamIcNS_11char_traitsIcEENS_9allocatorIcEEEE -Wl,-unexported_symbol -Wl,__ZTCNSt3__118basic_stringstreamIcNS_11char_traitsIcEENS_9allocatorIcEEEE8_NS_13basic_ostreamIcS2_EE;
@@ -136,23 +152,28 @@ REEXPORTED_FRAMEWORK_NAMES[sdk=macosx*] = $(inherited) WebCore;
 
 // FIXME: Remove -reexport_install_name once rdar://problem/30820233 is fixed.
 OTHER_TAPI_FLAGS = $(OTHER_TAPI_FLAGS_$(WK_COCOA_TOUCH));
-OTHER_TAPI_FLAGS_cocoatouch = $(inherited) -reexport_install_name $(WK_ALTERNATE_WEBKIT_SDK_PATH)$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks/WebKitLegacy.framework/WebKitLegacy -extra-private-header $(SRCROOT)/Platform/ExtraPrivateSymbolsForTAPI.h -extra-public-header $(SRCROOT)/Platform/ExtraPublicSymbolsForTAPI.h;
+OTHER_TAPI_FLAGS_cocoatouch = $(inherited) -reexport_install_name $(WK_ALTERNATE_WEBKIT_SDK_PATH)$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks/WebKitLegacy.framework/WebKitLegacy -extra-private-header $(SRCROOT)/Platform/ExtraPrivateSymbolsForTAPI.h -extra-public-header $(SRCROOT)/Platform/ExtraPublicSymbolsForTAPI.h -exclude-private-header $(BUILT_PRODUCTS_DIR)/$(PRIVATE_HEADERS_FOLDER_PATH)/NSURLDownloadSPI.h;
 
 SECTORDER_FLAGS = $(SECTORDER_FLAGS_$(CONFIGURATION));
 SECTORDER_FLAGS_Production[sdk=iphoneos*] = -Wl,-order_file,$(SDKROOT)/AppleInternal/OrderFiles/WebKit.order;
 SECTORDER_FLAGS_Production[sdk=macosx*] = -Wl,-order_file,mac/WebKit2.order;
 
 EXCLUDED_SOURCE_FILE_NAMES = Resources/ios/*;
-EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*] = PluginProcessShim.dylib SecItemShim.dylib WebProcessShim.dylib *.pdf Resources/mac/* com.apple.WebKit.Storage.sb com.apple.WebKit.NetworkProcess.sb com.apple.WebProcess.sb com.apple.WebKit.plugin-common.sb PlugInSandboxProfiles/*.sb;
+EXCLUDED_SOURCE_FILE_NAMES[sdk=iphone*] = PluginProcessShim.dylib SecItemShim.dylib WebProcessShim.dylib *.pdf Resources/mac/* com.apple.WebKit.NetworkProcess.sb com.apple.WebProcess.sb com.apple.WebKit.plugin-common.sb PlugInSandboxProfiles/*.sb;
 
 INSTALLHDRS_SCRIPT_PHASE = YES;
+APPLY_RULES_IN_COPY_HEADERS = $(USE_NEW_BUILD_SYSTEM);
 
-WK_FRAMEWORK_HEADER_POSTPROCESSING_DISABLED[sdk=macosx*] = $(WK_FRAMEWORK_HEADER_POSTPROCESSING_DISABLED$(WK_MACOS_1014));
-WK_FRAMEWORK_HEADER_POSTPROCESSING_DISABLED_MACOS_BEFORE_1014 = YES;
+WK_FRAMEWORK_HEADER_POSTPROCESSING_DISABLED[sdk=macosx*] = $(WK_FRAMEWORK_HEADER_POSTPROCESSING_DISABLED$(WK_MACOS_1015));
+WK_FRAMEWORK_HEADER_POSTPROCESSING_DISABLED_MACOS_BEFORE_1015 = YES;
 WK_FRAMEWORK_HEADER_POSTPROCESSING_DISABLED[sdk=iphone*11.*] = YES;
+WK_FRAMEWORK_HEADER_POSTPROCESSING_DISABLED[sdk=iphone*12.*] = YES;
 
-WK_RELOCATABLE_FRAMEWORK_LDFLAGS = $(WK_RELOCATABLE_FRAMEWORK_LDFLAGS_$(WK_RELOCATABLE_FRAMEWORKS));
-WK_RELOCATABLE_FRAMEWORK_LDFLAGS_YES = -Wl,-not_for_dyld_shared_cache;
+WK_RELOCATABLE_FRAMEWORK_LDFLAGS = $(WK_RELOCATABLE_FRAMEWORK_LDFLAGS_$(WK_RELOCATABLE_FRAMEWORKS)_$(WK_PLATFORM_NAME));
+WK_RELOCATABLE_FRAMEWORK_LDFLAGS_YES_macosx = -Wl,-not_for_dyld_shared_cache;
+
+WK_HAVE_DEVICE_IDENTITY = $(WK_HAVE_DEVICE_IDENTITY_$(PLATFORM_NAME));
+WK_HAVE_DEVICE_IDENTITY_iphoneos = YES;
 
 WK_HAVE_URL_FORMATTING = $(WK_HAVE_URL_FORMATTING_$(WK_PLATFORM_NAME));
 WK_HAVE_URL_FORMATTING_iphoneos = $(WK_HAVE_URL_FORMATTING$(WK_IOS_12));

@@ -36,6 +36,17 @@
 namespace WebKit {
 using namespace WebCore;
 
+RefPtr<NetworkProcess>& lastCreatedNetworkProcess()
+{
+    static NeverDestroyed<RefPtr<NetworkProcess>> networkProcess;
+    return networkProcess.get();
+}
+
+void LegacyCustomProtocolManager::networkProcessCreated(NetworkProcess& networkProcess)
+{
+    lastCreatedNetworkProcess() = &networkProcess;
+}
+
 LegacyCustomProtocolManager::WebSoupRequestAsyncData::WebSoupRequestAsyncData(GRefPtr<GTask>&& requestTask, WebKitSoupRequestGeneric* requestGeneric)
     : task(WTFMove(requestTask))
     , request(requestGeneric)
@@ -63,7 +74,7 @@ private:
     void startRequest(GRefPtr<GTask>&& task) override
     {
         WebKitSoupRequestGeneric* request = WEBKIT_SOUP_REQUEST_GENERIC(g_task_get_source_object(task.get()));
-        auto* customProtocolManager = NetworkProcess::singleton().supplement<LegacyCustomProtocolManager>();
+        auto* customProtocolManager = lastCreatedNetworkProcess()->supplement<LegacyCustomProtocolManager>();
         if (!customProtocolManager)
             return;
 
@@ -91,9 +102,8 @@ void LegacyCustomProtocolManager::registerScheme(const String& scheme)
     auto* genericRequestClass = static_cast<SoupRequestClass*>(g_type_class_peek(WEBKIT_TYPE_SOUP_REQUEST_GENERIC));
     ASSERT(genericRequestClass);
     genericRequestClass->schemes = const_cast<const char**>(reinterpret_cast<char**>(m_registeredSchemes->pdata));
-    NetworkStorageSession::forEach([](const WebCore::NetworkStorageSession& session) {
-        if (auto* soupSession = session.soupNetworkSession())
-            soupSession->setupCustomProtocols();
+    lastCreatedNetworkProcess()->forEachNetworkStorageSession([](const auto& session) {
+        session.soupNetworkSession().setupCustomProtocols();
     });
 }
 

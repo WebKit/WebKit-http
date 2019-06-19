@@ -26,7 +26,7 @@
 #import "config.h"
 #import "UIScriptController.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "DumpRenderTreeBrowserView.h"
 #import "UIScriptContext.h"
@@ -82,6 +82,22 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
     });
 }
 
+void UIScriptController::resignFirstResponder()
+{
+}
+
+void UIScriptController::setViewScale(double)
+{
+}
+
+void UIScriptController::setMinimumEffectiveWidth(double)
+{
+}
+
+void UIScriptController::setAllowsViewportShrinkToFit(bool)
+{
+}
+
 void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef)
 {
 }
@@ -100,6 +116,10 @@ void UIScriptController::liftUpAtPoint(long x, long y, long touchCount, JSValueR
 }
 
 void UIScriptController::singleTapAtPoint(long x, long y, JSValueRef callback)
+{
+}
+
+void UIScriptController::singleTapAtPointWithModifiers(long x, long y, JSValueRef modifierArray, JSValueRef callback)
 {
 }
 
@@ -131,6 +151,10 @@ void UIScriptController::stylusTapAtPoint(long x, long y, float azimuthAngle, fl
 {
 }
 
+void UIScriptController::stylusTapAtPointWithModifiers(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef modifierArray, JSValueRef callback)
+{
+}
+
 void UIScriptController::sendEventStream(JSStringRef eventsJSON, JSValueRef callback)
 {
 }
@@ -143,11 +167,7 @@ void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef characte
 {
 }
 
-void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
-{
-}
-
-void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
+void UIScriptController::keyDown(JSStringRef, JSValueRef)
 {
 }
 
@@ -155,16 +175,25 @@ void UIScriptController::dismissFormAccessoryView()
 {
 }
 
+void UIScriptController::dismissFilePicker(JSValueRef)
+{
+}
+
 void UIScriptController::setTimePickerValue(long, long)
 {
 }
 
-void UIScriptController::invokeShareSheetWithResolution(bool)
+void UIScriptController::setShareSheetCompletesImmediatelyWithResolution(bool)
 {
 }
 
 void UIScriptController::selectFormAccessoryPickerRow(long rowIndex)
 {
+}
+
+bool UIScriptController::isPresentingModally() const
+{
+    return false;
 }
 
 JSRetainPtr<JSStringRef> UIScriptController::textContentType() const
@@ -203,6 +232,25 @@ static CGPoint contentOffsetBoundedInValidRange(UIScrollView *scrollView, CGPoin
     return contentOffset;
 }
 
+double UIScriptController::contentOffsetX() const
+{
+    return [gWebScrollView contentOffset].x;
+}
+
+double UIScriptController::contentOffsetY() const
+{
+    return [gWebScrollView contentOffset].y;
+}
+
+bool UIScriptController::scrollUpdatesDisabled() const
+{
+    return false;
+}
+
+void UIScriptController::setScrollUpdatesDisabled(bool)
+{
+}
+
 void UIScriptController::scrollToOffset(long x, long y)
 {
     [gWebScrollView setContentOffset:contentOffsetBoundedInValidRange(gWebScrollView, CGPointMake(x, y)) animated:YES];
@@ -211,6 +259,10 @@ void UIScriptController::scrollToOffset(long x, long y)
 void UIScriptController::immediateScrollToOffset(long x, long y)
 {
     [gWebScrollView setContentOffset:contentOffsetBoundedInValidRange(gWebScrollView, CGPointMake(x, y)) animated:NO];
+}
+
+void UIScriptController::immediateScrollElementAtContentPointToOffset(long x, long y, long xScrollOffset, long yScrollOffset)
+{
 }
 
 void UIScriptController::immediateZoomToScale(double scale)
@@ -230,6 +282,11 @@ void UIScriptController::applyAutocorrection(JSStringRef, JSStringRef, JSValueRe
 {
 }
 
+bool UIScriptController::isShowingKeyboard() const
+{
+    return false;
+}
+
 double UIScriptController::minimumZoomScale() const
 {
     return gWebScrollView.minimumZoomScale;
@@ -240,12 +297,12 @@ double UIScriptController::maximumZoomScale() const
     return gWebScrollView.maximumZoomScale;
 }
 
-std::optional<bool> UIScriptController::stableStateOverride() const
+Optional<bool> UIScriptController::stableStateOverride() const
 {
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
-void UIScriptController::setStableStateOverride(std::optional<bool>)
+void UIScriptController::setStableStateOverride(Optional<bool>)
 {
 }
 
@@ -288,6 +345,47 @@ void UIScriptController::platformSetDidHideKeyboardCallback()
 {
 }
 
+void UIScriptController::platformSetDidShowMenuCallback()
+{
+}
+
+void UIScriptController::platformSetDidHideMenuCallback()
+{
+}
+
+bool UIScriptController::isShowingPopover() const
+{
+    return false;
+}
+
+void UIScriptController::platformSetWillPresentPopoverCallback()
+{
+}
+
+void UIScriptController::platformSetDidDismissPopoverCallback()
+{
+}
+
+JSObjectRef UIScriptController::rectForMenuAction(JSStringRef) const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::menuRect() const
+{
+    return nullptr;
+}
+
+bool UIScriptController::isShowingMenu() const
+{
+    return false;
+}
+
+bool UIScriptController::isDismissingMenu() const
+{
+    return false;
+}
+
 void UIScriptController::platformSetDidEndScrollingCallback()
 {
 }
@@ -296,7 +394,7 @@ void UIScriptController::platformClearAllCallbacks()
 {
 }
 
-JSObjectRef UIScriptController::selectionRangeViewRects() const
+JSObjectRef UIScriptController::textSelectionRangeRects() const
 {
     return nullptr;
 }
@@ -376,6 +474,76 @@ JSObjectRef UIScriptController::selectionEndGrabberViewRect() const
     return nullptr;
 }
 
+JSObjectRef UIScriptController::selectionCaretViewRect() const
+{
+    return nullptr;
 }
 
-#endif // PLATFORM(IOS)
+JSObjectRef UIScriptController::selectionRangeViewRects() const
+{
+    return nullptr;
+}
+
+bool UIScriptController::isShowingDataListSuggestions() const
+{
+    return false;
+}
+
+JSObjectRef UIScriptController::calendarType() const
+{
+    return nullptr;
+}
+
+void UIScriptController::setDefaultCalendarType(JSStringRef calendarIdentifier)
+{
+}
+
+void UIScriptController::overridePreference(JSStringRef, JSStringRef)
+{
+}
+
+void UIScriptController::drawSquareInEditableImage()
+{
+}
+
+long UIScriptController::numberOfStrokesInEditableImage()
+{
+    return 0;
+}
+
+void UIScriptController::toggleCapsLock(JSValueRef callback)
+{
+    doAsyncTask(callback);
+}
+
+JSObjectRef UIScriptController::attachmentInfo(JSStringRef)
+{
+    return nullptr;
+}
+
+void UIScriptController::setKeyboardInputModeIdentifier(JSStringRef)
+{
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::lastUndoLabel() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::firstRedoLabel() const
+{
+    return nullptr;
+}
+
+NSUndoManager *UIScriptController::platformUndoManager() const
+{
+    return nil;
+}
+
+void UIScriptController::setHardwareKeyboardAttached(bool)
+{
+}
+
+}
+
+#endif // PLATFORM(IOS_FAMILY)

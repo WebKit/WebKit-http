@@ -24,24 +24,16 @@
  */
 
 #import "_WKWebsitePolicies.h"
+#import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED
+@class WKWebpagePreferences;
 
-#import "APIWebsitePolicies.h"
-#import "WKObject.h"
-
-namespace WebKit {
-
-template<> struct WrapperTraits<API::WebsitePolicies> {
-    using WrapperClass = _WKWebsitePolicies;
-};
-
-}
-
-@interface _WKWebsitePolicies () <WKObject> {
+@interface _WKWebsitePolicies ()
+{
 @package
-    API::ObjectStorage<API::WebsitePolicies> _websitePolicies;
+    RetainPtr<WKWebpagePreferences> _webpagePreferences;
 }
-@end
 
-#endif
+@property (nonatomic, readonly) WKWebpagePreferences *webpagePreferences;
+
+@end

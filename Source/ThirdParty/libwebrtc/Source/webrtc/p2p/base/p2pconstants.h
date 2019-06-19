@@ -13,6 +13,8 @@
 
 #include <string>
 
+#include "rtc_base/system/rtc_export.h"
+
 namespace cricket {
 
 // CN_ == "content name".  When we initiate a session, we choose the
@@ -29,7 +31,7 @@ extern const char CN_OTHER[];
 extern const char GROUP_TYPE_BUNDLE[];
 
 extern const int ICE_UFRAG_LENGTH;
-extern const int ICE_PWD_LENGTH;
+RTC_EXPORT extern const int ICE_PWD_LENGTH;
 extern const size_t ICE_UFRAG_MIN_LENGTH;
 extern const size_t ICE_PWD_MIN_LENGTH;
 extern const size_t ICE_UFRAG_MAX_LENGTH;
@@ -102,12 +104,7 @@ extern const int CONNECTION_RESPONSE_TIMEOUT;
 // The minimum time we will wait before destroying a connection after creating
 // it.
 extern const int MIN_CONNECTION_LIFETIME;
-// TODO(qingsi): Rename all constants to kConstant style.
-//
-// The maximum time in milliseconds we will wait before signaling any address
-// ports and candidates gathered from these ports, if the candidate allocation
-// is not done yet.
-extern const int kMaxWaitMsBeforeSignalingAnyAddressPortsAndCandidates;
+
 }  // namespace cricket
 
 #endif  // P2P_BASE_P2PCONSTANTS_H_

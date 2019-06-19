@@ -46,7 +46,7 @@ using namespace HTMLNames;
 WTF_MAKE_ISO_ALLOCATED_IMPL(RenderFileUploadControl);
 
 const int afterButtonSpacing = 4;
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 const int iconHeight = 16;
 const int iconWidth = 16;
 const int iconFilenameSpacing = 2;
@@ -96,7 +96,7 @@ static int nodeWidth(Node* node)
     return (node && node->renderBox()) ? roundToInt(node->renderBox()->size().width()) : 0;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 static int nodeHeight(Node* node)
 {
     return (node && node->renderBox()) ? roundToInt(node->renderBox()->size().height()) : 0;
@@ -105,7 +105,7 @@ static int nodeHeight(Node* node)
 
 int RenderFileUploadControl::maxFilenameWidth() const
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     int iconWidth = nodeHeight(uploadButton());
 #endif
     return std::max(0, snappedIntRect(contentBoxRect()).width() - nodeWidth(uploadButton()) - afterButtonSpacing
@@ -117,6 +117,9 @@ void RenderFileUploadControl::paintObject(PaintInfo& paintInfo, const LayoutPoin
     if (style().visibility() != Visibility::Visible)
         return;
     
+    if (paintInfo.context().paintingDisabled())
+        return;
+
     // Push a clip.
     GraphicsContextStateSaver stateSaver(paintInfo.context(), false);
     if (paintInfo.phase == PaintPhase::Foreground || paintInfo.phase == PaintPhase::ChildBlockBackgrounds) {
@@ -133,7 +136,7 @@ void RenderFileUploadControl::paintObject(PaintInfo& paintInfo, const LayoutPoin
         const FontCascade& font = style().fontCascade();
         TextRun textRun = constructTextRun(displayedFilename, style(), AllowTrailingExpansion, RespectDirection | RespectDirectionOverride);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         int iconHeight = nodeHeight(uploadButton());
         int iconWidth = iconHeight;
 #endif
@@ -152,7 +155,7 @@ void RenderFileUploadControl::paintObject(PaintInfo& paintInfo, const LayoutPoin
         else
             textX = contentLeft + contentWidth() - buttonAndIconWidth - font.width(textRun);
 
-        LayoutUnit textY = 0;
+        LayoutUnit textY;
         // We want to match the button's baseline
         // FIXME: Make this work with transforms.
         if (RenderButton* buttonRenderer = downcast<RenderButton>(button->renderer()))
@@ -174,7 +177,7 @@ void RenderFileUploadControl::paintObject(PaintInfo& paintInfo, const LayoutPoin
             else
                 iconX = contentLeft + contentWidth() - buttonWidth - afterButtonSpacing - iconWidth;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
             if (RenderButton* buttonRenderer = downcast<RenderButton>(button->renderer())) {
                 // Draw the file icon and decorations.
                 IntRect iconRect(iconX, iconY, iconWidth, iconHeight);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,28 +27,61 @@
 
 #include "CryptoRandom.h"
 #include "Environment.h"
-#include "PerProcess.h"
 #include "ProcessCheck.h"
+#include "StaticPerProcess.h"
 #include "VMAllocate.h"
 #include "Vector.h"
 #include "bmalloc.h"
 #include <cstdio>
 #include <mutex>
 
+#if GIGACAGE_ENABLED
+
+namespace Gigacage {
+
+struct Callback {
+    Callback() { }
+    
+    Callback(void (*function)(void*), void *argument)
+        : function(function)
+        , argument(argument)
+    {
+    }
+    
+    void (*function)(void*) { nullptr };
+    void* argument { nullptr };
+};
+
+}
+
+namespace bmalloc {
+
+struct PrimitiveDisableCallbacks : public StaticPerProcess<PrimitiveDisableCallbacks> {
+    PrimitiveDisableCallbacks(std::lock_guard<Mutex>&) { }
+    
+    Vector<Gigacage::Callback> callbacks;
+};
+DECLARE_STATIC_PER_PROCESS_STORAGE(PrimitiveDisableCallbacks);
+DEFINE_STATIC_PER_PROCESS_STORAGE(PrimitiveDisableCallbacks);
+
+} // namespace bmalloc
+
+namespace Gigacage {
+
 // This is exactly 32GB because inside JSC, indexed accesses for arrays, typed arrays, etc,
 // use unsigned 32-bit ints as indices. The items those indices access are 8 bytes or less
 // in size. 2^32 * 8 = 32GB. This means if an access on a caged type happens to go out of
 // bounds, the access is guaranteed to land somewhere else in the cage or inside the runway.
 // If this were less than 32GB, those OOB accesses could reach outside of the cage.
-#define GIGACAGE_RUNWAY (32llu * 1024 * 1024 * 1024)
+constexpr size_t gigacageRunway = 32llu * 1024 * 1024 * 1024;
 
-alignas(GIGACAGE_BASE_PTRS_SIZE) char g_gigacageBasePtrs[GIGACAGE_BASE_PTRS_SIZE];
+// Note: g_gigacageBasePtrs[0] is reserved for storing the wasEnabled flag.
+// The first gigacageBasePtr will start at g_gigacageBasePtrs[sizeof(void*)].
+// This is done so that the wasEnabled flag will also be protected along with the
+// gigacageBasePtrs.
+alignas(gigacageBasePtrsSize) char g_gigacageBasePtrs[gigacageBasePtrsSize];
 
 using namespace bmalloc;
-
-namespace Gigacage {
-
-bool g_wasEnabled;
 
 namespace {
 
@@ -59,12 +92,12 @@ void protectGigacageBasePtrs()
     uintptr_t basePtrs = reinterpret_cast<uintptr_t>(g_gigacageBasePtrs);
     // We might only get page size alignment, but that's also the minimum we need.
     RELEASE_BASSERT(!(basePtrs & (vmPageSize() - 1)));
-    mprotect(g_gigacageBasePtrs, GIGACAGE_BASE_PTRS_SIZE, PROT_READ);
+    mprotect(g_gigacageBasePtrs, gigacageBasePtrsSize, PROT_READ);
 }
 
 void unprotectGigacageBasePtrs()
 {
-    mprotect(g_gigacageBasePtrs, GIGACAGE_BASE_PTRS_SIZE, PROT_READ | PROT_WRITE);
+    mprotect(g_gigacageBasePtrs, gigacageBasePtrsSize, PROT_READ | PROT_WRITE);
 }
 
 class UnprotectGigacageBasePtrsScope {
@@ -80,30 +113,23 @@ public:
     }
 };
 
-struct Callback {
-    Callback() { }
-    
-    Callback(void (*function)(void*), void *argument)
-        : function(function)
-        , argument(argument)
-    {
+size_t runwaySize(Kind kind)
+{
+    switch (kind) {
+    case Kind::ReservedForFlagsAndNotABasePtr:
+        RELEASE_BASSERT_NOT_REACHED();
+    case Kind::Primitive:
+        return gigacageRunway;
+    case Kind::JSValue:
+        return 0;
     }
-    
-    void (*function)(void*) { nullptr };
-    void* argument { nullptr };
-};
-
-struct PrimitiveDisableCallbacks {
-    PrimitiveDisableCallbacks(std::lock_guard<Mutex>&) { }
-    
-    Vector<Callback> callbacks;
-};
+    return 0;
+}
 
 } // anonymous namespace
 
 void ensureGigacage()
 {
-#if GIGACAGE_ENABLED
     static std::once_flag onceFlag;
     std::call_once(
         onceFlag,
@@ -113,7 +139,7 @@ void ensureGigacage()
             
             Kind shuffledKinds[numKinds];
             for (unsigned i = 0; i < numKinds; ++i)
-                shuffledKinds[i] = static_cast<Kind>(i);
+                shuffledKinds[i] = static_cast<Kind>(i + 1); // + 1 to skip Kind::ReservedForFlagsAndNotABasePtr.
             
             // We just go ahead and assume that 64 bits is enough randomness. That's trivially true right
             // now, but would stop being true if we went crazy with gigacages. Based on my math, 21 is the
@@ -140,13 +166,13 @@ void ensureGigacage()
             
             for (Kind kind : shuffledKinds) {
                 totalSize = bump(kind, alignTo(kind, totalSize));
+                totalSize += runwaySize(kind);
                 maxAlignment = std::max(maxAlignment, alignment(kind));
             }
-            totalSize += GIGACAGE_RUNWAY;
-            
+
             // FIXME: Randomize where this goes.
             // https://bugs.webkit.org/show_bug.cgi?id=175245
-            void* base = tryVMAllocate(maxAlignment, totalSize);
+            void* base = tryVMAllocate(maxAlignment, totalSize, VMTag::JSGigacage);
             if (!base) {
                 if (GIGACAGE_ALLOCATION_CAN_FAIL)
                     return;
@@ -155,25 +181,23 @@ void ensureGigacage()
                 BCRASH();
             }
 
-            if (GIGACAGE_RUNWAY > 0) {
-                char* runway = reinterpret_cast<char*>(base) + totalSize - GIGACAGE_RUNWAY;
-                // Make OOB accesses into the runway crash.
-                vmRevokePermissions(runway, GIGACAGE_RUNWAY);
-            }
-
-            vmDeallocatePhysicalPages(base, totalSize);
-            
             size_t nextCage = 0;
             for (Kind kind : shuffledKinds) {
                 nextCage = alignTo(kind, nextCage);
                 basePtr(kind) = reinterpret_cast<char*>(base) + nextCage;
                 nextCage = bump(kind, nextCage);
+                if (runwaySize(kind) > 0) {
+                    char* runway = reinterpret_cast<char*>(base) + nextCage;
+                    // Make OOB accesses into the runway crash.
+                    vmRevokePermissions(runway, runwaySize(kind));
+                    nextCage += runwaySize(kind);
+                }
             }
             
+            vmDeallocatePhysicalPages(base, totalSize);
+            setWasEnabled();
             protectGigacageBasePtrs();
-            g_wasEnabled = true;
         });
-#endif // GIGACAGE_ENABLED
 }
 
 void disablePrimitiveGigacage()
@@ -185,8 +209,8 @@ void disablePrimitiveGigacage()
         return;
     }
     
-    PrimitiveDisableCallbacks& callbacks = *PerProcess<PrimitiveDisableCallbacks>::get();
-    std::unique_lock<Mutex> lock(PerProcess<PrimitiveDisableCallbacks>::mutex());
+    PrimitiveDisableCallbacks& callbacks = *PrimitiveDisableCallbacks::get();
+    std::unique_lock<Mutex> lock(PrimitiveDisableCallbacks::mutex());
     for (Callback& callback : callbacks.callbacks)
         callback.function(callback.argument);
     callbacks.callbacks.shrink(0);
@@ -203,15 +227,15 @@ void addPrimitiveDisableCallback(void (*function)(void*), void* argument)
         return;
     }
     
-    PrimitiveDisableCallbacks& callbacks = *PerProcess<PrimitiveDisableCallbacks>::get();
-    std::unique_lock<Mutex> lock(PerProcess<PrimitiveDisableCallbacks>::mutex());
+    PrimitiveDisableCallbacks& callbacks = *PrimitiveDisableCallbacks::get();
+    std::unique_lock<Mutex> lock(PrimitiveDisableCallbacks::mutex());
     callbacks.callbacks.push(Callback(function, argument));
 }
 
 void removePrimitiveDisableCallback(void (*function)(void*), void* argument)
 {
-    PrimitiveDisableCallbacks& callbacks = *PerProcess<PrimitiveDisableCallbacks>::get();
-    std::unique_lock<Mutex> lock(PerProcess<PrimitiveDisableCallbacks>::mutex());
+    PrimitiveDisableCallbacks& callbacks = *PrimitiveDisableCallbacks::get();
+    std::unique_lock<Mutex> lock(PrimitiveDisableCallbacks::mutex());
     for (size_t i = 0; i < callbacks.callbacks.size(); ++i) {
         if (callbacks.callbacks[i].function == function
             && callbacks.callbacks[i].argument == argument) {
@@ -224,6 +248,9 @@ void removePrimitiveDisableCallback(void (*function)(void*), void* argument)
 
 static void primitiveGigacageDisabled(void*)
 {
+    if (GIGACAGE_ALLOCATION_CAN_FAIL && !wasEnabled())
+        return;
+
     static bool s_false;
     fprintf(stderr, "FATAL: Primitive gigacage disabled, but we don't want that in this process.\n");
     if (!s_false)
@@ -246,17 +273,15 @@ bool isDisablingPrimitiveGigacageDisabled()
 bool shouldBeEnabled()
 {
     static bool cached = false;
-
-#if GIGACAGE_ENABLED
     static std::once_flag onceFlag;
     std::call_once(
         onceFlag,
         [] {
-            if (!gigacageEnabledForProcess())
+            bool debugHeapEnabled = Environment::get()->isDebugHeapEnabled();
+            if (debugHeapEnabled)
                 return;
 
-            bool result = !PerProcess<Environment>::get()->isDebugHeapEnabled();
-            if (!result)
+            if (!gigacageEnabledForProcess())
                 return;
             
             if (char* gigacageEnabled = getenv("GIGACAGE_ENABLED")) {
@@ -269,12 +294,11 @@ bool shouldBeEnabled()
             
             cached = true;
         });
-#endif // GIGACAGE_ENABLED
-    
     return cached;
 }
 
 } // namespace Gigacage
 
+#endif // GIGACAGE_ENABLED
 
 

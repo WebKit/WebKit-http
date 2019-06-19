@@ -28,24 +28,27 @@
 
 #if ENABLE(MEDIA_SOURCE) && USE(AVFOUNDATION)
 
+#import "CDMInstance.h"
 #import "CDMSessionMediaSourceAVFObjC.h"
 #import "ContentType.h"
+#import "Logging.h"
 #import "MediaPlayerPrivateMediaSourceAVFObjC.h"
 #import "MediaSourcePrivateClient.h"
 #import "SourceBufferPrivateAVFObjC.h"
 #import <objc/runtime.h>
+#import <wtf/Algorithms.h>
 #import <wtf/SoftLinking.h>
-#import <wtf/text/AtomicString.h>
+#import <wtf/text/AtomString.h>
 
 namespace WebCore {
 
 #pragma mark -
 #pragma mark MediaSourcePrivateAVFObjC
 
-RefPtr<MediaSourcePrivateAVFObjC> MediaSourcePrivateAVFObjC::create(MediaPlayerPrivateMediaSourceAVFObjC* parent, MediaSourcePrivateClient* client)
+Ref<MediaSourcePrivateAVFObjC> MediaSourcePrivateAVFObjC::create(MediaPlayerPrivateMediaSourceAVFObjC* parent, MediaSourcePrivateClient* client)
 {
-    RefPtr<MediaSourcePrivateAVFObjC> mediaSourcePrivate = adoptRef(new MediaSourcePrivateAVFObjC(parent, client));
-    client->setPrivateAndOpen(*mediaSourcePrivate);
+    auto mediaSourcePrivate = adoptRef(*new MediaSourcePrivateAVFObjC(parent, client));
+    client->setPrivateAndOpen(mediaSourcePrivate.copyRef());
     return mediaSourcePrivate;
 }
 
@@ -53,25 +56,41 @@ MediaSourcePrivateAVFObjC::MediaSourcePrivateAVFObjC(MediaPlayerPrivateMediaSour
     : m_player(parent)
     , m_client(client)
     , m_isEnded(false)
+#if !RELEASE_LOG_DISABLED
+    , m_logger(m_player->mediaPlayerLogger())
+    , m_logIdentifier(m_player->mediaPlayerLogIdentifier())
+#endif
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+#if !RELEASE_LOG_DISABLED
+    m_client->setLogIdentifier(m_logIdentifier);
+#endif
 }
 
 MediaSourcePrivateAVFObjC::~MediaSourcePrivateAVFObjC()
 {
+    ALWAYS_LOG(LOGIDENTIFIER);
+
     for (auto it = m_sourceBuffers.begin(), end = m_sourceBuffers.end(); it != end; ++it)
         (*it)->clearMediaSource();
 }
 
 MediaSourcePrivate::AddStatus MediaSourcePrivateAVFObjC::addSourceBuffer(const ContentType& contentType, RefPtr<SourceBufferPrivate>& outPrivate)
 {
+    DEBUG_LOG(LOGIDENTIFIER, contentType);
+
     MediaEngineSupportParameters parameters;
     parameters.isMediaSource = true;
     parameters.type = contentType;
     if (MediaPlayerPrivateMediaSourceAVFObjC::supportsType(parameters) == MediaPlayer::IsNotSupported)
         return NotSupported;
 
-    m_sourceBuffers.append(SourceBufferPrivateAVFObjC::create(this));
-    outPrivate = m_sourceBuffers.last();
+    auto newSourceBuffer = SourceBufferPrivateAVFObjC::create(this);
+#if ENABLE(ENCRYPTED_MEDIA)
+    newSourceBuffer->setCDMInstance(m_cdmInstance.get());
+#endif
+    outPrivate = newSourceBuffer.copyRef();
+    m_sourceBuffers.append(WTFMove(newSourceBuffer));
 
     return Ok;
 }
@@ -245,6 +264,45 @@ void MediaSourcePrivateAVFObjC::setDecompressionSession(WebCoreDecompressionSess
         m_sourceBufferWithSelectedVideo->setDecompressionSession(decompressionSession);
 }
 
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaSourcePrivateAVFObjC::cdmInstanceAttached(CDMInstance& instance)
+{
+    ASSERT(!m_cdmInstance);
+    m_cdmInstance = &instance;
+    for (auto& sourceBuffer : m_sourceBuffers)
+        sourceBuffer->setCDMInstance(&instance);
+}
+
+void MediaSourcePrivateAVFObjC::cdmInstanceDetached(CDMInstance& instance)
+{
+    ASSERT_UNUSED(instance, m_cdmInstance && m_cdmInstance == &instance);
+    for (auto& sourceBuffer : m_sourceBuffers)
+        sourceBuffer->setCDMInstance(nullptr);
+
+    m_cdmInstance = nullptr;
+}
+
+void MediaSourcePrivateAVFObjC::attemptToDecryptWithInstance(CDMInstance& instance)
+{
+    ASSERT_UNUSED(instance, m_cdmInstance && m_cdmInstance == &instance);
+    for (auto& sourceBuffer : m_sourceBuffers)
+        sourceBuffer->attemptToDecrypt();
+}
+
+bool MediaSourcePrivateAVFObjC::waitingForKey() const
+{
+    return anyOf(m_sourceBuffers, [] (auto& sourceBuffer) {
+        return sourceBuffer->waitingForKey();
+    });
+}
+
+void MediaSourcePrivateAVFObjC::outputObscuredDueToInsufficientExternalProtectionChanged(bool obscured)
+{
+    if (m_cdmInstance)
+        m_cdmInstance->setHDCPStatus(obscured ? CDMInstance::HDCPStatus::OutputRestricted : CDMInstance::HDCPStatus::Valid);
+}
+#endif
+
 void MediaSourcePrivateAVFObjC::setSourceBufferWithSelectedVideo(SourceBufferPrivateAVFObjC* sourceBuffer)
 {
     if (m_sourceBufferWithSelectedVideo) {
@@ -259,6 +317,13 @@ void MediaSourcePrivateAVFObjC::setSourceBufferWithSelectedVideo(SourceBufferPri
         m_sourceBufferWithSelectedVideo->setDecompressionSession(m_player->decompressionSession());
     }
 }
+
+#if !RELEASE_LOG_DISABLED
+WTFLogChannel& MediaSourcePrivateAVFObjC::logChannel() const
+{
+    return LogMediaSource;
+}
+#endif
 
 }
 

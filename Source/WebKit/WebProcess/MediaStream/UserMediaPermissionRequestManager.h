@@ -17,14 +17,11 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef UserMediaPermissionRequestManager_h
-#define UserMediaPermissionRequestManager_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "MediaDeviceSandboxExtensions.h"
 #include "SandboxExtension.h"
-#include <WebCore/ActivityStateChangeObserver.h>
 #include <WebCore/MediaCanStartListener.h>
 #include <WebCore/MediaConstraints.h>
 #include <WebCore/MediaDevicesEnumerationRequest.h>
@@ -38,38 +35,30 @@ namespace WebKit {
 
 class WebPage;
 
-enum class DeviceAccessState { NoAccess, SessionAccess, PersistentAccess };
-
-class UserMediaPermissionRequestManager : public CanMakeWeakPtr<UserMediaPermissionRequestManager>, private WebCore::MediaCanStartListener, private WebCore::ActivityStateChangeObserver {
+class UserMediaPermissionRequestManager : public CanMakeWeakPtr<UserMediaPermissionRequestManager>, private WebCore::MediaCanStartListener {
 public:
     explicit UserMediaPermissionRequestManager(WebPage&);
-    ~UserMediaPermissionRequestManager();
+    ~UserMediaPermissionRequestManager() = default;
 
     void startUserMediaRequest(WebCore::UserMediaRequest&);
     void cancelUserMediaRequest(WebCore::UserMediaRequest&);
-    void userMediaAccessWasGranted(uint64_t, WebCore::CaptureDevice&& audioDevice, WebCore::CaptureDevice&& videoDevice, String&& deviceIdentifierHashSalt);
+    void userMediaAccessWasGranted(uint64_t, WebCore::CaptureDevice&& audioDevice, WebCore::CaptureDevice&& videoDevice, String&& deviceIdentifierHashSalt, CompletionHandler<void()>&&);
     void userMediaAccessWasDenied(uint64_t, WebCore::UserMediaRequest::MediaAccessDenialReason, String&&);
 
     void enumerateMediaDevices(WebCore::MediaDevicesEnumerationRequest&);
     void cancelMediaDevicesEnumeration(WebCore::MediaDevicesEnumerationRequest&);
     void didCompleteMediaDeviceEnumeration(uint64_t, const Vector<WebCore::CaptureDevice>& deviceList, String&& deviceIdentifierHashSalt, bool originHasPersistentAccess);
 
-    void grantUserMediaDeviceSandboxExtensions(MediaDeviceSandboxExtensions&&);
-    void revokeUserMediaDeviceSandboxExtensions(const Vector<String>&);
-
     WebCore::UserMediaClient::DeviceChangeObserverToken addDeviceChangeObserver(WTF::Function<void()>&&);
     void removeDeviceChangeObserver(WebCore::UserMediaClient::DeviceChangeObserverToken);
 
-    void captureDevicesChanged(DeviceAccessState);
+    void captureDevicesChanged();
 
 private:
     void sendUserMediaRequest(WebCore::UserMediaRequest&);
 
     // WebCore::MediaCanStartListener
     void mediaCanStart(WebCore::Document&) final;
-
-    // WebCore::ActivityStateChangeObserver
-    void activityStateDidChange(OptionSet<WebCore::ActivityState::Flag> oldActivityState, OptionSet<WebCore::ActivityState::Flag> newActivityState) final;
 
     void removeMediaRequestFromMaps(WebCore::UserMediaRequest&);
 
@@ -82,30 +71,14 @@ private:
     HashMap<uint64_t, RefPtr<WebCore::MediaDevicesEnumerationRequest>> m_idToMediaDevicesEnumerationRequestMap;
     HashMap<RefPtr<WebCore::MediaDevicesEnumerationRequest>, uint64_t> m_mediaDevicesEnumerationRequestToIDMap;
 
-    HashMap<String, RefPtr<SandboxExtension>> m_userMediaDeviceSandboxExtensions;
-
     HashMap<WebCore::UserMediaClient::DeviceChangeObserverToken, WTF::Function<void()>> m_deviceChangeObserverMap;
-    DeviceAccessState m_accessStateWhenDevicesChanged { DeviceAccessState::NoAccess };
     bool m_monitoringDeviceChange { false };
-    bool m_pendingDeviceChangeEvent { false };
-    bool m_monitoringActivityStateChange { false };
 };
 
 } // namespace WebKit
 
 namespace WTF {
 
-template<> struct EnumTraits<WebKit::DeviceAccessState> {
-    using values = EnumValues<
-        WebKit::DeviceAccessState,
-        WebKit::DeviceAccessState::NoAccess,
-        WebKit::DeviceAccessState::SessionAccess,
-        WebKit::DeviceAccessState::PersistentAccess
-    >;
-};
-
 } // namespace WTF
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // UserMediaPermissionRequestManager_h

@@ -31,12 +31,12 @@
 
 namespace WebCore {
 
-class Frame;
 class StorageArea;
 
-class Storage : public ScriptWrappable, public RefCounted<Storage>, public DOMWindowProperty {
+class Storage final : public ScriptWrappable, public RefCounted<Storage>, public DOMWindowProperty {
+    WTF_MAKE_ISO_ALLOCATED(Storage);
 public:
-    static Ref<Storage> create(Frame*, RefPtr<StorageArea>&&);
+    static Ref<Storage> create(DOMWindow&, Ref<StorageArea>&&);
     ~Storage();
 
     unsigned length() const;
@@ -49,14 +49,14 @@ public:
 
     // Bindings support functions.
     bool isSupportedPropertyName(const String&) const;
-    Vector<AtomicString> supportedPropertyNames() const;
+    Vector<AtomString> supportedPropertyNames() const;
 
-    StorageArea& area() const { return *m_storageArea; }
+    StorageArea& area() const { return m_storageArea.get(); }
 
 private:
-    Storage(Frame*, RefPtr<StorageArea>&&);
+    Storage(DOMWindow&, Ref<StorageArea>&&);
 
-    const RefPtr<StorageArea> m_storageArea;
+    const Ref<StorageArea> m_storageArea;
 };
 
 } // namespace WebCore

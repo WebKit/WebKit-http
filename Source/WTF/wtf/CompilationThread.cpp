@@ -24,40 +24,16 @@
  */
 
 #include "config.h"
-#include "CompilationThread.h"
+#include <wtf/CompilationThread.h>
 
-#include "StdLibExtras.h"
-#include "ThreadSpecific.h"
-#include "Threading.h"
-#include <mutex>
+#include <wtf/StdLibExtras.h>
+#include <wtf/Threading.h>
 
 namespace WTF {
 
-static ThreadSpecific<bool, CanBeGCThread::True>* s_isCompilationThread;
-
-static void initializeCompilationThreads()
-{
-    static std::once_flag initializeCompilationThreadsOnceFlag;
-    std::call_once(initializeCompilationThreadsOnceFlag, []{
-        s_isCompilationThread = new ThreadSpecific<bool, CanBeGCThread::True>();
-    });
-}
-
 bool isCompilationThread()
 {
-    if (!s_isCompilationThread)
-        return false;
-    if (!s_isCompilationThread->isSet())
-        return false;
-    return **s_isCompilationThread;
-}
-
-bool exchangeIsCompilationThread(bool newValue)
-{
-    initializeCompilationThreads();
-    bool oldValue = isCompilationThread();
-    **s_isCompilationThread = newValue;
-    return oldValue;
+    return Thread::current().isCompilationThread();
 }
 
 } // namespace WTF

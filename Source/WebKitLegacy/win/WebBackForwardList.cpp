@@ -145,7 +145,9 @@ HRESULT WebBackForwardList::goToItem(_In_opt_ IWebHistoryItem* item)
     if (!item || FAILED(item->QueryInterface(&webHistoryItem)))
         return E_FAIL;
 
-    m_backForwardList->goToItem(webHistoryItem->historyItem());
+    if (auto item = webHistoryItem->historyItem())
+        m_backForwardList->goToItem(*item);
+
     return S_OK;
 }
 
@@ -154,12 +156,12 @@ HRESULT WebBackForwardList::backItem(_COM_Outptr_opt_ IWebHistoryItem** item)
     if (!item)
         return E_POINTER;
     *item = nullptr;
-    HistoryItem* historyItem = m_backForwardList->backItem();
+    auto historyItem = m_backForwardList->backItem();
 
     if (!historyItem)
         return E_FAIL;
 
-    *item = WebHistoryItem::createInstance(historyItem);
+    *item = WebHistoryItem::createInstance(historyItem.get());
     return S_OK;
 }
 
@@ -169,11 +171,11 @@ HRESULT WebBackForwardList::currentItem(_COM_Outptr_opt_ IWebHistoryItem** item)
         return E_POINTER;
     *item = nullptr;
 
-    HistoryItem* historyItem = m_backForwardList->currentItem();
+    auto historyItem = m_backForwardList->currentItem();
     if (!historyItem)
         return E_FAIL;
 
-    *item = WebHistoryItem::createInstance(historyItem);
+    *item = WebHistoryItem::createInstance(historyItem.get());
     return S_OK;
 }
 
@@ -183,11 +185,11 @@ HRESULT WebBackForwardList::forwardItem(_COM_Outptr_opt_ IWebHistoryItem** item)
         return E_POINTER;
     *item = nullptr;
 
-    HistoryItem* historyItem = m_backForwardList->forwardItem();
+    auto historyItem = m_backForwardList->forwardItem();
     if (!historyItem)
         return E_FAIL;
 
-    *item = WebHistoryItem::createInstance(historyItem);
+    *item = WebHistoryItem::createInstance(historyItem.get());
     return S_OK;
 }
 
@@ -281,11 +283,11 @@ HRESULT WebBackForwardList::itemAtIndex(int index, _COM_Outptr_opt_ IWebHistoryI
         return E_POINTER;
     *item = nullptr;
 
-    HistoryItem* historyItem = m_backForwardList->itemAtIndex(index);
+    auto historyItem = m_backForwardList->itemAtIndex(index);
     if (!historyItem)
         return E_FAIL;
  
-    *item = WebHistoryItem::createInstance(historyItem);
+    *item = WebHistoryItem::createInstance(historyItem.get());
     return S_OK;
 }
 

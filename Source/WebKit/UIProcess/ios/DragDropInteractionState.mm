@@ -26,7 +26,7 @@
 #include "config.h"
 #include "DragDropInteractionState.h"
 
-#if ENABLE(DRAG_SUPPORT) && PLATFORM(IOS)
+#if ENABLE(DRAG_SUPPORT) && PLATFORM(IOS_FAMILY)
 
 #import <WebCore/DragItem.h>
 #import <WebCore/Image.h>
@@ -44,7 +44,7 @@ static UIDragItem *dragItemMatchingIdentifier(id <UIDragSession> session, NSInte
     return nil;
 }
 
-static UITargetedDragPreview *createTargetedDragPreview(UIImage *image, UIView *rootView, UIView *previewContainer, const FloatRect& frameInRootViewCoordinates, const Vector<FloatRect>& clippingRectsInFrameCoordinates, UIColor *backgroundColor, UIBezierPath *visiblePath)
+static RetainPtr<UITargetedDragPreview> createTargetedDragPreview(UIImage *image, UIView *rootView, UIView *previewContainer, const FloatRect& frameInRootViewCoordinates, const Vector<FloatRect>& clippingRectsInFrameCoordinates, UIColor *backgroundColor, UIBezierPath *visiblePath)
 {
     if (frameInRootViewCoordinates.isEmpty() || !image)
         return nullptr;
@@ -78,8 +78,7 @@ static UITargetedDragPreview *createTargetedDragPreview(UIImage *image, UIView *
 
     CGPoint centerInContainerCoordinates = { CGRectGetMidX(frameInContainerCoordinates), CGRectGetMidY(frameInContainerCoordinates) };
     auto target = adoptNS([[UIDragPreviewTarget alloc] initWithContainer:previewContainer center:centerInContainerCoordinates]);
-    auto dragPreview = adoptNS([[UITargetedDragPreview alloc] initWithView:imageView.get() parameters:parameters.get() target:target.get()]);
-    return dragPreview.autorelease();
+    return adoptNS([[UITargetedDragPreview alloc] initWithView:imageView.get() parameters:parameters.get() target:target.get()]);
 }
 
 static RetainPtr<UIImage> uiImageForImage(Image* image)
@@ -152,17 +151,17 @@ static bool canUpdatePreviewForActiveDragSource(const DragSourceState& source)
     return false;
 }
 
-std::optional<DragSourceState> DragDropInteractionState::activeDragSourceForItem(UIDragItem *item) const
+Optional<DragSourceState> DragDropInteractionState::activeDragSourceForItem(UIDragItem *item) const
 {
     if (![item.privateLocalContext isKindOfClass:[NSNumber class]])
-        return std::nullopt;
+        return WTF::nullopt;
 
     auto identifier = [(NSNumber *)item.privateLocalContext integerValue];
     for (auto& source : m_activeDragSources) {
         if (source.itemIdentifier == identifier)
             return source;
     }
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 bool DragDropInteractionState::anyActiveDragSourceIs(WebCore::DragSourceAction action) const
@@ -186,6 +185,30 @@ void DragDropInteractionState::dragSessionWillBegin()
     updatePreviewsForActiveDragSources();
 }
 
+void DragDropInteractionState::prepareForDelayedDropPreview(UIDragItem *item, void(^provider)(UITargetedDragPreview *preview))
+{
+    m_delayedItemPreviewProviders.append({ item, provider });
+}
+
+void DragDropInteractionState::deliverDelayedDropPreview(UIView *contentView, UIView *previewContainer, const WebCore::TextIndicatorData& indicator)
+{
+    if (m_delayedItemPreviewProviders.isEmpty())
+        return;
+
+    auto textIndicatorImage = uiImageForImage(indicator.contentImage.get());
+    auto preview = createTargetedDragPreview(textIndicatorImage.get(), contentView, previewContainer, indicator.textBoundingRectInRootViewCoordinates, indicator.textRectsInBoundingRectCoordinates, [UIColor colorWithCGColor:cachedCGColor(indicator.estimatedBackgroundColor)], nil);
+    for (auto& itemAndPreviewProvider : m_delayedItemPreviewProviders)
+        itemAndPreviewProvider.provider(preview.get());
+    m_delayedItemPreviewProviders.clear();
+}
+
+void DragDropInteractionState::clearAllDelayedItemPreviewProviders()
+{
+    for (auto& itemAndPreviewProvider : m_delayedItemPreviewProviders)
+        itemAndPreviewProvider.provider(nil);
+    m_delayedItemPreviewProviders.clear();
+}
+
 UITargetedDragPreview *DragDropInteractionState::previewForDragItem(UIDragItem *item, UIView *contentView, UIView *previewContainer) const
 {
     auto foundSource = activeDragSourceForItem(item);
@@ -197,15 +220,15 @@ UITargetedDragPreview *DragDropInteractionState::previewForDragItem(UIDragItem *
         if (shouldUseVisiblePathToCreatePreviewForDragSource(source)) {
             auto path = source.visiblePath.value();
             UIBezierPath *visiblePath = [UIBezierPath bezierPathWithCGPath:path.ensurePlatformPath()];
-            return createTargetedDragPreview(source.image.get(), contentView, previewContainer, source.dragPreviewFrameInRootViewCoordinates, { }, nil, visiblePath);
+            return createTargetedDragPreview(source.image.get(), contentView, previewContainer, source.dragPreviewFrameInRootViewCoordinates, { }, nil, visiblePath).autorelease();
         }
-        return createTargetedDragPreview(source.image.get(), contentView, previewContainer, source.dragPreviewFrameInRootViewCoordinates, { }, nil, nil);
+        return createTargetedDragPreview(source.image.get(), contentView, previewContainer, source.dragPreviewFrameInRootViewCoordinates, { }, nil, nil).autorelease();
     }
 
     if (shouldUseTextIndicatorToCreatePreviewForDragSource(source)) {
         auto indicator = source.indicatorData.value();
         auto textIndicatorImage = uiImageForImage(indicator.contentImage.get());
-        return createTargetedDragPreview(textIndicatorImage.get(), contentView, previewContainer, indicator.textBoundingRectInRootViewCoordinates, indicator.textRectsInBoundingRectCoordinates, [UIColor colorWithCGColor:cachedCGColor(indicator.estimatedBackgroundColor)], nil);
+        return createTargetedDragPreview(textIndicatorImage.get(), contentView, previewContainer, indicator.textBoundingRectInRootViewCoordinates, indicator.textRectsInBoundingRectCoordinates, [UIColor colorWithCGColor:cachedCGColor(indicator.estimatedBackgroundColor)], nil).autorelease();
     }
 
     return nil;
@@ -261,11 +284,13 @@ void DragDropInteractionState::clearStagedDragSource(DidBecomeActive didBecomeAc
 {
     if (didBecomeActive == DidBecomeActive::Yes)
         m_activeDragSources.append(stagedDragSource());
-    m_stagedDragSource = std::nullopt;
+    m_stagedDragSource = WTF::nullopt;
 }
 
 void DragDropInteractionState::dragAndDropSessionsDidEnd()
 {
+    clearAllDelayedItemPreviewProviders();
+
     // If any of UIKit's completion blocks are still in-flight when the drag interaction ends, we need to ensure that they are still invoked
     // to prevent UIKit from getting into an inconsistent state.
     if (auto completionBlock = takeDragCancelSetDownBlock())
@@ -312,4 +337,4 @@ void DragDropInteractionState::updatePreviewsForActiveDragSources()
 
 } // namespace WebKit
 
-#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(IOS)
+#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(IOS_FAMILY)

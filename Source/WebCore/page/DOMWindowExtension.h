@@ -25,34 +25,38 @@
 
 #pragma once
 
-#include "DOMWindowProperty.h"
+#include "DOMWindow.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
-class DOMWindowExtension;
 class DOMWrapperWorld;
 class Frame;
 
-class DOMWindowExtension : public RefCounted<DOMWindowExtension>, public DOMWindowProperty {
+class DOMWindowExtension final : public RefCounted<DOMWindowExtension>, public DOMWindow::Observer {
 public:
-    static Ref<DOMWindowExtension> create(Frame* frame, DOMWrapperWorld& world)
+    static Ref<DOMWindowExtension> create(DOMWindow* window, DOMWrapperWorld& world)
     {
-        return adoptRef(*new DOMWindowExtension(frame, world));
+        return adoptRef(*new DOMWindowExtension(window, world));
     }
 
-    void disconnectFrameForDocumentSuspension() override;
-    void reconnectFrameFromDocumentSuspension(Frame*) override;
-    void willDestroyGlobalObjectInCachedFrame() override;
-    void willDestroyGlobalObjectInFrame() override;
-    void willDetachGlobalObjectFromFrame() override;
+    WEBCORE_EXPORT ~DOMWindowExtension();
 
+    void suspendForPageCache() final;
+    void resumeFromPageCache() final;
+    void willDestroyGlobalObjectInCachedFrame() final;
+    void willDestroyGlobalObjectInFrame() final;
+    void willDetachGlobalObjectFromFrame() final;
+
+    WEBCORE_EXPORT Frame* frame() const;
     DOMWrapperWorld& world() const { return m_world; }
 
 private:
-    WEBCORE_EXPORT DOMWindowExtension(Frame*, DOMWrapperWorld&);
+    WEBCORE_EXPORT DOMWindowExtension(DOMWindow*, DOMWrapperWorld&);
 
+    WeakPtr<DOMWindow> m_window;
     Ref<DOMWrapperWorld> m_world;
     RefPtr<Frame> m_disconnectedFrame;
     bool m_wasDetached;

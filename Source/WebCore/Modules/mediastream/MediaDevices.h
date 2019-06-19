@@ -46,12 +46,14 @@
 
 namespace WebCore {
 
+class Document;
 class MediaDeviceInfo;
 class MediaStream;
 
 struct MediaTrackSupportedConstraints;
 
-class MediaDevices : public RefCounted<MediaDevices>, public ActiveDOMObject, public EventTargetWithInlineData, public CanMakeWeakPtr<MediaDevices> {
+class MediaDevices final : public RefCounted<MediaDevices>, public ActiveDOMObject, public EventTargetWithInlineData, public CanMakeWeakPtr<MediaDevices> {
+    WTF_MAKE_ISO_ALLOCATED(MediaDevices);
 public:
     static Ref<MediaDevices> create(Document&);
 
@@ -73,19 +75,21 @@ public:
         Variant<bool, MediaTrackConstraints> video;
         Variant<bool, MediaTrackConstraints> audio;
     };
-    ExceptionOr<void> getUserMedia(const StreamConstraints&, Promise&&) const;
-    ExceptionOr<void> getDisplayMedia(const StreamConstraints&, Promise&&) const;
+    void getUserMedia(const StreamConstraints&, Promise&&) const;
+    void getDisplayMedia(const StreamConstraints&, Promise&&) const;
     void enumerateDevices(EnumerateDevicesPromise&&) const;
     MediaTrackSupportedConstraints getSupportedConstraints();
 
     using RefCounted<MediaDevices>::ref;
     using RefCounted<MediaDevices>::deref;
 
+    void setDisableGetDisplayMediaUserGestureConstraint(bool value) { m_disableGetDisplayMediaUserGestureConstraint = value; }
+
 private:
     explicit MediaDevices(Document&);
 
     void scheduledEventTimerFired();
-    bool addEventListener(const AtomicString& eventType, Ref<EventListener>&&, const AddEventListenerOptions&) override;
+    bool addEventListener(const AtomString& eventType, Ref<EventListener>&&, const AddEventListenerOptions&) override;
 
     friend class JSMediaDevicesOwner;
 
@@ -105,6 +109,7 @@ private:
     UserMediaClient::DeviceChangeObserverToken m_deviceChangeToken;
     const EventNames& m_eventNames; // Need to cache this so we can use it from GC threads.
     bool m_listeningForDeviceChanges { false };
+    bool m_disableGetDisplayMediaUserGestureConstraint { false };
 };
 
 } // namespace WebCore

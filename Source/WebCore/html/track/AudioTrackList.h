@@ -41,7 +41,7 @@ public:
     }
     virtual ~AudioTrackList();
 
-    AudioTrack* getTrackById(const AtomicString&) const;
+    AudioTrack* getTrackById(const AtomString&) const;
 
     AudioTrack* item(unsigned index) const;
     AudioTrack* lastItem() const { return item(length() - 1); }
@@ -54,6 +54,7 @@ private:
     AudioTrackList(HTMLMediaElement*, ScriptExecutionContext*);
     const char* activeDOMObjectName() const final;
 };
+static_assert(sizeof(AudioTrackList) == sizeof(TrackListBase), "");
 
 } // namespace WebCore
 

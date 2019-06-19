@@ -29,11 +29,12 @@
 #include <wtf/TypeCasts.h>
 #include <wtf/text/WTFString.h>
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 namespace WebCore {
 
 class CryptoAlgorithmParameters {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     enum class Class {
         None,
@@ -70,4 +71,4 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::CryptoAlgorithm##ToClassName) \
 static bool isType(const WebCore::CryptoAlgorithmParameters& parameters) { return parameters.parametersClass() == WebCore::CryptoAlgorithmParameters::Class::ToClassName; } \
 SPECIALIZE_TYPE_TRAITS_END()
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

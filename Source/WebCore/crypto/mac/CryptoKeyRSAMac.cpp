@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CryptoKeyRSA.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CommonCryptoDERUtilities.h"
 #include "CommonCryptoUtilities.h"
@@ -41,7 +41,7 @@
 
 namespace WebCore {
 
-#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300)
+#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300)
 inline uint8_t* castDataArgumentToCCRSACryptorCreateFromDataIfNeeded(const uint8_t* value)
 {
     return const_cast<uint8_t*>(value);
@@ -58,21 +58,19 @@ static const unsigned char RSAOIDHeader[] = {0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86,
 
 // FIXME: We should get rid of magic number 16384. It assumes that the length of provided key will not exceed 16KB.
 // https://bugs.webkit.org/show_bug.cgi?id=164942
-static CCCryptorStatus getPublicKeyComponents(CCRSACryptorRef rsaKey, Vector<uint8_t>& modulus, Vector<uint8_t>& publicExponent)
+static CCCryptorStatus getPublicKeyComponents(const PlatformRSAKeyContainer& rsaKey, Vector<uint8_t>& modulus, Vector<uint8_t>& publicExponent)
 {
-    ASSERT(CCRSAGetKeyType(rsaKey) == ccRSAKeyPublic || CCRSAGetKeyType(rsaKey) == ccRSAKeyPrivate);
-    bool keyIsPublic = CCRSAGetKeyType(rsaKey) == ccRSAKeyPublic;
-    CCRSACryptorRef publicKey = keyIsPublic ? rsaKey : CCRSACryptorGetPublicKeyFromPrivateKey(rsaKey);
+    ASSERT(CCRSAGetKeyType(rsaKey.get()) == ccRSAKeyPublic || CCRSAGetKeyType(rsaKey.get()) == ccRSAKeyPrivate);
+    bool keyIsPublic = CCRSAGetKeyType(rsaKey.get()) == ccRSAKeyPublic;
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+    PlatformRSAKeyContainer publicKeyFromPrivateKey(keyIsPublic ? nullptr : CCRSACryptorGetPublicKeyFromPrivateKey(rsaKey.get()));
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     modulus.resize(16384);
     size_t modulusLength = modulus.size();
     publicExponent.resize(16384);
     size_t exponentLength = publicExponent.size();
-    CCCryptorStatus status = CCRSAGetKeyComponents(publicKey, modulus.data(), &modulusLength, publicExponent.data(), &exponentLength, 0, 0, 0, 0);
-    if (!keyIsPublic) {
-        // CCRSACryptorGetPublicKeyFromPrivateKey has "Get" in the name, but its result needs to be released (see <rdar://problem/15449697>).
-        CCRSACryptorRelease(publicKey);
-    }
+    CCCryptorStatus status = CCRSAGetKeyComponents(keyIsPublic ? rsaKey.get() : publicKeyFromPrivateKey.get(), modulus.data(), &modulusLength, publicExponent.data(), &exponentLength, 0, 0, 0, 0);
     if (status)
         return status;
 
@@ -81,9 +79,9 @@ static CCCryptorStatus getPublicKeyComponents(CCRSACryptorRef rsaKey, Vector<uin
     return status;
 }
 
-static CCCryptorStatus getPrivateKeyComponents(CCRSACryptorRef rsaKey, Vector<uint8_t>& privateExponent, CryptoKeyRSAComponents::PrimeInfo& firstPrimeInfo, CryptoKeyRSAComponents::PrimeInfo& secondPrimeInfo)
+static CCCryptorStatus getPrivateKeyComponents(const PlatformRSAKeyContainer& rsaKey, Vector<uint8_t>& privateExponent, CryptoKeyRSAComponents::PrimeInfo& firstPrimeInfo, CryptoKeyRSAComponents::PrimeInfo& secondPrimeInfo)
 {
-    ASSERT(CCRSAGetKeyType(rsaKey) == ccRSAKeyPrivate);
+    ASSERT(CCRSAGetKeyType(rsaKey.get()) == ccRSAKeyPrivate);
 
     Vector<uint8_t> unusedModulus(16384);
     size_t modulusLength = unusedModulus.size();
@@ -94,7 +92,7 @@ static CCCryptorStatus getPrivateKeyComponents(CCRSACryptorRef rsaKey, Vector<ui
     secondPrimeInfo.primeFactor.resize(16384);
     size_t qLength = secondPrimeInfo.primeFactor.size();
 
-    CCCryptorStatus status = CCRSAGetKeyComponents(rsaKey, unusedModulus.data(), &modulusLength, privateExponent.data(), &exponentLength, firstPrimeInfo.primeFactor.data(), &pLength, secondPrimeInfo.primeFactor.data(), &qLength);
+    CCCryptorStatus status = CCRSAGetKeyComponents(rsaKey.get(), unusedModulus.data(), &modulusLength, privateExponent.data(), &exponentLength, firstPrimeInfo.primeFactor.data(), &pLength, secondPrimeInfo.primeFactor.data(), &qLength);
     if (status)
         return status;
 
@@ -106,13 +104,13 @@ static CCCryptorStatus getPrivateKeyComponents(CCRSACryptorRef rsaKey, Vector<ui
     size_t dpSize;
     size_t dqSize;
     size_t qinvSize;
-    if (auto status = CCRSAGetCRTComponentsSizes(rsaKey, &dpSize, &dqSize, &qinvSize))
+    if (auto status = CCRSAGetCRTComponentsSizes(rsaKey.get(), &dpSize, &dqSize, &qinvSize))
         return status;
 
     Vector<uint8_t> dp(dpSize);
     Vector<uint8_t> dq(dqSize);
     Vector<uint8_t> qinv(qinvSize);
-    if (auto status = CCRSAGetCRTComponents(rsaKey, dp.data(), dpSize, dq.data(), dqSize, qinv.data(), qinvSize))
+    if (auto status = CCRSAGetCRTComponents(rsaKey.get(), dp.data(), dpSize, dq.data(), dqSize, qinv.data(), qinvSize))
         return status;
 
     firstPrimeInfo.factorCRTExponent = WTFMove(dp);
@@ -135,9 +133,9 @@ static CCCryptorStatus getPrivateKeyComponents(CCRSACryptorRef rsaKey, Vector<ui
     return status;
 }
 
-CryptoKeyRSA::CryptoKeyRSA(CryptoAlgorithmIdentifier identifier, CryptoAlgorithmIdentifier hash, bool hasHash, CryptoKeyType type, PlatformRSAKey platformKey, bool extractable, CryptoKeyUsageBitmap usage)
+CryptoKeyRSA::CryptoKeyRSA(CryptoAlgorithmIdentifier identifier, CryptoAlgorithmIdentifier hash, bool hasHash, CryptoKeyType type, PlatformRSAKeyContainer&& platformKey, bool extractable, CryptoKeyUsageBitmap usage)
     : CryptoKey(identifier, type, extractable, usage)
-    , m_platformKey(platformKey)
+    , m_platformKey(WTFMove(platformKey))
     , m_restrictedToSpecificHash(hasHash)
     , m_hash(hash)
 {
@@ -160,7 +158,7 @@ RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, 
     if (keyData.type() == CryptoKeyRSAComponents::Type::Private && keyData.firstPrimeInfo().primeFactor.isEmpty())
         return nullptr;
 
-    CCRSACryptorRef cryptor;
+    CCRSACryptorRef cryptor = nullptr;
     // FIXME: It is so weired that we recaculate the private exponent from first prime factor and second prime factor,
     // given the fact that we have already had it. Also, the re-caculated private exponent may not match the given one.
     // See <rdar://problem/15452324>.
@@ -177,12 +175,7 @@ RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, 
         return nullptr;
     }
 
-    return adoptRef(new CryptoKeyRSA(identifier, hash, hasHash, keyData.type() == CryptoKeyRSAComponents::Type::Public ? CryptoKeyType::Public : CryptoKeyType::Private, cryptor, extractable, usage));
-}
-
-CryptoKeyRSA::~CryptoKeyRSA()
-{
-    CCRSACryptorRelease(m_platformKey);
+    return adoptRef(new CryptoKeyRSA(identifier, hash, hasHash, keyData.type() == CryptoKeyRSAComponents::Type::Public ? CryptoKeyType::Public : CryptoKeyType::Private, PlatformRSAKeyContainer(cryptor), extractable, usage));
 }
 
 bool CryptoKeyRSA::isRestrictedToHash(CryptoAlgorithmIdentifier& identifier) const
@@ -222,7 +215,7 @@ auto CryptoKeyRSA::algorithm() const -> KeyAlgorithm
         CryptoRsaKeyAlgorithm result;
         result.name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
         result.modulusLength = 0;
-        result.publicExponent = Uint8Array::create(0);
+        result.publicExponent = Uint8Array::tryCreate(0);
         return result;
     }
 
@@ -232,7 +225,7 @@ auto CryptoKeyRSA::algorithm() const -> KeyAlgorithm
         CryptoRsaHashedKeyAlgorithm result;
         result.name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
         result.modulusLength = modulusLength;
-        result.publicExponent = Uint8Array::create(publicExponent.data(), publicExponent.size());
+        result.publicExponent = Uint8Array::tryCreate(publicExponent.data(), publicExponent.size());
         result.hash.name = CryptoAlgorithmRegistry::singleton().name(m_hash);
         return result;
     }
@@ -240,13 +233,13 @@ auto CryptoKeyRSA::algorithm() const -> KeyAlgorithm
     CryptoRsaKeyAlgorithm result;
     result.name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
     result.modulusLength = modulusLength;
-    result.publicExponent = Uint8Array::create(publicExponent.data(), publicExponent.size());
+    result.publicExponent = Uint8Array::tryCreate(publicExponent.data(), publicExponent.size());
     return result;
 }
 
 std::unique_ptr<CryptoKeyRSAComponents> CryptoKeyRSA::exportData() const
 {
-    switch (CCRSAGetKeyType(m_platformKey)) {
+    switch (CCRSAGetKeyType(m_platformKey.get())) {
     case ccRSAKeyPublic: {
         Vector<uint8_t> modulus;
         Vector<uint8_t> publicExponent;
@@ -308,39 +301,30 @@ void CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier algorithm, CryptoAlgor
         return;
     }
 
-    // We only use the callback functions when back on the main/worker thread, but captured variables are copied on a secondary thread too.
-    KeyPairCallback* localCallback = new KeyPairCallback(WTFMove(callback));
-    VoidCallback* localFailureCallback = new VoidCallback(WTFMove(failureCallback));
+    __block auto blockCallback(WTFMove(callback));
+    __block auto blockFailureCallback(WTFMove(failureCallback));
     auto contextIdentifier = context->contextIdentifier();
-
-    // FIXME: There is a risk that localCallback and localFailureCallback are never freed.
-    // Fix this by using unique pointers and move them from one lambda to the other.
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        CCRSACryptorRef ccPublicKey;
-        CCRSACryptorRef ccPrivateKey;
+        CCRSACryptorRef ccPublicKey = nullptr;
+        CCRSACryptorRef ccPrivateKey = nullptr;
         CCCryptorStatus status = CCRSACryptorGeneratePair(modulusLength, e, &ccPublicKey, &ccPrivateKey);
         if (status) {
             WTFLogAlways("Could not generate a key pair, status %d", status);
-            ScriptExecutionContext::postTaskTo(contextIdentifier, [localCallback, localFailureCallback](auto&) {
-                (*localFailureCallback)();
-                delete localCallback;
-                delete localFailureCallback;
+            ScriptExecutionContext::postTaskTo(contextIdentifier, [callback = WTFMove(blockCallback), failureCallback = WTFMove(blockFailureCallback)](auto&) {
+                failureCallback();
             });
             return;
         }
-        ScriptExecutionContext::postTaskTo(contextIdentifier, [algorithm, hash, hasHash, extractable, usage, localCallback, localFailureCallback, ccPublicKey, ccPrivateKey](auto&) {
-            auto publicKey = CryptoKeyRSA::create(algorithm, hash, hasHash, CryptoKeyType::Public, ccPublicKey, true, usage);
-            auto privateKey = CryptoKeyRSA::create(algorithm, hash, hasHash, CryptoKeyType::Private, ccPrivateKey, extractable, usage);
+        ScriptExecutionContext::postTaskTo(contextIdentifier, [algorithm, hash, hasHash, extractable, usage, callback = WTFMove(blockCallback), failureCallback = WTFMove(blockFailureCallback), ccPublicKey = PlatformRSAKeyContainer(ccPublicKey), ccPrivateKey = PlatformRSAKeyContainer(ccPrivateKey)](auto&) mutable {
+            auto publicKey = CryptoKeyRSA::create(algorithm, hash, hasHash, CryptoKeyType::Public, WTFMove(ccPublicKey), true, usage);
+            auto privateKey = CryptoKeyRSA::create(algorithm, hash, hasHash, CryptoKeyType::Private, WTFMove(ccPrivateKey), extractable, usage);
 
-            (*localCallback)(CryptoKeyPair { WTFMove(publicKey), WTFMove(privateKey) });
-
-            delete localCallback;
-            delete localFailureCallback;
+            callback(CryptoKeyPair { WTFMove(publicKey), WTFMove(privateKey) });
         });
     });
 }
 
-RefPtr<CryptoKeyRSA> CryptoKeyRSA::importSpki(CryptoAlgorithmIdentifier identifier, std::optional<CryptoAlgorithmIdentifier> hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
+RefPtr<CryptoKeyRSA> CryptoKeyRSA::importSpki(CryptoAlgorithmIdentifier identifier, Optional<CryptoAlgorithmIdentifier> hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
 {
     // The current SecLibrary cannot import a SPKI format binary. Hence, we need to strip out the SPKI header.
     // This hack can be removed when <rdar://problem/29523286> is resolved.
@@ -356,12 +340,12 @@ RefPtr<CryptoKeyRSA> CryptoKeyRSA::importSpki(CryptoAlgorithmIdentifier identifi
         return nullptr;
     headerSize += bytesUsedToEncodedLength(keyData[headerSize]) + sizeof(InitialOctet);
 
-    CCRSACryptorRef ccPublicKey;
+    CCRSACryptorRef ccPublicKey = nullptr;
     if (CCRSACryptorImport(keyData.data() + headerSize, keyData.size() - headerSize, &ccPublicKey))
         return nullptr;
 
-    // Notice: CryptoAlgorithmIdentifier::SHA_1 is just a placeholder. It should not have any effect if hash is std::nullopt.
-    return adoptRef(new CryptoKeyRSA(identifier, hash.value_or(CryptoAlgorithmIdentifier::SHA_1), !!hash, CryptoKeyType::Public, ccPublicKey, extractable, usages));
+    // Notice: CryptoAlgorithmIdentifier::SHA_1 is just a placeholder. It should not have any effect if hash is WTF::nullopt.
+    return adoptRef(new CryptoKeyRSA(identifier, hash.valueOr(CryptoAlgorithmIdentifier::SHA_1), !!hash, CryptoKeyType::Public, PlatformRSAKeyContainer(ccPublicKey), extractable, usages));
 }
 
 ExceptionOr<Vector<uint8_t>> CryptoKeyRSA::exportSpki() const
@@ -396,7 +380,7 @@ ExceptionOr<Vector<uint8_t>> CryptoKeyRSA::exportSpki() const
     return WTFMove(result);
 }
 
-RefPtr<CryptoKeyRSA> CryptoKeyRSA::importPkcs8(CryptoAlgorithmIdentifier identifier, std::optional<CryptoAlgorithmIdentifier> hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
+RefPtr<CryptoKeyRSA> CryptoKeyRSA::importPkcs8(CryptoAlgorithmIdentifier identifier, Optional<CryptoAlgorithmIdentifier> hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
 {
     // The current SecLibrary cannot import a PKCS8 format binary. Hence, we need to strip out the PKCS8 header.
     // This hack can be removed when <rdar://problem/29523286> is resolved.
@@ -413,12 +397,12 @@ RefPtr<CryptoKeyRSA> CryptoKeyRSA::importPkcs8(CryptoAlgorithmIdentifier identif
         return nullptr;
     headerSize += bytesUsedToEncodedLength(keyData[headerSize]);
 
-    CCRSACryptorRef ccPrivateKey;
+    CCRSACryptorRef ccPrivateKey = nullptr;
     if (CCRSACryptorImport(keyData.data() + headerSize, keyData.size() - headerSize, &ccPrivateKey))
         return nullptr;
 
-    // Notice: CryptoAlgorithmIdentifier::SHA_1 is just a placeholder. It should not have any effect if hash is std::nullopt.
-    return adoptRef(new CryptoKeyRSA(identifier, hash.value_or(CryptoAlgorithmIdentifier::SHA_1), !!hash, CryptoKeyType::Private, ccPrivateKey, extractable, usages));
+    // Notice: CryptoAlgorithmIdentifier::SHA_1 is just a placeholder. It should not have any effect if hash is WTF::nullopt.
+    return adoptRef(new CryptoKeyRSA(identifier, hash.valueOr(CryptoAlgorithmIdentifier::SHA_1), !!hash, CryptoKeyType::Private, PlatformRSAKeyContainer(ccPrivateKey), extractable, usages));
 }
 
 ExceptionOr<Vector<uint8_t>> CryptoKeyRSA::exportPkcs8() const
@@ -457,4 +441,4 @@ ExceptionOr<Vector<uint8_t>> CryptoKeyRSA::exportPkcs8() const
 
 } // namespace WebCore
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

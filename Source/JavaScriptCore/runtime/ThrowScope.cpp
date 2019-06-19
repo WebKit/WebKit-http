@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -56,29 +56,29 @@ ThrowScope::~ThrowScope()
     }
 
     bool willBeHandleByLLIntOrJIT = false;
-    void* previousScope = m_previousScope;
+    const void* previousScopeStackPosition = m_previousScope ? m_previousScope->stackPosition() : nullptr;
     void* topEntryFrame = m_vm.topEntryFrame;
 
     // If the topEntryFrame was pushed on the stack after the previousScope was instantiated,
     // then this throwScope will be returning to LLINT or JIT code that always do an exception
     // check. In that case, skip the simulated throw because the LLInt and JIT will be
     // checking for the exception their own way instead of calling ThrowScope::exception().
-    if (topEntryFrame && previousScope > topEntryFrame)
+    if (topEntryFrame && previousScopeStackPosition > topEntryFrame)
         willBeHandleByLLIntOrJIT = true;
-    
+
     if (!willBeHandleByLLIntOrJIT)
         simulateThrow();
 }
 
-void ThrowScope::throwException(ExecState* exec, Exception* exception)
+Exception* ThrowScope::throwException(ExecState* exec, Exception* exception)
 {
     if (m_vm.exception() && m_vm.exception() != exception)
         m_vm.verifyExceptionCheckNeedIsSatisfied(m_recursionDepth, m_location);
     
-    m_vm.throwException(exec, exception);
+    return m_vm.throwException(exec, exception);
 }
 
-JSValue ThrowScope::throwException(ExecState* exec, JSValue error)
+Exception* ThrowScope::throwException(ExecState* exec, JSValue error)
 {
     if (!error.isCell() || !jsDynamicCast<Exception*>(m_vm, error.asCell()))
         m_vm.verifyExceptionCheckNeedIsSatisfied(m_recursionDepth, m_location);
@@ -86,11 +86,9 @@ JSValue ThrowScope::throwException(ExecState* exec, JSValue error)
     return m_vm.throwException(exec, error);
 }
 
-JSObject* ThrowScope::throwException(ExecState* exec, JSObject* obj)
+Exception* ThrowScope::throwException(ExecState* exec, JSObject* obj)
 {
-    if (!jsDynamicCast<Exception*>(m_vm, obj))
-        m_vm.verifyExceptionCheckNeedIsSatisfied(m_recursionDepth, m_location);
-    
+    m_vm.verifyExceptionCheckNeedIsSatisfied(m_recursionDepth, m_location);
     return m_vm.throwException(exec, obj);
 }
 

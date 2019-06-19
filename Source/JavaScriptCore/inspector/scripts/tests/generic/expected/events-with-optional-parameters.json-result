@@ -232,6 +232,7 @@ namespace Inspector {
 class FrontendRouter;
 
 class DatabaseFrontendDispatcher {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     DatabaseFrontendDispatcher(FrontendRouter& frontendRouter) : m_frontendRouter(frontendRouter) { }
     void didExecuteOptionalParameters(RefPtr<JSON::ArrayOf<String>> columnNames, const String* notes, const double* timestamp, RefPtr<JSON::Object> values, RefPtr<JSON::Value> payload, RefPtr<Inspector::Protocol::Database::Error> sqlError, const String* screenColor, RefPtr<Inspector::Protocol::Database::ColorList> alternateColors, const String* printColor);
@@ -374,6 +375,8 @@ namespace Inspector {
 
 
 namespace Protocol {
+
+
 
 // Forward declarations.
 namespace Database {
@@ -992,7 +995,7 @@ __attribute__((visibility ("default")))
 namespace Inspector {
 
 template<typename ObjCEnumType>
-std::optional<ObjCEnumType> fromProtocolString(const String& value);
+Optional<ObjCEnumType> fromProtocolString(const String& value);
 
 inline String toProtocolString(TestProtocolPlatform value)
 {
@@ -1009,7 +1012,7 @@ inline String toProtocolString(TestProtocolPlatform value)
 }
 
 template<>
-inline std::optional<TestProtocolPlatform> fromProtocolString(const String& value)
+inline Optional<TestProtocolPlatform> fromProtocolString(const String& value)
 {
     if (value == "all")
         return TestProtocolPlatformAll;
@@ -1019,7 +1022,7 @@ inline std::optional<TestProtocolPlatform> fromProtocolString(const String& valu
         return TestProtocolPlatformIOS;
     if (value == "macos")
         return TestProtocolPlatformMacOS;
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 

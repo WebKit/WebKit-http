@@ -30,6 +30,7 @@
 
 #if ENABLE(MATHML)
 
+#include "HTTPParsers.h"
 #include "MathMLNames.h"
 #include "RenderMathMLToken.h"
 #include <wtf/IsoMallocInlines.h>
@@ -80,15 +81,15 @@ bool MathMLTokenElement::childShouldCreateRenderer(const Node& child) const
     return isPhrasingContent(child) && StyledElement::childShouldCreateRenderer(child);
 }
 
-std::optional<UChar32> MathMLTokenElement::convertToSingleCodePoint(StringView string)
+Optional<UChar32> MathMLTokenElement::convertToSingleCodePoint(StringView string)
 {
-    auto codePoints = stripLeadingAndTrailingWhitespace(string).codePoints();
+    auto codePoints = stripLeadingAndTrailingHTTPSpaces(string).codePoints();
     auto iterator = codePoints.begin();
     if (iterator == codePoints.end())
-        return std::nullopt;
-    std::optional<UChar32> character = *iterator;
+        return WTF::nullopt;
+    Optional<UChar32> character = *iterator;
     ++iterator;
-    return iterator == codePoints.end() ? character : std::nullopt;
+    return iterator == codePoints.end() ? character : WTF::nullopt;
 }
 
 }

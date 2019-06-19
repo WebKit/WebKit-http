@@ -23,12 +23,6 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WI.DebuggableType = {
-    JavaScript: "javascript",
-    ServiceWorker: "service-worker",
-    Web: "web",
-};
-
 WI.NotImplementedError = class NotImplementedError extends Error
 {
     constructor(message = "This method is not implemented.")

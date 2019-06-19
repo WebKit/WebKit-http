@@ -35,8 +35,6 @@
 #import <wtf/BlockPtr.h>
 #import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED
-
 static bool done;
 static bool willSubmitFormValuesCalled;
 
@@ -105,7 +103,7 @@ TEST(WebKit, FormSubmission)
     TestWebKitAPI::Util::run(&done);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 TEST(WebKit, FocusedElementInfo)
 {
@@ -144,8 +142,6 @@ TEST(WebKit, FocusedElementInfo)
     EXPECT_WK_STREQ("garply", [currentElement label]);
 }
 
-#endif // PLATFORM(IOS)
-
-#endif // WK_API_ENABLED
+#endif // PLATFORM(IOS_FAMILY)
 
 

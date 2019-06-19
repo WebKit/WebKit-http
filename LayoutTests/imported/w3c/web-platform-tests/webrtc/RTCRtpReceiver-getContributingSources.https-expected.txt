@@ -1,3 +1,4 @@
 
-FAIL getContributingSources() should return list of CSRC after connection is established promise_test: Unhandled rejection with value: object "TypeError: receiver.getContributingSources is not a function. (In 'receiver.getContributingSources()', 'receiver.getContributingSources' is undefined)"
+PASS [audio] getContributingSources() returns an empty list in loopback call 
+PASS [video] getContributingSources() returns an empty list in loopback call 
 

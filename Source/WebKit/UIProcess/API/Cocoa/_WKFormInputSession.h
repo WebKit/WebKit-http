@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 #import <WebKit/_WKFocusedElementInfo.h>
 
@@ -36,19 +34,18 @@
 
 @property (nonatomic, readonly, getter=isValid) BOOL valid;
 @property (nonatomic, readonly) NSObject <NSSecureCoding> *userObject;
-@property (nonatomic, readonly) id <_WKFocusedElementInfo> focusedElementInfo WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+@property (nonatomic, readonly) id <_WKFocusedElementInfo> focusedElementInfo WK_API_AVAILABLE(macos(10.12), ios(10.0));
 
 #if TARGET_OS_IPHONE
 @property (nonatomic, copy) NSString *accessoryViewCustomButtonTitle;
 @property (nonatomic, strong) UIView *customInputView WK_API_AVAILABLE(ios(10.0));
+@property (nonatomic, strong) UIView *customInputAccessoryView WK_API_AVAILABLE(ios(12.2));
 @property (nonatomic, copy) NSArray<UITextSuggestion *> *suggestions WK_API_AVAILABLE(ios(10.0));
 @property (nonatomic) BOOL accessoryViewShouldNotShow WK_API_AVAILABLE(ios(10.0));
 @property (nonatomic) BOOL forceSecureTextEntry WK_API_AVAILABLE(ios(10.0));
-@property (nonatomic, readonly) BOOL requiresStrongPasswordAssistance WK_API_AVAILABLE(ios(WK_IOS_TBA));
+@property (nonatomic, readonly) BOOL requiresStrongPasswordAssistance WK_API_AVAILABLE(ios(12.0));
 
-- (void)reloadFocusedElementContextView WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)reloadFocusedElementContextView WK_API_AVAILABLE(ios(12.0));
 #endif
 
 @end
-
-#endif // WK_API_ENABLED

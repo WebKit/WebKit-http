@@ -70,9 +70,9 @@
 
 #endif
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 @implementation WKView
-
-#if WK_API_ENABLED
+IGNORE_WARNINGS_END
 
 - (id)initWithFrame:(NSRect)frame processGroup:(WKProcessGroup *)processGroup browsingContextGroup:(WKBrowsingContextGroup *)browsingContextGroup
 {
@@ -83,8 +83,6 @@
 {
     return [self initWithFrame:frame contextRef:processGroup._contextRef pageGroupRef:browsingContextGroup._pageGroupRef relatedToPage:relatedView ? relatedView.pageRef : nil];
 }
-
-#endif // WK_API_ENABLED
 
 - (void)dealloc
 {
@@ -97,12 +95,10 @@
     [super dealloc];
 }
 
-#if WK_API_ENABLED
 - (WKBrowsingContextController *)browsingContextController
 {
     return _data->_impl->browsingContextController();
 }
-#endif // WK_API_ENABLED
 
 - (void)setDrawsBackground:(BOOL)drawsBackground
 {
@@ -180,7 +176,9 @@
     _data->_impl->setFrameSize(NSSizeToCGSize(size));
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)renewGState
+IGNORE_WARNINGS_END
 {
     _data->_impl->renewGState();
     [super renewGState];
@@ -693,7 +691,9 @@ Some other editing-related methods still unimplemented:
 }
 
 #if ENABLE(DRAG_SUPPORT)
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)draggedImage:(NSImage *)image endedAt:(NSPoint)endPoint operation:(NSDragOperation)operation
+IGNORE_WARNINGS_END
 {
     _data->_impl->draggedImage(image, NSPointToCGPoint(endPoint), operation);
 }
@@ -784,7 +784,9 @@ Some other editing-related methods still unimplemented:
     return _data->_impl->accessibilityFocusedUIElement();
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (BOOL)accessibilityIsIgnored
+IGNORE_WARNINGS_END
 {
     return _data->_impl->accessibilityIsIgnored();
 }
@@ -794,9 +796,26 @@ Some other editing-related methods still unimplemented:
     return _data->_impl->accessibilityHitTest(NSPointToCGPoint(point));
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (id)accessibilityAttributeValue:(NSString *)attribute
+IGNORE_WARNINGS_END
 {
     return _data->_impl->accessibilityAttributeValue(attribute);
+}
+
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+- (id)accessibilityAttributeValue:(NSString *)attribute forParameter:(id)parameter
+IGNORE_WARNINGS_END
+{
+    return _data->_impl->accessibilityAttributeValue(attribute, parameter);
+}
+
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+- (NSArray<NSString *> *)accessibilityParameterizedAttributeNames
+IGNORE_WARNINGS_END
+{
+    NSArray<NSString *> *names = [super accessibilityParameterizedAttributeNames];
+    return [names arrayByAddingObject:@"AXConvertRelativeFrame"];
 }
 
 - (NSView *)hitTest:(NSPoint)point
@@ -864,14 +883,16 @@ Some other editing-related methods still unimplemented:
     _data->_impl->provideDataForPasteboard(pasteboard, type);
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (NSArray *)namesOfPromisedFilesDroppedAtDestination:(NSURL *)dropDestination
+IGNORE_WARNINGS_END
 {
     return _data->_impl->namesOfPromisedFilesDroppedAtDestination(dropDestination);
 }
 
 - (void)maybeInstallIconLoadingClient
 {
-#if WK_API_ENABLED
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     class IconLoadingClient : public API::IconLoadingClient {
     public:
         explicit IconLoadingClient(WKView *wkView)
@@ -891,7 +912,7 @@ Some other editing-related methods still unimplemented:
         {
             RetainPtr<_WKLinkIconParameters> parameters = adoptNS([[_WKLinkIconParameters alloc] _initWithLinkIcon:linkIcon]);
 
-            [m_wkView _shouldLoadIconWithParameters:parameters.get() completionHandler:BlockPtr<void(IconLoadCompletionHandler)>::fromCallable([completionHandler = WTFMove(completionHandler)](IconLoadCompletionHandler loadCompletionHandler) mutable {
+            [m_wkView _shouldLoadIconWithParameters:parameters.get() completionHandler:makeBlockPtr([completionHandler = WTFMove(completionHandler)](IconLoadCompletionHandler loadCompletionHandler) mutable {
                 ASSERT(RunLoop::isMain());
                 if (loadCompletionHandler) {
                     completionHandler([loadCompletionHandler = BlockPtr<void (NSData *)>(loadCompletionHandler)](API::Data* data, WebKit::CallbackBase::Error error) {
@@ -907,10 +928,10 @@ Some other editing-related methods still unimplemented:
 
         WKView *m_wkView;
     };
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     if ([self respondsToSelector:IconLoadingClient::delegateSelector()])
         _data->_impl->page().setIconLoadingClient(std::make_unique<IconLoadingClient>(self));
-#endif // WK_API_ENABLED
 }
 
 - (instancetype)initWithFrame:(NSRect)frame processPool:(WebKit::WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration
@@ -929,7 +950,6 @@ Some other editing-related methods still unimplemented:
     return self;
 }
 
-#if WK_API_ENABLED
 - (void)_setThumbnailView:(_WKThumbnailView *)thumbnailView
 {
     _data->_impl->setThumbnailView(thumbnailView);
@@ -941,7 +961,6 @@ Some other editing-related methods still unimplemented:
         return nil;
     return _data->_impl->thumbnailView();
 }
-#endif // WK_API_ENABLED
 
 - (NSTextInputContext *)_web_superInputContext
 {
@@ -975,10 +994,9 @@ Some other editing-related methods still unimplemented:
 
 - (id)_web_superAccessibilityAttributeValue:(NSString *)attribute
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     return [super accessibilityAttributeValue:attribute];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 - (void)_web_superDoCommandBySelector:(SEL)selector
@@ -1026,7 +1044,7 @@ Some other editing-related methods still unimplemented:
     [self _didChangeContentSize:newSize];
 }
 
-#if ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
+#if ENABLE(DRAG_SUPPORT)
 
 - (void)_web_didPerformDragOperation:(BOOL)handled
 {
@@ -1119,7 +1137,10 @@ Some other editing-related methods still unimplemented:
 
 @end
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 @implementation WKView (Private)
+IGNORE_WARNINGS_END
 
 - (void)saveBackForwardSnapshotForCurrentItem
 {
@@ -1260,7 +1281,6 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
     _data->_impl->setUnderlayColor(underlayColor);
 }
 
-#if WK_API_ENABLED
 - (NSView *)_inspectorAttachmentView
 {
     return _data->_impl->inspectorAttachmentView();
@@ -1270,7 +1290,6 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
 {
     _data->_impl->setInspectorAttachmentView(newView);
 }
-#endif
 
 - (BOOL)_requiresUserActionForEditingControlsManager
 {
@@ -1414,6 +1433,9 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
 
 - (void)_setViewScale:(CGFloat)viewScale
 {
+    if (viewScale <= 0 || isnan(viewScale) || isinf(viewScale))
+        [NSException raise:NSInvalidArgumentException format:@"View scale should be a positive number"];
+
     _data->_impl->setViewScale(viewScale);
 }
 
@@ -1437,7 +1459,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
     return _data->_impl->totalHeightOfBanners();
 }
 
-static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOverlayScrollbarStyle scrollbarStyle)
+static Optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOverlayScrollbarStyle scrollbarStyle)
 {
     switch (scrollbarStyle) {
     case _WKOverlayScrollbarStyleDark:
@@ -1451,10 +1473,10 @@ static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOve
         break;
     }
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
-static _WKOverlayScrollbarStyle toAPIScrollbarStyle(std::optional<WebCore::ScrollbarOverlayStyle> coreScrollbarStyle)
+static _WKOverlayScrollbarStyle toAPIScrollbarStyle(Optional<WebCore::ScrollbarOverlayStyle> coreScrollbarStyle)
 {
     if (!coreScrollbarStyle)
         return _WKOverlayScrollbarStyleAutomatic;
@@ -1676,5 +1698,6 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(std::optional<WebCore::Scrol
 }
 
 @end
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 #endif // PLATFORM(MAC)

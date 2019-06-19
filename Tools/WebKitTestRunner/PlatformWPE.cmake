@@ -1,6 +1,3 @@
-find_package(Libxkbcommon 0.4.0 REQUIRED)
-find_package(WPEBackend-fdo REQUIRED)
-
 add_custom_target(WebKitTestRunner-forwarding-headers
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT_TESTRUNNER_DIR} --output ${FORWARDING_HEADERS_DIR} --platform wpe
 )
@@ -45,8 +42,9 @@ set(WebKitTestRunnerInjectedBundle_LIBRARIES
 )
 
 list(APPEND WebKitTestRunnerInjectedBundle_SOURCES
-    ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/AccessibilityControllerWPE.cpp
-    ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/AccessibilityUIElementWPE.cpp
+    ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/atk/AccessibilityControllerAtk.cpp
+    ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/atk/AccessibilityNotificationHandlerAtk.cpp
+    ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/atk/AccessibilityUIElementAtk.cpp
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/ActivateFontsWPE.cpp
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/InjectedBundleWPE.cpp
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/wpe/TestRunnerWPE.cpp

@@ -26,7 +26,7 @@
 #import "config.h"
 #import "ScrollAnimatorIOS.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "Frame.h"
 #import "RenderLayer.h"
@@ -103,8 +103,9 @@ bool ScrollAnimatorIOS::handleTouchEvent(const PlatformTouchEvent& touchEvent)
         determineScrollableAreaForTouchSequence(touchDelta);
 
     if (!m_committedToScrollAxis) {
-        bool horizontallyScrollable = m_scrollableArea.scrollSize(HorizontalScrollbar);
-        bool verticallyScrollable = m_scrollableArea.scrollSize(VerticalScrollbar);
+        auto scrollSize = m_scrollableArea.maximumScrollPosition() - m_scrollableArea.minimumScrollPosition();
+        bool horizontallyScrollable = scrollSize.width();
+        bool verticallyScrollable = scrollSize.height();
 
         if (!horizontallyScrollable && !verticallyScrollable)
             return false;
@@ -188,4 +189,4 @@ void ScrollAnimatorIOS::determineScrollableAreaForTouchSequence(const IntSize& s
 
 } // namespace WebCore
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

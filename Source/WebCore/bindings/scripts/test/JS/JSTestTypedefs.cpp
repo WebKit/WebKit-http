@@ -45,13 +45,13 @@
 #include "JSTestSubObj.h"
 #include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
-#include "URL.h"
 #include <JavaScriptCore/FunctionPrototype.h>
 #include <JavaScriptCore/HeapSnapshotBuilder.h>
 #include <JavaScriptCore/JSArray.h>
 #include <JavaScriptCore/JSCInlines.h>
 #include <wtf/GetPtr.h>
 #include <wtf/PointerPreparations.h>
+#include <wtf/URL.h>
 #include <wtf/Variant.h>
 
 
@@ -510,7 +510,7 @@ static inline JSC::EncodedJSValue jsTestTypedefsPrototypeFunctionSetShadowBody(J
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto color = state->argument(3).isUndefined() ? String() : convert<IDLDOMString>(*state, state->uncheckedArgument(3));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto alpha = state->argument(4).isUndefined() ? std::optional<Converter<IDLUnrestrictedFloat>::ReturnType>() : std::optional<Converter<IDLUnrestrictedFloat>::ReturnType>(convert<IDLUnrestrictedFloat>(*state, state->uncheckedArgument(4)));
+    auto alpha = state->argument(4).isUndefined() ? Optional<Converter<IDLUnrestrictedFloat>::ReturnType>() : Optional<Converter<IDLUnrestrictedFloat>::ReturnType>(convert<IDLUnrestrictedFloat>(*state, state->uncheckedArgument(4)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.setShadow(WTFMove(width), WTFMove(height), WTFMove(blur), WTFMove(color), WTFMove(alpha));
     return JSValue::encode(jsUndefined());
@@ -637,7 +637,7 @@ static inline JSC::EncodedJSValue jsTestTypedefsPrototypeFunctionFuncWithClampBo
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto arg1 = convert<IDLClampAdaptor<IDLUnsignedLongLong>>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto arg2 = state->argument(1).isUndefined() ? std::optional<Converter<IDLClampAdaptor<IDLUnsignedLongLong>>::ReturnType>() : std::optional<Converter<IDLClampAdaptor<IDLUnsignedLongLong>>::ReturnType>(convert<IDLClampAdaptor<IDLUnsignedLongLong>>(*state, state->uncheckedArgument(1)));
+    auto arg2 = state->argument(1).isUndefined() ? Optional<Converter<IDLClampAdaptor<IDLUnsignedLongLong>>::ReturnType>() : Optional<Converter<IDLClampAdaptor<IDLUnsignedLongLong>>::ReturnType>(convert<IDLClampAdaptor<IDLUnsignedLongLong>>(*state, state->uncheckedArgument(1)));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.funcWithClamp(WTFMove(arg1), WTFMove(arg2));
     return JSValue::encode(jsUndefined());
@@ -749,7 +749,7 @@ void JSTestTypedefs::heapSnapshot(JSCell* cell, HeapSnapshotBuilder& builder)
     auto* thisObject = jsCast<JSTestTypedefs*>(cell);
     builder.setWrappedObjectForCell(cell, &thisObject->wrapped());
     if (thisObject->scriptExecutionContext())
-        builder.setLabelForCell(cell, String::format("url %s", thisObject->scriptExecutionContext()->url().string().utf8().data()));
+        builder.setLabelForCell(cell, "url " + thisObject->scriptExecutionContext()->url().string());
     Base::heapSnapshot(cell, builder);
 }
 

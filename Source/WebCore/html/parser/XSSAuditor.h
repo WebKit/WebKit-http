@@ -27,7 +27,7 @@
 
 #include "HTMLToken.h"
 #include "HTTPParsers.h"
-#include "URL.h"
+#include <wtf/URL.h>
 #include "SuffixTree.h"
 #include "TextEncoding.h"
 
@@ -101,6 +101,8 @@ private:
 
     bool isContainedInRequest(const String&);
     bool isLikelySafeResource(const String& url);
+
+    SuffixTree<ASCIICodebook>* decodedHTTPBodySuffixTree();
 
     URL m_documentURL;
     bool m_isEnabled;

@@ -61,11 +61,11 @@ function initializeReadableStream(underlyingSource, strategy)
             @throwRangeError("Strategy for a ReadableByteStreamController cannot have a size");
 
         let readableByteStreamControllerConstructor = @ReadableByteStreamController;
-        @putByIdDirectPrivate(this, "readableStreamController", new @ReadableByteStreamController(this, underlyingSource, strategy.highWaterMark));
+        @putByIdDirectPrivate(this, "readableStreamController", new @ReadableByteStreamController(this, underlyingSource, strategy.highWaterMark, @isReadableStream));
     } else if (type === @undefined) {
         if (strategy.highWaterMark === @undefined)
             strategy.highWaterMark = 1;
-        @putByIdDirectPrivate(this, "readableStreamController", new @ReadableStreamDefaultController(this, underlyingSource, strategy.size, strategy.highWaterMark));
+        @putByIdDirectPrivate(this, "readableStreamController", new @ReadableStreamDefaultController(this, underlyingSource, strategy.size, strategy.highWaterMark, @isReadableStream));
     } else
         @throwRangeError("Invalid type for underlying source");
 
@@ -80,7 +80,7 @@ function cancel(reason)
         return @Promise.@reject(@makeThisTypeError("ReadableStream", "cancel"));
 
     if (@isReadableStreamLocked(this))
-        return @Promise.@reject(new @TypeError("ReadableStream is locked"));
+        return @Promise.@reject(@makeTypeError("ReadableStream is locked"));
 
     return @readableStreamCancel(this, reason);
 }
@@ -198,7 +198,7 @@ function pipeTo(destination)
     @Promise.prototype.@then.@call(destination.closed,
         function() {
             if (!closedPurposefully)
-                cancelSource(new @TypeError('destination is closing or closed and cannot be piped to anymore'));
+                cancelSource(@makeTypeError('destination is closing or closed and cannot be piped to anymore'));
         },
         cancelSource
     );

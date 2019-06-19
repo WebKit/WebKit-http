@@ -44,11 +44,14 @@ class IDBConnectionToClient;
 }
 
 class IDBTransactionInfo {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static IDBTransactionInfo clientTransaction(const IDBClient::IDBConnectionProxy&, const Vector<String>& objectStores, IDBTransactionMode);
     static IDBTransactionInfo versionChange(const IDBServer::IDBConnectionToClient&, const IDBDatabaseInfo& originalDatabaseInfo, uint64_t newVersion);
 
     IDBTransactionInfo(const IDBTransactionInfo&);
+    IDBTransactionInfo(IDBTransactionInfo&&) = default;
+    IDBTransactionInfo& operator=(IDBTransactionInfo&&) = default;
 
     enum IsolatedCopyTag { IsolatedCopy };
     IDBTransactionInfo(const IDBTransactionInfo&, IsolatedCopyTag);

@@ -35,7 +35,7 @@ namespace WebCore {
 
 class IDBError {
 public:
-    WEBCORE_EXPORT explicit IDBError(std::optional<ExceptionCode> = std::nullopt, const String& message = { });
+    WEBCORE_EXPORT explicit IDBError(Optional<ExceptionCode> = WTF::nullopt, const String& message = { });
 
     static IDBError userDeleteError()
     {
@@ -47,11 +47,9 @@ public:
         return IDBError { UnknownError, "Connection to Indexed Database server lost. Refresh the page to try again"_s };
     }
 
-    WEBCORE_EXPORT IDBError& operator=(const IDBError&);
-
     RefPtr<DOMException> toDOMException() const;
 
-    std::optional<ExceptionCode> code() const { return m_code; }
+    Optional<ExceptionCode> code() const { return m_code; }
     String name() const;
     String message() const;
 
@@ -63,7 +61,7 @@ public:
     template<class Decoder> static bool decode(Decoder&, IDBError&);
 
 private:
-    std::optional<ExceptionCode> m_code;
+    Optional<ExceptionCode> m_code;
     String m_message;
 };
 
@@ -91,7 +89,7 @@ bool IDBError::decode(Decoder& decoder, IDBError& error)
             return false;
         error.m_code = ec;
     } else
-        error.m_code = std::nullopt;
+        error.m_code = WTF::nullopt;
 
     if (!decoder.decode(error.m_message))
         return false;

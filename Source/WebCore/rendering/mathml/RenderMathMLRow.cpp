@@ -52,13 +52,13 @@ MathMLRowElement& RenderMathMLRow::element() const
     return static_cast<MathMLRowElement&>(nodeForNonAnonymous());
 }
 
-std::optional<int> RenderMathMLRow::firstLineBaseline() const
+Optional<int> RenderMathMLRow::firstLineBaseline() const
 {
     auto* baselineChild = firstChildBox();
     if (!baselineChild)
-        return std::optional<int>();
+        return Optional<int>();
 
-    return std::optional<int>(static_cast<int>(lroundf(ascentForChild(*baselineChild) + baselineChild->logicalTop())));
+    return Optional<int>(static_cast<int>(lroundf(ascentForChild(*baselineChild) + baselineChild->logicalTop())));
 }
 
 static RenderMathMLOperator* toVerticalStretchyOperator(RenderBox* box)
@@ -129,7 +129,7 @@ void RenderMathMLRow::computePreferredLogicalWidths()
 
     m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = 0;
 
-    LayoutUnit preferredWidth = 0;
+    LayoutUnit preferredWidth;
     for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         if (child->isOutOfFlowPositioned())
             continue;
@@ -177,6 +177,8 @@ void RenderMathMLRow::layoutBlock(bool relayoutChildren, LayoutUnit)
     updateLogicalHeight();
 
     layoutPositionedObjects(relayoutChildren);
+
+    updateScrollInfoAfterLayout();
 
     clearNeedsLayout();
 }

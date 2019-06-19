@@ -50,8 +50,6 @@ static const LPCWSTR kWebKit2WebPopupMenuProxyWindowClassName = L"WebKit2WebPopu
 static constexpr int defaultAnimationDuration = 200;
 static constexpr int maxPopupHeight = 320;
 static constexpr int popupWindowBorderWidth = 1;
-static constexpr int separatorPadding = 4;
-static constexpr int separatorHeight = 1;
 
 // This is used from within our custom message pump when we want to send a
 // message to the web view and not have our message stolen and sent to
@@ -218,7 +216,7 @@ void WebPopupMenuProxyWin::showPopupMenu(const IntRect& rect, TextDirection, dou
         shouldAnimate = FALSE;
 
     if (shouldAnimate) {
-        RECT viewRect = {0};
+        RECT viewRect { };
         ::GetWindowRect(hostWindow, &viewRect);
 
         if (!::IsRectEmpty(&viewRect)) {
@@ -443,9 +441,9 @@ void WebPopupMenuProxyWin::invalidateItem(int index)
     ::InvalidateRect(m_popup, &r, TRUE);
 }
 
-int WebPopupMenuProxyWin::scrollSize(ScrollbarOrientation orientation) const
+ScrollPosition WebPopupMenuProxyWin::scrollPosition() const
 {
-    return ((orientation == VerticalScrollbar) && m_scrollbar) ? (m_scrollbar->totalSize() - m_scrollbar->visibleSize()) : 0;
+    return { 0, m_scrollOffset };
 }
 
 void WebPopupMenuProxyWin::setScrollOffset(const IntPoint& offset)
@@ -556,9 +554,9 @@ LRESULT WebPopupMenuProxyWin::onKeyDown(HWND hWnd, UINT message, WPARAM wParam, 
         focusLast();
         break;
     case VK_PRIOR:
-        if (focusedIndex() != scrollOffset(VerticalScrollbar)) {
+        if (focusedIndex() != m_scrollOffset) {
             // Set the selection to the first visible item
-            int firstVisibleItem = scrollOffset(VerticalScrollbar);
+            int firstVisibleItem = m_scrollOffset;
             up(focusedIndex() - firstVisibleItem);
         } else {
             // The first visible item is selected, so move the selection back one page
@@ -566,7 +564,7 @@ LRESULT WebPopupMenuProxyWin::onKeyDown(HWND hWnd, UINT message, WPARAM wParam, 
         }
         break;
     case VK_NEXT: {
-        int lastVisibleItem = scrollOffset(VerticalScrollbar) + visibleItems() - 1;
+        int lastVisibleItem = m_scrollOffset + visibleItems() - 1;
         if (focusedIndex() != lastVisibleItem) {
             // Set the selection to the last visible item
             down(lastVisibleItem - focusedIndex());
@@ -922,7 +920,6 @@ void WebPopupMenuProxyWin::focusLast()
         }
     }
 }
-
 
 void WebPopupMenuProxyWin::incrementWheelDelta(int delta)
 {

@@ -23,14 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// FIXME: ApplicationCacheManager lacks advanced multi-target support. (ApplciationCache objects per-target)
+
 WI.ApplicationCacheManager = class ApplicationCacheManager extends WI.Object
 {
     constructor()
     {
         super();
-
-        if (window.ApplicationCacheAgent)
-            ApplicationCacheAgent.enable();
 
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
         WI.Frame.addEventListener(WI.Frame.Event.ChildFrameWasRemoved, this._childFrameWasRemoved, this);
@@ -40,14 +39,21 @@ WI.ApplicationCacheManager = class ApplicationCacheManager extends WI.Object
         this.initialize();
     }
 
+    // Target
+
+    initializeTarget(target)
+    {
+        if (target.ApplicationCacheAgent) {
+            target.ApplicationCacheAgent.enable();
+            target.ApplicationCacheAgent.getFramesWithManifests(this._framesWithManifestsLoaded.bind(this));
+        }
+    }
+
     // Public
 
     initialize()
     {
         this._applicationCacheObjects = {};
-
-        if (window.ApplicationCacheAgent)
-            ApplicationCacheAgent.getFramesWithManifests(this._framesWithManifestsLoaded.bind(this));
     }
 
     get applicationCacheObjects()
@@ -72,7 +78,7 @@ WI.ApplicationCacheManager = class ApplicationCacheManager extends WI.Object
 
     applicationCacheStatusUpdated(frameId, manifestURL, status)
     {
-        var frame = WI.frameResourceManager.frameForIdentifier(frameId);
+        var frame = WI.networkManager.frameForIdentifier(frameId);
         if (!frame)
             return;
 
@@ -123,7 +129,7 @@ WI.ApplicationCacheManager = class ApplicationCacheManager extends WI.Object
         if (error)
             return;
 
-        var frame = WI.frameResourceManager.frameForIdentifier(frameId);
+        var frame = WI.networkManager.frameForIdentifier(frameId);
         if (!frame)
             return;
 
@@ -137,7 +143,7 @@ WI.ApplicationCacheManager = class ApplicationCacheManager extends WI.Object
             return;
 
         for (var i = 0; i < framesWithManifests.length; ++i) {
-            var frame = WI.frameResourceManager.frameForIdentifier(framesWithManifests[i].frameId);
+            var frame = WI.networkManager.frameForIdentifier(framesWithManifests[i].frameId);
             if (!frame)
                 continue;
 

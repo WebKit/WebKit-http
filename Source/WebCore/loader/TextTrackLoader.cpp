@@ -35,6 +35,8 @@
 #include "CachedTextTrack.h"
 #include "CrossOriginAccessControl.h"
 #include "Document.h"
+#include "HTMLTrackElement.h"
+#include "InspectorInstrumentation.h"
 #include "Logging.h"
 #include "SharedBuffer.h"
 #include "VTTCue.h"
@@ -63,11 +65,11 @@ void TextTrackLoader::cueLoadTimerFired()
 {
     if (m_newCuesAvailable) {
         m_newCuesAvailable = false;
-        m_client.newCuesAvailable(this);
+        m_client.newCuesAvailable(*this);
     }
     
     if (m_state >= Finished)
-        m_client.cueLoadingCompleted(this, m_state == Failed);
+        m_client.cueLoadingCompleted(*this, m_state == Failed);
 }
 
 void TextTrackLoader::cancelLoad()
@@ -142,7 +144,7 @@ void TextTrackLoader::notifyFinished(CachedResource& resource)
     cancelLoad();
 }
 
-bool TextTrackLoader::load(const URL& url, const String& crossOriginMode, bool isInitiatingElementInUserAgentShadowTree)
+bool TextTrackLoader::load(const URL& url, HTMLTrackElement& element)
 {
     cancelLoad();
 
@@ -150,9 +152,14 @@ bool TextTrackLoader::load(const URL& url, const String& crossOriginMode, bool i
     Document& document = downcast<Document>(*m_scriptExecutionContext);
 
     ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
-    options.contentSecurityPolicyImposition = isInitiatingElementInUserAgentShadowTree ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck;
+    options.contentSecurityPolicyImposition = element.isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck;
 
-    auto cueRequest = createPotentialAccessControlRequest(document.completeURL(url), document, crossOriginMode, WTFMove(options));
+    ResourceRequest resourceRequest(document.completeURL(url));
+
+    if (auto mediaElement = element.mediaElement())
+        resourceRequest.setInspectorInitiatorNodeIdentifier(InspectorInstrumentation::identifierForNode(*mediaElement));
+
+    auto cueRequest = createPotentialAccessControlRequest(WTFMove(resourceRequest), document, element.mediaElementCrossOriginAttribute(), WTFMove(options));
     m_resource = document.cachedResourceLoader().requestTextTrack(WTFMove(cueRequest)).value_or(nullptr);
     if (!m_resource)
         return false;
@@ -171,7 +178,12 @@ void TextTrackLoader::newCuesParsed()
 
 void TextTrackLoader::newRegionsParsed()
 {
-    m_client.newRegionsAvailable(this);
+    m_client.newRegionsAvailable(*this);
+}
+
+void TextTrackLoader::newStyleSheetsParsed()
+{
+    m_client.newStyleSheetsAvailable(*this);
 }
 
 void TextTrackLoader::fileFailedToParse()
@@ -203,6 +215,14 @@ void TextTrackLoader::getNewRegions(Vector<RefPtr<VTTRegion>>& outputRegions)
     ASSERT(m_cueParser);
     if (m_cueParser)
         m_cueParser->getNewRegions(outputRegions);
+}
+
+Vector<String> TextTrackLoader::getNewStyleSheets()
+{
+    ASSERT(m_cueParser);
+    if (m_cueParser)
+        return m_cueParser->getStyleSheets();
+    return Vector<String>();
 }
 
 }

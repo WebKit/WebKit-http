@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,10 +27,12 @@
 
 #include "ActiveDOMObject.h"
 #include "CanvasRenderingContext.h"
+#include <wtf/IsoMalloc.h>
 
 namespace WebCore {
 
 class GPUBasedCanvasRenderingContext : public CanvasRenderingContext, public ActiveDOMObject {
+    WTF_MAKE_ISO_NONALLOCATABLE(GPUBasedCanvasRenderingContext);
 public:
 
     bool isGPUBased() const override { return true; }

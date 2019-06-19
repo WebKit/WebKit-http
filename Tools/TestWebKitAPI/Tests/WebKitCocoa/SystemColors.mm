@@ -25,8 +25,6 @@
 
 #include "config.h"
 
-#if WK_API_ENABLED
-
 #import "PlatformUtilities.h"
 #import "TestWKWebView.h"
 #import <WebKit/WKWebViewPrivate.h>
@@ -34,6 +32,11 @@
 
 #if PLATFORM(MAC)
 #import <pal/spi/cocoa/NSColorSPI.h>
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+#import "UIKitSPI.h"
+#import <UIKit/UIKit.h>
 #endif
 
 namespace TestWebKitAPI {
@@ -69,6 +72,17 @@ TEST(WebKit, LinkColorWithSystemAppearance)
 }
 #endif
 
-} // namespace TestWebKitAPI
-
+#if PLATFORM(IOS_FAMILY)
+TEST(WebKit, TintColorAffectsInteractionColor)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView setTintColor:[UIColor greenColor]];
+    [webView synchronouslyLoadHTMLString:@"<body contenteditable></body>"];
+    [webView stringByEvaluatingJavaScript:@"document.body.focus()"];
+    UIView<UITextInputTraits_Private> *textInput = (UIView<UITextInputTraits_Private> *) [webView textInputContentView];
+    EXPECT_TRUE([textInput.insertionPointColor isEqual:[UIColor greenColor]]);
+    EXPECT_TRUE([textInput.selectionBarColor isEqual:[UIColor greenColor]]);
+}
 #endif
+
+} // namespace TestWebKitAPI

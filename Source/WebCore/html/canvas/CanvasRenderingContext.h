@@ -28,6 +28,8 @@
 #include "CanvasBase.h"
 #include "GraphicsLayer.h"
 #include "ScriptWrappable.h"
+#include <wtf/Forward.h>
+#include <wtf/IsoMalloc.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/StringHash.h>
 
@@ -38,13 +40,17 @@ class HTMLCanvasElement;
 class HTMLImageElement;
 class HTMLVideoElement;
 class ImageBitmap;
-class URL;
+class TypedOMCSSImageValue;
 class WebGLObject;
 
 class CanvasRenderingContext : public ScriptWrappable {
-    WTF_MAKE_NONCOPYABLE(CanvasRenderingContext); WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(CanvasRenderingContext);
+    WTF_MAKE_ISO_ALLOCATED(CanvasRenderingContext);
 public:
-    virtual ~CanvasRenderingContext() = default;
+    virtual ~CanvasRenderingContext();
+
+    static HashSet<CanvasRenderingContext*>& instances(const LockHolder&);
+    static Lock& instancesMutex();
 
     void ref();
     WEBCORE_EXPORT void deref();
@@ -63,6 +69,7 @@ public:
     virtual bool isBitmapRenderer() const { return false; }
     virtual bool isPlaceholder() const { return false; }
     virtual bool isOffscreen2d() const { return false; }
+    virtual bool isPaint() const { return false; }
 
     virtual void paintRenderingResultsToCanvas() {}
     virtual PlatformLayer* platformLayer() const { return 0; }
@@ -73,7 +80,7 @@ public:
 protected:
     explicit CanvasRenderingContext(CanvasBase&);
     bool wouldTaintOrigin(const CanvasPattern*);
-    bool wouldTaintOrigin(const HTMLCanvasElement*);
+    bool wouldTaintOrigin(const CanvasBase*);
     bool wouldTaintOrigin(const HTMLImageElement*);
     bool wouldTaintOrigin(const HTMLVideoElement*);
     bool wouldTaintOrigin(const ImageBitmap*);
@@ -85,6 +92,7 @@ protected:
             m_canvas.setOriginTainted();
     }
     void checkOrigin(const URL&);
+    void checkOrigin(const TypedOMCSSImageValue&);
 
     bool m_callTracingActive { false };
 

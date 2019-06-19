@@ -35,11 +35,11 @@
 OBJC_CLASS NSPasteboard;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 OBJC_CLASS UIPasteboard;
 #endif
 
-#if PLATFORM(WPE)
+#if USE(LIBWPE)
 struct wpe_pasteboard;
 #endif
 
@@ -48,7 +48,6 @@ namespace WebCore {
 class Color;
 class SelectionData;
 class SharedBuffer;
-class URL;
 struct PasteboardCustomData;
 struct PasteboardImage;
 struct PasteboardItemInfo;
@@ -58,11 +57,10 @@ struct PasteboardWebContent;
 class PlatformPasteboard {
 public:
     WEBCORE_EXPORT explicit PlatformPasteboard(const String& pasteboardName);
-#if PLATFORM(IOS) || PLATFORM(WPE)
+#if PLATFORM(IOS_FAMILY) || USE(LIBWPE)
     WEBCORE_EXPORT PlatformPasteboard();
     WEBCORE_EXPORT Vector<PasteboardItemInfo> allPasteboardItemInfo();
     WEBCORE_EXPORT PasteboardItemInfo informationForItemAtIndex(int index);
-    WEBCORE_EXPORT void getTypesByFidelityForItemAtIndex(Vector<String>& types, int index);
     WEBCORE_EXPORT void updateSupportedTypeIdentifiers(const Vector<String>& types);
 #endif
     WEBCORE_EXPORT static String uniqueName();
@@ -107,20 +105,20 @@ public:
 #endif
 
 private:
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool allowReadingURLAtIndex(const URL&, int index) const;
 #endif
 
 #if PLATFORM(MAC)
     RetainPtr<NSPasteboard> m_pasteboard;
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     RetainPtr<id> m_pasteboard;
 #endif
 #if PLATFORM(GTK)
     GtkClipboard* m_clipboard;
 #endif
-#if PLATFORM(WPE)
+#if USE(LIBWPE)
     struct wpe_pasteboard* m_pasteboard;
 #endif
 };

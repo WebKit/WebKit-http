@@ -27,7 +27,7 @@
 #pragma once
 
 #include <wtf/Vector.h>
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 
 namespace WebCore {
 
@@ -55,29 +55,8 @@ public:
         enum Kind { TextNodeTest, CommentNodeTest, ProcessingInstructionNodeTest, AnyNodeTest, NameTest };
 
         explicit NodeTest(Kind kind) : m_kind(kind) { }
-        NodeTest(Kind kind, const AtomicString& data) : m_kind(kind), m_data(data) { }
-        NodeTest(Kind kind, const AtomicString& data, const AtomicString& namespaceURI) : m_kind(kind), m_data(data), m_namespaceURI(namespaceURI) { }
-
-#if COMPILER(MSVC)
-        NodeTest(const NodeTest&);
-        void operator=(const NodeTest&);
-
-        NodeTest(NodeTest&& other)
-            : m_kind(other.m_kind)
-            , m_data(WTFMove(other.m_data))
-            , m_namespaceURI(WTFMove(other.m_namespaceURI))
-            , m_mergedPredicates(WTFMove(other.m_mergedPredicates))
-        {
-        }
-        NodeTest& operator=(NodeTest&& other)
-        {
-            m_kind = other.m_kind;
-            m_data = WTFMove(other.m_data);
-            m_namespaceURI = WTFMove(other.m_namespaceURI);
-            m_mergedPredicates = WTFMove(other.m_mergedPredicates);
-            return *this;
-        }
-#endif
+        NodeTest(Kind kind, const AtomString& data) : m_kind(kind), m_data(data) { }
+        NodeTest(Kind kind, const AtomString& data, const AtomString& namespaceURI) : m_kind(kind), m_data(data), m_namespaceURI(namespaceURI) { }
 
     private:
         friend class Step;
@@ -86,8 +65,8 @@ public:
         friend bool nodeMatches(Node&, Axis, const NodeTest&);
 
         Kind m_kind;
-        AtomicString m_data;
-        AtomicString m_namespaceURI;
+        AtomString m_data;
+        AtomString m_namespaceURI;
         Vector<std::unique_ptr<Expression>> m_mergedPredicates;
     };
 

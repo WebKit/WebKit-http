@@ -65,7 +65,8 @@ class IDBConnectionProxy;
 class TransactionOperation;
 }
 
-class IDBTransaction : public ThreadSafeRefCounted<IDBTransaction>, public EventTargetWithInlineData, public IDBActiveDOMObject {
+class IDBTransaction final : public ThreadSafeRefCounted<IDBTransaction>, public EventTargetWithInlineData, public IDBActiveDOMObject {
+    WTF_MAKE_ISO_ALLOCATED(IDBTransaction);
 public:
     static Ref<IDBTransaction> create(IDBDatabase&, const IDBTransactionInfo&);
     static Ref<IDBTransaction> create(IDBDatabase&, const IDBTransactionInfo&, IDBOpenDBRequest&);
@@ -113,10 +114,10 @@ public:
     std::unique_ptr<IDBIndex> createIndex(IDBObjectStore&, const IDBIndexInfo&);
     void renameIndex(IDBIndex&, const String& newName);
 
-    Ref<IDBRequest> requestPutOrAdd(JSC::ExecState&, IDBObjectStore&, IDBKey*, SerializedScriptValue&, IndexedDB::ObjectStoreOverwriteMode);
+    Ref<IDBRequest> requestPutOrAdd(JSC::ExecState&, IDBObjectStore&, RefPtr<IDBKey>&&, SerializedScriptValue&, IndexedDB::ObjectStoreOverwriteMode);
     Ref<IDBRequest> requestGetRecord(JSC::ExecState&, IDBObjectStore&, const IDBGetRecordData&);
-    Ref<IDBRequest> requestGetAllObjectStoreRecords(JSC::ExecState&, IDBObjectStore&, const IDBKeyRangeData&, IndexedDB::GetAllType, std::optional<uint32_t> count);
-    Ref<IDBRequest> requestGetAllIndexRecords(JSC::ExecState&, IDBIndex&, const IDBKeyRangeData&, IndexedDB::GetAllType, std::optional<uint32_t> count);
+    Ref<IDBRequest> requestGetAllObjectStoreRecords(JSC::ExecState&, IDBObjectStore&, const IDBKeyRangeData&, IndexedDB::GetAllType, Optional<uint32_t> count);
+    Ref<IDBRequest> requestGetAllIndexRecords(JSC::ExecState&, IDBIndex&, const IDBKeyRangeData&, IndexedDB::GetAllType, Optional<uint32_t> count);
     Ref<IDBRequest> requestDeleteRecord(JSC::ExecState&, IDBObjectStore&, const IDBKeyRangeData&);
     Ref<IDBRequest> requestClearObjectStore(JSC::ExecState&, IDBObjectStore&);
     Ref<IDBRequest> requestCount(JSC::ExecState&, IDBObjectStore&, const IDBKeyRangeData&);
@@ -145,12 +146,15 @@ public:
 
     bool isFinishedOrFinishing() const;
     bool isFinished() const { return m_state == IndexedDB::TransactionState::Finished; }
+    bool didDispatchAbortOrCommit() const { return m_didDispatchAbortOrCommit; }
 
     IDBClient::IDBConnectionProxy& connectionProxy();
 
     void connectionClosedFromServer(const IDBError&);
 
     void visitReferencedObjectStores(JSC::SlotVisitor&) const;
+
+    WEBCORE_EXPORT static std::atomic<unsigned> numberOfIDBTransactions;
 
 private:
     IDBTransaction(IDBDatabase&, const IDBTransactionInfo&, IDBOpenDBRequest*);
@@ -162,7 +166,7 @@ private:
     void finishAbortOrCommit();
     void abortInProgressOperations(const IDBError&);
 
-    void scheduleOperation(RefPtr<IDBClient::TransactionOperation>&&);
+    void scheduleOperation(Ref<IDBClient::TransactionOperation>&&);
     void pendingOperationTimerFired();
     void completedOperationTimerFired();
 
@@ -258,6 +262,7 @@ private:
     RefPtr<IDBRequest> m_currentlyCompletingRequest;
 
     bool m_contextStopped { false };
+    bool m_didDispatchAbortOrCommit { false };
 };
 
 class TransactionActivator {

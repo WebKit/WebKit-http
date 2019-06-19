@@ -26,9 +26,7 @@
 #import "config.h"
 #import "_WKElementActionInternal.h"
 
-#if WK_API_ENABLED
-
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "GestureTypes.h"
 #import "WKActionSheetAssistant.h"
@@ -39,6 +37,10 @@
 #import <wtf/SoftLinking.h>
 #import <wtf/WeakObjCPtr.h>
 #import <wtf/text/WTFString.h>
+
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKElementActionAdditions.h>)
+#include <WebKitAdditions/WKElementActionAdditions.h>
+#endif
 
 #if HAVE(SAFARI_SERVICES_FRAMEWORK)
 #import <SafariServices/SSReadingList.h>
@@ -91,6 +93,11 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
 }
 #endif
 
++ (instancetype)elementActionWithType:(_WKElementActionType)type title:(NSString *)title actionHandler:(WKElementActionHandler)actionHandler
+{
+    return [_WKElementAction _elementActionWithType:type title:title actionHandler:actionHandler];
+}
+
 + (instancetype)_elementActionWithType:(_WKElementActionType)type title:(NSString *)title actionHandler:(WKElementActionHandler)actionHandler
 {
     WKElementActionHandlerInternal handler = ^(WKActionSheetAssistant *, _WKActivatedElementInfo *actionInfo) { actionHandler(actionInfo); };
@@ -115,7 +122,7 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
         };
         break;
     case _WKElementActionTypeSaveImage:
-        title = WEB_UI_STRING("Save Image", "Title for Save Image action button");
+        title = WEB_UI_STRING("Add to Photos", "Title for Add to Photos action button");
         handler = ^(WKActionSheetAssistant *assistant, _WKActivatedElementInfo *actionInfo) {
             [assistant.delegate actionSheetAssistant:assistant performAction:WebKit::SheetAction::SaveImage];
         };
@@ -131,7 +138,7 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
     case _WKElementActionTypeShare:
         title = WEB_UI_STRING("Share…", "Title for Share action button");
         handler = ^(WKActionSheetAssistant *assistant, _WKActivatedElementInfo *actionInfo) {
-            [assistant.delegate actionSheetAssistant:assistant shareElementWithURL:actionInfo.URL rect:actionInfo.boundingRect];
+            [assistant.delegate actionSheetAssistant:assistant shareElementWithURL:actionInfo.URL ?: actionInfo.imageURL rect:actionInfo.boundingRect];
         };
         break;
     default:
@@ -172,8 +179,15 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
     [self _runActionWithElementInfo:info forActionSheetAssistant:_defaultActionSheetAssistant.get().get()];
 }
 
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKElementActionAdditions.mm>)
+#include <WebKitAdditions/WKElementActionAdditions.mm>
+#else
++ (UIImage *)imageForElementActionType:(_WKElementActionType)actionType
+{
+    return nil;
+}
+#endif
+
 @end
 
-#endif // PLATFORM(IOS)
-
-#endif // WK_API_ENABLED
+#endif // PLATFORM(IOS_FAMILY)

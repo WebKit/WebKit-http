@@ -45,13 +45,13 @@ class FunctionExecutable;
 namespace WebCore {
 
 /* xmlCasingTest */
-extern const char* s_xmlCasingTestXMLCasingTestCode;
+extern const char* const s_xmlCasingTestXMLCasingTestCode;
 extern const int s_xmlCasingTestXMLCasingTestCodeLength;
 extern const JSC::ConstructAbility s_xmlCasingTestXMLCasingTestCodeConstructAbility;
-extern const char* s_xmlCasingTestCssCasingTestCode;
+extern const char* const s_xmlCasingTestCssCasingTestCode;
 extern const int s_xmlCasingTestCssCasingTestCodeLength;
 extern const JSC::ConstructAbility s_xmlCasingTestCssCasingTestCodeConstructAbility;
-extern const char* s_xmlCasingTestUrlCasingTestCode;
+extern const char* const s_xmlCasingTestUrlCasingTestCode;
 extern const int s_xmlCasingTestUrlCasingTestCodeLength;
 extern const JSC::ConstructAbility s_xmlCasingTestUrlCasingTestCodeConstructAbility;
 
@@ -222,7 +222,7 @@ namespace WebCore {
 const JSC::ConstructAbility s_xmlCasingTestXMLCasingTestCodeConstructAbility = JSC::ConstructAbility::CannotConstruct;
 const int s_xmlCasingTestXMLCasingTestCodeLength = 71;
 static const JSC::Intrinsic s_xmlCasingTestXMLCasingTestCodeIntrinsic = JSC::NoIntrinsic;
-const char* s_xmlCasingTestXMLCasingTestCode =
+const char* const s_xmlCasingTestXMLCasingTestCode =
     "(function (stream)\n" \
     "{\n" \
     "   \"use strict\";\n" \
@@ -234,7 +234,7 @@ const char* s_xmlCasingTestXMLCasingTestCode =
 const JSC::ConstructAbility s_xmlCasingTestCssCasingTestCodeConstructAbility = JSC::ConstructAbility::CannotConstruct;
 const int s_xmlCasingTestCssCasingTestCodeLength = 402;
 static const JSC::Intrinsic s_xmlCasingTestCssCasingTestCodeIntrinsic = JSC::NoIntrinsic;
-const char* s_xmlCasingTestCssCasingTestCode =
+const char* const s_xmlCasingTestCssCasingTestCode =
     "(function (stream, reason)\n" \
     "{\n" \
     "    \"use strict\";\n" \
@@ -252,7 +252,7 @@ const char* s_xmlCasingTestCssCasingTestCode =
 const JSC::ConstructAbility s_xmlCasingTestUrlCasingTestCodeConstructAbility = JSC::ConstructAbility::CannotConstruct;
 const int s_xmlCasingTestUrlCasingTestCodeLength = 338;
 static const JSC::Intrinsic s_xmlCasingTestUrlCasingTestCodeIntrinsic = JSC::NoIntrinsic;
-const char* s_xmlCasingTestUrlCasingTestCode =
+const char* const s_xmlCasingTestUrlCasingTestCode =
     "(function (object, key, args)\n" \
     "{\n" \
     "    \"use strict\";\n" \
@@ -275,7 +275,7 @@ const char* s_xmlCasingTestUrlCasingTestCode =
 JSC::FunctionExecutable* codeName##Generator(JSC::VM& vm) \
 {\
     JSVMClientData* clientData = static_cast<JSVMClientData*>(vm.clientData); \
-    return clientData->builtinFunctions().xmlCasingTestBuiltins().codeName##Executable()->link(vm, clientData->builtinFunctions().xmlCasingTestBuiltins().codeName##Source(), std::nullopt, s_##codeName##Intrinsic); \
+    return clientData->builtinFunctions().xmlCasingTestBuiltins().codeName##Executable()->link(vm, nullptr, clientData->builtinFunctions().xmlCasingTestBuiltins().codeName##Source(), WTF::nullopt, s_##codeName##Intrinsic); \
 }
 WEBCORE_FOREACH_XMLCASINGTEST_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 #undef DEFINE_BUILTIN_GENERATOR

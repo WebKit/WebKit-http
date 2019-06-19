@@ -25,15 +25,17 @@
 #pragma once
 
 #include "BrowserWindow.h"
+#include "Common.h"
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WebKit2_C.h>
+#include <unordered_map>
 
 class WebKitBrowserWindow : public BrowserWindow {
 public:
     static Ref<BrowserWindow> create(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView = false, bool pageLoadTesting = false);
 
 private:
-    WebKitBrowserWindow(HWND mainWnd, HWND urlBarWnd);
+    WebKitBrowserWindow(WKPageConfigurationRef, HWND mainWnd, HWND urlBarWnd);
 
     HRESULT init() override;
     HWND hwnd() override;
@@ -46,6 +48,7 @@ private:
 
     void print() override;
     void launchInspector() override;
+    void openProxySettings() override;
 
     _bstr_t userAgent() override;
     void setUserAgent(_bstr_t&) override;
@@ -57,10 +60,18 @@ private:
     void zoomIn() override;
     void zoomOut() override;
 
+    void updateProxySettings();
+
+    bool canTrustServerCertificate(WKProtectionSpaceRef);
+
     static void didFinishNavigation(WKPageRef, WKNavigationRef, WKTypeRef, const void*);
     static void didCommitNavigation(WKPageRef, WKNavigationRef, WKTypeRef, const void*);
+    static void didReceiveAuthenticationChallenge(WKPageRef, WKAuthenticationChallengeRef, const void*);
+    static WKPageRef createNewPage(WKPageRef, WKPageConfigurationRef, WKNavigationActionRef, WKWindowFeaturesRef, const void *);
 
     WKRetainPtr<WKViewRef> m_view;
     HWND m_hMainWnd { nullptr };
     HWND m_urlBarWnd { nullptr };
+    ProxySettings m_proxy { };
+    std::unordered_map<std::wstring, std::wstring> m_acceptedServerTrustCerts;
 };

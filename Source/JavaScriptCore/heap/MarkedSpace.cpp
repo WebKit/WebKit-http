@@ -197,8 +197,6 @@ void MarkedSpace::initializeSizeClassForStepSize()
 
 MarkedSpace::MarkedSpace(Heap* heap)
     : m_heap(heap)
-    , m_capacity(0)
-    , m_isIterating(false)
 {
     initializeSizeClassForStepSize();
 }
@@ -252,6 +250,7 @@ void MarkedSpace::sweepLargeAllocations()
             allocation->destroy();
             continue;
         }
+        allocation->setIndexInSpace(dstIndex);
         m_largeAllocations[dstIndex++] = allocation;
     }
     m_largeAllocations.shrink(dstIndex);
@@ -260,6 +259,7 @@ void MarkedSpace::sweepLargeAllocations()
 
 void MarkedSpace::prepareForAllocation()
 {
+    ASSERT(!Thread::mayBeGCThread() || m_heap->worldIsStopped());
     for (Subspace* subspace : m_subspaces)
         subspace->prepareForAllocation();
 
@@ -328,6 +328,12 @@ void MarkedSpace::prepareForConservativeScan()
         [&] (LargeAllocation* a, LargeAllocation* b) {
             return a < b;
         });
+    unsigned index = m_largeAllocationsOffsetForThisCollection;
+    for (auto* start = m_largeAllocationsForThisCollectionBegin; start != m_largeAllocationsForThisCollectionEnd; ++start, ++index) {
+        (*start)->setIndexInSpace(index);
+        ASSERT(m_largeAllocations[index] == *start);
+        ASSERT(m_largeAllocations[index]->indexInSpace() == index);
+    }
 }
 
 void MarkedSpace::prepareForMarking()

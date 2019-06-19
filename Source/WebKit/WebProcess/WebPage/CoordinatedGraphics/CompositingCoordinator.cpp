@@ -85,7 +85,7 @@ void CompositingCoordinator::setRootCompositingLayer(GraphicsLayer* graphicsLaye
 
     m_rootCompositingLayer = graphicsLayer;
     if (m_rootCompositingLayer)
-        m_rootLayer->addChildAtIndex(m_rootCompositingLayer, 0);
+        m_rootLayer->addChildAtIndex(*m_rootCompositingLayer, 0);
 }
 
 void CompositingCoordinator::setViewOverlayRootLayer(GraphicsLayer* graphicsLayer)
@@ -98,7 +98,7 @@ void CompositingCoordinator::setViewOverlayRootLayer(GraphicsLayer* graphicsLaye
 
     m_overlayCompositingLayer = graphicsLayer;
     if (m_overlayCompositingLayer)
-        m_rootLayer->addChild(m_overlayCompositingLayer);
+        m_rootLayer->addChild(*m_overlayCompositingLayer);
 }
 
 void CompositingCoordinator::sizeDidChange(const IntSize& newSize)
@@ -231,15 +231,19 @@ float CompositingCoordinator::pageScaleFactor() const
     return m_page->pageScaleFactor();
 }
 
-std::unique_ptr<GraphicsLayer> CompositingCoordinator::createGraphicsLayer(GraphicsLayer::Type layerType, GraphicsLayerClient& client)
+Ref<GraphicsLayer> CompositingCoordinator::createGraphicsLayer(GraphicsLayer::Type layerType, GraphicsLayerClient& client)
 {
-    CoordinatedGraphicsLayer* layer = new CoordinatedGraphicsLayer(layerType, client);
+    auto layer = adoptRef(*new CoordinatedGraphicsLayer(layerType, client));
     layer->setCoordinator(this);
-    m_nicosia.state.layers.add(layer->compositionLayer());
-    m_registeredLayers.add(layer->id(), layer);
+    {
+        auto& compositionLayer = layer->compositionLayer();
+        m_nicosia.state.layers.add(compositionLayer);
+        compositionLayer->setSceneIntegration(m_client.sceneIntegration());
+    }
+    m_registeredLayers.add(layer->id(), layer.ptr());
     layer->setNeedsVisibleRectAdjustment();
-    notifyFlushRequired(layer);
-    return std::unique_ptr<GraphicsLayer>(layer);
+    notifyFlushRequired(layer.ptr());
+    return layer;
 }
 
 FloatRect CompositingCoordinator::visibleContentsRect() const
@@ -275,7 +279,11 @@ void CompositingCoordinator::detachLayer(CoordinatedGraphicsLayer* layer)
     if (m_isPurging)
         return;
 
-    m_nicosia.state.layers.remove(layer->compositionLayer());
+    {
+        auto& compositionLayer = layer->compositionLayer();
+        m_nicosia.state.layers.remove(compositionLayer);
+        compositionLayer->setSceneIntegration(nullptr);
+    }
     m_registeredLayers.remove(layer->id());
     notifyFlushRequired(layer);
 }
@@ -283,7 +291,11 @@ void CompositingCoordinator::detachLayer(CoordinatedGraphicsLayer* layer)
 void CompositingCoordinator::attachLayer(CoordinatedGraphicsLayer* layer)
 {
     layer->setCoordinator(this);
-    m_nicosia.state.layers.add(layer->compositionLayer());
+    {
+        auto& compositionLayer = layer->compositionLayer();
+        m_nicosia.state.layers.add(compositionLayer);
+        compositionLayer->setSceneIntegration(m_client.sceneIntegration());
+    }
     m_registeredLayers.add(layer->id(), layer);
     layer->setNeedsVisibleRectAdjustment();
     notifyFlushRequired(layer);

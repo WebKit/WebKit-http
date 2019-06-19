@@ -34,12 +34,12 @@
 namespace WebCore {
 
 BorderEdge::BorderEdge(float edgeWidth, Color edgeColor, BorderStyle edgeStyle, bool edgeIsTransparent, bool edgeIsPresent, float devicePixelRatio)
-    : m_width(edgeWidth)
-    , m_color(edgeColor)
+    : m_color(edgeColor)
+    , m_width(edgeWidth)
+    , m_devicePixelRatio(devicePixelRatio)
     , m_style(edgeStyle)
     , m_isTransparent(edgeIsTransparent)
     , m_isPresent(edgeIsPresent)
-    , m_devicePixelRatio(devicePixelRatio)
 {
     if (edgeStyle == BorderStyle::Double && edgeWidth  < borderWidthInDevicePixel(3))
         m_style = BorderStyle::Solid;
@@ -87,7 +87,7 @@ bool BorderEdge::obscuresBackground() const
 
 void BorderEdge::getDoubleBorderStripeWidths(LayoutUnit& outerWidth, LayoutUnit& innerWidth) const
 {
-    LayoutUnit fullWidth = widthForPainting();
+    LayoutUnit fullWidth { widthForPainting() };
     innerWidth = ceilToDevicePixel(fullWidth * 2 / 3, m_devicePixelRatio);
     outerWidth = floorToDevicePixel(fullWidth / 3, m_devicePixelRatio);
 }

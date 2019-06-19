@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 #import "config.h"
 #import "WebKitNSImageExtras.h"
 
@@ -37,13 +37,12 @@
     [transform scaleBy:deviceScaleFactor];
 
     NSRect bounds = { NSZeroPoint, self.size };
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     BOOL flippedOrientation = self.isFlipped;
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     [self lockFocusWithRect:bounds context:nil hints:@{ NSImageHintCTM : transform } flipped:flippedOrientation];
 }
 
 @end
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)

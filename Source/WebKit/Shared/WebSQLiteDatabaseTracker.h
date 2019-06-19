@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebSQLiteDatabaseTracker_h
-#define WebSQLiteDatabaseTracker_h
+#pragma once
 
 #include <WebCore/SQLiteDatabaseTrackerClient.h>
 #include <pal/HysteresisActivity.h>
@@ -32,29 +31,26 @@
 
 namespace WebKit {
 
-class ChildProcess;
-class NetworkProcess;
-class WebProcess;
-
-class WebSQLiteDatabaseTracker : public WebCore::SQLiteDatabaseTrackerClient {
+class WebSQLiteDatabaseTracker final : public WebCore::SQLiteDatabaseTrackerClient {
     WTF_MAKE_NONCOPYABLE(WebSQLiteDatabaseTracker)
 public:
-    explicit WebSQLiteDatabaseTracker(NetworkProcess&);
-    explicit WebSQLiteDatabaseTracker(WebProcess&);
+    using IsHoldingLockedFilesHandler = Function<void(bool)>;
+    explicit WebSQLiteDatabaseTracker(IsHoldingLockedFilesHandler&&);
 
-    // WebCore::SQLiteDatabaseTrackerClient
-    void willBeginFirstTransaction() override;
-    void didFinishLastTransaction() override;
+    ~WebSQLiteDatabaseTracker();
+
+    void setIsSuspended(bool);
 
 private:
-    void hysteresisUpdated(PAL::HysteresisState);
+    void setIsHoldingLockedFiles(bool);
 
-    ChildProcess& m_process;
+    // WebCore::SQLiteDatabaseTrackerClient.
+    void willBeginFirstTransaction() final;
+    void didFinishLastTransaction() final;
+
+    IsHoldingLockedFilesHandler m_isHoldingLockedFilesHandler;
     PAL::HysteresisActivity m_hysteresis;
-    enum class ChildProcessType { Network, WebContent };
-    ChildProcessType m_childProcessType;
+    bool m_isSuspended { false };
 };
 
 } // namespace WebKit
-
-#endif // WebSQLiteDatabaseTracker_h

@@ -76,10 +76,10 @@ double JSValue::toNumberSlowCase(ExecState* exec) const
     return isUndefined() ? PNaN : 0; // null and false both convert to 0.
 }
 
-std::optional<double> JSValue::toNumberFromPrimitive() const
+Optional<double> JSValue::toNumberFromPrimitive() const
 {
     if (isEmpty())
-        return std::nullopt;
+        return WTF::nullopt;
     if (isNumber())
         return asNumber();
     if (isBoolean())
@@ -88,7 +88,7 @@ std::optional<double> JSValue::toNumberFromPrimitive() const
         return PNaN;
     if (isNull())
         return 0;
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 JSObject* JSValue::toObjectSlowCase(ExecState* exec, JSGlobalObject* globalObject) const
@@ -152,10 +152,8 @@ bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    if (std::optional<uint32_t> index = parseIndex(propertyName)) {
-        scope.release();
-        return putToPrimitiveByIndex(exec, index.value(), value, slot.isStrictMode());
-    }
+    if (Optional<uint32_t> index = parseIndex(propertyName))
+        RELEASE_AND_RETURN(scope, putToPrimitiveByIndex(exec, index.value(), value, slot.isStrictMode()));
 
     // Check if there are any setters or getters in the prototype chain
     JSObject* obj = synthesizePrototype(exec);
@@ -181,10 +179,8 @@ bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
                 return typeError(exec, scope, slot.isStrictMode(), ReadonlyPropertyWriteError);
 
             JSValue gs = obj->getDirect(offset);
-            if (gs.isGetterSetter()) {
-                scope.release();
-                return callSetter(exec, *this, gs, value, slot.isStrictMode() ? StrictMode : NotStrictMode);
-            }
+            if (gs.isGetterSetter())
+                RELEASE_AND_RETURN(scope, callSetter(exec, *this, gs, value, slot.isStrictMode() ? StrictMode : NotStrictMode));
 
             if (gs.isCustomGetterSetter())
                 return callCustomSetter(exec, gs, attributes & PropertyAttribute::CustomAccessor, obj, slot.thisValue(), value);
@@ -263,9 +259,9 @@ void JSValue::dumpInContextAssumingStructure(
                 out.print(" (rope)");
             const StringImpl* impl = string->tryGetValueImpl();
             if (impl) {
-                if (impl->isAtomic())
+                if (impl->isAtom())
                     out.print(" (atomic)");
-                if (impl->isAtomic())
+                if (impl->isAtom())
                     out.print(" (identifier)");
                 if (impl->isSymbol())
                     out.print(" (symbol)");

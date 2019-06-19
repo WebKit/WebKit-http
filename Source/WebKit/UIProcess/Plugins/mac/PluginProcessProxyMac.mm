@@ -33,13 +33,13 @@
 #import "PluginProcessMessages.h"
 #import "SandboxUtilities.h"
 #import <QuartzCore/CARemoteLayerServer.h>
-#import <WebCore/FileSystem.h>
-#import <WebCore/URL.h>
 #import <crt_externs.h>
 #import <mach-o/dyld.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <spawn.h>
+#import <wtf/FileSystem.h>
 #import <wtf/ProcessPrivilege.h>
+#import <wtf/URL.h>
 #import <wtf/text/CString.h>
 
 @interface WKPlaceholderModalWindow : NSWindow 
@@ -57,10 +57,8 @@
 @end
 
 namespace WebKit {
-using namespace WebCore;
-
     
-void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions, const PluginProcessAttributes& pluginProcessAttributes)
+void PluginProcessProxy::platformGetLaunchOptionsWithAttributes(ProcessLauncher::LaunchOptions& launchOptions, const PluginProcessAttributes& pluginProcessAttributes)
 {
     if (pluginProcessAttributes.moduleInfo.pluginArchitecture == CPU_TYPE_X86)
         launchOptions.processType = ProcessLauncher::ProcessType::Plugin32;
@@ -94,10 +92,9 @@ void PluginProcessProxy::platformInitializePluginProcess(PluginProcessCreationPa
 bool PluginProcessProxy::getPluginProcessSerialNumber(ProcessSerialNumber& pluginProcessSerialNumber)
 {
     pid_t pluginProcessPID = processIdentifier();
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     return GetProcessForPID(pluginProcessPID, &pluginProcessSerialNumber) == noErr;
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 void PluginProcessProxy::makePluginProcessTheFrontProcess()
@@ -106,20 +103,18 @@ void PluginProcessProxy::makePluginProcessTheFrontProcess()
     if (!getPluginProcessSerialNumber(pluginProcessSerialNumber))
         return;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     SetFrontProcess(&pluginProcessSerialNumber);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 void PluginProcessProxy::makeUIProcessTheFrontProcess()
 {
     ProcessSerialNumber processSerialNumber;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     GetCurrentProcess(&processSerialNumber);
     SetFrontProcess(&processSerialNumber);            
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 void PluginProcessProxy::setFullscreenWindowIsShowing(bool fullscreenWindowIsShowing)
@@ -152,10 +147,9 @@ void PluginProcessProxy::exitFullscreen()
 {
     // If the plug-in host is the current application then we should bring ourselves to the front when it exits full-screen mode.
     ProcessSerialNumber frontProcessSerialNumber;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     GetFrontProcess(&frontProcessSerialNumber);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     // The UI process must be the front process in order to change the presentation mode.
     makeUIProcessTheFrontProcess();
@@ -168,15 +162,13 @@ void PluginProcessProxy::exitFullscreen()
     // If the plug-in process was not the front process, switch back to the previous front process.
     // (Otherwise we'll keep the UI process as the front process).
     Boolean isPluginProcessFrontProcess;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     SameProcess(&frontProcessSerialNumber, &pluginProcessSerialNumber, &isPluginProcessFrontProcess);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     if (!isPluginProcessFrontProcess) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         SetFrontProcess(&frontProcessSerialNumber);
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
     }
 }
 
@@ -256,20 +248,17 @@ static bool shouldLaunchProcess(const PluginProcessAttributes& pluginProcessAttr
     return false;
 }
 
-void PluginProcessProxy::launchProcess(const String& launchPath, const Vector<String>& arguments, bool& result)
+void PluginProcessProxy::launchProcess(const String& launchPath, const Vector<String>& arguments, CompletionHandler<void(bool)>&& completionHandler)
 {
-    if (!shouldLaunchProcess(m_pluginProcessAttributes, launchPath, arguments)) {
-        result = false;
-        return;
-    }
-
-    result = true;
+    if (!shouldLaunchProcess(m_pluginProcessAttributes, launchPath, arguments))
+        return completionHandler(false);
 
     RetainPtr<NSMutableArray> argumentsArray = adoptNS([[NSMutableArray alloc] initWithCapacity:arguments.size()]);
     for (size_t i = 0; i < arguments.size(); ++i)
         [argumentsArray addObject:(NSString *)arguments[i]];
 
     [NSTask launchedTaskWithLaunchPath:launchPath arguments:argumentsArray.get()];
+    completionHandler(true);
 }
 
 static bool isJavaUpdaterURL(const PluginProcessAttributes& pluginProcessAttributes, const String& urlString)
@@ -297,14 +286,10 @@ static bool shouldLaunchApplicationAtURL(const PluginProcessAttributes& pluginPr
     return false;
 }
 
-void PluginProcessProxy::launchApplicationAtURL(const String& urlString, const Vector<String>& arguments, bool& result)
+void PluginProcessProxy::launchApplicationAtURL(const String& urlString, const Vector<String>& arguments, CompletionHandler<void(bool)>&& completionHandler)
 {
-    if (!shouldLaunchApplicationAtURL(m_pluginProcessAttributes, urlString)) {
-        result = false;
-        return;
-    }
-
-    result = true;
+    if (!shouldLaunchApplicationAtURL(m_pluginProcessAttributes, urlString))
+        return completionHandler(false);
 
     RetainPtr<NSMutableArray> argumentsArray = adoptNS([[NSMutableArray alloc] initWithCapacity:arguments.size()]);
     for (size_t i = 0; i < arguments.size(); ++i)
@@ -312,6 +297,7 @@ void PluginProcessProxy::launchApplicationAtURL(const String& urlString, const V
 
     NSDictionary *configuration = [NSDictionary dictionaryWithObject:argumentsArray.get() forKey:NSWorkspaceLaunchConfigurationArguments];
     [[NSWorkspace sharedWorkspace] launchApplicationAtURL:[NSURL URLWithString:urlString] options:NSWorkspaceLaunchAsync configuration:configuration error:nullptr];
+    completionHandler(true);
 }
 
 static bool isSilverlightPreferencesURL(const PluginProcessAttributes& pluginProcessAttributes, const String& urlString)
@@ -329,21 +315,20 @@ static bool shouldOpenURL(const PluginProcessAttributes& pluginProcessAttributes
     return false;
 }
 
-void PluginProcessProxy::openURL(const String& urlString, bool& result, int32_t& status, String& launchedURLString)
+void PluginProcessProxy::openURL(const String& urlString, CompletionHandler<void(bool result, int32_t status, String launchedURLString)>&& completionHandler)
 {
-    if (!shouldOpenURL(m_pluginProcessAttributes, urlString)) {
-        result = false;
-        return;
-    }
+    if (!shouldOpenURL(m_pluginProcessAttributes, urlString))
+        return completionHandler(false, 0, { });
 
-    result = true;
     CFURLRef launchedURL;
-    status = LSOpenCFURLRef(URL(ParsedURLString, urlString).createCFURL().get(), &launchedURL);
+    uint32_t status = LSOpenCFURLRef(URL({ }, urlString).createCFURL().get(), &launchedURL);
 
+    String launchedURLString;
     if (launchedURL) {
         launchedURLString = URL(launchedURL).string();
         CFRelease(launchedURL);
     }
+    completionHandler(true, status, launchedURLString);
 }
 
 static bool shouldOpenFile(const PluginProcessAttributes& pluginProcessAttributes, const String& fullPath)
@@ -356,15 +341,13 @@ static bool shouldOpenFile(const PluginProcessAttributes& pluginProcessAttribute
     return false;
 }
 
-void PluginProcessProxy::openFile(const String& fullPath, bool& result)
+void PluginProcessProxy::openFile(const String& fullPath, CompletionHandler<void(bool)>&& completionHandler)
 {
-    if (!shouldOpenFile(m_pluginProcessAttributes, fullPath)) {
-        result = false;
-        return;
-    }
+    if (!shouldOpenFile(m_pluginProcessAttributes, fullPath))
+        return completionHandler(false);
 
-    result = true;
     [[NSWorkspace sharedWorkspace] openFile:fullPath];
+    completionHandler(true);
 }
 
 int pluginProcessLatencyQOS()

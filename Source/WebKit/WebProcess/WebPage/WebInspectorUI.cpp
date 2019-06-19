@@ -26,12 +26,15 @@
 #include "config.h"
 #include "WebInspectorUI.h"
 
+#include "WebCoreArgumentCoders.h"
 #include "WebInspectorMessages.h"
 #include "WebInspectorProxyMessages.h"
 #include "WebPage.h"
 #include "WebProcess.h"
+#include <WebCore/CertificateInfo.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/DOMWrapperWorld.h>
+#include <WebCore/FloatRect.h>
 #include <WebCore/InspectorController.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
@@ -50,24 +53,13 @@ WebInspectorUI::WebInspectorUI(WebPage& page)
 {
     RuntimeEnabledFeatures::sharedFeatures().setInspectorAdditionsEnabled(true);
     RuntimeEnabledFeatures::sharedFeatures().setImageBitmapOffscreenCanvasEnabled(true);
+#if ENABLE(WEBGL2)
+    RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(true);
+#endif
 }
 
-void WebInspectorUI::establishConnection(IPC::Attachment encodedConnectionIdentifier, uint64_t inspectedPageIdentifier, bool underTest, unsigned inspectionLevel)
+void WebInspectorUI::establishConnection(PageIdentifier inspectedPageIdentifier, bool underTest, unsigned inspectionLevel)
 {
-#if USE(UNIX_DOMAIN_SOCKETS)
-    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.releaseFileDescriptor());
-#elif OS(DARWIN)
-    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
-#elif OS(WINDOWS)
-    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.handle());
-#else
-    notImplemented();
-    return;
-#endif
-
-    if (!IPC::Connection::identifierIsValid(connectionIdentifier))
-        return;
-
     m_inspectedPageIdentifier = inspectedPageIdentifier;
     m_frontendAPIDispatcher.reset();
     m_underTest = underTest;
@@ -76,8 +68,45 @@ void WebInspectorUI::establishConnection(IPC::Attachment encodedConnectionIdenti
     m_frontendController = &m_page.corePage()->inspectorController();
     m_frontendController->setInspectorFrontendClient(this);
 
-    m_backendConnection = IPC::Connection::createClientConnection(connectionIdentifier, *this);
+    updateConnection();
+}
+
+void WebInspectorUI::updateConnection()
+{
+    if (m_backendConnection) {
+        m_backendConnection->invalidate();
+        m_backendConnection = nullptr;
+    }
+
+#if USE(UNIX_DOMAIN_SOCKETS)
+    IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
+    IPC::Connection::Identifier connectionIdentifier(socketPair.server);
+    IPC::Attachment connectionClientPort(socketPair.client);
+#elif OS(DARWIN)
+    mach_port_t listeningPort = MACH_PORT_NULL;
+    if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort) != KERN_SUCCESS)
+        CRASH();
+
+    if (mach_port_insert_right(mach_task_self(), listeningPort, listeningPort, MACH_MSG_TYPE_MAKE_SEND) != KERN_SUCCESS)
+        CRASH();
+
+    IPC::Connection::Identifier connectionIdentifier(listeningPort);
+    IPC::Attachment connectionClientPort(listeningPort, MACH_MSG_TYPE_MOVE_SEND);
+#elif PLATFORM(WIN)
+    IPC::Connection::Identifier connectionIdentifier, connClient;
+    IPC::Connection::createServerAndClientIdentifiers(connectionIdentifier, connClient);
+    IPC::Attachment connectionClientPort(connClient);
+#else
+    notImplemented();
+    return;
+#endif
+
+#if USE(UNIX_DOMAIN_SOCKETS) || OS(DARWIN) || PLATFORM(WIN)
+    m_backendConnection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
     m_backendConnection->open();
+#endif
+
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::SetFrontendConnection(connectionClientPort), m_inspectedPageIdentifier);
 }
 
 void WebInspectorUI::windowObjectCleared()
@@ -125,19 +154,26 @@ void WebInspectorUI::closeWindow()
 {
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::DidClose(), m_inspectedPageIdentifier);
 
-    if (m_backendConnection)
+    if (m_backendConnection) {
         m_backendConnection->invalidate();
-    m_backendConnection = nullptr;
+        m_backendConnection = nullptr;
+    }
 
-    if (m_frontendController)
+    if (m_frontendController) {
         m_frontendController->setInspectorFrontendClient(nullptr);
-    m_frontendController = nullptr;
+        m_frontendController = nullptr;
+    }
 
     if (m_frontendHost)
         m_frontendHost->disconnectClient();
 
-    m_inspectedPageIdentifier = 0;
+    m_inspectedPageIdentifier = { };
     m_underTest = false;
+}
+
+void WebInspectorUI::reopen()
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::Reopen(), m_inspectedPageIdentifier);
 }
 
 WebCore::UserInterfaceLayoutDirection WebInspectorUI::userInterfaceLayoutDirection() const
@@ -215,6 +251,11 @@ void WebInspectorUI::changeAttachedWindowWidth(unsigned width)
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::SetAttachedWindowWidth(width), m_inspectedPageIdentifier);
 }
 
+void WebInspectorUI::changeSheetRect(const FloatRect& rect)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::SetSheetRect(rect), m_inspectedPageIdentifier);
+}
+
 void WebInspectorUI::openInNewTab(const String& url)
 {
     if (m_backendConnection)
@@ -234,6 +275,11 @@ void WebInspectorUI::append(const WTF::String& filename, const WTF::String& cont
 void WebInspectorUI::inspectedURLChanged(const String& urlString)
 {
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::InspectedURLChanged(urlString), m_inspectedPageIdentifier);
+}
+
+void WebInspectorUI::showCertificate(const CertificateInfo& certificateInfo)
+{
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::ShowCertificate(certificateInfo), m_inspectedPageIdentifier);
 }
 
 void WebInspectorUI::showConsole()
@@ -303,8 +349,7 @@ void WebInspectorUI::pageUnpaused()
 
 void WebInspectorUI::sendMessageToBackend(const String& message)
 {
-    if (m_backendConnection)
-        m_backendConnection->send(Messages::WebInspector::SendMessageToBackend(message), 0);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::SendMessageToBackend(message), m_inspectedPageIdentifier);
 }
 
 } // namespace WebKit

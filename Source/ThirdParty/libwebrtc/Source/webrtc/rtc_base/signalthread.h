@@ -15,9 +15,12 @@
 
 #include "rtc_base/checks.h"
 #include "rtc_base/constructormagic.h"
-#include "rtc_base/nullsocketserver.h"
+#include "rtc_base/criticalsection.h"
+#include "rtc_base/messagehandler.h"
+#include "rtc_base/messagequeue.h"
 #include "rtc_base/third_party/sigslot/sigslot.h"
 #include "rtc_base/thread.h"
+#include "rtc_base/thread_annotations.h"
 
 namespace rtc {
 
@@ -105,7 +108,7 @@ class SignalThread : public sigslot::has_slots<>, protected MessageHandler {
     explicit Worker(SignalThread* parent);
     ~Worker() override;
     void Run() override;
-    bool IsProcessingMessages() override;
+    bool IsProcessingMessagesForTesting() override;
 
    private:
     SignalThread* parent_;

@@ -103,17 +103,24 @@ namespace JSC { namespace DFG {
     macro(CheckTierUpAndOSREnter, NodeMustGenerate) \
     macro(CheckTierUpAtReturn, NodeMustGenerate) \
     \
-    /* Marker for an argument being set at the prologue of a function. */\
-    macro(SetArgument, 0) \
+    /* Marker for an argument being set at the prologue of a function. The argument is guaranteed to be set after this node. */\
+    macro(SetArgumentDefinitely, 0) \
+    /* A marker like the above that we use to track variable liveness and OSR exit state. However, it's not guaranteed to be set. To verify it was set, you'd need to check the actual argument length. We use this for varargs when we're unsure how many argument may actually end up on the stack. */\
+    macro(SetArgumentMaybe, 0) \
     \
     /* Marker of location in the IR where we may possibly perform jump replacement to */\
     /* invalidate this code block. */\
     macro(InvalidationPoint, NodeMustGenerate) \
     \
     /* Nodes for bitwise operations. */\
-    macro(BitAnd, NodeResultInt32) \
-    macro(BitOr, NodeResultInt32) \
-    macro(BitXor, NodeResultInt32) \
+    macro(ValueBitNot, NodeResultJS | NodeMustGenerate) \
+    macro(ArithBitNot, NodeResultInt32) \
+    macro(ValueBitAnd, NodeResultJS | NodeMustGenerate) \
+    macro(ArithBitAnd, NodeResultInt32) \
+    macro(ValueBitOr, NodeResultJS | NodeMustGenerate) \
+    macro(ArithBitOr, NodeResultInt32) \
+    macro(ValueBitXor, NodeResultJS | NodeMustGenerate) \
+    macro(ArithBitXor, NodeResultInt32) \
     macro(BitLShift, NodeResultInt32) \
     macro(BitRShift, NodeResultInt32) \
     macro(BitURShift, NodeResultInt32) \
@@ -168,6 +175,12 @@ namespace JSC { namespace DFG {
     \
     /* Add of values may either be arithmetic, or result in string concatenation. */\
     macro(ValueAdd, NodeResultJS | NodeMustGenerate) \
+    \
+    macro(ValueSub, NodeResultJS | NodeMustGenerate) \
+    macro(ValueMul, NodeResultJS | NodeMustGenerate) \
+    macro(ValueDiv, NodeResultJS | NodeMustGenerate) \
+    macro(ValuePow, NodeResultJS | NodeMustGenerate) \
+    macro(ValueMod, NodeResultJS | NodeMustGenerate) \
     \
     /* Add of values that always convers its inputs to strings. May have two or three kids. */\
     macro(StrCat, NodeResultJS | NodeMustGenerate) \
@@ -250,13 +263,14 @@ namespace JSC { namespace DFG {
     macro(CheckNotEmpty, NodeMustGenerate) \
     macro(AssertNotEmpty, NodeMustGenerate) \
     macro(CheckBadCell, NodeMustGenerate) \
-    macro(CheckInBounds, NodeMustGenerate) \
+    macro(CheckInBounds, NodeMustGenerate | NodeResultJS) \
     macro(CheckStringIdent, NodeMustGenerate) \
     macro(CheckTypeInfoFlags, NodeMustGenerate) /* Takes an OpInfo with the flags you want to test are set */\
     macro(CheckSubClass, NodeMustGenerate) \
     macro(ParseInt, NodeMustGenerate | NodeResultJS) \
     macro(GetPrototypeOf, NodeMustGenerate | NodeResultJS) \
     macro(ObjectCreate, NodeMustGenerate | NodeResultJS) \
+    macro(ObjectKeys, NodeMustGenerate | NodeResultJS) \
     \
     /* Atomics object functions. */\
     macro(AtomicsAdd, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
@@ -329,6 +343,8 @@ namespace JSC { namespace DFG {
     macro(NewArrayBuffer, NodeResultJS) \
     macro(NewTypedArray, NodeResultJS | NodeMustGenerate) \
     macro(NewRegexp, NodeResultJS) \
+    macro(NewSymbol, NodeResultJS) \
+    macro(NewStringObject, NodeResultJS) \
     /* Rest Parameter */\
     macro(GetRestLength, NodeResultInt32) \
     macro(CreateRest, NodeResultJS | NodeMustGenerate) \
@@ -356,6 +372,7 @@ namespace JSC { namespace DFG {
     macro(IsCellWithType, NodeResultBoolean) \
     macro(IsEmpty, NodeResultBoolean) \
     macro(IsUndefined, NodeResultBoolean) \
+    macro(IsUndefinedOrNull, NodeResultBoolean) \
     macro(IsBoolean, NodeResultBoolean) \
     macro(IsNumber, NodeResultBoolean) \
     macro(NumberIsInteger, NodeResultBoolean) \
@@ -373,7 +390,6 @@ namespace JSC { namespace DFG {
     macro(CallStringConstructor, NodeResultJS | NodeMustGenerate) \
     macro(NumberToStringWithRadix, NodeResultJS | NodeMustGenerate) \
     macro(NumberToStringWithValidRadixConstant, NodeResultJS) \
-    macro(NewStringObject, NodeResultJS) \
     macro(MakeRope, NodeResultJS) \
     macro(InByVal, NodeResultBoolean | NodeMustGenerate) \
     macro(InById, NodeResultBoolean | NodeMustGenerate) \
@@ -441,7 +457,7 @@ namespace JSC { namespace DFG {
     \
     /* For-in enumeration opcodes */\
     macro(GetEnumerableLength, NodeMustGenerate | NodeResultJS) \
-    macro(HasIndexedProperty, NodeResultBoolean) \
+    macro(HasIndexedProperty, NodeResultBoolean | NodeHasVarArgs) \
     macro(HasStructureProperty, NodeResultBoolean) \
     macro(HasGenericProperty, NodeResultBoolean) \
     macro(GetDirectPname, NodeMustGenerate | NodeHasVarArgs | NodeResultJS) \

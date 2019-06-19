@@ -26,6 +26,7 @@
 #pragma once
 
 #include <wtf/Lock.h>
+#include <wtf/MonotonicTime.h>
 #include <wtf/Ref.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/WorkQueue.h>
@@ -58,6 +59,8 @@ private:
     void startTimer(Seconds timeLimit);
     void stopTimer();
 
+    bool m_hasEnteredVM { false };
+
     Lock m_lock; // Guards access to m_vm.
     VM* m_vm;
 
@@ -65,8 +68,6 @@ private:
 
     Seconds m_cpuDeadline;
     MonotonicTime m_deadline;
-
-    bool m_hasEnteredVM { false };
 
     ShouldTerminateCallback m_callback;
     void* m_callbackData1;

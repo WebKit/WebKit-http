@@ -25,8 +25,6 @@
 
 #include "config.h"
 
-#if WK_API_ENABLED
-
 #include "PlatformUtilities.h"
 #include "TestNavigationDelegate.h"
 #include "TestWKWebView.h"
@@ -48,7 +46,7 @@
 
 @end
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 TEST(RenderingProgressTests, DidRenderSignificantAmountOfText)
 {
@@ -71,7 +69,7 @@ TEST(RenderingProgressTests, DidRenderSignificantAmountOfText)
     TestWebKitAPI::Util::run(&observedSignificantRenderedText);
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 #if PLATFORM(WATCHOS)
 
@@ -97,5 +95,3 @@ TEST(RenderingProgressTests, FirstPaintWithSignificantArea)
 }
 
 #endif // PLATFORM(WATCHOS)
-
-#endif // WK_API_ENABLED

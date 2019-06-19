@@ -30,6 +30,7 @@ from webkitpy.api_tests.manager import Manager
 from webkitpy.common.host import Host
 from webkitpy.layout_tests.views.metered_stream import MeteredStream
 from webkitpy.port import configuration_options, platform_options, base, win
+from webkitpy.results.options import upload_options
 
 EXCEPTIONAL_EXIT_STATUS = -1
 INTERRUPT_EXIT_STATUS = -2
@@ -122,6 +123,8 @@ def parse_args(args):
                              help='Number of seconds to wait before a test times out'),
         optparse.make_option('--no-timeout', dest='timeout', action='store_false',
                              help='Disable timeouts for all tests'),
+        optparse.make_option('--iterations', type='int', default=1, help='Number of times to run the set of tests (e.g. ABCABCABC)'),
+        optparse.make_option('--repeat-each', type='int', default=1, help='Number of times to run each test (e.g. AAABBBCCC)'),
 
         # FIXME: Remove the default, API tests should be multiprocess
         optparse.make_option('--child-processes', default=1,
@@ -134,6 +137,7 @@ def parse_args(args):
         optparse.make_option('--force', action='store_true', default=False,
                              help='Run all tests, even DISABLED tests'),
     ]))
+    option_group_definitions.append(('Upload Options', upload_options()))
 
     option_parser = optparse.OptionParser(
         usage='run-api-tests [options] [<test names>...]',

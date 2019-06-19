@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,107 +27,121 @@
 
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 
+#include "IntSizeHash.h"
 #include "OrientationNotifier.h"
-#include "RealtimeMediaSource.h"
+#include "RealtimeVideoSource.h"
+#include <wtf/Lock.h>
 #include <wtf/text/StringHash.h>
 
 typedef struct opaqueCMSampleBuffer* CMSampleBufferRef;
 
 OBJC_CLASS AVCaptureConnection;
 OBJC_CLASS AVCaptureDevice;
+OBJC_CLASS AVCaptureDeviceFormat;
 OBJC_CLASS AVCaptureOutput;
 OBJC_CLASS AVCaptureSession;
 OBJC_CLASS AVCaptureVideoDataOutput;
+OBJC_CLASS AVFrameRateRange;
 OBJC_CLASS NSError;
 OBJC_CLASS NSNotification;
 OBJC_CLASS WebCoreAVVideoCaptureSourceObserver;
 
 namespace WebCore {
 
-class AVVideoCaptureSource : public RealtimeMediaSource, private OrientationNotifier::Observer {
+class AVVideoPreset;
+class ImageTransferSessionVT;
+
+class AVVideoCaptureSource : public RealtimeVideoSource, private OrientationNotifier::Observer {
 public:
-    static CaptureSourceOrError create(const AtomicString&, const MediaConstraints*);
+    static CaptureSourceOrError create(String&& id, String&& hashSalt, const MediaConstraints*);
 
     WEBCORE_EXPORT static VideoCaptureFactory& factory();
-
-    int32_t width() const { return m_width; }
-    int32_t height() const { return m_height; }
 
     enum class InterruptionReason { None, VideoNotAllowedInBackground, AudioInUse, VideoInUse, VideoNotAllowedInSideBySide };
     void captureSessionBeginInterruption(RetainPtr<NSNotification>);
     void captureSessionEndInterruption(RetainPtr<NSNotification>);
+    void deviceDisconnected(RetainPtr<NSNotification>);
 
     AVCaptureSession* session() const { return m_session.get(); }
 
     void captureSessionIsRunningDidChange(bool);
     void captureSessionRuntimeError(RetainPtr<NSError>);
     void captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutput*, CMSampleBufferRef, AVCaptureConnection*);
+    void captureDeviceSuspendedDidChange();
 
 private:
-    AVVideoCaptureSource(AVCaptureDevice*, const AtomicString&);
+    AVVideoCaptureSource(AVCaptureDevice*, String&& id, String&& hashSalt);
     virtual ~AVVideoCaptureSource();
+
+    void clearSession();
 
     bool setupSession();
     bool setupCaptureSession();
     void shutdownCaptureSession();
 
-    const RealtimeMediaSourceCapabilities& capabilities() const final;
-    void setSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
-    void setFrameRate(double);
-    const RealtimeMediaSourceSettings& settings() const final;
+    const RealtimeMediaSourceCapabilities& capabilities() final;
+    const RealtimeMediaSourceSettings& settings() final;
     void startProducingData() final;
     void stopProducingData() final;
-    bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
     void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) final;
     void monitorOrientation(OrientationNotifier&) final;
     void beginConfiguration() final;
     void commitConfiguration() final;
     bool isCaptureSource() const final { return true; }
+    CaptureDevice::DeviceType deviceType() const final { return CaptureDevice::DeviceType::Camera; }
     bool interrupted() const final;
 
+    void setFrameRateWithPreset(double, RefPtr<VideoPreset>) final;
+    bool prefersPreset(VideoPreset&) final;
+    void generatePresets() final;
+    bool canResizeVideoFrames() const final { return true; }
+
+    void setSessionSizeAndFrameRate();
     bool setPreset(NSString*);
     void computeSampleRotation();
-
-    bool isFrameRateSupported(double frameRate);
-
-    NSString* bestSessionPresetForVideoDimensions(std::optional<int> width, std::optional<int> height);
+    AVFrameRateRange* frameDurationForFrameRate(double);
 
     // OrientationNotifier::Observer API
     void orientationChanged(int orientation) final;
 
     bool setFrameRateConstraint(double minFrameRate, double maxFrameRate);
 
-    void processNewFrame(RetainPtr<CMSampleBufferRef>, RetainPtr<AVCaptureConnection>);
+    void processNewFrame(Ref<MediaSample>&&);
     IntSize sizeForPreset(NSString*);
-
-    using VideoPresetMap = HashMap<String, IntSize>;
-    VideoPresetMap& videoPresets() { return m_supportedPresets; }
 
     AVCaptureDevice* device() const { return m_device.get(); }
 
-    RetainPtr<NSString> m_pendingPreset;
-    RetainPtr<CMSampleBufferRef> m_buffer;
-    RetainPtr<AVCaptureVideoDataOutput> m_videoOutput;
+#if !RELEASE_LOG_DISABLED
+    const char* logClassName() const override { return "AVVideoCaptureSource"; }
+#endif
 
-    IntSize m_presetSize;
-    int32_t m_width { 0 };
-    int32_t m_height { 0 };
+    RefPtr<MediaSample> m_buffer;
+    RetainPtr<AVCaptureVideoDataOutput> m_videoOutput;
+    std::unique_ptr<ImageTransferSessionVT> m_imageTransferSession;
+
     int m_sensorOrientation { 0 };
     int m_deviceOrientation { 0 };
     MediaSample::VideoRotation m_sampleRotation { MediaSample::VideoRotation::None };
 
-    VideoPresetMap m_supportedPresets;
-
-    mutable std::optional<RealtimeMediaSourceSettings> m_currentSettings;
-    mutable std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
+    Optional<RealtimeMediaSourceSettings> m_currentSettings;
+    Optional<RealtimeMediaSourceCapabilities> m_capabilities;
     RetainPtr<WebCoreAVVideoCaptureSourceObserver> m_objcObserver;
     RetainPtr<AVCaptureSession> m_session;
     RetainPtr<AVCaptureDevice> m_device;
-    InterruptionReason m_interruption { InterruptionReason::None };
-    bool m_isRunning { false };
 
+    Lock m_presetMutex;
+    RefPtr<AVVideoPreset> m_currentPreset;
+    IntSize m_currentSize;
+    double m_currentFrameRate;
+    InterruptionReason m_interruption { InterruptionReason::None };
+    int m_framesToDropAtStartup { 0 };
+    bool m_isRunning { false };
 };
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::AVVideoPreset)
+    static bool isType(const WebCore::VideoPreset& preset) { return preset.type == WebCore::VideoPreset::VideoPresetType::AVCapture; }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(MEDIA_STREAM)

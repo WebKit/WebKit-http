@@ -40,10 +40,13 @@
 #include "WorkerThread.h"
 #include <JavaScriptCore/IdentifiersFactory.h>
 #include <wtf/HashSet.h>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(Worker);
 
 static HashSet<Worker*>& allWorkers()
 {
@@ -93,7 +96,7 @@ ExceptionOr<Ref<Worker>> Worker::create(ScriptExecutionContext& context, JSC::Ru
     worker->m_shouldBypassMainWorldContentSecurityPolicy = shouldBypassMainWorldContentSecurityPolicy;
 
     // The worker context does not exist while loading, so we must ensure that the worker object is not collected, nor are its event listeners.
-    worker->setPendingActivity(worker.ptr());
+    worker->setPendingActivity(worker.get());
 
     // https://html.spec.whatwg.org/multipage/workers.html#official-moment-of-creation
     worker->m_workerCreationTime = MonotonicTime::now();
@@ -110,7 +113,7 @@ ExceptionOr<Ref<Worker>> Worker::create(ScriptExecutionContext& context, JSC::Ru
     fetchOptions.redirect = FetchOptions::Redirect::Follow;
     fetchOptions.destination = FetchOptions::Destination::Worker;
     worker->m_scriptLoader->loadAsynchronously(context, WTFMove(request), WTFMove(fetchOptions), contentSecurityPolicyEnforcement, ServiceWorkersMode::All, worker);
-    return WTFMove(worker);
+    return worker;
 }
 
 Worker::~Worker()
@@ -191,7 +194,7 @@ void Worker::notifyFinished()
     }
     m_scriptLoader = nullptr;
 
-    unsetPendingActivity(this);
+    unsetPendingActivity(*this);
 }
 
 } // namespace WebCore

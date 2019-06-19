@@ -26,23 +26,23 @@
 #import "config.h"
 #import "InputViewUpdateDeferrer.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "UIKitSPI.h"
 
 namespace WebKit {
 
-InputViewUpdateDeferrer::InputViewUpdateDeferrer()
+InputViewUpdateDeferrer::InputViewUpdateDeferrer(UIView *view)
+    : m_view(view)
 {
-    [[UIPeripheralHost sharedInstance] _beginIgnoringReloadInputViews];
+    [m_view _beginPinningInputViews];
 }
 
 InputViewUpdateDeferrer::~InputViewUpdateDeferrer()
 {
-    if ([[UIPeripheralHost sharedInstance] _endIgnoringReloadInputViews])
-        [[UIPeripheralHost sharedInstance] forceReloadInputViews];
+    [m_view _endPinningInputViews];
 }
     
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

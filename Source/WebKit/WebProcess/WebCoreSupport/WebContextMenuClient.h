@@ -44,7 +44,7 @@ public:
 private:
     void contextMenuDestroyed() override;
 
-    void downloadURL(const WebCore::URL&) override;
+    void downloadURL(const URL&) override;
     void searchWithGoogle(const WebCore::Frame*) override;
     void lookUpInDictionary(WebCore::Frame*) override;
     bool isSpeaking() override;
@@ -53,6 +53,10 @@ private:
 
 #if PLATFORM(COCOA)
     void searchWithSpotlight() override;
+#endif
+
+#if PLATFORM(GTK)
+    void insertEmoji(WebCore::Frame&) override;
 #endif
 
 #if USE(ACCESSIBILITY_CONTEXT_MENUS)

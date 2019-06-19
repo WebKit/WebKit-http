@@ -26,8 +26,6 @@
 #import "config.h"
 #import "_WKRemoteObjectInterfaceInternal.h"
 
-#if WK_API_ENABLED
-
 #import <objc/runtime.h>
 #import <wtf/HashMap.h>
 #import <wtf/NeverDestroyed.h>
@@ -53,7 +51,7 @@ struct MethodInfo {
         CString replySignature;
         Vector<HashSet<CFTypeRef>> allowedReplyClasses;
     };
-    std::optional<ReplyInfo> replyInfo;
+    Optional<ReplyInfo> replyInfo;
 };
 
 @implementation _WKRemoteObjectInterface {
@@ -362,5 +360,3 @@ static const char* methodArgumentTypeEncodingForSelector(Protocol *protocol, SEL
 }
 
 @end
-
-#endif // WK_API_ENABLED

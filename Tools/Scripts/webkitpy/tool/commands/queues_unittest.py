@@ -1,4 +1,5 @@
 # Copyright (C) 2009 Google Inc. All rights reserved.
+# Copyright (C) 2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -145,8 +146,8 @@ Feeding commit-queue high priority items [10005], regular items [10000]
 MOCK: update_work_items: commit-queue [10005, 10000]
 Feeding EWS (2 r? patches, 2 new)
 MOCK: upload_attachment: 10008
-MOCK: submit_to_ews: 10008
-MOCK: submit_to_ews: 10002
+MOCK: submit_to_old_ews: 10008
+MOCK: submit_to_old_ews: 10002
 """,
             "handle_unexpected_error": "Mock error message\n",
         }
@@ -183,10 +184,10 @@ class PatchProcessingQueueTest(CommandsTest):
         queue._options = Mock()
         queue._options.port = None
         patch = queue._tool.bugs.fetch_attachment(10001)
-        expected_logs = """MOCK add_attachment_to_bug: bug_id=50000, description=Archive of layout-test-results from bot for mac-snowleopard filename=layout-test-results.zip mimetype=None
+        expected_logs = """MOCK add_attachment_to_bug: bug_id=50000, description=Archive of layout-test-results from bot for mac-highsierra filename=layout-test-results.zip mimetype=None
 -- Begin comment --
 The attached test failures were seen while running run-webkit-tests on the mock-queue.
-Port: mac-snowleopard  Platform: MockPlatform 1.0
+Port: mac-highsierra  Platform: MockPlatform 1.0
 -- End comment --
 """
         OutputCapture().assert_outputs(self, queue._upload_results_archive_for_patch, [patch, Mock()], expected_logs=expected_logs)

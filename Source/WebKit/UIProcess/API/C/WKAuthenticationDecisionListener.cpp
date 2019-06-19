@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WKAuthenticationDecisionListener.h"
 
+#include "AuthenticationChallengeDisposition.h"
 #include "AuthenticationDecisionListener.h"
 #include "WKAPICast.h"
 #include "WebCredential.h"
@@ -34,20 +35,20 @@ using namespace WebKit;
 
 WKTypeID WKAuthenticationDecisionListenerGetTypeID()
 {
-    return toAPI(AuthenticationDecisionListener::APIType);
+    return WebKit::toAPI(AuthenticationDecisionListener::APIType);
 }
 
 void WKAuthenticationDecisionListenerUseCredential(WKAuthenticationDecisionListenerRef authenticationListener, WKCredentialRef credential)
 {
-    toImpl(authenticationListener)->useCredential(toImpl(credential));
+    WebKit::toImpl(authenticationListener)->completeChallenge(AuthenticationChallengeDisposition::UseCredential, credential ? WebKit::toImpl(credential)->credential() : WebCore::Credential());
 }
 
 void WKAuthenticationDecisionListenerCancel(WKAuthenticationDecisionListenerRef authenticationListener)
 {
-    toImpl(authenticationListener)->cancel();
+    WebKit::toImpl(authenticationListener)->completeChallenge(AuthenticationChallengeDisposition::Cancel);
 }
 
 void WKAuthenticationDecisionListenerRejectProtectionSpaceAndContinue(WKAuthenticationDecisionListenerRef authenticationListener)
 {
-    toImpl(authenticationListener)->rejectProtectionSpaceAndContinue();
+    WebKit::toImpl(authenticationListener)->completeChallenge(AuthenticationChallengeDisposition::RejectProtectionSpaceAndContinue);
 }

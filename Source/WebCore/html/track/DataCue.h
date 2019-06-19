@@ -33,12 +33,14 @@
 #include <JavaScriptCore/ArrayBuffer.h>
 #include <JavaScriptCore/JSCJSValue.h>
 #include <wtf/MediaTime.h>
+#include <wtf/TypeCasts.h>
 
 namespace WebCore {
 
 class ScriptExecutionContext;
 
 class DataCue final : public TextTrackCue {
+    WTF_MAKE_ISO_ALLOCATED(DataCue);
 public:
     static Ref<DataCue> create(ScriptExecutionContext& context, const MediaTime& start, const MediaTime& end, ArrayBuffer& data)
     {
@@ -122,5 +124,9 @@ struct LogArgument<WebCore::DataCue> {
 };
 
 }
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::DataCue)
+static bool isType(const WebCore::TextTrackCue& cue) { return cue.cueType() == WebCore::TextTrackCue::Data; }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif

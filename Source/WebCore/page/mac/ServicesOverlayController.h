@@ -63,7 +63,7 @@ private:
 
         DDHighlightRef ddHighlight() const { return m_ddHighlight.get(); }
         Range& range() const { return m_range.get(); }
-        GraphicsLayer* layer() const { return m_graphicsLayer.get(); }
+        GraphicsLayer& layer() const { return m_graphicsLayer.get(); }
 
         enum {
             TelephoneNumberType = 1 << 0,
@@ -82,16 +82,16 @@ private:
 
         // GraphicsLayerClient
         void notifyFlushRequired(const GraphicsLayer*) override;
-        void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect& inClip, GraphicsLayerPaintBehavior) override;
+        void paintContents(const GraphicsLayer*, GraphicsContext&, OptionSet<GraphicsLayerPaintingPhase>, const FloatRect& inClip, GraphicsLayerPaintBehavior) override;
         float deviceScaleFactor() const override;
 
         void didFinishFadeOutAnimation();
 
+        ServicesOverlayController* m_controller;
         RetainPtr<DDHighlightRef> m_ddHighlight;
         Ref<Range> m_range;
-        std::unique_ptr<GraphicsLayer> m_graphicsLayer;
+        Ref<GraphicsLayer> m_graphicsLayer;
         Type m_type;
-        ServicesOverlayController* m_controller;
     };
 
     // PageOverlay::Client

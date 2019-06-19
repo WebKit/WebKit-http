@@ -35,7 +35,7 @@
 #include <WebCore/FilterOperations.h>
 #include <WebCore/FloatPoint3D.h>
 #include <WebCore/FloatSize.h>
-#include <WebCore/LayoutMilestones.h>
+#include <WebCore/LayoutMilestone.h>
 #include <WebCore/PlatformCALayer.h>
 #include <WebCore/TransformationMatrix.h>
 #include <wtf/HashMap.h>
@@ -49,8 +49,6 @@ class Encoder;
 }
 
 namespace WebKit {
-
-class PlatformCALayerRemote;
 
 class RemoteLayerTreeTransaction {
 public:
@@ -92,16 +90,19 @@ public:
         EdgeAntialiasingMaskChanged     = 1LLU << 35,
         CustomAppearanceChanged         = 1LLU << 36,
         UserInteractionEnabledChanged   = 1LLU << 37,
+        EventRegionChanged              = 1LLU << 38,
     };
 
     struct LayerCreationProperties {
         LayerCreationProperties();
 
         void encode(IPC::Encoder&) const;
-        static std::optional<LayerCreationProperties> decode(IPC::Decoder&);
+        static Optional<LayerCreationProperties> decode(IPC::Decoder&);
 
         WebCore::GraphicsLayer::PlatformLayerID layerID;
         WebCore::PlatformCALayer::LayerType type;
+
+        WebCore::GraphicsLayer::EmbeddedViewID embeddedViewID;
 
         uint32_t hostingContextID;
         float hostingDeviceScaleFactor;
@@ -117,6 +118,7 @@ public:
         void notePropertiesChanged(OptionSet<LayerChange> changeFlags)
         {
             changedProperties.add(changeFlags);
+            everChangedProperties.add(changeFlags);
         }
 
         void resetChangedProperties()
@@ -125,6 +127,7 @@ public:
         }
 
         OptionSet<LayerChange> changedProperties;
+        OptionSet<LayerChange> everChangedProperties;
 
         String name;
         std::unique_ptr<WebCore::TransformationMatrix> transform;
@@ -167,10 +170,13 @@ public:
         bool opaque;
         bool contentsHidden;
         bool userInteractionEnabled;
+        WebCore::EventRegion eventRegion;
     };
 
     explicit RemoteLayerTreeTransaction();
     ~RemoteLayerTreeTransaction();
+    RemoteLayerTreeTransaction(RemoteLayerTreeTransaction&&);
+    RemoteLayerTreeTransaction& operator=(RemoteLayerTreeTransaction&&);
 
     void encode(IPC::Encoder&) const;
     static bool decode(IPC::Decoder&, RemoteLayerTreeTransaction&);
@@ -265,14 +271,14 @@ public:
     const Vector<TransactionCallbackID>& callbackIDs() const { return m_callbackIDs; }
     void setCallbackIDs(Vector<TransactionCallbackID>&& callbackIDs) { m_callbackIDs = WTFMove(callbackIDs); }
 
-    WebCore::LayoutMilestones newlyReachedLayoutMilestones() const { return m_newlyReachedLayoutMilestones; }
-    void setNewlyReachedLayoutMilestones(WebCore::LayoutMilestones milestones) { m_newlyReachedLayoutMilestones = milestones; }
+    OptionSet<WebCore::LayoutMilestone> newlyReachedPaintingMilestones() const { return m_newlyReachedPaintingMilestones; }
+    void setNewlyReachedPaintingMilestones(OptionSet<WebCore::LayoutMilestone> milestones) { m_newlyReachedPaintingMilestones = milestones; }
 
     bool hasEditorState() const { return !!m_editorState; }
     const EditorState& editorState() const { return m_editorState.value(); }
     void setEditorState(const EditorState& editorState) { m_editorState = editorState; }
 
-    std::optional<DynamicViewportSizeUpdateID> dynamicViewportSizeUpdateID() const { return m_dynamicViewportSizeUpdateID; }
+    Optional<DynamicViewportSizeUpdateID> dynamicViewportSizeUpdateID() const { return m_dynamicViewportSizeUpdateID; }
     void setDynamicViewportSizeUpdateID(DynamicViewportSizeUpdateID resizeID) { m_dynamicViewportSizeUpdateID = resizeID; }
     
 private:
@@ -302,7 +308,7 @@ private:
     uint64_t m_renderTreeSize { 0 };
     uint64_t m_transactionID { 0 };
     ActivityStateChangeID m_activityStateChangeID { ActivityStateChangeAsynchronous };
-    WebCore::LayoutMilestones m_newlyReachedLayoutMilestones { 0 };
+    OptionSet<WebCore::LayoutMilestone> m_newlyReachedPaintingMilestones;
     bool m_scaleWasSetByUIProcess { false };
     bool m_allowsUserScaling { false };
     bool m_avoidsUnsafeArea { true };
@@ -310,8 +316,8 @@ private:
     bool m_viewportMetaTagCameFromImageDocument { false };
     bool m_isInStableState { false };
 
-    std::optional<EditorState> m_editorState;
-    std::optional<DynamicViewportSizeUpdateID> m_dynamicViewportSizeUpdateID;
+    Optional<EditorState> m_editorState;
+    Optional<DynamicViewportSizeUpdateID> m_dynamicViewportSizeUpdateID;
 };
 
 } // namespace WebKit

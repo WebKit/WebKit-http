@@ -24,7 +24,7 @@
  */
 
 #pragma once
-#include "URL.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
     
@@ -36,7 +36,7 @@ struct ShareData {
     
 struct ShareDataWithParsedURL {
     ShareData shareData;
-    URL url;
+    Optional<URL> url;
 };
     
 }

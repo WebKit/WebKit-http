@@ -46,14 +46,7 @@ Ref<HTMLTableCaptionElement> HTMLTableCaptionElement::create(const QualifiedName
     return adoptRef(*new HTMLTableCaptionElement(tagName, document));
 }
 
-bool HTMLTableCaptionElement::isPresentationAttribute(const QualifiedName& name) const
-{
-    if (name == alignAttr)
-        return true;
-    return HTMLElement::isPresentationAttribute(name);
-}
-
-void HTMLTableCaptionElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
+void HTMLTableCaptionElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomString& value, MutableStyleProperties& style)
 {
     if (name == alignAttr) {
         if (!value.isEmpty())

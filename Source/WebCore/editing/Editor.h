@@ -58,6 +58,7 @@ class AlternativeTextController;
 class ArchiveResource;
 class DataTransfer;
 class CompositeEditCommand;
+class CustomUndoStep;
 class DeleteButtonController;
 class EditCommand;
 class EditCommandComposition;
@@ -81,9 +82,14 @@ class Text;
 class TextCheckerClient;
 class TextEvent;
 
+struct FontAttributes;
 struct PasteboardPlainText;
 struct PasteboardURL;
 struct TextCheckingResult;
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+struct SerializedAttachmentData;
+#endif
 
 enum EditorCommandSource { CommandFromMenuOrKeyBinding, CommandFromDOM, CommandFromDOMWithUserInterface };
 enum EditorParagraphSeparator { EditorParagraphSeparatorIsDiv, EditorParagraphSeparatorIsP };
@@ -97,30 +103,32 @@ enum class MailBlockquoteHandling {
 class HTMLAttachmentElement;
 #endif
 
-enum TemporarySelectionOption : uint8_t {
-    // Scroll to reveal the selection.
-    TemporarySelectionOptionRevealSelection = 1 << 0,
+enum class TemporarySelectionOption : uint8_t {
+    RevealSelection = 1 << 0,
+    DoNotSetFocus = 1 << 1,
 
     // Don't propagate selection changes to the client layer.
-    TemporarySelectionOptionIgnoreSelectionChanges = 1 << 1,
+    IgnoreSelectionChanges = 1 << 2,
 
     // Force the render tree to update selection state. Only respected on iOS.
-    TemporarySelectionOptionEnableAppearanceUpdates = 1 << 2
+    EnableAppearanceUpdates = 1 << 3,
 };
 
 class TemporarySelectionChange {
 public:
-    TemporarySelectionChange(Frame&, std::optional<VisibleSelection> = std::nullopt, OptionSet<TemporarySelectionOption> = { });
+    TemporarySelectionChange(Frame&, Optional<VisibleSelection> = WTF::nullopt, OptionSet<TemporarySelectionOption> = { });
     ~TemporarySelectionChange();
 
 private:
+    void setSelection(const VisibleSelection&);
+
     Ref<Frame> m_frame;
     OptionSet<TemporarySelectionOption> m_options;
     bool m_wasIgnoringSelectionChanges;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool m_appearanceUpdatesWereEnabled;
 #endif
-    std::optional<VisibleSelection> m_selectionToRestore;
+    Optional<VisibleSelection> m_selectionToRestore;
 };
 
 class Editor {
@@ -128,6 +136,12 @@ class Editor {
 public:
     explicit Editor(Frame&);
     ~Editor();
+
+    enum class PasteOption : uint8_t {
+        AllowPlainText = 1 << 0,
+        IgnoreMailBlockquote = 1 << 1,
+        AsQuotation = 1 << 2,
+    };
 
     WEBCORE_EXPORT EditorClient* client() const;
     WEBCORE_EXPORT TextCheckerClient* textChecker() const;
@@ -151,19 +165,21 @@ public:
     WEBCORE_EXPORT bool canCopy() const;
     WEBCORE_EXPORT bool canPaste() const;
     WEBCORE_EXPORT bool canDelete() const;
-    bool canSmartCopyOrDelete();
+    WEBCORE_EXPORT bool canSmartCopyOrDelete();
+    bool shouldSmartDelete();
 
     WEBCORE_EXPORT void cut();
     WEBCORE_EXPORT void copy();
     WEBCORE_EXPORT void paste();
     void paste(Pasteboard&);
     WEBCORE_EXPORT void pasteAsPlainText();
+    void pasteAsQuotation();
     WEBCORE_EXPORT void performDelete();
 
     WEBCORE_EXPORT void copyURL(const URL&, const String& title);
     void copyURL(const URL&, const String& title, Pasteboard&);
-    PasteboardWriterData::URL pasteboardWriterURL(const URL&, const String& title);
-#if !PLATFORM(IOS)
+    PasteboardWriterData::URLData pasteboardWriterURL(const URL&, const String& title);
+#if !PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT void copyImage(const HitTestResult&);
 #endif
 
@@ -194,18 +210,19 @@ public:
     WEBCORE_EXPORT RefPtr<Node> increaseSelectionListLevelOrdered();
     WEBCORE_EXPORT RefPtr<Node> increaseSelectionListLevelUnordered();
     WEBCORE_EXPORT void decreaseSelectionListLevel();
+    WEBCORE_EXPORT void changeSelectionListType();
    
     void removeFormattingAndStyle();
 
     void clearLastEditCommand();
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT void ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping();
 #endif
 
     WEBCORE_EXPORT bool deleteWithDirection(SelectionDirection, TextGranularity, bool killRing, bool isTypingAction);
     WEBCORE_EXPORT void deleteSelectionWithSmartDelete(bool smartDelete, EditAction = EditAction::Delete);
     void clearText();
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT void removeUnchangeableStyles();
 #endif
 
@@ -284,17 +301,18 @@ public:
     void markBadGrammar(const VisibleSelection&);
     void markMisspellingsAndBadGrammar(const VisibleSelection& spellingSelection, bool markGrammar, const VisibleSelection& grammarSelection);
     void markAndReplaceFor(const SpellCheckRequest&, const Vector<TextCheckingResult>&);
+    WEBCORE_EXPORT void replaceRangeForSpellChecking(Range&, const String&);
 
     bool isOverwriteModeEnabled() const { return m_overwriteModeEnabled; }
     WEBCORE_EXPORT void toggleOverwriteModeEnabled();
 
     void markAllMisspellingsAndBadGrammarInRanges(OptionSet<TextCheckingType>, RefPtr<Range>&& spellingRange, RefPtr<Range>&& automaticReplacementRange, RefPtr<Range>&& grammarRange);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     NO_RETURN_DUE_TO_ASSERT
 #endif
     void changeBackToReplacedString(const String& replacedString);
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT void advanceToNextMisspelling(bool startBeforeSelection = false);
 #endif
     void showSpellingGuessPanel();
@@ -308,6 +326,8 @@ public:
     void undo();
     bool canRedo() const;
     void redo();
+
+    void registerCustomUndoStep(Ref<CustomUndoStep>&&);
 
     void didBeginEditing();
     void didEndEditing();
@@ -362,7 +382,7 @@ public:
 
     RefPtr<Range> selectedRange();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT void confirmMarkedText();
     WEBCORE_EXPORT void setTextAsChildOfElement(const String&, Element&);
     WEBCORE_EXPORT void setTextAlignmentForChangedBaseWritingDirection(WritingDirection);
@@ -423,8 +443,11 @@ public:
     void textDidChangeInTextArea(Element*);
     WEBCORE_EXPORT WritingDirection baseWritingDirectionForSelectionStart() const;
 
-    WEBCORE_EXPORT void replaceSelectionWithFragment(DocumentFragment&, bool selectReplacement, bool smartReplace, bool matchStyle, EditAction = EditAction::Insert, MailBlockquoteHandling = MailBlockquoteHandling::RespectBlockquote);
-    WEBCORE_EXPORT void replaceSelectionWithText(const String&, bool selectReplacement, bool smartReplace, EditAction = EditAction::Insert);
+    enum class SelectReplacement : bool { No, Yes };
+    enum class SmartReplace : bool { No, Yes };
+    enum class MatchStyle : bool { No, Yes };
+    WEBCORE_EXPORT void replaceSelectionWithFragment(DocumentFragment&, SelectReplacement, SmartReplace, MatchStyle, EditAction = EditAction::Insert, MailBlockquoteHandling = MailBlockquoteHandling::RespectBlockquote);
+    WEBCORE_EXPORT void replaceSelectionWithText(const String&, SelectReplacement, SmartReplace, EditAction = EditAction::Insert);
     WEBCORE_EXPORT bool selectionStartHasMarkerFor(DocumentMarker::MarkerType, int from, int length) const;
     void updateMarkersForWordsAffectedByEditing(bool onlyHandleWordsContainingSelection);
     void deletedAutocorrectionAtPosition(const Position&, const String& originalString);
@@ -462,23 +485,21 @@ public:
 
     WEBCORE_EXPORT const Font* fontForSelection(bool& hasMultipleFonts) const;
     WEBCORE_EXPORT static const RenderStyle* styleForSelectionStart(Frame* , Node *&nodeToRemove);
+    WEBCORE_EXPORT FontAttributes fontAttributesAtSelectionStart() const;
 
 #if PLATFORM(COCOA)
-    void getTextDecorationAttributesRespectingTypingStyle(const RenderStyle&, NSMutableDictionary*) const;
-    WEBCORE_EXPORT RetainPtr<NSDictionary> fontAttributesForSelectionStart() const;
     WEBCORE_EXPORT String stringSelectionForPasteboard();
     String stringSelectionForPasteboardWithImageAltText();
-#if !PLATFORM(IOS)
-    bool canCopyExcludingStandaloneImages();
     void takeFindStringFromSelection();
-    WEBCORE_EXPORT void readSelectionFromPasteboard(const String& pasteboardName, MailBlockquoteHandling = MailBlockquoteHandling::RespectBlockquote);
+#if !PLATFORM(IOS_FAMILY)
+    WEBCORE_EXPORT void readSelectionFromPasteboard(const String& pasteboardName);
     WEBCORE_EXPORT void replaceNodeFromPasteboard(Node*, const String& pasteboardName);
     WEBCORE_EXPORT RefPtr<SharedBuffer> dataSelectionForPasteboard(const String& pasteboardName);
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT void replaceSelectionWithAttributedString(NSAttributedString *, MailBlockquoteHandling = MailBlockquoteHandling::RespectBlockquote);
 #endif
 
-    String clientReplacementURLForResource(Ref<SharedBuffer>&& resourceData, const String& mimeType);
+    bool canCopyExcludingStandaloneImages() const;
 
 #if !PLATFORM(WIN)
     WEBCORE_EXPORT void writeSelectionToPasteboard(Pasteboard&);
@@ -486,7 +507,7 @@ public:
     void writeSelection(PasteboardWriterData&);
 #endif
 
-#if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS)
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS_FAMILY)
     void scanSelectionForTelephoneNumbers();
     const Vector<RefPtr<Range>>& detectedTelephoneNumberRanges() const { return m_detectedTelephoneNumberRanges; }
 #endif
@@ -501,9 +522,11 @@ public:
     bool isGettingDictionaryPopupInfo() const { return m_isGettingDictionaryPopupInfo; }
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    WEBCORE_EXPORT void insertAttachment(const String& identifier, std::optional<uint64_t>&& fileSize, const String& fileName, const String& contentType);
-    void registerAttachmentIdentifier(const String&, const String& /* contentType */, const String& /* preferredFileName */, Ref<SharedBuffer>&&);
-    void registerAttachmentIdentifier(const String&, const String& /* contentType */, const String& /* filePath */);
+    WEBCORE_EXPORT void insertAttachment(const String& identifier, Optional<uint64_t>&& fileSize, const String& fileName, const String& contentType);
+    void registerAttachmentIdentifier(const String&, const String& contentType, const String& preferredFileName, Ref<SharedBuffer>&& fileData);
+    void registerAttachments(Vector<SerializedAttachmentData>&&);
+    void registerAttachmentIdentifier(const String&, const String& contentType, const String& filePath);
+    void registerAttachmentIdentifier(const String&);
     void cloneAttachmentData(const String& fromIdentifier, const String& toIdentifier);
     void didInsertAttachmentElement(HTMLAttachmentElement&);
     void didRemoveAttachmentElement(HTMLAttachmentElement&);
@@ -513,14 +536,18 @@ public:
 #endif
 #endif
 
+    WEBCORE_EXPORT RefPtr<HTMLImageElement> insertEditableImage();
+
 private:
     Document& document() const;
 
     bool canDeleteRange(Range*) const;
     bool canSmartReplaceWithPasteboard(Pasteboard&);
     void pasteAsPlainTextWithPasteboard(Pasteboard&);
-    void pasteWithPasteboard(Pasteboard*, bool allowPlainText, MailBlockquoteHandling = MailBlockquoteHandling::RespectBlockquote);
+    void pasteWithPasteboard(Pasteboard*, OptionSet<PasteOption>);
     String plainTextFromPasteboard(const PasteboardPlainText&);
+
+    void quoteFragmentForPasting(DocumentFragment&);
 
     void revealSelectionAfterEditingOperation(const ScrollAlignment& = ScrollAlignment::alignCenterIfNeeded, RevealExtentOption = DoNotRevealExtent);
     void markMisspellingsOrBadGrammar(const VisibleSelection&, bool checkSpelling, RefPtr<Range>& firstMisspellingRange);
@@ -553,6 +580,7 @@ private:
     static RefPtr<SharedBuffer> dataInRTFDFormat(NSAttributedString *);
     static RefPtr<SharedBuffer> dataInRTFFormat(NSAttributedString *);
 #endif
+    void platformFontAttributesAtSelectionStart(FontAttributes&, const RenderStyle&) const;
 
     void scheduleEditorUIUpdate();
 
@@ -591,7 +619,7 @@ private:
     bool m_editorUIUpdateTimerWasTriggeredByDictation { false };
     bool m_isHandlingAcceptedCandidate { false };
 
-#if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS)
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS_FAMILY)
     bool shouldDetectTelephoneNumbers();
     void scanRangeForTelephoneNumbers(Range&, const StringView&, Vector<RefPtr<Range>>& markedRanges);
 

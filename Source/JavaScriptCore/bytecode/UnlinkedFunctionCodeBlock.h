@@ -29,14 +29,16 @@
 
 namespace JSC {
 
+class CachedFunctionCodeBlock;
+
 class UnlinkedFunctionCodeBlock final : public UnlinkedCodeBlock {
 public:
     typedef UnlinkedCodeBlock Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
-    static UnlinkedFunctionCodeBlock* create(VM* vm, CodeType codeType, const ExecutableInfo& info, DebuggerMode debuggerMode)
+    static UnlinkedFunctionCodeBlock* create(VM* vm, CodeType codeType, const ExecutableInfo& info, OptionSet<CodeGenerationMode> codeGenerationMode)
     {
-        UnlinkedFunctionCodeBlock* instance = new (NotNull, allocateCell<UnlinkedFunctionCodeBlock>(vm->heap)) UnlinkedFunctionCodeBlock(vm, vm->unlinkedFunctionCodeBlockStructure.get(), codeType, info, debuggerMode);
+        UnlinkedFunctionCodeBlock* instance = new (NotNull, allocateCell<UnlinkedFunctionCodeBlock>(vm->heap)) UnlinkedFunctionCodeBlock(vm, vm->unlinkedFunctionCodeBlockStructure.get(), codeType, info, codeGenerationMode);
         instance->finishCreation(*vm);
         return instance;
     }
@@ -44,10 +46,14 @@ public:
     static void destroy(JSCell*);
 
 private:
-    UnlinkedFunctionCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info, DebuggerMode debuggerMode)
-        : Base(vm, structure, codeType, info, debuggerMode)
+    friend CachedFunctionCodeBlock;
+
+    UnlinkedFunctionCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info, OptionSet<CodeGenerationMode> codeGenerationMode)
+        : Base(vm, structure, codeType, info, codeGenerationMode)
     {
     }
+
+    UnlinkedFunctionCodeBlock(Decoder&, const CachedFunctionCodeBlock&);
     
 public:
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue proto)

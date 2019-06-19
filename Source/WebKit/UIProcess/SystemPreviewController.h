@@ -29,8 +29,8 @@
 
 #include <WebCore/IntRect.h>
 #include <WebCore/ResourceError.h>
-#include <WebCore/URL.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/URL.h>
 
 #if USE(QUICK_LOOK)
 OBJC_CLASS QLPreviewController;
@@ -48,9 +48,9 @@ public:
 
     bool canPreview(const String& mimeType) const;
 
-    void start(const String& mimeType, const WebCore::IntRect&);
+    void start(URL originatingPageURL, const String& mimeType, const WebCore::IntRect&);
     void updateProgress(float);
-    void finish(WebCore::URL);
+    void finish(URL);
     void cancel();
     void fail(const WebCore::ResourceError&);
 

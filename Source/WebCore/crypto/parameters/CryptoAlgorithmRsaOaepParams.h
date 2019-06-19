@@ -29,14 +29,14 @@
 #include "CryptoAlgorithmParameters.h"
 #include <wtf/Vector.h>
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 namespace WebCore {
 
 class CryptoAlgorithmRsaOaepParams final : public CryptoAlgorithmParameters {
 public:
     // Use labelVector() instead of label. The label will be gone once labelVector() is called.
-    mutable std::optional<BufferSource::VariantType> label;
+    mutable Optional<BufferSource::VariantType> label;
 
     Class parametersClass() const final { return Class::RsaOaepParams; }
 
@@ -46,7 +46,7 @@ public:
             return m_labelVector;
 
         BufferSource labelBuffer = WTFMove(*label);
-        label = std::nullopt;
+        label = WTF::nullopt;
         if (!labelBuffer.length())
             return m_labelVector;
 
@@ -71,4 +71,4 @@ private:
 
 SPECIALIZE_TYPE_TRAITS_CRYPTO_ALGORITHM_PARAMETERS(RsaOaepParams)
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

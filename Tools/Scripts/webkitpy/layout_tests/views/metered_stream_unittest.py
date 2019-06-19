@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 # Copyright (C) 2010, 2012 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -107,6 +109,31 @@ class RegularTest(unittest.TestCase):
     def test_log_args(self):
         self.logger.info('foo %s %d', 'bar', 2)
         self.assertEqual(self.buflist, ['foo bar 2\n'])
+
+    def test_unicode(self):
+        self.logger.info(u'\u2713')
+        self.assertEqual(self.buflist[-1][-2:], u'\u2713\n')
+
+        self.logger.info('‘example’')
+        self.assertEqual(self.buflist[-1][-14:], '‘example’\n')
+
+    def test_stream_with_encoding(self):
+        class AsciiStream(StringIO.StringIO):
+            def write(self, s):
+                return StringIO.StringIO.write(self, '{}'.format(s))
+
+        stream = AsciiStream()
+
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+        logger.propagate = False
+
+        try:
+            meter = MeteredStream(stream, self.verbose, logger, self.time_fn, 8675, print_timestamps=self.print_timestamps)
+            self.logger.info(u'\u2713')
+            self.assertEqual(stream.buflist[-1][-2:], '?\n')
+        finally:
+            meter.cleanup()
 
 
 class TtyTest(RegularTest):

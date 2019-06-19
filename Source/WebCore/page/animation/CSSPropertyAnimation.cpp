@@ -191,11 +191,11 @@ static inline FilterOperations blendFilterOperations(const CSSPropertyBlendingCl
         if (blendedOp)
             result.operations().append(blendedOp);
         else {
-            RefPtr<FilterOperation> identityOp = PassthroughFilterOperation::create();
+            auto identityOp = PassthroughFilterOperation::create();
             if (progress > 0.5)
-                result.operations().append(toOp ? toOp : identityOp);
+                result.operations().append(toOp ? toOp : WTFMove(identityOp));
             else
-                result.operations().append(fromOp ? fromOp : identityOp);
+                result.operations().append(fromOp ? fromOp : WTFMove(identityOp));
         }
     }
     return result;
@@ -258,6 +258,20 @@ static inline Visibility blendFunc(const CSSPropertyBlendingClient* anim, Visibi
         return to;
     double result = blendFunc(anim, fromVal, toVal, progress);
     return result > 0. ? Visibility::Visible : (to != Visibility::Visible ? to : from);
+}
+
+static inline TextUnderlineOffset blendFunc(const CSSPropertyBlendingClient* anim, const TextUnderlineOffset& from, const TextUnderlineOffset& to, double progress)
+{
+    if (from.isLength() && to.isLength())
+        return TextUnderlineOffset::createWithLength(blendFunc(anim, from.lengthValue(), to.lengthValue(), progress));
+    return TextUnderlineOffset::createWithAuto();
+}
+
+static inline TextDecorationThickness blendFunc(const CSSPropertyBlendingClient* anim, const TextDecorationThickness& from, const TextDecorationThickness& to, double progress)
+{
+    if (from.isLength() && to.isLength())
+        return TextDecorationThickness::createWithLength(blendFunc(anim, from.lengthValue(), to.lengthValue(), progress));
+    return TextDecorationThickness::createWithAuto();
 }
 
 static inline LengthBox blendFunc(const CSSPropertyBlendingClient* anim, const LengthBox& from, const LengthBox& to, double progress)
@@ -415,7 +429,7 @@ static inline FontSelectionValue blendFunc(const CSSPropertyBlendingClient* anim
     return FontSelectionValue(blendFunc(anim, static_cast<float>(from), static_cast<float>(to), progress));
 }
 
-static inline std::optional<FontSelectionValue> blendFunc(const CSSPropertyBlendingClient* anim, std::optional<FontSelectionValue> from, std::optional<FontSelectionValue> to, double progress)
+static inline Optional<FontSelectionValue> blendFunc(const CSSPropertyBlendingClient* anim, Optional<FontSelectionValue> from, Optional<FontSelectionValue> to, double progress)
 {
     return FontSelectionValue(blendFunc(anim, static_cast<float>(from.value()), static_cast<float>(to.value()), progress));
 }
@@ -1445,11 +1459,11 @@ private:
     void (RenderStyle::*m_setter)(const Color&);
 };
 
-class PropertyWrapperFontStyle : public PropertyWrapper<std::optional<FontSelectionValue>> {
+class PropertyWrapperFontStyle : public PropertyWrapper<Optional<FontSelectionValue>> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     PropertyWrapperFontStyle()
-        : PropertyWrapper<std::optional<FontSelectionValue>>(CSSPropertyFontStyle, &RenderStyle::fontItalic, &RenderStyle::setFontItalic)
+        : PropertyWrapper<Optional<FontSelectionValue>>(CSSPropertyFontStyle, &RenderStyle::fontItalic, &RenderStyle::setFontItalic)
     {
     }
 
@@ -1685,6 +1699,8 @@ CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap()
         new PropertyWrapper<FontSelectionValue>(CSSPropertyFontWeight, &RenderStyle::fontWeight, &RenderStyle::setFontWeight),
         new PropertyWrapper<FontSelectionValue>(CSSPropertyFontStretch, &RenderStyle::fontStretch, &RenderStyle::setFontStretch),
         new PropertyWrapperFontStyle(),
+        new PropertyWrapper<TextDecorationThickness>(CSSPropertyTextDecorationThickness, &RenderStyle::textDecorationThickness, &RenderStyle::setTextDecorationThickness),
+        new PropertyWrapper<TextUnderlineOffset>(CSSPropertyTextUnderlineOffset, &RenderStyle::textUnderlineOffset, &RenderStyle::setTextUnderlineOffset),
     };
     const unsigned animatableLonghandPropertiesCount = WTF_ARRAY_LENGTH(animatableLonghandPropertyWrappers);
 
@@ -1832,7 +1848,7 @@ bool CSSPropertyAnimation::canPropertyBeInterpolated(CSSPropertyID prop, const R
     return false;
 }
 
-CSSPropertyID CSSPropertyAnimation::getPropertyAtIndex(int i, std::optional<bool>& isShorthand)
+CSSPropertyID CSSPropertyAnimation::getPropertyAtIndex(int i, Optional<bool>& isShorthand)
 {
     CSSPropertyAnimationWrapperMap& map = CSSPropertyAnimationWrapperMap::singleton();
 

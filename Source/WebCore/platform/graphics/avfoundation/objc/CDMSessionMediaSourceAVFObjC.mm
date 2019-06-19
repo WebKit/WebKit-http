@@ -29,9 +29,9 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(MEDIA_SOURCE)
 
 #import "CDMPrivateMediaSourceAVFObjC.h"
-#import "FileSystem.h"
 #import "WebCoreNSErrorExtras.h"
 #import <AVFoundation/AVError.h>
+#import <wtf/FileSystem.h>
 
 namespace WebCore {
 
@@ -45,6 +45,10 @@ CDMSessionMediaSourceAVFObjC::~CDMSessionMediaSourceAVFObjC()
 {
     if (m_cdm)
         m_cdm->invalidateSession(this);
+
+    for (auto& sourceBuffer : m_sourceBuffers)
+        sourceBuffer->unregisterForErrorNotifications(this);
+    m_sourceBuffers.clear();
 }
 
 void CDMSessionMediaSourceAVFObjC::layerDidReceiveError(AVSampleBufferDisplayLayer *, NSError *error, bool& shouldIgnore)

@@ -29,11 +29,12 @@
 
 #include "ContentSecurityPolicy.h"
 #include "SecurityOriginData.h"
-#include "URL.h"
+#include "TextEncoding.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 
-ContentSecurityPolicySource::ContentSecurityPolicySource(const ContentSecurityPolicy& policy, const String& scheme, const String& host, std::optional<uint16_t> port, const String& path, bool hostHasWildcard, bool portHasWildcard)
+ContentSecurityPolicySource::ContentSecurityPolicySource(const ContentSecurityPolicy& policy, const String& scheme, const String& host, Optional<uint16_t> port, const String& path, bool hostHasWildcard, bool portHasWildcard)
     : m_policy(policy)
     , m_scheme(scheme)
     , m_host(host)
@@ -95,19 +96,19 @@ bool ContentSecurityPolicySource::portMatches(const URL& url) const
     if (m_portHasWildcard)
         return true;
 
-    std::optional<uint16_t> port = url.port();
+    Optional<uint16_t> port = url.port();
 
     if (port == m_port)
         return true;
 
-    if ((m_port && isDefaultPortForProtocol(m_port.value(), "http")) && ((!port && url.protocolIs("https")) || (port && isDefaultPortForProtocol(port.value(), "https"))))
+    if ((m_port && WTF::isDefaultPortForProtocol(m_port.value(), "http")) && ((!port && url.protocolIs("https")) || (port && WTF::isDefaultPortForProtocol(port.value(), "https"))))
         return true;
 
     if (!port)
-        return isDefaultPortForProtocol(m_port.value(), url.protocol());
+        return WTF::isDefaultPortForProtocol(m_port.value(), url.protocol());
 
     if (!m_port)
-        return isDefaultPortForProtocol(port.value(), url.protocol());
+        return WTF::isDefaultPortForProtocol(port.value(), url.protocol());
 
     return false;
 }

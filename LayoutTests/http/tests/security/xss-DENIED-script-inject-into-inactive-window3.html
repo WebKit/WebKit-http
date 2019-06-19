@@ -60,9 +60,7 @@ if (!window.location.search) {
 
 function checkDidLoadVictim()
 {
-    try {
-        secondOpenerDocument.location.href
-    } catch (e) {
+    if (secondOpenerDocument.location.href == "about:blank") {
         // Victim loaded.
         window.clearInterval(intervalId);
 

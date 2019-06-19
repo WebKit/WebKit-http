@@ -28,14 +28,17 @@
 
 #include "Animation.h"
 #include "Element.h"
-#include "KeyframeEffectReadOnly.h"
+#include "KeyframeEffect.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-Ref<CSSTransition> CSSTransition::create(Element& target, CSSPropertyID property, MonotonicTime generationTime, const Animation& backingAnimation, const RenderStyle* oldStyle, const RenderStyle& newStyle, Seconds delay, Seconds duration, const RenderStyle& reversingAdjustedStartStyle, double reversingShorteningFactor)
+WTF_MAKE_ISO_ALLOCATED_IMPL(CSSTransition);
+
+Ref<CSSTransition> CSSTransition::create(Element& owningElement, CSSPropertyID property, MonotonicTime generationTime, const Animation& backingAnimation, const RenderStyle* oldStyle, const RenderStyle& newStyle, Seconds delay, Seconds duration, const RenderStyle& reversingAdjustedStartStyle, double reversingShorteningFactor)
 {
-    auto result = adoptRef(*new CSSTransition(target, property, generationTime, backingAnimation, newStyle, reversingAdjustedStartStyle, reversingShorteningFactor));
-    result->initialize(target, oldStyle, newStyle);
+    auto result = adoptRef(*new CSSTransition(owningElement, property, generationTime, backingAnimation, newStyle, reversingAdjustedStartStyle, reversingShorteningFactor));
+    result->initialize(oldStyle, newStyle);
     result->setTimingProperties(delay, duration);
     return result;
 }
@@ -61,28 +64,16 @@ void CSSTransition::setTimingProperties(Seconds delay, Seconds duration)
     suspendEffectInvalidation();
 
     // This method is only called from CSSTransition::create() where we're guaranteed to have an effect.
-    ASSERT(effect());
-
-    auto* timing = effect()->timing();
+    auto* animationEffect = effect();
+    ASSERT(animationEffect);
 
     // In order for CSS Transitions to be seeked backwards, they need to have their fill mode set to backwards
     // such that the original CSS value applied prior to the transition is used for a negative current time.
-    timing->setFill(FillMode::Backwards);
-    timing->setDelay(delay);
-    timing->setIterationDuration(duration);
+    animationEffect->setFill(FillMode::Backwards);
+    animationEffect->setDelay(delay);
+    animationEffect->setIterationDuration(duration);
 
     unsuspendEffectInvalidation();
-}
-
-bool CSSTransition::canBeListed() const
-{
-    if (auto* transitionEffect = effect()) {
-        if (is<KeyframeEffectReadOnly>(transitionEffect)) {
-            if (!downcast<KeyframeEffectReadOnly>(effect())->hasBlendingKeyframes())
-                return false;
-        }
-    }
-    return WebAnimation::canBeListed();
 }
 
 } // namespace WebCore

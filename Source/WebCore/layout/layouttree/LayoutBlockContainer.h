@@ -39,13 +39,10 @@ namespace Layout {
 class BlockContainer : public Container {
     WTF_MAKE_ISO_ALLOCATED(BlockContainer);
 public:
-    friend class TreeBuilder;
+    BlockContainer(Optional<ElementAttributes>, RenderStyle&&, BaseTypeFlags = BlockContainerFlag);
 
     bool establishesInlineFormattingContext() const final;
-
-protected:
-    BlockContainer(std::optional<ElementAttributes>, RenderStyle&&, BaseTypeFlags = BlockContainerFlag);
-
+    bool establishesInlineFormattingContextOnly() const final;
 };
 
 }

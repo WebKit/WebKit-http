@@ -29,8 +29,11 @@
 #include "OfflineAudioContext.h"
 
 #include "Document.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(OfflineAudioContext);
 
 inline OfflineAudioContext::OfflineAudioContext(Document& document, unsigned numberOfChannels, size_t numberOfFrames, float sampleRate)
     : AudioContext(document, numberOfChannels, numberOfFrames, sampleRate)
@@ -46,7 +49,7 @@ ExceptionOr<Ref<OfflineAudioContext>> OfflineAudioContext::create(ScriptExecutio
         return Exception { SyntaxError };
     auto audioContext = adoptRef(*new OfflineAudioContext(downcast<Document>(context), numberOfChannels, numberOfFrames, sampleRate));
     audioContext->suspendIfNeeded();
-    return WTFMove(audioContext);
+    return audioContext;
 }
 
 } // namespace WebCore

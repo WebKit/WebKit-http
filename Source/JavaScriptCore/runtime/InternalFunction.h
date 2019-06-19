@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2007 Maks Orlovich
  *
@@ -24,7 +24,6 @@
 #pragma once
 
 #include "CodeSpecializationKind.h"
-#include "JSCPoison.h"
 #include "JSDestructibleObject.h"
 
 namespace JSC {
@@ -38,7 +37,7 @@ public:
     typedef JSDestructibleObject Base;
     static const unsigned StructureFlags = Base::StructureFlags | ImplementsHasInstance | ImplementsDefaultHasInstance | OverridesGetCallData;
 
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess>
     static IsoSubspace* subspaceFor(VM& vm)
     {
         static_assert(sizeof(CellType) == sizeof(InternalFunction), "InternalFunction subclasses that add fields need to override subspaceFor<>()");
@@ -63,9 +62,9 @@ public:
     TaggedNativeFunction nativeFunctionFor(CodeSpecializationKind kind)
     {
         if (kind == CodeForCall)
-            return m_functionForCall.unpoisoned();
+            return m_functionForCall;
         ASSERT(kind == CodeForConstruct);
-        return m_functionForConstruct.unpoisoned();
+        return m_functionForConstruct;
     }
 
     static ptrdiff_t offsetOfNativeFunctionFor(CodeSpecializationKind kind)
@@ -77,20 +76,19 @@ public:
     }
 
 protected:
-    using PoisonedTaggedNativeFunction = Poisoned<NativeCodePoison, TaggedNativeFunction>;
-
     JS_EXPORT_PRIVATE InternalFunction(VM&, Structure*, NativeFunction functionForCall, NativeFunction functionForConstruct);
 
     enum class NameVisibility { Visible, Anonymous };
-    JS_EXPORT_PRIVATE void finishCreation(VM&, const String& name, NameVisibility = NameVisibility::Visible);
+    enum class NameAdditionMode { WithStructureTransition, WithoutStructureTransition };
+    JS_EXPORT_PRIVATE void finishCreation(VM&, const String& name, NameVisibility = NameVisibility::Visible, NameAdditionMode = NameAdditionMode::WithStructureTransition);
 
     JS_EXPORT_PRIVATE static Structure* createSubclassStructureSlow(ExecState*, JSValue newTarget, Structure*);
 
     JS_EXPORT_PRIVATE static ConstructType getConstructData(JSCell*, ConstructData&);
     JS_EXPORT_PRIVATE static CallType getCallData(JSCell*, CallData&);
 
-    PoisonedTaggedNativeFunction m_functionForCall;
-    PoisonedTaggedNativeFunction m_functionForConstruct;
+    TaggedNativeFunction m_functionForCall;
+    TaggedNativeFunction m_functionForConstruct;
     WriteBarrier<JSString> m_originalName;
 };
 

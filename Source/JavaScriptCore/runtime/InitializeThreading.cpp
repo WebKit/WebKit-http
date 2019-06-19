@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,14 +33,17 @@
 #include "ExecutableAllocator.h"
 #include "Heap.h"
 #include "Identifier.h"
+#include "JSCPtrTag.h"
 #include "JSDateMath.h"
 #include "JSGlobalObject.h"
 #include "JSLock.h"
 #include "LLIntData.h"
 #include "MacroAssemblerCodeRef.h"
 #include "Options.h"
+#include "SigillCrashAnalyzer.h"
 #include "StructureIDTable.h"
 #include "SuperSampler.h"
+#include "WasmCapabilities.h"
 #include "WasmThunks.h"
 #include "WriteBarrier.h"
 #include <mutex>
@@ -48,8 +51,6 @@
 #include <wtf/Threading.h>
 #include <wtf/dtoa.h>
 #include <wtf/dtoa/cached-powers.h>
-
-using namespace WTF;
 
 namespace JSC {
 
@@ -62,16 +63,18 @@ void initializeThreading()
     std::call_once(initializeThreadingOnceFlag, []{
         WTF::initializeThreading();
         Options::initialize();
-        initializePoison();
+
+        initializePtrTagLookup();
 
 #if ENABLE(WRITE_BARRIER_PROFILING)
         WriteBarrierCounters::initialize();
 #endif
 
-#if ENABLE(ASSEMBLER)
-        ExecutableAllocator::initializeAllocator();
-#endif
+        ExecutableAllocator::initialize();
         VM::computeCanUseJIT();
+
+        if (VM::canUseJIT() && Options::useSigillCrashAnalyzer())
+            enableSigillCrashAnalyzer();
 
         LLInt::initialize();
 #ifndef NDEBUG
@@ -83,7 +86,8 @@ void initializeThreading()
         thread.setSavedLastStackTop(thread.stack().origin());
 
 #if ENABLE(WEBASSEMBLY)
-        Wasm::Thunks::initialize();
+        if (Wasm::isSupported())
+            Wasm::Thunks::initialize();
 #endif
 
         if (VM::isInMiniMode())

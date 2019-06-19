@@ -124,6 +124,7 @@ extern NSString *WebQuickLookUTIKey;
 extern NSString * const WebViewWillCloseNotification;
 
 #if ENABLE_DASHBOARD_SUPPORT
+// FIXME: Remove this once it is verified no one is dependent on it.
 typedef enum {
     WebDashboardBehaviorAlwaysSendMouseEventsToAllWindows,
     WebDashboardBehaviorAlwaysSendActiveNullEventsToPlugIns,
@@ -321,6 +322,11 @@ typedef enum {
 
 + (void)_setIconLoadingEnabled:(BOOL)enabled;
 + (BOOL)_isIconLoadingEnabled;
+
+@property (nonatomic, assign, setter=_setUseDarkAppearance:) BOOL _useDarkAppearance;
+@property (nonatomic, assign, setter=_setUseInactiveAppearance:) BOOL _useInactiveAppearance;
+
+- (void)_setUseDarkAppearance:(BOOL)useDarkAppearance useInactiveAppearance:(BOOL)useInactiveAppearance;
 
 - (WebInspector *)inspector;
 
@@ -549,6 +555,7 @@ Could be worth adding to the API.
 #endif
 
 #if ENABLE_DASHBOARD_SUPPORT
+// FIXME: Remove these once we have verified no one is calling them
 - (void)_addScrollerDashboardRegions:(NSMutableDictionary *)regions;
 - (NSDictionary *)_dashboardRegions;
 
@@ -721,8 +728,6 @@ Could be worth adding to the API.
 - (BOOL)usesPageCache;
 - (void)setUsesPageCache:(BOOL)usesPageCache;
 
-- (WebHistoryItem *)_globalHistoryItem;
-
 /*!
     @method textIteratorForRect:
     @param rect The rectangle of the document that we're interested in text from.
@@ -853,6 +858,11 @@ Could be worth adding to the API.
 
 - (WebPageVisibilityState)_visibilityState;
 - (void)_setVisibilityState:(WebPageVisibilityState)visibilityState isInitialState:(BOOL)isInitialState;
+
+#if !TARGET_OS_IPHONE
+- (BOOL)windowOcclusionDetectionEnabled;
+- (void)setWindowOcclusionDetectionEnabled:(BOOL)flag;
+#endif
 
 // Whether the column-break-{before,after} properties are respected instead of the
 // page-break-{before,after} properties.
@@ -1084,6 +1094,10 @@ typedef struct WebEdgeInsets {
 - (void)webView:(WebView *)sender didFirstVisuallyNonEmptyLayoutInFrame:(WebFrame *)frame;
 
 - (void)webView:(WebView *)sender didLayout:(WebLayoutMilestones)milestones;
+
+#if TARGET_OS_IPHONE
+- (void)webThreadWebView:(WebView *)sender didLayout:(WebLayoutMilestones)milestones;
+#endif
 
 // For implementing the WebInspector's test harness
 - (void)webView:(WebView *)webView didClearInspectorWindowObject:(WebScriptObject *)windowObject forFrame:(WebFrame *)frame;

@@ -34,7 +34,6 @@
 #include "Weak.h"
 #include "WeakGCMapInlines.h"
 
-using namespace WTF;
 using namespace JSC;
 
 #ifdef __cplusplus
@@ -46,9 +45,9 @@ JSWeakObjectMapRef JSWeakObjectMapCreate(JSContextRef context, void* privateData
     ExecState* exec = toJS(context);
     VM& vm = exec->vm();
     JSLockHolder locker(vm);
-    RefPtr<OpaqueJSWeakObjectMap> map = OpaqueJSWeakObjectMap::create(vm, privateData, callback);
-    exec->lexicalGlobalObject()->registerWeakMap(map.get());
-    return map.get();
+    auto map = OpaqueJSWeakObjectMap::create(vm, privateData, callback);
+    exec->lexicalGlobalObject()->registerWeakMap(map.ptr());
+    return map.ptr();
 }
 
 void JSWeakObjectMapSet(JSContextRef ctx, JSWeakObjectMapRef map, void* key, JSObjectRef object)

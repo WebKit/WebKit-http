@@ -119,7 +119,7 @@ void HTMLPlugInImageElement::finishCreating()
 HTMLPlugInImageElement::~HTMLPlugInImageElement()
 {
     if (m_needsDocumentActivationCallbacks)
-        document().unregisterForDocumentSuspensionCallbacks(this);
+        document().unregisterForDocumentSuspensionCallbacks(*this);
 }
 
 void HTMLPlugInImageElement::setDisplayState(DisplayState state)
@@ -158,7 +158,7 @@ bool HTMLPlugInImageElement::isImageType()
 bool HTMLPlugInImageElement::allowedToLoadFrameURL(const String& url)
 {
     URL completeURL = document().completeURL(url);
-    if (contentFrame() && protocolIsJavaScript(completeURL) && !document().securityOrigin().canAccess(contentDocument()->securityOrigin()))
+    if (contentFrame() && WTF::protocolIsJavaScript(completeURL) && !document().securityOrigin().canAccess(contentDocument()->securityOrigin()))
         return false;
     return document().frame()->isURLAllowed(completeURL);
 }
@@ -185,13 +185,13 @@ RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(RenderSty
     // inactive or reactivates so it can clear the renderer before going into the page cache.
     if (!m_needsDocumentActivationCallbacks) {
         m_needsDocumentActivationCallbacks = true;
-        document().registerForDocumentSuspensionCallbacks(this);
+        document().registerForDocumentSuspensionCallbacks(*this);
     }
 
     if (displayState() == DisplayingSnapshot) {
         auto renderSnapshottedPlugIn = createRenderer<RenderSnapshottedPlugIn>(*this, WTFMove(style));
         renderSnapshottedPlugIn->updateSnapshot(m_snapshotImage.get());
-        return WTFMove(renderSnapshottedPlugIn);
+        return renderSnapshottedPlugIn;
     }
 
     if (useFallbackContent())
@@ -301,8 +301,8 @@ void HTMLPlugInImageElement::didMoveToNewDocument(Document& oldDocument, Documen
 {
     ASSERT_WITH_SECURITY_IMPLICATION(&document() == &newDocument);
     if (m_needsDocumentActivationCallbacks) {
-        oldDocument.unregisterForDocumentSuspensionCallbacks(this);
-        newDocument.registerForDocumentSuspensionCallbacks(this);
+        oldDocument.unregisterForDocumentSuspensionCallbacks(*this);
+        newDocument.registerForDocumentSuspensionCallbacks(*this);
     }
 
     if (m_imageLoader)
@@ -414,7 +414,7 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot& root)
 
 bool HTMLPlugInImageElement::partOfSnapshotOverlay(const EventTarget* target) const
 {
-    static NeverDestroyed<AtomicString> selector(".snapshot-overlay", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<AtomString> selector(".snapshot-overlay", AtomString::ConstructFromLiteral);
     auto shadow = userAgentShadowRoot();
     if (!shadow)
         return false;

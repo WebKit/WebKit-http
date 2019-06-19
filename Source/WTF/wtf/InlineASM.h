@@ -23,9 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef InlineASM_h
-#define InlineASM_h
+#pragma once
+
 #include <wtf/Platform.h>
+
 #if !CPU(UNKNOWN)
 
 /* asm directive helpers */ 
@@ -36,7 +37,7 @@
 #define SYMBOL_STRING(name) #name
 #endif
 
-#if OS(IOS)
+#if OS(IOS_FAMILY)
 #define THUMB_FUNC_PARAM(name) SYMBOL_STRING(name)
 #else
 #define THUMB_FUNC_PARAM(name)
@@ -92,11 +93,10 @@
 #define LOCAL_LABEL_STRING(name) ".L" #name
 #endif
 
-#if (CPU(ARM_TRADITIONAL) && (defined(thumb2) || defined(__thumb2__) || defined(__thumb) || defined(__thumb__))) || CPU(ARM_THUMB2)
+#if CPU(ARM_THUMB2)
 #define INLINE_ARM_FUNCTION(name) ".thumb" "\n" ".thumb_func " THUMB_FUNC_PARAM(name) "\n"
 #else
 #define INLINE_ARM_FUNCTION(name)
 #endif
 
 #endif // !CPU(UNKNOWN)
-#endif // InlineASM_h

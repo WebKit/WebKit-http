@@ -26,11 +26,21 @@
 #import "config.h"
 #import "WKImagePreviewViewController.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import <UIKitSPI.h>
 #import <WebCore/IntSize.h>
 #import <_WKElementAction.h>
+
+#if HAVE(LINK_PREVIEW)
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKImagePreviewViewControllerAdditions.mm>)
+#include <WebKitAdditions/WKImagePreviewViewControllerAdditions.mm>
+#else
+static void setAdditionalPreviewActionInfo(UIPreviewAction *, _WKElementAction *)
+{
+}
+#endif
+#endif
 
 @implementation WKImagePreviewViewController {
     RetainPtr<CGImageRef> _image;
@@ -53,6 +63,7 @@
     _image = image;
 
     _imageView = adoptNS([[UIImageView alloc] initWithFrame:CGRectZero]);
+    _imageView.get().contentMode = UIViewContentModeScaleAspectFill;
     RetainPtr<UIImage> uiImage = adoptNS([[UIImage alloc] initWithCGImage:_image.get()]);
     [_imageView setImage:uiImage.get()];
 
@@ -92,13 +103,16 @@ static CGSize _scaleSizeWithinSize(CGSize source, CGSize destination)
 }
 
 #if HAVE(LINK_PREVIEW)
-- (NSArray <UIViewControllerPreviewAction *> *)previewActions
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+- (NSArray<UIPreviewAction *> *)previewActionItems
+IGNORE_WARNINGS_END
 {
-    NSMutableArray<UIViewControllerPreviewAction *> *previewActions = [NSMutableArray array];
+    NSMutableArray<UIPreviewAction *> *previewActions = [NSMutableArray array];
     for (_WKElementAction *imageAction in _imageActions.get()) {
-        UIViewControllerPreviewAction *previewAction = [UIViewControllerPreviewAction actionWithTitle:imageAction.title handler:^(UIViewControllerPreviewAction *action, UIViewController *previewViewController) {
+        UIPreviewAction *previewAction = [UIPreviewAction actionWithTitle:imageAction.title style:UIPreviewActionStyleDefault handler:^(UIPreviewAction *action, UIViewController *previewViewController) {
             [imageAction runActionWithElementInfo:_activatedElementInfo.get()];
         }];
+        setAdditionalPreviewActionInfo(previewAction, imageAction);
 
         [previewActions addObject:previewAction];
     }

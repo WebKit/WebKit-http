@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BinarySemaphore_h
-#define BinarySemaphore_h
+#pragma once
 
 #include <wtf/Condition.h>
 #include <wtf/Lock.h>
@@ -35,11 +34,22 @@ namespace WTF {
 
 class BinarySemaphore {
     WTF_MAKE_NONCOPYABLE(BinarySemaphore);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    BinarySemaphore() = default;
+    constexpr BinarySemaphore() = default;
 
     WTF_EXPORT_PRIVATE void signal();
-    WTF_EXPORT_PRIVATE bool wait(TimeWithDynamicClockType);
+    WTF_EXPORT_PRIVATE bool waitUntil(const TimeWithDynamicClockType&);
+
+    bool waitFor(Seconds relativeTimeout)
+    {
+        return waitUntil(MonotonicTime::now() + relativeTimeout);
+    }
+
+    void wait()
+    {
+        waitUntil(ParkingLot::Time::infinity());
+    }
 
 private:
     bool m_isSet { false };
@@ -50,5 +60,3 @@ private:
 } // namespace WTF
 
 using WTF::BinarySemaphore;
-
-#endif // BinarySemaphore_h

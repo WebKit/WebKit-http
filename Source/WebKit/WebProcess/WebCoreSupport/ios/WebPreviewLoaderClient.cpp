@@ -37,19 +37,18 @@
 
 namespace WebKit {
 
-using PasswordCallbackMap = HashMap<uint64_t, Function<void(const String&)>>;
+using PasswordCallbackMap = HashMap<WebCore::PageIdentifier, Function<void(const String&)>>;
 static PasswordCallbackMap& passwordCallbacks()
 {
     static NeverDestroyed<PasswordCallbackMap> callbackMap;
     return callbackMap.get();
 }
 
-WebPreviewLoaderClient::WebPreviewLoaderClient(const String& fileName, const String& uti, uint64_t pageID)
+WebPreviewLoaderClient::WebPreviewLoaderClient(const String& fileName, const String& uti, WebCore::PageIdentifier pageID)
     : m_fileName { fileName }
     , m_uti { uti }
     , m_pageID { pageID }
 {
-    WebProcess::singleton().send(Messages::WebPageProxy::DidStartLoadForQuickLookDocumentInMainFrame(m_fileName, m_uti), m_pageID);
 }
 
 WebPreviewLoaderClient::~WebPreviewLoaderClient()
@@ -59,6 +58,9 @@ WebPreviewLoaderClient::~WebPreviewLoaderClient()
 
 void WebPreviewLoaderClient::didReceiveDataArray(CFArrayRef dataArray)
 {
+    if (m_data.isEmpty())
+        WebProcess::singleton().send(Messages::WebPageProxy::DidStartLoadForQuickLookDocumentInMainFrame(m_fileName, m_uti), m_pageID);
+
     CFArrayApplyFunction(dataArray, CFRangeMake(0, CFArrayGetCount(dataArray)), [](const void* value, void* context) {
         ASSERT(CFGetTypeID(value) == CFDataGetTypeID());
         static_cast<QuickLookDocumentData*>(context)->append((CFDataRef)value);
@@ -83,7 +85,7 @@ void WebPreviewLoaderClient::didRequestPassword(Function<void(const String&)>&& 
     WebProcess::singleton().send(Messages::WebPageProxy::DidRequestPasswordForQuickLookDocumentInMainFrame(m_fileName), m_pageID);
 }
 
-void WebPreviewLoaderClient::didReceivePassword(const String& password, uint64_t pageID)
+void WebPreviewLoaderClient::didReceivePassword(const String& password, WebCore::PageIdentifier pageID)
 {
     ASSERT(passwordCallbacks().contains(pageID));
     auto completionHandler = passwordCallbacks().take(pageID);

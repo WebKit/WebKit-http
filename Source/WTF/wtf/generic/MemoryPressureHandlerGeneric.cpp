@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "MemoryPressureHandler.h"
+#include <wtf/MemoryPressureHandler.h>
 
 namespace WTF {
 
@@ -40,17 +40,17 @@ void MemoryPressureHandler::uninstall()
 {
 }
 
-void MemoryPressureHandler::holdOff(Seconds seconds)
+void MemoryPressureHandler::holdOff(Seconds)
 {
 }
 
-void MemoryPressureHandler::respondToMemoryPressure(Critical critical, Synchronous synchronous)
+void MemoryPressureHandler::respondToMemoryPressure(Critical, Synchronous)
 {
 }
 
-std::optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
+Optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
 {
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 } // namespace WTF

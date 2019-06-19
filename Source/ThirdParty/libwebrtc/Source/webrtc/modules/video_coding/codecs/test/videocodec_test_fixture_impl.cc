@@ -11,6 +11,7 @@
 #include "modules/video_coding/codecs/test/videocodec_test_fixture_impl.h"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 #include <utility>
 
@@ -70,11 +71,11 @@ void ConfigureSimulcast(VideoCodec* codec_settings) {
 void ConfigureSvc(VideoCodec* codec_settings) {
   RTC_CHECK_EQ(kVideoCodecVP9, codec_settings->codecType);
 
-  const std::vector<SpatialLayer> layers =
-      GetSvcConfig(codec_settings->width, codec_settings->height,
-                   codec_settings->VP9()->numberOfSpatialLayers,
-                   codec_settings->VP9()->numberOfTemporalLayers,
-                   /* is_screen_sharing = */ false);
+  const std::vector<SpatialLayer> layers = GetSvcConfig(
+      codec_settings->width, codec_settings->height, kMaxFramerateFps,
+      codec_settings->VP9()->numberOfSpatialLayers,
+      codec_settings->VP9()->numberOfTemporalLayers,
+      /* is_screen_sharing = */ false);
   ASSERT_EQ(codec_settings->VP9()->numberOfSpatialLayers, layers.size())
       << "GetSvcConfig returned fewer spatial layers than configured.";
 
@@ -121,22 +122,15 @@ std::string CodecSpecificToString(const VideoCodec& codec) {
 }
 
 bool RunEncodeInRealTime(const VideoCodecTestFixtureImpl::Config& config) {
-  if (config.measure_cpu) {
+  if (config.measure_cpu || config.encode_in_real_time) {
     return true;
   }
-#if defined(WEBRTC_ANDROID)
-  // In order to not overwhelm the OpenMAX buffers in the Android MediaCodec.
-  return (config.hw_encoder || config.hw_decoder);
-#else
   return false;
-#endif
 }
 
 std::string FilenameWithParams(
     const VideoCodecTestFixtureImpl::Config& config) {
-  std::string implementation_type = config.hw_encoder ? "hw" : "sw";
   return config.filename + "_" + config.CodecName() + "_" +
-         implementation_type + "_" +
          std::to_string(config.codec_settings.startBitrate);
 }
 
@@ -244,7 +238,7 @@ size_t VideoCodecTestFixtureImpl::Config::NumberOfSimulcastStreams() const {
 
 std::string VideoCodecTestFixtureImpl::Config::ToString() const {
   std::string codec_type = CodecTypeToPayloadString(codec_settings.codecType);
-  std::stringstream ss;
+  rtc::StringBuilder ss;
   ss << "filename: " << filename;
   ss << "\nnum_frames: " << num_frames;
   ss << "\nmax_payload_size_bytes: " << max_payload_size_bytes;
@@ -283,7 +277,7 @@ std::string VideoCodecTestFixtureImpl::Config::ToString() const {
     }
   }
   ss << "\n";
-  return ss.str();
+  return ss.Release();
 }
 
 std::string VideoCodecTestFixtureImpl::Config::CodecName() const {
@@ -301,10 +295,6 @@ std::string VideoCodecTestFixtureImpl::Config::CodecName() const {
     }
   }
   return name;
-}
-
-bool VideoCodecTestFixtureImpl::Config::IsAsyncCodec() const {
-  return hw_encoder || hw_decoder;
 }
 
 // TODO(kthelgason): Move this out of the test fixture impl and
@@ -454,16 +444,13 @@ void VideoCodecTestFixtureImpl::ProcessAllFrames(
   }
 
   // Wait until we know that the last frame has been sent for encode.
-  rtc::Event sync_event(false, false);
+  rtc::Event sync_event;
   task_queue->PostTask([&sync_event] { sync_event.Set(); });
   sync_event.Wait(rtc::Event::kForever);
 
   // Give the VideoProcessor pipeline some time to process the last frame,
   // and then release the codecs.
-  if (config_.IsAsyncCodec()) {
-    SleepMs(1 * rtc::kNumMillisecsPerSec);
-  }
-
+  SleepMs(1 * rtc::kNumMillisecsPerSec);
   cpu_process_time_->Stop();
 }
 
@@ -684,7 +671,7 @@ void VideoCodecTestFixtureImpl::PrintSettings(
   std::string encoder_name;
   std::string decoder_name;
   task_queue->SendTask([this, &encoder_name, &decoder_name] {
-    encoder_name = encoder_->ImplementationName();
+    encoder_name = encoder_->GetEncoderInfo().implementation_name;
     decoder_name = decoders_.at(0)->ImplementationName();
   });
   printf("enc_impl_name: %s\n", encoder_name.c_str());

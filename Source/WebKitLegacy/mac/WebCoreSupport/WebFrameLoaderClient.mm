@@ -44,11 +44,12 @@
 #import "WebElementDictionary.h"
 #import "WebFormDelegate.h"
 #import "WebFrameInternal.h"
-#import "WebFrameLoadDelegate.h"
+#import "WebFrameLoadDelegatePrivate.h"
 #import "WebFrameNetworkingContext.h"
 #import "WebFrameViewInternal.h"
 #import "WebHTMLRepresentationPrivate.h"
 #import "WebHTMLViewInternal.h"
+#import "WebHistoryDelegate.h"
 #import "WebHistoryInternal.h"
 #import "WebHistoryItemInternal.h"
 #import "WebKitErrorsPrivate.h"
@@ -67,6 +68,7 @@
 #import "WebPolicyDelegatePrivate.h"
 #import "WebPreferences.h"
 #import "WebResourceLoadDelegate.h"
+#import "WebResourceLoadDelegatePrivate.h"
 #import "WebScriptWorldInternal.h"
 #import "WebSecurityOriginInternal.h"
 #import "WebUIDelegate.h"
@@ -130,12 +132,16 @@
 #import <wtf/RunLoop.h>
 #import <wtf/text/WTFString.h>
 
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WebFrameLoaderClientAdditions.mm>
+#endif
+
 #if USE(PLUGIN_HOST_PROCESS) && ENABLE(NETSCAPE_PLUGIN_API)
 #import "NetscapePluginHostManager.h"
 #import "WebHostedNetscapePluginView.h"
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <WebCore/HTMLPlugInImageElement.h>
 #import <WebCore/WAKClipView.h>
 #import <WebCore/WAKScrollView.h>
@@ -163,7 +169,7 @@
 using namespace WebCore;
 using namespace HTMLNames;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 @interface WebHTMLView (Init)
 - (id)initWithFrame:(CGRect)frame;
 @end
@@ -176,6 +182,7 @@ NSString *WebPluginContainerKey = @"WebPluginContainer";
 
 @interface WebFramePolicyListener : NSObject <WebPolicyDecisionListener, WebFormSubmissionListener> {
     RefPtr<Frame> _frame;
+    PolicyCheckIdentifier _identifier;
     FramePolicyFunction _policyFunction;
 #if HAVE(APP_LINKS)
     RetainPtr<NSURL> _appLinkURL;
@@ -183,9 +190,9 @@ NSString *WebPluginContainerKey = @"WebPluginContainer";
     PolicyAction _defaultPolicy;
 }
 
-- (id)initWithFrame:(Frame*)frame policyFunction:(FramePolicyFunction&&)policyFunction defaultPolicy:(PolicyAction)defaultPolicy;
+- (id)initWithFrame:(Frame*)frame identifier:(PolicyCheckIdentifier)identifier policyFunction:(FramePolicyFunction&&)policyFunction defaultPolicy:(PolicyAction)defaultPolicy;
 #if HAVE(APP_LINKS)
-- (id)initWithFrame:(Frame*)frame policyFunction:(FramePolicyFunction&&)policyFunction defaultPolicy:(PolicyAction)defaultPolicy appLinkURL:(NSURL *)url;
+- (id)initWithFrame:(Frame*)frame identifier:(PolicyCheckIdentifier)identifier policyFunction:(FramePolicyFunction&&)policyFunction defaultPolicy:(PolicyAction)defaultPolicy appLinkURL:(NSURL *)url;
 #endif
 
 - (void)invalidate;
@@ -202,14 +209,14 @@ WebFrameLoaderClient::WebFrameLoaderClient(WebFrame *webFrame)
 {
 }
 
-std::optional<uint64_t> WebFrameLoaderClient::pageID() const
+Optional<PageIdentifier> WebFrameLoaderClient::pageID() const
 {
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
-std::optional<uint64_t> WebFrameLoaderClient::frameID() const
+Optional<uint64_t> WebFrameLoaderClient::frameID() const
 {
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 PAL::SessionID WebFrameLoaderClient::sessionID() const
@@ -240,7 +247,7 @@ bool WebFrameLoaderClient::hasHTMLView() const
     return [view isKindOfClass:[WebHTMLView class]];
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 bool WebFrameLoaderClient::forceLayoutOnRestoreFromPageCache()
 {
     NSView <WebDocumentView> *view = [m_webFrame->_private->webFrameView documentView];
@@ -285,7 +292,7 @@ void WebFrameLoaderClient::detachedFromParent2()
 {
     //remove any NetScape plugins that are children of this frame because they are about to be detached
     WebView *webView = getWebView(m_webFrame.get());
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     [webView removePluginInstanceViewsFor:(m_webFrame.get())];
 #endif
     [m_webFrame->_private->webFrameView _setWebFrame:nil]; // needed for now to be compatible w/ old behavior
@@ -308,27 +315,25 @@ void WebFrameLoaderClient::convertMainResourceLoadToDownload(DocumentLoader* doc
 
     if (!mainResourceLoader) {
         // The resource has already been cached, or the conversion is being attmpted when not calling SubresourceLoader::didReceiveResponse().
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         WebDownload *webDownload = [[WebDownload alloc] initWithRequest:request.nsURLRequest(HTTPBodyUpdatePolicy::UpdateHTTPBody) delegate:[webView downloadDelegate]];
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
         [webDownload autorelease];
         return;
     }
 
     ResourceHandle* handle = mainResourceLoader->handle();
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [WebDownload _downloadWithLoadingConnection:handle->connection() request:request.nsURLRequest(HTTPBodyUpdatePolicy::UpdateHTTPBody) response:response.nsURLResponse() delegate:[webView downloadDelegate] proxy:nil];
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 bool WebFrameLoaderClient::dispatchDidLoadResourceFromMemoryCache(DocumentLoader* loader, const ResourceRequest& request, const ResourceResponse& response, int length)
 {
     WebView *webView = getWebView(m_webFrame.get());
     WebResourceDelegateImplementationCache* implementations = WebViewGetResourceLoadDelegateImplementations(webView);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (implementations->webThreadDidLoadResourceFromMemoryCacheFunc) {
         CallResourceLoadDelegateInWebThread(implementations->webThreadDidLoadResourceFromMemoryCacheFunc, webView, @selector(webThreadWebView:didLoadResourceFromMemoryCache:response:length:fromDataSource:), request.nsURLRequest(HTTPBodyUpdatePolicy::UpdateHTTPBody), response.nsURLResponse(), length, dataSource(loader));
         return true;
@@ -348,7 +353,7 @@ void WebFrameLoaderClient::assignIdentifierToInitialRequest(unsigned long identi
 
     RetainPtr<id> object;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (implementations->webThreadIdentifierForRequestFunc) {
         object = CallResourceLoadDelegateInWebThread(implementations->webThreadIdentifierForRequestFunc, webView, @selector(webThreadWebView:identifierForInitialRequest:fromDataSource:), request.nsURLRequest(HTTPBodyUpdatePolicy::UpdateHTTPBody), dataSource(loader));
     } else
@@ -379,7 +384,7 @@ void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader* loader, unsig
 #endif
 
     NSURLRequest *newURLRequest = currentURLRequest;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (implementations->webThreadWillSendRequestFunc) {
         newURLRequest = (NSURLRequest *)CallResourceLoadDelegateInWebThread(implementations->webThreadWillSendRequestFunc, webView, @selector(webThreadWebView:resource:willSendRequest:redirectResponse:fromDataSource:), [webView _objectForIdentifier:identifier], currentURLRequest, redirectResponse.nsURLResponse(), dataSource(loader));
     } else
@@ -418,7 +423,7 @@ void WebFrameLoaderClient::dispatchDidReceiveAuthenticationChallenge(DocumentLoa
         }
     }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     NSWindow *window = [webView hostWindow] ? [webView hostWindow] : [webView window];
     [[WebPanelAuthenticationHandler sharedHandler] startAuthentication:webChallenge window:window];
 #endif
@@ -445,7 +450,7 @@ bool WebFrameLoaderClient::canAuthenticateAgainstProtectionSpace(DocumentLoader*
 }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 RetainPtr<CFDictionaryRef> WebFrameLoaderClient::connectionProperties(DocumentLoader* loader, unsigned long identifier)
 {
     WebView *webView = getWebView(m_webFrame.get());
@@ -478,7 +483,7 @@ void WebFrameLoaderClient::dispatchDidReceiveResponse(DocumentLoader* loader, un
     WebView *webView = getWebView(m_webFrame.get());
     WebResourceDelegateImplementationCache* implementations = WebViewGetResourceLoadDelegateImplementations(webView);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (implementations->webThreadDidReceiveResponseFunc) {
         if (id resource = [webView _objectForIdentifier:identifier])
             CallResourceLoadDelegateInWebThread(implementations->webThreadDidReceiveResponseFunc, webView, @selector(webThreadWebView:resource:didReceiveResponse:fromDataSource:), resource, response.nsURLResponse(), dataSource(loader));
@@ -496,7 +501,7 @@ void WebFrameLoaderClient::willCacheResponse(DocumentLoader* loader, unsigned lo
     WebView *webView = getWebView(m_webFrame.get());
     WebResourceDelegateImplementationCache* implementations = WebViewGetResourceLoadDelegateImplementations(webView);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (implementations->webThreadWillCacheResponseFunc) {
         if (id resource = [webView _objectForIdentifier:identifier])
             return completionHandler(CallResourceLoadDelegateInWebThread(implementations->webThreadWillCacheResponseFunc, webView, @selector(webThreadWebView:resource:willCacheResponse:fromDataSource:), resource, response, dataSource(loader)));
@@ -515,7 +520,7 @@ void WebFrameLoaderClient::dispatchDidReceiveContentLength(DocumentLoader* loade
 {
     WebView *webView = getWebView(m_webFrame.get());
     WebResourceDelegateImplementationCache* implementations = WebViewGetResourceLoadDelegateImplementations(webView);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (implementations->webThreadDidReceiveContentLengthFunc) {
         if (id resource = [webView _objectForIdentifier:identifier])
             CallResourceLoadDelegateInWebThread(implementations->webThreadDidReceiveContentLengthFunc, webView, @selector(webThreadWebView:resource:didReceiveContentLength:fromDataSource:), resource, (NSInteger)dataLength, dataSource(loader));
@@ -538,7 +543,7 @@ void WebFrameLoaderClient::dispatchDidFinishLoading(DocumentLoader* loader, unsi
     WebView *webView = getWebView(m_webFrame.get());
     WebResourceDelegateImplementationCache* implementations = WebViewGetResourceLoadDelegateImplementations(webView);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (implementations->webThreadDidFinishLoadingFromDataSourceFunc) {
         if (id resource = [webView _objectForIdentifier:identifier])
             CallResourceLoadDelegateInWebThread(implementations->webThreadDidFinishLoadingFromDataSourceFunc, webView, @selector(webThreadWebView:resource:didFinishLoadingFromDataSource:), resource, dataSource(loader));
@@ -560,7 +565,7 @@ void WebFrameLoaderClient::dispatchDidFailLoading(DocumentLoader* loader, unsign
     WebView *webView = getWebView(m_webFrame.get());
     WebResourceDelegateImplementationCache* implementations = WebViewGetResourceLoadDelegateImplementations(webView);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (implementations->webThreadDidFailLoadingWithErrorFromDataSourceFunc) {
         if (id resource = [webView _objectForIdentifier:identifier])
             CallResourceLoadDelegateInWebThread(implementations->webThreadDidFailLoadingWithErrorFromDataSourceFunc, webView, @selector(webThreadWebView:resource:didFailLoadingWithError:fromDataSource:), resource, (NSError *)error, dataSource(loader));
@@ -602,7 +607,7 @@ void WebFrameLoaderClient::dispatchDidCancelClientRedirect()
         CallFrameLoadDelegate(implementations->didCancelClientRedirectForFrameFunc, webView, @selector(webView:didCancelClientRedirectForFrame:), m_webFrame.get());
 }
 
-void WebFrameLoaderClient::dispatchWillPerformClientRedirect(const URL& url, double delay, WallTime fireDate)
+void WebFrameLoaderClient::dispatchWillPerformClientRedirect(const URL& url, double delay, WallTime fireDate, LockBackForwardList)
 {
     WebView *webView = getWebView(m_webFrame.get());
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
@@ -620,7 +625,7 @@ void WebFrameLoaderClient::dispatchDidChangeLocationWithinPage()
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
     if (implementations->didChangeLocationWithinPageForFrameFunc)
         CallFrameLoadDelegate(implementations->didChangeLocationWithinPageForFrameFunc, webView, @selector(webView:didChangeLocationWithinPageForFrame:), m_webFrame.get());
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     [[webView _UIKitDelegateForwarder] webView:webView didChangeLocationWithinPageForFrame:m_webFrame.get()];
 #endif
 }
@@ -661,7 +666,7 @@ void WebFrameLoaderClient::dispatchWillClose()
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
     if (implementations->willCloseFrameFunc)
         CallFrameLoadDelegate(implementations->willCloseFrameFunc, webView, @selector(webView:willCloseFrame:), m_webFrame.get());
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     [[webView _UIKitDelegateForwarder] webView:webView willCloseFrame:m_webFrame.get()];
 #endif
 }
@@ -672,11 +677,11 @@ void WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
     m_webFrame->_private->provisionalURL = core(m_webFrame.get())->loader().provisionalDocumentLoader()->url().string();
 
     WebView *webView = getWebView(m_webFrame.get());
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     [webView _didStartProvisionalLoadForFrame:m_webFrame.get()];
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     [[webView _UIKitDelegateForwarder] webView:webView didStartProvisionalLoadForFrame:m_webFrame.get()];
 #endif
 
@@ -699,7 +704,7 @@ void WebFrameLoaderClient::dispatchDidReceiveTitle(const StringWithDirection& ti
     }
 }
 
-void WebFrameLoaderClient::dispatchDidCommitLoad(std::optional<HasInsecureContent>)
+void WebFrameLoaderClient::dispatchDidCommitLoad(Optional<HasInsecureContent>)
 {
     // Tell the client we've committed this URL.
     ASSERT([m_webFrame->_private->webFrameView documentView] != nil);
@@ -710,7 +715,7 @@ void WebFrameLoaderClient::dispatchDidCommitLoad(std::optional<HasInsecureConten
     m_webFrame->_private->url = m_webFrame->_private->provisionalURL;
     m_webFrame->_private->provisionalURL = nullptr;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     [[webView _UIKitDelegateForwarder] webView:webView didCommitLoadForFrame:m_webFrame.get()];
 #endif
     
@@ -719,12 +724,12 @@ void WebFrameLoaderClient::dispatchDidCommitLoad(std::optional<HasInsecureConten
         CallFrameLoadDelegate(implementations->didCommitLoadForFrameFunc, webView, @selector(webView:didCommitLoadForFrame:), m_webFrame.get());
 }
 
-void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error)
+void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error, WillContinueLoading)
 {
     m_webFrame->_private->provisionalURL = nullptr;
 
     WebView *webView = getWebView(m_webFrame.get());
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     [webView _didFailProvisionalLoadWithError:error forFrame:m_webFrame.get()];
 #endif
 
@@ -740,14 +745,14 @@ void WebFrameLoaderClient::dispatchDidFailLoad(const ResourceError& error)
     ASSERT(!m_webFrame->_private->provisionalURL);
 
     WebView *webView = getWebView(m_webFrame.get());
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     [webView _didFailLoadWithError:error forFrame:m_webFrame.get()];
 #endif
 
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
     if (implementations->didFailLoadWithErrorForFrameFunc)
         CallFrameLoadDelegate(implementations->didFailLoadWithErrorForFrameFunc, webView, @selector(webView:didFailLoadWithError:forFrame:), (NSError *)error, m_webFrame.get());
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     [[webView _UIKitDelegateForwarder] webView:webView didFailLoadWithError:((NSError *)error) forFrame:m_webFrame.get()];
 #endif
 
@@ -758,7 +763,7 @@ void WebFrameLoaderClient::dispatchDidFinishDocumentLoad()
 {
     WebView *webView = getWebView(m_webFrame.get());
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     id webThreadDel = [webView _webMailDelegate];
     if ([webThreadDel respondsToSelector:@selector(_webthread_webView:didFinishDocumentLoadForFrame:)]) {
         [webThreadDel _webthread_webView:webView didFinishDocumentLoadForFrame:m_webFrame.get()];
@@ -775,7 +780,7 @@ void WebFrameLoaderClient::dispatchDidFinishLoad()
     ASSERT(!m_webFrame->_private->provisionalURL);
 
     WebView *webView = getWebView(m_webFrame.get());
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     [webView _didFinishLoadForFrame:m_webFrame.get()];
 #else
     [[webView _UIKitDelegateForwarder] webView:webView didFinishLoadForFrame:m_webFrame.get()];
@@ -793,12 +798,12 @@ void WebFrameLoaderClient::dispatchDidFinishLoad()
     [m_webFrame->_private->internalLoadDelegate webFrame:m_webFrame.get() didFinishLoadWithError:nil];
 }
 
-void WebFrameLoaderClient::dispatchDidReachLayoutMilestone(LayoutMilestones milestones)
+void WebFrameLoaderClient::dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone> milestones)
 {
     WebView *webView = getWebView(m_webFrame.get());
     WebFrameLoadDelegateImplementationCache* implementations = WebViewGetFrameLoadDelegateImplementations(webView);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (implementations->webThreadDidLayoutFunc)
         CallFrameLoadDelegateInWebThread(implementations->webThreadDidLayoutFunc, webView, @selector(webThreadWebView:didLayout:), kitLayoutMilestones(milestones));
 #else
@@ -812,7 +817,7 @@ void WebFrameLoaderClient::dispatchDidReachLayoutMilestone(LayoutMilestones mile
         if (implementations->didFirstLayoutInFrameFunc)
             CallFrameLoadDelegate(implementations->didFirstLayoutInFrameFunc, webView, @selector(webView:didFirstLayoutInFrame:), m_webFrame.get());
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         [[webView _UIKitDelegateForwarder] webView:webView didFirstLayoutInFrame:m_webFrame.get()];
 #endif
  
@@ -820,7 +825,7 @@ void WebFrameLoaderClient::dispatchDidReachLayoutMilestone(LayoutMilestones mile
         WebDynamicScrollBarsView *scrollView = [m_webFrame->_private->webFrameView _scrollView];
         if ([getWebView(m_webFrame.get()) drawsBackground])
             [scrollView setDrawsBackground:YES];
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
         [scrollView setVerticalScrollElasticity:NSScrollElasticityAutomatic];
         [scrollView setHorizontalScrollElasticity:NSScrollElasticityAutomatic];
 #endif
@@ -831,7 +836,7 @@ void WebFrameLoaderClient::dispatchDidReachLayoutMilestone(LayoutMilestones mile
         // double duty with the new didLayout API.
         if (implementations->didFirstVisuallyNonEmptyLayoutInFrameFunc)
             CallFrameLoadDelegate(implementations->didFirstVisuallyNonEmptyLayoutInFrameFunc, webView, @selector(webView:didFirstVisuallyNonEmptyLayoutInFrame:), m_webFrame.get());
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         if ([webView mainFrame] == m_webFrame.get())
             [[webView _UIKitDelegateForwarder] webView:webView didFirstVisuallyNonEmptyLayoutInFrame:m_webFrame.get()];
 #endif
@@ -861,7 +866,7 @@ void WebFrameLoaderClient::dispatchShow()
     [[webView _UIDelegateForwarder] webViewShow:webView];
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, WebCore::PolicyCheckIdentifier identifier, const String&, FramePolicyFunction&& function)
 {
     WebView *webView = getWebView(m_webFrame.get());
 
@@ -869,7 +874,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
                         decidePolicyForMIMEType:response.mimeType()
                                         request:request.nsURLRequest(HTTPBodyUpdatePolicy::UpdateHTTPBody)
                                           frame:m_webFrame.get()
-                               decisionListener:setUpPolicyListener(WTFMove(function), PolicyAction::Use).get()];
+                               decisionListener:setUpPolicyListener(identifier, WTFMove(function), PolicyAction::Use).get()];
 }
 
 
@@ -892,7 +897,7 @@ static BOOL shouldTryAppLink(WebView *webView, const NavigationAction& action, F
 #endif
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& action, const ResourceRequest& request, FormState* formState, const String& frameName, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& action, const ResourceRequest& request, FormState* formState, const String& frameName, WebCore::PolicyCheckIdentifier identifier, FramePolicyFunction&& function)
 {
     WebView *webView = getWebView(m_webFrame.get());
     BOOL tryAppLink = shouldTryAppLink(webView, action, nullptr);
@@ -901,10 +906,10 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const Navigati
             decidePolicyForNewWindowAction:actionDictionary(action, formState)
                                    request:request.nsURLRequest(HTTPBodyUpdatePolicy::UpdateHTTPBody)
                               newFrameName:frameName
-                          decisionListener:setUpPolicyListener(WTFMove(function), PolicyAction::Ignore, tryAppLink ? (NSURL *)request.url() : nil).get()];
+                          decisionListener:setUpPolicyListener(identifier, WTFMove(function), PolicyAction::Ignore, tryAppLink ? (NSURL *)request.url() : nil).get()];
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& action, const ResourceRequest& request, const ResourceResponse&, FormState* formState, PolicyDecisionMode, WebCore::ShouldSkipSafeBrowsingCheck, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& action, const ResourceRequest& request, const ResourceResponse&, FormState* formState, PolicyDecisionMode, WebCore::PolicyCheckIdentifier identifier, FramePolicyFunction&& function)
 {
     WebView *webView = getWebView(m_webFrame.get());
     BOOL tryAppLink = shouldTryAppLink(webView, action, core(m_webFrame.get()));
@@ -913,7 +918,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
                 decidePolicyForNavigationAction:actionDictionary(action, formState)
                                         request:request.nsURLRequest(HTTPBodyUpdatePolicy::UpdateHTTPBody)
                                           frame:m_webFrame.get()
-                               decisionListener:setUpPolicyListener(WTFMove(function), PolicyAction::Ignore, tryAppLink ? (NSURL *)request.url() : nil).get()];
+                               decisionListener:setUpPolicyListener(identifier, WTFMove(function), PolicyAction::Ignore, tryAppLink ? (NSURL *)request.url() : nil).get()];
 }
 
 void WebFrameLoaderClient::cancelPolicyCheck()
@@ -961,7 +966,9 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(FormState& formState, Completi
     }
 
     NSDictionary *values = makeFormFieldValuesDictionary(formState);
-    CallFormDelegate(getWebView(m_webFrame.get()), @selector(frame:sourceFrame:willSubmitForm:withValues:submissionListener:), m_webFrame.get(), kit(formState.sourceDocument().frame()), kit(&formState.form()), values, setUpPolicyListener([completionHandler = WTFMove(completionHandler)](PolicyAction) mutable { completionHandler(); }, PolicyAction::Ignore).get());
+    CallFormDelegate(getWebView(m_webFrame.get()), @selector(frame:sourceFrame:willSubmitForm:withValues:submissionListener:), m_webFrame.get(), kit(formState.sourceDocument().frame()), kit(&formState.form()), values, setUpPolicyListener(PolicyCheckIdentifier { },
+        [completionHandler = WTFMove(completionHandler)](PolicyAction, PolicyCheckIdentifier) mutable { completionHandler(); },
+        PolicyAction::Ignore).get());
 }
 
 void WebFrameLoaderClient::revertToProvisionalState(DocumentLoader* loader)
@@ -987,7 +994,7 @@ void WebFrameLoaderClient::startDownload(const ResourceRequest& request, const S
 
 void WebFrameLoaderClient::willChangeTitle(DocumentLoader* loader)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // FIXME: Should do this only in main frame case, right?
     [getWebView(m_webFrame.get()) _willChangeValueForKey:_WebMainFrameTitleKey];
 #endif
@@ -995,7 +1002,7 @@ void WebFrameLoaderClient::willChangeTitle(DocumentLoader* loader)
 
 void WebFrameLoaderClient::didChangeTitle(DocumentLoader* loader)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // FIXME: Should do this only in main frame case, right?
     [getWebView(m_webFrame.get()) _didChangeValueForKey:_WebMainFrameTitleKey];
 #endif
@@ -1003,7 +1010,7 @@ void WebFrameLoaderClient::didChangeTitle(DocumentLoader* loader)
 
 void WebFrameLoaderClient::didReplaceMultipartContent()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (FrameView *view = core(m_webFrame.get())->view())
         view->didReplaceMultipartContent();
 #endif
@@ -1032,8 +1039,8 @@ void WebFrameLoaderClient::updateGlobalHistory()
 {
     WebView* view = getWebView(m_webFrame.get());
     DocumentLoader* loader = core(m_webFrame.get())->loader().documentLoader();
-#if PLATFORM(IOS)
-    if (loader->urlForHistory() == blankURL())
+#if PLATFORM(IOS_FAMILY)
+    if (loader->urlForHistory() == WTF::blankURL())
         return;
 #endif
 
@@ -1097,25 +1104,10 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
     }
 }
 
-bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem* item) const
+bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem& item) const
 {
     WebView* view = getWebView(m_webFrame.get());
-    WebHistoryItem *webItem = kit(item);
-    
-    return [[view _policyDelegateForwarder] webView:view shouldGoToHistoryItem:webItem];
-}
-
-void WebFrameLoaderClient::updateGlobalHistoryItemForPage()
-{
-    HistoryItem* historyItem = 0;
-
-    if (Page* page = core(m_webFrame.get())->page()) {
-        if (!page->sessionID().isEphemeral())
-            historyItem = page->backForward().currentItem();
-    }
-
-    WebView *webView = getWebView(m_webFrame.get());
-    [webView _setGlobalHistoryItem:historyItem];
+    return [[view _policyDelegateForwarder] webView:view shouldGoToHistoryItem:kit(&item)];
 }
 
 void WebFrameLoaderClient::didDisplayInsecureContent()
@@ -1243,7 +1235,7 @@ void WebFrameLoaderClient::frameLoadCompleted()
 
 void WebFrameLoaderClient::saveViewStateToItem(HistoryItem& item)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Let UIKit handle the scroll point for the main frame.
     WebFrame *webFrame = m_webFrame.get();
     WebView *webView = getWebView(webFrame);   
@@ -1274,7 +1266,7 @@ void WebFrameLoaderClient::restoreViewState()
     if (!currentItem)
         return;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Let UIKit handle the scroll point for the main frame.
     WebFrame *webFrame = m_webFrame.get();
     WebView *webView = getWebView(webFrame);   
@@ -1306,7 +1298,7 @@ void WebFrameLoaderClient::provisionalLoadStarted()
 
     WebDynamicScrollBarsView *scrollView = [m_webFrame->_private->webFrameView _scrollView];
     [scrollView setDrawsBackground:NO];
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     [scrollView setVerticalScrollElasticity:NSScrollElasticityNone];
     [scrollView setHorizontalScrollElasticity:NSScrollElasticityNone];
 #endif
@@ -1326,7 +1318,7 @@ void WebFrameLoaderClient::prepareForDataSourceReplacement()
         return;
     }
     
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // Make sure that any work that is triggered by resigning first reponder can get done.
     // The main example where this came up is the textDidEndEditing that is sent to the
     // FormsDelegate (3223413). We need to do this before _detachChildren, since that will
@@ -1367,8 +1359,11 @@ void WebFrameLoaderClient::setTitle(const StringWithDirection& title, const URL&
         // FIXME: Use direction of title.
         if (implementations->setTitleFunc)
             CallHistoryDelegate(implementations->setTitleFunc, view, @selector(webView:updateHistoryTitle:forURL:inFrame:), (NSString *)title.string, (NSString *)url, m_webFrame.get());
-        else if (implementations->deprecatedSetTitleFunc)
+        else if (implementations->deprecatedSetTitleFunc) {
+IGNORE_WARNINGS_BEGIN("undeclared-selector")
             CallHistoryDelegate(implementations->deprecatedSetTitleFunc, view, @selector(webView:updateHistoryTitle:forURL:), (NSString *)title.string, (NSString *)url);
+IGNORE_WARNINGS_END
+        }
         return;
     }
 
@@ -1376,7 +1371,7 @@ void WebFrameLoaderClient::setTitle(const StringWithDirection& title, const URL&
     nsURL = [nsURL _webkit_canonicalize];
     if(!nsURL)
         return;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if ([[nsURL absoluteString] isEqualToString:@"about:blank"])
         return;
 #endif
@@ -1387,7 +1382,7 @@ void WebFrameLoaderClient::savePlatformDataToCachedFrame(CachedFrame* cachedFram
 {
     cachedFrame->setCachedFramePlatformData(std::make_unique<WebCachedFramePlatformData>(m_webFrame->_private->webFrameView.documentView));
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // At this point we know this frame is going to be cached. Stop all plugins.
     WebView *webView = getWebView(m_webFrame.get());
     [webView _stopAllPlugInsForPageCache];
@@ -1402,7 +1397,7 @@ void WebFrameLoaderClient::transitionToCommittedFromCachedFrame(CachedFrame* cac
     ASSERT(cachedFrame->documentLoader());
     [cachedView setDataSource:dataSource(cachedFrame->documentLoader())];
     
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // clean up webkit plugin instances before WebHTMLView gets freed.
     WebView *webView = getWebView(m_webFrame.get());
     [webView removePluginInstanceViewsFor:(m_webFrame.get())];
@@ -1411,7 +1406,7 @@ void WebFrameLoaderClient::transitionToCommittedFromCachedFrame(CachedFrame* cac
     [m_webFrame->_private->webFrameView _setDocumentView:cachedView];
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 void WebFrameLoaderClient::didRestoreFrameHierarchyForCachedFrame()
 {
     // When entering the PageCache the Document is detached and the plugin view may
@@ -1426,7 +1421,7 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
 {
     WebDataSource *dataSource = [m_webFrame.get() _dataSource];
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool willProduceHTMLView;
     // Fast path that skips initialization of objc class objects.
     if ([dataSource _documentLoader]->responseMIMEType() == "text/html")
@@ -1443,7 +1438,7 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
         return;
     }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // Don't suppress scrollbars before the view creation if we're making the view for a non-HTML view.
     if (!willProduceHTMLView)
         [[m_webFrame->_private->webFrameView _scrollView] setScrollBarsSuppressed:NO repaintOnUnsuppress:NO];
@@ -1476,14 +1471,14 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     if (isMainFrame && coreFrame->view())
         coreFrame->view()->setParentVisible(false);
     coreFrame->setView(nullptr);
-    RefPtr<FrameView> coreView = FrameView::create(*coreFrame);
+    auto coreView = FrameView::create(*coreFrame);
     coreFrame->setView(coreView.copyRef());
 
     [m_webFrame.get() _updateBackgroundAndUpdatesWhileOffscreen];
     [m_webFrame->_private->webFrameView _install];
 
     if (isMainFrame) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         coreView->setDelegatesScrolling(true);
 #endif
         coreView->setParentVisible(true);
@@ -1515,7 +1510,7 @@ void WebFrameLoaderClient::didSaveToPageCache()
 
 void WebFrameLoaderClient::didRestoreFromPageCache()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WebView *webView = getWebView(m_webFrame.get());
     if ([webView mainFrame] == m_webFrame.get())
         [[webView _UIKitDelegateForwarder] webViewDidRestoreFromPageCache:webView];
@@ -1526,7 +1521,7 @@ void WebFrameLoaderClient::dispatchDidBecomeFrameset(bool)
 {
 }
 
-RetainPtr<WebFramePolicyListener> WebFrameLoaderClient::setUpPolicyListener(FramePolicyFunction&& function, PolicyAction defaultPolicy, NSURL *appLinkURL)
+RetainPtr<WebFramePolicyListener> WebFrameLoaderClient::setUpPolicyListener(PolicyCheckIdentifier identifier, FramePolicyFunction&& function, PolicyAction defaultPolicy, NSURL *appLinkURL)
 {
     // FIXME: <rdar://5634381> We need to support multiple active policy listeners.
     [m_policyListener invalidate];
@@ -1534,10 +1529,10 @@ RetainPtr<WebFramePolicyListener> WebFrameLoaderClient::setUpPolicyListener(Fram
     RetainPtr<WebFramePolicyListener> policyListener;
 #if HAVE(APP_LINKS)
     if (appLinkURL)
-        policyListener = adoptNS([[WebFramePolicyListener alloc] initWithFrame:core(m_webFrame.get()) policyFunction:WTFMove(function) defaultPolicy:defaultPolicy appLinkURL:appLinkURL]);
+        policyListener = adoptNS([[WebFramePolicyListener alloc] initWithFrame:core(m_webFrame.get()) identifier:identifier policyFunction:WTFMove(function) defaultPolicy:defaultPolicy appLinkURL:appLinkURL]);
     else
 #endif
-        policyListener = adoptNS([[WebFramePolicyListener alloc] initWithFrame:core(m_webFrame.get()) policyFunction:WTFMove(function) defaultPolicy:defaultPolicy]);
+        policyListener = adoptNS([[WebFramePolicyListener alloc] initWithFrame:core(m_webFrame.get()) identifier:identifier policyFunction:WTFMove(function) defaultPolicy:defaultPolicy]);
 
     m_policyListener = policyListener.get();
 
@@ -1562,7 +1557,7 @@ String WebFrameLoaderClient::userAgent(const URL& url)
 NSDictionary *WebFrameLoaderClient::actionDictionary(const NavigationAction& action, FormState* formState) const
 {
     unsigned modifierFlags = 0;
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     auto keyStateEventData = action.keyStateEventData();
     if (keyStateEventData && keyStateEventData->isTrusted) {
         if (keyStateEventData->ctrlKey)
@@ -1616,18 +1611,18 @@ bool WebFrameLoaderClient::canCachePage() const
     if (!page)
         return false;
     
-    BackForwardList *backForwardList = static_cast<BackForwardList*>(page->backForward().client());
-    if (!backForwardList->enabled())
+    BackForwardList& backForwardList = static_cast<BackForwardList&>(page->backForward().client());
+    if (!backForwardList.enabled())
         return false;
     
-    if (!backForwardList->capacity())
+    if (!backForwardList.capacity())
         return false;
     
     return true;
 }
 
 RefPtr<Frame> WebFrameLoaderClient::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement& ownerElement,
-    const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight)
+    const String& referrer)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     
@@ -1751,7 +1746,9 @@ static NSView *pluginView(WebFrame *frame, WebPluginPackage *pluginPackage,
             element, WebPlugInContainingElementKey,
             nil];
         LOG(Plugins, "arguments:\n%@", arguments);
+IGNORE_WARNINGS_BEGIN("undeclared-selector")
     } else if ([viewFactory respondsToSelector:@selector(pluginViewWithArguments:)]) {
+IGNORE_WARNINGS_END
         arguments = [NSDictionary dictionaryWithObjectsAndKeys:
             baseURL, WebPluginBaseURLKey,
             attributes, WebPluginAttributesKey,
@@ -1781,7 +1778,7 @@ private:
     }
 };
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 @interface WAKView (UIKitSecretsWebKitKnowsAboutSeeUIWebPlugInView)
 - (PlatformLayer *)pluginLayer;
 - (BOOL)willProvidePluginLayer;
@@ -1822,7 +1819,7 @@ public:
             [platformWidget() detachPluginLayer];
     }
 };
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
@@ -1923,29 +1920,13 @@ RefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLPlugI
     int errorCode = 0;
 
     WebView *webView = getWebView(m_webFrame.get());
-#if !PLATFORM(IOS)
-    SEL selector = @selector(webView:plugInViewWithArguments:);
-#endif
-
     Document* document = core(m_webFrame.get())->document();
     NSURL *baseURL = document->baseURL();
     NSURL *pluginURL = url;
-    
-    // <rdar://problem/8366089>: AppleConnect has a bug where it does not
-    // understand the parameter names specified in the <object> element that
-    // embeds its plug-in. This site-specific hack works around the issue by
-    // converting the parameter names to lowercase before passing them to the
-    // plug-in.
-#if !PLATFORM(IOS)
-    Frame* frame = core(m_webFrame.get());
-#endif
     NSMutableArray *attributeKeys = kit(paramNames);
-#if !PLATFORM(IOS)
-    if (frame && frame->settings().needsSiteSpecificQuirks() && equalLettersIgnoringASCIICase(mimeType, "application/x-snkp")) {
-        for (NSUInteger i = 0; i < [attributeKeys count]; ++i)
-            [attributeKeys replaceObjectAtIndex:i withObject:[[attributeKeys objectAtIndex:i] lowercaseString]];
-    }
-    
+
+#if !PLATFORM(IOS_FAMILY)
+    SEL selector = @selector(webView:plugInViewWithArguments:);
     if ([[webView UIDelegate] respondsToSelector:selector]) {
         NSMutableDictionary *attributes = [[NSMutableDictionary alloc] initWithObjects:kit(paramValues) forKeys:attributeKeys];
         NSDictionary *arguments = [[NSDictionary alloc] initWithObjectsAndKeys:
@@ -1979,7 +1960,7 @@ RefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLPlugI
     
     NSString *extension = [[pluginURL path] pathExtension];
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (!pluginPackage && [extension length])
 #else
     if (!pluginPackage && [extension length] && ![MIMEType length])
@@ -2045,7 +2026,7 @@ RefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLPlugI
     }
     
     ASSERT(view);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     return adoptRef(new PluginWidgetIOS(view));
 #else
     return adoptRef(new PluginWidget(view));
@@ -2054,10 +2035,6 @@ RefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& size, HTMLPlugI
     END_BLOCK_OBJC_EXCEPTIONS;
 
     return nullptr;
-}
-
-void WebFrameLoaderClient::recreatePlugin(Widget*)
-{
 }
 
 void WebFrameLoaderClient::redirectDataToPlugin(Widget& pluginWidget)
@@ -2208,7 +2185,7 @@ Ref<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext()
     return WebFrameNetworkingContext::create(core(m_webFrame.get()));
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 bool WebFrameLoaderClient::shouldLoadMediaElementURL(const URL& url) const 
 {
     WebView *webView = getWebView(m_webFrame.get());
@@ -2266,8 +2243,11 @@ RefPtr<PreviewLoaderClient> WebFrameLoaderClient::createPreviewLoaderClient(cons
     if (!filePath)
         return nullptr;
 
+    auto documentWriter = adoptRef(*new QuickLookDocumentWriter(filePath));
+
     [m_webFrame provisionalDataSource]._quickLookContent = @{ WebQuickLookFileNameKey : filePath, WebQuickLookUTIKey : uti };
-    return adoptRef(*new QuickLookDocumentWriter(filePath));
+    [m_webFrame provisionalDataSource]._quickLookPreviewLoaderClient = documentWriter.ptr();
+    return documentWriter;
 }
 #endif
 
@@ -2311,7 +2291,7 @@ void WebFrameLoaderClient::getLoadDecisionForIcons(const Vector<std::pair<WebCor
 
     ASSERT(!m_activeIconLoadCallbackID);
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // WebKit 1, which only supports one icon per page URL, traditionally has preferred the last icon in case of multiple icons listed.
     // To preserve that behavior we walk the list backwards.
     for (auto icon = icons.rbegin(); icon != icons.rend(); ++icon) {
@@ -2330,7 +2310,7 @@ void WebFrameLoaderClient::getLoadDecisionForIcons(const Vector<std::pair<WebCor
 #endif
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 static NSImage *webGetNSImage(Image* image, NSSize size)
 {
     ASSERT(size.width);
@@ -2345,19 +2325,18 @@ static NSImage *webGetNSImage(Image* image, NSSize size)
     if (!nsImage)
         return nil;
     if (!NSEqualSizes([nsImage size], size)) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         [nsImage setScalesWhenResized:YES];
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
         [nsImage setSize:size];
     }
     return nsImage;
 }
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 
 void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, SharedBuffer* iconData)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     ASSERT(m_activeIconLoadCallbackID);
     ASSERT(callbackID = m_activeIconLoadCallbackID);
     m_activeIconLoadCallbackID = 0;
@@ -2383,19 +2362,20 @@ void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, SharedBuffer
 
 + (void)initialize
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
 #endif
 }
 
-- (id)initWithFrame:(Frame*)frame policyFunction:(FramePolicyFunction&&)policyFunction defaultPolicy:(PolicyAction)defaultPolicy
+- (id)initWithFrame:(Frame*)frame identifier:(PolicyCheckIdentifier)identifier policyFunction:(FramePolicyFunction&&)policyFunction defaultPolicy:(PolicyAction)defaultPolicy
 {
     self = [self init];
     if (!self)
         return nil;
 
+    _identifier = identifier;
     _frame = frame;
     _policyFunction = WTFMove(policyFunction);
     _defaultPolicy = defaultPolicy;
@@ -2404,9 +2384,9 @@ void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, SharedBuffer
 }
 
 #if HAVE(APP_LINKS)
-- (id)initWithFrame:(Frame*)frame policyFunction:(FramePolicyFunction&&)policyFunction defaultPolicy:(PolicyAction)defaultPolicy appLinkURL:(NSURL *)appLinkURL
+- (id)initWithFrame:(Frame*)frame identifier:(PolicyCheckIdentifier)identifier policyFunction:(FramePolicyFunction&&)policyFunction defaultPolicy:(PolicyAction)defaultPolicy appLinkURL:(NSURL *)appLinkURL
 {
-    self = [self initWithFrame:frame policyFunction:WTFMove(policyFunction) defaultPolicy:defaultPolicy];
+    self = [self initWithFrame:frame identifier:identifier policyFunction:WTFMove(policyFunction) defaultPolicy:defaultPolicy];
     if (!self)
         return nil;
 
@@ -2420,7 +2400,7 @@ void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, SharedBuffer
 {
     _frame = nullptr;
     if (auto policyFunction = std::exchange(_policyFunction, nullptr))
-        policyFunction(PolicyAction::Ignore);
+        policyFunction(PolicyAction::Ignore, _identifier);
 }
 
 - (void)dealloc
@@ -2432,8 +2412,8 @@ void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, SharedBuffer
     // response policy decision, "Ignore" for other policy decisions).
     _frame = nullptr;
     if (auto policyFunction = std::exchange(_policyFunction, nullptr)) {
-        RELEASE_LOG_ERROR(Loading, "Client application failed to make a policy decision via WebPolicyDecisionListener, using defaultPolicy %u", _defaultPolicy);
-        policyFunction(_defaultPolicy);
+        RELEASE_LOG_ERROR(Loading, "Client application failed to make a policy decision via WebPolicyDecisionListener, using defaultPolicy %hhu", _defaultPolicy);
+        policyFunction(_defaultPolicy, _identifier);
     }
 
     [super dealloc];
@@ -2446,7 +2426,7 @@ void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, SharedBuffer
         return;
 
     if (auto policyFunction = std::exchange(_policyFunction, nullptr))
-        policyFunction(action);
+        policyFunction(action, _identifier);
 }
 
 - (void)ignore

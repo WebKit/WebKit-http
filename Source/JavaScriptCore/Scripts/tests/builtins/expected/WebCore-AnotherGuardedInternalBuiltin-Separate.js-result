@@ -44,7 +44,7 @@ class FunctionExecutable;
 namespace WebCore {
 
 /* AnotherGuardedInternalBuiltin */
-extern const char* s_anotherGuardedInternalBuiltinLetsFetchCode;
+extern const char* const s_anotherGuardedInternalBuiltinLetsFetchCode;
 extern const int s_anotherGuardedInternalBuiltinLetsFetchCodeLength;
 extern const JSC::ConstructAbility s_anotherGuardedInternalBuiltinLetsFetchCodeConstructAbility;
 
@@ -206,7 +206,7 @@ namespace WebCore {
 const JSC::ConstructAbility s_anotherGuardedInternalBuiltinLetsFetchCodeConstructAbility = JSC::ConstructAbility::CannotConstruct;
 const int s_anotherGuardedInternalBuiltinLetsFetchCodeLength = 83;
 static const JSC::Intrinsic s_anotherGuardedInternalBuiltinLetsFetchCodeIntrinsic = JSC::NoIntrinsic;
-const char* s_anotherGuardedInternalBuiltinLetsFetchCode =
+const char* const s_anotherGuardedInternalBuiltinLetsFetchCode =
     "(function ()\n" \
     "{\n" \
     "   \"use strict\";\n" \
@@ -220,7 +220,7 @@ const char* s_anotherGuardedInternalBuiltinLetsFetchCode =
 JSC::FunctionExecutable* codeName##Generator(JSC::VM& vm) \
 {\
     JSVMClientData* clientData = static_cast<JSVMClientData*>(vm.clientData); \
-    return clientData->builtinFunctions().anotherGuardedInternalBuiltinBuiltins().codeName##Executable()->link(vm, clientData->builtinFunctions().anotherGuardedInternalBuiltinBuiltins().codeName##Source(), std::nullopt, s_##codeName##Intrinsic); \
+    return clientData->builtinFunctions().anotherGuardedInternalBuiltinBuiltins().codeName##Executable()->link(vm, nullptr, clientData->builtinFunctions().anotherGuardedInternalBuiltinBuiltins().codeName##Source(), WTF::nullopt, s_##codeName##Intrinsic); \
 }
 WEBCORE_FOREACH_ANOTHERGUARDEDINTERNALBUILTIN_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 #undef DEFINE_BUILTIN_GENERATOR

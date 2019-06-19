@@ -46,9 +46,9 @@ WI.RenderingFrameTimelineRecord = class RenderingFrameTimelineRecord extends WI.
         case WI.RenderingFrameTimelineRecord.TaskType.Script:
             return WI.UIString("Script");
         case WI.RenderingFrameTimelineRecord.TaskType.Layout:
-            return WI.UIString("Layout");
+            return WI.repeatedUIString.timelineRecordLayout();
         case WI.RenderingFrameTimelineRecord.TaskType.Paint:
-            return WI.UIString("Paint");
+            return WI.repeatedUIString.timelineRecordPaint();
         case WI.RenderingFrameTimelineRecord.TaskType.Other:
             return WI.UIString("Other");
         }
@@ -67,6 +67,27 @@ WI.RenderingFrameTimelineRecord = class RenderingFrameTimelineRecord extends WI.
             console.error("Unsupported timeline record type: " + record.type);
             return null;
         }
+    }
+
+    // Import / Export
+
+    static fromJSON(json)
+    {
+        let {startTime, endTime} = json;
+        let record = new WI.RenderingFrameTimelineRecord(startTime, endTime);
+        record.setupFrameIndex();
+        return record;
+    }
+
+    toJSON()
+    {
+        // FIXME: durationByTaskType data cannot be calculated if this does not have children.
+
+        return {
+            type: this.type,
+            startTime: this.startTime,
+            endTime: this.endTime,
+        };
     }
 
     // Public

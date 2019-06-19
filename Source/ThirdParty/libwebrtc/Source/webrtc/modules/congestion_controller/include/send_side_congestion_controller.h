@@ -80,23 +80,13 @@ class SendSideCongestionController
                              int max_bitrate_bps) override;
   void SignalNetworkState(NetworkState state) override;
 
-  // Deprecated: Is updated by OnNetworkRouteChanged
-  RTC_DEPRECATED virtual void SetTransportOverhead(
-      size_t transport_overhead_bytes_per_packet);
-
-  // Deprecated: Use GetBandwidthObserver instead.
-  RTC_DEPRECATED virtual BitrateController* GetBitrateController() const;
-
   RtcpBandwidthObserver* GetBandwidthObserver() override;
-  RTC_DEPRECATED RtcpBandwidthObserver* GetBandwidthObserver() const;
 
   bool AvailableBandwidth(uint32_t* bandwidth) const override;
   virtual int64_t GetPacerQueuingDelayMs() const;
   virtual int64_t GetFirstPacketTimeMs() const;
 
   TransportFeedbackObserver* GetTransportFeedbackObserver() override;
-
-  RTC_DEPRECATED virtual RateLimiter* GetRetransmissionRateLimiter();
 
   void SetPerPacketFeedbackAvailable(bool available) override;
   void EnablePeriodicAlrProbing(bool enable) override;
@@ -123,6 +113,9 @@ class SendSideCongestionController
 
   void SetAllocatedBitrateWithoutFeedback(uint32_t bitrate_bps) override;
 
+  void EnableCongestionWindowPushback(int64_t accepted_queue_ms,
+                                      uint32_t min_pushback_target_bitrate_bps);
+
  private:
   void MaybeTriggerOnNetworkChanged();
 
@@ -146,7 +139,7 @@ class SendSideCongestionController
       RTC_GUARDED_BY(probe_lock_);
 
   const std::unique_ptr<RateLimiter> retransmission_rate_limiter_;
-  TransportFeedbackAdapter transport_feedback_adapter_;
+  LegacyTransportFeedbackAdapter transport_feedback_adapter_;
   rtc::CriticalSection network_state_lock_;
   uint32_t last_reported_bitrate_bps_ RTC_GUARDED_BY(network_state_lock_);
   uint8_t last_reported_fraction_loss_ RTC_GUARDED_BY(network_state_lock_);
@@ -159,6 +152,8 @@ class SendSideCongestionController
   bool pacer_paused_;
   rtc::CriticalSection bwe_lock_;
   int min_bitrate_bps_ RTC_GUARDED_BY(bwe_lock_);
+  std::unique_ptr<ProbeBitrateEstimator> probe_bitrate_estimator_
+      RTC_GUARDED_BY(bwe_lock_);
   std::unique_ptr<DelayBasedBwe> delay_based_bwe_ RTC_GUARDED_BY(bwe_lock_);
   bool in_cwnd_experiment_;
   int64_t accepted_queue_ms_;
@@ -171,7 +166,7 @@ class SendSideCongestionController
   bool pacer_pushback_experiment_ = false;
   float encoding_rate_ = 1.0;
 
-  const std::unique_ptr<CongestionWindowPushbackController>
+  std::unique_ptr<CongestionWindowPushbackController>
       congestion_window_pushback_controller_;
 
   RTC_DISALLOW_IMPLICIT_CONSTRUCTORS(SendSideCongestionController);

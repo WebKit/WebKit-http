@@ -8,6 +8,9 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
+#include "call/call.h"
+#include "call/fake_network_pipe.h"
+#include "call/simulated_network.h"
 #include "test/call_test.h"
 #include "test/field_trial.h"
 #include "test/gtest.h"
@@ -34,9 +37,8 @@ class TransportFeedbackEndToEndTest
 INSTANTIATE_TEST_CASE_P(
     FieldTrials,
     TransportFeedbackEndToEndTest,
-    ::testing::Values("WebRTC-RoundRobinPacing/Disabled/",
-                      "WebRTC-RoundRobinPacing/Enabled/",
-                      "WebRTC-TaskQueueCongestionControl/Enabled/"));
+    ::testing::Values("WebRTC-TaskQueueCongestionControl/Enabled/",
+                      "WebRTC-TaskQueueCongestionControl/Disabled/"));
 
 TEST_P(TransportFeedbackEndToEndTest, AssignsTransportSequenceNumbers) {
   static const int kExtensionId = 5;
@@ -49,8 +51,13 @@ TEST_P(TransportFeedbackEndToEndTest, AssignsTransportSequenceNumbers) {
         const uint32_t& first_media_ssrc,
         const std::map<uint32_t, uint32_t>& ssrc_map,
         const std::map<uint8_t, MediaType>& payload_type_map)
-        : DirectTransport(task_queue, sender_call, payload_type_map),
-          done_(false, false),
+        : DirectTransport(task_queue,
+                          absl::make_unique<FakeNetworkPipe>(
+                              Clock::GetRealTimeClock(),
+                              absl::make_unique<SimulatedNetwork>(
+                                  BuiltInNetworkBehaviorConfig())),
+                          sender_call,
+                          payload_type_map),
           parser_(RtpHeaderParser::Create()),
           first_media_ssrc_(first_media_ssrc),
           rtx_to_media_ssrcs_(ssrc_map),
@@ -407,8 +414,9 @@ TEST_P(TransportFeedbackEndToEndTest,
       EXPECT_TRUE(parser.Parse(data, length));
       return parser.transport_feedback()->num_packets() > 0;
     }
-    void ModifySenderCallConfig(Call::Config* config) override {
-      config->bitrate_config.max_bitrate_bps = 300000;
+    void ModifySenderBitrateConfig(
+        BitrateConstraints* bitrate_config) override {
+      bitrate_config->max_bitrate_bps = 300000;
     }
 
     void PerformTest() override {

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2008 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,9 +21,6 @@
 
 #pragma once
 
-#include "SVGAnimatedBoolean.h"
-#include "SVGAnimatedEnumeration.h"
-#include "SVGAnimatedLength.h"
 #include "SVGExternalResourcesRequired.h"
 #include "SVGGraphicsElement.h"
 
@@ -85,73 +82,33 @@ public:
     ExceptionOr<void> selectSubString(unsigned charnum, unsigned nchars);
 
     static SVGTextContentElement* elementFromRenderer(RenderObject*);
-    const SVGLengthValue& specifiedTextLength() { return m_specifiedTextLength; }
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGTextContentElement, SVGGraphicsElement, SVGExternalResourcesRequired>;
-    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGTextContentElement, SVGGraphicsElement, SVGExternalResourcesRequired>;
 
-    const SVGLengthValue& textLength() const { return m_textLength.currentValue(attributeOwnerProxy()); }
-    SVGLengthAdjustType lengthAdjust() const { return m_lengthAdjust.currentValue(attributeOwnerProxy()); }
+    const SVGLengthValue& specifiedTextLength() const { return m_specifiedTextLength; }
+    const SVGLengthValue& textLength() const { return m_textLength->currentValue(); }
+    SVGLengthAdjustType lengthAdjust() const { return m_lengthAdjust->currentValue<SVGLengthAdjustType>(); }
 
-    RefPtr<SVGAnimatedLength> textLengthAnimated() { return m_textLength.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedEnumeration> lengthAdjustAnimated() { return m_lengthAdjust.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedLength& textLengthAnimated();
+    SVGAnimatedEnumeration& lengthAdjustAnimated() { return m_lengthAdjust; }
 
 protected:
     SVGTextContentElement(const QualifiedName&, Document&);
 
     bool isValid() const override { return SVGTests::isValid(); }
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomString&) override;
     bool isPresentationAttribute(const QualifiedName&) const override;
-    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomString&, MutableStyleProperties&) override;
     void svgAttributeChanged(const QualifiedName&) override;
 
     bool selfHasRelativeLengths() const override;
 
 private:
     bool isTextContent() const final { return true; }
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const override { return m_attributeOwnerProxy; }
 
-    static void registerAttributes();
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
-
-    class SVGAnimatedCustomLengthAttribute : public SVGAnimatedLengthAttribute {
-    public:
-        using SVGAnimatedLengthAttribute::operator=;
-
-        SVGAnimatedCustomLengthAttribute(SVGTextContentElement& element, SVGLengthMode lengthMode)
-            : SVGAnimatedLengthAttribute(lengthMode)
-            , m_element(element)
-        {
-        }
-
-        void synchronize(Element&, const QualifiedName& attributeName)
-        {
-            if (!shouldSynchronize())
-                return;
-            String string(SVGPropertyTraits<SVGLengthValue>::toString(m_element.m_specifiedTextLength));
-            static_cast<Element&>(m_element).setSynchronizedLazyAttribute(attributeName, string);
-        }
-
-        RefPtr<SVGAnimatedLength> animatedProperty(const SVGAttributeOwnerProxy& attributeOwnerProxy)
-        {
-            static NeverDestroyed<SVGLengthValue> defaultTextLength(LengthModeOther);
-            if (m_element.m_specifiedTextLength == defaultTextLength)
-                m_element.m_textLength.value().newValueSpecifiedUnits(LengthTypeNumber, m_element.getComputedTextLength());
-
-            setShouldSynchronize(true);
-            return static_reference_cast<SVGAnimatedLength>(attributeOwnerProxy.lookupOrCreateAnimatedProperty(*this).releaseNonNull());
-        }
-
-    private:
-        SVGTextContentElement& m_element;
-    };
-
-    using SVGAnimatedCustomLengthAttributeAccessor = SVGAnimatedAttributeAccessor<SVGTextContentElement, SVGAnimatedCustomLengthAttribute, AnimatedLength>;
-
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
-    SVGAnimatedCustomLengthAttribute m_textLength { *this, LengthModeOther };
-    SVGAnimatedEnumerationAttribute<SVGLengthAdjustType> m_lengthAdjust { SVGLengthAdjustSpacing };
+    Ref<SVGAnimatedLength> m_textLength { SVGAnimatedLength::create(this, LengthModeOther) };
+    Ref<SVGAnimatedEnumeration> m_lengthAdjust { SVGAnimatedEnumeration::create(this, SVGLengthAdjustSpacing) };
     SVGLengthValue m_specifiedTextLength { LengthModeOther };
 };
 

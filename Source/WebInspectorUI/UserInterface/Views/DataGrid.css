@@ -84,7 +84,7 @@
     vertical-align: middle;
     font-weight: normal;
     white-space: nowrap;
-    background-color: white;
+    background-color: var(--background-color);
     overflow: hidden;
 }
 
@@ -102,8 +102,6 @@ body[dir=rtl] .data-grid :matches(th, td):not(:last-child) {
 
 .data-grid th:matches(.sort-ascending, .sort-descending) {
     background-color: hsl(0, 0%, 90%);
-
-    --data-grid-sort-div-first-child-padding-end: 12px;
 }
 
 .data-grid tr.filler {
@@ -189,12 +187,16 @@ body[dir=rtl] .data-grid :matches(th, td):not(:last-child) {
     pointer-events: none;
 }
 
-body[dir=ltr] .data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-child) {
-    border-right-color: hsl(210, 100%, 40%);
+.data-grid:focus tr.selected td:not(:last-child) {
+    --border-end-color: hsla(0, 0%, var(--foreground-lightness), 0.05);
 }
 
-body[dir=rtl] .data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-child) {
-    border-left-color: hsl(210, 100%, 40%);
+body[dir=ltr] .data-grid:focus tr.selected td:not(:last-child) {
+    border-right-color: var(--border-end-color);
+}
+
+body[dir=rtl] .data-grid:focus tr.selected td:not(:last-child) {
+    border-left-color: var(--border-end-color);
 }
 
 .data-grid :matches(th, td) > div {
@@ -220,12 +222,8 @@ body[dir=rtl] .data-grid:matches(:focus, .force-focus) tr.selected td:not(:last-
     position: relative;
 }
 
-body[dir=ltr] .data-grid th:matches(.sort-ascending, .sort-descending) > div:first-child {
-    padding-right: var(--data-grid-sort-div-first-child-padding-end);
-}
-
-body[dir=rtl] .data-grid th:matches(.sort-ascending, .sort-descending) > div:first-child {
-    padding-left: var(--data-grid-sort-div-first-child-padding-end);
+.data-grid th:matches(.sort-ascending, .sort-descending) > div:first-child {
+    -webkit-padding-end: 12px;
 }
 
 .data-grid th:matches(.sort-ascending, .sort-descending) > div:first-child::after {
@@ -287,11 +285,11 @@ body[dir=rtl] .data-grid tr.parent td.disclosure::before {
     background-image: url(../Images/DisclosureTriangles.svg#open-normal);
 }
 
-.data-grid:matches(:focus, .force-focus) tr.parent.selected td.disclosure::before {
+.data-grid:focus tr.parent.selected td.disclosure::before {
     background-image: url(../Images/DisclosureTriangles.svg#closed-selected);
 }
 
-.data-grid:matches(:focus, .force-focus) tr.parent.expanded.selected td.disclosure::before {
+.data-grid:focus tr.parent.expanded.selected td.disclosure::before {
     background-image: url(../Images/DisclosureTriangles.svg#open-selected);
 }
 
@@ -300,7 +298,7 @@ body[dir=rtl] .data-grid tr.parent td.disclosure::before {
     color: inherit !important;
 }
 
-.data-grid:matches(:focus, .force-focus) tr.selected {
+.data-grid:focus tr.selected {
     background-color: var(--selected-background-color) !important;
     color: var(--selected-foreground-color) !important;
 }
@@ -314,10 +312,10 @@ body[dir=rtl] .data-grid tr.parent td.disclosure::before {
 }
 
 .data-grid td .subtitle::before {
-    content: " — ";
+    content: "\00A0\2014\00A0"; /* &nbsp;&mdash;&nbsp; */;
 }
 
-.data-grid:matches(:focus, .force-focus) tr.selected td .subtitle {
+.data-grid:focus tr.selected td .subtitle {
     color: hsla(0, 0%, 100%, 0.9);
 }
 
@@ -333,33 +331,21 @@ body[dir=rtl] .data-grid tr.parent td.disclosure::before {
     display: inline-block;
     width: 16px;
     height: 16px;
+    -webkit-margin-end: 2px;
     vertical-align: top;
-
-    --data-grid-icon-margin-end: 2px;
-}
-
-body[dir=ltr] .data-grid td .icon {
-    margin-right: var(--data-grid-icon-margin-end);
-}
-
-body[dir=rtl] .data-grid td .icon {
-    margin-left: var(--data-grid-icon-margin-end);
 }
 
 .data-grid td .go-to-arrow {
     display: none;
-
-    --data-grid-go-to-arrow-margin-start: 2px;
+    -webkit-margin-start: 2px;
 }
 
 body[dir=ltr] .data-grid td .go-to-arrow {
     float: right;
-    margin-left: var(--data-grid-go-to-arrow-margin-start);
 }
 
 body[dir=rtl] .data-grid td .go-to-arrow {
     float: left;
-    margin-right: var(--data-grid-go-to-arrow-margin-start);
 }
 
 .data-grid tr:matches(.selected, :hover) .go-to-arrow {
@@ -383,16 +369,7 @@ body[dir=rtl] .data-grid .resizer {
 .data-grid table:matches(.header, .data) {
     /* Hide starting border from first hidden columns. */
     width: calc(100% + 1px);
-
-    --data-grid-table-margin-start: -1px;
-}
-
-body[dir=ltr] .data-grid table:matches(.header, .data) {
-    margin-left: var(--data-grid-table-margin-start);
-}
-
-body[dir=rtl] .data-grid table:matches(.header, .data) {
-    margin-right: var(--data-grid-table-margin-start);
+    -webkit-margin-start: -1px;
 }
 
 body[dir=ltr] .data-grid :matches(th, td):first-child {
@@ -406,8 +383,7 @@ body[dir=rtl] .data-grid :matches(th, td):first-child {
 @media (-webkit-min-device-pixel-ratio: 2) {
     .data-grid table:matches(.header, .data) {
         width: calc(100% + 0.5px);
-        
-        --data-grid-table-margin-start: -0.5px;
+        -webkit-margin-start: -0.5px;
     }
 
     .data-grid :matches(th, td):first-child {
@@ -425,6 +401,34 @@ body[dir=rtl] .data-grid :matches(th, td):first-child {
     outline: none;
 }
 
-body:not(.window-inactive, .window-docked-inactive) .data-grid:matches(:focus, .force-focus) tr.editable.selected .cell-content > input {
-    color: white;
+body:not(.window-inactive, .window-docked-inactive) .data-grid:focus tr.editable.selected .cell-content > input {
+    color: var(--selected-foreground-color);
+}
+
+@media (prefers-color-scheme: dark) {
+    .data-grid td .subtitle {
+        color: var(--selected-secondary-text-color);
+    }
+
+    .data-grid:focus tr.selected td .subtitle {
+        color: hsla(0, 0%, var(--foreground-lightness), 0.9);
+    }
+
+    .data-grid tr.editable .cell-content > input {
+        color: inherit;
+    }
+
+    .data-grid td.spanning {
+        color: var(--text-color-secondary);
+        background-color: unset;
+    }
+
+    .data-grid th.sortable:active {
+        background-color: hsl(0, 0%, 40%);
+    }
+
+    .data-grid th.sort-ascending > div:first-child::after,
+    .data-grid th.sort-descending > div:first-child::after {
+        filter: invert();
+    }
 }

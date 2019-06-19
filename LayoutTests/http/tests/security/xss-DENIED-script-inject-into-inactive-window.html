@@ -16,9 +16,8 @@ var intervalId;
 
 function checkDidLoadVictim()
 {
-    try {
-        _openedWindowDocument.location.href
-    } catch (e) {
+    // Document.defaultView becomes null when a Document no longer has a browsing context.
+    if (!_openedWindowDocument.defaultView) {
         // Victim loaded; |_openedWindowDocument| is an inactive document.
         window.clearInterval(intervalId);
 

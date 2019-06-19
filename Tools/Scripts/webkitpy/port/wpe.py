@@ -26,6 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from webkitpy.common.system import path
 from webkitpy.common.memoized import memoized
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port.base import Port
@@ -81,7 +82,11 @@ class WPEPort(Port):
         self._copy_value_from_environ_if_set(environment, 'GST_DEBUG')
         self._copy_value_from_environ_if_set(environment, 'GST_DEBUG_DUMP_DOT_DIR')
         self._copy_value_from_environ_if_set(environment, 'GST_DEBUG_FILE')
+        self._copy_value_from_environ_if_set(environment, 'GST_DEBUG_NO_COLOR')
         return environment
+
+    def show_results_html_file(self, results_filename):
+        self._run_script("run-minibrowser", [path.abspath_to_uri(self.host.platform, results_filename)])
 
     def check_sys_deps(self):
         return super(WPEPort, self).check_sys_deps() and self._driver_class().check_driver(self)
@@ -101,10 +106,10 @@ class WPEPort(Port):
     def _search_paths(self):
         return [self.port_name, 'wk2'] + self.get_option("additional_platform_directory", [])
 
-    def default_baseline_search_path(self):
+    def default_baseline_search_path(self, **kwargs):
         return map(self._webkit_baseline_path, self._search_paths())
 
-    def _port_specific_expectations_files(self):
+    def _port_specific_expectations_files(self, **kwargs):
         return map(lambda x: self._filesystem.join(self._webkit_baseline_path(x), 'TestExpectations'), reversed(self._search_paths()))
 
     def test_expectations_file_position(self):

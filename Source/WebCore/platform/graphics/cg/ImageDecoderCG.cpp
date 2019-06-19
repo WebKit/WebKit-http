@@ -42,10 +42,13 @@
 
 namespace WebCore {
 
-const CFStringRef WebCoreCGImagePropertyAPNGUnclampedDelayTime = CFSTR("UnclampedDelayTime");
-const CFStringRef WebCoreCGImagePropertyAPNGDelayTime = CFSTR("DelayTime");
-const CFStringRef WebCoreCGImagePropertyAPNGLoopCount = CFSTR("LoopCount");
+const CFStringRef WebCoreCGImagePropertyHEICSDictionary = CFSTR("{HEICS}");
+const CFStringRef WebCoreCGImagePropertyHEICSFrameInfoArray = CFSTR("FrameInfo");
 
+const CFStringRef WebCoreCGImagePropertyUnclampedDelayTime = CFSTR("UnclampedDelayTime");
+const CFStringRef WebCoreCGImagePropertyDelayTime = CFSTR("DelayTime");
+const CFStringRef WebCoreCGImagePropertyLoopCount = CFSTR("LoopCount");
+    
 #if PLATFORM(WIN)
 const CFStringRef kCGImageSourceShouldPreferRGB32 = CFSTR("kCGImageSourceShouldPreferRGB32");
 const CFStringRef kCGImageSourceSkipMetadata = CFSTR("kCGImageSourceSkipMetadata");
@@ -109,7 +112,45 @@ static RetainPtr<CFDictionaryRef> imageSourceAsyncOptions(SubsamplingLevel subsa
     static const auto options = createImageSourceAsyncOptions().leakRef();
     return appendImageSourceOptions(adoptCF(CFDictionaryCreateMutableCopy(nullptr, 0, options)), subsamplingLevel, sizeForDrawing);
 }
-    
+
+static CFDictionaryRef animationPropertiesFromProperties(CFDictionaryRef properties)
+{
+    if (!properties)
+        return nullptr;
+
+    if (auto animationProperties = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyGIFDictionary))
+        return animationProperties;
+
+    if (auto animationProperties = (CFDictionaryRef)CFDictionaryGetValue(properties, kCGImagePropertyPNGDictionary))
+        return animationProperties;
+
+    return (CFDictionaryRef)CFDictionaryGetValue(properties, WebCoreCGImagePropertyHEICSDictionary);
+}
+
+static CFDictionaryRef animationHEICSPropertiesFromProperties(CFDictionaryRef properties, size_t index)
+{
+    if (!properties)
+        return nullptr;
+
+    // For HEICS images, ImageIO does not create a properties dictionary for each HEICS frame. Instead it maintains
+    // all frames' information in the image properties dictionary. Here is how ImageIO structures the properties
+    // dictionary for HEICS image:
+    //  "{HEICS}" =  {
+    //      FrameInfo = ( { DelayTime = "0.1"; }, { DelayTime = "0.1"; }, ... );
+    //      LoopCount = 0;
+    //      ...
+    //  };
+    CFDictionaryRef heicsProperties = (CFDictionaryRef)CFDictionaryGetValue(properties, WebCoreCGImagePropertyHEICSDictionary);
+    if (!heicsProperties)
+        return nullptr;
+
+    CFArrayRef frameInfoArray = (CFArrayRef)CFDictionaryGetValue(heicsProperties, WebCoreCGImagePropertyHEICSFrameInfoArray);
+    if (!frameInfoArray)
+        return nullptr;
+
+    return (CFDictionaryRef)CFArrayGetValueAtIndex(frameInfoArray, index);
+}
+
 static ImageOrientation orientationFromProperties(CFDictionaryRef imageProperties)
 {
     ASSERT(imageProperties);
@@ -176,7 +217,7 @@ String ImageDecoderCG::uti() const
 
 String ImageDecoderCG::filenameExtension() const
 {
-    return WebCore::preferredExtensionForImageSourceType(uti());
+    return WebCore::preferredExtensionForImageType(uti());
 }
 
 EncodedDataStatus ImageDecoderCG::encodedDataStatus() const
@@ -199,7 +240,7 @@ EncodedDataStatus ImageDecoderCG::encodedDataStatus() const
         return EncodedDataStatus::Error;
 
     case kCGImageStatusIncomplete: {
-        if (!isAllowedImageUTI(uti))
+        if (!isSupportedImageType(uti))
             return EncodedDataStatus::Error;
 
         RetainPtr<CFDictionaryRef> image0Properties = adoptCF(CGImageSourceCopyPropertiesAtIndex(m_nativeDecoder.get(), 0, imageSourceOptions().get()));
@@ -213,7 +254,7 @@ EncodedDataStatus ImageDecoderCG::encodedDataStatus() const
     }
 
     case kCGImageStatusComplete:
-        if (!isAllowedImageUTI(uti))
+        if (!isSupportedImageType(uti))
             return EncodedDataStatus::Error;
 
         return EncodedDataStatus::Complete;
@@ -231,58 +272,44 @@ size_t ImageDecoderCG::frameCount() const
 RepetitionCount ImageDecoderCG::repetitionCount() const
 {
     RetainPtr<CFDictionaryRef> properties = adoptCF(CGImageSourceCopyProperties(m_nativeDecoder.get(), imageSourceOptions().get()));
-    if (!properties)
-        return RepetitionCountOnce;
-    
-    CFDictionaryRef gifProperties = (CFDictionaryRef)CFDictionaryGetValue(properties.get(), kCGImagePropertyGIFDictionary);
-    if (gifProperties) {
-        CFNumberRef num = (CFNumberRef)CFDictionaryGetValue(gifProperties, kCGImagePropertyGIFLoopCount);
-        
-        // No property means loop once.
-        if (!num)
-            return RepetitionCountOnce;
-        
-        RepetitionCount loopCount;
-        CFNumberGetValue(num, kCFNumberIntType, &loopCount);
-        
-        // A property with value 0 means loop forever.
-        // For loopCount > 0, the specs is not clear about it. But it looks the meaning
-        // is: play once + loop loopCount which is equivalent to play loopCount + 1.
-        return loopCount ? loopCount + 1 : RepetitionCountInfinite;
-    }
-    
-    CFDictionaryRef pngProperties = (CFDictionaryRef)CFDictionaryGetValue(properties.get(), kCGImagePropertyPNGDictionary);
-    if (pngProperties) {
-        CFNumberRef num = (CFNumberRef)CFDictionaryGetValue(pngProperties, WebCoreCGImagePropertyAPNGLoopCount);
-        if (!num)
-            return RepetitionCountOnce;
-        
-        RepetitionCount loopCount;
-        CFNumberGetValue(num, kCFNumberIntType, &loopCount);
-        return loopCount ? loopCount : RepetitionCountInfinite;
-    }
-    
+    CFDictionaryRef animationProperties = animationPropertiesFromProperties(properties.get());
+
     // Turns out we're not an animated image after all, so we don't animate.
-    return RepetitionCountNone;
+    if (!animationProperties)
+        return RepetitionCountNone;
+
+    CFNumberRef num = (CFNumberRef)CFDictionaryGetValue(animationProperties, WebCoreCGImagePropertyLoopCount);
+
+    // No property means loop once.
+    if (!num)
+        return RepetitionCountOnce;
+
+    RepetitionCount loopCount;
+    CFNumberGetValue(num, kCFNumberIntType, &loopCount);
+
+    // A property with value 0 means loop forever.
+    // For loopCount > 0, the specs is not clear about it. But it looks the meaning
+    // is: play once + loop loopCount which is equivalent to play loopCount + 1.
+    return loopCount ? loopCount + 1 : RepetitionCountInfinite;
 }
 
-std::optional<IntPoint> ImageDecoderCG::hotSpot() const
+Optional<IntPoint> ImageDecoderCG::hotSpot() const
 {
     RetainPtr<CFDictionaryRef> properties = adoptCF(CGImageSourceCopyPropertiesAtIndex(m_nativeDecoder.get(), 0, imageSourceOptions().get()));
     if (!properties)
-        return std::nullopt;
+        return WTF::nullopt;
     
     int x = -1, y = -1;
     CFNumberRef num = (CFNumberRef)CFDictionaryGetValue(properties.get(), CFSTR("hotspotX"));
     if (!num || !CFNumberGetValue(num, kCFNumberIntType, &x))
-        return std::nullopt;
+        return WTF::nullopt;
     
     num = (CFNumberRef)CFDictionaryGetValue(properties.get(), CFSTR("hotspotY"));
     if (!num || !CFNumberGetValue(num, kCFNumberIntType, &y))
-        return std::nullopt;
+        return WTF::nullopt;
     
     if (x < 0 || y < 0)
-        return std::nullopt;
+        return WTF::nullopt;
     
     return IntPoint(x, y);
 }
@@ -330,27 +357,22 @@ ImageOrientation ImageDecoderCG::frameOrientationAtIndex(size_t index) const
 
 Seconds ImageDecoderCG::frameDurationAtIndex(size_t index) const
 {
+    RetainPtr<CFDictionaryRef> properties = nullptr;
+    RetainPtr<CFDictionaryRef> frameProperties = adoptCF(CGImageSourceCopyPropertiesAtIndex(m_nativeDecoder.get(), index, imageSourceOptions().get()));
+    CFDictionaryRef animationProperties = animationPropertiesFromProperties(frameProperties.get());
+
+    if (frameProperties && !animationProperties) {
+        properties = adoptCF(CGImageSourceCopyProperties(m_nativeDecoder.get(), imageSourceOptions().get()));
+        animationProperties = animationHEICSPropertiesFromProperties(properties.get(), index);
+    }
+
+    // Use the unclamped frame delay if it exists. Otherwise use the clamped frame delay.
     float value = 0;
-    RetainPtr<CFDictionaryRef> properties = adoptCF(CGImageSourceCopyPropertiesAtIndex(m_nativeDecoder.get(), index, imageSourceOptions().get()));
-    if (properties) {
-        CFDictionaryRef gifProperties = (CFDictionaryRef)CFDictionaryGetValue(properties.get(), kCGImagePropertyGIFDictionary);
-        if (gifProperties) {
-            if (CFNumberRef num = (CFNumberRef)CFDictionaryGetValue(gifProperties, kCGImagePropertyGIFUnclampedDelayTime)) {
-                // Use the unclamped frame delay if it exists.
-                CFNumberGetValue(num, kCFNumberFloatType, &value);
-            } else if (CFNumberRef num = (CFNumberRef)CFDictionaryGetValue(gifProperties, kCGImagePropertyGIFDelayTime)) {
-                // Fall back to the clamped frame delay if the unclamped frame delay does not exist.
-                CFNumberGetValue(num, kCFNumberFloatType, &value);
-            }
-        }
-        
-        CFDictionaryRef pngProperties = (CFDictionaryRef)CFDictionaryGetValue(properties.get(), kCGImagePropertyPNGDictionary);
-        if (pngProperties) {
-            if (CFNumberRef num = (CFNumberRef)CFDictionaryGetValue(pngProperties, WebCoreCGImagePropertyAPNGUnclampedDelayTime))
-                CFNumberGetValue(num, kCFNumberFloatType, &value);
-            else if (CFNumberRef num = (CFNumberRef)CFDictionaryGetValue(pngProperties, WebCoreCGImagePropertyAPNGDelayTime))
-                CFNumberGetValue(num, kCFNumberFloatType, &value);
-        }
+    if (animationProperties) {
+        if (CFNumberRef num = (CFNumberRef)CFDictionaryGetValue(animationProperties, WebCoreCGImagePropertyUnclampedDelayTime))
+            CFNumberGetValue(num, kCFNumberFloatType, &value);
+        else if (CFNumberRef num = (CFNumberRef)CFDictionaryGetValue(animationProperties, WebCoreCGImagePropertyDelayTime))
+            CFNumberGetValue(num, kCFNumberFloatType, &value);
     }
 
     Seconds duration(value);
@@ -405,7 +427,7 @@ NativeImagePtr ImageDecoderCG::createFrameImageAtIndex(size_t index, Subsampling
         
         if (decodingOptions.hasSizeForDrawing()) {
             // See which size is smaller: the image native size or the sizeForDrawing.
-            std::optional<IntSize> sizeForDrawing = decodingOptions.sizeForDrawing();
+            Optional<IntSize> sizeForDrawing = decodingOptions.sizeForDrawing();
             if (sizeForDrawing.value().unclampedArea() < size.unclampedArea())
                 size = sizeForDrawing.value();
         }
@@ -418,20 +440,15 @@ NativeImagePtr ImageDecoderCG::createFrameImageAtIndex(size_t index, Subsampling
         image = adoptCF(CGImageSourceCreateImageAtIndex(m_nativeDecoder.get(), index, options.get()));
     }
     
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // <rdar://problem/7371198> - CoreGraphics changed the default caching behaviour in iOS 4.0 to kCGImageCachingTransient
     // which caused a performance regression for us since the images had to be resampled/recreated every time we called
     // CGContextDrawImage. We now tell CG to cache the drawn images. See also <rdar://problem/14366755> -
     // CoreGraphics needs to un-deprecate kCGImageCachingTemporary since it's still not the default.
-#if COMPILER(CLANG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-#endif
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     CGImageSetCachingFlags(image.get(), kCGImageCachingTemporary);
-#if COMPILER(CLANG)
-#pragma clang diagnostic pop
-#endif
-#endif // PLATFORM(IOS)
+    ALLOW_DEPRECATED_DECLARATIONS_END
+#endif // PLATFORM(IOS_FAMILY)
     
     String uti = this->uti();
     if (uti.isEmpty() || uti != "public.xbitmap-image")

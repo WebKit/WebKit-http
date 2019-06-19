@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2007, 2008, 2009, 2010, 2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2006-2011, 2014, 2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,14 +26,16 @@
 #import "config.h"
 #import "PlatformEventFactoryIOS.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "IntPoint.h"
 #import "KeyEventCocoa.h"
+#import "KeyEventCodesIOS.h"
 #import "Logging.h"
 #import "WAKAppKitStubs.h"
 #import "WebEvent.h"
 #import "WindowsKeyboardCodes.h"
+#import <wtf/Optional.h>
 #import <wtf/WallTime.h>
 
 namespace WebCore {
@@ -42,15 +44,15 @@ static OptionSet<PlatformEvent::Modifier> modifiersForEvent(WebEvent *event)
 {
     OptionSet<PlatformEvent::Modifier> modifiers;
 
-    if (event.modifierFlags & WebEventFlagMaskShift)
+    if (event.modifierFlags & WebEventFlagMaskShiftKey)
         modifiers.add(PlatformEvent::Modifier::ShiftKey);
-    if (event.modifierFlags & WebEventFlagMaskControl)
-        modifiers.add(PlatformEvent::Modifier::CtrlKey);
-    if (event.modifierFlags & WebEventFlagMaskAlternate)
+    if (event.modifierFlags & WebEventFlagMaskControlKey)
+        modifiers.add(PlatformEvent::Modifier::ControlKey);
+    if (event.modifierFlags & WebEventFlagMaskOptionKey)
         modifiers.add(PlatformEvent::Modifier::AltKey);
-    if (event.modifierFlags & WebEventFlagMaskCommand)
+    if (event.modifierFlags & WebEventFlagMaskCommandKey)
         modifiers.add(PlatformEvent::Modifier::MetaKey);
-    if (event.modifierFlags & WebEventFlagMaskAlphaShift)
+    if (event.modifierFlags & WebEventFlagMaskLeftCapsLockKey)
         modifiers.add(PlatformEvent::Modifier::CapsLockKey);
 
     return modifiers;
@@ -93,6 +95,7 @@ public:
         m_globalPosition = globalPointForEvent(event);
         m_button = LeftButton; // This has always been the LeftButton on iOS.
         m_clickCount = 1; // This has always been 1 on iOS.
+        m_modifiers = modifiersForEvent(event);
     }
 };
 
@@ -125,29 +128,84 @@ PlatformWheelEvent PlatformEventFactory::createPlatformWheelEvent(WebEvent *even
 
 String keyIdentifierForKeyEvent(WebEvent *event)
 {
-    NSString *s = event.charactersIgnoringModifiers;
-    if ([s length] != 1) {
-        LOG(Events, "received an unexpected number of characters in key event: %u", [s length]);
-        return "Unidentified";
-    }
+    if (event.keyboardFlags & WebEventKeyboardInputModifierFlagsChanged) {
+        switch (event.keyCode) {
+        case VK_LWIN: // Left Command
+        case VK_APPS: // Right Command
+            return "Meta"_s;
 
-    return keyIdentifierForCharCode(CFStringGetCharacterAtIndex((CFStringRef)s, 0));
+        case VK_CAPITAL: // Caps Lock
+            return "CapsLock"_s;
+
+        case VK_LSHIFT: // Left Shift
+        case VK_RSHIFT: // Right Shift
+            return "Shift"_s;
+
+        case VK_LMENU: // Left Alt
+        case VK_RMENU: // Right Alt
+            return "Alt"_s;
+
+        case VK_LCONTROL: // Left Ctrl
+        case VK_RCONTROL: // Right Ctrl
+            return "Control"_s;
+
+        default:
+            ASSERT_NOT_REACHED();
+            return emptyString();
+        }
+    }
+    NSString *characters = event.charactersIgnoringModifiers;
+    if ([characters length] != 1) {
+        LOG(Events, "received an unexpected number of characters in key event: %u", [characters length]);
+        return "Unidentified"_s;
+    }
+    return keyIdentifierForCharCode([characters characterAtIndex:0]);
 }
 
 String keyForKeyEvent(WebEvent *event)
 {
-    NSString *characters = event.characters;
-    auto length = [characters length];
+    if (event.keyboardFlags & WebEventKeyboardInputModifierFlagsChanged) {
+        switch (event.keyCode) {
+        case VK_LWIN: // Left Command
+        case VK_APPS: // Right Command
+            return "Meta"_s;
 
+        case VK_CAPITAL: // Caps Lock
+            return "CapsLock"_s;
+
+        case VK_LSHIFT: // Left Shift
+        case VK_RSHIFT: // Right Shift
+            return "Shift"_s;
+
+        case VK_LMENU: // Left Alt
+        case VK_RMENU: // Right Alt
+            return "Alt"_s;
+
+        case VK_LCONTROL: // Left Ctrl
+        case VK_RCONTROL: // Right Ctrl
+            return "Control"_s;
+
+        default:
+            ASSERT_NOT_REACHED();
+            return "Unidentified"_s;
+        }
+    }
+
+    // If more than one key is being pressed and the key combination includes one or more modifier keys
+    // that result in the key no longer producing a printable character (e.g., Control + a), then the
+    // key value should be the printable key value that would have been produced if the key had been
+    // typed with the default keyboard layout with no modifier keys except for Shift and AltGr applied.
+    // See <https://www.w3.org/TR/2015/WD-uievents-20151215/#keys-guidelines>.
+    bool isControlDown = event.modifierFlags & WebEventFlagMaskControlKey;
+    NSString *characters = isControlDown ? event.charactersIgnoringModifiers : event.characters;
+    auto length = [characters length];
     // characters return an empty string for dead keys.
     // https://developer.apple.com/reference/appkit/nsevent/1534183-characters
     // "Dead" is defined here https://w3c.github.io/uievents-key/#keys-composition.
     if (!length)
         return "Dead"_s;
-
     if (length > 1)
         return characters;
-
     return keyForCharCode([characters characterAtIndex:0]);
 }
 
@@ -217,7 +275,7 @@ String codeForKeyEvent(WebEvent *event)
     case VK_RCONTROL: return "ControlRight"_s;
     case VK_RETURN: return "Enter"_s; //  Labeled Return on Apple keyboards.
     case VK_LWIN: return "MetaLeft"_s;
-    case VK_RWIN: return "MetaRight"_s;
+    case VK_APPS: return "MetaRight"_s;
     case VK_LSHIFT: return "ShiftLeft"_s;
     case VK_RSHIFT: return "ShiftRight"_s;
     case VK_SPACE: return "Space"_s;
@@ -264,7 +322,7 @@ String codeForKeyEvent(WebEvent *event)
     // NumpadBackspace.
     // NumpadClear.
     // NumpadClearEntry.
-    case VK_SEPARATOR: return "NumpadComma"_s;
+    case VK_SEPARATOR: return "NumpadComma"_s; // On JIS keyboard
     case VK_DECIMAL: return "NumpadDecimal"_s;
     case VK_DIVIDE: return "NumpadDivide"_s;
     // NumpadEnter.
@@ -363,6 +421,68 @@ String codeForKeyEvent(WebEvent *event)
     }
 }
 
+static bool isKeypadEvent(WebEvent* event)
+{
+    // Check that this is the type of event that has a keyCode.
+    if (event.type != WebEventKeyDown && event.type != WebEventKeyUp)
+        return false;
+
+    switch (event.keyCode) {
+    case VK_CLEAR: // Num Pad Clear
+    case VK_OEM_PLUS: // Num Pad =
+    case VK_DIVIDE:
+    case VK_MULTIPLY:
+    case VK_SUBTRACT:
+    case VK_ADD:
+    case VK_RETURN: // Num Pad Enter
+    case VK_DECIMAL: // Num Pad .
+    case VK_SEPARATOR: // Num Pad , (on JIS keyboard)
+    case VK_NUMPAD0:
+    case VK_NUMPAD1:
+    case VK_NUMPAD2:
+    case VK_NUMPAD3:
+    case VK_NUMPAD4:
+    case VK_NUMPAD5:
+    case VK_NUMPAD6:
+    case VK_NUMPAD7:
+    case VK_NUMPAD8:
+    case VK_NUMPAD9:
+        return true;
+    }
+    return false;
+}
+
+int windowsKeyCodeForKeyEvent(WebEvent* event)
+{
+    if (event.keyboardFlags & WebEventKeyboardInputModifierFlagsChanged)
+        return event.keyCode;
+
+    // There are several kinds of characters for which we produce key code from char code:
+    // 1. Roman letters. Windows keyboard layouts affect both virtual key codes and character codes for these,
+    //    so e.g. 'A' gets the same keyCode on QWERTY, AZERTY or Dvorak layouts.
+    // 2. Keys for which there is no known iOS virtual key codes, like PrintScreen.
+    // 3. Certain punctuation keys. On Windows, these are also remapped depending on current keyboard layout,
+    //    but see comment in windowsKeyCodeForCharCode().
+    if (!isKeypadEvent(event) && (event.type == WebEventKeyDown || event.type == WebEventKeyUp)) {
+        // Cmd switches Roman letters for Dvorak-QWERTY layout, so try modified characters first.
+        NSString *string = event.characters;
+        int code = string.length > 0 ? windowsKeyCodeForCharCode([string characterAtIndex:0]) : 0;
+        if (code)
+            return code;
+
+        // Ctrl+A on an AZERTY keyboard would get VK_Q keyCode if we relied on -[WebEvent keyCode] below.
+        string = event.charactersIgnoringModifiers;
+        code = string.length > 0 ? windowsKeyCodeForCharCode([string characterAtIndex:0]) : 0;
+        if (code)
+            return code;
+    }
+
+    // Use iOS virtual key code directly for any keys not handled above.
+    // E.g. the key next to Caps Lock has the same Event.keyCode on U.S. keyboard ('A') and on
+    // Russian keyboard (CYRILLIC LETTER EF).
+    return event.keyCode;
+}
+
 class PlatformKeyboardEventBuilder : public PlatformKeyboardEvent {
 public:
     PlatformKeyboardEventBuilder(WebEvent *event)
@@ -373,13 +493,19 @@ public:
         m_modifiers = modifiersForEvent(event);
         m_timestamp = WallTime::now();
 
-        m_text = event.characters;
-        m_unmodifiedText = event.charactersIgnoringModifiers;
+        if (event.keyboardFlags & WebEventKeyboardInputModifierFlagsChanged) {
+            m_text = emptyString();
+            m_unmodifiedText = emptyString();
+            m_autoRepeat = false;
+        } else {
+            m_text = event.characters;
+            m_unmodifiedText = event.charactersIgnoringModifiers;
+            m_autoRepeat = event.isKeyRepeating;
+        }
         m_key = keyForKeyEvent(event);
         m_code = codeForKeyEvent(event);
         m_keyIdentifier = keyIdentifierForKeyEvent(event);
-        m_windowsVirtualKeyCode = event.keyCode;
-        m_autoRepeat = event.isKeyRepeating;
+        m_windowsVirtualKeyCode = windowsKeyCodeForKeyEvent(event);
         m_isKeypad = false; // iOS does not distinguish the numpad. See <rdar://problem/7190835>.
         m_isSystemKey = false;
         m_Event = event;
@@ -528,4 +654,4 @@ PlatformTouchEvent PlatformEventFactory::createPlatformSimulatedTouchEvent(Platf
 
 } // namespace WebCore
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

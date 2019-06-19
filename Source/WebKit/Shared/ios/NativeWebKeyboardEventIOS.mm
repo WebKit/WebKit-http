@@ -26,18 +26,20 @@
 #import "config.h"
 #import "NativeWebKeyboardEvent.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
+#import "UIKitSPI.h"
 #import "WebIOSEventFactory.h"
+#import <WebCore/RuntimeApplicationChecks.h>
 
 namespace WebKit {
 
-NativeWebKeyboardEvent::NativeWebKeyboardEvent(::WebEvent *event)
-    : WebKeyboardEvent(WebIOSEventFactory::createWebKeyboardEvent(event))
+NativeWebKeyboardEvent::NativeWebKeyboardEvent(::WebEvent *event, HandledByInputMethod handledByInputMethod)
+    : WebKeyboardEvent(WebIOSEventFactory::createWebKeyboardEvent(event, handledByInputMethod == HandledByInputMethod::Yes))
     , m_nativeEvent(event)
 {
 }
 
 } // namespace WebKit
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

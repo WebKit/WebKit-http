@@ -28,27 +28,52 @@
 
 #if ENABLE(WEB_AUTHN)
 
-#include "AuthenticatorManager.h"
+#include "AuthenticatorAssertionResponse.h"
+#include "AuthenticatorAttestationResponse.h"
+#include "AuthenticatorCoordinator.h"
+#include "AuthenticatorResponse.h"
+#include "Document.h"
 #include "JSDOMPromiseDeferred.h"
+#include "Page.h"
+#include "PublicKeyCredentialData.h"
 #include <wtf/text/Base64.h>
 
 namespace WebCore {
 
-PublicKeyCredential::PublicKeyCredential(RefPtr<ArrayBuffer>&& id, RefPtr<AuthenticatorResponse>&& response)
+RefPtr<PublicKeyCredential> PublicKeyCredential::tryCreate(const PublicKeyCredentialData& data)
+{
+    if (!data.rawId || !data.clientDataJSON)
+        return nullptr;
+
+    if (data.isAuthenticatorAttestationResponse) {
+        if (!data.attestationObject)
+            return nullptr;
+
+        return adoptRef(*new PublicKeyCredential(data.rawId.releaseNonNull(), AuthenticatorAttestationResponse::create(data.clientDataJSON.releaseNonNull(), data.attestationObject.releaseNonNull()), { data.appid }));
+    }
+
+    if (!data.authenticatorData || !data.signature)
+        return nullptr;
+
+    return adoptRef(*new PublicKeyCredential(data.rawId.releaseNonNull(), AuthenticatorAssertionResponse::create(data.clientDataJSON.releaseNonNull(), data.authenticatorData.releaseNonNull(), data.signature.releaseNonNull(), WTFMove(data.userHandle)), { data.appid }));
+}
+
+PublicKeyCredential::PublicKeyCredential(Ref<ArrayBuffer>&& id, Ref<AuthenticatorResponse>&& response, AuthenticationExtensionsClientOutputs&& extensions)
     : BasicCredential(WTF::base64URLEncode(id->data(), id->byteLength()), Type::PublicKey, Discovery::Remote)
     , m_rawId(WTFMove(id))
     , m_response(WTFMove(response))
+    , m_extensions(WTFMove(extensions))
 {
 }
 
-ExceptionOr<bool> PublicKeyCredential::getClientExtensionResults() const
+PublicKeyCredential::AuthenticationExtensionsClientOutputs PublicKeyCredential::getClientExtensionResults() const
 {
-    return Exception { NotSupportedError };
+    return m_extensions;
 }
 
-void PublicKeyCredential::isUserVerifyingPlatformAuthenticatorAvailable(DOMPromiseDeferred<IDLBoolean>&& promise)
+void PublicKeyCredential::isUserVerifyingPlatformAuthenticatorAvailable(Document& document, DOMPromiseDeferred<IDLBoolean>&& promise)
 {
-    AuthenticatorManager::singleton().isUserVerifyingPlatformAuthenticatorAvailable(WTFMove(promise));
+    document.page()->authenticatorCoordinator().isUserVerifyingPlatformAuthenticatorAvailable(WTFMove(promise));
 }
 
 } // namespace WebCore

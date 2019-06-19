@@ -45,6 +45,7 @@ class CachedResourceClient;
 class CachedResourceHandleBase;
 class CachedResourceLoader;
 class CachedResourceRequest;
+class CookieJar;
 class LoadTiming;
 class MemoryCache;
 class SecurityOrigin;
@@ -73,6 +74,7 @@ public:
         RawResource,
         Icon,
         Beacon,
+        Ping,
         SVGDocumentResource
 #if ENABLE(XSLT)
         , XSLStyleSheet
@@ -94,7 +96,7 @@ public:
         DecodeError
     };
 
-    CachedResource(CachedResourceRequest&&, Type, PAL::SessionID);
+    CachedResource(CachedResourceRequest&&, Type, const PAL::SessionID&, const CookieJar*);
     virtual ~CachedResource();
 
     virtual void load(CachedResourceLoader&);
@@ -116,14 +118,15 @@ public:
     const URL& url() const { return m_resourceRequest.url();}
     const String& cachePartition() const { return m_resourceRequest.cachePartition(); }
     PAL::SessionID sessionID() const { return m_sessionID; }
+    const CookieJar* cookieJar() const { return m_cookieJar.get(); }
     Type type() const { return m_type; }
     String mimeType() const { return m_response.mimeType(); }
     long long expectedContentLength() const { return m_response.expectedContentLength(); }
 
-    static bool shouldUsePingLoad(Type type) { return type == Type::Beacon; }
+    static bool shouldUsePingLoad(Type type) { return type == Type::Beacon || type == Type::Ping; }
 
     ResourceLoadPriority loadPriority() const { return m_loadPriority; }
-    void setLoadPriority(const std::optional<ResourceLoadPriority>&);
+    void setLoadPriority(const Optional<ResourceLoadPriority>&);
 
     WEBCORE_EXPORT void addClient(CachedResourceClient&);
     WEBCORE_EXPORT void removeClient(CachedResourceClient&);
@@ -166,7 +169,7 @@ public:
 
     bool isImage() const { return type() == Type::ImageResource; }
     // FIXME: CachedRawResource could be a main resource, an audio/video resource, or a raw XHR/icon resource.
-    bool isMainOrMediaOrIconOrRawResource() const { return type() == Type::MainResource || type() == Type::MediaResource || type() == Type::Icon || type() == Type::RawResource || type() == Type::Beacon; }
+    bool isMainOrMediaOrIconOrRawResource() const { return type() == Type::MainResource || type() == Type::MediaResource || type() == Type::Icon || type() == Type::RawResource || type() == Type::Beacon || type() == Type::Ping; }
 
     // Whether this request should impact request counting and delay window.onload.
     bool ignoreForRequestCount() const
@@ -174,6 +177,8 @@ public:
         return m_ignoreForRequestCount
             || type() == Type::MainResource
             || type() == Type::LinkPrefetch
+            || type() == Type::Beacon
+            || type() == Type::Ping
             || type() == Type::Icon
             || type() == Type::RawResource;
     }
@@ -212,7 +217,7 @@ public:
     void loadFrom(const CachedResource&);
 
     SecurityOrigin* origin() const { return m_origin.get(); }
-    AtomicString initiatorName() const { return m_initiatorName; }
+    AtomString initiatorName() const { return m_initiatorName; }
 
     bool canDelete() const { return !hasClients() && !m_loader && !m_preloadCount && !m_handleCount && !m_resourceToRevalidate && !m_proxyResource; }
     bool hasOneHandle() const { return m_handleCount == 1; }
@@ -231,8 +236,6 @@ public:
     const ResourceLoaderOptions& options() const { return m_options; }
 
     virtual void destroyDecodedData() { }
-
-    void setOwningCachedResourceLoader(CachedResourceLoader* cachedResourceLoader) { m_owningCachedResourceLoader = cachedResourceLoader; }
 
     bool isPreloaded() const { return m_preloadCount; }
     void increasePreloadCount() { ++m_preloadCount; }
@@ -267,8 +270,6 @@ public:
 
     virtual void didSendData(unsigned long long /* bytesSent */, unsigned long long /* totalBytesToBeSent */) { }
 
-    virtual void didRetrieveDerivedDataFromCache(const String& /* type */, SharedBuffer&) { }
-
 #if USE(FOUNDATION) || USE(SOUP)
     WEBCORE_EXPORT void tryReplaceEncodedData(SharedBuffer&);
 #endif
@@ -281,7 +282,7 @@ public:
 
 protected:
     // CachedResource constructor that may be used when the CachedResource can already be filled with response data.
-    CachedResource(const URL&, Type, PAL::SessionID);
+    CachedResource(const URL&, Type, const PAL::SessionID&, const CookieJar*);
 
     void setEncodedSize(unsigned);
     void setDecodedSize(unsigned);
@@ -322,6 +323,7 @@ protected:
 private:
     MonotonicTime m_lastDecodedAccessTime; // Used as a "thrash guard" in the cache
     PAL::SessionID m_sessionID;
+    RefPtr<const CookieJar> m_cookieJar;
     WallTime m_responseTimestamp;
     unsigned long m_identifierForLoadWithoutResourceLoader { 0 };
 
@@ -331,8 +333,6 @@ private:
     HashSet<CachedResourceHandleBase*> m_handlesToRevalidate;
 
     Vector<std::pair<String, String>> m_varyingHeaderValues;
-
-    CachedResourceLoader* m_owningCachedResourceLoader { nullptr }; // only non-null for resources that are not in the cache
 
     // If this field is non-null we are using the resource as a proxy for checking whether an existing resource is still up to date
     // using HTTP If-Modified-Since/If-None-Match headers. If the response is 304 all clients of this resource are moved
@@ -347,7 +347,7 @@ private:
 
     ResourceError m_error;
     RefPtr<SecurityOrigin> m_origin;
-    AtomicString m_initiatorName;
+    AtomString m_initiatorName;
 
     RedirectChainCacheStatus m_redirectChainCacheStatus;
 

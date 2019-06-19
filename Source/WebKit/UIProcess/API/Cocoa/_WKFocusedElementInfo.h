@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 /**
@@ -53,13 +51,14 @@ typedef NS_ENUM(NSInteger, WKInputType) {
     WKInputTypeWeek,
     WKInputTypeTime,
     WKInputTypeSelect,
-    WKInputTypeColor
+    WKInputTypeColor,
+    WKInputTypeDrawing,
 };
 
 /**
- * The _WKFocusedElementInfo provides basic information about an element
- * that has been focused (either programmatically or through user interaction)
- * but has not yet been assisted.
+ * The _WKFocusedElementInfo provides basic information about an element that
+ * has been focused (either programmatically or through user interaction) but
+ * is not causing any input UI (e.g. keyboard, date picker, etc.) to be shown.
  */
 @protocol _WKFocusedElementInfo <NSObject>
 
@@ -82,8 +81,6 @@ typedef NS_ENUM(NSInteger, WKInputType) {
  */
 @property (nonatomic, readonly, getter=isUserInitiated) BOOL userInitiated;
 
-@property (nonatomic, readonly) NSObject <NSSecureCoding> *userObject WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
+@property (nonatomic, readonly) NSObject <NSSecureCoding> *userObject WK_API_AVAILABLE(macos(10.13.4), ios(11.3));
 
 @end
-
-#endif // WK_API_ENABLED

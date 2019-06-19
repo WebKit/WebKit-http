@@ -53,14 +53,15 @@ void genericUnwind(VM* vm, ExecState* callFrame)
         CRASH();
     }
     
-    vm->shadowChicken().log(*vm, topJSCallFrame, ShadowChicken::Packet::throwPacket());
+    if (auto* shadowChicken = vm->shadowChicken())
+        shadowChicken->log(*vm, topJSCallFrame, ShadowChicken::Packet::throwPacket());
 
     Exception* exception = scope.exception();
     RELEASE_ASSERT(exception);
     HandlerInfo* handler = vm->interpreter->unwind(*vm, callFrame, exception); // This may update callFrame.
 
     void* catchRoutine;
-    Instruction* catchPCForInterpreter = 0;
+    const Instruction* catchPCForInterpreter = nullptr;
     if (handler) {
         // handler->target is meaningless for getting a code offset when catching
         // the exception in a DFG/FTL frame. This bytecode target offset could be
@@ -69,11 +70,16 @@ void genericUnwind(VM* vm, ExecState* callFrame)
         // and can cause an overflow. OSR exit properly exits to handler->target
         // in the proper frame.
         if (!JITCode::isOptimizingJIT(callFrame->codeBlock()->jitType()))
-            catchPCForInterpreter = &callFrame->codeBlock()->instructions()[handler->target];
+            catchPCForInterpreter = callFrame->codeBlock()->instructions().at(handler->target).ptr();
 #if ENABLE(JIT)
         catchRoutine = handler->nativeCode.executableAddress();
 #else
-        catchRoutine = catchPCForInterpreter->u.pointer;
+        if (catchPCForInterpreter->isWide32())
+            catchRoutine = LLInt::getWide32CodePtr(catchPCForInterpreter->opcodeID());
+        else if (catchPCForInterpreter->isWide16())
+            catchRoutine = LLInt::getWide16CodePtr(catchPCForInterpreter->opcodeID());
+        else
+            catchRoutine = LLInt::getCodePtr(catchPCForInterpreter->opcodeID());
 #endif
     } else
         catchRoutine = LLInt::getCodePtr<ExceptionHandlerPtrTag>(handleUncaughtException).executableAddress();

@@ -41,7 +41,7 @@ class VideoTrackPrivate;
 
 class MockSourceBufferPrivate final : public SourceBufferPrivate {
 public:
-    static RefPtr<MockSourceBufferPrivate> create(MockMediaSourcePrivate*);
+    static Ref<MockSourceBufferPrivate> create(MockMediaSourcePrivate*);
     virtual ~MockSourceBufferPrivate();
 
     void clearMediaSource() { m_mediaSource = nullptr; }
@@ -49,7 +49,6 @@ public:
     bool hasVideo() const;
     bool hasAudio() const;
 
-    void seekToTime(const MediaTime&);
     MediaTime fastSeekTimeForMediaTime(const MediaTime&, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold);
 
 private:
@@ -63,16 +62,22 @@ private:
     void removedFromMediaSource() final;
     MediaPlayer::ReadyState readyState() const final;
     void setReadyState(MediaPlayer::ReadyState) final;
+    bool canSwitchToType(const ContentType&) final;
 
-    void flush(const AtomicString&) final { m_enqueuedSamples.clear(); }
-    void enqueueSample(Ref<MediaSample>&&, const AtomicString&) final;
-    bool isReadyForMoreSamples(const AtomicString&) final { return true; }
+    void flush(const AtomString&) final { m_enqueuedSamples.clear(); }
+    void enqueueSample(Ref<MediaSample>&&, const AtomString&) final;
+    bool isReadyForMoreSamples(const AtomString&) final { return true; }
     void setActive(bool) final;
 
-    Vector<String> enqueuedSamplesForTrackID(const AtomicString&) final;
+    Vector<String> enqueuedSamplesForTrackID(const AtomString&) final;
 
     void didReceiveInitializationSegment(const MockInitializationBox&);
     void didReceiveSample(const MockSampleBox&);
+
+#if !RELEASE_LOG_DISABLED
+    const Logger& sourceBufferLogger() const final;
+    const void* sourceBufferLogIdentifier() final;
+#endif
 
     MockMediaSourcePrivate* m_mediaSource;
     SourceBufferPrivateClient* m_client;

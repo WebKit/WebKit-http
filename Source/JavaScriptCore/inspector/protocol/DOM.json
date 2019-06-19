@@ -9,11 +9,6 @@
             "description": "Unique DOM node identifier."
         },
         {
-            "id": "BackendNodeId",
-            "type": "integer",
-            "description": "Unique DOM node identifier used to reference a node that may not have been pushed to the front-end."
-        },
-        {
             "id": "EventListenerId",
             "type": "integer",
             "description": "Unique event listener identifier."
@@ -52,6 +47,7 @@
                 { "name": "nodeName", "type": "string", "description": "<code>Node</code>'s nodeName." },
                 { "name": "localName", "type": "string", "description": "<code>Node</code>'s localName." },
                 { "name": "nodeValue", "type": "string", "description": "<code>Node</code>'s nodeValue." },
+                { "name": "frameId", "$ref": "Network.FrameId", "optional": true, "description": "Identifier of the containing frame." },
                 { "name": "childNodeCount", "type": "integer", "optional": true, "description": "Child count for <code>Container</code> nodes." },
                 { "name": "children", "type": "array", "optional": true, "items": { "$ref": "Node" }, "description": "Child nodes of this node when requested with children." },
                 { "name": "attributes", "type": "array", "optional": true, "items": { "type": "string" }, "description": "Attributes of the <code>Element</code> node in the form of flat array <code>[name1, value1, name2, value2]</code>." },
@@ -65,13 +61,21 @@
                 { "name": "pseudoType", "$ref": "PseudoType", "optional": true, "description": "Pseudo element type for this node." },
                 { "name": "shadowRootType", "$ref": "ShadowRootType", "optional": true, "description": "Shadow root type." },
                 { "name": "customElementState", "$ref": "CustomElementState", "optional": true, "description": "Custom element state." },
-                { "name": "frameId", "$ref": "Network.FrameId", "optional": true, "description": "Frame ID for frame owner elements." },
                 { "name": "contentDocument", "$ref": "Node", "optional": true, "description": "Content document for frame owner elements." },
                 { "name": "shadowRoots", "type": "array", "optional": true, "items": { "$ref": "Node" }, "description": "Shadow root list for given element host." },
                 { "name": "templateContent", "$ref": "Node", "optional": true, "description": "Content document fragment for template elements" },
                 { "name": "pseudoElements", "type": "array", "items": { "$ref": "Node" }, "optional": true, "description": "Pseudo elements associated with this node." },
-                { "name": "role", "type": "string", "optional": true, "description": "Computed value for first recognized role token, default role per element, or overridden role." },
                 { "name": "contentSecurityPolicyHash", "type": "string", "optional": true, "description": "Computed SHA-256 Content Security Policy hash source for given element." }
+            ]
+        },
+        {
+            "id": "DataBinding",
+            "type": "object",
+            "description": "Relationship between data that is associated with a node and the node itself.",
+            "properties": [
+                { "name": "binding", "type": "string", "description": "The binding key that is specified." },
+                { "name": "type", "optional": true, "type": "string", "description": "A more descriptive name for the type of binding that represents this paritcular data relationship" },
+                { "name": "value", "type": "string", "description": "The value that is resolved to with this data binding relationship." }
             ]
         },
         {
@@ -83,11 +87,10 @@
                 { "name": "type", "type": "string", "description": "<code>EventListener</code>'s type." },
                 { "name": "useCapture", "type": "boolean", "description": "<code>EventListener</code>'s useCapture." },
                 { "name": "isAttribute", "type": "boolean", "description": "<code>EventListener</code>'s isAttribute." },
-                { "name": "nodeId", "$ref": "NodeId", "description": "Target <code>DOMNode</code> id." },
-                { "name": "handlerBody", "type": "string", "description": "Event handler function body." },
+                { "name": "nodeId", "$ref": "NodeId", "optional": true, "description": "The target <code>DOMNode</code> id if the event listener is for a node." },
+                { "name": "onWindow", "type": "boolean", "optional": true, "description": "True if the event listener was added to the window." },
                 { "name": "location", "$ref": "Debugger.Location", "optional": true, "description": "Handler code location." },
-                { "name": "sourceName", "type": "string", "optional": true, "description": "Source script URL." },
-                { "name": "handler", "$ref": "Runtime.RemoteObject", "optional": true, "description": "Event handler function value." },
+                { "name": "handlerName", "type": "string", "optional": true, "description": "Event handler function name." },
                 { "name": "passive", "type": "boolean", "optional": true, "description": "<code>EventListener</code>'s passive." },
                 { "name": "once", "type": "boolean", "optional": true, "description": "<code>EventListener</code>'s once." },
                 { "name": "disabled", "type": "boolean", "optional": true },
@@ -263,11 +266,30 @@
             ]
         },
         {
+            "name": "getDataBindingsForNode",
+            "description": "Returns all data binding relationships between data that is associated with the node and the node itself.",
+            "parameters": [
+                { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to get data bindings for." }
+            ],
+            "returns": [
+                { "name": "dataBindings", "type": "array", "items": { "$ref": "DataBinding"}, "description": "Array of binding relationships between data and node" }
+            ]
+        },
+        {
+            "name": "getAssociatedDataForNode",
+            "description": "Returns all data that has been associated with the node and is available for data binding.",
+            "parameters": [
+                { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to get associated data for." }
+            ],
+            "returns": [
+                { "name": "associatedData", "type": "string", "optional": true, "description": "Associated data bound to this node. Sent as a JSON string." }
+            ]
+        },
+        {
             "name": "getEventListenersForNode",
             "description": "Returns event listeners relevant to the node.",
             "parameters": [
-                { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to get listeners for." },
-                { "name": "objectGroup", "type": "string", "optional": true, "description": "Symbolic group name for handler value. Handler value is not returned without this parameter specified." }
+                { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to get listeners for." }
             ],
             "returns": [
                 { "name": "listeners", "type": "array", "items": { "$ref": "EventListener"}, "description": "Array of relevant listeners." }
@@ -336,7 +358,8 @@
             "description": "Searches for a given string in the DOM tree. Use <code>getSearchResults</code> to access search results or <code>cancelSearch</code> to end this search session.",
             "parameters": [
                 { "name": "query", "type": "string", "description": "Plain text or query selector or XPath search query." },
-                { "name": "nodeIds", "type": "array", "items": { "$ref": "NodeId" }, "optional": true, "description": "Ids of nodes to use as starting points for the search." }
+                { "name": "nodeIds", "type": "array", "items": { "$ref": "NodeId" }, "optional": true, "description": "Ids of nodes to use as starting points for the search." },
+                { "name": "caseSensitive", "type": "boolean", "optional": true, "description": "If true, search is case sensitive." }
             ],
             "returns": [
                 { "name": "searchId", "type": "string", "description": "Unique search session identifier." },
@@ -377,7 +400,8 @@
             "description": "Enters the 'inspect' mode. In this mode, elements that user is hovering over are highlighted. Backend then generates 'inspect' command upon element selection.",
             "parameters": [
                 { "name": "enabled", "type": "boolean", "description": "True to enable inspection mode, false to disable it." },
-                { "name": "highlightConfig", "$ref": "HighlightConfig", "optional": true, "description": "A descriptor for the highlight appearance of hovered-over nodes. May be omitted if <code>enabled == false</code>." }
+                { "name": "highlightConfig", "$ref": "HighlightConfig", "optional": true, "description": "A descriptor for the highlight appearance of hovered-over nodes. May be omitted if <code>enabled == false</code>." },
+                { "name": "showRulers", "type": "boolean", "optional": true, "description": "Whether the rulers should be shown during element selection. This overrides Page.setShowRulers." }
             ]
         },
         {
@@ -450,23 +474,6 @@
             ],
             "returns": [
                 { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node for given path." }
-            ]
-        },
-        {
-            "name": "pushNodeByBackendIdToFrontend",
-            "description": "Requests that the node is sent to the caller given its backend node id.",
-            "parameters": [
-                { "name": "backendNodeId", "$ref": "BackendNodeId", "description": "The backend node id of the node." }
-            ],
-            "returns": [
-                { "name": "nodeId", "$ref": "NodeId", "description": "The pushed node's id." }
-            ]
-        },
-        {
-            "name": "releaseBackendNodeIds",
-            "description": "Requests that group of <code>BackendNodeIds</code> is released.",
-            "parameters": [
-                { "name": "nodeGroup", "type": "string", "description": "The backend node ids group name." }
             ]
         },
         {
@@ -658,6 +665,25 @@
             "description": "Called after a request has been made to remove an event listener from a node.",
             "parameters": [
                 { "name": "nodeId", "$ref": "NodeId" }
+            ]
+        },
+        {
+            "name": "didFireEvent",
+            "description": "Called when an event is fired on a node.",
+            "parameters": [
+                { "name": "nodeId", "$ref": "NodeId" },
+                { "name": "eventName", "type": "string" },
+                { "name": "timestamp", "$ref": "Network.Timestamp", "description": "Time when the event was fired" },
+                { "name": "data", "type": "object", "optional": true, "description": "Holds ancillary information about the event or its target." }
+            ]
+        },
+        {
+            "name": "powerEfficientPlaybackStateChanged",
+            "description": "Called when an element enters/exits a power efficient playback state.",
+            "parameters": [
+                { "name": "nodeId", "$ref": "NodeId" },
+                { "name": "timestamp", "$ref": "Network.Timestamp" },
+                { "name": "isPowerEfficient", "type": "boolean" }
             ]
         }
     ]

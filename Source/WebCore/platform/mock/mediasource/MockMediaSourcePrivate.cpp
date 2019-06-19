@@ -46,6 +46,9 @@ MockMediaSourcePrivate::MockMediaSourcePrivate(MockMediaPlayerMediaSource& paren
     : m_player(parent)
     , m_client(client)
 {
+#if !RELEASE_LOG_DISABLED
+    m_client->setLogIdentifier(m_player.mediaPlayerLogIdentifier());
+#endif
 }
 
 MockMediaSourcePrivate::~MockMediaSourcePrivate()
@@ -165,21 +168,31 @@ MediaTime MockMediaSourcePrivate::seekToTime(const MediaTime& targetTime, const 
             seekTime = sourceSeekTime;
     }
 
-    for (auto& buffer : m_activeSourceBuffers)
-        buffer->seekToTime(seekTime);
-
     return seekTime;
 }
 
-std::optional<VideoPlaybackQualityMetrics> MockMediaSourcePrivate::videoPlaybackQualityMetrics()
+Optional<VideoPlaybackQualityMetrics> MockMediaSourcePrivate::videoPlaybackQualityMetrics()
 {
     return VideoPlaybackQualityMetrics {
         m_totalVideoFrames,
         m_droppedVideoFrames,
         m_corruptedVideoFrames,
-        m_totalFrameDelay.toDouble()
+        m_totalFrameDelay.toDouble(),
+        0,
     };
 }
+
+#if !RELEASE_LOG_DISABLED
+const Logger& MockMediaSourcePrivate::mediaSourceLogger() const
+{
+    return m_player.mediaPlayerLogger();
+}
+
+const void* MockMediaSourcePrivate::mediaSourceLogIdentifier()
+{
+    return m_player.mediaPlayerLogIdentifier();
+}
+#endif
 
 }
 

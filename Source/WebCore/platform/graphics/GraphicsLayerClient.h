@@ -38,26 +38,24 @@ class IntPoint;
 class IntRect;
 class TransformationMatrix;
 
-enum GraphicsLayerPaintingPhaseFlags {
-    GraphicsLayerPaintBackground            = 1 << 0,
-    GraphicsLayerPaintForeground            = 1 << 1,
-    GraphicsLayerPaintMask                  = 1 << 2,
-    GraphicsLayerPaintClipPath              = 1 << 3,
-    GraphicsLayerPaintOverflowContents      = 1 << 4,
-    GraphicsLayerPaintCompositedScroll      = 1 << 5,
-    GraphicsLayerPaintChildClippingMask     = 1 << 6,
-    GraphicsLayerPaintAllWithOverflowClip   = GraphicsLayerPaintBackground | GraphicsLayerPaintForeground
+enum class GraphicsLayerPaintingPhase {
+    Background            = 1 << 0,
+    Foreground            = 1 << 1,
+    Mask                  = 1 << 2,
+    ClipPath              = 1 << 3,
+    OverflowContents      = 1 << 4,
+    CompositedScroll      = 1 << 5,
+    ChildClippingMask     = 1 << 6,
 };
-typedef uint8_t GraphicsLayerPaintingPhase;
 
 enum AnimatedPropertyID {
     AnimatedPropertyInvalid,
     AnimatedPropertyTransform,
     AnimatedPropertyOpacity,
     AnimatedPropertyBackgroundColor,
-    AnimatedPropertyFilter
+    AnimatedPropertyFilter,
 #if ENABLE(FILTERS_LEVEL_2)
-    , AnimatedPropertyWebkitBackdropFilter
+    AnimatedPropertyWebkitBackdropFilter,
 #endif
 };
 
@@ -72,6 +70,8 @@ enum LayerTreeAsTextBehaviorFlags {
     LayerTreeAsTextIncludePageOverlayLayers     = 1 << 6,
     LayerTreeAsTextIncludeAcceleratesDrawing    = 1 << 7,
     LayerTreeAsTextIncludeBackingStoreAttached  = 1 << 8,
+    LayerTreeAsTextIncludeRootLayerProperties   = 1 << 9,
+    LayerTreeAsTextIncludeEventRegion           = 1 << 10,
     LayerTreeAsTextShowAll                      = 0xFFFF
 };
 typedef unsigned LayerTreeAsTextBehavior;
@@ -100,8 +100,8 @@ public:
     // Notification that this layer requires a flush before the next display refresh.
     virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) { }
 
-    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect& /* inClip */, GraphicsLayerPaintBehavior) { }
-    virtual void didCommitChangesForLayer(const GraphicsLayer*) const { }
+    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, OptionSet<GraphicsLayerPaintingPhase>, const FloatRect& /* inClip */, GraphicsLayerPaintBehavior) { }
+    virtual void didChangePlatformLayerForLayer(const GraphicsLayer*) { }
 
     // Provides current transform (taking transform-origin and animations into account). Input matrix has been
     // initialized to identity already. Returns false if the layer has no transform.
@@ -123,7 +123,7 @@ public:
     virtual bool isTrackingRepaints() const { return false; }
 
     virtual bool shouldSkipLayerInDump(const GraphicsLayer*, LayerTreeAsTextBehavior) const { return false; }
-    virtual bool shouldDumpPropertyForLayer(const GraphicsLayer*, const char*) const { return true; }
+    virtual bool shouldDumpPropertyForLayer(const GraphicsLayer*, const char*, LayerTreeAsTextBehavior) const { return true; }
 
     virtual bool shouldAggressivelyRetainTiles(const GraphicsLayer*) const { return false; }
     virtual bool shouldTemporarilyRetainTileCohorts(const GraphicsLayer*) const { return true; }

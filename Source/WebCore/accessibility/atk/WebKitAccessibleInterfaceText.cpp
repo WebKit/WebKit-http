@@ -49,8 +49,8 @@
 #include "TextEncoding.h"
 #include "TextIterator.h"
 #include "VisibleUnits.h"
+#include "WebKitAccessible.h"
 #include "WebKitAccessibleUtil.h"
-#include "WebKitAccessibleWrapperAtk.h"
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
@@ -66,7 +66,7 @@ static AccessibilityObject* core(AtkText* text)
     if (!WEBKIT_IS_ACCESSIBLE(text))
         return 0;
 
-    return webkitAccessibleGetAccessibilityObject(WEBKIT_ACCESSIBLE(text));
+    return &webkitAccessibleGetAccessibilityObject(WEBKIT_ACCESSIBLE(text));
 }
 
 static int baselinePositionForRenderObject(RenderObject* renderObject)
@@ -231,7 +231,7 @@ static guint accessibilityObjectLength(const AccessibilityObject* object)
 
     // For those objects implementing the AtkText interface we use the
     // well known API to always get the text in a consistent way
-    AtkObject* atkObj = ATK_OBJECT(object->wrapper());
+    auto* atkObj = ATK_OBJECT(object->wrapper());
     if (ATK_IS_TEXT(atkObj)) {
         GUniquePtr<gchar> text(webkitAccessibleTextGetText(ATK_TEXT(atkObj), 0, -1));
         return g_utf8_strlen(text.get(), -1);
@@ -325,6 +325,10 @@ static IntRect textExtents(AtkText* text, gint startOffset, gint length, AtkCoor
     case ATK_XY_WINDOW:
         // No-op
         break;
+#if ATK_CHECK_VERSION(2, 30, 0)
+    case ATK_XY_PARENT:
+        RELEASE_ASSERT_NOT_REACHED();
+#endif
     }
 
     return extents;
@@ -402,13 +406,13 @@ static void getSelectionOffsetsForObject(AccessibilityObject* coreObject, Visibl
 
     // Calculate position of the selected range inside the object.
     Position parentFirstPosition = firstPositionInOrBeforeNode(node);
-    RefPtr<Range> rangeInParent = Range::create(node->document(), parentFirstPosition, nodeRangeStart);
+    auto rangeInParent = Range::create(node->document(), parentFirstPosition, nodeRangeStart);
 
     // Set values for start offsets and calculate initial range length.
     // These values might be adjusted later to cover special cases.
-    startOffset = webCoreOffsetToAtkOffset(coreObject, TextIterator::rangeLength(rangeInParent.get(), true));
-    RefPtr<Range> nodeRange = Range::create(node->document(), nodeRangeStart, nodeRangeEnd);
-    int rangeLength = TextIterator::rangeLength(nodeRange.get(), true);
+    startOffset = webCoreOffsetToAtkOffset(coreObject, TextIterator::rangeLength(rangeInParent.ptr(), true));
+    auto nodeRange = Range::create(node->document(), nodeRangeStart, nodeRangeEnd);
+    int rangeLength = TextIterator::rangeLength(nodeRange.ptr(), true);
 
     // Special cases that are only relevant when working with *_END boundaries.
     if (selection.affinity() == UPSTREAM) {

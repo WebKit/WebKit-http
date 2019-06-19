@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS)
 
 #include "BitmapTextureGL.h"
 #include "TextureMapperGLHeaders.h"
@@ -65,6 +65,14 @@ public:
 
     std::unique_ptr<TextureMapperPlatformLayerBuffer> clone();
 
+    class HolePunchClient {
+    public:
+        virtual void setVideoRectangle(const IntRect&) = 0;
+        virtual ~HolePunchClient() = 0;
+    };
+
+    void setHolePunchClient(std::unique_ptr<HolePunchClient>&& client) { m_holePunchClient = WTFMove(client); }
+
 private:
 
     RefPtr<BitmapTexture> m_texture;
@@ -76,8 +84,9 @@ private:
     TextureMapperGL::Flags m_extraFlags;
     bool m_hasManagedTexture;
     std::unique_ptr<UnmanagedBufferDataHolder> m_unmanagedBufferDataHolder;
+    std::unique_ptr<HolePunchClient> m_holePunchClient;
 };
 
 } // namespace WebCore
 
-#endif // USE(COORDINATED_GRAPHICS_THREADED)
+#endif // USE(COORDINATED_GRAPHICS)

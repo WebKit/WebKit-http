@@ -22,4 +22,11 @@
 
 messages -> WebPage : WebPageBase {
     LoadURL(String url)
+#if ENABLE(TEST_FEATURE)
+    TestAsyncMessage(enum:bool WebKit::TestTwoStateEnum twoStateEnum) -> (uint64_t result) Async
+    TestAsyncMessageWithNoArguments() -> () Async
+    TestAsyncMessageWithMultipleArguments() -> (bool flag, uint64_t value) Async
+#endif
+    TestSyncMessage(uint32_t param) -> (uint8_t reply) Synchronous
+    TestSynchronousMessage(bool value) -> (Optional<WebKit::TestClassName> optionalReply) Synchronous
 }

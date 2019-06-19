@@ -34,6 +34,7 @@
 #include "ContentSecurityPolicyHash.h"
 #include "ContentSecurityPolicySource.h"
 #include "ContentSecurityPolicySourceList.h"
+#include "CustomHeaderFields.h"
 #include "DOMStringList.h"
 #include "Document.h"
 #include "DocumentLoader.h"
@@ -208,7 +209,7 @@ void ContentSecurityPolicy::didReceiveHeader(const String& header, ContentSecuri
         m_hasAPIPolicy = true;
     }
 
-    m_cachedResponseHeaders = std::nullopt;
+    m_cachedResponseHeaders = WTF::nullopt;
 
     // RFC2616, section 4.2 specifies that headers appearing multiple times can
     // be combined with a comma. Walk the header string, and parse each comma
@@ -500,6 +501,18 @@ bool ContentSecurityPolicy::allowFrameAncestors(const Frame& frame, const URL& u
     return allPoliciesAllow(WTFMove(handleViolatedDirective), &ContentSecurityPolicyDirectiveList::violatedDirectiveForFrameAncestor, frame);
 }
 
+bool ContentSecurityPolicy::overridesXFrameOptions() const
+{
+    // If a resource is delivered with an policy that includes a directive named frame-ancestors and whose disposition
+    // is "enforce", then the X-Frame-Options header MUST be ignored.
+    // https://www.w3.org/TR/CSP3/#frame-ancestors-and-frame-options
+    for (auto& policy : m_policies) {
+        if (!policy->isReportOnly() && policy->hasFrameAncestorsDirective())
+            return true;
+    }
+    return false;
+}
+
 bool ContentSecurityPolicy::allowFrameAncestors(const Vector<RefPtr<SecurityOrigin>>& ancestorOrigins, const URL& url, bool overrideContentSecurityPolicy) const
 {
     if (overrideContentSecurityPolicy)
@@ -670,7 +683,7 @@ void ContentSecurityPolicy::reportViolation(const String& effectiveViolatedDirec
 
 void ContentSecurityPolicy::reportViolation(const String& effectiveViolatedDirective, const String& violatedDirective, const ContentSecurityPolicyDirectiveList& violatedDirectiveList, const URL& blockedURL, const String& consoleMessage, const String& sourceURL, const TextPosition& sourcePosition, JSC::ExecState* state) const
 {
-    logToConsole(consoleMessage, sourceURL, sourcePosition.m_line, state);
+    logToConsole(consoleMessage, sourceURL, sourcePosition.m_line, sourcePosition.m_column, state);
 
     if (!m_isReportingEnabled)
         return;
@@ -849,16 +862,15 @@ void ContentSecurityPolicy::reportMissingReportURI(const String& policy) const
     logToConsole("The Content Security Policy '" + policy + "' was delivered in report-only mode, but does not specify a 'report-uri'; the policy will have no effect. Please either add a 'report-uri' directive, or deliver the policy via the 'Content-Security-Policy' header.");
 }
 
-void ContentSecurityPolicy::logToConsole(const String& message, const String& contextURL, const WTF::OrdinalNumber& contextLine, JSC::ExecState* state) const
+void ContentSecurityPolicy::logToConsole(const String& message, const String& contextURL, const WTF::OrdinalNumber& contextLine, const WTF::OrdinalNumber& contextColumn, JSC::ExecState* state) const
 {
     if (!m_isReportingEnabled)
         return;
 
-    // FIXME: <http://webkit.org/b/114317> ContentSecurityPolicy::logToConsole should include a column number
     if (m_client)
         m_client->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, 0);
     else if (m_scriptExecutionContext)
-        m_scriptExecutionContext->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, contextURL, contextLine.oneBasedInt(), 0, state);
+        m_scriptExecutionContext->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, contextURL, contextLine.oneBasedInt(), contextColumn.oneBasedInt(), state);
 }
 
 void ContentSecurityPolicy::reportBlockedScriptExecutionToInspector(const String& directiveText) const
@@ -882,17 +894,17 @@ void ContentSecurityPolicy::upgradeInsecureRequestIfNeeded(URL& url, InsecureReq
     bool upgradeRequest = m_insecureNavigationRequestsToUpgrade.contains(SecurityOriginData::fromURL(url));
     if (requestType == InsecureRequestType::Load || requestType == InsecureRequestType::FormSubmission)
         upgradeRequest |= m_upgradeInsecureRequests;
-    
+
     if (!upgradeRequest)
         return;
 
     if (url.protocolIs("http"))
         url.setProtocol("https");
-    else if (url.protocolIs("ws"))
+    else {
+        ASSERT(url.protocolIs("ws"));
         url.setProtocol("wss");
-    else
-        return;
-    
+    }
+
     if (url.port() && url.port().value() == 80)
         url.setPort(443);
 }

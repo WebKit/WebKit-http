@@ -32,7 +32,7 @@
 #include "JSCInlines.h"
 #include "JSWebAssemblyInstance.h"
 #include "VMEntryScope.h"
-#include "WasmContext.h"
+#include "WasmContextInlines.h"
 #include "WasmInstance.h"
 #include <wtf/StringPrintStream.h>
 
@@ -52,11 +52,11 @@ bool CallFrame::callSiteBitsAreBytecodeOffset() const
 {
     ASSERT(codeBlock());
     switch (codeBlock()->jitType()) {
-    case JITCode::InterpreterThunk:
-    case JITCode::BaselineJIT:
+    case JITType::InterpreterThunk:
+    case JITType::BaselineJIT:
         return true;
-    case JITCode::None:
-    case JITCode::HostCallThunk:
+    case JITType::None:
+    case JITType::HostCallThunk:
         RELEASE_ASSERT_NOT_REACHED();
         return false;
     default:
@@ -71,11 +71,11 @@ bool CallFrame::callSiteBitsAreCodeOriginIndex() const
 {
     ASSERT(codeBlock());
     switch (codeBlock()->jitType()) {
-    case JITCode::DFGJIT:
-    case JITCode::FTLJIT:
+    case JITType::DFGJIT:
+    case JITType::FTLJIT:
         return true;
-    case JITCode::None:
-    case JITCode::HostCallThunk:
+    case JITType::None:
+    case JITType::HostCallThunk:
         RELEASE_ASSERT_NOT_REACHED();
         return false;
     default:
@@ -107,12 +107,12 @@ SUPPRESS_ASAN CallSiteIndex CallFrame::unsafeCallSiteIndex() const
 }
 
 #if USE(JSVALUE32_64)
-Instruction* CallFrame::currentVPC() const
+const Instruction* CallFrame::currentVPC() const
 {
     return bitwise_cast<Instruction*>(callSiteIndex().bits());
 }
 
-void CallFrame::setCurrentVPC(Instruction* vpc)
+void CallFrame::setCurrentVPC(const Instruction* vpc)
 {
     CallSiteIndex callSite(vpc);
     this[CallFrameSlot::argumentCount].tag() = callSite.bits();
@@ -126,13 +126,13 @@ unsigned CallFrame::callSiteBitsAsBytecodeOffset() const
 }
 
 #else // USE(JSVALUE32_64)
-Instruction* CallFrame::currentVPC() const
+const Instruction* CallFrame::currentVPC() const
 {
     ASSERT(callSiteBitsAreBytecodeOffset());
-    return &codeBlock()->instructions()[callSiteBitsAsBytecodeOffset()];
+    return codeBlock()->instructions().at(callSiteBitsAsBytecodeOffset()).ptr();
 }
 
-void CallFrame::setCurrentVPC(Instruction* vpc)
+void CallFrame::setCurrentVPC(const Instruction* vpc)
 {
     CallSiteIndex callSite(codeBlock()->bytecodeOffset(vpc));
     this[CallFrameSlot::argumentCount].tag() = static_cast<int32_t>(callSite.bits());
@@ -156,11 +156,11 @@ unsigned CallFrame::bytecodeOffset()
     if (callSiteBitsAreCodeOriginIndex()) {
         ASSERT(codeBlock());
         CodeOrigin codeOrigin = this->codeOrigin();
-        for (InlineCallFrame* inlineCallFrame = codeOrigin.inlineCallFrame; inlineCallFrame;) {
+        for (InlineCallFrame* inlineCallFrame = codeOrigin.inlineCallFrame(); inlineCallFrame;) {
             codeOrigin = inlineCallFrame->directCaller;
-            inlineCallFrame = codeOrigin.inlineCallFrame;
+            inlineCallFrame = codeOrigin.inlineCallFrame();
         }
-        return codeOrigin.bytecodeIndex;
+        return codeOrigin.bytecodeIndex();
     }
 #endif
     ASSERT(callSiteBitsAreBytecodeOffset());
@@ -253,14 +253,14 @@ SourceOrigin CallFrame::callerSourceOrigin()
             // In the above case, the eval function will be interpreted as the indirect call to eval inside forEach function.
             // At that time, the generated eval code should have the source origin to the original caller of the forEach function
             // instead of the source origin of the forEach function.
-            if (static_cast<FunctionExecutable*>(visitor->codeBlock()->ownerScriptExecutable())->isBuiltinFunction())
+            if (static_cast<FunctionExecutable*>(visitor->codeBlock()->ownerExecutable())->isBuiltinFunction())
                 return StackVisitor::Status::Continue;
             FALLTHROUGH;
 
         case StackVisitor::Frame::CodeType::Eval:
         case StackVisitor::Frame::CodeType::Module:
         case StackVisitor::Frame::CodeType::Global:
-            sourceOrigin = visitor->codeBlock()->ownerScriptExecutable()->sourceOrigin();
+            sourceOrigin = visitor->codeBlock()->ownerExecutable()->sourceOrigin();
             return StackVisitor::Status::Done;
 
         case StackVisitor::Frame::CodeType::Native:
@@ -337,9 +337,10 @@ const char* CallFrame::describeFrame()
     return buffer;
 }
 
-void CallFrame::convertToStackOverflowFrame(VM& vm)
+void CallFrame::convertToStackOverflowFrame(VM& vm, CodeBlock* codeBlockToKeepAliveUntilFrameIsUnwound)
 {
     ASSERT(!isGlobalExec());
+    ASSERT(codeBlockToKeepAliveUntilFrameIsUnwound->inherits<CodeBlock>(vm));
 
     EntryFrame* entryFrame = vm.topEntryFrame;
     CallFrame* throwOriginFrame = this;
@@ -350,7 +351,7 @@ void CallFrame::convertToStackOverflowFrame(VM& vm)
     JSObject* originCallee = throwOriginFrame ? throwOriginFrame->jsCallee() : vmEntryRecord(vm.topEntryFrame)->callee();
     JSObject* stackOverflowCallee = originCallee->globalObject()->stackOverflowFrameCallee();
 
-    setCodeBlock(nullptr);
+    setCodeBlock(codeBlockToKeepAliveUntilFrameIsUnwound);
     setCallee(stackOverflowCallee);
     setArgumentCountIncludingThis(0);
 }

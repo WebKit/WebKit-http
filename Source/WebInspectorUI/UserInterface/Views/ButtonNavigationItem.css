@@ -54,6 +54,7 @@
 
 .navigation-bar .item.button > .glyph {
     color: var(--glyph-color);
+    opacity: var(--glyph-opacity);
 }
 
 .navigation-bar .item.button:not(.disabled):active > .glyph {
@@ -71,4 +72,10 @@
 .navigation-bar .item.button.disabled.image-and-text,
 .navigation-bar .item.button.disabled > .glyph {
     color: var(--glyph-color-disabled);
+}
+
+@media (prefers-color-scheme: dark) {
+    .navigation-bar .item.button {
+        color: var(--text-color-secondary);
+    }
 }

@@ -110,12 +110,21 @@ WI.OpenResourceDialog = class OpenResourceDialog extends WI.Dialog
                 continue;
 
             treeElement.mainTitle = createHighlightedTitleFragment(resource.displayName, result.matchingTextRanges);
+
+            let path = resource.urlComponents.path;
+            let lastPathComponent = resource.urlComponents.lastPathComponent;
+            if (path && lastPathComponent) {
+                let parentPath = path.substring(0, path.length - lastPathComponent.length);
+                if (parentPath.length && parentPath !== "/")
+                    treeElement.titlesElement.dataset.path = parentPath;
+            }
+
             treeElement[WI.OpenResourceDialog.ResourceMatchCookieDataSymbol] = result.cookie;
             this._treeOutline.appendChild(treeElement);
         }
 
         if (this._treeOutline.children.length)
-            this._treeOutline.children[0].select(true, false, true, true);
+            this._treeOutline.children[0].select(true, false, true);
     }
 
     didDismissDialog()
@@ -135,8 +144,10 @@ WI.OpenResourceDialog = class OpenResourceDialog extends WI.Dialog
         WI.Target.addEventListener(WI.Target.Event.ResourceAdded, this._resourceWasAdded, this);
         WI.debuggerManager.addEventListener(WI.DebuggerManager.Event.ScriptAdded, this._scriptAdded, this);
 
-        if (WI.frameResourceManager.mainFrame)
-            this._addResourcesForFrame(WI.frameResourceManager.mainFrame);
+        if (WI.networkManager.mainFrame)
+            this._addResourcesForFrame(WI.networkManager.mainFrame);
+
+        this._addScriptsForTarget(WI.mainTarget);
 
         for (let target of WI.targets) {
             if (target !== WI.mainTarget)
@@ -154,9 +165,10 @@ WI.OpenResourceDialog = class OpenResourceDialog extends WI.Dialog
     _handleKeydownEvent(event)
     {
         if (event.keyCode === WI.KeyboardShortcut.Key.Escape.keyCode) {
-            if (this._inputElement.value === "")
+            if (this._inputElement.value === "") {
                 this.dismiss();
-            else
+                event.preventDefault();
+            } else
                 this._clear();
 
             event.preventDefault();
@@ -190,7 +202,7 @@ WI.OpenResourceDialog = class OpenResourceDialog extends WI.Dialog
             let adjacentSiblingProperty = event.keyCode === WI.KeyboardShortcut.Key.Up.keyCode ? "previousSibling" : "nextSibling";
             treeElement = treeElement[adjacentSiblingProperty];
             if (treeElement)
-                treeElement.revealAndSelect(true, false, true, true);
+                treeElement.revealAndSelect(true, false, true);
 
             event.preventDefault();
         }
@@ -250,7 +262,7 @@ WI.OpenResourceDialog = class OpenResourceDialog extends WI.Dialog
 
     _treeSelectionDidChange(event)
     {
-        let treeElement = event.data.selectedElement;
+        let treeElement = this._treeOutline.selectedTreeElement;
         if (!treeElement)
             return;
 
@@ -302,9 +314,18 @@ WI.OpenResourceDialog = class OpenResourceDialog extends WI.Dialog
         for (let resource of target.resourceCollection)
             this._addResource(resource, suppressFilterUpdate);
 
+        this._addScriptsForTarget(target);
+    }
+
+    _addScriptsForTarget(target)
+    {
+        const suppressFilterUpdate = true;
+
         let targetData = WI.debuggerManager.dataForTarget(target);
         for (let script of targetData.scripts) {
             if (script.resource)
+                continue;
+            if (script.dynamicallyAddedScriptElement)
                 continue;
             if (isWebKitInternalScript(script.sourceURL) || isWebInspectorConsoleEvaluationScript(script.sourceURL))
                 continue;

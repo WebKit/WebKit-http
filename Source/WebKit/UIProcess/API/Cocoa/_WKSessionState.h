@@ -25,11 +25,9 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface _WKSessionState : NSObject
 
 - (instancetype)initWithData:(NSData *)data;
@@ -37,5 +35,3 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @property (nonatomic, readonly, copy) NSData *data;
 
 @end
-
-#endif

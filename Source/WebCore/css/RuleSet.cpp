@@ -61,7 +61,7 @@ static inline MatchBasedOnRuleHash computeMatchBasedOnRuleHash(const CSSSelector
 
     if (selector.match() == CSSSelector::Tag) {
         const QualifiedName& tagQualifiedName = selector.tagQName();
-        const AtomicString& selectorNamespace = tagQualifiedName.namespaceURI();
+        const AtomString& selectorNamespace = tagQualifiedName.namespaceURI();
         if (selectorNamespace == starAtom() || selectorNamespace == xhtmlNamespaceURI) {
             if (tagQualifiedName == anyQName())
                 return MatchBasedOnRuleHash::Universal;
@@ -144,6 +144,14 @@ static inline PropertyWhitelistType determinePropertyWhitelistType(const CSSSele
 #endif
         if (component->match() == CSSSelector::PseudoElement && component->pseudoElementType() == CSSSelector::PseudoElementMarker)
             return PropertyWhitelistMarker;
+
+        if (const auto* selectorList = selector->selectorList()) {
+            for (const auto* subSelector = selectorList->first(); subSelector; subSelector = CSSSelectorList::next(subSelector)) {
+                auto whitelistType = determinePropertyWhitelistType(subSelector);
+                if (whitelistType != PropertyWhitelistNone)
+                    return whitelistType;
+            }
+        }
     }
     return PropertyWhitelistNone;
 }
@@ -168,7 +176,7 @@ RuleSet::RuleSet() = default;
 
 RuleSet::~RuleSet() = default;
 
-void RuleSet::addToRuleSet(const AtomicString& key, AtomRuleMap& map, const RuleData& ruleData)
+void RuleSet::addToRuleSet(const AtomString& key, AtomRuleMap& map, const RuleData& ruleData)
 {
     if (key.isNull())
         return;
@@ -178,7 +186,7 @@ void RuleSet::addToRuleSet(const AtomicString& key, AtomRuleMap& map, const Rule
     rules->append(ruleData);
 }
 
-static unsigned rulesCountForName(const RuleSet::AtomRuleMap& map, const AtomicString& name)
+static unsigned rulesCountForName(const RuleSet::AtomRuleMap& map, const AtomString& name)
 {
     if (const auto* rules = map.get(name))
         return rules->size();

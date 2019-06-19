@@ -28,32 +28,25 @@ namespace webrtc {
 
 enum { kMaxReceiverDelayMs = 10000 };
 
-VCMReceiver::VCMReceiver(VCMTiming* timing,
-                         Clock* clock,
-                         EventFactory* event_factory)
+VCMReceiver::VCMReceiver(VCMTiming* timing, Clock* clock)
     : VCMReceiver::VCMReceiver(timing,
                                clock,
-                               event_factory,
+                               absl::WrapUnique(EventWrapper::Create()),
+                               absl::WrapUnique(EventWrapper::Create()),
                                nullptr,  // NackSender
                                nullptr)  // KeyframeRequestSender
 {}
 
 VCMReceiver::VCMReceiver(VCMTiming* timing,
                          Clock* clock,
-                         EventFactory* event_factory,
                          NackSender* nack_sender,
                          KeyFrameRequestSender* keyframe_request_sender)
-    : VCMReceiver(
-          timing,
-          clock,
-          std::unique_ptr<EventWrapper>(event_factory
-                                            ? event_factory->CreateEvent()
-                                            : EventWrapper::Create()),
-          std::unique_ptr<EventWrapper>(event_factory
-                                            ? event_factory->CreateEvent()
-                                            : EventWrapper::Create()),
-          nack_sender,
-          keyframe_request_sender) {}
+    : VCMReceiver(timing,
+                  clock,
+                  absl::WrapUnique(EventWrapper::Create()),
+                  absl::WrapUnique(EventWrapper::Create()),
+                  nack_sender,
+                  keyframe_request_sender) {}
 
 VCMReceiver::VCMReceiver(VCMTiming* timing,
                          Clock* clock,
@@ -140,7 +133,7 @@ VCMEncodedFrame* VCMReceiver::FrameForDecoding(uint16_t max_wait_time_ms,
       jitter_buffer_.NextCompleteFrame(max_wait_time_ms);
 
   if (found_frame) {
-    frame_timestamp = found_frame->TimeStamp();
+    frame_timestamp = found_frame->Timestamp();
     min_playout_delay_ms = found_frame->EncodedImage().playout_delay_.min_ms;
     max_playout_delay_ms = found_frame->EncodedImage().playout_delay_.max_ms;
   } else {
@@ -212,7 +205,7 @@ VCMEncodedFrame* VCMReceiver::FrameForDecoding(uint16_t max_wait_time_ms,
     return NULL;
   }
   frame->SetRenderTime(render_time_ms);
-  TRACE_EVENT_ASYNC_STEP1("webrtc", "Video", frame->TimeStamp(), "SetRenderTS",
+  TRACE_EVENT_ASYNC_STEP1("webrtc", "Video", frame->Timestamp(), "SetRenderTS",
                           "render_time", frame->RenderTimeMs());
   if (!frame->Complete()) {
     // Update stats for incomplete frames.

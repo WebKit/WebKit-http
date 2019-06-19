@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "ExecutableBaseInlines.h"
 #include "FunctionExecutable.h"
 #include "JSCast.h"
 #include "JSFunction.h"
@@ -136,7 +137,7 @@ public:
         return nullptr;
     }
     
-    bool finalize();
+    bool finalize(VM&);
     
     bool merge(const CallVariant&);
     

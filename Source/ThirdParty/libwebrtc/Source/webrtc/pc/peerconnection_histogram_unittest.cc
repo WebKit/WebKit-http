@@ -24,7 +24,7 @@
 #include "rtc_base/fakenetwork.h"
 #include "rtc_base/gunit.h"
 #include "rtc_base/virtualsocketserver.h"
-#include "system_wrappers/include/metrics_default.h"
+#include "system_wrappers/include/metrics.h"
 
 namespace webrtc {
 
@@ -251,6 +251,7 @@ class PeerConnectionUsageHistogramTest : public ::testing::Test {
       return nullptr;
     }
 
+    observer->SetPeerConnectionInterface(pc.get());
     auto wrapper =
         absl::make_unique<PeerConnectionWrapperForUsageHistogramTest>(
             pc_factory, pc, std::move(observer));

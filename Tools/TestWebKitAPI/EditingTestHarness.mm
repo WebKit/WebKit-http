@@ -27,8 +27,6 @@
 #include "config.h"
 #include "EditingTestHarness.h"
 
-#if WK_API_ENABLED
-
 #import "PlatformUtilities.h"
 #import <WebKit/WKWebViewPrivate.h>
 
@@ -92,6 +90,16 @@
     [self deleteBackwardAndExpectEditorStateWith:nil];
 }
 
+- (void)moveBackward
+{
+    [self moveBackwardAndExpectEditorStateWith:nil];
+}
+
+- (void)moveForward
+{
+    [self moveForwardAndExpectEditorStateWith:nil];
+}
+
 - (void)insertText:(NSString *)text andExpectEditorStateWith:(NSDictionary<NSString *, id> *)entries
 {
     [self _execCommand:@"InsertText" argument:text expectEntries:entries];
@@ -115,6 +123,11 @@
 - (void)moveWordBackwardAndExpectEditorStateWith:(NSDictionary<NSString *, id> *)entries
 {
     [self _execCommand:@"MoveWordBackward" argument:nil expectEntries:entries];
+}
+
+- (void)moveForwardAndExpectEditorStateWith:(NSDictionary<NSString *, id> *)entries
+{
+    [self _execCommand:@"MoveForward" argument:nil expectEntries:entries];
 }
 
 - (void)toggleBold
@@ -211,5 +224,3 @@
 }
 
 @end
-
-#endif // WK_API_ENABLED

@@ -52,7 +52,7 @@ Ref<HTMLMetaElement> HTMLMetaElement::create(const QualifiedName& tagName, Docum
     return adoptRef(*new HTMLMetaElement(tagName, document));
 }
 
-void HTMLMetaElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLMetaElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == http_equivAttr)
         process();
@@ -83,7 +83,7 @@ void HTMLMetaElement::process()
     if (!isConnected())
         return;
 
-    const AtomicString& contentValue = attributeWithoutSynchronization(contentAttr);
+    const AtomString& contentValue = attributeWithoutSynchronization(contentAttr);
     if (contentValue.isNull())
         return;
 
@@ -91,7 +91,11 @@ void HTMLMetaElement::process()
         document().processViewport(contentValue, ViewportArguments::ViewportMeta);
     else if (RuntimeEnabledFeatures::sharedFeatures().disabledAdaptationsMetaTagEnabled() && equalLettersIgnoringASCIICase(name(), "disabled-adaptations"))
         document().processDisabledAdaptations(contentValue);
-#if PLATFORM(IOS)
+#if ENABLE(DARK_MODE_CSS)
+    else if (RuntimeEnabledFeatures::sharedFeatures().darkModeCSSEnabled() && (equalLettersIgnoringASCIICase(name(), "color-scheme") || equalLettersIgnoringASCIICase(name(), "supported-color-schemes")))
+        document().processColorScheme(contentValue);
+#endif
+#if PLATFORM(IOS_FAMILY)
     else if (equalLettersIgnoringASCIICase(name(), "format-detection"))
         document().processFormatDetection(contentValue);
     else if (equalLettersIgnoringASCIICase(name(), "apple-mobile-web-app-orientations"))
@@ -100,22 +104,22 @@ void HTMLMetaElement::process()
     else if (equalLettersIgnoringASCIICase(name(), "referrer"))
         document().processReferrerPolicy(contentValue, ReferrerPolicySource::MetaTag);
 
-    const AtomicString& httpEquivValue = attributeWithoutSynchronization(http_equivAttr);
+    const AtomString& httpEquivValue = attributeWithoutSynchronization(http_equivAttr);
     if (!httpEquivValue.isNull())
         document().processHttpEquiv(httpEquivValue, contentValue, isDescendantOf(document().head()));
 }
 
-const AtomicString& HTMLMetaElement::content() const
+const AtomString& HTMLMetaElement::content() const
 {
     return attributeWithoutSynchronization(contentAttr);
 }
 
-const AtomicString& HTMLMetaElement::httpEquiv() const
+const AtomString& HTMLMetaElement::httpEquiv() const
 {
     return attributeWithoutSynchronization(http_equivAttr);
 }
 
-const AtomicString& HTMLMetaElement::name() const
+const AtomString& HTMLMetaElement::name() const
 {
     return getNameAttribute();
 }

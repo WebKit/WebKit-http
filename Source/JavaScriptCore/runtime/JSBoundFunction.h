@@ -39,12 +39,13 @@ EncodedJSValue JSC_HOST_CALL hasInstanceBoundFunction(ExecState*);
 class JSBoundFunction final : public JSFunction {
 public:
     typedef JSFunction Base;
-    const static unsigned StructureFlags = ~ImplementsDefaultHasInstance & Base::StructureFlags;
+    const static unsigned StructureFlags = Base::StructureFlags & ~ImplementsDefaultHasInstance;
+    static_assert(StructureFlags & ImplementsHasInstance, "");
 
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess mode>
     static IsoSubspace* subspaceFor(VM& vm)
     {
-        return &vm.boundFunctionSpace;
+        return vm.boundFunctionSpace<mode>();
     }
 
     static JSBoundFunction* create(VM&, ExecState*, JSGlobalObject*, JSObject* targetFunction, JSValue boundThis, JSArray* boundArgs, int, const String& name);
@@ -75,8 +76,6 @@ private:
     
     void finishCreation(VM&, NativeExecutable*, int length);
 
-    // FIXME: Consider poisoning these pointers.
-    // https://bugs.webkit.org/show_bug.cgi?id=182713
     WriteBarrier<JSObject> m_targetFunction;
     WriteBarrier<Unknown> m_boundThis;
     WriteBarrier<JSArray> m_boundArgs;

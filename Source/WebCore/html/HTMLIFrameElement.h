@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "FeaturePolicy.h"
 #include "HTMLFrameElementBase.h"
 
 namespace WebCore {
@@ -40,22 +41,29 @@ public:
     RenderIFrame* renderer() const;
     const String& allow() const { return m_allow; }
 
+    void setReferrerPolicyForBindings(const AtomString&);
+    String referrerPolicyForBindings() const;
+    ReferrerPolicy referrerPolicy() const final;
+
+    const FeaturePolicy& featurePolicy() const;
+
 private:
     HTMLIFrameElement(const QualifiedName&, Document&);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool isKeyboardFocusable(KeyboardEvent*) const final { return false; }
 #endif
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
     bool isPresentationAttribute(const QualifiedName&) const final;
-    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomString&, MutableStyleProperties&) final;
 
     bool rendererIsNeeded(const RenderStyle&) final;
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
     std::unique_ptr<DOMTokenList> m_sandbox;
     String m_allow;
+    mutable Optional<FeaturePolicy> m_featurePolicy;
 };
 
 } // namespace WebCore

@@ -111,8 +111,6 @@ IntRect Chrome::rootViewToScreen(const IntRect& rect) const
     return m_client.rootViewToScreen(rect);
 }
     
-#if PLATFORM(IOS)
-
 IntPoint Chrome::accessibilityScreenToRootView(const IntPoint& point) const
 {
     return m_client.accessibilityScreenToRootView(point);
@@ -122,8 +120,6 @@ IntRect Chrome::rootViewToAccessibilityScreen(const IntRect& rect) const
 {
     return m_client.rootViewToAccessibilityScreen(rect);
 }
-
-#endif
 
 PlatformPageClient Chrome::platformPageClient() const
 {
@@ -425,7 +421,7 @@ void Chrome::disableSuddenTermination()
 
 std::unique_ptr<ColorChooser> Chrome::createColorChooser(ColorChooserClient& client, const Color& initialColor)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     return nullptr;
 #endif
     notifyPopupOpeningObservers();
@@ -482,7 +478,7 @@ void Chrome::dispatchDisabledAdaptationsDidChange(const OptionSet<DisabledAdapta
 
 void Chrome::dispatchViewportPropertiesDidChange(const ViewportArguments& arguments) const
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_isDispatchViewportDataDidChangeSuppressed)
         return;
 #endif
@@ -527,16 +523,7 @@ void Chrome::windowScreenDidChange(PlatformDisplayID displayID)
 #if PLATFORM(MAC) && ENABLE(GRAPHICS_CONTEXT_3D)
     GraphicsContext3DManager::sharedManager().screenDidChange(displayID, this);
 #endif
-
 }
-
-// --------
-
-#if ENABLE(DASHBOARD_SUPPORT)
-void ChromeClient::annotatedRegionsChanged()
-{
-}
-#endif
 
 bool ChromeClient::shouldReplaceWithGeneratedFileForUpload(const String&, String&)
 {
@@ -578,7 +565,7 @@ bool Chrome::requiresFullscreenForVideoPlayback()
 
 void Chrome::didReceiveDocType(Frame& frame)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     UNUSED_PARAM(frame);
 #else
     if (!frame.isMainFrame())

@@ -23,15 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "WebPDFViewPlaceholder.h"
 
 #import "WebFrameInternal.h"
 #import "WebPDFViewIOS.h"
 #import <JavaScriptCore/JSContextRef.h>
-#import <JavaScriptCore/JSStringRef.h>
-#import <JavaScriptCore/JSStringRefCF.h>
 #import <WebCore/DataTransfer.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/EventNames.h>
@@ -53,10 +51,6 @@
 #import <wtf/Vector.h>
 
 using namespace WebCore;
-
-@interface WebPDFView (Secrets)
-+ (Class)_representationClassForWebFrame:(WebFrame *)webFrame;
-@end
 
 #pragma mark Constants
 
@@ -309,18 +303,11 @@ static const float PAGE_HEIGHT_INSET = 4.0f * 2.0f;
 
     NSArray *scripts = allScriptsInPDFDocument(pdfDocument);
 
-    NSUInteger scriptCount = [scripts count];
-    if (scriptCount) {
-
+    if ([scripts count]) {
         JSGlobalContextRef ctx = JSGlobalContextCreate(0);
         JSObjectRef jsPDFDoc = makeJSPDFDoc(ctx, _dataSource);
-
-        for (NSUInteger i = 0; i < scriptCount; ++i) {
-            JSStringRef script = JSStringCreateWithCFString((CFStringRef)[scripts objectAtIndex:i]);
-            JSEvaluateScript(ctx, script, jsPDFDoc, 0, 0, 0);
-            JSStringRelease(script);
-        }
-
+        for (NSString *script in scripts)
+            JSEvaluateScript(ctx, OpaqueJSString::tryCreate(script).get(), jsPDFDoc, nullptr, 0, nullptr);
         JSGlobalContextRelease(ctx);
     }
 }
@@ -478,15 +465,15 @@ static const float PAGE_HEIGHT_INSET = 4.0f * 2.0f;
     if (!URL)
         return;
 
-    RefPtr<Event> event = MouseEvent::create(eventNames().clickEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes, Event::IsComposed::Yes,
+    auto event = MouseEvent::create(eventNames().clickEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes, Event::IsComposed::Yes,
         MonotonicTime::now(), nullptr, 1, { }, { }, { }, { }, 0, 0, nullptr, 0, 0, nullptr, MouseEvent::IsSimulated::Yes);
 
     // Call to the frame loader because this is where our security checks are made.
     Frame* frame = core([_dataSource webFrame]);
-    FrameLoadRequest frameLoadRequest { *frame->document(), frame->document()->securityOrigin(), { URL }, { }, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow,  InitiatedByMainFrame::Unknown };
-    frame->loader().loadFrameRequest(WTFMove(frameLoadRequest), event.get(), nullptr);
+    FrameLoadRequest frameLoadRequest { *frame->document(), frame->document()->securityOrigin(), { URL }, { }, LockHistory::No, LockBackForwardList::No, NeverSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow,  InitiatedByMainFrame::Unknown };
+    frame->loader().loadFrameRequest(WTFMove(frameLoadRequest), event.ptr(), nullptr);
 }
 
 @end
 
-#endif /* PLATFORM(IOS) */
+#endif /* PLATFORM(IOS_FAMILY) */

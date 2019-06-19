@@ -28,6 +28,7 @@
 #include "APIObject.h"
 #include "MessageReceiver.h"
 #include "UserContentControllerIdentifier.h"
+#include <WebCore/PageIdentifier.h>
 #include <wtf/Forward.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashMap.h>
@@ -59,7 +60,7 @@ class WebProcessProxy;
 class WebScriptMessageHandler;
 struct FrameInfoData;
 struct WebPageCreationParameters;
-enum class InjectUserScriptImmediately;
+enum class InjectUserScriptImmediately : bool;
 
 class WebUserContentControllerProxy : public API::ObjectImpl<API::Object::Type::UserContentController>, private IPC::MessageReceiver {
 public:
@@ -110,7 +111,7 @@ private:
     // IPC::MessageReceiver.
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
-    void didPostMessage(IPC::Connection&, uint64_t pageID, const FrameInfoData&, uint64_t messageHandlerID, const IPC::DataReference&);
+    void didPostMessage(IPC::Connection&, WebCore::PageIdentifier, const FrameInfoData&, uint64_t messageHandlerID, const IPC::DataReference&);
 
     void addUserContentWorldUse(API::UserContentWorld&);
     void removeUserContentWorldUses(API::UserContentWorld&, unsigned numberOfUsesToRemove);

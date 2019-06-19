@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,10 +27,11 @@
  */
 
 #include "config.h"
-#include "MediaTime.h"
+#include <wtf/MediaTime.h>
 
 #include <algorithm>
 #include <cstdlib>
+#include <wtf/Assertions.h>
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/JSONValues.h>
 #include <wtf/MathExtras.h>
@@ -41,6 +42,9 @@ namespace WTF {
 
 static uint32_t greatestCommonDivisor(uint32_t a, uint32_t b)
 {
+    ASSERT(a);
+    ASSERT(b);
+
     // Euclid's Algorithm
     uint32_t temp = 0;
     while (b) {
@@ -48,6 +52,8 @@ static uint32_t greatestCommonDivisor(uint32_t a, uint32_t b)
         b = a % b;
         a = temp;
     }
+
+    ASSERT(a);
     return a;
 }
 
@@ -61,7 +67,7 @@ static int64_t signum(int64_t val)
     return (0 < val) - (val < 0);
 }
 
-const uint32_t MediaTime::MaximumTimeScale = 0x7fffffffL;
+const uint32_t MediaTime::MaximumTimeScale = 1000000000;
 
 MediaTime::MediaTime()
     : m_timeValue(0)
@@ -75,6 +81,10 @@ MediaTime::MediaTime(int64_t value, uint32_t scale, uint8_t flags)
     , m_timeScale(scale)
     , m_timeFlags(flags)
 {
+    if (scale || isInvalid())
+        return;
+
+    *this = value < 0 ? negativeInfiniteTime() : positiveInfiniteTime();
 }
 
 MediaTime::~MediaTime()
@@ -108,6 +118,8 @@ MediaTime MediaTime::createWithFloat(float floatTime, uint32_t timeScale)
         return positiveInfiniteTime();
     if (floatTime < std::numeric_limits<int64_t>::min())
         return negativeInfiniteTime();
+    if (!timeScale)
+        return std::signbit(floatTime) ? negativeInfiniteTime() : positiveInfiniteTime();
 
     while (floatTime * timeScale > std::numeric_limits<int64_t>::max())
         timeScale /= 2;
@@ -136,6 +148,8 @@ MediaTime MediaTime::createWithDouble(double doubleTime, uint32_t timeScale)
         return positiveInfiniteTime();
     if (doubleTime < std::numeric_limits<int64_t>::min())
         return negativeInfiniteTime();
+    if (!timeScale)
+        return std::signbit(doubleTime) ? negativeInfiniteTime() : positiveInfiniteTime();
 
     while (doubleTime * timeScale > std::numeric_limits<int64_t>::max())
         timeScale /= 2;
@@ -328,13 +342,15 @@ MediaTime MediaTime::operator*(int32_t rhs) const
 bool MediaTime::operator!() const
 {
     return (m_timeFlags == Valid && !m_timeValue)
-        || (m_timeFlags == (Valid | DoubleValue) && !m_timeValueAsDouble);
+        || (m_timeFlags == (Valid | DoubleValue) && !m_timeValueAsDouble)
+        || isInvalid();
 }
 
 MediaTime::operator bool() const
 {
     return !(m_timeFlags == Valid && !m_timeValue)
-        && !(m_timeFlags == (Valid | DoubleValue) && !m_timeValueAsDouble);
+        && !(m_timeFlags == (Valid | DoubleValue) && !m_timeValueAsDouble)
+        && !isInvalid();
 }
 
 MediaTime::ComparisonFlags MediaTime::compare(const MediaTime& rhs) const
@@ -482,6 +498,11 @@ void MediaTime::setTimeScale(uint32_t timeScale, RoundingFlags flags)
         return;
     }
 
+    if (!timeScale) {
+        *this = m_timeValue < 0 ? negativeInfiniteTime() : positiveInfiniteTime();
+        return;
+    }
+
     if (timeScale == m_timeScale)
         return;
 
@@ -572,38 +593,39 @@ String MediaTime::toString() const
         builder.appendNumber(m_timeScale);
         builder.appendLiteral(" = ");
     }
-    builder.appendNumber(toDouble());
+    builder.appendFixedPrecisionNumber(toDouble());
     builder.append('}');
     return builder.toString();
 }
 
-static Ref<JSON::Object> toJSONStringInternal(const MediaTime& time)
+Ref<JSON::Object> MediaTime::toJSONObject() const
 {
     auto object = JSON::Object::create();
 
-    if (time.hasDoubleValue())
-        object->setDouble("value"_s, time.toDouble());
-    else {
-        if (time.isInvalid() || time.isIndefinite())
-            object->setString("value"_s, "NaN"_s);
-        else if (time.isPositiveInfinite())
-            object->setString("value"_s, "POSITIVE_INFINITY"_s);
-        else if (time.isNegativeInfinite())
-            object->setString("value"_s, "NEGATIVE_INFINITY"_s);
-        else
-            object->setDouble("value"_s, time.toDouble());
-
-        object->setInteger("numerator"_s, static_cast<int>(time.timeValue()));
-        object->setInteger("denominator"_s, time.timeScale());
-        object->setInteger("flags"_s, time.timeFlags());
+    if (hasDoubleValue()) {
+        object->setDouble("value"_s, toDouble());
+        return object;
     }
+
+    if (isInvalid() || isIndefinite())
+        object->setString("value"_s, "NaN"_s);
+    else if (isPositiveInfinite())
+        object->setString("value"_s, "POSITIVE_INFINITY"_s);
+    else if (isNegativeInfinite())
+        object->setString("value"_s, "NEGATIVE_INFINITY"_s);
+    else
+        object->setDouble("value"_s, toDouble());
+
+    object->setDouble("numerator"_s, static_cast<double>(m_timeValue));
+    object->setInteger("denominator"_s, m_timeScale);
+    object->setInteger("flags"_s, m_timeFlags);
 
     return object;
 }
 
 String MediaTime::toJSONString() const
 {
-    return toJSONStringInternal(*this)->toJSONString();
+    return toJSONObject()->toJSONString();
 }
 
 MediaTime abs(const MediaTime& rhs)
@@ -624,8 +646,8 @@ String MediaTimeRange::toJSONString() const
 {
     auto object = JSON::Object::create();
 
-    object->setObject("start"_s, toJSONStringInternal(start));
-    object->setObject("end"_s, toJSONStringInternal(end));
+    object->setObject("start"_s, start.toJSONObject());
+    object->setObject("end"_s, end.toJSONObject());
 
     return object->toJSONString();
 }

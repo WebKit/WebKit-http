@@ -27,6 +27,7 @@
 #import "config.h"
 #import "EventSenderProxy.h"
 
+#import "CoreGraphicsTestSPI.h"
 #import "PlatformWebView.h"
 #import "StringFunctions.h"
 #import "TestController.h"
@@ -45,6 +46,7 @@
 
 @interface NSEvent (ForTestRunner)
 - (void)_postDelayed;
+- (instancetype)_initWithCGEvent:(CGEventRef)event eventRef:(void *)eventRef;
 @end
 
 @interface EventSenderSyntheticEvent : NSEvent {
@@ -69,9 +71,41 @@
 
 @implementation EventSenderSyntheticEvent
 
-- (id)initPressureEventAtLocation:(NSPoint)location globalLocation:(NSPoint)globalLocation stage:(NSInteger)stage pressure:(float)pressure stageTransition:(float)stageTransition phase:(NSEventPhase)phase time:(NSTimeInterval)time eventNumber:(NSInteger)eventNumber window:(NSWindow *)window
+- (instancetype)initPressureEventAtLocation:(NSPoint)location globalLocation:(NSPoint)globalLocation stage:(NSInteger)stage pressure:(float)pressure stageTransition:(float)stageTransition phase:(NSEventPhase)phase time:(NSTimeInterval)time eventNumber:(NSInteger)eventNumber window:(NSWindow *)window
 {
-    self = [super init];
+    CGSGesturePhase gesturePhase;
+    switch (phase) {
+    case NSEventPhaseMayBegin:
+        gesturePhase = kCGSGesturePhaseMayBegin;
+        break;
+    case NSEventPhaseBegan:
+        gesturePhase = kCGSGesturePhaseBegan;
+        break;
+    case NSEventPhaseChanged:
+        gesturePhase = kCGSGesturePhaseChanged;
+        break;
+    case NSEventPhaseCancelled:
+        gesturePhase = kCGSGesturePhaseCancelled;
+        break;
+    case NSEventPhaseEnded:
+        gesturePhase = kCGSGesturePhaseEnded;
+        break;
+    case NSEventPhaseNone:
+    default:
+        gesturePhase = kCGSGesturePhaseNone;
+        break;
+    }
+
+    CGEventRef cgEvent = CGEventCreate(nullptr);
+    CGEventSetType(cgEvent, (CGEventType)kCGSEventGesture);
+    CGEventSetIntegerValueField(cgEvent, kCGEventGestureHIDType, 32);
+    CGEventSetIntegerValueField(cgEvent, kCGEventGesturePhase, gesturePhase);
+    CGEventSetDoubleValueField(cgEvent, kCGEventStagePressure, pressure);
+    CGEventSetDoubleValueField(cgEvent, kCGEventTransitionProgress, pressure);
+    CGEventSetIntegerValueField(cgEvent, kCGEventGestureStage, stageTransition);
+    CGEventSetIntegerValueField(cgEvent, kCGEventGestureBehavior, kCGSGestureBehaviorDeepPress);
+
+    self = [super _initWithCGEvent:cgEvent eventRef:nullptr];
 
     if (!self)
         return nil;
@@ -85,10 +119,7 @@
     _eventSender_timestamp = time;
     _eventSender_eventNumber = eventNumber;
     _eventSender_window = window;
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101003
-    self->_type = NSEventTypePressure;
     _eventSender_type = NSEventTypePressure;
-#endif
 
     return self;
 }
@@ -173,7 +204,7 @@ enum MouseButton {
     LeftMouseButton = 0,
     MiddleMouseButton = 1,
     RightMouseButton = 2,
-    NoMouseButton = -1
+    NoMouseButton = -2
 };
 
 struct KeyMappingEntry {
@@ -270,8 +301,15 @@ void EventSenderProxy::updateClickCountForButton(int button)
     m_clickButton = button;
 }
 
+static NSUInteger swizzledEventPressedMouseButtons()
+{
+    return TestController::singleton().eventSenderProxy()->mouseButtonsCurrentlyDown();
+}
+
 void EventSenderProxy::mouseDown(unsigned buttonNumber, WKEventModifiers modifiers)
 {
+    m_mouseButtonsCurrentlyDown |= (1 << buttonNumber);
+
     updateClickCountForButton(buttonNumber);
 
     NSEventType eventType = eventTypeForMouseButtonAndAction(buttonNumber, MouseDown);
@@ -287,6 +325,7 @@ void EventSenderProxy::mouseDown(unsigned buttonNumber, WKEventModifiers modifie
 
     NSView *targetView = [m_testController->mainWebView()->platformView() hitTest:[event locationInWindow]];
     if (targetView) {
+        auto eventPressedMouseButtonsSwizzler = std::make_unique<ClassMethodSwizzler>([NSEvent class], @selector(pressedMouseButtons), reinterpret_cast<IMP>(swizzledEventPressedMouseButtons));
         [NSApp _setCurrentEvent:event];
         [targetView mouseDown:event];
         [NSApp _setCurrentEvent:nil];
@@ -297,6 +336,8 @@ void EventSenderProxy::mouseDown(unsigned buttonNumber, WKEventModifiers modifie
 
 void EventSenderProxy::mouseUp(unsigned buttonNumber, WKEventModifiers modifiers)
 {
+    m_mouseButtonsCurrentlyDown &= ~(1 << buttonNumber);
+
     NSEventType eventType = eventTypeForMouseButtonAndAction(buttonNumber, MouseUp);
     NSEvent *event = [NSEvent mouseEventWithType:eventType
                                         location:NSMakePoint(m_position.x, m_position.y)
@@ -316,6 +357,7 @@ void EventSenderProxy::mouseUp(unsigned buttonNumber, WKEventModifiers modifiers
         targetView = m_testController->mainWebView()->platformView();
 
     ASSERT(targetView);
+    auto eventPressedMouseButtonsSwizzler = std::make_unique<ClassMethodSwizzler>([NSEvent class], @selector(pressedMouseButtons), reinterpret_cast<IMP>(swizzledEventPressedMouseButtons));
     [NSApp _setCurrentEvent:event];
     [targetView mouseUp:event];
     [NSApp _setCurrentEvent:nil];
@@ -325,7 +367,6 @@ void EventSenderProxy::mouseUp(unsigned buttonNumber, WKEventModifiers modifiers
     m_clickPosition = m_position;
 }
 
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101003
 void EventSenderProxy::sendMouseDownToStartPressureEvents()
 {
     updateClickCountForButton(0);
@@ -417,11 +458,10 @@ void EventSenderProxy::mouseForceClick()
     [NSApp sendEvent:mouseUp];
 
     [NSApp _setCurrentEvent:nil];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
     // WKView caches the most recent pressure event, so send it a nil event to clear the cache.
+    IGNORE_NULL_CHECK_WARNINGS_BEGIN
     [targetView pressureChangeWithEvent:nil];
-#pragma clang diagnostic pop
+    IGNORE_NULL_CHECK_WARNINGS_END
 }
 
 void EventSenderProxy::startAndCancelMouseForceClick()
@@ -453,11 +493,10 @@ void EventSenderProxy::startAndCancelMouseForceClick()
     [NSApp sendEvent:mouseUp];
 
     [NSApp _setCurrentEvent:nil];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
     // WKView caches the most recent pressure event, so send it a nil event to clear the cache.
+    IGNORE_NULL_CHECK_WARNINGS_BEGIN
     [targetView pressureChangeWithEvent:nil];
-#pragma clang diagnostic pop
+    IGNORE_NULL_CHECK_WARNINGS_END
 }
 
 void EventSenderProxy::mouseForceDown()
@@ -479,11 +518,10 @@ void EventSenderProxy::mouseForceDown()
     [forceMouseDown _postDelayed];
 
     [NSApp _setCurrentEvent:nil];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
     // WKView caches the most recent pressure event, so send it a nil event to clear the cache.
+    IGNORE_NULL_CHECK_WARNINGS_BEGIN
     [targetView pressureChangeWithEvent:nil];
-#pragma clang diagnostic pop
+    IGNORE_NULL_CHECK_WARNINGS_END
 }
 
 void EventSenderProxy::mouseForceUp()
@@ -503,12 +541,10 @@ void EventSenderProxy::mouseForceUp()
     ASSERT(targetView);
 
     [NSApp _setCurrentEvent:nil];
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
-// WKView caches the most recent pressure event, so send it a nil event to clear the cache.
+    // WKView caches the most recent pressure event, so send it a nil event to clear the cache.
+    IGNORE_NULL_CHECK_WARNINGS_BEGIN
     [targetView pressureChangeWithEvent:nil];
-#pragma clang diagnostic pop
+    IGNORE_NULL_CHECK_WARNINGS_END
 }
 
 void EventSenderProxy::mouseForceChanged(float force)
@@ -525,55 +561,11 @@ void EventSenderProxy::mouseForceChanged(float force)
     [NSApp sendEvent:beginPressure.get()];
     [NSApp sendEvent:pressureChangedEvent.get()];
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
     // WKView caches the most recent pressure event, so send it a nil event to clear the cache.
+    IGNORE_NULL_CHECK_WARNINGS_BEGIN
     [targetView pressureChangeWithEvent:nil];
-#pragma clang diagnostic pop
+    IGNORE_NULL_CHECK_WARNINGS_END
 }
-#else
-
-#if PLATFORM(COCOA)
-RetainPtr<NSEvent> EventSenderProxy::beginPressureEvent(int)
-{
-    return nil;
-}
-
-RetainPtr<NSEvent> EventSenderProxy::pressureChangeEvent(int, PressureChangeDirection)
-{
-    return nil;
-}
-
-RetainPtr<NSEvent> EventSenderProxy::pressureChangeEvent(int, float, PressureChangeDirection)
-{
-    return nil;
-}
-#endif // PLATFORM(COCOA)
-
-void EventSenderProxy::sendMouseDownToStartPressureEvents()
-{
-}
-
-void EventSenderProxy::mouseForceDown()
-{
-}
-
-void EventSenderProxy::mouseForceUp()
-{
-}
-
-void EventSenderProxy::mouseForceChanged(float)
-{
-}
-
-void EventSenderProxy::mouseForceClick()
-{
-}
-
-void EventSenderProxy::startAndCancelMouseForceClick()
-{
-}
-#endif // defined(__LP64__) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101003
 
 void EventSenderProxy::mouseMoveTo(double x, double y)
 {
@@ -601,6 +593,7 @@ void EventSenderProxy::mouseMoveTo(double x, double y)
     // Always target drags at the WKWebView to allow for drag-scrolling outside the view.
     NSView *targetView = isDrag ? m_testController->mainWebView()->platformView() : [m_testController->mainWebView()->platformView() hitTest:windowLocation];
     if (targetView) {
+        auto eventPressedMouseButtonsSwizzler = std::make_unique<ClassMethodSwizzler>([NSEvent class], @selector(pressedMouseButtons), reinterpret_cast<IMP>(swizzledEventPressedMouseButtons));
         [NSApp _setCurrentEvent:event];
         if (isDrag)
             [targetView mouseDragged:event];

@@ -29,10 +29,12 @@
 #import "WebKitTestRunnerDraggingInfo.h"
 #import <WebKit/WKUIDelegatePrivate.h>
 #import <wtf/Assertions.h>
+#import <wtf/BlockPtr.h>
+#import <wtf/Optional.h>
 #import <wtf/RetainPtr.h>
 
-#if PLATFORM(IOS)
-#import "UIKitTestSPI.h"
+#if PLATFORM(IOS_FAMILY)
+#import "UIKitSPI.h"
 #import <WebKit/WKWebViewPrivate.h>
 @interface WKWebView ()
 
@@ -45,37 +47,53 @@
 @end
 #endif
 
-#if WK_API_ENABLED
+struct CustomMenuActionInfo {
+    RetainPtr<NSString> name;
+    BOOL dismissesAutomatically { NO };
+    BlockPtr<void()> callback;
+};
 
 @interface TestRunnerWKWebView () <WKUIDelegatePrivate> {
-    RetainPtr<NSNumber *> m_stableStateOverride;
-    BOOL m_isInteractingWithFormControl;
+    RetainPtr<NSNumber> m_stableStateOverride;
+    BOOL _isInteractingWithFormControl;
+    BOOL _scrollingUpdatesDisabled;
+    Optional<CustomMenuActionInfo> _customMenuActionInfo;
+    RetainPtr<NSArray<NSString *>> _allowedMenuActions;
 }
 
 @property (nonatomic, copy) void (^zoomToScaleCompletionHandler)(void);
 @property (nonatomic, copy) void (^retrieveSpeakSelectionContentCompletionHandler)(void);
-@property (nonatomic) BOOL isShowingKeyboard;
+@property (nonatomic, getter=isShowingKeyboard, setter=setIsShowingKeyboard:) BOOL showingKeyboard;
+@property (nonatomic, getter=isShowingMenu, setter=setIsShowingMenu:) BOOL showingMenu;
+@property (nonatomic, getter=isDismissingMenu, setter=setIsDismissingMenu:) BOOL dismissingMenu;
+@property (nonatomic, getter=isShowingPopover, setter=setIsShowingPopover:) BOOL showingPopover;
 
 @end
 
 @implementation TestRunnerWKWebView
 
 #if PLATFORM(MAC)
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)dragImage:(NSImage *)anImage at:(NSPoint)viewLocation offset:(NSSize)initialOffset event:(NSEvent *)event pasteboard:(NSPasteboard *)pboard source:(id)sourceObj slideBack:(BOOL)slideFlag
+IGNORE_WARNINGS_END
 {
     RetainPtr<WebKitTestRunnerDraggingInfo> draggingInfo = adoptNS([[WebKitTestRunnerDraggingInfo alloc] initWithImage:anImage offset:initialOffset pasteboard:pboard source:sourceObj]);
     [self draggingUpdated:draggingInfo.get()];
 }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (instancetype)initWithFrame:(CGRect)frame configuration:(WKWebViewConfiguration *)configuration
 {
     if (self = [super initWithFrame:frame configuration:configuration]) {
         NSNotificationCenter* center = [NSNotificationCenter defaultCenter];
         [center addObserver:self selector:@selector(_invokeShowKeyboardCallbackIfNecessary) name:UIKeyboardDidShowNotification object:nil];
         [center addObserver:self selector:@selector(_invokeHideKeyboardCallbackIfNecessary) name:UIKeyboardDidHideNotification object:nil];
-
+        [center addObserver:self selector:@selector(_didShowMenu) name:UIMenuControllerDidShowMenuNotification object:nil];
+        [center addObserver:self selector:@selector(_willHideMenu) name:UIMenuControllerWillHideMenuNotification object:nil];
+        [center addObserver:self selector:@selector(_didHideMenu) name:UIMenuControllerDidHideMenuNotification object:nil];
+        [center addObserver:self selector:@selector(_willPresentPopover) name:@"UIPopoverControllerWillPresentPopoverNotification" object:nil];
+        [center addObserver:self selector:@selector(_didDismissPopover) name:@"UIPopoverControllerDidDismissPopoverNotification" object:nil];
         self.UIDelegate = self;
     }
     return self;
@@ -84,11 +102,18 @@
 - (void)dealloc
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+
+    [self resetInteractionCallbacks];
+
+    self.zoomToScaleCompletionHandler = nil;
+    self.retrieveSpeakSelectionContentCompletionHandler = nil;
+
+    [super dealloc];
 }
 
 - (void)didStartFormControlInteraction
 {
-    m_isInteractingWithFormControl = YES;
+    _isInteractingWithFormControl = YES;
 
     if (self.didStartFormControlInteractionCallback)
         self.didStartFormControlInteractionCallback();
@@ -96,7 +121,7 @@
 
 - (void)didEndFormControlInteraction
 {
-    m_isInteractingWithFormControl = NO;
+    _isInteractingWithFormControl = NO;
 
     if (self.didEndFormControlInteractionCallback)
         self.didEndFormControlInteractionCallback();
@@ -104,7 +129,7 @@
 
 - (BOOL)isInteractingWithFormControl
 {
-    return m_isInteractingWithFormControl;
+    return _isInteractingWithFormControl;
 }
 
 - (void)_didShowForcePressPreview
@@ -117,6 +142,106 @@
 {
     if (self.didDismissForcePressPreviewCallback)
         self.didDismissForcePressPreviewCallback();
+}
+
+- (BOOL)becomeFirstResponder
+{
+    BOOL wasFirstResponder = self.isFirstResponder;
+    BOOL becameFirstResponder = [super becomeFirstResponder];
+    if (!wasFirstResponder && becameFirstResponder)
+        [self _addCustomItemToMenuControllerIfNecessary];
+    return becameFirstResponder;
+}
+
+- (void)_addCustomItemToMenuControllerIfNecessary
+{
+    if (!_customMenuActionInfo)
+        return;
+
+    auto item = adoptNS([[UIMenuItem alloc] initWithTitle:_customMenuActionInfo->name.get() action:@selector(performCustomAction:)]);
+    [item setDontDismiss:!_customMenuActionInfo->dismissesAutomatically];
+    UIMenuController *controller = UIMenuController.sharedMenuController;
+    controller.menuItems = @[ item.get() ];
+    [controller update];
+}
+
+- (void)installCustomMenuAction:(NSString *)name dismissesAutomatically:(BOOL)dismissesAutomatically callback:(dispatch_block_t)callback
+{
+    _customMenuActionInfo = {{ name, dismissesAutomatically, callback }};
+    [self _addCustomItemToMenuControllerIfNecessary];
+}
+
+- (void)setAllowedMenuActions:(NSArray<NSString *> *)actions
+{
+    _allowedMenuActions = actions;
+}
+
+- (void)resetCustomMenuAction
+{
+    _customMenuActionInfo.reset();
+    UIMenuController.sharedMenuController.menuItems = @[ ];
+}
+
+- (void)performCustomAction:(id)sender
+{
+    if (!_customMenuActionInfo)
+        return;
+
+    if (!_customMenuActionInfo->callback) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    _customMenuActionInfo->callback();
+}
+
+- (BOOL)canPerformAction:(SEL)action withSender:(id)sender
+{
+    BOOL isCustomAction = action == @selector(performCustomAction:);
+    BOOL canPerformActionByDefault = [super canPerformAction:action withSender:sender];
+    if (isCustomAction)
+        canPerformActionByDefault = _customMenuActionInfo.hasValue();
+
+    if (canPerformActionByDefault && _allowedMenuActions && sender == UIMenuController.sharedMenuController) {
+        BOOL isAllowed = NO;
+        if (isCustomAction) {
+            for (NSString *allowedAction in _allowedMenuActions.get()) {
+                if ([[_customMenuActionInfo->name lowercaseString] isEqualToString:allowedAction.lowercaseString]) {
+                    isAllowed = YES;
+                    break;
+                }
+            }
+        } else {
+            for (NSString *allowedAction in _allowedMenuActions.get()) {
+                NSString *lowercaseSelectorName = [[allowedAction lowercaseString] stringByAppendingString:@":"];
+                if ([NSStringFromSelector(action).lowercaseString isEqualToString:lowercaseSelectorName]) {
+                    isAllowed = YES;
+                    break;
+                }
+            }
+        }
+        if (!isAllowed)
+            return NO;
+    }
+    return canPerformActionByDefault;
+}
+
+- (void)resetInteractionCallbacks
+{
+    self.didStartFormControlInteractionCallback = nil;
+    self.didEndFormControlInteractionCallback = nil;
+    self.didShowForcePressPreviewCallback = nil;
+    self.didDismissForcePressPreviewCallback = nil;
+    self.willBeginZoomingCallback = nil;
+    self.didEndZoomingCallback = nil;
+    self.didShowKeyboardCallback = nil;
+    self.didHideKeyboardCallback = nil;
+    self.didShowMenuCallback = nil;
+    self.didHideMenuCallback = nil;
+    self.willPresentPopoverCallback = nil;
+    self.didDismissPopoverCallback = nil;
+    self.didEndScrollingCallback = nil;
+    self.rotationDidEndCallback = nil;
 }
 
 - (void)zoomToScale:(double)scale animated:(BOOL)animated completionHandler:(void (^)(void))completionHandler
@@ -136,22 +261,69 @@
 
 - (void)_invokeShowKeyboardCallbackIfNecessary
 {
-    if (self.isShowingKeyboard)
+    if (self.showingKeyboard)
         return;
 
-    self.isShowingKeyboard = YES;
+    self.showingKeyboard = YES;
     if (self.didShowKeyboardCallback)
         self.didShowKeyboardCallback();
 }
 
 - (void)_invokeHideKeyboardCallbackIfNecessary
 {
-    if (!self.isShowingKeyboard)
+    if (!self.showingKeyboard)
         return;
 
-    self.isShowingKeyboard = NO;
+    self.showingKeyboard = NO;
     if (self.didHideKeyboardCallback)
         self.didHideKeyboardCallback();
+}
+
+- (void)_didShowMenu
+{
+    if (self.showingMenu)
+        return;
+
+    self.showingMenu = YES;
+    if (self.didShowMenuCallback)
+        self.didShowMenuCallback();
+}
+
+- (void)_willHideMenu
+{
+    self.dismissingMenu = YES;
+}
+
+- (void)_didHideMenu
+{
+    self.dismissingMenu = NO;
+
+    if (!self.showingMenu)
+        return;
+
+    self.showingMenu = NO;
+    if (self.didHideMenuCallback)
+        self.didHideMenuCallback();
+}
+
+- (void)_willPresentPopover
+{
+    if (self.showingPopover)
+        return;
+
+    self.showingPopover = YES;
+    if (self.willPresentPopoverCallback)
+        self.willPresentPopoverCallback();
+}
+
+- (void)_didDismissPopover
+{
+    if (!self.showingPopover)
+        return;
+
+    self.showingPopover = NO;
+    if (self.didDismissPopoverCallback)
+        self.didDismissPopoverCallback();
 }
 
 - (void)scrollViewWillBeginZooming:(UIScrollView *)scrollView withView:(UIView *)view
@@ -192,6 +364,16 @@
 {
     m_stableStateOverride = overrideBoolean;
     [self _scheduleVisibleContentRectUpdate];
+}
+
+- (BOOL)_scrollingUpdatesDisabledForTesting
+{
+    return _scrollingUpdatesDisabled;
+}
+
+- (void)_setScrollingUpdatesDisabledForTesting:(BOOL)disabled
+{
+    _scrollingUpdatesDisabled = disabled;
 }
 
 - (void)_didEndRotation
@@ -240,8 +422,6 @@
     [self _invokeHideKeyboardCallbackIfNecessary];
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 @end
-
-#endif // WK_API_ENABLED

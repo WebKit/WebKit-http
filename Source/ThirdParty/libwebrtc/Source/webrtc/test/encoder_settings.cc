@@ -12,13 +12,7 @@
 #include <algorithm>
 #include <string>
 
-#include "media/engine/internaldecoderfactory.h"
-#include "modules/video_coding/codecs/h264/include/h264.h"
-#include "modules/video_coding/codecs/multiplex/include/multiplex_decoder_adapter.h"
-#include "modules/video_coding/codecs/vp8/include/vp8.h"
-#include "modules/video_coding/codecs/vp9/include/vp9.h"
 #include "rtc_base/refcountedobject.h"
-#include "test/fake_decoder.h"
 
 namespace webrtc {
 namespace test {
@@ -67,6 +61,14 @@ std::vector<VideoStream> CreateVideoStreams(
               ? stream.target_bitrate_bps
               : DefaultVideoStreamFactory::kMaxBitratePerStream[i];
       target_bitrate_bps = std::min(max_bitrate_bps, target_bitrate_bps);
+
+      if (stream.max_framerate > 0) {
+        stream_settings[i].max_framerate = stream.max_framerate;
+      }
+      if (stream.num_temporal_layers) {
+        RTC_DCHECK_GE(*stream.num_temporal_layers, 1);
+        stream_settings[i].num_temporal_layers = stream.num_temporal_layers;
+      }
     } else {
       max_bitrate_bps = std::min(
           bitrate_left_bps, DefaultVideoStreamFactory::kMaxBitratePerStream[i]);
@@ -127,19 +129,7 @@ VideoReceiveStream::Decoder CreateMatchingDecoder(
     const std::string& payload_name) {
   VideoReceiveStream::Decoder decoder;
   decoder.payload_type = payload_type;
-  decoder.payload_name = payload_name;
-  if (payload_name == "H264") {
-    decoder.decoder = H264Decoder::Create().release();
-  } else if (payload_name == "VP8") {
-    decoder.decoder = VP8Decoder::Create().release();
-  } else if (payload_name == "VP9") {
-    decoder.decoder = VP9Decoder::Create().release();
-  } else if (payload_name == "multiplex") {
-    decoder.decoder = new MultiplexDecoderAdapter(
-        new InternalDecoderFactory(), SdpVideoFormat(cricket::kVp9CodecName));
-  } else {
-    decoder.decoder = new FakeDecoder();
-  }
+  decoder.video_format = SdpVideoFormat(payload_name);
   return decoder;
 }
 

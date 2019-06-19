@@ -80,7 +80,6 @@ public:
     void setTopLoadingFrame(WKBundleFrameRef frame) { m_topLoadingFrame = frame; }
 
     bool shouldDumpPixels() const { return m_dumpPixels; }
-    bool useWaitToDumpWatchdogTimer() const { return m_useWaitToDumpWatchdogTimer; }
     bool dumpJSConsoleLogInStdErr() const { return m_dumpJSConsoleLogInStdErr; };
 
     void outputText(const String&);
@@ -171,6 +170,7 @@ private:
     void beginTesting(WKDictionaryRef initialSettings, BegingTestingMode);
 
     bool booleanForKey(WKDictionaryRef, const char* key);
+    String stringForKey(WKDictionaryRef, const char* key);
 
     WKBundleRef m_bundle { nullptr };
     WKBundlePageGroupRef m_pageGroup { nullptr };
@@ -194,7 +194,6 @@ private:
     State m_state { Idle };
 
     bool m_dumpPixels { false };
-    bool m_useWaitToDumpWatchdogTimer { true };
     bool m_useWorkQueue { false };
     bool m_pixelResultIsPending { false };
     bool m_dumpJSConsoleLogInStdErr { false };

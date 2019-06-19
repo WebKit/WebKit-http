@@ -33,9 +33,9 @@
                 testExpected("trackCue.vertical", "");
                 testExpected("trackCue.snapToLines", true);
                 testExpected("trackCue.line", -1);
-                testExpected("trackCue.position", 50);
+                testExpected("trackCue.position", 'auto');
                 testExpected("trackCue.size", 100);
-                testExpected("trackCue.align", "middle");
+                testExpected("trackCue.align", "center");
                 testExpected("trackCue.text", "Lorem");
                 testExpected("serialize(trackCue.getCueAsHTML())", 'Lorem');
 
@@ -53,9 +53,9 @@
                 testExpected("newCue.vertical", "");
                 testExpected("newCue.snapToLines", true);
                 testExpected("newCue.line", -1);
-                testExpected("newCue.position", 50);
+                testExpected("newCue.position", 'auto');
                 testExpected("newCue.size", 100);
-                testExpected("newCue.align", "middle");
+                testExpected("newCue.align", "center");
                 testExpected("newCue.text", "Pie");
                 testExpected("serialize(newCue.getCueAsHTML())", 'Pie');
 

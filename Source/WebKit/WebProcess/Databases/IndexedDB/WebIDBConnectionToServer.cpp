@@ -31,12 +31,10 @@
 #include "DataReference.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessConnection.h"
-#include "StorageToWebProcessConnectionMessages.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebIDBConnectionToClientMessages.h"
 #include "WebIDBResult.h"
 #include "WebProcess.h"
-#include "WebToStorageProcessConnection.h"
 #include <WebCore/IDBConnectionToServer.h>
 #include <WebCore/IDBCursorInfo.h>
 #include <WebCore/IDBError.h>
@@ -64,21 +62,18 @@ WebIDBConnectionToServer::WebIDBConnectionToServer(PAL::SessionID sessionID)
 {
     relaxAdoptionRequirement();
 
-    m_isOpenInServer = sendSync(Messages::StorageToWebProcessConnection::EstablishIDBConnectionToServer(sessionID), Messages::StorageToWebProcessConnection::EstablishIDBConnectionToServer::Reply(m_identifier));
+    m_isOpenInServer = sendSync(Messages::NetworkConnectionToWebProcess::EstablishIDBConnectionToServer(sessionID), Messages::NetworkConnectionToWebProcess::EstablishIDBConnectionToServer::Reply(m_identifier));
 
-    // FIXME: This creates a reference cycle, so neither this object nor the IDBConnectionToServer will ever be deallocated.
     m_connectionToServer = IDBClient::IDBConnectionToServer::create(*this);
 }
 
 WebIDBConnectionToServer::~WebIDBConnectionToServer()
 {
-    if (m_isOpenInServer)
-        send(Messages::StorageToWebProcessConnection::RemoveIDBConnectionToServer(m_identifier));
 }
 
-IPC::Connection* WebIDBConnectionToServer::messageSenderConnection()
+IPC::Connection* WebIDBConnectionToServer::messageSenderConnection() const
 {
-    return &WebProcess::singleton().ensureWebToStorageProcessConnection(m_sessionID).connection();
+    return &WebProcess::singleton().ensureNetworkProcessConnection().connection();
 }
 
 IDBClient::IDBConnectionToServer& WebIDBConnectionToServer::coreConnectionToServer()
@@ -148,7 +143,7 @@ void WebIDBConnectionToServer::renameIndex(const IDBRequestData& requestData, ui
 
 void WebIDBConnectionToServer::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const IDBValue& value, const IndexedDB::ObjectStoreOverwriteMode mode)
 {
-    send(Messages::WebIDBConnectionToClient::PutOrAdd(requestData, keyData, value, static_cast<unsigned>(mode)));
+    send(Messages::WebIDBConnectionToClient::PutOrAdd(requestData, keyData, value, mode));
 }
 
 void WebIDBConnectionToServer::getRecord(const IDBRequestData& requestData, const IDBGetRecordData& getRecordData)
@@ -281,34 +276,13 @@ void WebIDBConnectionToServer::didPutOrAdd(const IDBResultData& result)
     m_connectionToServer->didPutOrAdd(result);
 }
 
-static void preregisterSandboxExtensionsIfNecessary(const WebIDBResult& result)
-{
-    auto resultType = result.resultData().type();
-    if (resultType != IDBResultType::GetRecordSuccess && resultType != IDBResultType::OpenCursorSuccess && resultType != IDBResultType::IterateCursorSuccess && resultType != IDBResultType::GetAllRecordsSuccess) {
-        ASSERT(resultType == IDBResultType::Error);
-        return;
-    }
-
-    const auto filePaths = resultType == IDBResultType::GetAllRecordsSuccess ? result.resultData().getAllResult().allBlobFilePaths() : result.resultData().getResult().value().blobFilePaths();
-
-#if ENABLE(SANDBOX_EXTENSIONS)
-    ASSERT(filePaths.size() == result.handles().size());
-#endif
-
-    if (!filePaths.isEmpty())
-        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::PreregisterSandboxExtensionsForOptionallyFileBackedBlob(filePaths, result.handles()), 0);
-}
-
 void WebIDBConnectionToServer::didGetRecord(const WebIDBResult& result)
 {
-    preregisterSandboxExtensionsIfNecessary(result);
     m_connectionToServer->didGetRecord(result.resultData());
 }
 
 void WebIDBConnectionToServer::didGetAllRecords(const WebIDBResult& result)
 {
-    if (result.resultData().getAllResult().type() == IndexedDB::GetAllType::Values)
-        preregisterSandboxExtensionsIfNecessary(result);
     m_connectionToServer->didGetAllRecords(result.resultData());
 }
 
@@ -324,13 +298,11 @@ void WebIDBConnectionToServer::didDeleteRecord(const IDBResultData& result)
 
 void WebIDBConnectionToServer::didOpenCursor(const WebIDBResult& result)
 {
-    preregisterSandboxExtensionsIfNecessary(result);
     m_connectionToServer->didOpenCursor(result.resultData());
 }
 
 void WebIDBConnectionToServer::didIterateCursor(const WebIDBResult& result)
 {
-    preregisterSandboxExtensionsIfNecessary(result);
     m_connectionToServer->didIterateCursor(result.resultData());
 }
 

@@ -1,12 +1,19 @@
 {
     "domain": "Recording",
     "description": "General types used for recordings of actions performed in the inspected page.",
+    "availability": ["web"],
+    "version": 1,
     "types": [
         {
             "id": "Type",
             "type": "string",
-            "enum": ["canvas-2d", "canvas-webgl"],
+            "enum": ["canvas-2d", "canvas-bitmaprenderer", "canvas-webgl", "canvas-webgl2"],
             "description": "The type of the recording."
+        },
+        {
+            "id": "Initiator",
+            "type": "string",
+            "enum": ["frontend", "console", "auto-capture"]
         },
         {
             "id": "InitialState",
@@ -14,6 +21,7 @@
             "description": "Information about the initial state of the recorded object.",
             "properties": [
                 { "name": "attributes", "type": "object", "optional": true, "description": "Key-value map for each attribute of the state." },
+                { "name": "states", "type": "array", "items": { "type": "object" }, "optional": true, "description": "Array of saved states of the context." },
                 { "name": "parameters", "type": "array", "items": { "type": "any" }, "optional": true, "description": "Array of values that were used to construct the recorded object." },
                 { "name": "content", "type": "string", "optional": true, "description": "Current content at the start of the recording." }
             ]

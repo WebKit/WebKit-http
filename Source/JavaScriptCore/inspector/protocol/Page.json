@@ -4,6 +4,21 @@
     "availability": ["web"],
     "types": [
         {
+            "id": "Setting",
+            "type": "string",
+            "description": "List of settings able to be overridden by WebInspector. Keep this in sync with FOR_EACH_INSPECTOR_OVERRIDE_SETTING.",
+            "enum": [
+                "AuthorAndUserStylesEnabled",
+                "ICECandidateFilteringEnabled",
+                "ImagesEnabled",
+                "MediaCaptureRequiresSecureConnection",
+                "MockCaptureDevicesEnabled",
+                "NeedsSiteSpecificQuirks",
+                "ScriptEnabled",
+                "WebSecurityEnabled"
+            ]
+        },
+        {
             "id": "ResourceType",
             "type": "string",
             "enum": ["Document", "Stylesheet", "Image", "Font", "Script", "XHR", "Fetch", "Ping", "Beacon", "WebSocket", "Other"],
@@ -20,6 +35,12 @@
             "type": "string",
             "enum": ["None", "Lax", "Strict"],
             "description": "Same-Site policy of a cookie."
+        },
+        {
+            "id": "Appearance",
+            "type": "string",
+            "enum": ["Light", "Dark"],
+            "description": "Page appearance name."
         },
         {
             "id": "Frame",
@@ -112,6 +133,21 @@
             ]
         },
         {
+            "name": "overrideUserAgent",
+            "description": "Override's the user agent of the inspected page",
+            "parameters": [
+                { "name": "value", "type": "string", "optional": true, "description": "Value to override the user agent with. If this value is not provided, the override is removed. Overrides are removed when Web Inspector closes/disconnects." }
+            ]
+        },
+        {
+            "name": "overrideSetting",
+            "description": "Allows the frontend to override the inspected page's settings.",
+            "parameters": [
+                { "name": "setting", "$ref": "Setting" },
+                { "name": "value", "type": "boolean", "optional": true, "description": "Value to override the setting with. If this value is not provided, the override is removed. Overrides are removed when Web Inspector closes/disconnects." }
+            ]
+        },
+        {
             "name": "getCookies",
             "description": "Returns all browser cookies. Depending on the backend support, will return detailed cookie information in the <code>cookies</code> field.",
             "returns": [
@@ -191,6 +227,13 @@
             "description": "Emulates the given media for CSS media queries.",
             "parameters": [
                 { "name": "media", "type": "string", "description": "Media type to emulate. Empty string disables the override." }
+            ]
+        },
+        {
+            "name": "setForcedAppearance",
+            "description": "Forces the given appearance for the page.",
+            "parameters": [
+                { "name": "appearance", "$ref": "Appearance", "description": "Appearance name to force. Empty string disables the override." }
             ]
         },
         {
@@ -293,6 +336,13 @@
             "description": "Fired when frame no longer has a scheduled navigation.",
             "parameters": [
                 { "name": "frameId", "$ref": "Network.FrameId", "description": "Id of the frame that has cleared its scheduled navigation." }
+            ]
+        },
+        {
+            "name": "defaultAppearanceDidChange",
+            "description": "Fired when page's default appearance changes, even if there is a forced appearance.",
+            "parameters": [
+                { "name": "appearance", "$ref": "Appearance", "description": "Name of the appearance that is active (not considering any forced appearance.)" }
             ]
         }
     ]

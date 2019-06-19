@@ -28,10 +28,10 @@
 #include "GraphicsContext.h"
 #include "HitTestResult.h"
 #include "LayoutRepainter.h"
-#include "LayoutState.h"
 #include "Page.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
+#include "RenderLayoutState.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGResourceContainer.h"
 #include "RenderSVGResourceFilter.h"
@@ -56,7 +56,6 @@ RenderSVGRoot::RenderSVGRoot(SVGSVGElement& element, RenderStyle&& style)
     , m_objectBoundingBoxValid(false)
     , m_isLayoutSizeChanged(false)
     , m_needsBoundariesOrTransformUpdate(true)
-    , m_hasSVGShadow(false)
     , m_hasBoxDecorations(false)
 {
 }
@@ -126,7 +125,7 @@ LayoutUnit RenderSVGRoot::computeReplacedLogicalWidth(ShouldComputePreferred sho
     return RenderReplaced::computeReplacedLogicalWidth(shouldComputePreferred);
 }
 
-LayoutUnit RenderSVGRoot::computeReplacedLogicalHeight(std::optional<LayoutUnit> estimatedUsedWidth) const
+LayoutUnit RenderSVGRoot::computeReplacedLogicalHeight(Optional<LayoutUnit> estimatedUsedWidth) const
 {
     // When we're embedded through SVGImage (border-image/background-image/<html:img>/...) we're forced to resize to a specific size.
     if (!m_containerSize.isEmpty())
@@ -146,7 +145,7 @@ void RenderSVGRoot::layout()
 
     m_resourcesNeedingToInvalidateClients.clear();
 
-    // Arbitrary affine transforms are incompatible with LayoutState.
+    // Arbitrary affine transforms are incompatible with RenderLayoutState.
     LayoutStateDisabler layoutStateDisabler(view().frameView().layoutContext());
 
     bool needsLayout = selfNeedsLayout();
@@ -342,19 +341,24 @@ LayoutRect RenderSVGRoot::clippedOverflowRectForRepaint(const RenderLayerModelOb
     return RenderReplaced::computeRectForRepaint(enclosingIntRect(repaintRect), repaintContainer);
 }
 
-FloatRect RenderSVGRoot::computeFloatRectForRepaint(const FloatRect& repaintRect, const RenderLayerModelObject* repaintContainer, bool fixed) const
+Optional<FloatRect> RenderSVGRoot::computeFloatVisibleRectInContainer(const FloatRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
 {
     // Apply our local transforms (except for x/y translation), then our shadow, 
     // and then call RenderBox's method to handle all the normal CSS Box model bits
-    FloatRect adjustedRect = m_localToBorderBoxTransform.mapRect(repaintRect);
+    FloatRect adjustedRect = m_localToBorderBoxTransform.mapRect(rect);
 
     const SVGRenderStyle& svgStyle = style().svgStyle();
     if (const ShadowData* shadow = svgStyle.shadow())
         shadow->adjustRectForShadow(adjustedRect);
 
     // Apply initial viewport clip
-    if (shouldApplyViewportClip())
-        adjustedRect.intersect(snappedIntRect(borderBoxRect()));
+    if (shouldApplyViewportClip()) {
+        if (context.m_options.contains(VisibleRectContextOption::UseEdgeInclusiveIntersection)) {
+            if (!adjustedRect.edgeInclusiveIntersect(snappedIntRect(borderBoxRect())))
+                return WTF::nullopt;
+        } else
+            adjustedRect.intersect(snappedIntRect(borderBoxRect()));
+    }
 
     if (m_hasBoxDecorations || hasRenderOverflow()) {
         // The selectionRect can project outside of the overflowRect, so take their union
@@ -362,7 +366,10 @@ FloatRect RenderSVGRoot::computeFloatRectForRepaint(const FloatRect& repaintRect
         LayoutRect decoratedRepaintRect = unionRect(localSelectionRect(false), visualOverflowRect());
         adjustedRect.unite(decoratedRepaintRect);
     }
-    return RenderReplaced::computeRectForRepaint(enclosingIntRect(adjustedRect), repaintContainer, {fixed, false});
+
+    if (Optional<LayoutRect> rectInContainer = RenderReplaced::computeVisibleRectInContainer(enclosingIntRect(adjustedRect), container, context))
+        return FloatRect(*rectInContainer);
+    return WTF::nullopt;
 }
 
 // This method expects local CSS box coordinates.
@@ -388,7 +395,6 @@ void RenderSVGRoot::updateCachedBoundaries()
     m_repaintBoundingBoxExcludingShadow.inflate(horizontalBorderAndPaddingExtent());
 
     m_repaintBoundingBox = m_repaintBoundingBoxExcludingShadow;
-    SVGRenderSupport::intersectRepaintRectWithShadows(*this, m_repaintBoundingBox);
 }
 
 bool RenderSVGRoot::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
@@ -399,7 +405,7 @@ bool RenderSVGRoot::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
     // Test SVG content if the point is in our content box or it is inside the visualOverflowRect and the overflow is visible.
     // FIXME: This should be an intersection when rect-based hit tests are supported by nodeAtFloatPoint.
     if (contentBoxRect().contains(pointInBorderBox) || (!shouldApplyViewportClip() && visualOverflowRect().contains(pointInParent))) {
-        FloatPoint localPoint = localToParentTransform().inverse().value_or(AffineTransform()).mapPoint(FloatPoint(pointInParent));
+        FloatPoint localPoint = localToParentTransform().inverse().valueOr(AffineTransform()).mapPoint(FloatPoint(pointInParent));
 
         for (RenderObject* child = lastChild(); child; child = child->previousSibling()) {
             // FIXME: nodeAtFloatPoint() doesn't handle rect-based hit tests yet.

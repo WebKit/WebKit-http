@@ -29,36 +29,43 @@
 #if ENABLE(PAYMENT_REQUEST)
 
 #include "Document.h"
-#include "MerchantValidationEventInit.h"
 #include "PaymentRequest.h"
 
 namespace WebCore {
 
-Ref<MerchantValidationEvent> MerchantValidationEvent::create(const AtomicString& type, const URL& validationURL, PaymentRequest& paymentRequest)
+Ref<MerchantValidationEvent> MerchantValidationEvent::create(const AtomString& type, const String& methodName, URL&& validationURL)
 {
-    return adoptRef(*new MerchantValidationEvent(type, validationURL, paymentRequest));
+    return adoptRef(*new MerchantValidationEvent(type, methodName, WTFMove(validationURL)));
 }
 
-ExceptionOr<Ref<MerchantValidationEvent>> MerchantValidationEvent::create(Document& document, const AtomicString& type, MerchantValidationEventInit&& eventInit)
+ExceptionOr<Ref<MerchantValidationEvent>> MerchantValidationEvent::create(Document& document, const AtomString& type, Init&& eventInit)
 {
     URL validationURL { document.url(), eventInit.validationURL };
     if (!validationURL.isValid())
         return Exception { TypeError };
 
-    return adoptRef(*new MerchantValidationEvent(type, WTFMove(validationURL), WTFMove(eventInit)));
+    auto methodName = WTFMove(eventInit.methodName);
+    if (!methodName.isEmpty()) {
+        auto validatedMethodName = convertAndValidatePaymentMethodIdentifier(methodName);
+        if (!validatedMethodName)
+            return Exception { RangeError, makeString('"', methodName, "\" is an invalid payment method identifier.") };
+    }
+
+    return adoptRef(*new MerchantValidationEvent(type, WTFMove(methodName), WTFMove(validationURL), WTFMove(eventInit)));
 }
 
-MerchantValidationEvent::MerchantValidationEvent(const AtomicString& type, const URL& validationURL, PaymentRequest& paymentRequest)
+MerchantValidationEvent::MerchantValidationEvent(const AtomString& type, const String& methodName, URL&& validationURL)
     : Event { type, Event::CanBubble::No, Event::IsCancelable::No }
-    , m_validationURL { validationURL }
-    , m_paymentRequest { &paymentRequest }
+    , m_methodName { methodName }
+    , m_validationURL { WTFMove(validationURL) }
 {
     ASSERT(isTrusted());
     ASSERT(m_validationURL.isValid());
 }
 
-MerchantValidationEvent::MerchantValidationEvent(const AtomicString& type, URL&& validationURL, MerchantValidationEventInit&& eventInit)
+MerchantValidationEvent::MerchantValidationEvent(const AtomString& type, String&& methodName, URL&& validationURL, Init&& eventInit)
     : Event { type, WTFMove(eventInit), IsTrusted::No }
+    , m_methodName { WTFMove(methodName) }
     , m_validationURL { WTFMove(validationURL) }
 {
     ASSERT(!isTrusted());
@@ -75,12 +82,10 @@ ExceptionOr<void> MerchantValidationEvent::complete(Ref<DOMPromise>&& merchantSe
     if (!isTrusted())
         return Exception { InvalidStateError };
 
-    ASSERT(m_paymentRequest);
-
     if (m_isCompleted)
         return Exception { InvalidStateError };
 
-    auto exception = m_paymentRequest->completeMerchantValidation(*this, WTFMove(merchantSessionPromise));
+    auto exception = downcast<PaymentRequest>(target())->completeMerchantValidation(*this, WTFMove(merchantSessionPromise));
     if (exception.hasException())
         return exception.releaseException();
 

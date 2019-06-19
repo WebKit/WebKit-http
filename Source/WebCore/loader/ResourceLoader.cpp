@@ -32,6 +32,8 @@
 
 #include "ApplicationCacheHost.h"
 #include "AuthenticationChallenge.h"
+#include "ContentRuleListResults.h"
+#include "CustomHeaderFields.h"
 #include "DataURLDecoder.h"
 #include "DiagnosticLoggingClient.h"
 #include "DiagnosticLoggingKeys.h"
@@ -41,6 +43,7 @@
 #include "FrameLoaderClient.h"
 #include "InspectorInstrumentation.h"
 #include "LoaderStrategy.h"
+#include "Logging.h"
 #include "Page.h"
 #include "PlatformStrategies.h"
 #include "ProgressTracker.h"
@@ -59,6 +62,9 @@
 #include "PreviewConverter.h"
 #include "PreviewLoader.h"
 #endif
+
+#undef RELEASE_LOG_IF_ALLOWED
+#define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), Network, "%p - ResourceLoader::" fmt, this, ##__VA_ARGS__)
 
 namespace WebCore {
 
@@ -113,6 +119,14 @@ void ResourceLoader::releaseResources()
 
 void ResourceLoader::init(ResourceRequest&& clientRequest, CompletionHandler<void(bool)>&& completionHandler)
 {
+#if PLATFORM(IOS_FAMILY)
+    if (!m_documentLoader) {
+        // We should always have a DocumentLoader at this point, but crash reports indicate that it is sometimes null.
+        // See https://bugs.webkit.org/show_bug.cgi?id=187360
+        ASSERT_NOT_REACHED();
+        return completionHandler(false);
+    }
+#endif
     ASSERT(!m_handle);
     ASSERT(m_request.isNull());
     ASSERT(m_deferredRequest.isNull());
@@ -120,7 +134,7 @@ void ResourceLoader::init(ResourceRequest&& clientRequest, CompletionHandler<voi
     
     m_loadTiming.markStartTimeAndFetchStart();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // If the documentLoader was detached while this ResourceLoader was waiting its turn
     // in ResourceLoadScheduler queue, don't continue.
     if (!m_documentLoader->frame()) {
@@ -150,7 +164,7 @@ void ResourceLoader::init(ResourceRequest&& clientRequest, CompletionHandler<voi
 
     willSendRequestInternal(WTFMove(clientRequest), ResourceResponse(), [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](ResourceRequest&& request) mutable {
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         // If this ResourceLoader was stopped as a result of willSendRequest, bail out.
         if (m_reachedTerminalState)
             return completionHandler(false);
@@ -256,6 +270,7 @@ void ResourceLoader::loadDataURL()
         if (this->reachedTerminalState())
             return;
         if (!decodeResult) {
+            RELEASE_LOG_IF_ALLOWED("loadDataURL: decoding of data failed (frame = %p, frameLoader = %p, resourceID = %lu)", frame(), frameLoader(), identifier());
             protectedThis->didFail(ResourceError(errorDomainWebKitInternal, 0, url, "Data URL decoding failed"));
             return;
         }
@@ -336,7 +351,7 @@ void ResourceLoader::willSendRequestInternal(ResourceRequest&& request, const Re
 
     ASSERT(!m_reachedTerminalState);
 #if ENABLE(CONTENT_EXTENSIONS)
-    ASSERT(m_resourceType != ResourceType::Invalid);
+    ASSERT(m_resourceType != ContentExtensions::ResourceType::Invalid);
 #endif
 
     // We need a resource identifier for all requests, even if FrameLoader is never going to see it (such as with CORS preflight requests).
@@ -350,9 +365,11 @@ void ResourceLoader::willSendRequestInternal(ResourceRequest&& request, const Re
     if (!redirectResponse.isNull() && frameLoader()) {
         Page* page = frameLoader()->frame().page();
         if (page && m_documentLoader) {
-            auto blockedStatus = page->userContentProvider().processContentExtensionRulesForLoad(request.url(), m_resourceType, *m_documentLoader);
-            applyBlockedStatusToRequest(blockedStatus, page, request);
-            if (blockedStatus.blockedLoad) {
+            auto results = page->userContentProvider().processContentRuleListsForLoad(request.url(), m_resourceType, *m_documentLoader);
+            bool blockedLoad = results.summary.blockedLoad;
+            ContentExtensions::applyResultsToRequest(WTFMove(results), page, request);
+            if (blockedLoad) {
+                RELEASE_LOG_IF_ALLOWED("willSendRequestinternal: resource load canceled because of content blocker (frame = %p, frameLoader = %p, resourceID = %lu)", frame(), frameLoader(), identifier());
                 didFail(blockedByContentBlockerError());
                 completionHandler({ });
                 return;
@@ -362,6 +379,7 @@ void ResourceLoader::willSendRequestInternal(ResourceRequest&& request, const Re
 #endif
 
     if (request.isNull()) {
+        RELEASE_LOG_IF_ALLOWED("willSendRequestinternal: resource load canceled because of empty request (frame = %p, frameLoader = %p, resourceID = %lu)", frame(), frameLoader(), identifier());
         didFail(cannotShowURLError());
         completionHandler({ });
         return;
@@ -371,7 +389,7 @@ void ResourceLoader::willSendRequestInternal(ResourceRequest&& request, const Re
         if (createdResourceIdentifier)
             frameLoader()->notifier().assignIdentifierToInitialRequest(m_identifier, documentLoader(), request);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         // If this ResourceLoader was stopped as a result of assignIdentifierToInitialRequest, bail out
         if (m_reachedTerminalState) {
             completionHandler(WTFMove(request));
@@ -517,6 +535,8 @@ void ResourceLoader::didReceiveDataOrBuffer(const char* data, unsigned length, R
 
 void ResourceLoader::didFinishLoading(const NetworkLoadMetrics& networkLoadMetrics)
 {
+    RELEASE_LOG_IF_ALLOWED("didFinishLoading: (frame = %p, frameLoader = %p, resourceID = %lu)", frame(), frameLoader(), identifier());
+
     didFinishLoadingOnePart(networkLoadMetrics);
 
     // If the load has been cancelled by a delegate in response to didFinishLoad(), do not release
@@ -543,6 +563,8 @@ void ResourceLoader::didFinishLoadingOnePart(const NetworkLoadMetrics& networkLo
 
 void ResourceLoader::didFail(const ResourceError& error)
 {
+    RELEASE_LOG_IF_ALLOWED("didFail: (frame = %p, frameLoader = %p, resourceID = %lu)", frame(), frameLoader(), identifier());
+
     if (wasCancelled())
         return;
     ASSERT(!m_reachedTerminalState);
@@ -646,6 +668,7 @@ void ResourceLoader::willSendRequestAsync(ResourceHandle* handle, ResourceReques
 {
     RefPtr<ResourceHandle> protectedHandle(handle);
     if (documentLoader()->applicationCacheHost().maybeLoadFallbackForRedirect(this, request, redirectResponse)) {
+        RELEASE_LOG_IF_ALLOWED("willSendRequestAsync: exiting early because maybeLoadFallbackForRedirect returned false (frame = %p, frameLoader = %p, resourceID = %lu)", frame(), frameLoader(), identifier());
         completionHandler(WTFMove(request));
         return;
     }
@@ -691,17 +714,19 @@ void ResourceLoader::didFail(ResourceHandle*, const ResourceError& error)
 
 void ResourceLoader::wasBlocked(ResourceHandle*)
 {
+    RELEASE_LOG_IF_ALLOWED("wasBlocked: resource load canceled because of content blocker (frame = %p, frameLoader = %p, resourceID = %lu)", frame(), frameLoader(), identifier());
     didFail(blockedError());
 }
 
 void ResourceLoader::cannotShowURL(ResourceHandle*)
 {
+    RELEASE_LOG_IF_ALLOWED("wasBlocked: resource load canceled because of invalid URL (frame = %p, frameLoader = %p, resourceID = %lu)", frame(), frameLoader(), identifier());
     didFail(cannotShowURLError());
 }
 
 bool ResourceLoader::shouldUseCredentialStorage()
 {
-    if (m_options.storedCredentialsPolicy == StoredCredentialsPolicy::DoNotUse)
+    if (m_options.storedCredentialsPolicy != StoredCredentialsPolicy::Use)
         return false;
 
     Ref<ResourceLoader> protectedThis(*this);
@@ -715,6 +740,15 @@ bool ResourceLoader::isAllowedToAskUserForCredentials() const
     if (!shouldAllowResourceToAskForCredentials())
         return false;
     return m_options.credentials == FetchOptions::Credentials::Include || (m_options.credentials == FetchOptions::Credentials::SameOrigin && m_frame->document()->securityOrigin().canRequest(originalRequest().url()));
+}
+
+bool ResourceLoader::shouldIncludeCertificateInfo() const
+{
+    if (m_options.certificateInfoPolicy == CertificateInfoPolicy::IncludeCertificateInfo)
+        return true;
+    if (UNLIKELY(InspectorInstrumentation::hasFrontends()))
+        return true;
+    return false;
 }
 
 void ResourceLoader::didReceiveAuthenticationChallenge(ResourceHandle* handle, const AuthenticationChallenge& challenge)
@@ -751,7 +785,7 @@ bool ResourceLoader::canAuthenticateAgainstProtectionSpace(const ProtectionSpace
 
 #endif
     
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 RetainPtr<CFDictionaryRef> ResourceLoader::connectionProperties(ResourceHandle*)
 {
@@ -791,10 +825,6 @@ bool ResourceLoader::isQuickLookResource() const
 bool ResourceLoader::isAlwaysOnLoggingAllowed() const
 {
     return frameLoader() && frameLoader()->isAlwaysOnLoggingAllowed();
-}
-
-void ResourceLoader::didRetrieveDerivedDataFromCache(const String&, SharedBuffer&)
-{
 }
 
 }

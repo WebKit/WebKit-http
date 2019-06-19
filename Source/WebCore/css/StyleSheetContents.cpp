@@ -25,6 +25,7 @@
 #include "CSSParser.h"
 #include "CSSStyleSheet.h"
 #include "CachedCSSStyleSheet.h"
+#include "ContentRuleListResults.h"
 #include "Document.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -294,7 +295,7 @@ void StyleSheetContents::wrapperDeleteRule(unsigned index)
     m_childRules.remove(childVectorIndex);
 }
 
-void StyleSheetContents::parserAddNamespace(const AtomicString& prefix, const AtomicString& uri)
+void StyleSheetContents::parserAddNamespace(const AtomString& prefix, const AtomString& uri)
 {
     ASSERT(!uri.isNull());
     if (prefix.isNull()) {
@@ -307,7 +308,7 @@ void StyleSheetContents::parserAddNamespace(const AtomicString& prefix, const At
     result.iterator->value = uri;
 }
 
-const AtomicString& StyleSheetContents::namespaceURIFromPrefix(const AtomicString& prefix)
+const AtomString& StyleSheetContents::namespaceURIFromPrefix(const AtomString& prefix)
 {
     PrefixNamespaceURIMap::const_iterator it = m_namespaces.find(prefix);
     if (it == m_namespaces.end())
@@ -337,18 +338,7 @@ void StyleSheetContents::parseAuthorStyleSheet(const CachedCSSStyleSheet* cached
         return;
     }
 
-    CSSParser p(parserContext());
-    p.parseSheet(this, sheetText, CSSParser::RuleParsing::Deferred);
-
-    if (m_parserContext.needsSiteSpecificQuirks && isStrictParserMode(m_parserContext.mode)) {
-        // Work around <https://bugs.webkit.org/show_bug.cgi?id=28350>.
-        static NeverDestroyed<const String> mediaWikiKHTMLFixesStyleSheet(MAKE_STATIC_STRING_IMPL("/* KHTML fix stylesheet */\n/* work around the horizontal scrollbars */\n#column-content { margin-left: 0; }\n\n"));
-        // There are two variants of KHTMLFixes.css. One is equal to mediaWikiKHTMLFixesStyleSheet,
-        // while the other lacks the second trailing newline.
-        if (baseURL().string().endsWith("/KHTMLFixes.css") && !sheetText.isNull() && mediaWikiKHTMLFixesStyleSheet.get().startsWith(sheetText)
-            && sheetText.length() >= mediaWikiKHTMLFixesStyleSheet.get().length() - 1)
-            clearRules();
-    }
+    CSSParser(parserContext()).parseSheet(this, sheetText, CSSParser::RuleParsing::Deferred);
 }
 
 bool StyleSheetContents::parseString(const String& sheetText)
@@ -522,8 +512,8 @@ bool StyleSheetContents::subresourcesAllowReuse(CachePolicy cachePolicy, FrameLo
         auto* documentLoader = loader.documentLoader();
         if (page && documentLoader) {
             const auto& request = resource.resourceRequest();
-            auto blockedStatus = page->userContentProvider().processContentExtensionRulesForLoad(request.url(), toResourceType(resource.type()), *documentLoader);
-            if (blockedStatus.blockedLoad || blockedStatus.madeHTTPS)
+            auto results = page->userContentProvider().processContentRuleListsForLoad(request.url(), ContentExtensions::toResourceType(resource.type()), *documentLoader);
+            if (results.summary.blockedLoad || results.summary.madeHTTPS)
                 return true;
         }
 #else

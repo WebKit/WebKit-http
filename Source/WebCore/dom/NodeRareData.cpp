@@ -31,6 +31,8 @@
 #include "config.h"
 #include "NodeRareData.h"
 
+#include "Page.h"
+
 namespace WebCore {
 
 struct SameSizeAsNodeRareData {
@@ -39,5 +41,8 @@ struct SameSizeAsNodeRareData {
 };
 
 COMPILE_ASSERT(sizeof(NodeRareData) == sizeof(SameSizeAsNodeRareData), NodeRareDataShouldStaySmall);
+
+// Ensure the 10 bits reserved for the m_connectedFrameCount cannot overflow
+static_assert(Page::maxNumberOfFrames < 1024, "Frame limit should fit in rare data count");
 
 } // namespace WebCore

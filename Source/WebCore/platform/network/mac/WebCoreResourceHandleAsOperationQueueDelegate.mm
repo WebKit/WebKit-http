@@ -43,7 +43,7 @@
 
 using namespace WebCore;
 
-static bool scheduledWithCustomRunLoopMode(const std::optional<SchedulePairHashSet>& pairs)
+static bool scheduledWithCustomRunLoopMode(const Optional<SchedulePairHashSet>& pairs)
 {
     if (!pairs)
         return false;
@@ -68,7 +68,7 @@ static bool scheduledWithCustomRunLoopMode(const std::optional<SchedulePairHashS
         return callOnMainThread(WTFMove(function));
 
     // If we have been scheduled in a custom run loop mode, schedule a block in that mode.
-    auto block = BlockPtr<void()>::fromCallable([alreadyCalled = false, function = WTFMove(function)] () mutable {
+    auto block = makeBlockPtr([alreadyCalled = false, function = WTFMove(function)] () mutable {
         if (alreadyCalled)
             return;
         alreadyCalled = true;
@@ -90,7 +90,6 @@ static bool scheduledWithCustomRunLoopMode(const std::optional<SchedulePairHashS
         if (auto* pairs = m_handle->context()->scheduledRunLoopPairs())
             m_scheduledPairs = *pairs;
     }
-    m_semaphore = dispatch_semaphore_create(0);
     m_messageQueue = messageQueue;
 
     return self;
@@ -106,12 +105,11 @@ static bool scheduledWithCustomRunLoopMode(const std::optional<SchedulePairHashS
     m_requestResult = nullptr;
     m_cachedResponseResult = nullptr;
     m_boolResult = NO;
-    dispatch_semaphore_signal(m_semaphore); // OK to signal even if we are not waiting.
+    m_semaphore.signal(); // OK to signal even if we are not waiting.
 }
 
 - (void)dealloc
 {
-    dispatch_release(m_semaphore);
     [super dealloc];
 }
 
@@ -137,18 +135,25 @@ static bool scheduledWithCustomRunLoopMode(const std::optional<SchedulePairHashS
     auto work = [self, protectedSelf, newRequest = retainPtr(newRequest), redirectResponse = retainPtr(redirectResponse)] () mutable {
         if (!m_handle) {
             m_requestResult = nullptr;
-            dispatch_semaphore_signal(m_semaphore);
+            m_semaphore.signal();
             return;
         }
 
-        m_handle->willSendRequest(newRequest.get(), redirectResponse.get(), [self, protectedSelf = WTFMove(protectedSelf)](ResourceRequest&& request) {
+        ResourceRequest redirectRequest = newRequest.get();
+        if ([newRequest.get() HTTPBodyStream]) {
+            ASSERT(m_handle->firstRequest().httpBody());
+            redirectRequest.setHTTPBody(m_handle->firstRequest().httpBody());
+        }
+        if (m_handle->firstRequest().httpContentType().isEmpty())
+            redirectRequest.clearHTTPContentType();
+        m_handle->willSendRequest(WTFMove(redirectRequest), redirectResponse.get(), [self, protectedSelf = WTFMove(protectedSelf)](ResourceRequest&& request) {
             m_requestResult = request.nsURLRequest(HTTPBodyUpdatePolicy::UpdateHTTPBody);
-            dispatch_semaphore_signal(m_semaphore);
+            m_semaphore.signal();
         });
     };
 
     [self callFunctionOnMainThread:WTFMove(work)];
-    dispatch_semaphore_wait(m_semaphore, DISPATCH_TIME_FOREVER);
+    m_semaphore.wait();
 
     LockHolder lock(m_mutex);
     if (!m_handle)
@@ -163,7 +168,9 @@ static bool scheduledWithCustomRunLoopMode(const std::optional<SchedulePairHashS
     return requestResult.autorelease();
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)connection:(NSURLConnection *)connection didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge
+IGNORE_WARNINGS_END
 {
     ASSERT(!isMainThread());
     UNUSED_PARAM(connection);
@@ -181,7 +188,9 @@ static bool scheduledWithCustomRunLoopMode(const std::optional<SchedulePairHashS
     [self callFunctionOnMainThread:WTFMove(work)];
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (BOOL)connection:(NSURLConnection *)connection canAuthenticateAgainstProtectionSpace:(NSURLProtectionSpace *)protectionSpace
+IGNORE_WARNINGS_END
 {
     ASSERT(!isMainThread());
     UNUSED_PARAM(connection);
@@ -192,17 +201,17 @@ static bool scheduledWithCustomRunLoopMode(const std::optional<SchedulePairHashS
     auto work = [self, protectedSelf, protectionSpace = retainPtr(protectionSpace)] () mutable {
         if (!m_handle) {
             m_boolResult = NO;
-            dispatch_semaphore_signal(m_semaphore);
+            m_semaphore.signal();
             return;
         }
         m_handle->canAuthenticateAgainstProtectionSpace(ProtectionSpace(protectionSpace.get()), [self, protectedSelf = WTFMove(protectedSelf)] (bool result) mutable {
             m_boolResult = result;
-            dispatch_semaphore_signal(m_semaphore);
+            m_semaphore.signal();
         });
     };
 
     [self callFunctionOnMainThread:WTFMove(work)];
-    dispatch_semaphore_wait(m_semaphore, DISPATCH_TIME_FOREVER);
+    m_semaphore.wait();
 
     LockHolder lock(m_mutex);
     if (!m_handle)
@@ -227,7 +236,7 @@ static bool scheduledWithCustomRunLoopMode(const std::optional<SchedulePairHashS
     auto work = [self, protectedSelf, r = retainPtr(r), connection = retainPtr(connection)] () mutable {
         RefPtr<ResourceHandle> protectedHandle(m_handle);
         if (!m_handle || !m_handle->client()) {
-            dispatch_semaphore_signal(m_semaphore);
+            m_semaphore.signal();
             return;
         }
 
@@ -246,12 +255,12 @@ static bool scheduledWithCustomRunLoopMode(const std::optional<SchedulePairHashS
         ResourceHandle::getConnectionTimingData(connection.get(), resourceResponse.deprecatedNetworkLoadMetrics());
 
         m_handle->didReceiveResponse(WTFMove(resourceResponse), [self, protectedSelf = WTFMove(protectedSelf)] {
-            dispatch_semaphore_signal(m_semaphore);
+            m_semaphore.signal();
         });
     };
 
     [self callFunctionOnMainThread:WTFMove(work)];
-    dispatch_semaphore_wait(m_semaphore, DISPATCH_TIME_FOREVER);
+    m_semaphore.wait();
 
     // Make sure we get destroyed on the main thread.
     [self callFunctionOnMainThread:[protectedSelf = WTFMove(protectedSelf)] { }];
@@ -352,18 +361,18 @@ static bool scheduledWithCustomRunLoopMode(const std::optional<SchedulePairHashS
     auto work = [self, protectedSelf, cachedResponse = retainPtr(cachedResponse)] () mutable {
         if (!m_handle || !m_handle->client()) {
             m_cachedResponseResult = nullptr;
-            dispatch_semaphore_signal(m_semaphore);
+            m_semaphore.signal();
             return;
         }
 
         m_handle->client()->willCacheResponseAsync(m_handle, cachedResponse.get(), [self, protectedSelf = WTFMove(protectedSelf)] (NSCachedURLResponse * response) mutable {
             m_cachedResponseResult = response;
-            dispatch_semaphore_signal(m_semaphore);
+            m_semaphore.signal();
         });
     };
 
     [self callFunctionOnMainThread:WTFMove(work)];
-    dispatch_semaphore_wait(m_semaphore, DISPATCH_TIME_FOREVER);
+    m_semaphore.wait();
 
     LockHolder lock(m_mutex);
     if (!m_handle)

@@ -49,15 +49,6 @@ WorkerRuntimeAgent::WorkerRuntimeAgent(WorkerAgentContext& context)
     ASSERT(context.workerGlobalScope.isContextThread());
 }
 
-void WorkerRuntimeAgent::didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*)
-{
-}
-
-void WorkerRuntimeAgent::willDestroyFrontendAndBackend(DisconnectReason reason)
-{
-    InspectorRuntimeAgent::willDestroyFrontendAndBackend(reason);
-}
-
 InjectedScript WorkerRuntimeAgent::injectedScriptForEval(ErrorString& errorString, const int* executionContextId)
 {
     if (executionContextId) {
@@ -65,7 +56,7 @@ InjectedScript WorkerRuntimeAgent::injectedScriptForEval(ErrorString& errorStrin
         return InjectedScript();
     }
 
-    JSC::ExecState* scriptState = execStateFromWorkerGlobalScope(&m_workerGlobalScope);
+    JSC::ExecState* scriptState = execStateFromWorkerGlobalScope(m_workerGlobalScope);
     return injectedScriptManager().injectedScriptFor(scriptState);
 }
 

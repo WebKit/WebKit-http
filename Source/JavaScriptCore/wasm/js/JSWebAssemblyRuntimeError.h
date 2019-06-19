@@ -36,16 +36,14 @@ public:
     typedef ErrorInstance Base;
 
     static JSWebAssemblyRuntimeError* create(ExecState*, VM&, Structure*, const String&);
-    static JSWebAssemblyRuntimeError* create(ExecState* exec, VM& vm, Structure* structure, JSValue message)
-    {
-        return create(exec, vm, structure, message.isUndefined() ? String() : message.toWTFString(exec));
-    }
 
     DECLARE_INFO;
 
 protected:
     JSWebAssemblyRuntimeError(VM&, Structure*);
 };
+
+JSObject* createJSWebAssemblyRuntimeError(ExecState*, VM&, const String&);
 
 } // namespace JSC
 

@@ -32,12 +32,16 @@
 namespace WebCore {
 
 class File;
+class HTMLImageElement;
 class RenderAttachment;
+class SharedBuffer;
 
 class HTMLAttachmentElement final : public HTMLElement {
     WTF_MAKE_ISO_ALLOCATED(HTMLAttachmentElement);
 public:
     static Ref<HTMLAttachmentElement> create(const QualifiedName&, Document&);
+    static const String& getAttachmentIdentifier(HTMLImageElement&);
+    static URL archiveResourceURL(const String&);
 
     WEBCORE_EXPORT URL blobURL() const;
     WEBCORE_EXPORT File* file() const;
@@ -48,14 +52,19 @@ public:
     const String& uniqueIdentifier() const { return m_uniqueIdentifier; }
     void setUniqueIdentifier(const String& uniqueIdentifier) { m_uniqueIdentifier = uniqueIdentifier; }
 
-    WEBCORE_EXPORT void updateAttributes(std::optional<uint64_t>&& newFileSize, const String& newContentType, const String& newFilename);
+    void copyNonAttributePropertiesFromElement(const Element&) final;
+
+    WEBCORE_EXPORT void updateAttributes(Optional<uint64_t>&& newFileSize, const String& newContentType, const String& newFilename);
+    WEBCORE_EXPORT void updateEnclosingImageWithData(const String& contentType, Ref<SharedBuffer>&& data);
 
     InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
     void removedFromAncestor(RemovalType, ContainerNode&) final;
 
-    String ensureUniqueIdentifier();
+    const String& ensureUniqueIdentifier();
+    bool hasEnclosingImage() const;
 
     WEBCORE_EXPORT String attachmentTitle() const;
+    String attachmentTitleForDisplay() const;
     String attachmentType() const;
     String attachmentPath() const;
 
@@ -67,14 +76,14 @@ private:
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
     bool shouldSelectOnMouseDown() final {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         return false;
 #else
         return true;
 #endif
     }
     bool canContainRangeEndPoint() const final { return false; }
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
     
     RefPtr<File> m_file;
     String m_uniqueIdentifier;

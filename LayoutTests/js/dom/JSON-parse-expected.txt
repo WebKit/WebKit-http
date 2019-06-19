@@ -1,7 +1,7 @@
 function (jsonObject){
         return jsonObject.parse();
     }
-PASS tests[i](nativeJSON) threw exception Error: JSON.parse requires at least one parameter.
+PASS tests[i](nativeJSON) threw exception SyntaxError: JSON Parse error: Unexpected identifier "undefined".
 function (jsonObject){
         return jsonObject.parse('');
     }
@@ -347,6 +347,10 @@ function (jsonObject){
         return jsonObject.parse('false');
     }
 PASS JSON.stringify(tests[i](nativeJSON)) is JSON.stringify(tests[i](JSON))
+function (jsonObject){
+        return jsonObject.parse('\\')
+    }
+PASS tests[i](nativeJSON) threw exception SyntaxError: JSON Parse error: Unrecognized token '\'.
 function (jsonObject){
         return jsonObject.parse(JSON.stringify(simpleObject));
     }

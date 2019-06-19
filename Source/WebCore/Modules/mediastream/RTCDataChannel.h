@@ -47,15 +47,16 @@ class Blob;
 class RTCPeerConnectionHandler;
 
 class RTCDataChannel final : public ActiveDOMObject, public RTCDataChannelHandlerClient, public EventTargetWithInlineData {
+    WTF_MAKE_ISO_ALLOCATED(RTCDataChannel);
 public:
     static Ref<RTCDataChannel> create(ScriptExecutionContext&, std::unique_ptr<RTCDataChannelHandler>&&, String&&, RTCDataChannelInit&&);
 
     bool ordered() const { return *m_options.ordered; }
-    std::optional<unsigned short> maxPacketLifeTime() const { return m_options.maxPacketLifeTime; }
-    std::optional<unsigned short> maxRetransmits() const { return m_options.maxRetransmits; }
+    Optional<unsigned short> maxPacketLifeTime() const { return m_options.maxPacketLifeTime; }
+    Optional<unsigned short> maxRetransmits() const { return m_options.maxRetransmits; }
     String protocol() const { return m_options.protocol; }
     bool negotiated() const { return *m_options.negotiated; };
-    std::optional<unsigned short> id() const { return m_options.id; };
+    Optional<unsigned short> id() const { return m_options.id; };
 
     String label() const { return m_label; }
     RTCDataChannelState readyState() const {return m_readyState; }
@@ -63,8 +64,8 @@ public:
     size_t bufferedAmountLowThreshold() const { return m_bufferedAmountLowThreshold; }
     void setBufferedAmountLowThreshold(size_t value) { m_bufferedAmountLowThreshold = value; }
 
-    const AtomicString& binaryType() const;
-    ExceptionOr<void> setBinaryType(const AtomicString&);
+    const AtomString& binaryType() const;
+    ExceptionOr<void> setBinaryType(const AtomString&);
 
     ExceptionOr<void> send(const String&);
     ExceptionOr<void> send(JSC::ArrayBuffer&);

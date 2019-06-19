@@ -30,6 +30,8 @@
 #include "Editing.h"
 #include "Element.h"
 #include "HTMLInputElement.h"
+#include "Settings.h"
+#include "ShadowRoot.h"
 #include "TextIterator.h"
 #include "VisibleUnits.h"
 #include <stdio.h>
@@ -219,7 +221,7 @@ static RefPtr<Range> makeSearchRange(const Position& position)
     if (result.hasException())
         return nullptr;
 
-    return WTFMove(searchRange);
+    return searchRange;
 }
 
 bool VisibleSelection::isAll(EditingBoundaryCrossingRule rule) const
@@ -504,13 +506,37 @@ Position VisibleSelection::adjustPositionForStart(const Position& currentPositio
     return Position();
 }
 
+static bool isInUserAgentShadowRootOrHasEditableShadowAncestor(Node& node)
+{
+    auto* shadowRoot = node.containingShadowRoot();
+    if (!shadowRoot)
+        return false;
+
+    if (shadowRoot->mode() == ShadowRootMode::UserAgent)
+        return true;
+
+    for (RefPtr<Node> currentNode = &node; currentNode; currentNode = currentNode->parentOrShadowHostNode()) {
+        if (currentNode->hasEditableStyle())
+            return true;
+    }
+    return false;
+}
+
 void VisibleSelection::adjustSelectionToAvoidCrossingShadowBoundaries()
 {
     if (m_base.isNull() || m_start.isNull() || m_end.isNull())
         return;
 
-    if (&m_start.anchorNode()->treeScope() == &m_end.anchorNode()->treeScope())
+    auto startNode = makeRef(*m_start.anchorNode());
+    auto endNode = makeRef(*m_end.anchorNode());
+    if (&startNode->treeScope() == &endNode->treeScope())
         return;
+
+    if (startNode->document().settings().selectionAcrossShadowBoundariesEnabled()) {
+        if (!isInUserAgentShadowRootOrHasEditableShadowAncestor(startNode)
+            && !isInUserAgentShadowRootOrHasEditableShadowAncestor(endNode))
+            return;
+    }
 
     if (m_baseIsFirst) {
         m_extent = adjustPositionForEnd(m_end, m_start.containerNode());
@@ -519,8 +545,6 @@ void VisibleSelection::adjustSelectionToAvoidCrossingShadowBoundaries()
         m_extent = adjustPositionForStart(m_start, m_end.containerNode());
         m_start = m_extent;
     }
-
-    ASSERT(&m_start.anchorNode()->treeScope() == &m_end.anchorNode()->treeScope());
 }
 
 void VisibleSelection::adjustSelectionToAvoidCrossingEditingBoundaries()

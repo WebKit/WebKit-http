@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKNavigationResponseInternal.h"
 
-#if WK_API_ENABLED
-
 #import "WKFrameInfoInternal.h"
 
 @implementation WKNavigationResponse
@@ -80,7 +78,10 @@
     return _navigationResponse->request().nsURLRequest(WebCore::HTTPBodyUpdatePolicy::DoNotUpdateHTTPBody);
 }
 
+- (NSString *)_downloadAttribute
+{
+    const String& attribute = _navigationResponse->downloadAttribute();
+    return attribute.isNull() ? nil : (NSString *)attribute;
+}
+
 @end
-
-
-#endif

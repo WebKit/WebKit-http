@@ -26,9 +26,9 @@
 #include "config.h"
 #include "YarrSyntaxChecker.h"
 
+#include "YarrFlags.h"
 #include "YarrParser.h"
 #include <wtf/Optional.h>
-#include <wtf/text/WTFString.h>
 
 namespace JSC { namespace Yarr {
 
@@ -44,11 +44,13 @@ public:
     void atomCharacterClassRange(UChar, UChar) {}
     void atomCharacterClassBuiltIn(BuiltInCharacterClassID, bool) {}
     void atomCharacterClassEnd() {}
-    void atomParenthesesSubpatternBegin(bool = true, std::optional<String> = std::nullopt) {}
+    void atomParenthesesSubpatternBegin(bool = true, Optional<String> = WTF::nullopt) {}
     void atomParentheticalAssertionBegin(bool = false) {}
     void atomParenthesesEnd() {}
     void atomBackReference(unsigned) {}
-    void atomNamedBackReference(String) {}
+    void atomNamedBackReference(const String&) {}
+    bool isValidNamedForwardReference(const String&) { return true; }
+    void atomNamedForwardReference(const String&) {}
     void quantifyAtom(unsigned, unsigned, bool) {}
     void disjunction() {}
 };
@@ -56,7 +58,12 @@ public:
 ErrorCode checkSyntax(const String& pattern, const String& flags)
 {
     SyntaxChecker syntaxChecker;
-    return parse(syntaxChecker, pattern, flags.contains('u'));
+
+    auto parsedFlags = parseFlags(flags);
+    if (!parsedFlags)
+        return ErrorCode::InvalidRegularExpressionFlags;
+
+    return parse(syntaxChecker, pattern, parsedFlags->contains(Flags::Unicode));
 }
 
 }} // JSC::Yarr

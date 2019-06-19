@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ScrollingStateStickyNode.h"
 
-#if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
+#if ENABLE(ASYNC_SCROLLING)
 
 #include "GraphicsLayer.h"
 #include "Logging.h"
@@ -41,7 +41,7 @@ Ref<ScrollingStateStickyNode> ScrollingStateStickyNode::create(ScrollingStateTre
 }
 
 ScrollingStateStickyNode::ScrollingStateStickyNode(ScrollingStateTree& tree, ScrollingNodeID nodeID)
-    : ScrollingStateNode(StickyNode, tree, nodeID)
+    : ScrollingStateNode(ScrollingNodeType::Sticky, tree, nodeID)
 {
 }
 
@@ -58,6 +58,12 @@ Ref<ScrollingStateNode> ScrollingStateStickyNode::clone(ScrollingStateTree& adop
     return adoptRef(*new ScrollingStateStickyNode(*this, adoptiveTree));
 }
 
+void ScrollingStateStickyNode::setAllPropertiesChanged()
+{
+    setPropertyChangedBit(ViewportConstraints);
+    ScrollingStateNode::setAllPropertiesChanged();
+}
+
 void ScrollingStateStickyNode::updateConstraints(const StickyPositionViewportConstraints& constraints)
 {
     if (m_constraints == constraints)
@@ -71,8 +77,6 @@ void ScrollingStateStickyNode::updateConstraints(const StickyPositionViewportCon
 
 void ScrollingStateStickyNode::reconcileLayerPositionForViewportRect(const LayoutRect& viewportRect, ScrollingLayerPositionAction action)
 {
-    ScrollingStateNode::reconcileLayerPositionForViewportRect(viewportRect, action);
-
     FloatPoint position = m_constraints.layerPositionForConstrainingRect(viewportRect);
     if (layer().representsGraphicsLayer()) {
         auto* graphicsLayer = static_cast<GraphicsLayer*>(layer());
@@ -135,4 +139,4 @@ void ScrollingStateStickyNode::dumpProperties(TextStream& ts, ScrollingStateTree
 
 } // namespace WebCore
 
-#endif // ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
+#endif // ENABLE(ASYNC_SCROLLING)

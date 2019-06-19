@@ -38,38 +38,38 @@ public:
         return adoptRef(*new DeviceOrientationData);
     }
 
-#if PLATFORM(IOS)
-    WEBCORE_EXPORT static Ref<DeviceOrientationData> create(std::optional<double> alpha, std::optional<double> beta, std::optional<double> gamma, std::optional<double> compassHeading, std::optional<double> compassAccuracy);
+#if PLATFORM(IOS_FAMILY)
+    WEBCORE_EXPORT static Ref<DeviceOrientationData> create(Optional<double> alpha, Optional<double> beta, Optional<double> gamma, Optional<double> compassHeading, Optional<double> compassAccuracy);
 #else
-    WEBCORE_EXPORT static Ref<DeviceOrientationData> create(std::optional<double> alpha, std::optional<double> beta, std::optional<double> gamma, std::optional<bool> absolute);
+    WEBCORE_EXPORT static Ref<DeviceOrientationData> create(Optional<double> alpha, Optional<double> beta, Optional<double> gamma, Optional<bool> absolute);
 #endif
 
-    std::optional<double> alpha() const { return m_alpha; }
-    std::optional<double> beta() const { return m_beta; }
-    std::optional<double> gamma() const { return m_gamma; }
-#if PLATFORM(IOS)
-    std::optional<double> compassHeading() const { return m_compassHeading; }
-    std::optional<double> compassAccuracy() const { return m_compassAccuracy; }
+    Optional<double> alpha() const { return m_alpha; }
+    Optional<double> beta() const { return m_beta; }
+    Optional<double> gamma() const { return m_gamma; }
+#if PLATFORM(IOS_FAMILY)
+    Optional<double> compassHeading() const { return m_compassHeading; }
+    Optional<double> compassAccuracy() const { return m_compassAccuracy; }
 #else
-    std::optional<bool> absolute() const { return m_absolute; }
+    Optional<bool> absolute() const { return m_absolute; }
 #endif
 
 private:
     DeviceOrientationData() = default;
-#if PLATFORM(IOS)
-    DeviceOrientationData(std::optional<double> alpha, std::optional<double> beta, std::optional<double> gamma, std::optional<double> compassHeading, std::optional<double> compassAccuracy);
+#if PLATFORM(IOS_FAMILY)
+    DeviceOrientationData(Optional<double> alpha, Optional<double> beta, Optional<double> gamma, Optional<double> compassHeading, Optional<double> compassAccuracy);
 #else
-    DeviceOrientationData(std::optional<double> alpha, std::optional<double> beta, std::optional<double> gamma, std::optional<bool> absolute);
+    DeviceOrientationData(Optional<double> alpha, Optional<double> beta, Optional<double> gamma, Optional<bool> absolute);
 #endif
 
-    std::optional<double> m_alpha;
-    std::optional<double> m_beta;
-    std::optional<double> m_gamma;
-#if PLATFORM(IOS)
-    std::optional<double> m_compassHeading;
-    std::optional<double> m_compassAccuracy;
+    Optional<double> m_alpha;
+    Optional<double> m_beta;
+    Optional<double> m_gamma;
+#if PLATFORM(IOS_FAMILY)
+    Optional<double> m_compassHeading;
+    Optional<double> m_compassAccuracy;
 #else
-    std::optional<bool> m_absolute;
+    Optional<bool> m_absolute;
 #endif
 };
 

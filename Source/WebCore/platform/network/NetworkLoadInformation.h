@@ -28,7 +28,6 @@
 #include "NetworkLoadMetrics.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
-#include <wtf/EnumTraits.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -41,7 +40,7 @@ struct NetworkTransactionInformation {
     NetworkLoadMetrics metrics;
 
     template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static std::optional<NetworkTransactionInformation> decode(Decoder&);
+    template<class Decoder> static Optional<NetworkTransactionInformation> decode(Decoder&);
 };
 
 struct NetworkLoadInformation {
@@ -73,18 +72,18 @@ template<class Encoder> inline void NetworkTransactionInformation::encode(Encode
     encoder << metrics;
 }
 
-template<class Decoder> inline std::optional<NetworkTransactionInformation> NetworkTransactionInformation::decode(Decoder& decoder)
+template<class Decoder> inline Optional<NetworkTransactionInformation> NetworkTransactionInformation::decode(Decoder& decoder)
 {
     NetworkTransactionInformation information;
 
     if (!decoder.decode(information.type))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(information.request))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(information.response))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(information.metrics))
-        return std::nullopt;
+        return WTF::nullopt;
 
     return information;
 }

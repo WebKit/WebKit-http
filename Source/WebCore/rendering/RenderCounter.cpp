@@ -46,10 +46,10 @@ using namespace HTMLNames;
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(RenderCounter);
 
-using CounterMap = HashMap<AtomicString, Ref<CounterNode>>;
+using CounterMap = HashMap<AtomString, Ref<CounterNode>>;
 using CounterMaps = HashMap<const RenderElement*, std::unique_ptr<CounterMap>>;
 
-static CounterNode* makeCounterNode(RenderElement&, const AtomicString& identifier, bool alwaysCreateCounter);
+static CounterNode* makeCounterNode(RenderElement&, const AtomString& identifier, bool alwaysCreateCounter);
 
 static CounterMaps& counterMaps()
 {
@@ -111,8 +111,8 @@ static CounterDirectives listItemCounterDirectives(RenderElement& renderer)
     if (is<RenderListItem>(renderer)) {
         auto& item = downcast<RenderListItem>(renderer);
         if (auto explicitValue = item.explicitValue())
-            return { *explicitValue, std::nullopt };
-        return { std::nullopt, item.isInReversedOrderedList() ? -1 : 1 };
+            return { *explicitValue, WTF::nullopt };
+        return { WTF::nullopt, item.isInReversedOrderedList() ? -1 : 1 };
     }
     if (auto element = renderer.element()) {
         if (is<HTMLOListElement>(*element)) {
@@ -120,7 +120,7 @@ static CounterDirectives listItemCounterDirectives(RenderElement& renderer)
             return { list.start(), list.isReversed() ? 1 : -1 };
         }
         if (isHTMLListElement(*element))
-            return { 0, std::nullopt };
+            return { 0, WTF::nullopt };
     }
     return { };
 }
@@ -130,12 +130,12 @@ struct CounterPlan {
     int value;
 };
 
-static std::optional<CounterPlan> planCounter(RenderElement& renderer, const AtomicString& identifier)
+static Optional<CounterPlan> planCounter(RenderElement& renderer, const AtomString& identifier)
 {
     // We must have a generating node or else we cannot have a counter.
     Element* generatingElement = renderer.generatingElement();
     if (!generatingElement)
-        return std::nullopt;
+        return WTF::nullopt;
 
     auto& style = renderer.style();
 
@@ -144,13 +144,13 @@ static std::optional<CounterPlan> planCounter(RenderElement& renderer, const Ato
         // Sometimes elements have more then one renderer. Only the first one gets the counter
         // LayoutTests/http/tests/css/counter-crash.html
         if (generatingElement->renderer() != &renderer)
-            return std::nullopt;
+            return WTF::nullopt;
         break;
     case PseudoId::Before:
     case PseudoId::After:
         break;
     default:
-        return std::nullopt; // Counters are forbidden from all other pseudo elements.
+        return WTF::nullopt; // Counters are forbidden from all other pseudo elements.
     }
 
     CounterDirectives directives;
@@ -167,10 +167,10 @@ static std::optional<CounterPlan> planCounter(RenderElement& renderer, const Ato
     }
 
     if (directives.resetValue)
-        return CounterPlan { true, saturatedAddition(*directives.resetValue, directives.incrementValue.value_or(0)) };
+        return CounterPlan { true, saturatedAddition(*directives.resetValue, directives.incrementValue.valueOr(0)) };
     if (directives.incrementValue)
         return CounterPlan { false, *directives.incrementValue };
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 // - Finds the insertion point for the counter described by counterOwner, isReset and 
@@ -194,7 +194,7 @@ struct CounterInsertionPoint {
     RefPtr<CounterNode> previousSibling;
 };
 
-static CounterInsertionPoint findPlaceForCounter(RenderElement& counterOwner, const AtomicString& identifier, bool isReset)
+static CounterInsertionPoint findPlaceForCounter(RenderElement& counterOwner, const AtomString& identifier, bool isReset)
 {
     // We cannot stop searching for counters with the same identifier before we also
     // check this renderer, because it may affect the positioning in the tree of our counter.
@@ -292,7 +292,7 @@ static CounterInsertionPoint findPlaceForCounter(RenderElement& counterOwner, co
     return { };
 }
 
-static CounterNode* makeCounterNode(RenderElement& renderer, const AtomicString& identifier, bool alwaysCreateCounter)
+static CounterNode* makeCounterNode(RenderElement& renderer, const AtomString& identifier, bool alwaysCreateCounter)
 {
     if (renderer.hasCounterNodeMap()) {
         ASSERT(counterMaps().contains(&renderer));
@@ -430,7 +430,7 @@ void RenderCounter::computePreferredLogicalWidths(float lead)
     RenderText::computePreferredLogicalWidths(lead);
 }
 
-static void destroyCounterNodeWithoutMapRemoval(const AtomicString& identifier, CounterNode& node)
+static void destroyCounterNodeWithoutMapRemoval(const AtomString& identifier, CounterNode& node)
 {
     RefPtr<CounterNode> previous;
     for (RefPtr<CounterNode> child = node.lastDescendant(); child && child != &node; child = WTFMove(previous)) {
@@ -454,7 +454,7 @@ void RenderCounter::destroyCounterNodes(RenderElement& owner)
     owner.setHasCounterNodeMap(false);
 }
 
-void RenderCounter::destroyCounterNode(RenderElement& owner, const AtomicString& identifier)
+void RenderCounter::destroyCounterNode(RenderElement& owner, const AtomString& identifier)
 {
     auto map = counterMaps().find(&owner);
     if (map == counterMaps().end())
@@ -592,7 +592,7 @@ void showCounterRendererTree(const WebCore::RenderObject* renderer, const char* 
     while (root->parent())
         root = root->parent();
 
-    AtomicString identifier(counterName);
+    AtomString identifier(counterName);
     for (auto* current = root; current; current = current->nextInPreOrder()) {
         if (!is<WebCore::RenderElement>(*current))
             continue;

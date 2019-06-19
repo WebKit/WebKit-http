@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2006, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,7 +21,6 @@
 
 #pragma once
 
-#include "SVGAnimatedLength.h"
 #include "SVGExternalResourcesRequired.h"
 #include "SVGGeometryElement.h"
 #include "SVGNames.h"
@@ -33,26 +32,23 @@ class SVGEllipseElement final : public SVGGeometryElement, public SVGExternalRes
 public:
     static Ref<SVGEllipseElement> create(const QualifiedName&, Document&);
 
-    const SVGLengthValue& cx() const { return m_cx.currentValue(attributeOwnerProxy()); }
-    const SVGLengthValue& cy() const { return m_cy.currentValue(attributeOwnerProxy()); }
-    const SVGLengthValue& rx() const { return m_rx.currentValue(attributeOwnerProxy()); }
-    const SVGLengthValue& ry() const { return m_ry.currentValue(attributeOwnerProxy()); }
+    const SVGLengthValue& cx() const { return m_cx->currentValue(); }
+    const SVGLengthValue& cy() const { return m_cy->currentValue(); }
+    const SVGLengthValue& rx() const { return m_rx->currentValue(); }
+    const SVGLengthValue& ry() const { return m_ry->currentValue(); }
 
-    RefPtr<SVGAnimatedLength> cxAnimated() { return m_cx.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLength> cyAnimated() { return m_cy.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLength> rxAnimated() { return m_rx.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLength> ryAnimated() { return m_ry.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedLength& cxAnimated() { return m_cx; }
+    SVGAnimatedLength& cyAnimated() { return m_cy; }
+    SVGAnimatedLength& rxAnimated() { return m_rx; }
+    SVGAnimatedLength& ryAnimated() { return m_ry; }
 
 private:
     SVGEllipseElement(const QualifiedName&, Document&);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGEllipseElement, SVGGeometryElement, SVGExternalResourcesRequired>;
-    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
-    static void registerAttributes();
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGEllipseElement, SVGGeometryElement, SVGExternalResourcesRequired>;
+    const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
 
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
     void svgAttributeChanged(const QualifiedName&) final;
 
     bool isValid() const final { return SVGTests::isValid(); }
@@ -60,11 +56,11 @@ private:
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
-    SVGAnimatedLengthAttribute m_cx { LengthModeWidth };
-    SVGAnimatedLengthAttribute m_cy { LengthModeHeight };
-    SVGAnimatedLengthAttribute m_rx { LengthModeWidth };
-    SVGAnimatedLengthAttribute m_ry { LengthModeHeight };
+    PropertyRegistry m_propertyRegistry { *this };
+    Ref<SVGAnimatedLength> m_cx { SVGAnimatedLength::create(this, LengthModeWidth) };
+    Ref<SVGAnimatedLength> m_cy { SVGAnimatedLength::create(this, LengthModeHeight) };
+    Ref<SVGAnimatedLength> m_rx { SVGAnimatedLength::create(this, LengthModeWidth) };
+    Ref<SVGAnimatedLength> m_ry { SVGAnimatedLength::create(this, LengthModeHeight) };
 };
 
 } // namespace WebCore

@@ -44,6 +44,7 @@
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller didFailLoadWithErrorForFrame:(WKWebProcessPlugInFrame *)frame error:(NSError *)error;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller didFinishLoadForFrame:(WKWebProcessPlugInFrame *)frame;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller didSameDocumentNavigation:(_WKSameDocumentNavigationType)navigationType forFrame:(WKWebProcessPlugInFrame *)frame;
+- (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller didClearWindowObjectForFrame:(WKWebProcessPlugInFrame *)frame inScriptWorld:(WKWebProcessPlugInScriptWorld *)scriptWorld;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller globalObjectIsAvailableForFrame:(WKWebProcessPlugInFrame *)frame inScriptWorld:(WKWebProcessPlugInScriptWorld *)scriptWorld;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller didRemoveFrameFromHierarchy:(WKWebProcessPlugInFrame *)frame;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller didHandleOnloadEventsForFrame:(WKWebProcessPlugInFrame *)frame;
@@ -52,6 +53,7 @@
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller didLayoutForFrame:(WKWebProcessPlugInFrame *)frame;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller renderingProgressDidChange:(_WKRenderingProgressEvents)events;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController*)controller didFirstVisuallyNonEmptyLayoutForFrame:(WKWebProcessPlugInFrame *)frame;
+- (_WKRenderingProgressEvents)webProcessPlugInBrowserContextControllerRenderingProgressEvents:(WKWebProcessPlugInBrowserContextController *)controller;
 
 // Resource loading
 
@@ -62,7 +64,5 @@
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller frame:(WKWebProcessPlugInFrame *)frame didInitiateLoadForResource:(uint64_t)resource request:(NSURLRequest *)request;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller frame:(WKWebProcessPlugInFrame *)frame didFinishLoadForResource:(uint64_t)resource;
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller frame:(WKWebProcessPlugInFrame *)frame didFailLoadForResource:(uint64_t)resource error:(NSError *)error;
-
-- (NSString *)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller frame:(WKWebProcessPlugInFrame *)frame userAgentForURL:(NSURL *)url;
 
 @end

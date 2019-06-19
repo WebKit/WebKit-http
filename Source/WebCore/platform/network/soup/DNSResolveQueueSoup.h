@@ -32,11 +32,14 @@
 
 namespace WebCore {
 
+class NetworkStorageSession;
+
 class DNSResolveQueueSoup final : public DNSResolveQueue {
 public:
     using CompletionAndCancelHandlers = std::pair<WebCore::DNSCompletionHandler, GRefPtr<GCancellable>>;
 
     DNSResolveQueueSoup() = default;
+    static void setGlobalDefaultNetworkStorageSessionAccessor(Function<NetworkStorageSession&()>&&);
     void resolve(const String& hostname, uint64_t identifier, DNSCompletionHandler&&) final;
     void stopResolve(uint64_t identifier) final;
 

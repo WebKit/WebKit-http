@@ -70,14 +70,14 @@ FetchBody FetchBody::extract(ScriptExecutionContext& context, Init&& value, Stri
     });
 }
 
-std::optional<FetchBody> FetchBody::fromFormData(FormData& formData)
+Optional<FetchBody> FetchBody::fromFormData(FormData& formData)
 {
     ASSERT(!formData.isEmpty());
 
     if (auto buffer = formData.asSharedBuffer()) {
         FetchBody body;
         body.m_consumer.setData(buffer.releaseNonNull());
-        return WTFMove(body);
+        return body;
     }
 
     auto url = formData.asBlobURL();
@@ -88,7 +88,7 @@ std::optional<FetchBody> FetchBody::fromFormData(FormData& formData)
     }
 
     // FIXME: Support form data bodies.
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 void FetchBody::arrayBuffer(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
@@ -186,7 +186,7 @@ void FetchBody::consumeAsStream(FetchBodyOwner& owner, FetchBodySource& source)
         owner.loadBlob(blobBody(), nullptr);
         m_data = nullptr;
     } else if (isFormData())
-        source.error("not implemented"_s);
+        source.error(Exception { NotSupportedError, "Not implemented"_s });
     else if (m_consumer.hasData())
         closeStream = source.enqueue(m_consumer.takeAsArrayBuffer());
     else
@@ -224,9 +224,9 @@ void FetchBody::consumeBlob(FetchBodyOwner& owner, Ref<DeferredPromise>&& promis
     m_data = nullptr;
 }
 
-void FetchBody::loadingFailed()
+void FetchBody::loadingFailed(const Exception& exception)
 {
-    m_consumer.loadingFailed();
+    m_consumer.loadingFailed(exception);
 }
 
 void FetchBody::loadingSucceeded()
@@ -241,7 +241,7 @@ RefPtr<FormData> FetchBody::bodyAsFormData(ScriptExecutionContext& context) cons
     if (isURLSearchParams())
         return FormData::create(UTF8Encoding().encode(urlSearchParamsBody().toString(), UnencodableHandling::Entities));
     if (isBlob()) {
-        RefPtr<FormData> body = FormData::create();
+        auto body = FormData::create();
         body->appendBlob(blobBody().url());
         return body;
     }
@@ -251,7 +251,7 @@ RefPtr<FormData> FetchBody::bodyAsFormData(ScriptExecutionContext& context) cons
         return FormData::create(arrayBufferViewBody().baseAddress(), arrayBufferViewBody().byteLength());
     if (isFormData()) {
         ASSERT(!context.isWorkerGlobalScope());
-        RefPtr<FormData> body = const_cast<FormData*>(&formDataBody());
+        auto body = makeRef(const_cast<FormData&>(formDataBody()));
         body->generateFiles(&downcast<Document>(context));
         return body;
     }
@@ -274,7 +274,7 @@ FetchBody::TakenData FetchBody::take()
     if (isBlob()) {
         auto body = FormData::create();
         body->appendBlob(blobBody().url());
-        return WTFMove(body);
+        return TakenData { WTFMove(body) };
     }
 
     if (isFormData())

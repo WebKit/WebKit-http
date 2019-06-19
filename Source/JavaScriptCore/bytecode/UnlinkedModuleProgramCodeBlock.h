@@ -29,14 +29,17 @@
 
 namespace JSC {
 
+class Decoder;
+class CachedModuleCodeBlock;
+
 class UnlinkedModuleProgramCodeBlock final : public UnlinkedGlobalCodeBlock {
 public:
     typedef UnlinkedGlobalCodeBlock Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
-    static UnlinkedModuleProgramCodeBlock* create(VM* vm, const ExecutableInfo& info, DebuggerMode debuggerMode)
+    static UnlinkedModuleProgramCodeBlock* create(VM* vm, const ExecutableInfo& info, OptionSet<CodeGenerationMode> codeGenerationMode)
     {
-        UnlinkedModuleProgramCodeBlock* instance = new (NotNull, allocateCell<UnlinkedModuleProgramCodeBlock>(vm->heap)) UnlinkedModuleProgramCodeBlock(vm, vm->unlinkedModuleProgramCodeBlockStructure.get(), info, debuggerMode);
+        UnlinkedModuleProgramCodeBlock* instance = new (NotNull, allocateCell<UnlinkedModuleProgramCodeBlock>(vm->heap)) UnlinkedModuleProgramCodeBlock(vm, vm->unlinkedModuleProgramCodeBlockStructure.get(), info, codeGenerationMode);
         instance->finishCreation(*vm);
         return instance;
     }
@@ -74,10 +77,14 @@ public:
     }
 
 private:
-    UnlinkedModuleProgramCodeBlock(VM* vm, Structure* structure, const ExecutableInfo& info, DebuggerMode debuggerMode)
-        : Base(vm, structure, ModuleCode, info, debuggerMode)
+    friend CachedModuleCodeBlock;
+
+    UnlinkedModuleProgramCodeBlock(VM* vm, Structure* structure, const ExecutableInfo& info, OptionSet<CodeGenerationMode> codeGenerationMode)
+        : Base(vm, structure, ModuleCode, info, codeGenerationMode)
     {
     }
+
+    UnlinkedModuleProgramCodeBlock(Decoder&, const CachedModuleCodeBlock&);
 
     int m_moduleEnvironmentSymbolTableConstantRegisterOffset { 0 };
 

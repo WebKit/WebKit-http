@@ -34,7 +34,7 @@ namespace API {
 class ExperimentalFeature final : public ObjectImpl<Object::Type::ExperimentalFeature> {
 public:
     static Ref<ExperimentalFeature> create(const WTF::String& name, const WTF::String& key, const WTF::String& details, bool defaultValue, bool hidden);
-    virtual ~ExperimentalFeature();
+    virtual ~ExperimentalFeature() = default;
 
     WTF::String name() const { return m_name; }
     WTF::String key() const { return m_key; }

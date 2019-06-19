@@ -25,19 +25,19 @@
 
 #pragma once
 
-#if ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
+#if ENABLE(DRAG_SUPPORT)
 
 #import "TestWKWebView.h"
 #import <WebKit/WKUIDelegatePrivate.h>
 #import <WebKit/_WKInputDelegate.h>
 #import <wtf/BlockPtr.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import "UIKitSPI.h"
 #import <UIKit/NSItemProvider+UIKitAdditions.h>
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 typedef NS_ENUM(NSInteger, DragAndDropPhase) {
     DragAndDropPhaseCancelled = 0,
@@ -71,7 +71,7 @@ typedef NSDictionary<NSNumber *, NSValue *> *ProgressToCGPointValueMap;
 - (UIDragInteraction *)dragInteraction;
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 @interface DragAndDropSimulator : NSObject<WKUIDelegatePrivate, _WKInputDelegate>
 
@@ -84,31 +84,37 @@ typedef NSDictionary<NSNumber *, NSValue *> *ProgressToCGPointValueMap;
 @property (nonatomic, readonly) NSArray<_WKAttachment *> *insertedAttachments;
 @property (nonatomic, readonly) NSArray<_WKAttachment *> *removedAttachments;
 @property (nonatomic, readonly) TestWKWebView *webView;
+@property (nonatomic) WKDragDestinationAction dragDestinationAction;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 - (instancetype)initWithWebView:(TestWKWebView *)webView;
 - (void)runFrom:(CGPoint)startLocation to:(CGPoint)endLocation additionalItemRequestLocations:(ProgressToCGPointValueMap)additionalItemRequestLocations;
-- (void)waitForInputSession;
+- (void)ensureInputSession;
 
 @property (nonatomic, readonly) DragAndDropPhase phase;
 @property (nonatomic) BOOL allowsFocusToStartInputSession;
 @property (nonatomic) BOOL shouldEnsureUIApplication;
+@property (nonatomic) BOOL shouldBecomeFirstResponder;
 @property (nonatomic) BOOL shouldAllowMoveOperation;
-@property (nonatomic) BlockPtr<BOOL(_WKActivatedElementInfo *)> showCustomActionSheetBlock;
-@property (nonatomic) BlockPtr<NSArray *(UIItemProvider *, NSArray *, NSDictionary *)> convertItemProvidersBlock;
-@property (nonatomic) BlockPtr<NSArray *(id <UIDropSession>)> overridePerformDropBlock;
 @property (nonatomic, strong) NSArray *externalItemProviders;
-@property (nonatomic) BlockPtr<NSUInteger(NSUInteger, id)> overrideDragUpdateBlock;
-@property (nonatomic) BlockPtr<void(BOOL, NSArray *)> dropCompletionBlock;
+@property (nonatomic, readonly) UIDropProposal *lastKnownDropProposal;
+
+@property (nonatomic, copy) BOOL(^showCustomActionSheetBlock)(_WKActivatedElementInfo *);
+@property (nonatomic, copy) NSArray *(^convertItemProvidersBlock)(NSItemProvider *, NSArray *, NSDictionary *);
+@property (nonatomic, copy) NSArray *(^overridePerformDropBlock)(id <UIDropSession>);
+@property (nonatomic, copy) void(^dropCompletionBlock)(BOOL, NSArray *);
+@property (nonatomic, copy) UIDropOperation(^overrideDragUpdateBlock)(UIDropOperation, id <UIDropSession>);
 
 @property (nonatomic, readonly) NSArray *sourceItemProviders;
 @property (nonatomic, readonly) NSArray *observedEventNames;
-@property (nonatomic, readonly) NSArray *finalSelectionRects;
+@property (nonatomic, readonly) CGRect finalSelectionStartRect;
 @property (nonatomic, readonly) CGRect lastKnownDragCaretRect;
 @property (nonatomic, readonly) NSArray<UITargetedDragPreview *> *liftPreviews;
+@property (nonatomic, readonly) NSArray *dropPreviews;
+@property (nonatomic, readonly) NSArray *delayedDropPreviews;
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 #if PLATFORM(MAC)
 
@@ -128,4 +134,4 @@ typedef NSDictionary<NSNumber *, NSValue *> *ProgressToCGPointValueMap;
 
 @end
 
-#endif // ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
+#endif // ENABLE(DRAG_SUPPORT)

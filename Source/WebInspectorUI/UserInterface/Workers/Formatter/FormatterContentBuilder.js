@@ -33,6 +33,7 @@ FormatterContentBuilder = class FormatterContentBuilder
         this._formattedContentLength = 0;
 
         this._startOfLine = true;
+        this._currentLine = null;
         this.lastTokenWasNewline = false;
         this.lastTokenWasWhitespace = false;
         this.lastNewlineAppendWasMultiple = false;
@@ -72,6 +73,18 @@ FormatterContentBuilder = class FormatterContentBuilder
             originalLineEndings: this._originalLineEndings,
             formattedLineEndings: this._formattedLineEndings,
         };
+    }
+
+    get lastToken()
+    {
+        return this._formattedContent.lastValue;
+    }
+
+    get currentLine()
+    {
+        if (!this._currentLine)
+            this._currentLine = this._formattedContent.slice(this._formattedContent.lastIndexOf("\n") + 1).join("");
+        return this._currentLine;
     }
 
     setOriginalContent(originalContent)
@@ -138,26 +151,27 @@ FormatterContentBuilder = class FormatterContentBuilder
     removeLastNewline()
     {
         console.assert(this.lastTokenWasNewline);
-        console.assert(this._formattedContent.lastValue === "\n");
+        console.assert(this.lastToken === "\n");
         if (this.lastTokenWasNewline) {
             this._popFormattedContent();
             this._formattedLineEndings.pop();
             this._startOfLine = false;
-            this.lastTokenWasNewline = false;
-            this.lastTokenWasWhitespace = false;
+            this.lastTokenWasNewline = this.lastToken === "\n";
+            this.lastTokenWasWhitespace = this.lastToken === " ";
         }
     }
 
     removeLastWhitespace()
     {
         console.assert(this.lastTokenWasWhitespace);
-        console.assert(this._formattedContent.lastValue === " ");
+        console.assert(this.lastToken === " ");
         if (this.lastTokenWasWhitespace) {
             this._popFormattedContent();
             // No need to worry about `_startOfLine` and `lastTokenWasNewline`
             // because `appendSpace` takes care of not adding whitespace
             // to the beginning of a line.
-            this.lastTokenWasWhitespace = false;
+            this.lastTokenWasNewline = this.lastToken === "\n";
+            this.lastTokenWasWhitespace = this.lastToken === " ";
         }
     }
 
@@ -191,12 +205,14 @@ FormatterContentBuilder = class FormatterContentBuilder
     {
         let removed = this._formattedContent.pop();
         this._formattedContentLength -= removed.length;
+        this._currentLine = null;
     }
 
     _append(str)
     {
         this._formattedContent.push(str);
         this._formattedContentLength += str.length;
+        this._currentLine = null;
     }
 
     _appendIndent()

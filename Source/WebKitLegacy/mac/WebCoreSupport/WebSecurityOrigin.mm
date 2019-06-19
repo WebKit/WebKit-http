@@ -34,7 +34,7 @@
 #import <WebCore/DatabaseTracker.h>
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityOriginData.h>
-#import <WebCore/URL.h>
+#import <wtf/URL.h>
 
 using namespace WebCore;
 
@@ -74,7 +74,7 @@ using namespace WebCore;
     return reinterpret_cast<SecurityOrigin*>(_private)->data().databaseIdentifier();
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (NSString *)toString
 {
     return reinterpret_cast<SecurityOrigin*>(_private)->toString();
@@ -88,7 +88,7 @@ using namespace WebCore;
 
 - (unsigned short)port
 {
-    return reinterpret_cast<SecurityOrigin*>(_private)->port().value_or(0);
+    return reinterpret_cast<SecurityOrigin*>(_private)->port().valueOr(0);
 }
 
 // FIXME: Overriding isEqual: without overriding hash will cause trouble if this ever goes into an NSSet or is the key in an NSDictionary,

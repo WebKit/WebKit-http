@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,9 +26,25 @@
 #import "config.h"
 #import "WebPage.h"
 
+#import "AttributedString.h"
 #import "LoadParameters.h"
+#import "PluginView.h"
+#import "RemoteObjectRegistry.h"
+#import "WKAccessibilityWebPageObjectBase.h"
 #import "WebPageProxyMessages.h"
+#import "WebPaymentCoordinator.h"
+#import <WebCore/DictionaryLookup.h>
+#import <WebCore/Editor.h>
+#import <WebCore/EventHandler.h>
+#import <WebCore/FocusController.h>
+#import <WebCore/HTMLConverter.h>
+#import <WebCore/HitTestResult.h>
+#import <WebCore/NodeRenderStyle.h>
+#import <WebCore/PaymentCoordinator.h>
 #import <WebCore/PlatformMediaSessionManager.h>
+#import <WebCore/RenderElement.h>
+#import <WebCore/RenderObject.h>
+#import <WebCore/TextIterator.h>
 
 #if PLATFORM(COCOA)
 
@@ -59,7 +75,163 @@ void WebPage::requestActiveNowPlayingSessionInfo(CallbackID callbackID)
 
     send(Messages::WebPageProxy::NowPlayingInfoCallback(hasActiveSession, registeredAsNowPlayingApplication, title, duration, elapsedTime, uniqueIdentifier, callbackID));
 }
+    
+void WebPage::performDictionaryLookupAtLocation(const FloatPoint& floatPoint)
+{
+    if (auto* pluginView = pluginViewForFrame(&m_page->mainFrame())) {
+        if (pluginView->performDictionaryLookupAtLocation(floatPoint))
+            return;
+    }
+    
+    // Find the frame the point is over.
+    HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(m_page->mainFrame().view()->windowToContents(roundedIntPoint(floatPoint)));
+    RefPtr<Range> range;
+    NSDictionary *options;
+    std::tie(range, options) = DictionaryLookup::rangeAtHitTestResult(result);
+    if (!range)
+        return;
+    
+    auto* frame = result.innerNonSharedNode() ? result.innerNonSharedNode()->document().frame() : &m_page->focusController().focusedOrMainFrame();
+    if (!frame)
+        return;
+    
+    performDictionaryLookupForRange(*frame, *range, options, TextIndicatorPresentationTransition::Bounce);
+}
 
+void WebPage::performDictionaryLookupForSelection(Frame& frame, const VisibleSelection& selection, TextIndicatorPresentationTransition presentationTransition)
+{
+    RefPtr<Range> selectedRange;
+    NSDictionary *options;
+    std::tie(selectedRange, options) = DictionaryLookup::rangeForSelection(selection);
+    if (selectedRange)
+        performDictionaryLookupForRange(frame, *selectedRange, options, presentationTransition);
+}
+
+void WebPage::performDictionaryLookupOfCurrentSelection()
+{
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+    performDictionaryLookupForSelection(frame, frame.selection().selection(), TextIndicatorPresentationTransition::BounceAndCrossfade);
+}
+    
+void WebPage::performDictionaryLookupForRange(Frame& frame, Range& range, NSDictionary *options, TextIndicatorPresentationTransition presentationTransition)
+{
+    send(Messages::WebPageProxy::DidPerformDictionaryLookup(dictionaryPopupInfoForRange(frame, range, options, presentationTransition)));
+}
+
+DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame& frame, Range& range, NSDictionary *options, TextIndicatorPresentationTransition presentationTransition)
+{
+    Editor& editor = frame.editor();
+    editor.setIsGettingDictionaryPopupInfo(true);
+    
+    DictionaryPopupInfo dictionaryPopupInfo;
+    if (range.text().stripWhiteSpace().isEmpty()) {
+        editor.setIsGettingDictionaryPopupInfo(false);
+        return dictionaryPopupInfo;
+    }
+    
+    Vector<FloatQuad> quads;
+    range.absoluteTextQuads(quads);
+    if (quads.isEmpty()) {
+        editor.setIsGettingDictionaryPopupInfo(false);
+        return dictionaryPopupInfo;
+    }
+    
+    IntRect rangeRect = frame.view()->contentsToWindow(quads[0].enclosingBoundingBox());
+    
+    const RenderStyle* style = range.startContainer().renderStyle();
+    float scaledAscent = style ? style->fontMetrics().ascent() * pageScaleFactor() : 0;
+    dictionaryPopupInfo.origin = FloatPoint(rangeRect.x(), rangeRect.y() + scaledAscent);
+    dictionaryPopupInfo.options = options;
+
+#if PLATFORM(MAC)
+
+    NSAttributedString *nsAttributedString = editingAttributedStringFromRange(range, IncludeImagesInAttributedString::No);
+    
+    RetainPtr<NSMutableAttributedString> scaledNSAttributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:[nsAttributedString string]]);
+    
+    NSFontManager *fontManager = [NSFontManager sharedFontManager];
+    
+    [nsAttributedString enumerateAttributesInRange:NSMakeRange(0, [nsAttributedString length]) options:0 usingBlock:^(NSDictionary *attributes, NSRange range, BOOL *stop) {
+        RetainPtr<NSMutableDictionary> scaledAttributes = adoptNS([attributes mutableCopy]);
+        
+        NSFont *font = [scaledAttributes objectForKey:NSFontAttributeName];
+        if (font)
+            font = [fontManager convertFont:font toSize:font.pointSize * pageScaleFactor()];
+        if (font)
+            [scaledAttributes setObject:font forKey:NSFontAttributeName];
+        
+        [scaledNSAttributedString addAttributes:scaledAttributes.get() range:range];
+    }];
+
+#endif // PLATFORM(MAC)
+    
+    TextIndicatorOptions indicatorOptions = TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges;
+    if (presentationTransition == TextIndicatorPresentationTransition::BounceAndCrossfade)
+        indicatorOptions |= TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
+    
+    auto textIndicator = TextIndicator::createWithRange(range, indicatorOptions, presentationTransition);
+    if (!textIndicator) {
+        editor.setIsGettingDictionaryPopupInfo(false);
+        return dictionaryPopupInfo;
+    }
+    
+    dictionaryPopupInfo.textIndicator = textIndicator->data();
+#if PLATFORM(MAC)
+    dictionaryPopupInfo.attributedString = scaledNSAttributedString;
+#endif // PLATFORM(MAC)
+    
+#if PLATFORM(IOSMAC)
+    dictionaryPopupInfo.attributedString = adoptNS([[NSMutableAttributedString alloc] initWithString:range.text()]);
+#endif // PLATFORM(IOSMAC)
+    
+    editor.setIsGettingDictionaryPopupInfo(false);
+    return dictionaryPopupInfo;
+}
+
+void WebPage::accessibilityTransferRemoteToken(RetainPtr<NSData> remoteToken)
+{
+    IPC::DataReference dataToken = IPC::DataReference(reinterpret_cast<const uint8_t*>([remoteToken bytes]), [remoteToken length]);
+    send(Messages::WebPageProxy::RegisterWebProcessAccessibilityToken(dataToken));
+}
+
+#if ENABLE(APPLE_PAY)
+WebPaymentCoordinator* WebPage::paymentCoordinator()
+{
+    if (!m_page)
+        return nullptr;
+    auto& client = m_page->paymentCoordinator().client();
+    return is<WebPaymentCoordinator>(client) ? downcast<WebPaymentCoordinator>(&client) : nullptr;
+}
+#endif
+
+void WebPage::getContentsAsAttributedString(CompletionHandler<void(const AttributedString&)>&& completionHandler)
+{
+    auto* documentElement = m_page->mainFrame().document()->documentElement();
+    if (!documentElement) {
+        completionHandler({ });
+        return;
+    }
+
+    NSDictionary* documentAttributes = nil;
+
+    AttributedString result;
+    result.string = attributedStringFromRange(rangeOfContents(*documentElement), &documentAttributes);
+    result.documentAttributes = documentAttributes;
+
+    completionHandler({ result });
+}
+
+void WebPage::setRemoteObjectRegistry(RemoteObjectRegistry& registry)
+{
+    m_remoteObjectRegistry = makeWeakPtr(registry);
+}
+
+void WebPage::updateMockAccessibilityElementAfterCommittingLoad()
+{
+    auto* document = mainFrame()->document();
+    [m_mockAccessibilityElement setHasMainFramePlugin:document ? document->isPluginDocument() : false];
+}
+    
 } // namespace WebKit
 
 #endif // PLATFORM(COCOA)

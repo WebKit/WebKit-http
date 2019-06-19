@@ -110,7 +110,7 @@ void HTMLTextFormControlElement::dispatchBlurEvent(RefPtr<Element>&& newFocusedE
 
 void HTMLTextFormControlElement::didEditInnerTextValue()
 {
-    if (!isTextField())
+    if (!renderer() || !isTextField())
         return;
 
     LOG(Editing, "HTMLTextFormControlElement %p didEditInnerTextValue", this);
@@ -130,7 +130,7 @@ String HTMLTextFormControlElement::strippedPlaceholder() const
 {
     // According to the HTML5 specification, we need to remove CR and LF from
     // the attribute value.
-    const AtomicString& attributeValue = attributeWithoutSynchronization(placeholderAttr);
+    const AtomString& attributeValue = attributeWithoutSynchronization(placeholderAttr);
     if (!attributeValue.contains(newlineCharacter) && !attributeValue.contains(carriageReturn))
         return attributeValue;
 
@@ -150,7 +150,7 @@ static bool isNotLineBreak(UChar ch) { return ch != newlineCharacter && ch != ca
 
 bool HTMLTextFormControlElement::isPlaceholderEmpty() const
 {
-    const AtomicString& attributeValue = attributeWithoutSynchronization(placeholderAttr);
+    const AtomString& attributeValue = attributeWithoutSynchronization(placeholderAttr);
     return attributeValue.string().find(isNotLineBreak) == notFound;
 }
 
@@ -189,14 +189,7 @@ void HTMLTextFormControlElement::setSelectionDirection(const String& direction)
 
 void HTMLTextFormControlElement::select(SelectionRevealMode revealMode, const AXTextStateChangeIntent& intent)
 {
-    // FIXME: We should abstract the selection behavior into an EditingBehavior function instead
-    // of hardcoding the behavior using a macro define.
-#if PLATFORM(IOS)
-    // We don't want to select all the text on iOS. Instead use the standard textfield behavior of going to the end of the line.
-    setSelectionRange(std::numeric_limits<int>::max(), std::numeric_limits<int>::max(), SelectionHasForwardDirection, revealMode, intent);
-#else
     setSelectionRange(0, std::numeric_limits<int>::max(), SelectionHasNoDirection, revealMode, intent);
-#endif
 }
 
 String HTMLTextFormControlElement::selectedText() const
@@ -383,11 +376,11 @@ int HTMLTextFormControlElement::computeSelectionEnd() const
     return indexForPosition(frame->selection().selection().end());
 }
 
-static const AtomicString& directionString(TextFieldSelectionDirection direction)
+static const AtomString& directionString(TextFieldSelectionDirection direction)
 {
-    static NeverDestroyed<const AtomicString> none("none", AtomicString::ConstructFromLiteral);
-    static NeverDestroyed<const AtomicString> forward("forward", AtomicString::ConstructFromLiteral);
-    static NeverDestroyed<const AtomicString> backward("backward", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomString> none("none", AtomString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomString> forward("forward", AtomString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomString> backward("backward", AtomString::ConstructFromLiteral);
 
     switch (direction) {
     case SelectionHasNoDirection:
@@ -402,7 +395,7 @@ static const AtomicString& directionString(TextFieldSelectionDirection direction
     return none;
 }
 
-const AtomicString& HTMLTextFormControlElement::selectionDirection() const
+const AtomString& HTMLTextFormControlElement::selectionDirection() const
 {
     if (!isTextField())
         return directionString(SelectionHasNoDirection);
@@ -493,7 +486,7 @@ void HTMLTextFormControlElement::selectionChanged(bool shouldFireSelectEvent)
         dispatchEvent(Event::create(eventNames().selectEvent, Event::CanBubble::Yes, Event::IsCancelable::No));
 }
 
-void HTMLTextFormControlElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLTextFormControlElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == placeholderAttr) {
         updatePlaceholderText();
@@ -522,7 +515,7 @@ bool HTMLTextFormControlElement::isInnerTextElementEditable() const
 void HTMLTextFormControlElement::updateInnerTextElementEditability()
 {
     if (auto innerText = innerTextElement()) {
-        auto value = isInnerTextElementEditable() ? AtomicString { "plaintext-only", AtomicString::ConstructFromLiteral } : AtomicString { "false", AtomicString::ConstructFromLiteral };
+        auto value = isInnerTextElementEditable() ? AtomString { "plaintext-only", AtomString::ConstructFromLiteral } : AtomString { "false", AtomString::ConstructFromLiteral };
         innerText->setAttributeWithoutSynchronization(contenteditableAttr, value);
     }
 }
@@ -660,7 +653,7 @@ unsigned HTMLTextFormControlElement::indexForPosition(const Position& passedPosi
     return index;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 void HTMLTextFormControlElement::hidePlaceholder()
 {
     if (RefPtr<HTMLElement> placeholder = placeholderElement())
@@ -765,7 +758,7 @@ static const Element* parentHTMLElement(const Element* element)
 String HTMLTextFormControlElement::directionForFormData() const
 {
     for (const Element* element = this; element; element = parentHTMLElement(element)) {
-        const AtomicString& dirAttributeValue = element->attributeWithoutSynchronization(dirAttr);
+        const AtomString& dirAttributeValue = element->attributeWithoutSynchronization(dirAttr);
         if (dirAttributeValue.isNull())
             continue;
 
@@ -815,7 +808,7 @@ void HTMLTextFormControlElement::adjustInnerTextStyle(const RenderStyle& parentS
 
     if (isDisabledFormControl())
         textBlockStyle.setColor(RenderTheme::singleton().disabledTextColor(textBlockStyle.visitedDependentColorWithColorFilter(CSSPropertyColor), parentStyle.visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor)));
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (textBlockStyle.textSecurity() != TextSecurity::None && !textBlockStyle.isLeftToRightDirection()) {
         // Preserve the alignment but force the direction to LTR so that the last-typed, unmasked character
         // (which cannot have RTL directionality) will appear to the right of the masked characters. See <rdar://problem/7024375>.

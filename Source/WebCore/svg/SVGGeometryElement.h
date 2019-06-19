@@ -2,7 +2,7 @@
  * Copyright (C) 2004, 2005, 2006, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2007 Rob Buis <buis@kde.org>
  * Copyright (C) 2018 Adobe Systems Incorporated. All rights reserved.
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,7 +23,6 @@
 #pragma once
 
 #include "Path.h"
-#include "SVGAnimatedNumber.h"
 #include "SVGGraphicsElement.h"
 #include "SVGNames.h"
 
@@ -35,32 +34,32 @@ class SVGPoint;
 class SVGGeometryElement : public SVGGraphicsElement {
     WTF_MAKE_ISO_ALLOCATED(SVGGeometryElement);
 public:
-    
     virtual float getTotalLength() const;
     virtual Ref<SVGPoint> getPointAtLength(float distance) const;
 
     bool isPointInFill(DOMPointInit&&);
     bool isPointInStroke(DOMPointInit&&);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGGeometryElement, SVGGraphicsElement>;
-    static auto& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGGeometryElement, SVGGraphicsElement>;
 
-    auto pathLengthAnimated() { return m_pathLength.animatedProperty(attributeOwnerProxy()); }
+    float pathLength() const { return m_pathLength->currentValue(); }
+    SVGAnimatedNumber& pathLengthAnimated() { return m_pathLength; }
 
 protected:
     SVGGeometryElement(const QualifiedName&, Document&);
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
 
 private:
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const override { return m_attributeOwnerProxy; }
+    bool isSVGGeometryElement() const override { return true; }
 
-    static void registerAttributes();
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
-
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
-    SVGAnimatedNumberAttribute m_pathLength;
+    Ref<SVGAnimatedNumber> m_pathLength { SVGAnimatedNumber::create(this) };
 };
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::SVGGeometryElement)
+    static bool isType(const WebCore::SVGElement& element) { return element.isSVGGeometryElement(); }
+    static bool isType(const WebCore::Node& node) { return is<WebCore::SVGElement>(node) && isType(downcast<WebCore::SVGElement>(node)); }
+SPECIALIZE_TYPE_TRAITS_END()

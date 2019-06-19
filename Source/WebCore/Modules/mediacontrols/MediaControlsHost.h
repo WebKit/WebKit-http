@@ -47,20 +47,20 @@ public:
     static Ref<MediaControlsHost> create(HTMLMediaElement*);
     ~MediaControlsHost();
 
-    static const AtomicString& automaticKeyword();
-    static const AtomicString& forcedOnlyKeyword();
-    static const AtomicString& alwaysOnKeyword();
-    static const AtomicString& manualKeyword();
+    static const AtomString& automaticKeyword();
+    static const AtomString& forcedOnlyKeyword();
+    static const AtomString& alwaysOnKeyword();
+    static const AtomString& manualKeyword();
 
     Vector<RefPtr<TextTrack>> sortedTrackListForMenu(TextTrackList&);
     Vector<RefPtr<AudioTrack>> sortedTrackListForMenu(AudioTrackList&);
 
     using TextOrAudioTrack = WTF::Variant<RefPtr<TextTrack>, RefPtr<AudioTrack>>;
-    String displayNameForTrack(const std::optional<TextOrAudioTrack>&);
+    String displayNameForTrack(const Optional<TextOrAudioTrack>&);
 
     TextTrack* captionMenuOffItem();
     TextTrack* captionMenuAutomaticItem();
-    AtomicString captionDisplayMode() const;
+    AtomString captionDisplayMode() const;
     void setSelectedTextTrack(TextTrack*);
     Element* textTrackContainer();
     void updateTextTrackContainer();

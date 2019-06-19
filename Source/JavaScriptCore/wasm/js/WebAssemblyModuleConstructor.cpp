@@ -88,7 +88,7 @@ EncodedJSValue JSC_HOST_CALL webAssemblyModuleCustomSections(ExecState* exec)
             if (!buffer)
                 return JSValue::encode(throwException(exec, throwScope, createOutOfMemoryError(exec)));
 
-            result->push(exec, JSArrayBuffer::create(vm, globalObject->m_arrayBufferStructure.get(), WTFMove(buffer)));
+            result->push(exec, JSArrayBuffer::create(vm, globalObject->arrayBufferStructure(ArrayBufferSharingMode::Default), WTFMove(buffer)));
             RETURN_IF_EXCEPTION(throwScope, { });
         }
     }
@@ -166,8 +166,7 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyModule(ExecState* exec
     Vector<uint8_t> source = createSourceBufferFromValue(vm, exec, exec->argument(0));
     RETURN_IF_EXCEPTION(scope, { });
 
-    scope.release();
-    return JSValue::encode(WebAssemblyModuleConstructor::createModule(exec, WTFMove(source)));
+    RELEASE_AND_RETURN(scope, JSValue::encode(WebAssemblyModuleConstructor::createModule(exec, WTFMove(source))));
 }
 
 static EncodedJSValue JSC_HOST_CALL callJSWebAssemblyModule(ExecState* exec)
@@ -182,11 +181,10 @@ JSWebAssemblyModule* WebAssemblyModuleConstructor::createModule(ExecState* exec,
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    auto* structure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), exec->lexicalGlobalObject()->WebAssemblyModuleStructure());
+    auto* structure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), exec->lexicalGlobalObject()->webAssemblyModuleStructure());
     RETURN_IF_EXCEPTION(scope, nullptr);
 
-    scope.release();
-    return JSWebAssemblyModule::createStub(vm, exec, structure, Wasm::Module::validateSync(&vm.wasmContext, WTFMove(buffer)));
+    RELEASE_AND_RETURN(scope, JSWebAssemblyModule::createStub(vm, exec, structure, Wasm::Module::validateSync(&vm.wasmContext, WTFMove(buffer))));
 }
 
 WebAssemblyModuleConstructor* WebAssemblyModuleConstructor::create(VM& vm, Structure* structure, WebAssemblyModulePrototype* thisPrototype)
@@ -203,7 +201,7 @@ Structure* WebAssemblyModuleConstructor::createStructure(VM& vm, JSGlobalObject*
 
 void WebAssemblyModuleConstructor::finishCreation(VM& vm, WebAssemblyModulePrototype* prototype)
 {
-    Base::finishCreation(vm, "Module"_s);
+    Base::finishCreation(vm, "Module"_s, NameVisibility::Visible, NameAdditionMode::WithoutStructureTransition);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
 }

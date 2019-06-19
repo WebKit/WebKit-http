@@ -45,12 +45,15 @@ public:
     }
 
     AuthenticationChallenge(const CurlResponse&, unsigned, const ResourceResponse&, AuthenticationClient* = nullptr);
+    AuthenticationChallenge(const URL&, const CertificateInfo&, const ResourceError&, AuthenticationClient* = nullptr);
+
     AuthenticationClient* authenticationClient() const { return m_authenticationClient.get(); }
 
 private:
     ProtectionSpaceServerType protectionSpaceServerTypeFromURI(const URL&, bool isForProxy);
-    ProtectionSpace protectionSpaceFromHandle(const CurlResponse&, const ResourceResponse&);
-    std::optional<uint16_t> determineProxyPort(const URL&);
+    ProtectionSpace protectionSpaceForPasswordBased(const CurlResponse&, const ResourceResponse&);
+    ProtectionSpace protectionSpaceForServerTrust(const URL&, const CertificateInfo&);
+    Optional<uint16_t> determineProxyPort(const URL&);
     ProtectionSpaceAuthenticationScheme authenticationSchemeFromCurlAuth(long);
     String parseRealm(const ResourceResponse&);
     void removeLeadingAndTrailingQuotes(String&);

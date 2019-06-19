@@ -26,7 +26,7 @@
 #include "config.h"
 #include "FileMonitor.h"
 
-#include "FileSystem.h"
+#include <wtf/FileSystem.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/threads/BinarySemaphore.h>
 
@@ -60,7 +60,7 @@ FileMonitor::FileMonitor(const String& path, Ref<WorkQueue>&& handlerQueue, WTF:
         createPlatformMonitor();
         semaphore.signal();
     });
-    semaphore.wait(WallTime::infinity());
+    semaphore.wait();
 }
 
 FileMonitor::~FileMonitor()
@@ -74,7 +74,7 @@ FileMonitor::~FileMonitor()
         m_platformMonitor = nullptr;
         semaphore.signal();
     });
-    semaphore.wait(WallTime::infinity());
+    semaphore.wait();
 }
 
 void FileMonitor::fileChangedCallback(GFileMonitor*, GFile*, GFile*, GFileMonitorEvent event, FileMonitor* monitor)

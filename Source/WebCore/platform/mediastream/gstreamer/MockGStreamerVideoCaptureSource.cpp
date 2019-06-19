@@ -33,42 +33,38 @@ namespace WebCore {
 
 class WrappedMockRealtimeVideoSource : public MockRealtimeVideoSource {
 public:
-    WrappedMockRealtimeVideoSource(const String& deviceID, const String& name)
-        : MockRealtimeVideoSource(deviceID, name)
+    WrappedMockRealtimeVideoSource(String&& deviceID, String&& name, String&& hashSalt)
+        : MockRealtimeVideoSource(WTFMove(deviceID), WTFMove(name), WTFMove(hashSalt))
     {
     }
 
     void updateSampleBuffer()
     {
-        int fpsNumerator, fpsDenominator;
         auto imageBuffer = this->imageBuffer();
-
         if (!imageBuffer)
             return;
 
+        int fpsNumerator, fpsDenominator;
         gst_util_double_to_fraction(frameRate(), &fpsNumerator, &fpsDenominator);
+        auto imageSize = imageBuffer->internalSize();
+        auto caps = adoptGRef(gst_caps_new_simple("video/x-raw",
+            "format", G_TYPE_STRING, "BGRA",
+            "width", G_TYPE_INT, imageSize.width(),
+            "height", G_TYPE_INT, imageSize.height(),
+            "framerate", GST_TYPE_FRACTION, fpsNumerator, fpsDenominator, nullptr));
         auto data = imageBuffer->toBGRAData();
         auto size = data.size();
-        auto image_size = imageBuffer->internalSize();
-        auto gstsample = gst_sample_new(gst_buffer_new_wrapped(static_cast<guint8*>(data.releaseBuffer().get()), size),
-            adoptGRef(gst_caps_new_simple("video/x-raw",
-                "format", G_TYPE_STRING, "BGRA",
-                "width", G_TYPE_INT, image_size.width(),
-                "height", G_TYPE_INT, image_size.height(),
-                "framerate", GST_TYPE_FRACTION, fpsNumerator, fpsDenominator,
-                nullptr)).get(),
-            nullptr, nullptr);
+        auto buffer = adoptGRef(gst_buffer_new_wrapped(g_memdup(data.releaseBuffer().get(), size), size));
+        auto gstSample = adoptGRef(gst_sample_new(buffer.get(), caps.get(), nullptr, nullptr));
 
-        auto sample = MediaSampleGStreamer::create(WTFMove(gstsample),
-            WebCore::FloatSize(), String());
-        videoSampleAvailable(sample);
+        videoSampleAvailable(MediaSampleGStreamer::create(WTFMove(gstSample), FloatSize(), String()));
     }
 };
 
-CaptureSourceOrError MockRealtimeVideoSource::create(const String& deviceID,
-    const String& name, const MediaConstraints* constraints)
+CaptureSourceOrError MockRealtimeVideoSource::create(String&& deviceID,
+    String&& name, String&& hashSalt, const MediaConstraints* constraints)
 {
-    auto source = adoptRef(*new MockGStreamerVideoCaptureSource(deviceID, name));
+    auto source = adoptRef(*new MockGStreamerVideoCaptureSource(WTFMove(deviceID), WTFMove(name), WTFMove(hashSalt)));
 
     if (constraints && source->applyConstraints(*constraints))
         return { };
@@ -99,9 +95,9 @@ void MockGStreamerVideoCaptureSource::videoSampleAvailable(MediaSample& sample)
     }
 }
 
-MockGStreamerVideoCaptureSource::MockGStreamerVideoCaptureSource(const String& deviceID, const String& name)
-    : GStreamerVideoCaptureSource(deviceID, name, "appsrc")
-    , m_wrappedSource(std::make_unique<WrappedMockRealtimeVideoSource>(deviceID, name))
+MockGStreamerVideoCaptureSource::MockGStreamerVideoCaptureSource(String&& deviceID, String&& name, String&& hashSalt)
+    : GStreamerVideoCaptureSource(String { deviceID }, String { name }, String { hashSalt }, "appsrc")
+    , m_wrappedSource(std::make_unique<WrappedMockRealtimeVideoSource>(WTFMove(deviceID), WTFMove(name), WTFMove(hashSalt)))
 {
     m_wrappedSource->addObserver(*this);
 }
@@ -111,23 +107,23 @@ MockGStreamerVideoCaptureSource::~MockGStreamerVideoCaptureSource()
     m_wrappedSource->removeObserver(*this);
 }
 
-std::optional<std::pair<String, String>> MockGStreamerVideoCaptureSource::applyConstraints(const MediaConstraints& constraints)
+Optional<RealtimeMediaSource::ApplyConstraintsError> MockGStreamerVideoCaptureSource::applyConstraints(const MediaConstraints& constraints)
 {
     m_wrappedSource->applyConstraints(constraints);
     return GStreamerVideoCaptureSource::applyConstraints(constraints);
 }
 
-void MockGStreamerVideoCaptureSource::applyConstraints(const MediaConstraints& constraints, SuccessHandler&& successHandler, FailureHandler&& failureHandler)
+void MockGStreamerVideoCaptureSource::applyConstraints(const MediaConstraints& constraints, ApplyConstraintsHandler&& completionHandler)
 {
-    m_wrappedSource->applyConstraints(constraints, WTFMove(successHandler), WTFMove(failureHandler));
+    m_wrappedSource->applyConstraints(constraints, WTFMove(completionHandler));
 }
 
-const RealtimeMediaSourceSettings& MockGStreamerVideoCaptureSource::settings() const
+const RealtimeMediaSourceSettings& MockGStreamerVideoCaptureSource::settings()
 {
     return m_wrappedSource->settings();
 }
 
-const RealtimeMediaSourceCapabilities& MockGStreamerVideoCaptureSource::capabilities() const
+const RealtimeMediaSourceCapabilities& MockGStreamerVideoCaptureSource::capabilities()
 {
     m_capabilities = m_wrappedSource->capabilities();
     m_currentSettings = m_wrappedSource->settings();

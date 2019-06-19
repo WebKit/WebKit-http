@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,8 +34,8 @@
 #import <wtf/SoftLinking.h>
 #import <wtf/text/WTFString.h>
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnullability-completeness"
+IGNORE_WARNINGS_BEGIN("nullability-completeness")
+
 SOFT_LINK_FRAMEWORK(AVKit)
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 SOFT_LINK_CLASS_OPTIONAL(AVKit, AVTouchBarMediaSelectionOption)
@@ -94,7 +94,8 @@ using WebCore::PlaybackSessionInterfaceMac;
 {
     UNUSED_PARAM(toleranceBefore);
     UNUSED_PARAM(toleranceAfter);
-    _playbackSessionInterfaceMac->playbackSessionModel()->seekToTime(time);
+    if (auto* model = _playbackSessionInterfaceMac->playbackSessionModel())
+        model->seekToTime(time);
 }
 
 - (void)cancelThumbnailAndAudioAmplitudeSampleGeneration
@@ -193,7 +194,8 @@ using WebCore::PlaybackSessionInterfaceMac;
     if (audioMediaSelectionOption && _audioTouchBarMediaSelectionOptions)
         index = [_audioTouchBarMediaSelectionOptions indexOfObject:audioMediaSelectionOption];
 
-    _playbackSessionInterfaceMac->playbackSessionModel()->selectAudioMediaOption(index != NSNotFound ? index : UINT64_MAX);
+    if (auto* model = _playbackSessionInterfaceMac->playbackSessionModel())
+        model->selectAudioMediaOption(index != NSNotFound ? index : UINT64_MAX);
 }
 
 - (NSArray<AVTouchBarMediaSelectionOption *> *)legibleTouchBarMediaSelectionOptions
@@ -223,7 +225,8 @@ using WebCore::PlaybackSessionInterfaceMac;
     if (legibleMediaSelectionOption && _legibleTouchBarMediaSelectionOptions)
         index = [_legibleTouchBarMediaSelectionOptions indexOfObject:legibleMediaSelectionOption];
 
-    _playbackSessionInterfaceMac->playbackSessionModel()->selectLegibleMediaOption(index != NSNotFound ? index : UINT64_MAX);
+    if (auto* model = _playbackSessionInterfaceMac->playbackSessionModel())
+        model->selectLegibleMediaOption(index != NSNotFound ? index : UINT64_MAX);
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
@@ -338,17 +341,14 @@ static RetainPtr<NSMutableArray> mediaSelectionOptions(const Vector<MediaSelecti
     return NO;
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 - (void)togglePictureInPicture
 {
     if (_playbackSessionInterfaceMac && _playbackSessionInterfaceMac->playbackSessionModel())
         _playbackSessionInterfaceMac->playbackSessionModel()->togglePictureInPicture();
 }
-#endif
 
-#pragma clang diagnostic pop
+IGNORE_WARNINGS_END
 
 @end
 
 #endif // PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
-

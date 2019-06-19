@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2011 Ericsson AB. All rights reserved.
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
@@ -41,6 +41,8 @@
 #include "MediaSample.h"
 #include "PlatformLayer.h"
 #include "RealtimeMediaSourceCapabilities.h"
+#include "RealtimeMediaSourceFactory.h"
+#include <wtf/LoggerHelper.h>
 #include <wtf/RecursiveLockAdapter.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
@@ -60,10 +62,17 @@ class MediaStreamPrivate;
 class OrientationNotifier;
 class PlatformAudioData;
 class RealtimeMediaSourceSettings;
+class RemoteVideoSample;
 
 struct CaptureSourceOrError;
 
-class WEBCORE_EXPORT RealtimeMediaSource : public ThreadSafeRefCounted<RealtimeMediaSource>, public CanMakeWeakPtr<RealtimeMediaSource> {
+class WEBCORE_EXPORT RealtimeMediaSource
+    : public ThreadSafeRefCounted<RealtimeMediaSource>
+    , public CanMakeWeakPtr<RealtimeMediaSource>
+#if !RELEASE_LOG_DISABLED
+    , private LoggerHelper
+#endif
+{
 public:
     class Observer {
     public:
@@ -85,61 +94,12 @@ public:
         virtual void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t /*numberOfFrames*/) { }
     };
 
-    class SingleSourceFactory {
-    public:
-        void setActiveSource(RealtimeMediaSource& source)
-        {
-            if (m_activeSource == &source)
-                return;
-            if (m_activeSource && m_activeSource->isProducingData())
-                m_activeSource->setMuted(true);
-            m_activeSource = &source;
-        }
-
-        void unsetActiveSource(RealtimeMediaSource& source)
-        {
-            if (m_activeSource == &source)
-                m_activeSource = nullptr;
-        }
-
-        RealtimeMediaSource* activeSource() { return m_activeSource; }
-    private:
-        RealtimeMediaSource* m_activeSource { nullptr };
-    };
-
-    class AudioCaptureFactory
-#if PLATFORM(IOS)
-        : public RealtimeMediaSource::SingleSourceFactory
-#endif
-    {
-    public:
-        virtual ~AudioCaptureFactory();
-        virtual CaptureSourceOrError createAudioCaptureSource(const CaptureDevice&, const MediaConstraints*) = 0;
-
-    protected:
-        AudioCaptureFactory() = default;
-    };
-
-    class VideoCaptureFactory
-#if PLATFORM(IOS)
-        : public RealtimeMediaSource::SingleSourceFactory
-#endif
-    {
-    public:
-        virtual ~VideoCaptureFactory();
-        virtual CaptureSourceOrError createVideoCaptureSource(const CaptureDevice&, const MediaConstraints*) = 0;
-        virtual void setVideoCapturePageState(bool, bool) { }
-
-    protected:
-        VideoCaptureFactory() = default;
-    };
-
     virtual ~RealtimeMediaSource() = default;
 
-    const String& id() const { return m_id; }
+    const String& hashedId() const;
+    String deviceIDHashSalt() const;
 
     const String& persistentID() const { return m_persistentID; }
-    virtual void setPersistentID(String&& persistentID) { m_persistentID = WTFMove(persistentID); }
 
     enum class Type { None, Audio, Video };
     Type type() const { return m_type; }
@@ -147,7 +107,7 @@ public:
     bool isProducingData() const { return m_isProducingData; }
     void start();
     void stop();
-    void requestStop(Observer* callingObserver = nullptr);
+    void requestToEnd(Observer& callingObserver);
 
     bool muted() const { return m_muted; }
     void setMuted(bool);
@@ -165,8 +125,11 @@ public:
     WEBCORE_EXPORT void addObserver(Observer&);
     WEBCORE_EXPORT void removeObserver(Observer&);
 
+    const IntSize size() const;
     void setSize(const IntSize&);
-    const IntSize& size() const { return m_size; }
+
+    const IntSize intrinsicSize() const;
+    void setIntrinsicSize(const IntSize&);
 
     double frameRate() const { return m_frameRate; }
     void setFrameRate(double);
@@ -182,59 +145,77 @@ public:
 
     int sampleRate() const { return m_sampleRate; }
     void setSampleRate(int);
-    virtual std::optional<Vector<int>> discreteSampleRates() const;
+    virtual Optional<Vector<int>> discreteSampleRates() const;
 
     int sampleSize() const { return m_sampleSize; }
     void setSampleSize(int);
-    virtual std::optional<Vector<int>> discreteSampleSizes() const;
+    virtual Optional<Vector<int>> discreteSampleSizes() const;
 
     bool echoCancellation() const { return m_echoCancellation; }
     void setEchoCancellation(bool);
 
-    virtual const RealtimeMediaSourceCapabilities& capabilities() const = 0;
-    virtual const RealtimeMediaSourceSettings& settings() const = 0;
+    virtual const RealtimeMediaSourceCapabilities& capabilities() = 0;
+    virtual const RealtimeMediaSourceSettings& settings() = 0;
 
-    using SuccessHandler = WTF::Function<void()>;
-    using FailureHandler = WTF::Function<void(const String& badConstraint, const String& errorString)>;
-    virtual void applyConstraints(const MediaConstraints&, SuccessHandler&&, FailureHandler&&);
-    std::optional<std::pair<String, String>> applyConstraints(const MediaConstraints&);
+    struct ApplyConstraintsError {
+        String badConstraint;
+        String message;
+    };
+    using ApplyConstraintsHandler = CompletionHandler<void(Optional<ApplyConstraintsError>&&)>;
+    virtual void applyConstraints(const MediaConstraints&, ApplyConstraintsHandler&&);
+    Optional<ApplyConstraintsError> applyConstraints(const MediaConstraints&);
 
     bool supportsConstraints(const MediaConstraints&, String&);
-    bool supportsConstraint(const MediaConstraint&) const;
-
-    virtual void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>);
+    bool supportsConstraint(const MediaConstraint&);
 
     virtual bool isIsolated() const { return false; }
 
     virtual bool isCaptureSource() const { return false; }
+    virtual CaptureDevice::DeviceType deviceType() const { return CaptureDevice::DeviceType::Unknown; }
 
     virtual void monitorOrientation(OrientationNotifier&) { }
 
     virtual void captureFailed();
 
+    virtual bool isIncomingAudioSource() const { return false; }
+    virtual bool isIncomingVideoSource() const { return false; }
+
+    void setIsRemote(bool isRemote) { m_isRemote = isRemote; }
+    bool isRemote() const { return m_isRemote; }
+
+#if !RELEASE_LOG_DISABLED
+    void setLogger(const Logger&, const void*);
+    const Logger* loggerPtr() const { return m_logger.get(); }
+    const Logger& logger() const final { ASSERT(m_logger); return *m_logger.get(); }
+    const void* logIdentifier() const final { return m_logIdentifier; }
+    const char* logClassName() const override { return "RealtimeMediaSource"; }
+    WTFLogChannel& logChannel() const final;
+#endif
+
     // Testing only
     virtual void delaySamples(Seconds) { };
+    void setInterruptedForTesting(bool);
 
 protected:
-    RealtimeMediaSource(const String& id, Type, const String& name);
+    RealtimeMediaSource(Type, String&& name, String&& deviceID = { }, String&& hashSalt = { });
 
     void scheduleDeferredTask(WTF::Function<void()>&&);
 
     virtual void beginConfiguration() { }
     virtual void commitConfiguration() { }
 
-    enum class SelectType { ForApplyConstraints, ForSupportsConstraints };
-    bool selectSettings(const MediaConstraints&, FlattenedConstraint&, String&, SelectType);
+    bool selectSettings(const MediaConstraints&, FlattenedConstraint&, String&);
     double fitnessDistance(const MediaConstraint&);
     void applyConstraint(const MediaConstraint&);
     void applyConstraints(const FlattenedConstraint&);
-    bool supportsSizeAndFrameRate(std::optional<IntConstraint> width, std::optional<IntConstraint> height, std::optional<DoubleConstraint>, String&, double& fitnessDistance);
+    bool supportsSizeAndFrameRate(Optional<IntConstraint> width, Optional<IntConstraint> height, Optional<DoubleConstraint>, String&, double& fitnessDistance);
 
-    virtual bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
-    virtual void setSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
+    virtual bool supportsSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>);
+    virtual void setSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>);
 
     void notifyMutedObservers() const;
     void notifyMutedChange(bool muted);
+    void notifySettingsDidChangeObservers(OptionSet<RealtimeMediaSourceSettings::Flag>);
 
     void initializeVolume(double volume) { m_volume = volume; }
     void initializeSampleRate(int sampleRate) { m_sampleRate = sampleRate; }
@@ -246,31 +227,44 @@ protected:
 private:
     virtual void startProducingData() { }
     virtual void stopProducingData() { }
+    virtual void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) { }
+
+    virtual void hasEnded() { }
 
     void forEachObserver(const WTF::Function<void(Observer&)>&) const;
 
-    bool m_muted { false };
+#if !RELEASE_LOG_DISABLED
+    RefPtr<const Logger> m_logger;
+    const void* m_logIdentifier;
+    MonotonicTime m_lastFrameLogTime;
+    unsigned m_frameCount { 0 };
+#endif
 
-    String m_id;
+    String m_idHashSalt;
+    String m_hashedID;
     String m_persistentID;
     Type m_type;
     String m_name;
     mutable RecursiveLock m_observersLock;
     HashSet<Observer*> m_observers;
     IntSize m_size;
+    IntSize m_intrinsicSize;
     double m_frameRate { 30 };
     double m_aspectRatio { 0 };
     double m_volume { 1 };
     double m_sampleRate { 0 };
     double m_sampleSize { 0 };
-    double m_fitnessScore { std::numeric_limits<double>::infinity() };
+    double m_fitnessScore { 0 };
     RealtimeMediaSourceSettings::VideoFacingMode m_facingMode { RealtimeMediaSourceSettings::User};
 
+    bool m_muted { false };
     bool m_pendingSettingsDidChangeNotification { false };
     bool m_echoCancellation { false };
     bool m_isProducingData { false };
     bool m_interrupted { false };
     bool m_captureDidFailed { false };
+    bool m_isRemote { false };
+    bool m_isEnded { false };
 };
 
 struct CaptureSourceOrError {
@@ -285,6 +279,23 @@ struct CaptureSourceOrError {
     String errorMessage;
 };
 
+String convertEnumerationToString(RealtimeMediaSource::Type);
+
 } // namespace WebCore
+
+namespace WTF {
+
+template<typename Type>
+struct LogArgument;
+
+template <>
+struct LogArgument<WebCore::RealtimeMediaSource::Type> {
+    static String toString(const WebCore::RealtimeMediaSource::Type type)
+    {
+        return convertEnumerationToString(type);
+    }
+};
+
+}; // namespace WTF
 
 #endif // ENABLE(MEDIA_STREAM)

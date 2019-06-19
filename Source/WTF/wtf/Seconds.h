@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WTF_Seconds_h
-#define WTF_Seconds_h
+#pragma once
 
 #include <wtf/MathExtras.h>
 #include <wtf/Optional.h>
@@ -227,12 +226,12 @@ public:
     }
 
     template<class Decoder>
-    static std::optional<Seconds> decode(Decoder& decoder)
+    static Optional<Seconds> decode(Decoder& decoder)
     {
-        std::optional<double> seconds;
+        Optional<double> seconds;
         decoder >> seconds;
         if (!seconds)
-            return std::nullopt;
+            return WTF::nullopt;
         return Seconds(*seconds);
     }
 
@@ -247,11 +246,25 @@ public:
         return true;
     }
 
+    struct MarkableTraits;
+
 private:
     double m_value { 0 };
 };
 
 WTF_EXPORT_PRIVATE void sleep(Seconds);
+
+struct Seconds::MarkableTraits {
+    static bool isEmptyValue(Seconds seconds)
+    {
+        return std::isnan(seconds.value());
+    }
+
+    static constexpr Seconds emptyValue()
+    {
+        return Seconds::nan();
+    }
+};
 
 inline namespace seconds_literals {
 
@@ -342,5 +355,3 @@ inline bool isfinite(WTF::Seconds seconds)
 
 using namespace WTF::seconds_literals;
 using WTF::Seconds;
-
-#endif // WTF_Seconds_h

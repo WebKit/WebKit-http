@@ -139,9 +139,9 @@ void RenderFrameSet::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     size_t cols = m_cols.m_sizes.size();
     LayoutUnit borderThickness = frameSetElement().border();
     
-    LayoutUnit yPos = 0;
+    LayoutUnit yPos;
     for (size_t r = 0; r < rows; r++) {
-        LayoutUnit xPos = 0;
+        LayoutUnit xPos;
         for (size_t c = 0; c < cols; c++) {
             downcast<RenderElement>(*child).paint(paintInfo, adjustedPaintOffset);
             xPos += m_cols.m_sizes[c];
@@ -494,6 +494,18 @@ void RenderFrameSet::layout()
     clearNeedsLayout();
 }
 
+static void resetFrameRendererAndDescendents(RenderBox* frameSetChild, RenderFrameSet& parentFrameSet)
+{
+    if (!frameSetChild)
+        return;
+
+    for (auto* descendant = frameSetChild; descendant; descendant = downcast<RenderBox>(RenderObjectTraversal::next(*descendant, &parentFrameSet))) {
+        descendant->setWidth(0);
+        descendant->setHeight(0);
+        descendant->clearNeedsLayout();
+    }
+}
+
 void RenderFrameSet::positionFrames()
 {
     RenderBox* child = firstChildBox();
@@ -516,7 +528,7 @@ void RenderFrameSet::positionFrames()
             if (width != child->width() || height != child->height()) {
                 child->setWidth(width);
                 child->setHeight(height);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
                 // FIXME: Is this iOS-specific?
                 child->setNeedsLayout(MarkOnlyThis);
 #else
@@ -534,12 +546,7 @@ void RenderFrameSet::positionFrames()
         yPos += height + borderThickness;
     }
 
-    // all the remaining frames are hidden to avoid ugly spurious unflowed frames
-    for (auto* descendant = child; descendant; descendant = downcast<RenderBox>(RenderObjectTraversal::next(*descendant, this))) {
-        descendant->setWidth(0);
-        descendant->setHeight(0);
-        descendant->clearNeedsLayout();
-    }
+    resetFrameRendererAndDescendents(child, *this);
 }
 
 void RenderFrameSet::positionFramesWithFlattening()
@@ -642,12 +649,7 @@ void RenderFrameSet::positionFramesWithFlattening()
     if (repaintNeeded)
         repaint();
 
-    // all the remaining frames are hidden to avoid ugly spurious unflowed frames
-    for (; child; child = child->nextSiblingBox()) {
-        child->setWidth(0);
-        child->setHeight(0);
-        child->clearNeedsLayout();
-    }
+    resetFrameRendererAndDescendents(child, *this);
 }
 
 bool RenderFrameSet::flattenFrameSet() const

@@ -13,15 +13,22 @@
 #include <algorithm>
 #include <cmath>
 
+#include "api/array_view.h"
 #include "modules/audio_processing/logging/apm_data_dumper.h"
 #include "rtc_base/checks.h"
 
 namespace webrtc {
+namespace {
+
+constexpr float kInitialFilterStateLevel = 0.f;
+
+}  // namespace
 
 FixedDigitalLevelEstimator::FixedDigitalLevelEstimator(
     size_t sample_rate_hz,
     ApmDataDumper* apm_data_dumper)
-    : apm_data_dumper_(apm_data_dumper) {
+    : apm_data_dumper_(apm_data_dumper),
+      filter_state_level_(kInitialFilterStateLevel) {
   SetSampleRate(sample_rate_hz);
   CheckParameterCombination();
   RTC_DCHECK(apm_data_dumper_);
@@ -97,4 +104,9 @@ void FixedDigitalLevelEstimator::SetSampleRate(size_t sample_rate_hz) {
       rtc::CheckedDivExact(samples_in_frame_, kSubFramesInFrame);
   CheckParameterCombination();
 }
+
+void FixedDigitalLevelEstimator::Reset() {
+  filter_state_level_ = kInitialFilterStateLevel;
+}
+
 }  // namespace webrtc

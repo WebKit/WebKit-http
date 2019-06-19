@@ -39,6 +39,7 @@ struct ServiceWorkerFetchResult {
     ServiceWorkerRegistrationKey registrationKey;
     String script;
     ContentSecurityPolicyResponseHeaders contentSecurityPolicy;
+    String referrerPolicy;
     ResourceError scriptError;
 
     template<class Encoder> void encode(Encoder&) const;
@@ -48,13 +49,13 @@ struct ServiceWorkerFetchResult {
 template<class Encoder>
 void ServiceWorkerFetchResult::encode(Encoder& encoder) const
 {
-    encoder << jobDataIdentifier << registrationKey << script << contentSecurityPolicy << scriptError;
+    encoder << jobDataIdentifier << registrationKey << script << contentSecurityPolicy << referrerPolicy << scriptError;
 }
 
 template<class Decoder>
 bool ServiceWorkerFetchResult::decode(Decoder& decoder, ServiceWorkerFetchResult& result)
 {
-    std::optional<ServiceWorkerJobDataIdentifier> jobDataIdentifier;
+    Optional<ServiceWorkerJobDataIdentifier> jobDataIdentifier;
     decoder >> jobDataIdentifier;
     if (!jobDataIdentifier)
         return false;
@@ -68,6 +69,8 @@ bool ServiceWorkerFetchResult::decode(Decoder& decoder, ServiceWorkerFetchResult
     if (!decoder.decode(result.script))
         return false;
     if (!decoder.decode(result.contentSecurityPolicy))
+        return false;
+    if (!decoder.decode(result.referrerPolicy))
         return false;
     if (!decoder.decode(result.scriptError))
         return false;

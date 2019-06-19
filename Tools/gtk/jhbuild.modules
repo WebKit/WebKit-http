@@ -31,7 +31,10 @@
       <dep package="libsecret"/>
       <dep package="libgpg-error"/>
       <dep package="libgcrypt"/>
+      <dep package="openjpeg"/>
+      <dep package="wpebackend-fdo"/>
       <if condition-set="linux">
+          <dep package="xdg-dbus-proxy"/>
           <dep package="xserver"/>
           <dep package="mesa"/>
           <dep package="at-spi2-core"/>
@@ -79,9 +82,11 @@
       href="http://webkitgtk.org/jhbuild_mirror/"/>
   <repository type="tarball" name="gnupg.org"
       href="https://www.gnupg.org/ftp/gcrypt/"/>
+  <repository type="tarball" name="wpewebkit"
+      href="https://wpewebkit.org/releases/"/>
 
   <cmake id="brotli">
-    <branch repo="github.com" module="google/brotli.git" checkoutdir="brotli" tag="v1.0.1"/>
+    <branch repo="github.com" module="google/brotli.git" checkoutdir="brotli" tag="v1.0.5"/>
   </cmake>
 
   <cmake id="woff2">
@@ -104,9 +109,12 @@
       <dep package="pixman"/>
       <dep package="glib"/>
     </dependencies>
-    <branch module="releases/cairo-1.14.8.tar.xz" version="1.14.8"
+    <branch module="releases/cairo-1.16.0.tar.xz" version="1.16.0"
             repo="cairographics.org"
-	    hash="sha1:c6f7b99986f93c9df78653c3e6a3b5043f65145e"/>
+	    hash="sha1:00e81842ae5e81bb0343108884eb5205be0eac14">
+      <!-- See https://gitlab.freedesktop.org/cairo/cairo/merge_requests/5 -->
+      <patch file="cairo-ft-Use-FT_Done_MM_Var-instead-of-free-when-available.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <!-- FIXME: Pixman 0.32.6 ARM iwMMXt fast path isn't buildable with GCC 4.9 and
@@ -122,7 +130,7 @@
 
   <autotools id="fonts" supports-non-srcdir-builds="no"
              skip-autogen="true">
-    <branch repo="github.com" module="WebKitGTK/webkitgtk-test-fonts.git" checkoutdir="webkitgtk-test-fonts" tag="0.0.7"/>
+    <branch repo="github.com" module="WebKitGTK/webkitgtk-test-fonts.git" checkoutdir="webkitgtk-test-fonts" tag="0.0.8"/>
   </autotools>
 
   <autotools id="dicts" supports-non-srcdir-builds="no"
@@ -132,9 +140,9 @@
 
   <autotools id="freetype6" autogen-sh="configure"
         autogenargs="--with-harfbuzz=no">
-    <branch module="freetype/freetype-2.8.tar.bz2" version="2.8"
+    <branch module="freetype/freetype-2.9.1.tar.bz2" version="2.9.1"
             repo="savannah.gnu.org"
-            hash="sha256:a3c603ed84c3c2495f9c9331fe6bba3bb0ee65e06ec331e0a0fb52158291b40b"/>
+            hash="sha256:db8d87ea720ea9d5edc5388fc7a0497bb11ba9fe972245e0f7f4c7e8b1e1e84d"/>
   </autotools>
 
   <autotools id="harfbuzz" autogen-sh="configure"
@@ -144,11 +152,11 @@
       <dep package="freetype6"/>
       <dep package="fontconfig"/>
     </dependencies>
-    <branch module="software/harfbuzz/release/harfbuzz-1.4.2.tar.bz2"
-            version="1.4.2"
-            checkoutdir="harfbuzz-1.4.2"
+    <branch module="software/harfbuzz/release/harfbuzz-${version}.tar.bz2"
+            version="2.2.0"
+            checkoutdir="harfbuzz-${version}"
             repo="freedesktop.org"
-            hash="sha256:8f234dcfab000fdec24d43674fffa2fdbdbd654eb176afbde30e8826339cb7b3"/>
+            hash="sha256:b7ccfcbd56b970a709e8b9ea9fb46c922c606c2feef8f086fb6a8492e530f810"/>
   </autotools>
 
   <autotools id="gdk-pixbuf" autogen-sh="configure"
@@ -207,33 +215,32 @@
             hash="sha256:db440670cb6f3c098b076df3735fbc4e69359bd605385e87c90ee48344a804ca"/>
   </autotools>
 
-  <autotools id="glib"
-             autogen-sh="configure"
-             autogenargs="--disable-dtrace">
-    <dependencies>
-      <dep package="libffi"/>
-    </dependencies>
-    <branch module="/pub/GNOME/sources/glib/2.54/glib-2.54.2.tar.xz" version="2.54.2"
+  <meson id="glib"
+         mesonargs="-Dlibmount=false -Dselinux=false">
+    <branch module="/pub/GNOME/sources/glib/2.58/glib-${version}.tar.xz" version="2.58.1"
             repo="ftp.gnome.org"
-            hash="sha256:bb89e5c5aad33169a8c7f28b45671c7899c12f74caf707737f784d7102758e6c">
-      <!-- This patch landed in glib-2-54 branch and will be available in 2.54.3. -->
-      <patch file="glib-gtester-do-not-consider-skipped-tests-as-failures.patch" strip="1"/>
-      <patch file="glib-cast-function-type.patch" strip="1"/>
+            hash="sha256:97d6a9d926b6aa3dfaadad3077cfb43eec74432ab455dff14250c769d526d7d6">
     </branch>
-  </autotools>
+  </meson>
 
-  <autotools id="glib-networking"
-             autogen-sh="configure">
-    <if condition-set="macos">
-      <autogenargs value="--with-ca-certificates='/usr/local/etc/openssl/cert.pem' --without-pkcs11"/>
-    </if>
+  <meson id="glib-networking">
     <dependencies>
       <dep package="glib"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/glib-networking/2.50/glib-networking-2.50.0.tar.xz" version="2.50.0"
+    <branch module="/pub/GNOME/sources/glib-networking/2.58/glib-networking-${version}.tar.xz" version="2.58.0"
             repo="ftp.gnome.org"
-            hash="sha256:3f1a442f3c2a734946983532ce59ed49120319fdb10c938447c373d5e5286bee"
-            md5sum="4d06d0224646f274918b1cb6da9a07f6"/>
+            hash="sha256:bdfa0255e031b8ee003cc283002536b77ee76450105f1dc6ab066b9bf4330068"/>
+  </meson>
+
+  <autotools id="libpsl"
+             autogenargs="--enable-runtime=libicu --enable-builtin=libicu">
+    <dependencies>
+      <dep package="icu"/>
+    </dependencies>
+    <branch module="rockdaboot/libpsl/releases/download/libpsl-${version}/libpsl-${version}.tar.gz"
+            version="0.20.2"
+            repo="github-tarball"
+            hash="sha256:f8fd0aeb66252dfcc638f14d9be1e2362fdaf2ca86bde0444ff4d5cc961b560f"/>
   </autotools>
 
   <autotools id="libsoup"
@@ -244,13 +251,11 @@
     </if>
     <dependencies>
       <dep package="glib-networking"/>
+      <dep package="libpsl"/>
     </dependencies>
-    <branch module="/pub/GNOME/sources/libsoup/2.57/libsoup-2.57.1.tar.xz" version="2.57.1"
+    <branch module="/pub/GNOME/sources/libsoup/2.64/libsoup-${version}.tar.xz" version="2.64.2"
             repo="ftp.gnome.org"
-            hash="sha256:ca1ca037e89e8bc7b782559f3ec5d89c9d0b836f505b2f95e008ed517fd6658f">
-      <patch file="libsoup-auth-Fix-async-authentication-when-flag-SOUP_MESSAGE.patch" strip="1"/>
-      <patch file="libsoup-auth-do-not-use-cached-credentials-in-lookup-method-.patch" strip="1"/>
-      <patch file="libsoup-soup-message-io-Do-not-fail-when-there-s-no-empty-li.patch" strip="1"/>
+            hash="sha256:75ddc194a5b1d6f25033bb9d355f04bfe5c03e0e1c71ed0774104457b3a786c6">
     </branch>
   </autotools>
 
@@ -264,9 +269,9 @@
       <dep package="freetype6"/>
       <dep package="libxml2"/>
     </dependencies>
-    <branch module="software/fontconfig/release/fontconfig-2.12.4.tar.bz2" version="2.12.4"
+    <branch module="software/fontconfig/release/fontconfig-2.13.1.tar.bz2" version="2.13.1"
             repo="freedesktop.org"
-            hash="sha256:668293fcc4b3c59765cdee5cee05941091c0879edcc24dfec5455ef83912e45c"/>
+            hash="sha256:f655dd2a986d7aa97e052261b36aa67b0a64989496361eca8d604e6414006741"/>
   </autotools>
 
   <autotools id="adwaita-icon-theme" autogen-sh="configure">
@@ -279,38 +284,33 @@
             hash="sha256:ccf79ff3bd340254737ce4d28b87f0ccee4b3358cd3cd5cd11dc7b42f41b272a"/>
   </autotools>
 
-  <autotools id="atk"
-             autogen-sh="configure"
-             autogenargs="--disable-introspection">
-    <branch module="pub/GNOME/sources/atk/2.25/atk-2.25.2.tar.xz" version="2.25.2"
+  <meson id="atk" mesonargs="-Dintrospection=false">
+    <branch module="pub/GNOME/sources/atk/2.32/atk-2.32.0.tar.xz" version="2.32.0"
             repo="ftp.gnome.org"
-            hash="sha256:75ac1f63e845f895dec8d72d4645ef5f362e32c921cc78987f2f19c2ce212a24"/>
-  </autotools>
+            hash="sha256:cb41feda7fe4ef0daa024471438ea0219592baf7c291347e5a858bb64e4091cc"/>
+  </meson>
 
-  <autotools id="at-spi2-core"
-             autogen-sh="configure"
-             autogenargs="--disable-introspection">
-    <branch module="pub/GNOME/sources/at-spi2-core/2.25/at-spi2-core-2.25.4.tar.xz" version="2.25.4"
+  <meson id="at-spi2-core" mesonargs="-Dintrospection=no">
+    <branch module="pub/GNOME/sources/at-spi2-core/2.32/at-spi2-core-2.32.1.tar.xz" version="2.32.1"
             repo="ftp.gnome.org"
-            hash="sha256:baeccbf92e84e64bb4a853f076c27b78ab44edf1fa5414a9c6e59a9b180bc9d8">
+            hash="sha256:3c2aa937ebfaca2c86569bce9b16a34fbe20d69ef0c58846313b1c42f53b0d53">
     </branch>
     <dependencies>
       <dep package="glib"/>
     </dependencies>
-  </autotools>
+  </meson>
 
-  <autotools id="at-spi2-atk"
-             autogen-sh="configure">
-    <branch module="pub/GNOME/sources/at-spi2-atk/2.25/at-spi2-atk-2.25.3.tar.xz" version="2.25.3"
+  <meson id="at-spi2-atk">
+    <branch module="pub/GNOME/sources/at-spi2-atk/2.32/at-spi2-atk-2.32.0.tar.xz" version="2.32.0"
             repo="ftp.gnome.org"
-            hash="sha256:b7aab1a4ee7182083fcfafb595b7b3fe4df34aa2230c775050fe6015b01f84e1">
+            hash="sha256:0b51e6d339fa2bcca3a3e3159ccea574c67b107f1ac8b00047fa60e34ce7a45c">
     </branch>
     <dependencies>
       <dep package="glib"/>
       <dep package="atk"/>
       <dep package="at-spi2-core"/>
     </dependencies>
-  </autotools>
+  </meson>
 
   <autotools id="libxml2" supports-non-srcdir-builds="no"
              autogen-sh="./autogen.sh; ./configure --with-python=no">
@@ -319,7 +319,7 @@
             hash="sha256:4031c1ecee9ce7ba4f313e91ef6284164885cdb69937a123f6a83bb6a72dcd38"/>
   </autotools>
 
-  <autotools id="xserver" autogenargs="--disable-xinerama --enable-glx --enable-composite --disable-xorg --disable-dmx --disable-xnest --disable-xquartz --disable-xwin --disable-xephyr --disable-xfake --disable-xfbdev --disable-install-setuid --disable-unit-tests --disable-present --enable-unix-transport --enable-tcp-transport --disable-local-transport --with-xkb-path=/usr/share/X11/xkb --with-xkb-output=/var/lib/xkb --with-xkb-bin-directory=/usr/bin --without-dtrace">
+  <autotools id="xserver" autogenargs="--disable-selective-werror --disable-xinerama --enable-glx --enable-composite --disable-xorg --disable-dmx --disable-xnest --disable-xquartz --disable-xwin --disable-xephyr --disable-xfake --disable-xfbdev --disable-install-setuid --disable-unit-tests --disable-present --enable-unix-transport --enable-tcp-transport --disable-local-transport --with-xkb-path=/usr/share/X11/xkb --with-xkb-output=/var/lib/xkb --with-xkb-bin-directory=/usr/bin --without-dtrace">
     <dependencies>
       <dep package="pixman"/>
     </dependencies>
@@ -337,17 +337,17 @@
              autogenargs="--disable-documentation">
     <pkg-config>wayland-server.pc</pkg-config>
     <branch module="releases/wayland-${version}.tar.xz"
-            version="1.14.0"
+            version="1.16.0"
             repo="wayland.freedesktop.org"
-            hash="sha256:ed80cabc0961a759a42092e2c39aabfc1ec9a13c86c98bbe2b812f008da27ab8"/>
+            hash="sha256:4e72c2b56109ccfb6610d776e465f4ca0af2280c9c2f7d5cc23f0ed2548752f5"/>
   </autotools>
 
   <autotools id="wayland-protocols"
              autogen-sh="configure">
     <branch module="releases/wayland-protocols-${version}.tar.xz"
-            version="1.12"
+            version="1.16"
 	    repo="wayland.freedesktop.org"
-	    hash="sha256:3b19e8a9e1e19474756a7069db23b90ca9b8ebb438448c6063b4a7fc89b7c8b2"/>
+	    hash="sha256:6b1485951fdcd36a960c870c46f28b03a3e5121fb46246916333ed07f78c98c5"/>
   </autotools>
 
   <autotools id="weston"
@@ -419,20 +419,17 @@
       <dep package="libxml2"/>
       <dep package="glib"/>
     </dependencies>
-    <branch module="/~hadess/shared-mime-info-${version}.tar.xz" version="1.5"
+    <branch module="/~hadess/shared-mime-info-${version}.tar.xz" version="1.10"
             repo="freedesktop.org"
-            hash="sha256:d6412840eb265bf36e61fd7b6fc6bea21b0f58cb22bed16f2ccccdd54bea4180">
-      <patch file="shared-mime-info-xht-glob.patch" strip="1"/>
-      <patch file="shared-mime-info-xhtml-magic.patch" strip="1"/>
-    </branch>
+            hash="sha256:c625a83b4838befc8cafcd54e3619946515d9e44d63d61c4adf7f5513ddfbebf"/>
   </autotools>
 
   <autotools id="icu"
              autogen-sh="./source/configure"
              autogenargs="--disable-samples --enable-weak-threads">
-    <branch module="icu4c-57_1-src.tgz" version="57.1" checkoutdir="icu"
+    <branch module="icu4c-63_1-src.tgz" version="63.1" checkoutdir="icu"
             repo="webkitgtk-jhbuild-mirror"
-            hash="sha256:ff8c67cb65949b1e7808f2359f2b80f722697048e90e7cfc382ec1fe229e9581">
+            hash="sha256:05c490b69454fce5860b7e8e2821231674af0a11d7ef2febea9a32512998cb9d">
       <patch file="icudata-stdlibs.patch" strip="1"/>
     </branch>
   </autotools>
@@ -448,16 +445,38 @@
 
   <autotools id="libgcrypt"
              autogen-sh="configure">
-    <branch module="libgcrypt/libgcrypt-1.7.6.tar.bz2"
-            version="1.7.6"
+    <branch module="libgcrypt/libgcrypt-${version}.tar.bz2"
+            version="1.8.4"
             repo="gnupg.org"
-            hash="sha256:626aafee84af9d2ce253d2c143dc1c0902dda045780cc241f39970fc60be05bc">
+            hash="sha256:f638143a0672628fde0cad745e9b14deb85dffb175709cacc1f4fe24b93f2227">
         <patch file="libgcrypt-use-only-dev-urandom-for-testing.patch" strip="1"/>
     </branch>
     <dependencies>
       <dep package="libgpg-error"/>
     </dependencies>
   </autotools>
+
+  <cmake id="openjpeg">
+    <branch repo="github-tarball"
+            module="uclouvain/openjpeg/archive/v${version}.tar.gz"
+            checkoutdir="openjpeg-${version}"
+            version="2.3.0"
+            hash="sha256:3dc787c1bb6023ba846c2a0d9b1f6e179f1cd255172bde9eb75b01f1e6c7d71a"/>
+  </cmake>
+
+  <cmake id="libwpe">
+    <branch repo="wpewebkit" module="libwpe-1.3.1.tar.xz" version="1.3.1"
+            hash="sha256:5d5e23ce48b35278201b3b88e5b1a89bd54b38391721b4e74ce472c3905df8b0"/>
+  </cmake>
+
+  <cmake id="wpebackend-fdo">
+    <dependencies>
+      <dep package="libwpe"/>
+      <dep package="glib"/>
+    </dependencies>
+    <branch repo="wpewebkit" module="wpebackend-fdo-1.3.1.tar.xz" version="1.3.1"
+            hash="sha256:b0d136aa9ce9f94b1d06b258ed68c4a7b588b2e692d448d9c6eedb72edf56739"/>
+  </cmake>
 
   <!-- Dependencies listed below this point are not thought to affect test results, and are only
        included because they themselves depend on other dependencies built by jhbuild. -->
@@ -509,13 +528,21 @@
 
   <distutils id="meson" python3="1">
     <branch repo="github-tarball"
-            version="0.42.0"
+            version="0.50.1"
             module="mesonbuild/meson/releases/download/${version}/meson-${version}.tar.gz"
             checkoutdir="meson-${version}"
-            hash="sha256:a74c7387a3dd8171e931bcd948355f7f9529368eae72c3c22a9beef6c2e73498"/>
-    <dependencies>
-      <dep package="ninja"/>
-    </dependencies>
+            hash="sha256:f68f56d60c80a77df8fc08fa1016bc5831605d4717b622c96212573271e14ecc"/>
   </distutils>
+
+  <autotools id="xdg-dbus-proxy" autogen-sh="configure">
+    <branch repo="github-tarball"
+            version="0.1.0"
+            module="flatpak/xdg-dbus-proxy/releases/download/${version}/xdg-dbus-proxy-${version}.tar.xz"
+            checkoutdir="xdg-dbus-proxy-${version}"
+            hash="sha256:9eefd30fe66940c8daf0e8ce6479307694814edb8b636caeb5aa6d6a46a4bc14"/>
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+  </autotools>
 
 </moduleset>

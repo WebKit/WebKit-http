@@ -26,7 +26,8 @@
 #include "Document.h"
 #include "Frame.h"
 #include "RenderListItem.h"
-#include "WebKitAccessibleWrapperAtk.h"
+#include "WebKitAccessible.h"
+#include "WebKitAccessibleUtil.h"
 #include <glib.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RefPtr.h>
@@ -35,7 +36,7 @@ namespace WebCore {
 
 static void emitTextSelectionChange(AccessibilityObject* object, VisibleSelection selection, int offset)
 {
-    AtkObject* axObject = object->wrapper();
+    auto* axObject = object->wrapper();
     if (!axObject || !ATK_IS_TEXT(axObject))
         return;
 
@@ -65,17 +66,17 @@ static void maybeEmitTextFocusChange(RefPtr<AccessibilityObject>&& object)
     if (object && oldObject.get() && oldObject.get()->document() != object->document())
         oldObject.get() = nullptr;
 
-    AtkObject* axObject = object ? object->wrapper() : 0;
-    AtkObject* oldAxObject = oldObject.get() ? oldObject.get()->wrapper() : nullptr;
+    auto* axObject = object ? object->wrapper() : nullptr;
+    auto* oldAxObject = oldObject.get() ? oldObject.get()->wrapper() : nullptr;
 
     if (axObject != oldAxObject) {
         if (oldAxObject && ATK_IS_TEXT(oldAxObject)) {
-            g_signal_emit_by_name(oldAxObject, "focus-event", false);
-            atk_object_notify_state_change(oldAxObject, ATK_STATE_FOCUSED, false);
+            g_signal_emit_by_name(oldAxObject, "focus-event", FALSE);
+            atk_object_notify_state_change(ATK_OBJECT(oldAxObject), ATK_STATE_FOCUSED, FALSE);
         }
         if (axObject && ATK_IS_TEXT(axObject)) {
-            g_signal_emit_by_name(axObject, "focus-event", true);
-            atk_object_notify_state_change(axObject, ATK_STATE_FOCUSED, true);
+            g_signal_emit_by_name(axObject, "focus-event", TRUE);
+            atk_object_notify_state_change(ATK_OBJECT(axObject), ATK_STATE_FOCUSED, TRUE);
         }
     }
 

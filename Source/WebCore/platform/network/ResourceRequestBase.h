@@ -31,8 +31,8 @@
 #include "FormData.h"
 #include "HTTPHeaderMap.h"
 #include "IntRect.h"
-#include "URL.h"
 #include "ResourceLoadPriority.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 
@@ -57,7 +57,7 @@ class ResourceResponse;
 class ResourceRequestBase {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    ResourceRequest isolatedCopy() const;
+    WEBCORE_EXPORT ResourceRequest isolatedCopy() const;
     WEBCORE_EXPORT void setAsIsolatedCopy(const ResourceRequest&);
 
     WEBCORE_EXPORT bool isNull() const;
@@ -140,10 +140,13 @@ public:
 
     void clearHTTPAcceptEncoding();
 
+    WEBCORE_EXPORT void clearPurpose();
+
     const Vector<String>& responseContentDispositionEncodingFallbackArray() const { return m_responseContentDispositionEncodingFallbackArray; }
     WEBCORE_EXPORT void setResponseContentDispositionEncodingFallbackArray(const String& encoding1, const String& encoding2 = String(), const String& encoding3 = String());
 
     WEBCORE_EXPORT FormData* httpBody() const;
+    WEBCORE_EXPORT bool hasUpload() const;
     WEBCORE_EXPORT void setHTTPBody(RefPtr<FormData>&&);
 
     bool allowCookies() const;
@@ -171,6 +174,10 @@ public:
     // Who initiated the request so the Inspector can associate it with a context. E.g. a Web Worker.
     String initiatorIdentifier() const { return m_initiatorIdentifier; }
     void setInitiatorIdentifier(const String& identifier) { m_initiatorIdentifier = identifier; }
+
+    // Additional information for the Inspector to be able to identify the node that initiated this request.
+    const Optional<int>& inspectorInitiatorNodeIdentifier() const { return m_inspectorInitiatorNodeIdentifier; }
+    void setInspectorInitiatorNodeIdentifier(int inspectorInitiatorNodeIdentifier) { m_inspectorInitiatorNodeIdentifier = inspectorInitiatorNodeIdentifier; }
 
 #if USE(SYSTEM_PREVIEW)
     WEBCORE_EXPORT bool isSystemPreview() const;
@@ -232,6 +239,7 @@ protected:
     SameSiteDisposition m_sameSiteDisposition { SameSiteDisposition::Unspecified };
     ResourceLoadPriority m_priority { ResourceLoadPriority::Low };
     Requester m_requester { Requester::Unspecified };
+    Optional<int> m_inspectorInitiatorNodeIdentifier;
     bool m_allowCookies { false };
     mutable bool m_resourceRequestUpdated { false };
     mutable bool m_platformRequestUpdated { false };
@@ -252,26 +260,11 @@ private:
 
 bool equalIgnoringHeaderFields(const ResourceRequestBase&, const ResourceRequestBase&);
 
-// FIXME: Find a better place for these functions.
-inline String toRegistrableDomain(const URL& a)
-{
-    return ResourceRequestBase::partitionName(a.host().toString());
-}
-
-inline bool registrableDomainsAreEqual(const URL& a, const URL& b)
-{
-    return toRegistrableDomain(a) == toRegistrableDomain(b);
-}
-inline bool registrableDomainsAreEqual(const URL& a, const String& registrableDomain)
-{
-    return toRegistrableDomain(a) == registrableDomain;
-}
-
 inline bool operator==(const ResourceRequest& a, const ResourceRequest& b) { return ResourceRequestBase::equal(a, b); }
 inline bool operator!=(ResourceRequest& a, const ResourceRequest& b) { return !(a == b); }
 
 WEBCORE_EXPORT unsigned initializeMaximumHTTPConnectionCountPerHost();
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 WEBCORE_EXPORT void initializeHTTPConnectionSettingsOnStartup();
 #endif
 
@@ -304,7 +297,7 @@ ALWAYS_INLINE bool ResourceRequestBase::decodeBase(Decoder& decoder)
     String firstPartyForCookies;
     if (!decoder.decode(firstPartyForCookies))
         return false;
-    m_firstPartyForCookies = URL(ParsedURLString, firstPartyForCookies);
+    m_firstPartyForCookies = URL({ }, firstPartyForCookies);
 
     if (!decoder.decode(m_httpMethod))
         return false;

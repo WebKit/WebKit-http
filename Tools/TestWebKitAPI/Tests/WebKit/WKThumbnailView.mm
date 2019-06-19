@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if PLATFORM(MAC) && WK_API_ENABLED
+#if PLATFORM(MAC)
 
 #import "JavaScriptTest.h"
 #import "PlatformUtilities.h"
@@ -96,13 +96,13 @@ static void setPageLoaderClient(WKPageRef page)
 
 TEST(WebKit, WKThumbnailViewKeepSnapshotWhenRemovedFromSuperview)
 {
-    WKRetainPtr<WKContextRef> context = adoptWK(WKContextCreate());
+    WKRetainPtr<WKContextRef> context = adoptWK(WKContextCreateWithConfiguration(nullptr));
     PlatformWebView webView(context.get());
     WKView *wkView = webView.platformView();
     setPageLoaderClient(webView.page());
     WKPageSetCustomBackingScaleFactor(webView.page(), 1);
 
-    WKRetainPtr<WKURLRef> url(AdoptWK, Util::createURLForResource("lots-of-text", "html"));
+    WKRetainPtr<WKURLRef> url = adoptWK(Util::createURLForResource("lots-of-text", "html"));
     WKPageLoadURL(webView.page(), url.get());
     Util::run(&didFinishLoad);
     didFinishLoad = false;
@@ -142,13 +142,13 @@ TEST(WebKit, WKThumbnailViewKeepSnapshotWhenRemovedFromSuperview)
 
 TEST(WebKit, WKThumbnailViewMaximumSnapshotSize)
 {
-    WKRetainPtr<WKContextRef> context = adoptWK(WKContextCreate());
+    WKRetainPtr<WKContextRef> context = adoptWK(WKContextCreateWithConfiguration(nullptr));
     PlatformWebView webView(context.get());
     WKView *wkView = webView.platformView();
     setPageLoaderClient(webView.page());
     WKPageSetCustomBackingScaleFactor(webView.page(), 1);
 
-    WKRetainPtr<WKURLRef> url(AdoptWK, Util::createURLForResource("lots-of-text", "html"));
+    WKRetainPtr<WKURLRef> url = adoptWK(Util::createURLForResource("lots-of-text", "html"));
     WKPageLoadURL(webView.page(), url.get());
     Util::run(&didFinishLoad);
     didFinishLoad = false;

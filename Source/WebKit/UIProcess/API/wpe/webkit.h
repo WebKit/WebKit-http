@@ -38,6 +38,7 @@
 #include <wpe/WebKitCookieManager.h>
 #include <wpe/WebKitCredential.h>
 #include <wpe/WebKitDefines.h>
+#include <wpe/WebKitDeviceInfoPermissionRequest.h>
 #include <wpe/WebKitDownload.h>
 #include <wpe/WebKitEditingCommands.h>
 #include <wpe/WebKitEditorState.h>
@@ -46,6 +47,7 @@
 #include <wpe/WebKitFaviconDatabase.h>
 #include <wpe/WebKitFindController.h>
 #include <wpe/WebKitFormSubmissionRequest.h>
+#include <wpe/WebKitGeolocationManager.h>
 #include <wpe/WebKitGeolocationPermissionRequest.h>
 #include <wpe/WebKitHitTestResult.h>
 #include <wpe/WebKitInstallMissingMediaPluginsPermissionRequest.h>
@@ -66,9 +68,12 @@
 #include <wpe/WebKitURIRequest.h>
 #include <wpe/WebKitURIResponse.h>
 #include <wpe/WebKitURISchemeRequest.h>
+#include <wpe/WebKitURIUtilities.h>
 #include <wpe/WebKitUserContent.h>
+#include <wpe/WebKitUserContentFilterStore.h>
 #include <wpe/WebKitUserContentManager.h>
 #include <wpe/WebKitUserMediaPermissionRequest.h>
+#include <wpe/WebKitVersion.h>
 #include <wpe/WebKitWebContext.h>
 #include <wpe/WebKitWebResource.h>
 #include <wpe/WebKitWebView.h>
@@ -77,6 +82,8 @@
 #include <wpe/WebKitWebsiteData.h>
 #include <wpe/WebKitWebsiteDataManager.h>
 #include <wpe/WebKitWindowProperties.h>
+
+#include <wpe/WebKitAutocleanups.h>
 
 #undef __WEBKIT_H_INSIDE__
 

@@ -30,9 +30,9 @@
 #include "APICast.h"
 #include "CallFrame.h"
 #include "InitializeThreading.h"
+#include "JSAPIGlobalObject.h"
 #include "JSCallbackObject.h"
 #include "JSClassRef.h"
-#include "JSGlobalObject.h"
 #include "JSObject.h"
 #include "JSCInlines.h"
 #include "SourceProvider.h"
@@ -138,7 +138,7 @@ JSGlobalContextRef JSGlobalContextCreateInGroup(JSContextGroupRef group, JSClass
     JSLockHolder locker(vm.ptr());
 
     if (!globalObjectClass) {
-        JSGlobalObject* globalObject = JSGlobalObject::create(vm.get(), JSGlobalObject::createStructure(vm.get(), jsNull()));
+        JSGlobalObject* globalObject = JSAPIGlobalObject::create(vm.get(), JSAPIGlobalObject::createStructure(vm.get(), jsNull()));
 #if ENABLE(REMOTE_INSPECTOR)
         if (JSRemoteInspectorGetInspectionEnabledByDefault())
             globalObject->setRemoteDebuggingEnabled(true);
@@ -232,7 +232,7 @@ JSStringRef JSGlobalContextCopyName(JSGlobalContextRef ctx)
     if (name.isNull())
         return 0;
 
-    return OpaqueJSString::create(name).leakRef();
+    return OpaqueJSString::tryCreate(name).leakRef();
 }
 
 void JSGlobalContextSetName(JSGlobalContextRef ctx, JSStringRef name)
@@ -316,7 +316,7 @@ JSStringRef JSContextCreateBacktrace(JSContextRef ctx, unsigned maxStackSize)
     BacktraceFunctor functor(builder, maxStackSize);
     frame->iterate(functor);
 
-    return OpaqueJSString::create(builder.toString()).leakRef();
+    return OpaqueJSString::tryCreate(builder.toString()).leakRef();
 }
 
 bool JSGlobalContextGetRemoteInspectionEnabled(JSGlobalContextRef ctx)

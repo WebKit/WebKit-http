@@ -29,10 +29,8 @@
  */
 
 #include "config.h"
-
 #include "FileStream.h"
 
-#include "FileSystem.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -49,14 +47,14 @@ FileStream::~FileStream()
     close();
 }
 
-long long FileStream::getSize(const String& path, double expectedModificationTime)
+long long FileStream::getSize(const String& path, Optional<WallTime> expectedModificationTime)
 {
     // Check the modification time for the possible file change.
-    time_t modificationTime;
-    if (!FileSystem::getFileModificationTime(path, modificationTime))
+    auto modificationTime = FileSystem::getFileModificationTime(path);
+    if (!modificationTime)
         return -1;
-    if (FileSystem::isValidFileTime(expectedModificationTime)) {
-        if (static_cast<time_t>(expectedModificationTime) != modificationTime)
+    if (expectedModificationTime) {
+        if (expectedModificationTime->secondsSinceEpoch().secondsAs<time_t>() != modificationTime->secondsSinceEpoch().secondsAs<time_t>())
             return -1;
     }
 

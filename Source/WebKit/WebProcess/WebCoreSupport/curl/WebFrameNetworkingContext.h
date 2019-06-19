@@ -47,13 +47,13 @@ public:
     WebFrameLoaderClient* webFrameLoaderClient() const;
 
 #if PLATFORM(WIN)
-    WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const;
+    WebCore::ResourceError blockedError(const WebCore::ResourceRequest&) const override;
 #endif
 
 private:
     WebFrameNetworkingContext(WebFrame*);
 
-    WebCore::NetworkStorageSession& storageSession() const override;
+    WebCore::NetworkStorageSession* storageSession() const override { return nullptr; }
 };
 
 }

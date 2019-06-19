@@ -81,7 +81,7 @@ HTMLFormElement::~HTMLFormElement()
 {
     document().formController().willDeleteForm(*this);
     if (!shouldAutocomplete())
-        document().unregisterForDocumentSuspensionCallbacks(this);
+        document().unregisterForDocumentSuspensionCallbacks(*this);
 
     m_defaultButton = nullptr;
     for (auto& associatedElement : m_associatedElements)
@@ -129,7 +129,7 @@ Node::InsertedIntoAncestorResult HTMLFormElement::insertedIntoAncestor(Insertion
 {
     HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
     if (insertionType.connectedToDocument)
-        document().didAssociateFormControl(this);
+        document().didAssociateFormControl(*this);
     return InsertedIntoAncestorResult::Done;
 }
 
@@ -142,13 +142,13 @@ void HTMLFormElement::removedFromAncestor(RemovalType removalType, ContainerNode
     HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 }
 
-void HTMLFormElement::handleLocalEvents(Event& event)
+void HTMLFormElement::handleLocalEvents(Event& event, EventInvokePhase phase)
 {
     if (event.eventPhase() != Event::CAPTURING_PHASE && is<Node>(event.target()) && event.target() != this && (event.type() == eventNames().submitEvent || event.type() == eventNames().resetEvent)) {
         event.stopPropagation();
         return;
     }
-    HTMLElement::handleLocalEvents(event);
+    HTMLElement::handleLocalEvents(event, phase);
 }
 
 unsigned HTMLFormElement::length() const
@@ -166,19 +166,19 @@ HTMLElement* HTMLFormElement::item(unsigned index)
     return elements()->item(index);
 }
 
-std::optional<Variant<RefPtr<RadioNodeList>, RefPtr<Element>>> HTMLFormElement::namedItem(const AtomicString& name)
+Optional<Variant<RefPtr<RadioNodeList>, RefPtr<Element>>> HTMLFormElement::namedItem(const AtomString& name)
 {
     auto namedItems = namedElements(name);
 
     if (namedItems.isEmpty())
-        return std::nullopt;
+        return WTF::nullopt;
     if (namedItems.size() == 1)
         return Variant<RefPtr<RadioNodeList>, RefPtr<Element>> { RefPtr<Element> { WTFMove(namedItems[0]) } };
 
     return Variant<RefPtr<RadioNodeList>, RefPtr<Element>> { RefPtr<RadioNodeList> { radioNodeList(name) } };
 }
 
-Vector<AtomicString> HTMLFormElement::supportedPropertyNames() const
+Vector<AtomString> HTMLFormElement::supportedPropertyNames() const
 {
     // FIXME: Should be implemented (only needed for enumeration with includeDontEnumProperties mode
     // since this class is annotated with LegacyUnenumerableNamedProperties).
@@ -408,7 +408,7 @@ void HTMLFormElement::resetAssociatedFormControlElements()
 
 bool HTMLFormElement::shouldAutocorrect() const
 {
-    const AtomicString& autocorrectValue = attributeWithoutSynchronization(autocorrectAttr);
+    const AtomString& autocorrectValue = attributeWithoutSynchronization(autocorrectAttr);
     if (!autocorrectValue.isEmpty())
         return !equalLettersIgnoringASCIICase(autocorrectValue, "off");
     if (RefPtr<HTMLFormElement> form = this->form())
@@ -418,7 +418,7 @@ bool HTMLFormElement::shouldAutocorrect() const
 
 #endif
 
-void HTMLFormElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLFormElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == actionAttr) {
         m_attributes.parseAction(value);
@@ -439,9 +439,9 @@ void HTMLFormElement::parseAttribute(const QualifiedName& name, const AtomicStri
         m_attributes.setAcceptCharset(value);
     else if (name == autocompleteAttr) {
         if (!shouldAutocomplete())
-            document().registerForDocumentSuspensionCallbacks(this);
+            document().registerForDocumentSuspensionCallbacks(*this);
         else
-            document().unregisterForDocumentSuspensionCallbacks(this);
+            document().unregisterForDocumentSuspensionCallbacks(*this);
     } else
         HTMLElement::parseAttribute(name, value);
 }
@@ -566,15 +566,15 @@ void HTMLFormElement::registerInvalidAssociatedFormControl(const HTMLFormControl
     ASSERT_WITH_MESSAGE(!is<HTMLFieldSetElement>(formControlElement), "FieldSet are never candidates for constraint validation.");
     ASSERT(static_cast<const Element&>(formControlElement).matchesInvalidPseudoClass());
 
-    if (m_invalidAssociatedFormControls.isEmpty())
+    if (m_invalidAssociatedFormControls.computesEmpty())
         invalidateStyleForSubtree();
-    m_invalidAssociatedFormControls.add(&formControlElement);
+    m_invalidAssociatedFormControls.add(const_cast<HTMLFormControlElement&>(formControlElement));
 }
 
 void HTMLFormElement::removeInvalidAssociatedFormControlIfNeeded(const HTMLFormControlElement& formControlElement)
 {
-    if (m_invalidAssociatedFormControls.remove(&formControlElement)) {
-        if (m_invalidAssociatedFormControls.isEmpty())
+    if (m_invalidAssociatedFormControls.remove(formControlElement)) {
+        if (m_invalidAssociatedFormControls.computesEmpty())
             invalidateStyleForSubtree();
     }
 }
@@ -587,7 +587,7 @@ bool HTMLFormElement::isURLAttribute(const Attribute& attribute) const
 void HTMLFormElement::registerImgElement(HTMLImageElement* e)
 {
     ASSERT(m_imageElements.find(e) == notFound);
-    m_imageElements.append(e);
+    m_imageElements.append(makeWeakPtr(e));
 }
 
 void HTMLFormElement::removeImgElement(HTMLImageElement* e)
@@ -681,18 +681,18 @@ HTMLFormControlElement* HTMLFormElement::findSubmitButton(const Event* event) co
 
 HTMLFormControlElement* HTMLFormElement::defaultButton() const
 {
-    if (!m_defaultButton) {
-        for (auto& associatedElement : m_associatedElements) {
-            if (!is<HTMLFormControlElement>(*associatedElement))
-                continue;
-            HTMLFormControlElement& control = downcast<HTMLFormControlElement>(*associatedElement);
-            if (control.isSuccessfulSubmitButton()) {
-                m_defaultButton = &control;
-                break;
-            }
+    if (m_defaultButton)
+        return m_defaultButton.get();
+    for (auto& associatedElement : m_associatedElements) {
+        if (!is<HTMLFormControlElement>(*associatedElement))
+            continue;
+        HTMLFormControlElement& control = downcast<HTMLFormControlElement>(*associatedElement);
+        if (control.isSuccessfulSubmitButton()) {
+            m_defaultButton = makeWeakPtr(control);
+            return &control;
         }
     }
-    return m_defaultButton;
+    return nullptr;
 }
 
 void HTMLFormElement::resetDefaultButton()
@@ -704,8 +704,9 @@ void HTMLFormElement::resetDefaultButton()
         return;
     }
 
-    RefPtr<HTMLFormControlElement> oldDefault = m_defaultButton;
-    m_defaultButton = nullptr;
+    ScriptDisallowedScope::InMainThread scriptDisallowedScope;
+
+    auto oldDefault = WTFMove(m_defaultButton);
     defaultButton();
     if (m_defaultButton != oldDefault) {
         if (oldDefault)
@@ -773,7 +774,7 @@ inline void HTMLFormElement::assertItemCanBeInPastNamesMap(FormNamedItem*) const
 }
 #endif
 
-RefPtr<HTMLElement> HTMLFormElement::elementFromPastNamesMap(const AtomicString& pastName) const
+RefPtr<HTMLElement> HTMLFormElement::elementFromPastNamesMap(const AtomString& pastName) const
 {
     if (pastName.isEmpty() || !m_pastNamesMap)
         return nullptr;
@@ -784,7 +785,7 @@ RefPtr<HTMLElement> HTMLFormElement::elementFromPastNamesMap(const AtomicString&
     return &item->asHTMLElement();
 }
 
-void HTMLFormElement::addToPastNamesMap(FormNamedItem* item, const AtomicString& pastName)
+void HTMLFormElement::addToPastNamesMap(FormNamedItem* item, const AtomString& pastName)
 {
     assertItemCanBeInPastNamesMap(item);
     if (pastName.isEmpty())
@@ -808,16 +809,16 @@ void HTMLFormElement::removeFromPastNamesMap(FormNamedItem* item)
 
 bool HTMLFormElement::matchesValidPseudoClass() const
 {
-    return m_invalidAssociatedFormControls.isEmpty();
+    return m_invalidAssociatedFormControls.computesEmpty();
 }
 
 bool HTMLFormElement::matchesInvalidPseudoClass() const
 {
-    return !m_invalidAssociatedFormControls.isEmpty();
+    return !matchesValidPseudoClass();
 }
 
 // FIXME: Use Ref<HTMLElement> for the function result since there are no non-HTML elements returned here.
-Vector<Ref<Element>> HTMLFormElement::namedElements(const AtomicString& name)
+Vector<Ref<Element>> HTMLFormElement::namedElements(const AtomString& name)
 {
     // http://www.whatwg.org/specs/web-apps/current-work/multipage/forms.html#dom-form-nameditem
     Vector<Ref<Element>> namedItems = elements()->namedItems(name);
@@ -843,8 +844,8 @@ void HTMLFormElement::resumeFromDocumentSuspension()
 void HTMLFormElement::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
     if (!shouldAutocomplete()) {
-        oldDocument.unregisterForDocumentSuspensionCallbacks(this);
-        document().registerForDocumentSuspensionCallbacks(this);
+        oldDocument.unregisterForDocumentSuspensionCallbacks(*this);
+        newDocument.registerForDocumentSuspensionCallbacks(*this);
     }
 
     HTMLElement::didMoveToNewDocument(oldDocument, newDocument);
@@ -863,7 +864,7 @@ void HTMLFormElement::finishParsingChildren()
 
 const Vector<FormAssociatedElement*>& HTMLFormElement::unsafeAssociatedElements() const
 {
-    ASSERT(!ScriptDisallowedScope::InMainThread::isScriptAllowed());
+    ASSERT(ScriptDisallowedScope::InMainThread::hasDisallowedScope());
     return m_associatedElements;
 }
 
@@ -885,15 +886,15 @@ HTMLFormElement* HTMLFormElement::findClosestFormAncestor(const Element& startEl
     return const_cast<HTMLFormElement*>(ancestorsOfType<HTMLFormElement>(startElement).first());
 }
 
-void HTMLFormElement::setAutocomplete(const AtomicString& value)
+void HTMLFormElement::setAutocomplete(const AtomString& value)
 {
     setAttributeWithoutSynchronization(autocompleteAttr, value);
 }
 
-const AtomicString& HTMLFormElement::autocomplete() const
+const AtomString& HTMLFormElement::autocomplete() const
 {
-    static NeverDestroyed<AtomicString> on("on", AtomicString::ConstructFromLiteral);
-    static NeverDestroyed<AtomicString> off("off", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<AtomString> on("on", AtomString::ConstructFromLiteral);
+    static NeverDestroyed<AtomString> off("off", AtomString::ConstructFromLiteral);
 
     return equalIgnoringASCIICase(attributeWithoutSynchronization(autocompleteAttr), "off") ? off : on;
 }

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2006, 2007, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,12 +21,6 @@
 
 #pragma once
 
-#include "SVGAnimatedAngle.h"
-#include "SVGAnimatedBoolean.h"
-#include "SVGAnimatedEnumeration.h"
-#include "SVGAnimatedLength.h"
-#include "SVGAnimatedPreserveAspectRatio.h"
-#include "SVGAnimatedRect.h"
 #include "SVGElement.h"
 #include "SVGExternalResourcesRequired.h"
 #include "SVGFitToViewBox.h"
@@ -58,33 +52,29 @@ public:
     void setOrientToAuto();
     void setOrientToAngle(SVGAngle&);
 
-    const SVGLengthValue& refX() const { return m_refX.currentValue(attributeOwnerProxy()); }
-    const SVGLengthValue& refY() const { return m_refY.currentValue(attributeOwnerProxy()); }
-    const SVGLengthValue& markerWidth() const { return m_markerWidth.currentValue(attributeOwnerProxy()); }
-    const SVGLengthValue& markerHeight() const { return m_markerHeight.currentValue(attributeOwnerProxy()); }
-    SVGMarkerUnitsType markerUnits() const { return m_markerUnits.currentValue(attributeOwnerProxy()); }
-    const SVGAngleValue& orientAngle() const { return m_orientAngle.currentValue(attributeOwnerProxy()); }
-    SVGMarkerOrientType orientType() const { return m_orientType.currentValue(attributeOwnerProxy()); }
+    const SVGLengthValue& refX() const { return m_refX->currentValue(); }
+    const SVGLengthValue& refY() const { return m_refY->currentValue(); }
+    const SVGLengthValue& markerWidth() const { return m_markerWidth->currentValue(); }
+    const SVGLengthValue& markerHeight() const { return m_markerHeight->currentValue(); }
+    SVGMarkerUnitsType markerUnits() const { return m_markerUnits->currentValue<SVGMarkerUnitsType>(); }
+    const SVGAngleValue& orientAngle() const { return m_orientAngle->currentValue(); }
+    SVGMarkerOrientType orientType() const { return m_orientType->currentValue<SVGMarkerOrientType>(); }
 
-    RefPtr<SVGAnimatedLength> refXAnimated() { return m_refX.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLength> refYAnimated() { return m_refY.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLength> markerWidthAnimated() { return m_markerWidth.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLength> markerHeightAnimated() { return m_markerHeight.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedEnumeration> markerUnitsAnimated() { return m_markerUnits.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedAngle> orientAngleAnimated() { return m_orientAngle.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedEnumeration> orientTypeAnimated() { return m_orientType.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedLength& refXAnimated() { return m_refX; }
+    SVGAnimatedLength& refYAnimated() { return m_refY; }
+    SVGAnimatedLength& markerWidthAnimated() { return m_markerWidth; }
+    SVGAnimatedLength& markerHeightAnimated() { return m_markerHeight; }
+    SVGAnimatedEnumeration& markerUnitsAnimated() { return m_markerUnits; }
+    SVGAnimatedAngle& orientAngleAnimated() { return m_orientAngle; }
+    Ref<SVGAnimatedEnumeration> orientTypeAnimated() { return m_orientType.copyRef(); }
 
 private:
     SVGMarkerElement(const QualifiedName&, Document&);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGMarkerElement, SVGElement, SVGExternalResourcesRequired, SVGFitToViewBox>;
-    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
-    static bool isAnimatedLengthAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isAnimatedLengthAttribute(attributeName); }
-    static void registerAttributes();
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGMarkerElement, SVGElement, SVGExternalResourcesRequired, SVGFitToViewBox>;
+    const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
 
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
     void childrenChanged(const ChildChange&) override;
 
@@ -97,42 +87,14 @@ private:
 
     void setOrient(SVGMarkerOrientType, const SVGAngleValue&);
 
-    static const AtomicString& orientTypeIdentifier();
-    static const AtomicString& orientAngleIdentifier();
-
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
-
-    class SVGAnimatedCustomOrientTypeAttribute : public SVGAnimatedEnumerationAttribute<SVGMarkerOrientType> {
-    public:
-        using Base = SVGAnimatedEnumerationAttribute<SVGMarkerOrientType>;
-
-        SVGAnimatedCustomOrientTypeAttribute(SVGMarkerOrientType baseValue)
-            : Base(baseValue)
-        {
-        }
-        void synchronize(Element& element, const QualifiedName& attributeName)
-        {
-            static const NeverDestroyed<String> autoString = MAKE_STATIC_STRING_IMPL("auto");
-            static const NeverDestroyed<String> autoStartReverseString = MAKE_STATIC_STRING_IMPL("auto-start-reverse");
-
-            if (!shouldSynchronize())
-                return;
-            if (value() == SVGMarkerOrientAuto)
-                element.setSynchronizedLazyAttribute(attributeName, autoString.get());
-            else if (value() == SVGMarkerOrientAutoStartReverse)
-                element.setSynchronizedLazyAttribute(attributeName, autoStartReverseString.get());
-        }
-    };
-
-    using SVGAnimatedCustomAngleAttributeAccessor = SVGAnimatedPairAttributeAccessor<SVGMarkerElement, SVGAnimatedAngleAttribute, AnimatedAngle, SVGAnimatedCustomOrientTypeAttribute, AnimatedEnumeration>;
-
-    SVGAnimatedLengthAttribute m_refX { LengthModeWidth };
-    SVGAnimatedLengthAttribute m_refY { LengthModeHeight };
-    SVGAnimatedLengthAttribute m_markerWidth { LengthModeWidth, "3" };
-    SVGAnimatedLengthAttribute m_markerHeight { LengthModeHeight, "3" };
-    SVGAnimatedEnumerationAttribute<SVGMarkerUnitsType> m_markerUnits { SVGMarkerUnitsStrokeWidth };
-    SVGAnimatedAngleAttribute m_orientAngle;
-    SVGAnimatedCustomOrientTypeAttribute m_orientType { SVGMarkerOrientAngle };
+    PropertyRegistry m_propertyRegistry { *this };
+    Ref<SVGAnimatedLength> m_refX { SVGAnimatedLength::create(this, LengthModeWidth) };
+    Ref<SVGAnimatedLength> m_refY { SVGAnimatedLength::create(this, LengthModeHeight) };
+    Ref<SVGAnimatedLength> m_markerWidth { SVGAnimatedLength::create(this, LengthModeWidth, "3") };
+    Ref<SVGAnimatedLength> m_markerHeight { SVGAnimatedLength::create(this, LengthModeHeight, "3") };
+    Ref<SVGAnimatedEnumeration> m_markerUnits { SVGAnimatedEnumeration::create(this, SVGMarkerUnitsStrokeWidth) };
+    Ref<SVGAnimatedAngle> m_orientAngle { SVGAnimatedAngle::create(this) };
+    Ref<SVGAnimatedOrientType> m_orientType { SVGAnimatedOrientType::create(this, SVGMarkerOrientAngle) };
 };
 
 } // namespace WebCore

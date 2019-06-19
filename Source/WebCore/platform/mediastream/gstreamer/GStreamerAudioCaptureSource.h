@@ -22,6 +22,7 @@
 #pragma once
 
 #if ENABLE(MEDIA_STREAM) && USE(LIBWEBRTC) && USE(GSTREAMER)
+#include "CaptureDevice.h"
 #include "GStreamerAudioCapturer.h"
 #include "GStreamerCaptureDevice.h"
 #include "RealtimeMediaSource.h"
@@ -30,24 +31,25 @@ namespace WebCore {
 
 class GStreamerAudioCaptureSource : public RealtimeMediaSource {
 public:
-    static CaptureSourceOrError create(const String& deviceID, const MediaConstraints*);
+    static CaptureSourceOrError create(String&& deviceID, String&& hashSalt, const MediaConstraints*);
     WEBCORE_EXPORT static AudioCaptureFactory& factory();
 
-    const RealtimeMediaSourceCapabilities& capabilities() const override;
-    const RealtimeMediaSourceSettings& settings() const override;
+    const RealtimeMediaSourceCapabilities& capabilities() override;
+    const RealtimeMediaSourceSettings& settings() override;
 
     GstElement* pipeline() { return m_capturer->pipeline(); }
     GStreamerCapturer* capturer() { return m_capturer.get(); }
 
 protected:
-    GStreamerAudioCaptureSource(GStreamerCaptureDevice);
-    GStreamerAudioCaptureSource(const String& deviceID, const String& name);
+    GStreamerAudioCaptureSource(GStreamerCaptureDevice, String&& hashSalt);
+    GStreamerAudioCaptureSource(String&& deviceID, String&& name, String&& hashSalt);
     virtual ~GStreamerAudioCaptureSource();
     void startProducingData() override;
     void stopProducingData() override;
+    CaptureDevice::DeviceType deviceType() const override { return CaptureDevice::DeviceType::Microphone; }
 
-    mutable std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
-    mutable std::optional<RealtimeMediaSourceSettings> m_currentSettings;
+    mutable Optional<RealtimeMediaSourceCapabilities> m_capabilities;
+    mutable Optional<RealtimeMediaSourceSettings> m_currentSettings;
 
 private:
     bool isCaptureSource() const final { return true; }

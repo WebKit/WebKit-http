@@ -24,6 +24,9 @@ class SaturationProtector {
  public:
   explicit SaturationProtector(ApmDataDumper* apm_data_dumper);
 
+  SaturationProtector(ApmDataDumper* apm_data_dumper,
+                      float extra_saturation_margin_db);
+
   // Update and return margin estimate. This method should be called
   // whenever a frame is reliably classified as 'speech'.
   //
@@ -58,8 +61,9 @@ class SaturationProtector {
 
   ApmDataDumper* apm_data_dumper_;
 
-  float last_margin_ = kInitialSaturationMarginDb;
+  float last_margin_;
   PeakEnveloper peak_enveloper_;
+  const float extra_saturation_margin_db_;
 };
 
 }  // namespace webrtc

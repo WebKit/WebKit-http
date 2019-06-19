@@ -48,7 +48,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/unicode/CharacterNames.h>
 
-#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS)
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS_FAMILY)
 #include "TelephoneNumberDetector.h"
 #endif
 
@@ -56,7 +56,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-CustomElementConstructionData::CustomElementConstructionData(Ref<JSCustomElementInterface>&& customElementInterface, const AtomicString& name, Vector<Attribute>&& attributes)
+CustomElementConstructionData::CustomElementConstructionData(Ref<JSCustomElementInterface>&& customElementInterface, const AtomString& name, Vector<Attribute>&& attributes)
     : elementInterface(WTFMove(customElementInterface))
     , name(name)
     , attributes(WTFMove(attributes))
@@ -89,7 +89,7 @@ static inline bool isAllWhitespaceOrReplacementCharacters(const String& string)
     return string.isAllSpecialCharacters<isHTMLSpaceOrReplacementCharacter>();
 }
 
-static bool isNumberedHeaderTag(const AtomicString& tagName)
+static bool isNumberedHeaderTag(const AtomString& tagName)
 {
     return tagName == h1Tag
         || tagName == h2Tag
@@ -99,22 +99,22 @@ static bool isNumberedHeaderTag(const AtomicString& tagName)
         || tagName == h6Tag;
 }
 
-static bool isCaptionColOrColgroupTag(const AtomicString& tagName)
+static bool isCaptionColOrColgroupTag(const AtomString& tagName)
 {
     return tagName == captionTag || tagName == colTag || tagName == colgroupTag;
 }
 
-static bool isTableCellContextTag(const AtomicString& tagName)
+static bool isTableCellContextTag(const AtomString& tagName)
 {
     return tagName == thTag || tagName == tdTag;
 }
 
-static bool isTableBodyContextTag(const AtomicString& tagName)
+static bool isTableBodyContextTag(const AtomString& tagName)
 {
     return tagName == tbodyTag || tagName == tfootTag || tagName == theadTag;
 }
 
-static bool isNonAnchorNonNobrFormattingTag(const AtomicString& tagName)
+static bool isNonAnchorNonNobrFormattingTag(const AtomString& tagName)
 {
     return tagName == bTag
         || tagName == bigTag
@@ -130,13 +130,13 @@ static bool isNonAnchorNonNobrFormattingTag(const AtomicString& tagName)
         || tagName == uTag;
 }
 
-static bool isNonAnchorFormattingTag(const AtomicString& tagName)
+static bool isNonAnchorFormattingTag(const AtomString& tagName)
 {
     return tagName == nobrTag || isNonAnchorNonNobrFormattingTag(tagName);
 }
 
 // https://html.spec.whatwg.org/multipage/syntax.html#formatting
-bool HTMLConstructionSite::isFormattingTag(const AtomicString& tagName)
+bool HTMLConstructionSite::isFormattingTag(const AtomString& tagName)
 {
     return tagName == aTag || isNonAnchorFormattingTag(tagName);
 }
@@ -420,7 +420,7 @@ void HTMLTreeBuilder::processFakeStartTag(const QualifiedName& tagName, Vector<A
     processStartTag(WTFMove(fakeToken));
 }
 
-void HTMLTreeBuilder::processFakeEndTag(const AtomicString& tagName)
+void HTMLTreeBuilder::processFakeEndTag(const AtomString& tagName)
 {
     AtomicHTMLToken fakeToken(HTMLToken::EndTag, tagName);
     processEndTag(WTFMove(fakeToken));
@@ -478,13 +478,13 @@ template <bool shouldClose(const HTMLStackItem&)> void HTMLTreeBuilder::processC
     m_tree.insertHTMLElement(WTFMove(token));
 }
 
-template <typename TableQualifiedName> static HashMap<AtomicString, QualifiedName> createCaseMap(const TableQualifiedName* const names[], unsigned length)
+template <typename TableQualifiedName> static HashMap<AtomString, QualifiedName> createCaseMap(const TableQualifiedName* const names[], unsigned length)
 {
-    HashMap<AtomicString, QualifiedName> map;
+    HashMap<AtomString, QualifiedName> map;
     for (unsigned i = 0; i < length; ++i) {
         const QualifiedName& name = *names[i];
-        const AtomicString& localName = name.localName();
-        AtomicString loweredLocalName = localName.convertToASCIILowercase();
+        const AtomString& localName = name.localName();
+        AtomString loweredLocalName = localName.convertToASCIILowercase();
         if (loweredLocalName != localName)
             map.add(loweredLocalName, name);
     }
@@ -493,14 +493,14 @@ template <typename TableQualifiedName> static HashMap<AtomicString, QualifiedNam
 
 static void adjustSVGTagNameCase(AtomicHTMLToken& token)
 {
-    static NeverDestroyed<HashMap<AtomicString, QualifiedName>> map = createCaseMap(SVGNames::getSVGTags(), SVGNames::SVGTagsCount);
+    static NeverDestroyed<HashMap<AtomString, QualifiedName>> map = createCaseMap(SVGNames::getSVGTags(), SVGNames::SVGTagsCount);
     const QualifiedName& casedName = map.get().get(token.name());
     if (casedName.localName().isNull())
         return;
     token.setName(casedName.localName());
 }
 
-static inline void adjustAttributes(HashMap<AtomicString, QualifiedName>& map, AtomicHTMLToken& token)
+static inline void adjustAttributes(HashMap<AtomString, QualifiedName>& map, AtomicHTMLToken& token)
 {
     for (auto& attribute : token.attributes()) {
         const QualifiedName& casedName = map.get(attribute.localName());
@@ -511,7 +511,7 @@ static inline void adjustAttributes(HashMap<AtomicString, QualifiedName>& map, A
 
 template<const QualifiedName* const* attributesTable(), unsigned attributesTableLength> static void adjustAttributes(AtomicHTMLToken& token)
 {
-    static NeverDestroyed<HashMap<AtomicString, QualifiedName>> map = createCaseMap(attributesTable(), attributesTableLength);
+    static NeverDestroyed<HashMap<AtomString, QualifiedName>> map = createCaseMap(attributesTable(), attributesTableLength);
     adjustAttributes(map, token);
 }
 
@@ -525,20 +525,20 @@ static inline void adjustMathMLAttributes(AtomicHTMLToken& token)
     adjustAttributes<MathMLNames::getMathMLAttrs, MathMLNames::MathMLAttrsCount>(token);
 }
 
-static void addNamesWithPrefix(HashMap<AtomicString, QualifiedName>& map, const AtomicString& prefix, const QualifiedName* const names[], unsigned length)
+static void addNamesWithPrefix(HashMap<AtomString, QualifiedName>& map, const AtomString& prefix, const QualifiedName* const names[], unsigned length)
 {
     for (unsigned i = 0; i < length; ++i) {
         const QualifiedName& name = *names[i];
-        const AtomicString& localName = name.localName();
+        const AtomString& localName = name.localName();
         map.add(prefix + ':' + localName, QualifiedName(prefix, localName, name.namespaceURI()));
     }
 }
 
-static HashMap<AtomicString, QualifiedName> createForeignAttributesMap()
+static HashMap<AtomString, QualifiedName> createForeignAttributesMap()
 {
-    HashMap<AtomicString, QualifiedName> map;
+    HashMap<AtomString, QualifiedName> map;
 
-    AtomicString xlinkName("xlink", AtomicString::ConstructFromLiteral);
+    AtomString xlinkName("xlink", AtomString::ConstructFromLiteral);
     addNamesWithPrefix(map, xlinkName, XLinkNames::getXLinkAttrs(), XLinkNames::XLinkAttrsCount);
     addNamesWithPrefix(map, xmlAtom(), XMLNames::getXMLAttrs(), XMLNames::XMLAttrsCount);
 
@@ -550,7 +550,7 @@ static HashMap<AtomicString, QualifiedName> createForeignAttributesMap()
 
 static void adjustForeignAttributes(AtomicHTMLToken& token)
 {
-    static NeverDestroyed<HashMap<AtomicString, QualifiedName>> map = createForeignAttributesMap();
+    static NeverDestroyed<HashMap<AtomString, QualifiedName>> map = createForeignAttributesMap();
     adjustAttributes(map, token);
 }
 
@@ -787,7 +787,7 @@ void HTMLTreeBuilder::processStartTagForInBody(AtomicHTMLToken&& token)
         processGenericRawTextStartTag(WTFMove(token));
         return;
     }
-    if (token.name() == noembedTag && m_options.pluginsEnabled) {
+    if (token.name() == noembedTag) {
         processGenericRawTextStartTag(WTFMove(token));
         return;
     }
@@ -2191,7 +2191,7 @@ void HTMLTreeBuilder::processCharacter(AtomicHTMLToken&& token)
     processCharacterBuffer(buffer);
 }
 
-#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS)
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS_FAMILY)
 
 // FIXME: Extract the following iOS-specific code into a separate file.
 // From the string 4089961010, creates a link of the form <a href="tel:4089961010">4089961010</a> and inserts it.
@@ -2200,7 +2200,7 @@ void HTMLTreeBuilder::insertPhoneNumberLink(const String& string)
     Vector<Attribute> attributes;
     attributes.append(Attribute(HTMLNames::hrefAttr, makeString("tel:"_s, string)));
 
-    const AtomicString& aTagLocalName = aTag->localName();
+    const AtomString& aTagLocalName = aTag->localName();
     AtomicHTMLToken aStartToken(HTMLToken::StartTag, aTagLocalName, WTFMove(attributes));
     AtomicHTMLToken aEndToken(HTMLToken::EndTag, aTagLocalName);
 
@@ -2258,6 +2258,7 @@ void HTMLTreeBuilder::linkifyPhoneNumbers(const String& string)
 static inline bool disallowTelephoneNumberParsing(const ContainerNode& node)
 {
     return node.isLink()
+        || node.hasTagName(aTag)
         || node.hasTagName(scriptTag)
         || is<HTMLFormControlElement>(node)
         || node.hasTagName(styleTag)
@@ -2275,7 +2276,7 @@ static inline bool shouldParseTelephoneNumbersInNode(const ContainerNode& node)
     return true;
 }
 
-#endif // ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS)
+#endif // ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS_FAMILY)
 
 void HTMLTreeBuilder::processCharacterBuffer(ExternalCharacterTokenBuffer& buffer)
 {
@@ -2430,7 +2431,7 @@ void HTMLTreeBuilder::processCharacterBufferForInBody(ExternalCharacterTokenBuff
 {
     m_tree.reconstructTheActiveFormattingElements();
     String characters = buffer.takeRemaining();
-#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS)
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(IOS_FAMILY)
     if (!isParsingFragment() && m_tree.isTelephoneNumberParsingEnabled() && shouldParseTelephoneNumbersInNode(m_tree.currentNode()) && TelephoneNumberDetector::isSupported())
         linkifyPhoneNumbers(characters);
     else
@@ -2773,7 +2774,7 @@ void HTMLTreeBuilder::processTokenInForeignContent(AtomicHTMLToken&& token)
             processStartTag(WTFMove(token));
             return;
         }
-        const AtomicString& currentNamespace = adjustedCurrentNode.namespaceURI();
+        const AtomString& currentNamespace = adjustedCurrentNode.namespaceURI();
         if (currentNamespace == MathMLNames::mathmlNamespaceURI)
             adjustMathMLAttributes(token);
         if (currentNamespace == SVGNames::svgNamespaceURI) {

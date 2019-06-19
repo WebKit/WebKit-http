@@ -30,7 +30,9 @@
 #include "config.h"
 #include "FloatPolygon.h"
 
+#include <wtf/HexNumber.h>
 #include <wtf/MathExtras.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
 
@@ -252,5 +254,14 @@ bool VertexPair::intersection(const VertexPair& other, FloatPoint& point) const
     point = vertex1() + uThisLine * thisDelta;
     return true;
 }
+
+#ifndef NDEBUG
+
+String FloatPolygonEdge::debugString() const
+{
+    return makeString("0x", hex(reinterpret_cast<uintptr_t>(this)), " (", vertex1().x(), ',', vertex1().y(), ' ', vertex2().x(), ',', vertex2().y(), ')');
+}
+
+#endif
 
 } // namespace WebCore

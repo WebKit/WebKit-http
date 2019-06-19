@@ -28,8 +28,8 @@
 #include "config.h"
 
 #include "NotImplemented.h"
-#include "URL.h"
 #include <wtf/Forward.h>
+#include <wtf/URL.h>
 
 namespace WebCore {
 

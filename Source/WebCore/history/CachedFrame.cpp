@@ -29,6 +29,7 @@
 #include "CSSAnimationController.h"
 #include "CachedFramePlatformData.h"
 #include "CachedPage.h"
+#include "CustomHeaderFields.h"
 #include "DOMWindow.h"
 #include "Document.h"
 #include "DocumentLoader.h"
@@ -47,7 +48,7 @@
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/text/CString.h>
 
-#if PLATFORM(IOS) || ENABLE(TOUCH_EVENTS)
+#if PLATFORM(IOS_FAMILY) || ENABLE(TOUCH_EVENTS)
 #include "Chrome.h"
 #include "ChromeClient.h"
 #endif
@@ -116,7 +117,7 @@ void CachedFrameBase::restore()
         ASSERT_WITH_SECURITY_IMPLICATION(m_document == frame.document());
     }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_isMainFrame) {
         frame.loader().client().didRestoreFrameHierarchyForCachedFrame();
 
@@ -143,16 +144,32 @@ CachedFrame::CachedFrame(Frame& frame)
     ASSERT(m_view);
     ASSERT(m_document->pageCacheState() == Document::InPageCache);
 
+    RELEASE_ASSERT(m_document->domWindow());
+    RELEASE_ASSERT(m_document->frame());
+    RELEASE_ASSERT(m_document->domWindow()->frame());
+
+    // FIXME: We have evidence that constructing CachedFrames for descendant frames may detach the document from its frame (rdar://problem/49877867).
+    // This sets the flag to help find the guilty code.
+    m_document->setMayBeDetachedFromFrame(false);
+
     // Create the CachedFrames for all Frames in the FrameTree.
     for (Frame* child = frame.tree().firstChild(); child; child = child->tree().nextSibling())
         m_childFrames.append(std::make_unique<CachedFrame>(*child));
+
+    RELEASE_ASSERT(m_document->domWindow());
+    RELEASE_ASSERT(m_document->frame());
+    RELEASE_ASSERT(m_document->domWindow()->frame());
 
     // Active DOM objects must be suspended before we cache the frame script data.
     m_document->suspend(ReasonForSuspension::PageCache);
 
     m_cachedFrameScriptData = std::make_unique<ScriptCachedFrameData>(frame);
 
-    m_document->domWindow()->suspendForDocumentSuspension();
+    m_document->domWindow()->suspendForPageCache();
+
+    // Clear FrameView to reset flags such as 'firstVisuallyNonEmptyLayoutCallbackPending' so that the
+    // 'DidFirstVisuallyNonEmptyLayout' callback gets called against when restoring from PageCache.
+    m_view->resetLayoutMilestones();
 
     frame.loader().client().savePlatformDataToCachedFrame(this);
 
@@ -178,7 +195,7 @@ CachedFrame::CachedFrame(Frame& frame)
         LOG(PageCache, "Finished creating CachedFrame for child frame with url '%s' and DocumentLoader %p\n", m_url.string().utf8().data(), m_documentLoader.get());
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_isMainFrame) {
         if (DOMWindow* domWindow = m_document->domWindow()) {
             if (domWindow->scrollEventListenerCount() && frame.page())
@@ -187,6 +204,7 @@ CachedFrame::CachedFrame(Frame& frame)
     }
 #endif
 
+    m_document->setMayBeDetachedFromFrame(true);
     m_document->detachFromCachedFrame(*this);
 
     ASSERT_WITH_SECURITY_IMPLICATION(!m_documentLoader->isLoading());

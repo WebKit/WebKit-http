@@ -62,9 +62,6 @@ public:
     // method during layout when they are invalidated by a filter.
     static void addResourceForClientInvalidation(RenderSVGResourceContainer*);
 
-    bool hasSVGShadow() const { return m_hasSVGShadow; }
-    void setHasSVGShadow(bool hasShadow) { m_hasSVGShadow = hasShadow; }
-
 private:
     void element() const = delete;
 
@@ -72,7 +69,7 @@ private:
     const char* renderName() const override { return "RenderSVGRoot"; }
 
     LayoutUnit computeReplacedLogicalWidth(ShouldComputePreferred  = ComputeActual) const override;
-    LayoutUnit computeReplacedLogicalHeight(std::optional<LayoutUnit> estimatedUsedWidth = std::nullopt) const override;
+    LayoutUnit computeReplacedLogicalHeight(Optional<LayoutUnit> estimatedUsedWidth = WTF::nullopt) const override;
     void layout() override;
     void paintReplaced(PaintInfo&, const LayoutPoint&) override;
 
@@ -91,12 +88,11 @@ private:
     FloatRect objectBoundingBox() const override { return m_objectBoundingBox; }
     FloatRect strokeBoundingBox() const override { return m_strokeBoundingBox; }
     FloatRect repaintRectInLocalCoordinates() const override { return m_repaintBoundingBox; }
-    FloatRect repaintRectInLocalCoordinatesExcludingSVGShadow() const { return m_repaintBoundingBoxExcludingShadow; }
 
     bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
 
     LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const override;
-    FloatRect computeFloatRectForRepaint(const FloatRect&, const RenderLayerModelObject* repaintContainer, bool fixed) const override;
+    Optional<FloatRect> computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject* container, VisibleRectContext) const override;
 
     void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags, bool* wasFixed) const override;
     const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const override;
@@ -119,7 +115,6 @@ private:
     HashSet<RenderSVGResourceContainer*> m_resourcesNeedingToInvalidateClients;
     bool m_isLayoutSizeChanged : 1;
     bool m_needsBoundariesOrTransformUpdate : 1;
-    bool m_hasSVGShadow : 1;
     bool m_hasBoxDecorations : 1;
 };
 

@@ -143,9 +143,6 @@ static bool hasDoubleValue(CSSPrimitiveValue::UnitType type)
     case CSSPrimitiveValue::CSS_CALC_PERCENTAGE_WITH_LENGTH:
     case CSSPrimitiveValue::CSS_PROPERTY_ID:
     case CSSPrimitiveValue::CSS_VALUE_ID:
-#if ENABLE(DASHBOARD_SUPPORT)
-    case CSSPrimitiveValue::CSS_DASHBOARD_REGION:
-#endif
         return false;
     };
     ASSERT_NOT_REACHED();
@@ -267,6 +264,16 @@ private:
         }
         ASSERT_NOT_REACHED();
         return 0;
+    }
+
+    void collectDirectComputationalDependencies(HashSet<CSSPropertyID>& values) const final
+    {
+        m_value->collectDirectComputationalDependencies(values);
+    }
+
+    void collectDirectRootComputationalDependencies(HashSet<CSSPropertyID>& values) const final
+    {
+        m_value->collectDirectRootComputationalDependencies(values);
     }
 
     bool equals(const CSSCalcExpressionNode& other) const final
@@ -408,7 +415,7 @@ public:
     {
         ASSERT(op == CalcOperator::Min || op == CalcOperator::Max);
 
-        std::optional<CalculationCategory> category = std::nullopt;
+        Optional<CalculationCategory> category = WTF::nullopt;
         for (auto& value : values) {
             auto valueCategory = resolvedTypeForMinOrMax(value->category(), destinationCategory);
 
@@ -532,6 +539,18 @@ private:
         return evaluate(doubleValues);
     }
 
+    void collectDirectComputationalDependencies(HashSet<CSSPropertyID>& values) const final
+    {
+        for (auto& child : m_children)
+            child->collectDirectComputationalDependencies(values);
+    }
+
+    void collectDirectRootComputationalDependencies(HashSet<CSSPropertyID>& values) const final
+    {
+        for (auto& child : m_children)
+            child->collectDirectRootComputationalDependencies(values);
+    }
+
     static String buildCssText(Vector<String> childExpressions, CalcOperator op)
     {
         StringBuilder result;
@@ -638,8 +657,9 @@ private:
         : CSSCalcExpressionNode(category, isIntegerResult(op, leftSide.get(), rightSide.get()))
         , m_operator(op)
     {
-        m_children.append(WTFMove(leftSide));
-        m_children.append(WTFMove(rightSide));
+        m_children.reserveInitialCapacity(2);
+        m_children.uncheckedAppend(WTFMove(leftSide));
+        m_children.uncheckedAppend(WTFMove(rightSide));
     }
 
     CSSCalcOperation(CalculationCategory category, CalcOperator op, Vector<Ref<CSSCalcExpressionNode>>&& children)

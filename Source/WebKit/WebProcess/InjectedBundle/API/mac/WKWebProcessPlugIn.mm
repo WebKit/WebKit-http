@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKWebProcessPlugInInternal.h"
 
-#if WK_API_ENABLED
-
 #import "APIArray.h"
 #import "WKConnectionInternal.h"
 #import "WKBundle.h"
@@ -91,10 +89,12 @@ static void setUpBundleClient(WKWebProcessPlugInController *plugInController, We
     setUpBundleClient(self, *_bundle);
 }
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 - (WKConnection *)connection
 {
     return wrapper(*_bundle->webConnectionToUIProcess());
 }
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (id)parameters
 {
@@ -138,5 +138,3 @@ static Ref<API::Array> createWKArray(NSArray *array)
 }
 
 @end
-
-#endif // WK_API_ENABLED

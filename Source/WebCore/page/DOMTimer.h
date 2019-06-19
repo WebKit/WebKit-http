@@ -75,7 +75,7 @@ private:
     // SuspendableTimer
     void fired() override;
     void didStop() override;
-    WEBCORE_EXPORT std::optional<MonotonicTime> alignedFireTime(MonotonicTime) const override;
+    WEBCORE_EXPORT Optional<MonotonicTime> alignedFireTime(MonotonicTime) const override;
 
     // ActiveDOMObject API.
     const char* activeDOMObjectName() const override;
@@ -92,7 +92,6 @@ private:
     Seconds m_originalInterval;
     TimerThrottleState m_throttleState;
     Seconds m_currentTimerInterval;
-    Seconds m_nestedTimerInterval;
     RefPtr<UserGestureToken> m_userGestureTokenToForward;
 };
 

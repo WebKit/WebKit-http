@@ -64,6 +64,11 @@ struct BasicBlock : RefCounted<BasicBlock> {
     }
     Node*& operator[](size_t i) { return at(i); }
     Node* operator[](size_t i) const { return at(i); }
+    Node* last() const
+    {
+        RELEASE_ASSERT(!!size());
+        return at(size() - 1);
+    }
     
     // Use this to find both the index of the terminal and the terminal itself in one go. May
     // return a clear NodeAndIndex if the basic block currently lacks a terminal. That may happen
@@ -252,7 +257,7 @@ private:
     BlockNodeList m_nodes;
 };
 
-typedef Vector<BasicBlock*, 5> BlockList;
+typedef Vector<BasicBlock*> BlockList;
     
 static inline unsigned getBytecodeBeginForBlock(BasicBlock** basicBlock)
 {

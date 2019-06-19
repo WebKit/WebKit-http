@@ -26,8 +26,6 @@
 #import "config.h"
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import "PlatformUtilities.h"
 #import "Test.h"
 #import <WebKit/WKContentRuleList.h>
@@ -380,5 +378,59 @@ TEST_F(WKContentRuleListStoreTest, AddRemove)
     TestWebKitAPI::Util::run(&receivedAlert);
 }
 
+#if PLATFORM(IOS_FAMILY)
+TEST_F(WKContentRuleListStoreTest, UnsafeMMap)
+{
+    RetainPtr<NSString> tempDir = [NSTemporaryDirectory() stringByAppendingPathComponent:@"UnsafeMMapTest"];
+    RetainPtr<WKContentRuleListStore> store = [WKContentRuleListStore storeWithURL:[NSURL fileURLWithPath:tempDir.get() isDirectory:YES]];
+    static NSString *compiledIdentifier = @"CompiledRuleList";
+    static NSString *copiedIdentifier = @"CopiedRuleList";
+    static NSString *ruleListSourceString = @"[{\"action\":{\"type\":\"block\"},\"trigger\":{\"url-filter\":\"blockedsubresource\"}}]";
+    RetainPtr<NSString> compiledFilePath = [tempDir stringByAppendingPathComponent:@"ContentRuleList-CompiledRuleList"];
+    RetainPtr<NSString> copiedFilePath = [tempDir stringByAppendingPathComponent:@"ContentRuleList-CopiedRuleList"];
 
+    __block bool doneCompiling = false;
+    [store compileContentRuleListForIdentifier:compiledIdentifier encodedContentRuleList:ruleListSourceString completionHandler:^(WKContentRuleList *filter, NSError *error) {
+        EXPECT_NOT_NULL(filter);
+        EXPECT_NULL(error);
+        doneCompiling = true;
+    }];
+    TestWebKitAPI::Util::run(&doneCompiling);
+
+    auto hasCompleteProtection = [] (const RetainPtr<NSString>& path) {
+        NSError *error = nil;
+        NSDictionary<NSFileAttributeKey, id> *attributes = [[NSFileManager defaultManager] attributesOfItemAtPath:path.get() error:&error];
+        EXPECT_NULL(error);
+        return [[attributes objectForKey:NSFileProtectionKey] isEqualToString:NSFileProtectionComplete];
+    };
+    
+    NSError *error = nil;
+    [[NSFileManager defaultManager] copyItemAtPath:compiledFilePath.get() toPath:copiedFilePath.get() error:&error];
+    EXPECT_NULL(error);
+    EXPECT_FALSE(hasCompleteProtection(copiedFilePath));
+    [[NSFileManager defaultManager] setAttributes:@{ NSFileProtectionKey: NSFileProtectionComplete } ofItemAtPath:copiedFilePath.get() error:&error];
+    EXPECT_NULL(error);
+#if !PLATFORM(IOS_FAMILY_SIMULATOR)
+    EXPECT_TRUE(hasCompleteProtection(copiedFilePath));
 #endif
+
+    __block bool doneLookingUp = false;
+    [store lookUpContentRuleListForIdentifier:copiedIdentifier completionHandler:^(WKContentRuleList *filter, NSError *error) {
+        EXPECT_NOT_NULL(filter);
+        EXPECT_NULL(error);
+        doneLookingUp = true;
+    }];
+    TestWebKitAPI::Util::run(&doneLookingUp);
+    EXPECT_FALSE(hasCompleteProtection(copiedFilePath));
+    
+    __block bool doneRemoving = false;
+    [store removeContentRuleListForIdentifier:compiledIdentifier completionHandler:^(NSError *error) {
+        EXPECT_NULL(error);
+        [store removeContentRuleListForIdentifier:copiedIdentifier completionHandler:^(NSError *error) {
+            EXPECT_NULL(error);
+            doneRemoving = true;
+        }];
+    }];
+    TestWebKitAPI::Util::run(&doneRemoving);
+}
+#endif // PLATFORM(IOS_FAMILY)

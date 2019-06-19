@@ -18,7 +18,7 @@
 #include "rtc_base/checks.h"
 #include "rtc_base/helpers.h"
 #include "rtc_base/logging.h"
-#include "rtc_base/stringencode.h"
+#include "rtc_base/timeutils.h"  // For TimeMillis
 
 namespace cricket {
 
@@ -69,7 +69,7 @@ void StunRequestManager::SendDelayed(StunRequest* request, int delay) {
 }
 
 void StunRequestManager::Flush(int msg_type) {
-  for (const auto kv : requests_) {
+  for (const auto& kv : requests_) {
     StunRequest* request = kv.second;
     if (msg_type == kAllRequests || msg_type == request->type()) {
       thread_->Clear(request, MSG_STUN_SEND);
@@ -79,7 +79,7 @@ void StunRequestManager::Flush(int msg_type) {
 }
 
 bool StunRequestManager::HasRequest(int msg_type) {
-  for (const auto kv : requests_) {
+  for (const auto& kv : requests_) {
     StunRequest* request = kv.second;
     if (msg_type == kAllRequests || msg_type == request->type()) {
       return true;

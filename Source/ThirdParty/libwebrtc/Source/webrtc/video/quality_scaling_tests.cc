@@ -10,6 +10,7 @@
 
 #include <string>
 
+#include "api/test/video/function_video_encoder_factory.h"
 #include "media/engine/internalencoderfactory.h"
 #include "modules/video_coding/codecs/h264/include/h264.h"
 #include "modules/video_coding/codecs/vp8/include/vp8.h"
@@ -17,7 +18,6 @@
 #include "test/call_test.h"
 #include "test/field_trial.h"
 #include "test/frame_generator_capturer.h"
-#include "test/function_video_encoder_factory.h"
 
 namespace webrtc {
 namespace {
@@ -100,11 +100,12 @@ void QualityScalingTest::RunTest(VideoEncoderFactory* encoder_factory,
     // Called when FrameGeneratorCapturer::AddOrUpdateSink is called.
     void OnSinkWantsChanged(rtc::VideoSinkInterface<VideoFrame>* sink,
                             const rtc::VideoSinkWants& wants) override {
-      EXPECT_LT(wants.max_pixel_count, kWidth * kHeight) << "Not a downscale.";
-      observation_complete_.Set();
+      if (wants.max_pixel_count < kWidth * kHeight)
+        observation_complete_.Set();
     }
-    void ModifySenderCallConfig(Call::Config* config) override {
-      config->bitrate_config.start_bitrate_bps = start_bps_;
+    void ModifySenderBitrateConfig(
+        BitrateConstraints* bitrate_config) override {
+      bitrate_config->start_bitrate_bps = start_bps_;
     }
 
     void ModifyVideoConfigs(

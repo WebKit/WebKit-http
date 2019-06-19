@@ -30,7 +30,6 @@
 
 #include "Attr.h"
 #include "Document.h"
-#include "HTMLDocument.h"
 #include "HTMLElement.h"
 #include "NodeTraversal.h"
 #include "XMLNSNames.h"
@@ -166,14 +165,14 @@ inline bool nodeMatchesBasicTest(Node& node, Step::Axis axis, const Step::NodeTe
         case Step::NodeTest::CommentNodeTest:
             return node.nodeType() == Node::COMMENT_NODE;
         case Step::NodeTest::ProcessingInstructionNodeTest: {
-            const AtomicString& name = nodeTest.m_data;
+            const AtomString& name = nodeTest.m_data;
             return node.nodeType() == Node::PROCESSING_INSTRUCTION_NODE && (name.isEmpty() || node.nodeName() == name);
         }
         case Step::NodeTest::AnyNodeTest:
             return true;
         case Step::NodeTest::NameTest: {
-            const AtomicString& name = nodeTest.m_data;
-            const AtomicString& namespaceURI = nodeTest.m_namespaceURI;
+            const AtomString& name = nodeTest.m_data;
+            const AtomString& namespaceURI = nodeTest.m_namespaceURI;
 
             if (axis == Step::AttributeAxis) {
                 ASSERT(node.isAttributeNode());
@@ -199,7 +198,7 @@ inline bool nodeMatchesBasicTest(Node& node, Step::Axis axis, const Step::NodeTe
             if (name == starAtom())
                 return namespaceURI.isEmpty() || namespaceURI == node.namespaceURI();
 
-            if (is<HTMLDocument>(node.document())) {
+            if (node.document().isHTMLDocument()) {
                 if (is<HTMLElement>(node)) {
                     // Paths without namespaces should match HTML elements in HTML documents despite those having an XHTML namespace. Names are compared case-insensitively.
                     return equalIgnoringASCIICase(downcast<HTMLElement>(node).localName(), name) && (namespaceURI.isNull() || namespaceURI == node.namespaceURI());

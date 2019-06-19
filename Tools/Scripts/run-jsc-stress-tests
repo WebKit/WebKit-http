@@ -43,6 +43,8 @@ class String
     end
 end
 
+RemoteHost = Struct.new(:name, :user, :host, :port, :remoteDirectory)
+
 THIS_SCRIPT_PATH = Pathname.new(__FILE__).realpath
 SCRIPTS_PATH = THIS_SCRIPT_PATH.dirname
 WEBKIT_PATH = SCRIPTS_PATH.dirname.dirname
@@ -109,10 +111,7 @@ $tarFileName = "payload.tar.gz"
 $copyVM = false
 $testRunnerType = nil
 $testWriter = "default"
-$remoteUser = nil
-$remoteHost = nil
-$remotePort = nil
-$remoteDirectory = nil
+$remoteHosts = []
 $architecture = nil
 $hostOS = nil
 $filter = nil
@@ -231,7 +230,7 @@ GetoptLong.new(['--help', '-h', GetoptLong::NO_ARGUMENT],
         $tarball = true
         $remote = true
         uri = URI("ssh://" + arg)
-        $remoteUser, $remoteHost, $remotePort = uri.user, uri.host, uri.port
+        $remoteHosts << RemoteHost.new("default-#{$remoteHosts.length}", uri.user, uri.host, uri.port)
     when '--remote-config-file'
         $remoteConfigFile = arg
     when '--child-processes'
@@ -259,16 +258,33 @@ if $remoteConfigFile
     file = File.read($remoteConfigFile)
     config = JSON.parse(file)
 
+    # old style config allowing for only one remote
     if !$remote and config['remote']
         $copyVM = true
         $tarball = true
         $remote = true
         uri = URI("ssh://" + config['remote'])
-        $remoteUser, $remoteHost, $remotePort = uri.user, uri.host, uri.port
+        $remoteHosts = [ RemoteHost.new("default", uri.user, uri.host, uri.port) ]
+        if config['remoteDirectory']
+            $remoteHosts[0].remoteDirectory = config['remoteDirectory']
+        end
     end
 
-    if config['remoteDirectory']
-        $remoteDirectory = config['remoteDirectory']
+    # we can combine --remote and a new style config
+    if config['remotes']
+        $copyVM = true
+        $tarball = true
+        $remote = true
+        $remoteHosts += config['remotes'].map {
+            | remote |
+            uri = URI("ssh://" + remote['address'])
+
+            host = RemoteHost.new(remote['name'], uri.user, uri.host, uri.port)
+            if remote['remoteDirectory']
+                host.remoteDirectory = remote['remoteDirectory']
+            end
+            host
+        }
     end
 end
 
@@ -302,7 +318,7 @@ else
     $jscPath = Pathname.new(jscArg).realpath
 end
 
-$progressMeter = ($verbosity == 0 and $stdout.tty?)
+$progressMeter = ($verbosity == 0 and $stdout.tty? and $remoteHosts.length <= 1)
 
 if $bundle
     $jscPath = $bundle + ".vm" + "JavaScriptCore.framework" + "Resources" + "jsc"
@@ -409,6 +425,8 @@ def determineArchitecture
         determineArchitectureFromELFBinary
     when "windows"
         determineArchitectureFromPEBinary
+    when "playstation"
+        "x86-64"
     else
         $stderr.puts "Warning: unable to determine architecture on this platform."
         nil
@@ -431,7 +449,13 @@ end
 
 $hostOS = determineOS unless $hostOS
 $architecture = determineArchitecture unless $architecture
-$isFTLPlatform = !($architecture == "x86" || $architecture == "arm" || $architecture == "mips" || $hostOS == "windows")
+$isFTLPlatform = !($architecture == "x86" || $architecture == "arm" || $architecture == "mips" || $hostOS == "windows" || $hostOS == "playstation")
+
+if $architecture == "x86"
+    # The JIT is temporarily disabled on this platform since
+    # https://trac.webkit.org/changeset/237547
+    $jitTests = false
+end
 
 def isFTLEnabled
     $jitTests && $isFTLPlatform
@@ -443,6 +467,14 @@ if !$testRunnerType
     else
         $testRunnerType = :make
     end
+end
+
+if $remoteHosts.length > 1 and $testRunnerType != :make
+    raise "Multiple remote hosts only supported with make runner"
+end
+
+if $hostOS == "playstation" && $testWriter == "default"
+    $testWriter = "playstation"
 end
 
 if $testWriter
@@ -460,6 +492,7 @@ EAGER_OPTIONS = ["--thresholdForJITAfterWarmUp=10", "--thresholdForJITSoon=10", 
 # NOTE: Tests rely on this using scribbleFreeCells.
 NO_CJIT_OPTIONS = ["--useConcurrentJIT=false", "--thresholdForJITAfterWarmUp=100", "--scribbleFreeCells=true"]
 B3O1_OPTIONS = ["--defaultB3OptLevel=1"]
+B3O0_OPTIONS = ["--defaultB3OptLevel=0"]
 FTL_OPTIONS = ["--useFTLJIT=true"]
 PROBE_OSR_EXIT_OPTION = ["--useProbeOSRExit=true"]
 
@@ -477,6 +510,8 @@ def frameworkFromJSCPath(jscPath)
     parentDirectory = jscPath.dirname
     if parentDirectory.basename.to_s == "Resources" and parentDirectory.dirname.basename.to_s == "JavaScriptCore.framework"
         parentDirectory.dirname
+    elsif $hostOS == "playstation"
+        jscPath.dirname
     elsif parentDirectory.basename.to_s =~ /^Debug/ or parentDirectory.basename.to_s =~ /^Release/
         jscPath.dirname + "JavaScriptCore.framework"
     else
@@ -581,8 +616,16 @@ def runWithOutputHandler(kind, outputHandler, *options)
     addRunCommand(kind, [pathToVM.to_s] + BASE_OPTIONS + $testSpecificRequiredOptions + options + [$benchmark.to_s], outputHandler, simpleErrorHandler)
 end
 
+def runWithOutputHandlerWithoutBaseOption(kind, outputHandler, *options)
+    addRunCommand(kind, [pathToVM.to_s] + $testSpecificRequiredOptions + options + [$benchmark.to_s], outputHandler, simpleErrorHandler)
+end
+
 def run(kind, *options)
     runWithOutputHandler(kind, silentOutputHandler, *options)
+end
+
+def runWithoutBaseOption(kind, *options)
+    runWithOutputHandlerWithoutBaseOption(kind, silentOutputHandler, *options)
 end
 
 def runNoFTL(*optionalTestSpecificOptions)
@@ -629,6 +672,23 @@ def runDefault(*optionalTestSpecificOptions)
     run("default", *(FTL_OPTIONS + optionalTestSpecificOptions))
 end
 
+def runBytecodeCacheImpl(optionalTestSpecificOptions, *additionalEnv)
+    unless $hostOS == "darwin"
+        skip
+        return
+    end
+    options = BASE_OPTIONS + $testSpecificRequiredOptions + FTL_OPTIONS + optionalTestSpecificOptions
+    addRunCommand("bytecode-cache", ["sh", (pathToHelpers + "bytecode-cache-test-helper.sh").to_s, pathToVM.to_s, $benchmark.to_s] + options, silentOutputHandler, simpleErrorHandler, *additionalEnv)
+end
+
+def runBytecodeCache(*optionalTestSpecificOptions)
+    runBytecodeCacheImpl(optionalTestSpecificOptions)
+end
+
+def runBytecodeCacheNoAssertion(*optionalTestSpecificOptions)
+    runBytecodeCacheImpl(optionalTestSpecificOptions, "JSC_forceDiskCache=false")
+end
+
 def runBigIntEnabled(*optionalTestSpecificOptions)
     # FIXME: <rdar://problem/40331121>
     if $remote or ($architecture !~ /x86/i and $hostOS == "darwin")
@@ -643,8 +703,8 @@ def runFTLNoCJIT(*optionalTestSpecificOptions)
     run("misc-ftl-no-cjit", *(FTL_OPTIONS + NO_CJIT_OPTIONS + optionalTestSpecificOptions))
 end
 
-def runFTLNoCJITB3O1(*optionalTestSpecificOptions)
-    run("ftl-no-cjit-b3o1", "--useArrayAllocationProfiling=false", "--forcePolyProto=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + B3O1_OPTIONS + optionalTestSpecificOptions))
+def runFTLNoCJITB3O0(*optionalTestSpecificOptions)
+    run("ftl-no-cjit-b3o0", "--useArrayAllocationProfiling=false", "--forcePolyProto=true", *(FTL_OPTIONS + NO_CJIT_OPTIONS + B3O0_OPTIONS + optionalTestSpecificOptions))
 end
 
 def runFTLNoCJITValidate(*optionalTestSpecificOptions)
@@ -720,11 +780,17 @@ def runShadowChicken(*optionalTestSpecificOptions)
     run("shadow-chicken", "--useDFGJIT=false", "--alwaysUseShadowChicken=true", *optionalTestSpecificOptions)
 end
 
+def runMiniMode(*optionalTestSpecificOptions)
+    run("mini-mode", "--forceMiniVMMode=true", *optionalTestSpecificOptions)
+end
+
 def defaultRun
     if $mode == "quick"
         defaultQuickRun
     else
         runDefault
+        runBytecodeCache
+        runMiniMode
         if $jitTests
             runNoLLInt
             runNoCJITValidatePhases
@@ -745,7 +811,7 @@ def defaultRun
             return if $mode == "basic"
 
             runFTLNoCJITValidate
-            runFTLNoCJITB3O1
+            runFTLNoCJITB3O0
             runFTLNoCJITNoPutStackValidate
             runFTLNoCJITNoInlineValidate
             runFTLEagerNoCJITB3O1
@@ -775,7 +841,7 @@ def defaultNoNoLLIntRun
 
             return if $mode == "basic"
 
-            runFTLNoCJITB3O1
+            runFTLNoCJITB3O0
             runFTLNoCJITNoPutStackValidate
             runFTLNoCJITNoInlineValidate
             runFTLEager
@@ -804,7 +870,7 @@ def defaultSpotCheckNoMaximalFlush
 
     runFTLNoCJITOSRValidation
     runFTLNoCJITNoAccessInlining
-    runFTLNoCJITB3O1
+    runFTLNoCJITB3O0
 end
 
 def defaultSpotCheck
@@ -830,7 +896,7 @@ def defaultNoEagerRun
         return if $mode == "basic"
 
         runFTLNoCJITNoInlineValidate
-        runFTLNoCJITB3O1
+        runFTLNoCJITB3O0
     end
 end
 
@@ -856,7 +922,7 @@ def defaultNoSamplingProfilerRun
 end
 
 def runProfiler
-    if $remote or ($architecture !~ /x86/i and $hostOS == "darwin") or ($hostOS == "windows")
+    if $remote or ($architecture !~ /x86/i and $hostOS == "darwin") or ($hostOS == "windows") or ($hostOS == "playstation")
         skip
         return
     end
@@ -1019,6 +1085,8 @@ def runWebAssembly
         run("wasm-no-call-ic", "-m", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
         run("wasm-no-tls-context", "-m", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
         run("wasm-slow-memory", "-m", "--useWebAssemblyFastMemory=false", *FTL_OPTIONS)
+        run("wasm-no-air", "-m", "--wasmBBQUsesAir=false", *FTL_OPTIONS)
+        run("wasm-collect-continuously", "-m", "--collectContinuously=true", *FTL_OPTIONS) if shouldCollectContinuously?
     end
 end
 
@@ -1035,6 +1103,8 @@ def runWebAssemblySuite
         run("wasm-no-call-ic", "-m", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
         run("wasm-no-tls-context", "-m", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
         run("wasm-slow-memory", "-m", "--useWebAssemblyFastMemory=false", *FTL_OPTIONS)
+        run("wasm-no-air", "-m", "--wasmBBQUsesAir=false", *FTL_OPTIONS)
+        run("wasm-collect-continuously", "-m", "--collectContinuously=true", *FTL_OPTIONS) if shouldCollectContinuously?
     end
 end
 
@@ -1053,6 +1123,8 @@ def runWebAssemblyEmscripten(mode)
         run("wasm-eager-jettison", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
         run("wasm-no-call-ic", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
         run("wasm-no-tls-context", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
+        run("wasm-no-air", "--wasmBBQUsesAir=false", *FTL_OPTIONS)
+        run("wasm-collect-continuously", "--collectContinuously=true", *FTL_OPTIONS) if shouldCollectContinuously?
     end
 end
 
@@ -1077,6 +1149,8 @@ def runWebAssemblySpecTest(mode)
       runWithOutputHandler("wasm-eager-jettison", noisyOutputHandler, "../spec-harness.js", "--forceCodeBlockToJettisonDueToOldAge=true", *FTL_OPTIONS)
       runWithOutputHandler("wasm-no-call-ic", noisyOutputHandler, "../spec-harness.js", "--useCallICsForWebAssemblyToJSCalls=false", *FTL_OPTIONS)
       runWithOutputHandler("wasm-no-tls-context", noisyOutputHandler, "../spec-harness.js", "--useFastTLSForWasmContext=false", *FTL_OPTIONS)
+      runWithOutputHandler("wasm-no-air", noisyOutputHandler, "../spec-harness.js", "--wasmBBQUsesAir=false", *FTL_OPTIONS)
+      runWithOutputHandler("wasm-collect-continuously", noisyOutputHandler, "../spec-harness.js", "--collectContinuously=true", *FTL_OPTIONS) if shouldCollectContinuously?
     end
 end
 
@@ -1272,6 +1346,13 @@ def prepareExtraAbsoluteFiles(absoluteBase, extraFiles)
     }
 end
 
+def runComplexTest(before, after, *options)
+    prepareExtraRelativeFiles(before.map{|v| (Pathname("..") + v).to_s}, $collection)
+    prepareExtraRelativeFiles(after.map{|v| (Pathname("..") + v).to_s}, $collection)
+    args = [pathToVM.to_s] + BASE_OPTIONS + $testSpecificRequiredOptions + options + before.map{|v| v.to_s} + [$benchmark.to_s] + after.map{|v| v.to_s}
+    addRunCommand("complex", args, silentOutputHandler, simpleErrorHandler)
+end
+
 def runMozillaTest(kind, mode, extraFiles, *options)
     if kind
         kind = "mozilla-" + kind
@@ -1403,7 +1484,7 @@ def allJSFiles(path)
         result = []
         Dir.foreach(path) {
             | filename |
-            next unless filename =~ /\.js$/
+            next unless filename =~ /\.m?js$/
             next unless (path + filename).file?
             result << path + filename
         }
@@ -1711,7 +1792,7 @@ def eachResultFile(startingDir, &block)
     end
 end
 
-def prepareTestRunner
+def prepareTestRunner(remoteIndex=0)
     raise if $bundle
 
     $runlist.each_with_index {
@@ -1740,7 +1821,7 @@ def prepareTestRunner
 
     case $testRunnerType
     when :make
-        prepareMakeTestRunner
+        prepareMakeTestRunner(remoteIndex)
     when :shell
         prepareShellTestRunner
     when :ruby
@@ -1759,11 +1840,13 @@ def cleanRunnerDirectory
     }
 end
 
-def sshRead(cmd)
+def sshRead(cmd, remoteIndex=0)
     raise unless $remote
 
+    remoteHost = $remoteHosts[remoteIndex]
+
     result = ""
-    IO.popen("ssh -p #{$remotePort} #{$remoteUser}@#{$remoteHost} '#{cmd}'", "r") {
+    IO.popen("ssh -o NoHostAuthenticationForLocalhost=yes -p #{remoteHost.port} #{remoteHost.user}@#{remoteHost.host} '#{cmd}'", "r") {
       | inp |
       inp.each_line {
         | line |
@@ -1874,24 +1957,25 @@ def runAndMonitorTestRunnerCommand(*cmd)
     end
 end
 
-def runTestRunner
+def runTestRunner(remoteIndex=0)
     if $remote
-        if !$remoteDirectory
-            $remoteDirectory = JSON::parse(sshRead("cat ~/.bencher"))["tempPath"]
+        remoteHost = $remoteHosts[remoteIndex]
+        if !remoteHost.remoteDirectory
+            remoteHost.remoteDirectory = JSON::parse(sshRead("cat ~/.bencher", remoteIndex))["tempPath"]
         end
-        mysys("ssh", "-p", $remotePort.to_s, "#{$remoteUser}@#{$remoteHost}", "mkdir -p #{$remoteDirectory}")
-        mysys("scp", "-P", $remotePort.to_s, ($outputDir.dirname + $tarFileName).to_s, "#{$remoteUser}@#{$remoteHost}:#{$remoteDirectory}")
+        mysys("ssh", "-o", "NoHostAuthenticationForLocalhost=yes", "-p", remoteHost.port.to_s, "#{remoteHost.user}@#{remoteHost.host}", "mkdir -p #{remoteHost.remoteDirectory}")
+        mysys("scp", "-o", "NoHostAuthenticationForLocalhost=yes", "-P", remoteHost.port.to_s, ($outputDir.dirname + $tarFileName).to_s, "#{remoteHost.user}@#{remoteHost.host}:#{remoteHost.remoteDirectory}")
         remoteScript = "\""
-        remoteScript += "cd #{$remoteDirectory} && "
+        remoteScript += "cd #{remoteHost.remoteDirectory} && "
         remoteScript += "rm -rf #{$outputDir.basename} && "
         remoteScript += "tar xzf #{$tarFileName} && "
         remoteScript += "cd #{$outputDir.basename}/.runner && "
         remoteScript += "export DYLD_FRAMEWORK_PATH=\\\"\\$(cd #{$testingFrameworkPath.dirname}; pwd)\\\" && "
-        remoteScript += "export LD_LIBRARY_PATH=#{$remoteDirectory}/#{$outputDir.basename}/#{$jscPath.dirname} && "
+        remoteScript += "export LD_LIBRARY_PATH=#{remoteHost.remoteDirectory}/#{$outputDir.basename}/#{$jscPath.dirname} && "
         remoteScript += "export JSCTEST_timeout=#{Shellwords.shellescape(ENV['JSCTEST_timeout'])} && "
         $envVars.each { |var| remoteScript += "export " << var << "\n" }
-        remoteScript += "#{testRunnerCommand}\""
-        runAndMonitorTestRunnerCommand("ssh", "-p", $remotePort.to_s, "#{$remoteUser}@#{$remoteHost}", remoteScript)
+        remoteScript += "#{testRunnerCommand(remoteIndex)}\""
+        runAndMonitorTestRunnerCommand("ssh", "-o", "NoHostAuthenticationForLocalhost=yes", "-p", remoteHost.port.to_s, "#{remoteHost.user}@#{remoteHost.host}", remoteScript)
     else
         Dir.chdir($runnerDir) {
             runAndMonitorTestRunnerCommand(testRunnerCommand)
@@ -1905,11 +1989,14 @@ def detectFailures
     failures = []
     
     if $remote
-        output = sshRead("cd #{$remoteDirectory}/#{$outputDir.basename}/.runner && find . -maxdepth 1 -name \"test_fail_*\"")
-        output.split(/\n/).each {
-            | line |
-            next unless line =~ /test_fail_/
-            failures << $~.post_match.to_i
+        $remoteHosts.each_with_index {
+            | host, remoteIndex |
+            output = sshRead("cd #{host.remoteDirectory}/#{$outputDir.basename}/.runner && find . -maxdepth 1 -name \"test_fail_*\"", remoteIndex)
+            output.split(/\n/).each {
+                | line |
+                next unless line =~ /test_fail_/
+                failures << $~.post_match.to_i
+            }
         }
     else
         Dir.foreach($runnerDir) {
@@ -2050,9 +2137,19 @@ def runRemote
     raise unless $remote
 
     prepareBundle
-    prepareTestRunner
+    $remoteHosts.each_index {
+        | index |
+        prepareTestRunner(index)
+    }
     compressBundle
-    runTestRunner
+    threads = []
+    $remoteHosts.each_index {
+        | index |
+        threads << Thread.new {
+            runTestRunner(index)
+        }
+    }
+    threads.each { |thr| thr.join }
     detectFailures
 end
 

@@ -1,3 +1,633 @@
+2019-05-08  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueMod into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=186174
+
+        Reviewed by Saam Barati.
+
+        * BigIntBench/big-int-simple-mod.js: Added.
+
+2019-05-06  Saam Barati  <sbarati@apple.com>
+
+        JS2 should print scores for different categories
+        https://bugs.webkit.org/show_bug.cgi?id=197605
+
+        Reviewed by Yusuke Suzuki.
+
+        * JetStream2/JetStreamDriver.js:
+        (displayCategoryScores):
+        (isInBrowser.document.onkeydown):
+        (Driver.prototype.async.start):
+        (Driver.prototype.async.reportScoreToRunBenchmarkRunner):
+
+2019-04-16  Jon Lee  <jonlee@apple.com>
+
+        [MotionMark] The text "kkkj" is causing Firefox console warning: `unreachable code after return statement`
+        https://bugs.webkit.org/show_bug.cgi?id=196814
+
+        Reviewed by Wenson Hsieh.
+
+        * MotionMark/resources/extensions.js:
+        (subtract.subtract.sampleY):
+
+2019-04-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] FontPlatformData objects aren't cached at all when using font-family:system-ui
+        https://bugs.webkit.org/show_bug.cgi?id=196846
+        <rdar://problem/49499971>
+
+        Reviewed by Simon Fraser and Darin Adler.
+
+        * Layout/system-ui-rebuild-emoji.html: Added.
+
+2019-04-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        -apple-trailing-word is needed for browser detection
+        https://bugs.webkit.org/show_bug.cgi?id=196575
+
+        Unreviewed.
+
+        * MotionMark/resources/debug-runner/motionmark.css:
+        (#intro .start-benchmark p):
+
+2019-03-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION (r242911?): High Sierra Release WK2 Perf bot timing out while running IndexedDB/large-number-of-inserts.html
+        https://bugs.webkit.org/show_bug.cgi?id=195952
+
+        Unreviewed test gardening.
+
+        * Skipped: Skip the affected test so the bot will finish the run.
+
+2019-03-27  Saam Barati  <sbarati@apple.com>
+
+        JetStream 2 should not report time values as scores
+        https://bugs.webkit.org/show_bug.cgi?id=196334
+
+        Reviewed by Yusuke Suzuki.
+
+        * JetStream2/JetStreamDriver.js:
+        (toTimeValue):
+        (Driver.prototype.async.reportScoreToRunBenchmarkRunner):
+
+2019-03-27  Saam barati  <sbarati@apple.com>
+
+        Unreviewed. Fix individual benchmark description urls to go to in-depth.html instead of about.html
+
+        * JetStream2/JetStreamDriver.js:
+        (Driver.prototype.prepareToRun.text.div.id.string_appeared_here.h3):
+
+2019-03-25  Saam barati  <sbarati@apple.com>
+
+        Update the blurb describing JetStream2 and fix a broken link in the in-depth page.
+
+        Rubber-stamped by Filip Pizlo.
+
+        * JetStream2/in-depth.html:
+        * JetStream2/index.html:
+
+2019-03-18  Saam Barati  <sbarati@apple.com>
+
+        Add a plan file for JetStream 2
+        https://bugs.webkit.org/show_bug.cgi?id=190734
+
+        Reviewed by Mark Lam.
+
+        Make the delay when starting via run-benchmark longer to allow
+        the page's animation to finish.
+
+        * JetStream2/JetStreamDriver.js:
+        (Driver.prototype.async.initialize):
+
+2019-03-15  Jon Davis  <jond@apple.com>
+
+        Fixed a bug preventing the overall sore to be displayed on JetStream2
+        https://bugs.webkit.org/show_bug.cgi?id=195817
+
+        Rubber-stamped by Saam Barati.
+
+        * JetStream2/JetStreamDriver.js:
+        (Driver.prototype.async.start):
+
+2019-03-14  Jon Davis  <jond@apple.com>
+
+        Implement a new design for JetStream2
+        https://bugs.webkit.org/show_bug.cgi?id=195492
+
+        Reviewed by Saam Barati.
+
+        * JetStream2/JetStream.css:
+        (html):
+        (body):
+        (::selection):
+        (main):
+        (.logo):
+        (.logo .logo-image):
+        (#jetstreams):
+        (#jetstreams svg):
+        (.summary):
+        (.summary + .summary):
+        (.summary:empty):
+        (article, .summary):
+        (h1):
+        (h2, h3, h4, h5, h6):
+        (h4, h5, h6):
+        (p):
+        (h5, h6):
+        (h6):
+        (a:link,):
+        (a:hover,):
+        (#status):
+        (#status label,):
+        (a.button):
+        (#status.loading):
+        (#status.error):
+        (.error h2, .error p):
+        (.error h2):
+        (#result-summary):
+        (#result-summary label):
+        (#result-summary .score):
+        (#result-summary .score .interval):
+        (#results):
+        (.benchmark):
+        (.benchmark h3, .benchmark h4, .benchmark .result, .benchmark label):
+        (.benchmark-running h4, .benchmark-running .result, .benchmark-running label):
+        (.benchmark-done h3, .benchmark-done h4, .benchmark-done .result, .benchmark-done label):
+        (.benchmark h3):
+        (.benchmark-running h3):
+        (.benchmark-done h3):
+        (.benchmark h3 a,):
+        (.benchmark-done h3 a:hover):
+        (.benchmark h4):
+        (.benchmark-done h4):
+        (.benchmark p,):
+        (.benchmark .result):
+        (.benchmark-done .result):
+        (.benchmark label):
+        (.benchmark-done label):
+        (@keyframes fadein):
+        (to):
+        (@keyframes scaledown):
+        (@keyframes shine):
+        (100%):
+        (@keyframes swingin):
+        (@media (max-width: 415px)):
+        (#logo): Deleted.
+        (p.summary): Deleted.
+        (p.summary + p.summary): Deleted.
+        (p.summary:empty): Deleted.
+        (p:first-of-type): Deleted.
+        (#status a:link): Deleted.
+        (.interval): Deleted.
+        (a:link, a:visited): Deleted.
+        (a:link:hover): Deleted.
+        (table): Deleted.
+        (td, th): Deleted.
+        (th): Deleted.
+        (tr:first-child > th:nth-child(even)): Deleted.
+        (tr:nth-child(even):not(:first-child, .benchmark-running)): Deleted.
+        (.result): Deleted.
+        (.benchmark-running): Deleted.
+        (:not(.benchmark-running) .result): Deleted.
+        (.benchmark-running .result): Deleted.
+        (.benchmark-name): Deleted.
+        (.result.category,): Deleted.
+        (.benchmark-name:not(.category):not(.geometric-mean)): Deleted.
+        (.geometric-mean): Deleted.
+        (.benchmark-name:not(:first-child)): Deleted.
+        (.benchmark-name a:link,): Deleted.
+        (.highlighted-result): Deleted.
+        * JetStream2/JetStream2Logo.svg: Added.
+        * JetStream2/JetStreamDriver.js:
+        (updateUI):
+        (Driver.prototype.async.start):
+        (Driver.prototype.prepareToRun.text.div.id.string_appeared_here.h3):
+        (Driver.prototype.prepareToRun.text.span):
+        (Driver.prototype.prepareToRun.a.h3.h4):
+        (Driver.prototype.prepareToRun.text.div):
+        (Driver.prototype.async.initialize):
+        (Driver.prototype.async.fetchResources.prototype.statusElement.onclick):
+        (prototype.fetchResources):
+        (prototype.updateUIBeforeRun):
+        (prototype.updateUIAfterRun):
+        (Driver.prototype.async.fetchResources.statusElement.innerHTML.a.href.string_appeared_here):
+        (Driver.prototype.async.fetchResources):
+        (Driver.prototype.prepareToRun.text.tr.id.string_appeared_here.FIXME.link.to.benchmark.explanation.td): Deleted.
+        * JetStream2/clouds.svg: Added.
+        * JetStream2/in-depth.html:
+        * JetStream2/index.html:
+        * JetStream2/jetstreams.svg: Added.
+
+2019-03-11  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement "~" unary operation
+        https://bugs.webkit.org/show_bug.cgi?id=182216
+
+        Reviewed by Keith Miller.
+
+        * BigIntBench/big-int-simple-bit-not.js: Added.
+
+2019-03-04  Saam Barati  <sbarati@apple.com>
+
+        Add a detailed summary page for JetStream 2
+        https://bugs.webkit.org/show_bug.cgi?id=195014
+
+        Rubber-stamped by Darin Adler.
+
+        * JetStream2/JetStream.css:
+        (a:link, a:visited):
+        * JetStream2/in-depth.html: Added.
+
+2019-02-08  Saam barati  <sbarati@apple.com>
+
+        Update JetStream2 CLI to not print "ms" since we now just print the score values
+        https://bugs.webkit.org/show_bug.cgi?id=193981
+
+        Reviewed by Yusuke Suzuki.
+
+        * JetStream2/JetStreamDriver.js:
+        (DefaultBenchmark.prototype.updateUIAfterRun):
+        (DefaultBenchmark):
+        (WSLBenchmark.prototype.updateUIAfterRun):
+        (WSLBenchmark):
+        (WasmBenchmark.prototype.updateUIAfterRun):
+        (WasmBenchmark):
+
+2019-01-31  Sihui Liu  <sihui_liu@apple.com>
+
+        REGRESSION (r240358): IndexedDB/large-binary-keys.html and IndexedDB/large-string-keys.html perf tests failing
+        https://bugs.webkit.org/show_bug.cgi?id=193956
+        <rdar://problem/47623109>
+
+        Reviewed by Ryosuke Niwa.
+
+        r240358 sets default IDB quota as 50 MB for single test, we need to increase that for big tests. 
+
+        * IndexedDB/large-binary-keys.html:
+        * IndexedDB/large-string-keys.html:
+
+2019-01-18  Saam Barati  <sbarati@apple.com>
+
+        Use scores everywhere in JetStream2's UI
+        https://bugs.webkit.org/show_bug.cgi?id=193593
+
+        Reviewed by Keith Miller.
+
+        * JetStream2/JetStreamDriver.js:
+        (DefaultBenchmark.prototype.processResults):
+        (DefaultBenchmark.prototype.get score):
+        (DefaultBenchmark.scoreDescription):
+        (WSLBenchmark.prototype.processResults):
+        (WSLBenchmark.prototype.get score):
+        (WSLBenchmark.scoreDescription):
+        (WasmBenchmark.prototype.processResults):
+        (WasmBenchmark.prototype.get score):
+        (WasmBenchmark.scoreDescription):
+        * JetStream2/index.html:
+
+2019-01-18  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * MediaTime/Configurations/Base.xcconfig:
+        * MediaTime/Configurations/SDKVariant.xcconfig: Added.
+
+2019-01-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r240124.
+
+        This commit broke an internal build.
+
+        Reverted changeset:
+
+        "SDK_VARIANT build destinations should be separate from non-
+        SDK_VARIANT builds"
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+        https://trac.webkit.org/changeset/240124
+
+2019-01-17  Jer Noble  <jer.noble@apple.com>
+
+        SDK_VARIANT build destinations should be separate from non-SDK_VARIANT builds
+        https://bugs.webkit.org/show_bug.cgi?id=189553
+
+        Reviewed by Tim Horton.
+
+        * MediaTime/Configurations/Base.xcconfig:
+        * MediaTime/Configurations/SDKVariant.xcconfig: Added.
+
+2018-12-20  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] We should enable CSE into arithmetic operations that speculate BigIntUse
+        https://bugs.webkit.org/show_bug.cgi?id=192723
+
+        Reviewed by Yusuke Suzuki.
+
+        * BigIntBench/big-int-cse.js: Added.
+        * BigIntBench/big-int-global-cse.js: Added.
+        * BigIntBench/big-int-licm.js: Added.
+
+2018-12-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r239377.
+        https://bugs.webkit.org/show_bug.cgi?id=192921
+
+        broke 32-bit JSC tests (Requested by keith_miller on #webkit).
+
+        Reverted changeset:
+
+        "[BigInt] We should enable CSE into arithmetic operations that
+        speculate BigIntUse"
+        https://bugs.webkit.org/show_bug.cgi?id=192723
+        https://trac.webkit.org/changeset/239377
+
+2018-12-19  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] We should enable CSE into arithmetic operations that speculate BigIntUse
+        https://bugs.webkit.org/show_bug.cgi?id=192723
+
+        Reviewed by Saam Barati.
+
+        * BigIntBench/big-int-cse.js: Added.
+        * BigIntBench/big-int-global-cse.js: Added.
+        * BigIntBench/big-int-licm.js: Added.
+
+2018-12-17  Suresh Koppisetty  <skoppisetty@apple.com>
+
+        Add "-o/--output" option to startup.py and new_tab.py benchmark scripts to save the results in json format.
+        https://bugs.webkit.org/show_bug.cgi?id=192385
+
+        Reviewed by Ryosuke Niwa.
+
+        Sample json output for new tab benchmark script after running for 2 iterations and 2 groups. Values are in milliseconds.
+        {
+                "NewTabBenchmark": {
+                        "metrics": {
+                                "Time": {
+                                        "current": [
+                                                [
+                                                        410.2939453125,
+                                                        307.81494140625
+                                                ],
+                                                [
+                                                        340.616943359375,
+                                                        265.94384765625
+                                                ]
+                                        ]
+                                }
+                        }
+                }
+        }
+
+        Sample json output for startup time benchmark script after running for 2 iterations. Values are in milliseconds.
+        {
+                "StartupBenchmark": {
+                        "metrics": {
+                                "Time": {
+                                        "current": [
+                                                [
+                                                        1415.2099609375,
+                                                        1439.552978515625
+                                                ]
+                                        ]
+                                }
+                        }
+                }
+        }
+
+        * LaunchTime/launch_time.py:
+        * LaunchTime/new_tab.py:
+        (NewTabBenchmark.get_test_name):
+        * LaunchTime/startup.py:
+        (StartupBenchmark.get_test_name):
+
+2018-12-17  Suresh Koppisetty  <skoppisetty@apple.com>
+
+        Import FeedbackServer only if "-f/--feedback-in-browser" option is enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=192378
+
+        Reviewed by Ryosuke Niwa.
+
+        FeedbackServer currently depends on Tornado-5.1, which further adds
+        dependency of "singledispatch", "backports-abc" and "futures" python libraries.
+        Importing FeedbackServer only if "-f/--feedback-in-browser" option is enabled
+        will let us run the benchmark scripts without installing any new python libraries.
+
+        * LaunchTime/launch_time.py:
+        * LaunchTime/new_tab.py:
+
+2018-12-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueDiv into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=186178
+
+        Reviewed by Yusuke Suzuki.
+
+        * BigIntBench/big-int-simple-div.js: Added.
+        * BigIntBench/value-div-type-propagation.js: Added.
+
+2018-12-10  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueMul into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=186175
+
+        Reviewed by Yusuke Suzuki.
+
+        * BigIntBench/big-int-simple-mul.js: Added.
+        * BigIntBench/value-mul-type-propagation.js: Added.
+
+2018-11-07  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add support to BigInt into ValueAdd
+        https://bugs.webkit.org/show_bug.cgi?id=186177
+
+        Reviewed by Keith Miller.
+
+        The idea of BigIntBench is to provide a set of microbenchmarks and
+        benchmarks to evaluate how fast BigInt computations are happening on
+        JSC implementation.
+
+        Now, we are adding microbenchmarks in this set,
+        but the plan is to move these tests to "JSTest/microbenchmarks" when
+        BigInt is enabled by default. After that, the focus of Bigint bench is
+        to provide a set of tests that represents real use cases of BigInt in
+        JS programs.
+
+        * BigIntBench/big-int-add-prediction-propagation.js: Added.
+        * BigIntBench/big-int-simple-add.js: Added.
+        * BigIntBench/big-int-simple-sub.js: Added.
+
+2018-11-07  Tadeu Zagallo  <tzagallo@apple.com>
+
+        REGRESSION(r237547): Test failures on 32-bit JSC since the JIT was disabled
+        https://bugs.webkit.org/show_bug.cgi?id=191184
+
+        Reviewed by Saam Barati.
+
+        Skip test when the JIT is disabled, it takes too long to run on CLoop.
+
+        * JetStream/cdjs/main.js:
+
+2018-11-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Cache glyph paths and share underline skipping code between all the ports
+        https://bugs.webkit.org/show_bug.cgi?id=191239
+
+        Reviewed by Alex Christensen.
+
+        Measures the performance of drawing a whole lot of underlines
+
+        * Layout/underline.html: Added.
+
+2018-10-25  Saam Barati  <sbarati@apple.com>
+
+        Check in corresponding C code in JetStream 2
+        https://bugs.webkit.org/show_bug.cgi?id=190733
+
+        Rubber-stamped by Filip Pizlo.
+
+        * JetStream2/simple/float-mm.c: Added.
+        * JetStream2/wasm/HashSet.cpp: Added.
+        * JetStream2/wasm/gcc-loops.cpp: Added.
+        * JetStream2/wasm/quicksort.c: Added.
+        * JetStream2/wasm/TSF: Added.
+        * JetStream2/wasm/TSF/build.sh: Added.
+        * JetStream2/wasm/TSF/config.h: Added.
+        * JetStream2/wasm/TSF/gpc.h: Added.
+        * JetStream2/wasm/TSF/gpc_code_gen_util.c: Added.
+        * JetStream2/wasm/TSF/gpc_instruction.c: Added.
+        * JetStream2/wasm/TSF/gpc_instruction_dispatch.gen: Added.
+        * JetStream2/wasm/TSF/gpc_instruction_size.gen: Added.
+        * JetStream2/wasm/TSF/gpc_instruction_stack_effects.gen: Added.
+        * JetStream2/wasm/TSF/gpc_instruction_static_size.gen: Added.
+        * JetStream2/wasm/TSF/gpc_instruction_to_string.gen: Added.
+        * JetStream2/wasm/TSF/gpc_int_common.h: Added.
+        * JetStream2/wasm/TSF/gpc_intable.c: Added.
+        * JetStream2/wasm/TSF/gpc_internal.h: Added.
+        * JetStream2/wasm/TSF/gpc_interpreter.gen: Added.
+        * JetStream2/wasm/TSF/gpc_program.c: Added.
+        * JetStream2/wasm/TSF/gpc_proto.c: Added.
+        * JetStream2/wasm/TSF/gpc_stack_height.c: Added.
+        * JetStream2/wasm/TSF/gpc_threaded.c: Added.
+        * JetStream2/wasm/TSF/gpc_worklist.h: Added.
+        * JetStream2/wasm/TSF/tsf.h: Added.
+        * JetStream2/wasm/TSF/tsf_adaptive_reader.c: Added.
+        * JetStream2/wasm/TSF/tsf_asprintf.c: Added.
+        * JetStream2/wasm/TSF/tsf_atomics.h: Added.
+        * JetStream2/wasm/TSF/tsf_buf_reader.c: Added.
+        * JetStream2/wasm/TSF/tsf_buf_writer.c: Added.
+        * JetStream2/wasm/TSF/tsf_buffer.c: Added.
+        * JetStream2/wasm/TSF/tsf_build_defines.h: Added.
+        * JetStream2/wasm/TSF/tsf_config.h: Added.
+        * JetStream2/wasm/TSF/tsf_config_stub.h: Added.
+        * JetStream2/wasm/TSF/tsf_copier.c: Added.
+        * JetStream2/wasm/TSF/tsf_define_helpers.c: Added.
+        * JetStream2/wasm/TSF/tsf_define_helpers.h: Added.
+        * JetStream2/wasm/TSF/tsf_destructor.c: Added.
+        * JetStream2/wasm/TSF/tsf_error.c: Added.
+        * JetStream2/wasm/TSF/tsf_format.h: Added.
+        * JetStream2/wasm/TSF/tsf_fsdb.c: Added.
+        * JetStream2/wasm/TSF/tsf_fsdb_protocol.c: Added.
+        * JetStream2/wasm/TSF/tsf_fsdb_protocol.h: Added.
+        * JetStream2/wasm/TSF/tsf_generator.c: Added.
+        * JetStream2/wasm/TSF/tsf_gpc_code_gen.c: Added.
+        * JetStream2/wasm/TSF/tsf_indent.h: Added.
+        * JetStream2/wasm/TSF/tsf_internal.h: Added.
+        * JetStream2/wasm/TSF/tsf_internal_config.h: Added.
+        * JetStream2/wasm/TSF/tsf_internal_config_stub.h: Added.
+        * JetStream2/wasm/TSF/tsf_inttypes.h: Added.
+        * JetStream2/wasm/TSF/tsf_io.c: Added.
+        * JetStream2/wasm/TSF/tsf_io_utils.c: Added.
+        * JetStream2/wasm/TSF/tsf_ir.c: Added.
+        * JetStream2/wasm/TSF/tsf_ir.h: Added.
+        * JetStream2/wasm/TSF/tsf_ir_different.c: Added.
+        * JetStream2/wasm/TSF/tsf_ir_different.h: Added.
+        * JetStream2/wasm/TSF/tsf_ir_speed.c: Added.
+        * JetStream2/wasm/TSF/tsf_limits.c: Added.
+        * JetStream2/wasm/TSF/tsf_named_type.c: Added.
+        * JetStream2/wasm/TSF/tsf_native.c: Added.
+        * JetStream2/wasm/TSF/tsf_parser.c: Added.
+        * JetStream2/wasm/TSF/tsf_primitive.c: Added.
+        * JetStream2/wasm/TSF/tsf_ra_type_man.c: Added.
+        * JetStream2/wasm/TSF/tsf_reflect.c: Added.
+        * JetStream2/wasm/TSF/tsf_region.h: Added.
+        * JetStream2/wasm/TSF/tsf_serial_in_man.c: Added.
+        * JetStream2/wasm/TSF/tsf_serial_out_man.c: Added.
+        * JetStream2/wasm/TSF/tsf_serial_protocol.h: Added.
+        * JetStream2/wasm/TSF/tsf_sha1.c: Added.
+        * JetStream2/wasm/TSF/tsf_sha1.h: Added.
+        * JetStream2/wasm/TSF/tsf_sha1_writer.c: Added.
+        * JetStream2/wasm/TSF/tsf_sort.c: Added.
+        * JetStream2/wasm/TSF/tsf_st.c: Added.
+        * JetStream2/wasm/TSF/tsf_st.h: Added.
+        * JetStream2/wasm/TSF/tsf_st_typetable.c: Added.
+        * JetStream2/wasm/TSF/tsf_stream_file_input.c: Added.
+        * JetStream2/wasm/TSF/tsf_stream_file_output.c: Added.
+        * JetStream2/wasm/TSF/tsf_type.c: Added.
+        * JetStream2/wasm/TSF/tsf_type_in_map.c: Added.
+        * JetStream2/wasm/TSF/tsf_type_out_map.c: Added.
+        * JetStream2/wasm/TSF/tsf_type_table.c: Added.
+        * JetStream2/wasm/TSF/tsf_types.h: Added.
+        * JetStream2/wasm/TSF/tsf_util.h: Added.
+        * JetStream2/wasm/TSF/tsf_version.c: Added.
+        * JetStream2/wasm/TSF/tsf_zip_abstract.c: Added.
+        * JetStream2/wasm/TSF/tsf_zip_abstract.h: Added.
+        * JetStream2/wasm/TSF/tsf_zip_attr.c: Added.
+        * JetStream2/wasm/TSF/tsf_zip_reader.c: Added.
+        * JetStream2/wasm/TSF/tsf_zip_writer.c: Added.
+
+2018-10-18  Saam Barati  <sbarati@apple.com>
+
+        Make JetStream 2
+        https://bugs.webkit.org/show_bug.cgi?id=187829
+
+        Rubber-stamped by Mark Lam.
+
+        This patch checks in the new JetStream 2 benchmark. JetStream 2 is
+        a new JavaScript and Web Assembly benchmark. JetStream 2's goal
+        is to measure the startup, worst case, and peak throughput performance
+        of the JavaScript engine. JetStream 2 incorporates these previous
+        benchmarks:
+        - JetStream
+        - ARES-6
+        - Kraken
+        - Web Tooling Benchmark
+        - WasmBench
+        - RexBench
+        
+        JetStream 2 also adds some new benchmarks:
+        - Two tests emphasizing web worker performance.
+        - One test emphasizing Promise, async iteration, and DataView performance.
+        - Two new code load tests.
+        - WSL: a test measuring all kinds of things, especially emphasizing exception performance.
+
+        * JetStream2: Added.
+
+2018-10-02  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r236613): Parser/html-parser.html performance test is failing
+        https://bugs.webkit.org/show_bug.cgi?id=190201
+
+        Unreviewed, apply the same fix as in r236699 to make sure the iframe is treated as
+        same origin, so that calls to document.open() / document.write() succeed.
+
+        * Parser/html-parser.html:
+
+2018-10-01  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r236613): Parser/HTML5-8266-ParseOnly.html performance tests no longer runs
+        https://bugs.webkit.org/show_bug.cgi?id=190174
+
+        Reviewed by Ryosuke Niwa.
+
+        Update iframe's sandbox to use 'allow-same-origin' so that the iframe is treated as same-origin and so that
+        the top frame can call document.open() / document.write() on the subframe. This test was also failing in
+        Firefox without this change.
+
+        * Parser/HTML5-8266-ParseOnly.html:
+
 2018-08-27  Aditya Keerthi  <akeerthi@apple.com>
 
         Consolidate ENABLE_INPUT_TYPE_COLOR and ENABLE_INPUT_TYPE_COLOR_POPOVER

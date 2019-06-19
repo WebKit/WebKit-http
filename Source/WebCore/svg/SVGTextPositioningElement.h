@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2008 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,8 +21,6 @@
 
 #pragma once
 
-#include "SVGAnimatedLengthList.h"
-#include "SVGAnimatedNumberList.h"
 #include "SVGTextContentElement.h"
 
 namespace WebCore {
@@ -32,42 +30,38 @@ class SVGTextPositioningElement : public SVGTextContentElement {
 public:
     static SVGTextPositioningElement* elementFromRenderer(RenderBoxModelObject&);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGTextPositioningElement, SVGTextContentElement>;
-    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGTextPositioningElement, SVGTextContentElement>;
 
-    const SVGLengthListValues& x() const { return m_x.currentValue(attributeOwnerProxy()); }
-    const SVGLengthListValues& y() const { return m_y.currentValue(attributeOwnerProxy()); }
-    const SVGLengthListValues& dx() const { return m_dx.currentValue(attributeOwnerProxy()); }
-    const SVGLengthListValues& dy() const { return m_dy.currentValue(attributeOwnerProxy()); }
-    const SVGNumberListValues& rotate() const { return m_rotate.currentValue(attributeOwnerProxy()); }
+    const SVGLengthList& x() const { return m_x->currentValue(); }
+    const SVGLengthList& y() const { return m_y->currentValue(); }
+    const SVGLengthList& dx() const { return m_dx->currentValue(); }
+    const SVGLengthList& dy() const { return m_dy->currentValue(); }
+    const SVGNumberList& rotate() const { return m_rotate->currentValue(); }
 
-    RefPtr<SVGAnimatedLengthList> xAnimated() { return m_x.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLengthList> yAnimated() { return m_y.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLengthList> dxAnimated() { return m_dx.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLengthList> dyAnimated() { return m_dy.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedNumberList> rotateAnimated() { return m_rotate.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedLengthList& xAnimated() { return m_x; }
+    SVGAnimatedLengthList& yAnimated() { return m_y; }
+    SVGAnimatedLengthList& dxAnimated() { return m_dx; }
+    SVGAnimatedLengthList& dyAnimated() { return m_dy; }
+    SVGAnimatedNumberList& rotateAnimated() { return m_rotate; }
 
 protected:
     SVGTextPositioningElement(const QualifiedName&, Document&);
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
 
 private:
     bool isPresentationAttribute(const QualifiedName&) const final;
-    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomString&, MutableStyleProperties&) final;
 
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const override { return m_attributeOwnerProxy; }
+    const SVGPropertyRegistry& propertyRegistry() const override { return m_propertyRegistry; }
 
-    static void registerAttributes();
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
-
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
-    SVGAnimatedLengthListAttribute m_x;
-    SVGAnimatedLengthListAttribute m_y;
-    SVGAnimatedLengthListAttribute m_dx;
-    SVGAnimatedLengthListAttribute m_dy;
-    SVGAnimatedNumberListAttribute m_rotate;
+    PropertyRegistry m_propertyRegistry { *this };
+    Ref<SVGAnimatedLengthList> m_x { SVGAnimatedLengthList::create(this, LengthModeWidth) };
+    Ref<SVGAnimatedLengthList> m_y { SVGAnimatedLengthList::create(this, LengthModeHeight) };
+    Ref<SVGAnimatedLengthList> m_dx { SVGAnimatedLengthList::create(this, LengthModeWidth) };
+    Ref<SVGAnimatedLengthList> m_dy { SVGAnimatedLengthList::create(this, LengthModeHeight) };
+    Ref<SVGAnimatedNumberList> m_rotate { SVGAnimatedNumberList::create(this) };
 };
 
 } // namespace WebCore

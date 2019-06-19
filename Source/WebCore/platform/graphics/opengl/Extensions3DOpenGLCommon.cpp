@@ -26,7 +26,7 @@
 
 #include "config.h"
 
-#if ENABLE(GRAPHICS_CONTEXT_3D)
+#if ENABLE(GRAPHICS_CONTEXT_3D) && (USE(OPENGL) || USE(OPENGL_ES))
 #include "Extensions3DOpenGLCommon.h"
 
 #include "ANGLEWebKitBridge.h"
@@ -53,7 +53,6 @@
 #include "EpoxyShims.h"
 #elif USE(OPENGL_ES)
 #include "OpenGLESShims.h"
-#define GL_GLEXT_PROTOTYPES 1
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #elif PLATFORM(GTK) || PLATFORM(WIN)
@@ -260,4 +259,4 @@ void Extensions3DOpenGLCommon::getnUniformivEXT(GC3Duint, int, GC3Dsizei, int *)
 
 } // namespace WebCore
 
-#endif // ENABLE(GRAPHICS_CONTEXT_3D)
+#endif // ENABLE(GRAPHICS_CONTEXT_3D) && (USE(OPENGL) || USE(OPENGL_ES))

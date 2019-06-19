@@ -16,8 +16,8 @@ describe("/api/measurement-set", function () {
     {
         const db = TestServer.database();
         return Promise.all([
-            db.selectFirstRow('platforms', {name: 'Mountain Lion'}),
-            db.selectFirstRow('test_metrics', {name: 'Time'}),
+            db.selectFirstRow('platforms', {name: platformName}),
+            db.selectFirstRow('test_metrics', {name: metricName}),
         ]).then(function (result) {
             return {platformId: result[0]['id'], metricId: result[1]['id']};
         });
@@ -107,7 +107,7 @@ describe("/api/measurement-set", function () {
             },
         }}];
 
-    const reportWithAncentRevision = [{
+    const reportWithAncientRevision = [{
         "buildNumber": "126",
         "buildTime": "2013-02-28T23:07:25Z",
         "revisions": {
@@ -124,6 +124,116 @@ describe("/api/measurement-set", function () {
                 "tests": {
                     "test1": {
                         "metrics": {"Time": { "current": [21, 22, 23, 24, 25] }}
+                    }
+                }
+            },
+        }}];
+
+    const secondReportWithRevision = [{
+        "buildNumber": "127",
+        "buildTime": "2013-02-28T23:07:25Z",
+        "revisions": {
+            "WebKit": {
+                "revision": "137794",
+                "timestamp": clusterTime(11.1).toISOString()
+            },
+        },
+        "builderName": "someBuilder",
+        "builderPassword": "somePassword",
+        "platform": "Mountain Lion",
+        "tests": {
+            "Suite": {
+                "tests": {
+                    "test1": {
+                        "metrics": {"Time": { "current": [21, 22, 23, 24, 25] }}
+                    }
+                }
+            },
+        }}];
+
+    const thirdReportWithRevision = [{
+        "buildNumber": "128",
+        "buildTime": "2013-02-28T23:07:25Z",
+        "revisions": {
+            "WebKit": {
+                "revision": "137795",
+                "timestamp": clusterTime(11.2).toISOString()
+            },
+        },
+        "builderName": "someBuilder",
+        "builderPassword": "somePassword",
+        "platform": "Mountain Lion",
+        "tests": {
+            "Suite": {
+                "tests": {
+                    "test1": {
+                        "metrics": {"Time": { "current": [21, 22, 23, 24, 25] }}
+                    }
+                }
+            },
+        }}];
+
+    const reportBaselineWithRevision = [{
+        "buildNumber": "129",
+        "buildTime": "2013-02-28T15:35:51Z",
+        "revisions": {
+            "WebKit": {
+                "revision": "144001",
+                "timestamp": clusterTime(13.35645364537).toISOString(),
+            },
+        },
+        "builderName": "someBuilder",
+        "builderPassword": "somePassword",
+        "platform": "Mountain Lion",
+        "tests": {
+            "Suite": {
+                "tests": {
+                    "test1": {
+                        "metrics": {"Time": { "baseline": [11, 12, 13, 14, 15] }}
+                    }
+                }
+            },
+        }}];
+
+    const secondReportBaselineWithRevision = [{
+        "buildNumber": "130",
+        "buildTime": "2013-02-28T23:01:25Z",
+        "revisions": {
+            "WebKit": {
+                "revision": "137784",
+                "timestamp": clusterTime(11.12).toISOString()
+            },
+        },
+        "builderName": "someBuilder",
+        "builderPassword": "somePassword",
+        "platform": "Mountain Lion",
+        "tests": {
+            "Suite": {
+                "tests": {
+                    "test1": {
+                        "metrics": {"Time": { "baseline": [21, 22, 23, 24, 25] }}
+                    }
+                }
+            },
+        }}];
+
+    const thirdReportBaselineWithRevision = [{
+        "buildNumber": "131",
+        "buildTime": "2013-02-28T23:01:25Z",
+        "revisions": {
+            "WebKit": {
+                "revision": "137884",
+                "timestamp": clusterTime(11.22).toISOString()
+            },
+        },
+        "builderName": "someBuilder",
+        "builderPassword": "somePassword",
+        "platform": "Mountain Lion",
+        "tests": {
+            "Suite": {
+                "tests": {
+                    "test1": {
+                        "metrics": {"Time": { "baseline": [21, 22, 23, 24, 25] }}
                     }
                 }
             },
@@ -342,6 +452,32 @@ describe("/api/measurement-set", function () {
         });
     });
 
+    it("should keep 'carry_over' points up to date", async () => {
+        const remote = TestServer.remoteAPI();
+        await addBuilderForReport(reportWithRevision[0]);
+        await remote.postJSON('/api/report/', reportWithRevision);
+        await remote.postJSON('/api/report/', secondReportWithRevision);
+        await remote.postJSON('/api/report/', thirdReportWithRevision);
+        await remote.postJSON('/api/report/', reportBaselineWithRevision);
+        await remote.postJSON('/api/report/', secondReportBaselineWithRevision);
+        await remote.postJSON('/api/report/', thirdReportBaselineWithRevision);
+        const result = await queryPlatformAndMetricWithRepository('Mountain Lion', 'Time', 'WebKit');
+
+        const response = await remote.getJSONWithStatus(`/api/measurement-set/?platform=${result.platformId}&metric=${result.metricId}`);
+
+        const currentRows = response['configurations']['current'];
+        assert.equal(currentRows.length, 2);
+        assert.deepEqual(format(response['formatMap'], currentRows[0]).buildNumber, 127);
+        assert.deepEqual(format(response['formatMap'], currentRows[1]).buildNumber, 128);
+        assert(format(response['formatMap'], currentRows[0]).commitTime < response.startTime);
+        assert(format(response['formatMap'], currentRows[1]).commitTime < response.startTime);
+
+        const baselineRows = response['configurations']['baseline'];
+        assert.equal(baselineRows.length, 2);
+        assert.deepEqual(format(response['formatMap'], baselineRows[0]).buildNumber, 131);
+        assert.deepEqual(format(response['formatMap'], baselineRows[1]).buildNumber, 129);
+    });
+
     it("should order results by build time when commit times are missing", () => {
         const remote = TestServer.remoteAPI();
         let repositoryId;
@@ -418,7 +554,7 @@ describe("/api/measurement-set", function () {
     it("should include one data point after the current time range", () => {
         const remote = TestServer.remoteAPI();
         return addBuilderForReport(reportWithBuildTime[0]).then(() => {
-            return remote.postJSON('/api/report/', reportWithAncentRevision);
+            return remote.postJSON('/api/report/', reportWithAncientRevision);
         }).then(() => {
             return remote.postJSON('/api/report/', reportWithNewRevision);
         }).then(() => {
@@ -429,7 +565,7 @@ describe("/api/measurement-set", function () {
             assert.equal(response['status'], 'OK');
             assert.equal(response['clusterCount'], 2, 'should have two clusters');
             assert.deepEqual(buildNumbers(response, 'current'),
-                [reportWithAncentRevision[0]['buildNumber'], reportWithNewRevision[0]['buildNumber']]);
+                [reportWithAncientRevision[0]['buildNumber'], reportWithNewRevision[0]['buildNumber']]);
         });
     });
 
@@ -438,7 +574,7 @@ describe("/api/measurement-set", function () {
         return addBuilderForReport(reportWithBuildTime[0]).then(() => {
             return remote.postJSON('/api/report/', reportWithBuildTime);
         }).then(() => {
-            return remote.postJSON('/api/report/', reportWithAncentRevision);
+            return remote.postJSON('/api/report/', reportWithAncientRevision);
         }).then(() => {
             return queryPlatformAndMetric('Mountain Lion', 'Time');
         }).then((result) => {
@@ -447,7 +583,7 @@ describe("/api/measurement-set", function () {
             assert.equal(response['clusterCount'], 2, 'should have two clusters');
             let currentRows = response['configurations']['current'];
             assert.equal(currentRows.length, 2, 'should contain two data points');
-            assert.deepEqual(buildNumbers(response, 'current'), [reportWithAncentRevision[0]['buildNumber'], reportWithBuildTime[0]['buildNumber']]);
+            assert.deepEqual(buildNumbers(response, 'current'), [reportWithAncientRevision[0]['buildNumber'], reportWithBuildTime[0]['buildNumber']]);
         });
     });
 
@@ -455,7 +591,7 @@ describe("/api/measurement-set", function () {
         const remote = TestServer.remoteAPI();
         let cachePrefix;
         return addBuilderForReport(reportWithBuildTime[0]).then(() => {
-            return remote.postJSON('/api/report/', reportWithAncentRevision);
+            return remote.postJSON('/api/report/', reportWithAncientRevision);
         }).then(() => {
             return remote.postJSON('/api/report/', reportWithRevision);
         }).then(() => {
@@ -545,4 +681,91 @@ describe("/api/measurement-set", function () {
             1, 1362046323388, '123', 1, 1, 'current']]);
     });
 
+    const reportWithCommitsNeedsRoundCommitTimeAndBuildRequest = {
+        "buildNumber": "123",
+        "buildTime": "2013-02-28T10:12:03.388304",
+        "builderName": "someBuilder",
+        "builderPassword": "somePassword",
+        "platform": "Mountain Lion",
+        "buildRequest": "700",
+        "tests": {
+            "test": {
+                "metrics": {"FrameRate": { "current": [[[0, 4], [100, 5], [205, 3]]] }}
+            },
+        },
+        "revisions": {
+            "macOS": {
+                "revision": "10.8.2 12C60",
+                "timestamp": '2018-09-27T09:49:52.670499Z',
+            },
+            "WebKit": {
+                "revision": "141977",
+                "timestamp": '2018-09-27T09:49:52.670999Z',
+            }
+        }
+    };
+
+    it("commit time of commits from measurement set queried by analysis task should match the one from `/api/commits`", async () => {
+        const expectedWebKitCommitTime = 1538041792671;
+        const expectedMacOSCommitTime = 1538041792670;
+        const remote = TestServer.remoteAPI();
+        await MockData.addMockData(TestServer.database());
+        let response = await reportAfterAddingBuilderAndAggregatorsWithResponse(reportWithCommitsNeedsRoundCommitTimeAndBuildRequest);
+        assert.equal(response['status'], 'OK');
+
+        const rawWebKitCommit = await remote.getJSONWithStatus(`/api/commits/WebKit/141977`);
+        assert.equal(rawWebKitCommit.commits[0].time, expectedWebKitCommitTime);
+
+        const rawMacOSCommit = await remote.getJSONWithStatus(`/api/commits/macOS/10.8.2%2012C60`);
+        assert.equal(rawMacOSCommit.commits[0].time, expectedMacOSCommitTime);
+
+        response = await TestServer.remoteAPI().getJSONWithStatus('/api/measurement-set/?analysisTask=500');
+        assert.equal(response['status'], 'OK');
+        assert.deepEqual(response['measurements'], [[1, 4, 3, 12, 50, [
+            ['1', '9', '10.8.2 12C60', null, expectedMacOSCommitTime], ['2', '11', '141977', null, expectedWebKitCommitTime]],
+            1, 1362046323388, '123', 1, 1, 'current']]);
+    });
+
+    const reportWithCommitsNeedsRoundCommitTime = {
+        "buildNumber": "123",
+        "buildTime": "2013-02-28T10:12:03.388304",
+        "builderName": "someBuilder",
+        "builderPassword": "somePassword",
+        "platform": "Mountain Lion",
+        "tests": {
+            "test": {
+                "metrics": {"FrameRate": { "current": [[[0, 4], [100, 5], [205, 3]]] }}
+            },
+        },
+        "revisions": {
+            "macOS": {
+                "revision": "10.8.2 12C60",
+                "timestamp": '2018-09-27T09:49:52.670499Z',
+            },
+            "WebKit": {
+                "revision": "141977",
+                "timestamp": '2018-09-27T09:49:52.670999Z',
+            }
+        }
+    };
+
+    it("commit time of commits from measurement set queried by platform and metric should match the one from `/api/commits`", async () => {
+        const expectedWebKitCommitTime = 1538041792671;
+        const expectedMacOSCommitTime = 1538041792670;
+        const remote = TestServer.remoteAPI();
+        await addBuilderForReport(reportWithCommitsNeedsRoundCommitTime);
+        await remote.postJSON('/api/report/', [reportWithCommitsNeedsRoundCommitTime]);
+
+        const rawWebKitCommit = await remote.getJSONWithStatus(`/api/commits/WebKit/141977`);
+        assert.equal(rawWebKitCommit.commits[0].time, expectedWebKitCommitTime);
+
+        const rawMacOSCommit = await remote.getJSONWithStatus(`/api/commits/macOS/10.8.2%2012C60`);
+        assert.equal(rawMacOSCommit.commits[0].time, expectedMacOSCommitTime);
+
+        const result = await queryPlatformAndMetric('Mountain Lion', 'FrameRate');
+        const primaryCluster = await remote.getJSONWithStatus(`/api/measurement-set/?platform=${result.platformId}&metric=${result.metricId}`);
+        assert.deepEqual(primaryCluster.configurations.current, [[1, 4, 3, 12, 50, false, [
+            [1, 1, '10.8.2 12C60', null, expectedMacOSCommitTime], [2, 2, '141977', null, expectedWebKitCommitTime]],
+            expectedWebKitCommitTime, 1, 1362046323388, '123', 1]]);
+    });
 });

@@ -154,7 +154,6 @@ private:
     
     void enqueueVideoSample(MediaStreamTrackPrivate&, MediaSample&);
     void enqueueCorrectedVideoSample(MediaSample&);
-    void flushAndRemoveVideoSampleBuffers();
     void requestNotificationWhenReadyForVideoData();
 
     void paint(GraphicsContext&, const FloatRect&) override;
@@ -174,7 +173,7 @@ private:
 
     bool ended() const override { return m_ended; }
 
-    void setShouldBufferData(bool) override;
+    void setBufferingPolicy(MediaPlayer::BufferingPolicy) override;
 
     MediaPlayer::ReadyState currentReadyState();
     void updateReadyState();
@@ -189,6 +188,7 @@ private:
     enum DisplayMode {
         None,
         PaintItBlack,
+        WaitingForFirstImage,
         PausedImage,
         LivePreview,
     };
@@ -228,6 +228,8 @@ private:
     CGAffineTransform videoTransformationMatrix(MediaSample&, bool forceUpdate = false);
 
     void applicationDidBecomeActive() final;
+
+    bool hideBackgroundLayer() const { return (!m_activeVideoTrack || m_waitingForFirstImage) && m_displayMode != PaintItBlack; }
 
     MediaPlayer* m_player { nullptr };
     RefPtr<MediaStreamPrivate> m_mediaStreamPrivate;
@@ -274,10 +276,10 @@ private:
     bool m_ended { false };
     bool m_hasEverEnqueuedVideoFrame { false };
     bool m_pendingSelectedTrackCheck { false };
-    bool m_shouldDisplayFirstVideoFrame { false };
     bool m_transformIsValid { false };
     bool m_visible { false };
     bool m_haveSeenMetadata { false };
+    bool m_waitingForFirstImage { false };
 };
     
 }

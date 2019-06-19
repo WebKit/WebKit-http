@@ -39,11 +39,11 @@ bool ISOTrackEncryptionBox::parse(DataView& view, unsigned& offset)
         return false;
 
     // unsigned int(8) reserved = 0;
-    offset += 2;
+    offset += 1;
 
     if (!m_version) {
         // unsigned int(8) reserved = 0;
-        offset += 2;
+        offset += 1;
     } else {
         int8_t cryptAndSkip = 0;
         if (!checkedRead<int8_t>(cryptAndSkip, view, offset, BigEndian))
@@ -64,9 +64,6 @@ bool ISOTrackEncryptionBox::parse(DataView& view, unsigned& offset)
         return false;
 
     auto keyIDBuffer = buffer->slice(offset, offset + 16);
-    if (!keyIDBuffer)
-        return false;
-
     offset += 16;
 
     m_defaultKID.resize(16);

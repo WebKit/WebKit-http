@@ -31,6 +31,7 @@
 #include "CacheStorageProvider.h"
 #include "Chrome.h"
 #include "CommonVM.h"
+#include "CustomHeaderFields.h"
 #include "DOMWindow.h"
 #include "DocumentLoader.h"
 #include "EditorClient.h"
@@ -47,6 +48,7 @@
 #include "PageConfiguration.h"
 #include "RenderSVGRoot.h"
 #include "RenderStyle.h"
+#include "RenderView.h"
 #include "SVGDocument.h"
 #include "SVGFEImageElement.h"
 #include "SVGForeignObjectElement.h"
@@ -324,7 +326,7 @@ ImageDrawResult SVGImage::draw(GraphicsContext& context, const FloatRect& dstRec
     }
 
 #if PLATFORM(MAC)
-    LocalDefaultSystemAppearance localAppearance(m_page->useSystemAppearance(), m_page->useDarkAppearance());
+    LocalDefaultSystemAppearance localAppearance(view->useDarkAppearance());
 #endif
 
     view->paint(context, intersection(context.clipBounds(), enclosingIntRect(srcRect)));
@@ -453,13 +455,7 @@ EncodedDataStatus SVGImage::dataChanged(bool allDataReceived)
         return EncodedDataStatus::Complete;
 
     if (allDataReceived) {
-        PageConfiguration pageConfiguration(
-            createEmptyEditorClient(),
-            SocketProvider::create(),
-            LibWebRTCProvider::create(),
-            CacheStorageProvider::create()
-        );
-        fillWithEmptyClients(pageConfiguration);
+        auto pageConfiguration = pageConfigurationWithEmptyClients();
         m_chromeClient = std::make_unique<SVGImageChromeClient>(this);
         pageConfiguration.chromeClient = m_chromeClient.get();
 
@@ -474,6 +470,7 @@ EncodedDataStatus SVGImage::dataChanged(bool allDataReceived)
         m_page->settings().setScriptEnabled(false);
         m_page->settings().setPluginsEnabled(false);
         m_page->settings().setAcceleratedCompositingEnabled(false);
+        m_page->settings().setShouldAllowUserInstalledFonts(false);
 
         Frame& frame = m_page->mainFrame();
         frame.setView(FrameView::create(frame));

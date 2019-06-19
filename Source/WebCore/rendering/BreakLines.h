@@ -90,7 +90,7 @@ inline bool needsLineBreakIterator(UChar character)
 template<typename CharacterType, NonBreakingSpaceBehavior nonBreakingSpaceBehavior, CanUseShortcut canUseShortcut>
 inline unsigned nextBreakablePosition(LazyLineBreakIterator& lazyBreakIterator, const CharacterType* string, unsigned length, unsigned startPosition)
 {
-    std::optional<unsigned> nextBreak;
+    Optional<unsigned> nextBreak;
 
     CharacterType lastLastCharacter = startPosition > 1 ? string[startPosition - 2] : static_cast<CharacterType>(lazyBreakIterator.secondToLastCharacter());
     CharacterType lastCharacter = startPosition > 0 ? string[startPosition - 1] : static_cast<CharacterType>(lazyBreakIterator.lastCharacter());
@@ -109,7 +109,7 @@ inline unsigned nextBreakablePosition(LazyLineBreakIterator& lazyBreakIterator, 
                     if (breakIterator) {
                         int candidate = ubrk_following(breakIterator, i - 1 + priorContextLength);
                         if (candidate == UBRK_DONE)
-                            nextBreak = std::nullopt;
+                            nextBreak = WTF::nullopt;
                         else {
                             unsigned result = candidate;
                             ASSERT(result >= priorContextLength);
@@ -187,12 +187,25 @@ inline unsigned nextBreakablePositionIgnoringNBSPWithoutShortcut(LazyLineBreakIt
     return nextBreakablePosition<UChar, NonBreakingSpaceBehavior::IgnoreNonBreakingSpace, CanUseShortcut::No>(lazyBreakIterator, stringView.characters16(), stringView.length(), startPosition);
 }
 
-inline bool isBreakable(LazyLineBreakIterator& lazyBreakIterator, unsigned startPosition, std::optional<unsigned>& nextBreakable, bool breakNBSP, bool canUseShortcut, bool keepAllWords)
+inline unsigned nextBreakablePositionBreakCharacter(LazyLineBreakIterator& lazyBreakIterator, unsigned startPosition)
+{
+    auto stringView = lazyBreakIterator.stringView();
+    ASSERT(startPosition <= stringView.length());
+    // FIXME: Can/Should we implement this using a Shared Iterator (performance issue)
+    // https://bugs.webkit.org/show_bug.cgi?id=197876
+    NonSharedCharacterBreakIterator iterator(stringView);
+    Optional<unsigned> next = ubrk_following(iterator, startPosition);
+    return next.valueOr(stringView.length());
+}
+
+inline bool isBreakable(LazyLineBreakIterator& lazyBreakIterator, unsigned startPosition, Optional<unsigned>& nextBreakable, bool breakNBSP, bool canUseShortcut, bool keepAllWords, bool breakAnywhere)
 {
     if (nextBreakable && nextBreakable.value() >= startPosition)
         return startPosition == nextBreakable;
 
-    if (keepAllWords) {
+    if (breakAnywhere)
+        nextBreakable = nextBreakablePositionBreakCharacter(lazyBreakIterator, startPosition);
+    else if (keepAllWords) {
         if (breakNBSP)
             nextBreakable = nextBreakablePositionKeepingAllWords(lazyBreakIterator, startPosition);
         else

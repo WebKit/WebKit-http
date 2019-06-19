@@ -1,4 +1,4 @@
-<!-- webkit-test-runner [ useThreadedScrolling=false ] -->
+<!-- webkit-test-runner [ useThreadedScrolling=false internal:AsyncOverflowScrollingEnabled=true ] -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -23,10 +23,6 @@
       height: 100px;
     }
   </style>
-  <script>
-    if (window.internals)
-      window.internals.settings.setAcceleratedCompositingForOverflowScrollEnabled(true);
-  </script>
 </head>
 
 <body>

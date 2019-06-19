@@ -245,6 +245,7 @@ protected:
     virtual void platformSetVisible(bool) = 0;
     virtual void platformPlay() = 0;
     virtual void platformPause() = 0;
+    virtual bool platformPaused() const { return !rate(); }
     virtual void checkPlayability() = 0;
     virtual void seekToTime(const MediaTime&, const MediaTime& negativeTolerance, const MediaTime& positiveTolerance) = 0;
     unsigned long long totalBytes() const override = 0;
@@ -369,7 +370,6 @@ private:
     bool m_cachedHasCaptions;
     bool m_ignoreLoadStateChanges;
     bool m_haveReportedFirstVideoFrame;
-    bool m_playWhenFramesAvailable;
     bool m_inbandTrackConfigurationPending;
     bool m_characteristicsChanged;
     bool m_shouldMaintainAspectRatio;

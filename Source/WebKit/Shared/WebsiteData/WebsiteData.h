@@ -28,6 +28,7 @@
 #include <WebCore/SecurityOriginData.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
+#include <wtf/OptionSet.h>
 #include <wtf/Vector.h>
 
 namespace IPC {
@@ -39,6 +40,8 @@ namespace WebKit {
 
 enum class WebsiteDataType;
 
+enum class WebsiteDataProcessType { Network, UI, Web };
+
 struct WebsiteData {
     struct Entry {
         WebCore::SecurityOriginData origin;
@@ -46,7 +49,7 @@ struct WebsiteData {
         uint64_t size;
 
         void encode(IPC::Encoder&) const;
-        static std::optional<WebsiteData::Entry> decode(IPC::Decoder&);
+        static Optional<WebsiteData::Entry> decode(IPC::Decoder&);
     };
 
     Vector<Entry> entries;
@@ -62,6 +65,8 @@ struct WebsiteData {
 
     void encode(IPC::Encoder&) const;
     static bool decode(IPC::Decoder&, WebsiteData&);
+    static WebsiteDataProcessType ownerProcess(WebsiteDataType);
+    static OptionSet<WebsiteDataType> filter(OptionSet<WebsiteDataType>, WebsiteDataProcessType);
 };
 
 }

@@ -82,15 +82,14 @@ String ReplaceRangeWithTextCommand::inputEventData() const
 RefPtr<DataTransfer> ReplaceRangeWithTextCommand::inputEventDataTransfer() const
 {
     if (!isEditingTextAreaOrTextInput())
-        return DataTransfer::createForInputEvent(m_text, createMarkup(*m_textFragment));
+        return DataTransfer::createForInputEvent(m_text, serializeFragment(*m_textFragment, SerializedNodes::SubtreeIncludingNode));
 
     return CompositeEditCommand::inputEventDataTransfer();
 }
 
 Vector<RefPtr<StaticRange>> ReplaceRangeWithTextCommand::targetRanges() const
 {
-    RefPtr<StaticRange> range = StaticRange::createFromRange(*m_rangeToBeReplaced);
-    return { 1, range };
+    return { 1, StaticRange::createFromRange(*m_rangeToBeReplaced) };
 }
 
 } // namespace WebCore

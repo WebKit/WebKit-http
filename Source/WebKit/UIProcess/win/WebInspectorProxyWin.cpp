@@ -30,7 +30,6 @@
 #include "APINavigation.h"
 #include "APINavigationAction.h"
 #include "APIPageConfiguration.h"
-#include "CFURLExtras.h"
 #include "PageClientImpl.h"
 #include "WebFramePolicyListenerProxy.h"
 #include "WebPageGroup.h"
@@ -38,12 +37,14 @@
 #include "WebPreferences.h"
 #include "WebProcessPool.h"
 #include "WebView.h"
+#include <WebCore/CertificateInfo.h>
 #include <WebCore/InspectorFrontendClientLocal.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/WebCoreBundleWin.h>
 #include <WebCore/WebCoreInstanceHandle.h>
 #include <WebCore/WindowMessageBroadcaster.h>
 #include <WebKit/WKPage.h>
+#include <wtf/cf/CFURLExtras.h>
 
 namespace WebKit {
 
@@ -191,7 +192,7 @@ WebPageProxy* WebInspectorProxy::platformCreateFrontendPage()
 {
     ASSERT(inspectedPage());
 
-    RefPtr<WebPreferences> preferences = WebPreferences::create(String(), "WebKit2.", "WebKit2.");
+    auto preferences = WebPreferences::create(String(), "WebKit2.", "WebKit2.");
 #if ENABLE(DEVELOPER_MODE)
     // Allow developers to inspect the Web Inspector in debug builds without changing settings.
     preferences->setDeveloperExtrasEnabled(true);
@@ -199,11 +200,11 @@ WebPageProxy* WebInspectorProxy::platformCreateFrontendPage()
 #endif
     preferences->setAllowFileAccessFromFileURLs(true);
     preferences->setJavaScriptRuntimeFlags({ });
-    RefPtr<WebPageGroup> pageGroup = WebPageGroup::create(inspectorPageGroupIdentifierForPage(inspectedPage()), false, false);
+    auto pageGroup = WebPageGroup::create(inspectorPageGroupIdentifierForPage(inspectedPage()));
     auto pageConfiguration = API::PageConfiguration::create();
     pageConfiguration->setProcessPool(&inspectorProcessPool(inspectionLevel()));
-    pageConfiguration->setPreferences(preferences.get());
-    pageConfiguration->setPageGroup(pageGroup.get());
+    pageConfiguration->setPreferences(preferences.ptr());
+    pageConfiguration->setPageGroup(pageGroup.ptr());
 
     WKPageNavigationClientV0 navigationClient = {
         { 0, this },
@@ -231,7 +232,7 @@ WebPageProxy* WebInspectorProxy::platformCreateFrontendPage()
         nullptr, // didRemoveNavigationGestureSnapshot
     };
 
-    RECT r = { 0, 0, initialWindowWidth, initialWindowHeight };
+    RECT r = { 0, 0, static_cast<LONG>(initialWindowWidth), static_cast<LONG>(initialWindowHeight) };
     auto page = inspectedPage();
     m_inspectedViewWindow = page->viewWidget();
     m_inspectedViewParentWindow = ::GetParent(m_inspectedViewWindow);
@@ -300,9 +301,6 @@ void WebInspectorProxy::platformAttach()
     static const unsigned minimumAttachedWidth = 750;
     static const unsigned minimumAttachedHeight = 250;
 
-    unsigned inspectedHeight = platformInspectedWindowHeight();
-    unsigned inspectedWidth = platformInspectedWindowWidth();
-
     if (m_inspectorDetachWindow && ::GetParent(m_inspectorViewWindow) == m_inspectorDetachWindow) {
         ::SetParent(m_inspectorViewWindow, m_inspectedViewParentWindow);
         ::ShowWindow(m_inspectorDetachWindow, SW_HIDE);
@@ -322,11 +320,10 @@ void WebInspectorProxy::platformAttach()
 
 void WebInspectorProxy::platformDetach()
 {
-    if (!inspectedPage()->isValid())
+    if (!inspectedPage()->hasRunningProcess())
         return;
 
     if (!m_inspectorDetachWindow) {
-        static bool haveRegisteredClass = false;
         registerWindowClass();
         m_inspectorDetachWindow = ::CreateWindowEx(0, WebInspectorProxyClassName, 0, WS_OVERLAPPEDWINDOW,
             CW_USEDEFAULT, CW_USEDEFAULT, initialWindowWidth, initialWindowHeight,
@@ -361,6 +358,11 @@ void WebInspectorProxy::platformSetAttachedWindowWidth(unsigned width)
     ::SetWindowPos(m_inspectedViewWindow, 0, windowInfo.left, windowInfo.top, windowInfo.parentWidth - windowInfo.left, windowInfo.parentHeight - windowInfo.top, SWP_NOZORDER);
 }
 
+void WebInspectorProxy::platformSetSheetRect(const WebCore::FloatRect&)
+{
+    notImplemented();
+}
+
 bool WebInspectorProxy::platformIsFront()
 {
     notImplemented();
@@ -383,6 +385,11 @@ void WebInspectorProxy::platformBringInspectedPageToFront()
 }
 
 void WebInspectorProxy::platformInspectedURLChanged(const String& /* url */)
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformShowCertificate(const WebCore::CertificateInfo&)
 {
     notImplemented();
 }

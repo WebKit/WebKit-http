@@ -26,18 +26,18 @@
 #import "config.h"
 #import "ResourceError.h"
 
-#import "URL.h"
 #import <CoreFoundation/CFError.h>
 #import <Foundation/Foundation.h>
 #import <wtf/BlockObjCExceptions.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/URL.h>
 #import <wtf/text/WTFString.h>
 
 @interface NSError (WebExtras)
 - (NSString *)_web_localizedDescription;
 @end
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 // This workaround code exists here because we can't call translateToCFError in Foundation. Once we
 // have that, we can remove this code. <rdar://problem/9837415> Need SPI for translateCFError
@@ -89,7 +89,7 @@ static NSDictionary* dictionaryThatCanCode(NSDictionary* src)
 
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 namespace WebCore {
 

@@ -27,7 +27,7 @@
 #include "config.h"
 #include "WebEvent.h"
 
-#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
+#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS_FAMILY)
 
 #include "WebCoreArgumentCoders.h"
 
@@ -65,27 +65,27 @@ void WebPlatformTouchPoint::encode(IPC::Encoder& encoder) const
     encoder << m_force;
 }
 
-std::optional<WebPlatformTouchPoint> WebPlatformTouchPoint::decode(IPC::Decoder& decoder)
+Optional<WebPlatformTouchPoint> WebPlatformTouchPoint::decode(IPC::Decoder& decoder)
 {
     WebPlatformTouchPoint result;
     if (!decoder.decode(result.m_id))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(result.m_state))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(result.m_screenPosition))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(result.m_position))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(result.m_radius))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(result.m_rotationAngle))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(result.m_force))
-        return std::nullopt;
+        return WTF::nullopt;
 
-    return WTFMove(result);
+    return result;
 }
 
 } // namespace WebKit
 
-#endif // ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
+#endif // ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS_FAMILY)

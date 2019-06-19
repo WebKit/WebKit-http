@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKNavigationDataInternal.h"
 
-#if WK_API_ENABLED
-
 #import "WKNSURLExtras.h"
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/ResourceResponse.h>
@@ -71,5 +69,3 @@
 }
 
 @end
-
-#endif // WK_API_ENABLED

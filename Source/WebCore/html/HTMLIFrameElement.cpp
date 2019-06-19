@@ -28,9 +28,9 @@
 #include "CSSPropertyNames.h"
 #include "DOMTokenList.h"
 #include "Frame.h"
-#include "HTMLDocument.h"
 #include "HTMLNames.h"
 #include "RenderIFrame.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScriptableDocumentParser.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -62,12 +62,12 @@ DOMTokenList& HTMLIFrameElement::sandbox()
 
 bool HTMLIFrameElement::isPresentationAttribute(const QualifiedName& name) const
 {
-    if (name == widthAttr || name == heightAttr || name == alignAttr || name == frameborderAttr)
+    if (name == widthAttr || name == heightAttr || name == frameborderAttr)
         return true;
     return HTMLFrameElementBase::isPresentationAttribute(name);
 }
 
-void HTMLIFrameElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
+void HTMLIFrameElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomString& value, MutableStyleProperties& style)
 {
     if (name == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, value);
@@ -86,7 +86,7 @@ void HTMLIFrameElement::collectStyleForPresentationAttribute(const QualifiedName
         HTMLFrameElementBase::collectStyleForPresentationAttribute(name, value, style);
 }
 
-void HTMLIFrameElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLIFrameElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == sandboxAttr) {
         if (m_sandbox)
@@ -110,6 +110,51 @@ bool HTMLIFrameElement::rendererIsNeeded(const RenderStyle& style)
 RenderPtr<RenderElement> HTMLIFrameElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderIFrame>(*this, WTFMove(style));
+}
+
+void HTMLIFrameElement::setReferrerPolicyForBindings(const AtomString& value)
+{
+    setAttributeWithoutSynchronization(referrerpolicyAttr, value);
+}
+
+String HTMLIFrameElement::referrerPolicyForBindings() const
+{
+    switch (referrerPolicy()) {
+    case ReferrerPolicy::NoReferrer:
+        return "no-referrer"_s;
+    case ReferrerPolicy::UnsafeUrl:
+        return "unsafe-url"_s;
+    case ReferrerPolicy::Origin:
+        return "origin"_s;
+    case ReferrerPolicy::OriginWhenCrossOrigin:
+        return "origin-when-cross-origin"_s;
+    case ReferrerPolicy::SameOrigin:
+        return "same-origin"_s;
+    case ReferrerPolicy::StrictOrigin:
+        return "strict-origin"_s;
+    case ReferrerPolicy::StrictOriginWhenCrossOrigin:
+        return "strict-origin-when-cross-origin"_s;
+    case ReferrerPolicy::NoReferrerWhenDowngrade:
+        return "no-referrer-when-downgrade"_s;
+    case ReferrerPolicy::EmptyString:
+        return { };
+    }
+    ASSERT_NOT_REACHED();
+    return { };
+}
+
+ReferrerPolicy HTMLIFrameElement::referrerPolicy() const
+{
+    if (RuntimeEnabledFeatures::sharedFeatures().referrerPolicyAttributeEnabled())
+        return parseReferrerPolicy(attributeWithoutSynchronization(referrerpolicyAttr), ReferrerPolicySource::ReferrerPolicyAttribute).valueOr(ReferrerPolicy::EmptyString);
+    return ReferrerPolicy::EmptyString;
+}
+
+const FeaturePolicy& HTMLIFrameElement::featurePolicy() const
+{
+    if (!m_featurePolicy)
+        m_featurePolicy = FeaturePolicy::parse(document(), m_allow);
+    return *m_featurePolicy;
 }
 
 }

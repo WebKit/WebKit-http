@@ -27,6 +27,7 @@
 #define WKContextConfigurationRef_h
 
 #include <WebKit/WKBase.h>
+#include <WebKit/WKDeprecated.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,6 +63,9 @@ WK_EXPORT void WKContextConfigurationSetResourceLoadStatisticsDirectory(WKContex
 WK_EXPORT bool WKContextConfigurationFullySynchronousModeIsAllowedForTesting(WKContextConfigurationRef configuration);
 WK_EXPORT void WKContextConfigurationSetFullySynchronousModeIsAllowedForTesting(WKContextConfigurationRef configuration, bool allowed);
 
+WK_EXPORT bool WKContextConfigurationIgnoreSynchronousMessagingTimeoutsForTesting(WKContextConfigurationRef configuration);
+WK_EXPORT void WKContextConfigurationSetIgnoreSynchronousMessagingTimeoutsForTesting(WKContextConfigurationRef configuration, bool ignore);
+
 WK_EXPORT WKArrayRef WKContextConfigurationCopyOverrideLanguages(WKContextConfigurationRef configuration);
 WK_EXPORT void WKContextConfigurationSetOverrideLanguages(WKContextConfigurationRef configuration, WKArrayRef overrideLanguages);
 
@@ -71,14 +75,20 @@ WK_EXPORT void WKContextConfigurationSetShouldCaptureAudioInUIProcess(WKContextC
 WK_EXPORT bool WKContextConfigurationProcessSwapsOnNavigation(WKContextConfigurationRef configuration);
 WK_EXPORT void WKContextConfigurationSetProcessSwapsOnNavigation(WKContextConfigurationRef configuration, bool swaps);
 
+WK_EXPORT bool WKContextConfigurationPrewarmsProcessesAutomatically(WKContextConfigurationRef configuration);
+WK_EXPORT void WKContextConfigurationSetPrewarmsProcessesAutomatically(WKContextConfigurationRef configuration, bool prewarms);
+
+WK_EXPORT bool WKContextConfigurationUsesWebProcessCache(WKContextConfigurationRef configuration);
+WK_EXPORT void WKContextConfigurationSetUsesWebProcessCache(WKContextConfigurationRef configuration, bool uses);
+
 WK_EXPORT bool WKContextConfigurationAlwaysKeepAndReuseSwappedProcesses(WKContextConfigurationRef configuration);
 WK_EXPORT void WKContextConfigurationSetAlwaysKeepAndReuseSwappedProcesses(WKContextConfigurationRef configuration, bool keepAndReuse);
 
 WK_EXPORT bool WKContextConfigurationProcessSwapsOnWindowOpenWithOpener(WKContextConfigurationRef configuration);
 WK_EXPORT void WKContextConfigurationSetProcessSwapsOnWindowOpenWithOpener(WKContextConfigurationRef configuration, bool swaps);
 
-WK_EXPORT int64_t WKContextConfigurationDiskCacheSizeOverride(WKContextConfigurationRef configuration);
-WK_EXPORT void WKContextConfigurationSetDiskCacheSizeOverride(WKContextConfigurationRef configuration, int64_t size);
+WK_EXPORT int64_t WKContextConfigurationDiskCacheSizeOverride(WKContextConfigurationRef configuration) WK_C_API_DEPRECATED;
+WK_EXPORT void WKContextConfigurationSetDiskCacheSizeOverride(WKContextConfigurationRef configuration, int64_t size) WK_C_API_DEPRECATED;
     
 #ifdef __cplusplus
 }

@@ -24,22 +24,23 @@
  */
 
 #include "config.h"
-#include "WorkQueue.h"
-#include "BlockPtr.h"
-#include "Ref.h"
+#include <wtf/WorkQueue.h>
+
+#include <wtf/BlockPtr.h>
+#include <wtf/Ref.h>
 
 namespace WTF {
 
 void WorkQueue::dispatch(Function<void()>&& function)
 {
-    dispatch_async(m_dispatchQueue, BlockPtr<void()>::fromCallable([protectedThis = makeRef(*this), function = WTFMove(function)] {
+    dispatch_async(m_dispatchQueue, makeBlockPtr([protectedThis = makeRef(*this), function = WTFMove(function)] {
         function();
     }).get());
 }
 
 void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
 {
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, duration.nanosecondsAs<int64_t>()), m_dispatchQueue, BlockPtr<void()>::fromCallable([protectedThis = makeRef(*this), function = WTFMove(function)] {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, duration.nanosecondsAs<int64_t>()), m_dispatchQueue, makeBlockPtr([protectedThis = makeRef(*this), function = WTFMove(function)] {
         function();
     }).get());
 }
@@ -94,7 +95,7 @@ void WorkQueue::platformInvalidate()
 
 void WorkQueue::concurrentApply(size_t iterations, WTF::Function<void(size_t index)>&& function)
 {
-    dispatch_apply(iterations, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), BlockPtr<void(size_t index)>::fromCallable([function = WTFMove(function)](size_t index) {
+    dispatch_apply(iterations, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), makeBlockPtr([function = WTFMove(function)](size_t index) {
         function(index);
     }).get());
 }

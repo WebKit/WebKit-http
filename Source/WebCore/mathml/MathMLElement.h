@@ -85,21 +85,19 @@ public:
         Stretched = 18
     };
 
-    virtual std::optional<bool> specifiedDisplayStyle() { return std::nullopt; }
-    virtual std::optional<MathVariant> specifiedMathVariant() { return std::nullopt; }
+    virtual Optional<bool> specifiedDisplayStyle() { return WTF::nullopt; }
+    virtual Optional<MathVariant> specifiedMathVariant() { return WTF::nullopt; }
 
     virtual void updateSelectedChild() { }
 
 protected:
     MathMLElement(const QualifiedName& tagName, Document&);
 
-    static StringView stripLeadingAndTrailingWhitespace(const StringView&);
-
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomString&) override;
     bool childShouldCreateRenderer(const Node&) const override;
 
     bool isPresentationAttribute(const QualifiedName&) const override;
-    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomString&, MutableStyleProperties&) override;
 
     bool willRespondToMouseClickEvents() override;
     void defaultEventHandler(Event&) override;

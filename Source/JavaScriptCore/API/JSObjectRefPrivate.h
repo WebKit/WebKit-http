@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -70,7 +70,7 @@ JS_EXPORT bool JSObjectDeletePrivateProperty(JSContextRef ctx, JSObjectRef objec
 JS_EXPORT JSObjectRef JSObjectGetProxyTarget(JSObjectRef);
 
 JS_EXPORT JSGlobalContextRef JSObjectGetGlobalContext(JSObjectRef object);
-    
+
 #ifdef __cplusplus
 }
 #endif

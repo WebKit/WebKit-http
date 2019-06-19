@@ -38,17 +38,24 @@ namespace WebCore {
 #endif
 
 #define WEBCORE_LOG_CHANNELS(M) \
+    M(AdClickAttribution) \
     M(Animations) \
+    M(ApplePay) \
     M(Archives) \
+    M(ClipRects) \
     M(Compositing) \
+    M(CompositingOverlap) \
     M(ContentFiltering) \
+    M(ContentObservation) \
     M(DatabaseTracker) \
     M(DisplayLists) \
     M(DOMTimers) \
     M(Editing) \
+    M(EME) \
     M(Events) \
     M(FileAPI) \
     M(Filters) \
+    M(Fonts) \
     M(Frames) \
     M(FTP) \
     M(Fullscreen) \
@@ -100,6 +107,7 @@ namespace WebCore {
     M(WebGL) \
     M(WebGPU) \
     M(WebRTC) \
+    M(WebRTCStats) \
     M(WheelEventTestTriggers) \
 
 #undef DECLARE_LOG_CHANNEL

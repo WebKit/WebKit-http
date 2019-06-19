@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CryptoAlgorithmParameters.h"
 #include <JavaScriptCore/JSObject.h>
@@ -39,7 +39,7 @@ public:
     // FIXME: Consider merging hash and hashIdentifier.
     Variant<JSC::Strong<JSC::JSObject>, String> hash;
     CryptoAlgorithmIdentifier hashIdentifier;
-    std::optional<size_t> length;
+    Optional<size_t> length;
 
     Class parametersClass() const final { return Class::HmacKeyParams; }
 
@@ -58,4 +58,4 @@ public:
 
 SPECIALIZE_TYPE_TRAITS_CRYPTO_ALGORITHM_PARAMETERS(HmacKeyParams)
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

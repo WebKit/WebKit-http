@@ -14,13 +14,17 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include "absl/strings/string_view.h"
 #include "modules/audio_processing/include/audio_processing.h"
 #include "modules/audio_processing/test/aec_dump_based_simulator.h"
 #include "modules/audio_processing/test/audio_processing_simulator.h"
 #include "modules/audio_processing/test/audioproc_float_impl.h"
 #include "modules/audio_processing/test/wav_based_simulator.h"
+#include "rtc_base/checks.h"
 #include "rtc_base/flags.h"
+#include "rtc_base/strings/string_builder.h"
 
 namespace webrtc {
 namespace test {
@@ -37,151 +41,185 @@ const char kUsageDescription[] =
     "processing module, either based on wav files or "
     "protobuf debug dump recordings.\n";
 
-DEFINE_string(dump_input, "", "Aec dump input filename");
-DEFINE_string(dump_output, "", "Aec dump output filename");
-DEFINE_string(i, "", "Forward stream input wav filename");
-DEFINE_string(o, "", "Forward stream output wav filename");
-DEFINE_string(ri, "", "Reverse stream input wav filename");
-DEFINE_string(ro, "", "Reverse stream output wav filename");
-DEFINE_string(artificial_nearend, "", "Artificial nearend wav filename");
-DEFINE_int(output_num_channels,
-           kParameterNotSpecifiedValue,
-           "Number of forward stream output channels");
-DEFINE_int(reverse_output_num_channels,
-           kParameterNotSpecifiedValue,
-           "Number of Reverse stream output channels");
-DEFINE_int(output_sample_rate_hz,
-           kParameterNotSpecifiedValue,
-           "Forward stream output sample rate in Hz");
-DEFINE_int(reverse_output_sample_rate_hz,
-           kParameterNotSpecifiedValue,
-           "Reverse stream output sample rate in Hz");
-DEFINE_bool(fixed_interface,
-            false,
-            "Use the fixed interface when operating on wav files");
-DEFINE_int(aec,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the echo canceller");
-DEFINE_int(aecm,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the mobile echo controller");
-DEFINE_int(ed,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate (0) the residual echo detector");
-DEFINE_string(ed_graph, "", "Output filename for graph of echo likelihood");
-DEFINE_int(agc,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the AGC");
-DEFINE_int(agc2,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the AGC2");
-DEFINE_int(pre_amplifier,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the pre amplifier");
-DEFINE_int(hpf,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the high-pass filter");
-DEFINE_int(ns,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the noise suppressor");
-DEFINE_int(ts,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the transient suppressor");
-DEFINE_int(ie,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the intelligibility enhancer");
-DEFINE_int(vad,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the voice activity detector");
-DEFINE_int(le,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the level estimator");
-DEFINE_bool(all_default,
-            false,
-            "Activate all of the default components (will be overridden by any "
-            "other settings)");
-DEFINE_int(aec_suppression_level,
-           kParameterNotSpecifiedValue,
-           "Set the aec suppression level (0-2)");
-DEFINE_int(delay_agnostic,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the AEC delay agnostic mode");
-DEFINE_int(extended_filter,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the AEC extended filter mode");
-DEFINE_int(drift_compensation,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the drift compensation");
-DEFINE_int(aec3,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the experimental AEC mode AEC3");
-DEFINE_int(experimental_agc,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the experimental AGC");
-DEFINE_int(experimental_agc_disable_digital_adaptive,
-           kParameterNotSpecifiedValue,
-           "Force-deactivate (1) digital adaptation in "
-           "experimental AGC. Digital adaptation is active by default (0).");
-DEFINE_int(
+WEBRTC_DEFINE_string(dump_input, "", "Aec dump input filename");
+WEBRTC_DEFINE_string(dump_output, "", "Aec dump output filename");
+WEBRTC_DEFINE_string(i, "", "Forward stream input wav filename");
+WEBRTC_DEFINE_string(o, "", "Forward stream output wav filename");
+WEBRTC_DEFINE_string(ri, "", "Reverse stream input wav filename");
+WEBRTC_DEFINE_string(ro, "", "Reverse stream output wav filename");
+WEBRTC_DEFINE_string(artificial_nearend, "", "Artificial nearend wav filename");
+WEBRTC_DEFINE_int(output_num_channels,
+                  kParameterNotSpecifiedValue,
+                  "Number of forward stream output channels");
+WEBRTC_DEFINE_int(reverse_output_num_channels,
+                  kParameterNotSpecifiedValue,
+                  "Number of Reverse stream output channels");
+WEBRTC_DEFINE_int(output_sample_rate_hz,
+                  kParameterNotSpecifiedValue,
+                  "Forward stream output sample rate in Hz");
+WEBRTC_DEFINE_int(reverse_output_sample_rate_hz,
+                  kParameterNotSpecifiedValue,
+                  "Reverse stream output sample rate in Hz");
+WEBRTC_DEFINE_bool(fixed_interface,
+                   false,
+                   "Use the fixed interface when operating on wav files");
+WEBRTC_DEFINE_int(aec,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the echo canceller");
+WEBRTC_DEFINE_int(aecm,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the mobile echo controller");
+WEBRTC_DEFINE_int(ed,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate (0) the residual echo detector");
+WEBRTC_DEFINE_string(ed_graph,
+                     "",
+                     "Output filename for graph of echo likelihood");
+WEBRTC_DEFINE_int(agc,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the AGC");
+WEBRTC_DEFINE_int(agc2,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the AGC2");
+WEBRTC_DEFINE_int(pre_amplifier,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the pre amplifier");
+WEBRTC_DEFINE_int(hpf,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the high-pass filter");
+WEBRTC_DEFINE_int(ns,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the noise suppressor");
+WEBRTC_DEFINE_int(ts,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the transient suppressor");
+WEBRTC_DEFINE_int(vad,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the voice activity detector");
+WEBRTC_DEFINE_int(le,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the level estimator");
+WEBRTC_DEFINE_bool(
+    all_default,
+    false,
+    "Activate all of the default components (will be overridden by any "
+    "other settings)");
+WEBRTC_DEFINE_int(aec_suppression_level,
+                  kParameterNotSpecifiedValue,
+                  "Set the aec suppression level (0-2)");
+WEBRTC_DEFINE_int(delay_agnostic,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the AEC delay agnostic mode");
+WEBRTC_DEFINE_int(extended_filter,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the AEC extended filter mode");
+WEBRTC_DEFINE_int(
+    aec3,
+    kParameterNotSpecifiedValue,
+    "Activate (1) or deactivate(0) the experimental AEC mode AEC3");
+WEBRTC_DEFINE_int(experimental_agc,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the experimental AGC");
+WEBRTC_DEFINE_int(
+    experimental_agc_disable_digital_adaptive,
+    kParameterNotSpecifiedValue,
+    "Force-deactivate (1) digital adaptation in "
+    "experimental AGC. Digital adaptation is active by default (0).");
+WEBRTC_DEFINE_int(experimental_agc_analyze_before_aec,
+                  kParameterNotSpecifiedValue,
+                  "Make level estimation happen before AEC"
+                  " in the experimental AGC. After AEC is the default (0)");
+WEBRTC_DEFINE_int(
+    experimental_agc_agc2_level_estimator,
+    kParameterNotSpecifiedValue,
+    "AGC2 level estimation"
+    " in the experimental AGC. AGC1 level estimation is the default (0)");
+WEBRTC_DEFINE_int(
     refined_adaptive_filter,
     kParameterNotSpecifiedValue,
     "Activate (1) or deactivate(0) the refined adaptive filter functionality");
-DEFINE_int(aecm_routing_mode,
-           kParameterNotSpecifiedValue,
-           "Specify the AECM routing mode (0-4)");
-DEFINE_int(aecm_comfort_noise,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the AECM comfort noise");
-DEFINE_int(agc_mode, kParameterNotSpecifiedValue, "Specify the AGC mode (0-2)");
-DEFINE_int(agc_target_level,
-           kParameterNotSpecifiedValue,
-           "Specify the AGC target level (0-31)");
-DEFINE_int(agc_limiter,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) the level estimator");
-DEFINE_int(agc_compression_gain,
-           kParameterNotSpecifiedValue,
-           "Specify the AGC compression gain (0-90)");
-DEFINE_float(agc2_fixed_gain_db, 0.f, "AGC2 fixed gain (dB) to apply");
-DEFINE_float(pre_amplifier_gain_factor,
-             1.f,
-             "Pre-amplifier gain factor (linear) to apply");
-DEFINE_int(vad_likelihood,
-           kParameterNotSpecifiedValue,
-           "Specify the VAD likelihood (0-3)");
-DEFINE_int(ns_level, kParameterNotSpecifiedValue, "Specify the NS level (0-3)");
-DEFINE_int(stream_delay,
-           kParameterNotSpecifiedValue,
-           "Specify the stream delay in ms to use");
-DEFINE_int(use_stream_delay,
-           kParameterNotSpecifiedValue,
-           "Activate (1) or deactivate(0) reporting the stream delay");
-DEFINE_int(stream_drift_samples,
-           kParameterNotSpecifiedValue,
-           "Specify the number of stream drift samples to use");
-DEFINE_int(initial_mic_level, 100, "Initial mic level (0-255)");
-DEFINE_int(simulate_mic_gain,
-           0,
-           "Activate (1) or deactivate(0) the analog mic gain simulation");
-DEFINE_int(simulated_mic_kind,
-           kParameterNotSpecifiedValue,
-           "Specify which microphone kind to use for microphone simulation");
-DEFINE_bool(performance_report, false, "Report the APM performance ");
-DEFINE_bool(verbose, false, "Produce verbose output");
-DEFINE_bool(bitexactness_report,
-            false,
-            "Report bitexactness for aec dump result reproduction");
-DEFINE_bool(discard_settings_in_aecdump,
-            false,
-            "Discard any config settings specified in the aec dump");
-DEFINE_bool(store_intermediate_output,
-            false,
-            "Creates new output files after each init");
-DEFINE_string(custom_call_order_file, "", "Custom process API call order file");
-DEFINE_string(aec3_settings,
-              "",
-              "File in JSON-format with custom AEC3 settings");
-DEFINE_bool(help, false, "Print this message");
+WEBRTC_DEFINE_int(agc_mode,
+                  kParameterNotSpecifiedValue,
+                  "Specify the AGC mode (0-2)");
+WEBRTC_DEFINE_int(agc_target_level,
+                  kParameterNotSpecifiedValue,
+                  "Specify the AGC target level (0-31)");
+WEBRTC_DEFINE_int(agc_limiter,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) the level estimator");
+WEBRTC_DEFINE_int(agc_compression_gain,
+                  kParameterNotSpecifiedValue,
+                  "Specify the AGC compression gain (0-90)");
+WEBRTC_DEFINE_float(agc2_enable_adaptive_gain,
+                    kParameterNotSpecifiedValue,
+                    "Activate (1) or deactivate(0) the AGC2 adaptive gain");
+WEBRTC_DEFINE_float(agc2_fixed_gain_db, 0.f, "AGC2 fixed gain (dB) to apply");
+
+std::vector<std::string> GetAgc2AdaptiveLevelEstimatorNames() {
+  return {"RMS", "peak"};
+}
+WEBRTC_DEFINE_string(
+    agc2_adaptive_level_estimator,
+    "RMS",
+    "AGC2 adaptive digital level estimator to use [RMS, peak]");
+
+WEBRTC_DEFINE_float(pre_amplifier_gain_factor,
+                    1.f,
+                    "Pre-amplifier gain factor (linear) to apply");
+WEBRTC_DEFINE_int(vad_likelihood,
+                  kParameterNotSpecifiedValue,
+                  "Specify the VAD likelihood (0-3)");
+WEBRTC_DEFINE_int(ns_level,
+                  kParameterNotSpecifiedValue,
+                  "Specify the NS level (0-3)");
+WEBRTC_DEFINE_int(stream_delay,
+                  kParameterNotSpecifiedValue,
+                  "Specify the stream delay in ms to use");
+WEBRTC_DEFINE_int(use_stream_delay,
+                  kParameterNotSpecifiedValue,
+                  "Activate (1) or deactivate(0) reporting the stream delay");
+WEBRTC_DEFINE_int(stream_drift_samples,
+                  kParameterNotSpecifiedValue,
+                  "Specify the number of stream drift samples to use");
+WEBRTC_DEFINE_int(initial_mic_level, 100, "Initial mic level (0-255)");
+WEBRTC_DEFINE_int(
+    simulate_mic_gain,
+    0,
+    "Activate (1) or deactivate(0) the analog mic gain simulation");
+WEBRTC_DEFINE_int(
+    simulated_mic_kind,
+    kParameterNotSpecifiedValue,
+    "Specify which microphone kind to use for microphone simulation");
+WEBRTC_DEFINE_bool(performance_report, false, "Report the APM performance ");
+WEBRTC_DEFINE_bool(verbose, false, "Produce verbose output");
+WEBRTC_DEFINE_bool(quiet,
+                   false,
+                   "Avoid producing information about the progress.");
+WEBRTC_DEFINE_bool(bitexactness_report,
+                   false,
+                   "Report bitexactness for aec dump result reproduction");
+WEBRTC_DEFINE_bool(discard_settings_in_aecdump,
+                   false,
+                   "Discard any config settings specified in the aec dump");
+WEBRTC_DEFINE_bool(store_intermediate_output,
+                   false,
+                   "Creates new output files after each init");
+WEBRTC_DEFINE_string(custom_call_order_file,
+                     "",
+                     "Custom process API call order file");
+WEBRTC_DEFINE_bool(print_aec3_parameter_values,
+                   false,
+                   "Print parameter values used in AEC3 in JSON-format");
+WEBRTC_DEFINE_string(aec3_settings,
+                     "",
+                     "File in JSON-format with custom AEC3 settings");
+WEBRTC_DEFINE_bool(dump_data,
+                   false,
+                   "Dump internal data during the call (requires build flag)");
+WEBRTC_DEFINE_string(dump_data_output_dir,
+                     "",
+                     "Internal data dump output directory");
+WEBRTC_DEFINE_bool(help, false, "Print this message");
 
 void SetSettingIfSpecified(const std::string& value,
                            absl::optional<std::string>* parameter) {
@@ -202,6 +240,27 @@ void SetSettingIfFlagSet(int32_t flag, absl::optional<bool>* parameter) {
   } else if (flag == 1) {
     *parameter = true;
   }
+}
+
+AudioProcessing::Config::GainController2::LevelEstimator
+MapAgc2AdaptiveLevelEstimator(absl::string_view name) {
+  if (name.compare("RMS") == 0) {
+    return AudioProcessing::Config::GainController2::LevelEstimator::kRms;
+  }
+  if (name.compare("peak") == 0) {
+    return AudioProcessing::Config::GainController2::LevelEstimator::kPeak;
+  }
+  auto concat_strings =
+      [](const std::vector<std::string>& strings) -> std::string {
+    rtc::StringBuilder ss;
+    for (const auto& s : strings) {
+      ss << " " << s;
+    }
+    return ss.Release();
+  };
+  RTC_CHECK(false)
+      << "Invalid value for agc2_adaptive_level_estimator, valid options:"
+      << concat_strings(GetAgc2AdaptiveLevelEstimatorNames()) << ".";
 }
 
 SimulationSettings CreateSettings() {
@@ -246,15 +305,12 @@ SimulationSettings CreateSettings() {
   SetSettingIfFlagSet(FLAG_hpf, &settings.use_hpf);
   SetSettingIfFlagSet(FLAG_ns, &settings.use_ns);
   SetSettingIfFlagSet(FLAG_ts, &settings.use_ts);
-  SetSettingIfFlagSet(FLAG_ie, &settings.use_ie);
   SetSettingIfFlagSet(FLAG_vad, &settings.use_vad);
   SetSettingIfFlagSet(FLAG_le, &settings.use_le);
   SetSettingIfSpecified(FLAG_aec_suppression_level,
                         &settings.aec_suppression_level);
   SetSettingIfFlagSet(FLAG_delay_agnostic, &settings.use_delay_agnostic);
   SetSettingIfFlagSet(FLAG_extended_filter, &settings.use_extended_filter);
-  SetSettingIfFlagSet(FLAG_drift_compensation,
-                      &settings.use_drift_compensation);
   SetSettingIfFlagSet(FLAG_refined_adaptive_filter,
                       &settings.use_refined_adaptive_filter);
 
@@ -262,16 +318,20 @@ SimulationSettings CreateSettings() {
   SetSettingIfFlagSet(FLAG_experimental_agc, &settings.use_experimental_agc);
   SetSettingIfFlagSet(FLAG_experimental_agc_disable_digital_adaptive,
                       &settings.experimental_agc_disable_digital_adaptive);
-
-  SetSettingIfSpecified(FLAG_aecm_routing_mode, &settings.aecm_routing_mode);
-  SetSettingIfFlagSet(FLAG_aecm_comfort_noise,
-                      &settings.use_aecm_comfort_noise);
+  SetSettingIfFlagSet(FLAG_experimental_agc_analyze_before_aec,
+                      &settings.experimental_agc_analyze_before_aec);
+  SetSettingIfFlagSet(FLAG_experimental_agc_agc2_level_estimator,
+                      &settings.use_experimental_agc_agc2_level_estimator);
   SetSettingIfSpecified(FLAG_agc_mode, &settings.agc_mode);
   SetSettingIfSpecified(FLAG_agc_target_level, &settings.agc_target_level);
   SetSettingIfFlagSet(FLAG_agc_limiter, &settings.use_agc_limiter);
   SetSettingIfSpecified(FLAG_agc_compression_gain,
                         &settings.agc_compression_gain);
+  SetSettingIfFlagSet(FLAG_agc2_enable_adaptive_gain,
+                      &settings.agc2_use_adaptive_gain);
   settings.agc2_fixed_gain_db = FLAG_agc2_fixed_gain_db;
+  settings.agc2_adaptive_level_estimator =
+      MapAgc2AdaptiveLevelEstimator(FLAG_agc2_adaptive_level_estimator);
   settings.pre_amplifier_gain_factor = FLAG_pre_amplifier_gain_factor;
   SetSettingIfSpecified(FLAG_vad_likelihood, &settings.vad_likelihood);
   SetSettingIfSpecified(FLAG_ns_level, &settings.ns_level);
@@ -287,10 +347,15 @@ SimulationSettings CreateSettings() {
   SetSettingIfSpecified(FLAG_simulated_mic_kind, &settings.simulated_mic_kind);
   settings.report_performance = FLAG_performance_report;
   settings.use_verbose_logging = FLAG_verbose;
+  settings.use_quiet_output = FLAG_quiet;
   settings.report_bitexactness = FLAG_bitexactness_report;
   settings.discard_all_settings_in_aecdump = FLAG_discard_settings_in_aecdump;
   settings.fixed_interface = FLAG_fixed_interface;
   settings.store_intermediate_output = FLAG_store_intermediate_output;
+  settings.print_aec3_parameter_values = FLAG_print_aec3_parameter_values;
+  settings.dump_internal_data = FLAG_dump_data;
+  SetSettingIfSpecified(FLAG_dump_data_output_dir,
+                        &settings.dump_internal_data_output_dir);
 
   return settings;
 }
@@ -351,16 +416,12 @@ void PerformBasicParameterSanityChecks(const SimulationSettings& settings) {
           *settings.reverse_output_num_channels <= 0,
       "Error: --reverse_output_num_channels must be positive!\n");
 
-  ReportConditionalErrorAndExit(
-      settings.aec_suppression_level &&
-          ((*settings.aec_suppression_level) < 0 ||
-           (*settings.aec_suppression_level) > 2),
-      "Error: --aec_suppression_level must be specified between 0 and 2.\n");
-
-  ReportConditionalErrorAndExit(
-      settings.aecm_routing_mode && ((*settings.aecm_routing_mode) < 0 ||
-                                     (*settings.aecm_routing_mode) > 4),
-      "Error: --aecm_routing_mode must be specified between 0 and 4.\n");
+  ReportConditionalErrorAndExit(settings.aec_suppression_level &&
+                                    ((*settings.aec_suppression_level) < 1 ||
+                                     (*settings.aec_suppression_level) > 2),
+                                "Error: --aec_suppression_level must be "
+                                "specified between 1 and 2. 0 is "
+                                "deprecated.\n");
 
   ReportConditionalErrorAndExit(
       settings.agc_target_level && ((*settings.agc_target_level) < 0 ||
@@ -445,6 +506,15 @@ void PerformBasicParameterSanityChecks(const SimulationSettings& settings) {
       settings.artificial_nearend_filename &&
           !valid_wav_name(*settings.artificial_nearend_filename),
       "Error: --artifical_nearend must be a valid .wav file name.\n");
+
+  ReportConditionalErrorAndExit(
+      WEBRTC_APM_DEBUG_DUMP == 0 && settings.dump_internal_data,
+      "Error: --dump_data cannot be set without proper build support.\n");
+
+  ReportConditionalErrorAndExit(
+      !settings.dump_internal_data &&
+          settings.dump_internal_data_output_dir.has_value(),
+      "Error: --dump_data_output_dir cannot be set without --dump_data.\n");
 }
 
 }  // namespace

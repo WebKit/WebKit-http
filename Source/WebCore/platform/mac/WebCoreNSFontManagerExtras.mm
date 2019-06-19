@@ -126,7 +126,7 @@ FontAttributeChanges computedFontAttributeChanges(NSFontManager *fontManager, id
 
     NSColor *convertedBackgroundColorA = [convertedAttributesA objectForKey:NSBackgroundColorAttributeName];
     if (convertedBackgroundColorA == [convertedAttributesB objectForKey:NSBackgroundColorAttributeName])
-        changes.setBackgroundColor(colorFromNSColor(convertedBackgroundColorA));
+        changes.setBackgroundColor(colorFromNSColor(convertedBackgroundColorA ?: NSColor.clearColor));
 
     changes.setFontChanges(computedFontChanges(fontManager, originalFontA, [convertedAttributesA objectForKey:NSFontAttributeName], [convertedAttributesB objectForKey:NSFontAttributeName]));
 
@@ -136,8 +136,8 @@ FontAttributeChanges computedFontAttributeChanges(NSFontManager *fontManager, id
 
     NSShadow *convertedShadow = [convertedAttributesA objectForKey:NSShadowAttributeName];
     if (convertedShadow) {
-        auto offset = convertedShadow.shadowOffset;
-        changes.setShadow({ colorFromNSColor(convertedShadow.shadowColor ?: NSColor.blackColor), offset.width, offset.height, convertedShadow.shadowBlurRadius });
+        FloatSize offset { static_cast<float>(convertedShadow.shadowOffset.width), static_cast<float>(convertedShadow.shadowOffset.height) };
+        changes.setShadow({ colorFromNSColor(convertedShadow.shadowColor ?: NSColor.blackColor), offset, convertedShadow.shadowBlurRadius });
     } else if (![convertedAttributesB objectForKey:NSShadowAttributeName])
         changes.setShadow({ });
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #import "config.h"
 #import "WebProcessPool.h"
 
+#import "AccessibilitySupportSPI.h"
 #import "CookieStorageUtilsCF.h"
 #import "LegacyCustomProtocolManagerClient.h"
 #import "NetworkProcessCreationParameters.h"
@@ -36,13 +37,13 @@
 #import "TextChecker.h"
 #import "VersionChecks.h"
 #import "WKBrowsingContextControllerInternal.h"
+#import "WebMemoryPressureHandler.h"
 #import "WebPageGroup.h"
 #import "WebPreferencesKeys.h"
 #import "WebProcessCreationParameters.h"
 #import "WebProcessMessages.h"
 #import "WindowServerConnection.h"
 #import <WebCore/Color.h>
-#import <WebCore/FileSystem.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformPasteboard.h>
@@ -51,13 +52,16 @@
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <sys/param.h>
+#import <wtf/FileSystem.h>
 #import <wtf/ProcessPrivilege.h>
+#import <wtf/SoftLinking.h>
+#import <wtf/cocoa/Entitlements.h>
 #import <wtf/spi/darwin/dyldSPI.h>
 
-#if PLATFORM(IOS)
-#import "WebMemoryPressureHandlerIOS.h"
-#else
+#if PLATFORM(MAC)
 #import <QuartzCore/CARemoteLayerServer.h>
+#else
+#import "UIKitSPI.h"
 #endif
 
 NSString *WebServiceWorkerRegistrationDirectoryDefaultsKey = @"WebServiceWorkerRegistrationDirectory";
@@ -65,25 +69,19 @@ NSString *WebKitLocalCacheDefaultsKey = @"WebKitLocalCache";
 NSString *WebKitJSCJITEnabledDefaultsKey = @"WebKitJSCJITEnabledDefaultsKey";
 NSString *WebKitJSCFTLJITEnabledDefaultsKey = @"WebKitJSCFTLJITEnabledDefaultsKey";
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 static NSString *WebKitApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification = @"NSApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification";
 #endif
 
-static NSString * const WebKit2HTTPProxyDefaultsKey = @"WebKit2HTTPProxy";
-static NSString * const WebKit2HTTPSProxyDefaultsKey = @"WebKit2HTTPSProxy";
-
-static NSString * const WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey = @"WebKitNetworkCacheEfficacyLoggingEnabled";
-
 static NSString * const WebKitSuppressMemoryPressureHandlerDefaultsKey = @"WebKitSuppressMemoryPressureHandler";
-static NSString * const WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey = @"WebKitNetworkLoadThrottleLatencyMilliseconds";
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
 static NSString * const WebKitLogCookieInformationDefaultsKey = @"WebKitLogCookieInformation";
 #endif
 
-#if ENABLE(NETWORK_CAPTURE)
-static NSString * const WebKitRecordReplayModeDefaultsKey = @"WebKitRecordReplayMode";
-static NSString * const WebKitRecordReplayCacheLocationDefaultsKey = @"WebKitRecordReplayCacheLocation";
+#if PLATFORM(IOS)
+SOFT_LINK_PRIVATE_FRAMEWORK(BackBoardServices)
+SOFT_LINK(BackBoardServices, BKSDisplayBrightnessGetCurrent, float, (), ());
 #endif
 
 namespace WebKit {
@@ -100,8 +98,6 @@ static void registerUserDefaultsIfNeeded()
     
     [registrationDictionary setObject:@YES forKey:WebKitJSCJITEnabledDefaultsKey];
     [registrationDictionary setObject:@YES forKey:WebKitJSCFTLJITEnabledDefaultsKey];
-
-    [registrationDictionary setObject:@NO forKey:WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey];
 
     [[NSUserDefaults standardUserDefaults] registerDefaults:registrationDictionary];
 }
@@ -132,14 +128,17 @@ void WebProcessPool::platformInitialize()
     registerUserDefaultsIfNeeded();
     registerNotificationObservers();
 
-#if PLATFORM(IOS)
-    installMemoryPressureHandler();
-#endif
+    // FIXME: This should be able to share code with WebCore's MemoryPressureHandler (and be platform independent).
+    // Right now it cannot because WebKit1 and WebKit2 need to be able to coexist in the UI process,
+    // and you can only have one WebCore::MemoryPressureHandler.
+
+    if (![[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitSuppressMemoryPressureHandler"])
+        installMemoryPressureHandler();
 
     setLegacyCustomProtocolManagerClient(std::make_unique<LegacyCustomProtocolManagerClient>());
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 String WebProcessPool::cookieStorageDirectory() const
 {
     String path = pathForProcessContainer();
@@ -156,7 +155,7 @@ void WebProcessPool::platformResolvePathsForSandboxExtensions()
 {
     m_resolvedPaths.uiProcessBundleResourcePath = resolvePathForSandboxExtension([[NSBundle mainBundle] resourcePath]);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     m_resolvedPaths.cookieStorageDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(cookieStorageDirectory());
     m_resolvedPaths.containerCachesDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(webContentCachesDirectory());
     m_resolvedPaths.containerTemporaryDirectory = resolveAndCreateReadWriteDirectoryForSandboxExtension(containerTemporaryDirectory());
@@ -166,11 +165,10 @@ void WebProcessPool::platformResolvePathsForSandboxExtensions()
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
 {
 #if PLATFORM(MAC)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
     parameters.accessibilityEnhancedUserInterfaceEnabled = [[NSApp accessibilityAttributeValue:@"AXEnhancedUserInterface"] boolValue];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 #else
     parameters.accessibilityEnhancedUserInterfaceEnabled = false;
 #endif
@@ -183,7 +181,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.shouldSuppressMemoryPressureHandler = [defaults boolForKey:WebKitSuppressMemoryPressureHandlerDefaultsKey];
 
 #if HAVE(HOSTED_CORE_ANIMATION)
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     parameters.acceleratedCompositingPort = MachSendRight::create([CARemoteLayerServer sharedServer].serverPort);
 #endif
 #endif
@@ -195,7 +193,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.uiProcessBundleIdentifier = String([[NSBundle mainBundle] bundleIdentifier]);
     parameters.uiProcessSDKVersion = dyld_get_program_sdk_version();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (!m_resolvedPaths.cookieStorageDirectory.isEmpty())
         SandboxExtension::createHandleWithoutResolvingPath(m_resolvedPaths.cookieStorageDirectory, SandboxExtension::Type::ReadWrite, parameters.cookieStorageDirectoryExtensionHandle);
 
@@ -209,14 +207,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.fontWhitelist = m_fontWhitelist;
 
     if (m_bundleParameters) {
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200)
-        auto data = adoptNS([[NSMutableData alloc] init]);
-        auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
-
-        [keyedArchiver setRequiresSecureCoding:YES];
-#else
         auto keyedArchiver = secureArchiver();
-#endif
 
         @try {
             [keyedArchiver encodeObject:m_bundleParameters.get() forKey:@"parameters"];
@@ -225,19 +216,12 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
             LOG_ERROR("Failed to encode bundle parameters: %@", exception);
         }
 
-#if (!PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
         auto data = keyedArchiver.get().encodedData;
-#endif
 
         parameters.bundleParameterData = API::Data::createWithoutCopying(WTFMove(data));
     }
     parameters.networkATSContext = adoptCF(_CFNetworkCopyATSContext());
 
-#if PLATFORM(MAC)
-    ASSERT(parameters.uiProcessCookieStorageIdentifier.isEmpty());
-    ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
-    parameters.uiProcessCookieStorageIdentifier = identifyingDataFromCookieStorage([[NSHTTPCookieStorage sharedHTTPCookieStorage] _cookieStorage]);
-#endif
 #if ENABLE(MEDIA_STREAM)
     // Allow microphone access if either preference is set because WebRTC requires microphone access.
     bool mediaDevicesEnabled = m_defaultPageGroup->preferences().mediaDevicesEnabled();
@@ -246,7 +230,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
         webRTCEnabled = [defaults boolForKey:@"ExperimentalPeerConnectionEnabled"];
 
     bool isSafari = false;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (WebCore::IOSApplication::isMobileSafari())
         isSafari = true;
 #elif PLATFORM(MAC)
@@ -264,7 +248,7 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
         SandboxExtension::createHandleForGenericExtension("com.apple.webkit.microphone", parameters.audioCaptureExtensionHandle);
 #endif
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+#if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
     parameters.shouldLogUserInteraction = [defaults boolForKey:WebKitLogCookieInformationDefaultsKey];
 #endif
     
@@ -282,20 +266,26 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 
-    parameters.httpProxy = [defaults stringForKey:WebKit2HTTPProxyDefaultsKey];
-    parameters.httpsProxy = [defaults stringForKey:WebKit2HTTPSProxyDefaultsKey];
+    {
+        bool isSafari = false;
+#if PLATFORM(IOS_FAMILY)
+        isSafari = WebCore::IOSApplication::isMobileSafari();
+#elif PLATFORM(MAC)
+        isSafari = WebCore::MacApplication::isSafari();
+#endif
+        if (isSafari) {
+            parameters.defaultDataStoreParameters.networkSessionParameters.httpProxy = URL(URL(), [defaults stringForKey:(NSString *)WebKit2HTTPProxyDefaultsKey]);
+            parameters.defaultDataStoreParameters.networkSessionParameters.httpsProxy = URL(URL(), [defaults stringForKey:(NSString *)WebKit2HTTPSProxyDefaultsKey]);
+        }
+    }
+
     parameters.networkATSContext = adoptCF(_CFNetworkCopyATSContext());
 
-    parameters.shouldEnableNetworkCacheEfficacyLogging = [defaults boolForKey:WebKitNetworkCacheEfficacyLoggingEnabledDefaultsKey];
-
-    parameters.sourceApplicationBundleIdentifier = m_configuration->sourceApplicationBundleIdentifier();
-    parameters.sourceApplicationSecondaryIdentifier = m_configuration->sourceApplicationSecondaryIdentifier();
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     parameters.ctDataConnectionServiceType = m_configuration->ctDataConnectionServiceType();
 #endif
 
     parameters.shouldSuppressMemoryPressureHandler = [defaults boolForKey:WebKitSuppressMemoryPressureHandlerDefaultsKey];
-    parameters.loadThrottleLatency = Seconds { [defaults integerForKey:WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey] / 1000. };
 
 #if PLATFORM(MAC)
     ASSERT(parameters.uiProcessCookieStorageIdentifier.isEmpty());
@@ -306,20 +296,16 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
     parameters.storageAccessAPIEnabled = storageAccessAPIEnabled();
     parameters.suppressesConnectionTerminationOnSystemChange = m_configuration->suppressesConnectionTerminationOnSystemChange();
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
-    parameters.logCookieInformation = [defaults boolForKey:WebKitLogCookieInformationDefaultsKey];
-#endif
+    parameters.shouldEnableITPDatabase = [defaults boolForKey:[NSString stringWithFormat:@"InternalDebug%@", WebPreferencesKey::isITPDatabaseEnabledKey().createCFString().get()]];
+    parameters.downloadMonitorSpeedMultiplier = m_configuration->downloadMonitorSpeedMultiplier();
 
-#if ENABLE(NETWORK_CAPTURE)
-    parameters.recordReplayMode = [defaults stringForKey:WebKitRecordReplayModeDefaultsKey];
-    parameters.recordReplayCacheLocation = [defaults stringForKey:WebKitRecordReplayCacheLocationDefaultsKey];
-    if (parameters.recordReplayCacheLocation.isEmpty())
-        parameters.recordReplayCacheLocation = parameters.diskCacheDirectory;
-#endif
+    // Check if the feature has been turned off explicitly. This avoids interpreting
+    // a non-existing default as a false value.
+    auto isITPFirstPartyWebsiteDataRemovalEnabledStr = [defaults stringForKey:[NSString stringWithFormat:@"Experimental%@", WebPreferencesKey::isITPFirstPartyWebsiteDataRemovalEnabledKey().createCFString().get()]];
+    if ([isITPFirstPartyWebsiteDataRemovalEnabledStr isEqual:@"0"])
+        parameters.isITPFirstPartyWebsiteDataRemovalEnabled = false;
 
-#if ENABLE(PROXIMITY_NETWORKING)
-    parameters.wirelessContextIdentifier = m_configuration->wirelessContextIdentifier();
-#endif
+    parameters.enableAdClickAttributionDebugMode = [defaults boolForKey:[NSString stringWithFormat:@"Experimental%@", WebPreferencesKey::adClickAttributionDebugModeEnabledKey().createCFString().get()]];
 }
 
 void WebProcessPool::platformInvalidateContext()
@@ -327,7 +313,7 @@ void WebProcessPool::platformInvalidateContext()
     unregisterNotificationObservers();
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 String WebProcessPool::parentBundleDirectory() const
 {
     return [[[NSBundle mainBundle] bundlePath] stringByStandardizingPath];
@@ -378,7 +364,7 @@ String WebProcessPool::containerTemporaryDirectory() const
 }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 void WebProcessPool::setJavaScriptConfigurationFileEnabledFromDefaults()
 {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
@@ -398,9 +384,27 @@ bool WebProcessPool::processSuppressionEnabled() const
     return !m_userObservablePageCounter.value() && !m_processSuppressionDisabledForPageCounter.value();
 }
 
+bool WebProcessPool::networkProcessHasEntitlementForTesting(const String& entitlement)
+{
+    return WTF::hasEntitlement(ensureNetworkProcess().connection()->xpcConnection(), entitlement.utf8().data());
+}
+
+#if PLATFORM(IOS)
+float WebProcessPool::displayBrightness()
+{
+    return BKSDisplayBrightnessGetCurrent();
+}
+    
+void WebProcessPool::backlightLevelDidChangeCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
+{
+    WebProcessPool* pool = reinterpret_cast<WebProcessPool*>(observer);
+    pool->sendToAllProcesses(Messages::WebProcess::BacklightLevelDidChange(BKSDisplayBrightnessGetCurrent()));
+}
+#endif
+
 void WebProcessPool::registerNotificationObservers()
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // Listen for enhanced accessibility changes and propagate them to the WebProcess.
     m_enhancedAccessibilityObserver = [[NSNotificationCenter defaultCenter] addObserverForName:WebKitApplicationDidChangeAccessibilityEnhancedUserInterfaceNotification object:nil queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *note) {
         setEnhancedAccessibility([[[note userInfo] objectForKey:@"AXEnhancedUserInterface"] boolValue]);
@@ -437,13 +441,26 @@ void WebProcessPool::registerNotificationObservers()
     }];
 #endif
 
-#endif // !PLATFORM(IOS)
+    m_activationObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSApplicationDidBecomeActiveNotification object:NSApp queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *notification) {
+        setApplicationIsActive(true);
+    }];
+
+    m_deactivationObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSApplicationDidResignActiveNotification object:NSApp queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *notification) {
+        setApplicationIsActive(false);
+    }];
+#elif PLATFORM(IOS)
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), this, backlightLevelDidChangeCallback, static_cast<CFStringRef>(UIBacklightLevelChangedNotification), nullptr, CFNotificationSuspensionBehaviorCoalesce);
+    m_accessibilityEnabledObserver = [[NSNotificationCenter defaultCenter] addObserverForName:(__bridge id)kAXSApplicationAccessibilityEnabledNotification object:nil queue:[NSOperationQueue currentQueue] usingBlock:^(NSNotification *) {
+        for (size_t i = 0; i < m_processes.size(); ++i)
+            m_processes[i]->unblockAccessibilityServerIfNeeded();
+    }];
+#endif // !PLATFORM(IOS_FAMILY)
 }
 
 void WebProcessPool::unregisterNotificationObservers()
 {
-#if !PLATFORM(IOS)
-    [[NSNotificationCenter defaultCenter] removeObserver:m_enhancedAccessibilityObserver.get()];    
+#if !PLATFORM(IOS_FAMILY)
+    [[NSNotificationCenter defaultCenter] removeObserver:m_enhancedAccessibilityObserver.get()];
     [[NSNotificationCenter defaultCenter] removeObserver:m_automaticTextReplacementNotificationObserver.get()];
     [[NSNotificationCenter defaultCenter] removeObserver:m_automaticSpellingCorrectionNotificationObserver.get()];
     [[NSNotificationCenter defaultCenter] removeObserver:m_automaticQuoteSubstitutionNotificationObserver.get()];
@@ -452,7 +469,12 @@ void WebProcessPool::unregisterNotificationObservers()
 #if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     [[NSNotificationCenter defaultCenter] removeObserver:m_scrollerStyleNotificationObserver.get()];
 #endif
-#endif // !PLATFORM(IOS)
+    [[NSNotificationCenter defaultCenter] removeObserver:m_activationObserver.get()];
+    [[NSNotificationCenter defaultCenter] removeObserver:m_deactivationObserver.get()];
+#elif PLATFORM(IOS)
+    CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), this, static_cast<CFStringRef>(UIBacklightLevelChangedNotification) , nullptr);
+    [[NSNotificationCenter defaultCenter] removeObserver:m_accessibilityEnabledObserver.get()];
+#endif // !PLATFORM(IOS_FAMILY)
 }
 
 static CFURLStorageSessionRef privateBrowsingSession()
@@ -486,6 +508,37 @@ void WebProcessPool::resetHSTSHostsAddedAfterDate(double startDateIntervalSince1
     _CFNetworkResetHSTSHostsSinceDate(nullptr, (__bridge CFDateRef)startDate);
     _CFNetworkResetHSTSHostsSinceDate(privateBrowsingSession(), (__bridge CFDateRef)startDate);
 }
+
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+void WebProcessPool::startDisplayLink(IPC::Connection& connection, unsigned observerID, uint32_t displayID)
+{
+    for (auto& displayLink : m_displayLinks) {
+        if (displayLink->displayID() == displayID) {
+            displayLink->addObserver(connection, observerID);
+            return;
+        }
+    }
+    auto displayLink = std::make_unique<DisplayLink>(displayID);
+    displayLink->addObserver(connection, observerID);
+    m_displayLinks.append(WTFMove(displayLink));
+}
+
+void WebProcessPool::stopDisplayLink(IPC::Connection& connection, unsigned observerID, uint32_t displayID)
+{
+    for (auto& displayLink : m_displayLinks) {
+        if (displayLink->displayID() == displayID) {
+            displayLink->removeObserver(connection, observerID);
+            return;
+        }
+    }
+}
+
+void WebProcessPool::stopDisplayLinks(IPC::Connection& connection)
+{
+    for (auto& displayLink : m_displayLinks)
+        displayLink->removeObservers(connection);
+}
+#endif
 
 // FIXME: Deprecated. Left here until a final decision is made.
 void WebProcessPool::setCookieStoragePartitioningEnabled(bool enabled)

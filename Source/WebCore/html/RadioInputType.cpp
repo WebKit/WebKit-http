@@ -37,7 +37,7 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-const AtomicString& RadioInputType::formControlType() const
+const AtomString& RadioInputType::formControlType() const
 {
     return InputTypeNames::radio();
 }
@@ -58,14 +58,15 @@ void RadioInputType::handleClickEvent(MouseEvent& event)
     event.setDefaultHandled();
 }
 
-void RadioInputType::handleKeydownEvent(KeyboardEvent& event)
+auto RadioInputType::handleKeydownEvent(KeyboardEvent& event) -> ShouldCallBaseEventHandler
 {
-    BaseCheckableInputType::handleKeydownEvent(event);
+    if (BaseCheckableInputType::handleKeydownEvent(event) == ShouldCallBaseEventHandler::No)
+        return ShouldCallBaseEventHandler::No;
     if (event.defaultHandled())
-        return;
+        return ShouldCallBaseEventHandler::Yes;
     const String& key = event.keyIdentifier();
     if (key != "Up" && key != "Down" && key != "Left" && key != "Right")
-        return;
+        return ShouldCallBaseEventHandler::Yes;
 
     ASSERT(element());
     // Left and up mean "previous radio button".
@@ -74,7 +75,7 @@ void RadioInputType::handleKeydownEvent(KeyboardEvent& event)
     // to the right).  Seems strange, but we'll match it.
     // However, when using Spatial Navigation, we need to be able to navigate without changing the selection.
     if (isSpatialNavigationEnabled(element()->document().frame()))
-        return;
+        return ShouldCallBaseEventHandler::Yes;
     bool forward = (key == "Down" || key == "Right");
 
     // We can only stay within the form's children if the form hasn't been demoted to a leaf because
@@ -94,9 +95,10 @@ void RadioInputType::handleKeydownEvent(KeyboardEvent& event)
             element()->document().setFocusedElement(inputElement.get());
             inputElement->dispatchSimulatedClick(&event, SendNoEvents, DoNotShowPressedLook);
             event.setDefaultHandled();
-            return;
+            return ShouldCallBaseEventHandler::Yes;
         }
     }
+    return ShouldCallBaseEventHandler::Yes;
 }
 
 void RadioInputType::handleKeyupEvent(KeyboardEvent& event)
@@ -157,7 +159,7 @@ void RadioInputType::willDispatchClick(InputElementClickState& state)
     state.checked = element()->checked();
     state.checkedRadioButton = element()->checkedRadioButtonForGroup();
 
-    element()->setChecked(true, DispatchChangeEvent);
+    element()->setChecked(true);
 }
 
 void RadioInputType::didDispatchClick(Event& event, const InputElementClickState& state)
@@ -169,7 +171,8 @@ void RadioInputType::didDispatchClick(Event& event, const InputElementClickState
         ASSERT(element());
         if (button && button->isRadioButton() && button->form() == element()->form() && button->name() == element()->name())
             button->setChecked(true);
-    }
+    } else if (state.checked != element()->checked())
+        fireInputAndChangeEvents();
 
     // The work we did in willDispatchClick was default handling.
     event.setDefaultHandled();
@@ -183,9 +186,9 @@ bool RadioInputType::isRadioButton() const
 bool RadioInputType::matchesIndeterminatePseudoClass() const
 {
     ASSERT(element());
-    const HTMLInputElement& element = *this->element();
-    if (const RadioButtonGroups* radioButtonGroups = element.radioButtonGroups())
-        return !radioButtonGroups->hasCheckedButton(&element);
+    auto& element = *this->element();
+    if (auto* radioButtonGroups = element.radioButtonGroups())
+        return !radioButtonGroups->hasCheckedButton(element);
     return !element.checked();
 }
 

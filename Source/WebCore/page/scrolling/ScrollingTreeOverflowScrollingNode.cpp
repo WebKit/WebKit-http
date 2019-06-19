@@ -34,11 +34,17 @@
 namespace WebCore {
 
 ScrollingTreeOverflowScrollingNode::ScrollingTreeOverflowScrollingNode(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
-    : ScrollingTreeScrollingNode(scrollingTree, OverflowScrollingNode, nodeID)
+    : ScrollingTreeScrollingNode(scrollingTree, ScrollingNodeType::Overflow, nodeID)
 {
 }
 
 ScrollingTreeOverflowScrollingNode::~ScrollingTreeOverflowScrollingNode() = default;
+
+void ScrollingTreeOverflowScrollingNode::dumpProperties(TextStream& ts, ScrollingStateTreeAsTextBehavior behavior) const
+{
+    ts << "overflow scrolling node";
+    ScrollingTreeScrollingNode::dumpProperties(ts, behavior);
+}
 
 } // namespace WebCore
 

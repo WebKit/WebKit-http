@@ -56,12 +56,6 @@ static const char* serviceName(const ProcessLauncher::LaunchOptions& launchOptio
         return launchOptions.nonValidInjectedCodeAllowed ? "com.apple.WebKit.WebContent.Development" : "com.apple.WebKit.WebContent";
     case ProcessLauncher::ProcessType::Network:
         return "com.apple.WebKit.Networking";
-    case ProcessLauncher::ProcessType::Storage:
-#if PLATFORM(IOS) && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !PLATFORM(IOS_SIMULATOR) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110300
-        return "com.apple.WebKit.Databases";
-#else
-        return "com.apple.WebKit.Storage";
-#endif
 #if ENABLE(NETSCAPE_PLUGIN_API)
     case ProcessLauncher::ProcessType::Plugin32:
         return "com.apple.WebKit.Plugin.32";
@@ -73,7 +67,7 @@ static const char* serviceName(const ProcessLauncher::LaunchOptions& launchOptio
 
 static bool shouldLeakBoost(const ProcessLauncher::LaunchOptions& launchOptions)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // On iOS, leak a boost onto all child processes
     UNUSED_PARAM(launchOptions);
     return true;
@@ -86,7 +80,7 @@ static bool shouldLeakBoost(const ProcessLauncher::LaunchOptions& launchOptions)
 static NSString *systemDirectoryPath()
 {
     static NSString *path = [^{
-#if PLATFORM(IOS_SIMULATOR)
+#if PLATFORM(IOS_FAMILY_SIMULATOR)
         char *simulatorRoot = getenv("SIMULATOR_ROOT");
         return simulatorRoot ? [NSString stringWithFormat:@"%s/System/", simulatorRoot] : @"/System/";
 #else
@@ -107,7 +101,7 @@ void ProcessLauncher::launchProcess()
     else
         name = serviceName(m_launchOptions);
 
-    m_xpcConnection = adoptOSObject(xpc_connection_create(name, dispatch_get_main_queue()));
+    m_xpcConnection = adoptOSObject(xpc_connection_create(name, nullptr));
 
     uuid_t uuid;
     uuid_generate(uuid);
@@ -119,7 +113,7 @@ void ProcessLauncher::launchProcess()
     // 2. When AppleLanguages is passed as command line argument for UI process, or set in its preferences, we should respect it in child processes.
     auto initializationMessage = adoptOSObject(xpc_dictionary_create(nullptr, nullptr, 0));
     _CFBundleSetupXPCBootstrap(initializationMessage.get());
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Clients that set these environment variables explicitly do not have the values automatically forwarded by libxpc.
     auto containerEnvironmentVariables = adoptOSObject(xpc_dictionary_create(nullptr, nullptr, 0));
     if (const char* environmentHOME = getenv("HOME"))
@@ -179,6 +173,10 @@ void ProcessLauncher::launchProcess()
 
     // FIXME: Switch to xpc_connection_set_bootstrap once it's available everywhere we need.
     auto bootstrapMessage = adoptOSObject(xpc_dictionary_create(nullptr, nullptr, 0));
+    
+    if (m_client && !m_client->isJITEnabled())
+        xpc_dictionary_set_bool(bootstrapMessage.get(), "disable-jit", true);
+
     xpc_dictionary_set_string(bootstrapMessage.get(), "message-name", "bootstrap");
 
     xpc_dictionary_set_mach_send(bootstrapMessage.get(), "server-port", listeningPort);
@@ -200,10 +198,9 @@ void ProcessLauncher::launchProcess()
 
     xpc_dictionary_set_value(bootstrapMessage.get(), "extra-initialization-data", extraInitializationData.get());
 
-    auto weakProcessLauncher = makeWeakPtr(*this);
-    auto errorHandler = [weakProcessLauncher, listeningPort](xpc_object_t event) {
+    auto errorHandlerImpl = [weakProcessLauncher = makeWeakPtr(*this), listeningPort] (xpc_object_t event) {
         ASSERT(!event || xpc_get_type(event) == XPC_TYPE_ERROR);
-
+        
         auto processLauncher = weakProcessLauncher.get();
         if (!processLauncher)
             return;
@@ -230,21 +227,27 @@ void ProcessLauncher::launchProcess()
         processLauncher->didFinishLaunchingProcess(0, IPC::Connection::Identifier());
     };
 
+    auto errorHandler = [errorHandlerImpl = WTFMove(errorHandlerImpl)] (xpc_object_t event) mutable {
+        RunLoop::main().dispatch([errorHandlerImpl = WTFMove(errorHandlerImpl), event] {
+            errorHandlerImpl(event);
+        });
+    };
+
     xpc_connection_set_event_handler(m_xpcConnection.get(), errorHandler);
 
     xpc_connection_resume(m_xpcConnection.get());
 
     if (UNLIKELY(m_launchOptions.shouldMakeProcessLaunchFailForTesting)) {
-        RunLoop::main().dispatch([errorHandler = WTFMove(errorHandler)] {
-            errorHandler(nullptr);
-        });
+        errorHandler(nullptr);
         return;
     }
 
     ref();
     xpc_connection_send_message_with_reply(m_xpcConnection.get(), bootstrapMessage.get(), dispatch_get_main_queue(), ^(xpc_object_t reply) {
         // Errors are handled in the event handler.
-        if (xpc_get_type(reply) != XPC_TYPE_ERROR) {
+        // It is possible for this block to be called after the error event handler, in which case we're no longer
+        // launching and we already took care of cleaning things up.
+        if (isLaunching() && xpc_get_type(reply) != XPC_TYPE_ERROR) {
             ASSERT(xpc_get_type(reply) == XPC_TYPE_DICTIONARY);
             ASSERT(!strcmp(xpc_dictionary_get_string(reply, "message-name"), "process-finished-launching"));
 

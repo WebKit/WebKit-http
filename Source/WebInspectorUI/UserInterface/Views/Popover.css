@@ -31,7 +31,6 @@
     pointer-events: none;
     z-index: var(--z-index-popover);
 
-    --popover-text-color: black;
     --popover-background-color: var(--panel-background-color);
     --popover-border-color: hsla(0, 0%, 0%, 0.25);
     --popover-shadow-color: hsla(0, 0%, 0%, 0.5);
@@ -59,6 +58,14 @@
     transition: opacity 350ms;
     pointer-events: none;
     opacity: 0;
+}
+
+.popover p {
+    margin: 0.2em 0;
+}
+
+.popover p + p {
+    margin-top: 0.5em;
 }
 
 .popover > .container {

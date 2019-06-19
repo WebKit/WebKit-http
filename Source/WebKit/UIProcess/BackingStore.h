@@ -45,6 +45,7 @@ class UpdateInfo;
 class WebPageProxy;
 
 class BackingStore {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(BackingStore);
 
 public:

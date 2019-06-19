@@ -18,8 +18,7 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef CoordinatedGraphicsScene_h
-#define CoordinatedGraphicsScene_h
+#pragma once
 
 #if USE(COORDINATED_GRAPHICS)
 
@@ -33,6 +32,7 @@
 #include <WebCore/TextureMapperBackingStore.h>
 #include <WebCore/TextureMapperFPSCounter.h>
 #include <WebCore/TextureMapperLayer.h>
+#include <WebCore/TextureMapperPlatformLayerProxy.h>
 #include <WebCore/Timer.h>
 #include <wtf/Function.h>
 #include <wtf/HashSet.h>
@@ -40,10 +40,6 @@
 #include <wtf/RunLoop.h>
 #include <wtf/ThreadingPrimitives.h>
 #include <wtf/Vector.h>
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-#include <WebCore/TextureMapperPlatformLayerProxy.h>
-#endif
 
 namespace Nicosia {
 class Buffer;
@@ -62,17 +58,13 @@ public:
     virtual void updateViewport() = 0;
 };
 
-class CoordinatedGraphicsScene : public ThreadSafeRefCounted<CoordinatedGraphicsScene>
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    , public WebCore::TextureMapperPlatformLayerProxy::Compositor
-#endif
-{
+class CoordinatedGraphicsScene : public ThreadSafeRefCounted<CoordinatedGraphicsScene>, public WebCore::TextureMapperPlatformLayerProxy::Compositor {
 public:
     explicit CoordinatedGraphicsScene(CoordinatedGraphicsSceneClient*);
     virtual ~CoordinatedGraphicsScene();
 
     void applyStateChanges(const Vector<WebCore::CoordinatedGraphicsState>&);
-    void paintToCurrentGLContext(const WebCore::TransformationMatrix&, float, const WebCore::FloatRect&, const WebCore::Color& backgroundColor, bool drawsBackground, WebCore::TextureMapper::PaintFlags = 0);
+    void paintToCurrentGLContext(const WebCore::TransformationMatrix&, const WebCore::FloatRect&, WebCore::TextureMapper::PaintFlags = 0);
     void detach();
 
     // The painting thread must lock the main thread to use below two methods, because two methods access members that the main thread manages. See m_client.
@@ -81,9 +73,6 @@ public:
 
     bool isActive() const { return m_isActive; }
     void setActive(bool active) { m_isActive = active; }
-
-    void setViewBackgroundColor(const WebCore::Color& color) { m_viewBackgroundColor = color; }
-    WebCore::Color viewBackgroundColor() const { return m_viewBackgroundColor; }
 
 private:
     void commitSceneState(const WebCore::CoordinatedGraphicsState::NicosiaState&);
@@ -95,9 +84,7 @@ private:
 
     void ensureRootLayer();
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
     void onNewBufferAvailable() override;
-#endif
 
     struct {
         RefPtr<Nicosia::Scene> scene;
@@ -113,7 +100,6 @@ private:
     std::unique_ptr<WebCore::TextureMapperLayer> m_rootLayer;
 
     Nicosia::PlatformLayer::LayerID m_rootLayerID { 0 };
-    WebCore::Color m_viewBackgroundColor { WebCore::Color::white };
 
     WebCore::TextureMapperFPSCounter m_fpsCounter;
 };
@@ -121,7 +107,5 @@ private:
 } // namespace WebKit
 
 #endif // USE(COORDINATED_GRAPHICS)
-
-#endif // CoordinatedGraphicsScene_h
 
 

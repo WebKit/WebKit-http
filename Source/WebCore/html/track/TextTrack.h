@@ -52,8 +52,9 @@ public:
 };
 
 class TextTrack : public TrackBase, public EventTargetWithInlineData, public ContextDestructionObserver {
+    WTF_MAKE_ISO_ALLOCATED(TextTrack);
 public:
-    static Ref<TextTrack> create(ScriptExecutionContext* context, TextTrackClient* client, const AtomicString& kind, const AtomicString& id, const AtomicString& label, const AtomicString& language)
+    static Ref<TextTrack> create(ScriptExecutionContext* context, TextTrackClient* client, const AtomString& kind, const AtomString& id, const AtomString& label, const AtomString& language)
     {
         return adoptRef(*new TextTrack(context, client, kind, id, label, language, AddTrack));
     }
@@ -65,12 +66,12 @@ public:
     static TextTrack* captionMenuOffItem();
     static TextTrack* captionMenuAutomaticItem();
 
-    static const AtomicString& subtitlesKeyword();
-    static bool isValidKindKeyword(const AtomicString&);
+    static const AtomString& subtitlesKeyword();
+    static bool isValidKindKeyword(const AtomString&);
 
-    static const AtomicString& disabledKeyword();
-    static const AtomicString& hiddenKeyword();
-    static const AtomicString& showingKeyword();
+    static const AtomString& disabledKeyword();
+    static const AtomString& hiddenKeyword();
+    static const AtomString& showingKeyword();
 
     enum class Kind { Subtitles, Captions, Descriptions, Chapters, Metadata, Forced };
     Kind kind() const;
@@ -79,10 +80,10 @@ public:
     Kind kindForBindings() const;
     void setKindForBindings(Kind);
 
-    const AtomicString& kindKeyword() const;
+    const AtomString& kindKeyword() const;
     void setKindKeywordIgnoringASCIICase(StringView);
 
-    virtual AtomicString inBandMetadataTrackDispatchType() const { return emptyString(); }
+    virtual AtomString inBandMetadataTrackDispatchType() const { return emptyString(); }
 
     enum class Mode { Disabled, Hidden, Showing };
     Mode mode() const;
@@ -134,7 +135,7 @@ public:
     void removeAllCues();
 
 #if ENABLE(MEDIA_SOURCE)
-    void setLanguage(const AtomicString&) override;
+    void setLanguage(const AtomString&) override;
 #endif
 
     virtual bool isInband() const { return false; }
@@ -144,14 +145,17 @@ public:
     using RefCounted<TrackBase>::ref;
     using RefCounted<TrackBase>::deref;
 
+    const Optional<Vector<String>>& styleSheets() const { return m_styleSheets; }
+
 protected:
-    TextTrack(ScriptExecutionContext*, TextTrackClient*, const AtomicString& kind, const AtomicString& id, const AtomicString& label, const AtomicString& language, TextTrackType);
+    TextTrack(ScriptExecutionContext*, TextTrackClient*, const AtomString& kind, const AtomString& id, const AtomString& label, const AtomString& language, TextTrackType);
 
 #if !RELEASE_LOG_DISABLED
     const char* logClassName() const override { return "TextTrack"; }
 #endif
 
     RefPtr<TextTrackCueList> m_cues;
+    Optional<Vector<String>> m_styleSheets;
 
 private:
     bool enabled() const override;
@@ -169,8 +173,8 @@ private:
     TextTrackClient* m_client;
     TextTrackType m_trackType;
     ReadinessState m_readinessState { NotLoaded };
-    std::optional<int> m_trackIndex;
-    std::optional<int> m_renderedTrackIndex;
+    Optional<int> m_trackIndex;
+    Optional<int> m_renderedTrackIndex;
     bool m_hasBeenConfigured { false };
 };
 

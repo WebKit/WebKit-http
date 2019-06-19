@@ -36,17 +36,27 @@ public:
     enum MovieLoadType { Unknown, Download, StoredStream, LiveStream };
     enum Preload { None, MetaData, Auto };
     enum VideoGravity { VideoGravityResize, VideoGravityResizeAspect, VideoGravityResizeAspectFill };
+    enum SupportsType { IsNotSupported, IsSupported, MayBeSupported };
     enum {
         VideoFullscreenModeNone = 0,
         VideoFullscreenModeStandard = 1 << 0,
         VideoFullscreenModePictureInPicture = 1 << 1,
     };
     typedef uint32_t VideoFullscreenMode;
+
+    enum class BufferingPolicy {
+        Default,
+        LimitReadAhead,
+        MakeResourcesPurgeable,
+        PurgeResources,
+    };
 };
 
 WTF::String convertEnumerationToString(MediaPlayerEnums::ReadyState);
 WTF::String convertEnumerationToString(MediaPlayerEnums::NetworkState);
 WTF::String convertEnumerationToString(MediaPlayerEnums::Preload);
+WTF::String convertEnumerationToString(MediaPlayerEnums::SupportsType);
+WTF::String convertEnumerationToString(MediaPlayerEnums::BufferingPolicy);
 
 } // namespace WebCore
 
@@ -69,6 +79,14 @@ struct LogArgument<WebCore::MediaPlayerEnums::NetworkState> {
     static WTF::String toString(const WebCore::MediaPlayerEnums::NetworkState state)
     {
         return convertEnumerationToString(state);
+    }
+};
+
+template <>
+struct LogArgument<WebCore::MediaPlayerEnums::BufferingPolicy> {
+    static WTF::String toString(const WebCore::MediaPlayerEnums::BufferingPolicy policy)
+    {
+        return convertEnumerationToString(policy);
     }
 };
 

@@ -78,6 +78,8 @@ public:
 
         virtual void willChangeWebProcessIsResponsive() = 0;
         virtual void didChangeWebProcessIsResponsive() = 0;
+        
+        virtual void didSwapWebProcesses() = 0;
     };
 
     class Transaction {
@@ -119,6 +121,11 @@ public:
     void reset(const Transaction::Token&);
 
     bool isLoading() const;
+    bool isProvisional() const { return m_committedState.state == State::Provisional; }
+    bool isCommitted() const { return m_committedState.state == State::Committed; }
+    bool isFinished() const { return m_committedState.state == State::Finished; }
+
+    bool hasUncommittedLoad() const;
 
     const String& provisionalURL() const { return m_committedState.provisionalURL; }
     const String& url() const { return m_committedState.url; }
@@ -138,6 +145,7 @@ public:
     void clearPendingAPIRequestURL(const Transaction::Token&);
 
     void didStartProvisionalLoad(const Transaction::Token&, const String& url, const String& unreachableURL);
+    void didExplicitOpen(const Transaction::Token&, const String& url);
     void didReceiveServerRedirectForProvisionalLoad(const Transaction::Token&, const String& url);
     void didFailProvisionalLoad(const Transaction::Token&);
 
@@ -164,6 +172,8 @@ public:
     void didChangeProgress(const Transaction::Token&, double);
     void didFinishProgress(const Transaction::Token&);
     void setNetworkRequestsInProgress(const Transaction::Token&, bool);
+
+    void didSwapWebProcesses();
 
     bool committedHasInsecureContent() const { return m_committedState.hasInsecureContent; }
 

@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "api/mediatypes.h"
-#include "common_types.h"  // NOLINT(build/include)
 #include "rtc_base/copyonwritebuffer.h"
 
 namespace webrtc {
@@ -31,13 +30,7 @@ class PacketReceiver {
 
   virtual DeliveryStatus DeliverPacket(MediaType media_type,
                                        rtc::CopyOnWriteBuffer packet,
-                                       int64_t packet_time_us);
-
-  // TODO(bugs.webrtc.org/9584): Deprecated. Over the transition, default
-  // implementations are used, and subclasses must override one or the other.
-  virtual DeliveryStatus DeliverPacket(MediaType media_type,
-                                       rtc::CopyOnWriteBuffer packet,
-                                       const PacketTime& packet_time);
+                                       int64_t packet_time_us) = 0;
 
  protected:
   virtual ~PacketReceiver() {}

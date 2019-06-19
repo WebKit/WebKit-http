@@ -36,7 +36,27 @@ WI.TimelineMarker = class TimelineMarker extends WI.Object
         this._details = details || null;
     }
 
+    // Import / Export
+
+    static fromJSON(json)
+    {
+        let {time, type, details} = json;
+        return new WI.TimelineMarker(time, type, details);
+    }
+
+    toJSON()
+    {
+        return {
+            time: this._time,
+            type: this._type,
+            details: this._details || undefined,
+        };
+    }
+
     // Public
+
+    get type() { return this._type; }
+    get details() { return this._details; }
 
     get time()
     {
@@ -56,16 +76,6 @@ WI.TimelineMarker = class TimelineMarker extends WI.Object
 
         this.dispatchEventToListeners(WI.TimelineMarker.Event.TimeChanged);
     }
-
-    get type()
-    {
-        return this._type;
-    }
-
-    get details()
-    {
-        return this._details;
-    }
 };
 
 WI.TimelineMarker.Event = {
@@ -76,5 +86,6 @@ WI.TimelineMarker.Type = {
     CurrentTime: "current-time",
     LoadEvent: "load-event",
     DOMContentEvent: "dom-content-event",
-    TimeStamp: "timestamp"
+    TimeStamp: "timestamp",
+    Scanner: "scanner",
 };

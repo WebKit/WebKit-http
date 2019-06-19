@@ -31,6 +31,7 @@
 #ifndef SQLiteFileSystem_h
 #define SQLiteFileSystem_h
 
+#include <wtf/WallTime.h>
 #include <wtf/text/WTFString.h>
 
 struct sqlite3;
@@ -43,16 +44,6 @@ class SQLiteDatabase;
 // by the WebKit database code.
 class SQLiteFileSystem {
 public:
-    // Opens a database file.
-    //
-    // filemame - The name of the database file.
-    // database - The SQLite structure that represents the database stored
-    //            in the given file.
-    // forWebSQLDatabase - True, if and only if we're opening a Web SQL Database file.
-    //                     Used by Chromium to determine if the DB file needs to be opened
-    //                     using a custom VFS.
-    static int openDatabase(const String& filename, sqlite3** database, bool forWebSQLDatabase);
-
     // Creates an absolute file path given a directory and a file name.
     //
     // path - The directory.
@@ -89,7 +80,9 @@ public:
     // fileName - The file name.
     WEBCORE_EXPORT static bool deleteDatabaseFile(const String& fileName);
 
-#if PLATFORM(IOS)
+    WEBCORE_EXPORT static String computeHashForFileName(const String& fileName);
+
+#if PLATFORM(IOS_FAMILY)
     // Truncates a database file. Used when MobileSafariSettings deletes a database file,
     // since deleting the file nukes the POSIX file locks which would potentially cause Safari
     // to corrupt the new db if it's running in the background.
@@ -97,8 +90,8 @@ public:
 #endif
     
     static long long getDatabaseFileSize(const String& fileName);
-    WEBCORE_EXPORT static double databaseCreationTime(const String& fileName);
-    WEBCORE_EXPORT static double databaseModificationTime(const String& fileName);
+    WEBCORE_EXPORT static Optional<WallTime> databaseCreationTime(const String& fileName);
+    WEBCORE_EXPORT static Optional<WallTime> databaseModificationTime(const String& fileName);
 
 private:
     // do not instantiate this class

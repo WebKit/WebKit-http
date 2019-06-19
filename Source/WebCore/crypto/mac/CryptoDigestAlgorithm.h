@@ -27,13 +27,13 @@
 
 #include <pal/crypto/CryptoDigest.h>
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CryptoAlgorithm.h"
 
 namespace WebCore {
 
-static std::optional<PAL::CryptoDigest::Algorithm> cryptoDigestAlgorithm(CryptoAlgorithmIdentifier hashFunction)
+static Optional<PAL::CryptoDigest::Algorithm> cryptoDigestAlgorithm(CryptoAlgorithmIdentifier hashFunction)
 {
     switch (hashFunction) {
     case CryptoAlgorithmIdentifier::SHA_1:
@@ -47,10 +47,10 @@ static std::optional<PAL::CryptoDigest::Algorithm> cryptoDigestAlgorithm(CryptoA
     case CryptoAlgorithmIdentifier::SHA_512:
         return PAL::CryptoDigest::Algorithm::SHA_512;
     default:
-        return std::nullopt;
+        return WTF::nullopt;
     }
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

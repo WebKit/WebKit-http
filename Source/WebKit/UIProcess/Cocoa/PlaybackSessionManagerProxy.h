@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
 #include "MessageReceiver.h"
 #include <WebCore/GraphicsLayer.h>
@@ -39,13 +39,13 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include <WebCore/PlaybackSessionInterfaceAVKit.h>
 #else
 #include <WebCore/PlaybackSessionInterfaceMac.h>
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 typedef WebCore::PlaybackSessionInterfaceAVKit PlatformPlaybackSessionInterface;
 #else
 typedef WebCore::PlaybackSessionInterfaceMac PlatformPlaybackSessionInterface;
@@ -85,6 +85,7 @@ public:
     void wirelessVideoPlaybackDisabledChanged(bool);
     void mutedChanged(bool);
     void volumeChanged(double);
+    void pictureInPictureSupportedChanged(bool);
     void pictureInPictureActiveChanged(bool);
 
 private:
@@ -136,6 +137,7 @@ private:
     bool wirelessVideoPlaybackDisabled() const final { return m_wirelessVideoPlaybackDisabled; }
     bool isMuted() const final { return m_muted; }
     double volume() const final { return m_volume; }
+    bool isPictureInPictureSupported() const final { return m_pictureInPictureSupported; }
     bool isPictureInPictureActive() const final { return m_pictureInPictureActive; }
 
     PlaybackSessionManagerProxy* m_manager;
@@ -163,12 +165,13 @@ private:
     bool m_wirelessVideoPlaybackDisabled { false };
     bool m_muted { false };
     double m_volume { 0 };
+    bool m_pictureInPictureSupported { false };
     bool m_pictureInPictureActive { false };
 };
 
 class PlaybackSessionManagerProxy : public RefCounted<PlaybackSessionManagerProxy>, private IPC::MessageReceiver {
 public:
-    static RefPtr<PlaybackSessionManagerProxy> create(WebPageProxy&);
+    static Ref<PlaybackSessionManagerProxy> create(WebPageProxy&);
     virtual ~PlaybackSessionManagerProxy();
 
     void invalidate();
@@ -196,7 +199,6 @@ private:
     // Messages from PlaybackSessionManager
     void setUpPlaybackControlsManagerWithID(uint64_t contextId);
     void clearPlaybackControlsManager();
-    void resetMediaState(uint64_t contextId);
     void currentTimeChanged(uint64_t contextId, double currentTime, double hostTime);
     void bufferedTimeChanged(uint64_t contextId, double bufferedTime);
     void seekableRangesVectorChanged(uint64_t contextId, Vector<std::pair<double, double>> ranges, double lastModifiedTime, double liveUpdateInterval);
@@ -213,6 +215,7 @@ private:
     void handleControlledElementIDResponse(uint64_t, String) const;
     void mutedChanged(uint64_t contextId, bool muted);
     void volumeChanged(uint64_t contextId, double volume);
+    void pictureInPictureSupportedChanged(uint64_t contextId, bool pictureInPictureSupported);
     void pictureInPictureActiveChanged(uint64_t contextId, bool pictureInPictureActive);
 
     // Messages to PlaybackSessionManager
@@ -242,4 +245,4 @@ private:
 
 } // namespace WebKit
 
-#endif // PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#endif // PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))

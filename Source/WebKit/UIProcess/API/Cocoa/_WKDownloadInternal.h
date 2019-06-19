@@ -25,11 +25,16 @@
 
 #import "_WKDownload.h"
 
-#if WK_API_ENABLED
-
+#import "DownloadProxy.h"
 #import "WKObject.h"
+
+namespace WebKit {
+
+template<> struct WrapperTraits<DownloadProxy> {
+    using WrapperClass = _WKDownload;
+};
+
+}
 
 @interface _WKDownload () <WKObject>
 @end
-
-#endif // WK_API_ENABLED

@@ -11,12 +11,12 @@
 #include "modules/audio_processing/aec3/subtractor.h"
 
 #include <algorithm>
-#include <numeric>
+#include <utility>
 
 #include "api/array_view.h"
+#include "modules/audio_processing/aec3/fft_data.h"
 #include "modules/audio_processing/logging/apm_data_dumper.h"
 #include "rtc_base/checks.h"
-#include "rtc_base/logging.h"
 #include "rtc_base/numerics/safe_minmax.h"
 #include "system_wrappers/include/field_trial.h"
 
@@ -153,8 +153,6 @@ void Subtractor::HandleEchoPathChange(
   }
 
   if (echo_path_variability.gain_change && enable_agc_gain_change_response_) {
-    RTC_LOG(LS_WARNING) << "Resetting main filter adaptation speed due to "
-                           "microphone gain change";
     G_main_.HandleEchoPathChange(echo_path_variability);
   }
 }
@@ -193,7 +191,7 @@ void Subtractor::Process(const RenderBuffer& render_buffer,
                   adaptation_during_saturation_, &shadow_saturation);
 
   // Compute the signal powers in the subtractor output.
-  output->UpdatePowers(y);
+  output->ComputeMetrics(y);
 
   // Adjust the filter if needed.
   bool main_filter_adjusted = false;

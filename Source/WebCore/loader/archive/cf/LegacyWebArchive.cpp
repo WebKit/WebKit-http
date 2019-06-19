@@ -30,27 +30,34 @@
 #include "LegacyWebArchive.h"
 
 #include "CachedResource.h"
+#include "CustomHeaderFields.h"
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "Editor.h"
+#include "EditorClient.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameSelection.h"
 #include "FrameTree.h"
+#include "HTMLAttachmentElement.h"
 #include "HTMLFrameElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLNames.h"
 #include "HTMLObjectElement.h"
 #include "Image.h"
-#include "URLHash.h"
 #include "Logging.h"
 #include "MemoryCache.h"
 #include "Page.h"
 #include "Range.h"
+#include "RuntimeEnabledFeatures.h"
+#include "SerializedAttachmentData.h"
 #include "Settings.h"
+#include "SharedBuffer.h"
 #include "markup.h"
 #include <wtf/ListHashSet.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/URLHash.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/CString.h>
 
@@ -421,7 +428,7 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::create(Node& node, WTF::Function<bool
     }
 
     Vector<Node*> nodeList;
-    String markupString = createMarkup(node, IncludeNode, &nodeList, DoNotResolveURLs, tagNamesToFilter.get());
+    String markupString = serializeFragment(node, SerializedNodes::SubtreeIncludingNode, &nodeList, ResolveURLs::No, tagNamesToFilter.get());
     auto nodeType = node.nodeType();
     if (nodeType != Node::DOCUMENT_NODE && nodeType != Node::DOCUMENT_TYPE_NODE)
         markupString = documentTypeString(node.document()) + markupString;
@@ -460,9 +467,45 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::create(Range* range)
 
     // FIXME: This is always "for interchange". Is that right?
     Vector<Node*> nodeList;
-    String markupString = documentTypeString(document) + createMarkup(*range, &nodeList, AnnotateForInterchange);
+    String markupString = documentTypeString(document) + serializePreservingVisualAppearance(*range, &nodeList, AnnotateForInterchange::Yes);
     return create(markupString, *frame, nodeList, nullptr);
 }
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+static void addSubresourcesForAttachmentElementsIfNecessary(Frame& frame, const Vector<Node*>& nodes, Vector<Ref<ArchiveResource>>& subresources)
+{
+    if (!RuntimeEnabledFeatures::sharedFeatures().attachmentElementEnabled())
+        return;
+
+    Vector<String> identifiers;
+    for (auto* node : nodes) {
+        if (!is<HTMLAttachmentElement>(node))
+            continue;
+
+        auto uniqueIdentifier = downcast<HTMLAttachmentElement>(*node).uniqueIdentifier();
+        if (uniqueIdentifier.isEmpty())
+            continue;
+
+        identifiers.append(WTFMove(uniqueIdentifier));
+    }
+
+    if (identifiers.isEmpty())
+        return;
+
+    auto* editorClient = frame.editor().client();
+    if (!editorClient)
+        return;
+
+    auto frameName = frame.tree().uniqueName();
+    for (auto& data : editorClient->serializedAttachmentDataForIdentifiers(WTFMove(identifiers))) {
+        auto resourceURL = HTMLAttachmentElement::archiveResourceURL(data.identifier);
+        if (auto resource = ArchiveResource::create(data.data.ptr(), WTFMove(resourceURL), data.mimeType, { }, frameName))
+            subresources.append(resource.releaseNonNull());
+    }
+}
+
+#endif
 
 RefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Frame& frame, const Vector<Node*>& nodes, WTF::Function<bool (Frame&)>&& frameFilter)
 {
@@ -472,7 +515,7 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Fr
     // it's possible to have a response without a URL here
     // <rdar://problem/5454935>
     if (responseURL.isNull())
-        responseURL = URL(ParsedURLString, emptyString());
+        responseURL = URL({ }, emptyString());
 
     auto mainResource = ArchiveResource::create(utf8Buffer(markupString), responseURL, response.mimeType(), "UTF-8", frame.tree().uniqueName());
     if (!mainResource)
@@ -528,6 +571,10 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Fr
         }
     }
 
+#if ENABLE(ATTACHMENT_ELEMENT)
+    addSubresourcesForAttachmentElementsIfNecessary(frame, nodes, subresources);
+#endif
+
     // If we are archiving the entire page, add any link icons that we have data for.
     if (!nodes.isEmpty() && nodes[0]->isDocumentNode()) {
         auto* documentLoader = frame.loader().documentLoader();
@@ -554,8 +601,8 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::createFromSelection(Frame* frame)
     builder.append(documentTypeString(*document));
 
     Vector<Node*> nodeList;
-    if (auto selectionRange = frame->selection().toNormalizedRange())
-        builder.append(createMarkup(*selectionRange, &nodeList, AnnotateForInterchange));
+    auto serializeComposedTree = frame->settings().selectionAcrossShadowBoundariesEnabled() ? SerializeComposedTree::Yes : SerializeComposedTree::No;
+    builder.append(serializePreservingVisualAppearance(frame->selection().selection(), ResolveURLs::No, serializeComposedTree, &nodeList));
 
     auto archive = create(builder.toString(), *frame, nodeList, nullptr);
     
@@ -565,7 +612,7 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::createFromSelection(Frame* frame)
     // Wrap the frameset document in an iframe so it can be pasted into
     // another document (which will have a body or frameset of its own). 
     String iframeMarkup = "<iframe frameborder=\"no\" marginwidth=\"0\" marginheight=\"0\" width=\"98%%\" height=\"98%%\" src=\"" + frame->loader().documentLoader()->response().url().string() + "\"></iframe>";
-    auto iframeResource = ArchiveResource::create(utf8Buffer(iframeMarkup), blankURL(), "text/html", "UTF-8", String());
+    auto iframeResource = ArchiveResource::create(utf8Buffer(iframeMarkup), WTF::blankURL(), "text/html", "UTF-8", String());
 
     Vector<Ref<LegacyWebArchive>> subframeArchives;
     subframeArchives.reserveInitialCapacity(1);

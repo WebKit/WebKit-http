@@ -29,31 +29,42 @@
 
 #include "IDBConnectionToClient.h"
 #include "IDBDatabaseIdentifier.h"
+#include "StorageQuotaManager.h"
+#include "StorageQuotaUser.h"
 #include "UniqueIDBDatabase.h"
 #include "UniqueIDBDatabaseConnection.h"
+#include <pal/HysteresisActivity.h>
+#include <pal/SessionID.h>
 #include <wtf/CrossThreadTaskHandler.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
 class IDBCursorInfo;
 class IDBRequestData;
 class IDBValue;
+class StorageQuotaManager;
 
 struct IDBGetRecordData;
 
 namespace IDBServer {
 
+const uint64_t defaultPerOriginQuota = 500 * MB;
+
 class IDBBackingStoreTemporaryFileHandler;
 
-class IDBServer : public RefCounted<IDBServer>, public CrossThreadTaskHandler {
+enum class ShouldForceStop : bool { No, Yes };
+
+class IDBServer : public RefCounted<IDBServer>, public CrossThreadTaskHandler, public CanMakeWeakPtr<IDBServer> {
 public:
-    static Ref<IDBServer> create(IDBBackingStoreTemporaryFileHandler&);
-    WEBCORE_EXPORT static Ref<IDBServer> create(const String& databaseDirectoryPath, IDBBackingStoreTemporaryFileHandler&);
+    using QuotaManagerGetter = WTF::Function<StorageQuotaManager*(PAL::SessionID, const ClientOrigin&)>;
+    static Ref<IDBServer> create(PAL::SessionID, IDBBackingStoreTemporaryFileHandler&, QuotaManagerGetter&&);
+    WEBCORE_EXPORT static Ref<IDBServer> create(PAL::SessionID, const String& databaseDirectoryPath, IDBBackingStoreTemporaryFileHandler&, QuotaManagerGetter&&);
 
     WEBCORE_EXPORT void registerConnection(IDBConnectionToClient&);
     WEBCORE_EXPORT void unregisterConnection(IDBConnectionToClient&);
@@ -104,9 +115,23 @@ public:
     WEBCORE_EXPORT void closeAndDeleteDatabasesModifiedSince(WallTime, Function<void ()>&& completionHandler);
     WEBCORE_EXPORT void closeAndDeleteDatabasesForOrigins(const Vector<SecurityOriginData>&, Function<void ()>&& completionHandler);
 
+    uint64_t perOriginQuota() const { return m_perOriginQuota; }
+    WEBCORE_EXPORT void setPerOriginQuota(uint64_t);
+
+    void requestSpace(const ClientOrigin&, uint64_t taskSize, CompletionHandler<void(StorageQuotaManager::Decision)>&&);
+    void increasePotentialSpaceUsed(const ClientOrigin&, uint64_t taskSize);
+    void decreasePotentialSpaceUsed(const ClientOrigin&, uint64_t taskSize);
+    void setSpaceUsed(const ClientOrigin&, uint64_t spaceUsed);
+    void resetSpaceUsed(const ClientOrigin&);
+
+    void initializeQuotaUser(const ClientOrigin& origin) { ensureQuotaUser(origin); }
+
+    WEBCORE_EXPORT void tryStop(ShouldForceStop);
+    WEBCORE_EXPORT void resume();
+
 private:
-    IDBServer(IDBBackingStoreTemporaryFileHandler&);
-    IDBServer(const String& databaseDirectoryPath, IDBBackingStoreTemporaryFileHandler&);
+    IDBServer(PAL::SessionID, IDBBackingStoreTemporaryFileHandler&, QuotaManagerGetter&&);
+    IDBServer(PAL::SessionID, const String& databaseDirectoryPath, IDBBackingStoreTemporaryFileHandler&, QuotaManagerGetter&&);
 
     UniqueIDBDatabase& getOrCreateUniqueIDBDatabase(const IDBDatabaseIdentifier&);
 
@@ -117,6 +142,49 @@ private:
     void performCloseAndDeleteDatabasesForOrigins(const Vector<SecurityOriginData>&, uint64_t callbackID);
     void didPerformCloseAndDeleteDatabases(uint64_t callbackID);
 
+    void upgradeFilesIfNecessary();
+    void removeDatabasesModifiedSinceForVersion(WallTime, const String&);
+    void removeDatabasesWithOriginsForVersion(const Vector<SecurityOriginData>&, const String&);
+
+    class QuotaUser final : public StorageQuotaUser {
+        WTF_MAKE_FAST_ALLOCATED;
+    public:
+        QuotaUser(IDBServer&, StorageQuotaManager*, ClientOrigin&&);
+        ~QuotaUser();
+
+        StorageQuotaManager* manager() { return m_manager.get(); }
+
+        void setSpaceUsed(uint64_t spaceUsed) { m_spaceUsed = spaceUsed; }
+        void resetSpaceUsed();
+
+        void increasePotentialSpaceUsed(uint64_t increase) { m_estimatedSpaceIncrease += increase; }
+        void decreasePotentialSpaceUsed(uint64_t decrease)
+        {
+            ASSERT(m_estimatedSpaceIncrease >= decrease);
+            m_estimatedSpaceIncrease -= decrease;
+        }
+
+        void initializeSpaceUsed(uint64_t spaceUsed);
+
+    private:
+        uint64_t spaceUsed() const final { return m_spaceUsed + m_estimatedSpaceIncrease; }
+        void whenInitialized(CompletionHandler<void()>&&) final;
+
+        IDBServer& m_server;
+        WeakPtr<StorageQuotaManager> m_manager;
+        ClientOrigin m_origin;
+        bool m_isInitialized { false };
+        uint64_t m_spaceUsed { 0 };
+        uint64_t m_estimatedSpaceIncrease { 0 };
+        CompletionHandler<void()> m_initializationCallback;
+    };
+
+    WEBCORE_EXPORT QuotaUser& ensureQuotaUser(const ClientOrigin&);
+    void startComputingSpaceUsedForOrigin(const ClientOrigin&);
+    void computeSpaceUsedForOrigin(const ClientOrigin&);
+    void finishComputingSpaceUsedForOrigin(const ClientOrigin&, uint64_t spaceUsed);
+
+    PAL::SessionID m_sessionID;
     HashMap<uint64_t, RefPtr<IDBConnectionToClient>> m_connectionMap;
     HashMap<IDBDatabaseIdentifier, std::unique_ptr<UniqueIDBDatabase>> m_uniqueIDBDatabaseMap;
 
@@ -127,6 +195,11 @@ private:
 
     String m_databaseDirectoryPath;
     IDBBackingStoreTemporaryFileHandler& m_backingStoreTemporaryFileHandler;
+
+    uint64_t m_perOriginQuota { defaultPerOriginQuota };
+
+    HashMap<ClientOrigin, std::unique_ptr<QuotaUser>> m_quotaUsers;
+    QuotaManagerGetter m_quotaManagerGetter;
 };
 
 } // namespace IDBServer

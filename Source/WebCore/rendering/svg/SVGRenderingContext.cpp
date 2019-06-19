@@ -235,7 +235,7 @@ AffineTransform SVGRenderingContext::calculateTransformationToOutermostCoordinat
     return absoluteTransform;
 }
 
-std::unique_ptr<ImageBuffer> SVGRenderingContext::createImageBuffer(const FloatRect& targetRect, const AffineTransform& absoluteTransform, ColorSpace colorSpace, RenderingMode renderingMode)
+std::unique_ptr<ImageBuffer> SVGRenderingContext::createImageBuffer(const FloatRect& targetRect, const AffineTransform& absoluteTransform, ColorSpace colorSpace, RenderingMode renderingMode, const GraphicsContext* context)
 {
     IntRect paintRect = calculateImageBufferRect(targetRect, absoluteTransform);
     // Don't create empty ImageBuffers.
@@ -245,7 +245,12 @@ std::unique_ptr<ImageBuffer> SVGRenderingContext::createImageBuffer(const FloatR
     FloatSize scale;
     FloatSize clampedSize = ImageBuffer::clampedSize(paintRect.size(), scale);
 
+#if USE(DIRECT2D)
+    auto imageBuffer = ImageBuffer::create(clampedSize, renderingMode, context, 1, colorSpace);
+#else
+    UNUSED_PARAM(context);
     auto imageBuffer = ImageBuffer::create(clampedSize, renderingMode, 1, colorSpace);
+#endif
     if (!imageBuffer)
         return nullptr;
 
@@ -258,7 +263,7 @@ std::unique_ptr<ImageBuffer> SVGRenderingContext::createImageBuffer(const FloatR
     return imageBuffer;
 }
 
-std::unique_ptr<ImageBuffer> SVGRenderingContext::createImageBuffer(const FloatRect& targetRect, const FloatRect& clampedRect, ColorSpace colorSpace, RenderingMode renderingMode)
+std::unique_ptr<ImageBuffer> SVGRenderingContext::createImageBuffer(const FloatRect& targetRect, const FloatRect& clampedRect, ColorSpace colorSpace, RenderingMode renderingMode, const GraphicsContext* context)
 {
     IntSize clampedSize = roundedIntSize(clampedRect.size());
     FloatSize unclampedSize = roundedIntSize(targetRect.size());
@@ -267,7 +272,12 @@ std::unique_ptr<ImageBuffer> SVGRenderingContext::createImageBuffer(const FloatR
     if (clampedSize.isEmpty())
         return nullptr;
 
+#if USE(DIRECT2D)
+    auto imageBuffer = ImageBuffer::create(clampedSize, renderingMode, context, 1, colorSpace);
+#else
+    UNUSED_PARAM(context);
     auto imageBuffer = ImageBuffer::create(clampedSize, renderingMode, 1, colorSpace);
+#endif
     if (!imageBuffer)
         return nullptr;
 
@@ -306,7 +316,7 @@ void SVGRenderingContext::clipToImageBuffer(GraphicsContext& context, const Affi
 
     // The mask image has been created in the absolute coordinate space, as the image should not be scaled.
     // So the actual masking process has to be done in the absolute coordinate space as well.
-    context.concatCTM(absoluteTransform.inverse().value_or(AffineTransform()));
+    context.concatCTM(absoluteTransform.inverse().valueOr(AffineTransform()));
     context.clipToImageBuffer(*imageBuffer, absoluteTargetRect);
     context.concatCTM(absoluteTransform);
 

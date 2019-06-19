@@ -26,12 +26,14 @@
 #include "NamedNodeMap.h"
 
 #include "Attr.h"
-#include "HTMLDocument.h"
 #include "HTMLElement.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
 using namespace HTMLNames;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(NamedNodeMap);
 
 void NamedNodeMap::ref()
 {
@@ -43,17 +45,17 @@ void NamedNodeMap::deref()
     m_element.deref();
 }
 
-RefPtr<Attr> NamedNodeMap::getNamedItem(const AtomicString& name) const
+RefPtr<Attr> NamedNodeMap::getNamedItem(const AtomString& name) const
 {
     return m_element.getAttributeNode(name);
 }
 
-RefPtr<Attr> NamedNodeMap::getNamedItemNS(const AtomicString& namespaceURI, const AtomicString& localName) const
+RefPtr<Attr> NamedNodeMap::getNamedItemNS(const AtomString& namespaceURI, const AtomString& localName) const
 {
     return m_element.getAttributeNodeNS(namespaceURI, localName);
 }
 
-ExceptionOr<Ref<Attr>> NamedNodeMap::removeNamedItem(const AtomicString& name)
+ExceptionOr<Ref<Attr>> NamedNodeMap::removeNamedItem(const AtomString& name)
 {
     if (!m_element.hasAttributes())
         return Exception { NotFoundError };
@@ -66,7 +68,7 @@ ExceptionOr<Ref<Attr>> NamedNodeMap::removeNamedItem(const AtomicString& name)
 Vector<String> NamedNodeMap::supportedPropertyNames() const
 {
     Vector<String> names = m_element.getAttributeNames();
-    if (is<HTMLElement>(m_element) && is<HTMLDocument>(m_element.document())) {
+    if (is<HTMLElement>(m_element) && m_element.document().isHTMLDocument()) {
         names.removeAllMatching([](String& name) {
             for (auto character : StringView { name }.codeUnits()) {
                 if (isASCIIUpper(character))
@@ -78,7 +80,7 @@ Vector<String> NamedNodeMap::supportedPropertyNames() const
     return names;
 }
 
-ExceptionOr<Ref<Attr>> NamedNodeMap::removeNamedItemNS(const AtomicString& namespaceURI, const AtomicString& localName)
+ExceptionOr<Ref<Attr>> NamedNodeMap::removeNamedItemNS(const AtomString& namespaceURI, const AtomString& localName)
 {
     if (!m_element.hasAttributes())
         return Exception { NotFoundError };

@@ -33,6 +33,7 @@
 namespace WebCore {
 
 class WebGLRenderingContext final : public WebGLRenderingContextBase {
+    WTF_MAKE_ISO_ALLOCATED(WebGLRenderingContext);
 public:
     static std::unique_ptr<WebGLRenderingContext> create(CanvasBase&, GraphicsContext3DAttributes);
     static std::unique_ptr<WebGLRenderingContext> create(CanvasBase&, Ref<GraphicsContext3D>&&, GraphicsContext3DAttributes);
@@ -41,7 +42,7 @@ public:
 
     WebGLExtension* getExtension(const String&) final;
     WebGLAny getParameter(GC3Denum pname) final;
-    std::optional<Vector<String>> getSupportedExtensions() final;
+    Optional<Vector<String>> getSupportedExtensions() final;
 
     WebGLAny getFramebufferAttachmentParameter(GC3Denum target, GC3Denum attachment, GC3Denum pname) final;
     void renderbufferStorage(GC3Denum target, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height) final;

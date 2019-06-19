@@ -26,21 +26,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
-#import <PDFKit/PDFKit.h>
+#import <Quartz/Quartz.h>
 #import <WebKitLegacy/WebDocumentInternal.h>
 
 @class WebDataSource;
 
-#if __MAC_OS_X_VERSION_MAX_ALLOWED < 101200
-@protocol PDFViewDelegate <NSObject>
-@end
-#endif
-
 @interface WebPDFView : NSView <PDFViewDelegate, WebDocumentView, WebDocumentSearching, WebDocumentIncrementalSearching, WebMultipleTextMatches, WebDocumentSelection, WebDocumentElement, WebDocumentPDF, _WebDocumentViewState, _WebDocumentZooming>
 {
-    NSView *previewView;
     PDFView *PDFSubview;
     NSString *path;
     BOOL firstResponderIsPDFDocumentView;

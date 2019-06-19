@@ -31,8 +31,6 @@
 #import <WebKit/WebKit.h>
 #import <wtf/text/WTFString.h>
 
-#if WK_API_ENABLED
-
 static bool readyToContinue;
 
 @interface LocalStorageUIDelegate : NSObject <WKUIDelegate>
@@ -62,9 +60,6 @@ TEST(WKWebView, LocalStorageFetchDataRecords)
     [webView loadHTMLString:@"<script>localStorage.setItem('testKey', 'testValue');alert(localStorage.getItem('testKey'));</script>" baseURL:[NSURL URLWithString:@"http://localhost"]];
     TestWebKitAPI::Util::run(&readyToContinue);
 
-    // Local storage database update interval is 1 second.
-    TestWebKitAPI::Util::sleep(1);
-
     readyToContinue = false;
     [[WKWebsiteDataStore defaultDataStore] fetchDataRecordsOfTypes:[WKWebsiteDataStore allWebsiteDataTypes] completionHandler:^(NSArray<WKWebsiteDataRecord *> *dataRecords) {
         readyToContinue = true;
@@ -75,6 +70,3 @@ TEST(WKWebView, LocalStorageFetchDataRecords)
     }];
     TestWebKitAPI::Util::run(&readyToContinue);
 }
-
-#endif
-

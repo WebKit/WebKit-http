@@ -29,15 +29,29 @@
 #import "config.h"
 #import "WebCoreURLResponseIOS.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "QuickLook.h"
 #import "UTIUtilities.h"
 #import <MobileCoreServices/MobileCoreServices.h>
-
-#import "QuickLookSoftLink.h"
+#import <pal/ios/QuickLookSoftLink.h>
 
 namespace WebCore {
+
+// <rdar://problem/46332893> Register .mjs files as whatever UTI indicates JavaScript
+static CFDictionaryRef createExtensionToMIMETypeMap()
+{
+    CFStringRef keys[] = {
+        CFSTR("mjs")
+    };
+
+    CFStringRef values[] = {
+        CFSTR("text/javascript")
+    };
+
+    ASSERT(sizeof(keys) == sizeof(values));
+    return CFDictionaryCreate(kCFAllocatorDefault, (const void**)&keys, (const void**)&values, sizeof(keys) / sizeof(CFStringRef), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+}
 
 void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse, bool isMainResourceLoad)
 {
@@ -46,12 +60,28 @@ void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse, bool isMainResourceL
     if (!updatedMIMEType)
         updatedMIMEType = defaultMIMEType().createCFString();
 
+    // <rdar://problem/46332893> Register .mjs files as whatever UTI indicates JavaScript
+    if (!mimeType) {
+        auto url = CFURLResponseGetURL(cfResponse);
+        if ([(__bridge NSURL *)url isFileURL]) {
+            RetainPtr<CFStringRef> extension = adoptCF(CFURLCopyPathExtension(url));
+            if (extension) {
+                static CFDictionaryRef extensionMap = createExtensionToMIMETypeMap();
+                CFMutableStringRef mutableExtension = CFStringCreateMutableCopy(kCFAllocatorDefault, 0, extension.get());
+                CFStringLowercase(mutableExtension, NULL);
+                extension = adoptCF(mutableExtension);
+                if (auto newMIMEType = (CFStringRef)CFDictionaryGetValue(extensionMap, extension.get()))
+                    updatedMIMEType = newMIMEType;
+            }
+        }
+    }
+
 #if USE(QUICK_LOOK)
     // We must ensure that the MIME type is correct, so that QuickLook's web plugin is called when needed.
     // We filter the basic MIME types so that we don't do unnecessary work in standard browsing situations.
     if (isMainResourceLoad && shouldUseQuickLookForMIMEType((NSString *)updatedMIMEType.get())) {
         RetainPtr<CFStringRef> suggestedFilename = adoptCF(CFURLResponseCopySuggestedFilename(cfResponse));
-        RetainPtr<CFStringRef> quickLookMIMEType = adoptCF((CFStringRef)QLTypeCopyBestMimeTypeForFileNameAndMimeType((NSString *)suggestedFilename.get(), (NSString *)mimeType.get()));
+        RetainPtr<CFStringRef> quickLookMIMEType = adoptCF((CFStringRef)PAL::softLink_QuickLook_QLTypeCopyBestMimeTypeForFileNameAndMimeType((NSString *)suggestedFilename.get(), (NSString *)mimeType.get()));
         if (!quickLookMIMEType) {
             auto url = CFURLResponseGetURL(cfResponse);
             if ([(NSURL *)url isFileURL]) {
@@ -77,4 +107,4 @@ void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse, bool isMainResourceL
 
 } // namespace WebCore
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

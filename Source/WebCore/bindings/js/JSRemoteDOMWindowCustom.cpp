@@ -30,10 +30,11 @@
 #include "WebCoreJSClientData.h"
 
 namespace WebCore {
+using namespace JSC;
 
 bool JSRemoteDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)
 {
-    if (std::optional<unsigned> index = parseIndex(propertyName))
+    if (Optional<unsigned> index = parseIndex(propertyName))
         return getOwnPropertySlotByIndex(object, state, index.value(), slot);
 
     auto* thisObject = jsCast<JSRemoteDOMWindow*>(object);
@@ -97,14 +98,12 @@ bool JSRemoteDOMWindow::deletePropertyByIndex(JSCell*, ExecState* state, unsigne
     return false;
 }
 
-void JSRemoteDOMWindow::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
+void JSRemoteDOMWindow::getOwnPropertyNames(JSObject*, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
-    auto* thisObject = jsCast<JSRemoteDOMWindow*>(object);
-
     // FIXME: Add scoped children indexes.
 
     if (mode.includeDontEnumProperties())
-        addCrossOriginWindowOwnPropertyNames(*exec, thisObject->wrapped(), propertyNames);
+        addCrossOriginOwnPropertyNames<CrossOriginObject::Window>(*exec, propertyNames);
 }
 
 bool JSRemoteDOMWindow::defineOwnProperty(JSC::JSObject*, JSC::ExecState* state, JSC::PropertyName, const JSC::PropertyDescriptor&, bool)

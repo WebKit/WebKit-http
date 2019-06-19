@@ -25,14 +25,13 @@
 
 #pragma once
 
-#include <wtf/EnumTraits.h>
+#include <wtf/Forward.h>
 
 namespace WebKit {
 
-enum class CoordinateSystem {
+enum class CoordinateSystem : uint8_t {
     Page = 0,
-    LayoutViewport,
-    VisualViewport,
+    LayoutViewport
 };
 
 } // namespace WebKit
@@ -43,8 +42,7 @@ template<> struct EnumTraits<WebKit::CoordinateSystem> {
     using values = EnumValues<
     WebKit::CoordinateSystem,
     WebKit::CoordinateSystem::Page,
-    WebKit::CoordinateSystem::LayoutViewport,
-    WebKit::CoordinateSystem::VisualViewport
+    WebKit::CoordinateSystem::LayoutViewport
     >;
 };
 

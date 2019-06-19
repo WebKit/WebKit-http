@@ -13,7 +13,12 @@
 #include <algorithm>
 #include <functional>
 
+#include "modules/audio_processing/aec3/adaptive_fir_filter.h"
 #include "modules/audio_processing/aec3/aec3_common.h"
+#include "modules/audio_processing/aec3/echo_path_variability.h"
+#include "modules/audio_processing/aec3/fft_data.h"
+#include "modules/audio_processing/aec3/render_signal_analyzer.h"
+#include "modules/audio_processing/aec3/subtractor_output.h"
 #include "modules/audio_processing/logging/apm_data_dumper.h"
 #include "rtc_base/atomicops.h"
 #include "rtc_base/checks.h"
@@ -22,7 +27,6 @@ namespace webrtc {
 namespace {
 
 constexpr float kHErrorInitial = 10000.f;
-constexpr float kHErrorGainChange = 10000.f;
 constexpr int kPoorExcitationCounterInitial = 1000;
 
 }  // namespace
@@ -48,7 +52,7 @@ MainFilterUpdateGain::~MainFilterUpdateGain() {}
 void MainFilterUpdateGain::HandleEchoPathChange(
     const EchoPathVariability& echo_path_variability) {
   if (echo_path_variability.gain_change) {
-    H_error_.fill(kHErrorGainChange);
+    // TODO(bugs.webrtc.org/9526) Handle gain changes.
   }
 
   if (echo_path_variability.delay_change !=
@@ -128,7 +132,10 @@ void MainFilterUpdateGain::Compute(
                  H_error_increase.begin(), std::multiplies<float>());
   std::transform(H_error_.begin(), H_error_.end(), H_error_increase.begin(),
                  H_error_.begin(), [&](float a, float b) {
-                   return std::max(a + b, current_config_.error_floor);
+                   float error = a + b;
+                   error = std::max(error, current_config_.error_floor);
+                   error = std::min(error, current_config_.error_ceil);
+                   return error;
                  });
 
   data_dumper_->DumpRaw("aec3_main_gain_H_error", H_error_);
@@ -153,6 +160,9 @@ void MainFilterUpdateGain::UpdateCurrentConfig() {
                   target_config_.leakage_diverged, change_factor);
       current_config_.error_floor =
           average(old_target_config_.error_floor, target_config_.error_floor,
+                  change_factor);
+      current_config_.error_ceil =
+          average(old_target_config_.error_ceil, target_config_.error_ceil,
                   change_factor);
       current_config_.noise_gate =
           average(old_target_config_.noise_gate, target_config_.noise_gate,

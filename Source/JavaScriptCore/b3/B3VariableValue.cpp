@@ -28,6 +28,7 @@
 
 #if ENABLE(B3_JIT)
 
+#include "B3ValueInlines.h"
 #include "B3Variable.h"
 
 namespace JSC { namespace B3 {
@@ -41,20 +42,15 @@ void VariableValue::dumpMeta(CommaPrinter& comma, PrintStream& out) const
     out.print(comma, pointerDump(m_variable));
 }
 
-Value* VariableValue::cloneImpl() const
-{
-    return new VariableValue(*this);
-}
-
 VariableValue::VariableValue(Kind kind, Origin origin, Variable* variable, Value* value)
-    : Value(CheckedOpcode, kind, Void, origin, value)
+    : Value(CheckedOpcode, kind, Void, One, origin, value)
     , m_variable(variable)
 {
     ASSERT(kind == Set);
 }
 
 VariableValue::VariableValue(Kind kind, Origin origin, Variable* variable)
-    : Value(CheckedOpcode, kind, variable->type(), origin)
+    : Value(CheckedOpcode, kind, variable->type(), Zero, origin)
     , m_variable(variable)
 {
     ASSERT(kind == Get);

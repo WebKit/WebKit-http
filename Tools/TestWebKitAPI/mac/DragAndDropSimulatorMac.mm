@@ -26,7 +26,7 @@
 #import "config.h"
 #import "DragAndDropSimulator.h"
 
-#if ENABLE(DRAG_SUPPORT) && PLATFORM(MAC) && WK_API_ENABLED
+#if ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
 
 #import "PlatformUtilities.h"
 #import "TestDraggingInfo.h"
@@ -56,7 +56,9 @@
     return self;
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)dragImage:(NSImage *)image at:(NSPoint)viewLocation offset:(NSSize)initialOffset event:(NSEvent *)event pasteboard:(NSPasteboard *)pboard source:(id)sourceObj slideBack:(BOOL)slideFlag
+IGNORE_WARNINGS_END
 {
     [_dragAndDropSimulator performDragInWebView:self atLocation:viewLocation withImage:image pasteboard:pboard source:sourceObj];
 }
@@ -120,6 +122,7 @@ static NSImage *defaultExternalDragImage()
         _webView = adoptNS([[DragAndDropTestWKWebView alloc] initWithFrame:frame configuration:configuration ?: [[[WKWebViewConfiguration alloc] init] autorelease] simulator:self]);
         _filePromiseDestinationURLs = adoptNS([NSMutableArray new]);
         [_webView setUIDelegate:self];
+        self.dragDestinationAction = WKDragDestinationActionAny & ~WKDragDestinationActionLoad;
     }
     return self;
 }
@@ -468,6 +471,11 @@ static BOOL getFilePathsAndTypeIdentifiers(NSArray<NSURL *> *fileURLs, NSArray<N
     _doneWaitingForDrop = true;
 }
 
+- (WKDragDestinationAction)_webView:(WKWebView *)webView dragDestinationActionMaskForDraggingInfo:(id)draggingInfo
+{
+    return self.dragDestinationAction;
+}
+
 @end
 
-#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(MAC) && WK_API_ENABLED
+#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)

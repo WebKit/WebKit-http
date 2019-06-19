@@ -76,16 +76,13 @@ class RtpPacketHistory {
                     absl::optional<int64_t> send_time_ms);
 
   // Gets stored RTP packet corresponding to the input |sequence number|.
-  // Returns nullptr if packet is not found. If |verify_rtt| is true, doesn't
-  // return packet that was (re)sent too recently.
+  // Returns nullptr if packet is not found or was (re)sent too recently.
   std::unique_ptr<RtpPacketToSend> GetPacketAndSetSendTime(
-      uint16_t sequence_number,
-      bool verify_rtt);
+      uint16_t sequence_number);
 
   // Similar to GetPacketAndSetSendTime(), but only returns a snapshot of the
   // current state for packet, and never updates internal state.
-  absl::optional<PacketState> GetPacketState(uint16_t sequence_number,
-                                             bool verify_rtt) const;
+  absl::optional<PacketState> GetPacketState(uint16_t sequence_number) const;
 
   // Get the packet (if any) from the history, with size closest to
   // |packet_size|. The exact size of the packet is not guaranteed.
@@ -136,6 +133,7 @@ class RtpPacketHistory {
 
   // Map from rtp sequence numbers to stored packet.
   std::map<uint16_t, StoredPacket> packet_history_ RTC_GUARDED_BY(lock_);
+  std::map<size_t, uint16_t> packet_size_ RTC_GUARDED_BY(lock_);
 
   // The earliest packet in the history. This might not be the lowest sequence
   // number, in case there is a wraparound.

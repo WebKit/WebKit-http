@@ -25,15 +25,15 @@
 
 #pragma once
 
-#if WK_API_ENABLED
-
 #import <WebKit/WKNavigationDelegatePrivate.h>
 #import <WebKit/WebKit.h>
 
 @interface TestNavigationDelegate : NSObject <WKNavigationDelegate>
 
+@property (nonatomic, copy) void (^decidePolicyForNavigationAction)(WKNavigationAction *, void (^)(WKNavigationActionPolicy));
 @property (nonatomic, copy) void (^didFailProvisionalNavigation)(WKWebView *, WKNavigation *, NSError *);
 @property (nonatomic, copy) void (^didStartProvisionalNavigation)(WKWebView *, WKNavigation *);
+@property (nonatomic, copy) void (^didCommitNavigation)(WKWebView *, WKNavigation *);
 @property (nonatomic, copy) void (^didFinishNavigation)(WKWebView *, WKNavigation *);
 @property (nonatomic, copy) void (^renderingProgressDidChange)(WKWebView *, _WKRenderingProgressEvents);
 @property (nonatomic, copy) void (^webContentProcessDidTerminate)(WKWebView *);
@@ -47,5 +47,3 @@
 - (void)_test_waitForDidStartProvisionalNavigation;
 - (void)_test_waitForDidFinishNavigation;
 @end
-
-#endif

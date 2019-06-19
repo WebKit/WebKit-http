@@ -1,7 +1,7 @@
 add_definitions(-DQUARTZCORE_DLL -DDISABLE_COREIMAGE -DDISABLE_FRONTEND -DDISABLE_IOSURFACE -DDISABLE_RENDERSERVER
     -DDISABLE_3D_TRANSFORMS -DWEBCORE_CONTEXT_MENUS -DPSAPI_VERSION=1)
 
-list(APPEND WebCore_INCLUDE_DIRECTORIES
+list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBKIT_LIBRARIES_DIR}/include"
     "${WEBCORE_DIR}/loader/archive/cf"
     "${WEBCORE_DIR}/platform/graphics/avfoundation"
@@ -11,20 +11,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/cg"
     "${WEBCORE_DIR}/platform/network/cf"
 )
-
-if (${USE_DIRECT2D})
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/platform/graphics/win"
-    )
-else ()
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/platform/graphics/avfoundation"
-        "${WEBCORE_DIR}/platform/graphics/avfoundation/cf"
-        "${WEBCORE_DIR}/platform/graphics/ca"
-        "${WEBCORE_DIR}/platform/graphics/ca/win"
-        "${WEBCORE_DIR}/platform/graphics/cg"
-    )
-endif ()
 
 list(APPEND WebCore_SOURCES
     loader/cf/ResourceLoaderCFNet.cpp
@@ -47,12 +33,14 @@ list(APPEND WebCore_SOURCES
     platform/graphics/win/FontCustomPlatformData.cpp
 
     platform/network/cf/AuthenticationCF.cpp
+    platform/network/cf/CertificateInfoCFNet.cpp
     platform/network/cf/CookieStorageCFNet.cpp
     platform/network/cf/CredentialStorageCFNet.cpp
     platform/network/cf/DNSResolveQueueCFNet.cpp
     platform/network/cf/FormDataStreamCFNet.cpp
     platform/network/cf/LoaderRunLoopCF.cpp
     platform/network/cf/NetworkStorageSessionCFNet.cpp
+    platform/network/cf/NetworkStorageSessionCFNetWin.cpp
     platform/network/cf/ProtectionSpaceCFNet.cpp
     platform/network/cf/ProxyServerCFNet.cpp
     platform/network/cf/ResourceErrorCF.cpp
@@ -63,9 +51,29 @@ list(APPEND WebCore_SOURCES
     platform/network/cf/ResourceResponseCFNet.cpp
     platform/network/cf/SocketStreamHandleImplCFNet.cpp
     platform/network/cf/SynchronousLoaderClientCFNet.cpp
+
+    platform/text/LocaleNone.cpp
+)
+
+list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
+    platform/network/cf/AuthenticationCF.h
+    platform/network/cf/AuthenticationChallenge.h
+    platform/network/cf/CertificateInfo.h
+    platform/network/cf/DownloadBundle.h
+    platform/network/cf/LoaderRunLoopCF.h
+    platform/network/cf/ProtectionSpaceCFNet.h
+    platform/network/cf/ResourceError.h
+    platform/network/cf/ResourceRequest.h
+    platform/network/cf/ResourceRequestCFNet.h
+    platform/network/cf/ResourceResponse.h
+    platform/network/cf/SocketStreamHandleImpl.h
 )
 
 if (${USE_DIRECT2D})
+    list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/graphics/win"
+    )
+
     list(APPEND WebCore_SOURCES
         page/win/FrameWinDirect2D.cpp
 
@@ -88,11 +96,18 @@ if (${USE_DIRECT2D})
         platform/win/DragImageDirect2D.cpp
     )
 else ()
+    list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/graphics/avfoundation"
+        "${WEBCORE_DIR}/platform/graphics/avfoundation/cf"
+        "${WEBCORE_DIR}/platform/graphics/ca"
+        "${WEBCORE_DIR}/platform/graphics/ca/win"
+        "${WEBCORE_DIR}/platform/graphics/cg"
+    )
+
     list(APPEND WebCore_SOURCES
         page/win/FrameCGWin.cpp
 
         platform/graphics/ca/GraphicsLayerCA.cpp
-        platform/graphics/ca/LayerFlushScheduler.cpp
         platform/graphics/ca/LayerPool.cpp
         platform/graphics/ca/PlatformCALayer.cpp
         platform/graphics/ca/TileController.cpp
@@ -119,6 +134,7 @@ else ()
         platform/graphics/cg/IOSurfacePool.cpp
         platform/graphics/cg/ImageBufferCG.cpp
         platform/graphics/cg/ImageBufferDataCG.cpp
+        platform/graphics/cg/ImageBufferUtilitiesCG.cpp
         platform/graphics/cg/ImageDecoderCG.cpp
         platform/graphics/cg/ImageSourceCGWin.cpp
         platform/graphics/cg/IntPointCG.cpp
@@ -143,23 +159,26 @@ else ()
 
         platform/win/DragImageCGWin.cpp
     )
-endif ()
 
-list(APPEND WebCore_FORWARDING_HEADERS_DIRECTORIES
-    platform/network/cf
-)
+    list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
+        platform/graphics/ca/GraphicsLayerCA.h
+        platform/graphics/ca/LayerPool.h
+        platform/graphics/ca/PlatformCAAnimation.h
+        platform/graphics/ca/PlatformCAFilters.h
+        platform/graphics/ca/PlatformCALayer.h
+        platform/graphics/ca/PlatformCALayerClient.h
+        platform/graphics/ca/TileController.h
 
-if (${USE_DIRECT2D})
-    list(APPEND WebCore_FORWARDING_HEADERS_DIRECTORIES
-        platform/graphics/win
-    )
-else ()
-    list(APPEND WebCore_FORWARDING_HEADERS_DIRECTORIES
-        platform/graphics/ca
-        platform/graphics/cg
+        platform/graphics/ca/win/AbstractCACFLayerTreeHost.h
+        platform/graphics/ca/win/CACFLayerTreeHost.h
+        platform/graphics/ca/win/CACFLayerTreeHostClient.h
+        platform/graphics/ca/win/PlatformCALayerWin.h
 
-        platform/graphics/ca/win
-
-        platform/network/cf
+        platform/graphics/cg/GraphicsContextCG.h
+        platform/graphics/cg/IOSurfacePool.h
+        platform/graphics/cg/ImageBufferDataCG.h
+        platform/graphics/cg/ImageBufferUtilitiesCG.h
+        platform/graphics/cg/PDFDocumentImage.h
+        platform/graphics/cg/UTIRegistry.h
     )
 endif ()

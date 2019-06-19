@@ -33,12 +33,12 @@
 #include "InlineIterator.h"
 #include "InlineTextBox.h"
 #include "InlineTextBoxStyle.h"
-#include "LayoutState.h"
 #include "LineLayoutState.h"
 #include "Logging.h"
 #include "RenderBlockFlow.h"
 #include "RenderFragmentContainer.h"
 #include "RenderFragmentedFlow.h"
+#include "RenderLayoutState.h"
 #include "RenderLineBreak.h"
 #include "RenderRubyBase.h"
 #include "RenderRubyText.h"
@@ -446,8 +446,8 @@ void RenderBlockFlow::setMarginsForRubyRun(BidiRun* run, RenderRubyRun& renderer
         }
     }
     renderer.getOverhang(lineInfo.isFirstLine(), renderer.style().isLeftToRightDirection() ? previousObject : nextObject, renderer.style().isLeftToRightDirection() ? nextObject : previousObject, startOverhang, endOverhang);
-    setMarginStartForChild(renderer, -startOverhang);
-    setMarginEndForChild(renderer, -endOverhang);
+    setMarginStartForChild(renderer, LayoutUnit(-startOverhang));
+    setMarginEndForChild(renderer, LayoutUnit(-endOverhang));
 }
 
 static inline void setLogicalWidthForTextRun(RootInlineBox* lineBox, BidiRun* run, RenderText& renderer, float xPos, const LineInfo& lineInfo,
@@ -471,7 +471,7 @@ static inline void setLogicalWidthForTextRun(RootInlineBox* lineBox, BidiRun* ru
             glyphOverflow.computeBounds = true; 
     }
     
-    LayoutUnit hyphenWidth = 0;
+    LayoutUnit hyphenWidth;
     if (downcast<InlineTextBox>(*run->box()).hasHyphen())
         hyphenWidth = measureHyphenWidth(renderer, font, &fallbackFonts);
 
@@ -568,7 +568,7 @@ void RenderBlockFlow::updateRubyForJustifiedText(RenderRubyRun& rubyRun, BidiRun
     float newBaseWidth = rubyRun.logicalWidth() + totalExpansion + marginStartForChild(rubyRun) + marginEndForChild(rubyRun);
     float newRubyRunWidth = rubyRun.logicalWidth() + totalExpansion;
     rubyBase.setInitialOffset((newRubyRunWidth - newBaseWidth) / 2);
-    rubyRun.setOverrideContentLogicalWidth(newRubyRunWidth);
+    rubyRun.setOverrideContentLogicalWidth(LayoutUnit(newRubyRunWidth));
     rubyRun.setNeedsLayout(MarkOnlyThis);
     rootBox.markDirty();
     if (RenderRubyText* rubyText = rubyRun.rubyText()) {
@@ -1413,7 +1413,7 @@ void RenderBlockFlow::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, I
                 if (layoutState.usesRepaintBounds())
                     layoutState.updateRepaintRangeFromBox(lineBox);
                 
-                LayoutUnit adjustment = 0;
+                LayoutUnit adjustment;
                 bool overflowsFragment = false;
                 
                 layoutState.marginInfo().setAtBeforeSideOfBlock(false);
@@ -1457,7 +1457,7 @@ void RenderBlockFlow::layoutRunsAndFloatsInRange(LineLayoutState& layoutState, I
             auto it = floatingObjectSet.begin();
             auto end = floatingObjectSet.end();
             if (auto* lastFloat = layoutState.floatList().lastFloat()) {
-                auto lastFloatIterator = floatingObjectSet.find<FloatingObject&, FloatingObjectHashTranslator>(*lastFloat);
+                auto lastFloatIterator = floatingObjectSet.find(lastFloat);
                 ASSERT(lastFloatIterator != end);
                 ++lastFloatIterator;
                 it = lastFloatIterator;
@@ -1609,8 +1609,8 @@ void RenderBlockFlow::linkToEndLineIfNeeded(LineLayoutState& layoutState)
             trailingFloatsLineBox->alignBoxesInBlockDirection(blockLogicalHeight, textBoxDataMap, verticalPositionCache);
             trailingFloatsLineBox->setLineTopBottomPositions(blockLogicalHeight, blockLogicalHeight, blockLogicalHeight, blockLogicalHeight);
             trailingFloatsLineBox->setPaginatedLineWidth(availableLogicalWidthForContent(blockLogicalHeight));
-            LayoutRect logicalLayoutOverflow(0, blockLogicalHeight, 1, bottomLayoutOverflow - blockLogicalHeight);
-            LayoutRect logicalVisualOverflow(0, blockLogicalHeight, 1, bottomVisualOverflow - blockLogicalHeight);
+            LayoutRect logicalLayoutOverflow(0_lu, blockLogicalHeight, 1_lu, bottomLayoutOverflow - blockLogicalHeight);
+            LayoutRect logicalVisualOverflow(0_lu, blockLogicalHeight, 1_lu, bottomVisualOverflow - blockLogicalHeight);
             trailingFloatsLineBox->setOverflowFromLogicalRects(logicalLayoutOverflow, logicalVisualOverflow, trailingFloatsLineBox->lineTop(), trailingFloatsLineBox->lineBottom());
             if (layoutState.fragmentedFlow())
                 updateFragmentForLine(trailingFloatsLineBox);
@@ -1620,7 +1620,7 @@ void RenderBlockFlow::linkToEndLineIfNeeded(LineLayoutState& layoutState)
         auto it = floatingObjectSet.begin();
         auto end = floatingObjectSet.end();
         if (auto* lastFloat = layoutState.floatList().lastFloat()) {
-            auto lastFloatIterator = floatingObjectSet.find<FloatingObject&, FloatingObjectHashTranslator>(*lastFloat);
+            auto lastFloatIterator = floatingObjectSet.find(lastFloat);
             ASSERT(lastFloatIterator != end);
             ++lastFloatIterator;
             it = lastFloatIterator;
@@ -1789,7 +1789,7 @@ RootInlineBox* RenderBlockFlow::determineStartPosition(LineLayoutState& layoutSt
     if (!layoutState.isFullLayout()) {
         // Paginate all of the clean lines.
         bool paginated = view().frameView().layoutContext().layoutState() && view().frameView().layoutContext().layoutState()->isPaginated();
-        LayoutUnit paginationDelta = 0;
+        LayoutUnit paginationDelta;
         auto floatsIterator = floats.begin();
         auto end = floats.end();
         for (currentLine = firstRootBox(); currentLine && !currentLine->isDirty(); currentLine = currentLine->nextRootBox()) {
@@ -2080,7 +2080,7 @@ void RenderBlockFlow::addOverflowFromInlineChildren()
         SimpleLineLayout::collectFlowOverflow(*this, *layout);
         return;
     }
-    LayoutUnit endPadding = hasOverflowClip() ? paddingEnd() : LayoutUnit();
+    LayoutUnit endPadding = hasOverflowClip() ? paddingEnd() : 0_lu;
     // FIXME: Need to find another way to do this, since scrollbars could show when we don't want them to.
     if (hasOverflowClip() && !endPadding && element() && element()->isRootEditableElement() && style().isLeftToRightDirection())
         endPadding = 1;
@@ -2127,7 +2127,7 @@ void RenderBlockFlow::checkLinesForTextOverflow()
     // Determine the width of the ellipsis using the current font.
     // FIXME: CSS3 says this is configurable, also need to use 0x002E (FULL STOP) if horizontal ellipsis is "not renderable"
     const FontCascade& font = style().fontCascade();
-    static NeverDestroyed<AtomicString> ellipsisStr(&horizontalEllipsis, 1);
+    static NeverDestroyed<AtomString> ellipsisStr(&horizontalEllipsis, 1);
     const FontCascade& firstLineFont = firstLineStyle().fontCascade();
     float firstLineEllipsisWidth = firstLineFont.width(constructTextRun(&horizontalEllipsis, 1, firstLineStyle()));
     float ellipsisWidth = (font == firstLineFont) ? firstLineEllipsisWidth : font.width(constructTextRun(&horizontalEllipsis, 1, style()));
@@ -2143,14 +2143,14 @@ void RenderBlockFlow::checkLinesForTextOverflow()
         IndentTextOrNot shouldIndentText = firstLine ? IndentText : DoNotIndentText;
         LayoutUnit blockRightEdge = logicalRightOffsetForLine(curr->lineTop(), shouldIndentText);
         LayoutUnit blockLeftEdge = logicalLeftOffsetForLine(curr->lineTop(), shouldIndentText);
-        LayoutUnit lineBoxEdge = ltr ? curr->x() + curr->logicalWidth() : curr->x();
+        LayoutUnit lineBoxEdge { ltr ? curr->x() + curr->logicalWidth() : curr->x() };
         if ((ltr && lineBoxEdge > blockRightEdge) || (!ltr && lineBoxEdge < blockLeftEdge)) {
             // This line spills out of our box in the appropriate direction.  Now we need to see if the line
             // can be truncated.  In order for truncation to be possible, the line must have sufficient space to
             // accommodate our truncation string, and no replaced elements (images, tables) can overlap the ellipsis
             // space.
-            LayoutUnit width = firstLine ? firstLineEllipsisWidth : ellipsisWidth;
-            LayoutUnit blockEdge = ltr ? blockRightEdge : blockLeftEdge;
+            LayoutUnit width { firstLine ? firstLineEllipsisWidth : ellipsisWidth };
+            LayoutUnit blockEdge { ltr ? blockRightEdge : blockLeftEdge };
             if (curr->lineCanAccommodateEllipsis(ltr, blockEdge, lineBoxEdge, width)) {
                 float totalLogicalWidth = curr->placeEllipsis(ellipsisStr, ltr, blockLeftEdge, blockRightEdge, width);
 
@@ -2258,8 +2258,8 @@ LayoutUnit RenderBlockFlow::startAlignedOffsetForLine(LayoutUnit position, Inden
     updateLogicalWidthForAlignment(textAlign, 0, 0, logicalLeft, totalLogicalWidth, availableLogicalWidth, 0);
 
     if (!style().isLeftToRightDirection())
-        return logicalWidth() - logicalLeft;
-    return logicalLeft;
+        return LayoutUnit(logicalWidth() - logicalLeft);
+    return LayoutUnit(logicalLeft);
 }
 
 void RenderBlockFlow::updateFragmentForLine(RootInlineBox* lineBox) const

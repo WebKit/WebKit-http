@@ -28,7 +28,6 @@
 #include "config.h"
 #include "CSSValue.h"
 
-#include "CSSAnimationTriggerScrollValue.h"
 #include "CSSAspectRatioValue.h"
 #include "CSSBorderImageSliceValue.h"
 #include "CSSCalculationValue.h"
@@ -53,6 +52,7 @@
 #include "CSSInitialValue.h"
 #include "CSSLineBoxContainValue.h"
 #include "CSSNamedImageValue.h"
+#include "CSSPaintImageValue.h"
 #include "CSSPendingSubstitutionValue.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSProperty.h"
@@ -65,6 +65,7 @@
 #include "CSSVariableReferenceValue.h"
 
 #include "CSSGridAutoRepeatValue.h"
+#include "CSSGridIntegerRepeatValue.h"
 #include "CSSGridLineNamesValue.h"
 #include "CSSGridTemplateAreasValue.h"
 
@@ -118,6 +119,18 @@ bool CSSValue::traverseSubresources(const WTF::Function<bool (const CachedResour
     return false;
 }
 
+void CSSValue::collectDirectComputationalDependencies(HashSet<CSSPropertyID>& values) const
+{
+    if (is<CSSPrimitiveValue>(*this))
+        downcast<CSSPrimitiveValue>(*this).collectDirectComputationalDependencies(values);
+}
+
+void CSSValue::collectDirectRootComputationalDependencies(HashSet<CSSPropertyID>& values) const
+{
+    if (is<CSSPrimitiveValue>(*this))
+        downcast<CSSPrimitiveValue>(*this).collectDirectRootComputationalDependencies(values);
+}
+
 template<class ChildClassType>
 inline static bool compareCSSValues(const CSSValue& first, const CSSValue& second)
 {
@@ -140,6 +153,10 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSCursorImageValue>(*this, other);
         case FilterImageClass:
             return compareCSSValues<CSSFilterImageValue>(*this, other);
+#if ENABLE(CSS_PAINTING_API)
+        case PaintImageClass:
+            return compareCSSValues<CSSPaintImageValue>(*this, other);
+#endif
         case FontClass:
             return compareCSSValues<CSSFontValue>(*this, other);
         case FontFaceSrcClass:
@@ -172,6 +189,8 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSRevertValue>(*this, other);
         case GridAutoRepeatClass:
             return compareCSSValues<CSSGridAutoRepeatValue>(*this, other);
+        case GridIntegerRepeatClass:
+            return compareCSSValues<CSSGridIntegerRepeatValue>(*this, other);
         case GridLineNamesClass:
             return compareCSSValues<CSSGridLineNamesValue>(*this, other);
         case GridTemplateAreasClass:
@@ -186,8 +205,6 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSCubicBezierTimingFunctionValue>(*this, other);
         case StepsTimingFunctionClass:
             return compareCSSValues<CSSStepsTimingFunctionValue>(*this, other);
-        case FramesTimingFunctionClass:
-            return compareCSSValues<CSSFramesTimingFunctionValue>(*this, other);
         case SpringTimingFunctionClass:
             return compareCSSValues<CSSSpringTimingFunctionValue>(*this, other);
         case UnicodeRangeClass:
@@ -200,10 +217,6 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSCalcValue>(*this, other);
         case ImageSetClass:
             return compareCSSValues<CSSImageSetValue>(*this, other);
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-        case AnimationTriggerScrollClass:
-            return compareCSSValues<CSSAnimationTriggerScrollValue>(*this, other);
-#endif
         case CSSContentDistributionClass:
             return compareCSSValues<CSSContentDistributionValue>(*this, other);
         case CustomPropertyClass:
@@ -242,6 +255,10 @@ String CSSValue::cssText() const
         return downcast<CSSCursorImageValue>(*this).customCSSText();
     case FilterImageClass:
         return downcast<CSSFilterImageValue>(*this).customCSSText();
+#if ENABLE(CSS_PAINTING_API)
+    case PaintImageClass:
+        return downcast<CSSPaintImageValue>(*this).customCSSText();
+#endif
     case FontClass:
         return downcast<CSSFontValue>(*this).customCSSText();
     case FontFaceSrcClass:
@@ -274,6 +291,8 @@ String CSSValue::cssText() const
         return downcast<CSSRevertValue>(*this).customCSSText();
     case GridAutoRepeatClass:
         return downcast<CSSGridAutoRepeatValue>(*this).customCSSText();
+    case GridIntegerRepeatClass:
+        return downcast<CSSGridIntegerRepeatValue>(*this).customCSSText();
     case GridLineNamesClass:
         return downcast<CSSGridLineNamesValue>(*this).customCSSText();
     case GridTemplateAreasClass:
@@ -288,8 +307,6 @@ String CSSValue::cssText() const
         return downcast<CSSCubicBezierTimingFunctionValue>(*this).customCSSText();
     case StepsTimingFunctionClass:
         return downcast<CSSStepsTimingFunctionValue>(*this).customCSSText();
-    case FramesTimingFunctionClass:
-        return downcast<CSSFramesTimingFunctionValue>(*this).customCSSText();
     case SpringTimingFunctionClass:
         return downcast<CSSSpringTimingFunctionValue>(*this).customCSSText();
     case UnicodeRangeClass:
@@ -302,10 +319,6 @@ String CSSValue::cssText() const
         return downcast<CSSCalcValue>(*this).customCSSText();
     case ImageSetClass:
         return downcast<CSSImageSetValue>(*this).customCSSText();
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    case AnimationTriggerScrollClass:
-        return downcast<CSSAnimationTriggerScrollValue>(*this).customCSSText();
-#endif
     case CSSContentDistributionClass:
         return downcast<CSSContentDistributionValue>(*this).customCSSText();
     case CustomPropertyClass:
@@ -391,6 +404,9 @@ void CSSValue::destroy()
     case GridAutoRepeatClass:
         delete downcast<CSSGridAutoRepeatValue>(this);
         return;
+    case GridIntegerRepeatClass:
+        delete downcast<CSSGridIntegerRepeatValue>(this);
+        return;
     case GridLineNamesClass:
         delete downcast<CSSGridLineNamesValue>(this);
         return;
@@ -411,9 +427,6 @@ void CSSValue::destroy()
         return;
     case StepsTimingFunctionClass:
         delete downcast<CSSStepsTimingFunctionValue>(this);
-        return;
-    case FramesTimingFunctionClass:
-        delete downcast<CSSFramesTimingFunctionValue>(this);
         return;
     case SpringTimingFunctionClass:
         delete downcast<CSSSpringTimingFunctionValue>(this);
@@ -436,9 +449,9 @@ void CSSValue::destroy()
     case FilterImageClass:
         delete downcast<CSSFilterImageValue>(this);
         return;
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    case AnimationTriggerScrollClass:
-        delete downcast<CSSAnimationTriggerScrollValue>(this);
+#if ENABLE(CSS_PAINTING_API)
+    case PaintImageClass:
+        delete downcast<CSSPaintImageValue>(this);
         return;
 #endif
     case CSSContentDistributionClass:

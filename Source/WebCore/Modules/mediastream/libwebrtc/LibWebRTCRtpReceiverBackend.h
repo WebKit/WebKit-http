@@ -29,25 +29,29 @@
 #include "LibWebRTCMacros.h"
 #include "RTCRtpReceiverBackend.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+ALLOW_UNUSED_PARAMETERS_BEGIN
 
 #include <webrtc/api/rtpreceiverinterface.h>
 #include <webrtc/rtc_base/scoped_ref_ptr.h>
 
-#pragma GCC diagnostic pop
+ALLOW_UNUSED_PARAMETERS_END
 
 namespace WebCore {
 
 class LibWebRTCRtpReceiverBackend final : public RTCRtpReceiverBackend {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit LibWebRTCRtpReceiverBackend(rtc::scoped_refptr<webrtc::RtpReceiverInterface>&& rtcReceiver)
         : m_rtcReceiver(WTFMove(rtcReceiver))
     {
     }
 
+    webrtc::RtpReceiverInterface* rtcReceiver() { return m_rtcReceiver.get(); }
+
 private:
     RTCRtpParameters getParameters() final;
+    Vector<RTCRtpContributingSource> getContributingSources() const final;
+    Vector<RTCRtpSynchronizationSource> getSynchronizationSources() const final;
 
     rtc::scoped_refptr<webrtc::RtpReceiverInterface> m_rtcReceiver;
 };

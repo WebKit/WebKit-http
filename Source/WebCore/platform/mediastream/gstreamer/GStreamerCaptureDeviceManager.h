@@ -26,18 +26,19 @@
 #include "CaptureDeviceManager.h"
 #include "GRefPtrGStreamer.h"
 #include "GStreamerCaptureDevice.h"
+#include "RealtimeMediaSourceFactory.h"
 
 namespace WebCore {
 
 class GStreamerCaptureDeviceManager : public CaptureDeviceManager {
 public:
-    std::optional<GStreamerCaptureDevice> gstreamerDeviceWithUID(const String&);
+    Optional<GStreamerCaptureDevice> gstreamerDeviceWithUID(const String&);
 
     const Vector<CaptureDevice>& captureDevices() final;
     virtual CaptureDevice::DeviceType deviceType() = 0;
 
 private:
-    void deviceAdded(GRefPtr<GstDevice>&&);
+    void addDevice(GRefPtr<GstDevice>&&);
     void refreshCaptureDevices();
 
     GRefPtr<GstDeviceMonitor> m_deviceMonitor;
@@ -59,7 +60,7 @@ class GStreamerVideoCaptureDeviceManager final : public GStreamerCaptureDeviceMa
     friend class NeverDestroyed<GStreamerVideoCaptureDeviceManager>;
 public:
     static GStreamerVideoCaptureDeviceManager& singleton();
-    static RealtimeMediaSource::VideoCaptureFactory& videoFactory();
+    static VideoCaptureFactory& videoFactory();
     CaptureDevice::DeviceType deviceType() final { return CaptureDevice::DeviceType::Camera; }
 private:
     GStreamerVideoCaptureDeviceManager() = default;

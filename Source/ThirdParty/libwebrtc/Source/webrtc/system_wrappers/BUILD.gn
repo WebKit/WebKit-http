@@ -25,8 +25,6 @@ rtc_static_library("system_wrappers") {
     "source/cpu_features.cc",
     "source/cpu_info.cc",
     "source/event.cc",
-    "source/event_timer_win.cc",
-    "source/event_timer_win.h",
     "source/rtp_to_ntp_estimator.cc",
     "source/sleep.cc",
   ]
@@ -35,23 +33,13 @@ rtc_static_library("system_wrappers") {
   libs = []
   deps = [
     ":cpu_features_api",
-    ":field_trial_api",
-    ":metrics_api",
-    ":runtime_enabled_features_api",
-    "..:webrtc_common",
+    "../api:array_view",
     "../modules:module_api_public",
     "../rtc_base:checks",
     "../rtc_base/synchronization:rw_lock_wrapper",
     "../rtc_base/system:arch",
     "//third_party/abseil-cpp/absl/types:optional",
   ]
-
-  if (is_posix || is_fuchsia) {
-    sources += [
-      "source/event_timer_posix.cc",
-      "source/event_timer_posix.h",
-    ]
-  }
 
   if (is_android) {
     defines += [ "WEBRTC_THREAD_RR" ]
@@ -101,77 +89,50 @@ rtc_source_set("cpu_features_api") {
   sources = [
     "include/cpu_features_wrapper.h",
   ]
-  deps = [
-    "..:webrtc_common",
-  ]
 }
 
-rtc_source_set("field_trial_api") {
-  sources = [
+rtc_source_set("field_trial") {
+  visibility = [ "*" ]
+  public = [
     "include/field_trial.h",
   ]
-}
-
-rtc_source_set("runtime_enabled_features_api") {
-  visibility = [ "*" ]
   sources = [
-    "include/runtime_enabled_features.h",
+    "source/field_trial.cc",
   ]
+  if (rtc_exclude_field_trial_default) {
+    defines = [ "WEBRTC_EXCLUDE_FIELD_TRIAL_DEFAULT" ]
+  }
+  if (build_with_chromium) {
+    # When WebRTC is built as part of Chromium it should exclude the default
+    # implementation of field_trial unless it is building for NACL or
+    # Chromecast.
+    if (!is_nacl && !is_chromecast) {
+      deps = [
+        "../../webrtc_overrides:field_trial",
+      ]
+    }
+  }
 }
 
-rtc_source_set("metrics_api") {
+rtc_source_set("metrics") {
   visibility = [ "*" ]
-  sources = [
+  public = [
     "include/metrics.h",
   ]
+  sources = [
+    "source/metrics.cc",
+  ]
+  if (rtc_exclude_metrics_default) {
+    defines = [ "WEBRTC_EXCLUDE_METRICS_DEFAULT" ]
+  }
   deps = [
     "..:webrtc_common",
     "../rtc_base:checks",
     "../rtc_base:rtc_base_approved",
   ]
-}
-
-rtc_source_set("field_trial_default") {
-  visibility = [ "*" ]
-  sources = [
-    "include/field_trial_default.h",
-    "source/field_trial_default.cc",
-  ]
-  deps = [
-    ":field_trial_api",
-  ]
-}
-
-rtc_source_set("runtime_enabled_features_default") {
-  visibility = [ "*" ]
-  sources = [
-    "source/runtime_enabled_features_default.cc",
-  ]
-  deps = [
-    ":runtime_enabled_features_api",
-    "../rtc_base:rtc_base_approved",
-  ]
-}
-
-rtc_source_set("metrics_default") {
-  visibility = [ "*" ]
-  sources = [
-    "include/metrics_default.h",
-    "source/metrics_default.cc",
-  ]
-  deps = [
-    ":metrics_api",
-    "../rtc_base:rtc_base_approved",
-  ]
-}
-
-group("system_wrappers_default") {
-  deps = [
-    ":field_trial_default",
-    ":metrics_default",
-    ":runtime_enabled_features_default",
-    ":system_wrappers",
-  ]
+  if (build_with_chromium) {
+    deps += [ "../../webrtc_overrides:metrics" ]
+  }
 }
 
 if (is_android && !build_with_mozilla) {
@@ -209,17 +170,13 @@ if (rtc_include_tests) {
       "source/rtp_to_ntp_estimator_unittest.cc",
     ]
 
-    if (is_posix || is_fuchsia) {
-      sources += [ "source/event_timer_posix_unittest.cc" ]
-    }
-
     deps = [
-      ":metrics_api",
-      ":metrics_default",
+      ":metrics",
       ":system_wrappers",
       "..:webrtc_common",
       "../rtc_base:rtc_base_approved",
       "../test:test_main",
+      "../test:test_support",
       "//testing/gtest",
     ]
 

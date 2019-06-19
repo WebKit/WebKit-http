@@ -28,11 +28,12 @@
 
 #if PLATFORM(MAC)
 
+#import "Logging.h"
 #import "WebAutomationSessionMacros.h"
 #import "WebInspectorProxy.h"
 #import "WebPageProxy.h"
 #import "_WKAutomationSession.h"
-#import <HIToolbox/Events.h>
+#import <Carbon/Carbon.h>
 #import <WebCore/IntPoint.h>
 #import <WebCore/IntSize.h>
 #import <WebCore/PlatformMouseEvent.h>
@@ -74,6 +75,8 @@ void WebAutomationSession::sendSynthesizedEventsToPage(WebPageProxy& page, NSArr
     NSWindow *window = page.platformWindow();
 
     for (NSEvent *event in eventsToSend) {
+        LOG(Automation, "Sending event[%p] to window[%p]: %@", event, window, event);
+
         // Take focus back in case the Inspector became focused while the prior command or
         // NSEvent was delivered to the window.
         [window becomeKeyWindow];
@@ -117,22 +120,23 @@ bool WebAutomationSession::wasEventSynthesizedForAutomation(NSEvent *event)
 
 #pragma mark Platform-dependent Implementations
 
-void WebAutomationSession::platformSimulateMouseInteraction(WebPageProxy& page, MouseInteraction interaction, WebMouseEvent::Button button, const WebCore::IntPoint& locationInView, WebEvent::Modifiers keyModifiers)
+#if ENABLE(WEBDRIVER_MOUSE_INTERACTIONS)
+void WebAutomationSession::platformSimulateMouseInteraction(WebPageProxy& page, MouseInteraction interaction, WebMouseEvent::Button button, const WebCore::IntPoint& locationInView, OptionSet<WebEvent::Modifier> keyModifiers)
 {
     IntRect windowRect;
     page.rootViewToWindow(IntRect(locationInView, IntSize()), windowRect);
     IntPoint locationInWindow = windowRect.location();
 
     NSEventModifierFlags modifiers = 0;
-    if (keyModifiers & WebEvent::MetaKey)
+    if (keyModifiers.contains(WebEvent::Modifier::MetaKey))
         modifiers |= NSEventModifierFlagCommand;
-    if (keyModifiers & WebEvent::AltKey)
+    if (keyModifiers.contains(WebEvent::Modifier::AltKey))
         modifiers |= NSEventModifierFlagOption;
-    if (keyModifiers & WebEvent::ControlKey)
+    if (keyModifiers.contains(WebEvent::Modifier::ControlKey))
         modifiers |= NSEventModifierFlagControl;
-    if (keyModifiers & WebEvent::ShiftKey)
+    if (keyModifiers.contains(WebEvent::Modifier::ShiftKey))
         modifiers |= NSEventModifierFlagShift;
-    if (keyModifiers & WebEvent::CapsLockKey)
+    if (keyModifiers.contains(WebEvent::Modifier::CapsLockKey))
         modifiers |= NSEventModifierFlagCapsLock;
 
     NSTimeInterval timestamp = [NSDate timeIntervalSinceReferenceDate];
@@ -207,7 +211,9 @@ void WebAutomationSession::platformSimulateMouseInteraction(WebPageProxy& page, 
 
     sendSynthesizedEventsToPage(page, eventsToBeSent.get());
 }
+#endif // ENABLE(WEBDRIVER_MOUSE_INTERACTIONS)
 
+#if ENABLE(WEBDRIVER_KEYBOARD_INTERACTIONS)
 static bool virtualKeyHasStickyModifier(VirtualKey key)
 {
     // Returns whether the key's modifier flags should affect other events while pressed down.
@@ -571,8 +577,8 @@ void WebAutomationSession::platformSimulateKeyboardInteraction(WebPageProxy& pag
     bool isStickyModifier = false;
     NSEventModifierFlags changedModifiers = 0;
     int keyCode = 0;
-    std::optional<unichar> charCode;
-    std::optional<unichar> charCodeIgnoringModifiers;
+    Optional<unichar> charCode;
+    Optional<unichar> charCodeIgnoringModifiers;
 
     WTF::switchOn(key,
         [&] (VirtualKey virtualKey) {
@@ -612,6 +618,12 @@ void WebAutomationSession::platformSimulateKeyboardInteraction(WebPageProxy& pag
     case KeyboardInteraction::KeyRelease: {
         NSEventType eventType = isStickyModifier ? NSEventTypeFlagsChanged : NSEventTypeKeyUp;
         m_currentModifiers &= ~changedModifiers;
+
+        // When using a physical keyboard, if command is held down, releasing a non-modifier key doesn't send a KeyUp event.
+        bool commandKeyHeldDown = m_currentModifiers & NSEventModifierFlagCommand;
+        if (characters && commandKeyHeldDown)
+            break;
+
         [eventsToBeSent addObject:[NSEvent keyEventWithType:eventType location:eventPosition modifierFlags:m_currentModifiers timestamp:timestamp windowNumber:windowNumber context:nil characters:characters charactersIgnoringModifiers:unmodifiedCharacters isARepeat:NO keyCode:keyCode]];
         break;
     }
@@ -709,6 +721,7 @@ void WebAutomationSession::platformSimulateKeySequence(WebPageProxy& page, const
 
     sendSynthesizedEventsToPage(page, eventsToBeSent.get());
 }
+#endif // ENABLE(WEBDRIVER_KEYBOARD_INTERACTIONS)
 
 } // namespace WebKit
 

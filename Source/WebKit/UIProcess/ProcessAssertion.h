@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,19 +23,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ProcessAssertion_h
-#define ProcessAssertion_h
+#pragma once
 
 #include <wtf/Function.h>
 #include <wtf/ProcessID.h>
+#include <wtf/WeakPtr.h>
+#include <wtf/text/WTFString.h>
 
 #if !OS(WINDOWS)
 #include <unistd.h>
 #endif
 
-#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+#if PLATFORM(IOS_FAMILY)
 #include <wtf/RetainPtr.h>
-#include <wtf/WeakPtr.h>
 OBJC_CLASS BKSProcessAssertion;
 #endif
 
@@ -44,65 +44,74 @@ namespace WebKit {
 enum class AssertionState {
     Suspended,
     Background,
-    Foreground
+    UnboundedNetworking,
+    Foreground,
 };
 
-class ProcessAssertionClient {
-public:
-    virtual ~ProcessAssertionClient() { };
-    virtual void assertionWillExpireImminently() = 0;
+enum class AssertionReason {
+    Extension,
+    FinishTask,
+    FinishTaskUnbounded,
+    MediaPlayback,
 };
 
-class ProcessAssertion
-#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
-    : public CanMakeWeakPtr<ProcessAssertion>
-#endif
-{
+class ProcessAssertion : public CanMakeWeakPtr<ProcessAssertion> {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    ProcessAssertion(ProcessID, AssertionState, Function<void()>&& invalidationCallback = { });
+    class Client {
+    public:
+        virtual ~Client() { }
+        virtual void uiAssertionWillExpireImminently() = 0;
+    };
+
+    ProcessAssertion(ProcessID, const String& reason, AssertionState);
+    ProcessAssertion(ProcessID, const String& reason, AssertionState, AssertionReason);
     virtual ~ProcessAssertion();
 
-    virtual void setClient(ProcessAssertionClient& client) { m_client = &client; }
-    ProcessAssertionClient* client() { return m_client; }
+    void setClient(Client& client) { m_client = &client; }
+    Client* client() { return m_client; }
 
     AssertionState state() const { return m_assertionState; }
     virtual void setState(AssertionState);
 
-#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+#if PLATFORM(IOS_FAMILY)
 protected:
     enum class Validity { No, Yes, Unset };
     Validity validity() const { return m_validity; }
+
+    virtual void processAssertionWasInvalidated();
 #endif
 
 private:
-#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
-    void markAsInvalidated();
-
+#if PLATFORM(IOS_FAMILY)
     RetainPtr<BKSProcessAssertion> m_assertion;
     Validity m_validity { Validity::Unset };
-    Function<void()> m_invalidationCallback;
 #endif
     AssertionState m_assertionState;
-    ProcessAssertionClient* m_client { nullptr };
+    Client* m_client { nullptr };
 };
-    
+
+#if PLATFORM(IOS_FAMILY)
+
 class ProcessAndUIAssertion final : public ProcessAssertion {
 public:
-    ProcessAndUIAssertion(ProcessID, AssertionState);
+    ProcessAndUIAssertion(ProcessID, const String& reason, AssertionState);
     ~ProcessAndUIAssertion();
 
-    void setClient(ProcessAssertionClient&) final;
-
     void setState(AssertionState) final;
+    void uiAssertionWillExpireImminently();
 
-#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
 private:
+    void processAssertionWasInvalidated() final;
     void updateRunInBackgroundCount();
 
-    bool m_isHoldingBackgroundAssertion { false };
-#endif
+    bool m_isHoldingBackgroundTask { false };
 };
-    
-}
 
-#endif // ProcessAssertion_h
+#else
+
+using ProcessAndUIAssertion = ProcessAssertion;
+
+#endif // PLATFORM(IOS_FAMILY)
+    
+} // namespace WebKit

@@ -47,12 +47,13 @@ ObjCEventListener* ObjCEventListener::find(ObjCListener listener)
     return map->get(listener);
 }
 
-Ref<ObjCEventListener> ObjCEventListener::wrap(ObjCListener listener)
+RefPtr<ObjCEventListener> ObjCEventListener::wrap(ObjCListener listener)
 {
-    RefPtr<ObjCEventListener> wrapper = find(listener);
-    if (wrapper)
-        return wrapper.releaseNonNull();
-    return adoptRef(*new ObjCEventListener(listener));
+    if (!listener)
+        return nullptr;
+    if (RefPtr<ObjCEventListener> wrapper = find(listener))
+        return wrapper;
+    return adoptRef(new ObjCEventListener(listener));
 }
 
 ObjCEventListener::ObjCEventListener(ObjCListener listener)
@@ -70,6 +71,9 @@ ObjCEventListener::ObjCEventListener(ObjCListener listener)
 ObjCEventListener::~ObjCEventListener()
 {
     listenerMap->remove(m_listener.get());
+    // Avoid executing arbitrary code during GC; e.g. inside Node::~Node. Use CF* to be ARC safe.
+    CFRetain((__bridge CFTypeRef)m_listener.get());
+    CFAutorelease((__bridge CFTypeRef)m_listener.get());
 }
 
 void ObjCEventListener::handleEvent(ScriptExecutionContext&, Event& event)

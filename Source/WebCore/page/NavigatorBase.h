@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "ContextDestructionObserver.h"
 #include "ExceptionOr.h"
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
@@ -36,14 +37,14 @@ namespace WebCore {
 class ScriptExecutionContext;
 class ServiceWorkerContainer;
 
-class NavigatorBase : public RefCounted<NavigatorBase> {
+class NavigatorBase : public RefCounted<NavigatorBase>, public ContextDestructionObserver {
 public:
     virtual ~NavigatorBase();
 
     static String appName();
     String appVersion() const;
     virtual const String& userAgent() const = 0;
-    static String platform();
+    virtual String platform() const;
 
     static String appCodeName();
     static String product();
@@ -57,15 +58,16 @@ public:
     static Vector<String> languages();
 
 protected:
-    explicit NavigatorBase(ScriptExecutionContext&);
+    explicit NavigatorBase(ScriptExecutionContext*);
 
 #if ENABLE(SERVICE_WORKER)
 public:
+    ServiceWorkerContainer* serviceWorkerIfExists();
     ServiceWorkerContainer& serviceWorker();
     ExceptionOr<ServiceWorkerContainer&> serviceWorker(ScriptExecutionContext&);
 
 private:
-    UniqueRef<ServiceWorkerContainer> m_serviceWorkerContainer;
+    std::unique_ptr<ServiceWorkerContainer> m_serviceWorkerContainer;
 #endif
 };
 

@@ -55,8 +55,9 @@ public:
 
 private:
     SVGFontFaceElement(const QualifiedName&, Document&);
+    ~SVGFontFaceElement();
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
 
     void childrenChanged(const ChildChange&) final;
     InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;

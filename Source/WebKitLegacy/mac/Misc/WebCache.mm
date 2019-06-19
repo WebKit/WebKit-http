@@ -25,6 +25,7 @@
 
 #import "WebCache.h"
 
+#import "NetworkStorageSessionMap.h"
 #import "WebApplicationCacheInternal.h"
 #import "WebNSObjectExtras.h"
 #import "WebPreferences.h"
@@ -32,14 +33,17 @@
 #import "WebViewInternal.h"
 #import <JavaScriptCore/InitializeThreading.h>
 #import <WebCore/ApplicationCacheStorage.h>
+#import <WebCore/CookieJar.h>
 #import <WebCore/CredentialStorage.h>
 #import <WebCore/CrossOriginPreflightResultCache.h>
 #import <WebCore/Document.h>
 #import <WebCore/MemoryCache.h>
+#import <WebCore/NetworkStorageSession.h>
+#import <WebCore/StorageSessionProvider.h>
 #import <wtf/MainThread.h>
 #import <wtf/RunLoop.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import "MemoryMeasure.h"
 #import "WebFrameInternal.h"
 #import <WebCore/CachedImage.h>
@@ -48,11 +52,18 @@
 #import <WebCore/WebCoreThreadRun.h>
 #endif
 
+class DefaultStorageSessionProvider : public WebCore::StorageSessionProvider {
+    WebCore::NetworkStorageSession* storageSession() const final
+    {
+        return &NetworkStorageSessionMap::defaultStorageSession();
+    }
+};
+
 @implementation WebCache
 
 + (void)initialize
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
@@ -121,7 +132,7 @@
     WebCore::CrossOriginPreflightResultCache::singleton().clear();
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 + (void)emptyInMemoryResources
 {
     // This method gets called from MobileSafari after it calls [WebView
@@ -163,7 +174,8 @@
     if (!image || !url || ![[url absoluteString] length])
         return false;
 
-    return WebCore::MemoryCache::singleton().addImageToCache(RetainPtr<CGImageRef>(image), url, frame ? core(frame)->document()->domainForCachePartition() : emptyString());
+    auto provider = adoptRef(*new DefaultStorageSessionProvider);
+    return WebCore::MemoryCache::singleton().addImageToCache(RetainPtr<CGImageRef>(image), url, frame ? core(frame)->document()->domainForCachePartition() : emptyString(), PAL::SessionID::defaultSessionID(), WebCore::CookieJar::create(WTFMove(provider)).ptr());
 }
 
 + (void)removeImageFromCacheForURL:(NSURL *)url
@@ -194,7 +206,7 @@
     return cachedImage.image()->nativeImage().get();
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 + (void)setDisabled:(BOOL)disabled
 {
@@ -212,7 +224,7 @@
 + (void)clearCachedCredentials
 {
     [WebView _makeAllWebViewsPerformSelector:@selector(_clearCredentials)];
-    WebCore::CredentialStorage::defaultCredentialStorage().clearCredentials();
+    NetworkStorageSessionMap::defaultStorageSession().credentialStorage().clearCredentials();
 }
 
 @end

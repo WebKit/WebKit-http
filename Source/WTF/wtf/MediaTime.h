@@ -26,10 +26,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_MediaTime_h
-#define WTF_MediaTime_h
+#pragma once
 
 #include <wtf/FastMalloc.h>
+#include <wtf/JSONValues.h>
 #include <wtf/text/WTFString.h>
 
 #include <cmath>
@@ -112,6 +112,7 @@ public:
     void dump(PrintStream& out) const;
     String toString() const;
     String toJSONString() const;
+    Ref<JSON::Object> toJSONObject() const;
 
     // Make the following casts errors:
     operator double() const = delete;
@@ -173,10 +174,27 @@ bool MediaTime::decode(Decoder& decoder, MediaTime& time)
         && decoder.decode(time.m_timeFlags);
 }
 
+template<typename Type>
+struct LogArgument;
+
+template <>
+struct LogArgument<MediaTime> {
+    static String toString(const MediaTime& time)
+    {
+        return time.toJSONString();
+    }
+};
+
+template <>
+struct LogArgument<MediaTimeRange> {
+    static String toString(const MediaTimeRange& range)
+    {
+        return range.toJSONString();
+    }
+};
+
 }
 
 using WTF::MediaTime;
 using WTF::MediaTimeRange;
 using WTF::abs;
-
-#endif

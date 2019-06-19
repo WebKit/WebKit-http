@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if ENABLE(ASYNC_SCROLLING) && PLATFORM(IOS)
+#if ENABLE(ASYNC_SCROLLING) && PLATFORM(IOS_FAMILY)
 
 #include <WebCore/ScrollingTreeOverflowScrollingNode.h>
 
@@ -44,20 +44,12 @@ private:
     void commitStateBeforeChildren(const WebCore::ScrollingStateNode&) override;
     void commitStateAfterChildren(const WebCore::ScrollingStateNode&) override;
     
-    WebCore::FloatPoint scrollPosition() const override;
+    void repositionScrollingLayers() override;
 
-    void setScrollLayerPosition(const WebCore::FloatPoint&, const WebCore::FloatRect& layoutViewport) override;
-
-    void updateLayersAfterViewportChange(const WebCore::FloatRect& fixedPositionRect, double scale) override { }
-    void updateLayersAfterDelegatedScroll(const WebCore::FloatPoint& scrollPosition) override;
-
-    void updateLayersAfterAncestorChange(const WebCore::ScrollingTreeNode& changedNode, const WebCore::FloatRect& fixedPositionRect, const WebCore::FloatSize& cumulativeDelta) override;
-
-    void handleWheelEvent(const WebCore::PlatformWheelEvent&) override { }
-
+    // The delegate is non-null for subframes.
     std::unique_ptr<ScrollingTreeScrollingNodeDelegateIOS> m_scrollingNodeDelegate;
 };
 
 } // namespace WebKit
 
-#endif // ENABLE(ASYNC_SCROLLING) && PLATFORM(IOS)
+#endif // ENABLE(ASYNC_SCROLLING) && PLATFORM(IOS_FAMILY)

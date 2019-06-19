@@ -53,32 +53,22 @@ PASS new RTCPeerConnection({ bundlePolicy: "balanced" })
 PASS new RTCPeerConnection({ bundlePolicy: "max-compat" }) 
 PASS new RTCPeerConnection({ bundlePolicy: "max-bundle" }) 
 PASS new RTCPeerConnection({ bundlePolicy: "invalid" }) 
-FAIL new RTCPeerConnection({ rtcpMuxPolicy: null }) assert_throws: function "function () {
-        eval(expr);
-      }" did not throw
+PASS new RTCPeerConnection({ rtcpMuxPolicy: null }) 
 PASS new RTCPeerConnection({ rtcpMuxPolicy: undefined }) 
 PASS new RTCPeerConnection({ rtcpMuxPolicy: "negotiate" }) 
 PASS new RTCPeerConnection({ rtcpMuxPolicy: "require" }) 
-FAIL new RTCPeerConnection({ rtcpMuxPolicy: "invalid" }) assert_throws: function "function () {
-        eval(expr);
-      }" did not throw
+PASS new RTCPeerConnection({ rtcpMuxPolicy: "invalid" }) 
 FAIL new RTCPeerConnection({ peerIdentity: toStringThrows }) assert_throws: function "function () {
         eval(expr);
       }" did not throw
-FAIL new RTCPeerConnection({ certificates: null }) assert_throws: function "function () {
-        eval(expr);
-      }" did not throw
+PASS new RTCPeerConnection({ certificates: null }) 
 PASS new RTCPeerConnection({ certificates: undefined }) 
 PASS new RTCPeerConnection({ certificates: [] }) 
-FAIL new RTCPeerConnection({ certificates: [null] }) assert_throws: function "function () {
-        eval(expr);
-      }" did not throw
-FAIL new RTCPeerConnection({ certificates: [undefined] }) assert_throws: function "function () {
-        eval(expr);
-      }" did not throw
+PASS new RTCPeerConnection({ certificates: [null] }) 
+PASS new RTCPeerConnection({ certificates: [undefined] }) 
 PASS new RTCPeerConnection({ iceCandidatePoolSize: toNumberThrows }) 
-FAIL new RTCPeerConnection({ certificates: [certificate] }) RTCPeerConnection.generateCertificate is not a function. (In 'RTCPeerConnection.generateCertificate({ name: "ECDSA", namedCurve: "P-256" })', 'RTCPeerConnection.generateCertificate' is undefined)
-FAIL new RTCPeerConnection({ certificates: [expiredCertificate] }) RTCPeerConnection.generateCertificate is not a function. (In 'RTCPeerConnection.generateCertificate({ name: "ECDSA", namedCurve: "P-256", expires: 0 })', 'RTCPeerConnection.generateCertificate' is undefined)
+PASS new RTCPeerConnection({ certificates: [certificate] }) 
+PASS new RTCPeerConnection({ certificates: [expiredCertificate] }) 
 PASS localDescription initial value 
 PASS currentLocalDescription initial value 
 PASS pendingLocalDescription initial value 

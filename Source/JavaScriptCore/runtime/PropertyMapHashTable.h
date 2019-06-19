@@ -27,7 +27,7 @@
 #include <wtf/HashTable.h>
 #include <wtf/MathExtras.h>
 #include <wtf/Vector.h>
-#include <wtf/text/AtomicStringImpl.h>
+#include <wtf/text/AtomStringImpl.h>
 
 
 #define DUMP_PROPERTYMAP_STATS 0
@@ -123,7 +123,7 @@ public:
     typedef JSCell Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess>
     static IsoSubspace* subspaceFor(VM& vm)
     {
         return &vm.propertyTableSpace;
@@ -288,7 +288,7 @@ inline PropertyTable::const_iterator PropertyTable::end() const
 inline PropertyTable::find_iterator PropertyTable::find(const KeyType& key)
 {
     ASSERT(key);
-    ASSERT(key->isAtomic() || key->isSymbol());
+    ASSERT(key->isAtom() || key->isSymbol());
     unsigned hash = IdentifierRepHash::hash(key);
 
 #if DUMP_PROPERTYMAP_STATS
@@ -318,7 +318,7 @@ inline PropertyTable::find_iterator PropertyTable::find(const KeyType& key)
 inline PropertyTable::ValueType* PropertyTable::get(const KeyType& key)
 {
     ASSERT(key);
-    ASSERT(key->isAtomic() || key->isSymbol());
+    ASSERT(key->isAtom() || key->isSymbol());
 
     if (!m_keyCount)
         return nullptr;

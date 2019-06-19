@@ -65,7 +65,7 @@ void CoordinatedGraphicsScene::applyStateChanges(const Vector<CoordinatedGraphic
         commitSceneState(state.nicosia);
 }
 
-void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatrix& matrix, float opacity, const FloatRect& clipRect, const Color& backgroundColor, bool drawsBackground, TextureMapper::PaintFlags PaintFlags)
+void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatrix& matrix, const FloatRect& clipRect, TextureMapper::PaintFlags PaintFlags)
 {
     updateSceneState();
 
@@ -78,18 +78,8 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
     m_textureMapper->beginPainting(PaintFlags);
     m_textureMapper->beginClip(TransformationMatrix(), clipRect);
 
-    if (drawsBackground) {
-        RGBA32 rgba = makeRGBA32FromFloats(backgroundColor.red(),
-            backgroundColor.green(), backgroundColor.blue(),
-            backgroundColor.alpha() * opacity);
-        m_textureMapper->drawSolidColor(clipRect, TransformationMatrix(), Color(rgba));
-    } else
-        m_textureMapper->clearColor(m_viewBackgroundColor);
-
-    if (currentRootLayer->opacity() != opacity || currentRootLayer->transform() != matrix) {
-        currentRootLayer->setOpacity(opacity);
+    if (currentRootLayer->transform() != matrix)
         currentRootLayer->setTransform(matrix);
-    }
 
     currentRootLayer->paint();
     m_fpsCounter.updateFPSAndDisplay(*m_textureMapper, clipRect.location(), matrix);
@@ -113,12 +103,10 @@ void CoordinatedGraphicsScene::updateViewport()
         m_client->updateViewport();
 }
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
 void CoordinatedGraphicsScene::onNewBufferAvailable()
 {
     updateViewport();
 }
-#endif
 
 Nicosia::CompositionLayerTextureMapperImpl& compositionLayerImpl(Nicosia::CompositionLayer& compositionLayer)
 {
@@ -352,6 +340,12 @@ void CoordinatedGraphicsScene::updateSceneState()
                             layer.setPreserves3D(layerState.flags.preserves3D);
                         }
 
+                        if (layerState.delta.repaintCounterChanged)
+                            layer.setRepaintCounter(layerState.repaintCounter.visible, layerState.repaintCounter.count);
+
+                        if (layerState.delta.debugBorderChanged)
+                            layer.setDebugVisuals(layerState.debugBorder.visible, layerState.debugBorder.color, layerState.debugBorder.width);
+
                         if (layerState.backingStore) {
                             auto& impl = backingStoreImpl(*layerState.backingStore);
                             layersByBacking.backingStore.append(
@@ -444,13 +438,12 @@ void CoordinatedGraphicsScene::purgeGLResources()
 
     if (m_nicosia.scene) {
         m_nicosia.scene->accessState(
-            [this](const Nicosia::Scene::State& state)
+            [](Nicosia::Scene::State& state)
             {
-                ASSERT(state.id == m_nicosia.state.id);
-                for (auto& layer : m_nicosia.state.layers)
+                for (auto& layer : state.layers)
                     removeLayer(*layer);
-                m_nicosia.state.layers = { };
-                m_nicosia.state.rootLayer = nullptr;
+                state.layers = { };
+                state.rootLayer = nullptr;
             });
         m_nicosia.scene = nullptr;
     }

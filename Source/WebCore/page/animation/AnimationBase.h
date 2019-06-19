@@ -39,10 +39,15 @@ class CompositeAnimation;
 class Element;
 class FloatRect;
 class LayoutRect;
-class RenderBoxModelObject;
 class RenderElement;
 class RenderStyle;
 class TimingFunction;
+
+enum class AnimateChange {
+    StyleBlended            = 1 << 0, // Style was changed.
+    StateChange             = 1 << 1, // Animation state() changed.
+    RunningStateChange      = 1 << 2, // Animation "running or paused" changed.
+};
 
 class AnimationBase : public RefCounted<AnimationBase>
     , public CSSPropertyBlendingClient {
@@ -56,8 +61,7 @@ public:
     Element* element() const { return m_element.get(); }
     const RenderStyle& currentStyle() const override;
     RenderElement* renderer() const override;
-    RenderBoxModelObject* compositedRenderer() const;
-    void clear();
+    virtual void clear();
 
     double duration() const;
 
@@ -122,14 +126,20 @@ public:
     bool active() const { return !postActive() && !preActive(); }
     bool running() const { return !isNew() && !postActive(); }
     bool paused() const { return m_pauseTime || m_animationState == AnimationState::PausedNew; }
-    bool inPausedState() const { return m_animationState >= AnimationState::PausedNew && m_animationState <= AnimationState::PausedRun; }
+
+    static bool isPausedState(AnimationState state) { return state >= AnimationState::PausedNew && state <= AnimationState::PausedRun; }
+    static bool isRunningState(AnimationState state) { return state >= AnimationState::StartWaitStyleAvailable && state < AnimationState::Done; }
+
+    bool inPausedState() const { return isPausedState(m_animationState); }
+    bool inRunningState() const { return isRunningState(m_animationState); }
+
     bool isNew() const { return m_animationState == AnimationState::New || m_animationState == AnimationState::PausedNew; }
     bool waitingForStartTime() const { return m_animationState == AnimationState::StartWaitResponse; }
     bool waitingForStyleAvailable() const { return m_animationState == AnimationState::StartWaitStyleAvailable; }
 
     bool isAccelerated() const override { return m_isAccelerated; }
 
-    virtual std::optional<Seconds> timeToNextService();
+    virtual Optional<Seconds> timeToNextService();
 
     double progress(double scale = 1, double offset = 0, const TimingFunction* = nullptr) const;
 
@@ -155,13 +165,7 @@ public:
     // Does this animation/transition involve the given property?
     virtual bool affectsProperty(CSSPropertyID /*property*/) const { return false; }
 
-    enum RunningStates {
-        Delaying = 1 << 0,
-        Paused = 1 << 1,
-        Running = 1 << 2,
-    };
-    typedef unsigned RunningState;
-    bool isAnimatingProperty(CSSPropertyID property, bool acceleratedOnly, RunningState runningState) const
+    bool isAnimatingProperty(CSSPropertyID property, bool acceleratedOnly) const
     {
         if (acceleratedOnly && !m_isAccelerated)
             return false;
@@ -169,16 +173,7 @@ public:
         if (!affectsProperty(property))
             return false;
 
-        if ((runningState & Delaying) && preActive())
-            return true;
-
-        if ((runningState & Paused) && inPausedState())
-            return true;
-
-        if ((runningState & Running) && !inPausedState() && (m_animationState >= AnimationState::StartWaitStyleAvailable && m_animationState < AnimationState::Done))
-            return true;
-
-        return false;
+        return inRunningState() || inPausedState();
     }
 
     bool transformFunctionListsMatch() const override { return m_transformFunctionListsMatch; }
@@ -256,11 +251,11 @@ protected:
     CompositeAnimation* m_compositeAnimation; // Ideally this would be a reference, but it has to be cleared if an animation is destroyed inside an event callback.
     Ref<Animation> m_animation;
 
-    std::optional<double> m_startTime;
-    std::optional<double> m_pauseTime;
+    Optional<double> m_startTime;
+    Optional<double> m_pauseTime;
     double m_requestedStartTime { 0 };
-    std::optional<double> m_totalDuration;
-    std::optional<double> m_nextIterationDuration;
+    Optional<double> m_totalDuration;
+    Optional<double> m_nextIterationDuration;
 
     AnimationState m_animationState { AnimationState::New };
     bool m_colorFilterFunctionListsMatch { false };

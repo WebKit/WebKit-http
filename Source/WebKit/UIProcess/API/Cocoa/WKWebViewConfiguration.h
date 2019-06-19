@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 #import <WebKit/WKDataDetectorTypes.h>
 
@@ -35,6 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class WKPreferences;
 @class WKProcessPool;
 @class WKUserContentController;
+@class WKWebpagePreferences;
 @class WKWebsiteDataStore;
 @protocol WKURLSchemeHandler;
 
@@ -69,7 +68,7 @@ typedef NS_ENUM(NSInteger, WKSelectionGranularity) {
 typedef NS_ENUM(NSInteger, WKUserInterfaceDirectionPolicy) {
     WKUserInterfaceDirectionPolicyContent,
     WKUserInterfaceDirectionPolicySystem,
-} WK_API_AVAILABLE(macosx(10.12));
+} WK_API_AVAILABLE(macos(10.12));
 
 #endif
 
@@ -85,13 +84,13 @@ typedef NS_OPTIONS(NSUInteger, WKAudiovisualMediaTypes) {
     WKAudiovisualMediaTypeAudio = 1 << 0,
     WKAudiovisualMediaTypeVideo = 1 << 1,
     WKAudiovisualMediaTypeAll = NSUIntegerMax
-} WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+} WK_API_AVAILABLE(macos(10.12), ios(10.0));
 
 /*! A WKWebViewConfiguration object is a collection of properties with
  which to initialize a web view.
  @helps Contains properties used to configure a @link WKWebView @/link.
  */
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface WKWebViewConfiguration : NSObject <NSSecureCoding, NSCopying>
 
 /*! @abstract The process pool from which to obtain the view's web content
@@ -112,7 +111,7 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 
 /*! @abstract The website data store to be used by the web view.
  */
-@property (nonatomic, strong) WKWebsiteDataStore *websiteDataStore WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+@property (nonatomic, strong) WKWebsiteDataStore *websiteDataStore WK_API_AVAILABLE(macos(10.11), ios(9.0));
 
 /*! @abstract A Boolean value indicating whether the web view suppresses
  content rendering until it is fully loaded into memory.
@@ -122,14 +121,20 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 
 /*! @abstract The name of the application as used in the user agent string.
 */
-@property (nullable, nonatomic, copy) NSString *applicationNameForUserAgent WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+@property (nullable, nonatomic, copy) NSString *applicationNameForUserAgent WK_API_AVAILABLE(macos(10.11), ios(9.0));
 
 /*! @abstract A Boolean value indicating whether AirPlay is allowed.
  @discussion The default value is YES.
  */
-@property (nonatomic) BOOL allowsAirPlayForMediaPlayback WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+@property (nonatomic) BOOL allowsAirPlayForMediaPlayback WK_API_AVAILABLE(macos(10.11), ios(9.0));
 
-@property (nonatomic) WKAudiovisualMediaTypes mediaTypesRequiringUserActionForPlayback WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+@property (nonatomic) WKAudiovisualMediaTypes mediaTypesRequiringUserActionForPlayback WK_API_AVAILABLE(macos(10.12), ios(10.0));
+
+/*! @abstract The set of default webpage preferences to use when loading and rendering content.
+ @discussion These default webpage preferences are additionally passed to the navigation delegate
+ in -webView:decidePolicyForNavigationAction:preferences:decisionHandler:.
+ */
+@property (null_resettable, nonatomic, copy) WKWebpagePreferences *defaultWebpagePreferences WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 #if TARGET_OS_IPHONE
 /*! @abstract A Boolean value indicating whether HTML5 videos play inline
@@ -172,7 +177,7 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
  @discussion Possible values are described in WKUserInterfaceDirectionPolicy.
  The default value is WKUserInterfaceDirectionPolicyContent.
  */
-@property (nonatomic) WKUserInterfaceDirectionPolicy userInterfaceDirectionPolicy WK_API_AVAILABLE(macosx(10.12));
+@property (nonatomic) WKUserInterfaceDirectionPolicy userInterfaceDirectionPolicy WK_API_AVAILABLE(macos(10.12));
 
 #endif
 
@@ -188,12 +193,12 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
  An exception will be thrown if you try to register a URL scheme handler for a URL scheme that WebKit handles internally.
  You can use +[WKWebView handlesURLScheme:] to check the availability of a given URL scheme.
  */
-- (void)setURLSchemeHandler:(nullable id <WKURLSchemeHandler>)urlSchemeHandler forURLScheme:(NSString *)urlScheme WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (void)setURLSchemeHandler:(nullable id <WKURLSchemeHandler>)urlSchemeHandler forURLScheme:(NSString *)urlScheme WK_API_AVAILABLE(macos(10.13), ios(11.0));
 
 /* @abstract Returns the currently registered URL scheme handler object for the given URL scheme.
  @param scheme The URL scheme to lookup.
  */
-- (nullable id <WKURLSchemeHandler>)urlSchemeHandlerForURLScheme:(NSString *)urlScheme WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (nullable id <WKURLSchemeHandler>)urlSchemeHandlerForURLScheme:(NSString *)urlScheme WK_API_AVAILABLE(macos(10.13), ios(11.0));
 
 @end
 
@@ -208,5 +213,3 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @end
 
 NS_ASSUME_NONNULL_END
-
-#endif

@@ -40,7 +40,7 @@ public:
     explicit NumberInputType(HTMLInputElement& element) : TextFieldInputType(element) { }
 
 private:
-    const AtomicString& formControlType() const final;
+    const AtomString& formControlType() const final;
     void setValue(const String&, bool valueChanged, TextFieldEventBehavior) final;
     double valueAsDouble() const final;
     ExceptionOr<void> setValueAsDouble(double, TextFieldEventBehavior) const final;
@@ -51,7 +51,7 @@ private:
     float decorationWidth() const final;
     bool isSteppable() const final;
     StepRange createStepRange(AnyStepHandling) const final;
-    void handleKeydownEvent(KeyboardEvent&) final;
+    ShouldCallBaseEventHandler handleKeydownEvent(KeyboardEvent&) final;
     Decimal parseToNumber(const String&, const Decimal&) const final;
     String serialize(const Decimal&) const final;
     String localizeValue(const String&) const final;

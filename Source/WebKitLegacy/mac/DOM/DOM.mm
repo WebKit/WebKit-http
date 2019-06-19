@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2006 James G. Speth (speth@end.com)
  * Copyright (C) 2006 Samuel Weinig (sam.weinig@gmail.com)
  *
@@ -63,7 +63,7 @@
 #import <WebCore/WebScriptObjectPrivate.h>
 #import <wtf/HashMap.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <WebCore/WAKAppKitStubs.h>
 #import <WebCore/WAKWindow.h>
 #import <WebCore/WebCoreThreadMessage.h>
@@ -188,7 +188,7 @@ static NSArray *kit(const Vector<IntRect>& rects)
     return array;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 static WKQuad wkQuadFromFloatQuad(const FloatQuad& inQuad)
 {
@@ -244,8 +244,7 @@ static inline WKQuad zeroQuad()
 
 @implementation DOMNode (WebCoreInternal)
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wobjc-protocol-method-implementation"
+IGNORE_WARNINGS_BEGIN("objc-protocol-method-implementation")
 
 - (NSString *)description
 {
@@ -259,7 +258,7 @@ static inline WKQuad zeroQuad()
     return [NSString stringWithFormat:@"<%@ [%@]: %p>", [[self class] description], [self nodeName], _internal];
 }
 
-#pragma clang diagnostic pop
+IGNORE_WARNINGS_END
 
 - (Bindings::RootObject*)_rootObject
 {
@@ -309,7 +308,7 @@ id <DOMEventTarget> kit(EventTarget* target)
 
 @implementation DOMNode (DOMNodeExtensions)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (CGRect)boundingBox
 #else
 - (NSRect)boundingBox
@@ -319,7 +318,7 @@ id <DOMEventTarget> kit(EventTarget* target)
     node.document().updateLayoutIgnorePendingStylesheets();
     auto* renderer = node.renderer();
     if (!renderer)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         return CGRectZero;
 #else
         return NSZeroRect;
@@ -332,7 +331,7 @@ id <DOMEventTarget> kit(EventTarget* target)
     return [self textRects];
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 // quad in page coordinates, taking transforms into account. c.f. - (NSRect)boundingBox;
 - (WKQuad)absoluteQuad
@@ -493,7 +492,7 @@ id <DOMEventTarget> kit(EventTarget* target)
     return kit(page->focusController().previousFocusableElement(*core(self)));
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 @end
 
@@ -545,10 +544,10 @@ id <DOMEventTarget> kit(EventTarget* target)
 
     auto& node = *core(self);
 
-    Ref<Range> range = rangeOfContents(node);
+    auto range = rangeOfContents(node);
 
     const float margin = 4 / node.document().page()->pageScaleFactor();
-    RefPtr<TextIndicator> textIndicator = TextIndicator::createWithRange(range, TextIndicatorOptionTightlyFitContent |
+    auto textIndicator = TextIndicator::createWithRange(range, TextIndicatorOptionTightlyFitContent |
         TextIndicatorOptionRespectTextColor |
         TextIndicatorOptionPaintBackgrounds |
         TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges |
@@ -596,7 +595,7 @@ id <DOMEventTarget> kit(EventTarget* target)
 
 @implementation DOMRange (DOMRangeExtensions)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (CGRect)boundingBox
 #else
 - (NSRect)boundingBox
@@ -618,6 +617,8 @@ id <DOMEventTarget> kit(EventTarget* target)
     auto* frame = range.ownerDocument().frame();
     if (!frame)
         return nil;
+
+    Ref<Frame> protectedFrame(*frame);
 
     // iOS uses CGImageRef for drag images, which doesn't support separate logical/physical sizes.
 #if PLATFORM(MAC)
@@ -713,7 +714,7 @@ id <DOMEventTarget> kit(EventTarget* target)
 
 @end
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 @implementation DOMHTMLLinkElement (WebPrivate)
 

@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WKInspectorViewController.h"
 
-#if PLATFORM(MAC) && WK_API_ENABLED
+#if PLATFORM(MAC)
 
 #import "APINavigation.h"
 #import "VersionChecks.h"
@@ -226,7 +226,8 @@
     decisionHandler(WKNavigationActionPolicyCancel);
     
     // And instead load it in the inspected page.
-    _inspectedPage->loadRequest(navigationAction.request);
+    if (_inspectedPage)
+        _inspectedPage->loadRequest(navigationAction.request);
 }
 
 // MARK: WKInspectorWKWebViewDelegate methods
@@ -251,6 +252,18 @@
     _inspectedPage->reload(WebCore::ReloadOption::FromOrigin);
 }
 
+- (void)inspectorWKWebView:(WKInspectorWKWebView *)webView willMoveToWindow:(NSWindow *)newWindow
+{
+    if (!!_delegate && [_delegate respondsToSelector:@selector(inspectorViewController:willMoveToWindow:)])
+        [_delegate inspectorViewController:self willMoveToWindow:newWindow];
+}
+
+- (void)inspectorWKWebViewDidMoveToWindow:(WKInspectorWKWebView *)webView
+{
+    if (!!_delegate && [_delegate respondsToSelector:@selector(inspectorViewControllerDidMoveToWindow:)])
+        [_delegate inspectorViewControllerDidMoveToWindow:self];
+}
+
 @end
 
-#endif // PLATFORM(MAC) && WK_API_ENABLED
+#endif // PLATFORM(MAC)

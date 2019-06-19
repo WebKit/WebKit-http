@@ -49,13 +49,8 @@ public:
     virtual void jobResolvedWithRegistration(ServiceWorkerJob&, ServiceWorkerRegistrationData&&, ShouldNotifyWhenResolved) = 0;
     virtual void jobResolvedWithUnregistrationResult(ServiceWorkerJob&, bool unregistrationResult) = 0;
     virtual void startScriptFetchForJob(ServiceWorkerJob&, FetchOptions::Cache) = 0;
-    virtual void jobFinishedLoadingScript(ServiceWorkerJob&, const String& script, const ContentSecurityPolicyResponseHeaders&) = 0;
-    virtual void jobFailedLoadingScript(ServiceWorkerJob&, const ResourceError&, std::optional<Exception>&&) = 0;
-
-    virtual SWServerConnectionIdentifier connectionIdentifier() = 0;
-
-    virtual void ref() = 0;
-    virtual void deref() = 0;
+    virtual void jobFinishedLoadingScript(ServiceWorkerJob&, const String& script, const ContentSecurityPolicyResponseHeaders&, const String& referrerPolicy) = 0;
+    virtual void jobFailedLoadingScript(ServiceWorkerJob&, const ResourceError&, Exception&&) = 0;
 };
 
 } // namespace WebCore

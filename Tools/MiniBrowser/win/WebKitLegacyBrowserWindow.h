@@ -71,6 +71,7 @@ private:
 
     void showLastVisitedSites(IWebView&);
     void launchInspector();
+    void openProxySettings();
     void navigateForwardOrBackward(UINT menuID);
     void navigateToHistory(UINT menuID);
     void exitProgram();
@@ -119,8 +120,6 @@ private:
 
     std::vector<IWebHistoryItemPtr> m_historyItems;
 
-    std::unique_ptr<PageLoadTestClient> m_pageLoadTestClient;
-
     IWebViewPtr m_webView;
     IWebViewPrivatePtr m_webViewPrivate;
 
@@ -143,4 +142,6 @@ private:
     HWND m_viewWnd { nullptr };
 
     bool m_useLayeredWebView;
+
+    std::unique_ptr<PageLoadTestClient> m_pageLoadTestClient;
 };

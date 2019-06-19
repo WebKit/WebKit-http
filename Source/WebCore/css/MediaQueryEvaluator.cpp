@@ -45,10 +45,12 @@
 #include "PlatformScreen.h"
 #include "RenderStyle.h"
 #include "RenderView.h"
+#include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "StyleResolver.h"
 #include "Theme.h"
 #include <wtf/HashMap.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/text/TextStream.h>
 
 #if ENABLE(3D_TRANSFORMS)
@@ -72,9 +74,9 @@ static TextStream& operator<<(TextStream& ts, MediaFeaturePrefix op)
 #endif
 
 typedef bool (*MediaQueryFunction)(CSSValue*, const CSSToLengthConversionData&, Frame&, MediaFeaturePrefix);
-typedef HashMap<AtomicStringImpl*, MediaQueryFunction> MediaQueryFunctionMap;
+typedef HashMap<AtomStringImpl*, MediaQueryFunction> MediaQueryFunctionMap;
 
-static bool isAccessibilitySettingsDependent(const AtomicString& mediaFeature)
+static bool isAccessibilitySettingsDependent(const AtomString& mediaFeature)
 {
     return mediaFeature == MediaFeatureNames::invertedColors
         || mediaFeature == MediaFeatureNames::maxMonochrome
@@ -83,7 +85,7 @@ static bool isAccessibilitySettingsDependent(const AtomicString& mediaFeature)
         || mediaFeature == MediaFeatureNames::prefersReducedMotion;
 }
 
-static bool isViewportDependent(const AtomicString& mediaFeature)
+static bool isViewportDependent(const AtomString& mediaFeature)
 {
     return mediaFeature == MediaFeatureNames::width
         || mediaFeature == MediaFeatureNames::height
@@ -95,6 +97,15 @@ static bool isViewportDependent(const AtomicString& mediaFeature)
         || mediaFeature == MediaFeatureNames::aspectRatio
         || mediaFeature == MediaFeatureNames::minAspectRatio
         || mediaFeature == MediaFeatureNames::maxAspectRatio;
+}
+
+static bool isAppearanceDependent(const AtomString& mediaFeature)
+{
+    return mediaFeature == MediaFeatureNames::prefersDarkInterface
+#if ENABLE(DARK_MODE_CSS)
+        || mediaFeature == MediaFeatureNames::prefersColorScheme
+#endif
+    ;
 }
 
 MediaQueryEvaluator::MediaQueryEvaluator(bool mediaFeatureResult)
@@ -164,6 +175,8 @@ bool MediaQueryEvaluator::evaluate(const MediaQuerySet& querySet, StyleResolver*
                     styleResolver->addViewportDependentMediaQueryResult(expressions[j], expressionResult);
                 if (styleResolver && isAccessibilitySettingsDependent(expressions[j].mediaFeature()))
                     styleResolver->addAccessibilitySettingsDependentMediaQueryResult(expressions[j], expressionResult);
+                if (styleResolver && isAppearanceDependent(expressions[j].mediaFeature()))
+                    styleResolver->addAppearanceDependentMediaQueryResult(expressions[j], expressionResult);
                 if (!expressionResult)
                     break;
             }
@@ -178,7 +191,7 @@ bool MediaQueryEvaluator::evaluate(const MediaQuerySet& querySet, StyleResolver*
     return result;
 }
 
-bool MediaQueryEvaluator::evaluate(const MediaQuerySet& querySet, Vector<MediaQueryResult>& results) const
+bool MediaQueryEvaluator::evaluate(const MediaQuerySet& querySet, Vector<MediaQueryResult>& viewportDependentResults, Vector<MediaQueryResult>& appearanceDependentResults) const
 {
     auto& queries = querySet.queryVector();
     if (!queries.size())
@@ -197,7 +210,9 @@ bool MediaQueryEvaluator::evaluate(const MediaQuerySet& querySet, Vector<MediaQu
             for (; j < expressions.size(); ++j) {
                 bool expressionResult = evaluate(expressions[j]);
                 if (isViewportDependent(expressions[j].mediaFeature()))
-                    results.append({ expressions[j], expressionResult });
+                    viewportDependentResults.append({ expressions[j], expressionResult });
+                if (isAppearanceDependent(expressions[j].mediaFeature()))
+                    appearanceDependentResults.append({ expressions[j], expressionResult });
                 if (!expressionResult)
                     break;
             }
@@ -223,14 +238,16 @@ template<typename T, typename U> bool compareValue(T a, U b, MediaFeaturePrefix 
 }
 
 #if !LOG_DISABLED
+
 static String aspectRatioValueAsString(CSSValue* value)
 {
     if (!is<CSSAspectRatioValue>(value))
         return emptyString();
 
     auto& aspectRatio = downcast<CSSAspectRatioValue>(*value);
-    return String::format("%f/%f", aspectRatio.numeratorValue(), aspectRatio.denominatorValue());
+    return makeString(FormattedNumber::fixedWidth(aspectRatio.numeratorValue(), 6), '/', FormattedNumber::fixedWidth(aspectRatio.denominatorValue(), 6));
 }
+
 #endif
 
 static bool compareAspectRatioValue(CSSValue* value, int width, int height, MediaFeaturePrefix op)
@@ -241,10 +258,10 @@ static bool compareAspectRatioValue(CSSValue* value, int width, int height, Medi
     return compareValue(width * aspectRatio.denominatorValue(), height * aspectRatio.numeratorValue(), op);
 }
 
-static std::optional<double> doubleValue(CSSValue* value)
+static Optional<double> doubleValue(CSSValue* value)
 {
     if (!is<CSSPrimitiveValue>(value) || !downcast<CSSPrimitiveValue>(*value).isNumber())
-        return std::nullopt;
+        return WTF::nullopt;
     return downcast<CSSPrimitiveValue>(*value).doubleValue(CSSPrimitiveValue::CSS_NUMBER);
 }
 
@@ -676,7 +693,7 @@ static bool hoverEvaluate(CSSValue* value, const CSSToLengthConversionData&, Fra
 {
     if (!is<CSSPrimitiveValue>(value)) {
 #if ENABLE(TOUCH_EVENTS)
-        return false;
+        return !screenIsTouchPrimaryInputDevice();
 #else
         return true;
 #endif
@@ -684,15 +701,28 @@ static bool hoverEvaluate(CSSValue* value, const CSSToLengthConversionData&, Fra
 
     auto keyword = downcast<CSSPrimitiveValue>(*value).valueID();
 #if ENABLE(TOUCH_EVENTS)
-    return keyword == CSSValueNone;
-#else
-    return keyword == CSSValueHover;
+    if (screenIsTouchPrimaryInputDevice())
+        return keyword == CSSValueNone;
 #endif
+    return keyword == CSSValueHover;
 }
 
-static bool anyHoverEvaluate(CSSValue* value, const CSSToLengthConversionData& cssToLengthConversionData, Frame& frame, MediaFeaturePrefix prefix)
+static bool anyHoverEvaluate(CSSValue* value, const CSSToLengthConversionData&, Frame&, MediaFeaturePrefix)
 {
-    return hoverEvaluate(value, cssToLengthConversionData, frame, prefix);
+    if (!is<CSSPrimitiveValue>(value)) {
+#if ENABLE(TOUCH_EVENTS)
+        return !screenHasTouchDevice();
+#else
+        return true;
+#endif
+    }
+
+    auto keyword = downcast<CSSPrimitiveValue>(*value).valueID();
+#if ENABLE(TOUCH_EVENTS)
+    if (screenHasTouchDevice())
+        return keyword == CSSValueNone;
+#endif
+    return keyword == CSSValueHover;
 }
 
 static bool pointerEvaluate(CSSValue* value, const CSSToLengthConversionData&, Frame&, MediaFeaturePrefix)
@@ -702,17 +732,25 @@ static bool pointerEvaluate(CSSValue* value, const CSSToLengthConversionData&, F
 
     auto keyword = downcast<CSSPrimitiveValue>(*value).valueID();
 #if ENABLE(TOUCH_EVENTS)
-    return keyword == CSSValueCoarse;
-#else
-    return keyword == CSSValueFine;
+    if (screenIsTouchPrimaryInputDevice())
+        return keyword == CSSValueCoarse;
 #endif
+    return keyword == CSSValueFine;
 }
 
-static bool anyPointerEvaluate(CSSValue* value, const CSSToLengthConversionData& cssToLengthConversionData, Frame& frame, MediaFeaturePrefix prefix)
+static bool anyPointerEvaluate(CSSValue* value, const CSSToLengthConversionData&, Frame&, MediaFeaturePrefix)
 {
-    return pointerEvaluate(value, cssToLengthConversionData, frame, prefix);
+    if (!is<CSSPrimitiveValue>(value))
+        return true;
+
+    auto keyword = downcast<CSSPrimitiveValue>(*value).valueID();
+#if ENABLE(TOUCH_EVENTS)
+    if (screenHasTouchDevice())
+        return keyword == CSSValueCoarse;
+#endif
+    return keyword == CSSValueFine;
 }
-    
+
 static bool prefersDarkInterfaceEvaluate(CSSValue* value, const CSSToLengthConversionData&, Frame& frame, MediaFeaturePrefix)
 {
     bool prefersDarkInterface = false;
@@ -726,6 +764,33 @@ static bool prefersDarkInterfaceEvaluate(CSSValue* value, const CSSToLengthConve
     return downcast<CSSPrimitiveValue>(*value).valueID() == (prefersDarkInterface ? CSSValuePrefers : CSSValueNoPreference);
 }
 
+#if ENABLE(DARK_MODE_CSS)
+static bool prefersColorSchemeEvaluate(CSSValue* value, const CSSToLengthConversionData&, Frame& frame, MediaFeaturePrefix)
+{
+    ASSERT(RuntimeEnabledFeatures::sharedFeatures().darkModeCSSEnabled());
+
+    if (!value)
+        return true;
+
+    if (!is<CSSPrimitiveValue>(value))
+        return false;
+
+    auto keyword = downcast<CSSPrimitiveValue>(*value).valueID();
+    bool useDarkAppearance = frame.page()->useDarkAppearance();
+
+    switch (keyword) {
+    case CSSValueNoPreference:
+        return false;
+    case CSSValueDark:
+        return useDarkAppearance;
+    case CSSValueLight:
+        return !useDarkAppearance;
+    default:
+        return false;
+    }
+}
+#endif
+
 static bool prefersReducedMotionEvaluate(CSSValue* value, const CSSToLengthConversionData&, Frame& frame, MediaFeaturePrefix)
 {
     bool userPrefersReducedMotion = false;
@@ -737,7 +802,7 @@ static bool prefersReducedMotionEvaluate(CSSValue* value, const CSSToLengthConve
     case Settings::ForcedAccessibilityValue::Off:
         break;
     case Settings::ForcedAccessibilityValue::System:
-#if USE(NEW_THEME) || PLATFORM(IOS)
+#if USE(NEW_THEME) || PLATFORM(IOS_FAMILY)
         userPrefersReducedMotion = Theme::singleton().userPrefersReducedMotion();
 #endif
         break;
@@ -757,7 +822,7 @@ static bool displayModeEvaluate(CSSValue* value, const CSSToLengthConversionData
 
     auto keyword = downcast<CSSPrimitiveValue>(*value).valueID();
 
-    auto manifest = frame.page() ? frame.page()->applicationManifest() : std::nullopt;
+    auto manifest = frame.page() ? frame.page()->applicationManifest() : WTF::nullopt;
     if (!manifest)
         return keyword == CSSValueBrowser;
 
@@ -777,7 +842,7 @@ static bool displayModeEvaluate(CSSValue* value, const CSSToLengthConversionData
 #endif // ENABLE(APPLICATION_MANIFEST)
 
 // Use this function instead of calling add directly to avoid inlining.
-static void add(MediaQueryFunctionMap& map, AtomicStringImpl* key, MediaQueryFunction value)
+static void add(MediaQueryFunctionMap& map, AtomStringImpl* key, MediaQueryFunction value)
 {
     map.add(key, value);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,8 @@
 
 #include "IsoHeapImpl.h"
 #include "IsoTLSDeallocatorEntry.h"
+#include "IsoSharedHeapInlines.h"
+#include "IsoSharedPageInlines.h"
 
 namespace bmalloc {
 
@@ -42,26 +44,26 @@ IsoHeapImpl<Config>::IsoHeapImpl()
 template<typename Config>
 EligibilityResult<Config> IsoHeapImpl<Config>::takeFirstEligible()
 {
-    if (m_isInlineDirectoryEligible) {
+    if (m_isInlineDirectoryEligibleOrDecommitted) {
         EligibilityResult<Config> result = m_inlineDirectory.takeFirstEligible();
         if (result.kind == EligibilityKind::Full)
-            m_isInlineDirectoryEligible = false;
+            m_isInlineDirectoryEligibleOrDecommitted = false;
         else
             return result;
     }
     
-    if (!m_firstEligibleDirectory) {
+    if (!m_firstEligibleOrDecommitedDirectory) {
         // If nothing is eligible, it can only be because we have no directories. It wouldn't be the end
-        // of the world if we broke this invariant. It would only mean that didBecomeEligible() would need
+        // of the world if we broke this invariant. It would only mean that didBecomeEligibleOrDecommited() would need
         // a null check.
         RELEASE_BASSERT(!m_headDirectory);
         RELEASE_BASSERT(!m_tailDirectory);
     }
     
-    for (; m_firstEligibleDirectory; m_firstEligibleDirectory = m_firstEligibleDirectory->next) {
-        EligibilityResult<Config> result = m_firstEligibleDirectory->payload.takeFirstEligible();
+    for (; m_firstEligibleOrDecommitedDirectory; m_firstEligibleOrDecommitedDirectory = m_firstEligibleOrDecommitedDirectory->next) {
+        EligibilityResult<Config> result = m_firstEligibleOrDecommitedDirectory->payload.takeFirstEligible();
         if (result.kind != EligibilityKind::Full) {
-            m_directoryHighWatermark = std::max(m_directoryHighWatermark, m_firstEligibleDirectory->index());
+            m_directoryHighWatermark = std::max(m_directoryHighWatermark, m_firstEligibleOrDecommitedDirectory->index());
             return result;
         }
     }
@@ -76,26 +78,26 @@ EligibilityResult<Config> IsoHeapImpl<Config>::takeFirstEligible()
         m_tailDirectory = newDirectory;
     }
     m_directoryHighWatermark = newDirectory->index();
-    m_firstEligibleDirectory = newDirectory;
+    m_firstEligibleOrDecommitedDirectory = newDirectory;
     EligibilityResult<Config> result = newDirectory->payload.takeFirstEligible();
     RELEASE_BASSERT(result.kind != EligibilityKind::Full);
     return result;
 }
 
 template<typename Config>
-void IsoHeapImpl<Config>::didBecomeEligible(IsoDirectory<Config, numPagesInInlineDirectory>* directory)
+void IsoHeapImpl<Config>::didBecomeEligibleOrDecommited(IsoDirectory<Config, numPagesInInlineDirectory>* directory)
 {
     RELEASE_BASSERT(directory == &m_inlineDirectory);
-    m_isInlineDirectoryEligible = true;
+    m_isInlineDirectoryEligibleOrDecommitted = true;
 }
 
 template<typename Config>
-void IsoHeapImpl<Config>::didBecomeEligible(IsoDirectory<Config, IsoDirectoryPage<Config>::numPages>* directory)
+void IsoHeapImpl<Config>::didBecomeEligibleOrDecommited(IsoDirectory<Config, IsoDirectoryPage<Config>::numPages>* directory)
 {
-    RELEASE_BASSERT(m_firstEligibleDirectory);
+    RELEASE_BASSERT(m_firstEligibleOrDecommitedDirectory);
     auto* directoryPage = IsoDirectoryPage<Config>::pageFor(directory);
-    if (directoryPage->index() < m_firstEligibleDirectory->index())
-        m_firstEligibleDirectory = directoryPage;
+    if (directoryPage->index() < m_firstEligibleOrDecommitedDirectory->index())
+        m_firstEligibleOrDecommitedDirectory = directoryPage;
 }
 
 template<typename Config>
@@ -106,19 +108,6 @@ void IsoHeapImpl<Config>::scavenge(Vector<DeferredDecommit>& decommits)
         [&] (auto& directory) {
             directory.scavenge(decommits);
         });
-    m_directoryHighWatermark = 0;
-}
-
-template<typename Config>
-void IsoHeapImpl<Config>::scavengeToHighWatermark(Vector<DeferredDecommit>& decommits)
-{
-    std::lock_guard<Mutex> locker(this->lock);
-    if (!m_directoryHighWatermark)
-        m_inlineDirectory.scavengeToHighWatermark(decommits);
-    for (IsoDirectoryPage<Config>* page = m_headDirectory; page; page = page->next) {
-        if (page->index() >= m_directoryHighWatermark)
-            page->payload.scavengeToHighWatermark(decommits);
-    }
     m_directoryHighWatermark = 0;
 }
 
@@ -189,6 +178,11 @@ void IsoHeapImpl<Config>::forEachLiveObject(const Func& func)
         [&] (IsoPage<Config>& page) {
             page.forEachLiveObject(func);
         });
+    for (unsigned index = 0; index < maxAllocationFromShared; ++index) {
+        void* pointer = m_sharedCells[index];
+        if (pointer && !(m_availableShared & (1U << index)))
+            func(pointer);
+    }
 }
 
 template<typename Config>
@@ -232,6 +226,86 @@ void IsoHeapImpl<Config>::isNoLongerFreeable(void* ptr, size_t bytes)
 {
     BUNUSED_PARAM(ptr);
     m_freeableMemory -= bytes;
+}
+
+template<typename Config>
+AllocationMode IsoHeapImpl<Config>::updateAllocationMode()
+{
+    auto getNewAllocationMode = [&] {
+        // Exhaust shared free cells, which means we should start activating the fast allocation mode for this type.
+        if (!m_availableShared) {
+            m_lastSlowPathTime = std::chrono::steady_clock::now();
+            return AllocationMode::Fast;
+        }
+
+        switch (m_allocationMode) {
+        case AllocationMode::Shared:
+            // Currently in the shared allocation mode. Until we exhaust shared free cells, continue using the shared allocation mode.
+            // But if we allocate so many shared cells within very short period, we should use the fast allocation mode instead.
+            // This avoids the following pathological case.
+            //
+            //     for (int i = 0; i < 1e6; ++i) {
+            //         auto* ptr = allocate();
+            //         ...
+            //         free(ptr);
+            //     }
+            if (m_numberOfAllocationsFromSharedInOneCycle <= IsoPage<Config>::numObjects)
+                return AllocationMode::Shared;
+            BFALLTHROUGH;
+
+        case AllocationMode::Fast: {
+            // The allocation pattern may change. We should check the allocation rate and decide which mode is more appropriate.
+            // If we don't go to the allocation slow path during ~1 seconds, we think the allocation becomes quiescent state.
+            auto now = std::chrono::steady_clock::now();
+            if ((now - m_lastSlowPathTime) < std::chrono::seconds(1)) {
+                m_lastSlowPathTime = now;
+                return AllocationMode::Fast;
+            }
+
+            m_numberOfAllocationsFromSharedInOneCycle = 0;
+            m_lastSlowPathTime = now;
+            return AllocationMode::Shared;
+        }
+
+        case AllocationMode::Init:
+            m_lastSlowPathTime = std::chrono::steady_clock::now();
+            return AllocationMode::Shared;
+        }
+
+        return AllocationMode::Shared;
+    };
+    AllocationMode allocationMode = getNewAllocationMode();
+    m_allocationMode = allocationMode;
+    return allocationMode;
+}
+
+template<typename Config>
+void* IsoHeapImpl<Config>::allocateFromShared(const std::lock_guard<Mutex>&, bool abortOnFailure)
+{
+    static constexpr bool verbose = false;
+
+    unsigned indexPlusOne = __builtin_ffs(m_availableShared);
+    BASSERT(indexPlusOne);
+    unsigned index = indexPlusOne - 1;
+    void* result = m_sharedCells[index];
+    if (result) {
+        if (verbose)
+            fprintf(stderr, "%p: allocated %p from shared again of size %u\n", this, result, Config::objectSize);
+    } else {
+        constexpr unsigned objectSizeWithHeapImplPointer = Config::objectSize + sizeof(uint8_t);
+        result = IsoSharedHeap::get()->allocateNew<objectSizeWithHeapImplPointer>(abortOnFailure);
+        if (!result)
+            return nullptr;
+        if (verbose)
+            fprintf(stderr, "%p: allocated %p from shared of size %u\n", this, result, Config::objectSize);
+        BASSERT(index < IsoHeapImplBase::maxAllocationFromShared);
+        *indexSlotFor<Config>(result) = index;
+        m_sharedCells[index] = result;
+    }
+    BASSERT(result);
+    m_availableShared &= ~(1U << index);
+    ++m_numberOfAllocationsFromSharedInOneCycle;
+    return result;
 }
 
 } // namespace bmalloc

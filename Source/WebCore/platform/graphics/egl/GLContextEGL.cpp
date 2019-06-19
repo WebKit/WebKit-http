@@ -38,7 +38,6 @@
 #if USE(LIBEPOXY)
 #include <epoxy/gl.h>
 #elif USE(OPENGL_ES)
-#define GL_GLEXT_PROTOTYPES 1
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #else
@@ -52,6 +51,8 @@
 #undef CAIRO_HAS_GLX_FUNCTIONS
 #include <cairo-gl.h>
 #endif
+
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -94,17 +95,25 @@ const char* GLContextEGL::lastErrorString()
 
 bool GLContextEGL::getEGLConfig(EGLDisplay display, EGLConfig* config, EGLSurfaceType surfaceType)
 {
+    std::array<EGLint, 4> rgbaSize = { 8, 8, 8, 8 };
+    if (const char* environmentVariable = getenv("WEBKIT_EGL_PIXEL_LAYOUT")) {
+        if (!strcmp(environmentVariable, "RGB565"))
+            rgbaSize = { 5, 6, 5, 0 };
+        else
+            WTFLogAlways("Unknown pixel layout %s, falling back to RGBA8888", environmentVariable);
+    }
+
     EGLint attributeList[] = {
 #if USE(OPENGL_ES)
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
 #else
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
 #endif
-        EGL_RED_SIZE, 8,
-        EGL_GREEN_SIZE, 8,
-        EGL_BLUE_SIZE, 8,
+        EGL_RED_SIZE, rgbaSize[0],
+        EGL_GREEN_SIZE, rgbaSize[1],
+        EGL_BLUE_SIZE, rgbaSize[2],
+        EGL_ALPHA_SIZE, rgbaSize[3],
         EGL_STENCIL_SIZE, 8,
-        EGL_ALPHA_SIZE, 8,
         EGL_SURFACE_TYPE, EGL_NONE,
         EGL_NONE
     };
@@ -122,8 +131,30 @@ bool GLContextEGL::getEGLConfig(EGLDisplay display, EGLConfig* config, EGLSurfac
         break;
     }
 
+    EGLint count;
+    if (!eglChooseConfig(display, attributeList, nullptr, 0, &count))
+        return false;
+
     EGLint numberConfigsReturned;
-    return eglChooseConfig(display, attributeList, config, 1, &numberConfigsReturned) && numberConfigsReturned;
+    Vector<EGLConfig> configs(count);
+    if (!eglChooseConfig(display, attributeList, reinterpret_cast<EGLConfig*>(configs.data()), count, &numberConfigsReturned) || !numberConfigsReturned)
+        return false;
+
+    auto index = configs.findMatching([&](EGLConfig value) {
+        EGLint redSize, greenSize, blueSize, alphaSize;
+        eglGetConfigAttrib(display, value, EGL_RED_SIZE, &redSize);
+        eglGetConfigAttrib(display, value, EGL_GREEN_SIZE, &greenSize);
+        eglGetConfigAttrib(display, value, EGL_BLUE_SIZE, &blueSize);
+        eglGetConfigAttrib(display, value, EGL_ALPHA_SIZE, &alphaSize);
+        return redSize == rgbaSize[0] && greenSize == rgbaSize[1]
+            && blueSize == rgbaSize[2] && alphaSize == rgbaSize[3];
+    });
+
+    if (index != notFound) {
+        *config = configs[index];
+        return true;
+    }
+    return false;
 }
 
 std::unique_ptr<GLContextEGL> GLContextEGL::createWindowContext(GLNativeWindowType window, PlatformDisplay& platformDisplay, EGLContext sharingContext)
@@ -151,7 +182,9 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createWindowContext(GLNativeWindowTy
     if (platformDisplay.type() == PlatformDisplay::Type::Wayland)
         surface = createWindowSurfaceWayland(display, config, window);
 #endif
-#elif PLATFORM(WPE)
+#endif
+
+#if USE(WPE_RENDERER)
     if (platformDisplay.type() == PlatformDisplay::Type::WPE)
         surface = createWindowSurfaceWPE(display, config, window);
 #else
@@ -201,10 +234,8 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSurfacelessContext(PlatformDis
     }
 
     const char* extensions = eglQueryString(display, EGL_EXTENSIONS);
-    if (!GLContext::isExtensionSupported(extensions, "EGL_KHR_surfaceless_context") && !GLContext::isExtensionSupported(extensions, "EGL_KHR_surfaceless_opengl")) {
-        WTFLogAlways("Cannot create EGL surfaceless context: missing EGL_KHR_surfaceless_{context,opengl} extension.\n");
+    if (!GLContext::isExtensionSupported(extensions, "EGL_KHR_surfaceless_context") && !GLContext::isExtensionSupported(extensions, "EGL_KHR_surfaceless_opengl"))
         return nullptr;
-    }
 
     EGLConfig config;
     if (!getEGLConfig(display, &config, Surfaceless)) {
@@ -250,7 +281,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType win
         if (platformDisplay.type() == PlatformDisplay::Type::Wayland)
             context = createWaylandContext(platformDisplay, eglSharingContext);
 #endif
-#if PLATFORM(WPE)
+#if USE(WPE_RENDERER)
         if (platformDisplay.type() == PlatformDisplay::Type::WPE)
             context = createWPEContext(platformDisplay, eglSharingContext);
 #endif
@@ -287,7 +318,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay
         if (platformDisplay.type() == PlatformDisplay::Type::Wayland)
             context = createWaylandContext(platformDisplay);
 #endif
-#if PLATFORM(WPE)
+#if USE(WPE_RENDERER)
         if (platformDisplay.type() == PlatformDisplay::Type::WPE)
             context = createWPEContext(platformDisplay);
 #endif
@@ -330,7 +361,7 @@ GLContextEGL::~GLContextEGL()
 #if PLATFORM(WAYLAND)
     destroyWaylandWindow();
 #endif
-#if PLATFORM(WPE)
+#if USE(WPE_RENDERER)
     destroyWPETarget();
 #endif
 }

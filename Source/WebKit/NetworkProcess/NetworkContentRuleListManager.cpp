@@ -35,7 +35,11 @@
 namespace WebKit {
 using namespace WebCore;
 
-NetworkContentRuleListManager::NetworkContentRuleListManager() = default;
+NetworkContentRuleListManager::NetworkContentRuleListManager(NetworkProcess& networkProcess)
+    : m_networkProcess(networkProcess)
+{
+}
+
 NetworkContentRuleListManager::~NetworkContentRuleListManager()
 {
     auto pendingCallbacks = WTFMove(m_pendingCallbacks);
@@ -59,18 +63,17 @@ void NetworkContentRuleListManager::contentExtensionsBackend(UserContentControll
     m_pendingCallbacks.ensure(identifier, [] {
         return Vector<BackendCallback> { };
     }).iterator->value.append(WTFMove(callback));
-    NetworkProcess::singleton().parentProcessConnection()->send(Messages::NetworkProcessProxy::ContentExtensionRules { identifier }, 0);
+    m_networkProcess.parentProcessConnection()->send(Messages::NetworkProcessProxy::ContentExtensionRules { identifier }, 0);
 }
 
-void NetworkContentRuleListManager::addContentRuleLists(UserContentControllerIdentifier identifier, const Vector<std::pair<String, WebCompiledContentRuleListData>>& contentRuleLists)
+void NetworkContentRuleListManager::addContentRuleLists(UserContentControllerIdentifier identifier, Vector<std::pair<String, WebCompiledContentRuleListData>>&& contentRuleLists)
 {
     auto& backend = *m_contentExtensionBackends.ensure(identifier, [] {
         return std::make_unique<WebCore::ContentExtensions::ContentExtensionsBackend>();
     }).iterator->value;
 
-    for (const auto& contentRuleList : contentRuleLists) {
-        WebCompiledContentRuleListData contentRuleListData = contentRuleList.second;
-        auto compiledContentRuleList = WebCompiledContentRuleList::create(WTFMove(contentRuleListData));
+    for (auto&& contentRuleList : contentRuleLists) {
+        auto compiledContentRuleList = WebCompiledContentRuleList::create(WTFMove(contentRuleList.second));
         backend.addContentExtension(contentRuleList.first, WTFMove(compiledContentRuleList), ContentExtensions::ContentExtension::ShouldCompileCSS::No);
     }
 

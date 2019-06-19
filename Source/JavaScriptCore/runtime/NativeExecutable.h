@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,12 +26,8 @@
 #pragma once
 
 #include "ExecutableBase.h"
-#include "JSCPoison.h"
 
 namespace JSC {
-namespace DOMJIT {
-class Signature;
-}
 
 class NativeExecutable final : public ExecutableBase {
     friend class JIT;
@@ -40,11 +36,11 @@ public:
     typedef ExecutableBase Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
-    static NativeExecutable* create(VM&, Ref<JITCode>&& callThunk, TaggedNativeFunction, Ref<JITCode>&& constructThunk, TaggedNativeFunction constructor, Intrinsic, const DOMJIT::Signature*, const String& name);
+    static NativeExecutable* create(VM&, Ref<JITCode>&& callThunk, TaggedNativeFunction, Ref<JITCode>&& constructThunk, TaggedNativeFunction constructor, const String& name);
 
     static void destroy(JSCell*);
     
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess>
     static IsoSubspace* subspaceFor(VM& vm)
     {
         return &vm.nativeExecutableSpace;
@@ -52,8 +48,8 @@ public:
 
     CodeBlockHash hashFor(CodeSpecializationKind) const;
 
-    TaggedNativeFunction function() { return m_function.unpoisoned(); }
-    TaggedNativeFunction constructor() { return m_constructor.unpoisoned(); }
+    TaggedNativeFunction function() { return m_function; }
+    TaggedNativeFunction constructor() { return m_constructor; }
         
     TaggedNativeFunction nativeFunctionFor(CodeSpecializationKind kind)
     {
@@ -76,27 +72,18 @@ public:
     DECLARE_INFO;
 
     const String& name() const { return m_name; }
-    const DOMJIT::Signature* signature() const { return m_signature; }
 
-    const DOMJIT::Signature* signatureFor(CodeSpecializationKind kind) const
-    {
-        if (isCall(kind))
-            return signature();
-        return nullptr;
-    }
+    const DOMJIT::Signature* signatureFor(CodeSpecializationKind) const;
+    Intrinsic intrinsic() const;
 
 protected:
     void finishCreation(VM&, Ref<JITCode>&& callThunk, Ref<JITCode>&& constructThunk, const String& name);
 
 private:
-    friend class ExecutableBase;
-    using PoisonedTaggedNativeFunction = Poisoned<NativeCodePoison, TaggedNativeFunction>;
+    NativeExecutable(VM&, TaggedNativeFunction, TaggedNativeFunction constructor);
 
-    NativeExecutable(VM&, TaggedNativeFunction, TaggedNativeFunction constructor, Intrinsic, const DOMJIT::Signature*);
-
-    PoisonedTaggedNativeFunction m_function;
-    PoisonedTaggedNativeFunction m_constructor;
-    const DOMJIT::Signature* m_signature;
+    TaggedNativeFunction m_function;
+    TaggedNativeFunction m_constructor;
 
     String m_name;
 };

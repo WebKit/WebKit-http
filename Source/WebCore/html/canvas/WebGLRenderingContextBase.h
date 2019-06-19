@@ -43,6 +43,7 @@
 #include "WebGLTexture.h"
 #include "WebGLVertexArrayObjectOES.h"
 #include <JavaScriptCore/ConsoleTypes.h>
+#include <limits>
 #include <memory>
 
 #if ENABLE(WEBGL2)
@@ -93,7 +94,8 @@ class HTMLVideoElement;
 
 using WebGLCanvas = WTF::Variant<RefPtr<HTMLCanvasElement>, RefPtr<OffscreenCanvas>>;
 
-class WebGLRenderingContextBase : public GPUBasedCanvasRenderingContext, private ActivityStateChangeObserver {
+class WebGLRenderingContextBase : public GraphicsContext3D::Client, public GPUBasedCanvasRenderingContext, private ActivityStateChangeObserver {
+    WTF_MAKE_ISO_ALLOCATED(WebGLRenderingContextBase);
 public:
     static std::unique_ptr<WebGLRenderingContextBase> create(CanvasBase&, WebGLContextAttributes&, const String&);
     virtual ~WebGLRenderingContextBase();
@@ -118,8 +120,8 @@ public:
 
     using BufferDataSource = WTF::Variant<RefPtr<ArrayBuffer>, RefPtr<ArrayBufferView>>;
     void bufferData(GC3Denum target, long long size, GC3Denum usage);
-    void bufferData(GC3Denum target, std::optional<BufferDataSource>&&, GC3Denum usage);
-    void bufferSubData(GC3Denum target, long long offset, std::optional<BufferDataSource>&&);
+    void bufferData(GC3Denum target, Optional<BufferDataSource>&&, GC3Denum usage);
+    void bufferSubData(GC3Denum target, long long offset, Optional<BufferDataSource>&&);
 
     GC3Denum checkFramebufferStatus(GC3Denum target);
     virtual void clear(GC3Dbitfield mask) = 0;
@@ -171,10 +173,10 @@ public:
 
     RefPtr<WebGLActiveInfo> getActiveAttrib(WebGLProgram*, GC3Duint index);
     RefPtr<WebGLActiveInfo> getActiveUniform(WebGLProgram*, GC3Duint index);
-    std::optional<Vector<RefPtr<WebGLShader>>> getAttachedShaders(WebGLProgram*);
+    Optional<Vector<RefPtr<WebGLShader>>> getAttachedShaders(WebGLProgram*);
     GC3Dint getAttribLocation(WebGLProgram*, const String& name);
     WebGLAny getBufferParameter(GC3Denum target, GC3Denum pname);
-    std::optional<WebGLContextAttributes> getContextAttributes();
+    Optional<WebGLContextAttributes> getContextAttributes();
     GC3Denum getError();
     virtual WebGLExtension* getExtension(const String& name) = 0;
     virtual WebGLAny getFramebufferAttachmentParameter(GC3Denum target, GC3Denum attachment, GC3Denum pname) = 0;
@@ -186,7 +188,7 @@ public:
     String getShaderInfoLog(WebGLShader*);
     RefPtr<WebGLShaderPrecisionFormat> getShaderPrecisionFormat(GC3Denum shaderType, GC3Denum precisionType);
     String getShaderSource(WebGLShader*);
-    virtual std::optional<Vector<String>> getSupportedExtensions() = 0;
+    virtual Optional<Vector<String>> getSupportedExtensions() = 0;
     WebGLAny getTexParameter(GC3Denum target, GC3Denum pname);
     WebGLAny getUniform(WebGLProgram*, const WebGLUniformLocation*);
     RefPtr<WebGLUniformLocation> getUniformLocation(WebGLProgram*, const String&);
@@ -237,13 +239,13 @@ public:
     using TexImageSource = WTF::Variant<RefPtr<ImageBitmap>, RefPtr<ImageData>, RefPtr<HTMLImageElement>, RefPtr<HTMLCanvasElement>>;
 #endif
 
-    ExceptionOr<void> texImage2D(GC3Denum target, GC3Dint level, GC3Denum internalformat, GC3Denum format, GC3Denum type, std::optional<TexImageSource>);
+    ExceptionOr<void> texImage2D(GC3Denum target, GC3Dint level, GC3Denum internalformat, GC3Denum format, GC3Denum type, Optional<TexImageSource>);
 
     void texParameterf(GC3Denum target, GC3Denum pname, GC3Dfloat param);
     void texParameteri(GC3Denum target, GC3Denum pname, GC3Dint param);
 
     void texSubImage2D(GC3Denum target, GC3Dint level, GC3Dint xoffset, GC3Dint yoffset, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, RefPtr<ArrayBufferView>&&);
-    ExceptionOr<void> texSubImage2D(GC3Denum target, GC3Dint level, GC3Dint xoffset, GC3Dint yoffset, GC3Denum format, GC3Denum type, std::optional<TexImageSource>&&);
+    ExceptionOr<void> texSubImage2D(GC3Denum target, GC3Dint level, GC3Dint xoffset, GC3Dint yoffset, GC3Denum format, GC3Denum type, Optional<TexImageSource>&&);
 
     template <class TypedArray, class DataType>
     class TypedList {
@@ -329,10 +331,8 @@ public:
         SyntheticLostContext
     };
     void forceLostContext(LostContextMode);
-    void recycleContext();
     void forceRestoreContext();
     void loseContextImpl(LostContextMode);
-    void dispatchContextChangedEvent();
     WEBCORE_EXPORT void simulateContextChanged();
 
     GraphicsContext3D* graphicsContext3D() const { return m_context.get(); }
@@ -357,6 +357,12 @@ public:
 
     // Used for testing only, from Internals.
     WEBCORE_EXPORT void setFailNextGPUStatusCheck();
+
+    // GraphicsContext3D::Client
+    void didComposite() override;
+    void forceContextLost() override;
+    void recycleContext() override;
+    void dispatchContextChangedNotification() override;
 
 protected:
     WebGLRenderingContextBase(CanvasBase&, WebGLContextAttributes);
@@ -796,7 +802,7 @@ protected:
 
     // Helpers for simulating vertexAttrib0.
     void initVertexAttrib0();
-    std::optional<bool> simulateVertexAttrib0(GC3Duint numVertex);
+    Optional<bool> simulateVertexAttrib0(GC3Duint numVertex);
     bool validateSimulatedVertexAttrib0(GC3Duint numVertex);
     void restoreStatesAfterVertexAttrib0Simulation();
 
@@ -833,10 +839,11 @@ protected:
     HTMLCanvasElement* htmlCanvas();
     OffscreenCanvas* offscreenCanvas();
 
-    template <typename T> inline std::optional<T> checkedAddAndMultiply(T value, T add, T multiply);
+    template <typename T> inline Optional<T> checkedAddAndMultiply(T value, T add, T multiply);
+    template <typename T> unsigned getMaxIndex(const RefPtr<JSC::ArrayBuffer> elementArrayBuffer, GC3Dintptr uoffset, GC3Dsizei n);
 
 private:
-    bool validateArrayBufferType(const char* functionName, GC3Denum type, std::optional<JSC::TypedArrayType>);
+    bool validateArrayBufferType(const char* functionName, GC3Denum type, Optional<JSC::TypedArrayType>);
     void registerWithWebGLStateTracker();
     void checkForContextLossHandling();
 
@@ -847,15 +854,39 @@ private:
 };
 
 template <typename T>
-inline std::optional<T> WebGLRenderingContextBase::checkedAddAndMultiply(T value, T add, T multiply)
+inline Optional<T> WebGLRenderingContextBase::checkedAddAndMultiply(T value, T add, T multiply)
 {
     Checked<T, RecordOverflow> checkedResult = Checked<T>(value);
     checkedResult += Checked<T>(add);
     checkedResult *= Checked<T>(multiply);
     if (checkedResult.hasOverflowed())
-        return std::nullopt;
+        return WTF::nullopt;
 
     return checkedResult.unsafeGet();
+}
+
+template<typename T>
+inline unsigned WebGLRenderingContextBase::getMaxIndex(const RefPtr<JSC::ArrayBuffer> elementArrayBuffer, GC3Dintptr uoffset, GC3Dsizei n)
+{
+    unsigned maxIndex = 0;
+    T restartIndex = 0;
+
+#if ENABLE(WEBGL2)
+    // WebGL 2 spec enforces that GL_PRIMITIVE_RESTART_FIXED_INDEX is always enabled, so ignore the restart index.
+    if (isWebGL2())
+        restartIndex = std::numeric_limits<T>::max();
+#endif
+
+    // Make uoffset an element offset.
+    uoffset /= sizeof(T);
+    const T* p = static_cast<const T*>(elementArrayBuffer->data()) + uoffset;
+    while (n-- > 0) {
+        if (*p != restartIndex && *p > maxIndex)
+            maxIndex = *p;
+        ++p;
+    }
+
+    return maxIndex;
 }
 
 } // namespace WebCore

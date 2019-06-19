@@ -30,13 +30,13 @@
 #include "SoupNetworkSession.h"
 
 #include "AuthenticationChallenge.h"
-#include "FileSystem.h"
 #include "GUniquePtrSoup.h"
 #include "Logging.h"
 #include "SoupNetworkProxySettings.h"
 #include <glib/gstdio.h>
 #include <libsoup/soup.h>
 #include <pal/crypto/CryptoDigest.h>
+#include <wtf/FileSystem.h>
 #include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/Base64.h>
@@ -98,14 +98,16 @@ private:
     HashSet<String> m_certificates;
 };
 
-static HashMap<String, HostTLSCertificateSet, ASCIICaseInsensitiveHash>& clientCertificates()
+using AllowedCertificatesMap = HashMap<String, HostTLSCertificateSet, ASCIICaseInsensitiveHash>;
+
+static AllowedCertificatesMap& allowedCertificates()
 {
-    static NeverDestroyed<HashMap<String, HostTLSCertificateSet, ASCIICaseInsensitiveHash>> certificates;
+    static NeverDestroyed<AllowedCertificatesMap> certificates;
     return certificates;
 }
 
 SoupNetworkSession::SoupNetworkSession(PAL::SessionID sessionID, SoupCookieJar* cookieJar)
-    : m_soupSession(adoptGRef(soup_session_async_new()))
+    : m_soupSession(adoptGRef(soup_session_new()))
 {
     // Values taken from http://www.browserscope.org/ following
     // the rule "Do What Every Other Modern Browser Is Doing". They seem
@@ -123,13 +125,10 @@ SoupNetworkSession::SoupNetworkSession(PAL::SessionID sessionID, SoupCookieJar* 
     g_object_set(m_soupSession.get(),
         SOUP_SESSION_MAX_CONNS, maxConnections,
         SOUP_SESSION_MAX_CONNS_PER_HOST, maxConnectionsPerHost,
-        SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_CONTENT_DECODER,
+        SOUP_SESSION_TIMEOUT, 0,
+        SOUP_SESSION_IDLE_TIMEOUT, 0,
         SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_CONTENT_SNIFFER,
-        SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_PROXY_RESOLVER_DEFAULT,
         SOUP_SESSION_ADD_FEATURE, jar.get(),
-        SOUP_SESSION_USE_THREAD_CONTEXT, TRUE,
-        SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, TRUE,
-        SOUP_SESSION_SSL_STRICT, TRUE,
         nullptr);
 
     setupCustomProtocols();
@@ -157,7 +156,7 @@ SoupNetworkSession::~SoupNetworkSession() = default;
 void SoupNetworkSession::setupLogger()
 {
 #if !LOG_DISABLED
-    if (LogNetwork.state != WTFLogChannelOn || soup_session_get_feature(m_soupSession.get(), SOUP_TYPE_LOGGER))
+    if (LogNetwork.state != WTFLogChannelState::On || soup_session_get_feature(m_soupSession.get(), SOUP_TYPE_LOGGER))
         return;
 
     GRefPtr<SoupLogger> logger = adoptGRef(soup_logger_new(SOUP_LOGGER_LOG_BODY, -1));
@@ -279,24 +278,24 @@ void SoupNetworkSession::setShouldIgnoreTLSErrors(bool ignoreTLSErrors)
     gIgnoreTLSErrors = ignoreTLSErrors;
 }
 
-std::optional<ResourceError> SoupNetworkSession::checkTLSErrors(const URL& requestURL, GTlsCertificate* certificate, GTlsCertificateFlags tlsErrors)
+Optional<ResourceError> SoupNetworkSession::checkTLSErrors(const URL& requestURL, GTlsCertificate* certificate, GTlsCertificateFlags tlsErrors)
 {
     if (gIgnoreTLSErrors)
-        return std::nullopt;
+        return WTF::nullopt;
 
     if (!tlsErrors)
-        return std::nullopt;
+        return WTF::nullopt;
 
-    auto it = clientCertificates().find(requestURL.host().toString());
-    if (it != clientCertificates().end() && it->value.contains(certificate))
-        return std::nullopt;
+    auto it = allowedCertificates().find(requestURL.host().toStringWithoutCopying());
+    if (it != allowedCertificates().end() && it->value.contains(certificate))
+        return WTF::nullopt;
 
     return ResourceError::tlsError(requestURL, tlsErrors, certificate);
 }
 
 void SoupNetworkSession::allowSpecificHTTPSCertificateForHost(const CertificateInfo& certificateInfo, const String& host)
 {
-    clientCertificates().add(host, HostTLSCertificateSet()).iterator->value.add(certificateInfo.certificate());
+    allowedCertificates().add(host, HostTLSCertificateSet()).iterator->value.add(certificateInfo.certificate());
 }
 
 } // namespace WebCore

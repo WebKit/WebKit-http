@@ -55,7 +55,7 @@
     [CEReactions, MayThrowException] Attr removeAttributeNode(Attr attr);
 
     [EnabledAtRuntime=ShadowDOM, MayThrowException] ShadowRoot attachShadow(ShadowRootInit init);
-    [EnabledAtRuntime=ShadowDOM, ImplementedAs=shadowRootForBindings, CallWith=ScriptState] readonly attribute ShadowRoot? shadowRoot;
+    [EnabledAtRuntime=ShadowDOM, ImplementedAs=shadowRootForBindings, CallWith=ExecState] readonly attribute ShadowRoot? shadowRoot;
 
     [MayThrowException] Element? closest(DOMString selectors);
     [MayThrowException] boolean matches(DOMString selectors);
@@ -97,6 +97,11 @@
     // FIXME: Should we add unprefixed versions?
     [Conditional=FULLSCREEN_API, EnabledBySetting=FullScreen, ImplementedAs=webkitRequestFullscreen] void webkitRequestFullScreen(); // Prefixed Mozilla version.
     [Conditional=FULLSCREEN_API, EnabledBySetting=FullScreen] void webkitRequestFullscreen(); // Prefixed W3C version.
+
+    // Extensions from Pointer Events API (https://w3c.github.io/pointerevents/#extensions-to-the-element-interface).
+    [Conditional=POINTER_EVENTS, EnabledAtRuntime=PointerEvents, MayThrowException] void setPointerCapture(long pointerId);
+    [Conditional=POINTER_EVENTS, EnabledAtRuntime=PointerEvents, MayThrowException] void releasePointerCapture(long pointerId);
+    [Conditional=POINTER_EVENTS, EnabledAtRuntime=PointerEvents] boolean hasPointerCapture(long pointerId);
 
     // Extensions from Pointer Lock API (https://w3c.github.io/pointerlock/#extensions-to-the-element-interface).
     [Conditional=POINTER_LOCK] void requestPointerLock();
@@ -141,17 +146,6 @@
 
     // Non standard event handler (https://developer.apple.com/reference/webkitjs/element/1629580-onwebkitplaybacktargetavailabili).
     [NotEnumerable, Conditional=WIRELESS_PLAYBACK_TARGET] attribute EventHandler onwebkitplaybacktargetavailabilitychanged;
-
-    // Accessibility events.
-    [EnabledAtRuntime=AccessibilityObjectModel] attribute EventHandler onaccessiblecontextmenu;
-    [EnabledAtRuntime=AccessibilityObjectModel] attribute EventHandler onaccessibleclick;
-    [EnabledAtRuntime=AccessibilityObjectModel] attribute EventHandler onaccessibledecrement;
-    [EnabledAtRuntime=AccessibilityObjectModel] attribute EventHandler onaccessibledismiss;
-    [EnabledAtRuntime=AccessibilityObjectModel] attribute EventHandler onaccessiblefocus;
-    [EnabledAtRuntime=AccessibilityObjectModel] attribute EventHandler onaccessibleincrement;
-    [EnabledAtRuntime=AccessibilityObjectModel] attribute EventHandler onaccessiblescrollintoview;
-    [EnabledAtRuntime=AccessibilityObjectModel] attribute EventHandler onaccessiblesetvalue;
-    [EnabledAtRuntime=AccessibilityObjectModel] attribute EventHandler onaccessibleselect;
 };
 
 dictionary ShadowRootInit {

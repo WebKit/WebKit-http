@@ -49,8 +49,7 @@ public:
 
     bool enqueue(RefPtr<JSC::ArrayBuffer>&&);
 
-    template<class ResolveResultType>
-    void error(const ResolveResultType&);
+    void error(const Exception&);
 
     void close() { invoke(*globalObject().globalExec(), jsController(), "close", JSC::jsUndefined()); }
 
@@ -99,18 +98,16 @@ inline bool ReadableStreamDefaultController::enqueue(RefPtr<JSC::ArrayBuffer>&& 
     }
     auto length = buffer->byteLength();
     auto chunk = JSC::Uint8Array::create(WTFMove(buffer), 0, length);
-    ASSERT(chunk);
-    enqueue(state, toJS(&state, &globalObject, chunk.get()));
+    enqueue(state, toJS(&state, &globalObject, chunk.ptr()));
     scope.assertNoException();
     return true;
 }
 
-template<>
-inline void ReadableStreamDefaultController::error<String>(const String& errorMessage)
+inline void ReadableStreamDefaultController::error(const Exception& exception)
 {
     JSC::ExecState& state = globalExec();
     JSC::JSLockHolder locker(&state);
-    error(state, JSC::createTypeError(&state, errorMessage));
+    error(state, createDOMException(&state, exception.code(), exception.message()));
 }
 
 } // namespace WebCore

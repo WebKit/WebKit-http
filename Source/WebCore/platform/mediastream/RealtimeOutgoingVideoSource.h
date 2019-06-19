@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc.
+ * Copyright (C) 2017-2019 Apple Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted, provided that the following conditions
@@ -34,23 +34,30 @@
 #include "MediaStreamTrackPrivate.h"
 #include <Timer.h>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+ALLOW_UNUSED_PARAMETERS_BEGIN
 
 #include <webrtc/api/mediastreaminterface.h>
 #include <webrtc/common_video/include/i420_buffer_pool.h>
 
-#pragma GCC diagnostic pop
+ALLOW_UNUSED_PARAMETERS_END
 
+#include <wtf/LoggerHelper.h>
 #include <wtf/Optional.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
 namespace WebCore {
 
-class RealtimeOutgoingVideoSource : public ThreadSafeRefCounted<RealtimeOutgoingVideoSource, WTF::DestructionThread::Main>, public webrtc::VideoTrackSourceInterface, private MediaStreamTrackPrivate::Observer {
+class RealtimeOutgoingVideoSource
+    : public ThreadSafeRefCounted<RealtimeOutgoingVideoSource, WTF::DestructionThread::Main>
+    , public webrtc::VideoTrackSourceInterface
+    , private MediaStreamTrackPrivate::Observer
+#if !RELEASE_LOG_DISABLED
+    , private LoggerHelper
+#endif
+{
 public:
     static Ref<RealtimeOutgoingVideoSource> create(Ref<MediaStreamTrackPrivate>&& videoSource);
-    ~RealtimeOutgoingVideoSource() { stop(); }
+    ~RealtimeOutgoingVideoSource();
 
     void stop();
     bool setSource(Ref<MediaStreamTrackPrivate>&&);
@@ -69,22 +76,29 @@ protected:
     explicit RealtimeOutgoingVideoSource(Ref<MediaStreamTrackPrivate>&&);
 
     void sendFrame(rtc::scoped_refptr<webrtc::VideoFrameBuffer>&&);
+    bool isSilenced() const { return m_muted || !m_enabled; }
 
-    Vector<rtc::VideoSinkInterface<webrtc::VideoFrame>*> m_sinks;
-    webrtc::I420BufferPool m_bufferPool;
+    virtual rtc::scoped_refptr<webrtc::VideoFrameBuffer> createBlackFrame(size_t width, size_t height) = 0;
 
-    bool m_enabled { true };
-    bool m_muted { false };
-    uint32_t m_width { 0 };
-    uint32_t m_height { 0 };
     bool m_shouldApplyRotation { false };
     webrtc::VideoRotation m_currentRotation { webrtc::kVideoRotation_0 };
+
+#if !RELEASE_LOG_DISABLED
+    // LoggerHelper API
+    const Logger& logger() const final { return m_logger.get(); }
+    const void* logIdentifier() const final { return m_logIdentifier; }
+    const char* logClassName() const final { return "RealtimeOutgoingVideoSource"; }
+    WTFLogChannel& logChannel() const final;
+#endif
 
 private:
     void sendBlackFramesIfNeeded();
     void sendOneBlackFrame();
     void initializeFromSource();
     void updateBlackFramesSending();
+
+    void observeSource();
+    void unobserveSource();
 
     // Notifier API
     void RegisterObserver(webrtc::ObserverInterface*) final { }
@@ -114,10 +128,24 @@ private:
     void trackEnded(MediaStreamTrackPrivate&) final { }
 
     Ref<MediaStreamTrackPrivate> m_videoSource;
-    std::optional<RealtimeMediaSourceSettings> m_initialSettings;
-    bool m_isStopped { false };
+    Optional<RealtimeMediaSourceSettings> m_initialSettings;
     Timer m_blackFrameTimer;
     rtc::scoped_refptr<webrtc::VideoFrameBuffer> m_blackFrame;
+
+    mutable RecursiveLock m_sinksLock;
+    HashSet<rtc::VideoSinkInterface<webrtc::VideoFrame>*> m_sinks;
+
+    bool m_enabled { true };
+    bool m_muted { false };
+    uint32_t m_width { 0 };
+    uint32_t m_height { 0 };
+
+#if !RELEASE_LOG_DISABLED
+    Ref<const Logger> m_logger;
+    const void* m_logIdentifier;
+    MonotonicTime m_lastFrameLogTime;
+    unsigned m_frameCount { 0 };
+#endif
 };
 
 } // namespace WebCore

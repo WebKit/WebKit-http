@@ -26,9 +26,11 @@
 #include "config.h"
 #include "PageNetworkAgent.h"
 
+#include "CustomHeaderFields.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
+#include "InstrumentingAgents.h"
 #include "Page.h"
 #include "ScriptState.h"
 #include "WebSocket.h"
@@ -38,23 +40,28 @@ namespace WebCore {
 
 using namespace Inspector;
 
-PageNetworkAgent::PageNetworkAgent(PageAgentContext& context, InspectorPageAgent* pageAgent)
+PageNetworkAgent::PageNetworkAgent(PageAgentContext& context)
     : InspectorNetworkAgent(context)
-    , m_pageAgent(pageAgent)
+    , m_inspectedPage(context.inspectedPage)
 {
-    ASSERT(m_pageAgent);
 }
 
 String PageNetworkAgent::loaderIdentifier(DocumentLoader* loader)
 {
-    return m_pageAgent->loaderId(loader);
+    if (loader) {
+        if (auto* pageAgent = m_instrumentingAgents.inspectorPageAgent())
+            return pageAgent->loaderId(loader);
+    }
+    return { };
 }
 
 String PageNetworkAgent::frameIdentifier(DocumentLoader* loader)
 {
-    if (!loader)
-        return { };
-    return m_pageAgent->frameId(loader->frame());
+    if (loader) {
+        if (auto* pageAgent = m_instrumentingAgents.inspectorPageAgent())
+            return pageAgent->frameId(loader->frame());
+    }
+    return { };
 }
 
 Vector<WebSocket*> PageNetworkAgent::activeWebSockets(const LockHolder& lock)
@@ -69,12 +76,15 @@ Vector<WebSocket*> PageNetworkAgent::activeWebSockets(const LockHolder& lock)
         if (!channel)
             continue;
 
+        if (!channel->hasCreatedHandshake())
+            continue;
+
         if (!is<Document>(webSocket->scriptExecutionContext()))
             continue;
 
         // FIXME: <https://webkit.org/b/168475> Web Inspector: Correctly display iframe's WebSockets
         auto* document = downcast<Document>(webSocket->scriptExecutionContext());
-        if (document->page() != &m_pageAgent->page())
+        if (document->page() != &m_inspectedPage)
             continue;
 
         webSockets.append(webSocket);
@@ -85,12 +95,18 @@ Vector<WebSocket*> PageNetworkAgent::activeWebSockets(const LockHolder& lock)
 
 void PageNetworkAgent::setResourceCachingDisabled(bool disabled)
 {
-    m_pageAgent->page().setResourceCachingDisabledOverride(disabled);
+    m_inspectedPage.setResourceCachingDisabledOverride(disabled);
 }
 
 ScriptExecutionContext* PageNetworkAgent::scriptExecutionContext(ErrorString& errorString, const String& frameId)
 {
-    auto* frame = m_pageAgent->assertFrame(errorString, frameId);
+    auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
+    if (!pageAgent) {
+        errorString = "Missing Page agent"_s;
+        return nullptr;
+    }
+
+    auto* frame = pageAgent->assertFrame(errorString, frameId);
     if (!frame)
         return nullptr;
 

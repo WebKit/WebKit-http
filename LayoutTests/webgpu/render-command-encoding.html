@@ -1,0 +1,48 @@
+<!DOCTYPE html><!-- webkit-test-runner [ experimental:WebGPUEnabled=true ] -->
+<meta charset=utf-8>
+<title>Get the GPUDevice and ask for the GPUQueue</title>
+<body>
+<script src="../resources/testharness.js"></script>
+<script src="../resources/testharnessreport.js"></script>
+<script src="js/webgpu-functions.js"></script>
+<script>
+const shaders = `
+#include <metal_stdlib>
+    
+using namespace metal;
+
+struct Vertex
+{
+    float4 position [[position]];
+};
+
+vertex Vertex vertex_main()
+{
+    return Vertex { float4(0, 0, 0, 1) };
+}
+
+fragment float4 fragment_main(Vertex vertexIn [[stage_in]])
+{
+    return vertexIn.position;
+}
+`
+promise_test(async () => {
+    const device = await getBasicDevice();
+
+    const canvas = document.createElement("canvas");
+    const swapChain = createBasicSwapChain(canvas, device);
+    const shaderModule = device.createShaderModule({ code: shaders });
+    const pipeline = createBasicPipeline(shaderModule, device);
+
+    const commandEncoder = device.createCommandEncoder();
+    assert_true(commandEncoder instanceof GPUCommandEncoder, "createCommandEncoder returned a GPUCommandEncoder");
+
+    const encoder = beginBasicRenderPass(swapChain, commandEncoder);
+    assert_true(encoder instanceof GPURenderPassEncoder, "beginRenderPass() returned a GPURenderPassEncoder");
+
+    encoder.setPipeline(pipeline);
+    encoder.endPass();
+}, "GPURenderPassEncoder created and successfully ended");
+
+</script>
+</body>

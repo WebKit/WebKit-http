@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,26 +29,40 @@
 #include "DataReference.h"
 #include "LibWebRTCNetwork.h"
 #include "NetworkConnectionToWebProcessMessages.h"
-#include "WebCacheStorageConnection.h"
-#include "WebCacheStorageConnectionMessages.h"
+#include "ServiceWorkerClientFetchMessages.h"
+#include "StorageAreaMap.h"
+#include "StorageAreaMapMessages.h"
 #include "WebCacheStorageProvider.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebIDBConnectionToServerMessages.h"
 #include "WebLoaderStrategy.h"
 #include "WebMDNSRegisterMessages.h"
 #include "WebPage.h"
 #include "WebPageMessages.h"
+#include "WebPaymentCoordinator.h"
 #include "WebProcess.h"
 #include "WebRTCMonitor.h"
 #include "WebRTCMonitorMessages.h"
 #include "WebRTCResolverMessages.h"
 #include "WebRTCSocketMessages.h"
 #include "WebResourceLoaderMessages.h"
+#include "WebSWClientConnection.h"
+#include "WebSWClientConnectionMessages.h"
+#include "WebSWContextManagerConnection.h"
+#include "WebSWContextManagerConnectionMessages.h"
+#include "WebServiceWorkerProvider.h"
+#include "WebSocketChannel.h"
+#include "WebSocketChannelMessages.h"
 #include "WebSocketStream.h"
 #include "WebSocketStreamMessages.h"
 #include <WebCore/CachedResource.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/SharedBuffer.h>
 #include <pal/SessionID.h>
+
+#if ENABLE(APPLE_PAY_REMOTE_UI)
+#include "WebPaymentCoordinatorMessages.h"
+#endif
 
 namespace WebKit {
 using namespace WebCore;
@@ -76,9 +90,18 @@ void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IP
             stream->didReceiveMessage(connection, decoder);
         return;
     }
+    if (decoder.messageReceiverName() == Messages::WebSocketChannel::messageReceiverName()) {
+        WebProcess::singleton().webSocketChannelManager().didReceiveMessage(connection, decoder);
+        return;
+    }
     if (decoder.messageReceiverName() == Messages::WebPage::messageReceiverName()) {
-        if (auto* webPage = WebProcess::singleton().webPage(decoder.destinationID()))
+        if (auto* webPage = WebProcess::singleton().webPage(makeObjectIdentifier<PageIdentifierType>(decoder.destinationID())))
             webPage->didReceiveWebPageMessage(connection, decoder);
+        return;
+    }
+    if (decoder.messageReceiverName() == Messages::StorageAreaMap::messageReceiverName()) {
+        if (auto* stoargeAreaMap = WebProcess::singleton().storageAreaMap(decoder.destinationID()))
+            stoargeAreaMap->didReceiveMessage(connection, decoder);
         return;
     }
 
@@ -102,16 +125,64 @@ void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IP
         return;
     }
 #endif
-    if (decoder.messageReceiverName() == Messages::WebCacheStorageConnection::messageReceiverName()) {
-        WebProcess::singleton().cacheStorageProvider().process(connection, decoder);
+
+#if ENABLE(INDEXED_DATABASE)
+    if (decoder.messageReceiverName() == Messages::WebIDBConnectionToServer::messageReceiverName()) {
+        if (auto idbConnection = m_webIDBConnectionsByIdentifier.get(decoder.destinationID()))
+            idbConnection->didReceiveMessage(connection, decoder);
         return;
     }
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    if (decoder.messageReceiverName() == Messages::WebSWClientConnection::messageReceiverName()) {
+        auto serviceWorkerConnection = m_swConnectionsByIdentifier.get(makeObjectIdentifier<SWServerConnectionIdentifierType>(decoder.destinationID()));
+        if (serviceWorkerConnection)
+            serviceWorkerConnection->didReceiveMessage(connection, decoder);
+        return;
+    }
+    if (decoder.messageReceiverName() == Messages::ServiceWorkerClientFetch::messageReceiverName()) {
+        WebServiceWorkerProvider::singleton().didReceiveServiceWorkerClientFetchMessage(connection, decoder);
+        return;
+    }
+    if (decoder.messageReceiverName() == Messages::WebSWContextManagerConnection::messageReceiverName()) {
+        ASSERT(SWContextManager::singleton().connection());
+        if (auto* contextManagerConnection = SWContextManager::singleton().connection())
+            static_cast<WebSWContextManagerConnection&>(*contextManagerConnection).didReceiveMessage(connection, decoder);
+        return;
+    }
+#endif
+
+#if ENABLE(APPLE_PAY_REMOTE_UI)
+    if (decoder.messageReceiverName() == Messages::WebPaymentCoordinator::messageReceiverName()) {
+        if (auto webPage = WebProcess::singleton().webPage(makeObjectIdentifier<PageIdentifierType>(decoder.destinationID())))
+            webPage->paymentCoordinator()->didReceiveMessage(connection, decoder);
+        return;
+    }
+#endif
 
     didReceiveNetworkProcessConnectionMessage(connection, decoder);
 }
 
-void NetworkProcessConnection::didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&)
+void NetworkProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
+#if ENABLE(SERVICE_WORKER)
+    if (decoder.messageReceiverName() == Messages::WebSWContextManagerConnection::messageReceiverName()) {
+        ASSERT(SWContextManager::singleton().connection());
+        if (auto* contextManagerConnection = SWContextManager::singleton().connection())
+            static_cast<WebSWContextManagerConnection&>(*contextManagerConnection).didReceiveSyncMessage(connection, decoder, replyEncoder);
+        return;
+    }
+#endif
+
+#if ENABLE(APPLE_PAY_REMOTE_UI)
+    if (decoder.messageReceiverName() == Messages::WebPaymentCoordinator::messageReceiverName()) {
+        if (auto webPage = WebProcess::singleton().webPage(makeObjectIdentifier<PageIdentifierType>(decoder.destinationID())))
+            webPage->paymentCoordinator()->didReceiveSyncMessage(connection, decoder, replyEncoder);
+        return;
+    }
+#endif
+
     ASSERT_NOT_REACHED();
 }
 
@@ -121,32 +192,28 @@ void NetworkProcessConnection::didClose(IPC::Connection&)
     Ref<NetworkProcessConnection> protector(*this);
     WebProcess::singleton().networkProcessConnectionClosed(this);
 
-    Vector<String> dummyFilenames;
-    for (auto& handler : m_writeBlobToFileCompletionHandlers.values())
-        handler(dummyFilenames);
+#if ENABLE(INDEXED_DATABASE)
+    for (auto& connection : m_webIDBConnectionsByIdentifier.values())
+        connection->connectionToServerLost();
+    
+    m_webIDBConnectionsByIdentifier.clear();
+    m_webIDBConnectionsBySession.clear();
+#endif
 
-    m_writeBlobToFileCompletionHandlers.clear();
+#if ENABLE(SERVICE_WORKER)
+    auto connections = std::exchange(m_swConnectionsByIdentifier, { });
+    for (auto& connection : connections.values())
+        connection->connectionToServerLost();
+#endif
 }
 
 void NetworkProcessConnection::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
 {
 }
 
-void NetworkProcessConnection::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void (const Vector<String>& filePaths)>&& completionHandler)
+void NetworkProcessConnection::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, CompletionHandler<void(Vector<String>&& filePaths)>&& completionHandler)
 {
-    static uint64_t writeBlobToFileIdentifier;
-    uint64_t requestIdentifier = ++writeBlobToFileIdentifier;
-
-    m_writeBlobToFileCompletionHandlers.set(requestIdentifier, WTFMove(completionHandler));
-
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::WriteBlobsToTemporaryFiles(blobURLs, requestIdentifier), 0);
-}
-
-void NetworkProcessConnection::didWriteBlobsToTemporaryFiles(uint64_t requestIdentifier, const Vector<String>& filenames)
-{
-    auto handler = m_writeBlobToFileCompletionHandlers.take(requestIdentifier);
-    if (handler)
-        handler(filenames);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().sendWithAsyncReply(Messages::NetworkConnectionToWebProcess::WriteBlobsToTemporaryFiles(blobURLs), WTFMove(completionHandler));
 }
 
 void NetworkProcessConnection::didFinishPingLoad(uint64_t pingLoadIdentifier, ResourceError&& error, ResourceResponse&& response)
@@ -181,4 +248,46 @@ void NetworkProcessConnection::didCacheResource(const ResourceRequest& request, 
 }
 #endif
 
+#if ENABLE(INDEXED_DATABASE)
+WebIDBConnectionToServer& NetworkProcessConnection::idbConnectionToServerForSession(PAL::SessionID sessionID)
+{
+    return *m_webIDBConnectionsBySession.ensure(sessionID, [&] {
+        auto connection = WebIDBConnectionToServer::create(sessionID);
+        
+        auto result = m_webIDBConnectionsByIdentifier.add(connection->identifier(), connection.copyRef());
+        ASSERT_UNUSED(result, result.isNewEntry);
+        
+        return connection;
+    }).iterator->value;
+}
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+WebSWClientConnection& NetworkProcessConnection::serviceWorkerConnectionForSession(PAL::SessionID sessionID)
+{
+    ASSERT(sessionID.isValid());
+    return *m_swConnectionsBySession.ensure(sessionID, [sessionID] {
+        return WebSWClientConnection::create(sessionID);
+    }).iterator->value;
+}
+
+void NetworkProcessConnection::removeSWClientConnection(WebSWClientConnection& connection)
+{
+    ASSERT(m_swConnectionsByIdentifier.contains(connection.serverConnectionIdentifier()));
+    m_swConnectionsByIdentifier.remove(connection.serverConnectionIdentifier());
+}
+
+SWServerConnectionIdentifier NetworkProcessConnection::initializeSWClientConnection(WebSWClientConnection& connection)
+{
+    SWServerConnectionIdentifier identifier;
+    bool result = m_connection->sendSync(Messages::NetworkConnectionToWebProcess::EstablishSWServerConnection(connection.sessionID()), Messages::NetworkConnectionToWebProcess::EstablishSWServerConnection::Reply(identifier), 0);
+    ASSERT_UNUSED(result, result);
+
+    ASSERT(!m_swConnectionsByIdentifier.contains(identifier));
+    m_swConnectionsByIdentifier.add(identifier, &connection);
+
+    return identifier;
+}
+
+#endif
 } // namespace WebKit

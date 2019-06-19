@@ -162,7 +162,8 @@ void RenderReplaced::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     GraphicsContextStateSaver savedGraphicsContext(paintInfo.context(), false);
     if (element() && element()->parentOrShadowHostElement()) {
         auto* parentContainer = element()->parentOrShadowHostElement();
-        if (draggedContentContainsReplacedElement(document().markers().markersFor(parentContainer, DocumentMarker::DraggedContent), *element())) {
+        ASSERT(parentContainer);
+        if (draggedContentContainsReplacedElement(document().markers().markersFor(*parentContainer, DocumentMarker::DraggedContent), *element())) {
             savedGraphicsContext.save();
             paintInfo.context().setAlpha(0.25);
         }
@@ -435,7 +436,7 @@ void RenderReplaced::computeIntrinsicRatioInformation(FloatSize& intrinsicSize, 
 LayoutUnit RenderReplaced::computeConstrainedLogicalWidth(ShouldComputePreferred shouldComputePreferred) const
 {
     if (shouldComputePreferred == ComputePreferred)
-        return computeReplacedLogicalWidthRespectingMinMaxWidth(LayoutUnit(), ComputePreferred);
+        return computeReplacedLogicalWidthRespectingMinMaxWidth(0_lu, ComputePreferred);
 
     // The aforementioned 'constraint equation' used for block-level, non-replaced
     // elements in normal flow:
@@ -447,7 +448,7 @@ LayoutUnit RenderReplaced::computeConstrainedLogicalWidth(ShouldComputePreferred
     // This solves above equation for 'width' (== logicalWidth).
     LayoutUnit marginStart = minimumValueForLength(style().marginStart(), logicalWidth);
     LayoutUnit marginEnd = minimumValueForLength(style().marginEnd(), logicalWidth);
-    logicalWidth = std::max(LayoutUnit(), (logicalWidth - (marginStart + marginEnd + (size().width() - clientWidth()))));
+    logicalWidth = std::max(0_lu, (logicalWidth - (marginStart + marginEnd + (size().width() - clientWidth()))));
     return computeReplacedLogicalWidthRespectingMinMaxWidth(logicalWidth, shouldComputePreferred);
 }
 
@@ -478,7 +479,7 @@ LayoutUnit RenderReplaced::computeReplacedLogicalWidth(ShouldComputePreferred sh
             // of 'width' is: (used height) * (intrinsic ratio)
             if (intrinsicRatio && ((computedHeightIsAuto && !hasIntrinsicWidth && hasIntrinsicHeight) || !computedHeightIsAuto)) {
                 LayoutUnit estimatedUsedWidth = hasIntrinsicWidth ? LayoutUnit(constrainedSize.width()) : computeConstrainedLogicalWidth(shouldComputePreferred);
-                LayoutUnit logicalHeight = computeReplacedLogicalHeight(std::optional<LayoutUnit>(estimatedUsedWidth));
+                LayoutUnit logicalHeight = computeReplacedLogicalHeight(Optional<LayoutUnit>(estimatedUsedWidth));
                 return computeReplacedLogicalWidthRespectingMinMaxWidth(roundToInt(round(logicalHeight * intrinsicRatio)), shouldComputePreferred);
             }
 
@@ -508,7 +509,7 @@ LayoutUnit RenderReplaced::computeReplacedLogicalWidth(ShouldComputePreferred sh
     return computeReplacedLogicalWidthRespectingMinMaxWidth(intrinsicLogicalWidth(), shouldComputePreferred);
 }
 
-LayoutUnit RenderReplaced::computeReplacedLogicalHeight(std::optional<LayoutUnit> estimatedUsedWidth) const
+LayoutUnit RenderReplaced::computeReplacedLogicalHeight(Optional<LayoutUnit> estimatedUsedWidth) const
 {
     // 10.5 Content height: the 'height' property: http://www.w3.org/TR/CSS21/visudet.html#propdef-height
     if (hasReplacedLogicalHeight())
@@ -631,10 +632,10 @@ LayoutRect RenderReplaced::localSelectionRect(bool checkWhetherSelected) const
         return LayoutRect(LayoutPoint(), size());
     
     const RootInlineBox& rootBox = m_inlineBoxWrapper->root();
-    LayoutUnit newLogicalTop = rootBox.blockFlow().style().isFlippedBlocksWritingMode() ? m_inlineBoxWrapper->logicalBottom() - rootBox.selectionBottom() : rootBox.selectionTop() - m_inlineBoxWrapper->logicalTop();
+    LayoutUnit newLogicalTop { rootBox.blockFlow().style().isFlippedBlocksWritingMode() ? m_inlineBoxWrapper->logicalBottom() - rootBox.selectionBottom() : rootBox.selectionTop() - m_inlineBoxWrapper->logicalTop() };
     if (rootBox.blockFlow().style().isHorizontalWritingMode())
-        return LayoutRect(0, newLogicalTop, width(), rootBox.selectionHeight());
-    return LayoutRect(newLogicalTop, 0, rootBox.selectionHeight(), height());
+        return LayoutRect(0_lu, newLogicalTop, width(), rootBox.selectionHeight());
+    return LayoutRect(newLogicalTop, 0_lu, rootBox.selectionHeight(), height());
 }
 
 void RenderReplaced::setSelectionState(SelectionState state)

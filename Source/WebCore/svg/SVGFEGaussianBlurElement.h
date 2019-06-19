@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2007 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -22,8 +22,6 @@
 #pragma once
 
 #include "FEGaussianBlur.h"
-#include "SVGAnimatedEnumeration.h"
-#include "SVGAnimatedNumber.h"
 #include "SVGFEConvolveMatrixElement.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
 
@@ -36,38 +34,32 @@ public:
 
     void setStdDeviation(float stdDeviationX, float stdDeviationY);
 
-    String in1() const { return m_in1.currentValue(attributeOwnerProxy()); }
-    float stdDeviationX() const { return m_stdDeviationX.currentValue(attributeOwnerProxy()); }
-    float stdDeviationY() const { return m_stdDeviationY.currentValue(attributeOwnerProxy()); }
-    EdgeModeType edgeMode() const { return m_edgeMode.currentValue(attributeOwnerProxy()); }
+    String in1() const { return m_in1->currentValue(); }
+    float stdDeviationX() const { return m_stdDeviationX->currentValue(); }
+    float stdDeviationY() const { return m_stdDeviationY->currentValue(); }
+    EdgeModeType edgeMode() const { return m_edgeMode->currentValue<EdgeModeType>(); }
 
-    RefPtr<SVGAnimatedString> in1Animated() { return m_in1.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedNumber> stdDeviationXAnimated() { return m_stdDeviationX.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedNumber> stdDeviationYAnimated() { return m_stdDeviationY.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedEnumeration> edgeModeAnimated() { return m_edgeMode.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedString& in1Animated() { return m_in1; }
+    SVGAnimatedNumber& stdDeviationXAnimated() { return m_stdDeviationX; }
+    SVGAnimatedNumber& stdDeviationYAnimated() { return m_stdDeviationY; }
+    SVGAnimatedEnumeration& edgeModeAnimated() { return m_edgeMode; }
 
 private:
     SVGFEGaussianBlurElement(const QualifiedName&, Document&);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGFEGaussianBlurElement, SVGFilterPrimitiveStandardAttributes>;
-    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
-    static void registerAttributes();
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGFEGaussianBlurElement, SVGFilterPrimitiveStandardAttributes>;
+    const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
 
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
 
-    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
+    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) const override;
 
-    static const AtomicString& stdDeviationXIdentifier();
-    static const AtomicString& stdDeviationYIdentifier();
-
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
-    SVGAnimatedStringAttribute m_in1;
-    SVGAnimatedNumberAttribute m_stdDeviationX;
-    SVGAnimatedNumberAttribute m_stdDeviationY;
-    SVGAnimatedEnumerationAttribute<EdgeModeType> m_edgeMode { EDGEMODE_NONE };
+    PropertyRegistry m_propertyRegistry { *this };
+    Ref<SVGAnimatedString> m_in1 { SVGAnimatedString::create(this) };
+    Ref<SVGAnimatedNumber> m_stdDeviationX { SVGAnimatedNumber::create(this) };
+    Ref<SVGAnimatedNumber> m_stdDeviationY { SVGAnimatedNumber::create(this) };
+    Ref<SVGAnimatedEnumeration> m_edgeMode { SVGAnimatedEnumeration::create(this, EDGEMODE_NONE) };
 };
 
 } // namespace WebCore

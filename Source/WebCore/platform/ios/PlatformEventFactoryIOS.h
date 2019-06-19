@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #include "PlatformKeyboardEvent.h"
 #include "PlatformMouseEvent.h"
@@ -53,7 +53,8 @@ public:
 WEBCORE_EXPORT String keyForKeyEvent(WebEvent *);
 WEBCORE_EXPORT String codeForKeyEvent(WebEvent *);
 WEBCORE_EXPORT String keyIdentifierForKeyEvent(WebEvent *);
+WEBCORE_EXPORT int windowsKeyCodeForKeyEvent(WebEvent*);
 
 } // namespace WebCore
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

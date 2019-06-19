@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "AllocationFailureMode.h"
 #include "FreeList.h"
 #include "MarkedBlock.h"
 #include <wtf/Noncopyable.h>
@@ -43,7 +44,7 @@ public:
     
     void* allocate(GCDeferralContext*, AllocationFailureMode);
     
-    unsigned cellSize() const { return m_cellSize; }
+    unsigned cellSize() const { return m_freeList.cellSize(); }
 
     void stopAllocating();
     void prepareForAllocation();
@@ -67,8 +68,8 @@ private:
     ALWAYS_INLINE void doTestCollectionsIfNeeded(GCDeferralContext*);
 
     BlockDirectory* m_directory;
-    unsigned m_cellSize;
     FreeList m_freeList;
+
     MarkedBlock::Handle* m_currentBlock { nullptr };
     MarkedBlock::Handle* m_lastActiveBlock { nullptr };
     
@@ -84,7 +85,7 @@ inline ptrdiff_t LocalAllocator::offsetOfFreeList()
 
 inline ptrdiff_t LocalAllocator::offsetOfCellSize()
 {
-    return OBJECT_OFFSETOF(LocalAllocator, m_cellSize);
+    return OBJECT_OFFSETOF(LocalAllocator, m_freeList) + FreeList::offsetOfCellSize();
 }
 
 } // namespace JSC

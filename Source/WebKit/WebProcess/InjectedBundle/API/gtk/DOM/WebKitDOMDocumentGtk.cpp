@@ -55,6 +55,7 @@
 #include <WebCore/CSSImportRule.h>
 #include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
+#include <WebCore/FullscreenManager.h>
 #include <WebCore/JSExecState.h>
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
@@ -1119,16 +1120,9 @@ WebKitDOMTreeWalker* webkit_dom_document_create_tree_walker(WebKitDOMDocument* s
     return WebKit::kit(gobjectResult.get());
 }
 
-WebKitDOMCSSStyleDeclaration* webkit_dom_document_get_override_style(WebKitDOMDocument* self, WebKitDOMElement* element, const gchar* pseudoElement)
+WebKitDOMCSSStyleDeclaration* webkit_dom_document_get_override_style(WebKitDOMDocument*, WebKitDOMElement*, const gchar*)
 {
-    WebCore::JSMainThreadNullState state;
-    g_return_val_if_fail(WEBKIT_DOM_IS_DOCUMENT(self), 0);
-    g_return_val_if_fail(WEBKIT_DOM_IS_ELEMENT(element), 0);
-    WebCore::Document* item = WebKit::core(self);
-    WebCore::Element* convertedElement = WebKit::core(element);
-    WTF::String convertedPseudoElement = WTF::String::fromUTF8(pseudoElement);
-    RefPtr<WebCore::CSSStyleDeclaration> gobjectResult = WTF::getPtr(item->getOverrideStyle(convertedElement, convertedPseudoElement));
-    return WebKit::kit(gobjectResult.get());
+    return nullptr;
 }
 
 WebKitDOMXPathExpression* webkit_dom_document_create_expression(WebKitDOMDocument* self, const gchar* expression, WebKitDOMXPathNSResolver* resolver, GError** error)
@@ -1315,7 +1309,7 @@ void webkit_dom_document_webkit_cancel_fullscreen(WebKitDOMDocument* self)
     WebCore::JSMainThreadNullState state;
     g_return_if_fail(WEBKIT_DOM_IS_DOCUMENT(self));
     WebCore::Document* item = WebKit::core(self);
-    item->webkitCancelFullScreen();
+    item->fullscreenManager().cancelFullscreen();
 }
 
 void webkit_dom_document_webkit_exit_fullscreen(WebKitDOMDocument* self)
@@ -1323,7 +1317,7 @@ void webkit_dom_document_webkit_exit_fullscreen(WebKitDOMDocument* self)
     WebCore::JSMainThreadNullState state;
     g_return_if_fail(WEBKIT_DOM_IS_DOCUMENT(self));
     WebCore::Document* item = WebKit::core(self);
-    item->webkitExitFullscreen();
+    item->fullscreenManager().exitFullscreen();
 }
 
 void webkit_dom_document_exit_pointer_lock(WebKitDOMDocument* self)
@@ -1825,7 +1819,7 @@ gboolean webkit_dom_document_get_webkit_is_fullscreen(WebKitDOMDocument* self)
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_DOCUMENT(self), FALSE);
     WebCore::Document* item = WebKit::core(self);
-    gboolean result = item->webkitIsFullScreen();
+    gboolean result = item->fullscreenManager().isFullscreen();
     return result;
 }
 
@@ -1834,7 +1828,7 @@ gboolean webkit_dom_document_get_webkit_fullscreen_keyboard_input_allowed(WebKit
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_DOCUMENT(self), FALSE);
     WebCore::Document* item = WebKit::core(self);
-    gboolean result = item->webkitFullScreenKeyboardInputAllowed();
+    gboolean result = item->fullscreenManager().isFullscreenKeyboardInputAllowed();
     return result;
 }
 
@@ -1843,7 +1837,7 @@ WebKitDOMElement* webkit_dom_document_get_webkit_current_fullscreen_element(WebK
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_DOCUMENT(self), 0);
     WebCore::Document* item = WebKit::core(self);
-    RefPtr<WebCore::Element> gobjectResult = WTF::getPtr(item->webkitCurrentFullScreenElement());
+    RefPtr<WebCore::Element> gobjectResult = WTF::getPtr(item->fullscreenManager().currentFullscreenElement());
     return WebKit::kit(gobjectResult.get());
 }
 
@@ -1852,7 +1846,7 @@ gboolean webkit_dom_document_get_webkit_fullscreen_enabled(WebKitDOMDocument* se
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_DOCUMENT(self), FALSE);
     WebCore::Document* item = WebKit::core(self);
-    gboolean result = item->webkitFullscreenEnabled();
+    gboolean result = item->fullscreenManager().isFullscreenEnabled();
     return result;
 }
 
@@ -1861,7 +1855,7 @@ WebKitDOMElement* webkit_dom_document_get_webkit_fullscreen_element(WebKitDOMDoc
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_DOCUMENT(self), 0);
     WebCore::Document* item = WebKit::core(self);
-    RefPtr<WebCore::Element> gobjectResult = WTF::getPtr(item->webkitFullscreenElement());
+    RefPtr<WebCore::Element> gobjectResult = WTF::getPtr(item->fullscreenManager().fullscreenElement());
     return WebKit::kit(gobjectResult.get());
 }
 

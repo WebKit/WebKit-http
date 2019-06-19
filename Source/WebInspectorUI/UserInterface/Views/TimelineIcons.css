@@ -31,6 +31,10 @@
     content: url(../Images/ScriptsInstrument.svg);
 }
 
+.cpu-icon .icon {
+    content: url(../Images/CPUInstrument.svg);
+}
+
 .memory-icon .icon {
     content: url(../Images/MemoryInstrument.svg);
 }
@@ -45,6 +49,10 @@
 
 .rendering-frame-icon .icon {
     content: url(../Images/RenderingFramesInstrument.svg);
+}
+
+.media-icon .icon {
+    content: url(../Images/MediaInstrument.svg);
 }
 
 .stopwatch-icon .icon {
@@ -115,4 +123,22 @@
 
 .heap-snapshot-record .icon {
     content: url(../Images/HeapSnapshot.svg);
+}
+
+.dom-event-record .icon {
+    content: url(../Images/DOMEvent.svg);
+}
+
+.dom-event-record.fullscreen .icon {
+    content: url(../Images/DOMEventFullscreen.svg);
+}
+
+.power-efficient-playback-state-changed-record .icon {
+    content: url(../Images/PowerEfficientPlaybackStateChanged.svg);
+}
+
+@media (prefers-color-scheme: dark) {
+    .time-icon .icon {
+        filter: invert();
+    }
 }

@@ -53,13 +53,9 @@ static inline Vector<MockMediaDevice> defaultDevices()
             MockCameraProperties {
                 30,
                 RealtimeMediaSourceSettings::VideoFacingMode::User, {
-                    { { 3840, 2160 }, { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
-                    { { 1920, 1080 }, { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
                     { { 1280, 720 }, { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
-                    { { 960, 540 }, { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
-                    { { 640, 480 }, { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
-                    { { 352, 288 }, { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
-                    { { 320, 240 }, { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
+                    { { 640, 480 },  { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
+                    { { 112, 112 },  { { 30, 30}, { 27.5, 27.5}, { 25, 25}, { 22.5, 22.5}, { 20, 20}, { 17.5, 17.5}, { 15, 15}, { 12.5, 12.5}, { 10, 10}, { 7.5, 7.5}, { 5, 5} } },
                 },
                 Color::black,
             } },
@@ -68,20 +64,90 @@ static inline Vector<MockMediaDevice> defaultDevices()
             MockCameraProperties {
                 15,
                 RealtimeMediaSourceSettings::VideoFacingMode::Environment, {
-                    { { 1280, 720 }, { { 3, 120 } } },
-                    { { 960, 540 }, { { 3, 60 } } },
-                    { { 640, 480 }, { { 2, 30 } } },
-                    { { 352, 288 }, { { 2, 30 } } },
-                    { { 320, 240 }, { { 2, 30 } } },
-                    { { 160, 120 }, { { 2, 30 } } },
+                    { { 3840, 2160 }, { { 2, 30 } } },
+                    { { 1920, 1080 }, { { 2, 30 } } },
+                    { { 1280, 720 },  { { 3, 120 } } },
+                    { { 960, 540 },   { { 3, 60 } } },
+                    { { 640, 480 },   { { 2, 30 } } },
+                    { { 352, 288 },   { { 2, 30 } } },
+                    { { 320, 240 },   { { 2, 30 } } },
+                    { { 160, 120 },   { { 2, 30 } } },
                 },
                 Color::darkGray,
             } },
 
-        MockMediaDevice { "SCREEN-1"_s, "Mock screen device 1"_s, MockDisplayProperties { 30, Color::lightGray } },
-        MockMediaDevice { "SCREEN-2"_s, "Mock screen device 2"_s, MockDisplayProperties { 10, Color::yellow } }
+        MockMediaDevice { "SCREEN-1"_s, "Mock screen device 1"_s, MockDisplayProperties { CaptureDevice::DeviceType::Screen, Color::lightGray, { 3840, 2160 } } },
+        MockMediaDevice { "SCREEN-2"_s, "Mock screen device 2"_s, MockDisplayProperties { CaptureDevice::DeviceType::Screen, Color::yellow, { 1920, 1080 } } },
+
+        MockMediaDevice { "WINDOW-2"_s, "Mock window 1"_s, MockDisplayProperties { CaptureDevice::DeviceType::Screen, 0xfff1b5, { 640, 480 } } },
+        MockMediaDevice { "WINDOW-2"_s, "Mock window 2"_s, MockDisplayProperties { CaptureDevice::DeviceType::Screen, 0xffd0b5, { 1280, 600 } } },
     };
 }
+
+class MockRealtimeVideoSourceFactory : public VideoCaptureFactory {
+public:
+    CaptureSourceOrError createVideoCaptureSource(const CaptureDevice& device, String&& hashSalt, const MediaConstraints* constraints) final
+    {
+        ASSERT(device.type() == CaptureDevice::DeviceType::Camera);
+        ASSERT(MockRealtimeMediaSourceCenter::captureDeviceWithPersistentID(CaptureDevice::DeviceType::Camera, device.persistentId()));
+
+        return MockRealtimeVideoSource::create(String { device.persistentId() }, String { device.label() }, WTFMove(hashSalt), constraints);
+    }
+
+private:
+#if PLATFORM(IOS_FAMILY)
+    void setVideoCapturePageState(bool interrupted, bool pageMuted) final
+    {
+        if (activeSource())
+            activeSource()->setInterrupted(interrupted, pageMuted);
+    }
+#endif
+    CaptureDeviceManager& videoCaptureDeviceManager() final { return MockRealtimeMediaSourceCenter::singleton().videoCaptureDeviceManager(); }
+};
+
+class MockRealtimeDisplaySourceFactory : public DisplayCaptureFactory {
+public:
+    CaptureSourceOrError createDisplayCaptureSource(const CaptureDevice& device, const MediaConstraints* constraints) final
+    {
+        ASSERT(MockRealtimeMediaSourceCenter::captureDeviceWithPersistentID(device.type(), device.persistentId()));
+
+        switch (device.type()) {
+        case CaptureDevice::DeviceType::Screen:
+        case CaptureDevice::DeviceType::Window:
+            return MockRealtimeVideoSource::create(String { device.persistentId() }, String { device.label() }, String { }, constraints);
+            break;
+        case CaptureDevice::DeviceType::Microphone:
+        case CaptureDevice::DeviceType::Camera:
+        case CaptureDevice::DeviceType::Unknown:
+            ASSERT_NOT_REACHED();
+            break;
+        }
+
+        return { };
+    }
+private:
+    CaptureDeviceManager& displayCaptureDeviceManager() final { return MockRealtimeMediaSourceCenter::singleton().displayCaptureDeviceManager(); }
+};
+
+class MockRealtimeAudioSourceFactory : public AudioCaptureFactory {
+public:
+    CaptureSourceOrError createAudioCaptureSource(const CaptureDevice& device, String&& hashSalt, const MediaConstraints* constraints) final
+    {
+        ASSERT(device.type() == CaptureDevice::DeviceType::Microphone);
+        ASSERT(MockRealtimeMediaSourceCenter::captureDeviceWithPersistentID(CaptureDevice::DeviceType::Microphone, device.persistentId()));
+
+        return MockRealtimeAudioSource::create(String { device.persistentId() }, String { device.label() }, WTFMove(hashSalt), constraints);
+    }
+private:
+#if PLATFORM(IOS_FAMILY)
+    void setAudioCapturePageState(bool interrupted, bool pageMuted) final
+    {
+        if (activeSource())
+            activeSource()->setInterrupted(interrupted, pageMuted);
+    }
+#endif
+    CaptureDeviceManager& audioCaptureDeviceManager() final { return MockRealtimeMediaSourceCenter::singleton().audioCaptureDeviceManager(); }
+};
 
 static Vector<MockMediaDevice>& devices()
 {
@@ -123,10 +189,38 @@ MockRealtimeMediaSourceCenter& MockRealtimeMediaSourceCenter::singleton()
 void MockRealtimeMediaSourceCenter::setMockRealtimeMediaSourceCenterEnabled(bool enabled)
 {
     static bool active = false;
-    if (active != enabled) {
-        active = enabled;
-        RealtimeMediaSourceCenter::setSharedStreamCenterOverride(enabled ? &singleton() : nullptr);
+    if (active == enabled)
+        return;
+
+    active = enabled;
+
+    RealtimeMediaSourceCenter& center = RealtimeMediaSourceCenter::singleton();
+    MockRealtimeMediaSourceCenter& mock = singleton();
+
+    if (active) {
+        if (mock.m_isMockAudioCaptureEnabled)
+            center.setAudioCaptureFactory(mock.audioCaptureFactory());
+        if (mock.m_isMockVideoCaptureEnabled)
+            center.setVideoCaptureFactory(mock.videoCaptureFactory());
+        if (mock.m_isMockDisplayCaptureEnabled)
+            center.setDisplayCaptureFactory(mock.displayCaptureFactory());
+        return;
     }
+
+    if (mock.m_isMockAudioCaptureEnabled)
+        center.unsetAudioCaptureFactory(mock.audioCaptureFactory());
+    if (mock.m_isMockVideoCaptureEnabled)
+        center.unsetVideoCaptureFactory(mock.videoCaptureFactory());
+    if (mock.m_isMockDisplayCaptureEnabled)
+        center.unsetDisplayCaptureFactory(mock.displayCaptureFactory());
+}
+
+bool MockRealtimeMediaSourceCenter::mockRealtimeMediaSourceCenterEnabled()
+{
+    MockRealtimeMediaSourceCenter& mock = singleton();
+    RealtimeMediaSourceCenter& center = RealtimeMediaSourceCenter::singleton();
+
+    return &center.audioCaptureFactory() == &mock.audioCaptureFactory() || &center.videoCaptureFactory() == &mock.videoCaptureFactory() || &center.displayCaptureFactory() == &mock.displayCaptureFactory();
 }
 
 static void createCaptureDevice(const MockMediaDevice& device)
@@ -186,30 +280,30 @@ void MockRealtimeMediaSourceCenter::removeDevice(const String& persistentId)
     RealtimeMediaSourceCenter::singleton().captureDevicesChanged();
 }
 
-std::optional<MockMediaDevice> MockRealtimeMediaSourceCenter::mockDeviceWithPersistentID(const String& id)
+Optional<MockMediaDevice> MockRealtimeMediaSourceCenter::mockDeviceWithPersistentID(const String& id)
 {
     ASSERT(!id.isEmpty());
 
     auto& map = deviceMap();
     auto iterator = map.find(id);
     if (iterator == map.end())
-        return std::nullopt;
+        return WTF::nullopt;
 
     return iterator->value;
 }
 
-std::optional<CaptureDevice> MockRealtimeMediaSourceCenter::captureDeviceWithPersistentID(CaptureDevice::DeviceType type, const String& id)
+Optional<CaptureDevice> MockRealtimeMediaSourceCenter::captureDeviceWithPersistentID(CaptureDevice::DeviceType type, const String& id)
 {
     ASSERT(!id.isEmpty());
 
     auto& map = deviceMap();
     auto iterator = map.find(id);
     if (iterator == map.end() || iterator->value.type() != type)
-        return std::nullopt;
+        return WTF::nullopt;
 
     CaptureDevice device { iterator->value.persistentId, type, iterator->value.label };
     device.setEnabled(true);
-    return WTFMove(device);
+    return device;
 }
 
 Vector<CaptureDevice>& MockRealtimeMediaSourceCenter::audioDevices()
@@ -217,7 +311,7 @@ Vector<CaptureDevice>& MockRealtimeMediaSourceCenter::audioDevices()
     static auto audioDevices = makeNeverDestroyed([] {
         Vector<CaptureDevice> audioDevices;
         for (const auto& device : devices()) {
-            if (device.type() == CaptureDevice::DeviceType::Microphone)
+            if (device.isMicrophone())
                 audioDevices.append(captureDeviceWithPersistentID(CaptureDevice::DeviceType::Microphone, device.persistentId).value());
         }
         return audioDevices;
@@ -231,7 +325,7 @@ Vector<CaptureDevice>& MockRealtimeMediaSourceCenter::videoDevices()
     static auto videoDevices = makeNeverDestroyed([] {
         Vector<CaptureDevice> videoDevices;
         for (const auto& device : devices()) {
-            if (device.type() == CaptureDevice::DeviceType::Camera)
+            if (device.isCamera())
                 videoDevices.append(captureDeviceWithPersistentID(CaptureDevice::DeviceType::Camera, device.persistentId).value());
         }
         return videoDevices;
@@ -245,13 +339,31 @@ Vector<CaptureDevice>& MockRealtimeMediaSourceCenter::displayDevices()
     static auto displayDevices = makeNeverDestroyed([] {
         Vector<CaptureDevice> displayDevices;
         for (const auto& device : devices()) {
-            if (device.type() == CaptureDevice::DeviceType::Screen)
+            if (device.isDisplay())
                 displayDevices.append(captureDeviceWithPersistentID(CaptureDevice::DeviceType::Screen, device.persistentId).value());
         }
         return displayDevices;
     }());
 
     return displayDevices;
+}
+
+AudioCaptureFactory& MockRealtimeMediaSourceCenter::audioCaptureFactory()
+{
+    static NeverDestroyed<MockRealtimeAudioSourceFactory> factory;
+    return factory.get();
+}
+
+VideoCaptureFactory& MockRealtimeMediaSourceCenter::videoCaptureFactory()
+{
+    static NeverDestroyed<MockRealtimeVideoSourceFactory> factory;
+    return factory.get();
+}
+
+DisplayCaptureFactory& MockRealtimeMediaSourceCenter::displayCaptureFactory()
+{
+    static NeverDestroyed<MockRealtimeDisplaySourceFactory> factory;
+    return factory.get();
 }
 
 } // namespace WebCore

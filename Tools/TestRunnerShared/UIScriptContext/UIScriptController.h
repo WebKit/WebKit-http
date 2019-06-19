@@ -31,6 +31,10 @@
 #include <wtf/Optional.h>
 #include <wtf/Ref.h>
 
+OBJC_CLASS NSUndoManager;
+OBJC_CLASS NSView;
+OBJC_CLASS UIView;
+
 namespace WebCore {
 class FloatRect;
 }
@@ -66,12 +70,18 @@ public:
     void doAfterVisibleContentRectUpdate(JSValueRef callback);
 
     void zoomToScale(double scale, JSValueRef callback);
+    void setViewScale(double);
+    void setMinimumEffectiveWidth(double);
+    void setAllowsViewportShrinkToFit(bool);
+
+    void resignFirstResponder();
 
     void simulateAccessibilitySettingsChangeNotification(JSValueRef callback);
 
     void touchDownAtPoint(long x, long y, long touchCount, JSValueRef callback);
     void liftUpAtPoint(long x, long y, long touchCount, JSValueRef callback);
     void singleTapAtPoint(long x, long y, JSValueRef callback);
+    void singleTapAtPointWithModifiers(long x, long y, JSValueRef modifierArray, JSValueRef callback);
     void doubleTapAtPoint(long x, long y, JSValueRef callback);
     void dragFromPointToPoint(long startX, long startY, long endX, long endY, double durationSeconds, JSValueRef callback);
 
@@ -79,6 +89,7 @@ public:
     void stylusMoveToPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback);
     void stylusUpAtPoint(long x, long y, JSValueRef callback);
     void stylusTapAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback);
+    void stylusTapAtPointWithModifiers(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef modifierArray, JSValueRef callback);
 
     void longPressAtPoint(long x, long y, JSValueRef callback);
 
@@ -86,14 +97,16 @@ public:
 
     void enterText(JSStringRef);
     void typeCharacterUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
-    void keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
-    void keyUpUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
+
+    void keyDown(JSStringRef character, JSValueRef modifierArray);
+    void toggleCapsLock(JSValueRef callback);
 
     void keyboardAccessoryBarNext();
     void keyboardAccessoryBarPrevious();
 
     void applyAutocorrection(JSStringRef newString, JSStringRef oldString, JSValueRef callback);
     
+    void dismissFilePicker(JSValueRef callback);
     void dismissFormAccessoryView();
     void selectFormAccessoryPickerRow(long);
     JSRetainPtr<JSStringRef> textContentType() const;
@@ -101,16 +114,25 @@ public:
     JSRetainPtr<JSStringRef> formInputLabel() const;
     void setTimePickerValue(long hour, long minute);
 
-    void invokeShareSheetWithResolution(bool resolved);
+    void setShareSheetCompletesImmediatelyWithResolution(bool resolved);
 
     bool isShowingDataListSuggestions() const;
 
     JSObjectRef contentsOfUserInterfaceItem(JSStringRef) const;
     void overridePreference(JSStringRef preference, JSStringRef value);
+
+    bool isPresentingModally() const;
     
+    double contentOffsetX() const;
+    double contentOffsetY() const;
+
+    bool scrollUpdatesDisabled() const;
+    void setScrollUpdatesDisabled(bool);
+
     void scrollToOffset(long x, long y);
 
     void immediateScrollToOffset(long x, long y);
+    void immediateScrollElementAtContentPointToOffset(long x, long y, long xScrollOffset, long yScrollOffset);
     void immediateZoomToScale(double scale);
 
     void beginBackSwipe(JSValueRef callback);
@@ -140,6 +162,24 @@ public:
     void setDidHideKeyboardCallback(JSValueRef);
     JSValueRef didHideKeyboardCallback() const;
 
+    bool isShowingKeyboard() const;
+
+    void setDidHideMenuCallback(JSValueRef);
+    JSValueRef didHideMenuCallback() const;
+    void setDidShowMenuCallback(JSValueRef);
+    JSValueRef didShowMenuCallback() const;
+
+    bool isShowingPopover() const;
+    void setDidDismissPopoverCallback(JSValueRef);
+    JSValueRef didDismissPopoverCallback() const;
+    void setWillPresentPopoverCallback(JSValueRef);
+    JSValueRef willPresentPopoverCallback() const;
+
+    bool isDismissingMenu() const;
+    bool isShowingMenu() const;
+    JSObjectRef rectForMenuAction(JSStringRef action) const;
+    JSObjectRef menuRect() const;
+
     void setDidEndScrollingCallback(JSValueRef);
     JSValueRef didEndScrollingCallback() const;
 
@@ -149,16 +189,22 @@ public:
     double minimumZoomScale() const;
     double maximumZoomScale() const;
     
-    std::optional<bool> stableStateOverride() const;
-    void setStableStateOverride(std::optional<bool>);
+    Optional<bool> stableStateOverride() const;
+    void setStableStateOverride(Optional<bool>);
 
     JSObjectRef contentVisibleRect() const;
     
-    JSObjectRef selectionRangeViewRects() const;
+    JSObjectRef textSelectionRangeRects() const;
     JSObjectRef textSelectionCaretRect() const;
     JSObjectRef selectionStartGrabberViewRect() const;
     JSObjectRef selectionEndGrabberViewRect() const;
+    JSObjectRef selectionCaretViewRect() const;
+    JSObjectRef selectionRangeViewRects() const;
+    JSObjectRef calendarType() const;
+    void setDefaultCalendarType(JSStringRef calendarIdentifier);
     JSObjectRef inputViewBounds() const;
+
+    void setKeyboardInputModeIdentifier(JSStringRef);
 
     void replaceTextAtRange(JSStringRef, int location, int length);
     void removeAllDynamicDictionaries();
@@ -187,6 +233,16 @@ public:
     void makeWindowContentViewFirstResponder();
     bool isWindowContentViewFirstResponder() const;
 
+    void drawSquareInEditableImage();
+    long numberOfStrokesInEditableImage();
+
+    JSRetainPtr<JSStringRef> lastUndoLabel() const;
+    JSRetainPtr<JSStringRef> firstRedoLabel() const;
+
+    JSObjectRef attachmentInfo(JSStringRef attachmentIdentifier);
+
+    void setHardwareKeyboardAttached(bool);
+
 private:
     UIScriptController(UIScriptContext&);
     
@@ -200,15 +256,34 @@ private:
     void platformSetDidEndZoomingCallback();
     void platformSetDidShowKeyboardCallback();
     void platformSetDidHideKeyboardCallback();
+    void platformSetDidShowMenuCallback();
+    void platformSetDidHideMenuCallback();
+    void platformSetWillPresentPopoverCallback();
+    void platformSetDidDismissPopoverCallback();
     void platformSetDidEndScrollingCallback();
     void platformClearAllCallbacks();
     void platformPlayBackEventStream(JSStringRef, JSValueRef);
+
+#if PLATFORM(COCOA)
+    NSUndoManager *platformUndoManager() const;
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+    UIView *platformContentView() const;
+#endif
+#if PLATFORM(MAC)
+    NSView *platformContentView() const;
+#endif
 
     JSClassRef wrapperClass() final;
 
     JSObjectRef objectFromRect(const WebCore::FloatRect&) const;
 
     UIScriptContext* m_context;
+
+#if PLATFORM(COCOA)
+    bool m_capsLockOn { false };
+#endif
 };
 
 }

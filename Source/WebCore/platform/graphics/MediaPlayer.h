@@ -40,7 +40,7 @@
 #include "PlatformMediaSession.h"
 #include "SecurityOriginHash.h"
 #include "Timer.h"
-#include "URL.h"
+#include <wtf/URL.h>
 #include "VideoTrackPrivate.h"
 #include <JavaScriptCore/Uint8Array.h>
 #include <wtf/Function.h>
@@ -87,10 +87,11 @@ struct MediaEngineSupportParameters {
 };
 
 struct VideoPlaybackQualityMetrics {
-    unsigned totalVideoFrames;
-    unsigned droppedVideoFrames;
-    unsigned corruptedVideoFrames;
-    double totalFrameDelay;
+    uint32_t totalVideoFrames { 0 };
+    uint32_t droppedVideoFrames { 0 };
+    uint32_t corruptedVideoFrames { 0 };
+    double totalFrameDelay { 0 };
+    uint32_t displayCompositedVideoFrames { 0 };
 };
 
 #if PLATFORM(QT)
@@ -178,6 +179,7 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     virtual void mediaPlayerInitializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&) { }
+    virtual void mediaPlayerWaitingForKeyChanged() { }
 #endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -201,7 +203,7 @@ public:
     virtual bool mediaPlayerIsLooping() const { return false; }
     virtual CachedResourceLoader* mediaPlayerCachedResourceLoader() { return nullptr; }
     virtual RefPtr<PlatformMediaResourceLoader> mediaPlayerCreateResourceLoader() { return nullptr; }
-    virtual bool doesHaveAttribute(const AtomicString&, AtomicString* = nullptr) const { return false; }
+    virtual bool doesHaveAttribute(const AtomString&, AtomString* = nullptr) const { return false; }
     virtual bool mediaPlayerShouldUsePersistentCache() const { return true; }
     virtual const String& mediaPlayerMediaCacheDirectory() const { return emptyString(); }
 
@@ -220,7 +222,7 @@ public:
     virtual Vector<RefPtr<PlatformTextTrack>> outOfBandTrackSources() { return { }; }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual String mediaPlayerNetworkInterfaceName() const { return String(); }
     virtual bool mediaPlayerGetRawCookies(const URL&, Vector<Cookie>&) const { return false; }
 #endif
@@ -234,6 +236,7 @@ public:
 
     virtual double mediaPlayerRequestedPlaybackRate() const { return 0; }
     virtual MediaPlayerEnums::VideoFullscreenMode mediaPlayerFullscreenMode() const { return MediaPlayerEnums::VideoFullscreenModeNone; }
+    virtual bool mediaPlayerIsVideoFullscreenStandby() const { return false; }
     virtual Vector<String> mediaPlayerPreferredAudioCharacteristics() const { return Vector<String>(); }
 
 #if USE(GSTREAMER)
@@ -259,8 +262,8 @@ public:
     void invalidate();
 
     // Media engine support.
-    enum SupportsType { IsNotSupported, IsSupported, MayBeSupported };
-    static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
+    using MediaPlayerEnums::SupportsType;
+    static SupportsType supportsType(const MediaEngineSupportParameters&);
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
     static bool isAvailable();
     static HashSet<RefPtr<SecurityOrigin>> originsInMediaCache(const String& path);
@@ -273,10 +276,10 @@ public:
     bool supportsScanning() const;
     bool canSaveMediaData() const;
     bool requiresImmediateCompositing() const;
-    bool doesHaveAttribute(const AtomicString&, AtomicString* value = nullptr) const;
+    bool doesHaveAttribute(const AtomString&, AtomString* value = nullptr) const;
     PlatformLayer* platformLayer() const;
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler = [] { });
     void setVideoFullscreenFrame(FloatRect);
     void updateVideoFullscreenInlineImage();
@@ -284,9 +287,11 @@ public:
     void setVideoFullscreenGravity(VideoGravity);
     void setVideoFullscreenMode(VideoFullscreenMode);
     VideoFullscreenMode fullscreenMode() const;
+    void videoFullscreenStandbyChanged();
+    bool isVideoFullscreenStandby() const;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     NSArray *timedMetadata() const;
     String accessLog() const;
     String errorLog() const;
@@ -316,7 +321,9 @@ public:
     void prepareToPlay();
     void play();
     void pause();
-    void setShouldBufferData(bool);
+
+    using MediaPlayerEnums::BufferingPolicy;
+    void setBufferingPolicy(BufferingPolicy);
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     // Represents synchronous exceptions that can be thrown from the Encrypted Media methods.
@@ -496,6 +503,8 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void initializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&);
+    void waitingForKeyChanged();
+    bool waitingForKey() const;
 #endif
 
     String referrer() const;
@@ -526,7 +535,7 @@ public:
     Vector<RefPtr<PlatformTextTrack>> outOfBandTrackSources();
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     String mediaPlayerNetworkInterfaceName() const;
     bool getRawCookies(const URL&, Vector<Cookie>&) const;
 #endif
@@ -546,9 +555,7 @@ public:
 
     unsigned long long fileSize() const;
 
-#if ENABLE(MEDIA_SOURCE)
-    std::optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics();
-#endif
+    Optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics();
 
     void handlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType);
     String sourceApplicationIdentifier() const;
@@ -574,9 +581,13 @@ public:
     void applicationWillResignActive();
     void applicationDidBecomeActive();
 
-#if ENABLE(VIDEO) && USE(AVFOUNDATION)
+#if USE(AVFOUNDATION)
     WEBCORE_EXPORT AVPlayer *objCAVFoundationAVPlayer() const;
 #endif
+
+    bool performTaskAtMediaTime(WTF::Function<void()>&&, MediaTime);
+
+    bool shouldIgnoreIntrinsicSize();
 
 private:
     MediaPlayer(MediaPlayerClient&);
@@ -629,28 +640,5 @@ public:
 };
 
 } // namespace WebCore
-
-namespace WTF {
-
-template<typename Type>
-struct LogArgument;
-
-template <>
-struct LogArgument<MediaTime> {
-    static String toString(const MediaTime& time)
-    {
-        return time.toJSONString();
-    }
-};
-
-template <>
-struct LogArgument<MediaTimeRange> {
-    static String toString(const MediaTimeRange& range)
-    {
-        return range.toJSONString();
-    }
-};
-
-}
 
 #endif // ENABLE(VIDEO)

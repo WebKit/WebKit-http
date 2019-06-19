@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2008, 2009 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,25 +23,26 @@
 
 #include "Document.h"
 #include "QualifiedName.h"
-#include "SVGAnimatedString.h"
+#include "SVGPropertyOwnerRegistry.h"
 
 namespace WebCore {
 
-template<typename OwnerType, typename... BaseTypes>
-class SVGAttributeRegistry;
-
-template<typename OwnerType, typename... BaseTypes>
-class SVGAttributeOwnerProxyImpl;
+class SVGElement;
 
 class SVGURIReference {
     WTF_MAKE_NONCOPYABLE(SVGURIReference);
 public:
     virtual ~SVGURIReference() = default;
 
-    void parseAttribute(const QualifiedName&, const AtomicString&);
+    void parseAttribute(const QualifiedName&, const AtomString&);
 
     static String fragmentIdentifierFromIRIString(const String&, const Document&);
-    static Element* targetElementFromIRIString(const String&, const Document&, String* fragmentIdentifier = nullptr, const Document* externalDocument = nullptr);
+
+    struct TargetElementResult {
+        RefPtr<Element> element;
+        String identifier;
+    };
+    static TargetElementResult targetElementFromIRIString(const String&, const TreeScope&, RefPtr<Document> externalDocument = nullptr);
 
     static bool isExternalURIReference(const String& uri, const Document& document)
     {
@@ -55,12 +56,10 @@ public:
         return !equalIgnoringFragmentIdentifier(url, document.url());
     }
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGURIReference>;
-    using AttributeRegistry = SVGAttributeRegistry<SVGURIReference>;
-    static AttributeRegistry& attributeRegistry();
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGURIReference>;
 
-    const String& href() const;
-    RefPtr<SVGAnimatedString> hrefAnimated();
+    String href() const { return m_href->currentValue(); }
+    SVGAnimatedString& hrefAnimated() { return m_href; }
 
 protected:
     SVGURIReference(SVGElement* contextElement);
@@ -68,10 +67,7 @@ protected:
     static bool isKnownAttribute(const QualifiedName& attributeName);
 
 private:
-    static void registerAttributes();
-
-    std::unique_ptr<AttributeOwnerProxy> m_attributeOwnerProxy;
-    SVGAnimatedStringAttribute m_href;
+    Ref<SVGAnimatedString> m_href;
 };
 
 } // namespace WebCore

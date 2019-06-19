@@ -25,18 +25,14 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 @class WKProcessPool;
 @class _WKAutomationSessionConfiguration;
 
 @protocol _WKAutomationDelegate <NSObject>
 @optional
-- (BOOL)_processPoolAllowsRemoteAutomation:(WKProcessPool *)processPool WK_API_AVAILABLE(macosx(10.13), ios(11.0));
-- (void)_processPool:(WKProcessPool *)processPool didRequestAutomationSessionWithIdentifier:(NSString *)identifier configuration:(_WKAutomationSessionConfiguration *)configuration WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
+- (BOOL)_processPoolAllowsRemoteAutomation:(WKProcessPool *)processPool WK_API_AVAILABLE(macos(10.13), ios(11.0));
+- (void)_processPool:(WKProcessPool *)processPool didRequestAutomationSessionWithIdentifier:(NSString *)identifier configuration:(_WKAutomationSessionConfiguration *)configuration WK_API_AVAILABLE(macos(10.13.4), ios(11.3));
 
-- (NSString *)_processPoolBrowserNameForAutomation:(WKProcessPool *)processPool WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
-- (NSString *)_processPoolBrowserVersionForAutomation:(WKProcessPool *)processPool WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (NSString *)_processPoolBrowserNameForAutomation:(WKProcessPool *)processPool WK_API_AVAILABLE(macos(10.14), ios(12.0));
+- (NSString *)_processPoolBrowserVersionForAutomation:(WKProcessPool *)processPool WK_API_AVAILABLE(macos(10.14), ios(12.0));
 @end
-
-#endif // WK_API_ENABLED

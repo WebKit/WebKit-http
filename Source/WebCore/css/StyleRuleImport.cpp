@@ -74,6 +74,8 @@ void StyleRuleImport::setCSSStyleSheet(const String& href, const URL& baseURL, c
 
     Document* document = m_parentStyleSheet ? m_parentStyleSheet->singleOwnerDocument() : nullptr;
     m_styleSheet = StyleSheetContents::create(this, href, context);
+    if (m_parentStyleSheet->isContentOpaque() || !cachedStyleSheet->isCORSSameOrigin())
+        m_styleSheet->setAsOpaque();
     m_styleSheet->parseAuthorStyleSheet(cachedStyleSheet, document ? &document->securityOrigin() : nullptr);
 
     m_loading = false;
@@ -93,8 +95,11 @@ void StyleRuleImport::requestStyleSheet()
 {
     if (!m_parentStyleSheet)
         return;
-    Document* document = m_parentStyleSheet->singleOwnerDocument();
+    auto* document = m_parentStyleSheet->singleOwnerDocument();
     if (!document)
+        return;
+    auto* page = document->page();
+    if (!page)
         return;
 
     URL absURL;
@@ -116,12 +121,12 @@ void StyleRuleImport::requestStyleSheet()
 
     // FIXME: Skip Content Security Policy check when stylesheet is in a user agent shadow tree.
     // See <https://bugs.webkit.org/show_bug.cgi?id=146663>.
-    CachedResourceRequest request(absURL, CachedResourceLoader::defaultCachedResourceOptions(), std::nullopt, String(m_parentStyleSheet->charset()));
+    CachedResourceRequest request(absURL, CachedResourceLoader::defaultCachedResourceOptions(), WTF::nullopt, String(m_parentStyleSheet->charset()));
     request.setInitiator(cachedResourceRequestInitiators().css);
     if (m_cachedSheet)
         m_cachedSheet->removeClient(m_styleSheetClient);
     if (m_parentStyleSheet->isUserStyleSheet()) {
-        request.setOptions(ResourceLoaderOptions(
+        ResourceLoaderOptions options {
             SendCallbackPolicy::DoNotSendCallbacks,
             ContentSniffingPolicy::SniffContent,
             DataBufferingPolicy::BufferData,
@@ -133,10 +138,19 @@ void StyleRuleImport::requestStyleSheet()
             CertificateInfoPolicy::DoNotIncludeCertificateInfo,
             ContentSecurityPolicyImposition::SkipPolicyCheck,
             DefersLoadingPolicy::AllowDefersLoading,
-            CachingPolicy::AllowCaching));
-        m_cachedSheet = document->cachedResourceLoader().requestUserCSSStyleSheet(WTFMove(request));
-    } else
+            CachingPolicy::AllowCaching
+        };
+        options.loadedFromOpaqueSource = m_parentStyleSheet->isContentOpaque() ? LoadedFromOpaqueSource::Yes : LoadedFromOpaqueSource::No;
+
+        request.setOptions(WTFMove(options));
+
+        m_cachedSheet = document->cachedResourceLoader().requestUserCSSStyleSheet(*page, WTFMove(request));
+    } else {
+        auto options = request.options();
+        options.loadedFromOpaqueSource = m_parentStyleSheet->isContentOpaque() ? LoadedFromOpaqueSource::Yes : LoadedFromOpaqueSource::No;
+        request.setOptions(WTFMove(options));
         m_cachedSheet = document->cachedResourceLoader().requestCSSStyleSheet(WTFMove(request)).value_or(nullptr);
+    }
     if (m_cachedSheet) {
         // if the import rule is issued dynamically, the sheet may be
         // removed from the pending sheet count, so let the doc know

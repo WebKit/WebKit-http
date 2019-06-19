@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "Environment.h"
 #include "IsoHeapImpl.h"
 #include "IsoTLS.h"
 #include "bmalloc.h"
@@ -94,9 +95,8 @@ BNO_INLINE void* IsoTLS::allocateSlow(api::IsoHeap<Type>& handle, bool abortOnFa
         break;
     }
     
-    auto debugMallocResult = debugMalloc(Config::objectSize);
-    if (debugMallocResult.usingDebugHeap)
-        return debugMallocResult.ptr;
+    // If debug heap is enabled, s_mallocFallbackState becomes MallocFallbackState::FallBackToMalloc.
+    BASSERT(!Environment::get()->isDebugHeapEnabled());
     
     IsoTLS* tls = ensureHeapAndEntries(handle);
     
@@ -113,13 +113,13 @@ void IsoTLS::deallocateImpl(api::IsoHeap<Type>& handle, void* p)
     if (!tls || offset >= tls->m_extent)
         deallocateSlow<Config>(handle, p);
     else
-        tls->deallocateFast<Config>(offset, p);
+        tls->deallocateFast<Config>(handle, offset, p);
 }
 
-template<typename Config>
-void IsoTLS::deallocateFast(unsigned offset, void* p)
+template<typename Config, typename Type>
+void IsoTLS::deallocateFast(api::IsoHeap<Type>& handle, unsigned offset, void* p)
 {
-    reinterpret_cast<IsoDeallocator<Config>*>(m_data + offset)->deallocate(p);
+    reinterpret_cast<IsoDeallocator<Config>*>(m_data + offset)->deallocate(handle, p);
 }
 
 template<typename Config, typename Type>
@@ -138,14 +138,14 @@ BNO_INLINE void IsoTLS::deallocateSlow(api::IsoHeap<Type>& handle, void* p)
         break;
     }
     
-    if (debugFree(p))
-        return;
+    // If debug heap is enabled, s_mallocFallbackState becomes MallocFallbackState::FallBackToMalloc.
+    BASSERT(!Environment::get()->isDebugHeapEnabled());
     
     RELEASE_BASSERT(handle.isInitialized());
     
     IsoTLS* tls = ensureEntries(std::max(handle.allocatorOffset(), handle.deallocatorOffset()));
     
-    tls->deallocateFast<Config>(handle.deallocatorOffset(), p);
+    tls->deallocateFast<Config>(handle, handle.deallocatorOffset(), p);
 }
 
 inline IsoTLS* IsoTLS::get()

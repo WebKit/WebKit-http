@@ -49,9 +49,9 @@ void checkUserMediaPermissionCallback(WKPageRef, WKFrameRef, WKSecurityOriginRef
 
 TEST(WebKit, EnumerateDevices)
 {
-    auto context = adoptWK(WKContextCreate());
+    auto context = adoptWK(WKContextCreateWithConfiguration(nullptr));
 
-    WKRetainPtr<WKPageGroupRef> pageGroup(AdoptWK, WKPageGroupCreateWithIdentifier(Util::toWK("EnumerateDevices").get()));
+    WKRetainPtr<WKPageGroupRef> pageGroup = adoptWK(WKPageGroupCreateWithIdentifier(Util::toWK("EnumerateDevices").get()));
     WKPreferencesRef preferences = WKPageGroupGetPreferences(pageGroup.get());
     WKPreferencesSetMediaDevicesEnabled(preferences, true);
     WKPreferencesSetFileAccessFromFileURLsAllowed(preferences, true);

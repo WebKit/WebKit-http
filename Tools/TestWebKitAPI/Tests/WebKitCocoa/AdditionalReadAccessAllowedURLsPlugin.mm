@@ -25,8 +25,6 @@
 
 #import "config.h"
 
-#if WK_API_ENABLED
-
 #import "AdditionalReadAccessAllowedURLsProtocol.h"
 #import "PlatformUtilities.h"
 #import <WebKit/WKWebProcessPlugIn.h>
@@ -54,6 +52,13 @@
 
     _interface = [_WKRemoteObjectInterface remoteObjectInterfaceWithProtocol:@protocol(AdditionalReadAccessAllowedURLsProtocol)];
     [[browserContextController _remoteObjectRegistry] registerExportedObject:self interface:_interface.get()];
+
+    __block bool blockCalled = false;
+    NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+    [coordinator coordinateReadingItemAtURL:[NSURL fileURLWithPath:@"/Applications/Safari.app"] options:NSFileCoordinatorReadingWithoutChanges error:nil byAccessor:^(NSURL *newURL) {
+        blockCalled = true;
+    }];
+    ASSERT(blockCalled);
 }
 
 - (void)dealloc
@@ -70,5 +75,3 @@
 }
 
 @end
-
-#endif // WK_API_ENABLED

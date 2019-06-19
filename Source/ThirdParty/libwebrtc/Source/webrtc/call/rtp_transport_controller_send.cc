@@ -22,13 +22,9 @@
 namespace webrtc {
 namespace {
 static const int64_t kRetransmitWindowSizeMs = 500;
+static const size_t kMaxOverheadBytes = 500;
 const char kTaskQueueExperiment[] = "WebRTC-TaskQueueCongestionControl";
 using TaskQueueController = webrtc::webrtc_cc::SendSideCongestionController;
-
-bool TaskQueueExperimentEnabled() {
-  std::string trial = webrtc::field_trial::FindFullName(kTaskQueueExperiment);
-  return trial.find("Enable") == 0;
-}
 
 std::unique_ptr<SendSideCongestionControllerInterface> CreateController(
     Clock* clock,
@@ -69,9 +65,9 @@ RtpTransportControllerSend::RtpTransportControllerSend(
       retransmission_rate_limiter_(clock, kRetransmitWindowSizeMs),
       task_queue_("rtp_send_controller") {
   // Created after task_queue to be able to post to the task queue internally.
-  send_side_cc_ =
-      CreateController(clock, &task_queue_, event_log, &pacer_, bitrate_config,
-                       TaskQueueExperimentEnabled(), controller_factory);
+  send_side_cc_ = CreateController(
+      clock, &task_queue_, event_log, &pacer_, bitrate_config,
+      !field_trial::IsDisabled(kTaskQueueExperiment), controller_factory);
 
   process_thread_->RegisterModule(&pacer_, RTC_FROM_HERE);
   process_thread_->RegisterModule(send_side_cc_.get(), RTC_FROM_HERE);
@@ -89,16 +85,20 @@ RtpVideoSenderInterface* RtpTransportControllerSend::CreateRtpVideoSender(
     std::map<uint32_t, RtpState> suspended_ssrcs,
     const std::map<uint32_t, RtpPayloadState>& states,
     const RtpConfig& rtp_config,
-    const RtcpConfig& rtcp_config,
+    int rtcp_report_interval_ms,
     Transport* send_transport,
     const RtpSenderObservers& observers,
-    RtcEventLog* event_log) {
+    RtcEventLog* event_log,
+    std::unique_ptr<FecController> fec_controller,
+    const RtpSenderFrameEncryptionConfig& frame_encryption_config) {
   video_rtp_senders_.push_back(absl::make_unique<RtpVideoSender>(
-      ssrcs, suspended_ssrcs, states, rtp_config, rtcp_config, send_transport,
-      observers,
+      ssrcs, suspended_ssrcs, states, rtp_config, rtcp_report_interval_ms,
+      send_transport, observers,
       // TODO(holmer): Remove this circular dependency by injecting
       // the parts of RtpTransportControllerSendInterface that are really used.
-      this, event_log, &retransmission_rate_limiter_));
+      this, event_log, &retransmission_rate_limiter_, std::move(fec_controller),
+      frame_encryption_config.frame_encryptor,
+      frame_encryption_config.crypto_options));
   return video_rtp_senders_.back().get();
 }
 
@@ -307,6 +307,27 @@ void RtpTransportControllerSend::SetClientBitratePreferences(
 
 void RtpTransportControllerSend::SetAllocatedBitrateWithoutFeedback(
     uint32_t bitrate_bps) {
-  send_side_cc_->SetAllocatedBitrateWithoutFeedback(bitrate_bps);
+  // Audio transport feedback will not be reported in this mode, instead update
+  // acknowledged bitrate estimator with the bitrate allocated for audio.
+  if (field_trial::IsEnabled("WebRTC-Audio-ABWENoTWCC")) {
+    // TODO(srte): Make sure it's safe to always report this and remove the
+    // field trial check.
+    send_side_cc_->SetAllocatedBitrateWithoutFeedback(bitrate_bps);
+  }
+}
+
+void RtpTransportControllerSend::OnTransportOverheadChanged(
+    size_t transport_overhead_bytes_per_packet) {
+  if (transport_overhead_bytes_per_packet >= kMaxOverheadBytes) {
+    RTC_LOG(LS_ERROR) << "Transport overhead exceeds " << kMaxOverheadBytes;
+    return;
+  }
+
+  // TODO(holmer): Call AudioRtpSenders when they have been moved to
+  // RtpTransportControllerSend.
+  for (auto& rtp_video_sender : video_rtp_senders_) {
+    rtp_video_sender->OnTransportOverheadChanged(
+        transport_overhead_bytes_per_packet);
+  }
 }
 }  // namespace webrtc

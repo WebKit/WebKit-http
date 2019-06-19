@@ -29,7 +29,9 @@
 
 #include "BrowserWindow.h"
 #include <errno.h>
+#if ENABLE_WEB_AUDIO || ENABLE_VIDEO
 #include <gst/gst.h>
+#endif
 #include <gtk/gtk.h>
 #include <string.h>
 #include <webkit2/webkit2.h>
@@ -46,9 +48,11 @@ static gboolean privateMode;
 static gboolean automationMode;
 static gboolean fullScreen;
 static gboolean ignoreTLSErrors;
+static const char *contentFilter;
 static const char *cookiesFile;
 static const char *cookiesPolicy;
 static const char *proxy;
+static gboolean darkMode;
 
 typedef enum {
     MINI_BROWSER_ERROR_INVALID_ABOUT_PATH
@@ -100,6 +104,7 @@ static const GOptionEntry commandLineOptions[] =
 {
     { "bg-color", 0, 0, G_OPTION_ARG_CALLBACK, parseBackgroundColor, "Background color", NULL },
     { "editor-mode", 'e', 0, G_OPTION_ARG_NONE, &editorMode, "Run in editor mode", NULL },
+    { "dark-mode", 'd', 0, G_OPTION_ARG_NONE, &darkMode, "Run in dark mode", NULL },
     { "session-file", 's', 0, G_OPTION_ARG_FILENAME, &sessionFile, "Session file", "FILE" },
     { "geometry", 'g', 0, G_OPTION_ARG_STRING, &geometry, "Set the size and position of the window (WIDTHxHEIGHT+X+Y)", "GEOMETRY" },
     { "full-screen", 'f', 0, G_OPTION_ARG_NONE, &fullScreen, "Set the window to full-screen mode", NULL },
@@ -110,6 +115,7 @@ static const GOptionEntry commandLineOptions[] =
     { "proxy", 0, 0, G_OPTION_ARG_STRING, &proxy, "Set proxy", "PROXY" },
     { "ignore-host", 0, 0, G_OPTION_ARG_STRING_ARRAY, &ignoreHosts, "Set proxy ignore hosts", "HOSTS" },
     { "ignore-tls-errors", 0, 0, G_OPTION_ARG_NONE, &ignoreTLSErrors, "Ignore TLS errors", NULL },
+    { "content-filter", 0, 0, G_OPTION_ARG_FILENAME, &contentFilter, "JSON with content filtering rules", "FILE" },
     { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &uriArguments, 0, "[URL…]" },
     { 0, 0, 0, 0, 0, 0, 0 }
 };
@@ -266,7 +272,7 @@ static void aboutDataRequestFree(AboutDataRequest *request)
     if (request->dataMap)
         g_hash_table_destroy(request->dataMap);
 
-    g_slice_free(AboutDataRequest, request);
+    g_free(request);
 }
 
 static AboutDataRequest* aboutDataRequestNew(WebKitURISchemeRequest *uriRequest)
@@ -274,7 +280,7 @@ static AboutDataRequest* aboutDataRequestNew(WebKitURISchemeRequest *uriRequest)
     if (!aboutDataRequestMap)
         aboutDataRequestMap = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, (GDestroyNotify)aboutDataRequestFree);
 
-    AboutDataRequest *request = g_slice_new0(AboutDataRequest);
+    AboutDataRequest *request = g_new0(AboutDataRequest, 1);
     request->request = g_object_ref(uriRequest);
     g_hash_table_insert(aboutDataRequestMap, GUINT_TO_POINTER(webkit_web_view_get_page_id(webkit_uri_scheme_request_get_web_view(request->request))), request);
 
@@ -402,11 +408,11 @@ static void gotWebsiteDataCallback(WebKitWebsiteDataManager *manager, GAsyncResu
 
     guint64 pageID = webkit_web_view_get_page_id(webkit_uri_scheme_request_get_web_view(dataRequest->request));
     aboutDataFillTable(result, dataRequest, dataList, "Cookies", WEBKIT_WEBSITE_DATA_COOKIES, NULL, pageID);
+    aboutDataFillTable(result, dataRequest, dataList, "Device Id Hash Salt", WEBKIT_WEBSITE_DATA_DEVICE_ID_HASH_SALT, NULL, pageID);
     aboutDataFillTable(result, dataRequest, dataList, "Memory Cache", WEBKIT_WEBSITE_DATA_MEMORY_CACHE, NULL, pageID);
     aboutDataFillTable(result, dataRequest, dataList, "Disk Cache", WEBKIT_WEBSITE_DATA_DISK_CACHE, webkit_website_data_manager_get_disk_cache_directory(manager), pageID);
     aboutDataFillTable(result, dataRequest, dataList, "Session Storage", WEBKIT_WEBSITE_DATA_SESSION_STORAGE, NULL, pageID);
     aboutDataFillTable(result, dataRequest, dataList, "Local Storage", WEBKIT_WEBSITE_DATA_LOCAL_STORAGE, webkit_website_data_manager_get_local_storage_directory(manager), pageID);
-    aboutDataFillTable(result, dataRequest, dataList, "WebSQL Databases", WEBKIT_WEBSITE_DATA_WEBSQL_DATABASES, webkit_website_data_manager_get_websql_directory(manager), pageID);
     aboutDataFillTable(result, dataRequest, dataList, "IndexedDB Databases", WEBKIT_WEBSITE_DATA_INDEXEDDB_DATABASES, webkit_website_data_manager_get_indexeddb_directory(manager), pageID);
     aboutDataFillTable(result, dataRequest, dataList, "Plugins Data", WEBKIT_WEBSITE_DATA_PLUGIN_DATA, NULL, pageID);
     aboutDataFillTable(result, dataRequest, dataList, "Offline Web Applications Cache", WEBKIT_WEBSITE_DATA_OFFLINE_APPLICATION_CACHE, webkit_website_data_manager_get_offline_application_cache_directory(manager), pageID);
@@ -468,6 +474,18 @@ static void automationStartedCallback(WebKitWebContext *webContext, WebKitAutoma
     g_signal_connect(session, "create-web-view", G_CALLBACK(createWebViewForAutomationCallback), NULL);
 }
 
+typedef struct {
+    GMainLoop *mainLoop;
+    WebKitUserContentFilter *filter;
+    GError *error;
+} FilterSaveData;
+
+static void filterSavedCallback(WebKitUserContentFilterStore *store, GAsyncResult *result, FilterSaveData *data)
+{
+    data->filter = webkit_user_content_filter_store_save_finish(store, result, &data->error);
+    g_main_loop_quit(data->mainLoop);
+}
+
 int main(int argc, char *argv[])
 {
 #if ENABLE_DEVELOPER_MODE
@@ -479,7 +497,9 @@ int main(int argc, char *argv[])
     GOptionContext *context = g_option_context_new(NULL);
     g_option_context_add_main_entries(context, commandLineOptions, 0);
     g_option_context_add_group(context, gtk_get_option_group(TRUE));
+#if ENABLE_WEB_AUDIO || ENABLE_VIDEO
     g_option_context_add_group(context, gst_init_get_option_group());
+#endif
 
     WebKitSettings *webkitSettings = webkit_settings_new();
     webkit_settings_set_enable_developer_extras(webkitSettings, TRUE);
@@ -534,6 +554,30 @@ int main(int argc, char *argv[])
     webkit_user_content_manager_register_script_message_handler(userContentManager, "aboutData");
     g_signal_connect(userContentManager, "script-message-received::aboutData", G_CALLBACK(aboutDataScriptMessageReceivedCallback), webContext);
 
+    if (contentFilter) {
+        GFile *contentFilterFile = g_file_new_for_commandline_arg(contentFilter);
+
+        FilterSaveData saveData = { NULL, NULL, NULL };
+        gchar *filtersPath = g_build_filename(g_get_user_cache_dir(), g_get_prgname(), "filters", NULL);
+        WebKitUserContentFilterStore *store = webkit_user_content_filter_store_new(filtersPath);
+        g_free(filtersPath);
+
+        webkit_user_content_filter_store_save_from_file(store, "GTKMiniBrowserFilter", contentFilterFile, NULL, (GAsyncReadyCallback)filterSavedCallback, &saveData);
+        saveData.mainLoop = g_main_loop_new(NULL, FALSE);
+        g_main_loop_run(saveData.mainLoop);
+        g_object_unref(store);
+
+        if (saveData.filter)
+            webkit_user_content_manager_add_filter(userContentManager, saveData.filter);
+        else
+            g_printerr("Cannot save filter '%s': %s\n", contentFilter, saveData.error->message);
+
+        g_clear_pointer(&saveData.error, g_error_free);
+        g_clear_pointer(&saveData.filter, webkit_user_content_filter_unref);
+        g_main_loop_unref(saveData.mainLoop);
+        g_object_unref(contentFilterFile);
+    }
+
     webkit_web_context_set_automation_allowed(webContext, automationMode);
     g_signal_connect(webContext, "automation-started", G_CALLBACK(automationStartedCallback), NULL);
 
@@ -541,10 +585,15 @@ int main(int argc, char *argv[])
         webkit_web_context_set_tls_errors_policy(webContext, WEBKIT_TLS_ERRORS_POLICY_IGNORE);
 
     BrowserWindow *mainWindow = BROWSER_WINDOW(browser_window_new(NULL, webContext));
+    if (darkMode)
+        g_object_set(gtk_widget_get_settings(GTK_WIDGET(mainWindow)), "gtk-application-prefer-dark-theme", TRUE, NULL);
     if (fullScreen)
         gtk_window_fullscreen(GTK_WINDOW(mainWindow));
     else if (geometry)
         gtk_window_parse_geometry(GTK_WINDOW(mainWindow), geometry);
+
+    if (backgroundColor)
+        browser_window_set_background_color(mainWindow, backgroundColor);
 
     GtkWidget *firstTab = NULL;
     if (uriArguments) {
@@ -561,9 +610,6 @@ int main(int argc, char *argv[])
     } else {
         WebKitWebView *webView = createBrowserTab(mainWindow, webkitSettings, userContentManager);
         firstTab = GTK_WIDGET(webView);
-
-        if (backgroundColor)
-            browser_window_set_background_color(mainWindow, backgroundColor);
 
         if (!editorMode) {
             if (sessionFile)

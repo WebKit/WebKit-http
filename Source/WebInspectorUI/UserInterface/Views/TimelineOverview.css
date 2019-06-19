@@ -53,7 +53,7 @@ body[dir=rtl] .timeline-overview:not(.frames) > :matches(.scroll-container, .tim
     z-index: var(--z-index-header);
     width: var(--timeline-sidebar-width);
     height: 23px;
-    background-color: white;
+    background-color: var(--background-color);
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -86,7 +86,7 @@ body[dir=rtl] .timeline-overview:not(.frames) > :matches(.scroll-container, .tim
 }
 
 .timeline-overview.edit-instruments > .tree-outline.timelines .item.selected {
-    color: initial;
+    color: var(--text-color);
     background-color: transparent;
 }
 
@@ -116,10 +116,7 @@ body[dir=rtl] .timeline-overview:not(.frames) > :matches(.scroll-container, .tim
     border-top: 1px solid hsla(0, 0%, 0%, 0.09);
 }
 
-.timeline-overview > .tree-outline.timelines .item.selected + .item {
-    border-top-color: hsl(0, 0%, 83%);
-}
-
+.timeline-overview > .tree-outline.timelines .item.selected + .item,
 body.window-inactive .timeline-overview > .tree-outline.timelines .item.selected + .item {
     border-top-color: hsl(0, 0%, 83%);
 }
@@ -218,6 +215,10 @@ body.mac-platform.legacy .timeline-overview > .graphs-container {
     border-top: 1px solid hsla(0, 0%, 0%, 0.09);
 }
 
+.timeline-overview:not(.has-scrollbar) > .scroll-container {
+    pointer-events: none;
+}
+
 .timeline-overview > .scroll-container > .scroll-width-sizer {
     position: absolute;
     top: 0;
@@ -232,4 +233,20 @@ body[dir=ltr] .timeline-overview > .scroll-container > .scroll-width-sizer {
 
 body[dir=rtl] .timeline-overview > .scroll-container > .scroll-width-sizer {
     right: 0;
+}
+
+@media (prefers-color-scheme: dark) {
+    .timeline-overview:not(.frames) > .graphs-container > .timeline-overview-graph:nth-child(even) {
+        background: var(--background-color-alternate);
+    }
+
+    .timeline-overview.edit-instruments > .tree-outline.timelines .item:not(:first-child),
+    .timeline-overview > .tree-outline.timelines .item:not(.selected):not(:first-child) {
+        border-top-color: hsla(0, 0%, var(--foreground-lightness), 0.09);
+    }
+
+    .timeline-overview > .tree-outline.timelines .item.selected + .item,
+    body.window-inactive .timeline-overview > .tree-outline.timelines .item.selected + .item {
+        border-top-color: hsla(0, 0%, var(--foreground-lightness), 0.09);
+    }
 }

@@ -33,6 +33,7 @@
 namespace WebCore {
 
 class IDBDatabaseInfo {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     IDBDatabaseInfo(const String& name, uint64_t version);
 
@@ -47,7 +48,7 @@ public:
     uint64_t version() const { return m_version; }
 
     bool hasObjectStore(const String& name) const;
-    IDBObjectStoreInfo createNewObjectStore(const String& name, std::optional<IDBKeyPath>&&, bool autoIncrement);
+    IDBObjectStoreInfo createNewObjectStore(const String& name, Optional<IDBKeyPath>&&, bool autoIncrement);
     void addExistingObjectStore(const IDBObjectStoreInfo&);
     IDBObjectStoreInfo* infoForExistingObjectStore(uint64_t objectStoreIdentifier);
     IDBObjectStoreInfo* infoForExistingObjectStore(const String& objectStoreName);

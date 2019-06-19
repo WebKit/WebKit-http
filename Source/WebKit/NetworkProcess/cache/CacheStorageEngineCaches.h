@@ -28,8 +28,13 @@
 #include "CacheStorageEngineCache.h"
 #include "NetworkCacheStorage.h"
 #include <WebCore/ClientOrigin.h>
+#include <WebCore/StorageQuotaUser.h>
 #include <wtf/CompletionHandler.h>
 #include <wtf/Deque.h>
+
+namespace WebCore {
+class StorageQuotaManager;
+}
 
 namespace WebKit {
 
@@ -37,12 +42,12 @@ namespace CacheStorage {
 
 class Engine;
 
-class Caches : public RefCounted<Caches> {
+class Caches final : public RefCounted<Caches>, private WebCore::StorageQuotaUser {
 public:
-    static Ref<Caches> create(Engine& engine, WebCore::ClientOrigin&& origin, String&& rootPath, uint64_t quota) { return adoptRef(*new Caches { engine, WTFMove(origin), WTFMove(rootPath), quota }); }
+    static Ref<Caches> create(Engine&, WebCore::ClientOrigin&&, String&& rootPath, WebCore::StorageQuotaManager&);
     ~Caches();
 
-    static void retrieveOriginFromDirectory(const String& folderPath, WorkQueue&, WTF::CompletionHandler<void(std::optional<WebCore::ClientOrigin>&&)>&&);
+    static void retrieveOriginFromDirectory(const String& folderPath, WorkQueue&, WTF::CompletionHandler<void(Optional<WebCore::ClientOrigin>&&)>&&);
 
     void initialize(WebCore::DOMCacheEngine::CompletionCallback&&);
     void open(const String& name, WebCore::DOMCacheEngine::CacheIdentifierCallback&&);
@@ -60,7 +65,6 @@ public:
     void readRecordsList(Cache&, NetworkCache::Storage::TraverseHandler&&);
     void readRecord(const NetworkCache::Key&, WTF::Function<void(Expected<WebCore::DOMCacheEngine::Record, WebCore::DOMCacheEngine::Error>&&)>&&);
 
-    bool hasEnoughSpace(uint64_t spaceRequired) const { return m_quota >= m_size + spaceRequired; }
     void requestSpace(uint64_t spaceRequired, WebCore::DOMCacheEngine::CompletionCallback&&);
     void writeRecord(const Cache&, const RecordInformation&, WebCore::DOMCacheEngine::Record&&, uint64_t previousRecordSize, WebCore::DOMCacheEngine::CompletionCallback&&);
 
@@ -74,18 +78,24 @@ public:
 
     void clear(WTF::CompletionHandler<void()>&&);
     void clearMemoryRepresentation();
+    void resetSpaceUsed();
 
     uint64_t storageSize() const;
 
 private:
-    Caches(Engine&, WebCore::ClientOrigin&&, String&& rootPath, uint64_t quota);
+    Caches(Engine&, WebCore::ClientOrigin&&, String&& rootPath, WebCore::StorageQuotaManager&);
+
+    // StorageQuotaUser API.
+    uint64_t spaceUsed() const final { return m_size; }
 
     void initializeSize();
     void readCachesFromDisk(WTF::Function<void(Expected<Vector<Cache>, WebCore::DOMCacheEngine::Error>&&)>&&);
     void writeCachesToDisk(WebCore::DOMCacheEngine::CompletionCallback&&);
 
+    void whenInitialized(CompletionHandler<void()>&&) final;
+
     void storeOrigin(WebCore::DOMCacheEngine::CompletionCallback&&);
-    static std::optional<WebCore::ClientOrigin> readOrigin(const NetworkCache::Data&);
+    static Optional<WebCore::ClientOrigin> readOrigin(const NetworkCache::Data&);
 
     Cache* find(const String& name);
     void clearPendingWritingCachesToDiskCallbacks();
@@ -93,21 +103,23 @@ private:
     void makeDirty() { ++m_updateCounter; }
     bool isDirty(uint64_t updateCounter) const;
 
+    bool hasActiveCache() const;
+
     bool m_isInitialized { false };
     Engine* m_engine { nullptr };
     uint64_t m_updateCounter { 0 };
     WebCore::ClientOrigin m_origin;
     String m_rootPath;
-    uint64_t m_quota { 0 };
     uint64_t m_size { 0 };
     Vector<Cache> m_caches;
     Vector<Cache> m_removedCaches;
     RefPtr<NetworkCache::Storage> m_storage;
     HashMap<NetworkCache::Key, WebCore::DOMCacheEngine::Record> m_volatileStorage;
-    mutable std::optional<NetworkCache::Salt> m_volatileSalt;
+    mutable Optional<NetworkCache::Salt> m_volatileSalt;
     Vector<WebCore::DOMCacheEngine::CompletionCallback> m_pendingInitializationCallbacks;
     bool m_isWritingCachesToDisk { false };
-    Deque<CompletionHandler<void(std::optional<WebCore::DOMCacheEngine::Error>)>> m_pendingWritingCachesToDiskCallbacks;
+    Deque<CompletionHandler<void(Optional<WebCore::DOMCacheEngine::Error>)>> m_pendingWritingCachesToDiskCallbacks;
+    WeakPtr<WebCore::StorageQuotaManager> m_quotaManager;
 };
 
 } // namespace CacheStorage

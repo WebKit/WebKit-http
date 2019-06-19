@@ -40,7 +40,14 @@ WI.DOMNodeTreeElement = class DOMNodeTreeElement extends WI.GeneralTreeElement
 
     ondelete()
     {
+        // We set this flag so that TreeOutlines that will remove this
+        // BreakpointTreeElement will know whether it was deleted from
+        // within the TreeOutline or from outside it (e.g. TextEditor).
+        this.__deletedViaDeleteKeyboardShortcut = true;
+
         WI.domDebuggerManager.removeDOMBreakpointsForNode(this.representedObject);
+        WI.domManager.removeEventListenerBreakpointsForNode(this.representedObject);
+
         return true;
     }
 
@@ -48,13 +55,14 @@ WI.DOMNodeTreeElement = class DOMNodeTreeElement extends WI.GeneralTreeElement
     {
         contextMenu.appendSeparator();
 
-        const allowEditing = true;
-        WI.DOMBreakpointTreeController.appendBreakpointContextMenuItems(contextMenu, this.representedObject, allowEditing);
+        WI.appendContextMenuItemsForDOMNodeBreakpoints(contextMenu, this.representedObject, {
+            allowEditing: true,
+        });
 
         contextMenu.appendSeparator();
 
-        contextMenu.appendItem(WI.UIString("Reveal in DOM Tree"), () => {
-            WI.domTreeManager.inspectElement(this.representedObject.id);
+        contextMenu.appendItem(WI.repeatedUIString.revealInDOMTree(), () => {
+            WI.domManager.inspectElement(this.representedObject.id);
         });
     }
 };

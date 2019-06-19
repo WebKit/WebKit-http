@@ -25,15 +25,12 @@
 
 #import "WK2BrowserWindowController.h"
 
-#if WK_API_ENABLED
-
 #import "AppDelegate.h"
 #import "AppKitCompatibilityDeclarations.h"
 #import "SettingsController.h"
 #import <WebKit/WKFrameInfo.h>
 #import <WebKit/WKNavigationActionPrivate.h>
 #import <WebKit/WKNavigationDelegate.h>
-#import <WebKit/WKPage.h>
 #import <WebKit/WKPreferencesPrivate.h>
 #import <WebKit/WKUIDelegate.h>
 #import <WebKit/WKUIDelegatePrivate.h>
@@ -136,9 +133,9 @@ static const int testFooterBannerHeight = 58;
 
 - (IBAction)fetch:(id)sender
 {
-    [urlText setStringValue:[self addProtocolIfNecessary:[urlText stringValue]]];
-
-    [_webView loadRequest:[NSURLRequest requestWithURL:[NSURL _webkit_URLWithUserTypedString:[urlText stringValue]]]];
+    [urlText setStringValue:[self addProtocolIfNecessary:urlText.stringValue]];
+    NSURL *url = [NSURL _webkit_URLWithUserTypedString:urlText.stringValue];
+    [_webView loadRequest:[NSURLRequest requestWithURL:url]];
 }
 
 - (IBAction)setPageScale:(id)sender
@@ -407,7 +404,6 @@ static BOOL areEssentiallyEqual(double a, double b)
     preferences._resourceUsageOverlayVisible = settings.resourceUsageOverlayVisible;
     preferences._displayListDrawingEnabled = settings.displayListDrawingEnabled;
     preferences._subpixelAntialiasedLayerTextEnabled = settings.subpixelAntialiasedLayerTextEnabled;
-    preferences._visualViewportEnabled = settings.visualViewportEnabled;
     preferences._largeImageAsyncDecodingEnabled = settings.largeImageAsyncDecodingEnabled;
     preferences._animatedImageAsyncDecodingEnabled = settings.animatedImageAsyncDecodingEnabled;
     preferences._colorFilterEnabled = settings.appleColorFilterEnabled;
@@ -675,12 +671,6 @@ static NSSet *dataTypes()
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
 {
     LOG(@"didFinishNavigation: %@", navigation);
-    
-    // Banner heights don't persist across page loads (oddly, since Page stores them), so reset on every page load.
-    if ([[SettingsController shared] isSpaceReservedForBanners]) {
-        [_webView _setHeaderBannerHeight:testHeaderBannerHeight];
-        [_webView _setFooterBannerHeight:testFooterBannerHeight];
-    }
 }
 
 - (void)webView:(WKWebView *)webView didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge completionHandler:(void (^)(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *__nullable credential))completionHandler
@@ -764,11 +754,8 @@ static NSSet *dataTypes()
 
 - (void)setFindBarView:(NSView *)findBarView
 {
-    if (_textFindBarView)
-        [_textFindBarView removeFromSuperview];
     _textFindBarView = findBarView;
     _findBarVisible = YES;
-    [containerView addSubview:_textFindBarView];
     [_textFindBarView setFrame:NSMakeRect(0, 0, containerView.bounds.size.width, _textFindBarView.frame.size.height)];
 }
 
@@ -795,6 +782,14 @@ static NSSet *dataTypes()
 {
 }
 
-@end
+- (void)_webView:(WKWebView *)webView requestMediaCaptureAuthorization: (_WKCaptureDevices)devices decisionHandler:(void (^)(BOOL authorized))decisionHandler
+{
+    decisionHandler(true);
+}
 
-#endif // WK_API_ENABLED
+- (void)_webView:(WKWebView *)webView includeSensitiveMediaDeviceDetails:(void (^)(BOOL includeSensitiveDetails))decisionHandler
+{
+    decisionHandler(false);
+}
+
+@end

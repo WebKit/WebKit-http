@@ -558,7 +558,7 @@ WI.TabBar = class TabBar extends WI.View
         if (event.button !== 0 || event.ctrlKey)
             return;
 
-        let itemElement = event.target.enclosingNodeOrSelfWithClass(WI.TabBarItem.StyleClassName);
+        let itemElement = event.target.closest("." + WI.TabBarItem.StyleClassName);
         if (!itemElement)
             return;
 
@@ -573,15 +573,27 @@ WI.TabBar = class TabBar extends WI.View
             if (!this._hiddenTabBarItems.length)
                 return;
 
+            if (this._ignoreTabPickerMouseDown)
+                return;
+
+            this._ignoreTabPickerMouseDown = true;
+
             let contextMenu = WI.ContextMenu.createFromEvent(event);
-            for (let item of this._hiddenTabBarItems)
-                contextMenu.appendItem(item.title, () => this.selectedTabBarItem = item);
+            contextMenu.addBeforeShowCallback(() => {
+                this._ignoreTabPickerMouseDown = false;
+            });
+
+            for (let item of this._hiddenTabBarItems) {
+                contextMenu.appendItem(item.title, () => {
+                    this.selectedTabBarItem = item;
+                });
+            }
 
             contextMenu.show();
             return;
         }
 
-        let closeButtonElement = event.target.enclosingNodeOrSelfWithClass(WI.TabBarItem.CloseButtonStyleClassName);
+        let closeButtonElement = event.target.closest("." + WI.TabBarItem.CloseButtonStyleClassName);
         if (closeButtonElement)
             return;
 
@@ -614,7 +626,7 @@ WI.TabBar = class TabBar extends WI.View
 
     _handleClick(event)
     {
-        var itemElement = event.target.enclosingNodeOrSelfWithClass(WI.TabBarItem.StyleClassName);
+        var itemElement = event.target.closest("." + WI.TabBarItem.StyleClassName);
         if (!itemElement)
             return;
 
@@ -627,7 +639,7 @@ WI.TabBar = class TabBar extends WI.View
 
         const clickedMiddleButton = event.button === 1;
 
-        var closeButtonElement = event.target.enclosingNodeOrSelfWithClass(WI.TabBarItem.CloseButtonStyleClassName);
+        var closeButtonElement = event.target.closest("." + WI.TabBarItem.CloseButtonStyleClassName);
         if (closeButtonElement || clickedMiddleButton) {
             // Disallow closing the only tab.
             if (this.element.classList.contains("single-tab"))

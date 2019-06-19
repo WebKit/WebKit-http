@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if (WK_API_ENABLED && PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR))
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS_FAMILY) && !PLATFORM(IOS_FAMILY_SIMULATOR))
 
 #import "PlatformUtilities.h"
 #import "Test.h"
@@ -113,6 +113,12 @@ TEST(ExitFullscreenOnEnterPiP, ElementFullscreen)
     [webView evaluateJavaScript:@"document.getElementById('enter-element-fullscreen').click()" completionHandler: nil];
     TestWebKitAPI::Util::run(&didEnterFullscreen);
     ASSERT_TRUE(didEnterFullscreen);
+
+    // Make the video the "main content" by playing with a user gesture.
+    __block bool didBeginPlaying = false;
+    [webView performAfterReceivingMessage:@"playing" action:^{ didBeginPlaying = true; }];
+    [webView evaluateJavaScript:@"document.getElementById('play').click()" completionHandler:nil];
+    TestWebKitAPI::Util::run(&didBeginPlaying);
 
     didEnterPiP = false;
     didExitFullscreen = false;

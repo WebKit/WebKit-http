@@ -147,7 +147,7 @@ void DOMWindowExtensionBasic::initialize(WKBundleRef bundle, WKTypeRef userData)
     assert(WKGetTypeID(userData) == WKBundlePageGroupGetTypeID());
     WKBundlePageGroupRef pageGroup = static_cast<WKBundlePageGroupRef>(userData);
 
-    WKRetainPtr<WKStringRef> source(AdoptWK, WKStringCreateWithUTF8CString("alert('Unimportant alert');"));
+    WKRetainPtr<WKStringRef> source = adoptWK(WKStringCreateWithUTF8CString("alert('Unimportant alert');"));
     WKBundleAddUserScript(bundle, pageGroup, WKBundleScriptWorldCreateWorld(), source.get(), 0, 0, 0, kWKInjectAtDocumentStart, kWKInjectInAllFrames);
 }
 
@@ -229,9 +229,6 @@ void DOMWindowExtensionBasic::didReconnectDOMWindowExtensionToGlobalObject(WKBun
 
 void DOMWindowExtensionBasic::willDestroyGlobalObjectForDOMWindowExtension(WKBundleDOMWindowExtensionRef)
 {
-    // All of the items are candidates for the page cache and should not be evicted from the page
-    // cache before the test completes.
-    ASSERT_NOT_REACHED();
 }
 
 static void didFinishLoadForFrameCallback(WKBundlePageRef, WKBundleFrameRef frame, WKTypeRef*, const void *clientInfo)

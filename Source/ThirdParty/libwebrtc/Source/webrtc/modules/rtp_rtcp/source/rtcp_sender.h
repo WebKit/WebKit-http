@@ -68,7 +68,7 @@ class RTCPSender {
              RtcpPacketTypeCounterObserver* packet_type_counter_observer,
              RtcEventLog* event_log,
              Transport* outgoing_transport,
-             RtcpIntervalConfig interval_config);
+             int report_interval_ms);
   virtual ~RTCPSender();
 
   RtcpMode Status() const;
@@ -82,7 +82,13 @@ class RTCPSender {
 
   void SetTimestampOffset(uint32_t timestamp_offset);
 
-  void SetLastRtpTime(uint32_t rtp_timestamp, int64_t capture_time_ms);
+  // TODO(bugs.webrtc.org/6458): Remove default parameter value when all the
+  // depending projects are updated to correctly set payload type.
+  void SetLastRtpTime(uint32_t rtp_timestamp,
+                      int64_t capture_time_ms,
+                      int8_t payload_type = -1);
+
+  void SetRtpClockRate(int8_t payload_type, int rtp_clock_rate_hz);
 
   uint32_t SSRC() const;
 
@@ -124,7 +130,6 @@ class RTCPSender {
                                      uint32_t name,
                                      const uint8_t* data,
                                      uint16_t length);
-  int32_t SetRTCPVoIPMetrics(const RTCPVoIPMetric* VoIPMetric);
 
   void SendRtcpXrReceiverReferenceTime(bool enable);
 
@@ -135,9 +140,6 @@ class RTCPSender {
   void SetTargetBitrate(unsigned int target_bitrate);
   void SetVideoBitrateAllocation(const VideoBitrateAllocation& bitrate);
   bool SendFeedbackPacket(const rtcp::TransportFeedback& packet);
-
-  int64_t RtcpAudioReportInverval() const;
-  int64_t RtcpVideoReportInverval() const;
 
  private:
   class RtcpContext;
@@ -185,10 +187,9 @@ class RTCPSender {
   RtcEventLog* const event_log_;
   Transport* const transport_;
 
-  const RtcpIntervalConfig interval_config_;
+  const int report_interval_ms_;
 
   rtc::CriticalSection critical_section_rtcp_sender_;
-  bool using_nack_ RTC_GUARDED_BY(critical_section_rtcp_sender_);
   bool sending_ RTC_GUARDED_BY(critical_section_rtcp_sender_);
 
   int64_t next_time_to_send_rtcp_ RTC_GUARDED_BY(critical_section_rtcp_sender_);
@@ -235,18 +236,24 @@ class RTCPSender {
   bool xr_send_receiver_reference_time_enabled_
       RTC_GUARDED_BY(critical_section_rtcp_sender_);
 
-  // XR VoIP metric
-  absl::optional<RTCPVoIPMetric> xr_voip_metric_
-      RTC_GUARDED_BY(critical_section_rtcp_sender_);
-
   RtcpPacketTypeCounterObserver* const packet_type_counter_observer_;
   RtcpPacketTypeCounter packet_type_counter_
       RTC_GUARDED_BY(critical_section_rtcp_sender_);
 
   RtcpNackStats nack_stats_ RTC_GUARDED_BY(critical_section_rtcp_sender_);
 
-  absl::optional<VideoBitrateAllocation> video_bitrate_allocation_
+  VideoBitrateAllocation video_bitrate_allocation_
       RTC_GUARDED_BY(critical_section_rtcp_sender_);
+  bool send_video_bitrate_allocation_
+      RTC_GUARDED_BY(critical_section_rtcp_sender_);
+
+  std::map<int8_t, int> rtp_clock_rates_khz_
+      RTC_GUARDED_BY(critical_section_rtcp_sender_);
+  int8_t last_payload_type_ RTC_GUARDED_BY(critical_section_rtcp_sender_);
+
+  absl::optional<VideoBitrateAllocation> CheckAndUpdateLayerStructure(
+      const VideoBitrateAllocation& bitrate) const
+      RTC_EXCLUSIVE_LOCKS_REQUIRED(critical_section_rtcp_sender_);
 
   void SetFlag(uint32_t type, bool is_volatile)
       RTC_EXCLUSIVE_LOCKS_REQUIRED(critical_section_rtcp_sender_);

@@ -26,7 +26,9 @@
 #include "JSDOMBinding.h"
 #include "JSDOMBindingSecurity.h"
 #include "JSDOMExceptionHandling.h"
+#include "JSDOMWindowCustom.h"
 #include "RuntimeApplicationChecks.h"
+#include "WebCoreJSClientData.h"
 #include <JavaScriptCore/JSFunction.h>
 #include <JavaScriptCore/Lookup.h>
 
@@ -38,11 +40,7 @@ static bool getOwnPropertySlotCommon(JSLocation& thisObject, ExecState& state, P
     VM& vm = state.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    Frame* frame = thisObject.wrapped().frame();
-    if (!frame) {
-        slot.setUndefined();
-        return true;
-    }
+    auto* window = thisObject.wrapped().window();
 
     // When accessing Location cross-domain, functions are always the native built-in ones.
     // See JSDOMWindow::getOwnPropertySlotDelegate for additional details.
@@ -50,14 +48,10 @@ static bool getOwnPropertySlotCommon(JSLocation& thisObject, ExecState& state, P
     // Our custom code is only needed to implement the Window cross-domain scheme, so if access is
     // allowed, return false so the normal lookup will take place.
     String message;
-    if (BindingSecurity::shouldAllowAccessToFrame(state, *frame, message))
+    if (BindingSecurity::shouldAllowAccessToDOMWindow(state, window, message))
         return false;
 
     // https://html.spec.whatwg.org/#crossorigingetownpropertyhelper-(-o,-p-)
-    if (propertyName == vm.propertyNames->toStringTagSymbol || propertyName == vm.propertyNames->hasInstanceSymbol || propertyName == vm.propertyNames->isConcatSpreadableSymbol) {
-        slot.setValue(&thisObject, PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum, jsUndefined());
-        return true;
-    }
 
     // We only allow access to Location.replace() cross origin.
     if (propertyName == vm.propertyNames->replace) {
@@ -67,44 +61,53 @@ static bool getOwnPropertySlotCommon(JSLocation& thisObject, ExecState& state, P
 
     // Getting location.href cross origin needs to throw. However, getOwnPropertyDescriptor() needs to return
     // a descriptor that has a setter but no getter.
-    if (slot.internalMethodType() == PropertySlot::InternalMethodType::GetOwnProperty && propertyName == vm.propertyNames->href) {
+    if (slot.internalMethodType() == PropertySlot::InternalMethodType::GetOwnProperty && propertyName == static_cast<JSVMClientData*>(vm.clientData)->builtinNames().hrefPublicName()) {
         auto* entry = JSLocation::info()->staticPropHashTable->entry(propertyName);
         CustomGetterSetter* customGetterSetter = CustomGetterSetter::create(vm, nullptr, entry->propertyPutter());
         slot.setCustomGetterSetter(&thisObject, static_cast<unsigned>(JSC::PropertyAttribute::CustomAccessor | PropertyAttribute::DontEnum), customGetterSetter);
         return true;
     }
 
+    if (handleCommonCrossOriginProperties(&thisObject, vm, propertyName, slot))
+        return true;
+
     throwSecurityError(state, scope, message);
     slot.setUndefined();
-    return true;
+    return false;
 }
 
 bool JSLocation::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyName propertyName, PropertySlot& slot)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     auto* thisObject = jsCast<JSLocation*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
 
-    if (getOwnPropertySlotCommon(*thisObject, *state, propertyName, slot))
+    bool result = getOwnPropertySlotCommon(*thisObject, *state, propertyName, slot);
+    EXCEPTION_ASSERT(!scope.exception() || !result);
+    RETURN_IF_EXCEPTION(scope, false);
+    if (result)
         return true;
-    return JSObject::getOwnPropertySlot(object, state, propertyName, slot);
+    RELEASE_AND_RETURN(scope, JSObject::getOwnPropertySlot(object, state, propertyName, slot));
 }
 
 bool JSLocation::getOwnPropertySlotByIndex(JSObject* object, ExecState* state, unsigned index, PropertySlot& slot)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     auto* thisObject = jsCast<JSLocation*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
 
-    if (getOwnPropertySlotCommon(*thisObject, *state, Identifier::from(state, index), slot))
+    bool result = getOwnPropertySlotCommon(*thisObject, *state, Identifier::from(state, index), slot);
+    EXCEPTION_ASSERT(!scope.exception() || !result);
+    RETURN_IF_EXCEPTION(scope, false);
+    if (result)
         return true;
-    return JSObject::getOwnPropertySlotByIndex(object, state, index, slot);
+    RELEASE_AND_RETURN(scope, JSObject::getOwnPropertySlotByIndex(object, state, index, slot));
 }
 
 static bool putCommon(JSLocation& thisObject, ExecState& state, PropertyName propertyName)
 {
-    Frame* frame = thisObject.wrapped().frame();
-    if (!frame)
-        return true;
-
     VM& vm = state.vm();
     // Silently block access to toString and valueOf.
     if (propertyName == vm.propertyNames->toString || propertyName == vm.propertyNames->valueOf)
@@ -113,11 +116,11 @@ static bool putCommon(JSLocation& thisObject, ExecState& state, PropertyName pro
     // Always allow assigning to the whole location.
     // However, alllowing assigning of pieces might inadvertently disclose parts of the original location.
     // So fall through to the access check for those.
-    if (propertyName == vm.propertyNames->href)
+    if (propertyName == static_cast<JSVMClientData*>(vm.clientData)->builtinNames().hrefPublicName())
         return false;
 
     // Block access and throw if there is a security error.
-    if (!BindingSecurity::shouldAllowAccessToFrame(&state, frame, ThrowSecurityError))
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(&state, thisObject.wrapped().window(), ThrowSecurityError))
         return true;
 
     return false;
@@ -149,7 +152,7 @@ bool JSLocation::deleteProperty(JSCell* cell, ExecState* exec, PropertyName prop
 {
     JSLocation* thisObject = jsCast<JSLocation*>(cell);
     // Only allow deleting by frames in the same origin.
-    if (!BindingSecurity::shouldAllowAccessToFrame(exec, thisObject->wrapped().frame(), ThrowSecurityError))
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped().window(), ThrowSecurityError))
         return false;
     return Base::deleteProperty(thisObject, exec, propertyName);
 }
@@ -158,37 +161,17 @@ bool JSLocation::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned p
 {
     JSLocation* thisObject = jsCast<JSLocation*>(cell);
     // Only allow deleting by frames in the same origin.
-    if (!BindingSecurity::shouldAllowAccessToFrame(exec, thisObject->wrapped().frame(), ThrowSecurityError))
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped().window(), ThrowSecurityError))
         return false;
     return Base::deletePropertyByIndex(thisObject, exec, propertyName);
-}
-
-// https://html.spec.whatwg.org/#crossoriginproperties-(-o-)
-static void addCrossOriginLocationPropertyNames(ExecState& state, PropertyNameArray& propertyNames)
-{
-    VM& vm = state.vm();
-    static const Identifier* const properties[] = { &vm.propertyNames->href, &vm.propertyNames->replace };
-    for (auto* property : properties)
-        propertyNames.add(*property);
-}
-
-// https://html.spec.whatwg.org/#crossoriginownpropertykeys-(-o-)
-static void addCrossOriginLocationOwnPropertyNames(ExecState& state, PropertyNameArray& propertyNames)
-{
-    VM& vm = state.vm();
-    addCrossOriginLocationPropertyNames(state, propertyNames);
-
-    propertyNames.add(vm.propertyNames->toStringTagSymbol);
-    propertyNames.add(vm.propertyNames->hasInstanceSymbol);
-    propertyNames.add(vm.propertyNames->isConcatSpreadableSymbol);
 }
 
 void JSLocation::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
     JSLocation* thisObject = jsCast<JSLocation*>(object);
-    if (!BindingSecurity::shouldAllowAccessToFrame(exec, thisObject->wrapped().frame(), DoNotReportSecurityError)) {
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped().window(), DoNotReportSecurityError)) {
         if (mode.includeDontEnumProperties())
-            addCrossOriginLocationOwnPropertyNames(*exec, propertyNames);
+            addCrossOriginOwnPropertyNames<CrossOriginObject::Location>(*exec, propertyNames);
         return;
     }
     Base::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
@@ -197,7 +180,7 @@ void JSLocation::getOwnPropertyNames(JSObject* object, ExecState* exec, Property
 bool JSLocation::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool throwException)
 {
     JSLocation* thisObject = jsCast<JSLocation*>(object);
-    if (!BindingSecurity::shouldAllowAccessToFrame(exec, thisObject->wrapped().frame(), ThrowSecurityError))
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped().window(), ThrowSecurityError))
         return false;
 
     VM& vm = exec->vm();
@@ -209,7 +192,7 @@ bool JSLocation::defineOwnProperty(JSObject* object, ExecState* exec, PropertyNa
 JSValue JSLocation::getPrototype(JSObject* object, ExecState* exec)
 {
     JSLocation* thisObject = jsCast<JSLocation*>(object);
-    if (!BindingSecurity::shouldAllowAccessToFrame(exec, thisObject->wrapped().frame(), DoNotReportSecurityError))
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped().window(), DoNotReportSecurityError))
         return jsNull();
 
     return Base::getPrototype(object, exec);
@@ -226,7 +209,7 @@ bool JSLocation::preventExtensions(JSObject*, ExecState* exec)
 String JSLocation::toStringName(const JSObject* object, ExecState* exec)
 {
     auto* thisObject = jsCast<const JSLocation*>(object);
-    if (!BindingSecurity::shouldAllowAccessToFrame(exec, thisObject->wrapped().frame(), DoNotReportSecurityError))
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, thisObject->wrapped().window(), DoNotReportSecurityError))
         return "Object"_s;
     return "Location"_s;
 }

@@ -27,8 +27,6 @@
 
 #import "WKFoundation.h"
 
-#if WK_API_ENABLED
-
 #import "APIHistoryClient.h"
 #import "APINavigationClient.h"
 #import "PageLoadState.h"
@@ -36,6 +34,7 @@
 #import "ProcessThrottler.h"
 #import <wtf/RetainPtr.h>
 #import <wtf/RunLoop.h>
+#import <wtf/UniqueRef.h>
 #import <wtf/WeakObjCPtr.h>
 
 @class WKWebView;
@@ -55,14 +54,15 @@ namespace WebKit {
 struct WebNavigationDataStore;
 
 class NavigationState final : private PageLoadState::Observer {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit NavigationState(WKWebView *);
     ~NavigationState();
 
     static NavigationState& fromWebPage(WebPageProxy&);
 
-    std::unique_ptr<API::NavigationClient> createNavigationClient();
-    std::unique_ptr<API::HistoryClient> createHistoryClient();
+    UniqueRef<API::NavigationClient> createNavigationClient();
+    UniqueRef<API::HistoryClient> createHistoryClient();
 
     RetainPtr<id <WKNavigationDelegate> > navigationDelegate();
     void setNavigationDelegate(id <WKNavigationDelegate>);
@@ -82,7 +82,7 @@ public:
 
     void didFirstPaint();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     enum class NetworkActivityTokenReleaseReason { LoadCompleted, ScreenLocked };
     void releaseNetworkActivityToken(NetworkActivityTokenReleaseReason);
 #endif
@@ -97,6 +97,7 @@ private:
         void didStartProvisionalNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
         void didReceiveServerRedirectForProvisionalNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
         void willPerformClientRedirect(WebPageProxy&, const WTF::String&, double) override;
+        void didPerformClientRedirect(WebPageProxy&, const WTF::String&, const WTF::String&) override;
         void didCancelClientRedirect(WebPageProxy&) override;
         void didFailProvisionalNavigationWithError(WebPageProxy&, WebFrameProxy&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
         void didFailProvisionalLoadInSubframeWithError(WebPageProxy&, WebFrameProxy&, const WebCore::SecurityOriginData&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
@@ -106,7 +107,9 @@ private:
         void didFailNavigationWithError(WebPageProxy&, WebFrameProxy&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
         void didSameDocumentNavigation(WebPageProxy&, API::Navigation*, SameDocumentNavigationType, API::Object*) override;
 
-        void renderingProgressDidChange(WebPageProxy&, WebCore::LayoutMilestones) override;
+        void renderingProgressDidChange(WebPageProxy&, OptionSet<WebCore::LayoutMilestone>) override;
+
+        bool shouldBypassContentModeSafeguards() const final;
 
         void didReceiveAuthenticationChallenge(WebPageProxy&, AuthenticationChallengeProxy&) override;
         bool processDidTerminate(WebPageProxy&, ProcessTerminationReason) override;
@@ -115,7 +118,7 @@ private:
 
         RefPtr<API::Data> webCryptoMasterKey(WebPageProxy&) override;
 
-        RefPtr<API::String> signedPublicKeyAndChallengeString(WebPageProxy&, unsigned keySizeIndex, const RefPtr<API::String>& challengeString, const WebCore::URL&) override;
+        RefPtr<API::String> signedPublicKeyAndChallengeString(WebPageProxy&, unsigned keySizeIndex, const RefPtr<API::String>& challengeString, const URL&) override;
 
 #if USE(QUICK_LOOK)
         void didStartLoadForQuickLookDocumentInMainFrame(const WTF::String& fileName, const WTF::String& uti) override;
@@ -123,16 +126,16 @@ private:
 #endif
 
 #if PLATFORM(MAC)
-        void webGLLoadPolicy(WebPageProxy&, const WebCore::URL&, CompletionHandler<void(WebCore::WebGLLoadPolicy)>&&) const final;
-        void resolveWebGLLoadPolicy(WebPageProxy&, const WebCore::URL&, CompletionHandler<void(WebCore::WebGLLoadPolicy)>&&) const final;
-        bool willGoToBackForwardListItem(WebPageProxy&, WebBackForwardListItem&, bool inPageCache, API::Object*) final;
+        void webGLLoadPolicy(WebPageProxy&, const URL&, CompletionHandler<void(WebCore::WebGLLoadPolicy)>&&) const final;
+        void resolveWebGLLoadPolicy(WebPageProxy&, const URL&, CompletionHandler<void(WebCore::WebGLLoadPolicy)>&&) const final;
+        bool willGoToBackForwardListItem(WebPageProxy&, WebBackForwardListItem&, bool inPageCache) final;
         bool didFailToInitializePlugIn(WebPageProxy&, API::Dictionary&) final;
         bool didBlockInsecurePluginVersion(WebPageProxy&, API::Dictionary&) final;
         void decidePolicyForPluginLoad(WebKit::WebPageProxy&, WebKit::PluginModuleLoadPolicy, API::Dictionary&, CompletionHandler<void(WebKit::PluginModuleLoadPolicy, const WTF::String&)>&&) final;
         bool didChangeBackForwardList(WebPageProxy&, WebBackForwardListItem*, const Vector<Ref<WebBackForwardListItem>>&) final;
 #endif
 
-        void contentRuleListNotification(WebPageProxy&, WebCore::URL&&, Vector<String>&&, Vector<String>&&) final;
+        void contentRuleListNotification(WebPageProxy&, URL&&, WebCore::ContentRuleListResults&&) final;
         void decidePolicyForNavigationAction(WebPageProxy&, Ref<API::NavigationAction>&&, Ref<WebFramePolicyListenerProxy>&&, API::Object* userData) override;
         void decidePolicyForNavigationResponse(WebPageProxy&, Ref<API::NavigationResponse>&&, Ref<WebFramePolicyListenerProxy>&&, API::Object* userData) override;
 
@@ -174,8 +177,9 @@ private:
     void didChangeCertificateInfo() override;
     void willChangeWebProcessIsResponsive() override;
     void didChangeWebProcessIsResponsive() override;
+    void didSwapWebProcesses() override;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void releaseNetworkActivityTokenAfterLoadCompletion() { releaseNetworkActivityToken(NetworkActivityTokenReleaseReason::LoadCompleted); }
 #endif
 
@@ -184,6 +188,7 @@ private:
 
     struct {
         bool webViewDecidePolicyForNavigationActionDecisionHandler : 1;
+        bool webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler : 1;
         bool webViewDecidePolicyForNavigationActionDecisionHandlerWebsitePolicies : 1;
         bool webViewDecidePolicyForNavigationActionUserInfoDecisionHandlerWebsitePolicies : 1;
         bool webViewDecidePolicyForNavigationResponseDecisionHandler : 1;
@@ -194,6 +199,7 @@ private:
         bool webViewDidFailProvisionalNavigationWithError : 1;
         bool webViewNavigationDidFailProvisionalLoadInSubframeWithError : 1;
         bool webViewWillPerformClientRedirect : 1;
+        bool webViewDidPerformClientRedirect : 1;
         bool webViewDidCancelClientRedirect : 1;
         bool webViewDidCommitNavigation : 1;
         bool webViewNavigationDidFinishDocumentLoad : 1;
@@ -216,6 +222,7 @@ private:
         bool webViewWillSnapshotBackForwardListItem : 1;
         bool webViewNavigationGestureSnapshotWasRemoved : 1;
         bool webViewURLContentRuleListIdentifiersNotifications : 1;
+        bool webViewContentRuleListWithIdentifierPerformedActionForURL : 1;
 #if USE(QUICK_LOOK)
         bool webViewDidStartLoadForQuickLookDocumentInMainFrame : 1;
         bool webViewDidFinishLoadForQuickLookDocumentInMainFrame : 1;
@@ -241,12 +248,10 @@ private:
         bool webViewDidUpdateHistoryTitleForURL : 1;
     } m_historyDelegateMethods;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     ProcessThrottler::BackgroundActivityToken m_activityToken;
     RunLoop::Timer<NavigationState> m_releaseActivityTimer;
 #endif
 };
 
 } // namespace WebKit
-
-#endif

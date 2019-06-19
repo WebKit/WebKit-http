@@ -49,6 +49,8 @@ enum class WebsiteDataType {
     ServiceWorkerRegistrations = 1 << 14,
 #endif
     DOMCache = 1 << 15,
+    DeviceIdHashSalt = 1 << 16,
+    AdClickAttributions = 1 << 17,
 };
 
 };

@@ -12,15 +12,24 @@
 
 #include <memory>
 
+#include "api/test/mock_video_decoder.h"
+#include "api/test/mock_video_encoder.h"
+#include "api/video_codecs/vp8_temporal_layers.h"
 #include "common_video/libyuv/include/webrtc_libyuv.h"
 #include "modules/video_coding/codecs/test/video_codec_unittest.h"
 #include "modules/video_coding/codecs/vp8/include/vp8.h"
-#include "modules/video_coding/codecs/vp8/temporal_layers.h"
+#include "modules/video_coding/codecs/vp8/libvpx_vp8_encoder.h"
+#include "modules/video_coding/codecs/vp8/test/mock_libvpx_interface.h"
 #include "modules/video_coding/utility/vp8_header_parser.h"
 #include "rtc_base/timeutils.h"
 #include "test/video_codec_settings.h"
 
 namespace webrtc {
+
+using testing::Invoke;
+using testing::NiceMock;
+using testing::Return;
+using testing::_;
 
 namespace {
 constexpr uint32_t kInitialTimestampRtp = 123;
@@ -31,6 +40,7 @@ constexpr size_t kMaxPayloadSize = 1440;
 constexpr int kDefaultMinPixelsPerFrame = 320 * 180;
 constexpr int kWidth = 172;
 constexpr int kHeight = 144;
+constexpr float kFramerateFps = 30;
 }  // namespace
 
 class TestVp8Impl : public VideoCodecUnitTest {
@@ -55,21 +65,30 @@ class TestVp8Impl : public VideoCodecUnitTest {
 
   void EncodeAndWaitForFrame(const VideoFrame& input_frame,
                              EncodedImage* encoded_frame,
-                             CodecSpecificInfo* codec_specific_info) {
+                             CodecSpecificInfo* codec_specific_info,
+                             bool keyframe = false) {
+    std::vector<FrameType> frame_types;
+    if (keyframe) {
+      frame_types.emplace_back(FrameType::kVideoFrameKey);
+    } else {
+      frame_types.emplace_back(FrameType::kVideoFrameDelta);
+    }
     EXPECT_EQ(WEBRTC_VIDEO_CODEC_OK,
-              encoder_->Encode(input_frame, nullptr, nullptr));
+              encoder_->Encode(input_frame, nullptr, &frame_types));
     ASSERT_TRUE(WaitForEncodedFrame(encoded_frame, codec_specific_info));
     VerifyQpParser(*encoded_frame);
-    EXPECT_STREQ("libvpx", codec_specific_info->codec_name);
+    EXPECT_EQ("libvpx", encoder_->GetEncoderInfo().implementation_name);
     EXPECT_EQ(kVideoCodecVP8, codec_specific_info->codecType);
-    EXPECT_EQ(0u, codec_specific_info->codecSpecific.VP8.simulcastIdx);
+    EXPECT_EQ(0, encoded_frame->SpatialIndex());
   }
 
   void EncodeAndExpectFrameWith(const VideoFrame& input_frame,
-                                uint8_t temporal_idx) {
+                                uint8_t temporal_idx,
+                                bool keyframe = false) {
     EncodedImage encoded_frame;
     CodecSpecificInfo codec_specific_info;
-    EncodeAndWaitForFrame(input_frame, &encoded_frame, &codec_specific_info);
+    EncodeAndWaitForFrame(input_frame, &encoded_frame, &codec_specific_info,
+                          keyframe);
     EXPECT_EQ(temporal_idx, codec_specific_info.codecSpecific.VP8.temporalIdx);
   }
 
@@ -127,7 +146,7 @@ TEST_F(TestVp8Impl, OnEncodedImageReportsInfo) {
   CodecSpecificInfo codec_specific_info;
   EncodeAndWaitForFrame(*input_frame, &encoded_frame, &codec_specific_info);
 
-  EXPECT_EQ(kInitialTimestampRtp, encoded_frame._timeStamp);
+  EXPECT_EQ(kInitialTimestampRtp, encoded_frame.Timestamp());
   EXPECT_EQ(kInitialTimestampMs, encoded_frame.capture_time_ms_);
   EXPECT_EQ(kWidth, static_cast<int>(encoded_frame._encodedWidth));
   EXPECT_EQ(kHeight, static_cast<int>(encoded_frame._encodedHeight));
@@ -173,57 +192,57 @@ TEST_F(TestVp8Impl, DecodedQpEqualsEncodedQp) {
 TEST_F(TestVp8Impl, ChecksSimulcastSettings) {
   codec_settings_.numberOfSimulcastStreams = 2;
   // Reslutions are not scaled by 2, temporal layers do not match.
-  codec_settings_.simulcastStream[0] = {kWidth, kHeight, 2, 4000,
-                                        3000,   2000,    80};
-  codec_settings_.simulcastStream[1] = {kWidth, kHeight, 3, 4000,
-                                        3000,   2000,    80};
+  codec_settings_.simulcastStream[0] = {kWidth, kHeight, kFramerateFps, 2,
+                                        4000,   3000,    2000,          80};
+  codec_settings_.simulcastStream[1] = {kWidth, kHeight, 30,   3,
+                                        4000,   3000,    2000, 80};
   EXPECT_EQ(WEBRTC_VIDEO_CODEC_ERR_SIMULCAST_PARAMETERS_NOT_SUPPORTED,
             encoder_->InitEncode(&codec_settings_, kNumCores, kMaxPayloadSize));
   codec_settings_.numberOfSimulcastStreams = 3;
   // Reslutions are not scaled by 2.
-  codec_settings_.simulcastStream[0] = {kWidth / 2, kHeight / 2, 1, 4000,
-                                        3000,       2000,        80};
-  codec_settings_.simulcastStream[1] = {kWidth / 2, kHeight / 2, 1, 4000,
-                                        3000,       2000,        80};
-  codec_settings_.simulcastStream[2] = {kWidth, kHeight, 1, 4000,
-                                        3000,   2000,    80};
+  codec_settings_.simulcastStream[0] = {
+      kWidth / 2, kHeight / 2, kFramerateFps, 1, 4000, 3000, 2000, 80};
+  codec_settings_.simulcastStream[1] = {
+      kWidth / 2, kHeight / 2, kFramerateFps, 1, 4000, 3000, 2000, 80};
+  codec_settings_.simulcastStream[2] = {kWidth, kHeight, 30,   1,
+                                        4000,   3000,    2000, 80};
   EXPECT_EQ(WEBRTC_VIDEO_CODEC_ERR_SIMULCAST_PARAMETERS_NOT_SUPPORTED,
             encoder_->InitEncode(&codec_settings_, kNumCores, kMaxPayloadSize));
   // Reslutions are not scaled by 2.
-  codec_settings_.simulcastStream[0] = {kWidth, kHeight, 1, 4000,
-                                        3000,   2000,    80};
-  codec_settings_.simulcastStream[1] = {kWidth, kHeight, 1, 4000,
-                                        3000,   2000,    80};
-  codec_settings_.simulcastStream[2] = {kWidth, kHeight, 1, 4000,
-                                        3000,   2000,    80};
+  codec_settings_.simulcastStream[0] = {kWidth, kHeight, kFramerateFps, 1,
+                                        4000,   3000,    2000,          80};
+  codec_settings_.simulcastStream[1] = {kWidth, kHeight, kFramerateFps, 1,
+                                        4000,   3000,    2000,          80};
+  codec_settings_.simulcastStream[2] = {kWidth, kHeight, kFramerateFps, 1,
+                                        4000,   3000,    2000,          80};
   EXPECT_EQ(WEBRTC_VIDEO_CODEC_ERR_SIMULCAST_PARAMETERS_NOT_SUPPORTED,
             encoder_->InitEncode(&codec_settings_, kNumCores, kMaxPayloadSize));
   // Temporal layers do not match.
-  codec_settings_.simulcastStream[0] = {kWidth / 4, kHeight / 4, 1, 4000,
-                                        3000,       2000,        80};
-  codec_settings_.simulcastStream[1] = {kWidth / 2, kHeight / 2, 2, 4000,
-                                        3000,       2000,        80};
-  codec_settings_.simulcastStream[2] = {kWidth, kHeight, 3, 4000,
-                                        3000,   2000,    80};
+  codec_settings_.simulcastStream[0] = {
+      kWidth / 4, kHeight / 4, kFramerateFps, 1, 4000, 3000, 2000, 80};
+  codec_settings_.simulcastStream[1] = {
+      kWidth / 2, kHeight / 2, kFramerateFps, 2, 4000, 3000, 2000, 80};
+  codec_settings_.simulcastStream[2] = {kWidth, kHeight, kFramerateFps, 3,
+                                        4000,   3000,    2000,          80};
   EXPECT_EQ(WEBRTC_VIDEO_CODEC_ERR_SIMULCAST_PARAMETERS_NOT_SUPPORTED,
             encoder_->InitEncode(&codec_settings_, kNumCores, kMaxPayloadSize));
   // Resolutions do not match codec config.
   codec_settings_.simulcastStream[0] = {
-      kWidth / 4 + 1, kHeight / 4 + 1, 1, 4000, 3000, 2000, 80};
+      kWidth / 4 + 1, kHeight / 4 + 1, kFramerateFps, 1, 4000, 3000, 2000, 80};
   codec_settings_.simulcastStream[1] = {
-      kWidth / 2 + 2, kHeight / 2 + 2, 1, 4000, 3000, 2000, 80};
-  codec_settings_.simulcastStream[2] = {kWidth + 4, kHeight + 4, 1, 4000,
-                                        3000,       2000,        80};
+      kWidth / 2 + 2, kHeight / 2 + 2, kFramerateFps, 1, 4000, 3000, 2000, 80};
+  codec_settings_.simulcastStream[2] = {
+      kWidth + 4, kHeight + 4, kFramerateFps, 1, 4000, 3000, 2000, 80};
   EXPECT_EQ(WEBRTC_VIDEO_CODEC_ERR_SIMULCAST_PARAMETERS_NOT_SUPPORTED,
             encoder_->InitEncode(&codec_settings_, kNumCores, kMaxPayloadSize));
   // Everything fine: scaling by 2, top resolution matches video, temporal
   // settings are the same for all layers.
-  codec_settings_.simulcastStream[0] = {kWidth / 4, kHeight / 4, 1, 4000,
-                                        3000,       2000,        80};
-  codec_settings_.simulcastStream[1] = {kWidth / 2, kHeight / 2, 1, 4000,
-                                        3000,       2000,        80};
-  codec_settings_.simulcastStream[2] = {kWidth, kHeight, 1, 4000,
-                                        3000,   2000,    80};
+  codec_settings_.simulcastStream[0] = {
+      kWidth / 4, kHeight / 4, kFramerateFps, 1, 4000, 3000, 2000, 80};
+  codec_settings_.simulcastStream[1] = {
+      kWidth / 2, kHeight / 2, kFramerateFps, 1, 4000, 3000, 2000, 80};
+  codec_settings_.simulcastStream[2] = {kWidth, kHeight, kFramerateFps, 1,
+                                        4000,   3000,    2000,          80};
   EXPECT_EQ(WEBRTC_VIDEO_CODEC_OK,
             encoder_->InitEncode(&codec_settings_, kNumCores, kMaxPayloadSize));
 }
@@ -315,7 +334,8 @@ TEST_F(TestVp8Impl, ScalingDisabledIfAutomaticResizeOff) {
   EXPECT_EQ(WEBRTC_VIDEO_CODEC_OK,
             encoder_->InitEncode(&codec_settings_, kNumCores, kMaxPayloadSize));
 
-  VideoEncoder::ScalingSettings settings = encoder_->GetScalingSettings();
+  VideoEncoder::ScalingSettings settings =
+      encoder_->GetEncoderInfo().scaling_settings;
   EXPECT_FALSE(settings.thresholds.has_value());
 }
 
@@ -325,9 +345,87 @@ TEST_F(TestVp8Impl, ScalingEnabledIfAutomaticResizeOn) {
   EXPECT_EQ(WEBRTC_VIDEO_CODEC_OK,
             encoder_->InitEncode(&codec_settings_, kNumCores, kMaxPayloadSize));
 
-  VideoEncoder::ScalingSettings settings = encoder_->GetScalingSettings();
+  VideoEncoder::ScalingSettings settings =
+      encoder_->GetEncoderInfo().scaling_settings;
   EXPECT_TRUE(settings.thresholds.has_value());
   EXPECT_EQ(kDefaultMinPixelsPerFrame, settings.min_pixels_per_frame);
+}
+
+TEST_F(TestVp8Impl, DontDropKeyframes) {
+  // Set very high resolution to trigger overuse more easily.
+  const int kScreenWidth = 1920;
+  const int kScreenHeight = 1080;
+
+  codec_settings_.width = kScreenWidth;
+  codec_settings_.height = kScreenHeight;
+
+  // Screensharing has the internal frame dropper off, and instead per frame
+  // asks ScreenshareLayers to decide if it should be dropped or not.
+  codec_settings_.VP8()->frameDroppingOn = false;
+  codec_settings_.mode = VideoCodecMode::kScreensharing;
+  // ScreenshareLayers triggers on 2 temporal layers and 1000kbps max bitrate.
+  codec_settings_.VP8()->numberOfTemporalLayers = 2;
+  codec_settings_.maxBitrate = 1000;
+
+  // Reset the frame generator with large number of squares, leading to lots of
+  // details and high probability of overshoot.
+  input_frame_generator_ = test::FrameGenerator::CreateSquareGenerator(
+      codec_settings_.width, codec_settings_.height,
+      test::FrameGenerator::OutputType::I420,
+      /* num_squares = */ absl::optional<int>(300));
+
+  EXPECT_EQ(WEBRTC_VIDEO_CODEC_OK,
+            encoder_->InitEncode(&codec_settings_, kNumCores, kMaxPayloadSize));
+
+  VideoBitrateAllocation bitrate_allocation;
+  // Bitrate only enough for TL0.
+  bitrate_allocation.SetBitrate(0, 0, 200000);
+  encoder_->SetRateAllocation(bitrate_allocation, 5);
+
+  EncodedImage encoded_frame;
+  CodecSpecificInfo codec_specific_info;
+  EncodeAndWaitForFrame(*NextInputFrame(), &encoded_frame, &codec_specific_info,
+                        true);
+  EncodeAndExpectFrameWith(*NextInputFrame(), 0, true);
+  EncodeAndExpectFrameWith(*NextInputFrame(), 0, true);
+  EncodeAndExpectFrameWith(*NextInputFrame(), 0, true);
+}
+
+TEST_F(TestVp8Impl, KeepsTimestampOnReencode) {
+  auto* const vpx = new NiceMock<MockLibvpxVp8Interface>();
+  LibvpxVp8Encoder encoder((std::unique_ptr<LibvpxInterface>(vpx)));
+
+  // Settings needed to trigger ScreenshareLayers usage, which is required for
+  // overshoot-drop-reencode logic.
+  codec_settings_.targetBitrate = 200;
+  codec_settings_.maxBitrate = 1000;
+  codec_settings_.mode = VideoCodecMode::kScreensharing;
+  codec_settings_.VP8()->numberOfTemporalLayers = 2;
+
+  EXPECT_CALL(*vpx, img_wrap(_, _, _, _, _, _))
+      .WillOnce(Invoke([](vpx_image_t* img, vpx_img_fmt_t fmt, unsigned int d_w,
+                          unsigned int d_h, unsigned int stride_align,
+                          unsigned char* img_data) {
+        img->fmt = fmt;
+        img->d_w = d_w;
+        img->d_h = d_h;
+        img->img_data = img_data;
+        return img;
+      }));
+  EXPECT_EQ(WEBRTC_VIDEO_CODEC_OK,
+            encoder.InitEncode(&codec_settings_, 1, 1000));
+  MockEncodedImageCallback callback;
+  encoder.RegisterEncodeCompleteCallback(&callback);
+
+  // Simulate overshoot drop, re-encode: encode function will be called twice
+  // with the same parameters. codec_get_cx_data() will by default return no
+  // image data and be interpreted as drop.
+  EXPECT_CALL(*vpx, codec_encode(_, _, /* pts = */ 0, _, _, _))
+      .Times(2)
+      .WillRepeatedly(Return(vpx_codec_err_t::VPX_CODEC_OK));
+
+  auto delta_frame = std::vector<FrameType>{kVideoFrameDelta};
+  encoder.Encode(*NextInputFrame(), nullptr, &delta_frame);
 }
 
 }  // namespace webrtc

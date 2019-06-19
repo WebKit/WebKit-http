@@ -26,11 +26,12 @@
 #pragma once
 
 #include <pal/text/UnencodableHandling.h>
+#include <wtf/URL.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class TextEncoding {
+class TextEncoding : public WTF::URLTextEncoding {
 public:
     TextEncoding() = default;
     WEBCORE_EXPORT TextEncoding(const char* name);
@@ -43,11 +44,12 @@ public:
     bool isJapanese() const;
 
     const TextEncoding& closestByteBasedEquivalent() const;
-    const TextEncoding& encodingForFormSubmission() const;
+    const TextEncoding& encodingForFormSubmissionOrURLParsing() const;
 
     WEBCORE_EXPORT String decode(const char*, size_t length, bool stopOnError, bool& sawError) const;
     String decode(const char*, size_t length) const;
-    Vector<uint8_t> encode(StringView, UnencodableHandling) const;
+    WEBCORE_EXPORT Vector<uint8_t> encode(StringView, UnencodableHandling) const;
+    Vector<uint8_t> encodeForURLParsing(StringView string) const final { return encode(string, UnencodableHandling::URLEncodedEntities); }
 
     UChar backslashAsCurrencySymbol() const;
     bool isByteBasedEncoding() const { return !isNonByteBasedEncoding(); }
@@ -69,6 +71,11 @@ const TextEncoding& UTF16BigEndianEncoding();
 const TextEncoding& UTF16LittleEndianEncoding();
 WEBCORE_EXPORT const TextEncoding& UTF8Encoding();
 WEBCORE_EXPORT const TextEncoding& WindowsLatin1Encoding();
+
+// Unescapes the given string using URL escaping rules.
+// DANGER: If the URL has "%00" in it,
+// the resulting string will have embedded null characters!
+WEBCORE_EXPORT String decodeURLEscapeSequences(const String&, const TextEncoding& = UTF8Encoding());
 
 inline String TextEncoding::decode(const char* characters, size_t length) const
 {

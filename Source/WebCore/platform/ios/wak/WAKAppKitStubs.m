@@ -26,15 +26,8 @@
 #import "config.h"
 #import "WAKAppKitStubs.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 id NSApp = nil;
 
-@implementation NSCursor
-+ (void)setHiddenUntilMouseMoves:(BOOL)flag
-{
-    UNUSED_PARAM(flag);
-}
-@end
-
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

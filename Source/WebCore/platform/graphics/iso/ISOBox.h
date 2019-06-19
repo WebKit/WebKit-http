@@ -35,11 +35,11 @@ class DataView;
 
 namespace WebCore {
 
-class ISOBox {
+class WEBCORE_EXPORT ISOBox {
 public:
     virtual ~ISOBox() = default;
 
-    using PeekResult = std::optional<std::pair<FourCC, uint64_t>>;
+    using PeekResult = Optional<std::pair<FourCC, uint64_t>>;
     static PeekResult peekBox(JSC::DataView&, unsigned offset);
     static size_t minimumBoxSize() { return 2 * sizeof(uint32_t); }
 
@@ -75,7 +75,7 @@ protected:
     Vector<uint8_t> m_extendedType;
 };
 
-class ISOFullBox : public ISOBox {
+class WEBCORE_EXPORT ISOFullBox : public ISOBox {
 public:
     uint8_t version() const { return m_version; }
     uint32_t flags() const { return m_flags; }

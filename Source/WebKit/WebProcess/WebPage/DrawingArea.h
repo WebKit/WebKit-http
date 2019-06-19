@@ -29,11 +29,12 @@
 #include "DrawingAreaInfo.h"
 #include "LayerTreeContext.h"
 #include "MessageReceiver.h"
+#include "WebPage.h"
 #include <WebCore/ActivityState.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/LayerFlushThrottleState.h>
-#include <WebCore/LayoutMilestones.h>
+#include <WebCore/LayoutMilestone.h>
 #include <WebCore/PlatformScreen.h>
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
@@ -61,11 +62,11 @@ namespace WebKit {
 
 struct ColorSpaceData;
 class LayerTreeHost;
-class WebPage;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
 
 class DrawingArea : public IPC::MessageReceiver {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(DrawingArea);
 
 public:
@@ -73,32 +74,32 @@ public:
     virtual ~DrawingArea();
     
     DrawingAreaType type() const { return m_type; }
+    DrawingAreaIdentifier identifier() const { return m_identifier; }
 
     virtual void setNeedsDisplay() = 0;
     virtual void setNeedsDisplayInRect(const WebCore::IntRect&) = 0;
     virtual void scroll(const WebCore::IntRect& scrollRect, const WebCore::IntSize& scrollDelta) = 0;
 
     // FIXME: These should be pure virtual.
-    virtual void pageBackgroundTransparencyChanged() { }
     virtual void forceRepaint() { }
     virtual bool forceRepaintAsync(CallbackID) { return false; }
     virtual void setLayerTreeStateIsFrozen(bool) { }
     virtual bool layerTreeStateIsFrozen() const { return false; }
-    virtual LayerTreeHost* layerTreeHost() const { return 0; }
+    virtual bool layerFlushThrottlingIsActive() const { return false; }
 
     virtual void setPaintingEnabled(bool) { }
     virtual void updatePreferences(const WebPreferencesStore&) { }
     virtual void mainFrameContentSizeChanged(const WebCore::IntSize&) { }
 
 #if PLATFORM(COCOA)
-    virtual void setViewExposedRect(std::optional<WebCore::FloatRect>) = 0;
-    virtual std::optional<WebCore::FloatRect> viewExposedRect() const = 0;
+    virtual void setViewExposedRect(Optional<WebCore::FloatRect>) = 0;
+    virtual Optional<WebCore::FloatRect> viewExposedRect() const = 0;
 
     virtual void acceleratedAnimationDidStart(uint64_t /*layerID*/, const String& /*key*/, MonotonicTime /*startTime*/) { }
     virtual void acceleratedAnimationDidEnd(uint64_t /*layerID*/, const String& /*key*/) { }
     virtual void addFence(const WTF::MachSendRight&) { }
 #endif
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual WebCore::FloatRect exposedContentRect() const = 0;
     virtual void setExposedContentRect(const WebCore::FloatRect&) = 0;
 #endif
@@ -111,6 +112,7 @@ public:
     virtual WebCore::GraphicsLayerFactory* graphicsLayerFactory() { return nullptr; }
     virtual void setRootCompositingLayer(WebCore::GraphicsLayer*) = 0;
     virtual void scheduleCompositingLayerFlush() = 0;
+    virtual void scheduleInitialDeferredPaint() = 0;
     virtual void scheduleCompositingLayerFlushImmediately() = 0;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
@@ -126,47 +128,43 @@ public:
 
     virtual bool adjustLayerFlushThrottling(WebCore::LayerFlushThrottleState::Flags) { return false; }
 
-    virtual void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) { }
+    virtual void attachViewOverlayGraphicsLayer(WebCore::GraphicsLayer*) { }
 
     virtual void setShouldScaleViewToFitDocument(bool) { }
 
-    virtual bool dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones) { return false; }
+    virtual bool addMilestonesToDispatch(OptionSet<WebCore::LayoutMilestone>) { return false; }
 
 #if PLATFORM(COCOA)
     // Used by TiledCoreAnimationDrawingArea.
     virtual void updateGeometry(const WebCore::IntSize& viewSize, bool flushSynchronously, const WTF::MachSendRight& fencePort) { }
 #endif
 
-    virtual void layerHostDidFlushLayers() { };
-
-#if USE(COORDINATED_GRAPHICS)
-    virtual void didChangeViewportAttributes(WebCore::ViewportAttributes&&) = 0;
-#endif
+    virtual void layerHostDidFlushLayers() { }
 
 #if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+    virtual void didChangeViewportAttributes(WebCore::ViewportAttributes&&) = 0;
     virtual void deviceOrPageScaleFactorChanged() = 0;
 #endif
 
-#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-    void displayWasRefreshed();
-#endif
+    virtual void adoptLayersFromDrawingArea(DrawingArea&) { }
 
-    virtual void attachDrawingArea() { };
+    void removeMessageReceiverIfNeeded();
 
 protected:
-    DrawingArea(DrawingAreaType, WebPage&);
+    DrawingArea(DrawingAreaType, DrawingAreaIdentifier, WebPage&);
+
+    template<typename U> bool send(const U& message)
+    {
+        return m_webPage.send(message, m_identifier.toUInt64(), { });
+    }
 
     DrawingAreaType m_type;
+    DrawingAreaIdentifier m_identifier;
     WebPage& m_webPage;
-
-#if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    uint64_t m_nativeSurfaceHandleForCompositing { 0 };
-#endif
 
 private:
     // IPC::MessageReceiver.
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
 
     // Message handlers.
     // FIXME: These should be pure virtual.
@@ -185,10 +183,7 @@ private:
     virtual void addTransactionCallbackID(WebKit::CallbackID) { ASSERT_NOT_REACHED(); }
 #endif
 
-#if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    virtual void setNativeSurfaceHandleForCompositing(uint64_t) = 0;
-    virtual void destroyNativeSurfaceHandleForCompositing(bool&) = 0;
-#endif
+    bool m_hasRemovedMessageReceiver { false };
 };
 
 } // namespace WebKit

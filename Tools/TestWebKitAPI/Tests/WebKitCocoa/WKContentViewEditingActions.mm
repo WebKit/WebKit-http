@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "PlatformUtilities.h"
 #import "Test.h"
@@ -33,20 +33,6 @@
 #import "TestWKWebView.h"
 #import <WebKit/WebKit.h>
 #import <wtf/RetainPtr.h>
-
-static UIView *recursiveFindWKContentView(UIView *view)
-{
-    if ([view isKindOfClass:NSClassFromString(@"WKContentView")])
-        return view;
-
-    for (UIView *subview in view.subviews) {
-        UIView *contentView = recursiveFindWKContentView(subview);
-        if (contentView)
-            return contentView;
-    }
-
-    return nil;
-}
 
 TEST(WebKit, WKContentViewEditingActions)
 {
@@ -58,7 +44,7 @@ TEST(WebKit, WKContentViewEditingActions)
 
     [webView stringByEvaluatingJavaScript:@"selectPlainText()"];
 
-    UIView *contentView = recursiveFindWKContentView(webView.get());
+    UIView *contentView = [webView wkContentView];
 
     __block bool done = false;
 

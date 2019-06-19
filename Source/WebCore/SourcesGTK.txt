@@ -23,6 +23,7 @@
 
 accessibility/atk/AXObjectCacheAtk.cpp
 accessibility/atk/AccessibilityObjectAtk.cpp
+accessibility/atk/WebKitAccessible.cpp
 accessibility/atk/WebKitAccessibleHyperlink.cpp
 accessibility/atk/WebKitAccessibleInterfaceAction.cpp @no-unify
 accessibility/atk/WebKitAccessibleInterfaceComponent.cpp
@@ -37,7 +38,6 @@ accessibility/atk/WebKitAccessibleInterfaceTableCell.cpp
 accessibility/atk/WebKitAccessibleInterfaceText.cpp
 accessibility/atk/WebKitAccessibleInterfaceValue.cpp
 accessibility/atk/WebKitAccessibleUtil.cpp
-accessibility/atk/WebKitAccessibleWrapperAtk.cpp
 
 editing/atk/FrameSelectionAtk.cpp
 
@@ -46,12 +46,12 @@ loader/soup/ResourceLoaderSoup.cpp
 page/linux/ResourceUsageOverlayLinux.cpp
 page/linux/ResourceUsageThreadLinux.cpp
 
-page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp
-page/scrolling/coordinatedgraphics/ScrollingTreeCoordinatedGraphics.cpp
-page/scrolling/coordinatedgraphics/ScrollingTreeFixedNode.cpp
-page/scrolling/coordinatedgraphics/ScrollingTreeFrameScrollingNodeCoordinatedGraphics.cpp
-page/scrolling/coordinatedgraphics/ScrollingTreeStickyNode.cpp
-page/scrolling/coordinatedgraphics/ScrollingStateNodeCoordinatedGraphics.cpp
+page/scrolling/nicosia/ScrollingCoordinatorNicosia.cpp
+page/scrolling/nicosia/ScrollingStateNodeNicosia.cpp
+page/scrolling/nicosia/ScrollingTreeFixedNode.cpp
+page/scrolling/nicosia/ScrollingTreeFrameScrollingNodeNicosia.cpp
+page/scrolling/nicosia/ScrollingTreeNicosia.cpp
+page/scrolling/nicosia/ScrollingTreeStickyNode.cpp
 
 page/scrolling/generic/ScrollingThreadGeneric.cpp
 
@@ -59,20 +59,23 @@ platform/ScrollAnimationKinetic.cpp
 platform/ScrollAnimationSmooth.cpp
 platform/UserAgentQuirks.cpp
 
-platform/geoclue/GeolocationProviderGeoclue.cpp
+platform/generic/ScrollAnimatorGeneric.cpp
 
 platform/graphics/GLContext.cpp @no-unify
 platform/graphics/GraphicsContext3DPrivate.cpp
 
 platform/graphics/cairo/BackingStoreBackendCairoX11.cpp @no-unify
 
-platform/graphics/egl/GLContextEGL.cpp
+platform/graphics/egl/GLContextEGL.cpp @no-unify
+platform/graphics/egl/GLContextEGLLibWPE.cpp @no-unify
 platform/graphics/egl/GLContextEGLWayland.cpp @no-unify
 platform/graphics/egl/GLContextEGLX11.cpp @no-unify
 
 platform/graphics/glx/GLContextGLX.cpp
 
 platform/graphics/gstreamer/ImageGStreamerCairo.cpp
+
+platform/graphics/libwpe/PlatformDisplayLibWPE.cpp
 
 platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
 platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
@@ -89,7 +92,6 @@ platform/graphics/x11/XUniqueResource.cpp @no-unify
 platform/gtk/DragDataGtk.cpp
 platform/gtk/LocalizedStringsGtk.cpp
 platform/gtk/PasteboardGtk.cpp
-platform/gtk/ScrollAnimatorGtk.cpp
 platform/gtk/SelectionData.cpp
 
 platform/text/Hyphenation.cpp

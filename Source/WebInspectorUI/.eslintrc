@@ -35,6 +35,7 @@
     },
     "globals": {
         // Agents
+        "AuditAgent": true,
         "ApplicationCacheAgent": true,
         "CSSAgent": true,
         "CanvasAgent": true,
@@ -54,6 +55,7 @@
         "RecordingAgent": true,
         "RuntimeAgent": true,
         "ScriptProfilerAgent": true,
+        "ServiceWorkerAgent": true,
         "TimelineAgent": true,
         "WorkerAgent": true,
 
@@ -62,6 +64,7 @@
 
         // WebInspector
         "AsyncTestSuite": true,
+        "Debouncer": true,
         "Formatter": true,
         "FormatterContentBuilder": true,
         "FrontendTestHarness": true,
@@ -73,11 +76,13 @@
         "InspectorTest": true,
         "LinkedList": true,
         "ListMultimap": true,
+        "Multimap": true,
         "ProtocolTest": true,
         "ProtocolTestHarness": true,
         "SyncTestSuite": true,
         "TestHarness": true,
         "TestSuite": true,
+        "Throttler": true,
 
         // Externals
         "CodeMirror": true,
@@ -85,6 +90,7 @@
         "esprima": true,
 
         // Formatters
+        "CSSFormatter": true,
         "ESTreeWalker": true,
         "EsprimaFormatter": true,
         "FormatterWorker": true,
@@ -98,6 +104,7 @@
         "CSSPrimitiveValue": true,
         "Exception": true,
         "WebKitPoint": true,
+        "SQLError": true,
 
         // Utilities
         "appendWebInspectorConsoleEvaluationSourceURL": true,
@@ -122,6 +129,7 @@
         "parseMIMEType": true,
         "resolveDotsInPath": true,
         "simpleGlobStringToRegExp": true,
+        "textToBlob": true,
         "timestamp": true,
         "zeroWidthSpace": true,
 
@@ -151,7 +159,6 @@
         "createCodeMirrorCubicBezierTextMarkers": true,
         "createCodeMirrorGradientTextMarkers": true,
         "createCodeMirrorSpringTextMarkers": true,
-        "createCodeMirrorVariableTextMarkers": true,
     },
     "rules": {
         "array-bracket-spacing": [2, "never"],

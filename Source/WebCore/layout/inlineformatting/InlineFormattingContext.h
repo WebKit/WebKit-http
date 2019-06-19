@@ -27,29 +27,100 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "DisplayBox.h"
 #include "FormattingContext.h"
+#include "InlineFormattingState.h"
+#include "InlineLine.h"
 #include <wtf/IsoMalloc.h>
 
 namespace WebCore {
-
 namespace Layout {
 
-class InlineFormattingState;
+class FloatingState;
+class InlineContainer;
 
 // This class implements the layout logic for inline formatting contexts.
 // https://www.w3.org/TR/CSS22/visuren.html#inline-formatting
 class InlineFormattingContext : public FormattingContext {
     WTF_MAKE_ISO_ALLOCATED(InlineFormattingContext);
 public:
-    InlineFormattingContext(const Box& formattingContextRoot);
-
-    void layout(LayoutContext&, FormattingState&) const override;
+    InlineFormattingContext(const Box& formattingContextRoot, InlineFormattingState&);
+    void layout() const override;
 
 private:
-    void computeStaticPosition(const LayoutContext&, const Box&) const override;
-    void computeInFlowPositionedPosition(const LayoutContext&, const Box&) const override;
+    void computeIntrinsicWidthConstraints() const override;
 
-    InstrinsicWidthConstraints instrinsicWidthConstraints(LayoutContext&, const Box&) const override;
+    class LineLayout {
+    public:
+        LineLayout(const InlineFormattingContext&);
+        void layout(LayoutUnit widthConstraint) const;
+        LayoutUnit computedIntrinsicWidth(LayoutUnit widthConstraint) const;
+
+    private:
+        LayoutState& layoutState() const { return m_formattingContext.layoutState(); }
+
+        struct LineContent {
+            Optional<unsigned> lastInlineItemIndex;
+            Vector<WeakPtr<InlineItem>> floats;
+            std::unique_ptr<Line::Content> runs;
+        };
+
+        struct LineInput {
+            enum class SkipVerticalAligment { No, Yes };
+            LineInput(LayoutPoint logicalTopLeft, LayoutUnit availableLogicalWidth, SkipVerticalAligment, unsigned firstInlineItemIndex, const InlineItems&);
+            struct HorizontalConstraint {
+                HorizontalConstraint(LayoutPoint logicalTopLeft, LayoutUnit availableLogicalWidth);
+
+                LayoutPoint logicalTopLeft;
+                LayoutUnit availableLogicalWidth;
+            };
+            HorizontalConstraint horizontalConstraint;
+            // FIXME Alternatively we could just have a second pass with vertical positioning (preferred width computation opts out) 
+            SkipVerticalAligment skipVerticalAligment;
+            unsigned firstInlineItemIndex { 0 };
+            const InlineItems& inlineItems;
+            Optional<LayoutUnit> floatMinimumLogicalBottom;
+        };
+        LineContent placeInlineItems(const LineInput&) const;
+        void createDisplayRuns(const Line::Content&, const Vector<WeakPtr<InlineItem>>& floats, LayoutUnit widthConstraint) const;
+        void alignRuns(TextAlignMode, unsigned firstRunIndex, LayoutUnit availableWidth) const;
+
+    private:
+        static void justifyRuns(Line&);
+
+    private:
+        const InlineFormattingContext& m_formattingContext;
+        InlineFormattingState& m_formattingState;
+        FloatingState& m_floatingState;
+        const Container& m_formattingRoot;
+    };
+
+    class Quirks {
+    public:
+        static bool lineDescentNeedsCollapsing(const LayoutState&, const Line::Content&);
+    };
+
+    class Geometry : public FormattingContext::Geometry {
+    public:
+        static HeightAndMargin inlineBlockHeightAndMargin(const LayoutState&, const Box&);
+        static WidthAndMargin inlineBlockWidthAndMargin(LayoutState&, const Box&, UsedHorizontalValues);
+    };
+
+    void layoutFormattingContextRoot(const Box&, UsedHorizontalValues) const;
+    void computeIntrinsicWidthForFloatBox(const Box&) const;
+    void computeMarginBorderAndPaddingForInlineContainer(const InlineContainer&, UsedHorizontalValues) const;
+    void initializeMarginBorderAndPaddingForGenericInlineBox(const InlineBox&) const;
+    void computeIntrinsicWidthForInlineBlock(const Box&) const;
+    void computeWidthAndHeightForReplacedInlineBox(const Box&, UsedHorizontalValues) const;
+    void computeHorizontalMargin(const Box&, UsedHorizontalValues) const;
+    void computeHeightAndMargin(const Box&) const;
+    void computeWidthAndMargin(const Box&, UsedHorizontalValues) const;
+
+    void collectInlineContent() const;
+
+    InlineFormattingState& formattingState() const { return downcast<InlineFormattingState>(FormattingContext::formattingState()); }
+    // FIXME: Come up with a structure that requires no friending.
+    friend class Line;
 };
 
 }

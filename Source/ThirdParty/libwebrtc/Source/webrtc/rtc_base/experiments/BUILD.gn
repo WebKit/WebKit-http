@@ -15,7 +15,7 @@ rtc_static_library("alr_experiment") {
   ]
   deps = [
     "../:rtc_base_approved",
-    "../../system_wrappers:field_trial_api",
+    "../../system_wrappers:field_trial",
     "//third_party/abseil-cpp/absl/types:optional",
   ]
 }
@@ -28,11 +28,11 @@ rtc_static_library("field_trial_parser") {
     "field_trial_units.h",
   ]
   deps = [
-    "../:rtc_base_approved",
     "../../api/units:data_rate",
     "../../api/units:data_size",
     "../../api/units:time_delta",
-    "../../system_wrappers:field_trial_api",
+    "../../rtc_base:checks",
+    "../../rtc_base:logging",
     "//third_party/abseil-cpp/absl/types:optional",
   ]
 }
@@ -44,7 +44,7 @@ rtc_static_library("congestion_controller_experiment") {
   ]
   deps = [
     "../:rtc_base_approved",
-    "../../system_wrappers:field_trial_api",
+    "../../system_wrappers:field_trial",
     "//third_party/abseil-cpp/absl/types:optional",
   ]
 }
@@ -56,9 +56,55 @@ rtc_static_library("quality_scaling_experiment") {
   ]
   deps = [
     "../:rtc_base_approved",
-    "../..:webrtc_common",
     "../../api/video_codecs:video_codecs_api",
-    "../../system_wrappers:field_trial_api",
+    "../../system_wrappers:field_trial",
+    "//third_party/abseil-cpp/absl/types:optional",
+  ]
+}
+
+rtc_static_library("normalize_simulcast_size_experiment") {
+  sources = [
+    "normalize_simulcast_size_experiment.cc",
+    "normalize_simulcast_size_experiment.h",
+  ]
+  deps = [
+    "../:rtc_base_approved",
+    "../../system_wrappers:field_trial",
+    "//third_party/abseil-cpp/absl/types:optional",
+  ]
+}
+
+rtc_static_library("cpu_speed_experiment") {
+  sources = [
+    "cpu_speed_experiment.cc",
+    "cpu_speed_experiment.h",
+  ]
+  deps = [
+    "../:rtc_base_approved",
+    "../../system_wrappers:field_trial",
+    "//third_party/abseil-cpp/absl/types:optional",
+  ]
+}
+
+rtc_static_library("rtt_mult_experiment") {
+  sources = [
+    "rtt_mult_experiment.cc",
+    "rtt_mult_experiment.h",
+  ]
+  deps = [
+    "../:rtc_base_approved",
+    "../../system_wrappers:field_trial",
+  ]
+}
+
+rtc_static_library("jitter_upper_bound_experiment") {
+  sources = [
+    "jitter_upper_bound_experiment.cc",
+    "jitter_upper_bound_experiment.h",
+  ]
+  deps = [
+    "../:rtc_base_approved",
+    "../../system_wrappers:field_trial",
     "//third_party/abseil-cpp/absl/types:optional",
   ]
 }
@@ -69,18 +115,26 @@ if (rtc_include_tests) {
 
     sources = [
       "congestion_controller_experiment_unittest.cc",
+      "cpu_speed_experiment_unittest.cc",
       "field_trial_parser_unittest.cc",
       "field_trial_units_unittest.cc",
+      "normalize_simulcast_size_experiment_unittest.cc",
       "quality_scaling_experiment_unittest.cc",
+      "rtt_mult_experiment_unittest.cc",
     ]
     deps = [
       ":congestion_controller_experiment",
+      ":cpu_speed_experiment",
       ":field_trial_parser",
+      ":normalize_simulcast_size_experiment",
       ":quality_scaling_experiment",
+      ":rtt_mult_experiment",
+      "..:gunit_helpers",
       "../:rtc_base_tests_main",
       "../:rtc_base_tests_utils",
-      "../../system_wrappers:field_trial_api",
+      "../../system_wrappers:field_trial",
       "../../test:field_trial",
+      "../../test:test_support",
     ]
   }
 }

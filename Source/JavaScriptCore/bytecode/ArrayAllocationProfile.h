@@ -32,8 +32,21 @@ namespace JSC {
 
 class ArrayAllocationProfile {
 public:
+    ArrayAllocationProfile() = default;
+
+    ArrayAllocationProfile(IndexingType recommendedIndexingMode)
+    {
+        initializeIndexingMode(recommendedIndexingMode);
+    }
+
+    IndexingType selectIndexingTypeConcurrently()
+    {
+        return m_currentIndexingType;
+    }
+
     IndexingType selectIndexingType()
     {
+        ASSERT(!isCompilationThread());
         JSArray* lastArray = m_lastArray;
         if (lastArray && UNLIKELY(lastArray->indexingType() != m_currentIndexingType))
             updateProfile();
@@ -41,8 +54,14 @@ public:
     }
 
     // vector length hint becomes [0, BASE_CONTIGUOUS_VECTOR_LEN_MAX].
+    unsigned vectorLengthHintConcurrently()
+    {
+        return m_largestSeenVectorLength;
+    }
+
     unsigned vectorLengthHint()
     {
+        ASSERT(!isCompilationThread());
         JSArray* lastArray = m_lastArray;
         if (lastArray && (m_largestSeenVectorLength != BASE_CONTIGUOUS_VECTOR_LEN_MAX) && UNLIKELY(lastArray->getVectorLength() > m_largestSeenVectorLength))
             updateProfile();

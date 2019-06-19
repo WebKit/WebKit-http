@@ -25,13 +25,11 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 @class _WKRemoteObjectInterface;
 
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface _WKRemoteObjectRegistry : NSObject
 
 - (void)registerExportedObject:(id)object interface:(_WKRemoteObjectInterface *)interface;
@@ -40,5 +38,3 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 - (id)remoteObjectProxyWithInterface:(_WKRemoteObjectInterface *)interface;
 
 @end
-
-#endif // WK_API_ENABLED

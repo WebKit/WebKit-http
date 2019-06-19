@@ -152,7 +152,7 @@ struct InlineCallFrame {
             tailCallee = inlineCallFrame->isTail();
             callKind = inlineCallFrame->kind;
             codeOrigin = &inlineCallFrame->directCaller;
-            inlineCallFrame = codeOrigin->inlineCallFrame;
+            inlineCallFrame = codeOrigin->inlineCallFrame();
         } while (inlineCallFrame && tailCallee);
 
         if (tailCallee)
@@ -172,26 +172,26 @@ struct InlineCallFrame {
     InlineCallFrame* getCallerInlineFrameSkippingTailCalls()
     {
         CodeOrigin* caller = getCallerSkippingTailCalls();
-        return caller ? caller->inlineCallFrame : nullptr;
+        return caller ? caller->inlineCallFrame() : nullptr;
     }
     
     Vector<ValueRecovery> argumentsWithFixup; // Includes 'this' and arity fixups.
     WriteBarrier<CodeBlock> baselineCodeBlock;
-    ValueRecovery calleeRecovery;
     CodeOrigin directCaller;
 
-    unsigned argumentCountIncludingThis; // Do not include fixups.
+    unsigned argumentCountIncludingThis { 0 }; // Do not include fixups.
     signed stackOffset : 28;
     unsigned kind : 3; // real type is Kind
     bool isClosureCall : 1; // If false then we know that callee/scope are constants and the DFG won't treat them as variables, i.e. they have to be recovered manually.
     VirtualRegister argumentCountRegister; // Only set when we inline a varargs call.
+
+    ValueRecovery calleeRecovery;
     
     // There is really no good notion of a "default" set of values for
     // InlineCallFrame's fields. This constructor is here just to reduce confusion if
     // we forgot to initialize explicitly.
     InlineCallFrame()
-        : argumentCountIncludingThis(0)
-        , stackOffset(0)
+        : stackOffset(0)
         , kind(Call)
         , isClosureCall(false)
     {
@@ -240,20 +240,24 @@ inline CodeBlock* baselineCodeBlockForInlineCallFrame(InlineCallFrame* inlineCal
 
 inline CodeBlock* baselineCodeBlockForOriginAndBaselineCodeBlock(const CodeOrigin& codeOrigin, CodeBlock* baselineCodeBlock)
 {
-    if (codeOrigin.inlineCallFrame)
-        return baselineCodeBlockForInlineCallFrame(codeOrigin.inlineCallFrame);
+    ASSERT(baselineCodeBlock->jitType() == JITType::BaselineJIT);
+    auto* inlineCallFrame = codeOrigin.inlineCallFrame();
+    if (inlineCallFrame)
+        return baselineCodeBlockForInlineCallFrame(inlineCallFrame);
     return baselineCodeBlock;
 }
 
+// This function is defined here and not in CodeOrigin because it needs access to the directCaller field in InlineCallFrame
 template <typename Function>
 inline void CodeOrigin::walkUpInlineStack(const Function& function)
 {
     CodeOrigin codeOrigin = *this;
     while (true) {
         function(codeOrigin);
-        if (!codeOrigin.inlineCallFrame)
+        auto* inlineCallFrame = codeOrigin.inlineCallFrame();
+        if (!inlineCallFrame)
             break;
-        codeOrigin = codeOrigin.inlineCallFrame->directCaller;
+        codeOrigin = inlineCallFrame->directCaller;
     }
 }
 

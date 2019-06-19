@@ -28,25 +28,33 @@
 #include "GraphicsContext.h"
 #include "HTMLCanvasElement.h"
 #include "WebGLRenderingContextBase.h"
+#include <wtf/IsoMallocInlines.h>
 
 #if ENABLE(MEDIA_STREAM)
 
 namespace WebCore {
 
-Ref<CanvasCaptureMediaStreamTrack> CanvasCaptureMediaStreamTrack::create(ScriptExecutionContext& context, Ref<HTMLCanvasElement>&& canvas, std::optional<double>&& frameRequestRate)
+WTF_MAKE_ISO_ALLOCATED_IMPL(CanvasCaptureMediaStreamTrack);
+
+Ref<CanvasCaptureMediaStreamTrack> CanvasCaptureMediaStreamTrack::create(Document& document, Ref<HTMLCanvasElement>&& canvas, Optional<double>&& frameRequestRate)
 {
     auto source = CanvasCaptureMediaStreamTrack::Source::create(canvas.get(), WTFMove(frameRequestRate));
-    return adoptRef(*new CanvasCaptureMediaStreamTrack(context, WTFMove(canvas), WTFMove(source)));
+    return adoptRef(*new CanvasCaptureMediaStreamTrack(document, WTFMove(canvas), WTFMove(source)));
 }
 
-CanvasCaptureMediaStreamTrack::CanvasCaptureMediaStreamTrack(ScriptExecutionContext& context, Ref<HTMLCanvasElement>&& canvas, Ref<CanvasCaptureMediaStreamTrack::Source>&& source)
-    : MediaStreamTrack(context, MediaStreamTrackPrivate::create(source.copyRef()))
+CanvasCaptureMediaStreamTrack::CanvasCaptureMediaStreamTrack(Document& document, Ref<HTMLCanvasElement>&& canvas, Ref<CanvasCaptureMediaStreamTrack::Source>&& source)
+    : MediaStreamTrack(document, MediaStreamTrackPrivate::create(document.logger(), source.copyRef()))
     , m_canvas(WTFMove(canvas))
-    , m_source(WTFMove(source))
 {
 }
 
-Ref<CanvasCaptureMediaStreamTrack::Source> CanvasCaptureMediaStreamTrack::Source::create(HTMLCanvasElement& canvas, std::optional<double>&& frameRequestRate)
+CanvasCaptureMediaStreamTrack::CanvasCaptureMediaStreamTrack(Document& document, Ref<HTMLCanvasElement>&& canvas, Ref<MediaStreamTrackPrivate>&& privateTrack)
+    : MediaStreamTrack(document, WTFMove(privateTrack))
+    , m_canvas(WTFMove(canvas))
+{
+}
+
+Ref<CanvasCaptureMediaStreamTrack::Source> CanvasCaptureMediaStreamTrack::Source::create(HTMLCanvasElement& canvas, Optional<double>&& frameRequestRate)
 {
     auto source = adoptRef(*new Source(canvas, WTFMove(frameRequestRate)));
     source->start();
@@ -60,19 +68,13 @@ Ref<CanvasCaptureMediaStreamTrack::Source> CanvasCaptureMediaStreamTrack::Source
 }
 
 // FIXME: Give source id and name
-CanvasCaptureMediaStreamTrack::Source::Source(HTMLCanvasElement& canvas, std::optional<double>&& frameRequestRate)
-    : RealtimeMediaSource(String(), Type::Video, String())
+CanvasCaptureMediaStreamTrack::Source::Source(HTMLCanvasElement& canvas, Optional<double>&& frameRequestRate)
+    : RealtimeMediaSource(Type::Video, "CanvasCaptureMediaStreamTrack"_s)
     , m_frameRequestRate(WTFMove(frameRequestRate))
     , m_requestFrameTimer(*this, &Source::requestFrameTimerFired)
     , m_canvasChangedTimer(*this, &Source::captureCanvas)
     , m_canvas(&canvas)
 {
-    m_settings.setWidth(canvas.width());
-    m_settings.setHeight(canvas.height());
-    RealtimeMediaSourceSupportedConstraints constraints;
-    constraints.setSupportsWidth(true);
-    constraints.setSupportsHeight(true);
-    m_settings.setSupportedConstraints(constraints);
 }
 
 void CanvasCaptureMediaStreamTrack::Source::startProducingData()
@@ -110,26 +112,41 @@ void CanvasCaptureMediaStreamTrack::Source::canvasDestroyed(CanvasBase& canvas)
     m_canvas = nullptr;
 }
 
+const RealtimeMediaSourceSettings& CanvasCaptureMediaStreamTrack::Source::settings()
+{
+    if (m_currentSettings)
+        return m_currentSettings.value();
+
+    RealtimeMediaSourceSupportedConstraints constraints;
+    constraints.setSupportsWidth(true);
+    constraints.setSupportsHeight(true);
+
+    RealtimeMediaSourceSettings settings;
+    settings.setWidth(m_canvas->width());
+    settings.setHeight(m_canvas->height());
+    settings.setSupportedConstraints(constraints);
+
+    m_currentSettings = WTFMove(settings);
+    return m_currentSettings.value();
+}
+
+void CanvasCaptureMediaStreamTrack::Source::settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag> settings)
+{
+    if (settings.containsAny({ RealtimeMediaSourceSettings::Flag::Width, RealtimeMediaSourceSettings::Flag::Height }))
+        m_currentSettings = WTF::nullopt;
+}
+
 void CanvasCaptureMediaStreamTrack::Source::canvasResized(CanvasBase& canvas)
 {
     ASSERT_UNUSED(canvas, m_canvas == &canvas);
-
-    OptionSet<RealtimeMediaSourceSettings::Flag> changed;
-    if (m_canvas->width() != m_settings.width())
-        changed.add(RealtimeMediaSourceSettings::Flag::Width);
-    if (m_canvas->height() != m_settings.height())
-        changed.add(RealtimeMediaSourceSettings::Flag::Height);
-
-    m_settings.setWidth(m_canvas->width());
-    m_settings.setHeight(m_canvas->height());
-
-    settingsDidChange(changed);
+    setSize(IntSize(m_canvas->width(), m_canvas->height()));
 }
 
 void CanvasCaptureMediaStreamTrack::Source::canvasChanged(CanvasBase& canvas, const FloatRect&)
 {
     ASSERT_UNUSED(canvas, m_canvas == &canvas);
 
+#if ENABLE(WEBGL)
     // FIXME: We need to preserve drawing buffer as we are currently grabbing frames asynchronously.
     // We should instead add an anchor point for both 2d and 3d contexts where canvas will actually paint.
     // And call canvas observers from that point.
@@ -140,6 +157,7 @@ void CanvasCaptureMediaStreamTrack::Source::canvasChanged(CanvasBase& canvas, co
             context.setPreserveDrawingBuffer(true);
         }
     }
+#endif
 
     // FIXME: We should try to generate the frame at the time the screen is being updated.
     if (m_canvasChangedTimer.isActive())
@@ -174,8 +192,8 @@ RefPtr<MediaStreamTrack> CanvasCaptureMediaStreamTrack::clone()
 {
     if (!scriptExecutionContext())
         return nullptr;
-
-    return CanvasCaptureMediaStreamTrack::create(*scriptExecutionContext(), m_canvas.copyRef(), m_source->frameRequestRate());
+    
+    return adoptRef(*new CanvasCaptureMediaStreamTrack(downcast<Document>(*scriptExecutionContext()), m_canvas.copyRef(), m_private->clone()));
 }
 
 }

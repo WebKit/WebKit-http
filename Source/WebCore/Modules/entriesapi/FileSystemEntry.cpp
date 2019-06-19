@@ -29,12 +29,15 @@
 #include "DOMException.h"
 #include "DOMFileSystem.h"
 #include "ErrorCallback.h"
-#include "FileSystem.h"
 #include "FileSystemDirectoryEntry.h"
 #include "FileSystemEntryCallback.h"
 #include "ScriptExecutionContext.h"
+#include <wtf/FileSystem.h>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(FileSystemEntry);
 
 FileSystemEntry::FileSystemEntry(ScriptExecutionContext& context, DOMFileSystem& filesystem, const String& virtualPath)
     : ActiveDOMObject(&context)

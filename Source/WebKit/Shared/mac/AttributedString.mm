@@ -26,28 +26,26 @@
 #import "config.h"
 #import "AttributedString.h"
 
-#import "ArgumentCodersMac.h"
+#import "ArgumentCodersCocoa.h"
 #import "Decoder.h"
 #import "Encoder.h"
 
-namespace WebKit {
+namespace IPC {
 
-void AttributedString::encode(IPC::Encoder& encoder) const
+void ArgumentCoder<WebKit::AttributedString>::encode(Encoder& encoder, const WebKit::AttributedString& attributedString)
 {
-    encoder << static_cast<bool>(!string);
-    if (!string)
-        return;
-    IPC::encode(encoder, string.get());
+    encoder << attributedString.string << attributedString.documentAttributes;
 }
 
-bool AttributedString::decode(IPC::Decoder& decoder, AttributedString& attributedString)
+Optional<WebKit::AttributedString> ArgumentCoder<WebKit::AttributedString>::decode(Decoder& decoder)
 {
-    bool isNull;
-    if (!decoder.decode(isNull))
-        return false;
-    if (isNull)
-        return true;
-    return IPC::decode(decoder, attributedString.string);
+    RetainPtr<NSAttributedString> attributedString;
+    if (!IPC::decode(decoder, attributedString))
+        return WTF::nullopt;
+    RetainPtr<NSDictionary> documentAttributes;
+    if (!IPC::decode(decoder, documentAttributes))
+        return WTF::nullopt;
+    return WebKit::AttributedString { attributedString.get(), documentAttributes.get() };
 }
 
 }

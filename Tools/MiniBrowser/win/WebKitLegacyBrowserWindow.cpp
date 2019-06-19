@@ -329,7 +329,7 @@ static void updateMenuItemForHistoryItem(HMENU menu, IWebHistoryItem& historyIte
 {
     UINT menuID = IDM_HISTORY_LINK0 + currentHistoryItem;
 
-    MENUITEMINFO menuItemInfo = { 0 };
+    MENUITEMINFO menuItemInfo { };
     menuItemInfo.cbSize = sizeof(MENUITEMINFO);
     menuItemInfo.fMask = MIIM_TYPE;
     menuItemInfo.fType = MFT_STRING;
@@ -428,6 +428,10 @@ void WebKitLegacyBrowserWindow::launchInspector()
         return;
 
     m_inspector->show();
+}
+
+void WebKitLegacyBrowserWindow::openProxySettings()
+{
 }
 
 void WebKitLegacyBrowserWindow::navigateForwardOrBackward(UINT menuID)
@@ -608,7 +612,7 @@ static HDC getPrinterDC()
     return pdlg.hDC;
 }
 
-static void initDocStruct(DOCINFO* di, TCHAR* docname)
+static void initDocStruct(DOCINFO* di, const wchar_t* docname)
 {
     memset(di, 0, sizeof(DOCINFO));
     di->cbSize = sizeof(DOCINFO);

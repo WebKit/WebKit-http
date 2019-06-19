@@ -29,6 +29,7 @@
 
 #include "MessagePort.h"
 #include "MessagePortChannelProvider.h"
+#include "ScriptExecutionContext.h"
 
 namespace WebCore {
 
@@ -39,8 +40,8 @@ Ref<MessageChannel> MessageChannel::create(ScriptExecutionContext& context)
 
 MessageChannel::MessageChannel(ScriptExecutionContext& context)
 {
-    MessagePortIdentifier id1 = { Process::identifier(), generateObjectIdentifier<MessagePortIdentifier::PortIdentifierType>() };
-    MessagePortIdentifier id2 = { Process::identifier(), generateObjectIdentifier<MessagePortIdentifier::PortIdentifierType>() };
+    MessagePortIdentifier id1 = { Process::identifier(), ObjectIdentifier<MessagePortIdentifier::PortIdentifierType>::generate() };
+    MessagePortIdentifier id2 = { Process::identifier(), ObjectIdentifier<MessagePortIdentifier::PortIdentifierType>::generate() };
 
     m_port1 = MessagePort::create(context, id1, id2);
     m_port2 = MessagePort::create(context, id2, id1);

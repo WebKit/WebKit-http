@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,14 +28,11 @@
 
 #if USE(QUICK_LOOK)
 
+#import "QuickLook.h"
 #import "ResourceRequest.h"
 #import "ResourceResponse.h"
+#import <pal/ios/QuickLookSoftLink.h>
 #import <pal/spi/ios/QuickLookSPI.h>
-#import <wtf/SoftLinking.h>
-
-SOFT_LINK_FRAMEWORK(QuickLook);
-SOFT_LINK_CLASS(QuickLook, QLPreviewConverter);
-SOFT_LINK_CONSTANT(QuickLook, kQLPreviewOptionPasswordKey, CFStringRef);
 
 namespace WebCore {
 
@@ -44,17 +41,35 @@ static NSDictionary *optionsWithPassword(const String& password)
     if (password.isNull())
         return nil;
 
-    return @{ (NSString *)getkQLPreviewOptionPasswordKey() : password };
+    return @{ (NSString *)PAL::get_QuickLook_kQLPreviewOptionPasswordKey() : password };
 }
 
 PreviewConverter::PreviewConverter(id delegate, const ResourceResponse& response, const String& password)
-    : m_platformConverter { adoptNS([allocQLPreviewConverterInstance() initWithConnection:nil delegate:delegate response:response.nsURLResponse() options:optionsWithPassword(password)]) }
+    : m_platformConverter { adoptNS([PAL::allocQLPreviewConverterInstance() initWithConnection:nil delegate:delegate response:response.nsURLResponse() options:optionsWithPassword(password)]) }
 {
 }
 
 PreviewConverter::PreviewConverter(NSData *data, const String& uti, const String& password)
-    : m_platformConverter { adoptNS([allocQLPreviewConverterInstance() initWithData:data name:nil uti:uti options:optionsWithPassword(password)]) }
+    : m_platformConverter { adoptNS([PAL::allocQLPreviewConverterInstance() initWithData:data name:nil uti:uti options:optionsWithPassword(password)]) }
 {
+}
+
+bool PreviewConverter::supportsMIMEType(const String& mimeType)
+{
+    if (equalLettersIgnoringASCIICase(mimeType, "text/html") || equalLettersIgnoringASCIICase(mimeType, "text/plain"))
+        return false;
+
+    static std::once_flag onceFlag;
+    static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> supportedMIMETypes;
+    std::call_once(onceFlag, [] {
+        for (NSString *mimeType in QLPreviewGetSupportedMIMETypesSet())
+            supportedMIMETypes->add(mimeType);
+    });
+
+    if (mimeType.isNull())
+        return false;
+
+    return supportedMIMETypes->contains(mimeType);
 }
 
 ResourceRequest PreviewConverter::safeRequest(const ResourceRequest& request) const

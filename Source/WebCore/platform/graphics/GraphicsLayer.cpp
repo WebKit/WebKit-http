@@ -78,7 +78,8 @@ bool GraphicsLayer::supportsLayerType(Type type)
     switch (type) {
     case Type::Normal:
     case Type::PageTiledBacking:
-    case Type::Scrolling:
+    case Type::ScrollContainer:
+    case Type::ScrolledContents:
         return true;
     case Type::Shape:
         return false;
@@ -110,9 +111,23 @@ bool GraphicsLayer::supportsContentsTiling()
 }
 #endif
 
-GraphicsLayer::GraphicsLayer(Type type, GraphicsLayerClient& client)
-    : m_client(client)
+// Singleton client used for layers on which clearClient has been called.
+class EmptyGraphicsLayerClient : public GraphicsLayerClient {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    static EmptyGraphicsLayerClient& singleton();
+};
+
+EmptyGraphicsLayerClient& EmptyGraphicsLayerClient::singleton()
+{
+    static NeverDestroyed<EmptyGraphicsLayerClient> client;
+    return client;
+}
+
+GraphicsLayer::GraphicsLayer(Type type, GraphicsLayerClient& layerClient)
+    : m_client(&layerClient)
     , m_type(type)
+    , m_beingDestroyed(false)
     , m_contentsOpaque(false)
     , m_supportsSubpixelAntialiasedText(false)
     , m_preserves3D(false)
@@ -131,7 +146,7 @@ GraphicsLayer::GraphicsLayer(Type type, GraphicsLayerClient& client)
     , m_canDetachBackingStore(true)
 {
 #ifndef NDEBUG
-    m_client.verifyNotPainting();
+    client().verifyNotPainting();
 #endif
 }
 
@@ -141,16 +156,34 @@ GraphicsLayer::~GraphicsLayer()
     ASSERT(!m_parent); // willBeDestroyed should have been called already.
 }
 
+void GraphicsLayer::unparentAndClear(RefPtr<GraphicsLayer>& layer)
+{
+    if (layer) {
+        layer->removeFromParent();
+        layer->clearClient();
+        layer = nullptr;
+    }
+}
+
+void GraphicsLayer::clear(RefPtr<GraphicsLayer>& layer)
+{
+    if (layer) {
+        layer->clearClient();
+        layer = nullptr;
+    }
+}
+
 void GraphicsLayer::willBeDestroyed()
 {
+    m_beingDestroyed = true;
 #ifndef NDEBUG
-    m_client.verifyNotPainting();
+    client().verifyNotPainting();
 #endif
     if (m_replicaLayer)
-        m_replicaLayer->setReplicatedLayer(0);
+        m_replicaLayer->setReplicatedLayer(nullptr);
 
     if (m_replicatedLayer)
-        m_replicatedLayer->setReplicatedByLayer(0);
+        m_replicatedLayer->setReplicatedByLayer(nullptr);
 
     if (m_maskLayer) {
         m_maskLayer->setParent(nullptr);
@@ -159,6 +192,16 @@ void GraphicsLayer::willBeDestroyed()
 
     removeAllChildren();
     removeFromParent();
+}
+
+void GraphicsLayer::clearClient()
+{
+    m_client = &EmptyGraphicsLayerClient::singleton();
+}
+
+void GraphicsLayer::setClient(GraphicsLayerClient& client)
+{
+    m_client = &client;
 }
 
 void GraphicsLayer::setParent(GraphicsLayer* layer)
@@ -177,99 +220,92 @@ bool GraphicsLayer::hasAncestor(GraphicsLayer* ancestor) const
     return false;
 }
 
-bool GraphicsLayer::setChildren(const Vector<GraphicsLayer*>& newChildren)
+bool GraphicsLayer::setChildren(Vector<Ref<GraphicsLayer>>&& newChildren)
 {
     // If the contents of the arrays are the same, nothing to do.
     if (newChildren == m_children)
         return false;
 
     removeAllChildren();
-    
+
     size_t listSize = newChildren.size();
     for (size_t i = 0; i < listSize; ++i)
-        addChild(newChildren[i]);
+        addChild(WTFMove(newChildren[i]));
     
     return true;
 }
 
-void GraphicsLayer::addChild(GraphicsLayer* childLayer)
+void GraphicsLayer::addChild(Ref<GraphicsLayer>&& childLayer)
 {
-    ASSERT(childLayer != this);
+    ASSERT(childLayer.ptr() != this);
     
-    if (childLayer->parent())
-        childLayer->removeFromParent();
-
+    childLayer->removeFromParent();
     childLayer->setParent(this);
-    m_children.append(childLayer);
+    m_children.append(WTFMove(childLayer));
 }
 
-void GraphicsLayer::addChildAtIndex(GraphicsLayer* childLayer, int index)
+void GraphicsLayer::addChildAtIndex(Ref<GraphicsLayer>&& childLayer, int index)
 {
-    ASSERT(childLayer != this);
+    ASSERT(childLayer.ptr() != this);
 
-    if (childLayer->parent())
-        childLayer->removeFromParent();
-
+    childLayer->removeFromParent();
     childLayer->setParent(this);
-    m_children.insert(index, childLayer);
+    m_children.insert(index, WTFMove(childLayer));
 }
 
-void GraphicsLayer::addChildBelow(GraphicsLayer* childLayer, GraphicsLayer* sibling)
+void GraphicsLayer::addChildBelow(Ref<GraphicsLayer>&& childLayer, GraphicsLayer* sibling)
 {
-    ASSERT(childLayer != this);
+    ASSERT(childLayer.ptr() != this);
     childLayer->removeFromParent();
 
-    bool found = false;
+    childLayer->setParent(this);
+
     for (unsigned i = 0; i < m_children.size(); i++) {
-        if (sibling == m_children[i]) {
-            m_children.insert(i, childLayer);
-            found = true;
-            break;
+        if (sibling == m_children[i].ptr()) {
+            m_children.insert(i, WTFMove(childLayer));
+            return;
         }
     }
 
-    childLayer->setParent(this);
-
-    if (!found)
-        m_children.append(childLayer);
+    m_children.append(WTFMove(childLayer));
 }
 
-void GraphicsLayer::addChildAbove(GraphicsLayer* childLayer, GraphicsLayer* sibling)
+void GraphicsLayer::addChildAbove(Ref<GraphicsLayer>&& childLayer, GraphicsLayer* sibling)
 {
     childLayer->removeFromParent();
-    ASSERT(childLayer != this);
+    ASSERT(childLayer.ptr() != this);
 
-    bool found = false;
+    childLayer->setParent(this);
+
     for (unsigned i = 0; i < m_children.size(); i++) {
-        if (sibling == m_children[i]) {
-            m_children.insert(i+1, childLayer);
-            found = true;
-            break;
+        if (sibling == m_children[i].ptr()) {
+            m_children.insert(i + 1, WTFMove(childLayer));
+            return;
         }
     }
 
-    childLayer->setParent(this);
-
-    if (!found)
-        m_children.append(childLayer);
+    m_children.append(WTFMove(childLayer));
 }
 
-bool GraphicsLayer::replaceChild(GraphicsLayer* oldChild, GraphicsLayer* newChild)
+bool GraphicsLayer::replaceChild(GraphicsLayer* oldChild, Ref<GraphicsLayer>&& newChild)
 {
     ASSERT(!newChild->parent());
+    
+    GraphicsLayer* rawNewChild = newChild.ptr();
+
     bool found = false;
     for (unsigned i = 0; i < m_children.size(); i++) {
-        if (oldChild == m_children[i]) {
-            m_children[i] = newChild;
+        if (oldChild == m_children[i].ptr()) {
+            m_children[i] = WTFMove(newChild);
             found = true;
             break;
         }
     }
     if (found) {
-        oldChild->setParent(0);
+        oldChild->setParent(nullptr);
 
-        newChild->removeFromParent();
-        newChild->setParent(this);
+        rawNewChild->removeFromParent();
+        rawNewChild->setParent(this);
         return true;
     }
     return false;
@@ -278,17 +314,22 @@ bool GraphicsLayer::replaceChild(GraphicsLayer* oldChild, GraphicsLayer* newChil
 void GraphicsLayer::removeAllChildren()
 {
     while (m_children.size()) {
-        GraphicsLayer* curLayer = m_children[0];
+        GraphicsLayer* curLayer = m_children[0].ptr();
         ASSERT(curLayer->parent());
         curLayer->removeFromParent();
+        // curLayer may be destroyed here.
     }
 }
 
 void GraphicsLayer::removeFromParent()
 {
     if (m_parent) {
-        m_parent->m_children.removeFirst(this);
+        GraphicsLayer* parent = m_parent;
         setParent(nullptr);
+        parent->m_children.removeFirstMatching([this](auto& layer) {
+            return layer.ptr() == this;
+        });
+        // |this| may be destroyed here.
     }
 }
 
@@ -318,7 +359,7 @@ void GraphicsLayer::setChildrenTransform(const TransformationMatrix& matrix)
         m_childrenTransform = std::make_unique<TransformationMatrix>(matrix);
 }
 
-void GraphicsLayer::setMaskLayer(GraphicsLayer* layer)
+void GraphicsLayer::setMaskLayer(RefPtr<GraphicsLayer>&& layer)
 {
     if (layer == m_maskLayer)
         return;
@@ -332,7 +373,7 @@ void GraphicsLayer::setMaskLayer(GraphicsLayer* layer)
         m_maskLayer->setIsMaskLayer(false);
     }
     
-    m_maskLayer = layer;
+    m_maskLayer = WTFMove(layer);
 }
 
 Path GraphicsLayer::shapeLayerPath() const
@@ -371,6 +412,11 @@ void GraphicsLayer::setShapeLayerWindRule(WindRule windRule)
 #endif
 }
 
+void GraphicsLayer::setEventRegion(EventRegion&& eventRegion)
+{
+    m_eventRegion = WTFMove(eventRegion);
+}
+
 void GraphicsLayer::noteDeviceOrPageScaleFactorChangedIncludingDescendants()
 {
     deviceOrPageScaleFactorChanged();
@@ -381,10 +427,8 @@ void GraphicsLayer::noteDeviceOrPageScaleFactorChangedIncludingDescendants()
     if (m_replicaLayer)
         m_replicaLayer->noteDeviceOrPageScaleFactorChangedIncludingDescendants();
 
-    const Vector<GraphicsLayer*>& childLayers = children();
-    size_t numChildren = childLayers.size();
-    for (size_t i = 0; i < numChildren; ++i)
-        childLayers[i]->noteDeviceOrPageScaleFactorChangedIncludingDescendants();
+    for (auto& layer : children())
+        layer->noteDeviceOrPageScaleFactorChangedIncludingDescendants();
 }
 
 void GraphicsLayer::setIsInWindow(bool inWindow)
@@ -393,7 +437,7 @@ void GraphicsLayer::setIsInWindow(bool inWindow)
         tiledBacking->setIsInWindow(inWindow);
 }
 
-void GraphicsLayer::setReplicatedByLayer(GraphicsLayer* layer)
+void GraphicsLayer::setReplicatedByLayer(RefPtr<GraphicsLayer>&& layer)
 {
     if (m_replicaLayer == layer)
         return;
@@ -404,7 +448,7 @@ void GraphicsLayer::setReplicatedByLayer(GraphicsLayer* layer)
     if (layer)
         layer->setReplicatedLayer(this);
 
-    m_replicaLayer = layer;
+    m_replicaLayer = WTFMove(layer);
 }
 
 void GraphicsLayer::setOffsetFromRenderer(const FloatSize& offset, ShouldSetNeedsDisplay shouldSetNeedsDisplay)
@@ -413,6 +457,18 @@ void GraphicsLayer::setOffsetFromRenderer(const FloatSize& offset, ShouldSetNeed
         return;
 
     m_offsetFromRenderer = offset;
+
+    // If the compositing layer offset changes, we need to repaint.
+    if (shouldSetNeedsDisplay == SetNeedsDisplay)
+        setNeedsDisplay();
+}
+
+void GraphicsLayer::setScrollOffset(const ScrollOffset& offset, ShouldSetNeedsDisplay shouldSetNeedsDisplay)
+{
+    if (offset == m_scrollOffset)
+        return;
+
+    m_scrollOffset = offset;
 
     // If the compositing layer offset changes, we need to repaint.
     if (shouldSetNeedsDisplay == SetNeedsDisplay)
@@ -435,15 +491,82 @@ void GraphicsLayer::setBackgroundColor(const Color& color)
     m_backgroundColor = color;
 }
 
+void GraphicsLayer::setPaintingPhase(OptionSet<GraphicsLayerPaintingPhase> phase)
+{
+    if (phase == m_paintingPhase)
+        return;
+
+    setNeedsDisplay();
+    m_paintingPhase = phase;
+}
+
 void GraphicsLayer::paintGraphicsLayerContents(GraphicsContext& context, const FloatRect& clip, GraphicsLayerPaintBehavior layerPaintBehavior)
 {
-    FloatSize offset = offsetFromRenderer();
+    FloatSize offset = offsetFromRenderer() - toFloatSize(scrollOffset());
     context.translate(-offset);
 
     FloatRect clipRect(clip);
     clipRect.move(offset);
 
-    m_client.paintContents(this, context, m_paintingPhase, clipRect, layerPaintBehavior);
+    client().paintContents(this, context, m_paintingPhase, clipRect, layerPaintBehavior);
+}
+
+FloatRect GraphicsLayer::adjustCoverageRectForMovement(const FloatRect& coverageRect, const FloatRect& previousVisibleRect, const FloatRect& currentVisibleRect)
+{
+    // If the old visible rect is empty, we have no information about how the visible area is changing
+    // (maybe the layer was just created), so don't attempt to expand. Also don't attempt to expand if the rects don't overlap.
+    if (previousVisibleRect.isEmpty() || !currentVisibleRect.intersects(previousVisibleRect))
+        return unionRect(coverageRect, currentVisibleRect);
+
+    const float paddingMultiplier = 2;
+
+    float leftEdgeDelta = paddingMultiplier * (currentVisibleRect.x() - previousVisibleRect.x());
+    float rightEdgeDelta = paddingMultiplier * (currentVisibleRect.maxX() - previousVisibleRect.maxX());
+
+    float topEdgeDelta = paddingMultiplier * (currentVisibleRect.y() - previousVisibleRect.y());
+    float bottomEdgeDelta = paddingMultiplier * (currentVisibleRect.maxY() - previousVisibleRect.maxY());
+    
+    FloatRect expandedRect = currentVisibleRect;
+
+    // More exposed on left side.
+    if (leftEdgeDelta < 0) {
+        float newLeft = expandedRect.x() + leftEdgeDelta;
+        // Pad to the left, but don't reduce padding that's already in the backing store (since we're still exposing to the left).
+        if (newLeft < previousVisibleRect.x())
+            expandedRect.shiftXEdgeTo(newLeft);
+        else
+            expandedRect.shiftXEdgeTo(previousVisibleRect.x());
+    }
+
+    // More exposed on right.
+    if (rightEdgeDelta > 0) {
+        float newRight = expandedRect.maxX() + rightEdgeDelta;
+        // Pad to the right, but don't reduce padding that's already in the backing store (since we're still exposing to the right).
+        if (newRight > previousVisibleRect.maxX())
+            expandedRect.setWidth(newRight - expandedRect.x());
+        else
+            expandedRect.setWidth(previousVisibleRect.maxX() - expandedRect.x());
+    }
+
+    // More exposed at top.
+    if (topEdgeDelta < 0) {
+        float newTop = expandedRect.y() + topEdgeDelta;
+        if (newTop < previousVisibleRect.y())
+            expandedRect.shiftYEdgeTo(newTop);
+        else
+            expandedRect.shiftYEdgeTo(previousVisibleRect.y());
+    }
+
+    // More exposed on bottom.
+    if (bottomEdgeDelta > 0) {
+        float newBottom = expandedRect.maxY() + bottomEdgeDelta;
+        if (newBottom > previousVisibleRect.maxY())
+            expandedRect.setHeight(newBottom - expandedRect.y());
+        else
+            expandedRect.setHeight(previousVisibleRect.maxY() - expandedRect.y());
+    }
+    
+    return unionRect(coverageRect, expandedRect);
 }
 
 String GraphicsLayer::animationNameForTransition(AnimatedPropertyID property)
@@ -534,9 +657,8 @@ void GraphicsLayer::distributeOpacity(float accumulatedOpacity)
     setOpacityInternal(accumulatedOpacity);
     
     if (preserves3D()) {
-        size_t numChildren = children().size();
-        for (size_t i = 0; i < numChildren; ++i)
-            children()[i]->distributeOpacity(accumulatedOpacity);
+        for (auto& layer : children())
+            layer->distributeOpacity(accumulatedOpacity);
     }
 }
 
@@ -673,7 +795,7 @@ void GraphicsLayer::resetTrackedRepaints()
 
 void GraphicsLayer::addRepaintRect(const FloatRect& repaintRect)
 {
-    if (!m_client.isTrackingRepaints())
+    if (!client().isTrackingRepaints())
         return;
 
     FloatRect largestRepaintRect(FloatPoint(), m_size);
@@ -693,14 +815,20 @@ void GraphicsLayer::traverse(GraphicsLayer& layer, const WTF::Function<void (Gra
 {
     traversalFunc(layer);
 
-    for (auto* childLayer : layer.children())
-        traverse(*childLayer, traversalFunc);
+    for (auto& childLayer : layer.children())
+        traverse(childLayer.get(), traversalFunc);
 
     if (auto* replicaLayer = layer.replicaLayer())
         traverse(*replicaLayer, traversalFunc);
 
     if (auto* maskLayer = layer.maskLayer())
         traverse(*maskLayer, traversalFunc);
+}
+
+GraphicsLayer::EmbeddedViewID GraphicsLayer::nextEmbeddedViewID()
+{
+    static GraphicsLayer::EmbeddedViewID nextEmbeddedViewID;
+    return ++nextEmbeddedViewID;
 }
 
 void GraphicsLayer::dumpLayer(TextStream& ts, LayerTreeAsTextBehavior behavior) const
@@ -717,11 +845,11 @@ void GraphicsLayer::dumpLayer(TextStream& ts, LayerTreeAsTextBehavior behavior) 
     ts << indent << ")\n";
 }
 
-static void dumpChildren(TextStream& ts, const Vector<GraphicsLayer*>& children, unsigned& totalChildCount, LayerTreeAsTextBehavior behavior)
+static void dumpChildren(TextStream& ts, const Vector<Ref<GraphicsLayer>>& children, unsigned& totalChildCount, LayerTreeAsTextBehavior behavior)
 {
     totalChildCount += children.size();
-    for (auto* child : children) {
-        if ((behavior & LayerTreeAsTextDebug) || !child->client().shouldSkipLayerInDump(child, behavior)) {
+    for (auto& child : children) {
+        if ((behavior & LayerTreeAsTextDebug) || !child->client().shouldSkipLayerInDump(child.ptr(), behavior)) {
             TextStream::IndentScope indentScope(ts);
             child->dumpLayer(ts, behavior);
             continue;
@@ -737,6 +865,9 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
     TextStream::IndentScope indentScope(ts);
     if (!m_offsetFromRenderer.isZero())
         ts << indent << "(offsetFromRenderer " << m_offsetFromRenderer << ")\n";
+
+    if (!m_scrollOffset.isZero())
+        ts << indent << "(scrollOffset " << m_scrollOffset << ")\n";
 
     if (m_position != FloatPoint())
         ts << indent << "(position " << m_position.x() << " " << m_position.y() << ")\n";
@@ -768,7 +899,7 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
     if (type() == Type::Normal && tiledBacking())
         ts << indent << "(usingTiledLayer 1)\n";
 
-    bool needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack = m_client.needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack(*this);
+    bool needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack = client().needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack(*this);
     if (m_contentsOpaque || needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack)
         ts << indent << "(contentsOpaque " << (m_contentsOpaque || needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack) << ")\n";
 
@@ -778,7 +909,7 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
     if (m_preserves3D)
         ts << indent << "(preserves3D " << m_preserves3D << ")\n";
 
-    if (m_drawsContent && m_client.shouldDumpPropertyForLayer(this, "drawsContent"))
+    if (m_drawsContent && client().shouldDumpPropertyForLayer(this, "drawsContent", behavior))
         ts << indent << "(drawsContent " << m_drawsContent << ")\n";
 
     if (!m_contentsVisible)
@@ -787,12 +918,10 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
     if (!m_backfaceVisibility)
         ts << indent << "(backfaceVisibility " << (m_backfaceVisibility ? "visible" : "hidden") << ")\n";
 
-    if (behavior & LayerTreeAsTextDebug) {
+    if (behavior & LayerTreeAsTextDebug)
         ts << indent << "(primary-layer-id " << primaryLayerID() << ")\n";
-        ts << indent << "(client " << static_cast<void*>(&m_client) << ")\n";
-    }
 
-    if (m_backgroundColor.isValid() && m_client.shouldDumpPropertyForLayer(this, "backgroundColor"))
+    if (m_backgroundColor.isValid() && client().shouldDumpPropertyForLayer(this, "backgroundColor", behavior))
         ts << indent << "(backgroundColor " << m_backgroundColor.nameForRenderTreeAsText() << ")\n";
 
     if (behavior & LayerTreeAsTextIncludeAcceleratesDrawing && m_acceleratesDrawing)
@@ -846,7 +975,7 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
         ts << ")\n";
     }
 
-    if (behavior & LayerTreeAsTextIncludeRepaintRects && repaintRectMap().contains(this) && !repaintRectMap().get(this).isEmpty() && m_client.shouldDumpPropertyForLayer(this, "repaintRects")) {
+    if (behavior & LayerTreeAsTextIncludeRepaintRects && repaintRectMap().contains(this) && !repaintRectMap().get(this).isEmpty() && client().shouldDumpPropertyForLayer(this, "repaintRects", behavior)) {
         ts << indent << "(repaint rects\n";
         for (size_t i = 0; i < repaintRectMap().get(this).size(); ++i) {
             if (repaintRectMap().get(this)[i].isEmpty())
@@ -863,29 +992,13 @@ void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behav
         ts << indent << ")\n";
     }
 
-    if (behavior & LayerTreeAsTextIncludePaintingPhases && paintingPhase()) {
-        ts << indent << "(paintingPhases\n";
-        TextStream::IndentScope indentScope(ts);
-        if (paintingPhase() & GraphicsLayerPaintBackground)
-            ts << indent << "GraphicsLayerPaintBackground\n";
-
-        if (paintingPhase() & GraphicsLayerPaintForeground)
-            ts << indent << "GraphicsLayerPaintForeground\n";
-
-        if (paintingPhase() & GraphicsLayerPaintMask)
-            ts << indent << "GraphicsLayerPaintMask\n";
-
-        if (paintingPhase() & GraphicsLayerPaintChildClippingMask)
-            ts << indent << "GraphicsLayerPaintChildClippingMask\n";
-
-        if (paintingPhase() & GraphicsLayerPaintOverflowContents)
-            ts << indent << "GraphicsLayerPaintOverflowContents\n";
-
-        if (paintingPhase() & GraphicsLayerPaintCompositedScroll)
-            ts << indent << "GraphicsLayerPaintCompositedScroll\n";
-
+    if (behavior & LayerTreeAsTextIncludeEventRegion && !m_eventRegion.isEmpty()) {
+        ts << indent << "(event region" << m_eventRegion;
         ts << indent << ")\n";
     }
+
+    if (behavior & LayerTreeAsTextIncludePaintingPhases && paintingPhase())
+        ts << indent << "(paintingPhases " << paintingPhase() << ")\n";
 
     dumpAdditionalProperties(ts, behavior);
     
@@ -915,7 +1028,22 @@ TextStream& operator<<(TextStream& ts, const Vector<GraphicsLayer::PlatformLayer
     return ts;
 }
 
-TextStream& operator<<(TextStream& ts, const WebCore::GraphicsLayer::CustomAppearance& customAppearance)
+TextStream& operator<<(TextStream& ts, GraphicsLayerPaintingPhase phase)
+{
+    switch (phase) {
+    case GraphicsLayerPaintingPhase::Background: ts << "background"; break;
+    case GraphicsLayerPaintingPhase::Foreground: ts << "foreground"; break;
+    case GraphicsLayerPaintingPhase::Mask: ts << "mask"; break;
+    case GraphicsLayerPaintingPhase::ClipPath: ts << "clip-path"; break;
+    case GraphicsLayerPaintingPhase::OverflowContents: ts << "overflow-contents"; break;
+    case GraphicsLayerPaintingPhase::CompositedScroll: ts << "composited-scroll"; break;
+    case GraphicsLayerPaintingPhase::ChildClippingMask: ts << "child-clipping-mask"; break;
+    }
+
+    return ts;
+}
+
+TextStream& operator<<(TextStream& ts, const GraphicsLayer::CustomAppearance& customAppearance)
 {
     switch (customAppearance) {
     case GraphicsLayer::CustomAppearance::None: ts << "none"; break;
@@ -944,6 +1072,6 @@ void showGraphicsLayerTree(const WebCore::GraphicsLayer* layer)
         return;
 
     String output = layer->layerTreeAsText(WebCore::LayerTreeAsTextShowAll);
-    fprintf(stderr, "%s\n", output.utf8().data());
+    WTFLogAlways("%s\n", output.utf8().data());
 }
 #endif

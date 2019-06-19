@@ -31,9 +31,10 @@
 
 #pragma once
 
-#include "URL.h"
 #include <wtf/Deque.h>
+#include <wtf/URL.h>
 #include <wtf/Vector.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -112,7 +113,7 @@ public:
     void abort();
 
     void setDOMApplicationCache(DOMApplicationCache*);
-    void notifyDOMApplicationCache(const AtomicString& eventType, int progressTotal, int progressDone);
+    void notifyDOMApplicationCache(const AtomString& eventType, int progressTotal, int progressDone);
 
     void stopLoadingInFrame(Frame&);
 
@@ -128,7 +129,7 @@ private:
     friend class ApplicationCacheGroup;
 
     struct DeferredEvent {
-        AtomicString eventType;
+        AtomString eventType;
         int progressTotal;
         int progressDone;
     };
@@ -136,7 +137,7 @@ private:
     bool isApplicationCacheEnabled();
     bool isApplicationCacheBlockedForRequest(const ResourceRequest&);
 
-    void dispatchDOMEvent(const AtomicString& eventType, int progressTotal, int progressDone);
+    void dispatchDOMEvent(const AtomString& eventType, int progressTotal, int progressDone);
 
     bool scheduleLoadFallbackResourceFromApplicationCache(ResourceLoader*, ApplicationCache* = nullptr);
     void setCandidateApplicationCacheGroup(ApplicationCacheGroup*);
@@ -146,7 +147,7 @@ private:
     ApplicationCache* mainResourceApplicationCache() const { return m_mainResourceApplicationCache.get(); }
     bool maybeLoadFallbackForMainError(const ResourceRequest&, const ResourceError&);
 
-    DOMApplicationCache* m_domApplicationCache { nullptr };
+    WeakPtr<DOMApplicationCache> m_domApplicationCache;
     DocumentLoader& m_documentLoader;
 
     bool m_defersEvents { true }; // Events are deferred until after document onload.

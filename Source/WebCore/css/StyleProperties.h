@@ -38,7 +38,6 @@ class CSSStyleDeclaration;
 class CachedResource;
 class Color;
 class ImmutableStyleProperties;
-class URL;
 class MutableStyleProperties;
 class PropertySetCSSStyleDeclaration;
 class StyledElement;
@@ -114,7 +113,7 @@ public:
     WEBCORE_EXPORT RefPtr<CSSValue> getPropertyCSSValue(CSSPropertyID) const;
     WEBCORE_EXPORT String getPropertyValue(CSSPropertyID) const;
 
-    WEBCORE_EXPORT std::optional<Color> propertyAsColor(CSSPropertyID) const;
+    WEBCORE_EXPORT Optional<Color> propertyAsColor(CSSPropertyID) const;
     WEBCORE_EXPORT CSSValueID propertyAsValueID(CSSPropertyID) const;
 
     bool propertyIsImportant(CSSPropertyID) const;
@@ -163,9 +162,10 @@ private:
     String getShorthandValue(const StylePropertyShorthand&) const;
     String getCommonValue(const StylePropertyShorthand&) const;
     String getAlignmentShorthandValue(const StylePropertyShorthand&) const;
-    enum CommonValueMode { OmitUncommonValues, ReturnNullOnUncommonValues };
-    String borderPropertyValue(CommonValueMode) const;
+    String borderPropertyValue(const StylePropertyShorthand&, const StylePropertyShorthand&, const StylePropertyShorthand&) const;
+    String pageBreakPropertyValue(const StylePropertyShorthand&) const;
     String getLayeredShorthandValue(const StylePropertyShorthand&) const;
+    String get2Values(const StylePropertyShorthand&) const;
     String get4Values(const StylePropertyShorthand&) const;
     String borderSpacingValue(const StylePropertyShorthand&) const;
     String fontValue() const;
@@ -250,7 +250,7 @@ public:
     Vector<CSSProperty, 4> m_propertyVector;
 
     // Methods for querying and altering CSS custom properties.
-    bool setCustomProperty(const String& propertyName, const String& value, bool important, CSSParserContext);
+    bool setCustomProperty(const Document*, const String& propertyName, const String& value, bool important, CSSParserContext);
     bool removeCustomProperty(const String& propertyName, String* returnText = nullptr);
 
 private:

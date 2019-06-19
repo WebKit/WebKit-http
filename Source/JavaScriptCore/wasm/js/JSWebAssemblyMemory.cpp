@@ -69,7 +69,7 @@ Structure* JSWebAssemblyMemory::createStructure(VM& vm, JSGlobalObject* globalOb
 
 JSWebAssemblyMemory::JSWebAssemblyMemory(VM& vm, Structure* structure)
     : Base(vm, structure)
-    , m_memory(Wasm::Memory::create().releaseNonNull())
+    , m_memory(Wasm::Memory::create())
 {
 }
 
@@ -83,7 +83,7 @@ JSArrayBuffer* JSWebAssemblyMemory::buffer(VM& vm, JSGlobalObject* globalObject)
     auto destructor = [protectedMemory = WTFMove(protectedMemory)] (void*) { };
     m_buffer = ArrayBuffer::createFromBytes(memory().memory(), memory().size(), WTFMove(destructor));
     m_buffer->makeWasmMemory();
-    m_bufferWrapper.set(vm, this, JSArrayBuffer::create(vm, globalObject->m_arrayBufferStructure.get(), m_buffer.get()));
+    m_bufferWrapper.set(vm, this, JSArrayBuffer::create(vm, globalObject->arrayBufferStructure(ArrayBufferSharingMode::Default), m_buffer.get()));
     RELEASE_ASSERT(m_bufferWrapper);
     return m_bufferWrapper.get();
 }
@@ -133,7 +133,7 @@ void JSWebAssemblyMemory::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
-    heap()->reportExtraMemoryAllocated(memory().size());
+    vm.heap.reportExtraMemoryAllocated(memory().size());
 }
 
 void JSWebAssemblyMemory::destroy(JSCell* cell)

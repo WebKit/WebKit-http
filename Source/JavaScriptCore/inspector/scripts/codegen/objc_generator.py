@@ -24,8 +24,12 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
-from generator import Generator, ucfirst
-from models import PrimitiveType, ObjectType, ArrayType, EnumType, AliasedType, Frameworks
+try:
+    from .generator import Generator, ucfirst
+    from .models import PrimitiveType, ObjectType, ArrayType, EnumType, AliasedType, Frameworks
+except ValueError:
+    from generator import Generator, ucfirst
+    from models import PrimitiveType, ObjectType, ArrayType, EnumType, AliasedType, Frameworks
 
 log = logging.getLogger('global')
 
@@ -50,7 +54,7 @@ _OBJC_IDENTIFIER_RENAME_MAP = {
     'id': 'identifier',  # Page.Frame.id, Runtime.ExecutionContextDescription.id, Debugger.BreakpointAction.id
 }
 
-_OBJC_IDENTIFIER_REVERSE_RENAME_MAP = dict((v, k) for k, v in _OBJC_IDENTIFIER_RENAME_MAP.iteritems())
+_OBJC_IDENTIFIER_REVERSE_RENAME_MAP = dict((v, k) for k, v in _OBJC_IDENTIFIER_RENAME_MAP.items())
 
 
 class ObjCTypeCategory:
@@ -118,7 +122,7 @@ class ObjCGenerator(Generator):
 
     # Generate ObjC types, command handlers, and event dispatchers for a subset of domains.
 
-    DOMAINS_TO_GENERATE = ['CSS', 'DOM', 'DOMStorage', 'Network', 'Page', 'Automation', 'GenericTypes']
+    DOMAINS_TO_GENERATE = ['CSS', 'DOM', 'DOMDebugger', 'DOMStorage', 'Network', 'Security', 'Page', 'Automation', 'GenericTypes']
 
     def should_generate_types_for_domain(self, domain):
         if not len(self.type_declarations_for_domain(domain)):

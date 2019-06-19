@@ -23,7 +23,7 @@
 #pragma once
 
 #include "CachedHTMLCollection.h"
-#include "HTMLElement.h"
+#include "HTMLFormElement.h"
 #include "RadioNodeList.h"
 
 namespace WebCore {
@@ -35,12 +35,15 @@ class HTMLImageElement;
 // The famous <table><tr><form><td> problem.
 
 class HTMLFormControlsCollection final : public CachedHTMLCollection<HTMLFormControlsCollection, CollectionTypeTraits<FormControls>::traversalType> {
+    WTF_MAKE_ISO_ALLOCATED(HTMLFormControlsCollection);
 public:
     static Ref<HTMLFormControlsCollection> create(ContainerNode&, CollectionType);
     virtual ~HTMLFormControlsCollection();
 
     HTMLElement* item(unsigned offset) const override;
-    std::optional<Variant<RefPtr<RadioNodeList>, RefPtr<Element>>> namedItemOrItems(const String&) const;
+    Optional<Variant<RefPtr<RadioNodeList>, RefPtr<Element>>> namedItemOrItems(const String&) const;
+
+    HTMLFormElement& ownerNode() const;
 
     // For CachedHTMLCollection.
     HTMLElement* customElementAfter(Element*) const;
@@ -53,7 +56,6 @@ private:
 
     const Vector<FormAssociatedElement*>& unsafeFormControlElements() const;
     Vector<Ref<FormAssociatedElement>> copyFormControlElementsVector() const;
-    const Vector<HTMLImageElement*>& formImageElements() const;
 
     mutable Element* m_cachedElement;
     mutable unsigned m_cachedElementOffsetInArray;

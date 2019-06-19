@@ -53,6 +53,7 @@ def clear_cached_configuration():
     global _have_determined_configuration, _configuration
     _have_determined_configuration = False
     _configuration = "Release"
+    Config.asan.fget._results_cache = {}
 
 
 @memoized
@@ -149,3 +150,11 @@ class Config(object):
             return None
 
         return self._filesystem.read_text_file(configuration_path).rstrip()
+
+    @property
+    @memoized
+    def asan(self):
+        try:
+            return self._filesystem.exists(self._filesystem.join(self.build_directory(None), "ASan"))
+        except:
+            return False

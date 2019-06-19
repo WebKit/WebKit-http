@@ -39,6 +39,7 @@ class FileSystemEntriesCallback;
 class ScriptExecutionContext;
 
 class FileSystemDirectoryReader final : public ScriptWrappable, public ActiveDOMObject, public RefCounted<FileSystemDirectoryReader> {
+    WTF_MAKE_ISO_ALLOCATED(FileSystemDirectoryReader);
 public:
     static Ref<FileSystemDirectoryReader> create(ScriptExecutionContext& context, FileSystemDirectoryEntry& directory)
     {
@@ -56,7 +57,7 @@ private:
     bool canSuspendForDocumentSuspension() const final;
 
     Ref<FileSystemDirectoryEntry> m_directory;
-    std::optional<Exception> m_error;
+    Optional<Exception> m_error;
     bool m_isReading { false };
     bool m_isDone { false };
 };

@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if ENABLE(FULLSCREEN_API) && PLATFORM(IOS)
+#if ENABLE(FULLSCREEN_API) && PLATFORM(IOS_FAMILY)
 #include "WKFullscreenStackView.h"
 
 #import "UIKitSPI.h"
@@ -62,7 +62,9 @@ SOFT_LINK_CLASS_OPTIONAL(AVKit, AVBackgroundView)
 
     // FIXME: remove this once AVBackgroundView handles this. https://bugs.webkit.org/show_bug.cgi?id=188022
     [_backgroundView setClipsToBounds:YES];
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [_backgroundView.get().layer setContinuousCorners:YES];
+ALLOW_DEPRECATED_DECLARATIONS_END
     [_backgroundView.get().layer setCornerRadius:16];
 
     return self;
@@ -84,4 +86,4 @@ SOFT_LINK_CLASS_OPTIONAL(AVKit, AVBackgroundView)
 
 @end
 
-#endif // ENABLE(FULLSCREEN_API) && PLATFORM(IOS)
+#endif // ENABLE(FULLSCREEN_API) && PLATFORM(IOS_FAMILY)

@@ -26,7 +26,7 @@
 
 WI.Resource = class Resource extends WI.SourceCode
 {
-    constructor(url, mimeType, type, loaderIdentifier, targetId, requestIdentifier, requestMethod, requestHeaders, requestData, requestSentTimestamp, requestSentWalltime, initiatorSourceCodeLocation, originalRequestWillBeSentTimestamp)
+    constructor(url, {mimeType, type, loaderIdentifier, targetId, requestIdentifier, requestMethod, requestHeaders, requestData, requestSentTimestamp, requestSentWalltime, initiatorCallFrames, initiatorSourceCodeLocation, initiatorNode, originalRequestWillBeSentTimestamp} = {})
     {
         super();
 
@@ -50,14 +50,16 @@ WI.Resource = class Resource extends WI.SourceCode
         this._responseHeaders = {};
         this._requestCookies = null;
         this._responseCookies = null;
+        this._serverTimingEntries = null;
         this._parentFrame = null;
+        this._initiatorCallFrames = initiatorCallFrames || null;
         this._initiatorSourceCodeLocation = initiatorSourceCodeLocation || null;
+        this._initiatorNode = initiatorNode || null;
         this._initiatedResources = [];
         this._originalRequestWillBeSentTimestamp = originalRequestWillBeSentTimestamp || null;
         this._requestSentTimestamp = requestSentTimestamp || NaN;
         this._requestSentWalltime = requestSentWalltime || NaN;
         this._responseReceivedTimestamp = NaN;
-        this._lastRedirectReceivedTimestamp = NaN;
         this._lastDataReceivedTimestamp = NaN;
         this._finishedOrFailedTimestamp = NaN;
         this._finishThenRequestContentPromise = null;
@@ -65,16 +67,19 @@ WI.Resource = class Resource extends WI.SourceCode
         this._statusText = null;
         this._cached = false;
         this._canceled = false;
+        this._finished = false;
         this._failed = false;
         this._failureReasonText = null;
         this._receivedNetworkLoadMetrics = false;
         this._responseSource = WI.Resource.ResponseSource.Unknown;
+        this._security = null;
         this._timingData = new WI.ResourceTimingData(this);
         this._protocol = null;
         this._priority = WI.Resource.NetworkPriority.Unknown;
         this._remoteAddress = null;
         this._connectionIdentifier = null;
         this._target = targetId ? WI.targetManager.targetForIdentifier(targetId) : WI.mainTarget;
+        this._redirects = [];
 
         // Exact sizes if loaded over the network or cache.
         this._requestHeadersTransferSize = NaN;
@@ -151,8 +156,8 @@ WI.Resource = class Resource extends WI.SourceCode
             return WI.UIString("XHR");
         case WI.Resource.Type.Fetch:
             if (plural)
-                return WI.UIString("Fetches");
-            return WI.UIString("Fetch");
+                return WI.UIString("Fetches", "Resources loaded via 'fetch' method");
+            return WI.repeatedUIString.fetch();
         case WI.Resource.Type.Ping:
             if (plural)
                 return WI.UIString("Pings");
@@ -171,6 +176,15 @@ WI.Resource = class Resource extends WI.SourceCode
             console.error("Unknown resource type", type);
             return null;
         }
+    }
+
+    static classNameForResource(resource)
+    {
+        if (resource.type === WI.Resource.Type.Other) {
+            if (resource.requestedByteRange)
+                return "resource-type-range";
+        }
+        return resource.type;
     }
 
     static displayNameForProtocol(protocol)
@@ -280,31 +294,62 @@ WI.Resource = class Resource extends WI.SourceCode
 
     // Public
 
+    get url() { return this._url; }
+    get mimeType() { return this._mimeType; }
     get target() { return this._target; }
     get type() { return this._type; }
     get loaderIdentifier() { return this._loaderIdentifier; }
     get requestIdentifier() { return this._requestIdentifier; }
     get requestMethod() { return this._requestMethod; }
     get requestData() { return this._requestData; }
+    get initiatorCallFrames() { return this._initiatorCallFrames; }
+    get initiatorSourceCodeLocation() { return this._initiatorSourceCodeLocation; }
+    get initiatorNode() { return this._initiatorNode; }
+    get initiatedResources() { return this._initiatedResources; }
+    get originalRequestWillBeSentTimestamp() { return this._originalRequestWillBeSentTimestamp; }
     get statusCode() { return this._statusCode; }
     get statusText() { return this._statusText; }
     get responseSource() { return this._responseSource; }
+    get security() { return this._security; }
     get timingData() { return this._timingData; }
     get protocol() { return this._protocol; }
     get priority() { return this._priority; }
     get remoteAddress() { return this._remoteAddress; }
     get connectionIdentifier() { return this._connectionIdentifier; }
-
-    get url()
-    {
-        return this._url;
-    }
+    get parentFrame() { return this._parentFrame; }
+    get finished() { return this._finished; }
+    get failed() { return this._failed; }
+    get canceled() { return this._canceled; }
+    get failureReasonText() { return this._failureReasonText; }
+    get requestHeaders() { return this._requestHeaders; }
+    get responseHeaders() { return this._responseHeaders; }
+    get requestSentTimestamp() { return this._requestSentTimestamp; }
+    get requestSentWalltime() { return this._requestSentWalltime; }
+    get responseReceivedTimestamp() { return this._responseReceivedTimestamp; }
+    get lastDataReceivedTimestamp() { return this._lastDataReceivedTimestamp; }
+    get finishedOrFailedTimestamp() { return this._finishedOrFailedTimestamp; }
+    get cached() { return this._cached; }
+    get requestHeadersTransferSize() { return this._requestHeadersTransferSize; }
+    get requestBodyTransferSize() { return this._requestBodyTransferSize; }
+    get responseHeadersTransferSize() { return this._responseHeadersTransferSize; }
+    get responseBodyTransferSize() { return this._responseBodyTransferSize; }
+    get cachedResponseBodySize() { return this._cachedResponseBodySize; }
+    get redirects() { return this._redirects; }
 
     get urlComponents()
     {
         if (!this._urlComponents)
             this._urlComponents = parseURL(this._url);
         return this._urlComponents;
+    }
+
+    get loadedSecurely()
+    {
+        if (this.urlComponents.scheme !== "https" && this.urlComponents.scheme !== "wss" && this.urlComponents.scheme !== "sftp")
+            return false;
+        if (isNaN(this._timingData.secureConnectionStart) && !isNaN(this._timingData.connectionStart))
+            return false;
+        return true;
     }
 
     get displayName()
@@ -317,26 +362,6 @@ WI.Resource = class Resource extends WI.SourceCode
         const isMultiLine = true;
         const dataURIMaxSize = 64;
         return WI.truncateURL(this._url, isMultiLine, dataURIMaxSize);
-    }
-
-    get initiatorSourceCodeLocation()
-    {
-        return this._initiatorSourceCodeLocation;
-    }
-
-    get initiatedResources()
-    {
-        return this._initiatedResources;
-    }
-
-    get originalRequestWillBeSentTimestamp()
-    {
-        return this._originalRequestWillBeSentTimestamp;
-    }
-
-    get mimeType()
-    {
-        return this._mimeType;
     }
 
     get mimeTypeComponents()
@@ -403,31 +428,6 @@ WI.Resource = class Resource extends WI.SourceCode
         this.dispatchEventToListeners(WI.Resource.Event.InitiatedResourcesDidChange);
     }
 
-    get parentFrame()
-    {
-        return this._parentFrame;
-    }
-
-    get finished()
-    {
-        return this._finished;
-    }
-
-    get failed()
-    {
-        return this._failed;
-    }
-
-    get canceled()
-    {
-        return this._canceled;
-    }
-
-    get failureReasonText()
-    {
-        return this._failureReasonText;
-    }
-
     get queryStringParameters()
     {
         if (this._queryStringParameters === undefined)
@@ -445,16 +445,6 @@ WI.Resource = class Resource extends WI.SourceCode
     get requestDataContentType()
     {
         return this._requestHeaders.valueForCaseInsensitiveKey("Content-Type") || null;
-    }
-
-    get requestHeaders()
-    {
-        return this._requestHeaders;
-    }
-
-    get responseHeaders()
-    {
-        return this._responseHeaders;
     }
 
     get requestCookies()
@@ -487,16 +477,6 @@ WI.Resource = class Resource extends WI.SourceCode
         return this._responseCookies;
     }
 
-    get requestSentTimestamp()
-    {
-        return this._requestSentTimestamp;
-    }
-
-    get requestSentWalltime()
-    {
-        return this._requestSentWalltime;
-    }
-
     get requestSentDate()
     {
         return isNaN(this._requestSentWalltime) ? null : new Date(this._requestSentWalltime * 1000);
@@ -504,22 +484,7 @@ WI.Resource = class Resource extends WI.SourceCode
 
     get lastRedirectReceivedTimestamp()
     {
-        return this._lastRedirectReceivedTimestamp;
-    }
-
-    get responseReceivedTimestamp()
-    {
-        return this._responseReceivedTimestamp;
-    }
-
-    get lastDataReceivedTimestamp()
-    {
-        return this._lastDataReceivedTimestamp;
-    }
-
-    get finishedOrFailedTimestamp()
-    {
-        return this._finishedOrFailedTimestamp;
+        return this._redirects.length ? this._redirects.lastValue.timestamp : NaN;
     }
 
     get firstTimestamp()
@@ -546,17 +511,6 @@ WI.Resource = class Resource extends WI.SourceCode
     {
         return this.timingData.responseEnd - this.timingData.startTime;
     }
-
-    get cached()
-    {
-        return this._cached;
-    }
-
-    get requestHeadersTransferSize() { return this._requestHeadersTransferSize; }
-    get requestBodyTransferSize() { return this._requestBodyTransferSize; }
-    get responseHeadersTransferSize() { return this._responseHeadersTransferSize; }
-    get responseBodyTransferSize() { return this._responseBodyTransferSize; }
-    get cachedResponseBodySize() { return this._cachedResponseBodySize; }
 
     get size()
     {
@@ -641,9 +595,37 @@ WI.Resource = class Resource extends WI.SourceCode
         return !!(contentEncoding && /\b(?:gzip|deflate)\b/.test(contentEncoding));
     }
 
+    get requestedByteRange()
+    {
+        let range = this._requestHeaders.valueForCaseInsensitiveKey("Range");
+        if (!range)
+            return null;
+
+        let rangeValues = range.match(/bytes=(\d+)-(\d+)/);
+        if (!rangeValues)
+            return null;
+
+        let start = parseInt(rangeValues[1]);
+        if (isNaN(start))
+            return null;
+
+        let end = parseInt(rangeValues[2]);
+        if (isNaN(end))
+            return null;
+
+        return {start, end};
+    }
+
     get scripts()
     {
         return this._scripts || [];
+    }
+
+    get serverTiming()
+    {
+        if (!this._serverTimingEntries)
+            this._serverTimingEntries = WI.ServerTimingEntry.parseHeaders(this._responseHeaders.valueForCaseInsensitiveKey("Server-Timing"));
+        return this._serverTimingEntries;
     }
 
     scriptForLocation(sourceCodeLocation)
@@ -669,22 +651,23 @@ WI.Resource = class Resource extends WI.SourceCode
         return null;
     }
 
-    updateForRedirectResponse(url, requestHeaders, elapsedTime)
+    updateForRedirectResponse(request, response, elapsedTime, walltime)
     {
         console.assert(!this._finished);
         console.assert(!this._failed);
         console.assert(!this._canceled);
 
-        var oldURL = this._url;
+        let oldURL = this._url;
+        let oldHeaders = this._requestHeaders;
 
-        if (url)
-            this._url = url;
+        if (request.url)
+            this._url = request.url;
 
-        this._requestHeaders = requestHeaders || {};
+        this._requestHeaders = request.headers || {};
         this._requestCookies = null;
-        this._lastRedirectReceivedTimestamp = elapsedTime || NaN;
+        this._redirects.push(new WI.Redirect(oldURL, request.method, oldHeaders, response.status, response.statusText, response.headers, elapsedTime));
 
-        if (oldURL !== url) {
+        if (oldURL !== request.url) {
             // Delete the URL components so the URL is re-parsed the next time it is requested.
             this._urlComponents = null;
 
@@ -706,7 +689,7 @@ WI.Resource = class Resource extends WI.SourceCode
         return requestDataContentType && requestDataContentType.match(/^application\/x-www-form-urlencoded\s*(;.*)?$/i);
     }
 
-    updateForResponse(url, mimeType, type, responseHeaders, statusCode, statusText, elapsedTime, timingData, source)
+    updateForResponse(url, mimeType, type, responseHeaders, statusCode, statusText, elapsedTime, timingData, source, security)
     {
         console.assert(!this._finished);
         console.assert(!this._failed);
@@ -728,11 +711,14 @@ WI.Resource = class Resource extends WI.SourceCode
         this._statusText = statusText;
         this._responseHeaders = responseHeaders || {};
         this._responseCookies = null;
+        this._serverTimingEntries = null;
         this._responseReceivedTimestamp = elapsedTime || NaN;
         this._timingData = WI.ResourceTimingData.fromPayload(timingData, this);
 
         if (source)
             this._responseSource = WI.Resource.responseSourceFromPayload(source);
+
+        this._security = security || {};
 
         const headerBaseSize = 12; // Length of "HTTP/1.1 ", " ", and "\r\n".
         const headerPad = 4; // Length of ": " and "\r\n".
@@ -805,8 +791,18 @@ WI.Resource = class Resource extends WI.SourceCode
             console.assert(this._responseBodyTransferSize >= 0);
             console.assert(this._responseBodySize >= 0);
 
+            // There may have been no size updates received during load if Content-Length was 0.
+            if (isNaN(this._estimatedSize))
+                this._estimatedSize = 0;
+
             this.dispatchEventToListeners(WI.Resource.Event.SizeDidChange, {previousSize: this._estimatedSize});
             this.dispatchEventToListeners(WI.Resource.Event.TransferSizeDidChange);
+        }
+
+        if (metrics.securityConnection) {
+            if (!this._security)
+                this._security = {};
+            this._security.connection = metrics.securityConnection;
         }
 
         this.dispatchEventToListeners(WI.Resource.Event.MetricsDidChange);
@@ -1072,9 +1068,72 @@ WI.Resource = class Resource extends WI.SourceCode
                 command.push("--data-binary " + escapeStringPosix(this.requestData));
         }
 
-        let curlCommand = command.join(" \\\n");
-        InspectorFrontendHost.copyText(curlCommand);
-        return curlCommand;
+        return command.join(" \\\n");
+    }
+
+    stringifyHTTPRequest()
+    {
+        let lines = [];
+
+        let protocol = this.protocol || "";
+        if (protocol === "h2") {
+            // HTTP/2 Request pseudo headers:
+            // https://tools.ietf.org/html/rfc7540#section-8.1.2.3
+            lines.push(`:method: ${this.requestMethod}`);
+            lines.push(`:scheme: ${this.urlComponents.scheme}`);
+            lines.push(`:authority: ${WI.h2Authority(this.urlComponents)}`);
+            lines.push(`:path: ${WI.h2Path(this.urlComponents)}`);
+        } else {
+            // HTTP/1.1 request line:
+            // https://www.w3.org/Protocols/rfc2616/rfc2616-sec5.html#sec5.1
+            lines.push(`${this.requestMethod} ${this.urlComponents.path}${protocol ? " " + protocol.toUpperCase() : ""}`);
+        }
+
+        for (let key in this.requestHeaders)
+            lines.push(`${key}: ${this.requestHeaders[key]}`);
+
+        return lines.join("\n") + "\n";
+    }
+
+    stringifyHTTPResponse()
+    {
+        let lines = [];
+
+        let protocol = this.protocol || "";
+        if (protocol === "h2") {
+            // HTTP/2 Response pseudo headers:
+            // https://tools.ietf.org/html/rfc7540#section-8.1.2.4
+            lines.push(`:status: ${this.statusCode}`);
+        } else {
+            // HTTP/1.1 response status line:
+            // https://www.w3.org/Protocols/rfc2616/rfc2616-sec6.html#sec6.1
+            lines.push(`${protocol ? protocol.toUpperCase() + " " : ""}${this.statusCode} ${this.statusText}`);
+        }
+
+        for (let key in this.responseHeaders)
+            lines.push(`${key}: ${this.responseHeaders[key]}`);
+
+        return lines.join("\n") + "\n";
+    }
+
+    async showCertificate()
+    {
+        let errorString = WI.UIString("Unable to show certificate for \u201C%s\u201D").format(this.url);
+
+        try {
+            let {serializedCertificate} = await NetworkAgent.getSerializedCertificate(this._requestIdentifier);
+            if (InspectorFrontendHost.showCertificate(serializedCertificate))
+                return;
+        } catch (e) {
+            console.error(e);
+            throw errorString;
+        }
+
+        let consoleMessage = new WI.ConsoleMessage(this._target, WI.ConsoleMessage.MessageSource.Other, WI.ConsoleMessage.MessageLevel.Error, errorString);
+        consoleMessage.shouldRevealConsole = true;
+        WI.consoleLogViewController.appendConsoleMessage(consoleMessage);
+
+        throw errorString;
     }
 };
 
@@ -1127,6 +1186,12 @@ WI.Resource.NetworkPriority = {
     Medium: Symbol("medium"),
     High: Symbol("high"),
 };
+
+WI.Resource.GroupingMode = {
+    Path: "group-resource-by-path",
+    Type: "group-resource-by-type",
+};
+WI.settings.resourceGroupingMode = new WI.Setting("resource-grouping-mode", WI.Resource.GroupingMode.Type);
 
 // This MIME Type map is private, use WI.Resource.typeFromMIMEType().
 WI.Resource._mimeTypeMap = {

@@ -37,11 +37,9 @@
 #import <wtf/RetainPtr.h>
 #import <wtf/mac/AppKitCompatibilityDeclarations.h>
 
-#if WK_API_ENABLED
 @interface WKWebView ()
 - (WKPageRef)_pageForTesting;
 @end
-#endif
 
 using namespace WTR;
 
@@ -52,6 +50,8 @@ enum {
 
 // FIXME: Move to NSWindowSPI.h.
 @interface NSWindow ()
+- (void)_setWindowResolution:(CGFloat)resolution;
+// FIXME: Remove once the variant above exists on all platforms we need (cf. rdar://problem/47614795).
 - (void)_setWindowResolution:(CGFloat)resolution displayIfChanged:(BOOL)displayIfChanged;
 @end
 
@@ -61,7 +61,6 @@ PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const Te
     : m_windowIsKey(true)
     , m_options(options)
 {
-#if WK_API_ENABLED
     // FIXME: Not sure this is the best place for this; maybe we should have API to set this so we can do it from TestController?
     if (m_options.useRemoteLayerTree)
         [[NSUserDefaults standardUserDefaults] setValue:@YES forKey:@"WebKit2UseRemoteLayerTreeDrawingArea"];
@@ -81,12 +80,7 @@ PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const Te
     [m_window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameAqua]];
     [m_window setCollectionBehavior:NSWindowCollectionBehaviorStationary];
     [[m_window contentView] addSubview:m_view];
-    if (m_options.shouldShowWebView)
-        [m_window orderFront:nil];
-    else
-        [m_window orderBack:nil];
     [m_window setReleasedWhenClosed:NO];
-#endif
 }
 
 void PlatformWebView::setWindowIsKey(bool isKey)
@@ -110,6 +104,8 @@ PlatformWebView::~PlatformWebView()
 {
     m_window.platformWebView = nullptr;
     [m_window close];
+    [m_window release];
+    [m_view release];
 }
 
 PlatformWindow PlatformWebView::keyWindow()
@@ -119,11 +115,7 @@ PlatformWindow PlatformWebView::keyWindow()
 
 WKPageRef PlatformWebView::page()
 {
-#if WK_API_ENABLED
     return [m_view _pageForTesting];
-#else
-    return nullptr;
-#endif
 }
 
 void PlatformWebView::focus()
@@ -161,6 +153,7 @@ void PlatformWebView::addChromeInputField()
     NSTextField *textField = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, 100, 20)];
     textField.tag = 1;
     [[m_window contentView] addSubview:textField];
+    [textField release];
 
     NSView *view = platformView();
     [textField setNextKeyView:view];
@@ -193,20 +186,17 @@ void PlatformWebView::makeWebViewFirstResponder()
 
 bool PlatformWebView::drawsBackground() const
 {
-#if WK_API_ENABLED
     return [m_view _drawsBackground];
-#else
-    return false;
-#endif
 }
 
 void PlatformWebView::setDrawsBackground(bool drawsBackground)
 {
-#if WK_API_ENABLED
     [m_view _setDrawsBackground:drawsBackground];
-#else
-    UNUSED_PARAM(drawsBackground);
-#endif
+}
+
+void PlatformWebView::setEditable(bool editable)
+{
+    m_view._editable = editable;
 }
 
 RetainPtr<CGImageRef> PlatformWebView::windowSnapshotImage()
@@ -226,10 +216,11 @@ void PlatformWebView::changeWindowScaleIfNeeded(float newScale)
     if (currentScale == newScale)
         return;
 
-    [m_window _setWindowResolution:newScale displayIfChanged:YES];
-#if WK_API_ENABLED
+    if ([m_window respondsToSelector:@selector(_setWindowResolution:)])
+        [m_window _setWindowResolution:newScale];
+    else
+        [m_window _setWindowResolution:newScale displayIfChanged:YES];
     [m_view _setOverrideDeviceScaleFactor:newScale];
-#endif
 
     // Instead of re-constructing the current window, let's fake resize it to ensure that the scale change gets picked up.
     forceWindowFramesChanged();
@@ -248,9 +239,7 @@ void PlatformWebView::forceWindowFramesChanged()
 
 void PlatformWebView::setNavigationGesturesEnabled(bool enabled)
 {
-#if WK_API_ENABLED
     [platformView() setAllowsBackForwardNavigationGestures:enabled];
-#endif
 }
 
 } // namespace WTR

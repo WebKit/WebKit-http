@@ -31,7 +31,6 @@ WI.BreakpointActionView = class BreakpointActionView extends WI.Object
 
         console.assert(action);
         console.assert(delegate);
-        console.assert(DebuggerAgent.BreakpointActionType);
 
         this._action = action;
         this._delegate = delegate;
@@ -159,8 +158,6 @@ WI.BreakpointActionView = class BreakpointActionView extends WI.Object
             this._codeMirror = WI.CodeMirrorEditor.create(editorElement, {
                 lineWrapping: true,
                 mode: "text/javascript",
-                indentWithTabs: true,
-                indentUnit: 4,
                 matchBrackets: true,
                 value: this._action.data || "",
             });

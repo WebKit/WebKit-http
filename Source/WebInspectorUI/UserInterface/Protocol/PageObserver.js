@@ -39,12 +39,17 @@ WI.PageObserver = class PageObserver
 
     frameNavigated(frame, loaderId)
     {
-        WI.frameResourceManager.frameDidNavigate(frame, loaderId);
+        WI.networkManager.frameDidNavigate(frame, loaderId);
     }
 
     frameDetached(frameId)
     {
-        WI.frameResourceManager.frameDidDetach(frameId);
+        WI.networkManager.frameDidDetach(frameId);
+    }
+
+    defaultAppearanceDidChange(appearance)
+    {
+        WI.cssManager.defaultAppearanceDidChange(appearance);
     }
 
     frameStartedLoading(frameId)

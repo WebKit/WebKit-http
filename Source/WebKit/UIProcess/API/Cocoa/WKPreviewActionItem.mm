@@ -26,17 +26,19 @@
 #import "config.h"
 #import "WKPreviewActionItemInternal.h"
 
-#if WK_API_ENABLED && TARGET_OS_IPHONE
+#if PLATFORM(IOS_FAMILY)
 
 @implementation WKPreviewAction
 @synthesize identifier=_identifier;
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 + (instancetype)actionWithIdentifier:(NSString *)identifier title:(NSString *)title style:(UIPreviewActionStyle)style handler:(void (^)(UIPreviewAction *action, UIViewController *previewViewController))handler
 {
     WKPreviewAction *action = [self actionWithTitle:title style:style handler:handler];
     action->_identifier = identifier;
     return action;
 }
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (id)copyWithZone:(NSZone *)zone
 {
@@ -53,4 +55,4 @@
 
 @end
 
-#endif // WK_API_ENABLED && TARGET_OS_IPHONE
+#endif // PLATFORM(IOS_FAMILY)

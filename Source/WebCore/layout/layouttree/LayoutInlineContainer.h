@@ -39,10 +39,9 @@ namespace Layout {
 class InlineContainer : public Container {
     WTF_MAKE_ISO_ALLOCATED(InlineContainer);
 public:
-    friend class TreeBuilder;
+    InlineContainer(Optional<ElementAttributes>, RenderStyle&&, BaseTypeFlags = InlineContainerFlag);
 
-protected:
-    InlineContainer(std::optional<ElementAttributes>, RenderStyle&&, BaseTypeFlags = InlineContainerFlag);
+    bool establishesInlineFormattingContext() const final;
 };
 
 }

@@ -15,7 +15,7 @@
       "nicks" : [
          "aboodman"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Aaron Chu" : {
       "emails" : [
@@ -33,7 +33,7 @@
       "nicks" : [
          "acolwell"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Abhishek Arya" : {
       "emails" : [
@@ -43,7 +43,7 @@
       "nicks" : [
          "inferno-sec"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Ada Chan" : {
       "emails" : [
@@ -53,7 +53,7 @@
       "nicks" : [
          "chanada"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Adam Barth" : {
       "emails" : [
@@ -72,7 +72,7 @@
       "nicks" : [
          "adambe"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Adam Kallai" : {
       "emails" : [
@@ -81,7 +81,7 @@
       "nicks" : [
          "kadam"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Adam Klein" : {
       "emails" : [
@@ -90,7 +90,7 @@
       "nicks" : [
          "aklein"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Adam Langley" : {
       "emails" : [
@@ -100,7 +100,7 @@
       "nicks" : [
          "agl"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Adam Roben" : {
       "emails" : [
@@ -111,7 +111,7 @@
       "nicks" : [
          "aroben"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Adam Treat" : {
       "emails" : [
@@ -123,7 +123,7 @@
       "nicks" : [
          "manyoso"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Adele Peterson" : {
       "emails" : [
@@ -133,7 +133,7 @@
       "nicks" : [
          "adele"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Ademar de Souza Reis Jr" : {
       "emails" : [
@@ -144,7 +144,7 @@
       "nicks" : [
          "ademar"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Adenilson Cavalcanti" : {
       "emails" : [
@@ -155,7 +155,7 @@
       "nicks" : [
          "Savago"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Aditya Keerthi" : {
       "emails" : [
@@ -190,7 +190,7 @@
       "nicks" : [
          "enne"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Aharon Lanin" : {
       "emails" : [
@@ -204,7 +204,15 @@
       "nicks" : [
          "akiss"
       ],
-      "status" : "committer"
+      "status" : "contributor"
+   },
+   "Alan Coon" : {
+      "emails" : [
+         "alancoon@apple.com"
+      ],
+      "nicks" : [
+         "alancoon"
+      ]
    },
    "Alan Cutter" : {
       "emails" : [
@@ -226,7 +234,7 @@
       "emails" : [
          "ajwong@chromium.org"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Alberto Garcia" : {
       "emails" : [
@@ -247,7 +255,7 @@
       "nicks" : [
          "alecf"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Alejandro G. Castro" : {
       "emails" : [
@@ -295,7 +303,7 @@
       "nicks" : [
          "ahf"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Alexander Kellett" : {
       "emails" : [
@@ -307,7 +315,7 @@
       "nicks" : [
          "lypanov"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Alexander Pavlov" : {
       "emails" : [
@@ -318,7 +326,7 @@
       "nicks" : [
          "apavlov"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Alexandre Elias" : {
       "emails" : [
@@ -328,7 +336,7 @@
       "nicks" : [
          "aelias"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Alexandru Chiculita" : {
       "emails" : [
@@ -338,7 +346,7 @@
       "nicks" : [
          "achicu"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Alexey Marinichev" : {
       "emails" : [
@@ -370,7 +378,7 @@
       "nicks" : [
          "darktears"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Ali Juma" : {
       "emails" : [
@@ -388,7 +396,7 @@
       "nicks" : [
          "aboxhall"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Alice Liu" : {
       "emails" : [
@@ -399,7 +407,7 @@
       "nicks" : [
          "aliu"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Alicia Boya Garcia" : {
       "emails" : [
@@ -423,7 +431,7 @@
       "nicks" : [
          "carewolf"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Alok Priyadarshi" : {
       "emails" : [
@@ -432,7 +440,7 @@
       "nicks" : [
          "alokp"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Alp Toker" : {
       "emails" : [
@@ -444,7 +452,7 @@
       "nicks" : [
          "alp"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Ami Fischman" : {
       "emails" : [
@@ -454,7 +462,7 @@
       "nicks" : [
          "fischman"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Amruth Raj" : {
       "emails" : [
@@ -463,7 +471,7 @@
       "nicks" : [
          "amruthraj"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Anders Carlsson" : {
       "emails" : [
@@ -485,13 +493,13 @@
       "nicks" : [
          "bbandix"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Andre Boule" : {
       "emails" : [
          "aboule@apple.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Andreas Kling" : {
       "aliases" : [
@@ -517,7 +525,7 @@
       "nicks" : [
          "abucur"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Andrei Popescu" : {
       "emails" : [
@@ -526,7 +534,7 @@
       "nicks" : [
          "andreip"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Andres Gomez" : {
       "emails" : [
@@ -539,7 +547,7 @@
          "tanty",
          "agomez"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Andrew Lo" : {
       "emails" : [
@@ -550,7 +558,7 @@
       "nicks" : [
          "andrewlo"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Andrew Scherkus" : {
       "emails" : [
@@ -559,7 +567,7 @@
       "nicks" : [
          "scherkus"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Andrew Trick" : {
       "emails" : [
@@ -578,7 +586,7 @@
       "nicks" : [
          "proton"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Andrey Adaykin" : {
       "emails" : [
@@ -588,7 +596,7 @@
       "nicks" : [
          "aandrey"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Andrey Kosyakov" : {
       "emails" : [
@@ -597,7 +605,7 @@
       "nicks" : [
          "caseq"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Andrzej Badowski" : {
       "emails" : [
@@ -606,7 +614,7 @@
       "nicks" : [
          "abadowski"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Andy Estes" : {
       "emails" : [
@@ -633,7 +641,7 @@
       "nicks" : [
          "wingo"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Anna Cavender" : {
       "emails" : [
@@ -642,7 +650,7 @@
       "nicks" : [
          "annacc"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Anne van Kesteren" : {
       "emails" : [
@@ -668,7 +676,7 @@
       "nicks" : [
          "rik"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Antoine Labour" : {
       "emails" : [
@@ -677,7 +685,7 @@
       "nicks" : [
          "piman"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Antoine Quint" : {
       "emails" : [
@@ -696,7 +704,7 @@
       "nicks" : [
          "antonlefou"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Anton Muhin" : {
       "emails" : [
@@ -705,7 +713,7 @@
       "nicks" : [
          "antonm"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Anton Obzhirov" : {
       "emails" : [
@@ -715,7 +723,7 @@
       "nicks" : [
          "aobzhirov"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Anton Vayvod" : {
       "emails" : [
@@ -750,6 +758,11 @@
       ],
       "status" : "reviewer"
    },
+   "Apple Bot Watchers" : {
+      "emails" : [
+         "webkit-bot-watchers-bugzilla@group.apple.com"
+      ]
+   },
    "Ariya Hidayat" : {
       "emails" : [
          "ariya.hidayat@gmail.com",
@@ -760,7 +773,7 @@
       "nicks" : [
          "ariya"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Arko Saha" : {
       "emails" : [
@@ -769,7 +782,7 @@
       "nicks" : [
          "arkos"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Arno Renevier" : {
       "emails" : [
@@ -778,7 +791,7 @@
       "nicks" : [
          "arno"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Arpita Bahuguna" : {
       "emails" : [
@@ -787,7 +800,7 @@
       "nicks" : [
          "arpitab"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Arvid Nilsson" : {
       "emails" : [
@@ -797,7 +810,7 @@
       "nicks" : [
          "anilsson"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Aryeh Gregor" : {
       "emails" : [
@@ -823,7 +836,7 @@
       "nicks" : [
          "kbalazs"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Basile Clement" : {
       "emails" : [
@@ -833,7 +846,7 @@
       "nicks" : [
          "elarnon"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Basuke Suzuki" : {
       "emails" : [
@@ -851,7 +864,7 @@
       "nicks" : [
          "betravis"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Bem Jones-Bey" : {
       "emails" : [
@@ -861,7 +874,7 @@
       "nicks" : [
          "bemjb"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Ben Murdoch" : {
       "emails" : [
@@ -870,7 +883,7 @@
       "nicks" : [
          "benm"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Ben Wells" : {
       "emails" : [
@@ -879,7 +892,7 @@
       "nicks" : [
          "benwells"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Benjamin C Meyer" : {
       "emails" : [
@@ -889,7 +902,7 @@
       "nicks" : [
          "icefox"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Benjamin Kalman" : {
       "emails" : [
@@ -899,7 +912,7 @@
       "nicks" : [
          "kalman"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Benjamin Otte" : {
       "emails" : [
@@ -910,7 +923,7 @@
       "nicks" : [
          "otte"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Benjamin Poulain" : {
       "aliases" : [
@@ -949,7 +962,7 @@
       "nicks" : [
          "bbudge"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Brady Eidson" : {
       "emails" : [
@@ -970,7 +983,7 @@
       "nicks" : [
          "brendanlong"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Brent Fulgham" : {
       "emails" : [
@@ -991,7 +1004,7 @@
       "nicks" : [
          "brettx"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Brian Burg" : {
       "emails" : [
@@ -1013,7 +1026,7 @@
       "nicks" : [
          "bdholt1"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Brian Salomon" : {
       "emails" : [
@@ -1040,7 +1053,7 @@
       "nicks" : [
          "abinader"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Byungseon Shin" : {
       "emails" : [
@@ -1051,7 +1064,7 @@
       "nicks" : [
          "xingri"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Byungwoo Lee" : {
       "emails" : [
@@ -1062,7 +1075,7 @@
       "nicks" : [
          "byungwoo"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Caio Araujo Neponoceno de Lima" : {
       "emails" : [
@@ -1082,7 +1095,7 @@
       "nicks" : [
          "cmarcelo"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Caitlin Potter" : {
       "emails" : [
@@ -1101,7 +1114,7 @@
       "nicks" : [
          "heycam"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Cameron Zwarich" : {
       "emails" : [
@@ -1109,7 +1122,7 @@
          "cwzwarich@apple.com",
          "cwzwarich@webkit.org"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Carlos Alberto Lopez Perez" : {
       "emails" : [
@@ -1119,7 +1132,7 @@
       "nicks" : [
          "clopez"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Carlos Eduardo Ramalho" : {
       "emails" : [
@@ -1151,7 +1164,7 @@
       "nicks" : [
          "cszabo1"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Cary Clark" : {
       "emails" : [
@@ -1161,7 +1174,7 @@
       "nicks" : [
          "caryclark"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Chang Shu" : {
       "emails" : [
@@ -1173,7 +1186,7 @@
       "nicks" : [
          "cshu"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "ChangSeok Oh" : {
       "emails" : [
@@ -1183,7 +1196,7 @@
       "nicks" : [
          "changseok"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Charles Reis" : {
       "emails" : [
@@ -1192,7 +1205,7 @@
       "nicks" : [
          "creis"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Charlie Turner" : {
       "emails" : [
@@ -1210,7 +1223,7 @@
       "nicks" : [
          "chelsea"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Chris Blumenberg" : {
       "emails" : [
@@ -1219,7 +1232,7 @@
       "nicks" : [
          "cblu"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Chris Dumez" : {
       "aliases" : [
@@ -1246,7 +1259,7 @@
          "cevans@chromium.org"
       ],
       "expertise" : "Security",
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Chris Fleizach" : {
       "emails" : [
@@ -1266,7 +1279,7 @@
       "nicks" : [
          "ctguil"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Chris Jerdonek" : {
       "emails" : [
@@ -1275,7 +1288,7 @@
       "nicks" : [
          "cjerdonek"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Chris Marrin" : {
       "emails" : [
@@ -1284,7 +1297,7 @@
       "nicks" : [
          "cmarrin"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Chris Nardi" : {
       "emails" : [
@@ -1303,7 +1316,7 @@
       "nicks" : [
          "cpetersen"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Chris Rogers" : {
       "emails" : [
@@ -1312,7 +1325,7 @@
       "nicks" : [
          "crogers"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Christian Biesinger" : {
       "emails" : [
@@ -1328,7 +1341,7 @@
          "christian@webkit.org",
          "christian@lanedo.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Christopher Reid" : {
       "emails" : [
@@ -1357,7 +1370,7 @@
       "nicks" : [
          "collinjackson"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Commit Queue" : {
       "class" : "bot",
@@ -1382,7 +1395,7 @@
       "nicks" : [
          "ctruta"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Cris Neckar" : {
       "emails" : [
@@ -1391,7 +1404,7 @@
       "nicks" : [
          "cneckar"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Csaba Osztrogon\u00e1c" : {
       "emails" : [
@@ -1401,7 +1414,7 @@
       "nicks" : [
          "ossy"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Dan Bernstein" : {
       "aliases" : [
@@ -1424,7 +1437,7 @@
       "nicks" : [
          "danw"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Dana Burkart" : {
       "emails" : [
@@ -1433,7 +1446,7 @@
       "nicks" : [
          "dana"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Dana Jansens" : {
       "emails" : [
@@ -1442,7 +1455,7 @@
       "nicks" : [
          "danakj"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Daniel Bates" : {
       "emails" : [
@@ -1462,7 +1475,7 @@
       "nicks" : [
          "dcheng"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Daniel Sievers" : {
       "emails" : [
@@ -1488,7 +1501,7 @@
       "nicks" : [
          "fishd"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Dave Barton" : {
       "emails" : [
@@ -1498,7 +1511,7 @@
       "nicks" : [
          "davebarton"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Dave Tharp" : {
       "emails" : [
@@ -1507,7 +1520,7 @@
       "nicks" : [
          "dtharp"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "David Dorwin" : {
       "emails" : [
@@ -1524,11 +1537,15 @@
       "nicks" : [
          "dfarler"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "David Fenton" : {
+      "aliases" : [
+         "Dawei Fenton"
+      ],
       "emails" : [
-         "david_fenton@apple.com"
+         "david_fenton@apple.com",
+         "realdawei@apple.com"
       ],
       "nicks" : [
          "realdawei"
@@ -1544,7 +1561,7 @@
       "nicks" : [
          "dgrogan"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "David Harrison" : {
       "emails" : [
@@ -1554,7 +1571,7 @@
       "nicks" : [
          "harrison"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "David Hyatt" : {
       "aliases" : [
@@ -1568,7 +1585,7 @@
          "dhyatt",
          "hyatt"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "David Jonathan Ross" : {
       "emails" : [
@@ -1599,7 +1616,7 @@
       "nicks" : [
          "dave_levin"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "David Michael Barr" : {
       "emails" : [
@@ -1610,7 +1627,7 @@
       "nicks" : [
          "barrbrain"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "David Quesada" : {
       "emails" : [
@@ -1634,7 +1651,7 @@
       "nicks" : [
          "catfishman"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Dean Jackson" : {
       "emails" : [
@@ -1662,7 +1679,7 @@
       "nicks" : [
          "dnomi"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Devin Rousso" : {
       "emails" : [
@@ -1685,7 +1702,7 @@
       "nicks" : [
          "Dewei"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Dhi Aurrahman" : {
       "emails" : [
@@ -1694,7 +1711,7 @@
       "nicks" : [
          "diorahman"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Diego Gonzalez" : {
       "emails" : [
@@ -1705,7 +1722,7 @@
       "nicks" : [
          "diegohcg"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Diego Pino Garcia" : {
       "emails" : [
@@ -1724,7 +1741,7 @@
       "nicks" : [
          "dglazkov"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Dinu Jacob" : {
       "emails" : [
@@ -1735,7 +1752,7 @@
       "nicks" : [
          "dsjacob"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Dirk Pranke" : {
       "emails" : [
@@ -1745,7 +1762,7 @@
       "nicks" : [
          "dpranke"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Dirk Schulze" : {
       "emails" : [
@@ -1764,7 +1781,7 @@
       "nicks" : [
          "dgorbik"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Dmitry Lomov" : {
       "emails" : [
@@ -1775,7 +1792,7 @@
       "nicks" : [
          "dslomov"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Dmitry Titov" : {
       "emails" : [
@@ -1785,7 +1802,7 @@
       "nicks" : [
          "dimich"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Dominic Cooney" : {
       "emails" : [
@@ -1795,7 +1812,7 @@
       "nicks" : [
          "dominicc"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Dominic Mazzoni" : {
       "emails" : [
@@ -1804,6 +1821,15 @@
       ],
       "nicks" : [
          "dmazzoni"
+      ],
+      "status" : "contributor"
+   },
+   "Dominik Infuehr" : {
+      "emails" : [
+         "dinfuehr@igalia.com"
+      ],
+      "nicks" : [
+         "dinfuehr"
       ],
       "status" : "committer"
    },
@@ -1816,7 +1842,7 @@
       "nicks" : [
          "drott"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Don Melton" : {
       "aliases" : [
@@ -1828,7 +1854,7 @@
       "nicks" : [
          "gramps"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Don Olmstead" : {
       "emails" : [
@@ -1838,7 +1864,7 @@
       "nicks" : [
          "dolmstead"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Dongseong Hwang" : {
       "emails" : [
@@ -1850,7 +1876,7 @@
       "nicks" : [
          "dshwang"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Dongwoo Joshua Im" : {
       "emails" : [
@@ -1861,13 +1887,13 @@
       "nicks" : [
          "dwim"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Doug Russell" : {
       "emails" : [
          "d_russell@apple.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Douglas Davidson" : {
       "emails" : [
@@ -1890,7 +1916,7 @@
       "nicks" : [
          "atwilson"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Dumitru Daniliuc" : {
       "emails" : [
@@ -1900,7 +1926,7 @@
       "nicks" : [
          "dumi"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "D\u00e1niel B\u00e1tyai" : {
       "emails" : [
@@ -1911,7 +1937,7 @@
       "nicks" : [
          "dbatyai"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Eli Fidler" : {
       "emails" : [
@@ -1921,7 +1947,7 @@
       "nicks" : [
          "efidler"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Elliot Poger" : {
       "emails" : [
@@ -1931,7 +1957,7 @@
       "nicks" : [
          "epoger"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Elliott Sprehn" : {
       "emails" : [
@@ -1942,7 +1968,7 @@
       "nicks" : [
          "esprehn"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Emil A Eklund" : {
       "aliases" : [
@@ -1955,7 +1981,7 @@
       "nicks" : [
          "eae"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Emilio Cobos Alvarez" : {
       "emails" : [
@@ -1974,7 +2000,7 @@
       "nicks" : [
          "enrica"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Enrique Oca\u00f1a Gonz\u00e1lez" : {
       "emails" : [
@@ -2013,7 +2039,7 @@
       "nicks" : [
          "eroman"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Eric Seidel" : {
       "emails" : [
@@ -2023,7 +2049,7 @@
       "nicks" : [
          "eseidel"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Eric Uhrhane" : {
       "emails" : [
@@ -2032,7 +2058,7 @@
       "nicks" : [
          "ericu"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Erik Arvidsson" : {
       "emails" : [
@@ -2041,7 +2067,7 @@
       "nicks" : [
          "arv"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Eugene Klyuchnikov" : {
       "emails" : [
@@ -2050,7 +2076,7 @@
       "nicks" : [
          "eustas"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Eunmi Lee" : {
       "emails" : [
@@ -2061,7 +2087,7 @@
       "nicks" : [
          "eunmi"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Eva Balazsfalvi" : {
       "emails" : [
@@ -2072,7 +2098,7 @@
       "nicks" : [
          "ebalazsfalvi"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Evan Martin" : {
       "emails" : [
@@ -2081,7 +2107,7 @@
       "nicks" : [
          "evmar"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Evan Stade" : {
       "emails" : [
@@ -2090,7 +2116,7 @@
       "nicks" : [
          "estade"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Fady Samuel" : {
       "emails" : [
@@ -2099,13 +2125,13 @@
       "nicks" : [
          "fsamuel"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Feng Qian" : {
       "emails" : [
          "feng@chromium.org"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Filip Pizlo" : {
       "aliases" : [
@@ -2138,7 +2164,7 @@
       "nicks" : [
          "fmalita"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Forms Bugs" : {
       "emails" : [
@@ -2157,7 +2183,8 @@
    },
    "Fujii Hironori" : {
       "emails" : [
-         "Hironori.Fujii@sony.com"
+         "Hironori.Fujii@sony.com",
+         "fujii.hironori@gmail.com"
       ],
       "nicks" : [
          "fujihiro"
@@ -2172,7 +2199,7 @@
       "nicks" : [
          "ukai"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Gabor Abraham" : {
       "emails" : [
@@ -2198,7 +2225,7 @@
       "nicks" : [
          "loki04"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Gabor Rapcsanyi" : {
       "emails" : [
@@ -2209,7 +2236,7 @@
       "nicks" : [
          "rgabor"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Gavin Barraclough" : {
       "emails" : [
@@ -2219,7 +2246,7 @@
       "nicks" : [
          "gbarra"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Gavin Peters" : {
       "emails" : [
@@ -2231,7 +2258,7 @@
       "nicks" : [
          "gavinp"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Geoffrey Garen" : {
       "aliases" : [
@@ -2252,7 +2279,7 @@
          "staikos@webkit.org"
       ],
       "expertise" : "Core KHTML Contributor, The QtWebKit Port",
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Gergo Balogh" : {
       "emails" : [
@@ -2272,7 +2299,7 @@
       "nicks" : [
          "girishr"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Glenn Adams" : {
       "emails" : [
@@ -2282,7 +2309,7 @@
       "nicks" : [
          "gasubic"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Grace Kloba" : {
       "emails" : [
@@ -2297,13 +2324,13 @@
          "Graham.Dennis@gmail.com",
          "gdennis@webkit.org"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Greg Bolsinga" : {
       "emails" : [
          "bolsinga@apple.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Greg Simon" : {
       "emails" : [
@@ -2322,7 +2349,7 @@
       "nicks" : [
          "gman"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Grzegorz Czajkowski" : {
       "emails" : [
@@ -2332,7 +2359,7 @@
       "nicks" : [
          "grzegorz"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Guillaume Emont" : {
       "emails" : [
@@ -2353,7 +2380,7 @@
       "nicks" : [
          "k.gurpreet"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Gustavo Noronha Silva" : {
       "emails" : [
@@ -2378,7 +2405,7 @@
       "nicks" : [
          "ryumiel"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Gyuyoung Kim" : {
       "emails" : [
@@ -2402,7 +2429,7 @@
       "nicks" : [
          "morrita"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Hans Muller" : {
       "emails" : [
@@ -2413,7 +2440,7 @@
       "nicks" : [
          "hansmuller"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Hans Wennborg" : {
       "emails" : [
@@ -2422,7 +2449,7 @@
       "nicks" : [
          "hwennborg"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Hao Zheng" : {
       "emails" : [
@@ -2445,7 +2472,7 @@
       "nicks" : [
          "hayato"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Helder Correia" : {
       "emails" : [
@@ -2456,7 +2483,7 @@
       "nicks" : [
          "helder"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Hin-Chung Lam" : {
       "emails" : [
@@ -2464,7 +2491,7 @@
          "hclam@chromium.org"
       ],
       "expertise" : "HTML5 Video, Accelerated Compositing (Chromium Port)",
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Hironori Bono" : {
       "emails" : [
@@ -2473,7 +2500,7 @@
       "nicks" : [
          "hbono"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Holger Freyther" : {
       "aliases" : [
@@ -2487,7 +2514,7 @@
       "nicks" : [
          "zecke"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Hugo Parente Lima" : {
       "emails" : [
@@ -2497,7 +2524,7 @@
       "nicks" : [
          "hugopl"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Hunseop Jeong" : {
       "emails" : [
@@ -2508,7 +2535,7 @@
       "nicks" : [
          "hunseop"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Hyowon Kim" : {
       "emails" : [
@@ -2517,7 +2544,7 @@
       "nicks" : [
          "hyowon"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Hyungwook Lee" : {
       "emails" : [
@@ -2527,7 +2554,7 @@
       "nicks" : [
          "hwlee"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Ian Henderson" : {
       "emails" : [
@@ -2554,7 +2581,7 @@
       "nicks" : [
          "vollick"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Igor Trindade Oliveira" : {
       "emails" : [
@@ -2566,7 +2593,7 @@
       "nicks" : [
          "igoroliveira"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Ilya Sherman" : {
       "emails" : [
@@ -2575,7 +2602,7 @@
       "nicks" : [
          "isherman"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Ilya Tikhonovsky" : {
       "emails" : [
@@ -2584,7 +2611,7 @@
       "nicks" : [
          "loislo"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Ion Rosca" : {
       "emails" : [
@@ -2593,13 +2620,13 @@
       "nicks" : [
          "rosca"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Ivan Ivan Krsti\u0107" : {
       "emails" : [
          "ike@apple.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "JF Bastien" : {
       "emails" : [
@@ -2625,7 +2652,7 @@
       "nicks" : [
          "jkjiang"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jae Hyun Park" : {
       "emails" : [
@@ -2635,7 +2662,7 @@
       "nicks" : [
          "jaepark"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jaehun Lim" : {
       "emails" : [
@@ -2645,7 +2672,7 @@
       "nicks" : [
          "jaehun"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jake Nielsen" : {
       "emails" : [
@@ -2653,7 +2680,7 @@
          "jacob_nielsen@gmail.com",
          "jacob_nielsen@apple.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jakob Petsovits" : {
       "emails" : [
@@ -2665,7 +2692,7 @@
       "nicks" : [
          "jpetso"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jakub Wieczorek" : {
       "emails" : [
@@ -2674,7 +2701,7 @@
       "nicks" : [
          "fawek"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "James Craig" : {
       "emails" : [
@@ -2684,7 +2711,7 @@
       "nicks" : [
          "jcraig"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "James Hawkins" : {
       "emails" : [
@@ -2694,7 +2721,7 @@
       "nicks" : [
          "jhawkins"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "James Kozianski" : {
       "emails" : [
@@ -2704,7 +2731,7 @@
       "nicks" : [
          "koz"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "James Robinson" : {
       "emails" : [
@@ -2715,7 +2742,7 @@
       "nicks" : [
          "jamesr"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "James Simonsen" : {
       "emails" : [
@@ -2724,7 +2751,7 @@
       "nicks" : [
          "simonjam"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jan Alonzo" : {
       "emails" : [
@@ -2735,7 +2762,7 @@
       "nicks" : [
          "janm"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Janos Badics" : {
       "emails" : [
@@ -2744,7 +2771,7 @@
       "nicks" : [
          "dicska"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jarred Nicholls" : {
       "emails" : [
@@ -2754,7 +2781,7 @@
       "nicks" : [
          "jarrednicholls"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jason Liu" : {
       "emails" : [
@@ -2763,7 +2790,7 @@
       "nicks" : [
          "jasonliu"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jason Marcell" : {
       "emails" : [
@@ -2790,7 +2817,7 @@
       "nicks" : [
          "jcivelli"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jeff Miller" : {
       "emails" : [
@@ -2818,7 +2845,7 @@
       "nicks" : [
          "jpfau"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jenn Braithwaite" : {
       "emails" : [
@@ -2827,14 +2854,14 @@
       "nicks" : [
          "jennb"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jens Alfke" : {
       "emails" : [
          "snej@chromium.org",
          "jens@apple.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jer Noble" : {
       "emails" : [
@@ -2864,7 +2891,7 @@
       "nicks" : [
          "jeremymos"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jeremy Orlow" : {
       "emails" : [
@@ -2875,7 +2902,7 @@
       "nicks" : [
          "jorlow"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Jessie Berlin" : {
       "emails" : [
@@ -2896,14 +2923,14 @@
       "nicks" : [
          "jeez_"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jia Pu" : {
       "emails" : [
          "jiapu.mail@gmail.com",
          "jpu@apple.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jian Li" : {
       "emails" : [
@@ -2913,7 +2940,7 @@
       "nicks" : [
          "jianli"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Jiewen Tan" : {
       "emails" : [
@@ -2939,7 +2966,7 @@
       "nicks" : [
          "jinwoo"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jinyoung Hur" : {
       "emails" : [
@@ -2949,7 +2976,7 @@
       "nicks" : [
          "jyhur"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Joanmarie Diggs" : {
       "emails" : [
@@ -2971,7 +2998,7 @@
       "nicks" : [
          "jturcotte"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Jochen Eisinger" : {
       "emails" : [
@@ -2981,7 +3008,7 @@
       "nicks" : [
          "jochen__"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Joe Thomas" : {
       "emails" : [
@@ -2990,7 +3017,7 @@
       "nicks" : [
          "joethomas"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Johan K. Jensen" : {
       "emails" : [
@@ -3000,7 +3027,7 @@
       "nicks" : [
          "johankj"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "John Abd-El-Malek" : {
       "emails" : [
@@ -3010,7 +3037,7 @@
       "nicks" : [
          "jam"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "John Bates" : {
       "emails" : [
@@ -3038,7 +3065,7 @@
       "nicks" : [
          "johnnyg"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "John Knottenbelt" : {
       "emails" : [
@@ -3047,7 +3074,7 @@
       "nicks" : [
          "jknotten"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "John Mellor" : {
       "emails" : [
@@ -3065,7 +3092,7 @@
       "nicks" : [
          "sullivan"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "John Wilander" : {
       "emails" : [
@@ -3084,7 +3111,7 @@
       "nicks" : [
          "johnnyding"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jon Honeycutt" : {
       "aliases" : [
@@ -3097,7 +3124,7 @@
       "nicks" : [
          "jhoneycutt"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Jon Lee" : {
       "emails" : [
@@ -3121,10 +3148,11 @@
       "emails" : [
          "jbedard@apple.com"
       ],
+      "expertise" : "webkitpy",
       "nicks" : [
          "jbedard"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Jonathan Davis" : {
       "emails" : [
@@ -3145,7 +3173,7 @@
       "nicks" : [
          "jondong"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jono Wells" : {
       "emails" : [
@@ -3157,7 +3185,7 @@
       "nicks" : [
          "jonowells"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Joone Hur" : {
       "emails" : [
@@ -3169,12 +3197,13 @@
       "nicks" : [
          "joone"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Joonghun Park" : {
       "emails" : [
          "jh718.park@samsung.com",
-         "jh718.park@gmail.com"
+         "jh718.park@gmail.com",
+         "pjh0718@gmail.com"
       ],
       "nicks" : [
          "joonghunpark"
@@ -3189,7 +3218,7 @@
       "nicks" : [
          "Altha"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Joseph Pecoraro" : {
       "aliases" : [
@@ -3213,7 +3242,7 @@
       "nicks" : [
          "jsbell"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Jozsef Berta" : {
       "emails" : [
@@ -3242,7 +3271,7 @@
       "nicks" : [
          "jparent"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Julien Brianceau" : {
       "emails" : [
@@ -3251,7 +3280,7 @@
       "nicks" : [
          "jbrianceau"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Julien Chaffraix" : {
       "emails" : [
@@ -3264,13 +3293,13 @@
       "nicks" : [
          "jchaffraix"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Jungshik Shin" : {
       "emails" : [
          "jshin@chromium.org"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Justin Fan" : {
       "emails" : [
@@ -3287,7 +3316,13 @@
       "nicks" : [
          "justing"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
+   },
+   "Justin Michaud" : {
+      "emails" : [
+         "justin_michaud@apple.com"
+      ],
+      "status" : "committer"
    },
    "Justin Novosad" : {
       "emails" : [
@@ -3297,7 +3332,7 @@
       "nicks" : [
          "junov"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Justin Schuh" : {
       "emails" : [
@@ -3307,7 +3342,7 @@
       "nicks" : [
          "jschuh"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Kalyan Kondapally" : {
       "emails" : [
@@ -3317,7 +3352,7 @@
       "nicks" : [
          "kalyank"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Kangil Han" : {
       "emails" : [
@@ -3328,7 +3363,7 @@
       "nicks" : [
          "kangil"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Karen Grunberg" : {
       "emails" : [
@@ -3338,7 +3373,7 @@
       "nicks" : [
          "kareng"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Katie Madonna" : {
       "emails" : [
@@ -3357,7 +3392,7 @@
       "nicks" : [
          "silverroots"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Keishi Hattori" : {
       "emails" : [
@@ -3367,7 +3402,7 @@
       "nicks" : [
          "keishi"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Keith Miller" : {
       "emails" : [
@@ -3391,7 +3426,7 @@
          "knorton@google.com",
          "knorton@alum.mit.edu"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Ken Buchanan" : {
       "emails" : [
@@ -3400,13 +3435,13 @@
       "nicks" : [
          "kenrb"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Ken Kocienda" : {
       "emails" : [
          "kocienda@apple.com"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Kenichi Ishibashi" : {
       "emails" : [
@@ -3415,7 +3450,7 @@
       "nicks" : [
          "bashi"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Kenji Imasaki" : {
       "emails" : [
@@ -3424,7 +3459,7 @@
       "nicks" : [
          "imasaki"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Kenneth Rohde Christiansen" : {
       "aliases" : [
@@ -3442,7 +3477,7 @@
          "kenneth",
          "kenne"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Kenneth Russell" : {
       "aliases" : [
@@ -3457,7 +3492,7 @@
          "kbr_google",
          "kbrgg"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Kent Hansen" : {
       "emails" : [
@@ -3467,7 +3502,7 @@
       "nicks" : [
          "khansen"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Kent Tamura" : {
       "emails" : [
@@ -3478,7 +3513,7 @@
       "nicks" : [
          "tkent"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Kentaro Hara" : {
       "emails" : [
@@ -3489,7 +3524,7 @@
       "nicks" : [
          "haraken"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Kevin Decker" : {
       "emails" : [
@@ -3499,7 +3534,7 @@
       "nicks" : [
          "superkevin"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Kevin McCullough" : {
       "emails" : [
@@ -3509,7 +3544,7 @@
       "nicks" : [
          "maculloch"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Kevin Ollivier" : {
       "emails" : [
@@ -3520,7 +3555,7 @@
       "nicks" : [
          "kollivier"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Kihong Kwon" : {
       "emails" : [
@@ -3530,13 +3565,13 @@
       "nicks" : [
          "kihong"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Kim Gr\u00f6nholm" : {
       "emails" : [
          "kim.1.gronholm@nokia.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Kimmo Kinnunen" : {
       "emails" : [
@@ -3547,7 +3582,7 @@
       "nicks" : [
          "kimmok"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Kinuko Yasuda" : {
       "emails" : [
@@ -3556,7 +3591,7 @@
       "nicks" : [
          "kinuko"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Kiran Muppala" : {
       "emails" : [
@@ -3564,6 +3599,12 @@
       ],
       "nicks" : [
          "kiranm"
+      ],
+      "status" : "contributor"
+   },
+   "Kocsen Chung" : {
+      "emails" : [
+         "kocsen_chung@apple.com"
       ],
       "status" : "committer"
    },
@@ -3589,7 +3630,7 @@
       "nicks" : [
          "kpiascik"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Konstantin Tokarev" : {
       "emails" : [
@@ -3611,7 +3652,7 @@
       "nicks" : [
          "kkristof"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Krzysztof Czech" : {
       "emails" : [
@@ -3621,13 +3662,13 @@
       "nicks" : [
          "kczech"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Krzysztof Kowalczyk" : {
       "emails" : [
          "kkowalczyk@gmail.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Kulanthaivel Palanichamy" : {
       "emails" : [
@@ -3647,7 +3688,7 @@
       "nicks" : [
          "kseo"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "KwangHyuk Kim" : {
       "emails" : [
@@ -3657,7 +3698,7 @@
       "nicks" : [
          "hyuki"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Lars Knoll" : {
       "emails" : [
@@ -3670,7 +3711,7 @@
       "nicks" : [
          "lars"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Laszlo Gombos" : {
       "emails" : [
@@ -3683,7 +3724,7 @@
       "nicks" : [
          "lgombos"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Laszlo Vidacs" : {
       "emails" : [
@@ -3693,7 +3734,7 @@
       "nicks" : [
          "lvidacs"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Lauro Neto" : {
       "emails" : [
@@ -3702,7 +3743,7 @@
       "nicks" : [
          "lmoura"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Leandro Gracia Gil" : {
       "emails" : [
@@ -3711,7 +3752,7 @@
       "nicks" : [
          "leandrogracia"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Leandro Pereira" : {
       "emails" : [
@@ -3721,7 +3762,7 @@
       "nicks" : [
          "acidx"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Leo Yang" : {
       "emails" : [
@@ -3734,7 +3775,7 @@
       "nicks" : [
          "leoyang"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Levi Weintraub" : {
       "emails" : [
@@ -3746,7 +3787,7 @@
       "nicks" : [
          "leviw"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Li Yin" : {
       "emails" : [
@@ -3756,13 +3797,19 @@
       "nicks" : [
          "liyin"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Lia Chen" : {
       "emails" : [
          "liachen@blackberry.com",
          "liachen@rim.com"
       ]
+   },
+   "Ling Ho" : {
+      "emails" : [
+         "lingho@apple.com"
+      ],
+      "expertise" : "webkit.org admin"
    },
    "Lorenzo Tilve" : {
       "emails" : [
@@ -3780,7 +3827,7 @@
       "nicks" : [
          "demarchi"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Lucas Forschler" : {
       "emails" : [
@@ -3798,7 +3845,7 @@
       "nicks" : [
          "luck"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Luiz Agostini" : {
       "emails" : [
@@ -3809,7 +3856,7 @@
       "nicks" : [
          "lca"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Luke Macpherson" : {
       "emails" : [
@@ -3819,7 +3866,7 @@
       "nicks" : [
          "macpherson"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "L\u00e1szl\u00f3 Lang\u00f3" : {
       "emails" : [
@@ -3829,7 +3876,7 @@
       "nicks" : [
          "llango"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Maciej Stachowiak" : {
       "emails" : [
@@ -3846,7 +3893,7 @@
          "ager@chromium.org"
       ],
       "expertise" : "V8",
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mahesh Kulkarni" : {
       "emails" : [
@@ -3858,7 +3905,7 @@
       "nicks" : [
          "maheshkk"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Manuel Rego Casasnovas" : {
       "emails" : [
@@ -3879,13 +3926,13 @@
       "nicks" : [
          "setanta"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Marcus Voltis Bulach" : {
       "emails" : [
          "bulach@chromium.org"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mario Sanchez Prada" : {
       "emails" : [
@@ -3909,7 +3956,7 @@
       "nicks" : [
          "mhahnenberg"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Mark Lam" : {
       "emails" : [
@@ -3927,7 +3974,7 @@
       "nicks" : [
          "pilgrim_google"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mark Rowe" : {
       "emails" : [
@@ -3938,7 +3985,7 @@
       "nicks" : [
          "bdash"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Martin Hock" : {
       "emails" : [
@@ -3947,7 +3994,7 @@
       "nicks" : [
          "mhock"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Martin Hodovan" : {
       "emails" : [
@@ -3968,7 +4015,7 @@
       "nicks" : [
          "mrobinson"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Mary Wu" : {
       "emails" : [
@@ -3978,7 +4025,7 @@
       "nicks" : [
          "marywu"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Matt Baker" : {
       "emails" : [
@@ -3997,14 +4044,14 @@
       "nicks" : [
          "mdaiter"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Matt Delaney" : {
       "emails" : [
          "mdelaney7@gmail.com",
          "mdelaney@apple.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Matt Falkenhagen" : {
       "emails" : [
@@ -4013,7 +4060,7 @@
       "nicks" : [
          "falken"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Matt Hanson" : {
       "emails" : [
@@ -4022,7 +4069,7 @@
       "nicks" : [
          "matthanson"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Matt Lewis" : {
       "emails" : [
@@ -4043,13 +4090,13 @@
       "nicks" : [
          "pewtermoose"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Matt Perry" : {
       "emails" : [
          "mpcomplete@chromium.org"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Matt Rajca" : {
       "emails" : [
@@ -4068,7 +4115,7 @@
       "nicks" : [
          "mmirman"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Max Vujovic" : {
       "emails" : [
@@ -4079,14 +4126,14 @@
       "nicks" : [
          "mvujovic"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Maxime Britto" : {
       "emails" : [
          "maxime.britto@gmail.com",
          "britto@apple.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Maxime Simon" : {
       "emails" : [
@@ -4097,7 +4144,7 @@
       "nicks" : [
          "maxime.simon"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Megan Gardner" : {
       "emails" : [
@@ -4118,7 +4165,7 @@
       "nicks" : [
          "mibrunin"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Michael Catanzaro" : {
       "emails" : [
@@ -4138,7 +4185,7 @@
       "nicks" : [
          "michaeln"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Michael Pruett" : {
       "emails" : [
@@ -4147,7 +4194,7 @@
       "nicks" : [
          "mpruett"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Michael Saboff" : {
       "emails" : [
@@ -4167,7 +4214,7 @@
       "nicks" : [
          "mpakula"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Michelangelo De Simone" : {
       "emails" : [
@@ -4177,7 +4224,7 @@
       "nicks" : [
          "michelangelo"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Miguel Gomez" : {
       "emails" : [
@@ -4205,7 +4252,7 @@
       "nicks" : [
          "mmaerean"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mihai Parparita" : {
       "emails" : [
@@ -4215,7 +4262,7 @@
       "nicks" : [
          "mihaip"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Mihai Tica" : {
       "emails" : [
@@ -4225,7 +4272,7 @@
       "nicks" : [
          "mitica"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mihnea Ovidenie" : {
       "emails" : [
@@ -4235,14 +4282,14 @@
       "nicks" : [
          "mihnea"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Mike Belshe" : {
       "emails" : [
          "mbelshe@chromium.org",
          "mike@belshe.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mike Fenton" : {
       "emails" : [
@@ -4253,7 +4300,7 @@
       "nicks" : [
          "mfenton"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mike Lawther" : {
       "emails" : [
@@ -4262,7 +4309,7 @@
       "nicks" : [
          "mikelawther"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mike Reed" : {
       "emails" : [
@@ -4271,7 +4318,7 @@
       "nicks" : [
          "reed"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mike Thole" : {
       "emails" : [
@@ -4279,7 +4326,7 @@
          "mthole@apple.com"
       ],
       "expertise" : "The Chromium Port",
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mike West" : {
       "emails" : [
@@ -4290,13 +4337,13 @@
       "nicks" : [
          "mkwst"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mikhail Naganov" : {
       "emails" : [
          "mnaganov@chromium.org"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Mikhail Pozdnyakov" : {
       "emails" : [
@@ -4305,7 +4352,7 @@
       "nicks" : [
          "MPozdnyakov"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Min Qin" : {
       "emails" : [
@@ -4342,7 +4389,7 @@
       "nicks" : [
          "nadav"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Nael Ouedraogo" : {
       "emails" : [
@@ -4352,7 +4399,7 @@
       "nicks" : [
          "nael"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Nan Wang" : {
       "emails" : [
@@ -4373,7 +4420,7 @@
       "nicks" : [
          "honten"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Nat Duca" : {
       "emails" : [
@@ -4383,7 +4430,7 @@
       "nicks" : [
          "nduca"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Nate Chapin" : {
       "emails" : [
@@ -4394,7 +4441,7 @@
          "japhet",
          "natechapin"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Nayan Kumar K" : {
       "emails" : [
@@ -4404,7 +4451,7 @@
       "nicks" : [
          "xc0ffee"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Nick Diego Yamane" : {
       "emails" : [
@@ -4414,7 +4461,7 @@
       "nicks" : [
          "diegoyam"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Nico Weber" : {
       "emails" : [
@@ -4425,7 +4472,7 @@
       "nicks" : [
          "thakis"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Nikita Vasilyev" : {
       "emails" : [
@@ -4453,7 +4500,7 @@
       "nicks" : [
          "wildfox"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Nils Barth" : {
       "emails" : [
@@ -4472,7 +4519,7 @@
       "nicks" : [
          "nghanavatian"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Noam Rosenthal" : {
       "emails" : [
@@ -4483,7 +4530,7 @@
       "nicks" : [
          "noamr"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Noel Gordon" : {
       "emails" : [
@@ -4494,7 +4541,7 @@
       "nicks" : [
          "noel"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Ojan Vafai" : {
       "emails" : [
@@ -4505,7 +4552,7 @@
       "nicks" : [
          "ojan"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Oliver Hunt" : {
       "emails" : [
@@ -4515,7 +4562,16 @@
       "nicks" : [
          "olliej"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
+   },
+   "Oriol Brufau" : {
+      "emails" : [
+         "obrufau@igalia.com"
+      ],
+      "nicks" : [
+         "obrufau"
+      ],
+      "status" : "committer"
    },
    "Pablo Flouret" : {
       "emails" : [
@@ -4524,6 +4580,15 @@
       ],
       "nicks" : [
          "pablof"
+      ],
+      "status" : "contributor"
+   },
+   "Pablo Saavedra" : {
+      "emails" : [
+         "psaavedra@igalia.com"
+      ],
+      "nicks" : [
+         "psaavedra"
       ],
       "status" : "committer"
    },
@@ -4535,7 +4600,7 @@
       "nicks" : [
          "pamg"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Patrick Gansterer" : {
       "emails" : [
@@ -4546,7 +4611,7 @@
       "nicks" : [
          "paroga"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Pavel Feldman" : {
       "emails" : [
@@ -4557,7 +4622,7 @@
       "nicks" : [
          "pfeldman"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Pavel Podivilov" : {
       "emails" : [
@@ -4566,7 +4631,7 @@
       "nicks" : [
          "podivilov"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Per Arne Vollan" : {
       "emails" : [
@@ -4587,7 +4652,7 @@
       "nicks" : [
          "beverloo"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Peter Gal" : {
       "emails" : [
@@ -4598,7 +4663,7 @@
       "nicks" : [
          "elecro"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Peter Kasting" : {
       "emails" : [
@@ -4609,7 +4674,7 @@
       "nicks" : [
          "pkasting"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Peter Linss" : {
       "emails" : [
@@ -4627,7 +4692,7 @@
       "nicks" : [
          "molnarp"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Peter Varga" : {
       "emails" : [
@@ -4638,7 +4703,7 @@
       "nicks" : [
          "stampho"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Philip J\u00e4genstedt" : {
       "emails" : [
@@ -4658,7 +4723,7 @@
       "nicks" : [
          "pdr"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Philippe Normand" : {
       "emails" : [
@@ -4679,7 +4744,7 @@
       "nicks" : [
          "elproxy"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Pierre d'Herbemont" : {
       "emails" : [
@@ -4691,7 +4756,7 @@
       "nicks" : [
          "pdherbemont"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Pierre-Olivier Latour" : {
       "emails" : [
@@ -4701,7 +4766,7 @@
       "nicks" : [
          "pol"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Pratik Solanki" : {
       "emails" : [
@@ -4710,7 +4775,7 @@
       "nicks" : [
          "psolanki"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Pravin D" : {
       "emails" : [
@@ -4720,7 +4785,7 @@
       "nicks" : [
          "pravind"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Qi Zhang" : {
       "emails" : [
@@ -4730,7 +4795,7 @@
       "nicks" : [
          "qi"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Radar WebKit Bug Importer" : {
       "class" : "bot",
@@ -4746,7 +4811,7 @@
          "radustavila",
          "stavila"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Rafael Antognolli" : {
       "emails" : [
@@ -4756,7 +4821,7 @@
       "nicks" : [
          "antognolli"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Rafael Brandao" : {
       "emails" : [
@@ -4766,7 +4831,7 @@
       "nicks" : [
          "rafaelbrandao"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Rafael Weinstein" : {
       "emails" : [
@@ -4775,7 +4840,7 @@
       "nicks" : [
          "rafaelw"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Raphael Kubo da Costa" : {
       "emails" : [
@@ -4788,7 +4853,7 @@
       "nicks" : [
          "rakuco"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Raul Hudea" : {
       "emails" : [
@@ -4805,7 +4870,7 @@
       "nicks" : [
          "kphanee"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Raymond Toy" : {
       "emails" : [
@@ -4815,7 +4880,7 @@
       "nicks" : [
          "rtoy"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Rebecca Hauck" : {
       "emails" : [
@@ -4834,7 +4899,7 @@
       "nicks" : [
          "reni"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Richard Williamson" : {
       "emails" : [
@@ -4843,7 +4908,7 @@
       "nicks" : [
          "rjw"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Ricky Mondello" : {
       "emails" : [
@@ -4860,7 +4925,7 @@
       "nicks" : [
          "cabanier"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Rob Buis" : {
       "emails" : [
@@ -4868,7 +4933,8 @@
          "rwlbuis@webkit.org",
          "rob.buis@samsung.com",
          "rbuis@blackberry.com",
-         "rbuis@rim.com"
+         "rbuis@rim.com",
+         "rbuis@igalia.com"
       ],
       "expertise" : "KDE contributor, The QtWebKit Port, SVG (Scalable Vector Graphics)",
       "nicks" : [
@@ -4885,7 +4951,7 @@
       "nicks" : [
          "rhogan"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Robert Kroeger" : {
       "emails" : [
@@ -4894,7 +4960,7 @@
       "nicks" : [
          "rjkroege"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Robin Morisset" : {
       "emails" : [
@@ -4913,13 +4979,13 @@
       "nicks" : [
          "rfong"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Roland Steiner" : {
       "emails" : [
          "rolandsteiner@chromium.org"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Roland Takacs" : {
       "emails" : [
@@ -4929,7 +4995,7 @@
       "nicks" : [
          "rtakacs"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Romain Bellessort" : {
       "emails" : [
@@ -4939,16 +5005,17 @@
       "nicks" : [
          "romainb"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Ross Kirsling" : {
       "emails" : [
          "ross.kirsling@sony.com"
       ],
+      "expertise" : "JavaScript/ECMAScript, PlayStation port, WinCairo port",
       "nicks" : [
          "rkirsling"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Ruth Fong" : {
       "emails" : [
@@ -4959,7 +5026,7 @@
          "ruthfong",
          "ruth_fong"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Ryan Haddad" : {
       "emails" : [
@@ -4991,7 +5058,7 @@
       "nicks" : [
          "ryuan"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Saam Barati" : {
       "emails" : [
@@ -5011,7 +5078,7 @@
          "sadrul",
          "sadrulhc"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Said Abou-Hallawa" : {
       "emails" : [
@@ -5042,7 +5109,7 @@
       "nicks" : [
          "skyostil"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Samuel White" : {
       "emails" : [
@@ -5052,7 +5119,7 @@
       "nicks" : [
          "samuel_white"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Santosh Mahto" : {
       "emails" : [
@@ -5062,13 +5129,13 @@
       "nicks" : [
          "santoshbit2007"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Satish Sampath" : {
       "emails" : [
          "satish@chromium.org"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Scott Violet" : {
       "emails" : [
@@ -5078,7 +5145,7 @@
       "nicks" : [
          "sky"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Sebastian Dr\u00f6ge" : {
       "emails" : [
@@ -5091,7 +5158,7 @@
       "nicks" : [
          "slomo"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Seokju Kwon" : {
       "emails" : [
@@ -5102,7 +5169,7 @@
       "nicks" : [
          "seokju"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Sergio Correia" : {
       "emails" : [
@@ -5112,7 +5179,7 @@
       "nicks" : [
          "qrwteyrutiyoup"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Sergio Villar Senin" : {
       "emails" : [
@@ -5132,6 +5199,12 @@
       "nicks" : [
          "shawnsingh"
       ],
+      "status" : "contributor"
+   },
+   "Shawn Roberts" : {
+      "emails" : [
+         "sroberts@apple.com"
+      ],
       "status" : "committer"
    },
    "Shinichiro Hamaji" : {
@@ -5142,7 +5215,7 @@
       "nicks" : [
          "hamaji"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Shinya Kawanaka" : {
       "emails" : [
@@ -5151,7 +5224,7 @@
       "nicks" : [
          "shinyak"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Shivakumar J M" : {
       "emails" : [
@@ -5162,7 +5235,7 @@
       "nicks" : [
          "shivajm"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Siddharth Mathur" : {
       "emails" : [
@@ -5173,7 +5246,7 @@
       "nicks" : [
          "simathur"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Sihui Liu" : {
       "emails" : [
@@ -5192,7 +5265,7 @@
       "nicks" : [
          "silvia"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Simon Fraser" : {
       "emails" : [
@@ -5214,7 +5287,7 @@
       "nicks" : [
          "tronical"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Simon Pena" : {
       "emails" : [
@@ -5225,7 +5298,7 @@
       "nicks" : [
          "spenap"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Stephan Szabo" : {
       "emails" : [
@@ -5254,7 +5327,7 @@
       "nicks" : [
          "schenney"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Stephen White" : {
       "emails" : [
@@ -5264,7 +5337,7 @@
       "nicks" : [
          "senorblanco"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Steve Block" : {
       "emails" : [
@@ -5275,7 +5348,7 @@
       "nicks" : [
          "steveblock"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Steve Falkenburg" : {
       "emails" : [
@@ -5285,7 +5358,7 @@
       "nicks" : [
          "sfalken"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Steve Lacey" : {
       "emails" : [
@@ -5294,7 +5367,7 @@
       "nicks" : [
          "stevela"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Sudarsana Nagineni" : {
       "emails" : [
@@ -5306,7 +5379,7 @@
       "nicks" : [
          "babu"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Sukolsak Sakshuwong" : {
       "emails" : [
@@ -5335,7 +5408,7 @@
       "nicks" : [
          "szledan"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Tab Atkins" : {
       "emails" : [
@@ -5353,7 +5426,7 @@
       "nicks" : [
          "tadeuzagallo"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Taiju Tsuiki" : {
       "emails" : [
@@ -5362,7 +5435,7 @@
       "nicks" : [
          "tzik"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Takashi Sakamoto" : {
       "emails" : [
@@ -5371,7 +5444,7 @@
       "nicks" : [
          "tasak"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Takashi Toyoshima" : {
       "emails" : [
@@ -5382,7 +5455,7 @@
       "nicks" : [
          "toyoshim"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Tamas Czene" : {
       "emails" : [
@@ -5401,7 +5474,7 @@
       "nicks" : [
          "gertom"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Terry Anderson" : {
       "emails" : [
@@ -5410,7 +5483,7 @@
       "nicks" : [
          "tdanderson"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Theresa O'Connor" : {
       "aliases" : [
@@ -5434,7 +5507,7 @@
       "nicks" : [
          "tmpsantos"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Thiago de Barros Lacerda" : {
       "emails" : [
@@ -5444,7 +5517,7 @@
       "nicks" : [
          "lacerda"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Thibault Saunier" : {
       "emails" : [
@@ -5475,7 +5548,7 @@
       "nicks" : [
          "tsepez"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Tibor Meszaros" : {
       "emails" : [
@@ -5487,7 +5560,7 @@
       "nicks" : [
          "mtibor"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Tien-Ren Chen" : {
       "emails" : [
@@ -5523,7 +5596,7 @@
       "emails" : [
          "timo@apple.com"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Tim Volodine" : {
       "emails" : [
@@ -5556,7 +5629,7 @@
       "nicks" : [
          "basecode"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Tom Hudson" : {
       "emails" : [
@@ -5566,7 +5639,7 @@
       "nicks" : [
          "tomhudson"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Tom Zakrajsek" : {
       "emails" : [
@@ -5575,7 +5648,7 @@
       "nicks" : [
          "tomz"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Tommy Widenflycht" : {
       "emails" : [
@@ -5584,7 +5657,7 @@
       "nicks" : [
          "tommyw"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Tom\u00e1\u0161 Popela" : {
       "emails" : [
@@ -5603,7 +5676,7 @@
       "nicks" : [
          "tony^work"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Tony Gentilcore" : {
       "emails" : [
@@ -5613,7 +5686,7 @@
       "nicks" : [
          "tonyg-cr"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Tor Arne Vestb\u00f8" : {
       "emails" : [
@@ -5625,7 +5698,7 @@
       "nicks" : [
          "torarne"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Trey Matteson" : {
       "emails" : [
@@ -5634,14 +5707,14 @@
       "nicks" : [
          "trey"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Tristan O'Tierney" : {
       "emails" : [
          "tristan@otierney.net",
          "tristan@apple.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Truitt Savell" : {
       "emails" : [
@@ -5661,7 +5734,7 @@
       "nicks" : [
          "vangelis"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Viatcheslav Ostapenko" : {
       "emails" : [
@@ -5672,13 +5745,13 @@
       "nicks" : [
          "ostap"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Vicki Murley" : {
       "emails" : [
          "vicki@apple.com"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Victor Carbune" : {
       "emails" : [
@@ -5689,7 +5762,7 @@
       "nicks" : [
          "vcarbune"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Victor Jaquez" : {
       "emails" : [
@@ -5699,7 +5772,7 @@
          "vjaquez",
          "ceyusa"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Victor Wang" : {
       "emails" : [
@@ -5708,7 +5781,7 @@
       "nicks" : [
          "victorw"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Victoria Kirst" : {
       "emails" : [
@@ -5718,7 +5791,7 @@
       "nicks" : [
          "vrk"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Vincent Scheib" : {
       "emails" : [
@@ -5727,7 +5800,7 @@
       "nicks" : [
          "scheib"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Vineet Chaudhary" : {
       "emails" : [
@@ -5737,13 +5810,13 @@
       "nicks" : [
          "vineetc"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Vitaly Repeshko" : {
       "emails" : [
          "vitalyr@chromium.org"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Vivek Galatage" : {
       "emails" : [
@@ -5754,7 +5827,7 @@
       "nicks" : [
          "vivekg"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Vsevolod Vlasov" : {
       "emails" : [
@@ -5764,7 +5837,7 @@
       "nicks" : [
          "vsevik"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "W. James MacLean" : {
       "emails" : [
@@ -5773,7 +5846,7 @@
       "nicks" : [
          "seumas"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Web Components Team" : {
       "emails" : [
@@ -5813,7 +5886,7 @@
       "nicks" : [
          "wms"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Wyatt Carss" : {
       "emails" : [
@@ -5857,7 +5930,7 @@
       "nicks" : [
          "wangxianzhu"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Xiaohai Wei" : {
       "emails" : [
@@ -5868,7 +5941,7 @@
       "nicks" : [
          "wistoch"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Xiaomei Ji" : {
       "emails" : [
@@ -5877,7 +5950,7 @@
       "nicks" : [
          "xji"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Xingnan Wang" : {
       "emails" : [
@@ -5886,14 +5959,14 @@
       "nicks" : [
          "xingnan"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Yaar Schnitman" : {
       "emails" : [
          "yaar@chromium.org",
          "yaar@google.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Yael Aharon" : {
       "emails" : [
@@ -5903,7 +5976,7 @@
       "nicks" : [
          "yael"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Yi Shen" : {
       "emails" : [
@@ -5911,7 +5984,7 @@
          "yi.shen@sisa.samsung.com",
          "yi.4.shen@nokia.com"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Yoav Weiss" : {
       "emails" : [
@@ -5928,7 +6001,7 @@
       "nicks" : [
          "yong"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Yongjun Zhang" : {
       "emails" : [
@@ -5954,7 +6027,7 @@
       "nicks" : [
          "yosin"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Youenn Fablet" : {
       "emails" : [
@@ -5981,7 +6054,7 @@
          "yuqiang.xian@intel.com"
       ],
       "expertise" : "JavaScriptCore",
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Yury Semikhatsky" : {
       "emails" : [
@@ -5991,10 +6064,11 @@
       "nicks" : [
          "yurys"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Yusuke Suzuki" : {
       "emails" : [
+         "ysuzuki@apple.com",
          "yusukesuzuki@slowstart.org",
          "utatane.tea@gmail.com"
       ],
@@ -6012,7 +6086,7 @@
       "nicks" : [
          "yutak"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Yuzo Fujishima" : {
       "emails" : [
@@ -6021,7 +6095,7 @@
       "nicks" : [
          "yuzo"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Zack Rusin" : {
       "emails" : [
@@ -6031,7 +6105,7 @@
       "nicks" : [
          "zackr"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Zalan Bujtas" : {
       "emails" : [
@@ -6060,7 +6134,7 @@
       "nicks" : [
          "zalbisser"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Zhenyao Mo" : {
       "emails" : [
@@ -6069,7 +6143,7 @@
       "nicks" : [
          "zhenyao"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Zoltan Arvai" : {
       "emails" : [
@@ -6079,7 +6153,7 @@
       "nicks" : [
          "azbest_hu"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "Zoltan Herczeg" : {
       "aliases" : [
@@ -6093,7 +6167,7 @@
       "nicks" : [
          "zherczeg"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Zoltan Horvath" : {
       "emails" : [
@@ -6106,7 +6180,7 @@
       "nicks" : [
          "zoltan"
       ],
-      "status" : "reviewer"
+      "status" : "contributor"
    },
    "Zsolt Borbely" : {
       "emails" : [
@@ -6116,7 +6190,7 @@
       "nicks" : [
          "bzsolt"
       ],
-      "status" : "committer"
+      "status" : "contributor"
    },
    "\u017dan Dober\u0161ek" : {
       "emails" : [

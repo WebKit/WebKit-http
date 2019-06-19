@@ -64,7 +64,7 @@ bool BaseCheckableInputType::appendFormData(DOMFormData& formData, bool) const
     return true;
 }
 
-void BaseCheckableInputType::handleKeydownEvent(KeyboardEvent& event)
+auto BaseCheckableInputType::handleKeydownEvent(KeyboardEvent& event) -> ShouldCallBaseEventHandler
 {
     const String& key = event.keyIdentifier();
     if (key == "U+0020") {
@@ -72,7 +72,9 @@ void BaseCheckableInputType::handleKeydownEvent(KeyboardEvent& event)
         element()->setActive(true, true);
         // No setDefaultHandled(), because IE dispatches a keypress in this case
         // and the caller will only dispatch a keypress if we don't call setDefaultHandled().
+        return ShouldCallBaseEventHandler::No;
     }
+    return ShouldCallBaseEventHandler::Yes;
 }
 
 void BaseCheckableInputType::handleKeypressEvent(KeyboardEvent& event)
@@ -99,7 +101,7 @@ void BaseCheckableInputType::accessKeyAction(bool sendMouseEvents)
 
 String BaseCheckableInputType::fallbackValue() const
 {
-    static NeverDestroyed<const AtomicString> on("on", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomString> on("on", AtomString::ConstructFromLiteral);
     return on.get();
 }
 
@@ -117,6 +119,21 @@ void BaseCheckableInputType::setValue(const String& sanitizedValue, bool, TextFi
 bool BaseCheckableInputType::isCheckable()
 {
     return true;
+}
+
+void BaseCheckableInputType::fireInputAndChangeEvents()
+{
+    if (!element()->isConnected())
+        return;
+
+    if (!shouldSendChangeEventAfterCheckedChanged())
+        return;
+
+    auto protectedThis = makeRef(*this);
+    element()->setTextAsOfLastFormControlChangeEvent(String());
+    element()->dispatchInputEvent();
+    if (auto* element = this->element())
+        element->dispatchFormControlChangeEvent();
 }
 
 } // namespace WebCore

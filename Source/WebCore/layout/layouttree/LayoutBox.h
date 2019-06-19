@@ -42,14 +42,43 @@ class TreeBuilder;
 class Box : public CanMakeWeakPtr<Box> {
     WTF_MAKE_ISO_ALLOCATED(Box);
 public:
-    friend class TreeBuilder;
+    enum class ElementType {
+        Document,
+        Body,
+        TableCell,
+        TableColumn,
+        TableRow,
+        TableColumnGroup,
+        TableRowGroup,
+        TableHeaderGroup,
+        TableFooterGroup,
+        Image,
+        IFrame,
+        GenericElement
+    };
 
+    struct ElementAttributes {
+        ElementType elementType;
+    };
+
+    enum BaseTypeFlag {
+        BoxFlag               = 1 << 0,
+        ContainerFlag         = 1 << 1,
+        BlockContainerFlag    = 1 << 2,
+        InlineBoxFlag         = 1 << 3,
+        InlineContainerFlag   = 1 << 4,
+        LineBreakBoxFlag      = 1 << 5
+    };
+    typedef unsigned BaseTypeFlags;
+
+    Box(Optional<ElementAttributes>, RenderStyle&&);
     virtual ~Box();
 
     bool establishesFormattingContext() const;
     bool establishesBlockFormattingContext() const;
     bool establishesBlockFormattingContextOnly() const;
     virtual bool establishesInlineFormattingContext() const { return false; }
+    virtual bool establishesInlineFormattingContextOnly() const { return false; }
 
     bool isInFlow() const { return !isFloatingOrOutOfFlowPositioned(); }
     bool isPositioned() const { return isInFlowPositioned() || isOutOfFlowPositioned(); }
@@ -63,6 +92,7 @@ public:
     bool isLeftFloatingPositioned() const;
     bool isRightFloatingPositioned() const;
     bool hasFloatClear() const;
+    bool isFloatAvoider() const;
 
     bool isFloatingOrOutOfFlowPositioned() const { return isFloatingPositioned() || isOutOfFlowPositioned(); }
 
@@ -71,6 +101,7 @@ public:
     const Container& initialContainingBlock() const;
 
     bool isDescendantOf(const Container&) const;
+    bool isContainingBlockDescendantOf(const Container&) const;
 
     bool isAnonymous() const { return !m_elementAttributes; }
 
@@ -82,6 +113,10 @@ public:
 
     bool isDocumentBox() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::Document; }
     bool isBodyBox() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::Body; }
+    bool isTableCell() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::TableCell; }
+    bool isReplaced() const { return isImage() || isIFrame(); }
+    bool isIFrame() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::IFrame; }
+    bool isImage() const { return m_elementAttributes && m_elementAttributes.value().elementType == ElementType::Image; }
 
     const Container* parent() const { return m_parent; }
     const Box* nextSibling() const { return m_nextSibling; }
@@ -91,59 +126,39 @@ public:
     const Box* previousInFlowSibling() const;
     const Box* previousInFlowOrFloatingSibling() const;
 
-    typedef unsigned BaseTypeFlags;
     bool isContainer() const { return m_baseTypeFlags & ContainerFlag; }
     bool isBlockContainer() const { return m_baseTypeFlags & BlockContainerFlag; }
     bool isInlineBox() const { return m_baseTypeFlags & InlineBoxFlag; }
     bool isInlineContainer() const { return m_baseTypeFlags & InlineContainerFlag; }
+    bool isLineBreakBox() const { return m_baseTypeFlags & LineBreakBoxFlag; }
 
     bool isPaddingApplicable() const;
     bool isOverflowVisible() const;
 
     const RenderStyle& style() const { return m_style; }
 
-    std::optional<const Replaced> replaced() const { return m_replaced; }
+    const Replaced* replaced() const { return m_replaced.get(); }
+    // FIXME: Temporary until after intrinsic size change is tracked by Replaced.
+    Replaced* replaced() { return m_replaced.get(); }
 
-protected:
-    enum class ElementType {
-        Document,
-        Body,
-        TableColumn,
-        TableRow,
-        TableColumnGroup,
-        TableRowGroup,
-        TableHeaderGroup,
-        TableFooterGroup,
-        GenericElement
-    };
-
-    struct ElementAttributes {
-        ElementType elementType;
-    };
-
-    enum BaseTypeFlag {
-        ContainerFlag         = 1 << 0,
-        BlockContainerFlag    = 1 << 1,
-        InlineBoxFlag         = 1 << 2,
-        InlineContainerFlag   = 1 << 3
-    };
-    Box(std::optional<ElementAttributes>, RenderStyle&&, BaseTypeFlags);
-
-private:
     void setParent(Container& parent) { m_parent = &parent; }
     void setNextSibling(Box& nextSibling) { m_nextSibling = &nextSibling; }
     void setPreviousSibling(Box& previousSibling) { m_previousSibling = &previousSibling; }
 
+protected:
+    Box(Optional<ElementAttributes>, RenderStyle&&, BaseTypeFlags);
+
+private:
     RenderStyle m_style;
-    std::optional<ElementAttributes> m_elementAttributes;
+    Optional<ElementAttributes> m_elementAttributes;
 
     Container* m_parent { nullptr };
     Box* m_previousSibling { nullptr };
     Box* m_nextSibling { nullptr };
 
-    std::optional<const Replaced> m_replaced;
+    std::unique_ptr<Replaced> m_replaced;
 
-    unsigned m_baseTypeFlags : 4;
+    unsigned m_baseTypeFlags : 6;
 };
 
 }

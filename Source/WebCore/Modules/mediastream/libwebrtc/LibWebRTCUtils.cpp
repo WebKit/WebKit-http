@@ -29,22 +29,21 @@
 
 #include "LibWebRTCMacros.h"
 #include "RTCPeerConnection.h"
-#include "RTCRtpParameters.h"
+#include "RTCRtpSendParameters.h"
 #include <wtf/text/WTFString.h>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+ALLOW_UNUSED_PARAMETERS_BEGIN
 
 #include <webrtc/api/rtpparameters.h>
 #include <webrtc/api/rtptransceiverinterface.h>
 
-#pragma GCC diagnostic pop
+ALLOW_UNUSED_PARAMETERS_END
 
 namespace WebCore {
 
-static inline RTCRtpParameters::EncodingParameters toRTCEncodingParameters(const webrtc::RtpEncodingParameters& rtcParameters)
+static inline RTCRtpEncodingParameters toRTCEncodingParameters(const webrtc::RtpEncodingParameters& rtcParameters)
 {
-    RTCRtpParameters::EncodingParameters parameters;
+    RTCRtpEncodingParameters parameters;
 
     if (rtcParameters.ssrc)
         parameters.ssrc = *rtcParameters.ssrc;
@@ -55,10 +54,10 @@ static inline RTCRtpParameters::EncodingParameters toRTCEncodingParameters(const
     if (rtcParameters.dtx) {
         switch (*rtcParameters.dtx) {
         case webrtc::DtxStatus::DISABLED:
-            parameters.dtx = RTCRtpParameters::DtxStatus::Disabled;
+            parameters.dtx = RTCDtxStatus::Disabled;
             break;
         case webrtc::DtxStatus::ENABLED:
-            parameters.dtx = RTCRtpParameters::DtxStatus::Enabled;
+            parameters.dtx = RTCDtxStatus::Enabled;
         }
     }
     parameters.active = rtcParameters.active;
@@ -73,34 +72,9 @@ static inline RTCRtpParameters::EncodingParameters toRTCEncodingParameters(const
     return parameters;
 }
 
-static inline webrtc::RtpEncodingParameters fromRTCEncodingParameters(const RTCRtpParameters::EncodingParameters& parameters)
+static inline RTCRtpHeaderExtensionParameters toRTCHeaderExtensionParameters(const webrtc::RtpHeaderExtensionParameters& rtcParameters)
 {
-    webrtc::RtpEncodingParameters rtcParameters;
-
-    if (parameters.dtx) {
-        switch (*parameters.dtx) {
-        case RTCRtpParameters::DtxStatus::Disabled:
-            rtcParameters.dtx = webrtc::DtxStatus::DISABLED;
-            break;
-        case RTCRtpParameters::DtxStatus::Enabled:
-            rtcParameters.dtx = webrtc::DtxStatus::ENABLED;
-        }
-    }
-    rtcParameters.active = parameters.active;
-    if (parameters.maxBitrate)
-        rtcParameters.max_bitrate_bps = parameters.maxBitrate;
-    if (parameters.maxFramerate)
-        rtcParameters.max_framerate = parameters.maxFramerate;
-    rtcParameters.rid = parameters.rid.utf8().data();
-    if (parameters.scaleResolutionDownBy != 1)
-        rtcParameters.scale_resolution_down_by = parameters.scaleResolutionDownBy;
-
-    return rtcParameters;
-}
-
-static inline RTCRtpParameters::HeaderExtensionParameters toRTCHeaderExtensionParameters(const webrtc::RtpHeaderExtensionParameters& rtcParameters)
-{
-    RTCRtpParameters::HeaderExtensionParameters parameters;
+    RTCRtpHeaderExtensionParameters parameters;
 
     parameters.uri = fromStdString(rtcParameters.uri);
     parameters.id = rtcParameters.id;
@@ -108,7 +82,7 @@ static inline RTCRtpParameters::HeaderExtensionParameters toRTCHeaderExtensionPa
     return parameters;
 }
 
-static inline webrtc::RtpHeaderExtensionParameters fromRTCHeaderExtensionParameters(const RTCRtpParameters::HeaderExtensionParameters& parameters)
+static inline webrtc::RtpHeaderExtensionParameters fromRTCHeaderExtensionParameters(const RTCRtpHeaderExtensionParameters& parameters)
 {
     webrtc::RtpHeaderExtensionParameters rtcParameters;
 
@@ -118,9 +92,9 @@ static inline webrtc::RtpHeaderExtensionParameters fromRTCHeaderExtensionParamet
     return rtcParameters;
 }
 
-static inline RTCRtpParameters::CodecParameters toRTCCodecParameters(const webrtc::RtpCodecParameters& rtcParameters)
+static inline RTCRtpCodecParameters toRTCCodecParameters(const webrtc::RtpCodecParameters& rtcParameters)
 {
-    RTCRtpParameters::CodecParameters parameters;
+    RTCRtpCodecParameters parameters;
 
     parameters.payloadType = rtcParameters.payload_type;
     parameters.mimeType = fromStdString(rtcParameters.mime_type());
@@ -129,6 +103,24 @@ static inline RTCRtpParameters::CodecParameters toRTCCodecParameters(const webrt
     if (rtcParameters.num_channels)
         parameters.channels = *rtcParameters.num_channels;
 
+    StringBuilder sdpFmtpLineBuilder;
+    sdpFmtpLineBuilder.appendLiteral("a=fmtp:");
+    sdpFmtpLineBuilder.appendNumber(parameters.payloadType);
+    sdpFmtpLineBuilder.append(' ');
+
+    bool isFirst = true;
+    for (auto& keyValue : rtcParameters.parameters) {
+        if (!isFirst)
+            sdpFmtpLineBuilder.append(';');
+        else
+            isFirst = false;
+
+        sdpFmtpLineBuilder.append(StringView { keyValue.first.c_str() });
+        sdpFmtpLineBuilder.append('=');
+        sdpFmtpLineBuilder.append(StringView { keyValue.second.c_str() });
+    }
+    parameters.sdpFmtpLine = sdpFmtpLineBuilder.toString();
+
     return parameters;
 }
 
@@ -136,53 +128,73 @@ RTCRtpParameters toRTCRtpParameters(const webrtc::RtpParameters& rtcParameters)
 {
     RTCRtpParameters parameters;
 
-    parameters.transactionId = fromStdString(rtcParameters.transaction_id);
-    for (auto& rtcEncoding : rtcParameters.encodings)
-        parameters.encodings.append(toRTCEncodingParameters(rtcEncoding));
     for (auto& extension : rtcParameters.header_extensions)
         parameters.headerExtensions.append(toRTCHeaderExtensionParameters(extension));
     for (auto& codec : rtcParameters.codecs)
         parameters.codecs.append(toRTCCodecParameters(codec));
 
+    return parameters;
+}
+
+RTCRtpSendParameters toRTCRtpSendParameters(const webrtc::RtpParameters& rtcParameters)
+{
+    RTCRtpSendParameters parameters { toRTCRtpParameters(rtcParameters) };
+
+    parameters.transactionId = fromStdString(rtcParameters.transaction_id);
+    for (auto& rtcEncoding : rtcParameters.encodings)
+        parameters.encodings.append(toRTCEncodingParameters(rtcEncoding));
+
     switch (rtcParameters.degradation_preference) {
     // FIXME: Support DegradationPreference::DISABLED.
     case webrtc::DegradationPreference::DISABLED:
     case webrtc::DegradationPreference::MAINTAIN_FRAMERATE:
-        parameters.degradationPreference = RTCRtpParameters::DegradationPreference::MaintainFramerate;
+        parameters.degradationPreference = RTCDegradationPreference::MaintainFramerate;
         break;
     case webrtc::DegradationPreference::MAINTAIN_RESOLUTION:
-        parameters.degradationPreference = RTCRtpParameters::DegradationPreference::MaintainResolution;
+        parameters.degradationPreference = RTCDegradationPreference::MaintainResolution;
         break;
     case webrtc::DegradationPreference::BALANCED:
-        parameters.degradationPreference = RTCRtpParameters::DegradationPreference::Balanced;
+        parameters.degradationPreference = RTCDegradationPreference::Balanced;
         break;
     };
     return parameters;
 }
 
-webrtc::RtpParameters fromRTCRtpParameters(const RTCRtpParameters& parameters)
+void updateRTCRtpSendParameters(const RTCRtpSendParameters& parameters, webrtc::RtpParameters& rtcParameters)
 {
-    webrtc::RtpParameters rtcParameters;
     rtcParameters.transaction_id = parameters.transactionId.utf8().data();
 
-    for (auto& encoding : parameters.encodings)
-        rtcParameters.encodings.push_back(fromRTCEncodingParameters(encoding));
+    if (parameters.encodings.size() != rtcParameters.encodings.size()) {
+        // If encodings size is different, setting parameters will fail. Let's make it so.
+        rtcParameters.encodings.clear();
+        return;
+    }
+
+    // We copy all current encodings parameters and only update parameters that can actually be usefully updated.
+    for (size_t i = 0; i < parameters.encodings.size(); ++i) {
+        rtcParameters.encodings[i].active = parameters.encodings[i].active;
+        if (parameters.encodings[i].maxBitrate)
+            rtcParameters.encodings[i].max_bitrate_bps = parameters.encodings[i].maxBitrate;
+        if (parameters.encodings[i].maxFramerate)
+            rtcParameters.encodings[i].max_framerate = parameters.encodings[i].maxFramerate;
+    }
+
+    rtcParameters.header_extensions.clear();
     for (auto& extension : parameters.headerExtensions)
         rtcParameters.header_extensions.push_back(fromRTCHeaderExtensionParameters(extension));
     // Codecs parameters are readonly
 
     switch (parameters.degradationPreference) {
-    case RTCRtpParameters::DegradationPreference::MaintainFramerate:
+    case RTCDegradationPreference::MaintainFramerate:
         rtcParameters.degradation_preference = webrtc::DegradationPreference::MAINTAIN_FRAMERATE;
         break;
-    case RTCRtpParameters::DegradationPreference::MaintainResolution:
+    case RTCDegradationPreference::MaintainResolution:
         rtcParameters.degradation_preference = webrtc::DegradationPreference::MAINTAIN_RESOLUTION;
         break;
-    case RTCRtpParameters::DegradationPreference::Balanced:
+    case RTCDegradationPreference::Balanced:
         rtcParameters.degradation_preference = webrtc::DegradationPreference::BALANCED;
         break;
     }
-    return rtcParameters;
 }
 
 RTCRtpTransceiverDirection toRTCRtpTransceiverDirection(webrtc::RtpTransceiverDirection rtcDirection)
@@ -197,6 +209,8 @@ RTCRtpTransceiverDirection toRTCRtpTransceiverDirection(webrtc::RtpTransceiverDi
     case webrtc::RtpTransceiverDirection::kInactive:
         return RTCRtpTransceiverDirection::Inactive;
     };
+
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 webrtc::RtpTransceiverDirection fromRTCRtpTransceiverDirection(RTCRtpTransceiverDirection direction)
@@ -211,15 +225,19 @@ webrtc::RtpTransceiverDirection fromRTCRtpTransceiverDirection(RTCRtpTransceiver
     case RTCRtpTransceiverDirection::Inactive:
         return webrtc::RtpTransceiverDirection::kInactive;
     };
+
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 webrtc::RtpTransceiverInit fromRtpTransceiverInit(const RTCRtpTransceiverInit& init)
 {
     webrtc::RtpTransceiverInit rtcInit;
     rtcInit.direction = fromRTCRtpTransceiverDirection(init.direction);
+    for (auto& stream : init.streams)
+        rtcInit.stream_ids.push_back(stream->id().utf8().data());
     return rtcInit;
 }
 
-}; // namespace WebCore
+} // namespace WebCore
 
 #endif // USE(LIBWEBRTC)

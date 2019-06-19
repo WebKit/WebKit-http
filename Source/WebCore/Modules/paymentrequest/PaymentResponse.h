@@ -27,10 +27,14 @@
 
 #if ENABLE(PAYMENT_REQUEST)
 
+#include "ActiveDOMObject.h"
+#include "ContextDestructionObserver.h"
 #include "EventTarget.h"
 #include "JSDOMPromiseDeferred.h"
+#include "JSValueInWrappedObject.h"
 #include "PaymentAddress.h"
 #include "PaymentComplete.h"
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -38,11 +42,16 @@ class Document;
 class PaymentRequest;
 struct PaymentValidationErrors;
 
-class PaymentResponse final : public RefCounted<PaymentResponse>, public EventTargetWithInlineData {
+class PaymentResponse final : public ActiveDOMObject, public EventTargetWithInlineData, public RefCounted<PaymentResponse> {
+    WTF_MAKE_ISO_ALLOCATED(PaymentResponse);
 public:
-    static Ref<PaymentResponse> create(PaymentRequest& request)
+    using DetailsFunction = Function<JSC::Strong<JSC::JSObject>(JSC::ExecState&)>;
+
+    static Ref<PaymentResponse> create(ScriptExecutionContext* context, PaymentRequest& request)
     {
-        return adoptRef(*new PaymentResponse(request));
+        auto response = adoptRef(*new PaymentResponse(context, request));
+        response->finishConstruction();
+        return response;
     }
 
     ~PaymentResponse();
@@ -53,8 +62,10 @@ public:
     const String& methodName() const { return m_methodName; }
     void setMethodName(const String& methodName) { m_methodName = methodName; }
 
-    const JSC::Strong<JSC::JSObject>& details() const { return m_details; }
-    void setDetails(JSC::Strong<JSC::JSObject>&& details) { m_details = WTFMove(details); }
+    const DetailsFunction& detailsFunction() const { return m_detailsFunction; }
+    void setDetailsFunction(DetailsFunction&&);
+
+    JSValueInWrappedObject& cachedDetails() { return m_cachedDetails; }
 
     PaymentAddress* shippingAddress() const { return m_shippingAddress.get(); }
     void setShippingAddress(PaymentAddress* shippingAddress) { m_shippingAddress = shippingAddress; }
@@ -71,33 +82,49 @@ public:
     const String& payerPhone() const { return m_payerPhone; }
     void setPayerPhone(const String& payerPhone) { m_payerPhone = payerPhone; }
 
-    void complete(std::optional<PaymentComplete>&&, DOMPromiseDeferred<void>&&);
+    void complete(Optional<PaymentComplete>&&, DOMPromiseDeferred<void>&&);
     void retry(PaymentValidationErrors&&, DOMPromiseDeferred<void>&&);
+    void abortWithException(Exception&&);
+    bool hasRetryPromise() const { return !!m_retryPromise; }
+    void settleRetryPromise(ExceptionOr<void>&& = { });
 
     using RefCounted<PaymentResponse>::ref;
     using RefCounted<PaymentResponse>::deref;
 
 private:
-    explicit PaymentResponse(PaymentRequest&);
+    PaymentResponse(ScriptExecutionContext*, PaymentRequest&);
+    void finishConstruction();
+
+    // ActiveDOMObject
+    const char* activeDOMObjectName() const final { return "PaymentResponse"; }
+    bool canSuspendForDocumentSuspension() const final;
+    void stop() final;
 
     // EventTarget
     EventTargetInterface eventTargetInterface() const final { return PaymentResponseEventTargetInterfaceType; }
-    ScriptExecutionContext* scriptExecutionContext() const final;
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
 
-    Ref<PaymentRequest> m_request;
+    enum class State {
+        Created,
+        Completed,
+        Stopped,
+    };
+
+    WeakPtr<PaymentRequest> m_request;
     String m_requestId;
     String m_methodName;
-    // FIXME: The following use of JSC::Strong is incorrect and can lead to storage leaks
-    // due to reference cycles; we should use JSValueInWrappedObject instead.
-    JSC::Strong<JSC::JSObject> m_details;
+    DetailsFunction m_detailsFunction;
+    JSValueInWrappedObject m_cachedDetails;
     RefPtr<PaymentAddress> m_shippingAddress;
     String m_shippingOption;
     String m_payerName;
     String m_payerEmail;
     String m_payerPhone;
-    bool m_completeCalled { false };
+    State m_state { State::Created };
+    Optional<DOMPromiseDeferred<void>> m_retryPromise;
+    RefPtr<PendingActivity<PaymentResponse>> m_pendingActivity;
 };
 
 } // namespace WebCore

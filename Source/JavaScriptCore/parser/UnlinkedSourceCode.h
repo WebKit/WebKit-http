@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,13 +28,16 @@
 
 #pragma once
 
-#include "JSCPoison.h"
 #include "SourceProvider.h"
 #include <wtf/RefPtr.h>
 
 namespace JSC {
 
     class UnlinkedSourceCode {
+        template<typename SourceType>
+        friend class CachedUnlinkedSourceCodeShape;
+        friend class CachedSourceCodeWithoutProvider;
+
     public:
         UnlinkedSourceCode()
             : m_provider(0)
@@ -69,14 +72,12 @@ namespace JSC {
         {
         }
 
-        UnlinkedSourceCode(const UnlinkedSourceCode& other)
-            : m_provider(other.m_provider)
-            , m_startOffset(other.m_startOffset)
-            , m_endOffset(other.m_endOffset)
-        {
-        }
-
         bool isHashTableDeletedValue() const { return m_provider.isHashTableDeletedValue(); }
+
+        SourceProvider& provider() const
+        {
+            return *m_provider;
+        }
 
         unsigned hash() const
         {
@@ -99,9 +100,9 @@ namespace JSC {
         int length() const { return m_endOffset - m_startOffset; }
 
     protected:
-        // FIXME: Make it PoisonedRef<SourceProvidier>.
+        // FIXME: Make it Ref<SourceProvidier>.
         // https://bugs.webkit.org/show_bug.cgi?id=168325
-        PoisonedRefPtr<UnlinkedSourceCodePoison, SourceProvider> m_provider;
+        RefPtr<SourceProvider> m_provider;
         int m_startOffset;
         int m_endOffset;
     };

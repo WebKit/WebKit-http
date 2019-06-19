@@ -37,6 +37,7 @@
 #include "HTMLNames.h"
 #include "HTMLObjectElement.h"
 #include "HTMLParserIdioms.h"
+#include "InspectorInstrumentation.h"
 #include "Page.h"
 #include "RenderImage.h"
 #include "RenderSVGImage.h"
@@ -204,7 +205,7 @@ void ImageLoader::updateFromElement()
     if (!document.hasLivingRenderTree())
         return;
 
-    AtomicString attr = element().imageSourceURL();
+    AtomString attr = element().imageSourceURL();
 
     // Avoid loading a URL we already failed to load.
     if (!m_failedLoadURL.isEmpty() && attr == m_failedLoadURL)
@@ -219,16 +220,20 @@ void ImageLoader::updateFromElement()
         options.sameOriginDataURLFlag = SameOriginDataURLFlag::Set;
 
         auto crossOriginAttribute = element().attributeWithoutSynchronization(HTMLNames::crossoriginAttr);
-        auto request = createPotentialAccessControlRequest(document.completeURL(sourceURI(attr)), document, crossOriginAttribute, WTFMove(options));
+
+        ResourceRequest resourceRequest(document.completeURL(sourceURI(attr)));
+        resourceRequest.setInspectorInitiatorNodeIdentifier(InspectorInstrumentation::identifierForNode(m_element));
+
+        auto request = createPotentialAccessControlRequest(WTFMove(resourceRequest), document, crossOriginAttribute, WTFMove(options));
         request.setInitiator(element());
 
         if (m_loadManually) {
             bool autoLoadOtherImages = document.cachedResourceLoader().autoLoadImages();
             document.cachedResourceLoader().setAutoLoadImages(false);
-            newImage = new CachedImage(WTFMove(request), m_element.document().page()->sessionID());
+            auto* page = m_element.document().page();
+            newImage = new CachedImage(WTFMove(request), page->sessionID(), &page->cookieJar());
             newImage->setStatus(CachedResource::Pending);
             newImage->setLoading(true);
-            newImage->setOwningCachedResourceLoader(&document.cachedResourceLoader());
             document.cachedResourceLoader().m_documentResources.set(newImage->url(), newImage.get());
             document.cachedResourceLoader().setAutoLoadImages(autoLoadOtherImages);
         } else
@@ -427,7 +432,7 @@ void ImageLoader::decode(Ref<DeferredPromise>&& promise)
         return;
     }
     
-    AtomicString attr = element().imageSourceURL();
+    AtomString attr = element().imageSourceURL();
     if (stripLeadingAndTrailingHTMLSpaces(attr).isEmpty()) {
         decodeError("Missing source URL.");
         return;
@@ -480,7 +485,7 @@ void ImageLoader::timerFired()
 void ImageLoader::dispatchPendingEvent(ImageEventSender* eventSender)
 {
     ASSERT(eventSender == &beforeLoadEventSender() || eventSender == &loadEventSender() || eventSender == &errorEventSender());
-    const AtomicString& eventType = eventSender->eventType();
+    const AtomString& eventType = eventSender->eventType();
     if (eventType == eventNames().beforeloadEvent)
         dispatchPendingBeforeLoadEvent();
     if (eventType == eventNames().loadEvent)

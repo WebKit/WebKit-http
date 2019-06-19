@@ -48,12 +48,13 @@ private:
 
     void pullAudioData() final;
 
-    GstAudioConverter* m_sampleConverter;
+    GUniquePtr<GstAudioConverter> m_sampleConverter;
     std::unique_ptr<GStreamerAudioStreamDescription> m_inputStreamDescription;
     std::unique_ptr<GStreamerAudioStreamDescription> m_outputStreamDescription;
 
     Lock m_adapterMutex;
     GRefPtr<GstAdapter> m_adapter;
+    Vector<uint8_t> m_audioBuffer;
 };
 
 } // namespace WebCore

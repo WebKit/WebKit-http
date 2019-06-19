@@ -28,7 +28,7 @@
 #import "DragAndDropSimulator.h"
 #import "PlatformUtilities.h"
 
-#if WK_API_ENABLED && ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
+#if ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
 
 static void waitForConditionWithLogging(BOOL(^condition)(), NSTimeInterval loggingTimeout, NSString *message, ...)
 {
@@ -78,7 +78,7 @@ TEST(DragAndDropTests, DropColor)
 {
     NSPasteboard *pasteboard = [NSPasteboard pasteboardWithUniqueName];
     [pasteboard declareTypes:@[NSColorPboardType] owner:nil];
-    [[NSColor redColor] writeToPasteboard:pasteboard];
+    [[NSColor colorWithRed:1 green:0 blue:0 alpha:1] writeToPasteboard:pasteboard];
 
     auto simulator = adoptNS([[DragAndDropSimulator alloc] initWithWebViewFrame:NSMakeRect(0, 0, 400, 400)]);
     TestWKWebView *webView = [simulator webView];
@@ -135,4 +135,4 @@ TEST(DragAndDropTests, DragImageFileIntoFileUpload)
     EXPECT_EQ(1, [webView stringByEvaluatingJavaScript:@"filecount.textContent"].integerValue);
 }
 
-#endif // WK_API_ENABLED && ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
+#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)

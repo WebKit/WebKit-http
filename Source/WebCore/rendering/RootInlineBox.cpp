@@ -29,11 +29,11 @@
 #include "GraphicsContext.h"
 #include "HitTestResult.h"
 #include "InlineTextBox.h"
-#include "LayoutState.h"
 #include "LogicalSelectionOffsetCaches.h"
 #include "PaintInfo.h"
 #include "RenderFragmentedFlow.h"
 #include "RenderInline.h"
+#include "RenderLayoutState.h"
 #include "RenderRubyBase.h"
 #include "RenderRubyRun.h"
 #include "RenderRubyText.h"
@@ -123,7 +123,7 @@ bool RootInlineBox::lineCanAccommodateEllipsis(bool ltr, int blockEdge, int line
     return InlineFlowBox::canAccommodateEllipsis(ltr, blockEdge, ellipsisWidth);
 }
 
-float RootInlineBox::placeEllipsis(const AtomicString& ellipsisStr,  bool ltr, float blockLeftEdge, float blockRightEdge, float ellipsisWidth, InlineBox* markupBox)
+float RootInlineBox::placeEllipsis(const AtomString& ellipsisStr,  bool ltr, float blockLeftEdge, float blockRightEdge, float ellipsisWidth, InlineBox* markupBox)
 {
     if (!gEllipsisBoxMap)
         gEllipsisBoxMap = new EllipsisBoxMap();
@@ -183,7 +183,7 @@ bool RootInlineBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& re
 void RootInlineBox::adjustPosition(float dx, float dy)
 {
     InlineFlowBox::adjustPosition(dx, dy);
-    LayoutUnit blockDirectionDelta = isHorizontal() ? dy : dx; // The block direction delta is a LayoutUnit.
+    LayoutUnit blockDirectionDelta { isHorizontal() ? dy : dx }; // The block direction delta is a LayoutUnit.
     m_lineTop += blockDirectionDelta;
     m_lineBottom += blockDirectionDelta;
     m_lineTopWithLeading += blockDirectionDelta;
@@ -243,8 +243,8 @@ LayoutUnit RootInlineBox::alignBoxesInBlockDirection(LayoutUnit heightOfBlock, G
     if (isSVGRootInlineBox())
         return 0;
 
-    LayoutUnit maxPositionTop = 0;
-    LayoutUnit maxPositionBottom = 0;
+    LayoutUnit maxPositionTop;
+    LayoutUnit maxPositionBottom;
     int maxAscent = 0;
     int maxDescent = 0;
     bool setMaxAscent = false;
@@ -300,7 +300,7 @@ LayoutUnit RootInlineBox::alignBoxesInBlockDirection(LayoutUnit heightOfBlock, G
 
 LayoutUnit RootInlineBox::beforeAnnotationsAdjustment() const
 {
-    LayoutUnit result = 0;
+    LayoutUnit result;
 
     if (!renderer().style().isFlippedLinesWritingMode()) {
         // Annotations under the previous line may push us down.
@@ -360,12 +360,12 @@ LayoutUnit RootInlineBox::lineSnapAdjustment(LayoutUnit delta) const
         return 0;
 
     LayoutUnit lineGridFontAscent = lineGrid->style().fontMetrics().ascent(baselineType());
-    LayoutUnit lineGridFontHeight = lineGridBox->logicalHeight();
-    LayoutUnit firstTextTop = lineGridBlockOffset + lineGridBox->logicalTop();
+    LayoutUnit lineGridFontHeight { lineGridBox->logicalHeight() };
+    LayoutUnit firstTextTop { lineGridBlockOffset + lineGridBox->logicalTop() };
     LayoutUnit firstLineTopWithLeading = lineGridBlockOffset + lineGridBox->lineTopWithLeading();
     LayoutUnit firstBaselinePosition = firstTextTop + lineGridFontAscent;
 
-    LayoutUnit currentTextTop = blockOffset + logicalTop() + delta;
+    LayoutUnit currentTextTop { blockOffset + logicalTop() + delta };
     LayoutUnit currentFontAscent = blockFlow().style().fontMetrics().ascent(baselineType());
     LayoutUnit currentBaselinePosition = currentTextTop + currentFontAscent;
 
@@ -373,7 +373,7 @@ LayoutUnit RootInlineBox::lineSnapAdjustment(LayoutUnit delta) const
 
     // If we're paginated, see if we're on a page after the first one. If so, the grid resets on subsequent pages.
     // FIXME: If the grid is an ancestor of the pagination establisher, then this is incorrect.
-    LayoutUnit pageLogicalTop = 0;
+    LayoutUnit pageLogicalTop;
     if (layoutState->isPaginated() && layoutState->pageLogicalHeight()) {
         pageLogicalTop = blockFlow().pageLogicalTopForOffset(lineTopWithLeading() + delta);
         if (pageLogicalTop > firstLineTopWithLeading)
@@ -388,7 +388,7 @@ LayoutUnit RootInlineBox::lineSnapAdjustment(LayoutUnit delta) const
         if (logicalHeight() <= lineGridFontHeight)
             firstTextTop += (lineGridFontHeight - logicalHeight()) / 2;
         else {
-            LayoutUnit numberOfLinesWithLeading = ceilf(static_cast<float>(logicalHeight() - lineGridFontHeight) / gridLineHeight);
+            LayoutUnit numberOfLinesWithLeading { ceilf(static_cast<float>(logicalHeight() - lineGridFontHeight) / gridLineHeight) };
             LayoutUnit totalHeight = lineGridFontHeight + numberOfLinesWithLeading * gridLineHeight;
             firstTextTop += (totalHeight - logicalHeight()) / 2;
         }
@@ -433,11 +433,11 @@ GapRects RootInlineBox::lineSelectionGap(RenderBlock& rootBlock, const LayoutPoi
     InlineBox* firstBox = firstSelectedBox();
     InlineBox* lastBox = lastSelectedBox();
     if (leftGap) {
-        result.uniteLeft(blockFlow().logicalLeftSelectionGap(rootBlock, rootBlockPhysicalPosition, offsetFromRootBlock, &firstBox->parent()->renderer(), firstBox->logicalLeft(),
+        result.uniteLeft(blockFlow().logicalLeftSelectionGap(rootBlock, rootBlockPhysicalPosition, offsetFromRootBlock, &firstBox->parent()->renderer(), LayoutUnit(firstBox->logicalLeft()),
             selTop, selHeight, cache, paintInfo));
     }
     if (rightGap) {
-        result.uniteRight(blockFlow().logicalRightSelectionGap(rootBlock, rootBlockPhysicalPosition, offsetFromRootBlock, &lastBox->parent()->renderer(), lastBox->logicalRight(),
+        result.uniteRight(blockFlow().logicalRightSelectionGap(rootBlock, rootBlockPhysicalPosition, offsetFromRootBlock, &lastBox->parent()->renderer(), LayoutUnit(lastBox->logicalRight()),
             selTop, selHeight, cache, paintInfo));
     }
 
@@ -450,11 +450,11 @@ GapRects RootInlineBox::lineSelectionGap(RenderBlock& rootBlock, const LayoutPoi
     // We can see that the |bbb| run is not part of the selection while the runs around it are.
     if (firstBox && firstBox != lastBox) {
         // Now fill in any gaps on the line that occurred between two selected elements.
-        LayoutUnit lastLogicalLeft = firstBox->logicalRight();
+        LayoutUnit lastLogicalLeft { firstBox->logicalRight() };
         bool isPreviousBoxSelected = firstBox->selectionState() != RenderObject::SelectionNone;
         for (InlineBox* box = firstBox->nextLeafChild(); box; box = box->nextLeafChild()) {
             if (box->selectionState() != RenderObject::SelectionNone) {
-                LayoutRect logicalRect(lastLogicalLeft, selTop, box->logicalLeft() - lastLogicalLeft, selHeight);
+                LayoutRect logicalRect { lastLogicalLeft, selTop, LayoutUnit(box->logicalLeft() - lastLogicalLeft), selHeight };
                 logicalRect.move(renderer().isHorizontalWritingMode() ? offsetFromRootBlock : LayoutSize(offsetFromRootBlock.height(), offsetFromRootBlock.width()));
                 LayoutRect gapRect = rootBlock.logicalRectToPhysicalRect(rootBlockPhysicalPosition, logicalRect);
                 if (isPreviousBoxSelected && gapRect.width() > 0 && gapRect.height() > 0) {
@@ -579,7 +579,7 @@ LayoutUnit RootInlineBox::selectionTop() const
     if (renderer().style().isFlippedLinesWritingMode())
         return selectionTop;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // See rdar://problem/19692206 ... don't want to do this adjustment for iOS where overlap is ok and handled.
     if (renderer().isRubyBase()) {
         // The ruby base selection should avoid intruding into the ruby text. This is only the case if there is an actual ruby text above us.
@@ -697,7 +697,7 @@ LayoutUnit RootInlineBox::selectionBottom() const
     if (!renderer().style().isFlippedLinesWritingMode() || !nextRootBox())
         return selectionBottom;
     
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // See rdar://problem/19692206 ... don't want to do this adjustment for iOS where overlap is ok and handled.
     if (renderer().isRubyBase()) {
         // The ruby base selection should avoid intruding into the ruby text. This is only the case if there is an actual ruby text below us.
@@ -849,14 +849,14 @@ LayoutRect RootInlineBox::paddedLayoutOverflowRect(LayoutUnit endPadding) const
     
     if (isHorizontal()) {
         if (isLeftToRightDirection())
-            lineLayoutOverflow.shiftMaxXEdgeTo(std::max<LayoutUnit>(lineLayoutOverflow.maxX(), logicalRight() + endPadding));
+            lineLayoutOverflow.shiftMaxXEdgeTo(std::max(lineLayoutOverflow.maxX(), LayoutUnit(logicalRight() + endPadding)));
         else
-            lineLayoutOverflow.shiftXEdgeTo(std::min<LayoutUnit>(lineLayoutOverflow.x(), logicalLeft() - endPadding));
+            lineLayoutOverflow.shiftXEdgeTo(std::min(lineLayoutOverflow.x(), LayoutUnit(logicalLeft() - endPadding)));
     } else {
         if (isLeftToRightDirection())
-            lineLayoutOverflow.shiftMaxYEdgeTo(std::max<LayoutUnit>(lineLayoutOverflow.maxY(), logicalRight() + endPadding));
+            lineLayoutOverflow.shiftMaxYEdgeTo(std::max(lineLayoutOverflow.maxY(), LayoutUnit(logicalRight() + endPadding)));
         else
-            lineLayoutOverflow.shiftYEdgeTo(std::min<LayoutUnit>(lineLayoutOverflow.y(), logicalLeft() - endPadding));
+            lineLayoutOverflow.shiftYEdgeTo(std::min(lineLayoutOverflow.y(), LayoutUnit(logicalLeft() - endPadding)));
     }
     
     return lineLayoutOverflow;
@@ -993,7 +993,7 @@ void RootInlineBox::ascentAndDescentForBox(InlineBox& box, GlyphOverflowAndFallb
 LayoutUnit RootInlineBox::verticalPositionForBox(InlineBox* box, VerticalPositionCache& verticalPositionCache)
 {
     if (box->renderer().isTextOrLineBreak())
-        return box->parent()->logicalTop();
+        return LayoutUnit(box->parent()->logicalTop());
     
     RenderBoxModelObject* renderer = box->boxModelObject();
     ASSERT(renderer->isInline());
@@ -1013,7 +1013,7 @@ LayoutUnit RootInlineBox::verticalPositionForBox(InlineBox* box, VerticalPositio
             return cachedPosition;
     }
 
-    LayoutUnit verticalPosition = 0;
+    LayoutUnit verticalPosition;
     VerticalAlign verticalAlign = renderer->style().verticalAlign();
     if (verticalAlign == VerticalAlign::Top || verticalAlign == VerticalAlign::Bottom)
         return 0;

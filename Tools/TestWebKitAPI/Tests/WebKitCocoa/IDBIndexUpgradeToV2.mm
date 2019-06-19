@@ -27,6 +27,7 @@
 
 #import "PlatformUtilities.h"
 #import "Test.h"
+#import <WebCore/SQLiteFileSystem.h>
 #import <WebKit/WKProcessPoolPrivate.h>
 #import <WebKit/WKUserContentControllerPrivate.h>
 #import <WebKit/WKWebViewConfigurationPrivate.h>
@@ -34,8 +35,6 @@
 #import <WebKit/_WKProcessPoolConfiguration.h>
 #import <WebKit/_WKUserStyleSheet.h>
 #import <wtf/RetainPtr.h>
-
-#if WK_API_ENABLED
 
 static bool receivedScriptMessage;
 static RetainPtr<WKScriptMessage> lastScriptMessage;
@@ -59,13 +58,16 @@ TEST(IndexedDB, IndexUpgradeToV2)
     RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
     [[configuration userContentController] addScriptMessageHandler:handler.get() name:@"testHandler"];
 
-    [configuration.get().processPool _terminateStorageProcess];
+    [configuration.get().processPool _terminateNetworkProcess];
 
     // Copy the inconsistent database files to the database directory
     NSURL *url1 = [[NSBundle mainBundle] URLForResource:@"IndexUpgrade" withExtension:@"sqlite3" subdirectory:@"TestWebKitAPI.resources"];
     NSURL *url2 = [[NSBundle mainBundle] URLForResource:@"IndexUpgrade" withExtension:@"blob" subdirectory:@"TestWebKitAPI.resources"];
 
-    NSURL *targetURL = [NSURL fileURLWithPath:[@"~/Library/WebKit/TestWebKitAPI/WebsiteData/IndexedDB/file__0/index-upgrade-test" stringByExpandingTildeInPath]];
+    NSString *hash = WebCore::SQLiteFileSystem::computeHashForFileName("index-upgrade-test");
+    NSString *originDirectory = @"~/Library/WebKit/TestWebKitAPI/WebsiteData/IndexedDB/v1/file__0/";
+    NSString *databaseDirectory = [[originDirectory stringByAppendingString:hash] stringByExpandingTildeInPath];
+    NSURL *targetURL = [NSURL fileURLWithPath:databaseDirectory];
     [[NSFileManager defaultManager] removeItemAtURL:targetURL error:nil];
     [[NSFileManager defaultManager] createDirectoryAtURL:targetURL withIntermediateDirectories:YES attributes:nil error:nil];
 
@@ -81,5 +83,3 @@ TEST(IndexedDB, IndexUpgradeToV2)
 
     EXPECT_WK_STREQ(@"Object expected to be a blob: [object Blob]", [lastScriptMessage body]);
 }
-
-#endif

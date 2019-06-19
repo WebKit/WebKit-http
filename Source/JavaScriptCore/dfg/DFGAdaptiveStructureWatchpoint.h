@@ -28,11 +28,12 @@
 #if ENABLE(DFG_JIT)
 
 #include "ObjectPropertyCondition.h"
+#include "PackedCellPtr.h"
 #include "Watchpoint.h"
 
 namespace JSC { namespace DFG {
 
-class AdaptiveStructureWatchpoint : public Watchpoint {
+class AdaptiveStructureWatchpoint final : public Watchpoint {
 public:
     AdaptiveStructureWatchpoint(const ObjectPropertyCondition&, CodeBlock*);
     
@@ -40,12 +41,12 @@ public:
     
     void install(VM&);
 
-protected:
-    void fireInternal(VM&, const FireDetail&) override;
+    void fireInternal(VM&, const FireDetail&);
 
 private:
-    ObjectPropertyCondition m_key;
-    CodeBlock* m_codeBlock;
+    // Own destructor may not be called. Keep members trivially destructible.
+    JSC_WATCHPOINT_FIELD(PackedCellPtr<CodeBlock>, m_codeBlock);
+    JSC_WATCHPOINT_FIELD(ObjectPropertyCondition, m_key);
 };
 
 } } // namespace JSC::DFG

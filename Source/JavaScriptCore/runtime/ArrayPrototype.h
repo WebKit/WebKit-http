@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2007-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2007-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -21,12 +21,8 @@
 #pragma once
 
 #include "JSArray.h"
-#include "JSCPoison.h"
-#include <wtf/PoisonedUniquePtr.h>
 
 namespace JSC {
-
-class ArrayPrototypeAdaptiveInferredPropertyWatchpoint;
 
 class ArrayPrototype final : public JSArray {
 private:
@@ -50,20 +46,8 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(DerivedArrayType, StructureFlags), info(), ArrayClass);
     }
 
-    void tryInitializeSpeciesWatchpoint(ExecState*);
-
-    static const bool needsDestruction = false;
-    // We don't need destruction since we use a finalizer.
-    static void destroy(JSC::JSCell*);
-
 protected:
     void finishCreation(VM&, JSGlobalObject*);
-
-private:
-    // This bit is set if any user modifies the constructor property Array.prototype. This is used to optimize species creation for JSArrays.
-    friend ArrayPrototypeAdaptiveInferredPropertyWatchpoint;
-    PoisonedUniquePtr<ArrayPrototypePoison, ArrayPrototypeAdaptiveInferredPropertyWatchpoint> m_constructorWatchpoint;
-    PoisonedUniquePtr<ArrayPrototypePoison, ArrayPrototypeAdaptiveInferredPropertyWatchpoint> m_constructorSpeciesWatchpoint;
 };
 
 EncodedJSValue JSC_HOST_CALL arrayProtoFuncToString(ExecState*);

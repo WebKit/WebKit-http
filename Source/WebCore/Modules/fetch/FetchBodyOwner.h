@@ -40,7 +40,7 @@ namespace WebCore {
 
 class FetchBodyOwner : public RefCounted<FetchBodyOwner>, public ActiveDOMObject {
 public:
-    FetchBodyOwner(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&);
+    FetchBodyOwner(ScriptExecutionContext&, Optional<FetchBody>&&, Ref<FetchHeaders>&&);
     ~FetchBodyOwner();
 
     bool bodyUsed() const { return isDisturbed(); }
@@ -66,6 +66,10 @@ public:
     virtual void cancel() { }
 #endif
 
+    bool hasLoadingError() const;
+    ResourceError loadingError() const;
+    Optional<Exception> loadingException() const;
+
 protected:
     const FetchBody& body() const { return *m_body; }
     FetchBody& body() { return *m_body; }
@@ -88,6 +92,9 @@ protected:
     void setBodyAsOpaque() { m_isBodyOpaque = true; }
     bool isBodyOpaque() const { return m_isBodyOpaque; }
 
+    void setLoadingError(Exception&&);
+    void setLoadingError(ResourceError&&);
+
 private:
     // Blob loading routines
     void blobChunk(const char*, size_t);
@@ -109,18 +116,19 @@ private:
     };
 
 protected:
-    std::optional<FetchBody> m_body;
+    Optional<FetchBody> m_body;
     String m_contentType;
     bool m_isDisturbed { false };
 #if ENABLE(STREAMS_API)
     RefPtr<FetchBodySource> m_readableStreamSource;
 #endif
     Ref<FetchHeaders> m_headers;
-    std::optional<ResourceError> m_loadingError;
 
 private:
-    std::optional<BlobLoader> m_blobLoader;
+    Optional<BlobLoader> m_blobLoader;
     bool m_isBodyOpaque { false };
+
+    Variant<std::nullptr_t, Exception, ResourceError> m_loadingError;
 };
 
 } // namespace WebCore

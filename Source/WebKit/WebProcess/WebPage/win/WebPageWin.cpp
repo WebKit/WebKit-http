@@ -55,6 +55,10 @@ void WebPage::platformInitialize()
 {
 }
 
+void WebPage::platformReinitialize()
+{
+}
+
 void WebPage::platformDetach()
 {
 }
@@ -109,12 +113,9 @@ bool WebPage::platformCanHandleRequest(const ResourceRequest&)
     return false;
 }
 
-String WebPage::platformUserAgent(const URL& url) const
+String WebPage::platformUserAgent(const URL&) const
 {
-    if (url.isNull() || !m_page->settings().needsSiteSpecificQuirks())
-        return String();
-
-    return WebCore::standardUserAgentForURL(url);
+    return { };
 }
 
 static const unsigned CtrlKey = 1 << 0;
@@ -237,16 +238,16 @@ const char* WebPage::interpretKeyEvent(const WebCore::KeyboardEvent* evt)
     return mapKey ? keyPressCommandsMap->get(mapKey) : 0;
 }
 
-bool WebPage::handleEditingKeyboardEvent(WebCore::KeyboardEvent* event)
+bool WebPage::handleEditingKeyboardEvent(WebCore::KeyboardEvent& event)
 {
-    auto* frame = downcast<Node>(event->target())->document().frame();
+    auto* frame = downcast<Node>(event.target())->document().frame();
     ASSERT(frame);
 
-    auto* keyEvent = event->underlyingPlatformEvent();
+    auto* keyEvent = event.underlyingPlatformEvent();
     if (!keyEvent || keyEvent->isSystemKey()) // Do not treat this as text input if it's a system key event.
         return false;
 
-    auto command = frame->editor().command(interpretKeyEvent(event));
+    auto command = frame->editor().command(interpretKeyEvent(&event));
 
     if (keyEvent->type() == PlatformEvent::RawKeyDown) {
         // WebKit doesn't have enough information about mode to decide
@@ -255,17 +256,17 @@ bool WebPage::handleEditingKeyboardEvent(WebCore::KeyboardEvent* event)
         // handle them immediately (e.g. Tab that changes focus) or
         // let a keypress event be generated (e.g. Tab that inserts a
         // Tab character, or Enter).
-        return !command.isTextInsertion() && command.execute(event);
+        return !command.isTextInsertion() && command.execute(&event);
     }
 
-    if (command.execute(event))
+    if (command.execute(&event))
         return true;
 
     // Don't insert null or control characters as they can result in unexpected behaviour.
-    if (event->charCode() < ' ')
+    if (event.charCode() < ' ')
         return false;
 
-    return frame->editor().insertText(keyEvent->text(), event);
+    return frame->editor().insertText(keyEvent->text(), &event);
 }
 
 } // namespace WebKit

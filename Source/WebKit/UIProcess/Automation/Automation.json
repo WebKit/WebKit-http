@@ -32,14 +32,22 @@
             "description": "The coordinate system in which rects, points, and sizes are to be interpreted.",
             "enum": [
                 "Page",
-                "LayoutViewport",
-                "VisualViewport"
+                "Viewport"
             ]
         },
         {
             "id": "BrowsingContextHandle",
             "type": "string",
             "description": "An opaque identifier for a browsing context."
+        },
+        {
+            "id": "BrowsingContextPresentation",
+            "type": "string",
+            "description": "How a browsing context is presented by the user agent. A browsing context is considered a tab if it shares an OS-level window with another browsing context.",
+            "enum": [
+                "Window",
+                "Tab"
+            ]
         },
         {
             "id": "FrameHandle",
@@ -291,7 +299,7 @@
                 { "name": "sourceId", "type": "string", "description": "The input source whose state is described by this object." },
                 { "name": "pressedCharKey", "type": "string", "optional": true, "description": "For 'keyboard' input sources, specifies a character key that has 'pressed' state. Unmentioned character keys are assumed to have a 'released' state." },
                 { "name": "pressedVirtualKeys", "type": "array", "items": { "$ref": "VirtualKey" }, "optional": true, "description": "For 'keyboard' input sources, specifies virtual keys that have a 'pressed' state. Unmentioned virtual keys are assumed to have a 'released' state." },
-                { "name": "pressedButton", "$ref": "MouseButton", "optional": true, "description": "For 'mouse' input sources, specifies which mouse button has a 'pressed' state. Unmentioned mouse buttons are assumed to have a 'released' state." },
+                { "name": "pressedButton", "$ref": "MouseButton", "optional": true, "description": "For 'mouse' input sources, specifies which mouse button has a 'pressed' state. Unmentioned mouse buttons are assumed to have a 'released' state. For 'touch' input sources, passing MouseButton::Left denotes a touch-down state." },
                 { "name": "origin", "$ref": "MouseMoveOrigin", "optional": true, "description": "For 'mouse' input sources, specifies the origin type of a mouse move transition. Defaults to 'Viewport' if omitted."},
                 { "name": "nodeHandle", "$ref": "NodeHandle", "optional": true, "description": "The handle of the element to use as origin when origin type is 'Element'."},
                 { "name": "location", "$ref": "Point", "optional": true, "description": "For 'mouse' or 'touch' input sources, specifies a location in view coordinates to which the input source should transition. Transitioning to this state may interpolate intemediate input source states to better simulate real user movements and gestures." },
@@ -323,10 +331,11 @@
             "name": "createBrowsingContext",
             "description": "Opens a new browsing context in the automation session and makes it the active browsing context for user interaction. This command creates a browsing context in a new window rather than adding a tab to an existing window.",
             "parameters": [
-                { "name": "preferNewTab", "type": "boolean", "optional": true, "description": "Create the new browsing context as a tab in an existing Automation window, if possible."}
+                { "name": "presentationHint", "$ref": "BrowsingContextPresentation", "optional": true, "description": "A hint for the desired presentation of new browsing context (new tab or new window)."}
             ],
             "returns": [
-                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "An opaque handle for the newly created browsing context." }
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "An opaque handle for the newly created browsing context." },
+                { "name": "presentation", "$ref": "BrowsingContextPresentation", "description": "How the browser presented the new browsing context (new tab or new window)." }
             ],
             "async": true
         },
@@ -610,7 +619,8 @@
             "description": "Sets the files to be selected when a file input type element becomes active in a browsing context.",
             "parameters": [
                 { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context." },
-                { "name": "filenames", "type": "array", "items": { "$ref": "string" }, "description": "Absolute paths to the files that should be selected." }
+                { "name": "filenames", "type": "array", "items": { "type": "string" }, "description": "Absolute paths to the files that should be selected." },
+                { "name": "fileContents", "type": "array", "items": { "type" : "string" }, "optional": true, "description": "An array of Base64-encoded binary data for each file to be selected. If this property is provided, it is assumed that 'filenames' are not real file paths on the session host's filesystem, and this binary data will be used instead." }
             ]
         },
         {

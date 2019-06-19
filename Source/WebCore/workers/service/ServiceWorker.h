@@ -31,9 +31,9 @@
 #include "ContextDestructionObserver.h"
 #include "EventTarget.h"
 #include "ServiceWorkerData.h"
-#include "URL.h"
 #include <JavaScriptCore/Strong.h>
 #include <wtf/RefCounted.h>
+#include <wtf/URL.h>
 
 namespace JSC {
 class JSValue;
@@ -44,6 +44,7 @@ namespace WebCore {
 class Frame;
 
 class ServiceWorker final : public RefCounted<ServiceWorker>, public EventTargetWithInlineData, public ActiveDOMObject {
+    WTF_MAKE_ISO_ALLOCATED(ServiceWorker);
 public:
     using State = ServiceWorkerState;
     static Ref<ServiceWorker> getOrCreate(ScriptExecutionContext&, ServiceWorkerData&&);
@@ -54,7 +55,7 @@ public:
 
     State state() const { return m_data.state; }
     
-    void scheduleTaskToUpdateState(State);
+    void updateState(State);
 
     ExceptionOr<void> postMessage(ScriptExecutionContext&, JSC::JSValue message, Vector<JSC::Strong<JSC::JSObject>>&&);
 

@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_WeakPtr_h
-#define WTF_WeakPtr_h
+#pragma once
 
 #include <wtf/Noncopyable.h>
 #include <wtf/Ref.h>
@@ -34,31 +33,48 @@
 
 namespace WTF {
 
-template<typename T> class WeakPtr;
-template<typename T> class WeakPtrFactory;
+// Testing interface for TestWebKitAPI
+#ifndef DID_CREATE_WEAK_PTR_IMPL
+#define DID_CREATE_WEAK_PTR_IMPL(p)
+#endif
+#ifndef WILL_DESTROY_WEAK_PTR_IMPL
+#define WILL_DESTROY_WEAK_PTR_IMPL(p)
+#endif
 
-// Note: WeakReference is an implementation detail, and should not be used directly.
-template<typename T>
-class WeakReference : public ThreadSafeRefCounted<WeakReference<T>> {
-    WTF_MAKE_NONCOPYABLE(WeakReference<T>);
+template<typename> class WeakHashSet;
+template<typename> class WeakPtr;
+template<typename> class WeakPtrFactory;
+
+class WeakPtrImpl : public ThreadSafeRefCounted<WeakPtrImpl> {
+    WTF_MAKE_NONCOPYABLE(WeakPtrImpl);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    T* get() const { return m_ptr; }
+    template<typename T> static Ref<WeakPtrImpl> create(T* ptr)
+    {
+        return adoptRef(*new WeakPtrImpl(ptr));
+    }
 
+    ~WeakPtrImpl()
+    {
+        WILL_DESTROY_WEAK_PTR_IMPL(m_ptr);
+    }
+
+    template<typename T> typename T::WeakValueType* get()
+    {
+        return static_cast<typename T::WeakValueType*>(m_ptr);
+    }
+
+    explicit operator bool() const { return m_ptr; }
     void clear() { m_ptr = nullptr; }
 
 private:
-    friend class WeakPtr<T>;
-    friend class WeakPtrFactory<T>;
-
-    static Ref<WeakReference<T>> create(T* ptr) { return adoptRef(*new WeakReference(ptr)); }
-
-    explicit WeakReference(T* ptr)
-        : m_ptr(ptr)
+    template<typename T> explicit WeakPtrImpl(T* ptr)
+        : m_ptr(static_cast<typename T::WeakValueType*>(ptr))
     {
+        DID_CREATE_WEAK_PTR_IMPL(ptr);
     }
 
-    T* m_ptr;
+    void* m_ptr;
 };
 
 template<typename T>
@@ -67,27 +83,29 @@ class WeakPtr {
 public:
     WeakPtr() { }
     WeakPtr(std::nullptr_t) { }
-    WeakPtr(Ref<WeakReference<T>>&& ref) : m_ref(std::forward<Ref<WeakReference<T>>>(ref)) { }
     template<typename U> WeakPtr(const WeakPtr<U>&);
     template<typename U> WeakPtr(WeakPtr<U>&&);
 
-    T* get() const { return m_ref ? m_ref->get() : nullptr; }
-    explicit operator bool() const { return m_ref && m_ref->get(); }
+    T* get() const { return m_impl ? static_cast<T*>(m_impl->get<T>()) : nullptr; }
+    explicit operator bool() const { return m_impl && *m_impl; }
 
-    WeakPtr& operator=(std::nullptr_t) { m_ref = nullptr; return *this; }
+    WeakPtr& operator=(std::nullptr_t) { m_impl = nullptr; return *this; }
     template<typename U> WeakPtr& operator=(const WeakPtr<U>&);
     template<typename U> WeakPtr& operator=(WeakPtr<U>&&);
 
-    T* operator->() const { return m_ref->get(); }
-    T& operator*() const { return *m_ref->get(); }
+    T* operator->() const { return get(); }
+    T& operator*() const { return *get(); }
 
-    void clear() { m_ref = nullptr; }
+    void clear() { m_impl = nullptr; }
 
 private:
-    template<typename U> friend class WeakPtr;
+    explicit WeakPtr(Ref<WeakPtrImpl>&& ref) : m_impl(WTFMove(ref)) { }
+    template<typename> friend class WeakHashSet;
+    template<typename> friend class WeakPtr;
+    template<typename> friend class WeakPtrFactory;
     template<typename U> friend WeakPtr<U> makeWeakPtr(U&);
 
-    RefPtr<WeakReference<T>> m_ref;
+    RefPtr<WeakPtrImpl> m_impl;
 };
 
 // Note: you probably want to inherit from CanMakeWeakPtr rather than use this directly.
@@ -99,84 +117,86 @@ public:
     WeakPtrFactory() = default;
     ~WeakPtrFactory()
     {
-        if (!m_ref)
+        if (!m_impl)
             return;
-        m_ref->clear();
+        m_impl->clear();
     }
 
-    WeakPtr<T> createWeakPtr(T& ptr) const
+    WeakPtr<T> createWeakPtr(T& object) const
     {
-        if (!m_ref)
-            m_ref = WeakReference<T>::create(&ptr);
-        return { makeRef(*m_ref) };
+        if (!m_impl)
+            m_impl = WeakPtrImpl::create(&object);
+
+        ASSERT(&object == m_impl->get<T>());
+        return WeakPtr<T>(makeRef(*m_impl));
     }
 
-    WeakPtr<const T> createWeakPtr(const T& ptr) const
+    WeakPtr<const T> createWeakPtr(const T& object) const
     {
-        if (!m_ref)
-            m_ref = WeakReference<T>::create(const_cast<T*>(&ptr));
-        return { makeRef(reinterpret_cast<WeakReference<const T>&>(*m_ref)) };
+        if (!m_impl)
+            m_impl = WeakPtrImpl::create(const_cast<T*>(&object));
+
+        ASSERT(&object == m_impl->get<T>());
+        return WeakPtr<T>(makeRef(*m_impl));
     }
 
     void revokeAll()
     {
-        if (!m_ref)
+        if (!m_impl)
             return;
 
-        m_ref->clear();
-        m_ref = nullptr;
+        m_impl->clear();
+        m_impl = nullptr;
     }
 
 private:
-    mutable RefPtr<WeakReference<T>> m_ref;
+    template<typename> friend class WeakHashSet;
+
+    mutable RefPtr<WeakPtrImpl> m_impl;
 };
 
 template<typename T> class CanMakeWeakPtr {
 public:
-    const WeakPtrFactory<T>& weakPtrFactory() const { return m_weakFactory; }
-    WeakPtrFactory<T>& weakPtrFactory() { return m_weakFactory; }
+    typedef T WeakValueType;
+
+    const WeakPtrFactory<T>& weakPtrFactory() const { return m_weakPtrFactory; }
+    WeakPtrFactory<T>& weakPtrFactory() { return m_weakPtrFactory; }
 
 private:
-    WeakPtrFactory<T> m_weakFactory;
+    WeakPtrFactory<T> m_weakPtrFactory;
 };
 
-template<typename T, typename U> inline WeakReference<T>* weak_reference_upcast(WeakReference<U>* weakReference)
+template<typename T, typename U> inline WeakPtrImpl* weak_ptr_impl_cast(WeakPtrImpl* impl)
 {
-    static_assert(std::is_convertible<U*, T*>::value, "U* must be convertible to T*");
-    return reinterpret_cast<WeakReference<T>*>(weakReference);
-}
-
-template<typename T, typename U> inline WeakReference<T>* weak_reference_downcast(WeakReference<U>* weakReference)
-{
-    static_assert(std::is_convertible<T*, U*>::value, "T* must be convertible to U*");
-    return reinterpret_cast<WeakReference<T>*>(weakReference);
+    static_assert(std::is_same<typename T::WeakValueType, typename U::WeakValueType>::value, "Invalid weak pointer cast");
+    return impl;
 }
 
 template<typename T> template<typename U> inline WeakPtr<T>::WeakPtr(const WeakPtr<U>& o)
-    : m_ref(weak_reference_upcast<T>(o.m_ref.get()))
+    : m_impl(weak_ptr_impl_cast<T, U>(o.m_impl.get()))
 {
 }
 
 template<typename T> template<typename U> inline WeakPtr<T>::WeakPtr(WeakPtr<U>&& o)
-    : m_ref(adoptRef(weak_reference_upcast<T>(o.m_ref.leakRef())))
+    : m_impl(adoptRef(weak_ptr_impl_cast<T, U>(o.m_impl.leakRef())))
 {
 }
 
 template<typename T> template<typename U> inline WeakPtr<T>& WeakPtr<T>::operator=(const WeakPtr<U>& o)
 {
-    m_ref = weak_reference_upcast<T>(o.m_ref.get());
+    m_impl = weak_ptr_impl_cast<T, U>(o.m_impl.get());
     return *this;
 }
 
 template<typename T> template<typename U> inline WeakPtr<T>& WeakPtr<T>::operator=(WeakPtr<U>&& o)
 {
-    m_ref = adoptRef(weak_reference_upcast<T>(o.m_ref.leakRef()));
+    m_impl = adoptRef(weak_ptr_impl_cast<T, U>(o.m_impl.leakRef()));
     return *this;
 }
 
-template<typename T> inline WeakPtr<T> makeWeakPtr(T& ref)
+template<typename T> inline WeakPtr<T> makeWeakPtr(T& object)
 {
-    return { adoptRef(*weak_reference_downcast<T>(ref.weakPtrFactory().createWeakPtr(ref).m_ref.leakRef())) };
+    return { object.weakPtrFactory().createWeakPtr(object) };
 }
 
 template<typename T> inline WeakPtr<T> makeWeakPtr(T* ptr)
@@ -221,7 +241,4 @@ template<typename T, typename U> inline bool operator!=(T* a, const WeakPtr<U>& 
 using WTF::CanMakeWeakPtr;
 using WTF::WeakPtr;
 using WTF::WeakPtrFactory;
-using WTF::WeakReference;
 using WTF::makeWeakPtr;
-
-#endif

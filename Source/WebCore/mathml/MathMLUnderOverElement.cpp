@@ -58,12 +58,12 @@ const MathMLElement::BooleanValue& MathMLUnderOverElement::accentUnder()
     return cachedBooleanAttribute(accentunderAttr, m_accentUnder);
 }
 
-void MathMLUnderOverElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void MathMLUnderOverElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == accentAttr)
-        m_accent = std::nullopt;
+        m_accent = WTF::nullopt;
     else if (name == accentunderAttr)
-        m_accentUnder = std::nullopt;
+        m_accentUnder = WTF::nullopt;
 
     MathMLElement::parseAttribute(name, value);
 }

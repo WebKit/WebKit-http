@@ -26,8 +26,6 @@
 #import "config.h"
 #import "IconLoadingDelegate.h"
 
-#if WK_API_ENABLED
-
 #include "WKNSData.h"
 #include "_WKIconLoadingDelegate.h"
 #include "_WKLinkIconParametersInternal.h"
@@ -87,7 +85,7 @@ void IconLoadingDelegate::IconLoadingClient::getLoadDecisionForIcon(const WebCor
 
     RetainPtr<_WKLinkIconParameters> parameters = adoptNS([[_WKLinkIconParameters alloc] _initWithLinkIcon:linkIcon]);
 
-    [delegate webView:m_iconLoadingDelegate.m_webView shouldLoadIconWithParameters:parameters.get() completionHandler:BlockPtr<void (IconLoadCompletionHandler loadCompletionHandler)>::fromCallable([completionHandler = WTFMove(completionHandler)] (IconLoadCompletionHandler loadCompletionHandler) mutable {
+    [delegate webView:m_iconLoadingDelegate.m_webView shouldLoadIconWithParameters:parameters.get() completionHandler:makeBlockPtr([completionHandler = WTFMove(completionHandler)] (IconLoadCompletionHandler loadCompletionHandler) mutable {
         ASSERT(RunLoop::isMain());
         if (loadCompletionHandler) {
             completionHandler([loadCompletionHandler = Block_copy(loadCompletionHandler)](API::Data* data, WebKit::CallbackBase::Error error) {
@@ -102,5 +100,3 @@ void IconLoadingDelegate::IconLoadingClient::getLoadDecisionForIcon(const WebCor
 }
 
 } // namespace WebKit
-
-#endif // WK_API_ENABLED

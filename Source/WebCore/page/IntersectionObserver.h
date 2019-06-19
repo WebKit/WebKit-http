@@ -28,6 +28,7 @@
 #if ENABLE(INTERSECTION_OBSERVER)
 
 #include "ActiveDOMObject.h"
+#include "GCReachableRef.h"
 #include "IntersectionObserverCallback.h"
 #include "IntersectionObserverEntry.h"
 #include "LengthBox.h"
@@ -43,10 +44,12 @@ class Element;
 
 struct IntersectionObserverRegistration {
     WeakPtr<IntersectionObserver> observer;
-    std::optional<size_t> previousThresholdIndex;
+    Optional<size_t> previousThresholdIndex;
 };
 
 struct IntersectionObserverData {
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
+
     // IntersectionObservers for which the element that owns this IntersectionObserverData is the root.
     // An IntersectionObserver is only owned by a JavaScript wrapper. ActiveDOMObject::hasPendingActivity
     // is overridden to keep this wrapper alive while the observer has ongoing observations.
@@ -72,6 +75,7 @@ public:
 
     Element* root() const { return m_root; }
     String rootMargin() const;
+    const LengthBox& rootMarginBox() const { return m_rootMargin; }
     const Vector<double>& thresholds() const { return m_thresholds; }
     const Vector<Element*> observationTargets() const { return m_observationTargets; }
 
@@ -79,7 +83,11 @@ public:
     void unobserve(Element&);
     void disconnect();
 
-    Vector<Ref<IntersectionObserverEntry>> takeRecords();
+    struct TakenRecords {
+        Vector<Ref<IntersectionObserverEntry>> records;
+        Vector<GCReachableRef<Element>> pendingTargets;
+    };
+    TakenRecords takeRecords();
 
     void targetDestroyed(Element&);
     bool hasObservationTargets() const { return m_observationTargets.size(); }
@@ -108,6 +116,7 @@ private:
     Vector<double> m_thresholds;
     RefPtr<IntersectionObserverCallback> m_callback;
     Vector<Element*> m_observationTargets;
+    Vector<GCReachableRef<Element>> m_pendingTargets;
     Vector<Ref<IntersectionObserverEntry>> m_queuedEntries;
 };
 

@@ -25,7 +25,10 @@
 #include "JSTestStandaloneDictionary.h"
 
 #include "JSDOMConvertBoolean.h"
+#include "JSDOMConvertCallbacks.h"
 #include "JSDOMConvertStrings.h"
+#include "JSDOMGlobalObject.h"
+#include "JSVoidCallback.h"
 #include <JavaScriptCore/JSCInlines.h>
 #include <JavaScriptCore/JSString.h>
 #include <wtf/NeverDestroyed.h>
@@ -56,6 +59,17 @@ template<> DictionaryImplName convertDictionary<DictionaryImplName>(ExecState& s
     }
     if (!boolMemberValue.isUndefined()) {
         result.boolMember = convert<IDLBoolean>(state, boolMemberValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    JSValue callbackMemberValue;
+    if (isNullOrUndefined)
+        callbackMemberValue = jsUndefined();
+    else {
+        callbackMemberValue = object->get(&state, Identifier::fromString(&state, "callbackMember"));
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    if (!callbackMemberValue.isUndefined()) {
+        result.callbackMember = convert<IDLCallbackFunction<JSVoidCallback>>(state, callbackMemberValue, *jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject()));
         RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue enumMemberValue;
@@ -102,14 +116,14 @@ template<> JSString* convertEnumerationToJS(ExecState& state, TestStandaloneDict
     return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
-template<> std::optional<TestStandaloneDictionary::EnumInStandaloneDictionaryFile> parseEnumeration<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>(ExecState& state, JSValue value)
+template<> Optional<TestStandaloneDictionary::EnumInStandaloneDictionaryFile> parseEnumeration<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>(ExecState& state, JSValue value)
 {
     auto stringValue = value.toWTFString(&state);
     if (stringValue == "enumValue1")
         return TestStandaloneDictionary::EnumInStandaloneDictionaryFile::EnumValue1;
     if (stringValue == "enumValue2")
         return TestStandaloneDictionary::EnumInStandaloneDictionaryFile::EnumValue2;
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 template<> const char* expectedEnumerationValues<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>()

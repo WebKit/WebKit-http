@@ -129,11 +129,21 @@ public:
         fail(URLFilterParser::BackReference);
     }
 
-    void atomNamedBackReference(String)
+    void atomNamedBackReference(const String&)
     {
         fail(URLFilterParser::BackReference);
     }
 
+    bool isValidNamedForwardReference(const String&)
+    {
+        return false;
+    }
+
+    void atomNamedForwardReference(const String&)
+    {
+        fail(URLFilterParser::ForwardReference);
+    }
+    
     void assertionBOL()
     {
         if (hasError())
@@ -208,7 +218,7 @@ public:
         fail(URLFilterParser::AtomCharacter);
     }
 
-    void atomParenthesesSubpatternBegin(bool = true, std::optional<String> = std::nullopt)
+    void atomParenthesesSubpatternBegin(bool = true, Optional<String> = WTF::nullopt)
     {
         if (hasError())
             return;
@@ -372,6 +382,8 @@ String URLFilterParser::statusString(ParseStatus status)
         return "Character class is not supported.";
     case BackReference:
         return "Patterns cannot contain backreferences.";
+    case ForwardReference:
+        return "Patterns cannot contain forward references.";
     case MisplacedStartOfLine:
         return "Start of line assertion can only appear as the first term in a filter.";
     case WordBoundary:
@@ -391,6 +403,8 @@ String URLFilterParser::statusString(ParseStatus status)
     case InvalidQuantifier:
         return "Arbitrary atom repetitions are not supported.";
     }
+
+    RELEASE_ASSERT_NOT_REACHED();
 }
     
 } // namespace ContentExtensions

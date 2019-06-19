@@ -28,6 +28,7 @@
 #include "CompilationResult.h"
 #include "DFGCompilationKey.h"
 #include "DFGCompilationMode.h"
+#include "DFGDesiredGlobalProperties.h"
 #include "DFGDesiredIdentifiers.h"
 #include "DFGDesiredTransitions.h"
 #include "DFGDesiredWatchpoints.h"
@@ -56,7 +57,7 @@ public:
     Plan(
         CodeBlock* codeBlockToCompile, CodeBlock* profiledDFGCodeBlock,
         CompilationMode, unsigned osrEntryBytecodeIndex,
-        const Operands<JSValue>& mustHandleValues);
+        const Operands<Optional<JSValue>>& mustHandleValues);
     ~Plan();
 
     void compileInThread(ThreadData*);
@@ -69,7 +70,6 @@ public:
     
     CompilationKey key();
     
-    void markCodeBlocks(SlotVisitor&);
     template<typename Func>
     void iterateCodeBlocksForGC(const Func&);
     void checkLivenessAndVisitChildren(SlotVisitor&);
@@ -88,8 +88,7 @@ public:
     bool isFTL() const { return DFG::isFTL(m_mode); }
     CompilationMode mode() const { return m_mode; }
     unsigned osrEntryBytecodeIndex() const { return m_osrEntryBytecodeIndex; }
-    const Operands<JSValue>& mustHandleValues() const { return m_mustHandleValues; }
-
+    const Operands<Optional<JSValue>>& mustHandleValues() const { return m_mustHandleValues; }
     ThreadData* threadData() const { return m_threadData; }
     Profiler::Compilation* compilation() const { return m_compilation.get(); }
 
@@ -101,6 +100,7 @@ public:
     DesiredIdentifiers& identifiers() { return m_identifiers; }
     DesiredWeakReferences& weakReferences() { return m_weakReferences; }
     DesiredTransitions& transitions() { return m_transitions; }
+    DesiredGlobalProperties& globalProperties() { return m_globalProperties; }
     RecordedStatuses& recordedStatuses() { return m_recordedStatuses; }
 
     bool willTryToTierUp() const { return m_willTryToTierUp; }
@@ -122,11 +122,14 @@ private:
     enum CompilationPath { FailPath, DFGPath, FTLPath, CancelPath };
     CompilationPath compileInThreadImpl();
     
+    bool isStillValidOnMainThread();
     bool isStillValid();
     void reallyAdd(CommonData*);
 
     // Warning: pretty much all of the pointer fields in this object get nulled by cancel(). So, if
     // you're writing code that is callable on the cancel path, be sure to null check everything!
+
+    CompilationMode m_mode;
 
     VM* m_vm;
 
@@ -134,11 +137,13 @@ private:
     CodeBlock* m_codeBlock;
     CodeBlock* m_profiledDFGCodeBlock;
 
-    CompilationMode m_mode;
-    const unsigned m_osrEntryBytecodeIndex;
-    Operands<JSValue> m_mustHandleValues;
+    Operands<Optional<JSValue>> m_mustHandleValues;
     bool m_mustHandleValuesMayIncludeGarbage { true };
     Lock m_mustHandleValueCleaningLock;
+
+    bool m_willTryToTierUp { false };
+
+    const unsigned m_osrEntryBytecodeIndex;
 
     ThreadData* m_threadData;
 
@@ -151,9 +156,8 @@ private:
     DesiredIdentifiers m_identifiers;
     DesiredWeakReferences m_weakReferences;
     DesiredTransitions m_transitions;
+    DesiredGlobalProperties m_globalProperties;
     RecordedStatuses m_recordedStatuses;
-
-    bool m_willTryToTierUp { false };
 
     HashMap<unsigned, Vector<unsigned>> m_tierUpInLoopHierarchy;
     Vector<unsigned> m_tierUpAndOSREnterBytecodes;

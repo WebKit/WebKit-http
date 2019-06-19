@@ -26,15 +26,16 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import "WebHTMLViewInternal.h"
 #import <WebCore/CachedFramePlatformData.h>
-#import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/RetainPtr.h>
 
 class WebCachedFramePlatformData : public WebCore::CachedFramePlatformData {
 public:
     WebCachedFramePlatformData(id webDocumentView) : m_webDocumentView(webDocumentView) { }
     
-    virtual void clear() { wtfObjcMsgSend<void>(m_webDocumentView.get(), @selector(closeIfNotCurrentView)); }
+    virtual void clear() { wtfObjCMsgSend<void>(m_webDocumentView.get(), @selector(closeIfNotCurrentView)); }
 
     id webDocumentView() { return m_webDocumentView.get(); }
 private:

@@ -66,7 +66,7 @@ exclude Source/WebKit/Resources
 # We do want to include the NEWS, but we want it to be in the root of the archive.
 file Source/WebKit/wpe/NEWS NEWS
 
-file Source/WebCore/English.lproj/mediaControlsLocalizedStrings.js Source/WebCore/English.lproj/mediaControlsLocalizedStrings.js
+file Source/WebCore/en.lproj/mediaControlsLocalizedStrings.js Source/WebCore/en.lproj/mediaControlsLocalizedStrings.js
 file Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
 
 # Include only the resources we actually build
@@ -84,14 +84,16 @@ exclude Tools/wpe/patches
 exclude Tools/wpe/jhbuild.modules
 exclude Tools/wpe/jhbuildrc
 
+file Tools/glib/common.py
 file Tools/glib/generate-inspector-gresource-manifest.py
 
+directory Tools/gtkdoc
 directory Tools/MiniBrowser
 directory Tools/TestWebKitAPI
 
 file CMakeLists.txt
 file Tools/CMakeLists.txt
+file Tools/PlatformWPE.cmake
 
-# FIXME: We are not currently generating documentation for WPE.
-#directory ${CMAKE_BINARY_DIR}/Documentation/webkit2gtk-${WEBKITGTK_API_VERSION}/html Documentation/webkit2gtk-${WEBKITGTK_API_VERSION}/html
-#directory ${CMAKE_BINARY_DIR}/Documentation/webkitdomgtk-${WEBKITGTK_API_VERSION}/html Documentation/webkitdomgtk-${WEBKITGTK_API_VERSION}/html
+directory ${CMAKE_BINARY_DIR}/Documentation/wpe-${WPE_API_VERSION}/html/wpe-${WPE_API_VERSION} Documentation/wpe-${WPE_API_VERSION}/html
+directory ${CMAKE_BINARY_DIR}/Documentation/wpe-webextensions-${WPE_API_VERSION}/html/wpe-webextensions-${WPE_API_VERSION} Documentation/wpe-webextensions-${WPE_API_VERSION}/html

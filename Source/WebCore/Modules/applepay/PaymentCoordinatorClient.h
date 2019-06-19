@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,10 +31,14 @@
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
 
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/PaymentCoordinatorClientAdditions.h>
+#endif
+
 namespace WebCore {
 
+class Document;
 class PaymentMerchantSession;
-class URL;
 struct PaymentAuthorizationResult;
 struct PaymentMethodUpdate;
 struct ShippingContactUpdate;
@@ -42,24 +46,36 @@ struct ShippingMethodUpdate;
 
 class PaymentCoordinatorClient {
 public:
-    virtual bool supportsVersion(unsigned version) = 0;
-    virtual std::optional<String> validatedPaymentNetwork(const String&) = 0;
+    bool supportsVersion(unsigned version);
+
+    virtual Optional<String> validatedPaymentNetwork(const String&) = 0;
     virtual bool canMakePayments() = 0;
-    virtual void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler) = 0;
-    virtual void openPaymentSetup(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler) = 0;
+    virtual void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, CompletionHandler<void(bool)>&&) = 0;
+    virtual void openPaymentSetup(const String& merchantIdentifier, const String& domainName, CompletionHandler<void(bool)>&&) = 0;
 
     virtual bool showPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLs, const ApplePaySessionPaymentRequest&) = 0;
     virtual void completeMerchantValidation(const PaymentMerchantSession&) = 0;
-    virtual void completeShippingMethodSelection(std::optional<ShippingMethodUpdate>&&) = 0;
-    virtual void completeShippingContactSelection(std::optional<ShippingContactUpdate>&&) = 0;
-    virtual void completePaymentMethodSelection(std::optional<PaymentMethodUpdate>&&) = 0;
-    virtual void completePaymentSession(std::optional<PaymentAuthorizationResult>&&) = 0;
+    virtual void completeShippingMethodSelection(Optional<ShippingMethodUpdate>&&) = 0;
+    virtual void completeShippingContactSelection(Optional<ShippingContactUpdate>&&) = 0;
+    virtual void completePaymentMethodSelection(Optional<PaymentMethodUpdate>&&) = 0;
+    virtual void completePaymentSession(Optional<PaymentAuthorizationResult>&&) = 0;
     virtual void abortPaymentSession() = 0;
     virtual void cancelPaymentSession() = 0;
     virtual void paymentCoordinatorDestroyed() = 0;
+    virtual bool supportsUnrestrictedApplePay() const = 0;
+
+    virtual bool isMockPaymentCoordinator() const { return false; }
+    virtual bool isWebPaymentCoordinator() const { return false; }
+
+    virtual bool isAlwaysOnLoggingAllowed() const { return false; }
 
 protected:
     virtual ~PaymentCoordinatorClient() = default;
+
+#if defined(PAYMENTCOORDINATORCLIENT_ADDITIONS)
+PAYMENTCOORDINATORCLIENT_ADDITIONS
+#undef PAYMENTCOORDINATORCLIENT_ADDITIONS
+#endif
 };
 
 }

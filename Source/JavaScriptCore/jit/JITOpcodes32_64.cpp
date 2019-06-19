@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Patrick Gansterer <paroga@paroga.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,10 +47,11 @@
 
 namespace JSC {
 
-void JIT::emit_op_mov(Instruction* currentInstruction)
+void JIT::emit_op_mov(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int src = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpMov>();
+    int dst = bytecode.m_dst.offset();
+    int src = bytecode.m_src.offset();
     
     if (m_codeBlock->isConstantRegisterIndex(src))
         emitStore(dst, getConstantOperand(src));
@@ -60,26 +61,30 @@ void JIT::emit_op_mov(Instruction* currentInstruction)
     }
 }
 
-void JIT::emit_op_end(Instruction* currentInstruction)
+void JIT::emit_op_end(const Instruction* currentInstruction)
 {
     ASSERT(returnValueGPR != callFrameRegister);
-    emitLoad(currentInstruction[1].u.operand, regT1, returnValueGPR);
+    auto bytecode = currentInstruction->as<OpEnd>();
+    emitLoad(bytecode.m_value.offset(), regT1, returnValueGPR);
     emitRestoreCalleeSaves();
     emitFunctionEpilogue();
     ret();
 }
 
-void JIT::emit_op_jmp(Instruction* currentInstruction)
+void JIT::emit_op_jmp(const Instruction* currentInstruction)
 {
-    unsigned target = currentInstruction[1].u.operand;
+    auto bytecode = currentInstruction->as<OpJmp>();
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
     addJump(jump(), target);
 }
 
-void JIT::emit_op_new_object(Instruction* currentInstruction)
+void JIT::emit_op_new_object(const Instruction* currentInstruction)
 {
-    Structure* structure = currentInstruction[3].u.objectAllocationProfile->structure();
+    auto bytecode = currentInstruction->as<OpNewObject>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    Structure* structure = metadata.m_objectAllocationProfile.structure();
     size_t allocationSize = JSFinalObject::allocationSize(structure->inlineCapacity());
-    Allocator allocator = subspaceFor<JSFinalObject>(*m_vm)->allocatorForNonVirtual(allocationSize, AllocatorForMode::AllocatorIfExists);
+    Allocator allocator = allocatorForNonVirtualConcurrently<JSFinalObject>(*m_vm, allocationSize, AllocatorForMode::AllocatorIfExists);
 
     RegisterID resultReg = returnValueGPR;
     RegisterID allocatorReg = regT1;
@@ -93,26 +98,28 @@ void JIT::emit_op_new_object(Instruction* currentInstruction)
         emitAllocateJSObject(resultReg, JITAllocator::constant(allocator), allocatorReg, TrustedImmPtr(structure), butterfly, scratchReg, slowCases);
         emitInitializeInlineStorage(resultReg, structure->inlineCapacity());
         addSlowCase(slowCases);
-        emitStoreCell(currentInstruction[1].u.operand, resultReg);
+        emitStoreCell(bytecode.m_dst.offset(), resultReg);
     }
 }
 
-void JIT::emitSlow_op_new_object(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_new_object(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    int dst = currentInstruction[1].u.operand;
-    Structure* structure = currentInstruction[3].u.objectAllocationProfile->structure();
+    auto bytecode = currentInstruction->as<OpNewObject>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int dst = bytecode.m_dst.offset();
+    Structure* structure = metadata.m_objectAllocationProfile.structure();
     callOperation(operationNewObject, structure);
     emitStoreCell(dst, returnValueGPR);
 }
 
-void JIT::emit_op_overrides_has_instance(Instruction* currentInstruction)
+void JIT::emit_op_overrides_has_instance(const Instruction* currentInstruction)
 {
-    auto& bytecode = *reinterpret_cast<OpOverridesHasInstance*>(currentInstruction);
-    int dst = bytecode.dst();
-    int constructor = bytecode.constructor();
-    int hasInstanceValue = bytecode.hasInstanceValue();
+    auto bytecode = currentInstruction->as<OpOverridesHasInstance>();
+    int dst = bytecode.m_dst.offset();
+    int constructor = bytecode.m_constructor.offset();
+    int hasInstanceValue = bytecode.m_hasInstanceValue.offset();
 
     emitLoadPayload(hasInstanceValue, regT0);
     // We don't jump if we know what Symbol.hasInstance would do.
@@ -135,12 +142,12 @@ void JIT::emit_op_overrides_has_instance(Instruction* currentInstruction)
 
 }
 
-void JIT::emit_op_instanceof(Instruction* currentInstruction)
+void JIT::emit_op_instanceof(const Instruction* currentInstruction)
 {
-    auto& bytecode = *reinterpret_cast<OpInstanceof*>(currentInstruction);
-    int dst = bytecode.dst();
-    int value = bytecode.value();
-    int proto = bytecode.prototype();
+    auto bytecode = currentInstruction->as<OpInstanceof>();
+    int dst = bytecode.m_dst.offset();
+    int value = bytecode.m_value.offset();
+    int proto = bytecode.m_prototype.offset();
 
     // Load the operands into registers.
     // We use regT0 for baseVal since we will be done with this first, and we can then use it for the result.
@@ -164,20 +171,20 @@ void JIT::emit_op_instanceof(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emit_op_instanceof_custom(Instruction*)
+void JIT::emit_op_instanceof_custom(const Instruction*)
 {
     // This always goes to slow path since we expect it to be rare.
     addSlowCase(jump());
 }
 
-void JIT::emitSlow_op_instanceof(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_instanceof(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
     
-    auto& bytecode = *reinterpret_cast<OpInstanceof*>(currentInstruction);
-    int dst = bytecode.dst();
-    int value = bytecode.value();
-    int proto = bytecode.prototype();
+    auto bytecode = currentInstruction->as<OpInstanceof>();
+    int dst = bytecode.m_dst.offset();
+    int value = bytecode.m_value.offset();
+    int proto = bytecode.m_prototype.offset();
     
     JITInstanceOfGenerator& gen = m_instanceOfs[m_instanceOfIndex++];
     
@@ -188,15 +195,15 @@ void JIT::emitSlow_op_instanceof(Instruction* currentInstruction, Vector<SlowCas
     gen.reportSlowPathCall(coldPathBegin, call);
 }
 
-void JIT::emitSlow_op_instanceof_custom(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_instanceof_custom(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    auto& bytecode = *reinterpret_cast<OpInstanceofCustom*>(currentInstruction);
-    int dst = bytecode.dst();
-    int value = bytecode.value();
-    int constructor = bytecode.constructor();
-    int hasInstanceValue = bytecode.hasInstanceValue();
+    auto bytecode = currentInstruction->as<OpInstanceofCustom>();
+    int dst = bytecode.m_dst.offset();
+    int value = bytecode.m_value.offset();
+    int constructor = bytecode.m_constructor.offset();
+    int hasInstanceValue = bytecode.m_hasInstanceValue.offset();
 
     emitLoad(value, regT1, regT0);
     emitLoadPayload(constructor, regT2);
@@ -205,10 +212,11 @@ void JIT::emitSlow_op_instanceof_custom(Instruction* currentInstruction, Vector<
     emitStoreBool(dst, returnValueGPR);
 }
     
-void JIT::emit_op_is_empty(Instruction* currentInstruction)
+void JIT::emit_op_is_empty(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int value = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpIsEmpty>();
+    int dst = bytecode.m_dst.offset();
+    int value = bytecode.m_operand.offset();
     
     emitLoad(value, regT1, regT0);
     compare32(Equal, regT1, TrustedImm32(JSValue::EmptyValueTag), regT0);
@@ -216,10 +224,11 @@ void JIT::emit_op_is_empty(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emit_op_is_undefined(Instruction* currentInstruction)
+void JIT::emit_op_is_undefined(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int value = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpIsUndefined>();
+    int dst = bytecode.m_dst.offset();
+    int value = bytecode.m_operand.offset();
     
     emitLoad(value, regT1, regT0);
     Jump isCell = branchIfCell(regT1);
@@ -243,20 +252,35 @@ void JIT::emit_op_is_undefined(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emit_op_is_boolean(Instruction* currentInstruction)
+void JIT::emit_op_is_undefined_or_null(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int value = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpIsUndefinedOrNull>();
+    int dst = bytecode.m_dst.offset();
+    int value = bytecode.m_operand.offset();
+
+    emitLoadTag(value, regT0);
+    static_assert((JSValue::UndefinedTag + 1 == JSValue::NullTag) && (JSValue::NullTag & 0x1), "");
+    or32(TrustedImm32(1), regT0);
+    compare32(Equal, regT0, TrustedImm32(JSValue::NullTag), regT0);
+    emitStoreBool(dst, regT0);
+}
+
+void JIT::emit_op_is_boolean(const Instruction* currentInstruction)
+{
+    auto bytecode = currentInstruction->as<OpIsBoolean>();
+    int dst = bytecode.m_dst.offset();
+    int value = bytecode.m_operand.offset();
     
     emitLoadTag(value, regT0);
     compare32(Equal, regT0, TrustedImm32(JSValue::BooleanTag), regT0);
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emit_op_is_number(Instruction* currentInstruction)
+void JIT::emit_op_is_number(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int value = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpIsNumber>();
+    int dst = bytecode.m_dst.offset();
+    int value = bytecode.m_operand.offset();
     
     emitLoadTag(value, regT0);
     add32(TrustedImm32(1), regT0);
@@ -264,11 +288,12 @@ void JIT::emit_op_is_number(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emit_op_is_cell_with_type(Instruction* currentInstruction)
+void JIT::emit_op_is_cell_with_type(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int value = currentInstruction[2].u.operand;
-    int type = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpIsCellWithType>();
+    int dst = bytecode.m_dst.offset();
+    int value = bytecode.m_operand.offset();
+    int type = bytecode.m_type;
 
     emitLoad(value, regT1, regT0);
     Jump isNotCell = branchIfNotCell(regT1);
@@ -283,10 +308,11 @@ void JIT::emit_op_is_cell_with_type(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emit_op_is_object(Instruction* currentInstruction)
+void JIT::emit_op_is_object(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int value = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpIsObject>();
+    int dst = bytecode.m_dst.offset();
+    int value = bytecode.m_operand.offset();
 
     emitLoad(value, regT1, regT0);
     Jump isNotCell = branchIfNotCell(regT1);
@@ -301,10 +327,11 @@ void JIT::emit_op_is_object(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emit_op_to_primitive(Instruction* currentInstruction)
+void JIT::emit_op_to_primitive(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int src = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpToPrimitive>();
+    int dst = bytecode.m_dst.offset();
+    int src = bytecode.m_src.offset();
 
     emitLoad(src, regT1, regT0);
 
@@ -316,19 +343,21 @@ void JIT::emit_op_to_primitive(Instruction* currentInstruction)
         emitStore(dst, regT1, regT0);
 }
 
-void JIT::emit_op_set_function_name(Instruction* currentInstruction)
+void JIT::emit_op_set_function_name(const Instruction* currentInstruction)
 {
-    int func = currentInstruction[1].u.operand;
-    int name = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpSetFunctionName>();
+    int func = bytecode.m_function.offset();
+    int name = bytecode.m_name.offset();
     emitLoadPayload(func, regT1);
     emitLoad(name, regT3, regT2);
     callOperation(operationSetFunctionName, regT1, JSValueRegs(regT3, regT2));
 }
 
-void JIT::emit_op_not(Instruction* currentInstruction)
+void JIT::emit_op_not(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int src = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpNot>();
+    int dst = bytecode.m_dst.offset();
+    int src = bytecode.m_operand.offset();
 
     emitLoadTag(src, regT0);
 
@@ -339,10 +368,11 @@ void JIT::emit_op_not(Instruction* currentInstruction)
     emitStoreBool(dst, regT0, (dst == src));
 }
 
-void JIT::emit_op_jfalse(Instruction* currentInstruction)
+void JIT::emit_op_jfalse(const Instruction* currentInstruction)
 {
-    int cond = currentInstruction[1].u.operand;
-    unsigned target = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpJfalse>();
+    int cond = bytecode.m_condition.offset();
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
 
     emitLoad(cond, regT1, regT0);
 
@@ -353,10 +383,11 @@ void JIT::emit_op_jfalse(Instruction* currentInstruction)
     addJump(branchIfFalsey(*vm(), value, scratch1, scratch2, fpRegT0, fpRegT1, shouldCheckMasqueradesAsUndefined, m_codeBlock->globalObject()), target);
 }
 
-void JIT::emit_op_jtrue(Instruction* currentInstruction)
+void JIT::emit_op_jtrue(const Instruction* currentInstruction)
 {
-    int cond = currentInstruction[1].u.operand;
-    unsigned target = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpJtrue>();
+    int cond = bytecode.m_condition.offset();
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
 
     emitLoad(cond, regT1, regT0);
     bool shouldCheckMasqueradesAsUndefined = true;
@@ -366,10 +397,11 @@ void JIT::emit_op_jtrue(Instruction* currentInstruction)
     addJump(branchIfTruthy(*vm(), value, scratch1, scratch2, fpRegT0, fpRegT1, shouldCheckMasqueradesAsUndefined, m_codeBlock->globalObject()), target);
 }
 
-void JIT::emit_op_jeq_null(Instruction* currentInstruction)
+void JIT::emit_op_jeq_null(const Instruction* currentInstruction)
 {
-    int src = currentInstruction[1].u.operand;
-    unsigned target = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpJeqNull>();
+    int src = bytecode.m_value.offset();
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
 
     emitLoad(src, regT1, regT0);
 
@@ -391,10 +423,11 @@ void JIT::emit_op_jeq_null(Instruction* currentInstruction)
     masqueradesGlobalObjectIsForeign.link(this);
 }
 
-void JIT::emit_op_jneq_null(Instruction* currentInstruction)
+void JIT::emit_op_jneq_null(const Instruction* currentInstruction)
 {
-    int src = currentInstruction[1].u.operand;
-    unsigned target = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpJneqNull>();
+    int src = bytecode.m_value.offset();
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
 
     emitLoad(src, regT1, regT0);
 
@@ -416,26 +449,30 @@ void JIT::emit_op_jneq_null(Instruction* currentInstruction)
     wasNotImmediate.link(this);
 }
 
-void JIT::emit_op_jneq_ptr(Instruction* currentInstruction)
+void JIT::emit_op_jneq_ptr(const Instruction* currentInstruction)
 {
-    int src = currentInstruction[1].u.operand;
-    Special::Pointer ptr = currentInstruction[2].u.specialPointer;
-    unsigned target = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpJneqPtr>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int src = bytecode.m_value.offset();
+    Special::Pointer ptr = bytecode.m_specialPointer;
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
 
     emitLoad(src, regT1, regT0);
     Jump notCell = branchIfNotCell(regT1);
     Jump equal = branchPtr(Equal, regT0, TrustedImmPtr(actualPointerFor(m_codeBlock, ptr)));
     notCell.link(this);
-    store32(TrustedImm32(1), &currentInstruction[4].u.operand);
+    store8(TrustedImm32(1), &metadata.m_hasJumped);
     addJump(jump(), target);
     equal.link(this);
 }
 
-void JIT::emit_op_eq(Instruction* currentInstruction)
+void JIT::emit_op_eq(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int src1 = currentInstruction[2].u.operand;
-    int src2 = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpEq>();
+
+    int dst = bytecode.m_dst.offset();
+    int src1 = bytecode.m_lhs.offset();
+    int src2 = bytecode.m_rhs.offset();
 
     emitLoad2(src1, regT1, regT0, src2, regT3, regT2);
     addSlowCase(branch32(NotEqual, regT1, regT3));
@@ -447,9 +484,10 @@ void JIT::emit_op_eq(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emitSlow_op_eq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_eq(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int dst = currentInstruction[1].u.operand;
+    auto bytecode = currentInstruction->as<OpEq>();
+    int dst = bytecode.m_dst.offset();
 
     JumpList storeResult;
     JumpList genericCase;
@@ -473,11 +511,12 @@ void JIT::emitSlow_op_eq(Instruction* currentInstruction, Vector<SlowCaseEntry>:
     emitStoreBool(dst, returnValueGPR);
 }
 
-void JIT::emit_op_jeq(Instruction* currentInstruction)
+void JIT::emit_op_jeq(const Instruction* currentInstruction)
 {
-    int target = currentInstruction[3].u.operand;
-    int src1 = currentInstruction[1].u.operand;
-    int src2 = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpJeq>();
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
+    int src1 = bytecode.m_lhs.offset();
+    int src2 = bytecode.m_rhs.offset();
 
     emitLoad2(src1, regT1, regT0, src2, regT3, regT2);
     addSlowCase(branch32(NotEqual, regT1, regT3));
@@ -512,16 +551,19 @@ void JIT::compileOpEqJumpSlow(Vector<SlowCaseEntry>::iterator& iter, CompileOpEq
     done.link(this);
 }
 
-void JIT::emitSlow_op_jeq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jeq(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    compileOpEqJumpSlow(iter, CompileOpEqType::Eq, currentInstruction[3].u.operand);
+    auto bytecode = currentInstruction->as<OpJeq>();
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
+    compileOpEqJumpSlow(iter, CompileOpEqType::Eq, target);
 }
 
-void JIT::emit_op_neq(Instruction* currentInstruction)
+void JIT::emit_op_neq(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int src1 = currentInstruction[2].u.operand;
-    int src2 = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpNeq>();
+    int dst = bytecode.m_dst.offset();
+    int src1 = bytecode.m_lhs.offset();
+    int src2 = bytecode.m_rhs.offset();
 
     emitLoad2(src1, regT1, regT0, src2, regT3, regT2);
     addSlowCase(branch32(NotEqual, regT1, regT3));
@@ -533,9 +575,10 @@ void JIT::emit_op_neq(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emitSlow_op_neq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_neq(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int dst = currentInstruction[1].u.operand;
+    auto bytecode = currentInstruction->as<OpNeq>();
+    int dst = bytecode.m_dst.offset();
 
     JumpList storeResult;
     JumpList genericCase;
@@ -560,11 +603,12 @@ void JIT::emitSlow_op_neq(Instruction* currentInstruction, Vector<SlowCaseEntry>
     emitStoreBool(dst, returnValueGPR);
 }
 
-void JIT::emit_op_jneq(Instruction* currentInstruction)
+void JIT::emit_op_jneq(const Instruction* currentInstruction)
 {
-    int target = currentInstruction[3].u.operand;
-    int src1 = currentInstruction[1].u.operand;
-    int src2 = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpJneq>();
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
+    int src1 = bytecode.m_lhs.offset();
+    int src2 = bytecode.m_rhs.offset();
 
     emitLoad2(src1, regT1, regT0, src2, regT3, regT2);
     addSlowCase(branch32(NotEqual, regT1, regT3));
@@ -574,16 +618,20 @@ void JIT::emit_op_jneq(Instruction* currentInstruction)
     addJump(branch32(NotEqual, regT0, regT2), target);
 }
 
-void JIT::emitSlow_op_jneq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jneq(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    compileOpEqJumpSlow(iter, CompileOpEqType::NEq, currentInstruction[3].u.operand);
+    auto bytecode = currentInstruction->as<OpJneq>();
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
+    compileOpEqJumpSlow(iter, CompileOpEqType::NEq, target);
 }
 
-void JIT::compileOpStrictEq(Instruction* currentInstruction, CompileOpStrictEqType type)
+template <typename Op>
+void JIT::compileOpStrictEq(const Instruction* currentInstruction, CompileOpStrictEqType type)
 {
-    int dst = currentInstruction[1].u.operand;
-    int src1 = currentInstruction[2].u.operand;
-    int src2 = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<Op>();
+    int dst = bytecode.m_dst.offset();
+    int src1 = bytecode.m_lhs.offset();
+    int src2 = bytecode.m_rhs.offset();
 
     emitLoad2(src1, regT1, regT0, src2, regT3, regT2);
 
@@ -607,21 +655,23 @@ void JIT::compileOpStrictEq(Instruction* currentInstruction, CompileOpStrictEqTy
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emit_op_stricteq(Instruction* currentInstruction)
+void JIT::emit_op_stricteq(const Instruction* currentInstruction)
 {
-    compileOpStrictEq(currentInstruction, CompileOpStrictEqType::StrictEq);
+    compileOpStrictEq<OpStricteq>(currentInstruction, CompileOpStrictEqType::StrictEq);
 }
 
-void JIT::emit_op_nstricteq(Instruction* currentInstruction)
+void JIT::emit_op_nstricteq(const Instruction* currentInstruction)
 {
-    compileOpStrictEq(currentInstruction, CompileOpStrictEqType::NStrictEq);
+    compileOpStrictEq<OpNstricteq>(currentInstruction, CompileOpStrictEqType::NStrictEq);
 }
 
-void JIT::compileOpStrictEqJump(Instruction* currentInstruction, CompileOpStrictEqType type)
+template<typename Op>
+void JIT::compileOpStrictEqJump(const Instruction* currentInstruction, CompileOpStrictEqType type)
 {
-    int target = currentInstruction[3].u.operand;
-    int src1 = currentInstruction[1].u.operand;
-    int src2 = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<Op>();
+    int target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
+    int src1 = bytecode.m_lhs.offset();
+    int src2 = bytecode.m_rhs.offset();
 
     emitLoad2(src1, regT1, regT0, src2, regT3, regT2);
 
@@ -643,38 +693,41 @@ void JIT::compileOpStrictEqJump(Instruction* currentInstruction, CompileOpStrict
         addJump(branch32(NotEqual, regT0, regT2), target);
 }
 
-void JIT::emit_op_jstricteq(Instruction* currentInstruction)
+void JIT::emit_op_jstricteq(const Instruction* currentInstruction)
 {
-    compileOpStrictEqJump(currentInstruction, CompileOpStrictEqType::StrictEq);
+    compileOpStrictEqJump<OpJstricteq>(currentInstruction, CompileOpStrictEqType::StrictEq);
 }
 
-void JIT::emit_op_jnstricteq(Instruction* currentInstruction)
+void JIT::emit_op_jnstricteq(const Instruction* currentInstruction)
 {
-    compileOpStrictEqJump(currentInstruction, CompileOpStrictEqType::NStrictEq);
+    compileOpStrictEqJump<OpJnstricteq>(currentInstruction, CompileOpStrictEqType::NStrictEq);
 }
 
-void JIT::emitSlow_op_jstricteq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jstricteq(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    unsigned target = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpJstricteq>();
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
     callOperation(operationCompareStrictEq, JSValueRegs(regT1, regT0), JSValueRegs(regT3, regT2));
     emitJumpSlowToHot(branchTest32(NonZero, returnValueGPR), target);
 }
 
-void JIT::emitSlow_op_jnstricteq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jnstricteq(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    unsigned target = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpJnstricteq>();
+    unsigned target = jumpTarget(currentInstruction, bytecode.m_targetLabel);
     callOperation(operationCompareStrictEq, JSValueRegs(regT1, regT0), JSValueRegs(regT3, regT2));
     emitJumpSlowToHot(branchTest32(Zero, returnValueGPR), target);
 }
 
-void JIT::emit_op_eq_null(Instruction* currentInstruction)
+void JIT::emit_op_eq_null(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int src = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpEqNull>();
+    int dst = bytecode.m_dst.offset();
+    int src = bytecode.m_operand.offset();
 
     emitLoad(src, regT1, regT0);
     Jump isImmediate = branchIfNotCell(regT1);
@@ -702,10 +755,11 @@ void JIT::emit_op_eq_null(Instruction* currentInstruction)
     emitStoreBool(dst, regT1);
 }
 
-void JIT::emit_op_neq_null(Instruction* currentInstruction)
+void JIT::emit_op_neq_null(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int src = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpNeqNull>();
+    int dst = bytecode.m_dst.offset();
+    int src = bytecode.m_operand.offset();
 
     emitLoad(src, regT1, regT0);
     Jump isImmediate = branchIfNotCell(regT1);
@@ -733,19 +787,21 @@ void JIT::emit_op_neq_null(Instruction* currentInstruction)
     emitStoreBool(dst, regT1);
 }
 
-void JIT::emit_op_throw(Instruction* currentInstruction)
+void JIT::emit_op_throw(const Instruction* currentInstruction)
 {
+    auto bytecode = currentInstruction->as<OpThrow>();
     ASSERT(regT0 == returnValueGPR);
     copyCalleeSavesToEntryFrameCalleeSavesBuffer(vm()->topEntryFrame);
-    emitLoad(currentInstruction[1].u.operand, regT1, regT0);
+    emitLoad(bytecode.m_value.offset(), regT1, regT0);
     callOperationNoExceptionCheck(operationThrow, JSValueRegs(regT1, regT0));
     jumpToExceptionHandler(*vm());
 }
 
-void JIT::emit_op_to_number(Instruction* currentInstruction)
+void JIT::emit_op_to_number(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int src = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpToNumber>();
+    int dst = bytecode.m_dst.offset();
+    int src = bytecode.m_operand.offset();
 
     emitLoad(src, regT1, regT0);
 
@@ -753,15 +809,16 @@ void JIT::emit_op_to_number(Instruction* currentInstruction)
     addSlowCase(branch32(AboveOrEqual, regT1, TrustedImm32(JSValue::LowestTag)));
     isInt32.link(this);
 
-    emitValueProfilingSite();
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
     if (src != dst)
         emitStore(dst, regT1, regT0);
 }
 
-void JIT::emit_op_to_string(Instruction* currentInstruction)
+void JIT::emit_op_to_string(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int src = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpToString>();
+    int dst = bytecode.m_dst.offset();
+    int src = bytecode.m_operand.offset();
 
     emitLoad(src, regT1, regT0);
 
@@ -772,23 +829,26 @@ void JIT::emit_op_to_string(Instruction* currentInstruction)
         emitStore(dst, regT1, regT0);
 }
 
-void JIT::emit_op_to_object(Instruction* currentInstruction)
+void JIT::emit_op_to_object(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int src = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpToObject>();
+    int dst = bytecode.m_dst.offset();
+    int src = bytecode.m_operand.offset();
 
     emitLoad(src, regT1, regT0);
 
     addSlowCase(branchIfNotCell(regT1));
     addSlowCase(branchIfNotObject(regT0));
 
-    emitValueProfilingSite();
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
     if (src != dst)
         emitStore(dst, regT1, regT0);
 }
 
-void JIT::emit_op_catch(Instruction* currentInstruction)
+void JIT::emit_op_catch(const Instruction* currentInstruction)
 {
+    auto bytecode = currentInstruction->as<OpCatch>();
+
     restoreCalleeSavesFromEntryFrameCalleeSavesBuffer(vm()->topEntryFrame);
 
     move(TrustedImmPtr(m_vm), regT3);
@@ -811,13 +871,13 @@ void JIT::emit_op_catch(Instruction* currentInstruction)
 
     store32(TrustedImm32(0), Address(regT3, VM::exceptionOffset()));
 
-    unsigned exception = currentInstruction[1].u.operand;
+    unsigned exception = bytecode.m_exception.offset();
     emitStore(exception, regT1, regT2);
 
     load32(Address(regT2, Exception::valueOffset() + OBJECT_OFFSETOF(JSValue, u.asBits.payload)), regT0);
     load32(Address(regT2, Exception::valueOffset() + OBJECT_OFFSETOF(JSValue, u.asBits.tag)), regT1);
 
-    unsigned thrownValue = currentInstruction[2].u.operand;
+    unsigned thrownValue = bytecode.m_thrownValue.offset();
     emitStore(thrownValue, regT1, regT0);
 
 #if ENABLE(DFG_JIT)
@@ -825,7 +885,8 @@ void JIT::emit_op_catch(Instruction* currentInstruction)
     // argument type proofs, storing locals to the buffer, etc
     // https://bugs.webkit.org/show_bug.cgi?id=175598
 
-    ValueProfileAndOperandBuffer* buffer = static_cast<ValueProfileAndOperandBuffer*>(currentInstruction[3].u.pointer);
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    ValueProfileAndOperandBuffer* buffer = metadata.m_buffer;
     if (buffer || !shouldEmitProfiling())
         callOperation(operationTryOSREnterAtCatch, m_bytecodeOffset);
     else
@@ -838,30 +899,32 @@ void JIT::emit_op_catch(Instruction* currentInstruction)
         buffer->forEach([&] (ValueProfileAndOperand& profile) {
             JSValueRegs regs(regT1, regT0);
             emitGetVirtualRegister(profile.m_operand, regs);
-            emitValueProfilingSite(profile.m_profile);
+            emitValueProfilingSite(static_cast<ValueProfile&>(profile));
         });
     }
 #endif // ENABLE(DFG_JIT)
 }
 
-void JIT::emit_op_identity_with_profile(Instruction*)
+void JIT::emit_op_identity_with_profile(const Instruction*)
 {
     // We don't need to do anything here...
 }
 
-void JIT::emit_op_get_parent_scope(Instruction* currentInstruction)
+void JIT::emit_op_get_parent_scope(const Instruction* currentInstruction)
 {
-    int currentScope = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpGetParentScope>();
+    int currentScope = bytecode.m_scope.offset();
     emitLoadPayload(currentScope, regT0);
     loadPtr(Address(regT0, JSScope::offsetOfNext()), regT0);
-    emitStoreCell(currentInstruction[1].u.operand, regT0);
+    emitStoreCell(bytecode.m_dst.offset(), regT0);
 }
 
-void JIT::emit_op_switch_imm(Instruction* currentInstruction)
+void JIT::emit_op_switch_imm(const Instruction* currentInstruction)
 {
-    size_t tableIndex = currentInstruction[1].u.operand;
-    unsigned defaultOffset = currentInstruction[2].u.operand;
-    unsigned scrutinee = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpSwitchImm>();
+    size_t tableIndex = bytecode.m_tableIndex;
+    unsigned defaultOffset = jumpTarget(currentInstruction, bytecode.m_defaultOffset);
+    unsigned scrutinee = bytecode.m_scrutinee.offset();
 
     // create jump table for switch destinations, track this switch statement.
     SimpleJumpTable* jumpTable = &m_codeBlock->switchJumpTable(tableIndex);
@@ -873,11 +936,12 @@ void JIT::emit_op_switch_imm(Instruction* currentInstruction)
     jump(returnValueGPR, NoPtrTag);
 }
 
-void JIT::emit_op_switch_char(Instruction* currentInstruction)
+void JIT::emit_op_switch_char(const Instruction* currentInstruction)
 {
-    size_t tableIndex = currentInstruction[1].u.operand;
-    unsigned defaultOffset = currentInstruction[2].u.operand;
-    unsigned scrutinee = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpSwitchChar>();
+    size_t tableIndex = bytecode.m_tableIndex;
+    unsigned defaultOffset = jumpTarget(currentInstruction, bytecode.m_defaultOffset);
+    unsigned scrutinee = bytecode.m_scrutinee.offset();
 
     // create jump table for switch destinations, track this switch statement.
     SimpleJumpTable* jumpTable = &m_codeBlock->switchJumpTable(tableIndex);
@@ -889,11 +953,12 @@ void JIT::emit_op_switch_char(Instruction* currentInstruction)
     jump(returnValueGPR, NoPtrTag);
 }
 
-void JIT::emit_op_switch_string(Instruction* currentInstruction)
+void JIT::emit_op_switch_string(const Instruction* currentInstruction)
 {
-    size_t tableIndex = currentInstruction[1].u.operand;
-    unsigned defaultOffset = currentInstruction[2].u.operand;
-    unsigned scrutinee = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpSwitchString>();
+    size_t tableIndex = bytecode.m_tableIndex;
+    unsigned defaultOffset = jumpTarget(currentInstruction, bytecode.m_defaultOffset);
+    unsigned scrutinee = bytecode.m_scrutinee.offset();
 
     // create jump table for switch destinations, track this switch statement.
     StringJumpTable* jumpTable = &m_codeBlock->stringSwitchJumpTable(tableIndex);
@@ -904,41 +969,45 @@ void JIT::emit_op_switch_string(Instruction* currentInstruction)
     jump(returnValueGPR, NoPtrTag);
 }
 
-void JIT::emit_op_debug(Instruction* currentInstruction)
+void JIT::emit_op_debug(const Instruction* currentInstruction)
 {
+    auto bytecode = currentInstruction->as<OpDebug>();
     load32(codeBlock()->debuggerRequestsAddress(), regT0);
     Jump noDebuggerRequests = branchTest32(Zero, regT0);
-    callOperation(operationDebug, currentInstruction[1].u.operand);
+    callOperation(operationDebug, static_cast<int>(bytecode.m_debugHookType));
     noDebuggerRequests.link(this);
 }
 
 
-void JIT::emit_op_enter(Instruction* currentInstruction)
+void JIT::emit_op_enter(const Instruction* currentInstruction)
 {
     emitEnterOptimizationCheck();
     
     // Even though JIT code doesn't use them, we initialize our constant
     // registers to zap stale pointers, to avoid unnecessarily prolonging
     // object lifetime and increasing GC pressure.
-    for (int i = 0; i < m_codeBlock->numVars(); ++i)
+    for (int i = CodeBlock::llintBaselineCalleeSaveSpaceAsVirtualRegisters(); i < m_codeBlock->numVars(); ++i)
         emitStore(virtualRegisterForLocal(i).offset(), jsUndefined());
 
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_enter);
     slowPathCall.call();
 }
 
-void JIT::emit_op_get_scope(Instruction* currentInstruction)
+void JIT::emit_op_get_scope(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
+    auto bytecode = currentInstruction->as<OpGetScope>();
+    int dst = bytecode.m_dst.offset();
     emitGetFromCallFrameHeaderPtr(CallFrameSlot::callee, regT0);
     loadPtr(Address(regT0, JSFunction::offsetOfScopeChain()), regT0);
     emitStoreCell(dst, regT0);
 }
 
-void JIT::emit_op_create_this(Instruction* currentInstruction)
+void JIT::emit_op_create_this(const Instruction* currentInstruction)
 {
-    int callee = currentInstruction[2].u.operand;
-    WriteBarrierBase<JSCell>* cachedFunction = &currentInstruction[4].u.jsCell;
+    auto bytecode = currentInstruction->as<OpCreateThis>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int callee = bytecode.m_callee.offset();
+    WriteBarrierBase<JSCell>* cachedFunction = &metadata.m_cachedCallee;
     RegisterID calleeReg = regT0;
     RegisterID rareDataReg = regT4;
     RegisterID resultReg = regT0;
@@ -951,8 +1020,8 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
     addSlowCase(branchIfNotFunction(calleeReg));
     loadPtr(Address(calleeReg, JSFunction::offsetOfRareData()), rareDataReg);
     addSlowCase(branchTestPtr(Zero, rareDataReg));
-    load32(Address(rareDataReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfile::offsetOfAllocator()), allocatorReg);
-    loadPtr(Address(rareDataReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfile::offsetOfStructure()), structureReg);
+    load32(Address(rareDataReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfileWithPrototype::offsetOfAllocator()), allocatorReg);
+    loadPtr(Address(rareDataReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfileWithPrototype::offsetOfStructure()), structureReg);
 
     loadPtr(cachedFunction, cachedFunctionReg);
     Jump hasSeenMultipleCallees = branchPtr(Equal, cachedFunctionReg, TrustedImmPtr(JSCell::seenMultipleCalleeObjects()));
@@ -962,39 +1031,41 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
     JumpList slowCases;
     auto butterfly = TrustedImmPtr(nullptr);
     emitAllocateJSObject(resultReg, JITAllocator::variable(), allocatorReg, structureReg, butterfly, scratchReg, slowCases);
-    emitLoadPayload(callee, scratchReg);
-    loadPtr(Address(scratchReg, JSFunction::offsetOfRareData()), scratchReg);
-    load32(Address(scratchReg, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfile::offsetOfInlineCapacity()), scratchReg);
+    load8(Address(structureReg, Structure::inlineCapacityOffset()), scratchReg);
     emitInitializeInlineStorage(resultReg, scratchReg);
     addSlowCase(slowCases);
-    emitStoreCell(currentInstruction[1].u.operand, resultReg);
+    emitStoreCell(bytecode.m_dst.offset(), resultReg);
 }
 
-void JIT::emit_op_to_this(Instruction* currentInstruction)
+void JIT::emit_op_to_this(const Instruction* currentInstruction)
 {
-    WriteBarrierBase<Structure>* cachedStructure = &currentInstruction[2].u.structure;
-    int thisRegister = currentInstruction[1].u.operand;
+    auto bytecode = currentInstruction->as<OpToThis>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    StructureID* cachedStructureID = &metadata.m_cachedStructureID;
+    int thisRegister = bytecode.m_srcDst.offset();
 
     emitLoad(thisRegister, regT3, regT2);
 
     addSlowCase(branchIfNotCell(regT3));
     addSlowCase(branchIfNotType(regT2, FinalObjectType));
     loadPtr(Address(regT2, JSCell::structureIDOffset()), regT0);
-    loadPtr(cachedStructure, regT2);
+    load32(cachedStructureID, regT2);
     addSlowCase(branchPtr(NotEqual, regT0, regT2));
 }
 
-void JIT::emit_op_check_tdz(Instruction* currentInstruction)
+void JIT::emit_op_check_tdz(const Instruction* currentInstruction)
 {
-    emitLoadTag(currentInstruction[1].u.operand, regT0);
+    auto bytecode = currentInstruction->as<OpCheckTdz>();
+    emitLoadTag(bytecode.m_targetVirtualRegister.offset(), regT0);
     addSlowCase(branchIfEmpty(regT0));
 }
 
-void JIT::emit_op_has_structure_property(Instruction* currentInstruction)
+void JIT::emit_op_has_structure_property(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    int enumerator = currentInstruction[4].u.operand;
+    auto bytecode = currentInstruction->as<OpHasStructureProperty>();
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    int enumerator = bytecode.m_enumerator.offset();
 
     emitLoadPayload(base, regT0);
     emitJumpSlowCaseIfNotJSCell(base);
@@ -1010,7 +1081,7 @@ void JIT::emit_op_has_structure_property(Instruction* currentInstruction)
 
 void JIT::privateCompileHasIndexedProperty(ByValInfo* byValInfo, ReturnAddressPtr returnAddress, JITArrayMode arrayMode)
 {
-    Instruction* currentInstruction = &m_codeBlock->instructions()[byValInfo->bytecodeIndex];
+    const Instruction* currentInstruction = m_codeBlock->instructions().at(byValInfo->bytecodeIndex).ptr();
     
     PatchableJump badType;
     
@@ -1022,10 +1093,10 @@ void JIT::privateCompileHasIndexedProperty(ByValInfo* byValInfo, ReturnAddressPt
 
     LinkBuffer patchBuffer(*this, m_codeBlock);
     
-    patchBuffer.link(badType, CodeLocationLabel<NoPtrTag>(MacroAssemblerCodePtr<NoPtrTag>::createFromExecutableAddress(returnAddress.value())).labelAtOffset(byValInfo->returnAddressToSlowPath));
-    patchBuffer.link(slowCases, CodeLocationLabel<NoPtrTag>(MacroAssemblerCodePtr<NoPtrTag>::createFromExecutableAddress(returnAddress.value())).labelAtOffset(byValInfo->returnAddressToSlowPath));
-    
-    patchBuffer.link(done, byValInfo->badTypeJump.labelAtOffset(byValInfo->badTypeJumpToDone));
+    patchBuffer.link(badType, byValInfo->slowPathTarget);
+    patchBuffer.link(slowCases, byValInfo->slowPathTarget);
+
+    patchBuffer.link(done, byValInfo->badTypeDoneTarget);
 
     byValInfo->stubRoutine = FINALIZE_CODE_FOR_STUB(
         m_codeBlock, patchBuffer, JITStubRoutinePtrTag,
@@ -1035,18 +1106,21 @@ void JIT::privateCompileHasIndexedProperty(ByValInfo* byValInfo, ReturnAddressPt
     MacroAssembler::repatchCall(CodeLocationCall<NoPtrTag>(MacroAssemblerCodePtr<NoPtrTag>(returnAddress)), FunctionPtr<OperationPtrTag>(operationHasIndexedPropertyGeneric));
 }
 
-void JIT::emit_op_has_indexed_property(Instruction* currentInstruction)
+void JIT::emit_op_has_indexed_property(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    int property = currentInstruction[3].u.operand;
-    ArrayProfile* profile = arrayProfileFor<OpHasIndexedPropertyShape>(currentInstruction);
+    auto bytecode = currentInstruction->as<OpHasIndexedProperty>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property.offset();
+    ArrayProfile* profile = &metadata.m_arrayProfile;
     ByValInfo* byValInfo = m_codeBlock->addByValInfo();
     
     emitLoadPayload(base, regT0);
     emitJumpSlowCaseIfNotJSCell(base);
 
-    emitLoadPayload(property, regT1);
+    emitLoad(property, regT3, regT1);
+    addSlowCase(branchIfNotInt32(regT3));
 
     // This is technically incorrect - we're zero-extending an int32. On the hot path this doesn't matter.
     // We check the value as if it was a uint32 against the m_vectorLength - which will always fail if
@@ -1079,13 +1153,14 @@ void JIT::emit_op_has_indexed_property(Instruction* currentInstruction)
     m_byValCompilationInfo.append(ByValCompilationInfo(byValInfo, m_bytecodeOffset, PatchableJump(), badType, mode, profile, done, nextHotPath));
 }
 
-void JIT::emitSlow_op_has_indexed_property(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_has_indexed_property(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    int property = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpHasIndexedProperty>();
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property.offset();
     ByValInfo* byValInfo = m_byValCompilationInfo[m_byValInstructionIndex].byValInfo;
 
     Label slowPath = label();
@@ -1099,12 +1174,13 @@ void JIT::emitSlow_op_has_indexed_property(Instruction* currentInstruction, Vect
     m_byValInstructionIndex++;
 }
 
-void JIT::emit_op_get_direct_pname(Instruction* currentInstruction)
+void JIT::emit_op_get_direct_pname(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    int index = currentInstruction[4].u.operand;
-    int enumerator = currentInstruction[5].u.operand;
+    auto bytecode = currentInstruction->as<OpGetDirectPname>();
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    int index = bytecode.m_index.offset();
+    int enumerator = bytecode.m_enumerator.offset();
 
     // Check that base is a cell
     emitLoadPayload(base, regT0);
@@ -1135,15 +1211,16 @@ void JIT::emit_op_get_direct_pname(Instruction* currentInstruction)
     load32(BaseIndex(regT0, regT2, TimesEight, offsetOfFirstProperty + OBJECT_OFFSETOF(JSValue, u.asBits.payload)), regT0);
     
     done.link(this);
-    emitValueProfilingSite();
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
     emitStore(dst, regT1, regT0);
 }
 
-void JIT::emit_op_enumerator_structure_pname(Instruction* currentInstruction)
+void JIT::emit_op_enumerator_structure_pname(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int enumerator = currentInstruction[2].u.operand;
-    int index = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpEnumeratorStructurePname>();
+    int dst = bytecode.m_dst.offset();
+    int enumerator = bytecode.m_enumerator.offset();
+    int index = bytecode.m_index.offset();
 
     emitLoadPayload(index, regT0);
     emitLoadPayload(enumerator, regT1);
@@ -1163,11 +1240,12 @@ void JIT::emit_op_enumerator_structure_pname(Instruction* currentInstruction)
     emitStore(dst, regT2, regT0);
 }
 
-void JIT::emit_op_enumerator_generic_pname(Instruction* currentInstruction)
+void JIT::emit_op_enumerator_generic_pname(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int enumerator = currentInstruction[2].u.operand;
-    int index = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpEnumeratorGenericPname>();
+    int dst = bytecode.m_dst.offset();
+    int enumerator = bytecode.m_enumerator.offset();
+    int index = bytecode.m_index.offset();
 
     emitLoadPayload(index, regT0);
     emitLoadPayload(enumerator, regT1);
@@ -1187,10 +1265,12 @@ void JIT::emit_op_enumerator_generic_pname(Instruction* currentInstruction)
     emitStore(dst, regT2, regT0);
 }
 
-void JIT::emit_op_profile_type(Instruction* currentInstruction)
+void JIT::emit_op_profile_type(const Instruction* currentInstruction)
 {
-    TypeLocation* cachedTypeLocation = currentInstruction[2].u.location;
-    int valueToProfile = currentInstruction[1].u.operand;
+    auto bytecode = currentInstruction->as<OpProfileType>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    TypeLocation* cachedTypeLocation = metadata.m_typeLocation;
+    int valueToProfile = bytecode.m_targetVirtualRegister.offset();
 
     // Load payload in T0. Load tag in T3.
     emitLoadPayload(valueToProfile, regT0);
@@ -1252,33 +1332,36 @@ void JIT::emit_op_profile_type(Instruction* currentInstruction)
     jumpToEnd.link(this);
 }
 
-void JIT::emit_op_log_shadow_chicken_prologue(Instruction* currentInstruction)
+void JIT::emit_op_log_shadow_chicken_prologue(const Instruction* currentInstruction)
 {
+    RELEASE_ASSERT(vm()->shadowChicken());
     updateTopCallFrame();
     static_assert(nonArgGPR0 != regT0 && nonArgGPR0 != regT2, "we will have problems if this is true.");
+    auto bytecode = currentInstruction->as<OpLogShadowChickenPrologue>();
     GPRReg shadowPacketReg = regT0;
     GPRReg scratch1Reg = nonArgGPR0; // This must be a non-argument register.
     GPRReg scratch2Reg = regT2;
     ensureShadowChickenPacket(*vm(), shadowPacketReg, scratch1Reg, scratch2Reg);
 
     scratch1Reg = regT4;
-    emitLoadPayload(currentInstruction[1].u.operand, regT3);
+    emitLoadPayload(bytecode.m_scope.offset(), regT3);
     logShadowChickenProloguePacket(shadowPacketReg, scratch1Reg, regT3);
 }
 
-void JIT::emit_op_log_shadow_chicken_tail(Instruction* currentInstruction)
+void JIT::emit_op_log_shadow_chicken_tail(const Instruction* currentInstruction)
 {
+    RELEASE_ASSERT(vm()->shadowChicken());
     updateTopCallFrame();
     static_assert(nonArgGPR0 != regT0 && nonArgGPR0 != regT2, "we will have problems if this is true.");
+    auto bytecode = currentInstruction->as<OpLogShadowChickenTail>();
     GPRReg shadowPacketReg = regT0;
     GPRReg scratch1Reg = nonArgGPR0; // This must be a non-argument register.
     GPRReg scratch2Reg = regT2;
     ensureShadowChickenPacket(*vm(), shadowPacketReg, scratch1Reg, scratch2Reg);
-
-    emitLoadPayload(currentInstruction[1].u.operand, regT2);
-    emitLoadTag(currentInstruction[1].u.operand, regT1);
+    emitLoadPayload(bytecode.m_thisValue.offset(), regT2);
+    emitLoadTag(bytecode.m_thisValue.offset(), regT1);
     JSValueRegs thisRegs(regT1, regT2);
-    emitLoadPayload(currentInstruction[2].u.operand, regT3);
+    emitLoadPayload(bytecode.m_scope.offset(), regT3);
     logShadowChickenTailPacket(shadowPacketReg, thisRegs, regT3, m_codeBlock, CallSiteIndex(currentInstruction));
 }
 

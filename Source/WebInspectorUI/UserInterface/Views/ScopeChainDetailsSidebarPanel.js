@@ -261,6 +261,7 @@ WI.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel extends W
                 }
 
                 let treeOutline = objectTree.treeOutline;
+                treeOutline.registerScrollVirtualizer(this.contentView.element, 16);
                 treeOutline.addEventListener(WI.TreeOutline.Event.ElementAdded, this._treeElementAdded.bind(this, detailsSectionIdentifier), this);
                 treeOutline.addEventListener(WI.TreeOutline.Event.ElementDisclosureDidChanged, this._treeElementDisclosureDidChange.bind(this, detailsSectionIdentifier), this);
 
@@ -306,11 +307,10 @@ WI.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel extends W
             promises.push(new Promise(function(resolve, reject) {
                 let options = {objectGroup: WI.ScopeChainDetailsSidebarPanel.WatchExpressionsObjectGroupName, includeCommandLineAPI: false, doNotPauseOnExceptionsAndMuteConsole: true, returnByValue: false, generatePreview: true, saveResult: false};
                 WI.runtimeManager.evaluateInInspectedWindow(expression, options, function(object, wasThrown) {
-                    if (!object)
-                        return;
+                    object = object || WI.RemoteObject.fromPrimitiveValue(undefined);
                     let propertyDescriptor = new WI.PropertyDescriptor({name: expression, value: object}, undefined, undefined, wasThrown);
                     objectTree.appendExtraPropertyDescriptor(propertyDescriptor);
-                    resolve(propertyDescriptor);
+                    resolve();
                 });
             }));
         }
@@ -364,8 +364,6 @@ WI.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel extends W
         this._codeMirror = WI.CodeMirrorEditor.create(editorElement, {
             lineWrapping: true,
             mode: "text/javascript",
-            indentWithTabs: true,
-            indentUnit: 4,
             matchBrackets: true,
             value: "",
         });

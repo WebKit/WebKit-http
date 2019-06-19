@@ -34,14 +34,10 @@ class RtpReceiverInternal : public RtpReceiverInterface {
   virtual void Stop() = 0;
 
   // Sets the underlying MediaEngine channel associated with this RtpSender.
-  // SetVoiceMediaChannel should be used for audio RtpSenders and
-  // SetVideoMediaChannel should be used for video RtpSenders. Must call the
-  // appropriate SetXxxMediaChannel(nullptr) before the media channel is
-  // destroyed.
-  virtual void SetVoiceMediaChannel(
-      cricket::VoiceMediaChannel* voice_media_channel) = 0;
-  virtual void SetVideoMediaChannel(
-      cricket::VideoMediaChannel* video_media_channel) = 0;
+  // A VoiceMediaChannel should be used for audio RtpSenders and
+  // a VideoMediaChannel should be used for video RtpSenders.
+  // Must call SetMediaChannel(nullptr) before the media channel is destroyed.
+  virtual void SetMediaChannel(cricket::MediaChannel* media_channel) = 0;
 
   // Configures the RtpReceiver with the underlying media channel, with the
   // given SSRC as the stream identifier. If |ssrc| is 0, the receiver will
@@ -115,6 +111,12 @@ class AudioRtpReceiver : public ObserverInterface,
   RtpParameters GetParameters() const override;
   bool SetParameters(const RtpParameters& parameters) override;
 
+  void SetFrameDecryptor(
+      rtc::scoped_refptr<FrameDecryptorInterface> frame_decryptor) override;
+
+  rtc::scoped_refptr<FrameDecryptorInterface> GetFrameDecryptor()
+      const override;
+
   // RtpReceiverInternal implementation.
   void Stop() override;
   void SetupMediaChannel(uint32_t ssrc) override;
@@ -123,17 +125,9 @@ class AudioRtpReceiver : public ObserverInterface,
   void set_stream_ids(std::vector<std::string> stream_ids) override;
   void SetStreams(const std::vector<rtc::scoped_refptr<MediaStreamInterface>>&
                       streams) override;
-
   void SetObserver(RtpReceiverObserverInterface* observer) override;
 
-  void SetVoiceMediaChannel(
-      cricket::VoiceMediaChannel* voice_media_channel) override {
-    media_channel_ = voice_media_channel;
-  }
-  void SetVideoMediaChannel(
-      cricket::VideoMediaChannel* video_media_channel) override {
-    RTC_NOTREACHED();
-  }
+  void SetMediaChannel(cricket::MediaChannel* media_channel) override;
 
   std::vector<RtpSource> GetSources() const override;
   int AttachmentId() const override { return attachment_id_; }
@@ -155,6 +149,7 @@ class AudioRtpReceiver : public ObserverInterface,
   RtpReceiverObserverInterface* observer_ = nullptr;
   bool received_first_packet_ = false;
   int attachment_id_ = 0;
+  rtc::scoped_refptr<FrameDecryptorInterface> frame_decryptor_;
 };
 
 class VideoRtpReceiver : public rtc::RefCountedObject<RtpReceiverInternal> {
@@ -196,6 +191,12 @@ class VideoRtpReceiver : public rtc::RefCountedObject<RtpReceiverInternal> {
   RtpParameters GetParameters() const override;
   bool SetParameters(const RtpParameters& parameters) override;
 
+  void SetFrameDecryptor(
+      rtc::scoped_refptr<FrameDecryptorInterface> frame_decryptor) override;
+
+  rtc::scoped_refptr<FrameDecryptorInterface> GetFrameDecryptor()
+      const override;
+
   // RtpReceiverInternal implementation.
   void Stop() override;
   void SetupMediaChannel(uint32_t ssrc) override;
@@ -207,16 +208,11 @@ class VideoRtpReceiver : public rtc::RefCountedObject<RtpReceiverInternal> {
 
   void SetObserver(RtpReceiverObserverInterface* observer) override;
 
-  void SetVoiceMediaChannel(
-      cricket::VoiceMediaChannel* voice_media_channel) override {
-    RTC_NOTREACHED();
-  }
-  void SetVideoMediaChannel(
-      cricket::VideoMediaChannel* video_media_channel) override {
-    media_channel_ = video_media_channel;
-  }
+  void SetMediaChannel(cricket::MediaChannel* media_channel) override;
 
   int AttachmentId() const override { return attachment_id_; }
+
+  std::vector<RtpSource> GetSources() const override;
 
  private:
   class VideoRtpTrackSource : public VideoTrackSource {
@@ -250,6 +246,7 @@ class VideoRtpReceiver : public rtc::RefCountedObject<RtpReceiverInternal> {
   RtpReceiverObserverInterface* observer_ = nullptr;
   bool received_first_packet_ = false;
   int attachment_id_ = 0;
+  rtc::scoped_refptr<FrameDecryptorInterface> frame_decryptor_;
 };
 
 }  // namespace webrtc

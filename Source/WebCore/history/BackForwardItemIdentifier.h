@@ -25,10 +25,10 @@
 
 #pragma once
 
-#include "Process.h"
+#include "ProcessIdentifier.h"
 #include <wtf/DebugUtilities.h>
 #include <wtf/Hasher.h>
-#include <wtf/text/WTFString.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
 
@@ -40,7 +40,7 @@ struct BackForwardItemIdentifier {
     unsigned hash() const;
 
     template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static std::optional<BackForwardItemIdentifier> decode(Decoder&);
+    template<class Decoder> static Optional<BackForwardItemIdentifier> decode(Decoder&);
 
 #if !LOG_DISABLED
     const char* logString() const;
@@ -48,10 +48,12 @@ struct BackForwardItemIdentifier {
 };
 
 #if !LOG_DISABLED
+
 inline const char* BackForwardItemIdentifier::logString() const
 {
-    return debugString(String::number(processIdentifier.toUInt64()), "-", String::number(itemIdentifier.toUInt64()));
+    return debugString(makeString(processIdentifier.toUInt64(), '-', itemIdentifier.toUInt64()));
 }
+
 #endif
 
 inline bool operator==(const BackForwardItemIdentifier& a, const BackForwardItemIdentifier& b)
@@ -66,17 +68,17 @@ void BackForwardItemIdentifier::encode(Encoder& encoder) const
 }
 
 template<class Decoder>
-std::optional<BackForwardItemIdentifier> BackForwardItemIdentifier::decode(Decoder& decoder)
+Optional<BackForwardItemIdentifier> BackForwardItemIdentifier::decode(Decoder& decoder)
 {
-    std::optional<ProcessIdentifier> processIdentifier;
+    Optional<ProcessIdentifier> processIdentifier;
     decoder >> processIdentifier;
     if (!processIdentifier)
-        return std::nullopt;
+        return WTF::nullopt;
 
-    std::optional<ObjectIdentifier<ItemIdentifierType>> itemIdentifier;
+    Optional<ObjectIdentifier<ItemIdentifierType>> itemIdentifier;
     decoder >> itemIdentifier;
     if (!itemIdentifier)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return { { WTFMove(*processIdentifier), WTFMove(*itemIdentifier) } };
 }

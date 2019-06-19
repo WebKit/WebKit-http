@@ -38,13 +38,12 @@
 #endif
 
 namespace WebCore {
-    class URL;
     class ResourceHandle;
     class ResourceRequest;
     class ResourceResponse;
 }
 
-class WebDownload
+class WebDownload final
 : public IWebDownload
 , public IWebURLAuthenticationChallengeSender
 #if USE(CURL)
@@ -52,13 +51,13 @@ class WebDownload
 #endif
 {
 public:
-    static WebDownload* createInstance(const WebCore::URL&, IWebDownloadDelegate*);
+    static WebDownload* createInstance(const URL&, IWebDownloadDelegate*);
     static WebDownload* createInstance(WebCore::ResourceHandle*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, IWebDownloadDelegate*);
     static WebDownload* createInstance();
 private:
     WebDownload();
     void init(WebCore::ResourceHandle*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, IWebDownloadDelegate*);
-    void init(const WebCore::URL&, IWebDownloadDelegate*);
+    void init(const URL&, IWebDownloadDelegate*);
     ~WebDownload();
 public:
     // IUnknown

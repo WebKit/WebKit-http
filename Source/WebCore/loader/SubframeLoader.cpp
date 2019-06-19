@@ -56,6 +56,7 @@
 #include "SecurityOrigin.h"
 #include "SecurityPolicy.h"
 #include "Settings.h"
+#include <wtf/CompletionHandler.h>
 
 namespace WebCore {
     
@@ -72,31 +73,41 @@ void SubframeLoader::clear()
     m_containsPlugins = false;
 }
 
-bool SubframeLoader::requestFrame(HTMLFrameOwnerElement& ownerElement, const String& urlString, const AtomicString& frameName, LockHistory lockHistory, LockBackForwardList lockBackForwardList)
+bool SubframeLoader::requestFrame(HTMLFrameOwnerElement& ownerElement, const String& urlString, const AtomString& frameName, LockHistory lockHistory, LockBackForwardList lockBackForwardList)
 {
     // Support for <frame src="javascript:string">
     URL scriptURL;
     URL url;
-    if (protocolIsJavaScript(urlString)) {
+    if (WTF::protocolIsJavaScript(urlString)) {
         scriptURL = completeURL(urlString); // completeURL() encodes the URL.
-        url = blankURL();
+        url = WTF::blankURL();
     } else
         url = completeURL(urlString);
 
     if (shouldConvertInvalidURLsToBlank() && !url.isValid())
-        url = blankURL();
+        url = WTF::blankURL();
 
-    bool hasExistingFrame = ownerElement.contentFrame();
+    // If we will schedule a JavaScript URL load, we need to delay the firing of the load event at least until we've run the JavaScript in the URL.
+    CompletionHandlerCallingScope stopDelayingLoadEvent;
+    if (!scriptURL.isEmpty()) {
+        ownerElement.document().incrementLoadEventDelayCount();
+        stopDelayingLoadEvent = CompletionHandlerCallingScope([ownerDocument = makeRef(ownerElement.document())] {
+            ownerDocument->decrementLoadEventDelayCount();
+        });
+    }
+
     Frame* frame = loadOrRedirectSubframe(ownerElement, url, frameName, lockHistory, lockBackForwardList);
     if (!frame)
         return false;
 
-    // If we create a new subframe then an empty document is loaded into it synchronously and may
-    // cause script execution (say, via a DOM load event handler) that can do anything, including
-    // navigating the subframe. We only want to evaluate scriptURL if the frame has not been navigated.
-    bool canExecuteScript = hasExistingFrame || (frame->loader().documentLoader() && frame->loader().documentLoader()->originalURL() == blankURL());
-    if (!scriptURL.isEmpty() && canExecuteScript && ownerElement.isURLAllowed(scriptURL))
-        frame->script().executeIfJavaScriptURL(scriptURL);
+    if (!scriptURL.isEmpty() && ownerElement.isURLAllowed(scriptURL)) {
+        // FIXME: Some sites rely on the javascript:'' loading synchronously, which is why we have this special case.
+        // Blink has the same workaround (https://bugs.chromium.org/p/chromium/issues/detail?id=923585).
+        if (urlString == "javascript:''" || urlString == "javascript:\"\"")
+            frame->script().executeIfJavaScriptURL(scriptURL);
+        else
+            frame->navigationScheduler().scheduleLocationChange(ownerElement.document(), ownerElement.document().securityOrigin(), scriptURL, m_frame.loader().outgoingReferrer(), lockHistory, lockBackForwardList, stopDelayingLoadEvent.release());
+    }
 
     return true;
 }
@@ -207,7 +218,7 @@ static void logPluginRequest(Page* page, const String& mimeType, const String& u
     page->sawPlugin(description);
 }
 
-bool SubframeLoader::requestObject(HTMLPlugInImageElement& ownerElement, const String& url, const AtomicString& frameName, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues)
+bool SubframeLoader::requestObject(HTMLPlugInImageElement& ownerElement, const String& url, const AtomString& frameName, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
     if (url.isEmpty() && mimeType.isEmpty())
         return false;
@@ -285,7 +296,7 @@ RefPtr<Widget> SubframeLoader::createJavaAppletWidget(const IntSize& size, HTMLA
     return widget;
 }
 
-Frame* SubframeLoader::loadOrRedirectSubframe(HTMLFrameOwnerElement& ownerElement, const URL& requestURL, const AtomicString& frameName, LockHistory lockHistory, LockBackForwardList lockBackForwardList)
+Frame* SubframeLoader::loadOrRedirectSubframe(HTMLFrameOwnerElement& ownerElement, const URL& requestURL, const AtomString& frameName, LockHistory lockHistory, LockBackForwardList lockBackForwardList)
 {
     auto& initiatingDocument = ownerElement.document();
 
@@ -308,17 +319,6 @@ Frame* SubframeLoader::loadOrRedirectSubframe(HTMLFrameOwnerElement& ownerElemen
 Frame* SubframeLoader::loadSubframe(HTMLFrameOwnerElement& ownerElement, const URL& url, const String& name, const String& referrer)
 {
     Ref<Frame> protect(m_frame);
-
-    bool allowsScrolling = true;
-    int marginWidth = -1;
-    int marginHeight = -1;
-    if (is<HTMLFrameElementBase>(ownerElement)) {
-        auto& frameElementBase = downcast<HTMLFrameElementBase>(ownerElement);
-        allowsScrolling = frameElementBase.scrollingMode() != ScrollbarAlwaysOff;
-        marginWidth = frameElementBase.marginWidth();
-        marginHeight = frameElementBase.marginHeight();
-    }
-
     auto document = makeRef(ownerElement.document());
 
     if (!document->securityOrigin().canDisplay(url)) {
@@ -329,12 +329,15 @@ Frame* SubframeLoader::loadSubframe(HTMLFrameOwnerElement& ownerElement, const U
     if (!SubframeLoadingDisabler::canLoadFrame(ownerElement))
         return nullptr;
 
-    String referrerToUse = SecurityPolicy::generateReferrerHeader(document->referrerPolicy(), url, referrer);
+    ReferrerPolicy policy = ownerElement.referrerPolicy();
+    if (policy == ReferrerPolicy::EmptyString)
+        policy = document->referrerPolicy();
+    String referrerToUse = SecurityPolicy::generateReferrerHeader(policy, url, referrer);
 
     // Prevent initial empty document load from triggering load events.
     document->incrementLoadEventDelayCount();
 
-    auto frame = m_frame.loader().client().createFrame(url, name, ownerElement, referrerToUse, allowsScrolling, marginWidth, marginHeight);
+    auto frame = m_frame.loader().client().createFrame(url, name, ownerElement, referrerToUse);
 
     document->decrementLoadEventDelayCount();
 
@@ -410,7 +413,7 @@ bool SubframeLoader::loadPlugin(HTMLPlugInImageElement& pluginElement, const URL
     IntSize contentSize = roundedIntSize(LayoutSize(renderer->contentWidth(), renderer->contentHeight()));
     bool loadManually = is<PluginDocument>(document) && !m_containsPlugins && downcast<PluginDocument>(document).shouldLoadPluginManually();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // On iOS, we only tell the plugin to be in full page mode if the containing plugin document is the top level document.
     if (document.ownerElement())
         loadManually = false;

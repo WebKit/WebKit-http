@@ -34,7 +34,7 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "FindIndicatorOverlayClientIOS.h"
 #endif
 
@@ -61,6 +61,7 @@ public:
     void selectFindMatch(uint32_t matchIndex);
     void hideFindUI();
     void countStringMatches(const String&, FindOptions, unsigned maxMatchCount);
+    uint32_t replaceMatches(const Vector<uint32_t>& matchIndices, const String& replacementText, bool selectionOnly);
     
     void hideFindIndicator();
     void showFindIndicatorInSelection();
@@ -79,7 +80,7 @@ private:
     bool mouseEvent(WebCore::PageOverlay&, const WebCore::PlatformMouseEvent&) override;
     void drawRect(WebCore::PageOverlay&, WebCore::GraphicsContext&, const WebCore::IntRect& dirtyRect) override;
 
-    Vector<WebCore::IntRect> rectsForTextMatchesInRect(WebCore::IntRect clipRect);
+    Vector<WebCore::FloatRect> rectsForTextMatchesInRect(WebCore::IntRect clipRect);
     bool updateFindIndicator(WebCore::Frame& selectedFrame, bool isShowingOverlay, bool shouldAnimate = true);
 
     void updateFindUIAfterPageScroll(bool found, const String&, FindOptions, unsigned maxMatchCount, WebCore::DidWrap);
@@ -88,6 +89,9 @@ private:
     void didFindString();
     void didFailToFindString();
     void didHideFindIndicator();
+    
+    unsigned findIndicatorRadius() const;
+    bool shouldHideFindIndicatorOnScroll() const;
 
     WebPage* m_webPage;
     WebCore::PageOverlay* m_findPageOverlay { nullptr };
@@ -100,7 +104,7 @@ private:
     // Index value is -1 if not found or if number of matches exceeds provided maximum.
     int m_foundStringMatchIndex { -1 };
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     RefPtr<WebCore::PageOverlay> m_findIndicatorOverlay;
     std::unique_ptr<FindIndicatorOverlayClientIOS> m_findIndicatorOverlayClient;
 #endif

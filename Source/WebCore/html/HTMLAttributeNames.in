@@ -66,6 +66,8 @@ aria-valuenow
 aria-valuetext
 as
 async
+adcampaignid
+addestination
 autocomplete
 autofocus
 autoplay
@@ -142,6 +144,8 @@ hreflang
 hspace
 http_equiv
 id
+imagesizes
+imagesrcset
 incremental
 indeterminate
 inputmode
@@ -191,15 +195,7 @@ novalidate
 nowrap
 object
 onabort
-onaccessiblecontextmenu
-onaccessibleclick
-onaccessibledecrement
-onaccessibledismiss
-onaccessiblefocus
-onaccessibleincrement
-onaccessiblescrollintoview
-onaccessiblesetvalue
-onaccessibleselect
+onafterprint
 onanimationstart
 onanimationiteration
 onanimationend
@@ -211,6 +207,7 @@ onbeforecut
 onbeforeinput
 onbeforeload
 onbeforepaste
+onbeforeprint
 onbeforeunload
 onblur
 oncanplay
@@ -245,11 +242,13 @@ onkeyup
 ongesturestart
 ongesturechange
 ongestureend
+ongotpointercapture
 onlanguagechange
 onload
 onloadeddata
 onloadedmetadata
 onloadstart
+onlostpointercapture
 onmessage
 onmousedown
 onmouseenter
@@ -268,6 +267,14 @@ onpaste
 onpause
 onplay
 onplaying
+onpointerdown
+onpointermove
+onpointerup
+onpointercancel
+onpointerover
+onpointerout
+onpointerenter
+onpointerleave
 onpopstate
 onprogress
 onratechange
@@ -340,6 +347,7 @@ progress
 prompt
 pseudo
 readonly
+referrerpolicy
 rel
 required
 results
@@ -420,3 +428,5 @@ x-apple-data-detectors-type
 x-apple-data-detectors-result
 
 x-apple-pdf-annotation
+
+x-apple-editable-image

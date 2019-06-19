@@ -47,7 +47,7 @@ public:
     virtual void didFail() { }
 };
 
-class CurlDownload : public ThreadSafeRefCounted<CurlDownload>, public CurlRequestClient {
+class CurlDownload final : public ThreadSafeRefCounted<CurlDownload>, public CurlRequestClient {
 public:
     CurlDownload() = default;
     ~CurlDownload();
@@ -71,10 +71,10 @@ public:
 private:
     Ref<CurlRequest> createCurlRequest(ResourceRequest&);
     void curlDidSendData(CurlRequest&, unsigned long long, unsigned long long) override { }
-    void curlDidReceiveResponse(CurlRequest&, const CurlResponse&) override;
+    void curlDidReceiveResponse(CurlRequest&, CurlResponse&&) override;
     void curlDidReceiveBuffer(CurlRequest&, Ref<SharedBuffer>&&) override;
-    void curlDidComplete(CurlRequest&) override;
-    void curlDidFailWithError(CurlRequest&, const ResourceError&) override;
+    void curlDidComplete(CurlRequest&, NetworkLoadMetrics&&) override;
+    void curlDidFailWithError(CurlRequest&, ResourceError&&, CertificateInfo&&) override;
 
     bool shouldRedirectAsGET(const ResourceRequest&, bool crossOrigin);
     void willSendRequest();

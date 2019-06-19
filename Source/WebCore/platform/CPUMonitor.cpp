@@ -35,7 +35,7 @@ CPUMonitor::CPUMonitor(Seconds checkInterval, ExceededCPULimitHandler&& exceeded
 {
 }
 
-void CPUMonitor::setCPULimit(std::optional<double> cpuLimit)
+void CPUMonitor::setCPULimit(const Optional<double>& cpuLimit)
 {
     if (m_cpuLimit == cpuLimit)
         return;

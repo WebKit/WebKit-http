@@ -52,10 +52,7 @@ RealtimeOutgoingVideoSourceLibWebRTC::RealtimeOutgoingVideoSourceLibWebRTC(Ref<M
 
 void RealtimeOutgoingVideoSourceLibWebRTC::sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample& sample)
 {
-    if (!m_sinks.size())
-        return;
-
-    if (m_muted || !m_enabled)
+    if (isSilenced())
         return;
 
     switch (sample.videoRotation()) {
@@ -78,6 +75,21 @@ void RealtimeOutgoingVideoSourceLibWebRTC::sampleBufferUpdated(MediaStreamTrackP
     auto frameBuffer(GStreamerVideoFrameLibWebRTC::create(gst_sample_ref(mediaSample.platformSample().sample.gstSample)));
 
     sendFrame(WTFMove(frameBuffer));
+}
+
+rtc::scoped_refptr<webrtc::VideoFrameBuffer> RealtimeOutgoingVideoSourceLibWebRTC::createBlackFrame(size_t  width, size_t  height)
+{
+    GstVideoInfo info;
+
+    gst_video_info_set_format(&info, GST_VIDEO_FORMAT_RGB, width, height);
+
+    GRefPtr<GstBuffer> buffer = adoptGRef(gst_buffer_new_allocate(nullptr, info.size, nullptr));
+    GRefPtr<GstCaps> caps = adoptGRef(gst_video_info_to_caps(&info));
+
+    auto map = GstMappedBuffer::create(buffer.get(), GST_MAP_WRITE);
+    memset(map->data(), 0, info.size);
+
+    return GStreamerVideoFrameLibWebRTC::create(gst_sample_new(buffer.get(), caps.get(), NULL, NULL));
 }
 
 } // namespace WebCore

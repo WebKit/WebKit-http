@@ -66,8 +66,8 @@ static void appendSourceToError(CallFrame* callFrame, ErrorInstance* exception, 
 
     CodeBlock* codeBlock;
     CodeOrigin codeOrigin = callFrame->codeOrigin();
-    if (codeOrigin && codeOrigin.inlineCallFrame)
-        codeBlock = baselineCodeBlockForInlineCallFrame(codeOrigin.inlineCallFrame);
+    if (codeOrigin && codeOrigin.inlineCallFrame())
+        codeBlock = baselineCodeBlockForInlineCallFrame(codeOrigin.inlineCallFrame());
     else
         codeBlock = callFrame->codeBlock();
 
@@ -76,7 +76,7 @@ static void appendSourceToError(CallFrame* callFrame, ErrorInstance* exception, 
     int expressionStart = divotPoint - startOffset;
     int expressionStop = divotPoint + endOffset;
 
-    StringView sourceString = codeBlock->source()->source();
+    StringView sourceString = codeBlock->source().provider()->source();
     if (!expressionStop || expressionStart > static_cast<int>(sourceString.length()))
         return;
     
@@ -87,7 +87,7 @@ static void appendSourceToError(CallFrame* callFrame, ErrorInstance* exception, 
     
     String message = asString(jsMessage)->value(callFrame);
     if (expressionStart < expressionStop)
-        message = appender(message, codeBlock->source()->getRange(expressionStart, expressionStop).toString(), type, ErrorInstance::FoundExactSource);
+        message = appender(message, codeBlock->source().provider()->getRange(expressionStart, expressionStop).toString(), type, ErrorInstance::FoundExactSource);
     else {
         // No range information, so give a few characters of context.
         int dataLength = sourceString.length();
@@ -103,7 +103,7 @@ static void appendSourceToError(CallFrame* callFrame, ErrorInstance* exception, 
             stop++;
         while (stop > expressionStart && isStrWhiteSpace(sourceString[stop - 1]))
             stop--;
-        message = appender(message, codeBlock->source()->getRange(start, stop).toString(), type, ErrorInstance::FoundApproximateSource);
+        message = appender(message, codeBlock->source().provider()->getRange(start, stop).toString(), type, ErrorInstance::FoundApproximateSource);
     }
     exception->putDirect(*vm, vm->propertyNames->message, jsString(vm, message));
 
@@ -212,7 +212,7 @@ void ErrorInstance::finalizeUnconditionally(VM& vm)
     // If we did, we might end up keeping functions (and their global objects) alive that happened to
     // get caught in a trace.
     for (const auto& frame : *m_stackTrace.get()) {
-        if (!frame.isMarked()) {
+        if (!frame.isMarked(vm)) {
             computeErrorInfo(vm);
             return;
         }

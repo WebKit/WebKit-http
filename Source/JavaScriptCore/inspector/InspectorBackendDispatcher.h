@@ -29,7 +29,6 @@
 #include "InspectorFrontendRouter.h"
 #include "InspectorProtocolTypes.h"
 #include <functional>
-#include <wtf/DeprecatedOptional.h>
 #include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -93,7 +92,7 @@ public:
     void sendPendingErrors();
 
     void reportProtocolError(CommonErrorCode, const String& errorMessage);
-    void reportProtocolError(std::optional<long> relatedRequestId, CommonErrorCode, const String& errorMessage);
+    void reportProtocolError(Optional<long> relatedRequestId, CommonErrorCode, const String& errorMessage);
 
     template<typename T>
     WTF_INTERNAL
@@ -110,11 +109,6 @@ public:
 private:
     BackendDispatcher(Ref<FrontendRouter>&&);
 
-#if PLATFORM(MAC)
-    // This is necessary for some versions of Safari. Remove it when those versions of Safari are no longer supported.
-    void reportProtocolError(WTF::DeprecatedOptional<long> relatedRequestId, CommonErrorCode, const String& errorMessage);
-#endif
-
     Ref<FrontendRouter> m_frontendRouter;
     HashMap<String, SupplementalBackendDispatcher*> m_dispatchers;
 
@@ -125,7 +119,7 @@ private:
 
     // For synchronously handled requests, avoid plumbing requestId through every
     // call that could potentially fail with a protocol error.
-    std::optional<long> m_currentRequestId { std::nullopt };
+    Optional<long> m_currentRequestId { WTF::nullopt };
 };
 
 } // namespace Inspector

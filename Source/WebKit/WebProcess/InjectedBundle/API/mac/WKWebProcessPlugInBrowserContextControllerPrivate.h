@@ -25,8 +25,6 @@
 
 #import <WebKit/WKWebProcessPlugInBrowserContextController.h>
 
-#if WK_API_ENABLED
-
 #import <WebKit/WKBase.h>
 
 @class WKBrowsingContextHandle;
@@ -43,14 +41,12 @@
 @property (nonatomic, readonly) _WKRemoteObjectRegistry *_remoteObjectRegistry;
 
 @property (weak, setter=_setFormDelegate:) id <WKWebProcessPlugInFormDelegatePrivate> _formDelegate;
-@property (weak, setter=_setEditingDelegate:) id <WKWebProcessPlugInEditingDelegate> _editingDelegate WK_API_AVAILABLE(macosx(10.12.3), ios(10.3));
+@property (weak, setter=_setEditingDelegate:) id <WKWebProcessPlugInEditingDelegate> _editingDelegate WK_API_AVAILABLE(macos(10.12.3), ios(10.3));
 
-@property (nonatomic, setter=_setDefersLoading:) BOOL _defersLoading;
+@property (nonatomic, setter=_setDefersLoading:) BOOL _defersLoading WK_API_DEPRECATED("No longer supported", macos(10.10, WK_MAC_TBA), ios(8.0, WK_IOS_TBA));
 
 @property (nonatomic, readonly) BOOL _usesNonPersistentWebsiteDataStore;
 
 + (instancetype)lookUpBrowsingContextFromHandle:(WKBrowsingContextHandle *)handle;
 
 @end
-
-#endif // WK_API_ENABLED

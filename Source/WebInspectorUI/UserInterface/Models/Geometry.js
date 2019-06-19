@@ -63,9 +63,9 @@ WI.Point = class Point
 
     distance(anotherPoint)
     {
-        var dx = anotherPoint.x - this.x;
-        var dy = anotherPoint.y - this.y;
-        return Math.sqrt(dx * dx, dy * dy);
+        let dx = anotherPoint.x - this.x;
+        let dy = anotherPoint.y - this.y;
+        return Math.sqrt((dx * dx) + (dy * dy));
     }
 };
 
@@ -282,6 +282,18 @@ WI.Quad = class Quad
 
         this.width = Math.round(Math.sqrt(Math.pow(quad[0] - quad[2], 2) + Math.pow(quad[1] - quad[3], 2)));
         this.height = Math.round(Math.sqrt(Math.pow(quad[0] - quad[6], 2) + Math.pow(quad[1] - quad[7], 2)));
+    }
+
+    // Import / Export
+
+    static fromJSON(json)
+    {
+        return new WI.Quad(json);
+    }
+
+    toJSON()
+    {
+        return this.toProtocol();
     }
 
     // Public

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -253,10 +253,11 @@ Memory::Memory(PageCount initial, PageCount maximum, Function<void(NotifyPressur
     ASSERT(!initial.bytes());
     ASSERT(m_mode == MemoryMode::BoundsChecking);
     dataLogLnIf(verbose, "Memory::Memory allocating ", *this);
+    ASSERT(!memory());
 }
 
 Memory::Memory(void* memory, PageCount initial, PageCount maximum, size_t mappedCapacity, MemoryMode mode, Function<void(NotifyPressure)>&& notifyMemoryPressure, Function<void(SyncTryToReclaim)>&& syncTryToReclaimMemory, WTF::Function<void(GrowSuccess, PageCount, PageCount)>&& growSuccessCallback)
-    : m_memory(memory)
+    : m_memory(memory, initial.bytes())
     , m_size(initial.bytes())
     , m_initial(initial)
     , m_maximum(maximum)
@@ -269,18 +270,21 @@ Memory::Memory(void* memory, PageCount initial, PageCount maximum, size_t mapped
     dataLogLnIf(verbose, "Memory::Memory allocating ", *this);
 }
 
-RefPtr<Memory> Memory::create()
+Ref<Memory> Memory::create()
 {
-    return adoptRef(new Memory());
+    return adoptRef(*new Memory());
 }
 
-RefPtr<Memory> Memory::create(PageCount initial, PageCount maximum, WTF::Function<void(NotifyPressure)>&& notifyMemoryPressure, WTF::Function<void(SyncTryToReclaim)>&& syncTryToReclaimMemory, WTF::Function<void(GrowSuccess, PageCount, PageCount)>&& growSuccessCallback)
+RefPtr<Memory> Memory::tryCreate(PageCount initial, PageCount maximum, WTF::Function<void(NotifyPressure)>&& notifyMemoryPressure, WTF::Function<void(SyncTryToReclaim)>&& syncTryToReclaimMemory, WTF::Function<void(GrowSuccess, PageCount, PageCount)>&& growSuccessCallback)
 {
     ASSERT(initial);
     RELEASE_ASSERT(!maximum || maximum >= initial); // This should be guaranteed by our caller.
 
     const size_t initialBytes = initial.bytes();
     const size_t maximumBytes = maximum ? maximum.bytes() : 0;
+
+    if (initialBytes > MAX_ARRAY_BUFFER_SIZE)
+        return nullptr; // Client will throw OOMError.
 
     if (maximum && !maximumBytes) {
         // User specified a zero maximum, initial size must also be zero.
@@ -335,14 +339,14 @@ Memory::~Memory()
         memoryManager().freePhysicalBytes(m_size);
         switch (m_mode) {
         case MemoryMode::Signaling:
-            if (mprotect(m_memory, Memory::fastMappedBytes(), PROT_READ | PROT_WRITE)) {
+            if (mprotect(memory(), Memory::fastMappedBytes(), PROT_READ | PROT_WRITE)) {
                 dataLog("mprotect failed: ", strerror(errno), "\n");
                 RELEASE_ASSERT_NOT_REACHED();
             }
-            memoryManager().freeFastMemory(m_memory);
+            memoryManager().freeFastMemory(memory());
             break;
         case MemoryMode::BoundsChecking:
-            Gigacage::freeVirtualPages(Gigacage::Primitive, m_memory, m_size);
+            Gigacage::freeVirtualPages(Gigacage::Primitive, memory(), m_size);
             break;
         }
     }
@@ -372,8 +376,10 @@ Expected<PageCount, Memory::GrowFailReason> Memory::grow(PageCount delta)
         return makeUnexpected(GrowFailReason::InvalidDelta);
     
     const Wasm::PageCount newPageCount = oldPageCount + delta;
-    if (!newPageCount)
+    if (!newPageCount || !newPageCount.isValid())
         return makeUnexpected(GrowFailReason::InvalidGrowSize);
+    if (newPageCount.bytes() > MAX_ARRAY_BUFFER_SIZE)
+        return makeUnexpected(GrowFailReason::OutOfMemory);
 
     auto success = [&] () {
         m_growSuccessCallback(GrowSuccessTag, oldPageCount, newPageCount);
@@ -395,6 +401,7 @@ Expected<PageCount, Memory::GrowFailReason> Memory::grow(PageCount delta)
         return makeUnexpected(GrowFailReason::WouldExceedMaximum);
 
     size_t desiredSize = newPageCount.bytes();
+    RELEASE_ASSERT(desiredSize <= MAX_ARRAY_BUFFER_SIZE);
     RELEASE_ASSERT(desiredSize > m_size);
     size_t extraBytes = desiredSize - m_size;
     RELEASE_ASSERT(extraBytes);
@@ -413,24 +420,26 @@ Expected<PageCount, Memory::GrowFailReason> Memory::grow(PageCount delta)
         if (!newMemory)
             return makeUnexpected(GrowFailReason::OutOfMemory);
 
-        memcpy(newMemory, m_memory, m_size);
+        memcpy(newMemory, memory(), m_size);
         if (m_memory)
-            Gigacage::freeVirtualPages(Gigacage::Primitive, m_memory, m_size);
-        m_memory = newMemory;
+            Gigacage::freeVirtualPages(Gigacage::Primitive, memory(), m_size);
+        m_memory = CagedMemory(newMemory, desiredSize);
         m_mappedCapacity = desiredSize;
         m_size = desiredSize;
+        ASSERT(memory() == newMemory);
         return success();
     }
     case MemoryMode::Signaling: {
-        RELEASE_ASSERT(m_memory);
+        RELEASE_ASSERT(memory());
         // Signaling memory must have been pre-allocated virtually.
-        uint8_t* startAddress = static_cast<uint8_t*>(m_memory) + m_size;
+        uint8_t* startAddress = static_cast<uint8_t*>(memory()) + m_size;
         
-        dataLogLnIf(verbose, "Marking WebAssembly memory's ", RawPointer(m_memory), " as read+write in range [", RawPointer(startAddress), ", ", RawPointer(startAddress + extraBytes), ")");
+        dataLogLnIf(verbose, "Marking WebAssembly memory's ", RawPointer(memory()), " as read+write in range [", RawPointer(startAddress), ", ", RawPointer(startAddress + extraBytes), ")");
         if (mprotect(startAddress, extraBytes, PROT_READ | PROT_WRITE)) {
             dataLog("mprotect failed: ", strerror(errno), "\n");
             RELEASE_ASSERT_NOT_REACHED();
         }
+        m_memory.recage(m_size, desiredSize);
         m_size = desiredSize;
         return success();
     }
@@ -454,7 +463,7 @@ void Memory::registerInstance(Instance* instance)
 
 void Memory::dump(PrintStream& out) const
 {
-    out.print("Memory at ", RawPointer(m_memory), ", size ", m_size, "B capacity ", m_mappedCapacity, "B, initial ", m_initial, " maximum ", m_maximum, " mode ", makeString(m_mode));
+    out.print("Memory at ", RawPointer(memory()), ", size ", m_size, "B capacity ", m_mappedCapacity, "B, initial ", m_initial, " maximum ", m_maximum, " mode ", makeString(m_mode));
 }
 
 } // namespace JSC

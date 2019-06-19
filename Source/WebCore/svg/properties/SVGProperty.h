@@ -1,5 +1,6 @@
 /*
  * Copyright (C) Research In Motion Limited 2010. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -19,22 +20,83 @@
 
 #pragma once
 
+#include "SVGPropertyOwner.h"
+#include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-enum SVGPropertyRole {
-    UndefinedRole,
-    BaseValRole,
-    AnimValRole
-};
+enum class SVGPropertyAccess : uint8_t { ReadWrite, ReadOnly };
+enum class SVGPropertyState : uint8_t { Clean, Dirty };
 
 class SVGProperty : public RefCounted<SVGProperty> {
 public:
     virtual ~SVGProperty() = default;
 
-    virtual bool isReadOnly() const = 0;
-    virtual void commitChange() = 0;
+    // Managing the relationship with the owner.
+    bool isAttached() const { return m_owner; }
+    void attach(SVGPropertyOwner* owner, SVGPropertyAccess access)
+    {
+        ASSERT(!m_owner);
+        ASSERT(m_state == SVGPropertyState::Clean);
+        m_owner = owner;
+        m_access = access;
+    }
+
+    void detach()
+    {
+        m_owner = nullptr;
+        m_access = SVGPropertyAccess::ReadWrite;
+        m_state = SVGPropertyState::Clean;
+    }
+
+    const SVGElement* contextElement() const
+    {
+        if (!m_owner)
+            return nullptr;
+        return m_owner->attributeContextElement();
+    }
+
+    void commitChange()
+    {
+        if (!m_owner)
+            return;
+        m_owner->commitPropertyChange(this);
+    }
+
+    // DOM access.
+    SVGPropertyAccess access() const { return m_access; }
+    bool isReadOnly() const { return m_access == SVGPropertyAccess::ReadOnly; }
+
+    // Synchronizing the SVG attribute and its reflection here.
+    bool isDirty() const { return m_state == SVGPropertyState::Dirty; }
+    void setDirty() { m_state = SVGPropertyState::Dirty; }
+    Optional<String> synchronize()
+    {
+        if (m_state == SVGPropertyState::Clean)
+            return WTF::nullopt;
+        m_state = SVGPropertyState::Clean;
+        return valueAsString();
+    }
+
+    // This is used when calling setAttribute().
+    virtual String valueAsString() const { return emptyString(); }
+
+    // Visual Studio doesn't seem to see these private constructors from subclasses.
+    // FIXME: See what it takes to remove this hack.
+#if !COMPILER(MSVC)
+protected:
+#endif
+    SVGProperty(SVGPropertyOwner* owner = nullptr, SVGPropertyAccess access = SVGPropertyAccess::ReadWrite)
+        : m_owner(owner)
+        , m_access(access)
+    {
+    }
+
+    SVGPropertyOwner* m_owner { nullptr };
+    SVGPropertyAccess m_access { SVGPropertyAccess::ReadWrite };
+    SVGPropertyState m_state { SVGPropertyState::Clean };
 };
 
 } // namespace WebCore

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
 
 #if JSC_OBJC_API_ENABLED
 
-#import <JavaScriptCore/JSContext.h>
+#import <JavaScriptCore/JSContextPrivate.h>
 
 struct CallbackData {
     CallbackData* next;
@@ -51,6 +51,7 @@ struct CallbackData {
 - (void)beginCallbackWithData:(CallbackData *)callbackData calleeValue:(JSValueRef)calleeValue thisValue:(JSValueRef)thisValue argumentCount:(size_t)argumentCount arguments:(const JSValueRef *)arguments;
 - (void)endCallbackWithData:(CallbackData *)callbackData;
 
+- (JSWrapperMap *)wrapperMap;
 - (JSValue *)wrapperForObjCObject:(id)object;
 - (JSValue *)wrapperForJSObject:(JSValueRef)value;
 

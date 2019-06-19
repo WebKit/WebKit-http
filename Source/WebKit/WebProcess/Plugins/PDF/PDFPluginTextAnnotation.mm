@@ -32,7 +32,7 @@
 #import "PDFKitImports.h"
 #import "PDFLayerControllerSPI.h"
 #import "PDFPlugin.h"
-#import <PDFKit/PDFKit.h>
+#import <Quartz/Quartz.h>
 #import <WebCore/CSSPrimitiveValue.h>
 #import <WebCore/CSSPropertyNames.h>
 #import <WebCore/ColorMac.h>
@@ -80,10 +80,9 @@ PDFPluginTextAnnotation::~PDFPluginTextAnnotation()
 Ref<Element> PDFPluginTextAnnotation::createAnnotationElement()
 {
     Document& document = parent()->document();
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     PDFAnnotationTextWidget *textAnnotation = this->textAnnotation();
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     bool isMultiline = textAnnotation.isMultiline;
 
     auto element = document.createElement(isMultiline ? textareaTag : inputTag, false);

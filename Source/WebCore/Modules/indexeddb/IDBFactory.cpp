@@ -72,14 +72,14 @@ IDBFactory::IDBFactory(IDBClient::IDBConnectionProxy& connectionProxy)
 
 IDBFactory::~IDBFactory() = default;
 
-ExceptionOr<Ref<IDBOpenDBRequest>> IDBFactory::open(ScriptExecutionContext& context, const String& name, std::optional<uint64_t> version)
+ExceptionOr<Ref<IDBOpenDBRequest>> IDBFactory::open(ScriptExecutionContext& context, const String& name, Optional<uint64_t> version)
 {
     LOG(IndexedDB, "IDBFactory::open");
     
     if (version && !version.value())
         return Exception { TypeError, "IDBFactory.open() called with a version of 0"_s };
 
-    return openInternal(context, name, version.value_or(0));
+    return openInternal(context, name, version.valueOr(0));
 }
 
 ExceptionOr<Ref<IDBOpenDBRequest>> IDBFactory::openInternal(ScriptExecutionContext& context, const String& name, uint64_t version)
@@ -91,7 +91,7 @@ ExceptionOr<Ref<IDBOpenDBRequest>> IDBFactory::openInternal(ScriptExecutionConte
         return Exception { SecurityError, "IDBFactory.open() called in an invalid security context"_s };
 
     ASSERT(context.securityOrigin());
-    IDBDatabaseIdentifier databaseIdentifier(name, SecurityOriginData { context.securityOrigin()->data() }, SecurityOriginData { context.topOrigin().data() });
+    IDBDatabaseIdentifier databaseIdentifier(name, context.sessionID(), SecurityOriginData { context.securityOrigin()->data() }, SecurityOriginData { context.topOrigin().data() });
     if (!databaseIdentifier.isValid())
         return Exception { TypeError, "IDBFactory.open() called with an invalid security origin"_s };
 
@@ -111,7 +111,7 @@ ExceptionOr<Ref<IDBOpenDBRequest>> IDBFactory::deleteDatabase(ScriptExecutionCon
         return Exception { SecurityError, "IDBFactory.deleteDatabase() called in an invalid security context"_s };
 
     ASSERT(context.securityOrigin());
-    IDBDatabaseIdentifier databaseIdentifier(name, SecurityOriginData { context.securityOrigin()->data() }, SecurityOriginData { context.topOrigin().data() });
+    IDBDatabaseIdentifier databaseIdentifier(name, context.sessionID(), SecurityOriginData { context.securityOrigin()->data() }, SecurityOriginData { context.topOrigin().data() });
     if (!databaseIdentifier.isValid())
         return Exception { TypeError, "IDBFactory.deleteDatabase() called with an invalid security origin"_s };
 
@@ -123,9 +123,11 @@ ExceptionOr<Ref<IDBOpenDBRequest>> IDBFactory::deleteDatabase(ScriptExecutionCon
 ExceptionOr<short> IDBFactory::cmp(ExecState& execState, JSValue firstValue, JSValue secondValue)
 {
     auto first = scriptValueToIDBKey(execState, firstValue);
-    auto second = scriptValueToIDBKey(execState, secondValue);
+    if (!first->isValid())
+        return Exception { DataError, "Failed to execute 'cmp' on 'IDBFactory': The parameter is not a valid key."_s };
 
-    if (!first->isValid() || !second->isValid())
+    auto second = scriptValueToIDBKey(execState, secondValue);
+    if (!second->isValid())
         return Exception { DataError, "Failed to execute 'cmp' on 'IDBFactory': The parameter is not a valid key."_s };
 
     return first->compare(second.get());

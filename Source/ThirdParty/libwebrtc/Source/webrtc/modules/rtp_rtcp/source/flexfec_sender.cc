@@ -10,11 +10,15 @@
 
 #include "modules/rtp_rtcp/include/flexfec_sender.h"
 
+#include <string.h>
+#include <list>
 #include <utility>
 
 #include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
 #include "modules/rtp_rtcp/source/forward_error_correction.h"
 #include "modules/rtp_rtcp/source/rtp_header_extensions.h"
+#include "modules/rtp_rtcp/source/rtp_packet_to_send.h"
+#include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 
 namespace webrtc {
@@ -90,7 +94,7 @@ FlexfecSender::FlexfecSender(
       rtp_header_extension_map_(
           RegisterSupportedExtensions(rtp_header_extensions)),
       header_extensions_size_(
-          rtp_header_extension_map_.GetTotalLengthInBytes(extension_sizes)) {
+          RtpHeaderExtensionSize(extension_sizes, rtp_header_extension_map_)) {
   // This object should not have been instantiated if FlexFEC is disabled.
   RTC_DCHECK_GE(payload_type, 0);
   RTC_DCHECK_LE(payload_type, 127);

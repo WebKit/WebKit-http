@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2009 Dirk Schulze <krit@webkit.org>
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,10 +48,10 @@ std::unique_ptr<ImageBuffer> ImageBuffer::create(const FloatSize& size, Renderin
 }
 
 #if USE(DIRECT2D)
-std::unique_ptr<ImageBuffer> ImageBuffer::create(const FloatSize& size, RenderingMode renderingMode, const GraphicsContext* targetContext, float resolutionScale, ColorSpace colorSpace)
+std::unique_ptr<ImageBuffer> ImageBuffer::create(const FloatSize& size, RenderingMode renderingMode, const GraphicsContext* targetContext, float resolutionScale, ColorSpace colorSpace, const HostWindow* hostWindow)
 {
     bool success = false;
-    std::unique_ptr<ImageBuffer> buffer(new ImageBuffer(size, resolutionScale, colorSpace, renderingMode, targetContext, success));
+    std::unique_ptr<ImageBuffer> buffer(new ImageBuffer(size, resolutionScale, colorSpace, renderingMode, hostWindow, targetContext, success));
     if (!success)
         return nullptr;
     return buffer;
@@ -196,6 +196,21 @@ bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D&, GC3Denum, Platform3D
 }
 #endif
 
+std::unique_ptr<ImageBuffer> ImageBuffer::copyRectToBuffer(const FloatRect& rect, ColorSpace colorSpace, const GraphicsContext& context)
+{
+    if (rect.isEmpty())
+        return nullptr;
+
+    IntSize scaledSize = ImageBuffer::compatibleBufferSize(rect.size(), context);
+
+    auto buffer = ImageBuffer::createCompatibleBuffer(scaledSize, 1, colorSpace, context);
+    if (!buffer)
+        return nullptr;
+
+    buffer->context().drawImageBuffer(*this, -rect.location());
+    return buffer;
+}
+
 std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, ColorSpace colorSpace, const GraphicsContext& context)
 {
     if (size.isEmpty())
@@ -214,7 +229,11 @@ std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize
 
 std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize& size, float resolutionScale, ColorSpace colorSpace, const GraphicsContext& context)
 {
+#if USE(DIRECT2D)
+    return create(size, context.renderingMode(), &context, resolutionScale, colorSpace);
+#else
     return create(size, context.renderingMode(), resolutionScale, colorSpace);
+#endif
 }
 
 IntSize ImageBuffer::compatibleBufferSize(const FloatSize& size, const GraphicsContext& context)

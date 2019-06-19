@@ -205,7 +205,7 @@ IDBError MemoryIDBBackingStore::clearObjectStore(const IDBResourceIdentifier& tr
 
     ASSERT_UNUSED(transactionIdentifier, m_transactions.contains(transactionIdentifier));
 
-#if !LOG_DISABLED
+#ifndef NDEBUG
     auto transaction = m_transactions.get(transactionIdentifier);
     ASSERT(transaction->isWriting());
 #endif
@@ -363,9 +363,11 @@ IDBError MemoryIDBBackingStore::getRecord(const IDBResourceIdentifier& transacti
         return IDBError { UnknownError, "No backing store object store found"_s };
 
     switch (type) {
-    case IDBGetRecordDataType::KeyAndValue:
-        outValue = objectStore->valueForKeyRange(range);
+    case IDBGetRecordDataType::KeyAndValue: {
+        auto key = objectStore->lowestKeyWithRecordInRange(range);
+        outValue = { key, key.isNull() ? ThreadSafeDataBuffer() : objectStore->valueForKey(key), objectStore->info().keyPath() };
         break;
+    }
     case IDBGetRecordDataType::KeyOnly:
         outValue = objectStore->lowestKeyWithRecordInRange(range);
         break;
@@ -555,8 +557,9 @@ void MemoryIDBBackingStore::registerObjectStore(Ref<MemoryObjectStore>&& objectS
     ASSERT(!m_objectStoresByIdentifier.contains(objectStore->info().identifier()));
     ASSERT(!m_objectStoresByName.contains(objectStore->info().name()));
 
+    auto identifier = objectStore->info().identifier();
     m_objectStoresByName.set(objectStore->info().name(), &objectStore.get());
-    m_objectStoresByIdentifier.set(objectStore->info().identifier(), WTFMove(objectStore));
+    m_objectStoresByIdentifier.set(identifier, WTFMove(objectStore));
 }
 
 void MemoryIDBBackingStore::unregisterObjectStore(MemoryObjectStore& objectStore)
@@ -589,6 +592,12 @@ IDBObjectStoreInfo* MemoryIDBBackingStore::infoForObjectStore(uint64_t objectSto
 void MemoryIDBBackingStore::deleteBackingStore()
 {
     // The in-memory IDB backing store doesn't need to do any cleanup when it is deleted.
+}
+
+uint64_t MemoryIDBBackingStore::databasesSizeForOrigin() const
+{
+    // FIXME: Implement this.
+    return 0;
 }
 
 } // namespace IDBServer

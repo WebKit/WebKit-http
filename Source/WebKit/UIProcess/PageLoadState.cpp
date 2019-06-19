@@ -172,6 +172,11 @@ bool PageLoadState::isLoading() const
     return isLoading(m_committedState);
 }
 
+bool PageLoadState::hasUncommittedLoad() const
+{
+    return isLoading(m_uncommittedState);
+}
+
 String PageLoadState::activeURL(const Data& data)
 {
     // If there is a currently pending URL, it is the active URL,
@@ -206,9 +211,9 @@ bool PageLoadState::hasOnlySecureContent(const Data& data)
         return false;
 
     if (data.state == State::Provisional)
-        return WebCore::protocolIs(data.provisionalURL, "https");
+        return WTF::protocolIs(data.provisionalURL, "https");
 
-    return WebCore::protocolIs(data.url, "https");
+    return WTF::protocolIs(data.url, "https");
 }
 
 bool PageLoadState::hasOnlySecureContent() const
@@ -244,6 +249,14 @@ void PageLoadState::clearPendingAPIRequestURL(const Transaction::Token& token)
 {
     ASSERT_UNUSED(token, &token.m_pageLoadState == this);
     m_uncommittedState.pendingAPIRequestURL = String();
+}
+
+void PageLoadState::didExplicitOpen(const Transaction::Token& token, const String& url)
+{
+    ASSERT_UNUSED(token, &token.m_pageLoadState == this);
+
+    m_uncommittedState.url = url;
+    m_uncommittedState.provisionalURL = String();
 }
 
 void PageLoadState::didStartProvisionalLoad(const Transaction::Token& token, const String& url, const String& unreachableURL)
@@ -405,6 +418,11 @@ bool PageLoadState::isLoading(const Data& data)
 
     ASSERT_NOT_REACHED();
     return false;
+}
+
+void PageLoadState::didSwapWebProcesses()
+{
+    callObserverCallback(&Observer::didSwapWebProcesses);
 }
 
 void PageLoadState::willChangeProcessIsResponsive()

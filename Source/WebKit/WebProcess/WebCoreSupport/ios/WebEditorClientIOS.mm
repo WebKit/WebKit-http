@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WebEditorClient.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "WebPage.h"
 #import <WebCore/DocumentFragment.h>
@@ -36,15 +36,21 @@
 namespace WebKit {
 using namespace WebCore;
     
-void WebEditorClient::handleKeyboardEvent(KeyboardEvent* event)
+void WebEditorClient::handleKeyboardEvent(KeyboardEvent& event)
 {
     if (m_page->handleEditingKeyboardEvent(event))
-        event->setDefaultHandled();
+        event.setDefaultHandled();
 }
 
-void WebEditorClient::handleInputMethodKeydown(KeyboardEvent* event)
+void WebEditorClient::handleInputMethodKeydown(KeyboardEvent& event)
 {
+#if USE(UIKIT_KEYBOARD_ADDITIONS)
+    if (event.handledByInputMethod())
+        event.setDefaultHandled();
+#else
     notImplemented();
+    UNUSED_PARAM(event);
+#endif
 }
 
 void WebEditorClient::setInsertionPasteboard(const String&)
@@ -86,11 +92,16 @@ bool WebEditorClient::performsTwoStepPaste(WebCore::DocumentFragment*)
     return false;
 }
 
+void WebEditorClient::updateStringForFind(const String& findString)
+{
+    m_page->updateStringForFind(findString);
+}
+
 void WebEditorClient::overflowScrollPositionChanged()
 {
-    m_page->didChangeSelection();
+    m_page->didChangeOverflowScrollPosition();
 }
 
 } // namespace WebKit
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

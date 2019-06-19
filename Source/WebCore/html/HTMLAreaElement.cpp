@@ -52,7 +52,7 @@ Ref<HTMLAreaElement> HTMLAreaElement::create(const QualifiedName& tagName, Docum
     return adoptRef(*new HTMLAreaElement(tagName, document));
 }
 
-void HTMLAreaElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLAreaElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == shapeAttr) {
         if (equalLettersIgnoringASCIICase(value, "default"))
@@ -69,7 +69,7 @@ void HTMLAreaElement::parseAttribute(const QualifiedName& name, const AtomicStri
     } else if (name == coordsAttr) {
         m_coords = parseHTMLListOfOfFloatingPointNumberValues(value.string());
         invalidateCachedRegion();
-    } else if (name == altAttr || name == accesskeyAttr) {
+    } else if (name == altAttr) {
         // Do nothing.
     } else
         HTMLAnchorElement::parseAttribute(name, value);

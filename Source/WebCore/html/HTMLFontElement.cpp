@@ -39,7 +39,6 @@ namespace WebCore {
 WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLFontElement);
 
 using namespace HTMLNames;
-using namespace WTF;
 
 HTMLFontElement::HTMLFontElement(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document)
@@ -187,7 +186,7 @@ bool HTMLFontElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLFontElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
+void HTMLFontElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomString& value, MutableStyleProperties& style)
 {
     if (name == sizeAttr) {
         CSSValueID size = CSSValueInvalid;

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WTF_WallTime_h
-#define WTF_WallTime_h
+#pragma once
 
 #include <wtf/ClockType.h>
 #include <wtf/Seconds.h>
@@ -56,6 +55,7 @@ public:
     WTF_EXPORT_PRIVATE static WallTime now();
     
     static constexpr WallTime infinity() { return fromRawSeconds(std::numeric_limits<double>::infinity()); }
+    static constexpr WallTime nan() { return fromRawSeconds(std::numeric_limits<double>::quiet_NaN()); }
     
     constexpr Seconds secondsSinceEpoch() const { return Seconds(m_value); }
     
@@ -132,6 +132,9 @@ public:
     {
         return *this;
     }
+
+    struct MarkableTraits;
+
 private:
     constexpr WallTime(double rawValue)
         : m_value(rawValue)
@@ -139,6 +142,18 @@ private:
     }
 
     double m_value { 0 };
+};
+
+struct WallTime::MarkableTraits {
+    static bool isEmptyValue(WallTime time)
+    {
+        return std::isnan(time.m_value);
+    }
+
+    static constexpr WallTime emptyValue()
+    {
+        return WallTime::nan();
+    }
 };
 
 WTF_EXPORT_PRIVATE void sleep(WallTime);
@@ -165,5 +180,3 @@ inline bool isfinite(WTF::WallTime time)
 } // namespace std
 
 using WTF::WallTime;
-
-#endif // WTF_WallTime_h

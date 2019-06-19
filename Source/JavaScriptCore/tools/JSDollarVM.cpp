@@ -57,7 +57,6 @@
 #endif
 
 using namespace JSC;
-using namespace WTF;
 
 namespace {
 
@@ -445,7 +444,7 @@ public:
             return true;
         }
 
-        std::optional<uint32_t> index = parseIndex(propertyName);
+        Optional<uint32_t> index = parseIndex(propertyName);
         if (index && index.value() < thisObject->getLength()) {
             slot.setValue(thisObject, PropertyAttribute::DontDelete | PropertyAttribute::DontEnum, jsNumber(thisObject->m_vector[index.value()]));
             return true;
@@ -1151,14 +1150,12 @@ EncodedJSValue JSC_HOST_CALL functionWasmStreamingParserAddBytes(ExecState* exec
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(exec->vm());
     auto* thisObject = jsDynamicCast<WasmStreamingParser*>(vm, exec->thisValue());
-    if (!thisObject) {
-        scope.release();
-        return JSValue::encode(jsBoolean(false));
-    }
+    if (!thisObject)
+        RELEASE_AND_RETURN(scope, JSValue::encode(jsBoolean(false)));
+
     auto data = getWasmBufferFromValue(exec, exec->argument(0));
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    scope.release();
-    return JSValue::encode(jsNumber(static_cast<int32_t>(thisObject->streamingParser().addBytes(bitwise_cast<const uint8_t*>(data.first), data.second))));
+    RELEASE_AND_RETURN(scope, JSValue::encode(jsNumber(static_cast<int32_t>(thisObject->streamingParser().addBytes(bitwise_cast<const uint8_t*>(data.first), data.second)))));
 }
 
 EncodedJSValue JSC_HOST_CALL functionWasmStreamingParserFinalize(ExecState* exec)
@@ -1303,7 +1300,7 @@ class CallerFrameJITTypeFunctor {
 public:
     CallerFrameJITTypeFunctor()
         : m_currentFrame(0)
-        , m_jitType(JITCode::None)
+        , m_jitType(JITType::None)
     {
     }
 
@@ -1316,11 +1313,11 @@ public:
         return StackVisitor::Continue;
     }
     
-    JITCode::JITType jitType() { return m_jitType; }
+    JITType jitType() { return m_jitType; }
 
 private:
     mutable unsigned m_currentFrame;
-    mutable JITCode::JITType m_jitType;
+    mutable JITType m_jitType;
 };
 
 static FunctionExecutable* getExecutableForFunction(JSValue theFunctionValue)
@@ -1347,7 +1344,7 @@ static EncodedJSValue JSC_HOST_CALL functionLLintTrue(ExecState* exec)
         return JSValue::encode(jsUndefined());
     CallerFrameJITTypeFunctor functor;
     exec->iterate(functor);
-    return JSValue::encode(jsBoolean(functor.jitType() == JITCode::InterpreterThunk));
+    return JSValue::encode(jsBoolean(functor.jitType() == JITType::InterpreterThunk));
 }
 
 // Returns true if the current frame is a baseline JIT frame.
@@ -1358,7 +1355,7 @@ static EncodedJSValue JSC_HOST_CALL functionJITTrue(ExecState* exec)
         return JSValue::encode(jsUndefined());
     CallerFrameJITTypeFunctor functor;
     exec->iterate(functor);
-    return JSValue::encode(jsBoolean(functor.jitType() == JITCode::BaselineJIT));
+    return JSValue::encode(jsBoolean(functor.jitType() == JITType::BaselineJIT));
 }
 
 // Set that the argument function should not be inlined.
@@ -1464,7 +1461,7 @@ static CodeBlock* codeBlockFromArg(ExecState* exec)
             else
                 candidateCodeBlock = func->jsExecutable()->eitherCodeBlock();
         } else
-            candidateCodeBlock = reinterpret_cast<CodeBlock*>(value.asCell());
+            candidateCodeBlock = static_cast<CodeBlock*>(value.asCell());
     }
 
     if (candidateCodeBlock && VMInspector::isValidCodeBlock(exec, candidateCodeBlock))
@@ -1653,6 +1650,57 @@ static EncodedJSValue JSC_HOST_CALL functionGetPID(ExecState*)
     return JSValue::encode(jsNumber(getCurrentProcessID()));
 }
 
+// Make the globalObject have a bad time. Does nothing if the object is not a JSGlobalObject.
+// Usage: $vm.haveABadTime(globalObject)
+static EncodedJSValue JSC_HOST_CALL functionHaveABadTime(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    JSValue objValue = exec->argument(0);
+    if (!objValue.isObject())
+        return JSValue::encode(jsBoolean(false));
+
+    JSObject* obj = asObject(objValue.asCell());
+    JSGlobalObject* globalObject = jsDynamicCast<JSGlobalObject*>(vm, obj);
+    if (!globalObject)
+        JSValue::encode(jsBoolean(false));
+
+    globalObject->haveABadTime(vm);
+    return JSValue::encode(jsBoolean(true));
+}
+
+// Checks if the object (or its global if the object is not a global) is having a bad time.
+// Usage: $vm.isHavingABadTime(obj)
+static EncodedJSValue JSC_HOST_CALL functionIsHavingABadTime(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    JSValue objValue = exec->argument(0);
+    if (!objValue.isObject())
+        return JSValue::encode(jsUndefined());
+
+    JSObject* obj = asObject(objValue.asCell());
+    JSGlobalObject* globalObject = jsDynamicCast<JSGlobalObject*>(vm, obj);
+    if (globalObject)
+        JSValue::encode(jsBoolean(globalObject->isHavingABadTime()));
+
+    globalObject = obj->globalObject();
+    if (!globalObject)
+        return JSValue::encode(jsUndefined());
+
+    return JSValue::encode(jsBoolean(globalObject->isHavingABadTime()));
+}
+
+// Creates a new global object.
+// Usage: $vm.createGlobalObject()
+static EncodedJSValue JSC_HOST_CALL functionCreateGlobalObject(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    JSGlobalObject* globalObject = JSGlobalObject::create(vm, JSGlobalObject::createStructure(vm, jsNull()));
+    return JSValue::encode(globalObject);
+}
+
 static EncodedJSValue JSC_HOST_CALL functionCreateProxy(ExecState* exec)
 {
     VM& vm = exec->vm();
@@ -1671,6 +1719,13 @@ static EncodedJSValue JSC_HOST_CALL functionCreateRuntimeArray(ExecState* exec)
     JSLockHolder lock(exec);
     RuntimeArray* array = RuntimeArray::create(exec);
     return JSValue::encode(array);
+}
+
+static EncodedJSValue JSC_HOST_CALL functionCreateNullRopeString(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    return JSValue::encode(JSRopeString::createNullForTesting(vm));
 }
 
 static EncodedJSValue JSC_HOST_CALL functionCreateImpureGetter(ExecState* exec)
@@ -1791,7 +1846,7 @@ static EncodedJSValue JSC_HOST_CALL functionCreateBuiltin(ExecState* exec)
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     const SourceCode& source = makeSource(functionText, { });
-    JSFunction* func = JSFunction::create(vm, createBuiltinExecutable(vm, source, Identifier::fromString(&vm, "foo"), ConstructorKind::None, ConstructAbility::CannotConstruct)->link(vm, source), exec->lexicalGlobalObject());
+    JSFunction* func = JSFunction::create(vm, createBuiltinExecutable(vm, source, Identifier::fromString(&vm, "foo"), ConstructorKind::None, ConstructAbility::CannotConstruct)->link(vm, nullptr, source), exec->lexicalGlobalObject());
 
     return JSValue::encode(func);
 }
@@ -1806,12 +1861,11 @@ static EncodedJSValue JSC_HOST_CALL functionGetPrivateProperty(ExecState* exec)
 
     String str = asString(exec->argument(1))->value(exec);
 
-    const Identifier* ident = vm.propertyNames->lookUpPrivateName(Identifier::fromString(exec, str));
-    if (!ident)
+    SymbolImpl* symbol = vm.propertyNames->lookUpPrivateName(Identifier::fromString(exec, str));
+    if (!symbol)
         return throwVMError(exec, scope, "Unknown private name.");
 
-    scope.release();
-    return JSValue::encode(exec->argument(0).get(exec, *ident));
+    RELEASE_AND_RETURN(scope, JSValue::encode(exec->argument(0).get(exec, symbol)));
 }
 
 static EncodedJSValue JSC_HOST_CALL functionCreateRoot(ExecState* exec)
@@ -1884,7 +1938,25 @@ static EncodedJSValue JSC_HOST_CALL functionSetHiddenValue(ExecState* exec)
 static EncodedJSValue JSC_HOST_CALL functionShadowChickenFunctionsOnStack(ExecState* exec)
 {
     VM& vm = exec->vm();
-    return JSValue::encode(vm.shadowChicken().functionsOnStack(exec));
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    if (auto* shadowChicken = vm.shadowChicken()) {
+        scope.release();
+        return JSValue::encode(shadowChicken->functionsOnStack(exec));
+    }
+
+    JSArray* result = constructEmptyArray(exec, 0);
+    RETURN_IF_EXCEPTION(scope, { });
+    StackVisitor::visit(exec, &vm, [&] (StackVisitor& visitor) -> StackVisitor::Status {
+        if (visitor->isInlinedFrame())
+            return StackVisitor::Continue;
+        if (visitor->isWasmFrame())
+            return StackVisitor::Continue;
+        result->push(exec, jsCast<JSObject*>(visitor->callee().asCell()));
+        scope.releaseAssertNoException(); // This function is only called from tests.
+        return StackVisitor::Continue;
+    });
+    RETURN_IF_EXCEPTION(scope, { });
+    return JSValue::encode(result);
 }
 
 static EncodedJSValue JSC_HOST_CALL functionSetGlobalConstRedeclarationShouldNotThrow(ExecState* exec)
@@ -1898,7 +1970,7 @@ static EncodedJSValue JSC_HOST_CALL functionFindTypeForExpression(ExecState* exe
 {
     VM& vm = exec->vm();
     RELEASE_ASSERT(vm.typeProfiler());
-    vm.typeProfilerLog()->processLogEntries("jsc Testing API: functionFindTypeForExpression"_s);
+    vm.typeProfilerLog()->processLogEntries(vm, "jsc Testing API: functionFindTypeForExpression"_s);
 
     JSValue functionValue = exec->argument(0);
     RELEASE_ASSERT(functionValue.isFunction(vm));
@@ -1917,13 +1989,13 @@ static EncodedJSValue JSC_HOST_CALL functionReturnTypeFor(ExecState* exec)
 {
     VM& vm = exec->vm();
     RELEASE_ASSERT(vm.typeProfiler());
-    vm.typeProfilerLog()->processLogEntries("jsc Testing API: functionReturnTypeFor"_s);
+    vm.typeProfilerLog()->processLogEntries(vm, "jsc Testing API: functionReturnTypeFor"_s);
 
     JSValue functionValue = exec->argument(0);
     RELEASE_ASSERT(functionValue.isFunction(vm));
     FunctionExecutable* executable = (jsDynamicCast<JSFunction*>(vm, functionValue.asCell()->getObject()))->jsExecutable();
 
-    unsigned offset = executable->typeProfilingStartOffset();
+    unsigned offset = executable->typeProfilingStartOffset(vm);
     String jsonString = vm.typeProfiler()->typeInformationForExpressionAtOffset(TypeProfilerSearchDescriptorFunctionReturn, offset, executable->sourceID(), vm);
     return JSValue::encode(JSONParse(exec, jsonString));
 }
@@ -1989,9 +2061,9 @@ static EncodedJSValue JSC_HOST_CALL functionEnableExceptionFuzz(ExecState*)
     return JSValue::encode(jsUndefined());
 }
 
-static EncodedJSValue changeDebuggerModeWhenIdle(ExecState* exec, DebuggerMode mode)
+static EncodedJSValue changeDebuggerModeWhenIdle(ExecState* exec, OptionSet<CodeGenerationMode> codeGenerationMode)
 {
-    bool newDebuggerMode = (mode == DebuggerOn);
+    bool newDebuggerMode = codeGenerationMode.contains(CodeGenerationMode::Debugger);
     if (Options::forceDebuggerBytecodeGeneration() == newDebuggerMode)
         return JSValue::encode(jsUndefined());
 
@@ -1999,18 +2071,29 @@ static EncodedJSValue changeDebuggerModeWhenIdle(ExecState* exec, DebuggerMode m
     vm->whenIdle([=] () {
         Options::forceDebuggerBytecodeGeneration() = newDebuggerMode;
         vm->deleteAllCode(PreventCollectionAndDeleteAllCode);
+        if (newDebuggerMode)
+            vm->ensureShadowChicken();
     });
     return JSValue::encode(jsUndefined());
 }
 
 static EncodedJSValue JSC_HOST_CALL functionEnableDebuggerModeWhenIdle(ExecState* exec)
 {
-    return changeDebuggerModeWhenIdle(exec, DebuggerOn);
+    return changeDebuggerModeWhenIdle(exec, { CodeGenerationMode::Debugger });
 }
 
 static EncodedJSValue JSC_HOST_CALL functionDisableDebuggerModeWhenIdle(ExecState* exec)
 {
-    return changeDebuggerModeWhenIdle(exec, DebuggerOff);
+    return changeDebuggerModeWhenIdle(exec, { });
+}
+
+static EncodedJSValue JSC_HOST_CALL functionDeleteAllCodeWhenIdle(ExecState* exec)
+{
+    VM* vm = &exec->vm();
+    vm->whenIdle([=] () {
+        vm->deleteAllCode(PreventCollectionAndDeleteAllCode);
+    });
+    return JSValue::encode(jsUndefined());
 }
 
 static EncodedJSValue JSC_HOST_CALL functionGlobalObjectCount(ExecState* exec)
@@ -2029,6 +2112,9 @@ static EncodedJSValue JSC_HOST_CALL functionGlobalObjectForObject(ExecState* exe
 
 static EncodedJSValue JSC_HOST_CALL functionGetGetterSetter(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue value = exec->argument(0);
     if (!value.isObject())
         return JSValue::encode(jsUndefined());
@@ -2037,8 +2123,12 @@ static EncodedJSValue JSC_HOST_CALL functionGetGetterSetter(ExecState* exec)
     if (!property.isString())
         return JSValue::encode(jsUndefined());
 
+    auto propertyName = asString(property)->toIdentifier(exec);
+    RETURN_IF_EXCEPTION(scope, { });
+
     PropertySlot slot(value, PropertySlot::InternalMethodType::VMInquiry);
-    value.getPropertySlot(exec, asString(property)->toIdentifier(exec), slot);
+    value.getPropertySlot(exec, propertyName, slot);
+    RETURN_IF_EXCEPTION(scope, { });
 
     JSValue result;
     if (slot.isCacheableGetter())
@@ -2147,8 +2237,13 @@ void JSDollarVM::finishCreation(VM& vm)
     addFunction(vm, "value", functionValue, 1);
     addFunction(vm, "getpid", functionGetPID, 0);
 
+    addFunction(vm, "haveABadTime", functionHaveABadTime, 1);
+    addFunction(vm, "isHavingABadTime", functionIsHavingABadTime, 1);
+
+    addFunction(vm, "createGlobalObject", functionCreateGlobalObject, 0);
     addFunction(vm, "createProxy", functionCreateProxy, 1);
     addFunction(vm, "createRuntimeArray", functionCreateRuntimeArray, 0);
+    addFunction(vm, "createNullRopeString", functionCreateNullRopeString, 0);
 
     addFunction(vm, "createImpureGetter", functionCreateImpureGetter, 1);
     addFunction(vm, "createCustomGetterObject", functionCreateCustomGetterObject, 0);
@@ -2189,6 +2284,8 @@ void JSDollarVM::finishCreation(VM& vm)
 
     addFunction(vm, "enableDebuggerModeWhenIdle", functionEnableDebuggerModeWhenIdle, 0);
     addFunction(vm, "disableDebuggerModeWhenIdle", functionDisableDebuggerModeWhenIdle, 0);
+
+    addFunction(vm, "deleteAllCodeWhenIdle", functionDeleteAllCodeWhenIdle, 0);
 
     addFunction(vm, "globalObjectCount", functionGlobalObjectCount, 0);
     addFunction(vm, "globalObjectForObject", functionGlobalObjectForObject, 1);

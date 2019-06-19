@@ -43,10 +43,10 @@
     color: hsla(0, 0%, 0%, 0.7);
 }
 
-.tree-outline:matches(:focus, .force-focus) .item.selected .alternate-subtitle {
+.tree-outline:focus .item.selected .alternate-subtitle {
     color: hsla(0, 0%, 100%, 0.9);
 }
 
 .tree-outline .item.small:not(.two-line) .alternate-subtitle::before {
-    content: " — ";
+    content: "\00A0\2014\00A0"; /* &nbsp;&mdash;&nbsp; */;
 }

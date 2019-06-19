@@ -33,11 +33,11 @@
 
 #include "FloatRect.h"
 #include "FontCache.h"
+#include "FontCascade.h"
 #include "FontDescription.h"
 #include "GlyphPage.h"
 #include "HWndDC.h"
 #include "OpenTypeCG.h"
-#include <WebKitSystemInterface/WebKitSystemInterface.h>
 #include <mlang.h>
 #include <pal/spi/win/CoreTextSPIWin.h>
 #include <unicode/uchar.h>
@@ -48,8 +48,6 @@
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
-
-using namespace std;
 
 void Font::platformInit()
 {
@@ -147,9 +145,24 @@ float Font::platformWidthForGlyph(Glyph glyph) const
     CGAffineTransform m = CGAffineTransformMakeScale(pointSize, pointSize);
  
     bool isPrinterFont = false;
-    wkGetGlyphAdvances(font, m, m_platformData.isSystemFont(), isPrinterFont, glyph, advance);
+    FontCascade::getPlatformGlyphAdvances(font, m, m_platformData.isSystemFont(), isPrinterFont, glyph, advance);
 
     return advance.width + m_syntheticBoldOffset;
+}
+
+Path Font::platformPathForGlyph(Glyph glyph) const
+{
+    auto ctFont = adoptCF(CTFontCreateWithGraphicsFont(platformData().cgFont(), platformData().size(), nullptr, nullptr));
+    auto result = adoptCF(CTFontCreatePathForGlyph(ctFont.get(), glyph, nullptr));
+    auto syntheticBoldOffset = this->syntheticBoldOffset();
+    if (syntheticBoldOffset) {
+        auto newPath = adoptCF(CGPathCreateMutable());
+        CGPathAddPath(newPath.get(), nullptr, result.get());
+        auto translation = CGAffineTransformMakeTranslation(syntheticBoldOffset, 0);
+        CGPathAddPath(newPath.get(), &translation, result.get());
+        return newPath;
+    }
+    return adoptCF(CGPathCreateMutableCopy(result.get()));
 }
 
 }

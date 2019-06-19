@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -58,7 +58,7 @@ FunctionConstructor::FunctionConstructor(VM& vm, Structure* structure)
 
 void FunctionConstructor::finishCreation(VM& vm, FunctionPrototype* functionPrototype)
 {
-    Base::finishCreation(vm, functionPrototype->classInfo()->className);
+    Base::finishCreation(vm, vm.propertyNames->Function.string(), NameVisibility::Visible, NameAdditionMode::WithoutStructureTransition);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, functionPrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
@@ -69,10 +69,11 @@ JSObject* constructFunction(ExecState* exec, JSGlobalObject* globalObject, const
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    if (!globalObject->evalEnabled())
-        return throwException(exec, scope, createEvalError(exec, globalObject->evalDisabledErrorMessage()));
-    scope.release();
-    return constructFunctionSkippingEvalEnabledCheck(exec, globalObject, args, functionName, sourceOrigin, sourceURL, position, -1, functionConstructionMode, newTarget);
+    if (UNLIKELY(!globalObject->evalEnabled())) {
+        throwException(exec, scope, createEvalError(exec, globalObject->evalDisabledErrorMessage()));
+        return nullptr;
+    }
+    RELEASE_AND_RETURN(scope, constructFunctionSkippingEvalEnabledCheck(exec, globalObject, args, functionName, sourceOrigin, sourceURL, position, -1, functionConstructionMode, newTarget));
 }
 
 JSObject* constructFunctionSkippingEvalEnabledCheck(
@@ -95,81 +96,61 @@ JSObject* constructFunctionSkippingEvalEnabledCheck(
         prefix = "async function ";
         break;
     case FunctionConstructionMode::AsyncGenerator:
-        prefix = "{async function*";
+        prefix = "async function*";
         break;
     }
-
-    auto checkBody = [&] (const String& body) {
-        // The spec mandates that the body parses a valid function body independent
-        // of the parameters.
-        String program = makeString("(", prefix, "(){\n", body, "\n})");
-        SourceCode source = makeSource(program, sourceOrigin, sourceURL, position);
-        JSValue exception;
-        checkSyntax(exec, source, &exception);
-        if (exception) {
-            scope.throwException(exec, exception);
-            return;
-        }
-    };
 
     // How we stringify functions is sometimes important for web compatibility.
     // See https://bugs.webkit.org/show_bug.cgi?id=24350.
     String program;
+    Optional<int> functionConstructorParametersEndPosition = WTF::nullopt;
     if (args.isEmpty())
-        program = makeString("{", prefix, functionName.string(), "() {\n\n}}");
+        program = makeString(prefix, functionName.string(), "() {\n\n}");
     else if (args.size() == 1) {
         auto body = args.at(0).toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, nullptr);
-        checkBody(body);
-        RETURN_IF_EXCEPTION(scope, nullptr);
-        program = makeString("{", prefix, functionName.string(), "() {\n", body, "\n}}");
+        program = makeString(prefix, functionName.string(), "() {\n", body, "\n}");
     } else {
-        StringBuilder builder;
-        builder.append('{');
+        StringBuilder builder(StringBuilder::OverflowHandler::RecordOverflow);
         builder.append(prefix);
         builder.append(functionName.string());
+
         builder.append('(');
-        StringBuilder parameterBuilder;
         auto viewWithString = args.at(0).toString(exec)->viewWithUnderlyingString(exec);
         RETURN_IF_EXCEPTION(scope, nullptr);
-        parameterBuilder.append(viewWithString.view);
-        for (size_t i = 1; i < args.size() - 1; i++) {
-            parameterBuilder.appendLiteral(", ");
+        builder.append(viewWithString.view);
+        for (size_t i = 1; !builder.hasOverflowed() && i < args.size() - 1; i++) {
+            builder.appendLiteral(", ");
             auto viewWithString = args.at(i).toString(exec)->viewWithUnderlyingString(exec);
             RETURN_IF_EXCEPTION(scope, nullptr);
-            parameterBuilder.append(viewWithString.view);
+            builder.append(viewWithString.view);
         }
-        auto body = args.at(args.size() - 1).toWTFString(exec);
-        RETURN_IF_EXCEPTION(scope, nullptr);
-
-        {
-            // The spec mandates that the parameters parse as a valid parameter list
-            // independent of the function body.
-            String program = makeString("(", prefix, "(", parameterBuilder.toString(), "){\n\n})");
-            SourceCode source = makeSource(program, sourceOrigin, sourceURL, position);
-            JSValue exception;
-            checkSyntax(exec, source, &exception);
-            if (exception) {
-                scope.throwException(exec, exception);
-                return nullptr;
-            }
+        if (builder.hasOverflowed()) {
+            throwOutOfMemoryError(exec, scope);
+            return nullptr;
         }
 
-        builder.append(parameterBuilder);
+        functionConstructorParametersEndPosition = builder.length() + 1;
         builder.appendLiteral(") {\n");
-        checkBody(body);
+
+        auto body = args.at(args.size() - 1).toString(exec)->viewWithUnderlyingString(exec);
         RETURN_IF_EXCEPTION(scope, nullptr);
-        builder.append(body);
-        builder.appendLiteral("\n}}");
+        builder.append(body.view);
+        builder.appendLiteral("\n}");
+        if (builder.hasOverflowed()) {
+            throwOutOfMemoryError(exec, scope);
+            return nullptr;
+        }
         program = builder.toString();
     }
 
-    SourceCode source = makeSource(program, sourceOrigin, sourceURL, position);
+    SourceCode source = makeSource(program, sourceOrigin, URL({ }, sourceURL), position);
     JSObject* exception = nullptr;
-    FunctionExecutable* function = FunctionExecutable::fromGlobalCode(functionName, *exec, source, exception, overrideLineNumber);
-    if (!function) {
+    FunctionExecutable* function = FunctionExecutable::fromGlobalCode(functionName, *exec, source, exception, overrideLineNumber, functionConstructorParametersEndPosition);
+    if (UNLIKELY(!function)) {
         ASSERT(exception);
-        return throwException(exec, scope, exception);
+        throwException(exec, scope, exception);
+        return nullptr;
     }
 
     Structure* structure = nullptr;

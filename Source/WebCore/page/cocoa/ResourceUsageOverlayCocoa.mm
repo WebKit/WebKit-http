@@ -41,6 +41,7 @@
 #include <wtf/MathExtras.h>
 #include <wtf/MemoryFootprint.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 using WebCore::ResourceUsageOverlay;
 @interface WebOverlayLayer : CALayer {
@@ -229,7 +230,7 @@ void ResourceUsageOverlay::platformInitialize()
 
     overlay().layer().setContentsToPlatformLayer(m_layer.get(), GraphicsLayer::ContentsLayerPurpose::None);
 
-    ResourceUsageThread::addObserver(this, [this] (const ResourceUsageData& data) {
+    ResourceUsageThread::addObserver(this, All, [this] (const ResourceUsageData& data) {
         appendDataToHistory(data);
 
         // FIXME: It shouldn't be necessary to update the bounds on every single thread loop iteration,
@@ -257,7 +258,7 @@ static void showText(CGContextRef context, float x, float y, CGColorRef color, c
     CGContextSetFillColorWithColor(context, color);
 
     auto matrix = CGAffineTransformMakeScale(1, -1);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     CFStringRef fontName = CFSTR("Courier");
     CGFloat fontSize = 10;
 #else
@@ -426,19 +427,19 @@ static void drawMemoryPie(CGContextRef context, FloatRect& rect, HistoricResourc
 static String formatByteNumber(size_t number)
 {
     if (number >= 1024 * 1048576)
-        return String::format("%.3f GB", static_cast<double>(number) / (1024 * 1048576));
+        return makeString(FormattedNumber::fixedWidth(number / (1024. * 1048576), 3), " GB");
     if (number >= 1048576)
-        return String::format("%.2f MB", static_cast<double>(number) / 1048576);
+        return makeString(FormattedNumber::fixedWidth(number / 1048576., 2), " MB");
     if (number >= 1024)
-        return String::format("%.1f kB", static_cast<double>(number) / 1024);
-    return String::format("%lu", number);
+        return makeString(FormattedNumber::fixedWidth(number / 1024, 1), " kB");
+    return String::number(number);
 }
 
 static String gcTimerString(MonotonicTime timerFireDate, MonotonicTime now)
 {
     if (std::isnan(timerFireDate))
         return "[not scheduled]"_s;
-    return String::format("%g", (timerFireDate - now).seconds());
+    return String::numberToStringFixedPrecision((timerFireDate - now).seconds());
 }
 
 void ResourceUsageOverlay::platformDraw(CGContextRef context)
@@ -457,7 +458,7 @@ void ResourceUsageOverlay::platformDraw(CGContextRef context)
     CGContextClearRect(context, viewBounds);
 
     static CGColorRef colorForLabels = createColor(0.9, 0.9, 0.9, 1);
-    showText(context, 10, 20, colorForLabels, String::format("        CPU: %g", data.cpu.last()));
+    showText(context, 10, 20, colorForLabels, makeString("        CPU: ", FormattedNumber::fixedPrecision(data.cpu.last(), 6, KeepTrailingZeros)));
     showText(context, 10, 30, colorForLabels, "  Footprint: " + formatByteNumber(memoryFootprint()));
     showText(context, 10, 40, colorForLabels, "   External: " + formatByteNumber(data.totalExternalSize.last()));
 
@@ -467,11 +468,11 @@ void ResourceUsageOverlay::platformDraw(CGContextRef context)
         size_t reclaimable = category.reclaimableSize.last();
         size_t external = category.externalSize.last();
         
-        String label = String::format("% 11s: %s", category.name.ascii().data(), formatByteNumber(dirty).ascii().data());
+        String label = makeString(pad(' ', 11, category.name), ": ", formatByteNumber(dirty));
         if (external)
-            label = label + String::format(" + %s", formatByteNumber(external).ascii().data());
+            label = label + makeString(" + ", formatByteNumber(external));
         if (reclaimable)
-            label = label + String::format(" [%s]", formatByteNumber(reclaimable).ascii().data());
+            label = label + makeString(" [", formatByteNumber(reclaimable), ']');
 
         // FIXME: Show size/capacity of GC heap.
         showText(context, 10, y, category.color.get(), label);
@@ -480,8 +481,8 @@ void ResourceUsageOverlay::platformDraw(CGContextRef context)
     y -= 5;
 
     MonotonicTime now = MonotonicTime::now();
-    showText(context, 10, y + 10, colorForLabels, String::format("    Eden GC: %s", gcTimerString(data.timeOfNextEdenCollection, now).ascii().data()));
-    showText(context, 10, y + 20, colorForLabels, String::format("    Full GC: %s", gcTimerString(data.timeOfNextFullCollection, now).ascii().data()));
+    showText(context, 10, y + 10, colorForLabels, "    Eden GC: " + gcTimerString(data.timeOfNextEdenCollection, now));
+    showText(context, 10, y + 20, colorForLabels, "    Full GC: " + gcTimerString(data.timeOfNextFullCollection, now));
 
     drawCpuHistory(context, viewBounds.size.width - 70, 0, viewBounds.size.height, data.cpu);
     drawGCHistory(context, viewBounds.size.width - 140, 0, viewBounds.size.height, data.gcHeapSize, data.categories[MemoryCategory::GCHeap].dirtySize);

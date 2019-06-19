@@ -28,7 +28,8 @@
 #include "CachedFontClient.h"
 #include "CachedResourceHandle.h"
 #include <JavaScriptCore/ArrayBufferView.h>
-#include <wtf/text/AtomicString.h>
+#include <wtf/WeakPtr.h>
+#include <wtf/text/AtomString.h>
 
 namespace WebCore {
 
@@ -64,7 +65,7 @@ public:
     };
     Status status() const { return m_status; }
 
-    const AtomicString& familyNameOrURI() const { return m_familyNameOrURI; }
+    const AtomString& familyNameOrURI() const { return m_familyNameOrURI; }
 
     void opportunisticallyStartFontDataURLLoading(CSSFontSelector&);
 
@@ -84,7 +85,7 @@ private:
 
     void setStatus(Status);
 
-    AtomicString m_familyNameOrURI; // URI for remote, built-in font name for local.
+    AtomString m_familyNameOrURI; // URI for remote, built-in font name for local.
     CachedResourceHandle<CachedFont> m_font; // For remote fonts, a pointer to our cached resource.
     CSSFontFace& m_face; // Our owning font face.
 
@@ -93,11 +94,14 @@ private:
     std::unique_ptr<FontCustomPlatformData> m_immediateFontCustomPlatformData;
 
 #if ENABLE(SVG_FONTS)
-    RefPtr<SVGFontFaceElement> m_svgFontFaceElement;
+    WeakPtr<SVGFontFaceElement> m_svgFontFaceElement;
 #endif
     std::unique_ptr<FontCustomPlatformData> m_inDocumentCustomPlatformData;
 
     Status m_status { Status::Pending };
+#if ENABLE(SVG_FONTS)
+    bool m_hasSVGFontFaceElement;
+#endif
 };
 
 } // namespace WebCore

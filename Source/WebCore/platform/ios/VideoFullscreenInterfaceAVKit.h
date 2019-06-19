@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
 
 #pragma once
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #include "EventListener.h"
 #include "HTMLMediaElementEnums.h"
@@ -57,7 +57,7 @@ class IntRect;
 class FloatSize;
 class VideoFullscreenModel;
 class VideoFullscreenChangeObserver;
-    
+
 class VideoFullscreenInterfaceAVKit final
     : public VideoFullscreenModelClient
     , public PlaybackSessionModelClient
@@ -86,10 +86,8 @@ public:
     WEBCORE_EXPORT void requestHideAndExitFullscreen();
     WEBCORE_EXPORT void preparedToReturnToInline(bool visible, const IntRect& inlineRect);
     WEBCORE_EXPORT void preparedToExitFullscreen();
-#if ENABLE(FULLSCREEN_API)
     WEBCORE_EXPORT void setHasVideoContentLayer(bool);
     WEBCORE_EXPORT void setInlineRect(const IntRect&, bool visible);
-#endif
 
     enum class ExitFullScreenReason {
         DoneButtonTapped,
@@ -127,11 +125,9 @@ public:
     };
 
     Mode m_currentMode;
-#if ENABLE(FULLSCREEN_API)
     Mode m_targetMode;
-#endif
 
-    VideoFullscreenModel* videoFullscreenModel() const { return m_videoFullscreenModel; }
+    VideoFullscreenModel* videoFullscreenModel() const { return m_videoFullscreenModel.get(); }
     bool shouldExitFullscreenWithReason(ExitFullScreenReason);
     HTMLMediaElementEnums::VideoFullscreenMode mode() const { return m_currentMode.mode(); }
     bool allowsPictureInPicturePlayback() const { return m_allowsPictureInPicturePlayback; }
@@ -146,17 +142,15 @@ public:
     void willStopPictureInPicture();
     void didStopPictureInPicture();
     void prepareForPictureInPictureStopWithCompletionHandler(void (^)(BOOL));
-#if ENABLE(FULLSCREEN_API)
     void exitFullscreenHandler(BOOL success, NSError *);
     void enterFullscreenHandler(BOOL success, NSError *);
-#endif
     bool isPlayingVideoInEnhancedFullscreen() const;
 
     WEBCORE_EXPORT void setMode(HTMLMediaElementEnums::VideoFullscreenMode);
     void clearMode(HTMLMediaElementEnums::VideoFullscreenMode);
     bool hasMode(HTMLMediaElementEnums::VideoFullscreenMode mode) const { return m_currentMode.hasMode(mode); }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     UIViewController *presentingViewController();
     UIViewController *fullscreenViewController() const { return m_viewController.get(); }
     WebAVPlayerLayerView* playerLayerView() const { return m_playerLayerView.get(); }
@@ -166,15 +160,10 @@ public:
 protected:
     WEBCORE_EXPORT VideoFullscreenInterfaceAVKit(PlaybackSessionInterfaceAVKit&);
 
-#if ENABLE(FULLSCREEN_API)
     void doSetup();
     void finalizeSetup();
     void doExitFullscreen();
     void returnToStandby();
-#else
-    void enterPictureInPicture();
-    void enterFullscreenStandard();
-#endif
     void doEnterFullscreen();
     void watchdogTimerFired();
     WebAVPlayerController *playerController() const;
@@ -182,8 +171,8 @@ protected:
     Ref<PlaybackSessionInterfaceAVKit> m_playbackSessionInterface;
     RetainPtr<WebAVPlayerViewControllerDelegate> m_playerViewControllerDelegate;
     RetainPtr<WebAVPlayerViewController> m_playerViewController;
-    VideoFullscreenModel* m_videoFullscreenModel { nullptr };
-    VideoFullscreenChangeObserver* m_fullscreenChangeObserver { nullptr };
+    WeakPtr<VideoFullscreenModel> m_videoFullscreenModel;
+    WeakPtr<VideoFullscreenChangeObserver> m_fullscreenChangeObserver;
 
     // These are only used when fullscreen is presented in a separate window.
     RetainPtr<UIWindow> m_window;
@@ -195,12 +184,13 @@ protected:
     WTF::Function<void(bool)> m_prepareToInlineCallback;
     RunLoop::Timer<VideoFullscreenInterfaceAVKit> m_watchdogTimer;
     FloatRect m_inlineRect;
+    RouteSharingPolicy m_routeSharingPolicy { RouteSharingPolicy::Default };
+    String m_routingContextUID;
     bool m_allowsPictureInPicturePlayback { false };
     bool m_wirelessVideoPlaybackDisabled { true };
     bool m_shouldReturnToFullscreenWhenStoppingPiP { false };
     bool m_restoringFullscreenForPictureInPictureStop { false };
 
-#if ENABLE(FULLSCREEN_API)
     bool m_setupNeedsInlineRect { false };
     bool m_exitFullscreenNeedInlineRect { false };
 
@@ -225,16 +215,11 @@ protected:
     bool m_inlineIsVisible { false };
     bool m_standby { false };
     bool m_targetStandby { false };
-#else
-    bool m_exitRequested { false };
-    bool m_exitCompleted { false };
-    bool m_enterRequested { false };
-    bool m_shouldReturnToFullscreenAfterEnteringForeground { false };
+
     bool m_waitingForPreparedToExit { false };
-#endif
 };
 
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 

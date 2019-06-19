@@ -49,7 +49,6 @@ class TransformState;
 
 class GraphicsLayerCA : public GraphicsLayer, public PlatformCALayerClient {
 public:
-
     WEBCORE_EXPORT explicit GraphicsLayerCA(Type, GraphicsLayerClient&);
     WEBCORE_EXPORT virtual ~GraphicsLayerCA();
 
@@ -62,16 +61,16 @@ public:
     WEBCORE_EXPORT PlatformLayer* platformLayer() const override;
     PlatformCALayer* platformCALayer() const { return primaryLayer(); }
 
-    WEBCORE_EXPORT bool setChildren(const Vector<GraphicsLayer*>&) override;
-    WEBCORE_EXPORT void addChild(GraphicsLayer*) override;
-    WEBCORE_EXPORT void addChildAtIndex(GraphicsLayer*, int index) override;
-    WEBCORE_EXPORT void addChildAbove(GraphicsLayer*, GraphicsLayer* sibling) override;
-    WEBCORE_EXPORT void addChildBelow(GraphicsLayer*, GraphicsLayer* sibling) override;
-    WEBCORE_EXPORT bool replaceChild(GraphicsLayer* oldChild, GraphicsLayer* newChild) override;
+    WEBCORE_EXPORT bool setChildren(Vector<Ref<GraphicsLayer>>&&) override;
+    WEBCORE_EXPORT void addChild(Ref<GraphicsLayer>&&) override;
+    WEBCORE_EXPORT void addChildAtIndex(Ref<GraphicsLayer>&&, int index) override;
+    WEBCORE_EXPORT void addChildAbove(Ref<GraphicsLayer>&&, GraphicsLayer* sibling) override;
+    WEBCORE_EXPORT void addChildBelow(Ref<GraphicsLayer>&&, GraphicsLayer* sibling) override;
+    WEBCORE_EXPORT bool replaceChild(GraphicsLayer* oldChild, Ref<GraphicsLayer>&& newChild) override;
 
     WEBCORE_EXPORT void removeFromParent() override;
 
-    WEBCORE_EXPORT void setMaskLayer(GraphicsLayer*) override;
+    WEBCORE_EXPORT void setMaskLayer(RefPtr<GraphicsLayer>&&) override;
     WEBCORE_EXPORT void setReplicatedLayer(GraphicsLayer*) override;
 
     WEBCORE_EXPORT void setPosition(const FloatPoint&) override;
@@ -125,6 +124,8 @@ public:
     WEBCORE_EXPORT void setShapeLayerPath(const Path&) override;
     WEBCORE_EXPORT void setShapeLayerWindRule(WindRule) override;
 
+    WEBCORE_EXPORT void setEventRegion(EventRegion&&) override;
+
     WEBCORE_EXPORT void suspendAnimations(MonotonicTime) override;
     WEBCORE_EXPORT void resumeAnimations() override;
 
@@ -134,7 +135,8 @@ public:
     WEBCORE_EXPORT void removeAnimation(const String& animationName) override;
 
     WEBCORE_EXPORT void setContentsToImage(Image*) override;
-#if PLATFORM(IOS)
+    WEBCORE_EXPORT void setContentsToEmbeddedView(GraphicsLayer::ContentsLayerEmbeddedViewType, GraphicsLayer::EmbeddedViewID) override;
+#if PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT PlatformLayer* contentsLayerForMedia() const override;
 #endif
     WEBCORE_EXPORT void setContentsToPlatformLayer(PlatformLayer*, ContentsLayerPurpose) override;
@@ -155,7 +157,8 @@ public:
     FloatSize pixelAlignmentOffset() const override { return m_pixelAlignmentOffset; }
 
     struct CommitState {
-        int treeDepth { 0 };
+        unsigned treeDepth { 0 };
+        unsigned totalBackdropFilterArea { 0 };
         bool ancestorHadChanges { false };
         bool ancestorHasTransformAnimation { false };
         bool ancestorStartedOrEndedTransformAnimation { false };
@@ -163,7 +166,7 @@ public:
         bool ancestorIsViewportConstrained { false };
     };
     bool needsCommit(const CommitState&);
-    void recursiveCommitChanges(const CommitState&, const TransformState&, float pageScaleFactor = 1, const FloatPoint& positionRelativeToBase = FloatPoint(), bool affectedByPageScale = false);
+    void recursiveCommitChanges(CommitState&, const TransformState&, float pageScaleFactor = 1, const FloatPoint& positionRelativeToBase = FloatPoint(), bool affectedByPageScale = false);
 
     WEBCORE_EXPORT void flushCompositingState(const FloatRect&) override;
     WEBCORE_EXPORT void flushCompositingStateForThisLayerOnly() override;
@@ -171,6 +174,8 @@ public:
     WEBCORE_EXPORT bool visibleRectChangeRequiresFlush(const FloatRect& visibleRect) const override;
 
     WEBCORE_EXPORT TiledBacking* tiledBacking() const override;
+
+    WEBCORE_EXPORT Vector<std::pair<String, double>> acceleratedAnimationsForTesting() const final;
 
 protected:
     WEBCORE_EXPORT void setOpacityInternal(float) override;
@@ -226,6 +231,7 @@ private:
 
     virtual Ref<PlatformCALayer> createPlatformCALayer(PlatformCALayer::LayerType, PlatformCALayerClient* owner);
     virtual Ref<PlatformCALayer> createPlatformCALayer(PlatformLayer*, PlatformCALayerClient* owner);
+    virtual Ref<PlatformCALayer> createPlatformCALayerForEmbeddedView(PlatformCALayer::LayerType, GraphicsLayer::EmbeddedViewID, PlatformCALayerClient* owner);
     virtual Ref<PlatformCAAnimation> createPlatformCAAnimation(PlatformCAAnimation::AnimationType, const String& keyPath);
 
     PlatformCALayer* primaryLayer() const { return m_structuralLayer.get() ? m_structuralLayer.get() : m_layer.get(); }
@@ -273,7 +279,7 @@ private:
         return m_animations && m_animations->runningAnimations.contains(animationName);
     }
 
-    void commitLayerChangesBeforeSublayers(CommitState&, float pageScaleFactor, const FloatPoint& positionRelativeToBase);
+    void commitLayerChangesBeforeSublayers(CommitState&, float pageScaleFactor, const FloatPoint& positionRelativeToBase, bool& layerTypeChanged);
     void commitLayerChangesAfterSublayers(CommitState&);
 
     FloatPoint computePositionRelativeToBase(float& pageScale) const;
@@ -288,7 +294,7 @@ private:
 
     void updateClippingStrategy(PlatformCALayer&, RefPtr<PlatformCALayer>& shapeMaskLayer, const FloatRoundedRect&);
 
-    WEBCORE_EXPORT void setReplicatedByLayer(GraphicsLayer*) override;
+    WEBCORE_EXPORT void setReplicatedByLayer(RefPtr<GraphicsLayer>&&) override;
 
     WEBCORE_EXPORT bool canThrottleLayerFlush() const override;
 
@@ -317,8 +323,6 @@ private:
 
     void setVisibleAndCoverageRects(const VisibleAndCoverageRects&, bool isViewportConstrained);
     
-    static FloatRect adjustTiledLayerVisibleRect(TiledBacking*, const FloatRect& oldVisibleRect, const FloatRect& newVisibleRect, const FloatSize& oldSize, const FloatSize& newSize);
-
     bool recursiveVisibleRectChangeRequiresFlush(const CommitState&, const TransformState&) const;
     
     bool isPageTiledBackingLayer() const { return type() == Type::PageTiledBacking; }
@@ -398,7 +402,7 @@ private:
     void updateContentsVisibility();
     void updateContentsOpaque(float pageScaleFactor);
     void updateBackfaceVisibility();
-    void updateStructuralLayer();
+    bool updateStructuralLayer();
     void updateDrawsContent();
     void updateCoverage(const CommitState&);
     void updateBackgroundColor();
@@ -409,6 +413,7 @@ private:
     void updateContentsColorLayer();
     void updateContentsRects();
     void updateMasksToBoundsRect();
+    void updateEventRegion();
     void updateMaskLayer();
     void updateReplicatedLayers();
 
@@ -423,7 +428,7 @@ private:
 
     void updateOpacityOnLayer();
     void updateFilters();
-    void updateBackdropFilters();
+    void updateBackdropFilters(CommitState&);
     void updateBackdropFiltersRect();
 
 #if ENABLE(CSS_COMPOSITING)
@@ -439,7 +444,7 @@ private:
         StructuralLayerForReplicaFlattening,
         StructuralLayerForBackdrop
     };
-    void ensureStructuralLayer(StructuralLayerPurpose);
+    bool ensureStructuralLayer(StructuralLayerPurpose);
     StructuralLayerPurpose structuralLayerPurpose() const;
     
     void ensureLayerAnimations();
@@ -527,6 +532,7 @@ private:
         WindRuleChanged                         = 1LLU << 37,
         UserInteractionEnabledChanged           = 1LLU << 38,
         NeedsComputeVisibleAndCoverageRect      = 1LLU << 39,
+        EventRegionChanged                      = 1LLU << 40,
     };
     typedef uint64_t LayerChangeFlags;
     void addUncommittedChanges(LayerChangeFlags);

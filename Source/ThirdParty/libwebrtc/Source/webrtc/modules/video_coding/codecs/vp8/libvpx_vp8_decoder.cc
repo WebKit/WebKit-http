@@ -12,7 +12,6 @@
 #include <string>
 
 #include "absl/memory/memory.h"
-#include "common_video/libyuv/include/webrtc_libyuv.h"
 #include "modules/video_coding/codecs/vp8/libvpx_vp8_decoder.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/numerics/exp_filter.h"
@@ -55,7 +54,7 @@ void GetPostProcParamsFromFieldTrialGroup(
 
 }  // namespace
 
-std::unique_ptr<VP8Decoder> VP8Decoder::Create() {
+std::unique_ptr<VideoDecoder> VP8Decoder::Create() {
   return absl::make_unique<LibvpxVp8Decoder>();
 }
 
@@ -254,7 +253,7 @@ int LibvpxVp8Decoder::Decode(const EncodedImage& input_image,
   vpx_codec_err_t vpx_ret =
       vpx_codec_control(decoder_, VPXD_GET_LAST_QUANTIZER, &qp);
   RTC_DCHECK_EQ(vpx_ret, VPX_CODEC_OK);
-  ret = ReturnFrame(img, input_image._timeStamp, input_image.ntp_time_ms_, qp);
+  ret = ReturnFrame(img, input_image.Timestamp(), input_image.ntp_time_ms_, qp);
   if (ret != 0) {
     // Reset to avoid requesting key frames too often.
     if (ret < 0 && propagation_cnt_ > 0)

@@ -44,7 +44,7 @@ public:
 
     static RefPtr<DeferredPromise> create(JSC::ExecState& state, JSDOMGlobalObject& globalObject, Mode mode = Mode::ClearPromiseOnResolve)
     {
-        auto* promiseDeferred = JSC::JSPromiseDeferred::create(&state, &globalObject);
+        auto* promiseDeferred = JSC::JSPromiseDeferred::tryCreate(&state, &globalObject);
         if (!promiseDeferred)
             return nullptr;
         return adoptRef(new DeferredPromise(globalObject, *promiseDeferred, mode));
@@ -257,7 +257,9 @@ void fulfillPromiseWithJSON(Ref<DeferredPromise>&&, const String&);
 void fulfillPromiseWithArrayBuffer(Ref<DeferredPromise>&&, ArrayBuffer*);
 void fulfillPromiseWithArrayBuffer(Ref<DeferredPromise>&&, const void*, size_t);
 WEBCORE_EXPORT void rejectPromiseWithExceptionIfAny(JSC::ExecState&, JSDOMGlobalObject&, JSC::JSPromiseDeferred&);
-JSC::EncodedJSValue createRejectedPromiseWithTypeError(JSC::ExecState&, const String&);
+
+enum class RejectedPromiseWithTypeErrorCause { NativeGetter, InvalidThis };
+JSC::EncodedJSValue createRejectedPromiseWithTypeError(JSC::ExecState&, const String&, RejectedPromiseWithTypeErrorCause);
 
 using PromiseFunction = void(JSC::ExecState&, Ref<DeferredPromise>&&);
 
@@ -270,7 +272,7 @@ inline JSC::JSValue callPromiseFunction(JSC::ExecState& state)
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     auto& globalObject = callerGlobalObject(state);
-    JSC::JSPromiseDeferred* promiseDeferred = JSC::JSPromiseDeferred::create(&state, &globalObject);
+    JSC::JSPromiseDeferred* promiseDeferred = JSC::JSPromiseDeferred::tryCreate(&state, &globalObject);
 
     // promiseDeferred can be null when terminating a Worker abruptly.
     if (executionScope == PromiseExecutionScope::WindowOrWorker && !promiseDeferred)
@@ -290,7 +292,7 @@ inline JSC::JSValue callPromiseFunction(JSC::ExecState& state, PromiseFunctor fu
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     auto& globalObject = callerGlobalObject(state);
-    JSC::JSPromiseDeferred* promiseDeferred = JSC::JSPromiseDeferred::create(&state, &globalObject);
+    JSC::JSPromiseDeferred* promiseDeferred = JSC::JSPromiseDeferred::tryCreate(&state, &globalObject);
 
     // promiseDeferred can be null when terminating a Worker abruptly.
     if (executionScope == PromiseExecutionScope::WindowOrWorker && !promiseDeferred)

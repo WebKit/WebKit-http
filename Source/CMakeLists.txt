@@ -13,7 +13,7 @@ endif ()
 
 add_subdirectory(JavaScriptCore)
 
-if (${PORT} STREQUAL "Win" AND ENABLE_GRAPHICS_CONTEXT_3D)
+if (ENABLE_GRAPHICS_CONTEXT_3D)
     add_subdirectory(ThirdParty/ANGLE)
 endif ()
 

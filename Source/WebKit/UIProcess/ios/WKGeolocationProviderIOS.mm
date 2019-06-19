@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WKGeolocationProviderIOS.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "APIFrameInfo.h"
 #import "APISecurityOrigin.h"
@@ -41,20 +41,19 @@
 #import "_WKGeolocationCoreLocationProvider.h"
 #import "_WKGeolocationPositionInternal.h"
 #import <WebCore/GeolocationPosition.h>
-#import <WebCore/URL.h>
 #import <WebGeolocationPosition.h>
 #import <wtf/Assertions.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/HashSet.h>
 #import <wtf/RefPtr.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/URL.h>
 
 // FIXME: Remove use of WebKit1 from WebKit2
 #import <WebKit/WebGeolocationCoreLocationProvider.h>
 #import <WebKit/WebAllowDenyPolicyListener.h>
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 
 @interface WKGeolocationProviderIOS (_WKGeolocationCoreLocationListener) <_WKGeolocationCoreLocationListener>
 @end
@@ -185,11 +184,11 @@ static void setEnableHighAccuracy(WKGeolocationManagerRef geolocationManager, bo
 
         id<WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([request.view UIDelegate]);
         if ([uiDelegate respondsToSelector:@selector(_webView:requestGeolocationAuthorizationForURL:frame:decisionHandler:)]) {
-            WebCore::URL requestFrameURL(WebCore::URL(), request.frame->url());
+            URL requestFrameURL(URL(), request.frame->url());
             RetainPtr<WKFrameInfo> frameInfo = wrapper(API::FrameInfo::create(*request.frame.get(), *request.origin.get()));
-            RefPtr<WebKit::CompletionHandlerCallChecker> checker = WebKit::CompletionHandlerCallChecker::create(uiDelegate, @selector(_webView:requestGeolocationAuthorizationForURL:frame:decisionHandler:));
+            auto checker = WebKit::CompletionHandlerCallChecker::create(uiDelegate, @selector(_webView:requestGeolocationAuthorizationForURL:frame:decisionHandler:));
             WKWebView *viewFromRequest = request.view.get();
-            [uiDelegate _webView:viewFromRequest requestGeolocationAuthorizationForURL:requestFrameURL frame:frameInfo.get() decisionHandler:BlockPtr<void(BOOL)>::fromCallable([request = WTFMove(request), checker = WTFMove(checker)](BOOL authorized) {
+            [uiDelegate _webView:viewFromRequest requestGeolocationAuthorizationForURL:requestFrameURL frame:frameInfo.get() decisionHandler:makeBlockPtr([request = WTFMove(request), checker = WTFMove(checker)](BOOL authorized) {
                 if (checker->completionHandlerHasBeenCalled())
                     return;
                 checker->didCallCompletionHandler();
@@ -201,8 +200,8 @@ static void setEnableHighAccuracy(WKGeolocationManagerRef geolocationManager, bo
         if ([uiDelegate respondsToSelector:@selector(_webView:shouldRequestGeolocationAuthorizationForURL:isMainFrame:mainFrameURL:)]) {
             const WebKit::WebFrameProxy* mainFrame = request.frame->page()->mainFrame();
             bool isMainFrame = request.frame == mainFrame;
-            WebCore::URL requestFrameURL(WebCore::URL(), request.frame->url());
-            WebCore::URL mainFrameURL(WebCore::URL(), mainFrame->url());
+            URL requestFrameURL(URL(), request.frame->url());
+            URL mainFrameURL(URL(), mainFrame->url());
             requiresUserAuthorization = [uiDelegate _webView:request.view.get()
                  shouldRequestGeolocationAuthorizationForURL:requestFrameURL
                                                  isMainFrame:isMainFrame
@@ -354,6 +353,6 @@ static void setEnableHighAccuracy(WKGeolocationManagerRef geolocationManager, bo
 }
 @end
 
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

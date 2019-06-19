@@ -12,20 +12,22 @@
 
 #include <utility>
 
-#import <WebRTC/RTCCameraPreviewView.h>
-#import <WebRTC/RTCVideoCodecFactory.h>
-#import <WebRTC/RTCVideoRenderer.h>
+#import "sdk/objc/base/RTCVideoRenderer.h"
+#import "sdk/objc/components/video_codec/RTCDefaultVideoDecoderFactory.h"
+#import "sdk/objc/components/video_codec/RTCDefaultVideoEncoderFactory.h"
+#import "sdk/objc/helpers/RTCCameraPreviewView.h"
 
 #include "absl/memory/memory.h"
 #include "api/audio_codecs/builtin_audio_decoder_factory.h"
 #include "api/audio_codecs/builtin_audio_encoder_factory.h"
 #include "api/peerconnectioninterface.h"
+#include "api/video/builtin_video_bitrate_allocator_factory.h"
 #include "media/engine/webrtcmediaengine.h"
 #include "modules/audio_processing/include/audio_processing.h"
-#include "sdk/objc/Framework/Native/api/video_capturer.h"
-#include "sdk/objc/Framework/Native/api/video_decoder_factory.h"
-#include "sdk/objc/Framework/Native/api/video_encoder_factory.h"
-#include "sdk/objc/Framework/Native/api/video_renderer.h"
+#include "sdk/objc/native/api/video_capturer.h"
+#include "sdk/objc/native/api/video_decoder_factory.h"
+#include "sdk/objc/native/api/video_encoder_factory.h"
+#include "sdk/objc/native/api/video_renderer.h"
 
 namespace webrtc_examples {
 
@@ -115,12 +117,16 @@ void ObjCCallClient::CreatePeerConnectionFactory() {
   std::unique_ptr<webrtc::VideoEncoderFactory> videoEncoderFactory =
       webrtc::ObjCToNativeVideoEncoderFactory([[RTCDefaultVideoEncoderFactory alloc] init]);
 
+  std::unique_ptr<webrtc::VideoBitrateAllocatorFactory> videoBitrateAllocatorFactory =
+      webrtc::CreateBuiltinVideoBitrateAllocatorFactory();
+
   std::unique_ptr<cricket::MediaEngineInterface> media_engine =
       cricket::WebRtcMediaEngineFactory::Create(nullptr /* adm */,
                                                 webrtc::CreateBuiltinAudioEncoderFactory(),
                                                 webrtc::CreateBuiltinAudioDecoderFactory(),
                                                 std::move(videoEncoderFactory),
                                                 std::move(videoDecoderFactory),
+                                                std::move(videoBitrateAllocatorFactory),
                                                 nullptr /* audio_mixer */,
                                                 webrtc::AudioProcessingBuilder().Create());
   RTC_LOG(LS_INFO) << "Media engine created: " << media_engine.get();

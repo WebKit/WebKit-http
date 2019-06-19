@@ -66,8 +66,7 @@ using namespace WebCore;
     if (!self)
         return nil;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     // In WebHTMLView, we set a clip. This is not typical to do in an
     // NSView, and while correct for any one invocation of drawRect:,
     // it causes some bad problems if that clip is cached between calls.
@@ -78,7 +77,7 @@ using namespace WebCore;
     // See these bugs for more information:
     // <rdar://problem/3409315>: REGRESSSION (7B58-7B60)?: Safari draws blank frames on macosx.apple.com perf page
     [self releaseGState];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     return self;
 }
@@ -166,25 +165,9 @@ using namespace WebCore;
 - (NSRect)_focusRingVisibleRect
 {
     NSRect rect = [self visibleRect];
-    if (_haveAdditionalClip) {
+    if (_haveAdditionalClip)
         rect = NSIntersectionRect(rect, _additionalClip);
-    }
     return rect;
-}
-
-- (void)scrollWheel:(NSEvent *)event
-{
-    NSView *docView = [self documentView];
-    if ([docView respondsToSelector:@selector(_webView)]) {
-#if ENABLE(DASHBOARD_SUPPORT)
-        WebView *wv = [docView _webView];
-        if ([wv _dashboardBehavior:WebDashboardBehaviorAllowWheelScrolling]) {
-            [super scrollWheel:event];
-        }
-#endif
-        return;
-    }
-    [super scrollWheel:event];
 }
 
 @end

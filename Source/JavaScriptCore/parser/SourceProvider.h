@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,12 +28,19 @@
 
 #pragma once
 
+#include "CachedBytecode.h"
+#include "CodeSpecializationKind.h"
 #include "SourceOrigin.h"
 #include <wtf/RefCounted.h>
+#include <wtf/URL.h>
 #include <wtf/text/TextPosition.h>
 #include <wtf/text/WTFString.h>
 
 namespace JSC {
+
+class SourceCode;
+class UnlinkedFunctionExecutable;
+class UnlinkedFunctionCodeBlock;
 
     enum class SourceProviderSourceType : uint8_t {
         Program,
@@ -41,25 +48,32 @@ namespace JSC {
         WebAssembly,
     };
 
+    using BytecodeCacheGenerator = Function<RefPtr<CachedBytecode>()>;
+
     class SourceProvider : public RefCounted<SourceProvider> {
     public:
         static const intptr_t nullID = 1;
         
-        JS_EXPORT_PRIVATE SourceProvider(const SourceOrigin&, const String& url, const TextPosition& startPosition, SourceProviderSourceType);
+        JS_EXPORT_PRIVATE SourceProvider(const SourceOrigin&, URL&&, const TextPosition& startPosition, SourceProviderSourceType);
 
         JS_EXPORT_PRIVATE virtual ~SourceProvider();
 
         virtual unsigned hash() const = 0;
         virtual StringView source() const = 0;
+        virtual RefPtr<CachedBytecode> cachedBytecode() const { return nullptr; }
+        virtual void cacheBytecode(const BytecodeCacheGenerator&) const { }
+        virtual void updateCache(const UnlinkedFunctionExecutable*, const SourceCode&, CodeSpecializationKind, const UnlinkedFunctionCodeBlock*) const { }
+        virtual void commitCachedBytecode() const { }
+
         StringView getRange(int start, int end) const
         {
             return source().substring(start, end - start);
         }
 
         const SourceOrigin& sourceOrigin() const { return m_sourceOrigin; }
-        const String& url() const { return m_url; }
-        const String& sourceURL() const { return m_sourceURLDirective; }
-        const String& sourceMappingURL() const { return m_sourceMappingURLDirective; }
+        const URL& url() const { return m_url; }
+        const String& sourceURLDirective() const { return m_sourceURLDirective; }
+        const String& sourceMappingURLDirective() const { return m_sourceMappingURLDirective; }
 
         TextPosition startPosition() const { return m_startPosition; }
         SourceProviderSourceType sourceType() const { return m_sourceType; }
@@ -71,19 +85,15 @@ namespace JSC {
             return m_id;
         }
 
-        bool isValid() const { return m_validated; }
-        void setValid() { m_validated = true; }
-
-        void setSourceURLDirective(const String& sourceURL) { m_sourceURLDirective = sourceURL; }
-        void setSourceMappingURLDirective(const String& sourceMappingURL) { m_sourceMappingURLDirective = sourceMappingURL; }
+        void setSourceURLDirective(const String& sourceURLDirective) { m_sourceURLDirective = sourceURLDirective; }
+        void setSourceMappingURLDirective(const String& sourceMappingURLDirective) { m_sourceMappingURLDirective = sourceMappingURLDirective; }
 
     private:
         JS_EXPORT_PRIVATE void getID();
 
         SourceProviderSourceType m_sourceType;
-        bool m_validated : 1;
+        URL m_url;
         SourceOrigin m_sourceOrigin;
-        String m_url;
         String m_sourceURLDirective;
         String m_sourceMappingURLDirective;
         TextPosition m_startPosition;
@@ -92,9 +102,9 @@ namespace JSC {
 
     class StringSourceProvider : public SourceProvider {
     public:
-        static Ref<StringSourceProvider> create(const String& source, const SourceOrigin& sourceOrigin, const String& url, const TextPosition& startPosition = TextPosition(), SourceProviderSourceType sourceType = SourceProviderSourceType::Program)
+        static Ref<StringSourceProvider> create(const String& source, const SourceOrigin& sourceOrigin, URL&& url, const TextPosition& startPosition = TextPosition(), SourceProviderSourceType sourceType = SourceProviderSourceType::Program)
         {
-            return adoptRef(*new StringSourceProvider(source, sourceOrigin, url, startPosition, sourceType));
+            return adoptRef(*new StringSourceProvider(source, sourceOrigin, WTFMove(url), startPosition, sourceType));
         }
 
         JS_EXPORT_PRIVATE ~StringSourceProvider() override;
@@ -109,22 +119,23 @@ namespace JSC {
             return m_source.get();
         }
 
-    private:
-        StringSourceProvider(const String& source, const SourceOrigin& sourceOrigin, const String& url, const TextPosition& startPosition, SourceProviderSourceType sourceType)
-            : SourceProvider(sourceOrigin, url, startPosition, sourceType)
+    protected:
+        StringSourceProvider(const String& source, const SourceOrigin& sourceOrigin, URL&& url, const TextPosition& startPosition, SourceProviderSourceType sourceType)
+            : SourceProvider(sourceOrigin, WTFMove(url), startPosition, sourceType)
             , m_source(source.isNull() ? *StringImpl::empty() : *source.impl())
         {
         }
 
+    private:
         Ref<StringImpl> m_source;
     };
-    
+
 #if ENABLE(WEBASSEMBLY)
     class WebAssemblySourceProvider : public SourceProvider {
     public:
-        static Ref<WebAssemblySourceProvider> create(Vector<uint8_t>&& data, const SourceOrigin& sourceOrigin, const String& url)
+        static Ref<WebAssemblySourceProvider> create(Vector<uint8_t>&& data, const SourceOrigin& sourceOrigin, URL&& url)
         {
-            return adoptRef(*new WebAssemblySourceProvider(WTFMove(data), sourceOrigin, url));
+            return adoptRef(*new WebAssemblySourceProvider(WTFMove(data), sourceOrigin, WTFMove(url)));
         }
 
         unsigned hash() const override
@@ -143,8 +154,8 @@ namespace JSC {
         }
 
     private:
-        WebAssemblySourceProvider(Vector<uint8_t>&& data, const SourceOrigin& sourceOrigin, const String& url)
-            : SourceProvider(sourceOrigin, url, TextPosition(), SourceProviderSourceType::WebAssembly)
+        WebAssemblySourceProvider(Vector<uint8_t>&& data, const SourceOrigin& sourceOrigin, URL&& url)
+            : SourceProvider(sourceOrigin, WTFMove(url), TextPosition(), SourceProviderSourceType::WebAssembly)
             , m_source("[WebAssembly source]")
             , m_data(WTFMove(data))
         {

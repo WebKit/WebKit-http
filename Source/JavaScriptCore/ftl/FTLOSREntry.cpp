@@ -48,6 +48,11 @@ void* prepareOSREntry(
     ExecutableBase* executable = dfgCodeBlock->ownerExecutable();
     DFG::JITCode* dfgCode = dfgCodeBlock->jitCode()->dfg();
     ForOSREntryJITCode* entryCode = entryCodeBlock->jitCode()->ftlForOSREntry();
+
+    if (!entryCode->dfgCommon()->isStillValid) {
+        dfgCode->clearOSREntryBlockAndResetThresholds(dfgCodeBlock);
+        return 0;
+    }
     
     if (Options::verboseOSR()) {
         dataLog(
@@ -64,7 +69,7 @@ void* prepareOSREntry(
         return 0;
     }
     
-    Operands<JSValue> values;
+    Operands<Optional<JSValue>> values;
     dfgCode->reconstruct(
         exec, dfgCodeBlock, CodeOrigin(bytecodeIndex), streamIndex, values);
     
@@ -73,8 +78,8 @@ void* prepareOSREntry(
     
     for (int argument = values.numberOfArguments(); argument--;) {
         JSValue valueOnStack = exec->r(virtualRegisterForArgument(argument).offset()).asanUnsafeJSValue();
-        JSValue reconstructedValue = values.argument(argument);
-        if (valueOnStack == reconstructedValue || !argument)
+        Optional<JSValue> reconstructedValue = values.argument(argument);
+        if ((reconstructedValue && valueOnStack == reconstructedValue.value()) || !argument)
             continue;
         dataLog("Mismatch between reconstructed values and the value on the stack for argument arg", argument, " for ", *entryCodeBlock, " at bc#", bytecodeIndex, ":\n");
         dataLog("    Value on stack: ", valueOnStack, "\n");
@@ -88,8 +93,13 @@ void* prepareOSREntry(
     EncodedJSValue* scratch = static_cast<EncodedJSValue*>(
         entryCode->entryBuffer()->dataBuffer());
     
-    for (int local = values.numberOfLocals(); local--;)
-        scratch[local] = JSValue::encode(values.local(local));
+    for (int local = values.numberOfLocals(); local--;) {
+        Optional<JSValue> value = values.local(local);
+        if (value)
+            scratch[local] = JSValue::encode(value.value());
+        else
+            scratch[local] = JSValue::encode(JSValue());
+    }
     
     int stackFrameSize = entryCode->common.requiredRegisterCountForExecutionAndExit();
     if (UNLIKELY(!vm.ensureStackCapacityFor(&exec->registers()[virtualRegisterForLocal(stackFrameSize - 1).offset()]))) {

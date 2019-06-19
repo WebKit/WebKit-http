@@ -33,8 +33,7 @@
 #import "PlatformScreen.h"
 #import "Scrollbar.h"
 #import "WindowsKeyboardCodes.h"
-#import <HIToolbox/CarbonEvents.h>
-#import <HIToolbox/Events.h>
+#import <Carbon/Carbon.h>
 #import <mach/mach_time.h>
 #import <pal/spi/mac/HIToolboxSPI.h>
 #import <pal/spi/mac/NSEventSPI.h>
@@ -46,18 +45,15 @@ namespace WebCore {
 
 NSPoint globalPoint(const NSPoint& windowPoint, NSWindow *window)
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     return flipScreenPoint([window convertBaseToScreen:windowPoint], screen(window));
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 static NSPoint globalPointForEvent(NSEvent *event)
 {
     switch ([event type]) {
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
     case NSEventTypePressure:
-#endif
     case NSEventTypeLeftMouseDown:
     case NSEventTypeLeftMouseDragged:
     case NSEventTypeLeftMouseUp:
@@ -80,9 +76,7 @@ static NSPoint globalPointForEvent(NSEvent *event)
 static IntPoint pointForEvent(NSEvent *event, NSView *windowView)
 {
     switch ([event type]) {
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
     case NSEventTypePressure:
-#endif
     case NSEventTypeLeftMouseDown:
     case NSEventTypeLeftMouseDragged:
     case NSEventTypeLeftMouseUp:
@@ -111,9 +105,7 @@ static IntPoint pointForEvent(NSEvent *event, NSView *windowView)
 static MouseButton mouseButtonForEvent(NSEvent *event)
 {
     switch ([event type]) {
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
     case NSEventTypePressure:
-#endif
     case NSEventTypeLeftMouseDown:
     case NSEventTypeLeftMouseUp:
     case NSEventTypeLeftMouseDragged:
@@ -261,7 +253,7 @@ String keyForKeyEvent(NSEvent *event)
     // that result in the key no longer producing a printable character (e.g., Control + a), then the
     // key value should be the printable key value that would have been produced if the key had been
     // typed with the default keyboard layout with no modifier keys except for Shift and AltGr applied.
-    // https://w3c.github.io/uievents/#keys-guidelines
+    // See <https://www.w3.org/TR/2015/WD-uievents-20151215/#keys-guidelines>.
     bool isControlDown = ([event modifierFlags] & NSEventModifierFlagControl);
     NSString *s = isControlDown ? [event charactersIgnoringModifiers] : [event characters];
     auto length = [s length];
@@ -493,22 +485,22 @@ String keyIdentifierForKeyEvent(NSEvent* event)
         switch ([event keyCode]) {
         case 54: // Right Command
         case 55: // Left Command
-            return String("Meta");
+            return "Meta"_str;
 
         case 57: // Capslock
-            return String("CapsLock");
+            return "CapsLock"_str;
 
         case 56: // Left Shift
         case 60: // Right Shift
-            return String("Shift");
+            return "Shift"_str;
 
         case 58: // Left Alt
         case 61: // Right Alt
-            return String("Alt");
+            return "Alt"_str;
 
         case 59: // Left Ctrl
         case 62: // Right Ctrl
-            return String("Control");
+            return "Control"_str;
 
         default:
             ASSERT_NOT_REACHED();
@@ -668,7 +660,7 @@ OptionSet<PlatformEvent::Modifier> modifiersForEvent(NSEvent *event)
     if (event.modifierFlags & NSEventModifierFlagShift)
         modifiers.add(PlatformEvent::Modifier::ShiftKey);
     if (event.modifierFlags & NSEventModifierFlagControl)
-        modifiers.add(PlatformEvent::Modifier::CtrlKey);
+        modifiers.add(PlatformEvent::Modifier::ControlKey);
     if (event.modifierFlags & NSEventModifierFlagOption)
         modifiers.add(PlatformEvent::Modifier::AltKey);
     if (event.modifierFlags & NSEventModifierFlagCommand)
@@ -724,7 +716,6 @@ public:
         // PlatformEvent
         m_type = mouseEventTypeForEvent(event);
 
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
         BOOL eventIsPressureEvent = [event type] == NSEventTypePressure;
         if (eventIsPressureEvent) {
             // Since AppKit doesn't send mouse events for force down or force up, we have to use the current pressure
@@ -736,9 +727,6 @@ public:
             else
                 m_type = PlatformEvent::MouseForceChanged;
         }
-#else
-        UNUSED_PARAM(correspondingPressureEvent);
-#endif
 
         m_modifiers = modifiersForEvent(event);
         m_timestamp = eventTimeStampSince1970(event);
@@ -754,11 +742,9 @@ public:
 #endif
 
         m_force = 0;
-#if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
         int stage = eventIsPressureEvent ? event.stage : correspondingPressureEvent.stage;
         double pressure = eventIsPressureEvent ? event.pressure : correspondingPressureEvent.pressure;
         m_force = pressure + stage;
-#endif
 
         // Mac specific
         m_modifierFlags = [event modifierFlags];

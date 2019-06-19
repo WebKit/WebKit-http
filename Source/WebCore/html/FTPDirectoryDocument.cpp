@@ -41,6 +41,7 @@
 #include <wtf/GregorianDateTime.h>
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/unicode/CharacterNames.h>
 
 namespace WebCore {
@@ -111,28 +112,28 @@ void FTPDirectoryDocumentParser::appendEntry(const String& filename, const Strin
     auto& document = *this->document();
 
     auto rowElement = m_tableElement->insertRow(-1).releaseReturnValue();
-    rowElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomicString("ftpDirectoryEntryRow", AtomicString::ConstructFromLiteral));
+    rowElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomString("ftpDirectoryEntryRow", AtomString::ConstructFromLiteral));
 
     auto typeElement = HTMLTableCellElement::create(tdTag, document);
     typeElement->appendChild(Text::create(document, String(&noBreakSpace, 1)));
     if (isDirectory)
-        typeElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomicString("ftpDirectoryIcon ftpDirectoryTypeDirectory", AtomicString::ConstructFromLiteral));
+        typeElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomString("ftpDirectoryIcon ftpDirectoryTypeDirectory", AtomString::ConstructFromLiteral));
     else
-        typeElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomicString("ftpDirectoryIcon ftpDirectoryTypeFile", AtomicString::ConstructFromLiteral));
+        typeElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomString("ftpDirectoryIcon ftpDirectoryTypeFile", AtomString::ConstructFromLiteral));
     rowElement->appendChild(typeElement);
 
     auto nameElement = createTDForFilename(filename);
-    nameElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomicString("ftpDirectoryFileName", AtomicString::ConstructFromLiteral));
+    nameElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomString("ftpDirectoryFileName", AtomString::ConstructFromLiteral));
     rowElement->appendChild(nameElement);
 
     auto dateElement = HTMLTableCellElement::create(tdTag, document);
     dateElement->appendChild(Text::create(document, date));
-    dateElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomicString("ftpDirectoryFileDate", AtomicString::ConstructFromLiteral));
+    dateElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomString("ftpDirectoryFileDate", AtomString::ConstructFromLiteral));
     rowElement->appendChild(dateElement);
 
     auto sizeElement = HTMLTableCellElement::create(tdTag, document);
     sizeElement->appendChild(Text::create(document, size));
-    sizeElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomicString("ftpDirectoryFileSize", AtomicString::ConstructFromLiteral));
+    sizeElement->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomString("ftpDirectoryFileSize", AtomString::ConstructFromLiteral));
     rowElement->appendChild(sizeElement);
 }
 
@@ -167,12 +168,12 @@ static String processFilesizeString(const String& size, bool isDirectory)
         return unknownFileSizeText();
 
     if (bytes < 1000000)
-        return String::format("%.2f KB", static_cast<float>(bytes)/1000);
+        return makeString(FormattedNumber::fixedWidth(bytes / 1000., 2), " KB");
 
     if (bytes < 1000000000)
-        return String::format("%.2f MB", static_cast<float>(bytes)/1000000);
+        return makeString(FormattedNumber::fixedWidth(bytes / 1000000., 2), " MB");
 
-    return String::format("%.2f GB", static_cast<float>(bytes)/1000000000);
+    return makeString(FormattedNumber::fixedWidth(bytes / 1000000000., 2), " GB");
 }
 
 static bool wasLastDayOfMonth(int year, int month, int day)
@@ -209,12 +210,12 @@ static String processFileDateString(const FTPTime& fileTime)
         if (hour < 12) {
             if (hour == 0)
                 hour = 12;
-            timeOfDay = String::format(", %i:%02i AM", hour, fileTime.tm_min);
+            timeOfDay = makeString(", ", hour, ':', pad('0', 2, fileTime.tm_min), " AM");
         } else {
             hour = hour - 12;
             if (hour == 0)
                 hour = 12;
-            timeOfDay = String::format(", %i:%02i PM", hour, fileTime.tm_min);
+            timeOfDay = makeString(", ", hour, ':', pad('0', 2, fileTime.tm_min), " PM");
         }
     }
 
@@ -247,9 +248,9 @@ static String processFileDateString(const FTPTime& fileTime)
     String dateString;
 
     if (fileTime.tm_year > -1)
-        dateString = makeString(months[month], ' ', String::number(fileTime.tm_mday), ", ", String::number(fileTime.tm_year));
+        dateString = makeString(months[month], ' ', fileTime.tm_mday, ", ", fileTime.tm_year);
     else
-        dateString = makeString(months[month], ' ', String::number(fileTime.tm_mday), ", ", String::number(now.year()));
+        dateString = makeString(months[month], ' ', fileTime.tm_mday, ", ", now.year());
 
     return dateString + timeOfDay;
 }
@@ -281,7 +282,7 @@ void FTPDirectoryDocumentParser::parseAndAppendOneLine(const String& inputLine)
 
 static inline RefPtr<SharedBuffer> createTemplateDocumentData(const Settings& settings)
 {
-    RefPtr<SharedBuffer> buffer = SharedBuffer::createWithContentsOfFile(settings.ftpDirectoryTemplatePath());
+    auto buffer = SharedBuffer::createWithContentsOfFile(settings.ftpDirectoryTemplatePath());
     if (buffer)
         LOG(FTP, "Loaded FTPDirectoryTemplate of length %zu\n", buffer->size());
     return buffer;
@@ -313,7 +314,7 @@ bool FTPDirectoryDocumentParser::loadDocumentTemplate()
     }
 
     m_tableElement = HTMLTableElement::create(document);
-    m_tableElement->setAttributeWithoutSynchronization(HTMLNames::idAttr, AtomicString("ftpDirectoryTable", AtomicString::ConstructFromLiteral));
+    m_tableElement->setAttributeWithoutSynchronization(HTMLNames::idAttr, AtomString("ftpDirectoryTable", AtomString::ConstructFromLiteral));
 
     // If we didn't find the table element, lets try to append our own to the body.
     // If that fails for some reason, cram it on the end of the document as a last ditch effort.
@@ -335,8 +336,8 @@ void FTPDirectoryDocumentParser::createBasicDocument()
     document.appendChild(bodyElement);
 
     m_tableElement = HTMLTableElement::create(document);
-    m_tableElement->setAttributeWithoutSynchronization(HTMLNames::idAttr, AtomicString("ftpDirectoryTable", AtomicString::ConstructFromLiteral));
-    m_tableElement->setAttribute(HTMLNames::styleAttr, AtomicString("width:100%", AtomicString::ConstructFromLiteral));
+    m_tableElement->setAttributeWithoutSynchronization(HTMLNames::idAttr, AtomString("ftpDirectoryTable", AtomString::ConstructFromLiteral));
+    m_tableElement->setAttribute(HTMLNames::styleAttr, AtomString("width:100%", AtomString::ConstructFromLiteral));
 
     bodyElement->appendChild(*m_tableElement);
 
@@ -424,7 +425,7 @@ FTPDirectoryDocument::FTPDirectoryDocument(Frame* frame, const URL& url)
     : HTMLDocument(frame, url)
 {
 #if !LOG_DISABLED
-    LogFTP.state = WTFLogChannelOn;
+    LogFTP.state = WTFLogChannelState::On;
 #endif
 }
 

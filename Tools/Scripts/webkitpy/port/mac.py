@@ -1,5 +1,5 @@
 # Copyright (C) 2011 Google Inc. All rights reserved.
-# Copyright (C) 2012, 2013, 2016 Apple Inc. All rights reserved.
+# Copyright (C) 2012-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -69,8 +69,7 @@ class MacPort(DarwinPort):
     def _build_driver_flags(self):
         return ['ARCHS=i386'] if self.architecture() == 'x86' else []
 
-    @memoized
-    def default_baseline_search_path(self):
+    def default_baseline_search_path(self, **kwargs):
         versions_to_fallback = []
         version_name_map = VersionNameMap.map(self.host.platform)
 
@@ -188,7 +187,7 @@ class MacPort(DarwinPort):
     def is_mavericks(self):
         return self._version == 'mavericks'
 
-    def default_child_processes(self):
+    def default_child_processes(self, **kwargs):
         default_count = super(MacPort, self).default_child_processes()
 
         # FIXME: https://bugs.webkit.org/show_bug.cgi?id=95906  With too many WebProcess WK2 tests get stuck in resource contention.
@@ -267,8 +266,18 @@ class MacPort(DarwinPort):
             self._helper = None
 
     def logging_patterns_to_strip(self):
-        # FIXME: Remove this after <rdar://problem/15605007> is fixed
-        return [(re.compile('(AVF|GVA) info:.*\n'), '')]
+        logging_patterns = []
+
+        # FIXME: Remove this after <rdar://problem/15605007> is fixed.
+        logging_patterns.append((re.compile('(AVF|GVA) info:.*\n'), ''))
+
+        # FIXME: Remove this after <rdar://problem/35954459> is fixed.
+        logging_patterns.append(('AVDCreateGPUAccelerator: Error loading GPU renderer\n', ''))
+
+        # FIXME: Remove this after <rdar://problem/51191120> is fixed.
+        logging_patterns.append((re.compile('GVA warning: getFreeDRMInstanceCount, maxDRMInstanceCount: .*\n'), ''))
+
+        return logging_patterns
 
     def stderr_patterns_to_strip(self):
         worthless_patterns = []
@@ -280,3 +289,14 @@ class MacPort(DarwinPort):
         worthless_patterns.append((re.compile('.*<<<< VMC >>>>.*\n'), ''))
         worthless_patterns.append((re.compile('.*<<< FFR_Common >>>.*\n'), ''))
         return worthless_patterns
+
+    def configuration_for_upload(self, host=None):
+        host = host or self.host
+        configuration = super(MacPort, self).configuration_for_upload(host=host)
+
+        output = host.executive.run_command(['/usr/sbin/sysctl', 'hw.model']).rstrip()
+        match = re.match(r'hw.model: (?P<model>.*)', output)
+        if match:
+            configuration['model'] = match.group('model')
+
+        return configuration

@@ -29,6 +29,7 @@
 #include "config.h"
 #include "NetscapePlugInStreamLoader.h"
 
+#include "CustomHeaderFields.h"
 #include "DocumentLoader.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
@@ -60,7 +61,7 @@ NetscapePlugInStreamLoader::NetscapePlugInStreamLoader(Frame& frame, NetscapePlu
     , m_client(&client)
 {
 #if ENABLE(CONTENT_EXTENSIONS)
-    m_resourceType = ResourceType::PlugInStream;
+    m_resourceType = ContentExtensions::ResourceType::PlugInStream;
 #endif
 }
 

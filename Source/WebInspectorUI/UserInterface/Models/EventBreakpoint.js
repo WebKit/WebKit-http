@@ -25,27 +25,25 @@
 
 WI.EventBreakpoint = class EventBreakpoint extends WI.Object
 {
-    constructor(type, eventName, {disabled, eventListener} = {})
+    constructor(type, eventName, {eventListener, disabled} = {})
     {
         super();
 
-        console.assert(typeof type === "string");
-        console.assert(Object.values(WI.EventBreakpoint.Type).includes(type));
-        console.assert(typeof eventName === "string");
+        console.assert(Object.values(WI.EventBreakpoint.Type).includes(type), type);
+        console.assert(typeof eventName === "string", eventName);
 
         this._type = type;
         this._eventName = eventName;
-
-        this._disabled = disabled || false;
         this._eventListener = eventListener || null;
+        this._disabled = disabled || false;
     }
 
     // Static
 
-    static fromPayload(payload)
+    static deserialize(serializedInfo)
     {
-        return new WI.EventBreakpoint(payload.type, payload.eventName, {
-            disabled: !!payload.disabled,
+        return new WI.EventBreakpoint(serializedInfo.type, serializedInfo.eventName, {
+            disabled: !!serializedInfo.disabled,
         });
     }
 
@@ -67,25 +65,26 @@ WI.EventBreakpoint = class EventBreakpoint extends WI.Object
 
         this._disabled = disabled;
 
-        this.dispatchEventToListeners(WI.EventBreakpoint.Event.DisabledStateDidChange);
-    }
-
-    get serializableInfo()
-    {
-        let info = {
-            type: this._type,
-            eventName: this._eventName,
-        };
-        if (this._disabled)
-            info.disabled = true;
-
-        return info;
+        this.dispatchEventToListeners(WI.EventBreakpoint.Event.DisabledStateChanged);
     }
 
     saveIdentityToCookie(cookie)
     {
-        cookie[WI.EventBreakpoint.TypeCookieKey] = this._type;
-        cookie[WI.EventBreakpoint.EventNameCookieKey] = this._eventName;
+        cookie["event-breakpoint-type"] = this._type;
+        cookie["event-breakpoint-event-name"] = this._eventName;
+    }
+
+    toJSON(key)
+    {
+        let json = {
+            type: this._type,
+            eventName: this._eventName,
+        };
+        if (this._disabled)
+            json.disabled = true;
+        if (key === WI.ObjectStore.toJSONSymbol)
+            json[WI.objectStores.eventBreakpoints.keyPath] = this._type + ":" + this._eventName;
+        return json;
     }
 };
 
@@ -95,10 +94,6 @@ WI.EventBreakpoint.Type = {
     Timer: "timer",
 };
 
-WI.EventBreakpoint.TypeCookieKey = "event-breakpoint-type";
-WI.EventBreakpoint.EventNameCookieKey = "event-breakpoint-event-name";
-
 WI.EventBreakpoint.Event = {
-    DisabledStateDidChange: "event-breakpoint-disabled-state-did-change",
-    ResolvedStateDidChange: "event-breakpoint-resolved-state-did-change",
+    DisabledStateChanged: "event-breakpoint-disabled-state-changed",
 };

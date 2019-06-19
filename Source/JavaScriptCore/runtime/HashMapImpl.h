@@ -26,6 +26,7 @@
 #pragma once
 
 #include "ExceptionHelpers.h"
+#include "JSCJSValueInlines.h"
 #include "JSObject.h"
 
 namespace JSC {
@@ -245,7 +246,7 @@ ALWAYS_INLINE JSValue normalizeMapKey(JSValue key)
 
     double d = key.asDouble();
     if (std::isnan(d))
-        return key;
+        return jsNaN();
 
     int i = static_cast<int>(d);
     if (i == d) {
@@ -284,16 +285,16 @@ ALWAYS_INLINE uint32_t jsMapHash(ExecState* exec, VM& vm, JSValue value)
     return wangsInt64Hash(JSValue::encode(value));
 }
 
-ALWAYS_INLINE std::optional<uint32_t> concurrentJSMapHash(JSValue key)
+ALWAYS_INLINE Optional<uint32_t> concurrentJSMapHash(JSValue key)
 {
     key = normalizeMapKey(key);
     if (key.isString()) {
         JSString* string = asString(key);
         if (string->length() > 10 * 1024)
-            return std::nullopt;
+            return WTF::nullopt;
         const StringImpl* impl = string->tryGetValueImpl();
         if (!impl)
-            return std::nullopt;
+            return WTF::nullopt;
         return impl->concurrentHash();
     }
 

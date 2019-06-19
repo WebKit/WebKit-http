@@ -232,7 +232,7 @@ void RenderListItem::updateValueNow() const
 void RenderListItem::updateValue()
 {
     if (!m_valueWasSetExplicitly) {
-        m_value = std::nullopt;
+        m_value = WTF::nullopt;
         if (m_marker)
             m_marker->setNeedsLayoutAndPrefWidthsRecalc();
     }
@@ -270,8 +270,8 @@ void RenderListItem::positionListMarker()
         return;
 
     LayoutUnit markerOldLogicalLeft = m_marker->logicalLeft();
-    LayoutUnit blockOffset = 0;
-    LayoutUnit lineOffset = 0;
+    LayoutUnit blockOffset;
+    LayoutUnit lineOffset;
     for (auto* ancestor = m_marker->parentBox(); ancestor && ancestor != this; ancestor = ancestor->parentBox()) {
         blockOffset += ancestor->logicalTop();
         lineOffset += ancestor->logicalLeft();
@@ -398,7 +398,7 @@ void RenderListItem::explicitValueChanged()
         item->updateValue();
 }
 
-void RenderListItem::setExplicitValue(std::optional<int> value)
+void RenderListItem::setExplicitValue(Optional<int> value)
 {
     if (!value) {
         if (!m_valueWasSetExplicitly)
@@ -407,7 +407,7 @@ void RenderListItem::setExplicitValue(std::optional<int> value)
         if (m_valueWasSetExplicitly && m_value == value)
             return;
     }
-    m_valueWasSetExplicitly = value.has_value();
+    m_valueWasSetExplicitly = value.hasValue();
     m_value = value;
     explicitValueChanged();
 }

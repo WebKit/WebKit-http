@@ -26,9 +26,11 @@
 #import "config.h"
 #import "WKPreviewElementInfoInternal.h"
 
-#if WK_API_ENABLED && PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 @implementation WKPreviewElementInfo
+IGNORE_WARNINGS_END
 
 - (instancetype)_initWithLinkURL:(NSURL *)url
 {

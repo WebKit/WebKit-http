@@ -46,6 +46,19 @@ SharedMemory::Handle::Handle()
 {
 }
 
+SharedMemory::Handle::Handle(Handle&& other)
+{
+    m_port = std::exchange(other.m_port, MACH_PORT_NULL);
+    m_size = std::exchange(other.m_size, 0);
+}
+
+auto SharedMemory::Handle::operator=(Handle&& other) -> Handle&
+{
+    m_port = std::exchange(other.m_port, MACH_PORT_NULL);
+    m_size = std::exchange(other.m_size, 0);
+    return *this;
+}
+
 SharedMemory::Handle::~Handle()
 {
     clear();
@@ -157,7 +170,7 @@ static WTF::MachSendRight makeMemoryEntry(size_t size, vm_offset_t offset, Share
     return WTF::MachSendRight::adopt(port);
 }
 
-RefPtr<SharedMemory> SharedMemory::create(void* data, size_t size, Protection protection)
+RefPtr<SharedMemory> SharedMemory::wrapMap(void* data, size_t size, Protection protection)
 {
     ASSERT(size);
 

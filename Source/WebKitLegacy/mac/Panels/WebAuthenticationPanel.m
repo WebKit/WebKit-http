@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 #import <WebKitLegacy/WebAuthenticationPanel.h>
 
@@ -104,10 +104,9 @@
 - (BOOL)loadNib
 {
     if (!nibLoaded) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         if ([NSBundle loadNibNamed:WebAuthenticationPanelNibName owner:self]) {
-#pragma clang diagnostic pop
+            ALLOW_DEPRECATED_DECLARATIONS_END
             nibLoaded = YES;
             [imageView setImage:[NSImage imageNamed:@"NSApplicationIcon"]];
         } else {
@@ -296,4 +295,4 @@
 
 @end
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)

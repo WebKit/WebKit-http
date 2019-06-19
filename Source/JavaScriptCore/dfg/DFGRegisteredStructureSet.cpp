@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,7 +53,7 @@ void RegisteredStructureSet::filterArrayModes(ArrayModes arrayModes)
 {
     genericFilter(
         [&] (RegisteredStructure structure) -> bool {
-            return arrayModes & arrayModeFromStructure(structure.get());
+            return arrayModes & arrayModesFromStructure(structure.get());
         });
 }
 
@@ -79,7 +79,7 @@ ArrayModes RegisteredStructureSet::arrayModesFromStructures() const
     ArrayModes result = 0;
     forEach(
         [&] (RegisteredStructure structure) {
-            mergeArrayModes(result, asArrayModes(structure->indexingType()));
+            mergeArrayModes(result, arrayModesFromStructure(structure.get()));
         });
     return result;
 }

@@ -97,7 +97,7 @@ static void webAssemblyModuleValidateAsyncInternal(ExecState* exec, JSPromiseDef
         vm.promiseDeferredTimer->scheduleWorkSoon(promise, [promise, globalObject, result = WTFMove(result), &vm] () mutable {
             auto scope = DECLARE_CATCH_SCOPE(vm);
             ExecState* exec = globalObject->globalExec();
-            JSValue module = JSWebAssemblyModule::createStub(vm, exec, globalObject->WebAssemblyModuleStructure(), WTFMove(result));
+            JSValue module = JSWebAssemblyModule::createStub(vm, exec, globalObject->webAssemblyModuleStructure(), WTFMove(result));
             if (UNLIKELY(scope.exception())) {
                 reject(exec, scope, promise);
                 return;
@@ -115,7 +115,7 @@ static EncodedJSValue JSC_HOST_CALL webAssemblyCompileFunc(ExecState* exec)
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     auto* globalObject = exec->lexicalGlobalObject();
 
-    JSPromiseDeferred* promise = JSPromiseDeferred::create(exec, globalObject);
+    JSPromiseDeferred* promise = JSPromiseDeferred::tryCreate(exec, globalObject);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
 
     {
@@ -166,7 +166,7 @@ static void instantiate(VM& vm, ExecState* exec, JSPromiseDeferred* promise, JSW
 {
     auto scope = DECLARE_CATCH_SCOPE(vm);
     // In order to avoid potentially recompiling a module. We first gather all the import/memory information prior to compiling code.
-    JSWebAssemblyInstance* instance = JSWebAssemblyInstance::create(vm, exec, moduleKey, module, importObject, exec->lexicalGlobalObject()->WebAssemblyInstanceStructure(), Ref<Wasm::Module>(module->module()), creationMode);
+    JSWebAssemblyInstance* instance = JSWebAssemblyInstance::create(vm, exec, moduleKey, module, importObject, exec->lexicalGlobalObject()->webAssemblyInstanceStructure(), Ref<Wasm::Module>(module->module()), creationMode);
     RETURN_IF_EXCEPTION(scope, reject(exec, scope, promise));
 
     Vector<Strong<JSCell>> dependencies;
@@ -203,7 +203,7 @@ static void compileAndInstantiate(VM& vm, ExecState* exec, JSPromiseDeferred* pr
         vm.promiseDeferredTimer->scheduleWorkSoon(promise, [promise, importObject, moduleKeyCell, globalObject, result = WTFMove(result), resolveKind, creationMode, &vm] () mutable {
             auto scope = DECLARE_CATCH_SCOPE(vm);
             ExecState* exec = globalObject->globalExec();
-            JSWebAssemblyModule* module = JSWebAssemblyModule::createStub(vm, exec, globalObject->WebAssemblyModuleStructure(), WTFMove(result));
+            JSWebAssemblyModule* module = JSWebAssemblyModule::createStub(vm, exec, globalObject->webAssemblyModuleStructure(), WTFMove(result));
             if (UNLIKELY(scope.exception()))
                 return reject(exec, scope, promise);
 
@@ -237,7 +237,7 @@ static void webAssemblyModuleInstantinateAsyncInternal(ExecState* exec, JSPromis
         vm.promiseDeferredTimer->scheduleWorkSoon(promise, [promise, importObject, globalObject, result = WTFMove(result), &vm] () mutable {
             auto scope = DECLARE_CATCH_SCOPE(vm);
             ExecState* exec = globalObject->globalExec();
-            JSWebAssemblyModule* module = JSWebAssemblyModule::createStub(vm, exec, globalObject->WebAssemblyModuleStructure(), WTFMove(result));
+            JSWebAssemblyModule* module = JSWebAssemblyModule::createStub(vm, exec, globalObject->webAssemblyModuleStructure(), WTFMove(result));
             if (UNLIKELY(scope.exception()))
                 return reject(exec, scope, promise);
 
@@ -261,7 +261,7 @@ static EncodedJSValue JSC_HOST_CALL webAssemblyInstantiateFunc(ExecState* exec)
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     auto* globalObject = exec->lexicalGlobalObject();
 
-    JSPromiseDeferred* promise = JSPromiseDeferred::create(exec, globalObject);
+    JSPromiseDeferred* promise = JSPromiseDeferred::tryCreate(exec, globalObject);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
 
     {
@@ -306,7 +306,7 @@ EncodedJSValue JSC_HOST_CALL webAssemblyCompileStreamingInternal(ExecState* exec
     auto* globalObject = exec->lexicalGlobalObject();
     auto catchScope = DECLARE_CATCH_SCOPE(vm);
 
-    JSPromiseDeferred* promise = JSPromiseDeferred::create(exec, globalObject);
+    JSPromiseDeferred* promise = JSPromiseDeferred::tryCreate(exec, globalObject);
 
     Vector<Strong<JSCell>> dependencies;
     dependencies.append(Strong<JSCell>(vm, globalObject));
@@ -330,8 +330,7 @@ EncodedJSValue JSC_HOST_CALL webAssemblyInstantiateStreamingInternal(ExecState* 
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     auto* globalObject = exec->lexicalGlobalObject();
 
-    JSPromiseDeferred* promise = JSPromiseDeferred::create(exec, globalObject);
-
+    JSPromiseDeferred* promise = JSPromiseDeferred::tryCreate(exec, globalObject);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     {
         auto catchScope = DECLARE_CATCH_SCOPE(vm);

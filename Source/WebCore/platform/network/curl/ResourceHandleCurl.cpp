@@ -32,13 +32,12 @@
 
 #if USE(CURL)
 
+#include "CookieJar.h"
 #include "CookieJarCurl.h"
-#include "CookiesStrategy.h"
 #include "CredentialStorage.h"
 #include "CurlCacheManager.h"
 #include "CurlContext.h"
 #include "CurlRequest.h"
-#include "FileSystem.h"
 #include "HTTPParsers.h"
 #include "Logging.h"
 #include "NetworkStorageSession.h"
@@ -48,6 +47,7 @@
 #include "SynchronousLoaderClient.h"
 #include "TextEncoding.h"
 #include <wtf/CompletionHandler.h>
+#include <wtf/FileSystem.h>
 #include <wtf/text/Base64.h>
 
 namespace WebCore {
@@ -81,11 +81,16 @@ bool ResourceHandle::start()
         return true;
     }
 
+    d->m_startTime = MonotonicTime::now();
+
     d->m_curlRequest = createCurlRequest(WTFMove(request));
 
-    if (auto credential = getCredential(d->m_firstRequest, false))
-        d->m_curlRequest->setUserPass(credential->first, credential->second);
+    if (auto credential = getCredential(d->m_firstRequest, false)) {
+        d->m_curlRequest->setUserPass(credential->user(), credential->password());
+        d->m_curlRequest->setAuthenticationScheme(ProtectionSpaceAuthenticationSchemeHTTPBasic);
+    }
 
+    d->m_curlRequest->setStartTime(d->m_startTime);
     d->m_curlRequest->start();
 
     return true;
@@ -140,16 +145,16 @@ Ref<CurlRequest> ResourceHandle::createCurlRequest(ResourceRequest&& request, Re
     if (status == RequestStatus::NewRequest) {
         addCacheValidationHeaders(request);
 
-        auto& storageSession = NetworkStorageSession::defaultStorageSession();
+        auto& storageSession = *d->m_context->storageSession();
         auto& cookieJar = storageSession.cookieStorage();
         auto includeSecureCookies = request.url().protocolIs("https") ? IncludeSecureCookies::Yes : IncludeSecureCookies::No;
-        String cookieHeaderField = cookieJar.cookieRequestHeaderFieldValue(storageSession, request.firstPartyForCookies(), SameSiteInfo::create(request), request.url(), std::nullopt, std::nullopt, includeSecureCookies).first;
+        String cookieHeaderField = cookieJar.cookieRequestHeaderFieldValue(storageSession, request.firstPartyForCookies(), SameSiteInfo::create(request), request.url(), WTF::nullopt, WTF::nullopt, includeSecureCookies).first;
         if (!cookieHeaderField.isEmpty())
             request.addHTTPHeaderField(HTTPHeaderName::Cookie, cookieHeaderField);
     }
 
     CurlRequest::ShouldSuspend shouldSuspend = d->m_defersLoading ? CurlRequest::ShouldSuspend::Yes : CurlRequest::ShouldSuspend::No;
-    auto curlRequest = CurlRequest::create(request, *delegate(), shouldSuspend, CurlRequest::EnableMultipart::Yes, d->m_messageQueue);
+    auto curlRequest = CurlRequest::create(request, *delegate(), shouldSuspend, CurlRequest::EnableMultipart::Yes, CurlRequest::CaptureNetworkLoadMetrics::Basic, d->m_messageQueue);
     
     return curlRequest;
 }
@@ -226,9 +231,9 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
         URL urlToStore;
         if (challenge.failureResponse().httpStatusCode() == 401)
             urlToStore = challenge.failureResponse().url();
-        CredentialStorage::defaultCredentialStorage().set(partition, credential, challenge.protectionSpace(), urlToStore);
+        d->m_context->storageSession()->credentialStorage().set(partition, credential, challenge.protectionSpace(), urlToStore);
 
-        restartRequestWithCredential(credential.user(), credential.password());
+        restartRequestWithCredential(challenge.protectionSpace(), credential);
 
         d->m_user = String();
         d->m_pass = String();
@@ -241,19 +246,19 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
             // The stored credential wasn't accepted, stop using it.
             // There is a race condition here, since a different credential might have already been stored by another ResourceHandle,
             // but the observable effect should be very minor, if any.
-            CredentialStorage::defaultCredentialStorage().remove(partition, challenge.protectionSpace());
+            d->m_context->storageSession()->credentialStorage().remove(partition, challenge.protectionSpace());
         }
 
         if (!challenge.previousFailureCount()) {
-            Credential credential = CredentialStorage::defaultCredentialStorage().get(partition, challenge.protectionSpace());
+            Credential credential = d->m_context->storageSession()->credentialStorage().get(partition, challenge.protectionSpace());
             if (!credential.isEmpty() && credential != d->m_initialCredential) {
                 ASSERT(credential.persistence() == CredentialPersistenceNone);
                 if (challenge.failureResponse().httpStatusCode() == 401) {
                     // Store the credential back, possibly adding it as a default for this directory.
-                    CredentialStorage::defaultCredentialStorage().set(partition, credential, challenge.protectionSpace(), challenge.failureResponse().url());
+                    d->m_context->storageSession()->credentialStorage().set(partition, credential, challenge.protectionSpace(), challenge.failureResponse().url());
                 }
 
-                restartRequestWithCredential(credential.user(), credential.password());
+                restartRequestWithCredential(challenge.protectionSpace(), credential);
                 return;
             }
         }
@@ -284,11 +289,11 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge
     if (shouldUseCredentialStorage()) {
         if (challenge.failureResponse().httpStatusCode() == 401) {
             URL urlToStore = challenge.failureResponse().url();
-            CredentialStorage::defaultCredentialStorage().set(partition, credential, challenge.protectionSpace(), urlToStore);
+            d->m_context->storageSession()->credentialStorage().set(partition, credential, challenge.protectionSpace(), urlToStore);
         }
     }
 
-    restartRequestWithCredential(credential.user(), credential.password());
+    restartRequestWithCredential(challenge.protectionSpace(), credential);
 
     clearAuthentication();
 }
@@ -330,40 +335,34 @@ void ResourceHandle::receivedChallengeRejection(const AuthenticationChallenge&)
     ASSERT_NOT_REACHED();
 }
 
-std::optional<std::pair<String, String>> ResourceHandle::getCredential(ResourceRequest& request, bool redirect)
+Optional<Credential> ResourceHandle::getCredential(const ResourceRequest& request, bool redirect)
 {
     // m_user/m_pass are credentials given manually, for instance, by the arguments passed to XMLHttpRequest.open().
-    String partition = request.cachePartition();
+    Credential credential { d->m_user, d->m_pass, CredentialPersistenceNone };
 
     if (shouldUseCredentialStorage()) {
-        if (d->m_user.isEmpty() && d->m_pass.isEmpty()) {
+        String partition = request.cachePartition();
+
+        if (credential.isEmpty()) {
             // <rdar://problem/7174050> - For URLs that match the paths of those previously challenged for HTTP Basic authentication, 
             // try and reuse the credential preemptively, as allowed by RFC 2617.
-            d->m_initialCredential = CredentialStorage::defaultCredentialStorage().get(partition, request.url());
+            d->m_initialCredential = d->m_context->storageSession()->credentialStorage().get(partition, request.url());
         } else if (!redirect) {
             // If there is already a protection space known for the URL, update stored credentials
             // before sending a request. This makes it possible to implement logout by sending an
             // XMLHttpRequest with known incorrect credentials, and aborting it immediately (so that
             // an authentication dialog doesn't pop up).
-            CredentialStorage::defaultCredentialStorage().set(partition, Credential(d->m_user, d->m_pass, CredentialPersistenceNone), request.url());
+            d->m_context->storageSession()->credentialStorage().set(partition, credential, request.url());
         }
     }
 
-    String user = d->m_user;
-    String password = d->m_pass;
+    if (!d->m_initialCredential.isEmpty())
+        return d->m_initialCredential;
 
-    if (!d->m_initialCredential.isEmpty()) {
-        user = d->m_initialCredential.user();
-        password = d->m_initialCredential.password();
-    }
-
-    if (user.isEmpty() && password.isEmpty())
-        return std::nullopt;
-
-    return std::pair<String, String>(user, password);
+    return WTF::nullopt;
 }
 
-void ResourceHandle::restartRequestWithCredential(const String& user, const String& password)
+void ResourceHandle::restartRequestWithCredential(const ProtectionSpace& protectionSpace, const Credential& credential)
 {
     ASSERT(isMainThread());
 
@@ -374,20 +373,26 @@ void ResourceHandle::restartRequestWithCredential(const String& user, const Stri
     d->m_curlRequest->cancel();
 
     d->m_curlRequest = createCurlRequest(WTFMove(previousRequest), RequestStatus::ReusedRequest);
-    d->m_curlRequest->setUserPass(user, password);
+    d->m_curlRequest->setAuthenticationScheme(protectionSpace.authenticationScheme());
+    d->m_curlRequest->setUserPass(credential.user(), credential.password());
+    d->m_curlRequest->setStartTime(d->m_startTime);
     d->m_curlRequest->start();
 }
 
 void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentialsPolicy storedCredentialsPolicy, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     ASSERT(isMainThread());
+    ASSERT(!request.isEmpty());
 
     SynchronousLoaderClient client;
+    client.setAllowStoredCredentials(storedCredentialsPolicy == StoredCredentialsPolicy::Use);
+
     bool defersLoading = false;
     bool shouldContentSniff = true;
     bool shouldContentEncodingSniff = true;
     RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &client, defersLoading, shouldContentSniff, shouldContentEncodingSniff));
     handle->d->m_messageQueue = &client.messageQueue();
+    handle->d->m_startTime = MonotonicTime::now();
 
     if (request.url().protocolIsData()) {
         handle->handleDataURL();
@@ -396,6 +401,13 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
 
     auto requestCopy = handle->firstRequest();
     handle->d->m_curlRequest = handle->createCurlRequest(WTFMove(requestCopy));
+
+    if (auto credential = handle->getCredential(handle->d->m_firstRequest, false)) {
+        handle->d->m_curlRequest->setUserPass(credential->user(), credential->password());
+        handle->d->m_curlRequest->setAuthenticationScheme(ProtectionSpaceAuthenticationSchemeHTTPBasic);
+    }
+
+    handle->d->m_curlRequest->setStartTime(handle->d->m_startTime);
     handle->d->m_curlRequest->start();
 
     do {
@@ -483,6 +495,7 @@ void ResourceHandle::willSendRequest()
         // in a cross-origin redirect, we want to clear those headers here. 
         newRequest.clearHTTPAuthorization();
         newRequest.clearHTTPOrigin();
+        d->m_startTime = WTF::MonotonicTime::now();
     }
 
     ResourceResponse responseCopy = delegate()->response();
@@ -511,8 +524,9 @@ void ResourceHandle::continueAfterWillSendRequest(ResourceRequest&& request)
     d->m_curlRequest = createCurlRequest(WTFMove(request));
 
     if (shouldForwardCredential && credential)
-        d->m_curlRequest->setUserPass(credential->first, credential->second);
+        d->m_curlRequest->setUserPass(credential->user(), credential->password());
 
+    d->m_curlRequest->setStartTime(d->m_startTime);
     d->m_curlRequest->start();
 }
 

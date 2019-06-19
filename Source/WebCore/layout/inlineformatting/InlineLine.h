@@ -1,0 +1,145 @@
+/*
+ * Copyright (C) 2019 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#pragma once
+
+#if ENABLE(LAYOUT_FORMATTING_CONTEXT)
+
+#include "DisplayRun.h"
+#include "InlineItem.h"
+#include "InlineTextItem.h"
+#include <wtf/IsoMalloc.h>
+
+namespace WebCore {
+namespace Layout {
+
+class Line {
+    WTF_MAKE_ISO_ALLOCATED(Line);
+public:
+    Line(const LayoutState&, const LayoutPoint& topLeft, LayoutUnit availableWidth, LayoutUnit minimumLineHeight, LayoutUnit baselineOffset);
+    Line(const LayoutState&, LayoutUnit logicalLeft, LayoutUnit availableWidth);
+
+    class Content {
+    public:
+        struct Run {
+            struct TextContext {
+                unsigned start { 0 };
+                unsigned length { 0 };
+            };
+            Run(const InlineItem&, const Display::Rect&, TextContext, bool isCollapsed, bool canBeExtended);
+
+            const InlineItem& inlineItem;
+            Display::Rect logicalRect;
+            LayoutUnit baseline;
+            Optional<TextContext> textContext;
+            bool isCollapsed { false };
+            bool canBeExtended { false };
+        };
+        using Runs = Vector<std::unique_ptr<Run>>;
+        const Runs& runs() const { return m_runs; }
+        bool isEmpty() const { return m_runs.isEmpty(); }
+
+        LayoutUnit logicalTop() const { return m_logicalRect.top(); }
+        LayoutUnit logicalLeft() const { return m_logicalRect.left(); }
+        LayoutUnit logicalRight() const { return logicalLeft() + logicalWidth(); }
+        LayoutUnit logicalBottom() const { return logicalTop() + logicalHeight(); }
+        LayoutUnit logicalWidth() const { return m_logicalRect.width(); }
+        LayoutUnit logicalHeight() const { return m_logicalRect.height(); }
+        LineBox::Baseline baseline() const { return m_baseline; }
+        LayoutUnit baselineOffset() const { return m_baselineOffset; }
+
+    private:
+        friend class Line;
+
+        void setLogicalRect(const Display::Rect& logicalRect) { m_logicalRect = logicalRect; }
+        void setBaseline(LineBox::Baseline baseline) { m_baseline = baseline; }
+        void setBaselineOffset(LayoutUnit baselineOffset) { m_baselineOffset = baselineOffset; }
+        Runs& runs() { return m_runs; }
+
+        Display::Rect m_logicalRect;
+        LineBox::Baseline m_baseline;
+        LayoutUnit m_baselineOffset;
+        Runs m_runs;
+    };
+    std::unique_ptr<Content> close();
+
+    void append(const InlineItem&, LayoutUnit logicalWidth);
+    bool hasContent() const { return !isVisuallyEmpty(); }
+
+    LayoutUnit trailingTrimmableWidth() const;
+
+    void moveLogicalLeft(LayoutUnit);
+    void moveLogicalRight(LayoutUnit);
+
+    LayoutUnit availableWidth() const { return logicalWidth() - contentLogicalWidth(); }
+    LayoutUnit contentLogicalRight() const { return logicalLeft() + contentLogicalWidth(); }
+    LayoutUnit logicalTop() const { return m_logicalTopLeft.y(); }
+    LayoutUnit logicalBottom() const { return logicalTop() + logicalHeight(); }
+
+    static LineBox::Baseline halfLeadingMetrics(const FontMetrics&, LayoutUnit lineLogicalHeight);
+
+private:
+    LayoutUnit logicalLeft() const { return m_logicalTopLeft.x(); }
+    LayoutUnit logicalRight() const { return logicalLeft() + logicalWidth(); }
+
+    LayoutUnit logicalWidth() const { return m_lineLogicalWidth; }
+    LayoutUnit logicalHeight() const { return m_contentLogicalHeight; }
+
+    LayoutUnit contentLogicalWidth() const { return m_contentLogicalWidth; }
+    LayoutUnit baselineAlignedContentHeight() const { return m_baseline.ascent + m_baseline.descent; }
+    LayoutUnit baselineOffset() const { return m_baseline.ascent + m_baselineTop; }
+
+    void appendNonBreakableSpace(const InlineItem&, const Display::Rect& logicalRect);
+    void appendTextContent(const InlineTextItem&, LayoutUnit logicalWidth);
+    void appendNonReplacedInlineBox(const InlineItem&, LayoutUnit logicalWidth);
+    void appendReplacedInlineBox(const InlineItem&, LayoutUnit logicalWidth);
+    void appendInlineContainerStart(const InlineItem&, LayoutUnit logicalWidth);
+    void appendInlineContainerEnd(const InlineItem&, LayoutUnit logicalWidth);
+    void appendHardLineBreak(const InlineItem&);
+
+    void removeTrailingTrimmableContent();
+
+    void adjustBaselineAndLineHeight(const InlineItem&, LayoutUnit runHeight);
+    LayoutUnit inlineItemContentHeight(const InlineItem&) const;
+    bool isVisuallyEmpty() const;
+
+    const LayoutState& m_layoutState;
+    std::unique_ptr<Content> m_content;
+    ListHashSet<Content::Run*> m_trimmableContent;
+
+    LayoutPoint m_logicalTopLeft;
+    LayoutUnit m_contentLogicalWidth;
+
+    LineBox::Baseline m_baseline;
+    LayoutUnit m_baselineTop;
+
+    LayoutUnit m_contentLogicalHeight;
+    LayoutUnit m_lineLogicalWidth;
+    bool m_skipVerticalAligment { false };
+};
+
+}
+}
+#endif

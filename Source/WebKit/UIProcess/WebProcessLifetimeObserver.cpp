@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebProcessLifetimeObserver.h"
 
+#include "Logging.h"
 #include "WebPageProxy.h"
 #include "WebProcessProxy.h"
 
@@ -39,30 +40,32 @@ WebProcessLifetimeObserver::~WebProcessLifetimeObserver()
 {
 }
 
-void WebProcessLifetimeObserver::addWebPage(WebPageProxy& webPageProxy)
+void WebProcessLifetimeObserver::addWebPage(WebPageProxy& webPageProxy, WebProcessProxy& process)
 {
-    auto& process = webPageProxy.process();
-
     ASSERT(process.state() == WebProcessProxy::State::Running);
+    RELEASE_ASSERT(!process.isInProcessCache());
+    RELEASE_ASSERT(!process.isPrewarmed());
 
-    if (m_processes.add(&process).isNewEntry)
+    if (m_processes.add(&process).isNewEntry) {
+        RELEASE_LOG(Loading, "%p - WebProcessLifetimeObserver::addWebPage: webPID = %i, pageID = %" PRIu64, this, process.processIdentifier(), webPageProxy.pageID().toUInt64());
         webProcessWillOpenConnection(process, *process.connection());
+    }
 
     webPageWillOpenConnection(webPageProxy, *process.connection());
 }
 
-void WebProcessLifetimeObserver::removeWebPage(WebPageProxy& webPageProxy)
+void WebProcessLifetimeObserver::removeWebPage(WebPageProxy& webPageProxy, WebProcessProxy& process)
 {
-    auto& process = webPageProxy.process();
-
     // FIXME: This should assert that the page is either closed or that the process is no longer running,
     // but we have to make sure that removeWebPage is called after the connection has been removed in that case.
     ASSERT(m_processes.contains(&process));
 
     webPageDidCloseConnection(webPageProxy, *process.connection());
 
-    if (m_processes.remove(&process))
+    if (m_processes.remove(&process)) {
+        RELEASE_LOG(Loading, "%p - WebProcessLifetimeObserver::removeWebPage: webPID = %i, pageID = %" PRIu64, this, process.processIdentifier(), webPageProxy.pageID().toUInt64());
         webProcessDidCloseConnection(process, *process.connection());
+    }
 }
 
 WTF::IteratorRange<HashCountedSet<WebProcessProxy*>::const_iterator::Keys> WebProcessLifetimeObserver::processes() const

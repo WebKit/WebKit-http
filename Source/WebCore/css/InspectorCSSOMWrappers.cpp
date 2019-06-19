@@ -79,9 +79,9 @@ void InspectorCSSOMWrappers::collectFromStyleSheetContents(StyleSheetContents* s
 {
     if (!styleSheet)
         return;
-    RefPtr<CSSStyleSheet> styleSheetWrapper = CSSStyleSheet::create(*styleSheet);
-    m_styleSheetCSSOMWrapperSet.add(styleSheetWrapper);
-    collect(styleSheetWrapper.get());
+    auto styleSheetWrapper = CSSStyleSheet::create(*styleSheet);
+    m_styleSheetCSSOMWrapperSet.add(styleSheetWrapper.copyRef());
+    collect(styleSheetWrapper.ptr());
 }
 
 void InspectorCSSOMWrappers::collectFromStyleSheets(const Vector<RefPtr<CSSStyleSheet>>& sheets)
@@ -110,6 +110,12 @@ void InspectorCSSOMWrappers::collectDocumentWrappers(ExtensionStyleSheets& exten
         collectFromStyleSheetContents(CSSDefaultStyleSheets::mathMLStyleSheet);
         collectFromStyleSheetContents(CSSDefaultStyleSheets::mediaControlsStyleSheet);
         collectFromStyleSheetContents(CSSDefaultStyleSheets::fullscreenStyleSheet);
+#if ENABLE(DATALIST_ELEMENT)
+        collectFromStyleSheetContents(CSSDefaultStyleSheets::dataListStyleSheet);
+#endif
+#if ENABLE(INPUT_TYPE_COLOR)
+        collectFromStyleSheetContents(CSSDefaultStyleSheets::colorInputStyleSheet);
+#endif
         collectFromStyleSheetContents(CSSDefaultStyleSheets::plugInsStyleSheet);
         collectFromStyleSheetContents(CSSDefaultStyleSheets::mediaQueryStyleSheet);
 

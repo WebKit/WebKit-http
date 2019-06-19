@@ -38,10 +38,14 @@ WI.Instrument = class Instrument
             return new WI.ScriptInstrument;
         case WI.TimelineRecord.Type.RenderingFrame:
             return new WI.FPSInstrument;
+        case WI.TimelineRecord.Type.CPU:
+            return new WI.CPUInstrument;
         case WI.TimelineRecord.Type.Memory:
             return new WI.MemoryInstrument;
         case WI.TimelineRecord.Type.HeapAllocations:
             return new WI.HeapAllocationsInstrument;
+        case WI.TimelineRecord.Type.Media:
+            return new WI.MediaInstrument;
         default:
             console.error("Unknown TimelineRecord.Type: " + type);
             return null;

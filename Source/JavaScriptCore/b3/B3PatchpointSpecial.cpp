@@ -60,7 +60,7 @@ void PatchpointSpecial::forEachArg(Inst& inst, const ScopedLambda<Inst::EachArgC
         callback(inst.args[argIndex++], role, inst.origin->resultBank(), inst.origin->resultWidth());
     }
 
-    forEachArgImpl(0, argIndex, inst, SameAsRep, std::nullopt, callback, std::nullopt);
+    forEachArgImpl(0, argIndex, inst, SameAsRep, WTF::nullopt, callback, WTF::nullopt);
     argIndex += inst.origin->numChildren();
 
     for (unsigned i = patchpoint->numGPScratchRegisters; i--;)
@@ -120,6 +120,7 @@ bool PatchpointSpecial::admitsStack(Inst& inst, unsigned argIndex)
         case ValueRep::SomeRegister:
         case ValueRep::SomeRegisterWithClobber:
         case ValueRep::SomeEarlyRegister:
+        case ValueRep::SomeLateRegister:
         case ValueRep::Register:
         case ValueRep::LateRegister:
             return false;

@@ -31,7 +31,6 @@
 #include "InjectedBundlePage.h"
 #include "JSAccessibilityController.h"
 
-#include <JavaScriptCore/JSRetainPtr.h>
 #include <WebKit/WKBundle.h>
 #include <WebKit/WKBundlePage.h>
 #include <WebKit/WKBundlePagePrivate.h>
@@ -71,7 +70,7 @@ bool AccessibilityController::enhancedAccessibilityEnabled()
     return WKAccessibilityEnhancedAccessibilityEnabled();
 }
 
-#if !PLATFORM(GTK) && !PLATFORM(WPE)
+#if PLATFORM(COCOA)
 Ref<AccessibilityUIElement> AccessibilityController::rootElement()
 {
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
@@ -91,14 +90,8 @@ Ref<AccessibilityUIElement> AccessibilityController::focusedElement()
 
 RefPtr<AccessibilityUIElement> AccessibilityController::elementAtPoint(int x, int y)
 {
-    Ref<AccessibilityUIElement> uiElement = rootElement();
+    auto uiElement = rootElement();
     return uiElement->elementAtPoint(x, y);
 }
 
-#if !HAVE(ACCESSIBILITY) && PLATFORM(GTK)
-RefPtr<AccessibilityUIElement> AccessibilityController::rootElement() { return nullptr; }
-RefPtr<AccessibilityUIElement> AccessibilityController::focusedElement() { return nullptr; }
-#endif
-
 } // namespace WTR
-

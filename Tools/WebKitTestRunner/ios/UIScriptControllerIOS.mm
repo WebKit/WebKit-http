@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,14 +26,15 @@
 #import "config.h"
 #import "UIScriptController.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "HIDEventGenerator.h"
+#import "PencilKitTestSPI.h"
 #import "PlatformWebView.h"
 #import "StringFunctions.h"
 #import "TestController.h"
 #import "TestRunnerWKWebView.h"
-#import "UIKitTestSPI.h"
+#import "UIKitSPI.h"
 #import "UIScriptContext.h"
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <JavaScriptCore/OpaqueJSString.h>
@@ -41,6 +42,16 @@
 #import <WebCore/FloatRect.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKit/WebKit.h>
+#import <pal/spi/ios/GraphicsServicesSPI.h>
+#import <wtf/SoftLinking.h>
+#import <wtf/Vector.h>
+
+SOFT_LINK_FRAMEWORK(UIKit)
+SOFT_LINK_CLASS(UIKit, UIPhysicalKeyboardEvent)
+
+@interface UIPhysicalKeyboardEvent (UIPhysicalKeyboardEventHack)
+@property (nonatomic, assign) NSInteger _modifierFlags;
+@end
 
 namespace WTR {
 
@@ -53,22 +64,74 @@ static NSDictionary *toNSDictionary(CGRect rect)
         @"height": @(rect.size.height)
     };
 }
-    
+
+static unsigned arrayLength(JSContextRef context, JSObjectRef array)
+{
+    auto lengthString = adopt(JSStringCreateWithUTF8CString("length"));
+    if (auto lengthValue = JSObjectGetProperty(context, array, lengthString.get(), nullptr))
+        return static_cast<unsigned>(JSValueToNumber(context, lengthValue, nullptr));
+    return 0;
+}
+
+static Vector<String> parseModifierArray(JSContextRef context, JSValueRef arrayValue)
+{
+    if (!arrayValue)
+        return { };
+
+    // The value may either be a string with a single modifier or an array of modifiers.
+    if (JSValueIsString(context, arrayValue)) {
+        auto string = toWTFString(toWK(adopt(JSValueToStringCopy(context, arrayValue, nullptr))));
+        return { string };
+    }
+
+    if (!JSValueIsObject(context, arrayValue))
+        return { };
+    JSObjectRef array = const_cast<JSObjectRef>(arrayValue);
+    unsigned length = arrayLength(context, array);
+    Vector<String> modifiers;
+    modifiers.reserveInitialCapacity(length);
+    for (unsigned i = 0; i < length; ++i) {
+        JSValueRef exception = nullptr;
+        JSValueRef value = JSObjectGetPropertyAtIndex(context, array, i, &exception);
+        if (exception)
+            continue;
+        auto string = adopt(JSValueToStringCopy(context, value, &exception));
+        if (exception)
+            continue;
+        modifiers.append(toWTFString(toWK(string.get())));
+    }
+    return modifiers;
+}
+
+static BOOL forEachViewInHierarchy(UIView *view, void(^mapFunction)(UIView *subview, BOOL *stop))
+{
+    BOOL stop = NO;
+    mapFunction(view, &stop);
+    if (stop)
+        return YES;
+
+    for (UIView *subview in view.subviews) {
+        stop = forEachViewInHierarchy(subview, mapFunction);
+        if (stop)
+            break;
+    }
+    return stop;
+}
+
+static NSArray<UIView *> *findAllViewsInHierarchyOfType(UIView *view, Class viewClass)
+{
+    __block RetainPtr<NSMutableArray> views = adoptNS([[NSMutableArray alloc] init]);
+    forEachViewInHierarchy(view, ^(UIView *subview, BOOL *stop) {
+        if ([subview isKindOfClass:viewClass])
+            [views addObject:subview];
+    });
+    return views.autorelease();
+}
+
 void UIScriptController::checkForOutstandingCallbacks()
 {
     if (![[HIDEventGenerator sharedHIDEventGenerator] checkForOutstandingCallbacks])
         [NSException raise:@"WebKitTestRunnerTestProblem" format:@"The test completed before all synthesized events had been handled. Perhaps you're calling notifyDone() too early?"];
-}
-
-void UIScriptController::doAsyncTask(JSValueRef callback)
-{
-    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (!m_context)
-            return;
-        m_context->asyncTaskComplete(callbackID);
-    });
 }
 
 void UIScriptController::doAfterPresentationUpdate(JSValueRef callback)
@@ -135,7 +198,7 @@ void UIScriptController::retrieveSpeakSelectionContent(JSValueRef callback)
 JSRetainPtr<JSStringRef> UIScriptController::accessibilitySpeakSelectionContent() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    return adopt(JSStringCreateWithCFString((__bridge CFStringRef)webView.accessibilitySpeakSelectionContent));
+    return adopt(JSStringCreateWithCFString((CFStringRef)webView.accessibilitySpeakSelectionContent));
 }
 
 void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef callback)
@@ -194,12 +257,29 @@ void UIScriptController::liftUpAtPoint(long x, long y, long touchCount, JSValueR
 
 void UIScriptController::singleTapAtPoint(long x, long y, JSValueRef callback)
 {
+    singleTapAtPointWithModifiers(x, y, nullptr, callback);
+}
+
+void UIScriptController::singleTapAtPointWithModifiers(long x, long y, JSValueRef modifierArray, JSValueRef callback)
+{
     unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto modifierFlags = parseModifierArray(m_context->jsContext(), modifierArray);
+    for (auto& modifierFlag : modifierFlags)
+        [[HIDEventGenerator sharedHIDEventGenerator] keyDown:modifierFlag];
 
     [[HIDEventGenerator sharedHIDEventGenerator] tap:globalToContentCoordinates(TestController::singleton().mainWebView()->platformView(), x, y) completionBlock:^{
         if (!m_context)
             return;
-        m_context->asyncTaskComplete(callbackID);
+        for (size_t i = modifierFlags.size(); i; ) {
+            --i;
+            [[HIDEventGenerator sharedHIDEventGenerator] keyUp:modifierFlags[i]];
+        }
+        [[HIDEventGenerator sharedHIDEventGenerator] sendMarkerHIDEventWithCompletionBlock:^{
+            if (!m_context)
+                return;
+            m_context->asyncTaskComplete(callbackID);
+        }];
     }];
 }
 
@@ -252,16 +332,33 @@ void UIScriptController::stylusUpAtPoint(long x, long y, JSValueRef callback)
 
 void UIScriptController::stylusTapAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback)
 {
+    stylusTapAtPointWithModifiers(x, y, azimuthAngle, altitudeAngle, pressure, nullptr, callback);
+}
+
+void UIScriptController::stylusTapAtPointWithModifiers(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef modifierArray, JSValueRef callback)
+{
     unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto modifierFlags = parseModifierArray(m_context->jsContext(), modifierArray);
+    for (auto& modifierFlag : modifierFlags)
+        [[HIDEventGenerator sharedHIDEventGenerator] keyDown:modifierFlag];
 
     auto location = globalToContentCoordinates(TestController::singleton().mainWebView()->platformView(), x, y);
     [[HIDEventGenerator sharedHIDEventGenerator] stylusTapAtPoint:location azimuthAngle:azimuthAngle altitudeAngle:altitudeAngle pressure:pressure completionBlock:^{
         if (!m_context)
             return;
-        m_context->asyncTaskComplete(callbackID);
+        for (size_t i = modifierFlags.size(); i; ) {
+            --i;
+            [[HIDEventGenerator sharedHIDEventGenerator] keyUp:modifierFlags[i]];
+        }
+        [[HIDEventGenerator sharedHIDEventGenerator] sendMarkerHIDEventWithCompletionBlock:^{
+            if (!m_context)
+                return;
+            m_context->asyncTaskComplete(callbackID);
+        }];
     }];
 }
-    
+
 void convertCoordinates(NSMutableDictionary *event)
 {
     if (event[HIDEventTouchesKey]) {
@@ -335,7 +432,7 @@ void UIScriptController::enterText(JSStringRef text)
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     auto textAsCFString = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, text));
-    [webView _simulateTextEntered:(__bridge NSString *)textAsCFString.get()];
+    [webView _simulateTextEntered:(NSString *)textAsCFString.get()];
 }
 
 void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
@@ -350,28 +447,34 @@ void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef characte
     }];
 }
 
-void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
+static UIPhysicalKeyboardEvent *createUIPhysicalKeyboardEvent(NSString *hidInputString, NSString *uiEventInputString, UIKeyModifierFlags modifierFlags, UIKeyboardInputFlags inputFlags, bool isKeyDown)
 {
-    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
-
-    // Assumes that the keyboard is already shown.
-    [[HIDEventGenerator sharedHIDEventGenerator] keyDown:toWTFString(toWK(character)) completionBlock:^{
-        if (!m_context)
-            return;
-        m_context->asyncTaskComplete(callbackID);
-    }];
+    auto* keyboardEvent = [getUIPhysicalKeyboardEventClass() _eventWithInput:uiEventInputString inputFlags:inputFlags];
+    keyboardEvent._modifierFlags = modifierFlags;
+    auto hidEvent = createHIDKeyEvent(hidInputString, keyboardEvent.timestamp, isKeyDown);
+    [keyboardEvent _setHIDEvent:hidEvent.get() keyboard:nullptr];
+    return keyboardEvent;
 }
 
-void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
+void UIScriptController::keyDown(JSStringRef character, JSValueRef modifierArray)
 {
-    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    // Character can be either a single Unicode code point or the name of a special key (e.g. "downArrow").
+    // HIDEventGenerator knows how to map these special keys to the appropriate keycode.
+    String inputString = toWTFString(toWK(character));
+    auto modifierFlags = parseModifierArray(m_context->jsContext(), modifierArray);
 
-    // Assumes that the keyboard is already shown.
-    [[HIDEventGenerator sharedHIDEventGenerator] keyUp:toWTFString(toWK(character)) completionBlock:^{
-        if (!m_context)
-            return;
-        m_context->asyncTaskComplete(callbackID);
-    }];
+    for (auto& modifierFlag : modifierFlags)
+        [[HIDEventGenerator sharedHIDEventGenerator] keyDown:modifierFlag];
+
+    [[HIDEventGenerator sharedHIDEventGenerator] keyDown:inputString];
+    [[HIDEventGenerator sharedHIDEventGenerator] keyUp:inputString];
+
+    for (size_t i = modifierFlags.size(); i; ) {
+        --i;
+        [[HIDEventGenerator sharedHIDEventGenerator] keyUp:modifierFlags[i]];
+    }
+
+    [[HIDEventGenerator sharedHIDEventGenerator] sendMarkerHIDEventWithCompletionBlock:^{ /* Do nothing */ }];
 }
 
 void UIScriptController::dismissFormAccessoryView()
@@ -380,22 +483,35 @@ void UIScriptController::dismissFormAccessoryView()
     [webView dismissFormAccessoryView];
 }
 
+void UIScriptController::dismissFilePicker(JSValueRef callback)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    [webView _dismissFilePicker];
+
+    // Round-trip with the WebProcess to make sure it has been notified of the dismissal.
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    [webView evaluateJavaScript:@"" completionHandler:^(id result, NSError *error) {
+        if (m_context)
+            m_context->asyncTaskComplete(callbackID);
+    }];
+}
+
 JSRetainPtr<JSStringRef> UIScriptController::selectFormPopoverTitle() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    return adopt(JSStringCreateWithCFString((__bridge CFStringRef)webView.selectFormPopoverTitle));
+    return adopt(JSStringCreateWithCFString((CFStringRef)webView.selectFormPopoverTitle));
 }
 
 JSRetainPtr<JSStringRef> UIScriptController::textContentType() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    return adopt(JSStringCreateWithCFString((__bridge CFStringRef)(webView.textContentTypeForTesting ?: @"")));
+    return adopt(JSStringCreateWithCFString((CFStringRef)(webView.textContentTypeForTesting ?: @"")));
 }
 
 JSRetainPtr<JSStringRef> UIScriptController::formInputLabel() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    return adopt(JSStringCreateWithCFString((__bridge CFStringRef)webView.formInputLabel));
+    return adopt(JSStringCreateWithCFString((CFStringRef)webView.formInputLabel));
 }
 
 void UIScriptController::selectFormAccessoryPickerRow(long rowIndex)
@@ -410,17 +526,10 @@ void UIScriptController::setTimePickerValue(long hour, long minute)
     [webView setTimePickerValueToHour:hour minute:minute];
 }
 
-void UIScriptController::invokeShareSheetWithResolution(bool resolved)
+bool UIScriptController::isPresentingModally() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    [webView _invokeShareSheetWithResolution:resolved];
-}
-    
-JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
-{
-    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    NSDictionary *contentDictionary = [webView _contentsOfUserInterfaceItem:toWTFString(toWK(interfaceItem))];
-    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:contentDictionary inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+    return !!webView.window.rootViewController.presentedViewController;
 }
 
 static CGPoint contentOffsetBoundedInValidRange(UIScrollView *scrollView, CGPoint contentOffset)
@@ -439,6 +548,30 @@ static CGPoint contentOffsetBoundedInValidRange(UIScrollView *scrollView, CGPoin
     return contentOffset;
 }
 
+double UIScriptController::contentOffsetX() const
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    return webView.scrollView.contentOffset.x;
+}
+
+double UIScriptController::contentOffsetY() const
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    return webView.scrollView.contentOffset.y;
+}
+
+bool UIScriptController::scrollUpdatesDisabled() const
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    return webView._scrollingUpdatesDisabledForTesting;
+}
+
+void UIScriptController::setScrollUpdatesDisabled(bool disabled)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    webView._scrollingUpdatesDisabledForTesting = disabled;
+}
+
 void UIScriptController::scrollToOffset(long x, long y)
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -449,6 +582,24 @@ void UIScriptController::immediateScrollToOffset(long x, long y)
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     [webView.scrollView setContentOffset:contentOffsetBoundedInValidRange(webView.scrollView, CGPointMake(x, y)) animated:NO];
+}
+
+static UIScrollView *enclosingScrollViewIncludingSelf(UIView *view)
+{
+    do {
+        if ([view isKindOfClass:[UIScrollView self]])
+            return static_cast<UIScrollView *>(view);
+    } while ((view = [view superview]));
+
+    return nil;
+}
+
+void UIScriptController::immediateScrollElementAtContentPointToOffset(long x, long y, long xScrollOffset, long yScrollOffset)
+{
+    UIView *contentView = platformContentView();
+    UIView *hitView = [contentView hitTest:CGPointMake(x, y) withEvent:nil];
+    UIScrollView *enclosingScrollView = enclosingScrollViewIncludingSelf(hitView);
+    [enclosingScrollView setContentOffset:CGPointMake(xScrollOffset, yScrollOffset)];
 }
 
 void UIScriptController::immediateZoomToScale(double scale)
@@ -467,6 +618,11 @@ void UIScriptController::keyboardAccessoryBarPrevious()
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     [webView keyboardAccessoryBarPrevious];
+}
+
+bool UIScriptController::isShowingKeyboard() const
+{
+    return TestController::singleton().mainWebView()->platformView().showingKeyboard;
 }
 
 void UIScriptController::applyAutocorrection(JSStringRef newString, JSStringRef oldString, JSValueRef callback)
@@ -497,16 +653,16 @@ double UIScriptController::maximumZoomScale() const
     return webView.scrollView.maximumZoomScale;
 }
 
-std::optional<bool> UIScriptController::stableStateOverride() const
+Optional<bool> UIScriptController::stableStateOverride() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     if (webView._stableStateOverride)
         return webView._stableStateOverride.boolValue;
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
-void UIScriptController::setStableStateOverride(std::optional<bool> overrideValue)
+void UIScriptController::setStableStateOverride(Optional<bool> overrideValue)
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     if (overrideValue)
@@ -525,14 +681,14 @@ JSObjectRef UIScriptController::contentVisibleRect() const
     return m_context->objectFromRect(rect);
 }
 
-JSObjectRef UIScriptController::selectionRangeViewRects() const
+JSObjectRef UIScriptController::textSelectionRangeRects() const
 {
-    NSMutableArray *selectionRects = [[NSMutableArray alloc] init];
+    auto selectionRects = adoptNS([[NSMutableArray alloc] init]);
     NSArray *rects = TestController::singleton().mainWebView()->platformView()._uiTextSelectionRects;
     for (NSValue *rect in rects)
-        [selectionRects addObject:toNSDictionary([rect CGRectValue])];
+        [selectionRects addObject:toNSDictionary(rect.CGRectValue)];
 
-    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:selectionRects inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:selectionRects.get() inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
 }
 
 JSObjectRef UIScriptController::textSelectionCaretRect() const
@@ -542,22 +698,44 @@ JSObjectRef UIScriptController::textSelectionCaretRect() const
 
 JSObjectRef UIScriptController::selectionStartGrabberViewRect() const
 {
-    WKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    UIView *contentView = [webView valueForKeyPath:@"_currentContentView"];
+    UIView *contentView = platformContentView();
     UIView *selectionRangeView = [contentView valueForKeyPath:@"interactionAssistant.selectionView.rangeView"];
     auto frameInContentCoordinates = [selectionRangeView convertRect:[[selectionRangeView valueForKeyPath:@"startGrabber"] frame] toView:contentView];
+    frameInContentCoordinates = CGRectIntersection(contentView.bounds, frameInContentCoordinates);
     auto jsContext = m_context->jsContext();
     return JSValueToObject(jsContext, [JSValue valueWithObject:toNSDictionary(frameInContentCoordinates) inContext:[JSContext contextWithJSGlobalContextRef:jsContext]].JSValueRef, nullptr);
 }
 
 JSObjectRef UIScriptController::selectionEndGrabberViewRect() const
 {
-    WKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    UIView *contentView = [webView valueForKeyPath:@"_currentContentView"];
+    UIView *contentView = platformContentView();
     UIView *selectionRangeView = [contentView valueForKeyPath:@"interactionAssistant.selectionView.rangeView"];
     auto frameInContentCoordinates = [selectionRangeView convertRect:[[selectionRangeView valueForKeyPath:@"endGrabber"] frame] toView:contentView];
+    frameInContentCoordinates = CGRectIntersection(contentView.bounds, frameInContentCoordinates);
     auto jsContext = m_context->jsContext();
     return JSValueToObject(jsContext, [JSValue valueWithObject:toNSDictionary(frameInContentCoordinates) inContext:[JSContext contextWithJSGlobalContextRef:jsContext]].JSValueRef, nullptr);
+}
+
+JSObjectRef UIScriptController::selectionCaretViewRect() const
+{
+    UIView *contentView = platformContentView();
+    UIView *caretView = [contentView valueForKeyPath:@"interactionAssistant.selectionView.caretView"];
+    auto rectInContentViewCoordinates = CGRectIntersection([caretView convertRect:caretView.bounds toView:contentView], contentView.bounds);
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:toNSDictionary(rectInContentViewCoordinates) inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+}
+
+JSObjectRef UIScriptController::selectionRangeViewRects() const
+{
+    UIView *contentView = platformContentView();
+    UIView *rangeView = [contentView valueForKeyPath:@"interactionAssistant.selectionView.rangeView"];
+    auto rectsAsDictionaries = adoptNS([[NSMutableArray alloc] init]);
+    NSArray *textRectInfoArray = [rangeView valueForKeyPath:@"rects"];
+    for (id textRectInfo in textRectInfoArray) {
+        NSValue *rectValue = [textRectInfo valueForKeyPath:@"rect"];
+        auto rangeRectInContentViewCoordinates = [rangeView convertRect:rectValue.CGRectValue toView:contentView];
+        [rectsAsDictionaries addObject:toNSDictionary(CGRectIntersection(rangeRectInContentViewCoordinates, contentView.bounds))];
+    }
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:rectsAsDictionaries.get() inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
 }
 
 JSObjectRef UIScriptController::inputViewBounds() const
@@ -573,7 +751,7 @@ void UIScriptController::removeAllDynamicDictionaries()
 JSRetainPtr<JSStringRef> UIScriptController::scrollingTreeAsText() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    return adopt(JSStringCreateWithCFString((__bridge CFStringRef)[webView _scrollingTreeAsText]));
+    return adopt(JSStringCreateWithCFString((CFStringRef)[webView _scrollingTreeAsText]));
 }
 
 JSObjectRef UIScriptController::propertiesOfLayerWithID(uint64_t layerID) const
@@ -630,22 +808,6 @@ void UIScriptController::simulateRotationLikeSafari(DeviceOrientation* orientati
     };
     
     [[UIDevice currentDevice] setOrientation:toUIDeviceOrientation(orientation) animated:YES];
-}
-
-void UIScriptController::findString(JSStringRef string, unsigned long options, unsigned long maxCount)
-{
-    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    [webView _findString:toWTFString(toWK(string)) options:options maxCount:maxCount];
-}
-
-void UIScriptController::removeViewFromWindow(JSValueRef callback)
-{
-    TestController::singleton().mainWebView()->removeFromWindow();
-}
-
-void UIScriptController::addViewToWindow(JSValueRef callback)
-{
-    TestController::singleton().mainWebView()->addToWindow();
 }
 
 void UIScriptController::platformSetDidStartFormControlInteractionCallback()
@@ -728,6 +890,97 @@ void UIScriptController::platformSetDidHideKeyboardCallback()
     };
 }
 
+void UIScriptController::platformSetDidShowMenuCallback()
+{
+    TestController::singleton().mainWebView()->platformView().didShowMenuCallback = ^{
+        if (!m_context)
+            return;
+        m_context->fireCallback(CallbackTypeDidShowMenu);
+    };
+}
+
+void UIScriptController::platformSetDidHideMenuCallback()
+{
+    TestController::singleton().mainWebView()->platformView().didHideMenuCallback = ^{
+        if (!m_context)
+            return;
+        m_context->fireCallback(CallbackTypeDidHideMenu);
+    };
+}
+
+bool UIScriptController::isShowingPopover() const
+{
+    return TestController::singleton().mainWebView()->platformView().showingPopover;
+}
+
+void UIScriptController::platformSetWillPresentPopoverCallback()
+{
+    TestController::singleton().mainWebView()->platformView().willPresentPopoverCallback = ^{
+        if (!m_context)
+            return;
+        m_context->fireCallback(CallbackTypeWillPresentPopover);
+    };
+}
+
+void UIScriptController::platformSetDidDismissPopoverCallback()
+{
+    TestController::singleton().mainWebView()->platformView().didDismissPopoverCallback = ^{
+        if (!m_context)
+            return;
+        m_context->fireCallback(CallbackTypeDidDismissPopover);
+    };
+}
+
+JSObjectRef UIScriptController::rectForMenuAction(JSStringRef jsAction) const
+{
+    auto action = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, jsAction));
+
+    UIWindow *windowForButton = nil;
+    UIButton *buttonForAction = nil;
+    UIView *calloutBar = UICalloutBar.activeCalloutBar;
+    if (!calloutBar.window)
+        return nullptr;
+
+    for (UIButton *button in findAllViewsInHierarchyOfType(calloutBar, UIButton.class)) {
+        NSString *buttonTitle = [button titleForState:UIControlStateNormal];
+        if (!buttonTitle.length)
+            continue;
+
+        if (![buttonTitle isEqualToString:(__bridge NSString *)action.get()])
+            continue;
+
+        buttonForAction = button;
+        windowForButton = calloutBar.window;
+        break;
+    }
+
+    if (!buttonForAction)
+        return nullptr;
+
+    CGRect rectInRootViewCoordinates = [buttonForAction convertRect:buttonForAction.bounds toView:platformContentView()];
+    return m_context->objectFromRect(WebCore::FloatRect(rectInRootViewCoordinates.origin.x, rectInRootViewCoordinates.origin.y, rectInRootViewCoordinates.size.width, rectInRootViewCoordinates.size.height));
+}
+
+JSObjectRef UIScriptController::menuRect() const
+{
+    UIView *calloutBar = UICalloutBar.activeCalloutBar;
+    if (!calloutBar.window)
+        return nullptr;
+
+    CGRect rectInRootViewCoordinates = [calloutBar convertRect:calloutBar.bounds toView:platformContentView()];
+    return m_context->objectFromRect(WebCore::FloatRect(rectInRootViewCoordinates.origin.x, rectInRootViewCoordinates.origin.y, rectInRootViewCoordinates.size.width, rectInRootViewCoordinates.size.height));
+}
+
+bool UIScriptController::isDismissingMenu() const
+{
+    return TestController::singleton().mainWebView()->platformView().dismissingMenu;
+}
+
+bool UIScriptController::isShowingMenu() const
+{
+    return TestController::singleton().mainWebView()->platformView().showingMenu;
+}
+
 void UIScriptController::platformSetDidEndScrollingCallback()
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -740,18 +993,7 @@ void UIScriptController::platformSetDidEndScrollingCallback()
 
 void UIScriptController::platformClearAllCallbacks()
 {
-    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
-    
-    webView.didStartFormControlInteractionCallback = nil;
-    webView.didEndFormControlInteractionCallback = nil;
-    webView.didShowForcePressPreviewCallback = nil;
-    webView.didDismissForcePressPreviewCallback = nil;
-    webView.didEndZoomingCallback = nil;
-    webView.willBeginZoomingCallback = nil;
-    webView.didHideKeyboardCallback = nil;
-    webView.didShowKeyboardCallback = nil;
-    webView.didEndScrollingCallback = nil;
-    webView.rotationDidEndCallback = nil;
+    [TestController::singleton().mainWebView()->platformView() resetInteractionCallbacks];
 }
 
 void UIScriptController::setSafeAreaInsets(double top, double right, double bottom, double left)
@@ -765,20 +1007,137 @@ void UIScriptController::beginBackSwipe(JSValueRef callback)
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     [webView _beginBackSwipeForTesting];
-
-    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
-    m_context->asyncTaskComplete(callbackID);
 }
 
 void UIScriptController::completeBackSwipe(JSValueRef callback)
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     [webView _completeBackSwipeForTesting];
+}
 
-    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
-    m_context->asyncTaskComplete(callbackID);
+bool UIScriptController::isShowingDataListSuggestions() const
+{
+    Class remoteKeyboardWindowClass = NSClassFromString(@"UIRemoteKeyboardWindow");
+    Class suggestionsPickerViewClass = NSClassFromString(@"WKDataListSuggestionsPickerView");
+    UIWindow *remoteInputHostingWindow = nil;
+    for (UIWindow *window in UIApplication.sharedApplication.windows) {
+        if ([window isKindOfClass:remoteKeyboardWindowClass])
+            remoteInputHostingWindow = window;
+    }
+
+    if (!remoteInputHostingWindow)
+        return false;
+
+    __block bool foundDataListSuggestionsPickerView = false;
+    forEachViewInHierarchy(remoteInputHostingWindow, ^(UIView *subview, BOOL *stop) {
+        if (![subview isKindOfClass:suggestionsPickerViewClass])
+            return;
+
+        foundDataListSuggestionsPickerView = true;
+        *stop = YES;
+    });
+    return foundDataListSuggestionsPickerView;
+}
+
+#if HAVE(PENCILKIT)
+static PKCanvasView *findEditableImageCanvas()
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    Class pkCanvasViewClass = NSClassFromString(@"PKCanvasView");
+    __block PKCanvasView *canvasView = nil;
+    forEachViewInHierarchy(webView.window, ^(UIView *subview, BOOL *stop) {
+        if (![subview isKindOfClass:pkCanvasViewClass])
+            return;
+
+        canvasView = (PKCanvasView *)subview;
+        *stop = YES;
+    });
+    return canvasView;
+}
+#endif
+
+void UIScriptController::drawSquareInEditableImage()
+{
+#if HAVE(PENCILKIT)
+    Class pkDrawingClass = NSClassFromString(@"PKDrawing");
+    Class pkInkClass = NSClassFromString(@"PKInk");
+    Class pkStrokeClass = NSClassFromString(@"PKStroke");
+
+    PKCanvasView *canvasView = findEditableImageCanvas();
+    RetainPtr<PKDrawing> drawing = canvasView.drawing ?: adoptNS([[pkDrawingClass alloc] init]);
+    RetainPtr<CGPathRef> path = adoptCF(CGPathCreateWithRect(CGRectMake(0, 0, 50, 50), NULL));
+    RetainPtr<PKInk> ink = [pkInkClass inkWithIdentifier:@"com.apple.ink.pen" color:UIColor.greenColor weight:100.0];
+    RetainPtr<PKStroke> stroke = adoptNS([[pkStrokeClass alloc] _initWithPath:path.get() ink:ink.get() inputScale:1]);
+    [drawing _addStroke:stroke.get()];
+
+    [canvasView setDrawing:drawing.get()];
+#endif
+}
+
+long UIScriptController::numberOfStrokesInEditableImage()
+{
+#if HAVE(PENCILKIT)
+    PKCanvasView *canvasView = findEditableImageCanvas();
+    return canvasView.drawing._allStrokes.count;
+#else
+    return 0;
+#endif
+}
+
+void UIScriptController::setKeyboardInputModeIdentifier(JSStringRef identifier)
+{
+    TestController::singleton().setKeyboardInputModeIdentifier(toWTFString(toWK(identifier)));
+}
+
+// FIXME: Write this in terms of HIDEventGenerator once we know how to reset caps lock state
+// on test completion to avoid it effecting subsequent tests.
+void UIScriptController::toggleCapsLock(JSValueRef callback)
+{
+    m_capsLockOn = !m_capsLockOn;
+    auto *keyboardEvent = createUIPhysicalKeyboardEvent(@"capsLock", [NSString string], m_capsLockOn ? UIKeyModifierAlphaShift : 0,
+        kUIKeyboardInputModifierFlagsChanged, m_capsLockOn);
+    [[UIApplication sharedApplication] handleKeyUIEvent:keyboardEvent];
+    doAsyncTask(callback);
+}
+
+JSObjectRef UIScriptController::attachmentInfo(JSStringRef jsAttachmentIdentifier)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+
+    auto attachmentIdentifier = toWTFString(toWK(jsAttachmentIdentifier));
+    _WKAttachment *attachment = [webView _attachmentForIdentifier:attachmentIdentifier];
+    _WKAttachmentInfo *attachmentInfo = attachment.info;
+
+    NSDictionary *attachmentInfoDictionary = @{
+        @"id": attachmentIdentifier,
+        @"name": attachmentInfo.name,
+        @"contentType": attachmentInfo.contentType,
+        @"filePath": attachmentInfo.filePath,
+        @"size": @(attachmentInfo.data.length),
+    };
+
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:attachmentInfoDictionary inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+}
+
+UIView *UIScriptController::platformContentView() const
+{
+    return [TestController::singleton().mainWebView()->platformView() valueForKeyPath:@"_currentContentView"];
+}
+
+JSObjectRef UIScriptController::calendarType() const
+{
+    WKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    UIView *contentView = [webView valueForKeyPath:@"_currentContentView"];
+    NSString *calendarTypeString = [contentView valueForKeyPath:@"formInputControl.dateTimePickerCalendarType"];
+    auto jsContext = m_context->jsContext();
+    return JSValueToObject(jsContext, [JSValue valueWithObject:calendarTypeString inContext:[JSContext contextWithJSGlobalContextRef:jsContext]].JSValueRef, nullptr);
+}
+
+void UIScriptController::setHardwareKeyboardAttached(bool attached)
+{
+    GSEventSetHardwareKeyboardAttached(attached, 0);
 }
 
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

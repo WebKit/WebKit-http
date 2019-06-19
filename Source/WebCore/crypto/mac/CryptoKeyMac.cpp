@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CryptoKey.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CommonCryptoUtilities.h"
 
@@ -35,11 +35,11 @@ namespace WebCore {
 Vector<uint8_t> CryptoKey::randomData(size_t size)
 {
     Vector<uint8_t> result(size);
-    int rc = CCRandomCopyBytes(kCCRandomDefault, result.data(), result.size());
+    auto rc = CCRandomGenerateBytes(result.data(), result.size());
     RELEASE_ASSERT(rc == kCCSuccess);
     return result;
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

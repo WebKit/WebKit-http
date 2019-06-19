@@ -25,16 +25,17 @@
 
 #import "WKWebViewPrivate.h"
 
-#if WK_API_ENABLED
-
 #import "SameDocumentNavigationType.h"
+#import "WKShareSheet.h"
 #import "WKWebViewConfiguration.h"
 #import "_WKAttachmentInternal.h"
 #import "_WKWebViewPrintFormatterInternal.h"
+#import <wtf/CompletionHandler.h>
 #import <wtf/RefPtr.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/Variant.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import "UIKitSPI.h"
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
@@ -43,8 +44,12 @@
 #import <WebCore/LengthBox.h>
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #define WK_WEB_VIEW_PROTOCOLS <UIScrollViewDelegate>
+#endif
+
+#if PLATFORM(MAC)
+#define WK_WEB_VIEW_PROTOCOLS <WKShareSheetDelegate>
 #endif
 
 #if !defined(WK_WEB_VIEW_PROTOCOLS)
@@ -58,6 +63,8 @@ class Attachment;
 }
 
 namespace WebKit {
+enum class ContinueUnsafeLoad : bool;
+class SafeBrowsingWarning;
 class ViewSnapshot;
 class WebPageProxy;
 struct PrintInfo;
@@ -73,14 +80,11 @@ struct PrintInfo;
     RetainPtr<WKWebViewConfiguration> _configuration;
 
     RefPtr<WebKit::WebPageProxy> _page;
-
-#if PLATFORM(IOS)
-    NSUInteger _activeFocusedStateRetainCount;
-#endif
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (void)_processDidExit;
+- (void)_processWillSwap;
 - (void)_didRelaunchProcess;
 
 - (void)_didCommitLoadForMainFrame;
@@ -88,18 +92,21 @@ struct PrintInfo;
 - (void)_layerTreeCommitComplete;
 
 - (void)_couldNotRestorePageState;
-- (void)_restorePageScrollPosition:(std::optional<WebCore::FloatPoint>)scrollPosition scrollOrigin:(WebCore::FloatPoint)scrollOrigin previousObscuredInset:(WebCore::FloatBoxExtent)insets scale:(double)scale;
-- (void)_restorePageStateToUnobscuredCenter:(std::optional<WebCore::FloatPoint>)center scale:(double)scale; // FIXME: needs scroll origin?
+- (void)_restorePageScrollPosition:(Optional<WebCore::FloatPoint>)scrollPosition scrollOrigin:(WebCore::FloatPoint)scrollOrigin previousObscuredInset:(WebCore::FloatBoxExtent)insets scale:(double)scale;
+- (void)_restorePageStateToUnobscuredCenter:(Optional<WebCore::FloatPoint>)center scale:(double)scale; // FIXME: needs scroll origin?
 
 - (RefPtr<WebKit::ViewSnapshot>)_takeViewSnapshot;
 
 - (void)_scrollToContentScrollPosition:(WebCore::FloatPoint)scrollPosition scrollOrigin:(WebCore::IntPoint)scrollOrigin;
 - (BOOL)_scrollToRect:(WebCore::FloatRect)targetRect origin:(WebCore::FloatPoint)origin minimumScrollDistance:(float)minimumScrollDistance;
-- (void)_scrollByContentOffset:(WebCore::FloatPoint)offset animated:(BOOL)animated;
-- (void)_zoomToFocusRect:(WebCore::FloatRect)focusedElementRect selectionRect:(WebCore::FloatRect)selectionRectInDocumentCoordinates insideFixed:(BOOL)insideFixed fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll;
+- (double)_initialScaleFactor;
+- (double)_contentZoomScale;
+- (double)_targetContentZoomScaleForRect:(const WebCore::FloatRect&)targetRect currentScale:(double)currentScale fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale;
+- (void)_zoomToFocusRect:(const WebCore::FloatRect&)focusedElementRect selectionRect:(const WebCore::FloatRect&)selectionRectInDocumentCoordinates insideFixed:(BOOL)insideFixed fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll;
 - (BOOL)_zoomToRect:(WebCore::FloatRect)targetRect withOrigin:(WebCore::FloatPoint)origin fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale minimumScrollDistance:(float)minimumScrollDistance;
 - (void)_zoomOutWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated;
 - (void)_zoomToInitialScaleWithOrigin:(WebCore::FloatPoint)origin animated:(BOOL)animated;
+- (void)_didFinishScrolling;
 
 - (void)_setHasCustomContentView:(BOOL)hasCustomContentView loadedMIMEType:(const WTF::String&)mimeType;
 - (void)_didFinishLoadingDataForCustomContentProviderWithSuggestedFilename:(const WTF::String&)suggestedFilename data:(NSData *)data;
@@ -133,7 +140,6 @@ struct PrintInfo;
 - (void)_didChangeEditorState;
 
 - (void)_addShortcut:(id)sender;
-- (void)_arrowKey:(id)sender;
 - (void)_define:(id)sender;
 - (void)_lookup:(id)sender;
 - (void)_share:(id)sender;
@@ -141,6 +147,13 @@ struct PrintInfo;
 - (void)_promptForReplace:(id)sender;
 - (void)_transliterateChinese:(id)sender;
 - (void)replace:(id)sender;
+
+- (void)_nextAccessoryTab:(id)sender;
+- (void)_previousAccessoryTab:(id)sender;
+
+- (void)_incrementFocusPreservationCount;
+- (void)_decrementFocusPreservationCount;
+- (void)_resetFocusPreservationCount;
 
 @property (nonatomic, readonly) WKPasswordView *_passwordView;
 
@@ -151,19 +164,27 @@ struct PrintInfo;
 @property (nonatomic, readonly) WKSelectionGranularity _selectionGranularity;
 
 @property (nonatomic, readonly) BOOL _allowsDoubleTapGestures;
+@property (nonatomic, readonly) BOOL _stylusTapGestureShouldCreateEditableImage;
 @property (nonatomic, readonly) BOOL _haveSetObscuredInsets;
 @property (nonatomic, readonly) UIEdgeInsets _computedObscuredInset;
 @property (nonatomic, readonly) UIEdgeInsets _computedUnobscuredSafeAreaInset;
-#endif
+@property (nonatomic, readonly, getter=_isRetainingActiveFocusedState) BOOL _retainingActiveFocusedState;
 
-#if ENABLE(ACCESSIBILITY_EVENTS)
-- (void)_updateAccessibilityEventsEnabled;
-#endif
+- (BOOL)_effectiveAppearanceIsDark;
+- (BOOL)_effectiveAppearanceIsInactive;
+#endif // PLATFORM(IOS_FAMILY)
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 - (void)_didRemoveAttachment:(API::Attachment&)attachment;
 - (void)_didInsertAttachment:(API::Attachment&)attachment withSource:(NSString *)source;
+- (void)_didInvalidateDataForAttachment:(API::Attachment&)attachment;
 #endif
+
+- (void)_showSafeBrowsingWarning:(const WebKit::SafeBrowsingWarning&)warning completionHandler:(CompletionHandler<void(Variant<WebKit::ContinueUnsafeLoad, URL>&&)>&&)completionHandler;
+- (void)_clearSafeBrowsingWarning;
+- (void)_clearSafeBrowsingWarningIfForMainFrameNavigation;
+
+- (Optional<BOOL>)_resolutionForShareSheetImmediateCompletionForTesting;
 
 - (WKPageRef)_pageForTesting;
 - (WebKit::WebPageProxy*)_page;
@@ -172,18 +193,14 @@ struct PrintInfo;
 
 WKWebView* fromWebPageProxy(WebKit::WebPageProxy&);
 
-#if ENABLE(FULLSCREEN_API) && PLATFORM(IOS)
-@interface WKWebView (FullScreenAPI)
--(BOOL)hasFullScreenWindowController;
+#if ENABLE(FULLSCREEN_API) && PLATFORM(IOS_FAMILY)
+@interface WKWebView (FullScreenAPI_Internal)
 -(WKFullScreenWindowController *)fullScreenWindowController;
--(void)closeFullScreenWindowController;
-@end
-#endif // ENABLE(FULLSCREEN_API) && PLATFORM(IOS)
-
-#if PLATFORM(IOS) && !PLATFORM(IOSMAC)
-@interface WKWebView (_WKWebViewPrintFormatter)
-@property (nonatomic, readonly) id <_WKWebViewPrintProvider> _printProvider;
 @end
 #endif
 
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(IOSMAC)
+@interface WKWebView (_WKWebViewPrintFormatter)
+@property (nonatomic, readonly) id <_WKWebViewPrintProvider> _printProvider;
+@end
 #endif

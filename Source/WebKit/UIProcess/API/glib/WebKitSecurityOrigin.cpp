@@ -21,7 +21,7 @@
 #include "WebKitSecurityOrigin.h"
 
 #include "WebKitSecurityOriginPrivate.h"
-#include <WebCore/URL.h>
+#include <wtf/URL.h>
 #include <wtf/text/CString.h>
 
 /**
@@ -87,7 +87,7 @@ WebKitSecurityOrigin* webkit_security_origin_new(const gchar* protocol, const gc
     g_return_val_if_fail(protocol, nullptr);
     g_return_val_if_fail(host, nullptr);
 
-    std::optional<uint16_t> optionalPort;
+    Optional<uint16_t> optionalPort;
     if (port)
         optionalPort = port;
 
@@ -110,7 +110,7 @@ WebKitSecurityOrigin* webkit_security_origin_new_for_uri(const gchar* uri)
 {
     g_return_val_if_fail(uri, nullptr);
 
-    return webkitSecurityOriginCreate(WebCore::SecurityOrigin::create(WebCore::URL(WebCore::URL(), String::fromUTF8(uri))));
+    return webkitSecurityOriginCreate(WebCore::SecurityOrigin::create(URL(URL(), String::fromUTF8(uri))));
 }
 
 /**
@@ -217,7 +217,7 @@ guint16 webkit_security_origin_get_port(WebKitSecurityOrigin* origin)
 {
     g_return_val_if_fail(origin, 0);
 
-    return origin->securityOrigin->port().value_or(0);
+    return origin->securityOrigin->port().valueOr(0);
 }
 
 /**

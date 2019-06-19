@@ -1,4 +1,4 @@
-# Copyright (C) 2017 Apple Inc. All rights reserved.
+# Copyright (C) 2017-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -95,7 +95,7 @@ class SimulatorProcess(ServerProcess):
         self._target_host.listening_socket.listen(3)
         self._pid = self._target_host.launch_app(self._bundle_id, self._cmd[1:], env=self._env)
 
-        with Timeout(6, RuntimeError('Timed out waiting for pid {} to connect at port {}'.format(self._pid, self._target_host.listening_port()))):
+        with Timeout(15, RuntimeError('Timed out waiting for pid {} to connect at port {}'.format(self._pid, self._target_host.listening_port()))):
             stdin = None
             stdout = None
             stderr = None
@@ -120,6 +120,9 @@ class SimulatorProcess(ServerProcess):
         # Only bother to check for leaks or stderr if the process is still running.
         if self.poll() is None:
             self._port.check_for_leaks(self.process_name(), self.pid())
+            for child_process_name in self._child_processes.keys():
+                for child_process_id in self._child_processes[child_process_name]:
+                    self._port.check_for_leaks(child_process_name, child_process_id)
 
         if self._proc and self._proc.pid:
             self._target_host.executive.kill_process(self._proc.pid)

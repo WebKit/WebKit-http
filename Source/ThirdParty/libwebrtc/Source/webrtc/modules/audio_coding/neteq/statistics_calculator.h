@@ -83,10 +83,13 @@ class StatisticsCalculator {
   // Reports that |num_samples| samples were decoded from secondary packets.
   void SecondaryDecodedSamples(int num_samples);
 
-  // Logs a delayed packet outage event of |outage_duration_ms|. A delayed
-  // packet outage event is defined as an expand period caused not by an actual
-  // packet loss, but by a delayed packet.
-  virtual void LogDelayedPacketOutageEvent(int outage_duration_ms);
+  // Rerport that the packet buffer was flushed.
+  void FlushedPacketBuffer();
+
+  // Logs a delayed packet outage event of |num_samples| expanded at a sample
+  // rate of |fs_hz|. A delayed packet outage event is defined as an expand
+  // period caused not by an actual packet loss, but by a delayed packet.
+  virtual void LogDelayedPacketOutageEvent(int num_samples, int fs_hz);
 
   // Returns the current network statistics in |stats|. The current sample rate
   // is |fs_hz|, the total number of samples in packet buffer and sync buffer
@@ -110,6 +113,8 @@ class StatisticsCalculator {
   // Returns a copy of this class's lifetime statistics. These statistics are
   // never reset.
   NetEqLifetimeStatistics GetLifetimeStatistics() const;
+
+  NetEqOperationsAndState GetOperationsAndState() const;
 
  private:
   static const int kMaxReportPeriod = 60;  // Seconds before auto-reset.
@@ -178,6 +183,7 @@ class StatisticsCalculator {
   static uint16_t CalculateQ14Ratio(size_t numerator, uint32_t denominator);
 
   NetEqLifetimeStatistics lifetime_stats_;
+  NetEqOperationsAndState operations_and_state_;
   size_t concealed_samples_correction_ = 0;
   size_t voice_concealed_samples_correction_ = 0;
   size_t preemptive_samples_;
@@ -193,6 +199,7 @@ class StatisticsCalculator {
   size_t discarded_secondary_packets_;
   PeriodicUmaCount delayed_packet_outage_counter_;
   PeriodicUmaAverage excess_buffer_delay_;
+  PeriodicUmaCount buffer_full_counter_;
 
   RTC_DISALLOW_COPY_AND_ASSIGN(StatisticsCalculator);
 };

@@ -43,93 +43,16 @@ namespace WebCore {
 
 using namespace Inspector;
 
-WebConsoleAgent::WebConsoleAgent(AgentContext& context, InspectorHeapAgent* heapAgent)
-    : InspectorConsoleAgent(context, heapAgent)
+WebConsoleAgent::WebConsoleAgent(AgentContext& context)
+    : InspectorConsoleAgent(context)
 {
-}
-
-void WebConsoleAgent::getLoggingChannels(ErrorString&, RefPtr<JSON::ArrayOf<Inspector::Protocol::Console::Channel>>& channels)
-{
-    static const struct ChannelTable {
-        NeverDestroyed<String> name;
-        Inspector::Protocol::Console::ChannelSource source;
-    } channelTable[] = {
-        { MAKE_STATIC_STRING_IMPL("WebRTC"), Inspector::Protocol::Console::ChannelSource::WebRTC },
-        { MAKE_STATIC_STRING_IMPL("Media"), Inspector::Protocol::Console::ChannelSource::Media },
-    };
-
-    channels = JSON::ArrayOf<Inspector::Protocol::Console::Channel>::create();
-
-    size_t length = WTF_ARRAY_LENGTH(channelTable);
-    for (size_t i = 0; i < length; ++i) {
-        auto* logChannel = getLogChannel(channelTable[i].name);
-        if (!logChannel)
-            return;
-
-        auto level = Inspector::Protocol::Console::ChannelLevel::Off;
-        if (logChannel->state != WTFLogChannelOff) {
-            switch (logChannel->level) {
-            case WTFLogLevelAlways:
-            case WTFLogLevelError:
-            case WTFLogLevelWarning:
-                level = Inspector::Protocol::Console::ChannelLevel::Basic;
-                break;
-            case WTFLogLevelInfo:
-            case WTFLogLevelDebug:
-                level = Inspector::Protocol::Console::ChannelLevel::Verbose;
-                break;
-            }
-        }
-
-        auto channel = Inspector::Protocol::Console::Channel::create()
-            .setSource(channelTable[i].source)
-            .setLevel(level)
-            .release();
-        channels->addItem(WTFMove(channel));
-    }
-}
-
-static std::optional<std::pair<WTFLogChannelState, WTFLogLevel>> channelConfigurationForString(const String& levelString)
-{
-    WTFLogChannelState state;
-    WTFLogLevel level;
-
-    if (equalIgnoringASCIICase(levelString, "off")) {
-        state = WTFLogChannelOff;
-        level = WTFLogLevelError;
-    } else {
-        state = WTFLogChannelOn;
-        if (equalIgnoringASCIICase(levelString, "basic"))
-            level = WTFLogLevelWarning;
-        else if (equalIgnoringASCIICase(levelString, "verbose"))
-            level = WTFLogLevelDebug;
-        else
-            return std::nullopt;
-    }
-
-    return { { state, level } };
-}
-
-void WebConsoleAgent::setLoggingChannelLevel(ErrorString& errorString, const String& channelName, const String& channelLevel)
-{
-    auto* channel = getLogChannel(channelName.utf8().data());
-    if (!channel) {
-        errorString = "Logging channel not found"_s;
-        return;
-    }
-
-    auto configuration = channelConfigurationForString(channelLevel);
-    if (!configuration) {
-        errorString = "Invalid logging level"_s;
-        return;
-    }
-
-    channel->state = configuration.value().first;
-    channel->level = configuration.value().second;
 }
 
 void WebConsoleAgent::frameWindowDiscarded(DOMWindow* window)
 {
+    if (!m_injectedScriptManager.inspectorEnvironment().developerExtrasEnabled())
+        return;
+
     for (auto& message : m_consoleMessages) {
         JSC::ExecState* exec = message->scriptState();
         if (!exec)
@@ -148,7 +71,7 @@ void WebConsoleAgent::didReceiveResponse(unsigned long requestIdentifier, const 
         return;
 
     if (response.httpStatusCode() >= 400) {
-        String message = "Failed to load resource: the server responded with a status of " + String::number(response.httpStatusCode()) + " (" + response.httpStatusText() + ')';
+        String message = makeString("Failed to load resource: the server responded with a status of ", response.httpStatusCode(), " (", response.httpStatusText(), ')');
         addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::Network, MessageType::Log, MessageLevel::Error, message, response.url().string(), 0, 0, nullptr, requestIdentifier));
     }
 }

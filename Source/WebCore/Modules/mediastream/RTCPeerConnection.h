@@ -37,6 +37,7 @@
 
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
+#include "MediaEndpointConfiguration.h"
 #include "MediaStream.h"
 #include "RTCConfiguration.h"
 #include "RTCDataChannel.h"
@@ -45,10 +46,12 @@
 #include "RTCPeerConnectionState.h"
 #include "RTCRtpTransceiver.h"
 #include "RTCSignalingState.h"
+#include <JavaScriptCore/Uint8Array.h>
 #include <wtf/LoggerHelper.h>
 
 namespace WebCore {
 
+class MediaStream;
 class MediaStreamTrack;
 class PeerConnectionBackend;
 class RTCController;
@@ -60,8 +63,10 @@ class RTCStatsCallback;
 struct RTCAnswerOptions;
 struct RTCOfferOptions;
 struct RTCRtpParameters;
+
 struct RTCRtpTransceiverInit {
-    RTCRtpTransceiverDirection direction;
+    RTCRtpTransceiverDirection direction { RTCRtpTransceiverDirection::Sendrecv };
+    Vector<RefPtr<MediaStream>> streams;
 };
 
 class RTCPeerConnection final
@@ -72,6 +77,7 @@ class RTCPeerConnection final
     , private LoggerHelper
 #endif
 {
+    WTF_MAKE_ISO_ALLOCATED(RTCPeerConnection);
 public:
     static Ref<RTCPeerConnection> create(ScriptExecutionContext&);
     virtual ~RTCPeerConnection();
@@ -79,6 +85,18 @@ public:
     using DataChannelInit = RTCDataChannelInit;
 
     ExceptionOr<void> initializeWith(Document&, RTCConfiguration&&);
+
+    struct CertificateParameters {
+        String name;
+        String hash;
+        String namedCurve;
+        Optional<uint32_t> modulusLength;
+        RefPtr<Uint8Array> publicExponent;
+        Optional<double> expires;
+    };
+
+    using AlgorithmIdentifier = Variant<JSC::Strong<JSC::JSObject>, String>;
+    static void generateCertificate(JSC::ExecState&, AlgorithmIdentifier&&, DOMPromiseDeferred<IDLInterface<RTCCertificate>>&&);
 
     // 4.3.2 RTCPeerConnection Interface
     void queuedCreateOffer(RTCOfferOptions&&, PeerConnection::SessionDescriptionPromise&&);
@@ -111,9 +129,11 @@ public:
     void addInternalTransceiver(Ref<RTCRtpTransceiver>&& transceiver) { m_transceiverSet->append(WTFMove(transceiver)); }
 
     // 5.1 RTCPeerConnection extensions
-    const Vector<std::reference_wrapper<RTCRtpSender>>& getSenders() const { return m_transceiverSet->senders(); }
-    const Vector<std::reference_wrapper<RTCRtpReceiver>>& getReceivers() const { return m_transceiverSet->receivers(); }
-    const Vector<RefPtr<RTCRtpTransceiver>>& getTransceivers() const { return m_transceiverSet->list(); }
+    Vector<std::reference_wrapper<RTCRtpSender>> getSenders() const;
+    Vector<std::reference_wrapper<RTCRtpReceiver>> getReceivers() const;
+    const Vector<RefPtr<RTCRtpTransceiver>>& getTransceivers() const;
+
+    const Vector<RefPtr<RTCRtpTransceiver>>& currentTransceivers() const { return m_transceiverSet->list(); }
 
     ExceptionOr<Ref<RTCRtpSender>> addTrack(Ref<MediaStreamTrack>&&, const Vector<std::reference_wrapper<MediaStream>>&);
     ExceptionOr<void> removeTrack(RTCRtpSender&);
@@ -188,6 +208,8 @@ private:
     bool doClose();
     void doStop();
 
+    ExceptionOr<Vector<MediaEndpointConfiguration::CertificatePEM>> certificatesFromConfiguration(const RTCConfiguration&);
+
     bool m_isStopped { false };
     RTCSignalingState m_signalingState { RTCSignalingState::Stable };
     RTCIceGatheringState m_iceGatheringState { RTCIceGatheringState::New };
@@ -205,6 +227,8 @@ private:
 
     RTCConfiguration m_configuration;
     RTCController* m_controller { nullptr };
+    Vector<RefPtr<RTCCertificate>> m_certificates;
+    RefPtr<PendingActivity<RTCPeerConnection>> m_pendingActivity;
 };
 
 } // namespace WebCore

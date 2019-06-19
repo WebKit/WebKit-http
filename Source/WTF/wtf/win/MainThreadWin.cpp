@@ -28,17 +28,19 @@
  */
 
 #include "config.h"
-#include "MainThread.h"
+#include <wtf/MainThread.h>
 
-#include "Assertions.h"
-#include "Threading.h"
-#include "WindowsExtras.h"
+#include <wtf/Assertions.h>
+#include <wtf/RunLoop.h>
+#include <wtf/Threading.h>
+#include <wtf/WindowsExtras.h>
 
 namespace WTF {
 
 static HWND threadingWindowHandle;
 static UINT threadingFiredMessage;
 const LPCWSTR kThreadingWindowClassName = L"ThreadingWindowClass";
+static ThreadIdentifier mainThread { 0 };
 
 LRESULT CALLBACK ThreadingWindowWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -64,7 +66,20 @@ void initializeMainThreadPlatform()
         CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, HWND_MESSAGE, 0, 0, 0);
     threadingFiredMessage = RegisterWindowMessageW(L"com.apple.WebKit.MainThreadFired");
 
+    mainThread = Thread::currentID();
+
     Thread::initializeCurrentThreadInternal("Main Thread");
+    RunLoop::registerRunLoopMessageWindowClass();
+}
+
+bool isMainThread()
+{
+    return mainThread == Thread::currentID();
+}
+
+bool isMainThreadIfInitialized()
+{
+    return isMainThread();
 }
 
 void scheduleDispatchFunctionsOnMainThread()

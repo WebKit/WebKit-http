@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,26 +28,22 @@
 
 #if ENABLE(WEBGPU)
 
-#import "GPUDevice.h"
+#import "GPUSwapChain.h"
 #import "GraphicsContextCG.h"
-#import "GraphicsLayer.h"
-#import <wtf/FastMalloc.h>
-#import <wtf/RetainPtr.h>
 
 @implementation WebGPULayer
 
-@synthesize context=_context;
+@synthesize swapChain=_swapChain;
 
-- (id)initWithGPUDevice:(WebCore::GPUDevice*)context
+- (id)init
 {
     self = [super init];
-    _context = context;
 
     // FIXME: WebGPU - handle retina correctly.
-    _devicePixelRatio = 1;
+    _deviceScaleFactor = 1;
 
 #if PLATFORM(MAC)
-    self.contentsScale = _devicePixelRatio;
+    self.contentsScale = _deviceScaleFactor;
     self.colorspace = WebCore::sRGBColorSpaceRef();
 #endif
     return self;
@@ -55,18 +51,11 @@
 
 - (CGImageRef)copyImageSnapshotWithColorSpace:(CGColorSpaceRef)colorSpace
 {
-    if (!_context)
+    if (!_swapChain)
         return nullptr;
 
     UNUSED_PARAM(colorSpace);
     return nullptr;
-}
-
-- (void)display
-{
-    // This is a no-op. We don't need to
-    // call display - instead we present
-    // a drawable from our context.
 }
 
 @end

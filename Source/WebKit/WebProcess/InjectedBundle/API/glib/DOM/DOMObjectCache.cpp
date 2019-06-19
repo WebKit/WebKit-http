@@ -19,7 +19,7 @@
 #include "config.h"
 #include "DOMObjectCache.h"
 
-#include <WebCore/DOMWindowProperty.h>
+#include <WebCore/DOMWindow.h>
 #include <WebCore/Document.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameDestructionObserver.h>
@@ -102,10 +102,10 @@ public:
         ASSERT(!m_objects.contains(&data));
 
         WebCore::DOMWindow* domWindow = m_frame->document()->domWindow();
-        if (domWindow && (!m_domWindowObserver || m_domWindowObserver->domWindow() != domWindow)) {
+        if (domWindow && (!m_domWindowObserver || m_domWindowObserver->window() != domWindow)) {
             // New DOMWindow, clear the cache and create a new DOMWindowObserver.
             clear();
-            m_domWindowObserver = std::make_unique<DOMWindowObserver>(*m_frame, *this, domWindow);
+            m_domWindowObserver = std::make_unique<DOMWindowObserver>(*domWindow, *this);
         }
 
         m_objects.append(&data);
@@ -113,33 +113,32 @@ public:
     }
 
 private:
-    class DOMWindowObserver final: public WebCore::DOMWindowProperty {
+    class DOMWindowObserver final : public WebCore::DOMWindow::Observer {
         WTF_MAKE_FAST_ALLOCATED;
     public:
-        DOMWindowObserver(WebCore::Frame& frame, DOMObjectCacheFrameObserver& frameObserver, WebCore::DOMWindow* window)
-            : DOMWindowProperty(&frame)
+        DOMWindowObserver(WebCore::DOMWindow& window, DOMObjectCacheFrameObserver& frameObserver)
+            : m_window(makeWeakPtr(window))
             , m_frameObserver(frameObserver)
-            , m_domWindow(window)
         {
-            ASSERT(m_domWindow);
+            window.registerObserver(*this);
         }
 
-        virtual ~DOMWindowObserver()
+        ~DOMWindowObserver()
         {
+            if (m_window)
+                m_window->unregisterObserver(*this);
         }
 
-        WebCore::DOMWindow* domWindow() const { return m_domWindow; }
+        WebCore::DOMWindow* window() const { return m_window.get(); }
 
     private:
         void willDetachGlobalObjectFromFrame() override
         {
-            // Clear the DOMWindowProperty first, and then notify the Frame observer.
-            DOMWindowProperty::willDetachGlobalObjectFromFrame();
             m_frameObserver.willDetachGlobalObjectFromFrame();
         }
 
+        WeakPtr<WebCore::DOMWindow> m_window;
         DOMObjectCacheFrameObserver& m_frameObserver;
-        WebCore::DOMWindow* m_domWindow;
     };
 
     static void objectFinalizedCallback(gpointer userData, GObject* finalizedObject)

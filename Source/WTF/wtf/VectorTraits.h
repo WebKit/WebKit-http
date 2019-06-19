@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef WTF_VectorTraits_h
-#define WTF_VectorTraits_h
+#pragma once
 
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
@@ -29,7 +28,7 @@
 
 namespace WTF {
 
-    class AtomicString;
+    class AtomString;
 
     template<bool isPod, typename T>
     struct VectorTraitsBase;
@@ -72,7 +71,7 @@ namespace WTF {
     template<typename P> struct VectorTraits<RefPtr<P>> : SimpleClassVectorTraits { };
     template<typename P> struct VectorTraits<std::unique_ptr<P>> : SimpleClassVectorTraits { };
     template<typename P> struct VectorTraits<Ref<P>> : SimpleClassVectorTraits { };
-    template<> struct VectorTraits<AtomicString> : SimpleClassVectorTraits { };
+    template<> struct VectorTraits<AtomString> : SimpleClassVectorTraits { };
 
     template<typename First, typename Second>
     struct VectorTraits<std::pair<First, Second>>
@@ -92,5 +91,3 @@ namespace WTF {
 
 using WTF::VectorTraits;
 using WTF::SimpleClassVectorTraits;
-
-#endif // WTF_VectorTraits_h

@@ -17,7 +17,6 @@
 #include "call/rtp_packet_sink_interface.h"
 #include "call/syncable.h"
 #include "call/video_receive_stream.h"
-#include "common_video/libyuv/include/webrtc_libyuv.h"
 #include "modules/rtp_rtcp/include/flexfec_receiver.h"
 #include "modules/video_coding/frame_buffer2.h"
 #include "modules/video_coding/video_coding_impl.h"
@@ -32,7 +31,6 @@
 namespace webrtc {
 
 class CallStats;
-class IvfFileWriter;
 class ProcessThread;
 class RTPFragmentationHeader;
 class RtpStreamReceiverInterface;
@@ -45,7 +43,6 @@ namespace internal {
 
 class VideoReceiveStream : public webrtc::VideoReceiveStream,
                            public rtc::VideoSinkInterface<VideoFrame>,
-                           public EncodedImageCallback,
                            public NackSender,
                            public KeyFrameRequestSender,
                            public video_coding::OnCompleteFrameCallback,
@@ -73,25 +70,11 @@ class VideoReceiveStream : public webrtc::VideoReceiveStream,
 
   webrtc::VideoReceiveStream::Stats GetStats() const override;
 
-  // Takes ownership of the file, is responsible for closing it later.
-  // Calling this method will close and finalize any current log.
-  // Giving rtc::kInvalidPlatformFileValue disables logging.
-  // If a frame to be written would make the log too large the write fails and
-  // the log is closed and finalized. A |byte_limit| of 0 means no limit.
-  void EnableEncodedFrameRecording(rtc::PlatformFile file,
-                                   size_t byte_limit) override;
-
   void AddSecondarySink(RtpPacketSinkInterface* sink) override;
   void RemoveSecondarySink(const RtpPacketSinkInterface* sink) override;
 
   // Implements rtc::VideoSinkInterface<VideoFrame>.
   void OnFrame(const VideoFrame& video_frame) override;
-
-  // Implements EncodedImageCallback.
-  EncodedImageCallback::Result OnEncodedImage(
-      const EncodedImage& encoded_image,
-      const CodecSpecificInfo* codec_specific_info,
-      const RTPFragmentationHeader* fragmentation) override;
 
   // Implements NackSender.
   void SendNack(const std::vector<uint16_t>& sequence_numbers) override;
@@ -112,6 +95,8 @@ class VideoReceiveStream : public webrtc::VideoReceiveStream,
   uint32_t GetPlayoutTimestamp() const override;
   void SetMinimumPlayoutDelay(int delay_ms) override;
 
+  std::vector<webrtc::RtpSource> GetSources() const override;
+
  private:
   static void DecodeThreadFunction(void* ptr);
   bool Decode();
@@ -129,6 +114,7 @@ class VideoReceiveStream : public webrtc::VideoReceiveStream,
 
   CallStats* const call_stats_;
 
+  ReceiveStatisticsProxy stats_proxy_;
   // Shared by media and rtx stream receivers, since the latter has no RtpRtcp
   // module of its own.
   const std::unique_ptr<ReceiveStatistics> rtp_receive_statistics_;
@@ -136,13 +122,13 @@ class VideoReceiveStream : public webrtc::VideoReceiveStream,
   std::unique_ptr<VCMTiming> timing_;  // Jitter buffer experiment.
   vcm::VideoReceiver video_receiver_;
   std::unique_ptr<rtc::VideoSinkInterface<VideoFrame>> incoming_video_stream_;
-  ReceiveStatisticsProxy stats_proxy_;
   RtpVideoStreamReceiver rtp_video_stream_receiver_;
   std::unique_ptr<VideoStreamDecoder> video_stream_decoder_;
   RtpStreamsSynchronizer rtp_stream_sync_;
 
-  rtc::CriticalSection ivf_writer_lock_;
-  std::unique_ptr<IvfFileWriter> ivf_writer_ RTC_GUARDED_BY(ivf_writer_lock_);
+  // TODO(nisse, philipel): Creation and ownership of video encoders should be
+  // moved to the new VideoStreamDecoder.
+  std::vector<std::unique_ptr<VideoDecoder>> video_decoders_;
 
   // Members for the new jitter buffer experiment.
   std::unique_ptr<VCMJitterEstimator> jitter_estimator_;
@@ -160,6 +146,7 @@ class VideoReceiveStream : public webrtc::VideoReceiveStream,
   bool frame_decoded_ = false;
 
   int64_t last_keyframe_request_ms_ = 0;
+  int64_t last_complete_frame_time_ms_ = 0;
 };
 }  // namespace internal
 }  // namespace webrtc

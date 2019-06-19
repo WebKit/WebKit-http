@@ -322,6 +322,7 @@ class FrontendRouter;
 
 #if PLATFORM(WEB_EVENTS)
 class Network3FrontendDispatcher {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     Network3FrontendDispatcher(FrontendRouter& frontendRouter) : m_frontendRouter(frontendRouter) { }
     void resourceLoaded();
@@ -427,6 +428,8 @@ namespace Inspector {
 
 
 namespace Protocol {
+
+
 
 // Forward declarations.
 #if PLATFORM(WEB_TYPES)
@@ -942,7 +945,7 @@ __attribute__((visibility ("default")))
 
 @protocol TestProtocolNetwork1DomainHandler <NSObject>
 @required
-- (void)loadResourceWithErrorCallback:(void(^)(NSString *error))errorCallback successCallback:(void(^)())successCallback;
+- (void)loadResourceWithErrorCallback:(void(^)(NSString *error))errorCallback successCallback:(void(^)(void))successCallback;
 @end
 
 __attribute__((visibility ("default")))
@@ -1033,7 +1036,7 @@ __attribute__((visibility ("default")))
 namespace Inspector {
 
 template<typename ObjCEnumType>
-std::optional<ObjCEnumType> fromProtocolString(const String& value);
+Optional<ObjCEnumType> fromProtocolString(const String& value);
 
 inline String toProtocolString(TestProtocolPlatform value)
 {
@@ -1050,7 +1053,7 @@ inline String toProtocolString(TestProtocolPlatform value)
 }
 
 template<>
-inline std::optional<TestProtocolPlatform> fromProtocolString(const String& value)
+inline Optional<TestProtocolPlatform> fromProtocolString(const String& value)
 {
     if (value == "all")
         return TestProtocolPlatformAll;
@@ -1060,7 +1063,7 @@ inline std::optional<TestProtocolPlatform> fromProtocolString(const String& valu
         return TestProtocolPlatformIOS;
     if (value == "macos")
         return TestProtocolPlatformMacOS;
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 

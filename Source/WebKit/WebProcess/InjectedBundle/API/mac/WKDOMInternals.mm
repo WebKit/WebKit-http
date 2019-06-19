@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKDOMInternals.h"
 
-#if WK_API_ENABLED
-
 #import <WebCore/Document.h>
 #import <WebCore/Element.h>
 #import <WebCore/Node.h>
@@ -40,7 +38,7 @@
 #import "WKDOMDocument.h"
 #import "WKDOMText.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <WebCore/WAKAppKitStubs.h>
 #endif
 
@@ -173,5 +171,3 @@ NSArray *toNSArray(const Vector<WebCore::IntRect>& rects)
 }
 
 } // namespace WebKit
-
-#endif // WK_API_ENABLED

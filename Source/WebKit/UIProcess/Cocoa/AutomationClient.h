@@ -25,8 +25,6 @@
 
 #import "WKFoundation.h"
 
-#if WK_API_ENABLED
-
 #if ENABLE(REMOTE_INSPECTOR)
 
 #import "APIAutomationClient.h"
@@ -40,6 +38,7 @@
 namespace WebKit {
 
 class AutomationClient final : public API::AutomationClient, Inspector::RemoteInspector::Client {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit AutomationClient(WKProcessPool *, id <_WKAutomationDelegate>);
     virtual ~AutomationClient();
@@ -69,5 +68,3 @@ private:
 } // namespace WebKit
 
 #endif // ENABLE(REMOTE_INSPECTOR)
-
-#endif // WK_API_ENABLED

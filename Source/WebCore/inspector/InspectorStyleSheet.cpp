@@ -46,6 +46,7 @@
 #include "HTMLParserIdioms.h"
 #include "HTMLStyleElement.h"
 #include "InspectorCSSAgent.h"
+#include "InspectorDOMAgent.h"
 #include "InspectorPageAgent.h"
 #include "MediaList.h"
 #include "Node.h"
@@ -440,11 +441,11 @@ static RefPtr<CSSRuleList> asCSSRuleList(CSSStyleSheet* styleSheet)
     if (!styleSheet)
         return nullptr;
 
-    RefPtr<StaticCSSRuleList> list = StaticCSSRuleList::create();
+    auto list = StaticCSSRuleList::create();
     Vector<RefPtr<CSSRule>>& listRules = list->rules();
     for (unsigned i = 0, size = styleSheet->length(); i < size; ++i)
         listRules.append(styleSheet->item(i));
-    return WTFMove(list);
+    return list;
 }
 
 static RefPtr<CSSRuleList> asCSSRuleList(CSSRule* rule)
@@ -546,7 +547,7 @@ RefPtr<Inspector::Protocol::CSS::CSSStyle> InspectorStyle::buildObjectForStyle()
     if (sourceData)
         result->setRange(buildSourceRangeObject(sourceData->ruleBodyRange, m_parentStyleSheet->lineEndings()));
 
-    return WTFMove(result);
+    return result;
 }
 
 Ref<JSON::ArrayOf<Inspector::Protocol::CSS::CSSComputedStyleProperty>> InspectorStyle::buildArrayForComputedStyle() const
@@ -634,15 +635,9 @@ Ref<Inspector::Protocol::CSS::CSSStyle> InspectorStyle::styleWithProperties() co
         const CSSPropertySourceData& propertyEntry = it->sourceData;
         const String& name = propertyEntry.name;
 
-        // Visual Studio disagrees with other compilers as to whether 'class' is needed here.
-#if COMPILER(MSVC)
-        enum class Protocol::CSS::CSSPropertyStatus status;
-#else
-        enum Inspector::Protocol::CSS::CSSPropertyStatus status;
-#endif
-        status = it->disabled ? Inspector::Protocol::CSS::CSSPropertyStatus::Disabled : Inspector::Protocol::CSS::CSSPropertyStatus::Active;
+        auto status = it->disabled ? Inspector::Protocol::CSS::CSSPropertyStatus::Disabled : Inspector::Protocol::CSS::CSSPropertyStatus::Active;
 
-        RefPtr<Inspector::Protocol::CSS::CSSProperty> property = Inspector::Protocol::CSS::CSSProperty::create()
+        auto property = Inspector::Protocol::CSS::CSSProperty::create()
             .setName(name.convertToASCIILowercase())
             .setValue(propertyEntry.value)
             .release();
@@ -702,11 +697,11 @@ Ref<Inspector::Protocol::CSS::CSSStyle> InspectorStyle::styleWithProperties() co
                             shouldInactivate = true;
                     }
                 } else
-                    propertyNameToPreviousActiveProperty.set(canonicalPropertyName, property);
+                    propertyNameToPreviousActiveProperty.set(canonicalPropertyName, property.copyRef());
 
                 if (shouldInactivate) {
                     activeIt->value->setStatus(Inspector::Protocol::CSS::CSSPropertyStatus::Inactive);
-                    propertyNameToPreviousActiveProperty.set(canonicalPropertyName, property);
+                    propertyNameToPreviousActiveProperty.set(canonicalPropertyName, property.copyRef());
                 }
             } else {
                 bool implicit = m_style->isPropertyImplicit(name);
@@ -929,7 +924,7 @@ ExceptionOr<CSSStyleRule*> InspectorStyleSheet::addRule(const String& selector)
     if (text.hasException())
         return text.releaseException();
 
-    auto addRuleResult = m_pageStyleSheet->addRule(selector, emptyString(), std::nullopt);
+    auto addRuleResult = m_pageStyleSheet->addRule(selector, emptyString(), WTF::nullopt);
     if (addRuleResult.hasException())
         return addRuleResult.releaseException();
 
@@ -1023,7 +1018,7 @@ RefPtr<Inspector::Protocol::CSS::CSSStyleSheetBody> InspectorStyleSheet::buildOb
     if (!styleSheetText.hasException())
         result->setText(styleSheetText.releaseReturnValue());
 
-    return WTFMove(result);
+    return result;
 }
 
 RefPtr<Inspector::Protocol::CSS::CSSStyleSheetHeader> InspectorStyleSheet::buildObjectForStyleSheetInfo()
@@ -1184,7 +1179,7 @@ RefPtr<Inspector::Protocol::CSS::CSSRule> InspectorStyleSheet::buildObjectForRul
     if (mediaArray->length())
         result->setMedia(WTFMove(mediaArray));
 
-    return WTFMove(result);
+    return result;
 }
 
 RefPtr<Inspector::Protocol::CSS::CSSStyle> InspectorStyleSheet::buildObjectForStyle(CSSStyleDeclaration* style)
@@ -1338,12 +1333,12 @@ bool InspectorStyleSheet::ensureSourceData()
     if (!m_parsedStyleSheet->hasText())
         return false;
 
-    RefPtr<StyleSheetContents> newStyleSheet = StyleSheetContents::create();
+    auto newStyleSheet = StyleSheetContents::create();
     auto ruleSourceDataResult = std::make_unique<RuleSourceDataList>();
     
     CSSParserContext context(parserContextForDocument(m_pageStyleSheet->ownerDocument()));
     StyleSheetHandler handler(m_parsedStyleSheet->text(), m_pageStyleSheet->ownerDocument(), ruleSourceDataResult.get());
-    CSSParser::parseSheetForInspector(context, newStyleSheet.get(), m_parsedStyleSheet->text(), handler);
+    CSSParser::parseSheetForInspector(context, newStyleSheet.ptr(), m_parsedStyleSheet->text(), handler);
     m_parsedStyleSheet->setSourceData(WTFMove(ruleSourceDataResult));
     return m_parsedStyleSheet->hasSourceData();
 }
@@ -1423,7 +1418,7 @@ bool InspectorStyleSheet::resourceStyleSheetText(String* result) const
 
     String error;
     bool base64Encoded;
-    InspectorPageAgent::resourceContent(error, ownerDocument()->frame(), URL(ParsedURLString, m_pageStyleSheet->href()), result, &base64Encoded);
+    InspectorPageAgent::resourceContent(error, ownerDocument()->frame(), URL({ }, m_pageStyleSheet->href()), result, &base64Encoded);
     return error.isEmpty() && !base64Encoded;
 }
 

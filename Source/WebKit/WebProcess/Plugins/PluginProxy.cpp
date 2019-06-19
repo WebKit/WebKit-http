@@ -141,24 +141,26 @@ bool PluginProxy::initializeSynchronously()
     return result;
 }
 
-void PluginProxy::didCreatePlugin(bool wantsWheelEvents, uint32_t remoteLayerClientID)
+void PluginProxy::didCreatePlugin(bool wantsWheelEvents, uint32_t remoteLayerClientID, CompletionHandler<void()>&& completionHandler)
 {
     // We might have tried to create the plug-in sychronously while waiting on the asynchronous reply,
     // in which case we should ignore this message.
     if (!m_waitingOnAsynchronousInitialization)
-        return;
+        return completionHandler();
 
     didCreatePluginInternal(wantsWheelEvents, remoteLayerClientID);
+    completionHandler();
 }
 
-void PluginProxy::didFailToCreatePlugin()
+void PluginProxy::didFailToCreatePlugin(CompletionHandler<void()>&& completionHandler)
 {
     // We might have tried to create the plug-in sychronously while waiting on the asynchronous reply,
     // in which case we should ignore this message.
     if (!m_waitingOnAsynchronousInitialization)
-        return;
+        return completionHandler();
 
     didFailToCreatePluginInternal();
+    completionHandler();
 }
 
 void PluginProxy::didCreatePluginInternal(bool wantsWheelEvents, uint32_t remoteLayerClientID)
@@ -197,7 +199,7 @@ void PluginProxy::destroy()
 
     // Although this message is sent synchronously, the Plugin process replies immediately (before performing any tasks) so this is only waiting for
     // confirmation that the Plugin process received the DestroyPlugin message.
-    m_connection->connection()->sendSync(Messages::WebProcessConnection::DestroyPlugin(m_pluginInstanceID, m_waitingOnAsynchronousInitialization), Messages::WebProcessConnection::DestroyPlugin::Reply(), 0, 1_s, IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply);
+    m_connection->connection()->sendSync(Messages::WebProcessConnection::DestroyPlugin(m_pluginInstanceID, m_waitingOnAsynchronousInitialization), Messages::WebProcessConnection::DestroyPlugin::Reply(), 0, 1_s);
     m_connection->removePluginProxy(this);
 }
 
@@ -233,7 +235,7 @@ bool PluginProxy::supportsSnapshotting() const
         return false;
 
     bool isSupported = false;
-    if (m_connection && !m_connection->connection()->sendSync(Messages::PluginControllerProxy::SupportsSnapshotting(), Messages::PluginControllerProxy::SupportsSnapshotting::Reply(isSupported), m_pluginInstanceID, Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply))
+    if (m_connection && !m_connection->connection()->sendSync(Messages::PluginControllerProxy::SupportsSnapshotting(), Messages::PluginControllerProxy::SupportsSnapshotting::Reply(isSupported), m_pluginInstanceID))
         return false;
 
     return isSupported;
@@ -247,8 +249,7 @@ RefPtr<ShareableBitmap> PluginProxy::snapshot()
     if (snapshotStoreHandle.isNull())
         return nullptr;
 
-    RefPtr<ShareableBitmap> snapshotBuffer = ShareableBitmap::create(snapshotStoreHandle);
-    return snapshotBuffer;
+    return ShareableBitmap::create(snapshotStoreHandle);
 }
 
 bool PluginProxy::isTransparent()
@@ -575,14 +576,14 @@ void PluginProxy::loadURL(uint64_t requestID, const String& method, const String
     controller()->loadURL(requestID, method, urlString, target, headerFields, httpBody, allowPopups);
 }
 
-void PluginProxy::proxiesForURL(const String& urlString, String& proxyString)
+void PluginProxy::proxiesForURL(const String& urlString, CompletionHandler<void(String)>&& completionHandler)
 {
-    proxyString = controller()->proxiesForURL(urlString);
+    completionHandler(controller()->proxiesForURL(urlString));
 }
 
-void PluginProxy::cookiesForURL(const String& urlString, String& cookieString)
+void PluginProxy::cookiesForURL(const String& urlString, CompletionHandler<void(String)>&& completionHandler)
 {
-    cookieString = controller()->cookiesForURL(urlString);
+    completionHandler(controller()->cookiesForURL(urlString));
 }
 
 void PluginProxy::setCookiesForURL(const String& urlString, const String& cookieString)
@@ -590,9 +591,12 @@ void PluginProxy::setCookiesForURL(const String& urlString, const String& cookie
     controller()->setCookiesForURL(urlString, cookieString);
 }
 
-void PluginProxy::getAuthenticationInfo(const ProtectionSpace& protectionSpace, bool& returnValue, String& username, String& password)
+void PluginProxy::getAuthenticationInfo(const ProtectionSpace& protectionSpace, CompletionHandler<void(bool returnValue, String username, String password)>&& completionHandler)
 {
-    returnValue = controller()->getAuthenticationInfo(protectionSpace, username, password);
+    String username;
+    String password;
+    bool returnValue = controller()->getAuthenticationInfo(protectionSpace, username, password);
+    completionHandler(returnValue, username, password);
 }
 
 float PluginProxy::contentsScaleFactor()
@@ -635,40 +639,38 @@ IntRect PluginProxy::pluginBounds()
     return IntRect(IntPoint(), m_pluginSize);
 }
 
-void PluginProxy::getPluginElementNPObject(uint64_t& pluginElementNPObjectID)
+void PluginProxy::getPluginElementNPObject(CompletionHandler<void(uint64_t)>&& completionHandler)
 {
     NPObject* pluginElementNPObject = controller()->pluginElementNPObject();
-    if (!pluginElementNPObject) {
-        pluginElementNPObjectID = 0;
-        return;
-    }
+    if (!pluginElementNPObject)
+        return completionHandler(0);
 
-    pluginElementNPObjectID = m_connection->npRemoteObjectMap()->registerNPObject(pluginElementNPObject, this);
+    uint64_t pluginElementNPObjectID = m_connection->npRemoteObjectMap()->registerNPObject(pluginElementNPObject, this);
     releaseNPObject(pluginElementNPObject);
+    completionHandler(pluginElementNPObjectID);
 }
 
-void PluginProxy::evaluate(const NPVariantData& npObjectAsVariantData, const String& scriptString, bool allowPopups, bool& returnValue, NPVariantData& resultData)
+void PluginProxy::evaluate(const NPVariantData& npObjectAsVariantData, const String& scriptString, bool allowPopups, CompletionHandler<void(bool returnValue, NPVariantData&& resultData)>&& completionHandler)
 {
     PluginController::PluginDestructionProtector protector(controller());
 
     NPVariant npObjectAsVariant = m_connection->npRemoteObjectMap()->npVariantDataToNPVariant(npObjectAsVariantData, this);
-    if (!NPVARIANT_IS_OBJECT(npObjectAsVariant) || !(NPVARIANT_TO_OBJECT(npObjectAsVariant))) {
-        returnValue = false;
-        return;
-    }
-        
+    if (!NPVARIANT_IS_OBJECT(npObjectAsVariant) || !(NPVARIANT_TO_OBJECT(npObjectAsVariant)))
+        return completionHandler(false, { });
+
     NPVariant result;
-    returnValue = controller()->evaluate(NPVARIANT_TO_OBJECT(npObjectAsVariant), scriptString, &result, allowPopups);
+    bool returnValue = controller()->evaluate(NPVARIANT_TO_OBJECT(npObjectAsVariant), scriptString, &result, allowPopups);
     if (!returnValue)
-        return;
+        return completionHandler(false, { });
 
     // Convert the NPVariant to an NPVariantData.
-    resultData = m_connection->npRemoteObjectMap()->npVariantToNPVariantData(result, this);
+    NPVariantData resultData = m_connection->npRemoteObjectMap()->npVariantToNPVariantData(result, this);
     
     // And release the result.
     releaseNPVariantValue(&result);
-
     releaseNPVariantValue(&npObjectAsVariant);
+    
+    completionHandler(returnValue, WTFMove(resultData));
 }
 
 void PluginProxy::setPluginIsPlayingAudio(bool pluginIsPlayingAudio)
@@ -697,9 +699,9 @@ void PluginProxy::setStatusbarText(const String& statusbarText)
 }
 
 #if PLATFORM(X11)
-void PluginProxy::createPluginContainer(uint64_t& windowID)
+void PluginProxy::createPluginContainer(CompletionHandler<void(uint64_t windowID)>&& completionHandler)
 {
-    windowID = controller()->createPluginContainer();
+    completionHandler(controller()->createPluginContainer());
 }
 
 void PluginProxy::windowedPluginGeometryDidChange(const WebCore::IntRect& frameRect, const WebCore::IntRect& clipRect, uint64_t windowID)

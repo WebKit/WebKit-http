@@ -25,8 +25,8 @@
 
 #include "config.h"
 
-#include <WebCore/URL.h>
 #include <WebCore/UserAgent.h>
+#include <wtf/URL.h>
 
 using namespace WebCore;
 
@@ -34,7 +34,7 @@ namespace TestWebKitAPI {
 
 static void assertUserAgentForURLHasChromeBrowserQuirk(const char* url)
 {
-    String uaString = standardUserAgentForURL(URL(ParsedURLString, url));
+    String uaString = standardUserAgentForURL(URL({ }, url));
 
     EXPECT_TRUE(uaString.contains("Chrome"));
     EXPECT_TRUE(uaString.contains("Safari"));
@@ -44,7 +44,7 @@ static void assertUserAgentForURLHasChromeBrowserQuirk(const char* url)
 
 static void assertUserAgentForURLHasLinuxPlatformQuirk(const char* url)
 {
-    String uaString = standardUserAgentForURL(URL(ParsedURLString, url));
+    String uaString = standardUserAgentForURL(URL({ }, url));
 
     EXPECT_TRUE(uaString.contains("Linux"));
     EXPECT_FALSE(uaString.contains("Macintosh"));
@@ -56,7 +56,7 @@ static void assertUserAgentForURLHasLinuxPlatformQuirk(const char* url)
 
 static void assertUserAgentForURLHasMacPlatformQuirk(const char* url)
 {
-    String uaString = standardUserAgentForURL(URL(ParsedURLString, url));
+    String uaString = standardUserAgentForURL(URL({ }, url));
 
     EXPECT_TRUE(uaString.contains("Macintosh"));
     EXPECT_TRUE(uaString.contains("Mac OS X"));
@@ -69,18 +69,17 @@ static void assertUserAgentForURLHasMacPlatformQuirk(const char* url)
 TEST(UserAgentTest, Quirks)
 {
     // A site with not quirks should return a null String.
-    String uaString = standardUserAgentForURL(URL(ParsedURLString, "http://www.webkit.org/"));
+    String uaString = standardUserAgentForURL(URL({ }, "http://www.webkit.org/"));
     EXPECT_TRUE(uaString.isNull());
 
 #if !OS(LINUX) || !CPU(X86_64)
     // Google quirk should not affect sites with similar domains.
-    uaString = standardUserAgentForURL(URL(ParsedURLString, "http://www.googleblog.com/"));
+    uaString = standardUserAgentForURL(URL({ }, "http://www.googleblog.com/"));
     EXPECT_FALSE(uaString.contains("Linux x86_64"));
 #endif
 
     assertUserAgentForURLHasChromeBrowserQuirk("http://typekit.com/");
     assertUserAgentForURLHasChromeBrowserQuirk("http://typekit.net/");
-    assertUserAgentForURLHasChromeBrowserQuirk("http://www.washingtonpost.com/");
 
     assertUserAgentForURLHasLinuxPlatformQuirk("http://www.google.com/");
     assertUserAgentForURLHasLinuxPlatformQuirk("http://www.google.es/");
@@ -95,6 +94,9 @@ TEST(UserAgentTest, Quirks)
     assertUserAgentForURLHasMacPlatformQuirk("http://www.chase.com/");
     assertUserAgentForURLHasMacPlatformQuirk("http://docs.google.com/");
     assertUserAgentForURLHasMacPlatformQuirk("http://paypal.com/");
+    assertUserAgentForURLHasMacPlatformQuirk("http://outlook.live.com/");
+    assertUserAgentForURLHasMacPlatformQuirk("http://mail.ntu.edu.tw/");
+    assertUserAgentForURLHasMacPlatformQuirk("http://exchange.tu-berlin.de/");
 }
 
 } // namespace TestWebKitAPI

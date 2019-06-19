@@ -12,23 +12,21 @@ set(WebKitLegacy_SOURCES
     Storage/WebDatabaseProvider.cpp
     Storage/WebStorageNamespaceProvider.cpp
 
+    WebCoreSupport/NetworkStorageSessionMap.cpp
     WebCoreSupport/WebResourceLoadScheduler.cpp
     WebCoreSupport/WebViewGroup.cpp
 )
 
-set(WebKitLegacy_INCLUDE_DIRECTORIES
+set(WebKitLegacy_PRIVATE_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${WEBKITLEGACY_DIR}/Storage"
     "${WEBKITLEGACY_DIR}/WebCoreSupport"
-    "${FORWARDING_HEADERS_DIR}"
-)
-
-set(WebKitLegacy_SYSTEM_INCLUDE_DIRECTORIES
-    "${ICU_INCLUDE_DIRS}"
+    "${WebCore_PRIVATE_FRAMEWORK_HEADERS_DIR}"
+    "${WebKitLegacy_DERIVED_SOURCES_DIR}"
 )
 
 set(WebKitLegacy_LIBRARIES
-    PRIVATE JavaScriptCore${DEBUG_SUFFIX}
+    PRIVATE WebKit::JavaScriptCore
     PRIVATE WebCore${DEBUG_SUFFIX}
     PRIVATE PAL${DEBUG_SUFFIX}
 )
@@ -86,7 +84,7 @@ if (${PORT} STREQUAL "Qt")
     endif ()
 endif ()
 
-add_dependencies(WebKitLegacy WebCore)
+add_dependencies(WebKitLegacy WebCore WebCorePrivateFrameworkHeaders)
 if (TARGET WebKitLegacyGUID)
     add_dependencies(WebKitLegacy WebKitLegacyGUID)
 endif ()
@@ -99,7 +97,7 @@ if (MSVC)
     add_custom_command(
         TARGET WebKitLegacy
         POST_BUILD
-        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/version-stamp.pl ${DERIVED_SOURCES_WEBKITLEGACY_DIR} $<TARGET_FILE:WebKitLegacy>
+        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/version-stamp.pl ${WebKitLegacy_DERIVED_SOURCES_DIR} $<TARGET_FILE:WebKitLegacy>
         VERBATIM)
 
      if (NOT WTF_PLATFORM_WIN_CAIRO)

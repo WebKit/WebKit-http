@@ -38,7 +38,9 @@ ExitValue ExitValue::materializeNewObject(ExitTimeObjectMaterialization* data)
 {
     ExitValue result;
     result.m_kind = ExitValueMaterializeNewObject;
-    result.u.newObjectMaterializationData = data;
+    UnionType u;
+    u.newObjectMaterializationData = data;
+    result.m_value = WTFMove(u);
     return result;
 }
 
@@ -75,9 +77,6 @@ DataFormat ExitValue::dataFormat() const
             
     case ExitValueInJSStackAsDouble:
         return DataFormatDouble;
-            
-    case ExitValueRecovery:
-        return recoveryFormat();
     }
         
     RELEASE_ASSERT_NOT_REACHED();
@@ -109,9 +108,6 @@ void ExitValue::dumpInContext(PrintStream& out, DumpContext* context) const
         return;
     case ExitValueInJSStackAsDouble:
         out.print("InJSStackAsDouble:", virtualRegister());
-        return;
-    case ExitValueRecovery:
-        out.print("Recovery(", recoveryOpcode(), ", arg", leftRecoveryArgument(), ", arg", rightRecoveryArgument(), ", ", recoveryFormat(), ")");
         return;
     case ExitValueMaterializeNewObject:
         out.print("Materialize(", WTF::RawPointer(objectMaterialization()), ")");

@@ -81,14 +81,16 @@ void RenderMathMLSpace::layoutBlock(bool relayoutChildren, LayoutUnit)
     getSpaceHeightAndDepth(height, depth);
     setLogicalHeight(height + depth);
 
+    updateScrollInfoAfterLayout();
+
     clearNeedsLayout();
 }
 
-std::optional<int> RenderMathMLSpace::firstLineBaseline() const
+Optional<int> RenderMathMLSpace::firstLineBaseline() const
 {
     LayoutUnit height, depth;
     getSpaceHeightAndDepth(height, depth);
-    return std::optional<int>(height);
+    return Optional<int>(height);
 }
 
 }

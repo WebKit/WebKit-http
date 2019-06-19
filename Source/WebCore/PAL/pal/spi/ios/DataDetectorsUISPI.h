@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS) && ENABLE(DATA_DETECTION)
+#if PLATFORM(IOS_FAMILY) && ENABLE(DATA_DETECTION)
 
 #import <UIKit/UIKit.h>
 #import <wtf/SoftLinking.h>
@@ -61,6 +61,13 @@
 @end
 
 #endif
+
+@interface DDDetectionController (Staging_48014858)
+- (NSString *)titleForURL:(NSURL *)url results:(NSArray *)results context:(NSDictionary *)context;
+- (DDAction *)defaultActionForURL:(NSURL *)url results:(NSArray *)results context:(NSDictionary *)context;
+- (void)interactionDidStartForURL:(NSURL *)url;
+- (BOOL)shouldImmediatelyLaunchDefaultActionForURL:(NSURL *)url;
+@end
 
 SOFT_LINK_PRIVATE_FRAMEWORK(DataDetectorsUI)
 SOFT_LINK_CLASS(DataDetectorsUI, DDDetectionController)

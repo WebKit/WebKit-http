@@ -29,6 +29,7 @@
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include "SandboxUtilities.h"
+#include <WebCore/SharedBuffer.h>
 
 namespace API {
 

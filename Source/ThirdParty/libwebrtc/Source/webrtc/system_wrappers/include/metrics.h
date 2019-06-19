@@ -11,9 +11,10 @@
 #ifndef SYSTEM_WRAPPERS_INCLUDE_METRICS_H_
 #define SYSTEM_WRAPPERS_INCLUDE_METRICS_H_
 
+#include <map>
+#include <memory>
 #include <string>
 
-#include "common_types.h"  // NOLINT(build/include)
 #include "rtc_base/atomicops.h"
 #include "rtc_base/checks.h"
 
@@ -31,20 +32,21 @@
 // The macros use the methods HistogramFactoryGetCounts,
 // HistogramFactoryGetEnumeration and HistogramAdd.
 //
-// Therefore, WebRTC clients must either:
+// By default WebRTC provides implementations of the aforementioned methods
+// that can be found in system_wrappers/source/metrics.cc. If clients want to
+// provide a custom version, they will have to:
 //
-// - provide implementations of
-//   Histogram* webrtc::metrics::HistogramFactoryGetCounts(
-//       const std::string& name, int sample, int min, int max,
-//       int bucket_count);
-//   Histogram* webrtc::metrics::HistogramFactoryGetEnumeration(
-//       const std::string& name, int sample, int boundary);
-//   void webrtc::metrics::HistogramAdd(
-//       Histogram* histogram_pointer, const std::string& name, int sample);
-//
-// - or link with the default implementations (i.e.
-//   system_wrappers:metrics_default).
-//
+// 1. Compile WebRTC defining the preprocessor macro
+//    WEBRTC_EXCLUDE_METRICS_DEFAULT (if GN is used this can be achieved
+//    by setting the GN arg rtc_exclude_metrics_default to true).
+// 2. Provide implementations of:
+//    Histogram* webrtc::metrics::HistogramFactoryGetCounts(
+//        const std::string& name, int sample, int min, int max,
+//        int bucket_count);
+//    Histogram* webrtc::metrics::HistogramFactoryGetEnumeration(
+//        const std::string& name, int sample, int boundary);
+//    void webrtc::metrics::HistogramAdd(
+//        Histogram* histogram_pointer, const std::string& name, int sample);
 //
 // Example usage:
 //
@@ -131,7 +133,7 @@
 // TODO(qingsi): Refactor the default implementation given by RtcHistogram,
 // which is already sparse, and remove the boundary argument from the macro.
 #define RTC_HISTOGRAM_ENUMERATION_SPARSE(name, sample, boundary) \
-  RTC_HISTOGRAM_COMMON_BLOCK(                                    \
+  RTC_HISTOGRAM_COMMON_BLOCK_SLOW(                               \
       name, sample,                                              \
       webrtc::metrics::SparseHistogramFactoryGetEnumeration(name, boundary))
 
@@ -146,7 +148,7 @@
 // Histogram for enumerators (evenly spaced buckets).
 // |boundary| should be above the max enumerator sample.
 #define RTC_HISTOGRAM_ENUMERATION(name, sample, boundary) \
-  RTC_HISTOGRAM_COMMON_BLOCK(                             \
+  RTC_HISTOGRAM_COMMON_BLOCK_SLOW(                        \
       name, sample,                                       \
       webrtc::metrics::HistogramFactoryGetEnumeration(name, boundary))
 
@@ -173,7 +175,6 @@
     }                                                                      \
   } while (0)
 
-// Deprecated.
 // The histogram is constructed/found for each call.
 // May be used for histograms with infrequent updates.`
 #define RTC_HISTOGRAM_COMMON_BLOCK_SLOW(name, sample, factory_get_invocation) \
@@ -273,6 +274,39 @@ Histogram* SparseHistogramFactoryGetEnumeration(const std::string& name,
 
 // Function for adding a |sample| to a histogram.
 void HistogramAdd(Histogram* histogram_pointer, int sample);
+
+struct SampleInfo {
+  SampleInfo(const std::string& name, int min, int max, size_t bucket_count);
+  ~SampleInfo();
+
+  const std::string name;
+  const int min;
+  const int max;
+  const size_t bucket_count;
+  std::map<int, int> samples;  // <value, # of events>
+};
+
+// Enables collection of samples.
+// This method should be called before any other call into webrtc.
+void Enable();
+
+// Gets histograms and clears all samples.
+void GetAndReset(
+    std::map<std::string, std::unique_ptr<SampleInfo>>* histograms);
+
+// Functions below are mainly for testing.
+
+// Clears all samples.
+void Reset();
+
+// Returns the number of times the |sample| has been added to the histogram.
+int NumEvents(const std::string& name, int sample);
+
+// Returns the total number of added samples to the histogram.
+int NumSamples(const std::string& name);
+
+// Returns the minimum sample value (or -1 if the histogram has no samples).
+int MinSample(const std::string& name);
 
 }  // namespace metrics
 }  // namespace webrtc

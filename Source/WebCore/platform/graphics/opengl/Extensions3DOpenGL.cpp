@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if ENABLE(GRAPHICS_CONTEXT_3D)
+#if ENABLE(GRAPHICS_CONTEXT_3D) && (USE(OPENGL) || (PLATFORM(COCOA) && USE(OPENGL_ES)))
 
 #include "Extensions3DOpenGL.h"
 
@@ -46,7 +46,7 @@
 #endif
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "GraphicsContext3DIOS.h"
 #endif
 
@@ -194,7 +194,7 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
     if (name == "GL_ANGLE_framebuffer_blit")
         return m_availableExtensions.contains("GL_EXT_framebuffer_blit");
     if (name == "GL_ANGLE_framebuffer_multisample")
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         return m_availableExtensions.contains("GL_APPLE_framebuffer_multisample");
 #else
         return m_availableExtensions.contains("GL_EXT_framebuffer_multisample");
@@ -207,7 +207,7 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
     }
 
     if (name == "GL_EXT_sRGB")
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         return m_availableExtensions.contains("GL_EXT_sRGB");
 #else
         return m_availableExtensions.contains("GL_EXT_texture_sRGB") && (m_availableExtensions.contains("GL_EXT_framebuffer_sRGB") || m_availableExtensions.contains("GL_ARB_framebuffer_sRGB"));
@@ -241,7 +241,7 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
     if (name == "GL_OES_vertex_array_object") {
 #if (PLATFORM(GTK))
         return m_availableExtensions.contains("GL_ARB_vertex_array_object");
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
         return m_availableExtensions.contains("GL_OES_vertex_array_object");
 #elif PLATFORM(QT)
         return isVertexArrayObjectSupported();
@@ -273,7 +273,7 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
         return m_availableExtensions.contains("GL_EXT_texture_filter_anisotropic");
 
     if (name == "GL_EXT_draw_buffers") {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         return m_availableExtensions.contains(name);
 #elif PLATFORM(MAC) || PLATFORM(GTK) || (PLATFORM(QT) && QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
         return m_availableExtensions.contains("GL_ARB_draw_buffers");
@@ -283,7 +283,7 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
 #endif
     }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (name == "GL_EXT_packed_depth_stencil")
         return m_availableExtensions.contains("GL_OES_packed_depth_stencil");
 #endif
@@ -373,4 +373,4 @@ bool Extensions3DOpenGL::isVertexArrayObjectSupported()
 
 } // namespace WebCore
 
-#endif // ENABLE(GRAPHICS_CONTEXT_3D)
+#endif // ENABLE(GRAPHICS_CONTEXT_3D) && (USE(OPENGL) || (PLATFORM(COCOA) && USE(OPENGL_ES)))

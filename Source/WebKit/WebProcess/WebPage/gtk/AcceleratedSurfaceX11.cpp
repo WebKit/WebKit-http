@@ -26,7 +26,7 @@
 #include "config.h"
 #include "AcceleratedSurfaceX11.h"
 
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#if PLATFORM(X11)
 
 #include "WebPage.h"
 #include <WebCore/PlatformDisplayX11.h>
@@ -133,9 +133,9 @@ void AcceleratedSurfaceX11::createPixmap()
     XSync(m_display, False);
 }
 
-bool AcceleratedSurfaceX11::resize(const IntSize& size)
+bool AcceleratedSurfaceX11::hostResize(const IntSize& size)
 {
-    if (!AcceleratedSurface::resize(size))
+    if (!AcceleratedSurface::hostResize(size))
         return false;
 
     // Resize the window to at last 1x1 since X doesn't allow to create empty windows.
@@ -156,4 +156,4 @@ void AcceleratedSurfaceX11::didRenderFrame()
 
 } // namespace WebKit
 
-#endif // USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#endif // PLATFORM(X11)

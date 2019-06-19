@@ -9,21 +9,23 @@ if (window.internals)
     window.internals.settings.setWebGPUEnabled(true);
 
 function test() {
-    let suite = initializeTestSuite("Canvas.CreateContextWebGPU");
+    InspectorTest.debug();
 
-    addSimpleTestCase({
+    let suite = InspectorTest.CreateContextUtilities.initializeTestSuite("Canvas.CreateContextWebGPU");
+
+    InspectorTest.CreateContextUtilities.addSimpleTestCase({
         name: "Attached",
-        expression: `createAttachedCanvas("webgpu")`,
+        expression: `createAttachedCanvas("gpu")`,
         contextType: WI.Canvas.ContextType.WebGPU,
     });
 
-    addSimpleTestCase({
+    InspectorTest.CreateContextUtilities.addSimpleTestCase({
         name: "Detached",
-        expression: `createDetachedCanvas("webgpu")`,
+        expression: `createDetachedCanvas("gpu")`,
         contextType: WI.Canvas.ContextType.WebGPU,
     });
 
-    addCSSCanvasTestCase(WI.Canvas.ContextType.WebGPU);
+    InspectorTest.CreateContextUtilities.addCSSCanvasTestCase(WI.Canvas.ContextType.WebGPU);
 
     suite.runTestCasesAndFinish();
 }

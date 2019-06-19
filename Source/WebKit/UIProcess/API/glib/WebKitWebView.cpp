@@ -69,9 +69,10 @@
 #include <WebCore/GUniquePtrSoup.h>
 #include <WebCore/JSDOMExceptionHandling.h>
 #include <WebCore/RefPtrCairo.h>
-#include <WebCore/URL.h>
+#include <WebCore/URLSoup.h>
 #include <glib/gi18n-lib.h>
 #include <wtf/SetForScope.h>
+#include <wtf/URL.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/WTFGType.h>
 #include <wtf/text/CString.h>
@@ -99,17 +100,17 @@ using namespace WebCore;
 
 /**
  * SECTION: WebKitWebView
- * @Short_description: The central class of the WebKit2GTK+ API
+ * @Short_description: The central class of the WPE WebKit and WebKitGTK APIs
  * @Title: WebKitWebView
  *
- * #WebKitWebView is the central class of the WebKit2GTK+ API. It is
- * responsible for managing the drawing of the content and forwarding
- * of events. You can load any URI into the #WebKitWebView or a data
- * string. With #WebKitSettings you can control various aspects of the
- * rendering and loading of the content.
+ * #WebKitWebView is the central class of the WPE WebKit and WebKitGTK
+ * APIs. It is responsible for managing the drawing of the content and
+ * forwarding of events. You can load any URI into the #WebKitWebView or
+ * a data string. With #WebKitSettings you can control various aspects
+ * of the rendering and loading of the content.
  *
- * Note that #WebKitWebView is scrollable by itself, so you don't need
- * to embed it in a #GtkScrolledWindow.
+ * Note that in WebKitGTK, #WebKitWebView is scrollable by itself, so
+ * you don't need to embed it in a #GtkScrolledWindow.
  */
 
 enum {
@@ -197,6 +198,34 @@ typedef HashMap<uint64_t, GRefPtr<GTask> > SnapshotResultsMap;
 
 class PageLoadStateObserver;
 
+#if PLATFORM(WPE)
+static unsigned frameDisplayCallbackID;
+struct FrameDisplayedCallback {
+    FrameDisplayedCallback(WebKitFrameDisplayedCallback callback, gpointer userData = nullptr, GDestroyNotify destroyNotifyFunction = nullptr)
+        : id(++frameDisplayCallbackID)
+        , callback(callback)
+        , userData(userData)
+        , destroyNotifyFunction(destroyNotifyFunction)
+    {
+    }
+
+    ~FrameDisplayedCallback()
+    {
+        if (destroyNotifyFunction)
+            destroyNotifyFunction(userData);
+    }
+
+    FrameDisplayedCallback(FrameDisplayedCallback&&) = default;
+    FrameDisplayedCallback(const FrameDisplayedCallback&) = delete;
+    FrameDisplayedCallback& operator=(const FrameDisplayedCallback&) = delete;
+
+    unsigned id { 0 };
+    WebKitFrameDisplayedCallback callback { nullptr };
+    gpointer userData { nullptr };
+    GDestroyNotify destroyNotifyFunction { nullptr };
+};
+#endif // PLATFORM(WPE)
+
 struct _WebKitWebViewPrivate {
     ~_WebKitWebViewPrivate()
     {
@@ -208,12 +237,16 @@ struct _WebKitWebViewPrivate {
 #if PLATFORM(WPE)
     GRefPtr<WebKitWebViewBackend> backend;
     std::unique_ptr<WKWPE::View> view;
+    Vector<FrameDisplayedCallback> frameDisplayedCallbacks;
+    bool inFrameDisplayed;
+    HashSet<unsigned> frameDisplayedCallbacksToRemove;
 #endif
 
     WebKitWebView* relatedView;
     CString title;
     CString customTextEncoding;
     CString activeURI;
+    bool isActiveURIChangeBlocked;
     bool isLoading;
     bool isEphemeral;
     bool isControlledByAutomation;
@@ -230,7 +263,7 @@ struct _WebKitWebViewPrivate {
     GRefPtr<GMainLoop> modalLoop;
 
     GRefPtr<WebKitHitTestResult> mouseTargetHitTestResult;
-    WebEvent::Modifiers mouseTargetModifiers;
+    OptionSet<WebEvent::Modifier> mouseTargetModifiers;
 
     GRefPtr<WebKitFindController> findController;
 
@@ -323,10 +356,14 @@ private:
 
     void willChangeActiveURL() override
     {
+        if (m_webView->priv->isActiveURIChangeBlocked)
+            return;
         g_object_freeze_notify(G_OBJECT(m_webView));
     }
     void didChangeActiveURL() override
     {
+        if (m_webView->priv->isActiveURIChangeBlocked)
+            return;
         m_webView->priv->activeURI = getPage(m_webView).pageLoadState().activeURL().utf8();
         g_object_notify(G_OBJECT(m_webView), "uri");
         g_object_thaw_notify(G_OBJECT(m_webView));
@@ -355,6 +392,7 @@ private:
     void didChangeCertificateInfo() override { }
     void willChangeWebProcessIsResponsive() override { }
     void didChangeWebProcessIsResponsive() override { }
+    void didSwapWebProcesses() override { };
 
     WebKitWebView* m_webView;
 };
@@ -371,6 +409,29 @@ private:
     void handleDownloadRequest(WKWPE::View&, DownloadProxy& downloadProxy) override
     {
         webkitWebViewHandleDownloadRequest(m_webView, &downloadProxy);
+    }
+
+    void frameDisplayed(WKWPE::View&) override
+    {
+        {
+            SetForScope<bool> inFrameDisplayedGuard(m_webView->priv->inFrameDisplayed, true);
+            for (const auto& callback : m_webView->priv->frameDisplayedCallbacks) {
+                if (!m_webView->priv->frameDisplayedCallbacksToRemove.contains(callback.id))
+                    callback.callback(m_webView, callback.userData);
+            }
+        }
+
+        while (!m_webView->priv->frameDisplayedCallbacksToRemove.isEmpty()) {
+            auto id = m_webView->priv->frameDisplayedCallbacksToRemove.takeAny();
+            m_webView->priv->frameDisplayedCallbacks.removeFirstMatching([id](const auto& item) {
+                return item.id == id;
+            });
+        }
+    }
+
+    void willStartLoad(WKWPE::View&) override
+    {
+        webkitWebViewWillStartLoad(m_webView);
     }
 
     WebKitWebView* m_webView;
@@ -450,6 +511,12 @@ static void userAgentChanged(WebKitSettings* settings, GParamSpec*, WebKitWebVie
 }
 
 #if PLATFORM(GTK)
+static void enableBackForwardNavigationGesturesChanged(WebKitSettings* settings, GParamSpec*, WebKitWebView* webView)
+{
+    gboolean enable = webkit_settings_get_enable_back_forward_navigation_gestures(settings);
+    webkitWebViewBaseSetEnableBackForwardNavigationGesture(WEBKIT_WEB_VIEW_BASE(webView), enable);
+}
+
 static void webkitWebViewUpdateFavicon(WebKitWebView* webView, cairo_surface_t* favicon)
 {
     WebKitWebViewPrivate* priv = webView->priv;
@@ -530,10 +597,16 @@ static void webkitWebViewUpdateSettings(WebKitWebView* webView)
     page.setPreferences(*webkitSettingsGetPreferences(settings));
     page.setCanRunModal(webkit_settings_get_allow_modal_dialogs(settings));
     page.setCustomUserAgent(String::fromUTF8(webkit_settings_get_user_agent(settings)));
+#if PLATFORM(GTK)
+    enableBackForwardNavigationGesturesChanged(settings, nullptr, webView);
+#endif
 
     g_signal_connect(settings, "notify::allow-modal-dialogs", G_CALLBACK(allowModalDialogsChanged), webView);
     g_signal_connect(settings, "notify::zoom-text-only", G_CALLBACK(zoomTextOnlyChanged), webView);
     g_signal_connect(settings, "notify::user-agent", G_CALLBACK(userAgentChanged), webView);
+#if PLATFORM(GTK)
+    g_signal_connect(settings, "notify::enable-back-forward-navigation-gestures", G_CALLBACK(enableBackForwardNavigationGesturesChanged), webView);
+#endif
 }
 
 static void webkitWebViewDisconnectSettingsSignalHandlers(WebKitWebView* webView)
@@ -545,6 +618,9 @@ static void webkitWebViewDisconnectSettingsSignalHandlers(WebKitWebView* webView
     g_signal_handlers_disconnect_by_func(settings, reinterpret_cast<gpointer>(allowModalDialogsChanged), webView);
     g_signal_handlers_disconnect_by_func(settings, reinterpret_cast<gpointer>(zoomTextOnlyChanged), webView);
     g_signal_handlers_disconnect_by_func(settings, reinterpret_cast<gpointer>(userAgentChanged), webView);
+#if PLATFORM(GTK)
+    g_signal_handlers_disconnect_by_func(settings, reinterpret_cast<gpointer>(enableBackForwardNavigationGesturesChanged), webView);
+#endif
 }
 
 #if PLATFORM(GTK)
@@ -805,6 +881,11 @@ static void webkitWebViewDispose(GObject* object)
     if (webView->priv->websiteDataManager) {
         webkitWebsiteDataManagerRemoveProcessPool(webView->priv->websiteDataManager.get(), webkitWebContextGetProcessPool(webView->priv->context.get()));
         webView->priv->websiteDataManager = nullptr;
+    }
+
+    if (webView->priv->currentScriptDialog) {
+        webkit_script_dialog_close(webView->priv->currentScriptDialog);
+        ASSERT(!webView->priv->currentScriptDialog);
     }
 
 #if PLATFORM(WPE)
@@ -1355,6 +1436,12 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      * </para></listitem>
      * </itemizedlist>
      *
+     * It is possible to handle the script dialog request asynchronously, by simply
+     * caling webkit_script_dialog_ref() on the @dialog argument and calling
+     * webkit_script_dialog_close() when done.
+     * If the last reference is removed on a #WebKitScriptDialog and the dialog has not been
+     * closed, webkit_script_dialog_close() will be called.
+     *
      * Returns: %TRUE to stop other handlers from being invoked for the event.
      *    %FALSE to propagate the event further.
      */
@@ -1366,7 +1453,7 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
         g_signal_accumulator_true_handled, nullptr,
         g_cclosure_marshal_generic,
         G_TYPE_BOOLEAN, 1,
-        WEBKIT_TYPE_SCRIPT_DIALOG | G_SIGNAL_TYPE_STATIC_SCOPE);
+        WEBKIT_TYPE_SCRIPT_DIALOG);
 
     /**
      * WebKitWebView::decide-policy:
@@ -1387,14 +1474,16 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      *                   WebKitPolicyDecisionType type)
      * {
      *     switch (type) {
-     *     case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION:
+     *     case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION: {
      *         WebKitNavigationPolicyDecision *navigation_decision = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
      *         /<!-- -->* Make a policy decision here. *<!-- -->/
      *         break;
-     *     case WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION:
+     *     }
+     *     case WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION: {
      *         WebKitNavigationPolicyDecision *navigation_decision = WEBKIT_NAVIGATION_POLICY_DECISION (decision);
      *         /<!-- -->* Make a policy decision here. *<!-- -->/
      *         break;
+     *     }
      *     case WEBKIT_POLICY_DECISION_TYPE_RESPONSE:
      *         WebKitResponsePolicyDecision *response = WEBKIT_RESPONSE_POLICY_DECISION (decision);
      *         /<!-- -->* Make a policy decision here. *<!-- -->/
@@ -1987,6 +2076,27 @@ WebPageProxy& webkitWebViewGetPage(WebKitWebView* webView)
     return getPage(webView);
 }
 
+void webkitWebViewWillStartLoad(WebKitWebView* webView)
+{
+    // Ignore the active URI changes happening before WEBKIT_LOAD_STARTED. If they are not user-initiated,
+    // they could be a malicious attempt to trick users by loading an invalid URI on a trusted host, with the load
+    // intended to stall, or perhaps be repeated. If we trust the URI here and display it to the user, then the user's
+    // only indication that something is wrong would be a page loading indicator. If the load request is not
+    // user-initiated, we must not trust it until WEBKIT_LOAD_COMMITTED. If the load is triggered by API
+    // request, then the active URI is already the pending API request URL, so the blocking is harmless and the
+    // client application will still see the URI update immediately. Otherwise, the URI update will be delayed a bit.
+    webView->priv->isActiveURIChangeBlocked = true;
+
+    // This is called before NavigationClient::didStartProvisionalNavigation(), the page load state hasn't been committed yet.
+    auto& pageLoadState = getPage(webView).pageLoadState();
+    if (pageLoadState.isFinished())
+        return;
+
+    GUniquePtr<GError> error(g_error_new_literal(WEBKIT_NETWORK_ERROR, WEBKIT_NETWORK_ERROR_CANCELLED, _("Load request cancelled")));
+    webkitWebViewLoadFailed(webView, pageLoadState.isProvisional() ? WEBKIT_LOAD_STARTED : WEBKIT_LOAD_COMMITTED,
+        webView->priv->activeURI.data(), error.get());
+}
+
 void webkitWebViewLoadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent)
 {
     WebKitWebViewPrivate* priv = webView->priv;
@@ -1999,15 +2109,24 @@ void webkitWebViewLoadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent)
         webkitWebViewCancelAuthenticationRequest(webView);
         priv->loadingResourcesMap.clear();
         priv->mainResource = nullptr;
+        webView->priv->isActiveURIChangeBlocked = false;
         break;
-#if PLATFORM(GTK)
     case WEBKIT_LOAD_COMMITTED: {
+        auto activeURL = getPage(webView).pageLoadState().activeURL().utf8();
+        // Active URL is trusted now. If it's different to our active URI, due to the
+        // update block before WEBKIT_LOAD_STARTED, we update it here to be in sync
+        // again with the page load state.
+        if (activeURL != priv->activeURI) {
+            priv->activeURI = activeURL;
+            g_object_notify(G_OBJECT(webView), "uri");
+        }
+#if PLATFORM(GTK)
         WebKitFaviconDatabase* database = webkit_web_context_get_favicon_database(priv->context.get());
         GUniquePtr<char> faviconURI(webkit_favicon_database_get_favicon_uri(database, priv->activeURI.data()));
         webkitWebViewUpdateFaviconURI(webView, faviconURI.get());
+#endif
         break;
     }
-#endif
     case WEBKIT_LOAD_FINISHED:
         webkitWebViewCancelAuthenticationRequest(webView);
         break;
@@ -2082,8 +2201,7 @@ void webkitWebViewRunAsModal(WebKitWebView* webView)
 
 #if PLATFORM(GTK)
 // This is to suppress warnings about gdk_threads_leave and gdk_threads_enter.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     gdk_threads_leave();
 #endif
 
@@ -2091,7 +2209,7 @@ void webkitWebViewRunAsModal(WebKitWebView* webView)
 
 #if PLATFORM(GTK)
     gdk_threads_enter();
-#pragma GCC diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 #endif
 }
 
@@ -2100,39 +2218,52 @@ void webkitWebViewClosePage(WebKitWebView* webView)
     g_signal_emit(webView, signals[CLOSE], 0, NULL);
 }
 
-void webkitWebViewRunJavaScriptAlert(WebKitWebView* webView, const CString& message)
+void webkitWebViewRunJavaScriptAlert(WebKitWebView* webView, const CString& message, Function<void()>&& completionHandler)
 {
-    WebKitScriptDialog dialog(WEBKIT_SCRIPT_DIALOG_ALERT, message);
-    SetForScope<WebKitScriptDialog*> change(webView->priv->currentScriptDialog, &dialog);
+    ASSERT(!webView->priv->currentScriptDialog);
+    webView->priv->currentScriptDialog = webkitScriptDialogCreate(WEBKIT_SCRIPT_DIALOG_ALERT, message, { }, [webView, completionHandler = WTFMove(completionHandler)](bool, const String&) {
+        completionHandler();
+        webView->priv->currentScriptDialog = nullptr;
+    });
     gboolean returnValue;
-    g_signal_emit(webView, signals[SCRIPT_DIALOG], 0, &dialog, &returnValue);
+    g_signal_emit(webView, signals[SCRIPT_DIALOG], 0, webView->priv->currentScriptDialog, &returnValue);
+    webkit_script_dialog_unref(webView->priv->currentScriptDialog);
 }
 
-bool webkitWebViewRunJavaScriptConfirm(WebKitWebView* webView, const CString& message)
+void webkitWebViewRunJavaScriptConfirm(WebKitWebView* webView, const CString& message, Function<void(bool)>&& completionHandler)
 {
-    WebKitScriptDialog dialog(WEBKIT_SCRIPT_DIALOG_CONFIRM, message);
-    SetForScope<WebKitScriptDialog*> change(webView->priv->currentScriptDialog, &dialog);
+    ASSERT(!webView->priv->currentScriptDialog);
+    webView->priv->currentScriptDialog = webkitScriptDialogCreate(WEBKIT_SCRIPT_DIALOG_CONFIRM, message, { }, [webView, completionHandler = WTFMove(completionHandler)](bool result, const String&) {
+        completionHandler(result);
+        webView->priv->currentScriptDialog = nullptr;
+    });
     gboolean returnValue;
-    g_signal_emit(webView, signals[SCRIPT_DIALOG], 0, &dialog, &returnValue);
-    return dialog.confirmed;
+    g_signal_emit(webView, signals[SCRIPT_DIALOG], 0, webView->priv->currentScriptDialog, &returnValue);
+    webkit_script_dialog_unref(webView->priv->currentScriptDialog);
 }
 
-CString webkitWebViewRunJavaScriptPrompt(WebKitWebView* webView, const CString& message, const CString& defaultText)
+void webkitWebViewRunJavaScriptPrompt(WebKitWebView* webView, const CString& message, const CString& defaultText, Function<void(const String&)>&& completionHandler)
 {
-    WebKitScriptDialog dialog(WEBKIT_SCRIPT_DIALOG_PROMPT, message, defaultText);
-    SetForScope<WebKitScriptDialog*> change(webView->priv->currentScriptDialog, &dialog);
+    ASSERT(!webView->priv->currentScriptDialog);
+    webView->priv->currentScriptDialog = webkitScriptDialogCreate(WEBKIT_SCRIPT_DIALOG_PROMPT, message, defaultText, [webView, completionHandler = WTFMove(completionHandler)](bool, const String& result) {
+        completionHandler(result);
+        webView->priv->currentScriptDialog = nullptr;
+    });
     gboolean returnValue;
-    g_signal_emit(webView, signals[SCRIPT_DIALOG], 0, &dialog, &returnValue);
-    return dialog.text;
+    g_signal_emit(webView, signals[SCRIPT_DIALOG], 0, webView->priv->currentScriptDialog, &returnValue);
+    webkit_script_dialog_unref(webView->priv->currentScriptDialog);
 }
 
-bool webkitWebViewRunJavaScriptBeforeUnloadConfirm(WebKitWebView* webView, const CString& message)
+void webkitWebViewRunJavaScriptBeforeUnloadConfirm(WebKitWebView* webView, const CString& message, Function<void(bool)>&& completionHandler)
 {
-    WebKitScriptDialog dialog(WEBKIT_SCRIPT_DIALOG_BEFORE_UNLOAD_CONFIRM, message);
-    SetForScope<WebKitScriptDialog*> change(webView->priv->currentScriptDialog, &dialog);
+    ASSERT(!webView->priv->currentScriptDialog);
+    webView->priv->currentScriptDialog = webkitScriptDialogCreate(WEBKIT_SCRIPT_DIALOG_BEFORE_UNLOAD_CONFIRM, message, { }, [webView, completionHandler = WTFMove(completionHandler)](bool result, const String&) {
+        completionHandler(result);
+        webView->priv->currentScriptDialog = nullptr;
+    });
     gboolean returnValue;
-    g_signal_emit(webView, signals[SCRIPT_DIALOG], 0, &dialog, &returnValue);
-    return dialog.confirmed;
+    g_signal_emit(webView, signals[SCRIPT_DIALOG], 0, webView->priv->currentScriptDialog, &returnValue);
+    webkit_script_dialog_unref(webView->priv->currentScriptDialog);
 }
 
 bool webkitWebViewIsShowingScriptDialog(WebKitWebView* webView)
@@ -2182,10 +2313,10 @@ void webkitWebViewDismissCurrentScriptDialog(WebKitWebView* webView)
         webkitScriptDialogDismiss(webView->priv->currentScriptDialog);
 }
 
-std::optional<WebKitScriptDialogType> webkitWebViewGetCurrentScriptDialogType(WebKitWebView* webView)
+Optional<WebKitScriptDialogType> webkitWebViewGetCurrentScriptDialogType(WebKitWebView* webView)
 {
     if (!webView->priv->currentScriptDialog)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return static_cast<WebKitScriptDialogType>(webView->priv->currentScriptDialog->type);
 }
@@ -2202,7 +2333,7 @@ void webkitWebViewMakePermissionRequest(WebKitWebView* webView, WebKitPermission
     g_signal_emit(webView, signals[PERMISSION_REQUEST], 0, request, &returnValue);
 }
 
-void webkitWebViewMouseTargetChanged(WebKitWebView* webView, const WebHitTestResultData& hitTestResult, WebEvent::Modifiers modifiers)
+void webkitWebViewMouseTargetChanged(WebKitWebView* webView, const WebHitTestResultData& hitTestResult, OptionSet<WebEvent::Modifier> modifiers)
 {
 #if PLATFORM(GTK)
     webkitWebViewBaseSetTooltipArea(WEBKIT_WEB_VIEW_BASE(webView), hitTestResult.elementBoundingBox);
@@ -2560,7 +2691,7 @@ void webkit_web_view_load_uri(WebKitWebView* webView, const gchar* uri)
     g_return_if_fail(uri);
 
     GUniquePtr<SoupURI> soupURI(soup_uri_new(uri));
-    getPage(webView).loadRequest(URL(soupURI.get()));
+    getPage(webView).loadRequest(soupURIToURL(soupURI.get()));
 }
 
 /**
@@ -2623,7 +2754,7 @@ void webkit_web_view_load_plain_text(WebKitWebView* webView, const gchar* plainT
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
     g_return_if_fail(plainText);
 
-    getPage(webView).loadData({ reinterpret_cast<const uint8_t*>(plainText), plainText ? strlen(plainText) : 0 }, "text/plain"_s, "UTF-8"_s, blankURL().string());
+    getPage(webView).loadData({ reinterpret_cast<const uint8_t*>(plainText), plainText ? strlen(plainText) : 0 }, "text/plain"_s, "UTF-8"_s, WTF::blankURL().string());
 }
 
 /**
@@ -2687,7 +2818,7 @@ guint64 webkit_web_view_get_page_id(WebKitWebView* webView)
 {
     g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), 0);
 
-    return getPage(webView).pageID();
+    return getPage(webView).pageID().toUInt64();
 }
 
 /**
@@ -3893,74 +4024,6 @@ void webkitWebViewWebProcessTerminated(WebKitWebView* webView, WebKitWebProcessT
     g_signal_emit(webView, signals[WEB_PROCESS_TERMINATED], 0, reason);
 }
 
-#if PLATFORM(GTK)
-/**
- * webkit_web_view_set_background_color:
- * @web_view: a #WebKitWebView
- * @rgba: a #GdkRGBA
- *
- * Sets the color that will be used to draw the @web_view background before
- * the actual contents are rendered. Note that if the web page loaded in @web_view
- * specifies a background color, it will take precedence over the @rgba color.
- * By default the @web_view background color is opaque white.
- * Note that the parent window must have a RGBA visual and
- * #GtkWidget:app-paintable property set to %TRUE for backgrounds colors to work.
- *
- * <informalexample><programlisting>
- * static void browser_window_set_background_color (BrowserWindow *window,
- *                                                  const GdkRGBA *rgba)
- * {
- *     WebKitWebView *web_view;
- *     GdkScreen *screen = gtk_window_get_screen (GTK_WINDOW (window));
- *     GdkVisual *rgba_visual = gdk_screen_get_rgba_visual (screen);
- *
- *     if (!rgba_visual)
- *          return;
- *
- *     gtk_widget_set_visual (GTK_WIDGET (window), rgba_visual);
- *     gtk_widget_set_app_paintable (GTK_WIDGET (window), TRUE);
- *
- *     web_view = browser_window_get_web_view (window);
- *     webkit_web_view_set_background_color (web_view, rgba);
- * }
- * </programlisting></informalexample>
- *
- * Since: 2.8
- */
-void webkit_web_view_set_background_color(WebKitWebView* webView, const GdkRGBA* rgba)
-{
-    g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
-    g_return_if_fail(rgba);
-
-    Color color(*rgba);
-    auto& page = getPage(webView);
-    if (page.backgroundColor() == color)
-        return;
-
-    page.setBackgroundColor(color);
-    page.setDrawsBackground(color == Color::white);
-}
-
-/**
- * webkit_web_view_get_background_color:
- * @web_view: a #WebKitWebView
- * @rgba: (out): a #GdkRGBA to fill in with the background color
- *
- * Gets the color that is used to draw the @web_view background before
- * the actual contents are rendered.
- * For more information see also webkit_web_view_set_background_color()
- *
- * Since: 2.8
- */
-void webkit_web_view_get_background_color(WebKitWebView* webView, GdkRGBA* rgba)
-{
-    g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
-    g_return_if_fail(rgba);
-
-    *rgba = getPage(webView).backgroundColor();
-}
-#endif // PLATFORM(GTK)
-
 /*
  * webkit_web_view_is_editable:
  * @web_view: a #WebKitWebView
@@ -4065,3 +4128,55 @@ void webkit_web_view_restore_session_state(WebKitWebView* webView, WebKitWebView
 
     getPage(webView).restoreFromSessionState(webkitWebViewSessionStateGetSessionState(state), false);
 }
+
+#if PLATFORM(WPE)
+/**
+ * webkit_web_view_add_frame_displayed_callback:
+ * @web_view: a #WebKitWebView
+ * @callback: a #WebKitFrameDisplayedCallback
+ * @user_data: (closure): user data to pass to @callback
+ * @destroy_notify: (nullable): destroy notifier for @user_data
+ *
+ * Add a callback to be called when the backend notifies that a frame has been displayed in @web_view.
+ *
+ * Returns: an identifier that should be passed to webkit_web_view_remove_frame_displayed_callback()
+ *    to remove the callback.
+ *
+ * Since: 2.24
+ */
+unsigned webkit_web_view_add_frame_displayed_callback(WebKitWebView* webView, WebKitFrameDisplayedCallback callback, gpointer userData, GDestroyNotify destroyNotify)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), 0);
+    g_return_val_if_fail(callback, 0);
+
+    webView->priv->frameDisplayedCallbacks.append(FrameDisplayedCallback(callback, userData, destroyNotify));
+    return webView->priv->frameDisplayedCallbacks.last().id;
+}
+
+/**
+ * webkit_web_view_remove_frame_displayed_callback:
+ * @web_view: a #WebKitWebView
+ * @id: an identifier
+ *
+ * Removes a #WebKitFrameDisplayedCallback previously added to @web_view with
+ * webkit_web_view_add_frame_displayed_callback().
+ *
+ * Since: 2.24
+ */
+void webkit_web_view_remove_frame_displayed_callback(WebKitWebView* webView, unsigned id)
+{
+    g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
+    g_return_if_fail(id);
+
+    Function<bool(const FrameDisplayedCallback&)> matchFunction = [id](const auto& item) {
+        return item.id == id;
+    };
+
+    if (webView->priv->inFrameDisplayed) {
+        auto index = webView->priv->frameDisplayedCallbacks.findMatching(matchFunction);
+        if (index != notFound)
+            webView->priv->frameDisplayedCallbacksToRemove.add(id);
+    } else
+        webView->priv->frameDisplayedCallbacks.removeFirstMatching(matchFunction);
+}
+#endif // PLATFORM(WPE)

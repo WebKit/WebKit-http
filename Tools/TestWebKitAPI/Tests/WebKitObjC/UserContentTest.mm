@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if WK_HAVE_C_SPI
+#if WK_HAVE_C_SPI && PLATFORM(MAC)
 
 #import "Test.h"
 
@@ -35,8 +35,6 @@
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <WebKit/WKSerializedScriptValue.h>
 #import <WebKit/WKViewPrivate.h>
-
-#if WK_API_ENABLED && PLATFORM(MAC)
 
 static bool testFinished = false;
 static NSString *htmlString = @"<body style='background-color: red'>";
@@ -79,7 +77,7 @@ static void expectScriptValueIsString(WKSerializedScriptValueRef serializedScrip
     JSValueRef scriptValue = WKSerializedScriptValueDeserialize(serializedScriptValue, scriptContext, 0);
     EXPECT_TRUE(JSValueIsString(scriptContext, scriptValue));
     
-    JSRetainPtr<JSStringRef> scriptString(Adopt, JSValueToStringCopy(scriptContext, scriptValue, 0));
+    auto scriptString = adopt(JSValueToStringCopy(scriptContext, scriptValue, 0));
     EXPECT_TRUE(JSStringIsEqualToUTF8CString(scriptString.get(), expectedValue));
     
     JSGlobalContextRelease(scriptContext);
@@ -245,7 +243,5 @@ TEST_F(WebKit2UserContentTest, RemoveAllUserScripts)
     
     TestWebKitAPI::Util::run(&testFinished);
 }
-
-#endif // WK_API_ENABLED
 
 #endif 

@@ -35,7 +35,7 @@
 
 namespace WebCore {
 
-std::optional<String> BufferedLineReader::nextLine()
+Optional<String> BufferedLineReader::nextLine()
 {
     if (m_maybeSkipLF) {
         // We ran out of data after a CR (U+000D), which means that we may be
@@ -94,11 +94,11 @@ std::optional<String> BufferedLineReader::nextLine()
     if (shouldReturnLine) {
         auto line = m_lineBuffer.toString();
         m_lineBuffer.clear();
-        return WTFMove(line);
+        return line;
     }
 
     ASSERT(m_buffer.isEmpty());
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 } // namespace WebCore

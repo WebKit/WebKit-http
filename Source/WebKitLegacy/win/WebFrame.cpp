@@ -123,7 +123,6 @@ extern "C" {
 
 using namespace WebCore;
 using namespace HTMLNames;
-using namespace std;
 
 using JSC::JSGlobalObject;
 using JSC::JSLock;
@@ -564,7 +563,7 @@ HRESULT WebFrame::loadRequest(_In_opt_ IWebURLRequest* request)
     return S_OK;
 }
 
-void WebFrame::loadData(RefPtr<WebCore::SharedBuffer>&& data, BSTR mimeType, BSTR textEncodingName, BSTR baseURL, BSTR failingURL)
+void WebFrame::loadData(Ref<WebCore::SharedBuffer>&& data, BSTR mimeType, BSTR textEncodingName, BSTR baseURL, BSTR failingURL)
 {
     String mimeTypeString(mimeType, SysStringLen(mimeType));
     if (!mimeType)
@@ -610,7 +609,7 @@ HRESULT WebFrame::loadData(_In_opt_ IStream* data, _In_ BSTR mimeType, _In_ BSTR
 
 HRESULT WebFrame::loadPlainTextString(_In_ BSTR plainText, _In_ BSTR url)
 {
-    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<char*>(plainText), sizeof(UChar) * SysStringLen(plainText));
+    auto sharedBuffer = SharedBuffer::create(reinterpret_cast<char*>(plainText), sizeof(UChar) * SysStringLen(plainText));
     BString plainTextMimeType(TEXT("text/plain"), 10);
     BString utf16Encoding(TEXT("utf-16"), 6);
     loadData(WTFMove(sharedBuffer), plainTextMimeType, utf16Encoding, url, nullptr);
@@ -619,7 +618,7 @@ HRESULT WebFrame::loadPlainTextString(_In_ BSTR plainText, _In_ BSTR url)
 
 void WebFrame::loadHTMLString(_In_ BSTR htmlString, _In_ BSTR baseURL, _In_ BSTR unreachableURL)
 {
-    RefPtr<SharedBuffer> sharedBuffer = SharedBuffer::create(reinterpret_cast<char*>(htmlString), sizeof(UChar) * SysStringLen(htmlString));
+    auto sharedBuffer = SharedBuffer::create(reinterpret_cast<char*>(htmlString), sizeof(UChar) * SysStringLen(htmlString));
     BString utf16Encoding(TEXT("utf-16"), 6);
     loadData(WTFMove(sharedBuffer), 0, utf16Encoding, baseURL, unreachableURL);
 }
@@ -732,7 +731,7 @@ HRESULT WebFrame::findFrameNamed(_In_ BSTR name, _COM_Outptr_opt_ IWebFrame** fr
     if (!coreFrame)
         return E_UNEXPECTED;
 
-    Frame* foundFrame = coreFrame->tree().find(AtomicString(name, SysStringLen(name)));
+    Frame* foundFrame = coreFrame->tree().find(AtomString(name, SysStringLen(name)), *coreFrame);
     if (!foundFrame)
         return S_OK;
 
@@ -758,7 +757,7 @@ HRESULT WebFrame::parentFrame(_COM_Outptr_opt_ IWebFrame** frame)
     return hr;
 }
 
-class EnumChildFrames : public IEnumVARIANT
+class EnumChildFrames final : public IEnumVARIANT
 {
 public:
     EnumChildFrames(Frame* f)
@@ -857,7 +856,38 @@ HRESULT WebFrame::childFrames(_COM_Outptr_opt_ IEnumVARIANT** enumFrames)
 
 // IWebFramePrivate ------------------------------------------------------
 
-HRESULT WebFrame::renderTreeAsExternalRepresentation(BOOL forPrinting, _Deref_opt_out_ BSTR* result)
+enum WebRenderTreeAsTextOption {
+    WebRenderTreeAsTextShowAllLayers           = 1 << 0,
+    WebRenderTreeAsTextShowLayerNesting        = 1 << 1,
+    WebRenderTreeAsTextShowCompositedLayers    = 1 << 2,
+    WebRenderTreeAsTextShowOverflow            = 1 << 3,
+    WebRenderTreeAsTextShowSVGGeometry         = 1 << 4,
+    WebRenderTreeAsTextShowLayerFragments      = 1 << 5
+};
+
+typedef unsigned WebRenderTreeAsTextOptions;
+
+static OptionSet<RenderAsTextFlag> toRenderAsTextFlags(WebRenderTreeAsTextOptions options)
+{
+    OptionSet<RenderAsTextFlag> flags;
+
+    if (options & WebRenderTreeAsTextShowAllLayers)
+        flags.add(RenderAsTextFlag::ShowAllLayers);
+    if (options & WebRenderTreeAsTextShowLayerNesting)
+        flags.add(RenderAsTextFlag::ShowLayerNesting);
+    if (options & WebRenderTreeAsTextShowCompositedLayers)
+        flags.add(RenderAsTextFlag::ShowCompositedLayers);
+    if (options & WebRenderTreeAsTextShowOverflow)
+        flags.add(RenderAsTextFlag::ShowOverflow);
+    if (options & WebRenderTreeAsTextShowSVGGeometry)
+        flags.add(RenderAsTextFlag::ShowSVGGeometry);
+    if (options & WebRenderTreeAsTextShowLayerFragments)
+        flags.add(RenderAsTextFlag::ShowLayerFragments);
+
+    return flags;
+}
+
+HRESULT WebFrame::renderTreeAsExternalRepresentation(unsigned options, _Deref_opt_out_ BSTR* result)
 {
     if (!result)
         return E_POINTER;
@@ -866,7 +896,20 @@ HRESULT WebFrame::renderTreeAsExternalRepresentation(BOOL forPrinting, _Deref_op
     if (!coreFrame)
         return E_UNEXPECTED;
 
-    *result = BString(externalRepresentation(coreFrame, forPrinting ? RenderAsTextPrintingMode : RenderAsTextBehaviorNormal)).release();
+    *result = BString(externalRepresentation(coreFrame, toRenderAsTextFlags(options))).release();
+    return S_OK;
+}
+
+HRESULT WebFrame::renderTreeAsExternalRepresentationForPrinting(_Deref_opt_out_ BSTR* result)
+{
+    if (!result)
+        return E_POINTER;
+
+    Frame* coreFrame = core(this);
+    if (!coreFrame)
+        return E_UNEXPECTED;
+
+    *result = BString(externalRepresentation(coreFrame, { RenderAsTextFlag::PrintingMode })).release();
     return S_OK;
 }
 
@@ -979,11 +1022,11 @@ HRESULT WebFrame::setTextDirection(_In_ BSTR direction)
 
     String directionString(direction, SysStringLen(direction));
     if (directionString == "auto")
-        coreFrame->editor().setBaseWritingDirection(NaturalWritingDirection);
+        coreFrame->editor().setBaseWritingDirection(WritingDirection::Natural);
     else if (directionString == "ltr")
-        coreFrame->editor().setBaseWritingDirection(LeftToRightWritingDirection);
+        coreFrame->editor().setBaseWritingDirection(WritingDirection::LeftToRight);
     else if (directionString == "rtl")
-        coreFrame->editor().setBaseWritingDirection(RightToLeftWritingDirection);
+        coreFrame->editor().setBaseWritingDirection(WritingDirection::RightToLeft);
     return S_OK;
 }
 
@@ -1087,7 +1130,7 @@ HRESULT WebFrame::elementWithName(BSTR name, IDOMElement* form, IDOMElement** el
 
     HTMLFormElement* formElement = formElementFromDOMElement(form);
     if (formElement) {
-        AtomicString targetName((UChar*)name, SysStringLen(name));
+        AtomString targetName((UChar*)name, SysStringLen(name));
         for (auto& associatedElement : formElement->copyAssociatedElementsVector()) {
             if (!is<HTMLFormControlElement>(associatedElement.get()))
                 continue;
@@ -1574,7 +1617,7 @@ void WebFrame::drawHeader(PlatformGraphicsContext* pctx, IWebUIDelegate* ui, con
 void WebFrame::drawFooter(PlatformGraphicsContext* pctx, IWebUIDelegate* ui, const IntRect& pageRect, UINT page, UINT pageCount, float headerHeight, float footerHeight)
 {
     int x = pageRect.x();
-    int y = max((int)headerHeight+pageRect.height(), m_pageHeight-static_cast<int>(footerHeight));
+    int y = std::max((int)headerHeight+pageRect.height(), m_pageHeight-static_cast<int>(footerHeight));
     RECT footerRect = {x, y, x+pageRect.width(), y+static_cast<int>(footerHeight)};
     ui->drawFooterInRect(d->webView, &footerRect, reinterpret_cast<ULONG_PTR>(pctx), page + 1, pageCount);
 }
@@ -1655,7 +1698,7 @@ void WebFrame::drawFooter(PlatformGraphicsContext* pctx, IWebUIDelegate* ui, con
     HDC hdc = hdcFromContext(pctx);
     
     int x = pageRect.x();
-    int y = max(static_cast<int>(headerHeight) + pageRect.height(), m_pageHeight  -static_cast<int>(footerHeight));
+    int y = std::max(static_cast<int>(headerHeight) + pageRect.height(), m_pageHeight  -static_cast<int>(footerHeight));
     RECT footerRect = {x, y, x + pageRect.width(), y + static_cast<int>(footerHeight)};
 
     ui->drawFooterInRect(d->webView, &footerRect, reinterpret_cast<ULONG_PTR>(hdc), page+1, pageCount);
@@ -2020,7 +2063,7 @@ HRESULT WebFrame::stringByEvaluatingJavaScriptInScriptWorld(IWebScriptWorld* iWo
     // This bizarre set of rules matches behavior from WebKit for Safari 2.0.
     // If you don't like it, use -[WebScriptObject evaluateWebScript:] or 
     // JSEvaluateScript instead, since they have less surprising semantics.
-    if (!result || !result.isBoolean() && !result.isString() && !result.isNumber())
+    if (!result || (!result.isBoolean() && !result.isString() && !result.isNumber()))
         return S_OK;
 
     JSC::ExecState* exec = anyWorldGlobalObject->globalExec();
@@ -2085,13 +2128,15 @@ COMPtr<IAccessible> WebFrame::accessible() const
 
 void WebFrame::updateBackground()
 {
-    Color backgroundColor = webView()->transparent() ? Color::transparent : Color::white;
     Frame* coreFrame = core(this);
 
     if (!coreFrame || !coreFrame->view())
         return;
 
-    coreFrame->view()->updateBackgroundRecursively(backgroundColor, webView()->transparent());
+    Optional<Color> backgroundColor;
+    if (webView()->transparent())
+        backgroundColor = Color(Color::transparent);
+    coreFrame->view()->updateBackgroundRecursively(backgroundColor);
 }
 
 // IWebFrame2

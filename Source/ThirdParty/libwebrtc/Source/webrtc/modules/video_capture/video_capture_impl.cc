@@ -143,7 +143,7 @@ int32_t VideoCaptureImpl::IncomingFrame(uint8_t* videoFrame,
   int stride_y = width;
   int stride_uv = (width + 1) / 2;
   int target_width = width;
-  int target_height = height;
+  int target_height = abs(height);
 
   // SetApplyRotation doesn't take any lock. Make a local copy here.
   bool apply_rotation = apply_rotation_;
@@ -163,7 +163,7 @@ int32_t VideoCaptureImpl::IncomingFrame(uint8_t* videoFrame,
 
   // TODO(nisse): Use a pool?
   rtc::scoped_refptr<I420Buffer> buffer = I420Buffer::Create(
-      target_width, abs(target_height), stride_y, stride_uv, stride_uv);
+      target_width, target_height, stride_y, stride_uv, stride_uv);
 
   libyuv::RotationMode rotation_mode = libyuv::kRotate0;
   if (apply_rotation) {
@@ -205,6 +205,25 @@ int32_t VideoCaptureImpl::IncomingFrame(uint8_t* videoFrame,
   return 0;
 }
 
+int32_t VideoCaptureImpl::StartCapture(
+    const VideoCaptureCapability& capability) {
+  _requestedCapability = capability;
+  return -1;
+}
+
+int32_t VideoCaptureImpl::StopCapture() {
+  return -1;
+}
+
+bool VideoCaptureImpl::CaptureStarted() {
+  return false;
+}
+
+int32_t VideoCaptureImpl::CaptureSettings(
+    VideoCaptureCapability& /*settings*/) {
+  return -1;
+}
+
 int32_t VideoCaptureImpl::SetCaptureRotation(VideoRotation rotation) {
   rtc::CritScope cs(&_apiCs);
   _rotateFrame = rotation;
@@ -217,6 +236,10 @@ bool VideoCaptureImpl::SetApplyRotation(bool enable) {
   // The effect of this is the last caller wins.
   apply_rotation_ = enable;
   return true;
+}
+
+bool VideoCaptureImpl::GetApplyRotation() {
+  return apply_rotation_;
 }
 
 void VideoCaptureImpl::UpdateFrameCount() {

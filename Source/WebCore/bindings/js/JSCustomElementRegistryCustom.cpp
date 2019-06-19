@@ -56,7 +56,7 @@ static JSObject* getCustomElementCallback(ExecState& state, JSObject& prototype,
     return callback.getObject();
 }
 
-static bool validateCustomElementNameAndThrowIfNeeded(ExecState& state, const AtomicString& name)
+static bool validateCustomElementNameAndThrowIfNeeded(ExecState& state, const AtomString& name)
 {
     auto scope = DECLARE_THROW_SCOPE(state.vm());
     switch (Document::validateCustomElementName(name)) {
@@ -91,7 +91,7 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
     if (UNLIKELY(state.argumentCount() < 2))
         return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
-    AtomicString localName(state.uncheckedArgument(0).toString(&state)->toAtomicString(&state));
+    AtomString localName(state.uncheckedArgument(0).toString(&state)->toAtomString(&state));
     RETURN_IF_EXCEPTION(scope, JSValue());
 
     JSValue constructorValue = state.uncheckedArgument(1);
@@ -182,7 +182,7 @@ static JSValue whenDefinedPromise(ExecState& state, JSDOMGlobalObject& globalObj
     if (UNLIKELY(state.argumentCount() < 1))
         return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
-    AtomicString localName(state.uncheckedArgument(0).toString(&state)->toAtomicString(&state));
+    AtomString localName(state.uncheckedArgument(0).toString(&state)->toAtomString(&state));
     RETURN_IF_EXCEPTION(scope, JSValue());
 
     if (!validateCustomElementNameAndThrowIfNeeded(state, localName)) {
@@ -207,8 +207,8 @@ JSValue JSCustomElementRegistry::whenDefined(ExecState& state)
     auto scope = DECLARE_CATCH_SCOPE(state.vm());
 
     ASSERT(globalObject());
-    auto promiseDeferred = JSPromiseDeferred::create(&state, globalObject());
-    ASSERT(promiseDeferred);
+    auto promiseDeferred = JSPromiseDeferred::tryCreate(&state, globalObject());
+    RELEASE_ASSERT(promiseDeferred);
     JSValue promise = whenDefinedPromise(state, *globalObject(), wrapped(), *promiseDeferred);
 
     if (UNLIKELY(scope.exception())) {

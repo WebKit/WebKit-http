@@ -27,7 +27,8 @@
 #include "config.h"
 #include "FontTaggedSettings.h"
 
-#include <wtf/text/AtomicStringHash.h>
+#include <wtf/Hasher.h>
+#include <wtf/text/AtomStringHash.h>
 #include <wtf/text/TextStream.h>
 
 namespace WebCore {

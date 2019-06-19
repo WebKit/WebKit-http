@@ -40,7 +40,7 @@ public:
 protected:
     TextControlInnerContainer(Document&);
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
-    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
+    Optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
 };
 
 class TextControlInnerElement final : public HTMLDivElement {
@@ -50,7 +50,7 @@ public:
 
 protected:
     TextControlInnerElement(Document&);
-    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
+    Optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
 
 private:
     bool isMouseFocusable() const override { return false; }
@@ -68,7 +68,7 @@ public:
 private:
     TextControlInnerTextElement(Document&);
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
-    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
+    Optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
     bool isMouseFocusable() const override { return false; }
     bool isTextControlInnerTextElement() const override { return true; }
 };
@@ -81,7 +81,7 @@ public:
 private:
     TextControlPlaceholderElement(Document&);
     
-    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
+    Optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
 };
 
 class SearchFieldResultsButtonElement final : public HTMLDivElement {
@@ -90,7 +90,7 @@ public:
     static Ref<SearchFieldResultsButtonElement> create(Document&);
 
     void defaultEventHandler(Event&) override;
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     bool willRespondToMouseClickEvents() override;
 #endif
 
@@ -105,7 +105,7 @@ public:
     static Ref<SearchFieldCancelButtonElement> create(Document&);
 
     void defaultEventHandler(Event&) override;
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     bool willRespondToMouseClickEvents() override;
 #endif
 

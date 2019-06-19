@@ -101,6 +101,7 @@ CREATE TABLE commits (
     commit_committer integer REFERENCES committers ON DELETE CASCADE,
     commit_message text,
     commit_reported boolean NOT NULL DEFAULT FALSE,
+    commit_testability varchar(128) DEFAULT NULL,
     CONSTRAINT commit_in_repository_must_be_unique UNIQUE(commit_repository, commit_revision));
 CREATE INDEX commit_time_index ON commits(commit_time);
 CREATE INDEX commit_order_index ON commits(commit_order);
@@ -281,6 +282,8 @@ CREATE TABLE analysis_test_groups (
     testgroup_hidden boolean NOT NULL DEFAULT FALSE,
     testgroup_needs_notification boolean NOT NULL DEFAULT FALSE,
     testgroup_notification_sent_at timestamp DEFAULT NULL,
+    testgroup_initial_repetition_count integer NOT NULL,
+    testgroup_may_need_more_requests boolean DEFAULT FALSE,
     CONSTRAINT testgroup_name_must_be_unique_for_each_task UNIQUE(testgroup_task, testgroup_name));
 CREATE INDEX testgroup_task_index ON analysis_test_groups(testgroup_task);
 

@@ -22,67 +22,28 @@
 #include "config.h"
 
 #if ENABLE(MEDIA_STREAM) && USE(LIBWEBRTC)
-#include "RealtimeMediaSourceCenterLibWebRTC.h"
+#include "RealtimeMediaSourceCenter.h"
 
 #include "GStreamerAudioCaptureSource.h"
 #include "GStreamerCaptureDevice.h"
-#include "GStreamerCaptureDeviceManager.h"
 #include "GStreamerVideoCaptureSource.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
 
-RealtimeMediaSource::AudioCaptureFactory& RealtimeMediaSourceCenterLibWebRTC::audioCaptureSourceFactory()
+AudioCaptureFactory& RealtimeMediaSourceCenter::defaultAudioCaptureFactory()
 {
-    return RealtimeMediaSourceCenterLibWebRTC::singleton().audioFactory();
-}
-
-RealtimeMediaSourceCenterLibWebRTC& RealtimeMediaSourceCenterLibWebRTC::singleton()
-{
-    ASSERT(isMainThread());
-    static NeverDestroyed<RealtimeMediaSourceCenterLibWebRTC> center;
-    return center;
-}
-
-RealtimeMediaSourceCenter& RealtimeMediaSourceCenter::platformCenter()
-{
-    return RealtimeMediaSourceCenterLibWebRTC::singleton();
-}
-
-RealtimeMediaSourceCenterLibWebRTC::RealtimeMediaSourceCenterLibWebRTC()
-{
-}
-
-RealtimeMediaSourceCenterLibWebRTC::~RealtimeMediaSourceCenterLibWebRTC()
-{
-}
-
-RealtimeMediaSource::AudioCaptureFactory& RealtimeMediaSourceCenterLibWebRTC::audioFactory()
-{
-    if (m_audioFactoryOverride)
-        return *m_audioFactoryOverride;
-
     return GStreamerAudioCaptureSource::factory();
 }
 
-RealtimeMediaSource::VideoCaptureFactory& RealtimeMediaSourceCenterLibWebRTC::videoFactory()
+VideoCaptureFactory& RealtimeMediaSourceCenter::defaultVideoCaptureFactory()
 {
     return GStreamerVideoCaptureSource::factory();
 }
 
-CaptureDeviceManager& RealtimeMediaSourceCenterLibWebRTC::audioCaptureDeviceManager()
+DisplayCaptureFactory& RealtimeMediaSourceCenter::defaultDisplayCaptureFactory()
 {
-    return GStreamerAudioCaptureDeviceManager::singleton();
-}
-
-CaptureDeviceManager& RealtimeMediaSourceCenterLibWebRTC::videoCaptureDeviceManager()
-{
-    return GStreamerVideoCaptureDeviceManager::singleton();
-}
-
-CaptureDeviceManager& RealtimeMediaSourceCenterLibWebRTC::displayCaptureDeviceManager()
-{
-    return GStreamerDisplayCaptureDeviceManager::singleton();
+    return GStreamerVideoCaptureSource::displayFactory();
 }
 
 } // namespace WebCore

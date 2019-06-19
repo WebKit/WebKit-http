@@ -31,8 +31,6 @@
 #include "ModuleScopeData.h"
 #include <wtf/Assertions.h>
 
-using namespace WTF;
-
 namespace JSC {
 
 // ------------------------------ StatementNode --------------------------------
@@ -259,7 +257,6 @@ bool FunctionMetadataNode::operator==(const FunctionMetadataNode& other) const
         && m_isArrowFunctionBodyExpression == other.m_isArrowFunctionBodyExpression
         && m_ident == other.m_ident
         && m_ecmaName == other.m_ecmaName
-        && m_inferredName == other.m_inferredName
         && m_functionMode== other.m_functionMode
         && m_startColumn== other.m_startColumn
         && m_endColumn== other.m_endColumn
@@ -283,7 +280,6 @@ void FunctionMetadataNode::dump(PrintStream& stream) const
     stream.println("m_isArrowFunctionBodyExpression ", m_isArrowFunctionBodyExpression);
     stream.println("m_ident ", m_ident);
     stream.println("m_ecmaName ", m_ecmaName);
-    stream.println("m_inferredName ", m_inferredName);
     stream.println("m_functionMode ", static_cast<uint32_t>(m_functionMode));
     stream.println("m_startColumn ", m_startColumn);
     stream.println("m_endColumn ", m_endColumn);

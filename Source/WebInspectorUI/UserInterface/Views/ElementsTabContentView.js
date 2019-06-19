@@ -28,17 +28,14 @@ WI.ElementsTabContentView = class ElementsTabContentView extends WI.ContentBrows
     constructor(identifier)
     {
         let tabBarItem = WI.GeneralTabBarItem.fromTabInfo(WI.ElementsTabContentView.tabInfo());
-        let detailsSidebarPanelConstructors = [WI.RulesStyleDetailsSidebarPanel, WI.ComputedStyleDetailsSidebarPanel, WI.DOMNodeDetailsSidebarPanel];
 
-        if (window.LayerTreeAgent && !WI.settings.experimentalEnableLayersTab.value)
+        let detailsSidebarPanelConstructors = [WI.RulesStyleDetailsSidebarPanel, WI.ComputedStyleDetailsSidebarPanel, WI.ChangesDetailsSidebarPanel, WI.DOMNodeDetailsSidebarPanel];
+        if (window.LayerTreeAgent)
             detailsSidebarPanelConstructors.push(WI.LayerTreeDetailsSidebarPanel);
-
-        if (WI.settings.experimentalLegacyVisualSidebar.value)
-            detailsSidebarPanelConstructors.push(WI.VisualStyleDetailsSidebarPanel);
 
         super(identifier || "elements", "elements", tabBarItem, null, detailsSidebarPanelConstructors, true);
 
-        WI.frameResourceManager.addEventListener(WI.FrameResourceManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
+        WI.networkManager.addEventListener(WI.NetworkManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
     }
 
@@ -102,7 +99,7 @@ WI.ElementsTabContentView = class ElementsTabContentView extends WI.ContentBrows
     {
         super.closed();
 
-        WI.frameResourceManager.removeEventListener(null, null, this);
+        WI.networkManager.removeEventListener(null, null, this);
         WI.Frame.removeEventListener(null, null, this);
     }
 
@@ -112,7 +109,7 @@ WI.ElementsTabContentView = class ElementsTabContentView extends WI.ContentBrows
     {
         this.contentBrowser.contentViewContainer.closeAllContentViews();
 
-        var mainFrame = WI.frameResourceManager.mainFrame;
+        var mainFrame = WI.networkManager.mainFrame;
         if (mainFrame)
             this.contentBrowser.showContentViewForRepresentedObject(mainFrame.domTree);
     }

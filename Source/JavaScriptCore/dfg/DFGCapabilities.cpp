@@ -38,58 +38,57 @@ namespace JSC { namespace DFG {
 
 bool isSupported()
 {
-    return Options::useDFGJIT()
-        && MacroAssembler::supportsFloatingPoint();
+    return VM::canUseJIT() && Options::useDFGJIT() && MacroAssembler::supportsFloatingPoint();
 }
 
 bool isSupportedForInlining(CodeBlock* codeBlock)
 {
-    return codeBlock->ownerScriptExecutable()->isInliningCandidate();
+    return codeBlock->ownerExecutable()->isInliningCandidate();
 }
 
 bool mightCompileEval(CodeBlock* codeBlock)
 {
     return isSupported()
-        && codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount()
-        && codeBlock->ownerScriptExecutable()->isOkToOptimize();
+        && codeBlock->bytecodeCost() <= Options::maximumOptimizationCandidateBytecodeCost()
+        && codeBlock->ownerExecutable()->isOkToOptimize();
 }
 bool mightCompileProgram(CodeBlock* codeBlock)
 {
     return isSupported()
-        && codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount()
-        && codeBlock->ownerScriptExecutable()->isOkToOptimize();
+        && codeBlock->bytecodeCost() <= Options::maximumOptimizationCandidateBytecodeCost()
+        && codeBlock->ownerExecutable()->isOkToOptimize();
 }
 bool mightCompileFunctionForCall(CodeBlock* codeBlock)
 {
     return isSupported()
-        && codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount()
-        && codeBlock->ownerScriptExecutable()->isOkToOptimize();
+        && codeBlock->bytecodeCost() <= Options::maximumOptimizationCandidateBytecodeCost()
+        && codeBlock->ownerExecutable()->isOkToOptimize();
 }
 bool mightCompileFunctionForConstruct(CodeBlock* codeBlock)
 {
     return isSupported()
-        && codeBlock->instructionCount() <= Options::maximumOptimizationCandidateInstructionCount()
-        && codeBlock->ownerScriptExecutable()->isOkToOptimize();
+        && codeBlock->bytecodeCost() <= Options::maximumOptimizationCandidateBytecodeCost()
+        && codeBlock->ownerExecutable()->isOkToOptimize();
 }
 
 bool mightInlineFunctionForCall(CodeBlock* codeBlock)
 {
-    return codeBlock->instructionCount() <= Options::maximumFunctionForCallInlineCandidateInstructionCount()
+    return codeBlock->bytecodeCost() <= Options::maximumFunctionForCallInlineCandidateBytecodeCost()
         && isSupportedForInlining(codeBlock);
 }
 bool mightInlineFunctionForClosureCall(CodeBlock* codeBlock)
 {
-    return codeBlock->instructionCount() <= Options::maximumFunctionForClosureCallInlineCandidateInstructionCount()
+    return codeBlock->bytecodeCost() <= Options::maximumFunctionForClosureCallInlineCandidateBytecodeCost()
         && isSupportedForInlining(codeBlock);
 }
 bool mightInlineFunctionForConstruct(CodeBlock* codeBlock)
 {
-    return codeBlock->instructionCount() <= Options::maximumFunctionForConstructInlineCandidateInstructionCount()
+    return codeBlock->bytecodeCost() <= Options::maximumFunctionForConstructInlineCandidateBytecoodeCost()
         && isSupportedForInlining(codeBlock);
 }
 bool canUseOSRExitFuzzing(CodeBlock* codeBlock)
 {
-    return codeBlock->ownerScriptExecutable()->canUseOSRExitFuzzing();
+    return codeBlock->ownerExecutable()->canUseOSRExitFuzzing();
 }
 
 static bool verboseCapabilities()
@@ -103,17 +102,21 @@ inline void debugFail(CodeBlock* codeBlock, OpcodeID opcodeID, CapabilityLevel r
         dataLog("DFG rejecting opcode in ", *codeBlock, " because of opcode ", opcodeNames[opcodeID], "\n");
 }
 
-CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruction* pc)
+CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, const Instruction* pc)
 {
     UNUSED_PARAM(codeBlock); // This function does some bytecode parsing. Ordinarily bytecode parsing requires the owning CodeBlock. It's sort of strange that we don't use it here right now.
     UNUSED_PARAM(pc);
     
     switch (opcodeID) {
+    case op_wide16:
+    case op_wide32:
+        RELEASE_ASSERT_NOT_REACHED();
     case op_enter:
     case op_to_this:
     case op_argument_count:
     case op_check_tdz:
     case op_create_this:
+    case op_bitnot:
     case op_bitand:
     case op_bitor:
     case op_bitxor:
@@ -140,6 +143,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_instanceof_custom:
     case op_is_empty:
     case op_is_undefined:
+    case op_is_undefined_or_null:
     case op_is_boolean:
     case op_is_number:
     case op_is_object:
@@ -164,12 +168,9 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_put_by_val_direct:
     case op_try_get_by_id:
     case op_get_by_id:
-    case op_get_by_id_proto_load:
-    case op_get_by_id_unset:
     case op_get_by_id_with_this:
     case op_get_by_id_direct:
     case op_get_by_val_with_this:
-    case op_get_array_length:
     case op_put_by_id:
     case op_put_by_id_with_this:
     case op_put_by_val_with_this:
@@ -280,6 +281,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
         return CanCompile;
 
     case op_yield:
+    case op_create_generator_frame_environment:
     case llint_program_prologue:
     case llint_eval_prologue:
     case llint_module_program_prologue:
@@ -302,20 +304,17 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
 
 CapabilityLevel capabilityLevel(CodeBlock* codeBlock)
 {
-    Instruction* instructionsBegin = codeBlock->instructions().begin();
-    unsigned instructionCount = codeBlock->instructions().size();
     CapabilityLevel result = CanCompileAndInline;
     
-    for (unsigned bytecodeOffset = 0; bytecodeOffset < instructionCount; ) {
-        switch (Interpreter::getOpcodeID(instructionsBegin[bytecodeOffset].u.opcode)) {
+    for (const auto& instruction : codeBlock->instructions()) {
+        switch (instruction->opcodeID()) {
 #define DEFINE_OP(opcode, length) \
         case opcode: { \
-            CapabilityLevel newResult = leastUpperBound(result, capabilityLevel(opcode, codeBlock, instructionsBegin + bytecodeOffset)); \
+            CapabilityLevel newResult = leastUpperBound(result, capabilityLevel(opcode, codeBlock, instruction.ptr())); \
             if (newResult != result) { \
                 debugFail(codeBlock, opcode, newResult); \
                 result = newResult; \
             } \
-            bytecodeOffset += length; \
             break; \
         }
             FOR_EACH_OPCODE_ID(DEFINE_OP)

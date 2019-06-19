@@ -25,7 +25,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if defined(ENABLE_VIDEO) && ENABLE_VIDEO
+#if defined(ENABLE_VIDEO) && ENABLE_VIDEO && defined(ENABLE_CSS_TYPED_OM) && ENABLE_CSS_TYPED_OM
+typedef (HTMLImageElement or HTMLVideoElement or HTMLCanvasElement or ImageBitmap or TypedOMCSSImageValue) CanvasImageSource;
+#elif defined(ENABLE_VIDEO) && ENABLE_VIDEO
 typedef (HTMLImageElement or HTMLVideoElement or HTMLCanvasElement or ImageBitmap) CanvasImageSource;
 #else
 typedef (HTMLImageElement or HTMLCanvasElement or ImageBitmap) CanvasImageSource;
@@ -40,10 +42,10 @@ typedef (CanvasImageSource or Blob or ImageData) ImageBitmapSource;
 
     // Timers
     // FIXME: This should take a TimerHandler (a.k.a. (DOMString or Function)) rather than a ScheduledAction.
-    [CallWith=ScriptState, MayThrowException] long setTimeout(ScheduledAction handler, optional long timeout = 0, any... arguments);
+    [CallWith=ExecState, MayThrowException] long setTimeout(ScheduledAction handler, optional long timeout = 0, any... arguments);
     void clearTimeout(optional long handle = 0);
     // FIXME: This should take a TimerHandler (a.k.a. (DOMString or Function)) rather than a ScheduledAction.
-    [CallWith=ScriptState, MayThrowException] long setInterval(ScheduledAction handler, optional long timeout = 0, any... arguments);
+    [CallWith=ExecState, MayThrowException] long setInterval(ScheduledAction handler, optional long timeout = 0, any... arguments);
     void clearInterval(optional long handle = 0);
 
     [Custom] void queueMicrotask(VoidCallback callback);

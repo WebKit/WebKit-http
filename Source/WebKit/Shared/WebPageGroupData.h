@@ -37,12 +37,10 @@ namespace WebKit {
 
 struct WebPageGroupData {
     void encode(IPC::Encoder&) const;
-    static std::optional<WebPageGroupData> decode(IPC::Decoder&);
+    static Optional<WebPageGroupData> decode(IPC::Decoder&);
 
     String identifier;
     uint64_t pageGroupID;
-    bool visibleToInjectedBundle;
-    bool visibleToHistoryClient;
 
     UserContentControllerIdentifier userContentControllerIdentifier;
 };

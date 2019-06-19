@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS)
 
 #include "CompositingRunLoop.h"
 #include "CoordinatedGraphicsScene.h"
@@ -56,22 +56,20 @@ public:
         virtual uint64_t nativeSurfaceHandleForCompositing() = 0;
         virtual void didDestroyGLContext() = 0;
 
+        virtual void resize(const WebCore::IntSize&) = 0;
         virtual void willRenderFrame() = 0;
         virtual void didRenderFrame() = 0;
     };
 
-    enum class ShouldDoFrameSync { No, Yes };
-
-    static Ref<ThreadedCompositor> create(Client&, ThreadedDisplayRefreshMonitor::Client&, WebCore::PlatformDisplayID, const WebCore::IntSize&, float scaleFactor, ShouldDoFrameSync = ShouldDoFrameSync::Yes, WebCore::TextureMapper::PaintFlags = 0);
+    static Ref<ThreadedCompositor> create(Client&, ThreadedDisplayRefreshMonitor::Client&, WebCore::PlatformDisplayID, const WebCore::IntSize&, float scaleFactor, WebCore::TextureMapper::PaintFlags);
     virtual ~ThreadedCompositor();
 
-    void setNativeSurfaceHandleForCompositing(uint64_t);
     void setScaleFactor(float);
     void setScrollPosition(const WebCore::IntPoint&, float scale);
     void setViewportSize(const WebCore::IntSize&, float scale);
-    void setDrawsBackground(bool);
 
     void updateSceneState(const WebCore::CoordinatedGraphicsState&);
+    void updateScene();
 
     void invalidate();
 
@@ -79,13 +77,15 @@ public:
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     RefPtr<WebCore::DisplayRefreshMonitor> displayRefreshMonitor(WebCore::PlatformDisplayID);
-    void handleDisplayRefreshMonitorUpdate();
 #endif
 
     void frameComplete();
 
+    void suspend();
+    void resume();
+
 private:
-    ThreadedCompositor(Client&, ThreadedDisplayRefreshMonitor::Client&, WebCore::PlatformDisplayID, const WebCore::IntSize&, float scaleFactor, ShouldDoFrameSync, WebCore::TextureMapper::PaintFlags);
+    ThreadedCompositor(Client&, ThreadedDisplayRefreshMonitor::Client&, WebCore::PlatformDisplayID, const WebCore::IntSize&, float scaleFactor, WebCore::TextureMapper::PaintFlags);
 
     // CoordinatedGraphicsSceneClient
     void updateViewport() override;
@@ -100,9 +100,9 @@ private:
     std::unique_ptr<WebCore::GLContext> m_context;
 
     uint64_t m_nativeSurfaceHandle;
-    ShouldDoFrameSync m_doFrameSync;
     WebCore::TextureMapper::PaintFlags m_paintFlags { 0 };
     bool m_inForceRepaint { false };
+    unsigned m_suspendedCount { 0 };
 
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
 
@@ -111,13 +111,10 @@ private:
         WebCore::IntSize viewportSize;
         WebCore::IntPoint scrollPosition;
         float scaleFactor { 1 };
-        bool drawsBackground { true };
         bool needsResize { false };
-
         Vector<WebCore::CoordinatedGraphicsState> states;
 
         bool clientRendersNextFrame { false };
-        bool coordinateUpdateCompletionWithClient { false };
     } m_attributes;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
@@ -127,5 +124,5 @@ private:
 
 } // namespace WebKit
 
-#endif // USE(COORDINATED_GRAPHICS_THREADED)
+#endif // USE(COORDINATED_GRAPHICS)
 

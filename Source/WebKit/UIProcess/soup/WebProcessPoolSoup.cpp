@@ -38,11 +38,12 @@ namespace WebKit {
 
 void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationParameters& parameters)
 {
-    supplement<WebCookieManagerProxy>()->getCookiePersistentStorage(parameters.cookiePersistentStoragePath, parameters.cookiePersistentStorageType);
+    NetworkSessionCreationParameters& defaultSessionParameters = parameters.defaultDataStoreParameters.networkSessionParameters;
+    supplement<WebCookieManagerProxy>()->getCookiePersistentStorage(defaultSessionParameters.sessionID, defaultSessionParameters.cookiePersistentStoragePath, defaultSessionParameters.cookiePersistentStorageType);
+
     parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
     parameters.ignoreTLSErrors = m_ignoreTLSErrors;
     parameters.languages = userPreferredLanguages();
-    parameters.shouldEnableNetworkCacheEfficacyLogging = false;
     parameters.proxySettings = m_networkProxySettings;
 }
 
@@ -56,7 +57,6 @@ void WebProcessPool::setIgnoreTLSErrors(bool ignoreTLSErrors)
 void WebProcessPool::setNetworkProxySettings(const WebCore::SoupNetworkProxySettings& settings)
 {
     m_networkProxySettings = settings;
-    sendToAllProcesses(Messages::WebProcess::SetNetworkProxySettings(m_networkProxySettings));
     if (m_networkProcess)
         m_networkProcess->send(Messages::NetworkProcess::SetNetworkProxySettings(m_networkProxySettings), 0);
 }

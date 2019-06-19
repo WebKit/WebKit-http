@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKBrowsingContextControllerInternal.h"
 
-#if WK_API_ENABLED
-
 #import "APIData.h"
 #import "APINavigation.h"
 #import "ObjCObjectGraph.h"
@@ -72,7 +70,9 @@ NSString * const WKActionFrameNameKey = @"WKActionFrameNameKey";
 NSString * const WKActionOriginatingFrameURLKey = @"WKActionOriginatingFrameURLKey";
 NSString * const WKActionCanShowMIMETypeKey = @"WKActionCanShowMIMETypeKey";
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 @implementation WKBrowsingContextController {
+IGNORE_WARNINGS_END
     RefPtr<WebKit::WebPageProxy> _page;
     std::unique_ptr<WebKit::PageLoadStateObserver> _pageLoadStateObserver;
 
@@ -80,11 +80,13 @@ NSString * const WKActionCanShowMIMETypeKey = @"WKActionCanShowMIMETypeKey";
     WeakObjCPtr<id <WKBrowsingContextPolicyDelegate>> _policyDelegate;
 }
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 static HashMap<WebKit::WebPageProxy*, __unsafe_unretained WKBrowsingContextController *>& browsingContextControllerMap()
 {
     static NeverDestroyed<HashMap<WebKit::WebPageProxy*, __unsafe_unretained WKBrowsingContextController *>> browsingContextControllerMap;
     return browsingContextControllerMap;
 }
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 - (void)dealloc
 {
@@ -197,6 +199,7 @@ static HashMap<WebKit::WebPageProxy*, __unsafe_unretained WKBrowsingContextContr
 
 - (void)setApplicationNameForUserAgent:(NSString *)applicationNameForUserAgent
 {
+    _page->setApplicationNameForDesktopUserAgent(applicationNameForUserAgent);
     _page->setApplicationNameForUserAgent(applicationNameForUserAgent);
 }
 
@@ -319,7 +322,9 @@ static HashMap<WebKit::WebPageProxy*, __unsafe_unretained WKBrowsingContextContr
 
 static void didStartProvisionalNavigation(WKPageRef page, WKNavigationRef, WKTypeRef userData, const void* clientInfo)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     auto loadDelegate = browsingContext->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(browsingContextControllerDidStartProvisionalLoad:)])
@@ -328,7 +333,9 @@ static void didStartProvisionalNavigation(WKPageRef page, WKNavigationRef, WKTyp
 
 static void didReceiveServerRedirectForProvisionalNavigation(WKPageRef page, WKNavigationRef, WKTypeRef userData, const void* clientInfo)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     auto loadDelegate = browsingContext->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(browsingContextControllerDidReceiveServerRedirectForProvisionalLoad:)])
@@ -337,7 +344,9 @@ static void didReceiveServerRedirectForProvisionalNavigation(WKPageRef page, WKN
 
 static void didFailProvisionalNavigation(WKPageRef page, WKNavigationRef, WKErrorRef error, WKTypeRef userData, const void* clientInfo)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     auto loadDelegate = browsingContext->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(browsingContextController:didFailProvisionalLoadWithError:)])
@@ -346,7 +355,9 @@ static void didFailProvisionalNavigation(WKPageRef page, WKNavigationRef, WKErro
 
 static void didCommitNavigation(WKPageRef page, WKNavigationRef, WKTypeRef userData, const void* clientInfo)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     auto loadDelegate = browsingContext->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(browsingContextControllerDidCommitLoad:)])
@@ -355,7 +366,9 @@ static void didCommitNavigation(WKPageRef page, WKNavigationRef, WKTypeRef userD
 
 static void didFinishNavigation(WKPageRef page, WKNavigationRef, WKTypeRef userData, const void* clientInfo)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     auto loadDelegate = browsingContext->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(browsingContextControllerDidFinishLoad:)])
@@ -364,7 +377,9 @@ static void didFinishNavigation(WKPageRef page, WKNavigationRef, WKTypeRef userD
 
 static void didFailNavigation(WKPageRef page, WKNavigationRef, WKErrorRef error, WKTypeRef userData, const void* clientInfo)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     auto loadDelegate = browsingContext->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(browsingContextController:didFailLoadWithError:)])
@@ -373,7 +388,9 @@ static void didFailNavigation(WKPageRef page, WKNavigationRef, WKErrorRef error,
 
 static bool canAuthenticateAgainstProtectionSpace(WKPageRef page, WKProtectionSpaceRef protectionSpace, const void *clientInfo)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     auto loadDelegate = browsingContext->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(browsingContextController:canAuthenticateAgainstProtectionSpace:)])
@@ -384,7 +401,9 @@ static bool canAuthenticateAgainstProtectionSpace(WKPageRef page, WKProtectionSp
 
 static void didReceiveAuthenticationChallenge(WKPageRef page, WKAuthenticationChallengeRef authenticationChallenge, const void *clientInfo)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     auto loadDelegate = browsingContext->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(browsingContextController:didReceiveAuthenticationChallenge:)])
@@ -393,7 +412,9 @@ static void didReceiveAuthenticationChallenge(WKPageRef page, WKAuthenticationCh
 
 static void processDidCrash(WKPageRef page, const void* clientInfo)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     auto loadDelegate = browsingContext->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(browsingContextControllerWebProcessDidCrash:)])
@@ -453,7 +474,9 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
 
     policyClient.decidePolicyForNavigationAction = [](WKPageRef page, WKFrameRef frame, WKFrameNavigationType navigationType, WKEventModifiers modifiers, WKEventMouseButton mouseButton, WKFrameRef originatingFrame, WKURLRequestRef originalRequest, WKURLRequestRef request, WKFramePolicyListenerRef listener, WKTypeRef userData, const void* clientInfo)
     {
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+        ALLOW_DEPRECATED_DECLARATIONS_END
         auto policyDelegate = browsingContext->_policyDelegate.get();
 
         if ([policyDelegate respondsToSelector:@selector(browsingContextController:decidePolicyForNavigationAction:decisionHandler:)]) {
@@ -478,7 +501,9 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
 
     policyClient.decidePolicyForNewWindowAction = [](WKPageRef page, WKFrameRef frame, WKFrameNavigationType navigationType, WKEventModifiers modifiers, WKEventMouseButton mouseButton, WKURLRequestRef request, WKStringRef frameName, WKFramePolicyListenerRef listener, WKTypeRef userData, const void* clientInfo)
     {
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+        ALLOW_DEPRECATED_DECLARATIONS_END
         auto policyDelegate = browsingContext->_policyDelegate.get();
 
         if ([policyDelegate respondsToSelector:@selector(browsingContextController:decidePolicyForNewWindowAction:decisionHandler:)]) {
@@ -498,7 +523,9 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
 
     policyClient.decidePolicyForResponse = [](WKPageRef page, WKFrameRef frame, WKURLResponseRef response, WKURLRequestRef request, bool canShowMIMEType, WKFramePolicyListenerRef listener, WKTypeRef userData, const void* clientInfo)
     {
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         auto browsingContext = (__bridge WKBrowsingContextController *)clientInfo;
+        ALLOW_DEPRECATED_DECLARATIONS_END
         auto policyDelegate = browsingContext->_policyDelegate.get();
 
         if ([policyDelegate respondsToSelector:@selector(browsingContextController:decidePolicyForResponseAction:decisionHandler:)]) {
@@ -514,7 +541,9 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
             WKFramePolicyListenerUse(listener);
     };
 
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     WKPageSetPagePolicyClient(toAPI(&page), &policyClient.base);
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 - (id <WKBrowsingContextLoadDelegate>)loadDelegate
@@ -543,8 +572,11 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
 
     if (policyDelegate)
         setUpPagePolicyClient(self, *_page);
-    else
+    else {
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         WKPageSetPagePolicyClient(toAPI(_page.get()), nullptr);
+        ALLOW_DEPRECATED_DECLARATIONS_END
+    }
 }
 
 - (id <WKBrowsingContextHistoryDelegate>)historyDelegate
@@ -586,7 +618,10 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
 
 @end
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 @implementation WKBrowsingContextController (Private)
+IGNORE_WARNINGS_END
 
 - (WKPageRef)_pageRef
 {
@@ -690,7 +725,7 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
 
 - (_WKRemoteObjectRegistry *)_remoteObjectRegistry
 {
-#if WK_API_ENABLED && !TARGET_OS_IPHONE
+#if PLATFORM(MAC)
     return _page->remoteObjectRegistry();
 #else
     return nil;
@@ -708,5 +743,4 @@ static void setUpPagePolicyClient(WKBrowsingContextController *browsingContext, 
 }
 
 @end
-
-#endif // WK_API_ENABLED
+ALLOW_DEPRECATED_DECLARATIONS_END

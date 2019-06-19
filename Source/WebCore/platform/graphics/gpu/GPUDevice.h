@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,58 +10,88 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #pragma once
 
 #if ENABLE(WEBGPU)
 
+#include "GPUQueue.h"
+#include "GPUSwapChain.h"
+#include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
-
-OBJC_CLASS CALayer;
-OBJC_CLASS WebGPULayer;
+#include <wtf/WeakPtr.h>
 
 OBJC_PROTOCOL(MTLDevice);
 
 namespace WebCore {
 
-class GPUDevice {
+class GPUBindGroupLayout;
+class GPUBuffer;
+class GPUCommandBuffer;
+class GPUComputePipeline;
+class GPUPipelineLayout;
+class GPURenderPipeline;
+class GPUSampler;
+class GPUShaderModule;
+class GPUTexture;
+
+struct GPUBindGroupLayoutDescriptor;
+struct GPUBufferDescriptor;
+struct GPUComputePipelineDescriptor;
+struct GPUPipelineLayoutDescriptor;
+struct GPURenderPipelineDescriptor;
+struct GPURequestAdapterOptions;
+struct GPUSamplerDescriptor;
+struct GPUShaderModuleDescriptor;
+struct GPUSwapChainDescriptor;
+struct GPUTextureDescriptor;
+    
+using PlatformDevice = MTLDevice;
+using PlatformDeviceSmartPtr = RetainPtr<MTLDevice>;
+
+class GPUDevice : public RefCounted<GPUDevice>, public CanMakeWeakPtr<GPUDevice> {
 public:
-    WEBCORE_EXPORT GPUDevice();
-    WEBCORE_EXPORT ~GPUDevice();
+    static RefPtr<GPUDevice> tryCreate(const Optional<GPURequestAdapterOptions>&);
 
-    WEBCORE_EXPORT bool operator!() const;
+    RefPtr<GPUBuffer> tryCreateBuffer(const GPUBufferDescriptor&, bool isMappedOnCreation = false);
+    RefPtr<GPUTexture> tryCreateTexture(const GPUTextureDescriptor&) const;
+    RefPtr<GPUSampler> tryCreateSampler(const GPUSamplerDescriptor&) const;
 
-    void reshape(int width, int height) const;
+    RefPtr<GPUBindGroupLayout> tryCreateBindGroupLayout(const GPUBindGroupLayoutDescriptor&) const;
+    Ref<GPUPipelineLayout> createPipelineLayout(GPUPipelineLayoutDescriptor&&) const;
 
-#if USE(METAL)
-    WebGPULayer *layer() const { return m_layer.get(); }
-    WEBCORE_EXPORT CALayer *platformLayer() const;
-    MTLDevice *metal() const { return m_metal.get(); }
-#endif
+    RefPtr<GPUShaderModule> tryCreateShaderModule(const GPUShaderModuleDescriptor&) const;
+    RefPtr<GPURenderPipeline> tryCreateRenderPipeline(const GPURenderPipelineDescriptor&) const;
+    RefPtr<GPUComputePipeline> tryCreateComputePipeline(const GPUComputePipelineDescriptor&) const;
 
-    void markLayerComposited() const { }
+    RefPtr<GPUCommandBuffer> tryCreateCommandBuffer() const;
+
+    RefPtr<GPUQueue> tryGetQueue() const;
+    
+    PlatformDevice* platformDevice() const { return m_platformDevice.get(); }
+    GPUSwapChain* swapChain() const { return m_swapChain.get(); }
+    void setSwapChain(RefPtr<GPUSwapChain>&&);
 
 private:
-    void disconnect();
+    explicit GPUDevice(PlatformDeviceSmartPtr&&);
 
-#if USE(METAL)
-    RetainPtr<WebGPULayer> m_layer;
-    RetainPtr<MTLDevice> m_metal;
-#endif
+    PlatformDeviceSmartPtr m_platformDevice;
+    mutable RefPtr<GPUQueue> m_queue;
+    RefPtr<GPUSwapChain> m_swapChain;
 };
 
 } // namespace WebCore
 
-#endif
+#endif // ENABLE(WEBGPU)

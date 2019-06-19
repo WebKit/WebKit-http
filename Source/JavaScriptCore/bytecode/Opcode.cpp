@@ -30,6 +30,7 @@
 #include "config.h"
 #include "Opcode.h"
 
+#include "BytecodeStructs.h"
 #include <wtf/PrintStream.h>
 
 #if ENABLE(OPCODE_STATS)
@@ -39,6 +40,12 @@
 
 namespace JSC {
 
+const unsigned opcodeLengths[] = {
+#define OPCODE_LENGTH(opcode, length) length,
+    FOR_EACH_OPCODE_ID(OPCODE_LENGTH)
+#undef OPCODE_LENGTH
+};
+
 const char* const opcodeNames[] = {
 #define OPCODE_NAME_ENTRY(opcode, size) #opcode,
     FOR_EACH_OPCODE_ID(OPCODE_NAME_ENTRY)
@@ -46,6 +53,18 @@ const char* const opcodeNames[] = {
 };
 
 #if ENABLE(OPCODE_STATS)
+
+inline const char* padOpcodeName(OpcodeID op, unsigned width)
+{
+    auto padding = "                                ";
+    auto paddingLength = strlen(padding);
+    auto opcodeNameLength = strlen(opcodeNames[op]);
+    if (opcodeNameLength >= width)
+        return "";
+    if (paddingLength + opcodeNameLength < width)
+        return padding;
+    return &padding[paddingLength + opcodeNameLength - width];
+}
 
 long long OpcodeStats::opcodeCounts[numOpcodeIDs];
 long long OpcodeStats::opcodePairCounts[numOpcodeIDs][numOpcodeIDs];
@@ -78,9 +97,9 @@ static int compareOpcodeIndices(const void* left, const void* right)
 
 static int compareOpcodePairIndices(const void* left, const void* right)
 {
-    std::pair<int, int> leftPair = *(pair<int, int>*) left;
+    std::pair<int, int> leftPair = *(std::pair<int, int>*) left;
     long long leftValue = OpcodeStats::opcodePairCounts[leftPair.first][leftPair.second];
-    std::pair<int, int> rightPair = *(pair<int, int>*) right;
+    std::pair<int, int> rightPair = *(std::pair<int, int>*) right;
     long long rightValue = OpcodeStats::opcodePairCounts[rightPair.first][rightPair.second];
     
     if (leftValue < rightValue)
@@ -183,6 +202,32 @@ void OpcodeStats::resetLastInstruction()
 }
 
 #endif
+
+static const unsigned metadataSizes[] = {
+
+#define METADATA_SIZE(size) size,
+    FOR_EACH_BYTECODE_METADATA_SIZE(METADATA_SIZE)
+#undef METADATA_SIZE
+
+};
+
+static const unsigned metadataAlignments[] = {
+
+#define METADATA_ALIGNMENT(size) size,
+    FOR_EACH_BYTECODE_METADATA_ALIGNMENT(METADATA_ALIGNMENT)
+#undef METADATA_ALIGNMENT
+
+};
+
+unsigned metadataSize(OpcodeID opcodeID)
+{
+    return metadataSizes[opcodeID];
+}
+
+unsigned metadataAlignment(OpcodeID opcodeID)
+{
+    return metadataAlignments[opcodeID];
+}
 
 } // namespace JSC
 

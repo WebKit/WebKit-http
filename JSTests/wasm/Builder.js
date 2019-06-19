@@ -33,6 +33,7 @@ const _isValidValue = (value, type) => {
     switch (type) {
     // We allow both signed and unsigned numbers.
     case "i32": return Math.round(value) === value && LLB.varint32Min <= value && value <= LLB.varuint32Max;
+    case "anyref": return true;
     case "i64": return true; // FIXME https://bugs.webkit.org/show_bug.cgi?id=163420 64-bit values
     case "f32": return typeof(value) === "number" && isFinite(value);
     case "f64": return typeof(value) === "number" && isFinite(value);
@@ -533,6 +534,14 @@ export default class Builder {
                         End: () => this,
                         GetGlobal: (type, initValue, mutability) => {
                             s.data.push({ type, op: "get_global", mutability: _normalizeMutability(mutability), initValue });
+                            return _errorHandlingProxyFor(globalBuilder);
+                        },
+                        RefFunc: (type, initValue, mutability) => {
+                            s.data.push({ type, op: "ref.func", mutability: _normalizeMutability(mutability), initValue });
+                            return _errorHandlingProxyFor(globalBuilder);
+                        },
+                        RefNull: (type, mutability) => {
+                            s.data.push({ type, op: "ref.null", mutability: _normalizeMutability(mutability) });
                             return _errorHandlingProxyFor(globalBuilder);
                         }
                     };

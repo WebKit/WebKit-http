@@ -40,17 +40,11 @@
 #include <wtf/JSONValues.h>
 #include <wtf/Vector.h>
 
-namespace Inspector {
-class InspectorHeapAgent;
-class InspectorScriptProfilerAgent;
-}
-
 namespace WebCore {
 
 class Event;
 class FloatQuad;
 class Frame;
-class InspectorPageAgent;
 class RenderObject;
 class RunLoopObserver;
 
@@ -83,6 +77,8 @@ enum class TimelineRecordType {
     RequestAnimationFrame,
     CancelAnimationFrame,
     FireAnimationFrame,
+    
+    ObserverCallback,
 };
 
 class InspectorTimelineAgent final
@@ -92,7 +88,7 @@ class InspectorTimelineAgent final
     WTF_MAKE_NONCOPYABLE(InspectorTimelineAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    InspectorTimelineAgent(WebAgentContext&, Inspector::InspectorScriptProfilerAgent*, Inspector::InspectorHeapAgent*, InspectorPageAgent*);
+    InspectorTimelineAgent(WebAgentContext&);
     virtual ~InspectorTimelineAgent();
 
     void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) final;
@@ -116,11 +112,11 @@ public:
     void didRemoveTimer(int timerId, Frame*);
     void willFireTimer(int timerId, Frame*);
     void didFireTimer();
-    void willCallFunction(const String& scriptName, int scriptLine, Frame*);
+    void willCallFunction(const String& scriptName, int scriptLine, int scriptColumn, Frame*);
     void didCallFunction(Frame*);
     void willDispatchEvent(const Event&, Frame*);
-    void didDispatchEvent();
-    void willEvaluateScript(const String&, int, Frame&);
+    void didDispatchEvent(bool defaultPrevented);
+    void willEvaluateScript(const String&, int lineNumber, int columnNumber, Frame&);
     void didEvaluateScript(Frame&);
     void didInvalidateLayout(Frame&);
     void willLayout(Frame&);
@@ -137,6 +133,8 @@ public:
     void didCancelAnimationFrame(int callbackId, Frame*);
     void willFireAnimationFrame(int callbackId, Frame*);
     void didFireAnimationFrame();
+    void willFireObserverCallback(const String& callbackType, Frame*);
+    void didFireObserverCallback();
     void time(Frame&, const String&);
     void timeEnd(Frame&, const String&);
     void mainFrameStartedLoading();
@@ -160,6 +158,7 @@ private:
     void toggleInstruments(InstrumentState);
     void toggleScriptProfilerInstrument(InstrumentState);
     void toggleHeapInstrument(InstrumentState);
+    void toggleCPUInstrument(InstrumentState);
     void toggleMemoryInstrument(InstrumentState);
     void toggleTimelineInstrument(InstrumentState);
     void disableBreakpoints();
@@ -207,9 +206,6 @@ private:
 
     std::unique_ptr<Inspector::TimelineFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::TimelineBackendDispatcher> m_backendDispatcher;
-    Inspector::InspectorScriptProfilerAgent* m_scriptProfilerAgent;
-    Inspector::InspectorHeapAgent* m_heapAgent;
-    InspectorPageAgent* m_pageAgent;
 
     Vector<TimelineRecordEntry> m_recordStack;
     Vector<TimelineRecordEntry> m_pendingConsoleProfileRecords;

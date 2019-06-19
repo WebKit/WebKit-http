@@ -45,12 +45,12 @@ public:
     void addItem(Ref<WebCore::HistoryItem>&&) override;
     void goBack();
     void goForward();
-    void goToItem(WebCore::HistoryItem*) override;
+    void goToItem(WebCore::HistoryItem&) override;
         
-    WebCore::HistoryItem* backItem();
-    WebCore::HistoryItem* currentItem();
-    WebCore::HistoryItem* forwardItem();
-    WebCore::HistoryItem* itemAtIndex(int) override;
+    RefPtr<WebCore::HistoryItem> backItem();
+    RefPtr<WebCore::HistoryItem> currentItem();
+    RefPtr<WebCore::HistoryItem> forwardItem();
+    RefPtr<WebCore::HistoryItem> itemAtIndex(int) override;
 
     void backListWithLimit(int, Vector<Ref<WebCore::HistoryItem>>&);
     void forwardListWithLimit(int, Vector<Ref<WebCore::HistoryItem>>&);
@@ -59,8 +59,8 @@ public:
     void setCapacity(int);
     bool enabled();
     void setEnabled(bool);
-    int backListCount() override;
-    int forwardListCount() override;
+    unsigned backListCount() const override;
+    unsigned forwardListCount() const override;
     bool containsItem(WebCore::HistoryItem&);
 
     void close() override;
@@ -69,7 +69,7 @@ public:
     void removeItem(WebCore::HistoryItem&);
     const Vector<Ref<WebCore::HistoryItem>>& entries() const { return m_entries; }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     unsigned current();
     void setCurrent(unsigned newCurrent);
 #endif

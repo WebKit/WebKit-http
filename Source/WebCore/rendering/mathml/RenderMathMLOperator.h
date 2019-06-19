@@ -71,7 +71,7 @@ protected:
 private:
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
     void computePreferredLogicalWidths() final;
-    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0_lu) final;
     void paint(PaintInfo&, const LayoutPoint&) final;
 
     const char* renderName() const final { return isAnonymous() ? "RenderMathMLOperator (anonymous)" : "RenderMathMLOperator"; }
@@ -79,7 +79,7 @@ private:
     bool isRenderMathMLOperator() const final { return true; }
     bool isInvisibleOperator() const;
 
-    std::optional<int> firstLineBaseline() const final;
+    Optional<int> firstLineBaseline() const final;
     RenderMathMLOperator* unembellishedOperator() const final { return const_cast<RenderMathMLOperator*>(this); }
 
     LayoutUnit verticalStretchedOperatorShift() const;

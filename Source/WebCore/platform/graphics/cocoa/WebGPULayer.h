@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,21 +31,15 @@
 #import <QuartzCore/QuartzCore.h>
 
 namespace WebCore {
-class GPUDevice;
+class GPUSwapChain;
 }
 
-#if !PLATFORM(IOS_SIMULATOR)
 @interface WebGPULayer : CAMetalLayer {
-#else
-@interface WebGPULayer : CALayer { // FIXME: WebGPU - Disable WebGPU on iOS simulator?
-#endif
-    WebCore::GPUDevice* _context;
-    float _devicePixelRatio;
+    WebCore::GPUSwapChain* _swapChain;
+    float _deviceScaleFactor;
 }
 
-@property (nonatomic) WebCore::GPUDevice* context;
-
-- (id)initWithGPUDevice:(WebCore::GPUDevice*)context;
+@property (nonatomic) WebCore::GPUSwapChain* swapChain;
 
 - (CGImageRef)copyImageSnapshotWithColorSpace:(CGColorSpaceRef)colorSpace;
 

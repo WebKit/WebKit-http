@@ -42,8 +42,9 @@ namespace WebCore {
 class TextTrack;
 
 class TextTrackCue : public RefCounted<TextTrackCue>, public EventTargetWithInlineData {
+    WTF_MAKE_ISO_ALLOCATED(TextTrackCue);
 public:
-    static const AtomicString& cueShadowPseudoId();
+    static const AtomString& cueShadowPseudoId();
 
     TextTrack* track() const;
     void setTrack(TextTrack*);
@@ -86,6 +87,7 @@ public:
     virtual void didChange();
 
     String toJSONString() const;
+    String debugString() const;
 
     using RefCounted::ref;
     using RefCounted::deref;
@@ -126,15 +128,10 @@ private:
 
 namespace WTF {
 
-template<typename Type>
-struct LogArgument;
+template<typename> struct LogArgument;
 
-template <>
-struct LogArgument<WebCore::TextTrackCue> {
-    static String toString(const WebCore::TextTrackCue& cue)
-    {
-        return cue.toJSONString();
-    }
+template<> struct LogArgument<WebCore::TextTrackCue> {
+    static String toString(const WebCore::TextTrackCue& cue) { return cue.toJSONString(); }
 };
 
 }

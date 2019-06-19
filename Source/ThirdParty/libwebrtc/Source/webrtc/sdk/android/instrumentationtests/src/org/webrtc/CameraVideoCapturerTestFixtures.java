@@ -39,9 +39,9 @@ class CameraVideoCapturerTestFixtures {
 
   static private class RendererCallbacks implements VideoSink {
     private final Object frameLock = new Object();
-    private int framesRendered = 0;
-    private int width = 0;
-    private int height = 0;
+    private int framesRendered;
+    private int width;
+    private int height;
 
     @Override
     public void onFrame(VideoFrame frame) {
@@ -102,7 +102,7 @@ class CameraVideoCapturerTestFixtures {
   }
 
   static private class FakeCapturerObserver implements CapturerObserver {
-    private int framesCaptured = 0;
+    private int framesCaptured;
     private @Nullable VideoFrame videoFrame;
     final private Object frameLock = new Object();
     final private Object capturerStartLock = new Object();
@@ -686,6 +686,49 @@ class CameraVideoCapturerTestFixtures {
     disposeVideoTrackWithRenderer(videoTrackWithRenderer);
 
     assertTrue(gotExpectedResolution);
+  }
+
+  public void cropCameraOutput() throws InterruptedException {
+    final CapturerInstance capturerInstance = createCapturer(false /* initialize */);
+    final VideoTrackWithRenderer videoTrackWithRenderer =
+        createVideoTrackWithRenderer(capturerInstance.capturer);
+    assertTrue(videoTrackWithRenderer.rendererCallbacks.waitForNextFrameToRender() > 0);
+
+    final int startWidth = videoTrackWithRenderer.rendererCallbacks.frameWidth();
+    final int startHeight = videoTrackWithRenderer.rendererCallbacks.frameHeight();
+    final int frameRate = 30;
+    final int cropWidth;
+    final int cropHeight;
+    if (startWidth > startHeight) {
+      // Landscape input, request portrait output.
+      cropWidth = 360;
+      cropHeight = 640;
+    } else {
+      // Portrait input, request landscape output.
+      cropWidth = 640;
+      cropHeight = 630;
+    }
+
+    // Request different output orientation than input.
+    videoTrackWithRenderer.source.adaptOutputFormat(
+        cropWidth, cropHeight, cropWidth, cropHeight, frameRate);
+
+    boolean gotExpectedOrientation = false;
+    int numberOfInspectedFrames = 0;
+
+    do {
+      videoTrackWithRenderer.rendererCallbacks.waitForNextFrameToRender();
+      ++numberOfInspectedFrames;
+
+      gotExpectedOrientation = (cropWidth > cropHeight)
+          == (videoTrackWithRenderer.rendererCallbacks.frameWidth()
+                 > videoTrackWithRenderer.rendererCallbacks.frameHeight());
+    } while (!gotExpectedOrientation && numberOfInspectedFrames < 30);
+
+    disposeCapturer(capturerInstance);
+    disposeVideoTrackWithRenderer(videoTrackWithRenderer);
+
+    assertTrue(gotExpectedOrientation);
   }
 
   public void startWhileCameraIsAlreadyOpen() throws InterruptedException {

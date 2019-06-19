@@ -9,25 +9,35 @@
  */
 #include "modules/audio_processing/aec3/matched_filter_lag_aggregator.h"
 
+#include <algorithm>
+#include <iterator>
+
 #include "modules/audio_processing/logging/apm_data_dumper.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 
 MatchedFilterLagAggregator::MatchedFilterLagAggregator(
     ApmDataDumper* data_dumper,
-    size_t max_filter_lag)
-    : data_dumper_(data_dumper), histogram_(max_filter_lag + 1, 0) {
+    size_t max_filter_lag,
+    const EchoCanceller3Config::Delay::DelaySelectionThresholds& thresholds)
+    : data_dumper_(data_dumper),
+      histogram_(max_filter_lag + 1, 0),
+      thresholds_(thresholds) {
   RTC_DCHECK(data_dumper);
+  RTC_DCHECK_LE(thresholds_.initial, thresholds_.converged);
   histogram_data_.fill(0);
 }
 
 MatchedFilterLagAggregator::~MatchedFilterLagAggregator() = default;
 
-void MatchedFilterLagAggregator::Reset() {
+void MatchedFilterLagAggregator::Reset(bool hard_reset) {
   std::fill(histogram_.begin(), histogram_.end(), 0);
   histogram_data_.fill(0);
   histogram_data_index_ = 0;
-  significant_candidate_found_ = false;
+  if (hard_reset) {
+    significant_candidate_found_ = false;
+  }
 }
 
 absl::optional<DelayEstimate> MatchedFilterLagAggregator::Aggregate(
@@ -67,11 +77,19 @@ absl::optional<DelayEstimate> MatchedFilterLagAggregator::Aggregate(
         std::distance(histogram_.begin(),
                       std::max_element(histogram_.begin(), histogram_.end()));
 
-    if (histogram_[candidate] > 25) {
-      significant_candidate_found_ = true;
-      return DelayEstimate(DelayEstimate::Quality::kRefined, candidate);
+    significant_candidate_found_ =
+        significant_candidate_found_ ||
+        histogram_[candidate] > thresholds_.converged;
+    if (histogram_[candidate] > thresholds_.converged ||
+        (histogram_[candidate] > thresholds_.initial &&
+         !significant_candidate_found_)) {
+      DelayEstimate::Quality quality = significant_candidate_found_
+                                           ? DelayEstimate::Quality::kRefined
+                                           : DelayEstimate::Quality::kCoarse;
+      return DelayEstimate(quality, candidate);
     }
   }
+
   return absl::nullopt;
 }
 

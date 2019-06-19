@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2017 Apple Inc. All rights reserved.
+# Copyright (C) 2012-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,12 +25,16 @@ messages -> NetworkProcess LegacyReceiver {
     InitializeNetworkProcess(struct WebKit::NetworkProcessCreationParameters processCreationParameters)
 
     # Creates a connection for communication with a WebProcess
-    CreateNetworkConnectionToWebProcess()
+    CreateNetworkConnectionToWebProcess(bool isServiceWorkerProcess, WebCore::RegistrableDomain registrableDomain)
 
 #if USE(SOUP)
     SetIgnoreTLSErrors(bool ignoreTLSErrors)
     UserPreferredLanguagesChanged(Vector<String> languages)
     SetNetworkProxySettings(struct WebCore::SoupNetworkProxySettings settings)
+#endif
+
+#if USE(CURL)
+    SetNetworkProxySettings(PAL::SessionID sessionID, WebCore::CurlProxySettings settings)
 #endif
 
     ClearCachedCredentials()
@@ -48,6 +52,11 @@ messages -> NetworkProcess LegacyReceiver {
 #if PLATFORM(QT)
     StartTransfer(WebKit::DownloadID downloadID, String destination)
 #endif
+#if PLATFORM(COCOA)
+    PublishDownloadProgress(WebKit::DownloadID downloadID, URL url, WebKit::SandboxExtension::Handle sandboxExtensionHandle)
+#endif
+    ApplicationDidEnterBackground()
+    ApplicationWillEnterForeground()
 
     ContinueWillSendRequest(WebKit::DownloadID downloadID, WebCore::ResourceRequest request)
     ContinueDecidePendingDownloadDestination(WebKit::DownloadID downloadID, String destination, WebKit::SandboxExtension::Handle sandboxExtensionHandle, bool allowOverwrite)
@@ -56,7 +65,7 @@ messages -> NetworkProcess LegacyReceiver {
     SetQOS(int latencyQOS, int throughputQOS)
     SetStorageAccessAPIEnabled(bool enabled)
 #endif
-    SetAllowsAnySSLCertificateForWebSocket(bool enabled) -> ()
+    SetAllowsAnySSLCertificateForWebSocket(bool enabled) -> () Synchronous
 
     SyncAllCookies()
 
@@ -66,29 +75,69 @@ messages -> NetworkProcess LegacyReceiver {
     GetNetworkProcessStatistics(uint64_t callbackID)
     
     ClearCacheForAllOrigins(uint32_t cachesToClear)
-    SetCacheModel(uint32_t cacheModel);
+    SetCacheModel(enum:uint8_t WebKit::CacheModel cacheModel);
 
     ProcessDidTransitionToBackground()
     ProcessDidTransitionToForeground()
 
-    ProcessWillSuspendImminently() -> (bool handled)
+    ProcessWillSuspendImminently()
     PrepareToSuspend()
     CancelPrepareToSuspend()
     ProcessDidResume()
 
-    DidGrantSandboxExtensionsToStorageProcessForBlobs(uint64_t requestID)
+    PreconnectTo(URL url, enum:uint8_t WebCore::StoredCredentialsPolicy storedCredentialsPolicy);
 
-    WriteBlobToFilePath(WebCore::URL blobURL, String path, WebKit::SandboxExtension::Handle handle, uint64_t callbackID)
-
-    PreconnectTo(WebCore::URL url, enum WebCore::StoredCredentialsPolicy storedCredentialsPolicy);
-
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    UpdatePrevalentDomainsToBlockCookiesFor(PAL::SessionID sessionID, Vector<String> domainsToBlock, bool shouldClearFirst, uint64_t contextId)
-    HasStorageAccessForFrame(PAL::SessionID sessionID, String resourceDomain, String firstPartyDomain, uint64_t frameID, uint64_t pageID, uint64_t contextId)
-    GetAllStorageAccessEntries(PAL::SessionID sessionID, uint64_t contextId)
-    GrantStorageAccess(PAL::SessionID sessionID, String resourceDomain, String firstPartyDomain, std::optional<uint64_t> frameID, uint64_t pageID, uint64_t contextId)
-    RemoveAllStorageAccess(PAL::SessionID sessionID, uint64_t contextId)
-    RemovePrevalentDomains(PAL::SessionID sessionID, Vector<String> domainsWithInteraction);
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    ClearPrevalentResource(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> () Async
+    ClearUserInteraction(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> () Async
+    DumpResourceLoadStatistics(PAL::SessionID sessionID) -> (String dumpedStatistics) Async
+    SetResourceLoadStatisticsEnabled(bool enabled)
+    UpdatePrevalentDomainsToBlockCookiesFor(PAL::SessionID sessionID, Vector<WebCore::RegistrableDomain> domainsToBlock) -> () Async
+    IsGrandfathered(PAL::SessionID sessionID, WebCore::RegistrableDomain targetDomain) -> (bool isGrandfathered) Async
+    IsPrevalentResource(PAL::SessionID sessionID, WebCore::RegistrableDomain targetDomain) -> (bool isPrevalent) Async
+    IsVeryPrevalentResource(PAL::SessionID sessionID, WebCore::RegistrableDomain targetDomain) -> (bool isVeryPrevalent) Async
+    SetAgeCapForClientSideCookies(PAL::SessionID sessionID, Optional<Seconds> seconds) -> () Async
+    SetLastSeen(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain, Seconds seconds) -> () Async
+    SetPrevalentResource(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> () Async
+    SetPrevalentResourceForDebugMode(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> () Async
+    HadUserInteraction(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> (bool hadUserInteraction) Async
+    HasLocalStorage(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> (bool hadUserInteraction) Async
+    GetAllStorageAccessEntries(PAL::SessionID sessionID) -> (Vector<String> domains) Async
+    IsRegisteredAsRedirectingTo(PAL::SessionID sessionID, WebCore::RegistrableDomain redirectedFromDomain, WebCore::RegistrableDomain redirectedToDomain) -> (bool isRedirectingTo) Async
+    IsRegisteredAsSubFrameUnder(PAL::SessionID sessionID, WebCore::RegistrableDomain subFrameDomain, WebCore::RegistrableDomain topFrameDomain) -> (bool isSubframeUnder) Async
+    IsRegisteredAsSubresourceUnder(PAL::SessionID sessionID, WebCore::RegistrableDomain subresourceDomain, WebCore::RegistrableDomain topFrameDomain) -> (bool isSubresourceUnder) Async
+    LogFrameNavigation(PAL::SessionID sessionID, WebCore::RegistrableDomain targetDomain, WebCore::RegistrableDomain topFrameDomain, WebCore::RegistrableDomain sourceDomain, bool isRedirect, bool isMainFrame)
+    LogUserInteraction(PAL::SessionID sessionID, WebCore::RegistrableDomain topFrameDomain) -> () Async
+    RemovePrevalentDomains(PAL::SessionID sessionID, Vector<WebCore::RegistrableDomain> domainsWithInteraction)
+    ResetParametersToDefaultValues(PAL::SessionID sessionID) -> () Async
+    ScheduleClearInMemoryAndPersistent(PAL::SessionID sessionID, Optional<WallTime> modifiedSince, enum:bool WebKit::ShouldGrandfatherStatistics shouldGrandfather) -> () Async
+    ScheduleCookieBlockingUpdate(PAL::SessionID sessionID) -> () Async
+    ScheduleStatisticsAndDataRecordsProcessing(PAL::SessionID sessionID) -> () Async
+    SubmitTelemetry(PAL::SessionID sessionID) -> () Async
+    SetCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID, Seconds seconds) -> () Async
+    SetGrandfathered(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain, bool isGrandfathered) -> () Async
+    SetGrandfatheringTime(PAL::SessionID sessionID, Seconds seconds) -> () Async
+    SetMaxStatisticsEntries(PAL::SessionID sessionID, uint64_t maximumEntryCount) -> () Async
+    SetMinimumTimeBetweenDataRecordsRemoval(PAL::SessionID sessionID, Seconds seconds) -> () Async
+    SetPruneEntriesDownTo(PAL::SessionID sessionID, uint64_t maximumEntryCount) -> () Async
+    SetShouldClassifyResourcesBeforeDataRecordsRemoval(PAL::SessionID sessionID, bool value) -> () Async
+    SetNotifyPagesWhenDataRecordsWereScanned(PAL::SessionID sessionID, bool value) -> () Async
+    SetIsRunningResourceLoadStatisticsTest(PAL::SessionID sessionID, bool value) -> () Async
+    SetNotifyPagesWhenTelemetryWasCaptured(PAL::SessionID sessionID, bool value) -> () Async
+    SetResourceLoadStatisticsDebugMode(PAL::SessionID sessionID, bool debugMode) -> () Async
+    SetVeryPrevalentResource(PAL::SessionID sessionID, WebCore::RegistrableDomain resourceDomain) -> () Async
+    SetSubframeUnderTopFrameDomain(PAL::SessionID sessionID, WebCore::RegistrableDomain subFrameDomain, WebCore::RegistrableDomain topFrameDomain) -> () Async
+    SetSubresourceUnderTopFrameDomain(PAL::SessionID sessionID, WebCore::RegistrableDomain subresourceDomain, WebCore::RegistrableDomain topFrameDomain) -> () Async
+    SetSubresourceUniqueRedirectTo(PAL::SessionID sessionID, WebCore::RegistrableDomain subresourceDomain, WebCore::RegistrableDomain redirectedToDomain) -> () Async
+    SetSubresourceUniqueRedirectFrom(PAL::SessionID sessionID, WebCore::RegistrableDomain subresourceDomain, WebCore::RegistrableDomain redirectedFromDomain) -> () Async
+    SetTimeToLiveUserInteraction(PAL::SessionID sessionID, Seconds seconds) -> () Async
+    SetTopFrameUniqueRedirectTo(PAL::SessionID sessionID, WebCore::RegistrableDomain topFrameDomain, WebCore::RegistrableDomain redirectedToDomain) -> () Async
+    SetTopFrameUniqueRedirectFrom(PAL::SessionID sessionID, WebCore::RegistrableDomain topFrameDomain, WebCore::RegistrableDomain redirectedFromDomain) -> () Async
+    ResetCacheMaxAgeCapForPrevalentResources(PAL::SessionID sessionID) -> () Async
+    DidCommitCrossSiteLoadWithDataTransfer(PAL::SessionID sessionID, WebCore::RegistrableDomain fromDomain, WebCore::RegistrableDomain toDomain, OptionSet<WebCore::CrossSiteNavigationDataTransfer::Flag> navigationDataTransfer, WebCore::PageIdentifier pageID)
+    SetCrossSiteLoadWithLinkDecorationForTesting(PAL::SessionID sessionID, WebCore::RegistrableDomain fromDomain, WebCore::RegistrableDomain toDomain) -> () Async
+    ResetCrossSiteLoadsWithLinkDecorationForTesting(PAL::SessionID sessionID) -> () Async
+    DeleteCookiesForTesting(PAL::SessionID sessionID, WebCore::RegistrableDomain domain, bool includeHttpOnlyCookies) -> () Async
 #endif
 
     SetSessionIsControlledByAutomation(PAL::SessionID sessionID, bool controlled);
@@ -101,5 +150,26 @@ messages -> NetworkProcess LegacyReceiver {
     RegisterURLSchemeAsCORSEnabled(String scheme)
     RegisterURLSchemeAsCanDisplayOnlyIfCanRequest(String scheme)
 
-    SetCacheStorageParameters(PAL::SessionID sessionID, uint64_t quota, String cacheStorageDirectory, WebKit::SandboxExtension::Handle handle);
+    SetCacheStorageParameters(PAL::SessionID sessionID, String cacheStorageDirectory, WebKit::SandboxExtension::Handle handle);
+
+#if ENABLE(SERVICE_WORKER)
+    PostMessageToServiceWorkerClient(struct WebCore::ServiceWorkerClientIdentifier destinationIdentifier, struct WebCore::MessageWithMessagePorts message, WebCore::ServiceWorkerIdentifier sourceIdentifier, String sourceOrigin)
+
+    PostMessageToServiceWorker(WebCore::ServiceWorkerIdentifier destination, struct WebCore::MessageWithMessagePorts message, WebCore::ServiceWorkerOrClientIdentifier source, WebCore::SWServerConnectionIdentifier connectionIdentifier)
+
+    DisableServiceWorkerProcessTerminationDelay()
+#endif
+
+#if ENABLE(INDEXED_DATABASE)
+    SetIDBPerOriginQuota(uint64_t quota)
+#endif
+    UpdateQuotaBasedOnSpaceUsageForTesting(PAL::SessionID sessionID, struct WebCore::ClientOrigin origin)
+
+    StoreAdClickAttribution(PAL::SessionID sessionID, WebCore::AdClickAttribution adClickAttribution)
+    DumpAdClickAttribution(PAL::SessionID sessionID) -> (String adClickAttributionState) Async
+    ClearAdClickAttribution(PAL::SessionID sessionID) -> () Async
+    SetAdClickAttributionOverrideTimerForTesting(PAL::SessionID sessionID, bool value) -> () Async
+    SetAdClickAttributionConversionURLForTesting(PAL::SessionID sessionID, URL url) -> () Async
+    MarkAdClickAttributionsAsExpiredForTesting(PAL::SessionID sessionID) -> () Async
+    GetLocalStorageOriginDetails(PAL::SessionID sessionID) -> (Vector<WebKit::LocalStorageDatabaseTracker::OriginDetails> details) Async
 }

@@ -57,6 +57,10 @@ InjectedScriptManager::~InjectedScriptManager()
 {
 }
 
+void InjectedScriptManager::connect()
+{
+}
+
 void InjectedScriptManager::disconnect()
 {
     discardInjectedScripts();
@@ -120,6 +124,12 @@ void InjectedScriptManager::releaseObjectGroup(const String& objectGroup)
 {
     for (auto& injectedScript : m_idToInjectedScript.values())
         injectedScript.releaseObjectGroup(objectGroup);
+}
+
+void InjectedScriptManager::clearEventValue()
+{
+    for (auto& injectedScript : m_idToInjectedScript.values())
+        injectedScript.clearEventValue();
 }
 
 void InjectedScriptManager::clearExceptionValue()

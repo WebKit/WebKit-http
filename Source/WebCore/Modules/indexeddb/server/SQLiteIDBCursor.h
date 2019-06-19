@@ -44,9 +44,12 @@ class IDBGetResult;
 
 namespace IDBServer {
 
+enum class ShouldFetchForSameKey : bool { No, Yes };
+
 class SQLiteIDBTransaction;
 
 class SQLiteIDBCursor {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(SQLiteIDBCursor);
 public:
     static std::unique_ptr<SQLiteIDBCursor> maybeCreate(SQLiteIDBTransaction&, const IDBCursorInfo&);
@@ -76,7 +79,7 @@ public:
 
     void objectStoreRecordsChanged();
 
-    void currentData(IDBGetResult&);
+    void currentData(IDBGetResult&, const Optional<IDBKeyPath>&);
 
 private:
     bool establishStatement();
@@ -91,7 +94,7 @@ private:
         ShouldFetchAgain
     };
 
-    bool fetch();
+    bool fetch(ShouldFetchForSameKey = ShouldFetchForSameKey::No);
 
     struct SQLiteCursorRecord {
         IDBCursorRecord record;

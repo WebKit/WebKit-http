@@ -32,17 +32,6 @@
 extern "C" {
 #endif
 
-enum WKFontSmoothingLevel {
-    kWKFontSmoothingLevelNoSubpixelAntiAliasing = 0,
-    kWKFontSmoothingLevelLight = 1,
-    kWKFontSmoothingLevelMedium = 2,
-    kWKFontSmoothingLevelStrong = 3,
-#if defined(WIN32) || defined(_WIN32)
-    kWKFontSmoothingLevelWindows = 4,
-#endif
-};
-typedef enum WKFontSmoothingLevel WKFontSmoothingLevel;
-
 enum WKEditableLinkBehavior {
     kWKEditableLinkBehaviorDefault,
     kWKEditableLinkBehaviorAlwaysLive,
@@ -61,10 +50,9 @@ typedef unsigned WKJavaScriptRuntimeFlagSet;
 WK_EXPORT WKPreferencesRef WKPreferencesCreateCopy(WKPreferencesRef);
 
 WK_EXPORT void WKPreferencesEnableAllExperimentalFeatures(WKPreferencesRef);
-
-// Defaults to kWKFontSmoothingLevelMedium.
-WK_EXPORT void WKPreferencesSetFontSmoothingLevel(WKPreferencesRef, WKFontSmoothingLevel);
-WK_EXPORT WKFontSmoothingLevel WKPreferencesGetFontSmoothingLevel(WKPreferencesRef);
+WK_EXPORT void WKPreferencesSetExperimentalFeatureForKey(WKPreferencesRef, bool, WKStringRef);
+WK_EXPORT void WKPreferencesResetAllInternalDebugFeatures(WKPreferencesRef);
+WK_EXPORT void WKPreferencesSetInternalDebugFeatureForKey(WKPreferencesRef, bool, WKStringRef);
 
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetSubpixelAntialiasedLayerTextEnabled(WKPreferencesRef, bool);
@@ -85,10 +73,6 @@ WK_EXPORT bool WKPreferencesGetCanvasUsesAcceleratedDrawing(WKPreferencesRef);
 // Defaults to true.
 WK_EXPORT void WKPreferencesSetAcceleratedCompositingEnabled(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetAcceleratedCompositingEnabled(WKPreferencesRef);
-
-// Defaults to false.
-WK_EXPORT void WKPreferencesSetAcceleratedCompositingForOverflowScrollEnabled(WKPreferencesRef, bool);
-WK_EXPORT bool WKPreferencesGetAcceleratedCompositingForOverflowScrollEnabled(WKPreferencesRef);
 
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetCompositingBordersVisible(WKPreferencesRef, bool);
@@ -113,10 +97,6 @@ WK_EXPORT bool WKPreferencesGetForceSoftwareWebGLRendering(WKPreferencesRef);
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetAccelerated2DCanvasEnabled(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetAccelerated2DCanvasEnabled(WKPreferencesRef);
-
-// Defaults to true
-WK_EXPORT void WKPreferencesSetCSSAnimationTriggersEnabled(WKPreferencesRef, bool flag);
-WK_EXPORT bool WKPreferencesGetCSSAnimationTriggersEnabled(WKPreferencesRef);
 
 // Defaults to false
 WK_EXPORT void WKPreferencesSetWebAnimationsEnabled(WKPreferencesRef, bool flag);
@@ -354,6 +334,9 @@ WK_EXPORT bool WKPreferencesGetSimpleLineLayoutEnabled(WKPreferencesRef);
 WK_EXPORT void WKPreferencesSetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetSimpleLineLayoutDebugBordersEnabled(WKPreferencesRef);
 
+WK_EXPORT void WKPreferencesSetContentChangeObserverEnabled(WKPreferencesRef, bool);
+WK_EXPORT bool WKPreferencesGetContentChangeObserverEnabled(WKPreferencesRef);
+
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetNewBlockInsideInlineModelEnabled(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetNewBlockInsideInlineModelEnabled(WKPreferencesRef);
@@ -380,7 +363,7 @@ WK_EXPORT bool WKPreferencesUseLegacyTextAlignPositionedElementBehavior(WKPrefer
 WK_EXPORT void WKPreferencesSetMediaSourceEnabled(WKPreferencesRef preferencesRef, bool enabled);
 WK_EXPORT bool WKPreferencesGetMediaSourceEnabled(WKPreferencesRef preferencesRef);
 
-// Defaults to false;
+// Defaults to true;
 WK_EXPORT void WKPreferencesSetSourceBufferChangeTypeEnabled(WKPreferencesRef preferencesRef, bool enabled);
 WK_EXPORT bool WKPreferencesGetSourceBufferChangeTypeEnabled(WKPreferencesRef preferencesRef);
 
@@ -540,6 +523,10 @@ WK_EXPORT bool WKPreferencesGetMediaPreloadingEnabled(WKPreferencesRef);
 WK_EXPORT void WKPreferencesSetWebAuthenticationEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetWebAuthenticationEnabled(WKPreferencesRef);
 
+// Defaults to false
+WK_EXPORT void WKPreferencesSetWebAuthenticationLocalAuthenticatorEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetWebAuthenticationLocalAuthenticatorEnabled(WKPreferencesRef);
+
 // Defaults to true.
 WK_EXPORT void WKPreferencesSetInvisibleMediaAutoplayPermitted(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetInvisibleMediaAutoplayPermitted(WKPreferencesRef);
@@ -572,6 +559,10 @@ WK_EXPORT bool WKPreferencesGetAccessibilityObjectModelEnabled(WKPreferencesRef)
 WK_EXPORT void WKPreferencesSetAriaReflectionEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetAriaReflectionEnabled(WKPreferencesRef);
 
+// Defaults to true.
+WK_EXPORT void WKPreferencesSetSyntheticEditingCommandsEnabled(WKPreferencesRef, bool);
+WK_EXPORT bool WKPreferencesGetSyntheticEditingCommandsEnabled(WKPreferencesRef);
+    
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetCSSOMViewScrollingAPIEnabled(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetCSSOMViewScrollingAPIEnabled(WKPreferencesRef);
@@ -595,6 +586,10 @@ WK_EXPORT bool WKPreferencesGetColorFilterEnabled(WKPreferencesRef);
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetPunchOutWhiteBackgroundsInDarkMode(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetPunchOutWhiteBackgroundsInDarkMode(WKPreferencesRef);
+
+// Defaults to false
+WK_EXPORT void WKPreferencesSetReferrerPolicyAttributeEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetReferrerPolicyAttributeEnabled(WKPreferencesRef);
 
 #ifdef __cplusplus
 }

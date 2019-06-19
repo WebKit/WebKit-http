@@ -47,7 +47,7 @@
 #endif
 
 // CA uses ARGB32 for textures and ARGB32 -> ARGB32 resampling is optimized.
-#define USE_ARGB32 PLATFORM(IOS)
+#define USE_ARGB32 PLATFORM(IOS_FAMILY)
 
 namespace WebCore {
 
@@ -133,7 +133,7 @@ RefPtr<Uint8ClampedArray> ImageBufferData::getData(AlphaPremultiplication output
     if (area.hasOverflowed())
         return nullptr;
 
-    auto result = Uint8ClampedArray::createUninitialized(area.unsafeGet());
+    auto result = Uint8ClampedArray::tryCreateUninitialized(area.unsafeGet());
     uint8_t* resultData = result ? result->data() : nullptr;
     if (!resultData)
         return nullptr;

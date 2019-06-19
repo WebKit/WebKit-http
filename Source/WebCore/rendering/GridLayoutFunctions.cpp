@@ -27,6 +27,7 @@
 #include "GridLayoutFunctions.h"
 
 #include "LengthFunctions.h"
+#include "RenderGrid.h"
 
 namespace WebCore {
 
@@ -69,8 +70,8 @@ LayoutUnit marginLogicalSizeForChild(const RenderGrid& grid, GridTrackSizingDire
     if (child.needsLayout())
         return computeMarginLogicalSizeForChild(grid, direction, child);
     bool isRowAxis = flowAwareDirectionForChild(grid, child, direction) == ForColumns;
-    LayoutUnit marginStart = marginStartIsAuto(child, direction) ? LayoutUnit() : isRowAxis ? child.marginStart() : child.marginBefore();
-    LayoutUnit marginEnd = marginEndIsAuto(child, direction) ? LayoutUnit() : isRowAxis ? child.marginEnd() : child.marginAfter();
+    LayoutUnit marginStart = marginStartIsAuto(child, direction) ? 0_lu : isRowAxis ? child.marginStart() : child.marginBefore();
+    LayoutUnit marginEnd = marginEndIsAuto(child, direction) ? 0_lu : isRowAxis ? child.marginEnd() : child.marginAfter();
     return marginStart + marginEnd;
 }
 
@@ -89,7 +90,7 @@ bool hasOverrideContainingBlockContentSizeForChild(const RenderBox& child, GridT
     return direction == ForColumns ? child.hasOverrideContainingBlockContentLogicalWidth() : child.hasOverrideContainingBlockContentLogicalHeight();
 }
 
-std::optional<LayoutUnit> overrideContainingBlockContentSizeForChild(const RenderBox& child, GridTrackSizingDirection direction)
+Optional<LayoutUnit> overrideContainingBlockContentSizeForChild(const RenderBox& child, GridTrackSizingDirection direction)
 {
     return direction == ForColumns ? child.overrideContainingBlockContentLogicalWidth() : child.overrideContainingBlockContentLogicalHeight();
 }

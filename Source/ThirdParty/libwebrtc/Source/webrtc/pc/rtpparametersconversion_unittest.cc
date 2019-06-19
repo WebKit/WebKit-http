@@ -279,24 +279,28 @@ TEST(RtpParametersConversionTest, ToCricketCodecsDuplicatePayloadType) {
 
 TEST(RtpParametersConversionTest, ToCricketRtpHeaderExtensions) {
   std::vector<RtpHeaderExtensionParameters> extensions = {
-      {"http://example.com", 1}, {"urn:foo:bar", 14}};
+      {"http://example.com", 1},
+      {"urn:foo:bar", 14},
+      {"urn:first:two-byte-only:id", 15}};
   auto result = ToCricketRtpHeaderExtensions(extensions);
   ASSERT_TRUE(result.ok());
-  ASSERT_EQ(2u, result.value().size());
+  ASSERT_EQ(3u, result.value().size());
   EXPECT_EQ("http://example.com", result.value()[0].uri);
   EXPECT_EQ(1, result.value()[0].id);
   EXPECT_EQ("urn:foo:bar", result.value()[1].uri);
   EXPECT_EQ(14, result.value()[1].id);
+  EXPECT_EQ("urn:first:two-byte-only:id", result.value()[2].uri);
+  EXPECT_EQ(15, result.value()[2].id);
 }
 
 TEST(RtpParametersConversionTest, ToCricketRtpHeaderExtensionsErrors) {
-  // First, IDs outside the range 1-14.
+  // First, IDs outside the range 1-255.
   std::vector<RtpHeaderExtensionParameters> extensions = {
       {"http://example.com", 0}};
   auto result = ToCricketRtpHeaderExtensions(extensions);
   EXPECT_EQ(RTCErrorType::INVALID_RANGE, result.error().type());
 
-  extensions[0].id = 15;
+  extensions[0].id = 256;
   result = ToCricketRtpHeaderExtensions(extensions);
   EXPECT_EQ(RTCErrorType::INVALID_RANGE, result.error().type());
 
@@ -570,11 +574,23 @@ TEST(RtpParametersConversionTest, ToRtpCapabilities) {
   flexfec.id = 102;
   flexfec.clockrate = 90000;
 
+  cricket::VideoCodec rtx;
+  rtx.name = "rtx";
+  rtx.id = 104;
+  rtx.params.insert({"apt", "101"});
+
+  cricket::VideoCodec rtx2;
+  rtx2.name = "rtx";
+  rtx2.id = 105;
+  rtx2.params.insert({"apt", "109"});
+
   RtpCapabilities capabilities = ToRtpCapabilities<cricket::VideoCodec>(
-      {vp8, ulpfec}, {{"uri", 1}, {"uri2", 3}});
-  ASSERT_EQ(2u, capabilities.codecs.size());
+      {vp8, ulpfec, rtx, rtx2}, {{"uri", 1}, {"uri2", 3}});
+  ASSERT_EQ(3u, capabilities.codecs.size());
   EXPECT_EQ("VP8", capabilities.codecs[0].name);
   EXPECT_EQ("ulpfec", capabilities.codecs[1].name);
+  EXPECT_EQ("rtx", capabilities.codecs[2].name);
+  EXPECT_EQ(0u, capabilities.codecs[2].parameters.size());
   ASSERT_EQ(2u, capabilities.header_extensions.size());
   EXPECT_EQ("uri", capabilities.header_extensions[0].uri);
   EXPECT_EQ(1, capabilities.header_extensions[0].preferred_id);
@@ -583,8 +599,8 @@ TEST(RtpParametersConversionTest, ToRtpCapabilities) {
   EXPECT_EQ(0u, capabilities.fec.size());
 
   capabilities = ToRtpCapabilities<cricket::VideoCodec>(
-      {vp8, red, ulpfec}, cricket::RtpHeaderExtensions());
-  EXPECT_EQ(3u, capabilities.codecs.size());
+      {vp8, red, ulpfec, rtx}, cricket::RtpHeaderExtensions());
+  EXPECT_EQ(4u, capabilities.codecs.size());
   EXPECT_EQ(2u, capabilities.fec.size());
   EXPECT_NE(capabilities.fec.end(),
             std::find(capabilities.fec.begin(), capabilities.fec.end(),

@@ -25,7 +25,7 @@
 
 WI.ScriptTimelineRecord = class ScriptTimelineRecord extends WI.TimelineRecord
 {
-    constructor(eventType, startTime, endTime, callFrames, sourceCodeLocation, details, profilePayload)
+    constructor(eventType, startTime, endTime, callFrames, sourceCodeLocation, details, profilePayload, extraDetails)
     {
         super(WI.TimelineRecord.Type.Script, startTime, endTime, callFrames, sourceCodeLocation);
 
@@ -38,6 +38,7 @@ WI.ScriptTimelineRecord = class ScriptTimelineRecord extends WI.TimelineRecord
         this._details = details || "";
         this._profilePayload = profilePayload || null;
         this._profile = null;
+        this._extraDetails = extraDetails || null;
 
         // COMPATIBILITY(iOS 9): Before the ScriptProfilerAgent we did not have sample data. Return NaN to match old behavior.
         if (!window.ScriptProfilerAgent)
@@ -48,27 +49,45 @@ WI.ScriptTimelineRecord = class ScriptTimelineRecord extends WI.TimelineRecord
         }
     }
 
+    // Import / Export
+
+    static fromJSON(json)
+    {
+        let {eventType, startTime, endTime, callFrames, sourceCodeLocation, details, profilePayload, extraDetails} = json;
+
+        if (typeof details === "object" && details.__type === "GarbageCollection")
+            details = WI.GarbageCollection.fromJSON(details);
+
+        return new WI.ScriptTimelineRecord(eventType, startTime, endTime, callFrames, sourceCodeLocation, details, profilePayload, extraDetails);
+    }
+
+    toJSON()
+    {
+        // FIXME: CallFrames
+        // FIXME: SourceCodeLocation
+        // FIXME: profilePayload
+
+        return {
+            type: this.type,
+            eventType: this._eventType,
+            startTime: this.startTime,
+            endTime: this.endTime,
+            details: this._details,
+            extraDetails: this._extraDetails,
+        };
+    }
+
     // Public
 
-    get eventType()
-    {
-        return this._eventType;
-    }
-
-    get details()
-    {
-        return this._details;
-    }
+    get eventType() { return this._eventType; }
+    get details() { return this._details; }
+    get extraDetails() { return this._extraDetails; }
+    get callCountOrSamples() { return this._callCountOrSamples; }
 
     get profile()
     {
         this._initializeProfileFromPayload();
         return this._profile;
-    }
-
-    get callCountOrSamples()
-    {
-        return this._callCountOrSamples;
     }
 
     isGarbageCollection()
@@ -111,7 +130,7 @@ WI.ScriptTimelineRecord = class ScriptTimelineRecord extends WI.TimelineRecord
             console.assert("id" in nodePayload);
 
             if (nodePayload.url) {
-                var sourceCode = WI.frameResourceManager.resourceForURL(nodePayload.url);
+                var sourceCode = WI.networkManager.resourceForURL(nodePayload.url);
                 if (!sourceCode)
                     sourceCode = WI.debuggerManager.scriptsForURL(nodePayload.url, WI.assumingMainTarget())[0];
 
@@ -183,19 +202,20 @@ WI.ScriptTimelineRecord = class ScriptTimelineRecord extends WI.TimelineRecord
 };
 
 WI.ScriptTimelineRecord.EventType = {
-    ScriptEvaluated: "script-timeline-record-script-evaluated",
-    APIScriptEvaluated: "script-timeline-record-api-script-evaluated",
-    MicrotaskDispatched: "script-timeline-record-microtask-dispatched",
-    EventDispatched: "script-timeline-record-event-dispatched",
-    ProbeSampleRecorded: "script-timeline-record-probe-sample-recorded",
-    TimerFired: "script-timeline-record-timer-fired",
-    TimerInstalled: "script-timeline-record-timer-installed",
-    TimerRemoved: "script-timeline-record-timer-removed",
-    AnimationFrameFired: "script-timeline-record-animation-frame-fired",
-    AnimationFrameRequested: "script-timeline-record-animation-frame-requested",
-    AnimationFrameCanceled: "script-timeline-record-animation-frame-canceled",
-    ConsoleProfileRecorded: "script-timeline-record-console-profile-recorded",
-    GarbageCollected: "script-timeline-record-garbage-collected",
+    ScriptEvaluated: "script-evaluated",
+    APIScriptEvaluated: "api-script-evaluated",
+    MicrotaskDispatched: "microtask-dispatched",
+    EventDispatched: "event-dispatched",
+    ProbeSampleRecorded: "probe-sample-recorded",
+    TimerFired: "timer-fired",
+    TimerInstalled: "timer-installed",
+    TimerRemoved: "timer-removed",
+    AnimationFrameFired: "animation-frame-fired",
+    AnimationFrameRequested: "animation-frame-requested",
+    AnimationFrameCanceled: "animation-frame-canceled",
+    ObserverCallback: "observer-callback",
+    ConsoleProfileRecorded: "console-profile-recorded",
+    GarbageCollected: "garbage-collected",
 };
 
 WI.ScriptTimelineRecord.EventType.displayName = function(eventType, details, includeDetailsInMainTitle)
@@ -329,11 +349,11 @@ WI.ScriptTimelineRecord.EventType.displayName = function(eventType, details, inc
         nameMap.set("webkitEditableContentChanged", "Editable Content Changed");
         nameMap.set("webkitTransitionEnd", "Transition End");
         nameMap.set("webkitaddsourcebuffer", "Add Source Buffer");
-        nameMap.set("webkitbeginfullscreen", "Begin Full Screen");
+        nameMap.set("webkitbeginfullscreen", "Begin Full-Screen");
         nameMap.set("webkitcurrentplaybacktargetiswirelesschanged", "Current Playback Target Is Wireless Changed");
-        nameMap.set("webkitendfullscreen", "End Full Screen");
-        nameMap.set("webkitfullscreenchange", "Full Screen Change");
-        nameMap.set("webkitfullscreenerror", "Full Screen Error");
+        nameMap.set("webkitendfullscreen", "End Full-Screen");
+        nameMap.set("webkitfullscreenchange", "Full-Screen Change");
+        nameMap.set("webkitfullscreenerror", "Full-Screen Error");
         nameMap.set("webkitkeyadded", "Key Added");
         nameMap.set("webkitkeyerror", "Key Error");
         nameMap.set("webkitkeymessage", "Key Message");
@@ -371,7 +391,7 @@ WI.ScriptTimelineRecord.EventType.displayName = function(eventType, details, inc
         return WI.UIString("Probe Sample Recorded");
     case WI.ScriptTimelineRecord.EventType.ConsoleProfileRecorded:
         if (details && (details instanceof String || typeof details === "string"))
-            return WI.UIString("“%s” Profile Recorded").format(details);
+            return WI.UIString("\u201C%s\u201D Profile Recorded").format(details);
         return WI.UIString("Console Profile Recorded");
     case WI.ScriptTimelineRecord.EventType.GarbageCollected:
         console.assert(details);
@@ -400,6 +420,10 @@ WI.ScriptTimelineRecord.EventType.displayName = function(eventType, details, inc
         if (details && includeDetailsInMainTitle)
             return WI.UIString("Animation Frame %d Fired").format(details);
         return WI.UIString("Animation Frame Fired");
+    case WI.ScriptTimelineRecord.EventType.ObserverCallback:
+        if (details && (details instanceof String || typeof details === "string"))
+            return WI.UIString("%s Callback").format(details);
+        return WI.UIString("Observer Callback");
     case WI.ScriptTimelineRecord.EventType.AnimationFrameRequested:
         if (details && includeDetailsInMainTitle)
             return WI.UIString("Animation Frame %d Requested").format(details);

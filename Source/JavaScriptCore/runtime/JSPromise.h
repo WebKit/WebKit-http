@@ -31,7 +31,7 @@ namespace JSC {
 
 class JSPromise : public JSNonFinalObject {
 public:
-    typedef JSNonFinalObject Base;
+    using Base = JSNonFinalObject;
 
     static JSPromise* create(VM&, Structure*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);

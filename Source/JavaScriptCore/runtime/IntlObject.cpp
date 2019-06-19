@@ -33,16 +33,12 @@
 #include "Error.h"
 #include "FunctionPrototype.h"
 #include "IntlCanonicalizeLanguage.h"
-#include "IntlCollator.h"
 #include "IntlCollatorConstructor.h"
 #include "IntlCollatorPrototype.h"
-#include "IntlDateTimeFormat.h"
 #include "IntlDateTimeFormatConstructor.h"
 #include "IntlDateTimeFormatPrototype.h"
-#include "IntlNumberFormat.h"
 #include "IntlNumberFormatConstructor.h"
 #include "IntlNumberFormatPrototype.h"
-#include "IntlPluralRules.h"
 #include "IntlPluralRulesConstructor.h"
 #include "IntlPluralRulesPrototype.h"
 #include "JSCInlines.h"
@@ -63,9 +59,48 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(IntlObject);
 
 static EncodedJSValue JSC_HOST_CALL intlObjectFuncGetCanonicalLocales(ExecState*);
 
+static JSValue createCollatorConstructor(VM& vm, JSObject* object)
+{
+    IntlObject* intlObject = jsCast<IntlObject*>(object);
+    JSGlobalObject* globalObject = intlObject->globalObject(vm);
+    return IntlCollatorConstructor::create(vm, IntlCollatorConstructor::createStructure(vm, globalObject, globalObject->functionPrototype()), jsCast<IntlCollatorPrototype*>(globalObject->collatorStructure()->storedPrototypeObject()));
 }
 
+static JSValue createNumberFormatConstructor(VM& vm, JSObject* object)
+{
+    IntlObject* intlObject = jsCast<IntlObject*>(object);
+    JSGlobalObject* globalObject = intlObject->globalObject(vm);
+    return IntlNumberFormatConstructor::create(vm, IntlNumberFormatConstructor::createStructure(vm, globalObject, globalObject->functionPrototype()), jsCast<IntlNumberFormatPrototype*>(globalObject->numberFormatStructure()->storedPrototypeObject()));
+}
+
+static JSValue createDateTimeFormatConstructor(VM& vm, JSObject* object)
+{
+    IntlObject* intlObject = jsCast<IntlObject*>(object);
+    JSGlobalObject* globalObject = intlObject->globalObject(vm);
+    return IntlDateTimeFormatConstructor::create(vm, IntlDateTimeFormatConstructor::createStructure(vm, globalObject, globalObject->functionPrototype()), jsCast<IntlDateTimeFormatPrototype*>(globalObject->dateTimeFormatStructure()->storedPrototypeObject()));
+}
+
+static JSValue createPluralRulesConstructor(VM& vm, JSObject* object)
+{
+    IntlObject* intlObject = jsCast<IntlObject*>(object);
+    JSGlobalObject* globalObject = intlObject->globalObject(vm);
+    return IntlPluralRulesConstructor::create(vm, IntlPluralRulesConstructor::createStructure(vm, globalObject, globalObject->functionPrototype()), jsCast<IntlPluralRulesPrototype*>(globalObject->pluralRulesStructure()->storedPrototypeObject()));
+}
+
+}
+
+#include "IntlObject.lut.h"
+
 namespace JSC {
+
+/* Source for IntlObject.lut.h
+@begin intlObjectTable
+  getCanonicalLocales   intlObjectFuncGetCanonicalLocales            DontEnum|Function 1
+  Collator              createCollatorConstructor                    DontEnum|PropertyCallback
+  DateTimeFormat        createDateTimeFormatConstructor              DontEnum|PropertyCallback
+  NumberFormat          createNumberFormatConstructor                DontEnum|PropertyCallback
+@end
+*/
 
 struct MatcherResult {
     String locale;
@@ -73,56 +108,29 @@ struct MatcherResult {
     size_t extensionIndex { 0 };
 };
 
-const ClassInfo IntlObject::s_info = { "Object", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(IntlObject) };
+const ClassInfo IntlObject::s_info = { "Object", &Base::s_info, &intlObjectTable, nullptr, CREATE_METHOD_TABLE(IntlObject) };
 
 IntlObject::IntlObject(VM& vm, Structure* structure)
     : JSNonFinalObject(vm, structure)
 {
 }
 
-IntlObject* IntlObject::create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
+IntlObject* IntlObject::create(VM& vm, Structure* structure)
 {
     IntlObject* object = new (NotNull, allocateCell<IntlObject>(vm.heap)) IntlObject(vm, structure);
-    object->finishCreation(vm, globalObject);
+    object->finishCreation(vm);
     return object;
 }
 
-void IntlObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
+void IntlObject::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
 
-    // Set up Collator.
-    IntlCollatorPrototype* collatorPrototype = IntlCollatorPrototype::create(vm, globalObject, IntlCollatorPrototype::createStructure(vm, globalObject, globalObject->objectPrototype()));
-    Structure* collatorStructure = IntlCollator::createStructure(vm, globalObject, collatorPrototype);
-    IntlCollatorConstructor* collatorConstructor = IntlCollatorConstructor::create(vm, IntlCollatorConstructor::createStructure(vm, globalObject, globalObject->functionPrototype()), collatorPrototype, collatorStructure);
-
-    // Set up NumberFormat.
-    IntlNumberFormatPrototype* numberFormatPrototype = IntlNumberFormatPrototype::create(vm, globalObject, IntlNumberFormatPrototype::createStructure(vm, globalObject, globalObject->objectPrototype()));
-    Structure* numberFormatStructure = IntlNumberFormat::createStructure(vm, globalObject, numberFormatPrototype);
-    IntlNumberFormatConstructor* numberFormatConstructor = IntlNumberFormatConstructor::create(vm, IntlNumberFormatConstructor::createStructure(vm, globalObject, globalObject->functionPrototype()), numberFormatPrototype, numberFormatStructure);
-
-    // Set up DateTimeFormat.
-    IntlDateTimeFormatPrototype* dateTimeFormatPrototype = IntlDateTimeFormatPrototype::create(vm, globalObject, IntlDateTimeFormatPrototype::createStructure(vm, globalObject, globalObject->objectPrototype()));
-    Structure* dateTimeFormatStructure = IntlDateTimeFormat::createStructure(vm, globalObject, dateTimeFormatPrototype);
-    IntlDateTimeFormatConstructor* dateTimeFormatConstructor = IntlDateTimeFormatConstructor::create(vm, IntlDateTimeFormatConstructor::createStructure(vm, globalObject, globalObject->functionPrototype()), dateTimeFormatPrototype, dateTimeFormatStructure);
-
-    // Set up PluralRules.
-    IntlPluralRulesPrototype* pluralRulesPrototype = IntlPluralRulesPrototype::create(vm, globalObject, IntlPluralRulesPrototype::createStructure(vm, globalObject, globalObject->objectPrototype()));
-    Structure* pluralRulesStructure = IntlPluralRules::createStructure(vm, globalObject, pluralRulesPrototype);
-    IntlPluralRulesConstructor* pluralRulesConstructor = IntlPluralRulesConstructor::create(vm, IntlPluralRulesConstructor::createStructure(vm, globalObject, globalObject->functionPrototype()), pluralRulesPrototype, pluralRulesStructure);
-
     // Constructor Properties of the Intl Object
     // https://tc39.github.io/ecma402/#sec-constructor-properties-of-the-intl-object
-    putDirectWithoutTransition(vm, vm.propertyNames->Collator, collatorConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
-    putDirectWithoutTransition(vm, vm.propertyNames->NumberFormat, numberFormatConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
-    putDirectWithoutTransition(vm, vm.propertyNames->DateTimeFormat, dateTimeFormatConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
     if (Options::useIntlPluralRules())
-        putDirectWithoutTransition(vm, vm.propertyNames->PluralRules, pluralRulesConstructor, static_cast<unsigned>(PropertyAttribute::DontEnum));
-
-    // Function Properties of the Intl Object
-    // https://tc39.github.io/ecma402/#sec-function-properties-of-the-intl-object
-    putDirectNativeFunction(vm, globalObject, Identifier::fromString(&vm, "getCanonicalLocales"), 1, intlObjectFuncGetCanonicalLocales, NoIntrinsic, static_cast<unsigned>(PropertyAttribute::DontEnum));
+        putDirectWithoutTransition(vm, vm.propertyNames->PluralRules, createPluralRulesConstructor(vm, this), static_cast<unsigned>(PropertyAttribute::DontEnum));
 }
 
 Structure* IntlObject::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
@@ -212,8 +220,7 @@ unsigned intlNumberOption(ExecState& state, JSValue options, PropertyName proper
     JSValue value = opts->get(&state, property);
     RETURN_IF_EXCEPTION(scope, 0);
 
-    scope.release();
-    return intlDefaultNumberOption(state, value, property, minimum, maximum, fallback);
+    RELEASE_AND_RETURN(scope, intlDefaultNumberOption(state, value, property, minimum, maximum, fallback));
 }
 
 unsigned intlDefaultNumberOption(ExecState& state, JSValue value, PropertyName property, unsigned minimum, unsigned maximum, unsigned fallback)
@@ -554,7 +561,7 @@ Vector<String> canonicalizeLocaleList(ExecState& state, JSValue locales)
 
             String canonicalizedTag = canonicalizeLanguageTag(tag->value(&state));
             if (canonicalizedTag.isNull()) {
-                throwException(&state, scope, createRangeError(&state, String::format("invalid language tag: %s", tag->value(&state).utf8().data())));
+                throwException(&state, scope, createRangeError(&state, "invalid language tag: " + tag->value(&state)));
                 return Vector<String>();
             }
 

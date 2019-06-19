@@ -141,7 +141,7 @@ RenderBox::LogicalExtentComputedValues RenderSliderContainer::computeLogicalHeig
 #if ENABLE(DATALIST_ELEMENT)
     if (input.renderer()->isSlider() && !isVertical && input.list()) {
         int offsetFromCenter = theme().sliderTickOffsetFromTrackCenter();
-        LayoutUnit trackHeight = 0;
+        LayoutUnit trackHeight;
         if (offsetFromCenter < 0)
             trackHeight = -2 * offsetFromCenter;
         else {
@@ -191,7 +191,7 @@ void RenderSliderContainer::layout()
     double percentageOffset = sliderPosition(input).toDouble();
     LayoutUnit availableExtent = isVertical ? track->contentHeight() : track->contentWidth();
     availableExtent -= isVertical ? thumb->height() : thumb->width();
-    LayoutUnit offset = percentageOffset * availableExtent;
+    LayoutUnit offset { percentageOffset * availableExtent };
     LayoutPoint thumbLocation = thumb->location();
     if (isVertical)
         thumbLocation.setY(thumbLocation.y() + track->contentHeight() - thumb->height() - offset);
@@ -246,7 +246,7 @@ void SliderThumbElement::dragFrom(const LayoutPoint& point)
 {
     Ref<SliderThumbElement> protectedThis(*this);
     setPositionFromPoint(point);
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     startDragging();
 #endif
 }
@@ -298,10 +298,10 @@ void SliderThumbElement::setPositionFromPoint(const LayoutPoint& absolutePoint)
 #if ENABLE(DATALIST_ELEMENT)
     const LayoutUnit snappingThreshold = renderer()->theme().sliderTickSnappingThreshold();
     if (snappingThreshold > 0) {
-        if (std::optional<Decimal> closest = input->findClosestTickMarkValue(value)) {
+        if (Optional<Decimal> closest = input->findClosestTickMarkValue(value)) {
             double closestFraction = stepRange.proportionFromValue(*closest).toDouble();
             double closestRatio = isVertical || !isLeftToRightDirection ? 1.0 - closestFraction : closestFraction;
-            LayoutUnit closestPosition = trackLength * closestRatio;
+            LayoutUnit closestPosition { trackLength * closestRatio };
             if ((closestPosition - position).abs() <= snappingThreshold)
                 value = *closest;
         }
@@ -338,7 +338,7 @@ void SliderThumbElement::stopDragging()
         renderer()->setNeedsLayout();
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 void SliderThumbElement::defaultEventHandler(Event& event)
 {
     if (!is<MouseEvent>(event)) {
@@ -356,7 +356,7 @@ void SliderThumbElement::defaultEventHandler(Event& event)
 
     MouseEvent& mouseEvent = downcast<MouseEvent>(event);
     bool isLeftButton = mouseEvent.button() == LeftButton;
-    const AtomicString& eventType = mouseEvent.type();
+    const AtomString& eventType = mouseEvent.type();
 
     // We intentionally do not call event->setDefaultHandled() here because
     // MediaControlTimelineElement::defaultEventHandler() wants to handle these
@@ -378,7 +378,7 @@ void SliderThumbElement::defaultEventHandler(Event& event)
 }
 #endif
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 bool SliderThumbElement::willRespondToMouseMoveEvents()
 {
@@ -398,7 +398,7 @@ bool SliderThumbElement::willRespondToMouseClickEvents()
     return HTMLDivElement::willRespondToMouseClickEvents();
 }
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 
 void SliderThumbElement::willDetachRenderers()
 {
@@ -523,7 +523,7 @@ void SliderThumbElement::handleTouchEvent(TouchEvent& touchEvent)
         return;
     }
 
-    const AtomicString& eventType = touchEvent.type();
+    const AtomString& eventType = touchEvent.type();
     if (eventType == eventNames().touchstartEvent) {
         handleTouchStart(touchEvent);
         return;
@@ -590,15 +590,15 @@ RefPtr<HTMLInputElement> SliderThumbElement::hostInput() const
     return downcast<HTMLInputElement>(shadowHost());
 }
 
-std::optional<ElementStyle> SliderThumbElement::resolveCustomStyle(const RenderStyle&, const RenderStyle* hostStyle)
+Optional<ElementStyle> SliderThumbElement::resolveCustomStyle(const RenderStyle&, const RenderStyle* hostStyle)
 {
     // This doesn't actually compute style. This is just a hack to pick shadow pseudo id when host style is known.
 
-    static NeverDestroyed<const AtomicString> sliderThumbShadowPseudoId("-webkit-slider-thumb", AtomicString::ConstructFromLiteral);
-    static NeverDestroyed<const AtomicString> mediaSliderThumbShadowPseudoId("-webkit-media-slider-thumb", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomString> sliderThumbShadowPseudoId("-webkit-slider-thumb", AtomString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomString> mediaSliderThumbShadowPseudoId("-webkit-media-slider-thumb", AtomString::ConstructFromLiteral);
 
     if (!hostStyle)
-        return std::nullopt;
+        return WTF::nullopt;
 
     switch (hostStyle->appearance()) {
     case MediaSliderPart:
@@ -613,10 +613,10 @@ std::optional<ElementStyle> SliderThumbElement::resolveCustomStyle(const RenderS
         m_shadowPseudoId = sliderThumbShadowPseudoId;
     }
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
-const AtomicString& SliderThumbElement::shadowPseudoId() const
+const AtomString& SliderThumbElement::shadowPseudoId() const
 {
     return m_shadowPseudoId;
 }
@@ -644,15 +644,15 @@ RenderPtr<RenderElement> SliderContainerElement::createElementRenderer(RenderSty
     return createRenderer<RenderSliderContainer>(*this, WTFMove(style));
 }
 
-std::optional<ElementStyle> SliderContainerElement::resolveCustomStyle(const RenderStyle&, const RenderStyle* hostStyle)
+Optional<ElementStyle> SliderContainerElement::resolveCustomStyle(const RenderStyle&, const RenderStyle* hostStyle)
 {
     // This doesn't actually compute style. This is just a hack to pick shadow pseudo id when host style is known.
 
-    static NeverDestroyed<const AtomicString> mediaSliderContainer("-webkit-media-slider-container", AtomicString::ConstructFromLiteral);
-    static NeverDestroyed<const AtomicString> sliderContainer("-webkit-slider-container", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomString> mediaSliderContainer("-webkit-media-slider-container", AtomString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomString> sliderContainer("-webkit-slider-container", AtomString::ConstructFromLiteral);
 
     if (!hostStyle)
-        return std::nullopt;
+        return WTF::nullopt;
 
     switch (hostStyle->appearance()) {
     case MediaSliderPart:
@@ -667,10 +667,10 @@ std::optional<ElementStyle> SliderContainerElement::resolveCustomStyle(const Ren
         m_shadowPseudoId = sliderContainer;
     }
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
-const AtomicString& SliderContainerElement::shadowPseudoId() const
+const AtomString& SliderContainerElement::shadowPseudoId() const
 {
     return m_shadowPseudoId;
 }

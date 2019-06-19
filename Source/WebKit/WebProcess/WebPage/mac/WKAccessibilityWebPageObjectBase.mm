@@ -34,6 +34,7 @@
 #import "WKSharedAPICast.h"
 #import "WKString.h"
 #import "WKStringCF.h"
+#import <WebCore/AXIsolatedTree.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/Document.h>
 #import <WebCore/Frame.h>
@@ -41,45 +42,120 @@
 #import <WebCore/Page.h>
 #import <WebCore/ScrollView.h>
 #import <WebCore/Scrollbar.h>
-#import <wtf/ObjcRuntimeExtras.h>
-
-using namespace WebKit;
+#import <wtf/ObjCRuntimeExtras.h>
 
 @implementation WKAccessibilityWebPageObjectBase
+
+- (WebCore::AXObjectCache*)axObjectCache
+{
+    if (!m_page)
+        return nullptr;
+
+    auto page = m_page->corePage();
+    if (!page)
+        return nullptr;
+
+    auto& core = page->mainFrame();
+    if (!core.document())
+        return nullptr;
+
+    return core.document()->axObjectCache();
+}
+
+- (id)accessibilityPluginObject
+{
+    auto retrieveBlock = [&self]() -> id {
+        id axPlugin = nil;
+        auto dispatchBlock = [&axPlugin, &self] {
+            if (self->m_page)
+                axPlugin = self->m_page->accessibilityObjectForMainFramePlugin();
+        };
+
+        if (isMainThread())
+            dispatchBlock();
+        else {
+            callOnMainThreadAndWait([&dispatchBlock] {
+                dispatchBlock();
+            });
+        }
+        return axPlugin;
+    };
+    
+    return retrieveBlock();
+}
+
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+- (BOOL)clientSupportsIsolatedTree
+{
+    AXClientType type = _AXGetClientForCurrentRequestUntrusted();
+    // FIXME: Remove unknown client before enabling ACCESSIBILITY_ISOLATED_TREE.
+    return type == kAXClientTypeVoiceOver || type == kAXClientTypeUnknown;
+}
+
+- (id)isolatedTreeRootObject
+{
+    if (isMainThread()) {
+        if (auto cache = [self axObjectCache]) {
+            auto tree = AXIsolatedTree::initializeTreeForPageId(m_pageID, *cache);
+
+            // Now that we have created our tree, initialize the secondary thread,
+            // so future requests come in on the other thread.
+            _AXUIElementUseSecondaryAXThread(true);
+            if (auto rootNode = tree->rootNode())
+                return rootNode->wrapper();
+        }
+    } else {
+        auto tree = AXIsolatedTree::treeForPageID(m_pageID);
+        tree->applyPendingChanges();
+        if (auto rootNode = tree->rootNode())
+            return rootNode->wrapper();
+    }
+
+    return nil;
+}
+#endif
 
 - (id)accessibilityRootObjectWrapper
 {
     if (!WebCore::AXObjectCache::accessibilityEnabled())
         WebCore::AXObjectCache::enableAccessibility();
 
-    if (!m_page)
-        return nil;
-    
-    NSObject* mainFramePluginAccessibilityObjectWrapper = m_page->accessibilityObjectForMainFramePlugin();
-    if (mainFramePluginAccessibilityObjectWrapper)
-        return mainFramePluginAccessibilityObjectWrapper;
+    if (m_hasMainFramePlugin)
+        return self.accessibilityPluginObject;
 
-    WebCore::Page* page = m_page->corePage();
-    if (!page)
-        return nil;
-    
-    WebCore::Frame& core = page->mainFrame();
-    if (!core.document())
-        return nil;
-    
-    WebCore::AXObjectCache* cache = core.document()->axObjectCache();
-    if (!cache)
-        return nil;
-    
-    if (WebCore::AccessibilityObject* root = cache->rootObject())
-        return root->wrapper();
-    
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    // If VoiceOver is on, ensure subsequent requests are now handled on the secondary AX thread.
+    bool clientSupportsIsolatedTree = [self clientSupportsIsolatedTree];
+    if (clientSupportsIsolatedTree)
+        return [self isolatedTreeRootObject];
+#endif
+
+    if (auto cache = [self axObjectCache]) {
+        if (WebCore::AccessibilityObject* root = cache->rootObject())
+            return root->wrapper();
+    }
+
     return nil;
 }
 
-- (void)setWebPage:(WebPage*)page
+- (void)setWebPage:(WebKit::WebPage*)page
 {
     m_page = page;
+
+    if (page) {
+        m_pageID = page->pageID();
+
+        auto* frame = page->mainFrame();
+        m_hasMainFramePlugin = frame && frame->document() ? frame->document()->isPluginDocument() : false;
+    } else {
+        m_pageID = { };
+        m_hasMainFramePlugin = false;
+    }
+}
+
+- (void)setHasMainFramePlugin:(bool)hasPlugin
+{
+    m_hasMainFramePlugin = hasPlugin;
 }
 
 - (void)setRemoteParent:(id)parent

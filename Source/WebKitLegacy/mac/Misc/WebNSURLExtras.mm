@@ -33,13 +33,15 @@
 #import "WebLocalizableStrings.h"
 #import "WebNSDataExtras.h"
 #import <Foundation/NSURLRequest.h>
-#import <WebCore/URL.h>
 #import <WebCore/LoaderNSURLExtras.h>
+#import <WebCore/TextEncoding.h>
 #import <WebCore/WebCoreNSURLExtras.h>
-#import <wtf/Assertions.h>
-#import <wtf/ObjcRuntimeExtras.h>
 #import <unicode/uchar.h>
 #import <unicode/uscript.h>
+#import <wtf/Assertions.h>
+#import <wtf/ObjCRuntimeExtras.h>
+#import <wtf/URL.h>
+#import <wtf/cocoa/NSURLExtras.h>
 
 using namespace WebCore;
 using namespace WTF;
@@ -108,7 +110,7 @@ using namespace WTF;
 
 - (NSString *)_web_userVisibleString
 {
-    return userVisibleString(self);
+    return WTF::userVisibleString(self);
 }
 
 - (BOOL)_web_isEmpty
@@ -131,6 +133,12 @@ using namespace WTF;
     return URLByCanonicalizingURL(self);
 }
 
+- (NSURL *)_webkit_canonicalize_with_wtf
+{
+    auto url = WTF::URL(self);
+    return url.isValid() ? (NSURL *)url : nil;
+}
+
 - (NSURL *)_webkit_URLByRemovingFragment 
 {
     return URLByTruncatingOneCharacterBeforeComponent(self, kCFURLComponentFragment);
@@ -138,7 +146,7 @@ using namespace WTF;
 
 - (NSURL *)_web_URLByRemovingUserInfo
 {
-    return URLByRemovingUserInfo(self);
+    return WTF::URLByRemovingUserInfo(self);
 }
 
 - (BOOL)_webkit_isJavaScriptURL
@@ -174,17 +182,17 @@ using namespace WTF;
 
 -(NSData *)_web_dataForURLComponentType:(CFURLComponentType)componentType
 {
-    return dataForURLComponentType(self, componentType);
+    return WTF::dataForURLComponentType(self, componentType);
 }
 
 -(NSData *)_web_schemeData
 {
-    return dataForURLComponentType(self, kCFURLComponentScheme);
+    return WTF::dataForURLComponentType(self, kCFURLComponentScheme);
 }
 
 -(NSData *)_web_hostData
 {
-    NSData *result = dataForURLComponentType(self, kCFURLComponentHost);
+    NSData *result = WTF::dataForURLComponentType(self, kCFURLComponentHost);
     NSData *scheme = [self _web_schemeData];
     // Take off localhost for file
     if ([scheme _web_isCaseInsensitiveEqualToCString:"file"]) {

@@ -29,9 +29,9 @@
 #if PLATFORM(MAC)
 
 #import "CoreGraphicsTestSPI.h"
-#import "IOKitSPI.h"
 #import <algorithm>
 #import <mach/mach_time.h>
+#import <pal/spi/cocoa/IOKitSPI.h>
 #import <wtf/RetainPtr.h>
 
 #define MOUSE_EVENT_TYPES \
@@ -198,7 +198,7 @@ bool eventIsOfGestureTypes(CGEventRef event, IOHIDEventType first, Types ... res
     RetainPtr<CGEventRef> plainEvent = adoptCF(CGEventCreate(NULL));
     CGEventRef rawPlainEvent = plainEvent.get();
 
-    NSMutableDictionary *dict = [[NSMutableDictionary alloc] init];
+    NSMutableDictionary *dict = [[[NSMutableDictionary alloc] init] autorelease];
 
     FOR_EACH_CGEVENT_INTEGER_FIELD(LOAD_INTEGER_FIELD_FROM_EVENT);
     FOR_EACH_CGEVENT_DOUBLE_FIELD(LOAD_DOUBLE_FIELD_FROM_EVENT);

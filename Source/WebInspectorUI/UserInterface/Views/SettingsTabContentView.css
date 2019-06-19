@@ -24,15 +24,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-.content-view.settings {
-    padding-bottom: 6vh;
-    overflow-y: auto;
-}
-
 .content-view.settings .navigation-bar {
-    position: -webkit-sticky;
-    top: 0;
-    z-index: 1;
     background-color: white;
 }
 
@@ -45,8 +37,18 @@
     background-color: inherit;
 }
 
+.content-view.settings .navigation-bar .item.radio.button.text-only:before {
+    display: none;
+}
+
 .content-view.settings .navigation-bar .item.radio.button.text-only.selected {
     color: var(--selected-background-color)
+}
+
+.content-view.settings > .settings-view {
+    height: 100%;
+    overflow-y: auto;
+    padding-bottom: calc(var(--console-prompt-min-height) + 10px);
 }
 
 .content-view.settings > .settings-view > .separator {
@@ -69,23 +71,14 @@
 }
 
 .content-view.settings > .settings-view > .container button {
+    -webkit-margin-end: 4px;
     font-size: inherit;
 }
 
 .content-view.settings > .settings-view > .container > .title {
-    margin-top: 2px;
     width: 50%;
+    -webkit-margin-end: 6px;
     text-align: end;
-
-    --setting-name-margin-end: 6px;
-}
-
-body[dir=ltr] .content-view.settings > .settings-view > .container > .title {
-    margin-right: var(--setting-name-margin-end);
-}
-
-body[dir=rtl] .content-view.settings > .settings-view > .container > .title {
-    margin-left: var(--setting-name-margin-end);
 }
 
 .content-view.settings > .settings-view > .container > .editor-group {
@@ -93,23 +86,22 @@ body[dir=rtl] .content-view.settings > .settings-view > .container > .title {
     flex-direction: column;
 }
 
+.content-view.settings > .settings-view > .container > .editor-group > .editor {
+    --settings-editor-child-margin-top: 0;
+}
+
+.content-view.settings > .settings-view > .container > .editor-group > .editor:first-child > * {
+    margin-top: var(--settings-editor-child-margin-top);
+}
+
 .content-view.settings > .settings-view > .container > .editor-group > .editor input {
     font-size: inherit;
 }
 
 .content-view.settings > .settings-view > .container > .editor-group > .editor input[type="checkbox"] {
+    -webkit-margin-end: 4px;
     /* Vertically align <select> with the group title text. */
     font-size: 16px;
-
-    --settings-input-checkbox-margin-end: 4px;
-}
-
-body[dir=ltr] .content-view.settings > .settings-view > .container > .editor-group > .editor input[type="checkbox"] {
-    margin-right: var(--settings-input-checkbox-margin-end);
-}
-
-body[dir=rtl] .content-view.settings > .settings-view > .container > .editor-group > .editor input[type="checkbox"] {
-    margin-left: var(--settings-input-checkbox-margin-end);
 }
 
 .content-view.settings > .settings-view > .container > .editor-group > .editor select {
@@ -120,26 +112,28 @@ body[dir=rtl] .content-view.settings > .settings-view > .container > .editor-gro
     font-size: 16px;
 
     /* Vertically align <select> with the group title text. */
-    margin-top: 0;
+    --settings-editor-child-margin-top: -2px;
 }
 
 .content-view.settings > .settings-view > .container > .editor-group > .editor input[type="number"] {
-    /* Vertically align <input> with the group title text. */
-    margin-top: -1px;
-
     max-width: 48px;
+    -webkit-margin-start: 2px;
+    -webkit-margin-end: 5px;
+    padding-top: 0;
+    padding-bottom: 0;
     text-align: end;
+    vertical-align: 1px;
 
-    --settings-input-number-margin-start: 2px;
-    --settings-input-number-margin-end: 5px;
+    /* Vertically align <input> with the group title text. */
+    --settings-editor-child-margin-top: -2px;
 }
 
-body[dir=ltr] .content-view.settings > .settings-view > .container > .editor-group > .editor input[type="number"] {
-    margin-left: var(--settings-input-number-margin-start);
-    margin-right: var(--settings-input-number-margin-end);
-}
+@media (prefers-color-scheme: dark) {
+    .content-view.settings .navigation-bar {
+        background-color: var(--background-color-content);
+    }
 
-body[dir=rtl] .content-view.settings > .settings-view > .container > .editor-group > .editor input[type="number"] {
-    margin-left: var(--settings-input-number-margin-end);
-    margin-right: var(--settings-input-number-margin-start);
+    .content-view.settings .navigation-bar .item.radio.button.text-only.selected {
+        color: var(--glyph-color-active);
+    }
 }

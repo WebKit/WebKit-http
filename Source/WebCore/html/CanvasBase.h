@@ -30,9 +30,13 @@
 
 namespace WebCore {
 
+class AffineTransform;
 class CanvasBase;
 class CanvasRenderingContext;
 class Element;
+class GraphicsContext;
+class Image;
+class ImageBuffer;
 class IntSize;
 class FloatRect;
 class ScriptExecutionContext;
@@ -58,6 +62,7 @@ public:
 
     virtual bool isHTMLCanvasElement() const { return false; }
     virtual bool isOffscreenCanvas() const { return false; }
+    virtual bool isCustomPaintCanvas() const { return false; }
 
     virtual unsigned width() const = 0;
     virtual unsigned height() const = 0;
@@ -69,7 +74,7 @@ public:
     bool originClean() const { return m_originClean; }
 
     virtual SecurityOrigin* securityOrigin() const { return nullptr; }
-    ScriptExecutionContext* scriptExecutionContext() const { return m_scriptExecutionContext; }
+    ScriptExecutionContext* scriptExecutionContext() const { return canvasBaseScriptExecutionContext();  }
 
     CanvasRenderingContext* renderingContext() const;
 
@@ -77,18 +82,33 @@ public:
     void removeObserver(CanvasObserver&);
     void notifyObserversCanvasChanged(const FloatRect&);
     void notifyObserversCanvasResized();
-    void notifyObserversCanvasDestroyed();
+    void notifyObserversCanvasDestroyed(); // Must be called in destruction before clearing m_context.
 
     HashSet<Element*> cssCanvasClients() const;
 
+    virtual GraphicsContext* drawingContext() const = 0;
+    virtual GraphicsContext* existingDrawingContext() const = 0;
+
+    virtual void makeRenderingResultsAvailable() = 0;
+    virtual void didDraw(const FloatRect&) = 0;
+
+    virtual AffineTransform baseTransform() const = 0;
+    virtual Image* copiedImage() const = 0;
+
+    bool callTracingActive() const;
+
 protected:
-    CanvasBase(ScriptExecutionContext*);
+    CanvasBase();
+
+    virtual ScriptExecutionContext* canvasBaseScriptExecutionContext() const = 0;
 
     std::unique_ptr<CanvasRenderingContext> m_context;
 
 private:
     bool m_originClean { true };
-    ScriptExecutionContext* m_scriptExecutionContext;
+#ifndef NDEBUG
+    bool m_didNotifyObserversCanvasDestroyed { false };
+#endif
     HashSet<CanvasObserver*> m_observers;
 };
 

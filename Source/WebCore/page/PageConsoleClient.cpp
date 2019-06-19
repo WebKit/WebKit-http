@@ -34,13 +34,20 @@
 #include "ChromeClient.h"
 #include "Document.h"
 #include "Frame.h"
+#include "FrameSnapshotting.h"
 #include "HTMLCanvasElement.h"
+#include "ImageBitmapRenderingContext.h"
+#include "ImageBuffer.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
+#include "IntRect.h"
 #include "JSCanvasRenderingContext2D.h"
 #include "JSExecState.h"
 #include "JSHTMLCanvasElement.h"
+#include "JSImageBitmapRenderingContext.h"
+#include "JSNode.h"
 #include "JSOffscreenCanvas.h"
+#include "Node.h"
 #include "OffscreenCanvas.h"
 #include "Page.h"
 #include "ScriptableDocumentParser.h"
@@ -57,6 +64,10 @@
 #include "WebGLRenderingContext.h"
 #endif
 
+#if ENABLE(WEBGL2)
+#include "JSWebGL2RenderingContext.h"
+#include "WebGL2RenderingContext.h"
+#endif
 
 namespace WebCore {
 using namespace Inspector;
@@ -92,32 +103,9 @@ void PageConsoleClient::unmute()
     muteCount--;
 }
 
-static void getParserLocationForConsoleMessage(Document* document, String& url, unsigned& line, unsigned& column)
-{
-    if (!document)
-        return;
-
-    // We definitely cannot associate the message with a location being parsed if we are not even parsing.
-    if (!document->parsing())
-        return;
-
-    ScriptableDocumentParser* parser = document->scriptableDocumentParser();
-    if (!parser)
-        return;
-
-    // When the parser waits for scripts, any messages must be coming from some other source, and are not related to the location of the script element that made the parser wait.
-    if (!parser->shouldAssociateConsoleMessagesWithTextPosition())
-        return;
-
-    url = document->url().string();
-    TextPosition position = parser->textPosition();
-    line = position.m_line.oneBasedInt();
-    column = position.m_column.oneBasedInt();
-}
-
 void PageConsoleClient::addMessage(std::unique_ptr<Inspector::ConsoleMessage>&& consoleMessage)
 {
-    if (consoleMessage->source() != MessageSource::CSS && !m_page.usesEphemeralSession()) {
+    if (consoleMessage->source() != MessageSource::CSS && consoleMessage->type() != MessageType::Image && !m_page.usesEphemeralSession()) {
         m_page.chrome().client().addMessageToConsole(consoleMessage->source(), consoleMessage->level(), consoleMessage->message(), consoleMessage->line(), consoleMessage->column(), consoleMessage->url());
 
         if (m_page.settings().logsPageMessagesToSystemConsoleEnabled() || shouldPrintExceptions())
@@ -132,7 +120,8 @@ void PageConsoleClient::addMessage(MessageSource source, MessageLevel level, con
     String url;
     unsigned line = 0;
     unsigned column = 0;
-    getParserLocationForConsoleMessage(document, url, line, column);
+    if (document)
+        document->getParserLocation(url, line, column);
 
     addMessage(source, level, message, url, line, column, 0, JSExecState::currentState(), requestIdentifier);
 }
@@ -235,8 +224,14 @@ static CanvasRenderingContext* canvasRenderingContext(JSC::VM& vm, ScriptArgumen
         return canvas->renderingContext();
     if (auto* context = JSCanvasRenderingContext2D::toWrapped(vm, target))
         return context;
+    if (auto* context = JSImageBitmapRenderingContext::toWrapped(vm, target))
+        return context;
 #if ENABLE(WEBGL)
     if (auto* context = JSWebGLRenderingContext::toWrapped(vm, target))
+        return context;
+#endif
+#if ENABLE(WEBGL2)
+    if (auto* context = JSWebGL2RenderingContext::toWrapped(vm, target))
         return context;
 #endif
     return nullptr;
@@ -252,6 +247,48 @@ void PageConsoleClient::recordEnd(JSC::ExecState* state, Ref<ScriptArguments>&& 
 {
     if (auto* context = canvasRenderingContext(state->vm(), arguments))
         InspectorInstrumentation::didFinishRecordingCanvasFrame(*context, true);
+}
+
+void PageConsoleClient::screenshot(JSC::ExecState* state, Ref<ScriptArguments>&& arguments)
+{
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+
+    Frame& frame = m_page.mainFrame();
+
+    std::unique_ptr<ImageBuffer> snapshot;
+
+    auto* target = objectArgumentAt(arguments, 0);
+    if (target) {
+        auto* node = JSNode::toWrapped(state->vm(), target);
+        if (!node)
+            return;
+
+        snapshot = WebCore::snapshotNode(frame, *node);
+    } else {
+        // If no target is provided, capture an image of the viewport.
+        IntRect imageRect(IntPoint::zero(), frame.view()->sizeForVisibleContent());
+        snapshot = WebCore::snapshotFrameRect(frame, imageRect, SnapshotOptionsInViewCoordinates);
+    }
+
+    if (!snapshot) {
+        addMessage(std::make_unique<Inspector::ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Log, MessageLevel::Error, "Could not capture screenshot"_s, arguments.copyRef()));
+        return;
+    }
+
+    String dataURL = snapshot->toDataURL("image/png"_s, WTF::nullopt, PreserveResolution::Yes);
+    if (dataURL.isEmpty()) {
+        addMessage(std::make_unique<Inspector::ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Log, MessageLevel::Error, "Could not capture screenshot"_s, arguments.copyRef()));
+        return;
+    }
+
+    if (target) {
+        // Log the argument before sending the image for it.
+        String messageText;
+        arguments->getFirstArgumentAsString(messageText);
+        addMessage(std::make_unique<Inspector::ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Log, MessageLevel::Log, messageText, arguments.copyRef()));
+    }
+
+    addMessage(std::make_unique<Inspector::ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Image, MessageLevel::Log, dataURL));
 }
 
 } // namespace WebCore

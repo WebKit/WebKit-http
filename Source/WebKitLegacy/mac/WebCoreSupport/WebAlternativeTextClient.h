@@ -23,9 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#ifndef WebAlternativeTextClient_h
-#define WebAlternativeTextClient_h
+#pragma once
 
 #import "CorrectionPanel.h"
 #import <WebCore/AlternativeTextClient.h>
@@ -34,7 +32,7 @@
 
 class WebAlternativeTextClient : public WebCore::AlternativeTextClient {
 public:
-    WebAlternativeTextClient(WebView *);
+    explicit WebAlternativeTextClient(WebView*);
     virtual ~WebAlternativeTextClient();
     void pageDestroyed() override;
 #if USE(AUTOCORRECTION_PANEL)
@@ -48,20 +46,17 @@ public:
     void removeDictationAlternatives(uint64_t dictationContext) override;
     Vector<String> dictationAlternatives(uint64_t dictationContext) override;
 #endif
+
 private:
-#if PLATFORM(IOS)
-#pragma clang diagnostic push
-#if defined(__has_warning) && __has_warning("-Wunused-private-field")
-#pragma clang diagnostic ignored "-Wunused-private-field"
-#endif
+#if !(USE(AUTOCORRECTION_PANEL) || USE(DICTATION_ALTERNATIVES))
+    IGNORE_WARNINGS_BEGIN("unused-private-field")
 #endif
     WebView* m_webView;
-#if PLATFORM(IOS)
-#pragma clang diagnostic pop
+#if !(USE(AUTOCORRECTION_PANEL) || USE(DICTATION_ALTERNATIVES))
+    IGNORE_WARNINGS_END
 #endif
+
 #if USE(AUTOCORRECTION_PANEL)
     CorrectionPanel m_correctionPanel;
 #endif
 };
-
-#endif // WebAlternativeTextClient_h

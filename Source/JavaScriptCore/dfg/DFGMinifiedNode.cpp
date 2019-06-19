@@ -28,6 +28,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGMinifiedIDInlines.h"
 #include "DFGNode.h"
 #include "JSCInlines.h"
 
@@ -38,12 +39,14 @@ MinifiedNode MinifiedNode::fromNode(Node* node)
     ASSERT(belongsInMinifiedGraph(node->op()));
     MinifiedNode result;
     result.m_id = MinifiedID(node);
-    result.m_op = node->op();
+    result.m_hasConstant = hasConstant(node->op());
+    result.m_isPhantomDirectArguments = node->op() == PhantomDirectArguments;
+    result.m_isPhantomClonedArguments = node->op() == PhantomClonedArguments;
     if (hasConstant(node->op()))
         result.m_info = JSValue::encode(node->asJSValue());
     else {
         ASSERT(node->op() == PhantomDirectArguments || node->op() == PhantomClonedArguments);
-        result.m_info = bitwise_cast<uintptr_t>(node->origin.semantic.inlineCallFrame);
+        result.m_info = bitwise_cast<uintptr_t>(node->origin.semantic.inlineCallFrame());
     }
     return result;
 }

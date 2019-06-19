@@ -36,25 +36,13 @@
 
  /* Needed to make the negative z-index on .selection-area works. Otherwise the background-color from .syntax-highlighted hides the selection. */
     background-color: transparent !important;
-    color: black;
-
-    --item-parent-margin-start: -15px;
-
-    --item-parent-before-padding-end: 2px;
-
-    --item-parent-shadow-after-margin-start: -2px;
+    color: var(--text-color);
 
     --item-pseudo-class-enabled-selection-before-start: 2px;
-
-    --single-item-padding-start: 2px;
 
     --sublist-margin-start: 4px;
     --sublist-padding-start: 1px;
     --sublist-border-width-start: 9px;
-}
-
-.tree-outline.dom li.hovered:not(.selected) .selection-area {
-    background-color: hsla(209, 100%, 49%, 0.1);
 }
 
 .tree-outline.dom li .selection-area {
@@ -66,40 +54,37 @@
 }
 
 .tree-outline.dom li.selected .selection-area {
-    background-color: hsl(0, 0%, 83%);
+    background-color: var(--selected-background-color-unfocused);
 }
 
 .tree-outline.dom li.elements-drag-over .selection-area {
     margin-top: -2px;
-    border-top: 2px solid hsl(209, 100%, 49%);
+    border-top: 2px solid var(--selected-background-color);
 }
 
-.tree-outline.dom:focus li.selected .selection-area {
-    background-color: hsl(209, 100%, 49%);
+.tree-outline.dom:not(.non-selectable):focus li:matches(.selected, .hovered) .selection-area {
+    background-color: var(--selected-background-color);
 }
 
-.tree-outline.dom li.selected > span::after {
+.tree-outline.dom:not(.non-selectable) li.hovered:not(.selected) .selection-area {
+    opacity: 0.3;
+}
+
+.tree-outline.dom.show-last-selected li.last-selected > span::after {
     content: " = $0";
     color: var(--console-secondary-text-color);
     position: absolute;
     white-space: pre;
 }
 
-.tree-outline.dom:focus li.selected > span::after {
+.tree-outline.dom.show-last-selected:focus li.last-selected > span::after {
     color: var(--selected-secondary-text-color);
 }
 
 .tree-outline.dom ol {
     list-style-type: none;
     margin: 0;
-}
-
-body[dir=ltr] .tree-outline.dom ol {
-    padding-left: calc(var(--sublist-margin-start) + var(--sublist-padding-start) + var(--sublist-border-width-start));
-}
-
-body[dir=rtl] .tree-outline.dom ol {
-    padding-right: calc(var(--sublist-margin-start) + var(--sublist-padding-start) + var(--sublist-border-width-start));
+    -webkit-padding-start: calc(var(--sublist-margin-start) + var(--sublist-padding-start) + var(--sublist-border-width-start));
 }
 
 .tree-outline.dom ol.children {
@@ -111,23 +96,21 @@ body[dir=rtl] .tree-outline.dom ol {
 }
 
 .tree-outline.dom li:matches(.hovered, .selected) + ol.children.expanded {
+    -webkit-margin-start: var(--sublist-margin-start);
+    -webkit-padding-start: var(--sublist-padding-start);
     border: 0 solid hsla(0, 0%, 83%, 0.5);
 }
 
 body[dir=ltr] .tree-outline.dom li:matches(.hovered, .selected) + ol.children.expanded {
-    margin-left: var(--sublist-margin-start);
-    padding-left: var(--sublist-padding-start);
     border-left-width: var(--sublist-border-width-start);
 }
 
 body[dir=rtl] .tree-outline.dom li:matches(.hovered, .selected) + ol.children.expanded {
-    margin-right: var(--sublist-margin-start);
-    padding-right: var(--sublist-padding-start);
     border-right-width: var(--sublist-border-width-start);
 }
 
 .tree-outline.dom li.selected + ol.children.expanded {
-    border-color: hsl(0, 0%, 83%);
+    border-color: hsl(0, 0%, 65%, 0.5);
 }
 
 .tree-outline.dom li {
@@ -155,12 +138,8 @@ body[dir=rtl] .tree-outline.dom li:matches(.hovered, .selected) + ol.children.ex
     width: 5px;
     height: 5px;
     content: "";
-    background-color: var(--selected-background-color);
+    background-color: var(--glyph-color-active);
     border-radius: 50%;
-}
-
-.content-view.dom-tree.show-gutter .tree-outline.dom {
-    --item-pseudo-class-enabled-selection-before-start: 17px;
 }
 
 body[dir=ltr] .tree-outline.dom li.pseudo-class-enabled > .selection-area::before {
@@ -171,12 +150,8 @@ body[dir=rtl] .tree-outline.dom li.pseudo-class-enabled > .selection-area::befor
     right: var(--item-pseudo-class-enabled-selection-before-start);
 }
 
-body[dir=ltr] .tree-outline.dom.single-node li {
-    padding-left: var(--single-item-padding-start);
-}
-
-body[dir=rtl] .tree-outline.dom.single-node li {
-    padding-right: var(--single-item-padding-start);
+.tree-outline.dom.single-node li {
+    -webkit-padding-start: 2px;
 }
 
 .tree-outline.dom:focus li.selected {
@@ -192,23 +167,21 @@ body[dir=rtl] .tree-outline.dom.single-node li {
 }
 
 .tree-outline.dom li.parent {
+    -webkit-margin-start: -15px;
     line-height: 13px;
 }
 
-body[dir=ltr] .tree-outline.dom li.parent {
-    margin-left: var(--item-parent-margin-start);
+.tree-outline.dom li .html-tag.close {
+    -webkit-margin-start: calc(-1 * var(--sublist-margin-start) - var(--sublist-border-width-start));
 }
 
-body[dir=rtl] .tree-outline.dom li.parent {
-    margin-right: var(--item-parent-margin-start);
+.tree-outline.dom li .html-tag ~ .go-to-arrow {
+    height: 13px;
+    vertical-align: -3px;
 }
 
-body[dir=ltr] .tree-outline.dom li .html-tag.close {
-    margin-left: calc(-1 * var(--sublist-margin-start) - var(--sublist-border-width-start));
-}
-
-body[dir=rtl] .tree-outline.dom li .html-tag.close {
-    margin-right: calc(-1 * var(--sublist-margin-start) - var(--sublist-border-width-start));
+.tree-outline.dom li:not(.hovered) .html-tag ~ .go-to-arrow {
+    visibility: hidden;
 }
 
 .tree-outline.dom li.parent::before {
@@ -216,24 +189,20 @@ body[dir=rtl] .tree-outline.dom li .html-tag.close {
     z-index: 20;
     width: 13px;
     height: 13px;
+    -webkit-padding-end: 2px;
     content: "";
     background-image: url(../Images/DisclosureTriangles.svg#closed-normal);
     background-size: 13px 13px;
     background-repeat: no-repeat;
 }
 
-body[dir=rtl] .tree-outline.dom li.parent::before {
-    transform: scaleX(-1);
-}
-
 body[dir=ltr] .tree-outline.dom li.parent::before {
     float: left;
-    padding-right: var(--item-parent-before-padding-end);
 }
 
 body[dir=rtl] .tree-outline.dom li.parent::before {
     float: right;
-    padding-left: var(--item-parent-before-padding-end);
+    transform: scaleX(-1);
 }
 
 .tree-outline.dom:focus li.parent.selected::before {
@@ -269,16 +238,9 @@ body[dir=rtl] .tree-outline.dom li.parent::before {
     width: calc(100% + 8px);
     height: 1.2em;
     margin-top: -13px;
+    -webkit-margin-start: -2px;
     content: "";
     background-color: hsla(0, 0%, 90%, 0.5);
-}
-
-body[dir=ltr] .tree-outline.dom li.parent.shadow::after {
-    margin-left: var(--item-parent-shadow-after-margin-start);
-}
-
-body[dir=rtl] .tree-outline.dom li.parent.shadow::after {
-    margin-right: var(--item-parent-shadow-after-margin-start);
 }
 
 .tree-outline.dom li.parent.shadow + ol.children.expanded {
@@ -305,4 +267,31 @@ body[dir=rtl] .tree-outline.dom li.parent.shadow::after {
 
 .highlight .selection-area {
     animation: "dom-tree-outline-highlight-fadeout" 2s;
+}
+
+.tree-outline.dom li .highlight {
+    background-color: hsla(53, 83%, 53%, 0.2);
+    border-bottom: 1px solid hsl(47, 82%, 60%);
+}
+
+@media (prefers-color-scheme: dark) {
+    .tree-outline.dom .shadow {
+        color: var(--text-color);
+    }
+
+    /* FIXME: extract this as a variable. It's slightly different from var(background-color-secondary),
+    but close enough for now. It needs to use partial translucency so that the selection area shines through. */
+    .tree-outline.dom li.parent.shadow + ol.children.expanded,
+    .tree-outline.dom li.parent.shadow::after {
+        background-color: hsla(0, 0%, 90%, 0.1);
+    }
+
+    .showing-find-banner .tree-outline.dom .search-highlight {
+        /* FIXME: This should use a variable. */
+        background-color: hsla(53, 83%, 53%, 0.8);
+    }
+
+    .tree-outline.dom .html-pseudo-element {
+        color: hsl(0, 80%, 65%);
+    }
 }

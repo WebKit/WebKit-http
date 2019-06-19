@@ -1,6 +1,6 @@
 # Copyright (C) 2010 Google Inc. All rights reserved.
 # Copyright (C) 2010 Gabor Rapcsanyi (rgabor@inf.u-szeged.hu), University of Szeged
-# Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
+# Copyright (C) 2011, 2016, 2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -36,11 +36,13 @@ import sys
 import traceback
 
 from webkitpy.common.host import Host
+from webkitpy.common.interrupt_debugging import log_stack_trace_on_ctrl_c, log_stack_trace_on_term
 from webkitpy.layout_tests.controllers.manager import Manager
 from webkitpy.layout_tests.models.test_run_results import INTERRUPTED_EXIT_STATUS
 from webkitpy.port import configuration_options, platform_options
 from webkitpy.layout_tests.views import buildbot_results
 from webkitpy.layout_tests.views import printing
+from webkitpy.results.options import upload_options
 
 
 _log = logging.getLogger(__name__)
@@ -73,6 +75,10 @@ def main(argv, stdout, stderr):
         # FIXME: is this the best way to handle unsupported port names?
         print(str(e), file=stderr)
         return EXCEPTIONAL_EXIT_STATUS
+
+    stack_trace_path = host.filesystem.join(port.results_directory(), 'python_stack_trace.txt')
+    log_stack_trace_on_ctrl_c(output_file=stack_trace_path)
+    log_stack_trace_on_term(output_file=stack_trace_path)
 
     if options.print_expectations:
         return _print_expectations(port, options, args, stderr)
@@ -241,7 +247,8 @@ def parse_args(args):
                  "'only' == only run the SKIP tests, "
                  "'always' == always skip, even if listed on the command line.")),
         optparse.make_option("--force", action="store_true", default=False,
-            help="Run all tests with PASS as expected result, even those marked SKIP in the test list (implies --skipped=ignore)"),
+            help="Run all tests with PASS as expected result, even those marked SKIP in the test list or " + \
+                 "those which are device-specific (implies --skipped=ignore)"),
         optparse.make_option("--time-out-ms",
             help="Set the timeout for each test"),
         optparse.make_option("--order", action="store", default="natural",
@@ -316,17 +323,13 @@ def parse_args(args):
         optparse.make_option("--wptserver-doc-root", type="string", help=("Set web platform server document root, relative to LayoutTests directory")),
     ]))
 
-    # FIXME: Move these into json_results_generator.py
-    option_group_definitions.append(("Result JSON Options", [
+    # FIXME: Remove this group once the old results dashboards are deprecated.
+    option_group_definitions.append(("Legacy Result Options", [
         optparse.make_option("--master-name", help="The name of the buildbot master."),
-        optparse.make_option("--builder-name", default="",
-            help=("The name of the builder shown on the waterfall running this script. e.g. Apple MountainLion Release WK2 (Tests).")),
         optparse.make_option("--build-name", default="DUMMY_BUILD_NAME",
             help=("The name of the builder used in its path, e.g. webkit-rel.")),
         optparse.make_option("--build-slave", default="DUMMY_BUILD_SLAVE",
             help=("The name of the buildslave used. e.g. apple-macpro-6.")),
-        optparse.make_option("--build-number", default="DUMMY_BUILD_NUMBER",
-            help=("The build number of the builder running this script.")),
         optparse.make_option("--test-results-server", action="append", default=[],
             help=("If specified, upload results json files to this appengine server.")),
         optparse.make_option("--results-server-host", action="append", default=[],
@@ -338,6 +341,8 @@ def parse_args(args):
         optparse.make_option("--allowed-host", type="string", action="append", default=[],
             help=("If specified, tests are allowed to make requests to the specified hostname."))
     ]))
+
+    option_group_definitions.append(('Upload Options', upload_options()))
 
     option_parser = optparse.OptionParser(usage="%prog [options] [<path>...]")
 
@@ -371,8 +376,7 @@ def _print_expectations(port, options, args, logging_stream):
 def _set_up_derived_options(port, options):
     """Sets the options values that depend on other options values."""
     if not options.child_processes:
-        options.child_processes = os.environ.get("WEBKIT_TEST_CHILD_PROCESSES",
-                                                 str(port.default_child_processes()))
+        options.child_processes = os.environ.get('WEBKIT_TEST_CHILD_PROCESSES')
 
     if not options.configuration:
         options.configuration = port.default_configuration()

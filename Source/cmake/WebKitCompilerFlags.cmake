@@ -104,11 +104,11 @@ if (COMPILER_IS_GCC_OR_CLANG)
         WEBKIT_APPEND_GLOBAL_COMPILER_FLAGS(-fno-exceptions)
         WEBKIT_APPEND_GLOBAL_CXX_FLAGS(-fno-rtti)
 
-        check_cxx_compiler_flag("-std=c++14" CXX_COMPILER_SUPPORTS_CXX14)
-        if (CXX_COMPILER_SUPPORTS_CXX14)
-            WEBKIT_APPEND_GLOBAL_CXX_FLAGS(-std=c++14)
+        check_cxx_compiler_flag("-std=c++17" CXX_COMPILER_SUPPORTS_CXX17)
+        if (CXX_COMPILER_SUPPORTS_CXX17)
+            WEBKIT_APPEND_GLOBAL_CXX_FLAGS(-std=c++17)
         else ()
-            message(FATAL_ERROR "Compiler with C++14 support is required")
+            message(FATAL_ERROR "Compiler with C++17 support is required")
         endif ()
 
         if (WIN32)
@@ -119,9 +119,7 @@ if (COMPILER_IS_GCC_OR_CLANG)
     endif ()
 
     # Warnings to be enabled
-    WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS(-Wall
-                                         -Wextra
-                                         -Wcast-align
+    WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS(-Wcast-align
                                          -Wformat-security
                                          -Wmissing-format-attribute
                                          -Wpointer-arith
@@ -133,18 +131,34 @@ if (COMPILER_IS_GCC_OR_CLANG)
     WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS(-Qunused-arguments
                                          -Wno-maybe-uninitialized
                                          -Wno-noexcept-type
-                                         -Wno-parentheses-equality)
+                                         -Wno-parentheses-equality
+                                         -Wno-psabi)
 
     # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=80947
     if (${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS "8.0" AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         WEBKIT_PREPEND_GLOBAL_CXX_FLAGS(-Wno-attributes)
     endif ()
+
+    # -Wexpansion-to-defined produces false positives with GCC but not Clang
+    # https://bugs.webkit.org/show_bug.cgi?id=167643#c13
+    if (CMAKE_COMPILER_IS_GNUCXX)
+        WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS(-Wno-expansion-to-defined)
+    endif ()
+
+    # Force SSE2 fp on x86 builds.
+    if (WTF_CPU_X86 AND NOT CMAKE_CROSSCOMPILING)
+        WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS(-msse2 -mfpmath=sse)
+        include(DetectSSE2)
+        if (NOT SSE2_SUPPORT_FOUND)
+            message(FATAL_ERROR "SSE2 support is required to compile WebKit")
+        endif ()
+    endif ()
 endif ()
 
-# -Wexpansion-to-defined produces false positives with GCC but not Clang
-# https://bugs.webkit.org/show_bug.cgi?id=167643#c13
-if (CMAKE_COMPILER_IS_GNUCXX)
-    WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS(-Wno-expansion-to-defined)
+if (COMPILER_IS_GCC_OR_CLANG AND NOT MSVC)
+    # Don't give -Wall to clang-cl because clang-cl treats /Wall and -Wall as -Weverything.
+    # -Wall and -Wextra should be specified before -Wno-* for Clang.
+    WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS(-Wall -Wextra)
 endif ()
 
 # Ninja tricks compilers into turning off color support.
@@ -161,20 +175,62 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND NOT "${LOWERCASE_CMAKE_HOST_SY
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "-Wl,--no-keep-memory ${CMAKE_SHARED_LINKER_FLAGS_DEBUG}")
 endif ()
 
+if (LTO_MODE AND COMPILER_IS_CLANG)
+    set(CMAKE_C_FLAGS "-flto=${LTO_MODE} ${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "-flto=${LTO_MODE} ${CMAKE_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "-flto=${LTO_MODE} ${CMAKE_EXE_LINKER_FLAGS}")
+    set(CMAKE_SHARED_LINKER_FLAGS "-flto=${LTO_MODE} ${CMAKE_SHARED_LINKER_FLAGS}")
+    set(CMAKE_MODULE_LINKER_FLAGS "-flto=${LTO_MODE} ${CMAKE_MODULE_LINKER_FLAGS}")
+endif ()
+
 if (COMPILER_IS_GCC_OR_CLANG)
     # Careful: this needs to be above where ENABLED_COMPILER_SANITIZERS is set.
     # Also, it's not possible to use the normal prepend/append macros for
-    # -fsanitize=address, because check_cxx_compiler_flag will report it's
+    # -fsanitize=* flags, because check_cxx_compiler_flag will report it's
     # unsupported, because it causes the build to fail if not used when linking.
-    option(ENABLE_ADDRESS_SANITIZER "Enable address sanitizer" OFF)
-    if (ENABLE_ADDRESS_SANITIZER)
-        WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS(-fno-omit-frame-pointer
-                                             -fno-optimize-sibling-calls)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
-        set(CMAKE_EXE_LINKER_FLAGS "-lpthread ${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
-        set(CMAKE_SHARED_LINKER_FLAGS "-lpthread ${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address")
-        set(CMAKE_MODULE_LINKER_FLAGS "-lpthread ${CMAKE_MODULE_LINKER_FLAGS} -fsanitize=address")
+    if (ENABLE_SANITIZERS)
+        if (MSVC AND WTF_CPU_X86_64)
+            find_library(CLANG_ASAN_LIBRARY clang_rt.asan_dynamic_runtime_thunk-x86_64 ${CLANG_LIB_PATH})
+            find_library(CLANG_ASAN_RT_LIBRARY clang_rt.asan_dynamic-x86_64 PATHS ${CLANG_LIB_PATH})
+            set(SANITIZER_LINK_FLAGS "\"${CLANG_ASAN_LIBRARY}\" \"${CLANG_ASAN_RT_LIBRARY}\"")
+        else ()
+            set(SANITIZER_LINK_FLAGS "-lpthread")
+        endif ()
+
+        foreach (SANITIZER ${ENABLE_SANITIZERS})
+            if (${SANITIZER} MATCHES "address")
+                WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS("-fno-omit-frame-pointer -fno-optimize-sibling-calls")
+                set(SANITIZER_COMPILER_FLAGS "-fsanitize=address ${SANITIZER_COMPILER_FLAGS}")
+                set(SANITIZER_LINK_FLAGS "-fsanitize=address ${SANITIZER_LINK_FLAGS}")
+
+            elseif (${SANITIZER} MATCHES "undefined")
+                WEBKIT_PREPEND_GLOBAL_COMPILER_FLAGS("-fno-omit-frame-pointer -fno-optimize-sibling-calls")
+                # -fsanitize=vptr is incompatible with -fno-rtti
+                set(SANITIZER_COMPILER_FLAGS "-fsanitize=undefined -frtti ${SANITIZER_COMPILER_FLAGS}")
+                set(SANITIZER_LINK_FLAGS "-fsanitize=undefined ${SANITIZER_LINK_FLAGS}")
+
+            elseif (${SANITIZER} MATCHES "thread" AND NOT MSVC)
+                set(SANITIZER_COMPILER_FLAGS "-fsanitize=thread ${SANITIZER_COMPILER_FLAGS}")
+                set(SANITIZER_LINK_FLAGS "-fsanitize=thread ${SANITIZER_LINK_FLAGS}")
+
+            elseif (${SANITIZER} MATCHES "memory" AND COMPILER_IS_CLANG AND NOT MSVC)
+                set(SANITIZER_COMPILER_FLAGS "-fsanitize=memory ${SANITIZER_COMPILER_FLAGS}")
+                set(SANITIZER_LINK_FLAGS "-fsanitize=memory ${SANITIZER_LINK_FLAGS}")
+
+            elseif (${SANITIZER} MATCHES "leak" AND NOT MSVC)
+                set(SANITIZER_COMPILER_FLAGS "-fsanitize=leak ${SANITIZER_COMPILER_FLAGS}")
+                set(SANITIZER_LINK_FLAGS "-fsanitize=leak ${SANITIZER_LINK_FLAGS}")
+
+            else ()
+                message(FATAL_ERROR "Unsupported sanitizer: ${SANITIZER}")
+            endif ()
+        endforeach ()
+
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SANITIZER_COMPILER_FLAGS}")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${SANITIZER_COMPILER_FLAGS}")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${SANITIZER_LINK_FLAGS}")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${SANITIZER_LINK_FLAGS}")
+        set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} ${SANITIZER_LINK_FLAGS}")
     endif ()
 endif ()
 

@@ -26,10 +26,9 @@
 #import "config.h"
 #import <WebKit/WebKit.h>
 
-#if WK_API_ENABLED
-
 #import "PlatformUtilities.h"
 #import "Utilities.h"
+#import <WebKit/WKPreferencesRef.h>
 #import <WebKit/WKUIDelegatePrivate.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKit/_WKInputDelegate.h>
@@ -126,6 +125,9 @@ static void expectException(void (^completionHandler)())
 TEST(WebKit, DuplicateCompletionHandlerCalls)
 {
     auto webView = adoptNS([[WKWebView alloc] initWithFrame:CGRectMake(0, 0, 800, 600)]);
+    auto preferences = (__bridge WKPreferencesRef)[[webView configuration] preferences];
+    WKPreferencesSetWebSQLDisabled(preferences, false);
+
     auto delegate = adoptNS([[DuplicateCompletionHandlerCallsDelegate alloc] init]);
     [webView setNavigationDelegate:delegate.get()];
     [webView setUIDelegate:delegate.get()];
@@ -134,5 +136,3 @@ TEST(WebKit, DuplicateCompletionHandlerCalls)
 
     Util::run(&testFinished);
 }
-
-#endif // WK_API_ENABLED

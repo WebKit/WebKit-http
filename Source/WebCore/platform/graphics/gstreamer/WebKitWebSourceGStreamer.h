@@ -20,10 +20,12 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
+#include <gst/base/gstpushsrc.h>
 #include <gst/gst.h>
 
 namespace WebCore {
 class MediaPlayer;
+class SecurityOrigin;
 }
 
 G_BEGIN_DECLS
@@ -34,23 +36,26 @@ G_BEGIN_DECLS
 #define WEBKIT_IS_WEB_SRC(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), WEBKIT_TYPE_WEB_SRC))
 #define WEBKIT_IS_WEB_SRC_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), WEBKIT_TYPE_WEB_SRC))
 
+#define WEBKIT_WEB_SRC_PLAYER_CONTEXT_TYPE_NAME  "webkit.media-player"
+
 typedef struct _WebKitWebSrc        WebKitWebSrc;
 typedef struct _WebKitWebSrcClass   WebKitWebSrcClass;
 typedef struct _WebKitWebSrcPrivate WebKitWebSrcPrivate;
 
 struct _WebKitWebSrc {
-    GstBin parent;
+    GstPushSrc parent;
 
     WebKitWebSrcPrivate *priv;
 };
 
 struct _WebKitWebSrcClass {
-    GstBinClass parentClass;
+    GstPushSrcClass parentClass;
 };
 
 GType webkit_web_src_get_type(void);
 void webKitWebSrcSetMediaPlayer(WebKitWebSrc*, WebCore::MediaPlayer*);
 bool webKitSrcPassedCORSAccessCheck(WebKitWebSrc*);
+bool webKitSrcWouldTaintOrigin(WebKitWebSrc*, const WebCore::SecurityOrigin&);
 
 G_END_DECLS
 

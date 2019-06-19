@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -54,11 +54,11 @@ public:
     CommonData* dfgCommon() override;
     JITCode* dfg() override;
     
-    OSREntryData* appendOSREntryData(unsigned bytecodeIndex, unsigned machineCodeOffset)
+    OSREntryData* appendOSREntryData(unsigned bytecodeIndex, CodeLocationLabel<OSREntryPtrTag> machineCode)
     {
         DFG::OSREntryData entry;
         entry.m_bytecodeIndex = bytecodeIndex;
-        entry.m_machineCodeOffset = machineCodeOffset;
+        entry.m_machineCode = machineCode;
         osrEntry.append(entry);
         return &osrEntry.last();
     }
@@ -98,7 +98,7 @@ public:
     // stack. Currently, it also has the restriction that the values must be in their
     // bytecode-designated stack slots.
     void reconstruct(
-        ExecState*, CodeBlock*, CodeOrigin, unsigned streamIndex, Operands<JSValue>& result);
+        ExecState*, CodeBlock*, CodeOrigin, unsigned streamIndex, Operands<Optional<JSValue>>& result);
 
 #if ENABLE(FTL_JIT)
     // NB. All of these methods take CodeBlock* because they may want to use
@@ -121,12 +121,14 @@ public:
 #if ENABLE(FTL_JIT)
     CodeBlock* osrEntryBlock() { return m_osrEntryBlock.get(); }
     void setOSREntryBlock(VM&, const JSCell* owner, CodeBlock* osrEntryBlock);
-    void clearOSREntryBlock() { m_osrEntryBlock.clear(); }
+    void clearOSREntryBlockAndResetThresholds(CodeBlock* dfgCodeBlock);
 #endif
 
     static ptrdiff_t commonDataOffset() { return OBJECT_OFFSETOF(JITCode, common); }
 
-    std::optional<CodeOrigin> findPC(CodeBlock*, void* pc) override;
+    Optional<CodeOrigin> findPC(CodeBlock*, void* pc) override;
+
+    using DirectJITCode::initializeCodeRefForDFG;
     
 private:
     friend class JITCompiler; // Allow JITCompiler to call setCodeRef().

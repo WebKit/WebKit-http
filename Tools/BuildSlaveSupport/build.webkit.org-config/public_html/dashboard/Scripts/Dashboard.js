@@ -25,15 +25,17 @@
 
 Dashboard = {
     Platform: {
-        macOSMojave: { name: "macos-mojave", readableName: "macOS Mojave", order: 6 },
-        macOSHighSierra: { name: "macos-highsierra", readableName: "macOS High Sierra", order: 7 },
-        macOSSierra: { name: "macos-sierra", readableName: "macOS Sierra", order: 8 },
-        iOS11Simulator: { name: "ios-simulator-11", readableName: "iOS 11 Simulator", order: 20 },
-        iOS11Device: { name: "ios-11", readableName: "iOS 11", order: 25 },
-        Windows10: { name: "windows-10", readableName: "Windows 10", order: 50 },
-        Windows7: { name: "windows-7", readableName: "Windows 7", order: 60 },
+        macOSCatalina: { name: "macos-catalina", readableName: "macOS Catalina", order: 1 },
+        macOSMojave: { name: "macos-mojave", readableName: "macOS Mojave", order: 2 },
+        macOSHighSierra: { name: "macos-highsierra", readableName: "macOS High Sierra", order: 3 },
+        iOS12Simulator: { name: "ios-simulator-12", readableName: "iOS 12 Simulator", order: 20 },
+        iOS12Device: { name: "ios-12", readableName: "iOS 12", order: 25 },
+        Windows10: { name: "windows-10", readableName: "Windows 10", order: 30 },
+        Windows7: { name: "windows-7", readableName: "Windows 7", order: 35 },
+        WinCairo: { name: "wincairo-windows-10", readableName: "WinCairo", order: 50 },
         LinuxWPE: { name : "linux-wpe", readableName: "Linux WPE", order: 90 },
-        LinuxGTK: { name : "linux-gtk", readableName: "Linux GTK", order: 91 }
+        LinuxGTK: { name : "linux-gtk", readableName: "Linux GTK", order: 91 },
+        LinuxJSCOnly: { name : "linux-jsconly", readableName: "Linux JSCOnly", order: 92 },
     },
     Branch: {},
     Repository: {

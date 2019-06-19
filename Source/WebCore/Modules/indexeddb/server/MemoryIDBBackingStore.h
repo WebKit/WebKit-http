@@ -39,6 +39,7 @@ namespace IDBServer {
 class MemoryObjectStore;
 
 class MemoryIDBBackingStore : public IDBBackingStore {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static std::unique_ptr<MemoryIDBBackingStore> create(const IDBDatabaseIdentifier&);
     
@@ -78,8 +79,13 @@ public:
     bool supportsSimultaneousTransactions() final { return true; }
     bool isEphemeral() final { return true; }
 
+    void setQuota(uint64_t quota) final { UNUSED_PARAM(quota); };
+    uint64_t databasesSizeForOrigin() const final;
+
     void removeObjectStoreForVersionChangeAbort(MemoryObjectStore&);
     void restoreObjectStoreForVersionChangeAbort(Ref<MemoryObjectStore>&&);
+
+    bool hasTransaction(const IDBResourceIdentifier& identifier) const final { return m_transactions.contains(identifier); }
 
 private:
     RefPtr<MemoryObjectStore> takeObjectStoreByIdentifier(uint64_t identifier);

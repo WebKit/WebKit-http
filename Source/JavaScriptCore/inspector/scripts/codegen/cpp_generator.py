@@ -28,8 +28,12 @@ import logging
 import os.path
 import re
 
-from generator import ucfirst, Generator
-from models import PrimitiveType, ObjectType, ArrayType, EnumType, AliasedType, Frameworks
+try:
+    from .generator import ucfirst, Generator
+    from .models import PrimitiveType, ObjectType, ArrayType, EnumType, AliasedType, Frameworks
+except ValueError:
+    from generator import ucfirst, Generator
+    from models import PrimitiveType, ObjectType, ArrayType, EnumType, AliasedType, Frameworks
 
 log = logging.getLogger('global')
 
@@ -207,7 +211,7 @@ class CppGenerator(Generator):
         if isinstance(_type, PrimitiveType):
             cpp_name = CppGenerator.cpp_name_for_primitive_type(_type)
             if parameter.is_optional:
-                return "std::optional<%s>&" % cpp_name
+                return "Optional<%s>&" % cpp_name
             else:
                 return '%s*' % cpp_name
         if isinstance(_type, EnumType):
@@ -225,19 +229,26 @@ class CppGenerator(Generator):
         if isinstance(_type, AliasedType):
             _type = _type.aliased_type  # Fall through.
 
-        if isinstance(_type, EnumType):
-            _type = _type.primitive_type  # Fall through.
-
         if isinstance(_type, (ObjectType, ArrayType)):
             return 'RefPtr<%s>&&' % CppGenerator.cpp_protocol_type_for_type(_type)
         if isinstance(_type, PrimitiveType):
             cpp_name = CppGenerator.cpp_name_for_primitive_type(_type)
             if parameter.is_optional:
-                return "std::optional<%s>&" % cpp_name
+                return "Optional<%s>&" % cpp_name
             elif _type.qualified_name() in ['integer', 'number']:
                 return CppGenerator.cpp_name_for_primitive_type(_type)
             elif _type.qualified_name() in ['string']:
                 return 'const %s&' % cpp_name
+            else:
+                return cpp_name
+        if isinstance(_type, EnumType):
+            if _type.is_anonymous:
+                cpp_name = '%sBackendDispatcherHandler::%s' % (_type.type_domain().domain_name, ucfirst(parameter.parameter_name))
+            else:
+                cpp_name = 'Inspector::Protocol::%s::%s' % (_type.type_domain().domain_name, _type.raw_name())
+
+            if parameter.is_optional:
+                return "Optional<%s>" % cpp_name
             else:
                 return cpp_name
 
@@ -265,7 +276,7 @@ class CppGenerator(Generator):
             if _type.qualified_name() in ['any', 'object']:
                 return "RefPtr<%s>" % CppGenerator.cpp_name_for_primitive_type(_type)
             elif parameter.is_optional and _type.qualified_name() not in ['boolean', 'string', 'integer']:
-                return "std::optional<%s>" % cpp_name
+                return "Optional<%s>" % cpp_name
             else:
                 return cpp_name
 
@@ -277,12 +288,12 @@ class CppGenerator(Generator):
         if isinstance(_type, AliasedType):
             builder_type = CppGenerator.cpp_protocol_type_for_type(_type)
             if parameter.is_optional:
-                return "std::optional<%s>" % builder_type
+                return "Optional<%s>" % builder_type
             return '%s' % builder_type
         if isinstance(_type, PrimitiveType):
             cpp_name = CppGenerator.cpp_name_for_primitive_type(_type)
             if parameter.is_optional:
-                return "std::optional<%s>" % cpp_name
+                return "Optional<%s>" % cpp_name
             else:
                 return cpp_name
         if isinstance(_type, EnumType):

@@ -26,7 +26,7 @@
 #include "config.h"
 #include "HeapVerifier.h"
 
-#include "CodeBlock.h"
+#include "CodeBlockInlines.h"
 #include "HeapIterationScope.h"
 #include "JSCInlines.h"
 #include "JSObject.h"
@@ -330,8 +330,7 @@ bool HeapVerifier::validateJSCell(VM* expectedVM, JSCell* cell, CellProfile* pro
         CodeBlock* codeBlock = jsDynamicCast<CodeBlock*>(vm, cell);
         if (UNLIKELY(codeBlock)) {
             bool success = true;
-            for (unsigned i = 0; i < codeBlock->totalNumberOfValueProfiles(); ++i) {
-                ValueProfile& valueProfile = codeBlock->getFromAllValueProfiles(i);
+            codeBlock->forEachValueProfile([&](ValueProfile& valueProfile, bool) {
                 for (unsigned i = 0; i < ValueProfile::totalNumberOfBuckets; ++i) {
                     JSValue value = JSValue::decode(valueProfile.m_buckets[i]);
                     if (!value)
@@ -346,7 +345,7 @@ bool HeapVerifier::validateJSCell(VM* expectedVM, JSCell* cell, CellProfile* pro
                         continue;
                     }
                 }
-            }
+            });
             if (!success)
                 return false;
         }

@@ -29,8 +29,8 @@
 #import <wtf/Vector.h>
 #import <wtf/RetainPtr.h>
 
-#if !PLATFORM(IOS)
-#import <PDFKit/PDFDocument.h>
+#if !PLATFORM(IOS_FAMILY)
+#import <Quartz/Quartz.h>
 #endif
 
 static void appendValuesInPDFNameSubtreeToVector(CGPDFDictionaryRef subtree, Vector<CGPDFObjectRef>& values)
@@ -130,7 +130,7 @@ NSArray *allScriptsInPDFDocument(CGPDFDocumentRef pdfDocument)
     return scripts;
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 NSArray *allScriptsInPDFDocument(PDFDocument *document)
 {
     return allScriptsInPDFDocument([document documentRef]);

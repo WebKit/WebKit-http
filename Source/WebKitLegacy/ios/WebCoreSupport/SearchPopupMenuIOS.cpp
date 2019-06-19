@@ -19,27 +19,27 @@
 
 #include "SearchPopupMenuIOS.h"
 
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 using namespace WebCore;
 
 SearchPopupMenuIOS::SearchPopupMenuIOS(PopupMenuClient* client)
-    : m_popup(adoptRef(new PopupMenuIOS(client)))
+    : m_popup(adoptRef(*new PopupMenuIOS(client)))
 {
 }
 
 PopupMenu* SearchPopupMenuIOS::popupMenu()
 {
-    return m_popup.get();
+    return m_popup.ptr();
 }
 
-void SearchPopupMenuIOS::saveRecentSearches(const AtomicString&, const Vector<RecentSearch>& /*searchItems*/)
+void SearchPopupMenuIOS::saveRecentSearches(const AtomString&, const Vector<RecentSearch>& /*searchItems*/)
 {
 }
 
-void SearchPopupMenuIOS::loadRecentSearches(const AtomicString&, Vector<RecentSearch>& /*searchItems*/)
+void SearchPopupMenuIOS::loadRecentSearches(const AtomString&, Vector<RecentSearch>& /*searchItems*/)
 {
 }
 
@@ -48,4 +48,4 @@ bool SearchPopupMenuIOS::enabled()
     return false;
 }
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)

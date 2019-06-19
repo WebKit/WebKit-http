@@ -46,6 +46,15 @@ WI.MemoryTimeline = class MemoryTimeline extends WI.Timeline
 
         this._pressureEvents = [];
     }
+
+    addRecord(record)
+    {
+        let lastRecord = this.records.lastValue;
+        if (lastRecord)
+            record.adjustStartTimeToLastRecord(lastRecord);
+
+        super.addRecord(record);
+    }
 };
 
 WI.MemoryTimeline.Event = {

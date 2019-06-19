@@ -15,7 +15,7 @@
 #include "absl/memory/memory.h"
 #include "api/audio_codecs/builtin_audio_decoder_factory.h"
 #include "api/audio_codecs/builtin_audio_encoder_factory.h"
-#include "api/test/fakeconstraints.h"
+#include "api/create_peerconnection_factory.h"
 #include "api/videosourceproxy.h"
 #include "media/engine/internaldecoderfactory.h"
 #include "media/engine/internalencoderfactory.h"
@@ -164,12 +164,11 @@ bool SimplePeerConnection::CreatePeerConnection(const char** turn_urls,
   webrtc::PeerConnectionInterface::IceServer stun_server;
   stun_server.uri = GetPeerConnectionString();
   config_.servers.push_back(stun_server);
-
-  webrtc::FakeConstraints constraints;
-  constraints.SetAllowDtlsSctpDataChannels();
+  config_.enable_rtp_data_channel = true;
+  config_.enable_dtls_srtp = false;
 
   peer_connection_ = g_peer_connection_factory->CreatePeerConnection(
-      config_, &constraints, nullptr, nullptr, this);
+      config_, nullptr, nullptr, this);
 
   return peer_connection_.get() != nullptr;
 }
@@ -207,12 +206,12 @@ bool SimplePeerConnection::CreateOffer() {
   if (!peer_connection_.get())
     return false;
 
-  webrtc::FakeConstraints constraints;
+  webrtc::PeerConnectionInterface::RTCOfferAnswerOptions options;
   if (mandatory_receive_) {
-    constraints.SetMandatoryReceiveAudio(true);
-    constraints.SetMandatoryReceiveVideo(true);
+    options.offer_to_receive_audio = true;
+    options.offer_to_receive_video = true;
   }
-  peer_connection_->CreateOffer(this, &constraints);
+  peer_connection_->CreateOffer(this, options);
   return true;
 }
 
@@ -220,12 +219,12 @@ bool SimplePeerConnection::CreateAnswer() {
   if (!peer_connection_.get())
     return false;
 
-  webrtc::FakeConstraints constraints;
+  webrtc::PeerConnectionInterface::RTCOfferAnswerOptions options;
   if (mandatory_receive_) {
-    constraints.SetMandatoryReceiveAudio(true);
-    constraints.SetMandatoryReceiveVideo(true);
+    options.offer_to_receive_audio = true;
+    options.offer_to_receive_video = true;
   }
-  peer_connection_->CreateAnswer(this, &constraints);
+  peer_connection_->CreateAnswer(this, options);
   return true;
 }
 
@@ -450,7 +449,8 @@ void SimplePeerConnection::AddStreams(bool audio_only) {
 
     rtc::scoped_refptr<webrtc::jni::AndroidVideoTrackSource> source(
         new rtc::RefCountedObject<webrtc::jni::AndroidVideoTrackSource>(
-            g_signaling_thread.get(), env, false));
+            g_signaling_thread.get(), env, /* is_screencast= */ false,
+            /* align_timestamps= */ true));
     rtc::scoped_refptr<webrtc::VideoTrackSourceProxy> proxy_source =
         webrtc::VideoTrackSourceProxy::Create(g_signaling_thread.get(),
                                               g_worker_thread.get(), source);

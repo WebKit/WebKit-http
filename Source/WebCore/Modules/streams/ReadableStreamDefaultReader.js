@@ -25,6 +25,21 @@
 
 // @conditional=ENABLE(STREAMS_API)
 
+function initializeReadableStreamDefaultReader(stream)
+{
+    "use strict";
+
+    if (!@isReadableStream(stream))
+        @throwTypeError("ReadableStreamDefaultReader needs a ReadableStream");
+    if (@isReadableStreamLocked(stream))
+        @throwTypeError("ReadableStream is locked");
+
+    @readableStreamReaderGenericInitialize(this, stream);
+    @putByIdDirectPrivate(this, "readRequests", []);
+
+    return this;
+}
+
 function cancel(reason)
 {
     "use strict";
@@ -33,7 +48,7 @@ function cancel(reason)
         return @Promise.@reject(@makeThisTypeError("ReadableStreamDefaultReader", "cancel"));
 
     if (!@getByIdDirectPrivate(this, "ownerReadableStream"))
-        return @Promise.@reject(new @TypeError("cancel() called on a reader owned by no readable stream"));
+        return @Promise.@reject(@makeTypeError("cancel() called on a reader owned by no readable stream"));
 
     return @readableStreamReaderGenericCancel(this, reason);
 }
@@ -45,7 +60,7 @@ function read()
     if (!@isReadableStreamDefaultReader(this))
         return @Promise.@reject(@makeThisTypeError("ReadableStreamDefaultReader", "read"));
     if (!@getByIdDirectPrivate(this, "ownerReadableStream"))
-        return @Promise.@reject(new @TypeError("read() called on a reader owned by no readable stream"));
+        return @Promise.@reject(@makeTypeError("read() called on a reader owned by no readable stream"));
 
     return @readableStreamDefaultReaderRead(this);
 }

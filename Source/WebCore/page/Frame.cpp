@@ -5,7 +5,7 @@
  *                     2000 Simon Hausmann <hausmann@kde.org>
  *                     2000 Stefan Schimanski <1Stein@gmx.de>
  *                     2001 George Staikos <staikos@kde.org>
- * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2005 Alexey Proskuryakov <ap@nypop.com>
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2008 Eric Seidel <eric@webkit.org>
@@ -57,7 +57,6 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
-#include "HTMLDocument.h"
 #include "HTMLFormControlElement.h"
 #include "HTMLFormElement.h"
 #include "HTMLFrameElementBase.h"
@@ -96,6 +95,7 @@
 #include "TextResourceDecoder.h"
 #include "UserContentController.h"
 #include "UserContentURLPattern.h"
+#include "UserGestureIndicator.h"
 #include "UserScript.h"
 #include "UserTypingGestureIndicator.h"
 #include "VisibleUnits.h"
@@ -107,15 +107,11 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
 
-#if PLATFORM(IOS)
-#include "WKContentObservation.h"
-#endif
-
 namespace WebCore {
 
 using namespace HTMLNames;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 static const Seconds scrollFrequency { 1000_s / 60. };
 #endif
 
@@ -156,13 +152,8 @@ Frame::Frame(Page& page, HTMLFrameOwnerElement* ownerElement, FrameLoaderClient&
     , m_editor(makeUniqueRef<Editor>(*this))
     , m_selection(makeUniqueRef<FrameSelection>(this))
     , m_animationController(makeUniqueRef<CSSAnimationController>(*this))
-#if PLATFORM(IOS)
-    , m_overflowAutoScrollTimer(*this, &Frame::overflowAutoScrollTimerFired)
-    , m_selectionChangeCallbacksDisabled(false)
-#endif
     , m_pageZoomFactor(parentPageZoomFactor(this))
     , m_textZoomFactor(parentTextZoomFactor(this))
-    , m_activeDOMObjectsAndAnimationsSuspendedCount(0)
     , m_eventHandler(makeUniqueRef<EventHandler>(*this))
 {
     ProcessWarming::initializeNames();
@@ -503,150 +494,7 @@ String Frame::matchLabelsAgainstElement(const Vector<String>& labels, Element* e
     return matchLabelsAgainstString(labels, element->attributeWithoutSynchronization(idAttr));
 }
 
-#if PLATFORM(IOS)
-void Frame::scrollOverflowLayer(RenderLayer* layer, const IntRect& visibleRect, const IntRect& exposeRect)
-{
-    if (!layer)
-        return;
-
-    RenderBox* box = layer->renderBox();
-    if (!box)
-        return;
-
-    if (visibleRect.intersects(exposeRect))
-        return;
-
-    // FIXME: Why isn't this just calling RenderLayer::scrollRectToVisible()?
-    ScrollOffset scrollOffset = layer->scrollOffset();
-    int exposeLeft = exposeRect.x();
-    int exposeRight = exposeLeft + exposeRect.width();
-    int clientWidth = roundToInt(box->clientWidth());
-    if (exposeLeft <= 0)
-        scrollOffset.setX(std::max(0, scrollOffset.x() + exposeLeft - clientWidth / 2));
-    else if (exposeRight >= clientWidth)
-        scrollOffset.setX(std::min(box->scrollWidth() - clientWidth, scrollOffset.x() + clientWidth / 2));
-
-    int exposeTop = exposeRect.y();
-    int exposeBottom = exposeTop + exposeRect.height();
-    int clientHeight = roundToInt(box->clientHeight());
-    if (exposeTop <= 0)
-        scrollOffset.setY(std::max(0, scrollOffset.y() + exposeTop - clientHeight / 2));
-    else if (exposeBottom >= clientHeight)
-        scrollOffset.setY(std::min(box->scrollHeight() - clientHeight, scrollOffset.y() + clientHeight / 2));
-
-    layer->scrollToOffset(scrollOffset, ScrollClamping::Unclamped);
-    selection().setCaretRectNeedsUpdate();
-    selection().updateAppearance();
-}
-
-void Frame::overflowAutoScrollTimerFired()
-{
-    if (!eventHandler().mousePressed() || checkOverflowScroll(PerformOverflowScroll) == OverflowScrollNone) {
-        if (m_overflowAutoScrollTimer.isActive())
-            m_overflowAutoScrollTimer.stop();
-    }
-}
-
-void Frame::startOverflowAutoScroll(const IntPoint& mousePosition)
-{
-    m_overflowAutoScrollPos = mousePosition;
-
-    if (m_overflowAutoScrollTimer.isActive())
-        return;
-
-    if (checkOverflowScroll(DoNotPerformOverflowScroll) == OverflowScrollNone)
-        return;
-
-    m_overflowAutoScrollTimer.startRepeating(scrollFrequency);
-    m_overflowAutoScrollDelta = 3;
-}
-
-int Frame::checkOverflowScroll(OverflowScrollAction action)
-{
-    Position extent = selection().selection().extent();
-    if (extent.isNull())
-        return OverflowScrollNone;
-
-    RenderObject* renderer = extent.deprecatedNode()->renderer();
-    if (!renderer)
-        return OverflowScrollNone;
-
-    FrameView* view = this->view();
-    if (!view)
-        return OverflowScrollNone;
-
-    RenderBlock* containingBlock = renderer->containingBlock();
-    if (!containingBlock || !containingBlock->hasOverflowClip())
-        return OverflowScrollNone;
-    RenderLayer* layer = containingBlock->layer();
-    ASSERT(layer);
-
-    IntRect visibleRect = IntRect(view->scrollX(), view->scrollY(), view->visibleWidth(), view->visibleHeight());
-    IntPoint position = m_overflowAutoScrollPos;
-    if (visibleRect.contains(position.x(), position.y()))
-        return OverflowScrollNone;
-
-    int scrollType = 0;
-    int deltaX = 0;
-    int deltaY = 0;
-    IntPoint selectionPosition;
-
-    // This constant will make the selection draw a little bit beyond the edge of the visible area.
-    // This prevents a visual glitch, in that you can fail to select a portion of a character that
-    // is being rendered right at the edge of the visible rectangle.
-    // FIXME: This probably needs improvement, and may need to take the font size into account.
-    static const int scrollBoundsAdjustment = 3;
-
-    // FIXME: Make a small buffer at the end of a visible rectangle so that autoscrolling works 
-    // even if the visible extends to the limits of the screen.
-    if (position.x() < visibleRect.x()) {
-        scrollType |= OverflowScrollLeft;
-        if (action == PerformOverflowScroll) {
-            deltaX -= static_cast<int>(m_overflowAutoScrollDelta);
-            selectionPosition.setX(view->scrollX() - scrollBoundsAdjustment);
-        }
-    } else if (position.x() > visibleRect.maxX()) {
-        scrollType |= OverflowScrollRight;
-        if (action == PerformOverflowScroll) {
-            deltaX += static_cast<int>(m_overflowAutoScrollDelta);
-            selectionPosition.setX(view->scrollX() + view->visibleWidth() + scrollBoundsAdjustment);
-        }
-    }
-
-    if (position.y() < visibleRect.y()) {
-        scrollType |= OverflowScrollUp;
-        if (action == PerformOverflowScroll) {
-            deltaY -= static_cast<int>(m_overflowAutoScrollDelta);
-            selectionPosition.setY(view->scrollY() - scrollBoundsAdjustment);
-        }
-    } else if (position.y() > visibleRect.maxY()) {
-        scrollType |= OverflowScrollDown;
-        if (action == PerformOverflowScroll) {
-            deltaY += static_cast<int>(m_overflowAutoScrollDelta);
-            selectionPosition.setY(view->scrollY() + view->visibleHeight() + scrollBoundsAdjustment);
-        }
-    }
-
-    Ref<Frame> protectedThis(*this);
-
-    if (action == PerformOverflowScroll && (deltaX || deltaY)) {
-        layer->scrollToOffset(layer->scrollOffset() + IntSize(deltaX, deltaY), ScrollClamping::Unclamped);
-
-        // Handle making selection.
-        VisiblePosition visiblePosition(renderer->positionForPoint(selectionPosition, nullptr));
-        if (visiblePosition.isNotNull()) {
-            VisibleSelection visibleSelection = selection().selection();
-            visibleSelection.setExtent(visiblePosition);
-            if (selection().granularity() != CharacterGranularity)
-                visibleSelection.expandUsingGranularity(selection().granularity());
-            if (selection().shouldChangeSelection(visibleSelection))
-                selection().setSelection(visibleSelection);
-        }
-
-        m_overflowAutoScrollDelta *= 1.02f; // Accelerate the scroll
-    }
-    return scrollType;
-}
+#if PLATFORM(IOS_FAMILY)
 
 void Frame::setSelectionChangeCallbacksDisabled(bool selectionChangeCallbacksDisabled)
 {
@@ -657,26 +505,65 @@ bool Frame::selectionChangeCallbacksDisabled() const
 {
     return m_selectionChangeCallbacksDisabled;
 }
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
+
+bool Frame::requestDOMPasteAccess()
+{
+    if (m_settings->javaScriptCanAccessClipboard() && m_settings->DOMPasteAllowed())
+        return true;
+
+    if (!m_settings->domPasteAccessRequestsEnabled() || !m_doc)
+        return false;
+
+    auto gestureToken = UserGestureIndicator::currentUserGesture();
+    if (!gestureToken || !gestureToken->processingUserGesture())
+        return false;
+
+    switch (gestureToken->domPasteAccessPolicy()) {
+    case DOMPasteAccessPolicy::Granted:
+        return true;
+    case DOMPasteAccessPolicy::Denied:
+        return false;
+    case DOMPasteAccessPolicy::NotRequestedYet: {
+        auto* client = m_editor->client();
+        if (!client)
+            return false;
+
+        auto response = client->requestDOMPasteAccess(m_doc->originIdentifierForPasteboard());
+        gestureToken->didRequestDOMPasteAccess(response);
+        switch (response) {
+        case DOMPasteAccessResponse::GrantedForCommand:
+        case DOMPasteAccessResponse::GrantedForGesture:
+            return true;
+        case DOMPasteAccessResponse::DeniedForGesture:
+            return false;
+        }
+    }
+    }
+
+    ASSERT_NOT_REACHED();
+    return false;
+}
 
 void Frame::setPrinting(bool printing, const FloatSize& pageSize, const FloatSize& originalPageSize, float maximumShrinkRatio, AdjustViewSizeOrNot shouldAdjustViewSize)
 {
+    if (!view())
+        return;
     // In setting printing, we should not validate resources already cached for the document.
     // See https://bugs.webkit.org/show_bug.cgi?id=43704
     ResourceCacheValidationSuppressor validationSuppressor(m_doc->cachedResourceLoader());
 
     m_doc->setPrinting(printing);
-    if (auto* frameView = view()) {
-        frameView->adjustMediaTypeForPrinting(printing);
+    auto& frameView = *view();
+    frameView.adjustMediaTypeForPrinting(printing);
 
-        m_doc->styleScope().didChangeStyleSheetEnvironment();
-        if (shouldUsePrintingLayout())
-            frameView->forceLayoutForPagination(pageSize, originalPageSize, maximumShrinkRatio, shouldAdjustViewSize);
-        else {
-            frameView->forceLayout();
-            if (shouldAdjustViewSize == AdjustViewSize)
-                frameView->adjustViewSize();
-        }
+    m_doc->styleScope().didChangeStyleSheetEnvironment();
+    if (shouldUsePrintingLayout())
+        frameView.forceLayoutForPagination(pageSize, originalPageSize, maximumShrinkRatio, shouldAdjustViewSize);
+    else {
+        frameView.forceLayout();
+        if (shouldAdjustViewSize == AdjustViewSize)
+            frameView.adjustViewSize();
     }
 
     // Subframes of the one we're printing don't lay out to the page size.
@@ -734,10 +621,12 @@ void Frame::injectUserScriptImmediately(DOMWrapperWorld& world, const UserScript
         return;
     if (!UserContentURLPattern::matchesPatterns(document->url(), script.whitelist(), script.blacklist()))
         return;
+    if (!m_script->shouldAllowUserAgentScripts(*document))
+        return;
 
-    document->topDocument().setAsRunningUserScripts();
+    document->setAsRunningUserScripts();
     loader().client().willInjectUserScript(world);
-    m_script->evaluateInWorld(ScriptSourceCode(script.source(), script.url()), world);
+    m_script->evaluateInWorld(ScriptSourceCode(script.source(), URL(script.url())), world);
 }
 
 RenderView* Frame::contentRenderer() const
@@ -774,9 +663,10 @@ void Frame::clearTimers(FrameView *view, Document *document)
 {
     if (view) {
         view->layoutContext().unscheduleLayout();
-        if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
-            document->timeline().suspendAnimations();
-        else
+        if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled()) {
+            if (auto* timeline = document->existingTimeline())
+                timeline->suspendAnimations();
+        } else
             view->frame().animation().suspendAnimationsForDocument(document);
         view->frame().eventHandler().stopAutoscrollTimer();
     }
@@ -803,11 +693,6 @@ void Frame::willDetachPage()
     if (page() && page()->scrollingCoordinator() && m_view)
         page()->scrollingCoordinator()->willDestroyScrollableArea(*m_view);
 
-#if PLATFORM(IOS)
-    if (WebThreadCountOfObservedContentModifiers() > 0 && m_page)
-        m_page->chrome().client().clearContentChangeObservers(*this);
-#endif
-
     script().clearScriptObjects();
     script().updatePlatformScriptObjects();
 
@@ -831,6 +716,9 @@ void Frame::disconnectOwnerElement()
             m_page->decrementSubframeCount();
     }
     m_ownerElement = nullptr;
+
+    if (auto* document = this->document())
+        document->frameWasDisconnectedFromOwner();
 }
 
 String Frame::displayStringModifiedByEncoding(const String& str) const
@@ -895,7 +783,7 @@ RefPtr<Range> Frame::rangeForPoint(const IntPoint& framePoint)
     return nullptr;
 }
 
-void Frame::createView(const IntSize& viewportSize, const Color& backgroundColor, bool transparent,
+void Frame::createView(const IntSize& viewportSize, const Optional<Color>& backgroundColor,
     const IntSize& fixedLayoutSize, const IntRect& fixedVisibleContentRect,
     bool useFixedLayout, ScrollbarMode horizontalScrollbarMode, bool horizontalLock,
     ScrollbarMode verticalScrollbarMode, bool verticalLock)
@@ -926,7 +814,7 @@ void Frame::createView(const IntSize& viewportSize, const Color& backgroundColor
 
     setView(frameView.copyRef());
 
-    frameView->updateBackgroundRecursively(backgroundColor, transparent);
+    frameView->updateBackgroundRecursively(backgroundColor);
 
     if (isMainFrame)
         frameView->setParentVisible(true);

@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKBackForwardListItemInternal.h"
 
-#if WK_API_ENABLED
-
 #import "WKNSURLExtras.h"
 
 @implementation WKBackForwardListItem {
@@ -71,6 +69,11 @@
     return nullptr;
 }
 
+- (CGPoint) _scrollPosition
+{
+    return CGPointMake(_item->pageState().mainFrameState.scrollPosition.x(), _item->pageState().mainFrameState.scrollPosition.y());
+}
+
 #pragma mark WKObject protocol implementation
 
 - (API::Object&)_apiObject
@@ -79,5 +82,3 @@
 }
 
 @end
-
-#endif // WK_API_ENABLED

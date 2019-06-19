@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,50 +10,63 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #pragma once
 
 #if ENABLE(WEBGPU)
 
-#include <wtf/RetainPtr.h>
-
-OBJC_CLASS MTLRenderPassDescriptor;
+#include "GPUColor.h"
+#include "GPULoadOp.h"
+#include "GPUStoreOp.h"
+#include "GPUTexture.h"
+#include <wtf/Optional.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
-class GPURenderPassColorAttachmentDescriptor;
-class GPURenderPassDepthAttachmentDescriptor;
-
-class GPURenderPassDescriptor {
-public:
-    GPURenderPassDescriptor();
-    ~GPURenderPassDescriptor();
-
-    Vector<GPURenderPassColorAttachmentDescriptor> colorAttachments() const;
-    GPURenderPassDepthAttachmentDescriptor depthAttachment() const;
-
-#if USE(METAL)
-    MTLRenderPassDescriptor *metal() const;
-#endif
-
-#if USE(METAL)
-private:
-    RetainPtr<MTLRenderPassDescriptor> m_metal;
-#endif
+struct GPURenderPassColorAttachmentDescriptorBase {
+    GPULoadOp loadOp;
+    GPUStoreOp storeOp;
+    GPUColor clearColor { 0, 0, 0, 1 };
 };
-    
+
+struct GPURenderPassColorAttachmentDescriptor final : GPURenderPassColorAttachmentDescriptorBase {
+    GPURenderPassColorAttachmentDescriptor(Ref<GPUTexture>&&, const GPURenderPassColorAttachmentDescriptorBase&);
+
+    Ref<GPUTexture> attachment;
+};
+
+struct GPURenderPassDepthStencilAttachmentDescriptorBase {
+    GPULoadOp depthLoadOp;
+    GPUStoreOp depthStoreOp;
+    float clearDepth;
+
+    // FIXME: Add stencil support.
+};
+
+struct GPURenderPassDepthStencilAttachmentDescriptor final : GPURenderPassDepthStencilAttachmentDescriptorBase {
+    GPURenderPassDepthStencilAttachmentDescriptor(Ref<GPUTexture>&&, const GPURenderPassDepthStencilAttachmentDescriptorBase&);
+
+    Ref<GPUTexture> attachment;
+};
+
+struct GPURenderPassDescriptor {
+    Vector<GPURenderPassColorAttachmentDescriptor> colorAttachments;
+    Optional<GPURenderPassDepthStencilAttachmentDescriptor> depthStencilAttachment;
+};
+
 } // namespace WebCore
 
-#endif
+#endif // ENABLE(WEBGPU)

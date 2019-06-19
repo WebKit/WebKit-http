@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,17 +29,25 @@
 #include "CryptoKeyPair.h"
 #include "ExceptionOr.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #if OS(DARWIN) && !PLATFORM(GTK)
-typedef struct _CCECCryptor *CCECCryptorRef;
+#include "CommonCryptoUtilities.h"
+
 typedef CCECCryptorRef PlatformECKey;
+namespace WebCore {
+struct CCECCryptorRefDeleter {
+    void operator()(CCECCryptorRef key) const { CCECCryptorRelease(key); }
+};
+}
+typedef std::unique_ptr<typename std::remove_pointer<CCECCryptorRef>::type, WebCore::CCECCryptorRefDeleter> PlatformECKeyContainer;
 #endif
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
-// gcry_sexp* equates gcry_sexp_t.
-struct gcry_sexp;
-typedef gcry_sexp* PlatformECKey;
+#include <pal/crypto/gcrypt/Handle.h>
+
+typedef gcry_sexp_t PlatformECKey;
+typedef std::unique_ptr<typename std::remove_pointer<gcry_sexp_t>::type, PAL::GCrypt::HandleDeleter<gcry_sexp_t>> PlatformECKeyContainer;
 #endif
 
 
@@ -55,11 +63,11 @@ public:
         P521,
     };
 
-    static Ref<CryptoKeyEC> create(CryptoAlgorithmIdentifier identifier, NamedCurve curve, CryptoKeyType type, PlatformECKey platformKey, bool extractable, CryptoKeyUsageBitmap usages)
+    static Ref<CryptoKeyEC> create(CryptoAlgorithmIdentifier identifier, NamedCurve curve, CryptoKeyType type, PlatformECKeyContainer&& platformKey, bool extractable, CryptoKeyUsageBitmap usages)
     {
-        return adoptRef(*new CryptoKeyEC(identifier, curve, type, platformKey, extractable, usages));
+        return adoptRef(*new CryptoKeyEC(identifier, curve, type, WTFMove(platformKey), extractable, usages));
     }
-    virtual ~CryptoKeyEC();
+    virtual ~CryptoKeyEC() = default;
 
     static ExceptionOr<CryptoKeyPair> generatePair(CryptoAlgorithmIdentifier, const String& curve, bool extractable, CryptoKeyUsageBitmap);
     static RefPtr<CryptoKeyEC> importRaw(CryptoAlgorithmIdentifier, const String& curve, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap);
@@ -75,18 +83,18 @@ public:
     size_t keySizeInBits() const;
     NamedCurve namedCurve() const { return m_curve; }
     String namedCurveString() const;
-    PlatformECKey platformKey() const { return m_platformKey; }
+    PlatformECKey platformKey() const { return m_platformKey.get(); }
     static bool isValidECAlgorithm(CryptoAlgorithmIdentifier);
 
 private:
-    CryptoKeyEC(CryptoAlgorithmIdentifier, NamedCurve, CryptoKeyType, PlatformECKey, bool extractable, CryptoKeyUsageBitmap);
+    CryptoKeyEC(CryptoAlgorithmIdentifier, NamedCurve, CryptoKeyType, PlatformECKeyContainer&&, bool extractable, CryptoKeyUsageBitmap);
 
     CryptoKeyClass keyClass() const final { return CryptoKeyClass::EC; }
 
     KeyAlgorithm algorithm() const final;
 
     static bool platformSupportedCurve(NamedCurve);
-    static std::optional<CryptoKeyPair> platformGeneratePair(CryptoAlgorithmIdentifier, NamedCurve, bool extractable, CryptoKeyUsageBitmap);
+    static Optional<CryptoKeyPair> platformGeneratePair(CryptoAlgorithmIdentifier, NamedCurve, bool extractable, CryptoKeyUsageBitmap);
     static RefPtr<CryptoKeyEC> platformImportRaw(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap);
     static RefPtr<CryptoKeyEC> platformImportJWKPublic(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&& x, Vector<uint8_t>&& y, bool extractable, CryptoKeyUsageBitmap);
     static RefPtr<CryptoKeyEC> platformImportJWKPrivate(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&& x, Vector<uint8_t>&& y, Vector<uint8_t>&& d, bool extractable, CryptoKeyUsageBitmap);
@@ -97,7 +105,7 @@ private:
     Vector<uint8_t> platformExportSpki() const;
     Vector<uint8_t> platformExportPkcs8() const;
 
-    PlatformECKey m_platformKey;
+    PlatformECKeyContainer m_platformKey;
     NamedCurve m_curve;
 };
 
@@ -105,4 +113,4 @@ private:
 
 SPECIALIZE_TYPE_TRAITS_CRYPTO_KEY(CryptoKeyEC, CryptoKeyClass::EC)
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

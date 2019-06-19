@@ -49,7 +49,7 @@ public:
     ~CSSAnimationControllerPrivate();
 
     // Returns the time until the next animation needs to be serviced, or -1 if there are none.
-    std::optional<Seconds> updateAnimations(SetChanged callSetChanged = DoNotCallSetChanged);
+    Optional<Seconds> updateAnimations(SetChanged callSetChanged = DoNotCallSetChanged);
     void updateAnimationTimer(SetChanged callSetChanged = DoNotCallSetChanged);
 
     CompositeAnimation& ensureCompositeAnimation(Element&);
@@ -57,7 +57,7 @@ public:
 
     void updateStyleIfNeededDispatcherFired();
     void startUpdateStyleIfNeededDispatcher();
-    void addEventToDispatch(Element&, const AtomicString& eventType, const String& name, double elapsedTime);
+    void addEventToDispatch(Element&, const AtomString& eventType, const String& name, double elapsedTime);
     void addElementChangeToDispatch(Element&);
 
     bool hasAnimations() const { return !m_compositeAnimations.isEmpty(); }
@@ -76,10 +76,10 @@ public:
     void startAnimationsIfNotSuspended(Document*);
     void detachFromDocument(Document*);
 
-    bool isRunningAnimationOnRenderer(RenderElement&, CSSPropertyID, AnimationBase::RunningState) const;
-    bool isRunningAcceleratedAnimationOnRenderer(RenderElement&, CSSPropertyID, AnimationBase::RunningState) const;
+    bool isRunningAnimationOnRenderer(RenderElement&, CSSPropertyID) const;
+    bool isRunningAcceleratedAnimationOnRenderer(RenderElement&, CSSPropertyID) const;
 
-    bool pauseAnimationAtTime(Element&, const AtomicString& name, double t);
+    bool pauseAnimationAtTime(Element&, const AtomString& name, double t);
     bool pauseTransitionAtTime(Element&, const String& property, double t);
     unsigned numberOfActiveAnimations(Document*) const;
 
@@ -93,13 +93,13 @@ public:
     void endAnimationUpdate();
     void receivedStartTimeResponse(MonotonicTime);
     
-    void addToAnimationsWaitingForStyle(AnimationBase*);
-    void removeFromAnimationsWaitingForStyle(AnimationBase*);
+    void addToAnimationsWaitingForStyle(AnimationBase&);
+    void removeFromAnimationsWaitingForStyle(AnimationBase&);
 
-    void addToAnimationsWaitingForStartTimeResponse(AnimationBase*, bool willGetResponse);
-    void removeFromAnimationsWaitingForStartTimeResponse(AnimationBase*);
+    void addToAnimationsWaitingForStartTimeResponse(AnimationBase&, bool willGetResponse);
+    void removeFromAnimationsWaitingForStartTimeResponse(AnimationBase&);
 
-    void animationWillBeRemoved(AnimationBase*);
+    void animationWillBeRemoved(AnimationBase&);
 
     void updateAnimationTimerForElement(Element&);
 
@@ -107,15 +107,6 @@ public:
     void setAllowsNewAnimationsWhileSuspended(bool);
 
     void setRequiresLayout() { m_requiresLayout = true; }
-
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    bool wantsScrollUpdates() const { return !m_animationsDependentOnScroll.isEmpty(); }
-    void addToAnimationsDependentOnScroll(AnimationBase*);
-    void removeFromAnimationsDependentOnScroll(AnimationBase*);
-
-    void scrollWasUpdated();
-    float scrollPosition() const { return m_scrollPosition; }
-#endif
 
 private:
     void animationTimerFired();
@@ -131,7 +122,7 @@ private:
 
     struct EventToDispatch {
         Ref<Element> element;
-        AtomicString eventType;
+        AtomString eventType;
         String name;
         double elapsedTime;
     };
@@ -139,7 +130,7 @@ private:
     Vector<Ref<Element>> m_elementChangesToDispatch;
     HashSet<Document*> m_suspendedDocuments;
 
-    std::optional<MonotonicTime> m_beginAnimationUpdateTime;
+    Optional<MonotonicTime> m_beginAnimationUpdateTime;
 
     using AnimationsSet = HashSet<RefPtr<AnimationBase>>;
     AnimationsSet m_animationsWaitingForStyle;
@@ -155,11 +146,6 @@ private:
     // behavior of allowing new transitions and animations to
     // run even when this object is suspended.
     bool m_allowsNewAnimationsWhileSuspended;
-
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    AnimationsSet m_animationsDependentOnScroll;
-    float m_scrollPosition { 0 };
-#endif
 };
 
 } // namespace WebCore

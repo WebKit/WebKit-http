@@ -292,27 +292,34 @@ static inline bool isChildTypeAllowed(ContainerNode& newParent, Node& child)
     return true;
 }
 
-static inline bool isInTemplateContent(const Node* node)
+static bool containsIncludingHostElements(const Node& possibleAncestor, const Node& node)
 {
-    Document& document = node->document();
-    return &document == document.templateDocument();
-}
+    const Node* currentNode = &node;
+    do {
+        if (currentNode == &possibleAncestor)
+            return true;
+        const ContainerNode* parent = currentNode->parentNode();
+        if (!parent) {
+            if (is<ShadowRoot>(currentNode))
+                parent = downcast<ShadowRoot>(currentNode)->host();
+            else if (is<DocumentFragment>(*currentNode) && downcast<DocumentFragment>(*currentNode).isTemplateContent())
+                parent = static_cast<const TemplateContentDocumentFragment*>(currentNode)->host();
+        }
+        currentNode = parent;
+    } while (currentNode);
 
-static inline bool containsConsideringHostElements(const Node& newChild, const Node& newParent)
-{
-    return (newParent.isInShadowTree() || isInTemplateContent(&newParent))
-        ? newChild.containsIncludingHostElements(&newParent)
-        : newChild.contains(&newParent);
+    return false;
 }
 
 static inline ExceptionOr<void> checkAcceptChild(ContainerNode& newParent, Node& newChild, const Node* refChild, Document::AcceptChildOperation operation)
 {
+    if (containsIncludingHostElements(newChild, newParent))
+        return Exception { HierarchyRequestError };
+
     // Use common case fast path if possible.
     if ((newChild.isElementNode() || newChild.isTextNode()) && newParent.isElementNode()) {
         ASSERT(!newParent.isDocumentTypeNode());
         ASSERT(isChildTypeAllowed(newParent, newChild));
-        if (containsConsideringHostElements(newChild, newParent))
-            return Exception { HierarchyRequestError };
         if (operation == Document::AcceptChildOperation::InsertOrAdd && refChild && refChild->parentNode() != &newParent)
             return Exception { NotFoundError };
         return { };
@@ -321,9 +328,6 @@ static inline ExceptionOr<void> checkAcceptChild(ContainerNode& newParent, Node&
     // This should never happen, but also protect release builds from tree corruption.
     ASSERT(!newChild.isPseudoElement());
     if (newChild.isPseudoElement())
-        return Exception { HierarchyRequestError };
-
-    if (containsConsideringHostElements(newChild, newParent))
         return Exception { HierarchyRequestError };
 
     if (operation == Document::AcceptChildOperation::InsertOrAdd && refChild && refChild->parentNode() != &newParent)
@@ -342,7 +346,7 @@ static inline ExceptionOr<void> checkAcceptChildGuaranteedNodeTypes(ContainerNod
 {
     ASSERT(!newParent.isDocumentTypeNode());
     ASSERT(isChildTypeAllowed(newParent, newChild));
-    if (newChild.contains(&newParent))
+    if (containsIncludingHostElements(newChild, newParent))
         return Exception { HierarchyRequestError };
     return { };
 }
@@ -388,9 +392,11 @@ ExceptionOr<void> ContainerNode::insertBefore(Node& newChild, Node* refChild)
         return { };
 
     // We need this extra check because collectChildrenAndRemoveFromOldParent() can fire mutation events.
-    auto checkAcceptResult = checkAcceptChildGuaranteedNodeTypes(*this, newChild);
-    if (checkAcceptResult.hasException())
-        return checkAcceptResult.releaseException();
+    for (auto& child : targets) {
+        auto checkAcceptResult = checkAcceptChildGuaranteedNodeTypes(*this, child);
+        if (checkAcceptResult.hasException())
+            return checkAcceptResult.releaseException();
+    }
 
     InspectorInstrumentation::willInsertDOMNode(document(), *this);
 
@@ -504,9 +510,11 @@ ExceptionOr<void> ContainerNode::replaceChild(Node& newChild, Node& oldChild)
     }
 
     // Do this one more time because collectChildrenAndRemoveFromOldParent() fires a MutationEvent.
-    validityResult = checkPreReplacementValidity(*this, newChild, oldChild);
-    if (validityResult.hasException())
-        return validityResult.releaseException();
+    for (auto& child : targets) {
+        validityResult = checkPreReplacementValidity(*this, child, oldChild);
+        if (validityResult.hasException())
+            return validityResult.releaseException();
+    }
 
     // Remove the node we're replacing.
     Ref<Node> protectOldChild(oldChild);
@@ -520,9 +528,11 @@ ExceptionOr<void> ContainerNode::replaceChild(Node& newChild, Node& oldChild)
             return removeResult.releaseException();
 
         // Does this one more time because removeChild() fires a MutationEvent.
-        validityResult = checkPreReplacementValidity(*this, newChild, oldChild);
-        if (validityResult.hasException())
-            return validityResult.releaseException();
+        for (auto& child : targets) {
+            validityResult = checkPreReplacementValidity(*this, child, oldChild);
+            if (validityResult.hasException())
+                return validityResult.releaseException();
+        }
     }
 
     InspectorInstrumentation::willInsertDOMNode(document(), *this);
@@ -699,9 +709,11 @@ ExceptionOr<void> ContainerNode::appendChildWithoutPreInsertionValidityCheck(Nod
         return { };
 
     // We need this extra check because collectChildrenAndRemoveFromOldParent() can fire mutation events.
-    auto nodeTypeResult = checkAcceptChildGuaranteedNodeTypes(*this, newChild);
-    if (nodeTypeResult.hasException())
-        return nodeTypeResult.releaseException();
+    for (auto& child : targets) {
+        auto nodeTypeResult = checkAcceptChildGuaranteedNodeTypes(*this, child);
+        if (nodeTypeResult.hasException())
+            return nodeTypeResult.releaseException();
+    }
 
     InspectorInstrumentation::willInsertDOMNode(document(), *this);
 
@@ -741,11 +753,38 @@ void ContainerNode::parserAppendChild(Node& newChild)
     });
 }
 
+static bool affectsElements(const ContainerNode::ChildChange& change)
+{
+    switch (change.type) {
+    case ContainerNode::ElementInserted:
+    case ContainerNode::ElementRemoved:
+    case ContainerNode::AllChildrenRemoved:
+    case ContainerNode::AllChildrenReplaced:
+        return true;
+    case ContainerNode::TextInserted:
+    case ContainerNode::TextRemoved:
+    case ContainerNode::TextChanged:
+    case ContainerNode::NonContentsChildInserted:
+    case ContainerNode::NonContentsChildRemoved:
+        return false;
+    }
+    ASSERT_NOT_REACHED();
+    return false;
+}
+
 void ContainerNode::childrenChanged(const ChildChange& change)
 {
     document().incDOMTreeVersion();
+
+    if (affectsElements(change))
+        document().invalidateAccessKeyCache();
+
+    // FIXME: Unclear why it's always safe to skip this when parser is adding children.
+    // FIXME: Seems like it's equally safe to skip for TextInserted and TextRemoved as for TextChanged.
+    // FIXME: Should use switch for change type so we remember to update when adding new types.
     if (change.source == ChildChangeSource::API && change.type != TextChanged)
         document().updateRangesAfterChildrenChanged(*this);
+
     invalidateNodeListAndCollectionCachesInAncestors();
 }
 
@@ -836,7 +875,7 @@ ExceptionOr<Ref<NodeList>> ContainerNode::querySelectorAll(const String& selecto
     return query.releaseReturnValue().queryAll(*this);
 }
 
-Ref<HTMLCollection> ContainerNode::getElementsByTagName(const AtomicString& qualifiedName)
+Ref<HTMLCollection> ContainerNode::getElementsByTagName(const AtomString& qualifiedName)
 {
     ASSERT(!qualifiedName.isNull());
 
@@ -848,7 +887,7 @@ Ref<HTMLCollection> ContainerNode::getElementsByTagName(const AtomicString& qual
     return ensureRareData().ensureNodeLists().addCachedCollection<TagCollection>(*this, ByTag, qualifiedName);
 }
 
-Ref<HTMLCollection> ContainerNode::getElementsByTagNameNS(const AtomicString& namespaceURI, const AtomicString& localName)
+Ref<HTMLCollection> ContainerNode::getElementsByTagNameNS(const AtomString& namespaceURI, const AtomString& localName)
 {
     ASSERT(!localName.isNull());
     return ensureRareData().ensureNodeLists().addCachedTagCollectionNS(*this, namespaceURI.isEmpty() ? nullAtom() : namespaceURI, localName);
@@ -859,12 +898,12 @@ Ref<NodeList> ContainerNode::getElementsByName(const String& elementName)
     return ensureRareData().ensureNodeLists().addCacheWithAtomicName<NameNodeList>(*this, elementName);
 }
 
-Ref<HTMLCollection> ContainerNode::getElementsByClassName(const AtomicString& classNames)
+Ref<HTMLCollection> ContainerNode::getElementsByClassName(const AtomString& classNames)
 {
     return ensureRareData().ensureNodeLists().addCachedCollection<ClassCollection>(*this, ByClass, classNames);
 }
 
-Ref<RadioNodeList> ContainerNode::radioNodeList(const AtomicString& name)
+Ref<RadioNodeList> ContainerNode::radioNodeList(const AtomString& name)
 {
     ASSERT(hasTagName(HTMLNames::formTag) || hasTagName(HTMLNames::fieldsetTag));
     return ensureRareData().ensureNodeLists().addCacheWithAtomicName<RadioNodeList>(*this, name);

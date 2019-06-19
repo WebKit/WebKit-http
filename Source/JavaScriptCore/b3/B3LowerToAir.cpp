@@ -62,10 +62,9 @@
 #include <wtf/IndexSet.h>
 #include <wtf/ListDump.h>
 
-#if COMPILER(GCC) && ASSERT_DISABLED
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-type"
-#endif // COMPILER(GCC) && ASSERT_DISABLED
+#if ASSERT_DISABLED
+IGNORE_RETURN_TYPE_WARNINGS_BEGIN
+#endif
 
 namespace JSC { namespace B3 {
 
@@ -449,12 +448,12 @@ private:
     }
 
     template<typename Int, typename = Value::IsLegalOffset<Int>>
-    std::optional<unsigned> scaleForShl(Value* shl, Int offset, std::optional<Width> width = std::nullopt)
+    Optional<unsigned> scaleForShl(Value* shl, Int offset, Optional<Width> width = WTF::nullopt)
     {
         if (shl->opcode() != Shl)
-            return std::nullopt;
+            return WTF::nullopt;
         if (!shl->child(1)->hasInt32())
-            return std::nullopt;
+            return WTF::nullopt;
         unsigned logScale = shl->child(1)->asInt32();
         if (shl->type() == Int32)
             logScale &= 31;
@@ -464,10 +463,10 @@ private:
         // to signed since that's what all of our APIs want.
         int64_t bigScale = static_cast<uint64_t>(1) << static_cast<uint64_t>(logScale);
         if (!isRepresentableAs<int32_t>(bigScale))
-            return std::nullopt;
+            return WTF::nullopt;
         unsigned scale = static_cast<int32_t>(bigScale);
         if (!Arg::isValidIndexForm(scale, offset, width))
-            return std::nullopt;
+            return WTF::nullopt;
         return scale;
     }
     
@@ -493,7 +492,7 @@ private:
             Value* right = address->child(1);
 
             auto tryIndex = [&] (Value* index, Value* base) -> Arg {
-                std::optional<unsigned> scale = scaleForShl(index, offset, width);
+                Optional<unsigned> scale = scaleForShl(index, offset, width);
                 if (!scale)
                     return Arg();
                 if (m_locked.contains(index->child(0)) || m_locked.contains(base))
@@ -1275,6 +1274,7 @@ private:
                     arg = tmp(value.value());
                 break;
             case ValueRep::SomeRegister:
+            case ValueRep::SomeLateRegister:
                 arg = tmp(value.value());
                 break;
             case ValueRep::SomeRegisterWithClobber: {
@@ -1439,7 +1439,7 @@ private:
         // we do need at least one iteration of it for Check.
         for (;;) {
             bool shouldInvert =
-                (value->opcode() == BitXor && value->child(1)->hasInt() && (value->child(1)->asInt() & 1) && value->child(0)->returnsBool())
+                (value->opcode() == BitXor && value->child(1)->hasInt() && (value->child(1)->asInt() == 1) && value->child(0)->returnsBool())
                 || (value->opcode() == Equal && value->child(1)->isInt(0));
             if (!shouldInvert)
                 break;
@@ -2089,7 +2089,7 @@ private:
         }
         
         auto tryShl = [&] (Value* shl, Value* other) -> bool {
-            std::optional<unsigned> scale = scaleForShl(shl, offset);
+            Optional<unsigned> scale = scaleForShl(shl, offset);
             if (!scale)
                 return false;
             if (!canBeInternal(shl))
@@ -3367,8 +3367,8 @@ private:
             Tmp returnValueFPR = Tmp(FPRInfo::returnValueFPR);
             switch (value->type()) {
             case Void:
-                // It's impossible for a void value to be used as a child. If we did want to have a
-                // void return, we'd introduce a different opcode, like ReturnVoid.
+                // It's impossible for a void value to be used as a child. We use RetVoid
+                // for void returns.
                 RELEASE_ASSERT_NOT_REACHED();
                 break;
             case Int32:
@@ -3527,8 +3527,8 @@ void lowerToAir(Procedure& procedure)
 
 } } // namespace JSC::B3
 
-#if COMPILER(GCC) && ASSERT_DISABLED
-#pragma GCC diagnostic pop
-#endif // COMPILER(GCC) && ASSERT_DISABLED
+#if ASSERT_DISABLED
+IGNORE_RETURN_TYPE_WARNINGS_END
+#endif
 
 #endif // ENABLE(B3_JIT)

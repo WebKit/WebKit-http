@@ -10,11 +10,11 @@
 
 #import <UIKit/UIKit.h>
 
+#include "test/ios/coverage_util_ios.h"
 #include "test/ios/test_support.h"
 #include "test/testsupport/perf_test.h"
 
-#import "sdk/objc/Framework/Classes/Common/RTCUIApplicationStatusObserver.h"
-#include "sdk/objc/Framework/Classes/Common/helpers.h"
+#import "sdk/objc/helpers/NSString+StdString.h"
 
 // Springboard will kill any iOS app that fails to check in after launch within
 // a given time. Starting a UIApplication before invoking TestSuite::Run
@@ -65,17 +65,14 @@ static bool g_save_chartjson_result;
   // root view controller. Set an empty one here.
   [_window setRootViewController:[[UIViewController alloc] init]];
 
-  // We want to call `RTCUIApplicationStatusObserver sharedInstance` as early as
-  // possible in the application lifecycle to set observation properly.
-  __unused RTCUIApplicationStatusObserver *observer =
-      [RTCUIApplicationStatusObserver sharedInstance];
-
   // Queue up the test run.
   [self performSelector:@selector(runTests) withObject:nil afterDelay:0.1];
   return YES;
 }
 
 - (void)runTests {
+  rtc::test::ConfigureCoverageReportPath();
+
   int exitStatus = g_test_suite();
 
   if (g_save_chartjson_result) {
@@ -88,7 +85,7 @@ static bool g_save_chartjson_result;
           [outputDirectories[0] stringByAppendingPathComponent:fileName];
 
       webrtc::test::WritePerfResults(
-          webrtc::ios::StdStringFromNSString(outputPath));
+          [NSString stdStringForString:outputPath]);
     }
   }
 

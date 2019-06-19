@@ -11,31 +11,24 @@
 #ifndef API_AUDIO_CODECS_AUDIO_FORMAT_H_
 #define API_AUDIO_CODECS_AUDIO_FORMAT_H_
 
+#include <stddef.h>
 #include <map>
 #include <string>
-#include <utility>
 
-#include "absl/types/optional.h"
+#include "absl/strings/string_view.h"
 #include "rtc_base/checks.h"
+#include "rtc_base/system/rtc_export.h"
 
 namespace webrtc {
 
 // SDP specification for a single audio codec.
-// NOTE: This class is still under development and may change without notice.
-struct SdpAudioFormat {
+struct RTC_EXPORT SdpAudioFormat {
   using Parameters = std::map<std::string, std::string>;
 
   SdpAudioFormat(const SdpAudioFormat&);
   SdpAudioFormat(SdpAudioFormat&&);
-  SdpAudioFormat(const char* name, int clockrate_hz, size_t num_channels);
-  SdpAudioFormat(const std::string& name,
-                 int clockrate_hz,
-                 size_t num_channels);
-  SdpAudioFormat(const char* name,
-                 int clockrate_hz,
-                 size_t num_channels,
-                 const Parameters& param);
-  SdpAudioFormat(const std::string& name,
+  SdpAudioFormat(absl::string_view name, int clockrate_hz, size_t num_channels);
+  SdpAudioFormat(absl::string_view name,
                  int clockrate_hz,
                  size_t num_channels,
                  const Parameters& param);
@@ -59,8 +52,6 @@ struct SdpAudioFormat {
   size_t num_channels;
   Parameters parameters;
 };
-
-void swap(SdpAudioFormat& a, SdpAudioFormat& b);
 
 // Information about how an audio format is treated by the codec implementation.
 // Contains basic information, such as sample rate and number of channels, which

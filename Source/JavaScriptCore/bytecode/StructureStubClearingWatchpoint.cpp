@@ -36,12 +36,15 @@ namespace JSC {
 
 void StructureStubClearingWatchpoint::fireInternal(VM& vm, const FireDetail&)
 {
+    if (!m_holder->isValid())
+        return;
+
     if (!m_key || !m_key.isWatchable(PropertyCondition::EnsureWatchability)) {
         // This will implicitly cause my own demise: stub reset removes all watchpoints.
         // That works, because deleting a watchpoint removes it from the set's list, and
         // the set's list traversal for firing is robust against the set changing.
-        ConcurrentJSLocker locker(m_holder.codeBlock()->m_lock);
-        m_holder.stubInfo()->reset(m_holder.codeBlock());
+        ConcurrentJSLocker locker(m_holder->codeBlock()->m_lock);
+        m_holder->stubInfo()->reset(m_holder->codeBlock());
         return;
     }
 
@@ -52,6 +55,11 @@ void StructureStubClearingWatchpoint::fireInternal(VM& vm, const FireDetail&)
     }
 
     m_key.object()->structure(vm)->addTransitionWatchpoint(this);
+}
+
+inline bool WatchpointsOnStructureStubInfo::isValid() const
+{
+    return m_codeBlock->isLive();
 }
 
 StructureStubClearingWatchpoint* WatchpointsOnStructureStubInfo::addWatchpoint(const ObjectPropertyCondition& key)

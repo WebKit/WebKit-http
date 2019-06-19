@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,13 +28,15 @@
 
 #if ENABLE(APPLE_PAY)
 
+#include "ApplePaySessionPaymentRequest.h"
 #include "MockPayment.h"
 #include "MockPaymentContact.h"
 #include "MockPaymentMethod.h"
 #include "Page.h"
 #include "PaymentCoordinator.h"
-#include "URL.h"
+#include <wtf/CompletionHandler.h>
 #include <wtf/RunLoop.h>
+#include <wtf/URL.h>
 
 namespace WebCore {
 
@@ -52,44 +54,29 @@ MockPaymentCoordinator::MockPaymentCoordinator(Page& page)
     m_availablePaymentNetworks.add("visa");
 }
 
-bool MockPaymentCoordinator::supportsVersion(unsigned version)
-{
-    ASSERT(version > 0);
-
-#if !ENABLE(APPLE_PAY_SESSION_V3)
-    static const unsigned currentVersion = 2;
-#elif !ENABLE(APPLE_PAY_SESSION_V4)
-    static const unsigned currentVersion = 3;
-#else
-    static const unsigned currentVersion = 4;
-#endif
-
-    return version <= currentVersion;
-}
-
-std::optional<String> MockPaymentCoordinator::validatedPaymentNetwork(const String& paymentNetwork)
+Optional<String> MockPaymentCoordinator::validatedPaymentNetwork(const String& paymentNetwork)
 {
     auto result = m_availablePaymentNetworks.find(paymentNetwork);
     if (result == m_availablePaymentNetworks.end())
-        return std::nullopt;
+        return WTF::nullopt;
     return *result;
 }
 
 bool MockPaymentCoordinator::canMakePayments()
 {
-    return true;
+    return m_canMakePayments;
 }
 
-void MockPaymentCoordinator::canMakePaymentsWithActiveCard(const String&, const String&, Function<void(bool)>&& completionHandler)
+void MockPaymentCoordinator::canMakePaymentsWithActiveCard(const String&, const String&, CompletionHandler<void(bool)>&& completionHandler)
 {
-    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] {
-        completionHandler(true);
+    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), canMakePaymentsWithActiveCard = m_canMakePaymentsWithActiveCard]() mutable {
+        completionHandler(canMakePaymentsWithActiveCard);
     });
 }
 
-void MockPaymentCoordinator::openPaymentSetup(const String&, const String&, Function<void(bool)>&& completionHandler)
+void MockPaymentCoordinator::openPaymentSetup(const String&, const String&, CompletionHandler<void(bool)>&& completionHandler)
 {
-    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] {
+    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)]() mutable {
         completionHandler(true);
     });
 }
@@ -106,10 +93,20 @@ static void dispatchIfShowing(Function<void()>&& function)
     });
 }
 
+static Vector<ApplePayShippingMethod> convert(const Vector<ApplePaySessionPaymentRequest::ShippingMethod>& shippingMethods)
+{
+    return WTF::map(shippingMethods, [] (auto& shippingMethod) {
+        return ApplePayShippingMethod { shippingMethod.label, shippingMethod.detail, shippingMethod.amount, shippingMethod.identifier };
+    });
+}
+
 bool MockPaymentCoordinator::showPaymentUI(const URL&, const Vector<URL>&, const ApplePaySessionPaymentRequest& request)
 {
     if (request.shippingContact().pkContact())
         m_shippingAddress = request.shippingContact().toApplePayPaymentContact(request.version());
+    m_shippingMethods = convert(request.shippingMethods());
+    m_requiredBillingContactFields = request.requiredBillingContactFields();
+    m_requiredShippingContactFields = request.requiredShippingContactFields();
 
     ASSERT(showCount == hideCount);
     ++showCount;
@@ -143,19 +140,23 @@ void MockPaymentCoordinator::updateTotalAndLineItems(const ApplePaySessionPaymen
         m_lineItems.append(convert(lineItem));
 }
 
-void MockPaymentCoordinator::completeShippingMethodSelection(std::optional<ShippingMethodUpdate>&& shippingMethodUpdate)
+void MockPaymentCoordinator::completeShippingMethodSelection(Optional<ShippingMethodUpdate>&& shippingMethodUpdate)
 {
     if (shippingMethodUpdate)
         updateTotalAndLineItems(shippingMethodUpdate->newTotalAndLineItems);
 }
 
-void MockPaymentCoordinator::completeShippingContactSelection(std::optional<ShippingContactUpdate>&& shippingContactUpdate)
+void MockPaymentCoordinator::completeShippingContactSelection(Optional<ShippingContactUpdate>&& shippingContactUpdate)
 {
-    if (shippingContactUpdate)
-        updateTotalAndLineItems(shippingContactUpdate->newTotalAndLineItems);
+    if (!shippingContactUpdate)
+        return;
+
+    m_shippingMethods = convert(shippingContactUpdate->newShippingMethods);
+    updateTotalAndLineItems(shippingContactUpdate->newTotalAndLineItems);
+    m_errors = WTFMove(shippingContactUpdate->errors);
 }
-    
-void MockPaymentCoordinator::completePaymentMethodSelection(std::optional<PaymentMethodUpdate>&& paymentMethodUpdate)
+
+void MockPaymentCoordinator::completePaymentMethodSelection(Optional<PaymentMethodUpdate>&& paymentMethodUpdate)
 {
     if (paymentMethodUpdate)
         updateTotalAndLineItems(paymentMethodUpdate->newTotalAndLineItems);
@@ -195,8 +196,14 @@ void MockPaymentCoordinator::cancelPayment()
     });
 }
 
-void MockPaymentCoordinator::completePaymentSession(std::optional<PaymentAuthorizationResult>&&)
+void MockPaymentCoordinator::completePaymentSession(Optional<PaymentAuthorizationResult>&& result)
 {
+    auto isFinalState = isFinalStateResult(result);
+    m_errors = WTFMove(result->errors);
+
+    if (!isFinalState)
+        return;
+
     ++hideCount;
     ASSERT(showCount == hideCount);
 }

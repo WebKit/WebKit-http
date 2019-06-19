@@ -54,13 +54,13 @@ using namespace HTMLNames;
 
 class Event;
 
-RefPtr<HTMLMediaElement> parentMediaElement(Node* node)
+RefPtr<HTMLMediaElement> parentMediaElement(const Node* node)
 {
     if (!node)
         return nullptr;
     RefPtr<Node> mediaNode = node->shadowHost();
     if (!mediaNode)
-        mediaNode = node;
+        mediaNode = const_cast<Node*>(node);
     if (!is<HTMLMediaElement>(*mediaNode))
         return nullptr;
     return downcast<HTMLMediaElement>(mediaNode.get());
@@ -242,7 +242,7 @@ bool MediaControlVolumeSliderElement::willRespondToMouseClickEvents()
 void MediaControlVolumeSliderElement::setVolume(double volume)
 {
     if (value().toDouble() != volume)
-        setValue(String::numberToStringECMAScript(volume));
+        setValue(String::number(volume));
 }
 
 void MediaControlVolumeSliderElement::setClearMutedOnUserInteraction(bool clearMute)

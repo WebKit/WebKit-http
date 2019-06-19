@@ -35,6 +35,37 @@ var loadCSSProperties = xhrPromise(new URL("/repository/webkit/trunk/Source/WebC
 </script>
 
 <style>
+:root {
+    --feature-rule-color: hsl(0, 0%, 89.4%);
+    --status-color: hsl(0, 0%, 60%);
+    --supported-color: hsl(100, 100%, 30%);
+    --non-standard-color: hsl(275.4, 77.7%, 35.1%);
+    --in-development-color: hsl(24.5, 91.3%, 50.6%);
+    --no-active-development-color: hsl(240, 60.6%, 59.2%);
+    --partially-supported-color: hsl(180, 25%, 43.9%);
+    --experimental-color: hsl(211.3, 100%, 50%);
+    --under-consideration-color: hsl(5.9, 40.2%, 60%);
+    --removed-not-considering-color: hsl(0, 0%, 49.8%);
+    --not-implemented-color: hsl(0, 0%, 29.8%);
+    --obsolete-color: hsl(50, 100%, 25.1%);
+}
+
+@media(prefers-color-scheme:dark) {
+    :root {
+        --feature-rule-color: hsl(0, 0%, 20%);
+        --status-color: hsl(0, 0%, 51%);
+        --supported-color: hsl(79.5, 45.3%, 52%);
+        --non-standard-color: hsl(276.7, 36.3%, 51.4%);
+        --in-development-color: hsl(24.5, 91.3%, 50.6%);
+        --no-active-development-color: hsl(240, 60.6%, 59.2%);
+        --partially-supported-color: hsl(180, 30%, 52%);
+        --exoerimental-color: hsl(211.3, 100%, 50%);
+        --under-consideration-color: hsl(0, 35%, 61%);
+        --removed-not-considering-color: hsl(0, 0%, 49.8%);
+        --not-implemented-color: hsl(0, 0%, 70.2%);
+        --obsolete-color: hsl(31.9, 20.5%, 33.1%);
+    }
+}
 
 .feature-status-page {
     animation: none !important; /* This animation can trigger a hit-testing bug, so remove it for now */
@@ -50,42 +81,17 @@ var loadCSSProperties = xhrPromise(new URL("/repository/webkit/trunk/Source/WebC
     width: 100%;
 }
 
-section.side-by-side {
-    display: flex;
-    display: -webkit-flex;
-    flex: 1;
-    -webkit-flex: 1;
-}
-
-sidebar {
-    flex: 0 400px;
-    margin-right: 3rem;
-    font-size: 2rem;
-    margin-left: 1rem;
-}
-
-section.primary {
-    flex: 1;
-    -webkit-flex: 1;
-}
-
-.sticky {
-    position: -webkit-sticky;
-    top: 0;
-}
-
 .page h1 {
     font-size: 4.2rem;
-    font-weight: 200;
+    font-weight: 500;
     line-height: 6rem;
-    color: black;
-    text-align: left;
     margin: 3rem auto;
     width: 100%;
+    text-align: center;
 }
 
 .page h1 a {
-    color: #444;
+    color: inherit;
 }
 
 .page h2 {
@@ -98,17 +104,147 @@ section.primary {
     font-size: 2.2rem;
 }
 
+.css-feature-page {
+    padding-bottom: 3rem;
+}
+
+.css-feature-page p {
+    max-width: 920px;
+    margin: 0 auto 3rem;
+}
+
+/* Feature Filters */
+.feature-filters {
+    background-color: hsl(0, 0%, 0%);
+    background-color: var(--figure-mattewhite-background-color);
+    width: 100vw;
+    left: 50%;
+    position: relative;
+    transform: translate(-50vw, 0);
+    box-sizing: border-box;
+    margin-bottom: 3rem;
+    border: 1px solid hsl(0, 0%, 90.6%);
+    border-color: var(--article-border-color);
+    border-left: none;
+    border-right: none;
+}
+
+.feature-filters .search-input {
+    background-repeat: no-repeat;
+    background-position-x: 0.5rem;
+    background-position-y: 1rem;
+    background-size: 2rem;
+    padding: 1rem;
+    padding-left: 3rem;
+    padding-right: 8.5rem;
+    font-size: 2rem;
+    width: 100%;
+    margin-top: 0rem;
+    margin-bottom: 0rem;
+    box-sizing: border-box;
+    border-color: transparent;
+}
+
+.feature-filters li {
+    display: inline-block;
+    white-space: no-wrap;
+}
+
+.property-status label,
+.feature-filters label {
+    display: table-cell;
+    padding: 0.5rem 1rem;
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 3px;
+    cursor: pointer;
+    float: right;
+    line-height: 1;
+    font-size: 1.6rem;
+}
+
+#status-filters {
+    display: none;
+    text-align: center;
+    margin-top: 1rem;
+    margin-bottom: 0;
+}
+
+.property-filters {
+    max-width: 920px;
+    margin: 0 auto 0;
+    position: relative;
+    top: 0;
+}
+
+.property-filters.opened {
+    margin-top: 1.5rem;
+}
+
+.property-filters.opened #status-filters {
+    display: block;
+}
+
+#status-filters label {
+    margin-left: 1rem;
+    margin-bottom: 1rem;
+    float: none;
+    display: inline-block;
+    position: relative;
+}
+
+.feature-filters label {
+    float: none;
+    display: inline-block;
+}
+
+.status-filters {
+    list-style: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.filter-toggle:checked + .filter-status {
+    color: hsl(240, 1.3%, 84.5%);
+    color: var(--text-color);
+}
+
+.filter-status,
+.feature-status {
+    color: hsl(0, 0%, 60%);
+    color: var(--status-color);
+    border-color: hsl(0, 0%, 60%);
+    border-color: var(--status-color);
+}
+
+.feature-status a {
+    color: inherit;
+}
+
+.status-filter,
+.status-marker {
+    border-color: hsl(0, 0%, 60%);
+    border-color: var(--status-color)
+}
+
+.filter-toggle:checked + .filter-status {
+    background-color: hsl(0, 0%, 60%);
+    background-color: var(--status-color);
+}
+
+.property-description.status-marker {
+    border-left-width: 3px;
+    border-left-style: solid;
+    padding: 0.5rem 0 0.5rem 1rem;
+}
+
 .property-count {
+    max-width: 920px;
+    margin: 0 auto 3rem;
+
     text-align: right;
-    color: #999;
-}
-
-.property-count p {
-    margin: 0;
-}
-
-#property-list {
-/*    word-wrap: break-word;*/
+    color: hsl(240, 2.3%, 56.7%);
+    color: var(--text-color-coolgray);
 }
 
 .property-header > h3:first-of-type {
@@ -117,32 +253,57 @@ section.primary {
     margin: 0;
 }
 
-ul.properties {
+.property-header:after {
+    position: relative;
+    width: 2rem;
+    height: 2rem;
+    right: 0;
+    top: 0.5rem;
+    margin-left: 1rem;
+    transition: transform 0.3s ease-out;
+}
+
+.properties {
     padding: 0;
+    max-width: 920px;
+    margin: 0 auto 3rem;
+    border-bottom: 1px solid hsl(0, 0%, 89.4%);
+    border-color: var(--feature-rule-color);
 }
 
 .properties .property {
     position: relative;
     display: block;
-    background-color: #f9f9f9;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-    padding: 1em;
-    margin: 1em 0 !important;
     max-height: intrinsic;
     min-height: 3rem;
     overflow-y: hidden;
     cursor: pointer;
+    background-color: transparent;
+    border-color: transparent;
+    border-width: 1px;
+    border-style: solid;
+    border-top-color: hsl(0, 0%, 89.4%);
+    border-top-color: var(--feature-rule-color);
+    padding: 0.5rem;
+    line-height: 1.618;
     transition: background-color 0.3s ease-in;
 }
 
-.properties .property:hover {
-    background-color: white;
+.property.opened {
+    background-color: hsl(0, 0%, 100%);
+    background-color: var(--figure-mattewhite-background-color);
+    border-left-color: hsl(0, 0%, 89.4%);
+    border-left-color: var(--feature-rule-color);
+    border-right-color: hsl(0, 0%, 89.4%);
+    border-right-color: var(--feature-rule-color);
+    max-height: 120rem;
 }
 
-.property.opened {
-    background-color: white;
-    max-height: 120rem;
+.property.opened .property-header:after {
+    -webkit-transform: rotateX(-180deg);
+    -moz-transform: rotateX(-180deg);
+    transform: rotateX(-180deg);
+    perspective: 600;
 }
 
 .property-description .toggleable {
@@ -199,7 +360,6 @@ ul.values {
 
 .property-header {
     position: relative;
-    padding-right: 3rem;
     display: -webkit-flex;
     display: flex;
     -webkit-flex-direction: row;
@@ -220,33 +380,34 @@ ul.values {
 }
 
 .property.opened .property-header .toggle {
-    -webkit-transform: rotateX(-180deg);
-    -moz-transform: rotateX(-180deg);
     transform: rotateX(-180deg);
 }
 
-.property-header h3 .spec-label {
-    color: #999;
-    text-decoration: none;
-    font-weight: 200;
-}
-
+.property-header h3 .spec-label ,
 .property-header h3 .spec-label a {
-    color: #999;
     text-decoration: none;
     font-weight: 200;
+    color: hsl(0, 0%, 33.3%);
+    color: var(--text-color-medium);
 }
 
 .spec-label::before {
     content: ' — ';
 }
-.property-header h3 a {
-    color: #444;
+
+.property-description .toggleable {
+    color: hsl(0, 0%, 20%);
+    color: var(--text-color);
+}
+
+.property-header h3,
+.property-header a[name] {
+    color: hsl(0, 0%, 26.7%);
+    color: var(--text-color-heading);
 }
 
 .property-alias {
     font-size: smaller;
-    color: #999;
 }
 
 .property-header p {
@@ -254,12 +415,11 @@ ul.values {
     margin-bottom: 0.5rem;
 }
 
-.value-alias {
-    color: #999;
-}
-
+.property-alias,
+.value-alias,
 .value-status {
-    color: #999;
+    color: hsl(240, 2.3%, 56.7%);
+    color: var(--text-color-coolgray);
 }
 
 .property.is-hidden {
@@ -273,13 +433,6 @@ ul.property-details {
     margin-right: 0.5em;
 }
 
-.property-status {
-    display: inline-block;
-    position: relative;
-    font-size: 2rem;
-    min-width: 4em;
-    text-align: right;
-}
 
 .property-status,
 .property-status a {
@@ -287,155 +440,123 @@ ul.property-details {
 }
 
 .property .status-marker {
-    width: 0;
-    height: 0;
+    border-left-width: 3px;
+    border-left-style: solid;
+    padding: 0.5rem 0 0.5rem 1rem;
+}
+
+
+.status-marker {
+    border-color: hsl(0, 0%, 60%);
+    border-color: var(--status-color)
+}
+
+.supported {
+    color: hsl(100, 100%, 30%);
+    color: var(--supported-color);
+    border-color: hsl(100, 100%, 30%);
+    border-color: var(--supported-color);
+}
+
+.in-development {
+    color: hsl(24.5, 91.3%, 50.6%);
+    color: var(--in-development-color);
+    border-color: hsl(24.5, 91.3%, 50.6%);
+    border-color: var(--in-development-color);
+}
+
+.under-consideration {
+    color: hsl(5.9, 40.2%, 60%);
+    color: var(--under-consideration-color);
+    border-color: hsl(5.9, 40.2%, 60%);
+    border-color: var(--under-consideration-color);
+}
+
+.no-active-development {
+    color: hsl(240, 60.6%, 59.2%);
+    color: var(--no-active-development-color);
+    border-color: hsl(240, 60.6%, 59.2%);
+    border-color: var(--no-active-development-color);
+}
+
+.experimental {
+    color: hsl(211.3, 100%, 50%);
+    color: var(--experimental-color);
+    border-color: hsl(211.3, 100%, 50%);
+    border-color: var(--experimental-color);
+}
+
+.partial-support {
+    color: hsl(180, 25%, 43.9%);
+    color: var(--partially-supported-color);
+    border-color: hsl(180, 25%, 43.9%);
+    border-color: var(--partially-supported-color);
+}
+
+.non-standard {
+    color: hsl(275.4, 77.7%, 35.1%);
+    color: var(--non-standard-color);
+    border-color: hsl(275.4, 77.7%, 35.1%);
+    border-color: var(--non-standard-color);
+}
+
+.removed,
+.not-considering {
+    color: hsl(0, 0%, 49.8%);
+    color: var(--removed-not-considering-color);
+    border-color: hsl(0, 0%, 49.8%);
+    border-color: var(--removed-not-considering-color);
+}
+
+.not-implemented {
+    color: hsl(0, 0%, 29.8%);
+    color: var(--not-implemented-color);
+    border-color: hsl(0, 0%, 29.8%);
+    border-color: var(--not-implemented-color);
+}
+
+.obsolete {
+    color: hsl(50, 100%, 25.1%);
+    color: var(--obsolete-color);
+    border-color: hsl(50, 100%, 25.1%);
+    border-color: var(--obsolete-color);
+}
+
+.by-specification {
+    background-color: hsl(0, 0%, 96.9%);
+    background-color: var(--content-background-color);
+    border-color: hsl(0, 0%, 83.9%);
+    border-color: var(--input-border-color);
+}
+
+.property-filters.opened .search-input {
+    border-color: hsl(0, 0%, 83.9%);
+    border-color: var(--input-border-color);
+}
+
+.feature-filters .filters-toggle-button {
+    background-repeat: no-repeat;
+    background-size: 2rem;
+    background-position: right;
+    background-filter: lightness(2);
     position: absolute;
-    top: 0;
-    left: 0;
-    border-style: solid;
-    border-width: 20px 20px 0 0;
-    border-color: transparent transparent transparent transparent;
+    padding-right: 2.5rem;
+    right: 1rem;
+    top: 1rem;
+    border: none;
+    color: hsl(240, 2.3%, 56.7%);
 }
 
-#status-filters .supported,
-.property-status.supported,
-.property-status.supported a {
-    color: #339900;
+.feature-filters .filters-toggle-button:hover {
+    filter: brightness(0);
 }
 
-.status-marker.supported {
-    border-color: #339900 transparent transparent transparent;
-}
-
-#status-filters .in-development,
-.property-status.in-development,
-.property-status.in-development a {
-    color: #f46c0e;
-}
-
-.status-marker.in-development {
-    border-color: #f46c0e transparent transparent transparent;
-}
-
-#status-filters .no-active-development,
-.property-status.no-active-development,
-.property-status.no-active-development a {
-    color: #5858D6;
-}
-
-.status-marker.no-active-development {
-    border-color: #5858D6 transparent transparent transparent;
-}
-
-#status-filters .partial-support,
-.property-status.partial-support,
-.property-status.partial-support a {
-    color: #548c8c;
-}
-
-.status-marker.partial-support {
-    border-color: #548c8c transparent transparent transparent;
-}
-
-#status-filters .prototyping,
-.property-status.prototyping,
-.property-status.prototyping a {
-    color: #007AFF;
-}
-
-.status-marker.prototyping {
-    border-color: #007AFF transparent transparent transparent;
-}
-
-#status-filters .experimental,
-.property-status.experimental,
-.property-status.experimental a {
-    color: #007AFF;
-}
-
-.status-marker.experimental {
-    border-color: #007AFF transparent transparent transparent;
-}
-
-#status-filters .under-consideration,
-.property-status.under-consideration,
-.property-status.under-consideration a {
-    color: #cc9d00;
-}
-
-.status-marker.under-consideration {
-    border-color: #FFC500 transparent transparent transparent;
-}
-
-#status-filters .removed,
-.property-status.removed,
-.property-status.removed a {
-    color: #7F7F7F;
-}
-
-.status-marker.removed {
-    border-color: #7F7F7F transparent transparent transparent;
-}
-
-#status-filters .non-standard,
-.property-status.non-standard,
-.property-status.non-standard a {
-    color: #8000FF;
-}
-
-.status-marker.non-standard {
-    border-color: #8000FF transparent transparent transparent;
-}
-
-#status-filters .not-considering,
-.property-status.not-considering,
-.property-status.not-considering a {
-    color: #7F7F7F;
-}
-
-.status-marker.not-considering {
-    border-color: #7F7F7F transparent transparent transparent;
-}
-
-#status-filters .not-implemented,
-.property-status.not-implemented,
-.property-status.not-implemented a {
-    color: #4C4C4C;
-}
-
-.status-marker.not-implemented {
-    border-color: #4C4C4C transparent transparent transparent;
-}
-
-#status-filters .obsolete,
-.property-status.obsolete,
-.property-status.obsolete a {
-    color: #804000;
-}
-
-.status-marker.obsolete {
-    border-color: #804000 transparent transparent transparent;
-}
-
-.property-filters {
-    position: relative;
-    top: 0;
-    margin-top: 0.5em;
-}
-
-#search {
-    font-size: 2rem;
-    padding: 1rem;
-    border-radius: 3px;
-    border: 1px solid #cccccc;
-    width: 100%;
-    margin-top: 1.5rem;
-    box-sizing: border-box;
+#filters-toggle {
+    display: none;
 }
 
 .property-filters ul {
     margin-top: 0.5rem;
-    margin-bottom: 1.5rem;
 }
 
 .property-filters ul li {
@@ -444,7 +565,7 @@ ul.property-details {
 
 .property-filters label > input {
     position: relative;
-    top: -3px;
+    top: -1px;
 }
 
 .prefixes {
@@ -452,12 +573,26 @@ ul.property-details {
 }
 
 #specifications {
-    display: block;
+    display: inline-block;
     font-size: 1.6rem;
-    border: 1px solid silver;
-    width: calc(100% - 2rem);
-    height: 3rem;
-    margin: 1rem 2rem;
+    color: hsl(0, 0%, 20%);
+    color: var(--text-color);
+    margin-left: 1rem;
+}
+
+.filter-by-specifications-toggle {
+    position: absolute;
+    display: none;
+    left: 1000rem;
+    top: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#specifications:disabled + .filter-by-specifications-toggle {
+    display: block;
+    top: 0;
+    left: 0;
 }
 
 h3 a[name], .admin-bar h3 a[name] {
@@ -467,6 +602,21 @@ h3 a[name], .admin-bar h3 a[name] {
     visibility: visible; /* Override visibility:hidden from themes/webkit/style.css */
 }
 
+.pagination:after {
+    display: none;
+}
+
+.pagination,
+.pagination + h1 {
+    margin-top: 0;
+}
+
+@media only screen and (max-width: 1180px) {
+    .feature-filters .filters-toggle-button {
+        right: 3rem;
+    }
+}
+
 @media only screen and (max-width: 508px) {
     #property-filters,
     #property-list {
@@ -474,70 +624,114 @@ h3 a[name], .admin-bar h3 a[name] {
     }
 
     #property-filters {
-        border: 1px solid #ddd;
-        border-radius: 3px;
-        background: #f6f6f6;
-        padding: 1rem;
-        box-sizing: border-box;
-        margin-right: 0;
-        margin-bottom: 3rem;
+        padding-left: 2rem;
+        padding-right: 2rem;
     }
 
     .property-header h3 {
         font-size: 2rem;
+        padding-right: 0.5rem;
     }
 
     .property-status {
         font-size: 1.6rem;
         margin-top: 0.4rem;
+        float: left;
+    }
+
+    .property-header:after {
+        width: 1rem;
+        height: 1rem;
+        background-size: 1rem;
+        top: 1rem;
+    }
+
+    .property h3 {
+        font-size: 2rem;
+        padding-top: 4rem;
+    }
+
+    .property-header .property-status {
+        font-size: 1.6rem;
+        position: absolute;
+        text-align: left;
+    }
+
+    .property .moreinfo {
+        flex-wrap: wrap;
+    }
+
+    .property .moreinfo .contact {
+        text-align: left;
+    }
+
+    .status-filters {
+        flex-basis: 100%;
+    }
+
+    .status-filters label {
+        margin-left: 0;
+        margin-right: 1rem;
     }
 }
+
+@media(prefers-color-scheme:dark) {
+    .property-header:after {
+        filter: invert(1);
+    }
+
+    .search-input:hover,
+    .search-input:focus,
+    .feature-filters .filters-toggle-button:hover {
+        filter: brightness(2);
+    }
+}
+
 </style>
     <?php if (have_posts()) : while (have_posts()) : the_post(); ?>
 
-        <div class="page feature-status-page" id="post-<?php the_ID(); ?>">
-            <?php echo str_repeat('&nbsp;', 200);?>
+        <div class="page css-feature-page" id="post-<?php the_ID(); ?>">
+
+            <div class="connected pagination">
+                <?php wp_nav_menu( array('theme_location'  => 'feature-subnav') ); ?>
+            </div>
+
             <h1><a href="<?php echo get_permalink() ?>" rel="bookmark" title="Permanent Link: <?php the_title(); ?>"><?php the_title(); ?></a></h1>
 
-            <section class="side-by-side">
-                <sidebar>
-                    <section class="sticky">
-                        <form id="property-filters" class="property-filters">
-                            <h2>Filters</h2>
-                            <input type="text" id="search" placeholder="Search filter&hellip;" title="Filter the property list." required>
-                            <h2>Filter by Status</h2>
-                            <ul id="status-filters">
-                            </ul>
-                        </form>
+            <section class="feature-filters">
+                <form id="property-filters" class="property-filters page-width">
+                    <input type="text" id="search" class="search-input" placeholder="Search CSS Features&hellip;" title="Filter the property list." required><label class="filters-toggle-button">Filters</label>
+                    <ul id="status-filters">
+                    </ul>
 
-                        <div class="prefixes">
-                            <h2>Filter by Prefix</h2>
-                            <ul id="prefix-filters">
-                            </ul>
-                        </div>
-                    </section>
-                </sidebar>
-
-                <section class="primary">
-                    <div id="property-list">
-                        <div class="property-count">
-                            <p><span id="property-count"></span> <span id="property-pluralize">properties</span></p>
-                        </div>
+                    <div class="prefixes">
+                        <h2>Filter by Prefix</h2>
+                        <ul id="prefix-filters">
+                        </ul>
                     </div>
 
-                    <template id="success-template">
-                        <ul class="properties" id="properties-container"></ul>
+                </form>
+            </section>
 
-                        <p>Cannot find something? You can contact <a href="https://twitter.com/webkit">@webkit</a> on Twitter or contact the <a href="https://lists.webkit.org/mailman/listinfo/webkit-help">webkit-help</a> mailing list for questions.</p>
-                        <p>You can also <a href="/contributing-code/">contribute to features</a> directly, the entire project is Open Source. To report bugs on existing features or check existing bug reports, see <a href="https://bugs.webkit.org">https://bugs.webkit.org</a>.</p>
-                    </template>
+            <section class="primary">
+                <div id="property-list">
+                    <div class="property-count">
+                        <p><span id="property-count"></span> <span id="property-pluralize">properties</span></p>
+                    </div>
+                </div>
 
-                    <template id="error-template">
-                        <p>Error: unable to load the features list (<span id="error-message"></span>).</p>
-                        <p>If this is not resolved soon, please contact <a href="https://twitter.com/webkit">@webkit</a> on Twitter or the <a href="https://lists.webkit.org/mailman/listinfo/webkit-help">webkit-help</a> mailing list.</p>
-                    </template>
+                <template id="success-template">
+                    <ul class="properties" id="properties-container"></ul>
 
-                </section>
+                    <p>Cannot find something? You can contact <a href="https://twitter.com/webkit">@webkit</a> on Twitter or contact the <a href="https://lists.webkit.org/mailman/listinfo/webkit-help">webkit-help</a> mailing list for questions.</p>
+                    <p>You can also <a href="/contributing-code/">contribute to features</a> directly, the entire project is Open Source. To report bugs on existing features or check existing bug reports, see <a href="https://bugs.webkit.org">https://bugs.webkit.org</a>.</p>
+                </template>
+
+                <template id="error-template">
+                    <p>Error: unable to load the features list (<span id="error-message"></span>).</p>
+                    <p>If this is not resolved soon, please contact <a href="https://twitter.com/webkit">@webkit</a> on Twitter or the <a href="https://lists.webkit.org/mailman/listinfo/webkit-help">webkit-help</a> mailing list.</p>
+                </template>
+
             </section>
         </div>
 
@@ -564,7 +758,7 @@ function initializeStatusPage() {
         'obsolete',
         'removed',
     ];
-    
+
     const readableStatus = {
         'supported': 'Supported',
         'in-development': 'In Development',
@@ -636,7 +830,7 @@ function initializeStatusPage() {
             container.appendChild(link);
             return container;
         }
-        
+
         function appendValueWithLink(container, value, link)
         {
             if (link) {
@@ -646,7 +840,7 @@ function initializeStatusPage() {
                 container.appendChild(anchor);
                 return;
             }
-            
+
             container.textContent = value;
         }
 
@@ -667,12 +861,8 @@ function initializeStatusPage() {
         var slug = propertyObject.name.toLowerCase().replace(/ /g, '-');
         container.setAttribute("id", "property-" + slug);
 
-        var cornerStatus = document.createElement('div');
-        cornerStatus.className = "status-marker ";
-        container.appendChild(cornerStatus);
-
         var descriptionContainer = document.createElement('div');
-        descriptionContainer.className = "property-description";
+        descriptionContainer.className = "property-description status-marker";
 
         var featureHeaderContainer = document.createElement('div');
         featureHeaderContainer.className = "property-header";
@@ -729,15 +919,15 @@ function initializeStatusPage() {
                 longhandLink.textContent = longhand;
                 longhandsDiv.appendChild(longhandLink);
             }
-        
+
             toggledContentContainer.appendChild(longhandsDiv);
         }
-        
+
         function collapsePrefixedValues(values)
         {
             var remainingValues = [];
             var prefixMap = {};
-            
+
             for (var valueObj of values) {
                 var valueName = valueObj.value;
 
@@ -750,15 +940,15 @@ function initializeStatusPage() {
                         continue;
                     }
                 }
-                
+
                 remainingValues.push(valueObj);
             }
-            
+
             for (var prefixed in prefixMap) {
                 var unprefixedValue = findValueByName(remainingValues, prefixed);
                 unprefixedValue.aliases = prefixMap[prefixed];
             }
-            
+
             return remainingValues;
         }
 
@@ -766,14 +956,14 @@ function initializeStatusPage() {
             var valuesHeader = document.createElement("h4");
             valuesHeader.textContent = 'Supported Values:';
             toggledContentContainer.appendChild(valuesHeader);
-            
+
             var valuesList = document.createElement("ul");
             valuesList.className = 'values';
-            
+
             var values = collapsePrefixedValues(propertyObject.values);
             for (var valueObj of values) {
                 var li = document.createElement("li");
-                
+
                 valueObj.el = li;
 
                 var link = undefined;
@@ -789,48 +979,51 @@ function initializeStatusPage() {
                     link = valueObj['url'];
 
                 appendValueWithLink(li, valueObj.value, link);
-                
+
                 if (valueAliases) {
                     var span = document.createElement('span');
                     span.textContent = ' (' + valueAliases.join(', ') + ')';
                     span.className = 'value-alias';
                     li.appendChild(span);
                 }
-                
+
                 if (status) {
                     var span = document.createElement('span');
                     span.textContent = ' (' + status + ')';
                     span.className = 'value-status';
                     li.appendChild(span);
                 }
-                
+
                 valuesList.appendChild(li);
             }
             toggledContentContainer.appendChild(valuesList);
         }
-        
-        var statusContainer = document.createElement("span");
-        cornerStatus.className += propertyObject.status.status;
+
+        var statusContainer = document.createElement("div");
+        descriptionContainer.classList.add(propertyObject.status.status);
         statusContainer.className = "property-status " + propertyObject.status.status;
+        var statusLabel = document.createElement("label");
+
         if ("webkit-url" in propertyObject) {
             var statusLink = document.createElement("a");
             statusLink.href = propertyObject["webkit-url"];
             statusLink.textContent = readableStatus[propertyObject.status.status];
-            statusContainer.appendChild(statusLink);
+            statusLabel.appendChild(statusLink);
         } else {
-            statusContainer.textContent = readableStatus[propertyObject.status.status];
+            statusLabel.textContent = readableStatus[propertyObject.status.status];
         }
+        statusContainer.appendChild(statusLabel);
         featureHeaderContainer.appendChild(statusContainer);
 
         var toggle = document.createElement('button');
         toggle.className = 'toggle';
 
-        toggle.addEventListener('click', function (e) {
+        container.addEventListener('click', function (e) {
             container.classList.toggle('opened');
         });
 
         featureHeaderContainer.appendChild(toggle);
-        
+
         if (specificationObject && "description" in specificationObject) {
             var testDescription = document.createElement('p');
             testDescription.className = "property-desc";
@@ -858,7 +1051,7 @@ function initializeStatusPage() {
         }
 
         container.appendChild(descriptionContainer);
-        
+
         function getMostSpecificProperty(categoryObject, specificationObject, attributeName)
         {
             // The url in the specification object is more specific, so use it if present.
@@ -916,12 +1109,12 @@ function initializeStatusPage() {
 
         return container;
     }
-    
+
     function canonicalizeIdentifier(identifier)
     {
         return identifier.toLocaleLowerCase().replace(/ /g, '-');
     }
-    
+
     function renderSpecifications(categories, properties, selectedSpecifications)
     {
         var specificationsList = document.getElementById('specifications');
@@ -929,7 +1122,7 @@ function initializeStatusPage() {
 
         var selectedIndex = -1;
         var allCategories = Object.keys(categories).sort();
-        
+
         for (var i = 0; i < allCategories.length; ++i) {
             var categoryKey = allCategories[i];
             var category = categories[categoryKey];
@@ -946,7 +1139,7 @@ function initializeStatusPage() {
         if (selectedIndex != -1)
             specificationsList.selectedIndex = selectedIndex;
     }
-    
+
     function getPropertyCategory(propertyObject)
     {
         if ('specification' in propertyObject && 'category' in propertyObject.specification)
@@ -974,6 +1167,7 @@ function initializeStatusPage() {
     function initSearch(properties, categories)
     {
         var filtersForm = document.getElementById('property-filters');
+        var filtersToggleButton = document.getElementsByClassName('filters-toggle-button')[0];
         var statusContainer = document.getElementById('status-filters');
         var inputField = document.getElementById('search');
         var featuresEls = document.querySelectorAll('.properties > li');
@@ -994,10 +1188,10 @@ function initializeStatusPage() {
                     window.console.log('Status ' + propertyStatusKey + ' is not one of the predefined status keys ', statusOrder);
             }
         });
-        
+
         var selectedStatuses = statusesFromURL();
         var selectedSpecs = specificationsFromURL();
-        
+
         for (var key of statusOrder) {
             var status = statusFilters[key];
             var canonicalStatus = canonicalizeIdentifier(status);
@@ -1007,17 +1201,19 @@ function initializeStatusPage() {
             var input = document.createElement("input");
             input.setAttribute('type','checkbox');
             input.setAttribute('value', canonicalStatus);
-            if (selectedStatuses.indexOf(canonicalStatus) != -1)
+            if (selectedStatuses.indexOf(canonicalStatus) != -1) {
+                filtersForm.classList.add('opened');
                 input.checked = true;
+            }
             input.className = 'status-checkbox';
             input.addEventListener('change', function() { updateSearch(properties); });
             label.appendChild(input);
-            label.className = canonicalStatus;
+            label.className = "status-filter " + canonicalStatus;
             label.appendChild(document.createTextNode(" " + readableStatus[status]));
             entry.appendChild(label);
             statusContainer.appendChild(entry);
         }
-        
+
         // Append the special "By Specification" checkbox
         {
             var entry = document.createElement("li");
@@ -1029,43 +1225,29 @@ function initializeStatusPage() {
                 input.checked = true;
             input.addEventListener('change', function() { updateSearch(properties); });
             label.appendChild(input);
+            label.className = "status-filter by-specification";
             label.appendChild(document.createTextNode(" By Specification:"));
-            entry.appendChild(label);
-            
+
             var specsList = document.createElement('select');
             specsList.className = 'specifications';
             specsList.id = 'specifications';
-            entry.appendChild(specsList);
-            
+            specsList.addEventListener('mousedown', function() {
+                input.setAttribute('checked','checked');
+                input.checked = true;
+                console.log(input);
+                input.checked = true;
+            });
+            var specsListToggle = document.createElement('div');
+            specsListToggle.className = 'filter-by-specifications-toggle';
+            label.appendChild(specsList);
+            label.appendChild(specsListToggle);
+            entry.appendChild(label);
+
             statusContainer.appendChild(entry);
         }
 
-        var prefixContainer = document.getElementById('prefix-filters');
-        var prefixFilters = {};
-        prefixFilters['prefix-supported-property'] = 'Property with and without prefix';
-        prefixFilters['prefix-only-property'] = 'Prefixed-only Properties';
-        prefixFilters['prefix-supported-value'] = 'Prefixed Values';
-        prefixFilters['prefix-only-value'] = 'Prefixed-only Values';
-
-        for (var key in prefixFilters) {
-            var status = prefixFilters[key];
-            var entry = document.createElement("li");
-            var label = document.createElement("label");
-            var input = document.createElement("input");
-            input.setAttribute('type','checkbox');
-            input.setAttribute('value', key);
-            input.addEventListener('change', function() { updateSearch(properties); });
-            label.appendChild(input);
-            label.className = status.toLocaleLowerCase().replace(/ /g, '-');
-            label.appendChild(document.createTextNode(" " + status));
-            entry.appendChild(label);
-            prefixContainer.appendChild(entry);
-        }
-
-        filtersForm.addEventListener('click', function (e) {
-            if ( filtersForm.className.indexOf('opened') !== -1 ) {
-                filtersForm.className = filtersForm.className.replace(' opened','');
-            } else filtersForm.className += ' opened';
+        filtersToggleButton.addEventListener('mousedown', function (e) {
+            filtersForm.classList.toggle('opened');
         });
 
         var searchTerm = searchTermFromURL();
@@ -1092,17 +1274,17 @@ function initializeStatusPage() {
             if (item.checked)
                 checkedValues.push(item.value);
         });
-        
+
         return checkedValues;
     }
 
     function getValuesOfSelectedItems(select)
     {
         var selectedValues = [];
-        
+
         if (select.selectedIndex != -1)
             selectedValues.push(select.options[select.selectedIndex].value);
-        
+
         return selectedValues;
     }
 
@@ -1116,7 +1298,7 @@ function initializeStatusPage() {
         specificationsList.disabled = false;
         return getValuesOfSelectedItems(specificationsList);
     }
-    
+
     function updateSearch(properties)
     {
         var inputField = document.getElementById('search');
@@ -1131,36 +1313,36 @@ function initializeStatusPage() {
         var numVisible = searchProperties(properties, searchTerm, selectedSpecifications(), activeStatusFilters, activePrefixFilters);
         document.getElementById('property-pluralize').textContent = numVisible == 1 ? 'property' : 'properties';
         document.getElementById('property-count').textContent = numVisible;
-        
+
         updateSpecsState();
         updateURL(searchTerm, selectedSpecifications(), activeStatusFilters, activePrefixFilters);
     }
-    
+
     function updateSpecsState()
     {
         var specsEnabled = document.getElementById('by-spec-checkbox').checked;
         var specificationsList = document.getElementById('specifications');
-        
+
         var radiobuttons = [].slice.call(specificationsList.getElementsByTagName('input'));
         radiobuttons.forEach(function(radiobutton,i) {
             radiobutton.disabled = !specsEnabled;
         });
     }
-    
+
     function updateURL(searchTerm, selectedSpecifications, activeStatusFilters, activePrefixFilters)
     {
         var searchString = '';
-        
+
         function appendDelimiter()
         {
             searchString += searchString.length ? '&' : '?';
         }
-        
+
         if (searchTerm.length > 0) {
             appendDelimiter();
             searchString += 'search=' + encodeURIComponent(searchTerm);
         }
-        
+
         if (activeStatusFilters.length) {
             appendDelimiter();
             searchString += 'status=' + activeStatusFilters.join(',');
@@ -1179,7 +1361,7 @@ function initializeStatusPage() {
         var current = window.location.href;
         window.location.href = current.replace(/#(.*)$/, '') + '#' + searchString;
     }
-    
+
     function searchTermFromURL()
     {
         var search = window.location.search;
@@ -1191,7 +1373,7 @@ function initializeStatusPage() {
 
         return '';
     }
-    
+
     function statusesFromURL()
     {
         var search = window.location.search;
@@ -1220,14 +1402,14 @@ function initializeStatusPage() {
     {
         if (prefixRegexp.exec(valueObj.value))
             return true;
-        
+
         if ('alias' in valueObj) {
             for (var alias of valueObj.aliases) {
                 if (prefixRegexp.exec(alias))
                     return true;
             }
         }
-        
+
         return false;
     }
 
@@ -1271,13 +1453,13 @@ function initializeStatusPage() {
         properties.forEach(function(propertyObject) {
             var matchesStatusSearch = isStatusFiltered(propertyObject, statusFilters);
             var matchesPrefixSearch = isPrefixFiltered(propertyObject, prefixFilters);
-            
+
             var visible = propertyIsSearchMatch(propertyObject, searchTerm) && isCategoryMatch(propertyObject, categories) && matchesStatusSearch && matchesPrefixSearch;
             if (visible && !propertyObject.visible)
                 propertyObject.el.className = 'property';
             else if (!visible && propertyObject.visible)
                 propertyObject.el.className = 'property is-hidden';
-            
+
             if (visible) {
                 filterValues(propertyObject, searchTerm);
                 ++visibleCount;
@@ -1285,7 +1467,7 @@ function initializeStatusPage() {
 
             propertyObject.visible = visible;
         });
-        
+
         return visibleCount;
     }
 
@@ -1303,7 +1485,7 @@ function initializeStatusPage() {
                     return true;
             }
         }
-        
+
         for (var valueObj of propertyObject.values) {
             if (valueObj.value.toLowerCase().indexOf(searchTerm) !== -1)
                 return true;
@@ -1353,17 +1535,17 @@ function initializeStatusPage() {
         }
         return false;
     }
-    
+
     function propertyOrAliasIsPrefixed(propertyObject)
     {
         if (prefixRegexp.exec(propertyObject.name))
             return true;
-        
+
         for (var alias of propertyNameAliases(propertyObject)) {
             if (prefixRegexp.exec(alias))
                 return true;
         }
-        
+
         return false;
     }
 
@@ -1375,7 +1557,7 @@ function initializeStatusPage() {
             return false;
         if (activeFilters.indexOf(propertyObject.status.status) !== -1)
             return true;
-        
+
         return false;
     }
 
@@ -1403,7 +1585,7 @@ function initializeStatusPage() {
                     return true;
             }
         }
-        
+
         return false;
     }
 
@@ -1417,7 +1599,7 @@ function initializeStatusPage() {
     function mergeProperties(unprefixedPropertyObj, prefixedPropertyObj)
     {
         (unprefixedPropertyObj['codegen-properties'].aliases = unprefixedPropertyObj['codegen-properties'].aliases || []).push(prefixedPropertyObj.name);
-        
+
         for (var valueObj of prefixedPropertyObj.values) {
             if (!findValueByName(unprefixedPropertyObj.values, valueObj.value))
                 prefixedPropertyObj.values.push(valueObj);
@@ -1425,7 +1607,7 @@ function initializeStatusPage() {
 
         return unprefixedPropertyObj;
     }
-    
+
     // Sometimes we have separate entries for -webkit-foo and foo.
     function collapsePrefixedProperties(properties)
     {
@@ -1454,7 +1636,7 @@ function initializeStatusPage() {
 
             remainingProperties.push(propertyObj);
         }
-        
+
         return remainingProperties;
     }
 
@@ -1472,10 +1654,10 @@ function initializeStatusPage() {
         }
         propertyObject.values = valueObjects;
     }
-    
+
     function canonicalizeStatus(propertyObject, categories)
     {
-        // Inherit "status" from the cateogry if not explicitly specified.
+        // Inherit "status" from the category if not explicitly specified.
         if (!('status' in propertyObject)) {
             var category = getSpecificationCategory(propertyObject)
             if (category) {
@@ -1501,19 +1683,19 @@ function initializeStatusPage() {
             };
         } else if (!('status' in propertyObject.status))
             propertyObject.status.status = 'supported';
-            
+
         propertyObject.status.status = canonicalizeIdentifier(propertyObject.status.status);
     }
-    
+
     function renderContent(results)
     {
         var mainContent = document.getElementById("property-list");
         var successSubtree = document.importNode(document.getElementById("success-template").content, true);
         mainContent.appendChild(successSubtree);
-        
+
         var properties = results[0]['properties'];
         var everythingToShow = [];
-        
+
         var categories = results[0]['categories'];
 
         for (var property in properties) {
@@ -1525,10 +1707,10 @@ function initializeStatusPage() {
 
             everythingToShow.push(propertyObject);
         }
-        
+
         everythingToShow = collapsePrefixedProperties(everythingToShow);
         sortAlphabetically(everythingToShow);
-        
+
         renderProperties(categories, everythingToShow);
 
         initSearch(everythingToShow, categories);

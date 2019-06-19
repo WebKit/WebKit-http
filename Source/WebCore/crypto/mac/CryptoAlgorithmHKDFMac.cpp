@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CryptoAlgorithmHKDF.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CommonCryptoUtilities.h"
 #include "CryptoAlgorithmHkdfParams.h"
@@ -40,12 +40,15 @@ ExceptionOr<Vector<uint8_t>> CryptoAlgorithmHKDF::platformDeriveBits(const Crypt
     CCDigestAlgorithm digestAlgorithm;
     getCommonCryptoDigestAlgorithm(parameters.hashIdentifier, digestAlgorithm);
 
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     // <rdar://problem/32439455> Currently, when key data is empty, CCKeyDerivationHMac will bail out.
+    // <rdar://problem/48896021> Reminder: Switch to CCDeriveKey now that CCKeyDerivationHMac is deprecated.
     if (CCKeyDerivationHMac(kCCKDFAlgorithmHKDF, digestAlgorithm, 0, key.key().data(), key.key().size(), 0, 0, parameters.infoVector().data(), parameters.infoVector().size(), 0, 0, parameters.saltVector().data(), parameters.saltVector().size(), result.data(), result.size()))
         return Exception { OperationError };
+    ALLOW_DEPRECATED_DECLARATIONS_END
     return WTFMove(result);
 }
 
 }
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

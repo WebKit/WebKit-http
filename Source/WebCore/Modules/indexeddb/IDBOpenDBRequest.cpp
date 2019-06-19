@@ -40,8 +40,11 @@
 #include "IDBVersionChangeEvent.h"
 #include "Logging.h"
 #include "ScriptExecutionContext.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(IDBOpenDBRequest);
 
 Ref<IDBOpenDBRequest> IDBOpenDBRequest::createDeleteRequest(ScriptExecutionContext& context, IDBClient::IDBConnectionProxy& connectionProxy, const IDBDatabaseIdentifier& databaseIdentifier)
 {
@@ -115,6 +118,9 @@ void IDBOpenDBRequest::fireErrorAfterVersionChangeCompletion()
 void IDBOpenDBRequest::cancelForStop()
 {
     connectionProxy().openDBRequestCancelled({ connectionProxy(), *this });
+
+    if (m_transaction && m_transaction->isVersionChange())
+        m_transaction->removeRequest(*this);
 }
 
 void IDBOpenDBRequest::dispatchEvent(Event& event)

@@ -24,6 +24,23 @@
 
 // @conditional=ENABLE(STREAMS_API)
 
+function initializeReadableStreamBYOBReader(stream)
+{
+    "use strict";
+
+    if (!@isReadableStream(stream))
+        @throwTypeError("ReadableStreamBYOBReader needs a ReadableStream");
+    if (!@isReadableByteStreamController(@getByIdDirectPrivate(stream, "readableStreamController")))
+        @throwTypeError("ReadableStreamBYOBReader needs a ReadableByteStreamController");
+    if (@isReadableStreamLocked(stream))
+        @throwTypeError("ReadableStream is locked");
+
+    @readableStreamReaderGenericInitialize(this, stream);
+    @putByIdDirectPrivate(this, "readIntoRequests", []);
+
+    return this;
+}
+
 function cancel(reason)
 {
     "use strict";
@@ -32,7 +49,7 @@ function cancel(reason)
         return @Promise.@reject(@makeThisTypeError("ReadableStreamBYOBReader", "cancel"));
 
     if (!@getByIdDirectPrivate(this, "ownerReadableStream"))
-        return @Promise.@reject(new @TypeError("cancel() called on a reader owned by no readable stream"));
+        return @Promise.@reject(@makeTypeError("cancel() called on a reader owned by no readable stream"));
 
     return @readableStreamReaderGenericCancel(this, reason);
 }
@@ -45,16 +62,16 @@ function read(view)
         return @Promise.@reject(@makeThisTypeError("ReadableStreamBYOBReader", "read"));
 
     if (!@getByIdDirectPrivate(this, "ownerReadableStream"))
-        return @Promise.@reject(new @TypeError("read() called on a reader owned by no readable stream"));
+        return @Promise.@reject(@makeTypeError("read() called on a reader owned by no readable stream"));
 
     if (!@isObject(view))
-        return @Promise.@reject(new @TypeError("Provided view is not an object"));
+        return @Promise.@reject(@makeTypeError("Provided view is not an object"));
 
     if (!@ArrayBuffer.@isView(view))
-        return @Promise.@reject(new @TypeError("Provided view is not an ArrayBufferView"));
+        return @Promise.@reject(@makeTypeError("Provided view is not an ArrayBufferView"));
 
     if (view.byteLength === 0)
-        return @Promise.@reject(new @TypeError("Provided view cannot have a 0 byteLength"));
+        return @Promise.@reject(@makeTypeError("Provided view cannot have a 0 byteLength"));
 
     return @readableStreamBYOBReaderRead(this, view);
 }

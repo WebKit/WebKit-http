@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import <UIKit/UIPopoverController.h>
 
@@ -40,10 +40,9 @@
 @property (nonatomic, readonly) WKContentView *view;
 
 @property (nonatomic, assign) CGPoint presentationPoint;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 @property (nonatomic, retain) UIPopoverController *popoverController;
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
 @property (nonatomic, assign) id <WKRotatingPopoverDelegate> dismissionDelegate;
 @end
 
@@ -56,4 +55,4 @@
 - (void)accessoryDone;
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

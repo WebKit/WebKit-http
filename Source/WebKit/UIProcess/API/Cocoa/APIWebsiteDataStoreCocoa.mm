@@ -28,11 +28,10 @@
 
 #include "SandboxExtension.h"
 #include "SandboxUtilities.h"
-
 #include <Foundation/Foundation.h>
-#include <WebCore/FileSystem.h>
+#include <wtf/FileSystem.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <WebCore/RuntimeApplicationChecks.h>
 #endif
 
@@ -45,7 +44,7 @@ NSString *WebKitMediaKeysStorageDirectoryDefaultsKey = @"WebKitMediaKeysStorageD
 
 WTF::String WebsiteDataStore::defaultApplicationCacheDirectory()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // This quirk used to make these apps share application cache storage, but doesn't accomplish that any more.
     // Preserving it avoids the need to migrate data when upgrading.
     // FIXME: Ideally we should just have Safari, WebApp, and webbookmarksd create a data store with
@@ -115,7 +114,7 @@ WTF::String WebsiteDataStore::legacyDefaultApplicationCacheDirectory()
     NSString *appName = [[NSBundle mainBundle] bundleIdentifier];
     if (!appName)
         appName = [[NSProcessInfo processInfo] processName];
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // This quirk used to make these apps share application cache storage, but doesn't accomplish that any more.
     // Preserving it avoids the need to migrate data when upgrading.
     if (WebCore::IOSApplication::isMobileSafari() || WebCore::IOSApplication::isWebApp())
@@ -124,7 +123,7 @@ WTF::String WebsiteDataStore::legacyDefaultApplicationCacheDirectory()
     
     ASSERT(appName);
     
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     NSString *cacheDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches"];
 #else
     char cacheDirectory[MAXPATHLEN];
@@ -163,7 +162,7 @@ WTF::String WebsiteDataStore::legacyDefaultIndexedDBDatabaseDirectory()
     // Currently, the top level of that directory contains entities related to WebSQL databases.
     // We should fix this, and move WebSQL into a subdirectory (https://bugs.webkit.org/show_bug.cgi?id=124807)
     // In the meantime, an entity name prefixed with three underscores will not conflict with any WebSQL entities.
-    return WebCore::FileSystem::pathByAppendingComponent(legacyDefaultWebSQLDatabaseDirectory(), "___IndexedDB");
+    return FileSystem::pathByAppendingComponent(legacyDefaultWebSQLDatabaseDirectory(), "___IndexedDB");
 }
 
 WTF::String WebsiteDataStore::legacyDefaultLocalStorageDirectory()
@@ -199,9 +198,15 @@ WTF::String WebsiteDataStore::legacyDefaultMediaKeysStorageDirectory()
     return WebKit::stringByResolvingSymlinksInPath([mediaKeysStorageDirectory stringByStandardizingPath]);
 }
 
+WTF::String WebsiteDataStore::legacyDefaultDeviceIdHashSaltsStorageDirectory()
+{
+    // Not implemented.
+    return String();
+}
+
 WTF::String WebsiteDataStore::legacyDefaultJavaScriptConfigurationDirectory()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WTF::String path = WebKit::pathForProcessContainer();
     if (path.isEmpty())
         path = NSHomeDirectory();
@@ -300,28 +305,6 @@ WTF::String WebsiteDataStore::websiteDataDirectoryFileSystemRepresentation(const
         LOG_ERROR("Failed to create directory %@", url);
 
     return url.absoluteURL.path.fileSystemRepresentation;
-}
-
-WebKit::WebsiteDataStore::Configuration WebsiteDataStore::defaultDataStoreConfiguration()
-{
-    WebKit::WebsiteDataStore::Configuration configuration;
-
-    configuration.applicationCacheDirectory = defaultApplicationCacheDirectory();
-    configuration.applicationCacheFlatFileSubdirectoryName = "Files";
-    configuration.cacheStorageDirectory = defaultCacheStorageDirectory();
-    configuration.networkCacheDirectory = defaultNetworkCacheDirectory();
-    configuration.mediaCacheDirectory = defaultMediaCacheDirectory();
-
-    configuration.indexedDBDatabaseDirectory = defaultIndexedDBDatabaseDirectory();
-    configuration.serviceWorkerRegistrationDirectory = defaultServiceWorkerRegistrationDirectory();
-    configuration.webSQLDatabaseDirectory = defaultWebSQLDatabaseDirectory();
-    configuration.localStorageDirectory = defaultLocalStorageDirectory();
-    configuration.mediaKeysStorageDirectory = defaultMediaKeysStorageDirectory();
-    configuration.resourceLoadStatisticsDirectory = defaultResourceLoadStatisticsDirectory();
-    
-    configuration.javaScriptConfigurationDirectory = defaultJavaScriptConfigurationDirectory();
-
-    return configuration;
 }
 
 } // namespace API

@@ -44,37 +44,62 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         this._isFunction = false;
         this._isGetter = false;
         this._isVisual = false;
-        this._hasVisibleEffect = undefined;
 
-        this._state = null;
+        this._contextReplacer = null;
+
+        this._states = [];
         this._stateModifiers = new Set;
 
+        this._warning = null;
         this._swizzled = false;
         this._processed = false;
     }
 
     // Static
 
-    // Payload format: [name, parameters, swizzleTypes, trace, [snapshot]]
+    // Payload format: (name, parameters, swizzleTypes, [trace, [snapshot]])
     static fromPayload(payload)
     {
         if (!Array.isArray(payload))
             payload = [];
 
-        if (isNaN(payload[0]))
+        if (typeof payload[0] !== "number") {
+            if (payload.length > 0)
+                WI.Recording.synthesizeWarning(WI.UIString("non-number %s").format(WI.unlocalizedString("name")));
+
             payload[0] = -1;
+        }
 
-        if (!Array.isArray(payload[1]))
+        if (!Array.isArray(payload[1])) {
+            if (payload.length > 1)
+                WI.Recording.synthesizeWarning(WI.UIString("non-array %s").format(WI.unlocalizedString("parameters")));
+
             payload[1] = [];
+        }
 
-        if (!Array.isArray(payload[2]))
+        if (!Array.isArray(payload[2])) {
+            if (payload.length > 2)
+                WI.Recording.synthesizeWarning(WI.UIString("non-array %s").format(WI.unlocalizedString("swizzleTypes")));
+
             payload[2] = [];
+        }
 
-        if (!Array.isArray(payload[3]))
-            payload[3] = [];
+        if (typeof payload[3] !== "number" || isNaN(payload[3]) || (!payload[3] && payload[3] !== 0)) {
+            // COMPATIBILITY (iOS 12.1): "trace" was sent as an array of call frames instead of a single call stack
+            if (!Array.isArray(payload[3])) {
+                if (payload.length > 3)
+                    WI.Recording.synthesizeWarning(WI.UIString("non-number %s").format(WI.unlocalizedString("trace")));
 
-        if (payload.length >= 5 && isNaN(payload[4]))
+                payload[3] = [];
+            }
+        }
+
+        if (typeof payload[4] !== "number" || isNaN(payload[4])) {
+            if (payload.length > 4)
+                WI.Recording.synthesizeWarning(WI.UIString("non-number %s").format(WI.unlocalizedString("snapshot")));
+
             payload[4] = -1;
+        }
 
         return new WI.RecordingAction(...payload);
     }
@@ -84,15 +109,77 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         let prototype = WI.RecordingAction._prototypeForType(type);
         if (!prototype)
             return false;
-        return typeof Object.getOwnPropertyDescriptor(prototype, name).value === "function";
+        let propertyDescriptor = Object.getOwnPropertyDescriptor(prototype, name);
+        if (!propertyDescriptor)
+            return false;
+        return typeof propertyDescriptor.value === "function";
+    }
+
+    static constantNameForParameter(type, name, value, index, count)
+    {
+        let indexesForType = WI.RecordingAction._constantIndexes[type];
+        if (!indexesForType)
+            return null;
+
+        let indexesForAction = indexesForType[name];
+        if (!indexesForAction)
+            return null;
+
+        if (Array.isArray(indexesForAction) && !indexesForAction.includes(index))
+            return null;
+
+        if (typeof indexesForAction === "object") {
+            let indexesForActionVariant = indexesForAction[count];
+            if (!indexesForActionVariant)
+                return null;
+
+            if (Array.isArray(indexesForActionVariant) && !indexesForActionVariant.includes(index))
+                return null;
+        }
+
+        if (value === 0 && (type === WI.Recording.Type.CanvasWebGL || type === WI.Recording.Type.CanvasWebGL2)) {
+            if (name === "blendFunc" || name === "blendFuncSeparate")
+                return "ZERO";
+            if (index === 0) {
+                if (name === "drawArrays" || name === "drawElements")
+                    return "POINTS";
+                if (name === "pixelStorei")
+                    return "NONE";
+            }
+        }
+
+        let prototype = WI.RecordingAction._prototypeForType(type);
+        if (prototype) {
+            for (let key in prototype) {
+                let descriptor = Object.getOwnPropertyDescriptor(prototype, key);
+                if (descriptor && descriptor.value === value)
+                    return key;
+            }
+        }
+
+        return null;
     }
 
     static _prototypeForType(type)
     {
-        if (type === WI.Recording.Type.Canvas2D)
+        switch (type) {
+        case WI.Recording.Type.Canvas2D:
             return CanvasRenderingContext2D.prototype;
-        if (type === WI.Recording.Type.CanvasWebGL)
-            return WebGLRenderingContext.prototype;
+        case WI.Recording.Type.CanvasBitmapRenderer:
+            if (window.ImageBitmapRenderingContext)
+                return ImageBitmapRenderingContext.prototype;
+            break;
+        case WI.Recording.Type.CanvasWebGL:
+            if (window.WebGLRenderingContext)
+                return WebGLRenderingContext.prototype;
+            break;
+        case WI.Recording.Type.CanvasWebGL2:
+            if (window.WebGL2RenderingContext)
+                return WebGL2RenderingContext.prototype;
+            break;
+        }
+
+        WI.reportInternalError("Unknown recording type: " + type);
         return null;
     }
 
@@ -107,41 +194,41 @@ WI.RecordingAction = class RecordingAction extends WI.Object
     get isFunction() { return this._isFunction; }
     get isGetter() { return this._isGetter; }
     get isVisual() { return this._isVisual; }
-    get hasVisibleEffect() { return this._hasVisibleEffect; }
-    get state() { return this._state; }
+    get contextReplacer() { return this._contextReplacer; }
+    get states() { return this._states; }
     get stateModifiers() { return this._stateModifiers; }
+    get warning() { return this._warning; }
 
     get ready()
     {
         return this._swizzled && this._processed;
     }
 
-    process(recording, context)
+    process(recording, context, states, {lastAction} = {})
     {
         console.assert(this._swizzled, "You must swizzle() before you can process().");
         console.assert(!this._processed, "You should only process() once.");
 
         this._processed = true;
 
-        if (recording.type === WI.Recording.Type.CanvasWebGL) {
+        if (recording.type === WI.Recording.Type.CanvasWebGL || recording.type === WI.Recording.Type.CanvasWebGL2) {
             // We add each RecordingAction to the list of visualActionIndexes after it is processed.
             if (this._valid && this._isVisual) {
-                let contentBefore = recording.visualActionIndexes.length ? recording.visualActionIndexes.lastValue.snapshot : recording.initialState.content;
-                this._hasVisibleEffect = this._snapshot !== contentBefore;
+                let contentBefore = recording.visualActionIndexes.length ? recording.actions[recording.visualActionIndexes.lastValue].snapshot : recording.initialState.content;
+                if (this._snapshot === contentBefore)
+                    this._warning = WI.UIString("This action causes no visual change");
             }
             return;
         }
 
         function getContent() {
-            if (context instanceof CanvasRenderingContext2D) {
-                let imageData = context.getImageData(0, 0, context.canvas.width, context.canvas.height);
-                return [imageData.width, imageData.height, ...imageData.data];
-            }
+            if (context instanceof CanvasRenderingContext2D)
+                return context.getImageData(0, 0, context.canvas.width, context.canvas.height).data;
 
-            if (context instanceof WebGLRenderingContext || context instanceof WebGL2RenderingContext) {
+            if ((window.WebGLRenderingContext && context instanceof WebGLRenderingContext) || (window.WebGL2RenderingContext && context instanceof WebGL2RenderingContext)) {
                 let pixels = new Uint8Array(context.drawingBufferWidth * context.drawingBufferHeight * 4);
                 context.readPixels(0, 0, context.canvas.width, context.canvas.height, context.RGBA, context.UNSIGNED_BYTE, pixels);
-                return [...pixels];
+                return pixels;
             }
 
             if (context.canvas instanceof HTMLCanvasElement)
@@ -152,53 +239,54 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         }
 
         let contentBefore = null;
-        let shouldCheckHasVisualEffect = WI.settings.experimentalRecordingHasVisualEffect.value && this._valid && this._isVisual;
+        let shouldCheckHasVisualEffect = this._valid && this._isVisual;
         if (shouldCheckHasVisualEffect)
             contentBefore = getContent();
 
         this.apply(context);
 
-        if (shouldCheckHasVisualEffect)
-            this._hasVisibleEffect = !Array.shallowEqual(contentBefore, getContent());
+        if (shouldCheckHasVisualEffect) {
+            let contentAfter = getContent();
+            if (Array.shallowEqual(contentBefore, contentAfter))
+                this._warning = WI.UIString("This action causes no visual change");
+        }
 
         if (recording.type === WI.Recording.Type.Canvas2D) {
-            let matrix = context.getTransform();
+            let currentState = WI.RecordingState.fromContext(recording.type, context, {source: this});
+            console.assert(currentState);
 
-            this._state = {
-                currentX: context.currentX,
-                currentY: context.currentY,
-                direction: context.direction,
-                fillStyle: context.fillStyle,
-                font: context.font,
-                globalAlpha: context.globalAlpha,
-                globalCompositeOperation: context.globalCompositeOperation,
-                imageSmoothingEnabled: context.imageSmoothingEnabled,
-                imageSmoothingQuality: context.imageSmoothingQuality,
-                lineCap: context.lineCap,
-                lineDash: context.getLineDash(),
-                lineDashOffset: context.lineDashOffset,
-                lineJoin: context.lineJoin,
-                lineWidth: context.lineWidth,
-                miterLimit: context.miterLimit,
-                shadowBlur: context.shadowBlur,
-                shadowColor: context.shadowColor,
-                shadowOffsetX: context.shadowOffsetX,
-                shadowOffsetY: context.shadowOffsetY,
-                strokeStyle: context.strokeStyle,
-                textAlign: context.textAlign,
-                textBaseline: context.textBaseline,
-                transform: [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f],
-                webkitImageSmoothingEnabled: context.webkitImageSmoothingEnabled,
-                webkitLineDash: context.webkitLineDash,
-                webkitLineDashOffset: context.webkitLineDashOffset,
-            };
+            if (this.name === "save")
+                states.push(currentState);
+            else if (this.name === "restore")
+                states.pop();
 
-            if (WI.ImageUtilities.supportsCanvasPathDebugging())
-                this._state.setPath = [context.getPath()];
+            this._states = states.slice();
+            this._states.push(currentState);
+
+            let lastState = null;
+            if (lastAction) {
+                lastState = lastAction.states.lastValue;
+                for (let [name, value] of currentState) {
+                    let previousValue = lastState.get(name);
+                    if (value !== previousValue && !Object.shallowEqual(value, previousValue))
+                        this._stateModifiers.add(name);
+                }
+            }
+
+            if (WI.ImageUtilities.supportsCanvasPathDebugging()) {
+                let currentX = currentState.get("currentX");
+                let invalidX = (currentX < 0 || currentX >= context.canvas.width) && (!lastState || currentX !== lastState.get("currentX"));
+
+                let currentY = currentState.get("currentY");
+                let invalidY = (currentY < 0 || currentY >= context.canvas.height) && (!lastState || currentY !== lastState.get("currentY"));
+
+                if (invalidX || invalidY)
+                    this._warning = WI.UIString("This action moves the path outside the visible area");
+            }
         }
     }
 
-    async swizzle(recording)
+    async swizzle(recording, lastAction)
     {
         console.assert(!this._swizzled, "You should only swizzle() once.");
 
@@ -211,25 +299,18 @@ WI.RecordingAction = class RecordingAction extends WI.Object
             return recording.swizzle(item, this._payloadSwizzleTypes[index]);
         };
 
-        let swizzleCallFrame = async (item, index) => {
-            let array = await recording.swizzle(item, WI.Recording.Swizzle.None);
-            let [functionName, url] = await Promise.all([
-                recording.swizzle(array[0], WI.Recording.Swizzle.String),
-                recording.swizzle(array[1], WI.Recording.Swizzle.String),
-            ]);
-            return WI.CallFrame.fromPayload(WI.mainTarget, {
-                functionName,
-                url,
-                lineNumber: array[2],
-                columnNumber: array[3],
-            });
-        };
-
         let swizzlePromises = [
             recording.swizzle(this._payloadName, WI.Recording.Swizzle.String),
             Promise.all(this._payloadParameters.map(swizzleParameter)),
-            Promise.all(this._payloadTrace.map(swizzleCallFrame)),
         ];
+
+        if (!isNaN(this._payloadTrace))
+            swizzlePromises.push(recording.swizzle(this._payloadTrace, WI.Recording.Swizzle.CallStack))
+        else {
+            // COMPATIBILITY (iOS 12.1): "trace" was sent as an array of call frames instead of a single call stack
+            swizzlePromises.push(Promise.all(this._payloadTrace.map((item) => recording.swizzle(item, WI.Recording.Swizzle.CallFrame))));
+        }
+
         if (this._payloadSnapshot >= 0)
             swizzlePromises.push(recording.swizzle(this._payloadSnapshot, WI.Recording.Swizzle.String));
 
@@ -240,18 +321,35 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         if (this._payloadSnapshot >= 0)
             this._snapshot = snapshot;
 
-        this._isFunction = WI.RecordingAction.isFunctionForType(recording.type, this._name);
-        this._isGetter = !this._isFunction && !this._parameters.length;
+        if (recording.type === WI.Recording.Type.Canvas2D || recording.type === WI.Recording.Type.CanvasBitmapRenderer || recording.type === WI.Recording.Type.CanvasWebGL || recording.type === WI.Recording.Type.CanvasWebGL2) {
+            if (this._name === "width" || this._name === "height") {
+                this._contextReplacer = "canvas";
+                this._isFunction = false;
+                this._isGetter = !this._parameters.length;
+                this._isVisual = !this._isGetter;
+            }
 
-        let visualNames = WI.RecordingAction._visualNames[recording.type];
-        this._isVisual = visualNames ? visualNames.has(this._name) : false;
+            // FIXME: <https://webkit.org/b/180833>
+        }
 
-        if (this._valid) {
-            let prototype = WI.RecordingAction._prototypeForType(recording.type);
-            if (prototype && !(name in prototype)) {
-                this.markInvalid();
+        if (!this._contextReplacer) {
+            this._isFunction = WI.RecordingAction.isFunctionForType(recording.type, this._name);
+            this._isGetter = !this._isFunction && !this._parameters.length;
 
-                WI.Recording.synthesizeError(WI.UIString("“%s” is invalid.").format(name));
+            if (this._snapshot)
+                this._isVisual = true;
+            else {
+                let visualNames = WI.RecordingAction._visualNames[recording.type];
+                this._isVisual = visualNames ? visualNames.has(this._name) : false;
+            }
+
+            if (this._valid) {
+                let prototype = WI.RecordingAction._prototypeForType(recording.type);
+                if (prototype && !(name in prototype)) {
+                    this.markInvalid();
+
+                    WI.Recording.synthesizeWarning(WI.UIString("\u0022%s\u0022 is not valid for %s").format(name, prototype.constructor.name));
+                }
             }
         }
 
@@ -285,6 +383,10 @@ WI.RecordingAction = class RecordingAction extends WI.Object
 
         try {
             let name = options.nameOverride || this._name;
+
+            if (this._contextReplacer)
+                context = context[this._contextReplacer];
+
             if (this.isFunction)
                 context[name](...this._parameters);
             else {
@@ -296,7 +398,7 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         } catch {
             this.markInvalid();
 
-            WI.Recording.synthesizeError(WI.UIString("“%s” threw an error.").format(this._name));
+            WI.Recording.synthesizeWarning(WI.UIString("\u0022%s\u0022 threw an error").format(this._name));
         }
     }
 
@@ -323,6 +425,7 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         // WebGL
         case "blendColor":
         case "clearColor":
+        case "colorMask":
             return this._parameters;
 
         // 2D (non-standard, legacy)
@@ -345,7 +448,15 @@ WI.RecordingAction = class RecordingAction extends WI.Object
         case "strokeStyle":
         // 2D (non-standard)
         case "drawImageFromRect":
+        // BitmapRenderer
+        case "transferFromImageBitmap":
             return this._parameters.slice(0, 1);
+
+        // WebGL
+        case "texImage2D":
+        case "texSubImage2D":
+        case "compressedTexImage2D":
+            return [this._parameters.lastValue];
         }
 
         return [];
@@ -362,7 +473,180 @@ WI.RecordingAction = class RecordingAction extends WI.Object
 
 WI.RecordingAction.Event = {
     ValidityChanged: "recording-action-marked-invalid",
-    HasVisibleEffectChanged: "recording-action-has-visible-effect-changed",
+};
+
+WI.RecordingAction._constantIndexes = {
+    [WI.Recording.Type.CanvasWebGL]: {
+        "activeTexture": true,
+        "bindBuffer": true,
+        "bindFramebuffer": true,
+        "bindRenderbuffer": true,
+        "bindTexture": true,
+        "blendEquation": true,
+        "blendEquationSeparate": true,
+        "blendFunc": true,
+        "blendFuncSeparate": true,
+        "bufferData": [0, 2],
+        "bufferSubData": [0],
+        "checkFramebufferStatus": true,
+        "compressedTexImage2D": [0, 2],
+        "compressedTexSubImage2D": [0],
+        "copyTexImage2D": [0, 2],
+        "copyTexSubImage2D": [0],
+        "createShader": true,
+        "cullFace": true,
+        "depthFunc": true,
+        "disable": true,
+        "drawArrays": [0],
+        "drawElements": [0, 2],
+        "enable": true,
+        "framebufferRenderbuffer": true,
+        "framebufferTexture2D": [0, 1, 2],
+        "frontFace": true,
+        "generateMipmap": true,
+        "getBufferParameter": true,
+        "getFramebufferAttachmentParameter": true,
+        "getParameter": true,
+        "getProgramParameter": true,
+        "getRenderbufferParameter": true,
+        "getShaderParameter": true,
+        "getShaderPrecisionFormat": true,
+        "getTexParameter": true,
+        "getVertexAttrib": [1],
+        "getVertexAttribOffset": [1],
+        "hint": true,
+        "isEnabled": true,
+        "pixelStorei": [0],
+        "readPixels": [4, 5],
+        "renderbufferStorage": [0, 1],
+        "stencilFunc": [0],
+        "stencilFuncSeparate": [0, 1],
+        "stencilMaskSeparate": [0],
+        "stencilOp": true,
+        "stencilOpSeparate": true,
+        "texImage2D": {
+            5: [0, 2, 3, 4],
+            6: [0, 2, 3, 4],
+            8: [0, 2, 6, 7],
+            9: [0, 2, 6, 7],
+        },
+        "texParameterf": [0, 1],
+        "texParameteri": [0, 1],
+        "texSubImage2D": {
+            6: [0, 4, 5],
+            7: [0, 4, 5],
+            8: [0, 6, 7],
+            9: [0, 6, 7],
+        },
+        "vertexAttribPointer": [2],
+    },
+    [WI.Recording.Type.CanvasWebGL2]: {
+        "activeTexture": true,
+        "beginQuery": [0],
+        "beginTransformFeedback": true,
+        "bindBuffer": true,
+        "bindBufferBase": [0],
+        "bindBufferRange": [0],
+        "bindFramebuffer": true,
+        "bindRenderbuffer": true,
+        "bindTexture": true,
+        "bindTransformFeedback": [0],
+        "blendEquation": true,
+        "blendEquationSeparate": true,
+        "blendFunc": true,
+        "blendFuncSeparate": true,
+        "blitFramebuffer": [10],
+        "bufferData": [0, 2],
+        "bufferSubData": [0],
+        "checkFramebufferStatus": true,
+        "clearBufferfi": [0],
+        "clearBufferfv": [0],
+        "clearBufferiv": [0],
+        "clearBufferuiv": [0],
+        "compressedTexImage2D": [0, 2],
+        "compressedTexSubImage2D": [0],
+        "compressedTexSubImage3D": [0],
+        "copyBufferSubData": [0, 1],
+        "copyTexImage2D": [0, 2],
+        "copyTexSubImage2D": [0],
+        "copyTexSubImage3D": [0],
+        "createShader": true,
+        "cullFace": true,
+        "depthFunc": true,
+        "disable": true,
+        "drawArrays": [0],
+        "drawArraysInstanced": [0],
+        "drawBuffers": true,
+        "drawElements": [0, 2],
+        "drawElementsInstanced": [0, 2],
+        "drawRangeElements": [0, 4],
+        "enable": true,
+        "endQuery": true,
+        "fenceSync": [0],
+        "framebufferRenderbuffer": true,
+        "framebufferTexture2D": [0, 1, 2],
+        "framebufferTextureLayer": [0, 1],
+        "frontFace": true,
+        "generateMipmap": true,
+        "getActiveUniformBlockParameter": [2],
+        "getActiveUniforms": [2],
+        "getBufferParameter": true,
+        "getBufferSubData": [0],
+        "getFramebufferAttachmentParameter": true,
+        "getIndexedParameter": [0],
+        "getInternalformatParameter": true,
+        "getParameter": true,
+        "getProgramParameter": true,
+        "getQuery": true,
+        "getQueryParameter": [1],
+        "getRenderbufferParameter": true,
+        "getSamplerParameter": [1],
+        "getShaderParameter": true,
+        "getShaderPrecisionFormat": true,
+        "getSyncParameter": [1],
+        "getTexParameter": true,
+        "getVertexAttrib": [1],
+        "getVertexAttribOffset": [1],
+        "hint": true,
+        "invalidateFramebuffer": [0, 1],
+        "invalidateSubFramebuffer": [0, 1],
+        "isEnabled": true,
+        "pixelStorei": [0],
+        "readBuffer": true,
+        "readPixels": [4, 5],
+        "renderbufferStorage": [0, 1],
+        "renderbufferStorageMultisample": [0, 2],
+        "samplerParameterf": [1],
+        "samplerParameteri": [1],
+        "stencilFunc": [0],
+        "stencilFuncSeparate": [0, 1],
+        "stencilMaskSeparate": [0],
+        "stencilOp": true,
+        "stencilOpSeparate": true,
+        "texImage2D": {
+            5: [0, 2, 3, 4],
+            6: [0, 2, 3, 4],
+            8: [0, 2, 6, 7],
+            9: [0, 2, 6, 7],
+            10: [0, 2, 6, 7],
+            11: [0, 2, 7, 8],
+        },
+        "texParameterf": [0, 1],
+        "texParameteri": [0, 1],
+        "texStorage2D":[0, 2],
+        "texSubImage2D": {
+            6: [0, 4, 5],
+            7: [0, 4, 5],
+            8: [0, 6, 7],
+            9: [0, 6, 7],
+            10: [0, 6, 7],
+            11: [0, 8, 9],
+            12: [0, 8, 9],
+        },
+        "transformFeedbackVaryings": [2],
+        "vertexAttribIPointer": [2],
+        "vertexAttribPointer": [2],
+    },
 };
 
 WI.RecordingAction._visualNames = {
@@ -379,10 +663,20 @@ WI.RecordingAction._visualNames = {
         "strokeRect",
         "strokeText",
     ]),
+    [WI.Recording.Type.CanvasBitmapRenderer]: new Set([
+        "transferFromImageBitmap",
+    ]),
     [WI.Recording.Type.CanvasWebGL]: new Set([
         "clear",
         "drawArrays",
         "drawElements",
+    ]),
+    [WI.Recording.Type.CanvasWebGL2]: new Set([
+        "clear",
+        "drawArrays",
+        "drawArraysInstanced",
+        "drawElements",
+        "drawElementsInstanced",
     ]),
 };
 

@@ -46,6 +46,12 @@ public:
         ASSERT(!HashTraits<uint64_t>::isDeletedValue(m_id));
     }
 
+    ALWAYS_INLINE OptionalCallbackID& operator=(const OptionalCallbackID& otherID)
+    {
+        m_id = otherID.m_id;
+        return *this;
+    }
+
     uint64_t toInteger() { return m_id; }
     CallbackID callbackID()
     {

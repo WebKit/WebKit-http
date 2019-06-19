@@ -52,6 +52,7 @@ private:
 };
 
 class InbandGenericTextTrack final : public InbandTextTrack, private WebVTTParserClient {
+    WTF_MAKE_ISO_ALLOCATED(InbandGenericTextTrack);
 public:
     static Ref<InbandGenericTextTrack> create(ScriptExecutionContext&, TextTrackClient&, InbandTextTrackPrivate&);
     virtual ~InbandGenericTextTrack();
@@ -72,6 +73,7 @@ private:
 
     void newCuesParsed() final;
     void newRegionsParsed() final;
+    void newStyleSheetsParsed() final;
     void fileFailedToParse() final;
 
 #if !RELEASE_LOG_DISABLED

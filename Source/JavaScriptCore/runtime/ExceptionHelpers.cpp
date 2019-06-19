@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -82,29 +82,33 @@ JSObject* createStackOverflowError(ExecState* exec, JSGlobalObject* globalObject
 JSObject* createUndefinedVariableError(ExecState* exec, const Identifier& ident)
 {
     if (ident.isPrivateName()) {
-        VM& vm = exec->vm();
-        String message(makeString("Can't find private variable: @", vm.propertyNames->lookUpPublicName(ident).string()));
+        String message(makeString("Can't find private variable: PrivateSymbol.", ident.string()));
         return createReferenceError(exec, message);
     }
     String message(makeString("Can't find variable: ", ident.string()));
     return createReferenceError(exec, message);
 }
     
-JSString* errorDescriptionForValue(ExecState* exec, JSValue v)
+String errorDescriptionForValue(ExecState* exec, JSValue v)
 {
-    if (v.isString())
-        return jsNontrivialString(exec, makeString('"', asString(v)->value(exec), '"'));
+    if (v.isString()) {
+        String string = asString(v)->value(exec);
+        if (!string)
+            return string;
+        return tryMakeString('"', string, '"');
+    }
+
     if (v.isSymbol())
-        return jsNontrivialString(exec, asSymbol(v)->descriptiveString());
+        return asSymbol(v)->descriptiveString();
     if (v.isObject()) {
         VM& vm = exec->vm();
         CallData callData;
         JSObject* object = asObject(v);
         if (object->methodTable(vm)->getCallData(object, callData) != CallType::None)
-            return vm.smallStrings.functionString();
-        return jsString(exec, JSObject::calculatedClassName(object));
+            return vm.smallStrings.functionString()->value(exec);
+        return JSObject::calculatedClassName(object);
     }
-    return v.toString(exec);
+    return v.toString(exec)->value(exec);
 }
     
 static String defaultApproximateSourceError(const String& originalMessage, const String& sourceText)
@@ -194,7 +198,7 @@ static String notAFunctionSourceAppender(const String& originalMessage, const St
     String base = functionCallBase(sourceText);
     if (!base)
         return defaultApproximateSourceError(originalMessage, sourceText);
-    StringBuilder builder;
+    StringBuilder builder(StringBuilder::OverflowHandler::RecordOverflow);
     builder.append(base);
     builder.appendLiteral(" is not a function. (In '");
     builder.append(sourceText);
@@ -209,6 +213,9 @@ static String notAFunctionSourceAppender(const String& originalMessage, const St
         builder.append(displayValue);
     }
     builder.append(')');
+
+    if (builder.hasOverflowed())
+        return makeString("object is not a function."_s);
 
     return builder.toString();
 }
@@ -267,7 +274,15 @@ JSObject* createError(ExecState* exec, JSValue value, const String& message, Err
     VM& vm = exec->vm();
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
-    String errorMessage = makeString(errorDescriptionForValue(exec, value)->value(exec), ' ', message);
+    String valueDescription = errorDescriptionForValue(exec, value);
+    ASSERT(scope.exception() || !!valueDescription);
+    if (!valueDescription) {
+        scope.clearException();
+        return createOutOfMemoryError(exec);
+    }
+    String errorMessage = tryMakeString(valueDescription, ' ', message);
+    if (!errorMessage)
+        return createOutOfMemoryError(exec);
     scope.assertNoException();
     JSObject* exception = createTypeError(exec, errorMessage, appender, runtimeTypeForValue(vm, value));
     ASSERT(exception->isErrorInstance());
@@ -323,19 +338,19 @@ JSObject* createTDZError(ExecState* exec)
     return createReferenceError(exec, "Cannot access uninitialized variable.");
 }
 
-JSObject* throwOutOfMemoryError(ExecState* exec, ThrowScope& scope)
+Exception* throwOutOfMemoryError(ExecState* exec, ThrowScope& scope)
 {
     return throwException(exec, scope, createOutOfMemoryError(exec));
 }
 
-JSObject* throwStackOverflowError(ExecState* exec, ThrowScope& scope)
+Exception* throwStackOverflowError(ExecState* exec, ThrowScope& scope)
 {
     VM& vm = exec->vm();
     ErrorHandlingScope errorScope(vm);
     return throwException(exec, scope, createStackOverflowError(exec));
 }
 
-JSObject* throwTerminatedExecutionException(ExecState* exec, ThrowScope& scope)
+Exception* throwTerminatedExecutionException(ExecState* exec, ThrowScope& scope)
 {
     VM& vm = exec->vm();
     ErrorHandlingScope errorScope(vm);

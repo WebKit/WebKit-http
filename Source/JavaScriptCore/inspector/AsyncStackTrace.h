@@ -35,14 +35,14 @@ class ScriptCallStack;
 
 class JS_EXPORT_PRIVATE AsyncStackTrace : public RefCounted<AsyncStackTrace> {
 public:
-    enum class State {
+    enum class State : uint8_t {
         Pending,
         Active,
         Dispatched,
         Canceled,
     };
 
-    static RefPtr<AsyncStackTrace> create(Ref<ScriptCallStack>&&, bool singleShot, RefPtr<AsyncStackTrace> parent);
+    static Ref<AsyncStackTrace> create(Ref<ScriptCallStack>&&, bool singleShot, RefPtr<AsyncStackTrace> parent);
 
     bool isPending() const;
     bool isLocked() const;

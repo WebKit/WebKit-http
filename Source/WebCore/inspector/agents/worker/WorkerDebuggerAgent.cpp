@@ -60,7 +60,7 @@ InjectedScript WorkerDebuggerAgent::injectedScriptForEval(ErrorString& errorStri
         return InjectedScript();
     }
 
-    JSC::ExecState* scriptState = execStateFromWorkerGlobalScope(&m_workerGlobalScope);
+    JSC::ExecState* scriptState = execStateFromWorkerGlobalScope(m_workerGlobalScope);
     return injectedScriptManager().injectedScriptFor(scriptState);
 }
 

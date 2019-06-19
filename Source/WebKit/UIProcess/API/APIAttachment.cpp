@@ -55,6 +55,11 @@ void Attachment::updateAttributes(Function<void(WebKit::CallbackBase::Error)>&& 
         return;
     }
 
+    if (m_webPage->willUpdateAttachmentAttributes(*this) == WebKit::WebPageProxy::ShouldUpdateAttachmentAttributes::No) {
+        callback(WebKit::CallbackBase::Error::None);
+        return;
+    }
+
     m_webPage->updateAttachmentAttributes(*this, WTFMove(callback));
 }
 
@@ -67,9 +72,15 @@ void Attachment::invalidate()
 #if PLATFORM(COCOA)
     m_fileWrapper.clear();
 #endif
+    m_insertionState = InsertionState::NotInserted;
 }
 
 #if !PLATFORM(COCOA)
+
+bool Attachment::isEmpty() const
+{
+    return true;
+}
 
 WTF::String Attachment::mimeType() const
 {
@@ -81,9 +92,23 @@ WTF::String Attachment::fileName() const
     return { };
 }
 
-std::optional<uint64_t> Attachment::fileSizeForDisplay() const
+Optional<uint64_t> Attachment::fileSizeForDisplay() const
 {
-    return std::nullopt;
+    return WTF::nullopt;
+}
+
+RefPtr<WebCore::SharedBuffer> Attachment::enclosingImageData() const
+{
+    return nullptr;
+}
+
+RefPtr<WebCore::SharedBuffer> Attachment::createSerializedRepresentation() const
+{
+    return nullptr;
+}
+
+void Attachment::updateFromSerializedRepresentation(Ref<WebCore::SharedBuffer>&&, const WTF::String&)
+{
 }
 
 #endif // !PLATFORM(COCOA)

@@ -25,25 +25,21 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <WebKit/WKDOMNode.h>
 
 @class WKDOMElement;
 @class WKDOMText;
 
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface WKDOMDocument : WKDOMNode
 
 - (WKDOMElement *)createElement:(NSString *)tagName;
 - (WKDOMText *)createTextNode:(NSString *)data;
-- (WKDOMNode *)createDocumentFragmentWithMarkupString:(NSString *)markupString baseURL:(NSURL *)baseURL WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
-- (WKDOMNode *)createDocumentFragmentWithText:(NSString *)text WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
+- (WKDOMNode *)createDocumentFragmentWithMarkupString:(NSString *)markupString baseURL:(NSURL *)baseURL WK_API_AVAILABLE(macos(10.13.4), ios(11.3));
+- (WKDOMNode *)createDocumentFragmentWithText:(NSString *)text WK_API_AVAILABLE(macos(10.13.4), ios(11.3));
 
 @property(readonly) WKDOMElement *body;
 
-- (id)parserYieldToken WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (id)parserYieldToken WK_API_AVAILABLE(macos(10.14), ios(12.0));
 
 @end
-
-#endif // WK_API_ENABLED

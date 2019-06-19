@@ -37,7 +37,7 @@ typedef struct CGPoint CGPoint;
 #endif
 
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 #if OS(DARWIN) && !PLATFORM(QT)
 #ifdef NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES
 typedef struct CGPoint NSPoint;
@@ -45,7 +45,7 @@ typedef struct CGPoint NSPoint;
 typedef struct _NSPoint NSPoint;
 #endif
 #endif
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 
 #if PLATFORM(WIN)
 typedef struct tagPOINT POINT;
@@ -137,12 +137,12 @@ public:
     WEBCORE_EXPORT operator CGPoint() const;
 #endif
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 #if OS(DARWIN) && !PLATFORM(QT) && !defined(NSGEOMETRY_TYPES_SAME_AS_CGGEOMETRY_TYPES)
     WEBCORE_EXPORT explicit IntPoint(const NSPoint&); // don't do this implicitly since it's lossy
     WEBCORE_EXPORT operator NSPoint() const;
 #endif
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 
 #if PLATFORM(WIN)
     IntPoint(const POINT&);
@@ -224,3 +224,7 @@ WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const IntPoint&);
 
 } // namespace WebCore
 
+namespace WTF {
+template<> struct DefaultHash<WebCore::IntPoint>;
+template<> struct HashTraits<WebCore::IntPoint>;
+}

@@ -41,6 +41,7 @@
 #include <WebCore/HTMLIFrameElement.h>
 #include <WebCore/HTMLInputElement.h>
 #include <WebCore/HTMLNames.h>
+#include <WebCore/HTMLSelectElement.h>
 #include <WebCore/HTMLTableCellElement.h>
 #include <WebCore/HTMLTextAreaElement.h>
 #include <WebCore/IntRect.h>
@@ -133,7 +134,7 @@ IntRect InjectedBundleNodeHandle::renderRect(bool* isReplaced)
     return m_node->pixelSnappedRenderRect(isReplaced);
 }
 
-static RefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& paintingRect, const std::optional<float>& bitmapWidth, SnapshotOptions options)
+static RefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& paintingRect, const Optional<float>& bitmapWidth, SnapshotOptions options)
 {
     if (paintingRect.isEmpty())
         return nullptr;
@@ -182,7 +183,7 @@ static RefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& painti
     return snapshot;
 }
 
-RefPtr<WebImage> InjectedBundleNodeHandle::renderedImage(SnapshotOptions options, bool shouldExcludeOverflow, const std::optional<float>& bitmapWidth)
+RefPtr<WebImage> InjectedBundleNodeHandle::renderedImage(SnapshotOptions options, bool shouldExcludeOverflow, const Optional<float>& bitmapWidth)
 {
     Frame* frame = m_node->document().frame();
     if (!frame)
@@ -334,6 +335,11 @@ bool InjectedBundleNodeHandle::isTextField() const
         return false;
 
     return downcast<HTMLInputElement>(m_node.get()).isTextField();
+}
+
+bool InjectedBundleNodeHandle::isSelectElement() const
+{
+    return is<HTMLSelectElement>(m_node);
 }
 
 RefPtr<InjectedBundleNodeHandle> InjectedBundleNodeHandle::htmlTableCellElementCellAbove()

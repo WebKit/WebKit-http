@@ -52,7 +52,7 @@ public:
     const char* read(const char* name) { return ::getenv(name); }
     bool defined(const char* name) { return read(name) != nullptr; }
 
-    template<typename T> std::optional<T> readAs(const char* name)
+    template<typename T> Optional<T> readAs(const char* name)
     {
         if (const char* valueStr = read(name)) {
             T value;
@@ -60,7 +60,7 @@ public:
                 return value;
         }
 
-        return std::nullopt;
+        return WTF::nullopt;
     }
 
 private:
@@ -324,13 +324,19 @@ void CurlHandle::enableSSLForHost(const String& host)
         setCACertPath(path->utf8().data());
 }
 
+void CurlHandle::disableServerTrustEvaluation()
+{
+    setSslVerifyPeer(CurlHandle::VerifyPeer::Disable);
+    setSslVerifyHost(CurlHandle::VerifyHost::LooseNameCheck);
+}
+
 CURLcode CurlHandle::willSetupSslCtx(void* sslCtx)
 {
     if (!sslCtx)
         return CURLE_ABORTED_BY_CALLBACK;
 
     if (!m_sslVerifier)
-        m_sslVerifier = std::make_unique<CurlSSLVerifier>(*this, sslCtx);
+        m_sslVerifier = std::make_unique<CurlSSLVerifier>(sslCtx);
 
     return CURLE_OK;
 }
@@ -386,10 +392,8 @@ void CurlHandle::setUrl(const URL& url)
 void CurlHandle::appendRequestHeaders(const HTTPHeaderMap& headers)
 {
     if (headers.size()) {
-        for (auto& entry : headers) {
-            auto& value = entry.value;
+        for (auto& entry : headers)
             appendRequestHeader(entry.key, entry.value);
-        }
     }
 }
 
@@ -514,15 +518,11 @@ void CurlHandle::enableAllowedProtocols()
     curl_easy_setopt(m_handle, CURLOPT_PROTOCOLS, allowedProtocols);
 }
 
-void CurlHandle::enableHttpAuthentication(long option)
-{
-    curl_easy_setopt(m_handle, CURLOPT_HTTPAUTH, option);
-}
-
-void CurlHandle::setHttpAuthUserPass(const String& user, const String& password)
+void CurlHandle::setHttpAuthUserPass(const String& user, const String& password, long authType)
 {
     curl_easy_setopt(m_handle, CURLOPT_USERNAME, user.utf8().data());
     curl_easy_setopt(m_handle, CURLOPT_PASSWORD, password.utf8().data());
+    curl_easy_setopt(m_handle, CURLOPT_HTTPAUTH, authType);
 }
 
 void CurlHandle::setCACertPath(const char* path)
@@ -638,186 +638,151 @@ void CurlHandle::setSslCtxCallbackFunction(curl_ssl_ctx_callback callbackFunc, v
     curl_easy_setopt(m_handle, CURLOPT_SSL_CTX_FUNCTION, callbackFunc);
 }
 
+void CurlHandle::setDebugCallbackFunction(curl_debug_callback callbackFunc, void* userData)
+{
+    curl_easy_setopt(m_handle, CURLOPT_DEBUGFUNCTION, callbackFunc);
+    curl_easy_setopt(m_handle, CURLOPT_DEBUGDATA, userData);
+    curl_easy_setopt(m_handle, CURLOPT_VERBOSE, 1L);
+}
+
 void CurlHandle::enableConnectionOnly()
 {
     curl_easy_setopt(m_handle, CURLOPT_CONNECT_ONLY, 1L);
 }
 
-std::optional<String> CurlHandle::getProxyUrl()
+Optional<String> CurlHandle::getProxyUrl()
 {
     auto& proxy = CurlContext::singleton().proxySettings();
     if (proxy.mode() == CurlProxySettings::Mode::Default)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return proxy.url();
 }
 
-std::optional<long> CurlHandle::getResponseCode()
+Optional<long> CurlHandle::getResponseCode()
 {
     if (!m_handle)
-        return std::nullopt;
+        return WTF::nullopt;
 
     long responseCode;
     CURLcode errorCode = curl_easy_getinfo(m_handle, CURLINFO_RESPONSE_CODE, &responseCode);
     if (errorCode != CURLE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return responseCode;
 }
 
-std::optional<long> CurlHandle::getHttpConnectCode()
+Optional<long> CurlHandle::getHttpConnectCode()
 {
     if (!m_handle)
-        return std::nullopt;
+        return WTF::nullopt;
 
     long httpConnectCode;
     CURLcode errorCode = curl_easy_getinfo(m_handle, CURLINFO_HTTP_CONNECTCODE, &httpConnectCode);
     if (errorCode != CURLE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return httpConnectCode;
 }
 
-std::optional<long long> CurlHandle::getContentLength()
+Optional<long long> CurlHandle::getContentLength()
 {
     if (!m_handle)
-        return std::nullopt;
+        return WTF::nullopt;
 
     double contentLength;
 
     CURLcode errorCode = curl_easy_getinfo(m_handle, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &contentLength);
     if (errorCode != CURLE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return static_cast<long long>(contentLength);
 }
 
-std::optional<long> CurlHandle::getHttpAuthAvail()
+Optional<long> CurlHandle::getHttpAuthAvail()
 {
     if (!m_handle)
-        return std::nullopt;
+        return WTF::nullopt;
 
     long httpAuthAvailable;
     CURLcode errorCode = curl_easy_getinfo(m_handle, CURLINFO_HTTPAUTH_AVAIL, &httpAuthAvailable);
     if (errorCode != CURLE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return httpAuthAvailable;
 }
 
-std::optional<long> CurlHandle::getProxyAuthAvail()
+Optional<long> CurlHandle::getProxyAuthAvail()
 {
     if (!m_handle)
-        return std::nullopt;
+        return WTF::nullopt;
 
     long proxyAuthAvailable;
     CURLcode errorCode = curl_easy_getinfo(m_handle, CURLINFO_PROXYAUTH_AVAIL, &proxyAuthAvailable);
     if (errorCode != CURLE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return proxyAuthAvailable;
 }
 
-std::optional<long> CurlHandle::getHttpVersion()
+Optional<long> CurlHandle::getHttpVersion()
 {
     if (!m_handle)
-        return std::nullopt;
+        return WTF::nullopt;
 
     long version;
     CURLcode errorCode = curl_easy_getinfo(m_handle, CURLINFO_HTTP_VERSION, &version);
     if (errorCode != CURLE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return version;
 }
 
-std::optional<NetworkLoadMetrics> CurlHandle::getNetworkLoadMetrics()
+Optional<NetworkLoadMetrics> CurlHandle::getNetworkLoadMetrics(const WTF::Seconds& domainLookupStart)
 {
     double nameLookup = 0.0;
     double connect = 0.0;
     double appConnect = 0.0;
     double startTransfer = 0.0;
-    long requestHeaderSize = 0;
-    curl_off_t requestBodySize = 0;
-    long responseHeaderSize = 0;
-    curl_off_t responseBodySize = 0;
     long version = 0;
-    char* ip = nullptr;
-    long port = 0;
 
     if (!m_handle)
-        return std::nullopt;
+        return WTF::nullopt;
 
     CURLcode errorCode = curl_easy_getinfo(m_handle, CURLINFO_NAMELOOKUP_TIME, &nameLookup);
     if (errorCode != CURLE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     errorCode = curl_easy_getinfo(m_handle, CURLINFO_CONNECT_TIME, &connect);
     if (errorCode != CURLE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     errorCode = curl_easy_getinfo(m_handle, CURLINFO_APPCONNECT_TIME, &appConnect);
     if (errorCode != CURLE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     errorCode = curl_easy_getinfo(m_handle, CURLINFO_STARTTRANSFER_TIME, &startTransfer);
     if (errorCode != CURLE_OK)
-        return std::nullopt;
-
-    // FIXME: Gets total request size not just headers https://bugs.webkit.org/show_bug.cgi?id=188363
-    errorCode = curl_easy_getinfo(m_handle, CURLINFO_REQUEST_SIZE, &requestHeaderSize);
-    if (errorCode != CURLE_OK)
-        return std::nullopt;
-
-    errorCode = curl_easy_getinfo(m_handle, CURLINFO_SIZE_UPLOAD_T, &requestBodySize);
-    if (errorCode != CURLE_OK)
-        return std::nullopt;
-
-    errorCode = curl_easy_getinfo(m_handle, CURLINFO_HEADER_SIZE, &responseHeaderSize);
-    if (errorCode != CURLE_OK)
-        return std::nullopt;
-
-    errorCode = curl_easy_getinfo(m_handle, CURLINFO_SIZE_DOWNLOAD_T, &responseBodySize);
-    if (errorCode != CURLE_OK)
-        return std::nullopt;
-
-    errorCode = curl_easy_getinfo(m_handle, CURLINFO_PRIMARY_IP, &ip);
-    if (errorCode != CURLE_OK)
-        return std::nullopt;
-
-    errorCode = curl_easy_getinfo(m_handle, CURLINFO_PRIMARY_PORT, &port);
-    if (errorCode != CURLE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     errorCode = curl_easy_getinfo(m_handle, CURLINFO_HTTP_VERSION, &version);
     if (errorCode != CURLE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     NetworkLoadMetrics networkLoadMetrics;
 
-    networkLoadMetrics.domainLookupStart = Seconds(0);
-    networkLoadMetrics.domainLookupEnd = Seconds(nameLookup);
-    networkLoadMetrics.connectStart = Seconds(nameLookup);
-    networkLoadMetrics.connectEnd = Seconds(connect);
+    networkLoadMetrics.domainLookupStart = domainLookupStart;
+    networkLoadMetrics.domainLookupEnd = domainLookupStart + Seconds(nameLookup);
+    networkLoadMetrics.connectStart = domainLookupStart + Seconds(nameLookup);
+    networkLoadMetrics.connectEnd = domainLookupStart + Seconds(connect);
 
     if (appConnect > 0.0) {
-        networkLoadMetrics.secureConnectionStart = Seconds(connect);
-        networkLoadMetrics.connectEnd = Seconds(appConnect);
+        networkLoadMetrics.secureConnectionStart = domainLookupStart + Seconds(connect);
+        networkLoadMetrics.connectEnd = domainLookupStart + Seconds(appConnect);
     }
 
     networkLoadMetrics.requestStart = networkLoadMetrics.connectEnd;
-    networkLoadMetrics.responseStart = Seconds(startTransfer);
-
-    networkLoadMetrics.requestHeaderBytesSent = requestHeaderSize;
-    networkLoadMetrics.requestBodyBytesSent = requestBodySize;
-    networkLoadMetrics.responseHeaderBytesReceived = responseHeaderSize;
-    networkLoadMetrics.responseBodyBytesReceived = responseBodySize;
-
-    if (ip) {
-        networkLoadMetrics.remoteAddress = String(ip);
-        if (port)
-            networkLoadMetrics.remoteAddress.append(":" + String::number(port));
-    }
+    networkLoadMetrics.responseStart = domainLookupStart + Seconds(startTransfer);
 
     if (version == CURL_HTTP_VERSION_1_0)
         networkLoadMetrics.protocol = httpVersion10;
@@ -829,10 +794,56 @@ std::optional<NetworkLoadMetrics> CurlHandle::getNetworkLoadMetrics()
     return networkLoadMetrics;
 }
 
-std::optional<CertificateInfo> CurlHandle::certificateInfo() const
+void CurlHandle::addExtraNetworkLoadMetrics(NetworkLoadMetrics& networkLoadMetrics)
+{
+    long requestHeaderSize = 0;
+    curl_off_t requestBodySize = 0;
+    long responseHeaderSize = 0;
+    curl_off_t responseBodySize = 0;
+    char* ip = nullptr;
+    long port = 0;
+
+    // FIXME: Gets total request size not just headers https://bugs.webkit.org/show_bug.cgi?id=188363
+    CURLcode errorCode = curl_easy_getinfo(m_handle, CURLINFO_REQUEST_SIZE, &requestHeaderSize);
+    if (errorCode != CURLE_OK)
+        return;
+
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_SIZE_UPLOAD_T, &requestBodySize);
+    if (errorCode != CURLE_OK)
+        return;
+
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_HEADER_SIZE, &responseHeaderSize);
+    if (errorCode != CURLE_OK)
+        return;
+
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_SIZE_DOWNLOAD_T, &responseBodySize);
+    if (errorCode != CURLE_OK)
+        return;
+
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_PRIMARY_IP, &ip);
+    if (errorCode != CURLE_OK)
+        return;
+
+    errorCode = curl_easy_getinfo(m_handle, CURLINFO_PRIMARY_PORT, &port);
+    if (errorCode != CURLE_OK)
+        return;
+
+    networkLoadMetrics.requestHeaderBytesSent = requestHeaderSize;
+    networkLoadMetrics.requestBodyBytesSent = requestBodySize;
+    networkLoadMetrics.responseHeaderBytesReceived = responseHeaderSize;
+    networkLoadMetrics.responseBodyBytesReceived = responseBodySize;
+
+    if (ip) {
+        networkLoadMetrics.remoteAddress = String(ip);
+        if (port)
+            networkLoadMetrics.remoteAddress.append(":" + String::number(port));
+    }
+}
+
+Optional<CertificateInfo> CurlHandle::certificateInfo() const
 {
     if (!m_sslVerifier)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return m_sslVerifier->certificateInfo();
 }
@@ -921,7 +932,7 @@ size_t CurlSocketHandle::send(const uint8_t* buffer, size_t size)
     return totalBytesSent;
 }
 
-std::optional<size_t> CurlSocketHandle::receive(uint8_t* buffer, size_t bufferSize)
+Optional<size_t> CurlSocketHandle::receive(uint8_t* buffer, size_t bufferSize)
 {
     size_t bytesRead = 0;
 
@@ -930,19 +941,19 @@ std::optional<size_t> CurlSocketHandle::receive(uint8_t* buffer, size_t bufferSi
         if (errorCode != CURLE_AGAIN)
             m_errorHandler(errorCode);
 
-        return std::nullopt;
+        return WTF::nullopt;
     }
 
     return bytesRead;
 }
 
-std::optional<CurlSocketHandle::WaitResult> CurlSocketHandle::wait(const Seconds& timeout, bool alsoWaitForWrite)
+Optional<CurlSocketHandle::WaitResult> CurlSocketHandle::wait(const Seconds& timeout, bool alsoWaitForWrite)
 {
     curl_socket_t socket;
     CURLcode errorCode = curl_easy_getinfo(handle(), CURLINFO_ACTIVESOCKET, &socket);
     if (errorCode != CURLE_OK) {
         m_errorHandler(errorCode);
-        return std::nullopt;
+        return WTF::nullopt;
     }
 
     int64_t usec = timeout.microsecondsAs<int64_t>();
@@ -978,7 +989,7 @@ std::optional<CurlSocketHandle::WaitResult> CurlSocketHandle::wait(const Seconds
     } while (rc == -1 && errno == EINTR);
 
     if (rc <= 0)
-        return std::nullopt;
+        return WTF::nullopt;
 
     WaitResult result;
     result.readable = FD_ISSET(socket, &fdread) || FD_ISSET(socket, &fderr);

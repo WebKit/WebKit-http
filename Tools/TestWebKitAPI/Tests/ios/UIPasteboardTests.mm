@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if PLATFORM(IOS) && WK_API_ENABLED
+#if PLATFORM(IOS_FAMILY)
 
 #import "PlatformUtilities.h"
 #import "TestWKWebView.h"
@@ -38,7 +38,7 @@
 
 typedef void (^DataLoadCompletionBlock)(NSData *, NSError *);
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110300
+#if PLATFORM(IOS)
 
 static void checkJSONWithLogging(NSString *jsonString, NSDictionary *expected)
 {
@@ -48,7 +48,7 @@ static void checkJSONWithLogging(NSString *jsonString, NSDictionary *expected)
         NSLog(@"Expected JSON: %@ to match values: %@", jsonString, expected);
 }
 
-#endif // __IPHONE_OS_VERSION_MIN_REQUIRED >= 110300
+#endif // PLATFORM(IOS)
 
 namespace TestWebKitAPI {
 
@@ -145,7 +145,26 @@ TEST(UIPasteboardTests, PasteURLWithPlainTextAsURL)
     EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"!!rich.querySelector('a')"].boolValue);
 }
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110300
+TEST(UIPasteboardTests, PasteWithCompletionHandler)
+{
+    auto webView = setUpWebViewForPasteboardTests(@"DataTransfer");
+    [UIPasteboard generalPasteboard].URL = [NSURL URLWithString:@"https://www.apple.com/"];
+
+    bool done = false;
+    [(id <UIWKInteractionViewProtocol_Staging_49236384>)[webView textInputContentView] pasteWithCompletionHandler:[webView, &done] {
+        [UIPasteboard generalPasteboard].items = @[ ];
+        done = true;
+    }];
+
+    Util::run(&done);
+
+    EXPECT_WK_STREQ("text/uri-list, text/plain", [webView stringByEvaluatingJavaScript:@"types.textContent"]);
+    EXPECT_WK_STREQ("(STRING, text/uri-list), (STRING, text/plain)", [webView stringByEvaluatingJavaScript:@"items.textContent"]);
+    EXPECT_WK_STREQ("https://www.apple.com/", [webView stringByEvaluatingJavaScript:@"urlData.textContent"]);
+    EXPECT_WK_STREQ("https://www.apple.com/", [webView stringByEvaluatingJavaScript:@"textData.textContent"]);
+}
+
+#if PLATFORM(IOS)
 
 TEST(UIPasteboardTests, DataTransferGetDataWhenPastingURL)
 {
@@ -283,7 +302,53 @@ TEST(UIPasteboardTests, DataTransferURIListContainsMultipleURLs)
     EXPECT_WK_STREQ("https://www.apple.com/", [webView stringByEvaluatingJavaScript:@"textData.textContent"]);
 }
 
-#endif // __IPHONE_OS_VERSION_MIN_REQUIRED >= 110300
+TEST(UIPasteboardTests, ValidPreferredPresentationSizeForImage)
+{
+    auto webView = setUpWebViewForPasteboardTests(@"autofocus-contenteditable");
+    auto itemProvider = adoptNS([[NSItemProvider alloc] init]);
+    [itemProvider setPreferredPresentationSize:CGSizeMake(10, 20)];
+    [itemProvider registerDataRepresentationForTypeIdentifier:(__bridge NSString *)kUTTypePNG visibility:NSItemProviderRepresentationVisibilityAll loadHandler:[] (DataLoadCompletionBlock completionHandler) -> NSProgress * {
+        completionHandler([NSData dataWithContentsOfURL:[[NSBundle mainBundle] URLForResource:@"icon" withExtension:@"png" subdirectory:@"TestWebKitAPI.resources"]], nil);
+        return nil;
+    }];
+    [UIPasteboard generalPasteboard].itemProviders = @[ itemProvider.get() ];
+    [webView paste:nil];
+
+    EXPECT_WK_STREQ("10", [webView stringByEvaluatingJavaScript:@"document.querySelector('img').width"]);
+    EXPECT_WK_STREQ("20", [webView stringByEvaluatingJavaScript:@"document.querySelector('img').height"]);
+}
+
+TEST(UIPasteboardTests, InvalidPreferredPresentationSizeForImage)
+{
+    auto webView = setUpWebViewForPasteboardTests(@"autofocus-contenteditable");
+    auto itemProvider = adoptNS([[NSItemProvider alloc] init]);
+    [itemProvider setPreferredPresentationSize:CGSizeMake(-10, -20)];
+    [itemProvider registerDataRepresentationForTypeIdentifier:(__bridge NSString *)kUTTypePNG visibility:NSItemProviderRepresentationVisibilityAll loadHandler:[] (DataLoadCompletionBlock completionHandler) -> NSProgress * {
+        completionHandler([NSData dataWithContentsOfURL:[[NSBundle mainBundle] URLForResource:@"icon" withExtension:@"png" subdirectory:@"TestWebKitAPI.resources"]], nil);
+        return nil;
+    }];
+    [UIPasteboard generalPasteboard].itemProviders = @[ itemProvider.get() ];
+    [webView paste:nil];
+
+    EXPECT_WK_STREQ("0", [webView stringByEvaluatingJavaScript:@"document.querySelector('img').width"]);
+    EXPECT_WK_STREQ("174", [webView stringByEvaluatingJavaScript:@"document.querySelector('img').height"]);
+}
+
+TEST(UIPasteboardTests, MissingPreferredPresentationSizeForImage)
+{
+    auto webView = setUpWebViewForPasteboardTests(@"autofocus-contenteditable");
+    auto itemProvider = adoptNS([[NSItemProvider alloc] init]);
+    [itemProvider registerDataRepresentationForTypeIdentifier:(__bridge NSString *)kUTTypePNG visibility:NSItemProviderRepresentationVisibilityAll loadHandler:[] (DataLoadCompletionBlock completionHandler) -> NSProgress * {
+        completionHandler([NSData dataWithContentsOfURL:[[NSBundle mainBundle] URLForResource:@"icon" withExtension:@"png" subdirectory:@"TestWebKitAPI.resources"]], nil);
+        return nil;
+    }];
+    [UIPasteboard generalPasteboard].itemProviders = @[ itemProvider.get() ];
+    [webView paste:nil];
+
+    EXPECT_WK_STREQ("0", [webView stringByEvaluatingJavaScript:@"document.querySelector('img').width"]);
+    EXPECT_WK_STREQ("174", [webView stringByEvaluatingJavaScript:@"document.querySelector('img').height"]);
+}
+#endif // PLATFORM(IOS)
 
 } // namespace TestWebKitAPI
 

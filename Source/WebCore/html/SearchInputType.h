@@ -48,14 +48,14 @@ private:
     void addSearchResult() final;
     void attributeChanged(const QualifiedName&) final;
     RenderPtr<RenderElement> createInputRenderer(RenderStyle&&) final;
-    const AtomicString& formControlType() const final;
+    const AtomString& formControlType() const final;
     bool isSearchField() const final;
     bool needsContainer() const final;
     void createShadowSubtree() final;
     void destroyShadowSubtree() final;
     HTMLElement* resultsButtonElement() const final;
     HTMLElement* cancelButtonElement() const final;
-    void handleKeydownEvent(KeyboardEvent&) final;
+    ShouldCallBaseEventHandler handleKeydownEvent(KeyboardEvent&) final;
     void didSetValueByUserEdit() final;
     bool sizeShouldIncludeDecoration(int defaultSize, int& preferredSize) const final;
     float decorationWidth() const final;

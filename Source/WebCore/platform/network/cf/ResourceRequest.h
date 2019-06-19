@@ -42,7 +42,7 @@ namespace WebCore {
 class ResourceRequest : public ResourceRequestBase {
 public:
     ResourceRequest(const String& url) 
-        : ResourceRequestBase(URL(ParsedURLString, url), ResourceRequestCachePolicy::UseProtocolCachePolicy)
+        : ResourceRequestBase(URL({ }, url), ResourceRequestCachePolicy::UseProtocolCachePolicy)
     {
     }
 
@@ -119,7 +119,7 @@ inline bool ResourceRequest::resourcePrioritiesEnabled()
 {
 #if PLATFORM(MAC)
     return true;
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     return true;
 #elif PLATFORM(WIN)
     return false;

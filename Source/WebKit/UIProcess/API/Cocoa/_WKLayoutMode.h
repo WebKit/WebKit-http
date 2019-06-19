@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 typedef NS_ENUM(NSUInteger, _WKLayoutMode) {
     _WKLayoutModeViewSize = 0,
     _WKLayoutModeFixedSize = 1,
@@ -37,6 +35,4 @@ typedef NS_ENUM(NSUInteger, _WKLayoutMode) {
     // Lay out the view at a heuristically-determined size based on the minimum size of the document.
     _WKLayoutModeDynamicSizeComputedFromMinimumDocumentSize = 4,
 
-} WK_API_AVAILABLE(macosx(10.11), ios(9.0));
-
-#endif
+} WK_API_AVAILABLE(macos(10.11), ios(9.0));

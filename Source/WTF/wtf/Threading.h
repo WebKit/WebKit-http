@@ -28,8 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Threading_h
-#define Threading_h
+#pragma once
 
 #include <mutex>
 #include <stdint.h>
@@ -37,16 +36,16 @@
 #include <wtf/Expected.h>
 #include <wtf/FastTLS.h>
 #include <wtf/Function.h>
+#include <wtf/HashSet.h>
 #include <wtf/PlatformRegisters.h>
 #include <wtf/Ref.h>
 #include <wtf/RefPtr.h>
 #include <wtf/StackBounds.h>
 #include <wtf/StackStats.h>
 #include <wtf/ThreadSafeRefCounted.h>
-#include <wtf/ThreadSpecific.h>
 #include <wtf/Vector.h>
 #include <wtf/WordLock.h>
-#include <wtf/text/AtomicStringTable.h>
+#include <wtf/text/AtomStringTable.h>
 
 #if USE(PTHREADS) && !OS(DARWIN)
 #include <signal.h>
@@ -65,22 +64,23 @@ class PrintStream;
 // This function can be called from any threads.
 WTF_EXPORT_PRIVATE void initializeThreading();
 
-// FIXME: The following functions remain because they are used from WebKit Windows support library,
-// WebKitQuartzCoreAdditions.dll. When updating the support library, we should use new API instead
-// and the following workaound should be removed. And new code should not use the following APIs.
-// Remove this workaround code when <rdar://problem/31793213> is fixed.
-#if OS(WINDOWS)
-WTF_EXPORT_PRIVATE ThreadIdentifier createThread(ThreadFunction, void*, const char* threadName);
-WTF_EXPORT_PRIVATE int waitForThreadCompletion(ThreadIdentifier);
+#if USE(PTHREADS)
+
+// We use SIGUSR1 to suspend and resume machine threads in JavaScriptCore.
+constexpr const int SigThreadSuspendResume = SIGUSR1;
+
 #endif
+
+enum class GCThreadType : uint8_t {
+    None = 0,
+    Main,
+    Helper,
+};
 
 class Thread : public ThreadSafeRefCounted<Thread> {
 public:
     friend class ThreadGroup;
     friend WTF_EXPORT_PRIVATE void initializeThreading();
-#if OS(WINDOWS)
-    friend WTF_EXPORT_PRIVATE int waitForThreadCompletion(ThreadIdentifier);
-#endif
 
     WTF_EXPORT_PRIVATE ~Thread();
 
@@ -90,6 +90,10 @@ public:
 
     // Returns Thread object.
     static Thread& current();
+
+    // Set of all WTF::Thread created threads.
+    WTF_EXPORT_PRIVATE static HashSet<Thread*>& allThreads(const LockHolder&);
+    WTF_EXPORT_PRIVATE static Lock& allThreadsMutex();
 
 #if OS(WINDOWS)
     // Returns ThreadIdentifier directly. It is useful if the user only cares about identity
@@ -139,6 +143,10 @@ public:
     WTF_EXPORT_PRIVATE static const unsigned lockSpinLimit;
     WTF_EXPORT_PRIVATE static void yield();
 
+    WTF_EXPORT_PRIVATE static bool exchangeIsCompilationThread(bool newValue);
+    WTF_EXPORT_PRIVATE static void registerGCThread(GCThreadType);
+    WTF_EXPORT_PRIVATE static bool mayBeGCThread();
+
     WTF_EXPORT_PRIVATE void dump(PrintStream& out) const;
 
     static void initializePlatformThreading();
@@ -148,16 +156,16 @@ public:
         return m_stack;
     }
 
-    AtomicStringTable* atomicStringTable()
+    AtomStringTable* atomStringTable()
     {
-        return m_currentAtomicStringTable;
+        return m_currentAtomStringTable;
     }
 
-    AtomicStringTable* setCurrentAtomicStringTable(AtomicStringTable* atomicStringTable)
+    AtomStringTable* setCurrentAtomStringTable(AtomStringTable* atomStringTable)
     {
-        AtomicStringTable* oldAtomicStringTable = m_currentAtomicStringTable;
-        m_currentAtomicStringTable = atomicStringTable;
-        return oldAtomicStringTable;
+        AtomStringTable* oldAtomStringTable = m_currentAtomStringTable;
+        m_currentAtomStringTable = atomStringTable;
+        return oldAtomStringTable;
     }
 
 #if ENABLE(STACK_STATS)
@@ -191,10 +199,13 @@ public:
     mach_port_t machThread() { return m_platformThread; }
 #endif
 
+    bool isCompilationThread() const { return m_isCompilationThread; }
+    GCThreadType gcThreadType() const { return static_cast<GCThreadType>(m_gcThreadType); }
+
     struct NewThreadContext;
     static void entryPoint(NewThreadContext*);
 protected:
-    Thread() = default;
+    Thread();
 
     void initializeInThread();
 
@@ -227,11 +238,11 @@ protected:
         Detached,
     };
 
-    JoinableState joinableState() { return m_joinableState; }
+    JoinableState joinableState() const { return m_joinableState; }
     void didBecomeDetached() { m_joinableState = Detached; }
     void didExit();
     void didJoin() { m_joinableState = Joined; }
-    bool hasExited() { return m_didExit; }
+    bool hasExited() const { return m_didExit; }
 
     // These functions are only called from ThreadGroup.
     ThreadGroupAddResult addToThreadGroup(const AbstractLocker& threadGroupLocker, ThreadGroup&);
@@ -269,9 +280,11 @@ protected:
     static void THREAD_SPECIFIC_CALL destructTLS(void* data);
 
     JoinableState m_joinableState { Joinable };
-    bool m_isShuttingDown { false };
-    bool m_didExit { false };
-    bool m_isDestroyedOnce { false };
+    bool m_isShuttingDown : 1;
+    bool m_didExit : 1;
+    bool m_isDestroyedOnce : 1;
+    bool m_isCompilationThread: 1;
+    unsigned m_gcThreadType : 2;
 
     // Lock & ParkingLot rely on ThreadSpecific. But Thread object can be destroyed even after ThreadSpecific things are destroyed.
     // Use WordLock since WordLock does not depend on ThreadSpecific and this "Thread".
@@ -288,8 +301,8 @@ protected:
     unsigned m_suspendCount { 0 };
 #endif
 
-    AtomicStringTable* m_currentAtomicStringTable { nullptr };
-    AtomicStringTable m_defaultAtomicStringTable;
+    AtomStringTable* m_currentAtomStringTable { nullptr };
+    AtomStringTable m_defaultAtomStringTable;
 
 #if ENABLE(STACK_STATS)
     StackStats::PerThreadStats m_stackStats;
@@ -299,6 +312,15 @@ protected:
 public:
     void* m_apiData { nullptr };
 };
+
+inline Thread::Thread()
+    : m_isShuttingDown(false)
+    , m_didExit(false)
+    , m_isDestroyedOnce(false)
+    , m_isCompilationThread(false)
+    , m_gcThreadType(static_cast<unsigned>(GCThreadType::None))
+{
+}
 
 inline Thread* Thread::currentMayBeNull()
 {
@@ -334,11 +356,4 @@ inline Thread& Thread::current()
 } // namespace WTF
 
 using WTF::Thread;
-
-#if OS(WINDOWS)
-using WTF::ThreadIdentifier;
-using WTF::createThread;
-using WTF::waitForThreadCompletion;
-#endif
-
-#endif // Threading_h
+using WTF::GCThreadType;

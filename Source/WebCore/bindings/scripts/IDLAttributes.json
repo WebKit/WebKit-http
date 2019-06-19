@@ -22,7 +22,7 @@
         "AppleCopyright": {
             "contextsAllowed": ["interface", "attribute", "operation"]
         },
-        "AtomicString": {
+        "AtomString": {
             "contextsAllowed": ["type"]
         },
         "CEReactions": {
@@ -46,7 +46,7 @@
         },
         "CallWith": {
             "contextsAllowed": ["attribute", "operation"],
-            "values": ["Document", "ScriptExecutionContext", "ScriptState", "GlobalObject", "ActiveWindow", "FirstWindow", "ResponsibleDocument", "World"]
+            "values": ["Document", "ExecState", "ScriptExecutionContext", "GlobalObject", "ActiveWindow", "FirstWindow", "ResponsibleDocument", "World"]
         },
         "CheckSecurity": {
             "contextsAllowed": ["interface"]
@@ -80,10 +80,13 @@
         },
         "ConstructorCallWith": {
             "contextsAllowed": ["interface"],
-            "values": ["Document", "RuntimeFlags", "ScriptExecutionContext", "ScriptState"]
+            "values": ["Document", "ExecState", "RuntimeFlags", "ScriptExecutionContext"]
         },
         "ConstructorMayThrowException": {
             "contextsAllowed": ["interface"]
+        },
+        "ContextAllowsMediaDevices": {
+            "contextsAllowed": ["attribute"]
         },
         "ContextHasServiceWorkerScheme": {
             "contextsAllowed": ["attribute"]
@@ -151,6 +154,9 @@
         "CustomToStringName": {
             "contextsAllowed": ["interface"]
         },
+        "CustomEnabled": {
+            "contextsAllowed": ["interface", "dictionary", "enum", "attribute", "operation", "constant", "iterable"]
+        },
         "DOMJIT": {
             "contextsAllowed": ["interface", "attribute", "operation"],
             "values": ["", "ReadDOM", "Getter"]
@@ -163,10 +169,6 @@
         },
         "DoNotCheckSecurity": {
             "contextsAllowed": ["attribute", "operation"]
-        },
-        "DoNotCheckSecurityIf": {
-            "contextsAllowed": ["attribute", "operation"],
-            "values": ["CrossOriginWindowPolicyAllow", "CrossOriginWindowPolicyAllowPostMessage"]
         },
         "DoNotCheckSecurityOnGetter": {
             "contextsAllowed": ["attribute"]
@@ -182,8 +184,19 @@
             "values": ["*"]
         },
         "EnabledBySetting": {
+            "contextsAllowed": ["interface", "dictionary", "enum", "attribute", "operation", "constant", "dictionary-member"],
+            "values": ["*"]
+        },
+        "DisabledByQuirk": {
             "contextsAllowed": ["interface", "dictionary", "enum", "attribute", "operation", "constant"],
             "values": ["*"]
+        },
+        "EnabledByQuirk": {
+            "contextsAllowed": ["interface", "dictionary", "enum", "attribute", "operation", "constant"],
+            "values": ["*"]
+        },
+        "EnabledForContext": {
+            "contextsAllowed": ["attribute", "interface"]
         },
         "EnabledForWorld": {
             "contextsAllowed": ["attribute", "operation"],
@@ -194,6 +207,9 @@
             "standard": {
                 "url": "https://heycam.github.io/webidl/#EnforceRange"
             }
+        },
+        "ResultField": {
+            "contextsAllowed": ["operation"]
         },
         "ExportMacro": {
             "contextsAllowed": ["interface", "dictionary", "enum", "callback-function"],
@@ -395,7 +411,7 @@
         "ReportExternalMemoryCost": {
             "contextsAllowed": ["interface"]
         },
-        "RequiresExistingAtomicString": {
+        "RequiresExistingAtomString": {
             "contextsAllowed": ["type"]
         },
         "RethrowException": {
@@ -422,7 +438,7 @@
         },
         "SetterCallWith": {
             "contextsAllowed": ["attribute"],
-            "values": ["ScriptExecutionContext", "ScriptState", "GlobalObject", "ActiveWindow", "FirstWindow"]
+            "values": ["ExecState", "ScriptExecutionContext", "GlobalObject", "ActiveWindow", "FirstWindow"]
         },
         "SkipCallbackInvokeCheck": {
             "contextsAllowed": ["operation", "callback-function"]

@@ -36,6 +36,7 @@
     attribute boolean canCreateInstances;
     attribute boolean supportsServerCertificates;
     attribute boolean supportsSessions;
+    attribute sequence<MediaKeyEncryptionScheme> supportedEncryptionSchemes;
 
     void unregister();
 };

@@ -138,7 +138,6 @@ bool RenderSVGResourceFilter::applyResource(RenderElement& renderer, const Rende
     filterData->shearFreeAbsoluteTransform = AffineTransform(absoluteTransform.xScale(), 0, 0, absoluteTransform.yScale(), 0, 0);
 
     // Determine absolute boundaries of the filter and the drawing region.
-    FloatRect absoluteFilterBoundaries = filterData->shearFreeAbsoluteTransform.mapRect(filterData->boundaries);
     filterData->drawingRegion = renderer.strokeBoundingBox();
     filterData->drawingRegion.intersect(filterData->boundaries);
     FloatRect absoluteDrawingRegion = filterData->shearFreeAbsoluteTransform.mapRect(filterData->drawingRegion);
@@ -152,19 +151,9 @@ bool RenderSVGResourceFilter::applyResource(RenderElement& renderer, const Rende
     if (!filterData->builder)
         return false;
 
-    // Calculate the scale factor for the use of filterRes.
-    // Also see http://www.w3.org/TR/SVG/filters.html#FilterEffectsRegion
-    FloatSize scale(1, 1);
-    if (filterElement().hasAttribute(SVGNames::filterResAttr)) {
-        scale.setWidth(filterElement().filterResX() / absoluteFilterBoundaries.width());
-        scale.setHeight(filterElement().filterResY() / absoluteFilterBoundaries.height());
-    }
-
-    if (scale.isEmpty())
-        return false;
-
     // Determine scale factor for filter. The size of intermediate ImageBuffers shouldn't be bigger than kMaxFilterSize.
     FloatRect tempSourceRect = absoluteDrawingRegion;
+    FloatSize scale(1, 1);
     ImageBuffer::sizeNeedsClamping(tempSourceRect.size(), scale);
     tempSourceRect.scale(scale.width(), scale.height());
 
@@ -202,7 +191,7 @@ bool RenderSVGResourceFilter::applyResource(RenderElement& renderer, const Rende
     effectiveTransform.multiply(filterData->shearFreeAbsoluteTransform);
 
     RenderingMode renderingMode = renderer.settings().acceleratedFiltersEnabled() ? Accelerated : Unaccelerated;
-    auto sourceGraphic = SVGRenderingContext::createImageBuffer(filterData->drawingRegion, effectiveTransform, ColorSpaceLinearRGB, renderingMode);
+    auto sourceGraphic = SVGRenderingContext::createImageBuffer(filterData->drawingRegion, effectiveTransform, ColorSpaceLinearRGB, renderingMode, context);
     if (!sourceGraphic) {
         ASSERT(!m_rendererFilterDataMap.contains(&renderer));
         filterData->savedContext = context;
@@ -279,7 +268,7 @@ void RenderSVGResourceFilter::postApplyResource(RenderElement& renderer, Graphic
         // Always true if filterData is just built (filterData->state == FilterData::Built).
         if (!lastEffect->hasResult()) {
             filterData.state = FilterData::Applying;
-            lastEffect->applyAll();
+            lastEffect->apply();
             lastEffect->correctFilterResultIfNeeded();
             lastEffect->transformResultColorSpace(ColorSpaceSRGB);
         }
@@ -287,7 +276,7 @@ void RenderSVGResourceFilter::postApplyResource(RenderElement& renderer, Graphic
 
         ImageBuffer* resultImage = lastEffect->imageBufferResult();
         if (resultImage) {
-            context->concatCTM(filterData.shearFreeAbsoluteTransform.inverse().value_or(AffineTransform()));
+            context->concatCTM(filterData.shearFreeAbsoluteTransform.inverse().valueOr(AffineTransform()));
 
             context->scale(FloatSize(1 / filterData.filter->filterResolution().width(), 1 / filterData.filter->filterResolution().height()));
             context->drawImageBuffer(*resultImage, lastEffect->absolutePaintRect());

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,12 +26,11 @@
 #pragma once
 
 #if ENABLE(JIT)
-
 #include "JSCInlines.h"
 
 namespace JSC {
 
-inline MacroAssembler::JumpList JIT::emitDoubleGetByVal(Instruction* instruction, PatchableJump& badType)
+inline MacroAssembler::JumpList JIT::emitDoubleGetByVal(const Instruction* instruction, PatchableJump& badType)
 {
 #if USE(JSVALUE64)
     JSValueRegs result = JSValueRegs(regT0);
@@ -43,7 +42,7 @@ inline MacroAssembler::JumpList JIT::emitDoubleGetByVal(Instruction* instruction
     return slowCases;
 }
 
-ALWAYS_INLINE MacroAssembler::JumpList JIT::emitLoadForArrayMode(Instruction* currentInstruction, JITArrayMode arrayMode, PatchableJump& badType)
+ALWAYS_INLINE MacroAssembler::JumpList JIT::emitLoadForArrayMode(const Instruction* currentInstruction, JITArrayMode arrayMode, PatchableJump& badType)
 {
     switch (arrayMode) {
     case JITInt32:
@@ -61,12 +60,12 @@ ALWAYS_INLINE MacroAssembler::JumpList JIT::emitLoadForArrayMode(Instruction* cu
     return MacroAssembler::JumpList();
 }
 
-inline MacroAssembler::JumpList JIT::emitContiguousGetByVal(Instruction* instruction, PatchableJump& badType, IndexingType expectedShape)
+inline MacroAssembler::JumpList JIT::emitContiguousGetByVal(const Instruction* instruction, PatchableJump& badType, IndexingType expectedShape)
 {
     return emitContiguousLoad(instruction, badType, expectedShape);
 }
 
-inline MacroAssembler::JumpList JIT::emitArrayStorageGetByVal(Instruction* instruction, PatchableJump& badType)
+inline MacroAssembler::JumpList JIT::emitArrayStorageGetByVal(const Instruction* instruction, PatchableJump& badType)
 {
     return emitArrayStorageLoad(instruction, badType);
 }
@@ -95,9 +94,9 @@ ALWAYS_INLINE void JIT::emitPutIntToCallFrameHeader(RegisterID from, int entry)
 ALWAYS_INLINE void JIT::emitLoadCharacterString(RegisterID src, RegisterID dst, JumpList& failures)
 {
     failures.append(branchIfNotString(src));
-    failures.append(branch32(NotEqual, MacroAssembler::Address(src, JSString::offsetOfLength()), TrustedImm32(1)));
     loadPtr(MacroAssembler::Address(src, JSString::offsetOfValue()), dst);
-    failures.append(branchTest32(Zero, dst));
+    failures.append(branchIfRopeStringImpl(dst));
+    failures.append(branch32(NotEqual, MacroAssembler::Address(dst, StringImpl::lengthMemoryOffset()), TrustedImm32(1)));
     loadPtr(MacroAssembler::Address(dst, StringImpl::flagsOffset()), regT1);
     loadPtr(MacroAssembler::Address(dst, StringImpl::dataOffset()), dst);
 
@@ -131,7 +130,7 @@ ALWAYS_INLINE void JIT::updateTopCallFrame()
 {
     ASSERT(static_cast<int>(m_bytecodeOffset) >= 0);
 #if USE(JSVALUE32_64)
-    Instruction* instruction = &m_codeBlock->instructions()[m_bytecodeOffset]; 
+    const Instruction* instruction = m_codeBlock->instructions().at(m_bytecodeOffset).ptr();
     uint32_t locationBits = CallSiteIndex(instruction).bits();
 #else
     uint32_t locationBits = CallSiteIndex(m_bytecodeOffset).bits();
@@ -181,10 +180,11 @@ ALWAYS_INLINE MacroAssembler::Call JIT::appendCallWithExceptionCheckSetJSValueRe
     return call;
 }
 
-ALWAYS_INLINE MacroAssembler::Call JIT::appendCallWithExceptionCheckSetJSValueResultWithProfile(const FunctionPtr<CFunctionPtrTag> function, int dst)
+template<typename Metadata>
+ALWAYS_INLINE MacroAssembler::Call JIT::appendCallWithExceptionCheckSetJSValueResultWithProfile(Metadata& metadata, const FunctionPtr<CFunctionPtrTag> function, int dst)
 {
     MacroAssembler::Call call = appendCallWithExceptionCheck(function);
-    emitValueProfilingSite();
+    emitValueProfilingSite(metadata);
 #if USE(JSVALUE64)
     emitPutVirtualRegister(dst, returnValueGPR);
 #else
@@ -275,13 +275,13 @@ ALWAYS_INLINE void JIT::emitCount(AbstractSamplingCounter& counter, int32_t coun
 
 #if ENABLE(OPCODE_SAMPLING)
 #if CPU(X86_64)
-ALWAYS_INLINE void JIT::sampleInstruction(Instruction* instruction, bool inHostFunction)
+ALWAYS_INLINE void JIT::sampleInstruction(const Instruction* instruction, bool inHostFunction)
 {
     move(TrustedImmPtr(m_interpreter->sampler()->sampleSlot()), X86Registers::ecx);
     storePtr(TrustedImmPtr(m_interpreter->sampler()->encodeSample(instruction, inHostFunction)), X86Registers::ecx);
 }
 #else
-ALWAYS_INLINE void JIT::sampleInstruction(Instruction* instruction, bool inHostFunction)
+ALWAYS_INLINE void JIT::sampleInstruction(const Instruction* instruction, bool inHostFunction)
 {
     storePtr(TrustedImmPtr(m_interpreter->sampler()->encodeSample(instruction, inHostFunction)), m_interpreter->sampler()->sampleSlot());
 }
@@ -328,16 +328,20 @@ inline void JIT::emitValueProfilingSite(ValueProfile& valueProfile)
 #endif
 }
 
-inline void JIT::emitValueProfilingSite(unsigned bytecodeOffset)
+template<typename Op>
+inline std::enable_if_t<std::is_same<decltype(Op::Metadata::m_profile), ValueProfile>::value, void> JIT::emitValueProfilingSiteIfProfiledOpcode(Op bytecode)
+{
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
+}
+
+inline void JIT::emitValueProfilingSiteIfProfiledOpcode(...) { }
+
+template<typename Metadata>
+inline void JIT::emitValueProfilingSite(Metadata& metadata)
 {
     if (!shouldEmitProfiling())
         return;
-    emitValueProfilingSite(m_codeBlock->valueProfileForBytecodeOffset(bytecodeOffset));
-}
-
-inline void JIT::emitValueProfilingSite()
-{
-    emitValueProfilingSite(m_bytecodeOffset);
+    emitValueProfilingSite(metadata.m_profile);
 }
 
 inline void JIT::emitArrayProfilingSiteWithCell(RegisterID cell, RegisterID indexingType, ArrayProfile* arrayProfile)
@@ -350,11 +354,6 @@ inline void JIT::emitArrayProfilingSiteWithCell(RegisterID cell, RegisterID inde
     load8(Address(cell, JSCell::indexingTypeAndMiscOffset()), indexingType);
 }
 
-inline void JIT::emitArrayProfilingSiteForBytecodeIndexWithCell(RegisterID cell, RegisterID indexingType, unsigned bytecodeIndex)
-{
-    emitArrayProfilingSiteWithCell(cell, indexingType, m_codeBlock->getOrAddArrayProfile(bytecodeIndex));
-}
-
 inline void JIT::emitArrayProfileStoreToHoleSpecialCase(ArrayProfile* arrayProfile)
 {
     store8(TrustedImm32(1), arrayProfile->addressOfMayStoreToHole());
@@ -365,13 +364,12 @@ inline void JIT::emitArrayProfileOutOfBoundsSpecialCase(ArrayProfile* arrayProfi
     store8(TrustedImm32(1), arrayProfile->addressOfOutOfBounds());
 }
 
-static inline bool arrayProfileSaw(ArrayModes arrayModes, IndexingType capability)
-{
-    return arrayModesInclude(arrayModes, capability);
-}
-
 inline JITArrayMode JIT::chooseArrayMode(ArrayProfile* profile)
 {
+    auto arrayProfileSaw = [] (ArrayModes arrayModes, IndexingType capability) {
+        return arrayModesIncludeIgnoringTypedArrays(arrayModes, capability);
+    };
+
     ConcurrentJSLocker locker(m_codeBlock->m_lock);
     profile->computeUpdatedPrediction(locker, m_codeBlock);
     ArrayModes arrayModes = profile->observedArrayModes(locker);
@@ -701,12 +699,37 @@ ALWAYS_INLINE void JIT::emitJumpSlowCaseIfNotNumber(RegisterID reg)
     addSlowCase(branchIfNotNumber(reg));
 }
 
-inline Instruction* JIT::copiedInstruction(Instruction* inst)
+#endif // USE(JSVALUE32_64)
+
+ALWAYS_INLINE int JIT::jumpTarget(const Instruction* instruction, int target)
 {
-    return &m_instructions[m_codeBlock->bytecodeOffset(inst)];
+    if (target)
+        return target;
+    return m_codeBlock->outOfLineJumpOffset(instruction);
 }
 
-#endif // USE(JSVALUE32_64)
+ALWAYS_INLINE GetPutInfo JIT::copiedGetPutInfo(OpPutToScope bytecode)
+{
+    unsigned key = bytecode.m_metadataID + 1; // HashMap doesn't like 0 as a key
+    auto iterator = m_copiedGetPutInfos.find(key);
+    if (iterator != m_copiedGetPutInfos.end())
+        return GetPutInfo(iterator->value);
+    GetPutInfo getPutInfo = bytecode.metadata(m_codeBlock).m_getPutInfo;
+    m_copiedGetPutInfos.add(key, getPutInfo.operand());
+    return getPutInfo;
+}
+
+template<typename BinaryOp>
+ALWAYS_INLINE ArithProfile JIT::copiedArithProfile(BinaryOp bytecode)
+{
+    uint64_t key = static_cast<uint64_t>(BinaryOp::opcodeID) << 32 | static_cast<uint64_t>(bytecode.m_metadataID);
+    auto iterator = m_copiedArithProfiles.find(key);
+    if (iterator != m_copiedArithProfiles.end())
+        return iterator->value;
+    ArithProfile arithProfile = bytecode.metadata(m_codeBlock).m_arithProfile;
+    m_copiedArithProfiles.add(key, arithProfile);
+    return arithProfile;
+}
 
 } // namespace JSC
 

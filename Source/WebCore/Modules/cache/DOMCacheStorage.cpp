@@ -43,11 +43,11 @@ DOMCacheStorage::DOMCacheStorage(ScriptExecutionContext& context, Ref<CacheStora
     suspendIfNeeded();
 }
 
-std::optional<ClientOrigin> DOMCacheStorage::origin() const
+Optional<ClientOrigin> DOMCacheStorage::origin() const
 {
     auto* origin = scriptExecutionContext() ? scriptExecutionContext()->securityOrigin() : nullptr;
     if (!origin)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return ClientOrigin { scriptExecutionContext()->topOrigin().data(), origin->data() };
 }
@@ -59,7 +59,8 @@ static void doSequentialMatch(size_t index, Vector<Ref<DOMCache>>&& caches, DOMC
         return;
     }
 
-    caches[index]->doMatch(WTFMove(info), WTFMove(options), [caches = WTFMove(caches), info, options, completionHandler = WTFMove(completionHandler), index](ExceptionOr<FetchResponse*>&& result) mutable {
+    auto& cache = caches[index].get();
+    cache.doMatch(WTFMove(info), WTFMove(options), [caches = WTFMove(caches), info, options, completionHandler = WTFMove(completionHandler), index](ExceptionOr<FetchResponse*>&& result) mutable {
         if (result.hasException()) {
             completionHandler(result.releaseException());
             return;
@@ -82,9 +83,26 @@ static inline Ref<DOMCache> copyCache(const Ref<DOMCache>& cache)
     return cache.copyRef();
 }
 
+void DOMCacheStorage::doSequentialMatch(DOMCache::RequestInfo&& info, CacheQueryOptions&& options, Ref<DeferredPromise>&& promise)
+{
+    startSequentialMatch(WTF::map(m_caches, copyCache), WTFMove(info), WTFMove(options), [this, pendingActivity = makePendingActivity(*this), promise = WTFMove(promise)](ExceptionOr<FetchResponse*>&& result) mutable {
+        if (m_isStopped)
+            return;
+        if (result.hasException()) {
+            promise->reject(result.releaseException());
+            return;
+        }
+        if (!result.returnValue()) {
+            promise->resolve();
+            return;
+        }
+        promise->resolve<IDLInterface<FetchResponse>>(*result.returnValue());
+    });
+}
+
 void DOMCacheStorage::match(DOMCache::RequestInfo&& info, CacheQueryOptions&& options, Ref<DeferredPromise>&& promise)
 {
-    retrieveCaches([this, info = WTFMove(info), options = WTFMove(options), promise = WTFMove(promise)](std::optional<Exception>&& exception) mutable {
+    retrieveCaches([this, info = WTFMove(info), options = WTFMove(options), promise = WTFMove(promise)](Optional<Exception>&& exception) mutable {
         if (exception) {
             promise->reject(WTFMove(exception.value()));
             return;
@@ -100,26 +118,13 @@ void DOMCacheStorage::match(DOMCache::RequestInfo&& info, CacheQueryOptions&& op
             return;
         }
 
-        setPendingActivity(this);
-        startSequentialMatch(WTF::map(m_caches, copyCache), WTFMove(info), WTFMove(options), [this, promise = WTFMove(promise)](ExceptionOr<FetchResponse*>&& result) mutable {
-            if (!m_isStopped) {
-                if (result.hasException()) {
-                    promise->reject(result.releaseException());
-                    return;
-                }
-                if (!result.returnValue())
-                    promise->resolve();
-                else
-                    promise->resolve<IDLInterface<FetchResponse>>(*result.returnValue());
-            }
-            unsetPendingActivity(this);
-        });
+        this->doSequentialMatch(WTFMove(info), WTFMove(options), WTFMove(promise));
     });
 }
 
 void DOMCacheStorage::has(const String& name, DOMPromiseDeferred<IDLBoolean>&& promise)
 {
-    retrieveCaches([this, name, promise = WTFMove(promise)](std::optional<Exception>&& exception) mutable {
+    retrieveCaches([this, name, promise = WTFMove(promise)](Optional<Exception>&& exception) mutable {
         if (exception) {
             promise.reject(WTFMove(exception.value()));
             return;
@@ -136,7 +141,7 @@ Ref<DOMCache> DOMCacheStorage::findCacheOrCreate(CacheInfo&& info)
    return DOMCache::create(*scriptExecutionContext(), WTFMove(info.name), info.identifier, m_connection.copyRef());
 }
 
-void DOMCacheStorage::retrieveCaches(WTF::Function<void(std::optional<Exception>&&)>&& callback)
+void DOMCacheStorage::retrieveCaches(WTF::Function<void(Optional<Exception>&&)>&& callback)
 {
     auto origin = this->origin();
     if (!origin)
@@ -158,7 +163,7 @@ void DOMCacheStorage::retrieveCaches(WTF::Function<void(std::optional<Exception>
                     return findCacheOrCreate(WTFMove(info));
                 });
             }
-            callback(std::nullopt);
+            callback(WTF::nullopt);
         }
     });
 }
@@ -173,7 +178,7 @@ static void logConsolePersistencyError(ScriptExecutionContext* context, const St
 
 void DOMCacheStorage::open(const String& name, DOMPromiseDeferred<IDLInterface<DOMCache>>&& promise)
 {
-    retrieveCaches([this, name, promise = WTFMove(promise)](std::optional<Exception>&& exception) mutable {
+    retrieveCaches([this, name, promise = WTFMove(promise)](Optional<Exception>&& exception) mutable {
         if (exception) {
             promise.reject(WTFMove(exception.value()));
             return;
@@ -209,7 +214,7 @@ void DOMCacheStorage::doOpen(const String& name, DOMPromiseDeferred<IDLInterface
 
 void DOMCacheStorage::remove(const String& name, DOMPromiseDeferred<IDLBoolean>&& promise)
 {
-    retrieveCaches([this, name, promise = WTFMove(promise)](std::optional<Exception>&& exception) mutable {
+    retrieveCaches([this, name, promise = WTFMove(promise)](Optional<Exception>&& exception) mutable {
         if (exception) {
             promise.reject(WTFMove(exception.value()));
             return;
@@ -241,7 +246,7 @@ void DOMCacheStorage::doRemove(const String& name, DOMPromiseDeferred<IDLBoolean
 
 void DOMCacheStorage::keys(KeysPromise&& promise)
 {
-    retrieveCaches([this, promise = WTFMove(promise)](std::optional<Exception>&& exception) mutable {
+    retrieveCaches([this, promise = WTFMove(promise)](Optional<Exception>&& exception) mutable {
         if (exception) {
             promise.reject(WTFMove(exception.value()));
             return;

@@ -42,7 +42,7 @@
 namespace WebCore {
 
 CSSFontFaceSet::CSSFontFaceSet(CSSFontSelector* owningFontSelector)
-    : m_owningFontSelector(owningFontSelector)
+    : m_owningFontSelector(makeWeakPtr(owningFontSelector))
 {
 }
 
@@ -113,7 +113,7 @@ void CSSFontFaceSet::ensureLocalFontFacesForFamilyRegistered(const String& famil
 
     Vector<Ref<CSSFontFace>> faces;
     for (auto item : capabilities) {
-        Ref<CSSFontFace> face = CSSFontFace::create(m_owningFontSelector, nullptr, nullptr, true);
+        Ref<CSSFontFace> face = CSSFontFace::create(m_owningFontSelector.get(), nullptr, nullptr, true);
         
         Ref<CSSValueList> familyList = CSSValueList::createCommaSeparated();
         familyList->append(CSSValuePool::singleton().createFontFamilyValue(familyName));
@@ -230,6 +230,8 @@ void CSSFontFaceSet::removeFromFacesLookupTable(const CSSFontFace& face, const C
 
 void CSSFontFaceSet::remove(const CSSFontFace& face)
 {
+    auto protect = makeRef(face);
+
     m_cache.clear();
 
     for (auto* client : m_clients)
@@ -349,8 +351,8 @@ ExceptionOr<Vector<std::reference_wrapper<CSSFontFace>>> CSSFontFaceSet::matchin
         return Exception { SyntaxError };
     CSSValueList& familyList = downcast<CSSValueList>(*family);
 
-    HashSet<AtomicString> uniqueFamilies;
-    Vector<AtomicString> familyOrder;
+    HashSet<AtomString> uniqueFamilies;
+    Vector<AtomString> familyOrder;
     for (auto& family : familyList) {
         auto& primitive = downcast<CSSPrimitiveValue>(family.get());
         if (!primitive.isFontFamily())
@@ -384,7 +386,7 @@ ExceptionOr<Vector<std::reference_wrapper<CSSFontFace>>> CSSFontFaceSet::matchin
     result.reserveInitialCapacity(resultConstituents.size());
     for (auto* constituent : resultConstituents)
         result.uncheckedAppend(*constituent);
-    return WTFMove(result);
+    return result;
 }
 
 ExceptionOr<bool> CSSFontFaceSet::check(const String& font, const String& text)
@@ -400,7 +402,7 @@ ExceptionOr<bool> CSSFontFaceSet::check(const String& font, const String& text)
     return true;
 }
 
-CSSSegmentedFontFace* CSSFontFaceSet::fontFace(FontSelectionRequest request, const AtomicString& family)
+CSSSegmentedFontFace* CSSFontFaceSet::fontFace(FontSelectionRequest request, const AtomString& family)
 {
     auto iterator = m_facesLookupTable.find(family);
     if (iterator == m_facesLookupTable.end())

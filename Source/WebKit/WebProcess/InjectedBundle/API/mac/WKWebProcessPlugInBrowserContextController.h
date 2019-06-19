@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 @class WKDOMDocument;
@@ -35,7 +33,7 @@
 @class WKWebProcessPlugInPageGroup;
 @protocol WKWebProcessPlugInLoadDelegate;
 
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface WKWebProcessPlugInBrowserContextController : NSObject
 
 @property (readonly) WKDOMDocument *mainFrameDocument;
@@ -49,5 +47,3 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @property (weak) id <WKWebProcessPlugInLoadDelegate> loadDelegate;
 
 @end
-
-#endif // WK_API_ENABLED

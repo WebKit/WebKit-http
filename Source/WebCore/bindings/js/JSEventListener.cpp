@@ -22,6 +22,7 @@
 
 #include "BeforeUnloadEvent.h"
 #include "ContentSecurityPolicy.h"
+#include "EventNames.h"
 #include "Frame.h"
 #include "HTMLElement.h"
 #include "JSDOMConvertNullable.h"
@@ -149,52 +150,63 @@ void JSEventListener::handleEvent(ScriptExecutionContext& scriptExecutionContext
         callType = getCallData(vm, handleEventFunction, callData);
     }
 
-    if (callType != CallType::None) {
-        Ref<JSEventListener> protectedThis(*this);
+    if (callType == CallType::None)
+        return;
 
-        MarkedArgumentBuffer args;
-        args.append(toJS(exec, globalObject, &event));
-        ASSERT(!args.hasOverflowed());
+    Ref<JSEventListener> protectedThis(*this);
 
-        Event* savedEvent = globalObject->currentEvent();
+    MarkedArgumentBuffer args;
+    args.append(toJS(exec, globalObject, &event));
+    ASSERT(!args.hasOverflowed());
 
-        // window.event should not be set when the target is inside a shadow tree, as per the DOM specification.
-        bool isTargetInsideShadowTree = is<Node>(event.currentTarget()) && downcast<Node>(*event.currentTarget()).isInShadowTree();
-        if (!isTargetInsideShadowTree)
-            globalObject->setCurrentEvent(&event);
+    Event* savedEvent = globalObject->currentEvent();
 
-        VMEntryScope entryScope(vm, vm.entryScope ? vm.entryScope->globalObject() : globalObject);
+    // window.event should not be set when the target is inside a shadow tree, as per the DOM specification.
+    bool isTargetInsideShadowTree = is<Node>(event.currentTarget()) && downcast<Node>(*event.currentTarget()).isInShadowTree();
+    if (!isTargetInsideShadowTree)
+        globalObject->setCurrentEvent(&event);
 
-        InspectorInstrumentationCookie cookie = JSExecState::instrumentFunctionCall(&scriptExecutionContext, callType, callData);
+    VMEntryScope entryScope(vm, vm.entryScope ? vm.entryScope->globalObject() : globalObject);
 
-        JSValue thisValue = handleEventFunction == jsFunction ? toJS(exec, globalObject, event.currentTarget()) : jsFunction;
-        NakedPtr<JSC::Exception> exception;
-        JSValue retval = JSExecState::profiledCall(exec, JSC::ProfilingReason::Other, handleEventFunction, callType, callData, thisValue, args, exception);
+    InspectorInstrumentationCookie cookie = JSExecState::instrumentFunctionCall(&scriptExecutionContext, callType, callData);
 
-        InspectorInstrumentation::didCallFunction(cookie, &scriptExecutionContext);
+    JSValue thisValue = handleEventFunction == jsFunction ? toJS(exec, globalObject, event.currentTarget()) : jsFunction;
+    NakedPtr<JSC::Exception> exception;
+    JSValue retval = JSExecState::profiledCall(exec, JSC::ProfilingReason::Other, handleEventFunction, callType, callData, thisValue, args, exception);
 
-        globalObject->setCurrentEvent(savedEvent);
+    InspectorInstrumentation::didCallFunction(cookie, &scriptExecutionContext);
 
-        if (is<WorkerGlobalScope>(scriptExecutionContext)) {
-            auto& scriptController = *downcast<WorkerGlobalScope>(scriptExecutionContext).script();
-            bool terminatorCausedException = (scope.exception() && isTerminatedExecutionException(vm, scope.exception()));
-            if (terminatorCausedException || scriptController.isTerminatingExecution())
-                scriptController.forbidExecution();
-        }
+    globalObject->setCurrentEvent(savedEvent);
 
-        if (exception) {
-            event.target()->uncaughtExceptionInEventHandler();
-            reportException(exec, exception);
-        } else {
-            if (is<BeforeUnloadEvent>(event))
-                handleBeforeUnloadEventReturnValue(downcast<BeforeUnloadEvent>(event), convert<IDLNullable<IDLDOMString>>(*exec, retval));
-
-            if (m_isAttribute) {
-                if (retval.isFalse())
-                    event.preventDefault();
-            }
-        }
+    if (is<WorkerGlobalScope>(scriptExecutionContext)) {
+        auto& scriptController = *downcast<WorkerGlobalScope>(scriptExecutionContext).script();
+        bool terminatorCausedException = (scope.exception() && isTerminatedExecutionException(vm, scope.exception()));
+        if (terminatorCausedException || scriptController.isTerminatingExecution())
+            scriptController.forbidExecution();
     }
+
+    if (exception) {
+        event.target()->uncaughtExceptionInEventHandler();
+        reportException(exec, exception);
+        return;
+    }
+
+    if (!m_isAttribute) {
+        // This is an EventListener and there is therefore no need for any return value handling.
+        return;
+    }
+
+    // Do return value handling for event handlers (https://html.spec.whatwg.org/#the-event-handler-processing-algorithm).
+
+    if (event.type() == eventNames().beforeunloadEvent) {
+        // This is a OnBeforeUnloadEventHandler, and therefore the return value must be coerced into a String.
+        if (is<BeforeUnloadEvent>(event))
+            handleBeforeUnloadEventReturnValue(downcast<BeforeUnloadEvent>(event), convert<IDLNullable<IDLDOMString>>(*exec, retval));
+        return;
+    }
+
+    if (retval.isFalse())
+        event.preventDefault();
 }
 
 bool JSEventListener::operator==(const EventListener& listener) const
@@ -224,45 +236,45 @@ static inline RefPtr<JSEventListener> createEventListenerForEventHandlerAttribut
     return JSEventListener::create(asObject(listener), &wrapper, true, currentWorld(state));
 }
 
-JSC::JSValue eventHandlerAttribute(EventTarget& target, const AtomicString& eventType, DOMWrapperWorld& isolatedWorld)
+JSC::JSValue eventHandlerAttribute(EventTarget& target, const AtomString& eventType, DOMWrapperWorld& isolatedWorld)
 {
     return eventHandlerAttribute(target.attributeEventListener(eventType, isolatedWorld), *target.scriptExecutionContext());
 }
 
-void setEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, EventTarget& target, const AtomicString& eventType, JSC::JSValue value)
+void setEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, EventTarget& target, const AtomString& eventType, JSC::JSValue value)
 {
     target.setAttributeEventListener(eventType, createEventListenerForEventHandlerAttribute(state, value, wrapper), currentWorld(state));
 }
 
-JSC::JSValue windowEventHandlerAttribute(HTMLElement& element, const AtomicString& eventType, DOMWrapperWorld& isolatedWorld)
+JSC::JSValue windowEventHandlerAttribute(HTMLElement& element, const AtomString& eventType, DOMWrapperWorld& isolatedWorld)
 {
     auto& document = element.document();
     return eventHandlerAttribute(document.getWindowAttributeEventListener(eventType, isolatedWorld), document);
 }
 
-void setWindowEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, HTMLElement& element, const AtomicString& eventType, JSC::JSValue value)
+void setWindowEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, HTMLElement& element, const AtomString& eventType, JSC::JSValue value)
 {
     ASSERT(wrapper.globalObject());
     element.document().setWindowAttributeEventListener(eventType, createEventListenerForEventHandlerAttribute(state, value, *wrapper.globalObject()), currentWorld(state));
 }
 
-JSC::JSValue windowEventHandlerAttribute(DOMWindow& window, const AtomicString& eventType, DOMWrapperWorld& isolatedWorld)
+JSC::JSValue windowEventHandlerAttribute(DOMWindow& window, const AtomString& eventType, DOMWrapperWorld& isolatedWorld)
 {
     return eventHandlerAttribute(window, eventType, isolatedWorld);
 }
 
-void setWindowEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, DOMWindow& window, const AtomicString& eventType, JSC::JSValue value)
+void setWindowEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, DOMWindow& window, const AtomString& eventType, JSC::JSValue value)
 {
     setEventHandlerAttribute(state, wrapper, window, eventType, value);
 }
 
-JSC::JSValue documentEventHandlerAttribute(HTMLElement& element, const AtomicString& eventType, DOMWrapperWorld& isolatedWorld)
+JSC::JSValue documentEventHandlerAttribute(HTMLElement& element, const AtomString& eventType, DOMWrapperWorld& isolatedWorld)
 {
     auto& document = element.document();
     return eventHandlerAttribute(document.attributeEventListener(eventType, isolatedWorld), document);
 }
 
-void setDocumentEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, HTMLElement& element, const AtomicString& eventType, JSC::JSValue value)
+void setDocumentEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, HTMLElement& element, const AtomString& eventType, JSC::JSValue value)
 {
     ASSERT(wrapper.globalObject());
     auto& document = element.document();
@@ -271,12 +283,12 @@ void setDocumentEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrap
     document.setAttributeEventListener(eventType, createEventListenerForEventHandlerAttribute(state, value, *documentWrapper), currentWorld(state));
 }
 
-JSC::JSValue documentEventHandlerAttribute(Document& document, const AtomicString& eventType, DOMWrapperWorld& isolatedWorld)
+JSC::JSValue documentEventHandlerAttribute(Document& document, const AtomString& eventType, DOMWrapperWorld& isolatedWorld)
 {
     return eventHandlerAttribute(document, eventType, isolatedWorld);
 }
 
-void setDocumentEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, Document& document, const AtomicString& eventType, JSC::JSValue value)
+void setDocumentEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, Document& document, const AtomString& eventType, JSC::JSValue value)
 {
     setEventHandlerAttribute(state, wrapper, document, eventType, value);
 }

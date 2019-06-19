@@ -101,14 +101,15 @@ public:
 
     ~WebFramePolicyListenerPrivate() { }
 
+    PolicyCheckIdentifier m_policyCheckIdentifier;
     FramePolicyFunction m_policyFunction;
     COMPtr<WebFramePolicyListener> m_policyListener;
 };
 
 WebFrameLoaderClient::WebFrameLoaderClient(WebFrame* webFrame)
-    : m_webFrame(webFrame)
+    : m_policyListenerPrivate(std::make_unique<WebFramePolicyListenerPrivate>())
+    , m_webFrame(webFrame)
     , m_manualLoader(0)
-    , m_policyListenerPrivate(std::make_unique<WebFramePolicyListenerPrivate>())
     , m_hasSentResponseToPlugin(false) 
 {
 }
@@ -121,14 +122,14 @@ void WebFrameLoaderClient::frameLoaderDestroyed()
 {
 }
 
-std::optional<uint64_t> WebFrameLoaderClient::pageID() const
+Optional<WebCore::PageIdentifier> WebFrameLoaderClient::pageID() const
 {
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
-std::optional<uint64_t> WebFrameLoaderClient::frameID() const
+Optional<uint64_t> WebFrameLoaderClient::frameID() const
 {
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 PAL::SessionID WebFrameLoaderClient::sessionID() const
@@ -354,7 +355,7 @@ void WebFrameLoaderClient::dispatchDidCancelClientRedirect()
         frameLoadDelegate->didCancelClientRedirectForFrame(webView, m_webFrame);
 }
 
-void WebFrameLoaderClient::dispatchWillPerformClientRedirect(const URL& url, double delay, WallTime fireDate)
+void WebFrameLoaderClient::dispatchWillPerformClientRedirect(const URL& url, double delay, WallTime fireDate, WebCore::LockBackForwardList)
 {
     WebView* webView = m_webFrame->webView();
     COMPtr<IWebFrameLoadDelegate> frameLoadDelegate;
@@ -436,7 +437,7 @@ void WebFrameLoaderClient::dispatchDidReceiveTitle(const StringWithDirection& ti
         frameLoadDelegate->didReceiveTitle(webView, BString(title.string), m_webFrame);
 }
 
-void WebFrameLoaderClient::dispatchDidCommitLoad(std::optional<HasInsecureContent>)
+void WebFrameLoaderClient::dispatchDidCommitLoad(Optional<HasInsecureContent>)
 {
     WebView* webView = m_webFrame->webView();
     COMPtr<IWebFrameLoadDelegate> frameLoadDelegate;
@@ -444,7 +445,7 @@ void WebFrameLoaderClient::dispatchDidCommitLoad(std::optional<HasInsecureConten
         frameLoadDelegate->didCommitLoadForFrame(webView, m_webFrame);
 }
 
-void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error)
+void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& error, WillContinueLoading)
 {
     WebView* webView = m_webFrame->webView();
     COMPtr<IWebFrameLoadDelegate> frameLoadDelegate;
@@ -482,7 +483,7 @@ void WebFrameLoaderClient::dispatchDidFinishLoad()
         frameLoadDelegate->didFinishLoadForFrame(webView, m_webFrame);
 }
 
-void WebFrameLoaderClient::dispatchDidReachLayoutMilestone(LayoutMilestones milestones)
+void WebFrameLoaderClient::dispatchDidReachLayoutMilestone(OptionSet<WebCore::LayoutMilestone> milestones)
 {
     WebView* webView = m_webFrame->webView();
 
@@ -528,7 +529,7 @@ void WebFrameLoaderClient::dispatchShow()
         ui->webViewShow(webView);
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, WebCore::PolicyCheckIdentifier identifier, const String&, FramePolicyFunction&& function)
 {
     WebView* webView = m_webFrame->webView();
     Frame* coreFrame = core(m_webFrame);
@@ -540,13 +541,13 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
 
     COMPtr<IWebURLRequest> urlRequest(AdoptCOM, WebMutableURLRequest::createInstance(request));
 
-    if (SUCCEEDED(policyDelegate->decidePolicyForMIMEType(webView, BString(response.mimeType()), urlRequest.get(), m_webFrame, setUpPolicyListener(WTFMove(function)).get())))
+    if (SUCCEEDED(policyDelegate->decidePolicyForMIMEType(webView, BString(response.mimeType()), urlRequest.get(), m_webFrame, setUpPolicyListener(identifier, WTFMove(function)).get())))
         return;
 
-    m_policyListenerPrivate->m_policyFunction(PolicyAction::Use);
+    m_policyListenerPrivate->m_policyFunction(PolicyAction::Use, identifier);
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& action, const ResourceRequest& request, FormState* formState, const String& frameName, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& action, const ResourceRequest& request, FormState* formState, const String& frameName, WebCore::PolicyCheckIdentifier identifier, FramePolicyFunction&& function)
 {
     WebView* webView = m_webFrame->webView();
     Frame* coreFrame = core(m_webFrame);
@@ -559,13 +560,13 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const Navigati
     COMPtr<IWebURLRequest> urlRequest(AdoptCOM, WebMutableURLRequest::createInstance(request));
     COMPtr<WebActionPropertyBag> actionInformation(AdoptCOM, WebActionPropertyBag::createInstance(action, formState ? &formState->form() : nullptr, coreFrame));
 
-    if (SUCCEEDED(policyDelegate->decidePolicyForNewWindowAction(webView, actionInformation.get(), urlRequest.get(), BString(frameName), setUpPolicyListener(WTFMove(function)).get())))
+    if (SUCCEEDED(policyDelegate->decidePolicyForNewWindowAction(webView, actionInformation.get(), urlRequest.get(), BString(frameName), setUpPolicyListener(identifier, WTFMove(function)).get())))
         return;
 
-    m_policyListenerPrivate->m_policyFunction(PolicyAction::Use);
+    m_policyListenerPrivate->m_policyFunction(PolicyAction::Use, identifier);
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& action, const ResourceRequest& request, const ResourceResponse&, FormState* formState, WebCore::PolicyDecisionMode, WebCore::ShouldSkipSafeBrowsingCheck, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& action, const ResourceRequest& request, const ResourceResponse&, FormState* formState, WebCore::PolicyDecisionMode, WebCore::PolicyCheckIdentifier identifier, FramePolicyFunction&& function)
 {
     WebView* webView = m_webFrame->webView();
     Frame* coreFrame = core(m_webFrame);
@@ -578,10 +579,10 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     COMPtr<IWebURLRequest> urlRequest(AdoptCOM, WebMutableURLRequest::createInstance(request));
     COMPtr<WebActionPropertyBag> actionInformation(AdoptCOM, WebActionPropertyBag::createInstance(action, formState ? &formState->form() : nullptr, coreFrame));
 
-    if (SUCCEEDED(policyDelegate->decidePolicyForNavigationAction(webView, actionInformation.get(), urlRequest.get(), m_webFrame, setUpPolicyListener(WTFMove(function)).get())))
+    if (SUCCEEDED(policyDelegate->decidePolicyForNavigationAction(webView, actionInformation.get(), urlRequest.get(), m_webFrame, setUpPolicyListener(identifier, WTFMove(function)).get())))
         return;
 
-    m_policyListenerPrivate->m_policyFunction(PolicyAction::Use);
+    m_policyListenerPrivate->m_policyFunction(PolicyAction::Use, identifier);
 }
 
 void WebFrameLoaderClient::dispatchUnableToImplementPolicy(const ResourceError& error)
@@ -623,7 +624,8 @@ void WebFrameLoaderClient::dispatchWillSubmitForm(FormState& formState, Completi
     COMPtr<IPropertyBag> formValuesPropertyBag(AdoptCOM, COMPropertyBag<String>::createInstance(formValuesMap));
 
     COMPtr<WebFrame> sourceFrame(kit(formState.sourceDocument().frame()));
-    if (SUCCEEDED(formDelegate->willSubmitForm(m_webFrame, sourceFrame.get(), formElement.get(), formValuesPropertyBag.get(), setUpPolicyListener([completionHandler = WTFMove(completionHandler)] (PolicyAction) mutable { completionHandler(); }).get())))
+    if (SUCCEEDED(formDelegate->willSubmitForm(m_webFrame, sourceFrame.get(), formElement.get(), formValuesPropertyBag.get(),
+        setUpPolicyListener(PolicyCheckIdentifier { }, [completionHandler = WTFMove(completionHandler)] (PolicyAction, PolicyCheckIdentifier) mutable { completionHandler(); }).get())))
         return;
 
     // FIXME: Add a sane default implementation
@@ -743,8 +745,6 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
     COMPtr<IWebHistoryDelegate> historyDelegate;
     webView->historyDelegate(&historyDelegate);
 
-    WebHistory* history = WebHistory::sharedHistory();
-
     DocumentLoader* loader = core(m_webFrame)->loader().documentLoader();
     ASSERT(loader->unreachableURL().isEmpty());
 
@@ -765,22 +765,9 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
     }
 }
 
-bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem*) const
+bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem&) const
 {
     return true;
-}
-
-void WebFrameLoaderClient::updateGlobalHistoryItemForPage()
-{
-    HistoryItem* historyItem = 0;
-    WebView* webView = m_webFrame->webView();
-
-    if (Page* page = webView->page()) {
-        if (!page->usesEphemeralSession())
-            historyItem = page->backForward().currentItem();
-    }
-
-    webView->setGlobalHistoryItem(historyItem);
 }
 
 void WebFrameLoaderClient::didDisplayInsecureContent()
@@ -996,11 +983,12 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
 
     RECT pixelRect;
     view->frameRect(&pixelRect);
-    bool transparent = view->transparent();
-    Color backgroundColor = transparent ? Color::transparent : Color::white;
+    Optional<Color> backgroundColor;
+    if (view->transparent())
+        backgroundColor = Color(Color::transparent);
     FloatRect logicalFrame(pixelRect);
     logicalFrame.scale(1.0f / view->deviceScaleFactor());
-    core(m_webFrame)->createView(enclosingIntRect(logicalFrame).size(), backgroundColor, transparent, /* fixedLayoutSize */ { }, /* fixedVisibleContentRect */ { });
+    core(m_webFrame)->createView(enclosingIntRect(logicalFrame).size(), backgroundColor, /* fixedLayoutSize */ { }, /* fixedVisibleContentRect */ { });
 }
 
 void WebFrameLoaderClient::didSaveToPageCache()
@@ -1026,7 +1014,7 @@ bool WebFrameLoaderClient::canCachePage() const
 }
 
 RefPtr<Frame> WebFrameLoaderClient::createFrame(const URL& url, const String& name, HTMLFrameOwnerElement& ownerElement,
-    const String& referrer, bool /*allowsScrolling*/, int /*marginWidth*/, int /*marginHeight*/)
+    const String& referrer)
 {
     Frame* coreFrame = core(m_webFrame);
     ASSERT(coreFrame);
@@ -1074,7 +1062,7 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
     return WebCore::ObjectContentType::None;
 }
 
-void WebFrameLoaderClient::dispatchDidFailToStartPlugin(const PluginView* pluginView) const
+void WebFrameLoaderClient::dispatchDidFailToStartPlugin(const PluginView& pluginView) const
 {
     WebView* webView = m_webFrame->webView();
 
@@ -1085,23 +1073,23 @@ void WebFrameLoaderClient::dispatchDidFailToStartPlugin(const PluginView* plugin
     RetainPtr<CFMutableDictionaryRef> userInfo = adoptCF(CFDictionaryCreateMutable(0, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
 
     Frame* frame = core(m_webFrame);
-    ASSERT(frame == pluginView->parentFrame());
+    ASSERT(frame == pluginView.parentFrame());
 
-    if (!pluginView->pluginsPage().isNull()) {
-        URL pluginPageURL = frame->document()->completeURL(stripLeadingAndTrailingHTMLSpaces(pluginView->pluginsPage()));
+    if (!pluginView.pluginsPage().isNull()) {
+        URL pluginPageURL = frame->document()->completeURL(stripLeadingAndTrailingHTMLSpaces(pluginView.pluginsPage()));
         if (pluginPageURL.protocolIsInHTTPFamily()) {
             static CFStringRef key = MarshallingHelpers::LPCOLESTRToCFStringRef(WebKitErrorPlugInPageURLStringKey);
             CFDictionarySetValue(userInfo.get(), key, pluginPageURL.string().createCFString().get());
         }
     }
 
-    if (!pluginView->mimeType().isNull()) {
+    if (!pluginView.mimeType().isNull()) {
         static CFStringRef key = MarshallingHelpers::LPCOLESTRToCFStringRef(WebKitErrorMIMETypeKey);
-        CFDictionarySetValue(userInfo.get(), key, pluginView->mimeType().createCFString().get());
+        CFDictionarySetValue(userInfo.get(), key, pluginView.mimeType().createCFString().get());
     }
 
-    if (pluginView->plugin()) {
-        String pluginName = pluginView->plugin()->name();
+    if (pluginView.plugin()) {
+        String pluginName = pluginView.plugin()->name();
         if (!pluginName.isNull()) {
             static CFStringRef key = MarshallingHelpers::LPCOLESTRToCFStringRef(WebKitErrorPlugInNameKey);
             CFDictionarySetValue(userInfo.get(), key, pluginName.createCFString().get());
@@ -1113,7 +1101,7 @@ void WebFrameLoaderClient::dispatchDidFailToStartPlugin(const PluginView* plugin
  
     int errorCode = 0;
     String description;
-    switch (pluginView->status()) {
+    switch (pluginView.status()) {
         case PluginStatusCanNotFindPlugin:
             errorCode = WebKitErrorCannotFindPlugIn;
             description = WEB_UI_STRING("The plug-in can\xE2\x80\x99t be found", "WebKitErrorCannotFindPlugin description");
@@ -1126,7 +1114,7 @@ void WebFrameLoaderClient::dispatchDidFailToStartPlugin(const PluginView* plugin
             ASSERT_NOT_REACHED();
     }
 
-    ResourceError resourceError(String(WebKitErrorDomain), errorCode, pluginView->url(), String());
+    ResourceError resourceError(String(WebKitErrorDomain), errorCode, pluginView.url(), String());
     COMPtr<IWebError> error(AdoptCOM, WebError::createInstance(resourceError, userInfoBag.get()));
      
     resourceLoadDelegate->plugInFailedWithError(webView, error.get(), getWebDataSource(frame->loader().documentLoader()));
@@ -1171,7 +1159,7 @@ RefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& pluginSize, HTM
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     Frame* frame = core(m_webFrame);
-    RefPtr<PluginView> pluginView = PluginView::create(frame, pluginSize, &element, url, paramNames, paramValues, mimeType, loadManually);
+    auto pluginView = PluginView::create(frame, pluginSize, &element, url, paramNames, paramValues, mimeType, loadManually);
 
     if (pluginView->status() == PluginStatusLoadedSuccessfully)
         return pluginView;
@@ -1193,7 +1181,7 @@ void WebFrameLoaderClient::redirectDataToPlugin(Widget& pluginWidget)
 RefPtr<Widget> WebFrameLoaderClient::createJavaAppletWidget(const IntSize& pluginSize, HTMLAppletElement& element, const URL& /*baseURL*/, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    RefPtr<PluginView> pluginView = PluginView::create(core(m_webFrame), pluginSize, &element, URL(), paramNames, paramValues, "application/x-java-applet", false);
+    auto pluginView = PluginView::create(core(m_webFrame), pluginSize, &element, URL(), paramNames, paramValues, "application/x-java-applet", false);
 
     // Check if the plugin can be loaded successfully
     if (pluginView->plugin() && pluginView->plugin()->load())
@@ -1296,7 +1284,7 @@ void WebFrameLoaderClient::cancelPolicyCheck()
     m_policyListenerPrivate->m_policyFunction = nullptr;
 }
 
-COMPtr<WebFramePolicyListener> WebFrameLoaderClient::setUpPolicyListener(WebCore::FramePolicyFunction&& function)
+COMPtr<WebFramePolicyListener> WebFrameLoaderClient::setUpPolicyListener(WebCore::PolicyCheckIdentifier identifier, WebCore::FramePolicyFunction&& function)
 {
     // FIXME: <rdar://5634381> We need to support multiple active policy listeners.
 
@@ -1307,6 +1295,7 @@ COMPtr<WebFramePolicyListener> WebFrameLoaderClient::setUpPolicyListener(WebCore
     ASSERT(coreFrame);
 
     m_policyListenerPrivate->m_policyListener.adoptRef(WebFramePolicyListener::createInstance(coreFrame));
+    m_policyListenerPrivate->m_policyCheckIdentifier = identifier;
     m_policyListenerPrivate->m_policyFunction = WTFMove(function);
 
     return m_policyListenerPrivate->m_policyListener;
@@ -1324,7 +1313,7 @@ void WebFrameLoaderClient::receivedPolicyDecision(PolicyAction action)
     Frame* coreFrame = core(m_webFrame);
     ASSERT(coreFrame);
 
-    function(action);
+    function(action, m_policyListenerPrivate->m_policyCheckIdentifier);
 }
 
 void WebFrameLoaderClient::prefetchDNS(const String& hostname)

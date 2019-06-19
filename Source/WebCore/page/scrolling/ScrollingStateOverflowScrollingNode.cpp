@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ScrollingStateOverflowScrollingNode.h"
 
-#if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
+#if ENABLE(ASYNC_SCROLLING)
 
 #include "ScrollingStateTree.h"
 #include <wtf/text/TextStream.h>
@@ -39,7 +39,7 @@ Ref<ScrollingStateOverflowScrollingNode> ScrollingStateOverflowScrollingNode::cr
 }
 
 ScrollingStateOverflowScrollingNode::ScrollingStateOverflowScrollingNode(ScrollingStateTree& stateTree, ScrollingNodeID nodeID)
-    : ScrollingStateScrollingNode(stateTree, OverflowScrollingNode, nodeID)
+    : ScrollingStateScrollingNode(stateTree, ScrollingNodeType::Overflow, nodeID)
 {
 }
 
@@ -64,4 +64,4 @@ void ScrollingStateOverflowScrollingNode::dumpProperties(TextStream& ts, Scrolli
 
 } // namespace WebCore
 
-#endif // ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
+#endif // ENABLE(ASYNC_SCROLLING)

@@ -23,14 +23,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Atomics_h
-#define Atomics_h
+#pragma once
 
 #include <atomic>
 #include <wtf/StdLibExtras.h>
 
 #if OS(WINDOWS)
-#if !COMPILER(GCC_OR_CLANG)
+#if !COMPILER(GCC_COMPATIBLE)
 extern "C" void _ReadWriteBarrier(void);
 #pragma intrinsic(_ReadWriteBarrier)
 #endif
@@ -242,7 +241,7 @@ inline T atomicExchange(T* location, T newValue, std::memory_order order = std::
 // to do things like register allocation and code motion over pure operations.
 inline void compilerFence()
 {
-#if OS(WINDOWS) && !COMPILER(GCC_OR_CLANG)
+#if OS(WINDOWS) && !COMPILER(GCC_COMPATIBLE)
     _ReadWriteBarrier();
 #else
     asm volatile("" ::: "memory");
@@ -452,5 +451,3 @@ using WTF::InputAndValue;
 using WTF::inputAndValue;
 using WTF::ensurePointer;
 using WTF::opaqueMixture;
-
-#endif // Atomics_h

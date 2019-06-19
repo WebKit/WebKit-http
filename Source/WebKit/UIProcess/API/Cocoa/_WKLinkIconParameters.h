@@ -25,17 +25,15 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 typedef NS_ENUM(NSInteger, WKLinkIconType) {
     WKLinkIconTypeFavicon,
     WKLinkIconTypeTouchIcon,
     WKLinkIconTypeTouchPrecomposedIcon,
-} WK_API_AVAILABLE(macosx(10.12.3), ios(10.3));
+} WK_API_AVAILABLE(macos(10.12.3), ios(10.3));
 
-WK_CLASS_AVAILABLE(macosx(10.12.3), ios(10.3))
+WK_CLASS_AVAILABLE(macos(10.12.3), ios(10.3))
 @interface _WKLinkIconParameters : NSObject
 
 @property (nonatomic, readonly, copy) NSURL *url;
@@ -43,8 +41,6 @@ WK_CLASS_AVAILABLE(macosx(10.12.3), ios(10.3))
 @property (nonatomic, readonly, copy) NSString *mimeType;
 @property (nonatomic, readonly, copy) NSNumber *size;
 
-@property (nonatomic, readonly, copy) NSDictionary *attributes WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic, readonly, copy) NSDictionary *attributes WK_API_AVAILABLE(macos(10.14), ios(12.0));
 
 @end
-
-#endif

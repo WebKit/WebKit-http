@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "GestureTypes.h"
 #import "WKActionSheet.h"
@@ -38,11 +38,12 @@ struct InteractionInformationAtPosition;
 
 @class WKActionSheetAssistant;
 @class _WKActivatedElementInfo;
+@class _WKElementAction;
 @protocol WKActionSheetDelegate;
 
 @protocol WKActionSheetAssistantDelegate <NSObject>
 @required
-- (std::optional<WebKit::InteractionInformationAtPosition>)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
+- (Optional<WebKit::InteractionInformationAtPosition>)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant performAction:(WebKit::SheetAction)action;
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant openElementAtLocation:(CGPoint)location;
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant shareElementWithURL:(NSURL *)url rect:(CGRect)boundingRect;
@@ -54,6 +55,7 @@ struct InteractionInformationAtPosition;
 @optional
 - (BOOL)actionSheetAssistant:(WKActionSheetAssistant *)assistant showCustomSheetForElement:(_WKActivatedElementInfo *)element;
 - (void)updatePositionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
+- (CGRect)unoccludedWindowBoundsForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant willStartInteractionWithElement:(_WKActivatedElementInfo *)element;
 - (void)actionSheetAssistantDidStopInteraction:(WKActionSheetAssistant *)assistant;
 - (NSDictionary *)dataDetectionContextForActionSheetAssistant:(WKActionSheetAssistant *)assistant;
@@ -75,10 +77,12 @@ struct InteractionInformationAtPosition;
 - (void)showDataDetectorsSheet;
 - (void)cleanupSheet;
 - (void)updateSheetPosition;
-- (RetainPtr<NSArray>)defaultActionsForLinkSheet:(_WKActivatedElementInfo *)elementInfo;
-- (RetainPtr<NSArray>)defaultActionsForImageSheet:(_WKActivatedElementInfo *)elementInfo;
+- (RetainPtr<NSArray<_WKElementAction *>>)defaultActionsForLinkSheet:(_WKActivatedElementInfo *)elementInfo;
+- (RetainPtr<NSArray<_WKElementAction *>>)defaultActionsForImageSheet:(_WKActivatedElementInfo *)elementInfo;
 - (BOOL)isShowingSheet;
+- (void)interactionDidStartWithPositionInformation:(const WebKit::InteractionInformationAtPosition&)information;
 - (NSArray *)currentAvailableActionTitles;
+- (Optional<WebKit::InteractionInformationAtPosition>)currentPositionInformation;
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

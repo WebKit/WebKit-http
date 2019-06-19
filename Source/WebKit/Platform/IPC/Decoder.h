@@ -78,25 +78,25 @@ public:
     bool decodeVariableLengthByteArray(DataReference&);
 
     bool decode(bool&);
-    Decoder& operator>>(std::optional<bool>&);
+    Decoder& operator>>(Optional<bool>&);
     bool decode(uint8_t&);
-    Decoder& operator>>(std::optional<uint8_t>&);
+    Decoder& operator>>(Optional<uint8_t>&);
     bool decode(uint16_t&);
-    Decoder& operator>>(std::optional<uint16_t>&);
+    Decoder& operator>>(Optional<uint16_t>&);
     bool decode(uint32_t&);
-    Decoder& operator>>(std::optional<uint32_t>&);
+    Decoder& operator>>(Optional<uint32_t>&);
     bool decode(uint64_t&);
-    Decoder& operator>>(std::optional<uint64_t>&);
+    Decoder& operator>>(Optional<uint64_t>&);
     bool decode(int16_t&);
-    Decoder& operator>>(std::optional<int16_t>&);
+    Decoder& operator>>(Optional<int16_t>&);
     bool decode(int32_t&);
-    Decoder& operator>>(std::optional<int32_t>&);
+    Decoder& operator>>(Optional<int32_t>&);
     bool decode(int64_t&);
-    Decoder& operator>>(std::optional<int64_t>&);
+    Decoder& operator>>(Optional<int64_t>&);
     bool decode(float&);
-    Decoder& operator>>(std::optional<float>&);
+    Decoder& operator>>(Optional<float>&);
     bool decode(double&);
-    Decoder& operator>>(std::optional<double>&);
+    Decoder& operator>>(Optional<double>&);
 
     template<typename E>
     auto decode(E& e) -> std::enable_if_t<std::is_enum<E>::value, bool>
@@ -112,9 +112,9 @@ public:
     }
 
     template<typename E, std::enable_if_t<std::is_enum<E>::value>* = nullptr>
-    Decoder& operator>>(std::optional<E>& optional)
+    Decoder& operator>>(Optional<E>& optional)
     {
-        std::optional<uint64_t> value;
+        Optional<uint64_t> value;
         *this >> value;
         if (value && isValidEnum<E>(*value))
             optional = static_cast<E>(*value);
@@ -150,10 +150,33 @@ public:
         return ArgumentCoder<T>::decode(*this, t);
     }
 
+    template<typename T, std::enable_if_t<!std::is_enum<T>::value && !UsesLegacyDecoder<T>::value>* = nullptr>
+    bool decode(T& t)
+    {
+        Optional<T> optional;
+        *this >> optional;
+        if (!optional)
+            return false;
+        t = WTFMove(*optional);
+        return true;
+    }
+
     template<typename T, std::enable_if_t<UsesModernDecoder<T>::value>* = nullptr>
-    Decoder& operator>>(std::optional<T>& t)
+    Decoder& operator>>(Optional<T>& t)
     {
         t = ArgumentCoder<T>::decode(*this);
+        return *this;
+    }
+    
+    template<typename T, std::enable_if_t<!std::is_enum<T>::value && !UsesModernDecoder<T>::value>* = nullptr>
+    Decoder& operator>>(Optional<T>& optional)
+    {
+        T t;
+        if (ArgumentCoder<T>::decode(*this, t)) {
+            optional = WTFMove(t);
+            return *this;
+        }
+        optional = WTF::nullopt;
         return *this;
     }
 
@@ -164,7 +187,7 @@ public:
 private:
     bool alignBufferPosition(unsigned alignment, size_t);
     bool bufferIsLargeEnoughToContain(unsigned alignment, size_t) const;
-    template<typename Type> Decoder& getOptional(std::optional<Type>&);
+    template<typename Type> Decoder& getOptional(Optional<Type>&);
 
     const uint8_t* m_buffer;
     const uint8_t* m_bufferPos;

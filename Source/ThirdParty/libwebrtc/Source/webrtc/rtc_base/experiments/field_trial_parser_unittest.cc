@@ -76,6 +76,15 @@ TEST(FieldTrialParserTest, CanHandleMixedInput) {
   EXPECT_EQ(exp.ping.Get(), true);
   EXPECT_EQ(exp.hash.Get(), "");
 }
+TEST(FieldTrialParserTest, ParsesDoubleParameter) {
+  FieldTrialParameter<double> double_param("f", 0.0);
+  ParseFieldTrial({&double_param}, "f:45%");
+  EXPECT_EQ(double_param.Get(), 0.45);
+  ParseFieldTrial({&double_param}, "f:34 %");
+  EXPECT_EQ(double_param.Get(), 0.34);
+  ParseFieldTrial({&double_param}, "f:0.67");
+  EXPECT_EQ(double_param.Get(), 0.67);
+}
 TEST(FieldTrialParserTest, IgnoresNewKey) {
   DummyExperiment exp("Disabled,r:-11,foo");
   EXPECT_FALSE(exp.enabled.Get());
@@ -90,23 +99,36 @@ TEST(FieldTrialParserTest, IgnoresInvalid) {
   EXPECT_EQ(exp.ping.Get(), false);
   EXPECT_EQ(exp.hash.Get(), "a80");
 }
+TEST(FieldTrialParserTest, IgnoresOutOfRange) {
+  FieldTrialConstrained<double> low("low", 10, absl::nullopt, 100);
+  FieldTrialConstrained<double> high("high", 10, 5, absl::nullopt);
+  ParseFieldTrial({&low, &high}, "low:1000,high:0");
+  EXPECT_EQ(low.Get(), 10);
+  EXPECT_EQ(high.Get(), 10);
+  ParseFieldTrial({&low, &high}, "low:inf,high:nan");
+  EXPECT_EQ(low.Get(), 10);
+  EXPECT_EQ(high.Get(), 10);
+  ParseFieldTrial({&low, &high}, "low:20,high:20");
+  EXPECT_EQ(low.Get(), 20);
+  EXPECT_EQ(high.Get(), 20);
+}
 TEST(FieldTrialParserTest, ParsesOptionalParameters) {
   FieldTrialOptional<int> max_count("c", absl::nullopt);
   ParseFieldTrial({&max_count}, "");
-  EXPECT_FALSE(max_count.Get().has_value());
+  EXPECT_FALSE(max_count.GetOptional().has_value());
   ParseFieldTrial({&max_count}, "c:10");
-  EXPECT_EQ(max_count.Get().value(), 10);
+  EXPECT_EQ(max_count.GetOptional().value(), 10);
   ParseFieldTrial({&max_count}, "c");
-  EXPECT_FALSE(max_count.Get().has_value());
+  EXPECT_FALSE(max_count.GetOptional().has_value());
   ParseFieldTrial({&max_count}, "c:20");
-  EXPECT_EQ(max_count.Get().value(), 20);
+  EXPECT_EQ(max_count.GetOptional().value(), 20);
   ParseFieldTrial({&max_count}, "c:");
-  EXPECT_EQ(max_count.Get().value(), 20);
+  EXPECT_EQ(max_count.GetOptional().value(), 20);
   FieldTrialOptional<std::string> optional_string("s", std::string("ab"));
   ParseFieldTrial({&optional_string}, "s:");
-  EXPECT_EQ(optional_string.Get().value(), "");
+  EXPECT_EQ(optional_string.GetOptional().value(), "");
   ParseFieldTrial({&optional_string}, "s");
-  EXPECT_FALSE(optional_string.Get().has_value());
+  EXPECT_FALSE(optional_string.GetOptional().has_value());
 }
 TEST(FieldTrialParserTest, ParsesCustomEnumParameter) {
   FieldTrialEnum<CustomEnum> my_enum("e", CustomEnum::kDefault,

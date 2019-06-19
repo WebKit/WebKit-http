@@ -60,6 +60,14 @@ static void toggleOverwriteCallback(GtkWidget* widget, KeyBindingTranslator* tra
     translator->addPendingEditorCommand("OverWrite");
 }
 
+#if GTK_CHECK_VERSION(3, 24, 0)
+static void insertEmojiCallback(GtkWidget* widget, KeyBindingTranslator* translator)
+{
+    g_signal_stop_emission_by_name(widget, "insert-emoji");
+    translator->addPendingEditorCommand("GtkInsertEmoji");
+}
+#endif
+
 // GTK+ will still send these signals to the web view. So we can safely stop signal
 // emission without breaking accessibility.
 static void popupMenuCallback(GtkWidget* widget, KeyBindingTranslator*)
@@ -173,6 +181,9 @@ KeyBindingTranslator::KeyBindingTranslator()
     g_signal_connect(m_nativeWidget.get(), "toggle-overwrite", G_CALLBACK(toggleOverwriteCallback), this);
     g_signal_connect(m_nativeWidget.get(), "popup-menu", G_CALLBACK(popupMenuCallback), this);
     g_signal_connect(m_nativeWidget.get(), "show-help", G_CALLBACK(showHelpCallback), this);
+#if GTK_CHECK_VERSION(3, 24, 0)
+    g_signal_connect(m_nativeWidget.get(), "insert-emoji", G_CALLBACK(insertEmojiCallback), this);
+#endif
 }
 
 struct KeyCombinationEntry {
@@ -194,16 +205,21 @@ Vector<String> KeyBindingTranslator::commandsForKeyEvent(GdkEventKey* event)
 {
     ASSERT(m_pendingEditorCommands.isEmpty());
 
+    guint keyval;
+    GdkModifierType state;
+    gdk_event_get_keyval(reinterpret_cast<GdkEvent*>(event), &keyval);
+    gdk_event_get_state(reinterpret_cast<GdkEvent*>(event), &state);
+
     gtk_bindings_activate_event(G_OBJECT(m_nativeWidget.get()), event);
     if (!m_pendingEditorCommands.isEmpty())
         return WTFMove(m_pendingEditorCommands);
 
     // Special-case enter keys for we want them to work regardless of modifier.
-    if ((event->keyval == GDK_KEY_Return || event->keyval == GDK_KEY_KP_Enter || event->keyval == GDK_KEY_ISO_Enter))
+    if ((keyval == GDK_KEY_Return || keyval == GDK_KEY_KP_Enter || keyval == GDK_KEY_ISO_Enter))
         return { "InsertNewLine" };
 
     // For keypress events, we want charCode(), but keyCode() does that.
-    unsigned mapKey = event->state << 16 | event->keyval;
+    unsigned mapKey = state << 16 | keyval;
     if (!mapKey)
         return { };
 

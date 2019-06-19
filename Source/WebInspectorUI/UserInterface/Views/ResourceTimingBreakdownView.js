@@ -97,11 +97,48 @@ WI.ResourceTimingBreakdownView = class ResourceTimingBreakdownView extends WI.Vi
         return row;
     }
 
+    _appendServerTimingRow(label, duration, maxDuration)
+    {
+        let row = this._tableElement.appendChild(document.createElement("tr"));
+
+        let labelCell = row.appendChild(document.createElement("td"));
+        labelCell.className = "label";
+        labelCell.textContent = label;
+
+        // We need to allow duration to be zero.
+        if (duration !== undefined) {
+            let graphWidth = (duration / maxDuration) * 100;
+            let graphCell = row.appendChild(document.createElement("td"));
+            graphCell.className = "graph";
+
+            let block = graphCell.appendChild(document.createElement("div"));
+            // FIXME: Provide unique colors for the different ServerTiming rows based on the label/order.
+            block.classList.add("block", "response");
+            block.style.width = graphWidth + "%";
+            block.style.right = 0;
+
+            let timeCell = row.appendChild(document.createElement("td"));
+            timeCell.className = "time";
+            // Convert duration from milliseconds to seconds.
+            timeCell.textContent = Number.secondsToMillisecondsString(duration / 1000);
+        }
+
+        return row;
+    }
+
+    _appendDividerRow()
+    {
+        let emptyCell = this._appendEmptyRow().appendChild(document.createElement("td"));
+        emptyCell.colSpan = 3;
+        emptyCell.appendChild(document.createElement("hr"));
+    }
+
     initialLayout()
     {
         super.initialLayout();
 
-        let {startTime, domainLookupStart, domainLookupEnd, connectStart, connectEnd, secureConnectionStart, requestStart, responseStart, responseEnd} = this._resource.timingData;
+        let {startTime, redirectStart, redirectEnd, fetchStart, domainLookupStart, domainLookupEnd, connectStart, connectEnd, secureConnectionStart, requestStart, responseStart, responseEnd} = this._resource.timingData;
+        let serverTiming = this._resource.serverTiming;
 
         this._tableElement = this.element.appendChild(document.createElement("table"));
         this._tableElement.className = "waterfall";
@@ -111,7 +148,13 @@ WI.ResourceTimingBreakdownView = class ResourceTimingBreakdownView extends WI.Vi
         this._graphDuration = this._graphEndTime - this._graphStartTime;
 
         this._appendHeaderRow(WI.UIString("Scheduling:"));
-        this._appendRow(WI.UIString("Queued"), "queue", startTime, domainLookupStart || connectStart || requestStart);
+
+        if (redirectEnd - redirectStart) {
+            // FIXME: <https://webkit.org/b/190214> Web Inspector: expose full load metrics for redirect requests
+            this._appendRow(WI.UIString("Redirects"), "redirect", redirectStart, redirectEnd);
+        }
+
+        this._appendRow(WI.UIString("Queued"), "queue", fetchStart, domainLookupStart || connectStart || requestStart);
 
         if (domainLookupStart || connectStart) {
             this._appendEmptyRow();
@@ -133,5 +176,19 @@ WI.ResourceTimingBreakdownView = class ResourceTimingBreakdownView extends WI.Vi
         this._appendHeaderRow(WI.UIString("Totals:"));
         this._appendHeaderRow(WI.UIString("Time to First Byte"), Number.secondsToMillisecondsString(responseStart - startTime), "total-row");
         this._appendHeaderRow(WI.UIString("Start to Finish"), Number.secondsToMillisecondsString(responseEnd - startTime), "total-row");
+
+        if (serverTiming.length > 0) {
+            this._appendDividerRow()
+            this._appendHeaderRow(WI.UIString("Server Timing:"));
+
+            let maxDuration = serverTiming.reduce((max, {duration = 0}) => Math.max(max, duration), 0);
+
+            for (let entry of serverTiming) {
+                let {name, duration, description} = entry;
+
+                // For the label, prefer description over name.
+                this._appendServerTimingRow(description || name, duration, maxDuration);
+            }
+        }
     }
 };

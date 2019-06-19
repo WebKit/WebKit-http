@@ -38,9 +38,9 @@ enum AnimationPlayState {
     CustomToJSObject
 ] interface WebAnimation : EventTarget {
     attribute DOMString id;
-    attribute AnimationEffectReadOnly? effect;
+    attribute AnimationEffect? effect;
     attribute AnimationTimeline? timeline;
-    [ImplementedAs=bindingsStartTime] attribute double? startTime;
+    attribute double? startTime;
     [MayThrowException, ImplementedAs=bindingsCurrentTime] attribute double? currentTime;
     attribute double playbackRate;
     [ImplementedAs=bindingsPlayState] readonly attribute AnimationPlayState playState;
@@ -53,5 +53,6 @@ enum AnimationPlayState {
     [MayThrowException] void finish();
     [MayThrowException, ImplementedAs=bindingsPlay] void play();
     [MayThrowException, ImplementedAs=bindingsPause] void pause();
+    void updatePlaybackRate(double playbackRate);
     [MayThrowException] void reverse();
 };

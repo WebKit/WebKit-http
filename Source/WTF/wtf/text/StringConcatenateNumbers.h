@@ -35,17 +35,13 @@ template<typename SignedInt>
 class StringTypeAdapter<SignedInt, typename std::enable_if_t<std::is_integral<SignedInt>::value && std::is_signed<SignedInt>::value>> {
 public:
     StringTypeAdapter(SignedInt number)
-        : m_number(number)
+        : m_number { number }
     {
     }
 
     unsigned length() const { return lengthOfNumberAsStringSigned(m_number); }
     bool is8Bit() const { return true; }
-
-    void writeTo(LChar* destination) const { writeNumberToBufferSigned(m_number, destination); }
-    void writeTo(UChar* destination) const { writeNumberToBufferSigned(m_number, destination); }
-
-    String toString() const { return String::number(m_number); }
+    template<typename CharacterType> void writeTo(CharacterType* destination) const { writeNumberToBufferSigned(m_number, destination); }
 
 private:
     SignedInt m_number;
@@ -55,17 +51,13 @@ template<typename UnsignedInt>
 class StringTypeAdapter<UnsignedInt, typename std::enable_if_t<std::is_integral<UnsignedInt>::value && !std::is_signed<UnsignedInt>::value>> {
 public:
     StringTypeAdapter(UnsignedInt number)
-        : m_number(number)
+        : m_number { number }
     {
     }
 
     unsigned length() const { return lengthOfNumberAsStringUnsigned(m_number); }
     bool is8Bit() const { return true; }
-
-    void writeTo(LChar* destination) const { writeNumberToBufferUnsigned(m_number, destination); }
-    void writeTo(UChar* destination) const { writeNumberToBufferUnsigned(m_number, destination); }
-
-    String toString() const { return String::number(m_number); }
+    template<typename CharacterType> void writeTo(CharacterType* destination) const { writeNumberToBufferUnsigned(m_number, destination); }
 
 private:
     UnsignedInt m_number;
@@ -77,38 +69,27 @@ public:
     StringTypeAdapter(FloatingPoint number)
     {
         numberToString(number, m_buffer);
-        m_length = strlen(m_buffer);
+        m_length = std::strlen(&m_buffer[0]);
     }
 
     unsigned length() const { return m_length; }
     bool is8Bit() const { return true; }
-
-    void writeTo(LChar* destination) const
-    {
-        for (unsigned i = 0; i < m_length; ++i)
-            destination[i] = m_buffer[i];
-    }
-
-    void writeTo(UChar* destination) const
-    {
-        for (unsigned i = 0; i < m_length; ++i)
-            destination[i] = m_buffer[i];
-    }
-
-    String toString() const { return { m_buffer, m_length }; }
+    template<typename CharacterType> void writeTo(CharacterType* destination) const { StringImpl::copyCharacters(destination, buffer(), m_length); }
 
 private:
+    const LChar* buffer() const { return reinterpret_cast<const LChar*>(&m_buffer[0]); }
+
     NumberToStringBuffer m_buffer;
     unsigned m_length;
 };
 
 class FormattedNumber {
 public:
-    static FormattedNumber fixedPrecision(double number, unsigned significantFigures = 6, bool truncateTrailingZeros = false)
+    static FormattedNumber fixedPrecision(double number, unsigned significantFigures = 6, TrailingZerosTruncatingPolicy trailingZerosTruncatingPolicy = TruncateTrailingZeros)
     {
         FormattedNumber numberFormatter;
-        numberToFixedPrecisionString(number, significantFigures, numberFormatter.m_buffer, truncateTrailingZeros);
-        numberFormatter.m_length = strlen(numberFormatter.m_buffer);
+        numberToFixedPrecisionString(number, significantFigures, numberFormatter.m_buffer, trailingZerosTruncatingPolicy == TruncateTrailingZeros);
+        numberFormatter.m_length = std::strlen(&numberFormatter.m_buffer[0]);
         return numberFormatter;
     }
 
@@ -116,49 +97,31 @@ public:
     {
         FormattedNumber numberFormatter;
         numberToFixedWidthString(number, decimalPlaces, numberFormatter.m_buffer);
-        numberFormatter.m_length = strlen(numberFormatter.m_buffer);
+        numberFormatter.m_length = std::strlen(&numberFormatter.m_buffer[0]);
         return numberFormatter;
     }
 
     unsigned length() const { return m_length; }
-    const LChar* buffer() const { return reinterpret_cast<const LChar*>(m_buffer); }
+    const LChar* buffer() const { return reinterpret_cast<const LChar*>(&m_buffer[0]); }
 
 private:
     NumberToStringBuffer m_buffer;
     unsigned m_length;
 };
 
-template<>
-class StringTypeAdapter<FormattedNumber> {
+template<> class StringTypeAdapter<FormattedNumber> {
 public:
-    StringTypeAdapter(const FormattedNumber& numberFormatter)
-        : m_numberFormatter(numberFormatter)
+    StringTypeAdapter(const FormattedNumber& number)
+        : m_number { number }
     {
     }
 
-    unsigned length() const { return m_numberFormatter.length(); }
+    unsigned length() const { return m_number.length(); }
     bool is8Bit() const { return true; }
-
-    void writeTo(LChar* destination) const
-    {
-        auto buffer = m_numberFormatter.buffer();
-        auto length = m_numberFormatter.length();
-        for (unsigned i = 0; i < length; ++i)
-            destination[i] = buffer[i];
-    }
-
-    void writeTo(UChar* destination) const
-    {
-        auto buffer = m_numberFormatter.buffer();
-        auto length = m_numberFormatter.length();
-        for (unsigned i = 0; i < length; ++i)
-            destination[i] = buffer[i];
-    }
-
-    String toString() const { return { m_numberFormatter.buffer(), m_numberFormatter.length() }; }
+    template<typename CharacterType> void writeTo(CharacterType* destination) const { StringImpl::copyCharacters(destination, m_number.buffer(), m_number.length()); }
 
 private:
-    const FormattedNumber& m_numberFormatter;
+    const FormattedNumber& m_number;
 };
 
 }

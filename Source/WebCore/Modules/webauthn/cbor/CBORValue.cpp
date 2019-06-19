@@ -30,6 +30,8 @@
 #include "config.h"
 #include "CBORValue.h"
 
+#if ENABLE(WEB_AUTHN)
+
 #include <new>
 #include <utility>
 
@@ -151,6 +153,12 @@ CBORValue::CBORValue(SimpleValue inSimple)
     ASSERT(static_cast<int>(inSimple) >= 20 && static_cast<int>(inSimple) <= 23);
 }
 
+CBORValue::CBORValue(bool inBool)
+    : m_type(Type::SimpleValue)
+{
+    m_simpleValue = inBool ? CBORValue::SimpleValue::TrueValue : CBORValue::SimpleValue::FalseValue;
+}
+
 CBORValue& CBORValue::operator=(CBORValue&& that)
 {
     internalCleanup();
@@ -238,6 +246,12 @@ CBORValue::SimpleValue CBORValue::getSimpleValue() const
     return m_simpleValue;
 }
 
+bool CBORValue::getBool() const
+{
+    ASSERT(isBool());
+    return m_simpleValue == SimpleValue::TrueValue;
+}
+
 void CBORValue::internalMoveConstructFrom(CBORValue&& that)
 {
     m_type = that.m_type;
@@ -293,3 +307,5 @@ void CBORValue::internalCleanup()
 }
 
 } // namespace cbor
+
+#endif // ENABLE(WEB_AUTHN)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,117 +27,93 @@
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "FontCascade.h"
 #include "ImageBuffer.h"
 #include "MediaSample.h"
 #include "RealtimeMediaSource.h"
+#include "VideoPreset.h"
 #include <wtf/Lock.h>
 #include <wtf/RunLoop.h>
 
 namespace WebCore {
 
-struct FrameRateRange;
-struct VideoPreset;
+class ImageTransferSessionVT;
 
 class RealtimeVideoSource : public RealtimeMediaSource {
 public:
     virtual ~RealtimeVideoSource();
 
 protected:
-    RealtimeVideoSource(const String& id, const String& name);
+    RealtimeVideoSource(String&& name, String&& id, String&& hashSalt);
 
     void prepareToProduceData();
-    bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
-    void setSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>) final;
+    bool supportsSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>) override;
+    void setSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>) override;
 
-    using VideoPresets = Vector<VideoPreset>;
-    void setSupportedPresets(VideoPresets&&);
+    virtual void generatePresets() = 0;
+    virtual bool prefersPreset(VideoPreset&) { return true; }
+    virtual void setFrameRateWithPreset(double, RefPtr<VideoPreset>) { };
+    virtual bool canResizeVideoFrames() const { return false; }
+    bool shouldUsePreset(VideoPreset& current, VideoPreset& candidate);
 
-    struct CaptureSizeAndFrameRate {
-        IntSize size;
-        double frameRate;
-    };
-    std::optional<CaptureSizeAndFrameRate> bestSupportedSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
+    void setSupportedPresets(const Vector<Ref<VideoPreset>>&);
+    void setSupportedPresets(Vector<VideoPresetData>&&);
+    const Vector<Ref<VideoPreset>>& presets();
 
-    void addSupportedCapabilities(RealtimeMediaSourceCapabilities&) const;
+    bool frameRateRangeIncludesRate(const FrameRateRange&, double);
+
+    void updateCapabilities(RealtimeMediaSourceCapabilities&);
 
     void setDefaultSize(const IntSize& size) { m_defaultSize = size; }
 
     double observedFrameRate() const { return m_observedFrameRate; }
 
     void dispatchMediaSampleToObservers(MediaSample&);
+    const Vector<IntSize>& standardVideoSizes();
 
 private:
+    struct CaptureSizeAndFrameRate {
+        RefPtr<VideoPreset> encodingPreset;
+        IntSize requestedSize;
+        double requestedFrameRate { 0 };
+    };
+    bool supportsCaptureSize(Optional<int>, Optional<int>, const Function<bool(const IntSize&)>&&);
+    Optional<CaptureSizeAndFrameRate> bestSupportedSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>);
+    bool presetSupportsFrameRate(RefPtr<VideoPreset>, double);
 
-    VideoPresets m_presets;
+#if !RELEASE_LOG_DISABLED
+    const char* logClassName() const override { return "RealtimeVideoSource"; }
+#endif
+
+    Vector<Ref<VideoPreset>> m_presets;
     Deque<double> m_observedFrameTimeStamps;
     double m_observedFrameRate { 0 };
     IntSize m_defaultSize;
+#if PLATFORM(COCOA)
+    std::unique_ptr<ImageTransferSessionVT> m_imageTransferSession;
+#endif
 };
 
-struct FrameRateRange {
-    double minimum;
-    double maximum;
+struct SizeAndFrameRate {
+    Optional<int> width;
+    Optional<int> height;
+    Optional<double> frameRate;
 
-    template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static std::optional<FrameRateRange> decode(Decoder&);
+    String toJSONString() const;
+    Ref<JSON::Object> toJSONObject() const;
 };
-
-template<class Encoder>
-void FrameRateRange::encode(Encoder& encoder) const
-{
-    encoder << minimum;
-    encoder << maximum;
-}
-
-template <class Decoder>
-std::optional<FrameRateRange> FrameRateRange::decode(Decoder& decoder)
-{
-    std::optional<double> minimum;
-    decoder >> minimum;
-    if (!minimum)
-        return std::nullopt;
-
-    std::optional<double> maximum;
-    decoder >> maximum;
-    if (!maximum)
-        return std::nullopt;
-
-    return FrameRateRange { *minimum, *maximum };
-}
-
-struct VideoPreset {
-    IntSize size;
-    Vector<FrameRateRange> frameRateRanges;
-
-    template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static std::optional<VideoPreset> decode(Decoder&);
-};
-
-template<class Encoder>
-void VideoPreset::encode(Encoder& encoder) const
-{
-    encoder << size;
-    encoder << frameRateRanges;
-}
-
-template <class Decoder>
-std::optional<VideoPreset> VideoPreset::decode(Decoder& decoder)
-{
-    std::optional<IntSize> size;
-    decoder >> size;
-    if (!size)
-        return std::nullopt;
-
-    std::optional<Vector<FrameRateRange>> frameRateRanges;
-    decoder >> frameRateRanges;
-    if (!frameRateRanges)
-        return std::nullopt;
-
-    return VideoPreset { *size, *frameRateRanges };
-}
 
 } // namespace WebCore
+
+namespace WTF {
+template<typename Type> struct LogArgument;
+template <>
+struct LogArgument<WebCore::SizeAndFrameRate> {
+    static String toString(const WebCore::SizeAndFrameRate& size)
+    {
+        return size.toJSONString();
+    }
+};
+}; // namespace WTF
 
 #endif // ENABLE(MEDIA_STREAM)
 

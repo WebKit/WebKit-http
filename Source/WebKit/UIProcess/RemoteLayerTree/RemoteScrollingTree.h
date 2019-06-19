@@ -31,6 +31,10 @@
 #include <WebCore/ScrollingConstraints.h>
 #include <WebCore/ScrollingTree.h>
 
+namespace WebCore {
+class PlatformMouseEvent;
+};
+
 namespace WebKit {
 
 class RemoteScrollingCoordinatorProxy;
@@ -41,11 +45,13 @@ public:
     virtual ~RemoteScrollingTree();
 
     bool isRemoteScrollingTree() const override { return true; }
-    EventResult tryToHandleWheelEvent(const WebCore::PlatformWheelEvent&) override;
+    WebCore::ScrollingEventResult tryToHandleWheelEvent(const WebCore::PlatformWheelEvent&) override;
+
+    void handleMouseEvent(const WebCore::PlatformMouseEvent&);
 
     const RemoteScrollingCoordinatorProxy& scrollingCoordinatorProxy() const { return m_scrollingCoordinatorProxy; }
 
-    void scrollingTreeNodeDidScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& scrollPosition, const std::optional<WebCore::FloatPoint>& layoutViewportOrigin, WebCore::ScrollingLayerPositionAction = WebCore::ScrollingLayerPositionAction::Sync) override;
+    void scrollingTreeNodeDidScroll(WebCore::ScrollingTreeScrollingNode&, WebCore::ScrollingLayerPositionAction = WebCore::ScrollingLayerPositionAction::Sync) override;
     void scrollingTreeNodeRequestsScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& scrollPosition, bool representsProgrammaticScroll) override;
 
     void currentSnapPointIndicesDidChange(WebCore::ScrollingNodeID, unsigned horizontal, unsigned vertical) override;
@@ -57,8 +63,7 @@ private:
     void handleWheelEventPhase(WebCore::PlatformWheelEventPhase) override;
 #endif
 
-#if PLATFORM(IOS)
-    WebCore::FloatRect fixedPositionRect() override;
+#if PLATFORM(IOS_FAMILY)
     void scrollingTreeNodeWillStartPanGesture() override;
     void scrollingTreeNodeWillStartScroll() override;
     void scrollingTreeNodeDidEndScroll() override;

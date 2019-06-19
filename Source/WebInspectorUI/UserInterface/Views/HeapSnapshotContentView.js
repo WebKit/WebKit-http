@@ -33,6 +33,12 @@ WI.HeapSnapshotContentView = class HeapSnapshotContentView extends WI.ContentVie
 
         this.element.classList.add("heap-snapshot");
 
+        this._exportButtonNavigationItem = new WI.ButtonNavigationItem("export", WI.UIString("Export"), "Images/Export.svg", 15, 15);
+        this._exportButtonNavigationItem.tooltip = WI.UIString("Export (%s)").format(WI.saveKeyboardShortcut.displayName);
+        this._exportButtonNavigationItem.buttonStyle = WI.ButtonNavigationItem.Style.ImageAndText;
+        this._exportButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.High;
+        this._exportButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, () => { this._exportSnapshot(); });
+
         this._dataGrid = new WI.DataGrid(columns);
         this._dataGrid.sortColumnIdentifier = "retainedSize";
         this._dataGrid.sortOrder = WI.DataGrid.SortOrder.Descending;
@@ -51,6 +57,13 @@ WI.HeapSnapshotContentView = class HeapSnapshotContentView extends WI.ContentVie
     }
 
     // Protected
+
+    get navigationItems()
+    {
+        if (this.representedObject instanceof WI.HeapSnapshotProxy)
+            return [this._exportButtonNavigationItem];
+        return [];
+    }
 
     shown()
     {
@@ -72,6 +85,30 @@ WI.HeapSnapshotContentView = class HeapSnapshotContentView extends WI.ContentVie
     }
 
     // Private
+
+    _exportSnapshot()
+    {
+        if (!this.representedObject.snapshotStringData) {
+            InspectorFrontendHost.beep();
+            return;
+        }
+
+        let date = new Date;
+        let values = [
+            date.getFullYear(),
+            Number.zeroPad(date.getMonth() + 1, 2),
+            Number.zeroPad(date.getDate(), 2),
+            Number.zeroPad(date.getHours(), 2),
+            Number.zeroPad(date.getMinutes(), 2),
+            Number.zeroPad(date.getSeconds(), 2),
+        ];
+        let filename = WI.UIString("Heap Snapshot %s-%s-%s at %s.%s.%s").format(...values);
+        WI.FileUtilities.save({
+            url: WI.FileUtilities.inspectorURLForFilename(filename + ".json"),
+            content: this.representedObject.snapshotStringData,
+            forceSaveAs: true,
+        });
+    }
 
     _sortDataGrid()
     {

@@ -208,11 +208,27 @@ WI.NavigationBar = class NavigationBar extends WI.View
         super.needsLayout();
     }
 
+    sizeDidChange()
+    {
+        super.sizeDidChange();
+
+        this._updateContent();
+    }
+
     layout()
     {
-        if (this.layoutReason !== WI.View.LayoutReason.Resize && !this._forceLayout)
+        super.layout();
+
+        if (!this._forceLayout)
             return;
 
+        this._updateContent();
+    }
+
+    // Private
+
+    _updateContent()
+    {
         this._forceLayout = false;
 
         // Remove the collapsed style class to test if the items can fit at full width.
@@ -232,6 +248,9 @@ WI.NavigationBar = class NavigationBar extends WI.View
             forceItemHidden(item, false);
             item.updateLayout(true);
         }
+
+        if (this.sizesToFit)
+            return;
 
         let visibleNavigationItems = this._visibleNavigationItems;
 
@@ -282,8 +301,6 @@ WI.NavigationBar = class NavigationBar extends WI.View
             forceItemHidden(previousItem);
     }
 
-    // Private
-
     _mouseDown(event)
     {
         // Only handle left mouse clicks.
@@ -295,7 +312,7 @@ WI.NavigationBar = class NavigationBar extends WI.View
         if (!this._focused)
             this.element.removeAttribute("tabindex");
 
-        var itemElement = event.target.enclosingNodeOrSelfWithClass(WI.RadioButtonNavigationItem.StyleClassName);
+        var itemElement = event.target.closest("." + WI.RadioButtonNavigationItem.StyleClassName);
         if (!itemElement || !itemElement.navigationItem)
             return;
 
@@ -327,7 +344,7 @@ WI.NavigationBar = class NavigationBar extends WI.View
         event.preventDefault();
         event.stopPropagation();
 
-        var itemElement = event.target.enclosingNodeOrSelfWithClass(WI.RadioButtonNavigationItem.StyleClassName);
+        var itemElement = event.target.closest("." + WI.RadioButtonNavigationItem.StyleClassName);
         if (!itemElement || !itemElement.navigationItem || !this.element.contains(itemElement)) {
             // Find the element that is at the X position of the mouse, even when the mouse is no longer
             // vertically in the navigation bar.
@@ -335,7 +352,7 @@ WI.NavigationBar = class NavigationBar extends WI.View
             if (!element)
                 return;
 
-            itemElement = element.enclosingNodeOrSelfWithClass(WI.RadioButtonNavigationItem.StyleClassName);
+            itemElement = element.closest("." + WI.RadioButtonNavigationItem.StyleClassName);
             if (!itemElement || !itemElement.navigationItem || !this.element.contains(itemElement))
                 return;
         }

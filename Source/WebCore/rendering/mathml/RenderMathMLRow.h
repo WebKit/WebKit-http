@@ -41,8 +41,8 @@ public:
     MathMLRowElement& element() const;
 
 protected:
-    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
-    std::optional<int> firstLineBaseline() const override;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0_lu) override;
+    Optional<int> firstLineBaseline() const override;
 
     void stretchVerticalOperatorsAndLayoutChildren();
     void getContentBoundingBox(LayoutUnit& width, LayoutUnit& ascent, LayoutUnit& descent) const;

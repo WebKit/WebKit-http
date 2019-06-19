@@ -47,7 +47,7 @@ void WebPageProxy::platformInitialize()
 
 GtkWidget* WebPageProxy::viewWidget()
 {
-    return static_cast<PageClientImpl&>(m_pageClient).viewWidget();
+    return static_cast<PageClientImpl&>(pageClient()).viewWidget();
 }
 
 String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent)
@@ -57,7 +57,9 @@ String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent
 
 void WebPageProxy::bindAccessibilityTree(const String& plugID)
 {
-    m_accessibilityPlugID = plugID;
+    auto* accessible = gtk_widget_get_accessible(viewWidget());
+    atk_socket_embed(ATK_SOCKET(accessible), const_cast<char*>(plugID.utf8().data()));
+    atk_object_notify_state_change(accessible, ATK_STATE_TRANSIENT, FALSE);
 }
 
 void WebPageProxy::saveRecentSearches(const String&, const Vector<WebCore::RecentSearch>&)
@@ -65,9 +67,10 @@ void WebPageProxy::saveRecentSearches(const String&, const Vector<WebCore::Recen
     notImplemented();
 }
 
-void WebPageProxy::loadRecentSearches(const String&, Vector<WebCore::RecentSearch>&)
+void WebPageProxy::loadRecentSearches(const String&, CompletionHandler<void(Vector<WebCore::RecentSearch>&&)>&& completionHandler)
 {
     notImplemented();
+    completionHandler({ });
 }
 
 void WebsiteDataStore::platformRemoveRecentSearches(WallTime oldestTimeToRemove)
@@ -76,7 +79,7 @@ void WebsiteDataStore::platformRemoveRecentSearches(WallTime oldestTimeToRemove)
     notImplemented();
 }
 
-void WebPageProxy::editorStateChanged(const EditorState& editorState)
+void WebPageProxy::updateEditorState(const EditorState& editorState)
 {
     m_editorState = editorState;
     
@@ -84,7 +87,7 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
         return;
     if (m_editorState.selectionIsRange)
         WebPasteboardProxy::singleton().setPrimarySelectionOwner(focusedFrame());
-    m_pageClient.selectionDidChange();
+    pageClient().selectionDidChange();
 }
 
 #if PLATFORM(X11)
@@ -102,15 +105,16 @@ static gboolean pluginContainerPlugRemoved(GtkSocket* socket)
     return FALSE;
 }
 
-void WebPageProxy::createPluginContainer(uint64_t& windowID)
+void WebPageProxy::createPluginContainer(CompletionHandler<void(uint64_t)>&& completionHandler)
 {
     RELEASE_ASSERT(WebCore::PlatformDisplay::sharedDisplay().type() == WebCore::PlatformDisplay::Type::X11);
     GtkWidget* socket = gtk_socket_new();
     g_signal_connect(socket, "plug-removed", G_CALLBACK(pluginContainerPlugRemoved), 0);
     gtk_container_add(GTK_CONTAINER(viewWidget()), socket);
 
-    windowID = static_cast<uint64_t>(gtk_socket_get_id(GTK_SOCKET(socket)));
+    uint64_t windowID = static_cast<uint64_t>(gtk_socket_get_id(GTK_SOCKET(socket)));
     pluginWindowMap().set(windowID, socket);
+    completionHandler(windowID);
 }
 
 void WebPageProxy::windowedPluginGeometryDidChange(const WebCore::IntRect& frameRect, const WebCore::IntRect& clipRect, uint64_t windowID)
@@ -153,5 +157,15 @@ void WebPageProxy::getCenterForZoomGesture(const WebCore::IntPoint& centerInView
     process().sendSync(Messages::WebPage::GetCenterForZoomGesture(centerInViewCoordinates), Messages::WebPage::GetCenterForZoomGesture::Reply(center), m_pageID);
 }
 #endif
+
+bool WebPageProxy::makeGLContextCurrent()
+{
+    return webkitWebViewBaseMakeGLContextCurrent(WEBKIT_WEB_VIEW_BASE(viewWidget()));
+}
+
+void WebPageProxy::showEmojiPicker(const WebCore::IntRect& caretRect, CompletionHandler<void(String)>&& completionHandler)
+{
+    webkitWebViewBaseShowEmojiChooser(WEBKIT_WEB_VIEW_BASE(viewWidget()), caretRect, WTFMove(completionHandler));
+}
 
 } // namespace WebKit

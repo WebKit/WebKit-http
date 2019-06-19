@@ -83,7 +83,7 @@ HTMLImageElement* HTMLMapElement::imageElement()
     return treeScope().imageElementByUsemap(*m_name.impl());
 }
 
-void HTMLMapElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLMapElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     // FIXME: This logic seems wrong for XML documents.
     // Either the id or name will be used depending on the order the attributes are parsed.
@@ -118,14 +118,14 @@ Ref<HTMLCollection> HTMLMapElement::areas()
 Node::InsertedIntoAncestorResult HTMLMapElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
     Node::InsertedIntoAncestorResult request = HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
-    if (insertionType.connectedToDocument)
+    if (insertionType.treeScopeChanged)
         treeScope().addImageMap(*this);
     return request;
 }
 
 void HTMLMapElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    if (removalType.disconnectedFromDocument)
+    if (removalType.treeScopeChanged)
         oldParentOfRemovedTree.treeScope().removeImageMap(*this);
     HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 }

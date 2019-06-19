@@ -38,7 +38,14 @@ inline SVGFEDiffuseLightingElement::SVGFEDiffuseLightingElement(const QualifiedN
     : SVGFilterPrimitiveStandardAttributes(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::feDiffuseLightingTag));
-    registerAttributes();
+
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::inAttr, &SVGFEDiffuseLightingElement::m_in1>();
+        PropertyRegistry::registerProperty<SVGNames::diffuseConstantAttr, &SVGFEDiffuseLightingElement::m_diffuseConstant>();
+        PropertyRegistry::registerProperty<SVGNames::surfaceScaleAttr, &SVGFEDiffuseLightingElement::m_surfaceScale>();
+        PropertyRegistry::registerProperty<SVGNames::kernelUnitLengthAttr, &SVGFEDiffuseLightingElement::m_kernelUnitLengthX, &SVGFEDiffuseLightingElement::m_kernelUnitLengthY>();
+    });
 }
 
 Ref<SVGFEDiffuseLightingElement> SVGFEDiffuseLightingElement::create(const QualifiedName& tagName, Document& document)
@@ -46,53 +53,28 @@ Ref<SVGFEDiffuseLightingElement> SVGFEDiffuseLightingElement::create(const Quali
     return adoptRef(*new SVGFEDiffuseLightingElement(tagName, document));
 }
 
-const AtomicString& SVGFEDiffuseLightingElement::kernelUnitLengthXIdentifier()
-{
-    static NeverDestroyed<AtomicString> s_identifier("SVGKernelUnitLengthX", AtomicString::ConstructFromLiteral);
-    return s_identifier;
-}
-
-const AtomicString& SVGFEDiffuseLightingElement::kernelUnitLengthYIdentifier()
-{
-    static NeverDestroyed<AtomicString> s_identifier("SVGKernelUnitLengthY", AtomicString::ConstructFromLiteral);
-    return s_identifier;
-}
-
-void SVGFEDiffuseLightingElement::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::inAttr, &SVGFEDiffuseLightingElement::m_in1>();
-    registry.registerAttribute<SVGNames::diffuseConstantAttr, &SVGFEDiffuseLightingElement::m_diffuseConstant>();
-    registry.registerAttribute<SVGNames::surfaceScaleAttr, &SVGFEDiffuseLightingElement::m_surfaceScale>();
-    registry.registerAttribute<SVGNames::kernelUnitLengthAttr,
-        &SVGFEDiffuseLightingElement::kernelUnitLengthXIdentifier, &SVGFEDiffuseLightingElement::m_kernelUnitLengthX,
-        &SVGFEDiffuseLightingElement::kernelUnitLengthYIdentifier, &SVGFEDiffuseLightingElement::m_kernelUnitLengthY>();
-}
-
-void SVGFEDiffuseLightingElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void SVGFEDiffuseLightingElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == SVGNames::inAttr) {
-        m_in1.setValue(value);
+        m_in1->setBaseValInternal(value);
         return;
     }
 
     if (name == SVGNames::surfaceScaleAttr) {
-        m_surfaceScale.setValue(value.toFloat());
+        m_surfaceScale->setBaseValInternal(value.toFloat());
         return;
     }
 
     if (name == SVGNames::diffuseConstantAttr) {
-        m_diffuseConstant.setValue(value.toFloat());
+        m_diffuseConstant->setBaseValInternal(value.toFloat());
         return;
     }
 
     if (name == SVGNames::kernelUnitLengthAttr) {
         float x, y;
         if (parseNumberOptionalNumber(value, x, y)) {
-            m_kernelUnitLengthX.setValue(x);
-            m_kernelUnitLengthY.setValue(y);
+            m_kernelUnitLengthX->setBaseValInternal(x);
+            m_kernelUnitLengthY->setBaseValInternal(y);
         }
         return;
     }
@@ -170,7 +152,7 @@ void SVGFEDiffuseLightingElement::lightElementAttributeChanged(const SVGFELightE
     primitiveAttributeChanged(attrName);
 }
 
-RefPtr<FilterEffect> SVGFEDiffuseLightingElement::build(SVGFilterBuilder* filterBuilder, Filter& filter)
+RefPtr<FilterEffect> SVGFEDiffuseLightingElement::build(SVGFilterBuilder* filterBuilder, Filter& filter) const
 {
     auto input1 = filterBuilder->getEffectById(in1());
 
@@ -189,7 +171,7 @@ RefPtr<FilterEffect> SVGFEDiffuseLightingElement::build(SVGFilterBuilder* filter
 
     Color color = renderer->style().colorByApplyingColorFilter(renderer->style().svgStyle().lightingColor());
 
-    RefPtr<FilterEffect> effect = FEDiffuseLighting::create(filter, color, surfaceScale(), diffuseConstant(), kernelUnitLengthX(), kernelUnitLengthY(), WTFMove(lightSource));
+    auto effect = FEDiffuseLighting::create(filter, color, surfaceScale(), diffuseConstant(), kernelUnitLengthX(), kernelUnitLengthY(), WTFMove(lightSource));
     effect->inputEffects().append(input1);
     return effect;
 }

@@ -30,7 +30,7 @@
 #include <wtf/MonotonicTime.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
 #include <wtf/RetainPtr.h>
@@ -77,7 +77,6 @@ namespace WebCore {
 class AuthenticationChallenge;
 class Credential;
 class Frame;
-class URL;
 class NetworkingContext;
 class ProtectionSpace;
 class ResourceError;
@@ -209,10 +208,10 @@ public:
 #endif
 
     typedef Ref<ResourceHandle> (*BuiltinConstructor)(const ResourceRequest& request, ResourceHandleClient* client);
-    static void registerBuiltinConstructor(const AtomicString& protocol, BuiltinConstructor);
+    static void registerBuiltinConstructor(const AtomString& protocol, BuiltinConstructor);
 
     typedef void (*BuiltinSynchronousLoader)(NetworkingContext*, const ResourceRequest&, StoredCredentialsPolicy, ResourceError&, ResourceResponse&, Vector<char>& data);
-    static void registerBuiltinSynchronousLoader(const AtomicString& protocol, BuiltinSynchronousLoader);
+    static void registerBuiltinSynchronousLoader(const AtomString& protocol, BuiltinSynchronousLoader);
 
 protected:
     ResourceHandle(NetworkingContext*, const ResourceRequest&, ResourceHandleClient*, bool defersLoading, bool shouldContentSniff, bool shouldContentEncodingSniff);
@@ -250,7 +249,7 @@ private:
     void createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff, bool shouldContentEncodingSniff, SchedulingBehavior);
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff, bool shouldContentEncodingSniff, SchedulingBehavior, NSDictionary *connectionProperties);
 #endif
 
@@ -269,8 +268,8 @@ private:
 
     bool shouldRedirectAsGET(const ResourceRequest&, bool crossOrigin);
 
-    std::optional<std::pair<String, String>> getCredential(ResourceRequest&, bool);
-    void restartRequestWithCredential(const String& user, const String& password);
+    Optional<Credential> getCredential(const ResourceRequest&, bool);
+    void restartRequestWithCredential(const ProtectionSpace&, const Credential&);
 
     void handleDataURL();
 #endif

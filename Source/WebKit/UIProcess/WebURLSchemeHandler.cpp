@@ -48,9 +48,9 @@ WebURLSchemeHandler::~WebURLSchemeHandler()
     ASSERT(m_tasks.isEmpty());
 }
 
-void WebURLSchemeHandler::startTask(WebPageProxy& page, uint64_t taskIdentifier, ResourceRequest&& request, SyncLoadCompletionHandler&& completionHandler)
+void WebURLSchemeHandler::startTask(WebPageProxy& page, WebProcessProxy& process, uint64_t taskIdentifier, ResourceRequest&& request, SyncLoadCompletionHandler&& completionHandler)
 {
-    auto result = m_tasks.add(taskIdentifier, WebURLSchemeTask::create(*this, page, taskIdentifier, WTFMove(request), WTFMove(completionHandler)));
+    auto result = m_tasks.add(taskIdentifier, WebURLSchemeTask::create(*this, page, process, taskIdentifier, WTFMove(request), WTFMove(completionHandler)));
     ASSERT(result.isNewEntry);
 
     auto pageEntry = m_tasksByPageIdentifier.add(page.pageID(), HashSet<uint64_t>());
@@ -60,17 +60,31 @@ void WebURLSchemeHandler::startTask(WebPageProxy& page, uint64_t taskIdentifier,
     platformStartTask(page, result.iterator->value);
 }
 
-void WebURLSchemeHandler::stopAllTasksForPage(WebPageProxy& page)
+WebProcessProxy* WebURLSchemeHandler::processForTaskIdentifier(uint64_t taskIdentifier) const
+{
+    auto iterator = m_tasks.find(taskIdentifier);
+    if (iterator == m_tasks.end())
+        return nullptr;
+    return iterator->value->process();
+}
+
+void WebURLSchemeHandler::stopAllTasksForPage(WebPageProxy& page, WebProcessProxy* process)
 {
     auto iterator = m_tasksByPageIdentifier.find(page.pageID());
     if (iterator == m_tasksByPageIdentifier.end())
         return;
 
     auto& tasksByPage = iterator->value;
-    while (!tasksByPage.isEmpty())
-        stopTask(page, *tasksByPage.begin());
+    Vector<uint64_t> taskIdentifiersToStop;
+    taskIdentifiersToStop.reserveInitialCapacity(tasksByPage.size());
+    for (auto taskIdentifier : tasksByPage) {
+        if (!process || processForTaskIdentifier(taskIdentifier) == process)
+            taskIdentifiersToStop.uncheckedAppend(taskIdentifier);
+    }
 
-    ASSERT(m_tasksByPageIdentifier.find(page.pageID()) == m_tasksByPageIdentifier.end());
+    for (auto& taskIdentifier : taskIdentifiersToStop)
+        stopTask(page, taskIdentifier);
+
 }
 
 void WebURLSchemeHandler::stopTask(WebPageProxy& page, uint64_t taskIdentifier)
@@ -95,7 +109,7 @@ void WebURLSchemeHandler::taskCompleted(WebURLSchemeTask& task)
     platformTaskCompleted(task);
 }
 
-void WebURLSchemeHandler::removeTaskFromPageMap(uint64_t pageID, uint64_t taskID)
+void WebURLSchemeHandler::removeTaskFromPageMap(PageIdentifier pageID, uint64_t taskID)
 {
     auto iterator = m_tasksByPageIdentifier.find(pageID);
     ASSERT(iterator != m_tasksByPageIdentifier.end());

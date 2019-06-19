@@ -24,12 +24,15 @@
 #include "Frame.h"
 #include "Page.h"
 #include "PluginData.h"
-#include <wtf/text/AtomicString.h>
+#include <wtf/IsoMallocInlines.h>
+#include <wtf/text/AtomString.h>
 
 namespace WebCore {
 
-DOMMimeTypeArray::DOMMimeTypeArray(Frame* frame)
-    : DOMWindowProperty(frame)
+WTF_MAKE_ISO_ALLOCATED_IMPL(DOMMimeTypeArray);
+
+DOMMimeTypeArray::DOMMimeTypeArray(DOMWindow* window)
+    : DOMWindowProperty(window)
 {
 }
 
@@ -59,10 +62,10 @@ RefPtr<DOMMimeType> DOMMimeTypeArray::item(unsigned index)
 
     if (index >= mimes.size())
         return nullptr;
-    return DOMMimeType::create(data, m_frame, index);
+    return DOMMimeType::create(data, frame(), index);
 }
 
-RefPtr<DOMMimeType> DOMMimeTypeArray::namedItem(const AtomicString& propertyName)
+RefPtr<DOMMimeType> DOMMimeTypeArray::namedItem(const AtomString& propertyName)
 {
     PluginData* data = getPluginData();
     if (!data)
@@ -73,12 +76,12 @@ RefPtr<DOMMimeType> DOMMimeTypeArray::namedItem(const AtomicString& propertyName
     data->getWebVisibleMimesAndPluginIndices(mimes, mimePluginIndices);
     for (unsigned i = 0; i < mimes.size(); ++i) {
         if (mimes[i].type == propertyName)
-            return DOMMimeType::create(data, m_frame, i);
+            return DOMMimeType::create(data, frame(), i);
     }
     return nullptr;
 }
 
-Vector<AtomicString> DOMMimeTypeArray::supportedPropertyNames()
+Vector<AtomString> DOMMimeTypeArray::supportedPropertyNames()
 {
     PluginData* data = getPluginData();
     if (!data)
@@ -88,7 +91,7 @@ Vector<AtomicString> DOMMimeTypeArray::supportedPropertyNames()
     Vector<size_t> mimePluginIndices;
     data->getWebVisibleMimesAndPluginIndices(mimes, mimePluginIndices);
 
-    Vector<AtomicString> result;
+    Vector<AtomString> result;
     result.reserveInitialCapacity(mimes.size());
     for (auto& info : mimes)
         result.uncheckedAppend(WTFMove(info.type));
@@ -98,16 +101,15 @@ Vector<AtomicString> DOMMimeTypeArray::supportedPropertyNames()
 
 PluginData* DOMMimeTypeArray::getPluginData() const
 {
-    if (!m_frame)
+    auto* frame = this->frame();
+    if (!frame)
         return nullptr;
 
-    Page* page = m_frame->page();
+    auto* page = frame->page();
     if (!page)
         return nullptr;
 
-    PluginData* pluginData = &page->pluginData();
-
-    return pluginData;
+    return &page->pluginData();
 }
 
 } // namespace WebCore

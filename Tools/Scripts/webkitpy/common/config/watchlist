@@ -191,8 +191,11 @@
                         r"|Tools/Scripts/generate-inspector-protocol-bindings.py"
                         r"|Tools/Scripts/webkitpy/inspector",
         },
+        "WebInspectorProtocol": {
+            "filename": r"Source/JavaScriptCore/inspector/protocol/",
+        },
         "WebInspectorRecording": {
-            "filename": r"Source/JavaScriptCore/inspector/Protocol/Recording\.json"
+            "filename": r"Source/JavaScriptCore/inspector/protocol/Recording\.json"
                         r"|Source/WebCore/bindings/js/CallTracer.*"
                         r"|Source/WebCore/inspector/Recording.*"
                         r"|Source/WebInspectorUI/UserInterface/\w*/Recording.*\.js"
@@ -304,16 +307,18 @@
         "MSEEME": {
             "filename": r"Source/WebCore/Modules/encryptedmedia/"
                         r"|Source/WebCore/Modules/mediasource/"
+                        r"|LayoutTests/imported/w3c/web-platform-tests/encrypted-media/"
+                        r"|LayoutTests/imported/w3c/web-platform-tests/media-source/"
                         r"|LayoutTests/media/encrypted-media/"
                         r"|LayoutTests/media/media-source/",
         },
         "StreamsAPI": {
             "filename": r"Source/WebCore/bindings/js/JSDOMGlobalObject\.cpp"
-                        r"Source/WebCore/bindings/js/JSReadableStreamPrivateConstructors\.(h|cpp)"
-                        r"Source/WebCore/bindings/js/WebCoreBuiltinNames\.h"
-                        r"Source/WebCore/bindings/js/WebCoreJSBuiltinInternals\.(h|cpp)"
-                        r"Source/WebCore/bindings/js/WebCoreJSBuiltins\.(h|cpp)"
-                        r"Source/WebCore/Modules/streams/"
+                        r"|Source/WebCore/bindings/js/JSReadableStreamPrivateConstructors\.(h|cpp)"
+                        r"|Source/WebCore/bindings/js/WebCoreBuiltinNames\.h"
+                        r"|Source/WebCore/bindings/js/WebCoreJSBuiltinInternals\.(h|cpp)"
+                        r"|Source/WebCore/bindings/js/WebCoreJSBuiltins\.(h|cpp)"
+                        r"|Source/WebCore/Modules/streams/"
                         r"|LayoutTests/imported/w3c/web-platform-tests/streams-api/"
                         r"|LayoutTests/streams/",
         },
@@ -392,7 +397,7 @@
         "History": [ "cdumez@apple.com" ],
         "IndexedDB": [ "beidson@apple.com", "alecflett@chromium.org", "jsbell@chromium.org" ],
         "Loader": [ "japhet@chromium.org", "cdumez@apple.com", "dbates@webkit.org" ],
-        "JavaScriptCore": [ "keith_miller@apple.com", "sbarati@apple.com", "mark.lam@apple.com", "msaboff@apple.com" ],
+        "JavaScriptCore": [ "keith_miller@apple.com", "sbarati@apple.com", "mark.lam@apple.com", "msaboff@apple.com", "tzagallo@apple.com" ],
         "MacAndIOSTextLayoutAndRendering": [ "mmaxfield@apple.com" ],
         "MathML": [ "dbarton@mathscribe.com", "fred.wang@free.fr" ],
         "Media": [ "eric.carlson@apple.com", "jer.noble@apple.com", "glenn@skynav.com", "philipj@opera.com", "sergio.correia@openbossa.org" ],
@@ -416,8 +421,8 @@
         "WTF": [ "benjamin@webkit.org", "cmarcelo@webkit.org", "cdumez@apple.com", "dbates@webkit.org" ],
         "WebGL": [ "dino@apple.com", "kondapallykalyan@gmail.com", "graouts@webkit.org" ],
         "WebIDL": [ "esprehn+autocc@chromium.org", "cdumez@apple.com", "kondapallykalyan@gmail.com" ],
-        "WebInspectorBackend": [ "joepeck@webkit.org" ],
-        "WebInspectorGenerator": [ "bburg@apple.com", "joepeck@webkit.org" ],
+        "WebInspectorBackend": [ "joepeck@webkit.org", "drousso@apple.com" ],
+        "WebInspectorGenerator": [ "bburg@apple.com", "joepeck@webkit.org", "drousso@apple.com" ],
         "WebInspectorRecording": [ "drousso@apple.com" ],
         "JSBuiltins": [ "joepeck@webkit.org" ],
         "JSBuiltinsGenerator": [ "bburg@apple.com" ],
@@ -437,6 +442,7 @@
                                  "See http://trac.webkit.org/wiki/WebKitGTK/AddingNewWebKit2API", ],
         "ANGLE": [ "Note that there are important steps to take when updating ANGLE. "
                    "See http://trac.webkit.org/wiki/UpdatingANGLE", ],
+        "WebInspectorProtocol": [ "This patch modifies the inspector protocol. Please ensure that any frontend changes appropriately use feature checks for new protocol features." ],
         "WebInspectorGenerator": [ "This patch modifies the inspector protocol generator. Please ensure that you have rebaselined any generator test results (i.e., by running `Tools/Scripts/run-inspector-generator-tests --reset-results`)" ],
         "JSBuiltinsGenerator": [ "This patch modifies the JS builtins code generator. Please ensure that you have rebaselined any generator test results (i.e., by running `Tools/Scripts/run-builtins-generator-tests --reset-results`)" ],
         "WasmJSON": [ "This patch modifies one of the wasm.json files. Please ensure that any changes in one have been mirrored to the other. You can find the wasm.json files at \"Source/JavaScriptCore/wasm/wasm.json\" and \"JSTests/wasm/wasm.json\"." ],

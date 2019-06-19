@@ -69,6 +69,14 @@ static int bucketForKey(double key)
     return DefaultHash<double>::Hash::hash(key) & (TestDoubleHashTraits::minimumTableSize - 1);
 }
 
+template<typename T> struct BigTableHashTraits : public HashTraits<T> {
+    static const int minimumTableSize = WTF::HashTableCapacityForSize<4096>::value;
+};
+
+template<typename T> struct ZeroHash : public IntHash<T> {
+    static unsigned hash(const T&) { return 0; }
+};
+
 TEST(WTF_HashMap, DoubleHashCollisions)
 {
     // The "clobber" key here is one that ends up stealing the bucket that the -0 key
@@ -986,6 +994,75 @@ TEST(WTF_HashMap, RefMappedToNonZeroEmptyValue)
 
     for (auto& pair : vectorMap)
         ASSERT_TRUE(map.remove(pair.first));
+}
+
+TEST(WTF_HashMap, Random_Empty)
+{
+    HashMap<unsigned, unsigned> map;
+
+    auto result = map.random();
+    ASSERT_EQ(result, map.end());
+}
+
+TEST(WTF_HashMap, Random_WrapAround)
+{
+    HashMap<unsigned, unsigned, ZeroHash<unsigned>, BigTableHashTraits<unsigned>> map;
+    map.add(1, 1);
+
+    auto result = map.random();
+    ASSERT_EQ(result, map.begin());
+}
+
+TEST(WTF_HashMap, Random_IsEvenlyDistributed)
+{
+    HashMap<unsigned, unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> map;
+    map.add(0, 0);
+    map.add(1, 1);
+
+    unsigned zeros = 0;
+    unsigned ones = 0;
+
+    for (unsigned i = 0; i < 1000; ++i) {
+        auto it = map.random();
+        if (!it->value)
+            ++zeros;
+        else {
+            ASSERT_EQ(it->value, 1u);
+            ++ones;
+        }
+    }
+
+    ASSERT_EQ(zeros + ones, 1000u);
+    ASSERT_LE(zeros, 600u);
+    ASSERT_LE(ones, 600u);
+}
+
+TEST(WTF_HashMap, Random_IsEvenlyDistributedAfterRemove)
+{
+    for (size_t tableSize = 2; tableSize <= 2 * 6; ++tableSize) { // Our hash tables shrink at a load factor of 1 / 6.
+        HashMap<unsigned, unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> map;
+        for (size_t i = 0; i < tableSize; ++i)
+            map.add(i, i);
+        for (size_t i = 2; i < tableSize; ++i)
+            map.remove(i);
+
+        unsigned zeros = 0;
+        unsigned ones = 0;
+
+        for (unsigned i = 0; i < 1000; ++i) {
+            auto it = map.random();
+            if (!it->value)
+                ++zeros;
+            else {
+                ASSERT_EQ(it->value, 1u);
+                ++ones;
+            }
+        }
+
+        ASSERT_EQ(zeros + ones, 1000u);
+        ASSERT_LE(zeros, 600u);
+        ASSERT_LE(ones, 600u);
+    }
 }
 
 } // namespace TestWebKitAPI

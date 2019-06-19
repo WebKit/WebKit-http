@@ -66,7 +66,6 @@ enum AvoidanceReason_ : uint64_t {
     FlowHasTextFillBox                    = 1LLU  << 28,
     FlowHasBorderFitLines                 = 1LLU  << 29,
     FlowHasNonAutoLineBreak               = 1LLU  << 30,
-    FlowHasNonAutoTrailingWord            = 1LLU  << 31,
     FlowHasSVGFont                        = 1LLU  << 32,
     FlowTextIsEmpty                       = 1LLU  << 33,
     FlowTextHasSoftHyphen                 = 1LLU  << 34,
@@ -90,7 +89,8 @@ enum AvoidanceReason_ : uint64_t {
     MultiColumnFlowHasColumnSpanner       = 1LLU  << 52,
     MultiColumnFlowVerticalAlign          = 1LLU  << 53,
     MultiColumnFlowIsFloating             = 1LLU  << 54,
-    EndOfReasons                          = 1LLU  << 55
+    FlowIncludesDocumentMarkers           = 1LLU  << 55,
+    EndOfReasons                          = 1LLU  << 56
 };
 const unsigned NoReason = 0;
 

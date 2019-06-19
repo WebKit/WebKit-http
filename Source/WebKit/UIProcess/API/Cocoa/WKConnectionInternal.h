@@ -25,20 +25,18 @@
 
 #import "WKConnection.h"
 
-#if WK_API_ENABLED
-
 #import "WKObject.h"
 #import "WebConnection.h"
 
 namespace WebKit {
 
 template<> struct WrapperTraits<WebConnection> {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     using WrapperClass = WKConnection;
+    ALLOW_DEPRECATED_DECLARATIONS_END
 };
 
 }
 
 @interface WKConnection () <WKObject>
 @end
-
-#endif // WK_API_ENABLED

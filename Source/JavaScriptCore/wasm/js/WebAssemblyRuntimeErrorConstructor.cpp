@@ -49,15 +49,17 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyRuntimeError(ExecState
     auto& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue message = exec->argument(0);
-    auto* structure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), jsCast<InternalFunction*>(exec->jsCallee())->globalObject(vm)->WebAssemblyRuntimeErrorStructure());
+    String messageString = message.isUndefined() ? String() : message.toWTFString(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    return JSValue::encode(JSWebAssemblyRuntimeError::create(exec, vm, structure, message));
+    auto* structure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), jsCast<InternalFunction*>(exec->jsCallee())->globalObject(vm)->webAssemblyRuntimeErrorStructure());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    return JSValue::encode(JSWebAssemblyRuntimeError::create(exec, vm, structure, WTFMove(messageString)));
 }
 
 static EncodedJSValue JSC_HOST_CALL callJSWebAssemblyRuntimeError(ExecState* exec)
 {
     JSValue message = exec->argument(0);
-    Structure* errorStructure = jsCast<InternalFunction*>(exec->jsCallee())->globalObject(exec->vm())->WebAssemblyRuntimeErrorStructure();
+    Structure* errorStructure = jsCast<InternalFunction*>(exec->jsCallee())->globalObject(exec->vm())->webAssemblyRuntimeErrorStructure();
     return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, nullptr, TypeNothing, false));
 }
 
@@ -75,7 +77,7 @@ Structure* WebAssemblyRuntimeErrorConstructor::createStructure(VM& vm, JSGlobalO
 
 void WebAssemblyRuntimeErrorConstructor::finishCreation(VM& vm, WebAssemblyRuntimeErrorPrototype* prototype)
 {
-    Base::finishCreation(vm, "RuntimeError"_s);
+    Base::finishCreation(vm, "RuntimeError"_s, NameVisibility::Visible, NameAdditionMode::WithoutStructureTransition);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
 }

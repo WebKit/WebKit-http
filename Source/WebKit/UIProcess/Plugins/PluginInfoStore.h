@@ -31,10 +31,6 @@
 
 #include <WebCore/PluginData.h>
 
-namespace WebCore {
-class URL;
-}
-
 namespace WebKit {
 
 class PluginInfoStore;
@@ -53,7 +49,7 @@ public:
     // Returns the info for a plug-in that can handle the given MIME type.
     // If the MIME type is null, the file extension of the given url will be used to infer the
     // plug-in type. In that case, mimeType will be filled in with the right MIME type.
-    PluginModuleInfo findPlugin(String& mimeType, const WebCore::URL&, WebCore::PluginData::AllowedPluginTypes = WebCore::PluginData::AllPlugins);
+    PluginModuleInfo findPlugin(String& mimeType, const URL&, WebCore::PluginData::AllowedPluginTypes = WebCore::PluginData::AllPlugins);
 
     // Returns the info for the plug-in with the given bundle identifier.
     PluginModuleInfo findPluginWithBundleIdentifier(const String& bundleIdentifier);
@@ -63,12 +59,10 @@ public:
 
     static PluginModuleLoadPolicy defaultLoadPolicyForPlugin(const PluginModuleInfo&);
 
-    bool isSupportedPlugin(const String& mimeType, const WebCore::URL& pluginURL, const String& frameURLString, const WebCore::URL& pageURL);
-    std::optional<Vector<WebCore::SupportedPluginIdentifier>> supportedPluginIdentifiers();
+    bool isSupportedPlugin(const String& mimeType, const URL& pluginURL, const String& frameURLString, const URL& pageURL);
+    Optional<Vector<WebCore::SupportedPluginIdentifier>> supportedPluginIdentifiers();
     void addSupportedPlugin(String&& matchingDomain, String&& identifier, HashSet<String>&& mimeTypes, HashSet<String> extensions);
-    void clearSupportedPlugins() { m_supportedPlugins = std::nullopt; }
-
-    static bool shouldAllowPluginToRunUnsandboxed(const String& pluginBundleIdentifier);
+    void clearSupportedPlugins() { m_supportedPlugins = WTF::nullopt; }
 
 private:
     PluginModuleInfo findPluginForMIMEType(const String& mimeType, WebCore::PluginData::AllowedPluginTypes) const;
@@ -104,9 +98,9 @@ private:
         HashSet<String> mimeTypes;
         HashSet<String> extensions;
     };
-    static bool isSupportedPlugin(const SupportedPlugin&, const String& mimeType, const WebCore::URL& pluginURL);
+    static bool isSupportedPlugin(const SupportedPlugin&, const String& mimeType, const URL& pluginURL);
 
-    std::optional<Vector<SupportedPlugin>> m_supportedPlugins;
+    Optional<Vector<SupportedPlugin>> m_supportedPlugins;
 };
     
 } // namespace WebKit

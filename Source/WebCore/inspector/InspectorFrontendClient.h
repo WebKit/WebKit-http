@@ -30,11 +30,14 @@
 
 #pragma once
 
+#include "CertificateInfo.h"
 #include "UserInterfaceLayoutDirection.h"
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
+class FloatRect;
 
 class InspectorFrontendClient {
 public:
@@ -53,6 +56,7 @@ public:
     virtual void startWindowDrag() = 0;
     virtual void moveWindowBy(float x, float y) = 0;
 
+    virtual bool isRemote() const = 0;
     virtual String localizedStringsURL() = 0;
     virtual unsigned inspectionLevel() const = 0;
     virtual String backendCommandsURL() { return String(); };
@@ -60,12 +64,15 @@ public:
 
     virtual void bringToFront() = 0;
     virtual void closeWindow() = 0;
+    virtual void reopen() = 0;
 
     virtual UserInterfaceLayoutDirection userInterfaceLayoutDirection() const = 0;
 
     WEBCORE_EXPORT virtual void requestSetDockSide(DockSide) = 0;
     WEBCORE_EXPORT virtual void changeAttachedWindowHeight(unsigned) = 0;
     WEBCORE_EXPORT virtual void changeAttachedWindowWidth(unsigned) = 0;
+
+    WEBCORE_EXPORT virtual void changeSheetRect(const FloatRect&) = 0;
 
     WEBCORE_EXPORT virtual void openInNewTab(const String& url) = 0;
 
@@ -74,6 +81,7 @@ public:
     virtual void append(const WTF::String& url, const WTF::String& content) = 0;
 
     virtual void inspectedURLChanged(const String&) = 0;
+    virtual void showCertificate(const CertificateInfo&) = 0;
 
     virtual void pagePaused() { }
     virtual void pageUnpaused() { }

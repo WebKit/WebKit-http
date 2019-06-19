@@ -158,7 +158,7 @@ void DateTimeStringBuilder::visitField(DateTimeFormat::FieldType fieldType, int 
             appendNumber(m_date.second(), numberOfPatternCharacters);
         else {
             double second = m_date.second() + m_date.millisecond() / 1000.0;
-            String zeroPaddedSecondString = zeroPadString(String::format("%.03f", second), numberOfPatternCharacters + 4);
+            String zeroPaddedSecondString = zeroPadString(String::numberToStringFixedWidth(second, 3), numberOfPatternCharacters + 4);
             m_builder.append(m_localizer.convertToLocalizedNumber(zeroPaddedSecondString));
         }
         return;
@@ -326,7 +326,7 @@ String Locale::convertFromLocalizedNumber(const String& localized)
 
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 String Locale::formatDateTime(const DateComponents& date, FormatType formatType)
 {
     if (date.type() == DateComponents::Invalid)
@@ -362,7 +362,7 @@ String Locale::formatDateTime(const DateComponents& date, FormatType formatType)
     }
     return builder.toString();
 }
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 
 #endif
 

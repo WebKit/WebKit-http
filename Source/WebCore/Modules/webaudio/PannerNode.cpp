@@ -34,9 +34,12 @@
 #include "AudioNodeOutput.h"
 #include "HRTFPanner.h"
 #include "ScriptExecutionContext.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/MathExtras.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(PannerNode);
 
 static void fixNANs(double &x)
 {
@@ -50,6 +53,8 @@ PannerNode::PannerNode(AudioContext& context, float sampleRate)
     , m_lastGain(-1.0)
     , m_connectionCount(0)
 {
+    setNodeType(NodeTypePanner);
+    
     // Load the HRTF database asynchronously so we don't block the Javascript thread while creating the HRTF database.
     m_hrtfDatabaseLoader = HRTFDatabaseLoader::createAndLoadAsynchronouslyIfNecessary(context.sampleRate());
 
@@ -67,8 +72,6 @@ PannerNode::PannerNode(AudioContext& context, float sampleRate)
     m_position = FloatPoint3D(0, 0, 0);
     m_orientation = FloatPoint3D(1, 0, 0);
     m_velocity = FloatPoint3D(0, 0, 0);
-
-    setNodeType(NodeTypePanner);
 
     initialize();
 }

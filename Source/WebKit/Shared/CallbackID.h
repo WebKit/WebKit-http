@@ -47,6 +47,12 @@ public:
         ASSERT(HashTraits<uint64_t>::emptyValue() != m_id && !HashTraits<uint64_t>::isDeletedValue(m_id));
     }
 
+    ALWAYS_INLINE CallbackID& operator=(const CallbackID& otherID)
+    {
+        m_id = otherID.m_id;
+        return *this;
+    }
+
     bool operator==(const CallbackID& other) const { return m_id == other.m_id; }
 
     uint64_t toInteger() const { return m_id; }
@@ -75,12 +81,12 @@ public:
         encoder << m_id;
     }
 
-    template<class Decoder> static std::optional<CallbackID> decode(Decoder& decoder)
+    template<class Decoder> static Optional<CallbackID> decode(Decoder& decoder)
     {
-        std::optional<uint64_t> identifier;
+        Optional<uint64_t> identifier;
         decoder >> identifier;
         if (!identifier)
-            return std::nullopt;
+            return WTF::nullopt;
         RELEASE_ASSERT(isValidCallbackID(*identifier));
         return fromInteger(*identifier);
     }

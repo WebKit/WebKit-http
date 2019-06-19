@@ -27,7 +27,6 @@
 #include "AccessibilityUIElement.h"
 
 #include "JSAccessibilityUIElement.h"
-#include <JavaScriptCore/JSRetainPtr.h>
 
 namespace WTR {
 
@@ -54,7 +53,7 @@ bool AccessibilityUIElement::isValid() const
 }
 
 // iOS specific methods
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 JSRetainPtr<JSStringRef> AccessibilityUIElement::identifier() { return nullptr; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::traits() { return nullptr; }
 int AccessibilityUIElement::elementTextPosition() { return 0; }
@@ -80,7 +79,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::attributedStringForElement() { 
 #endif
     
 // Unsupported methods on various platforms. As they're implemented on other platforms this list should be modified.
-#if (!PLATFORM(GTK) && !PLATFORM(WPE)) || !HAVE(ACCESSIBILITY)
+#if PLATFORM(COCOA) || !HAVE(ACCESSIBILITY)
 JSRetainPtr<JSStringRef> AccessibilityUIElement::characterAtOffset(int) { return nullptr; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::wordAtOffset(int) { return nullptr; }
 JSRetainPtr<JSStringRef> AccessibilityUIElement::lineAtOffset(int) { return nullptr; }
@@ -92,6 +91,7 @@ RefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::selectedTextMarkerR
 void AccessibilityUIElement::resetSelectedTextMarkerRange() { }
 void AccessibilityUIElement::setBoolAttributeValue(JSStringRef, bool) { }
 void AccessibilityUIElement::setValue(JSStringRef) { }
+JSValueRef AccessibilityUIElement::searchTextWithCriteria(JSContextRef, JSValueRef, JSStringRef, JSStringRef) { return nullptr; }
 #endif
 
 #if !PLATFORM(COCOA) || !HAVE(ACCESSIBILITY)
@@ -108,4 +108,3 @@ RefPtr<AccessibilityTextMarker> AccessibilityUIElement::previousSentenceStartTex
 #endif
 
 } // namespace WTR
-

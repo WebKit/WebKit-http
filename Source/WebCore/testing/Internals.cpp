@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,15 +45,20 @@
 #include "CacheStorageProvider.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
+#include "CertificateInfo.h"
 #include "Chrome.h"
+#include "ChromeClient.h"
 #include "ClientOrigin.h"
 #include "ComposedTreeIterator.h"
+#include "CookieJar.h"
 #include "Cursor.h"
+#include "CustomHeaderFields.h"
 #include "DOMRect.h"
 #include "DOMRectList.h"
 #include "DOMStringList.h"
 #include "DOMWindow.h"
 #include "DeprecatedGlobalSettings.h"
+#include "DiagnosticLoggingClient.h"
 #include "DisabledAdaptations.h"
 #include "DisplayList.h"
 #include "Document.h"
@@ -72,8 +77,10 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
+#include "FullscreenManager.h"
 #include "GCObservation.h"
 #include "GridPosition.h"
+#include "HEVCUtilities.h"
 #include "HTMLAnchorElement.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLIFrameElement.h"
@@ -90,6 +97,8 @@
 #include "HistoryController.h"
 #include "HistoryItem.h"
 #include "HitTestResult.h"
+#include "IDBRequest.h"
+#include "IDBTransaction.h"
 #include "InspectorClient.h"
 #include "InspectorController.h"
 #include "InspectorFrontendClientLocal.h"
@@ -101,6 +110,7 @@
 #include "LibWebRTCProvider.h"
 #include "LoaderStrategy.h"
 #include "MallocStatistics.h"
+#include "MediaDevices.h"
 #include "MediaEngineConfigurationFactory.h"
 #include "MediaPlayer.h"
 #include "MediaProducer.h"
@@ -111,14 +121,13 @@
 #include "MockLibWebRTCPeerConnection.h"
 #include "MockPageOverlay.h"
 #include "MockPageOverlayClient.h"
+#include "NavigatorMediaDevices.h"
 #include "NetworkLoadInformation.h"
-#if USE(CG)
-#include "PDFDocumentImage.h"
-#endif
 #include "Page.h"
 #include "PageCache.h"
 #include "PageOverlay.h"
 #include "PathUtilities.h"
+#include "PlatformKeyboardEvent.h"
 #include "PlatformMediaSessionManager.h"
 #include "PlatformScreen.h"
 #include "PlatformStrategies.h"
@@ -169,6 +178,7 @@
 #include "WebCoreJSClientData.h"
 #include "WindowProxy.h"
 #include "WorkerThread.h"
+#include "WorkletGlobalScope.h"
 #include "WritingDirection.h"
 #include "XMLHttpRequest.h"
 #include <JavaScriptCore/CodeBlock.h>
@@ -176,14 +186,18 @@
 #include <JavaScriptCore/InspectorFrontendChannel.h>
 #include <JavaScriptCore/JSCInlines.h>
 #include <JavaScriptCore/JSCJSValue.h>
+#include <wtf/HexNumber.h>
 #include <wtf/JSONValues.h>
 #include <wtf/Language.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/MonotonicTime.h>
-#include <wtf/text/StringBuffer.h>
+#include <wtf/URLHelpers.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringConcatenateNumbers.h>
-#include <wtf/text/StringView.h>
+
+#if USE(CG)
+#include "PDFDocumentImage.h"
+#endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooser.h"
@@ -209,6 +223,7 @@
 #if ENABLE(VIDEO_TRACK)
 #include "CaptionUserPreferences.h"
 #include "PageGroup.h"
+#include "TextTrackCueGeneric.h"
 #endif
 
 #if ENABLE(VIDEO)
@@ -232,6 +247,8 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+#include "MediaRecorder.h"
+#include "MediaRecorderPrivateMock.h"
 #include "MediaStream.h"
 #include "MockRealtimeMediaSourceCenter.h"
 #endif
@@ -275,9 +292,12 @@
 #include "PaymentCoordinator.h"
 #endif
 
-#if ENABLE(WEB_AUTHN)
-#include "AuthenticatorManager.h"
-#include "MockCredentialsMessenger.h"
+#if PLATFORM(MAC) && USE(LIBWEBRTC)
+#include <webrtc/sdk/WebKit/VideoProcessingSoftLink.h>
+#endif
+
+#if PLATFORM(MAC)
+#include "GraphicsContext3DManager.h"
 #endif
 
 using JSC::CallData;
@@ -309,11 +329,14 @@ private:
     void attachWindow(DockSide) final { }
     void detachWindow() final { }
     void closeWindow() final;
+    void reopen() final { }
     void bringToFront() final { }
     String localizedStringsURL() final { return String(); }
     void inspectedURLChanged(const String&) final { }
+    void showCertificate(const CertificateInfo&) final { }
     void setAttachedWindowHeight(unsigned) final { }
     void setAttachedWindowWidth(unsigned) final { }
+    void setSheetRect(const FloatRect&) final { }
 
     void sendMessageToFrontend(const String& message) final;
     ConnectionType connectionType() const final { return ConnectionType::Local; }
@@ -338,7 +361,7 @@ InspectorStubFrontend::InspectorStubFrontend(Page& inspectedPage, RefPtr<DOMWind
     ASSERT_ARG(frontendWindow, frontendWindow);
 
     m_frontendController.setInspectorFrontendClient(this);
-    inspectedPage.inspectorController().connectFrontend(this);
+    inspectedPage.inspectorController().connectFrontend(*this);
 }
 
 InspectorStubFrontend::~InspectorStubFrontend()
@@ -352,7 +375,7 @@ void InspectorStubFrontend::closeWindow()
         return;
 
     m_frontendController.setInspectorFrontendClient(nullptr);
-    inspectedPage()->inspectorController().disconnectFrontend(this);
+    inspectedPage()->inspectorController().disconnectFrontend(*this);
 
     m_frontendWindow->close();
     m_frontendWindow = nullptr;
@@ -442,15 +465,16 @@ void Internals::resetToConsistentState(Page& page)
 
     page.mainFrame().setTextZoomFactor(1.0f);
 
-    page.setCompositingPolicyOverride(std::nullopt);
+    page.setCompositingPolicyOverride(WebCore::CompositingPolicy::Normal);
 
     FrameView* mainFrameView = page.mainFrame().view();
     if (mainFrameView) {
-        mainFrameView->setHeaderHeight(0);
-        mainFrameView->setFooterHeight(0);
+        page.setHeaderHeight(0);
+        page.setFooterHeight(0);
         page.setTopContentInset(0);
         mainFrameView->setUseFixedLayout(false);
         mainFrameView->setFixedLayoutSize(IntSize());
+        mainFrameView->enableAutoSizeMode(false, { });
 #if USE(COORDINATED_GRAPHICS)
         mainFrameView->setFixedVisibleContentRect(IntRect());
 #endif
@@ -458,7 +482,7 @@ void Internals::resetToConsistentState(Page& page)
             backing->setTileSizeUpdateDelayDisabledForTesting(false);
     }
 
-    WebCore::clearDefaultPortForProtocolMapForTesting();
+    WTF::clearDefaultPortForProtocolMapForTesting();
     overrideUserPreferredLanguages(Vector<String>());
     WebCore::DeprecatedGlobalSettings::setUsesOverlayScrollbars(false);
     WebCore::DeprecatedGlobalSettings::setUsesMockScrollAnimator(false);
@@ -477,6 +501,7 @@ void Internals::resetToConsistentState(Page& page)
     PlatformMediaSessionManager::sharedManager().resetRestrictions();
     PlatformMediaSessionManager::sharedManager().setWillIgnoreSystemInterruptions(true);
 #endif
+    PlatformMediaSessionManager::sharedManager().setIsPlayingToAutomotiveHeadUnit(false);
 #if HAVE(ACCESSIBILITY)
     AXObjectCache::setEnhancedUserInterfaceAccessibility(false);
     AXObjectCache::disableAccessibility();
@@ -494,7 +519,7 @@ void Internals::resetToConsistentState(Page& page)
 #endif
 
     page.setShowAllPlugins(false);
-    page.setLowPowerModeEnabledOverrideForTesting(std::nullopt);
+    page.setLowPowerModeEnabledOverrideForTesting(WTF::nullopt);
 
 #if PLATFORM(QT)
     if (NetworkingContext* context = page->mainFrame().loader().networkingContext()) {
@@ -514,7 +539,7 @@ void Internals::resetToConsistentState(Page& page)
     auto& rtcProvider = page.libWebRTCProvider();
     WebCore::useRealRTCPeerConnectionFactory(rtcProvider);
     rtcProvider.disableNonLocalhostConnections();
-    RuntimeEnabledFeatures::sharedFeatures().setWebRTCUnifiedPlanEnabled(true);
+    RuntimeEnabledFeatures::sharedFeatures().setWebRTCVP8CodecEnabled(true);
 #endif
 
     page.settings().setStorageAccessAPIEnabled(false);
@@ -523,6 +548,10 @@ void Internals::resetToConsistentState(Page& page)
     page.setFullscreenControlsHidden(false);
 
     MediaEngineConfigurationFactory::disableMock();
+
+#if ENABLE(MEDIA_STREAM)
+    RuntimeEnabledFeatures::sharedFeatures().setInterruptAudioOnPageVisibilityChangeEnabled(false);
+#endif
 }
 
 Internals::Internals(Document& document)
@@ -538,7 +567,7 @@ Internals::Internals(Document& document)
 
 #if ENABLE(MEDIA_STREAM)
     setMockMediaCaptureDevicesEnabled(true);
-    WebCore::DeprecatedGlobalSettings::setMediaCaptureRequiresSecureConnection(false);
+    setMediaCaptureRequiresSecureConnection(false);
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -558,15 +587,10 @@ Internals::Internals(Document& document)
 
 #if ENABLE(APPLE_PAY)
     auto* frame = document.frame();
-    if (frame && frame->page()) {
-        m_mockPaymentCoordinator = new MockPaymentCoordinator(*frame->page());
-        frame->page()->setPaymentCoordinator(std::make_unique<PaymentCoordinator>(*m_mockPaymentCoordinator));
+    if (frame && frame->page() && frame->isMainFrame()) {
+        auto mockPaymentCoordinator = new MockPaymentCoordinator(*frame->page());
+        frame->page()->setPaymentCoordinator(std::make_unique<PaymentCoordinator>(*mockPaymentCoordinator));
     }
-#endif
-
-#if ENABLE(WEB_AUTHN)
-    m_mockCredentialsMessenger = std::make_unique<MockCredentialsMessenger>(*this);
-    AuthenticatorManager::singleton().setMessenger(*m_mockCredentialsMessenger);
 #endif
 }
 
@@ -627,7 +651,7 @@ ExceptionOr<double> Internals::svgAnimationsInterval(SVGSVGElement& element) con
 
 String Internals::address(Node& node)
 {
-    return String::format("%p", &node);
+    return makeString("0x", hex(reinterpret_cast<uintptr_t>(&node)));
 }
 
 bool Internals::nodeNeedsStyleRecalc(Node& node)
@@ -834,6 +858,18 @@ unsigned Internals::imageFrameIndex(HTMLImageElement& element)
     return bitmapImage ? bitmapImage->currentFrame() : 0;
 }
 
+unsigned Internals::imageFrameCount(HTMLImageElement& element)
+{
+    auto* bitmapImage = bitmapImageFromImageElement(element);
+    return bitmapImage ? bitmapImage->frameCount() : 0;
+}
+
+float Internals::imageFrameDurationAtIndex(HTMLImageElement& element, unsigned index)
+{
+    auto* bitmapImage = bitmapImageFromImageElement(element);
+    return bitmapImage ? bitmapImage->frameDurationAtIndex(index).value() : 0;
+}
+    
 void Internals::setImageFrameDecodingDuration(HTMLImageElement& element, float duration)
 {
     if (auto* bitmapImage = bitmapImageFromImageElement(element))
@@ -1033,7 +1069,7 @@ ExceptionOr<bool> Internals::pauseAnimationAtTimeOnElement(const String& animati
 {
     if (pauseTime < 0)
         return Exception { InvalidAccessError };
-    return frame()->animation().pauseAnimationAtTime(element, AtomicString(animationName), pauseTime);
+    return frame()->animation().pauseAnimationAtTime(element, AtomString(animationName), pauseTime);
 }
 
 ExceptionOr<bool> Internals::pauseAnimationAtTimeOnPseudoElement(const String& animationName, double pauseTime, Element& element, const String& pseudoId)
@@ -1048,7 +1084,7 @@ ExceptionOr<bool> Internals::pauseAnimationAtTimeOnPseudoElement(const String& a
     if (!pseudoElement)
         return Exception { InvalidAccessError };
 
-    return frame()->animation().pauseAnimationAtTime(*pseudoElement, AtomicString(animationName), pauseTime);
+    return frame()->animation().pauseAnimationAtTime(*pseudoElement, AtomString(animationName), pauseTime);
 }
 
 ExceptionOr<bool> Internals::pauseTransitionAtTimeOnElement(const String& propertyName, double pauseTime, Element& element)
@@ -1073,6 +1109,24 @@ ExceptionOr<bool> Internals::pauseTransitionAtTimeOnPseudoElement(const String& 
     return frame()->animation().pauseTransitionAtTime(*pseudoElement, property, pauseTime);
 }
 
+Vector<Internals::AcceleratedAnimation> Internals::acceleratedAnimationsForElement(Element& element)
+{
+    if (!RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
+        return { };
+
+    Vector<Internals::AcceleratedAnimation> animations;
+    for (const auto& animationAsPair : element.document().timeline().acceleratedAnimationsForElement(element))
+        animations.append({ animationAsPair.first, animationAsPair.second });
+    return animations;
+}
+
+unsigned Internals::numberOfAnimationTimelineInvalidations() const
+{
+    if (RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled())
+        return frame()->document()->timeline().numberOfAnimationTimelineInvalidationsForTesting();
+    return 0;
+}
+
 ExceptionOr<RefPtr<Element>> Internals::pseudoElement(Element& element, const String& pseudoId)
 {
     if (pseudoId != "before" && pseudoId != "after")
@@ -1089,7 +1143,7 @@ ExceptionOr<String> Internals::elementRenderTreeAsText(Element& element)
     if (representation.isEmpty())
         return Exception { InvalidAccessError };
 
-    return WTFMove(representation);
+    return representation;
 }
 
 bool Internals::hasPausedImageAnimations(Element& element)
@@ -1131,14 +1185,14 @@ ExceptionOr<String> Internals::shadowRootType(const Node& root) const
 
     switch (downcast<ShadowRoot>(root).mode()) {
     case ShadowRootMode::UserAgent:
-        return String("UserAgentShadowRoot");
+        return "UserAgentShadowRoot"_str;
     case ShadowRootMode::Closed:
-        return String("ClosedShadowRoot");
+        return "ClosedShadowRoot"_str;
     case ShadowRootMode::Open:
-        return String("OpenShadowRoot");
+        return "OpenShadowRoot"_str;
     default:
         ASSERT_NOT_REACHED();
-        return String("Unknown");
+        return "Unknown"_str;
     }
 }
 
@@ -1289,14 +1343,14 @@ bool Internals::areTimersThrottled() const
     return contextDocument()->isTimerThrottlingEnabled();
 }
 
-void Internals::setEventThrottlingBehaviorOverride(std::optional<EventThrottlingBehavior> value)
+void Internals::setEventThrottlingBehaviorOverride(Optional<EventThrottlingBehavior> value)
 {
     Document* document = contextDocument();
     if (!document || !document->page())
         return;
 
     if (!value) {
-        document->page()->setEventThrottlingBehaviorOverride(std::nullopt);
+        document->page()->setEventThrottlingBehaviorOverride(WTF::nullopt);
         return;
     }
 
@@ -1310,15 +1364,15 @@ void Internals::setEventThrottlingBehaviorOverride(std::optional<EventThrottling
     }
 }
 
-std::optional<Internals::EventThrottlingBehavior> Internals::eventThrottlingBehaviorOverride() const
+Optional<Internals::EventThrottlingBehavior> Internals::eventThrottlingBehaviorOverride() const
 {
     Document* document = contextDocument();
     if (!document || !document->page())
-        return std::nullopt;
+        return WTF::nullopt;
 
     auto behavior = document->page()->eventThrottlingBehaviorOverride();
     if (!behavior)
-        return std::nullopt;
+        return WTF::nullopt;
 
     switch (behavior.value()) {
     case WebCore::EventThrottlingBehavior::Responsive:
@@ -1327,7 +1381,7 @@ std::optional<Internals::EventThrottlingBehavior> Internals::eventThrottlingBeha
         return Internals::EventThrottlingBehavior::Unresponsive;
     }
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 String Internals::visiblePlaceholder(Element& element)
@@ -1453,6 +1507,14 @@ void Internals::stopPeerConnection(RTCPeerConnection& connection)
     object.stop();
 }
 
+void Internals::clearPeerConnectionFactory()
+{
+#if USE(LIBWEBRTC)
+    if (auto* page = contextDocument()->page())
+        page->libWebRTCProvider().clearFactory();
+#endif
+}
+
 void Internals::applyRotationForOutgoingVideoSources(RTCPeerConnection& connection)
 {
     connection.applyRotationForOutgoingVideoSources();
@@ -1460,10 +1522,33 @@ void Internals::applyRotationForOutgoingVideoSources(RTCPeerConnection& connecti
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+void Internals::setShouldInterruptAudioOnPageVisibilityChange(bool shouldInterrupt)
+{
+    RuntimeEnabledFeatures::sharedFeatures().setInterruptAudioOnPageVisibilityChangeEnabled(shouldInterrupt);
+}
 
 void Internals::setMockMediaCaptureDevicesEnabled(bool enabled)
 {
-    WebCore::DeprecatedGlobalSettings::setMockCaptureDevicesEnabled(enabled);
+    Document* document = contextDocument();
+    if (auto* page = document->page())
+        page->settings().setMockCaptureDevicesEnabled(enabled);
+}
+
+void Internals::setMediaCaptureRequiresSecureConnection(bool enabled)
+{
+    Document* document = contextDocument();
+    if (auto* page = document->page())
+        page->settings().setMediaCaptureRequiresSecureConnection(enabled);
+}
+
+static std::unique_ptr<MediaRecorderPrivate> createRecorderMockSource()
+{
+    return std::unique_ptr<MediaRecorderPrivateMock>(new MediaRecorderPrivateMock);
+}
+
+void Internals::setCustomPrivateRecorderCreator()
+{
+    WebCore::MediaRecorder::setCustomPrivateRecorderCreator(createRecorderMockSource);
 }
 
 #endif
@@ -1475,6 +1560,15 @@ ExceptionOr<Ref<DOMRect>> Internals::absoluteCaretBounds()
         return Exception { InvalidAccessError };
 
     return DOMRect::create(document->frame()->selection().absoluteCaretBounds());
+}
+    
+ExceptionOr<bool> Internals::isCaretBlinkingSuspended()
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return Exception { InvalidAccessError };
+    
+    return document->frame()->selection().isCaretBlinkingSuspended();
 }
 
 Ref<DOMRect> Internals::boundingBox(Element& element)
@@ -1497,15 +1591,6 @@ ExceptionOr<Ref<DOMRectList>> Internals::inspectorHighlightRects()
     return DOMRectList::create(highlight.quads);
 }
 
-ExceptionOr<String> Internals::inspectorHighlightObject()
-{
-    Document* document = contextDocument();
-    if (!document || !document->page())
-        return Exception { InvalidAccessError };
-
-    return document->page()->inspectorController().buildObjectForHighlightedNodes()->toJSONString();
-}
-
 ExceptionOr<unsigned> Internals::markerCountForNode(Node& node, const String& markerType)
 {
     OptionSet<DocumentMarker::MarkerType> markerTypes;
@@ -1513,7 +1598,7 @@ ExceptionOr<unsigned> Internals::markerCountForNode(Node& node, const String& ma
         return Exception { SyntaxError };
 
     node.document().frame()->editor().updateEditorUINowIfScheduled();
-    return node.document().markers().markersFor(&node, markerTypes).size();
+    return node.document().markers().markersFor(node, markerTypes).size();
 }
 
 ExceptionOr<RenderedDocumentMarker*> Internals::markerAt(Node& node, const String& markerType, unsigned index)
@@ -1526,7 +1611,7 @@ ExceptionOr<RenderedDocumentMarker*> Internals::markerAt(Node& node, const Strin
 
     node.document().frame()->editor().updateEditorUINowIfScheduled();
 
-    Vector<RenderedDocumentMarker*> markers = node.document().markers().markersFor(&node, markerTypes);
+    Vector<RenderedDocumentMarker*> markers = node.document().markers().markersFor(node, markerTypes);
     if (markers.size() <= index)
         return nullptr;
     return markers[index];
@@ -1567,13 +1652,13 @@ ExceptionOr<String> Internals::dumpMarkerRects(const String& markerTypeString)
     rectString.appendLiteral("marker rects: ");
     for (const auto& rect : rects) {
         rectString.append('(');
-        rectString.appendNumber(rect.x());
+        rectString.appendFixedPrecisionNumber(rect.x());
         rectString.appendLiteral(", ");
-        rectString.appendNumber(rect.y());
+        rectString.appendFixedPrecisionNumber(rect.y());
         rectString.appendLiteral(", ");
-        rectString.appendNumber(rect.width());
+        rectString.appendFixedPrecisionNumber(rect.width());
         rectString.appendLiteral(", ");
-        rectString.appendNumber(rect.height());
+        rectString.appendFixedPrecisionNumber(rect.height());
         rectString.appendLiteral(") ");
     }
     return rectString.toString();
@@ -1582,7 +1667,7 @@ ExceptionOr<String> Internals::dumpMarkerRects(const String& markerTypeString)
 void Internals::addTextMatchMarker(const Range& range, bool isActive)
 {
     range.ownerDocument().updateLayoutIgnorePendingStylesheets();
-    range.ownerDocument().markers().addTextMatchMarker(&range, isActive);
+    range.ownerDocument().markers().addTextMatchMarker(range, isActive);
 }
 
 ExceptionOr<void> Internals::setMarkedTextMatchesAreHighlighted(bool flag)
@@ -1601,7 +1686,7 @@ void Internals::invalidateFontCache()
 
 void Internals::setFontSmoothingEnabled(bool enabled)
 {
-    WebCore::FontCascade::setShouldUseSmoothing(enabled);
+    FontCascade::setShouldUseSmoothing(enabled);
 }
 
 ExceptionOr<void> Internals::setLowPowerModeEnabled(bool isEnabled)
@@ -1670,6 +1755,26 @@ ExceptionOr<Ref<DOMRect>> Internals::visualViewportRect()
     return DOMRect::create(frameView.visualViewportRect());
 }
 
+ExceptionOr<void> Internals::setViewIsTransparent(bool transparent)
+{
+    Document* document = contextDocument();
+    if (!document || !document->view())
+        return Exception { InvalidAccessError };
+    Optional<Color> backgroundColor;
+    if (transparent)
+        backgroundColor = Color(Color::transparent);
+    document->view()->updateBackgroundRecursively(backgroundColor);
+    return { };
+}
+
+ExceptionOr<String> Internals::viewBaseBackgroundColor()
+{
+    Document* document = contextDocument();
+    if (!document || !document->view())
+        return Exception { InvalidAccessError };
+    return document->view()->baseBackgroundColor().cssText();
+}
+
 ExceptionOr<void> Internals::setViewBaseBackgroundColor(const String& colorValue)
 {
     Document* document = contextDocument();
@@ -1736,7 +1841,7 @@ ExceptionOr<String> Internals::configurationForViewport(float devicePixelRatio, 
     restrictMinimumScaleFactorToViewportSize(attributes, IntSize(availableWidth, availableHeight), devicePixelRatio);
     restrictScaleFactorToInitialScaleIfNotUserScalable(attributes);
 
-    return String { "viewport size " + String::number(attributes.layoutSize.width()) + "x" + String::number(attributes.layoutSize.height()) + " scale " + String::number(attributes.initialScale) + " with limits [" + String::number(attributes.minimumScale) + ", " + String::number(attributes.maximumScale) + "] and userScalable " + (attributes.userScalable ? "true" : "false") };
+    return makeString("viewport size ", FormattedNumber::fixedPrecision(attributes.layoutSize.width()), 'x', FormattedNumber::fixedPrecision(attributes.layoutSize.height()), " scale ", FormattedNumber::fixedPrecision(attributes.initialScale), " with limits [", FormattedNumber::fixedPrecision(attributes.minimumScale), ", ", FormattedNumber::fixedPrecision(attributes.maximumScale), "] and userScalable ", (attributes.userScalable ? "true" : "false"));
 }
 
 ExceptionOr<bool> Internals::wasLastChangeUserEdit(Element& textField)
@@ -1755,11 +1860,6 @@ bool Internals::elementShouldAutoComplete(HTMLInputElement& element)
     return element.shouldAutocomplete();
 }
 
-void Internals::setEditingValue(HTMLInputElement& element, const String& value)
-{
-    element.setEditingValue(value);
-}
-
 void Internals::setAutofilled(HTMLInputElement& element, bool enabled)
 {
     element.setAutoFilled(enabled);
@@ -1776,6 +1876,8 @@ static AutoFillButtonType toAutoFillButtonType(Internals::AutoFillButtonType typ
         return AutoFillButtonType::Contacts;
     case Internals::AutoFillButtonType::StrongPassword:
         return AutoFillButtonType::StrongPassword;
+    case Internals::AutoFillButtonType::CreditCard:
+        return AutoFillButtonType::CreditCard;
     }
     ASSERT_NOT_REACHED();
     return AutoFillButtonType::None;
@@ -1792,6 +1894,8 @@ static Internals::AutoFillButtonType toInternalsAutoFillButtonType(AutoFillButto
         return Internals::AutoFillButtonType::Contacts;
     case AutoFillButtonType::StrongPassword:
         return Internals::AutoFillButtonType::StrongPassword;
+    case AutoFillButtonType::CreditCard:
+        return Internals::AutoFillButtonType::CreditCard;
     }
     ASSERT_NOT_REACHED();
     return Internals::AutoFillButtonType::None;
@@ -1863,6 +1967,11 @@ unsigned Internals::lengthFromRange(Element& scope, const Range& range)
 String Internals::rangeAsText(const Range& range)
 {
     return range.text();
+}
+
+String Internals::rangeAsTextUsingBackwardsTextIterator(const Range& range)
+{
+    return plainTextUsingBackwardsTextIteratorForTesting(range);
 }
 
 Ref<Range> Internals::subrange(Range& range, int rangeLocation, int rangeLength)
@@ -2114,7 +2223,7 @@ ExceptionOr<RefPtr<NodeList>> Internals::nodesFromRect(Document& document, int c
         return nullptr;
 
     HitTestResult result(point, topPadding, rightPadding, bottomPadding, leftPadding);
-    renderView->hitTest(request, result);
+    document.hitTest(request, result);
     const HitTestResult::NodeSet& nodeSet = result.listBasedTestResult();
     Vector<Ref<Node>> matches;
     matches.reserveInitialCapacity(nodeSet.size());
@@ -2159,7 +2268,7 @@ String Internals::parserMetaData(JSC::JSValue code)
         GetCallerCodeBlockFunctor iter;
         exec->iterate(iter);
         CodeBlock* codeBlock = iter.codeBlock();
-        executable = codeBlock->ownerScriptExecutable();
+        executable = codeBlock->ownerExecutable();
     } else if (code.isFunction(vm)) {
         JSFunction* funcObj = JSC::jsCast<JSFunction*>(code.toObject(exec));
         executable = funcObj->jsExecutable();
@@ -2175,7 +2284,7 @@ String Internals::parserMetaData(JSC::JSValue code)
 
     if (executable->isFunctionExecutable()) {
         FunctionExecutable* funcExecutable = reinterpret_cast<FunctionExecutable*>(executable);
-        String inferredName = funcExecutable->inferredName().string();
+        String inferredName = funcExecutable->ecmaName().string();
         result.appendLiteral("function \"");
         result.append(inferredName);
         result.append('"');
@@ -2318,6 +2427,12 @@ void Internals::handleAcceptedCandidate(const String& candidate, unsigned locati
     contextDocument()->frame()->editor().handleAcceptedCandidate(result);
 }
 
+void Internals::changeSelectionListType()
+{
+    if (auto frame = makeRefPtr(this->frame()))
+        frame->editor().changeSelectionListType();
+}
+
 bool Internals::isOverwriteModeEnabled()
 {
     Document* document = contextDocument();
@@ -2365,7 +2480,7 @@ static ExceptionOr<FindOptions> parseFindOptions(const Vector<String>& optionLis
         if (!found)
             return Exception { SyntaxError };
     }
-    return WTFMove(result);
+    return result;
 }
 
 ExceptionOr<RefPtr<Range>> Internals::rangeOfString(const String& text, RefPtr<Range>&& referenceRange, const Vector<String>& findOptions)
@@ -2408,6 +2523,11 @@ ExceptionOr<unsigned> Internals::countFindMatches(const String& text, const Vect
     return document->page()->countFindMatches(text, parsedOptions.releaseReturnValue(), 1000);
 }
 
+unsigned Internals::numberOfIDBTransactions() const
+{
+    return IDBTransaction::numberOfIDBTransactions;
+}
+
 unsigned Internals::numberOfLiveNodes() const
 {
     unsigned nodeCount = 0;
@@ -2441,6 +2561,15 @@ uint64_t Internals::documentIdentifier(const Document& document) const
 bool Internals::isDocumentAlive(uint64_t documentIdentifier) const
 {
     return Document::allDocumentsMap().contains(makeObjectIdentifier<DocumentIdentifierType>(documentIdentifier));
+}
+
+bool Internals::isAnyWorkletGlobalScopeAlive() const
+{
+#if ENABLE(CSS_PAINTING_API)
+    return !WorkletGlobalScope::allWorkletGlobalScopesSet().isEmpty();
+#else
+    return false;
+#endif
 }
 
 String Internals::serviceWorkerClientIdentifier(const Document& document) const
@@ -2531,6 +2660,10 @@ static LayerTreeFlags toLayerTreeFlags(unsigned short flags)
         layerTreeFlags |= LayerTreeFlagsIncludeAcceleratesDrawing;
     if (flags & Internals::LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED)
         layerTreeFlags |= LayerTreeFlagsIncludeBackingStoreAttached;
+    if (flags & Internals::LAYER_TREE_INCLUDES_ROOT_LAYER_PROPERTIES)
+        layerTreeFlags |= LayerTreeFlagsIncludeRootLayerProperties;
+    if (flags & Internals::LAYER_TREE_INCLUDES_EVENT_REGION)
+        layerTreeFlags |= LayerTreeFlagsIncludeEventRegion;
 
     return layerTreeFlags;
 }
@@ -2576,11 +2709,87 @@ ExceptionOr<String> Internals::repaintRectsAsText() const
     return document->frame()->trackedRepaintRectsAsText();
 }
 
+ExceptionOr<String> Internals::scrollbarOverlayStyle(Node* node) const
+{
+    if (!node)
+        node = contextDocument();
+
+    if (!node)
+        return Exception { InvalidAccessError };
+
+    node->document().updateLayoutIgnorePendingStylesheets();
+
+    ScrollableArea* scrollableArea = nullptr;
+    if (is<Document>(*node)) {
+        auto* frameView = downcast<Document>(node)->view();
+        if (!frameView)
+            return Exception { InvalidAccessError };
+
+        scrollableArea = frameView;
+    } else if (is<Element>(*node)) {
+        auto& element = *downcast<Element>(node);
+        if (!element.renderBox())
+            return Exception { InvalidAccessError };
+
+        scrollableArea = element.renderBox()->layer();
+    } else
+        return Exception { InvalidNodeTypeError };
+
+    if (!scrollableArea)
+        return Exception { InvalidNodeTypeError };
+
+    switch (scrollableArea->scrollbarOverlayStyle()) {
+    case ScrollbarOverlayStyleDefault:
+        return "default"_str;
+    case ScrollbarOverlayStyleDark:
+        return "dark"_str;
+    case ScrollbarOverlayStyleLight:
+        return "light"_str;
+    }
+
+    ASSERT_NOT_REACHED();
+    return "unknown"_str;
+}
+
+ExceptionOr<bool> Internals::scrollbarUsingDarkAppearance(Node* node) const
+{
+    if (!node)
+        node = contextDocument();
+
+    if (!node)
+        return Exception { InvalidAccessError };
+
+    node->document().updateLayoutIgnorePendingStylesheets();
+
+    ScrollableArea* scrollableArea = nullptr;
+    if (is<Document>(*node)) {
+        auto* frameView = downcast<Document>(node)->view();
+        if (!frameView)
+            return Exception { InvalidAccessError };
+
+        scrollableArea = frameView;
+    } else if (is<Element>(*node)) {
+        auto& element = *downcast<Element>(node);
+        if (!element.renderBox())
+            return Exception { InvalidAccessError };
+
+        scrollableArea = element.renderBox()->layer();
+    } else
+        return Exception { InvalidNodeTypeError };
+
+    if (!scrollableArea)
+        return Exception { InvalidNodeTypeError };
+
+    return scrollableArea->useDarkAppearance();
+}
+
 ExceptionOr<String> Internals::scrollingStateTreeAsText() const
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
+
+    document->updateLayoutIgnorePendingStylesheets();
 
     Page* page = document->page();
     if (!page)
@@ -2906,7 +3115,7 @@ void Internals::setHeaderHeight(float height)
     if (!document || !document->view())
         return;
 
-    document->view()->setHeaderHeight(height);
+    document->page()->setHeaderHeight(height);
 }
 
 void Internals::setFooterHeight(float height)
@@ -2915,7 +3124,7 @@ void Internals::setFooterHeight(float height)
     if (!document || !document->view())
         return;
 
-    document->view()->setFooterHeight(height);
+    document->page()->setFooterHeight(height);
 }
 
 void Internals::setTopContentInset(float contentInset)
@@ -2934,31 +3143,31 @@ void Internals::webkitWillEnterFullScreenForElement(Element& element)
     Document* document = contextDocument();
     if (!document)
         return;
-    document->webkitWillEnterFullScreenForElement(&element);
+    document->fullscreenManager().willEnterFullscreen(element);
 }
 
-void Internals::webkitDidEnterFullScreenForElement(Element& element)
+void Internals::webkitDidEnterFullScreenForElement(Element&)
 {
     Document* document = contextDocument();
     if (!document)
         return;
-    document->webkitDidEnterFullScreenForElement(&element);
+    document->fullscreenManager().didEnterFullscreen();
 }
 
-void Internals::webkitWillExitFullScreenForElement(Element& element)
+void Internals::webkitWillExitFullScreenForElement(Element&)
 {
     Document* document = contextDocument();
     if (!document)
         return;
-    document->webkitWillExitFullScreenForElement(&element);
+    document->fullscreenManager().willExitFullscreen();
 }
 
-void Internals::webkitDidExitFullScreenForElement(Element& element)
+void Internals::webkitDidExitFullScreenForElement(Element&)
 {
     Document* document = contextDocument();
     if (!document)
         return;
-    document->webkitDidExitFullScreenForElement(&element);
+    document->fullscreenManager().didExitFullscreen();
 }
 
 bool Internals::isAnimatingFullScreen() const
@@ -2966,7 +3175,7 @@ bool Internals::isAnimatingFullScreen() const
     Document* document = contextDocument();
     if (!document)
         return false;
-    return document->isAnimatingFullScreen();
+    return document->fullscreenManager().isAnimatingFullscreen();
 }
 
 #endif
@@ -3124,14 +3333,14 @@ ExceptionOr<unsigned> Internals::compositingUpdateCount()
     return document->renderView()->compositor().compositingUpdateCount();
 }
 
-ExceptionOr<void> Internals::setCompositingPolicyOverride(std::optional<CompositingPolicy> policyOverride)
+ExceptionOr<void> Internals::setCompositingPolicyOverride(Optional<CompositingPolicy> policyOverride)
 {
     Document* document = contextDocument();
     if (!document)
         return Exception { InvalidAccessError };
 
     if (!policyOverride) {
-        document->page()->setCompositingPolicyOverride(std::nullopt);
+        document->page()->setCompositingPolicyOverride(WTF::nullopt);
         return { };
     }
 
@@ -3147,7 +3356,7 @@ ExceptionOr<void> Internals::setCompositingPolicyOverride(std::optional<Composit
     return { };
 }
 
-ExceptionOr<std::optional<Internals::CompositingPolicy>> Internals::compositingPolicyOverride() const
+ExceptionOr<Optional<Internals::CompositingPolicy>> Internals::compositingPolicyOverride() const
 {
     Document* document = contextDocument();
     if (!document)
@@ -3155,7 +3364,7 @@ ExceptionOr<std::optional<Internals::CompositingPolicy>> Internals::compositingP
 
     auto policyOverride = document->page()->compositingPolicyOverride();
     if (!policyOverride)
-        return { std::nullopt };
+        return { WTF::nullopt };
 
     switch (policyOverride.value()) {
     case WebCore::CompositingPolicy::Normal:
@@ -3191,7 +3400,7 @@ unsigned Internals::layoutCount() const
     return document->view()->layoutContext().layoutCount();
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 static const char* cursorTypeToString(Cursor::Type cursorType)
 {
     switch (cursorType) {
@@ -3252,7 +3461,7 @@ ExceptionOr<String> Internals::getCurrentCursorInfo()
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     Cursor cursor = document->frame()->eventHandler().currentMouseCursor();
 
     StringBuilder result;
@@ -3265,20 +3474,19 @@ ExceptionOr<String> Internals::getCurrentCursorInfo()
     if (cursor.image()) {
         FloatSize size = cursor.image()->size();
         result.appendLiteral(" image=");
-        result.appendNumber(size.width());
+        result.appendFixedPrecisionNumber(size.width());
         result.append('x');
-        result.appendNumber(size.height());
+        result.appendFixedPrecisionNumber(size.height());
     }
 #if ENABLE(MOUSE_CURSOR_SCALE)
     if (cursor.imageScaleFactor() != 1) {
         result.appendLiteral(" scale=");
-        NumberToStringBuffer buffer;
-        result.append(numberToFixedPrecisionString(cursor.imageScaleFactor(), 8, buffer, true));
+        result.appendFixedPrecisionNumber(cursor.imageScaleFactor(), 8);
     }
 #endif
     return result.toString();
 #else
-    return String { "FAIL: Cursor details not available on this platform." };
+    return "FAIL: Cursor details not available on this platform."_str;
 #endif
 }
 
@@ -3324,12 +3532,12 @@ void Internals::reloadExpiredOnly()
     frame()->loader().reload(ReloadOption::ExpiredOnly);
 }
 
-void Internals::enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight)
+void Internals::enableAutoSizeMode(bool enabled, int width, int height)
 {
     auto* document = contextDocument();
     if (!document || !document->view())
         return;
-    document->view()->enableAutoSizeMode(enabled, IntSize(minimumWidth, minimumHeight), IntSize(maximumWidth, maximumHeight));
+    document->view()->enableAutoSizeMode(enabled, { width, height });
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -3430,9 +3638,25 @@ void Internals::endSimulatedHDCPError(HTMLMediaElement& element)
 
 bool Internals::elementShouldBufferData(HTMLMediaElement& element)
 {
-    return element.shouldBufferData();
+    return element.bufferingPolicy() < MediaPlayer::BufferingPolicy::LimitReadAhead;
 }
 
+String Internals::elementBufferingPolicy(HTMLMediaElement& element)
+{
+    switch (element.bufferingPolicy()) {
+    case MediaPlayer::BufferingPolicy::Default:
+        return "Default";
+    case MediaPlayer::BufferingPolicy::LimitReadAhead:
+        return "LimitReadAhead";
+    case MediaPlayer::BufferingPolicy::MakeResourcesPurgeable:
+        return "MakeResourcesPurgeable";
+    case MediaPlayer::BufferingPolicy::PurgeResources:
+        return "PurgeResources";
+    }
+
+    ASSERT_NOT_REACHED();
+    return "UNKNOWN";
+}
 #endif
 
 bool Internals::isSelectPopupVisible(HTMLSelectElement& element)
@@ -3443,7 +3667,7 @@ bool Internals::isSelectPopupVisible(HTMLSelectElement& element)
     if (!is<RenderMenuList>(renderer))
         return false;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return downcast<RenderMenuList>(*renderer).popupIsVisible();
 #else
     return false;
@@ -3516,6 +3740,16 @@ ExceptionOr<void> Internals::setCaptionDisplayMode(const String& mode)
     return { };
 }
 
+#if ENABLE(VIDEO_TRACK)
+RefPtr<TextTrackCueGeneric> Internals::createGenericCue(double startTime, double endTime, String text)
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return nullptr;
+    return TextTrackCueGeneric::create(*document, MediaTime::createWithDouble(startTime), MediaTime::createWithDouble(endTime), text);
+}
+#endif
+
 #if ENABLE(VIDEO)
 
 Ref<TimeRanges> Internals::createTimeRanges(Float32Array& startTimes, Float32Array& endTimes)
@@ -3545,6 +3779,13 @@ ExceptionOr<Ref<DOMRect>> Internals::selectionBounds()
     return DOMRect::create(document->frame()->selection().selectionBounds());
 }
 
+void Internals::setSelectionWithoutValidation(Ref<Node> baseNode, unsigned baseOffset, RefPtr<Node> extentNode, unsigned extentOffset)
+{
+    contextDocument()->frame()->selection().moveTo(
+        VisiblePosition { createLegacyEditingPosition(baseNode.ptr(), baseOffset) },
+        VisiblePosition { createLegacyEditingPosition(extentNode.get(), extentOffset) });
+}
+
 ExceptionOr<bool> Internals::isPluginUnavailabilityIndicatorObscured(Element& element)
 {
     if (!is<HTMLPlugInElement>(element))
@@ -3570,6 +3811,11 @@ bool Internals::isPluginSnapshotted(Element& element)
     return is<HTMLPlugInElement>(element) && downcast<HTMLPlugInElement>(element).displayState() <= HTMLPlugInElement::DisplayingSnapshot;
 }
 
+bool Internals::pluginIsBelowSizeThreshold(Element& element)
+{
+    return is<HTMLPlugInElement>(element) && downcast<HTMLPlugInElement>(element).isBelowSizeThreshold();
+}
+
 #if ENABLE(MEDIA_SOURCE)
 
 void Internals::initializeMockMediaSource()
@@ -3583,12 +3829,12 @@ void Internals::initializeMockMediaSource()
     MediaPlayerFactorySupport::callRegisterMediaEngine(MockMediaPlayerMediaSource::registerMediaEngine);
 }
 
-Vector<String> Internals::bufferedSamplesForTrackID(SourceBuffer& buffer, const AtomicString& trackID)
+Vector<String> Internals::bufferedSamplesForTrackID(SourceBuffer& buffer, const AtomString& trackID)
 {
     return buffer.bufferedSamplesForTrackID(trackID);
 }
 
-Vector<String> Internals::enqueuedSamplesForTrackID(SourceBuffer& buffer, const AtomicString& trackID)
+Vector<String> Internals::enqueuedSamplesForTrackID(SourceBuffer& buffer, const AtomString& trackID)
 {
     return buffer.enqueuedSamplesForTrackID(trackID);
 }
@@ -3760,8 +4006,6 @@ void Internals::setMediaElementRestrictions(HTMLMediaElement& element, StringVie
 #endif
         if (equalLettersIgnoringASCIICase(restrictionString, "requireusergestureforaudioratechange"))
             restrictions |= MediaElementSession::RequireUserGestureForAudioRateChange;
-        if (equalLettersIgnoringASCIICase(restrictionString, "metadatapreloadingnotpermitted"))
-            restrictions |= MediaElementSession::MetadataPreloadingNotPermitted;
         if (equalLettersIgnoringASCIICase(restrictionString, "autopreloadingnotpermitted"))
             restrictions |= MediaElementSession::AutoPreloadingNotPermitted;
         if (equalLettersIgnoringASCIICase(restrictionString, "invisibleautoplaynotpermitted"))
@@ -3983,7 +4227,9 @@ void Internals::setPageMuted(StringView statesString)
         if (equalLettersIgnoringASCIICase(stateString, "audio"))
             state |= MediaProducer::AudioIsMuted;
         if (equalLettersIgnoringASCIICase(stateString, "capturedevices"))
-            state |= MediaProducer::CaptureDevicesAreMuted;
+            state |= MediaProducer::AudioAndVideoCaptureIsMuted;
+        if (equalLettersIgnoringASCIICase(stateString, "screencapture"))
+            state |= MediaProducer::ScreenCaptureIsMuted;
     }
 
     if (Page* page = document->page())
@@ -4032,6 +4278,10 @@ String Internals::pageMediaState()
         string.append("HasMutedVideoCaptureDevice,");
     if (state & MediaProducer::HasUserInteractedWithMediaElement)
         string.append("HasUserInteractedWithMediaElement,");
+    if (state & MediaProducer::HasActiveDisplayCaptureDevice)
+        string.append("HasActiveDisplayCaptureDevice,");
+    if (state & MediaProducer::HasMutedDisplayCaptureDevice)
+        string.append("HasMutedDisplayCaptureDevice,");
 
     if (string.isEmpty())
         string.append("IsNotPlaying");
@@ -4078,7 +4328,7 @@ void Internals::queueMicroTask(int testNumber)
         return;
 
     auto microtask = std::make_unique<ActiveDOMCallbackMicrotask>(MicrotaskQueue::mainThreadQueue(), *document, [document, testNumber]() {
-        document->addConsoleMessage(MessageSource::JS, MessageLevel::Debug, makeString("MicroTask #", String::number(testNumber), " has run."));
+        document->addConsoleMessage(MessageSource::JS, MessageLevel::Debug, makeString("MicroTask #", testNumber, " has run."));
     });
 
     MicrotaskQueue::mainThreadQueue().append(WTFMove(microtask));
@@ -4106,7 +4356,7 @@ static void appendOffsets(StringBuilder& builder, const Vector<LayoutUnit>& snap
         else
             justStarting = false;
 
-        builder.append(String::number(coordinate.toUnsigned()));
+        builder.appendNumber(coordinate.toUnsigned());
     }
     builder.appendLiteral(" }");
 }
@@ -4216,10 +4466,9 @@ String Internals::getCurrentMediaControlsStatusForElement(HTMLMediaElement& medi
 
 #if !PLATFORM(COCOA)
 
-String Internals::userVisibleString(const DOMURL&)
+String Internals::userVisibleString(const DOMURL& url)
 {
-    // Cocoa-specific function. Could ASSERT_NOT_REACHED, but that's probably overkill.
-    return String();
+    return WTF::URLHelpers::userVisibleURL(url.href().string().utf8());
 }
 
 #endif
@@ -4271,23 +4520,14 @@ JSValue Internals::cloneArrayBuffer(JSC::ExecState& state, JSValue buffer, JSVal
 
 #endif
 
-String Internals::resourceLoadStatisticsForOrigin(const String& origin)
+String Internals::resourceLoadStatisticsForURL(const DOMURL& url)
 {
-    return ResourceLoadObserver::shared().statisticsForOrigin(origin);
+    return ResourceLoadObserver::shared().statisticsForURL(url.href());
 }
 
 void Internals::setResourceLoadStatisticsEnabled(bool enable)
 {
     DeprecatedGlobalSettings::setResourceLoadStatisticsEnabled(enable);
-}
-
-void Internals::setUserGrantsStorageAccess(bool value)
-{
-    Document* document = contextDocument();
-    if (!document)
-        return;
-
-    document->setUserGrantsStorageAccessOverride(value);
 }
 
 String Internals::composedTreeAsText(Node& node)
@@ -4306,6 +4546,15 @@ void Internals::withUserGesture(RefPtr<VoidCallback>&& callback)
 {
     UserGestureIndicator gestureIndicator(ProcessingUserGesture, contextDocument());
     callback->handleEvent();
+}
+
+bool Internals::userIsInteracting()
+{
+    if (auto* document = contextDocument()) {
+        if (auto* page = document->page())
+            return page->chrome().client().userIsInteracting();
+    }
+    return false;
 }
 
 double Internals::lastHandledUserGestureTimestamp()
@@ -4357,13 +4606,13 @@ void Internals::setBaseWritingDirection(BaseWritingDirection direction)
         if (auto* frame = document->frame()) {
             switch (direction) {
             case BaseWritingDirection::Ltr:
-                frame->editor().setBaseWritingDirection(LeftToRightWritingDirection);
+                frame->editor().setBaseWritingDirection(WritingDirection::LeftToRight);
                 break;
             case BaseWritingDirection::Rtl:
-                frame->editor().setBaseWritingDirection(RightToLeftWritingDirection);
+                frame->editor().setBaseWritingDirection(WritingDirection::RightToLeft);
                 break;
             case BaseWritingDirection::Natural:
-                frame->editor().setBaseWritingDirection(NaturalWritingDirection);
+                frame->editor().setBaseWritingDirection(WritingDirection::Natural);
                 break;
             }
         }
@@ -4399,6 +4648,28 @@ bool Internals::pageHasPointerLock() const
 }
 #endif
 
+void Internals::markContextAsInsecure()
+{
+    auto* document = contextDocument();
+    if (!document)
+        return;
+
+    document->securityOrigin().setIsPotentiallyTrustworthy(false);
+}
+
+void Internals::postTask(RefPtr<VoidCallback>&& callback)
+{
+    auto* document = contextDocument();
+    if (!document) {
+        callback->handleEvent();
+        return;
+    }
+
+    document->postTask([callback = WTFMove(callback)](ScriptExecutionContext&) {
+        callback->handleEvent();
+    });
+}
+
 Vector<String> Internals::accessKeyModifiers() const
 {
     Vector<String> accessKeyModifierStrings;
@@ -4408,7 +4679,7 @@ Vector<String> Internals::accessKeyModifiers() const
         case PlatformEvent::Modifier::AltKey:
             accessKeyModifierStrings.append("altKey"_s);
             break;
-        case PlatformEvent::Modifier::CtrlKey:
+        case PlatformEvent::Modifier::ControlKey:
             accessKeyModifierStrings.append("ctrlKey"_s);
             break;
         case PlatformEvent::Modifier::MetaKey:
@@ -4431,7 +4702,7 @@ Vector<String> Internals::accessKeyModifiers() const
 
 void Internals::setQuickLookPassword(const String& password)
 {
-#if PLATFORM(IOS) && USE(QUICK_LOOK)
+#if PLATFORM(IOS_FAMILY) && USE(QUICK_LOOK)
     auto& quickLookHandleClient = MockPreviewLoaderClient::singleton();
     PreviewLoader::setClientForTesting(&quickLookHandleClient);
     quickLookHandleClient.setPassword(password);
@@ -4442,8 +4713,15 @@ void Internals::setQuickLookPassword(const String& password)
 
 void Internals::setAsRunningUserScripts(Document& document)
 {
-    document.topDocument().setAsRunningUserScripts();
+    document.setAsRunningUserScripts();
 }
+
+#if ENABLE(APPLE_PAY)
+void Internals::setApplePayIsActive(Document& document)
+{
+    document.setApplePayIsActive();
+}
+#endif
 
 #if ENABLE(WEBGL)
 void Internals::simulateWebGLContextChanged(WebGLRenderingContext& context)
@@ -4454,6 +4732,15 @@ void Internals::simulateWebGLContextChanged(WebGLRenderingContext& context)
 void Internals::failNextGPUStatusCheck(WebGLRenderingContext& context)
 {
     context.setFailNextGPUStatusCheck();
+}
+
+bool Internals::hasLowAndHighPowerGPUs()
+{
+#if PLATFORM(MAC)
+    return WebCore::hasLowAndHighPowerGPUs();
+#else
+    return false;
+#endif
 }
 #endif
 
@@ -4540,28 +4827,7 @@ void Internals::videoSampleAvailable(MediaSample& sample)
         m_nextTrackFramePromise->resolve(imageData.releaseReturnValue().releaseNonNull());
     else
         m_nextTrackFramePromise->reject(imageData.exception().code());
-    m_nextTrackFramePromise = std::nullopt;
-}
-
-ExceptionOr<void> Internals::setMediaDeviceState(const String& id, const String& property, bool value)
-{
-    auto* document = contextDocument();
-    if (!document)
-        return Exception { InvalidAccessError, "No context document"_s };
-
-    if (!equalLettersIgnoringASCIICase(property, "enabled"))
-        return Exception { InvalidAccessError, makeString("\"" + property, "\" is not a valid property for this method.") };
-
-    auto salt = document->deviceIDHashSalt();
-    CaptureDevice device = RealtimeMediaSourceCenter::singleton().captureDeviceWithUniqueID(id, salt);
-    if (!device)
-        return Exception { InvalidAccessError, makeString("device with ID \"" + id, "\" not found.") };
-
-    auto result = RealtimeMediaSourceCenter::singleton().setDeviceEnabled(device.persistentId(), value);
-    if (result.hasException())
-        return result.releaseException();
-
-    return { };
+    m_nextTrackFramePromise = WTF::nullopt;
 }
 
 void Internals::delayMediaStreamTrackSamples(MediaStreamTrack& track, float delay)
@@ -4587,6 +4853,21 @@ void Internals::simulateMediaStreamTrackCaptureSourceFailure(MediaStreamTrack& t
 void Internals::setMediaStreamTrackIdentifier(MediaStreamTrack& track, String&& id)
 {
     track.setIdForTesting(WTFMove(id));
+}
+
+void Internals::setMediaStreamSourceInterrupted(MediaStreamTrack& track, bool interrupted)
+{
+    track.source().setInterruptedForTesting(interrupted);
+}
+
+void Internals::setDisableGetDisplayMediaUserGestureConstraint(bool value)
+{
+    Document* document = contextDocument();
+    if (!document || !document->domWindow())
+        return;
+
+    if (auto* mediaDevices = NavigatorMediaDevices::mediaDevices(document->domWindow()->navigator()))
+        mediaDevices->setDisableGetDisplayMediaUserGestureConstraint(value);
 }
 #endif
 
@@ -4619,6 +4900,29 @@ double Internals::preferredAudioBufferSize() const
     return AudioSession::sharedSession().preferredBufferSize();
 #endif
     return 0;
+}
+
+bool Internals::audioSessionActive() const
+{
+#if USE(AUDIO_SESSION)
+    return AudioSession::sharedSession().isActive();
+#endif
+    return false;
+}
+
+void Internals::storeRegistrationsOnDisk(DOMPromiseDeferred<void>&& promise)
+{
+#if ENABLE(SERVICE_WORKER)
+    if (!contextDocument())
+        return;
+
+    auto& connection = ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(contextDocument()->sessionID());
+    connection.storeRegistrationsOnDiskForTesting([promise = WTFMove(promise)]() mutable {
+        promise.resolve();
+    });
+#else
+    promise.resolve();
+#endif
 }
 
 void Internals::clearCacheStorageMemoryRepresentation(DOMPromiseDeferred<void>&& promise)
@@ -4654,6 +4958,22 @@ void Internals::cacheStorageEngineRepresentation(DOMPromiseDeferred<IDLDOMString
     m_cacheStorageConnection->engineRepresentation([promise = WTFMove(promise)](const String& result) mutable {
         promise.resolve(result);
     });
+}
+
+void Internals::updateQuotaBasedOnSpaceUsage()
+{
+    auto* document = contextDocument();
+    if (!document)
+        return;
+
+    if (!m_cacheStorageConnection) {
+        if (auto* page = contextDocument()->page())
+            m_cacheStorageConnection = page->cacheStorageProvider().createCacheStorageConnection(page->sessionID());
+        if (!m_cacheStorageConnection)
+            return;
+    }
+
+    m_cacheStorageConnection->updateQuotaBasedOnSpaceUsage(ClientOrigin { document->topOrigin().data(), document->securityOrigin().data() });
 }
 
 void Internals::setConsoleMessageListener(RefPtr<StringCallback>&& listener)
@@ -4704,39 +5024,10 @@ bool Internals::hasServiceWorkerConnection()
 }
 #endif
 
-String Internals::timelineDescription(AnimationTimeline& timeline)
-{
-    return timeline.description();
-}
-
-void Internals::pauseTimeline(AnimationTimeline& timeline)
-{
-    timeline.pause();
-}
-
-void Internals::setTimelineCurrentTime(AnimationTimeline& timeline, double currentTime)
-{
-    timeline.setCurrentTime(Seconds::fromMilliseconds(currentTime));
-}
-
-void Internals::testIncomingSyncIPCMessageWhileWaitingForSyncReply()
-{
-    ASSERT(contextDocument());
-    ASSERT(contextDocument()->page());
-    contextDocument()->page()->chrome().client().testIncomingSyncIPCMessageWhileWaitingForSyncReply();
-}
-
 #if ENABLE(APPLE_PAY)
-MockPaymentCoordinator& Internals::mockPaymentCoordinator() const
+MockPaymentCoordinator& Internals::mockPaymentCoordinator(Document& document)
 {
-    return *m_mockPaymentCoordinator;
-}
-#endif
-
-#if ENABLE(WEB_AUTHN)
-MockCredentialsMessenger& Internals::mockCredentialsMessenger() const
-{
-    return *m_mockCredentialsMessenger;
+    return downcast<MockPaymentCoordinator>(document.frame()->page()->paymentCoordinator().client());
 }
 #endif
 
@@ -4823,16 +5114,100 @@ size_t Internals::pluginCount()
 
 void Internals::notifyResourceLoadObserver()
 {
-    ResourceLoadObserver::shared().notifyObserver();
+    ResourceLoadObserver::shared().updateCentralStatisticsStore();
 }
 
-unsigned long Internals::primaryScreenDisplayID()
+unsigned Internals::primaryScreenDisplayID()
 {
 #if PLATFORM(MAC)
     return WebCore::primaryScreenDisplayID();
 #else
     return 0;
 #endif
+}
+
+bool Internals::capsLockIsOn()
+{
+    return WebCore::PlatformKeyboardEvent::currentCapsLockState();
+}
+
+bool Internals::supportsVCPEncoder()
+{
+#if defined(ENABLE_VCP_ENCODER)
+    return ENABLE_VCP_ENCODER || ENABLE_VCP_VTB_ENCODER;
+#else
+    return false;
+#endif
+}
+
+Optional<HEVCParameterSet> Internals::parseHEVCCodecParameters(const String& codecString)
+{
+    return WebCore::parseHEVCCodecParameters(codecString);
+}
+
+auto Internals::getCookies() const -> Vector<CookieData>
+{
+    auto* document = contextDocument();
+    if (!document)
+        return { };
+
+    auto* page = document->page();
+    if (!page)
+        return { };
+
+    Vector<Cookie> cookies;
+    page->cookieJar().getRawCookies(*document, document->cookieURL(), cookies);
+    return WTF::map(cookies, [](auto& cookie) {
+        return CookieData { cookie };
+    });
+}
+
+void Internals::setAlwaysAllowLocalWebarchive(bool alwaysAllowLocalWebarchive)
+{
+    auto* localFrame = frame();
+    if (!localFrame)
+        return;
+    localFrame->loader().setAlwaysAllowLocalWebarchive(alwaysAllowLocalWebarchive);
+}
+
+void Internals::processWillSuspend()
+{
+    PlatformMediaSessionManager::sharedManager().processWillSuspend();
+}
+
+void Internals::processDidResume()
+{
+    PlatformMediaSessionManager::sharedManager().processDidResume();
+}
+
+void Internals::testDictionaryLogging()
+{
+    auto* document = contextDocument();
+    if (!document)
+        return;
+
+    auto* page = document->page();
+    if (!page)
+        return;
+
+    DiagnosticLoggingClient::ValueDictionary dictionary;
+    dictionary.set("stringKey"_s, String("stringValue"));
+    dictionary.set("uint64Key"_s, std::numeric_limits<uint64_t>::max());
+    dictionary.set("int64Key"_s, std::numeric_limits<int64_t>::min());
+    dictionary.set("boolKey"_s, true);
+    dictionary.set("doubleKey"_s, 2.7182818284590452353602874);
+
+    page->diagnosticLoggingClient().logDiagnosticMessageWithValueDictionary("testMessage"_s, "testDescription"_s, dictionary, ShouldSample::No);
+}
+
+void Internals::setXHRMaximumIntervalForUserGestureForwarding(XMLHttpRequest& request, double interval)
+{
+    request.setMaximumIntervalForUserGestureForwarding(interval);
+}
+
+void Internals::setIsPlayingToAutomotiveHeadUnit(bool isPlaying)
+{
+    PlatformMediaSessionManager::sharedManager().setIsPlayingToAutomotiveHeadUnit(isPlaying);
 }
 
 } // namespace WebCore

@@ -205,7 +205,7 @@ bool InspectorFrontendClientLocal::canAttachWindow()
 
 void InspectorFrontendClientLocal::setDockingUnavailable(bool unavailable)
 {
-    evaluateOnLoad(String::format("[\"setDockingUnavailable\", %s]", unavailable ? "true" : "false"));
+    evaluateOnLoad(makeString("[\"setDockingUnavailable\", ", unavailable ? "true" : "false", ']'));
 }
 
 void InspectorFrontendClientLocal::changeAttachedWindowHeight(unsigned height)
@@ -223,6 +223,11 @@ void InspectorFrontendClientLocal::changeAttachedWindowWidth(unsigned width)
     setAttachedWindowWidth(attachedWidth);
 }
 
+void InspectorFrontendClientLocal::changeSheetRect(const FloatRect& rect)
+{
+    setSheetRect(rect);
+}
+
 void InspectorFrontendClientLocal::openInNewTab(const String& url)
 {
     UserGestureIndicator indicator { ProcessingUserGesture };
@@ -230,7 +235,7 @@ void InspectorFrontendClientLocal::openInNewTab(const String& url)
     FrameLoadRequest frameLoadRequest { *mainFrame.document(), mainFrame.document()->securityOrigin(), { }, "_blank"_s, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
 
     bool created;
-    RefPtr<Frame> frame = WebCore::createWindow(mainFrame, mainFrame, WTFMove(frameLoadRequest), { }, created);
+    auto frame = WebCore::createWindow(mainFrame, mainFrame, WTFMove(frameLoadRequest), { }, created);
     if (!frame)
         return;
 
@@ -270,7 +275,7 @@ void InspectorFrontendClientLocal::setAttachedWindow(DockSide dockSide)
 
     m_dockSide = dockSide;
 
-    evaluateOnLoad(String::format("[\"setDockSide\", \"%s\"]", side));
+    evaluateOnLoad(makeString("[\"setDockSide\", \"", side, "\"]"));
 }
 
 void InspectorFrontendClientLocal::restoreAttachedWindowHeight()
@@ -294,7 +299,7 @@ bool InspectorFrontendClientLocal::isDebuggingEnabled()
 
 void InspectorFrontendClientLocal::setDebuggingEnabled(bool enabled)
 {
-    evaluateOnLoad(String::format("[\"setDebuggingEnabled\", %s]", enabled ? "true" : "false"));
+    evaluateOnLoad(makeString("[\"setDebuggingEnabled\", ", enabled ? "true" : "false", ']'));
 }
 
 bool InspectorFrontendClientLocal::isTimelineProfilingEnabled()
@@ -306,7 +311,7 @@ bool InspectorFrontendClientLocal::isTimelineProfilingEnabled()
 
 void InspectorFrontendClientLocal::setTimelineProfilingEnabled(bool enabled)
 {
-    evaluateOnLoad(String::format("[\"setTimelineProfilingEnabled\", %s]", enabled ? "true" : "false"));
+    evaluateOnLoad(makeString("[\"setTimelineProfilingEnabled\", ", enabled ? "true" : "false", ']'));
 }
 
 bool InspectorFrontendClientLocal::isProfilingJavaScript()
@@ -338,8 +343,8 @@ void InspectorFrontendClientLocal::showResources()
 
 void InspectorFrontendClientLocal::showMainResourceForFrame(Frame* frame)
 {
-    String frameId = m_inspectedPageController->pageAgent()->frameId(frame);
-    evaluateOnLoad(String::format("[\"showMainResourceForFrame\", \"%s\"]", frameId.ascii().data()));
+    String frameId = m_inspectedPageController->ensurePageAgent().frameId(frame);
+    evaluateOnLoad(makeString("[\"showMainResourceForFrame\", \"", frameId, "\"]"));
 }
 
 unsigned InspectorFrontendClientLocal::constrainedAttachedWindowHeight(unsigned preferredHeight, unsigned totalWindowHeight)

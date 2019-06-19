@@ -35,10 +35,13 @@
 #include "AudioContext.h"
 #include "AudioNodeInput.h"
 #include "AudioNodeOutput.h"
+#include <wtf/IsoMallocInlines.h>
 
 const unsigned DefaultNumberOfOutputChannels = 1;
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(ChannelMergerNode);
 
 RefPtr<ChannelMergerNode> ChannelMergerNode::create(AudioContext& context, float sampleRate, unsigned numberOfInputs)
 {
@@ -52,13 +55,13 @@ ChannelMergerNode::ChannelMergerNode(AudioContext& context, float sampleRate, un
     : AudioNode(context, sampleRate)
     , m_desiredNumberOfOutputChannels(DefaultNumberOfOutputChannels)
 {
+    setNodeType(NodeTypeChannelMerger);
+
     // Create the requested number of inputs.
     for (unsigned i = 0; i < numberOfInputs; ++i)
         addInput(std::make_unique<AudioNodeInput>(this));
 
     addOutput(std::make_unique<AudioNodeOutput>(this, 1));
-    
-    setNodeType(NodeTypeChannelMerger);
     
     initialize();
 }

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "UserContentProvider.h"
 
+#include "CustomHeaderFields.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
@@ -35,6 +36,7 @@
 #if ENABLE(CONTENT_EXTENSIONS)
 #include "ContentExtensionCompiler.h"
 #include "ContentExtensionsBackend.h"
+#include "ContentRuleListResults.h"
 #endif
 
 namespace WebCore {
@@ -101,15 +103,15 @@ static bool contentExtensionsEnabled(const DocumentLoader& documentLoader)
     return true;
 }
     
-ContentExtensions::BlockedStatus UserContentProvider::processContentExtensionRulesForLoad(const URL& url, ResourceType resourceType, DocumentLoader& initiatingDocumentLoader)
+ContentRuleListResults UserContentProvider::processContentRuleListsForLoad(const URL& url, OptionSet<ContentExtensions::ResourceType> resourceType, DocumentLoader& initiatingDocumentLoader)
 {
     if (!contentExtensionsEnabled(initiatingDocumentLoader))
         return { };
 
-    return userContentExtensionBackend().processContentExtensionRulesForLoad(url, resourceType, initiatingDocumentLoader);
+    return userContentExtensionBackend().processContentRuleListsForLoad(url, resourceType, initiatingDocumentLoader);
 }
 
-std::pair<Vector<ContentExtensions::Action>, Vector<String>> UserContentProvider::actionsForResourceLoad(const ResourceLoadInfo& resourceLoadInfo, DocumentLoader& initiatingDocumentLoader)
+Vector<ContentExtensions::ActionsFromContentRuleList> UserContentProvider::actionsForResourceLoad(const ContentExtensions::ResourceLoadInfo& resourceLoadInfo, DocumentLoader& initiatingDocumentLoader)
 {
     if (!contentExtensionsEnabled(initiatingDocumentLoader))
         return { };

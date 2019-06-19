@@ -25,17 +25,18 @@
 
 WI.DOMBreakpoint = class DOMBreakpoint extends WI.Object
 {
-    constructor(domNodeOrInfo, type, disabled)
+    constructor(domNodeOrInfo, type, {disabled} = {})
     {
-        console.assert(domNodeOrInfo, "Missing DOMNode or info.");
+        console.assert(domNodeOrInfo instanceof WI.DOMNode || typeof domNodeOrInfo === "object", domNodeOrInfo);
+        console.assert(Object.values(WI.DOMBreakpoint.Type).includes(type), type);
 
         super();
 
         if (domNodeOrInfo instanceof WI.DOMNode) {
             this._domNodeIdentifier = domNodeOrInfo.id;
             this._path = domNodeOrInfo.path();
-            console.assert(WI.frameResourceManager.mainFrame);
-            this._url = WI.frameResourceManager.mainFrame.url;
+            console.assert(WI.networkManager.mainFrame);
+            this._url = WI.networkManager.mainFrame.url;
         } else if (domNodeOrInfo && typeof domNodeOrInfo === "object") {
             this._domNodeIdentifier = null;
             this._path = domNodeOrInfo.path;
@@ -44,6 +45,15 @@ WI.DOMBreakpoint = class DOMBreakpoint extends WI.Object
 
         this._type = type;
         this._disabled = disabled || false;
+    }
+
+    // Static
+
+    static deserialize(serializedInfo)
+    {
+        return new WI.DOMBreakpoint(serializedInfo, serializedInfo.type, {
+            disabled: !!serializedInfo.disabled,
+        });
     }
 
     // Public
@@ -64,7 +74,7 @@ WI.DOMBreakpoint = class DOMBreakpoint extends WI.Object
 
         this._disabled = disabled;
 
-        this.dispatchEventToListeners(WI.DOMBreakpoint.Event.DisabledStateDidChange);
+        this.dispatchEventToListeners(WI.DOMBreakpoint.Event.DisabledStateChanged);
     }
 
     get domNodeIdentifier()
@@ -83,29 +93,30 @@ WI.DOMBreakpoint = class DOMBreakpoint extends WI.Object
 
         this._domNodeIdentifier = nodeIdentifier;
 
-        this.dispatchEventToListeners(WI.DOMBreakpoint.Event.ResolvedStateDidChange, data);
-    }
-
-    get serializableInfo()
-    {
-        let info = {url: this._url, path: this._path, type: this._type};
-        if (this._disabled)
-            info.disabled = true;
-
-        return info;
+        this.dispatchEventToListeners(WI.DOMBreakpoint.Event.DOMNodeChanged, data);
     }
 
     saveIdentityToCookie(cookie)
     {
-        cookie[WI.DOMBreakpoint.DocumentURLCookieKey] = this.url;
-        cookie[WI.DOMBreakpoint.NodePathCookieKey] = this.path;
-        cookie[WI.DOMBreakpoint.TypeCookieKey] = this.type;
+        cookie["dom-breakpoint-url"] = this._url;
+        cookie["dom-breakpoint-path"] = this._path;
+        cookie["dom-breakpoint-type"] = this._type;
+    }
+
+    toJSON(key)
+    {
+        let json = {
+            url: this._url,
+            path: this._path,
+            type: this._type,
+        };
+        if (this._disabled)
+            json.disabled = true;
+        if (key === WI.ObjectStore.toJSONSymbol)
+            json[WI.objectStores.domBreakpoints.keyPath] = this._url + ":" + this._path + ":" + this._type;
+        return json;
     }
 };
-
-WI.DOMBreakpoint.DocumentURLCookieKey = "dom-breakpoint-document-url";
-WI.DOMBreakpoint.NodePathCookieKey = "dom-breakpoint-node-path";
-WI.DOMBreakpoint.TypeCookieKey = "dom-breakpoint-type";
 
 WI.DOMBreakpoint.Type = {
     SubtreeModified: "subtree-modified",
@@ -114,6 +125,6 @@ WI.DOMBreakpoint.Type = {
 };
 
 WI.DOMBreakpoint.Event = {
-    DisabledStateDidChange: "dom-breakpoint-disabled-state-did-change",
-    ResolvedStateDidChange: "dom-breakpoint-resolved-state-did-change",
+    DOMNodeChanged: "dom-breakpoint-dom-node-changed",
+    DisabledStateChanged: "dom-breakpoint-disabled-state-changed",
 };

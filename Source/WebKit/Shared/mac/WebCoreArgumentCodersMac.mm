@@ -28,6 +28,7 @@
 #import "WebCoreArgumentCoders.h"
 
 #import "ArgumentCodersCF.h"
+#import "ArgumentCodersCocoa.h"
 #import "DataReference.h"
 #import <WebCore/CertificateInfo.h>
 #import <WebCore/ContentFilterUnblockHandler.h>
@@ -43,11 +44,8 @@
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #import <WebCore/MediaPlaybackTargetContext.h>
 #import <objc/runtime.h>
-#import <pal/spi/mac/AVFoundationSPI.h>
-#import <wtf/SoftLinking.h>
 
-SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
-SOFT_LINK_CLASS(AVFoundation, AVOutputContext)
+#import <pal/cocoa/AVFoundationSoftLink.h>
 #endif
 
 namespace IPC {
@@ -431,26 +429,16 @@ bool ArgumentCoder<WebCore::ResourceError>::decodePlatformData(Decoder& decoder,
 
 void ArgumentCoder<WebCore::ProtectionSpace>::encodePlatformData(Encoder& encoder, const WebCore::ProtectionSpace& space)
 {
-    auto archiver = secureArchiver();
-    [archiver encodeObject:space.nsSpace() forKey:@"protectionSpace"];
-    IPC::encode(encoder, (__bridge CFDataRef)archiver.get().encodedData);
+    encoder << space.nsSpace();
 }
 
 bool ArgumentCoder<WebCore::ProtectionSpace>::decodePlatformData(Decoder& decoder, WebCore::ProtectionSpace& space)
 {
-    RetainPtr<CFDataRef> data;
-    if (!IPC::decode(decoder, data))
+    auto platformData = IPC::decode<NSURLProtectionSpace>(decoder);
+    if (!platformData)
         return false;
 
-    auto unarchiver = secureUnarchiverFromData((__bridge NSData *)data.get());
-    @try {
-        if (RetainPtr<NSURLProtectionSpace> nsSpace = [unarchiver decodeObjectOfClass:[NSURLProtectionSpace class] forKey:@"protectionSpace"])
-            space = WebCore::ProtectionSpace(nsSpace.get());
-    } @catch (NSException *exception) {
-        LOG_ERROR("Failed to decode NSURLProtectionSpace: %@", exception);
-    }
-
-    [unarchiver finishDecoding];
+    space = WebCore::ProtectionSpace { platformData->get() };
     return true;
 }
 
@@ -474,10 +462,7 @@ void ArgumentCoder<WebCore::Credential>::encodePlatformData(Encoder& encoder, co
     }
 
     encoder << false;
-
-    auto archiver = secureArchiver();
-    [archiver encodeObject:nsCredential forKey:@"credential"];
-    IPC::encode(encoder, (__bridge CFDataRef)archiver.get().encodedData);
+    encoder << nsCredential;
 }
 
 bool ArgumentCoder<WebCore::Credential>::decodePlatformData(Decoder& decoder, WebCore::Credential& credential)
@@ -509,19 +494,11 @@ bool ArgumentCoder<WebCore::Credential>::decodePlatformData(Decoder& decoder, We
         return true;
     }
 
-    RetainPtr<CFDataRef> data;
-    if (!IPC::decode(decoder, data))
+    auto nsCredential = IPC::decode<NSURLCredential>(decoder);
+    if (!nsCredential)
         return false;
 
-    auto unarchiver = secureUnarchiverFromData((__bridge NSData *)data.get());
-    @try {
-        if (RetainPtr<NSURLCredential> nsCredential = [unarchiver decodeObjectOfClass:[NSURLCredential class] forKey:@"credential"])
-            credential = WebCore::Credential(nsCredential.get());
-    } @catch (NSException *exception) {
-        LOG_ERROR("Failed to decode NSURLCredential: %@", exception);
-    }
-
-    [unarchiver finishDecoding];
+    credential = WebCore::Credential { nsCredential->get() };
     return true;
 }
 
@@ -553,17 +530,17 @@ void ArgumentCoder<WebCore::KeypressCommand>::encode(Encoder& encoder, const Web
     encoder << keypressCommand.commandName << keypressCommand.text;
 }
     
-std::optional<WebCore::KeypressCommand> ArgumentCoder<WebCore::KeypressCommand>::decode(Decoder& decoder)
+Optional<WebCore::KeypressCommand> ArgumentCoder<WebCore::KeypressCommand>::decode(Decoder& decoder)
 {
-    std::optional<String> commandName;
+    Optional<String> commandName;
     decoder >> commandName;
     if (!commandName)
-        return std::nullopt;
+        return WTF::nullopt;
     
-    std::optional<String> text;
+    Optional<String> text;
     decoder >> text;
     if (!text)
-        return std::nullopt;
+        return WTF::nullopt;
     
     WebCore::KeypressCommand command;
     command.commandName = WTFMove(*commandName);
@@ -598,44 +575,22 @@ bool ArgumentCoder<WebCore::ContentFilterUnblockHandler>::decode(Decoder& decode
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 
-static NSString *deviceContextKey()
-{
-    static NSString * const key = @"deviceContext";
-    return key;
-}
-
 void ArgumentCoder<WebCore::MediaPlaybackTargetContext>::encodePlatformData(Encoder& encoder, const WebCore::MediaPlaybackTargetContext& target)
 {
-    auto archiver = secureArchiver();
-
-    if ([getAVOutputContextClass() conformsToProtocol:@protocol(NSSecureCoding)])
-        [archiver encodeObject:target.avOutputContext() forKey:deviceContextKey()];
-
-    IPC::encode(encoder, (__bridge CFDataRef)archiver.get().encodedData);
+    if ([PAL::getAVOutputContextClass() conformsToProtocol:@protocol(NSSecureCoding)])
+        encoder << target.avOutputContext();
 }
 
 bool ArgumentCoder<WebCore::MediaPlaybackTargetContext>::decodePlatformData(Decoder& decoder, WebCore::MediaPlaybackTargetContext& target)
 {
-    if (![getAVOutputContextClass() conformsToProtocol:@protocol(NSSecureCoding)])
+    if (![PAL::getAVOutputContextClass() conformsToProtocol:@protocol(NSSecureCoding)])
         return false;
 
-    RetainPtr<CFDataRef> data;
-    if (!IPC::decode(decoder, data))
+    auto context = IPC::decode<AVOutputContext>(decoder, PAL::getAVOutputContextClass());
+    if (!context)
         return false;
 
-    auto unarchiver = secureUnarchiverFromData((__bridge NSData *)data.get());
-
-    AVOutputContext *context = nil;
-    @try {
-        context = [unarchiver decodeObjectOfClass:getAVOutputContextClass() forKey:deviceContextKey()];
-    } @catch (NSException *exception) {
-        LOG_ERROR("The target picker being decoded is not an AVOutputContext.");
-        return false;
-    }
-
-    target = WebCore::MediaPlaybackTargetContext(context);
-    
-    [unarchiver finishDecoding];
+    target = WebCore::MediaPlaybackTargetContext { context->get() };
     return true;
 }
 

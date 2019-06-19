@@ -8,10 +8,10 @@ description: >
   await is not a simple assignment target and cannot be assigned to.
 negative:
   phase: parse
-  type: ReferenceError
+  type: SyntaxError
 ---*/
 
-throw "Test262: This statement should not be evaluated.";
+$DONOTEVALUATE();
 
 async function foo() {
   (await 1) = 1;

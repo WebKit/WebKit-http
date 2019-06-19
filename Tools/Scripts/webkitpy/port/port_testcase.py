@@ -45,7 +45,7 @@ from webkitpy.common.system.outputcapture import OutputCapture
 from webkitpy.common.system.systemhost_mock import MockSystemHost
 from webkitpy.common.version_name_map import INTERNAL_TABLE
 from webkitpy.port.base import Port
-from webkitpy.port.config import apple_additions
+from webkitpy.port.config import apple_additions, clear_cached_configuration
 from webkitpy.port.image_diff import ImageDiffer
 from webkitpy.port.server_process_mock import MockServerProcess
 from webkitpy.layout_tests.servers import http_server_base
@@ -56,21 +56,17 @@ from webkitpy.tool.mocktool import MockOptions
 class TestWebKitPort(Port):
     port_name = "testwebkitport"
 
-    def __init__(self, port_name=None, symbols_string=None,
+    def __init__(self, port_name=None,
                  expectations_file=None, skips_file=None, host=None, config=None,
                  **kwargs):
         port_name = port_name or TestWebKitPort.port_name
-        self.symbols_string = symbols_string  # Passing "" disables all staticly-detectable features.
         host = host or MockSystemHost()
         super(TestWebKitPort, self).__init__(host, port_name=port_name, **kwargs)
 
     def all_test_configurations(self):
         return [self.test_configuration()]
 
-    def _symbols_string(self):
-        return self.symbols_string
-
-    def _tests_for_other_platforms(self):
+    def _tests_for_other_platforms(self, **kwargs):
         return ["media", ]
 
     def _tests_for_disabled_features(self):
@@ -500,26 +496,6 @@ class PortTestCase(unittest.TestCase):
         port._options = MockOptions(webkit_test_runner=False)
         self.assertEqual(port.path_to_test_expectations_file(), '/mock-checkout/LayoutTests/platform/testwebkitport/TestExpectations')
 
-    def test_skipped_directories_for_features(self):
-        supported_features = ["Accelerated Compositing", "Foo Feature"]
-        expected_directories = set(["animations/3d", "transforms/3d"])
-        port = TestWebKitPort(supported_features=supported_features)
-        port._runtime_feature_list = lambda: supported_features
-        result_directories = set(port._skipped_tests_for_unsupported_features(test_list=["animations/3d/foo.html"]))
-        self.assertEqual(result_directories, expected_directories)
-
-    def test_skipped_directories_for_features_no_matching_tests_in_test_list(self):
-        supported_features = ["Accelerated Compositing", "Foo Feature"]
-        expected_directories = set([])
-        result_directories = set(TestWebKitPort(supported_features=supported_features)._skipped_tests_for_unsupported_features(test_list=['foo.html']))
-        self.assertEqual(result_directories, expected_directories)
-
-    def test_skipped_tests_for_unsupported_features_empty_test_list(self):
-        supported_features = ["Accelerated Compositing", "Foo Feature"]
-        expected_directories = set([])
-        result_directories = set(TestWebKitPort(supported_features=supported_features)._skipped_tests_for_unsupported_features(test_list=None))
-        self.assertEqual(result_directories, expected_directories)
-
     def test_skipped_layout_tests(self):
         self.assertEqual(TestWebKitPort().skipped_layout_tests(test_list=[]), set(['media']))
 
@@ -684,3 +660,35 @@ MOCK output of child process
     def test_additional_platform_directory(self):
         port = self.make_port(options=MockOptions(additional_platform_directory=['/tmp/foo']))
         self.assertEqual(port.baseline_search_path()[0], '/tmp/foo')
+
+    def test_max_child_processes(self):
+
+        port = self.make_port()
+        self.assertEqual(port.max_child_processes(True), 0)
+        self.assertEqual(port.max_child_processes(), float('inf'))
+
+    def test_default_upload_configuration(self):
+        clear_cached_configuration()
+        port = self.make_port()
+        configuration = port.configuration_for_upload()
+        self.assertEqual(configuration['architecture'], port.architecture())
+        self.assertEqual(configuration['is_simulator'], False)
+        self.assertEqual(configuration['platform'], port.host.platform.os_name)
+        self.assertEqual(configuration['style'], 'release')
+        self.assertEqual(configuration['version_name'], port.host.platform.os_version_name())
+
+    def test_debug_upload_configuration(self):
+        clear_cached_configuration()
+        port = self.make_port(options=MockOptions(configuration='Debug'))
+        self.assertEqual(port.configuration_for_upload()['style'], 'debug')
+
+    def test_asan_upload_configuration(self):
+        clear_cached_configuration()
+        port = self.make_port()
+        port.host.filesystem.write_text_file('/mock-build/ASan', 'YES')
+        self.assertEqual(port.configuration_for_upload()['style'], 'asan')
+
+    def test_guard_malloc_configuration(self):
+        clear_cached_configuration()
+        port = self.make_port(options=MockOptions(guard_malloc=True))
+        self.assertEqual(port.configuration_for_upload()['style'], 'guard-malloc')

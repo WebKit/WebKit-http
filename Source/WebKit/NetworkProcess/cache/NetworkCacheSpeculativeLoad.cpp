@@ -31,8 +31,9 @@
 #include "Logging.h"
 #include "NetworkCache.h"
 #include "NetworkLoad.h"
+#include "NetworkProcess.h"
 #include "NetworkSession.h"
-#include "SessionTracker.h"
+#include <WebCore/NetworkStorageSession.h>
 #include <pal/SessionID.h>
 #include <wtf/RunLoop.h>
 
@@ -59,7 +60,7 @@ SpeculativeLoad::SpeculativeLoad(Cache& cache, const GlobalFrameID& globalFrameI
     parameters.contentSniffingPolicy = ContentSniffingPolicy::DoNotSniffContent;
     parameters.contentEncodingSniffingPolicy = ContentEncodingSniffingPolicy::Sniff;
     parameters.request = m_originalRequest;
-    m_networkLoad = std::make_unique<NetworkLoad>(*this, WTFMove(parameters), *SessionTracker::networkSession(PAL::SessionID::defaultSessionID()));
+    m_networkLoad = std::make_unique<NetworkLoad>(*this, nullptr, WTFMove(parameters), *cache.networkProcess().networkSession(PAL::SessionID::defaultSessionID()));
 }
 
 SpeculativeLoad::~SpeculativeLoad()
@@ -71,7 +72,12 @@ void SpeculativeLoad::willSendRedirectedRequest(ResourceRequest&& request, Resou
 {
     LOG(NetworkCacheSpeculativePreloading, "Speculative redirect %s -> %s", request.url().string().utf8().data(), redirectRequest.url().string().utf8().data());
 
-    m_cacheEntry = m_cache->storeRedirect(request, redirectResponse, redirectRequest);
+    Optional<Seconds> maxAgeCap;
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    if (auto* networkStorageSession = m_cache->networkProcess().storageSession(PAL::SessionID::defaultSessionID()))
+        maxAgeCap = networkStorageSession->maxAgeCacheCap(request);
+#endif
+    m_cacheEntry = m_cache->storeRedirect(request, redirectResponse, redirectRequest, maxAgeCap);
     // Create a synthetic cache entry if we can't store.
     if (!m_cacheEntry)
         m_cacheEntry = m_cache->makeRedirectEntry(request, redirectResponse, redirectRequest);
@@ -80,7 +86,7 @@ void SpeculativeLoad::willSendRedirectedRequest(ResourceRequest&& request, Resou
     didComplete();
 }
 
-auto SpeculativeLoad::didReceiveResponse(ResourceResponse&& receivedResponse) -> ShouldContinueDidReceiveResponse
+void SpeculativeLoad::didReceiveResponse(ResourceResponse&& receivedResponse, ResponseCompletionHandler&& completionHandler)
 {
     m_response = receivedResponse;
 
@@ -93,7 +99,7 @@ auto SpeculativeLoad::didReceiveResponse(ResourceResponse&& receivedResponse) ->
     else
         m_cacheEntry = nullptr;
 
-    return ShouldContinueDidReceiveResponse::Yes;
+    completionHandler(PolicyAction::Use);
 }
 
 void SpeculativeLoad::didReceiveBuffer(Ref<SharedBuffer>&& buffer, int reportedEncodedDataLength)

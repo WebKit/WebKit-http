@@ -64,12 +64,15 @@
 #include <JavaScriptCore/JSCJSValueInlines.h>
 #include <JavaScriptCore/JSCellInlines.h>
 #include <JavaScriptCore/JSGenericTypedArrayViewInlines.h>
+#include <wtf/IsoMallocInlines.h>
 
 #if PLATFORM(QT)
 #undef emit
 #endif
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(WebGLRenderingContext);
 
 std::unique_ptr<WebGLRenderingContext> WebGLRenderingContext::create(CanvasBase& canvas, GraphicsContext3DAttributes attributes)
 {
@@ -183,10 +186,10 @@ WebGLExtension* WebGLRenderingContext::getExtension(const String& name)
     return nullptr;
 }
 
-std::optional<Vector<String>> WebGLRenderingContext::getSupportedExtensions()
+Optional<Vector<String>> WebGLRenderingContext::getSupportedExtensions()
 {
     if (isContextLost())
-        return std::nullopt;
+        return WTF::nullopt;
 
     Vector<String> result;
     
@@ -448,7 +451,7 @@ WebGLAny WebGLRenderingContext::getParameter(GC3Denum pname)
     case GraphicsContext3D::COLOR_WRITEMASK:
         return getBooleanArrayParameter(pname);
     case GraphicsContext3D::COMPRESSED_TEXTURE_FORMATS:
-        return Uint32Array::create(m_compressedTextureFormats.data(), m_compressedTextureFormats.size());
+        return Uint32Array::tryCreate(m_compressedTextureFormats.data(), m_compressedTextureFormats.size());
     case GraphicsContext3D::CULL_FACE:
         return getBooleanParameter(pname);
     case GraphicsContext3D::CULL_FACE_MODE:
@@ -524,7 +527,7 @@ WebGLAny WebGLRenderingContext::getParameter(GC3Denum pname)
     case GraphicsContext3D::RENDERBUFFER_BINDING:
         return m_renderbufferBinding;
     case GraphicsContext3D::RENDERER:
-        return String { "WebKit WebGL"_s };
+        return "WebKit WebGL"_str;
     case GraphicsContext3D::SAMPLE_BUFFERS:
         return getIntParameter(pname);
     case GraphicsContext3D::SAMPLE_COVERAGE_INVERT:
@@ -590,9 +593,9 @@ WebGLAny WebGLRenderingContext::getParameter(GC3Denum pname)
     case GraphicsContext3D::UNPACK_COLORSPACE_CONVERSION_WEBGL:
         return m_unpackColorspaceConversion;
     case GraphicsContext3D::VENDOR:
-        return String { "WebKit"_s };
+        return "WebKit"_str;
     case GraphicsContext3D::VERSION:
-        return "WebGL 1.0 (" + m_context->getString(GraphicsContext3D::VERSION) + ")";
+        return "WebGL 1.0"_str;
     case GraphicsContext3D::VIEWPORT:
         return getWebGLIntArrayParameter(pname);
     case Extensions3D::FRAGMENT_SHADER_DERIVATIVE_HINT_OES: // OES_standard_derivatives
@@ -601,8 +604,13 @@ WebGLAny WebGLRenderingContext::getParameter(GC3Denum pname)
         synthesizeGLError(GraphicsContext3D::INVALID_ENUM, "getParameter", "invalid parameter name, OES_standard_derivatives not enabled");
         return nullptr;
     case WebGLDebugRendererInfo::UNMASKED_RENDERER_WEBGL:
-        if (m_webglDebugRendererInfo)
+        if (m_webglDebugRendererInfo) {
+#if PLATFORM(IOS_FAMILY)
+            return "Apple GPU"_str;
+#else
             return m_context->getString(GraphicsContext3D::RENDERER);
+#endif
+        }
         synthesizeGLError(GraphicsContext3D::INVALID_ENUM, "getParameter", "invalid parameter name, WEBGL_debug_renderer_info not enabled");
         return nullptr;
     case WebGLDebugRendererInfo::UNMASKED_VENDOR_WEBGL:
@@ -690,7 +698,7 @@ bool WebGLRenderingContext::validateIndexArrayConservative(GC3Denum type, unsign
     auto buffer = elementArrayBuffer->elementArrayBuffer();
     ASSERT(buffer);
     
-    std::optional<unsigned> maxIndex = elementArrayBuffer->getCachedMaxIndex(type);
+    Optional<unsigned> maxIndex = elementArrayBuffer->getCachedMaxIndex(type);
     if (!maxIndex) {
         // Compute the maximum index in the entire buffer for the given type of index.
         switch (type) {

@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+# Copyright (C) 2014-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,8 +25,10 @@ from webkitpy.port import ios_testcase
 from webkitpy.port import port_testcase
 from webkitpy.common.system.outputcapture import OutputCapture
 from webkitpy.common.version import Version
+from webkitpy.port.config import clear_cached_configuration
 from webkitpy.tool.mocktool import MockOptions
 from webkitpy.common.system.executive_mock import MockExecutive2, ScriptError
+from webkitpy.xcode.device_type import DeviceType
 
 
 class IOSSimulatorTest(ios_testcase.IOSTest):
@@ -52,15 +54,15 @@ class IOSSimulatorTest(ios_testcase.IOSTest):
         self.assertEqual('ios-simulator', self.make_port().operating_system())
 
     def test_32bit(self):
-        port = self.make_port(options=MockOptions(architecture='x86'))
+        port = self.make_port(options=MockOptions(architecture='i386'))
 
         def run_script(script, args=None, env=None):
             self.args = args
 
         port._run_script = run_script
-        self.assertEqual(port.architecture(), 'x86')
+        self.assertEqual(port.architecture(), 'i386')
         port._build_driver()
-        self.assertEqual(self.args, ['ARCHS=i386', '--sdk', 'iphonesimulator'])
+        self.assertEqual(self.args, ['--sdk', 'iphonesimulator', 'ARCHS=i386'])
 
     def test_64bit(self):
         # Apple Mac port is 64-bit by default
@@ -72,7 +74,7 @@ class IOSSimulatorTest(ios_testcase.IOSTest):
 
         port._run_script = run_script
         port._build_driver()
-        self.assertEqual(self.args, ['--sdk', 'iphonesimulator'])
+        self.assertEqual(self.args, ['--sdk', 'iphonesimulator', 'ARCHS=x86_64'])
 
     def test_sdk_name(self):
         port = self.make_port()
@@ -91,27 +93,82 @@ class IOSSimulatorTest(ios_testcase.IOSTest):
     def test_layout_test_searchpath_with_apple_additions(self):
         with port_testcase.bind_mock_apple_additions():
             search_path = self.make_port().default_baseline_search_path()
-        self.assertEqual(search_path[0], '/additional_testing_path/ios-simulator-add-ios11-wk1')
-        self.assertEqual(search_path[1], '/mock-checkout/LayoutTests/platform/ios-simulator-11-wk1')
-        self.assertEqual(search_path[2], '/additional_testing_path/ios-simulator-add-ios11')
-        self.assertEqual(search_path[3], '/mock-checkout/LayoutTests/platform/ios-simulator-11')
-        self.assertEqual(search_path[4], '/additional_testing_path/ios-simulator-wk1')
-        self.assertEqual(search_path[5], '/mock-checkout/LayoutTests/platform/ios-simulator-wk1')
-        self.assertEqual(search_path[6], '/additional_testing_path/ios-simulator')
-        self.assertEqual(search_path[7], '/mock-checkout/LayoutTests/platform/ios-simulator')
-        self.assertEqual(search_path[8], '/additional_testing_path/ios-add-ios11')
-        self.assertEqual(search_path[9], '/mock-checkout/LayoutTests/platform/ios-11')
-        self.assertEqual(search_path[10], '/additional_testing_path/ios-wk1')
-        self.assertEqual(search_path[11], '/mock-checkout/LayoutTests/platform/ios-wk1')
+
+        self.assertEqual(search_path, [
+            '/additional_testing_path/ios-simulator-add-ios11-wk1',
+            '/mock-checkout/LayoutTests/platform/ios-simulator-11-wk1',
+            '/additional_testing_path/ios-simulator-add-ios11',
+            '/mock-checkout/LayoutTests/platform/ios-simulator-11',
+            '/additional_testing_path/ios-simulator-wk1',
+            '/mock-checkout/LayoutTests/platform/ios-simulator-wk1',
+            '/additional_testing_path/ios-simulator',
+            '/mock-checkout/LayoutTests/platform/ios-simulator',
+            '/additional_testing_path/ios-add-ios11-wk1',
+            '/mock-checkout/LayoutTests/platform/ios-11-wk1',
+            '/additional_testing_path/ios-add-ios11',
+            '/mock-checkout/LayoutTests/platform/ios-11',
+            '/additional_testing_path/ios-wk1',
+            '/mock-checkout/LayoutTests/platform/ios-wk1',
+            '/additional_testing_path/ios',
+            '/mock-checkout/LayoutTests/platform/ios',
+        ])
 
     def test_layout_test_searchpath_without_apple_additions(self):
         search_path = self.make_port(port_name='ios-simulator-wk2', os_version=Version(12)).default_baseline_search_path()
 
-        self.assertEqual(search_path[0], '/mock-checkout/LayoutTests/platform/ios-simulator-12-wk2')
-        self.assertEqual(search_path[1], '/mock-checkout/LayoutTests/platform/ios-simulator-12')
-        self.assertEqual(search_path[2], '/mock-checkout/LayoutTests/platform/ios-simulator-wk2')
-        self.assertEqual(search_path[3], '/mock-checkout/LayoutTests/platform/ios-simulator')
-        self.assertEqual(search_path[4], '/mock-checkout/LayoutTests/platform/ios-12')
-        self.assertEqual(search_path[5], '/mock-checkout/LayoutTests/platform/ios-wk2')
-        self.assertEqual(search_path[6], '/mock-checkout/LayoutTests/platform/ios')
-        self.assertEqual(search_path[7], '/mock-checkout/LayoutTests/platform/wk2')
+        self.assertEqual(search_path, [
+            '/mock-checkout/LayoutTests/platform/ios-simulator-12-wk2',
+            '/mock-checkout/LayoutTests/platform/ios-simulator-12',
+            '/mock-checkout/LayoutTests/platform/ios-simulator-wk2',
+            '/mock-checkout/LayoutTests/platform/ios-simulator',
+            '/mock-checkout/LayoutTests/platform/ios-12-wk2',
+            '/mock-checkout/LayoutTests/platform/ios-12',
+            '/mock-checkout/LayoutTests/platform/ios-wk2',
+            '/mock-checkout/LayoutTests/platform/ios',
+            '/mock-checkout/LayoutTests/platform/wk2',
+        ])
+
+    def test_layout_searchpath_wih_device_type(self):
+        search_path = self.make_port(port_name='ios-simulator-wk2', os_version=Version(12)).default_baseline_search_path(DeviceType.from_string('iPhone SE'))
+
+        self.assertEqual(search_path, [
+            '/mock-checkout/LayoutTests/platform/iphone-se-simulator-12-wk2',
+            '/mock-checkout/LayoutTests/platform/iphone-se-simulator-12',
+            '/mock-checkout/LayoutTests/platform/iphone-se-simulator-wk2',
+            '/mock-checkout/LayoutTests/platform/iphone-se-simulator',
+            '/mock-checkout/LayoutTests/platform/iphone-simulator-12-wk2',
+            '/mock-checkout/LayoutTests/platform/iphone-simulator-12',
+            '/mock-checkout/LayoutTests/platform/iphone-simulator-wk2',
+            '/mock-checkout/LayoutTests/platform/iphone-simulator',
+            '/mock-checkout/LayoutTests/platform/ios-simulator-12-wk2',
+            '/mock-checkout/LayoutTests/platform/ios-simulator-12',
+            '/mock-checkout/LayoutTests/platform/ios-simulator-wk2',
+            '/mock-checkout/LayoutTests/platform/ios-simulator',
+            '/mock-checkout/LayoutTests/platform/iphone-se-12-wk2',
+            '/mock-checkout/LayoutTests/platform/iphone-se-12',
+            '/mock-checkout/LayoutTests/platform/iphone-se-wk2',
+            '/mock-checkout/LayoutTests/platform/iphone-se',
+            '/mock-checkout/LayoutTests/platform/iphone-12-wk2',
+            '/mock-checkout/LayoutTests/platform/iphone-12',
+            '/mock-checkout/LayoutTests/platform/iphone-wk2',
+            '/mock-checkout/LayoutTests/platform/iphone',
+            '/mock-checkout/LayoutTests/platform/ios-12-wk2',
+            '/mock-checkout/LayoutTests/platform/ios-12',
+            '/mock-checkout/LayoutTests/platform/ios-wk2',
+            '/mock-checkout/LayoutTests/platform/ios',
+            '/mock-checkout/LayoutTests/platform/wk2',
+        ])
+
+    def test_max_child_processes(self):
+        port = self.make_port()
+        self.assertEqual(port.max_child_processes(DeviceType.from_string('Apple Watch')), 0)
+
+    def test_default_upload_configuration(self):
+        clear_cached_configuration()
+        port = self.make_port()
+        configuration = port.configuration_for_upload()
+        self.assertEqual(configuration['architecture'], port.architecture())
+        self.assertEqual(configuration['is_simulator'], True)
+        self.assertEqual(configuration['platform'], 'ios')
+        self.assertEqual(configuration['style'], 'release')
+        self.assertEqual(configuration['version_name'], 'iOS {}'.format(port.device_version()))

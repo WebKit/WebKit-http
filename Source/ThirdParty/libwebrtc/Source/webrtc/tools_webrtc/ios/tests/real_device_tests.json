@@ -13,9 +13,6 @@
       "app": "modules_unittests"
     },
     {
-      "app": "ortc_unittests"
-    },
-    {
       "app": "rtc_pc_unittests"
     },
     {
@@ -35,9 +32,6 @@
     },
     {
       "app": "video_engine_tests"
-    },
-    {
-      "app": "voice_engine_unittests"
     }
   ]
 }

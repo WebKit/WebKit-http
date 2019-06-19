@@ -38,55 +38,53 @@ namespace WebCore {
 namespace Layout {
 
 class FloatingState;
-class LayoutContext;
+class LayoutState;
 
 class FloatAvoider {
     WTF_MAKE_ISO_ALLOCATED(FloatAvoider);
 public:
-    FloatAvoider(const Box&, const FloatingState&, const LayoutContext&);
+    FloatAvoider(const Box&, const FloatingState&, const LayoutState&);
     virtual ~FloatAvoider() = default;
 
-    virtual Display::Box::Rect rect() const { return m_absoluteDisplayBox.rect(); }
-    Display::Box::Rect rectInContainingBlock() const;
+    virtual Display::Rect rect() const { return m_absoluteDisplayBox.rect(); }
+    Display::Rect rectInContainingBlock() const;
 
     struct HorizontalConstraints {
-        std::optional<PositionInContextRoot> left;
-        std::optional<PositionInContextRoot> right;
+        Optional<PositionInContextRoot> left;
+        Optional<PositionInContextRoot> right;
     };
     void setHorizontalConstraints(HorizontalConstraints);
     void setVerticalConstraint(PositionInContextRoot);
 
     bool overflowsContainingBlock() const;
 
-    void resetPosition();
-
 protected:
     virtual bool isLeftAligned() const { return layoutBox().style().isLeftToRightDirection(); }
-    virtual PositionInContextRoot initialHorizontalPosition() const;
-    virtual PositionInContextRoot initialVerticalPosition() const { return m_initialVerticalPosition; }
+    PositionInContextRoot initialHorizontalPosition() const;
 
     void resetHorizontalConstraints();
 
     virtual PositionInContextRoot horizontalPositionCandidate(HorizontalConstraints);
     virtual PositionInContextRoot verticalPositionCandidate(PositionInContextRoot);
 
-    LayoutUnit marginTop() const { return displayBox().marginTop(); }
-    LayoutUnit marginBottom() const { return displayBox().marginBottom(); }
-    LayoutUnit marginLeft() const { return displayBox().nonComputedMarginLeft(); }
-    LayoutUnit marginRight() const { return displayBox().nonComputedMarginRight(); }
+    LayoutUnit marginBefore() const { return displayBox().marginBefore(); }
+    LayoutUnit marginAfter() const { return displayBox().marginAfter(); }
+    // Do not use the used values here because they computed as if this box was not a float avoider.
+    LayoutUnit marginStart() const { return displayBox().computedMarginStart().valueOr(0); }
+    LayoutUnit marginEnd() const { return displayBox().computedMarginEnd().valueOr(0); }
 
-    LayoutUnit marginBoxWidth() const { return marginLeft() + displayBox().width() + marginRight(); }
+    LayoutUnit marginBoxWidth() const { return marginStart() + displayBox().width() + marginEnd(); }
 
     const FloatingState& floatingState() const { return m_floatingState; }
     const Box& layoutBox() const { return *m_layoutBox; }
     const Display::Box& displayBox() const { return m_absoluteDisplayBox; }
+    Display::Box& displayBox() { return m_absoluteDisplayBox; }
 
 private:
     WeakPtr<const Box> m_layoutBox;
     const FloatingState& m_floatingState;
     Display::Box m_absoluteDisplayBox;
     Display::Box m_containingBlockAbsoluteDisplayBox;
-    PositionInContextRoot m_initialVerticalPosition;
 };
 
 }

@@ -28,7 +28,7 @@
 
 #import "TestController.h"
 #import "TestRunnerWKWebView.h"
-#import "UIKitTestSPI.h"
+#import "UIKitSPI.h"
 #import <WebKit/WKImageCG.h>
 #import <WebKit/WKPreferencesPrivate.h>
 #import <WebKit/WKSnapshotConfiguration.h>
@@ -69,6 +69,7 @@ static Vector<WebKitTestRunnerWindow *> allWindows;
 {
     allWindows.removeFirst(self);
     ASSERT(!allWindows.contains(self));
+    [super dealloc];
 }
 
 - (BOOL)isKeyWindow
@@ -175,16 +176,20 @@ PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const Te
 
     UIViewController *viewController = [[PlatformWebViewController alloc] init];
     [m_window setRootViewController:viewController];
+    [viewController release];
 
     m_view = [[TestRunnerWKWebView alloc] initWithFrame:viewRectForWindowRect(rect, WebViewSizingMode::Default) configuration:configuration];
 
     [m_window.rootViewController.view addSubview:m_view];
+    [m_view becomeFirstResponder];
     [m_window makeKeyAndVisible];
 }
 
 PlatformWebView::~PlatformWebView()
 {
     m_window.platformWebView = nil;
+    [m_view release];
+    [m_window release];
 }
 
 PlatformWindow PlatformWebView::keyWindow()
@@ -266,6 +271,7 @@ void PlatformWebView::addChromeInputField()
     UITextField* textField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 100, 20)];
     textField.tag = 1;
     [m_window addSubview:textField];
+    [textField release];
 }
 
 void PlatformWebView::removeChromeInputField()
@@ -274,18 +280,23 @@ void PlatformWebView::removeChromeInputField()
     if (textField) {
         [textField removeFromSuperview];
         makeWebViewFirstResponder();
+        [textField release];
     }
 }
 
 void PlatformWebView::makeWebViewFirstResponder()
 {
-    // FIXME: iOS equivalent?
-    // [m_window makeFirstResponder:m_view];
+    [m_view becomeFirstResponder];
 }
 
 void PlatformWebView::changeWindowScaleIfNeeded(float)
 {
     // Retina only surface.
+}
+
+void PlatformWebView::setEditable(bool editable)
+{
+    m_view._editable = editable;
 }
 
 bool PlatformWebView::drawsBackground() const
@@ -359,9 +370,7 @@ RetainPtr<CGImageRef> PlatformWebView::windowSnapshotImage()
 
 void PlatformWebView::setNavigationGesturesEnabled(bool enabled)
 {
-#if WK_API_ENABLED
     [platformView() setAllowsBackForwardNavigationGestures:enabled];
-#endif
 }
 
 } // namespace WTR

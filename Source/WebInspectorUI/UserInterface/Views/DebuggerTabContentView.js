@@ -41,6 +41,11 @@ WI.DebuggerTabContentView = class DebuggerTabContentView extends WI.ContentBrows
         };
     }
 
+    static isTabAllowed()
+    {
+        return !WI.settings.experimentalEnableSourcesTab.value;
+    }
+
     // Public
 
     get type()

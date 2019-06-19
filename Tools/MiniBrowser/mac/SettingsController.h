@@ -53,7 +53,6 @@
 @property (nonatomic, readonly) BOOL displayListDrawingEnabled;
 @property (nonatomic, readonly) BOOL subpixelAntialiasedLayerTextEnabled;
 @property (nonatomic, readonly) BOOL resourceLoadStatisticsEnabled;
-@property (nonatomic, readonly) BOOL visualViewportEnabled;
 @property (nonatomic, readonly) BOOL largeImageAsyncDecodingEnabled;
 @property (nonatomic, readonly) BOOL animatedImageAsyncDecodingEnabled;
 @property (nonatomic, readonly) BOOL appleColorFilterEnabled;
@@ -62,7 +61,6 @@
 @property (nonatomic, readonly) BOOL loadsAllSiteIcons;
 @property (nonatomic, readonly) BOOL usesGameControllerFramework;
 @property (nonatomic, readonly) BOOL networkCacheSpeculativeRevalidationDisabled;
-@property (nonatomic, readonly) BOOL processSwapOnNavigationEnabled;
 @property (nonatomic, readonly) BOOL processSwapOnWindowOpenWithOpenerEnabled;
 
 @property (nonatomic, readonly) NSString *defaultURL;

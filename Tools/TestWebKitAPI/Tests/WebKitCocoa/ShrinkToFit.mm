@@ -30,7 +30,7 @@
 #import <WebKit/WKWebViewPrivate.h>
 #import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED && !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 static bool shrinkToFitDone;
 static bool shrinkToFitAfterNavigationDone;

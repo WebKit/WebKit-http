@@ -35,6 +35,7 @@
 #include "WebView.h"
 #include <JavaScriptCore/InspectorAgentBase.h>
 #include <WebCore/BString.h>
+#include <WebCore/CertificateInfo.h>
 #include <WebCore/Element.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/FrameView.h>
@@ -218,8 +219,8 @@ WebInspectorFrontendClient::WebInspectorFrontendClient(WebView* inspectedWebView
     : InspectorFrontendClientLocal(&inspectedWebView->page()->inspectorController(),  core(frontendWebView.get()), WTFMove(settings))
     , m_inspectedWebView(inspectedWebView)
     , m_inspectedWebViewHwnd(inspectedWebViewHwnd)
-    , m_inspectorClient(inspectorClient)
     , m_frontendHwnd(frontendHwnd)
+    , m_inspectorClient(inspectorClient)
     , m_frontendWebView(frontendWebView)
     , m_frontendWebViewHwnd(frontendWebViewHwnd)
     , m_attached(false)
@@ -267,6 +268,14 @@ void WebInspectorFrontendClient::bringToFront()
 void WebInspectorFrontendClient::closeWindow()
 {
     destroyInspectorView();
+}
+
+void WebInspectorFrontendClient::reopen()
+{
+    destroyInspectorView();
+
+    if (Page* inspectedPage = m_inspectedWebView->page())
+        inspectedPage->inspectorController().show();
 }
 
 void WebInspectorFrontendClient::attachWindow(DockSide)
@@ -331,10 +340,20 @@ void WebInspectorFrontendClient::setAttachedWindowWidth(unsigned)
     notImplemented();
 }
 
+void WebInspectorFrontendClient::setSheetRect(const FloatRect&)
+{
+    notImplemented();
+}
+
 void WebInspectorFrontendClient::inspectedURLChanged(const String& newURL)
 {
     m_inspectedURL = newURL;
     updateWindowTitle();
+}
+
+void WebInspectorFrontendClient::showCertificate(const CertificateInfo&)
+{
+    notImplemented();
 }
 
 void WebInspectorFrontendClient::closeWindowWithoutNotifications()
@@ -422,7 +441,7 @@ void WebInspectorFrontendClient::destroyInspectorView()
     if (Page* frontendPage = this->frontendPage())
         frontendPage->inspectorController().setInspectorFrontendClient(nullptr);
     if (Page* inspectedPage = m_inspectedWebView->page())
-        inspectedPage->inspectorController().disconnectFrontend(m_inspectorClient);
+        inspectedPage->inspectorController().disconnectFrontend(*m_inspectorClient);
 
     m_inspectorClient->releaseFrontend();
 
@@ -436,7 +455,7 @@ void WebInspectorFrontendClient::destroyInspectorView()
 void WebInspectorFrontendClient::updateWindowTitle()
 {
     String title = makeString("Web Inspector ", static_cast<UChar>(0x2014), ' ', m_inspectedURL);
-    ::SetWindowText(m_frontendHwnd, title.charactersWithNullTermination().data());
+    ::SetWindowText(m_frontendHwnd, title.wideCharacters().data());
 }
 
 LRESULT WebInspectorFrontendClient::onGetMinMaxInfo(WPARAM, LPARAM lParam)
@@ -491,7 +510,7 @@ void WebInspectorFrontendClient::onWebViewWindowPosChanging(WPARAM, LPARAM lPara
     SetWindowPos(m_frontendWebViewHwnd, 0, windowPos->x, windowPos->y + windowPos->cy, windowPos->cx, inspectorHeight, SWP_NOZORDER);
 }
 
-static LRESULT CALLBACK WebInspectorWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK WebInspectorWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     WebInspectorFrontendClient* client = reinterpret_cast<WebInspectorFrontendClient*>(::GetProp(hwnd, kWebInspectorPointerProp));
     if (!client)

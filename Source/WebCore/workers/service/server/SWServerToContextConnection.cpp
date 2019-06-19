@@ -30,53 +30,54 @@
 
 #include "SWServer.h"
 #include "SWServerWorker.h"
+#include <wtf/CompletionHandler.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
 static SWServerToContextConnectionIdentifier generateServerToContextConnectionIdentifier()
 {
-    return generateObjectIdentifier<SWServerToContextConnectionIdentifierType>();
+    return SWServerToContextConnectionIdentifier::generate();
 }
 
-static HashMap<SecurityOriginData, SWServerToContextConnection*>& allConnectionsByOrigin()
+static HashMap<RegistrableDomain, SWServerToContextConnection*>& allConnectionsByRegistrableDomain()
 {
-    static NeverDestroyed<HashMap<SecurityOriginData, SWServerToContextConnection*>> connectionsByOrigin;
+    static NeverDestroyed<HashMap<RegistrableDomain, SWServerToContextConnection*>> connectionsByOrigin;
     return connectionsByOrigin;
 }
 
-SWServerToContextConnection::SWServerToContextConnection(const SecurityOriginData& securityOrigin)
+SWServerToContextConnection::SWServerToContextConnection(const RegistrableDomain& registrableDomain)
     : m_identifier(generateServerToContextConnectionIdentifier())
-    , m_securityOrigin(securityOrigin)
+    , m_registrableDomain(registrableDomain)
 {
-    auto result = allConnectionsByOrigin().add(m_securityOrigin, this);
+    auto result = allConnectionsByRegistrableDomain().add(m_registrableDomain, this);
     ASSERT_UNUSED(result, result.isNewEntry);
 }
 
 SWServerToContextConnection::~SWServerToContextConnection()
 {
-    auto result = allConnectionsByOrigin().remove(m_securityOrigin);
+    auto result = allConnectionsByRegistrableDomain().remove(m_registrableDomain);
     ASSERT_UNUSED(result, result);
 }
 
-SWServerToContextConnection* SWServerToContextConnection::connectionForOrigin(const SecurityOriginData& securityOrigin)
+SWServerToContextConnection* SWServerToContextConnection::connectionForRegistrableDomain(const RegistrableDomain& registrableDomain)
 {
-    return allConnectionsByOrigin().get(securityOrigin);
+    return allConnectionsByRegistrableDomain().get(registrableDomain);
 }
 
-void SWServerToContextConnection::scriptContextFailedToStart(const std::optional<ServiceWorkerJobDataIdentifier>& jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, const String& message)
+void SWServerToContextConnection::scriptContextFailedToStart(const Optional<ServiceWorkerJobDataIdentifier>& jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, const String& message)
 {
     if (auto* worker = SWServerWorker::existingWorkerForIdentifier(serviceWorkerIdentifier))
         worker->scriptContextFailedToStart(jobDataIdentifier, message);
 }
 
-void SWServerToContextConnection::scriptContextStarted(const std::optional<ServiceWorkerJobDataIdentifier>& jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier)
+void SWServerToContextConnection::scriptContextStarted(const Optional<ServiceWorkerJobDataIdentifier>& jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier)
 {
     if (auto* worker = SWServerWorker::existingWorkerForIdentifier(serviceWorkerIdentifier))
         worker->scriptContextStarted(jobDataIdentifier);
 }
     
-void SWServerToContextConnection::didFinishInstall(const std::optional<ServiceWorkerJobDataIdentifier>& jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, bool wasSuccessful)
+void SWServerToContextConnection::didFinishInstall(const Optional<ServiceWorkerJobDataIdentifier>& jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, bool wasSuccessful)
 {
     if (auto* worker = SWServerWorker::existingWorkerForIdentifier(serviceWorkerIdentifier))
         worker->didFinishInstall(jobDataIdentifier, wasSuccessful);

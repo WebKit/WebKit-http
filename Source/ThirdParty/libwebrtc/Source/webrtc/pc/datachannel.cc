@@ -24,10 +24,6 @@ namespace webrtc {
 static size_t kMaxQueuedReceivedDataBytes = 16 * 1024 * 1024;
 static size_t kMaxQueuedSendDataBytes = 16 * 1024 * 1024;
 
-enum {
-  MSG_CHANNELREADY,
-};
-
 bool SctpSidAllocator::AllocateSid(rtc::SSLRole role, int* sid) {
   int potential_sid = (role == rtc::SSL_CLIENT) ? 0 : 1;
   while (!IsSidAvailable(potential_sid)) {
@@ -122,6 +118,10 @@ rtc::scoped_refptr<DataChannel> DataChannel::Create(
   return channel;
 }
 
+bool DataChannel::IsSctpLike(cricket::DataChannelType type) {
+  return type == cricket::DCT_SCTP || type == cricket::DCT_MEDIA_TRANSPORT;
+}
+
 DataChannel::DataChannel(DataChannelProviderInterface* provider,
                          cricket::DataChannelType dct,
                          const std::string& label)
@@ -151,7 +151,7 @@ bool DataChannel::Init(const InternalDataChannelInit& config) {
       return false;
     }
     handshake_state_ = kHandshakeReady;
-  } else if (data_channel_type_ == cricket::DCT_SCTP) {
+  } else if (IsSctpLike(data_channel_type_)) {
     if (config.id < -1 || config.maxRetransmits < -1 ||
         config.maxRetransmitTime < -1) {
       RTC_LOG(LS_ERROR) << "Failed to initialize the SCTP data channel due to "
@@ -187,7 +187,8 @@ bool DataChannel::Init(const InternalDataChannelInit& config) {
     // Chrome glue and WebKit) are not wired up properly until after this
     // function returns.
     if (provider_->ReadyToSendData()) {
-      rtc::Thread::Current()->Post(RTC_FROM_HERE, this, MSG_CHANNELREADY, NULL);
+      invoker_.AsyncInvoke<void>(RTC_FROM_HERE, rtc::Thread::Current(),
+                                 [this] { OnChannelReady(true); });
     }
   }
 
@@ -244,7 +245,7 @@ bool DataChannel::Send(const DataBuffer& buffer) {
   if (!queued_send_data_.Empty()) {
     // Only SCTP DataChannel queues the outgoing data when the transport is
     // blocked.
-    RTC_DCHECK(data_channel_type_ == cricket::DCT_SCTP);
+    RTC_DCHECK(IsSctpLike(data_channel_type_));
     if (!QueueSendDataMessage(buffer)) {
       RTC_LOG(LS_ERROR) << "Closing the DataChannel due to a failure to queue "
                            "additional data.";
@@ -276,7 +277,7 @@ void DataChannel::SetReceiveSsrc(uint32_t receive_ssrc) {
 void DataChannel::SetSctpSid(int sid) {
   RTC_DCHECK_LT(config_.id, 0);
   RTC_DCHECK_GE(sid, 0);
-  RTC_DCHECK_EQ(data_channel_type_, cricket::DCT_SCTP);
+  RTC_DCHECK(IsSctpLike(data_channel_type_));
   if (config_.id == sid) {
     return;
   }
@@ -286,7 +287,7 @@ void DataChannel::SetSctpSid(int sid) {
 }
 
 void DataChannel::OnClosingProcedureStartedRemotely(int sid) {
-  if (data_channel_type_ == cricket::DCT_SCTP && sid == config_.id &&
+  if (IsSctpLike(data_channel_type_) && sid == config_.id &&
       state_ != kClosing && state_ != kClosed) {
     // Don't bother sending queued data since the side that initiated the
     // closure wouldn't receive it anyway. See crbug.com/559394 for a lengthy
@@ -302,7 +303,7 @@ void DataChannel::OnClosingProcedureStartedRemotely(int sid) {
 }
 
 void DataChannel::OnClosingProcedureComplete(int sid) {
-  if (data_channel_type_ == cricket::DCT_SCTP && sid == config_.id) {
+  if (IsSctpLike(data_channel_type_) && sid == config_.id) {
     // If the closing procedure is complete, we should have finished sending
     // all pending data and transitioned to kClosing already.
     RTC_DCHECK_EQ(state_, kClosing);
@@ -313,7 +314,7 @@ void DataChannel::OnClosingProcedureComplete(int sid) {
 }
 
 void DataChannel::OnTransportChannelCreated() {
-  RTC_DCHECK(data_channel_type_ == cricket::DCT_SCTP);
+  RTC_DCHECK(IsSctpLike(data_channel_type_));
   if (!connected_to_provider_) {
     connected_to_provider_ = provider_->ConnectDataChannel(this);
   }
@@ -346,25 +347,17 @@ void DataChannel::SetSendSsrc(uint32_t send_ssrc) {
   UpdateState();
 }
 
-void DataChannel::OnMessage(rtc::Message* msg) {
-  switch (msg->message_id) {
-    case MSG_CHANNELREADY:
-      OnChannelReady(true);
-      break;
-  }
-}
-
 void DataChannel::OnDataReceived(const cricket::ReceiveDataParams& params,
                                  const rtc::CopyOnWriteBuffer& payload) {
   if (data_channel_type_ == cricket::DCT_RTP && params.ssrc != receive_ssrc_) {
     return;
   }
-  if (data_channel_type_ == cricket::DCT_SCTP && params.sid != config_.id) {
+  if (IsSctpLike(data_channel_type_) && params.sid != config_.id) {
     return;
   }
 
   if (params.type == cricket::DMT_CONTROL) {
-    RTC_DCHECK(data_channel_type_ == cricket::DCT_SCTP);
+    RTC_DCHECK(IsSctpLike(data_channel_type_));
     if (handshake_state_ != kHandshakeWaitingForAck) {
       // Ignore it if we are not expecting an ACK message.
       RTC_LOG(LS_WARNING)
@@ -581,7 +574,7 @@ bool DataChannel::SendDataMessage(const DataBuffer& buffer,
                                   bool queue_if_blocked) {
   cricket::SendDataParams send_params;
 
-  if (data_channel_type_ == cricket::DCT_SCTP) {
+  if (IsSctpLike(data_channel_type_)) {
     send_params.ordered = config_.ordered;
     // Send as ordered if it is still going through OPEN/ACK signaling.
     if (handshake_state_ != kHandshakeReady && !config_.ordered) {
@@ -608,7 +601,7 @@ bool DataChannel::SendDataMessage(const DataBuffer& buffer,
     return true;
   }
 
-  if (data_channel_type_ != cricket::DCT_SCTP) {
+  if (!IsSctpLike(data_channel_type_)) {
     return false;
   }
 
@@ -660,7 +653,7 @@ void DataChannel::QueueControlMessage(const rtc::CopyOnWriteBuffer& buffer) {
 bool DataChannel::SendControlMessage(const rtc::CopyOnWriteBuffer& buffer) {
   bool is_open_message = handshake_state_ == kHandshakeShouldSendOpen;
 
-  RTC_DCHECK_EQ(data_channel_type_, cricket::DCT_SCTP);
+  RTC_DCHECK(IsSctpLike(data_channel_type_));
   RTC_DCHECK(writable_);
   RTC_DCHECK_GE(config_.id, 0);
   RTC_DCHECK(!is_open_message || !config_.negotiated);

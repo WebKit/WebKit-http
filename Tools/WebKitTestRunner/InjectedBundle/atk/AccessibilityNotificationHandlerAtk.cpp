@@ -64,13 +64,9 @@ gboolean axObjectEventListener(GSignalInvocationHint* signalHint, unsigned numPa
     if (!accessible || !ATK_IS_OBJECT(accessible))
         return true;
 
-#if PLATFORM(GTK)
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(page);
     JSContextRef jsContext = WKBundleFrameGetJavaScriptContext(mainFrame);
-#else
-    JSContextRef jsContext = nullptr;
-#endif
 
     GSignalQuery signalQuery;
     const char* notificationName = nullptr;
@@ -184,15 +180,9 @@ void AccessibilityNotificationHandler::setNotificationFunctionCallback(JSValueRe
 
     m_notificationFunctionCallback = notificationFunctionCallback;
 
-#if PLATFORM(GTK)
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(page);
     JSContextRef jsContext = WKBundleFrameGetJavaScriptContext(mainFrame);
-#else
-    JSContextRef jsContext = nullptr;
-#endif
-    if (!jsContext)
-        return;
 
     connectAccessibilityCallbacks();
 
@@ -215,15 +205,9 @@ void AccessibilityNotificationHandler::setNotificationFunctionCallback(JSValueRe
 
 void AccessibilityNotificationHandler::removeAccessibilityNotificationHandler()
 {
-#if PLATFORM(GTK)
     WKBundlePageRef page = InjectedBundle::singleton().page()->page();
     WKBundleFrameRef mainFrame = WKBundlePageGetMainFrame(page);
     JSContextRef jsContext = WKBundleFrameGetJavaScriptContext(mainFrame);
-#else
-    JSContextRef jsContext = nullptr;
-#endif
-    if (!jsContext)
-        return;
 
     if (globalNotificationHandler == this) {
         JSValueUnprotect(jsContext, globalNotificationHandler->notificationFunctionCallback());
@@ -267,7 +251,7 @@ void AccessibilityNotificationHandler::connectAccessibilityCallbacks()
     for (const char** signalName = signalNames; *signalName; signalName++) {
         unsigned id = atk_add_global_event_listener(axObjectEventListener, *signalName);
         if (!id) {
-            String message = String::format("atk_add_global_event_listener failed for signal %s\n", *signalName);
+            String message = makeString("atk_add_global_event_listener failed for signal ", *signalName, '\n');
             InjectedBundle::singleton().outputText(message);
             continue;
         }

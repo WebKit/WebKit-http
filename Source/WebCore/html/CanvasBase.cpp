@@ -31,17 +31,19 @@
 #include "Element.h"
 #include "FloatRect.h"
 #include "InspectorInstrumentation.h"
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
-CanvasBase::CanvasBase(ScriptExecutionContext* scriptExecutionContext)
-    : m_scriptExecutionContext(scriptExecutionContext)
+CanvasBase::CanvasBase()
 {
 }
 
 CanvasBase::~CanvasBase()
 {
-    notifyObserversCanvasDestroyed();
+    ASSERT(!m_context); // Should have been set to null by base class.
+    ASSERT(m_didNotifyObserversCanvasDestroyed);
+    ASSERT(m_observers.isEmpty());
 }
 
 CanvasRenderingContext* CanvasBase::renderingContext() const
@@ -67,22 +69,28 @@ void CanvasBase::removeObserver(CanvasObserver& observer)
 
 void CanvasBase::notifyObserversCanvasChanged(const FloatRect& rect)
 {
-    for (auto& observer : m_observers)
+    for (auto& observer : copyToVector(m_observers))
         observer->canvasChanged(*this, rect);
 }
 
 void CanvasBase::notifyObserversCanvasResized()
 {
-    for (auto& observer : m_observers)
+    for (auto& observer : copyToVector(m_observers))
         observer->canvasResized(*this);
 }
 
 void CanvasBase::notifyObserversCanvasDestroyed()
 {
-    for (auto& observer : m_observers)
+    ASSERT(!m_didNotifyObserversCanvasDestroyed);
+
+    for (auto& observer : copyToVector(m_observers))
         observer->canvasDestroyed(*this);
 
     m_observers.clear();
+
+#ifndef NDEBUG
+    m_didNotifyObserversCanvasDestroyed = true;
+#endif
 }
 
 HashSet<Element*> CanvasBase::cssCanvasClients() const
@@ -99,6 +107,11 @@ HashSet<Element*> CanvasBase::cssCanvasClients() const
         }
     }
     return cssCanvasClients;
+}
+
+bool CanvasBase::callTracingActive() const
+{
+    return m_context && m_context->callTracingActive();
 }
 
 }

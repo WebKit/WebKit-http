@@ -31,14 +31,14 @@
 
 namespace WebCore {
 
-class ScrollerStyle {
+class WEBCORE_EXPORT ScrollerStyle {
 public:
     static NSScrollerStyle recommendedScrollerStyle();
 
-    WEBCORE_EXPORT static void setUseOverlayScrollbars(bool);
+    static void setUseOverlayScrollbars(bool);
     
 private:
-    static std::optional<bool> m_useOverlayScrollbars;
+    static Optional<bool> m_useOverlayScrollbars;
 };
 
 }

@@ -11,7 +11,7 @@
 #include "api/audio_codecs/isac/audio_encoder_isac_float.h"
 
 #include "absl/memory/memory.h"
-#include "common_types.h"  // NOLINT(build/include)
+#include "absl/strings/match.h"
 #include "modules/audio_coding/codecs/isac/main/include/audio_encoder_isac.h"
 #include "rtc_base/string_to_number.h"
 
@@ -19,11 +19,12 @@ namespace webrtc {
 
 absl::optional<AudioEncoderIsacFloat::Config>
 AudioEncoderIsacFloat::SdpToConfig(const SdpAudioFormat& format) {
-  if (STR_CASE_CMP(format.name.c_str(), "ISAC") == 0 &&
+  if (absl::EqualsIgnoreCase(format.name, "ISAC") &&
       (format.clockrate_hz == 16000 || format.clockrate_hz == 32000) &&
       format.num_channels == 1) {
     Config config;
     config.sample_rate_hz = format.clockrate_hz;
+    config.bit_rate = format.clockrate_hz == 16000 ? 32000 : 56000;
     if (config.sample_rate_hz == 16000) {
       // For sample rate 16 kHz, optionally use 60 ms frames, instead of the
       // default 30 ms.
@@ -65,9 +66,10 @@ std::unique_ptr<AudioEncoder> AudioEncoderIsacFloat::MakeAudioEncoder(
     absl::optional<AudioCodecPairId> /*codec_pair_id*/) {
   RTC_DCHECK(config.IsOk());
   AudioEncoderIsacFloatImpl::Config c;
+  c.payload_type = payload_type;
   c.sample_rate_hz = config.sample_rate_hz;
   c.frame_size_ms = config.frame_size_ms;
-  c.payload_type = payload_type;
+  c.bit_rate = config.bit_rate;
   return absl::make_unique<AudioEncoderIsacFloatImpl>(c);
 }
 

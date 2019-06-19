@@ -305,7 +305,7 @@ static ssize_t readBytesFromSocket(int socketDescriptor, Vector<uint8_t>& buffer
         struct cmsghdr* controlMessage;
         for (controlMessage = CMSG_FIRSTHDR(&message); controlMessage; controlMessage = CMSG_NXTHDR(&message, controlMessage)) {
             if (controlMessage->cmsg_level == SOL_SOCKET && controlMessage->cmsg_type == SCM_RIGHTS) {
-                if (controlMessage->cmsg_len < CMSG_LEN(0) || controlMessage->cmsg_len > attachmentMaxAmount) {
+                if (controlMessage->cmsg_len < CMSG_LEN(0) || controlMessage->cmsg_len > CMSG_LEN(sizeof(int) * attachmentMaxAmount)) {
                     ASSERT_NOT_REACHED();
                     break;
                 }
@@ -371,12 +371,9 @@ bool Connection::open()
     ASSERT(!m_socketNotifier);
 #endif
 
-    int flags = fcntl(m_socketDescriptor, F_GETFL, 0);
-    while (fcntl(m_socketDescriptor, F_SETFL, flags | O_NONBLOCK) == -1) {
-        if (errno != EINTR) {
-            ASSERT_NOT_REACHED();
-            return false;
-        }
+    if (!setNonBlock(m_socketDescriptor)) {
+        ASSERT_NOT_REACHED();
+        return false;
     }
 
     RefPtr<Connection> protectedThis(this);

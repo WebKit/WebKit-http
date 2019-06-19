@@ -19,21 +19,24 @@ function test() {
                 }
 
                 for (let eventListener of eventListeners) {
-                    let node = WI.domTreeManager.nodeForId(eventListener.nodeId);
-
-
                     InspectorTest.log(`Event: ${eventListener.type}`);
-                    InspectorTest.log(`Node: ${node.displayName}`);
+                    if (eventListener.nodeId) {
+                        let node = WI.domManager.nodeForId(eventListener.nodeId);
+                        InspectorTest.log(`Target: ${node.displayName}`);
+                    }
+                    if (eventListener.onWindow)
+                        InspectorTest.log("Target: window");
                     InspectorTest.log(`Capture: ${eventListener.useCapture}`);
                     InspectorTest.log(`Attribute: ${eventListener.isAttribute}`);
 
+                    if (eventListener.handlerName)
+                        InspectorTest.log(`Handler Name: ${eventListener.handlerName}`);
                     if (eventListener.passive)
                         InspectorTest.log(`Passive: ${eventListener.passive}`);
                     if (eventListener.once)
                         InspectorTest.log(`Once: ${eventListener.once}`);
-
-                    InspectorTest.expectThat(eventListener.location, "The Event Listener has a source location.");
-                    InspectorTest.expectThat(eventListener.handlerBody, "The Event Listener has a function.");
+                    if (eventListener.location)
+                        InspectorTest.log("The Event Listener has a source location.");
 
                     InspectorTest.log("");
                 }
@@ -43,15 +46,15 @@ function test() {
         }
     });
 
-    WI.domTreeManager.requestDocument((documentNode) => {
-        WI.domTreeManager.querySelector(documentNode.id, "div#x", (contentNodeId) => {
+    WI.domManager.requestDocument((documentNode) => {
+        WI.domManager.querySelector(documentNode.id, "div#x", (contentNodeId) => {
             if (!contentNodeId) {
                 InspectorTest.fail("DOM node not found.");
                 InspectorTest.completeTest();
                 return;
             }
 
-            domNode = WI.domTreeManager.nodeForId(contentNodeId);
+            domNode = WI.domManager.nodeForId(contentNodeId);
 
             suite.runTestCasesAndFinish();
         });
@@ -62,15 +65,24 @@ function test() {
 <body onload="runTest()">
     <p>Testing DOMAgent.getEventListenersForNode.</p>
 
-    <div id="x"></div>
+    <div id="x" onclick="(function xClick(event) { })()"></div>
     <script>
+        class ObjectEventHandler {
+            handleEvent(event) { }
+        }
+
         let element = document.getElementById("x");
-        element.addEventListener("alpha", (event) => {});
-        element.addEventListener("beta", (event) => {}, {once: true});
+        element.addEventListener("A", function xA(event) { });
+        element.addEventListener("B", function xB(event) { }, {once: true});
+        element.addEventListener("C", (event) => { });
+        element.addEventListener("D", { handleEvent(event) { } });
+        element.addEventListener("E", new ObjectEventHandler);
 
-        document.body.addEventListener("alpha", (event) => {}, true);
+        document.body.addEventListener("A", function bodyA(event) { }, true);
+        document.body.addEventListener("B", (event) => {}, true);
 
-        document.addEventListener("alpha", (event) => {}, {passive: true});
+        document.addEventListener("A", function documentA(event) { }, {passive: true});
+        document.addEventListener("B", (event) => {}, {passive: true});
     </script>
 </body>
 </html>

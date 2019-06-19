@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "PlatformUtilities.h"
 #import <UIKit/UIKit.h>
@@ -40,12 +40,16 @@ static bool loadFailed = false;
 
 @implementation RenderInContextWebViewDelegate
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)webViewDidFinishLoad:(UIWebView *)webView
+IGNORE_WARNINGS_END
 {
     loadComplete = true;
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error
+IGNORE_WARNINGS_END
 {
     loadComplete = true;
     loadFailed = true;

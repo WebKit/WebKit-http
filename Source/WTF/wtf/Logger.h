@@ -25,13 +25,7 @@
 
 #pragma once
 
-#include <wtf/Assertions.h>
-#include <wtf/HexNumber.h>
-#include <wtf/Noncopyable.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/text/StringBuilder.h>
-#include <wtf/text/WTFString.h>
 
 namespace WTF {
 
@@ -42,9 +36,12 @@ struct LogArgument {
     template<typename U = T> static typename std::enable_if<std::is_same<U, unsigned>::value, String>::type toString(unsigned argument) { return String::number(argument); }
     template<typename U = T> static typename std::enable_if<std::is_same<U, unsigned long>::value, String>::type toString(unsigned long argument) { return String::number(argument); }
     template<typename U = T> static typename std::enable_if<std::is_same<U, long>::value, String>::type toString(long argument) { return String::number(argument); }
-    template<typename U = T> static typename std::enable_if<std::is_same<U, float>::value, String>::type toString(float argument) { return String::number(argument); }
-    template<typename U = T> static typename std::enable_if<std::is_same<U, double>::value, String>::type toString(double argument) { return String::number(argument); }
-    template<typename U = T> static typename std::enable_if<std::is_same<typename std::remove_reference<U>::type, AtomicString>::value, String>::type toString(AtomicString argument) { return argument.string(); }
+    template<typename U = T> static typename std::enable_if<std::is_same<U, unsigned long long>::value, String>::type toString(unsigned long argument) { return String::number(argument); }
+    template<typename U = T> static typename std::enable_if<std::is_same<U, long long>::value, String>::type toString(long argument) { return String::number(argument); }
+    template<typename U = T> static typename std::enable_if<std::is_enum<U>::value, String>::type toString(U argument) { return String::number(static_cast<typename std::underlying_type<U>::type>(argument)); }
+    template<typename U = T> static typename std::enable_if<std::is_same<U, float>::value, String>::type toString(float argument) { return String::numberToStringFixedPrecision(argument); }
+    template<typename U = T> static typename std::enable_if<std::is_same<U, double>::value, String>::type toString(double argument) { return String::numberToStringFixedPrecision(argument); }
+    template<typename U = T> static typename std::enable_if<std::is_same<typename std::remove_reference<U>::type, AtomString>::value, String>::type toString(const AtomString& argument) { return argument.string(); }
     template<typename U = T> static typename std::enable_if<std::is_same<typename std::remove_reference<U>::type, String>::value, String>::type toString(String argument) { return argument; }
     template<typename U = T> static typename std::enable_if<std::is_same<typename std::remove_reference<U>::type, StringBuilder*>::value, String>::type toString(StringBuilder* argument) { return argument->toString(); }
     template<typename U = T> static typename std::enable_if<std::is_same<U, const char*>::value, String>::type toString(const char* argument) { return String(argument); }
@@ -131,47 +128,47 @@ public:
         //  on some systems, so don't allow it.
         UNUSED_PARAM(channel);
 #else
-        if (!willLog(channel, WTFLogLevelAlways))
+        if (!willLog(channel, WTFLogLevel::Always))
             return;
 
-        log(channel, WTFLogLevelAlways, arguments...);
+        log(channel, WTFLogLevel::Always, arguments...);
 #endif
     }
 
     template<typename... Arguments>
     inline void error(WTFLogChannel& channel, const Arguments&... arguments) const
     {
-        if (!willLog(channel, WTFLogLevelError))
+        if (!willLog(channel, WTFLogLevel::Error))
             return;
 
-        log(channel, WTFLogLevelError, arguments...);
+        log(channel, WTFLogLevel::Error, arguments...);
     }
 
     template<typename... Arguments>
     inline void warning(WTFLogChannel& channel, const Arguments&... arguments) const
     {
-        if (!willLog(channel, WTFLogLevelWarning))
+        if (!willLog(channel, WTFLogLevel::Warning))
             return;
 
-        log(channel, WTFLogLevelWarning, arguments...);
+        log(channel, WTFLogLevel::Warning, arguments...);
     }
 
     template<typename... Arguments>
     inline void info(WTFLogChannel& channel, const Arguments&... arguments) const
     {
-        if (!willLog(channel, WTFLogLevelInfo))
+        if (!willLog(channel, WTFLogLevel::Info))
             return;
 
-        log(channel, WTFLogLevelInfo, arguments...);
+        log(channel, WTFLogLevel::Info, arguments...);
     }
 
     template<typename... Arguments>
     inline void debug(WTFLogChannel& channel, const Arguments&... arguments) const
     {
-        if (!willLog(channel, WTFLogLevelDebug))
+        if (!willLog(channel, WTFLogLevel::Debug))
             return;
 
-        log(channel, WTFLogLevelDebug, arguments...);
+        log(channel, WTFLogLevel::Debug, arguments...);
     }
 
     inline bool willLog(const WTFLogChannel& channel, WTFLogLevel level) const
@@ -179,10 +176,10 @@ public:
         if (!m_enabled)
             return false;
 
-        if (level <= WTFLogLevelError)
+        if (level <= WTFLogLevel::Error)
             return true;
 
-        if (channel.state == WTFLogChannelOff || level > channel.level)
+        if (channel.state == WTFLogChannelState::Off || level > channel.level)
             return false;
 
         return m_enabled;
@@ -210,6 +207,8 @@ public:
         {
         }
 
+        WTF_EXPORT String toString() const;
+
         const char* className { nullptr };
         const char* methodName { nullptr };
         const uintptr_t objectPtr { 0 };
@@ -227,6 +226,8 @@ public:
     }
 
 private:
+    friend class AggregateLogger;
+
     Logger(const void* owner)
         : m_owner { owner }
     {
@@ -243,7 +244,7 @@ private:
         os_log(channel.osLogChannel, "%{public}s", logMessage.utf8().data());
 #endif
 
-        if (channel.state == WTFLogChannelOff || level > channel.level)
+        if (channel.state == WTFLogChannelState::Off || level > channel.level)
             return;
 
         for (Observer& observer : observers())
@@ -256,26 +257,15 @@ private:
         return observers;
     }
 
-    const void* m_owner;
     bool m_enabled { true };
+    const void* m_owner;
 };
 
-template <>
-struct LogArgument<Logger::LogSiteIdentifier> {
-    static String toString(const Logger::LogSiteIdentifier& value)
-    {
-        StringBuilder builder;
-
-        if (value.className) {
-            builder.append(value.className);
-            builder.appendLiteral("::");
-        }
-        builder.append(value.methodName);
-        builder.append('(');
-        appendUnsigned64AsHex(value.objectPtr, builder);
-        builder.appendLiteral(") ");
-        return builder.toString();
-    }
+template<> struct LogArgument<Logger::LogSiteIdentifier> {
+    static String toString(const Logger::LogSiteIdentifier& value) { return value.toString(); }
+};
+template<> struct LogArgument<const void*> {
+    WTF_EXPORT static String toString(const void*);
 };
 
 } // namespace WTF

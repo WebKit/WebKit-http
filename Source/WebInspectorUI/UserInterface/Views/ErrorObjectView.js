@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,7 +43,7 @@ WI.ErrorObjectView = class ErrorObjectView extends WI.Object
         previewElement.addEventListener("click", this._handlePreviewOrTitleElementClick.bind(this));
 
         this._outlineElement = this._element.appendChild(document.createElement("div"));
-        this._outline = new WI.TreeOutline(this._outlineElement);
+        this._outlineElement.className = "content";
     }
 
     // Static
@@ -55,7 +55,7 @@ WI.ErrorObjectView = class ErrorObjectView extends WI.Object
 
         var span = document.createElement("span");
         span.classList.add("error-object-link-container");
-        span.textContent = " — ";
+        span.textContent = ` ${emDash} `;
 
         const options = {
             ignoreNetworkTab: true,
@@ -80,11 +80,6 @@ WI.ErrorObjectView = class ErrorObjectView extends WI.Object
         return this._element;
     }
 
-    get treeOutline()
-    {
-        return this._outline;
-    }
-
     get expanded()
     {
         return this._expanded;
@@ -92,14 +87,25 @@ WI.ErrorObjectView = class ErrorObjectView extends WI.Object
 
     update()
     {
-        this._object.getOwnPropertyDescriptorsAsObject((properties) => {
-            console.assert(properties && properties.stack && properties.stack.value);
+        if (this._hasStackTrace)
+            return;
 
-            if (!this._hasStackTrace)
-                this._buildStackTrace(properties.stack.value.value);
+        const options = {
+            ownProperties: true,
+            generatePreview: true,
+        };
+        this._object.getPropertyDescriptors((properties) => {
+            if (!properties || this._hasStackTrace)
+                return;
 
+            let stackProperty = properties.find((property) => property.name === "stack");
+            console.assert(stackProperty);
+            if (!stackProperty)
+                return;
+
+            this._buildStackTrace(stackProperty.value.value);
             this._hasStackTrace = true;
-        });
+        }, options);
     }
 
     expand()

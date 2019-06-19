@@ -68,7 +68,7 @@
 #include <stdio.h>
 #include <wtf/text/CString.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Color.h"
@@ -114,6 +114,30 @@ IntRect DragCaretController::caretRectInRootViewCoordinates() const
     return { };
 }
 
+IntRect DragCaretController::editableElementRectInRootViewCoordinates() const
+{
+    if (!hasCaret())
+        return { };
+
+    RefPtr<ContainerNode> editableContainer;
+    if (auto* formControl = enclosingTextFormControl(m_position.deepEquivalent()))
+        editableContainer = formControl;
+    else
+        editableContainer = highestEditableRoot(m_position.deepEquivalent());
+
+    if (!editableContainer)
+        return { };
+
+    auto* renderer = editableContainer->renderer();
+    if (!renderer)
+        return { };
+
+    if (auto* view = editableContainer->document().view())
+        return view->contentsToRootView(renderer->absoluteBoundingBoxRect());
+
+    return { };
+}
+
 static inline bool shouldAlwaysUseDirectionalSelection(Frame* frame)
 {
     return !frame || frame->editor().behavior().shouldConsiderSelectionAsDirectional();
@@ -135,7 +159,7 @@ FrameSelection::FrameSelection(Frame* frame)
     , m_shouldShowBlockCursor(false)
     , m_pendingSelectionUpdate(false)
     , m_alwaysAlignCursorOnScrollWhenRevealingSelection(false)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     , m_updateAppearanceEnabled(false)
     , m_caretBlinks(true)
 #endif
@@ -403,9 +427,11 @@ static void updateSelectionByUpdatingLayoutOrStyle(Frame& frame)
 #endif
 }
 
-void FrameSelection::setNeedsSelectionUpdate()
+void FrameSelection::setNeedsSelectionUpdate(RevealSelectionAfterUpdate revealMode)
 {
     m_selectionRevealIntent = AXTextStateChangeIntent();
+    if (revealMode == RevealSelectionAfterUpdate::Forced)
+        m_selectionRevealMode = SelectionRevealMode::Reveal;
     m_pendingSelectionUpdate = true;
     if (RenderView* view = m_frame->contentRenderer())
         view->selection().clear();
@@ -436,7 +462,7 @@ void FrameSelection::updateAndRevealSelection(const AXTextStateChangeIntent& int
 
 void FrameSelection::updateDataDetectorsForSelection()
 {
-#if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS)
+#if ENABLE(TELEPHONE_NUMBER_DETECTION) && !PLATFORM(IOS_FAMILY)
     m_frame->editor().scanSelectionForTelephoneNumbers();
 #endif
 }
@@ -511,16 +537,18 @@ void FrameSelection::respondToNodeModification(Node& node, bool baseRemoved, boo
             m_selection.setWithoutValidation(m_selection.start(), m_selection.end());
         else
             m_selection.setWithoutValidation(m_selection.end(), m_selection.start());
-    } else if (RefPtr<Range> range = m_selection.firstRange()) {
-        auto compareNodeResult = range->compareNode(node);
-        if (!compareNodeResult.hasException()) {
-            auto compareResult = compareNodeResult.releaseReturnValue();
-            if (compareResult == Range::NODE_BEFORE_AND_AFTER || compareResult == Range::NODE_INSIDE) {
-                // If we did nothing here, when this node's renderer was destroyed, the rect that it 
-                // occupied would be invalidated, but, selection gaps that change as a result of 
-                // the removal wouldn't be invalidated.
-                // FIXME: Don't do so much unnecessary invalidation.
-                clearRenderTreeSelection = true;
+    } else if (isRange()) {
+        if (RefPtr<Range> range = m_selection.firstRange()) {
+            auto compareNodeResult = range->compareNode(node);
+            if (!compareNodeResult.hasException()) {
+                auto compareResult = compareNodeResult.releaseReturnValue();
+                if (compareResult == Range::NODE_BEFORE_AND_AFTER || compareResult == Range::NODE_INSIDE) {
+                    // If we did nothing here, when this node's renderer was destroyed, the rect that it
+                    // occupied would be invalidated, but, selection gaps that change as a result of
+                    // the removal wouldn't be invalidated.
+                    // FIXME: Don't do so much unnecessary invalidation.
+                    clearRenderTreeSelection = true;
+                }
             }
         }
     }
@@ -1422,7 +1450,7 @@ bool FrameSelection::modify(EAlteration alter, unsigned verticalDistance, Vertic
     willBeModified(alter, direction == DirectionUp ? DirectionBackward : DirectionForward);
 
     VisiblePosition pos;
-    LayoutUnit xPos = 0;
+    LayoutUnit xPos;
     switch (alter) {
     case AlterationMove:
         pos = VisiblePosition(direction == DirectionUp ? m_selection.start() : m_selection.end(), m_selection.affinity());
@@ -1488,7 +1516,7 @@ bool FrameSelection::modify(EAlteration alter, unsigned verticalDistance, Vertic
 
 LayoutUnit FrameSelection::lineDirectionPointForBlockDirectionNavigation(EPositionType type)
 {
-    LayoutUnit x = 0;
+    LayoutUnit x;
 
     if (isNone())
         return x;
@@ -1851,12 +1879,12 @@ bool FrameSelection::contains(const LayoutPoint& point) const
     if (!isRange())
         return false;
     
-    RenderView* renderView = m_frame->contentRenderer();
-    if (!renderView)
+    auto* document = m_frame->document();
+    if (!document)
         return false;
     
     HitTestResult result(point);
-    renderView->hitTest(HitTestRequest(), result);
+    document->hitTest(HitTestRequest(), result);
     Node* innerNode = result.innerNode();
     if (!innerNode || !innerNode->renderer())
         return false;
@@ -1979,7 +2007,7 @@ void FrameSelection::selectAll()
     }
 }
 
-bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, bool closeTyping, EUserTriggered userTriggered)
+bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, ShouldCloseTyping closeTyping, EUserTriggered userTriggered)
 {
     if (!range)
         return false;
@@ -1987,14 +2015,14 @@ bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, bool clo
 
     VisibleSelection newSelection(*range, affinity);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // FIXME: Why do we need this check only in iOS?
     if (newSelection.isNone())
         return false;
 #endif
 
     OptionSet<SetSelectionOption> selectionOptions {  ClearTypingStyle };
-    if (closeTyping)
+    if (closeTyping == ShouldCloseTyping::Yes)
         selectionOptions.add(CloseTyping);
 
     if (userTriggered == UserTriggered) {
@@ -2076,7 +2104,7 @@ inline static bool shouldStopBlinkingDueToTypingCommand(Frame* frame)
 
 void FrameSelection::updateAppearance()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (!m_updateAppearanceEnabled)
         return;
 #endif
@@ -2253,7 +2281,7 @@ RefPtr<MutableStyleProperties> FrameSelection::copyTypingStyle() const
 
 bool FrameSelection::shouldDeleteSelection(const VisibleSelection& selection) const
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_frame->selectionChangeCallbacksDisabled())
         return true;
 #endif
@@ -2370,7 +2398,7 @@ void FrameSelection::revealSelection(SelectionRevealMode revealMode, const Scrol
     Position start = m_selection.start();
     ASSERT(start.deprecatedNode());
     if (start.deprecatedNode() && start.deprecatedNode()->renderer()) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         if (RenderLayer* layer = start.deprecatedNode()->renderer()->enclosingLayer()) {
             if (!m_scrollingSuppressCount) {
                 layer->setAdjustForIOSCaretWhenScrolling(true);
@@ -2397,7 +2425,7 @@ void FrameSelection::setSelectionFromNone()
     // entire WebView is editable or designMode is on for this document).
 
     Document* document = m_frame->document();
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     bool caretBrowsing = m_frame->settings().caretBrowsingEnabled();
     if (!isNone() || !(document->hasEditableStyle() || caretBrowsing))
         return;
@@ -2412,7 +2440,7 @@ void FrameSelection::setSelectionFromNone()
 
 bool FrameSelection::shouldChangeSelection(const VisibleSelection& newSelection) const
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (m_frame->selectionChangeCallbacksDisabled())
         return true;
 #endif
@@ -2480,7 +2508,7 @@ void FrameSelection::showTreeForThis() const
 
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 void FrameSelection::expandSelectionToElementContainingCaretSelection()
 {
     RefPtr<Range> range = elementRangeContainingCaretSelection();
@@ -2894,7 +2922,7 @@ void FrameSelection::setCaretColor(const Color& caretColor)
             invalidateCaretRect();
     }
 }
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 }
 

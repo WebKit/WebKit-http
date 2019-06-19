@@ -16,9 +16,12 @@
 
 #include "absl/types/optional.h"
 #include "api/array_view.h"
+#include "api/mediatypes.h"
+#include "api/rtpparameters.h"
 #include "api/rtpreceiverinterface.h"
 #include "api/rtpsenderinterface.h"
 #include "rtc_base/refcount.h"
+#include "rtc_base/scoped_ref_ptr.h"
 
 namespace webrtc {
 
@@ -126,8 +129,7 @@ class RtpTransceiverInterface : public rtc::RefCountInterface {
   // by WebRTC for this transceiver.
   // https://w3c.github.io/webrtc-pc/#dom-rtcrtptransceiver-setcodecpreferences
   // TODO(steveanton): Not implemented.
-  virtual void SetCodecPreferences(
-      rtc::ArrayView<RtpCodecCapability> codecs) = 0;
+  virtual void SetCodecPreferences(rtc::ArrayView<RtpCodecCapability> codecs);
 
  protected:
   ~RtpTransceiverInterface() override = default;

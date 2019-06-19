@@ -39,8 +39,8 @@
 #import <WebCore/DOMWindow.h>
 #import <WebCore/Frame.h>
 #import <WebCore/JSDOMWindow.h>
-#import <WebCore/URL.h>
 #import <WebCore/ScriptController.h>
+#import <wtf/URL.h>
 
 using namespace JSC;
 using namespace WebCore;
@@ -62,7 +62,7 @@ static NSURL *toNSURL(const String& s)
 {
     if (s.isEmpty())
         return nil;
-    return URL(ParsedURLString, s);
+    return URL({ }, s);
 }
 
 static WebFrame *toWebFrame(JSGlobalObject* globalObject)

@@ -26,7 +26,7 @@
 
 #pragma once
 
-#include "URL.h"
+#include <wtf/URL.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -38,7 +38,7 @@ WEBCORE_EXPORT extern const char* const errorDomainWebKitServiceWorker; // Used 
 
 class ResourceErrorBase {
 public:
-    ResourceError isolatedCopy() const;
+    WEBCORE_EXPORT ResourceError isolatedCopy() const;
 
     const String& domain() const { lazyInit(); return m_domain; }
     int errorCode() const { lazyInit(); return m_errorCode; }

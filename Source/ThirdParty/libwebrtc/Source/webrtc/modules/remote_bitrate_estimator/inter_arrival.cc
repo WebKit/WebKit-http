@@ -10,15 +10,15 @@
 
 #include "modules/remote_bitrate_estimator/inter_arrival.h"
 
-#include <algorithm>
 #include <cassert>
 
-#include "modules/include/module_common_types.h"
+#include "modules/include/module_common_types_public.h"
 #include "rtc_base/logging.h"
 
 namespace webrtc {
 
 static const int kBurstDeltaThresholdMs = 5;
+static const int kMaxBurstDurationMs = 100;
 
 InterArrival::InterArrival(uint32_t timestamp_group_length_ticks,
                            double timestamp_to_ms_coeff,
@@ -46,6 +46,7 @@ bool InterArrival::ComputeDeltas(uint32_t timestamp,
     // have two frames of data to process.
     current_timestamp_group_.timestamp = timestamp;
     current_timestamp_group_.first_timestamp = timestamp;
+    current_timestamp_group_.first_arrival_ms = arrival_time_ms;
   } else if (!PacketInOrder(timestamp)) {
     return false;
   } else if (NewTimestampGroup(arrival_time_ms, timestamp)) {
@@ -93,6 +94,7 @@ bool InterArrival::ComputeDeltas(uint32_t timestamp,
     // The new timestamp is now the current frame.
     current_timestamp_group_.first_timestamp = timestamp;
     current_timestamp_group_.timestamp = timestamp;
+    current_timestamp_group_.first_arrival_ms = arrival_time_ms;
     current_timestamp_group_.size = 0;
   } else {
     current_timestamp_group_.timestamp =
@@ -147,8 +149,12 @@ bool InterArrival::BelongsToBurst(int64_t arrival_time_ms,
   if (ts_delta_ms == 0)
     return true;
   int propagation_delta_ms = arrival_time_delta_ms - ts_delta_ms;
-  return propagation_delta_ms < 0 &&
-         arrival_time_delta_ms <= kBurstDeltaThresholdMs;
+  if (propagation_delta_ms < 0 &&
+      arrival_time_delta_ms <= kBurstDeltaThresholdMs &&
+      arrival_time_ms - current_timestamp_group_.first_arrival_ms <
+          kMaxBurstDurationMs)
+    return true;
+  return false;
 }
 
 void InterArrival::Reset() {

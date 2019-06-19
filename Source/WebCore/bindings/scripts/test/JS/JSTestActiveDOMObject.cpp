@@ -33,12 +33,12 @@
 #include "JSDOMWrapperCache.h"
 #include "JSNode.h"
 #include "ScriptExecutionContext.h"
-#include "URL.h"
 #include <JavaScriptCore/FunctionPrototype.h>
 #include <JavaScriptCore/HeapSnapshotBuilder.h>
 #include <JavaScriptCore/JSCInlines.h>
 #include <wtf/GetPtr.h>
 #include <wtf/PointerPreparations.h>
+#include <wtf/URL.h>
 
 
 namespace WebCore {
@@ -200,7 +200,7 @@ static inline JSValue jsTestActiveDOMObjectExcitingAttrGetter(ExecState& state, 
 {
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
-    if (!BindingSecurity::shouldAllowAccessToFrame(&state, thisObject.wrapped().frame(), ThrowSecurityError))
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(&state, thisObject.wrapped().window(), ThrowSecurityError))
         return jsUndefined();
     auto& impl = thisObject.wrapped();
     JSValue result = toJS<IDLLong>(state, throwScope, impl.excitingAttr());
@@ -216,7 +216,7 @@ static inline JSC::EncodedJSValue jsTestActiveDOMObjectPrototypeFunctionExciting
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
-    if (!BindingSecurity::shouldAllowAccessToFrame(state, castedThis->wrapped().frame(), ThrowSecurityError))
+    if (!BindingSecurity::shouldAllowAccessToDOMWindow(state, castedThis->wrapped().window(), ThrowSecurityError))
         return JSValue::encode(jsUndefined());
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
@@ -255,7 +255,7 @@ void JSTestActiveDOMObject::heapSnapshot(JSCell* cell, HeapSnapshotBuilder& buil
     auto* thisObject = jsCast<JSTestActiveDOMObject*>(cell);
     builder.setWrappedObjectForCell(cell, &thisObject->wrapped());
     if (thisObject->scriptExecutionContext())
-        builder.setLabelForCell(cell, String::format("url %s", thisObject->scriptExecutionContext()->url().string().utf8().data()));
+        builder.setLabelForCell(cell, "url " + thisObject->scriptExecutionContext()->url().string());
     Base::heapSnapshot(cell, builder);
 }
 

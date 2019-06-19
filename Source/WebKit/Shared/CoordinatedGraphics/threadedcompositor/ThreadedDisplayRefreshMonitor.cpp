@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ThreadedDisplayRefreshMonitor.h"
 
-#if USE(COORDINATED_GRAPHICS_THREADED) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+#if USE(COORDINATED_GRAPHICS) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 
 #include "CompositingRunLoop.h"
 #include "ThreadedCompositor.h"
@@ -85,6 +85,13 @@ void ThreadedDisplayRefreshMonitor::dispatchDisplayRefreshCallback()
 void ThreadedDisplayRefreshMonitor::invalidate()
 {
     m_displayRefreshTimer.stop();
+    bool wasScheduled = false;
+    {
+        LockHolder locker(mutex());
+        wasScheduled = isScheduled();
+    }
+    if (wasScheduled)
+        DisplayRefreshMonitor::handleDisplayRefreshedNotificationOnMainThread(this);
     m_client = nullptr;
 }
 
@@ -117,4 +124,4 @@ void ThreadedDisplayRefreshMonitor::displayRefreshCallback()
 
 } // namespace WebKit
 
-#endif // USE(COORDINATED_GRAPHICS_THREADED) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+#endif // USE(COORDINATED_GRAPHICS) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)

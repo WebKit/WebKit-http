@@ -26,13 +26,11 @@
 #import "config.h"
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import "PlatformUtilities.h"
 #import "Test.h"
-#import <WebCore/WebCoreNSURLExtras.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/cocoa/NSURLExtras.h>
 
 static bool isDone;
 static int provisionalLoadCount;
@@ -110,7 +108,7 @@ TEST(WKWebView, LoadAlternateHTMLStringFromProvisionalLoadErrorBackToBack)
         [webView setNavigationDelegate:delegate.get()];
 
         char literal[] = "https://www.example.com<>/";
-        NSURL* targetURL = WebCore::URLWithData([NSData dataWithBytes:literal length:strlen(literal)], nil);
+        NSURL* targetURL = WTF::URLWithData([NSData dataWithBytes:literal length:strlen(literal)], nil);
         [webView loadRequest:[NSURLRequest requestWithURL:targetURL]];
         [webView loadRequest:[NSURLRequest requestWithURL:targetURL]];
 
@@ -154,5 +152,3 @@ TEST(WKWebView, LoadAlternateHTMLStringFromProvisionalLoadErrorReload)
     WKBackForwardList *list = [webView backForwardList];
     EXPECT_EQ((NSUInteger)0, list.backList.count);
 }
-
-#endif

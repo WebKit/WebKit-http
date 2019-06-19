@@ -42,7 +42,6 @@
 #include "HTMLParamElement.h"
 #include "HTMLPlugInElement.h"
 #include "HitTestResult.h"
-#include "LayoutState.h"
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "Page.h"
@@ -50,6 +49,7 @@
 #include "Path.h"
 #include "PlatformMouseEvent.h"
 #include "PluginViewBase.h"
+#include "RenderLayoutState.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "Settings.h"
@@ -136,7 +136,7 @@ bool RenderEmbeddedObject::requiresLayer() const
 
 bool RenderEmbeddedObject::allowsAcceleratedCompositing() const
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // The timing of layer creation is different on the phone, since the plugin can only be manipulated from the main thread.
     return is<PluginViewBase>(widget()) && downcast<PluginViewBase>(*widget()).willProvidePluginLayer();
 #else
@@ -144,7 +144,7 @@ bool RenderEmbeddedObject::allowsAcceleratedCompositing() const
 #endif
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 static String unavailablePluginReplacementText(RenderEmbeddedObject::PluginUnavailabilityReason pluginUnavailabilityReason)
 {
     switch (pluginUnavailabilityReason) {
@@ -158,6 +158,8 @@ static String unavailablePluginReplacementText(RenderEmbeddedObject::PluginUnava
         return insecurePluginVersionText();
     case RenderEmbeddedObject::UnsupportedPlugin:
         return unsupportedPluginText();
+    case RenderEmbeddedObject::PluginTooSmall:
+        return pluginTooSmallText();
     }
 
     ASSERT_NOT_REACHED();
@@ -172,7 +174,7 @@ static bool shouldUnavailablePluginMessageBeButton(Page& page, RenderEmbeddedObj
 
 void RenderEmbeddedObject::setPluginUnavailabilityReason(PluginUnavailabilityReason pluginUnavailabilityReason)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     UNUSED_PARAM(pluginUnavailabilityReason);
 #else
     setPluginUnavailabilityReasonWithDescription(pluginUnavailabilityReason, unavailablePluginReplacementText(pluginUnavailabilityReason));
@@ -181,7 +183,7 @@ void RenderEmbeddedObject::setPluginUnavailabilityReason(PluginUnavailabilityRea
 
 void RenderEmbeddedObject::setPluginUnavailabilityReasonWithDescription(PluginUnavailabilityReason pluginUnavailabilityReason, const String& description)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     UNUSED_PARAM(pluginUnavailabilityReason);
     UNUSED_PARAM(description);
 #else

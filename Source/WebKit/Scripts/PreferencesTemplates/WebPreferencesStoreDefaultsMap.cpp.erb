@@ -1,5 +1,5 @@
 /*
- * THIS FILE WAS AUTOMATICALLY GENERATED, DO NOT EDIT.
+ * <%= @warning %>
  *
  * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
@@ -34,23 +34,28 @@
 #include <wtf/Variant.h>
 
 // FIXME: These should added via options in WebPreferences.yaml, rather than hardcoded.
-#include "FontSmoothingLevel.h"
 #include <WebCore/DeprecatedGlobalSettings.h>
 #include <WebCore/LibWebRTCProvider.h>
+#include <WebCore/RealtimeMediaSourceCenter.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/Settings.h>
 #include <WebCore/TextEncodingRegistry.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 WebPreferencesStore::ValueMap& WebPreferencesStore::defaults()
 {
     static NeverDestroyed<ValueMap> defaults;
     if (defaults.get().isEmpty()) {
 <%- for @pref in @preferences do -%>
+<%- if @pref.condition -%>
+#if <%= @pref.condition %>
+<%- end -%>
         defaults.get().set(WebPreferencesKey::<%= @pref.nameLower %>Key(), Value(<%= @pref.type %>(<%= @pref.defaultValue %>)));
+<%- if @pref.condition -%>
+#endif
+<%- end -%>
 <%- end -%>
     }
 

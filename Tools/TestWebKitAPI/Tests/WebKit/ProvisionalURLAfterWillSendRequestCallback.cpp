@@ -38,10 +38,9 @@ namespace TestWebKitAPI {
 
 static bool committedLoad;
 
-static void didCommitLoadForFrame(WKPageRef page, WKFrameRef frame, WKTypeRef userData, const void*)
+static void didCommitNavigationCallback(WKPageRef page, WKNavigationRef, WKTypeRef userData, const void*)
 {
-    if (!WKFrameIsMainFrame(frame))
-        return;
+    WKFrameRef frame = WKPageGetMainFrame(page);
 
     // The provisional URL should be null.
     EXPECT_NULL(WKFrameCopyProvisionalURL(frame));
@@ -55,7 +54,7 @@ static void didCommitLoadForFrame(WKPageRef page, WKFrameRef frame, WKTypeRef us
     assert(WKGetTypeID(userData) == WKURLGetTypeID());
     EXPECT_TRUE(WKURLIsEqual(committedURL.get(), static_cast<WKURLRef>(userData)));
 
-    WKRetainPtr<WKURLRef> url(AdoptWK, Util::createURLForResource("simple2", "html"));
+    WKRetainPtr<WKURLRef> url = adoptWK(Util::createURLForResource("simple2", "html"));
     EXPECT_TRUE(WKURLIsEqual(committedURL.get(), url.get()));
 
     committedLoad = true;
@@ -63,7 +62,7 @@ static void didCommitLoadForFrame(WKPageRef page, WKFrameRef frame, WKTypeRef us
 
 TEST(WebKit2, ProvisionalURLAfterWillSendRequestCallback)
 {
-    WKRetainPtr<WKContextRef> context(AdoptWK, Util::createContextForInjectedBundleTest("ProvisionalURLAfterWillSendRequestCallbackTest"));
+    WKRetainPtr<WKContextRef> context = adoptWK(Util::createContextForInjectedBundleTest("ProvisionalURLAfterWillSendRequestCallbackTest"));
 
     WKContextInjectedBundleClientV0 injectedBundleClient;
     memset(&injectedBundleClient, 0, sizeof(injectedBundleClient));
@@ -72,14 +71,14 @@ TEST(WebKit2, ProvisionalURLAfterWillSendRequestCallback)
 
     PlatformWebView webView(context.get());
 
-    WKPageLoaderClientV0 loaderClient;
-    memset(&loaderClient, 0, sizeof(loaderClient));
+    WKPageNavigationClientV0 navigationClient;
+    memset(&navigationClient, 0, sizeof(navigationClient));
 
-    loaderClient.base.version = 0;
-    loaderClient.didCommitLoadForFrame = didCommitLoadForFrame;
-    WKPageSetPageLoaderClient(webView.page(), &loaderClient.base);
+    navigationClient.base.version = 0;
+    navigationClient.didCommitNavigation = didCommitNavigationCallback;
+    WKPageSetPageNavigationClient(webView.page(), &navigationClient.base);
 
-    WKRetainPtr<WKURLRef> url(AdoptWK, Util::createURLForResource("simple", "html"));
+    WKRetainPtr<WKURLRef> url = adoptWK(Util::createURLForResource("simple", "html"));
     WKPageLoadURL(webView.page(), url.get());
     Util::run(&committedLoad);
 }

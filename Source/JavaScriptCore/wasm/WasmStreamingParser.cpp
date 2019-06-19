@@ -30,6 +30,7 @@
 
 #include "WasmModuleParser.h"
 #include "WasmSectionParser.h"
+#include <wtf/Optional.h>
 #include <wtf/UnalignedAccess.h>
 
 namespace JSC { namespace Wasm {
@@ -47,14 +48,14 @@ static constexpr bool verbose = false;
         } \
     } while (0)
 
-ALWAYS_INLINE std::optional<uint8_t> parseUInt7(const uint8_t* data, size_t& offset, size_t size)
+ALWAYS_INLINE Optional<uint8_t> parseUInt7(const uint8_t* data, size_t& offset, size_t size)
 {
     if (offset >= size)
         return false;
     uint8_t result = data[offset++];
     if (result < 0x80)
         return result;
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 template <typename ...Args>
@@ -173,12 +174,12 @@ auto StreamingParser::parseSectionPayload(Vector<uint8_t>&& data) -> State
     return State::SectionID;
 }
 
-auto StreamingParser::consume(const uint8_t* bytes, size_t bytesSize, size_t& offsetInBytes, size_t requiredSize) -> std::optional<Vector<uint8_t>>
+auto StreamingParser::consume(const uint8_t* bytes, size_t bytesSize, size_t& offsetInBytes, size_t requiredSize) -> Optional<Vector<uint8_t>>
 {
     if (m_remaining.size() == requiredSize) {
         Vector<uint8_t> result = WTFMove(m_remaining);
         m_nextOffset += requiredSize;
-        return WTFMove(result);
+        return result;
     }
 
     if (m_remaining.size() > requiredSize) {
@@ -186,7 +187,7 @@ auto StreamingParser::consume(const uint8_t* bytes, size_t bytesSize, size_t& of
         memcpy(result.data(), m_remaining.data(), requiredSize);
         m_remaining.remove(0, requiredSize);
         m_nextOffset += requiredSize;
-        return WTFMove(result);
+        return result;
     }
 
     ASSERT(m_remaining.size() < requiredSize);
@@ -195,7 +196,7 @@ auto StreamingParser::consume(const uint8_t* bytes, size_t bytesSize, size_t& of
     if (totalDataSize < requiredSize) {
         m_remaining.append(bytes + offsetInBytes, bytesRemainingSize);
         offsetInBytes = bytesSize;
-        return std::nullopt;
+        return WTF::nullopt;
     }
 
     size_t usedSize = requiredSize - m_remaining.size();
@@ -203,7 +204,7 @@ auto StreamingParser::consume(const uint8_t* bytes, size_t bytesSize, size_t& of
     offsetInBytes += usedSize;
     Vector<uint8_t> result = WTFMove(m_remaining);
     m_nextOffset += requiredSize;
-    return WTFMove(result);
+    return result;
 }
 
 auto StreamingParser::consumeVarUInt32(const uint8_t* bytes, size_t bytesSize, size_t& offsetInBytes, IsEndOfStream isEndOfStream) -> Expected<uint32_t, State>

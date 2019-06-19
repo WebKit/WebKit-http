@@ -22,9 +22,16 @@
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 #include "system_wrappers/include/clock.h"
+#include "system_wrappers/include/field_trial.h"
 
 namespace webrtc {
 namespace vcm {
+
+namespace {
+
+constexpr char kFrameDropperFieldTrial[] = "WebRTC-FrameDropper";
+
+}  // namespace
 
 VideoSender::VideoSender(Clock* clock,
                          EncodedImageCallback* post_encode_callback)
@@ -33,12 +40,12 @@ VideoSender::VideoSender(Clock* clock,
       _encodedFrameCallback(post_encode_callback, &_mediaOpt),
       post_encode_callback_(post_encode_callback),
       _codecDataBase(&_encodedFrameCallback),
-      frame_dropper_enabled_(true),
+      frame_dropper_requested_(true),
+      force_disable_frame_dropper_(false),
       current_codec_(),
       encoder_params_({VideoBitrateAllocation(), 0, 0, 0}),
       encoder_has_internal_source_(false),
       next_frame_types_(1, kVideoFrameDelta) {
-  _mediaOpt.Reset();
   // Allow VideoSender to be created on one thread but used on another, post
   // construction. This is currently how this class is being used by at least
   // one external project (diffractor).
@@ -90,14 +97,12 @@ int32_t VideoSender::RegisterSendCodec(const VideoCodec* sendCodec,
     numLayers = 1;
   }
 
-  // If we have screensharing and we have layers, we disable frame dropper.
-  bool disable_frame_dropper =
-      numLayers > 1 && sendCodec->mode == VideoCodecMode::kScreensharing;
-  if (disable_frame_dropper) {
-    _mediaOpt.EnableFrameDropper(false);
-  } else if (frame_dropper_enabled_) {
-    _mediaOpt.EnableFrameDropper(true);
-  }
+  // Force-disable frame dropper if either:
+  //  * We have screensharing with layers.
+  //  * "WebRTC-FrameDropper" field trial is "Disabled".
+  force_disable_frame_dropper_ =
+      field_trial::IsDisabled(kFrameDropperFieldTrial) ||
+      (numLayers > 1 && sendCodec->mode == VideoCodecMode::kScreensharing);
 
   {
     rtc::CritScope cs(&params_crit_);
@@ -240,8 +245,10 @@ void VideoSender::SetEncoderParameters(EncoderParameters params,
 }
 
 // Add one raw video frame to the encoder, blocking.
-int32_t VideoSender::AddVideoFrame(const VideoFrame& videoFrame,
-                                   const CodecSpecificInfo* codecSpecificInfo) {
+int32_t VideoSender::AddVideoFrame(
+    const VideoFrame& videoFrame,
+    const CodecSpecificInfo* codecSpecificInfo,
+    absl::optional<VideoEncoder::EncoderInfo> encoder_info) {
   EncoderParameters encoder_params;
   std::vector<FrameType> next_frame_types;
   bool encoder_has_internal_source = false;
@@ -255,6 +262,17 @@ int32_t VideoSender::AddVideoFrame(const VideoFrame& videoFrame,
   if (_encoder == nullptr)
     return VCM_UNINITIALIZED;
   SetEncoderParameters(encoder_params, encoder_has_internal_source);
+  if (!encoder_info) {
+    encoder_info = _encoder->GetEncoderInfo();
+  }
+
+  // Frame dropping is enabled iff frame dropping has been requested, and
+  // frame dropping is not force-disabled, and rate controller is not trusted.
+  const bool frame_dropping_enabled =
+      frame_dropper_requested_ && !force_disable_frame_dropper_ &&
+      !encoder_info->has_trusted_rate_controller;
+  _mediaOpt.EnableFrameDropper(frame_dropping_enabled);
+
   if (_mediaOpt.DropFrame()) {
     RTC_LOG(LS_VERBOSE) << "Drop Frame "
                         << "target bitrate "
@@ -280,7 +298,7 @@ int32_t VideoSender::AddVideoFrame(const VideoFrame& videoFrame,
   const bool is_buffer_type_supported =
       buffer_type == VideoFrameBuffer::Type::kI420 ||
       (buffer_type == VideoFrameBuffer::Type::kNative &&
-       _encoder->SupportsNativeHandle());
+       encoder_info->supports_native_handle);
   if (!is_buffer_type_supported) {
     // This module only supports software encoding.
     // TODO(pbos): Offload conversion from the encoder thread.
@@ -348,7 +366,7 @@ int32_t VideoSender::IntraFrameRequest(size_t stream_index) {
 
 int32_t VideoSender::EnableFrameDropper(bool enable) {
   rtc::CritScope lock(&encoder_crit_);
-  frame_dropper_enabled_ = enable;
+  frame_dropper_requested_ = enable;
   _mediaOpt.EnableFrameDropper(enable);
   return VCM_OK;
 }

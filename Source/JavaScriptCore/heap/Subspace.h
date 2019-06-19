@@ -50,7 +50,7 @@ public:
     const char* name() const { return m_name.data(); }
     MarkedSpace& space() const { return m_space; }
     
-    const CellAttributes& attributes() const { return m_attributes; }
+    const CellAttributes& attributes() const;
     HeapCellType* heapCellType() const { return m_heapCellType; }
     AlignedMemoryAllocator* alignedMemoryAllocator() const { return m_alignedMemoryAllocator; }
     
@@ -70,7 +70,7 @@ public:
     template<typename Func>
     void forEachDirectory(const Func&);
     
-    RefPtr<SharedTask<BlockDirectory*()>> parallelDirectorySource();
+    Ref<SharedTask<BlockDirectory*()>> parallelDirectorySource();
     
     template<typename Func>
     void forEachMarkedBlock(const Func&);
@@ -78,7 +78,7 @@ public:
     template<typename Func>
     void forEachNotEmptyMarkedBlock(const Func&);
     
-    JS_EXPORT_PRIVATE RefPtr<SharedTask<MarkedBlock::Handle*()>> parallelNotEmptyMarkedBlockSource();
+    JS_EXPORT_PRIVATE Ref<SharedTask<MarkedBlock::Handle*()>> parallelNotEmptyMarkedBlockSource();
     
     template<typename Func>
     void forEachLargeAllocation(const Func&);
@@ -87,7 +87,7 @@ public:
     void forEachMarkedCell(const Func&);
     
     template<typename Func>
-    RefPtr<SharedTask<void(SlotVisitor&)>> forEachMarkedCellInParallel(const Func&);
+    Ref<SharedTask<void(SlotVisitor&)>> forEachMarkedCellInParallel(const Func&);
 
     template<typename Func>
     void forEachLiveCell(const Func&);
@@ -106,9 +106,6 @@ protected:
     
     MarkedSpace& m_space;
     
-    CString m_name;
-    CellAttributes m_attributes;
-
     HeapCellType* m_heapCellType { nullptr };
     AlignedMemoryAllocator* m_alignedMemoryAllocator { nullptr };
     
@@ -116,6 +113,8 @@ protected:
     BlockDirectory* m_directoryForEmptyAllocation { nullptr }; // Uses the MarkedSpace linked list of blocks.
     SentinelLinkedList<LargeAllocation, BasicRawSentinelNode<LargeAllocation>> m_largeAllocations;
     Subspace* m_nextSubspaceInAlignedMemoryAllocator { nullptr };
+
+    CString m_name;
 };
 
 } // namespace JSC

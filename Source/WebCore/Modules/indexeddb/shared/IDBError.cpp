@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-IDBError::IDBError(std::optional<ExceptionCode> code, const String& message)
+IDBError::IDBError(Optional<ExceptionCode> code, const String& message)
     : m_code(code)
     , m_message(message)
 {
@@ -41,13 +41,6 @@ IDBError::IDBError(std::optional<ExceptionCode> code, const String& message)
 IDBError IDBError::isolatedCopy() const
 {
     return IDBError { m_code, m_message.isolatedCopy() };
-}
-
-IDBError& IDBError::operator=(const IDBError& other)
-{
-    m_code = other.m_code;
-    m_message = other.m_message;
-    return *this;
 }
 
 String IDBError::name() const

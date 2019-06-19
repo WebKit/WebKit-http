@@ -38,12 +38,15 @@
 #include <wtf/JSONValues.h>
 #include <wtf/text/WTFString.h>
 
+namespace Inspector {
+class InjectedScriptManager;
+}
+
 namespace WebCore {
 
 class Element;
 class Event;
 class Frame;
-class InspectorDOMAgent;
 class Node;
 class RegisteredEventListener;
 
@@ -53,12 +56,12 @@ class InspectorDOMDebuggerAgent final : public InspectorAgentBase, public Inspec
     WTF_MAKE_NONCOPYABLE(InspectorDOMDebuggerAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    InspectorDOMDebuggerAgent(WebAgentContext&, InspectorDOMAgent*, Inspector::InspectorDebuggerAgent*);
+    InspectorDOMDebuggerAgent(WebAgentContext&, Inspector::InspectorDebuggerAgent*);
     virtual ~InspectorDOMDebuggerAgent();
 
     // DOMDebugger API
-    void setXHRBreakpoint(ErrorString&, const String& url, const bool* optionalIsRegex) final;
-    void removeXHRBreakpoint(ErrorString&, const String& url) final;
+    void setURLBreakpoint(ErrorString&, const String& url, const bool* optionalIsRegex) final;
+    void removeURLBreakpoint(ErrorString&, const String& url) final;
     void setEventBreakpoint(ErrorString&, const String& breakpointType, const String& eventName) final;
     void removeEventBreakpoint(ErrorString&, const String& breakpointType, const String& eventName) final;
     void setDOMBreakpoint(ErrorString&, int nodeId, const String& type) final;
@@ -66,14 +69,16 @@ public:
 
     // InspectorInstrumentation
     void willInsertDOMNode(Node& parent);
-    void didInvalidateStyleAttr(Node&);
+    void willInvalidateStyleAttr(Element&);
     void didInsertDOMNode(Node&);
     void willRemoveDOMNode(Node&);
     void didRemoveDOMNode(Node&);
     void willModifyDOMAttr(Element&);
     void willSendXMLHttpRequest(const String& url);
+    void willFetch(const String& url);
     void frameDocumentUpdated(Frame&);
-    void willHandleEvent(const Event&, const RegisteredEventListener&);
+    void willHandleEvent(Event&, const RegisteredEventListener&);
+    void didHandleEvent();
     void willFireTimer(bool oneShot);
     void willFireAnimationFrame();
     void mainFrameDOMContentLoaded();
@@ -88,13 +93,17 @@ private:
     void debuggerWasDisabled() final;
     void disable();
 
+    enum class URLBreakpointSource { Fetch, XHR };
+    void breakOnURLIfNeeded(const String& url, URLBreakpointSource);
+
     void descriptionForDOMEvent(Node& target, int breakpointType, bool insertion, JSON::Object& description);
     void updateSubtreeBreakpoints(Node*, uint32_t rootMask, bool set);
     bool hasBreakpoint(Node*, int type);
     void discardBindings();
 
     RefPtr<Inspector::DOMDebuggerBackendDispatcher> m_backendDispatcher;
-    InspectorDOMAgent* m_domAgent { nullptr };
+    Inspector::InjectedScriptManager& m_injectedScriptManager;
+
     Inspector::InspectorDebuggerAgent* m_debuggerAgent { nullptr };
 
     HashMap<Node*, uint32_t> m_domBreakpoints;
@@ -105,10 +114,9 @@ private:
         WTF::PairHashTraits<WTF::StrongEnumHashTraits<EventBreakpointType>, WTF::HashTraits<String>>
     > m_eventBreakpoints;
 
-    enum class XHRBreakpointType { Text, RegularExpression };
-
-    HashMap<String, XHRBreakpointType> m_xhrBreakpoints;
-    bool m_pauseOnAllXHRsEnabled { false };
+    enum class URLBreakpointType { RegularExpression, Text };
+    HashMap<String, URLBreakpointType> m_urlBreakpoints;
+    bool m_pauseOnAllURLsEnabled { false };
 };
 
 } // namespace WebCore

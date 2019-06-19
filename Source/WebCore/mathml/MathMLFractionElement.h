@@ -47,13 +47,13 @@ public:
 private:
     MathMLFractionElement(const QualifiedName& tagName, Document&);
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
 
-    FractionAlignment cachedFractionAlignment(const QualifiedName&, std::optional<FractionAlignment>&);
+    FractionAlignment cachedFractionAlignment(const QualifiedName&, Optional<FractionAlignment>&);
 
-    std::optional<Length> m_lineThickness;
-    std::optional<FractionAlignment> m_numeratorAlignment;
-    std::optional<FractionAlignment> m_denominatorAlignment;
+    Optional<Length> m_lineThickness;
+    Optional<FractionAlignment> m_numeratorAlignment;
+    Optional<FractionAlignment> m_denominatorAlignment;
 };
 
 }

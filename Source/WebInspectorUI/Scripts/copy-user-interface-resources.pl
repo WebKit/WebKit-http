@@ -112,7 +112,7 @@ sub readLicenseFile($)
 
 my $inspectorLicense = <<'EOF';
 /*
- * Copyright (C) 2007-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Matt Lilek. All rights reserved.
  * Copyright (C) 2008-2009 Anthony Ricaud <rik@webkit.org>
  * Copyright (C) 2009-2010 Joseph Pecoraro. All rights reserved.
@@ -129,7 +129,8 @@ my $inspectorLicense = <<'EOF';
  * Copyright (C) 2014 Antoine Quint
  * Copyright (C) 2015 Tobias Reiss <tobi+webkit@basecode.de>
  * Copyright (C) 2015-2017 Devin Rousso <webkit@devinrousso.com>. All rights reserved.
- * Copyright (C) 2017 Sony Interactive Entertainment Inc.
+ * Copyright (C) 2017 The Chromium Authors
+ * Copyright (C) 2017-2018 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -165,16 +166,16 @@ my $protocolDir = File::Spec->catdir($targetResourcePath, 'Protocol');
 my $workersDir = File::Spec->catdir($targetResourcePath, 'Workers');
 my $codeMirrorPath = File::Spec->catdir($uiRoot, 'External', 'CodeMirror');
 my $esprimaPath = File::Spec->catdir($uiRoot, 'External', 'Esprima');
-my $eslintPath = File::Spec->catdir($uiRoot, 'External', 'ESLint');
 my $threejsPath = File::Spec->catdir($uiRoot, 'External', 'three.js');
 
 $webInspectorUIAdditionsDir = &webInspectorUIAdditionsDir();
 
 my $codeMirrorLicense = readLicenseFile(File::Spec->catfile($codeMirrorPath, 'LICENSE'));
 my $esprimaLicense = readLicenseFile(File::Spec->catfile($esprimaPath, 'LICENSE'));
-my $eslintLicense = readLicenseFile(File::Spec->catfile($eslintPath, 'LICENSE'));
 my $threejsLicense = readLicenseFile(File::Spec->catfile($threejsPath, 'LICENSE'));
 make_path($protocolDir, $targetResourcePath);
+
+$python = $ENV{"PYTHON"} if defined($ENV{"PYTHON"});
 
 # Copy over dynamically loaded files from other frameworks, even if we aren't combining resources.
 copy(File::Spec->catfile($ENV{'JAVASCRIPTCORE_PRIVATE_HEADERS_DIR'}, 'InspectorBackendCommands.js'), File::Spec->catfile($protocolDir, 'InspectorBackendCommands.js')) or die "Copy of InspectorBackendCommands.js failed: $!";
@@ -226,8 +227,28 @@ sub combineOrStripResourcesForWebKitAdditions() {
     if (!defined $webInspectorUIAdditionsDir) {
         debugLog("Didn't define \$webInspectorUIAdditionsDir");
     } elsif (-d $webInspectorUIAdditionsDir) {
-        $combineWebKitAdditions = 1;
         debugLog("Found $webInspectorUIAdditionsDir");
+
+        opendir(DIR, $webInspectorUIAdditionsDir) || die "$!";
+        my @files = grep { !/^\.{1,2}$/ } readdir (DIR);
+        closedir(DIR);
+
+        # The WebKitAdditions/WebInspectorUI directory may exist without any files in it.
+        # Make sure that there is something to be processed in the directory before proceeding.
+        my $foundJSFile = 0;
+        my $foundCSSFile = 0;
+        foreach my $file (@files) {
+            my $path = File::Spec->catdir($$webInspectorUIAdditionsDir, $file);
+            next if -d $path;
+            if ($file =~ /\.js$/) {
+                debugLog("Found a JavaScript file to combine: $file");
+                $foundJSFile = 1;
+            } elsif ($file =~ /\.css$/) {
+                debugLog("Found a CSS file to combine: $file");
+                $foundCSSFile = 1;
+            }
+        }
+        $combineWebKitAdditions = 1 if $foundCSSFile or $foundJSFile;
     } else {
         debugLog("Didn't find $webInspectorUIAdditionsDir");
     }
@@ -316,15 +337,6 @@ if ($shouldCombineMain) {
        '--output-dir', $derivedSourcesDir,
        '--output-script-name', 'Esprima.js');
 
-    # Combine the ESLint JavaScript files in Production builds into a single file (ESLint.js).
-    system($perl, $combineResourcesCmd,
-       '--input-dir', 'External/ESLint',
-       '--input-html', $derivedSourcesMainHTML,
-       '--input-html-dir', $uiRoot,
-       '--derived-sources-dir', $derivedSourcesDir,
-       '--output-dir', $derivedSourcesDir,
-       '--output-script-name', 'ESLint.js');
-
     # Combine the three.js JavaScript files in Production builds into a single file (Three.js).
     system($perl, $combineResourcesCmd,
        '--input-dir', 'External/three.js',
@@ -370,10 +382,6 @@ if ($shouldCombineMain) {
     my $targetEsprimaJS = File::Spec->catfile($targetResourcePath, 'Esprima.js');
     seedFile($targetEsprimaJS, $esprimaLicense);
 
-    # Export the license into ESLint.js.
-    my $targetESLintJS = File::Spec->catfile($targetResourcePath, 'ESLint.js');
-    seedFile($targetESLintJS, $eslintLicense);
-
     # Export the license into Three.js.
     my $targetThreejsJS = File::Spec->catfile($targetResourcePath, 'Three.js');
     seedFile($targetThreejsJS, $threejsLicense);
@@ -394,19 +402,12 @@ if ($shouldCombineMain) {
     my $derivedSourcesEsprimaJS = File::Spec->catfile($derivedSourcesDir, 'Esprima.js');
     system(qq("$python" "$jsMinScript" < "$derivedSourcesEsprimaJS" >> "$targetEsprimaJS")) and die "Failed to minify $derivedSourcesEsprimaJS: $!";
 
-    # Minify the ESLint.js file, appending to the license that was exported above.
-    my $derivedSourcesESLintJS = File::Spec->catfile($derivedSourcesDir, 'ESLint.js');
-    system(qq("$python" "$jsMinScript" < "$derivedSourcesESLintJS" >> "$targetESLintJS")) and die "Failed to minify $derivedSourcesESLintJS: $!";
-
     # Minify the Three.js file, appending to the license that was exported above.
     my $derivedSourcesThreejsJS = File::Spec->catfile($derivedSourcesDir, 'Three.js');
     system(qq("$python" "$jsMinScript" < "$derivedSourcesThreejsJS" >> "$targetThreejsJS")) and die "Failed to minify $derivedSourcesThreejsJS: $!";
 
     # Copy over the Images directory.
     ditto(File::Spec->catdir($uiRoot, 'Images'), File::Spec->catdir($targetResourcePath, 'Images'));
-
-    # Remove ESLint until needed: <https://webkit.org/b/136515> Web Inspector: JavaScript source text editor should have a linter
-    unlink $targetESLintJS;
 
     # Copy the Protocol/Legacy and Workers directories.
     ditto(File::Spec->catfile($uiRoot, 'Protocol', 'Legacy'), File::Spec->catfile($protocolDir, 'Legacy'));

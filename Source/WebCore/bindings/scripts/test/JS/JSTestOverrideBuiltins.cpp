@@ -32,12 +32,12 @@
 #include "JSDOMWrapperCache.h"
 #include "JSNode.h"
 #include "ScriptExecutionContext.h"
-#include "URL.h"
 #include <JavaScriptCore/FunctionPrototype.h>
 #include <JavaScriptCore/HeapSnapshotBuilder.h>
 #include <JavaScriptCore/JSCInlines.h>
 #include <wtf/GetPtr.h>
 #include <wtf/PointerPreparations.h>
+#include <wtf/URL.h>
 
 
 namespace WebCore {
@@ -150,11 +150,11 @@ bool JSTestOverrideBuiltins::getOwnPropertySlot(JSObject* object, ExecState* sta
     auto* thisObject = jsCast<JSTestOverrideBuiltins*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     using GetterIDLType = IDLInterface<Node>;
-    auto getterFunctor = [] (auto& thisObject, auto propertyName) -> std::optional<typename GetterIDLType::ImplementationType> {
-        auto result = thisObject.wrapped().namedItem(propertyNameToAtomicString(propertyName));
+    auto getterFunctor = [] (auto& thisObject, auto propertyName) -> Optional<typename GetterIDLType::ImplementationType> {
+        auto result = thisObject.wrapped().namedItem(propertyNameToAtomString(propertyName));
         if (!GetterIDLType::isNullValue(result))
             return typename GetterIDLType::ImplementationType { GetterIDLType::extractValueFromNullable(result) };
-        return std::nullopt;
+        return WTF::nullopt;
     };
     if (auto namedProperty = accessVisibleNamedProperty<OverrideBuiltins::Yes>(*state, *thisObject, propertyName, getterFunctor)) {
         auto value = toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), WTFMove(namedProperty.value()));
@@ -170,11 +170,11 @@ bool JSTestOverrideBuiltins::getOwnPropertySlotByIndex(JSObject* object, ExecSta
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     auto propertyName = Identifier::from(state, index);
     using GetterIDLType = IDLInterface<Node>;
-    auto getterFunctor = [] (auto& thisObject, auto propertyName) -> std::optional<typename GetterIDLType::ImplementationType> {
-        auto result = thisObject.wrapped().namedItem(propertyNameToAtomicString(propertyName));
+    auto getterFunctor = [] (auto& thisObject, auto propertyName) -> Optional<typename GetterIDLType::ImplementationType> {
+        auto result = thisObject.wrapped().namedItem(propertyNameToAtomString(propertyName));
         if (!GetterIDLType::isNullValue(result))
             return typename GetterIDLType::ImplementationType { GetterIDLType::extractValueFromNullable(result) };
-        return std::nullopt;
+        return WTF::nullopt;
     };
     if (auto namedProperty = accessVisibleNamedProperty<OverrideBuiltins::Yes>(*state, *thisObject, propertyName, getterFunctor)) {
         auto value = toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), WTFMove(namedProperty.value()));
@@ -243,7 +243,7 @@ void JSTestOverrideBuiltins::heapSnapshot(JSCell* cell, HeapSnapshotBuilder& bui
     auto* thisObject = jsCast<JSTestOverrideBuiltins*>(cell);
     builder.setWrappedObjectForCell(cell, &thisObject->wrapped());
     if (thisObject->scriptExecutionContext())
-        builder.setLabelForCell(cell, String::format("url %s", thisObject->scriptExecutionContext()->url().string().utf8().data()));
+        builder.setLabelForCell(cell, "url " + thisObject->scriptExecutionContext()->url().string());
     Base::heapSnapshot(cell, builder);
 }
 

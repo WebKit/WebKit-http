@@ -1,7 +1,6 @@
 {
     "domain": "Runtime",
     "description": "Runtime domain exposes JavaScript runtime by means of remote evaluation and mirror objects. Evaluation results are returned as mirror object that expose object type, string representation and unique identifier that can be used for further object reference. Original objects are maintained in memory unless they are either explicitly released or are released along with the other objects in their object group.",
-    "workerSupported": true,
     "types": [
         {
             "id": "RemoteObjectId",
@@ -218,13 +217,30 @@
                 { "name": "contextId", "$ref": "Runtime.ExecutionContextId", "optional": true, "description": "Specifies in which isolated context to perform evaluation. Each content script lives in an isolated context and this parameter may be used to specify one of those contexts. If the parameter is omitted or 0 the evaluation will be performed in the context of the inspected page." },
                 { "name": "returnByValue", "type": "boolean", "optional": true, "description": "Whether the result is expected to be a JSON object that should be sent by value." },
                 { "name": "generatePreview", "type": "boolean", "optional": true, "description": "Whether preview should be generated for the result." },
-                { "name": "saveResult", "type": "boolean", "optional": true, "description": "Whether the resulting value should be considered for saving in the $n history." }
+                { "name": "saveResult", "type": "boolean", "optional": true, "description": "Whether the resulting value should be considered for saving in the $n history." },
+                { "name": "emulateUserGesture", "type": "boolean", "optional": true, "description": "Whether the expression should be considered to be in a user gesture or not." }
             ],
             "returns": [
                 { "name": "result", "$ref": "RemoteObject", "description": "Evaluation result." },
                 { "name": "wasThrown", "type": "boolean", "optional": true, "description": "True if the result was thrown during the evaluation." },
                 { "name": "savedResultIndex", "type": "integer", "optional": true, "description": "If the result was saved, this is the $n index that can be used to access the value." }
             ]
+        },
+        {
+            "name": "awaitPromise",
+            "description": "Calls the async callback when the promise with the given ID gets settled.",
+            "parameters": [
+                { "name": "promiseObjectId", "$ref": "RemoteObjectId", "description": "Identifier of the promise." },
+                { "name": "returnByValue", "type": "boolean", "optional": true, "description": "Whether the result is expected to be a JSON object that should be sent by value." },
+                { "name": "generatePreview", "type": "boolean", "optional": true, "description": "Whether preview should be generated for the result." },
+                { "name": "saveResult", "type": "boolean", "optional": true, "description": "Whether the resulting value should be considered for saving in the $n history." }
+            ],
+            "returns": [
+                { "name": "result", "$ref": "RemoteObject", "description": "Evaluation result." },
+                { "name": "wasThrown", "type": "boolean", "optional": true, "description": "True if the result was thrown during the evaluation." },
+                { "name": "savedResultIndex", "type": "integer", "optional": true, "description": "If the result was saved, this is the $n index that can be used to access the value." }
+            ],
+            "async": true
         },
         {
             "name": "callFunctionOn",

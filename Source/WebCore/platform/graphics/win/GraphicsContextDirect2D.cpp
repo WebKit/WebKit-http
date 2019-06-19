@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,16 +33,15 @@
 #include "ImageBuffer.h"
 #include "Logging.h"
 #include "NotImplemented.h"
-#include "URL.h"
 #include <d2d1.h>
 #include <d2d1effects.h>
 #include <dwrite.h>
+#include <wtf/URL.h>
 
 #pragma warning (disable : 4756)
 
 
 namespace WebCore {
-using namespace std;
 
 GraphicsContext::GraphicsContext(HDC hdc, bool hasAlpha)
 {
@@ -178,7 +177,7 @@ float GraphicsContextPlatformPrivate::currentGlobalAlpha() const
 void GraphicsContext::savePlatformState()
 {
     ASSERT(!paintingDisabled());
-    ASSERT(!isRecording());
+    ASSERT(!m_impl);
 
     // Note: Do not use this function within this class implementation, since we want to avoid the extra
     // save of the secondary context (in GraphicsContextPlatformPrivateDirect2D.h).
@@ -188,7 +187,7 @@ void GraphicsContext::savePlatformState()
 void GraphicsContext::restorePlatformState()
 {
     ASSERT(!paintingDisabled());
-    ASSERT(!isRecording());
+    ASSERT(!m_impl);
 
     // Note: Do not use this function within this class implementation, since we want to avoid the extra
     // restore of the secondary context (in GraphicsContextPlatformPrivateDirect2D.h).
@@ -201,7 +200,7 @@ void GraphicsContext::drawNativeImage(const COMPtr<ID2D1Bitmap>& image, const Fl
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
+    if (m_impl) {
         // FIXME: Implement DisplayListRecorder support for drawNativeImage.
         // m_displayListRecorder->drawNativeImage(image, imageSize, destRect, srcRect, op, blendMode, orientation);
         notImplemented();
@@ -319,7 +318,7 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width,
 {
 }
 
-void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& point, float width, DocumentMarkerLineStyle style)
+void GraphicsContext::drawDotsForDocumentMarker(const FloatRect& rect, DocumentMarkerLineStyle style)
 {
 }
 
@@ -551,8 +550,8 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect, const
     if (paintingDisabled() || !patternTransform.isInvertible())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawPattern(image, destRect, tileRect, patternTransform, phase, spacing, op, blendMode);
+    if (m_impl) {
+        m_impl->drawPattern(image, destRect, tileRect, patternTransform, phase, spacing, op, blendMode);
         return;
     }
 
@@ -596,6 +595,9 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect, const
 
     COMPtr<ID2D1BitmapBrush> patternBrush;
     HRESULT hr = context->CreateBitmapBrush(tileImage.get(), &bitmapBrushProperties, &brushProperties, &patternBrush);
+    ASSERT(SUCCEEDED(hr));
+    if (!SUCCEEDED(hr))
+        return;
 
     drawWithoutShadow(destRect, [this, destRect, patternBrush](ID2D1RenderTarget* renderTarget) {
         const D2D1_RECT_F d2dRect = destRect;
@@ -618,8 +620,8 @@ void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawRect(rect, borderThickness);
+    if (m_impl) {
+        m_impl->drawRect(rect, borderThickness);
         return;
     }
 
@@ -692,8 +694,10 @@ void GraphicsContextPlatformPrivate::setStrokeStyle(StrokeStyle strokeStyle)
     m_strokeSyleIsDirty = true;
 }
 
-void GraphicsContextPlatformPrivate::setMiterLimit(float miterLimit)
+void GraphicsContextPlatformPrivate::setMiterLimit(float canvasMiterLimit)
 {
+    // Direct2D miter limit is in terms of HALF the line thickness.
+    float miterLimit = 0.5f * canvasMiterLimit;
     if (WTF::areEssentiallyEqual(miterLimit, m_miterLimit))
         return;
 
@@ -746,6 +750,11 @@ void GraphicsContextPlatformPrivate::setDashes(const DashArray& dashes)
     m_strokeSyleIsDirty = true;
 }
 
+D2D1_STROKE_STYLE_PROPERTIES GraphicsContextPlatformPrivate::strokeStyleProperties() const
+{
+    return D2D1::StrokeStyleProperties(m_lineCap, m_lineCap, m_lineCap, m_lineJoin, m_miterLimit, D2D1_DASH_STYLE_SOLID, 0.0f);
+}
+
 void GraphicsContextPlatformPrivate::recomputeStrokeStyle()
 {
     if (!m_strokeSyleIsDirty)
@@ -753,18 +762,22 @@ void GraphicsContextPlatformPrivate::recomputeStrokeStyle()
 
     m_d2dStrokeStyle = nullptr;
 
-    if ((m_strokeStyle != SolidStroke) && (m_strokeStyle != NoStroke)) {
-        float patternOffset = m_patternOffset / m_strokeThickness;
+    DashArray dashes;
+    float patternOffset = 0;
+    auto dashStyle = D2D1_DASH_STYLE_SOLID;
 
-        DashArray dashes = m_dashes;
+    if ((m_strokeStyle != SolidStroke) && (m_strokeStyle != NoStroke)) {
+        dashStyle = D2D1_DASH_STYLE_CUSTOM;
+        patternOffset = m_patternOffset / m_strokeThickness;
+        dashes = m_dashes;
 
         // In Direct2D, dashes and dots are defined in terms of the ratio of the dash length to the line thickness.
         for (auto& dash : dashes)
             dash /= m_strokeThickness;
-
-        auto strokeStyleProperties = D2D1::StrokeStyleProperties(m_lineCap, m_lineCap, m_lineCap, m_lineJoin, m_strokeThickness, D2D1_DASH_STYLE_CUSTOM, patternOffset);
-        GraphicsContext::systemFactory()->CreateStrokeStyle(&strokeStyleProperties, dashes.data(), dashes.size(), &m_d2dStrokeStyle);
     }
+
+    auto strokeStyleProperties = D2D1::StrokeStyleProperties(m_lineCap, m_lineCap, m_lineCap, m_lineJoin, m_miterLimit, dashStyle, patternOffset);
+    GraphicsContext::systemFactory()->CreateStrokeStyle(&strokeStyleProperties, dashes.data(), dashes.size(), &m_d2dStrokeStyle);
 
     m_strokeSyleIsDirty = false;
 }
@@ -789,8 +802,8 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
     if (strokeStyle() == NoStroke)
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawLine(point1, point2);
+    if (m_impl) {
+        m_impl->drawLine(point1, point2);
         return;
     }
 
@@ -819,7 +832,7 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
 
         float patternOffset = dashedLinePatternOffsetForPatternAndStrokeWidth(patternWidth, strokeWidth);
         const float dashes[2] = { patternWidth, patternWidth };
-        auto strokeStyleProperties = D2D1::StrokeStyleProperties();
+        auto strokeStyleProperties = m_data->strokeStyleProperties();
         GraphicsContext::systemFactory()->CreateStrokeStyle(&strokeStyleProperties, dashes, ARRAYSIZE(dashes), &d2dStrokeStyle);
 
         m_data->setPatternWidth(patternWidth);
@@ -847,8 +860,8 @@ void GraphicsContext::drawEllipse(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawEllipse(rect);
+    if (m_impl) {
+        m_impl->drawEllipse(rect);
         return;
     }
 
@@ -894,8 +907,8 @@ void GraphicsContext::drawPath(const Path& path)
     if (paintingDisabled() || path.isEmpty())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawPath(path);
+    if (m_impl) {
+        m_impl->drawPath(path);
         return;
     }
 
@@ -1002,8 +1015,8 @@ void GraphicsContext::fillPath(const Path& path)
     if (paintingDisabled() || path.isEmpty())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->fillPath(path);
+    if (m_impl) {
+        m_impl->fillPath(path);
         return;
     }
 
@@ -1023,7 +1036,7 @@ void GraphicsContext::fillPath(const Path& path)
         context->SetTags(1, __LINE__);
 
         FloatRect boundingRect = path.fastBoundingRect();
-        auto drawFunction = [this, &path](ID2D1RenderTarget* renderTarget) {
+        WTF::Function<void(ID2D1RenderTarget*)> drawFunction = [this, &path](ID2D1RenderTarget* renderTarget) {
             renderTarget->FillGeometry(path.platformPath(), m_state.fillGradient->createPlatformGradientIfNecessary(renderTarget));
         };
 
@@ -1031,6 +1044,8 @@ void GraphicsContext::fillPath(const Path& path)
             drawWithShadow(boundingRect, drawFunction);
         else
             drawWithoutShadow(boundingRect, drawFunction);
+
+        flush();
         return;
     }
 
@@ -1056,8 +1071,8 @@ void GraphicsContext::strokePath(const Path& path)
     if (paintingDisabled() || path.isEmpty())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->strokePath(path);
+    if (m_impl) {
+        m_impl->strokePath(path);
         return;
     }
 
@@ -1070,7 +1085,7 @@ void GraphicsContext::strokePath(const Path& path)
 
         D2DContextStateSaver stateSaver(*m_data);
         auto boundingRect = path.fastBoundingRect();
-        auto drawFunction = [this, &path](ID2D1RenderTarget* renderTarget) {
+        WTF::Function<void(ID2D1RenderTarget*)> drawFunction = [this, &path](ID2D1RenderTarget* renderTarget) {
             renderTarget->DrawGeometry(path.platformPath(), m_state.strokeGradient->createPlatformGradientIfNecessary(renderTarget));
         };
 
@@ -1079,6 +1094,7 @@ void GraphicsContext::strokePath(const Path& path)
         else
             drawWithoutShadow(boundingRect, drawFunction);
 
+        flush();
         return;
     }
 
@@ -1101,8 +1117,8 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->fillRect(rect);
+    if (m_impl) {
+        m_impl->fillRect(rect);
         return;
     }
 
@@ -1111,7 +1127,7 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     if (m_state.fillGradient) {
         context->SetTags(1, __LINE__);
         D2DContextStateSaver stateSaver(*m_data);
-        auto drawFunction = [this, rect](ID2D1RenderTarget* renderTarget) {
+        WTF::Function<void(ID2D1RenderTarget*)> drawFunction = [this, rect](ID2D1RenderTarget* renderTarget) {
             const D2D1_RECT_F d2dRect = rect;
             renderTarget->FillRectangle(&d2dRect, m_state.fillGradient->createPlatformGradientIfNecessary(renderTarget));
         };
@@ -1148,8 +1164,8 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->fillRect(rect, color);
+    if (m_impl) {
+        m_impl->fillRect(rect, color);
         return;
     }
 
@@ -1176,7 +1192,7 @@ void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, cons
     if (paintingDisabled())
         return;
 
-    ASSERT(!isRecording());
+    ASSERT(!m_impl);
 
     auto context = platformContext();
 
@@ -1217,8 +1233,8 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->fillRectWithRoundedHole(rect, roundedHoleRect, color);
+    if (m_impl) {
+        m_impl->fillRectWithRoundedHole(rect, roundedHoleRect, color);
         return;
     }
 
@@ -1264,8 +1280,8 @@ void GraphicsContext::clip(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->clip(rect);
+    if (m_impl) {
+        m_impl->clip(rect);
         return;
     }
 
@@ -1277,8 +1293,8 @@ void GraphicsContext::clipOut(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->clipOut(rect);
+    if (m_impl) {
+        m_impl->clipOut(rect);
         return;
     }
 
@@ -1293,8 +1309,8 @@ void GraphicsContext::clipOut(const Path& path)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->clipOut(path);
+    if (m_impl) {
+        m_impl->clipOut(path);
         return;
     }
 
@@ -1318,8 +1334,8 @@ void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->clipPath(path, clipRule);
+    if (m_impl) {
+        m_impl->clipPath(path, clipRule);
         return;
     }
 
@@ -1328,6 +1344,8 @@ void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
         m_data->clip(FloatRect());
         return;
     }
+
+    ASSERT(!path.activePath());
 
     COMPtr<ID2D1GeometryGroup> pathToClip;
     path.createGeometryWithFillMode(clipRule, pathToClip);
@@ -1340,7 +1358,7 @@ IntRect GraphicsContext::clipBounds() const
     if (paintingDisabled())
         return IntRect();
 
-    if (isRecording()) {
+    if (m_impl) {
         WTFLogAlways("Getting the clip bounds not yet supported with display lists");
         return IntRect(-2048, -2048, 4096, 4096); // FIXME: display lists.
     }
@@ -1374,7 +1392,7 @@ void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
     if (paintingDisabled())
         return;
 
-    ASSERT(!isRecording());
+    ASSERT(!m_impl);
 
     save();
 
@@ -1421,7 +1439,7 @@ void GraphicsContext::endPlatformTransparencyLayer()
 
     m_data->endTransparencyLayer();
 
-    ASSERT(!isRecording());
+    ASSERT(!m_impl);
 
     m_state.alpha = m_data->currentGlobalAlpha();
 
@@ -1461,9 +1479,9 @@ void GraphicsContext::setMiterLimit(float limit)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
+    if (m_impl) {
         // Maybe this should be part of the state.
-        m_displayListRecorder->setMiterLimit(limit);
+        m_impl->setMiterLimit(limit);
         return;
     }
 
@@ -1475,8 +1493,8 @@ void GraphicsContext::clearRect(const FloatRect& rect)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->clearRect(rect);
+    if (m_impl) {
+        m_impl->clearRect(rect);
         return;
     }
 
@@ -1504,13 +1522,13 @@ void GraphicsContext::strokeRect(const FloatRect& rect, float lineWidth)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->strokeRect(rect, lineWidth);
+    if (m_impl) {
+        m_impl->strokeRect(rect, lineWidth);
         return;
     }
 
     if (m_state.strokeGradient) {
-        auto drawFunction = [this, rect, lineWidth](ID2D1RenderTarget* renderTarget) {
+        WTF::Function<void(ID2D1RenderTarget*)> drawFunction = [this, rect, lineWidth](ID2D1RenderTarget* renderTarget) {
             renderTarget->SetTags(1, __LINE__);
             const D2D1_RECT_F d2dRect = rect;
             renderTarget->DrawRectangle(&d2dRect, m_state.strokeGradient->createPlatformGradientIfNecessary(renderTarget), lineWidth, m_data->strokeStyle());
@@ -1539,8 +1557,8 @@ void GraphicsContext::setLineCap(LineCap cap)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->setLineCap(cap);
+    if (m_impl) {
+        m_impl->setLineCap(cap);
         return;
     }
 
@@ -1552,8 +1570,8 @@ void GraphicsContext::setLineDash(const DashArray& dashes, float dashOffset)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->setLineDash(dashes, dashOffset);
+    if (m_impl) {
+        m_impl->setLineDash(dashes, dashOffset);
         return;
     }
 
@@ -1574,8 +1592,8 @@ void GraphicsContext::setLineJoin(LineJoin join)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->setLineJoin(join);
+    if (m_impl) {
+        m_impl->setLineJoin(join);
         return;
     }
 
@@ -1592,8 +1610,8 @@ void GraphicsContext::scale(const FloatSize& size)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->scale(size);
+    if (m_impl) {
+        m_impl->scale(size);
         return;
     }
 
@@ -1606,8 +1624,8 @@ void GraphicsContext::rotate(float angle)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->rotate(angle);
+    if (m_impl) {
+        m_impl->rotate(angle);
         return;
     }
 
@@ -1620,8 +1638,8 @@ void GraphicsContext::translate(float x, float y)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->translate(x, y);
+    if (m_impl) {
+        m_impl->translate(x, y);
         return;
     }
 
@@ -1634,8 +1652,8 @@ void GraphicsContext::concatCTM(const AffineTransform& transform)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->concatCTM(transform);
+    if (m_impl) {
+        m_impl->concatCTM(transform);
         return;
     }
 
@@ -1648,7 +1666,7 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
+    if (m_impl) {
         WTFLogAlways("GraphicsContext::setCTM() is not compatible with recording contexts.");
         return;
     }
@@ -1662,7 +1680,7 @@ AffineTransform GraphicsContext::getCTM(IncludeDeviceScale includeScale) const
     if (paintingDisabled())
         return AffineTransform();
 
-    if (isRecording()) {
+    if (m_impl) {
         WTFLogAlways("GraphicsContext::getCTM() is not yet compatible with recording contexts.");
         return AffineTransform();
     }
@@ -1677,7 +1695,7 @@ FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMo
     if (paintingDisabled())
         return rect;
 
-    if (isRecording()) {
+    if (m_impl) {
         WTFLogAlways("GraphicsContext::roundToDevicePixels() is not yet compatible with recording contexts.");
         return rect;
     }
@@ -1687,24 +1705,23 @@ FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMo
     return rect;
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& point, float width, bool printing, bool doubleLines, StrokeStyle strokeStyle)
+void GraphicsContext::drawLineForText(const FloatRect& rect, bool printing, bool doubleLines, StrokeStyle strokeStyle)
 {
     DashArray widths;
-    widths.append(width);
     widths.append(0);
-    drawLinesForText(point, widths, printing, doubleLines, strokeStyle);
+    widths.append(rect.width());
+    drawLinesForText(rect.location(), rect.height(), widths, printing, doubleLines, strokeStyle);
 }
 
-void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleLines, StrokeStyle strokeStyle)
+void GraphicsContext::drawLinesForText(const FloatPoint& point, float thickness, const DashArray& widths, bool printing, bool doubleLines, StrokeStyle strokeStyle)
 {
     if (paintingDisabled())
-        return;
 
     if (!widths.size())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawLinesForText(point, widths, printing, doubleLines, strokeThickness());
+    if (m_impl) {
+        m_impl->drawLinesForText(point, thickness, widths, printing, doubleLines);
         return;
     }
 
@@ -1716,7 +1733,7 @@ void GraphicsContext::setURLForRect(const URL& link, const FloatRect& destRect)
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
+    if (m_impl) {
         WTFLogAlways("GraphicsContext::setURLForRect() is not yet compatible with recording contexts.");
         return; // FIXME for display lists.
     }
@@ -1759,7 +1776,7 @@ void GraphicsContext::setIsCALayerContext(bool isLayerContext)
     if (paintingDisabled())
         return;
 
-    if (isRecording())
+    if (m_impl)
         return;
 
     // This function is probabaly not needed.
@@ -1772,7 +1789,7 @@ bool GraphicsContext::isCALayerContext() const
         return false;
 
     // FIXME
-    if (isRecording())
+    if (m_impl)
         return false;
 
     // This function is probabaly not needed.
@@ -1786,7 +1803,7 @@ void GraphicsContext::setIsAcceleratedContext(bool isAccelerated)
         return;
 
     // FIXME
-    if (isRecording())
+    if (m_impl)
         return;
 
     notImplemented();
@@ -1798,7 +1815,7 @@ bool GraphicsContext::isAcceleratedContext() const
         return false;
 
     // FIXME
-    if (isRecording())
+    if (m_impl)
         return false;
 
     // This function is probabaly not needed.
@@ -1841,7 +1858,7 @@ void GraphicsContext::setPlatformShouldAntialias(bool enable)
     if (paintingDisabled())
         return;
 
-    ASSERT(!isRecording());
+    ASSERT(!m_impl);
 
     auto antialiasMode = enable ? D2D1_ANTIALIAS_MODE_PER_PRIMITIVE : D2D1_ANTIALIAS_MODE_ALIASED;
     platformContext()->SetAntialiasMode(antialiasMode);
@@ -1852,7 +1869,7 @@ void GraphicsContext::setPlatformShouldSmoothFonts(bool enable)
     if (paintingDisabled())
         return;
 
-    ASSERT(!isRecording());
+    ASSERT(!m_impl);
 
     auto fontSmoothingMode = enable ? D2D1_TEXT_ANTIALIAS_MODE_CLEARTYPE : D2D1_TEXT_ANTIALIAS_MODE_ALIASED;
     platformContext()->SetTextAntialiasMode(fontSmoothingMode);
@@ -1872,7 +1889,7 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator mode, Blen
     if (paintingDisabled())
         return;
 
-    ASSERT(!isRecording());
+    ASSERT(!m_impl);
 
     D2D1_BLEND_MODE targetBlendMode = D2D1_BLEND_MODE_SCREEN;
     D2D1_COMPOSITE_MODE targetCompositeMode = D2D1_COMPOSITE_MODE_SOURCE_ATOP; // ???
@@ -1994,7 +2011,7 @@ void GraphicsContext::platformFillEllipse(const FloatRect& ellipse)
     if (paintingDisabled())
         return;
 
-    ASSERT(!isRecording());
+    ASSERT(!m_impl);
 
     if (m_state.fillGradient || m_state.fillPattern) {
         // FIXME: We should be able to fill ellipses with pattern/gradient brushes in D2D.
@@ -2016,7 +2033,7 @@ void GraphicsContext::platformStrokeEllipse(const FloatRect& ellipse)
     if (paintingDisabled())
         return;
 
-    ASSERT(!isRecording());
+    ASSERT(!m_impl);
 
     if (m_state.strokeGradient || m_state.strokePattern) {
         // FIXME: We should be able to stroke ellipses with pattern/gradient brushes in D2D.

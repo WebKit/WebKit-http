@@ -24,7 +24,7 @@
  */
 
 .resource-sizes {
-    font-family: '-webkit-system-font';
+    font-family: -webkit-system-font, sans-serif;
 }
 
 .resource-sizes > .content {
@@ -115,4 +115,10 @@
     width: 10px;
     height: 10px;
     -webkit-margin-start: 3px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .resource-sizes > .content .label {
+        color: var(--text-color-secondary);
+    }
 }

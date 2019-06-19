@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef RetainPtr_h
-#define RetainPtr_h
+#pragma once
 
 #include <wtf/Platform.h>
 
@@ -57,13 +56,21 @@ namespace WTF {
 template<typename T> class RetainPtr;
 
 template<typename T> RetainPtr<T> adoptCF(T CF_RELEASES_ARGUMENT) WARN_UNUSED_RETURN;
-template<typename T> RetainPtr<T> adoptNS(T NS_RELEASES_ARGUMENT) WARN_UNUSED_RETURN;
+#ifdef __OBJC__
+template<typename T> RetainPtr<typename RetainPtr<T>::HelperPtrType> adoptNS(T NS_RELEASES_ARGUMENT) WARN_UNUSED_RETURN;
+#endif
 
 template<typename T> class RetainPtr {
 public:
     typedef typename std::remove_pointer<T>::type ValueType;
     typedef ValueType* PtrType;
     typedef CFTypeRef StorageType;
+
+#ifdef __OBJC__
+    typedef typename std::conditional<std::is_convertible<T, id>::value && !std::is_same<T, id>::value, typename std::remove_pointer<T>::type, T>::type HelperPtrType;
+#else
+    typedef T HelperPtrType;
+#endif
 
     RetainPtr() : m_ptr(nullptr) { }
     RetainPtr(PtrType ptr) : m_ptr(toStorageType(ptr)) { if (m_ptr) CFRetain(m_ptr); }
@@ -110,7 +117,9 @@ public:
     void swap(RetainPtr&);
 
     template<typename U> friend RetainPtr<U> adoptCF(U CF_RELEASES_ARGUMENT) WARN_UNUSED_RETURN;
-    template<typename U> friend RetainPtr<U> adoptNS(U NS_RELEASES_ARGUMENT) WARN_UNUSED_RETURN;
+#ifdef __OBJC__
+    template<typename U> friend RetainPtr<typename RetainPtr<U>::HelperPtrType> adoptNS(U NS_RELEASES_ARGUMENT) WARN_UNUSED_RETURN;
+#endif
 
 private:
     enum AdoptTag { Adopt };
@@ -153,7 +162,7 @@ private:
 };
 
 // Helper function for creating a RetainPtr using template argument deduction.
-template<typename T> RetainPtr<T> retainPtr(T) WARN_UNUSED_RETURN;
+template<typename T> RetainPtr<typename RetainPtr<T>::HelperPtrType> retainPtr(T) WARN_UNUSED_RETURN;
 
 template<typename T> inline RetainPtr<T>::~RetainPtr()
 {
@@ -307,21 +316,21 @@ template<typename T> inline RetainPtr<T> adoptCF(T CF_RELEASES_ARGUMENT ptr)
 }
 
 #ifdef __OBJC__
-template<typename T> inline RetainPtr<T> adoptNS(T NS_RELEASES_ARGUMENT ptr)
+template<typename T> inline RetainPtr<typename RetainPtr<T>::HelperPtrType> adoptNS(T NS_RELEASES_ARGUMENT ptr)
 {
 #if __has_feature(objc_arc)
     return ptr;
 #elif defined(OBJC_NO_GC)
-    return RetainPtr<T>(ptr, RetainPtr<T>::Adopt);
+    return RetainPtr<typename RetainPtr<T>::HelperPtrType>(ptr, RetainPtr<typename RetainPtr<T>::HelperPtrType>::Adopt);
 #else
-    RetainPtr<T> result = ptr;
+    RetainPtr<typename RetainPtr<T>::HelperPtrType> result = ptr;
     [ptr release];
     return result;
 #endif
 }
 #endif
 
-template<typename T> inline RetainPtr<T> retainPtr(T ptr)
+template<typename T> inline RetainPtr<typename RetainPtr<T>::HelperPtrType> retainPtr(T ptr)
 {
     return ptr;
 }
@@ -360,6 +369,16 @@ struct RetainPtrObjectHash {
     static const bool safeToCompareToEmptyOrDeleted = false;
 };
 
+inline bool safeCFEqual(CFTypeRef a, CFTypeRef b)
+{
+    return (!a && !b) || (a && b && CFEqual(a, b));
+}
+
+inline CFHashCode safeCFHash(CFTypeRef a)
+{
+    return a ? CFHash(a) : 0;
+}
+
 #ifdef __OBJC__
 template<typename T> T* dynamic_objc_cast(id object)
 {
@@ -374,13 +393,11 @@ template<typename T> T* dynamic_objc_cast(id object)
 
 using WTF::RetainPtr;
 using WTF::adoptCF;
-using WTF::adoptNS;
 using WTF::retainPtr;
 
 #ifdef __OBJC__
+using WTF::adoptNS;
 using WTF::dynamic_objc_cast;
 #endif
 
 #endif // USE(CF) || defined(__OBJC__)
-
-#endif // WTF_RetainPtr_h

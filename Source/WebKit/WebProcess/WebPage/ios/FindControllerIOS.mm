@@ -25,7 +25,7 @@
 
 #import <config.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "FindController.h"
 #import "FindIndicatorOverlayClientIOS.h"
@@ -48,10 +48,10 @@ namespace WebKit {
 using namespace WebCore;
 
 const int cornerRadius = 3;
-const int totalHorizontalMargin = 2;
+const int totalHorizontalMargin = 1;
 const int totalVerticalMargin = 1;
 
-const TextIndicatorOptions findTextIndicatorOptions = TextIndicatorOptionTightlyFitContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionDoNotClipToVisibleRect;
+const TextIndicatorOptions findTextIndicatorOptions = TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionDoNotClipToVisibleRect;
 
 static Color highlightColor()
 {
@@ -94,7 +94,7 @@ bool FindController::updateFindIndicator(Frame& selectedFrame, bool isShowingOve
         m_isShowingFindIndicator = false;
     }
 
-    RefPtr<TextIndicator> textIndicator = TextIndicator::createWithSelectionInFrame(selectedFrame, findTextIndicatorOptions, TextIndicatorPresentationTransition::None, FloatSize(totalHorizontalMargin, totalVerticalMargin));
+    auto textIndicator = TextIndicator::createWithSelectionInFrame(selectedFrame, findTextIndicatorOptions, TextIndicatorPresentationTransition::None, FloatSize(totalHorizontalMargin, totalVerticalMargin));
     if (!textIndicator)
         return false;
 
@@ -105,16 +105,13 @@ bool FindController::updateFindIndicator(Frame& selectedFrame, bool isShowingOve
     m_findIndicatorOverlay->setFrame(enclosingIntRect(textIndicator->textBoundingRectInRootViewCoordinates()));
     m_findIndicatorOverlay->setNeedsDisplay();
 
-    if (isShowingOverlay || shouldAnimate) {
-        FloatRect visibleContentRect = m_webPage->mainFrameView()->unobscuredContentRectIncludingScrollbars();
-
+    if (shouldAnimate) {
         bool isReplaced;
         const VisibleSelection& visibleSelection = selectedFrame.selection().selection();
         FloatRect renderRect = visibleSelection.start().containerNode()->renderRect(&isReplaced);
-
         IntRect startRect = visibleSelection.visibleStart().absoluteCaretBounds();
 
-        m_webPage->send(Messages::SmartMagnificationController::Magnify(startRect.center(), renderRect, visibleContentRect, m_webPage->minimumPageScaleFactor(), m_webPage->maximumPageScaleFactor()));
+        m_webPage->send(Messages::SmartMagnificationController::ScrollToRect(startRect.center(), renderRect));
     }
 
     m_isShowingFindIndicator = true;
@@ -173,6 +170,16 @@ void FindController::didFailToFindString()
 void FindController::didHideFindIndicator()
 {
     setSelectionChangeUpdatesEnabledInAllFrames(*m_webPage, false);
+}
+    
+unsigned FindController::findIndicatorRadius() const
+{
+    return cornerRadius;
+}
+    
+bool FindController::shouldHideFindIndicatorOnScroll() const
+{
+    return false;
 }
 
 } // namespace WebKit

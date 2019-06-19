@@ -39,7 +39,7 @@ class FloatAvoider;
 class Box;
 class Container;
 class FloatingPair;
-class LayoutContext;
+class LayoutState;
 
 // FloatingContext is responsible for adjusting the position of a box in the current formatting context
 // by taking the floating boxes into account.
@@ -50,14 +50,20 @@ public:
 
     FloatingState& floatingState() const { return m_floatingState; }
 
-    PointInContainingBlock positionForFloat(const Box&) const;
-    std::optional<PointInContainingBlock> positionForFloatAvoiding(const Box&) const;
-    std::optional<PositionInContainingBlock> verticalPositionWithClearance(const Box&) const;
+    Point positionForFloat(const Box&) const;
+    Optional<Point> positionForFormattingContextRoot(const Box&) const;
+
+    struct ClearancePosition {
+        Optional<Position> position;
+        Optional<LayoutUnit> clearance;
+    };
+    ClearancePosition verticalPositionWithClearance(const Box&) const;
 
 private:
-    LayoutContext& layoutContext() const { return m_floatingState.layoutContext(); }
+    LayoutState& layoutState() const { return m_floatingState.layoutState(); }
 
-    void floatingPosition(FloatAvoider&) const;
+    void findPositionForFloatBox(FloatBox&) const;
+    void findPositionForFormattingContextRoot(FloatAvoider&) const;
 
     FloatingState& m_floatingState;
 };

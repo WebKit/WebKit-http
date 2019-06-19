@@ -28,7 +28,7 @@
 #if ENABLE(SERVICE_WORKER)
 
 #include "SecurityOriginData.h"
-#include "URL.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 
@@ -54,12 +54,12 @@ public:
     ServiceWorkerRegistrationKey isolatedCopy() const;
 
     template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static std::optional<ServiceWorkerRegistrationKey> decode(Decoder&);
+    template<class Decoder> static Optional<ServiceWorkerRegistrationKey> decode(Decoder&);
 
     String toDatabaseKey() const;
-    static std::optional<ServiceWorkerRegistrationKey> fromDatabaseKey(const String&);
+    static Optional<ServiceWorkerRegistrationKey> fromDatabaseKey(const String&);
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
     String loggingString() const;
 #endif
 
@@ -75,16 +75,16 @@ void ServiceWorkerRegistrationKey::encode(Encoder& encoder) const
 }
 
 template<class Decoder>
-std::optional<ServiceWorkerRegistrationKey> ServiceWorkerRegistrationKey::decode(Decoder& decoder)
+Optional<ServiceWorkerRegistrationKey> ServiceWorkerRegistrationKey::decode(Decoder& decoder)
 {
-    std::optional<SecurityOriginData> topOrigin;
+    Optional<SecurityOriginData> topOrigin;
     decoder >> topOrigin;
     if (!topOrigin)
-        return std::nullopt;
+        return WTF::nullopt;
 
     URL scope;
     if (!decoder.decode(scope))
-        return std::nullopt;
+        return WTF::nullopt;
 
     return ServiceWorkerRegistrationKey { WTFMove(*topOrigin), WTFMove(scope) };
 }
@@ -102,7 +102,7 @@ struct ServiceWorkerRegistrationKeyHash {
 template<> struct HashTraits<WebCore::ServiceWorkerRegistrationKey> : GenericHashTraits<WebCore::ServiceWorkerRegistrationKey> {
     static WebCore::ServiceWorkerRegistrationKey emptyValue() { return WebCore::ServiceWorkerRegistrationKey::emptyKey(); }
 
-    static void constructDeletedValue(WebCore::ServiceWorkerRegistrationKey& slot) { slot.setScope(WebCore::URL(HashTableDeletedValue)); }
+    static void constructDeletedValue(WebCore::ServiceWorkerRegistrationKey& slot) { slot.setScope(URL(HashTableDeletedValue)); }
     static bool isDeletedValue(const WebCore::ServiceWorkerRegistrationKey& slot) { return slot.scope().isHashTableDeletedValue(); }
 };
 

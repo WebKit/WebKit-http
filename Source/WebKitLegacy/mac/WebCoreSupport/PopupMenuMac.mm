@@ -22,6 +22,7 @@
 
 #import "WebDelegateImplementationCaching.h"
 #import "WebFrameInternal.h"
+#import "WebUIDelegatePrivate.h"
 #import <WebCore/IntRect.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/Chrome.h>
@@ -113,15 +114,14 @@ void PopupMenuMac::populate()
         [menuItem setEnabled:m_client->itemIsEnabled(i)];
         [menuItem setToolTip:m_client->itemToolTip(i)];
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         // Allow the accessible text of the item to be overridden if necessary.
         if (AXObjectCache::accessibilityEnabled()) {
             NSString *accessibilityOverride = m_client->itemAccessibilityText(i);
             if ([accessibilityOverride length])
                 [menuItem accessibilitySetOverrideValue:accessibilityOverride forAttribute:NSAccessibilityDescriptionAttribute];
         }
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
     }
 }
 
@@ -167,23 +167,15 @@ void PopupMenuMac::show(const IntRect& r, FrameView* v, int index)
         auto defaultFont = adoptCF(CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, CTFontGetSize(font), nil));
         vertOffset += CTFontGetDescent(font) - CTFontGetDescent(defaultFont.get());
         vertOffset = fminf(NSHeight(r), vertOffset);
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
         if (textDirection == TextDirection::LTR)
             location = NSMakePoint(NSMinX(r) + popOverHorizontalAdjust, NSMaxY(r) - vertOffset);
         else
             location = NSMakePoint(NSMaxX(r) - popOverHorizontalAdjust, NSMaxY(r) - vertOffset);
-#else
-        location = NSMakePoint(NSMinX(r) + popOverHorizontalAdjust, NSMaxY(r) - vertOffset);
-#endif
     } else {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
         if (textDirection == TextDirection::LTR)
             location = NSMakePoint(NSMinX(r) + popUnderHorizontalAdjust, NSMaxY(r) + popUnderVerticalAdjust);
         else
             location = NSMakePoint(NSMaxX(r) - popUnderHorizontalAdjust, NSMaxY(r) + popUnderVerticalAdjust);
-#else
-        location = NSMakePoint(NSMinX(r) + popUnderHorizontalAdjust, NSMaxY(r) + popUnderVerticalAdjust);
-#endif
     }
     // Save the current event that triggered the popup, so we can clean up our event
     // state after the NSMenu goes away.
@@ -242,9 +234,11 @@ void PopupMenuMac::show(const IntRect& r, FrameView* v, int index)
 
 void PopupMenuMac::hide()
 {
-    [m_popup dismissPopUp];
+    [[m_popup menu] cancelTracking];
+    if (m_client)
+        m_client->popupDidHide();
 }
-    
+
 void PopupMenuMac::updateFromElement()
 {
 }

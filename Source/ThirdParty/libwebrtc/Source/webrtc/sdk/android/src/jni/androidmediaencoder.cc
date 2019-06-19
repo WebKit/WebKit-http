@@ -47,7 +47,6 @@
 #include "third_party/libyuv/include/libyuv/video_common.h"
 
 using rtc::Bind;
-using rtc::Thread;
 using rtc::ThreadManager;
 
 namespace webrtc {
@@ -105,13 +104,9 @@ class MediaCodecVideoEncoder : public VideoEncoder {
   int32_t RegisterEncodeCompleteCallback(
       EncodedImageCallback* callback) override;
   int32_t Release() override;
-  int32_t SetChannelParameters(uint32_t /* packet_loss */,
-                               int64_t /* rtt */) override;
   int32_t SetRateAllocation(const VideoBitrateAllocation& rate_allocation,
                             uint32_t frame_rate) override;
-
-  bool SupportsNativeHandle() const override { return has_egl_context_; }
-  const char* ImplementationName() const override;
+  EncoderInfo GetEncoderInfo() const override;
 
   // Fills the input buffer with data from the buffers passed as parameters.
   bool FillInputBuffer(JNIEnv* jni,
@@ -180,7 +175,7 @@ class MediaCodecVideoEncoder : public VideoEncoder {
   // true on success.
   bool DeliverPendingOutputs(JNIEnv* jni);
 
-  VideoEncoder::ScalingSettings GetScalingSettings() const override;
+  VideoEncoder::ScalingSettings GetScalingSettingsInternal() const;
 
   // Displays encoder statistics.
   void LogStatistics(bool force_log);
@@ -271,6 +266,7 @@ class MediaCodecVideoEncoder : public VideoEncoder {
   size_t gof_idx_;
 
   const bool has_egl_context_;
+  EncoderInfo encoder_info_;
 
   // Temporary fix for VP8.
   // Sends a key frame if frames are largely spaced apart (possibly
@@ -341,6 +337,13 @@ int32_t MediaCodecVideoEncoder::InitEncode(const VideoCodec* codec_settings,
   ALOGD << "InitEncode request: " << init_width << " x " << init_height;
   ALOGD << "Encoder automatic resize " << (scale_ ? "enabled" : "disabled");
 
+  if (codec_settings->numberOfSimulcastStreams > 1) {
+    ALOGD << "Number of simulcast layers requested: "
+          << codec_settings->numberOfSimulcastStreams
+          << ". Requesting software fallback.";
+    return WEBRTC_VIDEO_CODEC_FALLBACK_SOFTWARE;
+  }
+
   // Check allowed H.264 profile
   profile_ = H264::Profile::kProfileBaseline;
   if (codec_type == kVideoCodecH264) {
@@ -351,15 +354,14 @@ int32_t MediaCodecVideoEncoder::InitEncode(const VideoCodec* codec_settings,
     ALOGD << "H.264 profile: " << profile_;
   }
 
+  encoder_info_.supports_native_handle = has_egl_context_;
+  encoder_info_.implementation_name = "MediaCodec";
+  encoder_info_.scaling_settings = GetScalingSettingsInternal();
+
   return InitEncodeInternal(
       init_width, init_height, codec_settings->startBitrate,
       codec_settings->maxFramerate,
       codec_settings->expect_encode_from_texture && has_egl_context_);
-}
-
-int32_t MediaCodecVideoEncoder::SetChannelParameters(uint32_t /* packet_loss */,
-                                                     int64_t /* rtt */) {
-  return WEBRTC_VIDEO_CODEC_OK;
 }
 
 bool MediaCodecVideoEncoder::ResetCodec() {
@@ -923,6 +925,10 @@ int32_t MediaCodecVideoEncoder::SetRateAllocation(
   return WEBRTC_VIDEO_CODEC_OK;
 }
 
+VideoEncoder::EncoderInfo MediaCodecVideoEncoder::GetEncoderInfo() const {
+  return encoder_info_;
+}
+
 bool MediaCodecVideoEncoder::DeliverPendingOutputs(JNIEnv* jni) {
   RTC_DCHECK_CALLED_SEQUENTIALLY(&encoder_queue_checker_);
 
@@ -987,7 +993,7 @@ bool MediaCodecVideoEncoder::DeliverPendingOutputs(JNIEnv* jni) {
           new EncodedImage(payload, payload_size, payload_size));
       image->_encodedWidth = width_;
       image->_encodedHeight = height_;
-      image->_timeStamp = output_timestamp_;
+      image->SetTimestamp(output_timestamp_);
       image->capture_time_ms_ = output_render_time_ms_;
       image->rotation_ = output_rotation_;
       image->content_type_ = (codec_mode_ == VideoCodecMode::kScreensharing)
@@ -1001,7 +1007,6 @@ bool MediaCodecVideoEncoder::DeliverPendingOutputs(JNIEnv* jni) {
       info.codecType = codec_type;
       if (codec_type == kVideoCodecVP8) {
         info.codecSpecific.VP8.nonReference = false;
-        info.codecSpecific.VP8.simulcastIdx = 0;
         info.codecSpecific.VP8.temporalIdx = kNoTemporalIdx;
         info.codecSpecific.VP8.layerSync = false;
         info.codecSpecific.VP8.keyIdx = kNoKeyIdx;
@@ -1013,7 +1018,6 @@ bool MediaCodecVideoEncoder::DeliverPendingOutputs(JNIEnv* jni) {
         info.codecSpecific.VP9.flexible_mode = false;
         info.codecSpecific.VP9.ss_data_available = key_frame ? true : false;
         info.codecSpecific.VP9.temporal_idx = kNoTemporalIdx;
-        info.codecSpecific.VP9.spatial_idx = kNoSpatialIdx;
         info.codecSpecific.VP9.temporal_up_switch = true;
         info.codecSpecific.VP9.inter_layer_predicted = false;
         info.codecSpecific.VP9.gof_idx =
@@ -1143,8 +1147,8 @@ void MediaCodecVideoEncoder::LogStatistics(bool force_log) {
   }
 }
 
-VideoEncoder::ScalingSettings MediaCodecVideoEncoder::GetScalingSettings()
-    const {
+VideoEncoder::ScalingSettings
+MediaCodecVideoEncoder::GetScalingSettingsInternal() const {
   if (!scale_)
     return VideoEncoder::ScalingSettings::kOff;
 
@@ -1199,10 +1203,6 @@ VideoEncoder::ScalingSettings MediaCodecVideoEncoder::GetScalingSettings()
                                          kHighH264QpThreshold);
   }
   return VideoEncoder::ScalingSettings::kOff;
-}
-
-const char* MediaCodecVideoEncoder::ImplementationName() const {
-  return "MediaCodec";
 }
 
 static void JNI_MediaCodecVideoEncoder_FillInputBuffer(

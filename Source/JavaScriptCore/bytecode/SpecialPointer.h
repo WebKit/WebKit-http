@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@ class CodeBlock;
 class JSGlobalObject;
 
 namespace Special {
-enum Pointer {
+enum Pointer : unsigned {
     CallFunction,
     ApplyFunction,
     ObjectConstructor,
@@ -61,3 +61,11 @@ void* actualPointerFor(JSGlobalObject*, Special::Pointer);
 void* actualPointerFor(CodeBlock*, Special::Pointer);
 
 } // namespace JSC
+
+namespace WTF {
+
+class PrintStream;
+
+void printInternal(PrintStream&, JSC::Special::Pointer);
+
+} // namespace WTF

@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <WebKit/WKBackForwardListItem.h>
 
 /*! @abstract A WKBackForwardList object is a list of webpages previously
@@ -34,7 +32,7 @@
  */
 NS_ASSUME_NONNULL_BEGIN
 
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface WKBackForwardList : NSObject
 
 /*! @abstract The current item.
@@ -76,5 +74,3 @@ if there isn't one.
 @end
 
 NS_ASSUME_NONNULL_END
-
-#endif

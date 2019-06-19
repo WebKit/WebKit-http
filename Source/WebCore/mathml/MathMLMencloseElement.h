@@ -59,12 +59,12 @@ public:
 private:
     MathMLMencloseElement(const QualifiedName&, Document&);
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
     void parseNotationAttribute();
     void clearNotations() { m_notationFlags = 0; }
     void addNotation(MencloseNotationFlag notationFlag) { m_notationFlags.value() |= notationFlag; }
     void addNotationFlags(StringView notation);
-    std::optional<uint16_t> m_notationFlags;
+    Optional<uint16_t> m_notationFlags;
 };
 
 }

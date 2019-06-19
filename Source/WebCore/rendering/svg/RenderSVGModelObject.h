@@ -47,7 +47,7 @@ class RenderSVGModelObject : public RenderElement {
     WTF_MAKE_ISO_ALLOCATED(RenderSVGModelObject);
 public:
     LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const override;
-    FloatRect computeFloatRectForRepaint(const FloatRect&, const RenderLayerModelObject* repaintContainer, bool fixed = false) const final;
+    Optional<FloatRect> computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject* container, VisibleRectContext) const final;
     LayoutRect outlineBoundsForRepaint(const RenderLayerModelObject* repaintContainer, const RenderGeometryMap*) const final;
 
     void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const final;
@@ -59,10 +59,6 @@ public:
 
     static bool checkIntersection(RenderElement*, const FloatRect&);
     static bool checkEnclosure(RenderElement*, const FloatRect&);
-
-    virtual FloatRect repaintRectInLocalCoordinatesExcludingSVGShadow() const { return repaintRectInLocalCoordinates(); }
-    bool hasSVGShadow() const { return m_hasSVGShadow; }
-    void setHasSVGShadow(bool hasShadow) { m_hasSVGShadow = hasShadow; }
 
     SVGElement& element() const { return downcast<SVGElement>(nodeForNonAnonymous()); }
 
@@ -77,7 +73,6 @@ private:
     // This method should never be called, SVG uses a different nodeAtPoint method
     bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
     void absoluteFocusRingQuads(Vector<FloatQuad>&) final;
-    bool m_hasSVGShadow;
 };
 
 } // namespace WebCore

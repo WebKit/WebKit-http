@@ -28,9 +28,10 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+#include "NetworkProcessConnection.h"
 #include "WebProcess.h"
+#include "WebSWClientConnection.h"
 #include "WebSWServerConnection.h"
-#include "WebToStorageProcessConnection.h"
 #include <WebCore/CachedResource.h>
 #include <WebCore/Exception.h>
 #include <WebCore/ExceptionCode.h>
@@ -56,16 +57,16 @@ WebServiceWorkerProvider::WebServiceWorkerProvider()
 WebCore::SWClientConnection& WebServiceWorkerProvider::serviceWorkerConnectionForSession(SessionID sessionID)
 {
     ASSERT(sessionID.isValid());
-    return WebProcess::singleton().ensureWebToStorageProcessConnection(sessionID).serviceWorkerConnectionForSession(sessionID);
+    return WebProcess::singleton().ensureNetworkProcessConnection().serviceWorkerConnectionForSession(sessionID);
 }
 
 WebCore::SWClientConnection* WebServiceWorkerProvider::existingServiceWorkerConnectionForSession(SessionID sessionID)
 {
     ASSERT(sessionID.isValid());
-    auto* webToStorageProcessConnection = WebProcess::singleton().existingWebToStorageProcessConnection();
-    if (!webToStorageProcessConnection)
+    auto* networkProcessConnection = WebProcess::singleton().existingNetworkProcessConnection();
+    if (!networkProcessConnection)
         return nullptr;
-    return webToStorageProcessConnection->existingServiceWorkerConnectionForSession(sessionID);
+    return networkProcessConnection->existingServiceWorkerConnectionForSession(sessionID);
 }
 
 static inline bool shouldHandleFetch(const ResourceLoaderOptions& options)
@@ -79,14 +80,14 @@ static inline bool shouldHandleFetch(const ResourceLoaderOptions& options)
     return !!options.serviceWorkerRegistrationIdentifier;
 }
 
-void WebServiceWorkerProvider::handleFetch(ResourceLoader& loader, CachedResource* resource, PAL::SessionID sessionID, bool shouldClearReferrerOnHTTPSToHTTPRedirect, ServiceWorkerClientFetch::Callback&& callback)
+void WebServiceWorkerProvider::handleFetch(ResourceLoader& loader, PAL::SessionID sessionID, bool shouldClearReferrerOnHTTPSToHTTPRedirect, ServiceWorkerClientFetch::Callback&& callback)
 {
     if (!SchemeRegistry::canServiceWorkersHandleURLScheme(loader.request().url().protocol().toStringWithoutCopying()) || !shouldHandleFetch(loader.options())) {
         callback(ServiceWorkerClientFetch::Result::Unhandled);
         return;
     }
 
-    auto& connection = WebProcess::singleton().ensureWebToStorageProcessConnection(sessionID).serviceWorkerConnectionForSession(sessionID);
+    auto& connection = WebProcess::singleton().ensureNetworkProcessConnection().serviceWorkerConnectionForSession(sessionID);
     auto fetchIdentifier = makeObjectIdentifier<FetchIdentifierType>(loader.identifier());
     m_ongoingFetchTasks.add(fetchIdentifier, ServiceWorkerClientFetch::create(*this, loader, fetchIdentifier, connection, shouldClearReferrerOnHTTPSToHTTPRedirect, WTFMove(callback)));
 }

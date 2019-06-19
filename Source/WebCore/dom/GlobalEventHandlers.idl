@@ -107,15 +107,27 @@
     attribute EventHandler onanimationstart;
     attribute EventHandler onanimationcancel;
 
+    // Event handlers from Pointer Events API (https://w3c.github.io/pointerevents/#extensions-to-the-globaleventhandlers-mixin)
+    attribute EventHandler ongotpointercapture;
+    attribute EventHandler onlostpointercapture;
+    attribute EventHandler onpointerdown;
+    attribute EventHandler onpointermove;
+    attribute EventHandler onpointerup;
+    attribute EventHandler onpointercancel;
+    attribute EventHandler onpointerover;
+    attribute EventHandler onpointerout;
+    attribute EventHandler onpointerenter;
+    attribute EventHandler onpointerleave;
+
     // Additions that are not yet part of the standard.
 
     [NotEnumerable] attribute EventHandler onsearch;
     [NotEnumerable] attribute EventHandler onwheel;
-    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchcancel;
-    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchend;
-    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchmove;
-    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchstart;
-    [NotEnumerable, Conditional=TOUCH_EVENTS] attribute EventHandler ontouchforcechange;
+    [NotEnumerable, Conditional=TOUCH_EVENTS, EnabledAtRuntime=TouchEvents] attribute EventHandler ontouchcancel;
+    [NotEnumerable, Conditional=TOUCH_EVENTS, EnabledAtRuntime=TouchEvents] attribute EventHandler ontouchend;
+    [NotEnumerable, Conditional=TOUCH_EVENTS, EnabledAtRuntime=TouchEvents] attribute EventHandler ontouchmove;
+    [NotEnumerable, Conditional=TOUCH_EVENTS, EnabledAtRuntime=TouchEvents] attribute EventHandler ontouchstart;
+    [NotEnumerable, Conditional=TOUCH_EVENTS, EnabledAtRuntime=TouchEvents] attribute EventHandler ontouchforcechange;
     [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcechanged;
     [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcedown;
     [NotEnumerable, Conditional=MOUSE_FORCE_EVENTS] attribute EventHandler onwebkitmouseforcewillbegin;

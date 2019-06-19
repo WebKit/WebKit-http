@@ -111,7 +111,6 @@ public:
     void setPluginsEnabled(WebPageGroupProxy*, bool);
     void setJavaScriptCanAccessClipboard(WebPageGroupProxy*, bool);
     void setPrivateBrowsingEnabled(WebPageGroupProxy*, bool);
-    void setUseDashboardCompatibilityMode(WebPageGroupProxy*, bool);
     void setPopupBlockingEnabled(WebPageGroupProxy*, bool);
     void setAuthorAndUserStylesEnabled(WebPageGroupProxy*, bool);
     void setSpatialNavigationEnabled(WebPageGroupProxy*, bool);
@@ -159,12 +158,11 @@ public:
 
     void setTabKeyCyclesThroughElements(WebPage*, bool enabled);
     void setSerialLoadingEnabled(bool);
-    void setCSSAnimationTriggersEnabled(bool);
     void setWebAnimationsEnabled(bool);
     void setWebAnimationsCSSIntegrationEnabled(bool);
     void dispatchPendingLoadRequests();
 
-#if PLATFORM(COCOA) && WK_API_ENABLED
+#if PLATFORM(COCOA)
     WKWebProcessBundleParameters *bundleParameters();
 
     void extendClassesForParameterCoder(API::Array& classes);
@@ -181,7 +179,7 @@ private:
 
     std::unique_ptr<API::InjectedBundle::Client> m_client;
 
-#if PLATFORM(COCOA) && WK_API_ENABLED
+#if PLATFORM(COCOA)
     RetainPtr<WKWebProcessBundleParameters> m_bundleParameters;
     RetainPtr<NSSet> m_classesForCoder;
 #endif

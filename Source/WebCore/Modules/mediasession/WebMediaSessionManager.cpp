@@ -26,7 +26,7 @@
 #include "config.h"
 #include "WebMediaSessionManager.h"
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
 
 #include "FloatRect.h"
 #include "Logging.h"
@@ -39,6 +39,8 @@ namespace WebCore {
 static const Seconds taskDelayInterval { 100_ms };
 
 struct ClientState {
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
+
     explicit ClientState(WebMediaSessionManagerClient& client, uint64_t contextId)
         : client(client)
         , contextId(contextId)
@@ -464,4 +466,4 @@ void WebMediaSessionManager::watchdogTimerFired()
 
 } // namespace WebCore
 
-#endif // ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#endif // ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)

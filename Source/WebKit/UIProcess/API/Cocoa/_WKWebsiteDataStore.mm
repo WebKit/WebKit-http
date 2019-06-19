@@ -26,8 +26,6 @@
 #import "config.h"
 #import "_WKWebsiteDataStoreInternal.h"
 
-#if WK_API_ENABLED
-
 #import <wtf/RetainPtr.h>
 
 typedef NS_OPTIONS(NSUInteger, _WKWebsiteDataTypes) {
@@ -40,10 +38,11 @@ typedef NS_OPTIONS(NSUInteger, _WKWebsiteDataTypes) {
     _WKWebsiteDataTypeWebSQLDatabases = 1 << 5,
 };
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 @implementation _WKWebsiteDataStore
+IGNORE_WARNINGS_END
 
 - (instancetype)initWithDataStore:(WKWebsiteDataStore *)dataStore
 {
@@ -107,6 +106,4 @@ static RetainPtr<NSSet> toWKWebsiteDataTypes(_WKWebsiteDataTypes websiteDataType
 
 @end
 
-#pragma clang diagnostic pop
-
-#endif
+ALLOW_DEPRECATED_DECLARATIONS_END

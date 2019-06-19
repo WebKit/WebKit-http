@@ -31,10 +31,10 @@
 #include "PluginModuleInfo.h"
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/SecurityOrigin.h>
-#include <WebCore/URL.h>
 #include <algorithm>
 #include <wtf/ListHashSet.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/URL.h>
 
 namespace WebKit {
 using namespace WebCore;
@@ -167,12 +167,6 @@ static inline String pathExtension(const URL& url)
 
 #if !PLATFORM(COCOA)
 
-bool PluginInfoStore::shouldAllowPluginToRunUnsandboxed(const String& pluginBundleIdentifier)
-{
-    UNUSED_PARAM(pluginBundleIdentifier);
-    return false;
-}
-
 PluginModuleLoadPolicy PluginInfoStore::defaultLoadPolicyForPlugin(const PluginModuleInfo&)
 {
     return PluginModuleLoadNormally;
@@ -237,10 +231,10 @@ bool PluginInfoStore::isSupportedPlugin(const String& mimeType, const URL& plugi
     }) != notFound;
 }
 
-std::optional<Vector<SupportedPluginIdentifier>> PluginInfoStore::supportedPluginIdentifiers()
+Optional<Vector<SupportedPluginIdentifier>> PluginInfoStore::supportedPluginIdentifiers()
 {
     if (!m_supportedPlugins)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return WTF::map(*m_supportedPlugins, [] (auto&& item) {
         return SupportedPluginIdentifier { item.matchingDomain, item.identifier };

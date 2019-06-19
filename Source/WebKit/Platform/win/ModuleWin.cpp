@@ -34,8 +34,8 @@ namespace WebKit {
 
 bool Module::load()
 {
-    ASSERT(!::PathIsRelativeW(m_path.charactersWithNullTermination().data()));
-    m_module = ::LoadLibraryExW(m_path.charactersWithNullTermination().data(), 0, LOAD_WITH_ALTERED_SEARCH_PATH);
+    ASSERT(!::PathIsRelativeW(m_path.wideCharacters().data()));
+    m_module = ::LoadLibraryExW(m_path.wideCharacters().data(), 0, LOAD_WITH_ALTERED_SEARCH_PATH);
     return m_module;
 }
 
@@ -51,7 +51,8 @@ void* Module::platformFunctionPointer(const char* functionName) const
 {
     if (!m_module)
         return 0;
-    return ::GetProcAddress(m_module, functionName);
+    auto proc = ::GetProcAddress(m_module, functionName);
+    return reinterpret_cast<void*>(proc);
 }
 
 }

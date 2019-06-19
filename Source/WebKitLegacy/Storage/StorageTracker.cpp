@@ -28,19 +28,19 @@
 #include "StorageThread.h"
 #include "StorageTrackerClient.h"
 #include "WebStorageNamespaceProvider.h"
-#include <WebCore/FileSystem.h>
 #include <WebCore/PageGroup.h>
 #include <WebCore/SQLiteDatabaseTracker.h>
 #include <WebCore/SQLiteStatement.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/TextEncoding.h>
+#include <wtf/FileSystem.h>
 #include <wtf/MainThread.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include <pal/spi/ios/SQLite3SPI.h>
 #endif
 
@@ -79,6 +79,10 @@ void StorageTracker::internalInitialize()
     storageTracker->setIsActive(true);
     storageTracker->m_thread->start();  
     storageTracker->importOriginIdentifiers();
+
+    m_thread->dispatch([this] {
+        FileSystem::deleteFile(FileSystem::pathByAppendingComponent(m_storageDirectoryPath, "StorageTracker.db"));
+    });
 }
 
 StorageTracker& StorageTracker::tracker()
@@ -104,7 +108,7 @@ StorageTracker::StorageTracker(const String& storagePath)
 String StorageTracker::trackerDatabasePath()
 {
     ASSERT(!m_databaseMutex.tryLock());
-    return FileSystem::pathByAppendingComponent(m_storageDirectoryPath, "StorageTracker.db");
+    return FileSystem::pathByAppendingComponent(m_storageDirectoryPath, "LegacyStorageTracker.db");
 }
 
 static bool ensureDatabaseFileExists(const String& fileName, bool createIfDoesNotExist)
@@ -388,7 +392,7 @@ void StorageTracker::deleteAllOrigins()
     });
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 static void truncateDatabaseFile(SQLiteDatabase& database)
 {
     sqlite3_file_control(database.sqlite3Handle(), 0, SQLITE_TRUNCATE_DATABASE, 0);
@@ -431,13 +435,13 @@ void StorageTracker::syncDeleteAllOrigins()
         LOG_ERROR("Failed to read in all origins from the database.");
 
     if (m_database.isOpen()) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         truncateDatabaseFile(m_database);
 #endif
         m_database.close();
     }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!FileSystem::deleteFile(trackerDatabasePath())) {
         // In the case where it is not possible to delete the database file (e.g some other program
         // like a virus scanner is accessing it), make sure to remove all entries.
@@ -543,11 +547,11 @@ void StorageTracker::syncDeleteOrigin(const String& originIdentifier)
     }
 
     if (shouldDeleteTrackerFiles) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         truncateDatabaseFile(m_database);
 #endif
         m_database.close();
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
         FileSystem::deleteFile(trackerDatabasePath());
         FileSystem::deleteEmptyDirectory(m_storageDirectoryPath);
 #endif

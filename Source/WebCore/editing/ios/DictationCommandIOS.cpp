@@ -26,7 +26,7 @@
 #include "config.h"
 #include "DictationCommandIOS.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #include "Document.h"
 #include "DocumentMarkerController.h"
@@ -57,7 +57,7 @@ void DictationCommandIOS::doApply()
         inputText(firstInterpretation, true);
 
         if (interpretations.size() > 1)
-            document().markers().addDictationPhraseWithAlternativesMarker(endingSelection().toNormalizedRange().get(), interpretations);
+            document().markers().addDictationPhraseWithAlternativesMarker(*endingSelection().toNormalizedRange(), interpretations);
 
         setEndingSelection(VisibleSelection(endingSelection().visibleEnd()));
     }
@@ -67,16 +67,17 @@ void DictationCommandIOS::doApply()
     Element* root = afterResults.rootEditableElement();
 
     // FIXME: Add the result marker using a Position cached before results are inserted, instead of relying on TextIterators.
-    RefPtr<Range> rangeToEnd = Range::create(document(), createLegacyEditingPosition((Node *)root, 0), afterResults.deepEquivalent());
-    int endIndex = TextIterator::rangeLength(rangeToEnd.get(), true);
+    auto rangeToEnd = Range::create(document(), createLegacyEditingPosition((Node *)root, 0), afterResults.deepEquivalent());
+    int endIndex = TextIterator::rangeLength(rangeToEnd.ptr(), true);
     int startIndex = endIndex - resultLength;
 
     if (startIndex >= 0) {
         RefPtr<Range> resultRange = TextIterator::rangeFromLocationAndLength(document().documentElement(), startIndex, endIndex, true);
-        document().markers().addDictationResultMarker(resultRange.get(), m_metadata);
+        ASSERT(resultRange); // FIXME: What guarantees this?
+        document().markers().addDictationResultMarker(*resultRange, m_metadata);
     }
 }
 
 } // namespace WebCore
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

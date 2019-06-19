@@ -409,7 +409,6 @@ WI.DataGridNode = class DataGridNode extends WI.Object
     insertChild() { return WI.DataGrid.prototype.insertChild.apply(this, arguments); }
     removeChild() { return WI.DataGrid.prototype.removeChild.apply(this, arguments); }
     removeChildren() { return WI.DataGrid.prototype.removeChildren.apply(this, arguments); }
-    removeChildrenRecursive() { return WI.DataGrid.prototype.removeChildrenRecursive.apply(this, arguments); }
 
     _recalculateSiblings(myIndex)
     {
@@ -545,7 +544,7 @@ WI.DataGridNode = class DataGridNode extends WI.Object
             currentAncestor = currentAncestor.parent;
         }
 
-        this.element.scrollIntoViewIfNeeded(false);
+        this.dataGrid.updateVisibleRows(this);
 
         this.dispatchEventToListeners("revealed");
     }
@@ -651,7 +650,7 @@ WI.DataGridNode = class DataGridNode extends WI.Object
         if (!this.hasChildren)
             return false;
 
-        let cell = event.target.enclosingNodeOrSelfWithNodeName("td");
+        let cell = event.target.closest("td");
         if (!cell || !cell.classList.contains("disclosure"))
             return false;
 

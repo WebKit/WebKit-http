@@ -79,12 +79,7 @@ WI.Object = class WebInspectorObject
 
         if (thisObject && !eventType) {
             this._listeners.forEach(function(listenersTable) {
-                let listenerPairs = listenersTable.toArray();
-                for (let i = 0, length = listenerPairs.length; i < length; ++i) {
-                    let existingThisObject = listenerPairs[i][0];
-                    if (existingThisObject === thisObject)
-                        listenersTable.deleteAll(existingThisObject);
-                }
+                listenersTable.deleteAll(thisObject);
             });
 
             return;
@@ -225,4 +220,5 @@ WI.Notification = {
     ExtraDomainsActivated: "extra-domains-activated",
     DebugUIEnabledDidChange: "debug-ui-enabled-did-change",
     VisibilityStateDidChange: "visibility-state-did-change",
+    TransitionPageTarget: "transition-page-target",
 };

@@ -79,8 +79,8 @@ public:
 
     void drawRect(const FloatRect&, float) override;
     void drawLine(const FloatPoint&, const FloatPoint&) override;
-    void drawLinesForText(const FloatPoint&, const DashArray&, bool, bool, float) override;
-    void drawLineForDocumentMarker(const FloatPoint&, float, DocumentMarkerLineStyle) override;
+    void drawLinesForText(const FloatPoint&, float thickness, const DashArray&, bool, bool) override;
+    void drawDotsForDocumentMarker(const FloatRect&, DocumentMarkerLineStyle) override;
     void drawEllipse(const FloatRect&) override;
     void drawPath(const Path&) override;
 

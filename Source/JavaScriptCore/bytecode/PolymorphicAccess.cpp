@@ -163,6 +163,14 @@ CallSiteIndex AccessGenerationState::callSiteIndexForExceptionHandlingOrOriginal
     return m_callSiteIndex;
 }
 
+DisposableCallSiteIndex AccessGenerationState::callSiteIndexForExceptionHandling()
+{
+    RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
+    RELEASE_ASSERT(m_needsToRestoreRegistersIfException);
+    RELEASE_ASSERT(m_calculatedCallSiteIndex);
+    return DisposableCallSiteIndex::fromCallSiteIndex(m_callSiteIndex);
+}
+
 const HandlerInfo& AccessGenerationState::originalExceptionHandler()
 {
     if (!m_calculatedRegistersForCallAndExceptionHandling)
@@ -179,7 +187,11 @@ CallSiteIndex AccessGenerationState::originalCallSiteIndex() const { return stub
 void AccessGenerationState::emitExplicitExceptionHandler()
 {
     restoreScratch();
-    jit->copyCalleeSavesToEntryFrameCalleeSavesBuffer(m_vm.topEntryFrame);
+    jit->pushToSave(GPRInfo::regT0);
+    jit->loadPtr(&m_vm.topEntryFrame, GPRInfo::regT0);
+    jit->copyCalleeSavesToEntryFrameCalleeSavesBuffer(GPRInfo::regT0);
+    jit->popToRestore(GPRInfo::regT0);
+
     if (needsToRestoreRegistersIfException()) {
         // To the JIT that produces the original exception handling
         // call site, they will expect the OSR exit to be arrived
@@ -324,7 +336,7 @@ bool PolymorphicAccess::visitWeak(VM& vm) const
     }
     if (Vector<WriteBarrier<JSCell>>* weakReferences = m_weakReferences.get()) {
         for (WriteBarrier<JSCell>& weakReference : *weakReferences) {
-            if (!Heap::isMarked(weakReference.get()))
+            if (!vm.heap.isMarked(weakReference.get()))
                 return false;
         }
     }
@@ -535,7 +547,7 @@ AccessGenerationResult PolymorphicAccess::regenerate(
     failure.append(jit.jump());
 
     CodeBlock* codeBlockThatOwnsExceptionHandlers = nullptr;
-    CallSiteIndex callSiteIndexForExceptionHandling;
+    DisposableCallSiteIndex callSiteIndexForExceptionHandling;
     if (state.needsToRestoreRegistersIfException() && hasJSGetterSetterCall) {
         // Emit the exception handler.
         // Note that this code is only reachable when doing genericUnwind from a pure JS getter/setter .
@@ -557,7 +569,7 @@ AccessGenerationResult PolymorphicAccess::regenerate(
         CCallHelpers::Jump jumpToOSRExitExceptionHandler = jit.jump();
 
         HandlerInfo oldHandler = state.originalExceptionHandler();
-        CallSiteIndex newExceptionHandlingCallSite = state.callSiteIndexForExceptionHandling();
+        DisposableCallSiteIndex newExceptionHandlingCallSite = state.callSiteIndexForExceptionHandling();
         jit.addLinkTask(
             [=] (LinkBuffer& linkBuffer) {
                 linkBuffer.link(jumpToOSRExitExceptionHandler, oldHandler.nativeCode);

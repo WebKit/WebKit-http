@@ -128,24 +128,25 @@ bool CSSAnimationControllerPrivate::clear(Element& element)
     return result;
 }
 
-std::optional<Seconds> CSSAnimationControllerPrivate::updateAnimations(SetChanged callSetChanged/* = DoNotCallSetChanged*/)
+Optional<Seconds> CSSAnimationControllerPrivate::updateAnimations(SetChanged callSetChanged/* = DoNotCallSetChanged*/)
 {
     AnimationPrivateUpdateBlock updateBlock(*this);
-    std::optional<Seconds> timeToNextService;
+    Optional<Seconds> timeToNextService;
     bool calledSetChanged = false;
 
     for (auto& compositeAnimation : m_compositeAnimations) {
         CompositeAnimation& animation = *compositeAnimation.value;
         if (!animation.isSuspended() && animation.hasAnimations()) {
-            std::optional<Seconds> t = animation.timeToNextService();
+            Optional<Seconds> t = animation.timeToNextService();
             if (t && (!timeToNextService || t.value() < timeToNextService.value()))
                 timeToNextService = t.value();
             if (timeToNextService && timeToNextService.value() == 0_s) {
                 if (callSetChanged != CallSetChanged)
                     break;
+                
                 Element& element = *compositeAnimation.key;
                 ASSERT(element.document().pageCacheState() == Document::NotInPageCache);
-                element.invalidateStyleAndLayerComposition();
+                element.invalidateStyle();
                 calledSetChanged = true;
             }
         }
@@ -159,7 +160,7 @@ std::optional<Seconds> CSSAnimationControllerPrivate::updateAnimations(SetChange
 
 void CSSAnimationControllerPrivate::updateAnimationTimerForElement(Element& element)
 {
-    std::optional<Seconds> timeToNextService;
+    Optional<Seconds> timeToNextService;
 
     const CompositeAnimation* compositeAnimation = m_compositeAnimations.get(&element);
     if (!compositeAnimation->isSuspended() && compositeAnimation->hasAnimations())
@@ -176,9 +177,9 @@ void CSSAnimationControllerPrivate::updateAnimationTimerForElement(Element& elem
 
 void CSSAnimationControllerPrivate::updateAnimationTimer(SetChanged callSetChanged/* = DoNotCallSetChanged*/)
 {
-    std::optional<Seconds> timeToNextService = updateAnimations(callSetChanged);
+    Optional<Seconds> timeToNextService = updateAnimations(callSetChanged);
 
-    LOG(Animations, "updateAnimationTimer: timeToNextService is %.2f", timeToNextService.value_or(Seconds { -1 }).value());
+    LOG(Animations, "updateAnimationTimer: timeToNextService is %.2f", timeToNextService.valueOr(Seconds { -1 }).value());
 
     // If we don't need service, we want to make sure the timer is no longer running
     if (!timeToNextService) {
@@ -225,7 +226,7 @@ void CSSAnimationControllerPrivate::fireEventsAndUpdateStyle()
     }
 
     for (auto& change : m_elementChangesToDispatch)
-        change->invalidateStyleAndLayerComposition();
+        change->invalidateStyle();
 
     m_elementChangesToDispatch.clear();
 
@@ -239,7 +240,7 @@ void CSSAnimationControllerPrivate::startUpdateStyleIfNeededDispatcher()
         m_updateStyleIfNeededDispatcher.startOneShot(0_s);
 }
 
-void CSSAnimationControllerPrivate::addEventToDispatch(Element& element, const AtomicString& eventType, const String& name, double elapsedTime)
+void CSSAnimationControllerPrivate::addEventToDispatch(Element& element, const AtomString& eventType, const String& name, double elapsedTime)
 {
     m_eventsToDispatch.append({ element, eventType, name, elapsedTime });
     startUpdateStyleIfNeededDispatcher();
@@ -254,7 +255,7 @@ void CSSAnimationControllerPrivate::addElementChangeToDispatch(Element& element)
 
 void CSSAnimationControllerPrivate::animationFrameCallbackFired()
 {
-    std::optional<Seconds> timeToNextService = updateAnimations(CallSetChanged);
+    Optional<Seconds> timeToNextService = updateAnimations(CallSetChanged);
 
     if (timeToNextService)
         m_frame.document()->view()->scheduleAnimation();
@@ -289,24 +290,24 @@ void CSSAnimationControllerPrivate::animationTimerFired()
     fireEventsAndUpdateStyle();
 }
 
-bool CSSAnimationControllerPrivate::isRunningAnimationOnRenderer(RenderElement& renderer, CSSPropertyID property, AnimationBase::RunningState runningState) const
+bool CSSAnimationControllerPrivate::isRunningAnimationOnRenderer(RenderElement& renderer, CSSPropertyID property) const
 {
     if (!renderer.element())
         return false;
     auto* animation = m_compositeAnimations.get(renderer.element());
     if (!animation)
         return false;
-    return animation->isAnimatingProperty(property, false, runningState);
+    return animation->isAnimatingProperty(property, false);
 }
 
-bool CSSAnimationControllerPrivate::isRunningAcceleratedAnimationOnRenderer(RenderElement& renderer, CSSPropertyID property, AnimationBase::RunningState runningState) const
+bool CSSAnimationControllerPrivate::isRunningAcceleratedAnimationOnRenderer(RenderElement& renderer, CSSPropertyID property) const
 {
     if (!renderer.element())
         return false;
     auto* animation = m_compositeAnimations.get(renderer.element());
     if (!animation)
         return false;
-    return animation->isAnimatingProperty(property, true, runningState);
+    return animation->isAnimatingProperty(property, true);
 }
 
 void CSSAnimationControllerPrivate::updateThrottlingState()
@@ -408,11 +409,11 @@ void CSSAnimationControllerPrivate::setAllowsNewAnimationsWhileSuspended(bool al
     m_allowsNewAnimationsWhileSuspended = allowed;
 }
 
-bool CSSAnimationControllerPrivate::pauseAnimationAtTime(Element& element, const AtomicString& name, double t)
+bool CSSAnimationControllerPrivate::pauseAnimationAtTime(Element& element, const AtomString& name, double t)
 {
     CompositeAnimation& compositeAnimation = ensureCompositeAnimation(element);
     if (compositeAnimation.pauseAnimationAtTime(name, t)) {
-        element.invalidateStyleAndLayerComposition();
+        element.invalidateStyle();
         startUpdateStyleIfNeededDispatcher();
         return true;
     }
@@ -424,7 +425,7 @@ bool CSSAnimationControllerPrivate::pauseTransitionAtTime(Element& element, cons
 {
     CompositeAnimation& compositeAnimation = ensureCompositeAnimation(element);
     if (compositeAnimation.pauseTransitionAtTime(cssPropertyID(property), t)) {
-        element.invalidateStyleAndLayerComposition();
+        element.invalidateStyle();
         startUpdateStyleIfNeededDispatcher();
         return true;
     }
@@ -444,7 +445,7 @@ MonotonicTime CSSAnimationControllerPrivate::beginAnimationUpdateTime()
 void CSSAnimationControllerPrivate::beginAnimationUpdate()
 {
     if (!m_beginAnimationUpdateCount)
-        m_beginAnimationUpdateTime = std::nullopt;
+        m_beginAnimationUpdateTime = WTF::nullopt;
     ++m_beginAnimationUpdateCount;
 }
 
@@ -488,7 +489,7 @@ bool CSSAnimationControllerPrivate::computeExtentOfAnimation(Element& element, L
     if (!animation)
         return true;
 
-    if (!animation->isAnimatingProperty(CSSPropertyTransform, false, AnimationBase::Running | AnimationBase::Paused))
+    if (!animation->isAnimatingProperty(CSSPropertyTransform, false))
         return true;
 
     return animation->computeExtentOfTransformAnimation(bounds);
@@ -506,17 +507,15 @@ unsigned CSSAnimationControllerPrivate::numberOfActiveAnimations(Document* docum
     return count;
 }
 
-void CSSAnimationControllerPrivate::addToAnimationsWaitingForStyle(AnimationBase* animation)
+void CSSAnimationControllerPrivate::addToAnimationsWaitingForStyle(AnimationBase& animation)
 {
-    // Make sure this animation is not in the start time waiters
-    m_animationsWaitingForStartTimeResponse.remove(animation);
-
-    m_animationsWaitingForStyle.add(animation);
+    m_animationsWaitingForStartTimeResponse.remove(&animation);
+    m_animationsWaitingForStyle.add(&animation);
 }
 
-void CSSAnimationControllerPrivate::removeFromAnimationsWaitingForStyle(AnimationBase* animationToRemove)
+void CSSAnimationControllerPrivate::removeFromAnimationsWaitingForStyle(AnimationBase& animationToRemove)
 {
-    m_animationsWaitingForStyle.remove(animationToRemove);
+    m_animationsWaitingForStyle.remove(&animationToRemove);
 }
 
 void CSSAnimationControllerPrivate::styleAvailable()
@@ -528,7 +527,7 @@ void CSSAnimationControllerPrivate::styleAvailable()
     m_animationsWaitingForStyle.clear();
 }
 
-void CSSAnimationControllerPrivate::addToAnimationsWaitingForStartTimeResponse(AnimationBase* animation, bool willGetResponse)
+void CSSAnimationControllerPrivate::addToAnimationsWaitingForStartTimeResponse(AnimationBase& animation, bool willGetResponse)
 {
     // If willGetResponse is true, it means this animation is actually waiting for a response
     // (which will come in as a call to notifyAnimationStarted()).
@@ -547,17 +546,16 @@ void CSSAnimationControllerPrivate::addToAnimationsWaitingForStartTimeResponse(A
     // This will synchronize all software and accelerated animations started in the same 
     // updateStyleIfNeeded cycle.
     //
-    
+
     if (willGetResponse)
         m_waitingForAsyncStartNotification = true;
 
-    m_animationsWaitingForStartTimeResponse.add(animation);
+    m_animationsWaitingForStartTimeResponse.add(&animation);
 }
 
-void CSSAnimationControllerPrivate::removeFromAnimationsWaitingForStartTimeResponse(AnimationBase* animationToRemove)
+void CSSAnimationControllerPrivate::removeFromAnimationsWaitingForStartTimeResponse(AnimationBase& animationToRemove)
 {
-    m_animationsWaitingForStartTimeResponse.remove(animationToRemove);
-    
+    m_animationsWaitingForStartTimeResponse.remove(&animationToRemove);
     if (m_animationsWaitingForStartTimeResponse.isEmpty())
         m_waitingForAsyncStartNotification = false;
 }
@@ -573,15 +571,12 @@ void CSSAnimationControllerPrivate::startTimeResponse(MonotonicTime time)
     m_waitingForAsyncStartNotification = false;
 }
 
-void CSSAnimationControllerPrivate::animationWillBeRemoved(AnimationBase* animation)
+void CSSAnimationControllerPrivate::animationWillBeRemoved(AnimationBase& animation)
 {
-    LOG(Animations, "CSSAnimationControllerPrivate %p animationWillBeRemoved: %p", this, animation);
+    LOG(Animations, "CSSAnimationControllerPrivate %p animationWillBeRemoved: %p", this, &animation);
 
     removeFromAnimationsWaitingForStyle(animation);
     removeFromAnimationsWaitingForStartTimeResponse(animation);
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    removeFromAnimationsDependentOnScroll(animation);
-#endif
 
     bool anyAnimationsWaitingForAsyncStart = false;
     for (auto& animation : m_animationsWaitingForStartTimeResponse) {
@@ -594,33 +589,6 @@ void CSSAnimationControllerPrivate::animationWillBeRemoved(AnimationBase* animat
     if (!anyAnimationsWaitingForAsyncStart)
         m_waitingForAsyncStartNotification = false;
 }
-
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-void CSSAnimationControllerPrivate::addToAnimationsDependentOnScroll(AnimationBase* animation)
-{
-    m_animationsDependentOnScroll.add(animation);
-}
-
-void CSSAnimationControllerPrivate::removeFromAnimationsDependentOnScroll(AnimationBase* animation)
-{
-    m_animationsDependentOnScroll.remove(animation);
-}
-
-void CSSAnimationControllerPrivate::scrollWasUpdated()
-{
-    auto* view = m_frame.view();
-    if (!view || !wantsScrollUpdates())
-        return;
-
-    m_scrollPosition = view->scrollPositionForFixedPosition().y().toFloat();
-
-    // FIXME: This is updating all the animations, rather than just the ones
-    // that are dependent on scroll. We to go from our AnimationBase to its CompositeAnimation
-    // so we can execute code similar to updateAnimations.
-    // https://bugs.webkit.org/show_bug.cgi?id=144170
-    updateAnimations(CallSetChanged);
-}
-#endif
 
 CSSAnimationController::CSSAnimationController(Frame& frame)
     : m_data(std::make_unique<CSSAnimationControllerPrivate>(frame))
@@ -637,7 +605,7 @@ void CSSAnimationController::cancelAnimations(Element& element)
     if (element.document().renderTreeBeingDestroyed())
         return;
     ASSERT(element.document().pageCacheState() == Document::NotInPageCache);
-    element.invalidateStyleAndLayerComposition();
+    element.invalidateStyle();
 }
 
 AnimationUpdate CSSAnimationController::updateAnimations(Element& element, const RenderStyle& newStyle, const RenderStyle* oldStyle)
@@ -705,7 +673,7 @@ void CSSAnimationController::notifyAnimationStarted(RenderElement& renderer, Mon
     m_data->receivedStartTimeResponse(startTime);
 }
 
-bool CSSAnimationController::pauseAnimationAtTime(Element& element, const AtomicString& name, double t)
+bool CSSAnimationController::pauseAnimationAtTime(Element& element, const AtomString& name, double t)
 {
     AnimationUpdateBlock animationUpdateBlock(this);
     return m_data->pauseAnimationAtTime(element, name, t);
@@ -722,18 +690,18 @@ bool CSSAnimationController::pauseTransitionAtTime(Element& element, const Strin
     return m_data->pauseTransitionAtTime(element, property, t);
 }
 
-bool CSSAnimationController::isRunningAnimationOnRenderer(RenderElement& renderer, CSSPropertyID property, AnimationBase::RunningState runningState) const
+bool CSSAnimationController::isRunningAnimationOnRenderer(RenderElement& renderer, CSSPropertyID property) const
 {
     if (!renderer.style().hasAnimationsOrTransitions())
         return false;
-    return m_data->isRunningAnimationOnRenderer(renderer, property, runningState);
+    return m_data->isRunningAnimationOnRenderer(renderer, property);
 }
 
-bool CSSAnimationController::isRunningAcceleratedAnimationOnRenderer(RenderElement& renderer, CSSPropertyID property, AnimationBase::RunningState runningState) const
+bool CSSAnimationController::isRunningAcceleratedAnimationOnRenderer(RenderElement& renderer, CSSPropertyID property) const
 {
     if (!renderer.style().hasAnimationsOrTransitions())
         return false;
-    return m_data->isRunningAcceleratedAnimationOnRenderer(renderer, property, runningState);
+    return m_data->isRunningAcceleratedAnimationOnRenderer(renderer, property);
 }
 
 bool CSSAnimationController::isSuspended() const
@@ -823,18 +791,6 @@ bool CSSAnimationController::supportsAcceleratedAnimationOfProperty(CSSPropertyI
 {
     return CSSPropertyAnimation::animationOfPropertyIsAccelerated(property);
 }
-
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-bool CSSAnimationController::wantsScrollUpdates() const
-{
-    return m_data->wantsScrollUpdates();
-}
-
-void CSSAnimationController::scrollWasUpdated()
-{
-    m_data->scrollWasUpdated();
-}
-#endif
 
 bool CSSAnimationController::hasAnimations() const
 {

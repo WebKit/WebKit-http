@@ -34,8 +34,56 @@
 #include <limits.h>
 
 namespace JSC {
-
     class BytecodeGenerator;
+    class Label;
+
+    class BoundLabel {
+    public:
+        BoundLabel()
+            : m_type(Offset)
+            , m_generator(nullptr)
+            , m_target(0)
+        { }
+
+        explicit BoundLabel(int target)
+            : m_type(Offset)
+            , m_generator(nullptr)
+            , m_target(target)
+        { }
+
+        BoundLabel(BytecodeGenerator* generator, Label* label)
+            : m_type(GeneratorForward)
+            , m_generator(generator)
+            , m_label(label)
+        { }
+
+        BoundLabel(BytecodeGenerator* generator, int offset)
+            : m_type(GeneratorBackward)
+            , m_generator(generator)
+            , m_target(offset)
+        { }
+
+        int target();
+        int saveTarget();
+        int commitTarget();
+
+        operator int() { return target(); }
+
+    private:
+        enum Type : uint8_t {
+            Offset,
+            GeneratorForward,
+            GeneratorBackward,
+        };
+
+        Type m_type;
+        int m_savedTarget { 0 };
+        BytecodeGenerator* m_generator;
+        union {
+            Label* m_label;
+            int m_target;
+        };
+    };
 
     class Label {
     WTF_MAKE_NONCOPYABLE(Label);
@@ -44,14 +92,27 @@ namespace JSC {
 
         void setLocation(BytecodeGenerator&, unsigned);
 
-        int bind(int opcode, int offset) const
+        BoundLabel bind(BytecodeGenerator* generator)
         {
             m_bound = true;
-            if (m_location == invalidLocation) {
-                m_unresolvedJumps.append(std::make_pair(opcode, offset));
-                return 0;
-            }
-            return m_location - opcode;
+            if (!isForward())
+                return BoundLabel(generator, m_location);
+            return BoundLabel(generator, this);
+        }
+
+        BoundLabel bind(unsigned offset)
+        {
+            m_bound = true;
+            if (!isForward())
+                return BoundLabel(m_location - offset);
+            m_unresolvedJumps.append(offset);
+            return BoundLabel();
+        }
+
+        BoundLabel bind()
+        {
+            ASSERT(!isForward());
+            return bind(0u);
         }
 
         void ref() { ++m_refCount; }
@@ -65,16 +126,12 @@ namespace JSC {
 
         bool isForward() const { return m_location == invalidLocation; }
         
-        int bind()
-        {
-            ASSERT(!isForward());
-            return bind(0, 0);
-        }
-
         bool isBound() const { return m_bound; }
 
     private:
-        typedef Vector<std::pair<int, int>, 8> JumpVector;
+        friend class BoundLabel;
+
+        typedef Vector<int, 8> JumpVector;
 
         static const unsigned invalidLocation = UINT_MAX;
 

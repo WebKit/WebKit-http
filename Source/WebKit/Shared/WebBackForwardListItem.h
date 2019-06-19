@@ -27,7 +27,9 @@
 
 #include "APIObject.h"
 #include "SessionState.h"
+#include <WebCore/PageIdentifier.h>
 #include <wtf/Ref.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace API {
@@ -45,7 +47,7 @@ class SuspendedPageProxy;
 
 class WebBackForwardListItem : public API::ObjectImpl<API::Object::Type::BackForwardListItem> {
 public:
-    static Ref<WebBackForwardListItem> create(BackForwardListItemState&&, uint64_t pageID);
+    static Ref<WebBackForwardListItem> create(BackForwardListItemState&&, WebCore::PageIdentifier);
     virtual ~WebBackForwardListItem();
 
     static WebBackForwardListItem* itemForID(const WebCore::BackForwardItemIdentifier&);
@@ -53,7 +55,10 @@ public:
 
     const WebCore::BackForwardItemIdentifier& itemID() const { return m_itemState.identifier; }
     const BackForwardListItemState& itemState() { return m_itemState; }
-    uint64_t pageID() const { return m_pageID; }
+    WebCore::PageIdentifier pageID() const { return m_pageID; }
+
+    WebCore::ProcessIdentifier lastProcessIdentifier() const { return m_lastProcessIdentifier; }
+    void setLastProcessIdentifier(const WebCore::ProcessIdentifier& identifier) { m_lastProcessIdentifier = identifier; }
 
     void setPageState(PageState pageState) { m_itemState.pageState = WTFMove(pageState); }
     const PageState& pageState() const { return m_itemState.pageState; }
@@ -63,24 +68,28 @@ public:
     const String& title() const { return m_itemState.pageState.title; }
 
     bool itemIsInSameDocument(const WebBackForwardListItem&) const;
+    bool itemIsClone(const WebBackForwardListItem&);
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
     ViewSnapshot* snapshot() const { return m_itemState.snapshot.get(); }
     void setSnapshot(RefPtr<ViewSnapshot>&& snapshot) { m_itemState.snapshot = WTFMove(snapshot); }
 #endif
     void setSuspendedPage(SuspendedPageProxy*);
-    SuspendedPageProxy* suspendedPage() const { return m_suspendedPage; }
+    SuspendedPageProxy* suspendedPage() const;
 
 #if !LOG_DISABLED
     const char* loggingString();
 #endif
 
 private:
-    explicit WebBackForwardListItem(BackForwardListItemState&&, uint64_t pageID);
+    WebBackForwardListItem(BackForwardListItemState&&, WebCore::PageIdentifier);
+
+    void removeSuspendedPageFromProcessPool();
 
     BackForwardListItemState m_itemState;
-    uint64_t m_pageID;
-    SuspendedPageProxy* m_suspendedPage { nullptr };
+    WebCore::PageIdentifier m_pageID;
+    WebCore::ProcessIdentifier m_lastProcessIdentifier;
+    WeakPtr<SuspendedPageProxy> m_suspendedPage;
 };
 
 typedef Vector<Ref<WebBackForwardListItem>> BackForwardListItemVector;

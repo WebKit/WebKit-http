@@ -168,8 +168,8 @@ void InjectedBundlePageEditorClient::getPasteboardDataForRange(WebPage& page, Ra
             pasteboardTypes.append(type->string());
 
         for (auto item : dataArray->elementsOfType<API::Data>()) {
-            RefPtr<SharedBuffer> buffer = SharedBuffer::create(item->bytes(), item->size());
-            pasteboardData.append(buffer);
+            auto buffer = SharedBuffer::create(item->bytes(), item->size());
+            pasteboardData.append(WTFMove(buffer));
         }
     }
 }
@@ -188,16 +188,6 @@ void InjectedBundlePageEditorClient::didWriteToPasteboard(WebPage& page)
 {
     if (m_client.didWriteToPasteboard)
         m_client.didWriteToPasteboard(toAPI(&page), m_client.base.clientInfo);
-}
-
-String InjectedBundlePageEditorClient::replacementURLForResource(WebPage& page, Ref<SharedBuffer>&& resourceData, const String& mimeType)
-{
-    if (!m_client.replacementURLForResource)
-        return { };
-
-    auto data = adoptWK(WKDataCreate(reinterpret_cast<const unsigned char*>(resourceData->data()), resourceData->size()));
-    auto type = adoptWK(toCopiedAPI(mimeType));
-    return toWTFString(m_client.replacementURLForResource(toAPI(&page), data.get(), type.get(), m_client.base.clientInfo));
 }
 
 } // namespace WebKit

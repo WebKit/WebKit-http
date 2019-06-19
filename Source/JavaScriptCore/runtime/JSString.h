@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "ArgList.h"
 #include "CallFrame.h"
 #include "CommonIdentifiers.h"
 #include "Identifier.h"
@@ -31,6 +32,7 @@
 #include "ThrowScope.h"
 #include <array>
 #include <wtf/CheckedArithmetic.h>
+#include <wtf/ForbidHeapAllocation.h>
 #include <wtf/text/StringView.h>
 
 namespace JSC {
@@ -47,7 +49,6 @@ JSString* jsString(ExecState*, const String&); // returns empty string if passed
 JSString* jsSingleCharacterString(VM*, UChar);
 JSString* jsSingleCharacterString(ExecState*, UChar);
 JSString* jsSubstring(VM*, const String&, unsigned offset, unsigned length);
-JSString* jsSubstring(ExecState*, const String&, unsigned offset, unsigned length);
 
 // Non-trivial strings are two or more characters long.
 // These functions are faster than just calling jsString.
@@ -61,17 +62,26 @@ JSString* jsNontrivialString(ExecState*, String&&);
 JSString* jsOwnedString(VM*, const String&);
 JSString* jsOwnedString(ExecState*, const String&);
 
-JSRopeString* jsStringBuilder(VM*);
-
 bool isJSString(JSCell*);
 bool isJSString(JSValue);
 JSString* asString(JSValue);
 
-struct StringViewWithUnderlyingString {
-    StringView view;
-    String underlyingString;
-};
-
+// In 64bit architecture, JSString and JSRopeString have the following memory layout to make sizeof(JSString) == 16 and sizeof(JSRopeString) == 32.
+// JSString has only one pointer. We use it for String. length() and is8Bit() queries go to StringImpl. In JSRopeString, we reuse the above pointer
+// place for the 1st fiber. JSRopeString has three fibers so its size is 48. To keep length and is8Bit flag information in JSRopeString, JSRopeString
+// encodes these information into the fiber pointers. is8Bit flag is encoded in the 1st fiber pointer. length is embedded directly, and two fibers
+// are compressed into 12bytes. isRope information is encoded in the first fiber's LSB.
+//
+// Since length of JSRopeString should be frequently accessed compared to each fiber, we put length in contiguous 32byte field, and compress 2nd
+// and 3rd fibers into the following 80byte fields. One problem is that now 2nd and 3rd fibers are split. Storing and loading 2nd and 3rd fibers
+// are not one pointer load operation. To make concurrent collector work correctly, we must initialize 2nd and 3rd fibers at JSRopeString creation
+// and we must not modify these part later.
+//
+//              0                        8        10               16                       32                                     48
+// JSString     [   ID      ][  header  ][   String pointer      0]
+// JSRopeString [   ID      ][  header  ][   1st fiber         xyz][  length  ][2nd lower32][2nd upper16][3rd lower16][3rd upper32]
+//                                                               ^
+//                                            x:(is8Bit),y:(isSubstring),z:(isRope) bit flags
 class JSString : public JSCell {
 public:
     friend class JIT;
@@ -80,6 +90,7 @@ public:
     friend class JSRopeString;
     friend class MarkStack;
     friend class SlotVisitor;
+    friend class SmallStrings;
 
     typedef JSCell Base;
     static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | StructureIsImmortal | OverridesToThis;
@@ -89,55 +100,65 @@ public:
     
     // We specialize the string subspace to get the fastest possible sweep. This wouldn't be
     // necessary if JSString didn't have a destructor.
-    template<typename>
+    template<typename, SubspaceAccess>
     static CompleteSubspace* subspaceFor(VM& vm)
     {
         return &vm.stringSpace;
     }
     
-    static const unsigned MaxLength = std::numeric_limits<int32_t>::max();
-    
+    // We employ overflow checks in many places with the assumption that MaxLength
+    // is INT_MAX. Hence, it cannot be changed into another length value without
+    // breaking all the bounds and overflow checks that assume this.
+    static constexpr unsigned MaxLength = std::numeric_limits<int32_t>::max();
+    static_assert(MaxLength == String::MaxLength, "");
+
+    static constexpr uintptr_t isRopeInPointer = 0x1;
+
 private:
+    String& uninitializedValueInternal() const
+    {
+        return *bitwise_cast<String*>(&m_fiber);
+    }
+
+    String& valueInternal() const
+    {
+        ASSERT(!isRope());
+        return uninitializedValueInternal();
+    }
+
     JSString(VM& vm, Ref<StringImpl>&& value)
         : JSCell(vm, vm.stringStructure.get())
-        , m_value(WTFMove(value))
     {
+        new (&uninitializedValueInternal()) String(WTFMove(value));
     }
 
     JSString(VM& vm)
         : JSCell(vm, vm.stringStructure.get())
+        , m_fiber(isRopeInPointer)
     {
     }
 
-    void finishCreation(VM& vm, size_t length)
+    void finishCreation(VM& vm, unsigned length)
     {
-        ASSERT(!m_value.isNull());
+        ASSERT_UNUSED(length, length > 0);
+        ASSERT(!valueInternal().isNull());
         Base::finishCreation(vm);
-        setLength(length);
-        setIs8Bit(m_value.impl()->is8Bit());
     }
 
-    void finishCreation(VM& vm, size_t length, size_t cost)
+    void finishCreation(VM& vm, unsigned length, size_t cost)
     {
-        ASSERT(!m_value.isNull());
+        ASSERT_UNUSED(length, length > 0);
+        ASSERT(!valueInternal().isNull());
         Base::finishCreation(vm);
-        setLength(length);
-        setIs8Bit(m_value.impl()->is8Bit());
-        Heap::heap(this)->reportExtraMemoryAllocated(cost);
+        vm.heap.reportExtraMemoryAllocated(cost);
     }
 
-protected:
-    void finishCreation(VM& vm)
-    {
-        Base::finishCreation(vm);
-        setLength(0);
-        setIs8Bit(true);
-    }
+    static JSString* createEmptyString(VM&);
 
-public:
     static JSString* create(VM& vm, Ref<StringImpl>&& value)
     {
         unsigned length = value->length();
+        ASSERT(length > 0);
         size_t cost = value->cost();
         JSString* newString = new (NotNull, allocateCell<JSString>(vm.heap)) JSString(vm, WTFMove(value));
         newString->finishCreation(vm, length, cost);
@@ -145,23 +166,32 @@ public:
     }
     static JSString* createHasOtherOwner(VM& vm, Ref<StringImpl>&& value)
     {
-        size_t length = value->length();
+        unsigned length = value->length();
         JSString* newString = new (NotNull, allocateCell<JSString>(vm.heap)) JSString(vm, WTFMove(value));
         newString->finishCreation(vm, length);
         return newString;
     }
 
+protected:
+    void finishCreation(VM& vm)
+    {
+        Base::finishCreation(vm);
+    }
+
+public:
+    ~JSString();
+
     Identifier toIdentifier(ExecState*) const;
-    AtomicString toAtomicString(ExecState*) const;
-    RefPtr<AtomicStringImpl> toExistingAtomicString(ExecState*) const;
+    AtomString toAtomString(ExecState*) const;
+    RefPtr<AtomStringImpl> toExistingAtomString(ExecState*) const;
 
     StringViewWithUnderlyingString viewWithUnderlyingString(ExecState*) const;
 
     inline bool equal(ExecState*, JSString* other) const;
     const String& value(ExecState*) const;
-    const String& tryGetValue() const;
+    inline const String& tryGetValue(bool allocationAllowed = true) const;
     const StringImpl* tryGetValueImpl() const;
-    ALWAYS_INLINE unsigned length() const { return m_length; }
+    ALWAYS_INLINE unsigned length() const;
 
     JSValue toPrimitive(ExecState*, PreferredPrimitiveType) const;
     bool toBoolean() const { return !!length(); }
@@ -178,9 +208,7 @@ public:
 
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
-    static size_t offsetOfLength() { return OBJECT_OFFSETOF(JSString, m_length); }
-    static size_t offsetOfFlags() { return OBJECT_OFFSETOF(JSString, m_flags); }
-    static size_t offsetOfValue() { return OBJECT_OFFSETOF(JSString, m_value); }
+    static ptrdiff_t offsetOfValue() { return OBJECT_OFFSETOF(JSString, m_fiber); }
 
     DECLARE_EXPORT_INFO;
 
@@ -188,65 +216,149 @@ public:
     static size_t estimatedSize(JSCell*, VM&);
     static void visitChildren(JSCell*, SlotVisitor&);
 
-    enum {
-        Is8Bit = 1u
-    };
+    ALWAYS_INLINE bool isRope() const
+    {
+        return m_fiber & isRopeInPointer;
+    }
+
+    bool is8Bit() const;
 
 protected:
     friend class JSValue;
 
     JS_EXPORT_PRIVATE bool equalSlowCase(ExecState*, JSString* other) const;
-    bool isRope() const { return m_value.isNull(); }
     bool isSubstring() const;
-    bool is8Bit() const { return m_flags & Is8Bit; }
-    void setIs8Bit(bool flag) const
-    {
-        if (flag)
-            m_flags |= Is8Bit;
-        else
-            m_flags &= ~Is8Bit;
-    }
 
-    ALWAYS_INLINE void setLength(unsigned length)
-    {
-        m_length = length;
-    }
+    mutable uintptr_t m_fiber;
 
 private:
-    // A string is represented either by a String or a rope of fibers.
-    unsigned m_length { 0 };
-    mutable uint16_t m_flags { 0 };
-    // The poison is strategically placed and holds a value such that the first
-    // 64 bits of JSString look like a double JSValue.
-    uint16_t m_poison { 1 };
-    mutable String m_value;
-
     friend class LLIntOffsetsExtractor;
 
     static JSValue toThis(JSCell*, ExecState*, ECMAMode);
 
-    String& string() { ASSERT(!isRope()); return m_value; }
     StringView unsafeView(ExecState*) const;
 
+    friend JSString* jsString(VM*, const String&);
     friend JSString* jsString(ExecState*, JSString*, JSString*);
-    friend JSString* jsSubstring(ExecState*, JSString*, unsigned offset, unsigned length);
+    friend JSString* jsString(ExecState*, const String&, JSString*);
+    friend JSString* jsString(ExecState*, JSString*, const String&);
+    friend JSString* jsString(ExecState*, const String&, const String&);
+    friend JSString* jsString(ExecState*, JSString*, JSString*, JSString*);
+    friend JSString* jsString(ExecState*, const String&, const String&, const String&);
+    friend JSString* jsSingleCharacterString(VM*, UChar);
+    friend JSString* jsNontrivialString(VM*, const String&);
+    friend JSString* jsNontrivialString(VM*, String&&);
+    friend JSString* jsSubstring(VM*, const String&, unsigned, unsigned);
+    friend JSString* jsSubstring(VM&, ExecState*, JSString*, unsigned, unsigned);
+    friend JSString* jsSubstringOfResolved(VM&, GCDeferralContext*, JSString*, unsigned, unsigned);
+    friend JSString* jsOwnedString(VM*, const String&);
 };
 
 // NOTE: This class cannot override JSString's destructor. JSString's destructor is called directly
 // from JSStringSubspace::
 class JSRopeString final : public JSString {
     friend class JSString;
-
-    friend JSRopeString* jsStringBuilder(VM*);
-
 public:
+    // We use lower 3bits of fiber0 for flags. These bits are usable due to alignment, and it is OK even in 32bit architecture.
+    static constexpr uintptr_t is8BitInPointer = static_cast<uintptr_t>(StringImpl::flagIs8Bit());
+    static constexpr uintptr_t isSubstringInPointer = 0x2;
+    static_assert(is8BitInPointer == 0b100, "");
+    static_assert(isSubstringInPointer == 0b010, "");
+    static_assert(isRopeInPointer == 0b001, "");
+    static constexpr uintptr_t stringMask = ~(isRopeInPointer | is8BitInPointer | isSubstringInPointer);
+#if CPU(ADDRESS64)
+    static_assert(sizeof(uintptr_t) == sizeof(uint64_t), "");
+    class CompactFibers {
+    public:
+        JSString* fiber1() const
+        {
+            return bitwise_cast<JSString*>(static_cast<uintptr_t>(m_fiber1Lower) | (static_cast<uintptr_t>(m_fiber1Upper) << 32));
+        }
+
+        void initializeFiber1(JSString* fiber)
+        {
+            uintptr_t pointer = bitwise_cast<uintptr_t>(fiber);
+            m_fiber1Lower = static_cast<uint32_t>(pointer);
+            m_fiber1Upper = static_cast<uint16_t>(pointer >> 32);
+        }
+
+        JSString* fiber2() const
+        {
+            return bitwise_cast<JSString*>(static_cast<uintptr_t>(m_fiber2Lower) | (static_cast<uintptr_t>(m_fiber2Upper) << 16));
+        }
+        void initializeFiber2(JSString* fiber)
+        {
+            uintptr_t pointer = bitwise_cast<uintptr_t>(fiber);
+            m_fiber2Lower = static_cast<uint16_t>(pointer);
+            m_fiber2Upper = static_cast<uint32_t>(pointer >> 16);
+        }
+
+        unsigned length() const { return m_length; }
+        void initializeLength(unsigned length)
+        {
+            m_length = length;
+        }
+
+        static ptrdiff_t offsetOfLength() { return OBJECT_OFFSETOF(CompactFibers, m_length); }
+        static ptrdiff_t offsetOfFiber1() { return OBJECT_OFFSETOF(CompactFibers, m_length); }
+        static ptrdiff_t offsetOfFiber2() { return OBJECT_OFFSETOF(CompactFibers, m_fiber1Upper); }
+
+    private:
+        friend class LLIntOffsetsExtractor;
+
+        uint32_t m_length { 0 };
+        uint32_t m_fiber1Lower { 0 };
+        uint16_t m_fiber1Upper { 0 };
+        uint16_t m_fiber2Lower { 0 };
+        uint32_t m_fiber2Upper { 0 };
+    };
+    static_assert(sizeof(CompactFibers) == sizeof(void*) * 2, "");
+#else
+    class CompactFibers {
+    public:
+        JSString* fiber1() const
+        {
+            return m_fiber1;
+        }
+        void initializeFiber1(JSString* fiber)
+        {
+            m_fiber1 = fiber;
+        }
+
+        JSString* fiber2() const
+        {
+            return m_fiber2;
+        }
+        void initializeFiber2(JSString* fiber)
+        {
+            m_fiber2 = fiber;
+        }
+
+        unsigned length() const { return m_length; }
+        void initializeLength(unsigned length)
+        {
+            m_length = length;
+        }
+
+        static ptrdiff_t offsetOfLength() { return OBJECT_OFFSETOF(CompactFibers, m_length); }
+        static ptrdiff_t offsetOfFiber1() { return OBJECT_OFFSETOF(CompactFibers, m_fiber1); }
+        static ptrdiff_t offsetOfFiber2() { return OBJECT_OFFSETOF(CompactFibers, m_fiber2); }
+
+    private:
+        friend class LLIntOffsetsExtractor;
+
+        uint32_t m_length { 0 };
+        JSString* m_fiber1 { nullptr };
+        JSString* m_fiber2 { nullptr };
+    };
+#endif
+
     template <class OverflowHandler = CrashOnOverflow>
     class RopeBuilder : public OverflowHandler {
+        WTF_FORBID_HEAP_ALLOCATION;
     public:
         RopeBuilder(VM& vm)
             : m_vm(vm)
-            , m_jsString(jsStringBuilder(&vm))
-            , m_index(0)
         {
         }
 
@@ -254,237 +366,338 @@ public:
         {
             if (UNLIKELY(this->hasOverflowed()))
                 return false;
-            if (m_index == JSRopeString::s_maxInternalRopeLength)
+            if (!jsString->length())
+                return true;
+            if (m_strings.size() == JSRopeString::s_maxInternalRopeLength)
                 expand();
-            if (static_cast<int32_t>(m_jsString->length() + jsString->length()) < 0) {
+
+            static_assert(JSString::MaxLength == std::numeric_limits<int32_t>::max(), "");
+            auto sum = checkedSum<int32_t>(m_length, jsString->length());
+            if (sum.hasOverflowed()) {
                 this->overflowed();
                 return false;
             }
-            m_jsString->append(m_vm, m_index++, jsString);
+            ASSERT(static_cast<unsigned>(sum.unsafeGet()) <= MaxLength);
+            m_strings.append(jsString);
+            m_length = static_cast<unsigned>(sum.unsafeGet());
             return true;
         }
 
-        JSRopeString* release()
+        JSString* release()
         {
             RELEASE_ASSERT(!this->hasOverflowed());
-            JSRopeString* tmp = m_jsString;
-            m_jsString = nullptr;
-            return tmp;
+            JSString* result = nullptr;
+            switch (m_strings.size()) {
+            case 0: {
+                ASSERT(!m_length);
+                result = jsEmptyString(&m_vm);
+                break;
+            }
+            case 1: {
+                result = asString(m_strings.at(0));
+                break;
+            }
+            case 2: {
+                result = JSRopeString::create(m_vm, asString(m_strings.at(0)), asString(m_strings.at(1)));
+                break;
+            }
+            case 3: {
+                result = JSRopeString::create(m_vm, asString(m_strings.at(0)), asString(m_strings.at(1)), asString(m_strings.at(2)));
+                break;
+            }
+            default:
+                ASSERT_NOT_REACHED();
+                break;
+            }
+            ASSERT(result->length() == m_length);
+            m_strings.clear();
+            m_length = 0;
+            return result;
         }
 
         unsigned length() const
         {
             ASSERT(!this->hasOverflowed());
-            return m_jsString->length();
+            return m_length;
         }
 
     private:
         void expand();
 
         VM& m_vm;
-        JSRopeString* m_jsString;
-        size_t m_index;
+        MarkedArgumentBuffer m_strings;
+        unsigned m_length { 0 };
     };
 
+    inline unsigned length() const
+    {
+        return m_compactFibers.length();
+    }
+
 private:
-    ALWAYS_INLINE JSRopeString(VM& vm)
+    friend class LLIntOffsetsExtractor;
+
+    void convertToNonRope(String&&) const;
+
+    void initializeIs8Bit(bool flag) const
+    {
+        if (flag)
+            m_fiber |= is8BitInPointer;
+        else
+            m_fiber &= ~is8BitInPointer;
+    }
+
+    void initializeIsSubstring(bool flag) const
+    {
+        if (flag)
+            m_fiber |= isSubstringInPointer;
+        else
+            m_fiber &= ~isSubstringInPointer;
+    }
+
+    ALWAYS_INLINE void initializeLength(unsigned length)
+    {
+        ASSERT(length <= MaxLength);
+        m_compactFibers.initializeLength(length);
+    }
+
+    JSRopeString(VM& vm)
         : JSString(vm)
     {
+        initializeIsSubstring(false);
+        initializeLength(0);
+        initializeIs8Bit(true);
+        initializeFiber0(nullptr);
+        initializeFiber1(nullptr);
+        initializeFiber2(nullptr);
     }
 
-    void finishCreation(VM& vm, JSString* s1, JSString* s2)
+    JSRopeString(VM& vm, JSString* s1, JSString* s2)
+        : JSString(vm)
     {
-        Base::finishCreation(vm);
         ASSERT(!sumOverflows<int32_t>(s1->length(), s2->length()));
-        setLength(s1->length() + s2->length());
-        setIs8Bit(s1->is8Bit() && s2->is8Bit());
-        setIsSubstring(false);
-        fiber(0).set(vm, this, s1);
-        fiber(1).set(vm, this, s2);
-        fiber(2).clear();
+        initializeIsSubstring(false);
+        initializeLength(s1->length() + s2->length());
+        initializeIs8Bit(s1->is8Bit() && s2->is8Bit());
+        initializeFiber0(s1);
+        initializeFiber1(s2);
+        initializeFiber2(nullptr);
+        ASSERT((s1->length() + s2->length()) == length());
     }
 
-    void finishCreation(VM& vm, JSString* s1, JSString* s2, JSString* s3)
+    JSRopeString(VM& vm, JSString* s1, JSString* s2, JSString* s3)
+        : JSString(vm)
     {
-        Base::finishCreation(vm);
         ASSERT(!sumOverflows<int32_t>(s1->length(), s2->length(), s3->length()));
-        setLength(s1->length() + s2->length() + s3->length());
-        setIs8Bit(s1->is8Bit() && s2->is8Bit() &&  s3->is8Bit());
-        setIsSubstring(false);
-        fiber(0).set(vm, this, s1);
-        fiber(1).set(vm, this, s2);
-        fiber(2).set(vm, this, s3);
+        initializeIsSubstring(false);
+        initializeLength(s1->length() + s2->length() + s3->length());
+        initializeIs8Bit(s1->is8Bit() && s2->is8Bit() &&  s3->is8Bit());
+        initializeFiber0(s1);
+        initializeFiber1(s2);
+        initializeFiber2(s3);
+        ASSERT((s1->length() + s2->length() + s3->length()) == length());
     }
 
-    void finishCreation(VM& vm, ExecState* exec, JSString* base, unsigned offset, unsigned length)
+    JSRopeString(VM& vm, JSString* base, unsigned offset, unsigned length)
+        : JSString(vm)
     {
-        Base::finishCreation(vm);
         RELEASE_ASSERT(!sumOverflows<int32_t>(offset, length));
         RELEASE_ASSERT(offset + length <= base->length());
-        setLength(length);
-        setIs8Bit(base->is8Bit());
-        setIsSubstring(true);
-        if (base->isSubstring()) {
-            JSRopeString* baseRope = jsCast<JSRopeString*>(base);
-            substringBase().set(vm, this, baseRope->substringBase().get());
-            substringOffset() = baseRope->substringOffset() + offset;
-        } else {
-            substringBase().set(vm, this, base);
-            substringOffset() = offset;
-
-            // For now, let's not allow substrings with a rope base.
-            // Resolve non-substring rope bases so we don't have to deal with it.
-            // FIXME: Evaluate if this would be worth adding more branches.
-            if (base->isRope())
-                jsCast<JSRopeString*>(base)->resolveRope(exec);
-        }
+        initializeIsSubstring(true);
+        initializeLength(length);
+        initializeIs8Bit(base->is8Bit());
+        initializeSubstringBase(base);
+        initializeSubstringOffset(offset);
+        ASSERT(length == this->length());
+        ASSERT(!base->isRope());
     }
 
-    ALWAYS_INLINE void finishCreationSubstringOfResolved(VM& vm, JSString* base, unsigned offset, unsigned length)
+    ALWAYS_INLINE void finishCreationSubstringOfResolved(VM& vm)
     {
         Base::finishCreation(vm);
-        RELEASE_ASSERT(!sumOverflows<int32_t>(offset, length));
-        RELEASE_ASSERT(offset + length <= base->length());
-        setLength(length);
-        setIs8Bit(base->is8Bit());
-        setIsSubstring(true);
-        substringBase().set(vm, this, base);
-        substringOffset() = offset;
-    }
-
-    void finishCreation(VM& vm)
-    {
-        JSString::finishCreation(vm);
-        setIsSubstring(false);
-        fiber(0).clear();
-        fiber(1).clear();
-        fiber(2).clear();
-    }
-
-    void append(VM& vm, size_t index, JSString* jsString)
-    {
-        fiber(index).set(vm, this, jsString);
-        setLength(length() + jsString->length());
-        setIs8Bit(is8Bit() && jsString->is8Bit());
-    }
-
-    static JSRopeString* createNull(VM& vm)
-    {
-        JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap)) JSRopeString(vm);
-        newString->finishCreation(vm);
-        return newString;
     }
 
 public:
-    static JSString* create(VM& vm, ExecState* exec, JSString* base, unsigned offset, unsigned length)
+    static ptrdiff_t offsetOfLength() { return OBJECT_OFFSETOF(JSRopeString, m_compactFibers) + CompactFibers::offsetOfLength(); } // 32byte width.
+    static ptrdiff_t offsetOfFlags() { return offsetOfValue(); }
+    static ptrdiff_t offsetOfFiber0() { return offsetOfValue(); }
+    static ptrdiff_t offsetOfFiber1() { return OBJECT_OFFSETOF(JSRopeString, m_compactFibers) + CompactFibers::offsetOfFiber1(); }
+    static ptrdiff_t offsetOfFiber2() { return OBJECT_OFFSETOF(JSRopeString, m_compactFibers) + CompactFibers::offsetOfFiber2(); }
+
+    static constexpr unsigned s_maxInternalRopeLength = 3;
+
+    // This JSRopeString is only used to simulate half-baked JSRopeString in DFG and FTL MakeRope. If OSR exit happens in
+    // the middle of MakeRope due to string length overflow, we have half-baked JSRopeString which is the same to the result
+    // of this function. This half-baked JSRopeString will not be exposed to users, but still collectors can see it due to
+    // the conservative stack scan. This JSRopeString is used to test the collector with such a half-baked JSRopeString.
+    // Because this JSRopeString breaks the JSString's invariant (only one singleton JSString can be zero length), almost all the
+    // operations in JS fail to handle this string correctly.
+    static JSRopeString* createNullForTesting(VM& vm)
     {
         JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap)) JSRopeString(vm);
-        newString->finishCreation(vm, exec, base, offset, length);
+        newString->finishCreation(vm);
+        ASSERT(!newString->length());
+        ASSERT(newString->isRope());
+        ASSERT(newString->fiber0() == nullptr);
         return newString;
     }
-
-    ALWAYS_INLINE static JSString* createSubstringOfResolved(VM& vm, GCDeferralContext* deferralContext, JSString* base, unsigned offset, unsigned length)
-    {
-        JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap, deferralContext)) JSRopeString(vm);
-        newString->finishCreationSubstringOfResolved(vm, base, offset, length);
-        return newString;
-    }
-
-    ALWAYS_INLINE static JSString* createSubstringOfResolved(VM& vm, JSString* base, unsigned offset, unsigned length)
-    {
-        return createSubstringOfResolved(vm, nullptr, base, offset, length);
-    }
-
-    void visitFibers(SlotVisitor&);
-
-    static ptrdiff_t offsetOfFibers() { return OBJECT_OFFSETOF(JSRopeString, u); }
-
-    static const unsigned s_maxInternalRopeLength = 3;
 
 private:
-    static JSString* create(VM& vm, JSString* s1, JSString* s2)
+    static JSRopeString* create(VM& vm, JSString* s1, JSString* s2)
     {
-        JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap)) JSRopeString(vm);
-        newString->finishCreation(vm, s1, s2);
+        JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap)) JSRopeString(vm, s1, s2);
+        newString->finishCreation(vm);
+        ASSERT(newString->length());
+        ASSERT(newString->isRope());
         return newString;
     }
-    static JSString* create(VM& vm, JSString* s1, JSString* s2, JSString* s3)
+    static JSRopeString* create(VM& vm, JSString* s1, JSString* s2, JSString* s3)
     {
-        JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap)) JSRopeString(vm);
-        newString->finishCreation(vm, s1, s2, s3);
+        JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap)) JSRopeString(vm, s1, s2, s3);
+        newString->finishCreation(vm);
+        ASSERT(newString->length());
+        ASSERT(newString->isRope());
+        return newString;
+    }
+
+    ALWAYS_INLINE static JSRopeString* createSubstringOfResolved(VM& vm, GCDeferralContext* deferralContext, JSString* base, unsigned offset, unsigned length)
+    {
+        JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap, deferralContext)) JSRopeString(vm, base, offset, length);
+        newString->finishCreationSubstringOfResolved(vm);
+        ASSERT(newString->length());
+        ASSERT(newString->isRope());
         return newString;
     }
 
     friend JSValue jsStringFromRegisterArray(ExecState*, Register*, unsigned);
     friend JSValue jsStringFromArguments(ExecState*, JSValue);
 
-    JS_EXPORT_PRIVATE void resolveRope(ExecState*) const;
-    JS_EXPORT_PRIVATE void resolveRopeToAtomicString(ExecState*) const;
-    JS_EXPORT_PRIVATE RefPtr<AtomicStringImpl> resolveRopeToExistingAtomicString(ExecState*) const;
+    // If nullOrExecForOOM is null, resolveRope() will be do nothing in the event of an OOM error.
+    // The rope value will remain a null string in that case.
+    JS_EXPORT_PRIVATE const String& resolveRope(ExecState* nullOrExecForOOM) const;
+    template<typename Function> const String& resolveRopeWithFunction(ExecState* nullOrExecForOOM, Function&&) const;
+    JS_EXPORT_PRIVATE AtomString resolveRopeToAtomString(ExecState*) const;
+    JS_EXPORT_PRIVATE RefPtr<AtomStringImpl> resolveRopeToExistingAtomString(ExecState*) const;
     void resolveRopeSlowCase8(LChar*) const;
     void resolveRopeSlowCase(UChar*) const;
-    void outOfMemory(ExecState*) const;
+    void outOfMemory(ExecState* nullOrExecForOOM) const;
     void resolveRopeInternal8(LChar*) const;
     void resolveRopeInternal8NoSubstring(LChar*) const;
     void resolveRopeInternal16(UChar*) const;
     void resolveRopeInternal16NoSubstring(UChar*) const;
-    void clearFibers() const;
     StringView unsafeView(ExecState*) const;
     StringViewWithUnderlyingString viewWithUnderlyingString(ExecState*) const;
 
-    WriteBarrierBase<JSString>& fiber(unsigned i) const
+    JSString* fiber0() const
+    {
+        return bitwise_cast<JSString*>(m_fiber & stringMask);
+    }
+
+    JSString* fiber1() const
+    {
+        return m_compactFibers.fiber1();
+    }
+
+    JSString* fiber2() const
+    {
+        return m_compactFibers.fiber2();
+    }
+
+    JSString* fiber(unsigned i) const
     {
         ASSERT(!isSubstring());
         ASSERT(i < s_maxInternalRopeLength);
-        return u[i].string;
+        switch (i) {
+        case 0:
+            return fiber0();
+        case 1:
+            return fiber1();
+        case 2:
+            return fiber2();
+        }
+        ASSERT_NOT_REACHED();
+        return nullptr;
     }
 
-    WriteBarrierBase<JSString>& substringBase() const
+    void initializeFiber0(JSString* fiber)
     {
-        return u[1].string;
+        uintptr_t pointer = bitwise_cast<uintptr_t>(fiber);
+        ASSERT(!(pointer & ~stringMask));
+        m_fiber = (pointer | (m_fiber & ~stringMask));
     }
 
-    uintptr_t& substringOffset() const
+    void initializeFiber1(JSString* fiber)
     {
-        return u[2].number;
+        m_compactFibers.initializeFiber1(fiber);
     }
 
-    static uintptr_t notSubstringSentinel()
+    void initializeFiber2(JSString* fiber)
     {
-        return 0;
+        m_compactFibers.initializeFiber2(fiber);
     }
 
-    static uintptr_t substringSentinel()
+    void initializeSubstringBase(JSString* fiber)
     {
-        return 1;
+        initializeFiber1(fiber);
     }
 
-    bool isSubstring() const
+    JSString* substringBase() const { return fiber1(); }
+
+    void initializeSubstringOffset(unsigned offset)
     {
-        return u[0].number == substringSentinel();
+        m_compactFibers.initializeFiber2(bitwise_cast<JSString*>(static_cast<uintptr_t>(offset)));
     }
 
-    void setIsSubstring(bool isSubstring)
+    unsigned substringOffset() const
     {
-        u[0].number = isSubstring ? substringSentinel() : notSubstringSentinel();
+        return static_cast<unsigned>(bitwise_cast<uintptr_t>(fiber2()));
     }
 
-    mutable union {
-        uintptr_t number;
-        WriteBarrierBase<JSString> string;
-    } u[s_maxInternalRopeLength];
-
+    static_assert(s_maxInternalRopeLength >= 2, "");
+    mutable CompactFibers m_compactFibers;
 
     friend JSString* jsString(ExecState*, JSString*, JSString*);
+    friend JSString* jsString(ExecState*, const String&, JSString*);
+    friend JSString* jsString(ExecState*, JSString*, const String&);
+    friend JSString* jsString(ExecState*, const String&, const String&);
     friend JSString* jsString(ExecState*, JSString*, JSString*, JSString*);
     friend JSString* jsString(ExecState*, const String&, const String&, const String&);
+    friend JSString* jsSubstringOfResolved(VM&, GCDeferralContext*, JSString*, unsigned, unsigned);
+    friend JSString* jsSubstring(VM&, ExecState*, JSString*, unsigned, unsigned);
 };
 
 JS_EXPORT_PRIVATE JSString* jsStringWithCacheSlowCase(VM&, StringImpl&);
 
+// JSString::is8Bit is safe to be called concurrently. Concurrent threads can access is8Bit even if the main thread
+// is in the middle of converting JSRopeString to JSString.
+ALWAYS_INLINE bool JSString::is8Bit() const
+{
+    uintptr_t pointer = m_fiber;
+    if (pointer & isRopeInPointer) {
+        // Do not load m_fiber twice. We should use the information in pointer.
+        // Otherwise, JSRopeString may be converted to JSString between the first and second accesses.
+        return pointer & JSRopeString::is8BitInPointer;
+    }
+    return bitwise_cast<StringImpl*>(pointer)->is8Bit();
+}
+
+// JSString::length is safe to be called concurrently. Concurrent threads can access length even if the main thread
+// is in the middle of converting JSRopeString to JSString. This is OK because we never override the length bits
+// when we resolve a JSRopeString.
+ALWAYS_INLINE unsigned JSString::length() const
+{
+    uintptr_t pointer = m_fiber;
+    if (pointer & isRopeInPointer)
+        return jsCast<const JSRopeString*>(this)->length();
+    return bitwise_cast<StringImpl*>(pointer)->length();
+}
+
 inline const StringImpl* JSString::tryGetValueImpl() const
 {
-    return m_value.impl();
+    uintptr_t pointer = m_fiber;
+    if (pointer & isRopeInPointer)
+        return nullptr;
+    return bitwise_cast<StringImpl*>(pointer);
 }
 
 inline JSString* asString(JSValue value)
@@ -501,6 +714,8 @@ inline JSString* jsEmptyString(VM* vm)
 
 ALWAYS_INLINE JSString* jsSingleCharacterString(VM* vm, UChar c)
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(vm->heap.expectDoesGC());
     if (c <= maxSingleCharacterString)
         return vm->smallStrings.singleCharacterString(c);
     return JSString::create(*vm, StringImpl::create(&c, 1));
@@ -520,37 +735,50 @@ inline JSString* jsNontrivialString(VM* vm, String&& s)
 
 ALWAYS_INLINE Identifier JSString::toIdentifier(ExecState* exec) const
 {
-    return Identifier::fromString(exec, toAtomicString(exec));
+    return Identifier::fromString(exec, toAtomString(exec));
 }
 
-ALWAYS_INLINE AtomicString JSString::toAtomicString(ExecState* exec) const
+ALWAYS_INLINE AtomString JSString::toAtomString(ExecState* exec) const
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(vm()->heap.expectDoesGC());
     if (isRope())
-        static_cast<const JSRopeString*>(this)->resolveRopeToAtomicString(exec);
-    return AtomicString(m_value);
+        return static_cast<const JSRopeString*>(this)->resolveRopeToAtomString(exec);
+    return AtomString(valueInternal());
 }
 
-ALWAYS_INLINE RefPtr<AtomicStringImpl> JSString::toExistingAtomicString(ExecState* exec) const
+ALWAYS_INLINE RefPtr<AtomStringImpl> JSString::toExistingAtomString(ExecState* exec) const
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(vm()->heap.expectDoesGC());
     if (isRope())
-        return static_cast<const JSRopeString*>(this)->resolveRopeToExistingAtomicString(exec);
-    if (m_value.impl()->isAtomic())
-        return static_cast<AtomicStringImpl*>(m_value.impl());
-    return AtomicStringImpl::lookUp(m_value.impl());
+        return static_cast<const JSRopeString*>(this)->resolveRopeToExistingAtomString(exec);
+    if (valueInternal().impl()->isAtom())
+        return static_cast<AtomStringImpl*>(valueInternal().impl());
+    return AtomStringImpl::lookUp(valueInternal().impl());
 }
 
 inline const String& JSString::value(ExecState* exec) const
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(vm()->heap.expectDoesGC());
     if (isRope())
-        static_cast<const JSRopeString*>(this)->resolveRope(exec);
-    return m_value;
+        return static_cast<const JSRopeString*>(this)->resolveRope(exec);
+    return valueInternal();
 }
 
-inline const String& JSString::tryGetValue() const
+inline const String& JSString::tryGetValue(bool allocationAllowed) const
 {
-    if (isRope())
-        static_cast<const JSRopeString*>(this)->resolveRope(0);
-    return m_value;
+    if (allocationAllowed) {
+        if (validateDFGDoesGC)
+            RELEASE_ASSERT(vm()->heap.expectDoesGC());
+        if (isRope()) {
+            // Pass nullptr for the ExecState so that resolveRope does not throw in the event of an OOM error.
+            return static_cast<const JSRopeString*>(this)->resolveRope(nullptr);
+        }
+    } else
+        RELEASE_ASSERT(!isRope());
+    return valueInternal();
 }
 
 inline JSString* JSString::getIndex(ExecState* exec, unsigned i)
@@ -576,16 +804,31 @@ inline JSString* jsString(VM* vm, const String& s)
     return JSString::create(*vm, *s.impl());
 }
 
-inline JSString* jsSubstring(VM& vm, ExecState* exec, JSString* s, unsigned offset, unsigned length)
+inline JSString* jsSubstring(VM& vm, ExecState* exec, JSString* base, unsigned offset, unsigned length)
 {
-    ASSERT(offset <= s->length());
-    ASSERT(length <= s->length());
-    ASSERT(offset + length <= s->length());
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    ASSERT(offset <= base->length());
+    ASSERT(length <= base->length());
+    ASSERT(offset + length <= base->length());
     if (!length)
         return vm.smallStrings.emptyString();
-    if (!offset && length == s->length())
-        return s;
-    return JSRopeString::create(vm, exec, s, offset, length);
+    if (!offset && length == base->length())
+        return base;
+
+    // For now, let's not allow substrings with a rope base.
+    // Resolve non-substring rope bases so we don't have to deal with it.
+    // FIXME: Evaluate if this would be worth adding more branches.
+    if (base->isSubstring()) {
+        JSRopeString* baseRope = jsCast<JSRopeString*>(base);
+        base = baseRope->substringBase();
+        offset = baseRope->substringOffset() + offset;
+        ASSERT(!base->isRope());
+    } else if (base->isRope()) {
+        jsCast<JSRopeString*>(base)->resolveRope(exec);
+        RETURN_IF_EXCEPTION(scope, nullptr);
+    }
+    return jsSubstringOfResolved(vm, nullptr, base, offset, length);
 }
 
 inline JSString* jsSubstringOfResolved(VM& vm, GCDeferralContext* deferralContext, JSString* s, unsigned offset, unsigned length)
@@ -593,10 +836,17 @@ inline JSString* jsSubstringOfResolved(VM& vm, GCDeferralContext* deferralContex
     ASSERT(offset <= s->length());
     ASSERT(length <= s->length());
     ASSERT(offset + length <= s->length());
+    ASSERT(!s->isRope());
     if (!length)
         return vm.smallStrings.emptyString();
     if (!offset && length == s->length())
         return s;
+    if (length == 1) {
+        auto& base = s->valueInternal();
+        UChar character = base.characterAt(offset);
+        if (character <= maxSingleCharacterString)
+            return vm.smallStrings.singleCharacterString(character);
+    }
     return JSRopeString::createSubstringOfResolved(vm, deferralContext, s, offset, length);
 }
 
@@ -622,7 +872,10 @@ inline JSString* jsSubstring(VM* vm, const String& s, unsigned offset, unsigned 
         if (c <= maxSingleCharacterString)
             return vm->smallStrings.singleCharacterString(c);
     }
-    return JSString::createHasOtherOwner(*vm, StringImpl::createSubstringSharingImpl(*s.impl(), offset, length));
+    auto impl = StringImpl::createSubstringSharingImpl(*s.impl(), offset, length);
+    if (impl->isSubString())
+        return JSString::createHasOtherOwner(*vm, WTFMove(impl));
+    return JSString::create(*vm, WTFMove(impl));
 }
 
 inline JSString* jsOwnedString(VM* vm, const String& s)
@@ -638,15 +891,9 @@ inline JSString* jsOwnedString(VM* vm, const String& s)
     return JSString::createHasOtherOwner(*vm, *s.impl());
 }
 
-inline JSRopeString* jsStringBuilder(VM* vm)
-{
-    return JSRopeString::createNull(*vm);
-}
-
 inline JSString* jsEmptyString(ExecState* exec) { return jsEmptyString(&exec->vm()); }
 inline JSString* jsString(ExecState* exec, const String& s) { return jsString(&exec->vm(), s); }
 inline JSString* jsSingleCharacterString(ExecState* exec, UChar c) { return jsSingleCharacterString(&exec->vm(), c); }
-inline JSString* jsSubstring(ExecState* exec, const String& s, unsigned offset, unsigned length) { return jsSubstring(&exec->vm(), s, offset, length); }
 inline JSString* jsNontrivialString(ExecState* exec, const String& s) { return jsNontrivialString(&exec->vm(), s); }
 inline JSString* jsNontrivialString(ExecState* exec, String&& s) { return jsNontrivialString(&exec->vm(), WTFMove(s)); }
 inline JSString* jsOwnedString(ExecState* exec, const String& s) { return jsOwnedString(&exec->vm(), s); }
@@ -675,14 +922,18 @@ ALWAYS_INLINE JSString* jsStringWithCache(ExecState* exec, const String& s)
 ALWAYS_INLINE bool JSString::getStringPropertySlot(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (propertyName == vm.propertyNames->length) {
         slot.setValue(this, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly, jsNumber(length()));
         return true;
     }
 
-    std::optional<uint32_t> index = parseIndex(propertyName);
+    Optional<uint32_t> index = parseIndex(propertyName);
     if (index && index.value() < length()) {
-        slot.setValue(this, PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly, getIndex(exec, index.value()));
+        JSValue value = getIndex(exec, index.value());
+        RETURN_IF_EXCEPTION(scope, false);
+        slot.setValue(this, PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly, value);
         return true;
     }
 
@@ -691,8 +942,13 @@ ALWAYS_INLINE bool JSString::getStringPropertySlot(ExecState* exec, PropertyName
 
 ALWAYS_INLINE bool JSString::getStringPropertySlot(ExecState* exec, unsigned propertyName, PropertySlot& slot)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (propertyName < length()) {
-        slot.setValue(this, PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly, getIndex(exec, propertyName));
+        JSValue value = getIndex(exec, propertyName);
+        RETURN_IF_EXCEPTION(scope, false);
+        slot.setValue(this, PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly, value);
         return true;
     }
 
@@ -711,44 +967,50 @@ inline bool isJSString(JSValue v)
 
 ALWAYS_INLINE StringView JSRopeString::unsafeView(ExecState* exec) const
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(vm()->heap.expectDoesGC());
     if (isSubstring()) {
-        if (is8Bit())
-            return StringView(substringBase()->m_value.characters8() + substringOffset(), length());
-        return StringView(substringBase()->m_value.characters16() + substringOffset(), length());
+        auto& base = substringBase()->valueInternal();
+        if (base.is8Bit())
+            return StringView(base.characters8() + substringOffset(), length());
+        return StringView(base.characters16() + substringOffset(), length());
     }
-    resolveRope(exec);
-    return m_value;
+    return resolveRope(exec);
 }
 
 ALWAYS_INLINE StringViewWithUnderlyingString JSRopeString::viewWithUnderlyingString(ExecState* exec) const
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(vm()->heap.expectDoesGC());
     if (isSubstring()) {
-        auto& base = substringBase()->m_value;
-        if (is8Bit())
+        auto& base = substringBase()->valueInternal();
+        if (base.is8Bit())
             return { { base.characters8() + substringOffset(), length() }, base };
         return { { base.characters16() + substringOffset(), length() }, base };
     }
-    resolveRope(exec);
-    return { m_value, m_value };
+    auto& string = resolveRope(exec);
+    return { string, string };
 }
 
 ALWAYS_INLINE StringView JSString::unsafeView(ExecState* exec) const
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(vm()->heap.expectDoesGC());
     if (isRope())
         return static_cast<const JSRopeString*>(this)->unsafeView(exec);
-    return m_value;
+    return valueInternal();
 }
 
 ALWAYS_INLINE StringViewWithUnderlyingString JSString::viewWithUnderlyingString(ExecState* exec) const
 {
     if (isRope())
         return static_cast<const JSRopeString&>(*this).viewWithUnderlyingString(exec);
-    return { m_value, m_value };
+    return { valueInternal(), valueInternal() };
 }
 
 inline bool JSString::isSubstring() const
 {
-    return isRope() && static_cast<const JSRopeString*>(this)->isSubstring();
+    return m_fiber & JSRopeString::isSubstringInPointer;
 }
 
 // --- JSValue inlines ----------------------------

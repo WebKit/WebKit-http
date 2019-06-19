@@ -28,24 +28,27 @@
 #include "NetworkCacheEntry.h"
 #include "NetworkCacheStorage.h"
 #include "ShareableResource.h"
+#include <WebCore/PageIdentifier.h>
 #include <WebCore/ResourceResponse.h>
-#include <wtf/Function.h>
+#include <wtf/CompletionHandler.h>
 #include <wtf/OptionSet.h>
+#include <wtf/Seconds.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 class LowPowerModeNotifier;
 class ResourceRequest;
 class SharedBuffer;
-class URL;
 }
 
 namespace WebKit {
+
+class NetworkProcess;
+
 namespace NetworkCache {
 
 class Cache;
 class SpeculativeLoadManager;
-class Statistics;
 
 struct MappedBody {
 #if ENABLE(SHAREABLE_RESOURCE)
@@ -62,12 +65,10 @@ enum class RetrieveDecision {
     NoDueToStreamingMedia,
 };
 
-// FIXME: This enum is used in the Statistics code in a way that prevents removing or reordering anything.
 enum class StoreDecision {
     Yes,
     NoDueToProtocol,
     NoDueToHTTPMethod,
-    NoDueToAttachmentResponse, // Unused.
     NoDueToNoStoreResponse,
     NoDueToHTTPStatusCode,
     NoDueToNoStoreRequest,
@@ -81,23 +82,22 @@ enum class UseDecision {
     NoDueToVaryingHeaderMismatch,
     NoDueToMissingValidatorFields,
     NoDueToDecodeFailure,
-    NoDueToExpiredRedirect,
+    NoDueToExpiredRedirect
 };
 
-using GlobalFrameID = std::pair<uint64_t /*webPageID*/, uint64_t /*webFrameID*/>;
+using GlobalFrameID = std::pair<WebCore::PageIdentifier, uint64_t /*webFrameID*/>;
 
 class Cache : public RefCounted<Cache> {
 public:
     enum class Option {
-        EfficacyLogging = 1 << 0,
         // In testing mode we try to eliminate sources of randomness. Cache does not shrink and there are no read timeouts.
-        TestingMode = 1 << 1,
-        RegisterNotify = 1 << 2,
+        TestingMode = 1 << 0,
+        RegisterNotify = 1 << 1,
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-        SpeculativeRevalidation = 1 << 3,
+        SpeculativeRevalidation = 1 << 2,
 #endif
     };
-    static RefPtr<Cache> open(const String& cachePath, OptionSet<Option>);
+    static RefPtr<Cache> open(NetworkProcess&, const String& cachePath, OptionSet<Option>);
 
     void setCapacity(size_t);
 
@@ -111,25 +111,25 @@ public:
 
         WTF_MAKE_FAST_ALLOCATED;
     };
-    using RetrieveCompletionHandler = Function<void (std::unique_ptr<Entry>, const RetrieveInfo&)>;
+    using RetrieveCompletionHandler = Function<void(std::unique_ptr<Entry>, const RetrieveInfo&)>;
     void retrieve(const WebCore::ResourceRequest&, const GlobalFrameID&, RetrieveCompletionHandler&&);
-    std::unique_ptr<Entry> store(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, RefPtr<WebCore::SharedBuffer>&&, Function<void (MappedBody&)>&&);
-    std::unique_ptr<Entry> storeRedirect(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, const WebCore::ResourceRequest& redirectRequest);
+    std::unique_ptr<Entry> store(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, RefPtr<WebCore::SharedBuffer>&&, Function<void(MappedBody&)>&&);
+    std::unique_ptr<Entry> storeRedirect(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, const WebCore::ResourceRequest& redirectRequest, Optional<Seconds> maxAgeCap);
     std::unique_ptr<Entry> update(const WebCore::ResourceRequest&, const GlobalFrameID&, const Entry&, const WebCore::ResourceResponse& validatingResponse);
 
     struct TraversalEntry {
         const Entry& entry;
         const Storage::RecordInfo& recordInfo;
     };
-    void traverse(Function<void (const TraversalEntry*)>&&);
+    void traverse(Function<void(const TraversalEntry*)>&&);
     void remove(const Key&);
     void remove(const WebCore::ResourceRequest&);
-    void remove(const Vector<Key>&, Function<void ()>&&);
+    void remove(const Vector<Key>&, Function<void()>&&);
 
     void clear();
-    void clear(WallTime modifiedSince, Function<void ()>&& completionHandler);
+    void clear(WallTime modifiedSince, Function<void()>&&);
 
-    void retrieveData(const DataKey&, Function<void (const uint8_t* data, size_t size)>);
+    void retrieveData(const DataKey&, Function<void(const uint8_t*, size_t)>);
     void storeData(const DataKey&,  const uint8_t* data, size_t);
     
     std::unique_ptr<Entry> makeEntry(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, RefPtr<WebCore::SharedBuffer>&&);
@@ -143,10 +143,12 @@ public:
     SpeculativeLoadManager* speculativeLoadManager() { return m_speculativeLoadManager.get(); }
 #endif
 
+    NetworkProcess& networkProcess() { return m_networkProcess.get(); }
+
     ~Cache();
 
 private:
-    Cache(Ref<Storage>&&, OptionSet<Option> options);
+    Cache(NetworkProcess&, Ref<Storage>&&, OptionSet<Option> options);
 
     Key makeCacheKey(const WebCore::ResourceRequest&);
 
@@ -155,16 +157,18 @@ private:
     String dumpFilePath() const;
     void deleteDumpFile();
 
+    Optional<Seconds> maxAgeCap(Entry&, const WebCore::ResourceRequest&, PAL::SessionID);
+
     Ref<Storage> m_storage;
+    Ref<NetworkProcess> m_networkProcess;
 
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     std::unique_ptr<WebCore::LowPowerModeNotifier> m_lowPowerModeNotifier;
     std::unique_ptr<SpeculativeLoadManager> m_speculativeLoadManager;
 #endif
-    std::unique_ptr<Statistics> m_statistics;
 
     unsigned m_traverseCount { 0 };
 };
 
-}
-}
+} // namespace NetworkCache
+} // namespace WebKit

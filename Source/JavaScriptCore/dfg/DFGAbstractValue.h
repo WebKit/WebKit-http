@@ -30,11 +30,11 @@
 #include "ArrayProfile.h"
 #include "DFGAbstractValueClobberEpoch.h"
 #include "DFGFiltrationResult.h"
+#include "DFGFlushFormat.h"
 #include "DFGFrozenValue.h"
 #include "DFGNodeFlags.h"
 #include "DFGStructureAbstractValue.h"
 #include "DFGStructureClobberState.h"
-#include "InferredType.h"
 #include "JSCast.h"
 #include "ResultType.h"
 #include "SpeculatedType.h"
@@ -48,6 +48,7 @@ namespace DFG {
 
 class Graph;
 struct Node;
+class VariableAccessData;
 
 struct AbstractValue {
     AbstractValue()
@@ -137,7 +138,7 @@ struct AbstractValue {
     {
         if (m_type & SpecCell) {
             m_structure.observeTransition(from, to);
-            observeIndexingTypeTransition(from->indexingType(), to->indexingType());
+            observeIndexingTypeTransition(arrayModesFromStructure(from.get()), arrayModesFromStructure(to.get()));
         }
         checkConsistency();
     }
@@ -188,10 +189,23 @@ struct AbstractValue {
             && m_arrayModes == ALL_ARRAY_MODES
             && !m_value;
     }
+
+    bool isBytecodeTop() const
+    {
+        return (m_type | SpecBytecodeTop) == m_type
+            && m_structure.isTop()
+            && m_arrayModes == ALL_ARRAY_MODES
+            && !m_value;
+    }
     
     bool valueIsTop() const
     {
         return !m_value && m_type;
+    }
+
+    bool isInt52Any() const
+    {
+        return !(m_type & ~SpecInt52Any);
     }
     
     JSValue value() const
@@ -249,9 +263,6 @@ struct AbstractValue {
         checkConsistency();
     }
 
-    void set(Graph&, const InferredType::Descriptor&);
-    void set(Graph&, const InferredType::Descriptor&, StructureClobberState);
-
     void fixTypeForRepresentation(Graph&, NodeFlags representation, Node* = nullptr);
     void fixTypeForRepresentation(Graph&, Node*);
     
@@ -293,7 +304,7 @@ struct AbstractValue {
         return result;
     }
     
-    bool mergeOSREntryValue(Graph&, JSValue);
+    bool mergeOSREntryValue(Graph&, JSValue, VariableAccessData*, Node*);
     
     void merge(SpeculatedType type)
     {
@@ -317,8 +328,6 @@ struct AbstractValue {
     {
         return !(m_type & ~desiredType);
     }
-
-    bool isType(Graph&, const InferredType::Descriptor&) const;
 
     // Filters the value using the given structure set. If the admittedTypes argument is not passed, this
     // implicitly filters by the types implied by the structure set, which are usually a subset of
@@ -354,8 +363,6 @@ struct AbstractValue {
     FiltrationResult filter(const AbstractValue&);
     FiltrationResult filterClassInfo(Graph&, const ClassInfo*);
 
-    FiltrationResult filter(Graph&, const InferredType::Descriptor&);
-    
     ALWAYS_INLINE FiltrationResult fastForwardToAndFilterUnproven(AbstractValueClobberEpoch newEpoch, SpeculatedType type)
     {
         if (m_type & SpecCell)
@@ -377,27 +384,42 @@ struct AbstractValue {
     
     bool contains(RegisteredStructure) const;
 
-    bool validate(JSValue value) const
+    bool validateOSREntryValue(JSValue value, FlushFormat format) const
     {
-        if (isHeapTop())
+        if (isBytecodeTop())
             return true;
         
-        if (!!m_value && m_value != value)
-            return false;
+        if (format == FlushedInt52) {
+            if (!isInt52Any())
+                return false;
+
+            if (!validateTypeAcceptingBoxedInt52(value))
+                return false;
+
+            if (!!m_value) {
+                ASSERT(m_value.isAnyInt());
+                ASSERT(value.isAnyInt());
+                if (jsDoubleNumber(m_value.asAnyInt()) != jsDoubleNumber(value.asAnyInt()))
+                    return false;
+            }
+        } else {
+            if (!!m_value && m_value != value)
+                return false;
         
-        if (mergeSpeculations(m_type, speculationFromValue(value)) != m_type)
-            return false;
-        
-        if (value.isEmpty()) {
-            ASSERT(m_type & SpecEmpty);
-            return true;
+            if (mergeSpeculations(m_type, speculationFromValue(value)) != m_type)
+                return false;
+            
+            if (value.isEmpty()) {
+                ASSERT(m_type & SpecEmpty);
+                return true;
+            }
         }
         
         if (!!value && value.isCell()) {
             ASSERT(m_type & SpecCell);
             Structure* structure = value.asCell()->structure();
             return m_structure.contains(structure)
-                && (m_arrayModes & asArrayModes(structure->indexingType()));
+                && (m_arrayModes & arrayModesFromStructure(structure));
         }
         
         return true;
@@ -413,7 +435,7 @@ struct AbstractValue {
     void checkConsistency() const { }
     void assertIsRegistered(Graph&) const { }
 #else
-    void checkConsistency() const;
+    JS_EXPORT_PRIVATE void checkConsistency() const;
     void assertIsRegistered(Graph&) const;
 #endif
 
@@ -492,31 +514,24 @@ private:
         m_arrayModes = ALL_ARRAY_MODES;
     }
     
-    void observeIndexingTypeTransition(IndexingType from, IndexingType to)
+    void observeIndexingTypeTransition(ArrayModes from, ArrayModes to)
     {
-        if (m_arrayModes & asArrayModes(from))
-            m_arrayModes |= asArrayModes(to);
+        if (m_arrayModes & from)
+            m_arrayModes |= to;
     }
     
-    bool validateType(JSValue value) const
+    bool validateTypeAcceptingBoxedInt52(JSValue value) const
     {
-        if (isHeapTop())
+        if (isBytecodeTop())
             return true;
         
-        // Constant folding always represents Int52's in a double (i.e. AnyIntAsDouble).
-        // So speculationFromValue(value) for an Int52 value will return AnyIntAsDouble,
-        // and that's fine - the type validates just fine.
-        SpeculatedType type = m_type;
-        if (type & SpecInt52Only)
-            type |= SpecAnyIntAsDouble;
-        
-        if (mergeSpeculations(type, speculationFromValue(value)) != type)
-            return false;
-        
-        if (value.isEmpty()) {
-            ASSERT(m_type & SpecEmpty);
-            return true;
+        if (m_type & SpecInt52Any) {
+            if (mergeSpeculations(m_type, int52AwareSpeculationFromValue(value)) == m_type)
+                return true;
         }
+
+        if (mergeSpeculations(m_type, speculationFromValue(value)) != m_type)
+            return false;
         
         return true;
     }
@@ -538,7 +553,7 @@ private:
     void filterArrayModesByType();
 
 #if USE(JSVALUE64) && !defined(NDEBUG)
-    void ensureCanInitializeWithZeros();
+    JS_EXPORT_PRIVATE void ensureCanInitializeWithZeros();
 #endif
     
     bool shouldBeClear() const;

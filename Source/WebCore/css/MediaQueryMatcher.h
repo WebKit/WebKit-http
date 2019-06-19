@@ -23,6 +23,7 @@
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -66,7 +67,7 @@ private:
     std::unique_ptr<RenderStyle> documentElementUserAgentStyle() const;
     String mediaType() const;
 
-    Document* m_document;
+    WeakPtr<Document> m_document;
     Vector<Listener> m_listeners;
 
     // This value is incremented at style selector changes.

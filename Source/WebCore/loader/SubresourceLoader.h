@@ -53,7 +53,7 @@ public:
     WEBCORE_EXPORT const HTTPHeaderMap* originalHeaders() const;
 
     SecurityOrigin* origin() { return m_origin.get(); }
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void startLoading() override;
 
     // FIXME: What is an "iOS" original request? Why is it necessary?
@@ -79,7 +79,6 @@ private:
     void didFail(const ResourceError&) override;
     void willCancel(const ResourceError&) override;
     void didCancel(const ResourceError&) override;
-    void didRetrieveDerivedDataFromCache(const String& type, SharedBuffer&) override;
     
     void updateReferrerPolicy(const String&);
 
@@ -107,7 +106,7 @@ private:
         Uninitialized,
         Initialized,
         Finishing,
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         CancelledWhileInitializing
 #endif
     };
@@ -124,12 +123,12 @@ private:
         const CachedResource& m_resource;
     };
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     ResourceRequest m_iOSOriginalRequest;
 #endif
     CachedResource* m_resource;
     SubresourceLoaderState m_state;
-    std::optional<RequestCountTracker> m_requestCountTracker;
+    Optional<RequestCountTracker> m_requestCountTracker;
     RefPtr<SecurityOrigin> m_origin;
     CompletionHandler<void()> m_policyForResponseCompletionHandler;
     unsigned m_redirectCount { 0 };
@@ -138,3 +137,7 @@ private:
 };
 
 }
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::SubresourceLoader)
+static bool isType(const WebCore::ResourceLoader& loader) { return loader.isSubresourceLoader(); }
+SPECIALIZE_TYPE_TRAITS_END()

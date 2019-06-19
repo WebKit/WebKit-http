@@ -45,10 +45,9 @@
 #include <libxslt/imports.h>
 #include <libxslt/security.h>
 #include <libxslt/variables.h>
+#include <libxslt/xslt.h>
 #include <libxslt/xsltutils.h>
 #include <wtf/Assertions.h>
-#include <wtf/text/StringBuffer.h>
-#include <wtf/unicode/UTF8.h>
 
 #if OS(DARWIN) && !PLATFORM(GTK) && !PLATFORM(QT)
 #include "SoftLinkLibxslt.h"
@@ -102,7 +101,7 @@ static xmlDocPtr docLoaderFunc(const xmlChar* uri,
     case XSLT_LOAD_DOCUMENT: {
         xsltTransformContextPtr context = (xsltTransformContextPtr)ctxt;
         xmlChar* base = xmlNodeGetBase(context->document->doc, context->node);
-        URL url(URL(ParsedURLString, reinterpret_cast<const char*>(base)), reinterpret_cast<const char*>(uri));
+        URL url(URL({ }, reinterpret_cast<const char*>(base)), reinterpret_cast<const char*>(uri));
         xmlFree(base);
         ResourceError error;
         ResourceResponse response;
@@ -158,27 +157,41 @@ static inline void setXSLTLoadCallBack(xsltDocLoaderFunc func, XSLTProcessor* pr
     globalCachedResourceLoader = cachedResourceLoader;
 }
 
-static int writeToStringBuilder(void* context, const char* buffer, int len)
+static int writeToStringBuilder(void* context, const char* buffer, int length)
 {
     StringBuilder& resultOutput = *static_cast<StringBuilder*>(context);
 
-    if (!len)
-        return 0;
+    // FIXME: Consider ways to make this more efficient by moving it into a
+    // StringBuilder::appendUTF8 function, and then optimizing to not need a
+    // Vector<UChar> and possibly optimize cases that can produce 8-bit Latin-1
+    // strings, but that would need to be sophisticated about not processing
+    // trailing incomplete sequences and communicating that to the caller.
 
-    StringBuffer<UChar> stringBuffer(len);
-    UChar* bufferUChar = stringBuffer.characters();
-    UChar* bufferUCharEnd = bufferUChar + len;
+    Vector<UChar> outputBuffer(length);
 
-    const char* stringCurrent = buffer;
-    WTF::Unicode::ConversionResult result = WTF::Unicode::convertUTF8ToUTF16(&stringCurrent, buffer + len, &bufferUChar, bufferUCharEnd);
-    if (result != WTF::Unicode::conversionOK && result != WTF::Unicode::sourceExhausted) {
-        ASSERT_NOT_REACHED();
-        return -1;
+    UBool error = false;
+    int inputOffset = 0;
+    int outputOffset = 0;
+    while (inputOffset < length) {
+        UChar32 character;
+        int nextInputOffset = inputOffset;
+        U8_NEXT(reinterpret_cast<const uint8_t*>(buffer), nextInputOffset, length, character);
+        if (character < 0) {
+            if (nextInputOffset == length)
+                break;
+            ASSERT_NOT_REACHED();
+            return -1;
+        }
+        inputOffset = nextInputOffset;
+        U16_APPEND(outputBuffer.data(), outputOffset, length, character, error);
+        if (error) {
+            ASSERT_NOT_REACHED();
+            return -1;
+        }
     }
 
-    int utf16Length = bufferUChar - stringBuffer.characters();
-    resultOutput.append(stringBuffer.characters(), utf16Length);
-    return stringCurrent - buffer;
+    resultOutput.append(outputBuffer.data(), outputOffset);
+    return inputOffset;
 }
 
 static bool saveResultToString(xmlDocPtr resultDoc, xsltStylesheetPtr sheet, String& resultString)
@@ -244,7 +257,7 @@ static xsltStylesheetPtr xsltStylesheetPointer(RefPtr<XSLStyleSheet>& cachedStyl
 
         // According to Mozilla documentation, the node must be a Document node, an xsl:stylesheet or xsl:transform element.
         // But we just use text content regardless of node type.
-        cachedStylesheet->parseString(createMarkup(*stylesheetRootNode));
+        cachedStylesheet->parseString(serializeFragment(*stylesheetRootNode, SerializedNodes::SubtreeIncludingNode));
     }
 
     if (!cachedStylesheet || !cachedStylesheet->document())
@@ -262,7 +275,7 @@ static inline xmlDocPtr xmlDocPtrFromNode(Node& sourceNode, bool& shouldDelete)
     if (sourceIsDocument && ownerDocument->transformSource())
         sourceDoc = ownerDocument->transformSource()->platformSource();
     if (!sourceDoc) {
-        sourceDoc = xmlDocPtrForString(ownerDocument->cachedResourceLoader(), createMarkup(sourceNode),
+        sourceDoc = xmlDocPtrForString(ownerDocument->cachedResourceLoader(), serializeFragment(sourceNode, SerializedNodes::SubtreeIncludingNode),
             sourceIsDocument ? ownerDocument->url().string() : String());
         shouldDelete = sourceDoc;
     }
@@ -300,6 +313,14 @@ bool XSLTProcessor::transformToString(Node& sourceNode, String& mimeType, String
         return false;
     }
     m_stylesheet->clearDocuments();
+
+#if OS(DARWIN) && !PLATFORM(GTK)
+    int origXsltMaxDepth = *xsltMaxDepth;
+    *xsltMaxDepth = 1000;
+#else
+    int origXsltMaxDepth = xsltMaxDepth;
+    xsltMaxDepth = 1000;
+#endif
 
     xmlChar* origMethod = sheet->method;
     if (!origMethod && mimeType == "text/html")
@@ -353,6 +374,11 @@ bool XSLTProcessor::transformToString(Node& sourceNode, String& mimeType, String
     }
 
     sheet->method = origMethod;
+#if OS(DARWIN) && !PLATFORM(GTK)
+    *xsltMaxDepth = origXsltMaxDepth;
+#else
+    xsltMaxDepth = origXsltMaxDepth;
+#endif
     setXSLTLoadCallBack(0, 0, 0);
     xsltFreeStylesheet(sheet);
     m_stylesheet = nullptr;

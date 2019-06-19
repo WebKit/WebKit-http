@@ -39,12 +39,16 @@
 #include "Page.h"
 #include "SWContextManager.h"
 #include "ServiceWorkerGlobalScope.h"
-#include "URLParser.h"
 #include "WheelEventTestTrigger.h"
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/CallFrame.h>
 #include <JavaScriptCore/IdentifierInlines.h>
 #include <JavaScriptCore/JSValueRef.h>
+#include <wtf/URLParser.h>
+
+#if PLATFORM(COCOA)
+#include "UTIRegistry.h"
+#endif
 
 namespace WebCoreTestSupport {
 using namespace JSC;
@@ -204,5 +208,12 @@ void setupNewlyCreatedServiceWorker(uint64_t serviceWorkerIdentifier)
     UNUSED_PARAM(serviceWorkerIdentifier);
 #endif
 }
+
+#if PLATFORM(COCOA)
+void setAdditionalSupportedImageTypesForTesting(const WTF::String& imageTypes)
+{
+    WebCore::setAdditionalSupportedImageTypesForTesting(imageTypes);
+}
+#endif
 
 }

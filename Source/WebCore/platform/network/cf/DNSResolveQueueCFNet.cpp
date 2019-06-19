@@ -30,18 +30,18 @@
 
 #include "NotImplemented.h"
 #include "Timer.h"
-#include "URL.h"
 #include <wtf/HashSet.h>
 #include <wtf/MainThread.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/URL.h>
 #include <wtf/text/StringHash.h>
 
 #if PLATFORM(WIN)
 #include "LoaderRunLoopCF.h"
 #endif
 
-#if PLATFORM(WIN) || PLATFORM(IOS)
+#if PLATFORM(WIN) || PLATFORM(IOS_FAMILY)
 #include <CFNetwork/CFNetwork.h>
 #endif
 
@@ -55,8 +55,8 @@ void DNSResolveQueueCFNet::updateIsUsingProxy()
         return;
     }
 
-    RetainPtr<CFURLRef> httpCFURL = URL(ParsedURLString, "http://example.com/").createCFURL();
-    RetainPtr<CFURLRef> httpsCFURL = URL(ParsedURLString, "https://example.com/").createCFURL();
+    RetainPtr<CFURLRef> httpCFURL = URL({ }, "http://example.com/").createCFURL();
+    RetainPtr<CFURLRef> httpsCFURL = URL({ }, "https://example.com/").createCFURL();
 
     RetainPtr<CFArrayRef> httpProxyArray = adoptCF(CFNetworkCopyProxiesForURL(httpCFURL.get(), proxySettings.get()));
     RetainPtr<CFArrayRef> httpsProxyArray = adoptCF(CFNetworkCopyProxiesForURL(httpsCFURL.get(), proxySettings.get()));

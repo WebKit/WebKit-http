@@ -22,11 +22,13 @@
 #include "modules/bitrate_controller/send_side_bandwidth_estimation.h"
 #include "modules/congestion_controller/goog_cc/acknowledged_bitrate_estimator.h"
 #include "modules/congestion_controller/goog_cc/alr_detector.h"
+#include "modules/congestion_controller/goog_cc/congestion_window_pushback_controller.h"
 #include "modules/congestion_controller/goog_cc/delay_based_bwe.h"
 #include "modules/congestion_controller/goog_cc/probe_controller.h"
 #include "rtc_base/constructormagic.h"
 
 namespace webrtc {
+
 
 class GoogCcNetworkController : public NetworkControllerInterface {
  public:
@@ -52,39 +54,41 @@ class GoogCcNetworkController : public NetworkControllerInterface {
   NetworkControlUpdate GetNetworkState(Timestamp at_time) const;
 
  private:
+  friend class GoogCcStatePrinter;
   std::vector<ProbeClusterConfig> UpdateBitrateConstraints(
       TargetRateConstraints constraints,
       absl::optional<DataRate> starting_rate);
-  absl::optional<DataSize> MaybeUpdateCongestionWindow();
   void MaybeTriggerOnNetworkChanged(NetworkControlUpdate* update,
                                     Timestamp at_time);
-  bool GetNetworkParameters(int32_t* estimated_bitrate_bps,
-                            uint8_t* fraction_loss,
-                            int64_t* rtt_ms,
-                            Timestamp at_time);
   PacerConfig GetPacingRates(Timestamp at_time) const;
 
   RtcEventLog* const event_log_;
   const bool packet_feedback_only_;
+  FieldTrialFlag safe_reset_on_route_change_;
+  FieldTrialFlag safe_reset_acknowledged_rate_;
+  const bool use_stable_bandwidth_estimate_;
 
   const std::unique_ptr<ProbeController> probe_controller_;
+  const std::unique_ptr<CongestionWindowPushbackController>
+      congestion_window_pushback_controller_;
 
   std::unique_ptr<SendSideBandwidthEstimation> bandwidth_estimation_;
   std::unique_ptr<AlrDetector> alr_detector_;
+  std::unique_ptr<ProbeBitrateEstimator> probe_bitrate_estimator_;
   std::unique_ptr<DelayBasedBwe> delay_based_bwe_;
   std::unique_ptr<AcknowledgedBitrateEstimator> acknowledged_bitrate_estimator_;
 
   absl::optional<NetworkControllerConfig> initial_config_;
 
-  Timestamp next_loss_update_ = Timestamp::ms(0);
+  bool first_packet_sent_ = false;
+
+  Timestamp next_loss_update_ = Timestamp::MinusInfinity();
   int lost_packets_since_last_loss_update_ = 0;
   int expected_packets_since_last_loss_update_ = 0;
 
   std::deque<int64_t> feedback_max_rtts_;
-  absl::optional<int64_t> min_feedback_max_rtt_ms_;
 
-  DataRate last_bandwidth_;
-  absl::optional<TargetTransferRate> last_target_rate_;
+  DataRate last_target_rate_;
 
   int32_t last_estimated_bitrate_bps_ = 0;
   uint8_t last_estimated_fraction_loss_ = 0;

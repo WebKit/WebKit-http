@@ -28,7 +28,6 @@
 #include "GraphicsTypes.h"
 #include "Timer.h"
 #include <wtf/HashMap.h>
-#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -44,7 +43,7 @@ class ImageQualityController {
 public:
     explicit ImageQualityController(const RenderView&);
 
-    static std::optional<InterpolationQuality> interpolationQualityFromStyle(const RenderStyle&);
+    static Optional<InterpolationQuality> interpolationQualityFromStyle(const RenderStyle&);
     InterpolationQuality chooseInterpolationQuality(GraphicsContext&, RenderBoxModelObject*, Image&, const void* layer, const LayoutSize&);
 
     void rendererWillBeDestroyed(RenderBoxModelObject& renderer) { removeObject(&renderer); }

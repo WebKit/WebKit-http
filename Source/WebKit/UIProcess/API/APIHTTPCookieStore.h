@@ -28,13 +28,15 @@
 #include "APIObject.h"
 #include "HTTPCookieAcceptPolicy.h"
 #include <WebCore/Cookie.h>
+#include <wtf/CompletionHandler.h>
 #include <wtf/Forward.h>
-#include <wtf/Function.h>
 #include <wtf/HashSet.h>
 
 namespace WebCore {
-class URL;
 struct Cookie;
+#if PLATFORM(COCOA)
+class CookieStorageObserver;
+#endif
 }
 
 namespace WebKit {
@@ -49,16 +51,16 @@ class WebsiteDataStore;
 
 class HTTPCookieStore final : public ObjectImpl<Object::Type::HTTPCookieStore> {
 public:
-    static Ref<HTTPCookieStore> create(WebsiteDataStore& websiteDataStore)
+    static Ref<HTTPCookieStore> create(WebKit::WebsiteDataStore& websiteDataStore)
     {
         return adoptRef(*new HTTPCookieStore(websiteDataStore));
     }
 
     virtual ~HTTPCookieStore();
 
-    void cookies(Function<void (const Vector<WebCore::Cookie>&)>&& completionHandler);
-    void setCookie(const WebCore::Cookie&, Function<void ()>&& completionHandler);
-    void deleteCookie(const WebCore::Cookie&, Function<void ()>&& completionHandler);
+    void cookies(CompletionHandler<void(const Vector<WebCore::Cookie>&)>&&);
+    void setCookies(const Vector<WebCore::Cookie>&, CompletionHandler<void()>&&);
+    void deleteCookie(const WebCore::Cookie&, CompletionHandler<void()>&&);
 
     class Observer {
     public:
@@ -73,11 +75,19 @@ public:
     void cookieManagerDestroyed();
 
 private:
-    HTTPCookieStore(WebsiteDataStore&);
+    HTTPCookieStore(WebKit::WebsiteDataStore&);
 
     void registerForNewProcessPoolNotifications();
     void unregisterForNewProcessPoolNotifications();
 
+    static void flushDefaultUIProcessCookieStore();
+    static Vector<WebCore::Cookie> getAllDefaultUIProcessCookieStoreCookies();
+    static void setCookieInDefaultUIProcessCookieStore(const WebCore::Cookie&);
+    static void deleteCookieFromDefaultUIProcessCookieStore(const WebCore::Cookie&);
+    void startObservingChangesToDefaultUIProcessCookieStore(Function<void()>&&);
+    void stopObservingChangesToDefaultUIProcessCookieStore();
+    
+    // FIXME: This is a reference cycle.
     Ref<WebKit::WebsiteDataStore> m_owningDataStore;
     HashSet<Observer*> m_observers;
 
@@ -86,6 +96,10 @@ private:
     bool m_observingUIProcessCookies { false };
 
     uint64_t m_processPoolCreationListenerIdentifier { 0 };
+
+#if PLATFORM(COCOA)
+    RefPtr<WebCore::CookieStorageObserver> m_defaultUIProcessObserver;
+#endif
 };
 
 }

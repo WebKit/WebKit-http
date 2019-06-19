@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2007 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -35,7 +35,13 @@ inline SVGFEColorMatrixElement::SVGFEColorMatrixElement(const QualifiedName& tag
     : SVGFilterPrimitiveStandardAttributes(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::feColorMatrixTag));
-    registerAttributes();
+
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::inAttr, &SVGFEColorMatrixElement::m_in1>();
+        PropertyRegistry::registerProperty<SVGNames::typeAttr, ColorMatrixType, &SVGFEColorMatrixElement::m_type>();
+        PropertyRegistry::registerProperty<SVGNames::valuesAttr, &SVGFEColorMatrixElement::m_values>();
+    });
 }
 
 Ref<SVGFEColorMatrixElement> SVGFEColorMatrixElement::create(const QualifiedName& tagName, Document& document)
@@ -43,35 +49,22 @@ Ref<SVGFEColorMatrixElement> SVGFEColorMatrixElement::create(const QualifiedName
     return adoptRef(*new SVGFEColorMatrixElement(tagName, document));
 }
 
-void SVGFEColorMatrixElement::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::inAttr, &SVGFEColorMatrixElement::m_in1>();
-    registry.registerAttribute<SVGNames::typeAttr, ColorMatrixType, &SVGFEColorMatrixElement::m_type>();
-    registry.registerAttribute<SVGNames::valuesAttr, &SVGFEColorMatrixElement::m_values>();
-}
-
-void SVGFEColorMatrixElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void SVGFEColorMatrixElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == SVGNames::typeAttr) {
         auto propertyValue = SVGPropertyTraits<ColorMatrixType>::fromString(value);
         if (propertyValue > 0)
-            m_type.setValue(propertyValue);
+            m_type->setBaseValInternal<ColorMatrixType>(propertyValue);
         return;
     }
 
     if (name == SVGNames::inAttr) {
-        m_in1.setValue(value);
+        m_in1->setBaseValInternal(value);
         return;
     }
 
     if (name == SVGNames::valuesAttr) {
-        SVGNumberListValues newList;
-        newList.parse(value);
-        m_values.detachAnimatedListWrappers(attributeOwnerProxy(), newList.size());
-        m_values.setValue(WTFMove(newList));
+        m_values->baseVal()->parse(value);
         return;
     }
 
@@ -107,7 +100,7 @@ void SVGFEColorMatrixElement::svgAttributeChanged(const QualifiedName& attrName)
     SVGFilterPrimitiveStandardAttributes::svgAttributeChanged(attrName);
 }
 
-RefPtr<FilterEffect> SVGFEColorMatrixElement::build(SVGFilterBuilder* filterBuilder, Filter& filter)
+RefPtr<FilterEffect> SVGFEColorMatrixElement::build(SVGFilterBuilder* filterBuilder, Filter& filter) const
 {
     auto input1 = filterBuilder->getEffectById(in1());
 
@@ -134,16 +127,17 @@ RefPtr<FilterEffect> SVGFEColorMatrixElement::build(SVGFilterBuilder* filterBuil
             break;
         }
     } else {
-        filterValues = values();
-        unsigned size = filterValues.size();
+        unsigned size = values().size();
 
         if ((filterType == FECOLORMATRIX_TYPE_MATRIX && size != 20)
             || (filterType == FECOLORMATRIX_TYPE_HUEROTATE && size != 1)
             || (filterType == FECOLORMATRIX_TYPE_SATURATE && size != 1))
             return nullptr;
+        
+        filterValues = values();
     }
 
-    RefPtr<FilterEffect> effect = FEColorMatrix::create(filter, filterType, filterValues);
+    auto effect = FEColorMatrix::create(filter, filterType, filterValues);
     effect->inputEffects().append(input1);
     return effect;
 }

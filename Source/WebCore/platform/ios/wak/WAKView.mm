@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WAKViewInternal.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "GraphicsContext.h"
 #import "WAKClipView.h"
@@ -130,47 +130,34 @@ static void notificationCallback (WKViewRef v, WKViewNotificationType type, void
 
 - (BOOL)_selfHandleEvent:(WebEvent *)event
 {
-    WebEventType type = event.type;
-    
-    switch (type) {
-        case WebEventMouseDown: {
-            [self mouseDown:event];
-            break;
-        }
-        case WebEventMouseUp: {
-            [self mouseUp:event];
-            break;
-        }
-        case WebEventMouseMoved: {
-            [self mouseMoved:event];
-            break;
-        }
-        case WebEventKeyDown: {
-            [self keyDown:event];
-            break;
-        }
-        case WebEventKeyUp: {
-            [self keyUp:event];
-            break;
-        }
-        case WebEventScrollWheel: {
-            [self scrollWheel:event];
-            break;
-        }
+    switch (event.type) {
+    case WebEventMouseDown:
+        [self mouseDown:event];
+        return YES;
+    case WebEventMouseUp:
+        [self mouseUp:event];
+        return YES;
+    case WebEventMouseMoved:
+        [self mouseMoved:event];
+        return YES;
+    case WebEventKeyDown:
+        [self keyDown:event];
+        return YES;
+    case WebEventKeyUp:
+        [self keyUp:event];
+        return YES;
+    case WebEventScrollWheel:
+        [self scrollWheel:event];
+        return YES;
+    case WebEventTouchBegin:
+    case WebEventTouchChange:
+    case WebEventTouchEnd:
+    case WebEventTouchCancel:
 #if ENABLE(TOUCH_EVENTS)
-        case WebEventTouchBegin:
-        case WebEventTouchChange:
-        case WebEventTouchEnd:
-        case WebEventTouchCancel: {
-            [self touch:event];
-            break;
-        }
+        [self touch:event];
 #endif
-        default:
-            ASSERT_NOT_REACHED();
-            break;
+        return YES;
     }
-    return YES;
 }
 
 - (NSResponder *)nextResponder
@@ -792,4 +779,4 @@ static CGInterpolationQuality toCGInterpolationQuality(WebCore::InterpolationQua
 
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

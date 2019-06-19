@@ -64,7 +64,7 @@ RefPtr<Image> CSSGradientValue::image(RenderElement& renderer, const FloatSize& 
     auto newImage = GradientImage::create(createGradient(*this, renderer, size), size);
     if (cacheable)
         saveCachedImageForSize(size, newImage.get());
-    return WTFMove(newImage);
+    return newImage;
 }
 
 // Should only ever be called for deprecated gradients.
@@ -280,7 +280,7 @@ public:
                 float prevOffset = stops[lastOneOrLessIndex].offset;
                 float nextOffset = stops[lastOneOrLessIndex + 1].offset;
                 
-                float interStopProportion = 1 / (nextOffset - prevOffset);
+                float interStopProportion = (1 - prevOffset) / (nextOffset - prevOffset);
                 // FIXME: when we interpolate gradients using premultiplied colors, this should do premultiplication.
                 Color blendedColor = blend(stops[lastOneOrLessIndex].color, stops[lastOneOrLessIndex + 1].color, interStopProportion);
                 
@@ -693,7 +693,7 @@ String CSSLinearGradientValue::customCSSText() const
                 result.append(')');
             } else {
                 result.appendLiteral("color-stop(");
-                result.appendNumber(position);
+                result.appendFixedPrecisionNumber(position);
                 result.appendLiteral(", ");
                 result.append(stop.m_color->cssText());
                 result.append(')');
@@ -974,7 +974,7 @@ String CSSRadialGradientValue::customCSSText() const
                 result.append(')');
             } else {
                 result.appendLiteral("color-stop(");
-                result.appendNumber(position);
+                result.appendFixedPrecisionNumber(position);
                 result.appendLiteral(", ");
                 result.append(stop.m_color->cssText());
                 result.append(')');
@@ -1434,11 +1434,11 @@ Ref<Gradient> CSSConicGradientValue::createGradient(RenderElement& renderer, con
     if (!m_firstY)
         centerPoint.setY(size.height() / 2);
 
-    float angle = 0;
+    float angleRadians = 0;
     if (m_angle)
-        angle = m_angle->floatValue(CSSPrimitiveValue::CSS_DEG);
+        angleRadians = m_angle->floatValue(CSSPrimitiveValue::CSS_RAD);
 
-    Gradient::ConicData data { centerPoint, angle };
+    Gradient::ConicData data { centerPoint, angleRadians };
     ConicGradientAdapter adapter;
     auto stops = computeStops(adapter, conversionData, renderer.style(), 1);
 

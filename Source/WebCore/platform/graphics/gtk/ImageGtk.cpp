@@ -43,7 +43,7 @@ static Ref<Image> loadImageFromGResource(const char* iconName)
     GRefPtr<GBytes> data = adoptGRef(g_resources_lookup_data(path.get(), G_RESOURCE_LOOKUP_FLAGS_NONE, nullptr));
     ASSERT(data);
     icon->setData(SharedBuffer::create(static_cast<const unsigned char*>(g_bytes_get_data(data.get(), nullptr)), g_bytes_get_size(data.get())), true);
-    return WTFMove(icon);
+    return icon;
 }
 
 static Ref<SharedBuffer> loadResourceSharedBuffer(const char* filename)
@@ -64,11 +64,11 @@ static Ref<Image> loadMissingImageIconFromTheme(const char* name)
 {
     int iconSize = g_str_has_suffix(name, "@2x") ? 32 : 16;
     auto icon = BitmapImage::create();
-    GUniquePtr<GtkIconInfo> iconInfo(gtk_icon_theme_lookup_icon(gtk_icon_theme_get_default(), GTK_STOCK_MISSING_IMAGE, iconSize, GTK_ICON_LOOKUP_NO_SVG));
+    GUniquePtr<GtkIconInfo> iconInfo(gtk_icon_theme_lookup_icon(gtk_icon_theme_get_default(), "image-missing", iconSize, GTK_ICON_LOOKUP_NO_SVG));
     if (iconInfo) {
         auto buffer = loadResourceSharedBuffer(gtk_icon_info_get_filename(iconInfo.get()));
         icon->setData(WTFMove(buffer), true);
-        return WTFMove(icon);
+        return icon;
     }
 
     return loadImageFromGResource(name);

@@ -56,19 +56,16 @@ String ExtendedColor::cssText() const
         return WTF::emptyString();
     }
 
-    NumberToStringBuffer buffer;
-    bool shouldTruncateTrailingZeros = true;
-
-    builder.append(numberToFixedPrecisionString(red(), 6, buffer, shouldTruncateTrailingZeros));
+    builder.appendFixedPrecisionNumber(red());
     builder.append(' ');
 
-    builder.append(numberToFixedPrecisionString(green(), 6, buffer, shouldTruncateTrailingZeros));
+    builder.appendFixedPrecisionNumber(green());
     builder.append(' ');
 
-    builder.append(numberToFixedPrecisionString(blue(), 6, buffer, shouldTruncateTrailingZeros));
+    builder.appendFixedPrecisionNumber(blue());
     if (!WTF::areEssentiallyEqual(alpha(), 1.0f)) {
         builder.appendLiteral(" / ");
-        builder.append(numberToFixedPrecisionString(alpha(), 6, buffer, shouldTruncateTrailingZeros));
+        builder.appendFixedPrecisionNumber(alpha());
     }
     builder.append(')');
 

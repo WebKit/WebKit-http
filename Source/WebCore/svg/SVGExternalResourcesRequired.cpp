@@ -22,6 +22,8 @@
 #include "config.h"
 #include "SVGExternalResourcesRequired.h"
 
+#include "RenderSVGResource.h"
+#include "RenderSVGShape.h"
 #include "SVGElement.h"
 #include "SVGNames.h"
 
@@ -29,22 +31,18 @@ namespace WebCore {
 
 SVGExternalResourcesRequired::SVGExternalResourcesRequired(SVGElement* contextElement)
     : m_contextElement(*contextElement)
+    , m_externalResourcesRequired(SVGAnimatedBoolean::create(contextElement))
 {
-    registerAttributes();
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::externalResourcesRequiredAttr, &SVGExternalResourcesRequired::m_externalResourcesRequired>();
+    });
 }
 
-void SVGExternalResourcesRequired::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::externalResourcesRequiredAttr, &SVGEllipseElement::m_externalResourcesRequired>();
-}
-
-void SVGExternalResourcesRequired::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void SVGExternalResourcesRequired::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == SVGNames::externalResourcesRequiredAttr)
-        setExternalResourcesRequired(value == "true");
+        m_externalResourcesRequired->setBaseValInternal(value == "true");
 }
 
 void SVGExternalResourcesRequired::svgAttributeChanged(const QualifiedName& attrName)
@@ -57,7 +55,7 @@ void SVGExternalResourcesRequired::svgAttributeChanged(const QualifiedName& attr
     // Handle dynamic updates of the 'externalResourcesRequired' attribute. Only possible case: changing from 'true' to 'false'
     // causes an immediate dispatch of the SVGLoad event. If the attribute value was 'false' before inserting the script element
     // in the document, the SVGLoad event has already been dispatched.
-    if (!externalResourcesRequired() && !haveFiredLoadEvent() && !isParserInserted()) {
+    if (!externalResourcesRequiredAnimated().isAnimating() && !externalResourcesRequired() && !haveFiredLoadEvent() && !isParserInserted()) {
         setHaveFiredLoadEvent(true);
 
         ASSERT(m_contextElement.haveLoadedRequiredResources());

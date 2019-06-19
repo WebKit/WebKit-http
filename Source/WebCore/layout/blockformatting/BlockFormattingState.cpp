@@ -28,7 +28,7 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
-#include "FormattingContext.h"
+#include "BlockFormattingContext.h"
 #include "LayoutBox.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -37,8 +37,8 @@ namespace Layout {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(BlockFormattingState);
 
-BlockFormattingState::BlockFormattingState(Ref<FloatingState>&& floatingState, const LayoutContext& layoutContext)
-    : FormattingState(WTFMove(floatingState), Type::Block, layoutContext)
+BlockFormattingState::BlockFormattingState(Ref<FloatingState>&& floatingState, LayoutState& layoutState)
+    : FormattingState(WTFMove(floatingState), Type::Block, layoutState)
 {
 }
 

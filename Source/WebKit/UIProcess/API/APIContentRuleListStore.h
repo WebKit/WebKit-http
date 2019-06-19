@@ -31,6 +31,10 @@
 #include <system_error>
 #include <wtf/text/WTFString.h>
 
+namespace WebCore {
+class SharedBuffer;
+}
+
 namespace WTF {
 class WorkQueue;
 }

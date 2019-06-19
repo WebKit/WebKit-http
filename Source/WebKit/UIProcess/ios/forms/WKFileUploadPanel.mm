@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WKFileUploadPanel.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "APIArray.h"
 #import "APIData.h"
@@ -41,17 +41,29 @@
 #import "WebOpenPanelResultListenerProxy.h"
 #import "WebPageProxy.h"
 #import <MobileCoreServices/MobileCoreServices.h>
+#import <UIKit/UIDocumentPickerViewController.h>
 #import <WebCore/LocalizedStrings.h>
+#import <WebCore/MIMETypeRegistry.h>
+#import <WebCore/UTIUtilities.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/text/StringView.h>
 
 using namespace WebKit;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 
 static inline UIImagePickerControllerCameraDevice cameraDeviceForMediaCaptureType(WebCore::MediaCaptureType mediaCaptureType)
 {
     return mediaCaptureType == WebCore::MediaCaptureTypeUser ? UIImagePickerControllerCameraDeviceFront : UIImagePickerControllerCameraDeviceRear;
+}
+
+static bool arrayContainsUTIThatConformsTo(NSArray<NSString *> *typeIdentifiers, CFStringRef conformToUTI)
+{
+    for (NSString *uti in typeIdentifiers) {
+        if (UTTypeConformsTo((__bridge CFStringRef)uti, conformToUTI))
+            return true;
+    }
+    return false;
 }
 
 #pragma mark - Document picker icons
@@ -160,11 +172,11 @@ static inline UIImage *cameraIcon()
     BOOL _usingCamera;
     RetainPtr<UIImagePickerController> _imagePicker;
     RetainPtr<UIViewController> _presentationViewController; // iPhone always. iPad for Fullscreen Camera.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     RetainPtr<UIPopoverController> _presentationPopover; // iPad for action sheet and Photo Library.
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     RetainPtr<UIDocumentMenuViewController> _documentMenuController;
+    RetainPtr<UIDocumentPickerViewController> _documentPickerController;
     WebCore::MediaCaptureType _mediaCaptureType;
 }
 
@@ -181,6 +193,7 @@ static inline UIImage *cameraIcon()
     [_imagePicker setDelegate:nil];
     [_presentationPopover setDelegate:nil];
     [_documentMenuController setDelegate:nil];
+    [_documentPickerController setDelegate:nil];
 
     [super dealloc];
 }
@@ -235,6 +248,14 @@ static inline UIImage *cameraIcon()
     NSMutableArray *mimeTypes = [NSMutableArray arrayWithCapacity:acceptMimeTypes->size()];
     for (auto mimeType : acceptMimeTypes->elementsOfType<API::String>())
         [mimeTypes addObject:mimeType->string()];
+
+    Ref<API::Array> acceptFileExtensions = parameters->acceptFileExtensions();
+    for (auto extension : acceptFileExtensions->elementsOfType<API::String>()) {
+        String mimeType = WebCore::MIMETypeRegistry::getMIMETypeForExtension(extension->stringView().substring(1).toString());
+        if (!mimeType.isEmpty())
+            [mimeTypes addObject:mimeType];
+    }
+
     _mimeTypes = adoptNS([mimeTypes copy]);
 
     _mediaCaptureType = WebCore::MediaCaptureTypeNone;
@@ -291,50 +312,70 @@ static inline UIImage *cameraIcon()
     }
 }
 
+- (NSArray<NSString *> *)currentAvailableActionTitles
+{
+    NSMutableArray<NSString *> *actionTitles = [NSMutableArray array];
+
+    NSArray *mediaTypes = UTIsForMIMETypes(_mimeTypes.get()).allObjects;
+    BOOL containsImageMediaType = !mediaTypes.count || arrayContainsUTIThatConformsTo(mediaTypes, kUTTypeImage);
+    BOOL containsVideoMediaType = !mediaTypes.count || arrayContainsUTIThatConformsTo(mediaTypes, kUTTypeMovie);
+    if (containsImageMediaType || containsVideoMediaType) {
+        [actionTitles addObject:@"Photo Library"];
+        if (containsImageMediaType && containsVideoMediaType)
+            [actionTitles addObject:@"Take Photo or Video"];
+        else if (containsVideoMediaType)
+            [actionTitles addObject:@"Take Video"];
+        else
+            [actionTitles addObject:@"Take Photo"];
+    }
+    [actionTitles addObject:@"Browse"];
+    return actionTitles;
+}
+
 #pragma mark - Media Types
 
-static bool stringHasPrefixCaseInsensitive(NSString *str, NSString *prefix)
+static NSSet<NSString *> *UTIsForMIMETypes(NSArray *mimeTypes)
 {
-    NSRange range = [str rangeOfString:prefix options:(NSCaseInsensitiveSearch | NSAnchoredSearch)];
-    return range.location != NSNotFound;
-}
-
-static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
-{
-    // The HTML5 spec mentions the literal "image/*" and "video/*" strings.
-    // We support these and go a step further, if the MIME type starts with
-    // "image/" or "video/" we adjust the picker's image or video filters.
-    // So, "image/jpeg" would make the picker display all images types.
     NSMutableSet *mediaTypes = [NSMutableSet set];
     for (NSString *mimeType in mimeTypes) {
-        // FIXME: We should support more MIME type -> UTI mappings. <http://webkit.org/b/142614>
-        if (stringHasPrefixCaseInsensitive(mimeType, @"image/"))
-            [mediaTypes addObject:(NSString *)kUTTypeImage];
-        else if (stringHasPrefixCaseInsensitive(mimeType, @"video/"))
-            [mediaTypes addObject:(NSString *)kUTTypeMovie];
+        if ([mimeType caseInsensitiveCompare:@"image/*"] == NSOrderedSame)
+            [mediaTypes addObject:(__bridge NSString *)kUTTypeImage];
+        else if ([mimeType caseInsensitiveCompare:@"video/*"] == NSOrderedSame)
+            [mediaTypes addObject:(__bridge NSString *)kUTTypeMovie];
+        else if ([mimeType caseInsensitiveCompare:@"audio/*"] == NSOrderedSame)
+            [mediaTypes addObject:(__bridge NSString *)kUTTypeAudio];
+        else {
+            auto uti = WebCore::UTIFromMIMEType(mimeType);
+            if (!uti.isEmpty())
+                [mediaTypes addObject:(__bridge NSString *)uti];
+        }
+    }
+    return mediaTypes;
+}
+
+- (NSArray<NSString *> *)_mediaTypesForPickerSourceType:(UIImagePickerControllerSourceType)sourceType
+{
+    NSArray<NSString *> *availableMediaTypes = [UIImagePickerController availableMediaTypesForSourceType:sourceType];
+    NSSet<NSString *> *acceptedMediaTypes = UTIsForMIMETypes(_mimeTypes.get());
+    if (acceptedMediaTypes.count) {
+        NSMutableArray<NSString *> *mediaTypes = [NSMutableArray array];
+        for (NSString *availableMediaType in availableMediaTypes) {
+            if ([acceptedMediaTypes containsObject:availableMediaType])
+                [mediaTypes addObject:availableMediaType];
+            else {
+                for (NSString *acceptedMediaType in acceptedMediaTypes) {
+                    if (UTTypeConformsTo((__bridge CFStringRef)acceptedMediaType, (__bridge CFStringRef)availableMediaType)) {
+                        [mediaTypes addObject:availableMediaType];
+                        break;
+                    }
+                }
+            }
+        }
+        return mediaTypes;
     }
 
-    return mediaTypes.allObjects;
-}
-
-- (NSArray *)_mediaTypesForPickerSourceType:(UIImagePickerControllerSourceType)sourceType
-{
-    NSArray *mediaTypes = UTIsForMIMETypes(_mimeTypes.get());
-    if (mediaTypes.count)
-        return mediaTypes;
-
     // Fallback to every supported media type if there is no filter.
-    return [UIImagePickerController availableMediaTypesForSourceType:sourceType];
-}
-
-- (NSArray *)_documentPickerMenuMediaTypes
-{
-    NSArray *mediaTypes = UTIsForMIMETypes(_mimeTypes.get());
-    if (mediaTypes.count)
-        return mediaTypes;
-
-    // Fallback to every supported media type if there is no filter.
-    return @[@"public.item"];
+    return availableMediaTypes;
 }
 
 #pragma mark - Source selection menu
@@ -344,20 +385,13 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
     return WEB_UI_STRING_KEY("Photo Library", "Photo Library (file upload action sheet)", "File Upload alert sheet button string for choosing an existing media item from the Photo Library");
 }
 
-- (NSString *)_cameraButtonLabel
+- (NSString *)_cameraButtonLabelAllowingPhoto:(BOOL)allowPhoto allowingVideo:(BOOL)allowVideo
 {
-    if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera])
-        return nil;
-
-    // Choose the appropriate string for the camera button.
-    NSArray *filteredMediaTypes = [self _mediaTypesForPickerSourceType:UIImagePickerControllerSourceTypeCamera];
-    BOOL containsImageMediaType = [filteredMediaTypes containsObject:(NSString *)kUTTypeImage];
-    BOOL containsVideoMediaType = [filteredMediaTypes containsObject:(NSString *)kUTTypeMovie];
-    ASSERT(containsImageMediaType || containsVideoMediaType);
-    if (containsImageMediaType && containsVideoMediaType)
+    ASSERT(allowPhoto || allowVideo);
+    if (allowPhoto && allowVideo)
         return WEB_UI_STRING_KEY("Take Photo or Video", "Take Photo or Video (file upload action sheet)", "File Upload alert sheet camera button string for taking photos or videos");
 
-    if (containsVideoMediaType)
+    if (allowVideo)
         return WEB_UI_STRING_KEY("Take Video", "Take Video (file upload action sheet)", "File Upload alert sheet camera button string for taking only videos");
 
     return WEB_UI_STRING_KEY("Take Photo", "Take Photo (file upload action sheet)", "File Upload alert sheet camera button string for taking only photos");
@@ -365,25 +399,46 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 
 - (void)_showDocumentPickerMenu
 {
-    // FIXME: Support multiple file selection when implemented. <rdar://17177981>
-    _documentMenuController = adoptNS([[UIDocumentMenuViewController alloc] _initIgnoringApplicationEntitlementForImportOfTypes:[self _documentPickerMenuMediaTypes]]);
-    [_documentMenuController setDelegate:self];
+    NSArray *mediaTypes = UTIsForMIMETypes(_mimeTypes.get()).allObjects;
 
-    [_documentMenuController addOptionWithTitle:[self _photoLibraryButtonLabel] image:photoLibraryIcon() order:UIDocumentMenuOrderFirst handler:^{
-        [self _showPhotoPickerWithSourceType:UIImagePickerControllerSourceTypePhotoLibrary];
-    }];
+    BOOL containsImageMediaType = !mediaTypes.count || arrayContainsUTIThatConformsTo(mediaTypes, kUTTypeImage);
+    BOOL containsVideoMediaType = !mediaTypes.count || arrayContainsUTIThatConformsTo(mediaTypes, kUTTypeMovie);
 
-    if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
-        if (NSString *cameraString = [self _cameraButtonLabel]) {
+#if PLATFORM(IOSMAC)
+    // FIXME 49961589: Support picking media with UIImagePickerController
+    BOOL shouldPresentDocumentMenuViewController = NO;
+#else
+    BOOL shouldPresentDocumentMenuViewController = containsImageMediaType || containsVideoMediaType;
+#endif
+
+    NSArray *documentTypes = mediaTypes.count ? mediaTypes : @[(__bridge NSString *)kUTTypeItem];
+    if (shouldPresentDocumentMenuViewController) {
+        // FIXME 49979442: UIDocumentMenuViewController is deprecated. Use UIDocumentPickerViewController instead to support multiple file selection.
+        _documentMenuController = adoptNS([[UIDocumentMenuViewController alloc] _initIgnoringApplicationEntitlementForImportOfTypes:documentTypes]);
+        [_documentMenuController setDelegate:self];
+
+        [_documentMenuController addOptionWithTitle:[self _photoLibraryButtonLabel] image:photoLibraryIcon() order:UIDocumentMenuOrderFirst handler:^{
+            [self _showPhotoPickerWithSourceType:UIImagePickerControllerSourceTypePhotoLibrary];
+        }];
+
+        if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+            NSString *cameraString = [self _cameraButtonLabelAllowingPhoto:containsImageMediaType allowingVideo:containsVideoMediaType];
             [_documentMenuController addOptionWithTitle:cameraString image:cameraIcon() order:UIDocumentMenuOrderFirst handler:^{
                 _usingCamera = YES;
                 [self _showPhotoPickerWithSourceType:UIImagePickerControllerSourceTypeCamera];
             }];
         }
+
+        [self _presentMenuOptionForCurrentInterfaceIdiom:_documentMenuController.get()];
+    } else {
+        // Image and Video types are not accepted so bypass the menu and open the file picker directly.
+        _documentPickerController = adoptNS([[UIDocumentPickerViewController alloc] initWithDocumentTypes:documentTypes inMode:UIDocumentPickerModeImport]);
+        [_documentPickerController setAllowsMultipleSelection:_allowMultipleFiles];
+        [_documentPickerController setDelegate:self];
+        [self _presentFullscreenViewController:_documentPickerController.get() animated:YES];
     }
 
-    [self _presentMenuOptionForCurrentInterfaceIdiom:_documentMenuController.get()];
-    // Clear out the view controller we just presented. Don't save a reference to the UIDocumentMenuViewController as it is self dismissing.
+    // Clear out the view controller we just presented. Don't save a reference to the UIDocumentMenuViewController / UIDocumentPickerViewController as it is self dismissing.
     _presentationViewController = nil;
 }
 
@@ -415,18 +470,12 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 - (void)_showPhotoPickerWithSourceType:(UIImagePickerControllerSourceType)sourceType
 {
     ASSERT([UIImagePickerController isSourceTypeAvailable:sourceType]);
-    
-    _imagePicker = adoptNS([[UIImagePickerController alloc] init]);
-    [_imagePicker setDelegate:self];
-    [_imagePicker setSourceType:sourceType];
-    [_imagePicker setAllowsEditing:NO];
-    [_imagePicker setModalPresentationStyle:UIModalPresentationFullScreen];
-    [_imagePicker _setAllowsMultipleSelection:_allowMultipleFiles];
-    [_imagePicker setMediaTypes:[self _mediaTypesForPickerSourceType:sourceType]];
 
-    if (_mediaCaptureType != WebCore::MediaCaptureTypeNone)
-        [_imagePicker setCameraDevice:cameraDeviceForMediaCaptureType(_mediaCaptureType)];
-    
+    _imagePicker = adoptNS([[UIImagePickerController alloc] init]);
+    [_imagePicker setSourceType:sourceType];
+    [_imagePicker setMediaTypes:[self _mediaTypesForPickerSourceType:sourceType]];
+    [self _configureImagePicker:_imagePicker.get()];
+
     // Use a popover on the iPad if the source type is not the camera.
     // The camera will use a fullscreen, modal view controller.
     BOOL usePopover = currentUserInterfaceIdiomIsPad() && sourceType != UIImagePickerControllerSourceTypeCamera;
@@ -434,6 +483,17 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
         [self _presentPopoverWithContentViewController:_imagePicker.get() animated:YES];
     else
         [self _presentFullscreenViewController:_imagePicker.get() animated:YES];
+}
+
+- (void)_configureImagePicker:(UIImagePickerController *)imagePicker
+{
+    [imagePicker setDelegate:self];
+    [imagePicker setAllowsEditing:NO];
+    [imagePicker setModalPresentationStyle:UIModalPresentationFullScreen];
+    [imagePicker _setAllowsMultipleSelection:_allowMultipleFiles];
+
+    if (_mediaCaptureType != WebCore::MediaCaptureTypeNone)
+        [imagePicker setCameraDevice:cameraDeviceForMediaCaptureType(_mediaCaptureType)];
 }
 
 #pragma mark - Presenting View Controllers
@@ -450,10 +510,9 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 {
     [self _dismissDisplayAnimated:animated];
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     _presentationPopover = adoptNS([[UIPopoverController alloc] initWithContentViewController:contentViewController]);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     [_presentationPopover setDelegate:self];
     [_presentationPopover presentPopoverFromRect:CGRectIntegral(CGRectMake(_interactionPoint.x, _interactionPoint.y, 1, 1)) inView:_view permittedArrowDirections:UIPopoverArrowDirectionAny animated:animated];
 }
@@ -468,7 +527,9 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 
 #pragma mark - UIPopoverControllerDelegate
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)popoverControllerDidDismissPopover:(UIPopoverController *)popoverController
+IGNORE_WARNINGS_END
 {
     [self _cancel];
 }
@@ -489,10 +550,21 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 
 #pragma mark - UIDocumentPickerControllerDelegate implementation
 
-- (void)documentPicker:(UIDocumentPickerViewController *)documentPicker didPickDocumentAtURL:(NSURL *)url
+static NSString *displayStringForDocumentsAtURLs(NSArray<NSURL *> *urls)
 {
+    auto urlsCount = urls.count;
+    ASSERT(urlsCount);
+    if (urlsCount == 1)
+        return urls[0].lastPathComponent;
+
+    return WebCore::multipleFileUploadText(urlsCount);
+}
+
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
+{
+    ASSERT(urls.count);
     [self _dismissDisplayAnimated:YES];
-    [self _chooseFiles:@[url] displayString:url.lastPathComponent iconImage:iconForFile(url)];
+    [self _chooseFiles:urls displayString:displayStringForDocumentsAtURLs(urls) iconImage:iconForFile(urls[0])];
 }
 
 - (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)documentPicker
@@ -614,7 +686,7 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
     NSString * const kTemporaryDirectoryName = @"WKWebFileUpload";
 
     // Build temporary file path.
-    NSString *temporaryDirectory = WebCore::FileSystem::createTemporaryDirectory(kTemporaryDirectoryName);
+    NSString *temporaryDirectory = FileSystem::createTemporaryDirectory(kTemporaryDirectoryName);
     NSString *filePath = [temporaryDirectory stringByAppendingPathComponent:imageName];
     if (!filePath) {
         LOG_ERROR("WKFileUploadPanel: Failed to create temporary directory to save image");
@@ -720,6 +792,6 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 
 @end
 
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

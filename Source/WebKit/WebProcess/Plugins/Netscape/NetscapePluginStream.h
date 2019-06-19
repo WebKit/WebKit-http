@@ -27,18 +27,14 @@
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
-#include <WebCore/FileSystem.h>
 #include <WebCore/npruntime_internal.h>
 #include <memory>
+#include <wtf/FileSystem.h>
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
-
-namespace WebCore {
-class URL;
-}
 
 namespace WebKit {
 
@@ -55,8 +51,8 @@ public:
     uint64_t streamID() const { return m_streamID; }
     const NPStream* npStream() const { return &m_npStream; }
 
-    void willSendRequest(const WebCore::URL& requestURL, const WebCore::URL& redirectResponseURL, int redirectResponseStatus);
-    void didReceiveResponse(const WebCore::URL& responseURL, uint32_t streamLength,
+    void willSendRequest(const URL& requestURL, const URL& redirectResponseURL, int redirectResponseStatus);
+    void didReceiveResponse(const URL& responseURL, uint32_t streamLength,
                             uint32_t lastModifiedTime, const String& mimeType, const String& headers);
     void didReceiveData(const char* bytes, int length);
     void didFinishLoading();
@@ -93,7 +89,7 @@ private:
     int32_t m_offset;
 
     String m_filePath;
-    WebCore::FileSystem::PlatformFileHandle m_fileHandle;
+    FileSystem::PlatformFileHandle m_fileHandle;
     
     // Whether NPP_NewStream has successfully been called.
     bool m_isStarted;

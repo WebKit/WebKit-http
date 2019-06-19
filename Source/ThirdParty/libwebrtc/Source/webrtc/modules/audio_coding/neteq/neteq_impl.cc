@@ -11,13 +11,16 @@
 #include "modules/audio_coding/neteq/neteq_impl.h"
 
 #include <assert.h>
-
 #include <algorithm>
+#include <cstdint>
+#include <cstring>
+#include <list>
 #include <utility>
 #include <vector>
 
 #include "api/audio_codecs/audio_decoder.h"
 #include "common_audio/signal_processing/include/signal_processing_library.h"
+#include "modules/audio_coding/codecs/cng/webrtc_cng.h"
 #include "modules/audio_coding/neteq/accelerate.h"
 #include "modules/audio_coding/neteq/background_noise.h"
 #include "modules/audio_coding/neteq/buffer_level_filter.h"
@@ -40,15 +43,14 @@
 #include "modules/audio_coding/neteq/red_payload_splitter.h"
 #include "modules/audio_coding/neteq/sync_buffer.h"
 #include "modules/audio_coding/neteq/tick_timer.h"
+#include "modules/audio_coding/neteq/time_stretch.h"
 #include "modules/audio_coding/neteq/timestamp_scaler.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 #include "rtc_base/numerics/safe_conversions.h"
 #include "rtc_base/sanitizer.h"
 #include "rtc_base/strings/audio_format_to_string.h"
-#include "rtc_base/system/fallthrough.h"
 #include "rtc_base/trace_event.h"
-#include "system_wrappers/include/field_trial.h"
 
 namespace webrtc {
 
@@ -61,6 +63,7 @@ NetEqImpl::Dependencies::Dependencies(
           new DecoderDatabase(decoder_factory, config.codec_pair_id)),
       delay_peak_detector(new DelayPeakDetector(tick_timer.get())),
       delay_manager(new DelayManager(config.max_packets_in_buffer,
+                                     config.min_delay_ms,
                                      delay_peak_detector.get(),
                                      tick_timer.get())),
       dtmf_buffer(new DtmfBuffer(config.sample_rate_hz)),
@@ -199,10 +202,12 @@ void SetAudioFrameActivityAndType(bool vad_enabled,
 }
 }  // namespace
 
-int NetEqImpl::GetAudio(AudioFrame* audio_frame, bool* muted) {
+int NetEqImpl::GetAudio(AudioFrame* audio_frame,
+                        bool* muted,
+                        absl::optional<Operations> action_override) {
   TRACE_EVENT0("webrtc", "NetEqImpl::GetAudio");
   rtc::CritScope lock(&crit_sect_);
-  if (GetAudioInternal(audio_frame, muted) != 0) {
+  if (GetAudioInternal(audio_frame, muted, action_override) != 0) {
     return kFail;
   }
   RTC_DCHECK_EQ(
@@ -307,16 +312,6 @@ bool NetEqImpl::SetMaximumDelay(int delay_ms) {
   return false;
 }
 
-int NetEqImpl::LeastRequiredDelayMs() const {
-  rtc::CritScope lock(&crit_sect_);
-  assert(delay_manager_.get());
-  return delay_manager_->least_required_delay_ms();
-}
-
-int NetEqImpl::SetTargetDelay() {
-  return kNotImplemented;
-}
-
 int NetEqImpl::TargetDelayMs() const {
   rtc::CritScope lock(&crit_sect_);
   RTC_DCHECK(delay_manager_.get());
@@ -379,18 +374,18 @@ NetEqLifetimeStatistics NetEqImpl::GetLifetimeStatistics() const {
   return stats_.GetLifetimeStatistics();
 }
 
-void NetEqImpl::GetRtcpStatistics(RtcpStatistics* stats) {
+NetEqOperationsAndState NetEqImpl::GetOperationsAndState() const {
   rtc::CritScope lock(&crit_sect_);
-  if (stats) {
-    rtcp_.GetStatistics(false, stats);
-  }
-}
-
-void NetEqImpl::GetRtcpStatisticsNoReset(RtcpStatistics* stats) {
-  rtc::CritScope lock(&crit_sect_);
-  if (stats) {
-    rtcp_.GetStatistics(true, stats);
-  }
+  auto result = stats_.GetOperationsAndState();
+  result.current_buffer_size_ms =
+      (packet_buffer_->NumSamplesInBuffer(decoder_frame_length_) +
+       sync_buffer_->FutureLength()) *
+      1000 / fs_hz_;
+  result.current_frame_size_ms = decoder_frame_length_ * 1000 / fs_hz_;
+  result.next_packet_available = packet_buffer_->PeekNextPacket() &&
+                                 packet_buffer_->PeekNextPacket()->timestamp ==
+                                     sync_buffer_->end_timestamp();
+  return result;
 }
 
 void NetEqImpl::EnableVad() {
@@ -454,14 +449,6 @@ absl::optional<SdpAudioFormat> NetEqImpl::GetDecoderFormat(
   return di->GetFormat();
 }
 
-int NetEqImpl::SetTargetNumberOfChannels() {
-  return kNotImplemented;
-}
-
-int NetEqImpl::SetTargetSampleRate() {
-  return kNotImplemented;
-}
-
 void NetEqImpl::FlushBuffers() {
   rtc::CritScope lock(&crit_sect_);
   RTC_LOG(LS_VERBOSE) << "FlushBuffers";
@@ -473,12 +460,6 @@ void NetEqImpl::FlushBuffers() {
                                expand_->overlap_length());
   // Set to wait for new codec.
   first_packet_ = true;
-}
-
-void NetEqImpl::PacketBufferStatistics(int* current_num_packets,
-                                       int* max_num_packets) const {
-  rtc::CritScope lock(&crit_sect_);
-  packet_buffer_->BufferStat(current_num_packets, max_num_packets);
 }
 
 void NetEqImpl::EnableNack(size_t max_nack_list_size) {
@@ -576,8 +557,6 @@ int NetEqImpl::InsertPacketInternal(const RTPHeader& rtp_header,
     // Note: |first_packet_| will be cleared further down in this method, once
     // the packet has been successfully inserted into the packet buffer.
 
-    rtcp_.Init(rtp_header.sequenceNumber);
-
     // Flush the packet buffer and DTMF buffer.
     packet_buffer_->Flush();
     dtmf_buffer_->Flush();
@@ -591,9 +570,6 @@ int NetEqImpl::InsertPacketInternal(const RTPHeader& rtp_header,
     // Update codecs.
     timestamp_ = main_timestamp;
   }
-
-  // Update RTCP statistics, only for regular packets.
-  rtcp_.Update(rtp_header, receive_timestamp);
 
   if (nack_enabled_) {
     RTC_DCHECK(nack_);
@@ -816,7 +792,9 @@ int NetEqImpl::InsertPacketInternal(const RTPHeader& rtp_header,
   return 0;
 }
 
-int NetEqImpl::GetAudioInternal(AudioFrame* audio_frame, bool* muted) {
+int NetEqImpl::GetAudioInternal(AudioFrame* audio_frame,
+                                bool* muted,
+                                absl::optional<Operations> action_override) {
   PacketList packet_list;
   DtmfEvent dtmf_event;
   Operations operation;
@@ -849,9 +827,8 @@ int NetEqImpl::GetAudioInternal(AudioFrame* audio_frame, bool* muted) {
     *muted = true;
     return 0;
   }
-
-  int return_value =
-      GetDecision(&operation, &packet_list, &dtmf_event, &play_dtmf);
+  int return_value = GetDecision(&operation, &packet_list, &dtmf_event,
+                                 &play_dtmf, action_override);
   if (return_value != 0) {
     last_mode_ = kModeError;
     return return_value;
@@ -890,7 +867,12 @@ int NetEqImpl::GetAudioInternal(AudioFrame* audio_frame, bool* muted) {
       break;
     }
     case kExpand: {
-      return_value = DoExpand(play_dtmf);
+      RTC_DCHECK_EQ(return_value, 0);
+      if (!current_rtp_payload_type_ || !DoCodecPlc()) {
+        return_value = DoExpand(play_dtmf);
+      }
+      RTC_DCHECK_GE(sync_buffer_->FutureLength() - expand_->overlap_length(),
+                    output_size_samples_);
       break;
     }
     case kAccelerate:
@@ -1002,7 +984,7 @@ int NetEqImpl::GetAudioInternal(AudioFrame* audio_frame, bool* muted) {
     sync_buffer_->set_dtmf_index(sync_buffer_->Size());
   }
 
-  if (last_mode_ != kModeExpand) {
+  if (last_mode_ != kModeExpand && last_mode_ != kModeCodecPlc) {
     // If last operation was not expand, calculate the |playout_timestamp_| from
     // the |sync_buffer_|. However, do not update the |playout_timestamp_| if it
     // would be moved "backwards".
@@ -1027,7 +1009,7 @@ int NetEqImpl::GetAudioInternal(AudioFrame* audio_frame, bool* muted) {
                 static_cast<uint32_t>(audio_frame->samples_per_channel_);
 
   if (!(last_mode_ == kModeRfc3389Cng || last_mode_ == kModeCodecInternalCng ||
-        last_mode_ == kModeExpand)) {
+        last_mode_ == kModeExpand || last_mode_ == kModeCodecPlc)) {
     generated_noise_stopwatch_.reset();
   }
 
@@ -1039,7 +1021,8 @@ int NetEqImpl::GetAudioInternal(AudioFrame* audio_frame, bool* muted) {
 int NetEqImpl::GetDecision(Operations* operation,
                            PacketList* packet_list,
                            DtmfEvent* dtmf_event,
-                           bool* play_dtmf) {
+                           bool* play_dtmf,
+                           absl::optional<Operations> action_override) {
   // Initialize output variables.
   *play_dtmf = false;
   *operation = kUndefined;
@@ -1111,6 +1094,10 @@ int NetEqImpl::GetDecision(Operations* operation,
       *sync_buffer_, *expand_, decoder_frame_length_, packet, last_mode_,
       *play_dtmf, generated_noise_samples, &reset_decoder_);
 
+  if (action_override) {
+    // Use the provided action instead of the decision NetEq decided on.
+    *operation = *action_override;
+  }
   // Check if we already have enough samples in the |sync_buffer_|. If so,
   // change decision to normal, unless the decision was merge, accelerate, or
   // preemptive expand.
@@ -1539,6 +1526,48 @@ void NetEqImpl::DoMerge(int16_t* decoded_buffer,
   if (!play_dtmf) {
     dtmf_tone_generator_->Reset();
   }
+}
+
+bool NetEqImpl::DoCodecPlc() {
+  AudioDecoder* decoder = decoder_database_->GetActiveDecoder();
+  if (!decoder) {
+    return false;
+  }
+  const size_t channels = algorithm_buffer_->Channels();
+  const size_t requested_samples_per_channel =
+      output_size_samples_ -
+      (sync_buffer_->FutureLength() - expand_->overlap_length());
+  concealment_audio_.Clear();
+  decoder->GeneratePlc(requested_samples_per_channel, &concealment_audio_);
+  if (concealment_audio_.empty()) {
+    // Nothing produced. Resort to regular expand.
+    return false;
+  }
+  RTC_CHECK_GE(concealment_audio_.size(),
+               requested_samples_per_channel * channels);
+  sync_buffer_->PushBackInterleaved(concealment_audio_);
+  RTC_DCHECK_NE(algorithm_buffer_->Channels(), 0);
+  const size_t concealed_samples_per_channel =
+      concealment_audio_.size() / channels;
+
+  // Update in-call and post-call statistics.
+  const bool is_new_concealment_event = (last_mode_ != kModeCodecPlc);
+  if (std::all_of(concealment_audio_.cbegin(), concealment_audio_.cend(),
+                  [](int16_t i) { return i == 0; })) {
+    // Expand operation generates only noise.
+    stats_.ExpandedNoiseSamples(concealed_samples_per_channel,
+                                is_new_concealment_event);
+  } else {
+    // Expand operation generates more than only noise.
+    stats_.ExpandedVoiceSamples(concealed_samples_per_channel,
+                                is_new_concealment_event);
+  }
+  last_mode_ = kModeCodecPlc;
+  if (!generated_noise_stopwatch_) {
+    // Start a new stopwatch since we may be covering for a lost CNG packet.
+    generated_noise_stopwatch_ = tick_timer_->GetNewStopwatch();
+  }
+  return true;
 }
 
 int NetEqImpl::DoExpand(bool play_dtmf) {

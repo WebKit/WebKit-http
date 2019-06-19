@@ -2,7 +2,7 @@
  * Copyright (C) 2004, 2005, 2007 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
  * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -37,7 +37,13 @@ inline SVGFEBlendElement::SVGFEBlendElement(const QualifiedName& tagName, Docume
     : SVGFilterPrimitiveStandardAttributes(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::feBlendTag));
-    registerAttributes();
+    
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::modeAttr, BlendMode, &SVGFEBlendElement::m_mode>();
+        PropertyRegistry::registerProperty<SVGNames::inAttr, &SVGFEBlendElement::m_in1>();
+        PropertyRegistry::registerProperty<SVGNames::in2Attr, &SVGFEBlendElement::m_in2>();
+    });
 }
 
 Ref<SVGFEBlendElement> SVGFEBlendElement::create(const QualifiedName& tagName, Document& document)
@@ -45,32 +51,22 @@ Ref<SVGFEBlendElement> SVGFEBlendElement::create(const QualifiedName& tagName, D
     return adoptRef(*new SVGFEBlendElement(tagName, document));
 }
     
-void SVGFEBlendElement::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::inAttr, &SVGFEBlendElement::m_in1>();
-    registry.registerAttribute<SVGNames::in2Attr, &SVGFEBlendElement::m_in2>();
-    registry.registerAttribute<SVGNames::modeAttr, BlendMode, &SVGFEBlendElement::m_mode>();
-}
-
-void SVGFEBlendElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void SVGFEBlendElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == SVGNames::modeAttr) {
         BlendMode mode = BlendMode::Normal;
         if (parseBlendMode(value, mode))
-            m_mode.setValue(mode);
+            m_mode->setBaseValInternal<BlendMode>(mode);
         return;
     }
 
     if (name == SVGNames::inAttr) {
-        m_in1.setValue(value);
+        m_in1->setBaseValInternal(value);
         return;
     }
 
     if (name == SVGNames::in2Attr) {
-        m_in2.setValue(value);
+        m_in2->setBaseValInternal(value);
         return;
     }
 
@@ -104,7 +100,7 @@ void SVGFEBlendElement::svgAttributeChanged(const QualifiedName& attrName)
     SVGFilterPrimitiveStandardAttributes::svgAttributeChanged(attrName);
 }
 
-RefPtr<FilterEffect> SVGFEBlendElement::build(SVGFilterBuilder* filterBuilder, Filter& filter)
+RefPtr<FilterEffect> SVGFEBlendElement::build(SVGFilterBuilder* filterBuilder, Filter& filter) const
 {
     auto input1 = filterBuilder->getEffectById(in1());
     auto input2 = filterBuilder->getEffectById(in2());
@@ -112,7 +108,7 @@ RefPtr<FilterEffect> SVGFEBlendElement::build(SVGFilterBuilder* filterBuilder, F
     if (!input1 || !input2)
         return nullptr;
 
-    RefPtr<FilterEffect> effect = FEBlend::create(filter, mode());
+    auto effect = FEBlend::create(filter, mode());
     FilterEffectVector& inputEffects = effect->inputEffects();
     inputEffects.reserveCapacity(2);
     inputEffects.append(input1);

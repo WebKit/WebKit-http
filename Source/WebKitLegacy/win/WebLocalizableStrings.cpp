@@ -81,7 +81,7 @@ private:
 LocalizedString::operator LPCTSTR() const
 {
     if (!m_string.isEmpty())
-        return m_string.charactersWithNullTermination().data();
+        return m_string.wideCharacters().data();
 
     m_string = m_cfString;
 
@@ -89,7 +89,7 @@ LocalizedString::operator LPCTSTR() const
         if (m_string[i] == '@' && (m_string[i - 1] == '%' || (i > 2 && m_string[i - 1] == '$' && m_string[i - 2] >= '1' && m_string[i - 2] <= '9' && m_string[i - 3] == '%')))
             m_string.replace(i, 1, "s");
 
-    return m_string.charactersWithNullTermination().data();
+    return m_string.wideCharacters().data();
 }
 
 static CFBundleRef createWebKitBundle()
@@ -161,7 +161,7 @@ static CFStringRef copyLocalizedStringFromBundle(WebLocalizableStringsBundle* st
 
     CFStringRef result = CFCopyLocalizedStringWithDefaultValue(key.createCFString().get(), 0, bundle, notFound, 0);
 
-    ASSERT_WITH_MESSAGE(result != notFound, "could not find localizable string %s in bundle", key);
+    ASSERT_WITH_MESSAGE(result != notFound, "could not find localizable string %s in bundle", key.utf8().data());
     return result;
 }
 

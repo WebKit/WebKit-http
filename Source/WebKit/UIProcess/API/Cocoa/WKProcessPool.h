@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 /*! A WKProcessPool object represents a pool of web content processes.
@@ -35,8 +33,6 @@
  implementation-defined process limit is reached; after that, web views
  with the same process pool end up sharing web content processes.
  */
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface WKProcessPool : NSObject <NSSecureCoding>
 @end
-
-#endif

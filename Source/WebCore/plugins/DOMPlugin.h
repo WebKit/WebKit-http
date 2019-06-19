@@ -30,7 +30,8 @@ namespace WebCore {
 class Plugin;
 class PluginData;
 
-class DOMPlugin : public ScriptWrappable, public RefCounted<DOMPlugin>, public FrameDestructionObserver {
+class DOMPlugin final : public ScriptWrappable, public RefCounted<DOMPlugin>, public FrameDestructionObserver {
+    WTF_MAKE_ISO_ALLOCATED(DOMPlugin);
 public:
     static Ref<DOMPlugin> create(PluginData* pluginData, Frame* frame, PluginInfo pluginInfo) { return adoptRef(*new DOMPlugin(pluginData, frame, WTFMove(pluginInfo))); }
     ~DOMPlugin();
@@ -42,8 +43,8 @@ public:
     unsigned length() const;
 
     RefPtr<DOMMimeType> item(unsigned index);
-    RefPtr<DOMMimeType> namedItem(const AtomicString& propertyName);
-    Vector<AtomicString> supportedPropertyNames();
+    RefPtr<DOMMimeType> namedItem(const AtomString& propertyName);
+    Vector<AtomString> supportedPropertyNames();
 
 private:
     DOMPlugin(PluginData*, Frame*, PluginInfo);

@@ -33,6 +33,10 @@
 #include "ServiceWorkerGlobalScope.h"
 #endif
 
+namespace JSC {
+class JSProxy;
+}
+
 namespace WebCore {
 
 class JSDedicatedWorkerGlobalScope;

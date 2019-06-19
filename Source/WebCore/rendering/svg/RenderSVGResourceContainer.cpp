@@ -122,6 +122,10 @@ void RenderSVGResourceContainer::markAllClientsForInvalidation(InvalidationMode 
 
 void RenderSVGResourceContainer::markAllClientLayersForInvalidation()
 {
+    if (m_clientLayers.isEmpty())
+        return;
+    if ((*m_clientLayers.begin())->renderer().renderTreeBeingDestroyed())
+        return;
     for (auto* clientLayer : m_clientLayers)
         clientLayer->filterNeedsRepaint();
 }
@@ -171,19 +175,19 @@ void RenderSVGResourceContainer::registerResource()
 {
     SVGDocumentExtensions& extensions = svgExtensionsFromElement(element());
     if (!extensions.isIdOfPendingResource(m_id)) {
-        extensions.addResource(m_id, this);
+        extensions.addResource(m_id, *this);
         return;
     }
 
     std::unique_ptr<SVGDocumentExtensions::PendingElements> clients = extensions.removePendingResource(m_id);
 
     // Cache us with the new id.
-    extensions.addResource(m_id, this);
+    extensions.addResource(m_id, *this);
 
     // Update cached resources of pending clients.
     for (auto* client : *clients) {
         ASSERT(client->hasPendingResources());
-        extensions.clearHasPendingResourcesIfPossible(client);
+        extensions.clearHasPendingResourcesIfPossible(*client);
         auto* renderer = client->renderer();
         if (!renderer)
             continue;

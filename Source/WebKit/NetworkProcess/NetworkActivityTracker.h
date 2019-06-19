@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if USE(APPLE_INTERNAL_SDK) && ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000) || PLATFORM(WATCHOS))
+#if USE(APPLE_INTERNAL_SDK) && ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000) || PLATFORM(WATCHOS))
 #define HAVE_NW_ACTIVITY 1
 #endif
 
@@ -64,7 +64,8 @@ public:
         Failure,
     };
 
-    NetworkActivityTracker(Label, Domain = Domain::WebKit);
+    NetworkActivityTracker() = default;
+    explicit NetworkActivityTracker(Label, Domain = Domain::WebKit);
     ~NetworkActivityTracker();
 
     void setParent(NetworkActivityTracker&);
@@ -77,8 +78,8 @@ public:
 
 private:
 #if HAVE(NW_ACTIVITY)
-    Domain m_domain;
-    Label m_label;
+    Domain m_domain { Domain::Invalid };
+    Label m_label { Label::Invalid };
     bool m_isCompleted { false };
     RetainPtr<nw_activity_t> m_networkActivity;
 #endif

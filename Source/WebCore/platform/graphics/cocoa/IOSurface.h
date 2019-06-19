@@ -31,6 +31,10 @@
 #include "GraphicsContext.h"
 #include "IntSize.h"
 
+#if PLATFORM(IOS_FAMILY)
+#define HAVE_IOSURFACE_RGB10 1
+#endif
+
 namespace WTF {
 class MachSendRight;
 class TextStream;
@@ -40,14 +44,20 @@ namespace WebCore {
 
 class HostWindow;
     
+#if USE(IOSURFACE_CANVAS_BACKING_STORE)
+class ImageBuffer;
+#endif
+
 class IOSurface final {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     enum class Format {
         RGBA,
         YUV422,
+#if HAVE(IOSURFACE_RGB10)
         RGB10,
         RGB10A8,
+#endif
     };
     
     class Locker {

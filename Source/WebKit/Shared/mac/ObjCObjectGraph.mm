@@ -26,17 +26,14 @@
 #import "config.h"
 #import "ObjCObjectGraph.h"
 
-#import "ArgumentCodersMac.h"
+#import "ArgumentCodersCocoa.h"
 #import "Decoder.h"
 #import "Encoder.h"
-#import <wtf/Optional.h>
-
-#if WK_API_ENABLED
 #import "UserData.h"
 #import "WKAPICast.h"
 #import "WKBrowsingContextHandleInternal.h"
 #import "WKTypeRefWrapper.h"
-#endif
+#import <wtf/Optional.h>
 
 namespace WebKit {
 
@@ -107,13 +104,11 @@ enum class ObjCType {
     NSNumber,
     NSString,
 
-#if WK_API_ENABLED
     WKBrowsingContextHandle,
     WKTypeRefWrapper,
-#endif
 };
 
-static std::optional<ObjCType> typeFromObject(id object)
+static Optional<ObjCType> typeFromObject(id object)
 {
     ASSERT(object);
 
@@ -130,14 +125,14 @@ static std::optional<ObjCType> typeFromObject(id object)
     if (dynamic_objc_cast<NSString>(object))
         return ObjCType::NSString;
 
-#if WK_API_ENABLED
     if (dynamic_objc_cast<WKBrowsingContextHandle>(object))
         return ObjCType::WKBrowsingContextHandle;
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if (dynamic_objc_cast<WKTypeRefWrapper>(object))
         return ObjCType::WKTypeRefWrapper;
-#endif
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 void ObjCObjectGraph::encode(IPC::Encoder& encoder, id object)
@@ -190,15 +185,15 @@ void ObjCObjectGraph::encode(IPC::Encoder& encoder, id object)
         IPC::encode(encoder, static_cast<NSString *>(object));
         break;
 
-#if WK_API_ENABLED
     case ObjCType::WKBrowsingContextHandle:
         encoder << static_cast<WKBrowsingContextHandle *>(object).pageID;
         break;
 
     case ObjCType::WKTypeRefWrapper:
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         UserData::encode(encoder, toImpl(static_cast<WKTypeRefWrapper *>(object).object));
+        ALLOW_DEPRECATED_DECLARATIONS_END
         break;
-#endif
 
     default:
         ASSERT_NOT_REACHED();
@@ -302,13 +297,13 @@ bool ObjCObjectGraph::decode(IPC::Decoder& decoder, RetainPtr<id>& result)
         break;
     }
 
-#if WK_API_ENABLED
     case ObjCType::WKBrowsingContextHandle: {
-        uint64_t pageID;
-        if (!decoder.decode(pageID))
+        Optional<WebCore::PageIdentifier> pageID;
+        decoder >> pageID;
+        if (!pageID)
             return false;
 
-        result = adoptNS([[WKBrowsingContextHandle alloc] _initWithPageID:pageID]);
+        result = adoptNS([[WKBrowsingContextHandle alloc] _initWithPageID:*pageID]);
         break;
     }
 
@@ -317,10 +312,11 @@ bool ObjCObjectGraph::decode(IPC::Decoder& decoder, RetainPtr<id>& result)
         if (!UserData::decode(decoder, object))
             return false;
 
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         result = adoptNS([[WKTypeRefWrapper alloc] initWithObject:toAPI(object.get())]);
+        ALLOW_DEPRECATED_DECLARATIONS_END
         break;
     }
-#endif
 
     default:
         return false;

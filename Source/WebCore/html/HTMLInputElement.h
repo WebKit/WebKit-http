@@ -30,7 +30,7 @@
 #include <memory>
 #include <wtf/WeakPtr.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "DateComponents.h"
 #endif
 
@@ -44,7 +44,6 @@ class Icon;
 class InputType;
 class ListAttributeTargetObserver;
 class RadioButtonGroups;
-class URL;
 
 struct DateTimeChooserParameters;
 
@@ -55,7 +54,7 @@ struct InputElementClickState {
     RefPtr<HTMLInputElement> checkedRadioButton;
 };
 
-class HTMLInputElement : public HTMLTextFormControlElement, public CanMakeWeakPtr<HTMLInputElement> {
+class HTMLInputElement : public HTMLTextFormControlElement {
     WTF_MAKE_ISO_ALLOCATED(HTMLInputElement);
 public:
     static Ref<HTMLInputElement> create(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
@@ -87,7 +86,7 @@ public:
     StepRange createStepRange(AnyStepHandling) const;
 
 #if ENABLE(DATALIST_ELEMENT)
-    std::optional<Decimal> findClosestTickMarkValue(const Decimal&);
+    Optional<Decimal> findClosestTickMarkValue(const Decimal&);
 #endif
 
     WEBCORE_EXPORT ExceptionOr<void> stepUp(int = 1);
@@ -132,7 +131,7 @@ public:
     WEBCORE_EXPORT bool isTimeField() const;
     WEBCORE_EXPORT bool isWeekField() const;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     DateComponents::Type dateType() const;
 #endif
 
@@ -155,7 +154,7 @@ public:
 #endif
 
     bool checked() const { return m_isChecked; }
-    WEBCORE_EXPORT void setChecked(bool, TextFieldEventBehavior = DispatchNoEvent);
+    WEBCORE_EXPORT void setChecked(bool);
 
     // 'indeterminate' is a state independent of the checked state that causes the control to draw in a way that hides the actual state.
     bool indeterminate() const { return m_isIndeterminate; }
@@ -169,7 +168,7 @@ public:
     bool sizeShouldIncludeDecoration(int& preferredSize) const;
     float decorationWidth() const;
 
-    WEBCORE_EXPORT void setType(const AtomicString&);
+    WEBCORE_EXPORT void setType(const AtomString&);
 
     WEBCORE_EXPORT String value() const final;
     WEBCORE_EXPORT ExceptionOr<void> setValue(const String&, TextFieldEventBehavior = DispatchNoEvent);
@@ -185,8 +184,6 @@ public:
 
     // The value which is drawn by a renderer.
     String visibleValue() const;
-
-    WEBCORE_EXPORT void setEditingValue(const String&);
 
     WEBCORE_EXPORT double valueAsDate() const;
     WEBCORE_EXPORT ExceptionOr<void> setValueAsDate(double);
@@ -314,7 +311,7 @@ public:
     void blur() final;
     void defaultBlur();
 
-    const AtomicString& name() const final;
+    const AtomString& name() const final;
 
     void endEditing();
 
@@ -378,7 +375,7 @@ private:
 
     bool canTriggerImplicitSubmission() const final { return isTextField(); }
 
-    const AtomicString& formControlType() const final;
+    const AtomString& formControlType() const final;
 
     bool shouldSaveAndRestoreFormControlState() const final;
     FormControlState saveFormControlState() const final;
@@ -390,9 +387,9 @@ private:
 
     void accessKeyAction(bool sendMouseEvents) final;
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
     bool isPresentationAttribute(const QualifiedName&) const final;
-    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomString&, MutableStyleProperties&) final;
     void finishParsingChildren() final;
     void parserDidSetAttributes() final;
 
@@ -448,19 +445,21 @@ private:
 #if ENABLE(DATALIST_ELEMENT)
     void resetListAttributeTargetObserver();
 #endif
-    void maxLengthAttributeChanged(const AtomicString& newValue);
-    void minLengthAttributeChanged(const AtomicString& newValue);
+    void maxLengthAttributeChanged(const AtomString& newValue);
+    void minLengthAttributeChanged(const AtomString& newValue);
     void updateValueIfNeeded();
 
     void addToRadioButtonGroup();
     void removeFromRadioButtonGroup();
 
-    AtomicString m_name;
+    void setDefaultSelectionAfterFocus(SelectionRevealMode);
+
+    AtomString m_name;
     String m_valueIfDirty;
     unsigned m_size;
     short m_maxResults { -1 };
     bool m_isChecked : 1;
-    bool m_reflectsCheckedAttribute : 1;
+    bool m_dirtyCheckednessFlag : 1;
     bool m_isIndeterminate : 1;
     bool m_hasType : 1;
     bool m_isActivatedSubmit : 1;

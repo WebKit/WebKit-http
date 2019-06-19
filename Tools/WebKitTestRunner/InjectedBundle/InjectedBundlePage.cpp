@@ -50,7 +50,7 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
-#if USE(CF) && !PLATFORM(QT)
+#if USE(CF) && !PLATFORM(QT) && !PLATFORM(WIN_CAIRO)
 #include "WebArchiveDumpSupport.h"
 #endif
 
@@ -62,16 +62,11 @@ using namespace std;
 
 namespace WTR {
 
-static bool hasPrefix(const WTF::String& searchString, const WTF::String& prefix)
-{
-    return searchString.length() >= prefix.length() && searchString.substring(0, prefix.length()) == prefix;
-}
-
 static JSValueRef propertyValue(JSContextRef context, JSObjectRef object, const char* propertyName)
 {
     if (!object)
         return 0;
-    JSRetainPtr<JSStringRef> propertyNameString(Adopt, JSStringCreateWithUTF8CString(propertyName));
+    auto propertyNameString = adopt(JSStringCreateWithUTF8CString(propertyName));
     return JSObjectGetProperty(context, object, propertyNameString.get(), 0);
 }
 
@@ -97,7 +92,7 @@ static double numericWindowPropertyValue(WKBundleFrameRef frame, const char* pro
 static WTF::String dumpPath(JSGlobalContextRef context, JSObjectRef nodeValue)
 {
     JSValueRef nodeNameValue = propertyValue(context, nodeValue, "nodeName");
-    JSRetainPtr<JSStringRef> jsStringNodeName(Adopt, JSValueToStringCopy(context, nodeNameValue, 0));
+    auto jsStringNodeName = adopt(JSValueToStringCopy(context, nodeNameValue, 0));
     WKRetainPtr<WKStringRef> nodeName = toWK(jsStringNodeName);
 
     JSValueRef parentNode = propertyValue(context, nodeValue, "parentNode");
@@ -132,7 +127,7 @@ static WTF::String rangeToStr(WKBundlePageRef page, WKBundleScriptWorldRef world
 {
     if (!rangeRef)
         return "(null)";
- 
+
     WKBundleFrameRef frame = WKBundlePageGetMainFrame(page);
 
     JSGlobalContextRef context = WKBundleFrameGetJavaScriptContextForWorld(frame, world);
@@ -208,7 +203,7 @@ static WTF::String securityOriginToStr(WKSecurityOriginRef origin)
 
 static WTF::String frameToStr(WKBundleFrameRef frame)
 {
-    WKRetainPtr<WKStringRef> name(AdoptWK, WKBundleFrameCopyName(frame));
+    WKRetainPtr<WKStringRef> name = adoptWK(WKBundleFrameCopyName(frame));
     StringBuilder stringBuilder;
     if (WKBundleFrameIsMainFrame(frame)) {
         if (!WKStringIsEmpty(name.get())) {
@@ -276,7 +271,7 @@ static inline void dumpResourceURL(uint64_t identifier, StringBuilder& stringBui
 
 InjectedBundlePage::InjectedBundlePage(WKBundlePageRef page)
     : m_page(page)
-    , m_world(AdoptWK, WKBundleScriptWorldCreateWorld())
+    , m_world(adoptWK(WKBundleScriptWorldCreateWorld()))
 {
     WKBundlePageLoaderClientV9 loaderClient = {
         { 9, this },
@@ -367,8 +362,8 @@ InjectedBundlePage::InjectedBundlePage(WKBundlePageRef page)
     };
     WKBundlePageSetUIClient(m_page, &uiClient.base);
 
-    WKBundlePageEditorClientV2 editorClient = {
-        { 2, this },
+    WKBundlePageEditorClientV1 editorClient = {
+        { 1, this },
         shouldBeginEditing,
         shouldEndEditing,
         shouldInsertNode,
@@ -384,7 +379,6 @@ InjectedBundlePage::InjectedBundlePage(WKBundlePageRef page)
         0, /* getPasteboardDataForRange */
         0, /* didWriteToPasteboard */
         0, /* performTwoStepDrop */
-        0, /* replacementURLForResource */
     };
     WKBundlePageSetEditorClient(m_page, &editorClient.base);
 
@@ -420,8 +414,8 @@ void InjectedBundlePage::prepare()
 
     WKPoint origin = { 0, 0 };
     WKBundlePageSetScaleAtOrigin(m_page, 1, origin);
-
-    m_previousTestBackForwardListItem = adoptWK(WKBundleBackForwardListCopyItemAtIndex(WKBundlePageGetBackForwardList(m_page), 0));
+    
+    WKBundleClearHistoryForTesting(m_page);
 
     WKBundleFrameClearOpener(WKBundlePageGetMainFrame(m_page));
     
@@ -430,10 +424,6 @@ void InjectedBundlePage::prepare()
     // Force consistent "responsive" behavior for WebPage::eventThrottlingDelay() for testing. Tests can override via internals.
     WKEventThrottlingBehavior behavior = kWKEventThrottlingBehaviorResponsive;
     WKBundlePageSetEventThrottlingBehaviorOverride(m_page, &behavior);
-    
-    // Force consistent compositing behavior, even if the test runner is under memory pressure. Tests can override via internals.
-    WKCompositingPolicy policy = kWKCompositingPolicyNormal;
-    WKBundlePageSetCompositingPolicyOverride(m_page, &policy);
 }
 
 void InjectedBundlePage::resetAfterTest()
@@ -465,7 +455,7 @@ void InjectedBundlePage::resetAfterTest()
 // String output must be identical to -[WebFrame _drt_descriptionSuitableForTestResult].
 static void dumpFrameDescriptionSuitableForTestResult(WKBundleFrameRef frame, StringBuilder& stringBuilder)
 {
-    WKRetainPtr<WKStringRef> name(AdoptWK, WKBundleFrameCopyName(frame));
+    WKRetainPtr<WKStringRef> name = adoptWK(WKBundleFrameCopyName(frame));
     if (WKBundleFrameIsMainFrame(frame)) {
         if (WKStringIsEmpty(name.get())) {
             stringBuilder.appendLiteral("main frame");
@@ -794,21 +784,21 @@ static void dumpFrameScrollPosition(WKBundleFrameRef frame, StringBuilder& strin
         return;
 
     if (shouldIncludeFrameName) {
-        WKRetainPtr<WKStringRef> name(AdoptWK, WKBundleFrameCopyName(frame));
+        WKRetainPtr<WKStringRef> name = adoptWK(WKBundleFrameCopyName(frame));
         stringBuilder.appendLiteral("frame '");
         stringBuilder.append(toWTFString(name));
         stringBuilder.appendLiteral("' ");
     }
     stringBuilder.appendLiteral("scrolled to ");
-    stringBuilder.appendECMAScriptNumber(x);
+    stringBuilder.appendNumber(x);
     stringBuilder.append(',');
-    stringBuilder.appendECMAScriptNumber(y);
+    stringBuilder.appendNumber(y);
     stringBuilder.append('\n');
 }
 
 static void dumpDescendantFrameScrollPositions(WKBundleFrameRef frame, StringBuilder& stringBuilder)
 {
-    WKRetainPtr<WKArrayRef> childFrames(AdoptWK, WKBundleFrameCopyChildFrames(frame));
+    WKRetainPtr<WKArrayRef> childFrames = adoptWK(WKBundleFrameCopyChildFrames(frame));
     size_t size = WKArrayGetSize(childFrames.get());
     for (size_t i = 0; i < size; ++i) {
         WKBundleFrameRef subframe = static_cast<WKBundleFrameRef>(WKArrayGetItemAtIndex(childFrames.get(), i));
@@ -826,7 +816,7 @@ void InjectedBundlePage::dumpAllFrameScrollPositions(StringBuilder& stringBuilde
 
 static JSRetainPtr<JSStringRef> toJS(const char* string)
 {
-    return JSRetainPtr<JSStringRef>(Adopt, JSStringCreateWithUTF8CString(string));
+    return adopt(JSStringCreateWithUTF8CString(string));
 }
 
 static bool hasDocumentElement(WKBundleFrameRef frame)
@@ -856,18 +846,18 @@ static void dumpFrameText(WKBundleFrameRef frame, StringBuilder& stringBuilder)
     if (!hasDocumentElement(frame))
         return;
 
-    WKRetainPtr<WKStringRef> text(AdoptWK, WKBundleFrameCopyInnerText(frame));
+    WKRetainPtr<WKStringRef> text = adoptWK(WKBundleFrameCopyInnerText(frame));
     stringBuilder.append(toWTFString(text));
     stringBuilder.append('\n');
 }
 
 static void dumpDescendantFramesText(WKBundleFrameRef frame, StringBuilder& stringBuilder)
 {
-    WKRetainPtr<WKArrayRef> childFrames(AdoptWK, WKBundleFrameCopyChildFrames(frame));
+    WKRetainPtr<WKArrayRef> childFrames = adoptWK(WKBundleFrameCopyChildFrames(frame));
     size_t size = WKArrayGetSize(childFrames.get());
     for (size_t i = 0; i < size; ++i) {
         WKBundleFrameRef subframe = static_cast<WKBundleFrameRef>(WKArrayGetItemAtIndex(childFrames.get(), i));
-        WKRetainPtr<WKStringRef> subframeName(AdoptWK, WKBundleFrameCopyName(subframe));
+        WKRetainPtr<WKStringRef> subframeName = adoptWK(WKBundleFrameCopyName(subframe));
 
         // DumpRenderTree ignores empty frames, so do the same thing here.
         if (!hasDocumentElement(subframe))
@@ -892,7 +882,7 @@ void InjectedBundlePage::dumpAllFramesText(StringBuilder& stringBuilder)
 
 void InjectedBundlePage::dumpDOMAsWebArchive(WKBundleFrameRef frame, StringBuilder& stringBuilder)
 {
-#if USE(CF) && !PLATFORM(QT)
+#if USE(CF) && !PLATFORM(QT) && !PLATFORM(WIN_CAIRO)
     WKRetainPtr<WKDataRef> wkData = adoptWK(WKBundleFrameCopyWebArchive(frame));
     RetainPtr<CFDataRef> cfData = adoptCF(CFDataCreate(0, WKDataGetBytes(wkData.get()), WKDataGetSize(wkData.get())));
     RetainPtr<CFStringRef> cfString = adoptCF(WebCoreTestSupport::createXMLStringFromWebArchiveData(cfData.get()));
@@ -926,7 +916,7 @@ void InjectedBundlePage::dump()
         if (injectedBundle.testRunner()->isPrinting())
             stringBuilder.append(toWTFString(adoptWK(WKBundlePageCopyRenderTreeExternalRepresentationForPrinting(m_page)).get()));
         else
-            stringBuilder.append(toWTFString(adoptWK(WKBundlePageCopyRenderTreeExternalRepresentation(m_page)).get()));
+            stringBuilder.append(toWTFString(adoptWK(WKBundlePageCopyRenderTreeExternalRepresentation(m_page, injectedBundle.testRunner()->renderTreeDumpOptions())).get()));
         break;
     }
     case WhatToDump::MainFrameText:
@@ -1231,7 +1221,8 @@ WKURLRequestRef InjectedBundlePage::willSendRequestForFrame(WKBundlePageRef page
         String body = injectedBundle.testRunner()->willSendRequestHTTPBody();
         if (!body.isEmpty()) {
             CString cBody = body.utf8();
-            return WKURLRequestCopySettingHTTPBody(request, WKDataCreate(reinterpret_cast<const unsigned char*>(cBody.data()), cBody.length()));
+            WKRetainPtr<WKDataRef> body = adoptWK(WKDataCreate(reinterpret_cast<const unsigned char*>(cBody.data()), cBody.length()));
+            return WKURLRequestCopySettingHTTPBody(request, body.get());
         }
     }
 
@@ -1392,10 +1383,11 @@ WKBundlePagePolicyAction InjectedBundlePage::decidePolicyForNavigationAction(WKB
     stringBuilder.appendLiteral(" with navigation type \'");
     stringBuilder.append(toWTFString(NavigationTypeToString(WKBundleNavigationActionGetNavigationType(navigationAction))));
     stringBuilder.appendLiteral("\'");
-    WKBundleHitTestResultRef hitTestResultRef = WKBundleNavigationActionCopyHitTestResult(navigationAction);
+    WKRetainPtr<WKBundleHitTestResultRef> hitTestResultRef = adoptWK(WKBundleNavigationActionCopyHitTestResult(navigationAction));
     if (hitTestResultRef) {
+        WKRetainPtr<WKBundleNodeHandleRef> nodeHandleRef = adoptWK(WKBundleHitTestResultCopyNodeHandle(hitTestResultRef.get()));
         stringBuilder.appendLiteral(" originating from ");
-        stringBuilder.append(dumpPath(m_page, m_world.get(), WKBundleHitTestResultCopyNodeHandle(hitTestResultRef)));
+        stringBuilder.append(dumpPath(m_page, m_world.get(), nodeHandleRef.get()));
     }
 
     stringBuilder.append('\n');
@@ -1959,93 +1951,13 @@ void InjectedBundlePage::closeFullScreen(WKBundlePageRef pageRef)
 }
 #endif
 
-static bool compareByTargetName(WKBundleBackForwardListItemRef item1, WKBundleBackForwardListItemRef item2)
+String InjectedBundlePage::dumpHistory()
 {
-    return toSTD(adoptWK(WKBundleBackForwardListItemCopyTarget(item1))) < toSTD(adoptWK(WKBundleBackForwardListItemCopyTarget(item2)));
-}
-
-static void dumpBackForwardListItem(WKBundleBackForwardListItemRef item, unsigned indent, bool isCurrentItem, StringBuilder& stringBuilder)
-{
-    unsigned column = 0;
-    if (isCurrentItem) {
-        stringBuilder.appendLiteral("curr->");
-        column = 6;
-    }
-    for (unsigned i = column; i < indent; i++)
-        stringBuilder.append(' ');
-
-    WTF::String url = toWTFString(adoptWK(WKURLCopyString(adoptWK(WKBundleBackForwardListItemCopyURL(item)).get())));
-    if (hasPrefix(url, "file:")) {
-        WTF::String directoryName = "/LayoutTests/";
-        size_t start = url.find(directoryName);
-        if (start == WTF::notFound)
-            start = 0;
-        else
-            start += directoryName.length();
-        stringBuilder.appendLiteral("(file test):");
-        stringBuilder.append(url.substring(start));
-    } else
-        stringBuilder.append(url);
-
-    WTF::String target = toWTFString(adoptWK(WKBundleBackForwardListItemCopyTarget(item)));
-    if (target.length()) {
-        stringBuilder.appendLiteral(" (in frame \"");
-        stringBuilder.append(target);
-        stringBuilder.appendLiteral("\")");
-    }
-
-    // FIXME: Need WKBackForwardListItemIsTargetItem.
-    if (WKBundleBackForwardListItemIsTargetItem(item))
-        stringBuilder.appendLiteral("  **nav target**");
-
-    stringBuilder.append('\n');
-
-    if (WKRetainPtr<WKArrayRef> kids = adoptWK(WKBundleBackForwardListItemCopyChildren(item))) {
-        // Sort to eliminate arbitrary result ordering which defeats reproducible testing.
-        size_t size = WKArrayGetSize(kids.get());
-        Vector<WKBundleBackForwardListItemRef> sortedKids(size);
-        for (size_t i = 0; i < size; ++i)
-            sortedKids[i] = static_cast<WKBundleBackForwardListItemRef>(WKArrayGetItemAtIndex(kids.get(), i));
-        stable_sort(sortedKids.begin(), sortedKids.end(), compareByTargetName);
-        for (size_t i = 0; i < size; ++i)
-            dumpBackForwardListItem(sortedKids[i], indent + 4, false, stringBuilder);
-    }
-}
-
-void InjectedBundlePage::dumpBackForwardList(StringBuilder& stringBuilder)
-{
-    stringBuilder.appendLiteral("\n============== Back Forward List ==============\n");
-
-    WKBundleBackForwardListRef list = WKBundlePageGetBackForwardList(m_page);
-
-    // Print out all items in the list after m_previousTestBackForwardListItem.
-    // Gather items from the end of the list, then print them out from oldest to newest.
-    Vector<WKRetainPtr<WKBundleBackForwardListItemRef> > itemsToPrint;
-    for (unsigned i = WKBundleBackForwardListGetForwardListCount(list); i; --i) {
-        WKRetainPtr<WKBundleBackForwardListItemRef> item = adoptWK(WKBundleBackForwardListCopyItemAtIndex(list, i));
-        // Something is wrong if the item from the last test is in the forward part of the list.
-        ASSERT(!m_previousTestBackForwardListItem || !WKBundleBackForwardListItemIsSame(item.get(), m_previousTestBackForwardListItem.get()));
-        itemsToPrint.append(item);
-    }
-
-    ASSERT(!m_previousTestBackForwardListItem || !WKBundleBackForwardListItemIsSame(adoptWK(WKBundleBackForwardListCopyItemAtIndex(list, 0)).get(), m_previousTestBackForwardListItem.get()));
-
-    itemsToPrint.append(adoptWK(WKBundleBackForwardListCopyItemAtIndex(list, 0)));
-
-    int currentItemIndex = itemsToPrint.size() - 1;
-
-    int backListCount = WKBundleBackForwardListGetBackListCount(list);
-    for (int i = -1; i >= -backListCount; --i) {
-        WKRetainPtr<WKBundleBackForwardListItemRef> item = adoptWK(WKBundleBackForwardListCopyItemAtIndex(list, i));
-        if (m_previousTestBackForwardListItem && WKBundleBackForwardListItemIsSame(item.get(), m_previousTestBackForwardListItem.get()))
-            break;
-        itemsToPrint.append(item);
-    }
-
-    for (int i = itemsToPrint.size() - 1; i >= 0; i--)
-        dumpBackForwardListItem(itemsToPrint[i].get(), 8, i == currentItemIndex, stringBuilder);
-
-    stringBuilder.appendLiteral("===============================================\n");
+    return makeString(
+        "\n============== Back Forward List ==============\n",
+        toWTFString(adoptWK(WKBundlePageDumpHistoryForTesting(m_page, toWK("/LayoutTests/").get())).get()),
+        "===============================================\n"
+    );
 }
 
 #if !PLATFORM(COCOA)

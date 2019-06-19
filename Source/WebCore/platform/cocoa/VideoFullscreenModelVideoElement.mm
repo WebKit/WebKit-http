@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 #import "VideoFullscreenModelVideoElement.h"
 
 #import "DOMWindow.h"
@@ -45,21 +45,25 @@
 #import <wtf/NeverDestroyed.h>
 #import <wtf/SoftLinking.h>
 
-using namespace WebCore;
+namespace WebCore {
 
 VideoFullscreenModelVideoElement::VideoFullscreenModelVideoElement()
     : EventListener(EventListener::CPPEventListenerType)
 {
+    LOG(Fullscreen, "VideoFullscreenModelVideoElement %p ctor", this);
 }
 
 VideoFullscreenModelVideoElement::~VideoFullscreenModelVideoElement()
 {
+    LOG(Fullscreen, "VideoFullscreenModelVideoElement %p dtor", this);
 }
 
 void VideoFullscreenModelVideoElement::setVideoElement(HTMLVideoElement* videoElement)
 {
     if (m_videoElement == videoElement)
         return;
+
+    LOG(Fullscreen, "VideoFullscreenModelVideoElement %p setVideoElement(%p)", this, videoElement);
 
     if (m_videoElement && m_videoElement->videoFullscreenLayer())
         m_videoElement->setVideoFullscreenLayer(nullptr);
@@ -86,7 +90,7 @@ void VideoFullscreenModelVideoElement::handleEvent(WebCore::ScriptExecutionConte
     updateForEventName(event.type());
 }
 
-void VideoFullscreenModelVideoElement::updateForEventName(const WTF::AtomicString& eventName)
+void VideoFullscreenModelVideoElement::updateForEventName(const WTF::AtomString& eventName)
 {
     if (m_clients.isEmpty())
         return;
@@ -146,10 +150,8 @@ void VideoFullscreenModelVideoElement::requestFullscreenMode(HTMLMediaElementEnu
 
     if (m_videoElement && finishedWithMedia && mode == MediaPlayerEnums::VideoFullscreenModeNone) {
         if (m_videoElement->document().isMediaDocument()) {
-            if (DOMWindow* window = m_videoElement->document().domWindow()) {
-                if (History* history = window->history())
-                    history->back();
-            }
+            if (auto* window = m_videoElement->document().domWindow())
+                window->history().back();
         }
     }
 }
@@ -162,30 +164,20 @@ void VideoFullscreenModelVideoElement::setVideoLayerFrame(FloatRect rect)
         m_videoElement->setVideoFullscreenFrame(rect);
 }
 
-void VideoFullscreenModelVideoElement::setVideoLayerGravity(VideoFullscreenModel::VideoGravity gravity)
+void VideoFullscreenModelVideoElement::setVideoLayerGravity(MediaPlayerEnums::VideoGravity gravity)
 {
-    MediaPlayer::VideoGravity videoGravity = MediaPlayer::VideoGravityResizeAspect;
-    if (gravity == VideoFullscreenModel::VideoGravityResize)
-        videoGravity = MediaPlayer::VideoGravityResize;
-    else if (gravity == VideoFullscreenModel::VideoGravityResizeAspect)
-        videoGravity = MediaPlayer::VideoGravityResizeAspect;
-    else if (gravity == VideoFullscreenModel::VideoGravityResizeAspectFill)
-        videoGravity = MediaPlayer::VideoGravityResizeAspectFill;
-    else
-        ASSERT_NOT_REACHED();
-    
-    m_videoElement->setVideoFullscreenGravity(videoGravity);
+    m_videoElement->setVideoFullscreenGravity(gravity);
 }
 
-const Vector<AtomicString>& VideoFullscreenModelVideoElement::observedEventNames()
+const Vector<AtomString>& VideoFullscreenModelVideoElement::observedEventNames()
 {
-    static const auto names = makeNeverDestroyed(Vector<AtomicString> { eventNames().resizeEvent });
+    static const auto names = makeNeverDestroyed(Vector<AtomString> { eventNames().resizeEvent });
     return names;
 }
 
-const AtomicString& VideoFullscreenModelVideoElement::eventNameAll()
+const AtomString& VideoFullscreenModelVideoElement::eventNameAll()
 {
-    static NeverDestroyed<AtomicString> sEventNameAll = "allEvents";
+    static NeverDestroyed<AtomString> sEventNameAll = "allEvents";
     return sEventNameAll;
 }
 
@@ -193,6 +185,12 @@ void VideoFullscreenModelVideoElement::fullscreenModeChanged(HTMLMediaElementEnu
 {
     if (m_videoElement)
         m_videoElement->fullscreenModeChanged(videoFullscreenMode);
+}
+
+void VideoFullscreenModelVideoElement::requestRouteSharingPolicyAndContextUID(CompletionHandler<void(RouteSharingPolicy, String)>&& completionHandler)
+{
+    auto& session = AudioSession::sharedSession();
+    completionHandler(session.routeSharingPolicy(), session.routingContextUID());
 }
 
 void VideoFullscreenModelVideoElement::addClient(VideoFullscreenModelClient& client)
@@ -205,17 +203,6 @@ void VideoFullscreenModelVideoElement::removeClient(VideoFullscreenModelClient& 
 {
     ASSERT(m_clients.contains(&client));
     m_clients.remove(&client);
-}
-
-bool VideoFullscreenModelVideoElement::isVisible() const
-{
-    if (!m_videoElement)
-        return false;
-
-    if (Page* page = m_videoElement->document().page())
-        return page->isVisible();
-
-    return false;
 }
 
 void VideoFullscreenModelVideoElement::setHasVideo(bool hasVideo)
@@ -269,5 +256,7 @@ void VideoFullscreenModelVideoElement::didExitPictureInPicture()
     for (auto& client : m_clients)
         client->didExitPictureInPicture();
 }
+
+} // namespace WebCore
 
 #endif

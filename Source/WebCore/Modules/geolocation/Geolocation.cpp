@@ -42,6 +42,7 @@
 #include "PositionError.h"
 #include "RuntimeApplicationChecks.h"
 #include "SecurityOrigin.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Ref.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -52,7 +53,9 @@ static const ASCIILiteral failedToStartServiceErrorMessage { "Failed to start Ge
 static const ASCIILiteral framelessDocumentErrorMessage { "Geolocation cannot be used in frameless documents"_s };
 static const ASCIILiteral originCannotRequestGeolocationErrorMessage { "Origin does not have permission to use Geolocation service"_s };
 
-static RefPtr<Geoposition> createGeoposition(std::optional<GeolocationPosition>&& position)
+WTF_MAKE_ISO_ALLOCATED_IMPL(Geolocation);
+
+static RefPtr<Geoposition> createGeoposition(Optional<GeolocationPosition>&& position)
 {
     if (!position)
         return nullptr;
@@ -304,10 +307,10 @@ void Geolocation::getCurrentPosition(Ref<PositionCallback>&& successCallback, Re
     if (!frame())
         return;
 
-    RefPtr<GeoNotifier> notifier = GeoNotifier::create(*this, WTFMove(successCallback), WTFMove(errorCallback), WTFMove(options));
-    startRequest(notifier.get());
+    auto notifier = GeoNotifier::create(*this, WTFMove(successCallback), WTFMove(errorCallback), WTFMove(options));
+    startRequest(notifier.ptr());
 
-    m_oneShots.add(notifier);
+    m_oneShots.add(WTFMove(notifier));
 }
 
 int Geolocation::watchPosition(Ref<PositionCallback>&& successCallback, RefPtr<PositionErrorCallback>&& errorCallback, PositionOptions&& options)
@@ -315,14 +318,14 @@ int Geolocation::watchPosition(Ref<PositionCallback>&& successCallback, RefPtr<P
     if (!frame())
         return 0;
 
-    RefPtr<GeoNotifier> notifier = GeoNotifier::create(*this, WTFMove(successCallback), WTFMove(errorCallback), WTFMove(options));
-    startRequest(notifier.get());
+    auto notifier = GeoNotifier::create(*this, WTFMove(successCallback), WTFMove(errorCallback), WTFMove(options));
+    startRequest(notifier.ptr());
 
     int watchID;
     // Keep asking for the next id until we're given one that we don't already have.
     do {
         watchID = m_scriptExecutionContext->circularSequentialID();
-    } while (!m_watchers.add(watchID, WTFMove(notifier)));
+    } while (!m_watchers.add(watchID, notifier.copyRef()));
     return watchID;
 }
 
@@ -348,7 +351,7 @@ static bool isRequestFromIBooks()
 {
 #if PLATFORM(MAC)
     return MacApplication::isIBooks();
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     return IOSApplication::isIBooks();
 #endif
     return false;

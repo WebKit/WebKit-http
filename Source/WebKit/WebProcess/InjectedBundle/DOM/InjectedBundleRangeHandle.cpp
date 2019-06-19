@@ -41,6 +41,7 @@
 #include <WebCore/JSRange.h>
 #include <WebCore/Page.h>
 #include <WebCore/Range.h>
+#include <WebCore/RenderView.h>
 #include <WebCore/VisibleSelection.h>
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
@@ -77,7 +78,7 @@ RefPtr<InjectedBundleRangeHandle> InjectedBundleRangeHandle::getOrCreate(Range* 
 
     auto rangeHandle = InjectedBundleRangeHandle::create(*range);
     result.iterator->value = rangeHandle.ptr();
-    return WTFMove(rangeHandle);
+    return rangeHandle;
 }
 
 Ref<InjectedBundleRangeHandle> InjectedBundleRangeHandle::create(Range& range)
@@ -124,7 +125,7 @@ RefPtr<WebImage> InjectedBundleRangeHandle::renderedImage(SnapshotOptions option
         return nullptr;
 
 #if PLATFORM(MAC)
-    LocalDefaultSystemAppearance localAppearance(frame->page()->useSystemAppearance(), frame->page()->useDarkAppearance());
+    LocalDefaultSystemAppearance localAppearance(frameView->useDarkAppearance());
 #endif
 
     Ref<Frame> protector(*frame);
@@ -137,7 +138,7 @@ RefPtr<WebImage> InjectedBundleRangeHandle::renderedImage(SnapshotOptions option
     IntSize backingStoreSize = paintRect.size();
     backingStoreSize.scale(scaleFactor);
 
-    RefPtr<ShareableBitmap> backingStore = ShareableBitmap::createShareable(backingStoreSize, { });
+    auto backingStore = ShareableBitmap::createShareable(backingStoreSize, { });
     if (!backingStore)
         return nullptr;
 

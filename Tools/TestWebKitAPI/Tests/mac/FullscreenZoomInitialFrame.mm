@@ -120,8 +120,8 @@ void FullscreenZoomInitialFrame::initializeView(WKView *wkView)
 
     WKPageSetPageUIClient(wkView.pageRef, &uiClient.base);
 
-    WKRetainPtr<WKStringRef> identifier(AdoptWK, WKStringCreateWithUTF8CString("FullscreenZoomInitialFramePreferences"));
-    WKRetainPtr<WKPreferencesRef> customPreferences(AdoptWK, WKPreferencesCreateWithIdentifier(identifier.get()));
+    WKRetainPtr<WKStringRef> identifier = adoptWK(WKStringCreateWithUTF8CString("FullscreenZoomInitialFramePreferences"));
+    WKRetainPtr<WKPreferencesRef> customPreferences = adoptWK(WKPreferencesCreateWithIdentifier(identifier.get()));
     WKPreferencesSetFullScreenEnabled(customPreferences.get(), true);
     WKPageGroupSetPreferences(WKPageGetPageGroup(wkView.pageRef), customPreferences.get());
 }
@@ -156,6 +156,7 @@ void FullscreenZoomInitialFrame::runTest(View view)
 {
     RetainPtr<NSWindow> window = adoptNS([[NSWindow alloc] initWithContentRect:view.frame styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:NO]);
     [window.get().contentView addSubview:view];
+    [window makeKeyAndOrderFront:view];
 
     setPageScale(view, 2);
 

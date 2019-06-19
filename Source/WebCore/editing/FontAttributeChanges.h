@@ -26,7 +26,7 @@
 #pragma once
 
 #include "Color.h"
-#include <wtf/EnumTraits.h>
+#include "FontShadow.h"
 #include <wtf/Forward.h>
 #include <wtf/Optional.h>
 
@@ -35,6 +35,7 @@ namespace WebCore {
 class EditingStyle;
 class MutableStyleProperties;
 
+enum class EditAction : uint8_t;
 enum class VerticalAlignChange : uint8_t { Superscript, Baseline, Subscript };
 
 class FontChanges {
@@ -49,6 +50,11 @@ public:
     void setBold(bool bold) { m_bold = bold; }
     void setItalic(bool italic) { m_italic = italic; }
 
+    bool isEmpty() const
+    {
+        return !m_fontName && !m_fontFamily && !m_fontSize && !m_fontSizeDelta && !m_bold && !m_italic;
+    }
+
     WEBCORE_EXPORT Ref<EditingStyle> createEditingStyle() const;
     Ref<MutableStyleProperties> createStyleProperties() const;
 
@@ -57,20 +63,10 @@ private:
 
     String m_fontName;
     String m_fontFamily;
-    std::optional<double> m_fontSize;
-    std::optional<double> m_fontSizeDelta;
-    std::optional<bool> m_bold;
-    std::optional<bool> m_italic;
-};
-
-struct FontShadow {
-    template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static bool decode(Decoder&, FontShadow&);
-
-    Color color;
-    double width { 0 };
-    double height { 0 };
-    double blurRadius { 0 };
+    Optional<double> m_fontSize;
+    Optional<double> m_fontSizeDelta;
+    Optional<bool> m_bold;
+    Optional<bool> m_italic;
 };
 
 class FontAttributeChanges {
@@ -87,14 +83,15 @@ public:
     void setFontChanges(const FontChanges& fontChanges) { m_fontChanges = fontChanges; }
 
     WEBCORE_EXPORT Ref<EditingStyle> createEditingStyle() const;
+    WEBCORE_EXPORT EditAction editAction() const;
 
 private:
-    std::optional<VerticalAlignChange> m_verticalAlign;
-    std::optional<Color> m_backgroundColor;
-    std::optional<Color> m_foregroundColor;
-    std::optional<FontShadow> m_shadow;
-    std::optional<bool> m_strikeThrough;
-    std::optional<bool> m_underline;
+    Optional<VerticalAlignChange> m_verticalAlign;
+    Optional<Color> m_backgroundColor;
+    Optional<Color> m_foregroundColor;
+    Optional<FontShadow> m_shadow;
+    Optional<bool> m_strikeThrough;
+    Optional<bool> m_underline;
     FontChanges m_fontChanges;
 };
 
@@ -127,30 +124,6 @@ bool FontChanges::decode(Decoder& decoder, FontChanges& changes)
         return false;
 
     ASSERT(!changes.m_fontSize || !changes.m_fontSizeDelta);
-    return true;
-}
-
-template<class Encoder>
-void FontShadow::encode(Encoder& encoder) const
-{
-    encoder << color << width << height << blurRadius;
-}
-
-template<class Decoder>
-bool FontShadow::decode(Decoder& decoder, FontShadow& shadow)
-{
-    if (!decoder.decode(shadow.color))
-        return false;
-
-    if (!decoder.decode(shadow.width))
-        return false;
-
-    if (!decoder.decode(shadow.height))
-        return false;
-
-    if (!decoder.decode(shadow.blurRadius))
-        return false;
-
     return true;
 }
 

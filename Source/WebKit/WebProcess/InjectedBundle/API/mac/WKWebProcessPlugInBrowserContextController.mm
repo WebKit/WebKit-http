@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,8 +25,6 @@
 
 #import "config.h"
 #import "WKWebProcessPlugInBrowserContextControllerInternal.h"
-
-#if WK_API_ENABLED
 
 #import "APIData.h"
 #import "RemoteObjectRegistry.h"
@@ -104,6 +102,15 @@ static void didFinishLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, 
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didFinishLoadForFrame:)])
         [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFinishLoadForFrame:wrapper(*WebKit::toImpl(frame))];
+}
+
+static void didClearWindowObjectForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKBundleScriptWorldRef scriptWorld, const void* clientInfo)
+{
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+    
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didClearWindowObjectForFrame:inScriptWorld:)])
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didClearWindowObjectForFrame:wrapper(*WebKit::toImpl(frame)) inScriptWorld:wrapper(*WebKit::toImpl(scriptWorld))];
 }
 
 static void globalObjectIsAvailableForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKBundleScriptWorldRef scriptWorld, const void* clientInfo)
@@ -192,6 +199,18 @@ static void didReachLayoutMilestone(WKBundlePageRef page, WKLayoutMilestones mil
         [loadDelegate webProcessPlugInBrowserContextController:pluginContextController renderingProgressDidChange:renderingProgressEvents(WebKit::toLayoutMilestones(milestones))];
 }
 
+static WKLayoutMilestones layoutMilestones(const void *clientInfo)
+{
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto loadDelegate = pluginContextController->_loadDelegate.get();
+    
+    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextControllerRenderingProgressEvents:)]) {
+        _WKRenderingProgressEvents milestones = [loadDelegate webProcessPlugInBrowserContextControllerRenderingProgressEvents:pluginContextController];
+        return static_cast<WKLayoutMilestones>(milestones);
+    }
+    return { };
+}
+
 static void didFirstVisuallyNonEmptyLayoutForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo)
 {
     auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
@@ -210,29 +229,12 @@ static void didHandleOnloadEventsForFrame(WKBundlePageRef page, WKBundleFrameRef
         [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didHandleOnloadEventsForFrame:wrapper(*WebKit::toImpl(frame))];
 }
 
-static WKStringRef userAgentForURL(WKBundleFrameRef frame, WKURLRef url, const void* clientInfo)
-{
-    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
-    auto loadDelegate = pluginContextController->_loadDelegate.get();
-    
-    if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:frame:userAgentForURL:)]) {
-        WKWebProcessPlugInFrame *newFrame = wrapper(*WebKit::toImpl(frame));
-        NSString *string = [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:newFrame userAgentForURL:wrapper(*WebKit::toImpl(url))];
-        if (!string)
-            return nullptr;
-
-        return WKStringCreateWithCFString((__bridge CFStringRef)string);
-    }
-    
-    return nullptr;
-}
-
 static void setUpPageLoaderClient(WKWebProcessPlugInBrowserContextController *contextController, WebKit::WebPage& page)
 {
-    WKBundlePageLoaderClientV9 client;
+    WKBundlePageLoaderClientV10 client;
     memset(&client, 0, sizeof(client));
 
-    client.base.version = 8;
+    client.base.version = 10;
     client.base.clientInfo = (__bridge void*)contextController;
     client.didStartProvisionalLoadForFrame = didStartProvisionalLoadForFrame;
     client.didReceiveServerRedirectForProvisionalLoadForFrame = didReceiveServerRedirectForProvisionalLoadForFrame;
@@ -242,14 +244,15 @@ static void setUpPageLoaderClient(WKWebProcessPlugInBrowserContextController *co
     client.didFailLoadWithErrorForFrame = didFailLoadWithErrorForFrame;
     client.didSameDocumentNavigationForFrame = didSameDocumentNavigationForFrame;
     client.didFinishLoadForFrame = didFinishLoadForFrame;
+    client.didClearWindowObjectForFrame = didClearWindowObjectForFrame;
     client.globalObjectIsAvailableForFrame = globalObjectIsAvailableForFrame;
     client.didRemoveFrameFromHierarchy = didRemoveFrameFromHierarchy;
     client.didHandleOnloadEventsForFrame = didHandleOnloadEventsForFrame;
     client.didFirstVisuallyNonEmptyLayoutForFrame = didFirstVisuallyNonEmptyLayoutForFrame;
-    client.userAgentForURL = userAgentForURL;
 
     client.didLayoutForFrame = didLayoutForFrame;
     client.didLayout = didReachLayoutMilestone;
+    client.layoutMilestones = layoutMilestones;
 
     WKBundlePageSetPageLoaderClient(toAPI(&page), &client.base);
 }
@@ -347,10 +350,8 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
 
 - (void)dealloc
 {
-    if (_remoteObjectRegistry) {
-        WebKit::WebProcess::singleton().removeMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID());
+    if (_remoteObjectRegistry)
         [_remoteObjectRegistry _invalidate];
-    }
 
     _page->~WebPage();
 
@@ -413,10 +414,8 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
 
 - (_WKRemoteObjectRegistry *)_remoteObjectRegistry
 {
-    if (!_remoteObjectRegistry) {
+    if (!_remoteObjectRegistry)
         _remoteObjectRegistry = adoptNS([[_WKRemoteObjectRegistry alloc] _initWithWebPage:*_page]);
-        WebKit::WebProcess::singleton().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID(), [_remoteObjectRegistry remoteObjectRegistry]);
-    }
 
     return _remoteObjectRegistry.get();
 }
@@ -527,7 +526,7 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
             return [formDelegate _webProcessPlugInBrowserContextControllerShouldNotifyOnFormChanges:m_controller];
         }
 
-        void didAssociateFormControls(WebKit::WebPage*, const Vector<RefPtr<WebCore::Element>>& elements) override
+        void didAssociateFormControls(WebKit::WebPage*, const Vector<RefPtr<WebCore::Element>>& elements, WebKit::WebFrame*) override
         {
             auto formDelegate = m_controller->_formDelegate.get();
 
@@ -595,7 +594,7 @@ static inline WKEditorInsertAction toWK(WebCore::EditorInsertAction action)
 
             auto apiFromRange = fromRange ? adoptNS([[WKDOMRange alloc] _initWithImpl:fromRange]) : nil;
             auto apiToRange = toRange ? adoptNS([[WKDOMRange alloc] _initWithImpl:toRange]) : nil;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
             UITextStorageDirection apiAffinity = affinity == WebCore::UPSTREAM ? UITextStorageDirectionBackward : UITextStorageDirectionForward;
 #else
             NSSelectionAffinity apiAffinity = affinity == WebCore::UPSTREAM ? NSSelectionAffinityUpstream : NSSelectionAffinityDownstream;
@@ -650,16 +649,6 @@ static inline WKEditorInsertAction toWK(WebCore::EditorInsertAction action)
             return [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller performTwoStepDrop:wrapper(*nodeHandle) atDestination:wrapper(*rangeHandle) isMove:isMove];
         }
 
-        WTF::String replacementURLForResource(WebKit::WebPage&, Ref<WebCore::SharedBuffer>&& resourceData, const WTF::String& mimeType)
-        {
-            if (!m_delegateMethods.replacementURLForResource)
-                return { };
-
-            NSString *type = (NSString *)mimeType;
-            auto data = resourceData->createNSData();
-            return [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller replacementURLForResource:data.get() mimeType:type];
-        }
-
         WKWebProcessPlugInBrowserContextController *m_controller;
         const struct DelegateMethods {
             DelegateMethods(RetainPtr<id <WKWebProcessPlugInEditingDelegate>> delegate)
@@ -670,7 +659,6 @@ static inline WKEditorInsertAction toWK(WebCore::EditorInsertAction action)
                 , getPasteboardDataForRange([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:pasteboardDataForRange:)])
                 , didWriteToPasteboard([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextControllerDidWriteToPasteboard:)])
                 , performTwoStepDrop([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:performTwoStepDrop:atDestination:isMove:)])
-                , replacementURLForResource([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:replacementURLForResource:mimeType:)])
             {
             }
 
@@ -681,7 +669,6 @@ static inline WKEditorInsertAction toWK(WebCore::EditorInsertAction action)
             bool getPasteboardDataForRange;
             bool didWriteToPasteboard;
             bool performTwoStepDrop;
-            bool replacementURLForResource;
         } m_delegateMethods;
     };
 
@@ -693,12 +680,11 @@ static inline WKEditorInsertAction toWK(WebCore::EditorInsertAction action)
 
 - (BOOL)_defersLoading
 {
-    return _page->defersLoading();
+    return NO;
 }
 
 - (void)_setDefersLoading:(BOOL)defersLoading
 {
-    _page->setDefersLoading(defersLoading);
 }
 
 - (BOOL)_usesNonPersistentWebsiteDataStore
@@ -707,5 +693,3 @@ static inline WKEditorInsertAction toWK(WebCore::EditorInsertAction action)
 }
 
 @end
-
-#endif // WK_API_ENABLED

@@ -87,12 +87,12 @@ private:
     void frameDidFinishLoading(uint64_t requestID) override;
     void frameDidFail(uint64_t requestID, bool wasCancelled) override;
     void didEvaluateJavaScript(uint64_t requestID, const String& result) override;
-    void streamWillSendRequest(uint64_t streamID, const WebCore::URL& requestURL, const WebCore::URL& responseURL, int responseStatus) override;
-    void streamDidReceiveResponse(uint64_t streamID, const WebCore::URL& responseURL, uint32_t streamLength, uint32_t lastModifiedTime, const String& mimeType, const String& headers, const String& suggestedFileName) override;
+    void streamWillSendRequest(uint64_t streamID, const URL& requestURL, const URL& responseURL, int responseStatus) override;
+    void streamDidReceiveResponse(uint64_t streamID, const URL& responseURL, uint32_t streamLength, uint32_t lastModifiedTime, const String& mimeType, const String& headers, const String& suggestedFileName) override;
     void streamDidReceiveData(uint64_t streamID, const char* bytes, int length) override;
     void streamDidFinishLoading(uint64_t streamID) override;
     void streamDidFail(uint64_t streamID, bool wasCancelled) override;
-    void manualStreamDidReceiveResponse(const WebCore::URL& responseURL, uint32_t streamLength, uint32_t lastModifiedTime, const WTF::String& mimeType, const WTF::String& headers, const String& suggestedFileName) override;
+    void manualStreamDidReceiveResponse(const URL& responseURL, uint32_t streamLength, uint32_t lastModifiedTime, const WTF::String& mimeType, const WTF::String& headers, const String& suggestedFileName) override;
     void manualStreamDidReceiveData(const char* bytes, int length) override;
     void manualStreamDidFinishLoading() override;
     void manualStreamDidFail(bool wasCancelled) override;
@@ -156,12 +156,12 @@ private:
     // Message handlers.
     void loadURL(uint64_t requestID, const String& method, const String& urlString, const String& target, const WebCore::HTTPHeaderMap& headerFields, const Vector<uint8_t>& httpBody, bool allowPopups);
     void update(const WebCore::IntRect& paintedRect);
-    void proxiesForURL(const String& urlString, String& proxyString);
-    void cookiesForURL(const String& urlString, String& cookieString);
+    void proxiesForURL(const String& urlString, CompletionHandler<void(String)>&&);
+    void cookiesForURL(const String& urlString, CompletionHandler<void(String)>&&);
     void setCookiesForURL(const String& urlString, const String& cookieString);
-    void getAuthenticationInfo(const WebCore::ProtectionSpace&, bool& returnValue, String& username, String& password);
-    void getPluginElementNPObject(uint64_t& pluginElementNPObjectID);
-    void evaluate(const NPVariantData& npObjectAsVariantData, const String& scriptString, bool allowPopups, bool& returnValue, NPVariantData& resultData);
+    void getAuthenticationInfo(const WebCore::ProtectionSpace&, CompletionHandler<void(bool returnValue, String username, String password)>&&);
+    void getPluginElementNPObject(CompletionHandler<void(uint64_t)>&&);
+    void evaluate(const NPVariantData& npObjectAsVariantData, const String& scriptString, bool allowPopups, CompletionHandler<void(bool returnValue, NPVariantData&& resultData)>&&);
     void setPluginIsPlayingAudio(bool);
     void continueStreamLoad(uint64_t streamID);
     void cancelStreamLoad(uint64_t streamID);
@@ -173,15 +173,15 @@ private:
     void setLayerHostingContextID(uint32_t);
 #endif
 #if PLATFORM(X11)
-    void createPluginContainer(uint64_t& windowID);
+    void createPluginContainer(CompletionHandler<void(uint64_t windowID)>&&);
     void windowedPluginGeometryDidChange(const WebCore::IntRect& frameRect, const WebCore::IntRect& clipRect, uint64_t windowID);
     void windowedPluginVisibilityDidChange(bool isVisible, uint64_t windowID);
 #endif
 
     bool canInitializeAsynchronously() const;
 
-    void didCreatePlugin(bool wantsWheelEvents, uint32_t remoteLayerClientID);
-    void didFailToCreatePlugin();
+    void didCreatePlugin(bool wantsWheelEvents, uint32_t remoteLayerClientID, CompletionHandler<void()>&&);
+    void didFailToCreatePlugin(CompletionHandler<void()>&&);
 
     void didCreatePluginInternal(bool wantsWheelEvents, uint32_t remoteLayerClientID);
     void didFailToCreatePluginInternal();

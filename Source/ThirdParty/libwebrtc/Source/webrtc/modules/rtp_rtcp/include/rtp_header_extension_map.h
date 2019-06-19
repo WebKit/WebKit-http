@@ -11,6 +11,7 @@
 #ifndef MODULES_RTP_RTCP_INCLUDE_RTP_HEADER_EXTENSION_MAP_H_
 #define MODULES_RTP_RTCP_INCLUDE_RTP_HEADER_EXTENSION_MAP_H_
 
+#include <stdint.h>
 #include <string>
 
 #include "api/array_view.h"
@@ -20,17 +21,13 @@
 
 namespace webrtc {
 
-struct RtpExtensionSize {
-  RTPExtensionType type;
-  uint8_t value_size;
-};
-
 class RtpHeaderExtensionMap {
  public:
   static constexpr RTPExtensionType kInvalidType = kRtpExtensionNone;
   static constexpr int kInvalidId = 0;
 
   RtpHeaderExtensionMap();
+  explicit RtpHeaderExtensionMap(bool extmap_allow_mixed);
   explicit RtpHeaderExtensionMap(rtc::ArrayView<const RtpExtension> extensions);
 
   template <typename Extension>
@@ -44,11 +41,7 @@ class RtpHeaderExtensionMap {
     return GetId(type) != kInvalidId;
   }
   // Return kInvalidType if not found.
-  RTPExtensionType GetType(int id) const {
-    RTC_DCHECK_GE(id, kMinId);
-    RTC_DCHECK_LE(id, kMaxId);
-    return types_[id];
-  }
+  RTPExtensionType GetType(int id) const;
   // Return kInvalidId if not found.
   uint8_t GetId(RTPExtensionType type) const {
     RTC_DCHECK_GT(type, kRtpExtensionNone);
@@ -56,22 +49,25 @@ class RtpHeaderExtensionMap {
     return ids_[type];
   }
 
-  size_t GetTotalLengthInBytes(
-      rtc::ArrayView<const RtpExtensionSize> extensions) const;
-
   // TODO(danilchap): Remove use of the functions below.
   int32_t Register(RTPExtensionType type, int id) {
     return RegisterByType(id, type) ? 0 : -1;
   }
   int32_t Deregister(RTPExtensionType type);
 
+  // Corresponds to the SDP attribute extmap-allow-mixed, see RFC8285.
+  // Set to true if it's allowed to mix one- and two-byte RTP header extensions
+  // in the same stream.
+  bool ExtmapAllowMixed() const { return extmap_allow_mixed_; }
+  void SetExtmapAllowMixed(bool extmap_allow_mixed) {
+    extmap_allow_mixed_ = extmap_allow_mixed;
+  }
+
  private:
-  static constexpr int kMinId = 1;
-  static constexpr int kMaxId = 14;
   bool Register(int id, RTPExtensionType type, const char* uri);
 
-  RTPExtensionType types_[kMaxId + 1];
   uint8_t ids_[kRtpExtensionNumberOfExtensions];
+  bool extmap_allow_mixed_;
 };
 
 }  // namespace webrtc

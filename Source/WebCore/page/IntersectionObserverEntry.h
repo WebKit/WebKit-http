@@ -43,7 +43,7 @@ public:
 
     struct Init {
         double time;
-        std::optional<DOMRectInit> rootBounds;
+        Optional<DOMRectInit> rootBounds;
         DOMRectInit boundingClientRect;
         DOMRectInit intersectionRect;
         double intersectionRatio;
@@ -57,10 +57,10 @@ public:
     }
     
     double time() const { return m_time; }
-    RefPtr<DOMRectReadOnly> rootBounds() const { return m_rootBounds; }
-    RefPtr<DOMRectReadOnly> boundingClientRect() const { return m_boundingClientRect; }
-    RefPtr<DOMRectReadOnly> intersectionRect() const { return m_intersectionRect; }
-    RefPtr<Element> target() const { return m_target; }
+    DOMRectReadOnly* rootBounds() const { return m_rootBounds.get(); }
+    DOMRectReadOnly* boundingClientRect() const { return m_boundingClientRect.get(); }
+    DOMRectReadOnly* intersectionRect() const { return m_intersectionRect.get(); }
+    Element* target() const { return m_target.get(); }
 
     bool isIntersecting() const { return m_isIntersecting; }
     double intersectionRatio() const { return m_intersectionRatio; }

@@ -31,12 +31,10 @@
 #include "HWndDC.h"
 #include "TextRun.h"
 #include <wtf/MathExtras.h>
-
+#include <wtf/text/win/WCharStringExtras.h>
 
 namespace WebCore {
-using namespace WTF;
-using namespace Unicode;
-using namespace std;
+using namespace WTF::Unicode;
 
 // FIXME: Rearchitect this to be more like WidthIterator in Font.cpp.  Have an advance() method
 // that does stuff in that method instead of doing everything in the constructor.  Have advance()
@@ -46,12 +44,12 @@ UniscribeController::UniscribeController(const FontCascade* font, const TextRun&
     : m_font(*font)
     , m_run(run)
     , m_fallbackFonts(fallbackFonts)
-    , m_minGlyphBoundingBoxX(numeric_limits<float>::max())
-    , m_maxGlyphBoundingBoxX(numeric_limits<float>::min())
-    , m_minGlyphBoundingBoxY(numeric_limits<float>::max())
-    , m_maxGlyphBoundingBoxY(numeric_limits<float>::min())
-    , m_end(run.length())
+    , m_minGlyphBoundingBoxX(std::numeric_limits<float>::max())
+    , m_maxGlyphBoundingBoxX(std::numeric_limits<float>::min())
+    , m_minGlyphBoundingBoxY(std::numeric_limits<float>::max())
+    , m_maxGlyphBoundingBoxY(std::numeric_limits<float>::min())
     , m_currentCharacter(0)
+    , m_end(run.length())
     , m_runWidthSoFar(0)
     , m_padding(run.expansion())
     , m_computingOffsetPosition(false)
@@ -87,7 +85,7 @@ int UniscribeController::offsetForPosition(int x, bool includePartialGlyphs)
     advance(m_run.length());
     if (m_computingOffsetPosition) {
         // The point is to the left or to the right of the entire run.
-        if (m_offsetX >= m_runWidthSoFar && m_run.ltr() || m_offsetX < 0 && m_run.rtl())
+        if ((m_offsetX >= m_runWidthSoFar && m_run.ltr()) || (m_offsetX < 0 && m_run.rtl()))
             m_offsetPosition = m_end;
     }
     m_computingOffsetPosition = false;
@@ -173,7 +171,7 @@ void UniscribeController::advance(unsigned offset, GlyphBuffer* glyphBuffer)
             int itemStart = m_run.rtl() ? index + 1 : indexOfFontTransition;
             int itemLength = m_run.rtl() ? indexOfFontTransition - index : index - indexOfFontTransition;
             m_currentCharacter = baseCharacter + itemStart;
-            itemizeShapeAndPlace((isSmallCaps ? smallCapsBuffer.data() : cp) + itemStart, itemLength, fontData, glyphBuffer);
+            itemizeShapeAndPlace((isSmallCaps ? smallCapsBuffer.data() : cp) + itemStart, itemStart, itemLength, fontData, glyphBuffer);
             indexOfFontTransition = index;
         }
     }
@@ -185,20 +183,20 @@ void UniscribeController::advance(unsigned offset, GlyphBuffer* glyphBuffer)
 
         int itemStart = m_run.rtl() ? 0 : indexOfFontTransition;
         m_currentCharacter = baseCharacter + itemStart;
-        itemizeShapeAndPlace((nextIsSmallCaps ? smallCapsBuffer.data() : cp) + itemStart, itemLength, nextFontData, glyphBuffer);
+        itemizeShapeAndPlace((nextIsSmallCaps ? smallCapsBuffer.data() : cp) + itemStart, itemStart, itemLength, nextFontData, glyphBuffer);
     }
 
     m_currentCharacter = baseCharacter + length;
 }
 
-void UniscribeController::itemizeShapeAndPlace(const UChar* cp, unsigned length, const Font* fontData, GlyphBuffer* glyphBuffer)
+void UniscribeController::itemizeShapeAndPlace(const UChar* cp, unsigned stringOffset, unsigned length, const Font* fontData, GlyphBuffer* glyphBuffer)
 {
     // ScriptItemize (in Windows XP versions prior to SP2) can overflow by 1.  This is why there is an extra empty item
     // hanging out at the end of the array
     m_items.resize(6);
     int numItems = 0;
     HRESULT rc = S_OK;
-    while (rc = ::ScriptItemize(cp, length, m_items.size() - 1, &m_control, &m_state, m_items.data(), &numItems) == E_OUTOFMEMORY) {
+    while (rc = ::ScriptItemize(wcharFrom(cp), length, m_items.size() - 1, &m_control, &m_state, m_items.data(), &numItems) == E_OUTOFMEMORY) {
         m_items.resize(m_items.size() * 2);
         resetControlAndState();
     }
@@ -210,12 +208,12 @@ void UniscribeController::itemizeShapeAndPlace(const UChar* cp, unsigned length,
 
     if (m_run.rtl()) {
         for (int i = m_items.size() - 2; i >= 0; i--) {
-            if (!shapeAndPlaceItem(cp, i, fontData, glyphBuffer))
+            if (!shapeAndPlaceItem(cp, stringOffset, i, fontData, glyphBuffer))
                 return;
         }
     } else {
         for (unsigned i = 0; i < m_items.size() - 1; i++) {
-            if (!shapeAndPlaceItem(cp, i, fontData, glyphBuffer))
+            if (!shapeAndPlaceItem(cp, stringOffset, i, fontData, glyphBuffer))
                 return;
         }
     }
@@ -233,7 +231,7 @@ void UniscribeController::resetControlAndState()
     m_state.fOverrideDirection = m_run.directionalOverride();
 }
 
-bool UniscribeController::shapeAndPlaceItem(const UChar* cp, unsigned i, const Font* fontData, GlyphBuffer* glyphBuffer)
+bool UniscribeController::shapeAndPlaceItem(const UChar* cp, unsigned stringOffset, unsigned i, const Font* fontData, GlyphBuffer* glyphBuffer)
 {
     // Determine the string for this item.
     const UChar* str = cp + m_items[i].iCharPos;
@@ -255,12 +253,19 @@ bool UniscribeController::shapeAndPlaceItem(const UChar* cp, unsigned i, const F
     if (!shape(str, len, item, fontData, glyphs, clusters, visualAttributes))
         return true;
 
+    Vector<Optional<unsigned>> stringOffsets(glyphs.size());
+    for (unsigned i = 0; i < len; ++i) {
+        if (stringOffsets[clusters[i]])
+            stringOffsets[clusters[i]] = std::min(*stringOffsets[clusters[i]], i);
+        else
+            stringOffsets[clusters[i]] = i;
+    }
+
     // We now have a collection of glyphs.
     Vector<GOFFSET> offsets;
     Vector<int> advances;
     offsets.resize(glyphs.size());
     advances.resize(glyphs.size());
-    int glyphCount = 0;
     HRESULT placeResult = ScriptPlace(0, fontData->scriptCache(), glyphs.data(), glyphs.size(), visualAttributes.data(),
                                       &item.a, advances.data(), offsets.data(), 0);
     if (placeResult == E_PENDING) {
@@ -370,15 +375,15 @@ bool UniscribeController::shapeAndPlaceItem(const UChar* cp, unsigned i, const F
             else
                 glyphBuffer->expandLastAdvance(origin);
             GlyphBufferAdvance glyphAdvance(-origin.width() + advance, -origin.height());
-            glyphBuffer->add(glyph, fontData, glyphAdvance);
+            glyphBuffer->add(glyph, fontData, glyphAdvance, stringOffsets[k].valueOr(0) + stringOffset);
         }
 
         FloatRect glyphBounds = fontData->boundsForGlyph(glyph);
         glyphBounds.move(m_glyphOrigin.x(), m_glyphOrigin.y());
-        m_minGlyphBoundingBoxX = min(m_minGlyphBoundingBoxX, glyphBounds.x());
-        m_maxGlyphBoundingBoxX = max(m_maxGlyphBoundingBoxX, glyphBounds.maxX());
-        m_minGlyphBoundingBoxY = min(m_minGlyphBoundingBoxY, glyphBounds.y());
-        m_maxGlyphBoundingBoxY = max(m_maxGlyphBoundingBoxY, glyphBounds.maxY());
+        m_minGlyphBoundingBoxX = std::min(m_minGlyphBoundingBoxX, glyphBounds.x());
+        m_maxGlyphBoundingBoxX = std::max(m_maxGlyphBoundingBoxX, glyphBounds.maxX());
+        m_minGlyphBoundingBoxY = std::min(m_minGlyphBoundingBoxY, glyphBounds.y());
+        m_maxGlyphBoundingBoxY = std::max(m_maxGlyphBoundingBoxY, glyphBounds.maxY());
         m_glyphOrigin.move(advance + offsetX, -offsetY);
 
         // Mutate the glyph array to contain our altered advances.
@@ -423,7 +428,7 @@ bool UniscribeController::shape(const UChar* str, int len, SCRIPT_ITEM item, con
         return false;
 
     do {
-        shapeResult = ScriptShape(hdc, fontData->scriptCache(), str, len, glyphs.size(), &item.a,
+        shapeResult = ScriptShape(hdc, fontData->scriptCache(), wcharFrom(str), len, glyphs.size(), &item.a,
                                   glyphs.data(), clusters.data(), visualAttributes.data(), &glyphCount);
         if (shapeResult == E_PENDING) {
             // The script cache isn't primed with enough info yet.  We need to select our HFONT into

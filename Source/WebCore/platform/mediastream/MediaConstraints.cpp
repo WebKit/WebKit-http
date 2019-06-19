@@ -123,10 +123,8 @@ void StringConstraint::merge(const MediaConstraint& other)
 
 void FlattenedConstraint::set(const MediaConstraint& constraint)
 {
-    for (auto& variant : m_variants) {
-        if (variant.constraintType() == constraint.constraintType())
-            return;
-    }
+    if (find(constraint.constraintType()))
+        return;
 
     append(constraint);
 }
@@ -219,7 +217,7 @@ void MediaTrackConstraintSetMap::filter(const WTF::Function<bool(const MediaCons
         return;
 }
 
-void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, std::optional<IntConstraint>&& constraint)
+void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, Optional<IntConstraint>&& constraint)
 {
     switch (constraintType) {
     case MediaConstraintType::Width:
@@ -250,7 +248,7 @@ void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, std::op
     }
 }
 
-void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, std::optional<DoubleConstraint>&& constraint)
+void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, Optional<DoubleConstraint>&& constraint)
 {
     switch (constraintType) {
     case MediaConstraintType::AspectRatio:
@@ -279,7 +277,7 @@ void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, std::op
     }
 }
 
-void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, std::optional<BooleanConstraint>&& constraint)
+void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, Optional<BooleanConstraint>&& constraint)
 {
     switch (constraintType) {
     case MediaConstraintType::EchoCancellation:
@@ -308,13 +306,15 @@ void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, std::op
     }
 }
 
-void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, std::optional<StringConstraint>&& constraint)
+void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, Optional<StringConstraint>&& constraint)
 {
     switch (constraintType) {
     case MediaConstraintType::FacingMode:
         m_facingMode = WTFMove(constraint);
         break;
     case MediaConstraintType::DeviceId:
+        if (constraint)
+            constraint->removeEmptyStringConstraint();
         m_deviceId = WTFMove(constraint);
         break;
     case MediaConstraintType::GroupId:
@@ -389,23 +389,20 @@ bool MediaConstraints::isConstraintSet(const WTF::Function<bool(const MediaTrack
 
 void MediaConstraints::setDefaultVideoConstraints()
 {
-    // 640x480, 30fps, font-facing camera
-    bool hasFrameRateConstraints = isConstraintSet([](const MediaTrackConstraintSetMap& constraint) {
-        return !!constraint.frameRate();
+    // 640x480, 30fps, front-facing camera
+    bool needsFrameRateConstraints = !isConstraintSet([](const MediaTrackConstraintSetMap& constraint) {
+        return !!constraint.frameRate() || !!constraint.width() || !!constraint.height();
     });
     
-    bool hasSizeConstraints = isConstraintSet([](const MediaTrackConstraintSetMap& constraint) {
+    bool needsSizeConstraints = !isConstraintSet([](const MediaTrackConstraintSetMap& constraint) {
         return !!constraint.width() || !!constraint.height();
     });
     
-    bool hasFacingModeConstraints = isConstraintSet([](const MediaTrackConstraintSetMap& constraint) {
-        return !!constraint.facingMode();
+    bool needsFacingModeConstraints = !isConstraintSet([](const MediaTrackConstraintSetMap& constraint) {
+        return !!constraint.facingMode() || !!constraint.deviceId();
     });
     
-    if (hasFrameRateConstraints && hasSizeConstraints && hasFacingModeConstraints)
-        return;
-    
-    addDefaultVideoConstraints(mandatoryConstraints, !hasFrameRateConstraints, !hasSizeConstraints, !hasFacingModeConstraints);
+    addDefaultVideoConstraints(mandatoryConstraints, needsFrameRateConstraints, needsSizeConstraints, needsFacingModeConstraints);
 }
     
 }

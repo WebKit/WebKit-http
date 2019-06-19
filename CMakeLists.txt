@@ -2,13 +2,13 @@
 # Determine CMake version and build type.
 # -----------------------------------------------------------------------------
 #
-# NOTE: cmake_minimum_required() and project() *MUST* be the two fist commands
+# NOTE: cmake_minimum_required() and project() *MUST* be the two first commands
 # used, see https://cmake.org/cmake/help/v3.3/command/project.html -- the
 # latter in particular handles loading a bunch of shared CMake definitions
 # and loading the cross-compilation settings from CMAKE_TOOLCHAIN_FILE.
 #
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.7)
 
 project(WebKit)
 
@@ -40,6 +40,7 @@ set(ALL_PORTS
     GTK
     JSCOnly
     Mac
+    PlayStation
     Qt
     WPE
     WinCairo
@@ -84,16 +85,24 @@ if (MSVC_CXX_ARCHITECTURE_ID)
 else ()
     string(TOLOWER ${CMAKE_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_SYSTEM_PROCESSOR)
 endif ()
-if (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
-    set(WTF_CPU_ARM 1)
-elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^aarch64")
+if (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "(^aarch64|^arm64)")
     set(WTF_CPU_ARM64 1)
+elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
+    set(WTF_CPU_ARM 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^mips64")
     set(WTF_CPU_MIPS64 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^mips")
     set(WTF_CPU_MIPS 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "(x64|x86_64|amd64)")
-    set(WTF_CPU_X86_64 1)
+    # FORCE_32BIT is set in the build script when --32-bit is passed
+    # on a Linux/intel 64bit host. This allows us to produce 32bit
+    # binaries without setting the build up as a crosscompilation,
+    # which is the only way to modify CMAKE_SYSTEM_PROCESSOR.
+    if (FORCE_32BIT)
+        set(WTF_CPU_X86 1)
+    else ()
+        set(WTF_CPU_X86_64 1)
+    endif ()
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "(i[3-6]86|x86)")
     set(WTF_CPU_X86 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "ppc")
@@ -112,6 +121,8 @@ endif ()
 if (UNIX)
     if (APPLE)
         set(WTF_OS_MAC_OS_X 1)
+    elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+        set(WTF_OS_LINUX 1)
     else ()
         set(WTF_OS_UNIX 1)
     endif ()
@@ -129,6 +140,7 @@ endif ()
 # By default, only the highest-level libraries, WebKitLegacy and WebKit, are
 # shared, because properly building shared libraries that depend on each other
 # can be tricky. Override these in Options*.cmake for your port as needed.
+set(bmalloc_LIBRARY_TYPE STATIC)
 set(WTF_LIBRARY_TYPE STATIC)
 set(JavaScriptCore_LIBRARY_TYPE STATIC)
 set(PAL_LIBRARY_TYPE STATIC)

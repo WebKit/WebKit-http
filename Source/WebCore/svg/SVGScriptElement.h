@@ -21,8 +21,6 @@
 
 #pragma once
 
-#include "SVGAnimatedBoolean.h"
-#include "SVGAnimatedString.h"
 #include "SVGElement.h"
 #include "SVGExternalResourcesRequired.h"
 #include "SVGURIReference.h"
@@ -42,10 +40,10 @@ public:
 private:
     SVGScriptElement(const QualifiedName&, Document&, bool wasInsertedByParser, bool alreadyStarted);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGScriptElement, SVGElement, SVGExternalResourcesRequired, SVGURIReference>;
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGScriptElement, SVGElement, SVGExternalResourcesRequired, SVGURIReference>;
+    const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
 
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
     void svgAttributeChanged(const QualifiedName&) final;
 
     InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
@@ -84,7 +82,7 @@ private:
     bool filterOutAnimatableAttribute(const QualifiedName& name) const final { return name == SVGNames::typeAttr; }
 #endif
 
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
+    PropertyRegistry m_propertyRegistry { *this };
     Timer m_svgLoadEventTimer;
 };
 

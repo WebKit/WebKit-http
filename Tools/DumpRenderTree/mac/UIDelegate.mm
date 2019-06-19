@@ -46,7 +46,7 @@
 #import <WebKit/WebViewPrivate.h>
 #import <wtf/Assertions.h>
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 DumpRenderTreeDraggingInfo *draggingInfo = nil;
 #endif
 
@@ -96,7 +96,7 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
 
 - (void)modalWindowWillClose:(NSNotification *)notification
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     [[NSNotificationCenter defaultCenter] removeObserver:self name:NSWindowWillCloseNotification object:nil];
     [NSApp abortModal];
 #endif
@@ -104,7 +104,7 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
 
 - (void)webViewRunModal:(WebView *)sender
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     gTestRunner->setWindowIsKey(false);
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(modalWindowWillClose:) name:NSWindowWillCloseNotification object:nil];
     [NSApp runModalForWindow:[sender window]];
@@ -143,7 +143,7 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
 }
 
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 - (void)webView:(WebView *)sender dragImage:(NSImage *)anImage at:(NSPoint)viewLocation offset:(NSSize)initialOffset event:(NSEvent *)event pasteboard:(NSPasteboard *)pboard source:(id)sourceObj slideBack:(BOOL)slideFlag forView:(NSView *)view
 {
      assert(!draggingInfo);
@@ -293,7 +293,7 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
 
 - (BOOL)webView:(WebView *)webView supportsFullScreenForElement:(DOMElement*)element withKeyboard:(BOOL)withKeyboard
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     return NO;
 #else
     return YES;
@@ -385,15 +385,35 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
         [filePaths addObject:fileURL.path];
     }
 
+#if PLATFORM(IOS_FAMILY)
+    NSURL *firstURL = [NSURL fileURLWithPath:[NSString stringWithUTF8String:openPanelFiles[0].c_str()] relativeToURL:baseURL];
+    NSString *displayString = firstURL.lastPathComponent;
+    const std::vector<char>& iconData = gTestRunner->openPanelFilesMediaIcon();
+    CGImageRef imageRef;
+    if (!iconData.empty()) {
+        RetainPtr<CFDataRef> dataRef = adoptCF(CFDataCreate(nullptr, (unsigned char *)iconData.data(), iconData.size()));
+        RetainPtr<CGDataProviderRef> imageProviderRef = adoptCF(CGDataProviderCreateWithCFData(dataRef.get()));
+        imageRef = CGImageCreateWithJPEGDataProvider(imageProviderRef.get(), nullptr, true, kCGRenderingIntentDefault);
+    }
+#endif
+
     if (allowMultipleFiles) {
+#if PLATFORM(IOS_FAMILY)
+        [resultListener chooseFilenames:filePaths.get() displayString:displayString iconImage:imageRef];
+#else
         [resultListener chooseFilenames:filePaths.get()];
+#endif
         return;
     }
 
+#if PLATFORM(IOS_FAMILY)
+    [resultListener chooseFilename:[filePaths firstObject] displayString:displayString iconImage:imageRef];
+#else
     [resultListener chooseFilename:[filePaths firstObject]];
+#endif
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 - (NSUInteger)webView:(WebView *)webView dragDestinationActionMaskForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
 {
@@ -407,7 +427,7 @@ DumpRenderTreeDraggingInfo *draggingInfo = nil;
 
 - (void)dealloc
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     [draggingInfo release];
     draggingInfo = nil;
 #endif

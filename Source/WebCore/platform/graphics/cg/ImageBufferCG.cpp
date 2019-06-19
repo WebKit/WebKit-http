@@ -33,6 +33,7 @@
 #include "BitmapImage.h"
 #include "GraphicsContext.h"
 #include "GraphicsContextCG.h"
+#include "ImageBufferUtilitiesCG.h"
 #include "ImageData.h"
 #include "IntRect.h"
 #include "MIMETypeRegistry.h"
@@ -56,7 +57,7 @@
 #endif
 
 // CA uses ARGB32 for textures and ARGB32 -> ARGB32 resampling is optimized.
-#define USE_ARGB32 PLATFORM(IOS)
+#define USE_ARGB32 PLATFORM(IOS_FAMILY)
 
 namespace WebCore {
 
@@ -180,6 +181,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, CGColorSp
             fastFree(const_cast<void*>(data));
         };
         // Create a live image that wraps the data.
+        verifyImageBufferIsBigEnough(m_data.data, numBytes.unsafeGet());
         m_data.dataProvider = adoptCF(CGDataProviderCreateWithData(0, m_data.data, numBytes.unsafeGet(), releaseImageData));
 
         if (!cgContext)
@@ -439,7 +441,7 @@ void ImageBuffer::putByteArray(const Uint8ClampedArray& source, AlphaPremultipli
 
 static inline CFStringRef jpegUTI()
 {
-#if PLATFORM(IOS) || PLATFORM(WIN)
+#if PLATFORM(IOS_FAMILY) || PLATFORM(WIN)
     static const CFStringRef kUTTypeJPEG = CFSTR("public.jpeg");
 #endif
     return kUTTypeJPEG;
@@ -470,7 +472,7 @@ static RetainPtr<CFStringRef> utiFromImageBufferMIMEType(const String& mimeType)
 #endif
 }
 
-static bool encodeImage(CGImageRef image, CFStringRef uti, std::optional<double> quality, CFMutableDataRef data)
+static bool encodeImage(CGImageRef image, CFStringRef uti, Optional<double> quality, CFMutableDataRef data)
 {
     if (!image || !uti || !data)
         return false;
@@ -510,21 +512,21 @@ static Vector<uint8_t> dataVector(CFDataRef cfData)
     return data;
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, PreserveResolution preserveResolution) const
+String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, PreserveResolution preserveResolution) const
 {
     if (auto data = toCFData(mimeType, quality, preserveResolution))
         return dataURL(data.get(), mimeType);
     return "data:,"_s;
 }
 
-Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> quality) const
+Vector<uint8_t> ImageBuffer::toData(const String& mimeType, Optional<double> quality) const
 {
     if (auto data = toCFData(mimeType, quality, PreserveResolution::No))
         return dataVector(data.get());
     return { };
 }
 
-RetainPtr<CFDataRef> ImageBuffer::toCFData(const String& mimeType, std::optional<double> quality, PreserveResolution preserveResolution) const
+RetainPtr<CFDataRef> ImageBuffer::toCFData(const String& mimeType, Optional<double> quality, PreserveResolution preserveResolution) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
@@ -544,6 +546,7 @@ RetainPtr<CFDataRef> ImageBuffer::toCFData(const String& mimeType, std::optional
             return nullptr;
 
         size_t dataSize = 4 * logicalSize().width() * logicalSize().height();
+        verifyImageBufferIsBigEnough(premultipliedData->data(), dataSize);
         auto dataProvider = adoptCF(CGDataProviderCreateWithData(nullptr, premultipliedData->data(), dataSize, nullptr));
         if (!dataProvider)
             return nullptr;
@@ -569,7 +572,7 @@ RetainPtr<CFDataRef> ImageBuffer::toCFData(const String& mimeType, std::optional
     return WTFMove(cfData);
 }
 
-static RetainPtr<CFDataRef> cfData(const ImageData& source, const String& mimeType, std::optional<double> quality)
+static RetainPtr<CFDataRef> cfData(const ImageData& source, const String& mimeType, Optional<double> quality)
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
@@ -605,6 +608,7 @@ static RetainPtr<CFDataRef> cfData(const ImageData& source, const String& mimeTy
         data = premultipliedData.data();
     }
 
+    verifyImageBufferIsBigEnough(data, 4 * source.width() * source.height());
     auto dataProvider = adoptCF(CGDataProviderCreateWithData(0, data, 4 * source.width() * source.height(), 0));
     if (!dataProvider)
         return nullptr;
@@ -618,14 +622,14 @@ static RetainPtr<CFDataRef> cfData(const ImageData& source, const String& mimeTy
     return WTFMove(cfData);
 }
 
-String dataURL(const ImageData& source, const String& mimeType, std::optional<double> quality)
+String dataURL(const ImageData& source, const String& mimeType, Optional<double> quality)
 {
     if (auto data = cfData(source, mimeType, quality))
         return dataURL(data.get(), mimeType);
     return "data:,"_s;
 }
 
-Vector<uint8_t> data(const ImageData& source, const String& mimeType, std::optional<double> quality)
+Vector<uint8_t> data(const ImageData& source, const String& mimeType, Optional<double> quality)
 {
     if (auto data = cfData(source, mimeType, quality))
         return dataVector(data.get());

@@ -30,6 +30,7 @@
 
 #import "WebBaseNetscapePluginView.h"
 
+#import "NetworkStorageSessionMap.h"
 #import "WebFrameInternal.h"
 #import "WebKitLogging.h"
 #import "WebKitNSStringExtras.h"
@@ -47,6 +48,7 @@
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoader.h>
 #import <WebCore/HTMLPlugInElement.h>
+#import <WebCore/NetworkStorageSession.h>
 #import <WebCore/Page.h>
 #import <WebCore/ProtectionSpace.h>
 #import <WebCore/RenderEmbeddedObject.h>
@@ -94,17 +96,7 @@ using namespace WebCore;
     _baseURL = adoptNS([baseURL copy]);
     _MIMEType = adoptNS([MIME copy]);
 
-    // Enable "kiosk mode" when instantiating the QT plug-in inside of Dashboard. See <rdar://problem/6878105>
-    if ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.dashboard.client"] &&
-        [_pluginPackage.get() bundleIdentifier] == "com.apple.QuickTime Plugin.plugin") {
-        RetainPtr<NSMutableArray> mutableKeys = adoptNS([keys mutableCopy]);
-        RetainPtr<NSMutableArray> mutableValues = adoptNS([values mutableCopy]);
-
-        [mutableKeys.get() addObject:@"kioskmode"];
-        [mutableValues.get() addObject:@"true"];
-        [self setAttributeKeys:mutableKeys.get() andValues:mutableValues.get()];
-    } else
-         [self setAttributeKeys:keys andValues:values];
+    [self setAttributeKeys:keys andValues:values];
 
     if (loadManually)
         _mode = NP_FULL;
@@ -613,7 +605,9 @@ using namespace WebCore;
     }
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)renewGState
+IGNORE_WARNINGS_END
 {
     [super renewGState];
     
@@ -729,25 +723,22 @@ using namespace WebCore;
     switch (sourceSpace) {
         case NPCoordinateSpacePlugin:
             sourcePointInScreenSpace = [self convertPoint:sourcePoint toView:nil];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             sourcePointInScreenSpace = [[self currentWindow] convertBaseToScreen:sourcePointInScreenSpace];
-#pragma clang diagnostic pop
+            ALLOW_DEPRECATED_DECLARATIONS_END
             break;
             
         case NPCoordinateSpaceWindow:
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             sourcePointInScreenSpace = [[self currentWindow] convertBaseToScreen:sourcePoint];
-#pragma clang diagnostic pop
+            ALLOW_DEPRECATED_DECLARATIONS_END
             break;
             
         case NPCoordinateSpaceFlippedWindow:
             sourcePoint.y = [[self currentWindow] frame].size.height - sourcePoint.y;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             sourcePointInScreenSpace = [[self currentWindow] convertBaseToScreen:sourcePoint];
-#pragma clang diagnostic pop
+            ALLOW_DEPRECATED_DECLARATIONS_END
             break;
             
         case NPCoordinateSpaceScreen:
@@ -767,25 +758,22 @@ using namespace WebCore;
     // Then convert back to the destination space
     switch (destSpace) {
         case NPCoordinateSpacePlugin:
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             destPoint = [[self currentWindow] convertScreenToBase:sourcePointInScreenSpace];
-#pragma clang diagnostic pop
+            ALLOW_DEPRECATED_DECLARATIONS_END
             destPoint = [self convertPoint:destPoint fromView:nil];
             break;
             
         case NPCoordinateSpaceWindow:
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             destPoint = [[self currentWindow] convertScreenToBase:sourcePointInScreenSpace];
-#pragma clang diagnostic pop
+            ALLOW_DEPRECATED_DECLARATIONS_END
             break;
             
         case NPCoordinateSpaceFlippedWindow:
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             destPoint = [[self currentWindow] convertScreenToBase:sourcePointInScreenSpace];
-#pragma clang diagnostic pop
+            ALLOW_DEPRECATED_DECLARATIONS_END
             destPoint.y = [[self currentWindow] frame].size.height - destPoint.y;
             break;
             
@@ -875,7 +863,7 @@ bool getAuthenticationInfo(const char* protocolStr, const char* hostStr, int32_t
     
     RetainPtr<NSURLProtectionSpace> protectionSpace = adoptNS([[NSURLProtectionSpace alloc] initWithHost:host port:port protocol:protocol realm:realm authenticationMethod:authenticationMethod]);
     
-    NSURLCredential *credential = CredentialStorage::defaultCredentialStorage().get(emptyString(), ProtectionSpace(protectionSpace.get())).nsCredential();
+    NSURLCredential *credential = NetworkStorageSessionMap::defaultStorageSession().credentialStorage().get(emptyString(), ProtectionSpace(protectionSpace.get())).nsCredential();
     if (!credential)
         credential = [[NSURLCredentialStorage sharedCredentialStorage] defaultCredentialForProtectionSpace:protectionSpace.get()];
     if (!credential)

@@ -54,9 +54,10 @@ private:
 
     void doOpen(const String& name, DOMPromiseDeferred<IDLInterface<DOMCache>>&&);
     void doRemove(const String&, DOMPromiseDeferred<IDLBoolean>&&);
-    void retrieveCaches(WTF::Function<void(std::optional<Exception>&&)>&&);
+    void doSequentialMatch(DOMCache::RequestInfo&&, CacheQueryOptions&&, Ref<DeferredPromise>&&);
+    void retrieveCaches(WTF::Function<void(Optional<Exception>&&)>&&);
     Ref<DOMCache> findCacheOrCreate(DOMCacheEngine::CacheInfo&&);
-    std::optional<ClientOrigin> origin() const;
+    Optional<ClientOrigin> origin() const;
 
     Vector<Ref<DOMCache>> m_caches;
     uint64_t m_updateCounter { 0 };

@@ -36,7 +36,7 @@
 namespace JSC {
 
 // Map from CodeType enum to a corresponding name.
-const char* CodeProfile::s_codeTypeNames[CodeProfile::NumberOfCodeTypes] = {
+static const char* const s_codeTypeNames[CodeProfile::NumberOfCodeTypes] = {
     "[[EngineCode]]",
     "[[GlobalThunk]]",
     "[[RegExpCode]]",
@@ -82,7 +82,7 @@ void CodeProfile::sample(void* pc, void** framePointer)
             type = RegExpCode;
         else {
             CodeBlock* codeBlock = static_cast<CodeBlock*>(ownerUID);
-            if (codeBlock->jitType() == JITCode::DFGJIT)
+            if (codeBlock->jitType() == JITType::DFGJIT)
                 type = DFGJIT;
             else if (!canCompile(codeBlock->capabilityLevelState()))
                 type = BaselineOnly;

@@ -25,8 +25,10 @@
 #include <sys/ioctl.h>
 #include <sys/soundcard.h>
 
+typedef webrtc::adm_linux_alsa::AlsaSymbolTable WebRTCAlsaSymbolTable;
+WebRTCAlsaSymbolTable* GetAlsaSymbolTable();
+
 namespace webrtc {
-class EventWrapper;
 
 class AudioDeviceLinuxALSA : public AudioDeviceGeneric {
  public:

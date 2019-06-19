@@ -55,6 +55,7 @@ class InspectorDebuggerAgent;
 class InspectorScriptProfilerAgent;
 class JSGlobalObjectConsoleClient;
 class ScriptCallStack;
+struct JSAgentContext;
 
 class JSGlobalObjectInspectorController final
     : public InspectorEnvironment
@@ -68,8 +69,8 @@ public:
     JSGlobalObjectInspectorController(JSC::JSGlobalObject&);
     ~JSGlobalObjectInspectorController();
 
-    void connectFrontend(FrontendChannel*, bool isAutomaticInspection, bool immediatelyPause);
-    void disconnectFrontend(FrontendChannel*);
+    void connectFrontend(FrontendChannel&, bool isAutomaticInspection, bool immediatelyPause);
+    void disconnectFrontend(FrontendChannel&);
 
     void dispatchMessageFromFrontend(const String&);
 
@@ -103,6 +104,12 @@ public:
 private:
     void appendAPIBacktrace(ScriptCallStack&);
 
+    InspectorAgent& ensureInspectorAgent();
+    InspectorDebuggerAgent& ensureDebuggerAgent();
+
+    JSAgentContext jsAgentContext();
+    void createLazyAgents();
+
     JSC::JSGlobalObject& m_globalObject;
     std::unique_ptr<InjectedScriptManager> m_injectedScriptManager;
     std::unique_ptr<JSGlobalObjectConsoleClient> m_consoleClient;
@@ -110,8 +117,10 @@ private:
     JSGlobalObjectScriptDebugServer m_scriptDebugServer;
 
     AgentRegistry m_agents;
-    InspectorAgent* m_inspectorAgent { nullptr };
     InspectorConsoleAgent* m_consoleAgent { nullptr };
+
+    // Lazy, but also on-demand agents.
+    InspectorAgent* m_inspectorAgent { nullptr };
     InspectorDebuggerAgent* m_debuggerAgent { nullptr };
 
     Ref<FrontendRouter> m_frontendRouter;
@@ -124,6 +133,7 @@ private:
     bool m_includeNativeCallStackWithExceptions { true };
     bool m_isAutomaticInspection { false };
     bool m_pauseAfterInitialization { false };
+    bool m_didCreateLazyAgents { false };
 
 #if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
     AugmentableInspectorControllerClient* m_augmentingClient { nullptr };

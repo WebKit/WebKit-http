@@ -68,8 +68,10 @@ typedef unsigned char UInt8;
 #endif
 #endif
 
-#if PLATFORM(QT) && OS(WINDOWS)
-#include <windows.h>
+// X11 header defines "None" as constant in macro and breakes the PaintInvalidationReasons enum's "None".
+// As a workaround, we explicitly undef X11's None here.
+#if defined(None)
+#undef None
 #endif
 
 namespace WebCore {
@@ -80,10 +82,6 @@ class Font;
 class GlyphBuffer;
 #endif
 
-const int cMisspellingLineThickness = 3;
-const int cMisspellingLinePatternWidth = 4;
-const int cMisspellingLinePatternGapWidth = 1;
-
 class AffineTransform;
 class FloatRoundedRect;
 class Gradient;
@@ -92,7 +90,6 @@ class GraphicsContextPlatformPrivate;
 class ImageBuffer;
 class IntRect;
 class RoundedRect;
-class URL;
 class GraphicsContext3D;
 class Path;
 class TextRun;
@@ -116,12 +113,15 @@ enum StrokeStyle {
     WavyStroke,
 };
 
-enum class DocumentMarkerLineStyle : uint8_t {
-    TextCheckingDictationPhraseWithAlternatives,
-    Spelling,
-    Grammar,
-    AutocorrectionReplacement,
-    DictationAlternatives
+struct DocumentMarkerLineStyle {
+    enum class Mode : uint8_t {
+        TextCheckingDictationPhraseWithAlternatives,
+        Spelling,
+        Grammar,
+        AutocorrectionReplacement,
+        DictationAlternatives
+    } mode;
+    bool shouldUseDarkAppearance { false };
 };
 
 namespace DisplayList {
@@ -166,6 +166,9 @@ struct GraphicsContextState {
         ShouldSubpixelQuantizeFontsChange       = 1 << 19,
         DrawLuminanceMaskChange                 = 1 << 20,
         ImageInterpolationQualityChange         = 1 << 21,
+#if HAVE(OS_DARK_MODE_SUPPORT)
+        UseDarkAppearanceChange                 = 1 << 22,
+#endif
     };
     typedef uint32_t StateChangeFlags;
 
@@ -202,6 +205,9 @@ struct GraphicsContextState {
     bool shadowsUseLegacyRadius : 1;
 #endif
     bool drawLuminanceMask : 1;
+#if HAVE(OS_DARK_MODE_SUPPORT)
+    bool useDarkAppearance : 1;
+#endif
 };
 
 struct ImagePaintingOptions {
@@ -289,7 +295,7 @@ public:
     bool invalidatingControlTints() const { return m_paintInvalidationReasons == PaintInvalidationReasons::InvalidatingControlTints; }
     bool invalidatingImagesWithAsyncDecodes() const { return m_paintInvalidationReasons == PaintInvalidationReasons::InvalidatingImagesWithAsyncDecodes; }
 
-    void setStrokeThickness(float);
+    WEBCORE_EXPORT void setStrokeThickness(float);
     float strokeThickness() const { return m_state.strokeThickness; }
 
     void setStrokeStyle(StrokeStyle);
@@ -363,7 +369,7 @@ public:
     void drawRaisedEllipse(const FloatRect&, const Color& ellipseColor, const Color& shadowColor);
 
     WEBCORE_EXPORT void fillPath(const Path&);
-    void strokePath(const Path&);
+    WEBCORE_EXPORT void strokePath(const Path&);
 
     void fillEllipse(const FloatRect&);
     void strokeEllipse(const FloatRect&);
@@ -413,9 +419,14 @@ public:
     void setTextDrawingMode(TextDrawingModeFlags);
     TextDrawingModeFlags textDrawingMode() const { return m_state.textDrawingMode; }
 
-    float drawText(const FontCascade&, const TextRun&, const FloatPoint&, unsigned from = 0, std::optional<unsigned> to = std::nullopt);
+#if HAVE(OS_DARK_MODE_SUPPORT)
+    void setUseDarkAppearance(bool);
+    bool useDarkAppearance() const { return m_state.useDarkAppearance; }
+#endif
+
+    float drawText(const FontCascade&, const TextRun&, const FloatPoint&, unsigned from = 0, Optional<unsigned> to = WTF::nullopt);
     void drawGlyphs(const Font&, const GlyphBuffer&, unsigned from, unsigned numGlyphs, const FloatPoint&, FontSmoothingMode);
-    void drawEmphasisMarks(const FontCascade&, const TextRun&, const AtomicString& mark, const FloatPoint&, unsigned from = 0, std::optional<unsigned> to = std::nullopt);
+    void drawEmphasisMarks(const FontCascade&, const TextRun&, const AtomString& mark, const FloatPoint&, unsigned from = 0, Optional<unsigned> to = WTF::nullopt);
     void drawBidiText(const FontCascade&, const TextRun&, const FloatPoint&, FontCascade::CustomFontNotReadyAction = FontCascade::DoNotPaintIfFontNotReady);
 
     void applyState(const GraphicsContextState&);
@@ -426,10 +437,10 @@ public:
     };
     FloatRect roundToDevicePixels(const FloatRect&, RoundingMode = RoundAllSides);
 
-    FloatRect computeUnderlineBoundsForText(const FloatPoint&, float width, bool printing);
-    WEBCORE_EXPORT void drawLineForText(const FloatPoint&, float width, bool printing, bool doubleLines = false, StrokeStyle = SolidStroke);
-    void drawLinesForText(const FloatPoint&, const DashArray& widths, bool printing, bool doubleLines = false, StrokeStyle = SolidStroke);
-    void drawLineForDocumentMarker(const FloatPoint&, float width, DocumentMarkerLineStyle);
+    FloatRect computeUnderlineBoundsForText(const FloatRect&, bool printing);
+    WEBCORE_EXPORT void drawLineForText(const FloatRect&, bool printing, bool doubleLines = false, StrokeStyle = SolidStroke);
+    void drawLinesForText(const FloatPoint&, float thickness, const DashArray& widths, bool printing, bool doubleLines = false, StrokeStyle = SolidStroke);
+    void drawDotsForDocumentMarker(const FloatRect&, DocumentMarkerLineStyle);
 
     WEBCORE_EXPORT void beginTransparencyLayer(float opacity);
     WEBCORE_EXPORT void endTransparencyLayer();
@@ -644,7 +655,7 @@ private:
 
     void platformFillRoundedRect(const FloatRoundedRect&, const Color&);
 
-    FloatRect computeLineBoundsAndAntialiasingModeForText(const FloatPoint&, float width, bool printing, Color&);
+    FloatRect computeLineBoundsAndAntialiasingModeForText(const FloatRect&, bool printing, Color&);
 
     float dashedLineCornerWidthForStrokeWidth(float) const;
     float dashedLinePatternWidthForStrokeWidth(float) const;
@@ -710,7 +721,7 @@ public:
             m_graphicsContext.setImageInterpolationQuality(interpolationQualityToUse);
     }
 
-    explicit InterpolationQualityMaintainer(GraphicsContext& graphicsContext, std::optional<InterpolationQuality> interpolationQuality)
+    explicit InterpolationQualityMaintainer(GraphicsContext& graphicsContext, Optional<InterpolationQuality> interpolationQuality)
         : InterpolationQualityMaintainer(graphicsContext, interpolationQuality ? interpolationQuality.value() : graphicsContext.imageInterpolationQuality())
     {
     }

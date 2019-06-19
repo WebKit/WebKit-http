@@ -32,11 +32,15 @@
 #include "SWContextManager.h"
 #include "ServiceWorkerClient.h"
 #include "ServiceWorkerClients.h"
+#include "ServiceWorkerContainer.h"
 #include "ServiceWorkerThread.h"
 #include "ServiceWorkerWindowClient.h"
 #include "WorkerNavigator.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(ServiceWorkerGlobalScope);
 
 Ref<ServiceWorkerGlobalScope> ServiceWorkerGlobalScope::create(const ServiceWorkerContextData& data, const URL& url, Ref<SecurityOrigin>&& origin, const String& identifier, const String& userAgent, bool isOnline, ServiceWorkerThread& thread, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicy, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, PAL::SessionID sessionID)
 {
@@ -62,7 +66,8 @@ void ServiceWorkerGlobalScope::skipWaiting(Ref<DeferredPromise>&& promise)
 
     callOnMainThread([workerThread = makeRef(thread()), requestIdentifier]() mutable {
         if (auto* connection = SWContextManager::singleton().connection()) {
-            connection->skipWaiting(workerThread->identifier(), [workerThread = WTFMove(workerThread), requestIdentifier] {
+            auto identifier = workerThread->identifier();
+            connection->skipWaiting(identifier, [workerThread = WTFMove(workerThread), requestIdentifier] {
                 workerThread->runLoop().postTask([requestIdentifier](auto& context) {
                     auto& scope = downcast<ServiceWorkerGlobalScope>(context);
                     if (auto promise = scope.m_pendingSkipWaitingPromises.take(requestIdentifier))

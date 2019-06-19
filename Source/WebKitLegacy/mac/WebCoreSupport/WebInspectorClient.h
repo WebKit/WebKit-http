@@ -27,6 +27,7 @@
  */
 
 #import <JavaScriptCore/InspectorFrontendChannel.h>
+#import <WebCore/FloatRect.h>
 #import <WebCore/InspectorClient.h>
 #import <WebCore/InspectorFrontendClientLocal.h>
 #import <wtf/Forward.h>
@@ -42,13 +43,14 @@ OBJC_CLASS WebNodeHighlighter;
 OBJC_CLASS WebView;
 
 namespace WebCore {
+class CertificateInfo;
 class Frame;
 class Page;
 }
 
 class WebInspectorFrontendClient;
 
-class WebInspectorClient : public WebCore::InspectorClient, public Inspector::FrontendChannel {
+class WebInspectorClient final : public WebCore::InspectorClient, public Inspector::FrontendChannel {
 public:
     explicit WebInspectorClient(WebView *inspectedWebView);
 
@@ -61,7 +63,11 @@ public:
     void highlight() override;
     void hideHighlight() override;
 
-#if PLATFORM(IOS)
+#if ENABLE(REMOTE_INSPECTOR)
+    bool allowRemoteInspectionToPageDirectly() const override { return true; }
+#endif
+
+#if PLATFORM(IOS_FAMILY)
     void showInspectorIndication() override;
     void hideInspectorIndication() override;
 
@@ -112,6 +118,7 @@ public:
 
     void bringToFront() override;
     void closeWindow() override;
+    void reopen() override;
 
     void attachWindow(DockSide) override;
     void detachWindow() override;
@@ -119,7 +126,13 @@ public:
     void setAttachedWindowHeight(unsigned height) override;
     void setAttachedWindowWidth(unsigned height) override;
 
+#if !PLATFORM(IOS_FAMILY)
+    const WebCore::FloatRect& sheetRect() const { return m_sheetRect; }
+#endif
+    void setSheetRect(const WebCore::FloatRect&) override;
+
     void inspectedURLChanged(const String& newURL) override;
+    void showCertificate(const WebCore::CertificateInfo&) override;
 
 private:
     void updateWindowTitle() const;
@@ -128,10 +141,11 @@ private:
     void save(const String& url, const String& content, bool forceSaveAs, bool base64Encoded) override;
     void append(const String& url, const String& content) override;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     WebView *m_inspectedWebView;
     RetainPtr<WebInspectorWindowController> m_frontendWindowController;
     String m_inspectedURL;
     HashMap<String, RetainPtr<NSURL>> m_suggestedToActualURLMap;
+    WebCore::FloatRect m_sheetRect;
 #endif
 };

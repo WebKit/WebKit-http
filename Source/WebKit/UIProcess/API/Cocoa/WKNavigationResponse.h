@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -35,7 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 /*! Contains information about a navigation response, used for making policy decisions.
  */
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface WKNavigationResponse : NSObject
 
 /*! @abstract A Boolean value indicating whether the frame being navigated is the main frame.
@@ -54,5 +52,3 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @end
 
 NS_ASSUME_NONNULL_END
-
-#endif

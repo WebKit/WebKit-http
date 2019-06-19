@@ -34,6 +34,7 @@ class PeriodicWave;
 // OscillatorNode is an audio generator of periodic waveforms.
 
 class OscillatorNode final : public AudioScheduledSourceNode {
+    WTF_MAKE_ISO_ALLOCATED(OscillatorNode);
 public:
     // The waveform type.
     enum class Type {
@@ -101,4 +102,14 @@ private:
     static PeriodicWave* s_periodicWaveTriangle;
 };
 
+String convertEnumerationToString(OscillatorNode::Type); // In JSOscillatorNode.cpp
+
 } // namespace WebCore
+
+namespace WTF {
+
+template<> struct LogArgument<WebCore::OscillatorNode::Type> {
+    static String toString(WebCore::OscillatorNode::Type type) { return convertEnumerationToString(type); }
+};
+
+} // namespace WTF

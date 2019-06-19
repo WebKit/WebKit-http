@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "MemoryPressureHandler.h"
+#include <wtf/MemoryPressureHandler.h>
 
 #include <wtf/MemoryFootprint.h>
 #include <wtf/NeverDestroyed.h>
@@ -35,9 +35,9 @@
 namespace WTF {
 
 #if RELEASE_LOG_DISABLED
-WTFLogChannel LogMemoryPressure = { WTFLogChannelOn, "MemoryPressure", WTFLogLevelError };
+WTFLogChannel LogMemoryPressure = { WTFLogChannelState::On, "MemoryPressure", WTFLogLevel::Error };
 #else
-WTFLogChannel LogMemoryPressure = { WTFLogChannelOn, "MemoryPressure", WTFLogLevelError, LOG_CHANNEL_WEBKIT_SUBSYSTEM, OS_LOG_DEFAULT };
+WTFLogChannel LogMemoryPressure = { WTFLogChannelState::On, "MemoryPressure", WTFLogLevel::Error, LOG_CHANNEL_WEBKIT_SUBSYSTEM, OS_LOG_DEFAULT };
 #endif
 
 WTF_EXPORT_PRIVATE bool MemoryPressureHandler::ReliefLogger::s_loggingEnabled = false;
@@ -55,6 +55,9 @@ MemoryPressureHandler::MemoryPressureHandler()
     : m_windowsMeasurementTimer(RunLoop::main(), this, &MemoryPressureHandler::windowsMeasurementTimerFired)
 #endif
 {
+#if PLATFORM(COCOA)
+    setDispatchQueue(dispatch_get_main_queue());
+#endif
 }
 
 void MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor(bool use)
@@ -114,7 +117,7 @@ static size_t thresholdForPolicy(MemoryUsagePolicy policy)
 {
     const size_t baseThresholdForPolicy = std::min(3 * GB, ramSize());
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     const double conservativeThresholdFraction = 0.5;
     const double strictThresholdFraction = 0.65;
 #else
@@ -296,6 +299,17 @@ void MemoryPressureHandler::ReliefLogger::logMemoryUsageChange()
 
 #if !OS(WINDOWS)
 void MemoryPressureHandler::platformInitialize() { }
+#endif
+
+#if PLATFORM(COCOA)
+void MemoryPressureHandler::setDispatchQueue(dispatch_queue_t queue)
+{
+    RELEASE_ASSERT(!m_installed);
+    dispatch_retain(queue);
+    if (m_dispatchQueue)
+        dispatch_release(m_dispatchQueue);
+    m_dispatchQueue = queue;
+}
 #endif
 
 } // namespace WebCore

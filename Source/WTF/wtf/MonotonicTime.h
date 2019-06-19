@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WTF_MonotonicTime_h
-#define WTF_MonotonicTime_h
+#pragma once
 
 #include <wtf/ClockType.h>
 #include <wtf/Seconds.h>
@@ -145,12 +144,12 @@ public:
     }
 
     template<class Decoder>
-    static std::optional<MonotonicTime> decode(Decoder& decoder)
+    static Optional<MonotonicTime> decode(Decoder& decoder)
     {
-        std::optional<double> time;
+        Optional<double> time;
         decoder >> time;
         if (!time)
-            return std::nullopt;
+            return WTF::nullopt;
         return MonotonicTime::fromRawSeconds(*time);
     }
 
@@ -165,6 +164,8 @@ public:
         return true;
     }
 
+    struct MarkableTraits;
+
 private:
     constexpr MonotonicTime(double rawValue)
         : m_value(rawValue)
@@ -172,6 +173,18 @@ private:
     }
 
     double m_value { 0 };
+};
+
+struct MonotonicTime::MarkableTraits {
+    static bool isEmptyValue(MonotonicTime time)
+    {
+        return std::isnan(time.m_value);
+    }
+
+    static constexpr MonotonicTime emptyValue()
+    {
+        return MonotonicTime::nan();
+    }
 };
 
 } // namespace WTF
@@ -196,5 +209,3 @@ inline bool isfinite(WTF::MonotonicTime time)
 } // namespace std
 
 using WTF::MonotonicTime;
-
-#endif // WTF_MonotonicTime_h

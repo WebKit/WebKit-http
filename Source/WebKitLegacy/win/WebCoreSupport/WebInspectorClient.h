@@ -41,6 +41,7 @@
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
+class CertificateInfo;
 class Page;
 }
 
@@ -102,11 +103,15 @@ public:
 
     void bringToFront() override;
     void closeWindow() override;
+    void reopen() override;
 
     void setAttachedWindowHeight(unsigned) override;
     void setAttachedWindowWidth(unsigned) override;
 
+    void setSheetRect(const WebCore::FloatRect&) override;
+
     void inspectedURLChanged(const WTF::String& newURL) override;
+    void showCertificate(const WebCore::CertificateInfo&) override;
 
     // InspectorFrontendClientLocal API.
     void attachWindow(DockSide) override;
@@ -125,7 +130,7 @@ private:
     LRESULT onClose(WPARAM, LPARAM);
     LRESULT onSetFocus();
 
-    virtual void windowReceivedMessage(HWND, UINT message, WPARAM, LPARAM);
+    void windowReceivedMessage(HWND, UINT message, WPARAM, LPARAM) override;
 
     void onWebViewWindowPosChanging(WPARAM, LPARAM);
 
@@ -141,7 +146,7 @@ private:
     WTF::String m_inspectedURL;
     bool m_destroyingInspectorView;
 
-    static friend LRESULT CALLBACK WebInspectorWndProc(HWND, UINT, WPARAM, LPARAM);
+    friend LRESULT CALLBACK WebInspectorWndProc(HWND, UINT, WPARAM, LPARAM);
 };
 
 #endif // !defined(WebInspectorClient_h)

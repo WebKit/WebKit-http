@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RefCounter_h
-#define RefCounter_h
+#pragma once
 
 #include <wtf/Function.h>
 #include <wtf/Noncopyable.h>
@@ -37,6 +36,7 @@ enum class RefCounterEvent { Decrement, Increment };
 
 template<typename T>
 class RefCounter {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(RefCounter);
 
     class Count {
@@ -146,5 +146,3 @@ inline RefCounter<T>::~RefCounter()
 
 using WTF::RefCounter;
 using WTF::RefCounterEvent;
-
-#endif // RefCounter_h

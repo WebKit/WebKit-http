@@ -35,6 +35,7 @@
 #include "JSDOMPromise.h"
 #include "LoaderStrategy.h"
 #include "PlatformStrategies.h"
+#include "SWContextManager.h"
 #include "SecurityOrigin.h"
 #include "ServiceWorkerFetch.h"
 #include "ServiceWorkerGlobalScope.h"
@@ -76,7 +77,7 @@ ServiceWorkerThread::ServiceWorkerThread(const ServiceWorkerContextData& data, P
     , m_data(data.isolatedCopy())
     , m_workerObjectProxy(DummyServiceWorkerThreadProxy::shared())
 {
-    AtomicString::init();
+    AtomString::init();
 }
 
 ServiceWorkerThread::~ServiceWorkerThread() = default;
@@ -93,7 +94,7 @@ void ServiceWorkerThread::runEventLoop()
     WorkerThread::runEventLoop();
 }
 
-void ServiceWorkerThread::postFetchTask(Ref<ServiceWorkerFetch::Client>&& client, std::optional<ServiceWorkerClientIdentifier>&& clientId, ResourceRequest&& request, String&& referrer, FetchOptions&& options)
+void ServiceWorkerThread::postFetchTask(Ref<ServiceWorkerFetch::Client>&& client, Optional<ServiceWorkerClientIdentifier>&& clientId, ResourceRequest&& request, String&& referrer, FetchOptions&& options)
 {
     // FIXME: instead of directly using runLoop(), we should be using something like WorkerGlobalScopeProxy.
     // FIXME: request and options come straigth from IPC so are already isolated. We should be able to take benefit of that.

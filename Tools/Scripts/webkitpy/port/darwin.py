@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+# Copyright (C) 2014-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -53,14 +53,15 @@ class DarwinPort(ApplePort):
             return 350 * 1000
         return super(DarwinPort, self).default_timeout_ms()
 
-    def _port_specific_expectations_files(self):
-        return list(reversed([self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in self.baseline_search_path()]))
+    def _port_specific_expectations_files(self, device_type=None):
+        return list(reversed([self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in self.baseline_search_path(device_type=device_type)]))
 
-    def check_for_leaks(self, process_name, process_pid):
+    def check_for_leaks(self, process_name, process_id):
         if not self.get_option('leaks'):
             return
+
         # We could use http://code.google.com/p/psutil/ to get the process_name from the pid.
-        self._leak_detector.check_for_leaks(process_name, process_pid)
+        self._leak_detector.check_for_leaks(process_name, process_id)
 
     def print_leaks_summary(self):
         if not self.get_option('leaks'):
@@ -104,7 +105,7 @@ class DarwinPort(ApplePort):
                 else:
                     process_name = test.split('-')[0]
                     pid = int(test.split('-')[1])
-            except IndexError:
+            except (IndexError, ValueError):
                 continue
             if not any(entry[1] == process_name and entry[2] == pid for entry in crashed_processes):
                 # if this is a new crash, then append the logs
@@ -113,7 +114,7 @@ class DarwinPort(ApplePort):
 
     def _look_for_all_crash_logs_in_log_dir(self, newer_than):
         crash_log = CrashLogs(self.host, self.path_to_crash_logs(), crash_logs_to_skip=self._crash_logs_to_skip_for_host.get(self.host, []))
-        return crash_log.find_all_logs(include_errors=True, newer_than=newer_than)
+        return crash_log.find_all_logs(newer_than=newer_than)
 
     def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=None, sleep_fn=None, wait_for_log=True, target_host=None):
         # Note that we do slow-spin here and wait, since it appears the time
@@ -159,18 +160,31 @@ class DarwinPort(ApplePort):
     def sample_process(self, name, pid, target_host=None):
         host = target_host or self.host
         tempdir = host.filesystem.mkdtemp()
+        temp_tailspin_file_path = host.filesystem.join(str(tempdir), "{0}-{1}-tailspin-temp.txt".format(name, pid))
         command = [
-            '/usr/sbin/spindump',
-            pid,
-            10,
-            10,
-            '-file',
-            DarwinPort.spindump_file_path(host, name, pid, str(tempdir)),
+            '/usr/bin/tailspin',
+            'save',
+            '-n',
+            temp_tailspin_file_path,
         ]
-        if self.host.platform.is_mac():
+        if host.platform.is_mac():
             command = ['/usr/bin/sudo', '-n'] + command
+
         exit_status = host.executive.run_command(command, return_exit_code=True)
-        if exit_status:
+        if not exit_status:  # Symbolicate tailspin log using spindump
+            try:
+                host.executive.run_command([
+                    '/usr/sbin/spindump',
+                    '-i',
+                    temp_tailspin_file_path,
+                    '-file',
+                    DarwinPort.tailspin_file_path(host, name, pid, str(tempdir)),
+                ])
+                host.filesystem.move_to_base_host(DarwinPort.tailspin_file_path(host, name, pid, str(tempdir)),
+                                                  DarwinPort.tailspin_file_path(self.host, name, pid, self.results_directory()))
+            except IOError as e:
+                _log.warning('Unable to symbolicate tailspin log of process:' + str(e))
+        else:  # Tailspin failed, run sample instead
             try:
                 host.executive.run_command([
                     '/usr/bin/sample',
@@ -184,9 +198,6 @@ class DarwinPort(ApplePort):
                                                   DarwinPort.sample_file_path(self.host, name, pid, self.results_directory()))
             except ScriptError as e:
                 _log.warning('Unable to sample process:' + str(e))
-        else:
-            host.filesystem.move_to_base_host(DarwinPort.spindump_file_path(host, name, pid, str(tempdir)),
-                                              DarwinPort.spindump_file_path(self.host, name, pid, self.results_directory()))
         host.filesystem.rmtree(str(tempdir))
 
     @staticmethod
@@ -194,8 +205,8 @@ class DarwinPort(ApplePort):
         return host.filesystem.join(directory, "{0}-{1}-sample.txt".format(name, pid))
 
     @staticmethod
-    def spindump_file_path(host, name, pid, directory):
-        return host.filesystem.join(directory, "{0}-{1}-spindump.txt".format(name, pid))
+    def tailspin_file_path(host, name, pid, directory):
+        return host.filesystem.join(directory, "{0}-{1}-tailspin.txt".format(name, pid))
 
     def look_for_new_samples(self, unresponsive_processes, start_time):
         sample_files = {}
@@ -204,9 +215,9 @@ class DarwinPort(ApplePort):
             if self._filesystem.isfile(sample_file):
                 sample_files[test_name] = sample_file
             else:
-                spindump_file = DarwinPort.spindump_file_path(self.host, process_name, pid, self.results_directory())
-                if self._filesystem.isfile(spindump_file):
-                    sample_files[test_name] = spindump_file
+                tailspin_file = DarwinPort.tailspin_file_path(self.host, process_name, pid, self.results_directory())
+                if self._filesystem.isfile(tailspin_file):
+                    sample_files[test_name] = tailspin_file
         return sample_files
 
     def _path_to_image_diff(self):
@@ -231,9 +242,6 @@ class DarwinPort(ApplePort):
 
     def make_command(self):
         return self.xcrun_find('make', '/usr/bin/make')
-
-    def nm_command(self):
-        return self.xcrun_find('nm', 'nm')
 
     def xcrun_find(self, command, fallback=None):
         fallback = fallback or command

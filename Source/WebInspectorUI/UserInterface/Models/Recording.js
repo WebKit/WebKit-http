@@ -36,12 +36,13 @@ WI.Recording = class Recording extends WI.Object
         this._data = data;
         this._displayName = WI.UIString("Recording");
 
-        this._swizzle = [];
+        this._swizzle = null;
         this._actions = [new WI.RecordingInitialStateAction].concat(...this._frames.map((frame) => frame.actions));
         this._visualActionIndexes = [];
         this._source = null;
 
         this._processContext = null;
+        this._processStates = [];
         this._processing = false;
     }
 
@@ -50,36 +51,96 @@ WI.Recording = class Recording extends WI.Object
         if (typeof payload !== "object" || payload === null)
             return null;
 
-        if (isNaN(payload.version) || payload.version <= 0)
+        if (typeof payload.version !== "number") {
+            WI.Recording.synthesizeError(WI.UIString("non-number %s").format(WI.unlocalizedString("version")));
             return null;
+        }
+
+        if (payload.version < 1 || payload.version > WI.Recording.Version) {
+            WI.Recording.synthesizeError(WI.UIString("unsupported %s").format(WI.unlocalizedString("version")));
+            return null;
+        }
+
+        if (parseInt(payload.version) !== payload.version) {
+            WI.Recording.synthesizeWarning(WI.UIString("non-integer %s").format(WI.unlocalizedString("version")));
+            payload.version = parseInt(payload.version);
+        }
 
         let type = null;
         switch (payload.type) {
         case RecordingAgent.Type.Canvas2D:
             type = WI.Recording.Type.Canvas2D;
             break;
+        case RecordingAgent.Type.CanvasBitmapRenderer:
+            type = WI.Recording.Type.CanvasBitmapRenderer;
+            break;
         case RecordingAgent.Type.CanvasWebGL:
             type = WI.Recording.Type.CanvasWebGL;
             break;
+        case RecordingAgent.Type.CanvasWebGL2:
+            type = WI.Recording.Type.CanvasWebGL2;
+            break;
         default:
+            WI.Recording.synthesizeWarning(WI.UIString("unknown %s \u0022%s\u0022").format(WI.unlocalizedString("type"), payload.type));
             type = String(payload.type);
             break;
         }
 
-        if (typeof payload.initialState !== "object" || payload.initialState === null)
+        if (typeof payload.initialState !== "object" || payload.initialState === null) {
+            if ("initialState" in payload)
+                WI.Recording.synthesizeWarning(WI.UIString("non-object %s").format(WI.unlocalizedString("initialState")));
+
             payload.initialState = {};
-        if (typeof payload.initialState.attributes !== "object" || payload.initialState.attributes === null)
+        }
+
+        if (typeof payload.initialState.attributes !== "object" || payload.initialState.attributes === null) {
+            if ("attributes" in payload.initialState)
+                WI.Recording.synthesizeWarning(WI.UIString("non-object %s").format(WI.unlocalizedString("initialState.attributes")));
+
             payload.initialState.attributes = {};
-        if (!Array.isArray(payload.initialState.parameters))
+        }
+
+        if (!Array.isArray(payload.initialState.states) || payload.initialState.states.some((item) => typeof item !== "object" || item === null)) {
+            if ("states" in payload.initialState)
+                WI.Recording.synthesizeWarning(WI.UIString("non-array %s").format(WI.unlocalizedString("initialState.states")));
+
+            payload.initialState.states = [];
+
+            // COMPATIBILITY (iOS 12.0): Recording.InitialState.states did not exist yet
+            if (!isEmptyObject(payload.initialState.attributes)) {
+                let {width, height, ...state} = payload.initialState.attributes;
+                if (!isEmptyObject(state))
+                    payload.initialState.states.push(state);
+            }
+        }
+
+        if (!Array.isArray(payload.initialState.parameters)) {
+            if ("parameters" in payload.initialState)
+                WI.Recording.synthesizeWarning(WI.UIString("non-array %s").format(WI.unlocalizedString("initialState.attributes")));
+
             payload.initialState.parameters = [];
-        if (typeof payload.initialState.content !== "string")
+        }
+
+        if (typeof payload.initialState.content !== "string") {
+            if ("content" in payload.initialState)
+                WI.Recording.synthesizeWarning(WI.UIString("non-string %s").format(WI.unlocalizedString("initialState.content")));
+
             payload.initialState.content = "";
+        }
 
-        if (!Array.isArray(payload.frames))
+        if (!Array.isArray(payload.frames)) {
+            if ("frames" in payload)
+                WI.Recording.synthesizeWarning(WI.UIString("non-array %s").format(WI.unlocalizedString("frames")));
+
             payload.frames = [];
+        }
 
-        if (!Array.isArray(payload.data))
+        if (!Array.isArray(payload.data)) {
+            if ("data" in payload)
+                WI.Recording.synthesizeWarning(WI.UIString("non-array %s").format(WI.unlocalizedString("data")));
+
             payload.data = [];
+        }
 
         if (!frames)
             frames = payload.frames.map(WI.RecordingFrame.fromPayload)
@@ -130,18 +191,47 @@ WI.Recording = class Recording extends WI.Object
             return WI.unlocalizedString("WebGLUniformLocation");
         case WI.Recording.Swizzle.ImageBitmap:
             return WI.unlocalizedString("ImageBitmap");
+        case WI.Recording.Swizzle.WebGLQuery:
+            return WI.unlocalizedString("WebGLQuery");
+        case WI.Recording.Swizzle.WebGLSampler:
+            return WI.unlocalizedString("WebGLSampler");
+        case WI.Recording.Swizzle.WebGLSync:
+            return WI.unlocalizedString("WebGLSync");
+        case WI.Recording.Swizzle.WebGLTransformFeedback:
+            return WI.unlocalizedString("WebGLTransformFeedback");
+        case WI.Recording.Swizzle.WebGLVertexArrayObject:
+            return WI.unlocalizedString("WebGLVertexArrayObject");
         default:
             console.error("Unknown swizzle type", swizzleType);
             return null;
         }
     }
 
+    static synthesizeWarning(message)
+    {
+        message = WI.UIString("Recording Warning: %s").format(message);
+
+        if (window.InspectorTest) {
+            console.warn(message);
+            return;
+        }
+
+        let consoleMessage = new WI.ConsoleMessage(WI.mainTarget, WI.ConsoleMessage.MessageSource.Other, WI.ConsoleMessage.MessageLevel.Warning, message);
+        consoleMessage.shouldRevealConsole = true;
+
+        WI.consoleLogViewController.appendConsoleMessage(consoleMessage);
+    }
+
     static synthesizeError(message)
     {
-        const target = WI.mainTarget;
-        const source = WI.ConsoleMessage.MessageSource.Other;
-        const level = WI.ConsoleMessage.MessageLevel.Error;
-        let consoleMessage = new WI.ConsoleMessage(target, source, level, WI.UIString("Recording error: %s").format(message));
+        message = WI.UIString("Recording Error: %s").format(message);
+
+        if (window.InspectorTest) {
+            console.error(message);
+            return;
+        }
+
+        let consoleMessage = new WI.ConsoleMessage(WI.mainTarget, WI.ConsoleMessage.MessageSource.Other, WI.ConsoleMessage.MessageLevel.Error, message);
         consoleMessage.shouldRevealConsole = true;
 
         WI.consoleLogViewController.appendConsoleMessage(consoleMessage);
@@ -218,6 +308,9 @@ WI.Recording = class Recording extends WI.Object
 
     async swizzle(index, type)
     {
+        if (!this._swizzle)
+            this._swizzle = {};
+
         if (typeof this._swizzle[index] !== "object")
             this._swizzle[index] = {};
 
@@ -241,7 +334,12 @@ WI.Recording = class Recording extends WI.Object
             || type === WI.Recording.Swizzle.WebGLTexture
             || type === WI.Recording.Swizzle.WebGLShader
             || type === WI.Recording.Swizzle.WebGLProgram
-            || type === WI.Recording.Swizzle.WebGLUniformLocation) {
+            || type === WI.Recording.Swizzle.WebGLUniformLocation
+            || type === WI.Recording.Swizzle.WebGLQuery
+            || type === WI.Recording.Swizzle.WebGLSampler
+            || type === WI.Recording.Swizzle.WebGLSync
+            || type === WI.Recording.Swizzle.WebGLTransformFeedback
+            || type === WI.Recording.Swizzle.WebGLVertexArrayObject) {
             return index;
         }
 
@@ -259,31 +357,57 @@ WI.Recording = class Recording extends WI.Object
 
                 case WI.Recording.Swizzle.Image:
                     this._swizzle[index][type] = await WI.ImageUtilities.promisifyLoad(data);
+                    this._swizzle[index][type].__data = data;
                     break;
 
-                case WI.Recording.Swizzle.ImageData:
-                    this._swizzle[index][type] = new ImageData(new Uint8ClampedArray(data[0]), parseInt(data[1]), parseInt(data[2]));
+                case WI.Recording.Swizzle.ImageData: {
+                    let [object, width, height] = await Promise.all([
+                        this.swizzle(data[0], WI.Recording.Swizzle.Array),
+                        this.swizzle(data[1], WI.Recording.Swizzle.Number),
+                        this.swizzle(data[2], WI.Recording.Swizzle.Number),
+                    ]);
+
+                    object = await Promise.all(object.map((item) => this.swizzle(item, WI.Recording.Swizzle.Number)));
+
+                    this._swizzle[index][type] = new ImageData(new Uint8ClampedArray(object), width, height);
+                    this._swizzle[index][type].__data = {data: object, width, height};
                     break;
+                }
 
                 case WI.Recording.Swizzle.Path2D:
                     this._swizzle[index][type] = new Path2D(data);
+                    this._swizzle[index][type].__data = data;
                     break;
 
-                case WI.Recording.Swizzle.CanvasGradient:
-                    var gradientType = await this.swizzle(data[0], WI.Recording.Swizzle.String);
+                case WI.Recording.Swizzle.CanvasGradient: {
+                    let [gradientType, points] = await Promise.all([
+                        this.swizzle(data[0], WI.Recording.Swizzle.String),
+                        this.swizzle(data[1], WI.Recording.Swizzle.Array),
+                    ]);
+
+                    points = await Promise.all(points.map((item) => this.swizzle(item, WI.Recording.Swizzle.Number)));
 
                     WI.ImageUtilities.scratchCanvasContext2D((context) => {
-                        this._swizzle[index][type] = gradientType === "radial-gradient" ? context.createRadialGradient(...data[1]) : context.createLinearGradient(...data[1]);
+                        this._swizzle[index][type] = gradientType === "radial-gradient" ? context.createRadialGradient(...points) : context.createLinearGradient(...points);
                     });
 
+                    let stops = [];
                     for (let stop of data[2]) {
-                        let color = await this.swizzle(stop[1], WI.Recording.Swizzle.String);
-                        this._swizzle[index][type].addColorStop(stop[0], color);
-                    }
-                    break;
+                        let [offset, color] = await Promise.all([
+                            this.swizzle(stop[0], WI.Recording.Swizzle.Number),
+                            this.swizzle(stop[1], WI.Recording.Swizzle.String),
+                        ]);
+                        this._swizzle[index][type].addColorStop(offset, color);
 
-                case WI.Recording.Swizzle.CanvasPattern:
-                    var [image, repeat] = await Promise.all([
+                        stops.push({offset, color});
+                    }
+
+                    this._swizzle[index][type].__data = {type: gradientType, points, stops};
+                    break;
+                }
+
+                case WI.Recording.Swizzle.CanvasPattern: {
+                    let [image, repeat] = await Promise.all([
                         this.swizzle(data[0], WI.Recording.Swizzle.Image),
                         this.swizzle(data[1], WI.Recording.Swizzle.String),
                     ]);
@@ -292,12 +416,38 @@ WI.Recording = class Recording extends WI.Object
                         this._swizzle[index][type] = context.createPattern(image, repeat);
                         this._swizzle[index][type].__image = image;
                     });
-                    break;
 
-                case WI.Recording.Swizzle.ImageBitmap:
-                    var image = await this.swizzle(index, WI.Recording.Swizzle.Image);
-                    this._swizzle[index][type] = await createImageBitmap(image);
+                    this._swizzle[index][type].__data = {image: image.__data, repeat};
                     break;
+                }
+
+                case WI.Recording.Swizzle.ImageBitmap: {
+                    let image = await this.swizzle(index, WI.Recording.Swizzle.Image);
+                    this._swizzle[index][type] = await createImageBitmap(image);
+                    this._swizzle[index][type].__data = data;
+                    break;
+                }
+
+                case WI.Recording.Swizzle.CallStack: {
+                    let array = await this.swizzle(data, WI.Recording.Swizzle.Array);
+                    this._swizzle[index][type] = await Promise.all(array.map((item) => this.swizzle(item, WI.Recording.Swizzle.CallFrame)));
+                    break;
+                }
+
+                case WI.Recording.Swizzle.CallFrame: {
+                    let array = await this.swizzle(data, WI.Recording.Swizzle.Array);
+                    let [functionName, url] = await Promise.all([
+                        this.swizzle(array[0], WI.Recording.Swizzle.String),
+                        this.swizzle(array[1], WI.Recording.Swizzle.String),
+                    ]);
+                    this._swizzle[index][type] = WI.CallFrame.fromPayload(WI.assumingMainTarget(), {
+                        functionName,
+                        url,
+                        lineNumber: array[2],
+                        columnNumber: array[3],
+                    });
+                    break;
+                }
                 }
             } catch { }
         }
@@ -319,8 +469,14 @@ WI.Recording = class Recording extends WI.Object
         if (this._type === WI.Recording.Type.Canvas2D)
             return createCanvasContext("2d");
 
+        if (this._type === WI.Recording.Type.CanvasBitmapRenderer)
+            return createCanvasContext("bitmaprenderer");
+
         if (this._type === WI.Recording.Type.CanvasWebGL)
             return createCanvasContext("webgl");
+
+        if (this._type === WI.Recording.Type.CanvasWebGL2)
+            return createCanvasContext("webgl2");
 
         console.error("Unknown recording type", this._type);
         return null;
@@ -331,6 +487,8 @@ WI.Recording = class Recording extends WI.Object
         let initialState = {};
         if (!isEmptyObject(this._initialState.attributes))
             initialState.attributes = this._initialState.attributes;
+        if (this._initialState.states.length)
+            initialState.states = this._initialState.states;
         if (this._initialState.parameters.length)
             initialState.parameters = this._initialState.parameters;
         if (this._initialState.content && this._initialState.content.length)
@@ -345,6 +503,274 @@ WI.Recording = class Recording extends WI.Object
         };
     }
 
+    toHTML()
+    {
+        console.assert(this._type === WI.Recording.Type.Canvas2D);
+        console.assert(this.ready);
+
+        let lines = [];
+        let objects = [];
+
+        function processObject(object) {
+            objects.push({object, index: objects.length});
+            return `objects[${objects.length - 1}]`;
+        }
+
+        function processValue(value) {
+            if (typeof value === "object" && !Array.isArray(value))
+                return processObject(value);
+            return JSON.stringify(value);
+        }
+
+        function escapeHTML(s) {
+            return s.replace(/[^0-9A-Za-z ]/g, (c) => {
+                return `&#${c.charCodeAt(0)};`;
+            });
+        }
+
+        lines.push(`<!DOCTYPE html>`);
+        lines.push(`<head>`);
+        lines.push(`<title>${escapeHTML(this._displayName)}</title>`);
+        lines.push(`<style>`);
+        lines.push(`    body {`);
+        lines.push(`        margin: 0;`);
+        lines.push(`    }`);
+        lines.push(`    canvas {`);
+        lines.push(`        max-width: calc(100% - 40px);`);
+        lines.push(`        max-height: calc(100% - 40px);`);
+        lines.push(`        padding: 20px;`);
+        lines.push(`    }`);
+        lines.push(`</style>`);
+        lines.push(`</head>`);
+        lines.push(`<body>`);
+        lines.push(`<script>`);
+        lines.push(`"use strict";`);
+
+        lines.push(``);
+
+        lines.push(`let promises = [];`);
+        lines.push(`let objects = {};`);
+
+        lines.push(``);
+
+        lines.push(`let canvas = document.body.appendChild(document.createElement("canvas"));`);
+        for (let [attribute, value] of Object.entries(this._initialState.attributes))
+            lines.push(`canvas.${attribute} = ${JSON.stringify(value)};`);
+
+        lines.push(``);
+
+        let parametersString = this._initialState.parameters.map(processValue).join(`, `);
+        lines.push(`let context = canvas.getContext("2d"${parametersString ? ", " + parametersString : ""});`);
+
+        lines.push(``);
+
+        lines.push(`let frames = [`);
+
+        lines.push(`    function initialState() {`);
+        if (this._initialState.content) {
+            let image = new Image;
+            image.__data = this._initialState.content;
+            lines.push(`        context.drawImage(${processObject(image)}, 0, 0);`);
+            lines.push(``);
+        }
+        for (let state of this._actions[0].states) {
+            for (let [name, value] of state) {
+                if (name === "getPath" || name === "currentX" || name === "currentY")
+                    continue;
+
+                let contextString = `context`;
+                if (name === "setPath") {
+                    lines.push(`        if (${JSON.stringify(name)} in context)`);
+                    contextString = `    ` + contextString;
+                }
+
+                let callString = ``;
+                if (WI.RecordingAction.isFunctionForType(this._type, name))
+                    callString = `(` + value.map(processValue).join(`, `) + `)`;
+                else
+                    callString = ` = ${processValue(value)}`;
+
+                lines.push(`        ${contextString}.${name}${callString};`);
+            }
+
+            if (state !== this._actions[0].states.lastValue) {
+                lines.push(`        context.save();`);
+                lines.push(``);
+            }
+        }
+        lines.push(`    },`);
+
+        lines.push(`    function startRecording() {`);
+        lines.push(`        if (typeof console.record === "function")`);
+        lines.push(`            console.record(context, {name: ${JSON.stringify(this._displayName)}});`);
+        lines.push(`    },`);
+
+        for (let i = 0; i < this._frames.length; ++i) {
+            lines.push(`    function frame${i + 1}() {`);
+
+            for (let action of this._frames[i].actions) {
+                let contextString = `context`;
+                if (action.contextReplacer)
+                    contextString += `.${action.contextReplacer}`;
+
+                if (!action.valid)
+                    contextString = `// ` + contextString;
+
+                let callString = ``;
+                if (action.isFunction)
+                    callString += `(` + action.parameters.map(processValue).join(`, `) + `)`;
+                else if (!action.isGetter)
+                    callString += ` = ` + processValue(action.parameters[0]);
+
+                lines.push(`        ${contextString}.${action.name}${callString};`);
+            }
+
+            lines.push(`    },`);
+        }
+
+        lines.push(`    function stopRecording() {`);
+        lines.push(`        if (typeof console.recordEnd === "function")`);
+        lines.push(`            console.recordEnd(context);`);
+        lines.push(`    },`);
+
+        lines.push(`];`);
+
+        lines.push(``);
+
+        if (objects.length) {
+            if (objects.some(({object}) => object instanceof CanvasGradient)) {
+                lines.push(`function rebuildCanvasGradient(key, data) {`);
+                lines.push(`    let gradient = null;`);
+                lines.push(`    if (data.type === "radial-gradient")`);
+                lines.push(`        gradient = context.createRadialGradient(data.points[0], data.points[1], data.points[2], data.points[3], data.points[4], data.points[5]);`);
+                lines.push(`    else`);
+                lines.push(`        gradient = context.createLinearGradient(data.points[0], data.points[1], data.points[2], data.points[3]);`);
+                lines.push(`    for (let stop of data.stops)`);
+                lines.push(`        gradient.addColorStop(stop.offset, stop.color);`);
+                lines.push(`    objects[key] = gradient;`);
+                lines.push(`}`);
+            }
+
+            if (objects.some(({object}) => object instanceof CanvasPattern)) {
+                lines.push(`function rebuildCanvasPattern(key, data) {`);
+                lines.push(`    promises.push(new Promise(function(resolve, reject) {`);
+                lines.push(`        let image = new Image;`);
+                lines.push(`        function resolveWithImage(event) {`);
+                lines.push(`            objects[key] = context.createPattern(image, data.repeat);`);
+                lines.push(`            resolve();`);
+                lines.push(`        }`);
+                lines.push(`        image.addEventListener("load", resolveWithImage);`);
+                lines.push(`        image.addEventListener("error", resolveWithImage);`);
+                lines.push(`        image.src = data.image;`);
+                lines.push(`    }));`);
+                lines.push(`}`);
+            }
+
+            if (objects.some(({object}) => object instanceof DOMMatrix)) {
+                lines.push(`function rebuildDOMMatrix(key, data) {`);
+                lines.push(`    objects[key] = new DOMMatrix(data);`);
+                lines.push(`}`);
+            }
+
+            if (objects.some(({object}) => object instanceof Image)) {
+                lines.push(`function rebuildImage(key, data) {`);
+                lines.push(`    promises.push(new Promise(function(resolve, reject) {`);
+                lines.push(`        let image = new Image;`);
+                lines.push(`        function resolveWithImage(event) {`);
+                lines.push(`            objects[key] = image;`);
+                lines.push(`            resolve();`);
+                lines.push(`        }`);
+                lines.push(`        image.addEventListener("load", resolveWithImage);`);
+                lines.push(`        image.addEventListener("error", resolveWithImage);`);
+                lines.push(`        image.src = data;`);
+                lines.push(`    }));`);
+                lines.push(`}`);
+            }
+
+            if (objects.some(({object}) => object instanceof ImageBitmap)) {
+                lines.push(`function rebuildImageBitmap(key, data) {`);
+                lines.push(`    promises.push(new Promise(function(resolve, reject) {`);
+                lines.push(`        let image = new Image;`);
+                lines.push(`        function resolveWithImage(event) {`);
+                lines.push(`            createImageBitmap(image).then(function(imageBitmap) {`);
+                lines.push(`                objects[key] = imageBitmap;`);
+                lines.push(`                resolve();`);
+                lines.push(`            });`);
+                lines.push(`        }`);
+                lines.push(`        image.addEventListener("load", resolveWithImage);`);
+                lines.push(`        image.addEventListener("error", resolveWithImage);`);
+                lines.push(`        image.src = data;`);
+                lines.push(`    }));`);
+                lines.push(`}`);
+            }
+
+            if (objects.some(({object}) => object instanceof ImageData)) {
+                lines.push(`function rebuildImageData(key, data) {`);
+                lines.push(`    objects[key] = new ImageData(new Uint8ClampedArray(data.data), parseInt(data.width), parseInt(data.height));`);
+                lines.push(`}`);
+            }
+
+            if (objects.some(({object}) => object instanceof Path2D)) {
+                lines.push(`function rebuildPath2D(key, data) {`);
+                lines.push(`    objects[key] = new Path2D(data);`);
+                lines.push(`}`);
+            }
+
+            lines.push(``);
+
+            for (let {object, index} of objects) {
+                if (object instanceof CanvasGradient) {
+                    lines.push(`rebuildCanvasGradient(${index}, ${JSON.stringify(object.__data)});`);
+                    continue;
+                }
+
+                if (object instanceof CanvasPattern) {
+                    lines.push(`rebuildCanvasPattern(${index}, ${JSON.stringify(object.__data)});`);
+                    continue;
+                }
+
+                if (object instanceof DOMMatrix) {
+                    lines.push(`rebuildDOMMatrix(${index}, ${JSON.stringify(object.toString())});`)
+                    continue;
+                }
+
+                if (object instanceof Image) {
+                    lines.push(`rebuildImage(${index}, ${JSON.stringify(object.__data)});`)
+                    continue;
+                }
+
+                if (object instanceof ImageBitmap) {
+                    lines.push(`rebuildImageBitmap(${index}, ${JSON.stringify(object.__data)});`)
+                    continue;
+                }
+
+                if (object instanceof ImageData) {
+                    lines.push(`rebuildImageData(${index}, ${JSON.stringify(object.__data)});`);
+                    continue;
+                }
+
+                if (object instanceof Path2D) {
+                    lines.push(`rebuildPath2D(${index}, ${JSON.stringify(object.__data || "")});`)
+                    continue;
+                }
+            }
+
+            lines.push(``);
+        }
+
+        lines.push(`Promise.all(promises).then(function() {`);
+        lines.push(`    window.requestAnimationFrame(function executeFrame() {`);
+        lines.push(`        frames.shift()();`);
+        lines.push(`        if (frames.length)`);
+        lines.push(`            window.requestAnimationFrame(executeFrame);`);
+        lines.push(`    });`);
+        lines.push(`});`);
+
+        lines.push(`</script>`);
+        lines.push(`</body>`);
+        return lines.join(`\n`);
+    }
+
     // Private
 
     async _process()
@@ -356,54 +782,15 @@ WI.Recording = class Recording extends WI.Object
                 let initialContent = await WI.ImageUtilities.promisifyLoad(this._initialState.content);
                 this._processContext.drawImage(initialContent, 0, 0);
 
-                for (let [key, value] of Object.entries(this._initialState.attributes)) {
-                    switch (key) {
-                    case "setTransform":
-                        value = [await this.swizzle(value, WI.Recording.Swizzle.DOMMatrix)];
-                        break;
+                for (let initialState of this._initialState.states) {
+                    let state = await WI.RecordingState.swizzleInitialState(this, initialState);
+                    state.apply(this._type, this._processContext);
 
-                    case "fillStyle":
-                    case "strokeStyle":
-                            let [gradient, pattern, string] = await Promise.all([
-                                this.swizzle(value, WI.Recording.Swizzle.CanvasGradient),
-                                this.swizzle(value, WI.Recording.Swizzle.CanvasPattern),
-                                this.swizzle(value, WI.Recording.Swizzle.String),
-                            ]);
-                            if (gradient && !pattern)
-                                value = gradient;
-                            else if (pattern && !gradient)
-                                value = pattern;
-                            else
-                                value = string;
-                        break;
-
-                    case "direction":
-                    case "font":
-                    case "globalCompositeOperation":
-                    case "imageSmoothingEnabled":
-                    case "imageSmoothingQuality":
-                    case "lineCap":
-                    case "lineJoin":
-                    case "shadowColor":
-                    case "textAlign":
-                    case "textBaseline":
-                        value = await this.swizzle(value, WI.Recording.Swizzle.String);
-                        break;
-
-                    case "setPath":
-                        value = [await this.swizzle(value[0], WI.Recording.Swizzle.Path2D)];
-                        break;
+                    // The last state represents the current state, which should not be saved.
+                    if (initialState !== this._initialState.states.lastValue) {
+                        this._processContext.save();
+                        this._processStates.push(WI.RecordingState.fromContext(this._type, this._processContext));
                     }
-
-                    if (value === undefined || (Array.isArray(value) && value.includes(undefined)))
-                        continue;
-
-                    try {
-                        if (WI.RecordingAction.isFunctionForType(this._type, key))
-                            this._processContext[key](...value);
-                        else
-                            this._processContext[key] = value;
-                    } catch { }
                 }
             }
         }
@@ -411,7 +798,7 @@ WI.Recording = class Recording extends WI.Object
         // The first action is always a WI.RecordingInitialStateAction, which doesn't need to swizzle().
         // Since it is not associated with a WI.RecordingFrame, it has to manually process().
         if (!this._actions[0].ready) {
-            this._actions[0].process(this, this._processContext);
+            this._actions[0].process(this, this._processContext, this._processStates);
             this.dispatchEventToListeners(WI.Recording.Event.ProcessedAction, {action: this._actions[0], index: 0});
         }
 
@@ -419,11 +806,13 @@ WI.Recording = class Recording extends WI.Object
         let startTime = Date.now();
 
         let cumulativeActionIndex = 0;
+        let lastAction = this._actions[cumulativeActionIndex];
         for (let frameIndex = 0; frameIndex < this._frames.length; ++frameIndex) {
             let frame = this._frames[frameIndex];
 
             if (frame.actions.lastValue.ready) {
                 cumulativeActionIndex += frame.actions.length;
+                lastAction = frame.actions.lastValue;
                 continue;
             }
 
@@ -431,12 +820,14 @@ WI.Recording = class Recording extends WI.Object
                 ++cumulativeActionIndex;
 
                 let action = frame.actions[actionIndex];
-                if (action.ready)
+                if (action.ready) {
+                    lastAction = action;
                     continue;
+                }
 
                 await action.swizzle(this);
 
-                action.process(this, this._processContext);
+                action.process(this, this._processContext, this._processStates, {lastAction});
 
                 if (action.isVisual)
                     this._visualActionIndexes.push(cumulativeActionIndex);
@@ -452,6 +843,8 @@ WI.Recording = class Recording extends WI.Object
                     startTime = Date.now();
                 }
 
+                lastAction = action;
+
                 if (!this._processing)
                     return;
             }
@@ -460,10 +853,14 @@ WI.Recording = class Recording extends WI.Object
                 return;
         }
 
+        this._swizzle = null;
         this._processContext = null;
         this._processing = false;
     }
 };
+
+// Keep this in sync with Inspector::Protocol::Recording::VERSION.
+WI.Recording.Version = 1;
 
 WI.Recording.Event = {
     ProcessedAction: "recording-processed-action",
@@ -476,7 +873,9 @@ WI.Recording.CanvasRecordingNamesSymbol = Symbol("canvas-recording-names");
 
 WI.Recording.Type = {
     Canvas2D: "canvas-2d",
+    CanvasBitmapRenderer: "canvas-bitmaprenderer",
     CanvasWebGL: "canvas-webgl",
+    CanvasWebGL2: "canvas-webgl2",
 };
 
 // Keep this in sync with WebCore::RecordingSwizzleTypes.
@@ -501,4 +900,13 @@ WI.Recording.Swizzle = {
     WebGLProgram: 17,
     WebGLUniformLocation: 18,
     ImageBitmap: 19,
+    WebGLQuery: 20,
+    WebGLSampler: 21,
+    WebGLSync: 22,
+    WebGLTransformFeedback: 23,
+    WebGLVertexArrayObject: 24,
+
+    // Special frontend-only swizzle types.
+    CallStack: Symbol("CallStack"),
+    CallFrame: Symbol("CallFrame"),
 };

@@ -60,7 +60,7 @@ TEST(WebKit, WKPreferencesDefaults)
     static const char* expectedCursiveFontFamily = "Apple Chancery";
     static const char* expectedFantasyFontFamily = "Papyrus";
     static const char* expectedPictographFontFamily = "Apple Color Emoji";
-#elif PLATFORM(IOS)
+#elif PLATFORM(IOS_FAMILY)
     static const char* expectedStandardFontFamily = "Times";
     static const char* expectedFixedFontFamily = "Courier";
     static const char* expectedSerifFontFamily = "Times";
@@ -94,8 +94,6 @@ TEST(WebKit, WKPreferencesDefaults)
     EXPECT_FALSE(WKPreferencesGetDeveloperExtrasEnabled(preference));
     EXPECT_TRUE(WKPreferencesGetTextAreasAreResizable(preference));
 
-    EXPECT_EQ(kWKFontSmoothingLevelMedium, WKPreferencesGetFontSmoothingLevel(preference));
-
     EXPECT_TRUE(WKPreferencesGetAcceleratedCompositingEnabled(preference));
     EXPECT_FALSE(WKPreferencesGetCompositingBordersVisible(preference));
     EXPECT_FALSE(WKPreferencesGetCompositingRepaintCountersVisible(preference));
@@ -108,12 +106,12 @@ TEST(WebKit, WKPreferencesDefaults)
 
 TEST(WebKit, WKPreferencesCopying)
 {
-    WKRetainPtr<WKStringRef> identifier(AdoptWK, WKStringCreateWithUTF8CString("identifier"));
+    WKRetainPtr<WKStringRef> identifier = adoptWK(WKStringCreateWithUTF8CString("identifier"));
 
-    WKRetainPtr<WKPreferencesRef> preferences(AdoptWK, WKPreferencesCreateWithIdentifier(identifier.get()));
+    WKRetainPtr<WKPreferencesRef> preferences = adoptWK(WKPreferencesCreateWithIdentifier(identifier.get()));
     WKPreferencesSetDefaultFontSize(preferences.get(), 36);
 
-    WKRetainPtr<WKPreferencesRef> copy(AdoptWK, WKPreferencesCreateCopy(preferences.get()));
+    WKRetainPtr<WKPreferencesRef> copy = adoptWK(WKPreferencesCreateCopy(preferences.get()));
 
     WKPreferencesSetDefaultFontSize(preferences.get(), 24);
     EXPECT_EQ(24u, WKPreferencesGetDefaultFontSize(preferences.get()));

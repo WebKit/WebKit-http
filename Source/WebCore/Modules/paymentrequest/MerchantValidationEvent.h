@@ -28,33 +28,37 @@
 #if ENABLE(PAYMENT_REQUEST)
 
 #include "Event.h"
-#include "URL.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 
 class DOMPromise;
 class Document;
-class PaymentRequest;
-struct MerchantValidationEventInit;
 
 class MerchantValidationEvent final : public Event {
 public:
-    static Ref<MerchantValidationEvent> create(const AtomicString&, const URL&, PaymentRequest&);
-    static ExceptionOr<Ref<MerchantValidationEvent>> create(Document&, const AtomicString&, MerchantValidationEventInit&&);
+    struct Init final : EventInit {
+        String methodName;
+        String validationURL;
+    };
 
+    static Ref<MerchantValidationEvent> create(const AtomString& type, const String& methodName, URL&& validationURL);
+    static ExceptionOr<Ref<MerchantValidationEvent>> create(Document&, const AtomString& type, Init&&);
+
+    const String& methodName() const { return m_methodName; }
     const String& validationURL() const { return m_validationURL.string(); }
     ExceptionOr<void> complete(Ref<DOMPromise>&&);
 
 private:
-    MerchantValidationEvent(const AtomicString&, const URL&, PaymentRequest&);
-    MerchantValidationEvent(const AtomicString&, URL&&, MerchantValidationEventInit&&);
+    MerchantValidationEvent(const AtomString& type, const String& methodName, URL&& validationURL);
+    MerchantValidationEvent(const AtomString& type, String&& methodName, URL&& validationURL, Init&&);
 
     // Event
     EventInterface eventInterface() const final;
 
     bool m_isCompleted { false };
+    String m_methodName;
     URL m_validationURL;
-    RefPtr<PaymentRequest> m_paymentRequest;
 };
 
 } // namespace WebCore

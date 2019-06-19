@@ -36,7 +36,7 @@ namespace JSC { namespace B3 {
 // platform-agnostic code. Note that a ConstPtrValue will behave like either a Const32Value or
 // Const64Value depending on platform.
 
-#if USE(JSVALUE64)
+#if CPU(ADDRESS64)
 typedef Const64Value ConstPtrValueBase;
 #else
 typedef Const32Value ConstPtrValueBase;
@@ -51,12 +51,17 @@ public:
 
 private:
     friend class Procedure;
+    friend class Value;
 
+    template<typename T>
+    static Opcode opcodeFromConstructor(Origin, T*) { return ConstPtrValueBase::opcodeFromConstructor(); }
     template<typename T>
     ConstPtrValue(Origin origin, T* pointer)
         : ConstPtrValueBase(origin, bitwise_cast<intptr_t>(pointer))
     {
     }
+    template<typename T>
+    static Opcode opcodeFromConstructor(Origin, T) { return ConstPtrValueBase::opcodeFromConstructor(); }
     template<typename T>
     ConstPtrValue(Origin origin, T pointer)
         : ConstPtrValueBase(origin, static_cast<intptr_t>(pointer))

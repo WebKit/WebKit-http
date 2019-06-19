@@ -41,7 +41,7 @@ enum NoResultTag { NoResult };
 typedef MacroAssembler::RegisterID GPRReg;
 static constexpr GPRReg InvalidGPRReg { GPRReg::InvalidGPRReg };
 
-#if ENABLE(JIT)
+#if ENABLE(ASSEMBLER)
 
 #if USE(JSVALUE64)
 class JSValueRegs {
@@ -526,9 +526,9 @@ public:
 
 #endif // CPU(X86_64)
 
-#if CPU(ARM)
+#if CPU(ARM_THUMB2)
 #define NUMBER_OF_ARGUMENT_REGISTERS 4u
-#define NUMBER_OF_CALLEE_SAVES_REGISTERS 0u
+#define NUMBER_OF_CALLEE_SAVES_REGISTERS 1u
 
 class GPRInfo {
 public:
@@ -544,12 +544,9 @@ public:
     static const GPRReg regT4 = ARMRegisters::r8;
     static const GPRReg regT5 = ARMRegisters::r9;
     static const GPRReg regT6 = ARMRegisters::r10;
-#if CPU(ARM_THUMB2)
-    static const GPRReg regT7 = ARMRegisters::r11;
-#else 
-    static const GPRReg regT7 = ARMRegisters::r7;
-#endif
+    static const GPRReg regT7 = ARMRegisters::r5;
     static const GPRReg regT8 = ARMRegisters::r4;
+    static const GPRReg regCS0 = ARMRegisters::r11;
     // These registers match the baseline JIT.
     static const GPRReg callFrameRegister = ARMRegisters::fp;
     // These constants provide the names for the general purpose argument & return value registers.
@@ -582,11 +579,7 @@ public:
         ASSERT(reg != InvalidGPRReg);
         ASSERT(static_cast<int>(reg) < 16);
         static const unsigned indexForRegister[16] =
-#if CPU(ARM_THUMB2)
-            { 0, 1, 2, 3, 8, InvalidIndex, InvalidIndex, InvalidIndex, 4, 5, 6, 7, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex };
-#else
-            { 0, 1, 2, 3, 8, InvalidIndex, InvalidIndex, 7, 4, 5, 6, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex };
-#endif
+            { 0, 1, 2, 3, 8, 7, InvalidIndex, InvalidIndex, 4, 5, 6, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex };
         unsigned result = indexForRegister[reg];
         return result;
     }
@@ -723,7 +716,7 @@ public:
 
 #if CPU(MIPS)
 #define NUMBER_OF_ARGUMENT_REGISTERS 4u
-#define NUMBER_OF_CALLEE_SAVES_REGISTERS 0u
+#define NUMBER_OF_CALLEE_SAVES_REGISTERS 1u
 
 class GPRInfo {
 public:
@@ -757,6 +750,7 @@ public:
     static const GPRReg returnValueGPR = regT0;
     static const GPRReg returnValueGPR2 = regT1;
     static const GPRReg nonPreservedNonReturnGPR = regT2;
+    static const GPRReg regCS0 = MIPSRegisters::s0;
 
     static GPRReg toRegister(unsigned index)
     {
@@ -816,7 +810,7 @@ inline NoResultTag extractResult(NoResultTag) { return NoResult; }
 // We use this hack to get the GPRInfo from the GPRReg type in templates because our code is bad and we should feel bad..
 constexpr GPRInfo toInfoFromReg(GPRReg) { return GPRInfo(); }
 
-#endif // ENABLE(JIT)
+#endif // ENABLE(ASSEMBLER)
 
 } // namespace JSC
 
@@ -824,7 +818,7 @@ namespace WTF {
 
 inline void printInternal(PrintStream& out, JSC::GPRReg reg)
 {
-#if ENABLE(JIT)
+#if ENABLE(ASSEMBLER)
     out.print("%", JSC::GPRInfo::debugName(reg));
 #else
     out.printf("%%r%d", reg);

@@ -26,14 +26,15 @@
 
 #pragma once
 
-#include "RegExpKey.h"
 #include "YarrErrorCode.h"
+#include "YarrFlags.h"
 #include "YarrUnicodeProperties.h"
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/HashMap.h>
+#include <wtf/OptionSet.h>
 #include <wtf/PrintStream.h>
 #include <wtf/Vector.h>
-#include <wtf/text/WTFString.h>
+#include <wtf/text/StringHash.h>
 
 namespace JSC { namespace Yarr {
 
@@ -51,6 +52,29 @@ struct CharacterRange {
     }
 };
 
+enum struct CharacterClassWidths : unsigned char {
+    Unknown = 0x0,
+    HasBMPChars = 0x1,
+    HasNonBMPChars = 0x2,
+    HasBothBMPAndNonBMP = HasBMPChars | HasNonBMPChars
+};
+
+inline CharacterClassWidths operator|(CharacterClassWidths lhs, CharacterClassWidths rhs)
+{
+    return static_cast<CharacterClassWidths>(static_cast<unsigned>(lhs) | static_cast<unsigned>(rhs));
+}
+
+inline bool operator&(CharacterClassWidths lhs, CharacterClassWidths rhs)
+{
+    return static_cast<unsigned>(lhs) & static_cast<unsigned>(rhs);
+}
+
+inline CharacterClassWidths& operator|=(CharacterClassWidths& lhs, CharacterClassWidths rhs)
+{
+    lhs = lhs | rhs;
+    return lhs;
+}
+
 struct CharacterClass {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -59,48 +83,53 @@ public:
     // specified matches and ranges)
     CharacterClass()
         : m_table(0)
-        , m_hasNonBMPCharacters(false)
+        , m_characterWidths(CharacterClassWidths::Unknown)
         , m_anyCharacter(false)
     {
     }
     CharacterClass(const char* table, bool inverted)
         : m_table(table)
+        , m_characterWidths(CharacterClassWidths::Unknown)
         , m_tableInverted(inverted)
-        , m_hasNonBMPCharacters(false)
         , m_anyCharacter(false)
     {
     }
-    CharacterClass(std::initializer_list<UChar32> matches, std::initializer_list<CharacterRange> ranges, std::initializer_list<UChar32> matchesUnicode, std::initializer_list<CharacterRange> rangesUnicode)
+    CharacterClass(std::initializer_list<UChar32> matches, std::initializer_list<CharacterRange> ranges, std::initializer_list<UChar32> matchesUnicode, std::initializer_list<CharacterRange> rangesUnicode, CharacterClassWidths widths)
         : m_matches(matches)
         , m_ranges(ranges)
         , m_matchesUnicode(matchesUnicode)
         , m_rangesUnicode(rangesUnicode)
         , m_table(0)
+        , m_characterWidths(widths)
         , m_tableInverted(false)
-        , m_hasNonBMPCharacters(false)
         , m_anyCharacter(false)
     {
     }
 
+    bool hasNonBMPCharacters() { return m_characterWidths & CharacterClassWidths::HasNonBMPChars; }
+
+    bool hasOneCharacterSize() { return m_characterWidths == CharacterClassWidths::HasBMPChars || m_characterWidths == CharacterClassWidths::HasNonBMPChars; }
+    bool hasOnlyNonBMPCharacters() { return m_characterWidths == CharacterClassWidths::HasNonBMPChars; }
+    
     Vector<UChar32> m_matches;
     Vector<CharacterRange> m_ranges;
     Vector<UChar32> m_matchesUnicode;
     Vector<CharacterRange> m_rangesUnicode;
 
     const char* m_table;
+    CharacterClassWidths m_characterWidths;
     bool m_tableInverted : 1;
-    bool m_hasNonBMPCharacters : 1;
     bool m_anyCharacter : 1;
 };
 
-enum QuantifierType {
+enum QuantifierType : uint8_t {
     QuantifierFixedCount,
     QuantifierGreedy,
     QuantifierNonGreedy,
 };
 
 struct PatternTerm {
-    enum Type {
+    enum Type : uint8_t {
         TypeAssertionBOL,
         TypeAssertionEOL,
         TypeAssertionWordBoundary,
@@ -114,6 +143,9 @@ struct PatternTerm {
     } type;
     bool m_capture :1;
     bool m_invert :1;
+    QuantifierType quantityType;
+    Checked<unsigned> quantityMinCount;
+    Checked<unsigned> quantityMaxCount;
     union {
         UChar32 patternCharacter;
         CharacterClass* characterClass;
@@ -130,9 +162,6 @@ struct PatternTerm {
             bool eolAnchor : 1;
         } anchors;
     };
-    QuantifierType quantityType;
-    Checked<unsigned> quantityMinCount;
-    Checked<unsigned> quantityMaxCount;
     unsigned inputPosition;
     unsigned frameLocation;
 
@@ -219,7 +248,7 @@ struct PatternTerm {
         return PatternTerm(TypeAssertionWordBoundary, invert);
     }
     
-    bool invert()
+    bool invert() const
     {
         return m_invert;
     }
@@ -352,9 +381,9 @@ struct TermChain {
 
 
 struct YarrPattern {
-    JS_EXPORT_PRIVATE YarrPattern(const String& pattern, RegExpFlags, ErrorCode&, void* stackLimit = nullptr);
+    JS_EXPORT_PRIVATE YarrPattern(const String& pattern, OptionSet<Flags>, ErrorCode&, void* stackLimit = nullptr);
 
-    void reset()
+    void resetForReparsing()
     {
         m_numSubpatterns = 0;
         m_maxBackReference = 0;
@@ -381,11 +410,25 @@ struct YarrPattern {
         m_disjunctions.clear();
         m_userCharacterClasses.clear();
         m_captureGroupNames.shrink(0);
+        m_namedForwardReferences.shrink(0);
     }
 
     bool containsIllegalBackReference()
     {
         return m_maxBackReference > m_numSubpatterns;
+    }
+    
+    bool containsIllegalNamedForwardReferences()
+    {
+        if (m_namedForwardReferences.isEmpty())
+            return false;
+
+        for (auto& entry : m_namedForwardReferences) {
+            if (!m_captureGroupNames.contains(entry))
+                return true;
+        }
+
+        return false;
     }
 
     bool containsUnsignedLengthPattern()
@@ -493,19 +536,19 @@ struct YarrPattern {
     void dumpPattern(const String& pattern);
     void dumpPattern(PrintStream& out, const String& pattern);
 
-    bool global() const { return m_flags & FlagGlobal; }
-    bool ignoreCase() const { return m_flags & FlagIgnoreCase; }
-    bool multiline() const { return m_flags & FlagMultiline; }
-    bool sticky() const { return m_flags & FlagSticky; }
-    bool unicode() const { return m_flags & FlagUnicode; }
-    bool dotAll() const { return m_flags & FlagDotAll; }
+    bool global() const { return m_flags.contains(Flags::Global); }
+    bool ignoreCase() const { return m_flags.contains(Flags::IgnoreCase); }
+    bool multiline() const { return m_flags.contains(Flags::Multiline); }
+    bool sticky() const { return m_flags.contains(Flags::Sticky); }
+    bool unicode() const { return m_flags.contains(Flags::Unicode); }
+    bool dotAll() const { return m_flags.contains(Flags::DotAll); }
 
     bool m_containsBackreferences : 1;
     bool m_containsBOL : 1;
     bool m_containsUnsignedLengthPattern : 1;
     bool m_hasCopiedParenSubexpressions : 1;
     bool m_saveInitialStartValue : 1;
-    RegExpFlags m_flags;
+    OptionSet<Flags> m_flags;
     unsigned m_numSubpatterns { 0 };
     unsigned m_maxBackReference { 0 };
     unsigned m_initialStartValueFrameLocation { 0 };
@@ -513,6 +556,7 @@ struct YarrPattern {
     Vector<std::unique_ptr<PatternDisjunction>, 4> m_disjunctions;
     Vector<std::unique_ptr<CharacterClass>> m_userCharacterClasses;
     Vector<String> m_captureGroupNames;
+    Vector<String> m_namedForwardReferences;
     HashMap<String, unsigned> m_namedGroupToParenIndex;
 
 private:

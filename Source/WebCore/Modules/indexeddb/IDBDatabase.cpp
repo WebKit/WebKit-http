@@ -42,8 +42,11 @@
 #include "Logging.h"
 #include "ScriptExecutionContext.h"
 #include <JavaScriptCore/HeapInlines.h>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(IDBDatabase);
 
 Ref<IDBDatabase> IDBDatabase::create(ScriptExecutionContext& context, IDBClient::IDBConnectionProxy& connectionProxy, const IDBResultData& resultData)
 {
@@ -74,7 +77,7 @@ IDBDatabase::~IDBDatabase()
 
 bool IDBDatabase::hasPendingActivity() const
 {
-    ASSERT(&originThread() == &Thread::current() || mayBeGCThread());
+    ASSERT(&originThread() == &Thread::current() || Thread::mayBeGCThread());
 
     if (m_closedInServer || isContextStopped())
         return false;
@@ -97,11 +100,11 @@ uint64_t IDBDatabase::version() const
     return m_info.version();
 }
 
-RefPtr<DOMStringList> IDBDatabase::objectStoreNames() const
+Ref<DOMStringList> IDBDatabase::objectStoreNames() const
 {
     ASSERT(&originThread() == &Thread::current());
 
-    RefPtr<DOMStringList> objectStoreNames = DOMStringList::create();
+    auto objectStoreNames = DOMStringList::create();
     for (auto& name : m_info.objectStoreNames())
         objectStoreNames->append(name);
     objectStoreNames->sort();
@@ -144,12 +147,12 @@ ExceptionOr<Ref<IDBObjectStore>> IDBDatabase::createObjectStore(const String& na
     if (!m_versionChangeTransaction->isActive())
         return Exception { TransactionInactiveError };
 
-    if (m_info.hasObjectStore(name))
-        return Exception { ConstraintError, "Failed to execute 'createObjectStore' on 'IDBDatabase': An object store with the specified name already exists."_s };
-
     auto& keyPath = parameters.keyPath;
     if (keyPath && !isIDBKeyPathValid(keyPath.value()))
         return Exception { SyntaxError, "Failed to execute 'createObjectStore' on 'IDBDatabase': The keyPath option is not a valid key path."_s };
+
+    if (m_info.hasObjectStore(name))
+        return Exception { ConstraintError, "Failed to execute 'createObjectStore' on 'IDBDatabase': An object store with the specified name already exists."_s };
 
     if (keyPath && parameters.autoIncrement && ((WTF::holds_alternative<String>(keyPath.value()) && WTF::get<String>(keyPath.value()).isEmpty()) || WTF::holds_alternative<Vector<String>>(keyPath.value())))
         return Exception { InvalidAccessError, "Failed to execute 'createObjectStore' on 'IDBDatabase': The autoIncrement option was set but the keyPath option was empty or an array."_s };
@@ -167,6 +170,9 @@ ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(StringOrVectorOfString
 
     ASSERT(&originThread() == &Thread::current());
 
+    if (m_versionChangeTransaction && !m_versionChangeTransaction->isFinishedOrFinishing())
+        return Exception { InvalidStateError, "Failed to execute 'transaction' on 'IDBDatabase': A version change transaction is running."_s };
+
     if (m_closePending)
         return Exception { InvalidStateError, "Failed to execute 'transaction' on 'IDBDatabase': The database connection is closing."_s };
 
@@ -175,15 +181,6 @@ ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(StringOrVectorOfString
         objectStores = WTFMove(WTF::get<Vector<String>>(storeNames));
     else
         objectStores.append(WTFMove(WTF::get<String>(storeNames)));
-
-    if (objectStores.isEmpty())
-        return Exception { InvalidAccessError, "Failed to execute 'transaction' on 'IDBDatabase': The storeNames parameter was empty."_s };
-
-    if (mode != IDBTransactionMode::Readonly && mode != IDBTransactionMode::Readwrite)
-        return Exception { TypeError };
-
-    if (m_versionChangeTransaction && !m_versionChangeTransaction->isFinishedOrFinishing())
-        return Exception { InvalidStateError, "Failed to execute 'transaction' on 'IDBDatabase': A version change transaction is running."_s };
 
     // It is valid for javascript to pass in a list of object store names with the same name listed twice,
     // so we need to put them all in a set to get a unique list.
@@ -199,6 +196,12 @@ ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(StringOrVectorOfString
         return Exception { NotFoundError, "Failed to execute 'transaction' on 'IDBDatabase': One of the specified object stores was not found."_s };
     }
 
+    if (objectStores.isEmpty())
+        return Exception { InvalidAccessError, "Failed to execute 'transaction' on 'IDBDatabase': The storeNames parameter was empty."_s };
+
+    if (mode != IDBTransactionMode::Readonly && mode != IDBTransactionMode::Readwrite)
+        return Exception { TypeError };
+
     auto info = IDBTransactionInfo::clientTransaction(m_connectionProxy.get(), objectStores, mode);
 
     LOG(IndexedDBOperations, "IDB creating transaction: %s", info.loggingString().utf8().data());
@@ -208,7 +211,7 @@ ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(StringOrVectorOfString
 
     m_activeTransactions.set(info.identifier(), transaction.ptr());
 
-    return WTFMove(transaction);
+    return transaction;
 }
 
 ExceptionOr<void> IDBDatabase::deleteObjectStore(const String& objectStoreName)
@@ -264,7 +267,12 @@ void IDBDatabase::connectionToServerLost(const IDBError& error)
     m_closePending = true;
     m_closedInServer = true;
 
-    for (auto& transaction : m_activeTransactions.values())
+    auto activeTransactions = copyToVector(m_activeTransactions.values());
+    for (auto& transaction : activeTransactions)
+        transaction->connectionClosedFromServer(error);
+    
+    auto committingTransactions = copyToVector(m_committingTransactions.values());
+    for (auto& transaction : committingTransactions)
         transaction->connectionClosedFromServer(error);
 
     auto errorEvent = Event::create(m_eventNames.errorEvent, Event::CanBubble::Yes, Event::IsCancelable::No);

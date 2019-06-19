@@ -31,8 +31,7 @@ WI.StyleDetailsPanel = class StyleDetailsPanel extends WI.View
 
         this._delegate = delegate || null;
 
-        // Add this offset-sections class name so the sticky headers don't overlap the navigation bar.
-        this.element.classList.add(className, "offset-sections");
+        this.element.classList.add(className);
 
         this._navigationInfo = {identifier, label};
 
@@ -84,7 +83,7 @@ WI.StyleDetailsPanel = class StyleDetailsPanel extends WI.View
                 this._nodeStyles.removeEventListener(WI.DOMNodeStyles.Event.NeedsRefresh, this._nodeStylesNeedsRefreshed, this);
             }
 
-            this._nodeStyles = WI.cssStyleManager.stylesForNode(domNode);
+            this._nodeStyles = WI.cssManager.stylesForNode(domNode);
 
             console.assert(this._nodeStyles);
             if (!this._nodeStyles)
@@ -123,7 +122,7 @@ WI.StyleDetailsPanel = class StyleDetailsPanel extends WI.View
 
     get _initialScrollOffset()
     {
-        if (!WI.cssStyleManager.canForcePseudoClasses())
+        if (!WI.cssManager.canForcePseudoClasses())
             return 0;
         return this.nodeStyles.node.enabledPseudoClasses.length ? 0 : WI.GeneralStyleDetailsSidebarPanel.NoForcedPseudoClassesScrollOffset;
     }

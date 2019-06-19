@@ -25,7 +25,7 @@
 
 WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 {
-    constructor(delegate, property)
+    constructor(delegate, property, options = {})
     {
         super();
 
@@ -33,29 +33,55 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         this._delegate = delegate || null;
         this._property = property;
+        this._readOnly = options.readOnly || false;
         this._element = document.createElement("div");
 
         this._contentElement = null;
         this._nameElement = null;
         this._valueElement = null;
+        this._jumpToEffectivePropertyButton = null;
 
         this._nameTextField = null;
         this._valueTextField = null;
 
-        this._property.__propertyView = this;
-
+        this._selected = false;
         this._hasInvalidVariableValue = false;
 
-        this._update();
+        this.update();
         property.addEventListener(WI.CSSProperty.Event.OverriddenStatusChanged, this.updateStatus, this);
         property.addEventListener(WI.CSSProperty.Event.Changed, this.updateStatus, this);
+
+        if (!this._readOnly) {
+            this._element.tabIndex = -1;
+            property.addEventListener(WI.CSSProperty.Event.ModifiedChanged, this.updateStatus, this);
+
+            this._element.addEventListener("blur", (event) => {
+                // Keep selection after tabbing out of Web Inspector window and back.
+                if (document.activeElement === this._element)
+                    return;
+
+                if (this._delegate.spreadsheetStylePropertyBlur)
+                    this._delegate.spreadsheetStylePropertyBlur(event, this);
+            });
+
+            this._element.addEventListener("mouseenter", (event) => {
+                if (this._delegate.spreadsheetStylePropertyMouseEnter)
+                    this._delegate.spreadsheetStylePropertyMouseEnter(event, this);
+            });
+
+            new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl, WI.KeyboardShortcut.Key.Slash, () => {
+                this._toggle();
+                this._select();
+            }, this._element);
+
+            this._element.copyHandler = this;
+        }
     }
 
     // Public
 
     get element() { return this._element; }
-    get nameTextField() { return this._nameTextField; }
-    get valueTextField() { return this._valueTextField; }
+    get property() { return this._property; }
     get enabled() { return this._property.enabled; }
 
     set index(index)
@@ -63,10 +89,38 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         this._element.dataset.propertyIndex = index;
     }
 
+    get selected()
+    {
+        return this._selected;
+    }
+
+    set selected(value)
+    {
+        if (value === this._selected)
+            return;
+
+        this._selected = value;
+        this.updateStatus();
+    }
+
+    startEditingName()
+    {
+        if (!this._nameTextField)
+            return;
+
+        this._nameTextField.startEditing();
+    }
+
+    startEditingValue()
+    {
+        if (!this._valueTextField)
+            return;
+
+        this._valueTextField.startEditing();
+    }
+
     detached()
     {
-        this._property.__propertyView = null;
-
         if (this._nameTextField)
             this._nameTextField.detached();
 
@@ -82,9 +136,112 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             this._valueTextField.element.blur();
     }
 
-    highlight()
+    remove(replacement = null)
     {
-        this._element.classList.add("highlighted");
+        this.element.remove();
+
+        if (replacement)
+            this._property.replaceWithText(replacement);
+        else
+            this._property.remove();
+
+        this.detached();
+
+        if (this._delegate && typeof this._delegate.spreadsheetStylePropertyRemoved === "function")
+            this._delegate.spreadsheetStylePropertyRemoved(this);
+    }
+
+    update()
+    {
+        this.element.removeChildren();
+
+        if (this._isEditable()) {
+            this._checkboxElement = this.element.appendChild(document.createElement("input"));
+            this._checkboxElement.classList.add("property-toggle");
+            this._checkboxElement.type = "checkbox";
+            this._checkboxElement.checked = this._property.enabled;
+            this._checkboxElement.tabIndex = -1;
+            this._checkboxElement.addEventListener("click", (event) => {
+                event.stopPropagation();
+                this._toggle();
+                console.assert(this._checkboxElement.checked === this._property.enabled);
+            });
+        }
+
+        this._contentElement = this.element.appendChild(document.createElement("span"));
+        this._contentElement.className = "content";
+
+        if (!this._property.enabled)
+            this._contentElement.append("/* ");
+
+        this._nameElement = this._contentElement.appendChild(document.createElement("span"));
+        this._nameElement.classList.add("name");
+        this._nameElement.textContent = this._property.name;
+
+        let colonElement = this._contentElement.appendChild(document.createElement("span"));
+        colonElement.classList.add("colon");
+        colonElement.textContent = ": ";
+
+        this._valueElement = this._contentElement.appendChild(document.createElement("span"));
+        this._valueElement.classList.add("value");
+        this._renderValue(this._property.rawValue);
+
+        if (this._isEditable() && this._property.enabled) {
+            this._nameElement.tabIndex = 0;
+            this._nameElement.addEventListener("beforeinput", this._handleNameBeforeInput.bind(this));
+            this._nameElement.addEventListener("paste", this._handleNamePaste.bind(this));
+
+            this._nameTextField = new WI.SpreadsheetTextField(this, this._nameElement, this._nameCompletionDataProvider.bind(this));
+
+            this._valueElement.tabIndex = 0;
+            this._valueElement.addEventListener("beforeinput", this._handleValueBeforeInput.bind(this));
+
+            this._valueTextField = new WI.SpreadsheetTextField(this, this._valueElement, this._valueCompletionDataProvider.bind(this));
+        }
+
+        if (this._isEditable()) {
+            this._setupJumpToSymbol(this._nameElement);
+            this._setupJumpToSymbol(this._valueElement);
+        }
+
+        let semicolonElement = this._contentElement.appendChild(document.createElement("span"));
+        semicolonElement.classList.add("semicolon");
+        semicolonElement.textContent = ";";
+
+        if (this._property.enabled) {
+            this._warningElement = this.element.appendChild(document.createElement("span"));
+            this._warningElement.className = "warning";
+        } else
+            this._contentElement.append(" */");
+
+        if (!this._property.implicit && this._property.ownerStyle.type === WI.CSSStyleDeclaration.Type.Computed) {
+            let effectiveProperty = this._property.ownerStyle.nodeStyles.effectivePropertyForName(this._property.name);
+            if (effectiveProperty && !effectiveProperty.styleSheetTextRange)
+                effectiveProperty = effectiveProperty.relatedShorthandProperty;
+
+            let ownerRule = effectiveProperty ? effectiveProperty.ownerStyle.ownerRule : null;
+
+            let arrowElement = this._contentElement.appendChild(WI.createGoToArrowButton());
+            arrowElement.addEventListener("click", (event) => {
+                if (!effectiveProperty || !ownerRule || !event.altKey) {
+                    if (this._delegate.spreadsheetStylePropertyShowProperty)
+                        this._delegate.spreadsheetStylePropertyShowProperty(this, this._property);
+                    return;
+                }
+
+                let sourceCode = ownerRule.sourceCodeLocation.sourceCode;
+                let {startLine, startColumn} = effectiveProperty.styleSheetTextRange;
+                WI.showSourceCodeLocation(sourceCode.createSourceCodeLocation(startLine, startColumn), {
+                    ignoreNetworkTab: true,
+                    ignoreSearchTab: true,
+                });
+            });
+
+            if (effectiveProperty && ownerRule)
+                arrowElement.title = WI.UIString("Option-click to show source");
+        }
+
+        this.updateStatus();
     }
 
     updateStatus()
@@ -92,7 +249,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         let duplicatePropertyExistsBelow = (cssProperty) => {
             let propertyFound = false;
 
-            for (let property of this._property.ownerStyle.properties) {
+            for (let property of this._property.ownerStyle.enabledProperties) {
                 if (property === cssProperty)
                     propertyFound = true;
                 else if (property.name === cssProperty.name && propertyFound)
@@ -106,6 +263,22 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         let elementTitle = "";
 
         if (this._property.overridden) {
+            if (!this._jumpToEffectivePropertyButton && this._delegate && this._delegate.spreadsheetStylePropertySelectByProperty && WI.settings.experimentalEnableStylesJumpToEffective.value) {
+                console.assert(this._property.overridingProperty, `Overridden property is missing overridingProperty: ${this._property.formattedText}`);
+                if (this._property.overridingProperty) {
+                    this._jumpToEffectivePropertyButton = WI.createGoToArrowButton();
+                    this._jumpToEffectivePropertyButton.classList.add("select-effective-property");
+                    this._jumpToEffectivePropertyButton.dataset.value = this._property.overridingProperty.rawValue;
+                    this._element.append(this._jumpToEffectivePropertyButton);
+
+                    this._jumpToEffectivePropertyButton.addEventListener("click", (event) => {
+                        console.assert(this._property.overridingProperty);
+                        event.stop();
+                        this._delegate.spreadsheetStylePropertySelectByProperty(this._property.overridingProperty);
+                    });
+                }
+            }
+
             classNames.push("overridden");
             if (duplicatePropertyExistsBelow(this._property)) {
                 classNames.push("has-warning");
@@ -140,6 +313,12 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         if (!this._property.enabled)
             classNames.push("disabled");
 
+        if (this._property.modified)
+            classNames.push("modified");
+
+        if (this._selected)
+            classNames.push("selected");
+
         this._element.className = classNames.join(" ");
         this._element.title = elementTitle;
     }
@@ -147,93 +326,19 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
     applyFilter(filterText)
     {
         let matchesName = this._nameElement.textContent.includes(filterText);
+        this._nameElement.classList.toggle(WI.GeneralStyleDetailsSidebarPanel.FilterMatchSectionClassName, !!matchesName);
+
         let matchesValue = this._valueElement.textContent.includes(filterText);
+        this._valueElement.classList.toggle(WI.GeneralStyleDetailsSidebarPanel.FilterMatchSectionClassName, !!matchesValue);
+
         let matches = matchesName || matchesValue;
-        this._contentElement.classList.toggle(WI.GeneralStyleDetailsSidebarPanel.FilterMatchSectionClassName, matches);
         this._contentElement.classList.toggle(WI.GeneralStyleDetailsSidebarPanel.NoFilterMatchInPropertyClassName, !matches);
         return matches;
     }
 
-    // Private
-
-    _remove(replacement = "")
+    handleCopyEvent(event)
     {
-        this.element.remove();
-
-        if (replacement)
-            this._property.replaceWithText(replacement);
-        else
-            this._property.remove();
-
-        this.detached();
-
-        if (this._delegate && typeof this._delegate.spreadsheetStylePropertyRemoved === "function")
-            this._delegate.spreadsheetStylePropertyRemoved(this);
-    }
-
-    _update()
-    {
-        this.element.removeChildren();
-
-        if (this._property.editable) {
-            this._checkboxElement = this.element.appendChild(document.createElement("input"));
-            this._checkboxElement.classList.add("property-toggle");
-            this._checkboxElement.type = "checkbox";
-            this._checkboxElement.checked = this._property.enabled;
-            this._checkboxElement.tabIndex = -1;
-            this._checkboxElement.addEventListener("click", (event) => {
-                event.stopPropagation();
-                let disabled = !this._checkboxElement.checked;
-                this._property.commentOut(disabled);
-                this._update();
-            });
-        }
-
-        this._contentElement = this.element.appendChild(document.createElement("span"));
-        this._contentElement.className = "content";
-
-        if (!this._property.enabled)
-            this._contentElement.append("/* ");
-
-        this._nameElement = this._contentElement.appendChild(document.createElement("span"));
-        this._nameElement.classList.add("name");
-        this._nameElement.textContent = this._property.name;
-
-        let colonElement = this._contentElement.appendChild(document.createElement("span"));
-        colonElement.textContent = ": ";
-
-        this._valueElement = this._contentElement.appendChild(document.createElement("span"));
-        this._valueElement.classList.add("value");
-        this._renderValue(this._property.rawValue);
-
-        if (this._property.editable && this._property.enabled) {
-            this._nameElement.tabIndex = 0;
-            this._nameElement.addEventListener("beforeinput", this._handleNameBeforeInput.bind(this));
-            this._nameElement.addEventListener("paste", this._handleNamePaste.bind(this));
-
-            this._nameTextField = new WI.SpreadsheetTextField(this, this._nameElement, this._nameCompletionDataProvider.bind(this));
-
-            this._valueElement.tabIndex = 0;
-            this._valueElement.addEventListener("beforeinput", this._handleValueBeforeInput.bind(this));
-
-            this._valueTextField = new WI.SpreadsheetTextField(this, this._valueElement, this._valueCompletionDataProvider.bind(this));
-        }
-
-        if (this._property.editable) {
-            this._setupJumpToSymbol(this._nameElement);
-            this._setupJumpToSymbol(this._valueElement);
-        }
-
-        let semicolonElement = this._contentElement.appendChild(document.createElement("span"));
-        semicolonElement.textContent = ";";
-
-        if (this._property.enabled) {
-            this._warningElement = this.element.appendChild(document.createElement("span"));
-            this._warningElement.className = "warning";
-        } else
-            this._contentElement.append(" */");
-
-        this.updateStatus();
+        this._delegate.spreadsheetStylePropertyCopy(event, this);
     }
 
     // SpreadsheetTextField delegate
@@ -285,14 +390,14 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         }
 
         if (willRemoveProperty)
-            this._remove();
+            this.remove();
     }
 
-    spreadsheetTextFieldDidBlur(textField, event)
+    spreadsheetTextFieldDidBlur(textField, event, changed)
     {
         let focusedOutsideThisProperty = event.relatedTarget !== this._nameElement && event.relatedTarget !== this._valueElement;
         if (focusedOutsideThisProperty && (!this._nameTextField.value.trim() || !this._valueTextField.value.trim())) {
-            this._remove();
+            this.remove();
             return;
         }
 
@@ -301,6 +406,9 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         if (typeof this._delegate.spreadsheetStylePropertyFocusMoved === "function")
             this._delegate.spreadsheetStylePropertyFocusMoved(this, {direction: null});
+
+        if (changed && window.DOMAgent)
+            DOMAgent.markUndoableState();
     }
 
     spreadsheetTextFieldDidBackspace(textField)
@@ -311,7 +419,35 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             this._nameTextField.startEditing();
     }
 
+    spreadsheetTextFieldDidPressEsc(textField, textBeforeEditing)
+    {
+        let isNewProperty = !textBeforeEditing;
+        if (isNewProperty)
+            this.remove();
+        else if (this._delegate.spreadsheetStylePropertyDidPressEsc)
+            this._delegate.spreadsheetStylePropertyDidPressEsc(this);
+    }
+
     // Private
+
+    _toggle()
+    {
+        this._property.commentOut(this.property.enabled);
+        this.update();
+    }
+
+    _select()
+    {
+        if (this._delegate && this._delegate.spreadsheetStylePropertySelect) {
+            let index = parseInt(this._element.dataset.propertyIndex);
+            this._delegate.spreadsheetStylePropertySelect(index);
+        }
+    }
+
+    _isEditable()
+    {
+        return !this._readOnly && this._property.editable;
+    }
 
     _renderValue(value)
     {
@@ -322,8 +458,12 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         if (this._property.enabled) {
             // FIXME: <https://webkit.org/b/178636> Web Inspector: Styles: Make inline widgets work with CSS functions (var(), calc(), etc.)
-            tokens = this._addGradientTokens(tokens);
-            tokens = this._addColorTokens(tokens);
+
+            // CSS variables may contain color - display color picker for them.
+            if (this._property.variable || WI.CSSKeywordCompletions.isColorAwareProperty(this._property.name)) {
+                tokens = this._addGradientTokens(tokens);
+                tokens = this._addColorTokens(tokens);
+            }
             tokens = this._addTimingFunctionTokens(tokens, "cubic-bezier");
             tokens = this._addTimingFunctionTokens(tokens, "spring");
             tokens = this._addVariableTokens(tokens);
@@ -348,6 +488,10 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
                 let span = document.createElement("span");
                 span.classList.add(className);
                 span.textContent = token.value.truncateMiddle(maxValueLength);
+
+                if (token.type && token.type.includes("link"))
+                    span.addEventListener("contextmenu", this._handleLinkContextMenu.bind(this, token));
+
                 return span;
             }
 
@@ -364,7 +508,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         let innerElement = document.createElement("span");
         innerElement.textContent = text;
 
-        let readOnly = !this._property.editable;
+        let readOnly = !this._isEditable();
         let swatch = new WI.InlineSwatch(type, valueObject, readOnly);
 
         swatch.addEventListener(WI.InlineSwatch.Event.ValueChanged, (event) => {
@@ -374,24 +518,24 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
             innerElement.textContent = value;
             this._handleValueChange();
+
+            if (type === WI.InlineSwatch.Type.Variable)
+                this._renderValue(this._property.rawValue);
         }, this);
 
-        if (typeof this._delegate.stylePropertyInlineSwatchActivated === "function") {
+        if (this._delegate && typeof this._delegate.stylePropertyInlineSwatchActivated === "function") {
             swatch.addEventListener(WI.InlineSwatch.Event.Activated, () => {
                 this._delegate.stylePropertyInlineSwatchActivated();
             });
         }
 
-        if (typeof this._delegate.stylePropertyInlineSwatchDeactivated === "function") {
+        if (this._delegate && typeof this._delegate.stylePropertyInlineSwatchDeactivated === "function") {
             swatch.addEventListener(WI.InlineSwatch.Event.Deactivated, () => {
                 this._delegate.stylePropertyInlineSwatchDeactivated();
             });
         }
 
         tokenElement.append(swatch.element, innerElement);
-
-        // Prevent the value from editing when clicking on the swatch.
-        swatch.element.addEventListener("mousedown", (event) => { event.stop(); });
 
         return tokenElement;
     }
@@ -455,7 +599,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             } else if (WI.Color.FunctionNames.has(token.value) && token.type && (token.type.includes("atom") || token.type.includes("keyword"))) {
                 // Color Function start
                 colorFunctionStartIndex = i;
-            } else if (isNaN(colorFunctionStartIndex) && token.type && token.type.includes("keyword")) {
+            } else if (isNaN(colorFunctionStartIndex) && token.type && (token.type.includes("atom") || token.type.includes("keyword"))) {
                 // Color keyword
                 pushPossibleColorToken(token.value, token);
             } else if (!isNaN(colorFunctionStartIndex)) {
@@ -587,7 +731,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         event.preventDefault();
 
-        this._remove(text);
+        this.remove(text);
 
         if (this._delegate.spreadsheetStylePropertyAddBlankPropertySoon) {
             this._delegate.spreadsheetStylePropertyAddBlankPropertySoon(this, {
@@ -596,9 +740,14 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         }
     }
 
-    _nameCompletionDataProvider(prefix)
+    _nameCompletionDataProvider(prefix, options = {})
     {
-        return WI.CSSCompletions.cssNameCompletions.startsWith(prefix);
+        let completions;
+        if (!prefix && options.allowEmptyPrefix)
+            completions = WI.CSSCompletions.cssNameCompletions.values;
+        else
+            completions = WI.CSSCompletions.cssNameCompletions.startsWith(prefix);
+        return {prefix, completions};
     }
 
     _handleValueBeforeInput(event)
@@ -611,20 +760,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         if (!selection.rangeCount || selection.getRangeAt(0).endOffset !== text.length)
             return;
 
-        // Find the first and last index (if any) of a quote character to ensure that the string
-        // doesn't contain unbalanced quotes. If so, then there's no way that the semicolon could be
-        // part of a string within the value, so we can assume that it's the property "terminator".
-        const quoteRegex = /["']/g;
-        let start = -1;
-        let end = text.length;
-        let match = null;
-        while (match = quoteRegex.exec(text)) {
-            if (start < 0)
-                start = match.index;
-            end = match.index + 1;
-        }
-
-        if (start !== -1 && !text.substring(start, end).hasMatchingEscapedQuotes())
+        let unbalancedCharacters = WI.CSSCompletions.completeUnbalancedValue(text);
+        if (unbalancedCharacters)
             return;
 
         event.preventDefault();
@@ -634,8 +771,19 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
     _valueCompletionDataProvider(prefix)
     {
+        // For "border: 1px so|", we want to suggest "solid" based on "so" prefix.
+        let match = prefix.match(/[a-z0-9()-]+$/i);
+
+        // Clicking on the value of `height: 100%` shouldn't show any completions.
+        if (!match && prefix)
+            return {completions: [], prefix: ""};
+
+        prefix = match ? match[0] : "";
         let propertyName = this._nameElement.textContent.trim();
-        return WI.CSSKeywordCompletions.forProperty(propertyName).startsWith(prefix);
+        return {
+            prefix,
+            completions: WI.CSSKeywordCompletions.forProperty(propertyName).startsWith(prefix)
+        };
     }
 
     _setupJumpToSymbol(element)
@@ -665,6 +813,53 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             let sourceCode = sourceCodeLocation.sourceCode;
             WI.showSourceCodeLocation(sourceCode.createSourceCodeLocation(range.startLine, range.startColumn), options);
         });
+    }
+
+    _handleLinkContextMenu(token, event)
+    {
+        let contextMenu = WI.ContextMenu.createFromEvent(event);
+
+        let resolveURL = (url) => {
+            let ownerStyle = this._property.ownerStyle;
+            if (!ownerStyle)
+                return url;
+
+            let ownerStyleSheet = ownerStyle.ownerStyleSheet;
+            if (!ownerStyleSheet) {
+                let ownerRule = ownerStyle.ownerRule;
+                if (ownerRule)
+                    ownerStyleSheet = ownerRule.ownerStyleSheet;
+            }
+            if (ownerStyleSheet) {
+                if (ownerStyleSheet.url)
+                    return absoluteURL(url, ownerStyleSheet.url);
+
+                let parentFrame = ownerStyleSheet.parentFrame;
+                if (parentFrame)
+                    return absoluteURL(url, parentFrame.url);
+            }
+
+            let node = ownerStyle.node;
+            if (!node) {
+                let nodeStyles = ownerStyle.nodeStyles;
+                if (!nodeStyles) {
+                    let ownerRule = ownerStyle.ownerRule;
+                    if (ownerRule)
+                        nodeStyles = ownerRule.nodeStyles;
+                }
+                if (nodeStyles)
+                    node = nodeStyles.node;
+            }
+            if (node) {
+                let ownerDocument = node.ownerDocument;
+                if (ownerDocument)
+                    return absoluteURL(url, node.ownerDocument.documentURL);
+            }
+
+            return url;
+        };
+
+        WI.appendContextMenuItemsForURL(contextMenu, resolveURL(token.value));
     }
 };
 

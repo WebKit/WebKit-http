@@ -26,7 +26,7 @@
 #pragma once
 
 #include "Connection.h"
-#include <WebCore/Process.h>
+#include <WebCore/ProcessIdentifier.h>
 #include <wtf/HashMap.h>
 #include <wtf/ProcessID.h>
 #include <wtf/RefPtr.h>
@@ -41,6 +41,13 @@
 
 namespace WebKit {
 
+#if PLATFORM(GTK) || PLATFORM(WPE)
+enum class SandboxPermission {
+    ReadOnly,
+    ReadWrite,
+};
+#endif
+
 class ProcessLauncher : public ThreadSafeRefCounted<ProcessLauncher>, public CanMakeWeakPtr<ProcessLauncher> {
 public:
     class Client {
@@ -48,6 +55,7 @@ public:
         virtual ~Client() { }
         
         virtual void didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier) = 0;
+        virtual bool isJITEnabled() const { return true; }
     };
     
     enum class ProcessType {
@@ -56,8 +64,7 @@ public:
         Plugin32,
         Plugin64,
 #endif
-        Network,
-        Storage,
+        Network
     };
 
     struct LaunchOptions {
@@ -68,8 +75,11 @@ public:
         bool shouldMakeProcessLaunchFailForTesting { false };
         CString customWebContentServiceBundleIdentifier;
 
-#if ENABLE(DEVELOPER_MODE) && (PLATFORM(GTK) || PLATFORM(WPE))
+#if PLATFORM(GTK) || PLATFORM(WPE)
+        HashMap<CString, SandboxPermission> extraWebProcessSandboxPaths;
+#if ENABLE(DEVELOPER_MODE)
         String processCmdPrefix;
+#endif
 #endif
     };
 

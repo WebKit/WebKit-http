@@ -23,10 +23,12 @@ set(DumpRenderTree_SOURCES
 
 set(DumpRenderTree_LIBRARIES
     WebCoreTestSupport
-    JavaScriptCore
+    WebKit::JavaScriptCore
 )
 
 set(DumpRenderTree_INCLUDE_DIRECTORIES
+    ${WebCore_PRIVATE_FRAMEWORK_HEADERS_DIR}
+    ${WebKitLegacy_FRAMEWORK_HEADERS_DIR}
     ${DERIVED_SOURCES_DIR}/DumpRenderTree
     ${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}
     ${WEBKIT_TESTRUNNER_SHARED_DIR}/Bindings
@@ -65,8 +67,7 @@ set(TestNetscapePlugIn_SOURCES
 )
 
 set(TestNetscapePlugIn_LIBRARIES
-    JavaScriptCore
-    WTF
+    WebKit::JavaScriptCore
     WebCoreTestSupport
 )
 

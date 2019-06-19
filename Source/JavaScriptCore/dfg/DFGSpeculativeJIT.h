@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -147,13 +147,6 @@ public:
         {     
             graph.m_plan.weakReferences().addLazily(cell);
             return TrustedImmPtr(bitwise_cast<size_t>(cell));
-        }
-
-        template<typename Key>
-        static TrustedImmPtr weakPoisonedPointer(Graph& graph, JSCell* cell)
-        {     
-            graph.m_plan.weakReferences().addLazily(cell);
-            return TrustedImmPtr(bitwise_cast<size_t>(cell) ^ Key::key());
         }
 
         operator MacroAssembler::TrustedImmPtr() const { return m_value; }
@@ -584,6 +577,8 @@ public:
     bool isKnownNotNumber(Node* node) { return !(m_state.forNode(node).m_type & SpecFullNumber); }
     bool isKnownNotCell(Node* node) { return !(m_state.forNode(node).m_type & SpecCell); }
     bool isKnownNotOther(Node* node) { return !(m_state.forNode(node).m_type & SpecOther); }
+
+    bool canBeRope(Edge&);
     
     UniquedStringImpl* identifierUID(unsigned index)
     {
@@ -633,13 +628,13 @@ public:
     void bitOp(NodeType op, int32_t imm, GPRReg op1, GPRReg result)
     {
         switch (op) {
-        case BitAnd:
+        case ArithBitAnd:
             m_jit.and32(Imm32(imm), op1, result);
             break;
-        case BitOr:
+        case ArithBitOr:
             m_jit.or32(Imm32(imm), op1, result);
             break;
-        case BitXor:
+        case ArithBitXor:
             m_jit.xor32(Imm32(imm), op1, result);
             break;
         default:
@@ -649,13 +644,13 @@ public:
     void bitOp(NodeType op, GPRReg op1, GPRReg op2, GPRReg result)
     {
         switch (op) {
-        case BitAnd:
+        case ArithBitAnd:
             m_jit.and32(op1, op2, result);
             break;
-        case BitOr:
+        case ArithBitOr:
             m_jit.or32(op1, op2, result);
             break;
-        case BitXor:
+        case ArithBitXor:
             m_jit.xor32(op1, op2, result);
             break;
         default:
@@ -724,10 +719,10 @@ public:
 
 #if USE(JSVALUE64)
     void cachedGetById(CodeOrigin, GPRReg baseGPR, GPRReg resultGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget, SpillRegistersMode, AccessType);
-    void cachedGetByIdWithThis(CodeOrigin, GPRReg baseGPR, GPRReg thisGPR, GPRReg resultGPR, unsigned identifierNumber, JITCompiler::JumpList slowPathTarget = JITCompiler::JumpList());
+    void cachedGetByIdWithThis(CodeOrigin, GPRReg baseGPR, GPRReg thisGPR, GPRReg resultGPR, unsigned identifierNumber, const JITCompiler::JumpList& slowPathTarget = JITCompiler::JumpList());
 #elif USE(JSVALUE32_64)
     void cachedGetById(CodeOrigin, GPRReg baseTagGPROrNone, GPRReg basePayloadGPR, GPRReg resultTagGPR, GPRReg resultPayloadGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget, SpillRegistersMode, AccessType);
-    void cachedGetByIdWithThis(CodeOrigin, GPRReg baseTagGPROrNone, GPRReg basePayloadGPR, GPRReg thisTagGPROrNone, GPRReg thisPayloadGPR, GPRReg resultTagGPR, GPRReg resultPayloadGPR, unsigned identifierNumber, JITCompiler::JumpList slowPathTarget = JITCompiler::JumpList());
+    void cachedGetByIdWithThis(CodeOrigin, GPRReg baseTagGPROrNone, GPRReg basePayloadGPR, GPRReg thisTagGPROrNone, GPRReg thisPayloadGPR, GPRReg resultTagGPR, GPRReg resultPayloadGPR, unsigned identifierNumber, const JITCompiler::JumpList& slowPathTarget = JITCompiler::JumpList());
 #endif
 
     void compileDeleteById(Node*);
@@ -983,7 +978,7 @@ public:
         return appendCallWithCallFrameRollbackOnExceptionSetResult(operation, result);
     }
     
-#if !defined(NDEBUG) && !CPU(ARM) && !CPU(MIPS)
+#if !defined(NDEBUG) && !CPU(ARM_THUMB2) && !CPU(MIPS)
     void prepareForExternalCall()
     {
         // We're about to call out to a "native" helper function. The helper
@@ -1059,7 +1054,7 @@ public:
         }
         return call;
     }
-#elif CPU(ARM) && !CPU(ARM_HARDFP)
+#elif CPU(ARM_THUMB2) && !CPU(ARM_HARDFP)
     JITCompiler::Call appendCallSetResult(const FunctionPtr<CFunctionPtrTag> function, FPRReg result)
     {
         JITCompiler::Call call = appendCall(function);
@@ -1067,7 +1062,7 @@ public:
             m_jit.assembler().vmov(result, GPRInfo::returnValueGPR, GPRInfo::returnValueGPR2);
         return call;
     }
-#else // CPU(X86_64) || (CPU(ARM) && CPU(ARM_HARDFP)) || CPU(ARM64) || CPU(MIPS)
+#else // CPU(X86_64) || (CPU(ARM_THUMB2) && CPU(ARM_HARDFP)) || CPU(ARM64) || CPU(MIPS)
     JITCompiler::Call appendCallSetResult(const FunctionPtr<CFunctionPtrTag> function, FPRReg result)
     {
         JITCompiler::Call call = appendCall(function);
@@ -1199,8 +1194,8 @@ public:
     void compileStringEquality(
         Node*, GPRReg leftGPR, GPRReg rightGPR, GPRReg lengthGPR,
         GPRReg leftTempGPR, GPRReg rightTempGPR, GPRReg leftTemp2GPR,
-        GPRReg rightTemp2GPR, JITCompiler::JumpList fastTrue,
-        JITCompiler::JumpList fastSlow);
+        GPRReg rightTemp2GPR, const JITCompiler::JumpList& fastTrue,
+        const JITCompiler::JumpList& fastSlow);
     void compileStringEquality(Node*);
     void compileStringIdentEquality(Node*);
     void compileStringToUntypedEquality(Node*, Edge stringEdge, Edge untypedEdge);
@@ -1236,9 +1231,9 @@ public:
         BasicBlock* target;
     };
     
-    void emitSwitchIntJump(SwitchData*, GPRReg value, GPRReg scratch, GPRReg scratch2);
+    void emitSwitchIntJump(SwitchData*, GPRReg value, GPRReg scratch);
     void emitSwitchImm(Node*, SwitchData*);
-    void emitSwitchCharStringJump(SwitchData*, GPRReg value, GPRReg scratch, GPRReg scratch2);
+    void emitSwitchCharStringJump(SwitchData*, GPRReg value, GPRReg scratch);
     void emitSwitchChar(Node*, SwitchData*);
     void emitBinarySwitchStringRecurse(
         SwitchData*, const Vector<StringSwitchCase>&, unsigned numChecked,
@@ -1253,6 +1248,7 @@ public:
     void compileNumberToStringWithValidRadixConstant(Node*);
     void compileNumberToStringWithValidRadixConstant(Node*, int32_t radix);
     void compileNewStringObject(Node*);
+    void compileNewSymbol(Node*);
     
     void compileNewTypedArrayWithSize(Node*);
     
@@ -1329,9 +1325,13 @@ public:
     void compileUInt32ToNumber(Node*);
     void compileDoubleAsInt32(Node*);
 
+    void compileValueBitNot(Node*);
+    void compileBitwiseNot(Node*);
+
     template<typename SnippetGenerator, J_JITOperation_EJJ slowPathFunction>
     void emitUntypedBitOp(Node*);
     void compileBitwiseOp(Node*);
+    void compileValueBitwiseOp(Node*);
 
     void emitUntypedRightShiftBitOp(Node*);
     void compileShiftOp(Node*);
@@ -1343,6 +1343,7 @@ public:
 
     void compileArithDoubleUnaryOp(Node*, double (*doubleFunction)(double), double (*operation)(ExecState*, EncodedJSValue));
     void compileValueAdd(Node*);
+    void compileValueSub(Node*);
     void compileArithAdd(Node*);
     void compileMakeRope(Node*);
     void compileArithAbs(Node*);
@@ -1350,11 +1351,15 @@ public:
     void compileArithSub(Node*);
     void compileValueNegate(Node*);
     void compileArithNegate(Node*);
+    void compileValueMul(Node*);
     void compileArithMul(Node*);
+    void compileValueDiv(Node*);
     void compileArithDiv(Node*);
     void compileArithFRound(Node*);
+    void compileValueMod(Node*);
     void compileArithMod(Node*);
     void compileArithPow(Node*);
+    void compileValuePow(Node*);
     void compileArithRounding(Node*);
     void compileArithRandom(Node*);
     void compileArithUnary(Node*);
@@ -1472,6 +1477,7 @@ public:
     void compileNewArrayWithSize(Node*);
     void compileNewTypedArray(Node*);
     void compileToThis(Node*);
+    void compileObjectKeys(Node*);
     void compileObjectCreate(Node*);
     void compileCreateThis(Node*);
     void compileNewObject(Node*);
@@ -1541,7 +1547,7 @@ public:
     void emitGetLength(CodeOrigin, GPRReg lengthGPR, bool includeThis = false);
     void emitGetCallee(CodeOrigin, GPRReg calleeGPR);
     void emitGetArgumentStart(CodeOrigin, GPRReg startGPR);
-    void emitPopulateSliceIndex(Edge&, GPRReg length, GPRReg result);
+    void emitPopulateSliceIndex(Edge&, Optional<GPRReg> indexGPR, GPRReg lengthGPR, GPRReg resultGPR);
     
     // Generate an OSR exit fuzz check. Returns Jump() if OSR exit fuzz is not enabled, or if
     // it's in training mode.
@@ -1622,8 +1628,6 @@ public:
     void speculateStringOrOther(Edge);
     void speculateNotStringVar(Edge);
     void speculateNotSymbol(Edge);
-    template<typename StructureLocationType>
-    void speculateStringObjectForStructure(Edge, StructureLocationType);
     void speculateStringObject(Edge, GPRReg);
     void speculateStringObject(Edge);
     void speculateStringOrStringObject(Edge);
@@ -1648,13 +1652,7 @@ public:
     template<bool strict>
     GPRReg fillSpeculateInt32Internal(Edge, DataFormat& returnFormat);
     
-    void cageTypedArrayStorage(GPRReg);
-    
-    // It is possible, during speculative generation, to reach a situation in which we
-    // can statically determine a speculation will fail (for example, when two nodes
-    // will make conflicting speculations about the same operand). In such cases this
-    // flag is cleared, indicating no further code generation should take place.
-    bool m_compileOkay;
+    void cageTypedArrayStorage(GPRReg, GPRReg);
     
     void recordSetLocal(
         VirtualRegister bytecodeReg, VirtualRegister machineReg, DataFormat format)
@@ -1698,6 +1696,12 @@ public:
     RegisterBank<GPRInfo> m_gprs;
     RegisterBank<FPRInfo> m_fprs;
 
+    // It is possible, during speculative generation, to reach a situation in which we
+    // can statically determine a speculation will fail (for example, when two nodes
+    // will make conflicting speculations about the same operand). In such cases this
+    // flag is cleared, indicating no further code generation should take place.
+    bool m_compileOkay;
+
     Vector<MacroAssembler::Label> m_osrEntryHeads;
     
     struct BranchRecord {
@@ -1728,7 +1732,7 @@ public:
     };
     Vector<SlowPathLambda> m_slowPathLambdas;
     Vector<SilentRegisterSavePlan> m_plans;
-    std::optional<unsigned> m_outOfLineStreamIndex;
+    Optional<unsigned> m_outOfLineStreamIndex;
 };
 
 
@@ -2594,20 +2598,6 @@ private:
     Edge m_edge;
     GPRReg m_gprOrInvalid;
 };
-
-template<typename StructureLocationType>
-void SpeculativeJIT::speculateStringObjectForStructure(Edge edge, StructureLocationType structureLocation)
-{
-    RegisteredStructure stringObjectStructure =
-        m_jit.graph().registerStructure(m_jit.globalObjectFor(m_currentNode->origin.semantic)->stringObjectStructure());
-    
-    if (!m_state.forNode(edge).m_structure.isSubsetOf(RegisteredStructureSet(stringObjectStructure))) {
-        speculationCheck(
-            NotStringObject, JSValueRegs(), 0,
-            m_jit.branchWeakStructure(
-                JITCompiler::NotEqual, structureLocation, stringObjectStructure));
-    }
-}
 
 #define DFG_TYPE_CHECK_WITH_EXIT_KIND(exitKind, source, edge, typesPassedThrough, jumpToFail) do { \
         JSValueSource _dtc_source = (source);                           \

@@ -73,6 +73,8 @@ static ALWAYS_INLINE int missingSymbolMarker() { return std::numeric_limits<int>
 // copy:     SymbolTableEntry --> FatEntry -----^
 
 struct SymbolTableEntry {
+    friend class CachedSymbolTableEntry;
+
 private:
     static VarOffset varOffsetFromBits(intptr_t bits)
     {
@@ -227,7 +229,7 @@ public:
     
     bool isWatchable() const
     {
-        return (m_bits & KindBitsMask) == ScopeKindBits;
+        return (m_bits & KindBitsMask) == ScopeKindBits && VM::canUseJIT();
     }
     
     // Asserts if the offset is anything but a scope offset. This structures the assertions
@@ -289,8 +291,6 @@ public:
     
     void prepareToWatch();
     
-    void addWatchpoint(Watchpoint*);
-    
     // This watchpoint set is initialized clear, and goes through the following state transitions:
     // 
     // First write to this var, in any scope that has this symbol table: Clear->IsWatched.
@@ -310,10 +310,12 @@ public:
     // initializes that var in just one of them. This means that a compilation could constant-fold to one
     // of the scopes that still has an undefined value for this variable. That's fine, because at that
     // point any write to any of the instances of that variable would fire the watchpoint.
+    //
+    // Note that watchpointSet() returns nullptr if JIT is disabled.
     WatchpointSet* watchpointSet()
     {
         if (!isFat())
-            return 0;
+            return nullptr;
         return fatEntry()->m_watchpoints.get();
     }
     
@@ -343,7 +345,6 @@ private:
     };
     
     SymbolTableEntry& copySlow(const SymbolTableEntry&);
-    JS_EXPORT_PRIVATE void notifyWriteSlow(VM&, JSValue, const FireDetail&);
     
     bool isFat() const
     {
@@ -436,6 +437,8 @@ struct SymbolTableIndexHashTraits : HashTraits<SymbolTableEntry> {
 };
 
 class SymbolTable final : public JSCell {
+    friend class CachedSymbolTable;
+
 public:
     typedef JSCell Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
@@ -445,6 +448,12 @@ public:
     typedef HashMap<RefPtr<UniquedStringImpl>, RefPtr<TypeSet>, IdentifierRepHash> UniqueTypeSetMap;
     typedef HashMap<VarOffset, RefPtr<UniquedStringImpl>> OffsetToVariableMap;
     typedef Vector<SymbolTableEntry*> LocalToEntryVec;
+
+    template<typename CellType, SubspaceAccess>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return &vm.symbolTableSpace;
+    }
 
     static SymbolTable* create(VM& vm)
     {
@@ -627,8 +636,9 @@ public:
     void setArgumentsLength(VM& vm, uint32_t length)
     {
         if (UNLIKELY(!m_arguments))
-            m_arguments.set(vm, this, ScopedArgumentsTable::create(vm));
-        m_arguments.set(vm, this, m_arguments->setLength(vm, length));
+            m_arguments.set(vm, this, ScopedArgumentsTable::create(vm, length));
+        else
+            m_arguments.set(vm, this, m_arguments->setLength(vm, length));
     }
     
     ScopeOffset argumentOffset(uint32_t i) const
@@ -682,11 +692,18 @@ public:
     CodeBlock* rareDataCodeBlock();
     void setRareDataCodeBlock(CodeBlock*);
     
-    InferredValue* singletonScope() { return m_singletonScope.get(); }
+    InferredValue<JSScope>& singleton() { return m_singleton; }
+
+    void notifyCreation(VM& vm, JSScope* scope, const char* reason)
+    {
+        m_singleton.notifyWrite(vm, this, scope, reason);
+    }
 
     static void visitChildren(JSCell*, SlotVisitor&);
 
     DECLARE_EXPORT_INFO;
+
+    void finalizeUnconditionally(VM&);
 
 private:
     JS_EXPORT_PRIVATE SymbolTable(VM&);
@@ -712,7 +729,7 @@ private:
     std::unique_ptr<SymbolTableRareData> m_rareData;
 
     WriteBarrier<ScopedArgumentsTable> m_arguments;
-    WriteBarrier<InferredValue> m_singletonScope;
+    InferredValue<JSScope> m_singleton;
     
     std::unique_ptr<LocalToEntryVec> m_localToEntry;
 };

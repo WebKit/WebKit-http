@@ -103,6 +103,8 @@ class DeviceTypeTest(unittest.TestCase):
         self.assertEqual('iPad Air 2 running iOS', str(DeviceType.from_string('iPad Air 2')))
         self.assertEqual('Apple Watch Series 2 - 42mm running watchOS', str(DeviceType.from_string('Apple Watch Series 2 - 42mm')))
         self.assertEqual('Apple TV 4K running tvOS', str(DeviceType.from_string('Apple TV 4K')))
+        self.assertEqual('Device running iOS', str(DeviceType.from_string('')))
+        self.assertEqual('Apple Watch running watchOS', str(DeviceType.from_string('Apple Watch')))
 
     def test_comparison(self):
         # iPhone comparisons
@@ -141,3 +143,18 @@ class DeviceTypeTest(unittest.TestCase):
         self.assertFalse(DeviceType.from_string('iPhone') in DeviceType.from_string('iPhone 6s'))
         self.assertTrue(DeviceType.from_string('iPhone', Version(11, 1)) in DeviceType.from_string('iPhone', Version(11)))
         self.assertFalse(DeviceType.from_string('iPhone', Version(11)) in DeviceType.from_string('iPhone', Version(11, 1)))
+
+    def test_comparison_lower_case(self):
+        self.assertEqual(DeviceType.from_string('iphone X'), DeviceType.from_string('iPhone'))
+        self.assertEqual(DeviceType.from_string('iphone'), DeviceType.from_string('iPhone X'))
+        self.assertEqual(DeviceType.from_string('iPhone X'), DeviceType.from_string('iphone'))
+        self.assertEqual(DeviceType.from_string('iPhone'), DeviceType.from_string('iphone X'))
+        self.assertEqual(DeviceType.from_string('iphone X'), DeviceType.from_string('iphone'))
+        self.assertEqual(DeviceType.from_string('iphone'), DeviceType.from_string('iphone X'))
+
+        self.assertTrue(DeviceType.from_string('iphone 6s') in DeviceType.from_string('iPhone'))
+        self.assertTrue(DeviceType.from_string('iPhone 6s') in DeviceType.from_string('iphone'))
+        self.assertTrue(DeviceType.from_string('iphone 6s') in DeviceType.from_string('iphone'))
+
+    def test_unmapped_version(self):
+        self.assertEqual('iPhone running iOS', str(DeviceType.from_string('iPhone', Version(9))))

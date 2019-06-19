@@ -1,5 +1,5 @@
 # Copyright (C) 2009 Google Inc. All rights reserved.
-# Copyright (C) 2018 Apple Inc. All rights reserved.
+# Copyright (C) 2018, 2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -45,9 +45,9 @@ class UploadCommandsTest(CommandsTest):
     def test_assign_to_committer(self):
         tool = MockTool()
         expected_logs = """Warning, attachment 10001 on bug 50000 has invalid committer (non-committer@example.com)
-MOCK reassign_bug: bug_id=50000, assignee=eric@webkit.org
+MOCK reassign_bug: bug_id=50000, assignee=ap@webkit.org
 -- Begin comment --
-Attachment 10001 was posted by a committer and has review+, assigning to Eric Seidel for commit.
+Attachment 10001 was posted by a committer and has review+, assigning to Alexey Proskuryakov for commit.
 -- End comment --
 Bug 50003 is already assigned to foo@foo.com (None).
 Bug 50002 has no non-obsolete patches, ignoring.
@@ -115,6 +115,31 @@ MOCK add_patch_to_bug: bug_id=50000, description=Patch for landing, mark_for_rev
         expected_logs = "MOCK create_bug\nbug_title: Mock user response\nbug_description: Mock user response\ncomponent: MOCK component\ncc: MOCK cc\n"
         self.assert_execute_outputs(Prepare(), [], expected_logs=expected_logs, options=options)
 
+    def test_prepare_with_cc(self):
+        options = MockOptions()
+        options.cc = "a@example.com,b@example.com"
+        options.sort_xcode_project = False
+        options.non_interactive = True
+        expected_logs = "MOCK create_bug\nbug_title: Mock user response\nbug_description: Mock user response\ncomponent: MOCK component\ncc: a@example.com,b@example.com\n"
+        self.assert_execute_outputs(Prepare(), [], expected_logs=expected_logs, options=options)
+
+    def test_prepare_with_radar(self):
+        options = MockOptions()
+        options.cc_radar = True
+        options.sort_xcode_project = False
+        options.non_interactive = True
+        expected_logs = "MOCK create_bug\nbug_title: Mock user response\nbug_description: Mock user response\ncomponent: MOCK component\ncc: webkit-bug-importer@group.apple.com,MOCK cc\n"
+        self.assert_execute_outputs(Prepare(), [], expected_logs=expected_logs, options=options)
+
+    def test_prepare_with_cc_and_radar(self):
+        options = MockOptions()
+        options.cc = "a@example.com,b@example.com"
+        options.cc_radar = True
+        options.sort_xcode_project = False
+        options.non_interactive = True
+        expected_logs = "MOCK create_bug\nbug_title: Mock user response\nbug_description: Mock user response\ncomponent: MOCK component\ncc: webkit-bug-importer@group.apple.com,a@example.com,b@example.com\n"
+        self.assert_execute_outputs(Prepare(), [], expected_logs=expected_logs, options=options)
+
     def test_upload(self):
         options = MockOptions()
         options.cc = None
@@ -156,6 +181,7 @@ Obsoleting 2 old patches on bug 50000
 MOCK reassign_bug: bug_id=50000, assignee=None
 MOCK add_patch_to_bug: bug_id=50000, description=MOCK description, mark_for_review=False, mark_for_commit_queue=False, mark_for_landing=False
 MOCK: user.open_url: http://example.com/50000
+MOCK: submit_to_old_ews: 10001
 MOCK: submit_to_ews: 10001
 """
         self.assert_execute_outputs(Upload(), [50000], options=options, expected_logs=expected_logs)
@@ -179,6 +205,7 @@ Obsoleting 1 old patch on bug 50007
 MOCK add_patch_to_bug: bug_id=50007, description=MOCK description, mark_for_review=False, mark_for_commit_queue=False, mark_for_landing=False
 MOCK: user.open_url: http://example.com/50007
 MOCK: upload_attachment: 10008
+MOCK: submit_to_old_ews: 10008
 MOCK: submit_to_ews: 10008
 """
         self.assert_execute_outputs(Upload(), [50007], options=options, expected_logs=expected_logs)

@@ -46,6 +46,7 @@
 #include <WebCore/FrameLoadRequest.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/FullScreenController.h>
+#include <WebCore/FullscreenManager.h>
 #include <WebCore/GraphicsLayer.h>
 #include <WebCore/HTMLNames.h>
 #include <WebCore/HTMLVideoElement.h>
@@ -196,8 +197,8 @@ Page* WebChromeClient::createWindow(Frame& frame, const FrameLoadRequest&, const
         return 0;
 
 #if ENABLE(FULLSCREEN_API)
-    if (frame.document() && frame.document()->webkitCurrentFullScreenElement())
-        frame.document()->webkitCancelFullScreen();
+    if (frame.document() && frame.document()->fullscreenManager().currentFullscreenElement())
+        frame.document()->fullscreenManager().cancelFullscreen();
 #endif
 
     COMPtr<WebMutableURLRequest> request = adoptCOM(WebMutableURLRequest::createInstance(ResourceRequest(navigationAction.url())));
@@ -471,6 +472,16 @@ void WebChromeClient::scroll(const IntSize& delta, const IntRect& scrollViewRect
     m_webView->scrollBackingStore(core(m_webView->topLevelFrame())->view(), delta.width(), delta.height(), scrollViewRect, clipRect);
 }
 
+IntPoint WebChromeClient::accessibilityScreenToRootView(const WebCore::IntPoint& point) const
+{
+    return screenToRootView(point);
+}
+
+IntRect WebChromeClient::rootViewToAccessibilityScreen(const WebCore::IntRect& rect) const
+{
+    return rootViewToScreen(rect);
+}
+
 IntRect WebChromeClient::rootViewToScreen(const IntRect& rect) const
 {
     HWND viewWindow;
@@ -509,6 +520,11 @@ PlatformPageClient WebChromeClient::platformPageClient() const
 }
 
 void WebChromeClient::contentsSizeChanged(Frame&, const IntSize&) const
+{
+    notImplemented();
+}
+
+void WebChromeClient::intrinsicContentsSizeChanged(const IntSize&) const
 {
     notImplemented();
 }
@@ -636,16 +652,15 @@ void WebChromeClient::runOpenPanel(Frame&, FileChooser& fileChooser)
 
     ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner = viewWindow;
-    String allFiles = allFilesText();
-    allFiles.append(L"\0*.*\0\0", 6);
+    String allFiles = makeString(allFilesText(), String("\0*.*\0\0", 6));
 
-    Vector<UChar> filterCharacters = allFiles.charactersWithNullTermination(); // Retain buffer long enough to make the GetOpenFileName call
+    Vector<wchar_t> filterCharacters = allFiles.wideCharacters(); // Retain buffer long enough to make the GetOpenFileName call
     ofn.lpstrFilter = filterCharacters.data();
 
     ofn.lpstrFile = fileBuf.data();
     ofn.nMaxFile = fileBuf.size();
     String dialogTitle = uploadFileText();
-    Vector<UChar> dialogTitleCharacters = dialogTitle.charactersWithNullTermination(); // Retain buffer long enough to make the GetOpenFileName call
+    Vector<wchar_t> dialogTitleCharacters = dialogTitle.wideCharacters(); // Retain buffer long enough to make the GetOpenFileName call
     ofn.lpstrTitle = dialogTitleCharacters.data();
     ofn.Flags = OFN_ENABLESIZING | OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_EXPLORER;
     if (multiFile)
@@ -688,6 +703,10 @@ RefPtr<Icon> WebChromeClient::createIconForFiles(const Vector<String>& filenames
     return Icon::createIconForFiles(filenames);
 }
 
+void WebChromeClient::didFinishLoadingImageForElement(WebCore::HTMLImageElement&)
+{
+}
+
 void WebChromeClient::setCursor(const Cursor& cursor)
 {
     if (!cursor.platformCursor())
@@ -727,7 +746,7 @@ void WebChromeClient::attachRootGraphicsLayer(Frame&, GraphicsLayer* graphicsLay
     m_webView->setRootChildLayer(graphicsLayer);
 }
 
-void WebChromeClient::attachViewOverlayGraphicsLayer(Frame&, GraphicsLayer*)
+void WebChromeClient::attachViewOverlayGraphicsLayer(GraphicsLayer*)
 {
     // FIXME: If we want view-relative page overlays in Legacy WebKit on Windows, this would be the place to hook them up.
 }

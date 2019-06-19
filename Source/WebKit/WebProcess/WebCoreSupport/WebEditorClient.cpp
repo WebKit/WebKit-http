@@ -27,6 +27,7 @@
 #include "WebEditorClient.h"
 
 #include "EditorState.h"
+#include "SharedBufferDataReference.h"
 #include "UndoOrRedo.h"
 #include "WKBundlePageEditorClient.h"
 #include "WebCoreArgumentCoders.h"
@@ -37,6 +38,7 @@
 #include "WebProcess.h"
 #include "WebUndoStep.h"
 #include <WebCore/ArchiveResource.h>
+#include <WebCore/DOMPasteAccess.h>
 #include <WebCore/DocumentFragment.h>
 #include <WebCore/FocusController.h>
 #include <WebCore/Frame.h>
@@ -48,6 +50,7 @@
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
+#include <WebCore/SerializedAttachmentData.h>
 #include <WebCore/SpellChecker.h>
 #include <WebCore/StyleProperties.h>
 #include <WebCore/TextIterator.h>
@@ -167,7 +170,12 @@ bool WebEditorClient::shouldApplyStyle(StyleProperties* style, Range* range)
 
 void WebEditorClient::registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& preferredFileName, Ref<SharedBuffer>&& data)
 {
-    m_page->send(Messages::WebPageProxy::RegisterAttachmentIdentifierFromData(identifier, contentType, preferredFileName, IPC::SharedBufferDataReference { data.ptr() }));
+    m_page->send(Messages::WebPageProxy::RegisterAttachmentIdentifierFromData(identifier, contentType, preferredFileName, { data }));
+}
+
+void WebEditorClient::registerAttachments(Vector<WebCore::SerializedAttachmentData>&& data)
+{
+    m_page->send(Messages::WebPageProxy::registerAttachmentsFromSerializedData(WTFMove(data)));
 }
 
 void WebEditorClient::registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& filePath)
@@ -175,19 +183,31 @@ void WebEditorClient::registerAttachmentIdentifier(const String& identifier, con
     m_page->send(Messages::WebPageProxy::RegisterAttachmentIdentifierFromFilePath(identifier, contentType, filePath));
 }
 
+void WebEditorClient::registerAttachmentIdentifier(const String& identifier)
+{
+    m_page->send(Messages::WebPageProxy::RegisterAttachmentIdentifier(identifier));
+}
+
 void WebEditorClient::cloneAttachmentData(const String& fromIdentifier, const String& toIdentifier)
 {
     m_page->send(Messages::WebPageProxy::CloneAttachmentData(fromIdentifier, toIdentifier));
 }
 
-void WebEditorClient::didInsertAttachmentWithIdentifier(const String& identifier, const String& source)
+void WebEditorClient::didInsertAttachmentWithIdentifier(const String& identifier, const String& source, bool hasEnclosingImage)
 {
-    m_page->send(Messages::WebPageProxy::DidInsertAttachmentWithIdentifier(identifier, source));
+    m_page->send(Messages::WebPageProxy::DidInsertAttachmentWithIdentifier(identifier, source, hasEnclosingImage));
 }
 
 void WebEditorClient::didRemoveAttachmentWithIdentifier(const String& identifier)
 {
     m_page->send(Messages::WebPageProxy::DidRemoveAttachmentWithIdentifier(identifier));
+}
+
+Vector<SerializedAttachmentData> WebEditorClient::serializedAttachmentDataForIdentifiers(const Vector<String>& identifiers)
+{
+    Vector<WebCore::SerializedAttachmentData> serializedData;
+    m_page->sendSync(Messages::WebPageProxy::SerializedAttachmentDataForIdentifiers(identifiers), Messages::WebPageProxy::SerializedAttachmentDataForIdentifiers::Reply(serializedData));
+    return serializedData;
 }
 
 #endif
@@ -295,11 +315,6 @@ bool WebEditorClient::performTwoStepDrop(DocumentFragment& fragment, Range& dest
     return m_page->injectedBundleEditorClient().performTwoStepDrop(*m_page, fragment, destination, isMove);
 }
 
-String WebEditorClient::replacementURLForResource(Ref<WebCore::SharedBuffer>&& resourceData, const String& mimeType)
-{
-    return m_page->injectedBundleEditorClient().replacementURLForResource(*m_page, WTFMove(resourceData), mimeType);
-}
-
 void WebEditorClient::registerUndoStep(UndoStep& step)
 {
     // FIXME: Add assertion that the command being reapplied is the same command that is
@@ -308,10 +323,10 @@ void WebEditorClient::registerUndoStep(UndoStep& step)
         return;
 
     auto webStep = WebUndoStep::create(step);
-    auto editAction = static_cast<uint32_t>(webStep->step().editingAction());
+    auto stepID = webStep->stepID();
 
-    m_page->addWebUndoStep(webStep->stepID(), webStep.ptr());
-    m_page->send(Messages::WebPageProxy::RegisterEditCommandForUndo(webStep->stepID(), editAction));
+    m_page->addWebUndoStep(stepID, WTFMove(webStep));
+    m_page->send(Messages::WebPageProxy::RegisterEditCommandForUndo(stepID, step.label()), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
 }
 
 void WebEditorClient::registerRedoStep(UndoStep&)
@@ -357,18 +372,23 @@ void WebEditorClient::redo()
     m_page->sendSync(Messages::WebPageProxy::ExecuteUndoRedo(UndoOrRedo::Redo), Messages::WebPageProxy::ExecuteUndoRedo::Reply());
 }
 
-#if !PLATFORM(GTK) && !PLATFORM(COCOA) && !PLATFORM(WPE)
-void WebEditorClient::handleKeyboardEvent(KeyboardEvent* event)
+WebCore::DOMPasteAccessResponse WebEditorClient::requestDOMPasteAccess(const String& originIdentifier)
 {
-    if (m_page->handleEditingKeyboardEvent(event))
-        event->setDefaultHandled();
+    return m_page->requestDOMPasteAccess(originIdentifier);
 }
 
-void WebEditorClient::handleInputMethodKeydown(KeyboardEvent*)
+#if PLATFORM(WIN)
+void WebEditorClient::handleKeyboardEvent(KeyboardEvent& event)
+{
+    if (m_page->handleEditingKeyboardEvent(event))
+        event.setDefaultHandled();
+}
+
+void WebEditorClient::handleInputMethodKeydown(KeyboardEvent&)
 {
     notImplemented();
 }
-#endif
+#endif // PLATFORM(WIN)
 
 void WebEditorClient::textFieldDidBeginEditing(Element* element)
 {
@@ -416,7 +436,7 @@ void WebEditorClient::textDidChangeInTextArea(Element* element)
     m_page->injectedBundleFormClient().textDidChangeInTextArea(m_page, downcast<HTMLTextAreaElement>(element), webFrame);
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 void WebEditorClient::overflowScrollPositionChanged()
 {
     notImplemented();

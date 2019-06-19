@@ -25,6 +25,9 @@
 
 #pragma once
 
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+#include "AXIsolatedTree.h"
+#endif
 #include "AXTextStateChangeIntent.h"
 #include "AccessibilityObject.h"
 #include "Range.h"
@@ -37,8 +40,15 @@
 #include <wtf/ListHashSet.h>
 #include <wtf/RefPtr.h>
 
+#if USE(ATK)
+#include <wtf/glib/GRefPtr.h>
+#endif
+
 namespace WebCore {
 
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+class AXIsolatedTreeNode;
+#endif
 class Document;
 class HTMLAreaElement;
 class HTMLTextFormControlElement;
@@ -76,7 +86,7 @@ struct CharacterOffset {
     
     int remaining() const { return remainingOffset; }
     bool isNull() const { return !node; }
-    bool isEqual(CharacterOffset& other) const
+    bool isEqual(const CharacterOffset& other) const
     {
         if (isNull() || other.isNull())
             return false;
@@ -85,6 +95,7 @@ struct CharacterOffset {
 };
 
 class AXComputedObjectAttributeCache {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     AccessibilityObjectInclusion getIgnored(AXID) const;
     void setIgnored(AXID, AccessibilityObjectInclusion);
@@ -180,6 +191,13 @@ public:
     void deferAttributeChangeIfNeeded(const QualifiedName&, Element*);
     void recomputeIsIgnored(RenderObject* renderer);
 
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    WEBCORE_EXPORT Ref<AXIsolatedTree> generateIsolatedAccessibilityTree();
+
+    void associateIsolatedTreeNode(AccessibilityObject&, AXIsolatedTreeNode&, AXIsolatedTreeID);
+    Ref<AXIsolatedTreeNode> createIsolatedAccessibilityTreeHierarchy(AccessibilityObject&, AXID, AXIsolatedTree&, Vector<Ref<AXIsolatedTreeNode>>&);
+#endif
+    
 #if HAVE(ACCESSIBILITY)
     WEBCORE_EXPORT static void enableAccessibility();
     WEBCORE_EXPORT static void disableAccessibility();
@@ -187,6 +205,7 @@ public:
     // Enhanced user interface accessibility can be toggled by the assistive technology.
     WEBCORE_EXPORT static void setEnhancedUserInterfaceAccessibility(bool flag);
     
+    // Note: these may be called from a non-main thread concurrently as other readers.
     static bool accessibilityEnabled() { return gAccessibilityEnabled; }
     static bool accessibilityEnhancedUserInterfaceEnabled() { return gAccessibilityEnhancedUserInterfaceEnabled; }
 #else
@@ -204,8 +223,8 @@ public:
     AccessibilityObject* objectFromAXID(AXID id) const { return m_objects.get(id); }
 
     // Text marker utilities.
-    std::optional<TextMarkerData> textMarkerDataForVisiblePosition(const VisiblePosition&);
-    std::optional<TextMarkerData> textMarkerDataForFirstPositionInTextControl(HTMLTextFormControlElement&);
+    Optional<TextMarkerData> textMarkerDataForVisiblePosition(const VisiblePosition&);
+    Optional<TextMarkerData> textMarkerDataForFirstPositionInTextControl(HTMLTextFormControlElement&);
     void textMarkerDataForCharacterOffset(TextMarkerData&, const CharacterOffset&);
     void textMarkerDataForNextCharacterOffset(TextMarkerData&, const CharacterOffset&);
     void textMarkerDataForPreviousCharacterOffset(TextMarkerData&, const CharacterOffset&);
@@ -276,6 +295,8 @@ public:
         AXRowExpanded,
         AXExpandedChanged,
         AXInvalidStatusChanged,
+        AXPressDidSucceed,
+        AXPressDidFail,
         AXPressedStateChanged,
         AXReadOnlyStatusChanged,
         AXRequiredStatusChanged,
@@ -338,6 +359,8 @@ protected:
     void postPlatformNotification(AccessibilityObject*, AXNotification);
     void platformHandleFocusedUIElementChanged(Node* oldFocusedNode, Node* newFocusedNode);
 
+    void platformPerformDeferredCacheUpdate();
+
 #if PLATFORM(COCOA)
     void postTextStateChangePlatformNotification(AccessibilityObject*, const AXTextStateChangeIntent&, const VisibleSelection&);
     void postTextStateChangePlatformNotification(AccessibilityObject*, AXTextEditType, const String&, const VisiblePosition&);
@@ -368,7 +391,9 @@ protected:
     UChar32 characterAfter(const CharacterOffset&);
     UChar32 characterBefore(const CharacterOffset&);
     CharacterOffset characterOffsetForNodeAndOffset(Node&, int, TraverseOption = TraverseOptionDefault);
-    CharacterOffset previousBoundary(const CharacterOffset&, BoundarySearchFunction);
+
+    enum class NeedsContextAtParagraphStart { Yes, No };
+    CharacterOffset previousBoundary(const CharacterOffset&, BoundarySearchFunction, NeedsContextAtParagraphStart = NeedsContextAtParagraphStart::No);
     CharacterOffset nextBoundary(const CharacterOffset&, BoundarySearchFunction);
     CharacterOffset startCharacterOffsetOfWord(const CharacterOffset&, EWordSide = RightWordIfOnBoundary);
     CharacterOffset endCharacterOffsetOfWord(const CharacterOffset&, EWordSide = RightWordIfOnBoundary);
@@ -452,11 +477,18 @@ private:
     ListHashSet<Element*> m_deferredRecomputeIsIgnoredList;
     ListHashSet<Node*> m_deferredTextChangedList;
     ListHashSet<Element*> m_deferredSelectedChildredChangedList;
+    ListHashSet<RefPtr<AccessibilityObject>> m_deferredChildredChangedList;
+    ListHashSet<Node*> m_deferredChildrenChangedNodeList;
     HashMap<Element*, String> m_deferredTextFormControlValue;
     HashMap<Element*, QualifiedName> m_deferredAttributeChange;
     Vector<std::pair<Node*, Node*>> m_deferredFocusedNodeChange;
     bool m_isSynchronizingSelection { false };
     bool m_performingDeferredCacheUpdate { false };
+
+#if USE(ATK)
+    ListHashSet<RefPtr<AccessibilityObject>> m_deferredAttachedWrapperObjectList;
+    ListHashSet<GRefPtr<AccessibilityObjectWrapper>> m_deferredDetachedWrapperList;
+#endif
 };
 
 class AXAttributeCacheEnabler

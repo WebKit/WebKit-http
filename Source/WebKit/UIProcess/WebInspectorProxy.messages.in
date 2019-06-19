@@ -21,13 +21,18 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 messages -> WebInspectorProxy {
-    CreateInspectorPage(IPC::Attachment connectionIdentifier, bool canAttach, bool underTest)
+    OpenLocalInspectorFrontend(bool canAttach, bool underTest)
+    SetFrontendConnection(IPC::Attachment connectionIdentifier)
+
+    SendMessageToBackend(String message)
 
     FrontendLoaded()
     DidClose()
     BringToFront()
+    Reopen()
 
     InspectedURLChanged(String urlString)
+    ShowCertificate(WebCore::CertificateInfo certificateInfo)
     ElementSelectionChanged(bool active)
 
     Save(String filename, String content, bool base64Encoded, bool forceSaveAs)
@@ -42,6 +47,8 @@ messages -> WebInspectorProxy {
 
     SetAttachedWindowHeight(unsigned height)
     SetAttachedWindowWidth(unsigned width)
+
+    SetSheetRect(WebCore::FloatRect rect)
 
     StartWindowDrag()
 }

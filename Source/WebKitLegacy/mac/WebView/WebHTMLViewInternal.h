@@ -57,6 +57,7 @@ namespace WebCore {
 - (BOOL)_canSmartCopyOrDelete;
 
 - (WebFrame *)_frame;
+- (void)closeIfNotCurrentView;
 
 #if PLATFORM(MAC)
 - (void)_lookUpInDictionaryFromMenu:(id)sender;
@@ -69,7 +70,7 @@ namespace WebCore {
 - (void)setPromisedDragTIFFDataSource:(WebCore::CachedImage*)source;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (BOOL)_handleEditingKeyEvent:(WebCore::KeyboardEvent *)event;
 #endif
 
@@ -85,7 +86,7 @@ namespace WebCore {
 - (BOOL)_web_isDrawingIntoAcceleratedLayer;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (void)_layoutIfNeeded;
 #endif
 
@@ -98,10 +99,12 @@ namespace WebCore {
 
 - (WebPluginController *)_pluginController;
 
+- (void)_executeSavedKeypressCommands;
+
 @end
 
 @interface WebHTMLView (RemovedAppKitSuperclassMethods)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (void)delete:(id)sender;
 - (void)transpose:(id)sender;
 #endif

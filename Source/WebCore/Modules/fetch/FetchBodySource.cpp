@@ -42,14 +42,14 @@ void FetchBodySource::setActive()
 {
     ASSERT(m_bodyOwner);
     if (m_bodyOwner)
-        m_bodyOwner->setPendingActivity(m_bodyOwner);
+        m_bodyOwner->setPendingActivity(*m_bodyOwner);
 }
 
 void FetchBodySource::setInactive()
 {
     ASSERT(m_bodyOwner);
     if (m_bodyOwner)
-        m_bodyOwner->unsetPendingActivity(m_bodyOwner);
+        m_bodyOwner->unsetPendingActivity(*m_bodyOwner);
 }
 
 void FetchBodySource::doStart()
@@ -88,7 +88,7 @@ void FetchBodySource::close()
     m_bodyOwner = nullptr;
 }
 
-void FetchBodySource::error(const String& value)
+void FetchBodySource::error(const Exception& value)
 {
     controller().error(value);
     clean();

@@ -24,8 +24,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EventSenderProxy_h
-#define EventSenderProxy_h
+#pragma once
 
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
@@ -82,6 +81,10 @@ public:
 
     void keyDown(WKStringRef key, WKEventModifiers, unsigned location);
 
+#if PLATFORM(COCOA)
+    unsigned mouseButtonsCurrentlyDown() const { return m_mouseButtonsCurrentlyDown; }
+#endif
+
 #if ENABLE(TOUCH_EVENTS)
     // Touch events.
     void addTouchPoint(int x, int y);
@@ -134,6 +137,11 @@ private:
     void prepareAndDispatchTouchEvent(enum wpe_input_touch_event_type);
 #endif
 
+#if PLATFORM(WIN)
+    LRESULT dispatchMessage(UINT message, WPARAM, LPARAM);
+    POINT positionInPoint() const { return { static_cast<LONG>(m_position.x), static_cast<LONG>(m_position.y) }; }
+#endif
+
     double m_time;
     WKPoint m_position;
     bool m_leftMouseButtonDown;
@@ -143,6 +151,7 @@ private:
     WKEventMouseButton m_clickButton;
 #if PLATFORM(COCOA)
     int eventNumber;
+    unsigned m_mouseButtonsCurrentlyDown { 0 };
 #elif PLATFORM(GTK)
     Deque<WTREventQueueItem> m_eventQueue;
     unsigned m_mouseButtonsCurrentlyDown { 0 };
@@ -158,7 +167,6 @@ private:
     bool m_touchActive;
 #endif
 #elif PLATFORM(WPE)
-    struct wpe_view_backend* m_viewBackend;
     uint32_t m_buttonState;
     uint32_t m_mouseButtonsCurrentlyDown { 0 };
     Vector<struct wpe_input_touch_event_raw> m_touchEvents;
@@ -167,5 +175,3 @@ private:
 };
 
 } // namespace WTR
-
-#endif // EventSenderProxy_h

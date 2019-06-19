@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,7 +41,6 @@
 #include "JITMulGenerator.h"
 #include "JITNegGenerator.h"
 #include "JITOperations.h"
-#include "JITRightShiftGenerator.h"
 #include "JITSubGenerator.h"
 #include "JSArray.h"
 #include "JSFunction.h"
@@ -53,190 +52,113 @@
 
 namespace JSC {
 
-void JIT::emit_op_jless(Instruction* currentInstruction)
+void JIT::emit_op_jless(const Instruction* currentInstruction)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJump(op_jless, op1, op2, target, LessThan);
+    emit_compareAndJump<OpJless>(currentInstruction, LessThan);
 }
 
-void JIT::emit_op_jlesseq(Instruction* currentInstruction)
+void JIT::emit_op_jlesseq(const Instruction* currentInstruction)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJump(op_jlesseq, op1, op2, target, LessThanOrEqual);
+    emit_compareAndJump<OpJlesseq>(currentInstruction, LessThanOrEqual);
 }
 
-void JIT::emit_op_jgreater(Instruction* currentInstruction)
+void JIT::emit_op_jgreater(const Instruction* currentInstruction)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJump(op_jgreater, op1, op2, target, GreaterThan);
+    emit_compareAndJump<OpJgreater>(currentInstruction, GreaterThan);
 }
 
-void JIT::emit_op_jgreatereq(Instruction* currentInstruction)
+void JIT::emit_op_jgreatereq(const Instruction* currentInstruction)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJump(op_jgreatereq, op1, op2, target, GreaterThanOrEqual);
+    emit_compareAndJump<OpJgreatereq>(currentInstruction, GreaterThanOrEqual);
 }
 
-void JIT::emit_op_jnless(Instruction* currentInstruction)
+void JIT::emit_op_jnless(const Instruction* currentInstruction)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJump(op_jnless, op1, op2, target, GreaterThanOrEqual);
+    emit_compareAndJump<OpJnless>(currentInstruction, GreaterThanOrEqual);
 }
 
-void JIT::emit_op_jnlesseq(Instruction* currentInstruction)
+void JIT::emit_op_jnlesseq(const Instruction* currentInstruction)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJump(op_jnlesseq, op1, op2, target, GreaterThan);
+    emit_compareAndJump<OpJnlesseq>(currentInstruction, GreaterThan);
 }
 
-void JIT::emit_op_jngreater(Instruction* currentInstruction)
+void JIT::emit_op_jngreater(const Instruction* currentInstruction)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJump(op_jngreater, op1, op2, target, LessThanOrEqual);
+    emit_compareAndJump<OpJngreater>(currentInstruction, LessThanOrEqual);
 }
 
-void JIT::emit_op_jngreatereq(Instruction* currentInstruction)
+void JIT::emit_op_jngreatereq(const Instruction* currentInstruction)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJump(op_jngreatereq, op1, op2, target, LessThan);
+    emit_compareAndJump<OpJngreatereq>(currentInstruction, LessThan);
 }
 
-void JIT::emitSlow_op_jless(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jless(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJumpSlow(op1, op2, target, DoubleLessThan, operationCompareLess, false, iter);
+    emit_compareAndJumpSlow<OpJless>(currentInstruction, DoubleLessThan, operationCompareLess, false, iter);
 }
 
-void JIT::emitSlow_op_jlesseq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jlesseq(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJumpSlow(op1, op2, target, DoubleLessThanOrEqual, operationCompareLessEq, false, iter);
+    emit_compareAndJumpSlow<OpJlesseq>(currentInstruction, DoubleLessThanOrEqual, operationCompareLessEq, false, iter);
 }
 
-void JIT::emitSlow_op_jgreater(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jgreater(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJumpSlow(op1, op2, target, DoubleGreaterThan, operationCompareGreater, false, iter);
+    emit_compareAndJumpSlow<OpJgreater>(currentInstruction, DoubleGreaterThan, operationCompareGreater, false, iter);
 }
 
-void JIT::emitSlow_op_jgreatereq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jgreatereq(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJumpSlow(op1, op2, target, DoubleGreaterThanOrEqual, operationCompareGreaterEq, false, iter);
+    emit_compareAndJumpSlow<OpJgreatereq>(currentInstruction, DoubleGreaterThanOrEqual, operationCompareGreaterEq, false, iter);
 }
 
-void JIT::emitSlow_op_jnless(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jnless(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJumpSlow(op1, op2, target, DoubleGreaterThanOrEqualOrUnordered, operationCompareLess, true, iter);
+    emit_compareAndJumpSlow<OpJnless>(currentInstruction, DoubleGreaterThanOrEqualOrUnordered, operationCompareLess, true, iter);
 }
 
-void JIT::emitSlow_op_jnlesseq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jnlesseq(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJumpSlow(op1, op2, target, DoubleGreaterThanOrUnordered, operationCompareLessEq, true, iter);
+    emit_compareAndJumpSlow<OpJnlesseq>(currentInstruction, DoubleGreaterThanOrUnordered, operationCompareLessEq, true, iter);
 }
 
-void JIT::emitSlow_op_jngreater(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jngreater(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJumpSlow(op1, op2, target, DoubleLessThanOrEqualOrUnordered, operationCompareGreater, true, iter);
+    emit_compareAndJumpSlow<OpJngreater>(currentInstruction, DoubleLessThanOrEqualOrUnordered, operationCompareGreater, true, iter);
 }
 
-void JIT::emitSlow_op_jngreatereq(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_jngreatereq(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareAndJumpSlow(op1, op2, target, DoubleLessThanOrUnordered, operationCompareGreaterEq, true, iter);
+    emit_compareAndJumpSlow<OpJngreatereq>(currentInstruction, DoubleLessThanOrUnordered, operationCompareGreaterEq, true, iter);
 }
 
-void JIT::emit_op_below(Instruction* currentInstruction)
+void JIT::emit_op_below(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int op1 = currentInstruction[2].u.operand;
-    int op2 = currentInstruction[3].u.operand;
-    emit_compareUnsigned(dst, op1, op2, Below);
+    emit_compareUnsigned<OpBelow>(currentInstruction, Below);
 }
 
-void JIT::emit_op_beloweq(Instruction* currentInstruction)
+void JIT::emit_op_beloweq(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int op1 = currentInstruction[2].u.operand;
-    int op2 = currentInstruction[3].u.operand;
-    emit_compareUnsigned(dst, op1, op2, BelowOrEqual);
+    emit_compareUnsigned<OpBeloweq>(currentInstruction, BelowOrEqual);
 }
 
-void JIT::emit_op_jbelow(Instruction* currentInstruction)
+void JIT::emit_op_jbelow(const Instruction* currentInstruction)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareUnsignedAndJump(op1, op2, target, Below);
+    emit_compareUnsignedAndJump<OpJbelow>(currentInstruction, Below);
 }
 
-void JIT::emit_op_jbeloweq(Instruction* currentInstruction)
+void JIT::emit_op_jbeloweq(const Instruction* currentInstruction)
 {
-    int op1 = currentInstruction[1].u.operand;
-    int op2 = currentInstruction[2].u.operand;
-    unsigned target = currentInstruction[3].u.operand;
-
-    emit_compareUnsignedAndJump(op1, op2, target, BelowOrEqual);
+    emit_compareUnsignedAndJump<OpJbeloweq>(currentInstruction, BelowOrEqual);
 }
 
 #if USE(JSVALUE64)
 
-void JIT::emit_op_unsigned(Instruction* currentInstruction)
+void JIT::emit_op_unsigned(const Instruction* currentInstruction)
 {
-    int result = currentInstruction[1].u.operand;
-    int op1 = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<OpUnsigned>();
+    int result = bytecode.m_dst.offset();
+    int op1 = bytecode.m_operand.offset();
     
     emitGetVirtualRegister(op1, regT0);
     emitJumpSlowCaseIfNotInt(regT0);
@@ -245,20 +167,26 @@ void JIT::emit_op_unsigned(Instruction* currentInstruction)
     emitPutVirtualRegister(result, regT0);
 }
 
-void JIT::emit_compareAndJump(OpcodeID, int op1, int op2, unsigned target, RelationalCondition condition)
+template<typename Op>
+void JIT::emit_compareAndJump(const Instruction* instruction, RelationalCondition condition)
 {
     // We generate inline code for the following cases in the fast path:
     // - int immediate to constant int immediate
     // - constant int immediate to int immediate
     // - int immediate to int immediate
 
+    auto bytecode = instruction->as<Op>();
+    int op1 = bytecode.m_lhs.offset();
+    int op2 = bytecode.m_rhs.offset();
+    unsigned target = jumpTarget(instruction, bytecode.m_targetLabel);
+    bool disallowAllocation = false;
     if (isOperandConstantChar(op1)) {
         emitGetVirtualRegister(op2, regT0);
         addSlowCase(branchIfNotCell(regT0));
         JumpList failures;
         emitLoadCharacterString(regT0, regT0, failures);
         addSlowCase(failures);
-        addJump(branch32(commute(condition), regT0, Imm32(asString(getConstantOperand(op1))->tryGetValue()[0])), target);
+        addJump(branch32(commute(condition), regT0, Imm32(asString(getConstantOperand(op1))->tryGetValue(disallowAllocation)[0])), target);
         return;
     }
     if (isOperandConstantChar(op2)) {
@@ -267,7 +195,7 @@ void JIT::emit_compareAndJump(OpcodeID, int op1, int op2, unsigned target, Relat
         JumpList failures;
         emitLoadCharacterString(regT0, regT0, failures);
         addSlowCase(failures);
-        addJump(branch32(condition, regT0, Imm32(asString(getConstantOperand(op2))->tryGetValue()[0])), target);
+        addJump(branch32(condition, regT0, Imm32(asString(getConstantOperand(op2))->tryGetValue(disallowAllocation)[0])), target);
         return;
     }
     if (isOperandConstantInt(op2)) {
@@ -292,8 +220,13 @@ void JIT::emit_compareAndJump(OpcodeID, int op1, int op2, unsigned target, Relat
     addJump(branch32(condition, regT0, regT1), target);
 }
 
-void JIT::emit_compareUnsignedAndJump(int op1, int op2, unsigned target, RelationalCondition condition)
+template<typename Op>
+void JIT::emit_compareUnsignedAndJump(const Instruction* instruction, RelationalCondition condition)
 {
+    auto bytecode = instruction->as<Op>();
+    int op1 = bytecode.m_lhs.offset();
+    int op2 = bytecode.m_rhs.offset();
+    unsigned target = jumpTarget(instruction, bytecode.m_targetLabel);
     if (isOperandConstantInt(op2)) {
         emitGetVirtualRegister(op1, regT0);
         int32_t op2imm = getOperandConstantInt(op2);
@@ -308,8 +241,13 @@ void JIT::emit_compareUnsignedAndJump(int op1, int op2, unsigned target, Relatio
     }
 }
 
-void JIT::emit_compareUnsigned(int dst, int op1, int op2, RelationalCondition condition)
+template<typename Op>
+void JIT::emit_compareUnsigned(const Instruction* instruction, RelationalCondition condition)
 {
+    auto bytecode = instruction->as<Op>();
+    int dst = bytecode.m_dst.offset();
+    int op1 = bytecode.m_lhs.offset();
+    int op2 = bytecode.m_rhs.offset();
     if (isOperandConstantInt(op2)) {
         emitGetVirtualRegister(op1, regT0);
         int32_t op2imm = getOperandConstantInt(op2);
@@ -326,16 +264,14 @@ void JIT::emit_compareUnsigned(int dst, int op1, int op2, RelationalCondition co
     emitPutVirtualRegister(dst);
 }
 
-void JIT::emit_compareAndJumpSlow(int op1, int op2, unsigned target, DoubleCondition condition, size_t (JIT_OPERATION *operation)(ExecState*, EncodedJSValue, EncodedJSValue), bool invert, Vector<SlowCaseEntry>::iterator& iter)
+template<typename Op>
+void JIT::emit_compareAndJumpSlow(const Instruction* instruction, DoubleCondition condition, size_t (JIT_OPERATION *operation)(ExecState*, EncodedJSValue, EncodedJSValue), bool invert, Vector<SlowCaseEntry>::iterator& iter)
 {
-    COMPILE_ASSERT(OPCODE_LENGTH(op_jless) == OPCODE_LENGTH(op_jlesseq), OPCODE_LENGTH_op_jlesseq_equals_op_jless);
-    COMPILE_ASSERT(OPCODE_LENGTH(op_jless) == OPCODE_LENGTH(op_jnless), OPCODE_LENGTH_op_jnless_equals_op_jless);
-    COMPILE_ASSERT(OPCODE_LENGTH(op_jless) == OPCODE_LENGTH(op_jnlesseq), OPCODE_LENGTH_op_jnlesseq_equals_op_jless);
-    COMPILE_ASSERT(OPCODE_LENGTH(op_jless) == OPCODE_LENGTH(op_jgreater), OPCODE_LENGTH_op_jgreater_equals_op_jless);
-    COMPILE_ASSERT(OPCODE_LENGTH(op_jless) == OPCODE_LENGTH(op_jgreatereq), OPCODE_LENGTH_op_jgreatereq_equals_op_jless);
-    COMPILE_ASSERT(OPCODE_LENGTH(op_jless) == OPCODE_LENGTH(op_jngreater), OPCODE_LENGTH_op_jngreater_equals_op_jless);
-    COMPILE_ASSERT(OPCODE_LENGTH(op_jless) == OPCODE_LENGTH(op_jngreatereq), OPCODE_LENGTH_op_jngreatereq_equals_op_jless);
-    
+    auto bytecode = instruction->as<Op>();
+    int op1 = bytecode.m_lhs.offset();
+    int op2 = bytecode.m_rhs.offset();
+    unsigned target = jumpTarget(instruction, bytecode.m_targetLabel);
+
     // We generate inline code for the following cases in the slow path:
     // - floating-point number to constant int immediate
     // - constant int immediate to floating-point number
@@ -365,7 +301,7 @@ void JIT::emit_compareAndJumpSlow(int op1, int op2, unsigned target, DoubleCondi
 
             emitJumpSlowToHot(branchDouble(condition, fpRegT0, fpRegT1), target);
 
-            emitJumpSlowToHot(jump(), OPCODE_LENGTH(op_jless));
+            emitJumpSlowToHot(jump(), instruction->size());
 
             fail1.link(this);
         }
@@ -391,7 +327,7 @@ void JIT::emit_compareAndJumpSlow(int op1, int op2, unsigned target, DoubleCondi
 
             emitJumpSlowToHot(branchDouble(condition, fpRegT0, fpRegT1), target);
 
-            emitJumpSlowToHot(jump(), OPCODE_LENGTH(op_jless));
+            emitJumpSlowToHot(jump(), instruction->size());
 
             fail1.link(this);
         }
@@ -415,7 +351,7 @@ void JIT::emit_compareAndJumpSlow(int op1, int op2, unsigned target, DoubleCondi
 
         emitJumpSlowToHot(branchDouble(condition, fpRegT0, fpRegT1), target);
 
-        emitJumpSlowToHot(jump(), OPCODE_LENGTH(op_jless));
+        emitJumpSlowToHot(jump(), instruction->size());
 
         fail1.link(this);
         fail2.link(this);
@@ -427,9 +363,10 @@ void JIT::emit_compareAndJumpSlow(int op1, int op2, unsigned target, DoubleCondi
     emitJumpSlowToHot(branchTest32(invert ? Zero : NonZero, returnValueGPR), target);
 }
 
-void JIT::emit_op_inc(Instruction* currentInstruction)
+void JIT::emit_op_inc(const Instruction* currentInstruction)
 {
-    int srcDst = currentInstruction[1].u.operand;
+    auto bytecode = currentInstruction->as<OpInc>();
+    int srcDst = bytecode.m_srcDst.offset();
 
     emitGetVirtualRegister(srcDst, regT0);
     emitJumpSlowCaseIfNotInt(regT0);
@@ -438,9 +375,10 @@ void JIT::emit_op_inc(Instruction* currentInstruction)
     emitPutVirtualRegister(srcDst);
 }
 
-void JIT::emit_op_dec(Instruction* currentInstruction)
+void JIT::emit_op_dec(const Instruction* currentInstruction)
 {
-    int srcDst = currentInstruction[1].u.operand;
+    auto bytecode = currentInstruction->as<OpDec>();
+    int srcDst = bytecode.m_srcDst.offset();
 
     emitGetVirtualRegister(srcDst, regT0);
     emitJumpSlowCaseIfNotInt(regT0);
@@ -453,11 +391,12 @@ void JIT::emit_op_dec(Instruction* currentInstruction)
 
 #if CPU(X86_64)
 
-void JIT::emit_op_mod(Instruction* currentInstruction)
+void JIT::emit_op_mod(const Instruction* currentInstruction)
 {
-    int result = currentInstruction[1].u.operand;
-    int op1 = currentInstruction[2].u.operand;
-    int op2 = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpMod>();
+    int result = bytecode.m_dst.offset();
+    int op1 = bytecode.m_lhs.offset();
+    int op2 = bytecode.m_rhs.offset();
 
     // Make sure registers are correct for x86 IDIV instructions.
     ASSERT(regT0 == X86Registers::eax);
@@ -484,7 +423,7 @@ void JIT::emit_op_mod(Instruction* currentInstruction)
     emitPutVirtualRegister(result);
 }
 
-void JIT::emitSlow_op_mod(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_mod(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
@@ -494,13 +433,13 @@ void JIT::emitSlow_op_mod(Instruction* currentInstruction, Vector<SlowCaseEntry>
 
 #else // CPU(X86_64)
 
-void JIT::emit_op_mod(Instruction* currentInstruction)
+void JIT::emit_op_mod(const Instruction* currentInstruction)
 {
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_mod);
     slowPathCall.call();
 }
 
-void JIT::emitSlow_op_mod(Instruction*, Vector<SlowCaseEntry>::iterator&)
+void JIT::emitSlow_op_mod(const Instruction*, Vector<SlowCaseEntry>::iterator&)
 {
     UNREACHABLE_FOR_PLATFORM();
 }
@@ -511,28 +450,29 @@ void JIT::emitSlow_op_mod(Instruction*, Vector<SlowCaseEntry>::iterator&)
 
 #endif // USE(JSVALUE64)
 
-void JIT::emit_op_negate(Instruction* currentInstruction)
+void JIT::emit_op_negate(const Instruction* currentInstruction)
 {
-    ArithProfile* arithProfile = m_codeBlock->arithProfileForPC(currentInstruction);
-    JITNegIC* negateIC = m_codeBlock->addJITNegIC(arithProfile, currentInstruction);
+    ArithProfile* arithProfile = &currentInstruction->as<OpNegate>().metadata(m_codeBlock).m_arithProfile;
+    JITNegIC* negateIC = m_codeBlock->addJITNegIC(arithProfile);
     m_instructionToMathIC.add(currentInstruction, negateIC);
-    emitMathICFast(negateIC, currentInstruction, operationArithNegateProfiled, operationArithNegate);
+    emitMathICFast<OpNegate>(negateIC, currentInstruction, operationArithNegateProfiled, operationArithNegate);
 }
 
-void JIT::emitSlow_op_negate(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_negate(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
     JITNegIC* negIC = bitwise_cast<JITNegIC*>(m_instructionToMathIC.get(currentInstruction));
-    emitMathICSlow(negIC, currentInstruction, operationArithNegateProfiledOptimize, operationArithNegateProfiled, operationArithNegateOptimize);
+    emitMathICSlow<OpNegate>(negIC, currentInstruction, operationArithNegateProfiledOptimize, operationArithNegateProfiled, operationArithNegateOptimize);
 }
 
-template<typename SnippetGenerator>
-void JIT::emitBitBinaryOpFastPath(Instruction* currentInstruction)
+template<typename Op, typename SnippetGenerator>
+void JIT::emitBitBinaryOpFastPath(const Instruction* currentInstruction, ProfilingPolicy profilingPolicy)
 {
-    int result = currentInstruction[1].u.operand;
-    int op1 = currentInstruction[2].u.operand;
-    int op2 = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<Op>();
+    int result = bytecode.m_dst.offset();
+    int op1 = bytecode.m_lhs.offset();
+    int op2 = bytecode.m_rhs.offset();
 
 #if USE(JSVALUE64)
     JSValueRegs leftRegs = JSValueRegs(regT0);
@@ -567,41 +507,80 @@ void JIT::emitBitBinaryOpFastPath(Instruction* currentInstruction)
 
     ASSERT(gen.didEmitFastPath());
     gen.endJumpList().link(this);
+    if (profilingPolicy == ProfilingPolicy::ShouldEmitProfiling)
+        emitValueProfilingSiteIfProfiledOpcode(bytecode);
     emitPutVirtualRegister(result, resultRegs);
 
     addSlowCase(gen.slowPathJumpList());
 }
 
-void JIT::emit_op_bitand(Instruction* currentInstruction)
+void JIT::emit_op_bitnot(const Instruction* currentInstruction)
 {
-    emitBitBinaryOpFastPath<JITBitAndGenerator>(currentInstruction);
+    auto bytecode = currentInstruction->as<OpBitnot>();
+    int result = bytecode.m_dst.offset();
+    int op1 = bytecode.m_operand.offset();
+
+#if USE(JSVALUE64)
+    JSValueRegs leftRegs = JSValueRegs(regT0);
+#else
+    JSValueRegs leftRegs = JSValueRegs(regT1, regT0);
+#endif
+
+    emitGetVirtualRegister(op1, leftRegs);
+
+    addSlowCase(branchIfNotInt32(leftRegs));
+    not32(leftRegs.payloadGPR());
+#if USE(JSVALUE64)
+    boxInt32(leftRegs.payloadGPR(), leftRegs);
+#endif
+
+    emitValueProfilingSiteIfProfiledOpcode(bytecode);
+
+    emitPutVirtualRegister(result, leftRegs);
 }
 
-void JIT::emit_op_bitor(Instruction* currentInstruction)
+void JIT::emit_op_bitand(const Instruction* currentInstruction)
 {
-    emitBitBinaryOpFastPath<JITBitOrGenerator>(currentInstruction);
+    emitBitBinaryOpFastPath<OpBitand, JITBitAndGenerator>(currentInstruction, ProfilingPolicy::ShouldEmitProfiling);
 }
 
-void JIT::emit_op_bitxor(Instruction* currentInstruction)
+void JIT::emit_op_bitor(const Instruction* currentInstruction)
 {
-    emitBitBinaryOpFastPath<JITBitXorGenerator>(currentInstruction);
+    emitBitBinaryOpFastPath<OpBitor, JITBitOrGenerator>(currentInstruction, ProfilingPolicy::ShouldEmitProfiling);
 }
 
-void JIT::emit_op_lshift(Instruction* currentInstruction)
+void JIT::emit_op_bitxor(const Instruction* currentInstruction)
 {
-    emitBitBinaryOpFastPath<JITLeftShiftGenerator>(currentInstruction);
+    emitBitBinaryOpFastPath<OpBitxor, JITBitXorGenerator>(currentInstruction, ProfilingPolicy::ShouldEmitProfiling);
 }
 
-void JIT::emitRightShiftFastPath(Instruction* currentInstruction, OpcodeID opcodeID)
+void JIT::emit_op_lshift(const Instruction* currentInstruction)
+{
+    emitBitBinaryOpFastPath<OpLshift, JITLeftShiftGenerator>(currentInstruction);
+}
+
+void JIT::emitRightShiftFastPath(const Instruction* currentInstruction, OpcodeID opcodeID)
 {
     ASSERT(opcodeID == op_rshift || opcodeID == op_urshift);
+    switch (opcodeID) {
+    case op_rshift:
+        emitRightShiftFastPath<OpRshift>(currentInstruction, JITRightShiftGenerator::SignedShift);
+        break;
+    case op_urshift:
+        emitRightShiftFastPath<OpUrshift>(currentInstruction, JITRightShiftGenerator::UnsignedShift);
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+}
 
-    JITRightShiftGenerator::ShiftType snippetShiftType = opcodeID == op_rshift ?
-        JITRightShiftGenerator::SignedShift : JITRightShiftGenerator::UnsignedShift;
-
-    int result = currentInstruction[1].u.operand;
-    int op1 = currentInstruction[2].u.operand;
-    int op2 = currentInstruction[3].u.operand;
+template<typename Op>
+void JIT::emitRightShiftFastPath(const Instruction* currentInstruction, JITRightShiftGenerator::ShiftType snippetShiftType)
+{
+    auto bytecode = currentInstruction->as<Op>();
+    int result = bytecode.m_dst.offset();
+    int op1 = bytecode.m_lhs.offset();
+    int op2 = bytecode.m_rhs.offset();
 
 #if USE(JSVALUE64)
     JSValueRegs leftRegs = JSValueRegs(regT0);
@@ -644,42 +623,43 @@ void JIT::emitRightShiftFastPath(Instruction* currentInstruction, OpcodeID opcod
     addSlowCase(gen.slowPathJumpList());
 }
 
-void JIT::emit_op_rshift(Instruction* currentInstruction)
+void JIT::emit_op_rshift(const Instruction* currentInstruction)
 {
     emitRightShiftFastPath(currentInstruction, op_rshift);
 }
 
-void JIT::emit_op_urshift(Instruction* currentInstruction)
+void JIT::emit_op_urshift(const Instruction* currentInstruction)
 {
     emitRightShiftFastPath(currentInstruction, op_urshift);
 }
 
-ALWAYS_INLINE static OperandTypes getOperandTypes(Instruction* instruction)
+ALWAYS_INLINE static OperandTypes getOperandTypes(const ArithProfile& arithProfile)
 {
-    return OperandTypes(ArithProfile::fromInt(instruction[4].u.operand).lhsResultType(), ArithProfile::fromInt(instruction[4].u.operand).rhsResultType());
+    return OperandTypes(arithProfile.lhsResultType(), arithProfile.rhsResultType());
 }
 
-void JIT::emit_op_add(Instruction* currentInstruction)
+void JIT::emit_op_add(const Instruction* currentInstruction)
 {
-    ArithProfile* arithProfile = m_codeBlock->arithProfileForPC(currentInstruction);
-    JITAddIC* addIC = m_codeBlock->addJITAddIC(arithProfile, currentInstruction);
+    ArithProfile* arithProfile = &currentInstruction->as<OpAdd>().metadata(m_codeBlock).m_arithProfile;
+    JITAddIC* addIC = m_codeBlock->addJITAddIC(arithProfile);
     m_instructionToMathIC.add(currentInstruction, addIC);
-    emitMathICFast(addIC, currentInstruction, operationValueAddProfiled, operationValueAdd);
+    emitMathICFast<OpAdd>(addIC, currentInstruction, operationValueAddProfiled, operationValueAdd);
 }
 
-void JIT::emitSlow_op_add(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_add(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
     JITAddIC* addIC = bitwise_cast<JITAddIC*>(m_instructionToMathIC.get(currentInstruction));
-    emitMathICSlow(addIC, currentInstruction, operationValueAddProfiledOptimize, operationValueAddProfiled, operationValueAddOptimize);
+    emitMathICSlow<OpAdd>(addIC, currentInstruction, operationValueAddProfiledOptimize, operationValueAddProfiled, operationValueAddOptimize);
 }
 
-template <typename Generator, typename ProfiledFunction, typename NonProfiledFunction>
-void JIT::emitMathICFast(JITUnaryMathIC<Generator>* mathIC, Instruction* currentInstruction, ProfiledFunction profiledFunction, NonProfiledFunction nonProfiledFunction)
+template <typename Op, typename Generator, typename ProfiledFunction, typename NonProfiledFunction>
+void JIT::emitMathICFast(JITUnaryMathIC<Generator>* mathIC, const Instruction* currentInstruction, ProfiledFunction profiledFunction, NonProfiledFunction nonProfiledFunction)
 {
-    int result = currentInstruction[1].u.operand;
-    int operand = currentInstruction[2].u.operand;
+    auto bytecode = currentInstruction->as<Op>();
+    int result = bytecode.m_dst.offset();
+    int operand = bytecode.m_operand.offset();
 
 #if USE(JSVALUE64)
     // ArithNegate benefits from using the same register as src and dst.
@@ -724,22 +704,22 @@ void JIT::emitMathICFast(JITUnaryMathIC<Generator>* mathIC, Instruction* current
     emitPutVirtualRegister(result, resultRegs);
 }
 
-template <typename Generator, typename ProfiledFunction, typename NonProfiledFunction>
-void JIT::emitMathICFast(JITBinaryMathIC<Generator>* mathIC, Instruction* currentInstruction, ProfiledFunction profiledFunction, NonProfiledFunction nonProfiledFunction)
+template <typename Op, typename Generator, typename ProfiledFunction, typename NonProfiledFunction>
+void JIT::emitMathICFast(JITBinaryMathIC<Generator>* mathIC, const Instruction* currentInstruction, ProfiledFunction profiledFunction, NonProfiledFunction nonProfiledFunction)
 {
-    int result = currentInstruction[1].u.operand;
-    int op1 = currentInstruction[2].u.operand;
-    int op2 = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<Op>();
+    OperandTypes types = getOperandTypes(copiedArithProfile(bytecode));
+    int result = bytecode.m_dst.offset();
+    int op1 = bytecode.m_lhs.offset();
+    int op2 = bytecode.m_rhs.offset();
 
 #if USE(JSVALUE64)
-    OperandTypes types = getOperandTypes(copiedInstruction(currentInstruction));
     JSValueRegs leftRegs = JSValueRegs(regT1);
     JSValueRegs rightRegs = JSValueRegs(regT2);
     JSValueRegs resultRegs = JSValueRegs(regT0);
     GPRReg scratchGPR = regT3;
     FPRReg scratchFPR = fpRegT2;
 #else
-    OperandTypes types = getOperandTypes(currentInstruction);
     JSValueRegs leftRegs = JSValueRegs(regT1, regT0);
     JSValueRegs rightRegs = JSValueRegs(regT3, regT2);
     JSValueRegs resultRegs = leftRegs;
@@ -797,13 +777,14 @@ void JIT::emitMathICFast(JITBinaryMathIC<Generator>* mathIC, Instruction* curren
     emitPutVirtualRegister(result, resultRegs);
 }
 
-template <typename Generator, typename ProfiledRepatchFunction, typename ProfiledFunction, typename RepatchFunction>
-void JIT::emitMathICSlow(JITUnaryMathIC<Generator>* mathIC, Instruction* currentInstruction, ProfiledRepatchFunction profiledRepatchFunction, ProfiledFunction profiledFunction, RepatchFunction repatchFunction)
+template <typename Op, typename Generator, typename ProfiledRepatchFunction, typename ProfiledFunction, typename RepatchFunction>
+void JIT::emitMathICSlow(JITUnaryMathIC<Generator>* mathIC, const Instruction* currentInstruction, ProfiledRepatchFunction profiledRepatchFunction, ProfiledFunction profiledFunction, RepatchFunction repatchFunction)
 {
     MathICGenerationState& mathICGenerationState = m_instructionToMathICGenerationState.find(currentInstruction)->value;
     mathICGenerationState.slowPathStart = label();
 
-    int result = currentInstruction[1].u.operand;
+    auto bytecode = currentInstruction->as<Op>();
+    int result = bytecode.m_dst.offset();
 
 #if USE(JSVALUE64)
     JSValueRegs srcRegs = JSValueRegs(regT1);
@@ -842,23 +823,23 @@ void JIT::emitMathICSlow(JITUnaryMathIC<Generator>* mathIC, Instruction* current
     });
 }
 
-template <typename Generator, typename ProfiledRepatchFunction, typename ProfiledFunction, typename RepatchFunction>
-void JIT::emitMathICSlow(JITBinaryMathIC<Generator>* mathIC, Instruction* currentInstruction, ProfiledRepatchFunction profiledRepatchFunction, ProfiledFunction profiledFunction, RepatchFunction repatchFunction)
+template <typename Op, typename Generator, typename ProfiledRepatchFunction, typename ProfiledFunction, typename RepatchFunction>
+void JIT::emitMathICSlow(JITBinaryMathIC<Generator>* mathIC, const Instruction* currentInstruction, ProfiledRepatchFunction profiledRepatchFunction, ProfiledFunction profiledFunction, RepatchFunction repatchFunction)
 {
     MathICGenerationState& mathICGenerationState = m_instructionToMathICGenerationState.find(currentInstruction)->value;
     mathICGenerationState.slowPathStart = label();
 
-    int result = currentInstruction[1].u.operand;
-    int op1 = currentInstruction[2].u.operand;
-    int op2 = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<Op>();
+    OperandTypes types = getOperandTypes(copiedArithProfile(bytecode));
+    int result = bytecode.m_dst.offset();
+    int op1 = bytecode.m_lhs.offset();
+    int op2 = bytecode.m_rhs.offset();
 
 #if USE(JSVALUE64)
-    OperandTypes types = getOperandTypes(copiedInstruction(currentInstruction));
     JSValueRegs leftRegs = JSValueRegs(regT1);
     JSValueRegs rightRegs = JSValueRegs(regT2);
     JSValueRegs resultRegs = JSValueRegs(regT0);
 #else
-    OperandTypes types = getOperandTypes(currentInstruction);
     JSValueRegs leftRegs = JSValueRegs(regT1, regT0);
     JSValueRegs rightRegs = JSValueRegs(regT3, regT2);
     JSValueRegs resultRegs = leftRegs;
@@ -908,20 +889,22 @@ void JIT::emitMathICSlow(JITBinaryMathIC<Generator>* mathIC, Instruction* curren
     });
 }
 
-void JIT::emit_op_div(Instruction* currentInstruction)
+void JIT::emit_op_div(const Instruction* currentInstruction)
 {
-    int result = currentInstruction[1].u.operand;
-    int op1 = currentInstruction[2].u.operand;
-    int op2 = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpDiv>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int result = bytecode.m_dst.offset();
+    int op1 = bytecode.m_lhs.offset();
+    int op2 = bytecode.m_rhs.offset();
 
 #if USE(JSVALUE64)
-    OperandTypes types = getOperandTypes(copiedInstruction(currentInstruction));
+    OperandTypes types = getOperandTypes(metadata.m_arithProfile);
     JSValueRegs leftRegs = JSValueRegs(regT0);
     JSValueRegs rightRegs = JSValueRegs(regT1);
     JSValueRegs resultRegs = leftRegs;
     GPRReg scratchGPR = regT2;
 #else
-    OperandTypes types = getOperandTypes(currentInstruction);
+    OperandTypes types = getOperandTypes(metadata.m_arithProfile);
     JSValueRegs leftRegs = JSValueRegs(regT1, regT0);
     JSValueRegs rightRegs = JSValueRegs(regT3, regT2);
     JSValueRegs resultRegs = leftRegs;
@@ -931,7 +914,7 @@ void JIT::emit_op_div(Instruction* currentInstruction)
 
     ArithProfile* arithProfile = nullptr;
     if (shouldEmitProfiling())
-        arithProfile = m_codeBlock->arithProfileForPC(currentInstruction);
+        arithProfile = &currentInstruction->as<OpDiv>().metadata(m_codeBlock).m_arithProfile;
 
     SnippetOperand leftOperand(types.first());
     SnippetOperand rightOperand(types.second());
@@ -974,36 +957,36 @@ void JIT::emit_op_div(Instruction* currentInstruction)
     }
 }
 
-void JIT::emit_op_mul(Instruction* currentInstruction)
+void JIT::emit_op_mul(const Instruction* currentInstruction)
 {
-    ArithProfile* arithProfile = m_codeBlock->arithProfileForPC(currentInstruction);
-    JITMulIC* mulIC = m_codeBlock->addJITMulIC(arithProfile, currentInstruction);
+    ArithProfile* arithProfile = &currentInstruction->as<OpMul>().metadata(m_codeBlock).m_arithProfile;
+    JITMulIC* mulIC = m_codeBlock->addJITMulIC(arithProfile);
     m_instructionToMathIC.add(currentInstruction, mulIC);
-    emitMathICFast(mulIC, currentInstruction, operationValueMulProfiled, operationValueMul);
+    emitMathICFast<OpMul>(mulIC, currentInstruction, operationValueMulProfiled, operationValueMul);
 }
 
-void JIT::emitSlow_op_mul(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_mul(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
     JITMulIC* mulIC = bitwise_cast<JITMulIC*>(m_instructionToMathIC.get(currentInstruction));
-    emitMathICSlow(mulIC, currentInstruction, operationValueMulProfiledOptimize, operationValueMulProfiled, operationValueMulOptimize);
+    emitMathICSlow<OpMul>(mulIC, currentInstruction, operationValueMulProfiledOptimize, operationValueMulProfiled, operationValueMulOptimize);
 }
 
-void JIT::emit_op_sub(Instruction* currentInstruction)
+void JIT::emit_op_sub(const Instruction* currentInstruction)
 {
-    ArithProfile* arithProfile = m_codeBlock->arithProfileForPC(currentInstruction);
-    JITSubIC* subIC = m_codeBlock->addJITSubIC(arithProfile, currentInstruction);
+    ArithProfile* arithProfile = &currentInstruction->as<OpSub>().metadata(m_codeBlock).m_arithProfile;
+    JITSubIC* subIC = m_codeBlock->addJITSubIC(arithProfile);
     m_instructionToMathIC.add(currentInstruction, subIC);
-    emitMathICFast(subIC, currentInstruction, operationValueSubProfiled, operationValueSub);
+    emitMathICFast<OpSub>(subIC, currentInstruction, operationValueSubProfiled, operationValueSub);
 }
 
-void JIT::emitSlow_op_sub(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_sub(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
     JITSubIC* subIC = bitwise_cast<JITSubIC*>(m_instructionToMathIC.get(currentInstruction));
-    emitMathICSlow(subIC, currentInstruction, operationValueSubProfiledOptimize, operationValueSubProfiled, operationValueSubOptimize);
+    emitMathICSlow<OpSub>(subIC, currentInstruction, operationValueSubProfiledOptimize, operationValueSubProfiled, operationValueSubOptimize);
 }
 
 /* ------------------------------ END: OP_ADD, OP_SUB, OP_MUL, OP_POW ------------------------------ */

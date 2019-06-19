@@ -65,12 +65,9 @@ list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
     TestNetscapePlugIn/Tests
     TestNetscapePlugIn/win
     TestNetscapePlugIn/Tests/win
-    ${WEBKITLegacy_DIR}/win
-    ${DERIVED_SOURCES_DIR}/WebKitLegacy/Interfaces
 )
 
 list(APPEND DumpRenderTree_LIBRARIES
-    WTF
     WebKitLegacy
     shlwapi
 )
@@ -91,17 +88,28 @@ if (${WTF_PLATFORM_WIN_CAIRO})
         cairo/PixelDumpSupportCairo.cpp
     )
 else ()
-    list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
-        cg
-    )
-    list(APPEND DumpRenderTreeLib_SOURCES
-        cg/PixelDumpSupportCG.cpp
-    )
     list(APPEND DumpRenderTreeLib_LIBRARIES
         CFNetwork
-        CoreGraphics
         CoreText
     )
+    if (${USE_DIRECT2D})
+        list(APPEND DumpRenderTreeLib_SOURCES
+            win/PixelDumpSupportDirect2D.cpp
+        )
+        list(APPEND DumpRenderTreeLib_LIBRARIES
+            D2d1
+        )
+    else ()
+        list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
+            cg
+        )
+        list(APPEND DumpRenderTreeLib_SOURCES
+            cg/PixelDumpSupportCG.cpp
+        )
+        list(APPEND DumpRenderTreeLib_LIBRARIES
+            CoreGraphics
+        )
+    endif ()
 endif ()
 
 WEBKIT_ADD_PRECOMPILED_HEADER("DumpRenderTreePrefix.h" "win/DumpRenderTreePrefix.cpp" DumpRenderTreeLib_SOURCES)

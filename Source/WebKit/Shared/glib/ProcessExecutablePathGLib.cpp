@@ -27,12 +27,11 @@
 #include "config.h"
 #include "ProcessExecutablePath.h"
 
-#include <WebCore/FileSystem.h>
 #include <glib.h>
+#include <wtf/FileSystem.h>
 #include <wtf/glib/GLibUtilities.h>
 
 namespace WebKit {
-using namespace WebCore;
 
 #if ENABLE(DEVELOPER_MODE)
 static String getExecutablePath()
@@ -89,15 +88,6 @@ String executablePathOfNetworkProcess()
     return findWebKitProcess("WPENetworkProcess");
 #else
     return findWebKitProcess("WebKitNetworkProcess");
-#endif
-}
-
-String executablePathOfStorageProcess()
-{
-#if PLATFORM(WPE)
-    return findWebKitProcess("WPEStorageProcess");
-#else
-    return findWebKitProcess("WebKitStorageProcess");
 #endif
 }
 

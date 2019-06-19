@@ -37,7 +37,7 @@ namespace JSC { namespace B3 {
 // Warning: In B3, an Opcode is just one part of a Kind. Kind is used the way that an opcode
 // would be used in simple IRs. See B3Kind.h.
 
-enum Opcode : int16_t {
+enum Opcode : uint8_t {
     // A no-op that returns Void, useful for when you want to remove a value.
     Nop,
     
@@ -374,7 +374,7 @@ inline bool isCheckMath(Opcode opcode)
     }
 }
 
-std::optional<Opcode> invertedCompare(Opcode, Type);
+Optional<Opcode> invertedCompare(Opcode, Type);
 
 inline Opcode constPtrOpcode()
 {
@@ -465,7 +465,7 @@ inline bool isLoadStore(Opcode opcode)
     }
 }
 
-inline bool isAtomic(Opcode opcode)
+inline bool isAtom(Opcode opcode)
 {
     switch (opcode) {
     case AtomicWeakCAS:
@@ -510,7 +510,7 @@ inline bool isAtomicXchg(Opcode opcode)
 
 inline bool isMemoryAccess(Opcode opcode)
 {
-    return isAtomic(opcode) || isLoadStore(opcode);
+    return isAtom(opcode) || isLoadStore(opcode);
 }
 
 inline Opcode signExtendOpcode(Width width)

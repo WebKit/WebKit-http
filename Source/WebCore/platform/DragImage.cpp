@@ -30,6 +30,7 @@
 #include "FrameSnapshotting.h"
 #include "FrameView.h"
 #include "ImageBuffer.h"
+#include "NotImplemented.h"
 #include "Range.h"
 #include "RenderElement.h"
 #include "RenderObject.h"
@@ -154,10 +155,10 @@ struct ScopedFrameSelectionState {
     }
 
     const Frame& frame;
-    std::optional<SelectionRangeData::Context> selection;
+    Optional<SelectionRangeData::Context> selection;
 };
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 DragImageRef createDragImageForRange(Frame& frame, Range& range, bool forceBlackText)
 {
@@ -228,13 +229,6 @@ DragImageRef platformAdjustDragImageForDeviceScaleFactor(DragImageRef image, flo
 }
 #endif
 
-#if !PLATFORM(COCOA) && !PLATFORM(WIN)
-DragImageRef createDragImageForLink(Element&, URL&, const String&, FontRenderingMode, float)
-{
-    return nullptr;
-}
-#endif
-
 #if !PLATFORM(MAC)
 const int linkDragBorderInset = 2;
 
@@ -285,6 +279,51 @@ DragImage::~DragImage()
     if (m_dragImageRef)
         deleteDragImage(m_dragImageRef);
 }
+
+#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WIN)
+
+IntSize dragImageSize(DragImageRef)
+{
+    notImplemented();
+    return { 0, 0 };
+}
+
+void deleteDragImage(DragImageRef)
+{
+    notImplemented();
+}
+
+DragImageRef scaleDragImage(DragImageRef, FloatSize)
+{
+    notImplemented();
+    return nullptr;
+}
+
+DragImageRef dissolveDragImageToFraction(DragImageRef, float)
+{
+    notImplemented();
+    return nullptr;
+}
+
+DragImageRef createDragImageFromImage(Image*, ImageOrientationDescription)
+{
+    notImplemented();
+    return nullptr;
+}
+
+DragImageRef createDragImageIconForCachedImageFilename(const String&)
+{
+    notImplemented();
+    return nullptr;
+}
+
+DragImageRef createDragImageForLink(Element&, URL&, const String&, TextIndicatorData&, FontRenderingMode, float)
+{
+    notImplemented();
+    return nullptr;
+}
+
+#endif
 
 } // namespace WebCore
 

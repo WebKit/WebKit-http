@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Apple Inc. All rights reserved.
+# Copyright (C) 2018-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,41 +26,49 @@ import os
 import re
 
 from buildbot.scheduler import AnyBranchScheduler, Periodic, Dependent, Triggerable, Nightly
-from buildbot.schedulers.forcesched import ForceScheduler, WorkerChoiceParameter
 from buildbot.schedulers.trysched import Try_Userpass
 from buildbot.worker import Worker
 from buildbot.util import identifiers as buildbot_identifiers
 
-from factories import *
+from factories import (APITestsFactory, BindingsFactory, BuildFactory, Factory, GTKFactory,
+                       JSCTestsFactory, StyleFactory, TestFactory, WPEFactory, WebKitPerlFactory,
+                       WebKitPyFactory, WinCairoFactory, WindowsFactory, iOSBuildFactory, iOSTestsFactory,
+                       macOSBuildFactory, macOSWK1Factory, macOSWK2Factory)
 
 BUILDER_NAME_LENGTH_LIMIT = 70
 STEP_NAME_LENGTH_LIMIT = 50
 
 
-def loadBuilderConfig(c, use_localhost_worker=False, master_prefix_path='./'):
+def loadBuilderConfig(c, is_test_mode_enabled=False, master_prefix_path='./'):
     config = json.load(open(os.path.join(master_prefix_path, 'config.json')))
-    passwords = json.load(open(os.path.join(master_prefix_path, 'passwords.json')))
+    use_localhost_worker = is_test_mode_enabled
+    if is_test_mode_enabled:
+        passwords = {}
+    else:
+        passwords = json.load(open(os.path.join(master_prefix_path, 'passwords.json')))
+
     checkWorkersAndBuildersForConsistency(config, config['workers'], config['builders'])
     checkValidSchedulers(config, config['schedulers'])
 
     c['workers'] = [Worker(worker['name'], passwords.get(worker['name'], 'password'), max_builds=worker.get('max_builds', 1)) for worker in config['workers']]
     if use_localhost_worker:
-        c['workers'].append(Worker('local-worker', 'password', max_builds=2))
+        c['workers'].append(Worker('local-worker', 'password', max_builds=1))
 
     c['builders'] = []
     for builder in config['builders']:
         builder['tags'] = getTagsForBuilder(builder)
         factory = globals()[builder['factory']]
+        builder['description'] = builder.pop('shortname')
         factorykwargs = {}
-        for key in ["platform", "configuration", "architectures", "triggers", "additionalArguments"]:
+        for key in ['platform', 'configuration', 'architectures', 'triggers', 'additionalArguments']:
             value = builder.pop(key, None)
             if value:
                 factorykwargs[key] = value
 
-        builder["factory"] = factory(**factorykwargs)
+        builder['factory'] = factory(**factorykwargs)
 
         if use_localhost_worker:
-            builder['workernames'].append("local-worker")
+            builder['workernames'].append('local-worker')
 
         c['builders'].append(builder)
 
@@ -74,13 +82,8 @@ def loadBuilderConfig(c, use_localhost_worker=False, master_prefix_path='./'):
         scheduler = dict(map(lambda key_value_pair: (str(key_value_pair[0]), key_value_pair[1]), scheduler.items()))
         if (schedulerClassName == 'Try_Userpass'):
             # FIXME: Read the credentials from local file on disk.
-            scheduler['userpass'] = [('sampleuser', 'samplepass')]
+            scheduler['userpass'] = [(os.getenv('BUILDBOT_TRY_USERNAME', 'sampleuser'), os.getenv('BUILDBOT_TRY_PASSWORD', 'samplepass'))]
         c['schedulers'].append(schedulerClass(**scheduler))
-
-        force_scheduler = ForceScheduler(name='force-{0}'.format(scheduler['name']),
-                                         builderNames=scheduler['builderNames'],
-                                         properties=[WorkerChoiceParameter()])
-        c['schedulers'].append(force_scheduler)
 
 
 def checkValidWorker(worker):
@@ -100,6 +103,9 @@ def checkValidBuilder(config, builder):
 
     if not builder.get('name'):
         raise Exception('Builder "{}" does not have name defined.'.format(builder))
+
+    if not builder.get('shortname'):
+        raise Exception('Builder "{}" does not have short name defined. This name is needed for EWS status bubbles.'.format(builder.get('name')))
 
     if not buildbot_identifiers.ident_re.match(builder['name']):
         raise Exception('Builder name {} is not a valid buildbot identifier.'.format(builder['name']))
@@ -159,7 +165,7 @@ def checkWorkersAndBuildersForConsistency(config, workers, builders):
             if worker is None:
                 raise Exception('Builder {} has worker {}, which is not defined in workers list!'.format(builder['name'], worker_name))
 
-            if worker['platform'] != builder['platform']:
+            if worker['platform'] != builder['platform'] and worker['platform'] != '*' and builder['platform'] != '*':
                 raise Exception('Builder {0} is for platform {1}, but has worker {2} for platform {3}!'.format(
                     builder['name'], builder['platform'], worker['name'], worker['platform']))
 

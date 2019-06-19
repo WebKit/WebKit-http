@@ -46,7 +46,9 @@
 #include "HTMLImageElement.h"
 #include "HTMLNames.h"
 #include "IndentOutdentCommand.h"
+#include "InsertEditableImageCommand.h"
 #include "InsertListCommand.h"
+#include "InsertNestedListCommand.h"
 #include "Page.h"
 #include "Pasteboard.h"
 #include "RenderBox.h"
@@ -61,7 +63,7 @@
 #include "markup.h"
 #include <pal/system/Sound.h>
 #include <pal/text/KillRing.h>
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 
 namespace WebCore {
 
@@ -140,16 +142,16 @@ static bool executeToggleStyle(Frame& frame, EditorCommandSource source, EditAct
 
 static bool executeApplyParagraphStyle(Frame& frame, EditorCommandSource source, EditAction action, CSSPropertyID propertyID, const String& propertyValue)
 {
-    RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+    auto style = MutableStyleProperties::create();
     style->setProperty(propertyID, propertyValue);
     // FIXME: We don't call shouldApplyStyle when the source is DOM; is there a good reason for that?
     switch (source) {
     case CommandFromMenuOrKeyBinding:
-        frame.editor().applyParagraphStyleToSelection(style.get(), action);
+        frame.editor().applyParagraphStyleToSelection(style.ptr(), action);
         return true;
     case CommandFromDOM:
     case CommandFromDOMWithUserInterface:
-        frame.editor().applyParagraphStyle(style.get());
+        frame.editor().applyParagraphStyle(style.ptr());
         return true;
     }
     ASSERT_NOT_REACHED();
@@ -184,7 +186,7 @@ static bool expandSelectionToGranularity(Frame& frame, TextGranularity granulari
     EAffinity affinity = selection.affinity();
     if (!frame.editor().client()->shouldChangeSelectedRange(oldRange.get(), newRange.get(), affinity, false))
         return false;
-    frame.selection().setSelectedRange(newRange.get(), affinity, true);
+    frame.selection().setSelectedRange(newRange.get(), affinity, FrameSelection::ShouldCloseTyping::Yes);
     return true;
 }
 
@@ -295,7 +297,7 @@ static bool executeDelete(Frame& frame, Event*, EditorCommandSource source, cons
     case CommandFromDOMWithUserInterface:
         // If the current selection is a caret, delete the preceding character. IE performs forwardDelete, but we currently side with Firefox.
         // Doesn't scroll to make the selection visible, or modify the kill ring (this time, siding with IE, not Firefox).
-        TypingCommand::deleteKeyPressed(*frame.document(), frame.selection().granularity() == WordGranularity ? TypingCommand::SmartDelete : 0);
+        TypingCommand::deleteKeyPressed(*frame.document(), frame.editor().shouldSmartDelete() ? TypingCommand::SmartDelete : 0);
         return true;
     }
     ASSERT_NOT_REACHED();
@@ -354,7 +356,7 @@ static bool executeDeleteToMark(Frame& frame, Event*, EditorCommandSource, const
     RefPtr<Range> mark = frame.editor().mark().toNormalizedRange();
     FrameSelection& selection = frame.selection();
     if (mark && frame.editor().selectedRange()) {
-        bool selected = selection.setSelectedRange(unionDOMRanges(*mark, *frame.editor().selectedRange()).get(), DOWNSTREAM, true);
+        bool selected = selection.setSelectedRange(unionDOMRanges(*mark, *frame.editor().selectedRange()).get(), DOWNSTREAM, FrameSelection::ShouldCloseTyping::Yes);
         ASSERT(selected);
         if (!selected)
             return false;
@@ -477,6 +479,13 @@ static bool executeInsertImage(Frame& frame, Event*, EditorCommandSource, const 
     return executeInsertNode(frame, WTFMove(image));
 }
 
+static bool executeInsertEditableImage(Frame& frame, Event*, EditorCommandSource, const String&)
+{
+    ASSERT(frame.document());
+    InsertEditableImageCommand::create(*frame.document())->apply();
+    return true;
+}
+
 static bool executeInsertLineBreak(Frame& frame, Event* event, EditorCommandSource source, const String&)
 {
     switch (source) {
@@ -509,7 +518,7 @@ static bool executeInsertNewlineInQuotedContent(Frame& frame, Event*, EditorComm
 static bool executeInsertOrderedList(Frame& frame, Event*, EditorCommandSource, const String&)
 {
     ASSERT(frame.document());
-    InsertListCommand::create(*frame.document(), InsertListCommand::OrderedList)->apply();
+    InsertListCommand::create(*frame.document(), InsertListCommand::Type::OrderedList)->apply();
     return true;
 }
 
@@ -533,7 +542,21 @@ static bool executeInsertText(Frame& frame, Event*, EditorCommandSource, const S
 static bool executeInsertUnorderedList(Frame& frame, Event*, EditorCommandSource, const String&)
 {
     ASSERT(frame.document());
-    InsertListCommand::create(*frame.document(), InsertListCommand::UnorderedList)->apply();
+    InsertListCommand::create(*frame.document(), InsertListCommand::Type::UnorderedList)->apply();
+    return true;
+}
+
+static bool executeInsertNestedUnorderedList(Frame& frame, Event*, EditorCommandSource, const String&)
+{
+    ASSERT(frame.document());
+    InsertNestedListCommand::insertUnorderedList(*frame.document());
+    return true;
+}
+
+static bool executeInsertNestedOrderedList(Frame& frame, Event*, EditorCommandSource, const String&)
+{
+    ASSERT(frame.document());
+    InsertNestedListCommand::insertOrderedList(*frame.document());
     return true;
 }
 
@@ -559,27 +582,27 @@ static bool executeJustifyRight(Frame& frame, Event*, EditorCommandSource source
 
 static bool executeMakeTextWritingDirectionLeftToRight(Frame& frame, Event*, EditorCommandSource, const String&)
 {
-    RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+    auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyUnicodeBidi, CSSValueEmbed);
     style->setProperty(CSSPropertyDirection, CSSValueLtr);
-    frame.editor().applyStyle(style.get(), EditAction::SetWritingDirection);
+    frame.editor().applyStyle(style.ptr(), EditAction::SetInlineWritingDirection);
     return true;
 }
 
 static bool executeMakeTextWritingDirectionNatural(Frame& frame, Event*, EditorCommandSource, const String&)
 {
-    RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+    auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyUnicodeBidi, CSSValueNormal);
-    frame.editor().applyStyle(style.get(), EditAction::SetWritingDirection);
+    frame.editor().applyStyle(style.ptr(), EditAction::SetInlineWritingDirection);
     return true;
 }
 
 static bool executeMakeTextWritingDirectionRightToLeft(Frame& frame, Event*, EditorCommandSource, const String&)
 {
-    RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+    auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyUnicodeBidi, CSSValueEmbed);
     style->setProperty(CSSPropertyDirection, CSSValueRtl);
-    frame.editor().applyStyle(style.get(), EditAction::SetWritingDirection);
+    frame.editor().applyStyle(style.ptr(), EditAction::SetInlineWritingDirection);
     return true;
 }
 
@@ -885,8 +908,13 @@ static bool executePaste(Frame& frame, Event*, EditorCommandSource source, const
     if (source == CommandFromMenuOrKeyBinding) {
         UserTypingGestureIndicator typingGestureIndicator(frame);
         frame.editor().paste();
-    } else
-        frame.editor().paste();
+        return true;
+    }
+
+    if (!frame.requestDOMPasteAccess())
+        return false;
+
+    frame.editor().paste();
     return true;
 }
 
@@ -911,8 +939,13 @@ static bool executePasteAndMatchStyle(Frame& frame, Event*, EditorCommandSource 
     if (source == CommandFromMenuOrKeyBinding) {
         UserTypingGestureIndicator typingGestureIndicator(frame);
         frame.editor().pasteAsPlainText();
-    } else
-        frame.editor().pasteAsPlainText();
+        return true;
+    }
+
+    if (!frame.requestDOMPasteAccess())
+        return false;
+
+    frame.editor().pasteAsPlainText();
     return true;
 }
 
@@ -921,8 +954,28 @@ static bool executePasteAsPlainText(Frame& frame, Event*, EditorCommandSource so
     if (source == CommandFromMenuOrKeyBinding) {
         UserTypingGestureIndicator typingGestureIndicator(frame);
         frame.editor().pasteAsPlainText();
-    } else
-        frame.editor().pasteAsPlainText();
+        return true;
+    }
+
+    if (!frame.requestDOMPasteAccess())
+        return false;
+
+    frame.editor().pasteAsPlainText();
+    return true;
+}
+
+static bool executePasteAsQuotation(Frame& frame, Event*, EditorCommandSource source, const String&)
+{
+    if (source == CommandFromMenuOrKeyBinding) {
+        UserTypingGestureIndicator typingGestureIndicator(frame);
+        frame.editor().pasteAsQuotation();
+        return true;
+    }
+
+    if (!frame.requestDOMPasteAccess())
+        return false;
+
+    frame.editor().pasteAsQuotation();
     return true;
 }
 
@@ -1005,7 +1058,7 @@ static bool executeSelectToMark(Frame& frame, Event*, EditorCommandSource, const
         PAL::systemBeep();
         return false;
     }
-    frame.selection().setSelectedRange(unionDOMRanges(*mark, *selection).get(), DOWNSTREAM, true);
+    frame.selection().setSelectedRange(unionDOMRanges(*mark, *selection).get(), DOWNSTREAM, FrameSelection::ShouldCloseTyping::Yes);
     return true;
 }
 
@@ -1069,13 +1122,15 @@ static bool executeSwapWithMark(Frame& frame, Event*, EditorCommandSource, const
     return true;
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
+
 static bool executeTakeFindStringFromSelection(Frame& frame, Event*, EditorCommandSource, const String&)
 {
     frame.editor().takeFindStringFromSelection();
     return true;
 }
-#endif
+
+#endif // PLATFORM(COCOA)
 
 static bool executeToggleBold(Frame& frame, Event*, EditorCommandSource source, const String&)
 {
@@ -1185,7 +1240,8 @@ static bool supportedPaste(Frame* frame)
     if (!frame)
         return false;
 
-    bool defaultValue = frame->settings().javaScriptCanAccessClipboard() && frame->settings().DOMPasteAllowed();
+    auto& settings = frame->settings();
+    bool defaultValue = (settings.javaScriptCanAccessClipboard() && settings.DOMPasteAllowed()) || settings.domPasteAccessRequestsEnabled();
 
     EditorClient* client = frame->editor().client();
     return client ? client->canPaste(frame, defaultValue) : defaultValue;
@@ -1334,16 +1390,25 @@ static bool enabledRedo(Frame& frame, Event*, EditorCommandSource)
     return frame.editor().canRedo();
 }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
+
 static bool enabledTakeFindStringFromSelection(Frame& frame, Event*, EditorCommandSource)
 {
     return frame.editor().canCopyExcludingStandaloneImages();
 }
-#endif
+
+#endif // PLATFORM(COCOA)
 
 static bool enabledUndo(Frame& frame, Event*, EditorCommandSource)
 {
     return frame.editor().canUndo();
+}
+
+static bool enabledInRichlyEditableTextWithEditableImagesEnabled(Frame& frame, Event* event, EditorCommandSource source)
+{
+    if (!frame.settings().editableImagesEnabled())
+        return false;
+    return enabledInRichlyEditableText(frame, event, source);
 }
 
 // State functions
@@ -1390,17 +1455,17 @@ static TriState stateSuperscript(Frame& frame, Event*)
 
 static TriState stateTextWritingDirectionLeftToRight(Frame& frame, Event*)
 {
-    return stateTextWritingDirection(frame, LeftToRightWritingDirection);
+    return stateTextWritingDirection(frame, WritingDirection::LeftToRight);
 }
 
 static TriState stateTextWritingDirectionNatural(Frame& frame, Event*)
 {
-    return stateTextWritingDirection(frame, NaturalWritingDirection);
+    return stateTextWritingDirection(frame, WritingDirection::Natural);
 }
 
 static TriState stateTextWritingDirectionRightToLeft(Frame& frame, Event*)
 {
-    return stateTextWritingDirection(frame, RightToLeftWritingDirection);
+    return stateTextWritingDirection(frame, WritingDirection::RightToLeft);
 }
 
 static TriState stateUnderline(Frame& frame, Event*)
@@ -1565,6 +1630,7 @@ static const CommandMap& createCommandMap()
         { "IgnoreSpelling", { executeIgnoreSpelling, supportedFromMenuOrKeyBinding, enabledInEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "Indent", { executeIndent, supported, enabledInRichlyEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "InsertBacktab", { executeInsertBacktab, supportedFromMenuOrKeyBinding, enabledInEditableText, stateNone, valueNull, isTextInsertion, doNotAllowExecutionWhenDisabled } },
+        { "InsertEditableImage", { executeInsertEditableImage, supported, enabledInRichlyEditableTextWithEditableImagesEnabled, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "InsertHTML", { executeInsertHTML, supported, enabledInEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "InsertHorizontalRule", { executeInsertHorizontalRule, supported, enabledInRichlyEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "InsertImage", { executeInsertImage, supported, enabledInRichlyEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
@@ -1572,10 +1638,12 @@ static const CommandMap& createCommandMap()
         { "InsertNewline", { executeInsertNewline, supportedFromMenuOrKeyBinding, enabledInEditableText, stateNone, valueNull, isTextInsertion, doNotAllowExecutionWhenDisabled } },    
         { "InsertNewlineInQuotedContent", { executeInsertNewlineInQuotedContent, supported, enabledInRichlyEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "InsertOrderedList", { executeInsertOrderedList, supported, enabledInRichlyEditableText, stateOrderedList, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
+        { "InsertNestedOrderedList", { executeInsertNestedOrderedList, supported, enabledInRichlyEditableText, stateOrderedList, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "InsertParagraph", { executeInsertParagraph, supported, enabledInEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "InsertTab", { executeInsertTab, supportedFromMenuOrKeyBinding, enabledInEditableText, stateNone, valueNull, isTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "InsertText", { executeInsertText, supported, enabledInEditableText, stateNone, valueNull, isTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "InsertUnorderedList", { executeInsertUnorderedList, supported, enabledInRichlyEditableText, stateUnorderedList, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
+        { "InsertNestedUnorderedList", { executeInsertNestedUnorderedList, supported, enabledInRichlyEditableText, stateUnorderedList, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "Italic", { executeToggleItalic, supported, enabledInRichlyEditableText, stateItalic, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "JustifyCenter", { executeJustifyCenter, supported, enabledInRichlyEditableText, stateJustifyCenter, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "JustifyFull", { executeJustifyFull, supported, enabledInRichlyEditableText, stateJustifyFull, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
@@ -1636,6 +1704,7 @@ static const CommandMap& createCommandMap()
         { "Paste", { executePaste, supportedPaste, enabledPaste, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabledPaste } },
         { "PasteAndMatchStyle", { executePasteAndMatchStyle, supportedPaste, enabledPaste, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabledPaste } },
         { "PasteAsPlainText", { executePasteAsPlainText, supportedPaste, enabledPaste, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabledPaste } },
+        { "PasteAsQuotation", { executePasteAsQuotation, supportedPaste, enabledPaste, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabledPaste } },
         { "Print", { executePrint, supported, enabled, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "Redo", { executeRedo, supported, enabledRedo, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
         { "RemoveFormat", { executeRemoveFormat, supported, enabledRangeInEditableText, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
@@ -1674,7 +1743,7 @@ static const CommandMap& createCommandMap()
         { "PasteGlobalSelection", { executePasteGlobalSelection, supportedFromMenuOrKeyBinding, enabledPaste, stateNone, valueNull, notTextInsertion, allowExecutionWhenDisabled } },
 #endif
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
         { "TakeFindStringFromSelection", { executeTakeFindStringFromSelection, supportedFromMenuOrKeyBinding, enabledTakeFindStringFromSelection, stateNone, valueNull, notTextInsertion, doNotAllowExecutionWhenDisabled } },
 #endif
     };

@@ -36,7 +36,6 @@ namespace WebCore {
 
 class DOMTokenList;
 class HTMLLinkElement;
-class URL;
 struct MediaQueryParserContext;
 
 template<typename T> class EventSender;
@@ -49,13 +48,13 @@ public:
     virtual ~HTMLLinkElement();
 
     URL href() const;
-    const AtomicString& rel() const;
+    const AtomString& rel() const;
 
     String target() const final;
 
-    const AtomicString& type() const;
+    const AtomString& type() const;
 
-    std::optional<LinkIconType> iconType() const;
+    Optional<LinkIconType> iconType() const;
 
     CSSStyleSheet* sheet() const { return m_sheet.get(); }
 
@@ -65,9 +64,9 @@ public:
     bool isEnabledViaScript() const { return m_disabledState == EnabledViaScript; }
     DOMTokenList& sizes();
 
-    WEBCORE_EXPORT void setCrossOrigin(const AtomicString&);
+    WEBCORE_EXPORT void setCrossOrigin(const AtomString&);
     WEBCORE_EXPORT String crossOrigin() const;
-    WEBCORE_EXPORT void setAs(const AtomicString&);
+    WEBCORE_EXPORT void setAs(const AtomString&);
     WEBCORE_EXPORT String as() const;
 
     void dispatchPendingEvent(LinkEventSender*);
@@ -80,7 +79,7 @@ public:
 #endif
 
 private:
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
 
     bool shouldLoadLink() final;
     void process();

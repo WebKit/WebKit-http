@@ -28,6 +28,7 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "LayoutContainer.h"
 #include "RenderStyle.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -36,10 +37,17 @@ namespace Layout {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(Box);
 
-Box::Box(std::optional<ElementAttributes> attributes, RenderStyle&& style, BaseTypeFlags baseTypeFlags)
+Box::Box(Optional<ElementAttributes> attributes, RenderStyle&& style, BaseTypeFlags baseTypeFlags)
     : m_style(WTFMove(style))
     , m_elementAttributes(attributes)
     , m_baseTypeFlags(baseTypeFlags)
+{
+    if (isReplaced())
+        m_replaced = std::make_unique<Replaced>(*this);
+}
+
+Box::Box(Optional<ElementAttributes> attributes, RenderStyle&& style)
+    : Box(attributes, WTFMove(style), BaseTypeFlag::BoxFlag)
 {
 }
 
@@ -101,22 +109,34 @@ bool Box::isFixedPositioned() const
 
 bool Box::isFloatingPositioned() const
 {
+    // FIXME: Rendering code caches values like this. (style="position: absolute; float: left")
+    if (isOutOfFlowPositioned())
+        return false;
     return m_style.floating() != Float::No;
 }
 
 bool Box::isLeftFloatingPositioned() const
 {
+    if (!isFloatingPositioned())
+        return false;
     return m_style.floating() == Float::Left;
 }
 
 bool Box::isRightFloatingPositioned() const
 {
+    if (!isFloatingPositioned())
+        return false;
     return m_style.floating() == Float::Right;
 }
 
 bool Box::hasFloatClear() const
 {
     return m_style.clear() != Clear::None;
+}
+
+bool Box::isFloatAvoider() const
+{
+    return establishesBlockFormattingContext() || isFloatingPositioned();
 }
 
 const Container* Box::containingBlock() const
@@ -137,15 +157,15 @@ const Container* Box::containingBlock() const
     }
 
     if (isFixedPositioned()) {
-        auto* initialContainingBlock = parent();
-        for (; initialContainingBlock->parent(); initialContainingBlock = initialContainingBlock->parent()) { }
-        return initialContainingBlock;
+        auto* ancestor = parent();
+        for (; ancestor->parent() && !ancestor->style().hasTransform(); ancestor = ancestor->parent()) { }
+        return ancestor;
     }
 
     if (isOutOfFlowPositioned()) {
-        auto* positionedAncestor = parent();
-        for (; positionedAncestor->parent() && !positionedAncestor->isPositioned(); positionedAncestor = positionedAncestor->parent()) { }
-        return positionedAncestor;
+        auto* ancestor = parent();
+        for (; ancestor->parent() && !ancestor->isPositioned() && !ancestor->style().hasTransform(); ancestor = ancestor->parent()) { }
+        return ancestor;
     }
 
     ASSERT_NOT_REACHED();
@@ -177,10 +197,19 @@ const Container& Box::initialContainingBlock() const
     return *parent;
 }
 
-bool Box::isDescendantOf(const Container& container) const
+bool Box::isDescendantOf(const Container& ancestorCandidate) const
+{
+    for (auto* ancestor = parent(); ancestor; ancestor = ancestor->parent()) {
+        if (ancestor == &ancestorCandidate)
+            return true;
+    }
+    return false;
+}
+
+bool Box::isContainingBlockDescendantOf(const Container& ancestorCandidate) const
 { 
     for (auto* ancestor = containingBlock(); ancestor; ancestor = ancestor->containingBlock()) {
-        if (ancestor == &container)
+        if (ancestor == &ancestorCandidate)
             return true;
     }
     return false;
@@ -219,47 +248,64 @@ bool Box::isInitialContainingBlock() const
 
 const Box* Box::nextInFlowSibling() const
 {
-    if (auto* nextSibling = this->nextSibling()) {
-        if (nextSibling->isInFlow())
-            return nextSibling;
-        return nextSibling->nextInFlowSibling();
-    }
-    return nullptr;
+    auto* nextSibling = this->nextSibling();
+    while (nextSibling && !nextSibling->isInFlow())
+        nextSibling = nextSibling->nextSibling();
+    return nextSibling;
 }
 
 const Box* Box::nextInFlowOrFloatingSibling() const
 {
-    if (auto* nextSibling = this->nextSibling()) {
-        if (nextSibling->isInFlow() || nextSibling->isFloatingPositioned())
-            return nextSibling;
-        return nextSibling->nextInFlowSibling();
-    }
-    return nullptr;
+    auto* nextSibling = this->nextSibling();
+    while (nextSibling && !(nextSibling->isInFlow() || nextSibling->isFloatingPositioned()))
+        nextSibling = nextSibling->nextSibling();
+    return nextSibling;
 }
 
 const Box* Box::previousInFlowSibling() const
 {
-    if (auto* previousSibling = this->previousSibling()) {
-        if (previousSibling->isInFlow())
-            return previousSibling;
-        return previousSibling->previousInFlowSibling();
-    }
-    return nullptr;
+    auto* previousSibling = this->previousSibling();
+    while (previousSibling && !previousSibling->isInFlow())
+        previousSibling = previousSibling->previousSibling();
+    return previousSibling;
 }
 
 const Box* Box::previousInFlowOrFloatingSibling() const
 {
-    if (auto* previousSibling = this->previousSibling()) {
-        if (previousSibling->isInFlow() || previousSibling->isFloatingPositioned())
-            return previousSibling;
-        return previousSibling->previousInFlowOrFloatingSibling();
-    }
-    return nullptr;
+    auto* previousSibling = this->previousSibling();
+    while (previousSibling && !(previousSibling->isInFlow() || previousSibling->isFloatingPositioned()))
+        previousSibling = previousSibling->previousSibling();
+    return previousSibling;
 }
 
 bool Box::isOverflowVisible() const
 {
-    return m_style.overflowX() == Overflow::Visible || m_style.overflowY() == Overflow::Visible;
+    auto isOverflowVisible = m_style.overflowX() == Overflow::Visible || m_style.overflowY() == Overflow::Visible;
+    // UAs must apply the 'overflow' property set on the root element to the viewport. When the root element is an HTML "HTML" element
+    // or an XHTML "html" element, and that element has an HTML "BODY" element or an XHTML "body" element as a child,
+    // user agents must instead apply the 'overflow' property from the first such child element to the viewport,
+    // if the value on the root element is 'visible'. The 'visible' value when used for the viewport must be interpreted as 'auto'.
+    // The element from which the value is propagated must have a used value for 'overflow' of 'visible'.
+    if (isBodyBox()) {
+        auto* documentBox = parent();
+        ASSERT(documentBox);
+        if (!documentBox->isDocumentBox())
+            return isOverflowVisible;
+        if (!documentBox->isOverflowVisible())
+            return isOverflowVisible;
+        return true;
+    }
+    if (isInitialContainingBlock()) {
+        auto* documentBox = downcast<Container>(*this).firstChild();
+        if (!documentBox || !documentBox->isDocumentBox() || !is<Container>(documentBox))
+            return isOverflowVisible;
+        auto* bodyBox = downcast<Container>(documentBox)->firstChild();
+        if (!bodyBox || !bodyBox->isBodyBox())
+            return isOverflowVisible;
+        auto& bodyBoxStyle = bodyBox->style();
+        return bodyBoxStyle.overflowX() == Overflow::Visible || bodyBoxStyle.overflowY() == Overflow::Visible;
+    }
+    return isOverflowVisible;
 }
 
 bool Box::isPaddingApplicable() const

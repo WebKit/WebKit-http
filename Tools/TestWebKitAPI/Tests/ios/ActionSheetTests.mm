@@ -26,10 +26,10 @@
 #import "config.h"
 #import "Test.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "ClassMethodSwizzler.h"
-#import "InstanceMethodSwizzler.h"
+#import "IPadUserInterfaceSwizzler.h"
 #import "PlatformUtilities.h"
 #import "TestNavigationDelegate.h"
 #import "TestWKWebView.h"
@@ -65,20 +65,6 @@
 
 namespace TestWebKitAPI {
 
-class IPadUserInterfaceSwizzler {
-public:
-    IPadUserInterfaceSwizzler()
-        : m_swizzler([UIDevice class], @selector(userInterfaceIdiom), reinterpret_cast<IMP>(padUserInterfaceIdiom))
-    {
-    }
-private:
-    static UIUserInterfaceIdiom padUserInterfaceIdiom()
-    {
-        return UIUserInterfaceIdiomPad;
-    }
-    InstanceMethodSwizzler m_swizzler;
-};
-
 static RetainPtr<UIViewController> gOverrideViewControllerForFullscreenPresentation;
 static void setOverrideViewControllerForFullscreenPresentation(UIViewController *viewController)
 {
@@ -90,7 +76,7 @@ static UIViewController *overrideViewControllerForFullscreenPresentation()
     return gOverrideViewControllerForFullscreenPresentation.get();
 }
 
-TEST(ActionSheetTests, DismissingActionSheetShouldNotDismissPresentingViewController)
+TEST(ActionSheetTests, DISABLED_DismissingActionSheetShouldNotDismissPresentingViewController)
 {
     IPadUserInterfaceSwizzler iPadUserInterface;
     UIApplicationInitialize();
@@ -368,4 +354,4 @@ TEST(ActionSheetTests, CopyLinkWritesURLAndPlainText)
 
 } // namespace TestWebKitAPI
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

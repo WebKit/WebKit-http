@@ -31,6 +31,13 @@ WebRTC is written in C++11, but with some restrictions:
 
 [chromium-cpp11]: https://chromium-cpp.appspot.com/
 
+### Abseil
+
+You may use a subset of the utilities provided by the [Abseil][abseil]
+library when writing WebRTC C++ code. [Details](abseil-in-webrtc.md).
+
+[abseil]: https://abseil.io/about/
+
 ### <a name="h-cc-pairs"></a>`.h` and `.cc` files come in pairs
 
 `.h` and `.cc` files should come in pairs, with the same name (except
@@ -69,6 +76,18 @@ instead of                          | use
 `T* ptr, size_t num_elements`       | `ArrayView<T>`
 
 See [the source](api/array_view.h) for more detailed docs.
+
+### `absl::optional<T>` as function argument
+
+`absl::optional<T>` is generally a good choice when you want to pass a
+possibly missing `T` to a function&mdash;provided of course that `T`
+is a type that it makes sense to pass by value.
+
+However, when you want to avoid pass-by-value, generally **do not pass
+`const absl::optional<T>&`; use `const T*` instead.** `const
+absl::optional<T>&` forces the caller to store the `T` in an
+`absl::optional<T>`; `const T*`, on the other hand, makes no
+assumptions about how the `T` is stored.
 
 ### sigslot
 

@@ -29,8 +29,10 @@
 #if PLATFORM(MAC)
 
 #import "AXObjectCache.h"
+#import "ColorMac.h"
 #import "ControlStates.h"
 #import "GraphicsContext.h"
+#import "GraphicsContextCG.h"
 #import "ImageBuffer.h"
 #import "LengthSize.h"
 #import "LocalCurrentGraphicsContext.h"
@@ -358,11 +360,11 @@ static NSButtonCell *sharedCheckboxCell(const ControlStates& states, const IntSi
 
 static bool drawCellFocusRingWithFrameAtTime(NSCell *cell, NSRect cellFrame, NSView *controlView, NSTimeInterval timeOffset)
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     CGContextRef cgContext = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
-#pragma clang diagnostic pop
-    CGContextSaveGState(cgContext);
+    ALLOW_DEPRECATED_DECLARATIONS_END
+
+    CGContextStateSaver stateSaver(cgContext);
 
     CGFocusRingStyle focusRingStyle;
     bool needsRepaint = NSInitializeCGFocusRingStyleForTime(NSFocusRingOnly, &focusRingStyle, timeOffset);
@@ -374,13 +376,14 @@ static bool drawCellFocusRingWithFrameAtTime(NSCell *cell, NSRect cellFrame, NSV
     focusRingStyle.accumulate = -1;
 
     // FIXME: This color should be shared with RenderThemeMac. For now just use the same NSColor color.
-    auto style = adoptCF(CGStyleCreateFocusRingWithColor(&focusRingStyle, [NSColor keyboardFocusIndicatorColor].CGColor));
+    // The color is expected to be opaque, since CoreGraphics will apply opacity when drawing (because opacity is normally animated).
+    auto color = colorWithOverrideAlpha(colorFromNSColor([NSColor keyboardFocusIndicatorColor]).rgb(), 1);
+    auto style = adoptCF(CGStyleCreateFocusRingWithColor(&focusRingStyle, cachedCGColor(color)));
     CGContextSetStyle(cgContext, style.get());
 
     CGContextBeginTransparencyLayerWithRect(cgContext, NSRectToCGRect(cellFrame), nullptr);
     [cell drawFocusRingMaskWithFrame:cellFrame inView:controlView];
     CGContextEndTransparencyLayer(cgContext);
-    CGContextRestoreGState(cgContext);
 
     return needsRepaint;
 }
@@ -760,7 +763,7 @@ int ThemeMac::baselinePositionAdjustment(ControlPart part) const
     return Theme::baselinePositionAdjustment(part);
 }
 
-std::optional<FontCascadeDescription> ThemeMac::controlFont(ControlPart part, const FontCascade& font, float zoomFactor) const
+Optional<FontCascadeDescription> ThemeMac::controlFont(ControlPart part, const FontCascade& font, float zoomFactor) const
 {
     switch (part) {
     case PushButtonPart: {
@@ -768,13 +771,13 @@ std::optional<FontCascadeDescription> ThemeMac::controlFont(ControlPart part, co
         fontDescription.setIsAbsoluteSize(true);
 
         NSFont* nsFont = [NSFont systemFontOfSize:[NSFont systemFontSizeForControlSize:controlSizeForFont(font)]];
-        fontDescription.setOneFamily(AtomicString("-apple-system", AtomicString::ConstructFromLiteral));
+        fontDescription.setOneFamily(AtomString("-apple-system", AtomString::ConstructFromLiteral));
         fontDescription.setComputedSize([nsFont pointSize] * zoomFactor);
         fontDescription.setSpecifiedSize([nsFont pointSize] * zoomFactor);
         return fontDescription;
     }
     default:
-        return std::nullopt;
+        return WTF::nullopt;
     }
 }
 
@@ -908,7 +911,9 @@ void ThemeMac::inflateControlPaintRect(ControlPart part, const ControlStates& st
 
 void ThemeMac::paint(ControlPart part, ControlStates& states, GraphicsContext& context, const FloatRect& zoomedRect, float zoomFactor, ScrollView* scrollView, float deviceScaleFactor, float pageScaleFactor, bool useSystemAppearance, bool useDarkAppearance)
 {
-    LocalDefaultSystemAppearance localAppearance(useSystemAppearance, useDarkAppearance);
+    UNUSED_PARAM(useSystemAppearance);
+
+    LocalDefaultSystemAppearance localAppearance(useDarkAppearance);
 
     switch (part) {
         case CheckboxPart:

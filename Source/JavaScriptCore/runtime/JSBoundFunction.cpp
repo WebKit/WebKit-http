@@ -26,6 +26,7 @@
 #include "config.h"
 #include "JSBoundFunction.h"
 
+#include "ExecutableBaseInlines.h"
 #include "GetterSetter.h"
 #include "JSGlobalObject.h"
 #include "JSCInlines.h"
@@ -79,8 +80,7 @@ EncodedJSValue JSC_HOST_CALL boundFunctionCall(ExecState* exec)
     CallData callData;
     CallType callType = getCallData(vm, targetFunction, callData);
     ASSERT(callType != CallType::None);
-    scope.release();
-    return JSValue::encode(call(exec, targetFunction, callType, callData, boundFunction->boundThis(), args));
+    RELEASE_AND_RETURN(scope, JSValue::encode(call(exec, targetFunction, callType, callData, boundFunction->boundThis(), args)));
 }
 
 EncodedJSValue JSC_HOST_CALL boundThisNoArgsFunctionConstruct(ExecState* exec)
@@ -123,8 +123,7 @@ EncodedJSValue JSC_HOST_CALL boundFunctionConstruct(ExecState* exec)
     ConstructData constructData;
     ConstructType constructType = getConstructData(vm, targetFunction, constructData);
     ASSERT(constructType != ConstructType::None);
-    scope.release();
-    return JSValue::encode(construct(exec, targetFunction, constructType, constructData, args));
+    RELEASE_AND_RETURN(scope, JSValue::encode(construct(exec, targetFunction, constructType, constructData, args)));
 }
 
 EncodedJSValue JSC_HOST_CALL isBoundFunction(ExecState* exec)
@@ -158,7 +157,7 @@ inline Structure* getBoundFunctionStructure(VM& vm, ExecState* exec, JSGlobalObj
     Structure* result = globalObject->boundFunctionStructure();
 
     // It would be nice if the structure map was keyed global objects in addition to the other things. Unfortunately, it is not
-    // currently. Whoever works on caching structure changes for prototype transistions should consider this problem as well.
+    // currently. Whoever works on caching structure changes for prototype transitions should consider this problem as well.
     // See: https://bugs.webkit.org/show_bug.cgi?id=152738
     if (prototype.isObject() && prototype.getObject()->globalObject(vm) == globalObject) {
         result = vm.structureCache.emptyStructureForPrototypeFromBaseStructure(globalObject, prototype.getObject(), result);

@@ -228,13 +228,12 @@ void ContentFilter::didDecide(State state)
 
     ContentFilterUnblockHandler unblockHandler { m_blockingContentFilter->unblockHandler() };
     unblockHandler.setUnreachableURL(m_documentLoader.documentURL());
-    RefPtr<Frame> frame { m_documentLoader.frame() };
+    auto frame { m_documentLoader.frame() };
     String unblockRequestDeniedScript { m_blockingContentFilter->unblockRequestDeniedScript() };
     if (!unblockRequestDeniedScript.isEmpty() && frame) {
-        static_assert(std::is_base_of<ThreadSafeRefCounted<AbstractFrame>, Frame>::value, "AbstractFrame must be ThreadSafeRefCounted.");
-        unblockHandler.wrapWithDecisionHandler([frame = WTFMove(frame), script = unblockRequestDeniedScript.isolatedCopy()](bool unblocked) {
-            if (!unblocked)
-                frame->script().executeScript(script);
+        unblockHandler.wrapWithDecisionHandler([scriptController = makeWeakPtr(frame->script()), script = unblockRequestDeniedScript.isolatedCopy()](bool unblocked) {
+            if (!unblocked && scriptController)
+                scriptController->executeScript(script);
         });
     }
     m_documentLoader.frameLoader()->client().contentFilterDidBlockLoad(WTFMove(unblockHandler));
@@ -275,15 +274,21 @@ bool ContentFilter::continueAfterSubstituteDataRequest(const DocumentLoader& act
     return true;
 }
 
-void ContentFilter::handleProvisionalLoadFailure(const ResourceError& error)
+bool ContentFilter::willHandleProvisionalLoadFailure(const ResourceError& error) const
 {
     if (m_state != State::Blocked)
-        return;
+        return false;
 
     if (m_blockedError.errorCode() != error.errorCode() || m_blockedError.domain() != error.domain())
-        return;
+        return false;
 
     ASSERT(m_blockedError.failingURL() == error.failingURL());
+    return true;
+}
+
+void ContentFilter::handleProvisionalLoadFailure(const ResourceError& error)
+{
+    ASSERT(willHandleProvisionalLoadFailure(error));
 
     RefPtr<SharedBuffer> replacementData { m_blockingContentFilter->replacementData() };
     ResourceResponse response { URL(), "text/html"_s, static_cast<long long>(replacementData->size()), "UTF-8"_s };

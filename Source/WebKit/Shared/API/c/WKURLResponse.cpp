@@ -28,41 +28,39 @@
 
 #include "APIURLResponse.h"
 #include "WKAPICast.h"
-#include <WebCore/URL.h>
-
-using namespace WebKit;
+#include <wtf/URL.h>
 
 WKTypeID WKURLResponseGetTypeID()
 {
-    return toAPI(API::URLResponse::APIType);
+    return WebKit::toAPI(API::URLResponse::APIType);
 }
 
 WKURLRef WKURLResponseCopyURL(WKURLResponseRef responseRef)
 {
-    return toCopiedURLAPI(toImpl(responseRef)->resourceResponse().url());
+    return WebKit::toCopiedURLAPI(WebKit::toImpl(responseRef)->resourceResponse().url());
 }
 
 WKStringRef WKURLResponseCopyMIMEType(WKURLResponseRef responseRef)
 {
-    return toCopiedAPI(toImpl(responseRef)->resourceResponse().mimeType());
+    return WebKit::toCopiedAPI(WebKit::toImpl(responseRef)->resourceResponse().mimeType());
 }
 
 int32_t WKURLResponseHTTPStatusCode(WKURLResponseRef responseRef)
 {
-    return toImpl(responseRef)->resourceResponse().httpStatusCode();
+    return WebKit::toImpl(responseRef)->resourceResponse().httpStatusCode();
 }
 
 WKStringRef WKURLResponseCopySuggestedFilename(WKURLResponseRef responseRef)
 {
-    return toCopiedAPI(toImpl(responseRef)->resourceResponse().suggestedFilename());
+    return WebKit::toCopiedAPI(WebKit::toImpl(responseRef)->resourceResponse().suggestedFilename());
 }
 
 bool WKURLResponseIsAttachment(WKURLResponseRef responseRef)
 {
-    return toImpl(responseRef)->resourceResponse().isAttachment();
+    return WebKit::toImpl(responseRef)->resourceResponse().isAttachment();
 }
 
 uint32_t WKURLResponseGetExpectedContentLength(WKURLResponseRef responseRef)
 {
-    return toImpl(responseRef)->resourceResponse().expectedContentLength();
+    return WebKit::toImpl(responseRef)->resourceResponse().expectedContentLength();
 }

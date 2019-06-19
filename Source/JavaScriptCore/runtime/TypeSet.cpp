@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -79,10 +79,12 @@ void TypeSet::addTypeInformation(RuntimeType type, RefPtr<StructureShape>&& pass
     }
 }
 
-void TypeSet::invalidateCache()
+void TypeSet::invalidateCache(VM& vm)
 {
     ConcurrentJSLocker locker(m_lock);
-    auto keepMarkedStructuresFilter = [] (Structure* structure) -> bool { return Heap::isMarked(structure); };
+    auto keepMarkedStructuresFilter = [&] (Structure* structure) -> bool {
+        return vm.heap.isMarked(structure);
+    };
     m_structureSet.genericFilter(keepMarkedStructuresFilter);
 }
 
@@ -253,9 +255,7 @@ String TypeSet::toJSONString() const
     json.append('{');
 
     json.appendLiteral("\"displayTypeName\":");
-    json.append('"');
-    json.append(displayName());
-    json.append('"');
+    json.appendQuotedJSONString(displayName());
     json.append(',');
 
     json.appendLiteral("\"primitiveTypeNames\":");
@@ -321,10 +321,10 @@ String TypeSet::toJSONString() const
 }
 
 StructureShape::StructureShape()
-    : m_proto(nullptr)
-    , m_propertyHash(nullptr)
-    , m_final(false)
+    : m_final(false)
     , m_isInDictionaryMode(false)
+    , m_proto(nullptr)
+    , m_propertyHash(nullptr)
 {
 }
 
@@ -442,9 +442,7 @@ String StructureShape::toJSONString() const
     json.append('{');
 
     json.appendLiteral("\"constructorName\":");
-    json.append('"');
-    json.append(m_constructorName);
-    json.append('"');
+    json.appendQuotedJSONString(m_constructorName);
     json.append(',');
 
     json.appendLiteral("\"isInDictionaryMode\":");
@@ -463,9 +461,7 @@ String StructureShape::toJSONString() const
         hasAnItem = true;
 
         String fieldName((*it).get());
-        json.append('"');
-        json.append(fieldName);
-        json.append('"');
+        json.appendQuotedJSONString(fieldName);
     }
     json.append(']');
     json.append(',');
@@ -479,9 +475,7 @@ String StructureShape::toJSONString() const
         hasAnItem = true;
 
         String fieldName((*it).get());
-        json.append('"');
-        json.append(fieldName);
-        json.append('"');
+        json.appendQuotedJSONString(fieldName);
     }
     json.append(']');
     json.append(',');

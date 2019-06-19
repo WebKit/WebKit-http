@@ -31,19 +31,16 @@
 #include <WTF/RunLoop.h>
 #include <shlwapi.h>
 #include <wtf/text/StringBuilder.h>
-#include <wtf/text/win/WCharStringExtras.h>
 
 namespace WebKit {
 
-static const LPCWSTR processName(ProcessLauncher::ProcessType processType)
+static LPCWSTR processName(ProcessLauncher::ProcessType processType)
 {
     switch (processType) {
     case ProcessLauncher::ProcessType::Web:
         return L"WebKitWebProcess.exe";
     case ProcessLauncher::ProcessType::Network:
         return L"WebKitNetworkProcess.exe";
-    case ProcessLauncher::ProcessType::Storage:
-        return L"WebKitStorageProcess.exe";
     }
     return L"WebKitWebProcess.exe";
 }
@@ -87,13 +84,13 @@ void ProcessLauncher::launchProcess()
     commandLineBuilder.append(String::number(reinterpret_cast<uintptr_t>(clientIdentifier)));
     commandLineBuilder.append('\0');
 
-    auto commandLine = stringToNullTerminatedWChar(commandLineBuilder.toString());
+    auto commandLine = commandLineBuilder.toString().wideCharacters();
 
-    STARTUPINFO startupInfo = { 0 };
+    STARTUPINFO startupInfo { };
     startupInfo.cb = sizeof(startupInfo);
     startupInfo.dwFlags = STARTF_USESHOWWINDOW;
     startupInfo.wShowWindow = SW_HIDE;
-    PROCESS_INFORMATION processInformation = { 0 };
+    PROCESS_INFORMATION processInformation { };
     BOOL result = ::CreateProcess(0, commandLine.data(), 0, 0, true, 0, 0, 0, &startupInfo, &processInformation);
 
     // We can now close the client identifier handle.
@@ -101,7 +98,6 @@ void ProcessLauncher::launchProcess()
 
     if (!result) {
         // FIXME: What should we do here?
-        DWORD error = ::GetLastError();
         ASSERT_NOT_REACHED();
     }
 

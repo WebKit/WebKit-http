@@ -26,8 +26,6 @@
 #import "config.h"
 #import "_WKUserContentExtensionStoreInternal.h"
 
-#if WK_API_ENABLED
-
 #import "WKContentRuleListStoreInternal.h"
 #import "WKContentRuleListStorePrivate.h"
 #import "WKErrorInternal.h"
@@ -127,6 +125,9 @@ static NSError *toUserContentRuleListStoreError(const NSError *error)
     return self;
 }
 
-@end
+- (WKContentRuleListStore *)_contentRuleListStore
+{
+    return _contentRuleListStore.get();
+}
 
-#endif // WK_API_ENABLED
+@end

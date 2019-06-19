@@ -30,15 +30,18 @@
 
 #include "Document.h"
 #include "EventNames.h"
-#include "FileSystem.h"
 #include "Page.h"
 #include "SecurityOriginData.h"
 #include "Settings.h"
 #include "WebKitMediaKeyError.h"
 #include "WebKitMediaKeyMessageEvent.h"
 #include "WebKitMediaKeys.h"
+#include <wtf/FileSystem.h>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(WebKitMediaKeySession);
 
 Ref<WebKitMediaKeySession> WebKitMediaKeySession::create(ScriptExecutionContext& context, WebKitMediaKeys& keys, const String& keySystem)
 {

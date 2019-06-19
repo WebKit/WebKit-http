@@ -76,7 +76,7 @@ static bool fontHasVerticalGlyphs(CTFontRef ctFont)
     return false;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 bool fontFamilyShouldNotBeUsedForArabic(CFStringRef fontFamilyName)
 {
     if (!fontFamilyName)
@@ -115,7 +115,7 @@ static bool needsAscentAdjustment(CFStringRef familyName)
 
 void Font::platformInit()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     m_syntheticBoldOffset = m_platformData.syntheticBold() ? ceilf(m_platformData.size() / 24.0f) : 0.f;
 #else
     m_syntheticBoldOffset = m_platformData.syntheticBold() ? 1.0f : 0.f;
@@ -166,7 +166,7 @@ void Font::platformInit()
     if (platformData().orientation() == FontOrientation::Vertical && !isTextOrientationFallback())
         m_hasVerticalGlyphs = fontHasVerticalGlyphs(m_platformData.ctFont());
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     CGFloat adjustment = shouldUseAdjustment(m_platformData.font()) ? ceil((ascent + descent) * kLineHeightAdjustment) : 0;
 
     lineGap = ceilf(lineGap);
@@ -198,6 +198,8 @@ void Font::platformInit()
     m_fontMetrics.setLineGap(lineGap);
     m_fontMetrics.setXHeight(xHeight);
     m_fontMetrics.setLineSpacing(lineSpacing);
+    m_fontMetrics.setUnderlinePosition(-CTFontGetUnderlinePosition(m_platformData.font()));
+    m_fontMetrics.setUnderlineThickness(CTFontGetUnderlineThickness(m_platformData.font()));
 }
 
 void Font::platformCharWidthInit()
@@ -233,7 +235,7 @@ void Font::platformDestroy()
 
 bool Font::variantCapsSupportsCharacterForSynthesis(FontVariantCaps fontVariantCaps, UChar32 character) const
 {
-#if (PLATFORM(IOS) && TARGET_OS_IOS) || PLATFORM(MAC)
+#if (PLATFORM(IOS_FAMILY) && TARGET_OS_IOS) || PLATFORM(MAC)
     Glyph glyph = glyphForCharacter(character);
     if (!glyph)
         return false;
@@ -275,7 +277,7 @@ bool Font::variantCapsSupportsCharacterForSynthesis(FontVariantCaps fontVariantC
 #endif
 }
 
-#if (PLATFORM(IOS) && TARGET_OS_IOS) || PLATFORM(MAC)
+#if (PLATFORM(IOS_FAMILY) && TARGET_OS_IOS) || PLATFORM(MAC)
 static RetainPtr<CFDictionaryRef> smallCapsOpenTypeDictionary(CFStringRef key, int rawValue)
 {
     RetainPtr<CFNumberRef> value = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &rawValue));
@@ -393,7 +395,7 @@ static inline bool isTrueTypeFeature(CFDictionaryRef feature)
     return CFDictionaryContainsKey(feature, kCTFontFeatureTypeIdentifierKey) && CFDictionaryContainsKey(feature, kCTFontFeatureSelectorIdentifierKey);
 }
 
-static inline std::optional<CFStringRef> openTypeFeature(CFDictionaryRef feature)
+static inline Optional<CFStringRef> openTypeFeature(CFDictionaryRef feature)
 {
     ASSERT(isOpenTypeFeature(feature));
     CFStringRef tag = static_cast<CFStringRef>(CFDictionaryGetValue(feature, kCTFontOpenTypeFeatureTag));
@@ -401,7 +403,7 @@ static inline std::optional<CFStringRef> openTypeFeature(CFDictionaryRef feature
     CFNumberRef value = static_cast<CFNumberRef>(CFDictionaryGetValue(feature, kCTFontOpenTypeFeatureValue));
     auto success = CFNumberGetValue(value, kCFNumberIntType, &rawValue);
     ASSERT_UNUSED(success, success);
-    return rawValue ? std::optional<CFStringRef>(tag) : std::nullopt;
+    return rawValue ? Optional<CFStringRef>(tag) : WTF::nullopt;
 }
 
 static inline std::pair<int, int> trueTypeFeature(CFDictionaryRef feature)
@@ -561,7 +563,7 @@ void Font::determinePitch()
 
     int fixedPitch = extractNumber(adoptCF(static_cast<CFNumberRef>(CTFontCopyAttribute(m_platformData.font(), kCTFontFixedAdvanceAttribute))).get());
     m_treatAsFixedPitch = (CTFontGetSymbolicTraits(ctFont) & kCTFontMonoSpaceTrait) || fixedPitch || (caseInsensitiveCompare(fullName.get(), CFSTR("Osaka-Mono")) || caseInsensitiveCompare(fullName.get(), CFSTR("MS-PGothic")) || caseInsensitiveCompare(fullName.get(), CFSTR("MonotypeCorsiva")));
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (familyName && caseInsensitiveCompare(familyName.get(), CFSTR("Courier New"))) {
         // Special case Courier New to not be treated as fixed pitch, as this will make use of a hacked space width which is undesireable for iPhone (see rdar://6269783).
         m_treatAsFixedPitch = false;
@@ -597,8 +599,25 @@ float Font::platformWidthForGlyph(Glyph glyph) const
     return advance.width + m_syntheticBoldOffset;
 }
 
-bool Font::platformSupportsCodePoint(UChar32 character) const
+Path Font::platformPathForGlyph(Glyph glyph) const
 {
+    auto result = adoptCF(CTFontCreatePathForGlyph(platformData().ctFont(), glyph, nullptr));
+    auto syntheticBoldOffset = this->syntheticBoldOffset();
+    if (syntheticBoldOffset) {
+        auto newPath = adoptCF(CGPathCreateMutable());
+        CGPathAddPath(newPath.get(), nullptr, result.get());
+        auto translation = CGAffineTransformMakeTranslation(syntheticBoldOffset, 0);
+        CGPathAddPath(newPath.get(), &translation, result.get());
+        return newPath;
+    }
+    return adoptCF(CGPathCreateMutableCopy(result.get()));
+}
+
+bool Font::platformSupportsCodePoint(UChar32 character, Optional<UChar32> variation) const
+{
+    if (variation)
+        return false;
+
     UniChar codeUnits[2];
     CGGlyph glyphs[2];
     CFIndex count = 0;

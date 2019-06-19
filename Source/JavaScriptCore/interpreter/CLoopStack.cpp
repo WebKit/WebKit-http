@@ -29,7 +29,7 @@
 #include "config.h"
 #include "CLoopStack.h"
 
-#if !ENABLE(JIT)
+#if ENABLE(C_LOOP)
 
 #include "CLoopStackInlines.h"
 #include "ConservativeRoots.h"
@@ -56,6 +56,7 @@ CLoopStack::CLoopStack(VM& vm)
     , m_softReservedZoneSizeInRegisters(0)
 {
     size_t capacity = Options::maxPerThreadStackUsage();
+    capacity = WTF::roundUpToMultipleOf(pageSize(), capacity);
     ASSERT(capacity && isPageAligned(capacity));
 
     m_reservation = PageReservation::reserve(WTF::roundUpToMultipleOf(commitSize(), capacity), OSAllocator::JSVMStackPages);
@@ -102,6 +103,7 @@ bool CLoopStack::grow(Register* newTopOfStack)
     m_reservation.commit(newCommitTop, delta);
     addToCommittedByteCount(delta);
     m_commitTop = newCommitTop;
+    newTopOfStack = m_commitTop + m_softReservedZoneSizeInRegisters;
     setCLoopStackLimit(newTopOfStack);
     return true;
 }
@@ -163,4 +165,4 @@ size_t CLoopStack::committedByteCount()
 
 } // namespace JSC
 
-#endif // !ENABLE(JIT)
+#endif // ENABLE(C_LOOP)

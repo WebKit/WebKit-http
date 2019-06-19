@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WKAirPlayRoutePicker.h"
 
-#if PLATFORM(IOS) && ENABLE(AIRPLAY_PICKER)
+#if PLATFORM(IOS_FAMILY) && ENABLE(AIRPLAY_PICKER)
 
 #import "UIKitSPI.h"
 #import <WebCore/AudioSession.h>
@@ -39,8 +39,7 @@
 #import "WKContentViewInteraction.h"
 #import "WebPageProxy.h"
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 
 SOFT_LINK_FRAMEWORK(MediaPlayer)
 SOFT_LINK_CLASS(MediaPlayer, MPAVRoutingController)
@@ -74,7 +73,9 @@ using namespace WebKit;
     [super dealloc];
 }
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)popoverControllerDidDismissPopover:(UIPopoverController *)popoverController
+IGNORE_WARNINGS_END
 {
     if (popoverController != _popoverController)
         return;
@@ -160,22 +161,31 @@ using namespace WebKit;
 
 @end
 
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 #else 
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+
 SOFT_LINK_FRAMEWORK(MediaPlayer)
 SOFT_LINK_CLASS(MediaPlayer, MPAVRoutingController)
+SOFT_LINK_CLASS(MediaPlayer, MPMediaControlsConfiguration)
 SOFT_LINK_CLASS(MediaPlayer, MPMediaControlsViewController)
+
+@interface MPMediaControlsConfiguration (WKMPMediaControlsConfiguration)
+@property (nonatomic) BOOL sortByIsVideoRoute;
+@end
 
 enum {
     WKAirPlayRoutePickerRouteSharingPolicyDefault = 0,
-    WKAirPlayRoutePickerRouteSharingPolicyLongForm = 1,
+    WKAirPlayRoutePickerRouteSharingPolicyLongFormAudio = 1,
     WKAirPlayRoutePickerRouteSharingPolicyIndependent = 2,
+    WKAirPlayRoutePickerRouteSharingPolicyLongFormVideo = 3,
 };
 typedef NSInteger WKAirPlayRoutePickerRouteSharingPolicy;
 
 @interface MPMediaControlsViewController (WKMPMediaControlsViewControllerPrivate)
+- (instancetype)initWithConfiguration:(MPMediaControlsConfiguration *)configuration;
 - (void)setOverrideRouteSharingPolicy:(WKAirPlayRoutePickerRouteSharingPolicy)routeSharingPolicy routingContextUID:(NSString *)routingContextUID;
 @end
 
@@ -189,19 +199,24 @@ typedef NSInteger WKAirPlayRoutePickerRouteSharingPolicy;
     [super dealloc];
 }
 
-- (void)showFromView:(UIView *)view routeSharingPolicy:(WebCore::RouteSharingPolicy)routeSharingPolicy routingContextUID:(NSString *)routingContextUID
+- (void)showFromView:(UIView *)view routeSharingPolicy:(WebCore::RouteSharingPolicy)routeSharingPolicy routingContextUID:(NSString *)routingContextUID hasVideo:(BOOL)hasVideo
 {
     static_assert(static_cast<size_t>(WebCore::RouteSharingPolicy::Default) == static_cast<size_t>(WKAirPlayRoutePickerRouteSharingPolicyDefault), "RouteSharingPolicy::Default is not WKAirPlayRoutePickerRouteSharingPolicyDefault as expected");
-    static_assert(static_cast<size_t>(WebCore::RouteSharingPolicy::LongForm) == static_cast<size_t>(WKAirPlayRoutePickerRouteSharingPolicyLongForm), "RouteSharingPolicy::LongForm is not WKAirPlayRoutePickerRouteSharingPolicyLongForm as expected");
+    static_assert(static_cast<size_t>(WebCore::RouteSharingPolicy::LongFormAudio) == static_cast<size_t>(WKAirPlayRoutePickerRouteSharingPolicyLongFormAudio), "RouteSharingPolicy::LongFormAudio is not WKAirPlayRoutePickerRouteSharingPolicyLongFormAudio as expected");
     static_assert(static_cast<size_t>(WebCore::RouteSharingPolicy::Independent) == static_cast<size_t>(WKAirPlayRoutePickerRouteSharingPolicyIndependent), "RouteSharingPolicy::Independent is not WKAirPlayRoutePickerRouteSharingPolicyIndependent as expected");
-
+    static_assert(static_cast<size_t>(WebCore::RouteSharingPolicy::LongFormVideo) == static_cast<size_t>(WKAirPlayRoutePickerRouteSharingPolicyLongFormVideo), "RouteSharingPolicy::LongFormVideo is not WKAirPlayRoutePickerRouteSharingPolicyLongFormVideo as expected");
     if (_actionSheet)
         return;
 
     __block RetainPtr<MPAVRoutingController> routingController = adoptNS([allocMPAVRoutingControllerInstance() initWithName:@"WebKit - HTML media element showing AirPlay route picker"]);
     [routingController setDiscoveryMode:MPRouteDiscoveryModeDetailed];
 
-    _actionSheet = adoptNS([allocMPMediaControlsViewControllerInstance() init]);
+    RetainPtr<MPMediaControlsConfiguration> configuration;
+    if ([getMPMediaControlsConfigurationClass() instancesRespondToSelector:@selector(setSortByIsVideoRoute:)]) {
+        configuration = adoptNS([allocMPMediaControlsConfigurationInstance() init]);
+        configuration.get().sortByIsVideoRoute = hasVideo;
+    }
+    _actionSheet = adoptNS([allocMPMediaControlsViewControllerInstance() initWithConfiguration:configuration.get()]);
 
     if ([_actionSheet respondsToSelector:@selector(setOverrideRouteSharingPolicy:routingContextUID:)])
         [_actionSheet setOverrideRouteSharingPolicy:static_cast<WKAirPlayRoutePickerRouteSharingPolicy>(routeSharingPolicy) routingContextUID:routingContextUID];
@@ -218,6 +233,8 @@ typedef NSInteger WKAirPlayRoutePickerRouteSharingPolicy;
 
 @end
 
+ALLOW_DEPRECATED_DECLARATIONS_END
+
 #endif
 
-#endif // PLATFORM(IOS) && ENABLE(AIRPLAY_PICKER)
+#endif // PLATFORM(IOS_FAMILY) && ENABLE(AIRPLAY_PICKER)

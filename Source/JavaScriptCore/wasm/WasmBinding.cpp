@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include "CCallHelpers.h"
 #include "JSCInlines.h"
 #include "LinkBuffer.h"
+#include "WasmCallingConvention.h"
 #include "WasmInstance.h"
 
 namespace JSC { namespace Wasm {
@@ -45,14 +46,12 @@ Expected<MacroAssemblerCodeRef<WasmEntryPtrTag>, BindingFailure> wasmToWasm(unsi
     const PinnedRegisterInfo& pinnedRegs = PinnedRegisterInfo::get();
     JIT jit;
 
-    GPRReg scratch = GPRInfo::nonPreservedNonArgumentGPR0;
+    GPRReg scratch = wasmCallingConventionAir().prologueScratch(0);
     GPRReg baseMemory = pinnedRegs.baseMemoryPointer;
     ASSERT(baseMemory != scratch);
-    const auto& sizeRegs = pinnedRegs.sizeRegisters;
-    ASSERT(sizeRegs.size() >= 1);
-    ASSERT(sizeRegs[0].sizeRegister != baseMemory);
-    ASSERT(sizeRegs[0].sizeRegister != scratch);
-    GPRReg sizeRegAsScratch = sizeRegs[0].sizeRegister;
+    ASSERT(pinnedRegs.sizeRegister != baseMemory);
+    ASSERT(pinnedRegs.sizeRegister != scratch);
+    GPRReg sizeRegAsScratch = pinnedRegs.sizeRegister;
 
     // B3's call codegen ensures that the JSCell is a WebAssemblyFunction.
     jit.loadWasmContextInstance(sizeRegAsScratch); // Old Instance*
@@ -67,19 +66,16 @@ Expected<MacroAssemblerCodeRef<WasmEntryPtrTag>, BindingFailure> wasmToWasm(unsi
 
     // FIXME the following code assumes that all Wasm::Instance have the same pinned registers. https://bugs.webkit.org/show_bug.cgi?id=162952
     // Set up the callee's baseMemory register as well as the memory size registers.
-    ASSERT(!sizeRegs[0].sizeOffset); // The following code assumes we start at 0, and calculates subsequent size registers relative to 0.
-    jit.loadPtr(JIT::Address(baseMemory, Wasm::Instance::offsetOfCachedMemorySize()), sizeRegs[0].sizeRegister); // Memory size.
-    jit.loadPtr(JIT::Address(baseMemory, Wasm::Instance::offsetOfCachedMemory()), baseMemory); // Wasm::Memory::void*.
-    for (unsigned i = 1; i < sizeRegs.size(); ++i) {
-        ASSERT(sizeRegs[i].sizeRegister != baseMemory);
-        ASSERT(sizeRegs[i].sizeRegister != scratch);
-        jit.add64(JIT::TrustedImm32(-sizeRegs[i].sizeOffset), sizeRegs[0].sizeRegister, sizeRegs[i].sizeRegister);
+    {
+        GPRReg scratchOrSize = !Gigacage::isEnabled(Gigacage::Primitive) ? pinnedRegs.sizeRegister : wasmCallingConventionAir().prologueScratch(1);
+
+        jit.loadPtr(JIT::Address(baseMemory, Wasm::Instance::offsetOfCachedMemorySize()), pinnedRegs.sizeRegister); // Memory size.
+        jit.loadPtr(JIT::Address(baseMemory, Wasm::Instance::offsetOfCachedMemory()), baseMemory); // Wasm::Memory::TaggedArrayStoragePtr<void> (void*).
+        jit.cageConditionally(Gigacage::Primitive, baseMemory, pinnedRegs.sizeRegister, scratchOrSize);
     }
 
     // Tail call into the callee WebAssembly function.
     jit.loadPtr(scratch, scratch);
-    if (Options::usePoisoning())
-        jit.xorPtr(JIT::TrustedImmPtr(g_JITCodePoison), scratch);
     jit.jump(scratch, WasmEntryPtrTag);
 
     LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID, JITCompilationCanFail);

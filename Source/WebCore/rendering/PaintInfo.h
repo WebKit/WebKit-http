@@ -37,6 +37,7 @@
 
 namespace WebCore {
 
+class EventRegionContext;
 class OverlapTestRequestClient;
 class RenderInline;
 class RenderLayer;
@@ -115,7 +116,7 @@ struct PaintInfo {
         if (rect.isInfinite())
             return;
 
-        FloatRect tranformedRect(localToAncestorTransform.inverse().value_or(AffineTransform()).mapRect(rect));
+        FloatRect tranformedRect(localToAncestorTransform.inverse().valueOr(AffineTransform()).mapRect(rect));
         rect.setLocation(LayoutPoint(tranformedRect.location()));
         rect.setSize(LayoutSize(tranformedRect.size()));
     }
@@ -129,6 +130,7 @@ struct PaintInfo {
     const RenderLayerModelObject* paintContainer; // the layer object that originates the current painting
     bool requireSecurityOriginAccessForWidgets { false };
     const RenderLayer* m_enclosingSelfPaintingLayer { nullptr };
+    EventRegionContext* eventRegionContext { nullptr }; // For PaintPhase::EventRegion.
 
 private:
     GraphicsContext* m_context;

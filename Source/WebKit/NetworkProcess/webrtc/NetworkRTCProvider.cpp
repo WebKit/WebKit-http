@@ -37,6 +37,7 @@
 #include "WebRTCSocketMessages.h"
 #include <WebCore/LibWebRTCMacros.h>
 #include <webrtc/rtc_base/asyncpacketsocket.h>
+#include <webrtc/rtc_base/logging.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/WTFString.h>
 
@@ -64,7 +65,7 @@ NetworkRTCProvider::NetworkRTCProvider(NetworkConnectionToWebProcess& connection
 #if defined(NDEBUG)
     rtc::LogMessage::LogToDebug(rtc::LS_NONE);
 #else
-    if (WebKit2LogWebRTC.state != WTFLogChannelOn)
+    if (WebKit2LogWebRTC.state != WTFLogChannelState::On)
         rtc::LogMessage::LogToDebug(rtc::LS_WARNING);
 #endif
 }

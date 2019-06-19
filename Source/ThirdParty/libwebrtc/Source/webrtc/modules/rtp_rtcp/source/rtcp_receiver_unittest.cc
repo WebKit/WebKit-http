@@ -107,6 +107,8 @@ constexpr uint32_t kReceiverExtraSsrc = 0x1234567;
 constexpr uint32_t kNotToUsSsrc = 0x654321;
 constexpr uint32_t kUnknownSenderSsrc = 0x54321;
 
+constexpr int64_t kRtcpIntervalMs = 1000;
+
 }  // namespace
 
 class RtcpReceiverTest : public ::testing::Test {
@@ -120,6 +122,7 @@ class RtcpReceiverTest : public ::testing::Test {
                        &intra_frame_observer_,
                        &transport_feedback_observer_,
                        &bitrate_allocation_observer_,
+                       kRtcpIntervalMs,
                        &rtp_rtcp_impl_) {}
   void SetUp() {
     std::set<uint32_t> ssrcs = {kReceiverMainSsrc, kReceiverExtraSsrc};
@@ -208,7 +211,8 @@ TEST_F(RtcpReceiverTest, InjectSrPacketCalculatesRTT) {
   EXPECT_EQ(
       -1, rtcp_receiver_.RTT(kSenderSsrc, &rtt_ms, nullptr, nullptr, nullptr));
 
-  uint32_t sent_ntp = CompactNtp(system_clock_.CurrentNtpTime());
+  uint32_t sent_ntp =
+      CompactNtp(TimeMicrosToNtp(system_clock_.TimeInMicroseconds()));
   system_clock_.AdvanceTimeMilliseconds(kRttMs + kDelayMs);
 
   rtcp::SenderReport sr;
@@ -238,7 +242,8 @@ TEST_F(RtcpReceiverTest, InjectSrPacketCalculatesNegativeRTTAsOne) {
   EXPECT_EQ(
       -1, rtcp_receiver_.RTT(kSenderSsrc, &rtt_ms, nullptr, nullptr, nullptr));
 
-  uint32_t sent_ntp = CompactNtp(system_clock_.CurrentNtpTime());
+  uint32_t sent_ntp =
+      CompactNtp(TimeMicrosToNtp(system_clock_.TimeInMicroseconds()));
   system_clock_.AdvanceTimeMilliseconds(kRttMs + kDelayMs);
 
   rtcp::SenderReport sr;
@@ -266,7 +271,8 @@ TEST_F(
   const uint32_t kDelayNtp = 123000;
   const int64_t kDelayMs = CompactNtpRttToMs(kDelayNtp);
 
-  uint32_t sent_ntp = CompactNtp(system_clock_.CurrentNtpTime());
+  uint32_t sent_ntp =
+      CompactNtp(TimeMicrosToNtp(system_clock_.TimeInMicroseconds()));
   system_clock_.AdvanceTimeMilliseconds(kRttMs + kDelayMs);
 
   rtcp::SenderReport sr;
@@ -689,31 +695,6 @@ TEST_F(RtcpReceiverTest, ExtendedReportsPacketWithZeroReportBlocksIgnored) {
   InjectRtcpPacket(xr);
 }
 
-// VOiP reports are ignored.
-TEST_F(RtcpReceiverTest, InjectExtendedReportsVoipPacket) {
-  const uint8_t kLossRate = 123;
-  rtcp::VoipMetric voip_metric;
-  voip_metric.SetMediaSsrc(kReceiverMainSsrc);
-  RTCPVoIPMetric metric;
-  metric.lossRate = kLossRate;
-  voip_metric.SetVoipMetric(metric);
-  rtcp::ExtendedReports xr;
-  xr.SetSenderSsrc(kSenderSsrc);
-  xr.SetVoipMetric(voip_metric);
-
-  InjectRtcpPacket(xr);
-}
-
-TEST_F(RtcpReceiverTest, ExtendedReportsVoipPacketNotToUsIgnored) {
-  rtcp::VoipMetric voip_metric;
-  voip_metric.SetMediaSsrc(kNotToUsSsrc);
-  rtcp::ExtendedReports xr;
-  xr.SetSenderSsrc(kSenderSsrc);
-  xr.SetVoipMetric(voip_metric);
-
-  InjectRtcpPacket(xr);
-}
-
 TEST_F(RtcpReceiverTest, InjectExtendedReportsReceiverReferenceTimePacket) {
   const NtpTime kNtp(0x10203, 0x40506);
   rtcp::Rrtr rrtr;
@@ -762,7 +743,8 @@ TEST_F(RtcpReceiverTest, InjectExtendedReportsDlrrPacketWithSubBlock) {
 
   InjectRtcpPacket(xr);
 
-  uint32_t compact_ntp_now = CompactNtp(system_clock_.CurrentNtpTime());
+  uint32_t compact_ntp_now =
+      CompactNtp(TimeMicrosToNtp(system_clock_.TimeInMicroseconds()));
   EXPECT_TRUE(rtcp_receiver_.GetAndResetXrRrRtt(&rtt_ms));
   uint32_t rtt_ntp = compact_ntp_now - kDelay - kLastRR;
   EXPECT_NEAR(CompactNtpRttToMs(rtt_ntp), rtt_ms, 1);
@@ -781,7 +763,8 @@ TEST_F(RtcpReceiverTest, InjectExtendedReportsDlrrPacketWithMultipleSubBlocks) {
 
   InjectRtcpPacket(xr);
 
-  uint32_t compact_ntp_now = CompactNtp(system_clock_.CurrentNtpTime());
+  uint32_t compact_ntp_now =
+      CompactNtp(TimeMicrosToNtp(system_clock_.TimeInMicroseconds()));
   int64_t rtt_ms = 0;
   EXPECT_TRUE(rtcp_receiver_.GetAndResetXrRrRtt(&rtt_ms));
   uint32_t rtt_ntp = compact_ntp_now - kDelay - kLastRR;
@@ -792,13 +775,10 @@ TEST_F(RtcpReceiverTest, InjectExtendedReportsPacketWithMultipleReportBlocks) {
   rtcp_receiver_.SetRtcpXrRrtrStatus(true);
 
   rtcp::Rrtr rrtr;
-  rtcp::VoipMetric metric;
-  metric.SetMediaSsrc(kReceiverMainSsrc);
   rtcp::ExtendedReports xr;
   xr.SetSenderSsrc(kSenderSsrc);
   xr.SetRrtr(rrtr);
   xr.AddDlrrItem(ReceiveTimeInfo(kReceiverMainSsrc, 0x12345, 0x67890));
-  xr.SetVoipMetric(metric);
 
   InjectRtcpPacket(xr);
 
@@ -813,13 +793,10 @@ TEST_F(RtcpReceiverTest, InjectExtendedReportsPacketWithUnknownReportBlock) {
   rtcp_receiver_.SetRtcpXrRrtrStatus(true);
 
   rtcp::Rrtr rrtr;
-  rtcp::VoipMetric metric;
-  metric.SetMediaSsrc(kReceiverMainSsrc);
   rtcp::ExtendedReports xr;
   xr.SetSenderSsrc(kSenderSsrc);
   xr.SetRrtr(rrtr);
   xr.AddDlrrItem(ReceiveTimeInfo(kReceiverMainSsrc, 0x12345, 0x67890));
-  xr.SetVoipMetric(metric);
 
   rtc::Buffer packet = xr.Build();
   // Modify the DLRR block to have an unsupported block type, from 5 to 6.
@@ -849,7 +826,7 @@ TEST_F(RtcpReceiverTest, RttCalculatedAfterExtendedReportsDlrr) {
   const uint32_t kDelayNtp = rand.Rand(0, 0x7fffffff);
   const int64_t kDelayMs = CompactNtpRttToMs(kDelayNtp);
   rtcp_receiver_.SetRtcpXrRrtrStatus(true);
-  NtpTime now = system_clock_.CurrentNtpTime();
+  NtpTime now = TimeMicrosToNtp(system_clock_.TimeInMicroseconds());
   uint32_t sent_ntp = CompactNtp(now);
   system_clock_.AdvanceTimeMilliseconds(kRttMs + kDelayMs);
 
@@ -869,7 +846,7 @@ TEST_F(RtcpReceiverTest, XrDlrrCalculatesNegativeRttAsOne) {
   const int64_t kRttMs = rand.Rand(-3600 * 1000, -1);
   const uint32_t kDelayNtp = rand.Rand(0, 0x7fffffff);
   const int64_t kDelayMs = CompactNtpRttToMs(kDelayNtp);
-  NtpTime now = system_clock_.CurrentNtpTime();
+  NtpTime now = TimeMicrosToNtp(system_clock_.TimeInMicroseconds());
   uint32_t sent_ntp = CompactNtp(now);
   system_clock_.AdvanceTimeMilliseconds(kRttMs + kDelayMs);
   rtcp_receiver_.SetRtcpXrRrtrStatus(true);
@@ -967,13 +944,12 @@ TEST_F(RtcpReceiverTest, StoresLastReceivedRrtrPerSsrc) {
 }
 
 TEST_F(RtcpReceiverTest, ReceiveReportTimeout) {
-  const int64_t kRtcpIntervalMs = 1000;
   const uint16_t kSequenceNumber = 1234;
   system_clock_.AdvanceTimeMilliseconds(3 * kRtcpIntervalMs);
 
   // No RR received, shouldn't trigger a timeout.
-  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout(kRtcpIntervalMs));
-  EXPECT_FALSE(rtcp_receiver_.RtcpRrSequenceNumberTimeout(kRtcpIntervalMs));
+  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout());
+  EXPECT_FALSE(rtcp_receiver_.RtcpRrSequenceNumberTimeout());
 
   // Add a RR and advance the clock just enough to not trigger a timeout.
   rtcp::ReportBlock rb1;
@@ -988,8 +964,8 @@ TEST_F(RtcpReceiverTest, ReceiveReportTimeout) {
   InjectRtcpPacket(rr1);
 
   system_clock_.AdvanceTimeMilliseconds(3 * kRtcpIntervalMs - 1);
-  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout(kRtcpIntervalMs));
-  EXPECT_FALSE(rtcp_receiver_.RtcpRrSequenceNumberTimeout(kRtcpIntervalMs));
+  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout());
+  EXPECT_FALSE(rtcp_receiver_.RtcpRrSequenceNumberTimeout());
 
   // Add a RR with the same extended max as the previous RR to trigger a
   // sequence number timeout, but not a RR timeout.
@@ -998,17 +974,17 @@ TEST_F(RtcpReceiverTest, ReceiveReportTimeout) {
   InjectRtcpPacket(rr1);
 
   system_clock_.AdvanceTimeMilliseconds(2);
-  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout(kRtcpIntervalMs));
-  EXPECT_TRUE(rtcp_receiver_.RtcpRrSequenceNumberTimeout(kRtcpIntervalMs));
+  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout());
+  EXPECT_TRUE(rtcp_receiver_.RtcpRrSequenceNumberTimeout());
 
   // Advance clock enough to trigger an RR timeout too.
   system_clock_.AdvanceTimeMilliseconds(3 * kRtcpIntervalMs);
-  EXPECT_TRUE(rtcp_receiver_.RtcpRrTimeout(kRtcpIntervalMs));
+  EXPECT_TRUE(rtcp_receiver_.RtcpRrTimeout());
 
   // We should only get one timeout even though we still haven't received a new
   // RR.
-  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout(kRtcpIntervalMs));
-  EXPECT_FALSE(rtcp_receiver_.RtcpRrSequenceNumberTimeout(kRtcpIntervalMs));
+  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout());
+  EXPECT_FALSE(rtcp_receiver_.RtcpRrSequenceNumberTimeout());
 
   // Add a new RR with increase sequence number to reset timers.
   rtcp::ReportBlock rb2;
@@ -1022,8 +998,8 @@ TEST_F(RtcpReceiverTest, ReceiveReportTimeout) {
   EXPECT_CALL(bandwidth_observer_, OnReceivedRtcpReceiverReport(_, _, _));
   InjectRtcpPacket(rr2);
 
-  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout(kRtcpIntervalMs));
-  EXPECT_FALSE(rtcp_receiver_.RtcpRrSequenceNumberTimeout(kRtcpIntervalMs));
+  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout());
+  EXPECT_FALSE(rtcp_receiver_.RtcpRrSequenceNumberTimeout());
 
   // Verify we can get a timeout again once we've received new RR.
   system_clock_.AdvanceTimeMilliseconds(2 * kRtcpIntervalMs);
@@ -1032,11 +1008,11 @@ TEST_F(RtcpReceiverTest, ReceiveReportTimeout) {
   InjectRtcpPacket(rr2);
 
   system_clock_.AdvanceTimeMilliseconds(kRtcpIntervalMs + 1);
-  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout(kRtcpIntervalMs));
-  EXPECT_TRUE(rtcp_receiver_.RtcpRrSequenceNumberTimeout(kRtcpIntervalMs));
+  EXPECT_FALSE(rtcp_receiver_.RtcpRrTimeout());
+  EXPECT_TRUE(rtcp_receiver_.RtcpRrSequenceNumberTimeout());
 
   system_clock_.AdvanceTimeMilliseconds(2 * kRtcpIntervalMs);
-  EXPECT_TRUE(rtcp_receiver_.RtcpRrTimeout(kRtcpIntervalMs));
+  EXPECT_TRUE(rtcp_receiver_.RtcpRrTimeout());
 }
 
 TEST_F(RtcpReceiverTest, TmmbrReceivedWithNoIncomingPacket) {

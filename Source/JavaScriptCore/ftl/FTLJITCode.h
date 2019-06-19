@@ -60,7 +60,7 @@ public:
 
     RegisterSet liveRegistersToPreserveAtExceptionHandlingCallSite(CodeBlock*, CallSiteIndex) override;
 
-    std::optional<CodeOrigin> findPC(CodeBlock*, void* pc) override;
+    Optional<CodeOrigin> findPC(CodeBlock*, void* pc) override;
 
     CodeRef<JSEntryPtrTag> b3Code() const { return m_b3Code; }
     
@@ -82,4 +82,4 @@ private:
 
 } } // namespace JSC::FTL
 
-#endif // ENABLE(FLT_JIT)
+#endif // ENABLE(FTL_JIT)

@@ -67,6 +67,7 @@ class MockPeerConnectionObserver : public PeerConnectionObserver {
   }
   void OnSignalingChange(
       PeerConnectionInterface::SignalingState new_state) override {
+    RTC_DCHECK(pc_);
     RTC_DCHECK(pc_->signaling_state() == new_state);
     state_ = new_state;
   }
@@ -92,6 +93,7 @@ class MockPeerConnectionObserver : public PeerConnectionObserver {
 
   void OnIceConnectionChange(
       PeerConnectionInterface::IceConnectionState new_state) override {
+    RTC_DCHECK(pc_);
     RTC_DCHECK(pc_->ice_connection_state() == new_state);
     // When ICE is finished, the caller will get to a kIceConnectionCompleted
     // state, because it has the ICE controlling role, while the callee
@@ -104,12 +106,14 @@ class MockPeerConnectionObserver : public PeerConnectionObserver {
   }
   void OnIceGatheringChange(
       PeerConnectionInterface::IceGatheringState new_state) override {
+    RTC_DCHECK(pc_);
     RTC_DCHECK(pc_->ice_gathering_state() == new_state);
     ice_gathering_complete_ =
         new_state == PeerConnectionInterface::kIceGatheringComplete;
     callback_triggered_ = true;
   }
   void OnIceCandidate(const IceCandidateInterface* candidate) override {
+    RTC_DCHECK(pc_);
     RTC_DCHECK(PeerConnectionInterface::kIceGatheringNew !=
                pc_->ice_gathering_state());
     candidates_.push_back(absl::make_unique<JsepIceCandidate>(
@@ -362,6 +366,9 @@ class MockStatsObserver : public webrtc::StatsObserver {
                     &stats_.bytes_sent);
         GetInt64Value(r, StatsReport::kStatsValueNameCaptureStartNtpTimeMs,
                       &stats_.capture_start_ntp_time);
+        stats_.track_ids.emplace_back();
+        GetStringValue(r, StatsReport::kStatsValueNameTrackId,
+                       &stats_.track_ids.back());
       } else if (r->type() == StatsReport::kStatsReportTypeBwe) {
         stats_.timestamp = r->timestamp();
         GetIntValue(r, StatsReport::kStatsValueNameAvailableReceiveBandwidth,
@@ -420,6 +427,11 @@ class MockStatsObserver : public webrtc::StatsObserver {
     return stats_.srtp_cipher;
   }
 
+  std::vector<std::string> TrackIds() const {
+    RTC_CHECK(called_);
+    return stats_.track_ids;
+  }
+
  private:
   bool GetIntValue(const StatsReport* report,
                    StatsReport::StatsValueName name,
@@ -465,6 +477,7 @@ class MockStatsObserver : public webrtc::StatsObserver {
       available_receive_bandwidth = 0;
       dtls_cipher.clear();
       srtp_cipher.clear();
+      track_ids.clear();
     }
 
     size_t number_of_reports;
@@ -477,6 +490,7 @@ class MockStatsObserver : public webrtc::StatsObserver {
     int available_receive_bandwidth;
     std::string dtls_cipher;
     std::string srtp_cipher;
+    std::vector<std::string> track_ids;
   } stats_;
 };
 

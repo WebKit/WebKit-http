@@ -26,9 +26,11 @@
 #include "config.h"
 #include "AuthenticationChallengeProxy.h"
 
+#include "AuthenticationChallengeDisposition.h"
 #include "AuthenticationDecisionListener.h"
+#include "AuthenticationManager.h"
 #include "AuthenticationManagerMessages.h"
-#include "ChildProcessProxy.h"
+#include "AuxiliaryProcessProxy.h"
 #include "WebCertificateInfo.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebCredential.h"
@@ -41,88 +43,25 @@
 
 namespace WebKit {
 
-AuthenticationChallengeProxy::AuthenticationChallengeProxy(WebCore::AuthenticationChallenge&& authenticationChallenge, uint64_t challengeID, IPC::Connection* connection)
+AuthenticationChallengeProxy::AuthenticationChallengeProxy(WebCore::AuthenticationChallenge&& authenticationChallenge, uint64_t challengeID, Ref<IPC::Connection>&& connection, WeakPtr<SecKeyProxyStore>&& secKeyProxyStore)
     : m_coreAuthenticationChallenge(WTFMove(authenticationChallenge))
-    , m_challengeID(challengeID)
-    , m_connection(connection)
-{
-    ASSERT(m_challengeID);
-    m_listener = AuthenticationDecisionListener::create(this);
-}
-
-AuthenticationChallengeProxy::~AuthenticationChallengeProxy()
-{
-    // If an outstanding AuthenticationChallengeProxy is being destroyed even though it hasn't been responded to yet,
-    // we cancel it here so the process isn't waiting for an answer forever.
-    if (m_challengeID)
-        m_connection->send(Messages::AuthenticationManager::CancelChallenge(m_challengeID), 0);
-
-    if (m_listener)
-        m_listener->detachChallenge();
-}
-
-void AuthenticationChallengeProxy::useCredential(WebCredential* credential)
-{
-    if (!m_challengeID)
-        return;
-
-    uint64_t challengeID = m_challengeID;
-    m_challengeID = 0;
-
-    if (!credential) {
-        m_connection->send(Messages::AuthenticationManager::ContinueWithoutCredentialForChallenge(challengeID), 0);
-        return;
-    }
-
+    , m_listener(AuthenticationDecisionListener::create([challengeID, connection = WTFMove(connection), secKeyProxyStore = WTFMove(secKeyProxyStore)](AuthenticationChallengeDisposition disposition, const WebCore::Credential& credential) {
 #if HAVE(SEC_KEY_PROXY)
-    if (protectionSpace()->authenticationScheme() == WebCore::ProtectionSpaceAuthenticationSchemeClientCertificateRequested) {
-        if (!m_secKeyProxyStore) {
-            m_connection->send(Messages::AuthenticationManager::ContinueWithoutCredentialForChallenge(challengeID), 0);
+        if (secKeyProxyStore && secKeyProxyStore->initialize(credential)) {
+            sendClientCertificateCredentialOverXpc(connection, *secKeyProxyStore, challengeID, credential);
             return;
         }
-        m_secKeyProxyStore->initialize(credential->credential());
-        sendClientCertificateCredentialOverXpc(challengeID, credential->credential());
-        return;
-    }
 #endif
-    m_connection->send(Messages::AuthenticationManager::UseCredentialForChallenge(challengeID, credential->credential()), 0);
-}
-
-void AuthenticationChallengeProxy::cancel()
+        connection->send(Messages::AuthenticationManager::CompleteAuthenticationChallenge(challengeID, disposition, credential), 0);
+    }))
 {
-    if (!m_challengeID)
-        return;
-
-    m_connection->send(Messages::AuthenticationManager::CancelChallenge(m_challengeID), 0);
-
-    m_challengeID = 0;
-}
-
-void AuthenticationChallengeProxy::performDefaultHandling()
-{
-    if (!m_challengeID)
-        return;
-
-    m_connection->send(Messages::AuthenticationManager::PerformDefaultHandling(m_challengeID), 0);
-
-    m_challengeID = 0;
-}
-
-void AuthenticationChallengeProxy::rejectProtectionSpaceAndContinue()
-{
-    if (!m_challengeID)
-        return;
-
-    m_connection->send(Messages::AuthenticationManager::RejectProtectionSpaceAndContinue(m_challengeID), 0);
-
-    m_challengeID = 0;
 }
 
 WebCredential* AuthenticationChallengeProxy::proposedCredential() const
 {
     if (!m_webCredential)
         m_webCredential = WebCredential::create(m_coreAuthenticationChallenge.proposedCredential());
-        
+
     return m_webCredential.get();
 }
 
@@ -130,15 +69,8 @@ WebProtectionSpace* AuthenticationChallengeProxy::protectionSpace() const
 {
     if (!m_webProtectionSpace)
         m_webProtectionSpace = WebProtectionSpace::create(m_coreAuthenticationChallenge.protectionSpace());
-        
+
     return m_webProtectionSpace.get();
 }
-
-#if HAVE(SEC_KEY_PROXY)
-void AuthenticationChallengeProxy::setSecKeyProxyStore(SecKeyProxyStore& store)
-{
-    m_secKeyProxyStore = makeWeakPtr(store);
-}
-#endif
 
 } // namespace WebKit

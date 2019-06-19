@@ -57,6 +57,7 @@ const ClassInfo JSPromiseConstructor::s_info = { "Function", &Base::s_info, &pro
   reject          JSBuiltin             DontEnum|Function 1
   race            JSBuiltin             DontEnum|Function 1
   all             JSBuiltin             DontEnum|Function 1
+  allSettled      JSBuiltin             DontEnum|Function 1
 @end
 */
 
@@ -89,10 +90,10 @@ JSPromiseConstructor::JSPromiseConstructor(VM& vm, Structure* structure, NativeF
 
 void JSPromiseConstructor::finishCreation(VM& vm, JSPromisePrototype* promisePrototype, GetterSetter* speciesSymbol)
 {
-    Base::finishCreation(vm, "Promise"_s);
+    Base::finishCreation(vm, vm.propertyNames->Promise.string(), NameVisibility::Visible, NameAdditionMode::WithoutStructureTransition);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, promisePrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
-    putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+    putDirectNonIndexAccessorWithoutTransition(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
 
 void JSPromiseConstructor::addOwnInternalSlots(VM& vm, JSGlobalObject* globalObject)
@@ -114,7 +115,7 @@ static EncodedJSValue JSC_HOST_CALL constructPromise(ExecState* exec)
     Structure* promiseStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->promiseStructure());
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     JSPromise* promise = JSPromise::create(vm, promiseStructure);
-    promise->initialize(exec, globalObject, exec->argument(0));
+    promise->initialize(exec, globalObject,  exec->argument(0));
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     return JSValue::encode(promise);

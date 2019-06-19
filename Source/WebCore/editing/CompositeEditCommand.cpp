@@ -222,7 +222,7 @@ void EditCommandComposition::unapply()
     // Low level operations, like RemoveNodeCommand, don't require a layout because the high level operations that use them perform one
     // if one is necessary (like for the creation of VisiblePositions).
     m_document->updateLayoutIgnorePendingStylesheets();
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // FIXME: Where should iPhone code deal with the composition?
     // Since editing commands don't save/restore the composition, undoing without fixing
     // up the composition will leave a stale, invalid composition, as in <rdar://problem/6831637>.
@@ -302,6 +302,11 @@ void EditCommandComposition::getNodesInCommand(HashSet<Node*>& nodes)
 }
 #endif
 
+String EditCommandComposition::label() const
+{
+    return undoRedoLabel(m_editAction);
+}
+
 CompositeEditCommand::CompositeEditCommand(Document& document, EditAction editingAction)
     : EditCommand(document, editingAction)
 {
@@ -337,7 +342,8 @@ void CompositeEditCommand::apply()
         case EditAction::TypingInsertFinalComposition:
         case EditAction::Paste:
         case EditAction::DeleteByDrag:
-        case EditAction::SetWritingDirection:
+        case EditAction::SetInlineWritingDirection:
+        case EditAction::SetBlockWritingDirection:
         case EditAction::Cut:
         case EditAction::Unspecified:
         case EditAction::Insert:
@@ -382,8 +388,7 @@ Vector<RefPtr<StaticRange>> CompositeEditCommand::targetRanges() const
     if (!firstRange)
         return { };
 
-    RefPtr<StaticRange> range = StaticRange::createFromRange(*firstRange);
-    return { 1, range };
+    return { 1, StaticRange::createFromRange(*firstRange) };
 }
 
 Vector<RefPtr<StaticRange>> CompositeEditCommand::targetRangesForBindings() const
@@ -768,15 +773,27 @@ void CompositeEditCommand::replaceTextInNodePreservingMarkers(Text& node, unsign
     DocumentMarkerController& markerController = document().markers();
     auto markers = copyMarkers(markerController.markersInRange(Range::create(document(), &node, offset, &node, offset + count), DocumentMarker::allMarkers()));
     replaceTextInNode(node, offset, count, replacementText);
-    RefPtr<Range> newRange = Range::create(document(), &node, offset, &node, offset + replacementText.length());
+    auto newRange = Range::create(document(), &node, offset, &node, offset + replacementText.length());
     for (const auto& marker : markers) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         if (marker.isDictation()) {
-            markerController.addMarker(newRange.get(), marker.type(), marker.description(), marker.alternatives(), marker.metadata());
+            markerController.addMarker(newRange, marker.type(), marker.description(), marker.alternatives(), marker.metadata());
             continue;
         }
 #endif
-        markerController.addMarker(newRange.get(), marker.type(), marker.description());
+#if ENABLE(PLATFORM_DRIVEN_TEXT_CHECKING)
+        if (marker.type() == DocumentMarker::PlatformTextChecking) {
+            if (!WTF::holds_alternative<DocumentMarker::PlatformTextCheckingData>(marker.data())) {
+                ASSERT_NOT_REACHED();
+                continue;
+            }
+
+            auto& textCheckingData = WTF::get<DocumentMarker::PlatformTextCheckingData>(marker.data());
+            markerController.addPlatformTextCheckingMarker(newRange, textCheckingData.key, textCheckingData.value);
+            continue;
+        }
+#endif
+        markerController.addMarker(newRange, marker.type(), marker.description());
     }
 }
 
@@ -843,7 +860,7 @@ void CompositeEditCommand::removeNodeAttribute(Element& element, const Qualified
     setNodeAttribute(element, attribute, nullAtom());
 }
 
-void CompositeEditCommand::setNodeAttribute(Element& element, const QualifiedName& attribute, const AtomicString& value)
+void CompositeEditCommand::setNodeAttribute(Element& element, const QualifiedName& attribute, const AtomString& value)
 {
     applyCommandToComposite(SetNodeAttributeCommand::create(element, attribute, value));
 }
@@ -1103,7 +1120,7 @@ RefPtr<Node> CompositeEditCommand::insertBlockPlaceholder(const Position& pos)
 
     auto placeholder = createBlockPlaceholderElement(document());
     insertNodeAt(placeholder.copyRef(), pos);
-    return WTFMove(placeholder);
+    return placeholder;
 }
 
 RefPtr<Node> CompositeEditCommand::addBlockPlaceholderIfNeeded(Element* container)
@@ -1210,7 +1227,7 @@ RefPtr<Node> CompositeEditCommand::moveParagraphContentsToNewBlockIfNecessary(co
     if (newBlock->lastChild() && newBlock->lastChild()->hasTagName(brTag) && !endWasBr)
         removeNode(*newBlock->lastChild());
 
-    return WTFMove(newBlock);
+    return newBlock;
 }
 
 void CompositeEditCommand::pushAnchorElementDown(Element& anchorElement)
@@ -1414,14 +1431,14 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
             
             startIndex = 0;
             if (startInParagraph) {
-                RefPtr<Range> startRange = Range::create(document(), startOfParagraphToMove.deepEquivalent().parentAnchoredEquivalent(), visibleStart.deepEquivalent().parentAnchoredEquivalent());
-                startIndex = TextIterator::rangeLength(startRange.get(), true);
+                auto startRange = Range::create(document(), startOfParagraphToMove.deepEquivalent().parentAnchoredEquivalent(), visibleStart.deepEquivalent().parentAnchoredEquivalent());
+                startIndex = TextIterator::rangeLength(startRange.ptr(), true);
             }
 
             endIndex = 0;
             if (endInParagraph) {
-                RefPtr<Range> endRange = Range::create(document(), startOfParagraphToMove.deepEquivalent().parentAnchoredEquivalent(), visibleEnd.deepEquivalent().parentAnchoredEquivalent());
-                endIndex = TextIterator::rangeLength(endRange.get(), true);
+                auto endRange = Range::create(document(), startOfParagraphToMove.deepEquivalent().parentAnchoredEquivalent(), visibleEnd.deepEquivalent().parentAnchoredEquivalent());
+                endIndex = TextIterator::rangeLength(endRange.ptr(), true);
             }
         }
     }
@@ -1437,20 +1454,20 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
     // start and end can't be used directly to create a Range; they are "editing positions"
     Position startRangeCompliant = start.parentAnchoredEquivalent();
     Position endRangeCompliant = end.parentAnchoredEquivalent();
-    RefPtr<Range> range = Range::create(document(), startRangeCompliant.deprecatedNode(), startRangeCompliant.deprecatedEditingOffset(), endRangeCompliant.deprecatedNode(), endRangeCompliant.deprecatedEditingOffset());
+    auto range = Range::create(document(), startRangeCompliant.deprecatedNode(), startRangeCompliant.deprecatedEditingOffset(), endRangeCompliant.deprecatedNode(), endRangeCompliant.deprecatedEditingOffset());
 
     // FIXME: This is an inefficient way to preserve style on nodes in the paragraph to move. It
     // shouldn't matter though, since moved paragraphs will usually be quite small.
     RefPtr<DocumentFragment> fragment;
     // This used to use a ternary for initialization, but that confused some versions of GCC, see bug 37912
     if (startOfParagraphToMove != endOfParagraphToMove)
-        fragment = createFragmentFromMarkup(document(), createMarkup(*range, 0, DoNotAnnotateForInterchange, true), emptyString());
+        fragment = createFragmentFromMarkup(document(), serializePreservingVisualAppearance(range.get(), nullptr, AnnotateForInterchange::No, ConvertBlocksToInlines::Yes), emptyString());
 
     // A non-empty paragraph's style is moved when we copy and move it.  We don't move 
     // anything if we're given an empty paragraph, but an empty paragraph can have style
     // too, <div><b><br></b></div> for example.  Save it so that we can preserve it later.
     RefPtr<EditingStyle> styleInEmptyParagraph;
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (startOfParagraphToMove == endOfParagraphToMove && preserveStyle) {
 #else
     if (startOfParagraphToMove == endOfParagraphToMove && preserveStyle && isRichlyEditablePosition(destination.deepEquivalent())) {
@@ -1487,8 +1504,12 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
         document().updateLayoutIgnorePendingStylesheets();
     }
 
-    RefPtr<Range> startToDestinationRange(Range::create(document(), firstPositionInNode(document().documentElement()), destination.deepEquivalent().parentAnchoredEquivalent()));
-    destinationIndex = TextIterator::rangeLength(startToDestinationRange.get(), true);
+    RefPtr<ContainerNode> editableRoot = destination.rootEditableElement();
+    if (!editableRoot)
+        editableRoot = &document();
+
+    auto startToDestinationRange = Range::create(document(), firstPositionInNode(editableRoot.get()), destination.deepEquivalent().parentAnchoredEquivalent());
+    destinationIndex = TextIterator::rangeLength(startToDestinationRange.ptr(), true);
 
     setEndingSelection(VisibleSelection(destination, originalIsDirectional));
     ASSERT(endingSelection().isCaretOrRange());
@@ -1510,18 +1531,18 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
         // causes spaces to be collapsed during the move operation.  This results
         // in a call to rangeFromLocationAndLength with a location past the end
         // of the document (which will return null).
-        RefPtr<Range> start = TextIterator::rangeFromLocationAndLength(document().documentElement(), destinationIndex + startIndex, 0, true);
-        RefPtr<Range> end = TextIterator::rangeFromLocationAndLength(document().documentElement(), destinationIndex + endIndex, 0, true);
+        RefPtr<Range> start = TextIterator::rangeFromLocationAndLength(editableRoot.get(), destinationIndex + startIndex, 0, true);
+        RefPtr<Range> end = TextIterator::rangeFromLocationAndLength(editableRoot.get(), destinationIndex + endIndex, 0, true);
         if (start && end)
             setEndingSelection(VisibleSelection(start->startPosition(), end->startPosition(), DOWNSTREAM, originalIsDirectional));
     }
 }
 
-std::optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListItem() const
+Optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListItem() const
 {
     auto emptyListItem = enclosingEmptyListItem(endingSelection().visibleStart());
     if (!emptyListItem)
-        return std::nullopt;
+        return WTF::nullopt;
 
     auto listNode = emptyListItem->parentNode();
     // FIXME: Can't we do something better when the immediate parent wasn't a list node?
@@ -1529,7 +1550,7 @@ std::optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListI
         || (!listNode->hasTagName(ulTag) && !listNode->hasTagName(olTag))
         || !listNode->hasEditableStyle()
         || listNode == emptyListItem->rootEditableElement())
-        return std::nullopt;
+        return WTF::nullopt;
 
     return VisibleSelection(endingSelection().start().previous(BackwardDeletion), endingSelection().end());
 }

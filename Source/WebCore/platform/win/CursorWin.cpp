@@ -111,7 +111,7 @@ static Ref<SharedCursor> createSharedCursor(Image* img, const IntPoint& hotSpot)
         SelectObject(andMaskDC.get(), oldAndMask);
         SelectObject(xorMaskDC.get(), oldXorMask);
 
-        ICONINFO icon = {0};
+        ICONINFO icon { };
         icon.fIcon = FALSE;
         icon.xHotspot = effectiveHotSpot.x();
         icon.yHotspot = effectiveHotSpot.y();
@@ -126,7 +126,7 @@ static Ref<SharedCursor> loadSharedCursor(HINSTANCE hInstance, LPCWSTR lpCursorN
     return SharedCursor::create(::LoadCursorW(hInstance, lpCursorName));
 }
 
-static Ref<SharedCursor> loadCursorByName(char* name, int x, int y)
+static Ref<SharedCursor> loadCursorByName(const char* name, int x, int y)
 {
     IntPoint hotSpot(x, y);
     RefPtr<Image> cursorImage(Image::loadPlatformResource(name));

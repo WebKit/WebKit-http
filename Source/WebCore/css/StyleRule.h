@@ -84,8 +84,8 @@ public:
     }
 
     // FIXME: There shouldn't be any need for the null parent version.
-    RefPtr<CSSRule> createCSSOMWrapper(CSSStyleSheet* parentSheet = nullptr) const;
-    RefPtr<CSSRule> createCSSOMWrapper(CSSRule* parentRule) const;
+    Ref<CSSRule> createCSSOMWrapper(CSSStyleSheet* parentSheet = nullptr) const;
+    Ref<CSSRule> createCSSOMWrapper(CSSRule* parentRule) const;
 
 protected:
     StyleRuleBase(Type type, bool hasDocumentSecurityOrigin = false)
@@ -108,7 +108,7 @@ protected:
 private:
     WEBCORE_EXPORT void destroy();
     
-    RefPtr<CSSRule> createCSSOMWrapper(CSSStyleSheet* parentSheet, CSSRule* parentRule) const;
+    Ref<CSSRule> createCSSOMWrapper(CSSStyleSheet* parentSheet, CSSRule* parentRule) const;
 
     unsigned m_type : 5;
     // This is only needed to support getMatchedCSSRules.
@@ -220,6 +220,7 @@ private:
 };
 
 class DeferredStyleGroupRuleList final {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     DeferredStyleGroupRuleList(const CSSParserTokenRange&, CSSDeferredParser&);
     
@@ -342,7 +343,7 @@ private:
 
 class StyleRuleNamespace final : public StyleRuleBase {
 public:
-    static Ref<StyleRuleNamespace> create(AtomicString prefix, AtomicString uri)
+    static Ref<StyleRuleNamespace> create(AtomString prefix, AtomString uri)
     {
         return adoptRef(*new StyleRuleNamespace(prefix, uri));
     }
@@ -351,15 +352,15 @@ public:
 
     Ref<StyleRuleNamespace> copy() const { return adoptRef(*new StyleRuleNamespace(*this)); }
     
-    AtomicString prefix() const { return m_prefix; }
-    AtomicString uri() const { return m_uri; }
+    AtomString prefix() const { return m_prefix; }
+    AtomString uri() const { return m_uri; }
 
 private:
-    StyleRuleNamespace(AtomicString prefix, AtomicString uri);
+    StyleRuleNamespace(AtomString prefix, AtomString uri);
     StyleRuleNamespace(const StyleRuleNamespace&);
     
-    AtomicString m_prefix;
-    AtomicString m_uri;
+    AtomString m_prefix;
+    AtomString m_uri;
 };
     
 } // namespace WebCore

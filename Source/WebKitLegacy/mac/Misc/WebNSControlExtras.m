@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 #import "WebNSControlExtras.h"
 
@@ -47,10 +47,7 @@
     NSWindow *window = [self window];
     NSRect windowFrame = [window frame];
 
-    CGFloat backingScaleFactor;
-    backingScaleFactor = [window backingScaleFactor];
-
-    windowFrame.size.height += heightDelta * backingScaleFactor;
+    windowFrame.size.height += heightDelta;
     [window setFrame:windowFrame display:NO];
 }
 

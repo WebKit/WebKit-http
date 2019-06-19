@@ -29,6 +29,7 @@
 
 #include "PlatformSpeechSynthesisUtterance.h"
 #include "PlatformSpeechSynthesizer.h"
+#include "SpeechSynthesisClient.h"
 #include "SpeechSynthesisUtterance.h"
 #include "SpeechSynthesisVoice.h"
 #include <wtf/Deque.h>
@@ -39,9 +40,9 @@ namespace WebCore {
 class PlatformSpeechSynthesizerClient;
 class SpeechSynthesisVoice;
 
-class SpeechSynthesis : public PlatformSpeechSynthesizerClient, public RefCounted<SpeechSynthesis> {
+class SpeechSynthesis : public PlatformSpeechSynthesizerClient, public SpeechSynthesisClientObserver, public RefCounted<SpeechSynthesis> {
 public:
-    static Ref<SpeechSynthesis> create();
+    static Ref<SpeechSynthesis> create(WeakPtr<SpeechSynthesisClient>);
 
     bool pending() const;
     bool speaking() const;
@@ -58,7 +59,7 @@ public:
     WEBCORE_EXPORT void setPlatformSynthesizer(std::unique_ptr<PlatformSpeechSynthesizer>);
 
 private:
-    SpeechSynthesis();
+    SpeechSynthesis(WeakPtr<SpeechSynthesisClient>);
 
     // PlatformSpeechSynthesizerClient override methods.
     void voicesDidChange() override;
@@ -69,11 +70,20 @@ private:
     void speakingErrorOccurred(PlatformSpeechSynthesisUtterance&) override;
     void boundaryEventOccurred(PlatformSpeechSynthesisUtterance&, SpeechBoundary, unsigned charIndex) override;
 
+    // SpeechSynthesisClient override methods
+    void didStartSpeaking() override;
+    void didFinishSpeaking() override;
+    void didPauseSpeaking() override;
+    void didResumeSpeaking() override;
+    void speakingErrorOccurred() override;
+    void boundaryEventOccurred(bool wordBoundary, unsigned charIndex) override;
+    void voicesChanged() override;
+    
     void startSpeakingImmediately(SpeechSynthesisUtterance&);
     void handleSpeakingCompleted(SpeechSynthesisUtterance&, bool errorOccurred);
-    void fireEvent(const AtomicString& type, SpeechSynthesisUtterance&, unsigned long charIndex, const String& name);
+    void fireEvent(const AtomString& type, SpeechSynthesisUtterance&, unsigned long charIndex, const String& name);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Restrictions to change default behaviors.
     enum BehaviorRestrictionFlags {
         NoRestrictions = 0,
@@ -84,14 +94,17 @@ private:
     bool userGestureRequiredForSpeechStart() const { return m_restrictions & RequireUserGestureForSpeechStartRestriction; }
     void removeBehaviorRestriction(BehaviorRestrictions restriction) { m_restrictions &= ~restriction; }
 #endif
+    PlatformSpeechSynthesizer& ensurePlatformSpeechSynthesizer();
+    
     std::unique_ptr<PlatformSpeechSynthesizer> m_platformSpeechSynthesizer;
     Vector<Ref<SpeechSynthesisVoice>> m_voiceList;
     SpeechSynthesisUtterance* m_currentSpeechUtterance;
     Deque<Ref<SpeechSynthesisUtterance>> m_utteranceQueue;
     bool m_isPaused;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     BehaviorRestrictions m_restrictions;
 #endif
+    WeakPtr<SpeechSynthesisClient> m_speechSynthesisClient;
 };
 
 } // namespace WebCore

@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CryptoAlgorithmECDSA.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CommonCryptoDERUtilities.h"
 #include "CommonCryptoUtilities.h"
@@ -121,8 +121,10 @@ static ExceptionOr<bool> verifyECDSA(CryptoAlgorithmIdentifier hash, const Platf
     while (rStart < keyLengthInBytes && !signature[rStart])
         rStart++;
     size_t sStart = keyLengthInBytes;
-    while (rStart < signature.size() && !signature[sStart])
+    while (sStart < signature.size() && !signature[sStart])
         sStart++;
+    if (rStart >= keyLengthInBytes || sStart >= signature.size())
+        return false;
 
     // InitialOctet is needed when the first byte of r/s is larger than or equal to 128.
     bool rNeedsInitialOctet = signature[rStart] >= 128;
@@ -163,4 +165,4 @@ ExceptionOr<bool> CryptoAlgorithmECDSA::platformVerify(const CryptoAlgorithmEcds
 
 } // namespace WebCore
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

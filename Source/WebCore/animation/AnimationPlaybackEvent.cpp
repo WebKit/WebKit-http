@@ -30,21 +30,21 @@
 
 namespace WebCore {
 
-AnimationPlaybackEvent::AnimationPlaybackEvent(const AtomicString& type, const AnimationPlaybackEventInit& initializer, IsTrusted isTrusted)
+AnimationPlaybackEvent::AnimationPlaybackEvent(const AtomString& type, const AnimationPlaybackEventInit& initializer, IsTrusted isTrusted)
     : Event(type, initializer, isTrusted)
 {
-    if (initializer.currentTime == std::nullopt)
-        m_currentTime = std::nullopt;
+    if (initializer.currentTime)
+        m_currentTime = Seconds::fromMilliseconds(*initializer.currentTime);
     else
-        m_currentTime = Seconds::fromMilliseconds(initializer.currentTime.value());
+        m_currentTime = WTF::nullopt;
 
-    if (initializer.timelineTime == std::nullopt)
-        m_timelineTime = std::nullopt;
+    if (initializer.timelineTime)
+        m_timelineTime = Seconds::fromMilliseconds(*initializer.timelineTime);
     else
-        m_timelineTime = Seconds::fromMilliseconds(initializer.timelineTime.value());
+        m_timelineTime = WTF::nullopt;
 }
 
-AnimationPlaybackEvent::AnimationPlaybackEvent(const AtomicString& type, std::optional<Seconds> currentTime, std::optional<Seconds> timelineTime)
+AnimationPlaybackEvent::AnimationPlaybackEvent(const AtomString& type, Optional<Seconds> currentTime, Optional<Seconds> timelineTime)
     : Event(type, CanBubble::Yes, IsCancelable::No)
     , m_currentTime(currentTime)
     , m_timelineTime(timelineTime)
@@ -53,17 +53,17 @@ AnimationPlaybackEvent::AnimationPlaybackEvent(const AtomicString& type, std::op
 
 AnimationPlaybackEvent::~AnimationPlaybackEvent() = default;
 
-std::optional<double> AnimationPlaybackEvent::bindingsCurrentTime() const
+Optional<double> AnimationPlaybackEvent::bindingsCurrentTime() const
 {
     if (!m_currentTime)
-        return std::nullopt;
+        return WTF::nullopt;
     return secondsToWebAnimationsAPITime(m_currentTime.value());
 }
 
-std::optional<double> AnimationPlaybackEvent::bindingsTimelineTime() const
+Optional<double> AnimationPlaybackEvent::bindingsTimelineTime() const
 {
     if (!m_timelineTime)
-        return std::nullopt;
+        return WTF::nullopt;
     return secondsToWebAnimationsAPITime(m_timelineTime.value());
 }
 

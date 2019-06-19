@@ -26,12 +26,13 @@
 #import "config.h"
 #import "RenderThemeIOS.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "BitmapImage.h"
 #import "CSSPrimitiveValue.h"
 #import "CSSToLengthConversionData.h"
 #import "CSSValueKeywords.h"
+#import "ColorIOS.h"
 #import "DateComponents.h"
 #import "Document.h"
 #import "File.h"
@@ -51,6 +52,7 @@
 #import "HTMLSelectElement.h"
 #import "IOSurface.h"
 #import "Icon.h"
+#import "LocalCurrentTraitCollection.h"
 #import "LocalizedDateCache.h"
 #import "NodeRenderStyle.h"
 #import "Page.h"
@@ -70,20 +72,13 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <CoreImage/CoreImage.h>
 #import <objc/runtime.h>
+#import <pal/ios/UIKitSoftLink.h>
 #import <pal/spi/cocoa/CoreTextSPI.h>
 #import <pal/spi/ios/UIKitSPI.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/RefPtr.h>
-#import <wtf/SoftLinking.h>
 #import <wtf/StdLibExtras.h>
-
-SOFT_LINK_FRAMEWORK(UIKit)
-SOFT_LINK_CLASS(UIKit, UIApplication)
-SOFT_LINK_CLASS(UIKit, UIColor)
-SOFT_LINK_CLASS(UIKit, UIDocumentInteractionController)
-SOFT_LINK_CLASS(UIKit, UIImage)
-SOFT_LINK_CONSTANT(UIKit, UIContentSizeCategoryDidChangeNotification, CFStringRef)
-#define UIContentSizeCategoryDidChangeNotification getUIContentSizeCategoryDidChangeNotification()
 
 @interface WebCoreRenderThemeBundle : NSObject
 @end
@@ -286,7 +281,7 @@ static IOSGradientRef gradientWithName(IOSGradientType gradientType)
 
 static void contentSizeCategoryDidChange(CFNotificationCenterRef, void*, CFStringRef name, const void*, CFDictionaryRef)
 {
-    ASSERT_UNUSED(name, CFEqual(name, UIContentSizeCategoryDidChangeNotification));
+    ASSERT_UNUSED(name, CFEqual(name, PAL::get_UIKit_UIContentSizeCategoryDidChangeNotification()));
     WebThreadRun(^{
         Page::updateStyleForAllPagesAfterGlobalChangeInEnvironment();
     });
@@ -294,7 +289,7 @@ static void contentSizeCategoryDidChange(CFNotificationCenterRef, void*, CFStrin
 
 RenderThemeIOS::RenderThemeIOS()
 {
-    CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, contentSizeCategoryDidChange, UIContentSizeCategoryDidChangeNotification, 0, CFNotificationSuspensionBehaviorDeliverImmediately);
+    CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, contentSizeCategoryDidChange, (__bridge CFStringRef)PAL::get_UIKit_UIContentSizeCategoryDidChangeNotification(), 0, CFNotificationSuspensionBehaviorDeliverImmediately);
 }
 
 RenderTheme& RenderTheme::singleton()
@@ -313,7 +308,7 @@ CFStringRef RenderThemeIOS::contentSizeCategory()
 {
     if (!_contentSizeCategory().isNull())
         return (__bridge CFStringRef)static_cast<NSString*>(_contentSizeCategory());
-    return (CFStringRef)[[getUIApplicationClass() sharedApplication] preferredContentSizeCategory];
+    return (CFStringRef)[[PAL::getUIApplicationClass() sharedApplication] preferredContentSizeCategory];
 }
 
 void RenderThemeIOS::setContentSizeCategory(const String& contentSizeCategory)
@@ -384,68 +379,62 @@ static void drawJoinedLines(CGContextRef context, const Vector<CGPoint>& points,
 
 bool RenderThemeIOS::paintCheckboxDecorations(const RenderObject& box, const PaintInfo& paintInfo, const IntRect& rect)
 {
-    GraphicsContextStateSaver stateSaver(paintInfo.context());
-    FloatRect clip = addRoundedBorderClip(box, paintInfo.context(), rect);
-
-    float width = clip.width();
-    float height = clip.height();
-
     bool checked = isChecked(box);
     bool indeterminate = isIndeterminate(box);
-
     CGContextRef cgContext = paintInfo.context().platformContext();
-    if (!checked && !indeterminate) {
-        FloatPoint bottomCenter(clip.x() + clip.width() / 2.0f, clip.maxY());
-        drawAxialGradient(cgContext, gradientWithName(ShadeGradient), clip.location(), FloatPoint(clip.x(), clip.maxY()), LinearInterpolation);
+    GraphicsContextStateSaver stateSaver { paintInfo.context() };
+
+    if (checked || indeterminate) {
+        auto border = box.style().getRoundedBorderFor(rect);
+        paintInfo.context().fillRoundedRect(border.pixelSnappedRoundedRectForPainting(box.document().deviceScaleFactor()), Color(0.0f, 0.0f, 0.0f, 0.8f));
+
+        auto clip = addRoundedBorderClip(box, paintInfo.context(), rect);
+        auto width = clip.width();
+        auto height = clip.height();
+        drawAxialGradient(cgContext, gradientWithName(ConcaveGradient), clip.location(), FloatPoint { clip.x(), clip.maxY() }, LinearInterpolation);
+
+        constexpr float thicknessRatio = 2 / 14.0;
+        float lineWidth = std::min(width, height) * 2.0f * thicknessRatio;
+
+        Vector<CGPoint, 3> line;
+        Vector<CGPoint, 3> shadow;
+        if (checked) {
+            constexpr CGSize size { 14.0f, 14.0f };
+            constexpr CGPoint pathRatios[] = {
+                { 2.5f / size.width, 7.5f / size.height },
+                { 5.5f / size.width, 10.5f / size.height },
+                { 11.5f / size.width, 2.5f / size.height }
+            };
+
+            line.uncheckedAppend(CGPointMake(clip.x() + width * pathRatios[0].x, clip.y() + height * pathRatios[0].y));
+            line.uncheckedAppend(CGPointMake(clip.x() + width * pathRatios[1].x, clip.y() + height * pathRatios[1].y));
+            line.uncheckedAppend(CGPointMake(clip.x() + width * pathRatios[2].x, clip.y() + height * pathRatios[2].y));
+
+            shadow.uncheckedAppend(shortened(line[0], line[1], lineWidth / 4.0f));
+            shadow.uncheckedAppend(line[1]);
+            shadow.uncheckedAppend(shortened(line[2], line[1], lineWidth / 4.0f));
+        } else {
+            line.uncheckedAppend(CGPointMake(clip.x() + 3.5, clip.center().y()));
+            line.uncheckedAppend(CGPointMake(clip.maxX() - 3.5, clip.center().y()));
+
+            shadow.uncheckedAppend(shortened(line[0], line[1], lineWidth / 4.0f));
+            shadow.uncheckedAppend(shortened(line[1], line[0], lineWidth / 4.0f));
+        }
+
+        lineWidth = std::max<float>(lineWidth, 1);
+        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(shadow) }, kCGLineCapSquare, lineWidth, Color { 0.0f, 0.0f, 0.0f, 0.7f });
+
+        lineWidth = std::max<float>(std::min(width, height) * thicknessRatio, 1);
+        drawJoinedLines(cgContext, Vector<CGPoint> { WTFMove(line) }, kCGLineCapButt, lineWidth, Color { 1.0f, 1.0f, 1.0f, 240 / 255.0f });
+    } else {
+        auto clip = addRoundedBorderClip(box, paintInfo.context(), rect);
+        auto width = clip.width();
+        auto height = clip.height();
+        FloatPoint bottomCenter { clip.x() + width / 2.0f, clip.maxY() };
+
+        drawAxialGradient(cgContext, gradientWithName(ShadeGradient), clip.location(), FloatPoint { clip.x(), clip.maxY() }, LinearInterpolation);
         drawRadialGradient(cgContext, gradientWithName(ShineGradient), bottomCenter, 0, bottomCenter, sqrtf((width * width) / 4.0f + height * height), ExponentialInterpolation);
-        return false;
     }
-
-    drawAxialGradient(cgContext, gradientWithName(ConcaveGradient), clip.location(), FloatPoint(clip.x(), clip.maxY()), LinearInterpolation);
-
-    static const float thicknessRatio = 2 / 14.0;
-    static const CGSize size = { 14.0f, 14.0f };
-    float lineWidth = std::min(width, height) * 2.0f * thicknessRatio;
-
-    Vector<CGPoint> line;
-    Vector<CGPoint> shadow;
-
-    if (checked) {
-        static const CGPoint pathRatios[3] = {
-            { 2.5f / size.width, 7.5f / size.height },
-            { 5.5f / size.width, 10.5f / size.height },
-            { 11.5f / size.width, 2.5f / size.height }
-        };
-
-        line = {
-            CGPointMake(clip.x() + width * pathRatios[0].x, clip.y() + height * pathRatios[0].y),
-            CGPointMake(clip.x() + width * pathRatios[1].x, clip.y() + height * pathRatios[1].y),
-            CGPointMake(clip.x() + width * pathRatios[2].x, clip.y() + height * pathRatios[2].y)
-        };
-
-        shadow = {
-            shortened(line[0], line[1], lineWidth / 4.0f),
-            line[1],
-            shortened(line[2], line[1], lineWidth / 4.0f)
-        };
-    } else if (indeterminate) {
-        line = {
-            CGPointMake(clip.x() + 3.5, clip.center().y()),
-            CGPointMake(clip.maxX() - 3.5, clip.center().y())
-        };
-
-        shadow = {
-            shortened(line[0], line[1], lineWidth / 4.0f),
-            shortened(line[1], line[0], lineWidth / 4.0f)
-        };
-    }
-
-    lineWidth = std::max<float>(lineWidth, 1);
-    drawJoinedLines(cgContext, shadow, kCGLineCapSquare, lineWidth, Color(0.0f, 0.0f, 0.0f, 0.7f));
-
-    lineWidth = std::max<float>(std::min(clip.width(), clip.height()) * thicknessRatio, 1);
-    drawJoinedLines(cgContext, line, kCGLineCapButt, lineWidth, Color(1.0f, 1.0f, 1.0f, 240 / 255.0f));
-
     return false;
 }
 
@@ -484,10 +473,19 @@ void RenderThemeIOS::adjustRadioStyle(StyleResolver&, RenderStyle& style, const 
 bool RenderThemeIOS::paintRadioDecorations(const RenderObject& box, const PaintInfo& paintInfo, const IntRect& rect)
 {
     GraphicsContextStateSaver stateSaver(paintInfo.context());
-    FloatRect clip = addRoundedBorderClip(box, paintInfo.context(), rect);
-
     CGContextRef cgContext = paintInfo.context().platformContext();
+
+    auto drawShadeAndShineGradients = [&](auto clip) {
+        FloatPoint bottomCenter(clip.x() + clip.width() / 2.0, clip.maxY());
+        drawAxialGradient(cgContext, gradientWithName(ShadeGradient), clip.location(), FloatPoint(clip.x(), clip.maxY()), LinearInterpolation);
+        drawRadialGradient(cgContext, gradientWithName(ShineGradient), bottomCenter, 0, bottomCenter, std::max(clip.width(), clip.height()), ExponentialInterpolation);
+    };
+
     if (isChecked(box)) {
+        auto border = box.style().getRoundedBorderFor(rect);
+        paintInfo.context().fillRoundedRect(border.pixelSnappedRoundedRectForPainting(box.document().deviceScaleFactor()), Color(0.0f, 0.0f, 0.0f, 0.8f));
+
+        auto clip = addRoundedBorderClip(box, paintInfo.context(), rect);
         drawAxialGradient(cgContext, gradientWithName(ConcaveGradient), clip.location(), FloatPoint(clip.x(), clip.maxY()), LinearInterpolation);
 
         // The inner circle is 6 / 14 the size of the surrounding circle, 
@@ -502,10 +500,11 @@ bool RenderThemeIOS::paintRadioDecorations(const RenderObject& box, const PaintI
 
         FloatSize radius(clip.width() / 2.0f, clip.height() / 2.0f);
         paintInfo.context().clipRoundedRect(FloatRoundedRect(clip, radius, radius, radius, radius));
+        drawShadeAndShineGradients(clip);
+    } else {
+        auto clip = addRoundedBorderClip(box, paintInfo.context(), rect);
+        drawShadeAndShineGradients(clip);
     }
-    FloatPoint bottomCenter(clip.x() + clip.width() / 2.0, clip.maxY());
-    drawAxialGradient(cgContext, gradientWithName(ShadeGradient), clip.location(), FloatPoint(clip.x(), clip.maxY()), LinearInterpolation);
-    drawRadialGradient(cgContext, gradientWithName(ShineGradient), bottomCenter, 0, bottomCenter, std::max(clip.width(), clip.height()), ExponentialInterpolation);
     return false;
 }
 
@@ -562,7 +561,7 @@ void RenderThemeIOS::adjustRoundBorderRadius(RenderStyle& style, RenderBox& box)
 static void applyCommonButtonPaddingToStyle(RenderStyle& style, const Element& element)
 {
     Document& document = element.document();
-    RefPtr<CSSPrimitiveValue> emSize = CSSPrimitiveValue::create(0.5, CSSPrimitiveValue::CSS_EMS);
+    auto emSize = CSSPrimitiveValue::create(0.5, CSSPrimitiveValue::CSS_EMS);
     int pixels = emSize->computeLength<int>(CSSToLengthConversionData(&style, document.renderStyle(), document.renderView(), document.frame()->pageZoomFactor()));
     style.setPaddingBox(LengthBox(0, pixels, 0, pixels));
 }
@@ -917,12 +916,12 @@ bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintI
     context.setStrokeStyle(SolidStroke);
 
     const float verticalRenderingPosition = rect.y() + verticalOffset;
-    RefPtr<Gradient> strokeGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
+    auto strokeGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
     strokeGradient->addColorStop(0.0, Color(0x8d, 0x8d, 0x8d));
     strokeGradient->addColorStop(0.45, Color(0xee, 0xee, 0xee));
     strokeGradient->addColorStop(0.55, Color(0xee, 0xee, 0xee));
     strokeGradient->addColorStop(1.0, Color(0x8d, 0x8d, 0x8d));
-    context.setStrokeGradient(strokeGradient.releaseNonNull());
+    context.setStrokeGradient(WTFMove(strokeGradient));
 
     context.setFillColor(Color(255, 255, 255));
 
@@ -937,10 +936,10 @@ bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintI
     paintInfo.context().clipRoundedRect(FloatRoundedRect(border, roundedCornerRadius, roundedCornerRadius, roundedCornerRadius, roundedCornerRadius));
 
     float upperGradientHeight = progressBarHeight / 2.;
-    RefPtr<Gradient> upperGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition + 0.5), FloatPoint(rect.x(), verticalRenderingPosition + upperGradientHeight - 1.5) });
+    auto upperGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition + 0.5), FloatPoint(rect.x(), verticalRenderingPosition + upperGradientHeight - 1.5) });
     upperGradient->addColorStop(0.0, Color(133, 133, 133, 188));
     upperGradient->addColorStop(1.0, Color(18, 18, 18, 51));
-    context.setFillGradient(upperGradient.releaseNonNull());
+    context.setFillGradient(WTFMove(upperGradient));
 
     context.fillRect(FloatRect(rect.x(), verticalRenderingPosition, rect.width(), upperGradientHeight));
 
@@ -949,20 +948,20 @@ bool RenderThemeIOS::paintProgressBar(const RenderObject& renderer, const PaintI
         // 2) Draw the progress bar.
         double position = clampTo(renderProgress.position(), 0.0, 1.0);
         double barWidth = position * rect.width();
-        RefPtr<Gradient> barGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition + 0.5), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
+        auto barGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition + 0.5), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
         barGradient->addColorStop(0.0, Color(195, 217, 247));
         barGradient->addColorStop(0.45, Color(118, 164, 228));
         barGradient->addColorStop(0.49, Color(118, 164, 228));
         barGradient->addColorStop(0.51, Color(36, 114, 210));
         barGradient->addColorStop(0.55, Color(36, 114, 210));
         barGradient->addColorStop(1.0, Color(57, 142, 244));
-        context.setFillGradient(barGradient.releaseNonNull());
+        context.setFillGradient(WTFMove(barGradient));
 
-        RefPtr<Gradient> barStrokeGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
+        auto barStrokeGradient = Gradient::create(Gradient::LinearData { FloatPoint(rect.x(), verticalRenderingPosition), FloatPoint(rect.x(), verticalRenderingPosition + progressBarHeight - 1) });
         barStrokeGradient->addColorStop(0.0, Color(95, 107, 183));
         barStrokeGradient->addColorStop(0.5, Color(66, 106, 174, 240));
         barStrokeGradient->addColorStop(1.0, Color(38, 104, 166));
-        context.setStrokeGradient(barStrokeGradient.releaseNonNull());
+        context.setStrokeGradient(WTFMove(barStrokeGradient));
 
         Path barPath;
         int left = rect.x();
@@ -1016,11 +1015,16 @@ void RenderThemeIOS::adjustButtonStyle(StyleResolver& selector, RenderStyle& sty
 {
     RenderTheme::adjustButtonStyle(selector, style, element);
 
+#if ENABLE(INPUT_TYPE_COLOR)
+    if (style.appearance() == ColorWellPart)
+        return;
+#endif
+
     // Set padding: 0 1.0em; on buttons.
     // CSSPrimitiveValue::computeLengthInt only needs the element's style to calculate em lengths.
     // Since the element might not be in a document, just pass nullptr for the root element style
     // and the render view.
-    RefPtr<CSSPrimitiveValue> emSize = CSSPrimitiveValue::create(1.0, CSSPrimitiveValue::CSS_EMS);
+    auto emSize = CSSPrimitiveValue::create(1.0, CSSPrimitiveValue::CSS_EMS);
     int pixels = emSize->computeLength<int>(CSSToLengthConversionData(&style, nullptr, nullptr, 1.0, false));
     style.setPaddingBox(LengthBox(0, pixels, 0, pixels));
 
@@ -1125,12 +1129,19 @@ Color RenderThemeIOS::platformInactiveSelectionBackgroundColor(OptionSet<StyleCo
     return Color::transparent;
 }
 
+#if ENABLE(FULL_KEYBOARD_ACCESS)
+Color RenderThemeIOS::platformFocusRingColor(OptionSet<StyleColor::Options>) const
+{
+    return colorFromUIColor([PAL::getUIColorClass() keyboardFocusIndicatorColor]);
+}
+#endif
+
 bool RenderThemeIOS::shouldHaveSpinButton(const HTMLInputElement&) const
 {
     return false;
 }
 
-bool RenderThemeIOS::shouldHaveCapsLockIndicator(const HTMLInputElement&) const
+bool RenderThemeIOS::supportsFocusRing(const RenderStyle&) const
 {
     return false;
 }
@@ -1378,6 +1389,7 @@ String RenderThemeIOS::mediaControlsScript()
             NSBundle *bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
 
             StringBuilder scriptBuilder;
+            scriptBuilder.append("window.isIOSFamily = true;");
             scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"modern-media-controls-localized-strings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
             scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"modern-media-controls" ofType:@"js" inDirectory:@"modern-media-controls"] encoding:NSUTF8StringEncoding error:nil]);
             m_mediaControlsScript = scriptBuilder.toString();
@@ -1417,20 +1429,6 @@ String RenderThemeIOS::mediaControlsBase64StringForIconNameAndType(const String&
 
 #endif // ENABLE(VIDEO)
 
-CGColorRef RenderThemeIOS::colorForMarkerLineStyle(DocumentMarkerLineStyle style, bool)
-{
-    switch (style) {
-    case DocumentMarkerLineStyle::Spelling:
-        return [getUIColorClass() systemRedColor].CGColor;
-    case DocumentMarkerLineStyle::DictationAlternatives:
-    case DocumentMarkerLineStyle::TextCheckingDictationPhraseWithAlternatives:
-    case DocumentMarkerLineStyle::AutocorrectionReplacement:
-        return [getUIColorClass() systemBlueColor].CGColor;
-    case DocumentMarkerLineStyle::Grammar:
-        return [getUIColorClass() systemGreenColor].CGColor;
-    }
-}
-
 Color RenderThemeIOS::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::Options> options) const
 {
     const bool forVisitedLink = options.contains(StyleColor::Options::ForVisitedLink);
@@ -1443,46 +1441,85 @@ Color RenderThemeIOS::systemColor(CSSValueID cssValueID, OptionSet<StyleColor::O
 
     ASSERT(!forVisitedLink);
 
-    auto addResult = m_systemColorCache.add(cssValueID, Color());
-    if (!addResult.isNewEntry)
-        return addResult.iterator->value;
+    auto& cache = colorCache(options);
+    return cache.systemStyleColors.ensure(cssValueID, [this, cssValueID, options] () -> Color {
+        const bool useDarkAppearance = options.contains(StyleColor::Options::UseDarkAppearance);
+        const bool useInactiveAppearance = options.contains(StyleColor::Options::UseInactiveAppearance);
+        LocalCurrentTraitCollection localTraitCollection(useDarkAppearance, useInactiveAppearance);
 
-    Color color;
-    switch (cssValueID) {
-    case CSSValueAppleWirelessPlaybackTargetActive:
-        color = [getUIColorClass() systemBlueColor].CGColor;
-        break;
-    case CSSValueAppleSystemBlue:
-        color = [getUIColorClass() systemBlueColor].CGColor;
-        break;
-    case CSSValueAppleSystemGray:
-        color = [getUIColorClass() systemGrayColor].CGColor;
-        break;
-    case CSSValueAppleSystemGreen:
-        color = [getUIColorClass() systemGreenColor].CGColor;
-        break;
-    case CSSValueAppleSystemOrange:
-        color = [getUIColorClass() systemOrangeColor].CGColor;
-        break;
-    case CSSValueAppleSystemPink:
-        color = [getUIColorClass() systemPinkColor].CGColor;
-        break;
-    case CSSValueAppleSystemRed:
-        color = [getUIColorClass() systemRedColor].CGColor;
-        break;
-    case CSSValueAppleSystemYellow:
-        color = [getUIColorClass() systemYellowColor].CGColor;
-        break;
-    default:
-        break;
-    }
+        auto cssColorToSelector = [cssValueID] () -> SEL {
+            switch (cssValueID) {
+#if HAVE(OS_DARK_MODE_SUPPORT)
+            case CSSValueText:
+            case CSSValueAppleSystemLabel:
+            case CSSValueAppleSystemHeaderText:
+                return @selector(labelColor);
+            case CSSValueAppleSystemSecondaryLabel:
+                return @selector(secondaryLabelColor);
+            case CSSValueAppleSystemTertiaryLabel:
+                return @selector(tertiaryLabelColor);
+            case CSSValueAppleSystemQuaternaryLabel:
+                return @selector(quaternaryLabelColor);
+            case CSSValueAppleSystemPlaceholderText:
+                return @selector(placeholderTextColor);
+            case CSSValueWebkitControlBackground:
+            case CSSValueAppleSystemControlBackground:
+            case CSSValueAppleSystemTextBackground:
+            case CSSValueAppleSystemBackground:
+                return @selector(systemBackgroundColor);
+            case CSSValueAppleSystemSecondaryBackground:
+                return @selector(secondarySystemBackgroundColor);
+            case CSSValueAppleSystemTertiaryBackground:
+                return @selector(tertiarySystemBackgroundColor);
+            case CSSValueAppleSystemGroupedBackground:
+                return @selector(systemGroupedBackgroundColor);
+            case CSSValueAppleSystemSecondaryGroupedBackground:
+                return @selector(secondarySystemGroupedBackgroundColor);
+            case CSSValueAppleSystemTertiaryGroupedBackground:
+                return @selector(tertiarySystemGroupedBackgroundColor);
+            case CSSValueAppleSystemGrid:
+            case CSSValueAppleSystemSeparator:
+            case CSSValueAppleSystemContainerBorder:
+                return @selector(separatorColor);
+            case CSSValueAppleSystemSelectedContentBackground:
+            case CSSValueAppleSystemUnemphasizedSelectedContentBackground:
+                return @selector(tableCellDefaultSelectionTintColor);
+            case CSSValueAppleSystemBrown:
+                return @selector(systemBrownColor);
+            case CSSValueAppleSystemIndigo:
+                return @selector(systemIndigoColor);
+#endif
+            case CSSValueAppleSystemTeal:
+                return @selector(systemTealColor);
+            case CSSValueAppleWirelessPlaybackTargetActive:
+            case CSSValueAppleSystemBlue:
+                return @selector(systemBlueColor);
+            case CSSValueAppleSystemGray:
+                return @selector(systemGrayColor);
+            case CSSValueAppleSystemGreen:
+                return @selector(systemGreenColor);
+            case CSSValueAppleSystemOrange:
+                return @selector(systemOrangeColor);
+            case CSSValueAppleSystemPink:
+                return @selector(systemPinkColor);
+            case CSSValueAppleSystemPurple:
+                return @selector(systemPurpleColor);
+            case CSSValueAppleSystemRed:
+                return @selector(systemRedColor);
+            case CSSValueAppleSystemYellow:
+                return @selector(systemYellowColor);
+            default:
+                return nullptr;
+            }
+        };
 
-    if (!color.isValid())
-        color = RenderTheme::systemColor(cssValueID, options);
+        if (auto selector = cssColorToSelector()) {
+            if (auto color = wtfObjCMsgSend<UIColor *>(PAL::getUIColorClass(), selector))
+                return Color(color.CGColor, Color::Semantic);
+        }
 
-    addResult.iterator->value = color;
-
-    return addResult.iterator->value;
+        return RenderTheme::systemColor(cssValueID, options);
+    }).iterator->value;
 }
 
 #if ENABLE(ATTACHMENT_ELEMENT)
@@ -1515,7 +1552,7 @@ static RetainPtr<CTFontRef> attachmentActionFont()
 
 static UIColor *attachmentActionColor(const RenderAttachment& attachment)
 {
-    return [getUIColorClass() colorWithCGColor:cachedCGColor(attachment.style().visitedDependentColor(CSSPropertyColor))];
+    return [PAL::getUIColorClass() colorWithCGColor:cachedCGColor(attachment.style().visitedDependentColor(CSSPropertyColor))];
 }
 
 static RetainPtr<CTFontRef> attachmentTitleFont()
@@ -1524,10 +1561,10 @@ static RetainPtr<CTFontRef> attachmentTitleFont()
     return adoptCF(CTFontCreateWithFontDescriptor(fontDescriptor.get(), 0, nullptr));
 }
 
-static UIColor *attachmentTitleColor() { return [getUIColorClass() systemGrayColor]; }
+static UIColor *attachmentTitleColor() { return [PAL::getUIColorClass() systemGrayColor]; }
 
 static RetainPtr<CTFontRef> attachmentSubtitleFont() { return attachmentTitleFont(); }
-static UIColor *attachmentSubtitleColor() { return [getUIColorClass() systemGrayColor]; }
+static UIColor *attachmentSubtitleColor() { return [PAL::getUIColorClass() systemGrayColor]; }
 
 struct RenderAttachmentInfo {
     explicit RenderAttachmentInfo(const RenderAttachment&);
@@ -1609,12 +1646,13 @@ void RenderAttachmentInfo::buildWrappedLines(const String& text, CTFontRef font,
     // Combine it into one last line, and center-truncate it.
     CTLineRef firstRemainingLine = (CTLineRef)CFArrayGetValueAtIndex(ctLines, lineIndex);
     CFIndex remainingRangeStart = CTLineGetStringRange(firstRemainingLine).location;
-    NSRange remainingRange = NSMakeRange(remainingRangeStart, [attributedText length] - remainingRangeStart);
-    NSAttributedString *remainingString = [attributedText attributedSubstringFromRange:remainingRange];
-    RetainPtr<CTLineRef> remainingLine = adoptCF(CTLineCreateWithAttributedString((CFAttributedStringRef)remainingString));
+    CFRange remainingRange = CFRangeMake(remainingRangeStart, [attributedText length] - remainingRangeStart);
+    RetainPtr<CGPathRef> remainingPath = adoptCF(CGPathCreateWithRect(CGRectMake(0, 0, CGFLOAT_MAX, CGFLOAT_MAX), nullptr));
+    RetainPtr<CTFrameRef> remainingFrame = adoptCF(CTFramesetterCreateFrame(framesetter.get(), remainingRange, remainingPath.get(), nullptr));
     RetainPtr<NSAttributedString> ellipsisString = adoptNS([[NSAttributedString alloc] initWithString:@"\u2026" attributes:textAttributes]);
     RetainPtr<CTLineRef> ellipsisLine = adoptCF(CTLineCreateWithAttributedString((CFAttributedStringRef)ellipsisString.get()));
-    RetainPtr<CTLineRef> truncatedLine = adoptCF(CTLineCreateTruncatedLine(remainingLine.get(), attachmentWrappingTextMaximumWidth, kCTLineTruncationMiddle, ellipsisLine.get()));
+    CTLineRef remainingLine = (CTLineRef)CFArrayGetValueAtIndex(CTFrameGetLines(remainingFrame.get()), 0);
+    RetainPtr<CTLineRef> truncatedLine = adoptCF(CTLineCreateTruncatedLine(remainingLine, attachmentWrappingTextMaximumWidth, kCTLineTruncationMiddle, ellipsisLine.get()));
 
     if (!truncatedLine)
         truncatedLine = remainingLine;
@@ -1648,7 +1686,9 @@ static BOOL getAttachmentProgress(const RenderAttachment& attachment, float& pro
 
 static RetainPtr<UIImage> iconForAttachment(const RenderAttachment& attachment, FloatSize& size)
 {
-    auto documentInteractionController = adoptNS([allocUIDocumentInteractionControllerInstance() init]);
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+    auto documentInteractionController = adoptNS([PAL::allocUIDocumentInteractionControllerInstance() init]);
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     String fileName;
     if (File* file = attachment.attachmentElement().file())
@@ -1666,14 +1706,18 @@ static RetainPtr<UIImage> iconForAttachment(const RenderAttachment& attachment, 
         else
             UTI = UTIFromMIMEType(attachmentType);
 
+#if PLATFORM(IOS)
         [documentInteractionController setUTI:static_cast<NSString *>(UTI)];
+#endif
     }
 
+    RetainPtr<UIImage> result;
+#if PLATFORM(IOS)
     NSArray *icons = [documentInteractionController icons];
     if (!icons.count)
         return nil;
 
-    RetainPtr<UIImage> result = icons.lastObject;
+    result = icons.lastObject;
 
     BOOL useHeightForClosestMatch = [result size].height > [result size].width;
     CGFloat bestMatchRatio = -1;
@@ -1690,7 +1734,7 @@ static RetainPtr<UIImage> iconForAttachment(const RenderAttachment& attachment, 
             }
         }
     }
-
+#endif
     CGFloat iconAspect = [result size].width / [result size].height;
     size = largestRectWithAspectRatioInsideRect(iconAspect, FloatRect(0, 0, attachmentIconSize, attachmentIconSize)).size();
 
@@ -1703,7 +1747,7 @@ RenderAttachmentInfo::RenderAttachmentInfo(const RenderAttachment& attachment)
 
     hasProgress = getAttachmentProgress(attachment, progress);
 
-    String title = attachment.attachmentElement().attachmentTitle();
+    String title = attachment.attachmentElement().attachmentTitleForDisplay();
     String action = attachment.attachmentElement().attributeWithoutSynchronization(actionAttr);
     String subtitle = attachment.attachmentElement().attributeWithoutSynchronization(subtitleAttr);
 
@@ -1756,11 +1800,8 @@ static void paintAttachmentIcon(GraphicsContext& context, RenderAttachmentInfo& 
     if (!info.icon)
         return;
 
-    RefPtr<Image> iconImage = BitmapImage::create([info.icon CGImage]);
-    if (!iconImage)
-        return;
-
-    context.drawImage(*iconImage, info.iconRect);
+    auto iconImage = BitmapImage::create([info.icon CGImage]);
+    context.drawImage(iconImage.get(), info.iconRect);
 }
 
 static void paintAttachmentText(GraphicsContext& context, RenderAttachmentInfo& info)
@@ -1856,7 +1897,7 @@ String RenderThemeIOS::extraDefaultStyleSheet()
 static NSBundle *arKitBundle()
 {
     static NSBundle *arKitBundle = []() {
-#if PLATFORM(IOS_SIMULATOR)
+#if PLATFORM(IOS_FAMILY_SIMULATOR)
         dlopen("/System/Library/PrivateFrameworks/AssetViewer.framework/AssetViewer", RTLD_NOW);
         return [NSBundle bundleForClass:NSClassFromString(@"ASVThumbnailView")];
 #else
@@ -2038,4 +2079,4 @@ void RenderThemeIOS::paintSystemPreviewBadge(Image& image, const PaintInfo& pain
 
 } // namespace WebCore
 
-#endif //PLATFORM(IOS)
+#endif //PLATFORM(IOS_FAMILY)

@@ -34,6 +34,8 @@
 namespace WebKit {
 using namespace WebCore;
 
+static const double maximumZoom = 3.0;
+
 GestureController::GestureController(GtkWidget* widget, std::unique_ptr<GestureControllerClient>&& client)
     : m_client(WTFMove(client))
     , m_dragGesture(widget, *m_client)
@@ -51,7 +53,11 @@ bool GestureController::handleEvent(GdkEvent* event)
     m_swipeGesture.handleEvent(event);
     m_zoomGesture.handleEvent(event);
     m_longpressGesture.handleEvent(event);
+#if GTK_CHECK_VERSION(3, 10, 0)
+    touchEnd = (gdk_event_get_event_type(event) == GDK_TOUCH_END) || (gdk_event_get_event_type(event) == GDK_TOUCH_CANCEL);
+#else
     touchEnd = (event->type == GDK_TOUCH_END) || (event->type == GDK_TOUCH_CANCEL);
+#endif
     return touchEnd ? wasProcessingGestures : isProcessingGestures();
 }
 
@@ -214,6 +220,8 @@ void GestureController::ZoomGesture::scaleChanged(ZoomGesture* zoomGesture, doub
     zoomGesture->m_scale = zoomGesture->m_initialScale * scale;
     if (zoomGesture->m_scale < 1.0)
         zoomGesture->m_scale = 1.0;
+    if (zoomGesture->m_scale > maximumZoom)
+        zoomGesture->m_scale = maximumZoom;
 
     zoomGesture->m_viewPoint = zoomGesture->center();
 

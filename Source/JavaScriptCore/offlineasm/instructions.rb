@@ -53,9 +53,11 @@ MACRO_INSTRUCTIONS =
      "loadi",
      "loadis",
      "loadb",
-     "loadbs",
+     "loadbsi",
+     "loadbsq",
      "loadh",
-     "loadhs",
+     "loadhsi",
+     "loadhsq",
      "storei",
      "storeb",
      "loadd",
@@ -252,7 +254,8 @@ MACRO_INSTRUCTIONS =
      "memfence",
      "tagReturnAddress",
      "untagReturnAddress",
-     "removeCodePtrTag"
+     "removeCodePtrTag",
+     "untagArrayPtr",    
     ]
 
 X86_INSTRUCTIONS =
@@ -264,11 +267,13 @@ X86_INSTRUCTIONS =
 ARM_INSTRUCTIONS =
     [
      "clrbp",
-     "mvlbl"
+     "mvlbl",
+     "globaladdr"
     ]
 
 ARM64_INSTRUCTIONS =
     [
+     "bfiq", # Bit field insert <source reg> <last bit written> <width immediate> <dest reg>
      "pcrtoaddr",   # Address from PC relative offset - adr instruction
      "nopFixCortexA53Err835769", # nop on Cortex-A53 (nothing otherwise)
      "globaladdr"
@@ -323,3 +328,7 @@ def hasFallThrough(instruction)
     instruction != "ret" and instruction != "jmp"
 end
 
+def isPowerOfTwo(value)
+    return false if value <= 0
+    (value & (value - 1)).zero?
+end

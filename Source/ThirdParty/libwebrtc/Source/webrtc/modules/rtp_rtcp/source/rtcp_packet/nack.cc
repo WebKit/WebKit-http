@@ -11,6 +11,7 @@
 #include "modules/rtp_rtcp/source/rtcp_packet/nack.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <utility>
 
 #include "modules/rtp_rtcp/source/byte_io.h"
@@ -46,8 +47,9 @@ constexpr size_t Nack::kNackItemLength;
 //   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 //   |            PID                |             BLP               |
 //   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-Nack::Nack() {}
-Nack::~Nack() {}
+Nack::Nack() = default;
+Nack::Nack(const Nack& rhs) = default;
+Nack::~Nack() = default;
 
 bool Nack::Parse(const CommonHeader& packet) {
   RTC_DCHECK_EQ(packet.type(), kPacketType);

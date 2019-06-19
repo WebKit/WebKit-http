@@ -1,11 +1,11 @@
 set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
-set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY_WTF "${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}")
 
 include_directories(
-    ${FORWARDING_HEADERS_DIR}
+    "${FORWARDING_HEADERS_DIR}"
 )
 
 set(test_main_SOURCES
+    ${TESTWEBKITAPI_DIR}/cocoa/UtilitiesCocoa.mm
     ${TESTWEBKITAPI_DIR}/mac/mainMac.mm
 )
 
@@ -17,7 +17,6 @@ list(APPEND test_wtf_LIBRARIES
     ${CARBON_LIBRARY}
     ${COCOA_LIBRARY}
     ${COREFOUNDATION_LIBRARY}
-    libicucore.dylib
 )
 
 list(APPEND TestWebKitAPI_LIBRARIES
@@ -25,7 +24,6 @@ list(APPEND TestWebKitAPI_LIBRARIES
 )
 
 set(bundle_harness_SOURCES
-    ${TESTWEBKITAPI_DIR}/cocoa/InstanceMethodSwizzler.mm
     ${TESTWEBKITAPI_DIR}/cocoa/PlatformUtilitiesCocoa.mm
     ${TESTWEBKITAPI_DIR}/cocoa/UtilitiesCocoa.mm
     ${TESTWEBKITAPI_DIR}/mac/InjectedBundleControllerMac.mm
@@ -33,4 +31,8 @@ set(bundle_harness_SOURCES
     ${TESTWEBKITAPI_DIR}/mac/PlatformWebViewMac.mm
     ${TESTWEBKITAPI_DIR}/mac/SyntheticBackingScaleFactorWindow.m
     ${TESTWEBKITAPI_DIR}/mac/TestBrowsingContextLoadDelegate.mm
+)
+
+list(APPEND TestWebKitLegacy_SOURCES
+    ${test_main_SOURCES}
 )

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,11 +26,11 @@
 
 #pragma once
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
 namespace WebCore {
 
-class VideoFullscreenChangeObserver {
+class VideoFullscreenChangeObserver : public CanMakeWeakPtr<VideoFullscreenChangeObserver> {
 public:
     virtual ~VideoFullscreenChangeObserver() { };
     virtual void requestUpdateInlineRect() = 0;

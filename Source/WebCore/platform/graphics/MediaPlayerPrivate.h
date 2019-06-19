@@ -50,15 +50,16 @@ public:
     virtual void prepareToPlay() { }
     virtual PlatformLayer* platformLayer() const { return 0; }
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     virtual void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler) { completionHandler(); }
     virtual void updateVideoFullscreenInlineImage() { }
     virtual void setVideoFullscreenFrame(FloatRect) { }
     virtual void setVideoFullscreenGravity(MediaPlayer::VideoGravity) { }
     virtual void setVideoFullscreenMode(MediaPlayer::VideoFullscreenMode) { }
+    virtual void videoFullscreenStandbyChanged() { }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     virtual NSArray *timedMetadata() const { return 0; }
     virtual String accessLog() const { return emptyString(); }
     virtual String errorLog() const { return emptyString(); }
@@ -67,7 +68,7 @@ public:
 
     virtual void play() = 0;
     virtual void pause() = 0;    
-    virtual void setShouldBufferData(bool) { }
+    virtual void setBufferingPolicy(MediaPlayer::BufferingPolicy) { }
 
     virtual bool supportsPictureInPicture() const { return false; }
     virtual bool supportsFullscreen() const { return false; }
@@ -113,7 +114,7 @@ public:
 
     virtual void setVolume(float) { }
     virtual void setVolumeDouble(double volume) { return setVolume(volume); }
-#if PLATFORM(IOS) || USE(GSTREAMER)
+#if PLATFORM(IOS_FAMILY) || USE(GSTREAMER)
     virtual float volume() const { return 1; }
 #endif
 
@@ -190,7 +191,7 @@ public:
 
     virtual bool hasSingleSecurityOrigin() const { return false; }
     virtual bool didPassCORSAccessCheck() const { return false; }
-    virtual std::optional<bool> wouldTaintOrigin(const SecurityOrigin&) const { return std::nullopt; }
+    virtual Optional<bool> wouldTaintOrigin(const SecurityOrigin&) const { return WTF::nullopt; }
 
     virtual MediaPlayer::MovieLoadType movieLoadType() const { return MediaPlayer::Unknown; }
 
@@ -232,6 +233,7 @@ public:
     virtual void cdmInstanceAttached(CDMInstance&) { }
     virtual void cdmInstanceDetached(CDMInstance&) { }
     virtual void attemptToDecryptWithInstance(CDMInstance&) { }
+    virtual bool waitingForKey() const { return false; }
 #endif
 
 #if ENABLE(VIDEO_TRACK)
@@ -264,9 +266,7 @@ public:
 
     virtual bool ended() const { return false; }
 
-#if ENABLE(MEDIA_SOURCE)
-    virtual std::optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() { return std::nullopt; }
-#endif
+    virtual Optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() { return WTF::nullopt; }
 
 #if ENABLE(AVF_CAPTIONS)
     virtual void notifyTrackModeChanged() { }
@@ -279,9 +279,13 @@ public:
     virtual void applicationWillResignActive() { }
     virtual void applicationDidBecomeActive() { }
 
-#if ENABLE(VIDEO) && USE(AVFOUNDATION)
+#if USE(AVFOUNDATION)
     virtual AVPlayer *objCAVFoundationAVPlayer() const { return nullptr; }
 #endif
+
+    virtual bool performTaskAtMediaTime(WTF::Function<void()>&&, MediaTime) { return false; }
+
+    virtual bool shouldIgnoreIntrinsicSize() { return false; }
 };
 
 }

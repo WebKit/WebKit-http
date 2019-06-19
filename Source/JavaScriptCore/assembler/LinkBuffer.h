@@ -93,10 +93,10 @@ public:
     LinkBuffer(MacroAssembler& macroAssembler, MacroAssemblerCodePtr<tag> code, size_t size, JITCompilationEffort effort = JITCompilationMustSucceed, bool shouldPerformBranchCompaction = true)
         : m_size(size)
         , m_didAllocate(false)
-        , m_code(code.template retagged<LinkBufferPtrTag>())
 #ifndef NDEBUG
         , m_completed(false)
 #endif
+        , m_code(code.template retagged<LinkBufferPtrTag>())
     {
 #if ENABLE(BRANCH_COMPACTION)
         m_shouldPerformBranchCompaction = shouldPerformBranchCompaction;
@@ -261,17 +261,13 @@ public:
     }
 
     template<PtrTag tag, typename... Args>
-    CodeRef<tag> finalizeCodeWithDisassembly(const char* format, Args... args)
+    CodeRef<tag> finalizeCodeWithDisassembly(bool dumpDisassembly, const char* format, Args... args)
     {
-#if COMPILER(GCC_OR_CLANG)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-nonliteral"
-#pragma GCC diagnostic ignored "-Wformat-security"
-#endif
-        return finalizeCodeWithDisassemblyImpl(format, args...).template retagged<tag>();
-#if COMPILER(GCC_OR_CLANG)
-#pragma GCC diagnostic pop
-#endif
+        ALLOW_NONLITERAL_FORMAT_BEGIN
+        IGNORE_WARNINGS_BEGIN("format-security")
+        return finalizeCodeWithDisassemblyImpl(dumpDisassembly, format, args...).template retagged<tag>();
+        IGNORE_WARNINGS_END
+        ALLOW_NONLITERAL_FORMAT_END
     }
 
     template<PtrTag tag>
@@ -292,7 +288,7 @@ public:
 
 private:
     JS_EXPORT_PRIVATE CodeRef<LinkBufferPtrTag> finalizeCodeWithoutDisassemblyImpl();
-    JS_EXPORT_PRIVATE CodeRef<LinkBufferPtrTag> finalizeCodeWithDisassemblyImpl(const char* format, ...) WTF_ATTRIBUTE_PRINTF(2, 3);
+    JS_EXPORT_PRIVATE CodeRef<LinkBufferPtrTag> finalizeCodeWithDisassemblyImpl(bool dumpDisassembly, const char* format, ...) WTF_ATTRIBUTE_PRINTF(3, 4);
 
 #if ENABLE(BRANCH_COMPACTION)
     int executableOffsetFor(int location)
@@ -346,18 +342,27 @@ private:
     bool m_shouldPerformBranchCompaction { true };
 #endif
     bool m_didAllocate;
-    MacroAssemblerCodePtr<LinkBufferPtrTag> m_code;
 #ifndef NDEBUG
     bool m_completed;
 #endif
     bool m_alreadyDisassembled { false };
+    MacroAssemblerCodePtr<LinkBufferPtrTag> m_code;
     Vector<RefPtr<SharedTask<void(LinkBuffer&)>>> m_linkTasks;
 };
 
+#if OS(LINUX)
 #define FINALIZE_CODE_IF(condition, linkBufferReference, resultPtrTag, ...)  \
     (UNLIKELY((condition))                                              \
-        ? (linkBufferReference).finalizeCodeWithDisassembly<resultPtrTag>(__VA_ARGS__) \
+        ? (linkBufferReference).finalizeCodeWithDisassembly<resultPtrTag>(true, __VA_ARGS__) \
+        : (UNLIKELY(JSC::Options::logJITCodeForPerf()) \
+            ? (linkBufferReference).finalizeCodeWithDisassembly<resultPtrTag>(false, __VA_ARGS__) \
+            : (linkBufferReference).finalizeCodeWithoutDisassembly<resultPtrTag>()))
+#else
+#define FINALIZE_CODE_IF(condition, linkBufferReference, resultPtrTag, ...)  \
+    (UNLIKELY((condition))                                              \
+        ? (linkBufferReference).finalizeCodeWithDisassembly<resultPtrTag>(true, __VA_ARGS__) \
         : (linkBufferReference).finalizeCodeWithoutDisassembly<resultPtrTag>())
+#endif
 
 bool shouldDumpDisassemblyFor(CodeBlock*);
 

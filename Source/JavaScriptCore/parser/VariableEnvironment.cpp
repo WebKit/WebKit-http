@@ -154,12 +154,21 @@ VariableEnvironment CompactVariableEnvironment::toVariableEnvironment() const
 CompactVariableMap::Handle CompactVariableMap::get(const VariableEnvironment& env)
 {
     auto* environment = new CompactVariableEnvironment(env);
+    bool isNewEntry;
+    auto handle = get(environment, isNewEntry);
+    if (!isNewEntry)
+        delete environment;
+    return handle;
+}
+
+CompactVariableMap::Handle CompactVariableMap::get(CompactVariableEnvironment* environment, bool& isNewEntry)
+{
     CompactVariableMapKey key { *environment };
     auto addResult = m_map.add(key, 1);
+    isNewEntry = addResult.isNewEntry;
     if (addResult.isNewEntry)
         return CompactVariableMap::Handle(*environment, *this);
 
-    delete environment;
     ++addResult.iterator->value;
     return CompactVariableMap::Handle(addResult.iterator->key.environment(), *this);
 }
@@ -179,8 +188,25 @@ CompactVariableMap::Handle::~Handle()
     if (!iter->value) {
         ASSERT(m_environment == &iter->key.environment());
         m_map->m_map.remove(iter);
-        fastFree(m_environment);
+        delete m_environment;
     }
+}
+
+CompactVariableMap::Handle::Handle(const CompactVariableMap::Handle& other)
+    : m_environment(other.m_environment)
+    , m_map(other.m_map)
+{
+    if (m_map) {
+        auto iter = m_map->m_map.find(CompactVariableMapKey { *m_environment });
+        RELEASE_ASSERT(iter != m_map->m_map.end());
+        ++iter->value;
+    }
+}
+
+CompactVariableMap::Handle::Handle(CompactVariableEnvironment& environment, CompactVariableMap& map)
+    : m_environment(&environment)
+    , m_map(&map)
+{ 
 }
 
 } // namespace JSC

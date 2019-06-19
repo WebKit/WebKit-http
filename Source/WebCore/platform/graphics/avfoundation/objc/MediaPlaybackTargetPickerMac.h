@@ -26,7 +26,7 @@
 #ifndef MediaPlaybackTargetPickerMac_h
 #define MediaPlaybackTargetPickerMac_h
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
 
 #include "MediaPlaybackTargetPicker.h"
 #include <wtf/RetainPtr.h>
@@ -37,6 +37,7 @@ OBJC_CLASS WebAVOutputDeviceMenuControllerHelper;
 namespace WebCore {
 
 class MediaPlaybackTargetPickerMac final : public MediaPlaybackTargetPicker {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(MediaPlaybackTargetPickerMac);
 public:
     explicit MediaPlaybackTargetPickerMac(MediaPlaybackTargetPicker::Client&);

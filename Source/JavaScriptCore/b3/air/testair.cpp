@@ -45,6 +45,7 @@
 #include <wtf/NumberOfCores.h>
 #include <wtf/StdMap.h>
 #include <wtf/Threading.h>
+#include <wtf/text/StringCommon.h>
 
 // We don't have a NO_RETURN_DUE_TO_EXIT, nor should we. That's ridiculous.
 static bool hiddenTruthBecauseNoReturnIsStupid() { return true; }
@@ -138,9 +139,10 @@ void loadConstantImpl(BasicBlock* block, T value, B3::Air::Opcode move, Tmp tmp,
     block->append(move, nullptr, Arg::addr(scratch), tmp);
 }
 
-void loadConstant(BasicBlock* block, intptr_t value, Tmp tmp)
+template<typename T>
+void loadConstant(BasicBlock* block, T value, Tmp tmp)
 {
-    loadConstantImpl<intptr_t>(block, value, Move, tmp, tmp);
+    loadConstantImpl(block, value, Move, tmp, tmp);
 }
 
 void loadDoubleConstant(BasicBlock* block, double value, Tmp tmp, Tmp scratch)
@@ -2027,26 +2029,60 @@ void testArgumentRegPinned3()
     CHECK(r == 10 + 42 + 42);
 }
 
-#define RUN(test) do {                          \
-        if (!shouldRun(#test))                  \
-            break;                              \
-        tasks.append(                           \
-            createSharedTask<void()>(           \
-                [&] () {                        \
-                    dataLog(#test "...\n");     \
-                    test;                       \
-                    dataLog(#test ": OK!\n");   \
-                }));                            \
+void testLea64()
+{
+    B3::Procedure proc;
+    Code& code = proc.code();
+
+    BasicBlock* root = code.addBlock();
+
+    int64_t a = 0x11223344;
+    int64_t b = 1 << 13;
+
+    root->append(Lea64, nullptr, Arg::addr(Tmp(GPRInfo::argumentGPR0), b), Tmp(GPRInfo::returnValueGPR));
+    root->append(Ret64, nullptr, Tmp(GPRInfo::returnValueGPR));
+
+    int64_t r = compileAndRun<int64_t>(proc, a);
+    CHECK(r == a + b);
+}
+
+void testLea32()
+{
+    B3::Procedure proc;
+    Code& code = proc.code();
+
+    BasicBlock* root = code.addBlock();
+
+    int32_t a = 0x11223344;
+    int32_t b = 1 << 13;
+
+    root->append(Lea32, nullptr, Arg::addr(Tmp(GPRInfo::argumentGPR0), b), Tmp(GPRInfo::returnValueGPR));
+    root->append(Ret32, nullptr, Tmp(GPRInfo::returnValueGPR));
+
+    int32_t r = compileAndRun<int32_t>(proc, a);
+    CHECK(r == a + b);
+}
+
+#define PREFIX "O", Options::defaultB3OptLevel(), ": "
+
+#define RUN(test) do {                                 \
+        if (!shouldRun(#test))                         \
+            break;                                     \
+        tasks.append(                                  \
+            createSharedTask<void()>(                  \
+                [&] () {                               \
+                    dataLog(PREFIX #test "...\n");     \
+                    test;                              \
+                    dataLog(PREFIX #test ": OK!\n");   \
+                }));                                   \
     } while (false);
 
 void run(const char* filter)
 {
-    JSC::initializeThreading();
-
     Deque<RefPtr<SharedTask<void()>>> tasks;
 
     auto shouldRun = [&] (const char* testName) -> bool {
-        return !filter || !!strcasestr(testName, filter);
+        return !filter || WTF::findIgnoringASCIICaseWithoutLength(testName, filter) != WTF::notFound;
     };
 
     RUN(testSimple());
@@ -2112,6 +2148,9 @@ void run(const char* filter)
     RUN(testArgumentRegPinned2());
     RUN(testArgumentRegPinned3());
 
+    RUN(testLea32());
+    RUN(testLea64());
+
     if (tasks.isEmpty())
         usage();
 
@@ -2140,6 +2179,7 @@ void run(const char* filter)
     for (auto& thread : threads)
         thread->waitForCompletion();
     crashLock.lock();
+    crashLock.unlock();
 }
 
 } // anonymous namespace
@@ -2167,6 +2207,19 @@ int main(int argc, char** argv)
         break;
     }
     
-    run(filter);
+    JSC::initializeThreading();
+
+    for (unsigned i = 0; i <= 2; ++i) {
+        JSC::Options::defaultB3OptLevel() = i;
+        run(filter);
+    }
+
     return 0;
 }
+
+#if OS(WINDOWS)
+extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(int argc, const char* argv[])
+{
+    return main(argc, const_cast<char**>(argv));
+}
+#endif

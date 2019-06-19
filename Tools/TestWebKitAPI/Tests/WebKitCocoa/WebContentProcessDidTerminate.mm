@@ -25,8 +25,6 @@
 
 #include "config.h"
 
-#if WK_API_ENABLED
-
 #import "PlatformUtilities.h"
 #import "Test.h"
 #import <WebKit/WKNavigationDelegatePrivate.h>
@@ -230,21 +228,21 @@ TEST(WKNavigation, ProcessCrashDuringCallback)
     __block WKWebView *view = webView.get();
     [webView _getContentsAsStringWithCompletionHandler:^(NSString *contents, NSError *error) {
         if (!!error)
-            EXPECT_EQ(WKErrorWebContentProcessTerminated, error.code);
+            EXPECT_TRUE(error.code == WKErrorWebContentProcessTerminated || error.code == WKErrorWebViewInvalidated);
         ++callbackCount;
         if (callbackCount == 6)
             calledAllCallbacks = true;
     }];
     [webView _getContentsAsStringWithCompletionHandler:^(NSString *contents, NSError *error) {
         if (!!error)
-            EXPECT_EQ(WKErrorWebContentProcessTerminated, error.code);
+            EXPECT_TRUE(error.code == WKErrorWebContentProcessTerminated || error.code == WKErrorWebViewInvalidated);
         ++callbackCount;
         if (callbackCount == 6)
             calledAllCallbacks = true;
     }];
     [webView _getContentsAsStringWithCompletionHandler:^(NSString *contents, NSError *error) {
         if (!!error)
-            EXPECT_EQ(WKErrorWebContentProcessTerminated, error.code);
+            EXPECT_TRUE(error.code == WKErrorWebContentProcessTerminated || error.code == WKErrorWebViewInvalidated);
         [view _close]; // Calling _close will also invalidate all callbacks.
         ++callbackCount;
         if (callbackCount == 6)
@@ -252,21 +250,21 @@ TEST(WKNavigation, ProcessCrashDuringCallback)
     }];
     [webView _getContentsAsStringWithCompletionHandler:^(NSString *contents, NSError *error) {
         if (!!error)
-            EXPECT_EQ(WKErrorWebContentProcessTerminated, error.code);
+            EXPECT_TRUE(error.code == WKErrorWebContentProcessTerminated || error.code == WKErrorWebViewInvalidated);
         ++callbackCount;
         if (callbackCount == 6)
             calledAllCallbacks = true;
     }];
     [webView _getContentsAsStringWithCompletionHandler:^(NSString *contents, NSError *error) {
         if (!!error)
-            EXPECT_EQ(WKErrorWebContentProcessTerminated, error.code);
+            EXPECT_TRUE(error.code == WKErrorWebContentProcessTerminated || error.code == WKErrorWebViewInvalidated);
         ++callbackCount;
         if (callbackCount == 6)
             calledAllCallbacks = true;
     }];
     [webView _getContentsAsStringWithCompletionHandler:^(NSString *contents, NSError *error) {
         if (!!error)
-            EXPECT_EQ(WKErrorWebContentProcessTerminated, error.code);
+            EXPECT_TRUE(error.code == WKErrorWebContentProcessTerminated || error.code == WKErrorWebViewInvalidated);
         ++callbackCount;
         if (callbackCount == 6)
             calledAllCallbacks = true;
@@ -279,5 +277,3 @@ TEST(WKNavigation, ProcessCrashDuringCallback)
     TestWebKitAPI::Util::sleep(0.5);
     EXPECT_EQ(6U, callbackCount);
 }
-
-#endif // WK_API_ENABLED

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,28 +26,33 @@
 #pragma once
 
 #include <wtf/FastMalloc.h>
+#include <wtf/StdLibExtras.h>
 
 #if defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC
 #define GIGACAGE_ENABLED 0
-#define PRIMITIVE_GIGACAGE_MASK 0
-#define JSVALUE_GIGACAGE_MASK 0
-#define GIGACAGE_BASE_PTRS_SIZE 8192
-
-extern "C" {
-alignas(void*) extern WTF_EXPORT_PRIVATE char g_gigacageBasePtrs[GIGACAGE_BASE_PTRS_SIZE];
-}
 
 namespace Gigacage {
 
+const size_t primitiveGigacageMask = 0;
+const size_t jsValueGigacageMask = 0;
+const size_t gigacageBasePtrsSize = 8 * KB;
+
+extern "C" alignas(void*) WTF_EXPORT_PRIVATE char g_gigacageBasePtrs[gigacageBasePtrsSize];
+
 struct BasePtrs {
+    uintptr_t reservedForFlags;
     void* primitive;
     void* jsValue;
 };
 
 enum Kind {
+    ReservedForFlagsAndNotABasePtr = 0,
     Primitive,
     JSValue,
 };
+
+static_assert(offsetof(BasePtrs, primitive) == Kind::Primitive * sizeof(void*), "");
+static_assert(offsetof(BasePtrs, jsValue) == Kind::JSValue * sizeof(void*), "");
 
 inline void ensureGigacage() { }
 inline void disablePrimitiveGigacage() { }
@@ -65,6 +70,8 @@ inline bool canPrimitiveGigacageBeDisabled() { return true; }
 ALWAYS_INLINE const char* name(Kind kind)
 {
     switch (kind) {
+    case ReservedForFlagsAndNotABasePtr:
+        RELEASE_ASSERT_NOT_REACHED();
     case Primitive:
         return "Primitive";
     case JSValue:
@@ -77,6 +84,8 @@ ALWAYS_INLINE const char* name(Kind kind)
 ALWAYS_INLINE void*& basePtr(BasePtrs& basePtrs, Kind kind)
 {
     switch (kind) {
+    case ReservedForFlagsAndNotABasePtr:
+        RELEASE_ASSERT_NOT_REACHED();
     case Primitive:
         return basePtrs.primitive;
     case JSValue:
@@ -105,12 +114,15 @@ ALWAYS_INLINE size_t mask(Kind) { return 0; }
 
 template<typename T>
 inline T* caged(Kind, T* ptr) { return ptr; }
+template<typename T>
+inline T* cagedMayBeNull(Kind, T* ptr) { return ptr; }
 
 inline bool isCaged(Kind, const void*) { return false; }
 
 inline void* tryAlignedMalloc(Kind, size_t alignment, size_t size) { return tryFastAlignedMalloc(alignment, size); }
 inline void alignedFree(Kind, void* p) { fastAlignedFree(p); }
 WTF_EXPORT_PRIVATE void* tryMalloc(Kind, size_t size);
+WTF_EXPORT_PRIVATE void* tryRealloc(Kind, void*, size_t);
 inline void free(Kind, void* p) { fastFree(p); }
 
 WTF_EXPORT_PRIVATE void* tryAllocateZeroedVirtualPages(Kind, size_t size);
@@ -125,6 +137,7 @@ namespace Gigacage {
 WTF_EXPORT_PRIVATE void* tryAlignedMalloc(Kind, size_t alignment, size_t size);
 WTF_EXPORT_PRIVATE void alignedFree(Kind, void*);
 WTF_EXPORT_PRIVATE void* tryMalloc(Kind, size_t);
+WTF_EXPORT_PRIVATE void* tryRealloc(Kind, void*, size_t);
 WTF_EXPORT_PRIVATE void free(Kind, void*);
 
 WTF_EXPORT_PRIVATE void* tryAllocateZeroedVirtualPages(Kind, size_t size);

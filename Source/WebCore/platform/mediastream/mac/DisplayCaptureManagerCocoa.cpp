@@ -28,15 +28,17 @@
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "CoreVideoSoftLink.h"
 #include "Logging.h"
 #include <wtf/Algorithms.h>
 #include <wtf/NeverDestroyed.h>
 
 #if PLATFORM(MAC)
 #include "ScreenDisplayCaptureSourceMac.h"
+#include "WindowDisplayCaptureSourceMac.h"
 #include <CoreGraphics/CGDirectDisplay.h>
 #endif
+
+#include "CoreVideoSoftLink.h"
 
 namespace WebCore {
 
@@ -51,6 +53,7 @@ const Vector<CaptureDevice>& DisplayCaptureManagerCocoa::captureDevices()
     m_devices.clear();
 
     updateDisplayCaptureDevices();
+    updateWindowCaptureDevices();
 
     return m_devices;
 }
@@ -62,26 +65,42 @@ void DisplayCaptureManagerCocoa::updateDisplayCaptureDevices()
 #endif
 }
 
-std::optional<CaptureDevice> DisplayCaptureManagerCocoa::screenCaptureDeviceWithPersistentID(const String& deviceID)
+void DisplayCaptureManagerCocoa::updateWindowCaptureDevices()
+{
+#if PLATFORM(MAC)
+    WindowDisplayCaptureSourceMac::windowCaptureDevices(m_devices);
+#endif
+}
+
+Optional<CaptureDevice> DisplayCaptureManagerCocoa::screenCaptureDeviceWithPersistentID(const String& deviceID)
 {
 #if PLATFORM(MAC)
     return ScreenDisplayCaptureSourceMac::screenCaptureDeviceWithPersistentID(deviceID);
 #else
     UNUSED_PARAM(deviceID);
-    return std::nullopt;
+    return WTF::nullopt;
 #endif
 }
 
-std::optional<CaptureDevice> DisplayCaptureManagerCocoa::captureDeviceWithPersistentID(CaptureDevice::DeviceType type, const String& id)
+Optional<CaptureDevice> DisplayCaptureManagerCocoa::windowCaptureDeviceWithPersistentID(const String& deviceID)
+{
+#if PLATFORM(MAC)
+    return WindowDisplayCaptureSourceMac::windowCaptureDeviceWithPersistentID(deviceID);
+#else
+    UNUSED_PARAM(deviceID);
+    return WTF::nullopt;
+#endif
+}
+
+Optional<CaptureDevice> DisplayCaptureManagerCocoa::captureDeviceWithPersistentID(CaptureDevice::DeviceType type, const String& id)
 {
     switch (type) {
     case CaptureDevice::DeviceType::Screen:
         return screenCaptureDeviceWithPersistentID(id);
         break;
-            
-    case CaptureDevice::DeviceType::Application:
+
     case CaptureDevice::DeviceType::Window:
-    case CaptureDevice::DeviceType::Browser:
+        return windowCaptureDeviceWithPersistentID(id);
         break;
 
     case CaptureDevice::DeviceType::Camera:
@@ -91,7 +110,7 @@ std::optional<CaptureDevice> DisplayCaptureManagerCocoa::captureDeviceWithPersis
         break;
     }
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 } // namespace WebCore

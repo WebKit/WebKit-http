@@ -26,6 +26,8 @@
 #pragma once
 
 #include "CallFrame.h"
+#include "JSCallee.h"
+#include "JSGlobalObject.h"
 
 namespace JSC {
 

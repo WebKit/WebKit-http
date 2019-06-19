@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "AbortSignal.h"
 #include "FetchBody.h"
 #include "FetchHeaders.h"
 #include "FetchOptions.h"
@@ -36,19 +37,20 @@ namespace WebCore {
 
 struct FetchRequestInit {
     String method;
-    std::optional<FetchHeaders::Init> headers;
-    std::optional<FetchBody::Init> body;
+    Optional<FetchHeaders::Init> headers;
+    Optional<FetchBody::Init> body;
     String referrer;
-    std::optional<ReferrerPolicy> referrerPolicy;
-    std::optional<FetchOptions::Mode> mode;
-    std::optional<FetchOptions::Credentials> credentials;
-    std::optional<FetchOptions::Cache> cache;
-    std::optional<FetchOptions::Redirect> redirect;
+    Optional<ReferrerPolicy> referrerPolicy;
+    Optional<FetchOptions::Mode> mode;
+    Optional<FetchOptions::Credentials> credentials;
+    Optional<FetchOptions::Cache> cache;
+    Optional<FetchOptions::Redirect> redirect;
     String integrity;
-    std::optional<bool> keepalive;
+    Optional<bool> keepalive;
+    JSC::JSValue signal;
     JSC::JSValue window;
 
-    bool hasMembers() const { return !method.isEmpty() || headers || body || !referrer.isEmpty() || referrerPolicy || mode || credentials || cache || redirect || !integrity.isEmpty() || keepalive || !window.isUndefined(); }
+    bool hasMembers() const { return !method.isEmpty() || headers || body || !referrer.isEmpty() || referrerPolicy || mode || credentials || cache || redirect || !integrity.isEmpty() || keepalive || !window.isUndefined() || !signal.isUndefined(); }
 };
 
 }

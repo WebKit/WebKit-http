@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Kelvin W Sherlock (ksherlock@gmail.com)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -46,6 +46,8 @@
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
 #include "JSObject.h"
+#include "JSPromise.h"
+#include "JSPromiseDeferred.h"
 #include "JSRetainPtr.h"
 #include "JSString.h"
 #include "JSValueRef.h"
@@ -273,6 +275,30 @@ JSObjectRef JSObjectMakeRegExp(JSContextRef ctx, size_t argumentCount, const JSV
         result = 0;
     
     return toRef(result);
+}
+
+JSObjectRef JSObjectMakeDeferredPromise(JSContextRef ctx, JSObjectRef* resolve, JSObjectRef* reject, JSValueRef* exception)
+{
+    if (!ctx) {
+        ASSERT_NOT_REACHED();
+        return nullptr;
+    }
+
+    ExecState* exec = toJS(ctx);
+    VM& vm = exec->vm();
+    JSLockHolder locker(exec);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
+    auto* globalObject = exec->lexicalGlobalObject();
+    JSPromiseDeferred::DeferredData data = JSPromiseDeferred::createDeferredData(exec, globalObject, globalObject->promiseConstructor());
+    if (handleExceptionIfNeeded(scope, exec, exception) == ExceptionStatus::DidThrow)
+        return nullptr;
+
+    if (resolve)
+        *resolve = toRef(data.resolve);
+    if (reject)
+        *reject = toRef(data.reject);
+    return toRef(data.promise);
 }
 
 JSValueRef JSObjectGetPrototype(JSContextRef ctx, JSObjectRef object)
@@ -525,7 +551,7 @@ static const ClassInfo* classInfoPrivate(JSObject* jsObject)
     if (vm.currentlyDestructingCallbackObject != jsObject)
         return jsObject->classInfo(vm);
 
-    return vm.currentlyDestructingCallbackObjectClassInfo.unpoisoned();
+    return vm.currentlyDestructingCallbackObjectClassInfo;
 }
 
 void* JSObjectGetPrivate(JSObjectRef object)
@@ -763,6 +789,7 @@ JSObjectRef JSObjectCallAsConstructor(JSContextRef ctx, JSObjectRef object, size
 struct OpaqueJSPropertyNameArray {
     WTF_MAKE_FAST_ALLOCATED;
 public:
+    // FIXME: Why not inherit from RefCounted?
     OpaqueJSPropertyNameArray(VM* vm)
         : refCount(0)
         , vm(vm)
@@ -771,7 +798,7 @@ public:
     
     unsigned refCount;
     VM* vm;
-    Vector<JSRetainPtr<JSStringRef>> array;
+    Vector<Ref<OpaqueJSString>> array;
 };
 
 JSPropertyNameArrayRef JSObjectCopyPropertyNames(JSContextRef ctx, JSObjectRef object)
@@ -793,8 +820,8 @@ JSPropertyNameArrayRef JSObjectCopyPropertyNames(JSContextRef ctx, JSObjectRef o
     size_t size = array.size();
     propertyNames->array.reserveInitialCapacity(size);
     for (size_t i = 0; i < size; ++i)
-        propertyNames->array.uncheckedAppend(JSRetainPtr<JSStringRef>(Adopt, OpaqueJSString::create(array[i].string()).leakRef()));
-    
+        propertyNames->array.uncheckedAppend(OpaqueJSString::tryCreate(array[i].string()).releaseNonNull());
+
     return JSPropertyNameArrayRetain(propertyNames);
 }
 
@@ -819,7 +846,7 @@ size_t JSPropertyNameArrayGetCount(JSPropertyNameArrayRef array)
 
 JSStringRef JSPropertyNameArrayGetNameAtIndex(JSPropertyNameArrayRef array, size_t index)
 {
-    return array->array[static_cast<unsigned>(index)].get();
+    return array->array[static_cast<unsigned>(index)].ptr();
 }
 
 void JSPropertyNameAccumulatorAddName(JSPropertyNameAccumulatorRef array, JSStringRef propertyName)

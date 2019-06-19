@@ -220,7 +220,7 @@ public:
     T& operator[](size_t index) { return at(index); }
 
     bool isArgument(size_t index) const { return index < m_numArguments; }
-    bool isVariable(size_t index) const { return !isArgument(index); }
+    bool isLocal(size_t index) const { return !isArgument(index); }
     int operandForIndex(size_t index) const
     {
         if (index < numberOfArguments())
@@ -266,7 +266,7 @@ public:
     
 private:
     // The first m_numArguments of m_values are arguments, the rest are locals.
-    Vector<T, 24, UnsafeVectorOverflow> m_values;
+    Vector<T, 0, UnsafeVectorOverflow> m_values;
     unsigned m_numArguments;
 };
 

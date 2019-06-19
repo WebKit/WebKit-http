@@ -45,7 +45,7 @@ class FunctionExecutable;
 namespace WebCore {
 
 /* GuardedBuiltin */
-extern const char* s_guardedBuiltinIsReadableStreamLockedCode;
+extern const char* const s_guardedBuiltinIsReadableStreamLockedCode;
 extern const int s_guardedBuiltinIsReadableStreamLockedCodeLength;
 extern const JSC::ConstructAbility s_guardedBuiltinIsReadableStreamLockedCodeConstructAbility;
 
@@ -176,7 +176,7 @@ namespace WebCore {
 const JSC::ConstructAbility s_guardedBuiltinIsReadableStreamLockedCodeConstructAbility = JSC::ConstructAbility::CannotConstruct;
 const int s_guardedBuiltinIsReadableStreamLockedCodeLength = 71;
 static const JSC::Intrinsic s_guardedBuiltinIsReadableStreamLockedCodeIntrinsic = JSC::NoIntrinsic;
-const char* s_guardedBuiltinIsReadableStreamLockedCode =
+const char* const s_guardedBuiltinIsReadableStreamLockedCode =
     "(function (stream)\n" \
     "{\n" \
     "   \"use strict\";\n" \
@@ -190,7 +190,7 @@ const char* s_guardedBuiltinIsReadableStreamLockedCode =
 JSC::FunctionExecutable* codeName##Generator(JSC::VM& vm) \
 {\
     JSVMClientData* clientData = static_cast<JSVMClientData*>(vm.clientData); \
-    return clientData->builtinFunctions().guardedBuiltinBuiltins().codeName##Executable()->link(vm, clientData->builtinFunctions().guardedBuiltinBuiltins().codeName##Source(), std::nullopt, s_##codeName##Intrinsic); \
+    return clientData->builtinFunctions().guardedBuiltinBuiltins().codeName##Executable()->link(vm, nullptr, clientData->builtinFunctions().guardedBuiltinBuiltins().codeName##Source(), WTF::nullopt, s_##codeName##Intrinsic); \
 }
 WEBCORE_FOREACH_GUARDEDBUILTIN_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 #undef DEFINE_BUILTIN_GENERATOR

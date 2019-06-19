@@ -118,6 +118,8 @@ class DeprecatedPort(object):
     def run_javascriptcore_tests_command(self, build_style=None):
         command = self.script_shell_command("run-javascriptcore-tests")
         command.append("--no-fail-fast")
+        if 'JSCTESTS_OPTIONS' in os.environ:
+            command += os.environ['JSCTESTS_OPTIONS'].split()
         return self._append_build_style_flag(command, build_style)
 
     def run_webkit_tests_command(self, build_style=None):
@@ -161,6 +163,7 @@ class IOSSimulatorWK2Port(DeprecatedPort):
     def run_webkit_tests_command(self, build_style=None):
         command = super(IOSSimulatorWK2Port, self).run_webkit_tests_command(build_style)
         command.append("--ios-simulator")
+        command.append("--dedicated-simulators")
         return command
 
 

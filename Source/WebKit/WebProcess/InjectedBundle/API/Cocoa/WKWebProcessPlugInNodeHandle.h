@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <WebKit/WKImage.h>
@@ -37,7 +35,7 @@
 
 @class WKWebProcessPlugInFrame;
 
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface WKWebProcessPlugInNodeHandle : NSObject
 
 + (WKWebProcessPlugInNodeHandle *)nodeHandleWithJSValue:(JSValue *)value inContext:(JSContext *)context;
@@ -47,8 +45,8 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 - (UIImage *)renderedImageWithOptions:(WKSnapshotOptions)options WK_API_AVAILABLE(ios(9.0));
 - (UIImage *)renderedImageWithOptions:(WKSnapshotOptions)options width:(NSNumber *)width WK_API_AVAILABLE(ios(11.0));
 #else
-- (NSImage *)renderedImageWithOptions:(WKSnapshotOptions)options WK_API_AVAILABLE(macosx(10.11));
-- (NSImage *)renderedImageWithOptions:(WKSnapshotOptions)options width:(NSNumber *)width WK_API_AVAILABLE(macosx(10.13));
+- (NSImage *)renderedImageWithOptions:(WKSnapshotOptions)options WK_API_AVAILABLE(macos(10.11));
+- (NSImage *)renderedImageWithOptions:(WKSnapshotOptions)options width:(NSNumber *)width WK_API_AVAILABLE(macos(10.13));
 #endif
 
 @property (nonatomic, readonly) CGRect elementBounds;
@@ -57,9 +55,8 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @property (nonatomic, readonly) BOOL HTMLTextAreaElementIsUserEdited;
 @property (nonatomic, readonly) WKWebProcessPlugInNodeHandle *HTMLTableCellElementCellAbove;
 @property (nonatomic, readonly) WKWebProcessPlugInFrame *frame;
+@property (nonatomic, readonly) BOOL isSelectElement WK_API_AVAILABLE(macos(10.14.4), ios(12.2));
 
 - (BOOL)isTextField;
 
 @end
-
-#endif // WK_API_ENABLED

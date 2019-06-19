@@ -49,7 +49,7 @@ ExceptionOr<Ref<ImageData>> ImageData::create(unsigned sw, unsigned sh)
     IntSize size(sw, sh);
     auto data = adoptRef(*new ImageData(size));
     data->data()->zeroFill();
-    return WTFMove(data);
+    return data;
 }
 
 RefPtr<ImageData> ImageData::create(const IntSize& size)
@@ -77,7 +77,7 @@ RefPtr<ImageData> ImageData::create(const IntSize& size, Ref<Uint8ClampedArray>&
     return adoptRef(*new ImageData(size, WTFMove(byteArray)));
 }
 
-ExceptionOr<RefPtr<ImageData>> ImageData::create(Ref<Uint8ClampedArray>&& byteArray, unsigned sw, std::optional<unsigned> sh)
+ExceptionOr<RefPtr<ImageData>> ImageData::create(Ref<Uint8ClampedArray>&& byteArray, unsigned sw, Optional<unsigned> sh)
 {
     unsigned length = byteArray->length();
     if (!length || length % 4)
@@ -99,15 +99,13 @@ ImageData::ImageData(const IntSize& size)
     : m_size(size)
     , m_data(Uint8ClampedArray::createUninitialized((size.area() * 4).unsafeGet()))
 {
-    ASSERT(m_data);
 }
 
 ImageData::ImageData(const IntSize& size, Ref<Uint8ClampedArray>&& byteArray)
     : m_size(size)
     , m_data(WTFMove(byteArray))
 {
-    ASSERT(m_data);
-    ASSERT_WITH_SECURITY_IMPLICATION(!m_data || (size.area() * 4).unsafeGet() <= m_data->length());
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION((size.area() * 4).unsafeGet() <= m_data->length());
 }
 
 }

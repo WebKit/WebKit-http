@@ -30,8 +30,8 @@
 #if USE(APPLE_INTERNAL_SDK)
 
 #if PLATFORM(MAC)
-#import <LaunchServices/LaunchServicesPriv.h>
-#elif PLATFORM(IOS)
+#import <CoreServices/CoreServicesPriv.h>
+#elif PLATFORM(IOS_FAMILY)
 #import <MobileCoreServices/LSAppLinkPriv.h>
 #endif
 
@@ -60,9 +60,15 @@ typedef void (^LSAppLinkOpenCompletionHandler)(BOOL success, NSError *error);
 @end
 
 @interface LSAppLink ()
+#if HAVE(APP_LINKS_WITH_ISENABLED)
++ (NSArray<LSAppLink *> *)appLinksWithURL:(NSURL *)aURL limit:(NSUInteger)limit error:(NSError **)outError;
+- (void)openWithCompletionHandler:(LSAppLinkOpenCompletionHandler)completionHandler;
+@property (nonatomic, getter=isEnabled) BOOL enabled;
+#else
 + (void)getAppLinkWithURL:(NSURL *)aURL completionHandler:(LSAppLinkCompletionHandler)completionHandler;
-+ (void)openWithURL:(NSURL *)aURL completionHandler:(LSAppLinkOpenCompletionHandler)completionHandler;
 - (void)openInWebBrowser:(BOOL)inWebBrowser setAppropriateOpenStrategyAndWebBrowserState:(NSDictionary<NSString *, id> *)state completionHandler:(LSAppLinkOpenCompletionHandler)completionHandler;
+#endif
++ (void)openWithURL:(NSURL *)aURL completionHandler:(LSAppLinkOpenCompletionHandler)completionHandler;
 @property (readonly, strong) LSApplicationProxy *targetApplicationProxy;
 @end
 #endif
@@ -79,6 +85,7 @@ enum LSSessionID {
 
 typedef const struct CF_BRIDGED_TYPE(id) __LSASN* LSASNRef;
 typedef enum LSSessionID LSSessionID;
+typedef struct ProcessSerialNumber ProcessSerialNumber;
 
 WTF_EXTERN_C_BEGIN
 
@@ -86,6 +93,9 @@ extern const CFStringRef _kLSDisplayNameKey;
 
 LSASNRef _LSGetCurrentApplicationASN();
 OSStatus _LSSetApplicationInformationItem(LSSessionID, LSASNRef, CFStringRef keyToSetRef, CFTypeRef valueToSetRef, CFDictionaryRef* newInformationDictRef);
+CFTypeRef _LSCopyApplicationInformationItem(LSSessionID, LSASNRef, CFTypeRef);
+
+OSStatus _RegisterApplication(CFDictionaryRef, ProcessSerialNumber*);
 
 WTF_EXTERN_C_END
 

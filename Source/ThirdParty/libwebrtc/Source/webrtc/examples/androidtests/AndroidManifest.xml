@@ -14,17 +14,14 @@
       package="org.appspot.apprtc.test">
 
     <uses-permission android:name="android.permission.RUN_INSTRUMENTATION" />
-    <uses-sdk android:minSdkVersion="13" android:targetSdkVersion="21" />
+    <uses-sdk android:minSdkVersion="16" android:targetSdkVersion="21" />
 
     <application>
         <uses-library android:name="android.test.runner" />
     </application>
 
-    <!-- tools:ignore needed for chromium-junit4 tag. crbug.com/640116
-         TODO(sakal): Remove once the tag is no longer needed. -->
     <instrumentation android:name="android.support.test.runner.AndroidJUnitRunner"
         tools:ignore="MissingPrefix"
         android:targetPackage="org.appspot.apprtc"
-        android:label="Tests for AppRTCMobile"
-        chromium-junit4="true"/>
+        android:label="Tests for AppRTCMobile"/>
 </manifest>

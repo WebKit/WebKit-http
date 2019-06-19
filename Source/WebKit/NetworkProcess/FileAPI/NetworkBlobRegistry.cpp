@@ -37,139 +37,128 @@
 namespace WebKit {
 using namespace WebCore;
 
-NetworkBlobRegistry& NetworkBlobRegistry::singleton()
-{
-    ASSERT(RunLoop::isMain());
-    static NeverDestroyed<NetworkBlobRegistry> registry;
-    return registry;
-}
+NetworkBlobRegistry::NetworkBlobRegistry() = default;
+NetworkBlobRegistry::~NetworkBlobRegistry() = default;
 
-NetworkBlobRegistry::NetworkBlobRegistry()
+void NetworkBlobRegistry::registerFileBlobURL(NetworkConnectionToWebProcess& connection, const URL& url, const String& path, RefPtr<SandboxExtension>&& sandboxExtension, const String& contentType)
 {
-}
+    m_blobRegistry.registerFileBlobURL(url, BlobDataFileReferenceWithSandboxExtension::create(path, WTFMove(sandboxExtension)), contentType);
 
-void NetworkBlobRegistry::registerFileBlobURL(NetworkConnectionToWebProcess* connection, const URL& url, const String& path, RefPtr<SandboxExtension>&& sandboxExtension, const String& contentType)
-{
-    blobRegistry().registerFileBlobURL(url, BlobDataFileReferenceWithSandboxExtension::create(path, WTFMove(sandboxExtension)), contentType);
-
-    ASSERT(!m_blobsForConnection.get(connection).contains(url));
-    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(connection);
+    ASSERT(!m_blobsForConnection.get(&connection).contains(url));
+    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(&connection);
     if (mapIterator == m_blobsForConnection.end())
-        mapIterator = m_blobsForConnection.add(connection, HashSet<URL>()).iterator;
+        mapIterator = m_blobsForConnection.add(&connection, HashSet<URL>()).iterator;
     mapIterator->value.add(url);
 }
 
-void NetworkBlobRegistry::registerBlobURL(NetworkConnectionToWebProcess* connection, const URL& url, Vector<WebCore::BlobPart>&& blobParts, const String& contentType)
+void NetworkBlobRegistry::registerBlobURL(NetworkConnectionToWebProcess& connection, const URL& url, Vector<WebCore::BlobPart>&& blobParts, const String& contentType)
 {
-    blobRegistry().registerBlobURL(url, WTFMove(blobParts), contentType);
+    m_blobRegistry.registerBlobURL(url, WTFMove(blobParts), contentType);
 
-    ASSERT(!m_blobsForConnection.get(connection).contains(url));
-    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(connection);
+    ASSERT(!m_blobsForConnection.get(&connection).contains(url));
+    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(&connection);
     if (mapIterator == m_blobsForConnection.end())
-        mapIterator = m_blobsForConnection.add(connection, HashSet<URL>()).iterator;
+        mapIterator = m_blobsForConnection.add(&connection, HashSet<URL>()).iterator;
     mapIterator->value.add(url);
 }
 
-void NetworkBlobRegistry::registerBlobURL(NetworkConnectionToWebProcess* connection, const WebCore::URL& url, const WebCore::URL& srcURL, bool shouldBypassConnectionCheck)
+void NetworkBlobRegistry::registerBlobURL(NetworkConnectionToWebProcess& connection, const URL& url, const URL& srcURL, bool shouldBypassConnectionCheck)
 {
     // The connection may not be registered if NetworkProcess prevously crashed for any reason.
-    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(connection);
+    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(&connection);
     if (mapIterator == m_blobsForConnection.end()) {
         if (!shouldBypassConnectionCheck)
             return;
-        mapIterator = m_blobsForConnection.add(connection, HashSet<URL>()).iterator;
+        mapIterator = m_blobsForConnection.add(&connection, HashSet<URL>()).iterator;
     }
 
-    blobRegistry().registerBlobURL(url, srcURL);
+    m_blobRegistry.registerBlobURL(url, srcURL);
 
     ASSERT(shouldBypassConnectionCheck || mapIterator->value.contains(srcURL));
     mapIterator->value.add(url);
 }
 
-void NetworkBlobRegistry::registerBlobURLOptionallyFileBacked(NetworkConnectionToWebProcess* connection, const URL& url, const URL& srcURL, const String& fileBackedPath, const String& contentType)
+void NetworkBlobRegistry::registerBlobURLOptionallyFileBacked(NetworkConnectionToWebProcess& connection, const URL& url, const URL& srcURL, const String& fileBackedPath, const String& contentType)
 {
-    auto fileReference = connection->getBlobDataFileReferenceForPath(fileBackedPath);
-    ASSERT(fileReference);
+    m_blobRegistry.registerBlobURLOptionallyFileBacked(url, srcURL, BlobDataFileReferenceWithSandboxExtension::create(fileBackedPath, nullptr), contentType);
 
-    blobRegistry().registerBlobURLOptionallyFileBacked(url, srcURL, WTFMove(fileReference), contentType);
-
-    ASSERT(!m_blobsForConnection.get(connection).contains(url));
-    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(connection);
+    ASSERT(!m_blobsForConnection.get(&connection).contains(url));
+    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(&connection);
     if (mapIterator == m_blobsForConnection.end())
-        mapIterator = m_blobsForConnection.add(connection, HashSet<URL>()).iterator;
+        mapIterator = m_blobsForConnection.add(&connection, HashSet<URL>()).iterator;
     mapIterator->value.add(url);
 }
 
-void NetworkBlobRegistry::registerBlobURLForSlice(NetworkConnectionToWebProcess* connection, const WebCore::URL& url, const WebCore::URL& srcURL, int64_t start, int64_t end)
+void NetworkBlobRegistry::registerBlobURLForSlice(NetworkConnectionToWebProcess& connection, const URL& url, const URL& srcURL, int64_t start, int64_t end)
 {
     // The connection may not be registered if NetworkProcess prevously crashed for any reason.
-    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(connection);
+    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(&connection);
     if (mapIterator == m_blobsForConnection.end())
         return;
 
-    blobRegistry().registerBlobURLForSlice(url, srcURL, start, end);
+    m_blobRegistry.registerBlobURLForSlice(url, srcURL, start, end);
 
     ASSERT(mapIterator->value.contains(srcURL));
     mapIterator->value.add(url);
 }
 
-void NetworkBlobRegistry::unregisterBlobURL(NetworkConnectionToWebProcess* connection, const WebCore::URL& url)
+void NetworkBlobRegistry::unregisterBlobURL(NetworkConnectionToWebProcess& connection, const URL& url)
 {
     // The connection may not be registered if NetworkProcess prevously crashed for any reason.
-    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(connection);
+    BlobForConnectionMap::iterator mapIterator = m_blobsForConnection.find(&connection);
     if (mapIterator == m_blobsForConnection.end())
         return;
 
-    blobRegistry().unregisterBlobURL(url);
+    m_blobRegistry.unregisterBlobURL(url);
 
     mapIterator->value.remove(url);
 }
 
-uint64_t NetworkBlobRegistry::blobSize(NetworkConnectionToWebProcess* connection, const WebCore::URL& url)
+uint64_t NetworkBlobRegistry::blobSize(NetworkConnectionToWebProcess& connection, const URL& url)
 {
-    if (!m_blobsForConnection.contains(connection) || !m_blobsForConnection.find(connection)->value.contains(url))
+    if (!m_blobsForConnection.contains(&connection) || !m_blobsForConnection.find(&connection)->value.contains(url))
         return 0;
 
-    return blobRegistry().blobSize(url);
+    return m_blobRegistry.blobSize(url);
 }
 
-void NetworkBlobRegistry::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void(const Vector<String>&)>&& completionHandler)
+void NetworkBlobRegistry::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, CompletionHandler<void(Vector<String>&&)>&& completionHandler)
 {
-    blobRegistry().writeBlobsToTemporaryFiles(blobURLs, WTFMove(completionHandler));
+    m_blobRegistry.writeBlobsToTemporaryFiles(blobURLs, WTFMove(completionHandler));
 }
 
-void NetworkBlobRegistry::writeBlobToFilePath(const URL& blobURL, const String& path, Function<void(bool success)>&& completionHandler)
+void NetworkBlobRegistry::writeBlobToFilePath(const URL& blobURL, const String& path, CompletionHandler<void(bool success)>&& completionHandler)
 {
-    if (!blobRegistry().isBlobRegistryImpl()) {
+    if (!m_blobRegistry.isBlobRegistryImpl()) {
         completionHandler(false);
         ASSERT_NOT_REACHED();
         return;
     }
 
-    auto blobFiles = filesInBlob({ ParsedURLString, blobURL });
+    auto blobFiles = filesInBlob({ { }, blobURL });
     for (auto& file : blobFiles)
         file->prepareForFileAccess();
 
-    static_cast<BlobRegistryImpl&>(blobRegistry()).writeBlobToFilePath(blobURL, path, [blobFiles = WTFMove(blobFiles), completionHandler = WTFMove(completionHandler)] (bool success) {
+    m_blobRegistry.writeBlobToFilePath(blobURL, path, [blobFiles = WTFMove(blobFiles), completionHandler = WTFMove(completionHandler)] (bool success) mutable {
         for (auto& file : blobFiles)
             file->revokeFileAccess();
         completionHandler(success);
     });
 }
 
-void NetworkBlobRegistry::connectionToWebProcessDidClose(NetworkConnectionToWebProcess* connection)
+void NetworkBlobRegistry::connectionToWebProcessDidClose(NetworkConnectionToWebProcess& connection)
 {
-    if (!m_blobsForConnection.contains(connection))
+    if (!m_blobsForConnection.contains(&connection))
         return;
 
-    HashSet<URL>& blobsForConnection = m_blobsForConnection.find(connection)->value;
+    HashSet<URL>& blobsForConnection = m_blobsForConnection.find(&connection)->value;
     for (HashSet<URL>::iterator iter = blobsForConnection.begin(), end = blobsForConnection.end(); iter != end; ++iter)
-        blobRegistry().unregisterBlobURL(*iter);
+        m_blobRegistry.unregisterBlobURL(*iter);
 
-    m_blobsForConnection.remove(connection);
+    m_blobsForConnection.remove(&connection);
 }
 
-Vector<RefPtr<BlobDataFileReference>> NetworkBlobRegistry::filesInBlob(NetworkConnectionToWebProcess& connection, const WebCore::URL& url)
+Vector<RefPtr<BlobDataFileReference>> NetworkBlobRegistry::filesInBlob(NetworkConnectionToWebProcess& connection, const URL& url)
 {
     if (!m_blobsForConnection.contains(&connection) || !m_blobsForConnection.find(&connection)->value.contains(url))
         return { };
@@ -179,8 +168,8 @@ Vector<RefPtr<BlobDataFileReference>> NetworkBlobRegistry::filesInBlob(NetworkCo
 
 Vector<RefPtr<BlobDataFileReference>> NetworkBlobRegistry::filesInBlob(const URL& url)
 {
-    ASSERT(blobRegistry().isBlobRegistryImpl());
-    BlobData* blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(url);
+    ASSERT(m_blobRegistry.isBlobRegistryImpl());
+    BlobData* blobData = m_blobRegistry.getBlobDataFromURL(url);
     if (!blobData)
         return { };
 

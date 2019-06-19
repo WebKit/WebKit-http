@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if WK_HAVE_C_SPI
+#if WK_HAVE_C_SPI && PLATFORM(MAC)
 
 #import "JavaScriptTest.h"
 #import "Test.h"
@@ -40,8 +40,6 @@
 #import <WebKit/WKViewPrivate.h>
 #import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED && PLATFORM(MAC)
-
 static bool testFinished = false;
 
 namespace TestWebKitAPI {
@@ -54,7 +52,7 @@ TEST(WebKit2CustomProtocolsTest, SyncXHR)
     RetainPtr<WKBrowsingContextGroup> browsingContextGroup = adoptNS([[WKBrowsingContextGroup alloc] initWithIdentifier:@"TestIdentifier"]);
 
     // Allow file URLs to load non-file resources
-    WKRetainPtr<WKPreferencesRef> preferences(AdoptWK, WKPreferencesCreate());
+    WKRetainPtr<WKPreferencesRef> preferences = adoptWK(WKPreferencesCreate());
     WKPreferencesSetUniversalAccessFromFileURLsAllowed(preferences.get(), true);
     WKPageGroupSetPreferences(browsingContextGroup.get()._pageGroupRef, preferences.get());
 
@@ -72,7 +70,5 @@ TEST(WebKit2CustomProtocolsTest, SyncXHR)
 }
 
 } // namespace TestWebKitAPI
-
-#endif // WK_API_ENABLED
 
 #endif

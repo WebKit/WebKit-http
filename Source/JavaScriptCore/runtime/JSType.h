@@ -32,6 +32,8 @@ enum JSType : uint8_t {
     CustomGetterSetterType,
     APIValueWrapperType,
 
+    NativeExecutableType,
+
     ProgramExecutableType,
     ModuleProgramExecutableType,
     EvalExecutableType,
@@ -110,19 +112,19 @@ enum JSType : uint8_t {
     JSSetType,
     JSWeakMapType,
     JSWeakSetType,
-
     WebAssemblyToJSCalleeType,
+    StringObjectType,
 
-    LastJSCObjectType = WebAssemblyToJSCalleeType, // This is the last "JSC" Object type. After this, we have embedder's (e.g., WebCore) extended object types.
+    LastJSCObjectType = StringObjectType, // This is the last "JSC" Object type. After this, we have embedder's (e.g., WebCore) extended object types.
     MaxJSType = 0b11111111,
 };
 
-static const uint32_t FirstTypedArrayType = Int8ArrayType;
-static const uint32_t LastTypedArrayType = DataViewType;
+static constexpr uint32_t FirstTypedArrayType = Int8ArrayType;
+static constexpr uint32_t LastTypedArrayType = DataViewType;
 
 // LastObjectType should be MaxJSType (not LastJSCObjectType) since embedders can add their extended object types after the enums listed in JSType.
-static const uint32_t FirstObjectType = ObjectType;
-static const uint32_t LastObjectType = MaxJSType;
+static constexpr uint32_t FirstObjectType = ObjectType;
+static constexpr uint32_t LastObjectType = MaxJSType;
 
 static constexpr uint32_t NumberOfTypedArrayTypes = LastTypedArrayType - FirstTypedArrayType + 1;
 static constexpr uint32_t NumberOfTypedArrayTypesExcludingDataView = NumberOfTypedArrayTypes - 1;
@@ -130,4 +132,17 @@ static constexpr uint32_t NumberOfTypedArrayTypesExcludingDataView = NumberOfTyp
 static_assert(sizeof(JSType) == sizeof(uint8_t), "sizeof(JSType) is one byte.");
 static_assert(LastJSCObjectType < 128, "The highest bit is reserved for embedder's extension.");
 
+inline constexpr bool isTypedArrayType(JSType type)
+{
+    return (static_cast<uint32_t>(type) - FirstTypedArrayType) < NumberOfTypedArrayTypesExcludingDataView;
+}
+
 } // namespace JSC
+
+namespace WTF {
+
+class PrintStream;
+
+void printInternal(PrintStream&, JSC::JSType);
+
+} // namespace WTF

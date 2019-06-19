@@ -116,7 +116,7 @@ public:
     const PutByIdVariant& operator[](size_t index) const { return at(index); }
     
     void markIfCheap(SlotVisitor&);
-    bool finalize();
+    bool finalize(VM&);
     
     void merge(const PutByIdStatus&);
     
@@ -125,9 +125,6 @@ public:
     void dump(PrintStream&) const;
     
 private:
-#if ENABLE(DFG_JIT)
-    static ExitFlag hasExitSite(CodeBlock*, unsigned bytecodeIndex);
-#endif
 #if ENABLE(JIT)
     static PutByIdStatus computeForStubInfo(
         const ConcurrentJSLocker&, CodeBlock*, StructureStubInfo*, UniquedStringImpl* uid,

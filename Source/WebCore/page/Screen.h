@@ -36,11 +36,10 @@
 
 namespace WebCore {
 
-class Frame;
-
 class Screen final : public ScriptWrappable, public RefCounted<Screen>, public DOMWindowProperty {
+    WTF_MAKE_ISO_ALLOCATED(Screen);
 public:
-    static Ref<Screen> create(Frame* frame) { return adoptRef(*new Screen(frame)); }
+    static Ref<Screen> create(DOMWindow& window) { return adoptRef(*new Screen(window)); }
 
     unsigned height() const;
     unsigned width() const;
@@ -52,7 +51,7 @@ public:
     unsigned availWidth() const;
 
 private:
-    explicit Screen(Frame*);
+    explicit Screen(DOMWindow&);
 };
 
 } // namespace WebCore

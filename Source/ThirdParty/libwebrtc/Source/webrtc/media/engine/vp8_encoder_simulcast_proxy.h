@@ -16,14 +16,14 @@
 #include <vector>
 
 #include "api/video_codecs/sdp_video_format.h"
+#include "api/video_codecs/video_encoder.h"
 #include "api/video_codecs/video_encoder_factory.h"
-#include "modules/video_coding/codecs/vp8/include/vp8.h"
 
 namespace webrtc {
 
 // This class provides fallback to SimulcastEncoderAdapter if default VP8Encoder
 // doesn't support simulcast for provided settings.
-class VP8EncoderSimulcastProxy : public VP8Encoder {
+class VP8EncoderSimulcastProxy : public VideoEncoder {
  public:
   VP8EncoderSimulcastProxy(VideoEncoderFactory* factory,
                            const SdpVideoFormat& format);
@@ -42,14 +42,9 @@ class VP8EncoderSimulcastProxy : public VP8Encoder {
              const CodecSpecificInfo* codec_specific_info,
              const std::vector<FrameType>* frame_types) override;
   int RegisterEncodeCompleteCallback(EncodedImageCallback* callback) override;
-  int SetChannelParameters(uint32_t packet_loss, int64_t rtt) override;
   int SetRateAllocation(const VideoBitrateAllocation& bitrate,
                         uint32_t new_framerate) override;
-
-  VideoEncoder::ScalingSettings GetScalingSettings() const override;
-
-  bool SupportsNativeHandle() const override;
-  const char* ImplementationName() const override;
+  EncoderInfo GetEncoderInfo() const override;
 
  private:
   VideoEncoderFactory* const factory_;

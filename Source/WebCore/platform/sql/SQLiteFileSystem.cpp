@@ -31,12 +31,13 @@
 #include "config.h"
 #include "SQLiteFileSystem.h"
 
-#include "FileSystem.h"
 #include "SQLiteDatabase.h"
 #include "SQLiteStatement.h"
+#include <pal/crypto/CryptoDigest.h>
 #include <sqlite3.h>
+#include <wtf/FileSystem.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include <pal/spi/ios/SQLite3SPI.h>
 #endif
 
@@ -44,11 +45,6 @@ namespace WebCore {
 
 SQLiteFileSystem::SQLiteFileSystem()
 {
-}
-
-int SQLiteFileSystem::openDatabase(const String& filename, sqlite3** database, bool)
-{
-    return sqlite3_open_v2(FileSystem::fileSystemRepresentation(filename).data(), database, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_AUTOPROXY, nullptr);
 }
 
 String SQLiteFileSystem::appendDatabaseFileNameToPath(const String& path, const String& fileName)
@@ -95,7 +91,7 @@ bool SQLiteFileSystem::deleteDatabaseFile(const String& fileName)
     return !FileSystem::fileExists(fileName) && !FileSystem::fileExists(walFileName) && !FileSystem::fileExists(shmFileName);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 bool SQLiteFileSystem::truncateDatabaseFile(sqlite3* database)
 {
     return sqlite3_file_control(database, 0, SQLITE_TRUNCATE_DATABASE, 0) == SQLITE_OK;
@@ -104,20 +100,47 @@ bool SQLiteFileSystem::truncateDatabaseFile(sqlite3* database)
     
 long long SQLiteFileSystem::getDatabaseFileSize(const String& fileName)
 {        
-    long long size;
-    return FileSystem::getFileSize(fileName, size) ? size : 0;
+    long long fileSize = 0;
+    long long totalSize = 0;
+
+    if (FileSystem::getFileSize(fileName, fileSize))
+        totalSize += fileSize;
+
+    if (FileSystem::getFileSize(makeString(fileName, "-wal"_s), fileSize))
+        totalSize += fileSize;
+
+    if (FileSystem::getFileSize(makeString(fileName, "-shm"_s), fileSize))
+        totalSize += fileSize;
+
+    return totalSize;
 }
 
-double SQLiteFileSystem::databaseCreationTime(const String& fileName)
+Optional<WallTime> SQLiteFileSystem::databaseCreationTime(const String& fileName)
 {
-    time_t time;
-    return FileSystem::getFileCreationTime(fileName, time) ? time : 0;
+    return FileSystem::getFileCreationTime(fileName);
 }
 
-double SQLiteFileSystem::databaseModificationTime(const String& fileName)
+Optional<WallTime> SQLiteFileSystem::databaseModificationTime(const String& fileName)
 {
-    time_t time;
-    return FileSystem::getFileModificationTime(fileName, time) ? time : 0;
+    return FileSystem::getFileModificationTime(fileName);
+}
+    
+String SQLiteFileSystem::computeHashForFileName(const String& fileName)
+{
+    auto cryptoDigest = PAL::CryptoDigest::create(PAL::CryptoDigest::Algorithm::SHA_256);
+    cryptoDigest->addBytes(fileName.utf8().data(), fileName.utf8().length());
+    auto digest = cryptoDigest->computeHash();
+    
+    // Convert digest to hex.
+    char* start = 0;
+    unsigned digestLength = digest.size();
+    CString result = CString::newUninitialized(digestLength * 2, start);
+    char* buffer = start;
+    for (size_t i = 0; i < digestLength; ++i) {
+        snprintf(buffer, 3, "%02X", digest.at(i));
+        buffer += 2;
+    }
+    return String::fromUTF8(result);
 }
 
 } // namespace WebCore

@@ -24,7 +24,7 @@
 #include "rtc_base/logging.h"
 #include "rtc_base/nethelpers.h"
 #include "rtc_base/socketaddress.h"
-#include "rtc_base/stringencode.h"
+#include "rtc_base/strings/string_builder.h"
 
 namespace cricket {
 
@@ -209,6 +209,7 @@ TurnPort::TurnPort(rtc::Thread* thread,
       socket_(socket),
       resolver_(NULL),
       error_(0),
+      stun_dscp_value_(rtc::DSCP_NO_CHANGE),
       request_manager_(thread),
       next_channel_number_(TURN_CHANNEL_NUMBER_START),
       state_(STATE_CONNECTING),
@@ -250,6 +251,7 @@ TurnPort::TurnPort(rtc::Thread* thread,
       socket_(NULL),
       resolver_(NULL),
       error_(0),
+      stun_dscp_value_(rtc::DSCP_NO_CHANGE),
       request_manager_(thread),
       next_channel_number_(TURN_CHANNEL_NUMBER_START),
       state_(STATE_CONNECTING),
@@ -550,6 +552,10 @@ bool TurnPort::FailAndPruneConnection(const rtc::SocketAddress& address) {
 }
 
 int TurnPort::SetOption(rtc::Socket::Option opt, int value) {
+  // Remember the last requested DSCP value, for STUN traffic.
+  if (opt == rtc::Socket::OPT_DSCP)
+    stun_dscp_value_ = static_cast<rtc::DiffServCodePoint>(value);
+
   if (!socket_) {
     // If socket is not created yet, these options will be applied during socket
     // creation.
@@ -616,7 +622,7 @@ bool TurnPort::HandleIncomingPacket(rtc::AsyncPacketSocket* socket,
                                     const char* data,
                                     size_t size,
                                     const rtc::SocketAddress& remote_addr,
-                                    const rtc::PacketTime& packet_time) {
+                                    int64_t packet_time_us) {
   if (socket != socket_) {
     // The packet was received on a shared socket after we've allocated a new
     // socket for this TURN port.
@@ -653,12 +659,12 @@ bool TurnPort::HandleIncomingPacket(rtc::AsyncPacketSocket* socket,
   // a response to a previous request.
   uint16_t msg_type = rtc::GetBE16(data);
   if (IsTurnChannelData(msg_type)) {
-    HandleChannelData(msg_type, data, size, packet_time);
+    HandleChannelData(msg_type, data, size, packet_time_us);
     return true;
   }
 
   if (msg_type == TURN_DATA_INDICATION) {
-    HandleDataIndication(data, size, packet_time);
+    HandleDataIndication(data, size, packet_time_us);
     return true;
   }
 
@@ -689,8 +695,8 @@ void TurnPort::OnReadPacket(rtc::AsyncPacketSocket* socket,
                             const char* data,
                             size_t size,
                             const rtc::SocketAddress& remote_addr,
-                            const rtc::PacketTime& packet_time) {
-  HandleIncomingPacket(socket, data, size, remote_addr, packet_time);
+                            const int64_t& packet_time_us) {
+  HandleIncomingPacket(socket, data, size, remote_addr, packet_time_us);
 }
 
 void TurnPort::OnSentPacket(rtc::AsyncPacketSocket* socket,
@@ -794,7 +800,7 @@ void TurnPort::OnSendStunPacket(const void* data,
                                 size_t size,
                                 StunRequest* request) {
   RTC_DCHECK(connected());
-  rtc::PacketOptions options(DefaultDscpValue());
+  rtc::PacketOptions options(StunDscpValue());
   options.info_signaled_after_sent.packet_type = rtc::PacketType::kTurnMessage;
   CopyPortInformationToPacketInfo(&options.info_signaled_after_sent);
   if (Send(data, size, options) < 0) {
@@ -880,6 +886,10 @@ void TurnPort::Close() {
   SignalTurnPortClosed(this);
 }
 
+rtc::DiffServCodePoint TurnPort::StunDscpValue() const {
+  return stun_dscp_value_;
+}
+
 void TurnPort::OnMessage(rtc::Message* message) {
   switch (message->message_id) {
     case MSG_ALLOCATE_ERROR:
@@ -922,7 +932,7 @@ void TurnPort::OnAllocateRequestTimeout() {
 
 void TurnPort::HandleDataIndication(const char* data,
                                     size_t size,
-                                    const rtc::PacketTime& packet_time) {
+                                    int64_t packet_time_us) {
   // Read in the message, and process according to RFC5766, Section 10.4.
   rtc::ByteBufferReader buf(data, size);
   TurnMessage msg;
@@ -961,13 +971,13 @@ void TurnPort::HandleDataIndication(const char* data,
   }
 
   DispatchPacket(data_attr->bytes(), data_attr->length(), ext_addr, PROTO_UDP,
-                 packet_time);
+                 packet_time_us);
 }
 
 void TurnPort::HandleChannelData(int channel_id,
                                  const char* data,
                                  size_t size,
-                                 const rtc::PacketTime& packet_time) {
+                                 int64_t packet_time_us) {
   // Read the message, and process according to RFC5766, Section 11.6.
   //    0                   1                   2                   3
   //    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -1003,16 +1013,16 @@ void TurnPort::HandleChannelData(int channel_id,
   }
 
   DispatchPacket(data + TURN_CHANNEL_HEADER_SIZE, len, entry->address(),
-                 PROTO_UDP, packet_time);
+                 PROTO_UDP, packet_time_us);
 }
 
 void TurnPort::DispatchPacket(const char* data,
                               size_t size,
                               const rtc::SocketAddress& remote_addr,
                               ProtocolType proto,
-                              const rtc::PacketTime& packet_time) {
+                              int64_t packet_time_us) {
   if (Connection* conn = GetConnection(remote_addr)) {
-    conn->OnReadPacket(data, size, packet_time);
+    conn->OnReadPacket(data, size, packet_time_us);
   } else {
     Port::OnReadPacket(data, size, remote_addr, proto);
   }
@@ -1236,10 +1246,10 @@ std::string TurnPort::ReconstructedServerUrl() {
     case PROTO_TCP:
       break;
   }
-  std::ostringstream url;
+  rtc::StringBuilder url;
   url << scheme << ":" << server_address_.address.ipaddr().ToString() << ":"
       << server_address_.address.port() << "?transport=" << transport;
-  return url.str();
+  return url.Release();
 }
 
 void TurnPort::TurnCustomizerMaybeModifyOutgoingStunMessage(

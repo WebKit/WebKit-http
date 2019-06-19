@@ -24,11 +24,10 @@
 #include "call/rtp_transport_controller_send_interface.h"
 #include "call/video_receive_stream.h"
 #include "call/video_send_stream.h"
-#include "common_types.h"  // NOLINT(build/include)
 #include "rtc_base/bitrateallocationstrategy.h"
 #include "rtc_base/copyonwritebuffer.h"
+#include "rtc_base/network/sent_packet.h"
 #include "rtc_base/networkroute.h"
-#include "rtc_base/socket.h"
 
 namespace webrtc {
 
@@ -58,6 +57,11 @@ class Call {
 
   virtual AudioSendStream* CreateAudioSendStream(
       const AudioSendStream::Config& config) = 0;
+
+  // Gets called when media transport is created or removed.
+  virtual void MediaTransportChange(
+      MediaTransportInterface* media_transport_interface) = 0;
+
   virtual void DestroyAudioSendStream(AudioSendStream* send_stream) = 0;
 
   virtual AudioReceiveStream* CreateAudioReceiveStream(
@@ -113,8 +117,7 @@ class Call {
   virtual void SignalChannelNetworkState(MediaType media,
                                          NetworkState state) = 0;
 
-  virtual void OnTransportOverheadChanged(
-      MediaType media,
+  virtual void OnAudioTransportOverheadChanged(
       int transport_overhead_per_packet) = 0;
 
   virtual void OnSentPacket(const rtc::SentPacket& sent_packet) = 0;

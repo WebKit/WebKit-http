@@ -25,13 +25,11 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-WK_API_AVAILABLE(macosx(10.13), ios(11.0))
+WK_API_AVAILABLE(macos(10.13), ios(11.0))
 @protocol WKURLSchemeTask <NSObject>
 
 /*! @abstract The request to load for this task.
@@ -74,5 +72,3 @@ WK_API_AVAILABLE(macosx(10.13), ios(11.0))
 @end
 
 NS_ASSUME_NONNULL_END
-
-#endif

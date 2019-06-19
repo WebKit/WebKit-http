@@ -50,13 +50,14 @@ void linkFor(ExecState*, CallLinkInfo&, CodeBlock*, JSObject* callee, MacroAssem
 void linkDirectFor(ExecState*, CallLinkInfo&, CodeBlock*, MacroAssemblerCodePtr<JSEntryPtrTag>);
 void linkSlowFor(ExecState*, CallLinkInfo&);
 void unlinkFor(VM&, CallLinkInfo&);
-void linkVirtualFor(ExecState*, CallLinkInfo&);
 void linkPolymorphicCall(ExecState*, CallLinkInfo&, CallVariant);
 void resetGetByID(CodeBlock*, StructureStubInfo&, GetByIDKind);
 void resetPutByID(CodeBlock*, StructureStubInfo&);
 void resetInByID(CodeBlock*, StructureStubInfo&);
 void resetInstanceOf(StructureStubInfo&);
 void ftlThunkAwareRepatchCall(CodeBlock*, CodeLocationCall<JSInternalPtrTag>, FunctionPtr<CFunctionPtrTag> newCalleeFunction);
+MacroAssemblerCodePtr<JSEntryPtrTag> jsToWasmICCodePtr(VM&, CodeSpecializationKind, JSObject* callee);
+
 
 } // namespace JSC
 

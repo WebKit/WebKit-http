@@ -26,8 +26,6 @@
 #import "config.h"
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import "PlatformUtilities.h"
 #import "Test.h"
 #import "TestNavigationDelegate.h"
@@ -52,11 +50,10 @@ TEST(WKWebView, ProvisionalURLNotChange)
     TestWebKitAPI::Util::run(&isDone);
     isDone = false;
 
-    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"http://www.webkit.org!"]]];
+    NSURL *invalidURL = [NSURL URLWithString:@"https://a@/b"];
+    [webView loadRequest:[NSURLRequest requestWithURL:invalidURL]];
     TestWebKitAPI::Util::run(&isDone);
     isDone = false;
 
     EXPECT_STREQ([webView URL].absoluteString.UTF8String, "data:text/html,start");
 }
-
-#endif

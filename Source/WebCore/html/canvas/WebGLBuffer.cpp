@@ -62,6 +62,8 @@ bool WebGLBuffer::associateBufferDataImpl(const void* data, GC3Dsizeiptr byteLen
 
     switch (m_target) {
     case GraphicsContext3D::ELEMENT_ARRAY_BUFFER:
+        if (byteLength > std::numeric_limits<unsigned>::max())
+            return false;
         m_byteLength = byteLength;
         clearCachedMaxIndices();
         if (byteLength) {
@@ -228,13 +230,13 @@ GC3Dsizeiptr WebGLBuffer::byteLength() const
     return m_byteLength;
 }
 
-std::optional<unsigned> WebGLBuffer::getCachedMaxIndex(GC3Denum type)
+Optional<unsigned> WebGLBuffer::getCachedMaxIndex(GC3Denum type)
 {
     for (auto& cache : m_maxIndexCache) {
         if (cache.type == type)
             return cache.maxIndex;
     }
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 void WebGLBuffer::setCachedMaxIndex(GC3Denum type, unsigned value)

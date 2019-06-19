@@ -30,9 +30,14 @@ import logging
 import string
 from string import Template
 
-from generator import Generator, ucfirst
-from generator_templates import GeneratorTemplates as Templates
-from models import EnumType
+try:
+    from .generator import Generator, ucfirst
+    from .generator_templates import GeneratorTemplates as Templates
+    from .models import EnumType
+except ValueError:
+    from generator import Generator, ucfirst
+    from generator_templates import GeneratorTemplates as Templates
+    from models import EnumType
 
 log = logging.getLogger('global')
 
@@ -46,16 +51,16 @@ class JSBackendCommandsGenerator(Generator):
 
     def should_generate_domain(self, domain):
         type_declarations = self.type_declarations_for_domain(domain)
-        domain_enum_types = filter(lambda declaration: isinstance(declaration.type, EnumType), type_declarations)
-        return len(self.commands_for_domain(domain)) > 0 or len(self.events_for_domain(domain)) > 0 or len(domain_enum_types) > 0
+        domain_enum_types = [declaration for declaration in type_declarations if isinstance(declaration.type, EnumType)]
+        return self.version_for_domain(domain) is not None or len(self.commands_for_domain(domain)) > 0 or len(self.events_for_domain(domain)) > 0 or len(domain_enum_types) > 0
 
     def domains_to_generate(self):
-        return filter(self.should_generate_domain, Generator.domains_to_generate(self))
+        return list(filter(self.should_generate_domain, Generator.domains_to_generate(self)))
 
     def generate_output(self):
         sections = []
         sections.append(self.generate_license())
-        sections.extend(map(self.generate_domain, self.domains_to_generate()))
+        sections.extend(list(map(self.generate_domain, self.domains_to_generate())))
         return "\n\n".join(sections)
 
     def generate_domain(self, domain):
@@ -66,13 +71,21 @@ class JSBackendCommandsGenerator(Generator):
 
         lines.append('// %(domain)s.' % args)
 
+        version = self.version_for_domain(domain)
         type_declarations = self.type_declarations_for_domain(domain)
         commands = self.commands_for_domain(domain)
         events = self.events_for_domain(domain)
 
-        has_async_commands = any(map(lambda command: command.is_async, commands))
+        has_async_commands = any([command.is_async for command in commands])
         if len(events) > 0 or has_async_commands:
             lines.append('InspectorBackend.register%(domain)sDispatcher = InspectorBackend.registerDomainDispatcher.bind(InspectorBackend, "%(domain)s");' % args)
+
+        if isinstance(version, int):
+            version_args = {
+                'domain': domain.domain_name,
+                'version': version
+            }
+            lines.append('InspectorBackend.registerVersion("%(domain)s", %(version)s);' % version_args)
 
         for declaration in type_declarations:
             if declaration.type.is_enum():
@@ -138,8 +151,5 @@ class JSBackendCommandsGenerator(Generator):
             lines.append('InspectorBackend.activateDomain("%(domain)s", %(availability)s);' % activate_args)
         else:
             lines.append('InspectorBackend.activateDomain("%(domain)s");' % activate_args)
-
-        if domain.workerSupported:
-            lines.append('InspectorBackend.workerSupportedDomain("%s");' % domain.domain_name)
 
         return "\n".join(lines)

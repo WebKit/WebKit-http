@@ -26,28 +26,52 @@
 #include "config.h"
 #include "WebCookieManager.h"
 
-#include "ChildProcess.h"
-#include <WebCore/CookieJarDB.h>
+#include "NetworkProcess.h"
 #include <WebCore/NetworkStorageSession.h>
-#include <wtf/text/CString.h>
-
-using namespace WebCore;
 
 namespace WebKit {
 
-void WebCookieManager::platformSetHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy)
+using namespace WebCore;
+
+void WebCookieManager::platformSetHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy policy)
 {
+    CookieAcceptPolicy curlPolicy = CookieAcceptPolicy::OnlyFromMainDocumentDomain;
+    switch (policy) {
+    case HTTPCookieAcceptPolicyAlways:
+        curlPolicy = CookieAcceptPolicy::Always;
+        break;
+    case HTTPCookieAcceptPolicyNever:
+        curlPolicy = CookieAcceptPolicy::Never;
+        break;
+    case HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain:
+        curlPolicy = CookieAcceptPolicy::OnlyFromMainDocumentDomain;
+        break;
+    case HTTPCookieAcceptPolicyExclusivelyFromMainDocumentDomain:
+        curlPolicy = CookieAcceptPolicy::ExclusivelyFromMainDocumentDomain;
+        break;
+    }
+
+    m_process.forEachNetworkStorageSession([curlPolicy] (const auto& networkStorageSession) {
+        networkStorageSession.cookieStorage().setCookieAcceptPolicy(networkStorageSession, curlPolicy);
+    });
 }
 
 HTTPCookieAcceptPolicy WebCookieManager::platformGetHTTPCookieAcceptPolicy()
 {
-    return HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain;
-}
+    const auto& networkStorageSession = m_process.defaultStorageSession();
+    switch (networkStorageSession.cookieStorage().cookieAcceptPolicy(networkStorageSession)) {
+    case CookieAcceptPolicy::Always:
+        return HTTPCookieAcceptPolicyAlways;
+    case CookieAcceptPolicy::Never:
+        return HTTPCookieAcceptPolicyNever;
+    case CookieAcceptPolicy::OnlyFromMainDocumentDomain:
+        return HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain;
+    case CookieAcceptPolicy::ExclusivelyFromMainDocumentDomain:
+        return HTTPCookieAcceptPolicyExclusivelyFromMainDocumentDomain;
+    }
 
-void WebCookieManager::setCookiePersistentStorage(const String& storagePath)
-{
-    auto& storageSession = NetworkStorageSession::defaultStorageSession();
-    storageSession.setCookieDatabase(makeUniqueRef<CookieJarDB>(storagePath));
+    ASSERT_NOT_REACHED();
+    return HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain;
 }
 
 } // namespace WebKit

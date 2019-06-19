@@ -27,7 +27,7 @@
 #include "UserAgentQuirks.h"
 
 #include "PublicSuffix.h"
-#include "URL.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 
@@ -67,12 +67,6 @@ static bool urlRequiresChromeBrowser(const URL& url)
     if (baseDomain == "typekit.net" || baseDomain == "typekit.com")
         return true;
 
-    // Washington Post decides the image type based on the user agent,
-    // giving image/jp2 with WebKitGTK+'s standard user agent.
-    // https://bugs.webkit.org/show_bug.cgi?id=181421
-    if (baseDomain == "washingtonpost.com")
-        return true;
-
     return false;
 }
 
@@ -103,9 +97,11 @@ static bool urlRequiresMacintoshPlatform(const URL& url)
         return true;
 
     // Microsoft Outlook Web App forces users with WebKitGTK+'s standard user
-    // agent to use the light version. Earlier versions even blocks users from
+    // agent to use the light version. Earlier versions even block users from
     // accessing the calendar.
-    if (domain == "mail.ntu.edu.tw")
+    if (domain == "outlook.live.com"
+        || domain == "mail.ntu.edu.tw"
+        || domain == "exchange.tu-berlin.de")
         return true;
 
     // Google Docs shows a scary unsupported browser warning with WebKitGTK+'s

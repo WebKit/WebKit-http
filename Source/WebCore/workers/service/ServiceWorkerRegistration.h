@@ -41,6 +41,7 @@ class ServiceWorker;
 class ServiceWorkerContainer;
 
 class ServiceWorkerRegistration final : public RefCounted<ServiceWorkerRegistration>, public EventTargetWithInlineData, public ActiveDOMObject {
+    WTF_MAKE_ISO_ALLOCATED(ServiceWorkerRegistration);
 public:
     static Ref<ServiceWorkerRegistration> getOrCreate(ScriptExecutionContext&, Ref<ServiceWorkerContainer>&&, ServiceWorkerRegistrationData&&);
 
@@ -75,7 +76,7 @@ public:
     const ServiceWorkerRegistrationData& data() const { return m_registrationData; }
 
     void updateStateFromServer(ServiceWorkerRegistrationState, RefPtr<ServiceWorker>&&);
-    void scheduleTaskToFireUpdateFoundEvent();
+    void fireUpdateFoundEvent();
 
 private:
     ServiceWorkerRegistration(ScriptExecutionContext&, Ref<ServiceWorkerContainer>&&, ServiceWorkerRegistrationData&&);

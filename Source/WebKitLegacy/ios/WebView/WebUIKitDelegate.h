@@ -90,6 +90,8 @@ typedef NS_ENUM(NSInteger, WebMediaCaptureType) {
 - (void)webView:(WebView *)webView didHideFullScreenForPlugInView:(id)plugInView;
 - (void)webView:(WebView *)aWebView didReceiveMessage:(NSDictionary *)aMessage;
 - (void)addInputString:(NSString *)str withFlags:(NSUInteger)flags;
+- (BOOL)handleKeyTextCommandForCurrentEvent;
+- (BOOL)handleKeyAppCommandForCurrentEvent;
 // FIXME: remove deleteFromInput when UIKit implements deleteFromInputWithFlags.
 - (void)deleteFromInput;
 - (void)deleteFromInputWithFlags:(NSUInteger)flags;

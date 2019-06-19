@@ -35,7 +35,6 @@
 #include "SQLValue.h"
 #include <wtf/Deque.h>
 #include <wtf/Lock.h>
-#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -62,7 +61,7 @@ public:
     static Ref<SQLTransaction> create(Ref<Database>&&, RefPtr<SQLTransactionCallback>&&, RefPtr<VoidCallback>&& successCallback, RefPtr<SQLTransactionErrorCallback>&&, RefPtr<SQLTransactionWrapper>&&, bool readOnly);
     ~SQLTransaction();
 
-    ExceptionOr<void> executeSql(const String& sqlStatement, std::optional<Vector<SQLValue>>&& arguments, RefPtr<SQLStatementCallback>&&, RefPtr<SQLStatementErrorCallback>&&);
+    ExceptionOr<void> executeSql(const String& sqlStatement, Optional<Vector<SQLValue>>&& arguments, RefPtr<SQLStatementCallback>&&, RefPtr<SQLStatementErrorCallback>&&);
 
     void lockAcquired();
     void performNextStep();

@@ -33,19 +33,20 @@
 
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
+#include <wtf/WallTime.h>
 
 namespace WebCore {
 
 class FileStreamClient;
 class FileStream;
-class URL;
 
 class WEBCORE_EXPORT AsyncFileStream {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit AsyncFileStream(FileStreamClient&);
     ~AsyncFileStream();
 
-    void getSize(const String& path, double expectedModificationTime);
+    void getSize(const String& path, Optional<WallTime> expectedModificationTime);
     void openForRead(const String& path, long long offset, long long length);
     void close();
     void read(char* buffer, int length);

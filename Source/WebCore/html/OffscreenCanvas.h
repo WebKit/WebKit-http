@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "AffineTransform.h"
 #include "CanvasBase.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
@@ -44,8 +45,8 @@ class WebGLRenderingContext;
 using OffscreenRenderingContext = RefPtr<WebGLRenderingContext>;
 #endif
 
-class OffscreenCanvas final : public RefCounted<OffscreenCanvas>, public CanvasBase, public EventTargetWithInlineData {
-    WTF_MAKE_FAST_ALLOCATED;
+class OffscreenCanvas final : public RefCounted<OffscreenCanvas>, public CanvasBase, public EventTargetWithInlineData, private ContextDestructionObserver {
+    WTF_MAKE_ISO_ALLOCATED(OffscreenCanvas);
 public:
 
     struct ImageEncodeOptions {
@@ -75,6 +76,15 @@ public:
     RefPtr<ImageBitmap> transferToImageBitmap();
     // void convertToBlob(ImageEncodeOptions options);
 
+    GraphicsContext* drawingContext() const final { return nullptr; }
+    GraphicsContext* existingDrawingContext() const final { return nullptr; }
+
+    void makeRenderingResultsAvailable() final { }
+    void didDraw(const FloatRect&) final { }
+
+    AffineTransform baseTransform() const final { return { }; }
+    Image* copiedImage() const final { return nullptr; }
+
     using RefCounted::ref;
     using RefCounted::deref;
 
@@ -84,7 +94,8 @@ private:
 
     bool isOffscreenCanvas() const final { return true; }
 
-    ScriptExecutionContext* scriptExecutionContext() const final { return CanvasBase::scriptExecutionContext(); }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ContextDestructionObserver::scriptExecutionContext(); }
+    ScriptExecutionContext* canvasBaseScriptExecutionContext() const final { return ContextDestructionObserver::scriptExecutionContext(); }
 
     EventTargetInterface eventTargetInterface() const final { return OffscreenCanvasEventTargetInterfaceType; }
     void refEventTarget() final { ref(); }

@@ -29,8 +29,114 @@
 #include "ArgumentCoders.h"
 #include "Decoder.h"
 #include "HandleMessage.h"
+#include "TestClassName.h"
+#if ENABLE(TEST_FEATURE)
+#include "TestTwoStateEnum.h"
+#endif
 #include "WebPageMessages.h"
+#include <wtf/Optional.h>
 #include <wtf/text/WTFString.h>
+
+namespace Messages {
+
+namespace WebPage {
+
+#if ENABLE(TEST_FEATURE)
+
+void TestAsyncMessage::callReply(IPC::Decoder& decoder, CompletionHandler<void(uint64_t&&)>&& completionHandler)
+{
+    Optional<uint64_t> result;
+    decoder >> result;
+    if (!result) {
+        ASSERT_NOT_REACHED();
+        cancelReply(WTFMove(completionHandler));
+        return;
+    }
+    completionHandler(WTFMove(*result));
+}
+
+void TestAsyncMessage::cancelReply(CompletionHandler<void(uint64_t&&)>&& completionHandler)
+{
+    completionHandler(IPC::AsyncReplyError<uint64_t>::create());
+}
+
+void TestAsyncMessage::send(std::unique_ptr<IPC::Encoder>&& encoder, IPC::Connection& connection, uint64_t result)
+{
+    *encoder << result;
+    connection.sendSyncReply(WTFMove(encoder));
+}
+
+#endif
+
+#if ENABLE(TEST_FEATURE)
+
+void TestAsyncMessageWithNoArguments::callReply(IPC::Decoder& decoder, CompletionHandler<void()>&& completionHandler)
+{
+    completionHandler();
+}
+
+void TestAsyncMessageWithNoArguments::cancelReply(CompletionHandler<void()>&& completionHandler)
+{
+    completionHandler();
+}
+
+void TestAsyncMessageWithNoArguments::send(std::unique_ptr<IPC::Encoder>&& encoder, IPC::Connection& connection)
+{
+    connection.sendSyncReply(WTFMove(encoder));
+}
+
+#endif
+
+#if ENABLE(TEST_FEATURE)
+
+void TestAsyncMessageWithMultipleArguments::callReply(IPC::Decoder& decoder, CompletionHandler<void(bool&&, uint64_t&&)>&& completionHandler)
+{
+    Optional<bool> flag;
+    decoder >> flag;
+    if (!flag) {
+        ASSERT_NOT_REACHED();
+        cancelReply(WTFMove(completionHandler));
+        return;
+    }
+    Optional<uint64_t> value;
+    decoder >> value;
+    if (!value) {
+        ASSERT_NOT_REACHED();
+        cancelReply(WTFMove(completionHandler));
+        return;
+    }
+    completionHandler(WTFMove(*flag), WTFMove(*value));
+}
+
+void TestAsyncMessageWithMultipleArguments::cancelReply(CompletionHandler<void(bool&&, uint64_t&&)>&& completionHandler)
+{
+    completionHandler(IPC::AsyncReplyError<bool>::create(), IPC::AsyncReplyError<uint64_t>::create());
+}
+
+void TestAsyncMessageWithMultipleArguments::send(std::unique_ptr<IPC::Encoder>&& encoder, IPC::Connection& connection, bool flag, uint64_t value)
+{
+    *encoder << flag;
+    *encoder << value;
+    connection.sendSyncReply(WTFMove(encoder));
+}
+
+#endif
+
+void TestSyncMessage::send(std::unique_ptr<IPC::Encoder>&& encoder, IPC::Connection& connection, uint8_t reply)
+{
+    *encoder << reply;
+    connection.sendSyncReply(WTFMove(encoder));
+}
+
+void TestSynchronousMessage::send(std::unique_ptr<IPC::Encoder>&& encoder, IPC::Connection& connection, const Optional<WebKit::TestClassName>& optionalReply)
+{
+    *encoder << optionalReply;
+    connection.sendSyncReply(WTFMove(encoder));
+}
+
+} // namespace WebPage
+
+} // namespace Messages
 
 namespace WebKit {
 
@@ -40,7 +146,42 @@ void WebPage::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decod
         IPC::handleMessage<Messages::WebPage::LoadURL>(decoder, this, &WebPage::loadURL);
         return;
     }
+#if ENABLE(TEST_FEATURE)
+    if (decoder.messageName() == Messages::WebPage::TestAsyncMessage::name()) {
+        IPC::handleMessageAsync<Messages::WebPage::TestAsyncMessage>(connection, decoder, this, &WebPage::testAsyncMessage);
+        return;
+    }
+#endif
+#if ENABLE(TEST_FEATURE)
+    if (decoder.messageName() == Messages::WebPage::TestAsyncMessageWithNoArguments::name()) {
+        IPC::handleMessageAsync<Messages::WebPage::TestAsyncMessageWithNoArguments>(connection, decoder, this, &WebPage::testAsyncMessageWithNoArguments);
+        return;
+    }
+#endif
+#if ENABLE(TEST_FEATURE)
+    if (decoder.messageName() == Messages::WebPage::TestAsyncMessageWithMultipleArguments::name()) {
+        IPC::handleMessageAsync<Messages::WebPage::TestAsyncMessageWithMultipleArguments>(connection, decoder, this, &WebPage::testAsyncMessageWithMultipleArguments);
+        return;
+    }
+#endif
     WebPageBase::didReceiveMessage(connection, decoder);
 }
 
+void WebPage::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
+{
+    if (decoder.messageName() == Messages::WebPage::TestSyncMessage::name()) {
+        IPC::handleMessageSynchronous<Messages::WebPage::TestSyncMessage>(connection, decoder, replyEncoder, this, &WebPage::testSyncMessage);
+        return;
+    }
+    if (decoder.messageName() == Messages::WebPage::TestSynchronousMessage::name()) {
+        IPC::handleMessageSynchronous<Messages::WebPage::TestSynchronousMessage>(connection, decoder, replyEncoder, this, &WebPage::testSynchronousMessage);
+        return;
+    }
+    UNUSED_PARAM(connection);
+    UNUSED_PARAM(decoder);
+    UNUSED_PARAM(replyEncoder);
+    ASSERT_NOT_REACHED();
+}
+
 } // namespace WebKit
+

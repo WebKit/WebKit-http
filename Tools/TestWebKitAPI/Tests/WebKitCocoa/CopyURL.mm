@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if WK_API_ENABLED && PLATFORM(COCOA)
+#if PLATFORM(COCOA)
 
 #import "PlatformUtilities.h"
 #import "TestWKWebView.h"
@@ -33,7 +33,7 @@
 #import <wtf/RetainPtr.h>
 #import <wtf/text/WTFString.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import "UIKitSPI.h"
 #include <MobileCoreServices/MobileCoreServices.h>
 #endif
@@ -60,7 +60,7 @@ NSString *readURLFromPasteboard()
 
 static RetainPtr<TestWKWebView> createWebViewWithCustomPasteboardDataEnabled()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     UIApplicationInitialize();
 #endif
 
@@ -110,5 +110,5 @@ TEST(CopyURL, MalformedURL)
     EXPECT_WK_STREQ(@"", readURLFromPasteboard());
 }
 
-#endif // WK_API_ENABLED && PLATFORM(MAC)
+#endif // PLATFORM(MAC)
 

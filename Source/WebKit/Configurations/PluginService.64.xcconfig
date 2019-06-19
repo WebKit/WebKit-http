@@ -27,7 +27,7 @@ VALID_ARCHS_macosx_NO = x86_64;
 
 PRODUCT_NAME = com.apple.WebKit.Plugin.64;
 PRODUCT_BUNDLE_IDENTIFIER = $(PRODUCT_NAME);
-INFOPLIST_FILE = PluginProcess/EntryPoint/mac/XPCService/PluginService.32-64.Info.plist;
+INFOPLIST_FILE = PluginProcess/EntryPoint/Cocoa/XPCService/PluginService.64.Info.plist;
 
 WK_APPKIT_LDFLAGS = $(WK_APPKIT_LDFLAGS_$(WK_PLATFORM_NAME));
 WK_APPKIT_LDFLAGS_macosx = -framework AppKit;
@@ -35,6 +35,7 @@ WK_APPKIT_LDFLAGS_macosx = -framework AppKit;
 OTHER_LDFLAGS = $(inherited) $(WK_APPKIT_LDFLAGS) $(OTHER_LDFLAGS_PLATFORM) $(OTHER_LDFLAGS_VERSIONED_FRAMEWORK_PATH) $(WK_RELOCATABLE_FRAMEWORKS_LDFLAGS);
 OTHER_LDFLAGS_PLATFORM[sdk=macosx*] = $(BUILT_PRODUCTS_DIR)/PluginProcessShim.dylib;
 
-CODE_SIGN_ENTITLEMENTS = Configurations/PluginService.entitlements;
+CODE_SIGN_ENTITLEMENTS_COCOA_TOUCH_YES = Configurations/PluginService.entitlements;
+WK_LIBRARY_VALIDATION_CODE_SIGN_FLAGS[sdk=macosx*] = --entitlements $(WK_PROCESSED_XCENT_FILE);
 
 SKIP_INSTALL[sdk=iphone*] = YES;

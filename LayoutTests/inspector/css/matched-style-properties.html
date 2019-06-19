@@ -40,8 +40,8 @@ function test() {
             if (rule.type !== WI.CSSStyleSheet.Type.Author)
                 continue;
 
-            for (var j = 0; j < rule.style.properties.length; ++j) {
-                var property = rule.style.properties[j];
+            for (var j = 0; j < rule.style.enabledProperties.length; ++j) {
+                var property = rule.style.enabledProperties[j];
 
                 if (property.anonymous)
                     continue;
@@ -60,11 +60,11 @@ function test() {
         validateStyles();
     }
 
-    WI.domTreeManager.requestDocument(function(documentNode) {
-        WI.domTreeManager.querySelector(documentNode.id, "#node1", function(contentNodeId) {
+    WI.domManager.requestDocument(function(documentNode) {
+        WI.domManager.querySelector(documentNode.id, "#node1", function(contentNodeId) {
             if (contentNodeId) {
-                var domNode = WI.domTreeManager.nodeForId(contentNodeId);
-                nodeStyles = WI.cssStyleManager.stylesForNode(domNode);
+                var domNode = WI.domManager.nodeForId(contentNodeId);
+                nodeStyles = WI.cssManager.stylesForNode(domNode);
 
                 if (nodeStyles.needsRefresh)
                     nodeStyles.addEventListener(WI.DOMNodeStyles.Event.Refreshed, onStylesRefreshed, this);

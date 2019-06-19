@@ -37,7 +37,7 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
         var scopeItemPrefix = "resource-sidebar-";
         var scopeBarItems = [];
 
-        scopeBarItems.push(new WI.ScopeBarItem(scopeItemPrefix + "type-all", WI.UIString("All Resources"), true));
+        scopeBarItems.push(new WI.ScopeBarItem(scopeItemPrefix + "type-all", WI.UIString("All Resources"), {exclusive: true}));
 
         for (var key in WI.Resource.Type) {
             var value = WI.Resource.Type[key];
@@ -53,13 +53,13 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
 
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
 
-        WI.frameResourceManager.addEventListener(WI.FrameResourceManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
+        WI.networkManager.addEventListener(WI.NetworkManager.Event.MainFrameDidChange, this._mainFrameDidChange, this);
 
         WI.debuggerManager.addEventListener(WI.DebuggerManager.Event.ScriptAdded, this._scriptWasAdded, this);
         WI.debuggerManager.addEventListener(WI.DebuggerManager.Event.ScriptRemoved, this._scriptWasRemoved, this);
         WI.debuggerManager.addEventListener(WI.DebuggerManager.Event.ScriptsCleared, this._scriptsCleared, this);
 
-        WI.cssStyleManager.addEventListener(WI.CSSStyleManager.Event.StyleSheetAdded, this._styleSheetAdded, this);
+        WI.cssManager.addEventListener(WI.CSSManager.Event.StyleSheetAdded, this._styleSheetAdded, this);
 
         WI.targetManager.addEventListener(WI.TargetManager.Event.TargetRemoved, this._targetRemoved, this);
 
@@ -94,15 +94,15 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
         super.closed();
 
         WI.Frame.removeEventListener(null, null, this);
-        WI.frameResourceManager.removeEventListener(null, null, this);
+        WI.networkManager.removeEventListener(null, null, this);
         WI.debuggerManager.removeEventListener(null, null, this);
         WI.notifications.removeEventListener(null, null, this);
     }
 
     showDefaultContentView()
     {
-        if (WI.frameResourceManager.mainFrame) {
-            this.contentBrowser.showContentViewForRepresentedObject(WI.frameResourceManager.mainFrame);
+        if (WI.networkManager.mainFrame) {
+            this.contentBrowser.showContentViewForRepresentedObject(WI.networkManager.mainFrame);
             return;
         }
 
@@ -197,8 +197,8 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
     {
         super.initialLayout();
 
-        if (WI.frameResourceManager.mainFrame)
-            this._mainFrameMainResourceDidChange(WI.frameResourceManager.mainFrame);
+        if (WI.networkManager.mainFrame)
+            this._createMainFrameTreeElement(WI.networkManager.mainFrame);
 
         for (let script of WI.debuggerManager.knownNonResourceScripts) {
             this._addScript(script);
@@ -206,6 +206,13 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
             if (script.sourceMaps.length && ResourceSidebarPanel.shouldPlaceResourcesAtTopLevel())
                 this.contentTreeOutline.disclosureButtons = true;
         }
+    }
+
+    resetFilter()
+    {
+        this._scopeBar.resetToDefault();
+
+        super.resetFilter();
     }
 
     hasCustomFilters()
@@ -264,23 +271,16 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
 
     _mainFrameDidChange(event)
     {
-        this._mainFrameMainResourceDidChange(WI.frameResourceManager.mainFrame);
+        this._mainFrameMainResourceDidChange(WI.networkManager.mainFrame);
     }
 
     _mainFrameMainResourceDidChange(mainFrame)
     {
         this.contentBrowser.contentViewContainer.closeAllContentViews();
 
-        if (this._mainFrameTreeElement) {
-            this.contentTreeOutline.removeChild(this._mainFrameTreeElement);
-            this._mainFrameTreeElement = null;
-        }
-
+        this._createMainFrameTreeElement(mainFrame);
         if (!mainFrame)
             return;
-
-        this._mainFrameTreeElement = new WI.FrameTreeElement(mainFrame);
-        this.contentTreeOutline.insertChild(this._mainFrameTreeElement, 0);
 
         function delayedWork()
         {
@@ -296,6 +296,20 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
         // Cookie restoration will attempt to re-select the resource we were showing.
         // Give it time to do that before selecting the main frame resource.
         setTimeout(delayedWork.bind(this));
+    }
+
+    _createMainFrameTreeElement(mainFrame)
+    {
+        if (this._mainFrameTreeElement) {
+            this.contentTreeOutline.removeChild(this._mainFrameTreeElement);
+            this._mainFrameTreeElement = null;
+        }
+
+        if (!mainFrame)
+            return;
+
+        this._mainFrameTreeElement = new WI.FrameTreeElement(mainFrame);
+        this.contentTreeOutline.insertChild(this._mainFrameTreeElement, 0);
     }
 
     _scriptWasAdded(event)
@@ -317,7 +331,7 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
                     this._addTargetWithMainResource(script.target);
                 this.contentTreeOutline.disclosureButtons = true;
                 return;
-            }            
+            }
         }
 
         // If the script URL matches a resource we can assume it is part of that resource and does not need added.
@@ -413,7 +427,7 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
         }
 
         if (this._targetTreeElementMap.size) {
-            for (let treeElement of this._targetTreeElementMap)
+            for (let treeElement of this._targetTreeElementMap.values())
                 treeElement.parent.removeChild(treeElement, suppressOnDeselect, suppressSelectSibling);
             this._targetTreeElementMap.clear();
         }
@@ -457,7 +471,7 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
         if (!this.selected)
             return;
 
-        let treeElement = event.data.selectedElement;
+        let treeElement = this.contentTreeOutline.selectedTreeElement;
         if (!treeElement)
             return;
 

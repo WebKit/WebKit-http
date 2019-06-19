@@ -32,10 +32,13 @@
 
 #include "NodeRareData.h"
 #include "StyledElement.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-Ref<ClassCollection> ClassCollection::create(ContainerNode& rootNode, CollectionType type, const AtomicString& classNames)
+WTF_MAKE_ISO_ALLOCATED_IMPL(ClassCollection);
+
+Ref<ClassCollection> ClassCollection::create(ContainerNode& rootNode, CollectionType type, const AtomString& classNames)
 {
     ASSERT(type == ByClass);
     return adoptRef(*new ClassCollection(rootNode, type, classNames));

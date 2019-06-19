@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,22 +26,24 @@
 #include "config.h"
 #include "ArrayBuffer.h"
 
-#include "ArrayBufferNeuteringWatchpoint.h"
+#include "ArrayBufferNeuteringWatchpointSet.h"
 #include "JSArrayBufferView.h"
 #include "JSCInlines.h"
 #include <wtf/Gigacage.h>
 
 namespace JSC {
 
-SharedArrayBufferContents::SharedArrayBufferContents(void* data, ArrayBufferDestructorFunction&& destructor)
-    : m_data(data)
+SharedArrayBufferContents::SharedArrayBufferContents(void* data, unsigned size, ArrayBufferDestructorFunction&& destructor)
+    : m_data(data, size)
     , m_destructor(WTFMove(destructor))
+    , m_sizeInBytes(size)
 {
 }
 
 SharedArrayBufferContents::~SharedArrayBufferContents()
 {
-    m_destructor(m_data.getMayBeNull());
+    // FIXME: we shouldn't use getUnsafe here https://bugs.webkit.org/show_bug.cgi?id=197698
+    m_destructor(m_data.getUnsafe());
 }
 
 ArrayBufferContents::ArrayBufferContents()
@@ -56,9 +58,10 @@ ArrayBufferContents::ArrayBufferContents(ArrayBufferContents&& other)
 }
 
 ArrayBufferContents::ArrayBufferContents(void* data, unsigned sizeInBytes, ArrayBufferDestructorFunction&& destructor)
-    : m_data(data)
+    : m_data(data, sizeInBytes)
     , m_sizeInBytes(sizeInBytes)
 {
+    RELEASE_ASSERT(m_sizeInBytes <= MAX_ARRAY_BUFFER_SIZE);
     m_destructor = WTFMove(destructor);
 }
 
@@ -81,7 +84,8 @@ void ArrayBufferContents::clear()
 
 void ArrayBufferContents::destroy()
 {
-    m_destructor(m_data.getMayBeNull());
+    // FIXME: We shouldn't use getUnsafe here: https://bugs.webkit.org/show_bug.cgi?id=197698
+    m_destructor(m_data.getUnsafe());
 }
 
 void ArrayBufferContents::reset()
@@ -97,31 +101,34 @@ void ArrayBufferContents::tryAllocate(unsigned numElements, unsigned elementByte
     // Do not allow 31-bit overflow of the total size.
     if (numElements) {
         unsigned totalSize = numElements * elementByteSize;
-        if (totalSize / numElements != elementByteSize
-            || totalSize > static_cast<unsigned>(std::numeric_limits<int32_t>::max())) {
+        if (totalSize / numElements != elementByteSize || totalSize > MAX_ARRAY_BUFFER_SIZE) {
             reset();
             return;
         }
     }
-    size_t size = static_cast<size_t>(numElements) * static_cast<size_t>(elementByteSize);
-    if (!size)
-        size = 1; // Make sure malloc actually allocates something, but not too much. We use null to mean that the buffer is neutered.
-    m_data = Gigacage::tryMalloc(Gigacage::Primitive, size);
-    if (!m_data) {
+    size_t sizeInBytes = static_cast<size_t>(numElements) * static_cast<size_t>(elementByteSize);
+    size_t allocationSize = sizeInBytes;
+    if (!allocationSize)
+        allocationSize = 1; // Make sure malloc actually allocates something, but not too much. We use null to mean that the buffer is neutered.
+
+    void* data = Gigacage::tryMalloc(Gigacage::Primitive, allocationSize);
+    m_data = DataType(data, sizeInBytes);
+    if (!data) {
         reset();
         return;
     }
     
     if (policy == ZeroInitialize)
-        memset(m_data.get(), 0, size);
+        memset(data, 0, allocationSize);
 
-    m_sizeInBytes = numElements * elementByteSize;
+    m_sizeInBytes = sizeInBytes;
+    RELEASE_ASSERT(m_sizeInBytes <= MAX_ARRAY_BUFFER_SIZE);
     m_destructor = [] (void* p) { Gigacage::free(Gigacage::Primitive, p); };
 }
 
 void ArrayBufferContents::makeShared()
 {
-    m_shared = adoptRef(new SharedArrayBufferContents(m_data.getMayBeNull(), WTFMove(m_destructor)));
+    m_shared = adoptRef(new SharedArrayBufferContents(data(), sizeInBytes(), WTFMove(m_destructor)));
     m_destructor = [] (void*) { };
 }
 
@@ -130,6 +137,7 @@ void ArrayBufferContents::transferTo(ArrayBufferContents& other)
     other.clear();
     other.m_data = m_data;
     other.m_sizeInBytes = m_sizeInBytes;
+    RELEASE_ASSERT(other.m_sizeInBytes <= MAX_ARRAY_BUFFER_SIZE);
     other.m_destructor = WTFMove(m_destructor);
     other.m_shared = m_shared;
     reset();
@@ -141,8 +149,9 @@ void ArrayBufferContents::copyTo(ArrayBufferContents& other)
     other.tryAllocate(m_sizeInBytes, sizeof(char), ArrayBufferContents::DontInitialize);
     if (!other.m_data)
         return;
-    memcpy(other.m_data.get(), m_data.get(), m_sizeInBytes);
+    memcpy(other.data(), data(), m_sizeInBytes);
     other.m_sizeInBytes = m_sizeInBytes;
+    RELEASE_ASSERT(other.m_sizeInBytes <= MAX_ARRAY_BUFFER_SIZE);
 }
 
 void ArrayBufferContents::shareWith(ArrayBufferContents& other)
@@ -153,6 +162,7 @@ void ArrayBufferContents::shareWith(ArrayBufferContents& other)
     other.m_shared = m_shared;
     other.m_data = m_data;
     other.m_sizeInBytes = m_sizeInBytes;
+    RELEASE_ASSERT(other.m_sizeInBytes <= MAX_ARRAY_BUFFER_SIZE);
 }
 
 Ref<ArrayBuffer> ArrayBuffer::create(unsigned numElements, unsigned elementByteSize)
@@ -285,20 +295,20 @@ unsigned ArrayBuffer::clampIndex(double index) const
     return clampValue(index, 0, currentLength);
 }
 
-RefPtr<ArrayBuffer> ArrayBuffer::slice(double begin, double end) const
+Ref<ArrayBuffer> ArrayBuffer::slice(double begin, double end) const
 {
     return sliceImpl(clampIndex(begin), clampIndex(end));
 }
 
-RefPtr<ArrayBuffer> ArrayBuffer::slice(double begin) const
+Ref<ArrayBuffer> ArrayBuffer::slice(double begin) const
 {
     return sliceImpl(clampIndex(begin), byteLength());
 }
 
-RefPtr<ArrayBuffer> ArrayBuffer::sliceImpl(unsigned begin, unsigned end) const
+Ref<ArrayBuffer> ArrayBuffer::sliceImpl(unsigned begin, unsigned end) const
 {
     unsigned size = begin <= end ? end - begin : 0;
-    RefPtr<ArrayBuffer> result = ArrayBuffer::create(static_cast<const char*>(data()) + begin, size);
+    auto result = ArrayBuffer::create(static_cast<const char*>(data()) + begin, size);
     result->setSharingMode(sharingMode());
     return result;
 }
@@ -378,7 +388,7 @@ void ArrayBuffer::notifyIncommingReferencesOfTransfer(VM& vm)
         JSCell* cell = incomingReferenceAt(i);
         if (JSArrayBufferView* view = jsDynamicCast<JSArrayBufferView*>(vm, cell))
             view->neuter();
-        else if (ArrayBufferNeuteringWatchpoint* watchpoint = jsDynamicCast<ArrayBufferNeuteringWatchpoint*>(vm, cell))
+        else if (ArrayBufferNeuteringWatchpointSet* watchpoint = jsDynamicCast<ArrayBufferNeuteringWatchpointSet*>(vm, cell))
             watchpoint->fireAll();
     }
 }

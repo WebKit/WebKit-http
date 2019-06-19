@@ -30,11 +30,11 @@
 }
 
 .source-code.text-editor > .CodeMirror .warning {
-    background-color: hsl(51, 87%, 93%);
+    background-color: var(--warning-background-color-secondary);
 }
 
 .source-code.text-editor > .CodeMirror .error {
-    background-color: hsl(15, 100%, 90%);
+    background-color: var(--error-background-color-secondary);
 }
 
 .source-code.text-editor > .CodeMirror .thread-indicator {
@@ -88,19 +88,19 @@
 }
 
 .source-code.text-editor > .CodeMirror .issue-widget.warning {
-    background-color: hsl(51, 87%, 93%);
+    background-color: var(--warning-background-color-secondary);
 }
 
 .source-code.text-editor > .CodeMirror .issue-widget.inline.warning {
-    background-color: hsl(43, 97%, 84%);
+    background-color: var(--warning-background-color);
 }
 
 .source-code.text-editor > .CodeMirror .issue-widget.error {
-    background-color: hsl(15, 100%, 90%);
+    background-color: var(--error-background-color-secondary);
 }
 
 .source-code.text-editor > .CodeMirror .issue-widget.inline.error {
-    background-color: hsl(11, 100%, 80%);
+    background-color: var(--error-background-color);
 }
 
 .source-code.text-editor > .CodeMirror .thread-widget {
@@ -144,7 +144,7 @@
 }
 
 .popover .debugger-popover-content > .body {
-    border-top: 1px solid hsla(0, 0%, 0%, 0.3);
+    border-top: 1px solid var(--text-color-quaternary);
     overflow: auto;
     padding-top: 2px;
 }
@@ -183,7 +183,11 @@
     }
 }
 
-@media (prefers-dark-interface) {
+@media (prefers-color-scheme: dark) {
+    .source-code.text-editor > .CodeMirror .issue-widget {
+        color: hsl(0, 0%, var(--foreground-lightness));
+    }
+
     .source-code.text-editor > .CodeMirror .thread-widget.inline {
         background-color: hsl(99, 85%, 34%);
     }

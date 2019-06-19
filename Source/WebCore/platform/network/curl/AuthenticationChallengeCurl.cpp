@@ -35,7 +35,13 @@
 namespace WebCore {
 
 AuthenticationChallenge::AuthenticationChallenge(const CurlResponse& curlResponse, unsigned previousFailureCount, const ResourceResponse& response, AuthenticationClient* client)
-    : AuthenticationChallengeBase(protectionSpaceFromHandle(curlResponse, response), Credential(), previousFailureCount, response, ResourceError())
+    : AuthenticationChallengeBase(protectionSpaceForPasswordBased(curlResponse, response), Credential(), previousFailureCount, response, ResourceError())
+    , m_authenticationClient(client)
+{
+}
+
+AuthenticationChallenge::AuthenticationChallenge(const URL& url, const CertificateInfo& certificateInfo, const ResourceError& resourceError, AuthenticationClient* client)
+    : AuthenticationChallengeBase(protectionSpaceForServerTrust(url, certificateInfo), Credential(), 0, ResourceResponse(), resourceError)
     , m_authenticationClient(client)
 {
 }
@@ -51,7 +57,7 @@ ProtectionSpaceServerType AuthenticationChallenge::protectionSpaceServerTypeFrom
     return isForProxy ? ProtectionSpaceProxyHTTP : ProtectionSpaceServerHTTP;
 }
 
-ProtectionSpace AuthenticationChallenge::protectionSpaceFromHandle(const CurlResponse& curlResponse, const ResourceResponse& response)
+ProtectionSpace AuthenticationChallenge::protectionSpaceForPasswordBased(const CurlResponse& curlResponse, const ResourceResponse& response)
 {
     if (!response.isUnauthorized() && !response.isProxyAuthenticationRequired())
         return ProtectionSpace();
@@ -62,10 +68,19 @@ ProtectionSpace AuthenticationChallenge::protectionSpaceFromHandle(const CurlRes
     auto serverType = protectionSpaceServerTypeFromURI(url, isProxyAuth);
     auto authenticationScheme = authenticationSchemeFromCurlAuth(isProxyAuth ? curlResponse.availableProxyAuth : curlResponse.availableHttpAuth);
 
-    return ProtectionSpace(url.host().toString(), static_cast<int>(port ? *port : 0), serverType, parseRealm(response), authenticationScheme);
+    return ProtectionSpace(url.host().toString(), static_cast<int>(port.valueOr(0)), serverType, parseRealm(response), authenticationScheme);
 }
 
-std::optional<uint16_t> AuthenticationChallenge::determineProxyPort(const URL& url)
+ProtectionSpace AuthenticationChallenge::protectionSpaceForServerTrust(const URL& url, const CertificateInfo& certificateInfo)
+{
+    auto port = determineProxyPort(url);
+    auto serverType = protectionSpaceServerTypeFromURI(url, false);
+    auto authenticationScheme = ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested;
+
+    return ProtectionSpace(url.host().toString(), static_cast<int>(port.valueOr(0)), serverType, String(), authenticationScheme, certificateInfo);
+}
+
+Optional<uint16_t> AuthenticationChallenge::determineProxyPort(const URL& url)
 {
     static const uint16_t socksPort = 1080;
 
@@ -78,7 +93,7 @@ std::optional<uint16_t> AuthenticationChallenge::determineProxyPort(const URL& u
     if (protocolIsInSocksFamily(url))
         return socksPort;
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 ProtectionSpaceAuthenticationScheme AuthenticationChallenge::authenticationSchemeFromCurlAuth(long curlAuth)

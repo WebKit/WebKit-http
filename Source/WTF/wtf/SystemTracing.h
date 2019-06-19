@@ -47,6 +47,8 @@ enum TracePointCode {
     WebAssemblyCompileEnd,
     WebAssemblyExecuteStart,
     WebAssemblyExecuteEnd,
+    DumpJITMemoryStart,
+    DumpJITMemoryStop,
 
     WebCoreRange = 5000,
     MainResourceLoadDidStartProvisional,
@@ -74,6 +76,13 @@ enum TracePointCode {
     DisplayListRecordStart,
     DisplayListRecordEnd,
     DisplayRefreshDispatchingToMainThread,
+    ComputeEventRegionsStart,
+    ComputeEventRegionsEnd,
+
+    ScheduleRenderingUpdate,
+    TriggerRenderingUpdate,
+    RenderingUpdateStart,
+    RenderingUpdateEnd,
 
     WebKitRange = 10000,
     WebHTMLViewPaintStart,

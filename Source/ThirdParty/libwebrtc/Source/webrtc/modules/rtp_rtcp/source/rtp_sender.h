@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 #include "api/array_view.h"
 #include "api/call/transport.h"
@@ -37,6 +38,7 @@
 
 namespace webrtc {
 
+class FrameEncryptorInterface;
 class OverheadObserver;
 class RateLimiter;
 class RtcEventLog;
@@ -62,7 +64,10 @@ class RTPSender {
             SendPacketObserver* send_packet_observer,
             RateLimiter* nack_rate_limiter,
             OverheadObserver* overhead_observer,
-            bool populate_network2_timestamp);
+            bool populate_network2_timestamp,
+            FrameEncryptorInterface* frame_encryptor,
+            bool require_frame_encryption,
+            bool extmap_allow_mixed);
 
   ~RTPSender();
 
@@ -74,7 +79,7 @@ class RTPSender {
   uint32_t FecOverheadRate() const;
   uint32_t NackOverheadRate() const;
 
-  int32_t RegisterPayload(const char* payload_name,
+  int32_t RegisterPayload(absl::string_view payload_name,
                           const int8_t payload_type,
                           const uint32_t frequency,
                           const size_t channels,
@@ -84,6 +89,8 @@ class RTPSender {
 
   void SetSendingMediaStatus(bool enabled);
   bool SendingMedia() const;
+
+  void SetAsPartOfAllocation(bool part_of_allocation);
 
   void GetDataCounters(StreamDataCounters* rtp_stats,
                        StreamDataCounters* rtx_stats) const;
@@ -113,8 +120,11 @@ class RTPSender {
                         uint32_t* transport_frame_id_out,
                         int64_t expected_retransmission_time_ms);
 
+  void SetExtmapAllowMixed(bool extmap_allow_mixed);
+
   // RTP header extension
   int32_t RegisterRtpHeaderExtension(RTPExtensionType type, uint8_t id);
+  bool RegisterRtpHeaderExtension(const std::string& uri, int id);
   bool IsRtpHeaderExtensionRegistered(RTPExtensionType type) const;
   int32_t DeregisterRtpHeaderExtension(RTPExtensionType type);
 
@@ -239,13 +249,14 @@ class RTPSender {
                            const PacketOptions& options,
                            const PacedPacketInfo& pacing_info);
 
+  void RecomputeMaxSendDelay() RTC_EXCLUSIVE_LOCKS_REQUIRED(statistics_crit_);
   void UpdateDelayStatistics(int64_t capture_time_ms, int64_t now_ms);
   void UpdateOnSendPacket(int packet_id,
                           int64_t capture_time_ms,
                           uint32_t ssrc);
 
-  bool UpdateTransportSequenceNumber(RtpPacketToSend* packet,
-                                     int* packet_id) const;
+  bool UpdateTransportSequenceNumber(RtpPacketToSend* packet, int* packet_id)
+      RTC_EXCLUSIVE_LOCKS_REQUIRED(send_critsect_);
 
   void UpdateRtpStats(const RtpPacketToSend& packet,
                       bool is_rtx,
@@ -274,7 +285,7 @@ class RTPSender {
 
   Transport* transport_;
   bool sending_media_ RTC_GUARDED_BY(send_critsect_);
-
+  bool force_part_of_allocation_ RTC_GUARDED_BY(send_critsect_);
   size_t max_packet_size_;
 
   int8_t last_payload_type_ RTC_GUARDED_BY(send_critsect_);
@@ -296,6 +307,8 @@ class RTPSender {
   // Statistics
   rtc::CriticalSection statistics_crit_;
   SendDelayMap send_delays_ RTC_GUARDED_BY(statistics_crit_);
+  SendDelayMap::const_iterator max_delay_it_ RTC_GUARDED_BY(statistics_crit_);
+  int64_t sum_delays_ms_ RTC_GUARDED_BY(statistics_crit_);
   FrameCounts frame_counts_ RTC_GUARDED_BY(statistics_crit_);
   StreamDataCounters rtp_stats_ RTC_GUARDED_BY(statistics_crit_);
   StreamDataCounters rtx_rtp_stats_ RTC_GUARDED_BY(statistics_crit_);

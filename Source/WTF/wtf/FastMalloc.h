@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005-2009, 2015-2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2005-2018 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef WTF_FastMalloc_h
-#define WTF_FastMalloc_h
+#pragma once
 
 #include <new>
 #include <stdlib.h>
@@ -54,6 +53,7 @@ WTF_EXPORT_PRIVATE char* fastStrDup(const char*) RETURNS_NONNULL;
 WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastMalloc(size_t);
 WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastZeroedMalloc(size_t);
 WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastCalloc(size_t numElements, size_t elementSize);
+WTF_EXPORT_PRIVATE TryMallocReturnValue tryFastRealloc(void*, size_t);
 
 WTF_EXPORT_PRIVATE void fastFree(void*);
 
@@ -201,6 +201,15 @@ struct FastMalloc {
     }
     
     static void* realloc(void* p, size_t size) { return fastRealloc(p, size); }
+
+    static void* tryRealloc(void* p, size_t size)
+    {
+        auto result = tryFastRealloc(p, size);
+        void* realResult;
+        if (result.getValue(realResult))
+            return realResult;
+        return nullptr;
+    }
     
     static void free(void* p) { fastFree(p); }
 };
@@ -250,9 +259,9 @@ using WTF::tryFastZeroedMalloc;
 using WTF::fastAlignedMalloc;
 using WTF::fastAlignedFree;
 
-#if COMPILER(GCC_OR_CLANG) && OS(DARWIN)
+#if COMPILER(GCC_COMPATIBLE) && OS(DARWIN)
 #define WTF_PRIVATE_INLINE __private_extern__ inline __attribute__((always_inline))
-#elif COMPILER(GCC_OR_CLANG)
+#elif COMPILER(GCC_COMPATIBLE)
 #define WTF_PRIVATE_INLINE inline __attribute__((always_inline))
 #elif COMPILER(MSVC)
 #define WTF_PRIVATE_INLINE __forceinline
@@ -298,5 +307,3 @@ typedef int __thisIsHereToForceASemicolonAfterThisMacro
 #define WTF_MAKE_STRUCT_FAST_ALLOCATED \
     WTF_MAKE_FAST_ALLOCATED_IMPL \
 typedef int __thisIsHereToForceASemicolonAfterThisMacro
-
-#endif /* WTF_FastMalloc_h */

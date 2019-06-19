@@ -35,7 +35,7 @@ class CodeProfile {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     CodeProfile(const SourceCode& source, CodeProfile* parent)
-        : m_file(source.provider()->url().utf8())
+        : m_file(String(source.provider()->url()).utf8())
         , m_lineNumber(source.firstLine().oneBasedInt())
         , m_parent(parent)
     {
@@ -56,7 +56,6 @@ public:
         m_children.append(WTFMove(child));
     }
 
-private:
     enum CodeType {
         EngineCode,
         GlobalThunk,
@@ -68,6 +67,8 @@ private:
         EngineFrame,
         NumberOfCodeTypes
     };
+
+private:
     struct CodeRecord {
         CodeRecord(void* pc, CodeType type)
             : pc(pc)
@@ -83,8 +84,6 @@ private:
     CodeProfile* m_parent;
     Vector<std::unique_ptr<CodeProfile>> m_children;
     TieredMMapArray<CodeRecord> m_samples;
-
-    static const char* s_codeTypeNames[NumberOfCodeTypes];
 };
 
 } // namespace JSC

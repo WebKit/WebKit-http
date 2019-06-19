@@ -25,7 +25,7 @@
 
 WI.DOMBreakpointTreeElement = class DOMBreakpointTreeElement extends WI.GeneralTreeElement
 {
-    constructor(breakpoint, className, title)
+    constructor(breakpoint, {className, title} = {})
     {
         console.assert(breakpoint instanceof WI.DOMBreakpoint);
 
@@ -35,16 +35,13 @@ WI.DOMBreakpointTreeElement = class DOMBreakpointTreeElement extends WI.GeneralT
         if (!title)
             title = WI.DOMBreakpointTreeElement.displayNameForType(breakpoint.type);
 
-        super(["breakpoint", className], title, null, breakpoint);
+        const subtitle = null;
+        super(["breakpoint", "dom", className], title, subtitle, breakpoint);
 
-        this._statusImageElement = document.createElement("img");
-        this._statusImageElement.classList.add("status-image", "resolved");
-        this.status = this._statusImageElement;
+        this.status = WI.ImageUtilities.useSVGSymbol("Images/Breakpoint.svg");
+        this.status.className = WI.BreakpointTreeElement.StatusImageElementStyleClassName;
+
         this.tooltipHandledSeparately = true;
-
-        breakpoint.addEventListener(WI.DOMBreakpoint.Event.DisabledStateDidChange, this._updateStatus, this);
-
-        this._updateStatus();
     }
 
     // Static
@@ -53,11 +50,11 @@ WI.DOMBreakpointTreeElement = class DOMBreakpointTreeElement extends WI.GeneralT
     {
         switch (type) {
         case WI.DOMBreakpoint.Type.SubtreeModified:
-            return WI.UIString("Subtree Modified");
+            return WI.UIString("Subtree Modified", "A submenu item of 'Break On' that breaks (pauses) before child DOM node is modified");
         case WI.DOMBreakpoint.Type.AttributeModified:
-            return WI.UIString("Attribute Modified");
+            return WI.UIString("Attribute Modified", "A submenu item of 'Break On' that breaks (pauses) before DOM attribute is modified");
         case WI.DOMBreakpoint.Type.NodeRemoved:
-            return WI.UIString("Node Removed");
+            return WI.UIString("Node Removed", "A submenu item of 'Break On' that breaks (pauses) before DOM node is removed");
         default:
             console.error("Unexpected DOM breakpoint type: " + type);
             return null;
@@ -70,22 +67,30 @@ WI.DOMBreakpointTreeElement = class DOMBreakpointTreeElement extends WI.GeneralT
     {
         super.onattach();
 
+        this.representedObject.addEventListener(WI.DOMBreakpoint.Event.DisabledStateChanged, this._updateStatus, this);
+        WI.debuggerManager.addEventListener(WI.DebuggerManager.Event.BreakpointsEnabledDidChange, this._updateStatus, this);
+
         this._boundStatusImageElementClicked = this._statusImageElementClicked.bind(this);
         this._boundStatusImageElementFocused = this._statusImageElementFocused.bind(this);
         this._boundStatusImageElementMouseDown = this._statusImageElementMouseDown.bind(this);
 
-        this._statusImageElement.addEventListener("click", this._boundStatusImageElementClicked);
-        this._statusImageElement.addEventListener("focus", this._boundStatusImageElementFocused);
-        this._statusImageElement.addEventListener("mousedown", this._boundStatusImageElementMouseDown);
+        this.status.addEventListener("click", this._boundStatusImageElementClicked);
+        this.status.addEventListener("focus", this._boundStatusImageElementFocused);
+        this.status.addEventListener("mousedown", this._boundStatusImageElementMouseDown);
+
+        this._updateStatus();
     }
 
     ondetach()
     {
         super.ondetach();
 
-        this._statusImageElement.removeEventListener("click", this._boundStatusImageElementClicked);
-        this._statusImageElement.removeEventListener("focus", this._boundStatusImageElementFocused);
-        this._statusImageElement.removeEventListener("mousedown", this._boundStatusImageElementMouseDown);
+        this.representedObject.removeEventListener(null, null, this);
+        WI.debuggerManager.removeEventListener(null, null, this);
+
+        this.status.removeEventListener("click", this._boundStatusImageElementClicked);
+        this.status.removeEventListener("focus", this._boundStatusImageElementFocused);
+        this.status.removeEventListener("mousedown", this._boundStatusImageElementMouseDown);
 
         this._boundStatusImageElementClicked = null;
         this._boundStatusImageElementFocused = null;
@@ -94,6 +99,11 @@ WI.DOMBreakpointTreeElement = class DOMBreakpointTreeElement extends WI.GeneralT
 
     ondelete()
     {
+        // We set this flag so that TreeOutlines that will remove this
+        // BreakpointTreeElement will know whether it was deleted from
+        // within the TreeOutline or from outside it (e.g. TextEditor).
+        this.__deletedViaDeleteKeyboardShortcut = true;
+
         WI.domDebuggerManager.removeDOMBreakpoint(this.representedObject);
         return true;
     }
@@ -148,6 +158,10 @@ WI.DOMBreakpointTreeElement = class DOMBreakpointTreeElement extends WI.GeneralT
 
     _updateStatus()
     {
-        this._statusImageElement.classList.toggle("disabled", this.representedObject.disabled);
+        if (!this.status)
+            return;
+
+        this.status.classList.toggle(WI.BreakpointTreeElement.StatusImageDisabledStyleClassName, this.representedObject.disabled);
+        this.status.classList.toggle(WI.BreakpointTreeElement.StatusImageResolvedStyleClassName, WI.debuggerManager.breakpointsEnabled);
     }
 };

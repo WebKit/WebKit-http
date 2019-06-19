@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Alexey Proskuryakov <ap@nypop.com>
  * Copyright (C) 2007-2009 Torch Mobile, Inc.
  *
@@ -28,18 +28,18 @@
 #include "config.h"
 #include "TextEncoding.h"
 
+#include "DecodeEscapeSequences.h"
 #include "TextCodec.h"
 #include "TextEncodingRegistry.h"
-#include <unicode/unorm.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/text/CString.h>
 #include <wtf/text/StringView.h>
 
 namespace WebCore {
 
 static const TextEncoding& UTF7Encoding()
 {
-    static TextEncoding globalUTF7Encoding("UTF-7");
+    static NeverDestroyed<TextEncoding> globalUTF7Encoding("UTF-7");
     return globalUTF7Encoding;
 }
 
@@ -69,52 +69,17 @@ String TextEncoding::decode(const char* data, size_t length, bool stopOnError, b
     return newTextCodec(*this)->decode(data, length, true, stopOnError, sawError);
 }
 
-#if COMPILER(GCC_OR_CLANG)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-// NOTE: ICU's unorm_quickCheck and unorm_normalize functions are deprecated.
-
-Vector<uint8_t> TextEncoding::encode(StringView text, UnencodableHandling handling) const
+Vector<uint8_t> TextEncoding::encode(StringView string, UnencodableHandling handling) const
 {
-    if (!m_name || text.isEmpty())
+    if (!m_name || string.isEmpty())
         return { };
-
-    // FIXME: Consider adding a fast case for ASCII.
 
     // FIXME: What's the right place to do normalization?
     // It's a little strange to do it inside the encode function.
     // Perhaps normalization should be an explicit step done before calling encode.
-
-    auto upconvertedCharacters = text.upconvertedCharacters();
-
-    const UChar* source = upconvertedCharacters;
-    unsigned sourceLength = text.length();
-
-    Vector<UChar> normalizedCharacters;
-
-    UErrorCode err = U_ZERO_ERROR;
-    if (unorm_quickCheck(source, sourceLength, UNORM_NFC, &err) != UNORM_YES) {
-        // First try using the length of the original string, since normalization to NFC rarely increases length.
-        normalizedCharacters.grow(sourceLength);
-        int32_t normalizedLength = unorm_normalize(source, sourceLength, UNORM_NFC, 0, normalizedCharacters.data(), sourceLength, &err);
-        if (err == U_BUFFER_OVERFLOW_ERROR) {
-            err = U_ZERO_ERROR;
-            normalizedCharacters.resize(normalizedLength);
-            normalizedLength = unorm_normalize(source, sourceLength, UNORM_NFC, 0, normalizedCharacters.data(), normalizedLength, &err);
-        }
-        ASSERT(U_SUCCESS(err));
-
-        source = normalizedCharacters.data();
-        sourceLength = normalizedLength;
-    }
-
-    return newTextCodec(*this)->encode(StringView { source, sourceLength }, handling);
+    auto normalizedString = normalizedNFC(string);
+    return newTextCodec(*this)->encode(normalizedString.view, handling);
 }
-
-#if COMPILER(GCC_OR_CLANG)
-#pragma GCC diagnostic pop
-#endif
 
 const char* TextEncoding::domName() const
 {
@@ -178,7 +143,7 @@ const TextEncoding& TextEncoding::closestByteBasedEquivalent() const
 // byte-based encoding and can contain 0x00. By extension, the same
 // should be done for UTF-32. In case of UTF-7, it is a byte-based encoding,
 // but it's fraught with problems and we'd rather steer clear of it.
-const TextEncoding& TextEncoding::encodingForFormSubmission() const
+const TextEncoding& TextEncoding::encodingForFormSubmissionOrURLParsing() const
 {
     if (isNonByteBasedEncoding() || isUTF7Encoding())
         return UTF8Encoding();
@@ -187,39 +152,46 @@ const TextEncoding& TextEncoding::encodingForFormSubmission() const
 
 const TextEncoding& ASCIIEncoding()
 {
-    static TextEncoding globalASCIIEncoding("ASCII");
+    static NeverDestroyed<TextEncoding> globalASCIIEncoding("ASCII");
     return globalASCIIEncoding;
 }
 
 const TextEncoding& Latin1Encoding()
 {
-    static TextEncoding globalLatin1Encoding("latin1");
+    static NeverDestroyed<TextEncoding> globalLatin1Encoding("latin1");
     return globalLatin1Encoding;
 }
 
 const TextEncoding& UTF16BigEndianEncoding()
 {
-    static TextEncoding globalUTF16BigEndianEncoding("UTF-16BE");
+    static NeverDestroyed<TextEncoding> globalUTF16BigEndianEncoding("UTF-16BE");
     return globalUTF16BigEndianEncoding;
 }
 
 const TextEncoding& UTF16LittleEndianEncoding()
 {
-    static TextEncoding globalUTF16LittleEndianEncoding("UTF-16LE");
+    static NeverDestroyed<TextEncoding> globalUTF16LittleEndianEncoding("UTF-16LE");
     return globalUTF16LittleEndianEncoding;
 }
 
 const TextEncoding& UTF8Encoding()
 {
-    static TextEncoding globalUTF8Encoding("UTF-8");
-    ASSERT(globalUTF8Encoding.isValid());
+    static NeverDestroyed<TextEncoding> globalUTF8Encoding("UTF-8");
+    ASSERT(globalUTF8Encoding.get().isValid());
     return globalUTF8Encoding;
 }
 
 const TextEncoding& WindowsLatin1Encoding()
 {
-    static TextEncoding globalWindowsLatin1Encoding("WinLatin-1");
+    static NeverDestroyed<TextEncoding> globalWindowsLatin1Encoding("WinLatin-1");
     return globalWindowsLatin1Encoding;
+}
+
+String decodeURLEscapeSequences(const String& string, const TextEncoding& encoding)
+{
+    if (string.isEmpty())
+        return string;
+    return decodeEscapeSequences<URLEscapeSequence>(string, encoding);
 }
 
 } // namespace WebCore

@@ -68,29 +68,29 @@ Ref<API::Navigation> WebNavigationState::createReloadNavigation()
     return navigation;
 }
 
-Ref<API::Navigation> WebNavigationState::createLoadDataNavigation()
+Ref<API::Navigation> WebNavigationState::createLoadDataNavigation(std::unique_ptr<API::SubstituteData>&& substituteData)
 {
-    auto navigation = API::Navigation::create(*this);
+    auto navigation = API::Navigation::create(*this, WTFMove(substituteData));
 
     m_navigations.set(navigation->navigationID(), navigation.ptr());
 
     return navigation;
 }
 
-API::Navigation& WebNavigationState::navigation(uint64_t navigationID)
+API::Navigation* WebNavigationState::navigation(uint64_t navigationID)
 {
     ASSERT(navigationID);
     ASSERT(m_navigations.contains(navigationID));
 
-    return *m_navigations.get(navigationID);
+    return m_navigations.get(navigationID);
 }
 
-Ref<API::Navigation> WebNavigationState::takeNavigation(uint64_t navigationID)
+RefPtr<API::Navigation> WebNavigationState::takeNavigation(uint64_t navigationID)
 {
     ASSERT(navigationID);
     ASSERT(m_navigations.contains(navigationID));
     
-    return m_navigations.take(navigationID).releaseNonNull();
+    return m_navigations.take(navigationID);
 }
 
 void WebNavigationState::didDestroyNavigation(uint64_t navigationID)

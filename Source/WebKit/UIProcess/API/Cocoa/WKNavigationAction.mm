@@ -26,14 +26,17 @@
 #import "config.h"
 #import "WKNavigationActionInternal.h"
 
-#if WK_API_ENABLED
-
 #import "NavigationActionData.h"
 #import "WKFrameInfoInternal.h"
 #import "WKNavigationInternal.h"
+#import "WebEventFactory.h"
 #import "_WKUserInitiatedActionInternal.h"
 #import <WebCore/FloatPoint.h>
 #import <wtf/RetainPtr.h>
+
+#if PLATFORM(IOS_FAMILY)
+#import "WebIOSEventFactory.h"
+#endif
 
 @implementation WKNavigationAction
 
@@ -58,7 +61,7 @@ static WKNavigationType toWKNavigationType(WebCore::NavigationType navigationTyp
     return WKNavigationTypeOther;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 static WKSyntheticClickType toWKSyntheticClickType(WebKit::WebMouseEvent::SyntheticClickType syntheticClickType)
 {
     switch (syntheticClickType) {
@@ -74,48 +77,6 @@ static WKSyntheticClickType toWKSyntheticClickType(WebKit::WebMouseEvent::Synthe
 }
 #endif
 
-#if PLATFORM(MAC)
-
-// FIXME: This really belongs in WebEventFactory.
-static NSEventModifierFlags toNSEventModifierFlags(WebKit::WebEvent::Modifiers modifiers)
-{
-    NSEventModifierFlags modifierFlags = 0;
-
-    if (modifiers & WebKit::WebEvent::CapsLockKey)
-        modifierFlags |= NSEventModifierFlagCapsLock;
-    if (modifiers & WebKit::WebEvent::ShiftKey)
-        modifierFlags |= NSEventModifierFlagShift;
-    if (modifiers & WebKit::WebEvent::ControlKey)
-        modifierFlags |= NSEventModifierFlagControl;
-    if (modifiers & WebKit::WebEvent::AltKey)
-        modifierFlags |= NSEventModifierFlagOption;
-    if (modifiers & WebKit::WebEvent::MetaKey)
-        modifierFlags |= NSEventModifierFlagCommand;
-
-    return modifierFlags;
-}
-
-static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
-{
-    switch (mouseButton) {
-    case WebKit::WebMouseEvent::NoButton:
-        return 0;
-
-    case WebKit::WebMouseEvent::LeftButton:
-        return 1 << 0;
-
-    case WebKit::WebMouseEvent::RightButton:
-        return 1 << 1;
-
-    case WebKit::WebMouseEvent::MiddleButton:
-        return 1 << 2;
-
-    default:
-        return 0;
-    }
-}
-#endif
-
 - (void)dealloc
 {
     _navigationAction->~NavigationAction();
@@ -127,7 +88,7 @@ static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
 {
     return [NSString stringWithFormat:@"<%@: %p; navigationType = %ld; syntheticClickType = %ld; position x = %.2f y = %.2f request = %@; sourceFrame = %@; targetFrame = %@>", NSStringFromClass(self.class), self,
         (long)self.navigationType,
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         (long)self._syntheticClickType, self._clickLocationInRootViewCoordinates.x, self._clickLocationInRootViewCoordinates.y,
 #else
         0L, 0.0, 0.0,
@@ -155,7 +116,7 @@ static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
     return _navigationAction->request().nsURLRequest(WebCore::HTTPBodyUpdatePolicy::DoNotUpdateHTTPBody);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (WKSyntheticClickType)_syntheticClickType
 {
     return toWKSyntheticClickType(_navigationAction->syntheticClickType());
@@ -168,15 +129,24 @@ static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
 #endif
 
 #if PLATFORM(MAC)
+
 - (NSEventModifierFlags)modifierFlags
 {
-    return toNSEventModifierFlags(_navigationAction->modifiers());
+    return WebKit::WebEventFactory::toNSEventModifierFlags(_navigationAction->modifiers());
 }
 
 - (NSInteger)buttonNumber
 {
-    return toNSButtonNumber(_navigationAction->mouseButton());
+    return WebKit::WebEventFactory::toNSButtonNumber(_navigationAction->mouseButton());
 }
+
+#else
+
+- (UIKeyModifierFlags)modifierFlags
+{
+    return WebIOSEventFactory::toUIKeyModifierFlags(_navigationAction->modifiers());
+}
+
 #endif
 
 #pragma mark WKObject protocol implementation
@@ -215,6 +185,11 @@ static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
     return _navigationAction->shouldOpenAppLinks();
 }
 
+- (BOOL)_shouldPerformDownload
+{
+    return _navigationAction->shouldPerformDownload();
+}
+
 - (BOOL)_shouldOpenExternalURLs
 {
     return [self _shouldOpenExternalSchemes];
@@ -236,5 +211,3 @@ static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
 }
 
 @end
-
-#endif

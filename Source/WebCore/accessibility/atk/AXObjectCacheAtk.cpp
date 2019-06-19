@@ -29,46 +29,42 @@
 #include "HTMLSelectElement.h"
 #include "Range.h"
 #include "TextIterator.h"
-#include "WebKitAccessibleWrapperAtk.h"
+#include "WebKitAccessible.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
 
+static AtkObject* wrapperParent(WebKitAccessible* wrapper)
+{
+    // Look for the right object to emit the signal from, but using the implementation
+    // of atk_object_get_parent from AtkObject class (which uses a cached pointer if set)
+    // since the accessibility hierarchy in WebCore will no longer be navigable.
+    gpointer webkitAccessibleClass = g_type_class_peek_parent(WEBKIT_ACCESSIBLE_GET_CLASS(wrapper));
+    gpointer atkObjectClass = g_type_class_peek_parent(webkitAccessibleClass);
+    AtkObject* atkParent = ATK_OBJECT_CLASS(atkObjectClass)->get_parent(ATK_OBJECT(wrapper));
+    // We don't want to emit any signal from an object outside WebKit's world.
+    return WEBKIT_IS_ACCESSIBLE(atkParent) ? atkParent : nullptr;
+}
+
 void AXObjectCache::detachWrapper(AccessibilityObject* obj, AccessibilityDetachmentType detachmentType)
 {
-    AtkObject* wrapper = obj->wrapper();
+    auto* wrapper = obj->wrapper();
     ASSERT(wrapper);
 
     // If an object is being detached NOT because of the AXObjectCache being destroyed,
     // then it's being removed from the accessibility tree and we should emit a signal.
-    if (detachmentType != AccessibilityDetachmentType::CacheDestroyed) {
-        if (obj->document()) {
-            // Look for the right object to emit the signal from, but using the implementation
-            // of atk_object_get_parent from AtkObject class (which uses a cached pointer if set)
-            // since the accessibility hierarchy in WebCore will no longer be navigable.
-            gpointer webkitAccessibleClass = g_type_class_peek_parent(WEBKIT_ACCESSIBLE_GET_CLASS(wrapper));
-            gpointer atkObjectClass = g_type_class_peek_parent(webkitAccessibleClass);
-            AtkObject* atkParent = ATK_OBJECT_CLASS(atkObjectClass)->get_parent(ATK_OBJECT(wrapper));
-
-            // We don't want to emit any signal from an object outside WebKit's world.
-            if (WEBKIT_IS_ACCESSIBLE(atkParent)) {
-                // The accessibility hierarchy is already invalid, so the parent-children relationships
-                // in the AccessibilityObject tree are not there anymore, so we can't know the offset.
-                g_signal_emit_by_name(atkParent, "children-changed::remove", -1, wrapper);
-            }
-        }
-    }
+    if (detachmentType != AccessibilityDetachmentType::CacheDestroyed && obj->document() && wrapperParent(wrapper))
+        m_deferredDetachedWrapperList.add(wrapper);
 
     webkitAccessibleDetach(WEBKIT_ACCESSIBLE(wrapper));
 }
 
 void AXObjectCache::attachWrapper(AccessibilityObject* obj)
 {
-    AtkObject* atkObj = ATK_OBJECT(webkitAccessibleNew(obj));
-    obj->setWrapper(atkObj);
-    g_object_unref(atkObj);
+    GRefPtr<WebKitAccessible> wrapper = adoptGRef(webkitAccessibleNew(obj));
+    obj->setWrapper(wrapper.get());
 
     // If an object is being attached and we are not in the middle of a layout update, then
     // we should report ATs by emitting the children-changed::add signal from the parent.
@@ -88,18 +84,39 @@ void AXObjectCache::attachWrapper(AccessibilityObject* obj)
     if (!obj->renderer())
         return;
 
-    // Don't emit the signal for objects whose parents won't be exposed directly.
-    AccessibilityObject* coreParent = obj->parentObjectUnignored();
-    if (!coreParent || coreParent->accessibilityIsIgnoredByDefault())
-        return;
+    m_deferredAttachedWrapperObjectList.add(obj);
+}
 
-    // Look for the right object to emit the signal from.
-    AtkObject* atkParent = coreParent->wrapper();
-    if (!atkParent)
-        return;
+void AXObjectCache::platformPerformDeferredCacheUpdate()
+{
+    for (auto& coreObject : m_deferredAttachedWrapperObjectList) {
+        auto* wrapper = coreObject->wrapper();
+        if (!wrapper)
+            continue;
 
-    size_t index = coreParent->children(false).find(obj);
-    g_signal_emit_by_name(atkParent, "children-changed::add", index, atkObj);
+        // Don't emit the signal for objects whose parents won't be exposed directly.
+        auto* coreParent = coreObject->parentObjectUnignored();
+        if (!coreParent || coreParent->accessibilityIsIgnoredByDefault())
+            continue;
+
+        // Look for the right object to emit the signal from.
+        auto* atkParent = coreParent->wrapper();
+        if (!atkParent)
+            continue;
+
+        size_t index = coreParent->children(false).find(coreObject);
+        g_signal_emit_by_name(atkParent, "children-changed::add", index != notFound ? index : -1, wrapper);
+    }
+    m_deferredAttachedWrapperObjectList.clear();
+
+    for (auto& wrapper : m_deferredDetachedWrapperList) {
+        if (auto* atkParent = wrapperParent(wrapper.get())) {
+            // The accessibility hierarchy is already invalid, so the parent-children relationships
+            // in the AccessibilityObject tree are not there anymore, so we can't know the offset.
+            g_signal_emit_by_name(atkParent, "children-changed::remove", -1, wrapper.get());
+        }
+    }
+    m_deferredDetachedWrapperList.clear();
 }
 
 static AccessibilityObject* getListObject(AccessibilityObject* object)
@@ -168,24 +185,24 @@ static void notifyChildrenSelectionChange(AccessibilityObject* object)
     if (oldListObject.get() != listObject)
         oldFocusedObject.get() = nullptr;
 
-    AtkObject* axItem = item ? item->wrapper() : nullptr;
-    AtkObject* axOldFocusedObject = oldFocusedObject.get() ? oldFocusedObject.get()->wrapper() : nullptr;
+    WebKitAccessible* axItem = item ? item->wrapper() : nullptr;
+    WebKitAccessible* axOldFocusedObject = oldFocusedObject.get() ? oldFocusedObject.get()->wrapper() : nullptr;
 
     // Old focused object just lost focus, so emit the events.
     if (axOldFocusedObject && axItem != axOldFocusedObject) {
         g_signal_emit_by_name(axOldFocusedObject, "focus-event", false);
-        atk_object_notify_state_change(axOldFocusedObject, ATK_STATE_FOCUSED, false);
+        atk_object_notify_state_change(ATK_OBJECT(axOldFocusedObject), ATK_STATE_FOCUSED, false);
     }
 
     // Emit needed events for the currently (un)selected item.
     if (axItem) {
         bool isSelected = item->isSelected();
-        atk_object_notify_state_change(axItem, ATK_STATE_SELECTED, isSelected);
+        atk_object_notify_state_change(ATK_OBJECT(axItem), ATK_STATE_SELECTED, isSelected);
         // When the selection changes in a collapsed widget such as a combo box
         // whose child menu is not showing, that collapsed widget retains focus.
         if (!object->isCollapsed()) {
             g_signal_emit_by_name(axItem, "focus-event", isSelected);
-            atk_object_notify_state_change(axItem, ATK_STATE_FOCUSED, isSelected);
+            atk_object_notify_state_change(ATK_OBJECT(axItem), ATK_STATE_FOCUSED, isSelected);
         }
     }
 
@@ -196,7 +213,7 @@ static void notifyChildrenSelectionChange(AccessibilityObject* object)
 
 void AXObjectCache::postPlatformNotification(AccessibilityObject* coreObject, AXNotification notification)
 {
-    AtkObject* axObject = coreObject->wrapper();
+    auto* axObject = ATK_OBJECT(coreObject->wrapper());
     if (!axObject)
         return;
 
@@ -231,7 +248,7 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* coreObject, AX
             atk_value_get_current_value(ATK_VALUE(axObject), &propertyValues.new_value);
 #endif
 
-            g_signal_emit_by_name(ATK_OBJECT(axObject), "property-change::accessible-value", &propertyValues, NULL);
+            g_signal_emit_by_name(axObject, "property-change::accessible-value", &propertyValues, NULL);
         }
         break;
 
@@ -299,7 +316,7 @@ void AXObjectCache::nodeTextChangePlatformNotification(AccessibilityObject* obje
     if (!parentObject)
         return;
 
-    AtkObject* wrapper = parentObject->wrapper();
+    auto* wrapper = parentObject->wrapper();
     if (!wrapper || !ATK_IS_TEXT(wrapper))
         return;
 
@@ -337,8 +354,8 @@ void AXObjectCache::nodeTextChangePlatformNotification(AccessibilityObject* obje
         // Consider previous text objects that might be present for
         // the current accessibility object to ensure we emit the
         // right offset (e.g. multiline text areas).
-        RefPtr<Range> range = Range::create(document, node->parentNode(), 0, node, 0);
-        offsetToEmit = offset + TextIterator::rangeLength(range.get());
+        auto range = Range::create(document, node->parentNode(), 0, node, 0);
+        offsetToEmit = offset + TextIterator::rangeLength(range.ptr());
     }
 
     g_signal_emit_by_name(wrapper, detail.data(), offsetToEmit, textToEmit.length(), textToEmit.utf8().data());
@@ -349,7 +366,7 @@ void AXObjectCache::frameLoadingEventPlatformNotification(AccessibilityObject* o
     if (!object)
         return;
 
-    AtkObject* axObject = object->wrapper();
+    auto* axObject = ATK_OBJECT(object->wrapper());
     if (!axObject || !ATK_IS_DOCUMENT(axObject))
         return;
 
@@ -376,13 +393,15 @@ void AXObjectCache::platformHandleFocusedUIElementChanged(Node* oldFocusedNode, 
 {
     RefPtr<AccessibilityObject> oldObject = getOrCreate(oldFocusedNode);
     if (oldObject) {
-        g_signal_emit_by_name(oldObject->wrapper(), "focus-event", false);
-        atk_object_notify_state_change(oldObject->wrapper(), ATK_STATE_FOCUSED, false);
+        auto* axObject = oldObject->wrapper();
+        g_signal_emit_by_name(axObject, "focus-event", false);
+        atk_object_notify_state_change(ATK_OBJECT(axObject), ATK_STATE_FOCUSED, false);
     }
     RefPtr<AccessibilityObject> newObject = getOrCreate(newFocusedNode);
     if (newObject) {
-        g_signal_emit_by_name(newObject->wrapper(), "focus-event", true);
-        atk_object_notify_state_change(newObject->wrapper(), ATK_STATE_FOCUSED, true);
+        auto* axObject = newObject->wrapper();
+        g_signal_emit_by_name(axObject, "focus-event", true);
+        atk_object_notify_state_change(ATK_OBJECT(axObject), ATK_STATE_FOCUSED, true);
     }
 }
 

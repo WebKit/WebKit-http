@@ -25,18 +25,20 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
+#import <WebKit/WKWebpagePreferences.h>
 
 /*! A WKNavigation object can be used for tracking the loading progress of a webpage.
  @discussion A navigation is returned from the web view load methods, and is
  also passed to the navigation delegate methods, to uniquely identify a webpage
  load from start to finish.
  */
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface WKNavigation : NSObject
 
-@end
+/*! The content mode used when loading this webpage.
+ @discussion The value is either WKContentModeMobile or WKContentModeDesktop.
+ */
+@property (nonatomic, readonly) WKContentMode effectiveContentMode WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
-#endif
+@end

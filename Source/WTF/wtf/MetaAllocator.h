@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_MetaAllocator_h
-#define WTF_MetaAllocator_h
+#pragma once
 
 #include <wtf/Assertions.h>
 #include <wtf/HashMap.h>
@@ -180,8 +179,8 @@ private:
     WTF_EXPORT_PRIVATE void freeFreeSpaceNode(FreeSpaceNode*);
     
     size_t m_allocationGranule;
-    unsigned m_logAllocationGranule;
     size_t m_pageSize;
+    unsigned m_logAllocationGranule;
     unsigned m_logPageSize;
     
     Tree m_freeSpaceSizeMap;
@@ -208,6 +207,3 @@ private:
 };
 
 } // namespace WTF
-
-#endif // WTF_MetaAllocator_h
-

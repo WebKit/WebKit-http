@@ -46,13 +46,13 @@ public:
     SVGSMILElement(const QualifiedName&, Document&);
     virtual ~SVGSMILElement();
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
     InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) override;
     void removedFromAncestor(RemovalType, ContainerNode&) override;
     
-    virtual bool hasValidAttributeType() = 0;
-    virtual bool hasValidAttributeName();
+    virtual bool hasValidAttributeType() const = 0;
+    virtual bool hasValidAttributeName() const;
     virtual void animationAttributeChanged() = 0;
 
     SMILTimeContainer* timeContainer() { return m_timeContainer.get(); }

@@ -49,12 +49,12 @@ class PerformanceTiming;
 class ResourceResponse;
 class ResourceTiming;
 class ScriptExecutionContext;
-class URL;
 class UserTiming;
 
 class Performance final : public RefCounted<Performance>, public ContextDestructionObserver, public EventTargetWithInlineData {
+    WTF_MAKE_ISO_ALLOCATED(Performance);
 public:
-    static Ref<Performance> create(ScriptExecutionContext& context, MonotonicTime timeOrigin) { return adoptRef(*new Performance(context, timeOrigin)); }
+    static Ref<Performance> create(ScriptExecutionContext* context, MonotonicTime timeOrigin) { return adoptRef(*new Performance(context, timeOrigin)); }
     ~Performance();
 
     DOMHighResTimeStamp now() const;
@@ -91,7 +91,7 @@ public:
     using RefCounted::deref;
 
 private:
-    Performance(ScriptExecutionContext&, MonotonicTime timeOrigin);
+    Performance(ScriptExecutionContext*, MonotonicTime timeOrigin);
 
     void contextDestroyed() override;
 

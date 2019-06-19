@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "BitVector.h"
+#include <wtf/BitVector.h>
 
 #include <algorithm>
 #include <string.h>
@@ -179,6 +179,17 @@ size_t BitVector::bitCountSlow() const
     for (unsigned i = bits->numWords(); i--;)
         result += bitCount(bits->bits()[i]);
     return result;
+}
+
+bool BitVector::isEmptySlow() const
+{
+    ASSERT(!isInline());
+    const OutOfLineBits* bits = outOfLineBits();
+    for (unsigned i = bits->numWords(); i--;) {
+        if (bits->bits()[i])
+            return false;
+    }
+    return true;
 }
 
 bool BitVector::equalsSlowCase(const BitVector& other) const

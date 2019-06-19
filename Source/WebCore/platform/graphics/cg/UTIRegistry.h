@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,10 @@
 
 namespace WebCore {
 
-HashSet<String>& allowedImageUTIs();
-bool isAllowedImageUTI(const String&);
+const HashSet<String>& defaultSupportedImageTypes();
+HashSet<String>& additionalSupportedImageTypes();
+WEBCORE_EXPORT void setAdditionalSupportedImageTypes(const Vector<String>&);
+WEBCORE_EXPORT void setAdditionalSupportedImageTypesForTesting(const String&);
+bool isSupportedImageType(const String&);
 
 }

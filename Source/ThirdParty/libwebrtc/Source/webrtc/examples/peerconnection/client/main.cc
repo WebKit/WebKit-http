@@ -16,12 +16,14 @@
 #include "rtc_base/ssladapter.h"
 #include "rtc_base/win32socketinit.h"
 #include "rtc_base/win32socketserver.h"
+#include "system_wrappers/include/field_trial.h"
+#include "test/field_trial.h"
 
 int PASCAL wWinMain(HINSTANCE instance,
                     HINSTANCE prev_instance,
                     wchar_t* cmd_line,
                     int cmd_show) {
-  rtc::EnsureWinsockInit();
+  rtc::WinsockInitializer winsock_init;
   rtc::Win32SocketServer w32_ss;
   rtc::Win32Thread w32_thread(&w32_ss);
   rtc::ThreadManager::Instance()->SetCurrentThread(&w32_thread);
@@ -35,6 +37,11 @@ int PASCAL wWinMain(HINSTANCE instance,
     rtc::FlagList::Print(NULL, false);
     return 0;
   }
+
+  webrtc::test::ValidateFieldTrialsStringOrDie(FLAG_force_fieldtrials);
+  // InitFieldTrialsFromString stores the char*, so the char array must outlive
+  // the application.
+  webrtc::field_trial::InitFieldTrialsFromString(FLAG_force_fieldtrials);
 
   // Abort if the user specifies a port that is outside the allowed
   // range [1, 65535].

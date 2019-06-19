@@ -51,7 +51,7 @@ struct WebPreferencesStore;
 
 class WebSWContextManagerConnection final : public WebCore::SWContextManager::Connection, public IPC::MessageReceiver {
 public:
-    WebSWContextManagerConnection(Ref<IPC::Connection>&&, uint64_t pageGroupID, uint64_t pageID, const WebPreferencesStore&);
+    WebSWContextManagerConnection(Ref<IPC::Connection>&&, uint64_t pageGroupID, WebCore::PageIdentifier, const WebPreferencesStore&);
     ~WebSWContextManagerConnection();
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
@@ -64,7 +64,7 @@ private:
 
     // WebCore::SWContextManager::Connection.
     void postMessageToServiceWorkerClient(const WebCore::ServiceWorkerClientIdentifier& destinationIdentifier, WebCore::MessageWithMessagePorts&&, WebCore::ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin) final;
-    void didFinishInstall(std::optional<WebCore::ServiceWorkerJobDataIdentifier>, WebCore::ServiceWorkerIdentifier, bool wasSuccessful) final;
+    void didFinishInstall(Optional<WebCore::ServiceWorkerJobDataIdentifier>, WebCore::ServiceWorkerIdentifier, bool wasSuccessful) final;
     void didFinishActivation(WebCore::ServiceWorkerIdentifier) final;
     void setServiceWorkerHasPendingEvents(WebCore::ServiceWorkerIdentifier, bool) final;
     void workerTerminated(WebCore::ServiceWorkerIdentifier) final;
@@ -72,28 +72,31 @@ private:
     void matchAll(WebCore::ServiceWorkerIdentifier, const WebCore::ServiceWorkerClientQueryOptions&, WebCore::ServiceWorkerClientsMatchAllCallback&&) final;
     void claim(WebCore::ServiceWorkerIdentifier, CompletionHandler<void()>&&) final;
     void skipWaiting(WebCore::ServiceWorkerIdentifier, Function<void()>&&) final;
-    void setScriptResource(WebCore::ServiceWorkerIdentifier, const WebCore::URL&, const WebCore::ServiceWorkerContextData::ImportedScript&) final;
+    void setScriptResource(WebCore::ServiceWorkerIdentifier, const URL&, const WebCore::ServiceWorkerContextData::ImportedScript&) final;
+    bool isThrottleable() const final;
 
     // IPC messages.
-    void serviceWorkerStartedWithMessage(std::optional<WebCore::ServiceWorkerJobDataIdentifier>, WebCore::ServiceWorkerIdentifier, const String& exceptionMessage) final;
-    void installServiceWorker(const WebCore::ServiceWorkerContextData&, PAL::SessionID);
+    void serviceWorkerStartedWithMessage(Optional<WebCore::ServiceWorkerJobDataIdentifier>, WebCore::ServiceWorkerIdentifier, const String& exceptionMessage) final;
+    void installServiceWorker(const WebCore::ServiceWorkerContextData&, PAL::SessionID, String&& userAgent);
     void startFetch(WebCore::SWServerConnectionIdentifier, WebCore::ServiceWorkerIdentifier, WebCore::FetchIdentifier, WebCore::ResourceRequest&&, WebCore::FetchOptions&&, IPC::FormDataReference&&, String&& referrer);
     void cancelFetch(WebCore::SWServerConnectionIdentifier, WebCore::ServiceWorkerIdentifier, WebCore::FetchIdentifier);
+    void continueDidReceiveFetchResponse(WebCore::SWServerConnectionIdentifier, WebCore::ServiceWorkerIdentifier, WebCore::FetchIdentifier);
     void postMessageToServiceWorker(WebCore::ServiceWorkerIdentifier destinationIdentifier, WebCore::MessageWithMessagePorts&&, WebCore::ServiceWorkerOrClientData&& sourceData);
     void fireInstallEvent(WebCore::ServiceWorkerIdentifier);
     void fireActivateEvent(WebCore::ServiceWorkerIdentifier);
     void terminateWorker(WebCore::ServiceWorkerIdentifier);
     void syncTerminateWorker(WebCore::ServiceWorkerIdentifier, Messages::WebSWContextManagerConnection::SyncTerminateWorker::DelayedReply&&);
-    void findClientByIdentifierCompleted(uint64_t requestIdentifier, std::optional<WebCore::ServiceWorkerClientData>&&, bool hasSecurityError);
+    void findClientByIdentifierCompleted(uint64_t requestIdentifier, Optional<WebCore::ServiceWorkerClientData>&&, bool hasSecurityError);
     void matchAllCompleted(uint64_t matchAllRequestIdentifier, Vector<WebCore::ServiceWorkerClientData>&&);
     void claimCompleted(uint64_t claimRequestIdentifier);
     void didFinishSkipWaiting(uint64_t callbackID);
     void setUserAgent(String&& userAgent);
-    void terminateProcess();
+    NO_RETURN void terminateProcess();
+    void setThrottleState(bool isThrottleable);
 
-    Ref<IPC::Connection> m_connectionToStorageProcess;
+    Ref<IPC::Connection> m_connectionToNetworkProcess;
     uint64_t m_pageGroupID;
-    uint64_t m_pageID { 0 };
+    WebCore::PageIdentifier m_pageID;
     uint64_t m_previousServiceWorkerID { 0 };
 
     WebCore::SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy { WebCore::SecurityOrigin::StorageBlockingPolicy::AllowAllStorage };
@@ -105,6 +108,7 @@ private:
     HashMap<uint64_t, WTF::Function<void()>> m_skipWaitingRequests;
     uint64_t m_previousRequestIdentifier { 0 };
     String m_userAgent;
+    bool m_isThrottleable { true };
 };
 
 } // namespace WebKit

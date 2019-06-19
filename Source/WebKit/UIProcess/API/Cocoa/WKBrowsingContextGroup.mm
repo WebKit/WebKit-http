@@ -27,8 +27,6 @@
 #import "WKBrowsingContextGroupInternal.h"
 #import "WKBrowsingContextGroupPrivate.h"
 
-#if WK_API_ENABLED
-
 #import "APIArray.h"
 #import "APIString.h"
 #import "WKAPICast.h"
@@ -42,7 +40,9 @@
 #import "WKURLCF.h"
 #import <wtf/Vector.h>
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 @implementation WKBrowsingContextGroup {
+IGNORE_WARNINGS_END
     API::ObjectStorage<WebKit::WebPageGroup> _pageGroup;
 }
 
@@ -175,7 +175,10 @@ static WKRetainPtr<WKArrayRef> createWKArray(NSArray *array)
 
 @end
 
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 @implementation WKBrowsingContextGroup (Private)
+IGNORE_WARNINGS_END
 
 - (WKPageGroupRef)_pageGroupRef
 {
@@ -183,5 +186,4 @@ static WKRetainPtr<WKArrayRef> createWKArray(NSArray *array)
 }
 
 @end
-
-#endif // WK_API_ENABLED
+ALLOW_DEPRECATED_DECLARATIONS_END

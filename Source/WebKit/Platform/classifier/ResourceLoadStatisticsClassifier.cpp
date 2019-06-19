@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,27 +43,32 @@ ResourceLoadPrevalence ResourceLoadStatisticsClassifier::calculateResourcePreval
 {
     ASSERT(currentPrevalence != VeryHigh);
 
-    auto subresourceUnderTopFrameOriginsCount = resourceStatistic.subresourceUnderTopFrameOrigins.size();
+    auto subresourceUnderTopFrameDomainsCount = resourceStatistic.subresourceUnderTopFrameDomains.size();
     auto subresourceUniqueRedirectsToCount = resourceStatistic.subresourceUniqueRedirectsTo.size();
-    auto subframeUnderTopFrameOriginsCount = resourceStatistic.subframeUnderTopFrameOrigins.size();
+    auto subframeUnderTopFrameDomainsCount = resourceStatistic.subframeUnderTopFrameDomains.size();
     auto topFrameUniqueRedirectsToCount = resourceStatistic.topFrameUniqueRedirectsTo.size();
-    
-    if (!subresourceUnderTopFrameOriginsCount
+
+    return calculateResourcePrevalence(subresourceUnderTopFrameDomainsCount, subresourceUniqueRedirectsToCount, subframeUnderTopFrameDomainsCount, topFrameUniqueRedirectsToCount, currentPrevalence);
+}
+
+ResourceLoadPrevalence ResourceLoadStatisticsClassifier::calculateResourcePrevalence(unsigned subresourceUnderTopFrameDomainsCount, unsigned subresourceUniqueRedirectsToCount, unsigned subframeUnderTopFrameDomainsCount, unsigned topFrameUniqueRedirectsToCount, ResourceLoadPrevalence currentPrevalence)
+{
+    if (!subresourceUnderTopFrameDomainsCount
         && !subresourceUniqueRedirectsToCount
-        && !subframeUnderTopFrameOriginsCount
+        && !subframeUnderTopFrameDomainsCount
         && !topFrameUniqueRedirectsToCount) {
         return Low;
     }
 
-    if (vectorLength(subresourceUnderTopFrameOriginsCount, subresourceUniqueRedirectsToCount, subframeUnderTopFrameOriginsCount) > featureVectorLengthThresholdVeryHigh)
+    if (vectorLength(subresourceUnderTopFrameDomainsCount, subresourceUniqueRedirectsToCount, subframeUnderTopFrameDomainsCount) > featureVectorLengthThresholdVeryHigh)
         return VeryHigh;
 
     if (currentPrevalence == High
-        || subresourceUnderTopFrameOriginsCount > featureVectorLengthThresholdHigh
+        || subresourceUnderTopFrameDomainsCount > featureVectorLengthThresholdHigh
         || subresourceUniqueRedirectsToCount > featureVectorLengthThresholdHigh
-        || subframeUnderTopFrameOriginsCount > featureVectorLengthThresholdHigh
+        || subframeUnderTopFrameDomainsCount > featureVectorLengthThresholdHigh
         || topFrameUniqueRedirectsToCount > featureVectorLengthThresholdHigh
-        || classify(subresourceUnderTopFrameOriginsCount, subresourceUniqueRedirectsToCount, subframeUnderTopFrameOriginsCount))
+        || classify(subresourceUnderTopFrameDomainsCount, subresourceUniqueRedirectsToCount, subframeUnderTopFrameDomainsCount))
         return High;
 
     return Low;

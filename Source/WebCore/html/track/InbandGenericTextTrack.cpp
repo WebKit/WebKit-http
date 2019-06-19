@@ -34,9 +34,12 @@
 #include "Logging.h"
 #include "VTTRegionList.h"
 #include <math.h>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(InbandGenericTextTrack);
 
 void GenericTextTrackCueMap::add(GenericCueData& cueData, TextTrackCueGeneric& cue)
 {
@@ -125,11 +128,11 @@ void InbandGenericTextTrack::addGenericCue(GenericCueData& cueData)
     auto cue = TextTrackCueGeneric::create(*scriptExecutionContext(), cueData.startTime(), cueData.endTime(), cueData.content());
     updateCueFromCueData(cue.get(), cueData);
     if (hasCue(cue.ptr(), TextTrackCue::IgnoreDuration)) {
-        DEBUG_LOG(LOGIDENTIFIER, "ignoring already added cue: ", cue.get());
+        INFO_LOG(LOGIDENTIFIER, "ignoring already added cue: ", cue.get());
         return;
     }
 
-    DEBUG_LOG(LOGIDENTIFIER, "added cue: ", cue.get());
+    INFO_LOG(LOGIDENTIFIER, "added cue: ", cue.get());
 
     if (cueData.status() != GenericCueData::Complete)
         m_cueMap.add(cueData, cue);
@@ -153,10 +156,10 @@ void InbandGenericTextTrack::removeGenericCue(GenericCueData& cueData)
 {
     auto cue = makeRefPtr(m_cueMap.find(cueData));
     if (cue) {
-        DEBUG_LOG(LOGIDENTIFIER, *cue);
+        INFO_LOG(LOGIDENTIFIER, *cue);
         removeCue(*cue);
     } else
-        DEBUG_LOG(LOGIDENTIFIER, "UNABLE to find cue: ", cueData);
+        INFO_LOG(LOGIDENTIFIER, "UNABLE to find cue: ", cueData);
 
 }
 
@@ -194,11 +197,11 @@ void InbandGenericTextTrack::newCuesParsed()
         auto vttCue = VTTCue::create(*scriptExecutionContext(), *cueData);
 
         if (hasCue(vttCue.ptr(), TextTrackCue::IgnoreDuration)) {
-            DEBUG_LOG(LOGIDENTIFIER, "ignoring already added cue: ", vttCue.get());
+            INFO_LOG(LOGIDENTIFIER, "ignoring already added cue: ", vttCue.get());
             return;
         }
 
-        DEBUG_LOG(LOGIDENTIFIER, vttCue.get());
+        INFO_LOG(LOGIDENTIFIER, vttCue.get());
 
         addCue(WTFMove(vttCue));
     }
@@ -213,6 +216,10 @@ void InbandGenericTextTrack::newRegionsParsed()
         region->setTrack(this);
         regions()->add(region.releaseNonNull());
     }
+}
+
+void InbandGenericTextTrack::newStyleSheetsParsed()
+{
 }
 
 void InbandGenericTextTrack::fileFailedToParse()

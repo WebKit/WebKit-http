@@ -48,6 +48,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncEscape(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncUnescape(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncThrowTypeError(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncThrowTypeErrorArgumentsCalleeAndCaller(ExecState*);
+EncodedJSValue JSC_HOST_CALL globalFuncMakeTypeError(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncProtoGetter(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncProtoSetter(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncHostPromiseRejectionTracker(ExecState*);
@@ -55,6 +56,8 @@ EncodedJSValue JSC_HOST_CALL globalFuncBuiltinLog(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncBuiltinDescribe(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncImportModule(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncPropertyIsEnumerable(ExecState*);
+EncodedJSValue JSC_HOST_CALL globalFuncOwnKeys(ExecState*);
+EncodedJSValue JSC_HOST_CALL globalFuncDateTimeFormat(ExecState*);
 
 double jsToNumber(StringView);
 

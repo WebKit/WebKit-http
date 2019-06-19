@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
  * Copyright (C) 2014 University of Washington. All rights reserved.
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -31,10 +31,8 @@
  */
 
 #include "config.h"
-#include "JSONValues.h"
+#include <wtf/JSONValues.h>
 
-#include <wtf/DecimalNumber.h>
-#include <wtf/dtoa.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WTF {
@@ -165,7 +163,7 @@ bool parseStringToken(const UChar* start, const UChar* end, const UChar** tokenE
 {
     while (start < end) {
         UChar c = *start++;
-        if ('\\' == c) {
+        if ('\\' == c && start < end) {
             c = *start++;
             // Make sure the escaped char is valid.
             switch (c) {
@@ -271,6 +269,8 @@ bool decodeString(const UChar* start, const UChar* end, StringBuilder& output)
             output.append(c);
             continue;
         }
+        if (UNLIKELY(start >= end))
+            return false;
         c = *start++;
         switch (c) {
         case '"':
@@ -296,10 +296,14 @@ bool decodeString(const UChar* start, const UChar* end, StringBuilder& output)
             c = '\v';
             break;
         case 'x':
+            if (UNLIKELY(start + 1 >= end))
+                return false;
             c = toASCIIHexValue(start[0], start[1]);
             start += 2;
             break;
         case 'u':
+            if (UNLIKELY(start + 3 >= end))
+                return false;
             c = toASCIIHexValue(start[0], start[1]) << 8 | toASCIIHexValue(start[2], start[3]);
             start += 4;
             break;
@@ -446,38 +450,48 @@ RefPtr<JSON::Value> buildValue(const UChar* start, const UChar* end, const UChar
     return result;
 }
 
-inline bool escapeChar(UChar c, StringBuilder& dst)
+inline void appendDoubleQuotedString(StringBuilder& builder, StringView string)
 {
-    switch (c) {
-    case '\b': dst.appendLiteral("\\b"); break;
-    case '\f': dst.appendLiteral("\\f"); break;
-    case '\n': dst.appendLiteral("\\n"); break;
-    case '\r': dst.appendLiteral("\\r"); break;
-    case '\t': dst.appendLiteral("\\t"); break;
-    case '\\': dst.appendLiteral("\\\\"); break;
-    case '"': dst.appendLiteral("\\\""); break;
-    default:
-        return false;
-    }
-    return true;
-}
-
-inline void doubleQuoteString(const String& str, StringBuilder& dst)
-{
-    dst.append('"');
-    for (unsigned i = 0; i < str.length(); ++i) {
-        UChar c = str[i];
-        if (!escapeChar(c, dst)) {
-            if (c < 32 || c > 126 || c == '<' || c == '>') {
-                // 1. Escaping <, > to prevent script execution.
-                // 2. Technically, we could also pass through c > 126 as UTF8, but this
-                //    is also optional. It would also be a pain to implement here.
-                dst.append(String::format("\\u%04X", c));
-            } else
-                dst.append(c);
+    builder.append('"');
+    for (UChar codeUnit : string.codeUnits()) {
+        switch (codeUnit) {
+        case '\b':
+            builder.appendLiteral("\\b");
+            continue;
+        case '\f':
+            builder.appendLiteral("\\f");
+            continue;
+        case '\n':
+            builder.appendLiteral("\\n");
+            continue;
+        case '\r':
+            builder.appendLiteral("\\r");
+            continue;
+        case '\t':
+            builder.appendLiteral("\\t");
+            continue;
+        case '\\':
+            builder.appendLiteral("\\\\");
+            continue;
+        case '"':
+            builder.appendLiteral("\\\"");
+            continue;
         }
+        // We escape < and > to prevent script execution.
+        if (codeUnit >= 32 && codeUnit < 127 && codeUnit != '<' && codeUnit != '>') {
+            builder.append(codeUnit);
+            continue;
+        }
+        // We could encode characters >= 127 as UTF-8 instead of \u escape sequences.
+        // We could handle surrogates here if callers wanted that; for now we just
+        // write them out as a \u sequence, so a surrogate pair appears as two of them.
+        builder.appendLiteral("\\u");
+        builder.append(upperNibbleToASCIIHexDigit(codeUnit >> 8));
+        builder.append(lowerNibbleToASCIIHexDigit(codeUnit >> 8));
+        builder.append(upperNibbleToASCIIHexDigit(codeUnit));
+        builder.append(lowerNibbleToASCIIHexDigit(codeUnit));
     }
-    dst.append('"');
+    builder.append('"');
 }
 
 } // anonymous namespace
@@ -659,28 +673,14 @@ void Value::writeJSON(StringBuilder& output) const
             output.appendLiteral("false");
         break;
     case Type::String:
-        doubleQuoteString(m_value.string, output);
+        appendDoubleQuotedString(output, m_value.string);
         break;
     case Type::Double:
     case Type::Integer: {
-        NumberToLStringBuffer buffer;
-        if (!std::isfinite(m_value.number)) {
+        if (!std::isfinite(m_value.number))
             output.appendLiteral("null");
-            return;
-        }
-        DecimalNumber decimal = m_value.number;
-        unsigned length = 0;
-        if (decimal.bufferLengthForStringDecimal() > WTF::NumberToStringBufferLength) {
-            // Not enough room for decimal. Use exponential format.
-            if (decimal.bufferLengthForStringExponential() > WTF::NumberToStringBufferLength) {
-                // Fallback for an abnormal case if it's too little even for exponential.
-                output.appendLiteral("NaN");
-                return;
-            }
-            length = decimal.toStringExponential(buffer, WTF::NumberToStringBufferLength);
-        } else
-            length = decimal.toStringDecimal(buffer, WTF::NumberToStringBufferLength);
-        output.append(buffer, length);
+        else
+            output.appendNumber(m_value.number);
         break;
     }
     default:
@@ -786,7 +786,7 @@ void ObjectBase::writeJSON(StringBuilder& output) const
         ASSERT(findResult != m_map.end());
         if (i)
             output.append(',');
-        doubleQuoteString(findResult->key, output);
+        appendDoubleQuotedString(output, findResult->key);
         output.append(':');
         findResult->value->writeJSON(output);
     }

@@ -38,8 +38,8 @@
 #include <WebCore/HTTPHeaderMap.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/SharedBuffer.h>
-#include <WebCore/URL.h>
 #include <utility>
+#include <wtf/URL.h>
 #include <wtf/text/CString.h>
 
 #if PLUGIN_ARCHITECTURE(UNIX)
@@ -89,10 +89,6 @@ NetscapePlugin::NetscapePlugin(Ref<NetscapePluginModule>&& pluginModule)
     , m_isComplexTextInputEnabled(false)
     , m_hasHandledAKeyDownEvent(false)
     , m_ignoreNextKeyUpEventCounter(0)
-#ifndef NP_NO_CARBON
-    , m_nullEventTimer(RunLoop::main(), this, &NetscapePlugin::nullEventTimerFired)
-    , m_npCGContext()
-#endif
 #endif
 {
     m_npp.ndata = this;
@@ -751,7 +747,7 @@ RefPtr<ShareableBitmap> NetscapePlugin::snapshot()
     IntSize backingStoreSize = m_pluginSize;
     backingStoreSize.scale(contentsScaleFactor());
 
-    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(backingStoreSize, { });
+    auto bitmap = ShareableBitmap::createShareable(backingStoreSize, { });
     auto context = bitmap->createGraphicsContext();
 
     // FIXME: We should really call applyDeviceScaleFactor instead of scale, but that ends up calling into WKSI

@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2002 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2004, 2007-2008, 2016-2017 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -45,7 +45,7 @@ InternalFunction::InternalFunction(VM& vm, Structure* structure, NativeFunction 
     ASSERT(m_functionForConstruct);
 }
 
-void InternalFunction::finishCreation(VM& vm, const String& name, NameVisibility nameVisibility)
+void InternalFunction::finishCreation(VM& vm, const String& name, NameVisibility nameVisibility, NameAdditionMode nameAdditionMode)
 {
     Base::finishCreation(vm);
     ASSERT(jsDynamicCast<InternalFunction*>(vm, this));
@@ -54,8 +54,12 @@ void InternalFunction::finishCreation(VM& vm, const String& name, NameVisibility
     ASSERT(type() == InternalFunctionType);
     JSString* nameString = jsString(&vm, name);
     m_originalName.set(vm, this, nameString);
-    if (nameVisibility == NameVisibility::Visible)
-        putDirect(vm, vm.propertyNames->name, nameString, PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+    if (nameVisibility == NameVisibility::Visible) {
+        if (nameAdditionMode == NameAdditionMode::WithStructureTransition)
+            putDirect(vm, vm.propertyNames->name, nameString, PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+        else
+            putDirectWithoutTransition(vm, vm.propertyNames->name, nameString, PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+    }
 }
 
 void InternalFunction::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -88,7 +92,7 @@ CallType InternalFunction::getCallData(JSCell* cell, CallData& callData)
 {
     auto* function = jsCast<InternalFunction*>(cell);
     ASSERT(function->m_functionForCall);
-    callData.native.function = function->m_functionForCall.unpoisoned();
+    callData.native.function = function->m_functionForCall;
     return CallType::Host;
 }
 
@@ -97,7 +101,7 @@ ConstructType InternalFunction::getConstructData(JSCell* cell, ConstructData& co
     auto* function = jsCast<InternalFunction*>(cell);
     if (function->m_functionForConstruct == callHostFunctionAsConstructor)
         return ConstructType::None;
-    constructData.native.function = function->m_functionForConstruct.unpoisoned();
+    constructData.native.function = function->m_functionForConstruct;
     return ConstructType::Host;
 }
 

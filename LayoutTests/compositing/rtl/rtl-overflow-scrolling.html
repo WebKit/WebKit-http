@@ -1,10 +1,7 @@
-<!-- webkit-test-runner [ useThreadedScrolling=false ] -->
+<!-- webkit-test-runner [ useThreadedScrolling=false internal:AsyncOverflowScrollingEnabled=true ] -->
 <html>
 <head>
 <script type="text/javascript">
-    if (window.internals)
-        window.internals.settings.setAcceleratedCompositingForOverflowScrollEnabled(true);
-
     function runTest() {
         document.getElementById("container").scrollLeft = -715;
     }

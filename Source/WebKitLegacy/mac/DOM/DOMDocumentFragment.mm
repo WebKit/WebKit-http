@@ -37,9 +37,9 @@
 #import <WebCore/NameNodeList.h>
 #import <WebCore/NodeList.h>
 #import <WebCore/ThreadCheck.h>
-#import <WebCore/URL.h>
 #import <WebCore/WebScriptObjectPrivate.h>
 #import <wtf/GetPtr.h>
+#import <wtf/URL.h>
 
 #define IMPL static_cast<WebCore::DocumentFragment*>(reinterpret_cast<WebCore::Node*>(_internal))
 
@@ -72,7 +72,7 @@
 - (DOMElement *)getElementById:(NSString *)elementId
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->getElementById(AtomicString(elementId))));
+    return kit(WTF::getPtr(IMPL->getElementById(AtomString(elementId))));
 }
 
 - (DOMElement *)querySelector:(NSString *)selectors

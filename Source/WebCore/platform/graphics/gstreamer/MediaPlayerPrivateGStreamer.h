@@ -38,7 +38,7 @@
 
 #if ENABLE(VIDEO_TRACK)
 #include "TrackPrivateBaseGStreamer.h"
-#include <wtf/text/AtomicStringHash.h>
+#include <wtf/text/AtomStringHash.h>
 #endif
 
 typedef struct _GstMpegtsSection GstMpegtsSection;
@@ -91,6 +91,7 @@ public:
     bool paused() const override;
     bool seeking() const override;
 
+    MediaTime platformDuration() const;
     MediaTime durationMediaTime() const override;
     MediaTime currentMediaTime() const override;
     void seek(const MediaTime&) override;
@@ -109,12 +110,13 @@ public:
     MediaTime maxTimeLoaded() const override;
 
     bool hasSingleSecurityOrigin() const override;
+    Optional<bool> wouldTaintOrigin(const SecurityOrigin&) const override;
 
     void loadStateChanged();
     void timeChanged();
     void didEnd();
     virtual void durationChanged();
-    void loadingFailed(MediaPlayer::NetworkState);
+    void loadingFailed(MediaPlayer::NetworkState, MediaPlayer::ReadyState = MediaPlayer::HaveNothing, bool forceNotifications = false);
 
     virtual void sourceSetup(GstElement*);
 
@@ -138,7 +140,7 @@ public:
 private:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
-
+    void syncOnClock(bool sync);
 
     GstElement* createAudioSink() override;
 
@@ -147,7 +149,7 @@ private:
     virtual void updateStates();
     virtual void asyncStateChangeDone();
 
-    void createGSTPlayBin(const gchar* playbinName, const String& pipelineName);
+    void createGSTPlayBin(const URL&, const String& pipelineName);
 
     bool loadNextLocation();
     void mediaLocationChanged(GstMessage*);
@@ -178,7 +180,7 @@ private:
     static void downloadBufferFileCreatedCallback(MediaPlayerPrivateGStreamer*);
 
     void setPlaybinURL(const URL& urlString);
-    void loadFull(const String& url, const gchar* playbinName, const String& pipelineName);
+    void loadFull(const String& url, const String& pipelineName);
 
 #if GST_CHECK_VERSION(1, 10, 0)
     void updateTracks();
@@ -186,18 +188,16 @@ private:
 #endif
 
 protected:
-    void cacheDuration();
-
     bool m_buffering;
     int m_bufferingPercentage;
     mutable MediaTime m_cachedPosition;
+    mutable MediaTime m_cachedDuration;
     bool m_canFallBackToLastFinishedSeekPosition;
     bool m_changingRate;
     bool m_downloadFinished;
     bool m_errorOccured;
     mutable bool m_isEndReached;
     mutable bool m_isStreaming;
-    mutable MediaTime m_durationAtEOS;
     bool m_paused;
     float m_playbackRate;
     GstState m_currentState;
@@ -258,7 +258,7 @@ private:
     mutable unsigned long long m_totalBytes;
     URL m_url;
     bool m_preservesPitch;
-    mutable double m_lastQuery;
+    mutable Optional<Seconds> m_lastQueryTime;
     bool m_isLegacyPlaybin;
 #if GST_CHECK_VERSION(1, 10, 0)
     GRefPtr<GstStreamCollection> m_streamCollection;
@@ -277,16 +277,24 @@ private:
     GRefPtr<GstElement> m_downloadBuffer;
     Vector<RefPtr<MediaPlayerRequestInstallMissingPluginsCallback>> m_missingPluginCallbacks;
 #if ENABLE(VIDEO_TRACK)
-    HashMap<AtomicString, RefPtr<AudioTrackPrivateGStreamer>> m_audioTracks;
-    HashMap<AtomicString, RefPtr<InbandTextTrackPrivateGStreamer>> m_textTracks;
-    HashMap<AtomicString, RefPtr<VideoTrackPrivateGStreamer>> m_videoTracks;
+    HashMap<AtomString, RefPtr<AudioTrackPrivateGStreamer>> m_audioTracks;
+    HashMap<AtomString, RefPtr<InbandTextTrackPrivateGStreamer>> m_textTracks;
+    HashMap<AtomString, RefPtr<VideoTrackPrivateGStreamer>> m_videoTracks;
     RefPtr<InbandMetadataTextTrackPrivateGStreamer> m_chaptersTrack;
 #if USE(GSTREAMER_MPEGTS)
-    HashMap<AtomicString, RefPtr<InbandMetadataTextTrackPrivateGStreamer>> m_metadataTracks;
+    HashMap<AtomString, RefPtr<InbandMetadataTextTrackPrivateGStreamer>> m_metadataTracks;
 #endif
 #endif
     virtual bool isMediaSource() const { return false; }
+
+    uint64_t m_httpResponseTotalSize { 0 };
+    uint64_t m_networkReadPosition { 0 };
+    mutable uint64_t m_readPositionAtLastDidLoadingProgress { 0 };
+
+    HashSet<RefPtr<WebCore::SecurityOrigin>> m_origins;
+    Optional<bool> m_hasTaintedOrigin { WTF::nullopt };
 };
+
 }
 
 #endif // USE(GSTREAMER)

@@ -26,10 +26,8 @@
 #ifndef PlatformUtilities_h
 #define PlatformUtilities_h
 
-#ifndef BUILDING_JSCONLY__
 #include <WebKit/WKNativeEvent.h>
 #include <WebKit/WKRetainPtr.h>
-#endif
 
 #include "Utilities.h"
 #include <string>
@@ -77,7 +75,7 @@ static inline ::testing::AssertionResult assertWKStringEqual(const char* expecte
 #define EXPECT_WK_STREQ(expected, actual) \
     EXPECT_PRED_FORMAT2(TestWebKitAPI::Util::assertWKStringEqual, expected, actual)
 
-#if WK_API_ENABLED
+#if PLATFORM(COCOA)
 extern NSString * const TestPlugInClassNameParameter;
 #endif
 

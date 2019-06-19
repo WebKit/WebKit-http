@@ -58,9 +58,9 @@ public:
     static FetchBody extract(ScriptExecutionContext&, Init&&, String&);
     FetchBody() = default;
 
-    WEBCORE_EXPORT static std::optional<FetchBody> fromFormData(FormData&);
+    WEBCORE_EXPORT static Optional<FetchBody> fromFormData(FormData&);
 
-    void loadingFailed();
+    void loadingFailed(const Exception&);
     void loadingSucceeded();
 
     RefPtr<FormData> bodyAsFormData(ScriptExecutionContext&) const;

@@ -26,15 +26,16 @@
 #import "config.h"
 #import "RemoteScrollingCoordinatorProxy.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #if ENABLE(ASYNC_SCROLLING)
 
-#import "LayerRepresentation.h"
 #import "RemoteLayerTreeHost.h"
+#import "RemoteLayerTreeNode.h"
 #import "WebPageProxy.h"
 #import <UIKit/UIView.h>
 #import <WebCore/ScrollingStateFrameScrollingNode.h>
 #import <WebCore/ScrollingStateOverflowScrollingNode.h>
+#import <WebCore/ScrollingStatePositionedNode.h>
 #import <WebCore/ScrollingStateTree.h>
 
 #if ENABLE(CSS_SCROLL_SNAP)
@@ -42,61 +43,65 @@
 #import <WebCore/ScrollSnapOffsetsInfo.h>
 #import <WebCore/ScrollTypes.h>
 #import <WebCore/ScrollingTreeFrameScrollingNode.h>
+#import <WebCore/ScrollingTreeOverflowScrollingNode.h>
+#import <WebCore/ScrollingTreePositionedNode.h>
 #endif
 
 namespace WebKit {
 using namespace WebCore;
 
-static LayerRepresentation layerRepresentationFromLayerOrView(LayerOrView *layerOrView)
-{
-    return LayerRepresentation(layerOrView.layer);
-}
-
 void RemoteScrollingCoordinatorProxy::connectStateNodeLayers(ScrollingStateTree& stateTree, const RemoteLayerTreeHost& layerTreeHost)
 {
     for (auto& currNode : stateTree.nodeMap().values()) {
+        if (currNode->hasChangedProperty(ScrollingStateNode::Layer))
+            currNode->setLayer(layerTreeHost.layerForID(currNode->layer()));
+        
         switch (currNode->nodeType()) {
-        case OverflowScrollingNode: {
+        case ScrollingNodeType::Overflow: {
             ScrollingStateOverflowScrollingNode& scrollingStateNode = downcast<ScrollingStateOverflowScrollingNode>(*currNode);
-            
-            if (scrollingStateNode.hasChangedProperty(ScrollingStateNode::ScrollLayer))
-                scrollingStateNode.setLayer(layerRepresentationFromLayerOrView(layerTreeHost.getLayer(scrollingStateNode.layer())));
-            
+
+            if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollContainerLayer))
+                scrollingStateNode.setScrollContainerLayer(layerTreeHost.layerForID(scrollingStateNode.scrollContainerLayer()));
+
             if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrolledContentsLayer))
-                scrollingStateNode.setScrolledContentsLayer(layerRepresentationFromLayerOrView(layerTreeHost.getLayer(scrollingStateNode.scrolledContentsLayer())));
+                scrollingStateNode.setScrolledContentsLayer(layerTreeHost.layerForID(scrollingStateNode.scrolledContentsLayer()));
             break;
         };
-        case MainFrameScrollingNode:
-        case SubframeScrollingNode: {
+        case ScrollingNodeType::MainFrame:
+        case ScrollingNodeType::Subframe: {
             ScrollingStateFrameScrollingNode& scrollingStateNode = downcast<ScrollingStateFrameScrollingNode>(*currNode);
-            
-            if (scrollingStateNode.hasChangedProperty(ScrollingStateNode::ScrollLayer))
-                scrollingStateNode.setLayer(layerRepresentationFromLayerOrView(layerTreeHost.getLayer(scrollingStateNode.layer())));
+
+            if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrollContainerLayer))
+                scrollingStateNode.setScrollContainerLayer(layerTreeHost.layerForID(scrollingStateNode.scrollContainerLayer()));
+
+            if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::ScrolledContentsLayer))
+                scrollingStateNode.setScrolledContentsLayer(layerTreeHost.layerForID(scrollingStateNode.scrolledContentsLayer()));
 
             if (scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::CounterScrollingLayer))
-                scrollingStateNode.setCounterScrollingLayer(layerRepresentationFromLayerOrView(layerTreeHost.getLayer(scrollingStateNode.counterScrollingLayer())));
+                scrollingStateNode.setCounterScrollingLayer(layerTreeHost.layerForID(scrollingStateNode.counterScrollingLayer()));
 
             // FIXME: we should never have header and footer layers coming from the WebProcess.
             if (scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::HeaderLayer))
-                scrollingStateNode.setHeaderLayer(layerRepresentationFromLayerOrView(layerTreeHost.getLayer(scrollingStateNode.headerLayer())));
+                scrollingStateNode.setHeaderLayer(layerTreeHost.layerForID(scrollingStateNode.headerLayer()));
 
             if (scrollingStateNode.hasChangedProperty(ScrollingStateFrameScrollingNode::FooterLayer))
-                scrollingStateNode.setFooterLayer(layerRepresentationFromLayerOrView(layerTreeHost.getLayer(scrollingStateNode.footerLayer())));
+                scrollingStateNode.setFooterLayer(layerTreeHost.layerForID(scrollingStateNode.footerLayer()));
             break;
         }
-        case FixedNode:
-        case StickyNode:
-            if (currNode->hasChangedProperty(ScrollingStateNode::ScrollLayer))
-                currNode->setLayer(layerRepresentationFromLayerOrView(layerTreeHost.getLayer(currNode->layer())));
+        case ScrollingNodeType::FrameHosting:
+        case ScrollingNodeType::Fixed:
+        case ScrollingNodeType::Sticky:
+        case ScrollingNodeType::Positioned:
             break;
         }
     }
 }
 
-FloatRect RemoteScrollingCoordinatorProxy::customFixedPositionRect() const
+FloatRect RemoteScrollingCoordinatorProxy::currentLayoutViewport() const
 {
+    // FIXME: does this give a different value to the last value pushed onto us?
     return m_webPageProxy.computeCustomFixedPositionRect(m_webPageProxy.unobscuredContentRect(), m_webPageProxy.unobscuredContentRectRespectingInputViewBounds(), m_webPageProxy.customFixedPositionRect(),
-        m_webPageProxy.displayedContentScale(), FrameView::LayoutViewportConstraint::Unconstrained, visualViewportEnabled());
+        m_webPageProxy.displayedContentScale(), FrameView::LayoutViewportConstraint::Unconstrained);
 }
 
 void RemoteScrollingCoordinatorProxy::scrollingTreeNodeWillStartPanGesture()
@@ -112,6 +117,44 @@ void RemoteScrollingCoordinatorProxy::scrollingTreeNodeWillStartScroll()
 void RemoteScrollingCoordinatorProxy::scrollingTreeNodeDidEndScroll()
 {
     m_webPageProxy.scrollingNodeScrollDidEndScroll();
+}
+
+void RemoteScrollingCoordinatorProxy::establishLayerTreeScrollingRelations(const RemoteLayerTreeHost& remoteLayerTreeHost)
+{
+    for (auto layerID : m_layersWithScrollingRelations) {
+        if (auto* layerNode = remoteLayerTreeHost.nodeForID(layerID))
+            layerNode->setRelatedScrollContainerBehaviorAndIDs({ }, { });
+    }
+    m_layersWithScrollingRelations.clear();
+
+    // Usually a scroll view scrolls its descendant layers. In some positioning cases it also controls non-descendants, or doesn't control a descendant.
+    // To do overlap hit testing correctly we tell layers about such relations.
+    for (auto positionedNodeID : m_scrollingTree->positionedNodesWithRelatedOverflow()) {
+        auto* positionedNode = downcast<ScrollingTreePositionedNode>(m_scrollingTree->nodeForID(positionedNodeID));
+        if (!positionedNode) {
+            ASSERT_NOT_REACHED();
+            continue;
+        }
+        Vector<GraphicsLayer::PlatformLayerID> scrollContainerLayerIDs;
+
+        for (auto overflowNodeID : positionedNode->relatedOverflowScrollingNodes()) {
+            auto* overflowNode = downcast<ScrollingTreeOverflowScrollingNode>(m_scrollingTree->nodeForID(overflowNodeID));
+            if (!overflowNode) {
+                ASSERT_NOT_REACHED();
+                continue;
+            }
+            scrollContainerLayerIDs.append(RemoteLayerTreeNode::layerID(overflowNode->scrollContainerLayer()));
+        }
+
+        auto* positionedLayerNode = RemoteLayerTreeNode::forCALayer(positionedNode->layer());
+        if (!positionedLayerNode) {
+            ASSERT_NOT_REACHED();
+            continue;
+        }
+        positionedLayerNode->setRelatedScrollContainerBehaviorAndIDs(positionedNode->scrollPositioningBehavior(), WTFMove(scrollContainerLayerIDs));
+
+        m_layersWithScrollingRelations.add(positionedLayerNode->layerID());
+    }
 }
 
 #if ENABLE(CSS_SCROLL_SNAP)
@@ -217,4 +260,4 @@ CGPoint RemoteScrollingCoordinatorProxy::nearestActiveContentInsetAdjustedSnapPo
 
 
 #endif // ENABLE(ASYNC_SCROLLING)
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

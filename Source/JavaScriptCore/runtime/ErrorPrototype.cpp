@@ -53,12 +53,19 @@ ErrorPrototype::ErrorPrototype(VM& vm, Structure* structure)
 {
 }
 
-void ErrorPrototype::finishCreation(VM& vm)
+ErrorPrototype* ErrorPrototype::create(VM& vm, JSGlobalObject*, Structure* structure)
+{
+    ErrorPrototype* prototype = new (NotNull, allocateCell<ErrorPrototype>(vm.heap)) ErrorPrototype(vm, structure);
+    prototype->finishCreation(vm, "Error"_s);
+    return prototype;
+}
+
+void ErrorPrototype::finishCreation(VM& vm, const String& name)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
-    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String("Error"_s)), static_cast<unsigned>(PropertyAttribute::DontEnum));
-    putDirect(vm, vm.propertyNames->message, jsEmptyString(&vm), static_cast<unsigned>(PropertyAttribute::DontEnum));
+    putDirectWithoutTransition(vm, vm.propertyNames->name, jsString(&vm, name), static_cast<unsigned>(PropertyAttribute::DontEnum));
+    putDirectWithoutTransition(vm, vm.propertyNames->message, jsEmptyString(&vm), static_cast<unsigned>(PropertyAttribute::DontEnum));
 }
 
 // ------------------------------ Functions ---------------------------
@@ -120,8 +127,7 @@ EncodedJSValue JSC_HOST_CALL errorProtoFuncToString(ExecState* exec)
         return JSValue::encode(name.isString() ? name : jsString(exec, nameString));
 
     // 10. Return the result of concatenating name, ":", a single space character, and msg.
-    scope.release();
-    return JSValue::encode(jsMakeNontrivialString(exec, nameString, ": ", messageString));
+    RELEASE_AND_RETURN(scope, JSValue::encode(jsMakeNontrivialString(exec, nameString, ": ", messageString)));
 }
 
 } // namespace JSC

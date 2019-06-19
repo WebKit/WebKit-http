@@ -71,7 +71,7 @@ void link(State& state)
     if (UNLIKELY(compilation)) {
         compilation->addDescription(
             Profiler::OriginStack(),
-            toCString("Generated FTL JIT code for ", CodeBlockWithJITType(codeBlock, JITCode::FTLJIT), ", instruction count = ", graph.m_codeBlock->instructionCount(), ":\n"));
+            toCString("Generated FTL JIT code for ", CodeBlockWithJITType(codeBlock, JITType::FTLJIT), ", instructions size = ", graph.m_codeBlock->instructionsSize(), ":\n"));
         
         graph.ensureSSADominators();
         graph.ensureSSANaturalLoops();
@@ -171,7 +171,7 @@ void link(State& state)
                 state.allocationFailed = true;
                 return;
             }
-            linkBuffer->link(callArityCheck, FunctionPtr<OperationPtrTag>(codeBlock->m_isConstructor ? operationConstructArityCheck : operationCallArityCheck));
+            linkBuffer->link(callArityCheck, FunctionPtr<OperationPtrTag>(codeBlock->isConstructor() ? operationConstructArityCheck : operationCallArityCheck));
             linkBuffer->link(callLookupExceptionHandlerFromCallerFrame, FunctionPtr<OperationPtrTag>(lookupExceptionHandlerFromCallerFrame));
             linkBuffer->link(callArityFixup, FunctionPtr<JITThunkPtrTag>(vm.getCTIStub(arityFixupGenerator).code()));
             linkBuffer->link(mainPathJumps, state.generatedFunction);

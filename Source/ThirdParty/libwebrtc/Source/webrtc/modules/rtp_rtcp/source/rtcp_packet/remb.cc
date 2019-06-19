@@ -10,6 +10,7 @@
 
 #include "modules/rtp_rtcp/source/rtcp_packet/remb.h"
 
+#include <cstdint>
 #include <utility>
 
 #include "modules/rtp_rtcp/source/byte_io.h"
@@ -40,6 +41,8 @@ constexpr uint8_t Remb::kFeedbackMessageType;
 //    :  ...                                                          :
 
 Remb::Remb() : bitrate_bps_(0) {}
+
+Remb::Remb(const Remb& rhs) = default;
 
 Remb::~Remb() = default;
 

@@ -43,6 +43,7 @@ namespace WebCore {
 class SourceBuffer;
 
 class SourceBufferList final : public RefCounted<SourceBufferList>, public EventTargetWithInlineData, public ActiveDOMObject {
+    WTF_MAKE_ISO_ALLOCATED(SourceBufferList);
 public:
     static Ref<SourceBufferList> create(ScriptExecutionContext* context)
     {
@@ -72,7 +73,7 @@ public:
 private:
     explicit SourceBufferList(ScriptExecutionContext*);
 
-    void scheduleEvent(const AtomicString&);
+    void scheduleEvent(const AtomString&);
 
     void refEventTarget() override { ref(); }
     void derefEventTarget() override { deref(); }

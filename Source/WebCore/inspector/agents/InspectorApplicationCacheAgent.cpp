@@ -27,12 +27,14 @@
 #include "InspectorApplicationCacheAgent.h"
 
 #include "ApplicationCacheHost.h"
+#include "CustomHeaderFields.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
 #include "LoaderStrategy.h"
+#include "Page.h"
 #include "PlatformStrategies.h"
 #include <wtf/text/StringBuilder.h>
 
@@ -40,11 +42,11 @@ namespace WebCore {
 
 using namespace Inspector;
 
-InspectorApplicationCacheAgent::InspectorApplicationCacheAgent(WebAgentContext& context, InspectorPageAgent* pageAgent)
+InspectorApplicationCacheAgent::InspectorApplicationCacheAgent(PageAgentContext& context)
     : InspectorAgentBase("ApplicationCache"_s, context)
     , m_frontendDispatcher(std::make_unique<Inspector::ApplicationCacheFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(Inspector::ApplicationCacheBackendDispatcher::create(context.backendDispatcher, this))
-    , m_pageAgent(pageAgent)
+    , m_inspectedPage(context.inspectedPage)
 {
 }
 
@@ -67,8 +69,13 @@ void InspectorApplicationCacheAgent::enable(ErrorString&)
 
 void InspectorApplicationCacheAgent::updateApplicationCacheStatus(Frame* frame)
 {
+    auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
+    if (!pageAgent)
+        return;
+
     if (!frame)
         return;
+
     auto* documentLoader = frame->loader().documentLoader();
     if (!documentLoader)
         return;
@@ -77,7 +84,7 @@ void InspectorApplicationCacheAgent::updateApplicationCacheStatus(Frame* frame)
     int status = host.status();
     auto manifestURL = host.applicationCacheInfo().manifest.string();
 
-    m_frontendDispatcher->applicationCacheStatusUpdated(m_pageAgent->frameId(frame), manifestURL, status);
+    m_frontendDispatcher->applicationCacheStatusUpdated(pageAgent->frameId(frame), manifestURL, status);
 }
 
 void InspectorApplicationCacheAgent::networkStateChanged()
@@ -89,7 +96,9 @@ void InspectorApplicationCacheAgent::getFramesWithManifests(ErrorString&, RefPtr
 {
     result = JSON::ArrayOf<Inspector::Protocol::ApplicationCache::FrameWithManifest>::create();
 
-    for (Frame* frame = &m_pageAgent->mainFrame(); frame; frame = frame->tree().traverseNext()) {
+    auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
+
+    for (Frame* frame = &m_inspectedPage.mainFrame(); frame; frame = frame->tree().traverseNext()) {
         auto* documentLoader = frame->loader().documentLoader();
         if (!documentLoader)
             continue;
@@ -98,7 +107,7 @@ void InspectorApplicationCacheAgent::getFramesWithManifests(ErrorString&, RefPtr
         String manifestURL = host.applicationCacheInfo().manifest.string();
         if (!manifestURL.isEmpty()) {
             result->addItem(Inspector::Protocol::ApplicationCache::FrameWithManifest::create()
-                .setFrameId(m_pageAgent->frameId(frame))
+                .setFrameId(pageAgent->frameId(frame))
                 .setManifestURL(manifestURL)
                 .setStatus(static_cast<int>(host.status()))
                 .release());
@@ -108,7 +117,13 @@ void InspectorApplicationCacheAgent::getFramesWithManifests(ErrorString&, RefPtr
 
 DocumentLoader* InspectorApplicationCacheAgent::assertFrameWithDocumentLoader(ErrorString& errorString, const String& frameId)
 {
-    Frame* frame = m_pageAgent->assertFrame(errorString, frameId);
+    auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
+    if (!pageAgent) {
+        errorString = "Missing Page agent"_s;
+        return nullptr;
+    }
+
+    Frame* frame = pageAgent->assertFrame(errorString, frameId);
     if (!frame)
         return nullptr;
 

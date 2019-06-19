@@ -30,6 +30,7 @@
 #if ENABLE(MATHML)
 
 #include "RenderMathMLFraction.h"
+#include "Settings.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -53,10 +54,15 @@ const MathMLElement::Length& MathMLFractionElement::lineThickness()
     if (m_lineThickness)
         return m_lineThickness.value();
 
+    auto& thickness = attributeWithoutSynchronization(linethicknessAttr);
+    if (document().settings().coreMathMLEnabled()) {
+        m_lineThickness = parseMathMLLength(thickness);
+        return m_lineThickness.value();
+    }
+
     // The MathML3 recommendation states that "medium" is the default thickness.
     // However, it only states that "thin" and "thick" are respectively thiner and thicker.
     // The MathML in HTML5 implementation note suggests 50% and 200% and these values are also used in Gecko.
-    auto& thickness = attributeWithoutSynchronization(linethicknessAttr);
     m_lineThickness = Length();
     if (equalLettersIgnoringASCIICase(thickness, "thin")) {
         m_lineThickness.value().type = LengthType::UnitLess;
@@ -72,7 +78,7 @@ const MathMLElement::Length& MathMLFractionElement::lineThickness()
     return m_lineThickness.value();
 }
 
-MathMLFractionElement::FractionAlignment MathMLFractionElement::cachedFractionAlignment(const QualifiedName& name, std::optional<FractionAlignment>& alignment)
+MathMLFractionElement::FractionAlignment MathMLFractionElement::cachedFractionAlignment(const QualifiedName& name, Optional<FractionAlignment>& alignment)
 {
     if (alignment)
         return alignment.value();
@@ -97,14 +103,14 @@ MathMLFractionElement::FractionAlignment MathMLFractionElement::denominatorAlign
     return cachedFractionAlignment(denomalignAttr, m_denominatorAlignment);
 }
 
-void MathMLFractionElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void MathMLFractionElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == linethicknessAttr)
-        m_lineThickness = std::nullopt;
+        m_lineThickness = WTF::nullopt;
     else if (name == numalignAttr)
-        m_numeratorAlignment = std::nullopt;
+        m_numeratorAlignment = WTF::nullopt;
     else if (name == denomalignAttr)
-        m_denominatorAlignment = std::nullopt;
+        m_denominatorAlignment = WTF::nullopt;
 
     MathMLElement::parseAttribute(name, value);
 }

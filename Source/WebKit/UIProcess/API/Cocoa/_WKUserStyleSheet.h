@@ -25,15 +25,13 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
 @class _WKUserContentWorld;
 
-WK_CLASS_AVAILABLE(macosx(10.12), ios(10.0))
+WK_CLASS_AVAILABLE(macos(10.12), ios(10.0))
 @interface _WKUserStyleSheet : NSObject <NSCopying>
 
 @property (nonatomic, readonly, copy) NSString *source;
@@ -49,5 +47,3 @@ WK_CLASS_AVAILABLE(macosx(10.12), ios(10.0))
 @end
 
 NS_ASSUME_NONNULL_END
-
-#endif

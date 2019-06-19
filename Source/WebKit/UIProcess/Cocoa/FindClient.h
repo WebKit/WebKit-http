@@ -28,8 +28,6 @@
 
 #import "WKFoundation.h"
 
-#if WK_API_ENABLED
-
 #import "APIFindClient.h"
 #import <wtf/WeakObjCPtr.h>
 
@@ -39,6 +37,7 @@
 namespace WebKit {
 
 class FindClient final : public API::FindClient {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit FindClient(WKWebView *);
     
@@ -62,7 +61,5 @@ private:
 };
     
 } // namespace WebKit
-
-#endif // WK_API_ENABLED
 
 #endif // FindClient_h

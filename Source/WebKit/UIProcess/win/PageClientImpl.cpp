@@ -27,12 +27,13 @@
 #include "config.h"
 #include "PageClientImpl.h"
 
-#include "DrawingAreaProxyImpl.h"
-#include "NotImplemented.h"
+#include "DrawingAreaProxyCoordinatedGraphics.h"
 #include "WebContextMenuProxyWin.h"
 #include "WebPageProxy.h"
 #include "WebPopupMenuProxyWin.h"
 #include "WebView.h"
+#include <WebCore/DOMPasteAccess.h>
+#include <WebCore/NotImplemented.h>
 
 namespace WebKit {
 using namespace WebCore;
@@ -43,9 +44,9 @@ PageClientImpl::PageClientImpl(WebView& view)
 }
 
 // PageClient's pure virtual functions
-std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy()
+std::unique_ptr<DrawingAreaProxy> PageClientImpl::createDrawingAreaProxy(WebProcessProxy& process)
 {
-    return std::make_unique<DrawingAreaProxyImpl>(*m_view.page());
+    return std::make_unique<DrawingAreaProxyCoordinatedGraphics>(*m_view.page(), process);
 }
 
 void PageClientImpl::setViewNeedsDisplay(const WebCore::Region& region)
@@ -53,7 +54,7 @@ void PageClientImpl::setViewNeedsDisplay(const WebCore::Region& region)
     m_view.setViewNeedsDisplay(region);
 }
 
-void PageClientImpl::requestScroll(const WebCore::FloatPoint&, const WebCore::IntPoint&, bool)
+void PageClientImpl::requestScroll(const WebCore::FloatPoint&, const WebCore::IntPoint&)
 {
     notImplemented();
 }
@@ -66,9 +67,10 @@ WebCore::FloatPoint PageClientImpl::viewScrollPosition()
 
 WebCore::IntSize PageClientImpl::viewSize()
 {
-    if (m_view.drawingArea())
-        return m_view.drawingArea()->size();
-    return IntSize();
+    RECT clientRect;
+    GetClientRect(m_view.window(), &clientRect);
+
+    return IntRect(clientRect).size();
 }
 
 bool PageClientImpl::isViewWindowActive()
@@ -163,6 +165,16 @@ IntRect PageClientImpl::rootViewToScreen(const IntRect& rect)
     return IntRect();
 }
 
+WebCore::IntPoint PageClientImpl::accessibilityScreenToRootView(const WebCore::IntPoint& point)
+{
+    return screenToRootView(point);
+}
+
+WebCore::IntRect PageClientImpl::rootViewToAccessibilityScreen(const WebCore::IntRect& rect)    
+{
+    return rootViewToScreen(rect);
+}
+
 void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent& event, bool wasEventHandled)
 {
     notImplemented();
@@ -217,7 +229,7 @@ void PageClientImpl::didChangeContentSize(const IntSize& size)
     notImplemented();
 }
 
-void PageClientImpl::handleDownloadRequest(DownloadProxy* download)
+void PageClientImpl::handleDownloadRequest(DownloadProxy& download)
 {
     notImplemented();
 }
@@ -355,6 +367,11 @@ void PageClientImpl::derefView()
 HWND PageClientImpl::viewWidget()
 {
     return m_view.window();
+}
+
+void PageClientImpl::requestDOMPasteAccess(const IntRect&, const String&, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&& completionHandler)
+{
+    completionHandler(WebCore::DOMPasteAccessResponse::DeniedForGesture);
 }
 
 } // namespace WebKit

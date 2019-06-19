@@ -20,7 +20,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from webkitpy.common.version_name_map import VersionNameMap
+from webkitpy.common.version_name_map import VersionNameMap, INTERNAL_TABLE
+from webkitpy.port.config import apple_additions
 
 
 # This class is designed to match device types. Because it is used for matching, 'None' is treated as a wild-card.
@@ -108,20 +109,26 @@ class DeviceType(object):
         self.check_consistency()
 
     def __str__(self):
+        version = None
+        if self.software_version and apple_additions():
+            version = VersionNameMap.map().to_name(self.software_version, platform=self.software_variant.lower(), table=INTERNAL_TABLE)
+        elif self.software_version:
+            version = VersionNameMap.map().to_name(self.software_version, platform=self.software_variant.lower())
+
         return '{hardware_family}{hardware_type} running {version}'.format(
             hardware_family=self.hardware_family if self.hardware_family else 'Device',
             hardware_type=' {}'.format(self.hardware_type) if self.hardware_type else '',
-            version=VersionNameMap.map().to_name(self.software_version, platform=self.software_variant.lower()) if self.software_version else self.software_variant,
+            version=version or self.software_variant,
         )
 
     # This technique of matching treats 'None' a wild-card.
     def __eq__(self, other):
         assert isinstance(other, DeviceType)
-        if self.hardware_family is not None and other.hardware_family is not None and self.hardware_family != other.hardware_family:
+        if self.hardware_family is not None and other.hardware_family is not None and self.hardware_family.lower() != other.hardware_family.lower():
             return False
-        if self.hardware_type is not None and other.hardware_type is not None and self.hardware_type != other.hardware_type:
+        if self.hardware_type is not None and other.hardware_type is not None and self.hardware_type.lower() != other.hardware_type.lower():
             return False
-        if self.software_variant is not None and other.software_variant is not None and self.software_variant != other.software_variant:
+        if self.software_variant is not None and other.software_variant is not None and self.software_variant.lower() != other.software_variant.lower():
             return False
         if self.software_version is not None and other.software_version is not None and self.software_version != other.software_version:
             return False
@@ -129,12 +136,15 @@ class DeviceType(object):
 
     def __contains__(self, other):
         assert isinstance(other, DeviceType)
-        if self.hardware_family is not None and self.hardware_family != other.hardware_family:
+        if self.hardware_family is not None and (not other.hardware_family or self.hardware_family.lower() != other.hardware_family.lower()):
             return False
-        if self.hardware_type is not None and self.hardware_type != other.hardware_type:
+        if self.hardware_type is not None and (not other.hardware_type or self.hardware_type.lower() != other.hardware_type.lower()):
             return False
-        if self.software_variant is not None and self.software_variant != other.software_variant:
+        if self.software_variant is not None and (not other.software_variant or self.software_variant.lower() != other.software_variant.lower()):
             return False
         if self.software_version is not None and other.software_version is not None and not other.software_version in self.software_version:
             return False
         return True
+
+    def __hash__(self):
+        return hash((self.hardware_family, self.hardware_type, self.software_variant, self.software_version))

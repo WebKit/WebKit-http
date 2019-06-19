@@ -7,9 +7,9 @@ es5id: 8.3_A2.2
 description: Checking if execution of "false=0" fails
 negative:
   phase: parse
-  type: ReferenceError
+  type: SyntaxError
 ---*/
 
-throw "Test262: This statement should not be evaluated.";
+$DONOTEVALUATE();
 
 false = 0;

@@ -1,23 +1,37 @@
 TestPage.registerInitializer(() => {
     function log(object, indent) {
-        for (let key of Object.keys(object)) {
-            let value = object[key];
+        for (let [name, value] of object) {
             if (typeof value === "string")
                 value = sanitizeURL(value);
-            InspectorTest.log(indent + key + ": " + JSON.stringify(value));
+            else if (Array.isArray(value)) {
+                if (value[0] instanceof DOMMatrix)
+                    value[0] = [value[0].a, value[0].b, value[0].c, value[0].d, value[0].e, value[0].f];
+                else if (value[0] instanceof Path2D)
+                    value[0] = value[0].__data;
+            }
+            InspectorTest.log(indent + name + ": " + JSON.stringify(value));
         }
     }
 
-    function logRecording(recording) {
+    async function logRecording(recording, options = {}) {
         InspectorTest.log("initialState:");
 
         InspectorTest.log("  attributes:");
-        log(recording.initialState.attributes, "    ");
+        log(Object.entries(recording.initialState.attributes), "    ");
+
+        let currentState = recording.initialState.states.lastValue;
+        if (currentState) {
+            InspectorTest.log("  current state:");
+            let state = await WI.RecordingState.swizzleInitialState(recording, currentState);
+            log(state, "    ");
+        }
 
         InspectorTest.log("  parameters:");
-        log(recording.initialState.parameters, "    ");
+        log(Object.entries(recording.initialState.parameters), "    ");
 
-        InspectorTest.log("  content: " + JSON.stringify(recording.initialState.content));
+        let currentContent = recording.initialState.content;
+        if (currentContent)
+            InspectorTest.log("  content: <filtered>");
 
         InspectorTest.log("frames:");
         for (let i = 0; i < recording.frames.length; ++i) {
@@ -47,12 +61,7 @@ TestPage.registerInitializer(() => {
                 InspectorTest.log(actionText);
 
                 if (action.swizzleTypes.length) {
-                    let swizzleNames = action.swizzleTypes.map((item, i) => {
-                        let swizzleText = WI.Recording.displayNameForSwizzleType(item);
-                        if (action.parameters[i] != action._payloadParameters[i] && Number.isInteger(action._payloadParameters[i]))
-                            swizzleText += " (" + action._payloadParameters[i] + ")";
-                        return swizzleText;
-                    });
+                    let swizzleNames = action.swizzleTypes.map((item) => WI.Recording.displayNameForSwizzleType(item));
                     InspectorTest.log("      swizzleTypes: [" + swizzleNames.join(", ") + "]");
                 }
 
@@ -60,31 +69,20 @@ TestPage.registerInitializer(() => {
                     InspectorTest.log("      trace:");
 
                     for (let k = 0; k < action.trace.length; ++k) {
-                        let callFrame = action.trace[k];
-                        let traceText = `        ${k}: `;
-                        traceText += callFrame.functionName || "(anonymous function)";
-
-                        if (callFrame.nativeCode)
-                            traceText += " - [native code]";
-                        else if (callFrame.programCode)
-                            traceText += " - [program code]";
-                        else if (callFrame.sourceCodeLocation) {
-                            let location = callFrame.sourceCodeLocation;
-                            traceText += " - " + sanitizeURL(location.sourceCode.url) + `:${location.lineNumber}:${location.columnNumber}`;
-                        }
-
-                        traceText += " (" + action._payloadTrace[k] + ")";
-                        InspectorTest.log(traceText);
+                        let functionName = action.trace[k].functionName || "(anonymous function)";
+                        InspectorTest.log(`        ${k}: ` + functionName);
                     }
                 }
 
-                if (action.snapshot)
-                    InspectorTest.log("      snapshot: " + JSON.stringify(action.snapshot) + " (" + action._payloadSnapshot + ")");
+                if (action.snapshot) {
+                    if (options.checkForContentChange)
+                        InspectorTest.log(`      snapshot: <${currentContent === action.snapshot ? "FAIL" : "PASS"}: content changed>`);
+                    else
+                        InspectorTest.log("      snapshot: <filtered>");
+                    currentContent = action.snapshot;
+                }
             }
         }
-
-        InspectorTest.log("data:");
-        log(recording.data, "  ");
     }
 
     window.getCanvas = function(type) {
@@ -95,55 +93,89 @@ TestPage.registerInitializer(() => {
         return canvases[0];
     };
 
-    window.startRecording = function(type, resolve, reject, {singleFrame, memoryLimit} = {}) {
+    window.startRecording = function(type, resolve, reject, {frameCount, memoryLimit, checkForContentChange, callback} = {}) {
         let canvas = getCanvas(type);
         if (!canvas) {
             reject(`Missing canvas with type "${type}".`);
             return;
         }
 
+        let swizzled = false;
+        let lastFrame = false;
+
+        InspectorTest.awaitEvent("LastFrame")
+        .then((event) => {
+            lastFrame = true;
+
+            if (canvas.recordingActive) {
+                if (!frameCount)
+                    CanvasAgent.stopRecording(canvas.identifier).catch(reject);
+            } else {
+                InspectorTest.evaluateInPage(`cancelActions()`)
+                .then(() => {
+                    if (swizzled)
+                        resolve();
+                }, reject);
+            }
+        });
+
         let bufferUsed = 0;
-        let frameCount = 0;
+        let recordingFrameCount = 0;
         function handleRecordingProgress(event) {
-            InspectorTest.assert(event.data.frameCount > frameCount, "Additional frames were captured for this progress event.");
-            frameCount = event.data.frameCount;
+            InspectorTest.assert(canvas.recordingFrameCount > recordingFrameCount, "Additional frames were captured for this progress event.");
+            recordingFrameCount = canvas.recordingFrameCount;
 
-            InspectorTest.assert(event.data.bufferUsed > bufferUsed, "Total memory usage increases with each progress event.");
-            bufferUsed = event.data.bufferUsed;
+            InspectorTest.assert(canvas.recordingBufferUsed > bufferUsed, "Total memory usage increases with each progress event.");
+            bufferUsed = canvas.recordingBufferUsed;
         }
-        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingProgress, handleRecordingProgress);
+        canvas.addEventListener(WI.Canvas.Event.RecordingProgress, handleRecordingProgress);
 
-        WI.canvasManager.awaitEvent(WI.CanvasManager.Event.RecordingStopped).then((event) => {
-            WI.canvasManager.removeEventListener(WI.CanvasManager.Event.RecordingProgress, handleRecordingProgress);
-
-            InspectorTest.evaluateInPage(`cancelActions()`);
+        canvas.awaitEvent(WI.Canvas.Event.RecordingStopped).then((event) => {
+            canvas.removeEventListener(WI.Canvas.Event.RecordingProgress, handleRecordingProgress);
 
             let recording = event.data.recording;
             InspectorTest.assert(recording.source === canvas, "Recording should be of the given canvas.");
             InspectorTest.assert(recording.source.contextType === type, `Recording should be of a canvas with type "${type}".`);
             InspectorTest.assert(recording.source.recordingCollection.has(recording), "Recording should be in the canvas' list of recordings.");
-            InspectorTest.assert(recording.frames.length === frameCount, `Recording should have ${frameCount} frames.`)
+            InspectorTest.assert(recording.frames.length === recordingFrameCount, `Recording should have ${recordingFrameCount} frames.`)
 
-            return Promise.all(recording.actions.map((action) => action.swizzle(recording))).then(() => {
-                logRecording(recording, type);
+            if (frameCount)
+                InspectorTest.assert(recording.frames.length === frameCount, `Recording frame count should match the provided value ${frameCount}.`)
+
+            Promise.all(recording.actions.map((action) => action.swizzle(recording))).then(() => {
+                swizzled = true;
+
+                (callback ? callback(recording) : logRecording(recording, {checkForContentChange}))
+                .then(() => {
+                    if (lastFrame) {
+                        InspectorTest.evaluateInPage(`cancelActions()`)
+                        .then(resolve, reject);
+                    }
+                }, reject);
             });
-        }).then(resolve, reject);
-
-        CanvasAgent.startRecording(canvas.identifier, singleFrame, memoryLimit, (error) => {
-            if (error) {
-                reject(error);
-                return;
-            }
-
-            InspectorTest.evaluateInPage(`performActions()`);
         });
 
-        return canvas;
+        canvas.awaitEvent(WI.Canvas.Event.RecordingStarted).then((event) => {
+            InspectorTest.evaluateInPage(`performActions()`).catch(reject);
+        });
+
+        CanvasAgent.startRecording(canvas.identifier, frameCount, memoryLimit).catch(reject);
     };
 
-    window.consoleRecord = function(resolve, reject) {
-        WI.canvasManager.awaitEvent(WI.CanvasManager.Event.RecordingStopped).then((event) => {
+    window.consoleRecord = function(type, resolve, reject) {
+        let canvas = getCanvas(type);
+        if (!canvas) {
+            reject(`Missing canvas with type "${type}".`);
+            return;
+        }
+
+        canvas.awaitEvent(WI.Canvas.Event.RecordingStopped).then((event) => {
             let recording = event.data.recording;
+
+            InspectorTest.assert(recording.source === canvas, "Recording should be of the given canvas.");
+            InspectorTest.assert(recording.source.contextType === type, `Recording should be of a canvas with type "${type}".`);
+            InspectorTest.assert(recording.source.recordingCollection.has(recording), "Recording should be in the canvas' list of recordings.");
+
             InspectorTest.expectEqual(recording.displayName, "TEST", "The recording should have the name \"TEST\".");
             InspectorTest.expectEqual(recording.frames.length, 1, "The recording should have one frame.");
             InspectorTest.expectEqual(recording.frames[0].actions.length, 1, "The first frame should have one action.");

@@ -46,6 +46,8 @@ enum class SendCallbackPolicy : uint8_t {
     DoNotSendCallbacks
 };
 
+// FIXME: These options are named poorly. We only implement force disabling content sniffing, not enabling it,
+// and even that only on some platforms.
 enum class ContentSniffingPolicy : uint8_t {
     SniffContent,
     DoNotSniffContent
@@ -107,6 +109,8 @@ enum class ApplicationCacheMode : uint8_t {
     Bypass
 };
 
+// FIXME: These options are named poorly. We only implement force disabling content encoding sniffing, not enabling it,
+// and even that only on some platforms.
 enum class ContentEncodingSniffingPolicy : uint8_t {
     Sniff,
     DoNotSniff,
@@ -116,6 +120,11 @@ enum class PreflightPolicy : uint8_t {
     Consider,
     Force,
     Prevent
+};
+
+enum class LoadedFromOpaqueSource : uint8_t {
+    Yes,
+    No
 };
 
 struct ResourceLoaderOptions : public FetchOptions {
@@ -140,11 +149,10 @@ struct ResourceLoaderOptions : public FetchOptions {
     }
 
 #if ENABLE(SERVICE_WORKER)
-    std::optional<ServiceWorkerRegistrationIdentifier> serviceWorkerRegistrationIdentifier;
+    Optional<ServiceWorkerRegistrationIdentifier> serviceWorkerRegistrationIdentifier;
 #endif
     HashSet<HTTPHeaderName, WTF::IntHash<HTTPHeaderName>, WTF::StrongEnumHashTraits<HTTPHeaderName>> httpHeadersToKeep;
-    Vector<String> derivedCachedDataTypesToRetrieve;
-    std::optional<ContentSecurityPolicyResponseHeaders> cspResponseHeaders;
+    Optional<ContentSecurityPolicyResponseHeaders> cspResponseHeaders;
     unsigned maxRedirectCount { 20 };
 
     SendCallbackPolicy sendLoadCallbacks { SendCallbackPolicy::DoNotSendCallbacks };
@@ -163,6 +171,7 @@ struct ResourceLoaderOptions : public FetchOptions {
     ApplicationCacheMode applicationCacheMode { ApplicationCacheMode::Use };
     ClientCredentialPolicy clientCredentialPolicy { ClientCredentialPolicy::CannotAskClientForCredentials };
     PreflightPolicy preflightPolicy { PreflightPolicy::Consider };
+    LoadedFromOpaqueSource loadedFromOpaqueSource { LoadedFromOpaqueSource::No };
 };
 
 } // namespace WebCore

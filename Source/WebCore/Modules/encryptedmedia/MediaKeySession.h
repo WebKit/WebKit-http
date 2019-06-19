@@ -31,7 +31,7 @@
 #if ENABLE(ENCRYPTED_MEDIA)
 
 #include "ActiveDOMObject.h"
-#include "CDMInstance.h"
+#include "CDMInstanceSession.h"
 #include "DOMPromiseProxy.h"
 #include "EventTarget.h"
 #include "GenericEventQueue.h"
@@ -52,9 +52,10 @@ class MediaKeyStatusMap;
 class MediaKeys;
 class SharedBuffer;
 
-class MediaKeySession final : public RefCounted<MediaKeySession>, public EventTargetWithInlineData, public ActiveDOMObject, public CanMakeWeakPtr<MediaKeySession>, public CDMInstanceClient {
+class MediaKeySession final : public RefCounted<MediaKeySession>, public EventTargetWithInlineData, public ActiveDOMObject, public CDMInstanceSessionClient {
+    WTF_MAKE_ISO_ALLOCATED(MediaKeySession);
 public:
-    static Ref<MediaKeySession> create(ScriptExecutionContext&, WeakPtr<MediaKeys>&&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstance>&&);
+    static Ref<MediaKeySession> create(ScriptExecutionContext&, WeakPtr<MediaKeys>&&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstanceSession>&&);
     virtual ~MediaKeySession();
 
     using RefCounted<MediaKeySession>::ref;
@@ -66,7 +67,7 @@ public:
     double expiration() const;
     Ref<MediaKeyStatusMap> keyStatuses() const;
 
-    void generateRequest(const AtomicString&, const BufferSource&, Ref<DeferredPromise>&&);
+    void generateRequest(const AtomString&, const BufferSource&, Ref<DeferredPromise>&&);
     void load(const String&, Ref<DeferredPromise>&&);
     void update(const BufferSource&, Ref<DeferredPromise>&&);
     void close(Ref<DeferredPromise>&&);
@@ -78,14 +79,16 @@ public:
     const Vector<std::pair<Ref<SharedBuffer>, MediaKeyStatus>>& statuses() const { return m_statuses; }
 
 private:
-    MediaKeySession(ScriptExecutionContext&, WeakPtr<MediaKeys>&&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstance>&&);
+    MediaKeySession(ScriptExecutionContext&, WeakPtr<MediaKeys>&&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstanceSession>&&);
     void enqueueMessage(MediaKeyMessageType, const SharedBuffer&);
     void updateExpiration(double);
     void sessionClosed();
     String mediaKeysStorageDirectory() const;
 
-    // CDMInstanceClient
-    void updateKeyStatuses(CDMInstanceClient::KeyStatusVector&&) override;
+    // CDMInstanceSessionClient
+    void updateKeyStatuses(CDMInstanceSessionClient::KeyStatusVector&&) override;
+    void sendMessage(CDMMessageType, Ref<SharedBuffer>&& message) final;
+    void sessionIdChanged(const String&) final;
 
     // EventTarget
     EventTargetInterface eventTargetInterface() const override { return MediaKeySessionEventTargetInterfaceType; }
@@ -110,7 +113,7 @@ private:
     bool m_useDistinctiveIdentifier;
     MediaKeySessionType m_sessionType;
     Ref<CDM> m_implementation;
-    Ref<CDMInstance> m_instance;
+    Ref<CDMInstanceSession> m_instanceSession;
     GenericEventQueue m_eventQueue;
     GenericTaskQueue<Timer> m_taskQueue;
     Vector<Ref<SharedBuffer>> m_recordOfKeyUsage;

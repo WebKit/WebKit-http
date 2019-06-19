@@ -42,7 +42,7 @@ using namespace HTMLNames;
 class FormAttributeTargetObserver final : private IdTargetObserver {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    FormAttributeTargetObserver(const AtomicString& id, FormAssociatedElement&);
+    FormAttributeTargetObserver(const AtomString& id, FormAssociatedElement&);
 
 private:
     void idTargetChanged() override;
@@ -52,7 +52,7 @@ private:
 
 FormAssociatedElement::FormAssociatedElement(HTMLFormElement* form)
     : m_form(nullptr)
-    , m_formSetByParser(form)
+    , m_formSetByParser(makeWeakPtr(form))
 {
 }
 
@@ -74,7 +74,7 @@ void FormAssociatedElement::insertedIntoAncestor(Node::InsertionType insertionTy
     if (m_formSetByParser) {
         // The form could have been removed by a script during parsing.
         if (m_formSetByParser->isConnected())
-            setForm(m_formSetByParser);
+            setForm(m_formSetByParser.get());
         m_formSetByParser = nullptr;
     }
 
@@ -101,7 +101,7 @@ void FormAssociatedElement::removedFromAncestor(Node::RemovalType, ContainerNode
 
 HTMLFormElement* FormAssociatedElement::findAssociatedForm(const HTMLElement* element, HTMLFormElement* currentAssociatedForm)
 {
-    const AtomicString& formId(element->attributeWithoutSynchronization(formAttr));
+    const AtomString& formId(element->attributeWithoutSynchronization(formAttr));
     if (!formId.isNull() && element->isConnected()) {
         // The HTML5 spec says that the element should be associated with
         // the first element in the document to have an ID that equal to
@@ -119,11 +119,17 @@ HTMLFormElement* FormAssociatedElement::findAssociatedForm(const HTMLElement* el
     return currentAssociatedForm;
 }
 
+HTMLFormElement* FormAssociatedElement::form() const
+{
+    return m_form.get();
+}
+
 void FormAssociatedElement::formOwnerRemovedFromTree(const Node& formRoot)
 {
     ASSERT(m_form);
-    RefPtr<Node> rootNode = &asHTMLElement();
-    for (auto ancestor = makeRefPtr(asHTMLElement().parentNode()); ancestor; ancestor = ancestor->parentNode()) {
+    // Can't use RefPtr here beacuse this function might be called inside ~ShadowRoot via addChildNodesToDeletionQueue. See webkit.org/b/189493.
+    Node* rootNode = &asHTMLElement();
+    for (auto* ancestor = asHTMLElement().parentNode(); ancestor; ancestor = ancestor->parentNode()) {
         if (ancestor == m_form) {
             // Form is our ancestor so we don't need to reset our owner, we also no longer
             // need an id observer since we are no longer connected.
@@ -145,9 +151,9 @@ void FormAssociatedElement::setForm(HTMLFormElement* newForm)
     willChangeForm();
     if (m_form)
         m_form->removeFormElement(this);
-    m_form = newForm;
-    if (m_form)
-        m_form->registerFormElement(this);
+    m_form = makeWeakPtr(newForm);
+    if (newForm)
+        newForm->registerFormElement(this);
     didChangeForm();
 }
 
@@ -171,11 +177,12 @@ void FormAssociatedElement::formWillBeDestroyed()
 
 void FormAssociatedElement::resetFormOwner()
 {
-    RefPtr<HTMLFormElement> originalForm = m_form;
-    setForm(findAssociatedForm(&asHTMLElement(), m_form));
+    RefPtr<HTMLFormElement> originalForm = m_form.get();
+    setForm(findAssociatedForm(&asHTMLElement(), originalForm.get()));
     HTMLElement& element = asHTMLElement();
-    if (m_form && m_form != originalForm && m_form->isConnected())
-        element.document().didAssociateFormControl(&element);
+    auto* newForm = m_form.get();
+    if (newForm && newForm != originalForm && newForm->isConnected())
+        element.document().didAssociateFormControl(element);
 }
 
 void FormAssociatedElement::formAttributeChanged()
@@ -183,10 +190,12 @@ void FormAssociatedElement::formAttributeChanged()
     HTMLElement& element = asHTMLElement();
     if (!element.hasAttributeWithoutSynchronization(formAttr)) {
         // The form attribute removed. We need to reset form owner here.
-        RefPtr<HTMLFormElement> originalForm = m_form;
+        RefPtr<HTMLFormElement> originalForm = m_form.get();
+        // FIXME: Why does this not pass originalForm to findClosestFormAncestor?
         setForm(HTMLFormElement::findClosestFormAncestor(element));
-        if (m_form && m_form != originalForm && m_form->isConnected())
-            element.document().didAssociateFormControl(&element);
+        auto* newForm = m_form.get();
+        if (newForm && newForm != originalForm && newForm->isConnected())
+            element.document().didAssociateFormControl(element);
         m_formAttributeTargetObserver = nullptr;
     } else {
         resetFormOwner();
@@ -278,9 +287,9 @@ void FormAssociatedElement::formAttributeTargetChanged()
     resetFormOwner();
 }
 
-const AtomicString& FormAssociatedElement::name() const
+const AtomString& FormAssociatedElement::name() const
 {
-    const AtomicString& name = asHTMLElement().getNameAttribute();
+    const AtomString& name = asHTMLElement().getNameAttribute();
     return name.isNull() ? emptyAtom() : name;
 }
 
@@ -289,7 +298,7 @@ bool FormAssociatedElement::isFormControlElementWithState() const
     return false;
 }
 
-FormAttributeTargetObserver::FormAttributeTargetObserver(const AtomicString& id, FormAssociatedElement& element)
+FormAttributeTargetObserver::FormAttributeTargetObserver(const AtomString& id, FormAssociatedElement& element)
     : IdTargetObserver(element.asHTMLElement().treeScope().idTargetObserverRegistry(), id)
     , m_element(element)
 {

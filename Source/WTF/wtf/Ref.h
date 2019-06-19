@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_Ref_h
-#define WTF_Ref_h
+#pragma once
 
 #include <wtf/Assertions.h>
 #include <wtf/DumbPtrTraits.h>
@@ -268,17 +267,9 @@ inline bool is(const Ref<ArgType, PtrTraits>& source)
     return is<ExpectedType>(source.get());
 }
 
-template<typename Poison, typename T> struct PoisonedPtrTraits;
-
-template<typename Poison, typename T>
-using PoisonedRef = Ref<T, PoisonedPtrTraits<Poison, T>>;
-
 } // namespace WTF
 
-using WTF::PoisonedRef;
 using WTF::Ref;
 using WTF::adoptRef;
 using WTF::makeRef;
 using WTF::static_reference_cast;
-
-#endif // WTF_Ref_h

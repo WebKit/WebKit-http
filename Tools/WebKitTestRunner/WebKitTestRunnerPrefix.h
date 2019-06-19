@@ -23,6 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if defined(HAVE_CONFIG_H) && HAVE_CONFIG_H && defined(BUILDING_WITH_CMAKE)
+#include "cmakeconfig.h"
+#endif
+
 #ifdef __OBJC__
 #import <Foundation/Foundation.h>
 #endif
@@ -44,3 +48,9 @@
 #undef catch
 #endif
 
+#if PLATFORM(WIN)
+#undef WEBCORE_EXPORT
+#define WEBCORE_EXPORT WTF_IMPORT_DECLARATION
+#undef WEBCORE_TESTSUPPORT_EXPORT
+#define WEBCORE_TESTSUPPORT_EXPORT WTF_IMPORT_DECLARATION
+#endif

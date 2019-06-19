@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,8 @@
 #include "PlaybackSessionModel.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/WeakObjCPtr.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 OBJC_CLASS WebPlaybackControlsManager;
@@ -49,9 +51,6 @@ public:
     virtual ~PlaybackSessionInterfaceMac();
     PlaybackSessionModel* playbackSessionModel() const;
 
-    // PlaybackSessionInterface
-    void resetMediaState() final;
-
     // PlaybackSessionModelClient
     void durationChanged(double) final;
     void currentTimeChanged(double /*currentTime*/, double /*anchorTime*/) final;
@@ -62,21 +61,24 @@ public:
     void audioMediaSelectionIndexChanged(uint64_t) final;
     void legibleMediaSelectionIndexChanged(uint64_t) final;
     void externalPlaybackChanged(bool /* enabled */, PlaybackSessionModel::ExternalPlaybackTargetType, const String& /* localizedDeviceName */) final;
+    void isPictureInPictureSupportedChanged(bool) final;
 
     void invalidate();
     void ensureControlsManager();
 #if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
     void setPlayBackControlsManager(WebPlaybackControlsManager *);
     WebPlaybackControlsManager *playBackControlsManager();
+
+    void updatePlaybackControlsManagerCanTogglePictureInPicture();
 #endif
     void beginScrubbing();
     void endScrubbing();
 
 private:
     PlaybackSessionInterfaceMac(PlaybackSessionModel&);
-    PlaybackSessionModel* m_playbackSessionModel { nullptr };
+    WeakPtr<PlaybackSessionModel> m_playbackSessionModel;
 #if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
-    WebPlaybackControlsManager *m_playbackControlsManager  { nullptr };
+    WeakObjCPtr<WebPlaybackControlsManager> m_playbackControlsManager;
 
     void updatePlaybackControlsManagerTiming(double currentTime, double anchorTime, double playbackRate, bool isPlaying);
 #endif

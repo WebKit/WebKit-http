@@ -108,11 +108,6 @@ static const UniChar* provideStringAndAttributes(CFIndex stringIndex, CFIndex* c
     return info->cp + stringIndex;
 }
 
-static inline bool safeCFEqual(CFTypeRef a, CFTypeRef b)
-{
-    return (!a && !b) || (a && b && CFEqual(a, b));
-}
-
 void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp, unsigned length, unsigned stringLocation, const Font* font)
 {
     if (!font) {
@@ -144,7 +139,7 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
     if (!m_mayUseNaturalWritingDirection || m_run.directionalOverride()) {
         const short ltrForcedEmbeddingLevelValue = 0;
         const short rtlForcedEmbeddingLevelValue = 1;
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED == 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED == 120000)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED == 101400) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED == 120000)
         static const void* optionKeys[] = { kCTTypesetterOptionForcedEmbeddingLevel, kCTTypesetterOptionAllowUnboundedLayout };
         static const void* ltrOptionValues[] = { CFNumberCreate(kCFAllocatorDefault, kCFNumberShortType, &ltrForcedEmbeddingLevelValue), kCFBooleanTrue };
         static const void* rtlOptionValues[] = { CFNumberCreate(kCFAllocatorDefault, kCFNumberShortType, &rtlForcedEmbeddingLevelValue), kCFBooleanTrue };
@@ -158,10 +153,12 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
 
         ProviderInfo info = { cp, length, stringAttributes.get() };
         // FIXME: Some SDKs complain that the second parameter below cannot be null.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnonnull"
+        IGNORE_NULL_CHECK_WARNINGS_BEGIN
         RetainPtr<CTTypesetterRef> typesetter = adoptCF(CTTypesetterCreateWithUniCharProviderAndOptions(&provideStringAndAttributes, 0, &info, m_run.ltr() ? ltrTypesetterOptions : rtlTypesetterOptions));
-#pragma clang diagnostic pop
+        IGNORE_NULL_CHECK_WARNINGS_END
+
+        if (!typesetter)
+            return;
 
         line = adoptCF(CTTypesetterCreateLine(typesetter.get(), CFRangeMake(0, 0)));
     } else {
@@ -170,9 +167,15 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
         line = adoptCF(CTLineCreateWithUniCharProvider(&provideStringAndAttributes, nullptr, &info));
     }
 
+    if (!line)
+        return;
+
     m_coreTextLines.append(line.get());
 
     CFArrayRef runArray = CTLineGetGlyphRuns(line.get());
+
+    if (!runArray)
+        return;
 
     CFIndex runCount = CFArrayGetCount(runArray);
 
@@ -188,13 +191,13 @@ void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* cp,
             CTFontRef runCTFont = static_cast<CTFontRef>(CFDictionaryGetValue(runAttributes, kCTFontAttributeName));
             ASSERT(runCTFont && CFGetTypeID(runCTFont) == CTFontGetTypeID());
             RetainPtr<CFTypeRef> runFontEqualityObject = FontPlatformData::objectForEqualityCheck(runCTFont);
-            if (!safeCFEqual(runFontEqualityObject.get(), font->platformData().objectForEqualityCheck().get())) {
+            if (!WTF::safeCFEqual(runFontEqualityObject.get(), font->platformData().objectForEqualityCheck().get())) {
                 // Begin trying to see if runFont matches any of the fonts in the fallback list.
                 for (unsigned i = 0; !m_font.fallbackRangesAt(i).isNull(); ++i) {
                     runFont = m_font.fallbackRangesAt(i).fontForCharacter(baseCharacter);
                     if (!runFont)
                         continue;
-                    if (safeCFEqual(runFont->platformData().objectForEqualityCheck().get(), runFontEqualityObject.get()))
+                    if (WTF::safeCFEqual(runFont->platformData().objectForEqualityCheck().get(), runFontEqualityObject.get()))
                         break;
                     runFont = nullptr;
                 }

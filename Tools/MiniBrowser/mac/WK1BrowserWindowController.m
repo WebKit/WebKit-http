@@ -90,7 +90,7 @@
 
 - (IBAction)fetch:(id)sender
 {
-    [urlText setStringValue:[self addProtocolIfNecessary:[urlText stringValue]]];
+    [urlText setStringValue:[self addProtocolIfNecessary:urlText.stringValue]];
     NSURL *url = [NSURL _webkit_URLWithUserTypedString:urlText.stringValue];
     [[_webView mainFrame] loadRequest:[NSURLRequest requestWithURL:url]];
 }
@@ -308,7 +308,6 @@ static BOOL areEssentiallyEqual(double a, double b)
     [[WebPreferences standardPreferences] setAcceleratedDrawingEnabled:settings.acceleratedDrawingEnabled];
     [[WebPreferences standardPreferences] setSubpixelAntialiasedLayerTextEnabled:settings.subpixelAntialiasedLayerTextEnabled];
     [[WebPreferences standardPreferences] setResourceLoadStatisticsEnabled:settings.resourceLoadStatisticsEnabled];
-    [[WebPreferences standardPreferences] setVisualViewportEnabled:settings.visualViewportEnabled];
     [[WebPreferences standardPreferences] setLargeImageAsyncDecodingEnabled:settings.largeImageAsyncDecodingEnabled];
     [[WebPreferences standardPreferences] setAnimatedImageAsyncDecodingEnabled:settings.animatedImageAsyncDecodingEnabled];
     [[WebPreferences standardPreferences] setColorFilterEnabled:settings.appleColorFilterEnabled];

@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "LayerRepresentation.h"
+#include "RemoteLayerTreeNode.h"
 #include "RemoteLayerTreeTransaction.h"
 #include <wtf/HashMap.h>
 
@@ -35,10 +35,15 @@ class RemoteLayerTreeHost;
 
 class RemoteLayerTreePropertyApplier {
 public:
-    using RelatedLayerMap = HashMap<WebCore::GraphicsLayer::PlatformLayerID, CFTypeRef>;
-    static void applyProperties(CALayer *, RemoteLayerTreeHost*, const RemoteLayerTreeTransaction::LayerProperties&, const RelatedLayerMap&, RemoteLayerBackingStore::LayerContentsType);
-#if PLATFORM(IOS)
-    static void applyProperties(UIView *, RemoteLayerTreeHost*, const RemoteLayerTreeTransaction::LayerProperties&, const RelatedLayerMap&, RemoteLayerBackingStore::LayerContentsType);
+    using RelatedLayerMap = HashMap<WebCore::GraphicsLayer::PlatformLayerID, std::unique_ptr<RemoteLayerTreeNode>>;
+    static void applyProperties(RemoteLayerTreeNode&, RemoteLayerTreeHost*, const RemoteLayerTreeTransaction::LayerProperties&, const RelatedLayerMap&, RemoteLayerBackingStore::LayerContentsType);
+    static void applyPropertiesToLayer(CALayer *, RemoteLayerTreeHost*, const RemoteLayerTreeTransaction::LayerProperties&, RemoteLayerBackingStore::LayerContentsType);
+
+private:
+    static void updateChildren(RemoteLayerTreeNode&, const RemoteLayerTreeTransaction::LayerProperties&, const RelatedLayerMap&);
+    static void updateMask(RemoteLayerTreeNode&, const RemoteLayerTreeTransaction::LayerProperties&, const RelatedLayerMap&);
+#if PLATFORM(IOS_FAMILY)
+    static void applyPropertiesToUIView(UIView *, const RemoteLayerTreeTransaction::LayerProperties&, const RelatedLayerMap&);
 #endif
 };
 

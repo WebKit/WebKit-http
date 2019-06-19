@@ -54,7 +54,7 @@ void CharacterData::setData(const String& data)
     unsigned oldLength = length();
 
     if (m_data == nonNullData && canUseSetDataOptimization(*this)) {
-        document().textRemoved(this, 0, oldLength);
+        document().textRemoved(*this, 0, oldLength);
         if (document().frame())
             document().frame()->selection().textWasReplaced(this, 0, oldLength, oldLength);
         return;
@@ -63,7 +63,7 @@ void CharacterData::setData(const String& data)
     Ref<CharacterData> protectedThis(*this);
 
     setDataAndUpdate(nonNullData, 0, oldLength, nonNullData.length());
-    document().textRemoved(this, 0, oldLength);
+    document().textRemoved(*this, 0, oldLength);
 }
 
 ExceptionOr<String> CharacterData::substringData(unsigned offset, unsigned count)
@@ -96,6 +96,7 @@ unsigned CharacterData::parserAppendData(const String& string, unsigned offset, 
     if (!characterLengthLimit)
         return 0;
 
+    String oldData = m_data;
     if (string.is8Bit())
         m_data.append(string.characters8() + offset, characterLengthLimit);
     else
@@ -106,6 +107,10 @@ unsigned CharacterData::parserAppendData(const String& string, unsigned offset, 
         downcast<Text>(*this).updateRendererAfterContentChange(oldLength, 0);
 
     notifyParentAfterChange(ContainerNode::ChildChangeSource::Parser);
+
+    auto mutationRecipients = MutationObserverInterestGroup::createForCharacterDataMutation(*this);
+    if (UNLIKELY(mutationRecipients))
+        mutationRecipients->enqueueMutationRecord(MutationRecord::createCharacterData(*this, oldData));
 
     return characterLengthLimit;
 }
@@ -130,7 +135,7 @@ ExceptionOr<void> CharacterData::insertData(unsigned offset, const String& data)
 
     setDataAndUpdate(newStr, offset, 0, data.length());
 
-    document().textInserted(this, offset, data.length());
+    document().textInserted(*this, offset, data.length());
 
     return { };
 }
@@ -147,7 +152,7 @@ ExceptionOr<void> CharacterData::deleteData(unsigned offset, unsigned count)
 
     setDataAndUpdate(newStr, offset, count, 0);
 
-    document().textRemoved(this, offset, count);
+    document().textRemoved(*this, offset, count);
 
     return { };
 }
@@ -166,8 +171,8 @@ ExceptionOr<void> CharacterData::replaceData(unsigned offset, unsigned count, co
     setDataAndUpdate(newStr, offset, count, data.length());
 
     // update the markers for spell checking and grammar checking
-    document().textRemoved(this, offset, count);
-    document().textInserted(this, offset, data.length());
+    document().textRemoved(*this, offset, count);
+    document().textInserted(*this, offset, data.length());
 
     return { };
 }
@@ -237,11 +242,6 @@ void CharacterData::dispatchModifiedEvent(const String& oldData)
 int CharacterData::maxCharacterOffset() const
 {
     return static_cast<int>(length());
-}
-
-bool CharacterData::offsetInCharacters() const
-{
-    return true;
 }
 
 } // namespace WebCore

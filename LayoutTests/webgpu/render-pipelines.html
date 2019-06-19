@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<script src="js/webgpu-functions.js"></script>
+<script src="../resources/testharness.js"></script>
+<script src="../resources/testharnessreport.js"></script>
+<script>
+const shaderCode = `
+#include <metal_stdlib>
+    
+using namespace metal;
+
+struct Vertex
+{
+    float4 position [[position]];
+};
+
+vertex Vertex vertex_main(uint vid [[vertex_id]])
+{
+    Vertex v;
+    switch (vid) {
+    case 0:
+        v.position = float4(-1, 1, 0, 1);
+        break;
+    case 1:
+        v.position = float4(-1, -1, 0, 1);
+        break;
+    case 2:
+        v.position = float4(1, 1, 0, 1);
+        break;
+    default:
+        v.position = float4(1, -1, 0, 1);
+    }
+    return v;
+}
+
+fragment float4 fragment_main(Vertex vertexIn [[stage_in]])
+{
+    return float4(0.0, 1.0, 0.0, 1.0);
+}
+`
+
+promise_test(async () => {
+    const device = await getBasicDevice();
+    const shaderModule = device.createShaderModule({ code: shaderCode });
+
+    const layoutBinding = { binding: 0, visibility: GPUShaderStageBit.VERTEX, type: "storage-buffer" };
+    const bindGroupLayout = device.createBindGroupLayout({ bindings: [layoutBinding] });
+    const pipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] });
+
+    const pipeline = createBasicPipeline(shaderModule, device, null, pipelineLayout);
+    assert_true(pipeline instanceof GPURenderPipeline, "Successfully created GPURenderPipeline");
+}, "Create basic GPURenderPipeline");
+</script>
+</html>

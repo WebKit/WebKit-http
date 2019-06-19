@@ -181,7 +181,7 @@ static void handleKeyPress(Frame& frame, KeyboardEvent& event, const PlatformKey
         return;
 
     // Don't insert anything if a modifier is pressed and it has not been handled yet
-    if (platformEvent.ctrlKey() || platformEvent.altKey())
+    if (platformEvent.controlKey() || platformEvent.altKey())
         return;
 
     if (frame.editor().insertText(platformEvent.text(), &event))
@@ -205,15 +205,15 @@ static void handleKeyDown(Frame& frame, KeyboardEvent& event, const PlatformKeyb
     event.setDefaultHandled();
 }
 
-void WebEditorClient::handleKeyboardEvent(WebCore::KeyboardEvent* event)
+void WebEditorClient::handleKeyboardEvent(WebCore::KeyboardEvent& event)
 {
-    ASSERT(event->target());
-    auto* frame = downcast<Node>(event->target())->document().frame();
+    ASSERT(event.target());
+    auto* frame = downcast<Node>(event.target())->document().frame();
     ASSERT(frame);
 
     // FIXME: Reorder the checks in a more sensible way.
 
-    auto* platformEvent = event->underlyingPlatformEvent();
+    auto* platformEvent = event.underlyingPlatformEvent();
     if (!platformEvent)
         return;
 
@@ -228,17 +228,17 @@ void WebEditorClient::handleKeyboardEvent(WebCore::KeyboardEvent* event)
     // This is just a normal text insertion, so wait to execute the insertion
     // until a keypress event happens. This will ensure that the insertion will not
     // be reflected in the contents of the field until the keyup DOM event.
-    if (event->type() == eventNames().keypressEvent)
-        return handleKeyPress(*frame, *event, *platformEvent);
-    if (event->type() == eventNames().keydownEvent)
-        return handleKeyDown(*frame, *event, *platformEvent);
+    if (event.type() == eventNames().keypressEvent)
+        return handleKeyPress(*frame, event, *platformEvent);
+    if (event.type() == eventNames().keydownEvent)
+        return handleKeyDown(*frame, event, *platformEvent);
 }
 
-void WebEditorClient::handleInputMethodKeydown(WebCore::KeyboardEvent* event)
+void WebEditorClient::handleInputMethodKeydown(WebCore::KeyboardEvent& event)
 {
-    auto* platformEvent = event->underlyingPlatformEvent();
+    auto* platformEvent = event.underlyingPlatformEvent();
     if (platformEvent && platformEvent->windowsVirtualKeyCode() == VK_PROCESSKEY)
-        event->preventDefault();
+        event.preventDefault();
 }
 
 } // namespace WebKit

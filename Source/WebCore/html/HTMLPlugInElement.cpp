@@ -165,7 +165,7 @@ bool HTMLPlugInElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLFrameOwnerElement::isPresentationAttribute(name);
 }
 
-void HTMLPlugInElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
+void HTMLPlugInElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomString& value, MutableStyleProperties& style)
 {
     if (name == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, value);
@@ -406,6 +406,15 @@ JSC::JSObject* HTMLPlugInElement::scriptObjectForPluginReplacement()
     return nullptr;
 }
 
+bool HTMLPlugInElement::isBelowSizeThreshold() const
+{
+    auto* renderObject = renderer();
+    if (!is<RenderEmbeddedObject>(renderObject))
+        return true;
+    auto& renderEmbeddedObject = downcast<RenderEmbeddedObject>(*renderObject);
+    return renderEmbeddedObject.isPluginUnavailable() && renderEmbeddedObject.pluginUnavailabilityReason() == RenderEmbeddedObject::PluginTooSmall;
+}
+
 bool HTMLPlugInElement::setReplacement(RenderEmbeddedObject::PluginUnavailabilityReason reason, const String& unavailabilityDescription)
 {
     if (!is<RenderEmbeddedObject>(renderer()))
@@ -425,13 +434,18 @@ bool HTMLPlugInElement::setReplacement(RenderEmbeddedObject::PluginUnavailabilit
 
 bool HTMLPlugInElement::isReplacementObscured()
 {
-    // We should always start hit testing a clean tree.
-    if (document().view())
-        document().view()->updateLayoutAndStyleIfNeededRecursive();
-    // Check if style recalc/layout destroyed the associated renderer.
-    auto* renderView = document().topDocument().renderView();
-    if (!document().view() || !renderView)
+    auto topDocument = makeRef(document().topDocument());
+    auto topFrameView = makeRefPtr(topDocument->view());
+    if (!topFrameView)
         return false;
+
+    topFrameView->updateLayoutAndStyleIfNeededRecursive();
+
+    // Updating the layout may have detached this document from the top document.
+    auto* renderView = topDocument->renderView();
+    if (!renderView || !document().view() || &document().topDocument() != topDocument.ptr())
+        return false;
+
     if (!renderer() || !is<RenderEmbeddedObject>(*renderer()))
         return false;
     auto& pluginRenderer = downcast<RenderEmbeddedObject>(*renderer());
@@ -457,27 +471,29 @@ bool HTMLPlugInElement::isReplacementObscured()
     HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
     HitTestResult result;
     HitTestLocation location = LayoutPoint(x + width / 2, y + height / 2);
-    bool hit = renderView->hitTest(request, location, result);
+    ASSERT(!renderView->needsLayout());
+    ASSERT(!renderView->document().needsStyleRecalc());
+    bool hit = topDocument->hitTest(request, location, result);
     if (!hit || result.innerNode() != &pluginRenderer.frameOwnerElement())
         return true;
 
     location = LayoutPoint(x, y);
-    hit = renderView->hitTest(request, location, result);
+    hit = topDocument->hitTest(request, location, result);
     if (!hit || result.innerNode() != &pluginRenderer.frameOwnerElement())
         return true;
 
     location = LayoutPoint(x + width, y);
-    hit = renderView->hitTest(request, location, result);
+    hit = topDocument->hitTest(request, location, result);
     if (!hit || result.innerNode() != &pluginRenderer.frameOwnerElement())
         return true;
 
     location = LayoutPoint(x + width, y + height);
-    hit = renderView->hitTest(request, location, result);
+    hit = topDocument->hitTest(request, location, result);
     if (!hit || result.innerNode() != &pluginRenderer.frameOwnerElement())
         return true;
 
     location = LayoutPoint(x, y + height);
-    hit = renderView->hitTest(request, location, result);
+    hit = topDocument->hitTest(request, location, result);
     if (!hit || result.innerNode() != &pluginRenderer.frameOwnerElement())
         return true;
     return false;

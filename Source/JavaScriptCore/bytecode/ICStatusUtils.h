@@ -29,13 +29,24 @@
 
 namespace JSC {
 
+class CodeBlock;
+class StructureSet;
+
 template<typename VariantVectorType, typename VariantType>
 bool appendICStatusVariant(VariantVectorType& variants, const VariantType& variant)
 {
     // Attempt to merge this variant with an already existing variant.
     for (unsigned i = 0; i < variants.size(); ++i) {
-        if (variants[i].attemptToMerge(variant))
+        VariantType& mergedVariant = variants[i];
+        if (mergedVariant.attemptToMerge(variant)) {
+            for (unsigned j = 0; j < variants.size(); ++j) {
+                if (i == j)
+                    continue;
+                if (variants[j].structureSet().overlaps(mergedVariant.structureSet()))
+                    return false;
+            }
             return true;
+        }
     }
     
     // Make sure there is no overlap. We should have pruned out opportunities for

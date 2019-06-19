@@ -33,8 +33,11 @@
 #include "HTMLMediaElement.h"
 #include "ScriptExecutionContext.h"
 #include "TrackEvent.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(TrackListBase);
 
 TrackListBase::TrackListBase(HTMLMediaElement* element, ScriptExecutionContext* context)
     : ActiveDOMObject(context)
@@ -93,7 +96,7 @@ bool TrackListBase::contains(TrackBase& track) const
     return m_inbandTracks.find(&track) != notFound;
 }
 
-void TrackListBase::scheduleTrackEvent(const AtomicString& eventName, Ref<TrackBase>&& track)
+void TrackListBase::scheduleTrackEvent(const AtomString& eventName, Ref<TrackBase>&& track)
 {
     m_asyncEventQueue.enqueueEvent(TrackEvent::create(eventName, Event::CanBubble::No, Event::IsCancelable::No, WTFMove(track)));
 }

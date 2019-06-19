@@ -33,11 +33,11 @@
 
 namespace JSC {
 
-struct CodeOrigin;
 struct EntryFrame;
 struct InlineCallFrame;
 
 class CodeBlock;
+class CodeOrigin;
 class ExecState;
 class JSCell;
 class JSFunction;
@@ -94,7 +94,9 @@ public:
         bool hasLineAndColumnInfo() const;
         JS_EXPORT_PRIVATE void computeLineAndColumn(unsigned& line, unsigned& column) const;
 
-        RegisterAtOffsetList* calleeSaveRegisters();
+#if ENABLE(ASSEMBLER)
+        Optional<RegisterAtOffsetList> calleeSaveRegistersForUnwinding();
+#endif
 
         ClonedArguments* createArguments();
         CallFrame* callFrame() const { return m_callFrame; }

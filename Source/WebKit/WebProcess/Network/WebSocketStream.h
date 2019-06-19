@@ -45,7 +45,7 @@ namespace WebKit {
 
 class WebSocketStream : public IPC::MessageSender, public IPC::MessageReceiver, public WebCore::SocketStreamHandle, public Identified<WebSocketStream> {
 public:
-    static Ref<WebSocketStream> create(const WebCore::URL&, WebCore::SocketStreamHandleClient&, PAL::SessionID, const String& credentialPartition);
+    static Ref<WebSocketStream> create(const URL&, WebCore::SocketStreamHandleClient&, PAL::SessionID, const String& credentialPartition);
     static void networkProcessCrashed();
     static WebSocketStream* streamWithIdentifier(uint64_t);
     
@@ -53,7 +53,7 @@ public:
     
     // SocketStreamHandle
     void platformSend(const uint8_t*, size_t, Function<void(bool)>&&) final;
-    void platformSendHandshake(const uint8_t*, size_t, const std::optional<WebCore::CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&);
+    void platformSendHandshake(const uint8_t*, size_t, const Optional<WebCore::CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&);
     void platformClose() final;
     size_t bufferedAmount() final;
 
@@ -70,10 +70,10 @@ public:
     
 private:
     // MessageSender
-    IPC::Connection* messageSenderConnection() final;
-    uint64_t messageSenderDestinationID() final;
+    IPC::Connection* messageSenderConnection() const final;
+    uint64_t messageSenderDestinationID() const final;
 
-    WebSocketStream(const WebCore::URL&, WebCore::SocketStreamHandleClient&, PAL::SessionID, const String& credentialPartition);
+    WebSocketStream(const URL&, WebCore::SocketStreamHandleClient&, PAL::SessionID, const String& credentialPartition);
     ~WebSocketStream();
 
     size_t m_bufferedAmount { 0 };

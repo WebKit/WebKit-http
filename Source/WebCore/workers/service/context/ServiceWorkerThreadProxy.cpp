@@ -29,11 +29,15 @@
 #if ENABLE(SERVICE_WORKER)
 
 #include "CacheStorageProvider.h"
+#include "EventNames.h"
+#include "FetchLoader.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "LoaderStrategy.h"
 #include "PlatformStrategies.h"
+#include "ServiceWorkerClientIdentifier.h"
 #include "Settings.h"
+#include "WorkerGlobalScope.h"
 #include <pal/SessionID.h>
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
@@ -57,7 +61,7 @@ static inline UniqueRef<Page> createPageForServiceWorker(PageConfiguration&& con
 
     auto& mainFrame = page->mainFrame();
     mainFrame.loader().initForSynthesizedDocument({ });
-    auto document = Document::createNonRenderedPlaceholder(&mainFrame, data.scriptURL);
+    auto document = Document::createNonRenderedPlaceholder(mainFrame, data.scriptURL);
     document->createDOMWindow();
 
     document->mutableSettings().setStorageBlockingPolicy(storageBlockingPolicy);
@@ -69,6 +73,10 @@ static inline UniqueRef<Page> createPageForServiceWorker(PageConfiguration&& con
     document->setSiteForCookies(topOriginURL(origin));
     document->setFirstPartyForCookies(data.scriptURL);
     document->setDomainForCachePartition(origin->domainForCachePartition());
+
+    if (auto policy = parseReferrerPolicy(data.referrerPolicy, ReferrerPolicySource::HTTPHeader))
+        document->setReferrerPolicy(*policy);
+
     mainFrame.setDocument(WTFMove(document));
     return page;
 }
@@ -185,7 +193,7 @@ void ServiceWorkerThreadProxy::notifyNetworkStateChange(bool isOnline)
     }, WorkerRunLoop::defaultMode());
 }
 
-void ServiceWorkerThreadProxy::startFetch(SWServerConnectionIdentifier connectionIdentifier, FetchIdentifier fetchIdentifier, Ref<ServiceWorkerFetch::Client>&& client, std::optional<ServiceWorkerClientIdentifier>&& clientId, ResourceRequest&& request, String&& referrer, FetchOptions&& options)
+void ServiceWorkerThreadProxy::startFetch(SWServerConnectionIdentifier connectionIdentifier, FetchIdentifier fetchIdentifier, Ref<ServiceWorkerFetch::Client>&& client, Optional<ServiceWorkerClientIdentifier>&& clientId, ResourceRequest&& request, String&& referrer, FetchOptions&& options)
 {
     auto key = std::make_pair(connectionIdentifier, fetchIdentifier);
 
@@ -196,8 +204,24 @@ void ServiceWorkerThreadProxy::startFetch(SWServerConnectionIdentifier connectio
 
 void ServiceWorkerThreadProxy::cancelFetch(SWServerConnectionIdentifier connectionIdentifier, FetchIdentifier fetchIdentifier)
 {
-    if (auto client = m_ongoingFetchTasks.take(std::make_pair(connectionIdentifier, fetchIdentifier)))
-        client.value()->cancel();
+    auto client = m_ongoingFetchTasks.take(std::make_pair(connectionIdentifier, fetchIdentifier));
+    if (!client)
+        return;
+
+    postTaskForModeToWorkerGlobalScope([client = WTFMove(client.value())] (ScriptExecutionContext&) {
+        client->cancel();
+    }, WorkerRunLoop::defaultMode());
+}
+
+void ServiceWorkerThreadProxy::continueDidReceiveFetchResponse(SWServerConnectionIdentifier connectionIdentifier, FetchIdentifier fetchIdentifier)
+{
+    auto client = m_ongoingFetchTasks.get(std::make_pair(connectionIdentifier, fetchIdentifier));
+    if (!client)
+        return;
+
+    postTaskForModeToWorkerGlobalScope([client = makeRef(*client)] (ScriptExecutionContext&) {
+        client->continueDidReceiveResponse();
+    }, WorkerRunLoop::defaultMode());
 }
 
 void ServiceWorkerThreadProxy::removeFetch(SWServerConnectionIdentifier connectionIdentifier, FetchIdentifier fetchIdentifier)

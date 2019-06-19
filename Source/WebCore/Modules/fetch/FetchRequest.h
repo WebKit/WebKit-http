@@ -28,6 +28,7 @@
 
 #pragma once
 
+#include "AbortSignal.h"
 #include "ExceptionOr.h"
 #include "FetchBodyOwner.h"
 #include "FetchOptions.h"
@@ -53,7 +54,7 @@ public:
     using Redirect = FetchOptions::Redirect;
 
     static ExceptionOr<Ref<FetchRequest>> create(ScriptExecutionContext&, Info&&, Init&&);
-    static Ref<FetchRequest> create(ScriptExecutionContext& context, std::optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, ResourceRequest&& request, FetchOptions&& options, String&& referrer) { return adoptRef(*new FetchRequest(context, WTFMove(body), WTFMove(headers), WTFMove(request), WTFMove(options), WTFMove(referrer))); }
+    static Ref<FetchRequest> create(ScriptExecutionContext& context, Optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, ResourceRequest&& request, FetchOptions&& options, String&& referrer) { return adoptRef(*new FetchRequest(context, WTFMove(body), WTFMove(headers), WTFMove(request), WTFMove(options), WTFMove(referrer))); }
 
     const String& method() const { return m_request.httpMethod(); }
     const String& urlString() const;
@@ -68,6 +69,7 @@ public:
     Cache cache() const { return m_options.cache; }
     Redirect redirect() const { return m_options.redirect; }
     bool keepalive() const { return m_options.keepAlive; };
+    AbortSignal& signal() { return m_signal.get(); }
 
     const String& integrity() const { return m_options.integrity; }
 
@@ -81,7 +83,7 @@ public:
     ResourceRequest resourceRequest() const;
 
 private:
-    FetchRequest(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceRequest&&, FetchOptions&&, String&& referrer);
+    FetchRequest(ScriptExecutionContext&, Optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceRequest&&, FetchOptions&&, String&& referrer);
 
     ExceptionOr<void> initializeOptions(const Init&);
     ExceptionOr<void> initializeWith(FetchRequest&, Init&&);
@@ -96,13 +98,15 @@ private:
     FetchOptions m_options;
     String m_referrer;
     mutable String m_requestURL;
+    Ref<AbortSignal> m_signal;
 };
 
-inline FetchRequest::FetchRequest(ScriptExecutionContext& context, std::optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, ResourceRequest&& request, FetchOptions&& options, String&& referrer)
+inline FetchRequest::FetchRequest(ScriptExecutionContext& context, Optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, ResourceRequest&& request, FetchOptions&& options, String&& referrer)
     : FetchBodyOwner(context, WTFMove(body), WTFMove(headers))
     , m_request(WTFMove(request))
     , m_options(WTFMove(options))
     , m_referrer(WTFMove(referrer))
+    , m_signal(AbortSignal::create(context))
 {
     updateContentType();
 }

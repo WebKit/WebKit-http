@@ -66,12 +66,11 @@ BigIntConstructor::BigIntConstructor(VM& vm, Structure* structure)
 
 void BigIntConstructor::finishCreation(VM& vm, BigIntPrototype* bigIntPrototype)
 {
-    Base::finishCreation(vm, BigIntPrototype::info()->className);
+    Base::finishCreation(vm, "BigInt"_s, NameVisibility::Visible, NameAdditionMode::WithoutStructureTransition);
     ASSERT(inherits(vm, info()));
 
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, bigIntPrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
-    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String("BigInt"_s)), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
 
 // ------------------------------ Functions ---------------------------
@@ -98,20 +97,17 @@ static EncodedJSValue toBigInt(ExecState& state, JSValue argument)
     
     auto scope = DECLARE_THROW_SCOPE(vm);
     
-    if (argument.isBoolean()) {
-        scope.release();
-        return JSValue::encode(JSBigInt::createFrom(vm, argument.asBoolean()));
-    }
+    if (argument.isBoolean())
+        RELEASE_AND_RETURN(scope, JSValue::encode(JSBigInt::createFrom(vm, argument.asBoolean())));
     
     if (argument.isUndefinedOrNull() || argument.isNumber() || argument.isSymbol())
         return throwVMTypeError(&state, scope, "Invalid argument type in ToBigInt operation"_s);
     
     ASSERT(argument.isString());
     
-    scope.release();
-    return toStringView(&state, argument, [&] (StringView view) {
+    RELEASE_AND_RETURN(scope, toStringView(&state, argument, [&] (StringView view) {
         return JSValue::encode(JSBigInt::parseInt(&state, view));
-    });
+    }));
 }
 
 static EncodedJSValue JSC_HOST_CALL callBigIntConstructor(ExecState* state)

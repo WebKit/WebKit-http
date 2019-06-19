@@ -26,9 +26,9 @@
 #pragma once
 
 #include "LinkIconType.h"
-#include "URL.h"
 #include <wtf/HashMap.h>
 #include <wtf/Optional.h>
+#include <wtf/URL.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -37,7 +37,7 @@ struct LinkIcon {
     URL url;
     LinkIconType type;
     String mimeType;
-    std::optional<unsigned> size;
+    Optional<unsigned> size;
     Vector<std::pair<String, String>> attributes;
 
     template<class Encoder> void encode(Encoder&) const;

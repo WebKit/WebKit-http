@@ -39,12 +39,14 @@
 #include "JSDOMWindow.h"
 #include "MessagePort.h"
 #include "Navigator.h"
+#include "Page.h"
 #include "PublicURLManager.h"
 #include "RejectedPromiseTracker.h"
 #include "ResourceRequest.h"
 #include "SWClientConnection.h"
 #include "SWContextManager.h"
 #include "SchemeRegistry.h"
+#include "ScriptController.h"
 #include "ScriptDisallowedScope.h"
 #include "ScriptState.h"
 #include "ServiceWorker.h"
@@ -54,6 +56,8 @@
 #include "WorkerGlobalScope.h"
 #include "WorkerNavigator.h"
 #include "WorkerThread.h"
+#include "WorkletGlobalScope.h"
+#include "WorkletScriptController.h"
 #include <JavaScriptCore/CatchScope.h>
 #include <JavaScriptCore/Exception.h>
 #include <JavaScriptCore/JSPromise.h>
@@ -102,7 +106,7 @@ ScriptExecutionContextIdentifier ScriptExecutionContext::contextIdentifier() con
     if (!m_contextIdentifier) {
         Locker<Lock> locker(allScriptExecutionContextsMapLock);
 
-        m_contextIdentifier = generateObjectIdentifier<ScriptExecutionContextIdentifierType>();
+        m_contextIdentifier = ScriptExecutionContextIdentifier::generate();
 
         ASSERT(!allScriptExecutionContextsMap().contains(m_contextIdentifier));
         allScriptExecutionContextsMap().add(m_contextIdentifier, const_cast<ScriptExecutionContext*>(this));
@@ -390,6 +394,14 @@ void ScriptExecutionContext::reportException(const String& errorMessage, int lin
 
 void ScriptExecutionContext::reportUnhandledPromiseRejection(JSC::ExecState& state, JSC::JSPromise& promise, RefPtr<Inspector::ScriptCallStack>&& callStack)
 {
+    Page* page = nullptr;
+    if (is<Document>(this))
+        page = downcast<Document>(this)->page();
+    // FIXME: allow Workers to mute unhandled promise rejection messages.
+
+    if (page && !page->settings().unhandledPromiseRejectionToConsoleEnabled())
+        return;
+
     JSC::VM& vm = state.vm();
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
@@ -476,8 +488,15 @@ JSC::VM& ScriptExecutionContext::vm()
 {
     if (is<Document>(*this))
         return commonVM();
+    if (is<WorkerGlobalScope>(*this))
+        return downcast<WorkerGlobalScope>(*this).script()->vm();
+#if ENABLE(CSS_PAINTING_API)
+    if (is<WorkletGlobalScope>(*this))
+        return downcast<WorkletGlobalScope>(*this).script()->vm();
+#endif
 
-    return downcast<WorkerGlobalScope>(*this).script()->vm();
+    RELEASE_ASSERT_NOT_REACHED();
+    return commonVM();
 }
 
 RejectedPromiseTracker& ScriptExecutionContext::ensureRejectedPromiseTrackerSlow()
@@ -516,11 +535,19 @@ JSC::ExecState* ScriptExecutionContext::execState()
 {
     if (is<Document>(*this)) {
         Document& document = downcast<Document>(*this);
-        return execStateFromPage(mainThreadNormalWorld(), document.page());
+        auto* frame = document.frame();
+        return frame ? frame->script().globalObject(mainThreadNormalWorld())->globalExec() : nullptr;
     }
 
-    WorkerGlobalScope* workerGlobalScope = static_cast<WorkerGlobalScope*>(this);
-    return execStateFromWorkerGlobalScope(workerGlobalScope);
+    if (is<WorkerGlobalScope>(*this))
+        return execStateFromWorkerGlobalScope(downcast<WorkerGlobalScope>(*this));
+#if ENABLE(CSS_PAINTING_API)
+    if (is<WorkletGlobalScope>(*this))
+        return execStateFromWorkletGlobalScope(downcast<WorkletGlobalScope>(*this));
+#endif
+
+    ASSERT_NOT_REACHED();
+    return nullptr;
 }
 
 String ScriptExecutionContext::domainForCachePartition() const
@@ -528,13 +555,25 @@ String ScriptExecutionContext::domainForCachePartition() const
     return m_domainForCachePartition.isNull() ? topOrigin().domainForCachePartition() : m_domainForCachePartition;
 }
 
-#if ENABLE(SERVICE_WORKER)
+bool ScriptExecutionContext::allowsMediaDevices() const
+{
+#if ENABLE(MEDIA_STREAM)
+    if (!is<Document>(*this))
+        return false;
+    auto page = downcast<Document>(*this).page();
+    return page ? !page->settings().mediaCaptureRequiresSecureConnection() : false;
+#else
+    return false;
+#endif
+}
 
-bool ScriptExecutionContext::hasServiceWorkerScheme()
+bool ScriptExecutionContext::hasServiceWorkerScheme() const
 {
     ASSERT(securityOrigin());
     return SchemeRegistry::isServiceWorkerContainerCustomScheme(securityOrigin()->protocol());
 }
+
+#if ENABLE(SERVICE_WORKER)
 
 ServiceWorker* ScriptExecutionContext::activeServiceWorker() const
 {

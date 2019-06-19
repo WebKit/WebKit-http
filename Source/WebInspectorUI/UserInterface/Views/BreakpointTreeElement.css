@@ -23,23 +23,40 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+.item.breakpoint .status {
+    position: relative;
+}
+
 .item.breakpoint .status > .status-image {
-    width: 21px;
+    width: 23px;
     height: 12px;
-    content: url(../Images/BreakpointInactiveButton.svg);
-    margin-top: 3px;
+    margin-top: 2px;
+
+    fill: var(--breakpoint-color);
+    stroke: hsla(0, 0%, 10%, 0.3);
+    filter: grayscale();
 }
 
 .item.breakpoint .status > .status-image.resolved {
-    content: url(../Images/BreakpointButton.svg);
+    filter: none;
 }
 
-.item.breakpoint .status > .status-image.auto-continue {
-    opacity: 0.6;
+.tree-outline:focus .item.breakpoint.selected .status > .status-image.resolved {
+    stroke: var(--selected-foreground-color);
+}
+
+.item.breakpoint .status > .status-image.auto-continue::after {
+    position: absolute;
+    right: 3px;
+    width: 3px;
+    height: 12px;
+    content: "";
+    -webkit-clip-path: polygon(0 20%, 100% 50%, 0 80%);
+    background-color: var(--selected-foreground-color);
 }
 
 .item.breakpoint .status > .status-image.disabled {
-    opacity: 0.35;
+    fill: var(--breakpoint-color-disabled);
 }
 
 .item.breakpoint .subtitle.formatted-location {

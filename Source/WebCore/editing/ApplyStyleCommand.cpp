@@ -250,10 +250,10 @@ void ApplyStyleCommand::applyBlockStyle(EditingStyle& style)
     if (!scope)
         return;
 
-    RefPtr<Range> startRange = Range::create(document(), firstPositionInNode(scope), visibleStart.deepEquivalent().parentAnchoredEquivalent());
-    RefPtr<Range> endRange = Range::create(document(), firstPositionInNode(scope), visibleEnd.deepEquivalent().parentAnchoredEquivalent());
-    int startIndex = TextIterator::rangeLength(startRange.get(), true);
-    int endIndex = TextIterator::rangeLength(endRange.get(), true);
+    auto startRange = Range::create(document(), firstPositionInNode(scope), visibleStart.deepEquivalent().parentAnchoredEquivalent());
+    auto endRange = Range::create(document(), firstPositionInNode(scope), visibleEnd.deepEquivalent().parentAnchoredEquivalent());
+    int startIndex = TextIterator::rangeLength(startRange.ptr(), true);
+    int endIndex = TextIterator::rangeLength(endRange.ptr(), true);
 
     VisiblePosition paragraphStart(startOfParagraph(visibleStart));
     VisiblePosition nextParagraphStart(endOfParagraph(paragraphStart).next());
@@ -284,10 +284,12 @@ void ApplyStyleCommand::applyBlockStyle(EditingStyle& style)
         nextParagraphStart = endOfParagraph(paragraphStart).next();
     }
     
-    startRange = TextIterator::rangeFromLocationAndLength(scope, startIndex, 0, true);
-    endRange = TextIterator::rangeFromLocationAndLength(scope, endIndex, 0, true);
-    if (startRange && endRange)
-        updateStartEnd(startRange->startPosition(), endRange->startPosition());
+    {
+        auto startRange = TextIterator::rangeFromLocationAndLength(scope, startIndex, 0, true);
+        auto endRange = TextIterator::rangeFromLocationAndLength(scope, endIndex, 0, true);
+        if (startRange && endRange)
+            updateStartEnd(startRange->startPosition(), endRange->startPosition());
+    }
 }
 
 static Ref<MutableStyleProperties> copyStyleOrCreateEmpty(const StyleProperties* style)
@@ -483,17 +485,15 @@ HTMLElement* ApplyStyleCommand::splitAncestorsWithUnicodeBidi(Node* node, bool b
 
     HTMLElement* unsplitAncestor = nullptr;
 
-    WritingDirection highestAncestorDirection;
-    if (allowedDirection != NaturalWritingDirection
-        && highestAncestorUnicodeBidi != CSSValueBidiOverride
-        && is<HTMLElement>(*highestAncestorWithUnicodeBidi)
-        && EditingStyle::create(highestAncestorWithUnicodeBidi, EditingStyle::AllProperties)->textDirection(highestAncestorDirection)
-        && highestAncestorDirection == allowedDirection) {
-        if (!nextHighestAncestorWithUnicodeBidi)
-            return downcast<HTMLElement>(highestAncestorWithUnicodeBidi);
+    if (allowedDirection != WritingDirection::Natural && highestAncestorUnicodeBidi != CSSValueBidiOverride && is<HTMLElement>(*highestAncestorWithUnicodeBidi)) {
+        auto highestAncestorDirection = EditingStyle::create(highestAncestorWithUnicodeBidi, EditingStyle::AllProperties)->textDirection();
+        if (highestAncestorDirection && *highestAncestorDirection == allowedDirection) {
+            if (!nextHighestAncestorWithUnicodeBidi)
+                return downcast<HTMLElement>(highestAncestorWithUnicodeBidi);
 
-        unsplitAncestor = downcast<HTMLElement>(highestAncestorWithUnicodeBidi);
-        highestAncestorWithUnicodeBidi = nextHighestAncestorWithUnicodeBidi;
+            unsplitAncestor = downcast<HTMLElement>(highestAncestorWithUnicodeBidi);
+            highestAncestorWithUnicodeBidi = nextHighestAncestorWithUnicodeBidi;
+        }
     }
 
     // Split every ancestor through highest ancestor with embedding.
@@ -614,14 +614,13 @@ void ApplyStyleCommand::applyInlineStyle(EditingStyle& style)
     // and prevent us from adding redundant ones, as described in:
     // <rdar://problem/3724344> Bolding and unbolding creates extraneous tags
     Position removeStart = start.upstream();
-    WritingDirection textDirection = NaturalWritingDirection;
-    bool hasTextDirection = style.textDirection(textDirection);
+    auto textDirection = style.textDirection();
     RefPtr<EditingStyle> styleWithoutEmbedding;
     RefPtr<EditingStyle> embeddingStyle;
-    if (hasTextDirection) {
+    if (textDirection.hasValue()) {
         // Leave alone an ancestor that provides the desired single level embedding, if there is one.
-        HTMLElement* startUnsplitAncestor = splitAncestorsWithUnicodeBidi(start.deprecatedNode(), true, textDirection);
-        HTMLElement* endUnsplitAncestor = splitAncestorsWithUnicodeBidi(end.deprecatedNode(), false, textDirection);
+        auto* startUnsplitAncestor = splitAncestorsWithUnicodeBidi(start.deprecatedNode(), true, *textDirection);
+        auto* endUnsplitAncestor = splitAncestorsWithUnicodeBidi(end.deprecatedNode(), false, *textDirection);
         removeEmbeddingUpToEnclosingBlock(start.deprecatedNode(), startUnsplitAncestor);
         removeEmbeddingUpToEnclosingBlock(end.deprecatedNode(), endUnsplitAncestor);
 
@@ -669,7 +668,7 @@ void ApplyStyleCommand::applyInlineStyle(EditingStyle& style)
     document().updateLayoutIgnorePendingStylesheets();
 
     RefPtr<EditingStyle> styleToApply = &style;
-    if (hasTextDirection) {
+    if (textDirection.hasValue()) {
         // Avoid applying the unicode-bidi and direction properties beneath ancestors that already have them.
         Node* embeddingStartNode = highestEmbeddingAncestor(start.deprecatedNode(), enclosingBlock(start.deprecatedNode()));
         Node* embeddingEndNode = highestEmbeddingAncestor(end.deprecatedNode(), enclosingBlock(end.deprecatedNode()));
@@ -1051,9 +1050,9 @@ void ApplyStyleCommand::pushDownInlineStyleAroundNode(EditingStyle& style, Node*
             elementsToPushDown.append(*styledElement);
         }
 
-        RefPtr<EditingStyle> styleToPushDown = EditingStyle::create();
+        auto styleToPushDown = EditingStyle::create();
         if (is<HTMLElement>(*current))
-            removeInlineStyleFromElement(style, downcast<HTMLElement>(*current), RemoveIfNeeded, styleToPushDown.get());
+            removeInlineStyleFromElement(style, downcast<HTMLElement>(*current), RemoveIfNeeded, styleToPushDown.ptr());
 
         // The inner loop will go through children on each level
         // FIXME: we should aggregate inline child elements together so that we don't wrap each child separately.
@@ -1072,7 +1071,7 @@ void ApplyStyleCommand::pushDownInlineStyleAroundNode(EditingStyle& style, Node*
             // Apply style to all nodes containing targetNode and their siblings but NOT to targetNode
             // But if we've removed styledElement then always apply the style.
             if (&child != targetNode || styledElement)
-                applyInlineStyleToPushDown(child, styleToPushDown.get());
+                applyInlineStyleToPushDown(child, styleToPushDown.ptr());
 
             // We found the next node for the outer loop (contains targetNode)
             // When reached targetNode, stop the outer loop upon the completion of the current inner loop

@@ -53,9 +53,9 @@
 #import <WebCore/FrameLoader.h>
 #import <WebCore/LegacyWebArchive.h>
 #import <WebCore/MIMETypeRegistry.h>
+#import <WebCore/PreviewLoaderClient.h>
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/SharedBuffer.h>
-#import <WebCore/URL.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreURLResponse.h>
 #import <WebKitLegacy/DOMHTML.h>
@@ -65,8 +65,9 @@
 #import <wtf/RefPtr.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/RunLoop.h>
+#import <wtf/URL.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import "WebPDFViewIOS.h"
 #endif
 
@@ -83,7 +84,7 @@ public:
         : loader(WTFMove(loader))
         , representationFinishedLoading(NO)
         , includedInWebKitStatistics(NO)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         , _dataSourceDelegate(nil)
 #endif
     {
@@ -103,11 +104,12 @@ public:
     RetainPtr<id<WebDocumentRepresentation> > representation;
     BOOL representationFinishedLoading;
     BOOL includedInWebKitStatistics;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     NSObject<WebDataSourcePrivateDelegate> *_dataSourceDelegate;
 #endif
 #if USE(QUICK_LOOK)
     RetainPtr<NSDictionary> _quickLookContent;
+    RefPtr<WebCore::PreviewLoaderClient> _quickLookPreviewLoaderClient;
 #endif
 };
 
@@ -151,7 +153,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 + (void)initialize
 {
     if (self == [WebDataSource class]) {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
         JSC::initializeThreading();
         WTF::initializeMainThreadToProcessMainThread();
         RunLoop::initializeMainRunLoop();
@@ -171,7 +173,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
         toPrivate(_private)->loader->addAllArchiveResources(*[archive _coreLegacyWebArchive]);
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 - (NSFileWrapper *)_fileWrapperForURL:(NSURL *)URL
 {
@@ -202,7 +204,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
     toPrivate(_private)->loader->setDeferMainResourceDataLoad(flag);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (void)_setOverrideTextEncodingName:(NSString *)encoding
 {
     toPrivate(_private)->loader->setOverrideEncoding([encoding UTF8String]);
@@ -222,7 +224,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
     return nullptr;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (NSDictionary *)_quickLookContent
 {
 #if USE(QUICK_LOOK)
@@ -246,7 +248,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 - (void)_receivedData:(NSData *)data
 {
     // protect self temporarily, as the bridge receivedData call could remove our last ref
-    RetainPtr<WebDataSource*> protect(self);
+    RetainPtr<WebDataSource> protect(self);
     
     [[self representation] receivedData:data withDataSource:self];
     [[[[self webFrame] frameView] documentView] dataSourceUpdated:self];
@@ -278,11 +280,11 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
         // Since this is a "secret default" we don't both registering it.
         BOOL omitPDFSupport = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitOmitPDFSupport"];
         if (!omitPDFSupport)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #define WebPDFRepresentation ([WebView _getPDFRepresentationClass])
 #endif
             addTypesFromClass(repTypes, [WebPDFRepresentation class], [WebPDFRepresentation supportedMIMETypes]);
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #undef WebPDFRepresentation
 #endif
     }
@@ -376,7 +378,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 {
     Class repClass = [[self class] _representationClassForMIMEType:[self _responseMIMEType] allowingPlugins:[[[self _webView] preferences] arePlugInsEnabled]];
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if ([repClass respondsToSelector:@selector(_representationClassForWebFrame:)])
         repClass = [repClass performSelector:@selector(_representationClassForWebFrame:) withObject:[self webFrame]];
 #endif
@@ -390,7 +392,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 
     id<WebDocumentRepresentation> representation = toPrivate(_private)->representation.get();
     [representation setDataSource:self];
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     toPrivate(_private)->loader->setResponseMIMEType([self _responseMIMEType]);
 #endif
 }
@@ -417,9 +419,19 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 }
 
 #if USE(QUICK_LOOK)
+- (WebCore::PreviewLoaderClient*)_quickLookPreviewLoaderClient
+{
+    return toPrivate(_private)->_quickLookPreviewLoaderClient.get();
+}
+
 - (void)_setQuickLookContent:(NSDictionary *)quickLookContent
 {
     toPrivate(_private)->_quickLookContent = adoptNS([quickLookContent copy]);
+}
+
+- (void)_setQuickLookPreviewLoaderClient:(WebCore::PreviewLoaderClient*)quickLookPreviewLoaderClient
+{
+    toPrivate(_private)->_quickLookPreviewLoaderClient = quickLookPreviewLoaderClient;
 }
 #endif
 

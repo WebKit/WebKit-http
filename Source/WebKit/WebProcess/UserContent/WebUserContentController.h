@@ -47,7 +47,7 @@ namespace WebKit {
 class InjectedBundleScriptWorld;
 class WebCompiledContentRuleListData;
 class WebUserMessageHandlerDescriptorProxy;
-enum class InjectUserScriptImmediately;
+enum class InjectUserScriptImmediately : bool;
 
 class WebUserContentController final : public WebCore::UserContentProvider, private IPC::MessageReceiver {
 public:
@@ -57,10 +57,10 @@ public:
     UserContentControllerIdentifier identifier() { return m_identifier; }
 
     void addUserScript(InjectedBundleScriptWorld&, WebCore::UserScript&&);
-    void removeUserScriptWithURL(InjectedBundleScriptWorld&, const WebCore::URL&);
+    void removeUserScriptWithURL(InjectedBundleScriptWorld&, const URL&);
     void removeUserScripts(InjectedBundleScriptWorld&);
     void addUserStyleSheet(InjectedBundleScriptWorld&, WebCore::UserStyleSheet&&);
-    void removeUserStyleSheetWithURL(InjectedBundleScriptWorld&, const WebCore::URL&);
+    void removeUserStyleSheetWithURL(InjectedBundleScriptWorld&, const URL&);
     void removeUserStyleSheets(InjectedBundleScriptWorld&);
     void removeAllUserContent();
 
@@ -69,7 +69,7 @@ public:
     void addUserStyleSheets(const Vector<WebUserStyleSheetData>&);
     void addUserScriptMessageHandlers(const Vector<WebScriptMessageHandlerData>&);
 #if ENABLE(CONTENT_EXTENSIONS)
-    void addContentRuleLists(const Vector<std::pair<String, WebCompiledContentRuleListData>>&);
+    void addContentRuleLists(Vector<std::pair<String, WebCompiledContentRuleListData>>&&);
 #endif
 
 private:
@@ -104,9 +104,9 @@ private:
     void removeAllContentRuleLists();
 #endif
 
-    void addUserScriptInternal(InjectedBundleScriptWorld&, uint64_t userScriptIdentifier, WebCore::UserScript&&, InjectUserScriptImmediately);
+    void addUserScriptInternal(InjectedBundleScriptWorld&, const Optional<uint64_t>& userScriptIdentifier, WebCore::UserScript&&, InjectUserScriptImmediately);
     void removeUserScriptInternal(InjectedBundleScriptWorld&, uint64_t userScriptIdentifier);
-    void addUserStyleSheetInternal(InjectedBundleScriptWorld&, uint64_t userStyleSheetIdentifier, WebCore::UserStyleSheet&&);
+    void addUserStyleSheetInternal(InjectedBundleScriptWorld&, const Optional<uint64_t>& userStyleSheetIdentifier, WebCore::UserStyleSheet&&);
     void removeUserStyleSheetInternal(InjectedBundleScriptWorld&, uint64_t userStyleSheetIdentifier);
 #if ENABLE(USER_MESSAGE_HANDLERS)
     void addUserScriptMessageHandlerInternal(InjectedBundleScriptWorld&, uint64_t userScriptMessageHandlerIdentifier, const String& name);
@@ -115,14 +115,14 @@ private:
 
     UserContentControllerIdentifier m_identifier;
 
-    typedef HashMap<RefPtr<InjectedBundleScriptWorld>, Vector<std::pair<uint64_t, WebCore::UserScript>>> WorldToUserScriptMap;
+    typedef HashMap<RefPtr<InjectedBundleScriptWorld>, Vector<std::pair<Optional<uint64_t>, WebCore::UserScript>>> WorldToUserScriptMap;
     WorldToUserScriptMap m_userScripts;
 
-    typedef HashMap<RefPtr<InjectedBundleScriptWorld>, Vector<std::pair<uint64_t, WebCore::UserStyleSheet>>> WorldToUserStyleSheetMap;
+    typedef HashMap<RefPtr<InjectedBundleScriptWorld>, Vector<std::pair<Optional<uint64_t>, WebCore::UserStyleSheet>>> WorldToUserStyleSheetMap;
     WorldToUserStyleSheetMap m_userStyleSheets;
 
 #if ENABLE(USER_MESSAGE_HANDLERS)
-    typedef HashMap<RefPtr<InjectedBundleScriptWorld>, Vector<RefPtr<WebUserMessageHandlerDescriptorProxy>>> WorldToUserMessageHandlerVectorMap;
+    typedef HashMap<RefPtr<InjectedBundleScriptWorld>, Vector<std::pair<uint64_t, RefPtr<WebUserMessageHandlerDescriptorProxy>>>> WorldToUserMessageHandlerVectorMap;
     WorldToUserMessageHandlerVectorMap m_userMessageHandlers;
 #endif
 #if ENABLE(CONTENT_EXTENSIONS)

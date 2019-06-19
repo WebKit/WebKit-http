@@ -36,11 +36,14 @@
 #include "ServiceWorkerContainer.h"
 #include "ServiceWorkerTypes.h"
 #include "WorkerGlobalScope.h"
+#include <wtf/IsoMallocInlines.h>
 
 #define REGISTRATION_RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(m_container->isAlwaysOnLoggingAllowed(), ServiceWorker, "%p - ServiceWorkerRegistration::" fmt, this, ##__VA_ARGS__)
 #define REGISTRATION_RELEASE_LOG_ERROR_IF_ALLOWED(fmt, ...) RELEASE_LOG_ERROR_IF(m_container->isAlwaysOnLoggingAllowed(), ServiceWorker, "%p - ServiceWorkerRegistration::" fmt, this, ##__VA_ARGS__)
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(ServiceWorkerRegistration);
 
 const Seconds softUpdateDelay { 1_s };
 
@@ -203,20 +206,15 @@ void ServiceWorkerRegistration::updateStateFromServer(ServiceWorkerRegistrationS
     updatePendingActivityForEventDispatch();
 }
 
-void ServiceWorkerRegistration::scheduleTaskToFireUpdateFoundEvent()
+void ServiceWorkerRegistration::fireUpdateFoundEvent()
 {
     if (m_isStopped)
         return;
 
-    scriptExecutionContext()->postTask([this, protectedThis = makeRef(*this)](ScriptExecutionContext&) {
-        if (m_isStopped)
-            return;
+    REGISTRATION_RELEASE_LOG_IF_ALLOWED("fireUpdateFoundEvent: Firing updatefound event for registration %llu", identifier().toUInt64());
 
-        REGISTRATION_RELEASE_LOG_IF_ALLOWED("scheduleTaskToFireUpdateFoundEvent: Firing updatefound event for registration %llu", identifier().toUInt64());
-
-        ASSERT(m_pendingActivityForEventDispatch);
-        dispatchEvent(Event::create(eventNames().updatefoundEvent, Event::CanBubble::No, Event::IsCancelable::No));
-    });
+    ASSERT(m_pendingActivityForEventDispatch);
+    dispatchEvent(Event::create(eventNames().updatefoundEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 EventTargetInterface ServiceWorkerRegistration::eventTargetInterface() const

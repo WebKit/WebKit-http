@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,9 +25,9 @@
 
 WI.TimelineDataGrid = class TimelineDataGrid extends WI.DataGrid
 {
-    constructor(columns, editCallback, deleteCallback)
+    constructor(columns)
     {
-        super(columns, editCallback, deleteCallback);
+        super(columns);
 
         this.element.classList.add("timeline");
 
@@ -119,6 +119,12 @@ WI.TimelineDataGrid = class TimelineDataGrid extends WI.DataGrid
     {
         // Implemented by subclasses.
         return null;
+    }
+
+    shouldShowCallFramePopover()
+    {
+        // Implemented by subclasses.
+        return false;
     }
 
     addRowInSortOrder(dataGridNode, parentDataGridNode)
@@ -320,7 +326,8 @@ WI.TimelineDataGrid = class TimelineDataGrid extends WI.DataGrid
             return;
         }
 
-        this._showPopoverForSelectedNodeSoon();
+        if (this.shouldShowCallFramePopover())
+            this._showPopoverForSelectedNodeSoon();
     }
 
     _showPopoverForSelectedNodeSoon()
@@ -409,7 +416,7 @@ WI.TimelineDataGrid = class TimelineDataGrid extends WI.DataGrid
 
     _popoverCallStackTreeSelectionDidChange(event)
     {
-        let treeElement = event.data.selectedElement;
+        let treeElement = this._popoverCallStackTreeOutline.selectedTreeElement;
         if (!treeElement)
             return;
 

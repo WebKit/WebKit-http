@@ -40,7 +40,10 @@ InspectorBackendClass = class InspectorBackendClass
         this._defaultTracer = new WI.LoggingProtocolTracer;
         this._activeTracers = [this._defaultTracer];
 
-        this._workerSupportedDomains = [];
+        this._supportedDomainsForDebuggableType = new Map;
+
+        for (let debuggableType of Object.values(WI.DebuggableType))
+            this._supportedDomainsForDebuggableType.set(debuggableType, []);
 
         WI.settings.autoLogProtocolMessages.addEventListener(WI.Setting.Event.Changed, this._startOrStopAutomaticTracing, this);
         WI.settings.autoLogTimeStats.addEventListener(WI.Setting.Event.Changed, this._startOrStopAutomaticTracing, this);
@@ -55,7 +58,12 @@ InspectorBackendClass = class InspectorBackendClass
 
     // Public
 
-    get workerSupportedDomains() { return this._workerSupportedDomains; }
+    // This should be used for feature checking if something exists in the protocol
+    // regardless of whether or not the domain is active for a specific target.
+    get domains()
+    {
+        return this._agents;
+    }
 
     // It's still possible to set this flag on InspectorBackend to just
     // dump protocol traffic as it happens. For more complex uses of
@@ -86,6 +94,18 @@ InspectorBackendClass = class InspectorBackendClass
     get dumpInspectorTimeStats()
     {
         return WI.settings.autoLogTimeStats.value;
+    }
+
+    set filterMultiplexingBackendInspectorProtocolMessages(value)
+    {
+        WI.settings.filterMultiplexingBackendInspectorProtocolMessages.value = value;
+
+        this._defaultTracer.filterMultiplexingBackend = value;
+    }
+
+    get filterMultiplexingBackendInspectorProtocolMessages()
+    {
+        return WI.settings.filterMultiplexingBackendInspectorProtocolMessages.value;
     }
 
     set customTracer(tracer)
@@ -120,6 +140,12 @@ InspectorBackendClass = class InspectorBackendClass
         return this._activeTracers;
     }
 
+    registerVersion(domainName, version)
+    {
+        let agent = this._agentForDomain(domainName);
+        agent.VERSION = version;
+    }
+
     registerCommand(qualifiedName, callSignature, replySignature)
     {
         var [domainName, commandName] = qualifiedName.split(".");
@@ -149,17 +175,30 @@ InspectorBackendClass = class InspectorBackendClass
 
     dispatch(message)
     {
-        InspectorBackend.mainConnection.dispatch(message);
+        InspectorBackend.backendConnection.dispatch(message);
     }
 
-    runAfterPendingDispatches(script)
+    runAfterPendingDispatches(callback)
     {
+        if (!WI.mainTarget) {
+            callback();
+            return;
+        }
+
         // FIXME: Should this respect pending dispatches in all connections?
-        InspectorBackend.mainConnection.runAfterPendingDispatches(script);
+        WI.mainTarget.connection.runAfterPendingDispatches(callback);
     }
 
     activateDomain(domainName, activationDebuggableTypes)
     {
+        let supportedDebuggableTypes = activationDebuggableTypes || Object.values(WI.DebuggableType);
+        for (let debuggableType of supportedDebuggableTypes)
+            this._supportedDomainsForDebuggableType.get(debuggableType).push(domainName);
+
+        // FIXME: For proper multi-target support we should eliminate all uses of
+        // `window.FooAgent` and `unprefixed FooAgent` in favor of either:
+        //   - Per-target: `target.FooAgent`
+        //   - Global feature check: `InspectorBackend.domains.Foo`
         if (!activationDebuggableTypes || activationDebuggableTypes.includes(InspectorFrontendHost.debuggableType())) {
             let agent = this._agents[domainName];
             agent.activate();
@@ -169,9 +208,11 @@ InspectorBackendClass = class InspectorBackendClass
         return null;
     }
 
-    workerSupportedDomain(domainName)
+    supportedDomainsForDebuggableType(type)
     {
-        this._workerSupportedDomains.push(domainName);
+        console.assert(Object.values(WI.DebuggableType).includes(type), "Unknown debuggable type", type);
+
+        return this._supportedDomainsForDebuggableType.get(type);
     }
 
     // Private
@@ -180,6 +221,7 @@ InspectorBackendClass = class InspectorBackendClass
     {
         this._defaultTracer.dumpMessagesToConsole = this.dumpInspectorProtocolMessages;
         this._defaultTracer.dumpTimingDataToConsole = this.dumpTimingDataToConsole;
+        this._defaultTracer.filterMultiplexingBackend = this.filterMultiplexingBackendInspectorProtocolMessages;
     }
 
     _agentForDomain(domainName)
@@ -202,7 +244,7 @@ InspectorBackend.Agent = class InspectorBackendAgent
         this._domainName = domainName;
 
         // Default connection is the main connection.
-        this._connection = InspectorBackend.mainConnection;
+        this._connection = InspectorBackend.backendConnection;
         this._dispatcher = null;
 
         // Agents are always created, but are only useable after they are activated.
@@ -364,12 +406,39 @@ InspectorBackend.Command.prototype = {
     {
         "use strict";
 
-        agent = agent || this._instance._agent;
+        let instance = this._instance;
 
+        function deliverFailure(message) {
+            console.error(`Protocol Error: ${message}`);
+            if (callback)
+                setTimeout(callback.bind(null, message), 0);
+            else
+                return Promise.reject(new Error(message));
+        }
+
+        if (typeof commandArguments !== "object")
+            return deliverFailure(`invoke expects an object for command arguments but its type is '${typeof commandArguments}'.`);
+
+        let parameters = {};
+        for (let {name, type, optional} of instance.callSignature) {
+            if (!(name in commandArguments) && !optional)
+                return deliverFailure(`Missing argument '${name}' for command '${instance.qualifiedName}'.`);
+
+            let value = commandArguments[name];
+            if (optional && value === undefined)
+                continue;
+
+            if (typeof value !== type)
+                return deliverFailure(`Invalid type of argument '${name}' for command '${instance.qualifiedName}' call. It must be '${type}' but it is '${typeof value}'.`);
+
+            parameters[name] = value;
+        }
+
+        agent = agent || instance._agent;
         if (typeof callback === "function")
-            agent._connection._sendCommandToBackendWithCallback(this._instance, commandArguments, callback);
+            agent._connection._sendCommandToBackendWithCallback(instance, parameters, callback);
         else
-            return agent._connection._sendCommandToBackendExpectingPromise(this._instance, commandArguments);
+            return agent._connection._sendCommandToBackendExpectingPromise(instance, parameters);
     },
 
     supports(parameterName)
@@ -397,22 +466,18 @@ InspectorBackend.Command.prototype = {
         }
 
         let parameters = {};
-        for (let parameter of instance.callSignature) {
-            let parameterName = parameter["name"];
-            let typeName = parameter["type"];
-            let optionalFlag = parameter["optional"];
-
-            if (!commandArguments.length && !optionalFlag)
+        for (let {name, type, optional} of instance.callSignature) {
+            if (!commandArguments.length && !optional)
                 return deliverFailure(`Invalid number of arguments for command '${instance.qualifiedName}'.`);
 
             let value = commandArguments.shift();
-            if (optionalFlag && value === undefined)
+            if (optional && value === undefined)
                 continue;
 
-            if (typeof value !== typeName)
-                return deliverFailure(`Invalid type of argument '${parameterName}' for command '${instance.qualifiedName}' call. It must be '${typeName}' but it is '${typeof value}'.`);
+            if (typeof value !== type)
+                return deliverFailure(`Invalid type of argument '${name}' for command '${instance.qualifiedName}' call. It must be '${type}' but it is '${typeof value}'.`);
 
-            parameters[parameterName] = value;
+            parameters[name] = value;
         }
 
         if (!callback && commandArguments.length === 1 && commandArguments[0] !== undefined)

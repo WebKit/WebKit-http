@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2007 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -34,7 +34,15 @@ inline SVGFETurbulenceElement::SVGFETurbulenceElement(const QualifiedName& tagNa
     : SVGFilterPrimitiveStandardAttributes(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::feTurbulenceTag));
-    registerAttributes();
+
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::baseFrequencyAttr, &SVGFETurbulenceElement::m_baseFrequencyX, &SVGFETurbulenceElement::m_baseFrequencyY>();
+        PropertyRegistry::registerProperty<SVGNames::numOctavesAttr, &SVGFETurbulenceElement::m_numOctaves>();
+        PropertyRegistry::registerProperty<SVGNames::seedAttr, &SVGFETurbulenceElement::m_seed>();
+        PropertyRegistry::registerProperty<SVGNames::stitchTilesAttr, SVGStitchOptions, &SVGFETurbulenceElement::m_stitchTiles>();
+        PropertyRegistry::registerProperty<SVGNames::typeAttr, TurbulenceType, &SVGFETurbulenceElement::m_type>();
+    });
 }
 
 Ref<SVGFETurbulenceElement> SVGFETurbulenceElement::create(const QualifiedName& tagName, Document& document)
@@ -42,64 +50,38 @@ Ref<SVGFETurbulenceElement> SVGFETurbulenceElement::create(const QualifiedName& 
     return adoptRef(*new SVGFETurbulenceElement(tagName, document));
 }
 
-const AtomicString& SVGFETurbulenceElement::baseFrequencyXIdentifier()
-{
-    static NeverDestroyed<AtomicString> s_identifier("SVGBaseFrequencyX", AtomicString::ConstructFromLiteral);
-    return s_identifier;
-}
-
-const AtomicString& SVGFETurbulenceElement::baseFrequencyYIdentifier()
-{
-    static NeverDestroyed<AtomicString> s_identifier("SVGBaseFrequencyY", AtomicString::ConstructFromLiteral);
-    return s_identifier;
-}
-
-void SVGFETurbulenceElement::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::baseFrequencyAttr,
-        &SVGFETurbulenceElement::baseFrequencyXIdentifier, &SVGFETurbulenceElement::m_baseFrequencyX,
-        &SVGFETurbulenceElement::baseFrequencyYIdentifier, &SVGFETurbulenceElement::m_baseFrequencyY>();
-    registry.registerAttribute<SVGNames::numOctavesAttr, &SVGFETurbulenceElement::m_numOctaves>();
-    registry.registerAttribute<SVGNames::seedAttr, &SVGFETurbulenceElement::m_seed>();
-    registry.registerAttribute<SVGNames::stitchTilesAttr, SVGStitchOptions, &SVGFETurbulenceElement::m_stitchTiles>();
-    registry.registerAttribute<SVGNames::typeAttr, TurbulenceType, &SVGFETurbulenceElement::m_type>();
-}
-
-void SVGFETurbulenceElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void SVGFETurbulenceElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == SVGNames::typeAttr) {
         TurbulenceType propertyValue = SVGPropertyTraits<TurbulenceType>::fromString(value);
         if (propertyValue != TurbulenceType::Unknown)
-            m_type.setValue(propertyValue);
+            m_type->setBaseValInternal<TurbulenceType>(propertyValue);
         return;
     }
 
     if (name == SVGNames::stitchTilesAttr) {
         SVGStitchOptions propertyValue = SVGPropertyTraits<SVGStitchOptions>::fromString(value);
         if (propertyValue > 0)
-            m_stitchTiles.setValue(propertyValue);
+            m_stitchTiles->setBaseValInternal<SVGStitchOptions>(propertyValue);
         return;
     }
 
     if (name == SVGNames::baseFrequencyAttr) {
         float x, y;
         if (parseNumberOptionalNumber(value, x, y)) {
-            m_baseFrequencyX.setValue(x);
-            m_baseFrequencyY.setValue(y);
+            m_baseFrequencyX->setBaseValInternal(x);
+            m_baseFrequencyY->setBaseValInternal(y);
         }
         return;
     }
 
     if (name == SVGNames::seedAttr) {
-        m_seed.setValue(value.toFloat());
+        m_seed->setBaseValInternal(value.toFloat());
         return;
     }
 
     if (name == SVGNames::numOctavesAttr) {
-        m_numOctaves.setValue(value.string().toUIntStrict());
+        m_numOctaves->setBaseValInternal(value.string().toUIntStrict());
         return;
     }
 
@@ -126,7 +108,7 @@ bool SVGFETurbulenceElement::setFilterEffectAttribute(FilterEffect* effect, cons
 
 void SVGFETurbulenceElement::svgAttributeChanged(const QualifiedName& attrName)
 {
-    if (isKnownAttribute(attrName)) {
+    if (PropertyRegistry::isKnownAttribute(attrName)) {
         InstanceInvalidationGuard guard(*this);
         primitiveAttributeChanged(attrName);
         return;
@@ -135,7 +117,7 @@ void SVGFETurbulenceElement::svgAttributeChanged(const QualifiedName& attrName)
     SVGFilterPrimitiveStandardAttributes::svgAttributeChanged(attrName);
 }
 
-RefPtr<FilterEffect> SVGFETurbulenceElement::build(SVGFilterBuilder*, Filter& filter)
+RefPtr<FilterEffect> SVGFETurbulenceElement::build(SVGFilterBuilder*, Filter& filter) const
 {
     if (baseFrequencyX() < 0 || baseFrequencyY() < 0)
         return nullptr;

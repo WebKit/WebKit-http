@@ -36,9 +36,10 @@
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "LoadTiming.h"
+#include "PerformanceServerTiming.h"
 #include "ResourceResponse.h"
 #include "ResourceTiming.h"
-#include "URL.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 

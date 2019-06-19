@@ -26,7 +26,7 @@
 #include "config.h"
 #include "RegisterAtOffsetList.h"
 
-#if ENABLE(JIT)
+#if ENABLE(ASSEMBLER)
 
 #include <wtf/ListDump.h>
 
@@ -40,12 +40,12 @@ RegisterAtOffsetList::RegisterAtOffsetList(RegisterSet registerSet, OffsetBaseTy
     ptrdiff_t offset = 0;
     
     if (offsetBaseType == FramePointerBased)
-        offset = -(static_cast<ptrdiff_t>(numberOfRegisters) * sizeof(void*));
+        offset = -(static_cast<ptrdiff_t>(numberOfRegisters) * sizeof(CPURegister));
 
     m_registers.reserveInitialCapacity(numberOfRegisters);
     registerSet.forEach([&] (Reg reg) {
         m_registers.append(RegisterAtOffset(reg, offset));
-        offset += sizeof(void*);
+        offset += sizeof(CPURegister);
     });
 }
 
@@ -66,7 +66,17 @@ unsigned RegisterAtOffsetList::indexOf(Reg reg) const
     return UINT_MAX;
 }
 
+const RegisterAtOffsetList& RegisterAtOffsetList::llintBaselineCalleeSaveRegisters()
+{
+    static std::once_flag onceKey;
+    static LazyNeverDestroyed<RegisterAtOffsetList> result;
+    std::call_once(onceKey, [] {
+        result.construct(RegisterSet::llintBaselineCalleeSaveRegisters());
+    });
+    return result.get();
+}
+
 } // namespace JSC
 
-#endif // ENABLE(JIT)
+#endif // ENABLE(ASSEMBLER)
 

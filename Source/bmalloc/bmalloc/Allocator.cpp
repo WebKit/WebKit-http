@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
 #include "BAssert.h"
 #include "Chunk.h"
 #include "Deallocator.h"
-#include "DebugHeap.h"
+#include "Environment.h"
 #include "Heap.h"
 #include "PerProcess.h"
 #include "Sizes.h"
@@ -38,9 +38,9 @@ namespace bmalloc {
 
 Allocator::Allocator(Heap& heap, Deallocator& deallocator)
     : m_heap(heap)
-    , m_debugHeap(heap.debugHeap())
     , m_deallocator(deallocator)
 {
+    BASSERT(!Environment::get()->isDebugHeapEnabled());
     for (size_t sizeClass = 0; sizeClass < sizeClassCount; ++sizeClass)
         m_bumpAllocators[sizeClass].init(objectSize(sizeClass));
 }
@@ -52,9 +52,6 @@ Allocator::~Allocator()
 
 void* Allocator::tryAllocate(size_t size)
 {
-    if (m_debugHeap)
-        return m_debugHeap->malloc(size);
-
     if (size <= smallMax)
         return allocate(size);
 
@@ -78,9 +75,6 @@ void* Allocator::allocateImpl(size_t alignment, size_t size, bool crashOnFailure
 {
     BASSERT(isPowerOfTwo(alignment));
 
-    if (m_debugHeap)
-        return m_debugHeap->memalign(alignment, size, crashOnFailure);
-
     if (!size)
         size = alignment;
 
@@ -95,13 +89,22 @@ void* Allocator::allocateImpl(size_t alignment, size_t size, bool crashOnFailure
 
 void* Allocator::reallocate(void* object, size_t newSize)
 {
-    if (m_debugHeap)
-        return m_debugHeap->realloc(object, newSize);
+    bool crashOnFailure = true;
+    return reallocateImpl(object, newSize, crashOnFailure);
+}
 
+void* Allocator::tryReallocate(void* object, size_t newSize)
+{
+    bool crashOnFailure = false;
+    return reallocateImpl(object, newSize, crashOnFailure);
+}
+
+void* Allocator::reallocateImpl(void* object, size_t newSize, bool crashOnFailure)
+{
     size_t oldSize = 0;
-    switch (objectType(m_heap.kind(), object)) {
+    switch (objectType(m_heap, object)) {
     case ObjectType::Small: {
-        BASSERT(objectType(m_heap.kind(), nullptr) == ObjectType::Small);
+        BASSERT(objectType(m_heap, nullptr) == ObjectType::Small);
         if (!object)
             break;
 
@@ -121,7 +124,14 @@ void* Allocator::reallocate(void* object, size_t newSize)
     }
     }
 
-    void* result = allocate(newSize);
+    void* result = nullptr;
+    if (crashOnFailure)
+        result = allocate(newSize);
+    else {
+        result = tryAllocate(newSize);
+        if (!result)
+            return nullptr;
+    }
     size_t copySize = std::min(oldSize, newSize);
     memcpy(result, object, copySize);
     m_deallocator.deallocate(object);
@@ -181,9 +191,6 @@ BNO_INLINE void* Allocator::allocateLogSizeClass(size_t size)
 
 void* Allocator::allocateSlowCase(size_t size)
 {
-    if (m_debugHeap)
-        return m_debugHeap->malloc(size);
-
     if (size <= maskSizeClassMax) {
         size_t sizeClass = bmalloc::maskSizeClass(size);
         BumpAllocator& allocator = m_bumpAllocators[sizeClass];

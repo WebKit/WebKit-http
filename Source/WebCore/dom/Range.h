@@ -84,7 +84,6 @@ public:
     WEBCORE_EXPORT ExceptionOr<void> insertNode(Ref<Node>&&);
     WEBCORE_EXPORT String toString() const;
 
-    String toHTML() const;
     WEBCORE_EXPORT String text() const;
 
     WEBCORE_EXPORT ExceptionOr<Ref<DocumentFragment>> createContextualFragment(const String& html);
@@ -124,7 +123,7 @@ public:
     // Transform-friendly
     WEBCORE_EXPORT void absoluteTextQuads(Vector<FloatQuad>&, bool useSelectionHeight = false, RangeInFixedPosition* = nullptr) const;
     WEBCORE_EXPORT FloatRect absoluteBoundingRect(RespectClippingForTextRects = RespectClippingForTextRects::No) const;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT void collectSelectionRects(Vector<SelectionRect>&) const;
     WEBCORE_EXPORT int collectSelectionRectsWithoutUnionInteriorLines(Vector<SelectionRect>&) const;
 #endif
@@ -133,10 +132,10 @@ public:
     void nodeChildrenWillBeRemoved(ContainerNode&);
     void nodeWillBeRemoved(Node&);
 
-    void textInserted(Node*, unsigned offset, unsigned length);
-    void textRemoved(Node*, unsigned offset, unsigned length);
+    void textInserted(Node&, unsigned offset, unsigned length);
+    void textRemoved(Node&, unsigned offset, unsigned length);
     void textNodesMerged(NodeWithIndex& oldNode, unsigned offset);
-    void textNodeSplit(Text* oldNode);
+    void textNodeSplit(Text& oldNode);
 
     // Expand range to a unit (word or sentence or block or document) boundary.
     // Please refer to https://bugs.webkit.org/show_bug.cgi?id=27632 comment #5 
@@ -177,7 +176,7 @@ private:
 WEBCORE_EXPORT Ref<Range> rangeOfContents(Node&);
 
 WEBCORE_EXPORT bool areRangesEqual(const Range*, const Range*);
-bool rangesOverlap(const Range*, const Range*);
+WEBCORE_EXPORT bool rangesOverlap(const Range*, const Range*);
 
 inline bool documentOrderComparator(const Node* a, const Node* b)
 {

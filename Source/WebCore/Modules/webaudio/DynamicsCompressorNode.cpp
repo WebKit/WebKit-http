@@ -32,19 +32,22 @@
 #include "AudioNodeInput.h"
 #include "AudioNodeOutput.h"
 #include "DynamicsCompressor.h"
+#include <wtf/IsoMallocInlines.h>
 
 // Set output to stereo by default.
 static const unsigned defaultNumberOfOutputChannels = 2;
 
 namespace WebCore {
 
+WTF_MAKE_ISO_ALLOCATED_IMPL(DynamicsCompressorNode);
+
 DynamicsCompressorNode::DynamicsCompressorNode(AudioContext& context, float sampleRate)
     : AudioNode(context, sampleRate)
 {
+    setNodeType(NodeTypeDynamicsCompressor);
+
     addInput(std::make_unique<AudioNodeInput>(this));
     addOutput(std::make_unique<AudioNodeOutput>(this, defaultNumberOfOutputChannels));
-
-    setNodeType(NodeTypeDynamicsCompressor);
 
     m_threshold = AudioParam::create(context, "threshold", -24, -100, 0);
     m_knee = AudioParam::create(context, "knee", 30, 0, 40);

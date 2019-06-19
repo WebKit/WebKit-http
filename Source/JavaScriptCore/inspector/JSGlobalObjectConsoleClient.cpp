@@ -54,11 +54,9 @@ void JSGlobalObjectConsoleClient::setLogToSystemConsole(bool shouldLog)
     sLogToSystemConsole = shouldLog;
 }
 
-JSGlobalObjectConsoleClient::JSGlobalObjectConsoleClient(InspectorConsoleAgent* consoleAgent, InspectorDebuggerAgent* debuggerAgent, InspectorScriptProfilerAgent* scriptProfilerAgent)
+JSGlobalObjectConsoleClient::JSGlobalObjectConsoleClient(InspectorConsoleAgent* consoleAgent)
     : ConsoleClient()
     , m_consoleAgent(consoleAgent)
-    , m_debuggerAgent(debuggerAgent)
-    , m_scriptProfilerAgent(scriptProfilerAgent)
 {
 }
 
@@ -121,27 +119,28 @@ void JSGlobalObjectConsoleClient::profileEnd(JSC::ExecState*, const String& titl
 
 void JSGlobalObjectConsoleClient::startConsoleProfile()
 {
-    // FIXME: <https://webkit.org/b/158753> Generalize the concept of Instruments on the backend to work equally for JSContext and Web inspection
-    m_scriptProfilerAgent->programmaticCaptureStarted();
-
-    m_profileRestoreBreakpointActiveValue = m_debuggerAgent->breakpointsActive();
-
     ErrorString unused;
-    m_debuggerAgent->setBreakpointsActive(unused, false);
 
-    const bool includeSamples = true;
-    m_scriptProfilerAgent->startTracking(unused, &includeSamples);
+    if (m_debuggerAgent) {
+        m_profileRestoreBreakpointActiveValue = m_debuggerAgent->breakpointsActive();
+        m_debuggerAgent->setBreakpointsActive(unused, false);
+    }
+
+    if (m_scriptProfilerAgent) {
+        const bool includeSamples = true;
+        m_scriptProfilerAgent->startTracking(unused, &includeSamples);
+    }
 }
 
 void JSGlobalObjectConsoleClient::stopConsoleProfile()
 {
     ErrorString unused;
-    m_scriptProfilerAgent->stopTracking(unused);
 
-    m_debuggerAgent->setBreakpointsActive(unused, m_profileRestoreBreakpointActiveValue);
+    if (m_scriptProfilerAgent)
+        m_scriptProfilerAgent->stopTracking(unused);
 
-    // FIXME: <https://webkit.org/b/158753> Generalize the concept of Instruments on the backend to work equally for JSContext and Web inspection
-    m_scriptProfilerAgent->programmaticCaptureStopped();
+    if (m_debuggerAgent)
+        m_debuggerAgent->setBreakpointsActive(unused, m_profileRestoreBreakpointActiveValue);
 }
 
 void JSGlobalObjectConsoleClient::takeHeapSnapshot(JSC::ExecState*, const String& title)
@@ -167,6 +166,11 @@ void JSGlobalObjectConsoleClient::timeStamp(ExecState*, Ref<ScriptArguments>&&)
 
 void JSGlobalObjectConsoleClient::record(ExecState*, Ref<ScriptArguments>&&) { }
 void JSGlobalObjectConsoleClient::recordEnd(ExecState*, Ref<ScriptArguments>&&) { }
+
+void JSGlobalObjectConsoleClient::screenshot(ExecState*, Ref<ScriptArguments>&&)
+{
+    warnUnimplemented("console.screenshot"_s);
+}
 
 void JSGlobalObjectConsoleClient::warnUnimplemented(const String& method)
 {

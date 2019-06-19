@@ -33,14 +33,51 @@ namespace API {
 
 WebsitePolicies::WebsitePolicies() = default;
 
-WebsitePolicies::WebsitePolicies(bool contentBlockersEnabled, OptionSet<WebKit::WebsiteAutoplayQuirk> allowedAutoplayQuirks, WebKit::WebsiteAutoplayPolicy autoplayPolicy, Vector<WebCore::HTTPHeaderField>&& customHeaderFields, WebKit::WebsitePopUpPolicy popUpPolicy, RefPtr<WebsiteDataStore>&& websiteDataStore)
+WebsitePolicies::WebsitePolicies(bool contentBlockersEnabled, OptionSet<WebKit::WebsiteAutoplayQuirk> allowedAutoplayQuirks, WebKit::WebsiteAutoplayPolicy autoplayPolicy, Vector<WebCore::HTTPHeaderField>&& legacyCustomHeaderFields, Vector<WebCore::CustomHeaderFields>&& customHeaderFields, WebKit::WebsitePopUpPolicy popUpPolicy, RefPtr<WebsiteDataStore>&& websiteDataStore)
     : m_contentBlockersEnabled(contentBlockersEnabled)
     , m_allowedAutoplayQuirks(allowedAutoplayQuirks)
     , m_autoplayPolicy(autoplayPolicy)
+    , m_legacyCustomHeaderFields(WTFMove(legacyCustomHeaderFields))
     , m_customHeaderFields(WTFMove(customHeaderFields))
     , m_popUpPolicy(popUpPolicy)
     , m_websiteDataStore(WTFMove(websiteDataStore))
 { }
+
+Ref<WebsitePolicies> WebsitePolicies::copy() const
+{
+    auto policies = WebsitePolicies::create();
+    policies->setContentBlockersEnabled(m_contentBlockersEnabled);
+    policies->setAllowedAutoplayQuirks(m_allowedAutoplayQuirks);
+    policies->setAutoplayPolicy(m_autoplayPolicy);
+#if ENABLE(DEVICE_ORIENTATION)
+    policies->setDeviceOrientationAndMotionAccessState(m_deviceOrientationAndMotionAccessState);
+#endif
+    policies->setPopUpPolicy(m_popUpPolicy);
+    policies->setWebsiteDataStore(m_websiteDataStore.get());
+    policies->setCustomUserAgent(m_customUserAgent);
+    policies->setCustomJavaScriptUserAgentAsSiteSpecificQuirks(m_customJavaScriptUserAgentAsSiteSpecificQuirks);
+    policies->setCustomNavigatorPlatform(m_customNavigatorPlatform);
+    policies->setPreferredContentMode(m_preferredContentMode);
+    policies->setMetaViewportPolicy(m_metaViewportPolicy);
+    policies->setMediaSourcePolicy(m_mediaSourcePolicy);
+    policies->setSimulatedMouseEventsDispatchPolicy(m_simulatedMouseEventsDispatchPolicy);
+    policies->setLegacyOverflowScrollingTouchPolicy(m_legacyOverflowScrollingTouchPolicy);
+    
+    Vector<WebCore::HTTPHeaderField> legacyCustomHeaderFields;
+    legacyCustomHeaderFields.reserveInitialCapacity(m_legacyCustomHeaderFields.size());
+    for (auto& field : m_legacyCustomHeaderFields)
+        legacyCustomHeaderFields.uncheckedAppend(field);
+    policies->setLegacyCustomHeaderFields(WTFMove(legacyCustomHeaderFields));
+
+    Vector<WebCore::CustomHeaderFields> customHeaderFields;
+    customHeaderFields.reserveInitialCapacity(m_customHeaderFields.size());
+    for (auto& field : m_customHeaderFields)
+        customHeaderFields.uncheckedAppend(field);
+    policies->setCustomHeaderFields(WTFMove(customHeaderFields));
+    policies->setAllowSiteSpecificQuirksToOverrideContentMode(m_allowSiteSpecificQuirksToOverrideContentMode);
+    policies->setApplicationNameForDesktopUserAgent(m_applicationNameForDesktopUserAgent);
+    return policies;
+}
 
 WebsitePolicies::~WebsitePolicies()
 {
@@ -53,10 +90,32 @@ void WebsitePolicies::setWebsiteDataStore(RefPtr<WebsiteDataStore>&& websiteData
 
 WebKit::WebsitePoliciesData WebsitePolicies::data()
 {
-    std::optional<WebKit::WebsiteDataStoreParameters> parameters;
-    if (m_websiteDataStore)
-        parameters = m_websiteDataStore->websiteDataStore().parameters();
-    return { contentBlockersEnabled(), allowedAutoplayQuirks(), autoplayPolicy(), customHeaderFields(), popUpPolicy(), WTFMove(parameters) };
+    bool hasLegacyCustomHeaderFields = legacyCustomHeaderFields().size();
+    Vector<WebCore::CustomHeaderFields> customHeaderFields;
+    customHeaderFields.reserveInitialCapacity(this->customHeaderFields().size() + hasLegacyCustomHeaderFields);
+    for (auto& field : this->customHeaderFields())
+        customHeaderFields.uncheckedAppend(field);
+    if (hasLegacyCustomHeaderFields)
+        customHeaderFields.uncheckedAppend({ legacyCustomHeaderFields(), { }});
+
+    return {
+        contentBlockersEnabled(),
+        allowedAutoplayQuirks(),
+        autoplayPolicy(),
+#if ENABLE(DEVICE_ORIENTATION)
+        deviceOrientationAndMotionAccessState(),
+#endif
+        WTFMove(customHeaderFields),
+        popUpPolicy(),
+        m_websiteDataStore ? Optional<WebKit::WebsiteDataStoreParameters> { m_websiteDataStore->websiteDataStore().parameters() } : WTF::nullopt,
+        m_customUserAgent,
+        m_customJavaScriptUserAgentAsSiteSpecificQuirks,
+        m_customNavigatorPlatform,
+        m_metaViewportPolicy,
+        m_mediaSourcePolicy,
+        m_simulatedMouseEventsDispatchPolicy,
+        m_legacyOverflowScrollingTouchPolicy,
+    };
 }
 
 }

@@ -27,9 +27,9 @@
 #include "config.h"
 #include "UserAgent.h"
 
-#include "URL.h"
 #include "UserAgentQuirks.h"
 #include <wtf/NeverDestroyed.h>
+#include <wtf/URL.h>
 #include <wtf/text/StringBuilder.h>
 
 #if OS(UNIX)
@@ -58,7 +58,7 @@ static const String platformVersionForUAString()
 #if OS(UNIX)
     struct utsname name;
     uname(&name);
-    static NeverDestroyed<const String> uaOSVersion(String::format("%s %s", name.sysname, name.machine));
+    static NeverDestroyed<const String> uaOSVersion(makeString(name.sysname, ' ', name.machine));
     return uaOSVersion;
 #else
     // We will always claim to be Safari in Intel Mac OS X, since Safari without

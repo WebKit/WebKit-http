@@ -34,7 +34,7 @@
 #import "PrintInfo.h"
 #import "ShareableBitmap.h"
 #import "WebPageProxy.h"
-#import <PDFKit/PDFKit.h>
+#import <Quartz/Quartz.h>
 #import <WebCore/GraphicsContext.h>
 #import <WebCore/LocalDefaultSystemAppearance.h>
 #import <WebCore/WebCoreObjCExtras.h>
@@ -78,16 +78,14 @@ static BOOL isForcingPreviewUpdate;
 
 - (void)_setAutodisplay:(BOOL)newState
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if (!newState && [[_wkView window] isAutodisplay])
-#pragma clang diagnostic pop
         [_wkView displayIfNeeded];
+    ALLOW_DEPRECATED_DECLARATIONS_END
     
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [[_wkView window] setAutodisplay:newState];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     // For some reason, painting doesn't happen for a long time without this call, <rdar://problem/8975229>.
     if (newState)
@@ -295,7 +293,7 @@ static void pageDidDrawToImage(const WebKit::ShareableBitmap::Handle& imageHandl
     _webFrame->page()->drawPagesToPDF(_webFrame.get(), printInfo, firstPage - 1, lastPage - firstPage + 1, WTFMove(callback));
 }
 
-static void pageDidComputePageRects(const Vector<WebCore::IntRect>& pageRects, double totalScaleFactorForPrinting, IPCCallbackContext* context)
+static void pageDidComputePageRects(const Vector<WebCore::IntRect>& pageRects, double totalScaleFactorForPrinting, const WebCore::FloatBoxExtent& computedPageMargin, IPCCallbackContext* context)
 {
     ASSERT(RunLoop::isMain());
 
@@ -325,6 +323,12 @@ static void pageDidComputePageRects(const Vector<WebCore::IntRect>& pageRects, d
             ceil(lastPrintingPageRect.maxY() * view->_totalScaleFactorForPrinting));
         LOG(Printing, "WKPrintingView setting frame size to x:%g y:%g width:%g height:%g", newFrameSize.origin.x, newFrameSize.origin.y, newFrameSize.size.width, newFrameSize.size.height);
         [view setFrame:newFrameSize];
+        // Set @page margin.
+        auto *printInfo = [view->_printOperation printInfo];
+        [printInfo setTopMargin:computedPageMargin.top()];
+        [printInfo setBottomMargin:computedPageMargin.bottom()];
+        [printInfo setLeftMargin:computedPageMargin.left()];
+        [printInfo setRightMargin:computedPageMargin.right()];
 
         if ([view _isPrintingPreview]) {
             // Show page count, and ask for an actual image to replace placeholder.
@@ -346,9 +350,9 @@ static void pageDidComputePageRects(const Vector<WebCore::IntRect>& pageRects, d
     ASSERT(!_expectedComputedPagesCallback);
 
     IPCCallbackContext* context = new IPCCallbackContext;
-    auto callback = WebKit::ComputedPagesCallback::create([context](const Vector<WebCore::IntRect>& pageRects, double totalScaleFactorForPrinting, WebKit::CallbackBase::Error) {
+    auto callback = WebKit::ComputedPagesCallback::create([context](const Vector<WebCore::IntRect>& pageRects, double totalScaleFactorForPrinting, const WebCore::FloatBoxExtent& computedPageMargin, WebKit::CallbackBase::Error) {
         std::unique_ptr<IPCCallbackContext> contextDeleter(context);
-        pageDidComputePageRects(pageRects, totalScaleFactorForPrinting, context);
+        pageDidComputePageRects(pageRects, totalScaleFactorForPrinting, computedPageMargin, context);
     });
     _expectedComputedPagesCallback = callback->callbackID().toInteger();
     context->view = self;
@@ -454,19 +458,17 @@ static NSString *linkDestinationName(PDFDocument *document, PDFDestination *dest
     }
 
     NSGraphicsContext *nsGraphicsContext = [NSGraphicsContext currentContext];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     CGContextRef context = static_cast<CGContextRef>([nsGraphicsContext graphicsPort]);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     CGContextSaveGState(context);
     CGContextTranslateCTM(context, point.x, point.y);
     CGContextScaleCTM(context, _totalScaleFactorForPrinting, -_totalScaleFactorForPrinting);
     CGContextTranslateCTM(context, 0, -[pdfPage boundsForBox:kPDFDisplayBoxMediaBox].size.height);
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [pdfPage drawWithBox:kPDFDisplayBoxMediaBox];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     CGAffineTransform transform = CGContextGetCTM(context);
 
@@ -479,10 +481,9 @@ static NSString *linkDestinationName(PDFDocument *document, PDFDestination *dest
         if (![annotation isKindOfClass:WebKit::pdfAnnotationLinkClass()])
             continue;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         PDFAnnotationLink *linkAnnotation = (PDFAnnotationLink *)annotation;
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
         NSURL *url = [linkAnnotation URL];
         CGRect transformedRect = CGRectApplyAffineTransform(NSRectToCGRect([linkAnnotation bounds]), transform);
 
@@ -545,10 +546,9 @@ static NSString *linkDestinationName(PDFDocument *document, PDFDestination *dest
     }
 
     RefPtr<WebKit::ShareableBitmap> bitmap = pagePreviewIterator->value;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     CGContextRef cgContext = static_cast<CGContextRef>([[NSGraphicsContext currentContext] graphicsPort]);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     WebCore::GraphicsContext context(cgContext);
     WebCore::GraphicsContextStateSaver stateSaver(context);
@@ -562,11 +562,8 @@ static NSString *linkDestinationName(PDFDocument *document, PDFDestination *dest
 
     ASSERT(_printOperation == [NSPrintOperation currentOperation]);
 
-    auto* page = _webFrame->page();
-    if (!page)
-        return;
-
-    WebCore::LocalDefaultSystemAppearance localAppearance(page->useSystemAppearance(), page->useDarkAppearance());
+    // Always use the light appearance when printing.
+    WebCore::LocalDefaultSystemAppearance localAppearance(false);
 
     if ([self _isPrintingPreview]) {
         [self _drawPreview:nsRect];
@@ -589,10 +586,9 @@ static NSString *linkDestinationName(PDFDocument *document, PDFDestination *dest
                 if (![annotation isKindOfClass:WebKit::pdfAnnotationLinkClass()])
                     continue;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+                ALLOW_DEPRECATED_DECLARATIONS_BEGIN
                 PDFAnnotationLink *linkAnnotation = (PDFAnnotationLink *)annotation;
-#pragma clang diagnostic pop
+                ALLOW_DEPRECATED_DECLARATIONS_END
                 if (linkAnnotation.URL)
                     continue;
 

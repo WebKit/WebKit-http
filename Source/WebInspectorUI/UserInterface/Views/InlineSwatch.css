@@ -31,7 +31,7 @@
     height: 1em;
     margin-right: 3px;
     vertical-align: -2px;
-    background-color: white;
+    background-color: var(--background-color);
     border-radius: 2px;
     overflow: hidden;
     cursor: default;
@@ -46,12 +46,8 @@
     background-repeat: no-repeat;
 }
 
-.inline-swatch:matches(.bezier, .spring) {
-    content: url(../Images/CubicBezier.svg);
-}
-
-.inline-swatch.variable {
-    content: url(../Images/CSSVariable.svg);
+.inline-swatch:matches(.bezier, .spring, .variable) {
+    color: var(--glyph-color-active);
 }
 
 .inline-swatch:matches(.bezier, .spring, .variable) {

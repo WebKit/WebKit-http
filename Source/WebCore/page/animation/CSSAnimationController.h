@@ -44,7 +44,7 @@ class RenderElement;
 
 struct AnimationUpdate {
     std::unique_ptr<RenderStyle> style;
-    bool stateChanged { false };
+    bool animationChangeRequiresRecomposite { false };
 };
 
 class CSSAnimationController {
@@ -65,12 +65,13 @@ public:
     // This is called when an accelerated animation or transition has actually started to animate.
     void notifyAnimationStarted(RenderElement&, MonotonicTime startTime);
 
-    WEBCORE_EXPORT bool pauseAnimationAtTime(Element&, const AtomicString& name, double t); // To be used only for testing
+    WEBCORE_EXPORT bool pauseAnimationAtTime(Element&, const AtomString& name, double t); // To be used only for testing
     WEBCORE_EXPORT bool pauseTransitionAtTime(Element&, const String& property, double t); // To be used only for testing
     WEBCORE_EXPORT unsigned numberOfActiveAnimations(Document*) const; // To be used only for testing
     
-    bool isRunningAnimationOnRenderer(RenderElement&, CSSPropertyID, AnimationBase::RunningState) const;
-    bool isRunningAcceleratedAnimationOnRenderer(RenderElement&, CSSPropertyID, AnimationBase::RunningState) const;
+    // "Running" here means the animation is running or paused.
+    bool isRunningAnimationOnRenderer(RenderElement&, CSSPropertyID) const;
+    bool isRunningAcceleratedAnimationOnRenderer(RenderElement&, CSSPropertyID) const;
 
     WEBCORE_EXPORT bool isSuspended() const;
     WEBCORE_EXPORT void suspendAnimations();
@@ -93,11 +94,6 @@ public:
     WEBCORE_EXPORT void setAllowsNewAnimationsWhileSuspended(bool);
     
     static bool supportsAcceleratedAnimationOfProperty(CSSPropertyID);
-
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    bool wantsScrollUpdates() const;
-    void scrollWasUpdated();
-#endif
 
     bool hasAnimations() const;
 

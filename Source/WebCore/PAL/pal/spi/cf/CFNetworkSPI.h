@@ -30,17 +30,10 @@
 #include <CFNetwork/CFNetwork.h>
 #include <pal/spi/cf/CFNetworkConnectionCacheSPI.h>
 
-// FIXME: Policy about which CFNetwork features to *use* in WebKit does not belong in the SPI header.
-// The SPI header should define which CFNetwork features *exist* in the underlying system, but not
-// policy about what WebKit should do. Accordingly, we should move this somewhere else or rename it
-// to be about CFNetwork capabilities (HAVE) rather than about WebKit policy (USE).
-#if ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101302 && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110200) || (PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MIN_REQUIRED >= 40200) || (PLATFORM(TVOS) && __TV_OS_VERSION_MIN_REQUIRED >= 110200))
-#define USE_CFNETWORK_IGNORE_HSTS 1
-#endif
-
 #if PLATFORM(WIN) || USE(APPLE_INTERNAL_SDK)
 
 #include <CFNetwork/CFHTTPCookiesPriv.h>
+#include <CFNetwork/CFHTTPStream.h>
 #include <CFNetwork/CFProxySupportPriv.h>
 #include <CFNetwork/CFURLCachePriv.h>
 #include <CFNetwork/CFURLConnectionPriv.h>
@@ -50,16 +43,32 @@
 #include <CFNetwork/CFURLResponsePriv.h>
 #include <CFNetwork/CFURLStorageSession.h>
 
+#if PLATFORM(WIN)
+
+WTF_EXTERN_C_BEGIN
+
+CFN_EXPORT CFStringRef _CFNetworkErrorGetLocalizedDescription(CFIndex);
+
+extern const CFStringRef _kCFWindowsSSLLocalCert;
+extern const CFStringRef _kCFStreamPropertyWindowsSSLCertInfo;
+extern const CFStringRef _kCFWindowsSSLPeerCert;
+
+WTF_EXTERN_C_END
+
+#endif
+
 // FIXME: Remove the defined(__OBJC__)-guard once we fix <rdar://problem/19033610>.
 #if defined(__OBJC__) && PLATFORM(COCOA)
 #import <CFNetwork/CFNSURLConnection.h>
-
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101302
-@interface NSURLSessionConfiguration ()
-@property (nullable, copy) NSSet *_suppressedAutoAddedHTTPHeaders;
-@end
 #endif
 
+// This only needs to be declared on macOS 10.12 Sierra because
+// it will never appear in those SDK headers.  See also
+// HAVE(CFNETWORK_OVERRIDE_SESSION_COOKIE_ACCEPT_POLICY).
+#if defined(__OBJC__) && PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED == 101200
+@interface NSHTTPCookieStorage ()
+@property (nonatomic, readwrite) BOOL _overrideSessionCookieAcceptPolicy;
+@end
 #endif
 
 #else // !PLATFORM(WIN) && !USE(APPLE_INTERNAL_SDK)
@@ -123,7 +132,12 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 - (id)_initWithCFHTTPCookieStorage:(CFHTTPCookieStorageRef)cfStorage;
 - (CFHTTPCookieStorageRef)_cookieStorage;
 - (void)_saveCookies;
+#if HAVE(FOUNDATION_WITH_SAVE_COOKIES_WITH_COMPLETION_HANDLER)
 - (void)_saveCookies:(dispatch_block_t) completionHandler;
+#endif
+#if HAVE(CFNETWORK_OVERRIDE_SESSION_COOKIE_ACCEPT_POLICY)
+@property (nonatomic, readwrite) BOOL _overrideSessionCookieAcceptPolicy;
+#endif
 @end
 
 @interface NSURLConnection ()
@@ -161,17 +175,29 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 - (NSDate *)_lastModifiedDate;
 @end
 
+#if PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MAX_ALLOWED >= 60000
+typedef NS_ENUM(NSInteger, NSURLSessionCompanionProxyPreference) {
+    NSURLSessionCompanionProxyPreferenceDefault = 0,
+    NSURLSessionCompanionProxyPreferencePreferCompanion,
+    NSURLSessionCompanionProxyPreferencePreferDirectToCloud,
+};
+#endif
+
 @interface NSURLSessionConfiguration ()
 @property (assign) _TimingDataOptions _timingDataOptions;
 @property (copy) NSData *_sourceApplicationAuditTokenData;
 @property (nullable, copy) NSString *_sourceApplicationBundleIdentifier;
 @property (nullable, copy) NSString *_sourceApplicationSecondaryIdentifier;
 @property BOOL _shouldSkipPreferredClientCertificateLookup NS_AVAILABLE(10_10, 8_0);
-#if PLATFORM(IOS)
+@property BOOL _allowsTLSFallback;
+#if PLATFORM(IOS_FAMILY)
 @property (nullable, copy) NSString *_CTDataConnectionServiceType;
 #endif
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+#if HAVE(CFNETWORK_WITH_AUTO_ADDED_HTTP_HEADER_SUPPRESSION_SUPPORT)
 @property (nullable, copy) NSSet *_suppressedAutoAddedHTTPHeaders;
+#endif
+#if PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MAX_ALLOWED >= 60000
+@property NSURLSessionCompanionProxyPreference _companionProxyPreference;
 #endif
 @end
 
@@ -179,14 +205,16 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 - (NSDictionary *)_timingData;
 @property (readwrite, copy) NSString *_pathToDownloadTaskFile;
 @property (copy) NSString *_storagePartitionIdentifier;
+#if HAVE(FOUNDATION_WITH_SAME_SITE_COOKIE_SUPPORT)
 @property (nullable, readwrite, retain) NSURL *_siteForCookies;
 @property (readwrite) BOOL _isTopLevelNavigation;
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+#endif
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
 @property (nonatomic, assign) BOOL _preconnect;
 #endif
 @end
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
 @interface NSURLSessionTaskTransactionMetrics ()
 @property (copy, readonly) NSString* _remoteAddressAndPort;
 @property (copy, readonly) NSUUID* _connectionIdentifier;
@@ -196,6 +224,22 @@ typedef void (^CFCachedURLResponseCallBackBlock)(CFCachedURLResponseRef);
 @property (assign, readonly) int64_t _responseBodyBytesDecoded;
 @end
 #endif
+
+#if HAVE(CFNETWORK_NEGOTIATED_SSL_PROTOCOL_CIPHER)
+@interface NSURLSessionTaskTransactionMetrics ()
+@property (assign) SSLProtocol _negotiatedTLSProtocol;
+@property (assign) SSLCipherSuite _negotiatedTLSCipher;
+@end
+#endif
+
+@interface NSURLSession (SPI)
+#if HAVE(CFNETWORK_NSURLSESSION_STRICTRUSTEVALUATE)
++ (void)_strictTrustEvaluate:(NSURLAuthenticationChallenge *)challenge queue:(dispatch_queue_t)queue completionHandler:(void (^)(NSURLAuthenticationChallenge *challenge, OSStatus trustResult))cb;
+#endif
+#if HAVE(APP_SSO)
++ (void)_disableAppSSO;
+#endif
+@end
 
 extern NSString * const NSURLAuthenticationMethodOAuth;
 
@@ -236,7 +280,7 @@ extern const CFStringRef _kCFURLCachePartitionKey;
 extern const CFStringRef _kCFURLConnectionPropertyShouldSniff;
 extern const CFStringRef _kCFURLStorageSessionIsPrivate;
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101302
+#if HAVE(CFNETWORK_WITH_CONTENT_ENCODING_SNIFFING_OVERRIDE)
 extern const CFStringRef kCFURLRequestContentDecoderSkipURLCheck;
 #endif
 
@@ -251,7 +295,6 @@ typedef void (*CFHTTPCookieStorageChangedProcPtr)(CFHTTPCookieStorageRef, void*)
 void CFHTTPCookieStorageAddObserver(CFHTTPCookieStorageRef, CFRunLoopRef, CFStringRef, CFHTTPCookieStorageChangedProcPtr, void*);
 void CFHTTPCookieStorageRemoveObserver(CFHTTPCookieStorageRef, CFRunLoopRef, CFStringRef, CFHTTPCookieStorageChangedProcPtr, void*);
 
-void _CFNetworkSetOverrideSystemProxySettings(CFDictionaryRef);
 CFURLCredentialStorageRef CFURLCredentialStorageCreate(CFAllocatorRef);
 CFURLCredentialRef CFURLCredentialStorageCopyDefaultCredentialForProtectionSpace(CFURLCredentialStorageRef, CFURLProtectionSpaceRef);
 CFURLRequestPriority CFURLRequestGetRequestPriority(CFURLRequestRef);
@@ -284,6 +327,10 @@ Boolean _CFHostIsDomainTopLevel(CFStringRef domain);
 void _CFURLRequestCreateArchiveList(CFAllocatorRef, CFURLRequestRef, CFIndex* version, CFTypeRef** objects, CFIndex* objectCount, CFDictionaryRef* protocolProperties);
 CFMutableURLRequestRef _CFURLRequestCreateFromArchiveList(CFAllocatorRef, CFIndex version, CFTypeRef* objects, CFIndex objectCount, CFDictionaryRef protocolProperties);
 void CFURLRequestSetProxySettings(CFMutableURLRequestRef, CFDictionaryRef);
+
+#if HAVE(HSTS_STORAGE_PATH)
+void _CFNetworkSetHSTSStoragePath(CFStringRef);
+#endif
 
 #endif // !PLATFORM(WIN)
 
@@ -347,10 +394,8 @@ WTF_EXTERN_C_END
 @end
 
 @interface NSURLSessionConfiguration ()
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
 // FIXME: Remove this once rdar://problem/40650244 is in a build.
 @property (copy) NSDictionary *_socketStreamProperties;
-#endif
 @end
 
 @interface NSURLSessionTask ()

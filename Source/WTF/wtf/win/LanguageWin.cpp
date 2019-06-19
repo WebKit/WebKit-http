@@ -24,13 +24,14 @@
  */
 
 #include "config.h"
-#include "Language.h"
+#include <wtf/Language.h>
 
 #include <mutex>
 #include <windows.h>
 #include <wtf/Lock.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
+#include <wtf/text/win/WCharStringExtras.h>
 
 namespace WTF {
 
@@ -44,7 +45,7 @@ static String localeInfo(LCTYPE localeType, const String& fallback)
         return fallback;
     UChar* localeNameBuf;
     String localeName = String::createUninitialized(localeChars, localeNameBuf);
-    localeChars = GetLocaleInfo(langID, localeType, localeNameBuf, localeChars);
+    localeChars = GetLocaleInfo(langID, localeType, wcharFrom(localeNameBuf), localeChars);
     if (!localeChars)
         return fallback;
     if (localeName.isEmpty())

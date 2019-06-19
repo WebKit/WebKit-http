@@ -31,9 +31,12 @@ function test()
                 WI.debuggerManager.resume();
             });
 
-            WI.logManager.singleFireEventListener(WI.LogManager.Event.MessageAdded, (event) => {
-                InspectorTest.assert(event.data.message.level === WI.ConsoleMessage.MessageLevel.Error);
-                InspectorTest.pass("CSP Exception Console Message: " + event.data.message.messageText);
+            WI.consoleManager.singleFireEventListener(WI.ConsoleManager.Event.MessageAdded, (event) => {
+                let {message} = event.data;
+                InspectorTest.assert(message.level === WI.ConsoleMessage.MessageLevel.Error);
+                InspectorTest.assert(message.line > 0);
+                InspectorTest.assert(message.column > 0);
+                InspectorTest.pass("CSP Exception Console Message: " + message.messageText);
                 resolve();
             });
         }
@@ -51,11 +54,15 @@ function test()
                 WI.debuggerManager.resume();
                 reject();
             });
-            WI.logManager.singleFireEventListener(WI.LogManager.Event.MessageAdded, (event) => {
+            WI.consoleManager.singleFireEventListener(WI.ConsoleManager.Event.MessageAdded, (event) => {
                 WI.debuggerManager.removeEventListener(WI.DebuggerManager.Event.Paused, tempPauseFailListener, null);
-                InspectorTest.assert(event.data.message.level === WI.ConsoleMessage.MessageLevel.Error);
+
+                let {message} = event.data;
+                InspectorTest.assert(message.level === WI.ConsoleMessage.MessageLevel.Error);
+                InspectorTest.assert(message.line > 0);
+                InspectorTest.assert(message.column > 0);
                 InspectorTest.expectFalse(didPause, "CSP Exception caused outside of script evaluation should not pause.");
-                InspectorTest.pass("CSP Exception Console Message: " + event.data.message.messageText);
+                InspectorTest.pass("CSP Exception Console Message: " + message.messageText);
                 resolve();
             });
         }

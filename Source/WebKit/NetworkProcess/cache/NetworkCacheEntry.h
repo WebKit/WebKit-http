@@ -31,6 +31,7 @@
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/ResourceResponse.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Seconds.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -57,7 +58,7 @@ public:
     const Vector<std::pair<String, String>>& varyingRequestHeaders() const { return m_varyingRequestHeaders; }
 
     WebCore::SharedBuffer* buffer() const;
-    const std::optional<WebCore::ResourceRequest>& redirectRequest() const { return m_redirectRequest; }
+    const Optional<WebCore::ResourceRequest>& redirectRequest() const { return m_redirectRequest; }
 
 #if ENABLE(SHAREABLE_RESOURCE)
     ShareableResource::Handle& shareableResourceHandle() const;
@@ -70,6 +71,11 @@ public:
 
     void asJSON(StringBuilder&, const Storage::RecordInfo&) const;
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    bool hasReachedPrevalentResourceAgeCap() const;
+    void capMaxAge(const Seconds);
+#endif
+
 private:
     void initializeBufferFromStorageRecord() const;
 #if ENABLE(SHAREABLE_RESOURCE)
@@ -81,13 +87,15 @@ private:
     WebCore::ResourceResponse m_response;
     Vector<std::pair<String, String>> m_varyingRequestHeaders;
 
-    std::optional<WebCore::ResourceRequest> m_redirectRequest;
+    Optional<WebCore::ResourceRequest> m_redirectRequest;
     mutable RefPtr<WebCore::SharedBuffer> m_buffer;
 #if ENABLE(SHAREABLE_RESOURCE)
     mutable ShareableResource::Handle m_shareableResourceHandle;
 #endif
 
     Storage::Record m_sourceStorageRecord { };
+    
+    Optional<Seconds> m_maxAgeCap;
 };
 
 }

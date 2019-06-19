@@ -15,16 +15,10 @@ rtc_static_library("common_audio") {
   sources = [
     "audio_converter.cc",
     "audio_converter.h",
-    "audio_ring_buffer.cc",
-    "audio_ring_buffer.h",
     "audio_util.cc",
-    "blocker.cc",
-    "blocker.h",
     "channel_buffer.cc",
     "channel_buffer.h",
     "include/audio_util.h",
-    "lapped_transform.cc",
-    "lapped_transform.h",
     "real_fourier.cc",
     "real_fourier.h",
     "real_fourier_ooura.cc",
@@ -53,16 +47,18 @@ rtc_static_library("common_audio") {
   deps = [
     ":common_audio_c",
     ":sinc_resampler",
-    "..:webrtc_common",
     "../rtc_base:checks",
     "../rtc_base:gtest_prod",
     "../rtc_base:rtc_base_approved",
+    "../rtc_base:sanitizer",
     "../rtc_base/memory:aligned_array",
     "../rtc_base/memory:aligned_malloc",
     "../rtc_base/system:arch",
     "../system_wrappers",
     "../system_wrappers:cpu_features_api",
     "third_party/fft4g:fft4g",
+    "//third_party/abseil-cpp/absl/container:inlined_vector",
+    "//third_party/abseil-cpp/absl/memory:memory",
     "//third_party/abseil-cpp/absl/types:optional",
   ]
 
@@ -185,7 +181,6 @@ rtc_source_set("common_audio_c") {
   deps = [
     ":common_audio_c_arm_asm",
     ":common_audio_cc",
-    "..:webrtc_common",
     "../rtc_base:checks",
     "../rtc_base:compile_assert_c",
     "../rtc_base:rtc_base_approved",
@@ -205,7 +200,6 @@ rtc_source_set("common_audio_cc") {
   ]
 
   deps = [
-    "..:webrtc_common",
     "../rtc_base:rtc_base_approved",
     "../system_wrappers",
   ]
@@ -216,7 +210,6 @@ rtc_source_set("sinc_resampler") {
     "resampler/sinc_resampler.h",
   ]
   deps = [
-    "..:webrtc_common",
     "../rtc_base:gtest_prod",
     "../rtc_base:rtc_base_approved",
     "../rtc_base/memory:aligned_malloc",
@@ -349,12 +342,9 @@ if (rtc_include_tests) {
 
     sources = [
       "audio_converter_unittest.cc",
-      "audio_ring_buffer_unittest.cc",
       "audio_util_unittest.cc",
-      "blocker_unittest.cc",
       "channel_buffer_unittest.cc",
       "fir_filter_unittest.cc",
-      "lapped_transform_unittest.cc",
       "real_fourier_unittest.cc",
       "resampler/push_resampler_unittest.cc",
       "resampler/push_sinc_resampler_unittest.cc",
@@ -388,7 +378,6 @@ if (rtc_include_tests) {
       ":fir_filter",
       ":fir_filter_factory",
       ":sinc_resampler",
-      "..:webrtc_common",
       "../rtc_base:checks",
       "../rtc_base:rtc_base_approved",
       "../rtc_base:rtc_base_tests_utils",
@@ -396,6 +385,7 @@ if (rtc_include_tests) {
       "../system_wrappers:cpu_features_api",
       "../test:fileutils",
       "../test:test_main",
+      "../test:test_support",
       "//testing/gtest",
     ]
 

@@ -58,7 +58,7 @@
 #if USE(GSTREAMER)
 #include "MediaPlayerPrivateGStreamer.h"
 #define PlatformMediaEngineClassName MediaPlayerPrivateGStreamer
-#if ENABLE(VIDEO) && ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
+#if ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
 #include "MediaPlayerPrivateGStreamerMSE.h"
 #endif
 #endif // USE(GSTREAMER)
@@ -91,6 +91,10 @@
 #include "MediaPlayerPrivateQt.h"
 #define PlatformMediaEngineClassName MediaPlayerPrivateQt
 #endif
+#endif
+
+#if USE(EXTERNAL_HOLEPUNCH)
+#include "MediaPlayerPrivateHolePunch.h"
 #endif
 
 namespace WebCore {
@@ -139,7 +143,7 @@ public:
 
     void setRateDouble(double) override { }
     void setPreservesPitch(bool) override { }
-    bool paused() const override { return false; }
+    bool paused() const override { return true; }
 
     void setVolumeDouble(double) override { }
 
@@ -259,9 +263,13 @@ static void buildMediaEnginesVector()
         PlatformMediaEngineClassName::registerMediaEngine(addMediaEngine);
 #endif
 
-#if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
+#if USE(GSTREAMER) && ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
     if (DeprecatedGlobalSettings::isGStreamerEnabled())
         MediaPlayerPrivateGStreamerMSE::registerMediaEngine(addMediaEngine);
+#endif
+
+#if USE(EXTERNAL_HOLEPUNCH)
+    MediaPlayerPrivateHolePunch::registerMediaEngine(addMediaEngine);
 #endif
 
     haveMediaEnginesVector() = true;
@@ -288,15 +296,15 @@ static void addMediaEngine(CreateMediaEnginePlayer&& constructor, MediaEngineSup
     mutableInstalledMediaEnginesVector().append(MediaPlayerFactory { WTFMove(constructor), getSupportedTypes, supportsType, originsInMediaCache, clearMediaCache, clearMediaCacheForOrigins, supportsKeySystem });
 }
 
-static const AtomicString& applicationOctetStream()
+static const AtomString& applicationOctetStream()
 {
-    static NeverDestroyed<const AtomicString> applicationOctetStream("application/octet-stream", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomString> applicationOctetStream("application/octet-stream", AtomString::ConstructFromLiteral);
     return applicationOctetStream;
 }
 
-static const AtomicString& textPlain()
+static const AtomString& textPlain()
 {
-    static NeverDestroyed<const AtomicString> textPlain("text/plain", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<const AtomString> textPlain("text/plain", AtomString::ConstructFromLiteral);
     return textPlain;
 }
 
@@ -391,7 +399,7 @@ bool MediaPlayer::load(const URL& url, const ContentType& contentType, const Str
 #endif
 
     // If the MIME type is missing or is not meaningful, try to figure it out from the URL.
-    AtomicString containerType = m_contentType.containerType();
+    AtomString containerType = m_contentType.containerType();
     if (containerType.isEmpty() || containerType == applicationOctetStream() || containerType == textPlain()) {
         if (m_url.protocolIsData())
             m_contentType = ContentType(mimeTypeFromDataURL(m_url.string()));
@@ -549,6 +557,8 @@ void MediaPlayer::cancelLoad()
 
 void MediaPlayer::prepareToPlay()
 {
+    Ref<MediaPlayer> protectedThis(*this);
+
     m_private->prepareToPlay();
 }
 
@@ -562,9 +572,9 @@ void MediaPlayer::pause()
     m_private->pause();
 }
 
-void MediaPlayer::setShouldBufferData(bool shouldBuffer)
+void MediaPlayer::setBufferingPolicy(BufferingPolicy policy)
 {
-    m_private->setShouldBufferData(shouldBuffer);
+    m_private->setBufferingPolicy(policy);
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -695,7 +705,7 @@ PlatformLayer* MediaPlayer::platformLayer() const
     return m_private->platformLayer();
 }
     
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 
 void MediaPlayer::setVideoFullscreenLayer(PlatformLayer* layer, WTF::Function<void()>&& completionHandler)
 {
@@ -727,9 +737,19 @@ MediaPlayer::VideoFullscreenMode MediaPlayer::fullscreenMode() const
     return client().mediaPlayerFullscreenMode();
 }
 
+void MediaPlayer::videoFullscreenStandbyChanged()
+{
+    m_private->videoFullscreenStandbyChanged();
+}
+
+bool MediaPlayer::isVideoFullscreenStandby() const
+{
+    return client().mediaPlayerIsVideoFullscreenStandby();
+}
+
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 NSArray* MediaPlayer::timedMetadata() const
 {
@@ -909,7 +929,7 @@ MediaPlayer::SupportsType MediaPlayer::supportsType(const MediaEngineSupportPara
 {
     // 4.8.10.3 MIME types - The canPlayType(type) method must return the empty string if type is a type that the 
     // user agent knows it cannot render or is the type "application/octet-stream"
-    AtomicString containerType = parameters.type.containerType();
+    AtomString containerType = parameters.type.containerType();
     if (containerType == applicationOctetStream())
         return IsNotSupported;
 
@@ -931,7 +951,7 @@ void MediaPlayer::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& t
 
 bool MediaPlayer::isAvailable()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (DeprecatedGlobalSettings::isAVFoundationEnabled())
         return true;
 #endif
@@ -1058,7 +1078,7 @@ bool MediaPlayer::didPassCORSAccessCheck() const
 bool MediaPlayer::wouldTaintOrigin(const SecurityOrigin& origin) const
 {
     auto wouldTaint = m_private->wouldTaintOrigin(origin);
-    if (wouldTaint.has_value())
+    if (wouldTaint.hasValue())
         return wouldTaint.value();
 
     if (m_url.protocolIsData())
@@ -1182,7 +1202,7 @@ void MediaPlayer::readyStateChanged()
 
 void MediaPlayer::volumeChanged(double newVolume)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     UNUSED_PARAM(newVolume);
     m_volume = m_private->volume();
 #else
@@ -1275,6 +1295,17 @@ void MediaPlayer::initializationDataEncountered(const String& initDataType, RefP
     client().mediaPlayerInitializationDataEncountered(initDataType, WTFMove(initData));
 }
 
+void MediaPlayer::waitingForKeyChanged()
+{
+    client().mediaPlayerWaitingForKeyChanged();
+}
+
+bool MediaPlayer::waitingForKey() const
+{
+    if (!m_private)
+        return false;
+    return m_private->waitingForKey();
+}
 #endif
 
 String MediaPlayer::referrer() const
@@ -1448,15 +1479,13 @@ bool MediaPlayer::ended() const
     return m_private->ended();
 }
 
-#if ENABLE(MEDIA_SOURCE)
-std::optional<VideoPlaybackQualityMetrics> MediaPlayer::videoPlaybackQualityMetrics()
+Optional<VideoPlaybackQualityMetrics> MediaPlayer::videoPlaybackQualityMetrics()
 {
     if (!m_private)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return m_private->videoPlaybackQualityMetrics();
 }
-#endif
 
 void MediaPlayer::handlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType command)
 {
@@ -1478,12 +1507,12 @@ void MediaPlayerFactorySupport::callRegisterMediaEngine(MediaEngineRegister regi
     registerMediaEngine(addMediaEngine);
 }
 
-bool MediaPlayer::doesHaveAttribute(const AtomicString& attribute, AtomicString* value) const
+bool MediaPlayer::doesHaveAttribute(const AtomString& attribute, AtomString* value) const
 {
     return client().doesHaveAttribute(attribute, value);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 String MediaPlayer::mediaPlayerNetworkInterfaceName() const
 {
     return client().mediaPlayerNetworkInterfaceName();
@@ -1526,7 +1555,7 @@ void MediaPlayer::applicationDidBecomeActive()
     m_private->applicationDidBecomeActive();
 }
 
-#if ENABLE(VIDEO) && USE(AVFOUNDATION)
+#if USE(AVFOUNDATION)
 
 AVPlayer* MediaPlayer::objCAVFoundationAVPlayer() const
 {
@@ -1534,6 +1563,16 @@ AVPlayer* MediaPlayer::objCAVFoundationAVPlayer() const
 }
 
 #endif
+
+bool MediaPlayer::performTaskAtMediaTime(WTF::Function<void()>&& task, MediaTime time)
+{
+    return m_private->performTaskAtMediaTime(WTFMove(task), time);
+}
+
+bool MediaPlayer::shouldIgnoreIntrinsicSize()
+{
+    return m_private->shouldIgnoreIntrinsicSize();
+}
 
 #if !RELEASE_LOG_DISABLED
 const Logger& MediaPlayer::mediaPlayerLogger()
@@ -1592,6 +1631,36 @@ String convertEnumerationToString(MediaPlayerEnums::Preload enumerationValue)
     static_assert(!static_cast<size_t>(MediaPlayerEnums::None), "MediaPlayerEnums::None is not 0 as expected");
     static_assert(static_cast<size_t>(MediaPlayerEnums::MetaData) == 1, "MediaPlayerEnums::MetaData is not 1 as expected");
     static_assert(static_cast<size_t>(MediaPlayerEnums::Auto) == 2, "MediaPlayerEnums::Auto is not 2 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+String convertEnumerationToString(MediaPlayerEnums::SupportsType enumerationValue)
+{
+    static const NeverDestroyed<String> values[] = {
+        MAKE_STATIC_STRING_IMPL("IsNotSupported"),
+        MAKE_STATIC_STRING_IMPL("IsSupported"),
+        MAKE_STATIC_STRING_IMPL("MayBeSupported"),
+    };
+    static_assert(!static_cast<size_t>(MediaPlayerEnums::IsNotSupported), "MediaPlayerEnums::IsNotSupported is not 0 as expected");
+    static_assert(static_cast<size_t>(MediaPlayerEnums::IsSupported) == 1, "MediaPlayerEnums::IsSupported is not 1 as expected");
+    static_assert(static_cast<size_t>(MediaPlayerEnums::MayBeSupported) == 2, "MediaPlayerEnums::MayBeSupported is not 2 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+String convertEnumerationToString(MediaPlayerEnums::BufferingPolicy enumerationValue)
+{
+    static const NeverDestroyed<String> values[] = {
+        MAKE_STATIC_STRING_IMPL("Default"),
+        MAKE_STATIC_STRING_IMPL("LimitReadAhead"),
+        MAKE_STATIC_STRING_IMPL("MakeResourcesPurgeable"),
+        MAKE_STATIC_STRING_IMPL("PurgeResources"),
+    };
+    static_assert(!static_cast<size_t>(MediaPlayerEnums::BufferingPolicy::Default), "MediaPlayerEnums::Default is not 0 as expected");
+    static_assert(static_cast<size_t>(MediaPlayerEnums::BufferingPolicy::LimitReadAhead) == 1, "MediaPlayerEnums::LimitReadAhead is not 1 as expected");
+    static_assert(static_cast<size_t>(MediaPlayerEnums::BufferingPolicy::MakeResourcesPurgeable) == 2, "MediaPlayerEnums::MakeResourcesPurgeable is not 2 as expected");
+    static_assert(static_cast<size_t>(MediaPlayerEnums::BufferingPolicy::PurgeResources) == 3, "MediaPlayerEnums::PurgeResources is not 3 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return values[static_cast<size_t>(enumerationValue)];
 }

@@ -115,12 +115,12 @@ WI.FrameTreeElement = class FrameTreeElement extends WI.ResourceTreeElement
         // Immediate superclasses are skipped, since Frames handle their own SourceMapResources.
         WI.GeneralTreeElement.prototype.onattach.call(this);
 
-        WI.cssStyleManager.addEventListener(WI.CSSStyleManager.Event.StyleSheetAdded, this._styleSheetAdded, this);
+        WI.cssManager.addEventListener(WI.CSSManager.Event.StyleSheetAdded, this._styleSheetAdded, this);
     }
 
     ondetach()
     {
-        WI.cssStyleManager.removeEventListener(WI.CSSStyleManager.Event.StyleSheetAdded, this._styleSheetAdded, this);
+        WI.cssManager.removeEventListener(WI.CSSManager.Event.StyleSheetAdded, this._styleSheetAdded, this);
 
         super.ondetach();
     }
@@ -179,7 +179,7 @@ WI.FrameTreeElement = class FrameTreeElement extends WI.ResourceTreeElement
         }
 
         const doNotCreateIfMissing = true;
-        WI.cssStyleManager.preferredInspectorStyleSheetForFrame(this._frame, this.addRepresentedObjectToNewChildQueue.bind(this), doNotCreateIfMissing);
+        WI.cssManager.preferredInspectorStyleSheetForFrame(this._frame, this.addRepresentedObjectToNewChildQueue.bind(this), doNotCreateIfMissing);
     }
 
     onexpand()
@@ -193,6 +193,16 @@ WI.FrameTreeElement = class FrameTreeElement extends WI.ResourceTreeElement
         // and we only care about user triggered collapses.
         if (this.hasChildren)
             this._expandedSetting.value = false;
+    }
+
+    // Protected
+
+    get mainTitleText()
+    {
+        // We can't assume that `this._frame` exists since this may be called before that is set.
+        if (this.resource.parentFrame.name)
+            return WI.UIString("%s (%s)").format(this.resource.parentFrame.name, super.mainTitleText);
+        return super.mainTitleText;
     }
 
     // Private

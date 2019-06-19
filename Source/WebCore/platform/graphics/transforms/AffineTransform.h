@@ -29,7 +29,7 @@
 
 #include <array>
 #include <wtf/FastMalloc.h>
-#include <wtf/Optional.h>
+#include <wtf/Forward.h>
 
 #if USE(CG)
 typedef struct CGAffineTransform CGAffineTransform;
@@ -55,6 +55,7 @@ class FloatSize;
 class IntPoint;
 class IntSize;
 class IntRect;
+class Region;
 class TransformationMatrix;
 
 class AffineTransform {
@@ -90,6 +91,8 @@ public:
 
     WEBCORE_EXPORT FloatRect mapRect(const FloatRect&) const;
     WEBCORE_EXPORT FloatQuad mapQuad(const FloatQuad&) const;
+
+    WEBCORE_EXPORT Region mapRegion(const Region&) const;
 
     WEBCORE_EXPORT bool isIdentity() const;
 
@@ -131,7 +134,7 @@ public:
     WEBCORE_EXPORT double yScale() const;
 
     bool isInvertible() const; // If you call this this, you're probably doing it wrong.
-    WEBCORE_EXPORT std::optional<AffineTransform> inverse() const;
+    WEBCORE_EXPORT Optional<AffineTransform> inverse() const;
 
     WEBCORE_EXPORT void blend(const AffineTransform& from, double progress);
 

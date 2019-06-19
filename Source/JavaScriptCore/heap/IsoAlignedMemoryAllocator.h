@@ -26,6 +26,9 @@
 #pragma once
 
 #include "AlignedMemoryAllocator.h"
+#include <wtf/FastBitVector.h>
+#include <wtf/HashMap.h>
+#include <wtf/Vector.h>
 
 namespace JSC {
 
@@ -39,12 +42,16 @@ public:
 
     void dump(PrintStream&) const override;
 
+    void* tryAllocateMemory(size_t) override;
+    void freeMemory(void*) override;
+    void* tryReallocateMemory(void*, size_t) override;
+
 private:
-    Lock m_lock;
     Vector<void*> m_blocks;
     HashMap<void*, unsigned> m_blockIndices;
     FastBitVector m_committed;
     unsigned m_firstUncommitted { 0 };
+    Lock m_lock;
 };
 
 } // namespace JSC

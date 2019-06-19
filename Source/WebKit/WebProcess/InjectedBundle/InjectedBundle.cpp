@@ -33,7 +33,6 @@
 #include "NetworkProcessConnection.h"
 #include "NetworkSessionCreationParameters.h"
 #include "NotificationPermissionRequestManager.h"
-#include "SessionTracker.h"
 #include "UserData.h"
 #include "WebConnectionToUIProcess.h"
 #include "WebCoreArgumentCoders.h"
@@ -98,7 +97,7 @@ RefPtr<InjectedBundle> InjectedBundle::create(WebProcessCreationParameters& para
     if (!bundle->initialize(parameters, initializationUserData))
         return nullptr;
 
-    return WTFMove(bundle);
+    return bundle;
 }
 
 InjectedBundle::InjectedBundle(const WebProcessCreationParameters& parameters)
@@ -139,7 +138,7 @@ void InjectedBundle::postSynchronousMessage(const String& messageName, API::Obje
 
     auto& webProcess = WebProcess::singleton();
     if (!webProcess.parentProcessConnection()->sendSync(Messages::WebProcessPool::HandleSynchronousMessage(messageName, UserData(webProcess.transformObjectsToHandles(messageBody))),
-        Messages::WebProcessPool::HandleSynchronousMessage::Reply(returnUserData), 0, Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply))
+        Messages::WebProcessPool::HandleSynchronousMessage::Reply(returnUserData), 0))
         returnData = nullptr;
     else
         returnData = webProcess.transformHandlesToObjects(returnUserData.object());
@@ -185,11 +184,6 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
             page->settings().setImageControlsEnabled(enabled);
         return;
     }
-#endif
-
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    if (preference == "WebKitCSSAnimationTriggersEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setAnimationTriggersEnabled(enabled);
 #endif
 
     if (preference == "WebKitWebAnimationsEnabled")
@@ -239,8 +233,8 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
 #endif
 
 #if ENABLE(WEB_RTC)
-    if (preference == "WebKitMDNSICECandidatesEnabled")
-        RuntimeEnabledFeatures::sharedFeatures().setMDNSICECandidatesEnabled(enabled);
+    if (preference == "WebKitWebRTCMDNSICECandidatesEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setWebRTCMDNSICECandidatesEnabled(enabled);
     if (preference == "WebKitWebRTCUnifiedPlanEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setWebRTCUnifiedPlanEnabled(enabled);
 #endif
@@ -253,6 +247,24 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     if (preference == "WebKitWebAPIStatisticsEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setWebAPIStatisticsEnabled(enabled);
 
+    if (preference == "CSSCustomPropertiesAndValuesEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setCSSCustomPropertiesAndValuesEnabled(enabled);
+
+#if ENABLE(LAYOUT_FORMATTING_CONTEXT)
+    if (preference == "LayoutFormattingContextEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setLayoutFormattingContextEnabled(enabled);
+#endif
+
+#if ENABLE(CSS_PAINTING_API)
+    if (preference == "CSSPaintingAPIEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setCSSPaintingAPIEnabled(enabled);
+#endif
+
+#if ENABLE(CSS_TYPED_OM)
+    if (preference == "CSSTypedOMEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setCSSTypedOMEnabled(enabled);
+#endif
+
     // Map the names used in LayoutTests with the names used in WebCore::Settings and WebPreferencesStore.
 #define FOR_EACH_OVERRIDE_BOOL_PREFERENCE(macro) \
     macro(WebKitJavaEnabled, JavaEnabled, javaEnabled) \
@@ -264,7 +276,6 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitXSSAuditorEnabled, XSSAuditorEnabled, xssAuditorEnabled) \
     macro(WebKitShouldRespectImageOrientation, ShouldRespectImageOrientation, shouldRespectImageOrientation) \
     macro(WebKitDisplayImagesKey, LoadsImagesAutomatically, loadsImagesAutomatically) \
-    macro(WebKitVisualViewportEnabled, VisualViewportEnabled, visualViewportEnabled) \
     macro(WebKitLargeImageAsyncDecodingEnabled, LargeImageAsyncDecodingEnabled, largeImageAsyncDecodingEnabled) \
     macro(WebKitAnimatedImageAsyncDecodingEnabled, AnimatedImageAsyncDecodingEnabled, animatedImageAsyncDecodingEnabled) \
     \
@@ -337,23 +348,11 @@ void InjectedBundle::setJavaScriptCanAccessClipboard(WebPageGroupProxy* pageGrou
 void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, bool enabled)
 {
     ASSERT(!hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
-    if (enabled) {
-        WebProcess::singleton().ensureLegacyPrivateBrowsingSessionInNetworkProcess();
-        WebFrameNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters::legacyPrivateSessionParameters());
-    } else
-        SessionTracker::destroySession(PAL::SessionID::legacyPrivateSessionID());
+    WebProcess::singleton().enablePrivateBrowsingForTesting(enabled);
 
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->enableLegacyPrivateBrowsing(enabled);
-}
-
-void InjectedBundle::setUseDashboardCompatibilityMode(WebPageGroupProxy* pageGroup, bool enabled)
-{
-#if ENABLE(DASHBOARD_SUPPORT)
-    for (auto& page : PageGroup::pageGroup(pageGroup->identifier())->pages())
-        page->settings().setUsesDashboardBackwardCompatibilityMode(enabled);
-#endif
 }
 
 void InjectedBundle::setPopupBlockingEnabled(WebPageGroupProxy* pageGroup, bool enabled)
@@ -460,7 +459,6 @@ bool InjectedBundle::isProcessingUserGesture()
 
 void InjectedBundle::addUserScript(WebPageGroupProxy* pageGroup, InjectedBundleScriptWorld* scriptWorld, String&& source, String&& url, API::Array* whitelist, API::Array* blacklist, WebCore::UserScriptInjectionTime injectionTime, WebCore::UserContentInjectedFrames injectedFrames)
 {
-    // url is not from URL::string(), i.e. it has not already been parsed by URL, so we have to use the relative URL constructor for URL instead of the ParsedURLStringTag version.
     UserScript userScript { WTFMove(source), URL(URL(), url), whitelist ? whitelist->toStringVector() : Vector<String>(), blacklist ? blacklist->toStringVector() : Vector<String>(), injectionTime, injectedFrames };
 
     pageGroup->userContentController().addUserScript(*scriptWorld, WTFMove(userScript));
@@ -468,7 +466,6 @@ void InjectedBundle::addUserScript(WebPageGroupProxy* pageGroup, InjectedBundleS
 
 void InjectedBundle::addUserStyleSheet(WebPageGroupProxy* pageGroup, InjectedBundleScriptWorld* scriptWorld, const String& source, const String& url, API::Array* whitelist, API::Array* blacklist, WebCore::UserContentInjectedFrames injectedFrames)
 {
-    // url is not from URL::string(), i.e. it has not already been parsed by URL, so we have to use the relative URL constructor for URL instead of the ParsedURLStringTag version.
     UserStyleSheet userStyleSheet{ source, URL(URL(), url), whitelist ? whitelist->toStringVector() : Vector<String>(), blacklist ? blacklist->toStringVector() : Vector<String>(), injectedFrames, UserStyleUserLevel };
 
     pageGroup->userContentController().addUserStyleSheet(*scriptWorld, WTFMove(userStyleSheet));
@@ -476,13 +473,11 @@ void InjectedBundle::addUserStyleSheet(WebPageGroupProxy* pageGroup, InjectedBun
 
 void InjectedBundle::removeUserScript(WebPageGroupProxy* pageGroup, InjectedBundleScriptWorld* scriptWorld, const String& url)
 {
-    // url is not from URL::string(), i.e. it has not already been parsed by URL, so we have to use the relative URL constructor for URL instead of the ParsedURLStringTag version.
     pageGroup->userContentController().removeUserScriptWithURL(*scriptWorld, URL(URL(), url));
 }
 
 void InjectedBundle::removeUserStyleSheet(WebPageGroupProxy* pageGroup, InjectedBundleScriptWorld* scriptWorld, const String& url)
 {
-    // url is not from URL::string(), i.e. it has not already been parsed by URL, so we have to use the relative URL constructor for URL instead of the ParsedURLStringTag version.
     pageGroup->userContentController().removeUserStyleSheetWithURL(*scriptWorld, URL(URL(), url));
 }
 
@@ -631,15 +626,6 @@ InjectedBundle::DocumentIDToURLMap InjectedBundle::liveDocumentURLs(WebPageGroup
 void InjectedBundle::setTabKeyCyclesThroughElements(WebPage* page, bool enabled)
 {
     page->corePage()->setTabKeyCyclesThroughElements(enabled);
-}
-
-void InjectedBundle::setCSSAnimationTriggersEnabled(bool enabled)
-{
-#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
-    RuntimeEnabledFeatures::sharedFeatures().setAnimationTriggersEnabled(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
 }
 
 void InjectedBundle::setWebAnimationsEnabled(bool enabled)

@@ -1,12 +1,11 @@
 {
     "domain": "Console",
     "description": "Console domain defines methods and events for interaction with the JavaScript console. Console collects messages created by means of the <a href='http://getfirebug.com/wiki/index.php/Console_API'>JavaScript Console API</a>. One needs to enable this domain using <code>enable</code> command in order to start receiving the console messages. Browser collects messages issued while console domain is not enabled as well and reports them using <code>messageAdded</code> notification upon enabling.",
-    "workerSupported": true,
     "types": [
         {
             "id": "ChannelSource",
             "type": "string",
-            "enum": ["xml", "javascript", "network", "console-api", "storage", "appcache", "rendering", "css", "security", "content-blocker", "media", "webrtc", "other"],
+            "enum": ["xml", "javascript", "network", "console-api", "storage", "appcache", "rendering", "css", "security", "content-blocker", "media", "mediasource", "webrtc", "other"],
             "description": "Channels for different types of log messages."
         },
         {
@@ -32,7 +31,7 @@
                 { "name": "source", "$ref": "ChannelSource"},
                 { "name": "level", "type": "string", "enum": ["log", "info", "warning", "error", "debug"], "description": "Message severity." },
                 { "name": "text", "type": "string", "description": "Message text." },
-                { "name": "type", "type": "string", "optional": true, "enum": ["log", "dir", "dirxml", "table", "trace", "clear", "startGroup", "startGroupCollapsed", "endGroup", "assert", "timing", "profile", "profileEnd"], "description": "Console message type." },
+                { "name": "type", "type": "string", "optional": true, "enum": ["log", "dir", "dirxml", "table", "trace", "clear", "startGroup", "startGroupCollapsed", "endGroup", "assert", "timing", "profile", "profileEnd", "image"], "description": "Console message type." },
                 { "name": "url", "type": "string", "optional": true, "description": "URL of the message origin." },
                 { "name": "line", "type": "integer", "optional": true, "description": "Line number in the resource that generated this message." },
                 { "name": "column", "type": "integer", "optional": true, "description": "Column number on the line in the resource that generated this message." },

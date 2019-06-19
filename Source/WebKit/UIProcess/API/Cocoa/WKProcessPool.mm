@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKProcessPoolInternal.h"
 
-#if WK_API_ENABLED
-
 #import "AutomationClient.h"
 #import "CacheModel.h"
 #import "DownloadClient.h"
@@ -36,23 +34,26 @@
 #import "SandboxUtilities.h"
 #import "UIGamepadProvider.h"
 #import "WKObject.h"
+#import "WKWebViewInternal.h"
 #import "WebCertificateInfo.h"
 #import "WebCookieManagerProxy.h"
+#import "WebProcessCache.h"
 #import "WebProcessMessages.h"
 #import "WebProcessPool.h"
-#import "XPCServiceEntryPoint.h"
 #import "_WKAutomationDelegate.h"
 #import "_WKAutomationSessionInternal.h"
 #import "_WKDownloadDelegate.h"
+#import "_WKDownloadInternal.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 #import <WebCore/CertificateInfo.h>
 #import <WebCore/PluginData.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
+#import <wtf/BlockPtr.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/WeakObjCPtr.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <WebCore/WebCoreThreadSystemInterface.h>
 #import "WKGeolocationProviderIOS.h"
 #endif
@@ -64,10 +65,10 @@ static WKProcessPool *sharedProcessPool;
     WeakObjCPtr<id <_WKDownloadDelegate>> _downloadDelegate;
 
     RetainPtr<_WKAutomationSession> _automationSession;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     RetainPtr<WKGeolocationProviderIOS> _geolocationProvider;
     RetainPtr<id <_WKGeolocationCoreLocationProvider>> _coreLocationProvider;
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 }
 
 - (instancetype)_initWithConfiguration:(_WKProcessPoolConfiguration *)configuration
@@ -134,14 +135,14 @@ static WKProcessPool *sharedProcessPool;
     return *_processPool;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (WKGeolocationProviderIOS *)_geolocationProvider
 {
     if (!_geolocationProvider)
         _geolocationProvider = adoptNS([[WKGeolocationProviderIOS alloc] initWithProcessPool:*_processPool]);
     return _geolocationProvider.get();
 }
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 @end
 
@@ -182,11 +183,6 @@ static WKProcessPool *sharedProcessPool;
     return [url URLByAppendingPathComponent:@"WebsiteData" isDirectory:YES];
 }
 
-+ (int)_webContentProcessXPCMain
-{
-    return WebKit::XPCServiceMain();
-}
-
 - (void)_setAllowsSpecificHTTPSCertificate:(NSArray *)certificateChain forHost:(NSString *)host
 {
     _processPool->allowSpecificHTTPSCertificateForHost(WebKit::WebCertificateInfo::create(WebCore::CertificateInfo((__bridge CFArrayRef)certificateChain)).ptr(), host);
@@ -200,11 +196,6 @@ static WKProcessPool *sharedProcessPool;
 - (void)_registerURLSchemeAsCanDisplayOnlyIfCanRequest:(NSString *)scheme
 {
     _processPool->registerURLSchemeAsCanDisplayOnlyIfCanRequest(scheme);
-}
-
-- (void)_setMaximumNumberOfProcesses:(NSUInteger)value
-{
-    _processPool->setMaximumNumberOfProcesses(value);
 }
 
 - (void)_setCanHandleHTTPSServerTrustEvaluation:(BOOL)value
@@ -429,14 +420,19 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     _processPool->clearSupportedPlugins();
 }
 
-- (void)_terminateStorageProcess
-{
-    _processPool->terminateStorageProcessForTesting();
-}
-
 - (void)_terminateNetworkProcess
 {
     _processPool->terminateNetworkProcess();
+}
+
+- (void)_sendNetworkProcessWillSuspendImminently
+{
+    _processPool->sendNetworkProcessWillSuspendImminently();
+}
+
+- (void)_sendNetworkProcessDidResume
+{
+    _processPool->sendNetworkProcessDidResume();
 }
 
 - (void)_terminateServiceWorkerProcesses
@@ -454,10 +450,11 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     return _processPool->networkProcessIdentifier();
 }
 
-- (pid_t)_storageProcessIdentifier
+- (pid_t)_prewarmedProcessIdentifier
 {
-    return _processPool->storageProcessIdentifier();
+    return _processPool->prewarmedProcessIdentifier();
 }
+
 
 - (void)_syncNetworkProcessCookies
 {
@@ -493,6 +490,16 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     return [self _webProcessCount] - ([self _hasPrewarmedWebProcess] ? 1 : 0);
 }
 
+- (size_t)_webProcessCountIgnoringPrewarmedAndCached
+{
+    size_t count = 0;
+    for (auto& process : _processPool->processes()) {
+        if (!process->isInProcessCache() && !process->isPrewarmed())
+            ++count;
+    }
+    return count;
+}
+
 - (size_t)_webPageContentProcessCount
 {
     auto allWebProcesses = _processPool->processes();
@@ -514,11 +521,26 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 
 - (size_t)_pluginProcessCount
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return WebKit::PluginProcessManager::singleton().pluginProcesses().size();
 #else
     return 0;
 #endif
+}
+
+- (NSUInteger)_maximumSuspendedPageCount
+{
+    return _processPool->maxSuspendedPageCount();
+}
+
+- (NSUInteger)_processCacheCapacity
+{
+    return _processPool->webProcessCache().capacity();
+}
+
+- (NSUInteger)_processCacheSize
+{
+    return _processPool->webProcessCache().size();
 }
 
 - (size_t)_serviceWorkerProcessCount
@@ -557,14 +579,19 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     _processPool->setStorageAccessAPIEnabled(enabled);
 }
 
-- (void)_setAllowsAnySSLCertificateForServiceWorker:(BOOL) allows
+- (void)_synthesizeAppIsBackground:(BOOL)background
+{
+    _processPool->synthesizeAppIsBackground(background);
+}
+
+- (void)_setAllowsAnySSLCertificateForServiceWorker:(BOOL)allows
 {
 #if ENABLE(SERVICE_WORKER)
     _processPool->setAllowsAnySSLCertificateForServiceWorker(allows);
 #endif
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (id <_WKGeolocationCoreLocationProvider>)_coreLocationProvider
 {
     return _coreLocationProvider.get();
@@ -577,8 +604,31 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 
     _coreLocationProvider = coreLocationProvider;
 }
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
+
+- (_WKDownload *)_downloadURLRequest:(NSURLRequest *)request originatingWebView:(WKWebView *)webView
+{
+    return (_WKDownload *)_processPool->download([webView _page], request).wrapper();
+}
+
+- (_WKDownload *)_resumeDownloadFromData:(NSData *)resumeData path:(NSString *)path originatingWebView:(WKWebView *)webView
+{
+    return wrapper(_processPool->resumeDownload([webView _page], API::Data::createWithoutCopying(resumeData).ptr(), path));
+}
+
+- (void)_getActivePagesOriginsInWebProcessForTesting:(pid_t)pid completionHandler:(void(^)(NSArray<NSString *> *))completionHandler
+{
+    _processPool->activePagesOriginsInWebProcessForTesting(pid, [completionHandler = makeBlockPtr(completionHandler)] (Vector<String>&& activePagesOrigins) {
+        NSMutableArray<NSString *> *array = [[[NSMutableArray alloc] initWithCapacity:activePagesOrigins.size()] autorelease];
+        for (auto& origin : activePagesOrigins)
+            [array addObject:origin];
+        completionHandler(array);
+    });
+}
+
+- (BOOL)_networkProcessHasEntitlementForTesting:(NSString *)entitlement
+{
+    return _processPool->networkProcessHasEntitlementForTesting(entitlement);
+}
 
 @end
-
-#endif // WK_API_ENABLED

@@ -33,6 +33,7 @@
 #include <WebKit/WKRetainPtr.h>
 #include <string>
 #include <wtf/Noncopyable.h>
+#include <wtf/RunLoop.h>
 #include <wtf/Seconds.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -84,9 +85,21 @@ public:
     void didRemoveAllSessionCredentials();
     
     void dumpResourceLoadStatistics();
-    
+
+    bool canOpenWindows() const { return m_canOpenWindows; }
+
+    void dumpAdClickAttribution();
+    void performCustomMenuAction();
+
 private:
     WKRetainPtr<WKMutableDictionaryRef> createTestSettingsDictionary();
+
+    void waitToDumpWatchdogTimerFired();
+    void initializeWaitToDumpWatchdogTimerIfNeeded();
+    void invalidateWaitToDumpWatchdogTimer();
+
+    void done();
+    void setWaitUntilDone(bool);
 
     void dumpResults();
     static void dump(const char* textToStdout, const char* textToStderr = 0, bool seenError = false);
@@ -114,6 +127,7 @@ private:
     
     WKRetainPtr<WKURLRef> m_url;
     WTF::String m_urlString;
+    RunLoop::Timer<TestInvocation> m_waitToDumpWatchdogTimer;
 
     std::string m_expectedPixelHash;
 
@@ -132,6 +146,8 @@ private:
     bool m_dumpPixels { false };
     bool m_pixelResultIsPending { false };
     bool m_shouldDumpResourceLoadStatistics { false };
+    bool m_canOpenWindows { false };
+    bool m_shouldDumpAdClickAttribution { false };
     WhatToDump m_whatToDump { WhatToDump::RenderTree };
 
     StringBuilder m_textOutput;

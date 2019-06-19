@@ -41,10 +41,10 @@ const ClassInfo SetConstructor::s_info = { "Function", &Base::s_info, nullptr, n
 
 void SetConstructor::finishCreation(VM& vm, SetPrototype* setPrototype, GetterSetter* speciesSymbol)
 {
-    Base::finishCreation(vm, setPrototype->classInfo(vm)->className);
+    Base::finishCreation(vm, vm.propertyNames->Set.string(), NameVisibility::Visible, NameAdditionMode::WithoutStructureTransition);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, setPrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
-    putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+    putDirectNonIndexAccessorWithoutTransition(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
 
 static EncodedJSValue JSC_HOST_CALL callSet(ExecState*);
@@ -72,16 +72,12 @@ static EncodedJSValue JSC_HOST_CALL constructSet(ExecState* exec)
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     JSValue iterable = exec->argument(0);
-    if (iterable.isUndefinedOrNull()) {
-        scope.release();
-        return JSValue::encode(JSSet::create(exec, vm, setStructure));
-    }
+    if (iterable.isUndefinedOrNull()) 
+        RELEASE_AND_RETURN(scope, JSValue::encode(JSSet::create(exec, vm, setStructure)));
 
     if (auto* iterableSet = jsDynamicCast<JSSet*>(vm, iterable)) {
-        if (iterableSet->canCloneFastAndNonObservable(setStructure)) {
-            scope.release();
-            return JSValue::encode(iterableSet->clone(exec, vm, setStructure));
-        }
+        if (iterableSet->canCloneFastAndNonObservable(setStructure)) 
+            RELEASE_AND_RETURN(scope, JSValue::encode(iterableSet->clone(exec, vm, setStructure)));
     }
 
     JSSet* set = JSSet::create(exec, vm, setStructure);
@@ -126,7 +122,7 @@ EncodedJSValue JSC_HOST_CALL setPrivateFuncSetBucketNext(ExecState* exec)
             return JSValue::encode(bucket);
         bucket = bucket->next();
     }
-    return JSValue::encode(exec->vm().sentinelSetBucket.get());
+    return JSValue::encode(exec->vm().sentinelSetBucket());
 }
 
 EncodedJSValue JSC_HOST_CALL setPrivateFuncSetBucketKey(ExecState* exec)

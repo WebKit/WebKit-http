@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,11 +29,18 @@
 
 namespace JSC {
     
+inline JSString::~JSString()
+{
+    if (isRope())
+        return;
+    valueInternal().~String();
+}
+
 bool JSString::equal(ExecState* exec, JSString* other) const
 {
     if (isRope() || other->isRope())
         return equalSlowCase(exec, other);
-    return WTF::equal(*m_value.impl(), *other->m_value.impl());
+    return WTF::equal(*valueInternal().impl(), *other->valueInternal().impl());
 }
 
 template<typename StringType>
@@ -50,7 +57,26 @@ inline JSValue jsMakeNontrivialString(ExecState* exec, StringType&& string, Stri
     String result = tryMakeString(std::forward<StringType>(string), std::forward<StringTypes>(strings)...);
     if (UNLIKELY(!result))
         return throwOutOfMemoryError(exec, scope);
+    ASSERT(result.length() <= JSString::MaxLength);
     return jsNontrivialString(exec, WTFMove(result));
+}
+
+template <typename CharacterType>
+inline JSString* repeatCharacter(ExecState& exec, CharacterType character, unsigned repeatCount)
+{
+    VM& vm = exec.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    CharacterType* buffer = nullptr;
+    auto impl = StringImpl::tryCreateUninitialized(repeatCount, buffer);
+    if (!impl) {
+        throwOutOfMemoryError(&exec, scope);
+        return nullptr;
+    }
+
+    std::fill_n(buffer, repeatCount, character);
+
+    RELEASE_AND_RETURN(scope, jsString(&exec, WTFMove(impl)));
 }
 
 } // namespace JSC

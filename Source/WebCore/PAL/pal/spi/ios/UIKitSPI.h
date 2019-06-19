@@ -23,27 +23,42 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if PLATFORM(IOS_FAMILY)
+
+WTF_EXTERN_C_BEGIN
+typedef struct __GSKeyboard* GSKeyboardRef;
+WTF_EXTERN_C_END
+
 #if USE(APPLE_INTERNAL_SDK)
 
+#import <UIKit/NSParagraphStyle_Private.h>
+#import <UIKit/NSTextAttachment_Private.h>
+#import <UIKit/NSTextList.h>
 #import <UIKit/UIApplicationSceneConstants.h>
 #import <UIKit/UIApplication_Private.h>
+#import <UIKit/UIColor_Private.h>
+#import <UIKit/UIFont_Private.h>
 #import <UIKit/UIInterface_Private.h>
 #import <UIKit/UIScreen_Private.h>
 #import <UIKit/UIViewController_Private.h>
 
 #if ENABLE(DATA_INTERACTION)
-#import <UIKit/NSAttributedString+UIItemProvider.h>
-#import <UIKit/NSString+UIItemProvider.h>
+#import <UIKit/NSItemProvider+UIKitAdditions.h>
+#import <UIKit/NSItemProvider+UIKitAdditions_Private.h>
 #import <UIKit/NSURL+UIItemProvider.h>
-#import <UIKit/UIImage+UIItemProvider.h>
-#import <UIKit/UIItemProvider_Private.h>
 #endif
 
 @interface UIApplication ()
 + (UIApplicationSceneClassicMode)_classicMode;
+- (GSKeyboardRef)_hardwareKeyboard;
+- (CGFloat)_iOSMacScale;
 @end
 
-#else
+#if __has_include(<UIKit/UIFocusRingStyle.h>)
+#import <UIKit/UIFocusRingStyle.h>
+#endif
+
+#else // USE(APPLE_INTERNAL_SDK)
 
 #import <UIKit/UIKit.h>
 
@@ -57,11 +72,38 @@ typedef NS_ENUM(NSInteger, UIApplicationSceneClassicMode) {
     UIApplicationSceneClassicModeOriginalPad = 4,
 };
 
-@interface UIApplication ()
+typedef enum {
+    UIFontTraitPlain       = 0x00000000,
+    UIFontTraitItalic      = 0x00000001, // 1 << 0
+    UIFontTraitBold        = 0x00000002, // 1 << 1
+    UIFontTraitThin        = (1 << 2),
+    UIFontTraitLight       = (1 << 3),
+    UIFontTraitUltraLight  = (1 << 4)
+} UIFontTrait;
 
+@interface NSParagraphStyle ()
+- (NSArray *)textLists;
+@end
+
+@interface NSMutableParagraphStyle ()
+- (void)setTextLists:(NSArray *)textLists;
+@end
+
+@interface NSTextAttachment ()
+- (id)initWithFileWrapper:(NSFileWrapper *)fileWrapper;
+@end
+
+@interface NSTextList : NSObject
+- (instancetype)initWithMarkerFormat:(NSString *)format options:(NSUInteger)mask;
+@property (readonly, copy) NSString *markerFormat;
+@property NSInteger startingItemNumber;
+- (NSString *)markerForItemNumber:(NSInteger)itemNum;
+@end
+
+@interface UIApplication ()
 - (BOOL)_isClassic;
 + (UIApplicationSceneClassicMode)_classicMode;
-
+- (GSKeyboardRef)_hardwareKeyboard;
 @end
 
 @interface UIColor ()
@@ -71,8 +113,20 @@ typedef NS_ENUM(NSInteger, UIApplicationSceneClassicMode) {
 + (UIColor *)systemGreenColor;
 + (UIColor *)systemOrangeColor;
 + (UIColor *)systemPinkColor;
++ (UIColor *)systemPurpleColor;
 + (UIColor *)systemRedColor;
 + (UIColor *)systemYellowColor;
++ (UIColor *)systemTealColor;
+
++ (UIColor *)_disambiguated_due_to_CIImage_colorWithCGColor:(CGColorRef)cgColor;
+
+- (CGFloat)alphaComponent;
+
+@end
+
+@interface UIFont ()
+
++ (UIFont *)fontWithFamilyName:(NSString *)familyName traits:(UIFontTrait)traits size:(CGFloat)fontSize;
 
 @end
 
@@ -94,43 +148,24 @@ NS_ASSUME_NONNULL_END
 @end
 #endif
 
-#if ENABLE(DATA_INTERACTION)
+#endif // USE(APPLE_INTERNAL_SDK)
 
-NS_ASSUME_NONNULL_BEGIN
-
-@interface UIItemProvider : NSItemProvider
+#if ENABLE(FULL_KEYBOARD_ACCESS)
+@interface UIColor (IPI)
++ (UIColor *)keyboardFocusIndicatorColor;
 @end
 
-#define UIItemProviderRepresentationOptionsVisibilityAll NSItemProviderRepresentationVisibilityAll
-
-@protocol UIItemProviderReading <NSItemProviderReading>
-
-@required
-- (nullable instancetype)initWithItemProviderData:(NSData *)data typeIdentifier:(NSString *)typeIdentifier error:(NSError **)outError;
-
+@interface UIFocusRingStyle (Staging_47831886)
++ (CGFloat)cornerRadius;
++ (CGFloat)maxAlpha;
++ (CGFloat)alphaThreshold;
 @end
-
-@protocol UIItemProviderWriting <NSItemProviderWriting>
-
-@required
-- (NSProgress * _Nullable)loadDataWithTypeIdentifier:(NSString *)typeIdentifier forItemProviderCompletionHandler:(void (^)(NSData * _Nullable, NSError * _Nullable))completionHandler;
-
-@end
-
-@interface NSAttributedString () <UIItemProviderReading, UIItemProviderWriting>
-@end
-
-@interface NSString () <UIItemProviderReading, UIItemProviderWriting>
-@end
-
-@interface NSURL () <UIItemProviderReading, UIItemProviderWriting>
-@end
-
-@interface UIImage () <UIItemProviderReading, UIItemProviderWriting>
-@end
-
-NS_ASSUME_NONNULL_END
-
 #endif
 
+#if HAVE(OS_DARK_MODE_SUPPORT)
+@interface UIColor (UIColorInternal)
++ (UIColor *)tableCellDefaultSelectionTintColor;
+@end
 #endif
+
+#endif // PLATFORM(IOS_FAMILY)

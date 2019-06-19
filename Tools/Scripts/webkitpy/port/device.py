@@ -1,4 +1,4 @@
-# Copyright (C) 2017 Apple Inc. All rights reserved.
+# Copyright (C) 2017-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -96,6 +96,14 @@ class Device(object):
     @property
     def udid(self):
         return self.platform_device.udid
+
+    @property
+    def device_type(self):
+        return self.platform_device.device_type
+
+    @property
+    def build_version(self):
+        return self.platform_device.build_version
 
     def __nonzero__(self):
         return self.platform_device is not None

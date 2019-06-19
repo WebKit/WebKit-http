@@ -48,10 +48,10 @@
 #import <WebCore/Pasteboard.h>
 #import <WebCore/RenderImage.h>
 #import <WebCore/StringTruncator.h>
-#import <WebCore/WebCoreNSURLExtras.h>
 #import <wtf/StdLibExtras.h>
+#import <wtf/cocoa/NSURLExtras.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import "UIKitSPI.h"
 #endif
 
@@ -72,10 +72,9 @@ static RefPtr<ShareableBitmap> convertImageToBitmap(NSImage *image, const IntSiz
 
     RetainPtr<NSGraphicsContext> savedContext = [NSGraphicsContext currentContext];
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithGraphicsPort:graphicsContext->platformContext() flipped:YES]];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     [image drawInRect:NSMakeRect(0, 0, bitmap->size().width(), bitmap->size().height()) fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:1 respectFlipped:YES hints:nil];
 
     [NSGraphicsContext setCurrentContext:savedContext.get()];
@@ -113,10 +112,9 @@ static WebCore::CachedImage* cachedImage(Element& element)
 
 void WebDragClient::declareAndWriteDragImage(const String& pasteboardName, Element& element, const URL& url, const String& label, Frame*)
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     ASSERT(pasteboardName == String(NSDragPboard));
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     WebCore::CachedImage* image = cachedImage(element);
 
@@ -131,10 +129,10 @@ void WebDragClient::declareAndWriteDragImage(const String& pasteboardName, Eleme
     if (title.isEmpty()) {
         title = url.lastPathComponent();
         if (title.isEmpty())
-            title = userVisibleString((NSURL *)url);
+            title = WTF::userVisibleString(url);
     }
 
-    RefPtr<LegacyWebArchive> archive = LegacyWebArchive::create(element);
+    auto archive = LegacyWebArchive::create(element);
 
     NSURLResponse *response = image->response().nsURLResponse();
     
@@ -168,12 +166,12 @@ void WebDragClient::declareAndWriteDragImage(const String& pasteboardName, Eleme
             filename = downloadFilename;
     }
 
-    m_page->send(Messages::WebPageProxy::SetPromisedDataForImage(pasteboardName, imageHandle, imageSize, filename, extension, title, String([[response URL] absoluteString]), userVisibleString((NSURL *)url), archiveHandle, archiveSize));
+    m_page->send(Messages::WebPageProxy::SetPromisedDataForImage(pasteboardName, imageHandle, imageSize, filename, extension, title, String([[response URL] absoluteString]), WTF::userVisibleString(url), archiveHandle, archiveSize));
 }
 
 #endif // PLATFORM(MAC)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 static RefPtr<ShareableBitmap> convertCGImageToBitmap(CGImageRef image, const IntSize& size, Frame& frame)
 {
@@ -212,10 +210,10 @@ void WebDragClient::declareAndWriteDragImage(const String& pasteboardName, Eleme
 
 void WebDragClient::didConcludeEditDrag()
 {
-    m_page->didConcludeEditDataInteraction();
+    m_page->didConcludeEditDrag();
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 } // namespace WebKit
 

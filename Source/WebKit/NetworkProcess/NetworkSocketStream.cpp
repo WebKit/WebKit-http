@@ -27,23 +27,23 @@
 #include "NetworkSocketStream.h"
 
 #include "DataReference.h"
+#include "NetworkStorageSessionProvider.h"
 #include "WebSocketStreamMessages.h"
 #include <WebCore/CookieRequestHeaderFieldProxy.h>
 #include <WebCore/SocketStreamError.h>
-#include <WebCore/SocketStreamHandleImpl.h>
 
 namespace WebKit {
 using namespace WebCore;
 
-Ref<NetworkSocketStream> NetworkSocketStream::create(WebCore::URL&& url, PAL::SessionID sessionID, const String& credentialPartition, uint64_t identifier, IPC::Connection& connection, SourceApplicationAuditToken&& auditData)
+Ref<NetworkSocketStream> NetworkSocketStream::create(NetworkProcess& networkProcess, URL&& url, PAL::SessionID sessionID, const String& credentialPartition, uint64_t identifier, IPC::Connection& connection, SourceApplicationAuditToken&& auditData)
 {
-    return adoptRef(*new NetworkSocketStream(WTFMove(url), sessionID, credentialPartition, identifier, connection, WTFMove(auditData)));
+    return adoptRef(*new NetworkSocketStream(networkProcess, WTFMove(url), sessionID, credentialPartition, identifier, connection, WTFMove(auditData)));
 }
 
-NetworkSocketStream::NetworkSocketStream(URL&& url, PAL::SessionID sessionID, const String& credentialPartition, uint64_t identifier, IPC::Connection& connection, SourceApplicationAuditToken&& auditData)
+NetworkSocketStream::NetworkSocketStream(NetworkProcess& networkProcess, URL&& url, PAL::SessionID sessionID, const String& credentialPartition, uint64_t identifier, IPC::Connection& connection, SourceApplicationAuditToken&& auditData)
     : m_identifier(identifier)
     , m_connection(connection)
-    , m_impl(SocketStreamHandleImpl::create(url, *this, sessionID, credentialPartition, WTFMove(auditData)))
+    , m_impl(SocketStreamHandleImpl::create(url, *this, sessionID, credentialPartition, WTFMove(auditData), NetworkStorageSessionProvider::create(networkProcess, sessionID).ptr()))
 {
 }
 
@@ -54,7 +54,7 @@ void NetworkSocketStream::sendData(const IPC::DataReference& data, uint64_t iden
     });
 }
 
-void NetworkSocketStream::sendHandshake(const IPC::DataReference& data, const std::optional<CookieRequestHeaderFieldProxy>& headerFieldProxy, uint64_t identifier)
+void NetworkSocketStream::sendHandshake(const IPC::DataReference& data, const Optional<CookieRequestHeaderFieldProxy>& headerFieldProxy, uint64_t identifier)
 {
     m_impl->platformSendHandshake(data.data(), data.size(), headerFieldProxy, [this, protectedThis = makeRef(*this), identifier] (bool success, bool didAccessSecureCookies) {
         send(Messages::WebSocketStream::DidSendHandshake(identifier, success, didAccessSecureCookies));
@@ -107,12 +107,12 @@ void NetworkSocketStream::didFailSocketStream(SocketStreamHandle& handle, const 
     send(Messages::WebSocketStream::DidFailSocketStream(error));
 }
 
-IPC::Connection* NetworkSocketStream::messageSenderConnection()
+IPC::Connection* NetworkSocketStream::messageSenderConnection() const
 {
     return &m_connection;
 }
 
-uint64_t NetworkSocketStream::messageSenderDestinationID()
+uint64_t NetworkSocketStream::messageSenderDestinationID() const
 {
     return m_identifier;
 }

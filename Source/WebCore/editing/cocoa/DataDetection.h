@@ -37,11 +37,11 @@ OBJC_CLASS NSDictionary;
 
 namespace WebCore {
 
+class Document;
 class Element;
 class FloatRect;
 class HitTestResult;
 class Range;
-class URL;
 
 enum DataDetectorTypes {
     DataDetectorTypeNone = 0,
@@ -61,7 +61,8 @@ public:
     WEBCORE_EXPORT static RetainPtr<DDActionContext> detectItemAroundHitTestResult(const HitTestResult&, FloatRect& detectedDataBoundingBox, RefPtr<Range>& detectedDataRange);
 #endif
     WEBCORE_EXPORT static NSArray *detectContentInRange(RefPtr<Range>& contextRange, DataDetectorTypes, NSDictionary *context);
-#if PLATFORM(IOS)
+    WEBCORE_EXPORT static void removeDataDetectedLinksInDocument(Document&);
+#if PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT static bool canBePresentedByDataDetectors(const URL&);
     WEBCORE_EXPORT static bool isDataDetectorLink(Element&);
     WEBCORE_EXPORT static String dataDetectorIdentifier(Element&);

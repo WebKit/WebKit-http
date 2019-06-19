@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "B3FenceValue.h"
+#include "B3ValueInlines.h"
 
 #if ENABLE(B3_JIT)
 
@@ -34,13 +35,8 @@ FenceValue::~FenceValue()
 {
 }
 
-Value* FenceValue::cloneImpl() const
-{
-    return new FenceValue(*this);
-}
-
 FenceValue::FenceValue(Origin origin, HeapRange read, HeapRange write)
-    : Value(CheckedOpcode, Fence, Void, origin)
+    : Value(CheckedOpcode, Fence, Void, Zero, origin)
     , read(read)
     , write(write)
 {

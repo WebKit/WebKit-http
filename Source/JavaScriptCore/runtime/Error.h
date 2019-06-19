@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -23,6 +23,8 @@
 #pragma once
 
 #include "ErrorInstance.h"
+#include "ErrorType.h"
+#include "Exception.h"
 #include "InternalFunction.h"
 #include "JSObject.h"
 #include "ThrowScope.h"
@@ -37,16 +39,6 @@ class JSGlobalObject;
 class JSObject;
 class SourceCode;
 class Structure;
-
-enum class ErrorType : uint8_t {
-    Error,
-    EvalError,
-    RangeError,
-    ReferenceError,
-    SyntaxError,
-    TypeError,
-    URIError,
-};
 
 // ExecState wrappers.
 JSObject* createError(ExecState*, const String&, ErrorInstance::SourceAppender);
@@ -75,6 +67,8 @@ JS_EXPORT_PRIVATE JSObject* createOutOfMemoryError(ExecState*, const String&);
 
 JS_EXPORT_PRIVATE JSObject* createError(ExecState*, ErrorType, const String&);
 
+JSObject* createGetterTypeError(ExecState*, const String&);
+
 std::unique_ptr<Vector<StackFrame>> getStackTrace(ExecState*, VM&, JSObject*, bool useCurrentFrame);
 void getBytecodeOffset(ExecState*, VM&, Vector<StackFrame>*, CallFrame*&, unsigned& bytecodeOffset);
 bool getLineColumnAndSource(Vector<StackFrame>* stackTrace, unsigned& line, unsigned& column, String& sourceURL);
@@ -85,13 +79,15 @@ JSObject* addErrorInfo(ExecState*, JSObject* error, int line, const SourceCode&)
 // Methods to throw Errors.
 
 // Convenience wrappers, create an throw an exception with a default message.
-JS_EXPORT_PRIVATE JSObject* throwConstructorCannotBeCalledAsFunctionTypeError(ExecState*, ThrowScope&, const char* constructorName);
-JS_EXPORT_PRIVATE JSObject* throwTypeError(ExecState*, ThrowScope&);
-JS_EXPORT_PRIVATE JSObject* throwTypeError(ExecState*, ThrowScope&, ASCIILiteral errorMessage);
-JS_EXPORT_PRIVATE JSObject* throwTypeError(ExecState*, ThrowScope&, const String& errorMessage);
-JS_EXPORT_PRIVATE JSObject* throwSyntaxError(ExecState*, ThrowScope&);
-JS_EXPORT_PRIVATE JSObject* throwSyntaxError(ExecState*, ThrowScope&, const String& errorMessage);
-inline JSObject* throwRangeError(ExecState* state, ThrowScope& scope, const String& errorMessage) { return throwException(state, scope, createRangeError(state, errorMessage)); }
+JS_EXPORT_PRIVATE Exception* throwConstructorCannotBeCalledAsFunctionTypeError(ExecState*, ThrowScope&, const char* constructorName);
+JS_EXPORT_PRIVATE Exception* throwTypeError(ExecState*, ThrowScope&);
+JS_EXPORT_PRIVATE Exception* throwTypeError(ExecState*, ThrowScope&, ASCIILiteral errorMessage);
+JS_EXPORT_PRIVATE Exception* throwTypeError(ExecState*, ThrowScope&, const String& errorMessage);
+JS_EXPORT_PRIVATE Exception* throwSyntaxError(ExecState*, ThrowScope&);
+JS_EXPORT_PRIVATE Exception* throwSyntaxError(ExecState*, ThrowScope&, const String& errorMessage);
+inline Exception* throwRangeError(ExecState* state, ThrowScope& scope, const String& errorMessage) { return throwException(state, scope, createRangeError(state, errorMessage)); }
+
+JS_EXPORT_PRIVATE Exception* throwGetterTypeError(ExecState*, ThrowScope&, const String& errorMessage);
 JS_EXPORT_PRIVATE JSValue throwDOMAttributeGetterTypeError(ExecState*, ThrowScope&, const ClassInfo*, PropertyName);
 
 // Convenience wrappers, wrap result as an EncodedJSValue.
@@ -102,67 +98,7 @@ inline EncodedJSValue throwVMTypeError(ExecState* exec, ThrowScope& scope) { ret
 inline EncodedJSValue throwVMTypeError(ExecState* exec, ThrowScope& scope, ASCIILiteral errorMessage) { return JSValue::encode(throwTypeError(exec, scope, errorMessage)); }
 inline EncodedJSValue throwVMTypeError(ExecState* exec, ThrowScope& scope, const String& errorMessage) { return JSValue::encode(throwTypeError(exec, scope, errorMessage)); }
 inline EncodedJSValue throwVMRangeError(ExecState* state, ThrowScope& scope, const String& errorMessage) { return JSValue::encode(throwRangeError(state, scope, errorMessage)); }
+inline EncodedJSValue throwVMGetterTypeError(ExecState* exec, ThrowScope& scope, const String& errorMessage) { return JSValue::encode(throwGetterTypeError(exec, scope, errorMessage)); }
 inline EncodedJSValue throwVMDOMAttributeGetterTypeError(ExecState* state, ThrowScope& scope, const ClassInfo* classInfo, PropertyName propertyName) { return JSValue::encode(throwDOMAttributeGetterTypeError(state, scope, classInfo, propertyName)); }
 
-class StrictModeTypeErrorFunction final : public InternalFunction {
-private:
-    StrictModeTypeErrorFunction(VM& vm, Structure* structure, const String& message)
-        : InternalFunction(vm, structure, callThrowTypeError, constructThrowTypeError)
-        , m_message(message)
-    {
-    }
-
-    static void destroy(JSCell*);
-
-public:
-    typedef InternalFunction Base;
-    
-    template<typename CellType>
-    static IsoSubspace* subspaceFor(VM& vm)
-    {
-        return &vm.strictModeTypeErrorFunctionSpace;
-    }
-
-    static StrictModeTypeErrorFunction* create(VM& vm, Structure* structure, const String& message)
-    {
-        StrictModeTypeErrorFunction* function = new (NotNull, allocateCell<StrictModeTypeErrorFunction>(vm.heap)) StrictModeTypeErrorFunction(vm, structure, message);
-        function->finishCreation(vm, String());
-        return function;
-    }
-
-    static EncodedJSValue JSC_HOST_CALL constructThrowTypeError(ExecState* exec)
-    {
-        VM& vm = exec->vm();
-        auto scope = DECLARE_THROW_SCOPE(vm);
-        throwTypeError(exec, scope, static_cast<StrictModeTypeErrorFunction*>(exec->jsCallee())->m_message);
-        return JSValue::encode(jsNull());
-    }
-
-    static EncodedJSValue JSC_HOST_CALL callThrowTypeError(ExecState* exec)
-    {
-        VM& vm = exec->vm();
-        auto scope = DECLARE_THROW_SCOPE(vm);
-        throwTypeError(exec, scope, static_cast<StrictModeTypeErrorFunction*>(exec->jsCallee())->m_message);
-        return JSValue::encode(jsNull());
-    }
-
-    DECLARE_INFO;
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype) 
-    { 
-        return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info()); 
-    }
-
-private:
-    String m_message;
-};
-
 } // namespace JSC
-
-namespace WTF {
-
-class PrintStream;
-
-void printInternal(PrintStream&, JSC::ErrorType);
-
-} // namespace WTF

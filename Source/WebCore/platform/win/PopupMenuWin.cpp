@@ -161,7 +161,7 @@ void PopupMenuWin::show(const IntRect& r, FrameView* view, int index)
         shouldAnimate = FALSE;
 
     if (shouldAnimate) {
-        RECT viewRect = {0};
+        RECT viewRect { };
         ::GetWindowRect(hostWindow, &viewRect);
         if (!::IsRectEmpty(&viewRect))
             ::AnimateWindow(m_popup, defaultAnimationDuration, AW_BLEND);
@@ -609,9 +609,7 @@ void PopupMenuWin::paint(const IntRect& damageRect, HDC hdc)
 
     GraphicsContext context(m_DC.get());
 
-    int itemCount = client()->listSize();
-
-    // listRect is the damageRect translated into the coordinates of the entire menu list (which is itemCount * m_itemHeight pixels tall)
+    // listRect is the damageRect translated into the coordinates of the entire menu list (which is listSize * m_itemHeight pixels tall)
     IntRect listRect = damageRect;
     listRect.move(IntSize(0, m_scrollOffset * m_itemHeight));
 
@@ -681,14 +679,9 @@ void PopupMenuWin::paint(const IntRect& damageRect, HDC hdc)
     ::BitBlt(localDC, damageRect.x(), damageRect.y(), damageRect.width(), damageRect.height(), m_DC.get(), damageRect.x(), damageRect.y(), SRCCOPY);
 }
 
-int PopupMenuWin::scrollSize(ScrollbarOrientation orientation) const
+ScrollPosition PopupMenuWin::scrollPosition() const
 {
-    return ((orientation == VerticalScrollbar) && m_scrollbar) ? (m_scrollbar->totalSize() - m_scrollbar->visibleSize()) : 0;
-}
-
-int PopupMenuWin::scrollOffset(ScrollbarOrientation) const
-{
-    return m_scrollOffset;
+    return { 0, m_scrollOffset };
 }
 
 void PopupMenuWin::setScrollOffset(const IntPoint& offset)
@@ -823,8 +816,6 @@ LRESULT CALLBACK PopupMenuWin::PopupMenuWndProc(HWND hWnd, UINT message, WPARAM 
     return ::DefWindowProc(hWnd, message, wParam, lParam);
 }
 
-const int smoothScrollAnimationDuration = 5000;
-
 LRESULT PopupMenuWin::wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     LRESULT lResult = 0;
@@ -896,9 +887,9 @@ LRESULT PopupMenuWin::wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
                     focusLast();
                     break;
                 case VK_PRIOR:
-                    if (focusedIndex() != scrollOffset()) {
+                    if (focusedIndex() != m_scrollOffset) {
                         // Set the selection to the first visible item
-                        int firstVisibleItem = scrollOffset();
+                        int firstVisibleItem = m_scrollOffset;
                         up(focusedIndex() - firstVisibleItem);
                     } else {
                         // The first visible item is selected, so move the selection back one page
@@ -906,7 +897,7 @@ LRESULT PopupMenuWin::wndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPa
                     }
                     break;
                 case VK_NEXT: {
-                    int lastVisibleItem = scrollOffset() + visibleItems() - 1;
+                    int lastVisibleItem = m_scrollOffset + visibleItems() - 1;
                     if (focusedIndex() != lastVisibleItem) {
                         // Set the selection to the last visible item
                         down(lastVisibleItem - focusedIndex());

@@ -34,7 +34,6 @@
 
 
 namespace WebCore {
-using namespace WTF;
 
 using namespace HTMLNames;
 
@@ -415,9 +414,9 @@ size_t TextResourceDecoder::checkForBOM(const char* data, size_t len)
     size_t buf2Len = len;
     const unsigned char* buf1 = reinterpret_cast<const unsigned char*>(m_buffer.data());
     const unsigned char* buf2 = reinterpret_cast<const unsigned char*>(data);
-    unsigned char c1 = buf1Len ? (--buf1Len, *buf1++) : buf2Len ? (--buf2Len, *buf2++) : 0;
-    unsigned char c2 = buf1Len ? (--buf1Len, *buf1++) : buf2Len ? (--buf2Len, *buf2++) : 0;
-    unsigned char c3 = buf1Len ? (--buf1Len, *buf1++) : buf2Len ? (--buf2Len, *buf2++) : 0;
+    unsigned char c1 = buf1Len ? (static_cast<void>(--buf1Len), *buf1++) : buf2Len ? (static_cast<void>(--buf2Len), *buf2++) : 0;
+    unsigned char c2 = buf1Len ? (static_cast<void>(--buf1Len), *buf1++) : buf2Len ? (static_cast<void>(--buf2Len), *buf2++) : 0;
+    unsigned char c3 = buf1Len ? (static_cast<void>(--buf1Len), *buf1++) : buf2Len ? (static_cast<void>(--buf2Len), *buf2++) : 0;
 
     // Check for the BOM.
     if (c1 == 0xFF && c2 == 0xFE) {
@@ -657,6 +656,18 @@ String TextResourceDecoder::decodeAndFlush(const char* data, size_t length)
 {
     String decoded = decode(data, length);
     return decoded + flush();
+}
+
+const TextEncoding* TextResourceDecoder::encodingForURLParsing()
+{
+    // For UTF-{7,16,32}, we want to use UTF-8 for the query part as
+    // we do when submitting a form. A form with GET method
+    // has its contents added to a URL as query params and it makes sense
+    // to be consistent.
+    auto& encoding = m_encoding.encodingForFormSubmissionOrURLParsing();
+    if (encoding == UTF8Encoding())
+        return nullptr;
+    return &encoding;
 }
 
 }

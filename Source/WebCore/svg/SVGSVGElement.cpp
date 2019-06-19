@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2006 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2010 Rob Buis <buis@kde.org>
- * Copyright (C) 2007-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -41,7 +41,6 @@
 #include "SVGNumber.h"
 #include "SVGPoint.h"
 #include "SVGRect.h"
-#include "SVGStaticPropertyTearOff.h"
 #include "SVGTransform.h"
 #include "SVGViewElement.h"
 #include "SVGViewSpec.h"
@@ -59,8 +58,15 @@ inline SVGSVGElement::SVGSVGElement(const QualifiedName& tagName, Document& docu
     , m_timeContainer(SMILTimeContainer::create(*this))
 {
     ASSERT(hasTagName(SVGNames::svgTag));
-    registerAttributes();
-    document.registerForDocumentSuspensionCallbacks(this);
+    document.registerForDocumentSuspensionCallbacks(*this);
+
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::xAttr, &SVGSVGElement::m_x>();
+        PropertyRegistry::registerProperty<SVGNames::yAttr, &SVGSVGElement::m_y>();
+        PropertyRegistry::registerProperty<SVGNames::widthAttr, &SVGSVGElement::m_width>();
+        PropertyRegistry::registerProperty<SVGNames::heightAttr, &SVGSVGElement::m_height>();
+    });
 }
 
 Ref<SVGSVGElement> SVGSVGElement::create(const QualifiedName& tagName, Document& document)
@@ -77,37 +83,37 @@ SVGSVGElement::~SVGSVGElement()
 {
     if (m_viewSpec)
         m_viewSpec->resetContextElement();
-    document().unregisterForDocumentSuspensionCallbacks(this);
-    document().accessSVGExtensions().removeTimeContainer(this);
+    document().unregisterForDocumentSuspensionCallbacks(*this);
+    document().accessSVGExtensions().removeTimeContainer(*this);
 }
 
 void SVGSVGElement::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
-    oldDocument.unregisterForDocumentSuspensionCallbacks(this);
-    document().registerForDocumentSuspensionCallbacks(this);
+    oldDocument.unregisterForDocumentSuspensionCallbacks(*this);
+    document().registerForDocumentSuspensionCallbacks(*this);
     SVGGraphicsElement::didMoveToNewDocument(oldDocument, newDocument);
 }
 
-const AtomicString& SVGSVGElement::contentScriptType() const
+const AtomString& SVGSVGElement::contentScriptType() const
 {
-    static NeverDestroyed<AtomicString> defaultScriptType { "text/ecmascript" };
-    const AtomicString& type = attributeWithoutSynchronization(SVGNames::contentScriptTypeAttr);
+    static NeverDestroyed<AtomString> defaultScriptType { "text/ecmascript" };
+    const AtomString& type = attributeWithoutSynchronization(SVGNames::contentScriptTypeAttr);
     return type.isNull() ? defaultScriptType.get() : type;
 }
 
-void SVGSVGElement::setContentScriptType(const AtomicString& type)
+void SVGSVGElement::setContentScriptType(const AtomString& type)
 {
     setAttributeWithoutSynchronization(SVGNames::contentScriptTypeAttr, type);
 }
 
-const AtomicString& SVGSVGElement::contentStyleType() const
+const AtomString& SVGSVGElement::contentStyleType() const
 {
-    static NeverDestroyed<AtomicString> defaultStyleType { "text/css" };
-    const AtomicString& type = attributeWithoutSynchronization(SVGNames::contentStyleTypeAttr);
+    static NeverDestroyed<AtomString> defaultStyleType { "text/css" };
+    const AtomString& type = attributeWithoutSynchronization(SVGNames::contentStyleTypeAttr);
     return type.isNull() ? defaultStyleType.get() : type;
 }
 
-void SVGSVGElement::setContentStyleType(const AtomicString& type)
+void SVGSVGElement::setContentStyleType(const AtomString& type)
 {
     setAttributeWithoutSynchronization(SVGNames::contentStyleTypeAttr, type);
 }
@@ -171,16 +177,11 @@ void SVGSVGElement::setCurrentScale(float scale)
         frame->setPageZoomFactor(scale);
 }
 
-Ref<SVGPoint> SVGSVGElement::currentTranslate()
-{
-    return SVGStaticPropertyTearOff<SVGSVGElement, SVGPoint>::create(*this, m_currentTranslate, &SVGSVGElement::updateCurrentTranslate);
-}
-
 void SVGSVGElement::setCurrentTranslate(const FloatPoint& translation)
 {
-    if (m_currentTranslate == translation)
+    if (m_currentTranslate->value() == translation)
         return;
-    m_currentTranslate = translation;
+    m_currentTranslate->setValue(translation);
     updateCurrentTranslate();
 }
 
@@ -192,18 +193,7 @@ void SVGSVGElement::updateCurrentTranslate()
         document().renderView()->repaint();
 }
 
-void SVGSVGElement::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::xAttr, &SVGSVGElement::m_x>();
-    registry.registerAttribute<SVGNames::yAttr, &SVGSVGElement::m_y>();
-    registry.registerAttribute<SVGNames::widthAttr, &SVGSVGElement::m_width>();
-    registry.registerAttribute<SVGNames::heightAttr, &SVGSVGElement::m_height>();
-}
-
-void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (!nearestViewportElement()) {
         // For these events, the outermost <svg> element works like a <body> element does,
@@ -241,9 +231,9 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::xAttr)
-        m_x.setValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
+        m_x->setBaseValInternal(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::yAttr)
-        m_y.setValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
+        m_y->setBaseValInternal(SVGLengthValue::construct(LengthModeHeight, value, parseError));
     else if (name == SVGNames::widthAttr) {
         auto length = SVGLengthValue::construct(LengthModeWidth, value, parseError, ForbidNegativeLengths);
         if (parseError != NoError || value.isEmpty()) {
@@ -251,7 +241,7 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
             // Not sure it's correct for the empty string or for something that can't be parsed.
             length = SVGLengthValue(LengthModeWidth, "100%"_s);
         }
-        m_width.setValue(length);
+        m_width->setBaseValInternal(length);
     } else if (name == SVGNames::heightAttr) {
         auto length = SVGLengthValue::construct(LengthModeHeight, value, parseError, ForbidNegativeLengths);
         if (parseError != NoError || value.isEmpty()) {
@@ -259,7 +249,7 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
             // Not sure it's correct for the empty string or for something that can't be parsed.
             length = SVGLengthValue(LengthModeHeight, "100%"_s);
         }
-        m_height.setValue(length);
+        m_height->setBaseValInternal(length);
     }
 
     reportAttributeParsingError(parseError, name, value);
@@ -272,7 +262,7 @@ void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomicString
 
 void SVGSVGElement::svgAttributeChanged(const QualifiedName& attrName)
 {
-    if (isKnownAttribute(attrName)) {
+    if (PropertyRegistry::isKnownAttribute(attrName)) {
         InstanceInvalidationGuard guard(*this);
         invalidateSVGPresentationAttributeStyle();
 
@@ -322,12 +312,12 @@ Ref<NodeList> SVGSVGElement::collectIntersectionOrEnclosureList(SVGRect& rect, S
 
 static bool checkIntersectionWithoutUpdatingLayout(SVGElement& element, SVGRect& rect)
 {
-    return RenderSVGModelObject::checkIntersection(element.renderer(), rect.propertyReference());
+    return RenderSVGModelObject::checkIntersection(element.renderer(), rect.value());
 }
     
 static bool checkEnclosureWithoutUpdatingLayout(SVGElement& element, SVGRect& rect)
 {
-    return RenderSVGModelObject::checkEnclosure(element.renderer(), rect.propertyReference());
+    return RenderSVGModelObject::checkEnclosure(element.renderer(), rect.value());
 }
 
 Ref<NodeList> SVGSVGElement::getIntersectionList(SVGRect& rect, SVGElement* referenceElement)
@@ -396,12 +386,12 @@ Ref<SVGRect> SVGSVGElement::createSVGRect()
 
 Ref<SVGTransform> SVGSVGElement::createSVGTransform()
 {
-    return SVGTransform::create(SVGTransformValue { SVGTransformValue::SVG_TRANSFORM_MATRIX });
+    return SVGTransform::create(SVGTransformValue::SVG_TRANSFORM_MATRIX);
 }
 
 Ref<SVGTransform> SVGSVGElement::createSVGTransformFromMatrix(SVGMatrix& matrix)
 {
-    return SVGTransform::create(SVGTransformValue { matrix.propertyReference() });
+    return SVGTransform::create(matrix.value());
 }
 
 AffineTransform SVGSVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMScope mode) const
@@ -474,7 +464,7 @@ RenderPtr<RenderElement> SVGSVGElement::createElementRenderer(RenderStyle&& styl
 Node::InsertedIntoAncestorResult SVGSVGElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
     if (insertionType.connectedToDocument) {
-        document().accessSVGExtensions().addTimeContainer(this);
+        document().accessSVGExtensions().addTimeContainer(*this);
         if (!document().accessSVGExtensions().areAnimationsPaused())
             unpauseAnimations();
 
@@ -490,7 +480,7 @@ Node::InsertedIntoAncestorResult SVGSVGElement::insertedIntoAncestor(InsertionTy
 void SVGSVGElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
     if (removalType.disconnectedFromDocument) {
-        document().accessSVGExtensions().removeTimeContainer(this);
+        document().accessSVGExtensions().removeTimeContainer(*this);
         pauseAnimations();
     }
     SVGGraphicsElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
@@ -618,7 +608,7 @@ AffineTransform SVGSVGElement::viewBoxToViewTransform(float viewWidth, float vie
         return SVGFitToViewBox::viewBoxToViewTransform(currentViewBoxRect(), preserveAspectRatio(), viewWidth, viewHeight);
 
     AffineTransform transform = SVGFitToViewBox::viewBoxToViewTransform(currentViewBoxRect(), m_viewSpec->preserveAspectRatio(), viewWidth, viewHeight);
-    m_viewSpec->transformValue().concatenate(transform);
+    transform *= m_viewSpec->transform()->concatenate();
     return transform;
 }
 
@@ -745,7 +735,7 @@ void SVGSVGElement::resumeFromDocumentSuspension()
 
 // getElementById on SVGSVGElement is restricted to only the child subtree defined by the <svg> element.
 // See http://www.w3.org/TR/SVG11/struct.html#InterfaceSVGSVGElement
-Element* SVGSVGElement::getElementById(const AtomicString& id)
+Element* SVGSVGElement::getElementById(const AtomString& id)
 {
     if (id.isNull())
         return nullptr;

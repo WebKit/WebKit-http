@@ -20,6 +20,7 @@
 #include "config.h"
 #include "WebViewTest.h"
 #include <wtf/HashSet.h>
+#include <wtf/RunLoop.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/text/StringHash.h>
 
@@ -146,7 +147,7 @@ public:
             g_assert_cmpstr(webkit_script_dialog_get_message(dialog), ==, kAlertDialogMessage);
             break;
         case WEBKIT_SCRIPT_DIALOG_CONFIRM:
-            g_assert(m_scriptDialogConfirmed);
+            g_assert_true(m_scriptDialogConfirmed);
             g_assert_cmpstr(webkit_script_dialog_get_message(dialog), ==, "confirmed");
 
             break;
@@ -158,7 +159,15 @@ public:
             break;
         }
 
-        g_main_loop_quit(m_mainLoop);
+        if (m_delayedScriptDialogs) {
+            webkit_script_dialog_ref(dialog);
+            RunLoop::main().dispatch([this, dialog] {
+                webkit_script_dialog_close(dialog);
+                webkit_script_dialog_unref(dialog);
+                g_main_loop_quit(m_mainLoop);
+            });
+        } else
+            g_main_loop_quit(m_mainLoop);
     }
 
     void scriptConfirm(WebKitScriptDialog* dialog)
@@ -204,7 +213,7 @@ public:
 
     static void mouseTargetChanged(WebKitWebView*, WebKitHitTestResult* hitTestResult, guint modifiers, UIClientTest* test)
     {
-        g_assert(WEBKIT_IS_HIT_TEST_RESULT(hitTestResult));
+        g_assert_true(WEBKIT_IS_HIT_TEST_RESULT(hitTestResult));
         test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(hitTestResult));
 
         test->m_mouseTargetHitTestResult = hitTestResult;
@@ -214,13 +223,13 @@ public:
 
     static gboolean permissionRequested(WebKitWebView*, WebKitPermissionRequest* request, UIClientTest* test)
     {
-        g_assert(WEBKIT_IS_PERMISSION_REQUEST(request));
+        g_assert_true(WEBKIT_IS_PERMISSION_REQUEST(request));
         test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(request));
 
         if (test->m_verifyMediaTypes && WEBKIT_IS_USER_MEDIA_PERMISSION_REQUEST(request)) {
             WebKitUserMediaPermissionRequest* userMediaRequest = WEBKIT_USER_MEDIA_PERMISSION_REQUEST(request);
-            g_assert(webkit_user_media_permission_is_for_audio_device(userMediaRequest) == test->m_expectedAudioMedia);
-            g_assert(webkit_user_media_permission_is_for_video_device(userMediaRequest) == test->m_expectedVideoMedia);
+            g_assert_true(webkit_user_media_permission_is_for_audio_device(userMediaRequest) == test->m_expectedAudioMedia);
+            g_assert_true(webkit_user_media_permission_is_for_video_device(userMediaRequest) == test->m_expectedVideoMedia);
         }
 
         if (test->m_allowPermissionRequests)
@@ -318,8 +327,8 @@ public:
 
     virtual WebKitWebView* viewCreate(WebKitWebView* webView, WebKitNavigationAction* navigation)
     {
-        g_assert(webView == m_webView);
-        g_assert(navigation);
+        g_assert_true(webView == m_webView);
+        g_assert_nonnull(navigation);
 
         auto* newWebView = Test::createWebView(webkit_web_view_get_context(webView));
 #if PLATFORM(GTK)
@@ -329,7 +338,7 @@ public:
         m_webViewEvents.append(Create);
 
         WebKitWindowProperties* windowProperties = webkit_web_view_get_window_properties(WEBKIT_WEB_VIEW(newWebView));
-        g_assert(windowProperties);
+        g_assert_nonnull(windowProperties);
         assertObjectIsDeletedWhenTestFinishes(G_OBJECT(windowProperties));
         m_windowPropertiesChanged.clear();
 
@@ -342,10 +351,10 @@ public:
 
     virtual void viewReadyToShow(WebKitWebView* webView)
     {
-        g_assert(webView != m_webView);
+        g_assert_true(webView != m_webView);
 
         WebKitWindowProperties* windowProperties = webkit_web_view_get_window_properties(webView);
-        g_assert(windowProperties);
+        g_assert_nonnull(windowProperties);
         if (!m_windowProperties.isNull())
             WindowProperties(windowProperties).assertEqual(m_windowProperties);
 
@@ -354,7 +363,7 @@ public:
 
     virtual void viewClose(WebKitWebView* webView)
     {
-        g_assert(webView != m_webView);
+        g_assert_true(webView != m_webView);
 
         m_webViewEvents.append(Close);
         g_object_unref(webView);
@@ -365,6 +374,7 @@ public:
     Vector<WebViewEvents> m_webViewEvents;
     WebKitScriptDialogType m_scriptDialogType;
     bool m_scriptDialogConfirmed;
+    bool m_delayedScriptDialogs { false };
     bool m_allowPermissionRequests;
     gboolean m_verifyMediaTypes;
     gboolean m_expectedAudioMedia;
@@ -412,8 +422,8 @@ public:
 
     WebKitWebView* viewCreate(WebKitWebView* webView, WebKitNavigationAction* navigation)
     {
-        g_assert(navigation);
-        g_assert(!m_navigation);
+        g_assert_nonnull(navigation);
+        g_assert_null(m_navigation);
         m_navigation = webkit_navigation_action_copy(navigation);
         g_main_loop_quit(m_mainLoop);
         return nullptr;
@@ -455,7 +465,7 @@ static void testWebViewCreateNavigationData(CreateNavigationDataTest* test, gcon
     // FIXME: This should be button 1.
     g_assert_cmpuint(webkit_navigation_action_get_mouse_button(test->m_navigation), ==, 0);
     g_assert_cmpuint(webkit_navigation_action_get_modifiers(test->m_navigation), ==, 0);
-    g_assert(webkit_navigation_action_is_user_gesture(test->m_navigation));
+    g_assert_true(webkit_navigation_action_is_user_gesture(test->m_navigation));
 
     // Click on a link.
     test->clickAndWaitUntilMainLoopFinishes(21, 21);
@@ -463,7 +473,7 @@ static void testWebViewCreateNavigationData(CreateNavigationDataTest* test, gcon
     g_assert_cmpuint(webkit_navigation_action_get_navigation_type(test->m_navigation), ==, WEBKIT_NAVIGATION_TYPE_LINK_CLICKED);
     g_assert_cmpuint(webkit_navigation_action_get_mouse_button(test->m_navigation), ==, 1);
     g_assert_cmpuint(webkit_navigation_action_get_modifiers(test->m_navigation), ==, 0);
-    g_assert(webkit_navigation_action_is_user_gesture(test->m_navigation));
+    g_assert_true(webkit_navigation_action_is_user_gesture(test->m_navigation));
 
     // No user interaction.
     test->loadHTML("<html><body onLoad=\"window.open();\"></html>");
@@ -473,7 +483,7 @@ static void testWebViewCreateNavigationData(CreateNavigationDataTest* test, gcon
     g_assert_cmpuint(webkit_navigation_action_get_navigation_type(test->m_navigation), ==, WEBKIT_NAVIGATION_TYPE_OTHER);
     g_assert_cmpuint(webkit_navigation_action_get_mouse_button(test->m_navigation), ==, 0);
     g_assert_cmpuint(webkit_navigation_action_get_modifiers(test->m_navigation), ==, 0);
-    g_assert(!webkit_navigation_action_is_user_gesture(test->m_navigation));
+    g_assert_false(webkit_navigation_action_is_user_gesture(test->m_navigation));
 }
 #endif // PLATFORM(GTK)
 
@@ -493,13 +503,13 @@ public:
 
     static void dialogRunAsModalCallback(WebKitWebView* webView, ModalDialogsTest* test)
     {
-        g_assert(webView != test->m_webView);
+        g_assert_true(webView != test->m_webView);
         test->m_webViewEvents.append(RunAsModal);
     }
 
     WebKitWebView* viewCreate(WebKitWebView* webView, WebKitNavigationAction* navigation)
     {
-        g_assert(webView == m_webView);
+        g_assert_true(webView == m_webView);
 
         auto* newWebView = UIClientTest::viewCreate(webView, navigation);
         g_signal_connect(newWebView, "run-as-modal", G_CALLBACK(dialogRunAsModalCallback), this);
@@ -508,7 +518,7 @@ public:
 
     void viewReadyToShow(WebKitWebView* webView)
     {
-        g_assert(webView != m_webView);
+        g_assert_true(webView != m_webView);
         m_webViewEvents.append(ReadyToShow);
     }
 };
@@ -558,29 +568,35 @@ static void testWebViewJavaScriptDialogs(UIClientTest* test, gconstpointer)
         "<html><body onbeforeunload=\"return beforeUnloadHandler();\"><input id=\"testInput\" type=\"text\"></input><script>function beforeUnloadHandler() { return \"%s\"; }</script></body></html>";
 #endif
 
-    test->m_scriptDialogType = WEBKIT_SCRIPT_DIALOG_ALERT;
-    GUniquePtr<char> alertDialogMessage(g_strdup_printf(jsAlertFormat, kAlertDialogMessage));
-    GUniquePtr<char> alertHTML(g_strdup_printf(htmlOnLoadFormat, alertDialogMessage.get()));
-    test->loadHtml(alertHTML.get(), 0);
-    test->waitUntilMainLoopFinishes();
-    webkit_web_view_stop_loading(test->m_webView);
-    test->waitUntilLoadFinished();
+    for (unsigned i = 0; i <= 1; ++i) {
+        test->m_delayedScriptDialogs = !!i;
 
-    test->m_scriptDialogType = WEBKIT_SCRIPT_DIALOG_CONFIRM;
-    GUniquePtr<char> confirmDialogMessage(g_strdup_printf(jsConfirmFormat, kConfirmDialogMessage));
-    GUniquePtr<char> confirmHTML(g_strdup_printf(htmlOnLoadFormat, confirmDialogMessage.get()));
-    test->loadHtml(confirmHTML.get(), 0);
-    test->waitUntilMainLoopFinishes();
-    webkit_web_view_stop_loading(test->m_webView);
-    test->waitUntilLoadFinished();
+        test->m_scriptDialogType = WEBKIT_SCRIPT_DIALOG_ALERT;
+        GUniquePtr<char> alertDialogMessage(g_strdup_printf(jsAlertFormat, kAlertDialogMessage));
+        GUniquePtr<char> alertHTML(g_strdup_printf(htmlOnLoadFormat, alertDialogMessage.get()));
+        test->loadHtml(alertHTML.get(), nullptr);
+        test->waitUntilMainLoopFinishes();
+        webkit_web_view_stop_loading(test->m_webView);
+        test->waitUntilLoadFinished();
 
-    test->m_scriptDialogType = WEBKIT_SCRIPT_DIALOG_PROMPT;
-    GUniquePtr<char> promptDialogMessage(g_strdup_printf(jsPromptFormat, kPromptDialogMessage));
-    GUniquePtr<char> promptHTML(g_strdup_printf(htmlOnLoadFormat, promptDialogMessage.get()));
-    test->loadHtml(promptHTML.get(), 0);
-    test->waitUntilMainLoopFinishes();
-    webkit_web_view_stop_loading(test->m_webView);
-    test->waitUntilLoadFinished();
+        test->m_scriptDialogType = WEBKIT_SCRIPT_DIALOG_CONFIRM;
+        GUniquePtr<char> confirmDialogMessage(g_strdup_printf(jsConfirmFormat, kConfirmDialogMessage));
+        GUniquePtr<char> confirmHTML(g_strdup_printf(htmlOnLoadFormat, confirmDialogMessage.get()));
+        test->loadHtml(confirmHTML.get(), nullptr);
+        test->waitUntilMainLoopFinishes();
+        webkit_web_view_stop_loading(test->m_webView);
+        test->waitUntilLoadFinished();
+
+        test->m_scriptDialogType = WEBKIT_SCRIPT_DIALOG_PROMPT;
+        GUniquePtr<char> promptDialogMessage(g_strdup_printf(jsPromptFormat, kPromptDialogMessage));
+        GUniquePtr<char> promptHTML(g_strdup_printf(htmlOnLoadFormat, promptDialogMessage.get()));
+        test->loadHtml(promptHTML.get(), nullptr);
+        test->waitUntilMainLoopFinishes();
+        webkit_web_view_stop_loading(test->m_webView);
+        test->waitUntilLoadFinished();
+    }
+
+    test->m_delayedScriptDialogs = false;
 
     // FIXME: implement simulateUserInteraction in WPE.
 #if PLATFORM(GTK)
@@ -597,7 +613,7 @@ static void testWebViewJavaScriptDialogs(UIClientTest* test, gconstpointer)
     test->m_scriptDialogConfirmed = false;
     webkit_web_view_reload(test->m_webView);
     test->waitUntilLoadFinished();
-    g_assert(test->m_scriptDialogConfirmed);
+    g_assert_true(test->m_scriptDialogConfirmed);
 #endif
 
     // Navigation should trigger onbeforeunload.
@@ -605,7 +621,7 @@ static void testWebViewJavaScriptDialogs(UIClientTest* test, gconstpointer)
     test->m_scriptDialogConfirmed = false;
     test->loadHtml("<html></html>", nullptr);
     test->waitUntilLoadFinished();
-    g_assert(test->m_scriptDialogConfirmed);
+    g_assert_true(test->m_scriptDialogConfirmed);
 
     // Try close should trigger onbeforeunload.
     test->m_scriptDialogConfirmed = false;
@@ -613,7 +629,7 @@ static void testWebViewJavaScriptDialogs(UIClientTest* test, gconstpointer)
     test->waitUntilLoadFinished();
     test->simulateUserInteraction();
     test->tryCloseAndWaitUntilClosed();
-    g_assert(test->m_scriptDialogConfirmed);
+    g_assert_true(test->m_scriptDialogConfirmed);
 
     // Try close on a page with no unload handlers should not trigger onbeforeunload,
     // but should actually close the page.
@@ -621,10 +637,10 @@ static void testWebViewJavaScriptDialogs(UIClientTest* test, gconstpointer)
     test->loadHtml("<html><body></body></html>", nullptr);
     test->waitUntilLoadFinished();
     // We got a onbeforeunload of the previous page.
-    g_assert(test->m_scriptDialogConfirmed);
+    g_assert_true(test->m_scriptDialogConfirmed);
     test->m_scriptDialogConfirmed = false;
     test->tryCloseAndWaitUntilClosed();
-    g_assert(!test->m_scriptDialogConfirmed);
+    g_assert_false(test->m_scriptDialogConfirmed);
 #endif // PLATFORM(GTK)
 }
 
@@ -645,7 +661,7 @@ static void testWebViewWindowProperties(UIClientTest* test, gconstpointer)
         "locationbar-visible", "menubar-visible", "statusbar-visible", "toolbar-visible", "scrollbars-visible"
     };
     for (size_t i = 0; i < G_N_ELEMENTS(propertiesChanged); ++i)
-        g_assert(test->m_windowPropertiesChanged.contains(propertiesChanged[i]));
+        g_assert_true(test->m_windowPropertiesChanged.contains(propertiesChanged[i]));
 
     Vector<UIClientTest::WebViewEvents>& events = test->m_webViewEvents;
     g_assert_cmpint(events.size(), ==, 3);
@@ -683,100 +699,99 @@ static void testWebViewMouseTarget(UIClientTest* test, gconstpointer)
 
     // Move over link.
     WebKitHitTestResult* hitTestResult = test->moveMouseAndWaitUntilMouseTargetChanged(1, 1);
-    g_assert(webkit_hit_test_result_context_is_link(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_image(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_media(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_editable(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_selection(hitTestResult));
+    g_assert_true(webkit_hit_test_result_context_is_link(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_image(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_media(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_editable(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_selection(hitTestResult));
     g_assert_cmpstr(webkit_hit_test_result_get_link_uri(hitTestResult), ==, "http://www.webkitgtk.org/");
     g_assert_cmpstr(webkit_hit_test_result_get_link_title(hitTestResult), ==, "WebKitGTK+ Title");
     g_assert_cmpstr(webkit_hit_test_result_get_link_label(hitTestResult), ==, "WebKitGTK+ Website");
-    g_assert(!test->m_mouseTargetModifiers);
+    g_assert_cmpuint(test->m_mouseTargetModifiers, ==, 0);
 
     // Move out of the link.
     hitTestResult = test->moveMouseAndWaitUntilMouseTargetChanged(0, 0);
-    g_assert(!webkit_hit_test_result_context_is_link(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_image(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_media(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_editable(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_selection(hitTestResult));
-    g_assert(!test->m_mouseTargetModifiers);
+    g_assert_false(webkit_hit_test_result_context_is_link(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_image(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_media(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_editable(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_selection(hitTestResult));
+    g_assert_cmpuint(test->m_mouseTargetModifiers, ==, 0);
 
     // Move over image with GDK_CONTROL_MASK.
     hitTestResult = test->moveMouseAndWaitUntilMouseTargetChanged(1, 10, GDK_CONTROL_MASK);
-    g_assert(!webkit_hit_test_result_context_is_link(hitTestResult));
-    g_assert(webkit_hit_test_result_context_is_image(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_media(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_editable(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_selection(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_scrollbar(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_link(hitTestResult));
+    g_assert_true(webkit_hit_test_result_context_is_image(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_media(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_editable(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_selection(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_scrollbar(hitTestResult));
     g_assert_cmpstr(webkit_hit_test_result_get_image_uri(hitTestResult), ==, "file:///0xdeadbeef");
-    g_assert(test->m_mouseTargetModifiers & GDK_CONTROL_MASK);
+    g_assert_true(test->m_mouseTargetModifiers & GDK_CONTROL_MASK);
 
     // Move over image link.
     hitTestResult = test->moveMouseAndWaitUntilMouseTargetChanged(1, 20);
-    g_assert(webkit_hit_test_result_context_is_link(hitTestResult));
-    g_assert(webkit_hit_test_result_context_is_image(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_media(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_editable(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_scrollbar(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_selection(hitTestResult));
+    g_assert_true(webkit_hit_test_result_context_is_link(hitTestResult));
+    g_assert_true(webkit_hit_test_result_context_is_image(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_media(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_editable(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_scrollbar(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_selection(hitTestResult));
     g_assert_cmpstr(webkit_hit_test_result_get_link_uri(hitTestResult), ==, "http://www.webkitgtk.org/logo");
     g_assert_cmpstr(webkit_hit_test_result_get_image_uri(hitTestResult), ==, "file:///0xdeadbeef");
     g_assert_cmpstr(webkit_hit_test_result_get_link_title(hitTestResult), ==, "WebKitGTK+ Logo");
-    g_assert(!webkit_hit_test_result_get_link_label(hitTestResult));
-    g_assert(!test->m_mouseTargetModifiers);
+    g_assert_false(webkit_hit_test_result_get_link_label(hitTestResult));
+    g_assert_cmpuint(test->m_mouseTargetModifiers, ==, 0);
 
     // Move over media.
     hitTestResult = test->moveMouseAndWaitUntilMouseTargetChanged(1, 100);
-    g_assert(!webkit_hit_test_result_context_is_link(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_image(hitTestResult));
-    g_assert(webkit_hit_test_result_context_is_media(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_editable(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_scrollbar(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_selection(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_link(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_image(hitTestResult));
+    g_assert_true(webkit_hit_test_result_context_is_media(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_editable(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_scrollbar(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_selection(hitTestResult));
     g_assert_cmpstr(webkit_hit_test_result_get_media_uri(hitTestResult), ==, "file:///movie.ogg");
-    g_assert(!test->m_mouseTargetModifiers);
+    g_assert_cmpuint(test->m_mouseTargetModifiers, ==, 0);
 
     // Mover over input.
     hitTestResult = test->moveMouseAndWaitUntilMouseTargetChanged(5, 35);
-    g_assert(!webkit_hit_test_result_context_is_link(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_image(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_media(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_scrollbar(hitTestResult));
-    g_assert(webkit_hit_test_result_context_is_editable(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_selection(hitTestResult));
-    g_assert(!test->m_mouseTargetModifiers);
+    g_assert_false(webkit_hit_test_result_context_is_link(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_image(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_media(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_scrollbar(hitTestResult));
+    g_assert_true(webkit_hit_test_result_context_is_editable(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_selection(hitTestResult));
+    g_assert_cmpuint(test->m_mouseTargetModifiers, ==, 0);
 
     // Move over scrollbar.
     hitTestResult = test->moveMouseAndWaitUntilMouseTargetChanged(gtk_widget_get_allocated_width(GTK_WIDGET(test->m_webView)) - 4, 5);
-    g_assert(!webkit_hit_test_result_context_is_link(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_image(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_media(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_editable(hitTestResult));
-    g_assert(webkit_hit_test_result_context_is_scrollbar(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_selection(hitTestResult));
-    g_assert(!test->m_mouseTargetModifiers);
+    g_assert_false(webkit_hit_test_result_context_is_link(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_image(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_media(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_editable(hitTestResult));
+    g_assert_true(webkit_hit_test_result_context_is_scrollbar(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_selection(hitTestResult));
+    g_assert_cmpuint(test->m_mouseTargetModifiers, ==, 0);
 
     // Move over selection.
     hitTestResult = test->moveMouseAndWaitUntilMouseTargetChanged(2, 145);
-    g_assert(!webkit_hit_test_result_context_is_link(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_image(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_media(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_editable(hitTestResult));
-    g_assert(!webkit_hit_test_result_context_is_scrollbar(hitTestResult));
-    g_assert(webkit_hit_test_result_context_is_selection(hitTestResult));
-    g_assert(!test->m_mouseTargetModifiers);
+    g_assert_false(webkit_hit_test_result_context_is_link(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_image(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_media(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_editable(hitTestResult));
+    g_assert_false(webkit_hit_test_result_context_is_scrollbar(hitTestResult));
+    g_assert_true(webkit_hit_test_result_context_is_selection(hitTestResult));
+    g_assert_cmpuint(test->m_mouseTargetModifiers, ==, 0);
 }
 #endif // PLATFORM(GTK)
 
-#if ENABLE(GEOLOCATION)
 static void testWebViewGeolocationPermissionRequests(UIClientTest* test, gconstpointer)
 {
     // Some versions of geoclue give a runtime warning because it tries
     // to register the error quark twice. See https://bugs.webkit.org/show_bug.cgi?id=89858.
     // Make warnings non-fatal for this test to make it pass.
-    test->removeLogFatalFlag(G_LOG_LEVEL_WARNING);
+    Test::removeLogFatalFlag(G_LOG_LEVEL_WARNING);
 #if PLATFORM(GTK)
     test->showInWindowAndWaitUntilMapped();
 #endif
@@ -813,11 +828,51 @@ static void testWebViewGeolocationPermissionRequests(UIClientTest* test, gconstp
     test->loadHtml(geolocationRequestHTML, "https://foo.com/bar");
     result = test->waitUntilPermissionResultMessageReceived();
     g_assert_cmpstr(result, !=, "1");
-    test->addLogFatalFlag(G_LOG_LEVEL_WARNING);
+    Test::addLogFatalFlag(G_LOG_LEVEL_WARNING);
 }
-#endif // ENABLE(GEOLOCATION)
 
 #if ENABLE(MEDIA_STREAM)
+static void testWebViewUserMediaEnumerateDevicesPermissionCheck(UIClientTest* test, gconstpointer)
+{
+    WebKitSettings* settings = webkit_web_view_get_settings(test->m_webView);
+    gboolean enabled = webkit_settings_get_enable_media_stream(settings);
+    webkit_settings_set_enable_media_stream(settings, TRUE);
+
+#if PLATFORM(GTK)
+    test->showInWindowAndWaitUntilMapped();
+#endif
+    static const char* userMediaRequestHTML =
+        "<html>"
+        "  <script>"
+        "  function runTest()"
+        "  {"
+        "    navigator.mediaDevices.enumerateDevices().then("
+        "        function(devices) { "
+        "            devices.forEach(function(device) {"
+        "                                if (device.label) document.title = \"OK\";"
+        "                                             else document.title = \"Permission denied\";"
+        "            })"
+        "    })"
+        "  }"
+        "  </script>"
+        "  <body onload='runTest();'></body>"
+        "</html>";
+
+    test->m_verifyMediaTypes = TRUE;
+
+    // Test denying a permission request.
+    test->m_allowPermissionRequests = false;
+    test->loadHtml(userMediaRequestHTML, nullptr);
+    test->waitUntilTitleChangedTo("Permission denied");
+
+    // Test allowing a permission request.
+    test->m_allowPermissionRequests = true;
+    test->loadHtml(userMediaRequestHTML, nullptr);
+    test->waitUntilTitleChangedTo("OK");
+
+    webkit_settings_set_enable_media_stream(settings, enabled);
+}
+
 static void testWebViewUserMediaPermissionRequests(UIClientTest* test, gconstpointer)
 {
     WebKitSettings* settings = webkit_web_view_get_settings(test->m_webView);
@@ -938,16 +993,16 @@ static void testWebViewFileChooserRequest(FileChooserTest* test, gconstpointer)
     test->loadHtml(simpleFileUploadHTML.get(), 0);
     test->waitUntilLoadFinished();
     WebKitFileChooserRequest* fileChooserRequest = test->clickMouseButtonAndWaitForFileChooserRequest(5, 5);
-    g_assert(!webkit_file_chooser_request_get_select_multiple(fileChooserRequest));
+    g_assert_false(webkit_file_chooser_request_get_select_multiple(fileChooserRequest));
 
     const gchar* const* mimeTypes = webkit_file_chooser_request_get_mime_types(fileChooserRequest);
-    g_assert(!mimeTypes);
+    g_assert_null(mimeTypes);
 #if PLATFORM(GTK)
     GtkFileFilter* filter = webkit_file_chooser_request_get_mime_types_filter(fileChooserRequest);
-    g_assert(!filter);
+    g_assert_null(filter);
 #endif
     const gchar* const* selectedFiles = webkit_file_chooser_request_get_selected_files(fileChooserRequest);
-    g_assert(!selectedFiles);
+    g_assert_null(selectedFiles);
     webkit_file_chooser_request_cancel(fileChooserRequest);
 
     // Multiple selections allowed, no MIME filtering, some pre-selected files.
@@ -955,16 +1010,16 @@ static void testWebViewFileChooserRequest(FileChooserTest* test, gconstpointer)
     test->loadHtml(multipleSelectionFileUploadHTML.get(), 0);
     test->waitUntilLoadFinished();
     fileChooserRequest = test->clickMouseButtonAndWaitForFileChooserRequest(5, 5);
-    g_assert(webkit_file_chooser_request_get_select_multiple(fileChooserRequest));
+    g_assert_true(webkit_file_chooser_request_get_select_multiple(fileChooserRequest));
 
     mimeTypes = webkit_file_chooser_request_get_mime_types(fileChooserRequest);
-    g_assert(!mimeTypes);
+    g_assert_null(mimeTypes);
 #if PLATFORM(GTK)
     filter = webkit_file_chooser_request_get_mime_types_filter(fileChooserRequest);
-    g_assert(!filter);
+    g_assert_null(filter);
 #endif
     selectedFiles = webkit_file_chooser_request_get_selected_files(fileChooserRequest);
-    g_assert(!selectedFiles);
+    g_assert_null(selectedFiles);
 
     // Select some files.
     const gchar* filesToSelect[4] = { "/foo", "/foo/bar", "/foo/bar/baz", 0 };
@@ -972,21 +1027,21 @@ static void testWebViewFileChooserRequest(FileChooserTest* test, gconstpointer)
 
     // Check the files that have been just selected.
     selectedFiles = webkit_file_chooser_request_get_selected_files(fileChooserRequest);
-    g_assert(selectedFiles);
+    g_assert_nonnull(selectedFiles);
     g_assert_cmpstr(selectedFiles[0], ==, "/foo");
     g_assert_cmpstr(selectedFiles[1], ==, "/foo/bar");
     g_assert_cmpstr(selectedFiles[2], ==, "/foo/bar/baz");
-    g_assert(!selectedFiles[3]);
+    g_assert_null(selectedFiles[3]);
 
     // Perform another request to check if the list of files selected
     // in the previous step appears now as part of the new request.
     fileChooserRequest = test->clickMouseButtonAndWaitForFileChooserRequest(5, 5);
     selectedFiles = webkit_file_chooser_request_get_selected_files(fileChooserRequest);
-    g_assert(selectedFiles);
+    g_assert_nonnull(selectedFiles);
     g_assert_cmpstr(selectedFiles[0], ==, "/foo");
     g_assert_cmpstr(selectedFiles[1], ==, "/foo/bar");
     g_assert_cmpstr(selectedFiles[2], ==, "/foo/bar/baz");
-    g_assert(!selectedFiles[3]);
+    g_assert_null(selectedFiles[3]);
     webkit_file_chooser_request_cancel(fileChooserRequest);
 
     // Multiple selections not allowed, only accept images, audio and video files..
@@ -994,25 +1049,25 @@ static void testWebViewFileChooserRequest(FileChooserTest* test, gconstpointer)
     test->loadHtml(mimeFilteredFileUploadHTML.get(), 0);
     test->waitUntilLoadFinished();
     fileChooserRequest = test->clickMouseButtonAndWaitForFileChooserRequest(5, 5);
-    g_assert(!webkit_file_chooser_request_get_select_multiple(fileChooserRequest));
+    g_assert_false(webkit_file_chooser_request_get_select_multiple(fileChooserRequest));
 
     mimeTypes = webkit_file_chooser_request_get_mime_types(fileChooserRequest);
-    g_assert(mimeTypes);
+    g_assert_nonnull(mimeTypes);
     g_assert_cmpstr(mimeTypes[0], ==, "audio/*");
     g_assert_cmpstr(mimeTypes[1], ==, "video/*");
     g_assert_cmpstr(mimeTypes[2], ==, "image/*");
-    g_assert(!mimeTypes[3]);
+    g_assert_null(mimeTypes[3]);
 
 #if PLATFORM(GTK)
     filter = webkit_file_chooser_request_get_mime_types_filter(fileChooserRequest);
-    g_assert(GTK_IS_FILE_FILTER(filter));
-    g_assert(checkMimeTypeForFilter(filter, "audio/*"));
-    g_assert(checkMimeTypeForFilter(filter, "video/*"));
-    g_assert(checkMimeTypeForFilter(filter, "image/*"));
+    g_assert_true(GTK_IS_FILE_FILTER(filter));
+    g_assert_true(checkMimeTypeForFilter(filter, "audio/*"));
+    g_assert_true(checkMimeTypeForFilter(filter, "video/*"));
+    g_assert_true(checkMimeTypeForFilter(filter, "image/*"));
 #endif
 
     selectedFiles = webkit_file_chooser_request_get_selected_files(fileChooserRequest);
-    g_assert(!selectedFiles);
+    g_assert_null(selectedFiles);
     webkit_file_chooser_request_cancel(fileChooserRequest);
 }
 #endif // PLATFORM(GTK)
@@ -1030,7 +1085,7 @@ public:
 
     static void requestFinishedCallback(WebKitColorChooserRequest* request, ColorChooserTest* test)
     {
-        g_assert(test->m_request.get() == request);
+        g_assert_true(test->m_request.get() == request);
         test->m_request = nullptr;
         if (g_main_loop_is_running(test->m_mainLoop))
             g_main_loop_quit(test->m_mainLoop);
@@ -1043,7 +1098,7 @@ public:
 
     void runColorChooser(WebKitColorChooserRequest* request)
     {
-        g_assert(WEBKIT_IS_COLOR_CHOOSER_REQUEST(request));
+        g_assert_true(WEBKIT_IS_COLOR_CHOOSER_REQUEST(request));
         assertObjectIsDeletedWhenTestFinishes(G_OBJECT(request));
         m_request = request;
         g_signal_connect(request, "finished", G_CALLBACK(requestFinishedCallback), this);
@@ -1052,23 +1107,23 @@ public:
 
     void finishRequest()
     {
-        g_assert(m_request.get());
+        g_assert_nonnull(m_request.get());
         webkit_color_chooser_request_finish(m_request.get());
-        g_assert(!m_request);
+        g_assert_null(m_request);
     }
 
     void cancelRequest()
     {
-        g_assert(m_request.get());
+        g_assert_nonnull(m_request.get());
         webkit_color_chooser_request_cancel(m_request.get());
-        g_assert(!m_request);
+        g_assert_null(m_request);
     }
 
     WebKitColorChooserRequest* clickMouseButtonAndWaitForColorChooserRequest(int x, int y)
     {
         clickMouseButton(x, y);
         g_main_loop_run(m_mainLoop);
-        g_assert(m_request.get());
+        g_assert_nonnull(m_request.get());
         return m_request.get();
     }
 
@@ -1090,13 +1145,13 @@ static void testWebViewColorChooserRequest(ColorChooserTest* test, gconstpointer
     GdkRGBA rgba1;
     GdkRGBA rgba2 = { 0., 0., 0., 1. };
     webkit_color_chooser_request_get_rgba(request, &rgba1);
-    g_assert(gdk_rgba_equal(&rgba1, &rgba2));
+    g_assert_true(gdk_rgba_equal(&rgba1, &rgba2));
 
     // Set a different color.
     rgba2.green = 1;
     webkit_color_chooser_request_set_rgba(request, &rgba2);
     webkit_color_chooser_request_get_rgba(request, &rgba1);
-    g_assert(gdk_rgba_equal(&rgba1, &rgba2));
+    g_assert_true(gdk_rgba_equal(&rgba1, &rgba2));
 
     GdkRectangle rect;
     webkit_color_chooser_request_get_element_rectangle(request, &rect);
@@ -1115,7 +1170,7 @@ static void testWebViewColorChooserRequest(ColorChooserTest* test, gconstpointer
 
     webkit_color_chooser_request_get_rgba(request, &rgba1);
     GdkRGBA rgba3 = { 1., 0., 1., 1. };
-    g_assert(gdk_rgba_equal(&rgba1, &rgba3));
+    g_assert_true(gdk_rgba_equal(&rgba1, &rgba3));
 
     test->cancelRequest();
 }
@@ -1136,10 +1191,9 @@ void beforeAll()
 #if PLATFORM(GTK)
     UIClientTest::add("WebKitWebView", "mouse-target", testWebViewMouseTarget);
 #endif
-#if ENABLE(GEOLOCATION)
     UIClientTest::add("WebKitWebView", "geolocation-permission-requests", testWebViewGeolocationPermissionRequests);
-#endif
 #if ENABLE(MEDIA_STREAM)
+    UIClientTest::add("WebKitWebView", "usermedia-enumeratedevices-permission-check", testWebViewUserMediaEnumerateDevicesPermissionCheck);
     UIClientTest::add("WebKitWebView", "usermedia-permission-requests", testWebViewUserMediaPermissionRequests);
     UIClientTest::add("WebKitWebView", "audio-usermedia-permission-request", testWebViewAudioOnlyUserMediaPermissionRequests);
 #endif

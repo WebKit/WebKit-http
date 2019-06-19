@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS)
+#if ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS_FAMILY)
 
 #import "UIKitSPI.h"
 #import "WebDataListSuggestionsDropdown.h"
@@ -42,12 +42,12 @@ namespace WebKit {
 
 class WebDataListSuggestionsDropdownIOS : public WebDataListSuggestionsDropdown {
 public:
-    static Ref<WebDataListSuggestionsDropdownIOS> create(WebDataListSuggestionsDropdown::Client&, WKContentView *);
+    static Ref<WebDataListSuggestionsDropdownIOS> create(WebPageProxy&, WKContentView *);
 
     void didSelectOption(const String&);
 
 private:
-    WebDataListSuggestionsDropdownIOS(WebDataListSuggestionsDropdown::Client&, WKContentView *);
+    WebDataListSuggestionsDropdownIOS(WebPageProxy&, WKContentView *);
 
     void show(WebCore::DataListSuggestionInformation&&) final;
     void handleKeydownWithIdentifier(const String&) final;
@@ -59,4 +59,4 @@ private:
 
 } // namespace WebKit
 
-#endif // ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS)
+#endif // ENABLE(DATALIST_ELEMENT) && PLATFORM(IOS_FAMILY)

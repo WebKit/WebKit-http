@@ -35,6 +35,7 @@
 #include "ContextMenuClient.h"
 #include "ContextMenuItem.h"
 #include "ContextMenuProvider.h"
+#include "CustomHeaderFields.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "DocumentLoader.h"
@@ -68,13 +69,14 @@
 #include "UserTypingGestureIndicator.h"
 #include "WindowFeatures.h"
 #include "markup.h"
+#include <wtf/SetForScope.h>
 #include <wtf/WallTime.h>
 #include <wtf/unicode/CharacterNames.h>
 
 
 namespace WebCore {
-using namespace WTF;
-using namespace Unicode;
+
+using namespace WTF::Unicode;
 
 ContextMenuController::ContextMenuController(Page& page, ContextMenuClient& client)
     : m_page(page)
@@ -97,6 +99,11 @@ void ContextMenuController::clearContextMenu()
 
 void ContextMenuController::handleContextMenuEvent(Event& event)
 {
+    if (m_isHandlingContextMenuEvent)
+        return;
+
+    SetForScope<bool> isHandlingContextMenuEventForScope(m_isHandlingContextMenuEvent, true);
+
     m_contextMenu = maybeCreateContextMenu(event);
     if (!m_contextMenu)
         return;
@@ -357,6 +364,11 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuAction action, co
         frame->editor().command("SelectAll").execute();
         break;
 #endif
+#if PLATFORM(GTK)
+    case ContextMenuItemTagInsertEmoji:
+        m_client.insertEmoji(*frame);
+        break;
+#endif
     case ContextMenuItemTagSpellingGuess: {
         VisibleSelection selection = frame->selection().selection();
         if (frame->editor().shouldInsertText(title, selection.toNormalizedRange().get(), EditorInsertAction::Pasted)) {
@@ -434,13 +446,13 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuAction action, co
         m_client.stopSpeaking();
         break;
     case ContextMenuItemTagDefaultDirection:
-        frame->editor().setBaseWritingDirection(NaturalWritingDirection);
+        frame->editor().setBaseWritingDirection(WritingDirection::Natural);
         break;
     case ContextMenuItemTagLeftToRight:
-        frame->editor().setBaseWritingDirection(LeftToRightWritingDirection);
+        frame->editor().setBaseWritingDirection(WritingDirection::LeftToRight);
         break;
     case ContextMenuItemTagRightToLeft:
-        frame->editor().setBaseWritingDirection(RightToLeftWritingDirection);
+        frame->editor().setBaseWritingDirection(WritingDirection::RightToLeft);
         break;
     case ContextMenuItemTagTextDirectionDefault:
         frame->editor().command("MakeTextWritingDirectionNatural").execute();
@@ -814,6 +826,9 @@ void ContextMenuController::populate()
 #if PLATFORM(GTK) || PLATFORM(QT)
     ContextMenuItem SelectAllItem(ActionType, ContextMenuItemTagSelectAll, contextMenuItemTagSelectAll());
 #endif
+#if PLATFORM(GTK)
+    ContextMenuItem InsertEmojiItem(ActionType, ContextMenuItemTagInsertEmoji, contextMenuItemTagInsertEmoji());
+#endif
 
 #if PLATFORM(GTK) || PLATFORM(WIN)
     ContextMenuItem ShareMenuItem;
@@ -1056,6 +1071,9 @@ void ContextMenuController::populate()
 #if PLATFORM(GTK) || PLATFORM(QT)
         appendItem(SelectAllItem, m_contextMenu.get());
 #endif
+#if PLATFORM(GTK)
+        appendItem(InsertEmojiItem, m_contextMenu.get());
+#endif
 
         if (!inPasswordField) {
 #if !PLATFORM(GTK)
@@ -1209,6 +1227,10 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
         case ContextMenuItemTagDelete:
             shouldEnable = frame->editor().canDelete();
             break;
+        case ContextMenuItemTagInsertEmoji:
+            shouldEnable = frame->editor().canEdit();
+            break;
+        case ContextMenuItemTagSelectAll:
         case ContextMenuItemTagInputMethods:
         case ContextMenuItemTagUnicode:
         case ContextMenuItemTagUnicodeInsertLRMMark:
@@ -1224,7 +1246,7 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
             shouldEnable = true;
             break;
 #endif
-#if PLATFORM(GTK) || PLATFORM(QT)
+#if PLATFORM(QT)
         case ContextMenuItemTagSelectAll:
             shouldEnable = true;
             break;
@@ -1348,7 +1370,7 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
             break;
         case ContextMenuItemTagDownloadImageToDisk:
 #if PLATFORM(MAC)
-            if (WebCore::protocolIs(m_context.hitTestResult().absoluteImageURL(), "file"))
+            if (WTF::protocolIs(m_context.hitTestResult().absoluteImageURL(), "file"))
                 shouldEnable = false;
 #endif
             break;
@@ -1363,7 +1385,7 @@ void ContextMenuController::checkOrEnableIfNeeded(ContextMenuItem& item) const
                 item.setTitle(contextMenuItemTagDownloadVideoToDisk());
             else
                 item.setTitle(contextMenuItemTagDownloadAudioToDisk());
-            if (WebCore::protocolIs(m_context.hitTestResult().absoluteImageURL(), "file"))
+            if (WTF::protocolIs(m_context.hitTestResult().absoluteImageURL(), "file"))
                 shouldEnable = false;
             break;
         case ContextMenuItemTagCopyMediaLinkToClipboard:

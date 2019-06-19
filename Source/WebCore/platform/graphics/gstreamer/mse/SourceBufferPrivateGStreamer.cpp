@@ -73,9 +73,7 @@ void SourceBufferPrivateGStreamer::append(Vector<unsigned char>&& data)
     if (!m_sourceBufferPrivateClient)
         return;
 
-    if (m_client->append(this, WTFMove(data)))
-        return;
-
+    m_client->append(this, WTFMove(data));
     m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(SourceBufferPrivateClient::ReadStreamFailed);
 }
 
@@ -106,24 +104,24 @@ void SourceBufferPrivateGStreamer::setReadyState(MediaPlayer::ReadyState state)
     m_mediaSource->setReadyState(state);
 }
 
-void SourceBufferPrivateGStreamer::flush(const AtomicString& trackId)
+void SourceBufferPrivateGStreamer::flush(const AtomString& trackId)
 {
     m_client->flush(trackId);
 }
 
-void SourceBufferPrivateGStreamer::enqueueSample(Ref<MediaSample>&& sample, const AtomicString&)
+void SourceBufferPrivateGStreamer::enqueueSample(Ref<MediaSample>&& sample, const AtomString&)
 {
     m_notifyWhenReadyForMoreSamples = false;
 
     m_client->enqueueSample(WTFMove(sample));
 }
 
-void SourceBufferPrivateGStreamer::allSamplesInTrackEnqueued(const AtomicString& trackId)
+void SourceBufferPrivateGStreamer::allSamplesInTrackEnqueued(const AtomString& trackId)
 {
     m_client->allSamplesInTrackEnqueued(trackId);
 }
 
-bool SourceBufferPrivateGStreamer::isReadyForMoreSamples(const AtomicString&)
+bool SourceBufferPrivateGStreamer::isReadyForMoreSamples(const AtomString&)
 {
     return m_isReadyForMoreSamples;
 }
@@ -148,12 +146,7 @@ void SourceBufferPrivateGStreamer::setActive(bool isActive)
         m_mediaSource->sourceBufferPrivateDidChangeActiveState(this, isActive);
 }
 
-void SourceBufferPrivateGStreamer::stopAskingForMoreSamples(const AtomicString&)
-{
-    notImplemented();
-}
-
-void SourceBufferPrivateGStreamer::notifyClientWhenReadyForMoreSamples(const AtomicString& trackId)
+void SourceBufferPrivateGStreamer::notifyClientWhenReadyForMoreSamples(const AtomString& trackId)
 {
     ASSERT(WTF::isMainThread());
     m_notifyWhenReadyForMoreSamples = true;
@@ -176,6 +169,12 @@ void SourceBufferPrivateGStreamer::didReceiveAllPendingSamples()
 {
     if (m_sourceBufferPrivateClient)
         m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(SourceBufferPrivateClient::AppendSucceeded);
+}
+
+void SourceBufferPrivateGStreamer::appendParsingFailed()
+{
+    if (m_sourceBufferPrivateClient)
+        m_sourceBufferPrivateClient->sourceBufferPrivateAppendComplete(SourceBufferPrivateClient::ParsingFailed);
 }
 
 }

@@ -30,6 +30,7 @@
 #include <webkit2/WebKitDefines.h>
 #include <webkit2/WebKitDownload.h>
 #include <webkit2/WebKitFaviconDatabase.h>
+#include <webkit2/WebKitGeolocationManager.h>
 #include <webkit2/WebKitNetworkProxySettings.h>
 #include <webkit2/WebKitSecurityManager.h>
 #include <webkit2/WebKitURISchemeRequest.h>
@@ -214,6 +215,9 @@ webkit_web_context_download_uri                     (WebKitWebContext           
 WEBKIT_API WebKitCookieManager *
 webkit_web_context_get_cookie_manager               (WebKitWebContext              *context);
 
+WEBKIT_API WebKitGeolocationManager *
+webkit_web_context_get_geolocation_manager          (WebKitWebContext              *context);
+
 WEBKIT_API WebKitFaviconDatabase *
 webkit_web_context_get_favicon_database             (WebKitWebContext              *context);
 
@@ -246,6 +250,18 @@ webkit_web_context_register_uri_scheme              (WebKitWebContext           
                                                      WebKitURISchemeRequestCallback callback,
                                                      gpointer                       user_data,
                                                      GDestroyNotify                 user_data_destroy_func);
+
+WEBKIT_API void
+webkit_web_context_set_sandbox_enabled              (WebKitWebContext              *context,
+                                                     gboolean                       enabled);
+
+WEBKIT_API gboolean
+webkit_web_context_get_sandbox_enabled              (WebKitWebContext              *context);
+
+WEBKIT_API void
+webkit_web_context_add_path_to_sandbox              (WebKitWebContext              *context,
+                                                     const char                    *path,
+                                                     gboolean                       read_only);
 
 WEBKIT_API gboolean
 webkit_web_context_get_spell_checking_enabled       (WebKitWebContext              *context);

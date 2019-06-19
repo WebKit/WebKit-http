@@ -30,10 +30,18 @@
 #include "IDBConnectionToClient.h"
 #include "IDBConnectionToServer.h"
 #include "IDBServer.h"
+#include "StorageQuotaManager.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/WeakPtr.h>
+
+namespace PAL {
+class SessionID;
+}
 
 namespace WebCore {
+
+struct ClientOrigin;
 
 namespace IDBClient {
 class IDBConnectionToServer;
@@ -45,8 +53,11 @@ class IDBServer;
 
 class InProcessIDBServer final : public IDBClient::IDBConnectionToServerDelegate, public IDBServer::IDBConnectionToClientDelegate, public RefCounted<InProcessIDBServer>, public IDBServer::IDBBackingStoreTemporaryFileHandler {
 public:
-    WEBCORE_EXPORT static Ref<InProcessIDBServer> create();
-    WEBCORE_EXPORT static Ref<InProcessIDBServer> create(const String& databaseDirectoryPath);
+    using IDBClient::IDBConnectionToServerDelegate::weakPtrFactory;
+    using WeakValueType = IDBClient::IDBConnectionToServerDelegate::WeakValueType;
+
+    WEBCORE_EXPORT static Ref<InProcessIDBServer> create(PAL::SessionID);
+    WEBCORE_EXPORT static Ref<InProcessIDBServer> create(PAL::SessionID, const String& databaseDirectoryPath);
 
     WEBCORE_EXPORT IDBClient::IDBConnectionToServer& connectionToServer() const;
     IDBServer::IDBConnectionToClient& connectionToClient() const;
@@ -112,16 +123,19 @@ public:
     void ref() override { RefCounted<InProcessIDBServer>::ref(); }
     void deref() override { RefCounted<InProcessIDBServer>::deref(); }
 
-    void prepareForAccessToTemporaryFile(const String&) override { }
     void accessToTemporaryFileComplete(const String& path) override;
 
+    StorageQuotaManager* quotaManager(const ClientOrigin&);
+
 private:
-    InProcessIDBServer();
-    InProcessIDBServer(const String& databaseDirectoryPath);
+    explicit InProcessIDBServer(PAL::SessionID);
+    InProcessIDBServer(PAL::SessionID, const String& databaseDirectoryPath);
 
     Ref<IDBServer::IDBServer> m_server;
     RefPtr<IDBClient::IDBConnectionToServer> m_connectionToServer;
     RefPtr<IDBServer::IDBConnectionToClient> m_connectionToClient;
+
+    HashMap<ClientOrigin, std::unique_ptr<StorageQuotaManager>> m_quotaManagers;
 };
 
 } // namespace WebCore

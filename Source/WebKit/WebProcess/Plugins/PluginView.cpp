@@ -57,6 +57,7 @@
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MouseEvent.h>
 #include <WebCore/NetscapePlugInStreamLoader.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/Page.h>
 #include <WebCore/PlatformMouseEvent.h>
 #include <WebCore/ProtectionSpace.h>
@@ -67,6 +68,7 @@
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityPolicy.h>
 #include <WebCore/Settings.h>
+#include <WebCore/TextEncoding.h>
 #include <WebCore/UserGestureIndicator.h>
 #include <wtf/CompletionHandler.h>
 #include <wtf/text/StringBuilder.h>
@@ -319,9 +321,9 @@ PluginView::~PluginView()
     ASSERT(!m_plugin || !m_plugin->isBeingDestroyed());
 
     if (m_isWaitingUntilMediaCanStart)
-        m_pluginElement->document().removeMediaCanStartListener(this);
+        m_pluginElement->document().removeMediaCanStartListener(*this);
 
-    m_pluginElement->document().removeAudioProducer(this);
+    m_pluginElement->document().removeAudioProducer(*this);
 
     destroyPluginAndReset();
 
@@ -589,13 +591,13 @@ void PluginView::initializePlugin()
                     return;
                 
                 m_isWaitingUntilMediaCanStart = true;
-                m_pluginElement->document().addMediaCanStartListener(this);
+                m_pluginElement->document().addMediaCanStartListener(*this);
                 return;
             }
         }
     }
 
-    m_pluginElement->document().addAudioProducer(this);
+    m_pluginElement->document().addAudioProducer(*this);
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     HTMLPlugInImageElement& plugInImageElement = downcast<HTMLPlugInImageElement>(*m_pluginElement);
@@ -661,7 +663,7 @@ void PluginView::didInitializePlugin()
     if (wantsWheelEvents()) {
         if (Frame* frame = m_pluginElement->document().frame()) {
             if (FrameView* frameView = frame->view())
-                frameView->setNeedsLayout();
+                frameView->setNeedsLayoutAfterViewConfigurationChange();
         }
     }
 
@@ -886,17 +888,17 @@ std::unique_ptr<WebEvent> PluginView::createWebEvent(MouseEvent& event) const
         break;
     }
 
-    unsigned modifiers = 0;
+    OptionSet<WebEvent::Modifier> modifiers;
     if (event.shiftKey())
-        modifiers |= WebEvent::ShiftKey;
+        modifiers.add(WebEvent::Modifier::ShiftKey);
     if (event.ctrlKey())
-        modifiers |= WebEvent::ControlKey;
+        modifiers.add(WebEvent::Modifier::ControlKey);
     if (event.altKey())
-        modifiers |= WebEvent::AltKey;
+        modifiers.add(WebEvent::Modifier::AltKey);
     if (event.metaKey())
-        modifiers |= WebEvent::MetaKey;
+        modifiers.add(WebEvent::Modifier::MetaKey);
 
-    return std::make_unique<WebMouseEvent>(type, button, event.buttons(), m_plugin->convertToRootView(IntPoint(event.offsetX(), event.offsetY())), event.screenLocation(), 0, 0, 0, clickCount, static_cast<WebEvent::Modifiers>(modifiers), WallTime { }, 0);
+    return std::make_unique<WebMouseEvent>(type, button, event.buttons(), m_plugin->convertToRootView(IntPoint(event.offsetX(), event.offsetY())), event.screenLocation(), 0, 0, 0, clickCount, modifiers, WallTime { }, 0);
 }
 
 void PluginView::handleEvent(Event& event)
@@ -996,8 +998,12 @@ void PluginView::willDetachRenderer()
 
 RefPtr<SharedBuffer> PluginView::liveResourceData() const
 {
-    if (!m_isInitialized || !m_plugin)
-        return 0;
+    if (!m_isInitialized || !m_plugin) {
+        if (m_manualStreamData && m_manualStreamState == ManualStreamState::Finished)
+            return m_manualStreamData;
+
+        return nullptr;
+    }
 
     return m_plugin->liveResourceData();
 }
@@ -1162,7 +1168,7 @@ void PluginView::performURLRequest(URLRequest* request)
     Ref<PluginView> protect(*this);
 
     // First, check if this is a javascript: url.
-    if (protocolIsJavaScript(request->request().url())) {
+    if (WTF::protocolIsJavaScript(request->request().url())) {
         performJavaScriptURLRequest(request);
         return;
     }
@@ -1173,8 +1179,8 @@ void PluginView::performURLRequest(URLRequest* request)
     }
 
     // This request is to load a URL and create a stream.
-    RefPtr<Stream> stream = PluginView::Stream::create(this, request->requestID(), request->request());
-    addStream(stream.get());
+    auto stream = PluginView::Stream::create(this, request->requestID(), request->request());
+    addStream(stream.ptr());
     stream->start();
 }
 
@@ -1192,7 +1198,7 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
         return;
     }
 
-    UserGestureIndicator gestureIndicator(request->allowPopups() ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
+    UserGestureIndicator gestureIndicator(request->allowPopups() ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : WTF::nullopt);
 
     // First, try to find a target frame.
     Frame* targetFrame = frame->loader().findFrameForNavigation(request->target());
@@ -1227,7 +1233,7 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
 
 void PluginView::performJavaScriptURLRequest(URLRequest* request)
 {
-    ASSERT(protocolIsJavaScript(request->request().url()));
+    ASSERT(WTF::protocolIsJavaScript(request->request().url()));
 
     RefPtr<Frame> frame = m_pluginElement->document().frame();
     if (!frame)
@@ -1237,7 +1243,7 @@ void PluginView::performJavaScriptURLRequest(URLRequest* request)
 
     if (!request->target().isNull()) {
         // For security reasons, only allow JS requests to be made on the frame that contains the plug-in.
-        if (frame->tree().find(request->target()) != frame) {
+        if (frame->tree().find(request->target(), *frame) != frame) {
             // Let the plug-in know that its frame load failed.
             m_plugin->frameDidFail(request->requestID(), false);
             return;
@@ -1476,7 +1482,7 @@ bool PluginView::evaluate(NPObject* npObject, const String& scriptString, NPVari
     // protect the plug-in view from destruction.
     NPRuntimeObjectMap::PluginProtector pluginProtector(&m_npRuntimeObjectMap);
 
-    UserGestureIndicator gestureIndicator(allowPopups ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
+    UserGestureIndicator gestureIndicator(allowPopups ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : WTF::nullopt);
     return m_npRuntimeObjectMap.evaluate(npObject, scriptString, result);
 }
 
@@ -1576,12 +1582,18 @@ String PluginView::proxiesForURL(const String& urlString)
 
 String PluginView::cookiesForURL(const String& urlString)
 {
-    return cookies(m_pluginElement->document(), URL(URL(), urlString));
+    if (auto* page = m_pluginElement->document().page())
+        return page->cookieJar().cookies(m_pluginElement->document(), URL(URL(), urlString));
+    ASSERT_NOT_REACHED();
+    return { };
 }
 
 void PluginView::setCookiesForURL(const String& urlString, const String& cookieString)
 {
-    setCookies(m_pluginElement->document(), URL(URL(), urlString), cookieString);
+    if (auto* page = m_pluginElement->document().page())
+        page->cookieJar().setCookies(m_pluginElement->document(), URL(URL(), urlString), cookieString);
+    else
+        ASSERT_NOT_REACHED();
 }
 
 bool PluginView::getAuthenticationInfo(const ProtectionSpace& protectionSpace, String& username, String& password)
@@ -1590,11 +1602,7 @@ bool PluginView::getAuthenticationInfo(const ProtectionSpace& protectionSpace, S
     if (!contentDocument)
         return false;
 
-    String partitionName = contentDocument->topDocument().domainForCachePartition();
-    Credential credential = CredentialStorage::defaultCredentialStorage().get(partitionName, protectionSpace);
-    if (credential.isEmpty())
-        credential = CredentialStorage::defaultCredentialStorage().getFromPersistentStorage(protectionSpace);
-
+    auto credential = CredentialStorage::getFromPersistentStorage(protectionSpace);
     if (!credential.hasPassword())
         return false;
 

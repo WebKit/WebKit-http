@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if PLATFORM(IOS) && ENABLE(ASYNC_SCROLLING)
+#if PLATFORM(IOS_FAMILY) && ENABLE(ASYNC_SCROLLING)
 
 #include <UIKit/UIScrollView.h>
 #include <WebCore/ScrollingCoordinator.h>
@@ -33,6 +33,7 @@
 #include <WebCore/ScrollingTreeScrollingNodeDelegate.h>
 
 OBJC_CLASS CALayer;
+OBJC_CLASS UIScrollView;
 OBJC_CLASS WKScrollingNodeScrollViewDelegate;
 
 namespace WebCore {
@@ -54,22 +55,33 @@ public:
     void scrollWillStart() const;
     void scrollDidEnd() const;
     void scrollViewWillStartPanGesture() const;
-    void scrollViewDidScroll(const WebCore::FloatPoint& scrollPosition, bool inUserInteraction) const;
+    void scrollViewDidScroll(const WebCore::FloatPoint& scrollOffset, bool inUserInteraction);
+
     void currentSnapPointIndicesDidChange(unsigned horizontal, unsigned vertical) const;
     CALayer *scrollLayer() const { return m_scrollLayer.get(); }
 
     void resetScrollViewDelegate();
     void commitStateBeforeChildren(const WebCore::ScrollingStateScrollingNode&);
     void commitStateAfterChildren(const WebCore::ScrollingStateScrollingNode&);
-    void updateLayersAfterAncestorChange(const WebCore::ScrollingTreeNode& changedNode, const WebCore::FloatRect& fixedPositionRect, const WebCore::FloatSize& cumulativeDelta);
-    WebCore::FloatPoint scrollPosition() const;
-    void setScrollLayerPosition(const WebCore::FloatPoint&);
-    void updateChildNodesAfterScroll(const WebCore::FloatPoint& scrollPosition);
+
+    void repositionScrollingLayers();
+
+#if ENABLE(POINTER_EVENTS)
+    OptionSet<WebCore::TouchAction> activeTouchActions() const { return m_activeTouchActions; }
+    void computeActiveTouchActionsForGestureRecognizer(UIGestureRecognizer*);
+    void clearActiveTouchActions() { m_activeTouchActions = { }; }
+    void cancelPointersForGestureRecognizer(UIGestureRecognizer*);
+#endif
 
 private:
+    UIScrollView *scrollView() const;
+
     RetainPtr<CALayer> m_scrollLayer;
     RetainPtr<CALayer> m_scrolledContentsLayer;
     RetainPtr<WKScrollingNodeScrollViewDelegate> m_scrollViewDelegate;
+#if ENABLE(POINTER_EVENTS)
+    OptionSet<WebCore::TouchAction> m_activeTouchActions { };
+#endif
     bool m_updatingFromStateNode { false };
 };
 
@@ -85,4 +97,4 @@ private:
 
 @end
 
-#endif // PLATFORM(IOS) && ENABLE(ASYNC_SCROLLING)
+#endif // PLATFORM(IOS_FAMILY) && ENABLE(ASYNC_SCROLLING)

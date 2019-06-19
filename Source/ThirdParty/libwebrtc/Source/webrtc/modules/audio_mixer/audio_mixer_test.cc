@@ -17,25 +17,27 @@
 #include "modules/audio_mixer/audio_mixer_impl.h"
 #include "modules/audio_mixer/default_output_rate_calculator.h"
 #include "rtc_base/flags.h"
+#include "rtc_base/strings/string_builder.h"
 
-DEFINE_bool(help, false, "Prints this message");
-DEFINE_int(sampling_rate,
-           16000,
-           "Rate at which to mix (all input streams must have this rate)");
+WEBRTC_DEFINE_bool(help, false, "Prints this message");
+WEBRTC_DEFINE_int(
+    sampling_rate,
+    16000,
+    "Rate at which to mix (all input streams must have this rate)");
 
-DEFINE_bool(
+WEBRTC_DEFINE_bool(
     stereo,
     false,
     "Enable stereo (interleaved). Inputs need not be as this parameter.");
 
-DEFINE_bool(limiter, true, "Enable limiter.");
-DEFINE_string(output_file,
-              "mixed_file.wav",
-              "File in which to store the mixed result.");
-DEFINE_string(input_file_1, "", "First input. Default none.");
-DEFINE_string(input_file_2, "", "Second input. Default none.");
-DEFINE_string(input_file_3, "", "Third input. Default none.");
-DEFINE_string(input_file_4, "", "Fourth input. Default none.");
+WEBRTC_DEFINE_bool(limiter, true, "Enable limiter.");
+WEBRTC_DEFINE_string(output_file,
+                     "mixed_file.wav",
+                     "File in which to store the mixed result.");
+WEBRTC_DEFINE_string(input_file_1, "", "First input. Default none.");
+WEBRTC_DEFINE_string(input_file_2, "", "Second input. Default none.");
+WEBRTC_DEFINE_string(input_file_3, "", "Third input. Default none.");
+WEBRTC_DEFINE_string(input_file_4, "", "Fourth input. Default none.");
 
 namespace webrtc {
 namespace test {
@@ -74,10 +76,10 @@ class FilePlayingSource : public AudioMixer::Source {
   bool FileHasEnded() const { return file_has_ended_; }
 
   std::string ToString() const {
-    std::stringstream ss;
+    rtc::StringBuilder ss;
     ss << "{rate: " << sample_rate_hz_ << ", channels: " << number_of_channels_
        << ", samples_tot: " << wav_reader_->num_samples() << "}";
-    return ss.str();
+    return ss.Release();
   }
 
  private:

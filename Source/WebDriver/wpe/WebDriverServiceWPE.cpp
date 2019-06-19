@@ -70,6 +70,31 @@ bool WebDriverService::platformValidateCapability(const String& name, const RefP
             return false;
     }
 
+    RefPtr<JSON::Value> certificatesValue;
+    if (browserOptions->getValue("certificates"_s, certificatesValue)) {
+        RefPtr<JSON::Array> certificates;
+        if (!certificatesValue->asArray(certificates))
+            return false;
+
+        unsigned certificatesLength = certificates->length();
+        for (unsigned i = 0; i < certificatesLength; ++i) {
+            RefPtr<JSON::Value> certificateValue = certificates->get(i);
+            RefPtr<JSON::Object> certificate;
+            if (!certificateValue->asObject(certificate))
+                return false;
+
+            RefPtr<JSON::Value> hostValue;
+            String host;
+            if (!certificate->getValue("host"_s, hostValue) || !hostValue->asString(host))
+                return false;
+
+            RefPtr<JSON::Value> certificateFileValue;
+            String certificateFile;
+            if (!certificate->getValue("certificateFile"_s, certificateFileValue) || !certificateFileValue->asString(certificateFile))
+                return false;
+        }
+    }
+
     return true;
 }
 
@@ -90,7 +115,7 @@ void WebDriverService::platformParseCapabilities(const JSON::Object& matchedCapa
     String browserBinary;
     if (browserOptions->getString("binary"_s, browserBinary)) {
         capabilities.browserBinary = browserBinary;
-        capabilities.browserArguments = std::nullopt;
+        capabilities.browserArguments = WTF::nullopt;
     }
 
     RefPtr<JSON::Array> browserArguments;
@@ -104,6 +129,29 @@ void WebDriverService::platformParseCapabilities(const JSON::Object& matchedCapa
             value->asString(argument);
             ASSERT(!argument.isNull());
             capabilities.browserArguments->uncheckedAppend(WTFMove(argument));
+        }
+    }
+
+    RefPtr<JSON::Array> certificates;
+    if (browserOptions->getArray("certificates"_s, certificates) && certificates->length()) {
+        unsigned certificatesLength = certificates->length();
+        capabilities.certificates = Vector<std::pair<String, String>>();
+        capabilities.certificates->reserveInitialCapacity(certificatesLength);
+        for (unsigned i = 0; i < certificatesLength; ++i) {
+            RefPtr<JSON::Value> value = certificates->get(i);
+            RefPtr<JSON::Object> certificate;
+            value->asObject(certificate);
+            ASSERT(certificate);
+
+            String host;
+            certificate->getString("host"_s, host);
+            ASSERT(!host.isNull());
+
+            String certificateFile;
+            certificate->getString("certificateFile"_s, certificateFile);
+            ASSERT(!certificateFile.isNull());
+
+            capabilities.certificates->uncheckedAppend({ WTFMove(host), WTFMove(certificateFile) });
         }
     }
 }

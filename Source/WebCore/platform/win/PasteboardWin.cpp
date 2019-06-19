@@ -41,7 +41,6 @@
 #include "HWndDC.h"
 #include "HitTestResult.h"
 #include "Image.h"
-#include "URL.h"
 #include "NotImplemented.h"
 #include "Range.h"
 #include "RenderImage.h"
@@ -49,6 +48,7 @@
 #include "TextEncoding.h"
 #include "WebCoreInstanceHandle.h"
 #include "markup.h"
+#include <wtf/URL.h>
 #include <wtf/WindowsExtras.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringView.h>
@@ -341,7 +341,7 @@ void Pasteboard::read(PasteboardFileReader& reader)
         for (UINT i = 0; i < fileCount; i++) {
             if (!DragQueryFileW(hdrop, i, filename, WTF_ARRAY_LENGTH(filename)))
                 continue;
-            reader.readFilename(nullTerminatedWCharToString(filename));
+            reader.readFilename(filename);
         }
 
         GlobalUnlock(medium.hGlobal);
@@ -373,7 +373,7 @@ static bool writeURL(WCDataObject *data, const URL& url, String title, bool with
             title = url.host().toString();
     }
 
-    STGMEDIUM medium = {0};
+    STGMEDIUM medium { };
     medium.tymed = TYMED_HGLOBAL;
 
     medium.hGlobal = createGlobalData(url, title);
@@ -417,7 +417,7 @@ void Pasteboard::writeString(const String& type, const String& data)
     }
 
     if (winType == ClipboardDataTypeText) {
-        STGMEDIUM medium = {0};
+        STGMEDIUM medium { };
         medium.tymed = TYMED_HGLOBAL;
         medium.hGlobal = createGlobalData(data);
         if (!medium.hGlobal)
@@ -440,11 +440,11 @@ void Pasteboard::writeRangeToDataObject(Range& selectedRange, Frame& frame)
     if (!m_writableDataObject)
         return;
 
-    STGMEDIUM medium = {0};
+    STGMEDIUM medium { };
     medium.tymed = TYMED_HGLOBAL;
 
     Vector<char> data;
-    markupToCFHTML(createMarkup(selectedRange, 0, AnnotateForInterchange),
+    markupToCFHTML(serializePreservingVisualAppearance(selectedRange, nullptr, AnnotateForInterchange::Yes),
         selectedRange.startContainer().document().url().string(), data);
     medium.hGlobal = createGlobalData(data);
     if (medium.hGlobal && FAILED(m_writableDataObject->SetData(htmlFormat(), &medium, TRUE)))
@@ -469,7 +469,8 @@ void Pasteboard::writeSelection(Range& selectedRange, bool canSmartCopyOrDelete,
     // Put CF_HTML format on the pasteboard 
     if (::OpenClipboard(m_owner)) {
         Vector<char> data;
-        markupToCFHTML(createMarkup(selectedRange, 0, AnnotateForInterchange),
+        // FIXME: Use ResolveURLs::YesExcludingLocalFileURLsForPrivacy.
+        markupToCFHTML(serializePreservingVisualAppearance(frame.selection().selection()),
             selectedRange.startContainer().document().url().string(), data);
         HGLOBAL cbData = createGlobalData(data);
         if (!::SetClipboardData(HTMLClipboardFormat, cbData))
@@ -504,7 +505,7 @@ void Pasteboard::writePlainTextToDataObject(const String& text, SmartReplaceOpti
     if (!m_writableDataObject)
         return;
 
-    STGMEDIUM medium = {0};
+    STGMEDIUM medium { };
     medium.tymed = TYMED_HGLOBAL;
 
     String str = text;
@@ -554,23 +555,22 @@ static inline void pathRemoveBadFSCharacters(PWSTR psz, size_t length)
     psz[writeTo] = 0;
 }
 
-static String filesystemPathFromUrlOrTitle(const String& url, const String& title, const UChar* extension, bool isLink)
+static String filesystemPathFromUrlOrTitle(const String& url, const String& title, const String& extension, bool isLink)
 {
     static const size_t fsPathMaxLengthExcludingNullTerminator = MAX_PATH - 1;
     bool usedURL = false;
-    WCHAR fsPathBuffer[MAX_PATH];
+    UChar fsPathBuffer[MAX_PATH];
     fsPathBuffer[0] = 0;
-    int extensionLen = extension ? lstrlen(extension) : 0;
-    int fsPathMaxLengthExcludingExtension = fsPathMaxLengthExcludingNullTerminator - extensionLen;
+    int fsPathMaxLengthExcludingExtension = fsPathMaxLengthExcludingNullTerminator - extension.length();
 
     if (!title.isEmpty()) {
         size_t len = std::min<size_t>(title.length(), fsPathMaxLengthExcludingExtension);
         StringView(title).substring(0, len).getCharactersWithUpconvert(fsPathBuffer);
         fsPathBuffer[len] = 0;
-        pathRemoveBadFSCharacters(fsPathBuffer, len);
+        pathRemoveBadFSCharacters(wcharFrom(fsPathBuffer), len);
     }
 
-    if (!lstrlen(fsPathBuffer)) {
+    if (!wcslen(wcharFrom(fsPathBuffer))) {
         URL kurl(URL(), url);
         usedURL = true;
         // The filename for any content based drag or file url should be the last element of 
@@ -586,18 +586,18 @@ static String filesystemPathFromUrlOrTitle(const String& url, const String& titl
             StringView(url).substring(0, len).getCharactersWithUpconvert(fsPathBuffer);
         }
         fsPathBuffer[len] = 0;
-        pathRemoveBadFSCharacters(fsPathBuffer, len);
+        pathRemoveBadFSCharacters(wcharFrom(fsPathBuffer), len);
     }
 
-    if (!extension)
-        return String(static_cast<UChar*>(fsPathBuffer));
+    if (extension.isEmpty())
+        return String(fsPathBuffer);
 
     if (!isLink && usedURL) {
-        PathRenameExtension(fsPathBuffer, extension);
-        return String(static_cast<UChar*>(fsPathBuffer));
+        PathRenameExtension(wcharFrom(fsPathBuffer), extension.wideCharacters().data());
+        return String(fsPathBuffer);
     }
 
-    return makeString(static_cast<const UChar*>(fsPathBuffer), extension);
+    return makeString(const_cast<const UChar*>(fsPathBuffer), extension);
 }
 
 // writeFileToDataObject takes ownership of fileDescriptor and fileContent
@@ -605,7 +605,7 @@ static HRESULT writeFileToDataObject(IDataObject* dataObject, HGLOBAL fileDescri
 {
     HRESULT hr = S_OK;
     FORMATETC* fe;
-    STGMEDIUM medium = {0};
+    STGMEDIUM medium { };
     medium.tymed = TYMED_HGLOBAL;
 
     if (!fileDescriptor || !fileContent)
@@ -654,7 +654,7 @@ void Pasteboard::writeURLToDataObject(const URL& kurl, const String& titleStr)
     String url = kurl.string();
     ASSERT(url.isAllASCII()); // URL::string() is URL encoded.
 
-    String fsPath = filesystemPathFromUrlOrTitle(url, titleStr, L".URL", true);
+    String fsPath = filesystemPathFromUrlOrTitle(url, titleStr, ".URL", true);
     String contentString("[InternetShortcut]\r\nURL=" + url + "\r\n");
     CString content = contentString.latin1();
 
@@ -683,7 +683,7 @@ void Pasteboard::writeURLToDataObject(const URL& kurl, const String& titleStr)
     fgd->fgd[0].nFileSizeLow = content.length();
 
     unsigned maxSize = std::min<unsigned>(fsPath.length(), WTF_ARRAY_LENGTH(fgd->fgd[0].cFileName));
-    StringView(fsPath).substring(0, maxSize).getCharactersWithUpconvert(fgd->fgd[0].cFileName);
+    StringView(fsPath).substring(0, maxSize).getCharactersWithUpconvert(ucharFrom(fgd->fgd[0].cFileName));
     GlobalUnlock(urlFileDescriptor);
 
     char* fileContents = static_cast<char*>(GlobalLock(urlFileContent));
@@ -887,7 +887,6 @@ static HGLOBAL createGlobalImageFileDescriptor(const String& url, const String& 
     ASSERT_ARG(image, image);
     ASSERT(image->image()->data());
 
-    HRESULT hr = S_OK;
     String fsPath;
     HGLOBAL memObj = GlobalAlloc(GPTR, sizeof(FILEGROUPDESCRIPTOR));
     if (!memObj)
@@ -914,7 +913,7 @@ static HGLOBAL createGlobalImageFileDescriptor(const String& url, const String& 
         return 0;
     }
     extension.insert(".", 0);
-    fsPath = filesystemPathFromUrlOrTitle(url, preferredTitle, extension.charactersWithNullTermination().data(), false);
+    fsPath = filesystemPathFromUrlOrTitle(url, preferredTitle, extension, false);
 
     if (fsPath.length() <= 0) {
         GlobalUnlock(memObj);
@@ -923,7 +922,7 @@ static HGLOBAL createGlobalImageFileDescriptor(const String& url, const String& 
     }
 
     int maxSize = std::min<int>(fsPath.length(), WTF_ARRAY_LENGTH(fgd->fgd[0].cFileName));
-    StringView(fsPath).substring(0, maxSize).getCharactersWithUpconvert(fgd->fgd[0].cFileName);
+    StringView(fsPath).substring(0, maxSize).getCharactersWithUpconvert(ucharFrom(fgd->fgd[0].cFileName));
     GlobalUnlock(memObj);
 
     return memObj;
@@ -961,8 +960,7 @@ static HGLOBAL createGlobalHDropContent(const URL& url, String& fileName, Shared
         // windows does not enjoy a leading slash on paths
         if (localPath[0] == '/')
             localPath = localPath.substring(1);
-        auto localPathWide = stringToNullTerminatedWChar(localPath);
-        LPCWSTR localPathStr = localPathWide.data();
+        LPCWSTR localPathStr = localPath.wideCharacters().data();
         if (localPathStr && wcslen(localPathStr) + 1 < MAX_PATH)
             wcscpy_s(filePath, MAX_PATH, localPathStr);
         else
@@ -972,7 +970,7 @@ static HGLOBAL createGlobalHDropContent(const URL& url, String& fileName, Shared
         WCHAR extension[MAX_PATH];
         if (!::GetTempPath(WTF_ARRAY_LENGTH(tempPath), tempPath))
             return 0;
-        if (!::PathAppend(tempPath, stringToNullTerminatedWChar(fileName).data()))
+        if (!::PathAppend(tempPath, fileName.wideCharacters().data()))
             return 0;
         LPCWSTR foundExtension = ::PathFindExtension(tempPath);
         if (foundExtension) {
@@ -1014,7 +1012,7 @@ static HGLOBAL createGlobalHDropContent(const URL& url, String& fileName, Shared
 
     dropFiles->pFiles = sizeof(DROPFILES);
     dropFiles->fWide = TRUE;
-    wcscpy((LPWSTR)(dropFiles + 1), filePath);    
+    wcscpy(reinterpret_cast<LPWSTR>(dropFiles + 1), filePath);
     GlobalUnlock(memObj);
 
     return memObj;
@@ -1062,7 +1060,7 @@ void Pasteboard::writeMarkup(const String& markup)
     Vector<char> data;
     markupToCFHTML(markup, "", data);
 
-    STGMEDIUM medium = {0};
+    STGMEDIUM medium { };
     medium.tymed = TYMED_HGLOBAL;
 
     medium.hGlobal = createGlobalData(data);

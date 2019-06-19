@@ -10,14 +10,12 @@
 
 #include "modules/audio_processing/aec3/reverb_frequency_response.h"
 
+#include <stddef.h>
 #include <algorithm>
 #include <array>
-#include <cmath>
-#include <memory>
 #include <numeric>
 
 #include "api/array_view.h"
-#include "api/audio/echo_canceller3_config.h"
 #include "modules/audio_processing/aec3/aec3_common.h"
 #include "rtc_base/checks.h"
 #include "system_wrappers/include/field_trial.h"
@@ -69,7 +67,7 @@ void ReverbFrequencyResponse::Update(
     const absl::optional<float>& linear_filter_quality,
     bool stationary_block) {
   if (!enable_smooth_tail_response_updates_) {
-    Update(frequency_response, filter_delay_blocks, 0.1f);
+    Update(frequency_response, filter_delay_blocks, 0.5f);
     return;
   }
 
@@ -101,8 +99,6 @@ void ReverbFrequencyResponse::Update(
     tail_response_[k] = freq_resp_direct_path[k] * average_decay_;
   }
 
-  // TODO(devicentepena): Check if this should be done using a max that weights
-  // both the lower and upper bands equally.
   for (size_t k = 1; k < kFftLengthBy2; ++k) {
     const float avg_neighbour =
         0.5f * (tail_response_[k - 1] + tail_response_[k + 1]);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,15 +32,18 @@
 #import "IntRect.h"
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/mac/NSGraphicsSPI.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/StdLibExtras.h>
 
 #if USE(APPKIT)
 #import <AppKit/AppKit.h>
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import "Color.h"
 #import "WKGraphics.h"
+#import <pal/ios/UIKitSoftLink.h>
+#import <pal/spi/ios/UIKitSPI.h>
 #endif
 
 #if PLATFORM(MAC)
@@ -57,12 +60,26 @@ namespace WebCore {
 // NSColor, NSBezierPath, and NSGraphicsContext calls do not raise exceptions
 // so we don't block exceptions.
 
-#if PLATFORM(MAC)
+#if ENABLE(FULL_KEYBOARD_ACCESS)
 
 static bool drawFocusRingAtTime(CGContextRef context, NSTimeInterval timeOffset, const Color& color)
 {
+#if USE(APPKIT)
     CGFocusRingStyle focusRingStyle;
     BOOL needsRepaint = NSInitializeCGFocusRingStyleForTime(NSFocusRingOnly, &focusRingStyle, timeOffset);
+#else
+    BOOL needsRepaint = NO;
+    UNUSED_PARAM(timeOffset);
+
+    CGFocusRingStyle focusRingStyle;
+    focusRingStyle.version = 0;
+    focusRingStyle.tint = kCGFocusRingTintBlue;
+    focusRingStyle.ordering = kCGFocusRingOrderingNone;
+    focusRingStyle.alpha = [PAL::getUIFocusRingStyleClass() maxAlpha];
+    focusRingStyle.radius = [PAL::getUIFocusRingStyleClass() cornerRadius];
+    focusRingStyle.threshold = [PAL::getUIFocusRingStyleClass() alphaThreshold];
+    focusRingStyle.bounds = CGRectZero;
+#endif
 
     // We want to respect the CGContext clipping and also not overpaint any
     // existing focus ring. The way to do this is set accumulate to
@@ -71,15 +88,15 @@ static bool drawFocusRingAtTime(CGContextRef context, NSTimeInterval timeOffset,
     focusRingStyle.accumulate = -1;
     auto style = adoptCF(CGStyleCreateFocusRingWithColor(&focusRingStyle, cachedCGColor(color)));
 
-    CGContextSaveGState(context);
+    CGContextStateSaver stateSaver(context);
+
     CGContextSetStyle(context, style.get());
     CGContextFillPath(context);
-    CGContextRestoreGState(context);
 
     return needsRepaint;
 }
 
-static void drawFocusRing(CGContextRef context, const Color& color)
+inline static void drawFocusRing(CGContextRef context, const Color& color)
 {
     drawFocusRingAtTime(context, std::numeric_limits<double>::max(), color);
 }
@@ -91,19 +108,11 @@ static void drawFocusRingToContext(CGContextRef context, CGPathRef focusRingPath
     drawFocusRing(context, color);
 }
 
-static bool drawFocusRingToContextAtTime(CGContextRef context, CGPathRef focusRingPath, double timeOffset, const Color& color)
-{
-    UNUSED_PARAM(timeOffset);
-    CGContextBeginPath(context);
-    CGContextAddPath(context, focusRingPath);
-    return drawFocusRingAtTime(context, std::numeric_limits<double>::max(), color);
-}
-
-#endif // PLATFORM(MAC)
+#endif // ENABLE(FULL_KEYBOARD_ACCESS)
 
 void GraphicsContext::drawFocusRing(const Path& path, float width, float offset, const Color& color)
 {
-#if PLATFORM(MAC)
+#if ENABLE(FULL_KEYBOARD_ACCESS)
     if (paintingDisabled() || path.isNull())
         return;
 
@@ -122,6 +131,15 @@ void GraphicsContext::drawFocusRing(const Path& path, float width, float offset,
 }
 
 #if PLATFORM(MAC)
+
+static bool drawFocusRingToContextAtTime(CGContextRef context, CGPathRef focusRingPath, double timeOffset, const Color& color)
+{
+    UNUSED_PARAM(timeOffset);
+    CGContextBeginPath(context);
+    CGContextAddPath(context, focusRingPath);
+    return drawFocusRingAtTime(context, std::numeric_limits<double>::max(), color);
+}
+
 void GraphicsContext::drawFocusRing(const Path& path, double timeOffset, bool& needsRedraw, const Color& color)
 {
     if (paintingDisabled() || path.isNull())
@@ -147,11 +165,12 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, double timeO
 
     needsRedraw = drawFocusRingToContextAtTime(platformContext(), focusRingPath.get(), timeOffset, color);
 }
-#endif
+
+#endif // PLATFORM(MAC)
 
 void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width, float offset, const Color& color)
 {
-#if PLATFORM(MAC)
+#if ENABLE(FULL_KEYBOARD_ACCESS)
     if (paintingDisabled())
         return;
 
@@ -181,10 +200,57 @@ static inline void setPatternPhaseInUserSpace(CGContextRef context, CGPoint phas
     CGContextSetPatternPhase(context, CGSizeMake(phase.x, phase.y));
 }
 
-// FIXME: We need to keep this function since it is referenced by DrawLineForDocumentMarker::apply().
-void GraphicsContext::drawLineForDocumentMarker(const FloatPoint&, float, DocumentMarkerLineStyle)
+static CGColorRef colorForMarkerLineStyle(DocumentMarkerLineStyle::Mode style, bool useDarkMode)
 {
-    // Cocoa platforms use RenderTheme::drawLineForDocumentMarker() to paint the platform document markers.
+    switch (style) {
+    // Red
+    case DocumentMarkerLineStyle::Mode::Spelling:
+        return cachedCGColor(useDarkMode ? Color { 255, 140, 140, 217 } : Color { 255, 59, 48, 191 });
+    // Blue
+    case DocumentMarkerLineStyle::Mode::DictationAlternatives:
+    case DocumentMarkerLineStyle::Mode::TextCheckingDictationPhraseWithAlternatives:
+    case DocumentMarkerLineStyle::Mode::AutocorrectionReplacement:
+        return cachedCGColor(useDarkMode ? Color { 40, 145, 255, 217 } : Color { 0, 122, 255, 191 });
+    // Green
+    case DocumentMarkerLineStyle::Mode::Grammar:
+        return cachedCGColor(useDarkMode ? Color { 50, 215, 75, 217 } : Color { 25, 175, 50, 191 });
+    }
+}
+
+void GraphicsContext::drawDotsForDocumentMarker(const FloatRect& rect, DocumentMarkerLineStyle style)
+{
+    if (paintingDisabled())
+        return;
+
+    // We want to find the number of full dots, so we're solving the equations:
+    // dotDiameter = height
+    // dotDiameter / dotGap = 13.247 / 9.457
+    // numberOfGaps = numberOfDots - 1
+    // dotDiameter * numberOfDots + dotGap * numberOfGaps = width
+
+    auto width = rect.width();
+    auto dotDiameter = rect.height();
+    auto dotGap = dotDiameter * 9.457 / 13.247;
+    auto numberOfDots = (width + dotGap) / (dotDiameter + dotGap);
+    auto numberOfWholeDots = static_cast<unsigned>(numberOfDots);
+    auto numberOfWholeGaps = numberOfWholeDots - 1;
+
+    // Center the dots
+    auto offset = (width - (dotDiameter * numberOfWholeDots + dotGap * numberOfWholeGaps)) / 2;
+
+    auto circleColor = colorForMarkerLineStyle(style.mode, style.shouldUseDarkAppearance);
+
+    CGContextRef platformContext = this->platformContext();
+    CGContextStateSaver stateSaver { platformContext };
+    CGContextSetFillColorWithColor(platformContext, circleColor);
+    for (unsigned i = 0; i < numberOfWholeDots; ++i) {
+        auto location = rect.location();
+        location.move(offset + i * (dotDiameter + dotGap), 0);
+        auto size = FloatSize(dotDiameter, dotDiameter);
+        CGContextAddEllipseInRect(platformContext, FloatRect(location, size));
+    }
+    CGContextSetCompositeOperation(platformContext, kCGCompositeSover);
+    CGContextFillPath(platformContext);
 }
 
 } // namespace WebCore

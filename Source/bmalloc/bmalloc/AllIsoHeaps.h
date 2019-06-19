@@ -26,11 +26,12 @@
 #pragma once
 
 #include "IsoHeapImpl.h"
+#include "StaticPerProcess.h"
 #include "Vector.h"
 
 namespace bmalloc {
 
-class AllIsoHeaps {
+class AllIsoHeaps : public StaticPerProcess<AllIsoHeaps> {
 public:
     AllIsoHeaps(const std::lock_guard<Mutex>&);
     
@@ -41,9 +42,9 @@ public:
     void forEach(const Func&);
     
 private:
-    Mutex m_lock;
     IsoHeapImplBase* m_head { nullptr };
 };
+DECLARE_STATIC_PER_PROCESS_STORAGE(AllIsoHeaps);
 
 } // namespace bmalloc
 

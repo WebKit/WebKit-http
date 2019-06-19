@@ -40,16 +40,9 @@
 #include <oleacc.h>
 #include <string>
 #include <wtf/Assertions.h>
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 
-AccessibilityController::AccessibilityController()
-    : m_focusEventHook(0)
-    , m_scrollingStartEventHook(0)
-    , m_valueChangeEventHook(0)
-    , m_allEventsHook(0)
-    , m_notificationsEventHook(0)
-{
-}
+AccessibilityController::AccessibilityController() = default;
 
 AccessibilityController::~AccessibilityController()
 {
@@ -67,7 +60,7 @@ AccessibilityController::~AccessibilityController()
 AccessibilityUIElement AccessibilityController::elementAtPoint(int x, int y)
 {
     // FIXME: implement
-    return 0;
+    return { nullptr };
 }
 
 static COMPtr<IAccessibleComparable> comparableObject(const COMPtr<IServiceProvider>& serviceProvider)
@@ -123,7 +116,7 @@ AccessibilityUIElement AccessibilityController::accessibleElementById(JSStringRe
     if (result)
         return AccessibilityUIElement(result);
 
-    return 0;
+    return { nullptr };
 }
 
 AccessibilityUIElement AccessibilityController::focusedElement()
@@ -132,7 +125,7 @@ AccessibilityUIElement AccessibilityController::focusedElement()
 
     _variant_t vFocus;
     if (FAILED(rootAccessible->get_accFocus(&vFocus.GetVARIANT())))
-        return nullptr;
+        return { nullptr };
 
     if (V_VT(&vFocus) == VT_I4) {
         ASSERT(V_I4(&vFocus) == CHILDID_SELF);
@@ -149,15 +142,15 @@ AccessibilityUIElement AccessibilityController::rootElement()
 {
     COMPtr<IWebView> view;
     if (FAILED(frame->webView(&view)))
-        return 0;
+        return { nullptr };
 
     COMPtr<IWebViewPrivate2> viewPrivate(Query, view);
     if (!viewPrivate)
-        return 0;
+        return { nullptr };
 
     HWND webViewWindow;
     if (FAILED(viewPrivate->viewWindow(&webViewWindow)))
-        return 0;
+        return { nullptr };
 
     // Make sure the layout is up to date, so we can find all accessible elements.
     COMPtr<IWebFramePrivate> framePrivate(Query, frame);
@@ -168,7 +161,7 @@ AccessibilityUIElement AccessibilityController::rootElement()
     // WebView's window.
     COMPtr<IAccessible> rootAccessible;
     if (FAILED(AccessibleObjectFromWindow(webViewWindow, static_cast<DWORD>(OBJID_CLIENT), __uuidof(IAccessible), reinterpret_cast<void**>(&rootAccessible))))
-        return 0;
+        return { nullptr };
 
     return rootAccessible;
 }
@@ -363,7 +356,7 @@ void AccessibilityController::winNotificationReceived(PlatformUIElement element,
         if (!isSame)
             continue;
 
-        JSRetainPtr<JSStringRef> jsNotification(Adopt, JSStringCreateWithUTF8CString(eventName.c_str()));
+        auto jsNotification = adopt(JSStringCreateWithUTF8CString(eventName.c_str()));
         JSValueRef argument = JSValueMakeString(frame->globalContext(), jsNotification.get());
         JSObjectCallAsFunction(frame->globalContext(), slot.value, 0, 1, &argument, 0);
     }
@@ -391,6 +384,5 @@ bool AccessibilityController::enhancedAccessibilityEnabled()
 
 JSRetainPtr<JSStringRef> AccessibilityController::platformName() const
 {
-    JSRetainPtr<JSStringRef> platformName(Adopt, JSStringCreateWithUTF8CString("win"));
-    return platformName;
+    return adopt(JSStringCreateWithUTF8CString("win"));
 }

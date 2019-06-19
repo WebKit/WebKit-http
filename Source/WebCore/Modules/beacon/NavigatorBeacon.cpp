@@ -32,7 +32,8 @@
 #include "Frame.h"
 #include "HTTPParsers.h"
 #include "Navigator.h"
-#include "URL.h"
+#include "Page.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 
@@ -98,7 +99,7 @@ void NavigatorBeacon::logError(const ResourceError& error)
     document->addConsoleMessage(MessageSource::Network, MessageLevel::Error, makeString("Beacon API cannot load "_s, error.failingURL().string(), messageMiddle, description));
 }
 
-ExceptionOr<bool> NavigatorBeacon::sendBeacon(Document& document, const String& url, std::optional<FetchBody::Init>&& body)
+ExceptionOr<bool> NavigatorBeacon::sendBeacon(Document& document, const String& url, Optional<FetchBody::Init>&& body)
 {
     URL parsedUrl = document.completeURL(url);
 
@@ -120,11 +121,14 @@ ExceptionOr<bool> NavigatorBeacon::sendBeacon(Document& document, const String& 
 
     ResourceRequest request(parsedUrl);
     request.setHTTPMethod("POST"_s);
+    request.setPriority(ResourceLoadPriority::VeryLow);
 
-    FetchOptions options;
+    ResourceLoaderOptions options;
     options.credentials = FetchOptions::Credentials::Include;
     options.cache = FetchOptions::Cache::NoCache;
     options.keepAlive = true;
+    options.sendLoadCallbacks = SendCallbackPolicy::SendCallbacks;
+
     if (body) {
         options.mode = FetchOptions::Mode::Cors;
         String mimeType;
@@ -153,7 +157,7 @@ ExceptionOr<bool> NavigatorBeacon::sendBeacon(Document& document, const String& 
     return true;
 }
 
-ExceptionOr<bool> NavigatorBeacon::sendBeacon(Navigator& navigator, Document& document, const String& url, std::optional<FetchBody::Init>&& body)
+ExceptionOr<bool> NavigatorBeacon::sendBeacon(Navigator& navigator, Document& document, const String& url, Optional<FetchBody::Init>&& body)
 {
     return NavigatorBeacon::from(navigator)->sendBeacon(document, url, WTFMove(body));
 }

@@ -26,13 +26,13 @@
 #include "config.h"
 #include "CSSUnicodeRangeValue.h"
 
-#include <wtf/text/WTFString.h>
+#include <wtf/HexNumber.h>
 
 namespace WebCore {
 
 String CSSUnicodeRangeValue::customCSSText() const
 {
-    return String::format("U+%x-%x", m_from, m_to);
+    return makeString("U+", hex(m_from, Lowercase), '-', hex(m_to, Lowercase));
 }
 
 bool CSSUnicodeRangeValue::equals(const CSSUnicodeRangeValue& other) const

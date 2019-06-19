@@ -38,14 +38,9 @@
 #import <JavaScriptCore/JSObjectRef.h>
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <objc/runtime.h>
-#import <wtf/SoftLinking.h>
 #import <wtf/text/Base64.h>
 
-typedef AVMetadataItem AVMetadataItemType;
-SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
-SOFT_LINK_CLASS(AVFoundation, AVMetadataItem)
-#define AVMetadataItem getAVMetadataItemClass()
-
+#import <pal/cocoa/AVFoundationSoftLink.h>
 
 namespace WebCore {
 
@@ -53,7 +48,7 @@ namespace WebCore {
 static JSValue *jsValueWithDataInContext(NSData *, JSContext *);
 static JSValue *jsValueWithArrayInContext(NSArray *, JSContext *);
 static JSValue *jsValueWithDictionaryInContext(NSDictionary *, JSContext *);
-static JSValue *jsValueWithAVMetadataItemInContext(AVMetadataItemType *, JSContext *);
+static JSValue *jsValueWithAVMetadataItemInContext(AVMetadataItem *, JSContext *);
 static JSValue *jsValueWithValueInContext(id, JSContext *);
 #endif
 
@@ -136,7 +131,7 @@ static JSValue *jsValueWithValueInContext(id value, JSContext *context)
     if ([value isKindOfClass:[NSData class]])
         return jsValueWithDataInContext(value, context);
 
-    if ([value isKindOfClass:[AVMetadataItem class]])
+    if ([value isKindOfClass:PAL::getAVMetadataItemClass()])
         return jsValueWithAVMetadataItemInContext(value, context);
 
     return nil;
@@ -190,9 +185,8 @@ static JSValue *jsValueWithDictionaryInContext(NSDictionary *dictionary, JSConte
         if (!value)
             continue;
 
-        JSStringRef name = JSStringCreateWithCFString((__bridge CFStringRef)key);
-        JSObjectSetProperty([context JSGlobalContextRef], resultObject, name, [value JSValueRef], 0, &exception);
-        JSStringRelease(name);
+        auto name = OpaqueJSString::tryCreate(key);
+        JSObjectSetProperty([context JSGlobalContextRef], resultObject, name.get(), [value JSValueRef], 0, &exception);
         if (exception)
             continue;
     }
@@ -200,7 +194,7 @@ static JSValue *jsValueWithDictionaryInContext(NSDictionary *dictionary, JSConte
     return result;
 }
 
-static JSValue *jsValueWithAVMetadataItemInContext(AVMetadataItemType *item, JSContext *context)
+static JSValue *jsValueWithAVMetadataItemInContext(AVMetadataItem *item, JSContext *context)
 {
     NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
 

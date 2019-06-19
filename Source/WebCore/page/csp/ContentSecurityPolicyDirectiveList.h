@@ -30,7 +30,7 @@
 #include "ContentSecurityPolicyHash.h"
 #include "ContentSecurityPolicyMediaListDirective.h"
 #include "ContentSecurityPolicySourceListDirective.h"
-#include "URL.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 
@@ -76,6 +76,7 @@ public:
     const ContentSecurityPolicyDirective* defaultSrc() const { return m_defaultSrc.get(); }
 
     bool hasBlockAllMixedContentDirective() const { return m_hasBlockAllMixedContentDirective; }
+    bool hasFrameAncestorsDirective() const { return !!m_frameAncestors; }
 
     const String& evalDisabledErrorMessage() const { return m_evalDisabledErrorMessage; }
     const String& webAssemblyDisabledErrorMessage() const { return m_webAssemblyDisabledErrorMessage; }

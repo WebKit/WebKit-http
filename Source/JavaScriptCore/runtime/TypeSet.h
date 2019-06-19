@@ -71,13 +71,13 @@ private:
     static Ref<StructureShape> merge(Ref<StructureShape>&&, Ref<StructureShape>&&);
     bool hasSamePrototypeChain(const StructureShape&);
 
+    bool m_final;
+    bool m_isInDictionaryMode;
     HashSet<RefPtr<UniquedStringImpl>, IdentifierRepHash> m_fields;
     HashSet<RefPtr<UniquedStringImpl>, IdentifierRepHash> m_optionalFields;
     RefPtr<StructureShape> m_proto;
     std::unique_ptr<String> m_propertyHash;
     String m_constructorName;
-    bool m_final;
-    bool m_isInDictionaryMode;
 };
 
 class TypeSet : public ThreadSafeRefCounted<TypeSet> {
@@ -86,7 +86,7 @@ public:
     static Ref<TypeSet> create() { return adoptRef(*new TypeSet); }
     TypeSet();
     void addTypeInformation(RuntimeType, RefPtr<StructureShape>&&, Structure*, bool sawPolyProtoStructure);
-    void invalidateCache();
+    void invalidateCache(VM&);
     String dumpTypes() const;
     String displayName() const;
     Ref<JSON::ArrayOf<Inspector::Protocol::Runtime::StructureDescription>> allStructureRepresentations() const;

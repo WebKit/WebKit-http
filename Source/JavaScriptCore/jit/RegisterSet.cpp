@@ -26,7 +26,7 @@
 #include "config.h"
 #include "RegisterSet.h"
 
-#if ENABLE(JIT)
+#if ENABLE(ASSEMBLER)
 
 #include "GPRInfo.h"
 #include "JSCInlines.h"
@@ -46,19 +46,19 @@ RegisterSet RegisterSet::stackRegisters()
 RegisterSet RegisterSet::reservedHardwareRegisters()
 {
 #if CPU(ARM64)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     return RegisterSet(ARM64Registers::x18, ARM64Registers::lr);
 #else
     return RegisterSet(ARM64Registers::lr);
-#endif // PLATFORM(IOS)
-#elif CPU(ARM_THUMB2) || CPU(ARM_TRADITIONAL)
+#endif // PLATFORM(IOS_FAMILY)
+#elif CPU(ARM_THUMB2)
     return RegisterSet(ARMRegisters::lr, ARMRegisters::pc);
 #else
     return { };
 #endif
 }
 
-RegisterSet RegisterSet::runtimeRegisters()
+RegisterSet RegisterSet::runtimeTagRegisters()
 {
 #if USE(JSVALUE64)
     return RegisterSet(GPRInfo::tagTypeNumberRegister, GPRInfo::tagMaskRegister);
@@ -70,7 +70,7 @@ RegisterSet RegisterSet::runtimeRegisters()
 RegisterSet RegisterSet::specialRegisters()
 {
     return RegisterSet(
-        stackRegisters(), reservedHardwareRegisters(), runtimeRegisters());
+        stackRegisters(), reservedHardwareRegisters(), runtimeTagRegisters());
 }
 
 RegisterSet RegisterSet::volatileRegistersForJSCall()
@@ -132,18 +132,9 @@ RegisterSet RegisterSet::calleeSaveRegisters()
     result.set(ARMRegisters::r5);
     result.set(ARMRegisters::r6);
     result.set(ARMRegisters::r8);
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     result.set(ARMRegisters::r9);
 #endif
-    result.set(ARMRegisters::r10);
-    result.set(ARMRegisters::r11);
-#elif CPU(ARM_TRADITIONAL)
-    result.set(ARMRegisters::r4);
-    result.set(ARMRegisters::r5);
-    result.set(ARMRegisters::r6);
-    result.set(ARMRegisters::r7);
-    result.set(ARMRegisters::r8);
-    result.set(ARMRegisters::r9);
     result.set(ARMRegisters::r10);
     result.set(ARMRegisters::r11);
 #elif CPU(ARM64)
@@ -163,6 +154,7 @@ RegisterSet RegisterSet::calleeSaveRegisters()
         reg = static_cast<ARM64Registers::FPRegisterID>(reg + 1))
         result.set(reg);
 #elif CPU(MIPS)
+    result.set(MIPSRegisters::s0);
 #else
     UNREACHABLE_FOR_PLATFORM();
 #endif
@@ -201,6 +193,8 @@ RegisterSet RegisterSet::vmCalleeSaveRegisters()
     result.set(FPRInfo::fpRegCS5);
     result.set(FPRInfo::fpRegCS6);
     result.set(FPRInfo::fpRegCS7);
+#elif CPU(ARM_THUMB2) || CPU(MIPS)
+    result.set(GPRInfo::regCS0);
 #endif
     return result;
 }
@@ -221,12 +215,14 @@ RegisterSet RegisterSet::llintBaselineCalleeSaveRegisters()
 #if CPU(X86)
 #elif CPU(X86_64)
 #if !OS(WINDOWS)
+    result.set(GPRInfo::regCS1);
     result.set(GPRInfo::regCS2);
     ASSERT(GPRInfo::regCS3 == GPRInfo::tagTypeNumberRegister);
     ASSERT(GPRInfo::regCS4 == GPRInfo::tagMaskRegister);
     result.set(GPRInfo::regCS3);
     result.set(GPRInfo::regCS4);
 #else
+    result.set(GPRInfo::regCS3);
     result.set(GPRInfo::regCS4);
     ASSERT(GPRInfo::regCS5 == GPRInfo::tagTypeNumberRegister);
     ASSERT(GPRInfo::regCS6 == GPRInfo::tagMaskRegister);
@@ -234,14 +230,16 @@ RegisterSet RegisterSet::llintBaselineCalleeSaveRegisters()
     result.set(GPRInfo::regCS6);
 #endif
 #elif CPU(ARM_THUMB2)
-#elif CPU(ARM_TRADITIONAL)
+    result.set(GPRInfo::regCS0);
 #elif CPU(ARM64)
+    result.set(GPRInfo::regCS6);
     result.set(GPRInfo::regCS7);
     ASSERT(GPRInfo::regCS8 == GPRInfo::tagTypeNumberRegister);
     ASSERT(GPRInfo::regCS9 == GPRInfo::tagMaskRegister);
     result.set(GPRInfo::regCS8);
     result.set(GPRInfo::regCS9);
 #elif CPU(MIPS)
+    result.set(GPRInfo::regCS0);
 #else
     UNREACHABLE_FOR_PLATFORM();
 #endif
@@ -270,7 +268,6 @@ RegisterSet RegisterSet::dfgCalleeSaveRegisters()
     result.set(GPRInfo::regCS6);
 #endif
 #elif CPU(ARM_THUMB2)
-#elif CPU(ARM_TRADITIONAL)
 #elif CPU(ARM64)
     ASSERT(GPRInfo::regCS8 == GPRInfo::tagTypeNumberRegister);
     ASSERT(GPRInfo::regCS9 == GPRInfo::tagMaskRegister);
@@ -395,5 +392,5 @@ void RegisterSet::dump(PrintStream& out) const
 
 } // namespace JSC
 
-#endif // ENABLE(JIT)
+#endif // ENABLE(ASSEMBLER)
 

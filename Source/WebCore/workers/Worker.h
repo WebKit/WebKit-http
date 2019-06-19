@@ -34,7 +34,7 @@
 #include <JavaScriptCore/RuntimeFlags.h>
 #include <wtf/MonotonicTime.h>
 #include <wtf/Optional.h>
-#include <wtf/text/AtomicStringHash.h>
+#include <wtf/text/AtomStringHash.h>
 
 namespace JSC {
 class ExecState;
@@ -49,6 +49,7 @@ class WorkerGlobalScopeProxy;
 class WorkerScriptLoader;
 
 class Worker final : public AbstractWorker, public ActiveDOMObject, private WorkerScriptLoaderClient {
+    WTF_MAKE_ISO_ALLOCATED(Worker);
 public:
     struct Options {
         String name;
@@ -86,7 +87,7 @@ private:
     String m_name;
     String m_identifier;
     WorkerGlobalScopeProxy& m_contextProxy; // The proxy outlives the worker to perform thread shutdown.
-    std::optional<ContentSecurityPolicyResponseHeaders> m_contentSecurityPolicyResponseHeaders;
+    Optional<ContentSecurityPolicyResponseHeaders> m_contentSecurityPolicyResponseHeaders;
     MonotonicTime m_workerCreationTime;
     bool m_shouldBypassMainWorldContentSecurityPolicy { false };
     JSC::RuntimeFlags m_runtimeFlags;

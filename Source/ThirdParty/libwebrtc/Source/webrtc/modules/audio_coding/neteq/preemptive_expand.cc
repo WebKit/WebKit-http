@@ -10,9 +10,11 @@
 
 #include "modules/audio_coding/neteq/preemptive_expand.h"
 
-#include <algorithm>  // min, max
+#include <algorithm>
 
-#include "common_audio/signal_processing/include/signal_processing_library.h"
+#include "api/array_view.h"
+#include "modules/audio_coding/neteq/audio_multi_vector.h"
+#include "modules/audio_coding/neteq/time_stretch.h"
 
 namespace webrtc {
 
@@ -31,7 +33,8 @@ PreemptiveExpand::ReturnCodes PreemptiveExpand::Process(
       old_data_length >= input_length / num_channels_ - overlap_samples_) {
     // Length of input data too short to do preemptive expand. Simply move all
     // data from input to output.
-    output->PushBackInterleaved(input, input_length);
+    output->PushBackInterleaved(
+        rtc::ArrayView<const int16_t>(input, input_length));
     return kError;
   }
   const bool kFastMode = false;  // Fast mode is not available for PE Expand.
@@ -75,19 +78,19 @@ PreemptiveExpand::ReturnCodes PreemptiveExpand::CheckCriteriaAndStretch(
     size_t unmodified_length =
         std::max(old_data_length_per_channel_, fs_mult_120);
     // Copy first part, including cross-fade region.
-    output->PushBackInterleaved(
-        input, (unmodified_length + peak_index) * num_channels_);
+    output->PushBackInterleaved(rtc::ArrayView<const int16_t>(
+        input, (unmodified_length + peak_index) * num_channels_));
     // Copy the last |peak_index| samples up to 15 ms to |temp_vector|.
     AudioMultiVector temp_vector(num_channels_);
-    temp_vector.PushBackInterleaved(
+    temp_vector.PushBackInterleaved(rtc::ArrayView<const int16_t>(
         &input[(unmodified_length - peak_index) * num_channels_],
-        peak_index * num_channels_);
+        peak_index * num_channels_));
     // Cross-fade |temp_vector| onto the end of |output|.
     output->CrossFade(temp_vector, peak_index);
     // Copy the last unmodified part, 15 ms + pitch period until the end.
-    output->PushBackInterleaved(
+    output->PushBackInterleaved(rtc::ArrayView<const int16_t>(
         &input[unmodified_length * num_channels_],
-        input_length - unmodified_length * num_channels_);
+        input_length - unmodified_length * num_channels_));
 
     if (active_speech) {
       return kSuccess;
@@ -96,7 +99,8 @@ PreemptiveExpand::ReturnCodes PreemptiveExpand::CheckCriteriaAndStretch(
     }
   } else {
     // Accelerate not allowed. Simply move all data from decoded to outData.
-    output->PushBackInterleaved(input, input_length);
+    output->PushBackInterleaved(
+        rtc::ArrayView<const int16_t>(input, input_length));
     return kNoStretch;
   }
 }

@@ -98,6 +98,11 @@ String contextMenuItemTagSelectAll()
     return String::fromUTF8(_("Select _All"));
 }
 
+String contextMenuItemTagInsertEmoji()
+{
+    return String::fromUTF8(_("Insert _Emoji"));
+}
+
 String contextMenuItemTagUnicode()
 {
     return String::fromUTF8(_("_Insert Unicode Control Character"));
@@ -106,11 +111,6 @@ String contextMenuItemTagUnicode()
 String contextMenuItemTagInputMethods()
 {
     return String::fromUTF8(_("Input _Methods"));
-}
-
-String contextMenuItemTagSearchWeb()
-{
-    return String::fromUTF8(_("_Search the Web"));
 }
 
 String contextMenuItemTagUnicodeInsertLRMMark()
@@ -174,16 +174,6 @@ String validationMessageTooLongText(int, int maxLength)
 {
     GUniquePtr<char> string(g_strdup_printf(ngettext("Use no more than one character", "Use no more than %d characters", maxLength), maxLength));
     return String::fromUTF8(string.get());
-}
-
-String unacceptableTLSCertificate()
-{
-    return String::fromUTF8(_("Unacceptable TLS certificate"));
-}
-
-String localizedString(const char* key)
-{
-    return String::fromUTF8(key, strlen(key));
 }
 
 } // namespace WebCore

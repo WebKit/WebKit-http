@@ -34,6 +34,7 @@
 
 #include "ImageBuffer.h"
 #include "MockMediaDevice.h"
+#include "RealtimeMediaSourceFactory.h"
 #include <wtf/RunLoop.h>
 
 namespace WebCore {
@@ -41,14 +42,12 @@ namespace WebCore {
 class MockRealtimeAudioSource : public RealtimeMediaSource {
 public:
 
-    static CaptureSourceOrError create(const String& deviceID, const String& name, const MediaConstraints*);
-
-    static AudioCaptureFactory& factory();
+    static CaptureSourceOrError create(String&& deviceID, String&& name, String&& hashSalt, const MediaConstraints*);
 
     virtual ~MockRealtimeAudioSource();
 
 protected:
-    MockRealtimeAudioSource(const String& deviceID, const String& name);
+    MockRealtimeAudioSource(String&& deviceID, String&& name, String&& hashSalt);
 
     void startProducingData() final;
     void stopProducingData() final;
@@ -59,17 +58,18 @@ protected:
     static Seconds renderInterval() { return 60_ms; }
 
 private:
-    const RealtimeMediaSourceCapabilities& capabilities() const final;
-    const RealtimeMediaSourceSettings& settings() const final;
+    const RealtimeMediaSourceCapabilities& capabilities() final;
+    const RealtimeMediaSourceSettings& settings() final;
 
     void tick();
 
     bool isCaptureSource() const final { return true; }
+    CaptureDevice::DeviceType deviceType() const final { return CaptureDevice::DeviceType::Microphone; }
 
     void delaySamples(Seconds) final;
 
-    mutable std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
-    mutable std::optional<RealtimeMediaSourceSettings> m_currentSettings;
+    Optional<RealtimeMediaSourceCapabilities> m_capabilities;
+    Optional<RealtimeMediaSourceSettings> m_currentSettings;
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
 
     RunLoop::Timer<MockRealtimeAudioSource> m_timer;

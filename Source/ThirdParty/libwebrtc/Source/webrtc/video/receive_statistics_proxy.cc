@@ -275,7 +275,7 @@ void ReceiveStatisticsProxy::UpdateHistograms() {
   // Aggregate content_specific_stats_ by removing experiment or simulcast
   // information;
   std::map<VideoContentType, ContentSpecificStats> aggregated_stats;
-  for (auto it : content_specific_stats_) {
+  for (const auto& it : content_specific_stats_) {
     // Calculate simulcast specific metrics (".S0" ... ".S2" suffixes).
     VideoContentType content_type = it.first;
     if (videocontenttypehelpers::GetSimulcastId(content_type) > 0) {
@@ -297,7 +297,7 @@ void ReceiveStatisticsProxy::UpdateHistograms() {
     aggregated_stats[content_type].Add(it.second);
   }
 
-  for (auto it : aggregated_stats) {
+  for (const auto& it : aggregated_stats) {
     // For the metric Foo we report the following slices:
     // WebRTC.Video.Foo,
     // WebRTC.Video.Screenshare.Foo,
@@ -759,6 +759,9 @@ void ReceiveStatisticsProxy::OnRenderedFrame(const VideoFrame& frame) {
   RTC_DCHECK_GT(height, 0);
   int64_t now_ms = clock_->TimeInMilliseconds();
   rtc::CritScope lock(&crit_);
+
+  video_quality_observer_->OnRenderedFrame(now_ms);
+
   ContentSpecificStats* content_specific_stats =
       &content_specific_stats_[last_content_type_];
   renders_fps_estimator_.Update(1, now_ms);
@@ -813,8 +816,15 @@ void ReceiveStatisticsProxy::OnCompleteFrame(bool is_keyframe,
     ++stats_.frame_counts.delta_frames;
   }
 
+  // Content type extension is set only for keyframes and should be propagated
+  // for all the following delta frames. Here we may receive frames out of order
+  // and miscategorise some delta frames near the layer switch.
+  // This may slightly offset calculated bitrate and keyframes permille metrics.
+  VideoContentType propagated_content_type =
+      is_keyframe ? content_type : last_content_type_;
+
   ContentSpecificStats* content_specific_stats =
-      &content_specific_stats_[content_type];
+      &content_specific_stats_[propagated_content_type];
 
   content_specific_stats->total_media_bytes += size_bytes;
   if (is_keyframe) {
@@ -839,18 +849,13 @@ void ReceiveStatisticsProxy::OnDiscardedPacketsUpdated(int discarded_packets) {
   stats_.discarded_packets = discarded_packets;
 }
 
-void ReceiveStatisticsProxy::OnPreDecode(
-    const EncodedImage& encoded_image,
-    const CodecSpecificInfo* codec_specific_info) {
+void ReceiveStatisticsProxy::OnPreDecode(VideoCodecType codec_type, int qp) {
   RTC_DCHECK_RUN_ON(&decode_thread_);
-  if (!codec_specific_info || encoded_image.qp_ == -1) {
-    return;
-  }
   rtc::CritScope lock(&crit_);
-  last_codec_type_ = codec_specific_info->codecType;
-  if (last_codec_type_ == kVideoCodecVP8) {
-    qp_counters_.vp8.Add(encoded_image.qp_);
-    qp_sample_.Add(encoded_image.qp_);
+  last_codec_type_ = codec_type;
+  if (last_codec_type_ == kVideoCodecVP8 && qp != -1) {
+    qp_counters_.vp8.Add(qp);
+    qp_sample_.Add(qp);
   }
 }
 
@@ -880,6 +885,8 @@ void ReceiveStatisticsProxy::DecoderThreadStopped() {
 
 ReceiveStatisticsProxy::ContentSpecificStats::ContentSpecificStats()
     : interframe_delay_percentiles(kMaxCommonInterframeDelayMs) {}
+
+ReceiveStatisticsProxy::ContentSpecificStats::~ContentSpecificStats() = default;
 
 void ReceiveStatisticsProxy::ContentSpecificStats::Add(
     const ContentSpecificStats& other) {

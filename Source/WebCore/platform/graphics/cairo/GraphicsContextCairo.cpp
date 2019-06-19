@@ -36,6 +36,7 @@
 #if USE(CAIRO)
 
 #include "AffineTransform.h"
+#include "CairoOperations.h"
 #include "FloatRect.h"
 #include "FloatRoundedRect.h"
 #include "GraphicsContextImpl.h"
@@ -315,12 +316,12 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width,
     Cairo::drawFocusRing(*platformContext(), rects, width, color);
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool printing, bool doubleUnderlines, StrokeStyle)
+void GraphicsContext::drawLineForText(const FloatRect& rect, bool printing, bool doubleUnderlines, StrokeStyle)
 {
-    drawLinesForText(origin, DashArray { width, 0 }, printing, doubleUnderlines);
+    drawLinesForText(rect.location(), rect.height(), DashArray { 0, rect.width() }, printing, doubleUnderlines);
 }
 
-void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleUnderlines, StrokeStyle)
+void GraphicsContext::drawLinesForText(const FloatPoint& point, float thickness, const DashArray& widths, bool printing, bool doubleUnderlines, StrokeStyle)
 {
     if (paintingDisabled())
         return;
@@ -329,26 +330,26 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray&
         return;
 
     if (m_impl) {
-        m_impl->drawLinesForText(point, widths, printing, doubleUnderlines, strokeThickness());
+        m_impl->drawLinesForText(point, thickness, widths, printing, doubleUnderlines);
         return;
     }
 
     ASSERT(hasPlatformContext());
-    Cairo::drawLinesForText(*platformContext(), point, widths, printing, doubleUnderlines, m_state.strokeColor, m_state.strokeThickness);
+    Cairo::drawLinesForText(*platformContext(), point, thickness, widths, printing, doubleUnderlines, m_state.strokeColor);
 }
 
-void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& origin, float width, DocumentMarkerLineStyle style)
+void GraphicsContext::drawDotsForDocumentMarker(const FloatRect& rect, DocumentMarkerLineStyle style)
 {
     if (paintingDisabled())
         return;
 
     if (m_impl) {
-        m_impl->drawLineForDocumentMarker(origin, width, style);
+        m_impl->drawDotsForDocumentMarker(rect, style);
         return;
     }
 
     ASSERT(hasPlatformContext());
-    Cairo::drawLineForDocumentMarker(*platformContext(), origin, width, style);
+    Cairo::drawDotsForDocumentMarker(*platformContext(), rect, style);
 }
 
 FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMode roundingMode)

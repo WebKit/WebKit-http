@@ -25,20 +25,18 @@
 
 #import "WKBrowsingContextGroup.h"
 
-#if WK_API_ENABLED
-
 #import "WKObject.h"
 #import "WebPageGroup.h"
 
 namespace WebKit {
 
 template<> struct WrapperTraits<WebPageGroup> {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     using WrapperClass = WKBrowsingContextGroup;
+    ALLOW_DEPRECATED_DECLARATIONS_END
 };
 
 }
 
 @interface WKBrowsingContextGroup () <WKObject>
 @end
-
-#endif // WK_API_ENABLED

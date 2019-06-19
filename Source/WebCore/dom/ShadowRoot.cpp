@@ -36,6 +36,7 @@
 #include "SlotAssignment.h"
 #include "StyleResolver.h"
 #include "StyleScope.h"
+#include "StyleSheetList.h"
 #include "markup.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -46,6 +47,7 @@ WTF_MAKE_ISO_ALLOCATED_IMPL(ShadowRoot);
 struct SameSizeAsShadowRoot : public DocumentFragment, public TreeScope {
     unsigned countersAndFlags[1];
     void* styleScope;
+    void* styleSheetList;
     void* host;
     void* slotAssignment;
 };
@@ -75,6 +77,9 @@ ShadowRoot::~ShadowRoot()
 {
     if (isConnected())
         document().didRemoveInDocumentShadowRoot(*this);
+
+    if (m_styleSheetList)
+        m_styleSheetList->detach();
 
     // We cannot let ContainerNode destructor call willBeDeletedFrom()
     // for this ShadowRoot instance because TreeScope destructor
@@ -106,6 +111,30 @@ void ShadowRoot::removedFromAncestor(RemovalType removalType, ContainerNode& old
         document().didRemoveInDocumentShadowRoot(*this);
 }
 
+void ShadowRoot::childrenChanged(const ChildChange& childChange)
+{
+    DocumentFragment::childrenChanged(childChange);
+
+    if (!m_host || m_type == ShadowRootMode::UserAgent)
+        return; // Don't support first-child, nth-of-type, etc... in UA shadow roots as an optimization.
+
+    // FIXME: Avoid always invalidating style just for first-child, etc... as done in Element::childrenChanged.
+    switch (childChange.type) {
+    case ElementInserted:
+    case ElementRemoved:
+        m_host->invalidateStyleForSubtreeInternal();
+        break;
+    case TextInserted:
+    case TextRemoved:
+    case TextChanged:
+    case AllChildrenRemoved:
+    case NonContentsChildRemoved:
+    case NonContentsChildInserted:
+    case AllChildrenReplaced:
+        break;
+    }
+}
+
 void ShadowRoot::moveShadowRootToNewParentScope(TreeScope& newScope, Document& newDocument)
 {
     setParentTreeScope(newScope);
@@ -127,15 +156,20 @@ Style::Scope& ShadowRoot::styleScope()
     return *m_styleScope;
 }
 
+StyleSheetList& ShadowRoot::styleSheets()
+{
+    if (!m_styleSheetList)
+        m_styleSheetList = StyleSheetList::create(*this);
+    return *m_styleSheetList;
+}
+
 String ShadowRoot::innerHTML() const
 {
-    return createMarkup(*this, ChildrenOnly);
+    return serializeFragment(*this, SerializedNodes::SubtreesOfChildren);
 }
 
 ExceptionOr<void> ShadowRoot::setInnerHTML(const String& markup)
 {
-    if (isOrphan())
-        return Exception { InvalidAccessError };
     auto fragment = createFragmentForInnerOuterHTML(*host(), markup, AllowScriptingContent);
     if (fragment.hasException())
         return fragment.releaseException();
@@ -184,13 +218,13 @@ HTMLSlotElement* ShadowRoot::findAssignedSlot(const Node& node)
     return m_slotAssignment->findAssignedSlot(node, *this);
 }
 
-void ShadowRoot::renameSlotElement(HTMLSlotElement& slot, const AtomicString& oldName, const AtomicString& newName)
+void ShadowRoot::renameSlotElement(HTMLSlotElement& slot, const AtomString& oldName, const AtomString& newName)
 {
     ASSERT(m_slotAssignment);
     return m_slotAssignment->renameSlotElement(slot, oldName, newName, *this);
 }
 
-void ShadowRoot::addSlotElementByName(const AtomicString& name, HTMLSlotElement& slot)
+void ShadowRoot::addSlotElementByName(const AtomString& name, HTMLSlotElement& slot)
 {
     ASSERT(&slot.rootNode() == this);
     if (!m_slotAssignment)
@@ -199,7 +233,7 @@ void ShadowRoot::addSlotElementByName(const AtomicString& name, HTMLSlotElement&
     return m_slotAssignment->addSlotElementByName(name, slot, *this);
 }
 
-void ShadowRoot::removeSlotElementByName(const AtomicString& name, HTMLSlotElement& slot, ContainerNode& oldParentOfRemovedTree)
+void ShadowRoot::removeSlotElementByName(const AtomString& name, HTMLSlotElement& slot, ContainerNode& oldParentOfRemovedTree)
 {
     ASSERT(m_slotAssignment);
     return m_slotAssignment->removeSlotElementByName(name, slot, &oldParentOfRemovedTree, *this);

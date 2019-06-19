@@ -36,11 +36,15 @@ protected:
     GenericTypedArrayView(RefPtr<ArrayBuffer>&&, unsigned byteOffset, unsigned length);
 
 public:
-    static RefPtr<GenericTypedArrayView> create(unsigned length);
-    static RefPtr<GenericTypedArrayView> create(const typename Adaptor::Type* array, unsigned length);
-    static RefPtr<GenericTypedArrayView> create(RefPtr<ArrayBuffer>&&, unsigned byteOffset, unsigned length);
+    static Ref<GenericTypedArrayView> create(unsigned length);
+    static Ref<GenericTypedArrayView> create(const typename Adaptor::Type* array, unsigned length);
+    static Ref<GenericTypedArrayView> create(RefPtr<ArrayBuffer>&&, unsigned byteOffset, unsigned length);
+    static RefPtr<GenericTypedArrayView> tryCreate(unsigned length);
+    static RefPtr<GenericTypedArrayView> tryCreate(const typename Adaptor::Type* array, unsigned length);
+    static RefPtr<GenericTypedArrayView> tryCreate(RefPtr<ArrayBuffer>&&, unsigned byteOffset, unsigned length);
     
-    static RefPtr<GenericTypedArrayView> createUninitialized(unsigned length);
+    static Ref<GenericTypedArrayView> createUninitialized(unsigned length);
+    static RefPtr<GenericTypedArrayView> tryCreateUninitialized(unsigned length);
     
     typename Adaptor::Type* data() const { return static_cast<typename Adaptor::Type*>(baseAddress()); }
     
@@ -54,8 +58,7 @@ public:
         return setRangeImpl(
             reinterpret_cast<const char*>(data),
             count * sizeof(typename Adaptor::Type),
-            offset * sizeof(typename Adaptor::Type),
-            internalByteLength());
+            offset * sizeof(typename Adaptor::Type));
     }
     
     bool zeroRange(unsigned offset, size_t count)
@@ -69,12 +72,7 @@ public:
     {
         if (isNeutered())
             return 0;
-        return m_length;
-    }
-    
-    unsigned byteLength() const override
-    {
-        return internalByteLength();
+        return byteLength() / sizeof(typename Adaptor::Type);
     }
 
     typename Adaptor::Type item(unsigned index) const
@@ -100,8 +98,7 @@ public:
         return getRangeImpl(
             reinterpret_cast<char*>(data),
             count * sizeof(typename Adaptor::Type),
-            offset * sizeof(typename Adaptor::Type),
-            internalByteLength());
+            offset * sizeof(typename Adaptor::Type));
     }
 
     bool checkInboundData(unsigned offset, size_t count) const
@@ -122,14 +119,6 @@ public:
     }
 
     JSArrayBufferView* wrap(ExecState*, JSGlobalObject*) override;
-
-private:
-    unsigned internalByteLength() const
-    {
-        return length() * sizeof(typename Adaptor::Type);
-    }
-
-    unsigned m_length;
 };
 
 } // namespace JSC

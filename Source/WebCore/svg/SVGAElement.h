@@ -2,7 +2,7 @@
  * Copyright (C) 2004, 2005, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005 Rob Buis <buis@kde.org>
  * Copyright (C) 2007 Eric Seidel <eric@webkit.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -25,6 +25,7 @@
 #include "SVGExternalResourcesRequired.h"
 #include "SVGGraphicsElement.h"
 #include "SVGURIReference.h"
+#include "SharedStringHash.h"
 
 namespace WebCore {
 
@@ -33,18 +34,18 @@ class SVGAElement final : public SVGGraphicsElement, public SVGExternalResources
 public:
     static Ref<SVGAElement> create(const QualifiedName&, Document&);
 
-    String target() const final { return m_target.currentValue(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedString> targetAnimated() { return m_target.animatedProperty(attributeOwnerProxy()); }
+    String target() const final { return m_target->currentValue(); }
+    Ref<SVGAnimatedString>& targetAnimated() { return m_target; }
+
+    SharedStringHash visitedLinkHash() const;
 
 private:
     SVGAElement(const QualifiedName&, Document&);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGAElement, SVGGraphicsElement, SVGExternalResourcesRequired, SVGURIReference>;
-    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
-    static void registerAttributes();
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGAElement, SVGGraphicsElement, SVGExternalResourcesRequired, SVGURIReference>;
+    const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
 
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
     void svgAttributeChanged(const QualifiedName&) final;
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
@@ -63,8 +64,11 @@ private:
 
     bool willRespondToMouseClickEvents() final;
 
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
-    SVGAnimatedStringAttribute m_target;
+    PropertyRegistry m_propertyRegistry { *this };
+    Ref<SVGAnimatedString> m_target { SVGAnimatedString::create(this) };
+
+    // This is computed only once and must not be affected by subsequent URL changes.
+    mutable Optional<SharedStringHash> m_storedVisitedLinkHash;
 };
 
 } // namespace WebCore

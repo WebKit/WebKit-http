@@ -158,7 +158,7 @@ static Protocol::Console::ChannelSource messageSourceValue(MessageSource source)
 {
     switch (source) {
     case MessageSource::XML: return Protocol::Console::ChannelSource::XML;
-    case MessageSource::JS: return Protocol::Console::ChannelSource::Javascript;
+    case MessageSource::JS: return Protocol::Console::ChannelSource::JavaScript;
     case MessageSource::Network: return Protocol::Console::ChannelSource::Network;
     case MessageSource::ConsoleAPI: return Protocol::Console::ChannelSource::ConsoleAPI;
     case MessageSource::Storage: return Protocol::Console::ChannelSource::Storage;
@@ -170,6 +170,7 @@ static Protocol::Console::ChannelSource messageSourceValue(MessageSource source)
     case MessageSource::Other: return Protocol::Console::ChannelSource::Other;
     case MessageSource::Media: return Protocol::Console::ChannelSource::Media;
     case MessageSource::WebRTC: return Protocol::Console::ChannelSource::WebRTC;
+    case MessageSource::MediaSource: return Protocol::Console::ChannelSource::MediaSource;
     }
     return Protocol::Console::ChannelSource::Other;
 }
@@ -190,6 +191,7 @@ static Protocol::Console::ConsoleMessage::Type messageTypeValue(MessageType type
     case MessageType::Timing: return Protocol::Console::ConsoleMessage::Type::Timing;
     case MessageType::Profile: return Protocol::Console::ConsoleMessage::Type::Profile;
     case MessageType::ProfileEnd: return Protocol::Console::ConsoleMessage::Type::ProfileEnd;
+    case MessageType::Image: return Protocol::Console::ConsoleMessage::Type::Image;
     }
     return Protocol::Console::ConsoleMessage::Type::Log;
 }

@@ -47,7 +47,7 @@ class JS_EXPORT_PRIVATE InspectorAgent final : public InspectorAgentBase, public
     WTF_MAKE_FAST_ALLOCATED;
 public:
     InspectorAgent(AgentContext&);
-    virtual ~InspectorAgent();
+    virtual ~InspectorAgent() = default;
 
     void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) override;
     void willDestroyFrontendAndBackend(DisconnectReason) override;
@@ -71,9 +71,6 @@ private:
 
     Vector<String> m_pendingEvaluateTestCommands;
     std::pair<RefPtr<Protocol::Runtime::RemoteObject>, RefPtr<JSON::Object>> m_pendingInspectData;
-#if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
-    RefPtr<JSON::ArrayOf<String>> m_pendingExtraDomainsData;
-#endif
     bool m_enabled { false };
 };
 

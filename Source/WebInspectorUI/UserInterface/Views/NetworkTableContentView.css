@@ -27,6 +27,19 @@
     background: none;
 }
 
+.content-view.tab.network > .content-browser > .navigation-bar .hierarchical-path .icon {
+    -webkit-margin-start: 8px;
+    -webkit-margin-end: 4px;
+}
+
+.network-overview-icon > .icon {
+    content: url(../Images/NetworkOverview.svg);
+}
+
+.network-har-icon > .icon {
+    content: url(../Images/NetworkHAR.svg);
+}
+
 .content-view.network .network-table .icon {
     position: relative;
     width: 16px;
@@ -40,7 +53,61 @@
     cursor: pointer;
 }
 
-.network-table .cache-type {
+.network-table .cell.dom-node.name .icon {
+    content: url(../Images/DOMElement.svg);
+}
+
+.network-table .cell.dom-node.name .disclosure {
+    width: 13px;
+    height: 13px;
+    vertical-align: -2px;
+    content: url(../Images/DisclosureTriangles.svg#closed-normal);
+    background-size: 13px 13px;
+    background-repeat: no-repeat;
+}
+
+body[dir=rtl] .network-table .cell.dom-node.name .disclosure {
+    transform: scaleX(-1);
+}
+
+.network-table:focus li.selected .cell.dom-node.name .disclosure {
+    content: url(../Images/DisclosureTriangles.svg#closed-selected);
+}
+
+.network-table .cell.dom-node.name .disclosure.expanded {
+    content: url(../Images/DisclosureTriangles.svg#open-normal);
+}
+
+.network-table:focus li.selected .cell.dom-node.name .disclosure.expanded {
+    content: url(../Images/DisclosureTriangles.svg#open-selected);
+}
+
+.network-table.grouped .data-container .cell.name {
+    --item-padding-start: 19px;
+    --item-disclosure-width: 11px;
+}
+
+.network-table.grouped .data-container .cell:not(.parent).name {
+    -webkit-padding-start: var(--item-padding-start);
+}
+
+.network-table.grouped .data-container .cell.child.name {
+    -webkit-padding-start: calc(var(--item-padding-start) + var(--item-disclosure-width));
+}
+
+.network-table .data-container .cell.name .range {
+    color: hsla(0, 0%, 0%, 0.7);
+}
+
+.network-table .data-container .cell.name .range::before {
+    content: "\00A0\2014\00A0"; /* &nbsp;&mdash;&nbsp; */;
+}
+
+.network-table:focus .data-container li.selected .cell.name .range {
+    color: hsla(0, 0%, 100%, 0.9);
+}
+
+.network-table li:not(.selected) .cell:matches(.cache-type, .multiple) {
     color: var(--text-color-gray-medium);
 }
 
@@ -55,14 +122,21 @@
     -webkit-margin-end: 5px;
 }
 
+.network-table li.selected .cell.domain > .lock {
+    /* FIXME: <https://webkit.org/b/189773> Web Inspector: create special Network waterfall for media events */
+    filter: invert();
+}
+
+.network-table .cell.name > .status {
+    -webkit-margin-start: 4px;
+}
+
 body[dir=ltr] .network-table .cell.name > .status {
     float: right;
-    margin-left: 4px;
 }
 
 body[dir=rtl] .network-table .cell.name > .status {
     float: left;
-    margin-right: 4px;
 }
 
 .network-table .cell.name > .status .indeterminate-progress-spinner {
@@ -105,6 +179,42 @@ body[dir=rtl] .network-table .cell.name > .status {
     bottom: 0;
 }
 
+.network-table :not(.header) .cell.waterfall .waterfall-container > .dom-event {
+    position: absolute;
+    top: calc(50% - (var(--node-waterfall-dom-event-size) / 2));
+    min-width: var(--node-waterfall-dom-event-size);
+    height: var(--node-waterfall-dom-event-size);
+    background-color: var(--selected-background-color-active);
+    border-radius: calc(var(--node-waterfall-dom-event-size) / 2);
+}
+
+.network-table :not(.header) .cell.waterfall .waterfall-container > .dom-activity {
+    position: absolute;
+    top: calc(50% - 0.5px);
+    border-top: 1px dashed var(--selected-background-color-active);
+}
+
+.network-table :not(.header) .cell.waterfall .waterfall-container > .dom-activity.playing {
+    border-top-style: solid;
+}
+
+.network-table :not(.header) .cell.waterfall .waterfall-container > .area {
+    position: absolute;
+    top: var(--area-padding);
+    height: calc(100% - (var(--area-padding) * 2));
+
+    /* Half of the vertical space above any .dom-event node */
+    --area-padding: calc((50% - (var(--node-waterfall-dom-event-size) / 2)) / 2);
+}
+
+.network-table :not(.header) .cell.waterfall .waterfall-container > .area.dom-fullscreen {
+    background-color: hsl(0, 0%, 40%);
+}
+
+.network-table :not(.header) .cell.waterfall .waterfall-container > .area.power-efficient-playback {
+    background-color: var(--network-request-color);
+}
+
 .network-table .timeline-ruler {
     position: absolute;
     top: 0;
@@ -126,6 +236,37 @@ body[dir=rtl] .network-table .cell.name > .status {
     top: 8px;
     min-width: 2px;
     height: 4px;
+
+    --start-radius: 2px;
+    --end-radius: 2px;
+}
+
+body[dir=ltr] .waterfall .block {
+    border-top-left-radius: var(--start-radius);
+    border-top-right-radius: var(--end-radius);
+    border-bottom-left-radius: var(--start-radius);
+    border-bottom-right-radius: var(--end-radius);
+}
+
+body[dir=rtl] .waterfall .block {
+    border-top-left-radius: var(--end-radius);
+    border-top-right-radius: var(--start-radius);
+    border-bottom-left-radius: var(--end-radius);
+    border-bottom-right-radius: var(--start-radius);
+}
+
+.network-table .waterfall .block + .block {
+    --start-radius: 0;
+    --end-radius: 0;
+}
+
+.network-table .waterfall .block:matches(.mouse-tracking, .filler) + .block:not(.mouse-tracking, .filler),
+.network-table .waterfall .block:not(.request, .response) + :matches(.request, .response) {
+    --start-radius: 2px;
+}
+
+.network-table .waterfall .block:last-child {
+    --end-radius: 2px;
 }
 
 .waterfall .block.request,
@@ -140,9 +281,17 @@ body[dir=rtl] .network-table .cell.name > .status {
     height: 18px;
 }
 
+.waterfall .block.filler {
+    top: 9px;
+    height: 2px;
+    background-color: lightgrey;
+}
+
+.waterfall .block.redirect {
+    background-color: var(--network-redirect-color);
+}
+
 .waterfall .block.queue {
-    min-width: 3px;
-    -webkit-margin-start: -1px;
     background-color: var(--network-queue-color);
 }
 
@@ -164,4 +313,18 @@ body[dir=rtl] .network-table .cell.name > .status {
 
 .waterfall .block.response {
     background-color: var(--network-response-color);
+}
+
+@media (prefers-color-scheme: dark) {
+    .content-view.tab.network > .content-browser > .navigation-bar .hierarchical-path .icon {
+        filter: invert(88%);
+    }
+
+    .network-table .cell.domain > .lock {
+        filter: var(--filter-invert);
+    }
+
+    .network-table .data-container .cell.name .range {
+        color: var(--text-color-secondary);
+    }
 }

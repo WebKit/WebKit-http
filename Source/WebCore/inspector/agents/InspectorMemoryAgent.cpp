@@ -74,7 +74,7 @@ void InspectorMemoryAgent::startTracking(ErrorString&)
     if (m_tracking)
         return;
 
-    ResourceUsageThread::addObserver(this, [this] (const ResourceUsageData& data) {
+    ResourceUsageThread::addObserver(this, Memory, [this] (const ResourceUsageData& data) {
         collectSample(data);
     });
 
@@ -92,7 +92,7 @@ void InspectorMemoryAgent::stopTracking(ErrorString&)
 
     m_tracking = false;
 
-    m_frontendDispatcher->trackingComplete();
+    m_frontendDispatcher->trackingComplete(m_environment.executionStopwatch()->elapsedTime().seconds());
 }
 
 void InspectorMemoryAgent::didHandleMemoryPressure(Critical critical)
@@ -107,7 +107,7 @@ void InspectorMemoryAgent::didHandleMemoryPressure(Critical critical)
 void InspectorMemoryAgent::collectSample(const ResourceUsageData& data)
 {
     auto javascriptCategory = Protocol::Memory::CategoryData::create()
-        .setType(Protocol::Memory::CategoryData::Type::Javascript)
+        .setType(Protocol::Memory::CategoryData::Type::JavaScript)
         .setSize(data.categories[MemoryCategory::GCHeap].totalSize() + data.categories[MemoryCategory::GCOwned].totalSize())
         .release();
 
@@ -145,13 +145,13 @@ void InspectorMemoryAgent::collectSample(const ResourceUsageData& data)
     categories->addItem(WTFMove(otherCategory));
 
     auto event = Protocol::Memory::Event::create()
-        .setTimestamp(m_environment.executionStopwatch()->elapsedTime().seconds())
+        .setTimestamp(m_environment.executionStopwatch()->elapsedTimeSince(data.timestamp).seconds())
         .setCategories(WTFMove(categories))
         .release();
 
     m_frontendDispatcher->trackingUpdate(WTFMove(event));
 }
 
-} // namespace Inspector
+} // namespace WebCore
 
 #endif // ENABLE(RESOURCE_USAGE)

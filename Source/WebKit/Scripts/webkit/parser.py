@@ -50,6 +50,7 @@ def parse(file):
     master_condition = None
     superclass = []
     for line in file:
+        line = line.strip()
         match = re.search(r'messages -> (?P<destination>[A-Za-z_0-9]+) \s*(?::\s*(?P<superclass>.*?) \s*)?(?:(?P<attributes>.*?)\s+)?{', line)
         if match:
             receiver_attributes = parse_attributes_string(match.group('attributes'))
@@ -61,13 +62,12 @@ def parse(file):
             destination = match.group('destination')
             continue
         if line.startswith('#'):
-            trimmed = line.rstrip()
             if line.startswith('#if '):
-                conditions.append(trimmed[4:])
+                conditions.append(line[4:])
             elif line.startswith('#endif') and conditions:
                 conditions.pop()
             elif line.startswith('#else') or line.startswith('#elif'):
-                raise Exception("ERROR: '%s' is not supported in the *.in files" % trimmed)
+                raise Exception("ERROR: '%s' is not supported in the *.in files" % line)
             continue
         match = re.search(r'([A-Za-z_0-9]+)\((.*?)\)(?:(?:\s+->\s+)\((.*?)\))?(?:\s+(.*))?', line)
         if match:
@@ -134,9 +134,9 @@ def parse_parameters_string(parameters_string):
         if split[0].startswith('struct '):
             parameter_kind = 'struct'
             split[0] = split[0][7:]
-        elif split[0].startswith('enum '):
-            parameter_kind = 'enum'
-            split[0] = split[0][5:]
+        elif split[0].startswith('enum:'):
+            parameter_kind = split[0][:split[0].find(' ')]
+            split[0] = split[0][split[0].find(' ') + 1:]
 
         parameter_type = split[0]
         parameter_name = split[1]

@@ -60,9 +60,11 @@ public:
     bool isValid() const { return !!m_webPage; }
 
 #if PLATFORM(COCOA)
-    NSFileWrapper *fileWrapper() const { return m_fileWrapper.get(); }
+    NSFileWrapper *fileWrapper() const;
     void setFileWrapper(NSFileWrapper *fileWrapper) { m_fileWrapper = fileWrapper; }
     void setFileWrapperAndUpdateContentType(NSFileWrapper *, NSString *contentType);
+    void setFileWrapperGenerator(Function<RetainPtr<NSFileWrapper>(void)>&&);
+    void invalidateGeneratedFileWrapper();
     WTF::String utiType() const;
 #endif
     WTF::String mimeType() const;
@@ -77,19 +79,30 @@ public:
     InsertionState insertionState() const { return m_insertionState; }
     void setInsertionState(InsertionState state) { m_insertionState = state; }
 
-    std::optional<uint64_t> fileSizeForDisplay() const;
+    bool isEmpty() const;
+
+    RefPtr<WebCore::SharedBuffer> enclosingImageData() const;
+    Optional<uint64_t> fileSizeForDisplay() const;
+
+    void setHasEnclosingImage(bool hasEnclosingImage) { m_hasEnclosingImage = hasEnclosingImage; }
+    bool hasEnclosingImage() const { return m_hasEnclosingImage; }
+
+    RefPtr<WebCore::SharedBuffer> createSerializedRepresentation() const;
+    void updateFromSerializedRepresentation(Ref<WebCore::SharedBuffer>&&, const WTF::String& contentType);
 
 private:
     explicit Attachment(const WTF::String& identifier, WebKit::WebPageProxy&);
 
 #if PLATFORM(COCOA)
-    RetainPtr<NSFileWrapper> m_fileWrapper;
+    mutable RetainPtr<NSFileWrapper> m_fileWrapper;
+    Function<RetainPtr<NSFileWrapper>(void)> m_fileWrapperGenerator;
 #endif
     WTF::String m_identifier;
     WTF::String m_filePath;
     WTF::String m_contentType;
     WeakPtr<WebKit::WebPageProxy> m_webPage;
     InsertionState m_insertionState { InsertionState::NotInserted };
+    bool m_hasEnclosingImage { false };
 };
 
 } // namespace API

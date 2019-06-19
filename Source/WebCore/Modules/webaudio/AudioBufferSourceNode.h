@@ -37,6 +37,7 @@ class PannerNode;
 // It generally will be used for short sounds which require a high degree of scheduling flexibility (can playback in rhythmically perfect ways).
 
 class AudioBufferSourceNode final : public AudioScheduledSourceNode {
+    WTF_MAKE_ISO_ALLOCATED(AudioBufferSourceNode);
 public:
     static Ref<AudioBufferSourceNode> create(AudioContext&, float sampleRate);
 
@@ -56,7 +57,7 @@ public:
     unsigned numberOfChannels();
 
     // Play-state
-    ExceptionOr<void> start(double when, double grainOffset, std::optional<double> grainDuration);
+    ExceptionOr<void> start(double when, double grainOffset, Optional<double> grainDuration);
 
     // Note: the attribute was originally exposed as .looping, but to be more consistent in naming with <audio>
     // and with how it's described in the specification, the proper attribute name is .loop

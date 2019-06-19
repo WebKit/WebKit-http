@@ -278,7 +278,7 @@ static bool setTableCellsChanged(Element& element)
     return cellChanged;
 }
 
-static bool getBordersFromFrameAttributeValue(const AtomicString& value, bool& borderTop, bool& borderRight, bool& borderBottom, bool& borderLeft)
+static bool getBordersFromFrameAttributeValue(const AtomString& value, bool& borderTop, bool& borderRight, bool& borderBottom, bool& borderLeft)
 {
     borderTop = false;
     borderRight = false;
@@ -304,7 +304,7 @@ static bool getBordersFromFrameAttributeValue(const AtomicString& value, bool& b
     return true;
 }
 
-void HTMLTableElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
+void HTMLTableElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomString& value, MutableStyleProperties& style)
 {
     if (name == widthAttr)
         addHTMLLengthToStyle(style, CSSPropertyWidth, value);
@@ -320,7 +320,7 @@ void HTMLTableElement::collectStyleForPresentationAttribute(const QualifiedName&
     else if (name == backgroundAttr) {
         String url = stripLeadingAndTrailingHTMLSpaces(value);
         if (!url.isEmpty())
-            style.setProperty(CSSProperty(CSSPropertyBackgroundImage, CSSImageValue::create(document().completeURL(url))));
+            style.setProperty(CSSProperty(CSSPropertyBackgroundImage, CSSImageValue::create(document().completeURL(url), LoadedFromOpaqueSource::No)));
     } else if (name == valignAttr) {
         if (!value.isEmpty())
             addPropertyToPresentationAttributeStyle(style, CSSPropertyVerticalAlign, value);
@@ -363,12 +363,12 @@ void HTMLTableElement::collectStyleForPresentationAttribute(const QualifiedName&
 
 bool HTMLTableElement::isPresentationAttribute(const QualifiedName& name) const
 {
-    if (name == widthAttr || name == heightAttr || name == bgcolorAttr || name == backgroundAttr || name == valignAttr || name == vspaceAttr || name == hspaceAttr || name == alignAttr || name == cellspacingAttr || name == borderAttr || name == bordercolorAttr || name == frameAttr || name == rulesAttr)
+    if (name == widthAttr || name == heightAttr || name == bgcolorAttr || name == backgroundAttr || name == valignAttr || name == vspaceAttr || name == hspaceAttr || name == cellspacingAttr || name == borderAttr || name == bordercolorAttr || name == frameAttr || name == rulesAttr)
         return true;
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLTableElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLTableElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     CellBorders bordersBefore = cellBorders();
     unsigned short oldPadding = m_padding;
@@ -473,9 +473,9 @@ HTMLTableElement::CellBorders HTMLTableElement::cellBorders() const
     return NoBorders;
 }
 
-RefPtr<StyleProperties> HTMLTableElement::createSharedCellStyle()
+Ref<StyleProperties> HTMLTableElement::createSharedCellStyle()
 {
-    RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+    auto style = MutableStyleProperties::create();
 
     auto& cssValuePool = CSSValuePool::singleton();
     switch (cellBorders()) {
@@ -566,12 +566,12 @@ Ref<HTMLCollection> HTMLTableElement::tBodies()
     return ensureRareData().ensureNodeLists().addCachedCollection<GenericCachedHTMLCollection<CollectionTypeTraits<TableTBodies>::traversalType>>(*this, TableTBodies);
 }
 
-const AtomicString& HTMLTableElement::rules() const
+const AtomString& HTMLTableElement::rules() const
 {
     return attributeWithoutSynchronization(rulesAttr);
 }
 
-const AtomicString& HTMLTableElement::summary() const
+const AtomString& HTMLTableElement::summary() const
 {
     return attributeWithoutSynchronization(summaryAttr);
 }

@@ -25,7 +25,8 @@
 
 #pragma once
 
-#include "AnimationEffectReadOnly.h"
+#include "AnimationEffect.h"
+#include "AnimationEffectPhase.h"
 #include "GenericEventQueue.h"
 #include "WebAnimation.h"
 #include <wtf/Ref.h>
@@ -37,27 +38,46 @@ class Element;
 class RenderStyle;
 
 class DeclarativeAnimation : public WebAnimation {
+    WTF_MAKE_ISO_ALLOCATED(DeclarativeAnimation);
 public:
     ~DeclarativeAnimation();
 
     bool isDeclarativeAnimation() const final { return true; }
 
+    Element* owningElement() const { return m_owningElement; }
     const Animation& backingAnimation() const { return m_backingAnimation; }
     void setBackingAnimation(const Animation&);
-    void invalidateDOMEvents(Seconds elapsedTime = 0_s);
+    void cancelFromStyle();
+
+    Optional<double> startTime() const final;
+    void setStartTime(Optional<double>) final;
+    Optional<double> bindingsCurrentTime() const final;
+    ExceptionOr<void> setBindingsCurrentTime(Optional<double>) final;
+    WebAnimation::PlayState bindingsPlayState() const final;
+    bool bindingsPending() const final;
+    WebAnimation::ReadyPromise& bindingsReady() final;
+    WebAnimation::FinishedPromise& bindingsFinished() final;
+    ExceptionOr<void> bindingsPlay() override;
+    ExceptionOr<void> bindingsPause() override;
 
     void setTimeline(RefPtr<AnimationTimeline>&&) final;
     void cancel() final;
 
+    bool needsTick() const override;
+    void tick() override;
+
 protected:
     DeclarativeAnimation(Element&, const Animation&);
 
-    virtual void initialize(const Element&, const RenderStyle* oldStyle, const RenderStyle& newStyle);
+    virtual void initialize(const RenderStyle* oldStyle, const RenderStyle& newStyle);
     virtual void syncPropertiesWithBackingAnimation();
+    void invalidateDOMEvents(Seconds elapsedTime = 0_s);
 
 private:
-    AnimationEffectReadOnly::Phase phaseWithoutEffect() const;
-    void enqueueDOMEvent(const AtomicString&, Seconds);
+    void disassociateFromOwningElement();
+    void flushPendingStyleChanges() const;
+    AnimationEffectPhase phaseWithoutEffect() const;
+    void enqueueDOMEvent(const AtomString&, Seconds);
     void remove() final;
 
     // ActiveDOMObject.
@@ -65,12 +85,14 @@ private:
     void resume() final;
     void stop() final;
 
-    Element& m_target;
-    Ref<Animation> m_backingAnimation;
     bool m_wasPending { false };
-    AnimationEffectReadOnly::Phase m_previousPhase { AnimationEffectReadOnly::Phase::Idle };
-    double m_previousIteration;
+    AnimationEffectPhase m_previousPhase { AnimationEffectPhase::Idle };
+
     GenericEventQueue m_eventQueue;
+
+    Element* m_owningElement;
+    Ref<Animation> m_backingAnimation;
+    double m_previousIteration;
 };
 
 } // namespace WebCore

@@ -25,8 +25,6 @@
 
 #import "config.h"
 
-#if WK_API_ENABLED
-
 #import "RenderedImageWithOptionsProtocol.h"
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <WebKit/WKWebProcessPlugIn.h>
@@ -64,7 +62,7 @@
     JSContext *context = [_frame jsContextForWorld:[WKWebProcessPlugInScriptWorld normalWorld]];
     JSValue *containerValue = [context evaluateScript:@"document.querySelector('.container')"];
     WKWebProcessPlugInNodeHandle *containerNode = [WKWebProcessPlugInNodeHandle nodeHandleWithJSValue:containerValue inContext:context];
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     UIImage *image = [containerNode renderedImageWithOptions:kWKSnapshotOptionsExcludeOverflow width:width];
 #elif PLATFORM(MAC)
     NSImage *image = [containerNode renderedImageWithOptions:kWKSnapshotOptionsExcludeOverflow width:width];
@@ -73,5 +71,3 @@
 }
 
 @end
-
-#endif // WK_API_ENABLED

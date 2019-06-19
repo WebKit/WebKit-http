@@ -59,7 +59,7 @@ WI.CallFrameTreeController = class CallFrameTreeController extends WI.Object
         this._treeOutline.removeChildren();
 
         for (let callFrame of this._callFrames)
-            this._treeOutline.appendChild(new WI.CallFrameTreeElement(callFrame))
+            this._treeOutline.appendChild(new WI.CallFrameTreeElement(callFrame));
     }
 
     disconnect()
@@ -76,7 +76,7 @@ WI.CallFrameTreeController = class CallFrameTreeController extends WI.Object
 
     _treeSelectionDidChange(event)
     {
-        this._showSourceCodeLocation(event.data.selectedElement);
+        this._showSourceCodeLocation(this._treeOutline.selectedTreeElement);
     }
 
     _showSourceCodeLocation(treeElement)

@@ -36,21 +36,6 @@
 #include <wtf/Seconds.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(COCOA)
-#include <wtf/RetainPtr.h>
-#include <CoreFoundation/CFRunLoop.h>
-typedef RetainPtr<CFRunLoopTimerRef> PlatformTimerRef;
-#elif PLATFORM(QT)
-#include <QTimer>
-typedef QTimer PlatformTimerRef;
-#elif PLATFORM(GTK) || PLATFORM(WPE)
-#include <wtf/RunLoop.h>
-namespace WTR {
-class TestRunner;
-typedef RunLoop::Timer<TestRunner> PlatformTimerRef;
-}
-#endif
-
 namespace WTR {
 
 class TestRunner : public JSWrappable {
@@ -62,6 +47,15 @@ public:
     virtual JSClassRef wrapperClass();
 
     void makeWindowObject(JSContextRef, JSObjectRef windowObject, JSValueRef* exception);
+
+    bool isIOSFamily() const
+    {
+#if PLATFORM(IOS_FAMILY)
+        return true;
+#else
+        return false;
+#endif
+    }
 
     bool isWebKit2() const { return true; }
 
@@ -76,6 +70,9 @@ public:
     void notifyDone();
     double preciseTime();
     double timeout() { return m_timeout.milliseconds(); }
+
+    void setRenderTreeDumpOptions(unsigned short);
+    unsigned renderTreeDumpOptions() const { return m_renderTreeDumpOptions; }
 
     // Other dumping.
     void dumpBackForwardList() { m_shouldDumpBackForwardListsForAllWindows = true; }
@@ -102,12 +99,11 @@ public:
     // Special options.
     void keepWebHistory();
     void setAcceptsEditing(bool value) { m_shouldAllowEditing = value; }
-    void setCanOpenWindows(bool);
+    void setCanOpenWindows();
     void setCloseRemainingWindowsWhenComplete(bool value) { m_shouldCloseExtraWindows = value; }
     void setXSSAuditorEnabled(bool);
     void setModernMediaControlsEnabled(bool);
     void setWebGL2Enabled(bool);
-    void setWebGPUEnabled(bool);
     void setWritableStreamAPIEnabled(bool);
     void setReadableByteStreamAPIEnabled(bool);
 
@@ -117,7 +113,6 @@ public:
     void setPluginsEnabled(bool);
     void setJavaScriptCanAccessClipboard(bool);
     void setPrivateBrowsingEnabled(bool);
-    void setUseDashboardCompatibilityMode(bool);
     void setPopupBlockingEnabled(bool);
     void setAuthorAndUserStylesEnabled(bool);
     void setCustomPolicyDelegate(bool enabled, bool permissive = false);
@@ -134,7 +129,7 @@ public:
     void setAllowsAnySSLCertificate(bool);
     void setEncryptedMediaAPIEnabled(bool);
     void setMediaDevicesEnabled(bool);
-    void setMDNSICECandidatesEnabled(bool);
+    void setWebRTCMDNSICECandidatesEnabled(bool);
     void setWebRTCUnifiedPlanEnabled(bool);
     void setCustomUserAgent(JSStringRef);
     void setWebAPIStatisticsEnabled(bool);
@@ -157,6 +152,8 @@ public:
 
     // Text search testing.
     bool findString(JSStringRef, JSValueRef optionsArray);
+    void findStringMatchesInPage(JSStringRef, JSValueRef optionsArray);
+    void replaceFindMatchesAtIndices(JSValueRef matchIndices, JSStringRef replacementText, bool selectionOnly);
 
     // Local storage
     void clearAllDatabases();
@@ -176,6 +173,10 @@ public:
     void clearDOMCaches();
     bool hasDOMCache(JSStringRef origin);
     uint64_t domCacheSize(JSStringRef origin);
+    void setAllowStorageQuotaIncrease(bool);
+
+    // IndexedDB
+    void setIDBPerOriginQuota(uint64_t);
 
     // Failed load condition testing
     void forceImmediateCompletion();
@@ -228,8 +229,6 @@ public:
     void clearDidReceiveServerRedirectForProvisionalNavigation();
 
     bool shouldWaitUntilDone() const;
-    void waitToDumpWatchdogTimerFired();
-    void invalidateWaitToDumpWatchdogTimer();
 
     // Downloads
     bool shouldFinishAfterDownload() const { return m_shouldFinishAfterDownload; }
@@ -259,8 +258,6 @@ public:
     void setTextDirection(JSStringRef);
 
     void setShouldStayOnPageAfterHandlingBeforeUnload(bool);
-
-    void setDefersLoading(bool);
 
     void setStopProvisionalFrameLoads() { m_shouldStopProvisionalFrameLoads = true; }
     bool shouldStopProvisionalFrameLoads() const { return m_shouldStopProvisionalFrameLoads; }
@@ -292,6 +289,7 @@ public:
 
     // Cookies testing
     void setAlwaysAcceptCookies(bool);
+    void setOnlyAcceptFirstPartyCookies(bool);
 
     // Custom full screen behavior.
     void setHasCustomFullScreenBehavior(bool value) { m_customFullScreenBehavior = value; }
@@ -315,6 +313,7 @@ public:
     void setUserMediaPersistentPermissionForOrigin(bool permission, JSStringRef origin, JSStringRef parentOrigin);
     unsigned userMediaPermissionRequestCountForOrigin(JSStringRef origin, JSStringRef parentOrigin) const;
     void resetUserMediaPermissionRequestCountForOrigin(JSStringRef origin, JSStringRef parentOrigin);
+    bool isDoingMediaCapture() const;
 
     void setPageVisibility(JSStringRef state);
     void resetPageVisibility();
@@ -345,12 +344,18 @@ public:
     void setNavigationGesturesEnabled(bool);
     void setIgnoresViewportScaleLimits(bool);
     void setShouldDownloadUndisplayableMIMETypes(bool);
+    void setShouldAllowDeviceOrientationAndMotionAccess(bool);
 
     bool didCancelClientRedirect() const { return m_didCancelClientRedirect; }
     void setDidCancelClientRedirect(bool value) { m_didCancelClientRedirect = value; }
 
     void runUIScript(JSStringRef script, JSValueRef callback);
     void runUIScriptCallback(unsigned callbackID, JSStringRef result);
+
+    // Contextual menu actions
+    void setAllowedMenuActions(JSValueRef);
+    void installCustomMenuAction(JSStringRef name, bool dismissesAutomatically, JSValueRef callback);
+    void performCustomMenuAction();
 
     void installDidBeginSwipeCallback(JSValueRef);
     void installWillEndSwipeCallback(JSValueRef);
@@ -412,8 +417,10 @@ public:
     void setStatisticsSubresourceUniqueRedirectFrom(JSStringRef hostName, JSStringRef hostNameRedirectedFrom);
     void setStatisticsTopFrameUniqueRedirectTo(JSStringRef hostName, JSStringRef hostNameRedirectedTo);
     void setStatisticsTopFrameUniqueRedirectFrom(JSStringRef hostName, JSStringRef hostNameRedirectedFrom);
+    void setStatisticsCrossSiteLoadWithLinkDecoration(JSStringRef fromHost, JSStringRef toHost);
     void setStatisticsTimeToLiveUserInteraction(double seconds);
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool);
+    void setStatisticsIsRunningTest(bool);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
     void setStatisticsNotifyPagesWhenTelemetryWasCaptured(bool value);
     void setStatisticsMinimumTimeBetweenDataRecordsRemoval(double);
@@ -423,7 +430,10 @@ public:
     void statisticsClearInMemoryAndPersistentStore(JSValueRef callback);
     void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours, JSValueRef callback);
     void statisticsClearThroughWebsiteDataRemoval(JSValueRef callback);
+    void statisticsDeleteCookiesForHost(JSStringRef hostName, bool includeHttpOnlyCookies);
     void statisticsCallClearThroughWebsiteDataRemovalCallback();
+    bool isStatisticsHasLocalStorage(JSStringRef hostName);
+    void setStatisticsCacheMaxAgeCap(double seconds);
     void statisticsResetToConsistentState(JSValueRef completionHandler);
     void statisticsCallDidResetToConsistentStateCallback();
 
@@ -442,10 +452,14 @@ public:
 
     // Open panel
     void setOpenPanelFiles(JSValueRef);
+    void setOpenPanelFilesMediaIcon(JSValueRef);
+
+    // Modal alerts
+    void setShouldDismissJavaScriptAlertsAsynchronously(bool);
+    void abortModal();
 
     void terminateNetworkProcess();
     void terminateServiceWorkerProcess();
-    void terminateStorageProcess();
 
     void removeAllSessionCredentials(JSValueRef);
     void callDidRemoveAllSessionCredentialsCallback();
@@ -470,11 +484,29 @@ public:
 
     void sendDisplayConfigurationChangedMessageForTesting();
 
+    // WebAuthN
+    void setWebAuthenticationMockConfiguration(JSValueRef);
+    // FIXME(189876)
+    void addTestKeyToKeychain(JSStringRef privateKeyBase64, JSStringRef attrLabel, JSStringRef applicationTagBase64);
+    void cleanUpKeychain(JSStringRef attrLabel);
+    bool keyExistsInKeychain(JSStringRef attrLabel, JSStringRef applicationTagBase64);
+
+    void setCanHandleHTTPSServerTrustEvaluation(bool canHandle);
+    bool canDoServerTrustEvaluationInNetworkProcess();
+    unsigned long serverTrustEvaluationCallbackCallsCount();
+
+    // Ad Click Attribution.
+    void dumpAdClickAttribution();
+    void clearAdClickAttribution();
+    void clearAdClickAttributionsThroughWebsiteDataRemoval();
+    void setAdClickAttributionOverrideTimerForTesting(bool value);
+    void setAdClickAttributionConversionURLForTesting(JSStringRef);
+    void markAdClickAttributionsAsExpiredForTesting();
+
 private:
     TestRunner();
 
     void platformInitialize();
-    void initializeWaitToDumpWatchdogTimerIfNeeded();
 
     void setDumpPixels(bool);
     void setWaitUntilDone(bool);
@@ -483,60 +515,57 @@ private:
 
     WKRetainPtr<WKURLRef> m_testURL; // Set by InjectedBundlePage once provisional load starts.
 
-    bool m_shouldDumpAllFrameScrollPositions;
-    bool m_shouldDumpBackForwardListsForAllWindows;
-
-    bool m_shouldAllowEditing;
-    bool m_shouldCloseExtraWindows;
-
-    bool m_dumpEditingCallbacks;
-    bool m_dumpStatusCallbacks;
-    bool m_dumpTitleChanges;
-    bool m_dumpPixels;
-    bool m_dumpSelectionRect;
-    bool m_dumpFullScreenCallbacks;
-    bool m_dumpProgressFinishedCallback;
-    bool m_dumpResourceLoadCallbacks;
-    bool m_dumpResourceResponseMIMETypes;
-    bool m_dumpWillCacheResponse;
-    bool m_dumpApplicationCacheDelegateCallbacks;
-    bool m_dumpDatabaseCallbacks;
-    bool m_dumpPolicyCallbacks { false };
-    bool m_disallowIncreaseForApplicationCacheQuota;
-    bool m_testRepaint;
-    bool m_testRepaintSweepHorizontally;
-    bool m_isPrinting;
-
-    bool m_willSendRequestReturnsNull;
-    bool m_willSendRequestReturnsNullOnRedirect;
-    bool m_shouldStopProvisionalFrameLoads;
     String m_willSendRequestHTTPBody;
+    WTF::Seconds m_timeout { 30_s };
 
-    bool m_policyDelegateEnabled;
-    bool m_policyDelegatePermissive;
-    
-    bool m_globalFlag;
-    bool m_customFullScreenBehavior;
+    WKRetainPtr<WKStringRef> m_userStyleSheetLocation;
+    WKRetainPtr<WKArrayRef> m_allowedHosts;
 
-    WTF::Seconds m_timeout;
+    double m_databaseDefaultQuota { -1 };
+    double m_databaseMaxQuota { -1 };
 
-    double m_databaseDefaultQuota;
-    double m_databaseMaxQuota;
+    size_t m_userMediaPermissionRequestCount { 0 };
+
+    unsigned m_renderTreeDumpOptions { 0 };
+    bool m_shouldDumpAllFrameScrollPositions { false };
+    bool m_shouldDumpBackForwardListsForAllWindows { false };
+    bool m_shouldAllowEditing { true };
+    bool m_shouldCloseExtraWindows { false };
+
+    bool m_dumpEditingCallbacks { false };
+    bool m_dumpStatusCallbacks { false };
+    bool m_dumpTitleChanges { false };
+    bool m_dumpPixels { false };
+    bool m_dumpSelectionRect { false };
+    bool m_dumpFullScreenCallbacks { false };
+    bool m_dumpProgressFinishedCallback { false };
+    bool m_dumpResourceLoadCallbacks { false };
+    bool m_dumpResourceResponseMIMETypes { false };
+    bool m_dumpWillCacheResponse { false };
+    bool m_dumpApplicationCacheDelegateCallbacks { false };
+    bool m_dumpDatabaseCallbacks { false };
+    bool m_dumpPolicyCallbacks { false };
+
+    bool m_disallowIncreaseForApplicationCacheQuota { false };
+    bool m_testRepaint { false };
+    bool m_testRepaintSweepHorizontally { false };
+    bool m_isPrinting { false };
+    bool m_willSendRequestReturnsNull { false };
+    bool m_willSendRequestReturnsNullOnRedirect { false };
+    bool m_shouldStopProvisionalFrameLoads { false };
+
+    bool m_policyDelegateEnabled { false };
+    bool m_policyDelegatePermissive { false };
+
+    bool m_globalFlag { false };
+    bool m_customFullScreenBehavior { false };
 
     bool m_shouldDecideNavigationPolicyAfterDelay { false };
     bool m_shouldDecideResponsePolicyAfterDelay { false };
     bool m_shouldFinishAfterDownload { false };
     bool m_didCancelClientRedirect { false };
 
-    bool m_userStyleSheetEnabled;
-    WKRetainPtr<WKStringRef> m_userStyleSheetLocation;
-
-    WKRetainPtr<WKArrayRef> m_allowedHosts;
-
-    size_t m_userMediaPermissionRequestCount { 0 };
-
-    PlatformTimerRef m_waitToDumpWatchdogTimer;
-
+    bool m_userStyleSheetEnabled { false };
     bool m_dumpAllHTTPRedirectedResponseHeaders { false };
 };
 

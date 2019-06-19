@@ -69,7 +69,7 @@
 #include "OpenGLShims.h"
 #endif
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS)
 #include "TextureMapperPlatformLayerBuffer.h"
 #include "TextureMapperPlatformLayerProxy.h"
 #endif
@@ -77,20 +77,19 @@
 
 
 namespace WebCore {
-using namespace std;
 
 ImageBufferData::ImageBufferData(const IntSize& size, RenderingMode renderingMode)
     : m_platformContext(0)
     , m_size(size)
     , m_renderingMode(renderingMode)
 #if ENABLE(ACCELERATED_2D_CANVAS)
-#if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS)
     , m_compositorTexture(0)
 #endif
     , m_texture(0)
 #endif
 {
-#if ENABLE(ACCELERATED_2D_CANVAS) && USE(COORDINATED_GRAPHICS_THREADED)
+#if ENABLE(ACCELERATED_2D_CANVAS) && USE(COORDINATED_GRAPHICS)
     if (m_renderingMode == RenderingMode::Accelerated) {
 #if USE(NICOSIA)
         m_nicosiaLayer = Nicosia::ContentLayer::create(Nicosia::ContentLayerTextureMapperImpl::createFactory(*this));
@@ -107,7 +106,7 @@ ImageBufferData::~ImageBufferData()
         return;
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-#if USE(COORDINATED_GRAPHICS_THREADED) && USE(NICOSIA)
+#if USE(COORDINATED_GRAPHICS) && USE(NICOSIA)
     downcast<Nicosia::ContentLayerTextureMapperImpl>(m_nicosiaLayer->impl()).invalidateClient();
 #endif
 
@@ -117,7 +116,7 @@ ImageBufferData::~ImageBufferData()
     if (m_texture)
         glDeleteTextures(1, &m_texture);
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS)
     if (m_compositorTexture)
         glDeleteTextures(1, &m_compositorTexture);
 #endif
@@ -128,7 +127,7 @@ ImageBufferData::~ImageBufferData()
 }
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-#if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS)
 void ImageBufferData::createCompositorBuffer()
 {
     auto* context = PlatformDisplay::sharedDisplayForCompositing().sharingGLContext();
@@ -412,7 +411,7 @@ RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const IntRect& logic
     if (area.hasOverflowed())
         return nullptr;
 
-    auto result = Uint8ClampedArray::createUninitialized(area.unsafeGet());
+    auto result = Uint8ClampedArray::tryCreateUninitialized(area.unsafeGet());
     if (!result)
         return nullptr;
 
@@ -648,7 +647,7 @@ static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<u
     return cairo_surface_write_to_png_stream(image, writeFunction, output) == CAIRO_STATUS_SUCCESS;
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, PreserveResolution) const
+String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, PreserveResolution) const
 {
     Vector<uint8_t> encodedImage = toData(mimeType, quality);
     if (encodedImage.isEmpty())
@@ -660,7 +659,7 @@ String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> qual
     return "data:" + mimeType + ";base64," + base64Data;
 }
 
-Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double>) const
+Vector<uint8_t> ImageBuffer::toData(const String& mimeType, Optional<double>) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
@@ -675,7 +674,7 @@ Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double
 
 #endif
 
-#if ENABLE(ACCELERATED_2D_CANVAS) && !USE(COORDINATED_GRAPHICS_THREADED)
+#if ENABLE(ACCELERATED_2D_CANVAS) && !USE(COORDINATED_GRAPHICS)
 void ImageBufferData::paintToTextureMapper(TextureMapper& textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
     if (textureMapper->accelerationMode() != TextureMapper::OpenGLMode) {

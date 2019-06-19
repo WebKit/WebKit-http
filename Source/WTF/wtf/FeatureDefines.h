@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2007-2009 Torch Mobile, Inc.
  * Copyright (C) 2010, 2011 Research In Motion Limited. All rights reserved.
  * Copyright (C) 2013 Samsung Electronics. All rights reserved.
@@ -26,8 +26,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WTF_FeatureDefines_h
-#define WTF_FeatureDefines_h
+#pragma once
 
 /* Use this file to list _all_ ENABLE() macros. Define the macros to be one of the following values:
  *  - "0" disables the feature by default. The feature can still be enabled for a specific port or environment.
@@ -52,11 +51,17 @@
 /* FIXME: Move out the PLATFORM specific rules into platform specific files. */
 
 /* --------- Apple IOS (but not MAC) port --------- */
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #if !defined(ENABLE_AIRPLAY_PICKER)
 #if !PLATFORM(IOSMAC)
 #define ENABLE_AIRPLAY_PICKER 1
+#endif
+#endif
+
+#if !defined(ENABLE_APPLE_PAY_REMOTE_UI)
+#if !PLATFORM(APPLETV) && !PLATFORM(IOSMAC) && !PLATFORM(WATCHOS)
+#define ENABLE_APPLE_PAY_REMOTE_UI 1
 #endif
 #endif
 
@@ -163,31 +168,59 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #endif
 
 #if !defined(ENABLE_DOWNLOAD_ATTRIBUTE)
-#define ENABLE_DOWNLOAD_ATTRIBUTE 0
-#endif
-
-#if !defined(ENABLE_WKLEGACYPDFVIEW)
-#if PLATFORM(IOS) && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !PLATFORM(IOSMAC) && __IPHONE_OS_VERSION_MIN_REQUIRED < 120000
-#define ENABLE_WKLEGACYPDFVIEW 1
-#endif
+#define ENABLE_DOWNLOAD_ATTRIBUTE 1
 #endif
 
 #if !defined(ENABLE_WKPDFVIEW)
-#if PLATFORM(IOS) && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !PLATFORM(IOSMAC) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
+#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !PLATFORM(IOSMAC) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
 #define ENABLE_WKPDFVIEW 1
 #endif
 #endif
 
-#endif /* PLATFORM(IOS) */
+#if !defined(HAVE_PDFHOSTVIEWCONTROLLER_SNAPSHOTTING)
+#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !PLATFORM(IOSMAC) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000
+#define HAVE_PDFHOSTVIEWCONTROLLER_SNAPSHOTTING 1
+#endif
+#endif
+
+#if !defined(HAVE_VISIBILITY_PROPAGATION_VIEW)
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000
+#define HAVE_VISIBILITY_PROPAGATION_VIEW 1
+#endif
+#endif
+
+#if !defined(HAVE_UISCENE)
+#if (__IPHONE_OS_VERSION_MIN_REQUIRED >= 130000) || (PLATFORM(APPLETV) && __TV_OS_VERSION_MIN_REQUIRED >= 130000) || (PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MIN_REQUIRED >= 60000)
+#define HAVE_UISCENE 1
+#endif
+#endif
+
+#if !defined(HAVE_AVSTREAMSESSION)
+#define HAVE_AVSTREAMSESSION 0
+#endif
+
+#if !defined(ENABLE_MEDIA_SOURCE)
+#define ENABLE_MEDIA_SOURCE 0
+#endif
+
+#if !defined(HAVE_PASSKIT_GRANULAR_ERRORS)
+#define HAVE_PASSKIT_GRANULAR_ERRORS 1
+#endif
+
+#if !defined(HAVE_PASSKIT_API_TYPE)
+#define HAVE_PASSKIT_API_TYPE 1
+#endif
+
+#if !defined(HAVE_PASSKIT_BOUND_INTERFACE_IDENTIFIER)
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000
+#define HAVE_PASSKIT_BOUND_INTERFACE_IDENTIFIER 1
+#endif
+#endif
+
+#endif /* PLATFORM(IOS_FAMILY) */
 
 /* --------- Apple WATCHOS port --------- */
 #if PLATFORM(WATCHOS)
-
-#if !defined(ENABLE_PROXIMITY_NETWORKING)
-#if !TARGET_OS_SIMULATOR
-#define ENABLE_PROXIMITY_NETWORKING 1
-#endif
-#endif
 
 #endif /* PLATFORM(WATCHOS) */
 
@@ -196,10 +229,6 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 
 #if !defined(ENABLE_CONTENT_EXTENSIONS)
 #define ENABLE_CONTENT_EXTENSIONS 1
-#endif
-
-#if !defined(ENABLE_DASHBOARD_SUPPORT)
-#define ENABLE_DASHBOARD_SUPPORT 1
 #endif
 
 #if !defined(ENABLE_FULLSCREEN_API)
@@ -254,6 +283,32 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 
 #if !defined(ENABLE_WEBPROCESS_WINDOWSERVER_BLOCKING)
 #define ENABLE_WEBPROCESS_WINDOWSERVER_BLOCKING ENABLE_WEBPROCESS_NSRUNLOOP
+#endif
+
+#if !defined(HAVE_AVSTREAMSESSION)
+#define HAVE_AVSTREAMSESSION 1
+#endif
+
+#if !defined(ENABLE_MEDIA_SOURCE)
+#define ENABLE_MEDIA_SOURCE 1
+#endif
+
+#if !defined(HAVE_PASSKIT_GRANULAR_ERRORS)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+#define HAVE_PASSKIT_GRANULAR_ERRORS 1
+#endif
+#endif
+
+#if !defined(HAVE_PASSKIT_API_TYPE)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300 && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101304
+#define HAVE_PASSKIT_API_TYPE 1
+#endif
+#endif
+
+#if !defined(HAVE_PASSKIT_BOUND_INTERFACE_IDENTIFIER)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#define HAVE_PASSKIT_BOUND_INTERFACE_IDENTIFIER 1
+#endif
 #endif
 
 #endif /* PLATFORM(MAC) */
@@ -357,8 +412,8 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #define ENABLE_ACCELERATED_2D_CANVAS 0
 #endif
 
-#if !defined(ENABLE_ACCELERATED_OVERFLOW_SCROLLING)
-#define ENABLE_ACCELERATED_OVERFLOW_SCROLLING 0
+#if !defined(ENABLE_OVERFLOW_SCROLLING_TOUCH)
+#define ENABLE_OVERFLOW_SCROLLING_TOUCH 0
 #endif
 
 #if !defined(ENABLE_APNG)
@@ -401,6 +456,10 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #define ENABLE_CSS_IMAGE_RESOLUTION 0
 #endif
 
+#if !defined(ENABLE_CSS_CONIC_GRADIENTS)
+#define ENABLE_CSS_CONIC_GRADIENTS 0
+#endif
+
 #if !defined(ENABLE_CURSOR_SUPPORT)
 #define ENABLE_CURSOR_SUPPORT 1
 #endif
@@ -409,8 +468,8 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #define ENABLE_CUSTOM_SCHEME_HANDLER 0
 #endif
 
-#if !defined(ENABLE_DASHBOARD_SUPPORT)
-#define ENABLE_DASHBOARD_SUPPORT 0
+#if !defined(ENABLE_DARK_MODE_CSS)
+#define ENABLE_DARK_MODE_CSS 0
 #endif
 
 #if !defined(ENABLE_DATALIST_ELEMENT)
@@ -466,7 +525,7 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #endif
 
 #if !defined(ENABLE_INPUT_TYPE_COLOR)
-#define ENABLE_INPUT_TYPE_COLOR 0
+#define ENABLE_INPUT_TYPE_COLOR 1
 #endif
 
 #if !defined(ENABLE_INPUT_TYPE_DATE)
@@ -718,5 +777,3 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #if ENABLE(WEBGL2) && !ENABLE(WEBGL)
 #error "ENABLE(WEBGL2) requires ENABLE(WEBGL)"
 #endif
-
-#endif /* WTF_FeatureDefines_h */

@@ -34,14 +34,45 @@
 #include "Image.h"
 #include "ImageBitmap.h"
 #include "OffscreenCanvas.h"
-#include "URL.h"
 #include "SecurityOrigin.h"
+#include <wtf/HashSet.h>
+#include <wtf/IsoMallocInlines.h>
+#include <wtf/Lock.h>
+#include <wtf/NeverDestroyed.h>
+#include <wtf/URL.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(CanvasRenderingContext);
+
+HashSet<CanvasRenderingContext*>& CanvasRenderingContext::instances(const LockHolder&)
+{
+    static NeverDestroyed<HashSet<CanvasRenderingContext*>> instances;
+    return instances;
+}
+
+Lock& CanvasRenderingContext::instancesMutex()
+{
+    static LazyNeverDestroyed<Lock> mutex;
+    static std::once_flag initializeMutex;
+    std::call_once(initializeMutex, [] {
+        mutex.construct();
+    });
+    return mutex.get();
+}
 
 CanvasRenderingContext::CanvasRenderingContext(CanvasBase& canvas)
     : m_canvas(canvas)
 {
+    LockHolder lock(instancesMutex());
+    instances(lock).add(this);
+}
+
+CanvasRenderingContext::~CanvasRenderingContext()
+{
+    LockHolder lock(instancesMutex());
+    ASSERT(instances(lock).contains(this));
+    instances(lock).remove(this);
 }
 
 void CanvasRenderingContext::ref()
@@ -61,7 +92,7 @@ bool CanvasRenderingContext::wouldTaintOrigin(const CanvasPattern* pattern)
     return false;
 }
 
-bool CanvasRenderingContext::wouldTaintOrigin(const HTMLCanvasElement* sourceCanvas)
+bool CanvasRenderingContext::wouldTaintOrigin(const CanvasBase* sourceCanvas)
 {
     if (m_canvas.originClean() && sourceCanvas && !sourceCanvas->originClean())
         return true;
@@ -142,6 +173,11 @@ void CanvasRenderingContext::checkOrigin(const URL& url)
 {
     if (wouldTaintOrigin(url))
         m_canvas.setOriginTainted();
+}
+
+void CanvasRenderingContext::checkOrigin(const TypedOMCSSImageValue&)
+{
+    m_canvas.setOriginTainted();
 }
 
 } // namespace WebCore

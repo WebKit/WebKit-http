@@ -32,6 +32,7 @@ namespace JSC {
 
 class JSInternalPromise;
 class JSModuleNamespaceObject;
+class JSModuleRecord;
 class SourceCode;
 
 class JSModuleLoader final : public JSNonFinalObject {
@@ -79,6 +80,7 @@ public:
 
     // Additional platform dependent hooked APIs.
     JSValue evaluate(ExecState*, JSValue key, JSValue moduleRecord, JSValue scriptFetcher);
+    JSValue evaluateNonVirtual(ExecState*, JSValue key, JSValue moduleRecord, JSValue scriptFetcher);
 
     // Utility functions.
     JSModuleNamespaceObject* getModuleNamespaceObject(ExecState*, JSValue moduleRecord);

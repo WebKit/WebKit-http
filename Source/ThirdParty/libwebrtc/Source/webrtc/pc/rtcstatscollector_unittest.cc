@@ -143,10 +143,10 @@ std::unique_ptr<CertificateInfo> CreateFakeCertificateAndInfoFromDers(
   }
   // Fingerprints for the whole certificate chain, starting with leaf
   // certificate.
-  const rtc::SSLCertChain& chain = info->certificate->ssl_cert_chain();
+  const rtc::SSLCertChain& chain = info->certificate->GetSSLCertificateChain();
   std::unique_ptr<rtc::SSLFingerprint> fp;
   for (size_t i = 0; i < chain.GetSize(); i++) {
-    fp.reset(rtc::SSLFingerprint::Create("sha-1", &chain.Get(i)));
+    fp = rtc::SSLFingerprint::Create("sha-1", chain.Get(i));
     EXPECT_TRUE(fp);
     info->fingerprints.push_back(fp->GetRfc4572Fingerprint());
   }
@@ -704,7 +704,7 @@ TEST_F(RTCStatsCollectorTest, CollectRTCCertificateStatsSingle) {
           std::vector<std::string>({"(remote) single certificate"}));
   pc_->SetRemoteCertChain(
       kTransportName,
-      remote_certinfo->certificate->ssl_cert_chain().UniqueCopy());
+      remote_certinfo->certificate->GetSSLCertificateChain().Clone());
 
   rtc::scoped_refptr<const RTCStatsReport> report = stats_->GetStatsReport();
 
@@ -818,7 +818,7 @@ TEST_F(RTCStatsCollectorTest, CollectRTCCertificateStatsMultiple) {
           std::vector<std::string>({"(remote) audio"}));
   pc_->SetRemoteCertChain(
       kAudioTransport,
-      audio_remote_certinfo->certificate->ssl_cert_chain().UniqueCopy());
+      audio_remote_certinfo->certificate->GetSSLCertificateChain().Clone());
 
   pc_->AddVideoChannel("video", kVideoTransport);
   std::unique_ptr<CertificateInfo> video_local_certinfo =
@@ -830,7 +830,7 @@ TEST_F(RTCStatsCollectorTest, CollectRTCCertificateStatsMultiple) {
           std::vector<std::string>({"(remote) video"}));
   pc_->SetRemoteCertChain(
       kVideoTransport,
-      video_remote_certinfo->certificate->ssl_cert_chain().UniqueCopy());
+      video_remote_certinfo->certificate->GetSSLCertificateChain().Clone());
 
   rtc::scoped_refptr<const RTCStatsReport> report = stats_->GetStatsReport();
   ExpectReportContainsCertificateInfo(report, *audio_local_certinfo);
@@ -855,7 +855,7 @@ TEST_F(RTCStatsCollectorTest, CollectRTCCertificateStatsChain) {
                                             "(remote) chain"});
   pc_->SetRemoteCertChain(
       kTransportName,
-      remote_certinfo->certificate->ssl_cert_chain().UniqueCopy());
+      remote_certinfo->certificate->GetSSLCertificateChain().Clone());
 
   rtc::scoped_refptr<const RTCStatsReport> report = stats_->GetStatsReport();
   ExpectReportContainsCertificateInfo(report, *local_certinfo);
@@ -993,6 +993,23 @@ TEST_F(RTCStatsCollectorTest, CollectRTCIceCandidateStats) {
   expected_a_remote_relay.deleted = false;
   EXPECT_TRUE(*expected_a_remote_relay.is_remote);
 
+  std::unique_ptr<cricket::Candidate> a_local_relay = CreateFakeCandidate(
+      "16.17.18.19", 21, "a_local_relay's protocol", rtc::ADAPTER_TYPE_UNKNOWN,
+      cricket::RELAY_PORT_TYPE, 1);
+  a_local_relay->set_relay_protocol("tcp");
+
+  RTCRemoteIceCandidateStats expected_a_local_relay(
+      "RTCIceCandidate_" + a_local_relay->id(), 0);
+  expected_a_local_relay.transport_id = "RTCTransport_a_0";
+  expected_a_local_relay.ip = "16.17.18.19";
+  expected_a_local_relay.port = 21;
+  expected_a_local_relay.protocol = "a_local_relay's protocol";
+  expected_a_local_relay.relay_protocol = "tcp";
+  expected_a_local_relay.candidate_type = "relay";
+  expected_a_local_relay.priority = 1;
+  expected_a_local_relay.deleted = false;
+  EXPECT_TRUE(*expected_a_local_relay.is_remote);
+
   // Candidates in the second transport stats.
   std::unique_ptr<cricket::Candidate> b_local =
       CreateFakeCandidate("42.42.42.42", 42, "b_local's protocol",
@@ -1023,6 +1040,7 @@ TEST_F(RTCStatsCollectorTest, CollectRTCIceCandidateStats) {
   expected_b_remote.deleted = false;
   EXPECT_TRUE(*expected_b_remote.is_remote);
 
+  // Add candidate pairs to connection.
   cricket::TransportChannelStats a_transport_channel_stats;
   a_transport_channel_stats.connection_infos.push_back(
       cricket::ConnectionInfo());
@@ -1035,6 +1053,12 @@ TEST_F(RTCStatsCollectorTest, CollectRTCIceCandidateStats) {
   a_transport_channel_stats.connection_infos[1].local_candidate =
       *a_local_prflx.get();
   a_transport_channel_stats.connection_infos[1].remote_candidate =
+      *a_remote_relay.get();
+  a_transport_channel_stats.connection_infos.push_back(
+      cricket::ConnectionInfo());
+  a_transport_channel_stats.connection_infos[2].local_candidate =
+      *a_local_relay.get();
+  a_transport_channel_stats.connection_infos[2].remote_candidate =
       *a_remote_relay.get();
 
   pc_->AddVoiceChannel("audio", "a");
@@ -1402,6 +1426,8 @@ TEST_F(RTCStatsCollectorTest,
   voice_receiver_info.concealed_samples = 123;
   voice_receiver_info.concealment_events = 12;
   voice_receiver_info.jitter_buffer_delay_seconds = 3456;
+  voice_receiver_info.jitter_buffer_flushes = 7;
+  voice_receiver_info.delayed_packet_outage_samples = 15;
 
   stats_->CreateMockRtpSendersReceiversAndChannels(
       {}, {std::make_pair(remote_audio_track.get(), voice_receiver_info)}, {},
@@ -1435,6 +1461,8 @@ TEST_F(RTCStatsCollectorTest,
   expected_remote_audio_track.concealed_samples = 123;
   expected_remote_audio_track.concealment_events = 12;
   expected_remote_audio_track.jitter_buffer_delay = 3456;
+  expected_remote_audio_track.jitter_buffer_flushes = 7;
+  expected_remote_audio_track.delayed_packet_outage_samples = 15;
   ASSERT_TRUE(report->Get(expected_remote_audio_track.id()));
   EXPECT_EQ(expected_remote_audio_track,
             report->Get(expected_remote_audio_track.id())
@@ -1605,6 +1633,7 @@ TEST_F(RTCStatsCollectorTest, CollectRTCInboundRTPStreamStats_Audio) {
   expected_audio.ssrc = 1;
   expected_audio.is_remote = false;
   expected_audio.media_type = "audio";
+  expected_audio.kind = "audio";
   expected_audio.track_id = stats_of_track_type[0]->id();
   expected_audio.transport_id = "RTCTransport_TransportName_1";
   expected_audio.codec_id = "RTCCodec_AudioMid_Inbound_42";
@@ -1660,6 +1689,7 @@ TEST_F(RTCStatsCollectorTest, CollectRTCInboundRTPStreamStats_Video) {
   expected_video.ssrc = 1;
   expected_video.is_remote = false;
   expected_video.media_type = "video";
+  expected_video.kind = "video";
   expected_video.track_id = IdForType<RTCMediaStreamTrackStats>(report);
   expected_video.transport_id = "RTCTransport_TransportName_1";
   expected_video.codec_id = "RTCCodec_VideoMid_Inbound_42";
@@ -1724,6 +1754,7 @@ TEST_F(RTCStatsCollectorTest, CollectRTCOutboundRTPStreamStats_Audio) {
   expected_audio.ssrc = 1;
   expected_audio.is_remote = false;
   expected_audio.media_type = "audio";
+  expected_audio.kind = "audio";
   expected_audio.track_id = IdForType<RTCMediaStreamTrackStats>(report);
   expected_audio.transport_id = "RTCTransport_TransportName_1";
   expected_audio.codec_id = "RTCCodec_AudioMid_Outbound_42";
@@ -1784,6 +1815,7 @@ TEST_F(RTCStatsCollectorTest, CollectRTCOutboundRTPStreamStats_Video) {
   expected_video.ssrc = 1;
   expected_video.is_remote = false;
   expected_video.media_type = "video";
+  expected_video.kind = "video";
   expected_video.track_id = stats_of_track_type[0]->id();
   expected_video.transport_id = "RTCTransport_TransportName_1";
   expected_video.codec_id = "RTCCodec_VideoMid_Outbound_42";
@@ -1929,7 +1961,7 @@ TEST_F(RTCStatsCollectorTest, CollectRTCTransportStats) {
           {"(remote) local", "(remote) chain"});
   pc_->SetRemoteCertChain(
       kTransportName,
-      remote_certinfo->certificate->ssl_cert_chain().UniqueCopy());
+      remote_certinfo->certificate->GetSSLCertificateChain().Clone());
 
   report = stats_->GetFreshStatsReport();
 
@@ -1984,6 +2016,7 @@ TEST_F(RTCStatsCollectorTest, CollectNoStreamRTCOutboundRTPStreamStats_Audio) {
   expected_audio.ssrc = 1;
   expected_audio.is_remote = false;
   expected_audio.media_type = "audio";
+  expected_audio.kind = "audio";
   expected_audio.track_id = IdForType<RTCMediaStreamTrackStats>(report);
   expected_audio.transport_id = "RTCTransport_TransportName_1";
   expected_audio.codec_id = "RTCCodec_AudioMid_Outbound_42";

@@ -26,13 +26,15 @@
 #include "config.h"
 #include "MemoryRelease.h"
 
+#import "FontFamilySpecificationCoreText.h"
 #import "GCController.h"
 #import "IOSurfacePool.h"
 #import "LayerPool.h"
+#import "SystemFontDatabaseCoreText.h"
 #import <notify.h>
 #import <pal/spi/ios/GraphicsServicesSPI.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import "LegacyTileCache.h"
 #import "TileControllerMemoryHandlerIOS.h"
 #endif
@@ -42,7 +44,12 @@ namespace WebCore {
 
 void platformReleaseMemory(Critical)
 {
-#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR) && !PLATFORM(IOSMAC)
+#if USE_PLATFORM_SYSTEM_FALLBACK_LIST
+    SystemFontDatabaseCoreText::singleton().clear();
+#endif
+    clearFontFamilySpecificationCoreTextCache();
+
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(IOS_FAMILY_SIMULATOR) && !PLATFORM(IOSMAC)
     // FIXME: Remove this call to GSFontInitialize() once <rdar://problem/32886715> is fixed.
     GSFontInitialize();
     GSFontPurgeFontCache();
@@ -51,7 +58,7 @@ void platformReleaseMemory(Critical)
     for (auto& pool : LayerPool::allLayerPools())
         pool->drain();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     LegacyTileCache::drainLayerPool();
     tileControllerMemoryHandler().trimUnparentedTilesToTarget(0);
 #endif
@@ -63,7 +70,7 @@ void platformReleaseMemory(Critical)
 
 void jettisonExpensiveObjectsOnTopLevelNavigation()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Protect against doing excessive jettisoning during repeated navigations.
     const auto minimumTimeSinceNavigation = 2_s;
 

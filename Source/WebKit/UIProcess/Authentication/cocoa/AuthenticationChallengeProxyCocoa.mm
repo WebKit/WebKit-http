@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,24 +36,23 @@
 
 namespace WebKit {
 
-void AuthenticationChallengeProxy::sendClientCertificateCredentialOverXpc(uint64_t challengeID, const WebCore::Credential& credential) const
+void AuthenticationChallengeProxy::sendClientCertificateCredentialOverXpc(IPC::Connection& connection, SecKeyProxyStore& secKeyProxyStore, uint64_t challengeID, const WebCore::Credential& credential)
 {
-    ASSERT(m_secKeyProxyStore);
-    ASSERT(m_secKeyProxyStore->isInitialized());
+    ASSERT(secKeyProxyStore.isInitialized());
 
     auto message = adoptOSObject(xpc_dictionary_create(nullptr, nullptr, 0));
-    xpc_dictionary_set_string(message.get(), clientCertificateAuthenticationXPCMessageNameKey, clientCertificateAuthenticationXPCMessageNameValue);
-    xpc_dictionary_set_uint64(message.get(), clientCertificateAuthenticationXPCChallengeIDKey, challengeID);
-    xpc_dictionary_set_value(message.get(), clientCertificateAuthenticationXPCSecKeyProxyEndpointKey, m_secKeyProxyStore->get().endpoint._endpoint);
+    xpc_dictionary_set_string(message.get(), ClientCertificateAuthentication::XPCMessageNameKey, ClientCertificateAuthentication::XPCMessageNameValue);
+    xpc_dictionary_set_uint64(message.get(), ClientCertificateAuthentication::XPCChallengeIDKey, challengeID);
+    xpc_dictionary_set_value(message.get(), ClientCertificateAuthentication::XPCSecKeyProxyEndpointKey, secKeyProxyStore.get().endpoint._endpoint);
     auto certificateDataArray = adoptOSObject(xpc_array_create(nullptr, 0));
     for (id certificate in credential.nsCredential().certificates) {
         auto data = adoptCF(SecCertificateCopyData((SecCertificateRef)certificate));
         xpc_array_append_value(certificateDataArray.get(), adoptOSObject(xpc_data_create(CFDataGetBytePtr(data.get()), CFDataGetLength(data.get()))).get());
     }
-    xpc_dictionary_set_value(message.get(), clientCertificateAuthenticationXPCCertificatesKey, certificateDataArray.get());
-    xpc_dictionary_set_uint64(message.get(), clientCertificateAuthenticationXPCPersistenceKey, static_cast<uint64_t>(credential.nsCredential().persistence));
+    xpc_dictionary_set_value(message.get(), ClientCertificateAuthentication::XPCCertificatesKey, certificateDataArray.get());
+    xpc_dictionary_set_uint64(message.get(), ClientCertificateAuthentication::XPCPersistenceKey, static_cast<uint64_t>(credential.nsCredential().persistence));
 
-    xpc_connection_send_message(m_connection->xpcConnection(), message.get());
+    xpc_connection_send_message(connection.xpcConnection(), message.get());
 }
 
 } // namespace WebKit

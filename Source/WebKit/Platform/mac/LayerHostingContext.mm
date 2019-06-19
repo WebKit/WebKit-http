@@ -50,15 +50,16 @@ std::unique_ptr<LayerHostingContext> LayerHostingContext::createForPort(const Ma
 }
 
 #if HAVE(OUT_OF_PROCESS_LAYER_HOSTING)
-std::unique_ptr<LayerHostingContext> LayerHostingContext::createForExternalHostingProcess()
+std::unique_ptr<LayerHostingContext> LayerHostingContext::createForExternalHostingProcess(const LayerHostingContextOptions& options)
 {
     auto layerHostingContext = std::make_unique<LayerHostingContext>();
     layerHostingContext->m_layerHostingMode = LayerHostingMode::OutOfProcess;
 
-#if PLATFORM(IOS) && !PLATFORM(IOSMAC)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(IOSMAC)
     // Use a very large display ID to ensure that the context is never put on-screen 
     // without being explicitly parented. See <rdar://problem/16089267> for details.
     layerHostingContext->m_context = [CAContext remoteContextWithOptions:@{
+        kCAContextSecure: @(options.canShowWhileLocked),
 #if HAVE(CORE_ANIMATION_RENDER_SERVER)
         kCAContextIgnoresHitTest : @YES,
         kCAContextDisplayId : @10000
@@ -66,9 +67,13 @@ std::unique_ptr<LayerHostingContext> LayerHostingContext::createForExternalHosti
     }];
 #elif !PLATFORM(IOSMAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     [CAContext setAllowsCGSConnections:NO];
-    layerHostingContext->m_context = [CAContext remoteContextWithOptions:@{kCAContextCIFilterBehavior :  @"ignore"}];
+    layerHostingContext->m_context = [CAContext remoteContextWithOptions:@{
+        kCAContextCIFilterBehavior :  @"ignore",
+    }];
 #else
-    layerHostingContext->m_context = [CAContext contextWithCGSConnection:CGSMainConnectionID() options:@{ kCAContextCIFilterBehavior : @"ignore" }];
+    layerHostingContext->m_context = [CAContext contextWithCGSConnection:CGSMainConnectionID() options:@{
+        kCAContextCIFilterBehavior : @"ignore",
+    }];
 #endif
     
     return layerHostingContext;
@@ -103,7 +108,7 @@ CALayer *LayerHostingContext::rootLayer() const
     return [m_context layer];
 }
 
-uint32_t LayerHostingContext::contextID() const
+LayerHostingContextID LayerHostingContext::contextID() const
 {
     return [m_context contextId];
 }

@@ -1,4 +1,4 @@
-# Copyright (C) 2012 Apple Inc. All rights reserved.
+# Copyright (C) 2012-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -23,7 +23,7 @@
 messages -> NetworkProcessProxy LegacyReceiver {
     DidCreateNetworkConnectionToWebProcess(IPC::Attachment connectionIdentifier)
 
-    DidReceiveAuthenticationChallenge(uint64_t pageID, uint64_t frameID, WebCore::AuthenticationChallenge challenge, uint64_t challengeID)
+    DidReceiveAuthenticationChallenge(WebCore::PageIdentifier pageID, uint64_t frameID, WebCore::AuthenticationChallenge challenge, uint64_t challengeID)
 
     DidFetchWebsiteData(uint64_t callbackID, struct WebKit::WebsiteData websiteData)
     DidDeleteWebsiteData(uint64_t callbackID)
@@ -31,27 +31,39 @@ messages -> NetworkProcessProxy LegacyReceiver {
 
     DidSyncAllCookies()
 
-    DidWriteBlobToFilePath(bool success, uint64_t callbackID)
-
-    GrantSandboxExtensionsToStorageProcessForBlobs(uint64_t requestID, Vector<String> paths)
-
     ProcessReadyToSuspend()
     SetIsHoldingLockedFiles(bool isHoldingLockedFiles)
 
     # Diagnostic messages logging
-    LogDiagnosticMessage(uint64_t pageID, String message, String description, enum WebCore::ShouldSample shouldSample)
-    LogDiagnosticMessageWithResult(uint64_t pageID, String message, String description, uint32_t result, enum WebCore::ShouldSample shouldSample)
-    LogDiagnosticMessageWithValue(uint64_t pageID, String message, String description, double value, unsigned significantFigures, enum WebCore::ShouldSample shouldSample)
+    LogDiagnosticMessage(WebCore::PageIdentifier pageID, String message, String description, enum:bool WebCore::ShouldSample shouldSample)
+    LogDiagnosticMessageWithResult(WebCore::PageIdentifier pageID, String message, String description, uint32_t result, enum:bool WebCore::ShouldSample shouldSample)
+    LogDiagnosticMessageWithValue(WebCore::PageIdentifier pageID, String message, String description, double value, unsigned significantFigures, enum:bool WebCore::ShouldSample shouldSample)
+    LogGlobalDiagnosticMessageWithValue(String message, String description, double value, unsigned significantFigures, enum:bool WebCore::ShouldSample shouldSample)
 
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    DidUpdateBlockCookies(uint64_t callbackId)
-    StorageAccessRequestResult(bool wasGranted, uint64_t contextId)
-    AllStorageAccessEntriesResult(Vector<String> domains, uint64_t contextId)
-    DidRemoveAllStorageAccess(uint64_t contextId)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    LogTestingEvent(PAL::SessionID sessionID, String event)
+    NotifyResourceLoadStatisticsProcessed()
+    NotifyWebsiteDataDeletionForRegistrableDomainsFinished()
+    NotifyWebsiteDataScanForRegistrableDomainsFinished()
+    NotifyResourceLoadStatisticsTelemetryFinished(unsigned totalPrevalentResources, unsigned totalPrevalentResourcesWithUserInteraction, unsigned top3SubframeUnderTopFrameOrigins)
+    RequestStorageAccessConfirm(WebCore::PageIdentifier pageID, uint64_t frameID, WebCore::RegistrableDomain subFrameDomain, WebCore::RegistrableDomain topFrameDomain) -> (bool userDidGrantAccess) Async
+    DeleteWebsiteDataInUIProcessForRegistrableDomains(PAL::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> dataTypes, OptionSet<WebKit::WebsiteDataFetchOption> fetchOptions, Vector<WebCore::RegistrableDomain> domains) -> (HashSet<WebCore::RegistrableDomain> domainsWithMatchingDataRecords) Async
+    DidCommitCrossSiteLoadWithDataTransferFromPrevalentResource(WebCore::PageIdentifier pageID)
 #endif
 #if ENABLE(CONTENT_EXTENSIONS)
     ContentExtensionRules(WebKit::UserContentControllerIdentifier identifier)
 #endif
 
     RetrieveCacheStorageParameters(PAL::SessionID sessionID)
+
+#if ENABLE(SANDBOX_EXTENSIONS)
+    GetSandboxExtensionsForBlobFiles(Vector<String> paths) -> (WebKit::SandboxExtension::HandleArray extensions) Async
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    EstablishWorkerContextConnectionToNetworkProcess(WebCore::RegistrableDomain registrableDomain)
+    EstablishWorkerContextConnectionToNetworkProcessForExplicitSession(WebCore::RegistrableDomain registrableDomain, PAL::SessionID explicitSession)
+#endif
+
+    RequestStorageSpace(PAL::SessionID sessionID, struct WebCore::ClientOrigin origin, uint64_t quota, uint64_t currentSize, uint64_t spaceRequired) -> (Optional<uint64_t> newQuota) Async
 }

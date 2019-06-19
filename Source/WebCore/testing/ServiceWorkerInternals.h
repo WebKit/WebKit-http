@@ -37,7 +37,7 @@ class FetchEvent;
 class FetchResponse;
 class ScriptExecutionContext;
 
-class WEBCORE_EXPORT ServiceWorkerInternals : public RefCounted<ServiceWorkerInternals> {
+class WEBCORE_TESTSUPPORT_EXPORT ServiceWorkerInternals : public RefCounted<ServiceWorkerInternals> {
 public:
     static Ref<ServiceWorkerInternals> create(ServiceWorkerIdentifier identifier) { return adoptRef(*new ServiceWorkerInternals { identifier }); }
     ~ServiceWorkerInternals();
@@ -48,6 +48,10 @@ public:
     Ref<FetchResponse> createOpaqueWithBlobBodyResponse(ScriptExecutionContext&);
 
     Vector<String> fetchResponseHeaderList(FetchResponse&);
+
+    String processName() const;
+
+    bool isThrottleable() const;
 
 private:
     explicit ServiceWorkerInternals(ServiceWorkerIdentifier);

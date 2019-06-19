@@ -31,7 +31,7 @@ WI.LayoutTimelineView = class LayoutTimelineView extends WI.TimelineView
 
         console.assert(timeline.type === WI.TimelineRecord.Type.Layout, timeline);
 
-        let columns = {type: {}, name: {}, location: {}, area: {}, width: {}, height: {}, startTime: {}, totalTime: {}};
+        let columns = {type: {}, name: {}, initiator: {}, area: {}, width: {}, height: {}, startTime: {}, totalTime: {}};
 
         columns.name.title = WI.UIString("Type");
         columns.name.width = "15%";
@@ -52,8 +52,8 @@ WI.LayoutTimelineView = class LayoutTimelineView extends WI.TimelineView
 
         this._scopeBar = columns.type.scopeBar;
 
-        columns.location.title = WI.UIString("Initiator");
-        columns.location.width = "25%";
+        columns.initiator.title = WI.UIString("Initiator");
+        columns.initiator.width = "25%";
 
         columns.area.title = WI.UIString("Area");
         columns.area.width = "8%";
@@ -98,6 +98,9 @@ WI.LayoutTimelineView = class LayoutTimelineView extends WI.TimelineView
         timeline.addEventListener(WI.Timeline.Event.RecordAdded, this._layoutTimelineRecordAdded, this);
 
         this._pendingRecords = [];
+
+        for (let record of timeline.records)
+            this._processRecord(record);
     }
 
     // Public
@@ -201,7 +204,9 @@ WI.LayoutTimelineView = class LayoutTimelineView extends WI.TimelineView
             return;
 
         for (var layoutTimelineRecord of this._pendingRecords) {
-            let dataGridNode = new WI.LayoutTimelineDataGridNode(layoutTimelineRecord, this.zeroTime);
+            let dataGridNode = new WI.LayoutTimelineDataGridNode(layoutTimelineRecord, {
+                graphDataSource: this,
+            });
 
             this._dataGrid.addRowInSortOrder(dataGridNode);
 
@@ -214,14 +219,24 @@ WI.LayoutTimelineView = class LayoutTimelineView extends WI.TimelineView
                 }
 
                 let childRecord = entry.children[entry.index];
-                console.assert(childRecord.type === WI.TimelineRecord.Type.Layout, childRecord);
 
-                let childDataGridNode = new WI.LayoutTimelineDataGridNode(childRecord, this.zeroTime);
+                const options = {
+                    graphDataSource: this,
+                };
+                let childDataGridNode = null;
+                if (childRecord.type === WI.TimelineRecord.Type.Script)
+                    childDataGridNode = new WI.ScriptTimelineDataGridNode(childRecord, options);
+                else {
+                    console.assert(childRecord.type === WI.TimelineRecord.Type.Layout, childRecord);
+                    childDataGridNode = new WI.LayoutTimelineDataGridNode(childRecord, options);
+                }
+
                 console.assert(entry.parentDataGridNode, "Missing parent node for entry.", entry);
                 this._dataGrid.addRowInSortOrder(childDataGridNode, entry.parentDataGridNode);
 
                 if (childDataGridNode && childRecord.children.length)
                     stack.push({children: childRecord.children, parentDataGridNode: childDataGridNode, index: 0});
+
                 ++entry.index;
             }
         }
@@ -231,16 +246,21 @@ WI.LayoutTimelineView = class LayoutTimelineView extends WI.TimelineView
 
     _layoutTimelineRecordAdded(event)
     {
-        var layoutTimelineRecord = event.data.record;
+        let layoutTimelineRecord = event.data.record;
         console.assert(layoutTimelineRecord instanceof WI.LayoutTimelineRecord);
 
+        this._processRecord(layoutTimelineRecord);
+
+        this.needsLayout();
+    }
+
+    _processRecord(layoutTimelineRecord)
+    {
         // Only add top-level records, to avoid processing child records multiple times.
         if (layoutTimelineRecord.parent instanceof WI.LayoutTimelineRecord)
             return;
 
         this._pendingRecords.push(layoutTimelineRecord);
-
-        this.needsLayout();
     }
 
     _updateHighlight()

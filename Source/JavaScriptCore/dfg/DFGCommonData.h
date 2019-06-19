@@ -83,7 +83,9 @@ public:
     CallSiteIndex addCodeOrigin(CodeOrigin);
     CallSiteIndex addUniqueCallSiteIndex(CodeOrigin);
     CallSiteIndex lastCallSite() const;
-    void removeCallSiteIndex(CallSiteIndex);
+
+    DisposableCallSiteIndex addDisposableCallSiteIndex(CodeOrigin);
+    void removeDisposableCallSiteIndex(DisposableCallSiteIndex);
     
     void shrinkToFit();
     
@@ -114,6 +116,8 @@ public:
     void validateReferences(const TrackedReferences&);
 
     static ptrdiff_t frameRegisterCountOffset() { return OBJECT_OFFSETOF(CommonData, frameRegisterCount); }
+    
+    void clearWatchpoints();
 
     RefPtr<InlineCallFrameSet> inlineCallFrames;
     Vector<CodeOrigin, 0, UnsafeVectorOverflow> codeOrigins;

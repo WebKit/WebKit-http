@@ -33,10 +33,11 @@
 #include "BString.h"
 #include "HTMLNames.h"
 #include "QualifiedName.h"
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
 
-void AccessibilityObjectWrapper::accessibilityAttributeValue(const AtomicString& attributeName, VARIANT* result)
+void AccessibilityObjectWrapper::accessibilityAttributeValue(const AtomString& attributeName, VARIANT* result)
 {
     // FIXME: This should be fleshed out to match the Mac version
 
@@ -72,7 +73,7 @@ void AccessibilityObjectWrapper::accessibilityAttributeValue(const AtomicString&
         ASSERT(V_VT(result) == VT_EMPTY);
         V_VT(result) = VT_BSTR;
         PlainTextRange textRange = m_object->selectedTextRange();
-        String range = String::format("{%u, %u}", textRange.start, textRange.length);
+        String range = makeString('{', textRange.start, ", ", textRange.length, '}');
         V_BSTR(result) = WebCore::BString(range).release();
         return;
     }

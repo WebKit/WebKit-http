@@ -34,9 +34,8 @@ WI.CanvasTreeElement = class CanvasTreeElement extends WI.FolderizedTreeElement
 
         this.registerFolderizeSettings("shader-programs", WI.UIString("Shader Programs"), this.representedObject.shaderProgramCollection, WI.ShaderProgramTreeElement);
 
-        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingStarted, this._updateStatus, this);
-        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingStopped, this._updateStatus, this);
-
+        this.representedObject.addEventListener(WI.Canvas.Event.RecordingStarted, this._updateStatus, this);
+        this.representedObject.addEventListener(WI.Canvas.Event.RecordingStopped, this._updateStatus, this);
         this.representedObject.shaderProgramCollection.addEventListener(WI.Collection.Event.ItemAdded, this._handleItemAdded, this);
         this.representedObject.shaderProgramCollection.addEventListener(WI.Collection.Event.ItemRemoved, this._handleItemRemoved, this);
 
@@ -118,33 +117,33 @@ WI.CanvasTreeElement = class CanvasTreeElement extends WI.FolderizedTreeElement
     {
         if (this.representedObject.cssCanvasName) {
             this.representedObject.requestCSSCanvasClientNodes((cssCanvasClientNodes) => {
-                WI.domTreeManager.highlightDOMNodeList(cssCanvasClientNodes.map((node) => node.id), "all");
+                WI.domManager.highlightDOMNodeList(cssCanvasClientNodes.map((node) => node.id), "all");
             });
         } else {
             this.representedObject.requestNode((node) => {
                 if (!node || !node.ownerDocument)
                     return;
 
-                WI.domTreeManager.highlightDOMNode(node.id, "all");
+                WI.domManager.highlightDOMNode(node.id, "all");
             });
         }
     }
 
     _handleMouseOut(event)
     {
-        WI.domTreeManager.hideDOMNodeHighlight();
+        WI.domManager.hideDOMNodeHighlight();
     }
 
     _updateStatus()
     {
-        if (this.representedObject.isRecording) {
-            if (!this.status || !this.status[WI.CanvasTreeElement.SpinnerSymbol]) {
+        if (this.representedObject.recordingActive) {
+            if (!this.status || !this.status.__showingSpinner) {
                 let spinner = new WI.IndeterminateProgressSpinner;
                 this.status = spinner.element;
-                this.status[WI.CanvasTreeElement.SpinnerSymbol] = true;
+                this.status.__showingSpinner = true;
             }
         } else {
-            if (this.status && this.status[WI.CanvasTreeElement.SpinnerSymbol])
+            if (this.status && this.status.__showingSpinner)
                 this.status = "";
         }
     }

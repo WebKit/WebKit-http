@@ -25,12 +25,17 @@
 
 #pragma once
 
+#include "PrewarmInformation.h"
+
 namespace WebCore {
 
 class WEBCORE_EXPORT ProcessWarming {
 public:
     static void initializeNames();
-    static void prewarm();
+    static void prewarmGlobally();
+
+    static PrewarmInformation collectPrewarmInformation();
+    static void prewarmWithInformation(const PrewarmInformation&);
 };
 
 }

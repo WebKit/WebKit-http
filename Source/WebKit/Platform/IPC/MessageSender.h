@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,9 +34,9 @@ class MessageSender {
 public:
     virtual ~MessageSender();
 
-    template<typename U> bool send(const U& message)
+    template<typename U> bool send(const U& message, OptionSet<SendOption> sendOptions = { })
     {
-        return send(message, messageSenderDestinationID(), { });
+        return send(message, messageSenderDestinationID(), sendOptions);
     }
 
     template<typename U> bool send(const U& message, uint64_t destinationID, OptionSet<SendOption> sendOptions = { })
@@ -47,6 +47,12 @@ public:
         encoder->encode(message.arguments());
         
         return sendMessage(WTFMove(encoder), sendOptions);
+    }
+    
+    template<typename U, typename T>
+    bool send(const U& message, ObjectIdentifier<T> destinationID, OptionSet<SendOption> sendOptions = { })
+    {
+        return send<U>(message, destinationID.toUInt64(), sendOptions);
     }
 
     template<typename T>
@@ -65,11 +71,17 @@ public:
         return messageSenderConnection()->sendSync(WTFMove(message), WTFMove(reply), destinationID, timeout, sendSyncOptions);
     }
 
+    template<typename T, typename C>
+    void sendWithAsyncReply(T&& message, C&& completionHandler)
+    {
+        messageSenderConnection()->sendWithAsyncReply(WTFMove(message), WTFMove(completionHandler), messageSenderDestinationID());
+    }
+
     virtual bool sendMessage(std::unique_ptr<Encoder>, OptionSet<SendOption>);
 
 private:
-    virtual Connection* messageSenderConnection() = 0;
-    virtual uint64_t messageSenderDestinationID() = 0;
+    virtual Connection* messageSenderConnection() const = 0;
+    virtual uint64_t messageSenderDestinationID() const = 0;
 };
 
 } // namespace IPC

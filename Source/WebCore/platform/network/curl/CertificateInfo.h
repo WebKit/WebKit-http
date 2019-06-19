@@ -25,17 +25,22 @@
 
 #pragma once
 
+#include "CertificateInfoBase.h"
 #include "NotImplemented.h"
 #include <wtf/Vector.h>
+#include <wtf/persistence/PersistentCoders.h>
+#include <wtf/persistence/PersistentDecoder.h>
+#include <wtf/persistence/PersistentEncoder.h>
 
 namespace WebCore {
 
-class CertificateInfo {
+class CertificateInfo : public CertificateInfoBase {
 public:
     using Certificate = Vector<uint8_t>;
+    using CertificateChain = Vector<Certificate>;
 
     CertificateInfo() = default;
-    WEBCORE_EXPORT CertificateInfo(int verificationError, Vector<Certificate>&&);
+    WEBCORE_EXPORT CertificateInfo(int verificationError, CertificateChain&&);
 
     WEBCORE_EXPORT CertificateInfo isolatedCopy() const;
 
@@ -44,11 +49,15 @@ public:
 
     bool containsNonRootSHA1SignedCertificate() const { notImplemented(); return false; }
 
-    static Certificate makeCertificate(const char*, size_t);
+    Optional<SummaryInfo> summaryInfo() const { notImplemented(); return WTF::nullopt; }
+
+    bool isEmpty() const { return m_certificateChain.isEmpty(); }
+
+    static Certificate makeCertificate(const uint8_t*, size_t);
 
 private:
     int m_verificationError { 0 };
-    Vector<Certificate> m_certificateChain;
+    CertificateChain m_certificateChain;
 };
 
 inline bool operator==(const CertificateInfo& a, const CertificateInfo& b)
@@ -57,3 +66,22 @@ inline bool operator==(const CertificateInfo& a, const CertificateInfo& b)
 }
 
 } // namespace WebCore
+
+namespace WTF {
+namespace Persistence {
+
+template<> struct Coder<WebCore::CertificateInfo> {
+    static void encode(Encoder&, const WebCore::CertificateInfo&)
+    {
+        notImplemented();
+    }
+
+    static bool decode(Decoder&, WebCore::CertificateInfo&)
+    {
+        notImplemented();
+        return false;
+    }
+};
+
+} // namespace WTF::Persistence
+} // namespace WTF

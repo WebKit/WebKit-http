@@ -34,30 +34,27 @@ void WebPageGroupData::encode(IPC::Encoder& encoder) const
 {
     encoder << identifier;
     encoder << pageGroupID;
-    encoder << visibleToInjectedBundle;
-    encoder << visibleToHistoryClient;
-    encoder << userContentControllerIdentifier.toUInt64();
+    encoder << userContentControllerIdentifier;
 }
 
-std::optional<WebPageGroupData> WebPageGroupData::decode(IPC::Decoder& decoder)
+Optional<WebPageGroupData> WebPageGroupData::decode(IPC::Decoder& decoder)
 {
-    String id;
-    if (!decoder.decode(id))
-        return std::nullopt;
-    uint64_t pageGroupID;
-    if (!decoder.decode(pageGroupID))
-        return std::nullopt;
-    bool visibleToInjectedBundle;
-    if (!decoder.decode(visibleToInjectedBundle))
-        return std::nullopt;
-    bool visibleToHistoryClient;
-    if (!decoder.decode(visibleToHistoryClient))
-        return std::nullopt;
-    std::optional<uint64_t> userContentControllerIdentifier;
+    Optional<String> identifier;
+    decoder >> identifier;
+    if (!identifier)
+        return WTF::nullopt;
+    
+    Optional<uint64_t> pageGroupID;
+    decoder >> pageGroupID;
+    if (!pageGroupID)
+        return WTF::nullopt;
+    
+    Optional<UserContentControllerIdentifier> userContentControllerIdentifier;
     decoder >> userContentControllerIdentifier;
     if (!userContentControllerIdentifier)
-        return std::nullopt;
-    return { { id, pageGroupID, visibleToInjectedBundle, visibleToHistoryClient, makeObjectIdentifier<UserContentControllerIdentifierType>(*userContentControllerIdentifier) } };
+        return WTF::nullopt;
+    
+    return {{ WTFMove(*identifier), *pageGroupID, *userContentControllerIdentifier }};
 }
 
 } // namespace WebKit

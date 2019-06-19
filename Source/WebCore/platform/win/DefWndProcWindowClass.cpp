@@ -35,7 +35,7 @@ static const wchar_t className[] = L"DefWndProcWindowClass";
 
 static ATOM registerClass()
 {
-    WNDCLASSW wndClass = {0};
+    WNDCLASSW wndClass { };
     wndClass.lpszClassName = className;
     wndClass.lpfnWndProc = ::DefWindowProcW;
     wndClass.hInstance = instanceHandle();
@@ -45,7 +45,7 @@ static ATOM registerClass()
 
 const wchar_t* defWndProcWindowClassName()
 {
-    static ATOM atom = registerClass();
+    registerClass();
     return className;
 }
 

@@ -55,16 +55,16 @@ static IDToHistoryItemMap& idToHistoryItemMap()
     return map;
 }
 
-void WebBackForwardListProxy::addItemFromUIProcess(const BackForwardItemIdentifier& itemID, Ref<HistoryItem>&& item, uint64_t pageID, OverwriteExistingItem overwriteExistingItem)
+void WebBackForwardListProxy::addItemFromUIProcess(const BackForwardItemIdentifier& itemID, Ref<HistoryItem>&& item, PageIdentifier pageID, OverwriteExistingItem overwriteExistingItem)
 {
     // This item/itemID pair should not already exist in our map.
     ASSERT_UNUSED(overwriteExistingItem, overwriteExistingItem == OverwriteExistingItem::Yes || !idToHistoryItemMap().contains(itemID));
     idToHistoryItemMap().set(itemID, item.ptr());
 }
 
-static void WK2NotifyHistoryItemChanged(HistoryItem* item)
+static void WK2NotifyHistoryItemChanged(HistoryItem& item)
 {
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebProcessProxy::UpdateBackForwardItem(toBackForwardListItemState(*item)), 0);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebProcessProxy::UpdateBackForwardItem(toBackForwardListItemState(item)), 0);
 }
 
 HistoryItem* WebBackForwardListProxy::itemForID(const BackForwardItemIdentifier& itemID)
@@ -82,8 +82,8 @@ void WebBackForwardListProxy::removeItem(const BackForwardItemIdentifier& itemID
     WebCore::Page::clearPreviousItemFromAllPages(item.get());
 }
 
-WebBackForwardListProxy::WebBackForwardListProxy(WebPage* page)
-    : m_page(page)
+WebBackForwardListProxy::WebBackForwardListProxy(WebPage& page)
+    : m_page(&page)
 {
     WebCore::notifyHistoryItemChanged = WK2NotifyHistoryItemChanged;
 }
@@ -100,22 +100,22 @@ void WebBackForwardListProxy::addItem(Ref<HistoryItem>&& item)
     m_page->send(Messages::WebPageProxy::BackForwardAddItem(toBackForwardListItemState(item.get())));
 }
 
-void WebBackForwardListProxy::goToItem(HistoryItem* item)
+void WebBackForwardListProxy::goToItem(HistoryItem& item)
 {
     if (!m_page)
         return;
 
     SandboxExtension::Handle sandboxExtensionHandle;
-    m_page->sendSync(Messages::WebPageProxy::BackForwardGoToItem(item->identifier()), Messages::WebPageProxy::BackForwardGoToItem::Reply(sandboxExtensionHandle));
+    m_page->sendSync(Messages::WebPageProxy::BackForwardGoToItem(item.identifier()), Messages::WebPageProxy::BackForwardGoToItem::Reply(sandboxExtensionHandle));
     m_page->sandboxExtensionTracker().beginLoad(m_page->mainWebFrame(), WTFMove(sandboxExtensionHandle));
 }
 
-HistoryItem* WebBackForwardListProxy::itemAtIndex(int itemIndex)
+RefPtr<HistoryItem> WebBackForwardListProxy::itemAtIndex(int itemIndex)
 {
     if (!m_page)
         return nullptr;
 
-    std::optional<BackForwardItemIdentifier> itemID;
+    Optional<BackForwardItemIdentifier> itemID;
     if (!WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPageProxy::BackForwardItemAtIndex(itemIndex), Messages::WebPageProxy::BackForwardItemAtIndex::Reply(itemID), m_page->pageID()))
         return nullptr;
 
@@ -125,24 +125,24 @@ HistoryItem* WebBackForwardListProxy::itemAtIndex(int itemIndex)
     return idToHistoryItemMap().get(*itemID);
 }
 
-int WebBackForwardListProxy::backListCount()
+unsigned WebBackForwardListProxy::backListCount() const
 {
     if (!m_page)
         return 0;
 
-    int backListCount = 0;
+    unsigned backListCount = 0;
     if (!WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPageProxy::BackForwardBackListCount(), Messages::WebPageProxy::BackForwardBackListCount::Reply(backListCount), m_page->pageID()))
         return 0;
 
     return backListCount;
 }
 
-int WebBackForwardListProxy::forwardListCount()
+unsigned WebBackForwardListProxy::forwardListCount() const
 {
     if (!m_page)
         return 0;
 
-    int forwardListCount = 0;
+    unsigned forwardListCount = 0;
     if (!WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPageProxy::BackForwardForwardListCount(), Messages::WebPageProxy::BackForwardForwardListCount::Reply(forwardListCount), m_page->pageID()))
         return 0;
 

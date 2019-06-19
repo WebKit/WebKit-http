@@ -28,7 +28,7 @@
 #include "Color.h"
 #include "LayoutSize.h"
 #include "Length.h"
-#include <wtf/RefCounted.h>
+#include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/text/WTFString.h>
 
@@ -47,7 +47,7 @@ class FilterEffect;
 struct FloatComponents;
 struct ResourceLoaderOptions;
 
-class FilterOperation : public RefCounted<FilterOperation> {
+class FilterOperation : public ThreadSafeRefCounted<FilterOperation> {
 public:
     enum OperationType {
         REFERENCE, // url(#somefilter)
@@ -189,9 +189,6 @@ public:
 
     CachedSVGDocumentReference* cachedSVGDocumentReference() const { return m_cachedSVGDocumentReference.get(); }
 
-    FilterEffect* filterEffect() const { return m_filterEffect.get(); }
-    void setFilterEffect(RefPtr<FilterEffect>&&);
-
 private:
     ReferenceFilterOperation(const String& url, const String& fragment);
 
@@ -200,7 +197,6 @@ private:
     String m_url;
     String m_fragment;
     std::unique_ptr<CachedSVGDocumentReference> m_cachedSVGDocumentReference;
-    RefPtr<FilterEffect> m_filterEffect;
 };
 
 // GRAYSCALE, SEPIA, SATURATE and HUE_ROTATE are variations on a basic color matrix effect.

@@ -26,7 +26,7 @@
 #import "config.h"
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED && PLATFORM(MAC)
+#if PLATFORM(MAC)
 
 #import "PlatformUtilities.h"
 #import "Test.h"
@@ -205,4 +205,10 @@ TEST(SnapshotStore, SnapshotsForNeverLoadedPagesDoNotChangeUponNavigation)
     EXPECT_TRUE(imagesAreEqual(initialSnapshot.get(), snapshotAfterNavigation.get()));
 }
 
-#endif // WK_API_ENABLED && PLATFORM(MAC)
+TEST(SnapshotStore, SnapshottingNullBackForwardItemShouldNotCrash)
+{
+    RetainPtr<SnapshotTestWKWebView> webView = adoptNS([[SnapshotTestWKWebView alloc] init]);
+    [webView _saveBackForwardSnapshotForItem:nil];
+}
+
+#endif // PLATFORM(MAC)

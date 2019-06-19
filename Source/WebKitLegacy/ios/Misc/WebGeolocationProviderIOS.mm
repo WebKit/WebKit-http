@@ -23,13 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "WebGeolocationProviderIOS.h"
 
 #import "WebDelegateImplementationCaching.h"
 #import "WebGeolocationCoreLocationProvider.h"
 #import <WebGeolocationPosition.h>
+#import <WebUIDelegatePrivate.h>
 #import <WebCore/GeolocationPosition.h>
 #import <WebCore/WebCoreThread.h>
 #import <WebCore/WebCoreThreadRun.h>
@@ -370,4 +371,4 @@ static inline void abortSendLastPosition(WebGeolocationProviderIOS* provider)
 }
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

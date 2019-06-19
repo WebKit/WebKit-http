@@ -26,8 +26,6 @@
 #import "config.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 
-#if WK_API_ENABLED
-
 #import <wtf/RetainPtr.h>
 
 @implementation _WKProcessPoolConfiguration
@@ -64,22 +62,22 @@
 
 - (NSUInteger)maximumProcessCount
 {
-    return _processPoolConfiguration->maximumProcessCount();
+    // Deprecated.
+    return NSUIntegerMax;
 }
 
 - (void)setMaximumProcessCount:(NSUInteger)maximumProcessCount
 {
-    _processPoolConfiguration->setMaximumProcessCount(maximumProcessCount);
+    // Deprecated.
 }
 
 - (NSInteger)diskCacheSizeOverride
 {
-    return _processPoolConfiguration->diskCacheSizeOverride();
+    return 0;
 }
 
 - (void)setDiskCacheSizeOverride:(NSInteger)size
 {
-    _processPoolConfiguration->setDiskCacheSizeOverride(size);
 }
 
 - (BOOL)diskCacheSpeculativeValidationEnabled
@@ -139,15 +137,14 @@
     _processPoolConfiguration->setAdditionalReadAccessAllowedPaths(WTFMove(paths));
 }
 
-#if ENABLE(PROXIMITY_NETWORKING)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(IOS_FAMILY_SIMULATOR)
 - (NSUInteger)wirelessContextIdentifier
 {
-    return _processPoolConfiguration->wirelessContextIdentifier();
+    return 0;
 }
 
 - (void)setWirelessContextIdentifier:(NSUInteger)identifier
 {
-    _processPoolConfiguration->setWirelessContextIdentifier(identifier);
 }
 #endif
 
@@ -202,22 +199,20 @@
 
 - (NSString *)sourceApplicationBundleIdentifier
 {
-    return _processPoolConfiguration->sourceApplicationBundleIdentifier();
+    return nil;
 }
 
 - (void)setSourceApplicationBundleIdentifier:(NSString *)sourceApplicationBundleIdentifier
 {
-    _processPoolConfiguration->setSourceApplicationBundleIdentifier(sourceApplicationBundleIdentifier);
 }
 
 - (NSString *)sourceApplicationSecondaryIdentifier
 {
-    return _processPoolConfiguration->sourceApplicationSecondaryIdentifier();
+    return nil;
 }
 
 - (void)setSourceApplicationSecondaryIdentifier:(NSString *)sourceApplicationSecondaryIdentifier
 {
-    _processPoolConfiguration->setSourceApplicationSecondaryIdentifier(sourceApplicationSecondaryIdentifier);
 }
 
 - (BOOL)shouldCaptureAudioInUIProcess
@@ -260,6 +255,16 @@
     return _processPoolConfiguration->isAutomaticProcessWarmingEnabled();
 }
 
+- (void)setUsesWebProcessCache:(BOOL)value
+{
+    _processPoolConfiguration->setUsesWebProcessCache(value);
+}
+
+- (BOOL)usesWebProcessCache
+{
+    return _processPoolConfiguration->usesWebProcessCache();
+}
+
 - (void)setAlwaysKeepAndReuseSwappedProcesses:(BOOL)swaps
 {
     _processPoolConfiguration->setAlwaysKeepAndReuseSwappedProcesses(swaps);
@@ -282,15 +287,25 @@
 
 - (BOOL)pageCacheEnabled
 {
-    return _processPoolConfiguration->cacheModel() != WebKit::CacheModelDocumentViewer;
+    return _processPoolConfiguration->cacheModel() != WebKit::CacheModel::DocumentViewer;
 }
 
 - (void)setPageCacheEnabled:(BOOL)enabled
 {
     if (!enabled)
-        _processPoolConfiguration->setCacheModel(WebKit::CacheModelDocumentViewer);
+        _processPoolConfiguration->setCacheModel(WebKit::CacheModel::DocumentViewer);
     else if (![self pageCacheEnabled])
-        _processPoolConfiguration->setCacheModel(WebKit::CacheModelPrimaryWebBrowser);
+        _processPoolConfiguration->setCacheModel(WebKit::CacheModel::PrimaryWebBrowser);
+}
+
+- (BOOL)usesSingleWebProcess
+{
+    return _processPoolConfiguration->usesSingleWebProcess();
+}
+
+- (void)setUsesSingleWebProcess:(BOOL)enabled
+{
+    _processPoolConfiguration->setUsesSingleWebProcess(enabled);
 }
 
 - (BOOL)suppressesConnectionTerminationOnSystemChange
@@ -298,12 +313,46 @@
     return _processPoolConfiguration->suppressesConnectionTerminationOnSystemChange();
 }
 
+- (BOOL)isJITEnabled
+{
+    return _processPoolConfiguration->isJITEnabled();
+}
+
+- (void)setJITEnabled:(BOOL)enabled
+{
+    _processPoolConfiguration->setJITEnabled(enabled);
+}
+
+- (NSUInteger)downloadMonitorSpeedMultiplierForTesting
+{
+    return _processPoolConfiguration->downloadMonitorSpeedMultiplier();
+}
+
+- (void)setHSTSStorageDirectory:(NSURL *)directory
+{
+    if (directory && ![directory isFileURL])
+        [NSException raise:NSInvalidArgumentException format:@"%@ is not a file URL", directory];
+
+    // FIXME: Move this to _WKWebsiteDataStoreConfiguration once rdar://problem/50109631 is fixed.
+    _processPoolConfiguration->setHSTSStorageDirectory(directory.path);
+}
+
+- (NSURL *)hstsStorageDirectory
+{
+    return [NSURL fileURLWithPath:_processPoolConfiguration->hstsStorageDirectory() isDirectory:YES];
+}
+
+- (void)setDownloadMonitorSpeedMultiplierForTesting:(NSUInteger)multiplier
+{
+    _processPoolConfiguration->setDownloadMonitorSpeedMultiplier(multiplier);
+}
+
 - (void)setSuppressesConnectionTerminationOnSystemChange:(BOOL)suppressesConnectionTerminationOnSystemChange
 {
     _processPoolConfiguration->setSuppressesConnectionTerminationOnSystemChange(suppressesConnectionTerminationOnSystemChange);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 - (NSString *)CTDataConnectionServiceType
 {
     return _processPoolConfiguration->ctDataConnectionServiceType();
@@ -337,7 +386,7 @@
 
 - (NSString *)description
 {
-    NSString *description = [NSString stringWithFormat:@"<%@: %p; maximumProcessCount = %lu", NSStringFromClass(self.class), self, static_cast<unsigned long>([self maximumProcessCount])];
+    NSString *description = [NSString stringWithFormat:@"<%@: %p", NSStringFromClass(self.class), self];
 
     if (!_processPoolConfiguration->injectedBundlePath().isEmpty())
         return [description stringByAppendingFormat:@"; injectedBundleURL: \"%@\">", [self injectedBundleURL]];
@@ -368,5 +417,3 @@
 }
 
 @end
-
-#endif

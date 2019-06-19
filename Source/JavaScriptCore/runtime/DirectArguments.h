@@ -46,10 +46,10 @@ private:
     DirectArguments(VM&, Structure*, unsigned length, unsigned capacity);
     
 public:
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess>
     static CompleteSubspace* subspaceFor(VM& vm)
     {
-        RELEASE_ASSERT(!CellType::needsDestruction);
+        static_assert(!CellType::needsDestruction, "");
         return &vm.jsValueGigacageCellSpace;
     }
 
@@ -79,15 +79,14 @@ public:
             auto scope = DECLARE_THROW_SCOPE(vm);
             JSValue value = get(exec, vm.propertyNames->length);
             RETURN_IF_EXCEPTION(scope, 0);
-            scope.release();
-            return value.toUInt32(exec);
+            RELEASE_AND_RETURN(scope, value.toUInt32(exec));
         }
         return m_length;
     }
     
     bool isMappedArgument(uint32_t i) const
     {
-        return i < m_length && (!m_mappedArguments || !m_mappedArguments[i]);
+        return i < m_length && (!m_mappedArguments || !m_mappedArguments.at(i, m_length));
     }
 
     bool isMappedArgumentInDFG(uint32_t i) const
@@ -183,7 +182,8 @@ private:
     WriteBarrier<JSFunction> m_callee;
     uint32_t m_length; // Always the actual length of captured arguments and never what was stored into the length property.
     uint32_t m_minCapacity; // The max of this and length determines the capacity of this object. It may be the actual capacity, or maybe something smaller. We arrange it this way to be kind to the JITs.
-    CagedBarrierPtr<Gigacage::Primitive, bool> m_mappedArguments; // If non-null, it means that length, callee, and caller are fully materialized properties.
+    using MappedArguments = CagedBarrierPtr<Gigacage::Primitive, bool>;
+    MappedArguments m_mappedArguments; // If non-null, it means that length, callee, and caller are fully materialized properties.
 };
 
 } // namespace JSC

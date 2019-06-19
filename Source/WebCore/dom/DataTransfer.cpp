@@ -43,10 +43,10 @@
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "StaticPasteboard.h"
-#include "URLParser.h"
 #include "WebContentReader.h"
 #include "WebCorePasteboardFileReader.h"
 #include "markup.h"
+#include <wtf/URLParser.h>
 #include <wtf/unicode/CharacterNames.h>
 
 namespace WebCore {
@@ -146,7 +146,7 @@ void DataTransfer::clearData(const String& type)
 static String readURLsFromPasteboardAsString(Pasteboard& pasteboard, Function<bool(const String&)>&& shouldIncludeURL)
 {
     StringBuilder urlList;
-    for (auto urlString : pasteboard.readAllStrings("text/uri-list"_s)) {
+    for (const auto& urlString : pasteboard.readAllStrings("text/uri-list"_s)) {
         if (!shouldIncludeURL(urlString))
             continue;
         if (!urlList.isEmpty())
@@ -255,7 +255,7 @@ void DataTransfer::setDataFromItemList(const String& type, const String& data)
     if (type == "text/html")
         sanitizedData = sanitizeMarkup(data);
     else if (type == "text/uri-list") {
-        auto url = URLParser(data).result();
+        auto url = URL({ }, data);
         if (url.isValid())
             sanitizedData = url.string();
     } else if (type == "text/plain")
@@ -485,14 +485,7 @@ Ref<DataTransfer> DataTransfer::createForDrop(Document& document, std::unique_pt
 
 Ref<DataTransfer> DataTransfer::createForUpdatingDropTarget(Document& document, std::unique_ptr<Pasteboard>&& pasteboard, DragOperation sourceOperation, bool draggingFiles)
 {
-    auto mode = DataTransfer::StoreMode::Protected;
-#if ENABLE(DASHBOARD_SUPPORT)
-    if (document.settings().usesDashboardBackwardCompatibilityMode() && document.securityOrigin().isLocal())
-        mode = DataTransfer::StoreMode::Readonly;
-#else
-    UNUSED_PARAM(document);
-#endif
-    auto dataTransfer = adoptRef(*new DataTransfer(mode, WTFMove(pasteboard), draggingFiles ? Type::DragAndDropFiles : Type::DragAndDropData));
+    auto dataTransfer = adoptRef(*new DataTransfer(DataTransfer::StoreMode::Protected, WTFMove(pasteboard), draggingFiles ? Type::DragAndDropFiles : Type::DragAndDropData));
     dataTransfer->setSourceOperation(sourceOperation);
     dataTransfer->m_originIdentifier = document.originIdentifierForPasteboard();
     return dataTransfer;

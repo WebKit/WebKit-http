@@ -8,34 +8,29 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
+#include "api/test/simulated_network.h"
+#include "api/video/builtin_video_bitrate_allocator_factory.h"
+#include "call/fake_network_pipe.h"
+#include "call/simulated_network.h"
 #include "modules/rtp_rtcp/include/rtp_rtcp.h"
 #include "rtc_base/rate_limiter.h"
 #include "system_wrappers/include/sleep.h"
 #include "test/call_test.h"
-#include "test/encoder_proxy_factory.h"
 #include "test/fake_encoder.h"
 #include "test/field_trial.h"
 #include "test/gtest.h"
 #include "test/rtcp_packet_parser.h"
 #include "test/rtp_rtcp_observer.h"
+#include "test/video_encoder_proxy_factory.h"
 
 namespace webrtc {
 
-class BandwidthEndToEndTest : public test::CallTest,
-                              public testing::WithParamInterface<std::string> {
+class BandwidthEndToEndTest : public test::CallTest {
  public:
-  BandwidthEndToEndTest() : field_trial_(GetParam()) {}
-
- private:
-  test::ScopedFieldTrials field_trial_;
+  BandwidthEndToEndTest() = default;
 };
 
-INSTANTIATE_TEST_CASE_P(RoundRobin,
-                        BandwidthEndToEndTest,
-                        ::testing::Values("WebRTC-RoundRobinPacing/Disabled/",
-                                          "WebRTC-RoundRobinPacing/Enabled/"));
-
-TEST_P(BandwidthEndToEndTest, ReceiveStreamSendsRemb) {
+TEST_F(BandwidthEndToEndTest, ReceiveStreamSendsRemb) {
   class RembObserver : public test::EndToEndTest {
    public:
     RembObserver() : EndToEndTest(kDefaultTimeoutMs) {}
@@ -126,12 +121,12 @@ class BandwidthStatsTest : public test::EndToEndTest {
   const bool send_side_bwe_;
 };
 
-TEST_P(BandwidthEndToEndTest, VerifySendSideBweStats) {
+TEST_F(BandwidthEndToEndTest, VerifySendSideBweStats) {
   BandwidthStatsTest test(true);
   RunBaseTest(&test);
 }
 
-TEST_P(BandwidthEndToEndTest, VerifyRecvSideBweStats) {
+TEST_F(BandwidthEndToEndTest, VerifyRecvSideBweStats) {
   BandwidthStatsTest test(false);
   RunBaseTest(&test);
 }
@@ -141,7 +136,7 @@ TEST_P(BandwidthEndToEndTest, VerifyRecvSideBweStats) {
 // then have the test generate a REMB of 500 kbps and verify that the send BWE
 // is reduced to exactly 500 kbps. Then a REMB of 1000 kbps is generated and the
 // test verifies that the send BWE ramps back up to exactly 1000 kbps.
-TEST_P(BandwidthEndToEndTest, RembWithSendSideBwe) {
+TEST_F(BandwidthEndToEndTest, RembWithSendSideBwe) {
   class BweObserver : public test::EndToEndTest {
    public:
     BweObserver()
@@ -151,7 +146,6 @@ TEST_P(BandwidthEndToEndTest, RembWithSendSideBwe) {
           sender_ssrc_(0),
           remb_bitrate_bps_(1000000),
           receive_transport_(nullptr),
-          stop_event_(false, false),
           poller_thread_(&BitrateStatsPollingThread,
                          this,
                          "BitrateStatsPollingThread"),
@@ -164,13 +158,17 @@ TEST_P(BandwidthEndToEndTest, RembWithSendSideBwe) {
         test::SingleThreadedTaskQueueForTesting* task_queue) override {
       receive_transport_ = new test::PacketTransport(
           task_queue, nullptr, this, test::PacketTransport::kReceiver,
-          payload_type_map_, FakeNetworkPipe::Config());
+          payload_type_map_,
+          absl::make_unique<FakeNetworkPipe>(
+              Clock::GetRealTimeClock(), absl::make_unique<SimulatedNetwork>(
+                                             BuiltInNetworkBehaviorConfig())));
       return receive_transport_;
     }
 
-    void ModifySenderCallConfig(Call::Config* config) override {
+    void ModifySenderBitrateConfig(
+        BitrateConstraints* bitrate_config) override {
       // Set a high start bitrate to reduce the test completion time.
-      config->bitrate_config.start_bitrate_bps = remb_bitrate_bps_;
+      bitrate_config->start_bitrate_bps = remb_bitrate_bps_;
     }
 
     void ModifyVideoConfigs(
@@ -265,7 +263,7 @@ TEST_P(BandwidthEndToEndTest, RembWithSendSideBwe) {
   RunBaseTest(&test);
 }
 
-TEST_P(BandwidthEndToEndTest, ReportsSetEncoderRates) {
+TEST_F(BandwidthEndToEndTest, ReportsSetEncoderRates) {
   class EncoderRateStatsTest : public test::EndToEndTest,
                                public test::FakeEncoder {
    public:
@@ -276,6 +274,8 @@ TEST_P(BandwidthEndToEndTest, ReportsSetEncoderRates) {
           task_queue_(task_queue),
           send_stream_(nullptr),
           encoder_factory_(this),
+          bitrate_allocator_factory_(
+              CreateBuiltinVideoBitrateAllocatorFactory()),
           bitrate_kbps_(0) {}
 
     void OnVideoStreamsCreated(
@@ -289,6 +289,8 @@ TEST_P(BandwidthEndToEndTest, ReportsSetEncoderRates) {
         std::vector<VideoReceiveStream::Config>* receive_configs,
         VideoEncoderConfig* encoder_config) override {
       send_config->encoder_settings.encoder_factory = &encoder_factory_;
+      send_config->encoder_settings.bitrate_allocator_factory =
+          bitrate_allocator_factory_.get();
       RTC_DCHECK_EQ(1, encoder_config->number_of_streams);
     }
 
@@ -346,7 +348,8 @@ TEST_P(BandwidthEndToEndTest, ReportsSetEncoderRates) {
     test::SingleThreadedTaskQueueForTesting* const task_queue_;
     rtc::CriticalSection crit_;
     VideoSendStream* send_stream_;
-    test::EncoderProxyFactory encoder_factory_;
+    test::VideoEncoderProxyFactory encoder_factory_;
+    std::unique_ptr<VideoBitrateAllocatorFactory> bitrate_allocator_factory_;
     uint32_t bitrate_kbps_ RTC_GUARDED_BY(crit_);
   } test(&task_queue_);
 

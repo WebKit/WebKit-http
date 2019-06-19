@@ -28,7 +28,7 @@
 #import "TestWKWebView.h"
 #import <WebKit/WKPreferencesPrivate.h>
 
-#if WK_API_ENABLED && PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 TEST(TextAutosizingBoost, ChangeAutosizingBoostAtRuntime)
 {
@@ -54,4 +54,4 @@ TEST(TextAutosizingBoost, ChangeAutosizingBoostAtRuntime)
     EXPECT_EQ(38, boostedSize.height);
 }
 
-#endif // WK_API_ENABLED && PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

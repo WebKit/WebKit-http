@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CryptoAlgorithmHMAC.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CryptoKeyHMAC.h"
 #include <CommonCrypto/CommonHMAC.h>
@@ -34,7 +34,7 @@
 
 namespace WebCore {
 
-static std::optional<CCHmacAlgorithm> commonCryptoHMACAlgorithm(CryptoAlgorithmIdentifier hashFunction)
+static Optional<CCHmacAlgorithm> commonCryptoHMACAlgorithm(CryptoAlgorithmIdentifier hashFunction)
 {
     switch (hashFunction) {
     case CryptoAlgorithmIdentifier::SHA_1:
@@ -48,7 +48,7 @@ static std::optional<CCHmacAlgorithm> commonCryptoHMACAlgorithm(CryptoAlgorithmI
     case CryptoAlgorithmIdentifier::SHA_512:
         return kCCHmacAlgSHA512;
     default:
-        return std::nullopt;
+        return WTF::nullopt;
     }
 }
 
@@ -103,4 +103,4 @@ ExceptionOr<bool> CryptoAlgorithmHMAC::platformVerify(const CryptoKeyHMAC& key, 
 
 }
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

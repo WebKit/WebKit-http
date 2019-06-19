@@ -34,10 +34,9 @@
 namespace API {
 class Object;
 class String;
-class URL;
 
 template<> struct ClientTraits<WKBundlePageLoaderClientBase> {
-    typedef std::tuple<WKBundlePageLoaderClientV0, WKBundlePageLoaderClientV1, WKBundlePageLoaderClientV2, WKBundlePageLoaderClientV3, WKBundlePageLoaderClientV4, WKBundlePageLoaderClientV5, WKBundlePageLoaderClientV6, WKBundlePageLoaderClientV7, WKBundlePageLoaderClientV8, WKBundlePageLoaderClientV9> Versions;
+    typedef std::tuple<WKBundlePageLoaderClientV0, WKBundlePageLoaderClientV1, WKBundlePageLoaderClientV2, WKBundlePageLoaderClientV3, WKBundlePageLoaderClientV4, WKBundlePageLoaderClientV5, WKBundlePageLoaderClientV6, WKBundlePageLoaderClientV7, WKBundlePageLoaderClientV8, WKBundlePageLoaderClientV9, WKBundlePageLoaderClientV10> Versions;
 };
 }
 
@@ -48,9 +47,8 @@ public:
     explicit InjectedBundlePageLoaderClient(const WKBundlePageLoaderClientBase*);
 
     void willLoadURLRequest(WebPage&, const WebCore::ResourceRequest&, API::Object*) override;
-    void willLoadDataRequest(WebPage&, const WebCore::ResourceRequest&, WebCore::SharedBuffer*, const WTF::String&, const WTF::String&, const WebCore::URL&, API::Object*) override;
+    void willLoadDataRequest(WebPage&, const WebCore::ResourceRequest&, WebCore::SharedBuffer*, const WTF::String&, const WTF::String&, const URL&, API::Object*) override;
 
-    bool shouldGoToBackForwardListItem(WebPage&, InjectedBundleBackForwardListItem&, RefPtr<API::Object>&) override;
     void didStartProvisionalLoadForFrame(WebPage&, WebFrame&, RefPtr<API::Object>&) override;
     void didReceiveServerRedirectForProvisionalLoadForFrame(WebPage&, WebFrame&, RefPtr<API::Object>&) override;
     void didFailProvisionalLoadWithErrorForFrame(WebPage&, WebFrame&, const WebCore::ResourceError&, RefPtr<API::Object>&) override;
@@ -69,7 +67,7 @@ public:
     void didFirstLayoutForFrame(WebPage&, WebFrame&, RefPtr<API::Object>&) override;
     void didFirstVisuallyNonEmptyLayoutForFrame(WebPage&, WebFrame&, RefPtr<API::Object>&) override;
     void didLayoutForFrame(WebPage&, WebFrame&) override;
-    void didReachLayoutMilestone(WebPage&, WebCore::LayoutMilestones, RefPtr<API::Object>&) override;
+    void didReachLayoutMilestone(WebPage&, OptionSet<WebCore::LayoutMilestone>, RefPtr<API::Object>&) override;
 
     void didClearWindowObjectForFrame(WebPage&, WebFrame&, WebCore::DOMWrapperWorld&) override;
     void didCancelClientRedirectForFrame(WebPage&, WebFrame&) override;
@@ -87,9 +85,7 @@ public:
 
     void featuresUsedInPage(WebPage&, const Vector<WTF::String>&) override;
 
-    WTF::String userAgentForURL(WebFrame&, const WebCore::URL&) const override;
-
-    WebCore::LayoutMilestones layoutMilestones() const override;
+    OptionSet<WebCore::LayoutMilestone> layoutMilestones() const override;
 };
 
 } // namespace WebKit

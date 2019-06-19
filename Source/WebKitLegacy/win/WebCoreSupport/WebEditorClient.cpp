@@ -26,11 +26,11 @@
 #include "WebKitDLL.h"
 #include "WebEditorClient.h"
 
+#include "DOMCoreClasses.h"
 #include "WebKit.h"
 #include "WebNotification.h"
 #include "WebNotificationCenter.h"
 #include "WebView.h"
-#include "DOMCoreClasses.h"
 #include <comutil.h>
 #include <WebCore/BString.h>
 #include <WebCore/Document.h>
@@ -48,6 +48,7 @@
 #include <WebCore/UserTypingGestureIndicator.h>
 #include <WebCore/VisibleSelection.h>
 #include <wtf/text/StringView.h>
+#include <wtf/text/win/WCharStringExtras.h>
 
 using namespace WebCore;
 using namespace HTMLNames;
@@ -63,7 +64,7 @@ public:
 
 // WebEditorUndoTarget -------------------------------------------------------------
 
-class WebEditorUndoTarget : public IWebUndoTarget
+class WebEditorUndoTarget final : public IWebUndoTarget
 {
 public:
     WebEditorUndoTarget();
@@ -267,12 +268,6 @@ void WebEditorClient::willWriteSelectionToPasteboard(WebCore::Range*)
 void WebEditorClient::getClientPasteboardDataForRange(WebCore::Range*, Vector<String>&, Vector<RefPtr<WebCore::SharedBuffer> >&)
 {
     notImplemented();
-}
-
-String WebEditorClient::replacementURLForResource(Ref<WebCore::SharedBuffer>&&, const String&)
-{
-    notImplemented();
-    return { };
 }
 
 bool WebEditorClient::shouldDeleteRange(Range* range)
@@ -508,7 +503,7 @@ void WebEditorClient::textDidChangeInTextArea(Element* e)
     }
 }
 
-class WebEditorUndoCommand : public IWebUndoCommand
+class WebEditorUndoCommand final : public IWebUndoCommand
 {
 public:
     WebEditorUndoCommand(UndoStep&, bool isUndo);
@@ -526,9 +521,9 @@ private:
 };
 
 WebEditorUndoCommand::WebEditorUndoCommand(UndoStep& step, bool isUndo)
-    : m_step(step)
-    , m_isUndo(isUndo) 
-    , m_refCount(1)
+    : m_refCount(1)
+    , m_step(step)
+    , m_isUndo(isUndo)
 { 
 }
 
@@ -594,7 +589,9 @@ static String undoNameForEditAction(EditAction editAction)
     case EditAction::AlignRight: return WEB_UI_STRING_KEY("Align Right", "Align Right (Undo action name)", "Undo action name");
     case EditAction::Center: return WEB_UI_STRING_KEY("Center", "Center (Undo action name)", "Undo action name");
     case EditAction::Justify: return WEB_UI_STRING_KEY("Justify", "Justify (Undo action name)", "Undo action name");
-    case EditAction::SetWritingDirection: return WEB_UI_STRING_KEY("Set Writing Direction", "Set Writing Direction (Undo action name)", "Undo action name");
+    case EditAction::SetInlineWritingDirection:
+    case EditAction::SetBlockWritingDirection:
+        return WEB_UI_STRING_KEY("Set Writing Direction", "Set Writing Direction (Undo action name)", "Undo action name");
     case EditAction::Subscript: return WEB_UI_STRING_KEY("Subscript", "Subscript (Undo action name)", "Undo action name");
     case EditAction::Superscript: return WEB_UI_STRING_KEY("Superscript", "Superscript (Undo action name)", "Undo action name");
     case EditAction::Bold: return WEB_UI_STRING_KEY("Bold", "Bold (Undo action name)", "Undo action name");
@@ -626,8 +623,8 @@ static String undoNameForEditAction(EditAction editAction)
     case EditAction::FormatBlock: return WEB_UI_STRING_KEY("Formatting", "Format Block (Undo action name)", "Undo action name");
     case EditAction::Indent: return WEB_UI_STRING_KEY("Indent", "Indent (Undo action name)", "Undo action name");
     case EditAction::Outdent: return WEB_UI_STRING_KEY("Outdent", "Outdent (Undo action name)", "Undo action name");
+    default: return String();
     }
-    return String();
 }
 
 void WebEditorClient::registerUndoStep(UndoStep& step)
@@ -718,13 +715,13 @@ void WebEditorClient::redo()
     }
 }
 
-void WebEditorClient::handleKeyboardEvent(KeyboardEvent* evt)
+void WebEditorClient::handleKeyboardEvent(KeyboardEvent& event)
 {
-    if (m_webView->handleEditingKeyboardEvent(evt))
-        evt->setDefaultHandled();
+    if (m_webView->handleEditingKeyboardEvent(event))
+        event.setDefaultHandled();
 }
 
-void WebEditorClient::handleInputMethodKeydown(KeyboardEvent* )
+void WebEditorClient::handleInputMethodKeydown(KeyboardEvent&)
 {
 }
 
@@ -762,7 +759,7 @@ void WebEditorClient::checkSpellingOfString(StringView text, int* misspellingLoc
         return;
 
     initViewSpecificSpelling(m_webView);
-    ed->checkSpellingOfString(m_webView, text.upconvertedCharacters(), text.length(), misspellingLocation, misspellingLength);
+    ed->checkSpellingOfString(m_webView, wcharFrom(text.upconvertedCharacters()), text.length(), misspellingLocation, misspellingLength);
 }
 
 String WebEditorClient::getAutoCorrectSuggestionForMisspelledWord(const String& inputWord)
@@ -784,7 +781,7 @@ void WebEditorClient::checkGrammarOfString(StringView text, Vector<GrammarDetail
 
     initViewSpecificSpelling(m_webView);
     COMPtr<IEnumWebGrammarDetails> enumDetailsObj;
-    if (FAILED(ed->checkGrammarOfString(m_webView, text.upconvertedCharacters(), text.length(), &enumDetailsObj, badGrammarLocation, badGrammarLength)))
+    if (FAILED(ed->checkGrammarOfString(m_webView, wcharFrom(text.upconvertedCharacters()), text.length(), &enumDetailsObj, badGrammarLocation, badGrammarLength)))
         return;
 
     while (true) {

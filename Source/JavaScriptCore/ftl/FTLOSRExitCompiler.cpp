@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -124,44 +124,6 @@ static void compileRecovery(
         jit.load64(AssemblyHelpers::addressFor(value.virtualRegister()), GPRInfo::regT0);
         break;
             
-    case ExitValueRecovery:
-        Location::forValueRep(valueReps[value.rightRecoveryArgument()]).restoreInto(
-            jit, registerScratch, GPRInfo::regT1);
-        Location::forValueRep(valueReps[value.leftRecoveryArgument()]).restoreInto(
-            jit, registerScratch, GPRInfo::regT0);
-        switch (value.recoveryOpcode()) {
-        case AddRecovery:
-            switch (value.recoveryFormat()) {
-            case DataFormatInt32:
-                jit.add32(GPRInfo::regT1, GPRInfo::regT0);
-                break;
-            case DataFormatInt52:
-                jit.add64(GPRInfo::regT1, GPRInfo::regT0);
-                break;
-            default:
-                RELEASE_ASSERT_NOT_REACHED();
-                break;
-            }
-            break;
-        case SubRecovery:
-            switch (value.recoveryFormat()) {
-            case DataFormatInt32:
-                jit.sub32(GPRInfo::regT1, GPRInfo::regT0);
-                break;
-            case DataFormatInt52:
-                jit.sub64(GPRInfo::regT1, GPRInfo::regT0);
-                break;
-            default:
-                RELEASE_ASSERT_NOT_REACHED();
-                break;
-            }
-            break;
-        default:
-            RELEASE_ASSERT_NOT_REACHED();
-            break;
-        }
-        break;
-        
     case ExitValueMaterializeNewObject:
         jit.loadPtr(materializationToPointer.get(value.objectMaterialization()), GPRInfo::regT0);
         break;
@@ -244,6 +206,18 @@ static void compileStub(
 
     saveAllRegisters(jit, registerScratch);
     
+    if (validateDFGDoesGC) {
+        // We're about to exit optimized code. So, there's no longer any optimized
+        // code running that expects no GC. We need to set this before object
+        // materialization below.
+
+        // Even though we set Heap::m_expectDoesGC in compileFTLOSRExit(), we also need
+        // to set it here because compileFTLOSRExit() is only called on the first time
+        // we exit from this site, but all subsequent exits will take this compiled
+        // ramp without calling compileFTLOSRExit() first.
+        jit.store8(CCallHelpers::TrustedImm32(true), vm->heap.addressOfExpectDoesGC());
+    }
+
     // Bring the stack back into a sane form and assert that it's sane.
     jit.popToRestore(GPRInfo::regT0);
     jit.checkStackPointerAlignment();
@@ -274,13 +248,23 @@ static void compileStub(
         
         if (exit.m_kind == BadCache || exit.m_kind == BadIndexingType) {
             CodeOrigin codeOrigin = exit.m_codeOriginForExitProfile;
-            if (ArrayProfile* arrayProfile = jit.baselineCodeBlockFor(codeOrigin)->getArrayProfile(codeOrigin.bytecodeIndex)) {
+            if (ArrayProfile* arrayProfile = jit.baselineCodeBlockFor(codeOrigin)->getArrayProfile(codeOrigin.bytecodeIndex())) {
                 jit.load32(MacroAssembler::Address(GPRInfo::regT0, JSCell::structureIDOffset()), GPRInfo::regT1);
                 jit.store32(GPRInfo::regT1, arrayProfile->addressOfLastSeenStructureID());
+
+                jit.load8(MacroAssembler::Address(GPRInfo::regT0, JSCell::typeInfoTypeOffset()), GPRInfo::regT2);
+                jit.sub32(MacroAssembler::TrustedImm32(FirstTypedArrayType), GPRInfo::regT2);
+                auto notTypedArray = jit.branch32(MacroAssembler::AboveOrEqual, GPRInfo::regT2, MacroAssembler::TrustedImm32(NumberOfTypedArrayTypesExcludingDataView));
+                jit.move(MacroAssembler::TrustedImmPtr(typedArrayModes), GPRInfo::regT1);
+                jit.load32(MacroAssembler::BaseIndex(GPRInfo::regT1, GPRInfo::regT2, MacroAssembler::TimesFour), GPRInfo::regT2);
+                auto storeArrayModes = jit.jump();
+
+                notTypedArray.link(&jit);
                 jit.load8(MacroAssembler::Address(GPRInfo::regT0, JSCell::indexingTypeAndMiscOffset()), GPRInfo::regT1);
                 jit.and32(MacroAssembler::TrustedImm32(IndexingModeMask), GPRInfo::regT1);
                 jit.move(MacroAssembler::TrustedImm32(1), GPRInfo::regT2);
                 jit.lshift32(GPRInfo::regT1, GPRInfo::regT2);
+                storeArrayModes.link(&jit);
                 jit.or32(GPRInfo::regT2, MacroAssembler::AbsoluteAddress(arrayProfile->addressOfArrayModes()));
             }
         }
@@ -409,7 +393,7 @@ static void compileStub(
     jit.checkStackPointerAlignment();
 
     RegisterSet allFTLCalleeSaves = RegisterSet::ftlCalleeSaveRegisters();
-    RegisterAtOffsetList* baselineCalleeSaves = baselineCodeBlock->calleeSaveRegisters();
+    const RegisterAtOffsetList* baselineCalleeSaves = baselineCodeBlock->calleeSaveRegisters();
     RegisterAtOffsetList* vmCalleeSaves = RegisterSet::vmCalleeSaveRegisterOffsets();
     RegisterSet vmCalleeSavesToSkip = RegisterSet::stackRegisters();
     if (exit.isExceptionHandler()) {
@@ -424,7 +408,7 @@ static void compileStub(
             continue;
         }
         unsigned unwindIndex = codeBlock->calleeSaveRegisters()->indexOf(reg);
-        RegisterAtOffset* baselineRegisterOffset = baselineCalleeSaves->find(reg);
+        const RegisterAtOffset* baselineRegisterOffset = baselineCalleeSaves->find(reg);
         RegisterAtOffset* vmCalleeSave = nullptr; 
         if (exit.isExceptionHandler())
             vmCalleeSave = vmCalleeSaves->find(reg);
@@ -509,13 +493,20 @@ extern "C" void* compileFTLOSRExit(ExecState* exec, unsigned exitID)
         dataLog("Compiling OSR exit with exitID = ", exitID, "\n");
 
     VM& vm = exec->vm();
+
+    if (validateDFGDoesGC) {
+        // We're about to exit optimized code. So, there's no longer any optimized
+        // code running that expects no GC.
+        vm.heap.setExpectDoesGC(true);
+    }
+
     if (vm.callFrameForCatch)
         RELEASE_ASSERT(vm.callFrameForCatch == exec);
     
     CodeBlock* codeBlock = exec->codeBlock();
     
     ASSERT(codeBlock);
-    ASSERT(codeBlock->jitType() == JITCode::FTLJIT);
+    ASSERT(codeBlock->jitType() == JITType::FTLJIT);
     
     // It's sort of preferable that we don't GC while in here. Anyways, doing so wouldn't
     // really be profitable.

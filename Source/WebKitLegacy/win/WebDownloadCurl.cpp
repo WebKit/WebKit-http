@@ -35,21 +35,19 @@
 #include "WebURLAuthenticationChallenge.h"
 #include "WebURLCredential.h"
 #include "WebURLResponse.h"
-
-#include <wtf/text/CString.h>
-
-#include <io.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
 #include <WebCore/BString.h>
 #include <WebCore/CurlDownload.h>
-#include <WebCore/FileSystem.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/ResourceResponse.h>
+#include <WebCore/TextEncoding.h>
+#include <io.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <wtf/FileSystem.h>
+#include <wtf/text/CString.h>
 
 using namespace WebCore;
 
@@ -96,7 +94,7 @@ HRESULT WebDownload::initWithRequest(
         return E_FAIL;
 
     ResourceRequest resourceRequest;
-    resourceRequest.setURL(URL(ParsedURLString, String(url)));
+    resourceRequest.setURL(URL({ }, String(url)));
 
     const HTTPHeaderMap& headerMap = webRequest->httpHeaderFields();
     for (HTTPHeaderMap::const_iterator it = headerMap.begin(); it != headerMap.end(); ++it)

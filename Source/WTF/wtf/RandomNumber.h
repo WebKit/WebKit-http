@@ -23,17 +23,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WTF_RandomNumber_h
-#define WTF_RandomNumber_h
+#pragma once
 
 namespace WTF {
 
-// Returns a pseudo-random number in the range [0, 1), attempts to be
-// cryptographically secure if possible on the target platform
+// Returns a cryptographically secure pseudo-random number in the range [0, 1).
 WTF_EXPORT_PRIVATE double randomNumber();
+
+// Returns a cheap pseudo-random number in the range (0, UINT_MAX].
+WTF_EXPORT_PRIVATE unsigned weakRandomUint32();
 
 }
 
 using WTF::randomNumber;
-
-#endif
+using WTF::weakRandomUint32;

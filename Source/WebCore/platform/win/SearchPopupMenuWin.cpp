@@ -21,81 +21,40 @@
 #include "config.h"
 #include "SearchPopupMenuWin.h"
 
-#include <wtf/text/AtomicString.h>
-
-#if USE(CF)
-#include <wtf/RetainPtr.h>
-#endif
+#include "SearchPopupMenuDB.h"
+#include <wtf/text/AtomString.h>
 
 namespace WebCore {
 
 SearchPopupMenuWin::SearchPopupMenuWin(PopupMenuClient* client)
-    : m_popup(adoptRef(new PopupMenuWin(client)))
+    : m_popup(adoptRef(*new PopupMenuWin(client)))
 {
 }
 
 PopupMenu* SearchPopupMenuWin::popupMenu()
 {
-    return m_popup.get();
+    return m_popup.ptr();
 }
 
 bool SearchPopupMenuWin::enabled()
 {
-#if USE(CF)
     return true;
-#else
-    return false;
-#endif
 }
 
-#if USE(CF)
-static RetainPtr<CFStringRef> autosaveKey(const String& name)
-{
-    return String("com.apple.WebKit.searchField:" + name).createCFString();
-}
-#endif
-
-void SearchPopupMenuWin::saveRecentSearches(const AtomicString& name, const Vector<RecentSearch>& searchItems)
+void SearchPopupMenuWin::saveRecentSearches(const AtomString& name, const Vector<RecentSearch>& searchItems)
 {
     if (name.isEmpty())
         return;
 
-#if USE(CF)
-    RetainPtr<CFMutableArrayRef> items;
-
-    size_t size = searchItems.size();
-    if (size) {
-        items = adoptCF(CFArrayCreateMutable(0, size, &kCFTypeArrayCallBacks));
-        for (size_t i = 0; i < size; ++i)
-            CFArrayAppendValue(items.get(), searchItems[i].string.createCFString().get());
-    }
-
-    CFPreferencesSetAppValue(autosaveKey(name).get(), items.get(), kCFPreferencesCurrentApplication);
-    CFPreferencesAppSynchronize(kCFPreferencesCurrentApplication);
-#endif
+    SearchPopupMenuDB::singleton().saveRecentSearches(name, searchItems);
 }
 
-void SearchPopupMenuWin::loadRecentSearches(const AtomicString& name, Vector<RecentSearch>& searchItems)
+void SearchPopupMenuWin::loadRecentSearches(const AtomString& name, Vector<RecentSearch>& searchItems)
 {
     if (name.isEmpty())
         return;
 
-#if USE(CF)
-    searchItems.clear();
-    RetainPtr<CFArrayRef> items = adoptCF(reinterpret_cast<CFArrayRef>(CFPreferencesCopyAppValue(autosaveKey(name).get(), kCFPreferencesCurrentApplication)));
-
-    if (!items || CFGetTypeID(items.get()) != CFArrayGetTypeID())
-        return;
-
-    size_t size = CFArrayGetCount(items.get());
-    for (size_t i = 0; i < size; ++i) {
-        CFStringRef item = (CFStringRef)CFArrayGetValueAtIndex(items.get(), i);
-        if (CFGetTypeID(item) == CFStringGetTypeID()) {
-            // We are choosing not to use or store search times on Windows at this time, so for now it's OK to use a "distant past" time as a placeholder.
-            searchItems.append({ String{ item }, -WallTime::infinity() });
-        }
-    }
-#endif
+    SearchPopupMenuDB::singleton().loadRecentSearches(name, searchItems);
 }
 
 }

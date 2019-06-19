@@ -33,6 +33,7 @@
 #import "UserData.h"
 #import "WebPage.h"
 #import "WebPageProxy.h"
+#import "WebProcess.h"
 #import "WebProcessProxy.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 
@@ -42,23 +43,40 @@ RemoteObjectRegistry::RemoteObjectRegistry(_WKRemoteObjectRegistry *remoteObject
     : m_remoteObjectRegistry(remoteObjectRegistry)
     , m_messageSender(page)
     , m_takeBackgroundActivityToken([] { return ProcessThrottler::BackgroundActivityToken(); })
+    , m_isRegisteredAsMessageReceiver(true)
+    , m_messageReceiverID(page.pageID())
 {
+    WebProcess::singleton().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), m_messageReceiverID, *this);
+    page.setRemoteObjectRegistry(*this);
 }
 
 RemoteObjectRegistry::RemoteObjectRegistry(_WKRemoteObjectRegistry *remoteObjectRegistry, WebPageProxy& page)
     : m_remoteObjectRegistry(remoteObjectRegistry)
     , m_messageSender(page)
     , m_takeBackgroundActivityToken([&page] { return page.process().throttler().backgroundActivityToken(); })
+    , m_launchInitialProcessIfNecessary([&page] { page.launchInitialProcessIfNecessary(); })
 {
 }
 
-
 RemoteObjectRegistry::~RemoteObjectRegistry()
 {
+    close();
+}
+
+void RemoteObjectRegistry::close()
+{
+    if (m_isRegisteredAsMessageReceiver) {
+        WebProcess::singleton().removeMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), m_messageReceiverID);
+        m_isRegisteredAsMessageReceiver = false;
+    }
 }
 
 void RemoteObjectRegistry::sendInvocation(const RemoteObjectInvocation& invocation)
 {
+    // For backward-compatibility, support invoking injected bundle methods before having done any load in the WebView.
+    if (m_launchInitialProcessIfNecessary)
+        m_launchInitialProcessIfNecessary();
+
     if (auto* replyInfo = invocation.replyInfo()) {
         ASSERT(!m_pendingReplies.contains(replyInfo->replyID));
         m_pendingReplies.add(replyInfo->replyID, m_takeBackgroundActivityToken());
@@ -79,9 +97,7 @@ void RemoteObjectRegistry::sendUnusedReply(uint64_t replyID)
 
 void RemoteObjectRegistry::invokeMethod(const RemoteObjectInvocation& invocation)
 {
-#if WK_API_ENABLED
     [m_remoteObjectRegistry _invokeMethod:invocation];
-#endif
 }
 
 void RemoteObjectRegistry::callReplyBlock(uint64_t replyID, const UserData& blockInvocation)
@@ -89,9 +105,7 @@ void RemoteObjectRegistry::callReplyBlock(uint64_t replyID, const UserData& bloc
     bool wasRemoved = m_pendingReplies.remove(replyID);
     ASSERT_UNUSED(wasRemoved, wasRemoved);
 
-#if WK_API_ENABLED
     [m_remoteObjectRegistry _callReplyWithID:replyID blockInvocation:blockInvocation];
-#endif
 }
 
 void RemoteObjectRegistry::releaseUnusedReplyBlock(uint64_t replyID)
@@ -99,8 +113,6 @@ void RemoteObjectRegistry::releaseUnusedReplyBlock(uint64_t replyID)
     bool wasRemoved = m_pendingReplies.remove(replyID);
     ASSERT_UNUSED(wasRemoved, wasRemoved);
 
-#if WK_API_ENABLED
     [m_remoteObjectRegistry _releaseReplyWithID:replyID];
-#endif
 }
 } // namespace WebKit

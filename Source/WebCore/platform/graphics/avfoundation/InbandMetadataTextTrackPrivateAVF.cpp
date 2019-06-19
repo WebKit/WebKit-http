@@ -26,7 +26,7 @@
 #include "config.h"
 #include "InbandMetadataTextTrackPrivateAVF.h"
 
-#if ENABLE(VIDEO) && ENABLE(DATACUE_VALUE) && (USE(AVFOUNDATION) || PLATFORM(IOS))
+#if ENABLE(VIDEO) && ENABLE(DATACUE_VALUE) && (USE(AVFOUNDATION) || PLATFORM(IOS_FAMILY))
 
 #include "InbandTextTrackPrivateClient.h"
 #include "Logging.h"
@@ -38,12 +38,12 @@
 
 namespace WebCore {
 
-Ref<InbandMetadataTextTrackPrivateAVF> InbandMetadataTextTrackPrivateAVF::create(InbandTextTrackPrivate::Kind kind, InbandTextTrackPrivate::CueFormat cueFormat, const AtomicString& id)
+Ref<InbandMetadataTextTrackPrivateAVF> InbandMetadataTextTrackPrivateAVF::create(InbandTextTrackPrivate::Kind kind, InbandTextTrackPrivate::CueFormat cueFormat, const AtomString& id)
 {
     return adoptRef(*new InbandMetadataTextTrackPrivateAVF(kind, cueFormat, id));
 }
 
-InbandMetadataTextTrackPrivateAVF::InbandMetadataTextTrackPrivateAVF(InbandTextTrackPrivate::Kind kind, InbandTextTrackPrivate::CueFormat cueFormat, const AtomicString& id)
+InbandMetadataTextTrackPrivateAVF::InbandMetadataTextTrackPrivateAVF(InbandTextTrackPrivate::Kind kind, InbandTextTrackPrivate::CueFormat cueFormat, const AtomString& id)
     : InbandTextTrackPrivate(cueFormat)
     , m_kind(kind)
     , m_id(id)
@@ -104,4 +104,4 @@ void InbandMetadataTextTrackPrivateAVF::flushPartialCues()
 
 } // namespace WebCore
 
-#endif // ENABLE(VIDEO) && (USE(AVFOUNDATION) || PLATFORM(IOS))
+#endif // ENABLE(VIDEO) && (USE(AVFOUNDATION) || PLATFORM(IOS_FAMILY))

@@ -30,8 +30,6 @@
 #include "WasmModuleInformation.h"
 #include "WasmParser.h"
 #include "WasmSections.h"
-#include <wtf/Expected.h>
-#include <wtf/Optional.h>
 #include <wtf/SHA1.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -91,7 +89,7 @@ private:
     State parseFunctionSize(uint32_t);
     State parseFunctionPayload(Vector<uint8_t>&&);
 
-    std::optional<Vector<uint8_t>> consume(const uint8_t* bytes, size_t, size_t&, size_t);
+    Optional<Vector<uint8_t>> consume(const uint8_t* bytes, size_t, size_t&, size_t);
     Expected<uint32_t, State> consumeVarUInt32(const uint8_t* bytes, size_t, size_t&, IsEndOfStream);
 
     template <typename ...Args> NEVER_INLINE State WARN_UNUSED_RETURN fail(Args...);

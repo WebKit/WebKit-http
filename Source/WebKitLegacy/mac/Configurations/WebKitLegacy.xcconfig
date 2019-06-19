@@ -1,4 +1,4 @@
-// Copyright (C) 2009, 2010, 2014 Apple Inc. All rights reserved.
+// Copyright (C) 2009, 2010, 2014, 2019 Apple Inc. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -21,17 +21,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
 
+#include? "<DEVELOPER_DIR>/AppleInternal/XcodeConfig/PlatformSupport.xcconfig"
 #include "FeatureDefines.xcconfig"
 #include "Version.xcconfig"
+#include "WebKitTargetConditionals.xcconfig"
 
 EXCLUDED_SOURCE_FILE_NAMES = $(EXCLUDED_SOURCE_FILE_NAMES_$(WK_COCOA_TOUCH));
-EXCLUDED_SOURCE_FILE_NAMES_cocoatouch = *.defs *.nib *.pdf *.tiff CarbonUtils.* CarbonWindowAdapter.* CarbonWindowContentView.* CarbonWindowFrame.* HIViewAdapter.* HIWebView.* OutlookQuirksUserScript.js PopupMenuMac.* SearchPopupMenuMac.* WebClipView.* WebDashboardRegion.* WebDynamicScrollBarsView.* WebIconDatabase.* WebInspectorClient.* WebJavaScriptTextInputPanel.* WebNSEventExtras.* WebNSPasteboardExtras.* WebNSWindowExtras.* WebPanelAuthenticationHandler.* WebPluginsPrivate.* WebStringTruncator.* WebTextCompletionController.*;
+EXCLUDED_SOURCE_FILE_NAMES_cocoatouch = *.defs *.xib *.pdf *.tiff CarbonUtils.* CarbonWindowAdapter.* CarbonWindowContentView.* CarbonWindowFrame.* HIViewAdapter.* HIWebView.* OutlookQuirksUserScript.js PopupMenuMac.* SearchPopupMenuMac.* WebClipView.* WebDashboardRegion.* WebDynamicScrollBarsView.* WebIconDatabase.* WebInspectorClient.* WebJavaScriptTextInputPanel.* WebNSEventExtras.* WebNSPasteboardExtras.* WebNSWindowExtras.* WebPanelAuthenticationHandler.* WebPluginsPrivate.* WebStringTruncator.* WebTextCompletionController.*;
 EXCLUDED_SOURCE_FILE_NAMES_ = *IOS.mm MemoryMeasure.h WebCaretChangeListener.h WebFixedPositionContent.h WebFrameIOS.h WebFrameIPhone.h WebGeolocationCoreLocationProvider.h WebGeolocationPrivate.h WebGeolocationProviderIOS.h WebMIMETypeRegistry.h WebNSStringExtrasIOS.h WebNSStringExtrasIPhone.h WebPDFViewIOS.h WebPDFViewIPhone.h WebPDFViewPlaceholder.h WebSelectionRect.h WebUIKitDelegate.h WebUIKitSupport.h WebVisiblePosition.h DOMHTMLTextAreaElementPrivate.h DOMUIKitExtensions.h;
 
-EXPORTED_SYMBOLS_FILE = $(EXPORTED_SYMBOLS_FILE_$(WK_COCOA_TOUCH));
-EXPORTED_SYMBOLS_FILE_cocoatouch = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKitLegacy/WebKitLegacy.generated.exp;
-EXPORTED_SYMBOLS_FILE_[arch=i386] = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKitLegacy/WebKitLegacy.i386.exp;
-EXPORTED_SYMBOLS_FILE_[arch=x86_64] = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKitLegacy/WebKitLegacy.LP64.exp;
+EXPORTED_SYMBOLS_FILE = $(BUILT_PRODUCTS_DIR)/DerivedSources/WebKitLegacy/WebKitLegacy.generated.exp;
 
 WK_PRIVATE_FRAMEWORKS_DIR = $(WK_PRIVATE_FRAMEWORKS_DIR_$(USE_INTERNAL_SDK));
 WK_PRIVATE_FRAMEWORKS_DIR_[sdk=iphone*] = $(PROJECT_DIR)/../../WebKitLibraries/WebKitPrivateFrameworkStubs/iOS/$(WK_TARGET_IOS_VERSION_MAJOR);
@@ -46,7 +45,7 @@ SYSTEM_FRAMEWORK_SEARCH_PATHS = $(inherited) $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Pri
 
 OTHER_CFLAGS = $(OTHER_CFLAGS_COCOA_TOUCH_$(WK_IS_COCOA_TOUCH));
 OTHER_CFLAGS_COCOA_TOUCH_YES = $(inherited) -isystem $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders;
-OTHER_CFLAGS_COCOA_TOUCH_NO = $(inherited) -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/WebKit.framework/Frameworks -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/ApplicationServices.framework/Frameworks -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/Carbon.framework/Frameworks -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/Quartz.framework/Frameworks -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/CoreServices.framework/Frameworks;
+OTHER_CFLAGS_COCOA_TOUCH_NO = $(inherited) -iframework $(SDKROOT)$(SYSTEM_LIBRARY_DIR)/Frameworks/WebKit.framework/Frameworks;
 OTHER_CPLUSPLUSFLAGS = $(OTHER_CFLAGS);
 
 GCC_PREFIX_HEADER = mac/WebKitPrefix.h;
@@ -61,13 +60,14 @@ INSTALL_PATH = $(INSTALL_PATH_COCOA_TOUCH_$(WK_IS_COCOA_TOUCH));
 INSTALL_PATH_COCOA_TOUCH_YES = $(WK_ALTERNATE_WEBKIT_SDK_PATH)$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
 INSTALL_PATH_COCOA_TOUCH_NO = $(WEBKIT_LEGACY_FRAMEWORKS_DIR);
 
-DYLIB_INSTALL_NAME_BASE[sdk=iphone*] = $(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
 DYLIB_INSTALL_NAME_BASE = $(DYLIB_INSTALL_NAME_BASE_$(WK_USE_ALTERNATE_FRAMEWORKS_DIR));
 DYLIB_INSTALL_NAME_BASE_NO = $(NORMAL_WEBKIT_LEGACY_FRAMEWORKS_DIR);
 DYLIB_INSTALL_NAME_BASE_YES = $(DYLIB_INSTALL_NAME_BASE);
+DYLIB_INSTALL_NAME_BASE[sdk=iphone*] = $(SYSTEM_LIBRARY_DIR)/PrivateFrameworks;
 
 INSTALLHDRS_COPY_PHASE = YES;
 INSTALLHDRS_SCRIPT_PHASE = YES;
+APPLY_RULES_IN_COPY_HEADERS = $(USE_NEW_BUILD_SYSTEM);
 PRODUCT_NAME = WebKitLegacy;
 PRODUCT_BUNDLE_IDENTIFIER = com.apple.$(PRODUCT_NAME:rfc1034identifier);
 UMBRELLA_FRAMEWORKS_DIR = $(PRODUCTION_FRAMEWORKS_DIR)/WebKit.framework/Versions/A/Frameworks;
@@ -87,7 +87,13 @@ WK_MOBILE_CORE_SERVICES_LDFLAGS_cocoatouch = -framework MobileCoreServices;
 WK_MOBILE_GESTALT_LDFLAGS = $(WK_MOBILE_GESTALT_LDFLAGS_$(WK_COCOA_TOUCH));
 WK_MOBILE_GESTALT_LDFLAGS_cocoatouch = -lMobileGestalt;
 
-OTHER_LDFLAGS = -lobjc -lsqlite3 -framework CFNetwork -framework CoreFoundation -framework CoreGraphics -framework CoreText -framework Foundation -framework ImageIO -framework IOKit $(WK_APPKIT_LDFLAGS) $(WK_CARBON_LDFLAGS) $(WK_GRAPHICS_SERVICES_LDFLAGS) $(WK_MOBILE_CORE_SERVICES_LDFLAGS) $(WK_MOBILE_GESTALT_LDFLAGS);
+WK_SECURITY_INTERFACE_LDFLAGS = $(WK_SECURITY_INTERFACE_LDFLAGS_$(WK_PLATFORM_NAME));
+WK_SECURITY_INTERFACE_LDFLAGS_macosx = -framework SecurityInterface;
+
+WK_WEBINSPECTORUI_LDFLAGS = $(WK_WEBINSPECTORUI_LDFLAGS_$(WK_PLATFORM_NAME));
+WK_WEBINSPECTORUI_LDFLAGS_macosx = -weak_framework WebInspectorUI;
+
+OTHER_LDFLAGS = -lobjc -lsqlite3 -framework CFNetwork -framework CoreFoundation -framework CoreGraphics -framework CoreText -framework Foundation -framework ImageIO -framework IOKit $(WK_APPKIT_LDFLAGS) $(WK_CARBON_LDFLAGS) $(WK_GRAPHICS_SERVICES_LDFLAGS) $(WK_MOBILE_CORE_SERVICES_LDFLAGS) $(WK_MOBILE_GESTALT_LDFLAGS) $(WK_SECURITY_INTERFACE_LDFLAGS) $(WK_WEBINSPECTORUI_LDFLAGS);
 
 SECTORDER_FLAGS = $(SECTORDER_FLAGS_$(CONFIGURATION));
 SECTORDER_FLAGS_Production[sdk=iphoneos*] = -Wl,-order_file,$(SDKROOT)/AppleInternal/OrderFiles/WebKitLegacy.order;
@@ -121,21 +127,19 @@ WEBCORE_PRIVATE_HEADERS_DIR_Production_macosx_USE_OVERRIDE_FRAMEWORKS_DIR_NO = $
 WEBCORE_PRIVATE_HEADERS_DIR_Production_macosx_USE_OVERRIDE_FRAMEWORKS_DIR_YES = $(PRODUCTION_FRAMEWORKS_DIR)/WebCore.framework/PrivateHeaders;
 WEBCORE_PRIVATE_HEADERS_engineering = $(BUILT_PRODUCTS_DIR)/WebCore.framework/PrivateHeaders;
 
-WK_EMPTY_ = YES;
-WK_NOT_ = YES;
-WK_NOT_YES = NO;
-
 WK_USE_OVERRIDE_FRAMEWORKS_DIR = $(WK_NOT_$(WK_EMPTY_$(WK_OVERRIDE_FRAMEWORKS_DIR)));
 
 WK_OVERRIDE_FRAMEWORKS_DIR = $(WK_OVERRIDE_FRAMEWORKS_DIR_USE_STAGING_INSTALL_PATH_$(USE_STAGING_INSTALL_PATH));
-WK_OVERRIDE_FRAMEWORKS_DIR_USE_STAGING_INSTALL_PATH_YES = $(SYSTEM_LIBRARY_DIR)/StagedFrameworks/Safari;
+WK_OVERRIDE_FRAMEWORKS_DIR_USE_STAGING_INSTALL_PATH_YES = $(WK_INSTALL_PATH_PREFIX)$(SYSTEM_LIBRARY_DIR)/StagedFrameworks/Safari;
 
 WK_QUOTED_OVERRIDE_FRAMEWORKS_DIR = $(WK_QUOTED_OVERRIDE_FRAMEWORKS_DIR_$(WK_USE_OVERRIDE_FRAMEWORKS_DIR));
 WK_QUOTED_OVERRIDE_FRAMEWORKS_DIR_YES = "$(WK_OVERRIDE_FRAMEWORKS_DIR)";
 
-// FIXME: Enable TAPI in open source builds once <rdar://problem/24582471> is fixed in all supported SDKs.
-SUPPORTS_TEXT_BASED_API[sdk=iphone*] = $(USE_INTERNAL_SDK);
+WK_INSTALL_PATH_PREFIX = $(WK_INSTALL_PATH_PREFIX_DEPLOYMENT_$(DEPLOYMENT_LOCATION)$(WK_MACOS_1015)_USE_STAGING_INSTALL_PATH_$(USE_STAGING_INSTALL_PATH));
+WK_INSTALL_PATH_PREFIX_DEPLOYMENT_YES_MACOS_SINCE_1015_USE_STAGING_INSTALL_PATH_YES = $(PLATFORM_OOB_SYSTEM_CONTENT_DIR);
+
+SUPPORTS_TEXT_BASED_API[sdk=iphone*] = YES;
 SUPPORTS_TEXT_BASED_API[sdk=appletv*] = NO;
 SUPPORTS_TEXT_BASED_API[sdk=watch*] = NO;
-OTHER_TAPI_FLAGS[sdk=iphone*] = -x objective-c++ -std=c++17 -fno-rtti -DRELEASE_WITHOUT_OPTIMIZATIONS;
+OTHER_TAPI_FLAGS[sdk=iphone*] = -x objective-c++ -std=gnu++1z -fno-rtti -DRELEASE_WITHOUT_OPTIMIZATIONS -exclude-private-header $(BUILT_PRODUCTS_DIR)/$(PRIVATE_HEADERS_FOLDER_PATH)/NSURLDownloadSPI.h;
 TAPI_VERIFY_MODE[sdk=iphone*] = Pedantic;

@@ -25,7 +25,7 @@
 
 #import <wtf/Platform.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
@@ -33,6 +33,10 @@
 #if USE(APPLE_INTERNAL_SDK)
 
 #import <MediaPlayer/MPAVRoutingController.h>
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
+#import <MediaPlayer/MPMediaControlsConfiguration.h>
+#endif
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000 && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
 #import <MediaPlayer/MPMediaControlsViewController.h>
@@ -66,6 +70,9 @@ typedef NSInteger MPRouteDiscoveryMode;
 @property (nonatomic, copy, nullable) void (^didDismissHandler)(void);
 @end
 
+@interface MPMediaControlsConfiguration : NSObject <NSSecureCoding, NSCopying>
+@end
+
 #else
 
 enum {
@@ -75,21 +82,19 @@ enum {
 };
 typedef NSUInteger MPAVItemType;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 @interface MPAudioVideoRoutingPopoverController : UIPopoverController
 @end
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 @interface MPAudioVideoRoutingPopoverController ()
 - (id)initWithType:(MPAVItemType)avItemType;
 @end
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
 @interface MPAVRoutingSheet : UIView
 @end
-#pragma clang diagnostic pop
+ALLOW_DEPRECATED_DECLARATIONS_END
 
 @interface MPAVRoutingSheet ()
 @property (nonatomic, assign, setter=setAVItemType:) MPAVItemType avItemType;
@@ -105,4 +110,4 @@ NS_ASSUME_NONNULL_END
 
 #endif
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

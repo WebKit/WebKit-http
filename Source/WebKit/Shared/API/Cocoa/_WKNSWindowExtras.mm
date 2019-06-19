@@ -26,21 +26,17 @@
 #import "config.h"
 #import "_WKNSWindowExtras.h"
 
-#if WK_API_ENABLED
-
 #if !TARGET_OS_IPHONE
 
-#import "WKInspectorWindow.h"
+#import "_WKInspectorWindow.h"
 
 @implementation NSWindow (WKExtras)
 
 - (BOOL)_web_isWebInspectorWindow
 {
-    return [self isKindOfClass:[WKInspectorWindow class]];
+    return [self isKindOfClass:[_WKInspectorWindow class]];
 }
 
 @end
 
 #endif // !TARGET_OS_IPHONE
-
-#endif // WK_API_ENABLED

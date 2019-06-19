@@ -25,8 +25,6 @@
 
 #pragma once
 
-#include <wtf/EnumTraits.h>
-
 #if ENABLE(MEDIA_STREAM)
 
 #include "MediaConstraints.h"
@@ -47,13 +45,13 @@ struct MediaStreamRequest {
         encoder << videoConstraints;
     }
 
-    template <class Decoder> static std::optional<MediaStreamRequest> decode(Decoder& decoder)
+    template <class Decoder> static Optional<MediaStreamRequest> decode(Decoder& decoder)
     {
         MediaStreamRequest request;
         if (decoder.decodeEnum(request.type) && decoder.decode(request.audioConstraints) && decoder.decode(request.videoConstraints))
-            return WTFMove(request);
+            return request;
 
-        return std::nullopt;
+        return WTF::nullopt;
     }
 };
 

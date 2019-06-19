@@ -25,10 +25,10 @@
 
 #pragma once
 
-#if PLATFORM(COCOA)
+#if USE(LIBWEBRTC) && PLATFORM(COCOA)
 #include <WebCore/LibWebRTCProviderCocoa.h>
-#elif PLATFORM(GTK) || PLATFORM(WPE)
-#include <WebCore/LibWebRTCProviderGlib.h>
+#elif USE(LIBWEBRTC) && USE(GSTREAMER)
+#include <WebCore/LibWebRTCProviderGStreamer.h>
 #else
 #include <WebCore/LibWebRTCProvider.h>
 #endif
@@ -39,8 +39,8 @@ namespace WebKit {
 
 #if PLATFORM(COCOA)
 using LibWebRTCProviderBase = WebCore::LibWebRTCProviderCocoa;
-#elif PLATFORM(GTK) || PLATFORM(WPE)
-using LibWebRTCProviderBase = WebCore::LibWebRTCProviderGlib;
+#elif USE(GSTREAMER)
+using LibWebRTCProviderBase = WebCore::LibWebRTCProviderGStreamer;
 #else
 using LibWebRTCProviderBase = WebCore::LibWebRTCProvider;
 #endif
@@ -54,7 +54,6 @@ private:
 
     void unregisterMDNSNames(uint64_t documentIdentifier) final;
     void registerMDNSName(PAL::SessionID, uint64_t documentIdentifier, const String& ipAddress, CompletionHandler<void(MDNSNameOrError&&)>&&) final;
-    void resolveMDNSName(PAL::SessionID, const String& name, CompletionHandler<void(IPAddressOrError&&)>&&) final;
     void disableNonLocalhostConnections() final;
 };
 #else

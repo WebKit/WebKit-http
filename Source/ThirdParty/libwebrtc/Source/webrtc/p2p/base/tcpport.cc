@@ -307,7 +307,7 @@ void TCPPort::OnReadPacket(rtc::AsyncPacketSocket* socket,
                            const char* data,
                            size_t size,
                            const rtc::SocketAddress& remote_addr,
-                           const rtc::PacketTime& packet_time) {
+                           const int64_t& packet_time_us) {
   Port::OnReadPacket(data, size, remote_addr, PROTO_TCP);
 }
 
@@ -351,11 +351,21 @@ TCPConnection::TCPConnection(TCPPort* port,
                         << ", port() Network:" << port->Network()->ToString();
     const std::vector<rtc::InterfaceAddress>& desired_addresses =
         port_->Network()->GetIPs();
+
+#if defined(WEBRTC_WEBKIT_BUILD)
+     RTC_DCHECK(socket->GetLocalAddress().IsLoopbackIP() ||
+                (std::find_if(desired_addresses.begin(), desired_addresses.end(),
+                             [this](const rtc::InterfaceAddress& addr) {
+                               return socket_->GetLocalAddress().ipaddr() ==
+                                      addr;
+                             }) != desired_addresses.end()));
+ #else
     RTC_DCHECK(std::find_if(desired_addresses.begin(), desired_addresses.end(),
                             [this](const rtc::InterfaceAddress& addr) {
                               return socket_->GetLocalAddress().ipaddr() ==
                                      addr;
                             }) != desired_addresses.end());
+#endif
     ConnectSocketSignals(socket);
   }
 }
@@ -535,9 +545,9 @@ void TCPConnection::OnReadPacket(rtc::AsyncPacketSocket* socket,
                                  const char* data,
                                  size_t size,
                                  const rtc::SocketAddress& remote_addr,
-                                 const rtc::PacketTime& packet_time) {
+                                 const int64_t& packet_time_us) {
   RTC_DCHECK(socket == socket_.get());
-  Connection::OnReadPacket(data, size, packet_time);
+  Connection::OnReadPacket(data, size, packet_time_us);
 }
 
 void TCPConnection::OnReadyToSend(rtc::AsyncPacketSocket* socket) {

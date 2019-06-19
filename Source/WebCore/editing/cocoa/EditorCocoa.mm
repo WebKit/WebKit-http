@@ -31,11 +31,13 @@
 #import "CSSValuePool.h"
 #import "CachedResourceLoader.h"
 #import "ColorMac.h"
+#import "CustomHeaderFields.h"
 #import "DocumentFragment.h"
 #import "DocumentLoader.h"
 #import "Editing.h"
 #import "EditingStyle.h"
 #import "EditorClient.h"
+#import "FontAttributes.h"
 #import "FontCascade.h"
 #import "Frame.h"
 #import "FrameLoader.h"
@@ -44,103 +46,29 @@
 #import "HTMLConverter.h"
 #import "HTMLImageElement.h"
 #import "HTMLSpanElement.h"
+#import "LegacyNSPasteboardTypes.h"
 #import "LegacyWebArchive.h"
 #import "Pasteboard.h"
+#import "PasteboardStrategy.h"
+#import "PlatformStrategies.h"
 #import "RenderElement.h"
 #import "RenderStyle.h"
+#import "Settings.h"
 #import "Text.h"
 #import "WebContentReader.h"
-#import "WebCoreNSURLExtras.h"
 #import "markup.h"
 #import <pal/spi/cocoa/NSAttributedStringSPI.h>
 #import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
+#import <pal/system/Sound.h>
 #import <wtf/BlockObjCExceptions.h>
+#import <wtf/cocoa/NSURLExtras.h>
 
 namespace WebCore {
 
-void Editor::getTextDecorationAttributesRespectingTypingStyle(const RenderStyle& style, NSMutableDictionary* result) const
+void Editor::platformFontAttributesAtSelectionStart(FontAttributes& attributes, const RenderStyle& style) const
 {
-    RefPtr<EditingStyle> typingStyle = m_frame.selection().typingStyle();
-    if (typingStyle && typingStyle->style()) {
-        RefPtr<CSSValue> value = typingStyle->style()->getPropertyCSSValue(CSSPropertyWebkitTextDecorationsInEffect);
-        if (value && value->isValueList()) {
-            CSSValueList& valueList = downcast<CSSValueList>(*value);
-            if (valueList.hasValue(CSSValuePool::singleton().createIdentifierValue(CSSValueLineThrough).ptr()))
-                [result setObject:@(NSUnderlineStyleSingle) forKey:NSStrikethroughStyleAttributeName];
-            if (valueList.hasValue(CSSValuePool::singleton().createIdentifierValue(CSSValueUnderline).ptr()))
-                [result setObject:@(NSUnderlineStyleSingle) forKey:NSUnderlineStyleAttributeName];
-        }
-    } else {
-        auto decoration = style.textDecorationsInEffect();
-        if (decoration & TextDecoration::LineThrough)
-            [result setObject:@(NSUnderlineStyleSingle) forKey:NSStrikethroughStyleAttributeName];
-        if (decoration & TextDecoration::Underline)
-            [result setObject:@(NSUnderlineStyleSingle) forKey:NSUnderlineStyleAttributeName];
-    }
-}
-
-RetainPtr<NSDictionary> Editor::fontAttributesForSelectionStart() const
-{
-    Node* nodeToRemove;
-    auto* style = styleForSelectionStart(&m_frame, nodeToRemove);
-    if (!style)
-        return nil;
-
-    RetainPtr<NSMutableDictionary> attributes = adoptNS([[NSMutableDictionary alloc] init]);
-
-    if (auto ctFont = style->fontCascade().primaryFont().getCTFont())
-        [attributes setObject:(__bridge id)ctFont forKey:NSFontAttributeName];
-
-    // FIXME: Why would we not want to retrieve these attributes on iOS?
-#if PLATFORM(MAC)
-    // FIXME: for now, always report the colors after applying -apple-color-filter. In future not all clients
-    // may want this, so we may have to add a setting to control it. See also editingAttributedStringFromRange().
-    Color backgroundColor = style->visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor);
-    if (backgroundColor.isVisible())
-        [attributes setObject:nsColor(backgroundColor) forKey:NSBackgroundColorAttributeName];
-
-    Color foregroundColor = style->visitedDependentColorWithColorFilter(CSSPropertyColor);
-    // FIXME: isBlackColor not suitable for dark mode.
-    if (foregroundColor.isValid() && !Color::isBlackColor(foregroundColor))
-        [attributes setObject:nsColor(foregroundColor) forKey:NSForegroundColorAttributeName];
-
-    const ShadowData* shadowData = style->textShadow();
-    if (shadowData) {
-        RetainPtr<NSShadow> platformShadow = adoptNS([[NSShadow alloc] init]);
-        [platformShadow setShadowOffset:NSMakeSize(shadowData->x(), shadowData->y())];
-        [platformShadow setShadowBlurRadius:shadowData->radius()];
-        [platformShadow setShadowColor:nsColor(shadowData->color())];
-        [attributes setObject:platformShadow.get() forKey:NSShadowAttributeName];
-    }
-
-    int superscriptInt = 0;
-    switch (style->verticalAlign()) {
-    case VerticalAlign::Baseline:
-    case VerticalAlign::Bottom:
-    case VerticalAlign::BaselineMiddle:
-    case VerticalAlign::Length:
-    case VerticalAlign::Middle:
-    case VerticalAlign::TextBottom:
-    case VerticalAlign::TextTop:
-    case VerticalAlign::Top:
-        break;
-    case VerticalAlign::Sub:
-        superscriptInt = -1;
-        break;
-    case VerticalAlign::Super:
-        superscriptInt = 1;
-        break;
-    }
-    if (superscriptInt)
-        [attributes setObject:@(superscriptInt) forKey:NSSuperscriptAttributeName];
-#endif
-
-    getTextDecorationAttributesRespectingTypingStyle(*style, attributes.get());
-
-    if (nodeToRemove)
-        nodeToRemove->remove();
-
-    return attributes;
+    if (auto ctFont = style.fontCascade().primaryFont().getCTFont())
+        attributes.font = (__bridge id)ctFont;
 }
 
 static RefPtr<SharedBuffer> archivedDataForAttributedString(NSAttributedString *attributedString)
@@ -153,9 +81,8 @@ static RefPtr<SharedBuffer> archivedDataForAttributedString(NSAttributedString *
 
 String Editor::selectionInHTMLFormat()
 {
-    if (auto range = selectedRange())
-        return createMarkup(*range, nullptr, AnnotateForInterchange, false, ResolveNonLocalURLs);
-    return { };
+    return serializePreservingVisualAppearance(m_frame.selection().selection(), ResolveURLs::YesExcludingLocalFileURLsForPrivacy,
+        m_frame.settings().selectionAcrossShadowBoundariesEnabled() ? SerializeComposedTree::Yes : SerializeComposedTree::No);
 }
 
 #if ENABLE(ATTACHMENT_ELEMENT)
@@ -181,7 +108,7 @@ void Editor::getPasteboardTypesAndDataForAttachment(Element& element, Vector<Str
 
 void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
 {
-    NSAttributedString *attributedString = attributedStringFromRange(*selectedRange());
+    NSAttributedString *attributedString = attributedStringFromSelection(m_frame.selection().selection());
 
     PasteboardWebContent content;
     content.contentOrigin = m_frame.document()->originIdentifierForPasteboard();
@@ -199,7 +126,7 @@ void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
 
 void Editor::writeSelection(PasteboardWriterData& pasteboardWriterData)
 {
-    NSAttributedString *attributedString = attributedStringFromRange(*selectedRange());
+    NSAttributedString *attributedString = attributedStringFromSelection(m_frame.selection().selection());
 
     PasteboardWriterData::WebContent webContent;
     webContent.contentOrigin = m_frame.document()->originIdentifierForPasteboard();
@@ -217,7 +144,7 @@ void Editor::writeSelection(PasteboardWriterData& pasteboardWriterData)
 
 RefPtr<SharedBuffer> Editor::selectionInWebArchiveFormat()
 {
-    RefPtr<LegacyWebArchive> archive = LegacyWebArchive::createFromSelection(&m_frame);
+    auto archive = LegacyWebArchive::createFromSelection(&m_frame);
     if (!archive)
         return nullptr;
     return SharedBuffer::create(archive->rawDataRepresentation().get());
@@ -262,7 +189,7 @@ void Editor::replaceSelectionWithAttributedString(NSAttributedString *attributed
 
 String Editor::userVisibleString(const URL& url)
 {
-    return WebCore::userVisibleString(url);
+    return WTF::userVisibleString(url);
 }
 
 RefPtr<SharedBuffer> Editor::dataInRTFDFormat(NSAttributedString *string)
@@ -289,6 +216,40 @@ RefPtr<SharedBuffer> Editor::dataInRTFFormat(NSAttributedString *string)
     END_BLOCK_OBJC_EXCEPTIONS;
 
     return nullptr;
+}
+
+// FIXME: Should give this function a name that makes it clear it adds resources to the document loader as a side effect.
+// Or refactor so it does not do that.
+RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard, Range& context, bool allowPlainText, bool& chosePlainText)
+{
+    WebContentReader reader(m_frame, context, allowPlainText);
+    pasteboard.read(reader);
+    chosePlainText = reader.madeFragmentFromPlainText;
+    return WTFMove(reader.fragment);
+}
+
+void Editor::takeFindStringFromSelection()
+{
+    if (!canCopyExcludingStandaloneImages()) {
+        PAL::systemBeep();
+        return;
+    }
+
+    auto stringFromSelection = m_frame.displayStringModifiedByEncoding(selectedTextForDataTransfer());
+#if PLATFORM(MAC)
+    Vector<String> types;
+    types.append(String(legacyStringPasteboardType()));
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+    platformStrategies()->pasteboardStrategy()->setTypes(types, NSFindPboard);
+    platformStrategies()->pasteboardStrategy()->setStringForType(WTFMove(stringFromSelection), legacyStringPasteboardType(), NSFindPboard);
+    ALLOW_DEPRECATED_DECLARATIONS_END
+#else
+    if (auto* client = this->client()) {
+        // Since the find pasteboard doesn't exist on iOS, WebKit maintains its own notion of the latest find string,
+        // which SPI clients may respect when presenting find-in-page UI.
+        client->updateStringForFind(stringFromSelection);
+    }
+#endif
 }
 
 }

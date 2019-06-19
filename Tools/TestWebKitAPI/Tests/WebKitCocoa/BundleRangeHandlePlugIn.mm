@@ -25,8 +25,6 @@
 
 #import "config.h"
 
-#if WK_API_ENABLED
-
 #import "BundleRangeHandleProtocol.h"
 #import "PlatformUtilities.h"
 #import <WebKit/WKWebProcessPlugIn.h>
@@ -68,12 +66,10 @@
     auto rangeHandle = [WKWebProcessPlugInRangeHandle rangeHandleWithJSValue:jsRange inContext:context];
 
     [_remoteObject textFromBodyRange:rangeHandle.text];
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     [rangeHandle detectDataWithTypes:WKDataDetectorTypeAll context:@{ }];
     [_remoteObject bodyInnerHTMLAfterDetectingData:[[context evaluateScript:@"document.body.innerHTML"] toString]];
 #endif
 }
 
 @end
-
-#endif // WK_API_ENABLED

@@ -32,12 +32,12 @@
 #pragma GCC diagnostic ignored "-Wmissing-format-attribute"
 
 #include "config.h"
-#include "Assertions.h"
+#include <wtf/Assertions.h>
 
-#include "Compiler.h"
 #include <mutex>
 #include <stdio.h>
 #include <string.h>
+#include <wtf/Compiler.h>
 #include <wtf/Lock.h>
 #include <wtf/Locker.h>
 #include <wtf/LoggingAccumulator.h>
@@ -74,15 +74,64 @@
 #include <unistd.h>
 #endif
 
+namespace WTF {
+
+WTF_ATTRIBUTE_PRINTF(1, 0) static String createWithFormatAndArguments(const char* format, va_list args)
+{
+    va_list argsCopy;
+    va_copy(argsCopy, args);
+
+    ALLOW_NONLITERAL_FORMAT_BEGIN
+
+#if USE(CF) && !OS(WINDOWS)
+    if (strstr(format, "%@")) {
+        auto cfFormat = adoptCF(CFStringCreateWithCString(kCFAllocatorDefault, format, kCFStringEncodingUTF8));
+        auto result = adoptCF(CFStringCreateWithFormatAndArguments(kCFAllocatorDefault, nullptr, cfFormat.get(), args));
+        va_end(argsCopy);
+        return result.get();
+    }
+#endif
+
+    // Do the format once to get the length.
+#if COMPILER(MSVC)
+    int result = _vscprintf(format, args);
+#else
+    char ch;
+    int result = vsnprintf(&ch, 1, format, args);
+#endif
+
+    if (!result) {
+        va_end(argsCopy);
+        return emptyString();
+    }
+    if (result < 0) {
+        va_end(argsCopy);
+        return { };
+    }
+
+    Vector<char, 256> buffer;
+    unsigned length = result;
+    buffer.grow(length + 1);
+
+    // Now do the formatting again, guaranteed to fit.
+    vsnprintf(buffer.data(), buffer.size(), format, argsCopy);
+    va_end(argsCopy);
+
+    ALLOW_NONLITERAL_FORMAT_END
+
+    return StringImpl::create(reinterpret_cast<const LChar*>(buffer.data()), length);
+}
+
+}
+
 extern "C" {
 
 static void logToStderr(const char* buffer)
 {
 #if USE(APPLE_SYSTEM_LOG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     asl_log(0, 0, ASL_LEVEL_NOTICE, "%s", buffer);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 #endif
     fputs(buffer, stderr);
 }
@@ -94,14 +143,9 @@ static void vprintf_stderr_common(const char* format, va_list args)
     if (strstr(format, "%@")) {
         auto cfFormat = adoptCF(CFStringCreateWithCString(nullptr, format, kCFStringEncodingUTF8));
 
-#if COMPILER(CLANG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wformat-nonliteral"
-#endif
+        ALLOW_NONLITERAL_FORMAT_BEGIN
         auto str = adoptCF(CFStringCreateWithFormatAndArguments(nullptr, nullptr, cfFormat.get(), args));
-#if COMPILER(CLANG)
-#pragma clang diagnostic pop
-#endif
+        ALLOW_NONLITERAL_FORMAT_END
         CFIndex length = CFStringGetMaximumSizeForEncoding(CFStringGetLength(str.get()), kCFStringEncodingUTF8);
         constexpr unsigned InitialBufferSize { 256 };
         Vector<char, InitialBufferSize> buffer(length + 1);
@@ -113,13 +157,12 @@ static void vprintf_stderr_common(const char* format, va_list args)
     }
 
 #if USE(APPLE_SYSTEM_LOG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     va_list copyOfArgs;
     va_copy(copyOfArgs, args);
     asl_vlog(0, 0, ASL_LEVEL_NOTICE, format, copyOfArgs);
     va_end(copyOfArgs);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 #endif
 
     // Fall through to write to stderr in the same manner as other platforms.
@@ -141,10 +184,7 @@ static void vprintf_stderr_common(const char* format, va_list args)
     vfprintf(stderr, format, args);
 }
 
-#if COMPILER(GCC_OR_CLANG)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wformat-nonliteral"
-#endif
+ALLOW_NONLITERAL_FORMAT_BEGIN
 
 static void vprintf_stderr_with_prefix(const char* prefix, const char* format, va_list args)
 {
@@ -174,9 +214,7 @@ static void vprintf_stderr_with_trailing_newline(const char* format, va_list arg
     vprintf_stderr_common(formatWithNewline.data(), args);
 }
 
-#if COMPILER(GCC_OR_CLANG)
-#pragma GCC diagnostic pop
-#endif
+ALLOW_NONLITERAL_FORMAT_END
 
 WTF_ATTRIBUTE_PRINTF(1, 2)
 static void printf_stderr_common(const char* format, ...)
@@ -257,7 +295,7 @@ void WTFPrintBacktrace(void** stack, int size)
     out.print(stackTrace);
 }
 
-#if !defined(NDEBUG) || !OS(DARWIN)
+#if !defined(NDEBUG) || !(OS(DARWIN) || PLATFORM(PLAYSTATION))
 void WTFCrash()
 {
     WTFReportBacktrace();
@@ -266,11 +304,11 @@ void WTFCrash()
 #else
     *(int *)(uintptr_t)0xbbadbeef = 0;
     // More reliable, but doesn't say BBADBEEF.
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
     __builtin_trap();
 #else
     ((void(*)())0)();
-#endif // COMPILER(GCC_OR_CLANG)
+#endif // COMPILER(GCC_COMPATIBLE)
 #endif // ASAN_ENABLED
 }
 #else
@@ -281,7 +319,7 @@ void WTFCrash()
 {
     CRASH();
 }
-#endif // !defined(NDEBUG) || !OS(DARWIN)
+#endif // !defined(NDEBUG) || !(OS(DARWIN) || PLATFORM(PLAYSTATION))
 
 void WTFCrashWithSecurityImplication()
 {
@@ -371,60 +409,42 @@ void WTFSetLogChannelLevel(WTFLogChannel* channel, WTFLogLevel level)
 
 bool WTFWillLogWithLevel(WTFLogChannel* channel, WTFLogLevel level)
 {
-    return channel->level >= level && channel->state != WTFLogChannelOff;
+    return channel->level >= level && channel->state != WTFLogChannelState::Off;
 }
 
 void WTFLogWithLevel(WTFLogChannel* channel, WTFLogLevel level, const char* format, ...)
 {
-    if (level != WTFLogLevelAlways && level > channel->level)
+    if (level != WTFLogLevel::Always && level > channel->level)
         return;
 
-    if (channel->level != WTFLogLevelAlways && channel->state == WTFLogChannelOff)
+    if (channel->level != WTFLogLevel::Always && channel->state == WTFLogChannelState::Off)
         return;
 
     va_list args;
     va_start(args, format);
 
-#if COMPILER(CLANG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wformat-nonliteral"
-#endif
+    ALLOW_NONLITERAL_FORMAT_BEGIN
     WTFLog(channel, format, args);
-#if COMPILER(CLANG)
-#pragma clang diagnostic pop
-#endif
+    ALLOW_NONLITERAL_FORMAT_END
 
     va_end(args);
 }
 
-void WTFLog(WTFLogChannel* channel, const char* format, ...)
+static void WTFLogVaList(WTFLogChannel* channel, const char* format, va_list args)
 {
-    if (channel->state == WTFLogChannelOff)
+    if (channel->state == WTFLogChannelState::Off)
         return;
 
-    if (channel->state == WTFLogChannelOn) {
-        va_list args;
-        va_start(args, format);
+    if (channel->state == WTFLogChannelState::On) {
         vprintf_stderr_with_trailing_newline(format, args);
-        va_end(args);
         return;
     }
 
-    ASSERT(channel->state == WTFLogChannelOnWithAccumulation);
+    ASSERT(channel->state == WTFLogChannelState::OnWithAccumulation);
 
-    va_list args;
-    va_start(args, format);
-
-#if COMPILER(CLANG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wformat-nonliteral"
-#endif
-    String loggingString = String::format(format, args);
-#if COMPILER(CLANG)
-#pragma clang diagnostic pop
-#endif
-
-    va_end(args);
+    ALLOW_NONLITERAL_FORMAT_BEGIN
+    String loggingString = WTF::createWithFormatAndArguments(format, args);
+    ALLOW_NONLITERAL_FORMAT_END
 
     if (!loggingString.endsWith('\n'))
         loggingString.append('\n');
@@ -434,22 +454,27 @@ void WTFLog(WTFLogChannel* channel, const char* format, ...)
     logToStderr(loggingString.utf8().data());
 }
 
+void WTFLog(WTFLogChannel* channel, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+
+    WTFLogVaList(channel, format, args);
+
+    va_end(args);
+}
+
 void WTFLogVerbose(const char* file, int line, const char* function, WTFLogChannel* channel, const char* format, ...)
 {
-    if (channel->state != WTFLogChannelOn)
+    if (channel->state != WTFLogChannelState::On)
         return;
 
     va_list args;
     va_start(args, format);
 
-#if COMPILER(CLANG)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wformat-nonliteral"
-#endif
-    WTFLog(channel, format, args);
-#if COMPILER(CLANG)
-#pragma clang diagnostic pop
-#endif
+    ALLOW_NONLITERAL_FORMAT_BEGIN
+    WTFLogVaList(channel, format, args);
+    ALLOW_NONLITERAL_FORMAT_END
 
     va_end(args);
 
@@ -508,9 +533,9 @@ void WTFInitializeLogChannelStatesFromString(WTFLogChannel* channels[], size_t c
         Vector<String> componentInfo = logLevelComponent.split('=');
         String component = componentInfo[0].stripWhiteSpace();
 
-        WTFLogChannelState logChannelState = WTFLogChannelOn;
+        WTFLogChannelState logChannelState = WTFLogChannelState::On;
         if (component.startsWith('-')) {
-            logChannelState = WTFLogChannelOff;
+            logChannelState = WTFLogChannelState::Off;
             component = component.substring(1);
         }
 
@@ -519,17 +544,17 @@ void WTFInitializeLogChannelStatesFromString(WTFLogChannel* channels[], size_t c
             continue;
         }
 
-        WTFLogLevel logChannelLevel = WTFLogLevelError;
+        WTFLogLevel logChannelLevel = WTFLogLevel::Error;
         if (componentInfo.size() > 1) {
             String level = componentInfo[1].stripWhiteSpace();
             if (equalLettersIgnoringASCIICase(level, "error"))
-                logChannelLevel = WTFLogLevelError;
+                logChannelLevel = WTFLogLevel::Error;
             else if (equalLettersIgnoringASCIICase(level, "warning"))
-                logChannelLevel = WTFLogLevelWarning;
+                logChannelLevel = WTFLogLevel::Warning;
             else if (equalLettersIgnoringASCIICase(level, "info"))
-                logChannelLevel = WTFLogLevelInfo;
+                logChannelLevel = WTFLogLevel::Info;
             else if (equalLettersIgnoringASCIICase(level, "debug"))
-                logChannelLevel = WTFLogLevelDebug;
+                logChannelLevel = WTFLogLevel::Debug;
             else
                 WTFLogAlways("Unknown logging level: %s", level.utf8().data());
         }

@@ -23,10 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebBackForwardListProxy_h
-#define WebBackForwardListProxy_h
+#pragma once
 
 #include <WebCore/BackForwardClient.h>
+#include <WebCore/PageIdentifier.h>
 #include <wtf/HashSet.h>
 
 namespace WebCore {
@@ -39,7 +39,7 @@ class WebPage;
 
 class WebBackForwardListProxy : public WebCore::BackForwardClient {
 public: 
-    static Ref<WebBackForwardListProxy> create(WebPage* page) { return adoptRef(*new WebBackForwardListProxy(page)); }
+    static Ref<WebBackForwardListProxy> create(WebPage& page) { return adoptRef(*new WebBackForwardListProxy(page)); }
 
     static WebCore::HistoryItem* itemForID(const WebCore::BackForwardItemIdentifier&);
     static void removeItem(const WebCore::BackForwardItemIdentifier&);
@@ -48,20 +48,20 @@ public:
         Yes,
         No
     };
-    void addItemFromUIProcess(const WebCore::BackForwardItemIdentifier&, Ref<WebCore::HistoryItem>&&, uint64_t pageID, OverwriteExistingItem);
+    void addItemFromUIProcess(const WebCore::BackForwardItemIdentifier&, Ref<WebCore::HistoryItem>&&, WebCore::PageIdentifier, OverwriteExistingItem);
 
     void clear();
 
 private:
-    WebBackForwardListProxy(WebPage*);
+    WebBackForwardListProxy(WebPage&);
 
     void addItem(Ref<WebCore::HistoryItem>&&) override;
 
-    void goToItem(WebCore::HistoryItem*) override;
+    void goToItem(WebCore::HistoryItem&) override;
         
-    WebCore::HistoryItem* itemAtIndex(int) override;
-    int backListCount() override;
-    int forwardListCount() override;
+    RefPtr<WebCore::HistoryItem> itemAtIndex(int) override;
+    unsigned backListCount() const override;
+    unsigned forwardListCount() const override;
 
     void close() override;
 
@@ -69,5 +69,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // WebBackForwardListProxy_h

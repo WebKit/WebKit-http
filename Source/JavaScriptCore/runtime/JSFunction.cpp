@@ -48,6 +48,7 @@
 #include "Parser.h"
 #include "PropertyNameArray.h"
 #include "StackVisitor.h"
+#include "WebAssemblyFunction.h"
 
 namespace JSC {
 
@@ -84,7 +85,7 @@ JSFunction* JSFunction::create(VM& vm, FunctionExecutable* executable, JSScope* 
 JSFunction* JSFunction::create(VM& vm, FunctionExecutable* executable, JSScope* scope, Structure* structure)
 {
     JSFunction* result = createImpl(vm, executable, scope, structure);
-    executable->singletonFunction()->notifyWrite(vm, result, "Allocating a function");
+    executable->notifyCreation(vm, result, "Allocating a function");
     return result;
 }
 
@@ -111,7 +112,7 @@ void JSFunction::finishCreation(VM& vm)
     Base::finishCreation(vm);
     ASSERT(jsDynamicCast<JSFunction*>(vm, this));
     ASSERT(type() == JSFunctionType);
-    if (isBuiltinFunction() && jsExecutable()->name().isPrivateName()) {
+    if (isAnonymousBuiltinFunction()) {
         // This is anonymous builtin function.
         rareData(vm)->setHasReifiedName();
     }
@@ -226,7 +227,7 @@ const String JSFunction::calculatedDisplayName(VM& vm)
     if (!actualName.isEmpty() || isHostOrBuiltinFunction())
         return actualName;
 
-    return jsExecutable()->inferredName().string();
+    return jsExecutable()->ecmaName().string();
 }
 
 const SourceCode* JSFunction::sourceCode() const
@@ -497,17 +498,15 @@ bool JSFunction::put(JSCell* cell, ExecState* exec, PropertyName propertyName, J
 
     JSFunction* thisObject = jsCast<JSFunction*>(cell);
 
-    if (UNLIKELY(isThisValueAltered(slot, thisObject))) {
-        scope.release();
-        return ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode());
-    }
+    if (UNLIKELY(isThisValueAltered(slot, thisObject)))
+        RELEASE_AND_RETURN(scope, ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode()));
+
 
     if (thisObject->isHostOrBuiltinFunction()) {
         PropertyStatus propertyType = thisObject->reifyLazyPropertyForHostOrBuiltinIfNeeded(vm, exec, propertyName);
         if (isLazy(propertyType))
             slot.disableCaching();
-        scope.release();
-        return Base::put(thisObject, exec, propertyName, value, slot);
+        RELEASE_AND_RETURN(scope, Base::put(thisObject, exec, propertyName, value, slot));
     }
 
     if (propertyName == vm.propertyNames->prototype) {
@@ -518,23 +517,20 @@ bool JSFunction::put(JSCell* cell, ExecState* exec, PropertyName propertyName, J
         thisObject->methodTable(vm)->getOwnPropertySlot(thisObject, exec, propertyName, getSlot);
         if (thisObject->m_rareData)
             thisObject->m_rareData->clear("Store to prototype property of a function");
-        scope.release();
-        return Base::put(thisObject, exec, propertyName, value, slot);
+        RELEASE_AND_RETURN(scope, Base::put(thisObject, exec, propertyName, value, slot));
     }
 
     if (propertyName == vm.propertyNames->arguments || propertyName == vm.propertyNames->caller) {
-        if (!thisObject->jsExecutable()->hasCallerAndArgumentsProperties()) {
-            scope.release();
-            return Base::put(thisObject, exec, propertyName, value, slot);
-        }
+        if (!thisObject->jsExecutable()->hasCallerAndArgumentsProperties())
+            RELEASE_AND_RETURN(scope, Base::put(thisObject, exec, propertyName, value, slot));
+
         slot.disableCaching();
         return typeError(exec, scope, slot.isStrictMode(), ReadonlyPropertyWriteError);
     }
     PropertyStatus propertyType = thisObject->reifyLazyPropertyIfNeeded(vm, exec, propertyName);
     if (isLazy(propertyType))
         slot.disableCaching();
-    scope.release();
-    return Base::put(thisObject, exec, propertyName, value, slot);
+    RELEASE_AND_RETURN(scope, Base::put(thisObject, exec, propertyName, value, slot));
 }
 
 bool JSFunction::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
@@ -567,8 +563,7 @@ bool JSFunction::defineOwnProperty(JSObject* object, ExecState* exec, PropertyNa
     JSFunction* thisObject = jsCast<JSFunction*>(object);
     if (thisObject->isHostOrBuiltinFunction()) {
         thisObject->reifyLazyPropertyForHostOrBuiltinIfNeeded(vm, exec, propertyName);
-        scope.release();
-        return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
+        RELEASE_AND_RETURN(scope, Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException));
     }
 
     if (propertyName == vm.propertyNames->prototype) {
@@ -578,27 +573,23 @@ bool JSFunction::defineOwnProperty(JSObject* object, ExecState* exec, PropertyNa
         thisObject->methodTable(vm)->getOwnPropertySlot(thisObject, exec, propertyName, slot);
         if (thisObject->m_rareData)
             thisObject->m_rareData->clear("Store to prototype property of a function");
-        scope.release();
-        return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
+        RELEASE_AND_RETURN(scope, Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException));
     }
 
     bool valueCheck;
     if (propertyName == vm.propertyNames->arguments) {
-        if (!thisObject->jsExecutable()->hasCallerAndArgumentsProperties()) {
-            scope.release();
-            return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
-        }
+        if (!thisObject->jsExecutable()->hasCallerAndArgumentsProperties())
+            RELEASE_AND_RETURN(scope, Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException));
+
         valueCheck = !descriptor.value() || sameValue(exec, descriptor.value(), retrieveArguments(exec, thisObject));
     } else if (propertyName == vm.propertyNames->caller) {
-        if (!thisObject->jsExecutable()->hasCallerAndArgumentsProperties()) {
-            scope.release();
-            return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
-        }
+        if (!thisObject->jsExecutable()->hasCallerAndArgumentsProperties())
+            RELEASE_AND_RETURN(scope, Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException));
+
         valueCheck = !descriptor.value() || sameValue(exec, descriptor.value(), retrieveCallerFunction(exec, thisObject));
     } else {
         thisObject->reifyLazyPropertyIfNeeded(vm, exec, propertyName);
-        scope.release();
-        return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
+        RELEASE_AND_RETURN(scope, Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException));
     }
      
     if (descriptor.configurablePresent() && descriptor.configurable())
@@ -637,15 +628,19 @@ ConstructType JSFunction::getConstructData(JSCell* cell, ConstructData& construc
 
 String getCalculatedDisplayName(VM& vm, JSObject* object)
 {
+#if ENABLE(WEBASSEMBLY)
+    if (jsDynamicCast<JSToWasmICCallee*>(vm, object))
+        return "wasm-stub"_s;
+#endif
+
     if (!jsDynamicCast<JSFunction*>(vm, object) && !jsDynamicCast<InternalFunction*>(vm, object))
         return emptyString();
-
 
     Structure* structure = object->structure(vm);
     unsigned attributes;
     // This function may be called when the mutator isn't running and we are lazily generating a stack trace.
     PropertyOffset offset = structure->getConcurrently(vm.propertyNames->displayName.impl(), attributes);
-    if (offset != invalidOffset && !(attributes & (PropertyAttribute::Accessor | PropertyAttribute::CustomAccessor))) {
+    if (offset != invalidOffset && !(attributes & (PropertyAttribute::Accessor | PropertyAttribute::CustomAccessorOrValue))) {
         JSValue displayName = object->getDirect(offset);
         if (displayName && displayName.isString())
             return asString(displayName)->tryGetValue();
@@ -656,7 +651,7 @@ String getCalculatedDisplayName(VM& vm, JSObject* object)
         if (!actualName.isEmpty() || function->isHostOrBuiltinFunction())
             return actualName;
 
-        return function->jsExecutable()->inferredName().string();
+        return function->jsExecutable()->ecmaName().string();
     }
     if (auto* function = jsDynamicCast<InternalFunction*>(vm, object))
         return function->name();
@@ -679,7 +674,8 @@ void JSFunction::setFunctionName(ExecState* exec, JSValue value)
     ASSERT(jsExecutable()->ecmaName().isNull());
     String name;
     if (value.isSymbol()) {
-        SymbolImpl& uid = asSymbol(value)->privateName().uid();
+        PrivateName privateName = asSymbol(value)->privateName();
+        SymbolImpl& uid = privateName.uid();
         if (uid.isNullSymbol())
             name = emptyString();
         else

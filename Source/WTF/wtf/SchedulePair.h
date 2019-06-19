@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SchedulePair_h
-#define SchedulePair_h
+#pragma once
 
 #include <wtf/HashSet.h>
 #include <wtf/RetainPtr.h>
@@ -64,7 +63,7 @@ private:
 
 #if PLATFORM(COCOA)
     WTF_EXPORT_PRIVATE SchedulePair(NSRunLoop*, CFStringRef);
-    RetainPtr<NSRunLoop*> m_nsRunLoop;
+    RetainPtr<NSRunLoop> m_nsRunLoop;
 #endif
 
     RetainPtr<CFRunLoopRef> m_runLoop;
@@ -89,5 +88,3 @@ typedef HashSet<RefPtr<SchedulePair>, SchedulePairHash> SchedulePairHashSet;
 
 using WTF::SchedulePair;
 using WTF::SchedulePairHashSet;
-
-#endif

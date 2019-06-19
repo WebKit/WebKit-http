@@ -26,7 +26,7 @@
 #ifndef LegacyTileCache_h
 #define LegacyTileCache_h
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #include "Color.h"
 #include "FloatRect.h"
@@ -143,7 +143,7 @@ public:
     unsigned tileCapacityForGrid(LegacyTileGrid*);
     Color colorForGridTileBorder(LegacyTileGrid*) const;
     bool setOverrideVisibleRect(const FloatRect&);
-    void clearOverrideVisibleRect() { m_overrideVisibleRect = std::nullopt; }
+    void clearOverrideVisibleRect() { m_overrideVisibleRect = WTF::nullopt; }
 
     void doPendingRepaints();
 
@@ -184,7 +184,7 @@ private:
     // Ensure there are no async calls on a dead tile cache.
     RetainPtr<LegacyTileCacheTombstone> m_tombstone;
 
-    std::optional<FloatRect> m_overrideVisibleRect;
+    Optional<FloatRect> m_overrideVisibleRect;
 
     IntSize m_tileSize { 512, 512 };
     
@@ -221,6 +221,6 @@ private:
 
 } // namespace WebCore
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 #endif // TileCache_h

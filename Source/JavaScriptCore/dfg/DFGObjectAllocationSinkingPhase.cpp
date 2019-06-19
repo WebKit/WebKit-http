@@ -840,7 +840,7 @@ private:
         case NewGeneratorFunction:
         case NewAsyncGeneratorFunction:
         case NewAsyncFunction: {
-            if (isStillValid(node->castOperand<FunctionExecutable*>()->singletonFunction())) {
+            if (isStillValid(node->castOperand<FunctionExecutable*>())) {
                 m_heap.escape(node->child1().node());
                 break;
             }
@@ -868,7 +868,7 @@ private:
         }
 
         case CreateActivation: {
-            if (isStillValid(node->castOperand<SymbolTable*>()->singletonScope())) {
+            if (isStillValid(node->castOperand<SymbolTable*>())) {
                 m_heap.escape(node->child1().node());
                 break;
             }
@@ -877,11 +877,10 @@ private:
             writes.add(ActivationScopePLoc, LazyNode(node->child1().node()));
             {
                 SymbolTable* symbolTable = node->castOperand<SymbolTable*>();
-                ConcurrentJSLocker locker(symbolTable->m_lock);
                 LazyNode initialValue(m_graph.freeze(node->initializationValueForActivation()));
-                for (auto iter = symbolTable->begin(locker), end = symbolTable->end(locker); iter != end; ++iter) {
+                for (unsigned offset = 0; offset < symbolTable->scopeSize(); ++offset) {
                     writes.add(
-                        PromotedLocationDescriptor(ClosureVarPLoc, iter->value.scopeOffset().offset()),
+                        PromotedLocationDescriptor(ClosureVarPLoc, offset),
                         initialValue);
                 }
             }
@@ -1216,7 +1215,70 @@ private:
             }
         }
 
+        auto forEachEscapee = [&] (auto callback) {
+            for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
+                m_heap = m_heapAtHead[block];
+                m_heap.setWantEscapees();
+
+                for (Node* node : *block) {
+                    handleNode(
+                        node,
+                        [] (PromotedHeapLocation, LazyNode) { },
+                        [] (PromotedHeapLocation) -> Node* {
+                            return nullptr;
+                        });
+                    auto escapees = m_heap.takeEscapees();
+                    escapees.removeIf([&] (const auto& entry) { return !m_sinkCandidates.contains(entry.key); });
+                    callback(escapees, node);
+                }
+
+                m_heap.pruneByLiveness(m_combinedLiveness.liveAtTail[block]);
+
+                {
+                    HashMap<Node*, Allocation> escapingOnEdge;
+                    for (const auto& entry : m_heap.allocations()) {
+                        if (entry.value.isEscapedAllocation())
+                            continue;
+
+                        bool mustEscape = false;
+                        for (BasicBlock* successorBlock : block->successors()) {
+                            if (!m_heapAtHead[successorBlock].isAllocation(entry.key)
+                                || m_heapAtHead[successorBlock].getAllocation(entry.key).isEscapedAllocation())
+                                mustEscape = true;
+                        }
+
+                        if (mustEscape && m_sinkCandidates.contains(entry.key))
+                            escapingOnEdge.add(entry.key, entry.value);
+                    }
+                    callback(escapingOnEdge, block->terminal());
+                }
+            }
+        };
+
+        if (m_sinkCandidates.size()) {
+            // If we're moving an allocation to `where` in the program, we need to ensure
+            // we can still walk the stack at that point in the program for the
+            // InlineCallFrame of the original allocation. Certain InlineCallFrames rely on
+            // data in the stack when taking a stack trace. All allocation sites can do a
+            // stack walk (we do a stack walk when we GC). Conservatively, we say we're
+            // still ok to move this allocation if we are moving within the same InlineCallFrame.
+            // We could be more precise here and do an analysis of stack writes. However,
+            // this scenario is so rare that we just take the conservative-and-straight-forward 
+            // approach of checking that we're in the same InlineCallFrame.
+
+            forEachEscapee([&] (HashMap<Node*, Allocation>& escapees, Node* where) {
+                for (Node* allocation : escapees.keys()) {
+                    InlineCallFrame* inlineCallFrame = allocation->origin.semantic.inlineCallFrame();
+                    if (!inlineCallFrame)
+                        continue;
+                    if ((inlineCallFrame->isClosureCall || inlineCallFrame->isVarargs()) && inlineCallFrame != where->origin.semantic.inlineCallFrame())
+                        m_sinkCandidates.remove(allocation);
+                }
+            });
+        }
+
         // Ensure that the set of sink candidates is closed for put operations
+        // This is (2) as described above.
         Vector<Node*> worklist;
         worklist.appendRange(m_sinkCandidates.begin(), m_sinkCandidates.end());
 
@@ -1233,59 +1295,17 @@ private:
         if (DFGObjectAllocationSinkingPhaseInternal::verbose)
             dataLog("Candidates: ", listDump(m_sinkCandidates), "\n");
 
-        // Create the materialization nodes
-        for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
-            m_heap = m_heapAtHead[block];
-            m_heap.setWantEscapees();
 
-            for (Node* node : *block) {
-                handleNode(
-                    node,
-                    [] (PromotedHeapLocation, LazyNode) { },
-                    [] (PromotedHeapLocation) -> Node* {
-                        return nullptr;
-                    });
-                auto escapees = m_heap.takeEscapees();
-                if (!escapees.isEmpty())
-                    placeMaterializations(escapees, node);
-            }
-
-            m_heap.pruneByLiveness(m_combinedLiveness.liveAtTail[block]);
-
-            {
-                HashMap<Node*, Allocation> escapingOnEdge;
-                for (const auto& entry : m_heap.allocations()) {
-                    if (entry.value.isEscapedAllocation())
-                        continue;
-
-                    bool mustEscape = false;
-                    for (BasicBlock* successorBlock : block->successors()) {
-                        if (!m_heapAtHead[successorBlock].isAllocation(entry.key)
-                            || m_heapAtHead[successorBlock].getAllocation(entry.key).isEscapedAllocation())
-                            mustEscape = true;
-                    }
-
-                    if (mustEscape)
-                        escapingOnEdge.add(entry.key, entry.value);
-                }
-                placeMaterializations(WTFMove(escapingOnEdge), block->terminal());
-            }
-        }
+        // Create the materialization nodes.
+        forEachEscapee([&] (HashMap<Node*, Allocation>& escapees, Node* where) {
+            placeMaterializations(WTFMove(escapees), where);
+        });
 
         return hasUnescapedReads || !m_sinkCandidates.isEmpty();
     }
 
     void placeMaterializations(HashMap<Node*, Allocation> escapees, Node* where)
     {
-        // We don't create materializations if the escapee is not a
-        // sink candidate
-        escapees.removeIf(
-            [&] (const auto& entry) {
-                return !m_sinkCandidates.contains(entry.key);
-            });
-        if (escapees.isEmpty())
-            return;
-
         // First collect the hints that will be needed when the node
         // we materialize is still stored into other unescaped sink candidates.
         // The way to interpret this vector is:
@@ -2295,14 +2315,14 @@ private:
                         // at this point, we can simply trust that the incoming value has the right type
                         // for whatever structure we are using.
                         data->variants.append(
-                            PutByIdVariant::replace(currentSet, currentOffset, InferredType::Top));
+                            PutByIdVariant::replace(currentSet, currentOffset));
                         currentOffset = offset;
                         currentSet.clear();
                     }
                     currentSet.add(structure.get());
                 }
                 data->variants.append(
-                    PutByIdVariant::replace(currentSet, currentOffset, InferredType::Top));
+                    PutByIdVariant::replace(currentSet, currentOffset));
             }
 
             return m_graph.addNode(
@@ -2362,10 +2382,16 @@ private:
     // different answers. It turns out that this analysis works OK regardless of what this
     // returns but breaks badly if this changes its mind for any particular InferredValue. This
     // method protects us from that.
-    bool isStillValid(InferredValue* value)
+    bool isStillValid(SymbolTable* value)
     {
-        return m_validInferredValues.add(value, value->isStillValid()).iterator->value;
+        return m_validInferredValues.add(value, value->singleton().isStillValid()).iterator->value;
     }
+
+    bool isStillValid(FunctionExecutable* value)
+    {
+        return m_validInferredValues.add(value, value->singleton().isStillValid()).iterator->value;
+    }
+
 
     SSACalculator m_pointerSSA;
     SSACalculator m_allocationSSA;
@@ -2377,7 +2403,7 @@ private:
     InsertionSet m_insertionSet;
     CombinedLiveness m_combinedLiveness;
 
-    HashMap<InferredValue*, bool> m_validInferredValues;
+    HashMap<JSCell*, bool> m_validInferredValues;
 
     HashMap<Node*, Node*> m_materializationToEscapee;
     HashMap<Node*, Vector<Node*>> m_materializationSiteToMaterializations;

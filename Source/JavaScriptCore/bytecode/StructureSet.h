@@ -49,18 +49,13 @@ public:
     {
     }
     
-    ALWAYS_INLINE StructureSet(const StructureSet& other)
-        : TinyPtrSet(other)
-    {
-    }
-    
     Structure* onlyStructure() const
     {
         return onlyEntry();
     }
 
     void markIfCheap(SlotVisitor&) const;
-    bool isStillAlive() const;
+    bool isStillAlive(VM&) const;
     
     void dumpInContext(PrintStream&, DumpContext*) const;
     void dump(PrintStream&) const;

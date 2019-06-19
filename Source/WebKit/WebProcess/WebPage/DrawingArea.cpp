@@ -37,10 +37,8 @@
 #if PLATFORM(COCOA)
 #include "RemoteLayerTreeDrawingArea.h"
 #include "TiledCoreAnimationDrawingArea.h"
-#elif PLATFORM(WPE)
-#include "AcceleratedDrawingArea.h"
-#else
-#include "DrawingAreaImpl.h"
+#elif USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+#include "DrawingAreaCoordinatedGraphics.h"
 #endif
 
 namespace WebKit {
@@ -50,35 +48,32 @@ std::unique_ptr<DrawingArea> DrawingArea::create(WebPage& webPage, const WebPage
 {
     switch (parameters.drawingAreaType) {
 #if PLATFORM(COCOA)
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     case DrawingAreaTypeTiledCoreAnimation:
         return std::make_unique<TiledCoreAnimationDrawingArea>(webPage, parameters);
 #endif
     case DrawingAreaTypeRemoteLayerTree:
         return std::make_unique<RemoteLayerTreeDrawingArea>(webPage, parameters);
-#else
-    case DrawingAreaTypeImpl:
-#if PLATFORM(WPE)
-        return std::make_unique<AcceleratedDrawingArea>(webPage, parameters);
-#else
-        return std::make_unique<DrawingAreaImpl>(webPage, parameters);
-#endif
+#elif USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+    case DrawingAreaTypeCoordinatedGraphics:
+        return std::make_unique<DrawingAreaCoordinatedGraphics>(webPage, parameters);
 #endif
     }
 
     return nullptr;
 }
 
-DrawingArea::DrawingArea(DrawingAreaType type, WebPage& webPage)
+DrawingArea::DrawingArea(DrawingAreaType type, DrawingAreaIdentifier identifier, WebPage& webPage)
     : m_type(type)
+    , m_identifier(identifier)
     , m_webPage(webPage)
 {
-    WebProcess::singleton().addMessageReceiver(Messages::DrawingArea::messageReceiverName(), m_webPage.pageID(), *this);
+    WebProcess::singleton().addMessageReceiver(Messages::DrawingArea::messageReceiverName(), m_identifier, *this);
 }
 
 DrawingArea::~DrawingArea()
 {
-    WebProcess::singleton().removeMessageReceiver(Messages::DrawingArea::messageReceiverName(), m_webPage.pageID());
+    removeMessageReceiverIfNeeded();
 }
 
 void DrawingArea::dispatchAfterEnsuringUpdatedScrollPosition(WTF::Function<void ()>&& function)
@@ -93,5 +88,13 @@ RefPtr<WebCore::DisplayRefreshMonitor> DrawingArea::createDisplayRefreshMonitor(
     return nullptr;
 }
 #endif
+
+void DrawingArea::removeMessageReceiverIfNeeded()
+{
+    if (m_hasRemovedMessageReceiver)
+        return;
+    m_hasRemovedMessageReceiver = true;
+    WebProcess::singleton().removeMessageReceiver(Messages::DrawingArea::messageReceiverName(), m_identifier);
+}
 
 } // namespace WebKit

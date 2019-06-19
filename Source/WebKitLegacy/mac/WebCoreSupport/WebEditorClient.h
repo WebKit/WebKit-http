@@ -27,6 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import <WebCore/DOMPasteAccess.h>
 #import <WebCore/EditorClient.h>
 #import <WebCore/TextCheckerClient.h>
 #import <WebCore/VisibleSelection.h>
@@ -36,7 +37,7 @@
 #import <wtf/WeakPtr.h>
 #import <wtf/text/StringView.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <WebCore/WAKAppKitStubs.h>
 #endif
 
@@ -78,9 +79,9 @@ private:
     void willWriteSelectionToPasteboard(WebCore::Range*) final;
     void didWriteSelectionToPasteboard() final;
     void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData) final;
-    String replacementURLForResource(Ref<WebCore::SharedBuffer>&& resourceData, const String& mimeType) final;
 
     void setInsertionPasteboard(const String&) final;
+    WebCore::DOMPasteAccessResponse requestDOMPasteAccess(const String&) final { return WebCore::DOMPasteAccessResponse::DeniedForGesture; }
 
 #if USE(APPKIT)
     void uppercaseWord() final;
@@ -126,8 +127,8 @@ private:
     void undo() final;
     void redo() final;
     
-    void handleKeyboardEvent(WebCore::KeyboardEvent*) final;
-    void handleInputMethodKeydown(WebCore::KeyboardEvent*) final;
+    void handleKeyboardEvent(WebCore::KeyboardEvent&) final;
+    void handleInputMethodKeydown(WebCore::KeyboardEvent&) final;
 
     void textFieldDidBeginEditing(WebCore::Element*) final;
     void textFieldDidEndEditing(WebCore::Element*) final;
@@ -137,13 +138,14 @@ private:
     void textDidChangeInTextArea(WebCore::Element*) final;
     void overflowScrollPositionChanged() final { };
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void startDelayingAndCoalescingContentChangeNotifications() final;
     void stopDelayingAndCoalescingContentChangeNotifications() final;
     bool hasRichlyEditableSelection() final;
     int getPasteboardItemsCount() final;
     RefPtr<WebCore::DocumentFragment> documentFragmentFromDelegate(int index) final;
     bool performsTwoStepPaste(WebCore::DocumentFragment*) final;
+    void updateStringForFind(const String&) final { }
 #endif
 
     bool performTwoStepDrop(WebCore::DocumentFragment&, WebCore::Range& destination, bool isMove) final;
@@ -165,7 +167,7 @@ private:
     void setInputMethodState(bool enabled) final;
     void requestCheckingOfString(WebCore::TextCheckingRequest&, const WebCore::VisibleSelection& currentSelection) final;
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#if PLATFORM(MAC)
     void requestCandidatesForSelection(const WebCore::VisibleSelection&) final;
     void handleRequestedCandidates(NSInteger, NSArray<NSTextCheckingResult *> *);
     void handleAcceptedCandidateWithSoftSpaces(WebCore::TextCheckingResult) final;
@@ -178,14 +180,14 @@ private:
     bool m_haveUndoRedoOperations { false };
     RefPtr<WebCore::TextCheckingRequest> m_textCheckingRequest;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool m_delayingContentChangeNotifications { false };
     bool m_hasDelayedContentChangeNotification { false };
 #endif
 
     WebCore::VisibleSelection m_lastSelectionForRequestedCandidates;
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#if PLATFORM(MAC)
     RetainPtr<NSString> m_paragraphContextForCandidateRequest;
     NSRange m_rangeForCandidates;
     NSInteger m_lastCandidateRequestSequenceNumber;
@@ -219,7 +221,7 @@ inline WebCore::EAffinity core(NSSelectionAffinity affinity)
     return WebCore::EAffinity::UPSTREAM;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 inline bool WebEditorClient::isGrammarCheckingEnabled()
 {

@@ -34,6 +34,7 @@
 
 namespace WebCore {
 
+class FilterOperations;
 class RenderStyle;
 
 // A KeyframeAnimation tracks the state of an explicit animation for a single RenderElement.
@@ -43,25 +44,26 @@ public:
     {
         return adoptRef(*new KeyframeAnimation(animation, element, compositeAnimation, unanimatedStyle));
     }
-
-    bool animate(CompositeAnimation&, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle);
+    
+    OptionSet<AnimateChange> animate(CompositeAnimation&, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle);
     void getAnimatedStyle(std::unique_ptr<RenderStyle>&) override;
 
     bool computeExtentOfTransformAnimation(LayoutRect&) const override;
 
     const KeyframeList& keyframes() const { return m_keyframes; }
 
-    const AtomicString& name() const { return m_keyframes.animationName(); }
+    const AtomString& name() const { return m_keyframes.animationName(); }
 
     bool hasAnimationForProperty(CSSPropertyID) const;
 
     bool triggersStackingContext() const { return m_triggersStackingContext; }
     bool dependsOnLayout() const { return m_dependsOnLayout; }
+    bool affectsAcceleratedProperty() const { return m_hasAcceleratedProperty; }
 
     void setUnanimatedStyle(std::unique_ptr<RenderStyle> style) { m_unanimatedStyle = WTFMove(style); }
     const RenderStyle& unanimatedStyle() const override { return *m_unanimatedStyle; }
 
-    std::optional<Seconds> timeToNextService() override;
+    Optional<Seconds> timeToNextService() override;
 
 protected:
     void onAnimationStart(double elapsedTime) override;
@@ -75,7 +77,7 @@ protected:
     void resumeOverriddenAnimations() override;
 
     bool shouldSendEventForListener(Document::ListenerType inListenerType) const;
-    bool sendAnimationEvent(const AtomicString&, double elapsedTime);
+    bool sendAnimationEvent(const AtomString&, double elapsedTime);
 
     bool affectsProperty(CSSPropertyID) const override;
 
@@ -83,7 +85,6 @@ protected:
 
     bool computeExtentOfAnimationForMatchingTransformLists(const FloatRect& rendererBox, LayoutRect&) const;
 
-    void computeStackingContextImpact();
     void computeLayoutDependency();
     void resolveKeyframeStyles();
     void validateTransformFunctionList();
@@ -106,6 +107,7 @@ private:
 
     bool m_startEventDispatched { false };
     bool m_triggersStackingContext { false };
+    bool m_hasAcceleratedProperty { false };
     bool m_dependsOnLayout { false };
 };
 

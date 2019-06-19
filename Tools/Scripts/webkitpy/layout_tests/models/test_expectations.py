@@ -78,7 +78,6 @@ class TestExpectationWarning(object):
 class TestExpectationParser(object):
     """Provides parsing facilities for lines in the test_expectation.txt file."""
 
-    DUMMY_BUG_MODIFIER = "bug_dummy"
     BUG_MODIFIER_PREFIX = 'bug'
     BUG_MODIFIER_REGEX = 'bug\d+'
     REBASELINE_MODIFIER = 'rebaseline'
@@ -117,7 +116,7 @@ class TestExpectationParser(object):
             _log.warning('The following test %s from the Skipped list doesn\'t exist' % test_name)
         expectation_line = TestExpectationLine()
         expectation_line.original_string = test_name
-        expectation_line.modifiers = [TestExpectationParser.DUMMY_BUG_MODIFIER, TestExpectationParser.SKIP_MODIFIER]
+        expectation_line.modifiers = [TestExpectationParser.SKIP_MODIFIER]
         # FIXME: It's not clear what the expectations for a skipped test should be; the expectations
         # might be different for different entries in a Skipped file, or from the command line, or from
         # only running parts of the tests. It's also not clear if it matters much.
@@ -227,7 +226,7 @@ class TestExpectationParser(object):
     # FIXME: Update the original modifiers and remove this once the old syntax is gone.
     _configuration_tokens_list = [
         'SnowLeopard', 'Lion', 'MountainLion', 'Mavericks', 'Yosemite', 'ElCapitan', # Legacy macOS
-        'Mac', 'Sierra', 'HighSierra', 'Mojave',
+        'Mac', 'Sierra', 'HighSierra', 'Mojave', 'Catalina',
         'Win', 'XP', 'Vista', 'Win7',
         'Linux',
         'Android',
@@ -923,7 +922,7 @@ class TestExpectations(object):
             suffixes.add('wav')
         return set(suffixes)
 
-    def __init__(self, port, tests=None, include_generic=True, include_overrides=True, expectations_to_lint=None, force_expectations_pass=False):
+    def __init__(self, port, tests=None, include_generic=True, include_overrides=True, expectations_to_lint=None, force_expectations_pass=False, device_type=None):
         self._full_test_list = tests
         self._test_config = port.test_configuration()
         self._is_lint_mode = expectations_to_lint is not None
@@ -933,6 +932,7 @@ class TestExpectations(object):
         self._skipped_tests_warnings = []
         self._expectations = []
         self._force_expectations_pass = force_expectations_pass
+        self._device_type = device_type
         self._include_generic = include_generic
         self._include_overrides = include_overrides
         self._expectations_to_lint = expectations_to_lint
@@ -969,7 +969,7 @@ class TestExpectations(object):
             self._expectations_dict_index += 1
 
     def parse_all_expectations(self):
-        self._expectations_dict = self._expectations_to_lint or self._port.expectations_dict()
+        self._expectations_dict = self._expectations_to_lint or self._port.expectations_dict(device_type=self._device_type)
         self._expectations_dict_index = 0
 
         self._has_warnings = False
@@ -979,7 +979,7 @@ class TestExpectations(object):
         self.parse_override_expectations()
 
         # FIXME: move ignore_tests into port.skipped_layout_tests()
-        self.add_skipped_tests(self._port.skipped_layout_tests(self._full_test_list).union(set(self._port.get_option('ignore_tests', []))))
+        self.add_skipped_tests(self._port.skipped_layout_tests(self._full_test_list, device_type=self._device_type).union(set(self._port.get_option('ignore_tests', []))))
 
         self._report_warnings()
         self._process_tests_without_expectations()

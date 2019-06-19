@@ -551,7 +551,7 @@
 - path: ChakraCore/test/Error/CallNonFunction.js
   cmd: runChakra :baseline, "NoException", "CallNonFunction_3.baseline-jsc", []
 - path: ChakraCore/test/Error/variousErrors.js
-  cmd: runChakra :baseline, "NoException", "variousErrors3.baseline", []
+  cmd: runChakra :baseline, "NoException", "variousErrors3.baseline-jsc", []
 - path: ChakraCore/test/Error/bug560940.js
   cmd: runChakra :pass, "NoException", "", []
 - path: ChakraCore/test/Error/inlineSameFunc.js
@@ -689,6 +689,8 @@
   cmd: |
       if ($hostOS == "windows")
           skip
+      elsif ($hostOS == "playstation")
+          runChakra :baseline, "NoException", "InternalToString.baseline-jsc-playstation", []
       else
           runChakra :baseline, "NoException", "InternalToString.baseline", []
       end
@@ -1084,6 +1086,8 @@
   cmd: |
       if ($hostOS == "windows")
           skip
+      elsif ($hostOS == "playstation")
+          runChakra :baseline, "NoException", "equals.baseline-jsc-playstation", []
       else
           runChakra :baseline, "NoException", "equals.baseline", []
       end
@@ -1582,7 +1586,7 @@
   # Appears to be bad test.  JSC early parse exception vs. Chakra runtime exception.
   cmd: runChakra :skip, "NoException", "blockscope-functionbinding.baseline", []
 - path: ChakraCore/test/es6/letconst_global.js
-  cmd: runChakra :baseline, "NoException", "letconst_global.baseline-jsc", []
+  cmd: runChakra :skip, "NoException", "letconst_global.baseline-jsc", []
 - path: ChakraCore/test/es6/letconst_global_shadowing.js
   cmd: runChakra :baseline, "NoException", "letconst_global_shadowing.baseline-jsc", []
 - path: ChakraCore/test/es6/letconst_global_shadow_builtins.js
@@ -2059,6 +2063,8 @@
   cmd: |
       if ($hostOS == "windows")
           skip
+      elsif ($hostOS == "playstation")
+          runChakra :baseline, "NoException", "objtypespec-newobj.2.baseline-jsc-playstation", []
       else
           runChakra :baseline, "NoException", "objtypespec-newobj.2.baseline", []
       end

@@ -40,6 +40,7 @@
 #include "SVGElement.h"
 #include "SVGFilterBuilder.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
+#include "SourceAlpha.h"
 #include "SourceGraphic.h"
 #include <algorithm>
 #include <wtf/MathExtras.h>
@@ -104,13 +105,14 @@ RefPtr<FilterEffect> CSSFilter::buildReferenceFilter(RenderElement& renderer, Fi
         // Although we did not find the referenced filter, it might exist later in the document.
         // FIXME: This skips anonymous RenderObjects. <https://webkit.org/b/131085>
         if (auto* element = renderer.element())
-            document->accessSVGExtensions().addPendingResource(filterOperation.fragment(), element);
+            document->accessSVGExtensions().addPendingResource(filterOperation.fragment(), *element);
         return nullptr;
     }
 
     RefPtr<FilterEffect> effect;
 
     auto builder = std::make_unique<SVGFilterBuilder>(&previousEffect);
+    m_sourceAlpha = builder->getEffectById(SourceAlpha::effectName());
 
     for (auto& effectElement : childrenOfType<SVGFilterPrimitiveStandardAttributes>(*filter)) {
         effect = effectElement.build(builder.get(), *this);
@@ -144,7 +146,6 @@ bool CSSFilter::build(RenderElement& renderer, const FilterOperations& operation
         case FilterOperation::REFERENCE: {
             auto& referenceOperation = downcast<ReferenceFilterOperation>(filterOperation);
             effect = buildReferenceFilter(renderer, *previousEffect, referenceOperation);
-            referenceOperation.setFilterEffect(effect.copyRef());
             break;
         }
         case FilterOperation::GRAYSCALE: {
@@ -356,6 +357,8 @@ void CSSFilter::determineFilterPrimitiveSubregion()
 void CSSFilter::clearIntermediateResults()
 {
     m_sourceGraphic->clearResult();
+    if (m_sourceAlpha)
+        m_sourceAlpha->clearResult();
     for (auto& effect : m_effects)
         effect->clearResult();
 }

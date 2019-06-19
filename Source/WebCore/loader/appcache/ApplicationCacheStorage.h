@@ -38,7 +38,6 @@ class ApplicationCache;
 class ApplicationCacheGroup;
 class ApplicationCacheHost;
 class ApplicationCacheResource;
-class URL;
 class SecurityOrigin;
 class SharedBuffer;
 template<typename> class StorageIDJournal;
@@ -107,7 +106,7 @@ private:
 
     RefPtr<ApplicationCache> loadCache(unsigned storageID);
     ApplicationCacheGroup* loadCacheGroup(const URL& manifestURL);
-    std::optional<Vector<URL>> manifestURLs();
+    Optional<Vector<URL>> manifestURLs();
     ApplicationCacheGroup* findInMemoryCacheGroup(const URL& manifestURL) const;
     bool deleteCacheGroup(const String& manifestURL);
     void vacuumDatabaseFile();

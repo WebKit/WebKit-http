@@ -31,6 +31,7 @@
 #include "CAAudioStreamDescription.h"
 #include "LibWebRTCAudioFormat.h"
 #include "LibWebRTCProvider.h"
+#include "Logging.h"
 
 namespace WebCore {
 
@@ -47,6 +48,11 @@ RealtimeOutgoingAudioSourceCocoa::RealtimeOutgoingAudioSourceCocoa(Ref<MediaStre
     : RealtimeOutgoingAudioSource(WTFMove(audioSource))
     , m_sampleConverter(AudioSampleDataSource::create(LibWebRTCAudioFormat::sampleRate * 2))
 {
+}
+
+RealtimeOutgoingAudioSourceCocoa::~RealtimeOutgoingAudioSourceCocoa()
+{
+    unobserveSource();
 }
 
 Ref<RealtimeOutgoingAudioSource> RealtimeOutgoingAudioSource::create(Ref<MediaStreamTrackPrivate>&& audioSource)
@@ -135,8 +141,7 @@ void RealtimeOutgoingAudioSourceCocoa::pullAudioData()
 
     m_sampleConverter->pullAvalaibleSamplesAsChunks(bufferList, chunkSampleCount, m_readCount, [this, chunkSampleCount] {
         m_readCount += chunkSampleCount;
-        for (auto sink : m_sinks)
-            sink->OnData(m_audioBuffer.data(), LibWebRTCAudioFormat::sampleSize, m_outputStreamDescription.sampleRate(), m_outputStreamDescription.numberOfChannels(), chunkSampleCount);
+        sendAudioFrames(m_audioBuffer.data(), LibWebRTCAudioFormat::sampleSize, m_outputStreamDescription.sampleRate(), m_outputStreamDescription.numberOfChannels(), chunkSampleCount);
     });
 }
 

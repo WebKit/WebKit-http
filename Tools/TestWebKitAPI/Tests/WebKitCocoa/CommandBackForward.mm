@@ -27,6 +27,7 @@
 
 #if PLATFORM(MAC)
 
+#import "OffscreenWindow.h"
 #import "PlatformUtilities.h"
 #import "Test.h"
 #import "TestNavigationDelegate.h"
@@ -35,20 +36,6 @@
 #import <WebKit/WKViewPrivate.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/mac/AppKitCompatibilityDeclarations.h>
-
-@interface CommandBackForwardOffscreenWindow : NSWindow
-@end
-
-@implementation CommandBackForwardOffscreenWindow
-- (BOOL)isKeyWindow
-{
-    return YES;
-}
-- (BOOL)isVisible
-{
-    return YES;
-}
-@end
 
 enum ArrowDirection {
     Left,
@@ -96,11 +83,7 @@ public:
 
     virtual void SetUp()
     {
-        NSWindow *window = [[CommandBackForwardOffscreenWindow alloc] initWithContentRect:NSMakeRect(0, 0, 100, 100) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:YES];
-        [window setColorSpace:[[NSScreen mainScreen] colorSpace]];
-        [window orderBack:nil];
-        [window setAutodisplay:NO];
-        [window setReleasedWhenClosed:NO];
+        window = adoptNS([[OffscreenWindow alloc] initWithSize:CGSizeMake(100, 100)]);
     }
 };
 
@@ -116,7 +99,7 @@ public:
     {
         WebKit2_CommandBackForwardTest::SetUp();
 
-        WKRetainPtr<WKContextRef> context = adoptWK(WKContextCreate());
+        WKRetainPtr<WKContextRef> context = adoptWK(WKContextCreateWithConfiguration(nullptr));
         WKRetainPtr<WKPageConfigurationRef> configuration = adoptWK(WKPageConfigurationCreate());        
         WKPageConfigurationSetContext(configuration.get(), context.get());
 
@@ -148,8 +131,6 @@ public:
         didFinishNavigation = false;
     }
 };
-
-#if WK_API_ENABLED
 
 class WebKit2_CommandBackForwardTestWKWebView : public WebKit2_CommandBackForwardTest {
 public:
@@ -217,8 +198,6 @@ TEST_F(WebKit2_CommandBackForwardTestWKWebView, RTL)
 
     EXPECT_WK_STREQ([webView URL].path.lastPathComponent, @"simple2.html");
 }
-
-#endif
 
 TEST_F(WebKit2_CommandBackForwardTestWKView, LTR)
 {

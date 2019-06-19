@@ -28,13 +28,13 @@
 
 #include "CurlProxySettings.h"
 #include "CurlSSLHandle.h"
-#include "URL.h"
 
 #include <wtf/Lock.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Seconds.h>
 #include <wtf/Threading.h>
+#include <wtf/URL.h>
 
 #if OS(WINDOWS)
 #include <windows.h>
@@ -104,7 +104,7 @@ public:
 
     // Proxy
     const CurlProxySettings& proxySettings() const { return m_proxySettings; }
-    void setProxySettings(const CurlProxySettings& settings) { m_proxySettings = settings; }
+    void setProxySettings(CurlProxySettings&& settings) { m_proxySettings = WTFMove(settings); }
     void setProxyUserPass(const String& user, const String& password) { m_proxySettings.setUserPass(user, password); }
     void setDefaultProxyAuthMethod() { m_proxySettings.setDefaultAuthMethod(); }
     void setProxyAuthMethod(long authMethod) { m_proxySettings.setAuthMethod(authMethod); }
@@ -251,9 +251,9 @@ public:
     void enableAcceptEncoding();
     void enableAllowedProtocols();
 
-    void enableHttpAuthentication(long);
-    void setHttpAuthUserPass(const String&, const String&);
+    void setHttpAuthUserPass(const String&, const String&, long authType = CURLAUTH_ANY);
 
+    void disableServerTrustEvaluation();
     void setCACertPath(const char*);
     void setSslVerifyPeer(VerifyPeer);
     void setSslVerifyHost(VerifyHost);
@@ -273,19 +273,21 @@ public:
     void setWriteCallbackFunction(curl_write_callback, void*);
     void setReadCallbackFunction(curl_read_callback, void*);
     void setSslCtxCallbackFunction(curl_ssl_ctx_callback, void*);
+    void setDebugCallbackFunction(curl_debug_callback, void*);
 
     // Status
-    std::optional<String> getProxyUrl();
-    std::optional<long> getResponseCode();
-    std::optional<long> getHttpConnectCode();
-    std::optional<long long> getContentLength();
-    std::optional<long> getHttpAuthAvail();
-    std::optional<long> getProxyAuthAvail();
-    std::optional<long> getHttpVersion();
-    std::optional<NetworkLoadMetrics> getNetworkLoadMetrics();
+    Optional<String> getProxyUrl();
+    Optional<long> getResponseCode();
+    Optional<long> getHttpConnectCode();
+    Optional<long long> getContentLength();
+    Optional<long> getHttpAuthAvail();
+    Optional<long> getProxyAuthAvail();
+    Optional<long> getHttpVersion();
+    Optional<NetworkLoadMetrics> getNetworkLoadMetrics(const WTF::Seconds& domainLookupStart);
+    void addExtraNetworkLoadMetrics(NetworkLoadMetrics&);
 
     int sslErrors() const;
-    std::optional<CertificateInfo> certificateInfo() const;
+    Optional<CertificateInfo> certificateInfo() const;
 
     static long long maxCurlOffT();
 
@@ -322,8 +324,8 @@ public:
 
     bool connect();
     size_t send(const uint8_t*, size_t);
-    std::optional<size_t> receive(uint8_t*, size_t);
-    std::optional<WaitResult> wait(const Seconds& timeout, bool alsoWaitForWrite);
+    Optional<size_t> receive(uint8_t*, size_t);
+    Optional<WaitResult> wait(const Seconds& timeout, bool alsoWaitForWrite);
 
 private:
     Function<void(CURLcode)> m_errorHandler;

@@ -25,7 +25,6 @@
 
 #include "IsoTLS.h"
 
-#include "DebugHeap.h"
 #include "Environment.h"
 #include "Gigacage.h"
 #include "IsoTLSEntryInlines.h"
@@ -55,6 +54,7 @@ void IsoTLS::scavenge()
 
 IsoTLS::IsoTLS()
 {
+    BASSERT(!Environment::get()->isDebugHeapEnabled());
 }
 
 IsoTLS* IsoTLS::ensureEntries(unsigned offset)
@@ -77,7 +77,7 @@ IsoTLS* IsoTLS::ensureEntries(unsigned offset)
         });
     
     IsoTLS* tls = get();
-    IsoTLSLayout& layout = *PerProcess<IsoTLSLayout>::get();
+    IsoTLSLayout& layout = *IsoTLSLayout::get();
 
     IsoTLSEntry* oldLastEntry = tls ? tls->m_lastEntry : nullptr;
     RELEASE_BASSERT(!oldLastEntry || oldLastEntry->offset() < offset);
@@ -167,33 +167,11 @@ void IsoTLS::forEachEntry(const Func& func)
 {
     if (!m_lastEntry)
         return;
-    PerProcess<IsoTLSLayout>::get()->head()->walkUpToInclusive(
+    IsoTLSLayout::get()->head()->walkUpToInclusive(
         m_lastEntry,
         [&] (IsoTLSEntry* entry) {
             func(entry, m_data + entry->offset());
         });
-}
-
-bool IsoTLS::isUsingDebugHeap()
-{
-    return PerProcess<Environment>::get()->isDebugHeapEnabled();
-}
-
-auto IsoTLS::debugMalloc(size_t size) -> DebugMallocResult
-{
-    DebugMallocResult result;
-    if ((result.usingDebugHeap = isUsingDebugHeap()))
-        result.ptr = PerProcess<DebugHeap>::get()->malloc(size);
-    return result;
-}
-
-bool IsoTLS::debugFree(void* p)
-{
-    if (isUsingDebugHeap()) {
-        PerProcess<DebugHeap>::get()->free(p);
-        return true;
-    }
-    return false;
 }
 
 void IsoTLS::determineMallocFallbackState()
@@ -205,11 +183,13 @@ void IsoTLS::determineMallocFallbackState()
             if (s_mallocFallbackState != MallocFallbackState::Undecided)
                 return;
 
-#if GIGACAGE_ENABLED
+#if GIGACAGE_ENABLED || BCPU(ARM64)
+#if !BCPU(ARM64)
             if (!Gigacage::shouldBeEnabled()) {
                 s_mallocFallbackState = MallocFallbackState::FallBackToMalloc;
                 return;
             }
+#endif
             const char* env = getenv("bmalloc_IsoHeap");
             if (env && (!strcasecmp(env, "false") || !strcasecmp(env, "no") || !strcmp(env, "0")))
                 s_mallocFallbackState = MallocFallbackState::FallBackToMalloc;

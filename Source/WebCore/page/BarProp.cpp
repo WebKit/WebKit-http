@@ -32,11 +32,14 @@
 #include "Chrome.h"
 #include "Frame.h"
 #include "Page.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-BarProp::BarProp(Frame* frame, Type type)
-    : DOMWindowProperty(frame)
+WTF_MAKE_ISO_ALLOCATED_IMPL(BarProp);
+
+BarProp::BarProp(DOMWindow& window, Type type)
+    : DOMWindowProperty(&window)
     , m_type(type)
 {
 }
@@ -48,9 +51,10 @@ BarProp::Type BarProp::type() const
 
 bool BarProp::visible() const
 {
-    if (!m_frame)
+    auto* frame = this->frame();
+    if (!frame)
         return false;
-    Page* page = m_frame->page();
+    auto* page = frame->page();
     if (!page)
         return false;
 

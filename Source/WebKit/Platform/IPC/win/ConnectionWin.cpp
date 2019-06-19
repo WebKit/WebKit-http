@@ -27,10 +27,8 @@
 #include "Connection.h"
 
 #include "DataReference.h"
+#include <wtf/HexNumber.h>
 #include <wtf/RandomNumber.h>
-#include <wtf/text/WTFString.h>
-
-using namespace std;
 
 namespace IPC {
 
@@ -43,9 +41,9 @@ bool Connection::createServerAndClientIdentifiers(HANDLE& serverIdentifier, HAND
 
     do {
         unsigned uniqueID = randomNumber() * std::numeric_limits<unsigned>::max();
-        pipeName = String::format("\\\\.\\pipe\\com.apple.WebKit.%x", uniqueID);
+        pipeName = makeString("\\\\.\\pipe\\com.apple.WebKit.", hex(uniqueID));
 
-        serverIdentifier = ::CreateNamedPipe(pipeName.charactersWithNullTermination().data(),
+        serverIdentifier = ::CreateNamedPipe(pipeName.wideCharacters().data(),
             PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_OVERLAPPED,
             PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE, 1, inlineMessageMaxSize, inlineMessageMaxSize,
             0, 0);
@@ -54,7 +52,7 @@ bool Connection::createServerAndClientIdentifiers(HANDLE& serverIdentifier, HAND
     if (!serverIdentifier)
         return false;
 
-    clientIdentifier = ::CreateFileW(pipeName.charactersWithNullTermination().data(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, 0);
+    clientIdentifier = ::CreateFileW(pipeName.wideCharacters().data(), GENERIC_READ | GENERIC_WRITE, 0, 0, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, 0);
     if (!clientIdentifier) {
         ::CloseHandle(serverIdentifier);
         return false;
@@ -125,7 +123,6 @@ void Connection::readEventHandler()
 
                 m_readBuffer.grow(m_readBuffer.size() + bytesToRead);
                 if (!::ReadFile(m_connectionPipe, m_readBuffer.data() + numberOfBytesRead, bytesToRead, 0, &m_readListener.state())) {
-                    DWORD error = ::GetLastError();
                     ASSERT_NOT_REACHED();
                     return;
                 }

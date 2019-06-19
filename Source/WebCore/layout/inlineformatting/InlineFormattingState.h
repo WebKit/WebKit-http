@@ -27,27 +27,41 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "DisplayRun.h"
 #include "FormattingState.h"
-#include "Runs.h"
+#include "InlineItem.h"
+#include "InlineLineBox.h"
 #include <wtf/IsoMalloc.h>
+#include <wtf/OptionSet.h>
 
 namespace WebCore {
-
 namespace Layout {
 
+// Temp
+using InlineItems = Vector<std::unique_ptr<InlineItem>>;
+using InlineRuns = Vector<std::unique_ptr<Display::Run>>;
+using LineBoxes = Vector<LineBox>;
 // InlineFormattingState holds the state for a particular inline formatting context tree.
 class InlineFormattingState : public FormattingState {
     WTF_MAKE_ISO_ALLOCATED(InlineFormattingState);
 public:
-    InlineFormattingState(Ref<FloatingState>&&, const LayoutContext&);
+    InlineFormattingState(Ref<FloatingState>&&, LayoutState&);
     virtual ~InlineFormattingState();
 
-    // This is temporary. We need to construct a display tree context for inlines.
-    void addLayoutRuns(Vector<LayoutRun>&& layoutRuns) { m_layoutRuns = WTFMove(layoutRuns); }
-    const Vector<LayoutRun>& layoutRuns() const { return m_layoutRuns; }
+    void addInlineTextItem();
+
+    InlineItems& inlineItems() { return m_inlineItems; }
+    InlineRuns& inlineRuns() { return m_inlineRuns; }
+    LineBoxes& lineBoxes() { return m_lineBoxes; }
+
+    void addInlineItem(std::unique_ptr<InlineItem>&& inlineItem) { m_inlineItems.append(WTFMove(inlineItem)); }
+    void addInlineRun(std::unique_ptr<Display::Run>&& inlineRun) { m_inlineRuns.append(WTFMove(inlineRun)); }
+    void addLineBox(LineBox lineBox) { m_lineBoxes.append(lineBox); }
 
 private:
-    Vector<LayoutRun> m_layoutRuns;
+    InlineItems m_inlineItems;
+    InlineRuns m_inlineRuns;
+    LineBoxes m_lineBoxes;
 };
 
 }

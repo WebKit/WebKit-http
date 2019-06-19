@@ -28,11 +28,10 @@
 
 #import "WKAPICast.h"
 #import "WKNSURL.h"
-#import <WebCore/CFURLExtras.h>
 #import <objc/runtime.h>
+#import <wtf/cf/CFURLExtras.h>
 #import <wtf/text/CString.h>
 
-#if WK_API_ENABLED
 static inline Class wkNSURLClass()
 {
     static dispatch_once_t once;
@@ -42,21 +41,18 @@ static inline Class wkNSURLClass()
     });
     return wkNSURLClass;
 }
-#endif // WK_API_ENABLED
 
 WKURLRef WKURLCreateWithCFURL(CFURLRef cfURL)
 {
     if (!cfURL)
         return 0;
 
-#if WK_API_ENABLED
     // Since WKNSURL is an internal class with no subclasses, we can do a simple equality check.
     if (object_getClass((__bridge NSURL *)cfURL) == wkNSURLClass())
         return WebKit::toAPI(static_cast<API::URL*>(&[(WKNSURL *)(__bridge NSURL *)CFRetain(cfURL) _apiObject]));
-#endif
 
     CString urlBytes;
-    WebCore::getURLBytes(cfURL, urlBytes);
+    WTF::getURLBytes(cfURL, urlBytes);
 
     return WebKit::toCopiedURLAPI(urlBytes.data());
 }
@@ -69,5 +65,5 @@ CFURLRef WKURLCopyCFURL(CFAllocatorRef allocatorRef, WKURLRef URLRef)
     // UTF-8 which uses less memory and is what WebKit clients might expect.
 
     CString buffer = WebKit::toImpl(URLRef)->string().utf8();
-    return WebCore::createCFURLFromBuffer(buffer.data(), buffer.length(), 0).leakRef();
+    return WTF::createCFURLFromBuffer(buffer.data(), buffer.length(), 0).leakRef();
 }

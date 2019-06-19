@@ -49,7 +49,7 @@ void WebPluginInfoProvider::refreshPlugins()
     PluginDatabase::installedPlugins()->refresh();
 }
 
-Vector<WebCore::PluginInfo> WebPluginInfoProvider::pluginInfo(WebCore::Page& page, std::optional<Vector<WebCore::SupportedPluginIdentifier>>&)
+Vector<WebCore::PluginInfo> WebPluginInfoProvider::pluginInfo(WebCore::Page& page, Optional<Vector<WebCore::SupportedPluginIdentifier>>&)
 {
     Vector<WebCore::PluginInfo> outPlugins;
     const Vector<PluginPackage*>& plugins = PluginDatabase::installedPlugins()->plugins();
@@ -84,8 +84,8 @@ Vector<WebCore::PluginInfo> WebPluginInfoProvider::pluginInfo(WebCore::Page& pag
     return outPlugins;
 }
 
-Vector<WebCore::PluginInfo> WebPluginInfoProvider::webVisiblePluginInfo(WebCore::Page& page, const WebCore::URL&)
+Vector<WebCore::PluginInfo> WebPluginInfoProvider::webVisiblePluginInfo(WebCore::Page& page, const URL&)
 {
-    std::optional<Vector<WebCore::SupportedPluginIdentifier>> supportedPluginNames;
+    Optional<Vector<WebCore::SupportedPluginIdentifier>> supportedPluginNames;
     return pluginInfo(page, supportedPluginNames);
 }

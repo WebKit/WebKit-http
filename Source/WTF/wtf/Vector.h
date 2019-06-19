@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef WTF_Vector_h
-#define WTF_Vector_h
+#pragma once
 
 #include <initializer_list>
 #include <limits>
@@ -40,6 +39,10 @@
 #if ASAN_ENABLED
 extern "C" void __sanitizer_annotate_contiguous_container(const void* begin, const void* end, const void* old_mid, const void* new_mid);
 #endif
+
+namespace JSC {
+class LLIntOffsetsExtractor;
+}
 
 namespace WTF {
 
@@ -201,7 +204,7 @@ struct VectorFiller<true, T>
     static void uninitializedFill(T* dst, T* dstEnd, const T& val) 
     {
         static_assert(sizeof(T) == 1, "Size of type T should be equal to one!");
-#if COMPILER(GCC_OR_CLANG) && defined(_FORTIFY_SOURCE)
+#if COMPILER(GCC_COMPATIBLE) && defined(_FORTIFY_SOURCE)
         if (!__builtin_constant_p(dstEnd - dst) || (!(dstEnd - dst)))
 #endif
             memset(dst, val, dstEnd - dst);
@@ -429,6 +432,7 @@ protected:
     using Base::m_size;
 
 private:
+    friend class JSC::LLIntOffsetsExtractor;
     using Base::m_buffer;
     using Base::m_capacity;
 };
@@ -529,14 +533,9 @@ public:
     {
         ASSERT(buffer());
 
-#if COMPILER(GCC)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Winvalid-offsetof"
-#endif
+        IGNORE_GCC_WARNINGS_BEGIN("invalid-offsetof")
         static_assert((offsetof(VectorBuffer, m_inlineBuffer) + sizeof(m_inlineBuffer)) % 8 == 0, "Inline buffer end needs to be on 8 byte boundary for ASan annotations to work.");
-#if COMPILER(GCC)
-#pragma GCC diagnostic pop
-#endif
+        IGNORE_GCC_WARNINGS_END
 
         if (buffer() == inlineBuffer())
             return reinterpret_cast<char*>(m_inlineBuffer) + sizeof(m_inlineBuffer);
@@ -613,6 +612,7 @@ class Vector : private VectorBuffer<T, inlineCapacity> {
 private:
     typedef VectorBuffer<T, inlineCapacity> Base;
     typedef VectorTypeOperations<T> TypeOperations;
+    friend class JSC::LLIntOffsetsExtractor;
 
 public:
     typedef T ValueType;
@@ -775,6 +775,7 @@ public:
 
     void uncheckedAppend(ValueType&& value) { uncheckedAppend<ValueType>(std::forward<ValueType>(value)); }
     template<typename U> void uncheckedAppend(U&&);
+    template<typename... Args> void uncheckedConstructAndAppend(Args&&...);
 
     template<typename U> void append(const U*, size_t);
     template<typename U, size_t otherCapacity> void appendVector(const Vector<U, otherCapacity>&);
@@ -782,7 +783,7 @@ public:
 
     template<typename U> void insert(size_t position, const U*, size_t);
     template<typename U> void insert(size_t position, U&&);
-    template<typename U, size_t c> void insertVector(size_t position, const Vector<U, c>&);
+    template<typename U, size_t c, typename OH> void insertVector(size_t position, const Vector<U, c, OH>&);
 
     void remove(size_t position);
     void remove(size_t position, size_t length);
@@ -1392,6 +1393,18 @@ ALWAYS_INLINE void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::unch
 }
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename... Args>
+ALWAYS_INLINE void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::uncheckedConstructAndAppend(Args&&... args)
+{
+    ASSERT(size() < capacity());
+
+    asanBufferSizeWillChangeTo(m_size + 1);
+
+    new (NotNull, end()) T(std::forward<Args>(args)...);
+    ++m_size;
+}
+
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
 template<typename U, size_t otherCapacity>
 inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::appendVector(const Vector<U, otherCapacity>& val)
 {
@@ -1438,8 +1451,8 @@ inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::insert(size
 }
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
-template<typename U, size_t c>
-inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::insertVector(size_t position, const Vector<U, c>& val)
+template<typename U, size_t c, typename OH>
+inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::insertVector(size_t position, const Vector<U, c, OH>& val)
 {
     insert(position, val.begin(), val.size());
 }
@@ -1713,5 +1726,3 @@ using WTF::copyToVector;
 using WTF::copyToVectorOf;
 using WTF::copyToVectorSpecialization;
 using WTF::removeRepeatedElements;
-
-#endif // WTF_Vector_h

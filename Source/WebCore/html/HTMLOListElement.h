@@ -32,7 +32,7 @@ public:
     static Ref<HTMLOListElement> create(Document&);
     static Ref<HTMLOListElement> create(const QualifiedName&, Document&);
 
-    int startForBindings() const { return m_start.value_or(1); }
+    int startForBindings() const { return m_start.valueOr(1); }
     WEBCORE_EXPORT void setStartForBindings(int);
 
     // FIXME: The reason start() does not trigger layout is because it is called
@@ -41,19 +41,19 @@ public:
 
     int start() const { return m_start ? m_start.value() : (m_isReversed ? itemCount() : 1); }
     bool isReversed() const { return m_isReversed; }
-    void itemCountChanged() { m_itemCount = std::nullopt; }
+    void itemCountChanged() { m_itemCount = WTF::nullopt; }
 
 private:
     HTMLOListElement(const QualifiedName&, Document&);
         
     WEBCORE_EXPORT unsigned itemCount() const;
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
     bool isPresentationAttribute(const QualifiedName&) const final;
-    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomString&, MutableStyleProperties&) final;
 
-    std::optional<int> m_start;
-    mutable std::optional<unsigned> m_itemCount;
+    Optional<int> m_start;
+    mutable Optional<unsigned> m_itemCount;
     bool m_isReversed { false };
 };
 

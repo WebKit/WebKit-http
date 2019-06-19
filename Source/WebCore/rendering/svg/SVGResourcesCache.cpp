@@ -116,7 +116,7 @@ void SVGResourcesCache::clientStyleChanged(RenderElement& renderer, StyleDiffere
     RenderSVGResource::markForLayoutAndParentResourceInvalidation(renderer, false);
 
     if (renderer.element() && !renderer.element()->isSVGElement())
-        renderer.element()->invalidateStyleAndLayerComposition();
+        renderer.element()->invalidateStyle();
 }
 
 void SVGResourcesCache::clientWasAddedToTree(RenderObject& renderer)
@@ -163,9 +163,8 @@ void SVGResourcesCache::resourceDestroyed(RenderSVGResourceContainer& resource)
     for (auto& it : cache.m_cache) {
         if (it.value->resourceDestroyed(resource)) {
             // Mark users of destroyed resources as pending resolution based on the id of the old resource.
-            Element& resourceElement = resource.element();
-            Element* clientElement = it.key->element();
-            clientElement->document().accessSVGExtensions().addPendingResource(resourceElement.getIdAttribute(), clientElement);
+            auto& clientElement = *it.key->element();
+            clientElement.document().accessSVGExtensions().addPendingResource(resource.element().getIdAttribute(), clientElement);
         }
     }
 }

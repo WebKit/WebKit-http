@@ -43,12 +43,15 @@
 #include "RuntimeEnabledFeatures.h"
 #include "UserMediaController.h"
 #include "UserMediaRequest.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/RandomNumber.h>
 
 namespace WebCore {
 
+WTF_MAKE_ISO_ALLOCATED_IMPL(MediaDevices);
+
 inline MediaDevices::MediaDevices(Document& document)
-    : ActiveDOMObject(&document)
+    : ActiveDOMObject(document)
     , m_scheduledEventTimer(*this, &MediaDevices::scheduledEventTimerFired)
     , m_eventNames(eventNames())
 {
@@ -96,11 +99,11 @@ static MediaConstraints createMediaConstraints(const Variant<bool, MediaTrackCon
     );
 }
 
-ExceptionOr<void> MediaDevices::getUserMedia(const StreamConstraints& constraints, Promise&& promise) const
+void MediaDevices::getUserMedia(const StreamConstraints& constraints, Promise&& promise) const
 {
     auto* document = this->document();
     if (!document)
-        return Exception { InvalidStateError };
+        return;
 
     auto audioConstraints = createMediaConstraints(constraints.audio);
     auto videoConstraints = createMediaConstraints(constraints.video);
@@ -108,23 +111,22 @@ ExceptionOr<void> MediaDevices::getUserMedia(const StreamConstraints& constraint
         videoConstraints.setDefaultVideoConstraints();
 
     auto request = UserMediaRequest::create(*document, { MediaStreamRequest::Type::UserMedia, WTFMove(audioConstraints), WTFMove(videoConstraints) }, WTFMove(promise));
-    if (request)
-        request->start();
-
-    return { };
+    request->start();
 }
 
-ExceptionOr<void> MediaDevices::getDisplayMedia(const StreamConstraints& constraints, Promise&& promise) const
+void MediaDevices::getDisplayMedia(const StreamConstraints& constraints, Promise&& promise) const
 {
     auto* document = this->document();
     if (!document)
-        return Exception { InvalidStateError };
+        return;
 
-    auto request = UserMediaRequest::create(*document, { MediaStreamRequest::Type::DisplayMedia, createMediaConstraints(constraints.audio), createMediaConstraints(constraints.video) }, WTFMove(promise));
-    if (request)
-        request->start();
+    if (!m_disableGetDisplayMediaUserGestureConstraint && !UserGestureIndicator::processingUserGesture()) {
+        promise.reject(Exception { InvalidAccessError, "getDisplayMedia must be called from a user gesture handler."_s });
+        return;
+    }
 
-    return { };
+    auto request = UserMediaRequest::create(*document, { MediaStreamRequest::Type::DisplayMedia, { }, createMediaConstraints(constraints.video) }, WTFMove(promise));
+    request->start();
 }
 
 void MediaDevices::enumerateDevices(EnumerateDevicesPromise&& promise) const
@@ -175,7 +177,7 @@ bool MediaDevices::canSuspendForDocumentSuspension() const
     return true;
 }
 
-bool MediaDevices::addEventListener(const AtomicString& eventType, Ref<EventListener>&& listener, const AddEventListenerOptions& options)
+bool MediaDevices::addEventListener(const AtomString& eventType, Ref<EventListener>&& listener, const AddEventListenerOptions& options)
 {
     if (!m_listeningForDeviceChanges && eventType == eventNames().devicechangeEvent) {
         auto* document = this->document();
@@ -186,6 +188,16 @@ bool MediaDevices::addEventListener(const AtomicString& eventType, Ref<EventList
             m_deviceChangeToken = controller->addDeviceChangeObserver([weakThis = makeWeakPtr(*this), this]() {
 
                 if (!weakThis || m_scheduledEventTimer.isActive())
+                    return;
+
+                auto* document = this->document();
+                auto* controller = document ? UserMediaController::from(document->page()) : nullptr;
+                if (!controller)
+                    return;
+
+                bool canAccessMicrophone = controller->canCallGetUserMedia(*document, { UserMediaController::CaptureType::Microphone }) == UserMediaController::GetUserMediaAccess::CanCall;
+                bool canAccessCamera = controller->canCallGetUserMedia(*document, { UserMediaController::CaptureType::Camera }) == UserMediaController::GetUserMediaAccess::CanCall;
+                if (!canAccessMicrophone && !canAccessCamera)
                     return;
 
                 m_scheduledEventTimer.startOneShot(Seconds(randomNumber() / 2));

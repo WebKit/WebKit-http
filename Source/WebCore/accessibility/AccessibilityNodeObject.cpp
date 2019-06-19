@@ -177,8 +177,9 @@ AccessibilityObject* AccessibilityNodeObject::firstChild() const
 
     if (!firstChild)
         return nullptr;
-    
-    return axObjectCache()->getOrCreate(firstChild);
+
+    auto objectCache = axObjectCache();
+    return objectCache ? objectCache->getOrCreate(firstChild) : nullptr;
 }
 
 AccessibilityObject* AccessibilityNodeObject::lastChild() const
@@ -189,8 +190,9 @@ AccessibilityObject* AccessibilityNodeObject::lastChild() const
     Node* lastChild = node()->lastChild();
     if (!lastChild)
         return nullptr;
-    
-    return axObjectCache()->getOrCreate(lastChild);
+
+    auto objectCache = axObjectCache();
+    return objectCache ? objectCache->getOrCreate(lastChild) : nullptr;
 }
 
 AccessibilityObject* AccessibilityNodeObject::previousSibling() const
@@ -202,7 +204,8 @@ AccessibilityObject* AccessibilityNodeObject::previousSibling() const
     if (!previousSibling)
         return nullptr;
 
-    return axObjectCache()->getOrCreate(previousSibling);
+    auto objectCache = axObjectCache();
+    return objectCache ? objectCache->getOrCreate(previousSibling) : nullptr;
 }
 
 AccessibilityObject* AccessibilityNodeObject::nextSibling() const
@@ -214,7 +217,8 @@ AccessibilityObject* AccessibilityNodeObject::nextSibling() const
     if (!nextSibling)
         return nullptr;
 
-    return axObjectCache()->getOrCreate(nextSibling);
+    auto objectCache = axObjectCache();
+    return objectCache ? objectCache->getOrCreate(nextSibling) : nullptr;
 }
     
 AccessibilityObject* AccessibilityNodeObject::parentObjectIfExists() const
@@ -344,9 +348,13 @@ void AccessibilityNodeObject::addChildren()
     // The only time we add children from the DOM tree to a node with a renderer is when it's a canvas.
     if (renderer() && !m_node->hasTagName(canvasTag))
         return;
-    
+
+    auto objectCache = axObjectCache();
+    if (!objectCache)
+        return;
+
     for (Node* child = m_node->firstChild(); child; child = child->nextSibling())
-        addChild(axObjectCache()->getOrCreate(child));
+        addChild(objectCache->getOrCreate(child));
     
     m_subtreeDirty = false;
 }
@@ -380,6 +388,7 @@ bool AccessibilityNodeObject::canHaveChildren() const
     case AccessibilityRole::MenuItemCheckbox:
     case AccessibilityRole::MenuItemRadio:
     case AccessibilityRole::Splitter:
+    case AccessibilityRole::Meter:
         return false;
     case AccessibilityRole::DocumentMath:
 #if ENABLE(MATHML)
@@ -479,7 +488,7 @@ bool AccessibilityNodeObject::isSearchField() const
     // but it will catch google.com for example.
 
     // Check the node name of the input type, sometimes it's "search".
-    const AtomicString& nameAttribute = getAttribute(nameAttr);
+    const AtomString& nameAttribute = getAttribute(nameAttr);
     if (nameAttribute.containsIgnoringASCIICase("search"))
         return true;
 
@@ -560,7 +569,7 @@ bool AccessibilityNodeObject::isInputImage() const
 
 bool AccessibilityNodeObject::isProgressIndicator() const
 {
-    return roleValue() == AccessibilityRole::ProgressIndicator;
+    return roleValue() == AccessibilityRole::ProgressIndicator || roleValue() == AccessibilityRole::Meter;
 }
 
 bool AccessibilityNodeObject::isSlider() const
@@ -624,7 +633,7 @@ bool AccessibilityNodeObject::isEnabled() const
 {
     // ARIA says that the disabled status applies to the current element and all descendant elements.
     for (AccessibilityObject* object = const_cast<AccessibilityNodeObject*>(this); object; object = object->parentObject()) {
-        const AtomicString& disabledStatus = object->getAttribute(aria_disabledAttr);
+        const AtomString& disabledStatus = object->getAttribute(aria_disabledAttr);
         if (equalLettersIgnoringASCIICase(disabledStatus, "true"))
             return false;
         if (equalLettersIgnoringASCIICase(disabledStatus, "false"))
@@ -703,7 +712,7 @@ bool AccessibilityNodeObject::isHovered() const
 
 bool AccessibilityNodeObject::isMultiSelectable() const
 {
-    const AtomicString& ariaMultiSelectable = getAttribute(aria_multiselectableAttr);
+    const AtomString& ariaMultiSelectable = getAttribute(aria_multiselectableAttr);
     if (equalLettersIgnoringASCIICase(ariaMultiSelectable, "true"))
         return true;
     if (equalLettersIgnoringASCIICase(ariaMultiSelectable, "false"))
@@ -715,7 +724,7 @@ bool AccessibilityNodeObject::isMultiSelectable() const
 bool AccessibilityNodeObject::isRequired() const
 {
     // Explicit aria-required values should trump native required attributes.
-    const AtomicString& requiredValue = getAttribute(aria_requiredAttr);
+    const AtomString& requiredValue = getAttribute(aria_requiredAttr);
     if (equalLettersIgnoringASCIICase(requiredValue, "true"))
         return true;
     if (equalLettersIgnoringASCIICase(requiredValue, "false"))
@@ -885,7 +894,7 @@ bool AccessibilityNodeObject::isControl() const
     if (!node)
         return false;
 
-    return is<HTMLFormControlElement>(*node) || AccessibilityObject::isARIAControl(ariaRoleAttribute());
+    return is<HTMLFormControlElement>(*node) || AccessibilityObject::isARIAControl(ariaRoleAttribute()) || roleValue() == AccessibilityRole::Button;
 }
 
 bool AccessibilityNodeObject::isFieldset() const
@@ -948,6 +957,8 @@ Element* AccessibilityNodeObject::anchorElement() const
         return nullptr;
 
     AXObjectCache* cache = axObjectCache();
+    if (!cache)
+        return nullptr;
 
     // search up the DOM tree for an anchor element
     // NOTE: this assumes that any non-image with an anchor is an HTMLAnchorElement
@@ -1063,6 +1074,10 @@ void AccessibilityNodeObject::alterSliderValue(bool increase)
 {
     if (roleValue() != AccessibilityRole::Slider)
         return;
+    
+    auto element = this->element();
+    if (!element || element->isDisabledFormControl())
+        return;
 
     if (!getAttribute(stepAttr).isEmpty())
         changeValueByStep(increase);
@@ -1072,16 +1087,12 @@ void AccessibilityNodeObject::alterSliderValue(bool increase)
     
 void AccessibilityNodeObject::increment()
 {
-    if (dispatchAccessibilityEventWithType(AccessibilityEventType::Increment))
-        return;
     UserGestureIndicator gestureIndicator(ProcessingUserGesture, document());
     alterSliderValue(true);
 }
 
 void AccessibilityNodeObject::decrement()
 {
-    if (dispatchAccessibilityEventWithType(AccessibilityEventType::Decrement))
-        return;
     UserGestureIndicator gestureIndicator(ProcessingUserGesture, document());
     alterSliderValue(false);
 }
@@ -1093,9 +1104,11 @@ void AccessibilityNodeObject::changeValueByStep(bool increase)
 
     value += increase ? step : -step;
 
-    setValue(String::number(value));
+    setValue(String::numberToStringFixedPrecision(value));
 
-    axObjectCache()->postNotification(node(), AXObjectCache::AXValueChanged);
+    auto objectCache = axObjectCache();
+    if (objectCache)
+        objectCache->postNotification(node(), AXObjectCache::AXValueChanged);
 }
 
 void AccessibilityNodeObject::changeValueByPercent(float percentChange)
@@ -1105,13 +1118,15 @@ void AccessibilityNodeObject::changeValueByPercent(float percentChange)
     float value = valueForRange();
 
     // Make sure the specified percent will cause a change of one integer step or larger.
-    if (fabs(step) < 1)
-        step = fabs(percentChange) * (1 / percentChange);
+    if (std::abs(step) < 1)
+        step = std::abs(percentChange) * (1 / percentChange);
 
     value += step;
-    setValue(String::number(value));
+    setValue(String::numberToStringFixedPrecision(value));
 
-    axObjectCache()->postNotification(node(), AXObjectCache::AXValueChanged);
+    auto objectCache = axObjectCache();
+    if (objectCache)
+        objectCache->postNotification(node(), AXObjectCache::AXValueChanged);
 }
 
 bool AccessibilityNodeObject::isGenericFocusableElement() const
@@ -1158,7 +1173,7 @@ HTMLLabelElement* AccessibilityNodeObject::labelForElement(Element* element) con
     if (!is<HTMLElement>(*element) || !downcast<HTMLElement>(*element).isLabelable())
         return nullptr;
 
-    const AtomicString& id = element->getIdAttribute();
+    const AtomString& id = element->getIdAttribute();
     if (!id.isEmpty()) {
         if (HTMLLabelElement* label = element->treeScope().labelElementForId(id))
             return label;
@@ -1173,7 +1188,7 @@ String AccessibilityNodeObject::ariaAccessibilityDescription() const
     if (!ariaLabeledBy.isEmpty())
         return ariaLabeledBy;
 
-    const AtomicString& ariaLabel = getAttribute(aria_labelAttr);
+    const AtomString& ariaLabel = getAttribute(aria_labelAttr);
     if (!ariaLabel.isEmpty())
         return ariaLabel;
 
@@ -1272,10 +1287,14 @@ String AccessibilityNodeObject::textForLabelElement(Element* element) const
     String result = String();
     if (!is<HTMLLabelElement>(*element))
         return result;
-    
+
+    auto objectCache = axObjectCache();
+    if (!objectCache)
+        return result;
+
     HTMLLabelElement* label = downcast<HTMLLabelElement>(element);
     // Check to see if there's aria-labelledby attribute on the label element.
-    if (AccessibilityObject* labelObject = axObjectCache()->getOrCreate(label))
+    if (AccessibilityObject* labelObject = objectCache->getOrCreate(label))
         result = labelObject->ariaLabeledByAttribute();
     
     return !result.isEmpty() ? result : accessibleNameForNode(label);
@@ -1290,10 +1309,11 @@ void AccessibilityNodeObject::titleElementText(Vector<AccessibilityText>& textOr
     if (isLabelable()) {
         if (HTMLLabelElement* label = labelForElement(downcast<Element>(node))) {
             String innerText = textForLabelElement(label);
-            
+
+            auto objectCache = axObjectCache();
             // Only use the <label> text if there's no ARIA override.
-            if (!innerText.isEmpty() && !ariaAccessibilityDescription())
-                textOrder.append(AccessibilityText(innerText, isMeter() ? AccessibilityTextSource::Alternative : AccessibilityTextSource::LabelByElement, axObjectCache()->getOrCreate(label)));
+            if (objectCache && !innerText.isEmpty() && !ariaAccessibilityDescription())
+                textOrder.append(AccessibilityText(innerText, isMeter() ? AccessibilityTextSource::Alternative : AccessibilityTextSource::LabelByElement, objectCache->getOrCreate(label)));
             return;
         }
     }
@@ -1314,7 +1334,7 @@ void AccessibilityNodeObject::alternativeText(Vector<AccessibilityText>& textOrd
     
     ariaLabeledByText(textOrder);
     
-    const AtomicString& ariaLabel = getAttribute(aria_labelAttr);
+    const AtomString& ariaLabel = getAttribute(aria_labelAttr);
     if (!ariaLabel.isEmpty())
         textOrder.append(AccessibilityText(ariaLabel, AccessibilityTextSource::Alternative));
     
@@ -1330,7 +1350,7 @@ void AccessibilityNodeObject::alternativeText(Vector<AccessibilityText>& textOrd
         }
         // Images should use alt as long as the attribute is present, even if empty.
         // Otherwise, it should fallback to other methods, like the title attribute.
-        const AtomicString& alt = getAttribute(altAttr);
+        const AtomString& alt = getAttribute(altAttr);
         if (!alt.isEmpty())
             textOrder.append(AccessibilityText(alt, AccessibilityTextSource::Alternative));
     }
@@ -1339,9 +1359,10 @@ void AccessibilityNodeObject::alternativeText(Vector<AccessibilityText>& textOrd
     if (!node)
         return;
     
+    auto objectCache = axObjectCache();
     // The fieldset element derives its alternative text from the first associated legend element if one is available.
-    if (is<HTMLFieldSetElement>(*node)) {
-        AccessibilityObject* object = axObjectCache()->getOrCreate(downcast<HTMLFieldSetElement>(*node).legend());
+    if (objectCache && is<HTMLFieldSetElement>(*node)) {
+        AccessibilityObject* object = objectCache->getOrCreate(downcast<HTMLFieldSetElement>(*node).legend());
         if (object && !object->isHidden())
             textOrder.append(AccessibilityText(accessibleNameForNode(object->node()), AccessibilityTextSource::Alternative));
     }
@@ -1434,7 +1455,7 @@ void AccessibilityNodeObject::visibleText(Vector<AccessibilityText>& textOrder) 
 
 void AccessibilityNodeObject::helpText(Vector<AccessibilityText>& textOrder) const
 {
-    const AtomicString& ariaHelp = getAttribute(aria_helpAttr);
+    const AtomString& ariaHelp = getAttribute(aria_helpAttr);
     if (!ariaHelp.isEmpty())
         textOrder.append(AccessibilityText(ariaHelp, AccessibilityTextSource::Help));
     
@@ -1451,7 +1472,7 @@ void AccessibilityNodeObject::helpText(Vector<AccessibilityText>& textOrder) con
     }
 
     // Summary attribute used as help text on tables.
-    const AtomicString& summary = getAttribute(summaryAttr);
+    const AtomString& summary = getAttribute(summaryAttr);
     if (!summary.isEmpty())
         textOrder.append(AccessibilityText(summary, AccessibilityTextSource::Summary));
 
@@ -1460,7 +1481,7 @@ void AccessibilityNodeObject::helpText(Vector<AccessibilityText>& textOrder) con
     // descriptive text. This is problematic in the case of meters because the HTML spec suggests authors
     // can expose units through this attribute. Therefore, if the element is a meter, change its source
     // type to AccessibilityTextSource::Help.
-    const AtomicString& title = getAttribute(titleAttr);
+    const AtomString& title = getAttribute(titleAttr);
     if (!title.isEmpty()) {
         if (!isMeter() && !roleIgnoresTitle())
             textOrder.append(AccessibilityText(title, AccessibilityTextSource::TitleTag));
@@ -1469,7 +1490,7 @@ void AccessibilityNodeObject::helpText(Vector<AccessibilityText>& textOrder) con
     }
 }
 
-void AccessibilityNodeObject::accessibilityText(Vector<AccessibilityText>& textOrder)
+void AccessibilityNodeObject::accessibilityText(Vector<AccessibilityText>& textOrder) const
 {
     titleElementText(textOrder);
     alternativeText(textOrder);
@@ -1485,12 +1506,16 @@ void AccessibilityNodeObject::ariaLabeledByText(Vector<AccessibilityText>& textO
 {
     String ariaLabeledBy = ariaLabeledByAttribute();
     if (!ariaLabeledBy.isEmpty()) {
+        auto objectCache = axObjectCache();
+        if (!objectCache)
+            return;
+
         Vector<Element*> elements;
         ariaLabeledByElements(elements);
-        
+
         Vector<RefPtr<AccessibilityObject>> axElements;
         for (const auto& element : elements)
-            axElements.append(axObjectCache()->getOrCreate(element));
+            axElements.append(objectCache->getOrCreate(element));
         
         textOrder.append(AccessibilityText(ariaLabeledBy, AccessibilityTextSource::Alternative, WTFMove(axElements)));
     }
@@ -1514,14 +1539,14 @@ String AccessibilityNodeObject::alternativeTextForWebArea() const
     
     // Check if the HTML element has an aria-label for the webpage.
     if (Element* documentElement = document->documentElement()) {
-        const AtomicString& ariaLabel = documentElement->attributeWithoutSynchronization(aria_labelAttr);
+        const AtomString& ariaLabel = documentElement->attributeWithoutSynchronization(aria_labelAttr);
         if (!ariaLabel.isEmpty())
             return ariaLabel;
     }
     
     if (auto* owner = document->ownerElement()) {
         if (owner->hasTagName(frameTag) || owner->hasTagName(iframeTag)) {
-            const AtomicString& title = owner->attributeWithoutSynchronization(titleAttr);
+            const AtomString& title = owner->attributeWithoutSynchronization(titleAttr);
             if (!title.isEmpty())
                 return title;
         }
@@ -1551,7 +1576,7 @@ String AccessibilityNodeObject::accessibilityDescription() const
     if (usesAltTagForTextComputation()) {
         // Images should use alt as long as the attribute is present, even if empty.                    
         // Otherwise, it should fallback to other methods, like the title attribute.                    
-        const AtomicString& alt = getAttribute(altAttr);
+        const AtomString& alt = getAttribute(altAttr);
         if (!alt.isNull())
             return alt;
     }
@@ -1594,7 +1619,7 @@ String AccessibilityNodeObject::helpText() const
     if (!node)
         return String();
     
-    const AtomicString& ariaHelp = getAttribute(aria_helpAttr);
+    const AtomString& ariaHelp = getAttribute(aria_helpAttr);
     if (!ariaHelp.isEmpty())
         return ariaHelp;
     
@@ -1606,19 +1631,23 @@ String AccessibilityNodeObject::helpText() const
     for (Node* ancestor = node; ancestor; ancestor = ancestor->parentNode()) {
         if (is<HTMLElement>(*ancestor)) {
             HTMLElement& element = downcast<HTMLElement>(*ancestor);
-            const AtomicString& summary = element.getAttribute(summaryAttr);
+            const AtomString& summary = element.getAttribute(summaryAttr);
             if (!summary.isEmpty())
                 return summary;
             
             // The title attribute should be used as help text unless it is already being used as descriptive text.
-            const AtomicString& title = element.getAttribute(titleAttr);
+            const AtomString& title = element.getAttribute(titleAttr);
             if (!title.isEmpty() && description != title)
                 return title;
         }
-        
-        // Only take help text from an ancestor element if its a group or an unknown role. If help was 
+
+        auto objectCache = axObjectCache();
+        if (!objectCache)
+            return String();
+
+        // Only take help text from an ancestor element if its a group or an unknown role. If help was
         // added to those kinds of elements, it is likely it was meant for a child element.
-        if (AccessibilityObject* axObj = axObjectCache()->getOrCreate(ancestor)) {
+        if (AccessibilityObject* axObj = objectCache->getOrCreate(ancestor)) {
             if (!axObj->isGroup() && axObj->roleValue() != AccessibilityRole::Unknown)
                 break;
         }
@@ -1633,7 +1662,7 @@ unsigned AccessibilityNodeObject::hierarchicalLevel() const
     if (!is<Element>(node))
         return 0;
     Element& element = downcast<Element>(*node);
-    const AtomicString& ariaLevel = element.attributeWithoutSynchronization(aria_levelAttr);
+    const AtomString& ariaLevel = element.attributeWithoutSynchronization(aria_levelAttr);
     if (!ariaLevel.isEmpty())
         return ariaLevel.toInt();
     
@@ -1741,10 +1770,14 @@ String AccessibilityNodeObject::textUnderElement(AccessibilityTextUnderElementMo
     if (is<Text>(node))
         return downcast<Text>(*node).wholeText();
 
+    bool isAriaVisible = AccessibilityObject::matchedParent(*this, true, [] (const AccessibilityObject& object) {
+        return equalLettersIgnoringASCIICase(object.getAttribute(aria_hiddenAttr), "false");
+    }) != nullptr;
+
     // The Accname specification states that if the current node is hidden, and not directly
     // referenced by aria-labelledby or aria-describedby, and is not a host language text
     // alternative, the empty string should be returned.
-    if (isHidden() && !is<HTMLLabelElement>(node) && (node && !ancestorsOfType<HTMLCanvasElement>(*node).first())) {
+    if (isDOMHidden() && !isAriaVisible && !is<HTMLLabelElement>(node) && (node && !ancestorsOfType<HTMLCanvasElement>(*node).first())) {
         AccessibilityObject::AccessibilityChildrenVector labelFor;
         AccessibilityObject::AccessibilityChildrenVector descriptionFor;
         ariaLabelledByReferencingElements(labelFor);
@@ -1897,7 +1930,7 @@ String AccessibilityNodeObject::stringValue() const
         int selectedIndex = selectElement.selectedIndex();
         const Vector<HTMLElement*>& listItems = selectElement.listItems();
         if (selectedIndex >= 0 && static_cast<size_t>(selectedIndex) < listItems.size()) {
-            const AtomicString& overriddenDescription = listItems[selectedIndex]->attributeWithoutSynchronization(aria_labelAttr);
+            const AtomString& overriddenDescription = listItems[selectedIndex]->attributeWithoutSynchronization(aria_labelAttr);
             if (!overriddenDescription.isNull())
                 return overriddenDescription;
         }
@@ -1945,11 +1978,11 @@ static String accessibleNameForNode(Node* node, Node* labelledbyNode)
         return String();
     
     Element& element = downcast<Element>(*node);
-    const AtomicString& ariaLabel = element.attributeWithoutSynchronization(aria_labelAttr);
+    const AtomString& ariaLabel = element.attributeWithoutSynchronization(aria_labelAttr);
     if (!ariaLabel.isEmpty())
         return ariaLabel;
     
-    const AtomicString& alt = element.attributeWithoutSynchronization(altAttr);
+    const AtomString& alt = element.attributeWithoutSynchronization(altAttr);
     if (!alt.isEmpty())
         return alt;
 
@@ -1998,7 +2031,7 @@ static String accessibleNameForNode(Node* node, Node* labelledbyNode)
     if (!text.isEmpty())
         return text;
     
-    const AtomicString& title = element.attributeWithoutSynchronization(titleAttr);
+    const AtomString& title = element.attributeWithoutSynchronization(titleAttr);
     if (!title.isEmpty())
         return title;
     
@@ -2128,7 +2161,7 @@ bool AccessibilityNodeObject::canSetValueAttribute() const
     if (isProgressIndicator() || isSlider() || isScrollbar())
         return true;
 
-#if PLATFORM(GTK)
+#if USE(ATK)
     // In ATK, input types which support aria-readonly are treated as having a
     // settable value if the user can modify the widget's value or its state.
     if (supportsReadOnly())
@@ -2158,7 +2191,7 @@ bool AccessibilityNodeObject::canSetValueAttribute() const
 
 AccessibilityRole AccessibilityNodeObject::determineAriaRoleAttribute() const
 {
-    const AtomicString& ariaRole = getAttribute(roleAttr);
+    const AtomString& ariaRole = getAttribute(roleAttr);
     if (ariaRole.isNull() || ariaRole.isEmpty())
         return AccessibilityRole::Unknown;
     
@@ -2232,7 +2265,6 @@ bool AccessibilityNodeObject::canSetSelectedAttribute() const
     switch (roleValue()) {
     case AccessibilityRole::Cell:
     case AccessibilityRole::GridCell:
-    case AccessibilityRole::RadioButton:
     case AccessibilityRole::RowHeader:
     case AccessibilityRole::Row:
     case AccessibilityRole::TabList:

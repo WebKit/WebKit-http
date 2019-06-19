@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 #import <wtf/Platform.h>
 #import "PluginProcessShim.h"
@@ -45,97 +45,6 @@ namespace WebKit {
 extern "C" void WebKitPluginProcessShimInitialize(const PluginProcessShimCallbacks& callbacks);
 
 static PluginProcessShimCallbacks pluginProcessShimCallbacks;
-
-#ifndef __LP64__
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-
-static void shimDebugger(void)
-{
-    if (!pluginProcessShimCallbacks.shouldCallRealDebugger())
-        return;
-    
-    Debugger();
-}
-
-static UInt32 shimGetCurrentEventButtonState()
-{
-    return pluginProcessShimCallbacks.getCurrentEventButtonState();
-}
-
-static Boolean shimIsWindowActive(WindowRef window)
-{
-    bool result;
-    if (pluginProcessShimCallbacks.isWindowActive(window, result))
-        return result;
-    
-    return IsWindowActive(window);
-}
-
-static void shimModalDialog(ModalFilterUPP modalFilter, DialogItemIndex *itemHit)
-{
-    pluginProcessShimCallbacks.beginModal();
-    ModalDialog(modalFilter, itemHit);
-    pluginProcessShimCallbacks.endModal();
-}
-
-static DialogItemIndex shimAlert(SInt16 alertID, ModalFilterUPP modalFilter)
-{
-    pluginProcessShimCallbacks.beginModal();
-    DialogItemIndex index = Alert(alertID, modalFilter);
-    pluginProcessShimCallbacks.endModal();
-    
-    return index;
-}
-
-static void shimShowWindow(WindowRef window)
-{
-    pluginProcessShimCallbacks.carbonWindowShown(window);
-    ShowWindow(window);
-}
-
-static void shimHideWindow(WindowRef window)
-{
-    pluginProcessShimCallbacks.carbonWindowHidden(window);
-    HideWindow(window);
-}
-
-static OSStatus
-shimLSOpenCFURLRef(CFURLRef url, CFURLRef* launchedURL)
-{
-    int32_t returnValue;
-    if (pluginProcessShimCallbacks.openCFURLRef(url, returnValue, launchedURL))
-        return returnValue;
-
-    return LSOpenCFURLRef(url, launchedURL);
-}
-
-static kern_return_t shimMachVMMap(vm_map_t task, mach_vm_address_t *address, mach_vm_size_t size, mach_vm_offset_t mask, int flags, mem_entry_name_port_t object, memory_object_offset_t offset, boolean_t copy, vm_prot_t currentProtection, vm_prot_t maxProtection, vm_inherit_t inheritance)
-{
-    if (task == mach_task_self()) {
-        if (pluginProcessShimCallbacks.shouldMapMemoryExecutable && pluginProcessShimCallbacks.shouldMapMemoryExecutable(flags)) {
-            currentProtection |= VM_PROT_EXECUTE;
-            maxProtection |= VM_PROT_EXECUTE;
-        }
-    }
-
-    return mach_vm_map(task, address, size, mask, flags, object, offset, copy, currentProtection, maxProtection, inheritance);
-}
-
-DYLD_INTERPOSE(shimDebugger, Debugger);
-DYLD_INTERPOSE(shimGetCurrentEventButtonState, GetCurrentEventButtonState);
-DYLD_INTERPOSE(shimIsWindowActive, IsWindowActive);
-DYLD_INTERPOSE(shimModalDialog, ModalDialog);
-DYLD_INTERPOSE(shimAlert, Alert);
-DYLD_INTERPOSE(shimShowWindow, ShowWindow);
-DYLD_INTERPOSE(shimHideWindow, HideWindow);
-DYLD_INTERPOSE(shimLSOpenCFURLRef, LSOpenCFURLRef);
-DYLD_INTERPOSE(shimMachVMMap, mach_vm_map);
-
-#pragma clang diagnostic pop
-
-#endif
 
 // Simple Fake System V shared memory. This replacement API implements
 // usable system V shared memory for use within a single process. The memory
@@ -348,4 +257,4 @@ void WebKitPluginProcessShimInitialize(const PluginProcessShimCallbacks& callbac
 
 } // namespace WebKit
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)

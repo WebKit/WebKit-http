@@ -42,8 +42,11 @@
 #include "VRPlatformDisplay.h"
 #include "VRPose.h"
 #include "VRStageParameters.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(VRDisplay);
 
 Ref<VRDisplay> VRDisplay::create(ScriptExecutionContext& context, WeakPtr<VRPlatformDisplay>&& platformDisplay)
 {
@@ -180,7 +183,7 @@ void VRDisplay::requestPresent(const Vector<VRLayerInit>& layers, Ref<DeferredPr
 
 void VRDisplay::stopPresenting()
 {
-    m_presentingLayer = std::nullopt;
+    m_presentingLayer = WTF::nullopt;
 }
 
 void VRDisplay::exitPresent(Ref<DeferredPromise>&& promise)
@@ -207,12 +210,12 @@ void VRDisplay::submitFrame()
 
 void VRDisplay::platformDisplayConnected()
 {
-    document()->domWindow()->dispatchEvent(VRDisplayEvent::create(eventNames().vrdisplayconnectEvent, makeRefPtr(this), std::nullopt));
+    document()->domWindow()->dispatchEvent(VRDisplayEvent::create(eventNames().vrdisplayconnectEvent, makeRefPtr(this), WTF::nullopt));
 }
 
 void VRDisplay::platformDisplayDisconnected()
 {
-    document()->domWindow()->dispatchEvent(VRDisplayEvent::create(eventNames().vrdisplaydisconnectEvent, makeRefPtr(this), std::nullopt));
+    document()->domWindow()->dispatchEvent(VRDisplayEvent::create(eventNames().vrdisplaydisconnectEvent, makeRefPtr(this), WTF::nullopt));
 }
 
 void VRDisplay::platformDisplayMounted()

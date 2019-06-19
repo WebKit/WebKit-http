@@ -93,6 +93,15 @@ public:
     // Linux and Windows always extend selections from the extent endpoint.
     bool shouldAlwaysExtendSelectionFromExtentEndpoint() const { return m_type != EditingMacBehavior && m_type != EditingIOSBehavior; }
 
+    // On iOS, we don't want to select all the text when focusing a field. Instead, match platform behavior by going to the end of the line.
+    bool shouldMoveSelectionToEndWhenFocusingTextInput() const { return m_type == EditingIOSBehavior; }
+    
+    // On iOS, when smart delete is on, it is always on, and should do not additional checks (i.e. WordGranularity).
+    bool shouldAlwaysSmartDelete() const { return m_type == EditingIOSBehavior; }
+    
+    // On iOS, we should turn on smart insert and delete and newlines around paragraphs to match UIKit behaviour.
+    bool shouldSmartInsertDeleteParagraphs() const { return m_type == EditingIOSBehavior; }
+
 private:
     EditingBehaviorType m_type;
 };

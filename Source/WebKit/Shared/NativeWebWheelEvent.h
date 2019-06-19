@@ -42,7 +42,7 @@ typedef union _GdkEvent GdkEvent;
 #include <qevent.h>
 #endif
 
-#if PLATFORM(WPE)
+#if USE(LIBWPE)
 struct wpe_input_axis_event;
 #endif
 
@@ -62,7 +62,7 @@ public:
     NativeWebWheelEvent(const NativeWebWheelEvent&);
     NativeWebWheelEvent(GdkEvent*);
     NativeWebWheelEvent(GdkEvent*, WebWheelEvent::Phase, WebWheelEvent::Phase momentumPhase);
-#elif PLATFORM(WPE)
+#elif USE(LIBWPE)
     NativeWebWheelEvent(struct wpe_input_axis_event*, float deviceScaleFactor);
 #elif PLATFORM(WIN)
     NativeWebWheelEvent(HWND, UINT message, WPARAM, LPARAM);

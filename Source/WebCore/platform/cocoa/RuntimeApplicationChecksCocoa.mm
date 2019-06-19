@@ -62,13 +62,13 @@ String applicationBundleIdentifier()
 void setApplicationBundleIdentifier(const String& bundleIdentifier)
 {
     ASSERT(RunLoop::isMain());
-    ASSERT_WITH_MESSAGE(!applicationBundleIdentifierOverrideWasQueried, "applicationBundleIsEqualTo() should not be called before setApplicationBundleIdentifier()");
+    ASSERT_WITH_MESSAGE(!applicationBundleIdentifierOverrideWasQueried, "applicationBundleIsEqualTo() and applicationBundleStartsWith() should not be called before setApplicationBundleIdentifier()");
     applicationBundleIdentifierOverride() = bundleIdentifier;
 }
 
-static std::optional<uint32_t>& applicationSDKVersionOverride()
+static Optional<uint32_t>& applicationSDKVersionOverride()
 {
-    static NeverDestroyed<std::optional<uint32_t>> version;
+    static NeverDestroyed<Optional<uint32_t>> version;
     return version;
 }
 
@@ -86,9 +86,7 @@ uint32_t applicationSDKVersion()
 
 bool isInWebProcess()
 {
-    static bool mainBundleIsWebProcess = [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.WebKit.WebContent.Development"]
-        || [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.WebKit.WebContent"]
-        || [[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.WebProcess"];
+    static bool mainBundleIsWebProcess = [[[NSBundle mainBundle] bundleIdentifier] hasPrefix:@"com.apple.WebKit.WebContent"];
     return mainBundleIsWebProcess;
 }
 
@@ -191,7 +189,12 @@ bool MacApplication::isSolidStateNetworksDownloader()
 
 #endif // PLATFORM(MAC)
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
+
+static bool applicationBundleStartsWith(const String& bundleIdentifierPrefix)
+{
+    return applicationBundleIdentifier().startsWith(bundleIdentifierPrefix);
+}
 
 bool IOSApplication::isMobileMail()
 {
@@ -278,7 +281,19 @@ bool IOSApplication::isMoviStarPlus()
     static bool isMoviStarPlus = applicationBundleIsEqualTo("com.prisatv.yomvi"_s);
     return isMoviStarPlus;
 }
-    
+
+bool IOSApplication::isFirefox()
+{
+    static bool isFirefox = applicationBundleIsEqualTo("org.mozilla.ios.Firefox"_s);
+    return isFirefox;
+}
+
+bool IOSApplication::isAppleApplication()
+{
+    static bool isAppleApplication = applicationBundleStartsWith("com.apple."_s);
+    return isAppleApplication;
+}
+
 #endif
 
 } // namespace WebCore

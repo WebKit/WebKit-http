@@ -44,15 +44,19 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         this._overviewTreeElement = new WI.GeneralTreeElement("canvas-overview", WI.UIString("Overview"), null, this._canvasCollection);
         this._canvasTreeOutline.appendChild(this._overviewTreeElement);
 
-        this._importedRecordingsTreeElement = new WI.FolderTreeElement(WI.UIString("Imported Recordings"));
-        this._importedRecordingsTreeElement.hidden = true;
-        this._overviewTreeElement.appendChild(this._importedRecordingsTreeElement);
+        this._savedRecordingsTreeElement = new WI.FolderTreeElement(WI.UIString("Saved Recordings"), WI.RecordingCollection);
+        this._savedRecordingsTreeElement.hidden = true;
+        this._overviewTreeElement.appendChild(this._savedRecordingsTreeElement);
 
         this._recordShortcut = new WI.KeyboardShortcut(null, WI.KeyboardShortcut.Key.Space, this._handleSpace.bind(this));
         this._recordShortcut.implicitlyPreventsDefault = false;
+        this._recordShortcut.disabled = true;
 
         this._recordSingleFrameShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.Shift, WI.KeyboardShortcut.Key.Space, this._handleSpace.bind(this));
         this._recordSingleFrameShortcut.implicitlyPreventsDefault = false;
+        this._recordSingleFrameShortcut.disabled = true;
+
+        WI.canvasManager.enable();
     }
 
     static tabInfo()
@@ -102,8 +106,26 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
     {
         super.shown();
 
+        this._recordShortcut.disabled = false;
+        this._recordSingleFrameShortcut.disabled = false;
+
         if (!this.contentBrowser.currentContentView)
             this.showRepresentedObject(this._canvasCollection);
+    }
+
+    hidden()
+    {
+        this._recordShortcut.disabled = true;
+        this._recordSingleFrameShortcut.disabled = true;
+
+        super.hidden();
+    }
+
+    closed()
+    {
+        WI.canvasManager.disable();
+
+        super.closed();
     }
 
     restoreStateFromCookie(cookie)
@@ -116,6 +138,11 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         // FIXME: implement once <https://webkit.org/b/177606> is complete.
     }
 
+    async handleFileDrop(files)
+    {
+        await WI.FileUtilities.readJSON(files, (result) => WI.canvasManager.processJSON(result));
+    }
+
     // Protected
 
     attached()
@@ -124,13 +151,13 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
 
         WI.canvasManager.addEventListener(WI.CanvasManager.Event.CanvasAdded, this._handleCanvasAdded, this);
         WI.canvasManager.addEventListener(WI.CanvasManager.Event.CanvasRemoved, this._handleCanvasRemoved, this);
-        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingImported, this._recordingImportedOrStopped, this);
-        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingStopped, this._recordingImportedOrStopped, this);
+        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingSaved, this._handleRecordingSavedOrStopped, this);
+        WI.Canvas.addEventListener(WI.Canvas.Event.RecordingStopped, this._handleRecordingSavedOrStopped, this);
 
-        let canvases = new Set([...this._canvasCollection, ...WI.canvasManager.canvases]);
+        let canvases = WI.canvasManager.canvases;
 
         for (let canvas of this._canvasCollection) {
-            if (!canvases.has(canvas))
+            if (!canvases.includes(canvas))
                 this._removeCanvas(canvas);
         }
 
@@ -138,12 +165,16 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
             if (!this._canvasCollection.has(canvas))
                 this._addCanvas(canvas);
         }
+
+        this._savedRecordingsTreeElement.removeChildren();
+        for (let recording of WI.canvasManager.savedRecordings)
+            this._addRecording(recording, {suppressShowRecording: true});
     }
 
     detached()
     {
+        WI.Canvas.removeEventListener(null, null, this);
         WI.canvasManager.removeEventListener(null, null, this);
-        WI.RecordingContentView.removeEventListener(null, null, this);
 
         super.detached();
     }
@@ -155,22 +186,49 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         this._overviewTreeElement.appendChild(new WI.CanvasTreeElement(canvas));
         this._canvasCollection.add(canvas);
 
+        const options = {
+            suppressShowRecording: true,
+        };
+
         for (let recording of canvas.recordingCollection)
-            this._recordingAdded(recording, {suppressShowRecording: true});
+            this._addRecording(recording, options);
     }
 
     _removeCanvas(canvas)
     {
-        // FIXME: Create tree elements/cards for recordings belonging to the removed canvas.
-
         let treeElement = this._canvasTreeOutline.findTreeElement(canvas);
         console.assert(treeElement, "Missing tree element for canvas.", canvas);
+
+        const suppressNotification = true;
+        treeElement.deselect(suppressNotification);
         this._overviewTreeElement.removeChild(treeElement);
+
         this._canvasCollection.remove(canvas);
 
         let currentContentView = this.contentBrowser.currentContentView;
-        if (currentContentView instanceof WI.RecordingContentView && canvas.recordingCollection.has(currentContentView.representedObject))
+        if (currentContentView instanceof WI.CanvasContentView)
+            WI.showRepresentedObject(this._canvasCollection);
+        else if (currentContentView instanceof WI.RecordingContentView && canvas.recordingCollection.has(currentContentView.representedObject))
             this.contentBrowser.updateHierarchicalPathForCurrentContentView();
+
+        let navigationSidebarPanel = this.navigationSidebarPanel;
+        if (navigationSidebarPanel instanceof WI.CanvasSidebarPanel && navigationSidebarPanel.visible)
+            navigationSidebarPanel.updateRepresentedObjects();
+
+        this.showDetailsSidebarPanels();
+    }
+
+    _addRecording(recording, options = {})
+    {
+        if (!recording.source) {
+            const subtitle = null;
+            let recordingTreeElement = new WI.GeneralTreeElement(["recording"], recording.displayName, subtitle, recording);
+            this._savedRecordingsTreeElement.hidden = false;
+            this._savedRecordingsTreeElement.appendChild(recordingTreeElement);
+        }
+
+        if (!options.suppressShowRecording)
+            this.showRepresentedObject(recording);
     }
 
     _handleCanvasAdded(event)
@@ -185,7 +243,7 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
 
     _canvasTreeOutlineSelectionDidChange(event)
     {
-        let selectedElement = event.data.selectedElement;
+        let selectedElement = this._canvasTreeOutline.selectedTreeElement;
         if (!selectedElement)
             return;
 
@@ -198,28 +256,19 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         this.showRepresentedObject(representedObject);
     }
 
-    _recordingImportedOrStopped(event)
+    _handleRecordingSavedOrStopped(event)
     {
-        let recording = event.data.recording;
+        let {recording, initiatedByUser, imported} = event.data;
         if (!recording)
             return;
 
-        this._recordingAdded(recording, {
-            suppressShowRecording: event.data.fromConsole,
-        });
-    }
+        let options = {};
 
-    _recordingAdded(recording, options = {})
-    {
-        if (!recording.source) {
-            const subtitle = null;
-            let recordingTreeElement = new WI.GeneralTreeElement(["recording"], recording.displayName, subtitle, recording);
-            this._importedRecordingsTreeElement.hidden = false;
-            this._importedRecordingsTreeElement.appendChild(recordingTreeElement);
-        }
+        // Always show imported recordings.
+        if (recording.source || !imported)
+            options.suppressShowRecording = !initiatedByUser || this.contentBrowser.currentRepresentedObjects.some((representedObject) => representedObject instanceof WI.Recording);
 
-        if (!options.suppressShowRecording)
-            this.showRepresentedObject(recording);
+        this._addRecording(recording, options);
     }
 
     _handleSpace(event)
@@ -234,11 +283,11 @@ WI.CanvasTabContentView = class CanvasTabContentView extends WI.ContentBrowserTa
         if (!canvas)
             return;
 
-        if (canvas.isRecording)
-            WI.canvasManager.stopRecording();
-        else if (!WI.canvasManager.recordingCanvas) {
+        if (canvas.recordingActive)
+            canvas.stopRecording();
+        else {
             let singleFrame = !!event.shiftKey;
-            WI.canvasManager.startRecording(canvas, singleFrame);
+            canvas.startRecording(singleFrame);
         }
 
         event.preventDefault();

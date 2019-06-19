@@ -28,6 +28,26 @@
 
 namespace WebCore {
 
+static gint sortDevices(gconstpointer a, gconstpointer b)
+{
+    GstDevice* adev = GST_DEVICE(a), *bdev = GST_DEVICE(b);
+    GUniquePtr<GstStructure> aprops(gst_device_get_properties(adev));
+    GUniquePtr<GstStructure> bprops(gst_device_get_properties(bdev));
+    gboolean aIsDefault = FALSE, bIsDefault = FALSE;
+
+    gst_structure_get_boolean(aprops.get(), "is-default", &aIsDefault);
+    gst_structure_get_boolean(bprops.get(), "is-default", &bIsDefault);
+
+    if (aIsDefault == bIsDefault) {
+        GUniquePtr<char> aName(gst_device_get_display_name(adev));
+        GUniquePtr<char> bName(gst_device_get_display_name(bdev));
+
+        return g_strcmp0(aName.get(), bName.get());
+    }
+
+    return aIsDefault > bIsDefault ? -1 : 1;
+}
+
 GStreamerAudioCaptureDeviceManager& GStreamerAudioCaptureDeviceManager::singleton()
 {
     static NeverDestroyed<GStreamerAudioCaptureDeviceManager> manager;
@@ -46,7 +66,7 @@ GStreamerDisplayCaptureDeviceManager& GStreamerDisplayCaptureDeviceManager::sing
     return manager;
 }
 
-std::optional<GStreamerCaptureDevice> GStreamerCaptureDeviceManager::gstreamerDeviceWithUID(const String& deviceID)
+Optional<GStreamerCaptureDevice> GStreamerCaptureDeviceManager::gstreamerDeviceWithUID(const String& deviceID)
 {
     captureDevices();
 
@@ -54,7 +74,7 @@ std::optional<GStreamerCaptureDevice> GStreamerCaptureDeviceManager::gstreamerDe
         if (device.persistentId() == deviceID)
             return device;
     }
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 const Vector<CaptureDevice>& GStreamerCaptureDeviceManager::captureDevices()
@@ -66,7 +86,7 @@ const Vector<CaptureDevice>& GStreamerCaptureDeviceManager::captureDevices()
     return m_devices;
 }
 
-void GStreamerCaptureDeviceManager::deviceAdded(GRefPtr<GstDevice>&& device)
+void GStreamerCaptureDeviceManager::addDevice(GRefPtr<GstDevice>&& device)
 {
     GUniquePtr<GstStructure> properties(gst_device_get_properties(device.get()));
     const char* klass = gst_structure_get_string(properties.get(), "device.class");
@@ -85,7 +105,10 @@ void GStreamerCaptureDeviceManager::deviceAdded(GRefPtr<GstDevice>&& device)
     // This isn't really a UID but should be good enough (libwebrtc
     // itself does that at least for pulseaudio devices).
     GUniquePtr<char> deviceName(gst_device_get_display_name(device.get()));
-    String identifier = String::fromUTF8(deviceName.get());
+    gboolean isDefault = FALSE;
+    gst_structure_get_boolean(properties.get(), "is-default", &isDefault);
+
+    String identifier = makeString(isDefault ? "default: " : "", deviceName.get());
 
     auto gstCaptureDevice = GStreamerCaptureDevice(WTFMove(device), identifier, type, identifier);
     gstCaptureDevice.setEnabled(true);
@@ -108,10 +131,11 @@ void GStreamerCaptureDeviceManager::refreshCaptureDevices()
         } else if (type == CaptureDevice::DeviceType::Microphone) {
             GRefPtr<GstCaps> caps = adoptGRef(gst_caps_new_empty_simple("audio/x-raw"));
             gst_device_monitor_add_filter(m_deviceMonitor.get(), "Audio/Source", caps.get());
-        }
-        // FIXME: Add monitor for added/removed messages on the bus.
+        } else
+            return;
     }
 
+    // FIXME: Add monitor for added/removed messages on the bus.
     if (!gst_device_monitor_start(m_deviceMonitor.get())) {
         GST_WARNING_OBJECT(m_deviceMonitor.get(), "Could not start device monitor");
         m_deviceMonitor = nullptr;
@@ -119,10 +143,11 @@ void GStreamerCaptureDeviceManager::refreshCaptureDevices()
         return;
     }
 
-    GList* devices = gst_device_monitor_get_devices(m_deviceMonitor.get());
+    GList* devices = g_list_sort(gst_device_monitor_get_devices(m_deviceMonitor.get()), sortDevices);
     while (devices) {
         GRefPtr<GstDevice> device = adoptGRef(GST_DEVICE_CAST(devices->data));
-        deviceAdded(WTFMove(device));
+
+        addDevice(WTFMove(device));
         devices = g_list_delete_link(devices, devices);
     }
 

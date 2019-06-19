@@ -1,0 +1,3 @@
+
+PASS Create a basic GPUBindGroup via GPUDevice. 
+

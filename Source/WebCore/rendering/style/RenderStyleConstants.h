@@ -256,7 +256,6 @@ enum class Overflow : uint8_t {
     Hidden,
     Scroll,
     Auto,
-    Overlay,
     PagedX,
     PagedY
 };
@@ -534,7 +533,8 @@ enum class LineBreak : uint8_t {
     Loose,
     Normal,
     Strict,
-    AfterWhiteSpace
+    AfterWhiteSpace,
+    Anywhere
 };
 
 enum class Resize : uint8_t {
@@ -659,7 +659,8 @@ enum class WhiteSpace : uint8_t {
     PreWrap,
     PreLine,
     NoWrap,
-    KHTMLNoWrap
+    KHTMLNoWrap,
+    BreakSpaces
 };
 
 // The order of this enum must match the order of the text align values in CSSValueKeywords.in.
@@ -732,12 +733,11 @@ enum class TextDecorationSkip : uint8_t {
     Auto      = 1 << 2
 };
 
-// FIXME: There is no reason for the values in the enum to be powers of two.
 enum class TextUnderlinePosition : uint8_t {
     // FIXME: Implement support for 'under left' and 'under right' values.
-    Auto       = 1 << 0,
-    Alphabetic = 1 << 1,
-    Under      = 1 << 2
+    Auto,
+    Under,
+    FromFont
 };
 
 enum class TextZoom : uint8_t {
@@ -876,6 +876,7 @@ enum class DisplayType : uint8_t {
     Contents,
     Grid,
     InlineGrid,
+    FlowRoot,
     None
 };
 
@@ -1020,6 +1021,15 @@ enum class RubyPosition : uint8_t {
     InterCharacter
 };
 
+#if ENABLE(DARK_MODE_CSS)
+enum class ColorScheme : uint8_t {
+    Light = 1 << 0,
+    Dark = 1 << 1
+};
+
+static const size_t ColorSchemeBits = 2;
+#endif
+
 static const size_t GridAutoFlowBits = 4;
 enum InternalGridAutoFlowAlgorithm {
     InternalAutoFlowAlgorithmSparse = 1 << 0,
@@ -1078,13 +1088,6 @@ enum class CSSBoxType : uint8_t {
     ViewBox
 };
 
-#if ENABLE(TOUCH_EVENTS)
-enum class TouchAction : uint8_t {
-    Auto,
-    Manipulation
-};
-#endif
-
 #if ENABLE(CSS_SCROLL_SNAP)
 enum class ScrollSnapStrictness : uint8_t {
     None,
@@ -1126,7 +1129,6 @@ enum class ApplePayButtonType : uint8_t {
     Plain,
     Buy,
     SetUp,
-    InStore,
     Donate,
 #if ENABLE(APPLE_PAY_SESSION_V4)
     CheckOut,

@@ -31,10 +31,11 @@
 #include "FloatQuad.h"
 #include "FloatRect.h"
 #include "IntRect.h"
+#include "Region.h"
 #include "TransformationMatrix.h"
-#include <wtf/text/TextStream.h>
-
 #include <wtf/MathExtras.h>
+#include <wtf/Optional.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -104,11 +105,11 @@ bool AffineTransform::isInvertible() const
     return std::isfinite(determinant) && determinant != 0;
 }
 
-std::optional<AffineTransform> AffineTransform::inverse() const
+Optional<AffineTransform> AffineTransform::inverse() const
 {
     double determinant = det(m_transform);
     if (!std::isfinite(determinant) || determinant == 0)
-        return std::nullopt;
+        return WTF::nullopt;
 
     AffineTransform result;
     if (isIdentityOrTranslation()) {
@@ -332,6 +333,21 @@ FloatQuad AffineTransform::mapQuad(const FloatQuad& q) const
     result.setP3(mapPoint(q.p3()));
     result.setP4(mapPoint(q.p4()));
     return result;
+}
+
+Region AffineTransform::mapRegion(const Region& region) const
+{
+    if (isIdentityOrTranslation()) {
+        Region mappedRegion(region);
+        mappedRegion.translate(roundedIntSize(FloatSize(narrowPrecisionToFloat(m_transform[4]), narrowPrecisionToFloat(m_transform[5]))));
+        return mappedRegion;
+    }
+
+    Region mappedRegion;
+    for (auto& rect : region.rects())
+        mappedRegion.unite(mapRect(rect));
+
+    return mappedRegion;
 }
 
 void AffineTransform::blend(const AffineTransform& from, double progress)

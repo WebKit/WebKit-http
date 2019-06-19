@@ -1,3 +1,738 @@
+2019-06-05  Alex Christensen  <achristensen@webkit.org>
+
+        Progress towards resurrecting Mac CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=197132
+
+        Reviewed by Don Olmstead.
+
+        * PlatformMac.cmake:
+
+2019-06-03  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add WebKit::JavaScriptCore target
+        https://bugs.webkit.org/show_bug.cgi?id=198403
+
+        Reviewed by Konstantin Tokarev.
+
+        Use the WebKit::JavaScriptCore target.
+
+        * CMakeLists.txt:
+
+2019-05-31  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add WebKit::WTF target
+        https://bugs.webkit.org/show_bug.cgi?id=198400
+
+        Reviewed by Konstantin Tokarev.
+
+        Use the WebKit::WTF target.
+
+        * PlatformWin.cmake:
+
+2019-05-27  Chris Dumez  <cdumez@apple.com>
+
+        Use a strongly-typed identifier for pages
+        https://bugs.webkit.org/show_bug.cgi?id=198206
+
+        Reviewed by Youenn Fablet.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::pageLoadCompleted):
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2019-05-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use builtin FindICU
+        https://bugs.webkit.org/show_bug.cgi?id=197934
+
+        Reviewed by Michael Catanzaro.
+
+        Remove uses of ICU_INCLUDE_DIRS and ICU_LIBRARIES.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+
+2019-05-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244881.
+        https://bugs.webkit.org/show_bug.cgi?id=197559
+
+        Breaks compilation of jsconly on linux, breaking compilation
+        for jsc-i386-ews, jsc-mips-ews and jsc-armv7-ews (Requested by
+        guijemont on #webkit).
+
+        Reverted changeset:
+
+        "[CMake] Refactor WEBKIT_MAKE_FORWARDING_HEADERS into
+        WEBKIT_COPY_FILES"
+        https://bugs.webkit.org/show_bug.cgi?id=197174
+        https://trac.webkit.org/changeset/244881
+
+2019-05-02  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Refactor WEBKIT_MAKE_FORWARDING_HEADERS into WEBKIT_COPY_FILES
+        https://bugs.webkit.org/show_bug.cgi?id=197174
+
+        Reviewed by Alex Christensen.
+
+        Replace WEBKIT_MAKE_FORWARDING_HEADERS with WEBKIT_COPY_FILES and make dependencies
+        for framework headers explicit.
+
+        * PlatformWin.cmake:
+
+2019-04-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed, rolling out r244669.
+
+        Windows ports can't clean build.
+
+        Reverted changeset:
+
+        "[Win] Add flag to enable version information stamping and
+        disable by default."
+        https://bugs.webkit.org/show_bug.cgi?id=197249
+        https://trac.webkit.org/changeset/244669
+
+2019-04-25  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Win] Add flag to enable version information stamping and disable by default.
+        https://bugs.webkit.org/show_bug.cgi?id=197249
+
+        Reviewed by Ross Kirsling.
+
+        This feature is only used in AppleWin port. Add flag for this task and make it OFF by default.
+        Then enable it by default on AppleWin.
+
+        * PlatformWin.cmake:
+
+2019-04-23  Keith Rollin  <krollin@apple.com>
+
+        Add Xcode version check for Header post-processing scripts
+        https://bugs.webkit.org/show_bug.cgi?id=197116
+        <rdar://problem/50058968>
+
+        Reviewed by Brent Fulgham.
+
+        There are several places in our Xcode projects that post-process
+        header files after they've been exported. Because of XCBuild, we're
+        moving to a model where the post-processing is performed at the same
+        time the header files are exported, rather than as a distinct
+        post-processing step. This patch disables the distinct step when the
+        inline processing is available.
+
+        In practice, this means prefixing appropriate post-processing Custom
+        Build phases with:
+
+        if [ "${XCODE_VERSION_MAJOR}" -ge "1100" -a "${USE_NEW_BUILD_SYSTEM}" = "YES" ]; then
+            # In this configuration, post-processing is performed at the same time as copying in the postprocess-header-rule script, so there's no need for this separate step.
+            exit 0
+        fi
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2019-04-20  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][Win] Use target oriented design for WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=197112
+
+        Reviewed by Konstantin Tokarev.
+
+        Enumerate the public framework headers for WebKitLegacy and copy them. Include
+        directories should be PRIVATE. Migrate to using WebKitLegacy_DERIVED_SOURCES_DIR.
+
+        * CMakeLists.txt:
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+
+2019-04-19  Keith Rollin  <krollin@apple.com>
+
+        Add postprocess-header-rule scripts
+        https://bugs.webkit.org/show_bug.cgi?id=197072
+        <rdar://problem/50027299>
+
+        Reviewed by Brent Fulgham.
+
+        Several projects have post-processing build phases where exported
+        headers are tweaked after they've been copied. This post-processing is
+        performed via scripts called postprocess-headers.sh. For reasons
+        related to XCBuild, we are now transitioning to a build process where
+        the post-processing is performed at the same time as the
+        exporting/copying. To support this process, add similar scripts named
+        postprocess-header-rule, which are geared towards processing a single
+        file at a time rather than all exported files at once. Also add a
+        build rule that makes use of these scripts. These scripts and build
+        rules are not used at the moment; they will come into use in an
+        imminent patch.
+
+        Note that I've named these postprocess-header-rule rather than
+        postprocess-header-rule.sh. Scripts in Tools/Scripts do not have
+        suffixes indicating how the tool is implemented. Scripts in
+        per-project Scripts folders appear to be mixed regarding the use of
+        suffixes. I'm opting here to follow the Tools/Scripts convention, with
+        the expectation that over time we completely standardize on that.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+        * scripts/postprocess-header-rule: Added.
+
+2019-04-18  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Make WebCore headers copies
+        https://bugs.webkit.org/show_bug.cgi?id=182512
+        <rdar://problem/37510435>
+
+        Reviewed by Alex Christensen.
+
+        Added WebCorePrivateFrameworkHeaders as a dependency of WebKitLegacy for all
+        ports.
+
+        WebCore now uses WebCore_PRIVATE_INCLUDE_DIRECTORIES for all ports. This revealed
+        problems with WebKit's usage of WebCore headers. All include directories directly
+        referencing the WebCore source tree we're removed from the CMake files.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+
+2019-04-18  Keith Rollin  <krollin@apple.com>
+
+        Move MiG .def files into their own "Copy files" build step
+        https://bugs.webkit.org/show_bug.cgi?id=196982
+
+        Reviewed by Alex Christensen.
+
+        WebKitLegacy's MiG files need to be processed differently from the
+        other files in the "Copy Headers" build phase, so move them into their
+        own "Copy Files" build phase. This arrangement removes them from any
+        post-processing performed on the main group of headers.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2019-04-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r244386.
+        https://bugs.webkit.org/show_bug.cgi?id=197031
+
+        Causing build failures on several internal builders (Requested
+        by ShawnRoberts on #webkit).
+
+        Reverted changeset:
+
+        "Move MiG .def files into their own "Copy files" build step"
+        https://bugs.webkit.org/show_bug.cgi?id=196982
+        https://trac.webkit.org/changeset/244386
+
+2019-04-17  Keith Rollin  <krollin@apple.com>
+
+        Move MiG .def files into their own "Copy files" build step
+        https://bugs.webkit.org/show_bug.cgi?id=196982
+
+        Reviewed by Alex Christensen.
+
+        WebKitLegacy's MiG files need to be processed differently from the
+        other files in the "Copy Headers" build phase, so move them into their
+        own "Copy Files" build phase. This arrangement removes them from any
+        post-processing performed on the main group of headers.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2019-04-08  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][WinCairo] Separate copied headers into different directories
+        https://bugs.webkit.org/show_bug.cgi?id=196655
+
+        Reviewed by Michael Catanzaro.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+
+2019-04-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r243833.
+        https://bugs.webkit.org/show_bug.cgi?id=196645
+
+        This change breaks build of WPE and GTK ports (Requested by
+        annulen on #webkit).
+
+        Reverted changeset:
+
+        "[CMake][WTF] Mirror XCode header directories"
+        https://bugs.webkit.org/show_bug.cgi?id=191662
+        https://trac.webkit.org/changeset/243833
+
+2019-04-03  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][WTF] Mirror XCode header directories
+        https://bugs.webkit.org/show_bug.cgi?id=191662
+
+        Reviewed by Konstantin Tokarev.
+
+        Use WTFFramework as a dependency and include frameworks/WTF.cmake for AppleWin internal
+        builds.
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+
+2019-04-02  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake] WEBKIT_MAKE_FORWARDING_HEADERS shouldn't use POST_BUILD to copy generated headers
+        https://bugs.webkit.org/show_bug.cgi?id=182757
+
+        Reviewed by Don Olmstead.
+
+        * PlatformWin.cmake: Do not use DERIVED_SOURCE_DIRECTORIES
+        parameter of WEBKIT_MAKE_FORWARDING_HEADERS. Added
+        WebKitLegacyGUID_PRIVATE_FRAMEWORK_HEADERS.
+
+2019-03-13  Youenn Fablet  <youenn@apple.com>
+
+        Check IDB quota usage through QuotaManager
+        https://bugs.webkit.org/show_bug.cgi?id=195302
+
+        Reviewed by Chris Dumez.
+
+        * Storage/WebDatabaseProvider.cpp:
+        (WebDatabaseProvider::idbConnectionToServerForSession):
+
+2019-03-06  Sam Weinig  <sam@webkit.org>
+
+        WebKitLegacy does not need to generate an export file for i386 anymore
+        https://bugs.webkit.org/show_bug.cgi?id=195380
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+        Update and simplify the "Generate Export Files" phase now that we don't need
+        separate export files for i386 and x86_64.
+
+2019-03-01  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused code in WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=189614
+
+        Reviewed by Simon Fraser.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2019-02-20  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add SDKVariant.xcconfig to various Xcode projects
+        https://bugs.webkit.org/show_bug.cgi?id=194869
+
+        Rubber-stamped by Jer Noble.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2019-01-31  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Remove unnecessary member from NetworkStorageSession.
+        https://bugs.webkit.org/show_bug.cgi?id=194137
+
+        Reviewed by Don Olmstead.
+
+        * WebCoreSupport/NetworkStorageSessionMap.cpp:
+        (NetworkStorageSessionMap::defaultStorageSession):
+        (NetworkStorageSessionMap::ensureSession):
+
+2019-01-31  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Fix DRT crash related to private browsing.
+        https://bugs.webkit.org/show_bug.cgi?id=193816
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/NetworkStorageSessionMap.cpp:
+        (NetworkStorageSessionMap::ensureSession):
+
+2019-01-26  Darin Adler  <darin@apple.com>
+  
+        Replace many uses of String::format with more type-safe alternatives
+        https://bugs.webkit.org/show_bug.cgi?id=192742
+
+        Reviewed by Mark Lam.
+
+        * Shared/WebMemorySampler.cpp:
+        (WebKit::WebMemorySampler::writeHeaders): Use makeString.
+
+        * UIProcess/WebAuthentication/Cocoa/LocalAuthenticator.mm:
+        (WebKit::LocalAuthenticator::makeCredential): Use string concatentation.
+
+        * UIProcess/WebInspectorUtilities.cpp:
+        (WebKit::inspectorPageGroupIdentifierForPage): Use makeString.
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::processDidFinishLaunching): Ditto.
+        (WebKit::WebProcessPool::startMemorySampler): Ditto.
+
+2019-01-24  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Move FileSystem to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=193602
+
+        Reviewed by Yusuke Suzuki.
+
+        * Storage/StorageAreaSync.cpp:
+        * Storage/StorageSyncManager.cpp:
+        * Storage/StorageTracker.cpp:
+
+2019-01-23  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Curl] Unreviewed build fix for r240292 and friends.
+
+        WinCairo test stability must be restored in subsequent patch.
+
+        * WebCoreSupport/NetworkStorageSessionMap.cpp:
+        (NetworkStorageSessionMap::defaultStorageSession):
+        (NetworkStorageSessionMap::switchToNewTestingSession):
+        (NetworkStorageSessionMap::ensureSession):
+
+2019-01-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r240403.
+        https://bugs.webkit.org/show_bug.cgi?id=193757
+
+        "Causes multiple crashes on macOS port (probably used wrong
+        ENABLE macro)" (Requested by ddkilzer on #webkit).
+
+        Reverted changeset:
+
+        "[Curl] Unreviewed build fix for r240292 and friends."
+        https://trac.webkit.org/changeset/240403
+
+2019-01-23  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Curl] Unreviewed build fix for r240292 and friends.
+
+        WinCairo test stability must be restored in subsequent patch.
+
+        * WebCoreSupport/NetworkStorageSessionMap.cpp:
+        (NetworkStorageSessionMap::defaultStorageSession):
+        (NetworkStorageSessionMap::switchToNewTestingSession):
+        (NetworkStorageSessionMap::ensureSession):
+
+2019-01-22  Alex Christensen  <achristensen@webkit.org>
+
+        Fix some builds after r240292
+        https://bugs.webkit.org/show_bug.cgi?id=193580
+
+        * WebCoreSupport/NetworkStorageSessionMap.cpp:
+
+2019-01-22  Alex Christensen  <achristensen@webkit.org>
+
+        Move NetworkStorageSession ownership to NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=193580
+
+        Reviewed by Geoff Garen.
+
+        * WebCoreSupport/NetworkStorageSessionMap.cpp: Added.
+        (defaultNetworkStorageSession):
+        (globalSessionMap):
+        (NetworkStorageSessionMap::storageSession):
+        (NetworkStorageSessionMap::defaultStorageSession):
+        (NetworkStorageSessionMap::switchToNewTestingSession):
+        (NetworkStorageSessionMap::ensureSession):
+        (NetworkStorageSessionMap::destroySession):
+        * WebCoreSupport/NetworkStorageSessionMap.h: Added.
+        * WebCoreSupport/PageStorageSessionProvider.h:
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2019-01-15  Darin Adler  <darin@apple.com>
+
+        Use references rather than pointers for register/unregister functions, and more
+        https://bugs.webkit.org/show_bug.cgi?id=175028
+
+        Reviewed by Daniel Bates.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: Let Xcode update this project.
+
+2019-01-18  Eric Carlson  <eric.carlson@apple.com>
+
+        Revert r238815, it broke WK1 video fullscreen on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=193586
+        <rdar://problem/47358941>
+
+        Reviewed by Jer Noble.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2019-01-17  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using NetworkStorageSession::storageSession in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=193529
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/PageStorageSessionProvider.h: Added.
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2019-01-04  Youenn Fablet  <youenn@apple.com>
+
+        CSP violation reports should bypass CSP checks
+        https://bugs.webkit.org/show_bug.cgi?id=192857
+        <rdar://problem/46887236>
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::startPingLoad):
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2018-12-27  Alex Christensen  <achristensen@webkit.org>
+
+        Resurrect Mac CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=192658
+
+        Reviewed by Yusuke Suzuki.
+
+        * PlatformMac.cmake:
+
+2018-12-20  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Use Ref<> as much as possible
+        https://bugs.webkit.org/show_bug.cgi?id=192808
+
+        Reviewed by Alex Christensen.
+
+        * Storage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::copy):
+        (WebKit::StorageNamespaceImpl::storageArea):
+        * Storage/StorageNamespaceImpl.h:
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (WebKit::WebStorageNamespaceProvider::create):
+        (WebKit::WebStorageNamespaceProvider::createSessionStorageNamespace):
+        (WebKit::WebStorageNamespaceProvider::createEphemeralLocalStorageNamespace):
+        (WebKit::WebStorageNamespaceProvider::createLocalStorageNamespace):
+        (WebKit::WebStorageNamespaceProvider::createTransientLocalStorageNamespace):
+        * Storage/WebStorageNamespaceProvider.h:
+        * WebCoreSupport/WebViewGroup.cpp:
+        (WebViewGroup::getOrCreate):
+        * WebCoreSupport/WebViewGroup.h:
+
+2018-12-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][WebKitLegacy][Clang] WebKit.h warning: 'IWebEditingDelegate2::shouldInsertNode' hides overloaded virtual function [-Woverloaded-virtual]
+        https://bugs.webkit.org/show_bug.cgi?id=192581
+
+        Reviewed by Alex Christensen.
+
+        Conventionally, WebKit COM interface adds a new interface with
+        same name methods with the old interface. For example, both
+        IWebEditingDelegate and IWebEditingDelegate2 interfaces has
+        shouldInsertNode method.
+
+        This is a part of public API, can't be renamed.
+
+        * PlatformWin.cmake: Added -Wno-overloaded-virtual compiler option
+        for WebKitLegacy
+
+2018-12-06  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused LoaderStrategy::storeDerivedDataToCache and associated dead code
+        https://bugs.webkit.org/show_bug.cgi?id=192452
+
+        Reviewed by Anders Carlsson.
+
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2018-12-03  Jer Noble  <jer.noble@apple.com>
+
+        Get rid of old, dead Mac video fullscreen code.
+        https://bugs.webkit.org/show_bug.cgi?id=192315
+
+        Reviewed by Eric Carlson.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+
+2018-11-30  Alex Christensen  <achristensen@webkit.org>
+
+        Move URL from WebCore to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=190234
+
+        Reviewed by Keith Miller.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2018-11-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Reduce the use of WKSI library calls: CoreAnimation
+        https://bugs.webkit.org/show_bug.cgi?id=191777
+        <rdar://problem/46140542>
+
+        Reviewed by Zalan Bujtas.
+
+        Update the Windows build of WebKit to refer to the SPI headers, rather than WebKitSystemInterface.
+        Move a small amount of glue code from WKSI to WebCore, and remove any includes or link
+        directives for WebKitSystemInterface.lib.
+
+        * PlatformWin.cmake:
+
+2018-11-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: add button to show system certificate dialog
+        https://bugs.webkit.org/show_bug.cgi?id=191458
+        <rdar://problem/45977019>
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClientIOS.mm:
+        (WebInspectorFrontendClient::showCertificate): Added.
+
+2018-11-09  Sihui Liu  <sihui_liu@apple.com>
+
+        Remove legacy storage tracker database file after r237330
+        https://bugs.webkit.org/show_bug.cgi?id=191423
+
+        Reviewed by Geoffrey Garen.
+
+        r237330 changed the file name of storage tracker database, but it did not remove the old 
+        file before using the new one.
+
+        * Storage/StorageTracker.cpp:
+        (WebKit::StorageTracker::internalInitialize):
+
+2018-11-01  Sihui Liu  <sihui_liu@apple.com>
+
+        Add a storage limit for IndexedDB
+        https://bugs.webkit.org/show_bug.cgi?id=190598
+        <rdar://problem/44654715>
+
+        Reviewed by Chris Dumez.
+
+        * Storage/WebDatabaseProvider.cpp:
+        (WebDatabaseProvider::idbConnectionToServerForSession):
+        (WebDatabaseProvider::setIDBPerOriginQuota):
+        * Storage/WebDatabaseProvider.h:
+
+2018-10-30  Alexey Proskuryakov  <ap@apple.com>
+
+        Enable InstallAPI for iOS unconditionally
+        https://bugs.webkit.org/show_bug.cgi?id=191043
+        rdar://problem/32728423
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: Added NSURLDownloadSPI.h.
+
+2018-10-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r237600 and r237604.
+        https://bugs.webkit.org/show_bug.cgi?id=191086
+
+        Breaks internal iOS builds (Requested by ryanhadd_ on
+        #webkit).
+
+        Reverted changesets:
+
+        "Enable InstallAPI for iOS unconditionally"
+        https://bugs.webkit.org/show_bug.cgi?id=191043
+        https://trac.webkit.org/changeset/237600
+
+        "Build fix attempt after enabling InstallAPI for iOS."
+        https://bugs.webkit.org/show_bug.cgi?id=191043
+        https://trac.webkit.org/changeset/237604
+
+2018-10-30  Alexey Proskuryakov  <ap@apple.com>
+
+        Enable InstallAPI for iOS unconditionally
+        https://bugs.webkit.org/show_bug.cgi?id=191043
+        rdar://problem/32728423
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: Added NSURLDownloadSPI.h.
+
+2018-10-29  Tim Horton  <timothy_horton@apple.com>
+
+        Modernize WebKit nibs and lprojs for localization's sake
+        https://bugs.webkit.org/show_bug.cgi?id=190911
+        <rdar://problem/45349466>
+
+        Reviewed by Dan Bernstein.
+
+        * English.lproj/WebJavaScriptTextInputPanel.nib/designable.nib: Removed.
+        * English.lproj/WebJavaScriptTextInputPanel.nib/keyedobjects.nib: Removed.
+        * WebKitLegacy.xcodeproj/project.pbxproj:
+        * en.lproj/WebJavaScriptTextInputPanel.xib: Added.
+        NIB->XIB, English->en
+
+2018-10-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake][Ninja][Win] midl.exe fails to create, open and write a temporary file in parallel build in Docker container
+        https://bugs.webkit.org/show_bug.cgi?id=187725
+
+        Reviewed by Michael Catanzaro.
+
+        * PlatformWin.cmake: Added USES_TERMINAL to serialize midl.exe
+        executions.
+
+2018-10-22  Sihui Liu  <sihui_liu@apple.com>
+
+        Regression (r232410): StorageTracker.db file gets unlinked while in use
+        https://bugs.webkit.org/show_bug.cgi?id=190795
+
+        Reviewed by Chris Dumez.
+
+        WK2 stopped using StorageTracker.db file in r232410 and would delete 
+        the file for safety.
+        It turned out WK1 could use the same file path, so WK2 may delete the 
+        file while WK1 is using it.
+
+        * Storage/StorageTracker.cpp:
+        (WebKit::StorageTracker::trackerDatabasePath):
+
+2018-10-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Switch from PLATFORM(IOS) to PLATFORM(IOS_FAMILY)
+        https://bugs.webkit.org/show_bug.cgi?id=190729
+
+        Reviewed by Tim Horton.
+
+        * Storage/StorageTracker.cpp:
+        (WebKit::StorageTracker::syncDeleteAllOrigins):
+        (WebKit::StorageTracker::syncDeleteOrigin):
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::loadResource):
+        (WebResourceLoadScheduler::scheduleLoad):
+        (WebResourceLoadScheduler::remove):
+        (WebResourceLoadScheduler::servePendingRequests):
+
+2018-10-11  Keith Rollin  <krollin@apple.com>
+
+        CURRENT_ARCH should not be used in Run Script phase.
+        https://bugs.webkit.org/show_bug.cgi?id=190407
+        <rdar://problem/45133556>
+
+        Reviewed by Alexey Proskuryakov.
+
+        CURRENT_ARCH is used in a number of Xcode Run Script phases. However,
+        CURRENT_ARCH is not well-defined during this phase (and may even have
+        the value "undefined") since this phase is run just once per build
+        rather than once per supported architecture. Migrate away from
+        CURRENT_ARCH in favor of ARCHS, either by iterating over ARCHS and
+        performing an operation for each value, or by picking the first entry
+        in ARCHS and using that as a representative value.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: When generating
+        WebKitLegacy.*.exp, generate both 32- and 64-bit versions for
+        macosx platforms.
+
+2018-10-04  Dan Bernstein  <mitz@apple.com>
+
+        WebKitLegacy part of [Xcode] Update some build settings as recommended by Xcode 10
+        https://bugs.webkit.org/show_bug.cgi?id=190250
+
+        Reviewed by Andy Estes.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: Let Xcode update LastUpgradeCheck.
+
+2018-10-01  Dean Jackson  <dino@apple.com>
+
+        [macOS] Switching to discrete GPU should be done in the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=189361
+        <rdar://problem/43949622>
+
+        Reviewed by Simon Fraser.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: Add new files.
+
 2018-09-05  David Kilzer  <ddkilzer@apple.com>
 
         REGRESSION (r235585): WebDownloadInternal.h is missing from WebKitLegacy Xcode project

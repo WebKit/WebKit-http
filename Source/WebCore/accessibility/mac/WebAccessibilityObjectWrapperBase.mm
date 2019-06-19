@@ -31,10 +31,13 @@
 
 #if HAVE(ACCESSIBILITY)
 
+#import "AXIsolatedTree.h"
+#import "AXIsolatedTreeNode.h"
 #import "AXObjectCache.h"
 #import "AccessibilityARIAGridRow.h"
 #import "AccessibilityList.h"
 #import "AccessibilityListBox.h"
+#import "AccessibilityObjectInterface.h"
 #import "AccessibilityRenderObject.h"
 #import "AccessibilityScrollView.h"
 #import "AccessibilitySpinButton.h"
@@ -42,6 +45,8 @@
 #import "AccessibilityTableCell.h"
 #import "AccessibilityTableColumn.h"
 #import "AccessibilityTableRow.h"
+#import "Chrome.h"
+#import "ChromeClient.h"
 #import "ColorMac.h"
 #import "ContextMenuController.h"
 #import "Editing.h"
@@ -51,6 +56,7 @@
 #import "FrameLoaderClient.h"
 #import "FrameSelection.h"
 #import "HTMLNames.h"
+#import "LayoutRect.h"
 #import "LocalizedStrings.h"
 #import "Page.h"
 #import "RenderTextControl.h"
@@ -61,6 +67,13 @@
 #import "TextCheckingHelper.h"
 #import "VisibleUnits.h"
 #import "WebCoreFrameView.h"
+
+#if PLATFORM(MAC)
+#import <pal/spi/mac/HIServicesSPI.h>
+#else
+#import "WAKView.h"
+#import "WAKWindow.h"
+#endif
 
 using namespace WebCore;
 using namespace HTMLNames;
@@ -154,6 +167,10 @@ using namespace HTMLNames;
 #define NSAccessibilityHighlightedSearchKey @"AXHighlightedSearchKey"
 #endif
 
+#ifndef NSAccessibilityKeyboardFocusableSearchKey
+#define NSAccessibilityKeyboardFocusableSearchKey @"AXKeyboardFocusableSearchKey"
+#endif
+
 #ifndef NSAccessibilityItalicFontSearchKey
 #define NSAccessibilityItalicFontSearchKey @"AXItalicFontSearchKey"
 #endif
@@ -231,6 +248,8 @@ using namespace HTMLNames;
 #define NSAccessibilityImmediateDescendantsOnly @"AXImmediateDescendantsOnly"
 #endif
 
+#define _axBackingObject self.axBackingObject
+
 static NSArray *convertMathPairsToNSArray(const AccessibilityObject::AccessibilityMathMultiscriptPairs& pairs, NSString *subscriptKey, NSString *superscriptKey)
 {
     NSMutableArray *array = [NSMutableArray arrayWithCapacity:pairs.size()];
@@ -245,25 +264,41 @@ static NSArray *convertMathPairsToNSArray(const AccessibilityObject::Accessibili
     return array;
 }
 
-NSArray *convertToNSArray(const AccessibilityObject::AccessibilityChildrenVector& vector)
+static void addChildToArray(AccessibilityObjectInterface& child, RetainPtr<NSMutableArray> array)
 {
-    NSMutableArray *array = [NSMutableArray arrayWithCapacity:vector.size()];
-    for (const auto& child : vector) {
-        auto wrapper = (WebAccessibilityObjectWrapperBase *)child->wrapper();
-        ASSERT(wrapper);
-        if (wrapper) {
-            // We want to return the attachment view instead of the object representing the attachment,
-            // otherwise, we get palindrome errors in the AX hierarchy.
-            if (child->isAttachment() && [wrapper attachmentView])
-                [array addObject:[wrapper attachmentView]];
-            else
-                [array addObject:wrapper];
-        }
-    }
-    return [[array copy] autorelease];
+    WebAccessibilityObjectWrapper *wrapper = child.wrapper();
+    // We want to return the attachment view instead of the object representing the attachment,
+    // otherwise, we get palindrome errors in the AX hierarchy.
+    if (child.isAttachment() && [wrapper attachmentView])
+        [array.get() addObject:[wrapper attachmentView]];
+    else if (wrapper)
+        [array.get() addObject:wrapper];
+}
+
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+RetainPtr<NSArray> convertToNSArray(const Vector<RefPtr<WebCore::AXIsolatedTreeNode>>& children)
+{
+    RetainPtr<NSMutableArray> result = [[NSMutableArray alloc] initWithCapacity:children.size()];
+    for (auto& child : children)
+        addChildToArray(*child, result)
+    return result;
+}
+#endif
+
+RetainPtr<NSArray> convertToNSArray(const WebCore::AccessibilityObject::AccessibilityChildrenVector& children)
+{
+    RetainPtr<NSMutableArray> result = [[NSMutableArray alloc] initWithCapacity:children.size()];
+    for (auto& child : children)
+        addChildToArray(*child, result);
+    return result;
 }
 
 @implementation WebAccessibilityObjectWrapperBase
+
+@synthesize identifier=_identifier;
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+@synthesize isolatedTreeIdentifier=_isolatedTreeIdentifier;
+#endif
 
 - (id)initWithAccessibilityObject:(AccessibilityObject*)axObject
 {
@@ -271,16 +306,51 @@ NSArray *convertToNSArray(const AccessibilityObject::AccessibilityChildrenVector
         return nil;
 
     m_object = axObject;
+    _identifier = m_object->axObjectID();
+
     return self;
 }
+
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+- (RefPtr<WebCore::AXIsolatedTreeNode>)isolatedTreeNode
+{
+    RELEASE_ASSERT(!isMainThread());
+
+    if (!_identifier)
+        return nullptr;
+
+    if (m_isolatedTreeNode)
+        return m_isolatedTreeNode;
+
+    m_isolatedTreeNode = AXIsolatedTree::nodeInTreeForID(_isolatedTreeIdentifier, _identifier);
+    return m_isolatedTreeNode;
+}
+#endif
 
 - (void)detach
 {
     m_object = nullptr;
+    _identifier = 0;
+
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    m_isolatedTreeNode = nullptr;
+    _isolatedTreeIdentifier = 0;
+#endif
 }
 
 - (BOOL)updateObjectBackingStore
 {
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    if (_AXUIElementRequestServicedBySecondaryAXThread()) {
+        RELEASE_ASSERT(!isMainThread());
+        if (auto treeNode = self.isolatedTreeNode) {
+            if (auto tree = treeNode->tree())
+                tree->applyPendingChanges();
+        }
+        return _identifier;
+    }
+#endif
+    
     // Calling updateBackingStore() can invalidate this element so self must be retained.
     // If it does become invalidated, m_object will be nil.
     CFRetain((__bridge CFTypeRef)self);
@@ -303,153 +373,41 @@ NSArray *convertToNSArray(const AccessibilityObject::AccessibilityChildrenVector
 
 - (AccessibilityObject*)accessibilityObject
 {
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    ASSERT(!_AXUIElementRequestServicedBySecondaryAXThread());
+#endif
     return m_object;
-}
-
-// FIXME: Different kinds of elements are putting the title tag to use in different
-// AX fields. This should be rectified, but in the initial patch I want to achieve
-// parity with existing behavior.
-- (BOOL)titleTagShouldBeUsedInDescriptionField
-{
-    return (m_object->isLink() && !m_object->isImageMapLink()) || m_object->isImage();
-}
-
-// On iOS, we don't have to return the value in the title. We can return the actual title, given the API.
-- (BOOL)fileUploadButtonReturnsValueInTitle
-{
-    return YES;
 }
 
 // This should be the "visible" text that's actually on the screen if possible.
 // If there's alternative text, that can override the title.
 - (NSString *)baseAccessibilityTitle
 {
-    // Static text objects should not have a title. Its content is communicated in its AXValue.
-    if (m_object->roleValue() == AccessibilityRole::StaticText)
-        return [NSString string];
+    return _axBackingObject->titleAttributeValue();
+}
 
-    // A file upload button presents a challenge because it has button text and a value, but the
-    // API doesn't support this paradigm.
-    // The compromise is to return the button type in the role description and the value of the file path in the title
-    if (m_object->isFileUploadButton() && [self fileUploadButtonReturnsValueInTitle])
-        return m_object->stringValue();
-    
-    Vector<AccessibilityText> textOrder;
-    m_object->accessibilityText(textOrder);
-    
-    for (const auto& text : textOrder) {
-        // If we have alternative text, then we should not expose a title.
-        if (text.textSource == AccessibilityTextSource::Alternative)
-            break;
-        
-        // Once we encounter visible text, or the text from our children that should be used foremost.
-        if (text.textSource == AccessibilityTextSource::Visible || text.textSource == AccessibilityTextSource::Children)
-            return text.text;
-        
-        // If there's an element that labels this object and it's not exposed, then we should use
-        // that text as our title.
-        if (text.textSource == AccessibilityTextSource::LabelByElement && !m_object->exposesTitleUIElement())
-            return text.text;
-    }
-    
-    return [NSString string];
+- (WebCore::AccessibilityObjectInterface*)axBackingObject
+{
+#if ENABLE(ACCESSIBILITY_ISOLATED_TREE)
+    if (_AXUIElementRequestServicedBySecondaryAXThread())
+        return self.isolatedTreeNode.get();
+#endif
+    return m_object;
 }
 
 - (NSString *)baseAccessibilityDescription
 {
-    // Static text objects should not have a description. Its content is communicated in its AXValue.
-    // One exception is the media control labels that have a value and a description. Those are set programatically.
-    if (m_object->roleValue() == AccessibilityRole::StaticText && !m_object->isMediaControlLabel())
-        return [NSString string];
-    
-    Vector<AccessibilityText> textOrder;
-    m_object->accessibilityText(textOrder);
-
-    NSMutableString *returnText = [NSMutableString string];
-    bool visibleTextAvailable = false;
-    for (const auto& text : textOrder) {
-        if (text.textSource == AccessibilityTextSource::Alternative) {
-            [returnText appendString:text.text];
-            break;
-        }
-        
-        switch (text.textSource) {
-        // These are sub-components of one element (Attachment) that are re-combined in OSX and iOS.
-        case AccessibilityTextSource::Title:
-        case AccessibilityTextSource::Subtitle:
-        case AccessibilityTextSource::Action: {
-            if (!text.text.length())
-                break;
-            if ([returnText length])
-                [returnText appendString:@", "];
-            [returnText appendString:text.text];
-            break;
-        }
-        case AccessibilityTextSource::Visible:
-        case AccessibilityTextSource::Children:
-        case AccessibilityTextSource::LabelByElement:
-            visibleTextAvailable = true;
-            break;
-        default:
-            break;
-        }
-        
-        if (text.textSource == AccessibilityTextSource::TitleTag && !visibleTextAvailable) {
-            [returnText appendString:text.text];
-            break;
-        }
-    }
-    
-    return returnText;
+    return _axBackingObject->descriptionAttributeValue();
 }
 
 - (NSArray<NSString *> *)baseAccessibilitySpeechHint
 {
-    auto speak = m_object->speakAsProperty();
-    NSMutableArray<NSString *> *hints = [NSMutableArray array];
-    if (speak & SpeakAs::SpellOut)
-        [hints addObject:@"spell-out"];
-    else
-        [hints addObject:@"normal"];
-
-    if (speak & SpeakAs::Digits)
-        [hints addObject:@"digits"];
-    if (speak & SpeakAs::LiteralPunctuation)
-        [hints addObject:@"literal-punctuation"];
-    if (speak & SpeakAs::NoPunctuation)
-        [hints addObject:@"no-punctuation"];
-    
-    return hints;
+    return [(NSString *)_axBackingObject->speechHintAttributeValue() componentsSeparatedByString:@" "];
 }
 
 - (NSString *)baseAccessibilityHelpText
 {
-    Vector<AccessibilityText> textOrder;
-    m_object->accessibilityText(textOrder);
-    
-    bool descriptiveTextAvailable = false;
-    for (const auto& text : textOrder) {
-        if (text.textSource == AccessibilityTextSource::Help || text.textSource == AccessibilityTextSource::Summary)
-            return text.text;
-        
-        // If an element does NOT have other descriptive text the title tag should be used as its descriptive text.
-        // But, if those ARE available, then the title tag should be used for help text instead.
-        switch (text.textSource) {
-        case AccessibilityTextSource::Alternative:
-        case AccessibilityTextSource::Visible:
-        case AccessibilityTextSource::Children:
-        case AccessibilityTextSource::LabelByElement:
-            descriptiveTextAvailable = true;
-            break;
-        default:
-            break;
-        }
-        
-        if (text.textSource == AccessibilityTextSource::TitleTag && descriptiveTextAvailable)
-            return text.text;
-    }
-    
-    return [NSString string];
+    return _axBackingObject->helpTextAttributeValue();
 }
 
 struct PathConversionInfo {
@@ -461,31 +419,42 @@ static void convertPathToScreenSpaceFunction(PathConversionInfo& conversion, con
 {
     WebAccessibilityObjectWrapperBase *wrapper = conversion.wrapper;
     CGMutablePathRef newPath = conversion.path;
+    FloatRect rect;
     switch (element.type) {
     case PathElementMoveToPoint:
     {
-        CGPoint newPoint = [wrapper convertPointToScreenSpace:element.points[0]];
+        rect = FloatRect(element.points[0], FloatSize());
+        CGPoint newPoint = [wrapper convertRectToSpace:rect space:AccessibilityConversionSpace::Screen].origin;
         CGPathMoveToPoint(newPath, nil, newPoint.x, newPoint.y);
         break;
     }
     case PathElementAddLineToPoint:
     {
-        CGPoint newPoint = [wrapper convertPointToScreenSpace:element.points[0]];
+        rect = FloatRect(element.points[0], FloatSize());
+        CGPoint newPoint = [wrapper convertRectToSpace:rect space:AccessibilityConversionSpace::Screen].origin;
         CGPathAddLineToPoint(newPath, nil, newPoint.x, newPoint.y);
         break;
     }
     case PathElementAddQuadCurveToPoint:
     {
-        CGPoint newPoint1 = [wrapper convertPointToScreenSpace:element.points[0]];
-        CGPoint newPoint2 = [wrapper convertPointToScreenSpace:element.points[1]];
+        rect = FloatRect(element.points[0], FloatSize());
+        CGPoint newPoint1 = [wrapper convertRectToSpace:rect space:AccessibilityConversionSpace::Screen].origin;
+
+        rect = FloatRect(element.points[1], FloatSize());
+        CGPoint newPoint2 = [wrapper convertRectToSpace:rect space:AccessibilityConversionSpace::Screen].origin;
         CGPathAddQuadCurveToPoint(newPath, nil, newPoint1.x, newPoint1.y, newPoint2.x, newPoint2.y);
         break;
     }
     case PathElementAddCurveToPoint:
     {
-        CGPoint newPoint1 = [wrapper convertPointToScreenSpace:element.points[0]];
-        CGPoint newPoint2 = [wrapper convertPointToScreenSpace:element.points[1]];
-        CGPoint newPoint3 = [wrapper convertPointToScreenSpace:element.points[2]];
+        rect = FloatRect(element.points[0], FloatSize());
+        CGPoint newPoint1 = [wrapper convertRectToSpace:rect space:AccessibilityConversionSpace::Screen].origin;
+
+        rect = FloatRect(element.points[1], FloatSize());
+        CGPoint newPoint2 = [wrapper convertRectToSpace:rect space:AccessibilityConversionSpace::Screen].origin;
+
+        rect = FloatRect(element.points[2], FloatSize());
+        CGPoint newPoint3 = [wrapper convertRectToSpace:rect space:AccessibilityConversionSpace::Screen].origin;
         CGPathAddCurveToPoint(newPath, nil, newPoint1.x, newPoint1.y, newPoint2.x, newPoint2.y, newPoint3.x, newPoint3.y);
         break;
     }
@@ -507,16 +476,54 @@ static void convertPathToScreenSpaceFunction(PathConversionInfo& conversion, con
     return conversion.path;
 }
 
-- (CGPoint)convertPointToScreenSpace:(FloatPoint &)point
+- (id)_accessibilityWebDocumentView
 {
-    UNUSED_PARAM(point);
     ASSERT_NOT_REACHED();
-    return CGPointZero;
+    // Overridden by sub-classes
+    return nil;
+}
+
+- (CGRect)convertRectToSpace:(WebCore::FloatRect &)rect space:(AccessibilityConversionSpace)space
+{
+    if (!m_object)
+        return CGRectZero;
+    
+    CGSize size = CGSizeMake(rect.size().width(), rect.size().height());
+    CGPoint point = CGPointMake(rect.x(), rect.y());
+    
+    CGRect cgRect = CGRectMake(point.x, point.y, size.width, size.height);
+
+    // WebKit1 code path... platformWidget() exists.
+    FrameView* frameView = m_object->documentFrameView();
+#if PLATFORM(IOS_FAMILY)
+    WAKView* documentView = frameView ? frameView->documentView() : nullptr;
+    if (documentView) {
+        cgRect = [documentView convertRect:cgRect toView:nil];
+        
+        // we need the web document view to give us our final screen coordinates
+        // because that can take account of the scroller
+        id webDocument = [self _accessibilityWebDocumentView];
+        if (webDocument)
+            cgRect = [webDocument convertRect:cgRect toView:nil];
+        return cgRect;
+    }
+#else
+    if (frameView && frameView->platformWidget()) {
+        NSRect nsRect = NSRectFromCGRect(cgRect);
+        NSView* view = frameView->documentView();
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+        nsRect = [[view window] convertRectToScreen:[view convertRect:nsRect toView:nil]];
+        ALLOW_DEPRECATED_DECLARATIONS_END
+        return NSRectToCGRect(nsRect);
+    }
+#endif
+    else
+        return static_cast<CGRect>(m_object->convertFrameToSpace(rect, space));
 }
 
 - (NSString *)ariaLandmarkRoleDescription
 {
-    switch (m_object->roleValue()) {
+    switch (_axBackingObject->roleValue()) {
     case AccessibilityRole::LandmarkBanner:
         return AXARIAContentGroupText(@"ARIALandmarkBanner");
     case AccessibilityRole::LandmarkComplementary:
@@ -563,6 +570,27 @@ static void convertPathToScreenSpaceFunction(PathConversionInfo& conversion, con
     default:
         return nil;
     }
+}
+
+- (void)baseAccessibilitySetFocus:(BOOL)focus
+{
+    // If focus is just set without making the view the first responder, then keyboard focus won't move to the right place.
+    if (focus && !m_object->document()->frame()->selection().isFocusedAndActive()) {
+        FrameView* frameView = m_object->documentFrameView();
+        Page* page = m_object->page();
+        if (page && frameView) {
+            ChromeClient& chromeClient = page->chrome().client();
+            chromeClient.focus();
+
+            // Legacy WebKit1 case.
+            if (frameView->platformWidget())
+                chromeClient.makeFirstResponder(frameView->platformWidget());
+            else
+                chromeClient.assistiveTechnologyMakeFirstResponder();
+        }
+    }
+
+    m_object->setFocused(focus);
 }
 
 - (NSString *)accessibilityPlatformMathSubscriptKey
@@ -693,6 +721,7 @@ static AccessibilitySearchKeyMap* createAccessibilitySearchKeyMap()
         { NSAccessibilityHeadingSameLevelSearchKey, AccessibilitySearchKey::HeadingSameLevel },
         { NSAccessibilityHeadingSearchKey, AccessibilitySearchKey::Heading },
         { NSAccessibilityHighlightedSearchKey, AccessibilitySearchKey::Highlighted },
+        { NSAccessibilityKeyboardFocusableSearchKey, AccessibilitySearchKey::KeyboardFocusable },
         { NSAccessibilityItalicFontSearchKey, AccessibilitySearchKey::ItalicFont },
         { NSAccessibilityLandmarkSearchKey, AccessibilitySearchKey::Landmark },
         { NSAccessibilityLinkSearchKey, AccessibilitySearchKey::Link },

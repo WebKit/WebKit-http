@@ -27,6 +27,7 @@
 #include "WebFrameProxy.h"
 
 #include "APINavigation.h"
+#include "ProvisionalPageProxy.h"
 #include "WebCertificateInfo.h"
 #include "WebFramePolicyListenerProxy.h"
 #include "WebPageMessages.h"
@@ -43,8 +44,8 @@
 namespace WebKit {
 using namespace WebCore;
 
-WebFrameProxy::WebFrameProxy(WebPageProxy* page, uint64_t frameID)
-    : m_page(page)
+WebFrameProxy::WebFrameProxy(WebPageProxy& page, uint64_t frameID)
+    : m_page(makeWeakPtr(page))
     , m_isFrameSet(false)
     , m_frameID(frameID)
 {
@@ -74,7 +75,7 @@ bool WebFrameProxy::isMainFrame() const
     if (!m_page)
         return false;
 
-    return this == m_page->mainFrame();
+    return this == m_page->mainFrame() || (m_page->provisionalPageProxy() && this == m_page->provisionalPageProxy()->mainFrame());
 }
 
 void WebFrameProxy::loadURL(const URL& url)
@@ -85,12 +86,21 @@ void WebFrameProxy::loadURL(const URL& url)
     m_page->process().send(Messages::WebPage::LoadURLInFrame(url, m_frameID), m_page->pageID());
 }
 
+void WebFrameProxy::loadData(const IPC::DataReference& data, const String& MIMEType, const String& encodingName, const URL& baseURL)
+{
+    ASSERT(!isMainFrame());
+    if (!m_page)
+        return;
+
+    m_page->process().send(Messages::WebPage::LoadDataInFrame(data, MIMEType, encodingName, baseURL, m_frameID), m_page->pageID());
+}
+
 void WebFrameProxy::stopLoading() const
 {
     if (!m_page)
         return;
 
-    if (!m_page->isValid())
+    if (!m_page->hasRunningProcess())
         return;
 
     m_page->process().send(Messages::WebPage::StopLoadingFrame(m_frameID), m_page->pageID());
@@ -136,6 +146,11 @@ void WebFrameProxy::didStartProvisionalLoad(const URL& url)
     m_frameLoadState.didStartProvisionalLoad(url);
 }
 
+void WebFrameProxy::didExplicitOpen(const URL& url)
+{
+    m_frameLoadState.didExplicitOpen(url);
+}
+
 void WebFrameProxy::didReceiveServerRedirectForProvisionalLoad(const URL& url)
 {
     m_frameLoadState.didReceiveServerRedirectForProvisionalLoad(url);
@@ -177,12 +192,12 @@ void WebFrameProxy::didChangeTitle(const String& title)
     m_title = title;
 }
 
-WebFramePolicyListenerProxy& WebFrameProxy::setUpPolicyListenerProxy(CompletionHandler<void(WebCore::PolicyAction, API::WebsitePolicies*, ProcessSwapRequestedByClient, Vector<SafeBrowsingResult>&&)>&& completionHandler, ShouldExpectSafeBrowsingResult expect)
+WebFramePolicyListenerProxy& WebFrameProxy::setUpPolicyListenerProxy(CompletionHandler<void(PolicyAction, API::WebsitePolicies*, ProcessSwapRequestedByClient, RefPtr<SafeBrowsingWarning>&&)>&& completionHandler, ShouldExpectSafeBrowsingResult expect)
 {
     if (m_activeListener)
         m_activeListener->ignore();
-    m_activeListener = WebFramePolicyListenerProxy::create([this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)] (WebCore::PolicyAction action, API::WebsitePolicies* policies, ProcessSwapRequestedByClient processSwapRequestedByClient, Vector<SafeBrowsingResult>&& safeBrowsingResults) mutable {
-        completionHandler(action, policies, processSwapRequestedByClient, WTFMove(safeBrowsingResults));
+    m_activeListener = WebFramePolicyListenerProxy::create([this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)] (PolicyAction action, API::WebsitePolicies* policies, ProcessSwapRequestedByClient processSwapRequestedByClient, RefPtr<SafeBrowsingWarning>&& safeBrowsingWarning) mutable {
+        completionHandler(action, policies, processSwapRequestedByClient, WTFMove(safeBrowsingWarning));
         m_activeListener = nullptr;
     }, expect);
     return *m_activeListener;
@@ -231,7 +246,7 @@ bool WebFrameProxy::didHandleContentFilterUnblockNavigation(const ResourceReques
         return false;
     }
 
-    RefPtr<WebPageProxy> page { m_page };
+    RefPtr<WebPageProxy> page { m_page.get() };
     ASSERT(page);
     m_contentFilterUnblockHandler.requestUnblockAsync([page](bool unblocked) {
         if (unblocked)

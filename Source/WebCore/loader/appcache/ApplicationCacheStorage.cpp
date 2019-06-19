@@ -30,14 +30,14 @@
 #include "ApplicationCacheGroup.h"
 #include "ApplicationCacheHost.h"
 #include "ApplicationCacheResource.h"
-#include "FileSystem.h"
 #include "SQLiteDatabaseTracker.h"
 #include "SQLiteStatement.h"
 #include "SQLiteTransaction.h"
 #include "SecurityOrigin.h"
 #include "SecurityOriginData.h"
-#include "URL.h"
+#include <wtf/FileSystem.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/URL.h>
 #include <wtf/UUID.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
@@ -84,15 +84,10 @@ private:
 
 static unsigned urlHostHash(const URL& url)
 {
-    unsigned hostStart = url.hostStart();
-    unsigned hostEnd = url.hostEnd();
-
-    const String& urlString = url.string();
-
-    if (urlString.is8Bit())
-        return AlreadyHashed::avoidDeletedValue(StringHasher::computeHashAndMaskTop8Bits(urlString.characters8() + hostStart, hostEnd - hostStart));
-    
-    return AlreadyHashed::avoidDeletedValue(StringHasher::computeHashAndMaskTop8Bits(urlString.characters16() + hostStart, hostEnd - hostStart));
+    StringView host = url.host();
+    if (host.is8Bit())
+        return AlreadyHashed::avoidDeletedValue(StringHasher::computeHashAndMaskTop8Bits(host.characters8(), host.length()));
+    return AlreadyHashed::avoidDeletedValue(StringHasher::computeHashAndMaskTop8Bits(host.characters16(), host.length()));
 }
 
 ApplicationCacheGroup* ApplicationCacheStorage::loadCacheGroup(const URL& manifestURL)
@@ -223,7 +218,7 @@ ApplicationCacheGroup* ApplicationCacheStorage::cacheGroupForURL(const URL& url)
     
     int result;
     while ((result = statement.step()) == SQLITE_ROW) {
-        URL manifestURL = URL(ParsedURLString, statement.getColumnText(1));
+        URL manifestURL = URL({ }, statement.getColumnText(1));
 
         if (m_cachesInMemory.contains(manifestURL))
             continue;
@@ -290,7 +285,7 @@ ApplicationCacheGroup* ApplicationCacheStorage::fallbackCacheGroupForURL(const U
     
     int result;
     while ((result = statement.step()) == SQLITE_ROW) {
-        URL manifestURL = URL(ParsedURLString, statement.getColumnText(1));
+        URL manifestURL = URL({ }, statement.getColumnText(1));
 
         if (m_cachesInMemory.contains(manifestURL))
             continue;
@@ -1066,7 +1061,7 @@ static inline void parseHeader(const CharacterType* header, unsigned headerLengt
 
     // Save memory by putting the header names into atomic strings so each is stored only once,
     // even though the setHTTPHeaderField function does not require an atomic string.
-    AtomicString headerName { header, colonPosition };
+    AtomString headerName { header, colonPosition };
     String headerValue { header + colonPosition + 1, headerLength - colonPosition - 1 };
 
     response.setHTTPHeaderField(headerName, headerValue);
@@ -1114,7 +1109,7 @@ RefPtr<ApplicationCache> ApplicationCacheStorage::loadCache(unsigned storageID)
 
     int result;
     while ((result = cacheStatement.step()) == SQLITE_ROW) {
-        URL url(ParsedURLString, cacheStatement.getColumnText(0));
+        URL url({ }, cacheStatement.getColumnText(0));
         
         int httpStatusCode = cacheStatement.getColumnInt(1);
 
@@ -1167,7 +1162,7 @@ RefPtr<ApplicationCache> ApplicationCacheStorage::loadCache(unsigned storageID)
     
     Vector<URL> whitelist;
     while ((result = whitelistStatement.step()) == SQLITE_ROW) 
-        whitelist.append(URL(ParsedURLString, whitelistStatement.getColumnText(0)));
+        whitelist.append(URL({ }, whitelistStatement.getColumnText(0)));
 
     if (result != SQLITE_DONE)
         LOG_ERROR("Could not load cache online whitelist, error \"%s\"", m_database.lastErrorMsg());
@@ -1197,7 +1192,7 @@ RefPtr<ApplicationCache> ApplicationCacheStorage::loadCache(unsigned storageID)
     
     FallbackURLVector fallbackURLs;
     while ((result = fallbackStatement.step()) == SQLITE_ROW) 
-        fallbackURLs.append(std::make_pair(URL(ParsedURLString, fallbackStatement.getColumnText(0)), URL(ParsedURLString, fallbackStatement.getColumnText(1))));
+        fallbackURLs.append(std::make_pair(URL({ }, fallbackStatement.getColumnText(0)), URL({ }, fallbackStatement.getColumnText(1))));
 
     if (result != SQLITE_DONE)
         LOG_ERROR("Could not load fallback URLs, error \"%s\"", m_database.lastErrorMsg());
@@ -1206,7 +1201,7 @@ RefPtr<ApplicationCache> ApplicationCacheStorage::loadCache(unsigned storageID)
     
     cache->setStorageID(storageID);
 
-    return WTFMove(cache);
+    return cache;
 }    
     
 void ApplicationCacheStorage::remove(ApplicationCache* cache)
@@ -1313,24 +1308,24 @@ bool ApplicationCacheStorage::writeDataToUniqueFileInDirectory(SharedBuffer& dat
     return true;
 }
 
-std::optional<Vector<URL>> ApplicationCacheStorage::manifestURLs()
+Optional<Vector<URL>> ApplicationCacheStorage::manifestURLs()
 {
     SQLiteTransactionInProgressAutoCounter transactionCounter;
 
     openDatabase(false);
     if (!m_database.isOpen())
-        return std::nullopt;
+        return WTF::nullopt;
 
     SQLiteStatement selectURLs(m_database, "SELECT manifestURL FROM CacheGroups");
 
     if (selectURLs.prepare() != SQLITE_OK)
-        return std::nullopt;
+        return WTF::nullopt;
 
     Vector<URL> urls;
     while (selectURLs.step() == SQLITE_ROW)
-        urls.append(URL(ParsedURLString, selectURLs.getColumnText(0)));
+        urls.append(URL({ }, selectURLs.getColumnText(0)));
 
-    return WTFMove(urls);
+    return urls;
 }
 
 bool ApplicationCacheStorage::deleteCacheGroupRecord(const String& manifestURL)

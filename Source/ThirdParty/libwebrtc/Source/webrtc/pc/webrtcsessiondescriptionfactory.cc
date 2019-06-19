@@ -18,7 +18,6 @@
 #include "absl/memory/memory.h"
 #include "api/jsep.h"
 #include "api/jsepsessiondescription.h"
-#include "api/mediaconstraintsinterface.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/sslidentity.h"
 
@@ -117,7 +116,6 @@ void WebRtcSessionDescriptionFactory::CopyCandidatesFromSessionDescription(
   }
 }
 
-// Private constructor called by other constructors.
 WebRtcSessionDescriptionFactory::WebRtcSessionDescriptionFactory(
     rtc::Thread* signaling_thread,
     cricket::ChannelManager* channel_manager,

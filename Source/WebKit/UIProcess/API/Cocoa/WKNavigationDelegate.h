@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -35,6 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class WKNavigationAction;
 @class WKNavigationResponse;
 @class WKWebView;
+@class WKWebpagePreferences;
 
 /*! @enum WKNavigationActionPolicy
  @abstract The policy to pass back to the decision handler from the
@@ -45,7 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 typedef NS_ENUM(NSInteger, WKNavigationActionPolicy) {
     WKNavigationActionPolicyCancel,
     WKNavigationActionPolicyAllow,
-} WK_API_AVAILABLE(macosx(10.10), ios(8.0));
+} WK_API_AVAILABLE(macos(10.10), ios(8.0));
 
 /*! @enum WKNavigationResponsePolicy
  @abstract The policy to pass back to the decision handler from the webView:decidePolicyForNavigationResponse:decisionHandler: method.
@@ -55,7 +54,7 @@ typedef NS_ENUM(NSInteger, WKNavigationActionPolicy) {
 typedef NS_ENUM(NSInteger, WKNavigationResponsePolicy) {
     WKNavigationResponsePolicyCancel,
     WKNavigationResponsePolicyAllow,
-} WK_API_AVAILABLE(macosx(10.10), ios(8.0));
+} WK_API_AVAILABLE(macos(10.10), ios(8.0));
 
 /*! A class conforming to the WKNavigationDelegate protocol can provide
  methods for tracking progress for main frame navigations and for deciding
@@ -74,6 +73,20 @@ typedef NS_ENUM(NSInteger, WKNavigationResponsePolicy) {
  @discussion If you do not implement this method, the web view will load the request or, if appropriate, forward it to another application.
  */
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler;
+
+/*! @abstract Decides whether to allow or cancel a navigation.
+ @param webView The web view invoking the delegate method.
+ @param navigationAction Descriptive information about the action
+ triggering the navigation request.
+ @param preferences The default set of webpage preferences. This may be
+ changed by setting defaultWebpagePreferences on WKWebViewConfiguration.
+ @param decisionHandler The policy decision handler to call to allow or cancel
+ the navigation. The arguments are one of the constants of the enumerated type
+ WKNavigationActionPolicy, as well as an instance of WKWebpagePreferences.
+ @discussion If you implement this method,
+ -webView:decidePolicyForNavigationAction:decisionHandler: will not be called.
+ */
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction preferences:(WKWebpagePreferences *)preferences decisionHandler:(void (^)(WKNavigationActionPolicy, WKWebpagePreferences *))decisionHandler WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 /*! @abstract Decides whether to allow or cancel a navigation after its
  response is known.
@@ -142,10 +155,8 @@ typedef NS_ENUM(NSInteger, WKNavigationResponsePolicy) {
 /*! @abstract Invoked when the web view's web content process is terminated.
  @param webView The web view whose underlying web content process was terminated.
  */
-- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView WK_API_AVAILABLE(macos(10.11), ios(9.0));
 
 @end
 
 NS_ASSUME_NONNULL_END
-
-#endif

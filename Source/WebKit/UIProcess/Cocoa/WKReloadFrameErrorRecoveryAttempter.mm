@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKReloadFrameErrorRecoveryAttempter.h"
 
-#if WK_API_ENABLED
-
 #import "_WKErrorRecoveryAttempting.h"
 #import "_WKFrameHandleInternal.h"
 #import "WKWebViewInternal.h"
@@ -69,10 +67,8 @@
     if (!webFrameProxy)
         return NO;
 
-    webFrameProxy->loadURL(WebCore::URL(WebCore::URL(), _urlString));
+    webFrameProxy->loadURL(URL(URL(), _urlString));
     return YES;
 }
 
 @end
-
-#endif

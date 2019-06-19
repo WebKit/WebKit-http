@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKDOMRangePrivate.h"
 
-#if WK_API_ENABLED
-
 #import "InjectedBundleRangeHandle.h"
 #import "WKBundleAPICast.h"
 #import "WKDOMInternals.h"
@@ -50,8 +48,8 @@
 
 - (id)initWithDocument:(WKDOMDocument *)document
 {
-    RefPtr<WebCore::Range> range = WebCore::Range::create(*WebKit::toWebCoreDocument(document));
-    self = [self _initWithImpl:range.get()];
+    auto range = WebCore::Range::create(*WebKit::toWebCoreDocument(document));
+    self = [self _initWithImpl:range.ptr()];
     if (!self)
         return nil;
 
@@ -153,5 +151,3 @@
 }
 
 @end
-
-#endif // WK_API_ENABLED

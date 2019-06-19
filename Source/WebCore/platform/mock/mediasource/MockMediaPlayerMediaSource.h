@@ -29,6 +29,7 @@
 #if ENABLE(MEDIA_SOURCE)
 
 #include "MediaPlayerPrivate.h"
+#include <wtf/Logger.h>
 #include <wtf/MediaTime.h>
 
 namespace WebCore {
@@ -56,6 +57,11 @@ public:
     void waitForSeekCompleted();
     void seekCompleted();
 
+#if !RELEASE_LOG_DISABLED
+    const void* mediaPlayerLogIdentifier() { return m_player->mediaPlayerLogIdentifier(); }
+    const Logger& mediaPlayerLogger() { return m_player->mediaPlayerLogger(); }
+#endif
+
 private:
     // MediaPlayerPrivate Overrides
     void load(const String& url) override;
@@ -81,7 +87,7 @@ private:
     MediaTime currentMediaTime() const override;
     MediaTime durationMediaTime() const override;
     void seekWithTolerance(const MediaTime&, const MediaTime&, const MediaTime&) override;
-    std::optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() override;
+    Optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() override;
 
     MediaPlayer* m_player;
     RefPtr<MockMediaSourcePrivate> m_mediaSourcePrivate;

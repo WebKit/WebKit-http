@@ -25,10 +25,15 @@
 
 #pragma once
 
+#include "GridPositionsResolver.h"
 #include "LayoutUnit.h"
-#include "RenderGrid.h"
 
 namespace WebCore {
+
+class RenderBox;
+class RenderGrid;
+
+enum GridAxis { GridRowAxis, GridColumnAxis };
 
 namespace GridLayoutFunctions {
 
@@ -37,7 +42,7 @@ LayoutUnit marginLogicalSizeForChild(const RenderGrid&, GridTrackSizingDirection
 bool isOrthogonalChild(const RenderGrid&, const RenderBox&);
 GridTrackSizingDirection flowAwareDirectionForChild(const RenderGrid&, const RenderBox&, GridTrackSizingDirection);
 bool hasOverrideContainingBlockContentSizeForChild(const RenderBox&, GridTrackSizingDirection);
-std::optional<LayoutUnit> overrideContainingBlockContentSizeForChild(const RenderBox&, GridTrackSizingDirection);
+Optional<LayoutUnit> overrideContainingBlockContentSizeForChild(const RenderBox&, GridTrackSizingDirection);
 
 }
 

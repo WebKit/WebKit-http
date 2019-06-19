@@ -109,11 +109,9 @@ class RTCStatsIntegrationTest : public testing::Test {
     PeerConnectionInterface::IceServer ice_server;
     ice_server.uri = "stun:1.1.1.1:3478";
     config.servers.push_back(ice_server);
-    EXPECT_TRUE(caller_->CreatePc(nullptr, config,
-                                  CreateBuiltinAudioEncoderFactory(),
+    EXPECT_TRUE(caller_->CreatePc(config, CreateBuiltinAudioEncoderFactory(),
                                   CreateBuiltinAudioDecoderFactory()));
-    EXPECT_TRUE(callee_->CreatePc(nullptr, config,
-                                  CreateBuiltinAudioEncoderFactory(),
+    EXPECT_TRUE(callee_->CreatePc(config, CreateBuiltinAudioEncoderFactory(),
                                   CreateBuiltinAudioDecoderFactory()));
     PeerConnectionTestWrapper::Connect(caller_.get(), callee_.get());
 
@@ -129,7 +127,7 @@ class RTCStatsIntegrationTest : public testing::Test {
     callee_->CreateDataChannel("data", init);
 
     // Negotiate and wait for call to establish
-    caller_->CreateOffer(nullptr);
+    caller_->CreateOffer(PeerConnectionInterface::RTCOfferAnswerOptions());
     caller_->WaitForCallEstablished();
     callee_->WaitForCallEstablished();
   }
@@ -499,6 +497,7 @@ class RTCStatsReportVerifier {
     verifier.TestMemberIsNonNegative<int32_t>(candidate.priority);
     verifier.TestMemberIsUndefined(candidate.url);
     verifier.TestMemberIsDefined(candidate.deleted);
+    verifier.TestMemberIsUndefined(candidate.relay_protocol);
     return verifier.ExpectAllMembersSuccessfullyTested();
   }
 
@@ -605,11 +604,18 @@ class RTCStatsReportVerifier {
           media_stream_track.concealed_samples);
       verifier.TestMemberIsNonNegative<uint64_t>(
           media_stream_track.concealment_events);
+      verifier.TestMemberIsNonNegative<uint64_t>(
+          media_stream_track.jitter_buffer_flushes);
+      verifier.TestMemberIsNonNegative<uint64_t>(
+          media_stream_track.delayed_packet_outage_samples);
     } else {
       verifier.TestMemberIsUndefined(media_stream_track.jitter_buffer_delay);
       verifier.TestMemberIsUndefined(media_stream_track.total_samples_received);
       verifier.TestMemberIsUndefined(media_stream_track.concealed_samples);
       verifier.TestMemberIsUndefined(media_stream_track.concealment_events);
+      verifier.TestMemberIsUndefined(media_stream_track.jitter_buffer_flushes);
+      verifier.TestMemberIsUndefined(
+          media_stream_track.delayed_packet_outage_samples);
     }
     return verifier.ExpectAllMembersSuccessfullyTested();
   }
@@ -630,6 +636,7 @@ class RTCStatsReportVerifier {
     verifier->TestMemberIsUndefined(stream.associate_stats_id);
     verifier->TestMemberIsDefined(stream.is_remote);
     verifier->TestMemberIsDefined(stream.media_type);
+    verifier->TestMemberIsDefined(stream.kind);
     verifier->TestMemberIsIDReference(stream.track_id,
                                       RTCMediaStreamTrackStats::kType);
     verifier->TestMemberIsIDReference(stream.transport_id,
@@ -806,7 +813,11 @@ TEST_F(RTCStatsIntegrationTest, GetStatsWithInvalidReceiverSelector) {
   EXPECT_FALSE(report->size());
 }
 
-TEST_F(RTCStatsIntegrationTest, GetsStatsWhileDestroyingPeerConnections) {
+// TODO(bugs.webrtc.org/9847) Remove this test altogether if a proper fix cannot
+// be found. For now it is lying, as we cannot safely gets stats while
+// destroying PeerConnection.
+TEST_F(RTCStatsIntegrationTest,
+       DISABLED_GetsStatsWhileDestroyingPeerConnection) {
   StartCall();
 
   rtc::scoped_refptr<RTCStatsObtainer> stats_obtainer =

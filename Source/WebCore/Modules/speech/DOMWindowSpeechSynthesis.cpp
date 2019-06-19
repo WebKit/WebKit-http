@@ -38,7 +38,7 @@
 namespace WebCore {
 
 DOMWindowSpeechSynthesis::DOMWindowSpeechSynthesis(DOMWindow* window)
-    : DOMWindowProperty(window->frame())
+    : DOMWindowProperty(window)
 {
 }
 
@@ -70,7 +70,7 @@ SpeechSynthesis* DOMWindowSpeechSynthesis::speechSynthesis(DOMWindow& window)
 SpeechSynthesis* DOMWindowSpeechSynthesis::speechSynthesis()
 {
     if (!m_speechSynthesis && frame())
-        m_speechSynthesis = SpeechSynthesis::create();
+        m_speechSynthesis = SpeechSynthesis::create(makeWeakPtr(frame()->page()->speechSynthesisClient()));
     return m_speechSynthesis.get();
 }
 

@@ -31,11 +31,10 @@
 
 namespace JSC {
 
-SourceProvider::SourceProvider(const SourceOrigin& sourceOrigin, const String& url, const TextPosition& startPosition, SourceProviderSourceType sourceType)
+SourceProvider::SourceProvider(const SourceOrigin& sourceOrigin, URL&& url, const TextPosition& startPosition, SourceProviderSourceType sourceType)
     : m_sourceType(sourceType)
-    , m_validated(false)
+    , m_url(WTFMove(url))
     , m_sourceOrigin(sourceOrigin)
-    , m_url(url)
     , m_startPosition(startPosition)
 {
 }

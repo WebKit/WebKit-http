@@ -35,7 +35,8 @@
 
 #include "RTCBundlePolicy.h"
 #include "RTCIceTransportPolicy.h"
-#include "URL.h"
+#include "RTCPMuxPolicy.h"
+#include <wtf/URL.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -50,13 +51,19 @@ struct MediaEndpointConfiguration {
 
         IceServerInfo(Vector<URL>&&, const String&, const String&);
     };
+    struct CertificatePEM {
+        String certificate;
+        String privateKey;
+    };
 
-    MediaEndpointConfiguration(Vector<IceServerInfo>&&, RTCIceTransportPolicy, RTCBundlePolicy, unsigned short);
+    MediaEndpointConfiguration(Vector<IceServerInfo>&&, RTCIceTransportPolicy, RTCBundlePolicy, RTCPMuxPolicy, unsigned short, Vector<CertificatePEM>&&);
 
     Vector<IceServerInfo> iceServers;
     RTCIceTransportPolicy iceTransportPolicy;
     RTCBundlePolicy bundlePolicy;
+    RTCPMuxPolicy rtcpMuxPolicy;
     unsigned short iceCandidatePoolSize;
+    Vector<CertificatePEM> certificates;
 };
 
 } // namespace WebCore

@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2007 David Smith (catfish.man@gmail.com)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  * Copyright (C) Research In Motion Limited 2010. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -27,10 +27,10 @@
 #include "RenderBlockFlow.h"
 #include "RenderBox.h"
 #include "RenderView.h"
-
+#include <wtf/HexNumber.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
-using namespace WTF;
 
 struct SameSizeAsFloatingObject {
     void* pointers[2];
@@ -98,6 +98,15 @@ LayoutSize FloatingObject::translationOffsetToAncestor() const
 {
     return locationOffsetOfBorderBox() - renderer().locationOffset();
 }
+
+#ifndef NDEBUG
+
+String FloatingObject::debugString() const
+{
+    return makeString("0x", hex(reinterpret_cast<uintptr_t>(this)), " (", frameRect().x().toInt(), 'x', frameRect().y().toInt(), ' ', frameRect().maxX().toInt(), 'x', frameRect().maxY().toInt(), ')');
+}
+
+#endif
 
 inline static bool rangesIntersect(LayoutUnit floatTop, LayoutUnit floatBottom, LayoutUnit objectTop, LayoutUnit objectBottom)
 {
@@ -195,14 +204,14 @@ public:
     LayoutUnit highValue() const { return LayoutUnit::max(); }
     void collectIfNeeded(const IntervalType&);
 
-    LayoutUnit nextLogicalBottom() const { return m_nextLogicalBottom.value_or(0); }
-    LayoutUnit nextShapeLogicalBottom() const { return m_nextShapeLogicalBottom.value_or(nextLogicalBottom()); }
+    LayoutUnit nextLogicalBottom() const { return m_nextLogicalBottom.valueOr(0); }
+    LayoutUnit nextShapeLogicalBottom() const { return m_nextShapeLogicalBottom.valueOr(nextLogicalBottom()); }
 
 private:
     WeakPtr<const RenderBlockFlow> m_renderer;
     LayoutUnit m_belowLogicalHeight;
-    std::optional<LayoutUnit> m_nextLogicalBottom;
-    std::optional<LayoutUnit> m_nextShapeLogicalBottom;
+    Optional<LayoutUnit> m_nextLogicalBottom;
+    Optional<LayoutUnit> m_nextShapeLogicalBottom;
 };
 
 inline void FindNextFloatLogicalBottomAdapter::collectIfNeeded(const IntervalType& interval)
@@ -348,16 +357,13 @@ FloatingObject* FloatingObjects::add(std::unique_ptr<FloatingObject> floatingObj
 
 void FloatingObjects::remove(FloatingObject* floatingObject)
 {
-    ASSERT((m_set.contains<FloatingObject&, FloatingObjectHashTranslator>(*floatingObject)));
+    ASSERT((m_set.contains(floatingObject)));
     decreaseObjectsCount(floatingObject->type());
     ASSERT(floatingObject->isPlaced() || !floatingObject->isInPlacedTree());
     if (floatingObject->isPlaced())
         removePlacedObject(floatingObject);
     ASSERT(!floatingObject->originatingLine());
-    auto it = m_set.find<FloatingObject&, FloatingObjectHashTranslator>(*floatingObject);
-    if (it == m_set.end())
-        return;
-    m_set.remove(it);
+    m_set.remove(floatingObject);
 }
 
 void FloatingObjects::computePlacedFloatsTree()
@@ -448,7 +454,7 @@ inline bool ComputeFloatOffsetForFloatLayoutAdapter<FloatingObject::FloatRight>:
 template <FloatingObject::Type FloatTypeValue>
 LayoutUnit ComputeFloatOffsetForFloatLayoutAdapter<FloatTypeValue>::heightRemaining() const
 {
-    return this->m_outermostFloat ? this->m_renderer->logicalBottomForFloat(*this->m_outermostFloat) - this->m_lineTop : LayoutUnit::fromPixel(1);
+    return this->m_outermostFloat ? this->m_renderer->logicalBottomForFloat(*this->m_outermostFloat) - this->m_lineTop : 1_lu;
 }
 
 template <FloatingObject::Type FloatTypeValue>
@@ -473,7 +479,7 @@ inline bool ComputeFloatOffsetForLineLayoutAdapter<FloatingObject::FloatLeft>::u
     LayoutUnit logicalRight = m_renderer->logicalRightForFloat(floatingObject);
     if (ShapeOutsideInfo* shapeOutside = floatingObject.renderer().shapeOutsideInfo()) {
         ShapeOutsideDeltas shapeDeltas = shapeOutside->computeDeltasForContainingBlockLine(*m_renderer, floatingObject, m_lineTop, m_lineBottom - m_lineTop);
-        if (!shapeDeltas.lineOverlapsShape())
+        if (!shapeDeltas.isValid() || !shapeDeltas.lineOverlapsShape())
             return false;
 
         logicalRight += shapeDeltas.rightMarginBoxDelta();
@@ -492,7 +498,7 @@ inline bool ComputeFloatOffsetForLineLayoutAdapter<FloatingObject::FloatRight>::
     LayoutUnit logicalLeft = m_renderer->logicalLeftForFloat(floatingObject);
     if (ShapeOutsideInfo* shapeOutside = floatingObject.renderer().shapeOutsideInfo()) {
         ShapeOutsideDeltas shapeDeltas = shapeOutside->computeDeltasForContainingBlockLine(*m_renderer, floatingObject, m_lineTop, m_lineBottom - m_lineTop);
-        if (!shapeDeltas.lineOverlapsShape())
+        if (!shapeDeltas.isValid() || !shapeDeltas.lineOverlapsShape())
             return false;
 
         logicalLeft += shapeDeltas.leftMarginBoxDelta();

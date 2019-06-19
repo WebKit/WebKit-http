@@ -26,8 +26,6 @@ namespace webrtc {
 namespace vcm {
 
 VideoReceiver::VideoReceiver(Clock* clock,
-                             EventFactory* event_factory,
-                             EncodedImageCallback* pre_decode_image_callback,
                              VCMTiming* timing,
                              NackSender* nack_sender,
                              KeyFrameRequestSender* keyframe_request_sender)
@@ -35,7 +33,6 @@ VideoReceiver::VideoReceiver(Clock* clock,
       _timing(timing),
       _receiver(_timing,
                 clock_,
-                event_factory,
                 nack_sender,
                 keyframe_request_sender),
       _decodedFrameCallback(_timing, clock_),
@@ -46,7 +43,6 @@ VideoReceiver::VideoReceiver(Clock* clock,
       drop_frames_until_keyframe_(false),
       max_nack_list_size_(0),
       _codecDataBase(),
-      pre_decode_image_callback_(pre_decode_image_callback),
       _receiveStatsTimer(1000, clock_),
       _retransmissionTimer(10, clock_),
       _keyRequestTimer(500, clock_) {
@@ -297,16 +293,6 @@ int32_t VideoReceiver::Decode(uint16_t maxWaitTimeMs) {
     return VCM_FRAME_NOT_READY;
   }
 
-  if (pre_decode_image_callback_) {
-    EncodedImage encoded_image(frame->EncodedImage());
-    int qp = -1;
-    if (qp_parser_.GetQp(*frame, &qp)) {
-      encoded_image.qp_ = qp;
-    }
-    pre_decode_image_callback_->OnEncodedImage(encoded_image,
-                                               frame->CodecSpecific(), nullptr);
-  }
-
   // If this frame was too late, we should adjust the delay accordingly
   _timing->UpdateCurrentDelay(frame->RenderTimeMs(),
                               clock_->TimeInMilliseconds());
@@ -327,15 +313,6 @@ int32_t VideoReceiver::Decode(uint16_t maxWaitTimeMs) {
 //                 VCMEncodedFrame with FrameObject.
 int32_t VideoReceiver::Decode(const webrtc::VCMEncodedFrame* frame) {
   RTC_DCHECK_RUN_ON(&decoder_thread_checker_);
-  if (pre_decode_image_callback_) {
-    EncodedImage encoded_image(frame->EncodedImage());
-    int qp = -1;
-    if (qp_parser_.GetQp(*frame, &qp)) {
-      encoded_image.qp_ = qp;
-    }
-    pre_decode_image_callback_->OnEncodedImage(encoded_image,
-                                               frame->CodecSpecific(), nullptr);
-  }
   return Decode(*frame);
 }
 

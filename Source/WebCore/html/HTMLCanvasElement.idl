@@ -32,7 +32,7 @@ typedef (
     WebGL2RenderingContext or
 #endif
 #if defined(ENABLE_WEBGPU) && ENABLE_WEBGPU
-    WebGPURenderingContext or
+    GPUCanvasContext or
 #endif
     ImageBitmapRenderingContext or 
     CanvasRenderingContext2D) RenderingContext;
@@ -42,13 +42,13 @@ typedef (
     ReportExtraMemoryCost,
     ReportExternalMemoryCost,
 ] interface HTMLCanvasElement : HTMLElement {
-    attribute unsigned long width;
-    attribute unsigned long height;
+    [CEReactions=NotNeeded, CallTracingCallback=recordCanvasAction] attribute unsigned long width;
+    [CEReactions=NotNeeded, CallTracingCallback=recordCanvasAction] attribute unsigned long height;
 
-    [CallWith=ScriptState, MayThrowException] RenderingContext? getContext(DOMString contextId, any... arguments);
+    [CallWith=ExecState, MayThrowException] RenderingContext? getContext(DOMString contextId, any... arguments);
 
     [MayThrowException] DOMString toDataURL(optional DOMString type, optional any quality);
     [CallWith=ScriptExecutionContext, MayThrowException] void toBlob(BlobCallback callback, optional DOMString type, optional any quality);
 
-    [Conditional=MEDIA_STREAM, CallWith=ScriptExecutionContext, MayThrowException, NewObject] MediaStream captureStream(optional double frameRequestRate);
+    [Conditional=MEDIA_STREAM, CallWith=Document, MayThrowException, NewObject] MediaStream captureStream(optional double frameRequestRate);
 };

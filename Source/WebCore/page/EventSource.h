@@ -34,7 +34,7 @@
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
-#include "URL.h"
+#include <wtf/URL.h>
 #include "ThreadableLoaderClient.h"
 #include "Timer.h"
 #include <wtf/Vector.h>
@@ -46,7 +46,7 @@ class TextResourceDecoder;
 class ThreadableLoader;
 
 class EventSource final : public RefCounted<EventSource>, public EventTargetWithInlineData, private ThreadableLoaderClient, public ActiveDOMObject {
-    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_ISO_ALLOCATED(EventSource);
 public:
     struct Init {
         bool withCredentials;
@@ -94,7 +94,7 @@ private:
     void scheduleReconnect();
     void abortConnectionAttempt();
     void parseEventStream();
-    void parseEventStreamLine(unsigned position, std::optional<unsigned> fieldLength, unsigned lineLength);
+    void parseEventStreamLine(unsigned position, Optional<unsigned> fieldLength, unsigned lineLength);
     void dispatchMessageEvent();
 
     bool responseIsValid(const ResourceResponse&) const;
@@ -112,7 +112,7 @@ private:
     bool m_discardTrailingNewline { false };
     bool m_requestInFlight { false };
 
-    AtomicString m_eventName;
+    AtomString m_eventName;
     Vector<UChar> m_data;
     String m_currentlyParsedEventId;
     String m_lastEventId;

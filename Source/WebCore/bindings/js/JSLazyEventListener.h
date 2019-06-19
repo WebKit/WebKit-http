@@ -20,6 +20,8 @@
 #pragma once
 
 #include "JSEventListener.h"
+#include <wtf/Forward.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -31,9 +33,9 @@ class QualifiedName;
 
 class JSLazyEventListener final : public JSEventListener {
 public:
-    static RefPtr<JSLazyEventListener> create(Element&, const QualifiedName& attributeName, const AtomicString& attributeValue);
-    static RefPtr<JSLazyEventListener> create(Document&, const QualifiedName& attributeName, const AtomicString& attributeValue);
-    static RefPtr<JSLazyEventListener> create(DOMWindow&, const QualifiedName& attributeName, const AtomicString& attributeValue);
+    static RefPtr<JSLazyEventListener> create(Element&, const QualifiedName& attributeName, const AtomString& attributeValue);
+    static RefPtr<JSLazyEventListener> create(Document&, const QualifiedName& attributeName, const AtomString& attributeValue);
+    static RefPtr<JSLazyEventListener> create(DOMWindow&, const QualifiedName& attributeName, const AtomString& attributeValue);
 
     virtual ~JSLazyEventListener();
 
@@ -42,8 +44,12 @@ public:
 
 private:
     struct CreationArguments;
-    static RefPtr<JSLazyEventListener> create(const CreationArguments&);
-    JSLazyEventListener(const CreationArguments&, const String& sourceURL, const TextPosition&);
+    static RefPtr<JSLazyEventListener> create(CreationArguments&&);
+    JSLazyEventListener(CreationArguments&&, const String& sourceURL, const TextPosition&);
+
+#if !ASSERT_DISABLED
+    void checkValidityForEventTarget(EventTarget&) final;
+#endif
 
     JSC::JSObject* initializeJSFunction(ScriptExecutionContext&) const final;
     bool wasCreatedFromMarkup() const final { return true; }
@@ -53,7 +59,7 @@ private:
     String m_code;
     String m_sourceURL;
     TextPosition m_sourcePosition;
-    ContainerNode* m_originalNode;
+    WeakPtr<ContainerNode> m_originalNode;
 };
 
 } // namespace WebCore

@@ -56,8 +56,8 @@ size_t JITFinalizer::codeSize()
 
 bool JITFinalizer::finalize()
 {
-    MacroAssemblerCodeRef<JSEntryPtrTag> codeRef = FINALIZE_DFG_CODE(*m_linkBuffer, JSEntryPtrTag, "DFG JIT code for %s", toCString(CodeBlockWithJITType(m_plan.codeBlock(), JITCode::DFGJIT)).data());
-    m_jitCode->initializeCodeRef(codeRef, codeRef.code());
+    MacroAssemblerCodeRef<JSEntryPtrTag> codeRef = FINALIZE_DFG_CODE(*m_linkBuffer, JSEntryPtrTag, "DFG JIT code for %s", toCString(CodeBlockWithJITType(m_plan.codeBlock(), JITType::DFGJIT)).data());
+    m_jitCode->initializeCodeRefForDFG(codeRef, codeRef.code());
 
     m_plan.codeBlock()->setJITCode(m_jitCode.copyRef());
 
@@ -69,8 +69,8 @@ bool JITFinalizer::finalize()
 bool JITFinalizer::finalizeFunction()
 {
     RELEASE_ASSERT(!m_withArityCheck.isEmptyValue());
-    m_jitCode->initializeCodeRef(
-        FINALIZE_DFG_CODE(*m_linkBuffer, JSEntryPtrTag, "DFG JIT code for %s", toCString(CodeBlockWithJITType(m_plan.codeBlock(), JITCode::DFGJIT)).data()),
+    m_jitCode->initializeCodeRefForDFG(
+        FINALIZE_DFG_CODE(*m_linkBuffer, JSEntryPtrTag, "DFG JIT code for %s", toCString(CodeBlockWithJITType(m_plan.codeBlock(), JITType::DFGJIT)).data()),
         m_withArityCheck);
     m_plan.codeBlock()->setJITCode(m_jitCode.copyRef());
 

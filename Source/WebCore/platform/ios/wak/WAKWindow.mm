@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WAKWindow.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "LegacyTileCache.h"
 #import "PlatformScreen.h"
@@ -328,32 +328,28 @@ static id<OrientationProvider> gOrientationProvider;
     currentEvent = [anEvent retain];
 
     switch (anEvent.type) {
-        case WebEventMouseMoved:
-        case WebEventScrollWheel:
-            if (WAKView *hitView = [_contentView hitTest:(anEvent.locationInWindow)])
-                [hitView handleEvent:anEvent];
-            break;
+    case WebEventMouseMoved:
+    case WebEventScrollWheel:
+        if (WAKView *hitView = [_contentView hitTest:(anEvent.locationInWindow)])
+            [hitView handleEvent:anEvent];
+        break;
 
-        case WebEventMouseUp:
-        case WebEventKeyDown:
-        case WebEventKeyUp:
-        case WebEventTouchChange:
-            [_responderView handleEvent:anEvent];
-            break;
+    case WebEventMouseUp:
+    case WebEventKeyDown:
+    case WebEventKeyUp:
+    case WebEventTouchChange:
+        [_responderView handleEvent:anEvent];
+        break;
 
-        case WebEventMouseDown:
-        case WebEventTouchBegin:
-        case WebEventTouchEnd:
-        case WebEventTouchCancel:
-            if (WAKView *hitView = [_contentView hitTest:(anEvent.locationInWindow)]) {
-                [self makeFirstResponder:hitView];
-                [hitView handleEvent:anEvent];
-            }
-            break;
-
-        default:
-            ASSERT_NOT_REACHED();
-            break;
+    case WebEventMouseDown:
+    case WebEventTouchBegin:
+    case WebEventTouchEnd:
+    case WebEventTouchCancel:
+        if (WAKView *hitView = [_contentView hitTest:(anEvent.locationInWindow)]) {
+            [self makeFirstResponder:hitView];
+            [hitView handleEvent:anEvent];
+        }
+        break;
     }
 
     [currentEvent release];
@@ -365,8 +361,10 @@ static id<OrientationProvider> gOrientationProvider;
     WebThreadRun(^{
         [self sendEvent:anEvent];
 
-        if (aContentChange)
-            *aContentChange = WKObservedContentChange();
+        if (aContentChange) {
+            // We always make the decision asynchronously. See EventHandler::mouseMoved.
+            *aContentChange = WKContentIndeterminateChange;
+        }
     });
 }
 
@@ -732,4 +730,4 @@ static id<OrientationProvider> gOrientationProvider;
 
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

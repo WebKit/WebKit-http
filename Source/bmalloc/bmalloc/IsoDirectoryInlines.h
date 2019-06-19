@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,14 +46,13 @@ IsoDirectory<Config, passedNumPages>::IsoDirectory(IsoHeapImpl<Config>& heap)
 template<typename Config, unsigned passedNumPages>
 EligibilityResult<Config> IsoDirectory<Config, passedNumPages>::takeFirstEligible()
 {
-    unsigned pageIndex = (m_eligible | ~m_committed).findBit(m_firstEligible, true);
-    m_firstEligible = pageIndex;
+    unsigned pageIndex = (m_eligible | ~m_committed).findBit(m_firstEligibleOrDecommitted, true);
+    m_firstEligibleOrDecommitted = pageIndex;
+    BASSERT((m_eligible | ~m_committed).findBit(0, true) == pageIndex);
     if (pageIndex >= numPages)
         return EligibilityKind::Full;
 
-    m_highWatermark = std::max(pageIndex, m_highWatermark);
-    
-    Scavenger& scavenger = *PerProcess<Scavenger>::get();
+    Scavenger& scavenger = *Scavenger::get();
     scavenger.didStartGrowing();
     
     IsoPage<Config>* page = m_pages[pageIndex];
@@ -99,8 +98,8 @@ void IsoDirectory<Config, passedNumPages>::didBecome(IsoPage<Config>* page, IsoP
         if (verbose)
             fprintf(stderr, "%p: %p did become eligible.\n", this, page);
         m_eligible[pageIndex] = true;
-        m_firstEligible = std::min(m_firstEligible, pageIndex);
-        this->m_heap.didBecomeEligible(this);
+        m_firstEligibleOrDecommitted = std::min(m_firstEligibleOrDecommitted, pageIndex);
+        this->m_heap.didBecomeEligibleOrDecommited(this);
         return;
     case IsoPageTrigger::Empty:
         if (verbose)
@@ -108,7 +107,7 @@ void IsoDirectory<Config, passedNumPages>::didBecome(IsoPage<Config>* page, IsoP
         BASSERT(!!m_committed[pageIndex]);
         this->m_heap.isNowFreeable(page, IsoPageBase::pageSize);
         m_empty[pageIndex] = true;
-        PerProcess<Scavenger>::get()->schedule(IsoPageBase::pageSize);
+        Scavenger::get()->schedule(IsoPageBase::pageSize);
         return;
     }
     BCRASH();
@@ -124,6 +123,8 @@ void IsoDirectory<Config, passedNumPages>::didDecommit(unsigned index)
     BASSERT(!!m_committed[index]);
     this->m_heap.isNoLongerFreeable(m_pages[index], IsoPageBase::pageSize);
     m_committed[index] = false;
+    m_firstEligibleOrDecommitted = std::min(m_firstEligibleOrDecommitted, index);
+    this->m_heap.didBecomeEligibleOrDecommited(this);
     this->m_heap.didDecommit(m_pages[index], IsoPageBase::pageSize);
 }
 
@@ -143,18 +144,6 @@ void IsoDirectory<Config, passedNumPages>::scavenge(Vector<DeferredDecommit>& de
         [&] (size_t index) {
             scavengePage(index, decommits);
         });
-    m_highWatermark = 0;
-}
-
-template<typename Config, unsigned passedNumPages>
-void IsoDirectory<Config, passedNumPages>::scavengeToHighWatermark(Vector<DeferredDecommit>& decommits)
-{
-    (m_empty & m_committed).forEachSetBit(
-        [&] (size_t index) {
-            if (index > m_highWatermark)
-                scavengePage(index, decommits);
-        });
-    m_highWatermark = 0;
 }
 
 template<typename Config, unsigned passedNumPages>

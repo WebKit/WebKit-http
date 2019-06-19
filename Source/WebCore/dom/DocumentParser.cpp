@@ -26,6 +26,7 @@
 #include "config.h"
 #include "DocumentParser.h"
 
+#include "Document.h"
 #include <wtf/Assertions.h>
 
 namespace WebCore {
@@ -33,7 +34,7 @@ namespace WebCore {
 DocumentParser::DocumentParser(Document& document)
     : m_state(ParsingState)
     , m_documentWasLoadedAsPartOfNavigation(false)
-    , m_document(&document)
+    , m_document(makeWeakPtr(document))
 {
 }
 

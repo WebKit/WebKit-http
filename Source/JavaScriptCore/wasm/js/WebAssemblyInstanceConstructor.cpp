@@ -74,7 +74,7 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* ex
     if (!importArgument.isUndefined() && !importObject)
         return JSValue::encode(throwException(exec, scope, createTypeError(exec, "second argument to WebAssembly.Instance must be undefined or an Object"_s, defaultSourceAppender, runtimeTypeForValue(vm, importArgument))));
     
-    Structure* instanceStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), exec->lexicalGlobalObject()->WebAssemblyInstanceStructure());
+    Structure* instanceStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), exec->lexicalGlobalObject()->webAssemblyInstanceStructure());
     RETURN_IF_EXCEPTION(scope, { });
 
     JSWebAssemblyInstance* instance = JSWebAssemblyInstance::create(vm, exec, JSWebAssemblyInstance::createPrivateModuleKey(), module, importObject, instanceStructure, Ref<Wasm::Module>(module->module()), Wasm::CreationMode::FromJS);
@@ -106,7 +106,7 @@ Structure* WebAssemblyInstanceConstructor::createStructure(VM& vm, JSGlobalObjec
 
 void WebAssemblyInstanceConstructor::finishCreation(VM& vm, WebAssemblyInstancePrototype* prototype)
 {
-    Base::finishCreation(vm, "Instance"_s);
+    Base::finishCreation(vm, "Instance"_s, NameVisibility::Visible, NameAdditionMode::WithoutStructureTransition);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
 }

@@ -200,7 +200,7 @@ Path* RenderSVGShape::nonScalingStrokePath(const Path* path, const AffineTransfo
 
 bool RenderSVGShape::setupNonScalingStrokeContext(AffineTransform& strokeTransform, GraphicsContextStateSaver& stateSaver)
 {
-    std::optional<AffineTransform> inverse = strokeTransform.inverse();
+    Optional<AffineTransform> inverse = strokeTransform.inverse();
     if (!inverse)
         return false;
 
@@ -368,7 +368,7 @@ bool RenderSVGShape::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
     if (hitTestAction != HitTestForeground)
         return false;
 
-    FloatPoint localPoint = m_localTransform.inverse().value_or(AffineTransform()).mapPoint(pointInParent);
+    FloatPoint localPoint = m_localTransform.inverse().valueOr(AffineTransform()).mapPoint(pointInParent);
 
     if (!SVGRenderSupport::pointInClippingArea(*this, localPoint))
         return false;
@@ -441,7 +441,7 @@ FloatRect RenderSVGShape::calculateStrokeBoundingBox() const
         BoundingRectStrokeStyleApplier strokeStyle(*this);
         if (hasNonScalingStroke()) {
             AffineTransform nonScalingTransform = nonScalingStrokeTransform();
-            if (std::optional<AffineTransform> inverse = nonScalingTransform.inverse()) {
+            if (Optional<AffineTransform> inverse = nonScalingTransform.inverse()) {
                 Path* usePath = nonScalingStrokePath(m_path.get(), nonScalingTransform);
                 FloatRect strokeBoundingRect = usePath->strokeBoundingRect(&strokeStyle);
                 strokeBoundingRect = inverse.value().mapRect(strokeBoundingRect);
@@ -463,7 +463,6 @@ void RenderSVGShape::updateRepaintBoundingBox()
     SVGRenderSupport::intersectRepaintRectWithResources(*this, m_repaintBoundingBoxExcludingShadow);
 
     m_repaintBoundingBox = m_repaintBoundingBoxExcludingShadow;
-    SVGRenderSupport::intersectRepaintRectWithShadows(*this, m_repaintBoundingBox);
 }
 
 float RenderSVGShape::strokeWidth() const

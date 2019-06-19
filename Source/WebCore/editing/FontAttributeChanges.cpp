@@ -31,6 +31,7 @@
 #include "CSSValueKeywords.h"
 #include "CSSValueList.h"
 #include "CSSValuePool.h"
+#include "EditAction.h"
 #include "EditingStyle.h"
 #include "StyleProperties.h"
 
@@ -80,17 +81,29 @@ Ref<MutableStyleProperties> FontChanges::createStyleProperties() const
 
 static RefPtr<CSSValueList> cssValueListForShadow(const FontShadow& shadow)
 {
-    if (!shadow.width && !shadow.height && !shadow.blurRadius)
+    if (shadow.offset.isZero() && !shadow.blurRadius)
         return nullptr;
 
     auto list = CSSValueList::createCommaSeparated();
     auto& cssValuePool = CSSValuePool::singleton();
-    auto width = cssValuePool.createValue(shadow.width, CSSPrimitiveValue::CSS_PX);
-    auto height = cssValuePool.createValue(shadow.height, CSSPrimitiveValue::CSS_PX);
+    auto width = cssValuePool.createValue(shadow.offset.width(), CSSPrimitiveValue::CSS_PX);
+    auto height = cssValuePool.createValue(shadow.offset.height(), CSSPrimitiveValue::CSS_PX);
     auto blurRadius = cssValuePool.createValue(shadow.blurRadius, CSSPrimitiveValue::CSS_PX);
     auto color = cssValuePool.createValue(shadow.color);
     list->prepend(CSSShadowValue::create(WTFMove(width), WTFMove(height), WTFMove(blurRadius), { }, { }, WTFMove(color)));
     return list.ptr();
+}
+
+EditAction FontAttributeChanges::editAction() const
+{
+    if (!m_verticalAlign && !m_backgroundColor && !m_shadow && !m_strikeThrough && !m_underline) {
+        if (m_foregroundColor && m_fontChanges.isEmpty())
+            return EditAction::SetColor;
+
+        if (!m_foregroundColor && !m_fontChanges.isEmpty())
+            return EditAction::SetFont;
+    }
+    return EditAction::ChangeAttributes;
 }
 
 Ref<EditingStyle> FontAttributeChanges::createEditingStyle() const

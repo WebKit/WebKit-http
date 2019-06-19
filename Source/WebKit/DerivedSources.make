@@ -1,4 +1,4 @@
-# Copyright (C) 2010-2017 Apple Inc. All rights reserved.
+# Copyright (C) 2010-2018 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,22 +28,21 @@ VPATH = \
     $(WebKit2)/NetworkProcess/CustomProtocols \
     $(WebKit2)/NetworkProcess/mac \
     $(WebKit2)/NetworkProcess/webrtc \
+    $(WebKit2)/NetworkProcess/IndexedDB \
+    $(WebKit2)/NetworkProcess/ServiceWorker \
+    $(WebKit2)/NetworkProcess/WebStorage \
     $(WebKit2)/PluginProcess \
     $(WebKit2)/PluginProcess/mac \
     $(WebKit2)/Shared/Plugins \
     $(WebKit2)/Shared \
     $(WebKit2)/Shared/API/Cocoa \
+    $(WebKit2)/Shared/ApplePay \
     $(WebKit2)/Shared/Authentication \
     $(WebKit2)/Shared/mac \
-    $(WebKit2)/StorageProcess \
-    $(WebKit2)/StorageProcess/IndexedDB \
-    $(WebKit2)/StorageProcess/ServiceWorker \
-    $(WebKit2)/StorageProcess/mac \
     $(WebKit2)/WebProcess/ApplePay \
     $(WebKit2)/WebProcess/ApplicationCache \
     $(WebKit2)/WebProcess/Automation \
     $(WebKit2)/WebProcess/Cache \
-    $(WebKit2)/WebProcess/CredentialManagement \
     $(WebKit2)/WebProcess/Databases/IndexedDB \
     $(WebKit2)/WebProcess/FullScreen \
     $(WebKit2)/WebProcess/Geolocation \
@@ -58,18 +57,18 @@ VPATH = \
     $(WebKit2)/WebProcess/ResourceCache \
     $(WebKit2)/WebProcess/Storage \
     $(WebKit2)/WebProcess/UserContent \
+    $(WebKit2)/WebProcess/WebAuthentication \
     $(WebKit2)/WebProcess/WebCoreSupport \
     $(WebKit2)/WebProcess/WebPage \
+    $(WebKit2)/WebProcess/WebPage/Cocoa \
     $(WebKit2)/WebProcess/WebPage/RemoteLayerTree \
     $(WebKit2)/WebProcess/WebStorage \
     $(WebKit2)/WebProcess/cocoa \
     $(WebKit2)/WebProcess/ios \
     $(WebKit2)/WebProcess \
     $(WebKit2)/UIProcess \
-    $(WebKit2)/UIProcess/ApplePay \
     $(WebKit2)/UIProcess/Automation \
     $(WebKit2)/UIProcess/Cocoa \
-    $(WebKit2)/UIProcess/CredentialManagement \
     $(WebKit2)/UIProcess/Databases \
     $(WebKit2)/UIProcess/Downloads \
     $(WebKit2)/UIProcess/MediaStream \
@@ -80,7 +79,7 @@ VPATH = \
     $(WebKit2)/UIProcess/RemoteLayerTree \
     $(WebKit2)/UIProcess/Storage \
     $(WebKit2)/UIProcess/UserContent \
-    $(WebKit2)/UIProcess/WebStorage \
+    $(WebKit2)/UIProcess/WebAuthentication \
     $(WebKit2)/UIProcess/mac \
     $(WebKit2)/UIProcess/ios \
     $(WEBKITADDITIONS_HEADER_SEARCH_PATHS) \
@@ -97,16 +96,18 @@ endif
 
 MESSAGE_RECEIVERS = \
     AuthenticationManager \
+    AuxiliaryProcess \
     CacheStorageEngineConnection \
-    ChildProcess \
     DownloadProxy \
     DrawingArea \
     DrawingAreaProxy \
+    EditableImageController \
     EventDispatcher \
     LegacyCustomProtocolManager \
     LegacyCustomProtocolManagerProxy \
     NPObjectMessageReceiver \
     NetworkConnectionToWebProcess \
+    NetworkContentRuleListManager \
     NetworkMDNSRegister\
     NetworkProcess \
     NetworkProcessConnection \
@@ -115,8 +116,10 @@ MESSAGE_RECEIVERS = \
     NetworkRTCProvider \
     NetworkRTCSocket \
     NetworkResourceLoader \
+    NetworkSocketChannel \
     NetworkSocketStream \
-    NetworkContentRuleListManager \
+    PlaybackSessionManager \
+    PlaybackSessionManagerProxy \
     PluginControllerProxy \
     PluginProcess \
     PluginProcessConnection \
@@ -130,27 +133,27 @@ MESSAGE_RECEIVERS = \
     RemoteWebInspectorUI \
     SecItemShimProxy \
     ServiceWorkerClientFetch \
+    ServiceWorkerFetchTask \
     SmartMagnificationController \
     StorageAreaMap \
     StorageManager \
-    StorageProcess \
-    StorageProcessProxy \
-    StorageToWebProcessConnection \
+    TextCheckingControllerProxy \
     UserMediaCaptureManager \
     UserMediaCaptureManagerProxy \
+    VideoFullscreenManager \
+    VideoFullscreenManagerProxy \
     ViewGestureController \
     ViewGestureGeometryCollector \
     ViewUpdateDispatcher \
     VisitedLinkStore \
     VisitedLinkTableController \
+    WebAuthenticatorCoordinator \
+    WebAuthenticatorCoordinatorProxy \
     WebAutomationSession \
     WebAutomationSessionProxy \
-    WebCacheStorageConnection \
     WebConnection \
     WebCookieManager \
     WebCookieManagerProxy \
-    WebCredentialsMessenger \
-    WebCredentialsMessengerProxy \
     WebFullScreenManager \
     WebFullScreenManagerProxy \
     WebGeolocationManager \
@@ -168,12 +171,6 @@ MESSAGE_RECEIVERS = \
     WebPasteboardProxy \
     WebPaymentCoordinator \
     WebPaymentCoordinatorProxy \
-    WebSWClientConnection \
-    WebSWContextManagerConnection \
-    WebSWServerConnection \
-    WebSWServerToContextConnection \
-    PlaybackSessionManager \
-    PlaybackSessionManagerProxy \
     WebProcess \
     WebProcessConnection \
     WebProcessPool \
@@ -182,12 +179,14 @@ MESSAGE_RECEIVERS = \
     WebRTCResolver \
     WebRTCSocket \
     WebResourceLoader \
-    WebResourceLoadStatisticsStore \
+    WebSWClientConnection \
+    WebSWContextManagerConnection \
+    WebSWServerConnection \
+    WebSWServerToContextConnection \
+    WebSocketChannel \
     WebSocketStream \
     WebUserContentController \
     WebUserContentControllerProxy \
-    VideoFullscreenManager \
-    VideoFullscreenManagerProxy \
 #
 
 SCRIPTS = \
@@ -212,11 +211,11 @@ all : \
 #
 
 %MessageReceiver.cpp : %.messages.in $(SCRIPTS)
-	@echo Generating messages header for $*...
+	@echo Generating message receiver for $*...
 	@python $(WebKit2)/Scripts/generate-message-receiver.py $< > $@
 
 %Messages.h : %.messages.in $(SCRIPTS)
-	@echo Generating message receiver for $*...
+	@echo Generating messages header for $*...
 	@python $(WebKit2)/Scripts/generate-messages-header.py $< > $@
 
 TEXT_PREPROCESSOR_FLAGS=-E -P -w
@@ -226,16 +225,16 @@ ifneq ($(SDKROOT),)
 endif
 
 ifeq ($(USE_LLVM_TARGET_TRIPLES_FOR_CLANG),YES)
-	TARGET_TRIPLE_FLAGS=-target $(CURRENT_ARCH)-$(LLVM_TARGET_TRIPLE_VENDOR)-$(LLVM_TARGET_TRIPLE_OS_VERSION)$(LLVM_TARGET_TRIPLE_SUFFIX)
+	WK_CURRENT_ARCH=$(word 1, $(ARCHS))
+	TARGET_TRIPLE_FLAGS=-target $(WK_CURRENT_ARCH)-$(LLVM_TARGET_TRIPLE_VENDOR)-$(LLVM_TARGET_TRIPLE_OS_VERSION)$(LLVM_TARGET_TRIPLE_SUFFIX)
 endif
 
 SANDBOX_PROFILES = \
 	com.apple.WebProcess.sb \
-	com.apple.WebKit.Storage.sb \
 	com.apple.WebKit.plugin-common.sb \
 	com.apple.WebKit.NetworkProcess.sb
 
-all: $(SANDBOX_PROFILES)
+all : $(SANDBOX_PROFILES)
 
 %.sb : %.sb.in
 	@echo Pre-processing $* sandbox profile...
@@ -265,10 +264,13 @@ AUTOMATION_PROTOCOL_OUTPUT_FILES = \
     AutomationBackendDispatchers.cpp \
     AutomationFrontendDispatchers.h \
     AutomationFrontendDispatchers.cpp \
+    AutomationProtocolObjects.h \
+    AutomationProtocolObjects.cpp \
 #
+AUTOMATION_PROTOCOL_OUTPUT_PATTERNS = $(subst .,%,$(AUTOMATION_PROTOCOL_OUTPUT_FILES))
 
 ifeq ($(OS),MACOS)
-ifeq ($(shell $(CC) -std=gnu++14 -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS ' | cut -d' ' -f3), 1)
+ifeq ($(shell $(CC) -std=gnu++1z -x c++ -E -P -dM $(SDK_FLAGS) $(TARGET_TRIPLE_FLAGS) $(FRAMEWORK_FLAGS) $(HEADER_FLAGS) -include "wtf/Platform.h" /dev/null | grep ' WTF_PLATFORM_IOS_FAMILY ' | cut -d' ' -f3), 1)
 	AUTOMATION_BACKEND_PLATFORM_ARGUMENTS = --platform iOS
 else
 	AUTOMATION_BACKEND_PLATFORM_ARGUMENTS = --platform macOS
@@ -276,10 +278,10 @@ endif
 endif # MACOS
 
 # JSON-RPC Frontend Dispatchers, Backend Dispatchers, Type Builders
-$(firstword $(AUTOMATION_PROTOCOL_OUTPUT_FILES)) : $(AUTOMATION_PROTOCOL_INPUT_FILES) $(AUTOMATION_PROTOCOL_GENERATOR_SCRIPTS)
+$(AUTOMATION_PROTOCOL_OUTPUT_PATTERNS) : $(AUTOMATION_PROTOCOL_INPUT_FILES) $(AUTOMATION_PROTOCOL_GENERATOR_SCRIPTS)
 	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/generate-inspector-protocol-bindings.py --framework WebKit $(AUTOMATION_BACKEND_PLATFORM_ARGUMENTS) --backend --outputDir . $(AUTOMATION_PROTOCOL_INPUT_FILES)
 
-all : $(firstword $(AUTOMATION_PROTOCOL_OUTPUT_FILES))
+all : $(AUTOMATION_PROTOCOL_OUTPUT_FILES)
 
 %ScriptSource.h : %.js $(JavaScriptCore_SCRIPTS_DIR)/jsmin.py $(JavaScriptCore_SCRIPTS_DIR)/xxd.pl
 	echo "//# sourceURL=__InjectedScript_$(notdir $<)" > $(basename $(notdir $<)).min.js
@@ -291,18 +293,36 @@ all : WebAutomationSessionProxyScriptSource.h
 
 # WebPreferences generation
 
+WEB_PREFERENCES_INPUT_FILES = \
+    $(WebKit2)/Shared/WebPreferences.yaml \
+    $(ADDITIONAL_WEB_PREFERENCES_INPUT_FILES) \
+#
+WEB_PREFERENCES_COMBINED_INPUT_FILE = WebPreferencesCombined.yaml
+
 WEB_PREFERENCES_TEMPLATES = \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPageUpdatePreferences.cpp.erb \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesDefinitions.h.erb \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesExperimentalFeatures.cpp.erb \
+    $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesInternalDebugFeatures.cpp.erb \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesKeys.h.erb \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesKeys.cpp.erb \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesStoreDefaultsMap.cpp.erb \
-
 #
+WEB_PREFERENCES_FILES = $(basename $(notdir $(WEB_PREFERENCES_TEMPLATES)))
+WEB_PREFERENCES_PATTERNS = $(subst .,%,$(WEB_PREFERENCES_FILES))
 
-all : WebPageUpdatePreferences.cpp WebPreferencesDefinitions.h WebPreferencesExperimentalFeatures.cpp WebPreferencesKeys.h WebPreferencesKeys.cpp WebPreferencesStoreDefaultsMap.cpp
+all : $(WEB_PREFERENCES_FILES) $(WEB_PREFERENCES_COMBINED_INPUT_FILE)
 
-WebPageUpdatePreferences%cpp WebPreferencesDefinitions%h WebPreferencesExperimentalFeatures%cpp WebPreferencesKeys%h WebPreferencesKeys%cpp WebPreferencesStoreDefaultsMap%cpp : $(WebKit2)/Scripts/GeneratePreferences.rb $(WEB_PREFERENCES_TEMPLATES) $(WebKit2)/Shared/WebPreferences.yaml
-	$(RUBY) $< --input $(WebKit2)/Shared/WebPreferences.yaml
+$(WEB_PREFERENCES_COMBINED_INPUT_FILE) : $(WEB_PREFERENCES_INPUT_FILES)
+	cat $^ > $(WEB_PREFERENCES_COMBINED_INPUT_FILE)
 
+$(WEB_PREFERENCES_PATTERNS) : $(WebKit2)/Scripts/GeneratePreferences.rb $(WEB_PREFERENCES_TEMPLATES) $(WEB_PREFERENCES_COMBINED_INPUT_FILE)
+	$(RUBY) $< --input $(WEB_PREFERENCES_COMBINED_INPUT_FILE)
+
+# FIXME: We should switch to the internal HTTPSUpgradeList.txt once the feature is ready.
+# VPATH += $(WebKit2)/Shared/HTTPSUpgrade/
+VPATH := $(WebKit2)/Shared/HTTPSUpgrade/ $(VPATH)
+
+all : HTTPSUpgradeList.db
+HTTPSUpgradeList.db : HTTPSUpgradeList.txt $(WebKit2)/Scripts/generate-https-upgrade-database.sh
+	sh $(WebKit2)/Scripts/generate-https-upgrade-database.sh $< $@

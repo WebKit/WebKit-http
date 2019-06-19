@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PageReservation_h
-#define PageReservation_h
+#pragma once
 
 #include <wtf/PageAllocation.h>
 
@@ -106,6 +105,12 @@ public:
         return PageReservation(OSAllocator::reserveUncommitted(size + pageSize() * 2, usage, writable, executable, true), size, writable, executable, true);
     }
 
+    static PageReservation reserveAndCommitWithGuardPages(size_t size, OSAllocator::Usage usage = OSAllocator::UnknownUsage, bool writable = true, bool executable = false)
+    {
+        ASSERT(isPageAligned(size));
+        return PageReservation(OSAllocator::reserveAndCommit(size + pageSize() * 2, usage, writable, executable, true), size, writable, executable, true);
+    }
+
     void deallocate()
     {
         ASSERT(!m_committed);
@@ -138,5 +143,3 @@ private:
 }
 
 using WTF::PageReservation;
-
-#endif // PageReservation_h

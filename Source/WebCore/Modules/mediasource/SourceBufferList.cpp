@@ -36,8 +36,11 @@
 #include "Event.h"
 #include "EventNames.h"
 #include "SourceBuffer.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(SourceBufferList);
 
 SourceBufferList::SourceBufferList(ScriptExecutionContext* context)
     : ActiveDOMObject(context)
@@ -90,7 +93,7 @@ void SourceBufferList::swap(Vector<RefPtr<SourceBuffer>>& other)
         scheduleEvent(eventNames().removesourcebufferEvent);
 }
 
-void SourceBufferList::scheduleEvent(const AtomicString& eventName)
+void SourceBufferList::scheduleEvent(const AtomString& eventName)
 {
     auto event = Event::create(eventName, Event::CanBubble::No, Event::IsCancelable::No);
     event->setTarget(this);

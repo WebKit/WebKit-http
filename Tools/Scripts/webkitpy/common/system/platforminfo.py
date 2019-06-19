@@ -72,6 +72,9 @@ class PlatformInfo(object):
     def is_ios(self):
         return self.os_name == 'ios'
 
+    def is_watchos(self):
+        return self.os_name == 'watchos'
+
     def is_win(self):
         return self.os_name == 'win'
 
@@ -143,6 +146,11 @@ class PlatformInfo(object):
         except:
             return sys.maxint
 
+    def build_version(self):
+        if self.is_mac():
+            return self._executive.run_command(['/usr/bin/sw_vers', '-buildVersion'], return_stderr=False, ignore_errors=True).rstrip()
+        return None
+
     def xcode_sdk_version(self, sdk_name):
         if self.is_mac():
             # Assumes that xcrun does not write to standard output on failure (e.g. SDK does not exist).
@@ -162,10 +170,24 @@ class PlatformInfo(object):
             raise NotImplementedError
         return Version.from_string(self._executive.run_command(['xcodebuild', '-version']).split()[1])
 
+    def available_sdks(self):
+        if not self.is_mac():
+            return []
+
+        XCODE_SDK_REGEX = re.compile('\-sdk (?P<sdk>\D+)\d+\.\d+(?P<specifier>\D*)')
+        output = self._executive.run_command(['xcodebuild', '-showsdks'], return_stderr=False)
+
+        sdks = list()
+        for line in output.splitlines():
+            match = XCODE_SDK_REGEX.search(line)
+            if match:
+                sdks.append(match.group('sdk') + match.group('specifier'))
+        return sdks
+
     def _determine_os_name(self, sys_platform):
         if sys_platform == 'darwin':
             return 'mac'
-        if sys_platform == 'ios':
+        if sys_platform == 'ios' or sys_platform == 'watchos':
             return 'ios'
         if sys_platform.startswith('linux'):
             return 'linux'

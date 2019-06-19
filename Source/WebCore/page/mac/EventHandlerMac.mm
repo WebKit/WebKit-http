@@ -68,7 +68,7 @@
 #include <wtf/BlockObjCExceptions.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/ObjcRuntimeExtras.h>
+#include <wtf/ObjCRuntimeExtras.h>
 #include <wtf/ProcessPrivilege.h>
 
 #if ENABLE(MAC_GESTURE_EVENTS)
@@ -612,10 +612,9 @@ void EventHandler::sendFakeEventsAfterWidgetTracking(NSEvent *initiatingEvent)
         // no up-to-date cache of them anywhere.
         fakeEvent = [NSEvent mouseEventWithType:NSEventTypeMouseMoved
                                        location:[[view->platformWidget() window]
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
                                   convertScreenToBase:[NSEvent mouseLocation]]
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
                                   modifierFlags:[initiatingEvent modifierFlags]
                                       timestamp:[initiatingEvent timestamp]
                                    windowNumber:[initiatingEvent windowNumber]
@@ -753,11 +752,6 @@ bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
 
 bool EventHandler::needsKeyboardEventDisambiguationQuirks() const
 {
-#if ENABLE(DASHBOARD_SUPPORT)
-    if (m_frame.settings().usesDashboardBackwardCompatibilityMode())
-        return true;
-#endif
-        
     if (m_frame.settings().needsKeyboardEventDisambiguationQuirks())
         return true;
 
@@ -770,9 +764,9 @@ OptionSet<PlatformEvent::Modifier> EventHandler::accessKeyModifiers()
     // So, we use Control in this case, even though it conflicts with Emacs-style key bindings.
     // See <https://bugs.webkit.org/show_bug.cgi?id=21107> for more detail.
     if (AXObjectCache::accessibilityEnhancedUserInterfaceEnabled())
-        return PlatformEvent::Modifier::CtrlKey;
+        return PlatformEvent::Modifier::ControlKey;
 
-    return { PlatformEvent::Modifier::CtrlKey, PlatformEvent::Modifier::AltKey };
+    return { PlatformEvent::Modifier::ControlKey, PlatformEvent::Modifier::AltKey };
 }
 
 static ScrollableArea* scrollableAreaForBox(RenderBox& box)
@@ -788,10 +782,10 @@ static ContainerNode* findEnclosingScrollableContainer(ContainerNode* node, floa
     // Find the first node with a valid scrollable area starting with the current
     // node and traversing its parents (or shadow hosts).
     for (ContainerNode* candidate = node; candidate; candidate = candidate->parentOrShadowHostNode()) {
-        if (is<HTMLIFrameElement>(candidate))
+        if (is<HTMLIFrameElement>(*candidate))
             continue;
 
-        if (is<HTMLHtmlElement>(candidate) || is<HTMLDocument>(candidate))
+        if (is<HTMLHtmlElement>(*candidate) || is<HTMLDocument>(*candidate))
             return nullptr;
 
         RenderBox* box = candidate->renderBox();

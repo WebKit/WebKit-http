@@ -188,7 +188,7 @@ WI.JavaScriptLogViewController = class JavaScriptLogViewController extends WI.Ob
 
     requestClearMessages()
     {
-        WI.logManager.requestClearMessages();
+        WI.consoleManager.requestClearMessages();
     }
 
     // Protected
@@ -242,6 +242,7 @@ WI.JavaScriptLogViewController = class JavaScriptLogViewController extends WI.Ob
             returnByValue: false,
             generatePreview: true,
             saveResult: true,
+            emulateUserGesture: WI.settings.emulateInUserGesture.value,
             sourceURLAppender: appendWebInspectorConsoleEvaluationSourceURL,
         };
 
@@ -322,7 +323,7 @@ WI.JavaScriptLogViewController = class JavaScriptLogViewController extends WI.Ob
 
         this._currentSessionOrGroup = savedCurrentConsoleGroup;
 
-        if (wasScrolledToBottom || lastMessageView instanceof WI.ConsoleCommandView || lastMessageView.message.type === WI.ConsoleMessage.MessageType.Result)
+        if (wasScrolledToBottom || lastMessageView instanceof WI.ConsoleCommandView || lastMessageView.message.type === WI.ConsoleMessage.MessageType.Result || lastMessageView.message.type === WI.ConsoleMessage.MessageType.Image)
             this.scrollToBottom();
 
         WI.quickConsole.needsLayout();

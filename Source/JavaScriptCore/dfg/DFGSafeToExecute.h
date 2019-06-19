@@ -178,6 +178,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case ToThis:
     case CreateThis:
     case ObjectCreate:
+    case ObjectKeys:
     case GetCallee:
     case SetCallee:
     case GetArgumentCountIncludingThis:
@@ -196,10 +197,12 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case Phi:
     case Flush:
     case PhantomLocal:
-    case SetArgument:
-    case BitAnd:
-    case BitOr:
-    case BitXor:
+    case SetArgumentDefinitely:
+    case SetArgumentMaybe:
+    case ArithBitNot:
+    case ArithBitAnd:
+    case ArithBitOr:
+    case ArithBitXor:
     case BitLShift:
     case BitRShift:
     case BitURShift:
@@ -226,8 +229,17 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case ArithCeil:
     case ArithTrunc:
     case ArithUnary:
+    case ValueBitAnd:
+    case ValueBitXor:
+    case ValueBitOr:
+    case ValueBitNot:
     case ValueNegate:
     case ValueAdd:
+    case ValueSub:
+    case ValueMul:
+    case ValueDiv:
+    case ValueMod:
+    case ValuePow:
     case TryGetById:
     case DeleteById:
     case DeleteByVal:
@@ -309,6 +321,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case NewArrayWithSpread:
     case Spread:
     case NewRegexp:
+    case NewSymbol:
     case ProfileType:
     case ProfileControlFlow:
     case CheckTypeInfoFlags:
@@ -318,6 +331,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case InstanceOfCustom:
     case IsEmpty:
     case IsUndefined:
+    case IsUndefinedOrNull:
     case IsBoolean:
     case IsNumber:
     case NumberIsInteger:
@@ -530,50 +544,23 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node, bool igno
     case PutByOffset: {
         StorageAccessData& data = node->storageAccessData();
         PropertyOffset offset = data.offset;
-        UniquedStringImpl* uid = graph.identifiers()[data.identifierNumber];
-
-        InferredType::Descriptor inferredType;
-        switch (node->op()) {
-        case GetByOffset:
-        case GetGetterSetterByOffset:
-            inferredType = data.inferredType;
-            break;
-        case PutByOffset:
-            // PutByOffset knows about inferred types because it's the enforcer of that type rather
-            // than the consumer of that type. Therefore, PutByOffset expects TOP for the purpose of
-            // safe-to-execute in the sense that it will be happy with anything as general as TOP
-            // (so any type).
-            inferredType = InferredType::Top;
-            break;
-        default:
-            DFG_CRASH(graph, node, "Bad opcode");
-            break;
-        }
-
         // Graph::isSafeToLoad() is all about proofs derived from PropertyConditions. Those don't
         // know anything about inferred types. But if we have a proof derived from watching a
         // structure that has a type proof, then the next case below will deal with it.
-        if (state.structureClobberState() == StructuresAreWatched
-            && inferredType.kind() == InferredType::Top) {
-            if (JSObject* knownBase = node->child1()->dynamicCastConstant<JSObject*>(graph.m_vm)) {
+        if (state.structureClobberState() == StructuresAreWatched) {
+            if (JSObject* knownBase = node->child2()->dynamicCastConstant<JSObject*>(graph.m_vm)) {
                 if (graph.isSafeToLoad(knownBase, offset))
                     return true;
             }
         }
         
-        StructureAbstractValue& value = state.forNode(node->child1()).m_structure;
+        StructureAbstractValue& value = state.forNode(node->child2()).m_structure;
         if (value.isInfinite())
             return false;
         for (unsigned i = value.size(); i--;) {
             Structure* thisStructure = value[i].get();
             if (!thisStructure->isValidOffset(offset))
                 return false;
-            if (inferredType.kind() != InferredType::Top) {
-                InferredType::Descriptor thisInferredType =
-                    graph.inferredTypeForProperty(thisStructure, uid);
-                if (!inferredType.subsumes(thisInferredType))
-                    return false;
-            }
         }
         return true;
     }

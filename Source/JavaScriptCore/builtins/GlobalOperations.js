@@ -77,7 +77,7 @@ function speciesConstructor(obj, defaultConstructor)
     if (!@isObject(constructor))
         @throwTypeError("|this|.constructor is not an Object or undefined");
     constructor = constructor.@speciesSymbol;
-    if (constructor == null)
+    if (@isUndefinedOrNull(constructor))
         return defaultConstructor;
     if (@isConstructor(constructor))
         return constructor;
@@ -92,11 +92,11 @@ function copyDataProperties(target, source, excludedSet)
     if (!@isObject(target))
         @throwTypeError("target needs to be an object");
 
-    if (source == null) 
+    if (@isUndefinedOrNull(source))
         return target;
 
     let from = @toObject(source);
-    let keys = @Reflect.@ownKeys(from); 
+    let keys = @ownKeys(from);
     let keysLength = keys.length;
     for (let i = 0; i < keysLength; i++) {
         let nextKey = keys[i];
@@ -119,11 +119,11 @@ function copyDataPropertiesNoExclusions(target, source)
     if (!@isObject(target))
         @throwTypeError("target needs to be an object");
 
-    if (source == null) 
+    if (@isUndefinedOrNull(source))
         return target;
 
     let from = @toObject(source);
-    let keys = @Reflect.@ownKeys(from); 
+    let keys = @ownKeys(from);
     let keysLength = keys.length;
     for (let i = 0; i < keysLength; i++) {
         let nextKey = keys[i];

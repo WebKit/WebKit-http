@@ -36,17 +36,6 @@ namespace Display {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(Box);
 
-Box::Rect::Rect(LayoutUnit top, LayoutUnit left, LayoutUnit width, LayoutUnit height)
-    : m_rect(left, top, width, height)
-{
-#if !ASSERT_DISABLED
-    m_hasValidTop = true;
-    m_hasValidLeft = true;
-    m_hasValidWidth = true;
-    m_hasValidHeight = true;
-#endif
-}
-
 Box::Box(const RenderStyle& style)
     : m_style(style)
 {
@@ -57,10 +46,10 @@ Box::Box(const Box& other)
     , m_topLeft(other.m_topLeft)
     , m_contentWidth(other.m_contentWidth)
     , m_contentHeight(other.m_contentHeight)
-    , m_margin(other.m_margin)
-    , m_verticalNonCollapsedMargin(other.m_verticalNonCollapsedMargin)
-    , m_horizontalNonComputedMargin(other.m_horizontalNonComputedMargin)
-    , m_estimatedMarginTop(other.m_estimatedMarginTop)
+    , m_horizontalMargin(other.m_horizontalMargin)
+    , m_verticalMargin(other.m_verticalMargin)
+    , m_horizontalComputedMargin(other.m_horizontalComputedMargin)
+    , m_hasClearance(other.m_hasClearance)
     , m_border(other.m_border)
     , m_padding(other.m_padding)
 #if !ASSERT_DISABLED
@@ -69,11 +58,12 @@ Box::Box(const Box& other)
     , m_hasValidHorizontalMargin(other.m_hasValidHorizontalMargin)
     , m_hasValidVerticalMargin(other.m_hasValidVerticalMargin)
     , m_hasValidVerticalNonCollapsedMargin(other.m_hasValidVerticalNonCollapsedMargin)
-    , m_hasValidHorizontalNonComputedMargin(other.m_hasValidHorizontalNonComputedMargin)
+    , m_hasValidHorizontalComputedMargin(other.m_hasValidHorizontalComputedMargin)
     , m_hasValidBorder(other.m_hasValidBorder)
     , m_hasValidPadding(other.m_hasValidPadding)
     , m_hasValidContentHeight(other.m_hasValidContentHeight)
     , m_hasValidContentWidth(other.m_hasValidContentWidth)
+    , m_hasEstimatedMarginBefore(other.m_hasEstimatedMarginBefore)
 #endif
 {
 }
@@ -87,31 +77,31 @@ Box::Style::Style(const RenderStyle& style)
 {
 }
 
-Box::Rect Box::marginBox() const
+Rect Box::marginBox() const
 {
     auto borderBox = this->borderBox();
 
     Rect marginBox;
-    marginBox.setTop(borderBox.top() - marginTop());
-    marginBox.setLeft(borderBox.left() - marginLeft());
-    marginBox.setHeight(borderBox.height() + marginTop() + marginBottom());
-    marginBox.setWidth(borderBox.width() + marginLeft() + marginRight());
+    marginBox.setTop(borderBox.top() - marginBefore());
+    marginBox.setLeft(borderBox.left() - marginStart());
+    marginBox.setHeight(borderBox.height() + marginBefore() + marginAfter());
+    marginBox.setWidth(borderBox.width() + marginStart() + marginEnd());
     return marginBox;
 }
 
-Box::Rect Box::nonCollapsedMarginBox() const
+Rect Box::nonCollapsedMarginBox() const
 {
     auto borderBox = this->borderBox();
 
     Rect marginBox;
-    marginBox.setTop(borderBox.top() - nonCollapsedMarginTop());
-    marginBox.setLeft(borderBox.left() - marginLeft());
-    marginBox.setHeight(borderBox.height() + nonCollapsedMarginTop() + nonCollapsedMarginBottom());
-    marginBox.setWidth(borderBox.width() + marginLeft() + marginRight());
+    marginBox.setTop(borderBox.top() - nonCollapsedMarginBefore());
+    marginBox.setLeft(borderBox.left() - marginStart());
+    marginBox.setHeight(borderBox.height() + nonCollapsedMarginBefore() + nonCollapsedMarginAfter());
+    marginBox.setWidth(borderBox.width() + marginStart() + marginEnd());
     return marginBox;
 }
 
-Box::Rect Box::borderBox() const
+Rect Box::borderBox() const
 {
     Rect borderBox;
     borderBox.setTopLeft({ });
@@ -119,7 +109,7 @@ Box::Rect Box::borderBox() const
     return borderBox;
 }
 
-Box::Rect Box::paddingBox() const
+Rect Box::paddingBox() const
 {
     auto borderBox = this->borderBox();
 
@@ -131,7 +121,7 @@ Box::Rect Box::paddingBox() const
     return paddingBox;
 }
 
-Box::Rect Box::contentBox() const
+Rect Box::contentBox() const
 {
     Rect contentBox;
     contentBox.setTop(contentBoxTop());

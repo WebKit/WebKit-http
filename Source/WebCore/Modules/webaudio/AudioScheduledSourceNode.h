@@ -33,6 +33,7 @@
 namespace WebCore {
 
 class AudioScheduledSourceNode : public AudioNode {
+    WTF_MAKE_ISO_ALLOCATED(AudioScheduledSourceNode);
 public:
     // These are the possible states an AudioScheduledSourceNode can be in:
     //
@@ -87,8 +88,8 @@ protected:
     static const double UnknownTime;
 
 private:
-    bool addEventListener(const AtomicString& eventType, Ref<EventListener>&&, const AddEventListenerOptions&) override;
-    bool removeEventListener(const AtomicString& eventType, EventListener&, const ListenerOptions&) override;
+    bool addEventListener(const AtomString& eventType, Ref<EventListener>&&, const AddEventListenerOptions&) override;
+    bool removeEventListener(const AtomString& eventType, EventListener&, const ListenerOptions&) override;
     void removeAllEventListeners() override;
 };
 

@@ -42,9 +42,9 @@ class SerializedScriptValue;
 class ServiceWorkerContainer;
 class ServiceWorkerRegistration;
 class SharedBuffer;
-enum class ServiceWorkerRegistrationState;
-enum class ServiceWorkerState;
-enum class ShouldNotifyWhenResolved;
+enum class ServiceWorkerRegistrationState : uint8_t;
+enum class ServiceWorkerState : uint8_t;
+enum class ShouldNotifyWhenResolved : bool;
 struct ExceptionData;
 struct MessageWithMessagePorts;
 struct ServiceWorkerClientData;
@@ -57,7 +57,7 @@ class SWClientConnection : public ThreadSafeRefCounted<SWClientConnection> {
 public:
     WEBCORE_EXPORT virtual ~SWClientConnection();
 
-    using RegistrationCallback = WTF::CompletionHandler<void(std::optional<ServiceWorkerRegistrationData>&&)>;
+    using RegistrationCallback = WTF::CompletionHandler<void(Optional<ServiceWorkerRegistrationData>&&)>;
     virtual void matchRegistration(SecurityOriginData&& topOrigin, const URL& clientURL, RegistrationCallback&&) = 0;
 
     using GetRegistrationsCallback = WTF::CompletionHandler<void(Vector<ServiceWorkerRegistrationData>&&)>;
@@ -80,10 +80,15 @@ public:
     virtual bool mayHaveServiceWorkerRegisteredForOrigin(const SecurityOriginData&) const = 0;
     virtual void syncTerminateWorker(ServiceWorkerIdentifier) = 0;
 
-    virtual void registerServiceWorkerClient(const SecurityOrigin& topOrigin, const ServiceWorkerClientData&, const std::optional<ServiceWorkerRegistrationIdentifier>&) = 0;
+    virtual void registerServiceWorkerClient(const SecurityOrigin& topOrigin, const ServiceWorkerClientData&, const Optional<ServiceWorkerRegistrationIdentifier>&, const String& userAgent) = 0;
     virtual void unregisterServiceWorkerClient(DocumentIdentifier) = 0;
 
     virtual void finishFetchingScriptInServer(const ServiceWorkerFetchResult&) = 0;
+
+    virtual bool isThrottleable() const = 0;
+    virtual void updateThrottleState() = 0;
+
+    virtual void storeRegistrationsOnDiskForTesting(CompletionHandler<void()>&& callback) { callback(); }
 
 protected:
     WEBCORE_EXPORT SWClientConnection();
@@ -92,8 +97,8 @@ protected:
     WEBCORE_EXPORT void registrationJobResolvedInServer(ServiceWorkerJobIdentifier, ServiceWorkerRegistrationData&&, ShouldNotifyWhenResolved);
     WEBCORE_EXPORT void unregistrationJobResolvedInServer(ServiceWorkerJobIdentifier, bool unregistrationResult);
     WEBCORE_EXPORT void startScriptFetchForServer(ServiceWorkerJobIdentifier, const ServiceWorkerRegistrationKey&, FetchOptions::Cache);
-    WEBCORE_EXPORT void postMessageToServiceWorkerClient(DocumentIdentifier destinationContextIdentifier, MessageWithMessagePorts&&, ServiceWorkerData&& source, const String& sourceOrigin);
-    WEBCORE_EXPORT void updateRegistrationState(ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistrationState, const std::optional<ServiceWorkerData>&);
+    WEBCORE_EXPORT void postMessageToServiceWorkerClient(DocumentIdentifier destinationContextIdentifier, MessageWithMessagePorts&&, ServiceWorkerData&& source, String&& sourceOrigin);
+    WEBCORE_EXPORT void updateRegistrationState(ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistrationState, const Optional<ServiceWorkerData>&);
     WEBCORE_EXPORT void updateWorkerState(ServiceWorkerIdentifier, ServiceWorkerState);
     WEBCORE_EXPORT void fireUpdateFoundEvent(ServiceWorkerRegistrationIdentifier);
     WEBCORE_EXPORT void setRegistrationLastUpdateTime(ServiceWorkerRegistrationIdentifier, WallTime);

@@ -47,6 +47,7 @@ function bind(func, thisObject, ...outerArgs)
 function CommandLineAPI(commandLineAPIImpl, callFrame)
 {
     this.$_ = injectedScript._lastResult;
+    this.$event = injectedScript._eventValue;
     this.$exception = injectedScript._exceptionValue;
 
     // $0
@@ -57,9 +58,10 @@ function CommandLineAPI(commandLineAPIImpl, callFrame)
         this.__defineGetter__("$" + i, bind(injectedScript._savedResult, injectedScript, i));
 
     // Command Line API methods.
-    for (let member of CommandLineAPI.members_) {
-        this[member] = bind(commandLineAPIImpl[member], commandLineAPIImpl);
-        this[member].toString = function() { return "function " + member + "() { [Command Line API] }" };
+    for (let i = 0; i < CommandLineAPI.methods.length; ++i) {
+        let method = CommandLineAPI.methods[i];
+        this[method] = bind(commandLineAPIImpl[method], commandLineAPIImpl);
+        this[method].toString = function() { return "function " + method + "() { [Command Line API] }" };
     }
 }
 
@@ -67,9 +69,25 @@ function CommandLineAPI(commandLineAPIImpl, callFrame)
  * @type {Array.<string>}
  * @const
  */
-CommandLineAPI.members_ = [
-    "$", "$$", "$x", "dir", "dirxml", "keys", "values", "profile", "profileEnd", "table",
-    "monitorEvents", "unmonitorEvents", "inspect", "copy", "clear", "getEventListeners"
+CommandLineAPI.methods = [
+    "$",
+    "$$",
+    "$x",
+    "clear",
+    "copy",
+    "dir",
+    "dirxml",
+    "getEventListeners",
+    "inspect",
+    "keys",
+    "monitorEvents",
+    "profile",
+    "profileEnd",
+    "queryObjects",
+    "screenshot",
+    "table",
+    "unmonitorEvents",
+    "values",
 ];
 
 /**
@@ -184,6 +202,11 @@ CommandLineAPIImpl.prototype = {
         return inspectedWindow.console.table.apply(inspectedWindow.console, arguments)
     },
 
+    screenshot: function()
+    {
+        return inspectedWindow.console.screenshot.apply(inspectedWindow.console, arguments)
+    },
+
     /**
      * @param {Object} object
      * @param {Array.<string>|string=} types
@@ -221,6 +244,11 @@ CommandLineAPIImpl.prototype = {
         return this._inspect(object);
     },
 
+    queryObjects()
+    {
+        return InjectedScriptHost.queryObjects(...arguments);
+    },
+
     copy: function(object)
     {
         var string;
@@ -251,12 +279,9 @@ CommandLineAPIImpl.prototype = {
         CommandLineAPIHost.clearConsoleMessages();
     },
 
-    /**
-     * @param {Node} node
-     */
-    getEventListeners: function(node)
+    getEventListeners: function(target)
     {
-        return CommandLineAPIHost.getEventListeners(node);
+        return CommandLineAPIHost.getEventListeners(target);
     },
 
     _inspectedObject: function()

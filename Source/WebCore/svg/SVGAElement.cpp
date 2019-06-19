@@ -2,7 +2,7 @@
  * Copyright (C) 2004, 2005, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2007 Rob Buis <buis@kde.org>
  * Copyright (C) 2007 Eric Seidel <eric@webkit.org>
- * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -52,7 +52,11 @@ inline SVGAElement::SVGAElement(const QualifiedName& tagName, Document& document
     , SVGURIReference(this)
 {
     ASSERT(hasTagName(SVGNames::aTag));
-    registerAttributes();
+
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::targetAttr, &SVGAElement::m_target>();
+    });
 }
 
 Ref<SVGAElement> SVGAElement::create(const QualifiedName& tagName, Document& document)
@@ -63,7 +67,7 @@ Ref<SVGAElement> SVGAElement::create(const QualifiedName& tagName, Document& doc
 String SVGAElement::title() const
 {
     // If the xlink:title is set (non-empty string), use it.
-    const AtomicString& title = attributeWithoutSynchronization(XLinkNames::titleAttr);
+    const AtomString& title = attributeWithoutSynchronization(XLinkNames::titleAttr);
     if (!title.isEmpty())
         return title;
 
@@ -71,18 +75,10 @@ String SVGAElement::title() const
     return SVGElement::title();
 }
 
-void SVGAElement::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::targetAttr, &SVGAElement::m_target>();
-}
-
-void SVGAElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void SVGAElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == SVGNames::targetAttr) {
-        m_target.setValue(value);
+        m_target->setBaseValInternal(value);
         return;
     }
 
@@ -219,6 +215,14 @@ bool SVGAElement::childShouldCreateRenderer(const Node& child) const
 bool SVGAElement::willRespondToMouseClickEvents()
 { 
     return isLink() || SVGGraphicsElement::willRespondToMouseClickEvents(); 
+}
+
+SharedStringHash SVGAElement::visitedLinkHash() const
+{
+    ASSERT(isLink());
+    if (!m_storedVisitedLinkHash)
+        m_storedVisitedLinkHash = computeVisitedLinkHash(document().baseURL(), getAttribute(SVGNames::hrefAttr, XLinkNames::hrefAttr));
+    return *m_storedVisitedLinkHash;
 }
 
 } // namespace WebCore

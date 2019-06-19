@@ -26,8 +26,6 @@
 #import "config.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 
-#if WK_API_ENABLED
-
 #import "APIDictionary.h"
 #import "BlockSPI.h"
 #import "Connection.h"
@@ -38,6 +36,7 @@
 #import "WKRemoteObject.h"
 #import "WKRemoteObjectCoder.h"
 #import "WKSharedAPICast.h"
+#import "WebPage.h"
 #import "_WKRemoteObjectInterface.h"
 #import <objc/runtime.h>
 
@@ -319,5 +318,3 @@ static uint64_t generateReplyIdentifier()
 }
 
 @end
-
-#endif // WK_API_ENABLED

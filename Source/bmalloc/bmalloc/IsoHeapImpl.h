@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #pragma once
 
 #include "BMalloced.h"
+#include "IsoAllocator.h"
 #include "IsoDirectoryPage.h"
 #include "IsoTLSAllocatorEntry.h"
 #include "PhysicalPageMap.h"
@@ -37,24 +38,35 @@ class AllIsoHeaps;
 class BEXPORT IsoHeapImplBase {
     MAKE_BMALLOCED;
 public:
+    static constexpr unsigned maxAllocationFromShared = 8;
+    static constexpr unsigned maxAllocationFromSharedMask = maxAllocationFromShared - 1;
+    static_assert(maxAllocationFromShared <= bmalloc::alignment, "");
+    static_assert(isPowerOfTwo(maxAllocationFromShared), "");
+
     virtual ~IsoHeapImplBase();
     
     virtual void scavenge(Vector<DeferredDecommit>&) = 0;
-    virtual void scavengeToHighWatermark(Vector<DeferredDecommit>&) = 0;
     virtual size_t freeableMemory() = 0;
     virtual size_t footprint() = 0;
     
     void scavengeNow();
     static void finishScavenging(Vector<DeferredDecommit>&);
-    
+
 protected:
     IsoHeapImplBase();
     void addToAllIsoHeaps();
 
-private:
+    friend class IsoSharedPage;
     friend class AllIsoHeaps;
     
     IsoHeapImplBase* m_next { nullptr };
+    std::chrono::steady_clock::time_point m_lastSlowPathTime;
+    std::array<void*, maxAllocationFromShared> m_sharedCells { };
+    unsigned m_numberOfAllocationsFromSharedInOneCycle { 0 };
+    unsigned m_availableShared { maxAllocationFromSharedMask };
+    AllocationMode m_allocationMode { AllocationMode::Init };
+    
+    static_assert(sizeof(m_availableShared) * 8 >= maxAllocationFromShared, "");
 };
 
 template<typename Config>
@@ -68,11 +80,10 @@ public:
     EligibilityResult<Config> takeFirstEligible();
     
     // Callbacks from directory.
-    void didBecomeEligible(IsoDirectory<Config, numPagesInInlineDirectory>*);
-    void didBecomeEligible(IsoDirectory<Config, IsoDirectoryPage<Config>::numPages>*);
+    void didBecomeEligibleOrDecommited(IsoDirectory<Config, numPagesInInlineDirectory>*);
+    void didBecomeEligibleOrDecommited(IsoDirectory<Config, IsoDirectoryPage<Config>::numPages>*);
     
     void scavenge(Vector<DeferredDecommit>&) override;
-    void scavengeToHighWatermark(Vector<DeferredDecommit>&) override;
 
     size_t freeableMemory() override;
 
@@ -100,6 +111,9 @@ public:
 
     void isNowFreeable(void* ptr, size_t bytes);
     void isNoLongerFreeable(void* ptr, size_t bytes);
+
+    AllocationMode updateAllocationMode();
+    void* allocateFromShared(const std::lock_guard<Mutex>&, bool abortOnFailure);
     
     // It's almost always the caller's responsibility to grab the lock. This lock comes from the
     // PerProcess<IsoTLSDeallocatorEntry<Config>>::get()->lock. That's pretty weird, and we don't
@@ -120,8 +134,8 @@ private:
     unsigned m_nextDirectoryPageIndex { 1 }; // We start at 1 so that the high water mark being zero means we've only allocated in the inline directory since the last scavenge.
     unsigned m_directoryHighWatermark { 0 };
     
-    bool m_isInlineDirectoryEligible { true };
-    IsoDirectoryPage<Config>* m_firstEligibleDirectory { nullptr };
+    bool m_isInlineDirectoryEligibleOrDecommitted { true };
+    IsoDirectoryPage<Config>* m_firstEligibleOrDecommitedDirectory { nullptr };
     
     IsoTLSAllocatorEntry<Config> m_allocator;
 };

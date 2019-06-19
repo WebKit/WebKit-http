@@ -238,7 +238,7 @@ public:
 
     AddSpeculationMode addSpeculationMode(Node* add, bool leftShouldSpeculateInt32, bool rightShouldSpeculateInt32, PredictionPass pass)
     {
-        ASSERT(add->op() == ValueAdd || add->op() == ArithAdd || add->op() == ArithSub);
+        ASSERT(add->op() == ValueAdd || add->op() == ValueSub || add->op() == ArithAdd || add->op() == ArithSub);
         
         RareCaseProfilingSource source = add->sourceFor(pass);
         
@@ -284,7 +284,7 @@ public:
         return addSpeculationMode(add, pass) != DontSpeculateInt32;
     }
     
-    bool addShouldSpeculateAnyInt(Node* add)
+    bool addShouldSpeculateInt52(Node* add)
     {
         if (!enableInt52())
             return false;
@@ -295,27 +295,23 @@ public:
         if (hasExitSite(add, Int52Overflow))
             return false;
 
-        if (Node::shouldSpeculateAnyInt(left, right))
+        if (Node::shouldSpeculateInt52(left, right))
             return true;
 
-        auto shouldSpeculateAnyIntForAdd = [](Node* node) {
-            auto isAnyIntSpeculationForAdd = [](SpeculatedType value) {
-                return !!value && (value & (SpecAnyInt | SpecAnyIntAsDouble)) == value;
-            };
-
+        auto shouldSpeculateInt52ForAdd = [] (Node* node) {
             // When DoubleConstant node appears, it means that users explicitly write a constant in their code with double form instead of integer form (1.0 instead of 1).
             // In that case, we should honor this decision: using it as integer is not appropriate.
             if (node->op() == DoubleConstant)
                 return false;
-            return isAnyIntSpeculationForAdd(node->prediction());
+            return isIntAnyFormat(node->prediction());
         };
 
-        // Allow AnyInt ArithAdd only when the one side of the binary operation should be speculated AnyInt. It is a bit conservative
+        // Allow Int52 ArithAdd only when the one side of the binary operation should be speculated Int52. It is a bit conservative
         // decision. This is because Double to Int52 conversion is not so cheap. Frequent back-and-forth conversions between Double and Int52
         // rather hurt the performance. If the one side of the operation is already Int52, the cost for constructing ArithAdd becomes
         // cheap since only one Double to Int52 conversion could be required.
         // This recovers some regression in assorted tests while keeping kraken crypto improvements.
-        if (!left->shouldSpeculateAnyInt() && !right->shouldSpeculateAnyInt())
+        if (!left->shouldSpeculateInt52() && !right->shouldSpeculateInt52())
             return false;
 
         auto usesAsNumbers = [](Node* node) {
@@ -329,7 +325,7 @@ public:
         if (!usesAsNumbers(add))
             return false;
 
-        return shouldSpeculateAnyIntForAdd(left) && shouldSpeculateAnyIntForAdd(right);
+        return shouldSpeculateInt52ForAdd(left) && shouldSpeculateInt52ForAdd(right);
     }
     
     bool binaryArithShouldSpeculateInt32(Node* node, PredictionPass pass)
@@ -341,7 +337,7 @@ public:
             && node->canSpeculateInt32(node->sourceFor(pass));
     }
     
-    bool binaryArithShouldSpeculateAnyInt(Node* node, PredictionPass pass)
+    bool binaryArithShouldSpeculateInt52(Node* node, PredictionPass pass)
     {
         if (!enableInt52())
             return false;
@@ -349,7 +345,7 @@ public:
         Node* left = node->child1().node();
         Node* right = node->child2().node();
 
-        return Node::shouldSpeculateAnyInt(left, right)
+        return Node::shouldSpeculateInt52(left, right)
             && node->canSpeculateInt52(pass)
             && !hasExitSite(node, Int52Overflow);
     }
@@ -360,11 +356,11 @@ public:
             && node->canSpeculateInt32(pass);
     }
     
-    bool unaryArithShouldSpeculateAnyInt(Node* node, PredictionPass pass)
+    bool unaryArithShouldSpeculateInt52(Node* node, PredictionPass pass)
     {
         if (!enableInt52())
             return false;
-        return node->child1()->shouldSpeculateAnyInt()
+        return node->child1()->shouldSpeculateInt52()
             && node->canSpeculateInt52(pass)
             && !hasExitSite(node, Int52Overflow);
     }
@@ -417,14 +413,14 @@ public:
     ScriptExecutable* executableFor(InlineCallFrame* inlineCallFrame)
     {
         if (!inlineCallFrame)
-            return m_codeBlock->ownerScriptExecutable();
+            return m_codeBlock->ownerExecutable();
         
-        return inlineCallFrame->baselineCodeBlock->ownerScriptExecutable();
+        return inlineCallFrame->baselineCodeBlock->ownerExecutable();
     }
     
     ScriptExecutable* executableFor(const CodeOrigin& codeOrigin)
     {
-        return executableFor(codeOrigin.inlineCallFrame);
+        return executableFor(codeOrigin.inlineCallFrame());
     }
     
     CodeBlock* baselineCodeBlockFor(InlineCallFrame* inlineCallFrame)
@@ -441,9 +437,9 @@ public:
     
     bool isStrictModeFor(CodeOrigin codeOrigin)
     {
-        if (!codeOrigin.inlineCallFrame)
+        if (!codeOrigin.inlineCallFrame())
             return m_codeBlock->isStrictMode();
-        return codeOrigin.inlineCallFrame->isStrictMode();
+        return codeOrigin.inlineCallFrame()->isStrictMode();
     }
     
     ECMAMode ecmaModeFor(CodeOrigin codeOrigin)
@@ -463,7 +459,7 @@ public:
     
     bool hasExitSite(const CodeOrigin& codeOrigin, ExitKind exitKind)
     {
-        return baselineCodeBlockFor(codeOrigin)->unlinkedCodeBlock()->hasExitSite(FrequentExitSite(codeOrigin.bytecodeIndex, exitKind));
+        return baselineCodeBlockFor(codeOrigin)->unlinkedCodeBlock()->hasExitSite(FrequentExitSite(codeOrigin.bytecodeIndex(), exitKind));
     }
     
     bool hasExitSite(Node* node, ExitKind exitKind)
@@ -785,6 +781,7 @@ public:
 
     DesiredIdentifiers& identifiers() { return m_plan.identifiers(); }
     DesiredWatchpoints& watchpoints() { return m_plan.watchpoints(); }
+    DesiredGlobalProperties& globalProperties() { return m_plan.globalProperties(); }
 
     // Returns false if the key is already invalid or unwatchable. If this is a Presence condition,
     // this also makes it cheap to query if the condition holds. Also makes sure that the GC knows
@@ -792,30 +789,16 @@ public:
     bool watchCondition(const ObjectPropertyCondition&);
     bool watchConditions(const ObjectPropertyConditionSet&);
 
+    bool watchGlobalProperty(JSGlobalObject*, unsigned identifierNumber);
+
     // Checks if it's known that loading from the given object at the given offset is fine. This is
     // computed by tracking which conditions we track with watchCondition().
     bool isSafeToLoad(JSObject* base, PropertyOffset);
 
-    void registerInferredType(const InferredType::Descriptor& type)
-    {
-        if (type.structure())
-            registerStructure(type.structure());
-    }
-
-    // Tells us what inferred type we are able to prove the property to have now and in the future.
-    InferredType::Descriptor inferredTypeFor(const PropertyTypeKey&);
-    InferredType::Descriptor inferredTypeForProperty(Structure* structure, UniquedStringImpl* uid)
-    {
-        return inferredTypeFor(PropertyTypeKey(structure, uid));
-    }
-
-    AbstractValue inferredValueForProperty(
-        const RegisteredStructureSet& base, UniquedStringImpl* uid, StructureClobberState = StructuresAreWatched);
-
     // This uses either constant property inference or property type inference to derive a good abstract
     // value for some property accessed with the given abstract value base.
     AbstractValue inferredValueForProperty(
-        const AbstractValue& base, UniquedStringImpl* uid, PropertyOffset, StructureClobberState);
+        const AbstractValue& base, PropertyOffset, StructureClobberState);
     
     FullBytecodeLiveness& livenessFor(CodeBlock*);
     FullBytecodeLiveness& livenessFor(InlineCallFrame*);
@@ -840,7 +823,7 @@ public:
         CodeOrigin* codeOriginPtr = &codeOrigin;
         
         for (;;) {
-            InlineCallFrame* inlineCallFrame = codeOriginPtr->inlineCallFrame;
+            InlineCallFrame* inlineCallFrame = codeOriginPtr->inlineCallFrame();
             VirtualRegister stackOffset(inlineCallFrame ? inlineCallFrame->stackOffset : 0);
             
             if (inlineCallFrame) {
@@ -852,7 +835,7 @@ public:
             
             CodeBlock* codeBlock = baselineCodeBlockFor(inlineCallFrame);
             FullBytecodeLiveness& fullLiveness = livenessFor(codeBlock);
-            const FastBitVector& liveness = fullLiveness.getLiveness(codeOriginPtr->bytecodeIndex);
+            const FastBitVector& liveness = fullLiveness.getLiveness(codeOriginPtr->bytecodeIndex());
             for (unsigned relativeLocal = codeBlock->numCalleeLocals(); relativeLocal--;) {
                 VirtualRegister reg = stackOffset + virtualRegisterForLocal(relativeLocal);
                 
@@ -878,12 +861,10 @@ public:
 
             for (VirtualRegister reg = exclusionStart; reg < exclusionEnd; reg += 1)
                 functor(reg);
-            
-            codeOriginPtr = inlineCallFrame->getCallerSkippingTailCalls();
 
-            // The first inline call frame could be an inline tail call
-            if (!codeOriginPtr)
-                break;
+            // We need to handle tail callers because we may decide to exit to the
+            // the return bytecode following the tail call.
+            codeOriginPtr = &inlineCallFrame->directCaller;
         }
     }
     
@@ -1004,7 +985,7 @@ public:
     
     Bag<StorageAccessData> m_storageAccessData;
     
-    // In CPS, this is all of the SetArgument nodes for the arguments in the machine code block
+    // In CPS, this is all of the SetArgumentDefinitely nodes for the arguments in the machine code block
     // that survived DCE. All of them except maybe "this" will survive DCE, because of the Flush
     // nodes. In SSA, this has no meaning. It's empty.
     HashMap<BasicBlock*, ArgumentsVector> m_rootToArguments;
@@ -1035,16 +1016,6 @@ public:
     // So argumentFormats[0] are the argument formats for the normal call entrypoint.
     Vector<Vector<FlushFormat>> m_argumentFormats;
 
-    // This maps an entrypoint index to a particular op_catch bytecode offset. By convention,
-    // it'll never have zero as a key because we use zero to mean the op_enter entrypoint.
-    HashMap<unsigned, unsigned> m_entrypointIndexToCatchBytecodeOffset;
-
-    // This is the number of logical entrypoints that we're compiling. This is only used
-    // in SSA. Each EntrySwitch node must have m_numberOfEntrypoints cases. Note, this is
-    // not the same as m_roots.size(). m_roots.size() represents the number of roots in
-    // the CFG. In SSA, m_roots.size() == 1 even if we're compiling more than one entrypoint.
-    unsigned m_numberOfEntrypoints { UINT_MAX };
-
     SegmentedVector<VariableAccessData, 16> m_variableAccessData;
     SegmentedVector<ArgumentPosition, 8> m_argumentPositions;
     Bag<Transition> m_transitions;
@@ -1064,7 +1035,6 @@ public:
     HashMap<CodeBlock*, std::unique_ptr<FullBytecodeLiveness>> m_bytecodeLiveness;
     HashMap<CodeBlock*, std::unique_ptr<BytecodeKills>> m_bytecodeKills;
     HashSet<std::pair<JSObject*, PropertyOffset>> m_safeToLoad;
-    HashMap<PropertyTypeKey, InferredType::Descriptor> m_inferredTypes;
     Vector<Ref<Snippet>> m_domJITSnippets;
     std::unique_ptr<CPSDominators> m_cpsDominators;
     std::unique_ptr<SSADominators> m_ssaDominators;
@@ -1078,7 +1048,17 @@ public:
     unsigned m_localVars;
     unsigned m_nextMachineLocal;
     unsigned m_parameterSlots;
-    
+
+    // This is the number of logical entrypoints that we're compiling. This is only used
+    // in SSA. Each EntrySwitch node must have m_numberOfEntrypoints cases. Note, this is
+    // not the same as m_roots.size(). m_roots.size() represents the number of roots in
+    // the CFG. In SSA, m_roots.size() == 1 even if we're compiling more than one entrypoint.
+    unsigned m_numberOfEntrypoints { UINT_MAX };
+
+    // This maps an entrypoint index to a particular op_catch bytecode offset. By convention,
+    // it'll never have zero as a key because we use zero to mean the op_enter entrypoint.
+    HashMap<unsigned, unsigned> m_entrypointIndexToCatchBytecodeOffset;
+
     HashSet<String> m_localStrings;
     HashMap<const StringImpl*, String> m_copiedStrings;
 
@@ -1096,7 +1076,7 @@ public:
     bool m_hasDebuggerEnabled;
     bool m_hasExceptionHandlers { false };
     bool m_isInSSAConversion { false };
-    std::optional<uint32_t> m_maxLocalsForCatchOSREntry;
+    Optional<uint32_t> m_maxLocalsForCatchOSREntry;
     std::unique_ptr<FlowIndexing> m_indexingCache;
     std::unique_ptr<FlowMap<AbstractValue>> m_abstractValuesCache;
     Bag<EntrySwitchData> m_entrySwitchData;

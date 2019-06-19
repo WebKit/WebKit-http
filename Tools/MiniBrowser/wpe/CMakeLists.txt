@@ -12,6 +12,7 @@ set(MiniBrowser_INCLUDE_DIRECTORIES
 )
 
 set(MiniBrowser_SYSTEM_INCLUDE_DIRECTORIES
+    ${ATK_INCLUDE_DIRS}
     ${WPE_INCLUDE_DIRS}
     ${WPEBACKEND_FDO_INCLUDE_DIRS}
 )
@@ -20,6 +21,7 @@ set(MiniBrowser_LIBRARIES
     ${JavaScriptCore_LIBRARY_NAME}
     WPEToolingBackends
     WebKit
+    ${ATK_LIBRARIES}
     ${WPE_LIBRARIES}
     ${WPEBACKEND_FDO_LIBRARIES}
 )
@@ -34,3 +36,7 @@ add_executable(MiniBrowser ${MiniBrowser_SOURCES})
 target_link_libraries(MiniBrowser ${MiniBrowser_LIBRARIES})
 
 install(TARGETS MiniBrowser DESTINATION "${LIBEXEC_INSTALL_DIR}")
+
+if (ENABLE_WPE_QT_API)
+    add_subdirectory(qt)
+endif ()

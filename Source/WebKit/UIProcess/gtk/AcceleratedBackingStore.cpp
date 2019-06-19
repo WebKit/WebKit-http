@@ -34,7 +34,7 @@
 #include "AcceleratedBackingStoreWayland.h"
 #endif
 
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#if PLATFORM(X11)
 #include "AcceleratedBackingStoreX11.h"
 #endif
 
@@ -47,38 +47,17 @@ std::unique_ptr<AcceleratedBackingStore> AcceleratedBackingStore::create(WebPage
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
         return AcceleratedBackingStoreWayland::create(webPage);
 #endif
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#if PLATFORM(X11)
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::X11)
         return AcceleratedBackingStoreX11::create(webPage);
 #endif
+    RELEASE_ASSERT_NOT_REACHED();
     return nullptr;
 }
 
 AcceleratedBackingStore::AcceleratedBackingStore(WebPageProxy& webPage)
     : m_webPage(webPage)
 {
-}
-
-bool AcceleratedBackingStore::paint(cairo_t* cr, const IntRect& clipRect)
-{
-    if (m_webPage.drawsBackground())
-        return true;
-
-    const WebCore::Color& color = m_webPage.backgroundColor();
-    if (!color.isOpaque()) {
-        cairo_rectangle(cr, clipRect.x(), clipRect.y(), clipRect.width(), clipRect.height());
-        cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
-        cairo_fill(cr);
-    }
-
-    if (color.isVisible()) {
-        setSourceRGBAFromColor(cr, color);
-        cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-        cairo_rectangle(cr, clipRect.x(), clipRect.y(), clipRect.width(), clipRect.height());
-        cairo_fill(cr);
-    }
-
-    return true;
 }
 
 } // namespace WebKit

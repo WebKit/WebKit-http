@@ -34,7 +34,7 @@
 #include "EventTarget.h"
 #include "ExceptionOr.h"
 #include "Timer.h"
-#include "URL.h"
+#include <wtf/URL.h>
 #include "WebSocketChannelClient.h"
 #include <wtf/Deque.h>
 #include <wtf/HashSet.h>
@@ -51,6 +51,7 @@ class Blob;
 class ThreadableWebSocketChannel;
 
 class WebSocket final : public RefCounted<WebSocket>, public EventTargetWithInlineData, public ActiveDOMObject, private WebSocketChannelClient {
+    WTF_MAKE_ISO_ALLOCATED(WebSocket);
 public:
     static const char* subprotocolSeparator();
 
@@ -78,7 +79,7 @@ public:
     ExceptionOr<void> send(JSC::ArrayBufferView&);
     ExceptionOr<void> send(Blob&);
 
-    ExceptionOr<void> close(std::optional<unsigned short> code, const String& reason);
+    ExceptionOr<void> close(Optional<unsigned short> code, const String& reason);
 
     RefPtr<ThreadableWebSocketChannel> channel() const;
 
@@ -127,6 +128,8 @@ private:
 
     size_t getFramingOverhead(size_t payloadSize);
 
+    void failAsynchronously();
+
     enum class BinaryType { Blob, ArrayBuffer };
 
     RefPtr<ThreadableWebSocketChannel> m_channel;
@@ -143,6 +146,7 @@ private:
     bool m_shouldDelayEventFiring { false };
     Deque<Ref<Event>> m_pendingEvents;
     bool m_dispatchedErrorEvent { false };
+    RefPtr<PendingActivity<WebSocket>> m_pendingActivity;
 };
 
 } // namespace WebCore

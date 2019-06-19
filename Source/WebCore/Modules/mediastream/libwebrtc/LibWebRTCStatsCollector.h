@@ -30,12 +30,11 @@
 #include <wtf/CompletionHandler.h>
 #include <wtf/RefPtr.h>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+ALLOW_UNUSED_PARAMETERS_BEGIN
 
 #include <webrtc/pc/rtcstatscollector.h>
 
-#pragma GCC diagnostic pop
+ALLOW_UNUSED_PARAMETERS_END
 
 namespace WebCore {
 
@@ -43,7 +42,7 @@ class RTCStatsReport;
 
 class LibWebRTCStatsCollector : public webrtc::RTCStatsCollectorCallback {
 public:
-    using CollectorCallback = WTF::CompletionHandler<bool(RefPtr<RTCStatsReport>&&)>;
+    using CollectorCallback = CompletionHandler<RefPtr<RTCStatsReport>()>;
     static rtc::scoped_refptr<LibWebRTCStatsCollector> create(CollectorCallback&& callback) { return new rtc::RefCountedObject<LibWebRTCStatsCollector>(WTFMove(callback)); }
 
     explicit LibWebRTCStatsCollector(CollectorCallback&&);

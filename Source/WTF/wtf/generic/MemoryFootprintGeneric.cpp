@@ -24,13 +24,21 @@
  */
 
 #include "config.h"
-#include "MemoryFootprint.h"
+#include <wtf/MemoryFootprint.h>
+
+#if !(defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC) && OS(LINUX)
+#include <bmalloc/bmalloc.h>
+#endif
 
 namespace WTF {
 
 size_t memoryFootprint()
 {
+#if !(defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC) && OS(LINUX)
+    return bmalloc::api::memoryFootprint();
+#else
     return 0;
+#endif
 }
 
 } // namespace WTF

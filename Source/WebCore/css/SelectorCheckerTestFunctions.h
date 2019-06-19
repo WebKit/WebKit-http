@@ -27,12 +27,17 @@
 #pragma once
 
 #include "FocusController.h"
+#include "FullscreenManager.h"
 #include "HTMLInputElement.h"
 #include "HTMLOptionElement.h"
 #include "RenderScrollbar.h"
 #include "ScrollableArea.h"
 #include "ScrollbarTheme.h"
 #include <wtf/Compiler.h>
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+#include "HTMLAttachmentElement.h"
+#endif
 
 #if ENABLE(VIDEO_TRACK)
 #include "WebVTTElement.h"
@@ -130,6 +135,13 @@ ALWAYS_INLINE bool isWindowInactive(const Element& element)
     return !page->focusController().isActive();
 }
 
+#if ENABLE(ATTACHMENT_ELEMENT)
+ALWAYS_INLINE bool hasAttachment(const Element& element)
+{
+    return is<HTMLImageElement>(element) && downcast<HTMLImageElement>(element).attachmentElement();
+}
+#endif
+
 ALWAYS_INLINE bool containslanguageSubtagMatchingRange(StringView language, StringView range, unsigned languageLength, unsigned& position)
 {
     unsigned languageSubtagsStartIndex = position;
@@ -160,9 +172,9 @@ ALWAYS_INLINE bool containslanguageSubtagMatchingRange(StringView language, Stri
     return false;
 }
 
-ALWAYS_INLINE bool matchesLangPseudoClass(const Element& element, const Vector<AtomicString>& argumentList)
+ALWAYS_INLINE bool matchesLangPseudoClass(const Element& element, const Vector<AtomString>& argumentList)
 {
-    AtomicString language;
+    AtomString language;
 #if ENABLE(VIDEO_TRACK)
     if (is<WebVTTElement>(element))
         language = downcast<WebVTTElement>(element).language();
@@ -177,7 +189,7 @@ ALWAYS_INLINE bool matchesLangPseudoClass(const Element& element, const Vector<A
     // as specified in www.ietf.org/rfc/rfc4647.txt.
     StringView languageStringView = language.string();
     unsigned languageLength = language.length();
-    for (const AtomicString& range : argumentList) {
+    for (const AtomString& range : argumentList) {
         if (range.isEmpty())
             continue;
 
@@ -340,16 +352,16 @@ ALWAYS_INLINE bool matchesFullScreenPseudoClass(const Element& element)
     // context's Document is in the fullscreen state has the 'full-screen' pseudoclass applied.
     if (element.isFrameElementBase() && element.containsFullScreenElement())
         return true;
-    if (!element.document().webkitIsFullScreen())
+    if (!element.document().fullscreenManager().isFullscreen())
         return false;
-    return &element == element.document().webkitCurrentFullScreenElement();
+    return &element == element.document().fullscreenManager().currentFullscreenElement();
 }
 
 ALWAYS_INLINE bool matchesFullScreenAnimatingFullScreenTransitionPseudoClass(const Element& element)
 {
-    if (&element != element.document().webkitCurrentFullScreenElement())
+    if (&element != element.document().fullscreenManager().currentFullscreenElement())
         return false;
-    return element.document().isAnimatingFullScreen();
+    return element.document().fullscreenManager().isAnimatingFullscreen();
 }
 
 ALWAYS_INLINE bool matchesFullScreenAncestorPseudoClass(const Element& element)
@@ -361,16 +373,16 @@ ALWAYS_INLINE bool matchesFullScreenDocumentPseudoClass(const Element& element)
 {
     // While a Document is in the fullscreen state, the 'full-screen-document' pseudoclass applies
     // to all elements of that Document.
-    if (!element.document().webkitIsFullScreen())
+    if (!element.document().fullscreenManager().isFullscreen())
         return false;
     return true;
 }
 
 ALWAYS_INLINE bool matchesFullScreenControlsHiddenPseudoClass(const Element& element)
 {
-    if (&element != element.document().webkitCurrentFullScreenElement())
+    if (&element != element.document().fullscreenManager().currentFullscreenElement())
         return false;
-    return element.document().areFullscreenControlsHidden();
+    return element.document().fullscreenManager().areFullscreenControlsHidden();
 }
 #endif
 

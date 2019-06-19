@@ -29,7 +29,7 @@ messages -> DrawingArea {
     UpdateGeometry(WebCore::IntSize viewSize, bool flushSynchronously, MachSendRight fencePort)
     SetDeviceScaleFactor(float deviceScaleFactor)
     SetColorSpace(struct WebKit::ColorSpaceData colorSpace)
-    SetViewExposedRect(std::optional<WebCore::FloatRect> viewExposedRect)
+    SetViewExposedRect(Optional<WebCore::FloatRect> viewExposedRect)
 
     AdjustTransientZoom(double scale, WebCore::FloatPoint origin)
     CommitTransientZoom(double scale, WebCore::FloatPoint origin)
@@ -38,14 +38,5 @@ messages -> DrawingArea {
     AcceleratedAnimationDidEnd(uint64_t layerID, String key)
     
     AddTransactionCallbackID(WebKit::CallbackID callbackID)
-#endif
-
-#if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    SetNativeSurfaceHandleForCompositing(uint64_t handle)
-    DestroyNativeSurfaceHandleForCompositing() -> (bool handled)
-#endif
-
-#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
-    DisplayWasRefreshed()
 #endif
 }

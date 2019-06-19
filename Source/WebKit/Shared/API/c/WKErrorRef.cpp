@@ -29,26 +29,24 @@
 #include "APIError.h"
 #include "WKAPICast.h"
 
-using namespace WebKit;
-
 WKTypeID WKErrorGetTypeID()
 {
-    return toAPI(API::Error::APIType);
+    return WebKit::toAPI(API::Error::APIType);
 }
 
 WKStringRef WKErrorCopyWKErrorDomain()
 {
-    return toCopiedAPI(API::Error::webKitErrorDomain());
+    return WebKit::toCopiedAPI(API::Error::webKitErrorDomain());
 }
 
 WKStringRef WKErrorCopyDomain(WKErrorRef errorRef)
 {
-    return toCopiedAPI(toImpl(errorRef)->domain());
+    return WebKit::toCopiedAPI(WebKit::toImpl(errorRef)->domain());
 }
 
 int WKErrorGetErrorCode(WKErrorRef errorRef)
 {
-    auto errorCode = toImpl(errorRef)->errorCode();
+    auto errorCode = WebKit::toImpl(errorRef)->errorCode();
     switch (errorCode) {
     case API::Error::Policy::CannotShowMIMEType:
         return kWKErrorCodeCannotShowMIMEType;
@@ -60,6 +58,8 @@ int WKErrorGetErrorCode(WKErrorRef errorRef)
         return kWKErrorCodeCannotUseRestrictedPort;
     case API::Error::Policy::FrameLoadBlockedByContentBlocker:
         return kWKErrorCodeFrameLoadBlockedByContentBlocker;
+    case API::Error::Policy::FrameLoadBlockedByRestrictions:
+        return kWKErrorCodeFrameLoadBlockedByRestrictions;
     case API::Error::Policy::FrameLoadBlockedByContentFilter:
         return kWKErrorCodeFrameLoadBlockedByContentFilter;
     case API::Error::Plugin::CannotFindPlugIn:
@@ -83,10 +83,10 @@ int WKErrorGetErrorCode(WKErrorRef errorRef)
 
 WKURLRef WKErrorCopyFailingURL(WKErrorRef errorRef)
 {
-    return toCopiedURLAPI(toImpl(errorRef)->failingURL());
+    return WebKit::toCopiedURLAPI(WebKit::toImpl(errorRef)->failingURL());
 }
 
 WKStringRef WKErrorCopyLocalizedDescription(WKErrorRef errorRef)
 {
-    return toCopiedAPI(toImpl(errorRef)->localizedDescription());
+    return WebKit::toCopiedAPI(WebKit::toImpl(errorRef)->localizedDescription());
 }

@@ -43,6 +43,8 @@ public:
 private:
     explicit RealtimeOutgoingVideoSourceCocoa(Ref<MediaStreamTrackPrivate>&&);
 
+    rtc::scoped_refptr<webrtc::VideoFrameBuffer> createBlackFrame(size_t width, size_t height) final;
+
     // MediaStreamTrackPrivate::Observer API
     void sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample&) final;
 
@@ -52,7 +54,7 @@ private:
     std::unique_ptr<PixelBufferConformerCV> m_pixelBufferConformer;
     RetainPtr<VTImageRotationSessionRef> m_rotationSession;
     RetainPtr<CVPixelBufferPoolRef> m_rotationPool;
-    webrtc::VideoRotation m_currentRotationAngle { webrtc::kVideoRotation_0 };
+    webrtc::VideoRotation m_currentRotationSessionAngle { webrtc::kVideoRotation_0 };
     size_t m_rotatedWidth { 0 };
     size_t m_rotatedHeight { 0 };
     OSType m_rotatedFormat;

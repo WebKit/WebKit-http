@@ -47,7 +47,9 @@ ApplePayShippingContactSelectedEvent conditional=APPLE_PAY
 ApplePayShippingMethodSelectedEvent conditional=APPLE_PAY
 ApplePayValidateMerchantEvent conditional=APPLE_PAY
 AudioProcessingEvent conditional=WEB_AUDIO
+BlobEvent conditional=MEDIA_STREAM
 OfflineAudioCompletionEvent conditional=WEB_AUDIO
+MediaRecorderErrorEvent conditional=MEDIA_STREAM
 MediaStreamTrackEvent conditional=MEDIA_STREAM
 MerchantValidationEvent conditional=PAYMENT_REQUEST
 PaymentMethodChangeEvent conditional=PAYMENT_REQUEST
@@ -79,4 +81,4 @@ OverconstrainedErrorEvent conditional=MEDIA_STREAM
 MediaEncryptedEvent conditional=ENCRYPTED_MEDIA
 MediaKeyMessageEvent conditional=ENCRYPTED_MEDIA
 VRDisplayEvent
-AccessibleSetValueEvent
+PointerEvent conditional=POINTER_EVENTS

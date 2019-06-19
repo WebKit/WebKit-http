@@ -18,7 +18,6 @@
 
 #include "api/video/video_stream_encoder_observer.h"
 #include "call/video_send_stream.h"
-#include "common_types.h"  // NOLINT(build/include)
 #include "modules/video_coding/include/video_codec_interface.h"
 #include "modules/video_coding/include/video_coding_defines.h"
 #include "rtc_base/criticalsection.h"
@@ -53,6 +52,10 @@ class SendStatisticsProxy : public VideoStreamEncoderObserver,
 
   void OnSendEncodedImage(const EncodedImage& encoded_image,
                           const CodecSpecificInfo* codec_info) override;
+
+  void OnEncoderImplementationChanged(
+      const std::string& implementation_name) override;
+
   // Used to update incoming frame rate.
   void OnIncomingFrame(int width, int height) override;
 
@@ -150,7 +153,7 @@ class SendStatisticsProxy : public VideoStreamEncoderObserver,
     int64_t last_ms;
   };
   struct FallbackEncoderInfo {
-    FallbackEncoderInfo() = default;
+    FallbackEncoderInfo();
     bool is_possible = true;
     bool is_active = false;
     int on_off_events = 0;
@@ -188,10 +191,7 @@ class SendStatisticsProxy : public VideoStreamEncoderObserver,
     }
   };
   struct Frame {
-    Frame(int64_t send_ms,
-          uint32_t width,
-          uint32_t height,
-          size_t simulcast_idx)
+    Frame(int64_t send_ms, uint32_t width, uint32_t height, int simulcast_idx)
         : send_ms(send_ms),
           max_width(width),
           max_height(height),
@@ -200,7 +200,7 @@ class SendStatisticsProxy : public VideoStreamEncoderObserver,
         send_ms;          // Time when first frame with this timestamp is sent.
     uint32_t max_width;   // Max width with this timestamp.
     uint32_t max_height;  // Max height with this timestamp.
-    size_t max_simulcast_idx;  // Max simulcast index with this timestamp.
+    int max_simulcast_idx;  // Max simulcast index with this timestamp.
   };
   typedef std::map<uint32_t, Frame, TimestampOlderThan> EncodedFrameMap;
 
@@ -218,10 +218,12 @@ class SendStatisticsProxy : public VideoStreamEncoderObserver,
       RTC_EXCLUSIVE_LOCKS_REQUIRED(crit_);
 
   void UpdateEncoderFallbackStats(const CodecSpecificInfo* codec_info,
-                                  int pixels)
+                                  int pixels,
+                                  int simulcast_index)
       RTC_EXCLUSIVE_LOCKS_REQUIRED(crit_);
   void UpdateFallbackDisabledStats(const CodecSpecificInfo* codec_info,
-                                   int pixels)
+                                   int pixels,
+                                   int simulcast_index)
       RTC_EXCLUSIVE_LOCKS_REQUIRED(crit_);
 
   Clock* const clock_;
@@ -242,6 +244,14 @@ class SendStatisticsProxy : public VideoStreamEncoderObserver,
 
   absl::optional<int64_t> last_outlier_timestamp_ RTC_GUARDED_BY(crit_);
 
+  struct EncoderChangeEvent {
+    std::string previous_encoder_implementation;
+    std::string new_encoder_implementation;
+  };
+  // Stores the last change in encoder implementation in an optional, so that
+  // the event can be consumed.
+  absl::optional<EncoderChangeEvent> encoder_changed_;
+
   // Contains stats used for UMA histograms. These stats will be reset if
   // content type changes between real-time video and screenshare, since these
   // will be reported separately.
@@ -257,7 +267,7 @@ class SendStatisticsProxy : public VideoStreamEncoderObserver,
     void InitializeBitrateCounters(const VideoSendStream::Stats& stats);
 
     bool InsertEncodedFrame(const EncodedImage& encoded_frame,
-                            size_t simulcast_idx,
+                            int simulcast_idx,
                             bool* is_limited_in_resolution);
     void RemoveOld(int64_t now_ms, bool* is_limited_in_resolution);
 

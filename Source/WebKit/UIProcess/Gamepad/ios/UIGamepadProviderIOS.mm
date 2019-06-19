@@ -26,7 +26,7 @@
 #import "config.h"
 #import "UIGamepadProvider.h"
 
-#if ENABLE(GAMEPAD) && PLATFORM(IOS)
+#if ENABLE(GAMEPAD) && PLATFORM(IOS_FAMILY)
 
 #import "UIKitSPI.h"
 #import "WKWebViewInternal.h"
@@ -35,7 +35,9 @@ namespace WebKit {
 
 WebPageProxy* UIGamepadProvider::platformWebPageProxyForGamepadInput()
 {
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto firstResponder = [[[UIApplication sharedApplication] keyWindow] firstResponder];
+ALLOW_DEPRECATED_DECLARATIONS_END
 
     if ([firstResponder isKindOfClass:[WKContentView class]])
         return ((WKContentView *)firstResponder).page;
@@ -45,4 +47,4 @@ WebPageProxy* UIGamepadProvider::platformWebPageProxyForGamepadInput()
 
 }
 
-#endif // ENABLE(GAMEPAD) && PLATFORM(IOS)
+#endif // ENABLE(GAMEPAD) && PLATFORM(IOS_FAMILY)

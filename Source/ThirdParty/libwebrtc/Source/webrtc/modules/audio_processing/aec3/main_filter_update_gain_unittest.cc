@@ -24,6 +24,7 @@
 #include "modules/audio_processing/test/echo_canceller_test_tools.h"
 #include "rtc_base/numerics/safe_minmax.h"
 #include "rtc_base/random.h"
+#include "rtc_base/strings/string_builder.h"
 #include "test/gtest.h"
 
 namespace webrtc {
@@ -65,7 +66,7 @@ void RunFilterUpdateTest(int num_blocks_to_process,
   config.delay.min_echo_path_delay_blocks = 0;
   config.delay.default_delay = 1;
   std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
-      RenderDelayBuffer::Create(config, 3));
+      RenderDelayBuffer::Create2(config, 3));
   AecState aec_state(config);
   RenderSignalAnalyzer render_signal_analyzer(config);
   absl::optional<DelayEstimate> delay_estimate;
@@ -174,16 +175,16 @@ void RunFilterUpdateTest(int num_blocks_to_process,
 }
 
 std::string ProduceDebugText(int filter_length_blocks) {
-  std::ostringstream ss;
+  rtc::StringBuilder ss;
   ss << "Length: " << filter_length_blocks;
-  return ss.str();
+  return ss.Release();
 }
 
 std::string ProduceDebugText(size_t delay, int filter_length_blocks) {
-  std::ostringstream ss;
+  rtc::StringBuilder ss;
   ss << "Delay: " << delay << ", ";
   ss << ProduceDebugText(filter_length_blocks);
-  return ss.str();
+  return ss.Release();
 }
 
 }  // namespace

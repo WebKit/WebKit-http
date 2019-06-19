@@ -34,8 +34,6 @@
 #import <pal/spi/cocoa/AVKitSPI.h>
 #endif
 #import <WebCore/AlternativeTextClient.h>
-#import <WebCore/LayerFlushScheduler.h>
-#import <WebCore/LayerFlushSchedulerClient.h>
 #import <WebCore/WebCoreKeyboardUIMode.h>
 #import <wtf/HashMap.h>
 #import <wtf/Lock.h>
@@ -43,7 +41,7 @@
 #import <wtf/ThreadingPrimitives.h>
 #import <wtf/text/WTFString.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import "WebCaretChangeListener.h"
 #endif
 
@@ -51,6 +49,7 @@ namespace WebCore {
 class AlternativeTextUIController;
 class HistoryItem;
 class Page;
+class RunLoopObserver;
 class TextIndicatorWindow;
 class ValidationBubble;
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
@@ -77,17 +76,17 @@ class PlaybackSessionModelMediaElement;
 #if ENABLE(FULLSCREEN_API)
 @class WebFullScreenController;
 #endif
-#if ENABLE(REMOTE_INSPECTOR) && PLATFORM(IOS)
+#if ENABLE(REMOTE_INSPECTOR) && PLATFORM(IOS_FAMILY)
 @class WebIndicateLayer;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 @class WAKWindow;
 @class WebEvent;
 @class WebFixedPositionContent;
 #endif
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
 class WebMediaPlaybackTargetPicker;
 #endif
 
@@ -109,29 +108,29 @@ class WebSelectionServiceController;
 @class WebTextTouchBarItemController;
 #endif
 
-class WebViewLayerFlushScheduler : public WebCore::LayerFlushScheduler {
+class WebViewLayerFlushScheduler {
 public:
     WebViewLayerFlushScheduler(LayerFlushController*);
-    virtual ~WebViewLayerFlushScheduler() { }
+    ~WebViewLayerFlushScheduler();
+
+    void schedule();
+    void invalidate();
 
 private:
-    void layerFlushCallback() override
-    {
-        RefPtr<LayerFlushController> protector = m_flushController;
-        WebCore::LayerFlushScheduler::layerFlushCallback();
-    }
+    void layerFlushCallback();
     
     LayerFlushController* m_flushController;
+    std::unique_ptr<WebCore::RunLoopObserver> m_runLoopObserver;
 };
 
-class LayerFlushController : public RefCounted<LayerFlushController>, public WebCore::LayerFlushSchedulerClient {
+class LayerFlushController : public RefCounted<LayerFlushController> {
 public:
     static Ref<LayerFlushController> create(WebView* webView)
     {
         return adoptRef(*new LayerFlushController(webView));
     }
     
-    virtual bool flushLayers();
+    bool flushLayers();
     
     void scheduleLayerFlush();
     void invalidate();
@@ -171,7 +170,7 @@ private:
     id editingDelegateForwarder;
     id scriptDebugDelegate;
     id historyDelegate;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     id resourceProgressDelegateForwarder;
     id formDelegateForwarder;
 #endif
@@ -212,6 +211,7 @@ private:
     std::unique_ptr<WebCore::TextIndicatorWindow> textIndicatorWindow;
     BOOL hasInitializedLookupObserver;
     RetainPtr<WebWindowVisibilityObserver> windowVisibilityObserver;
+    BOOL windowOcclusionDetectionEnabled;
     RetainPtr<NSEvent> pressureEvent;
 #endif // PLATFORM(MAC)
 
@@ -230,7 +230,7 @@ private:
     
     WebPreferences *preferences;
     BOOL useSiteSpecificSpoofing;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     NSURL *userStyleSheetLocation;
 #endif
 
@@ -244,7 +244,7 @@ private:
     WebHistoryDelegateImplementationCache historyDelegateImplementations;
 
     BOOL closed;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     BOOL closing;
 #if ENABLE(ORIENTATION_EVENTS)
     NSUInteger deviceOrientation;
@@ -258,7 +258,7 @@ private:
     BOOL becomingFirstResponderFromOutside;
     BOOL usesPageCache;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     NSColor *backgroundColor;
 #else
     CGColorRef backgroundColor;
@@ -269,14 +269,7 @@ private:
     BOOL hasSpellCheckerDocumentTag;
     NSInteger spellCheckerDocumentTag;
 
-#if ENABLE(DASHBOARD_SUPPORT)
-    BOOL dashboardBehaviorAlwaysSendMouseEventsToAllWindows;
-    BOOL dashboardBehaviorAlwaysSendActiveNullEventsToPlugIns;
-    BOOL dashboardBehaviorAlwaysAcceptsFirstMouse;
-    BOOL dashboardBehaviorAllowWheelScrolling;
-#endif
-    
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     BOOL isStopping;
 
     id UIKitDelegate;
@@ -305,7 +298,7 @@ private:
 #endif
 
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // WebKit has both a global plug-in database and a separate, per WebView plug-in database. Dashboard uses the per WebView database.
     WebPluginDatabase *pluginDatabase;
 #endif
@@ -323,7 +316,7 @@ private:
     BOOL postsAcceleratedCompositingNotifications;
     RefPtr<LayerFlushController> layerFlushController;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     NSPasteboard *insertionPasteboard;
     RetainPtr<NSImage> _mainFrameIcon;
 #endif
@@ -344,7 +337,7 @@ private:
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WebIndicateLayer *indicateLayer;
 #endif
 #endif
@@ -357,13 +350,11 @@ private:
     std::unique_ptr<WebSelectionServiceController> _selectionServiceController;
 #endif
 
-    RefPtr<WebCore::HistoryItem> _globalHistoryItem;
-
     BOOL interactiveFormValidationEnabled;
     int validationMessageTimerMagnification;
 
     float customDeviceScaleFactor;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WebFixedPositionContent* _fixedPositionContent;
 #endif
 
@@ -375,7 +366,7 @@ private:
 
     BOOL _didPerformFirstNavigation;
 
-#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
+#if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)
     std::unique_ptr<WebMediaPlaybackTargetPicker> m_playbackTargetPicker;
 #endif
 }

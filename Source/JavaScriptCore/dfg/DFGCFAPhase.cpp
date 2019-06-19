@@ -31,6 +31,7 @@
 #include "DFGAbstractInterpreterInlines.h"
 #include "DFGBlockSet.h"
 #include "DFGClobberSet.h"
+#include "DFGClobberize.h"
 #include "DFGGraph.h"
 #include "DFGInPlaceAbstractState.h"
 #include "DFGPhase.h"
@@ -162,11 +163,20 @@ private:
         if (m_verbose)
             dataLog("   Found must-handle block: ", *block, "\n");
         
+        // This merges snapshot of stack values while CFA phase want to have proven types and values. This is somewhat tricky.
+        // But this is OK as long as DFG OSR entry validates the inputs with *proven* AbstracValue values. And it turns out that this
+        // type widening is critical to navier-stokes. Without it, navier-stokes has more strict constraint on OSR entry and
+        // fails OSR entry repeatedly.
         bool changed = false;
-        const Operands<JSValue>& mustHandleValues = m_graph.m_plan.mustHandleValues();
+        const Operands<Optional<JSValue>>& mustHandleValues = m_graph.m_plan.mustHandleValues();
         for (size_t i = mustHandleValues.size(); i--;) {
             int operand = mustHandleValues.operandForIndex(i);
-            JSValue value = mustHandleValues[i];
+            Optional<JSValue> value = mustHandleValues[i];
+            if (!value) {
+                if (m_verbose)
+                    dataLog("   Not live in bytecode: ", VirtualRegister(operand), "\n");
+                continue;
+            }
             Node* node = block->variablesAtHead.operand(operand);
             if (!node) {
                 if (m_verbose)
@@ -175,12 +185,10 @@ private:
             }
             
             if (m_verbose)
-                dataLog("   Widening ", VirtualRegister(operand), " with ", value, "\n");
+                dataLog("   Widening ", VirtualRegister(operand), " with ", value.value(), "\n");
             
             AbstractValue& target = block->valuesAtHead.operand(operand);
-            changed |= target.mergeOSREntryValue(m_graph, value);
-            target.fixTypeForRepresentation(
-                m_graph, resultFor(node->variableAccessData()->flushFormat()));
+            changed |= target.mergeOSREntryValue(m_graph, value.value(), node->variableAccessData(), node);
         }
         
         if (changed || !block->cfaHasVisited) {

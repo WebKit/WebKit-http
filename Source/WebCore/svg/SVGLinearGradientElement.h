@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2006, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,7 +21,6 @@
 
 #pragma once
 
-#include "SVGAnimatedLength.h"
 #include "SVGGradientElement.h"
 #include "SVGNames.h"
 
@@ -36,37 +35,34 @@ public:
 
     bool collectGradientAttributes(LinearGradientAttributes&);
 
-    const SVGLengthValue& x1() const { return m_x1.currentValue(attributeOwnerProxy()); }
-    const SVGLengthValue& y1() const { return m_y1.currentValue(attributeOwnerProxy()); }
-    const SVGLengthValue& x2() const { return m_x2.currentValue(attributeOwnerProxy()); }
-    const SVGLengthValue& y2() const { return m_y2.currentValue(attributeOwnerProxy()); }
+    const SVGLengthValue& x1() const { return m_x1->currentValue(); }
+    const SVGLengthValue& y1() const { return m_y1->currentValue(); }
+    const SVGLengthValue& x2() const { return m_x2->currentValue(); }
+    const SVGLengthValue& y2() const { return m_y2->currentValue(); }
 
-    RefPtr<SVGAnimatedLength> x1Animated() { return m_x1.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLength> y1Animated() { return m_y1.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLength> x2Animated() { return m_x2.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedLength> y2Animated() { return m_y2.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedLength& x1Animated() { return m_x1; }
+    SVGAnimatedLength& y1Animated() { return m_y1; }
+    SVGAnimatedLength& x2Animated() { return m_x2; }
+    SVGAnimatedLength& y2Animated() { return m_y2; }
 
 private:
     SVGLinearGradientElement(const QualifiedName&, Document&);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGLinearGradientElement, SVGGradientElement>;
-    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
-    static void registerAttributes();
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGLinearGradientElement, SVGGradientElement>;
+    const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
 
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 
     bool selfHasRelativeLengths() const override;
 
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
-    SVGAnimatedLengthAttribute m_x1 { LengthModeWidth };
-    SVGAnimatedLengthAttribute m_y1 { LengthModeHeight };
-    SVGAnimatedLengthAttribute m_x2 { LengthModeWidth, "100%" };
-    SVGAnimatedLengthAttribute m_y2 { LengthModeHeight };
+    PropertyRegistry m_propertyRegistry { *this };
+    Ref<SVGAnimatedLength> m_x1 { SVGAnimatedLength::create(this, LengthModeWidth) };
+    Ref<SVGAnimatedLength> m_y1 { SVGAnimatedLength::create(this, LengthModeHeight) };
+    Ref<SVGAnimatedLength> m_x2 { SVGAnimatedLength::create(this, LengthModeWidth, "100%") };
+    Ref<SVGAnimatedLength> m_y2 { SVGAnimatedLength::create(this, LengthModeHeight) };
 };
 
 } // namespace WebCore

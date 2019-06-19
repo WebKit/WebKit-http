@@ -31,21 +31,32 @@
 
 namespace API {
 
-static WebsiteDataStore* globalDefaultDataStore;
+static RefPtr<WebsiteDataStore>& globalDefaultDataStore()
+{
+    static NeverDestroyed<RefPtr<WebsiteDataStore>> globalDefaultDataStore;
+    return globalDefaultDataStore.get();
+}
+
 
 Ref<WebsiteDataStore> WebsiteDataStore::defaultDataStore()
 {
     WebKit::InitializeWebKit2();
 
-    if (!globalDefaultDataStore)
-        globalDefaultDataStore = adoptRef(new WebsiteDataStore(defaultDataStoreConfiguration(), PAL::SessionID::defaultSessionID())).leakRef();
+    auto& store = globalDefaultDataStore();
+    if (!store)
+        store = adoptRef(new WebsiteDataStore(defaultDataStoreConfiguration(), PAL::SessionID::defaultSessionID()));
 
-    return *globalDefaultDataStore;
+    return *store;
+}
+
+void WebsiteDataStore::deleteDefaultDataStoreForTesting()
+{
+    globalDefaultDataStore() = nullptr;
 }
 
 bool WebsiteDataStore::defaultDataStoreExists()
 {
-    return globalDefaultDataStore;
+    return !!globalDefaultDataStore();
 }
 
 Ref<WebsiteDataStore> WebsiteDataStore::createNonPersistentDataStore()
@@ -53,8 +64,9 @@ Ref<WebsiteDataStore> WebsiteDataStore::createNonPersistentDataStore()
     return adoptRef(*new WebsiteDataStore);
 }
 
-Ref<WebsiteDataStore> WebsiteDataStore::createLegacy(WebKit::WebsiteDataStore::Configuration configuration)
+Ref<WebsiteDataStore> WebsiteDataStore::createLegacy(Ref<WebKit::WebsiteDataStoreConfiguration>&& configuration)
 {
+    configuration->setIndexedDBDatabaseDirectory(legacyDefaultIndexedDBDatabaseDirectory());
     return adoptRef(*new WebsiteDataStore(WTFMove(configuration), PAL::SessionID::defaultSessionID()));
 }
 
@@ -63,7 +75,7 @@ WebsiteDataStore::WebsiteDataStore()
 {
 }
 
-WebsiteDataStore::WebsiteDataStore(WebKit::WebsiteDataStore::Configuration configuration, PAL::SessionID sessionID)
+WebsiteDataStore::WebsiteDataStore(Ref<WebKit::WebsiteDataStoreConfiguration>&& configuration, PAL::SessionID sessionID)
     : m_websiteDataStore(WebKit::WebsiteDataStore::create(WTFMove(configuration), sessionID))
 {
 }
@@ -74,10 +86,12 @@ WebsiteDataStore::~WebsiteDataStore()
 
 HTTPCookieStore& WebsiteDataStore::httpCookieStore()
 {
-    if (!m_apiHTTPCookieStore)
-        m_apiHTTPCookieStore = HTTPCookieStore::create(*this);
+    return m_websiteDataStore->cookieStore();
+}
 
-    return *m_apiHTTPCookieStore;
+WTF::String WebsiteDataStore:: indexedDBDatabaseDirectory()
+{
+    return m_websiteDataStore->configuration().indexedDBDatabaseDirectory();
 }
 
 bool WebsiteDataStore::isPersistent()
@@ -119,19 +133,53 @@ WTF::String WebsiteDataStore::defaultJavaScriptConfigurationDirectory()
 }
 #endif
 
-WebKit::WebsiteDataStore::Configuration WebsiteDataStore::legacyDefaultDataStoreConfiguration()
+#if !USE(GLIB)
+WTF::String WebsiteDataStore::defaultDeviceIdHashSaltsStorageDirectory()
 {
-    WebKit::WebsiteDataStore::Configuration configuration = defaultDataStoreConfiguration();
+    // Not implemented.
+    return WTF::String();
+}
+#endif
 
-    configuration.applicationCacheDirectory = legacyDefaultApplicationCacheDirectory();
-    configuration.applicationCacheFlatFileSubdirectoryName = "ApplicationCache";
-    configuration.networkCacheDirectory = legacyDefaultNetworkCacheDirectory();
-    configuration.mediaCacheDirectory = legacyDefaultMediaCacheDirectory();
-    configuration.mediaKeysStorageDirectory = legacyDefaultMediaKeysStorageDirectory();
-    configuration.indexedDBDatabaseDirectory = legacyDefaultIndexedDBDatabaseDirectory();
-    configuration.webSQLDatabaseDirectory = legacyDefaultWebSQLDatabaseDirectory();
-    configuration.localStorageDirectory = legacyDefaultLocalStorageDirectory();
-    configuration.javaScriptConfigurationDirectory = legacyDefaultJavaScriptConfigurationDirectory();
+Ref<WebKit::WebsiteDataStoreConfiguration> WebsiteDataStore::defaultDataStoreConfiguration()
+{
+    auto configuration = WebKit::WebsiteDataStoreConfiguration::create();
+
+    configuration->setPersistent(true);
+
+    configuration->setApplicationCacheDirectory(defaultApplicationCacheDirectory());
+    configuration->setApplicationCacheFlatFileSubdirectoryName("Files");
+    configuration->setCacheStorageDirectory(defaultCacheStorageDirectory());
+    configuration->setNetworkCacheDirectory(defaultNetworkCacheDirectory());
+    configuration->setMediaCacheDirectory(defaultMediaCacheDirectory());
+
+    configuration->setIndexedDBDatabaseDirectory(defaultIndexedDBDatabaseDirectory());
+    configuration->setServiceWorkerRegistrationDirectory(defaultServiceWorkerRegistrationDirectory());
+    configuration->setWebSQLDatabaseDirectory(defaultWebSQLDatabaseDirectory());
+    configuration->setLocalStorageDirectory(defaultLocalStorageDirectory());
+    configuration->setMediaKeysStorageDirectory(defaultMediaKeysStorageDirectory());
+    configuration->setResourceLoadStatisticsDirectory(defaultResourceLoadStatisticsDirectory());
+    configuration->setDeviceIdHashSaltsStorageDirectory(defaultDeviceIdHashSaltsStorageDirectory());
+
+    configuration->setJavaScriptConfigurationDirectory(defaultJavaScriptConfigurationDirectory());
+
+    return configuration;
+}
+
+Ref<WebKit::WebsiteDataStoreConfiguration> WebsiteDataStore::legacyDefaultDataStoreConfiguration()
+{
+    auto configuration = defaultDataStoreConfiguration();
+
+    configuration->setApplicationCacheDirectory(legacyDefaultApplicationCacheDirectory());
+    configuration->setApplicationCacheFlatFileSubdirectoryName("ApplicationCache");
+    configuration->setNetworkCacheDirectory(legacyDefaultNetworkCacheDirectory());
+    configuration->setMediaCacheDirectory(legacyDefaultMediaCacheDirectory());
+    configuration->setMediaKeysStorageDirectory(legacyDefaultMediaKeysStorageDirectory());
+    configuration->setDeviceIdHashSaltsStorageDirectory(legacyDefaultDeviceIdHashSaltsStorageDirectory());
+    configuration->setIndexedDBDatabaseDirectory(legacyDefaultIndexedDBDatabaseDirectory());
+    configuration->setWebSQLDatabaseDirectory(legacyDefaultWebSQLDatabaseDirectory());
+    configuration->setLocalStorageDirectory(legacyDefaultLocalStorageDirectory());
+    configuration->setJavaScriptConfigurationDirectory(legacyDefaultJavaScriptConfigurationDirectory());
     
     return configuration;
 }

@@ -27,13 +27,14 @@ WI.MemoryTimelineRecord = class MemoryTimelineRecord extends WI.TimelineRecord
 {
     constructor(timestamp, categories)
     {
-        super(WI.TimelineRecord.Type.Memory, timestamp, timestamp);
+        super(WI.TimelineRecord.Type.Memory, timestamp - MemoryTimelineRecord.samplingRatePerSecond, timestamp);
 
         console.assert(typeof timestamp === "number");
         console.assert(categories instanceof Array);
 
         this._timestamp = timestamp;
         this._categories = WI.MemoryTimelineRecord.memoryCategoriesFromProtocol(categories);
+        this._exportCategories = categories;
 
         this._totalSize = 0;
         for (let {size} of categories)
@@ -41,6 +42,12 @@ WI.MemoryTimelineRecord = class MemoryTimelineRecord extends WI.TimelineRecord
     }
 
     // Static
+
+    static get samplingRatePerSecond()
+    {
+        // 500ms. This matches the ResourceUsageThread sampling frequency in the backend.
+        return 0.5;
+    }
 
     static memoryCategoriesFromProtocol(categories)
     {
@@ -51,7 +58,7 @@ WI.MemoryTimelineRecord = class MemoryTimelineRecord extends WI.TimelineRecord
 
         for (let {type, size} of categories) {
             switch (type) {
-            case MemoryAgent.CategoryDataType.Javascript:
+            case MemoryAgent.CategoryDataType.JavaScript:
             case MemoryAgent.CategoryDataType.JIT:
                 javascriptSize += size;
                 break;
@@ -79,9 +86,33 @@ WI.MemoryTimelineRecord = class MemoryTimelineRecord extends WI.TimelineRecord
         ];
     }
 
+    // Import / Export
+
+    static fromJSON(json)
+    {
+        let {timestamp, categories} = json;
+        return new WI.MemoryTimelineRecord(timestamp, categories);
+    }
+
+    toJSON()
+    {
+        return {
+            type: this.type,
+            timestamp: this.startTime,
+            categories: this._exportCategories,
+        };
+    }
+
     // Public
 
     get timestamp() { return this._timestamp; }
     get categories() { return this._categories; }
     get totalSize() { return this._totalSize; }
+
+    adjustStartTimeToLastRecord(lastRecord)
+    {
+        console.assert(lastRecord instanceof MemoryTimelineRecord);
+        console.assert(this._startTime >= lastRecord.endTime);
+        this._startTime = lastRecord.endTime;
+    }
 };

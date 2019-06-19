@@ -4,8 +4,7 @@
 /*---
 esid: sec-intl.locale
 description: >
-    Checks error cases for the options argument to the Locale
-    constructor.
+    Verify valid language option values (various)
 info: |
     Intl.Locale( tag [, options] )
     10. If options is undefined, then
@@ -15,46 +14,53 @@ info: |
 
     ApplyOptionsToTag( tag, options )
     ...
-    9. If tag matches neither the privateuse nor the grandfathered production, then
-        b. If language is not undefined, then
-            i. Set tag to tag with the substring corresponding to the language production replaced by the string language.
+    2. If IsStructurallyValidLanguageTag(tag) is false, throw a RangeError exception.
+    3. Let language be ? GetOption(options, "language", "string", undefined, undefined).
+    4. If language is not undefined, then
+       a. If language does not match the unicode_language_subtag production, throw a RangeError exception.
+
+    IsStructurallyValidLanguageTag ( locale )
+
+    The IsStructurallyValidLanguageTag abstract operation verifies that the
+    locale argument (which must be a String value)
+
+    represents a well-formed Unicode BCP 47 Locale Identifier" as specified in
+    Unicode Technical Standard 35 section 3.2, or successor,
 
 features: [Intl.Locale]
 ---*/
 
 const validLanguageOptions = [
-  [undefined, undefined],
-  [null, 'null'],
-  ['zh-cmn', 'cmn'],
-  ['ZH-CMN', 'cmn'],
-  ['abcd', 'abcd'],
-  ['abcde', 'abcde'],
-  ['abcdef', 'abcdef'],
-  ['abcdefg', 'abcdefg'],
-  ['abcdefgh', 'abcdefgh'],
   [{ toString() { return 'de' } }, 'de'],
 ];
 for (const [language, expected] of validLanguageOptions) {
-  let options = { language };
   let expect = expected || 'en';
 
   assert.sameValue(
-    new Intl.Locale('en', options).toString(),
+    new Intl.Locale('en', {language}).toString(),
     expect,
-    `new Intl.Locale('en', options).toString() equals the value of ${expect}`
+    `new Intl.Locale('en', {language: "${language}"}).toString() returns "${expect}"`
   );
 
   expect = (expected || 'en') + '-US';
   assert.sameValue(
-    new Intl.Locale('en-US', options).toString(),
-    expected,
-    `new Intl.Locale('en-US', options).toString() equals the value of ${expect}`
+    new Intl.Locale('en-US', {language}).toString(),
+    expect,
+    `new Intl.Locale('en-US', {language: "${language}"}).toString() returns "${expect}"`
   );
 
-  expect = expected || 'en-els';
-  assert.sameValue(
-    new Intl.Locale('en-els', options).toString(),
-    expect,
-    `new Intl.Locale('en-els', options).toString() equals the value of ${expect}`
-  );
+  assert.throws(RangeError, () => new Intl.Locale('en-els', {language}));
+
+}
+
+const invalidLanguageOptions = [
+    null,
+    'zh-cmn',
+    'ZH-CMN',
+    'abcd',
+];
+for (const language of invalidLanguageOptions) {
+  assert.throws(RangeError, () => new Intl.Locale('en', {language}));
+  assert.throws(RangeError, () => new Intl.Locale('en-US', {language}));
+  assert.throws(RangeError, () => new Intl.Locale('en-els', {language}));
 }

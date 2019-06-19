@@ -465,9 +465,8 @@ void ConfigFile::parse()
             WTF::setDataFile(logPathname);
 
         if (!jscOptionsBuilder.isEmpty()) {
-            const char* optionsStr = jscOptionsBuilder.toString().utf8().data();
             Options::enableRestrictedOptions(true);
-            Options::setOptions(optionsStr);
+            Options::setOptions(jscOptionsBuilder.toString().utf8().data());
         }
     } else
         WTF::dataLogF("Error in JSC Config file on or near line %u, parsing '%s'\n", scanner.lineNumber(), scanner.currentBuffer());
@@ -491,14 +490,13 @@ void ConfigFile::canonicalizePaths()
                     strncat(filenameBuffer, "/", 2); // Room for '/' plus NUL
 #if COMPILER(GCC)
 #if GCC_VERSION_AT_LEAST(8, 0, 0)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-truncation"
+                IGNORE_WARNINGS_BEGIN("stringop-truncation")
 #endif
 #endif
                 strncat(filenameBuffer, m_filename, sizeof(filenameBuffer) - strlen(filenameBuffer) - 1);
 #if COMPILER(GCC)
 #if GCC_VERSION_AT_LEAST(8, 0, 0)
-#pragma GCC diagnostic pop
+                IGNORE_WARNINGS_END
 #endif
 #endif
                 strncpy(m_filename, filenameBuffer, s_maxPathLength);

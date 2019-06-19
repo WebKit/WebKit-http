@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 #include "Options.h"
 
 #include "AssemblerCommon.h"
+#include "CPU.h"
 #include "LLIntCommon.h"
 #include "MinimumReservedZoneSize.h"
 #include "SigillCrashAnalyzer.h"
@@ -159,6 +160,10 @@ bool Options::isAvailable(Options::ID id, Options::Availability availability)
     if (id == useSigillCrashAnalyzerID)
         return true;
 #endif
+#if ENABLE(ASSEMBLER) && OS(LINUX)
+    if (id == logJITCodeForPerfID)
+        return true;
+#endif
     if (id == traceLLIntExecutionID)
         return !!LLINT_TRACING;
     if (id == traceLLIntSlowPathID)
@@ -200,7 +205,7 @@ bool Options::overrideAliasedOptionWithHeuristic(const char* name)
 
 static unsigned computeNumberOfWorkerThreads(int maxNumberOfWorkerThreads, int minimum = 1)
 {
-    int cpusToUse = std::min(WTF::numberOfProcessorCores(), maxNumberOfWorkerThreads);
+    int cpusToUse = std::min(kernTCSMAwareNumberOfProcessorCores(), maxNumberOfWorkerThreads);
 
     // Be paranoid, it is the OS we're dealing with, after all.
     ASSERT(cpusToUse >= 1);
@@ -209,10 +214,15 @@ static unsigned computeNumberOfWorkerThreads(int maxNumberOfWorkerThreads, int m
 
 static int32_t computePriorityDeltaOfWorkerThreads(int32_t twoCorePriorityDelta, int32_t multiCorePriorityDelta)
 {
-    if (WTF::numberOfProcessorCores() <= 2)
+    if (kernTCSMAwareNumberOfProcessorCores() <= 2)
         return twoCorePriorityDelta;
 
     return multiCorePriorityDelta;
+}
+
+static bool jitEnabledByDefault()
+{
+    return is32Bit() || isAddress64Bit();
 }
 
 static unsigned computeNumberOfGCMarkers(unsigned maxNumberOfGCMarkers)
@@ -330,7 +340,7 @@ static void scaleJITPolicy()
 
 static void overrideDefaults()
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (WTF::numberOfProcessorCores() < 4)
 #endif
     {
@@ -344,7 +354,7 @@ static void overrideDefaults()
             Options::gcIncrementScale() = 0;
     }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // On iOS, we control heap growth using process memory footprint. Therefore these values can be agressive.
     Options::smallHeapRAMFraction() = 0.8;
     Options::mediumHeapRAMFraction() = 0.9;
@@ -367,6 +377,13 @@ static void overrideDefaults()
 #endif
 }
 
+static void correctOptions()
+{
+    unsigned thresholdForGlobalLexicalBindingEpoch = Options::thresholdForGlobalLexicalBindingEpoch();
+    if (thresholdForGlobalLexicalBindingEpoch == 0 || thresholdForGlobalLexicalBindingEpoch == 1)
+        Options::thresholdForGlobalLexicalBindingEpoch() = UINT_MAX;
+}
+
 static void recomputeDependentOptions()
 {
 #if !defined(NDEBUG)
@@ -375,15 +392,17 @@ static void recomputeDependentOptions()
 #if !ENABLE(JIT)
     Options::useLLInt() = true;
     Options::useJIT() = false;
+    Options::useBaselineJIT() = false;
     Options::useDFGJIT() = false;
     Options::useFTLJIT() = false;
     Options::useDOMJIT() = false;
-#endif
-#if !ENABLE(YARR_JIT)
     Options::useRegExpJIT() = false;
 #endif
 #if !ENABLE(CONCURRENT_JS)
     Options::useConcurrentJIT() = false;
+#endif
+#if !ENABLE(YARR_JIT)
+    Options::useRegExpJIT() = false;
 #endif
 #if !ENABLE(DFG_JIT)
     Options::useDFGJIT() = false;
@@ -396,17 +415,11 @@ static void recomputeDependentOptions()
 #if !CPU(X86_64) && !CPU(ARM64)
     Options::useConcurrentGC() = false;
 #endif
-    
-#if ENABLE(JIT) && CPU(X86)
-    // Disable JIT on IA-32 if SSE2 is not present
-    if (!MacroAssemblerX86::supportsFloatingPoint())
-        Options::useJIT() = false;
-#endif
 
-    WTF_SET_POINTER_PREPARATION_OPTIONS();
-
-    if (!Options::useJIT())
+    if (!Options::useJIT()) {
+        Options::useSigillCrashAnalyzer() = false;
         Options::useWebAssembly() = false;
+    }
 
     if (!Options::useWebAssembly())
         Options::useFastTLSForWasmContext() = false;
@@ -434,7 +447,8 @@ static void recomputeDependentOptions()
         || Options::logPhaseTimes()
         || Options::verboseCFA()
         || Options::verboseDFGFailure()
-        || Options::verboseFTLFailure())
+        || Options::verboseFTLFailure()
+        || Options::dumpRandomizingFuzzerAgentPredictions())
         Options::alwaysComputeHash() = true;
     
     if (!Options::useConcurrentGC())
@@ -459,7 +473,7 @@ static void recomputeDependentOptions()
         Options::useOSREntryToFTL() = false;
     }
     
-#if PLATFORM(IOS) && CPU(ARM64)
+#if ENABLE(SEPARATED_WX_HEAP)
     // Override globally for now. Longer term we'll just make the default
     // be to have this option enabled, and have platforms that don't support
     // it just silently use a single mapping.
@@ -495,9 +509,6 @@ static void recomputeDependentOptions()
         Options::scribbleFreeCells() = true;
     }
 
-    if (Options::useSigillCrashAnalyzer())
-        enableSigillCrashAnalyzer();
-
     if (Options::reservedZoneSize() < minimumReservedZoneSize)
         Options::reservedZoneSize() = minimumReservedZoneSize;
     if (Options::softReservedZoneSize() < Options::reservedZoneSize() + minimumReservedZoneSize)
@@ -508,6 +519,9 @@ static void recomputeDependentOptions()
     // https://bugs.webkit.org/show_bug.cgi?id=177956
     Options::useProbeOSRExit() = false;
 #endif
+
+    if (!Options::useCodeCache())
+        Options::diskCachePath() = nullptr;
 }
 
 void Options::initialize()
@@ -557,6 +571,8 @@ void Options::initialize()
 #if 0
                 ; // Deconfuse editors that do auto indentation
 #endif
+
+            correctOptions();
     
             recomputeDependentOptions();
 
@@ -572,6 +588,18 @@ void Options::initialize()
 #if HAVE(MACH_EXCEPTIONS)
             if (Options::useMachForExceptions())
                 handleSignalsWithMach();
+#endif
+
+#if ASAN_ENABLED && OS(LINUX) && ENABLE(WEBASSEMBLY_FAST_MEMORY)
+            if (Options::useWebAssemblyFastMemory()) {
+                const char* asanOptions = getenv("ASAN_OPTIONS");
+                bool okToUseWebAssemblyFastMemory = asanOptions
+                    && (strstr(asanOptions, "allow_user_segv_handler=1") || strstr(asanOptions, "handle_segv=0"));
+                if (!okToUseWebAssemblyFastMemory) {
+                    dataLogLn("WARNING: ASAN interferes with JSC signal handlers; useWebAssemblyFastMemory will be disabled.");
+                    Options::useWebAssemblyFastMemory() = false;
+                }
+            }
 #endif
         });
 }
@@ -678,6 +706,8 @@ bool Options::setOptions(const char* optionsStr)
         }
     }
 
+    correctOptions();
+
     recomputeDependentOptions();
 
     dumpOptionsIfNeeded();
@@ -714,6 +744,7 @@ bool Options::setOptionWithoutAlias(const char* arg)
         bool success = parse(valueStr, value);                     \
         if (success) {                                             \
             name_() = value;                                       \
+            correctOptions();                                      \
             recomputeDependentOptions();                           \
             return true;                                           \
         }                                                          \
@@ -744,12 +775,7 @@ bool Options::setAliasedOption(const char* arg)
     if (!equalStr)
         return false;
 
-#if COMPILER(CLANG)
-#if __has_warning("-Wtautological-compare")
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-compare"
-#endif
-#endif
+    IGNORE_WARNINGS_BEGIN("tautological-compare")
 
     // For each option, check if the specify arg is a match. If so, set the arg
     // if the value makes sense. Otherwise, move on to checking the next option.
@@ -772,11 +798,7 @@ bool Options::setAliasedOption(const char* arg)
     JSC_ALIASED_OPTIONS(FOR_EACH_OPTION)
 #undef FOR_EACH_OPTION
 
-#if COMPILER(CLANG)
-#if __has_warning("-Wtautological-compare")
-#pragma clang diagnostic pop
-#endif
-#endif
+    IGNORE_WARNINGS_END
 
     return false; // No option matched.
 }
@@ -878,7 +900,7 @@ void Option::dump(StringBuilder& builder) const
         builder.appendNumber(m_entry.sizeVal);
         break;
     case Options::Type::doubleType:
-        builder.appendNumber(m_entry.doubleVal);
+        builder.appendFixedPrecisionNumber(m_entry.doubleVal);
         break;
     case Options::Type::int32Type:
         builder.appendNumber(m_entry.int32Val);

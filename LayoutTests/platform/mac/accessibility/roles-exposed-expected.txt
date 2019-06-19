@@ -132,7 +132,7 @@ legend
 footer
       AXRole: AXGroup
       AXSubrole: AXLandmarkContentInfo
-      AXRoleDescription: footer
+      AXRoleDescription: content information
       
 form
       AXRole: AXGroup
@@ -182,7 +182,7 @@ h6
 hr
       AXRole: AXSplitter
       AXSubrole: AXContentSeparator
-      AXRoleDescription: rule
+      AXRoleDescription: separator
       
 i
       AXRole: 
@@ -530,9 +530,9 @@ mtd
       AXRoleDescription: group
       
 meter
-      AXRole: AXProgressIndicator
+      AXRole: AXLevelIndicator
       AXSubrole: AXMeter
-      AXRoleDescription: progress indicator
+      AXRoleDescription: level indicator
       
 nav
       AXRole: AXGroup
@@ -1243,6 +1243,11 @@ div[role=menuitemradio]
       AXRole: AXMenuItem
       AXSubrole: 
       AXRoleDescription: menu item
+      
+div[role=meter]
+      AXRole: AXLevelIndicator
+      AXSubrole: AXMeter
+      AXRoleDescription: level indicator
       
 div[role=navigation]
       AXRole: AXGroup

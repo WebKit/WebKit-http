@@ -26,6 +26,7 @@
 #include "TextDecoder.h"
 
 #include "HTMLParserIdioms.h"
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
@@ -38,7 +39,7 @@ ExceptionOr<Ref<TextDecoder>> TextDecoder::create(const String& label, Options o
     auto decoder = adoptRef(*new TextDecoder(strippedLabel.utf8().data(), options));
     if (!decoder->m_textEncoding.isValid() || !strcmp(decoder->m_textEncoding.name(), "replacement"))
         return Exception { RangeError };
-    return WTFMove(decoder);
+    return decoder;
 }
 
 TextDecoder::TextDecoder(const char* label, Options options)
@@ -90,9 +91,9 @@ static size_t codeUnitByteSize(const TextEncoding& encoding)
     return encoding.isByteBasedEncoding() ? 1 : 2;
 }
 
-ExceptionOr<String> TextDecoder::decode(std::optional<BufferSource::VariantType> input, DecodeOptions options)
+ExceptionOr<String> TextDecoder::decode(Optional<BufferSource::VariantType> input, DecodeOptions options)
 {
-    std::optional<BufferSource> inputBuffer;
+    Optional<BufferSource> inputBuffer;
     const uint8_t* data = nullptr;
     size_t length = 0;
     if (input) {
@@ -132,7 +133,7 @@ ExceptionOr<String> TextDecoder::decode(std::optional<BufferSource::VariantType>
         m_buffer.clear();
 
     m_hasDecoded = true;
-    return WTFMove(result);
+    return result;
 }
 
 String TextDecoder::encoding() const

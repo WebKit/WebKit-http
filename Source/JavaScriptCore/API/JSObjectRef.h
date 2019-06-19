@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Kelvin W Sherlock (ksherlock@gmail.com)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -441,7 +441,7 @@ JS_EXPORT JSObjectRef JSObjectMakeConstructor(JSContextRef ctx, JSClassRef jsCla
  @discussion The behavior of this function does not exactly match the behavior of the built-in Array constructor. Specifically, if one argument 
  is supplied, this function returns an array with one element.
  */
-JS_EXPORT JSObjectRef JSObjectMakeArray(JSContextRef ctx, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception) JSC_API_AVAILABLE(macosx(10.6), ios(7.0));
+JS_EXPORT JSObjectRef JSObjectMakeArray(JSContextRef ctx, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception) JSC_API_AVAILABLE(macos(10.6), ios(7.0));
 
 /*!
  @function
@@ -452,7 +452,7 @@ JS_EXPORT JSObjectRef JSObjectMakeArray(JSContextRef ctx, size_t argumentCount, 
  @param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
  @result A JSObject that is a Date.
  */
-JS_EXPORT JSObjectRef JSObjectMakeDate(JSContextRef ctx, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception) JSC_API_AVAILABLE(macosx(10.6), ios(7.0));
+JS_EXPORT JSObjectRef JSObjectMakeDate(JSContextRef ctx, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception) JSC_API_AVAILABLE(macos(10.6), ios(7.0));
 
 /*!
  @function
@@ -463,7 +463,7 @@ JS_EXPORT JSObjectRef JSObjectMakeDate(JSContextRef ctx, size_t argumentCount, c
  @param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
  @result A JSObject that is a Error.
  */
-JS_EXPORT JSObjectRef JSObjectMakeError(JSContextRef ctx, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception) JSC_API_AVAILABLE(macosx(10.6), ios(7.0));
+JS_EXPORT JSObjectRef JSObjectMakeError(JSContextRef ctx, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception) JSC_API_AVAILABLE(macos(10.6), ios(7.0));
 
 /*!
  @function
@@ -474,7 +474,18 @@ JS_EXPORT JSObjectRef JSObjectMakeError(JSContextRef ctx, size_t argumentCount, 
  @param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
  @result A JSObject that is a RegExp.
  */
-JS_EXPORT JSObjectRef JSObjectMakeRegExp(JSContextRef ctx, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception) JSC_API_AVAILABLE(macosx(10.6), ios(7.0));
+JS_EXPORT JSObjectRef JSObjectMakeRegExp(JSContextRef ctx, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception) JSC_API_AVAILABLE(macos(10.6), ios(7.0));
+
+/*!
+ @function
+ @abstract Creates a JavaScript promise object by invoking the provided executor.
+ @param ctx The execution context to use.
+ @param resolve A pointer to a JSObjectRef in which to store the resolve function for the new promise. Pass NULL if you do not care to store the resolve callback.
+ @param reject A pointer to a JSObjectRef in which to store the reject function for the new promise. Pass NULL if you do not care to store the reject callback.
+ @param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
+ @result A JSObject that is a promise or NULL if an exception occurred.
+ */
+JS_EXPORT JSObjectRef JSObjectMakeDeferredPromise(JSContextRef ctx, JSObjectRef* resolve, JSObjectRef* reject, JSValueRef* exception) JSC_API_AVAILABLE(macos(10.15), ios(13.0));
 
 /*!
 @function
@@ -554,52 +565,52 @@ JS_EXPORT void JSObjectSetProperty(JSContextRef ctx, JSObjectRef object, JSStrin
 JS_EXPORT bool JSObjectDeleteProperty(JSContextRef ctx, JSObjectRef object, JSStringRef propertyName, JSValueRef* exception);
 
 /*!
-@function
-@abstract Tests whether an object has a given property using a JSValueRef as the property key.
-@param object The JSObject to test.
-@param propertyKey A JSValueRef containing the property key to use when looking up the property.
-@param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
-@result true if the object has a property whose name matches propertyKey, otherwise false.
-@discussion This function is the same as performing "propertyKey in object" from JavaScript.
-*/
-JS_EXPORT bool JSObjectHasPropertyForKey(JSContextRef ctx, JSObjectRef object, JSValueRef propertyKey, JSValueRef* exception) JSC_API_AVAILABLE(macosx(JSC_MAC_TBA), ios(JSC_IOS_TBA));
+ @function
+ @abstract Tests whether an object has a given property using a JSValueRef as the property key.
+ @param object The JSObject to test.
+ @param propertyKey A JSValueRef containing the property key to use when looking up the property.
+ @param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
+ @result true if the object has a property whose name matches propertyKey, otherwise false.
+ @discussion This function is the same as performing "propertyKey in object" from JavaScript.
+ */
+JS_EXPORT bool JSObjectHasPropertyForKey(JSContextRef ctx, JSObjectRef object, JSValueRef propertyKey, JSValueRef* exception) JSC_API_AVAILABLE(macos(10.15), ios(13.0));
 
 /*!
-@function
-@abstract Gets a property from an object using a JSValueRef as the property key.
-@param ctx The execution context to use.
-@param object The JSObject whose property you want to get.
-@param propertyKey A JSValueRef containing the property key to use when looking up the property.
-@param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
-@result The property's value if object has the property key, otherwise the undefined value.
-@discussion This function is the same as performing "object[propertyKey]" from JavaScript.
-*/
-JS_EXPORT JSValueRef JSObjectGetPropertyForKey(JSContextRef ctx, JSObjectRef object, JSValueRef propertyKey, JSValueRef* exception) JSC_API_AVAILABLE(macosx(JSC_MAC_TBA), ios(JSC_IOS_TBA));
+ @function
+ @abstract Gets a property from an object using a JSValueRef as the property key.
+ @param ctx The execution context to use.
+ @param object The JSObject whose property you want to get.
+ @param propertyKey A JSValueRef containing the property key to use when looking up the property.
+ @param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
+ @result The property's value if object has the property key, otherwise the undefined value.
+ @discussion This function is the same as performing "object[propertyKey]" from JavaScript.
+ */
+JS_EXPORT JSValueRef JSObjectGetPropertyForKey(JSContextRef ctx, JSObjectRef object, JSValueRef propertyKey, JSValueRef* exception) JSC_API_AVAILABLE(macos(10.15), ios(13.0));
 
 /*!
-@function
-@abstract Sets a property on an object using a JSValueRef as the property key.
-@param ctx The execution context to use.
-@param object The JSObject whose property you want to set.
-@param propertyKey A JSValueRef containing the property key to use when looking up the property.
-@param value A JSValueRef to use as the property's value.
-@param attributes A logically ORed set of JSPropertyAttributes to give to the property.
-@param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
-@discussion This function is the same as performing "object[propertyKey] = value" from JavaScript.
-*/
-JS_EXPORT void JSObjectSetPropertyForKey(JSContextRef ctx, JSObjectRef object, JSValueRef propertyKey, JSValueRef value, JSPropertyAttributes attributes, JSValueRef* exception) JSC_API_AVAILABLE(macosx(JSC_MAC_TBA), ios(JSC_IOS_TBA));
+ @function
+ @abstract Sets a property on an object using a JSValueRef as the property key.
+ @param ctx The execution context to use.
+ @param object The JSObject whose property you want to set.
+ @param propertyKey A JSValueRef containing the property key to use when looking up the property.
+ @param value A JSValueRef to use as the property's value.
+ @param attributes A logically ORed set of JSPropertyAttributes to give to the property.
+ @param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
+ @discussion This function is the same as performing "object[propertyKey] = value" from JavaScript.
+ */
+JS_EXPORT void JSObjectSetPropertyForKey(JSContextRef ctx, JSObjectRef object, JSValueRef propertyKey, JSValueRef value, JSPropertyAttributes attributes, JSValueRef* exception) JSC_API_AVAILABLE(macos(10.15), ios(13.0));
 
 /*!
-@function
-@abstract Deletes a property from an object using a JSValueRef as the property key.
-@param ctx The execution context to use.
-@param object The JSObject whose property you want to delete.
-@param propertyKey A JSValueRef containing the property key to use when looking up the property.
-@param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
-@result true if the delete operation succeeds, otherwise false (for example, if the property has the kJSPropertyAttributeDontDelete attribute set).
-@discussion This function is the same as performing "delete object[propertyKey]" from JavaScript.
-*/
-JS_EXPORT bool JSObjectDeletePropertyForKey(JSContextRef ctx, JSObjectRef object, JSValueRef propertyKey, JSValueRef* exception) JSC_API_AVAILABLE(macosx(JSC_MAC_TBA), ios(JSC_IOS_TBA));
+ @function
+ @abstract Deletes a property from an object using a JSValueRef as the property key.
+ @param ctx The execution context to use.
+ @param object The JSObject whose property you want to delete.
+ @param propertyKey A JSValueRef containing the property key to use when looking up the property.
+ @param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
+ @result true if the delete operation succeeds, otherwise false (for example, if the property has the kJSPropertyAttributeDontDelete attribute set).
+ @discussion This function is the same as performing "delete object[propertyKey]" from JavaScript.
+ */
+JS_EXPORT bool JSObjectDeletePropertyForKey(JSContextRef ctx, JSObjectRef object, JSValueRef propertyKey, JSValueRef* exception) JSC_API_AVAILABLE(macos(10.15), ios(13.0));
 
 /*!
 @function

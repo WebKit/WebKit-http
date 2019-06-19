@@ -5,7 +5,7 @@
  * Copyright (C) 2009 Dirk Schulze <krit@webkit.org>
  * Copyright (C) Research In Motion Limited 2010. All rights reserved.
  * Copyright (C) 2014 Adobe Systems Incorporated. All rights reserved.
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -46,7 +46,16 @@ inline SVGFilterElement::SVGFilterElement(const QualifiedName& tagName, Document
     // Spec: If the x/y attribute is not specified, the effect is as if a value of "-10%" were specified.
     // Spec: If the width/height attribute is not specified, the effect is as if a value of "120%" were specified.
     ASSERT(hasTagName(SVGNames::filterTag));
-    registerAttributes();
+
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::filterUnitsAttr, SVGUnitTypes::SVGUnitType, &SVGFilterElement::m_filterUnits>();
+        PropertyRegistry::registerProperty<SVGNames::primitiveUnitsAttr, SVGUnitTypes::SVGUnitType, &SVGFilterElement::m_primitiveUnits>();
+        PropertyRegistry::registerProperty<SVGNames::xAttr, &SVGFilterElement::m_x>();
+        PropertyRegistry::registerProperty<SVGNames::yAttr, &SVGFilterElement::m_y>();
+        PropertyRegistry::registerProperty<SVGNames::widthAttr, &SVGFilterElement::m_width>();
+        PropertyRegistry::registerProperty<SVGNames::heightAttr, &SVGFilterElement::m_height>();
+    });
 }
 
 Ref<SVGFilterElement> SVGFilterElement::create(const QualifiedName& tagName, Document& document)
@@ -54,70 +63,26 @@ Ref<SVGFilterElement> SVGFilterElement::create(const QualifiedName& tagName, Doc
     return adoptRef(*new SVGFilterElement(tagName, document));
 }
 
-const AtomicString& SVGFilterElement::filterResXIdentifier()
-{
-    static NeverDestroyed<AtomicString> s_identifier("SVGFilterResX", AtomicString::ConstructFromLiteral);
-    return s_identifier;
-}
-
-const AtomicString& SVGFilterElement::filterResYIdentifier()
-{
-    static NeverDestroyed<AtomicString> s_identifier("SVGFilterResY", AtomicString::ConstructFromLiteral);
-    return s_identifier;
-}
-
-void SVGFilterElement::setFilterRes(unsigned filterResX, unsigned filterResY)
-{
-    m_filterResX.setValue(filterResX);
-    m_filterResY.setValue(filterResY);
-
-    if (RenderObject* object = renderer())
-        object->setNeedsLayout();
-}
-
-void SVGFilterElement::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::filterUnitsAttr, SVGUnitTypes::SVGUnitType, &SVGFilterElement::m_filterUnits>();
-    registry.registerAttribute<SVGNames::primitiveUnitsAttr, SVGUnitTypes::SVGUnitType, &SVGFilterElement::m_primitiveUnits>();
-    registry.registerAttribute<SVGNames::xAttr, &SVGFilterElement::m_x>();
-    registry.registerAttribute<SVGNames::yAttr, &SVGFilterElement::m_y>();
-    registry.registerAttribute<SVGNames::widthAttr, &SVGFilterElement::m_width>();
-    registry.registerAttribute<SVGNames::heightAttr, &SVGFilterElement::m_height>();
-    registry.registerAttribute<SVGNames::filterResAttr,
-        &SVGFilterElement::filterResXIdentifier, &SVGFilterElement::m_filterResX,
-        &SVGFilterElement::filterResYIdentifier, &SVGFilterElement::m_filterResY>();
-}
-
-void SVGFilterElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void SVGFilterElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::filterUnitsAttr) {
         SVGUnitTypes::SVGUnitType propertyValue = SVGPropertyTraits<SVGUnitTypes::SVGUnitType>::fromString(value);
         if (propertyValue > 0)
-            m_filterUnits.setValue(propertyValue);
+            m_filterUnits->setBaseValInternal<SVGUnitTypes::SVGUnitType>(propertyValue);
     } else if (name == SVGNames::primitiveUnitsAttr) {
         SVGUnitTypes::SVGUnitType propertyValue = SVGPropertyTraits<SVGUnitTypes::SVGUnitType>::fromString(value);
         if (propertyValue > 0)
-            m_primitiveUnits.setValue(propertyValue);
+            m_primitiveUnits->setBaseValInternal<SVGUnitTypes::SVGUnitType>(propertyValue);
     } else if (name == SVGNames::xAttr)
-        m_x.setValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
+        m_x->setBaseValInternal(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::yAttr)
-        m_y.setValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
+        m_y->setBaseValInternal(SVGLengthValue::construct(LengthModeHeight, value, parseError));
     else if (name == SVGNames::widthAttr)
-        m_width.setValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
+        m_width->setBaseValInternal(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::heightAttr)
-        m_height.setValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
-    else if (name == SVGNames::filterResAttr) {
-        float x, y;
-        if (parseNumberOptionalNumber(value, x, y)) {
-            m_filterResX.setValue(x);
-            m_filterResY.setValue(y);
-        }
-    }
+        m_height->setBaseValInternal(SVGLengthValue::construct(LengthModeHeight, value, parseError));
 
     reportAttributeParsingError(parseError, name, value);
 
@@ -128,13 +93,13 @@ void SVGFilterElement::parseAttribute(const QualifiedName& name, const AtomicStr
 
 void SVGFilterElement::svgAttributeChanged(const QualifiedName& attrName)
 {
-    if (isAnimatedLengthAttribute(attrName)) {
+    if (PropertyRegistry::isAnimatedLengthAttribute(attrName)) {
         InstanceInvalidationGuard guard(*this);
         invalidateSVGPresentationAttributeStyle();
         return;
     }
 
-    if (isKnownAttribute(attrName) || SVGURIReference::isKnownAttribute(attrName)) {
+    if (PropertyRegistry::isKnownAttribute(attrName) || SVGURIReference::isKnownAttribute(attrName)) {
         if (auto* renderer = this->renderer())
             renderer->setNeedsLayout();
         return;

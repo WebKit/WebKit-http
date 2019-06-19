@@ -34,9 +34,12 @@
 
 #if ENABLE(WEB_RTC)
 
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RTCRtpTransceiver);
 
 RTCRtpTransceiver::RTCRtpTransceiver(Ref<RTCRtpSender>&& sender, Ref<RTCRtpReceiver>&& receiver, std::unique_ptr<RTCRtpTransceiverBackend>&& backend)
     : m_direction(RTCRtpTransceiverDirection::Sendrecv)
@@ -64,10 +67,10 @@ RTCRtpTransceiverDirection RTCRtpTransceiver::direction() const
     return m_backend->direction();
 }
 
-std::optional<RTCRtpTransceiverDirection> RTCRtpTransceiver::currentDirection() const
+Optional<RTCRtpTransceiverDirection> RTCRtpTransceiver::currentDirection() const
 {
     if (!m_backend)
-        return std::nullopt;
+        return WTF::nullopt;
     return m_backend->currentDirection();
 }
 
@@ -106,12 +109,38 @@ void RTCRtpTransceiver::stop()
         m_backend->stop();
 }
 
+bool RTCRtpTransceiver::stopped() const
+{
+    if (m_backend)
+        return m_backend->stopped();
+    return m_stopped;
+}
+
 void RtpTransceiverSet::append(Ref<RTCRtpTransceiver>&& transceiver)
 {
-    m_senders.append(transceiver->sender());
-    m_receivers.append(transceiver->receiver());
-
     m_transceivers.append(WTFMove(transceiver));
+}
+
+Vector<std::reference_wrapper<RTCRtpSender>> RtpTransceiverSet::senders() const
+{
+    Vector<std::reference_wrapper<RTCRtpSender>> senders;
+    for (auto& transceiver : m_transceivers) {
+        if (transceiver->stopped())
+            continue;
+        senders.append(transceiver->sender());
+    }
+    return senders;
+}
+
+Vector<std::reference_wrapper<RTCRtpReceiver>> RtpTransceiverSet::receivers() const
+{
+    Vector<std::reference_wrapper<RTCRtpReceiver>> receivers;
+    for (auto& transceiver : m_transceivers) {
+        if (transceiver->stopped())
+            continue;
+        receivers.append(transceiver->receiver());
+    }
+    return receivers;
 }
 
 } // namespace WebCore

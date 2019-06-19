@@ -39,7 +39,7 @@ public:
         Generic,
         WebVTT
     };
-    static RefPtr<InbandTextTrackPrivate> create(CueFormat format) { return adoptRef(new InbandTextTrackPrivate(format)); }
+    static Ref<InbandTextTrackPrivate> create(CueFormat format) { return adoptRef(*new InbandTextTrackPrivate(format)); }
     virtual ~InbandTextTrackPrivate() = default;
 
     InbandTextTrackPrivateClient* client() const override { return m_client; }
@@ -69,10 +69,10 @@ public:
     virtual bool isMainProgramContent() const { return true; }
     virtual bool isEasyToRead() const { return false; }
     virtual bool isDefault() const { return false; }
-    AtomicString label() const override { return emptyAtom(); }
-    AtomicString language() const override { return emptyAtom(); }
-    AtomicString id() const override { return emptyAtom(); }
-    virtual AtomicString inBandMetadataTrackDispatchType() const { return emptyAtom(); }
+    AtomString label() const override { return emptyAtom(); }
+    AtomString language() const override { return emptyAtom(); }
+    AtomString id() const override { return emptyAtom(); }
+    virtual AtomString inBandMetadataTrackDispatchType() const { return emptyAtom(); }
 
     virtual int textTrackIndex() const { return 0; }
 

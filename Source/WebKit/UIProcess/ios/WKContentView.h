@@ -38,6 +38,7 @@ class PageConfiguration;
 }
 
 namespace WebCore {
+class FloatRect;
 struct Highlight;
 }
 
@@ -46,27 +47,33 @@ class DrawingAreaProxy;
 class RemoteLayerTreeTransaction;
 class WebFrameProxy;
 class WebPageProxy;
+class WebProcessProxy;
 class WebProcessPool;
 }
 
 @interface WKContentView : WKApplicationStateTrackingView {
 @package
     RefPtr<WebKit::WebPageProxy> _page;
-    WKWebView *_webView;
+    WKWebView *_webView; // FIXME: This should be made a WeakObjCPtr once everything that refers to it is moved to OpenSource.
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 @property (nonatomic, readonly) WKBrowsingContextController *browsingContextController;
+#pragma clang diagnostic pop
 
 @property (nonatomic, readonly) WebKit::WebPageProxy* page;
-@property (nonatomic, readonly) BOOL isAssistingNode;
+@property (nonatomic, readonly) BOOL isFocusingElement;
 @property (nonatomic, getter=isShowingInspectorIndication) BOOL showingInspectorIndication;
 @property (nonatomic, readonly, getter=isResigningFirstResponder) BOOL resigningFirstResponder;
 @property (nonatomic) BOOL sizeChangedSinceLastVisibleContentRectUpdate;
+@property (nonatomic, readonly) UIInterfaceOrientation interfaceOrientation;
 
 - (instancetype)initWithFrame:(CGRect)frame processPool:(WebKit::WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration webView:(WKWebView *)webView;
 
 - (void)didUpdateVisibleRect:(CGRect)visibleRect
     unobscuredRect:(CGRect)unobscuredRect
+    contentInsets:(UIEdgeInsets)contentInsets
     unobscuredRectInScrollViewCoordinates:(CGRect)unobscuredRectInScrollViewCoordinates
     obscuredInsets:(UIEdgeInsets)obscuredInsets
     unobscuredSafeAreaInsets:(UIEdgeInsets)unobscuredSafeAreaInsets
@@ -83,9 +90,13 @@ class WebProcessPool;
 
 - (void)_webViewDestroyed;
 
-- (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy;
+- (std::unique_ptr<WebKit::DrawingAreaProxy>)_createDrawingAreaProxy:(WebKit::WebProcessProxy&)process;
 - (void)_processDidExit;
+- (void)_processWillSwap;
 - (void)_didRelaunchProcess;
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+- (void)_processDidCreateContextForVisibilityPropagation;
+#endif
 - (void)_setAcceleratedCompositingRootView:(UIView *)rootView;
 
 - (void)_showInspectorHighlight:(const WebCore::Highlight&)highlight;
@@ -102,5 +113,8 @@ class WebProcessPool;
 - (BOOL)_zoomToRect:(CGRect)targetRect withOrigin:(CGPoint)origin fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale minimumScrollDistance:(CGFloat)minimumScrollDistance;
 - (void)_zoomOutWithOrigin:(CGPoint)origin;
 - (void)_zoomToInitialScaleWithOrigin:(CGPoint)origin;
+- (double)_initialScaleFactor;
+- (double)_contentZoomScale;
+- (double)_targetContentZoomScaleForRect:(const WebCore::FloatRect&)targetRect currentScale:(double)currentScale fitEntireRect:(BOOL)fitEntireRect minimumScale:(double)minimumScale maximumScale:(double)maximumScale;
 
 @end

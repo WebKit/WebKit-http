@@ -45,7 +45,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "SystemMemory.h"
 #endif
 
@@ -55,20 +55,20 @@
 
 namespace WebCore {
 
-CachedImage::CachedImage(CachedResourceRequest&& request, PAL::SessionID sessionID)
-    : CachedResource(WTFMove(request), Type::ImageResource, sessionID)
+CachedImage::CachedImage(CachedResourceRequest&& request, const PAL::SessionID& sessionID, const CookieJar* cookieJar)
+    : CachedResource(WTFMove(request), Type::ImageResource, sessionID, cookieJar)
 {
     setStatus(Unknown);
 }
 
-CachedImage::CachedImage(Image* image, PAL::SessionID sessionID)
-    : CachedResource(URL(), Type::ImageResource, sessionID)
+CachedImage::CachedImage(Image* image, const PAL::SessionID& sessionID, const CookieJar* cookieJar)
+    : CachedResource(URL(), Type::ImageResource, sessionID, cookieJar)
     , m_image(image)
 {
 }
 
-CachedImage::CachedImage(const URL& url, Image* image, PAL::SessionID sessionID, const String& domainForCachePartition)
-    : CachedResource(url, Type::ImageResource, sessionID)
+CachedImage::CachedImage(const URL& url, Image* image, const PAL::SessionID& sessionID, const CookieJar* cookieJar, const String& domainForCachePartition)
+    : CachedResource(url, Type::ImageResource, sessionID, cookieJar)
     , m_image(image)
     , m_isManuallyCached(true)
 {
@@ -130,7 +130,7 @@ void CachedImage::didRemoveClient(CachedResourceClient& client)
     ASSERT(client.resourceClientType() == CachedImageClient::expectedType());
 
     m_pendingContainerContextRequests.remove(&static_cast<CachedImageClient&>(client));
-    m_clienstWaitingForAsyncDecoding.remove(&static_cast<CachedImageClient&>(client));
+    m_clientsWaitingForAsyncDecoding.remove(&static_cast<CachedImageClient&>(client));
 
     if (m_svgImageCache)
         m_svgImageCache->removeClientFromCache(&static_cast<CachedImageClient&>(client));
@@ -142,36 +142,36 @@ void CachedImage::didRemoveClient(CachedResourceClient& client)
 
 bool CachedImage::isClientWaitingForAsyncDecoding(CachedImageClient& client) const
 {
-    return m_clienstWaitingForAsyncDecoding.contains(&client);
+    return m_clientsWaitingForAsyncDecoding.contains(&client);
 }
 
 void CachedImage::addClientWaitingForAsyncDecoding(CachedImageClient& client)
 {
     ASSERT(client.resourceClientType() == CachedImageClient::expectedType());
-    if (m_clienstWaitingForAsyncDecoding.contains(&client))
+    if (m_clientsWaitingForAsyncDecoding.contains(&client))
         return;
     if (!m_clients.contains(&client)) {
         // If the <html> element does not have its own background specified, painting the root box
         // renderer uses the style of the <body> element, see RenderView::rendererForRootBackground().
         // In this case, the client we are asked to add is the root box renderer. Since we can't add
-        // a client to m_clienstWaitingForAsyncDecoding unless it is one of the m_clients, we are going
+        // a client to m_clientsWaitingForAsyncDecoding unless it is one of the m_clients, we are going
         // to cancel the repaint optimization we do in CachedImage::imageFrameAvailable() by adding
-        // all the m_clients to m_clienstWaitingForAsyncDecoding.
+        // all the m_clients to m_clientsWaitingForAsyncDecoding.
         CachedResourceClientWalker<CachedImageClient> walker(m_clients);
         while (auto* client = walker.next())
-            m_clienstWaitingForAsyncDecoding.add(client);
+            m_clientsWaitingForAsyncDecoding.add(client);
     } else
-        m_clienstWaitingForAsyncDecoding.add(&client);
+        m_clientsWaitingForAsyncDecoding.add(&client);
 }
     
 void CachedImage::removeAllClientsWaitingForAsyncDecoding()
 {
-    if (m_clienstWaitingForAsyncDecoding.isEmpty() || !hasImage() || !is<BitmapImage>(image()))
+    if (m_clientsWaitingForAsyncDecoding.isEmpty() || !hasImage() || !is<BitmapImage>(image()))
         return;
     downcast<BitmapImage>(image())->stopAsyncDecodingQueue();
-    for (auto* client : m_clienstWaitingForAsyncDecoding)
+    for (auto* client : m_clientsWaitingForAsyncDecoding)
         client->imageChanged(this);
-    m_clienstWaitingForAsyncDecoding.clear();
+    m_clientsWaitingForAsyncDecoding.clear();
 }
 
 void CachedImage::switchClientsToRevalidatedResource()
@@ -196,7 +196,7 @@ void CachedImage::switchClientsToRevalidatedResource()
 void CachedImage::allClientsRemoved()
 {
     m_pendingContainerContextRequests.clear();
-    m_clienstWaitingForAsyncDecoding.clear();
+    m_clientsWaitingForAsyncDecoding.clear();
     if (m_image && !errorOccurred())
         m_image->resetAnimation();
 }
@@ -338,7 +338,7 @@ void CachedImage::clear()
     destroyDecodedData();
     clearImage();
     m_pendingContainerContextRequests.clear();
-    m_clienstWaitingForAsyncDecoding.clear();
+    m_clientsWaitingForAsyncDecoding.clear();
     setEncodedSize(0);
 }
 
@@ -362,13 +362,19 @@ inline void CachedImage::createImage()
                 setContainerContextForClient(*request.key, request.value.containerSize, request.value.containerZoom, request.value.imageURL);
         }
         m_pendingContainerContextRequests.clear();
-        m_clienstWaitingForAsyncDecoding.clear();
+        m_clientsWaitingForAsyncDecoding.clear();
     }
 }
 
 CachedImage::CachedImageObserver::CachedImageObserver(CachedImage& image)
 {
     m_cachedImages.add(&image);
+}
+
+void CachedImage::CachedImageObserver::encodedDataStatusChanged(const Image& image, EncodedDataStatus status)
+{
+    for (auto cachedImage : m_cachedImages)
+        cachedImage->encodedDataStatusChanged(image, status);
 }
 
 void CachedImage::CachedImageObserver::decodedSizeChanged(const Image& image, long long delta)
@@ -582,6 +588,14 @@ void CachedImage::destroyDecodedData()
         m_image->destroyDecodedData();
 }
 
+void CachedImage::encodedDataStatusChanged(const Image& image, EncodedDataStatus)
+{
+    if (&image != m_image)
+        return;
+
+    notifyObservers();
+}
+
 void CachedImage::decodedSizeChanged(const Image& image, long long delta)
 {
     if (&image != m_image)
@@ -627,7 +641,7 @@ void CachedImage::imageFrameAvailable(const Image& image, ImageAnimatingState an
 
     while (CachedImageClient* client = clientWalker.next()) {
         // All the clients of animated images have to be notified. The new frame has to be drawn in all of them.
-        if (animatingState == ImageAnimatingState::No && !m_clienstWaitingForAsyncDecoding.contains(client))
+        if (animatingState == ImageAnimatingState::No && !m_clientsWaitingForAsyncDecoding.contains(client))
             continue;
         if (client->imageFrameAvailable(*this, animatingState, changeRect) == VisibleInViewportState::Yes)
             visibleState = VisibleInViewportState::Yes;
@@ -637,7 +651,7 @@ void CachedImage::imageFrameAvailable(const Image& image, ImageAnimatingState an
         m_image->stopAnimation();
 
     if (decodingStatus != DecodingStatus::Partial)
-        m_clienstWaitingForAsyncDecoding.clear();
+        m_clientsWaitingForAsyncDecoding.clear();
 }
 
 void CachedImage::changedInRect(const Image& image, const IntRect* rect)

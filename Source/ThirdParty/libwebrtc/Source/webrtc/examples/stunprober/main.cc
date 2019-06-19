@@ -12,9 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <iostream>
 #include <map>
 #include <memory>
+#include <sstream>
 
 #include "p2p/base/basicpacketsocketfactory.h"
 #include "p2p/stunprober/stunprober.h"
@@ -25,6 +25,7 @@
 #include "rtc_base/nethelpers.h"
 #include "rtc_base/network.h"
 #include "rtc_base/ssladapter.h"
+#include "rtc_base/strings/string_builder.h"
 #include "rtc_base/stringutils.h"
 #include "rtc_base/thread.h"
 #include "rtc_base/timeutils.h"
@@ -32,16 +33,21 @@
 using stunprober::StunProber;
 using stunprober::AsyncCallback;
 
-DEFINE_bool(help, false, "Prints this message");
-DEFINE_int(interval, 10, "Interval of consecutive stun pings in milliseconds");
-DEFINE_bool(shared_socket, false, "Share socket mode for different remote IPs");
-DEFINE_int(pings_per_ip,
-           10,
-           "Number of consecutive stun pings to send for each IP");
-DEFINE_int(timeout,
-           1000,
-           "Milliseconds of wait after the last ping sent before exiting");
-DEFINE_string(
+WEBRTC_DEFINE_bool(help, false, "Prints this message");
+WEBRTC_DEFINE_int(interval,
+                  10,
+                  "Interval of consecutive stun pings in milliseconds");
+WEBRTC_DEFINE_bool(shared_socket,
+                   false,
+                   "Share socket mode for different remote IPs");
+WEBRTC_DEFINE_int(pings_per_ip,
+                  10,
+                  "Number of consecutive stun pings to send for each IP");
+WEBRTC_DEFINE_int(
+    timeout,
+    1000,
+    "Milliseconds of wait after the last ping sent before exiting");
+WEBRTC_DEFINE_string(
     servers,
     "stun.l.google.com:19302,stun1.l.google.com:19302,stun2.l.google.com:19302",
     "Comma separated STUN server addresses with ports");

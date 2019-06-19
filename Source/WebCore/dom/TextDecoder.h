@@ -27,8 +27,6 @@
 #include "BufferSource.h"
 #include "ExceptionOr.h"
 #include "TextEncoding.h"
-#include <wtf/Optional.h>
-#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -49,7 +47,7 @@ public:
     String encoding() const;
     bool fatal() const { return m_options.fatal; }
     bool ignoreBOM() const { return m_options.ignoreBOM; }
-    ExceptionOr<String> decode(std::optional<BufferSource::VariantType>, DecodeOptions);
+    ExceptionOr<String> decode(Optional<BufferSource::VariantType>, DecodeOptions);
 
 private:
     String prependBOMIfNecessary(const String&);

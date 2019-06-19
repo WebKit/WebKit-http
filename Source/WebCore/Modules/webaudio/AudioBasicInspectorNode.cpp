@@ -30,12 +30,16 @@
 
 #include "AudioNodeInput.h"
 #include "AudioNodeOutput.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(AudioBasicInspectorNode);
 
 AudioBasicInspectorNode::AudioBasicInspectorNode(AudioContext& context, float sampleRate, unsigned outputChannelCount)
     : AudioNode(context, sampleRate)
 {
+    setNodeType(NodeTypeBasicInspector);
     addInput(std::make_unique<AudioNodeInput>(this));
     addOutput(std::make_unique<AudioNodeOutput>(this, outputChannelCount));
 }
@@ -99,7 +103,7 @@ void AudioBasicInspectorNode::updatePullStatus()
         // When an AudioBasicInspectorNode is connected to a downstream node, it will get pulled by the
         // downstream node, thus remove it from the context's automatic pull list.
         if (m_needAutomaticPull) {
-            context().removeAutomaticPullNode(this);
+            context().removeAutomaticPullNode(*this);
             m_needAutomaticPull = false;
         }
     } else {
@@ -107,11 +111,11 @@ void AudioBasicInspectorNode::updatePullStatus()
         if (numberOfInputConnections && !m_needAutomaticPull) {
             // When an AudioBasicInspectorNode is not connected to any downstream node while still connected from
             // upstream node(s), add it to the context's automatic pull list.
-            context().addAutomaticPullNode(this);
+            context().addAutomaticPullNode(*this);
             m_needAutomaticPull = true;
         } else if (!numberOfInputConnections && m_needAutomaticPull) {
             // The AudioBasicInspectorNode is connected to nothing, remove it from the context's automatic pull list.
-            context().removeAutomaticPullNode(this);
+            context().removeAutomaticPullNode(*this);
             m_needAutomaticPull = false;
         }
     }

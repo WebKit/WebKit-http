@@ -26,7 +26,7 @@
 #include "config.h"
 #include "WebCoreThreadSystemInterface.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #include "WebCoreThread.h"
 #include "WebCoreThreadRun.h"
@@ -44,6 +44,7 @@ void InitWebCoreThreadSystemInterface(void)
     if (didInit)
         return;
 
+    INIT(WebThreadLock);
     INIT(WebThreadIsLockedOrDisabled);
     INIT(WebThreadIsEnabled);
     INIT(WebThreadRun);
@@ -51,4 +52,4 @@ void InitWebCoreThreadSystemInterface(void)
     didInit = true;
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

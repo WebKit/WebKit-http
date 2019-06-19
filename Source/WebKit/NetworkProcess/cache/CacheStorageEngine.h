@@ -48,6 +48,8 @@ class CallbackAggregator;
 
 namespace WebKit {
 
+class NetworkProcess;
+
 namespace CacheStorage {
 
 using CacheIdentifier = uint64_t;
@@ -57,26 +59,28 @@ class Engine : public RefCounted<Engine>, public CanMakeWeakPtr<Engine> {
 public:
     ~Engine();
 
-    static void from(PAL::SessionID, Function<void(Engine&)>&&);
-    static void destroyEngine(PAL::SessionID);
-    static void fetchEntries(PAL::SessionID, bool shouldComputeSize, WTF::CompletionHandler<void(Vector<WebsiteData::Entry>)>&&);
+    static void from(NetworkProcess&, PAL::SessionID, Function<void(Engine&)>&&);
+    static void destroyEngine(NetworkProcess&, PAL::SessionID);
+    static void fetchEntries(NetworkProcess&, PAL::SessionID, bool shouldComputeSize, CompletionHandler<void(Vector<WebsiteData::Entry>)>&&);
 
-    static void open(PAL::SessionID, WebCore::ClientOrigin&&, String&& cacheName, WebCore::DOMCacheEngine::CacheIdentifierCallback&&);
-    static void remove(PAL::SessionID, uint64_t cacheIdentifier, WebCore::DOMCacheEngine::CacheIdentifierCallback&&);
-    static void retrieveCaches(PAL::SessionID, WebCore::ClientOrigin&&, uint64_t updateCounter, WebCore::DOMCacheEngine::CacheInfosCallback&&);
+    static void open(NetworkProcess&, PAL::SessionID, WebCore::ClientOrigin&&, String&& cacheName, WebCore::DOMCacheEngine::CacheIdentifierCallback&&);
+    static void remove(NetworkProcess&, PAL::SessionID, uint64_t cacheIdentifier, WebCore::DOMCacheEngine::CacheIdentifierCallback&&);
+    static void retrieveCaches(NetworkProcess&, PAL::SessionID, WebCore::ClientOrigin&&, uint64_t updateCounter, WebCore::DOMCacheEngine::CacheInfosCallback&&);
 
-    static void retrieveRecords(PAL::SessionID, uint64_t cacheIdentifier, WebCore::URL&&, WebCore::DOMCacheEngine::RecordsCallback&&);
-    static void putRecords(PAL::SessionID, uint64_t cacheIdentifier, Vector<WebCore::DOMCacheEngine::Record>&&, WebCore::DOMCacheEngine::RecordIdentifiersCallback&&);
-    static void deleteMatchingRecords(PAL::SessionID, uint64_t cacheIdentifier, WebCore::ResourceRequest&&, WebCore::CacheQueryOptions&&, WebCore::DOMCacheEngine::RecordIdentifiersCallback&&);
+    static void retrieveRecords(NetworkProcess&, PAL::SessionID, uint64_t cacheIdentifier, URL&&, WebCore::DOMCacheEngine::RecordsCallback&&);
+    static void putRecords(NetworkProcess&, PAL::SessionID, uint64_t cacheIdentifier, Vector<WebCore::DOMCacheEngine::Record>&&, WebCore::DOMCacheEngine::RecordIdentifiersCallback&&);
+    static void deleteMatchingRecords(NetworkProcess&, PAL::SessionID, uint64_t cacheIdentifier, WebCore::ResourceRequest&&, WebCore::CacheQueryOptions&&, WebCore::DOMCacheEngine::RecordIdentifiersCallback&&);
 
-    static void lock(PAL::SessionID, uint64_t cacheIdentifier);
-    static void unlock(PAL::SessionID, uint64_t cacheIdentifier);
+    static void lock(NetworkProcess&, PAL::SessionID, uint64_t cacheIdentifier);
+    static void unlock(NetworkProcess&, PAL::SessionID, uint64_t cacheIdentifier);
 
-    static void clearMemoryRepresentation(PAL::SessionID, WebCore::ClientOrigin&&, WebCore::DOMCacheEngine::CompletionCallback&&);
-    static void representation(PAL::SessionID, CompletionHandler<void(String&&)>&&);
+    static void clearMemoryRepresentation(NetworkProcess&, PAL::SessionID, WebCore::ClientOrigin&&, WebCore::DOMCacheEngine::CompletionCallback&&);
+    static void representation(NetworkProcess&, PAL::SessionID, CompletionHandler<void(String&&)>&&);
 
-    static void clearAllCaches(PAL::SessionID, CompletionHandler<void()>&&);
-    static void clearCachesForOrigin(PAL::SessionID, WebCore::SecurityOriginData&&, CompletionHandler<void()>&&);
+    static void clearAllCaches(NetworkProcess&, PAL::SessionID, CompletionHandler<void()>&&);
+    static void clearCachesForOrigin(NetworkProcess&, PAL::SessionID, WebCore::SecurityOriginData&&, CompletionHandler<void()>&&);
+
+    static void initializeQuotaUser(NetworkProcess&, PAL::SessionID, const WebCore::ClientOrigin&, CompletionHandler<void()>&&);
 
     bool shouldPersist() const { return !!m_ioQueue;}
 
@@ -89,7 +93,7 @@ public:
     uint64_t nextCacheIdentifier() { return ++m_nextCacheIdentifier; }
 
 private:
-    Engine(String&& rootPath, uint64_t quota);
+    Engine(PAL::SessionID, NetworkProcess&, String&& rootPath);
 
     void open(const WebCore::ClientOrigin&, const String& cacheName, WebCore::DOMCacheEngine::CacheIdentifierCallback&&);
     void remove(uint64_t cacheIdentifier, WebCore::DOMCacheEngine::CacheIdentifierCallback&&);
@@ -104,7 +108,7 @@ private:
     void clearMemoryRepresentation(const WebCore::ClientOrigin&, WebCore::DOMCacheEngine::CompletionCallback&&);
     String representation();
 
-    void retrieveRecords(uint64_t cacheIdentifier, WebCore::URL&&, WebCore::DOMCacheEngine::RecordsCallback&&);
+    void retrieveRecords(uint64_t cacheIdentifier, URL&&, WebCore::DOMCacheEngine::RecordsCallback&&);
     void putRecords(uint64_t cacheIdentifier, Vector<WebCore::DOMCacheEngine::Record>&&, WebCore::DOMCacheEngine::RecordIdentifiersCallback&&);
     void deleteMatchingRecords(uint64_t cacheIdentifier, WebCore::ResourceRequest&&, WebCore::CacheQueryOptions&&, WebCore::DOMCacheEngine::RecordIdentifiersCallback&&);
 
@@ -113,26 +117,27 @@ private:
 
     String cachesRootPath(const WebCore::ClientOrigin&);
 
-    void fetchEntries(bool /* shouldComputeSize */, WTF::CompletionHandler<void(Vector<WebsiteData::Entry>)>&&);
+    void fetchEntries(bool /* shouldComputeSize */, CompletionHandler<void(Vector<WebsiteData::Entry>)>&&);
 
     void initialize(WebCore::DOMCacheEngine::CompletionCallback&&);
 
     using CachesOrError = Expected<std::reference_wrapper<Caches>, WebCore::DOMCacheEngine::Error>;
-    using CachesCallback = WTF::Function<void(CachesOrError&&)>;
+    using CachesCallback = Function<void(CachesOrError&&)>;
     void readCachesFromDisk(const WebCore::ClientOrigin&, CachesCallback&&);
 
     using CacheOrError = Expected<std::reference_wrapper<Cache>, WebCore::DOMCacheEngine::Error>;
-    using CacheCallback = WTF::Function<void(CacheOrError&&)>;
+    using CacheCallback = Function<void(CacheOrError&&)>;
     void readCache(uint64_t cacheIdentifier, CacheCallback&&);
 
     Cache* cache(uint64_t cacheIdentifier);
 
+    PAL::SessionID m_sessionID;
+    WeakPtr<NetworkProcess> m_networkProcess;
     HashMap<WebCore::ClientOrigin, RefPtr<Caches>> m_caches;
     uint64_t m_nextCacheIdentifier { 0 };
     String m_rootPath;
-    uint64_t m_quota { 0 };
     RefPtr<WorkQueue> m_ioQueue;
-    std::optional<NetworkCache::Salt> m_salt;
+    Optional<NetworkCache::Salt> m_salt;
     HashMap<CacheIdentifier, LockCount> m_cacheLocks;
     Vector<WebCore::DOMCacheEngine::CompletionCallback> m_initializationCallbacks;
     HashMap<uint64_t, WebCore::DOMCacheEngine::CompletionCallback> m_pendingWriteCallbacks;

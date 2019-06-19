@@ -25,8 +25,6 @@
 
 #import "config.h"
 
-#if WK_API_ENABLED
-
 #import "RenderedImageWithOptionsProtocol.h"
 #import "TestNavigationDelegate.h"
 #import "Utilities.h"
@@ -52,7 +50,7 @@ static void runTestWithWidth(NSNumber *width, CGSize expectedSize)
 
     __block bool testFinished = false;
     [remoteObject renderImageWithWidth:width completionHandler:^(CGSize imageSize) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         CGFloat scale = [UIScreen mainScreen].scale;
 #elif PLATFORM(MAC)
         CGFloat scale = [NSScreen mainScreen].backingScaleFactor;
@@ -80,5 +78,3 @@ TEST(WebKit, NodeHandleRenderedImageWithWidth)
     runTestWithWidth(@720, { 720, 540 });
     runTestWithWidth(@721, { 721, 541 });
 }
-
-#endif // WK_API_ENABLED

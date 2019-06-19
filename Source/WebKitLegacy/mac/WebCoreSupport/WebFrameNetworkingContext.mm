@@ -25,6 +25,7 @@
 
 #import "WebFrameNetworkingContext.h"
 
+#import "NetworkStorageSessionMap.h"
 #import "WebFrameInternal.h"
 #import "WebViewPrivate.h"
 #import <WebCore/FrameLoader.h>
@@ -36,7 +37,7 @@
 #import <pal/SessionID.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <WebCore/WebCoreThread.h>
 #import <WebKitLegacy/WebFrameLoadDelegate.h>
 #endif
@@ -46,14 +47,14 @@ using namespace WebCore;
 NetworkStorageSession& WebFrameNetworkingContext::ensurePrivateBrowsingSession()
 {
     ASSERT(isMainThread());
-    NetworkStorageSession::ensureSession(PAL::SessionID::legacyPrivateSessionID(), [[NSBundle mainBundle] bundleIdentifier]);
-    return *NetworkStorageSession::storageSession(PAL::SessionID::legacyPrivateSessionID());
+    NetworkStorageSessionMap::ensureSession(PAL::SessionID::legacyPrivateSessionID(), [[NSBundle mainBundle] bundleIdentifier]);
+    return *NetworkStorageSessionMap::storageSession(PAL::SessionID::legacyPrivateSessionID());
 }
 
 void WebFrameNetworkingContext::destroyPrivateBrowsingSession()
 {
     ASSERT(isMainThread());
-    NetworkStorageSession::destroySession(PAL::SessionID::legacyPrivateSessionID());
+    NetworkStorageSessionMap::destroySession(PAL::SessionID::legacyPrivateSessionID());
 }
 
 bool WebFrameNetworkingContext::localFileContentSniffingEnabled() const
@@ -90,14 +91,14 @@ ResourceError WebFrameNetworkingContext::blockedError(const ResourceRequest& req
     return frame()->loader().client().blockedError(request);
 }
 
-NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
+NetworkStorageSession* WebFrameNetworkingContext::storageSession() const
 {
     ASSERT(isMainThread());
     if (frame() && frame()->page() && frame()->page()->sessionID().isEphemeral()) {
-        if (auto* session = NetworkStorageSession::storageSession(PAL::SessionID::legacyPrivateSessionID()))
-            return *session;
+        if (auto* session = NetworkStorageSessionMap::storageSession(PAL::SessionID::legacyPrivateSessionID()))
+            return session;
         // Some requests may still be coming shortly before WebCore updates the session ID and after WebKit destroys the private browsing session.
         LOG_ERROR("Invalid session ID. Please file a bug unless you just disabled private browsing, in which case it's an expected race.");
     }
-    return NetworkStorageSession::defaultStorageSession();
+    return &NetworkStorageSessionMap::defaultStorageSession();
 }

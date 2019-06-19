@@ -34,15 +34,15 @@ template<typename IDLType>
 struct VariadicConverter {
     using Item = typename IDLType::ImplementationType;
 
-    static std::optional<Item> convert(JSC::ExecState& state, JSC::JSValue value)
+    static Optional<Item> convert(JSC::ExecState& state, JSC::JSValue value)
     {
         auto& vm = state.vm();
         auto scope = DECLARE_THROW_SCOPE(vm);
 
         auto result = Converter<IDLType>::convert(state, value);
-        RETURN_IF_EXCEPTION(scope, std::nullopt);
+        RETURN_IF_EXCEPTION(scope, WTF::nullopt);
 
-        return WTFMove(result);
+        return result;
     }
 };
 
@@ -62,7 +62,7 @@ template<typename IDLType> Vector<typename VariadicConverter<IDLType>::Item> con
         result.uncheckedAppend(WTFMove(*value));
     }
 
-    return WTFMove(result);
+    return result;
 }
 
 } // namespace WebCore

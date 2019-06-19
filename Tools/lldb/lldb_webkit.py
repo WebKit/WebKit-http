@@ -33,12 +33,33 @@ import lldb
 import string
 import struct
 
+
+def addSummaryAndSyntheticFormattersForRawBitmaskType(debugger, type_name, enumerator_value_to_name_map):
+    class GeneratedRawBitmaskProvider(RawBitmaskProviderBase):
+        ENUMERATOR_VALUE_TO_NAME_MAP = enumerator_value_to_name_map.copy()
+
+    def raw_bitmask_summary_provider(valobj, dict):
+        provider = GeneratedRawBitmaskProvider(valobj, dict)
+        return "{ size = %d }" % provider.size
+
+    # Add the provider class and summary function to the global scope so that LLDB
+    # can find them.
+    python_type_name = type_name.replace('::', '')  # Remove qualifications (e.g. WebCore::X becomes WebCoreX)
+    synthetic_provider_class_name = python_type_name + 'Provider'
+    summary_provider_function_name = python_type_name + '_SummaryProvider'
+    globals()[synthetic_provider_class_name] = GeneratedRawBitmaskProvider
+    globals()[summary_provider_function_name] = raw_bitmask_summary_provider
+
+    debugger.HandleCommand('type summary add --expand -F lldb_webkit.%s "%s"' % (summary_provider_function_name, type_name))
+    debugger.HandleCommand('type synthetic add %s --python-class lldb_webkit.%s' % (type_name, synthetic_provider_class_name))
+
+
 def __lldb_init_module(debugger, dict):
     debugger.HandleCommand('command script add -f lldb_webkit.btjs btjs')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFString_SummaryProvider WTF::String')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFStringImpl_SummaryProvider WTF::StringImpl')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFStringView_SummaryProvider WTF::StringView')
-    debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFAtomicString_SummaryProvider WTF::AtomicString')
+    debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFAtomString_SummaryProvider WTF::AtomString')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFVector_SummaryProvider -x "^WTF::Vector<.+>$"')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFHashTable_SummaryProvider -x "^WTF::HashTable<.+>$"')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFHashMap_SummaryProvider -x "^WTF::HashMap<.+>$"')
@@ -46,7 +67,7 @@ def __lldb_init_module(debugger, dict):
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFMediaTime_SummaryProvider WTF::MediaTime')
     debugger.HandleCommand('type summary add --expand -F lldb_webkit.WTFOptionSet_SummaryProvider -x "^WTF::OptionSet<.+>$"')
 
-    debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreURL_SummaryProvider WebCore::URL')
+    debugger.HandleCommand('type summary add -F lldb_webkit.WTFURL_SummaryProvider WTF::URL')
     debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreColor_SummaryProvider WebCore::Color')
 
     debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreLayoutUnit_SummaryProvider WebCore::LayoutUnit')
@@ -62,10 +83,28 @@ def __lldb_init_module(debugger, dict):
     debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreFloatPoint_SummaryProvider WebCore::FloatPoint')
     debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreFloatRect_SummaryProvider WebCore::FloatRect')
 
+    debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreSecurityOrigin_SummaryProvider WebCore::SecurityOrigin')
+    debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreFrame_SummaryProvider WebCore::Frame')
+
+    for className in ['Document', 'FTPDirectoryDocument', 'HTMLDocument', 'ImageDocument', 'MediaDocument', 'PluginDocument', 'SVGDocument', 'SinkDocument', 'TextDocument', 'XMLDocument']:
+        debugger.HandleCommand('type summary add -F lldb_webkit.WebCoreDocument_SummaryProvider WebCore::' + className)
+
     # synthetic types (see <https://lldb.llvm.org/varformats.html>)
     debugger.HandleCommand('type synthetic add -x "^WTF::Vector<.+>$" --python-class lldb_webkit.WTFVectorProvider')
     debugger.HandleCommand('type synthetic add -x "^WTF::HashTable<.+>$" --python-class lldb_webkit.WTFHashTableProvider')
     debugger.HandleCommand('type synthetic add -x "^WTF::OptionSet<.+>$" --python-class lldb_webkit.WTFOptionSetProvider')
+
+    addSummaryAndSyntheticFormattersForRawBitmaskType(debugger, "WebEventFlags", {
+        0x00010000: "WebEventFlagMaskLeftCommandKey",
+        0x00020000: "WebEventFlagMaskLeftShiftKey",
+        0x00040000: "WebEventFlagMaskLeftCapsLockKey",
+        0x00080000: "WebEventFlagMaskLeftOptionKey",
+        0x00100000: "WebEventFlagMaskLeftControlKey",
+        0x00800000: "WebEventFlagMaskRightControlKey",
+        0x00200000: "WebEventFlagMaskRightShiftKey",
+        0x00400000: "WebEventFlagMaskRightOptionKey",
+        0x01000000: "WebEventFlagMaskRightCommandKey",
+    })
 
 
 def WTFString_SummaryProvider(valobj, dict):
@@ -85,7 +124,7 @@ def WTFStringView_SummaryProvider(valobj, dict):
     return "{ length = %d, contents = '%s' }" % (provider.get_length(), provider.to_string())
 
 
-def WTFAtomicString_SummaryProvider(valobj, dict):
+def WTFAtomString_SummaryProvider(valobj, dict):
     return WTFString_SummaryProvider(valobj.GetChildMemberWithName('m_string'), dict)
 
 
@@ -134,8 +173,8 @@ def WebCoreColor_SummaryProvider(valobj, dict):
     return "{ %s }" % provider.to_string()
 
 
-def WebCoreURL_SummaryProvider(valobj, dict):
-    provider = WebCoreURLProvider(valobj, dict)
+def WTFURL_SummaryProvider(valobj, dict):
+    provider = WTFURLProvider(valobj, dict)
     return "{ %s }" % provider.to_string()
 
 
@@ -189,6 +228,30 @@ def WebCoreFloatRect_SummaryProvider(valobj, dict):
     return "{ x = %s, y = %s, width = %s, height = %s }" % (provider.get_x(), provider.get_y(), provider.get_width(), provider.get_height())
 
 
+def WebCoreSecurityOrigin_SummaryProvider(valobj, dict):
+    provider = WebCoreSecurityOriginProvider(valobj, dict)
+    return '{ %s, domain = %s, hasUniversalAccess = %d }' % (provider.to_string(), provider.domain(), provider.has_universal_access())
+
+
+def WebCoreFrame_SummaryProvider(valobj, dict):
+    provider = WebCoreFrameProvider(valobj, dict)
+    document = provider.document()
+    if document:
+        origin = document.origin()
+        url = document.url()
+        pageCacheState = document.page_cache_state()
+    else:
+        origin = ''
+        url = ''
+        pageCacheState = ''
+    return '{ origin = %s, url = %s, isMainFrame = %d, pageCacheState = %s }' % (origin, url, provider.is_main_frame(), pageCacheState)
+
+
+def WebCoreDocument_SummaryProvider(valobj, dict):
+    provider = WebCoreDocumentProvider(valobj, dict)
+    frame = provider.frame()
+    in_main_frame = '%d' % frame.is_main_frame() if frame else 'Detached'
+    return '{ origin = %s, url = %s, inMainFrame = %s, pageCacheState = %s }' % (provider.origin(), provider.url(), in_main_frame, provider.page_cache_state())
 
 
 def btjs(debugger, command, result, internal_dict):
@@ -333,7 +396,7 @@ class WTFStringImplProvider:
     def is_8bit(self):
         # FIXME: find a way to access WTF::StringImpl::s_hashFlag8BitBuffer
         return bool(self.valobj.GetChildMemberWithName('m_hashAndFlags').GetValueAsUnsigned(0) \
-            & 1 << 3)
+            & 1 << 2)
 
     def is_initialized(self):
         return self.valobj.GetValueAsUnsigned() != 0
@@ -572,8 +635,8 @@ class WebCoreFloatRectProvider:
         return WebCoreFloatSizeProvider(self.valobj.GetChildMemberWithName('m_size'), dict).get_height()
 
 
-class WebCoreURLProvider:
-    "Print a WebCore::URL"
+class WTFURLProvider:
+    "Print a WTF::URL"
     def __init__(self, valobj, dict):
         self.valobj = valobj
 
@@ -581,21 +644,119 @@ class WebCoreURLProvider:
         return WTFStringProvider(self.valobj.GetChildMemberWithName('m_string'), dict).to_string()
 
 
-class WTFOptionSetProvider:
+class StdOptionalWrapper:
+    def __init__(self, valobj, internal_dict):
+        self.valobj = valobj
+
+    def has_value(self):
+        return bool(self.valobj.GetChildMemberWithName('init_').GetValueAsUnsigned(0))
+
+    def value(self):
+        return self.valobj.GetChildMemberWithName('storage_').GetChildMemberWithName('value_')
+
+
+class WebCoreSecurityOriginProvider:
+    def __init__(self, valobj, internal_dict):
+        self.valobj = valobj
+        self._data_ptr = self.valobj.GetChildMemberWithName('m_data')
+
+    def is_unique(self):
+        return bool(self.valobj.GetChildMemberWithName('m_isUnique').GetValueAsUnsigned(0))
+
+    def scheme(self):
+        return WTFStringProvider(self._data_ptr.GetChildMemberWithName('protocol'), dict()).to_string()
+
+    def host(self):
+        return WTFStringProvider(self._data_ptr.GetChildMemberWithName('host'), dict()).to_string()
+
+    def port(self):
+        optional_port = StdOptionalWrapper(self._data_ptr.GetChildMemberWithName('port'), dict())
+        if not optional_port.has_value():
+            return None
+        return optional_port.value().GetValueAsUnsigned(0)
+
+    def domain(self):
+        return WTFStringProvider(self.valobj.GetChildMemberWithName('m_domain'), dict()).to_string()
+
+    def has_universal_access(self):
+        return bool(self.valobj.GetChildMemberWithName('m_universalAccess').GetValueAsUnsigned(0))
+
+    def to_string(self):
+        if self.is_unique():
+            return 'Unique'
+        scheme = self.scheme()
+        host = self.host()
+        port = self.port()
+        if not scheme and not host and not port:
+            return ''
+        if scheme == 'file:':
+            return 'file://'
+        result = '{}://{}'.format(scheme, host)
+        if port:
+            result += ':' + str(port)
+        return result
+
+
+class WebCoreFrameProvider:
+    def __init__(self, valobj, internal_dict):
+        self.valobj = valobj
+
+    def is_main_frame(self):
+        return self.valobj.GetAddress().GetFileAddress() == self.valobj.GetChildMemberWithName('m_mainFrame').GetAddress().GetFileAddress()
+
+    def document(self):
+        document_ptr = self.valobj.GetChildMemberWithName('m_doc').GetChildMemberWithName('m_ptr')
+        if not document_ptr or not bool(document_ptr.GetValueAsUnsigned(0)):
+            return None
+        return WebCoreDocumentProvider(document_ptr, dict())
+
+
+class WebCoreDocumentProvider:
+    def __init__(self, valobj, internal_dict):
+        self.valobj = valobj
+
+    def url(self):
+        return WTFURLProvider(self.valobj.GetChildMemberWithName('m_url'), dict()).to_string()
+
+    def origin(self):
+        security_origin_ptr = self.valobj.GetChildMemberWithName('m_securityOriginPolicy').GetChildMemberWithName('m_ptr').GetChildMemberWithName('m_securityOrigin').GetChildMemberWithName('m_ptr')
+        return WebCoreSecurityOriginProvider(security_origin_ptr, dict()).to_string()
+
+    def page_cache_state(self):
+        return self.valobj.GetChildMemberWithName('m_pageCacheState').GetValue()
+
+    def frame(self):
+        frame_ptr = self.valobj.GetChildMemberWithName('m_frame')
+        if not frame_ptr or not bool(frame_ptr.GetValueAsUnsigned(0)):
+            return None
+        return WebCoreFrameProvider(frame_ptr, dict())
+
+
+class FlagEnumerationProvider(object):
     def __init__(self, valobj, internal_dict):
         self.valobj = valobj
         self.update()
 
+    # Subclasses must override this to return a dictionary that maps emumerator values to names.
+    def _enumerator_value_to_name_map(self):
+        pass
+
+    # Subclasses must override this to return the bitmask.
+    def _bitmask(self):
+        pass
+
+    # Subclasses can override this to perform any computations when LLDB needs to refresh
+    # this provider.
+    def _update(self):
+        pass
+
     def has_children(self):
         return bool(self._elements)
 
-    #  Metadata is stored at indices greater than or equal to the number of elements in the set.
     def num_children(self):
-        return len(self._elements) + 1
+        return len(self._elements)
 
     def get_child_index(self, name):
-        if name == 'm_storage':
-            return self.num_children()
         try:
             return int(name.lstrip('[').rstrip(']'))
         except:
@@ -604,25 +765,23 @@ class WTFOptionSetProvider:
     def get_child_at_index(self, index):
         if index < 0 or not self.valobj.IsValid():
             return None
-        if index == self.num_children():
-            return self.storage
         if index < len(self._elements):
             (name, value) = self._elements[index]
             return self.valobj.CreateValueFromExpression(name, str(value))
         return None
 
     def update(self):
-        self.storage = self.valobj.GetChildMemberWithName('m_storage')  # May be an invalid value.
+        self._update()
+
         self._elements = []
         self.size = 0
 
-        template_argument_sbType = self.valobj.GetType().GetTemplateArgumentType(0)
-        enumerator_value_to_name_map = {sbTypeEnumMember.GetValueAsUnsigned(): sbTypeEnumMember.GetName() for sbTypeEnumMember in template_argument_sbType.get_enum_members_array()}
+        enumerator_value_to_name_map = self._enumerator_value_to_name_map()
         if not enumerator_value_to_name_map:
             return
 
         bitmask_with_all_options_set = sum(enumerator_value_to_name_map)
-        bitmask = self.storage.GetValueAsUnsigned(0)
+        bitmask = self._bitmask()
         if bitmask > bitmask_with_all_options_set:
             return  # Since this is an invalid value, return so the raw hex form is written out.
 
@@ -635,6 +794,33 @@ class WTFOptionSetProvider:
             bitmask = bitmask & (bitmask - 1)  # Turn off the rightmost set bit.
         self._elements = elements
         self.size = len(elements)
+
+
+class WTFOptionSetProvider(FlagEnumerationProvider):
+    def _enumerator_value_to_name_map(self):
+        template_argument_sbType = self.valobj.GetType().GetTemplateArgumentType(0)
+        enumerator_value_to_name_map = {}
+        for sbTypeEnumMember in template_argument_sbType.get_enum_members_array():
+            enumerator_value = sbTypeEnumMember.GetValueAsUnsigned()
+            if enumerator_value not in enumerator_value_to_name_map:
+                enumerator_value_to_name_map[enumerator_value] = sbTypeEnumMember.GetName()
+        return enumerator_value_to_name_map
+
+    def _bitmask(self):
+        return self.storage.GetValueAsUnsigned(0)
+
+    def _update(self):
+        self.storage = self.valobj.GetChildMemberWithName('m_storage')  # May be an invalid value.
+
+
+class RawBitmaskProviderBase(FlagEnumerationProvider):
+    ENUMERATOR_VALUE_TO_NAME_MAP = {}
+
+    def _enumerator_value_to_name_map(self):
+        return self.ENUMERATOR_VALUE_TO_NAME_MAP
+
+    def _bitmask(self):
+        return self.valobj.GetValueAsUnsigned(0)
 
 
 class WTFVectorProvider:

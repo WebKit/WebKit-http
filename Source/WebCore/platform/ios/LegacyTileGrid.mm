@@ -26,7 +26,7 @@
 #include "config.h"
 #include "LegacyTileGrid.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #include "LegacyTileGridTile.h"
 #include "LegacyTileLayer.h"
@@ -130,11 +130,13 @@ bool LegacyTileGrid::dropDistantTiles(unsigned tilesNeeded, double shortestDista
         if (distance <= shortestDistance)
             continue;
         toRemove.append(std::make_pair(distance, index));
-        std::push_heap(toRemove.begin(), toRemove.end(), std::ptr_fun(isFartherAway<TileIndex>));
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
+        std::push_heap(toRemove.begin(), toRemove.end(), isFartherAway<TileIndex>);
         if (toRemove.size() > tilesToRemoveCount) {
-            std::pop_heap(toRemove.begin(), toRemove.end(), std::ptr_fun(isFartherAway<TileIndex>));
+            std::pop_heap(toRemove.begin(), toRemove.end(), isFartherAway<TileIndex>);
             toRemove.removeLast();
         }
+        ALLOW_DEPRECATED_DECLARATIONS_END
     }
     size_t removeCount = toRemove.size();
     for (size_t n = 0; n < removeCount; ++n)
@@ -563,4 +565,4 @@ void LegacyTileGrid::dumpTiles()
 
 } // namespace WebCore
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

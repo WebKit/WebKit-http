@@ -29,11 +29,15 @@
 
 #include "AudioContext.h"
 #include "AudioNodeInput.h"
+#include "Document.h"
 #include "MediaStream.h"
 #include "MediaStreamAudioSource.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Locker.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(MediaStreamAudioDestinationNode);
 
 Ref<MediaStreamAudioDestinationNode> MediaStreamAudioDestinationNode::create(AudioContext& context, size_t numberOfChannels)
 {
@@ -43,7 +47,7 @@ Ref<MediaStreamAudioDestinationNode> MediaStreamAudioDestinationNode::create(Aud
 MediaStreamAudioDestinationNode::MediaStreamAudioDestinationNode(AudioContext& context, size_t numberOfChannels)
     : AudioBasicInspectorNode(context, context.sampleRate(), numberOfChannels)
     , m_source(MediaStreamAudioSource::create(context.sampleRate()))
-    , m_stream(MediaStream::create(*context.scriptExecutionContext(), MediaStreamPrivate::create(m_source.copyRef())))
+    , m_stream(MediaStream::create(*context.document(), MediaStreamPrivate::create(context.document()->logger(), m_source.copyRef())))
 {
     setNodeType(NodeTypeMediaStreamAudioDestination);
     initialize();

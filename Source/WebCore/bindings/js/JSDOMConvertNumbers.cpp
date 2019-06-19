@@ -26,8 +26,8 @@
 #include <JavaScriptCore/HeapInlines.h>
 #include <JavaScriptCore/JSCJSValueInlines.h>
 #include <wtf/MathExtras.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/text/WTFString.h>
-
 
 namespace WebCore {
 using namespace JSC;
@@ -41,7 +41,7 @@ static const int64_t kJSMaxInteger = 0x20000000000000LL - 1; // 2^53 - 1, larges
 
 static String rangeErrorString(double value, double min, double max)
 {
-    return makeString("Value ", String::numberToStringECMAScript(value), " is outside the range [", String::numberToStringECMAScript(min), ", ", String::numberToStringECMAScript(max), "]");
+    return makeString("Value ", value, " is outside the range [", min, ", ", max, ']');
 }
 
 static double enforceRange(ExecState& state, double x, double minimum, double maximum)

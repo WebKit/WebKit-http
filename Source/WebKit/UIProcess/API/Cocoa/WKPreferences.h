@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
 
@@ -34,7 +32,7 @@
  view. The preferences object associated with a web view is specified by
  its web view configuration.
  */
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface WKPreferences : NSObject <NSSecureCoding>
 
 /*! @abstract The minimum font size in points.
@@ -53,25 +51,27 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
  */
 @property (nonatomic) BOOL javaScriptCanOpenWindowsAutomatically;
 
+/*! @abstract A Boolean value indicating whether warnings should be
+ shown for suspected fraudulent content such as phishing or malware.
+ @discussion The default value is YES. This feature is currently available
+ in the following region: China.
+ */
+@property (nonatomic, getter=isFraudulentWebsiteWarningEnabled) BOOL fraudulentWebsiteWarningEnabled WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
+
 #if !TARGET_OS_IPHONE
-/*! @abstract A Boolean value indicating whether Java is enabled.
- @discussion The default value is NO.
- */
-@property (nonatomic) BOOL javaEnabled;
-
-/*! @abstract A Boolean value indicating whether plug-ins are enabled.
- @discussion The default value is NO.
- */
-@property (nonatomic) BOOL plugInsEnabled;
-
 /*!
  @property tabFocusesLinks
  @abstract If tabFocusesLinks is YES, the tab key will focus links and form controls.
  The Option key temporarily reverses this preference.
  */
-@property (nonatomic) BOOL tabFocusesLinks WK_API_AVAILABLE(macosx(10.12.3));
+@property (nonatomic) BOOL tabFocusesLinks WK_API_AVAILABLE(macos(10.12.3));
 #endif
 
 @end
 
-#endif
+@interface WKPreferences (WKDeprecated)
+
+@property (nonatomic) BOOL javaEnabled WK_API_DEPRECATED("Java is no longer supported", macos(10.10, WK_MAC_TBA));
+@property (nonatomic) BOOL plugInsEnabled WK_API_DEPRECATED("Plug-ins are no longer supported", macos(10.10, WK_MAC_TBA));
+
+@end

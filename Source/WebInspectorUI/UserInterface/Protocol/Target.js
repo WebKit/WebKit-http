@@ -38,15 +38,98 @@ WI.Target = class Target extends WI.Object
         this._resourceCollection = new WI.ResourceCollection;
         this._extraScriptCollection = new WI.ScriptCollection;
 
+        // Restrict the agents to the list of supported agents for this target type.
+        // This makes it so `target.FooAgent` only exists if the "Foo" domain is
+        // supported by the target.
+        this._agents = {};
+        const supportedDomains = this._supportedDomainsForTargetType(this._type);
+        for (let domain of supportedDomains) {
+            let agent = this._connection._agents[domain];
+            if (agent && agent.active)
+                this._agents[domain] = agent;
+        }
+
         this._connection.target = this;
+
+        // Agents we always expect in every target.
+        console.assert(this.RuntimeAgent);
+        console.assert(this.DebuggerAgent);
+        console.assert(this.ConsoleAgent);
+    }
+
+    // Target
+
+    initialize()
+    {
+        // Intentionally initialize InspectorAgent first if it is available.
+        // This may not be strictly necessary anymore, but is historical.
+        if (this.InspectorAgent)
+            this.InspectorAgent.enable();
+
+        // Initialize agents.
+        for (let manager of WI.managers) {
+            if (manager.initializeTarget)
+                manager.initializeTarget(this);
+        }
+
+        // Non-manager specific initialization.
+        WI.initializeTarget(this);
+
+        // Intentionally defer ConsoleAgent initialization to the end. We do this so that any
+        // previous initialization messages will have their responses arrive before a stream
+        // of console message added events come in after enabling Console.
+        this.ConsoleAgent.enable();
+
+        setTimeout(() => {
+            // Use this opportunity to run any one time frontend initialization
+            // now that we have a target with potentially new capabilities.
+            WI.performOneTimeFrontendInitializationsUsingTarget(this);
+        });
+
+        setTimeout(() => {
+            // Tell the backend we are initialized after all our initialization messages have been sent.
+            // This allows an automatically paused backend to resume execution, but we want to ensure
+            // our breakpoints were already sent to that backend.
+            // COMPATIBILITY (iOS 8): Inspector.initialized did not exist yet.
+            if (this.InspectorAgent && this.InspectorAgent.initialized)
+                this.InspectorAgent.initialized();
+        });
+    }
+
+    activateExtraDomain(domain)
+    {
+        let agent = this._connection._agents[domain];
+        if (agent && agent.active)
+            this._agents[domain] = agent;
     }
 
     // Agents
 
-    get RuntimeAgent() { return this._connection._agents.Runtime; }
-    get ConsoleAgent() { return this._connection._agents.Console; }
-    get DebuggerAgent() { return this._connection._agents.Debugger; }
-    get HeapAgent() { return this._connection._agents.Heap; }
+    get AuditAgent() { return this._agents.Audit; }
+    get ApplicationCacheAgent() { return this._agents.ApplicationCache; }
+    get CPUProfilerAgent() { return this._agents.CPUProfiler; }
+    get CSSAgent() { return this._agents.CSS; }
+    get CanvasAgent() { return this._agents.Canvas; }
+    get ConsoleAgent() { return this._agents.Console; }
+    get DOMAgent() { return this._agents.DOM; }
+    get DOMDebuggerAgent() { return this._agents.DOMDebugger; }
+    get DOMStorageAgent() { return this._agents.DOMStorage; }
+    get DatabaseAgent() { return this._agents.Database; }
+    get DebuggerAgent() { return this._agents.Debugger; }
+    get HeapAgent() { return this._agents.Heap; }
+    get IndexedDBAgent() { return this._agents.IndexedDB; }
+    get InspectorAgent() { return this._agents.Inspector; }
+    get LayerTreeAgent() { return this._agents.LayerTree; }
+    get MemoryAgent() { return this._agents.Memory; }
+    get NetworkAgent() { return this._agents.Network; }
+    get PageAgent() { return this._agents.Page; }
+    get RecordingAgent() { return this._agents.Recording; }
+    get RuntimeAgent() { return this._agents.Runtime; }
+    get ScriptProfilerAgent() { return this._agents.ScriptProfiler; }
+    get ServiceWorkerAgent() { return this._agents.ServiceWorker; }
+    get TargetAgent() { return this._agents.Target; }
+    get TimelineAgent() { return this._agents.Timeline; }
+    get WorkerAgent() { return this._agents.Worker; }
 
     // Public
 
@@ -98,6 +181,25 @@ WI.Target = class Target extends WI.Object
         this._extraScriptCollection.add(script);
 
         this.dispatchEventToListeners(WI.Target.Event.ScriptAdded, {script});
+    }
+
+    // Private
+
+    _supportedDomainsForTargetType(type)
+    {
+        switch (type) {
+        case WI.Target.Type.JSContext:
+            return InspectorBackend.supportedDomainsForDebuggableType(WI.DebuggableType.JavaScript);
+        case WI.Target.Type.Worker:
+            return InspectorBackend.supportedDomainsForDebuggableType(WI.DebuggableType.Worker);
+        case WI.Target.Type.ServiceWorker:
+            return InspectorBackend.supportedDomainsForDebuggableType(WI.DebuggableType.ServiceWorker);
+        case WI.Target.Type.Page:
+            return InspectorBackend.supportedDomainsForDebuggableType(WI.DebuggableType.Web);
+        default:
+            console.assert(false, "Unexpected target type", type);
+            return InspectorBackend.supportedDomainsForDebuggableType(WI.DebuggableType.Web);
+        }
     }
 };
 

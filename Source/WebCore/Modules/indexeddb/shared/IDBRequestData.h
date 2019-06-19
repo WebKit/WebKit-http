@@ -50,6 +50,8 @@ public:
     IDBRequestData(const IDBClient::IDBConnectionProxy&, const IDBOpenDBRequest&);
     explicit IDBRequestData(IDBClient::TransactionOperation&);
     IDBRequestData(const IDBRequestData&);
+    IDBRequestData(IDBRequestData&&) = default;
+    IDBRequestData& operator=(IDBRequestData&&) = default;
 
     enum IsolatedCopyTag { IsolatedCopy };
     IDBRequestData(const IDBRequestData&, IsolatedCopyTag);
@@ -126,7 +128,7 @@ bool IDBRequestData::decode(Decoder& decoder, IDBRequestData& request)
     if (!decoder.decode(request.m_indexIdentifier))
         return false;
 
-    std::optional<IDBDatabaseIdentifier> databaseIdentifier;
+    Optional<IDBDatabaseIdentifier> databaseIdentifier;
     decoder >> databaseIdentifier;
     if (!databaseIdentifier)
         return false;

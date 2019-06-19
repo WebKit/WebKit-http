@@ -230,15 +230,15 @@ void Recorder::drawLine(const FloatPoint& point1, const FloatPoint& point2)
     updateItemExtent(newItem);
 }
 
-void Recorder::drawLinesForText(const FloatPoint& point, const DashArray& widths, bool printing, bool doubleLines, float strokeThickness)
+void Recorder::drawLinesForText(const FloatPoint& point, float thickness, const DashArray& widths, bool printing, bool doubleLines)
 {
-    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawLinesForText::create(FloatPoint(), toFloatSize(point), widths, printing, doubleLines, strokeThickness)));
+    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawLinesForText::create(FloatPoint(), toFloatSize(point), thickness, widths, printing, doubleLines)));
     updateItemExtent(newItem);
 }
 
-void Recorder::drawLineForDocumentMarker(const FloatPoint& point, float width, DocumentMarkerLineStyle style)
+void Recorder::drawDotsForDocumentMarker(const FloatRect& rect, DocumentMarkerLineStyle style)
 {
-    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawLineForDocumentMarker::create(point, width, style)));
+    DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawDotsForDocumentMarker::create(rect, style)));
     updateItemExtent(newItem);
 }
 
@@ -404,7 +404,7 @@ Item& Recorder::appendItem(Ref<Item>&& item)
 
 void Recorder::updateItemExtent(DrawingItem& item) const
 {
-    if (std::optional<FloatRect> rect = item.localBounds(graphicsContext()))
+    if (Optional<FloatRect> rect = item.localBounds(graphicsContext()))
         item.setExtent(extentFromLocalBounds(rect.value()));
 }
 
@@ -473,7 +473,7 @@ void Recorder::ContextState::rotate(float angleInRadians)
     AffineTransform rotation;
     rotation.rotate(angleInDegrees);
 
-    if (std::optional<AffineTransform> inverse = rotation.inverse())
+    if (Optional<AffineTransform> inverse = rotation.inverse())
         clipBounds = inverse.value().mapRect(clipBounds);
 }
 
@@ -487,7 +487,7 @@ void Recorder::ContextState::concatCTM(const AffineTransform& matrix)
 {
     ctm *= matrix;
 
-    if (std::optional<AffineTransform> inverse = matrix.inverse())
+    if (Optional<AffineTransform> inverse = matrix.inverse())
         clipBounds = inverse.value().mapRect(clipBounds);
 }
 

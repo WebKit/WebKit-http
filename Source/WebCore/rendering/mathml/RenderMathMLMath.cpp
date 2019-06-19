@@ -50,7 +50,7 @@ void RenderMathMLMath::centerChildren(LayoutUnit contentWidth)
         centerBlockOffset = -centerBlockOffset;
     for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         if (!child->isOutOfFlowPositioned())
-            child->setLocation(child->location() + LayoutPoint(centerBlockOffset, 0));
+            child->setLocation(child->location() + LayoutPoint(centerBlockOffset, 0_lu));
     }
 }
 
@@ -86,6 +86,8 @@ void RenderMathMLMath::layoutBlock(bool relayoutChildren, LayoutUnit pageLogical
     updateLogicalHeight();
 
     layoutPositionedObjects(relayoutChildren);
+
+    updateScrollInfoAfterLayout();
 
     clearNeedsLayout();
 }

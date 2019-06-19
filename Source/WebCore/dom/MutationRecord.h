@@ -34,6 +34,12 @@
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
+namespace JSC {
+
+class SlotVisitor;
+
+}
+
 namespace WebCore {
 
 class CharacterData;
@@ -46,14 +52,14 @@ class QualifiedName;
 class MutationRecord : public RefCounted<MutationRecord> {
 public:
     static Ref<MutationRecord> createChildList(ContainerNode& target, Ref<NodeList>&& added, Ref<NodeList>&& removed, RefPtr<Node>&& previousSibling, RefPtr<Node>&& nextSibling);
-    static Ref<MutationRecord> createAttributes(Element& target, const QualifiedName&, const AtomicString& oldValue);
+    static Ref<MutationRecord> createAttributes(Element& target, const QualifiedName&, const AtomString& oldValue);
     static Ref<MutationRecord> createCharacterData(CharacterData& target, const String& oldValue);
 
     static Ref<MutationRecord> createWithNullOldValue(MutationRecord&);
 
     virtual ~MutationRecord();
 
-    virtual const AtomicString& type() = 0;
+    virtual const AtomString& type() = 0;
     virtual Node* target() = 0;
 
     virtual NodeList* addedNodes() = 0;
@@ -61,10 +67,12 @@ public:
     virtual Node* previousSibling() { return 0; }
     virtual Node* nextSibling() { return 0; }
 
-    virtual const AtomicString& attributeName() { return nullAtom(); }
-    virtual const AtomicString& attributeNamespace() { return nullAtom(); }
+    virtual const AtomString& attributeName() { return nullAtom(); }
+    virtual const AtomString& attributeNamespace() { return nullAtom(); }
 
     virtual String oldValue() { return String(); }
+
+    virtual void visitNodesConcurrently(JSC::SlotVisitor&) const = 0;
 };
 
 } // namespace WebCore

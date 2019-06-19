@@ -33,10 +33,14 @@
 #include "config.h"
 #include "OffscreenCanvasRenderingContext2D.h"
 
+#include <wtf/IsoMallocInlines.h>
+
 namespace WebCore {
 
+WTF_MAKE_ISO_ALLOCATED_IMPL(OffscreenCanvasRenderingContext2D);
+
 OffscreenCanvasRenderingContext2D::OffscreenCanvasRenderingContext2D(CanvasBase& canvas)
-    : CanvasRenderingContext2DBase(canvas, false, false)
+    : CanvasRenderingContext2DBase(canvas, false)
 {
 }
 

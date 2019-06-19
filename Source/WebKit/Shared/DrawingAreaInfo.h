@@ -25,16 +25,18 @@
 
 #pragma once
 
+#include <wtf/ObjectIdentifier.h>
+
 namespace WebKit {
 
 enum DrawingAreaType {
 #if PLATFORM(COCOA)
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     DrawingAreaTypeTiledCoreAnimation,
 #endif
     DrawingAreaTypeRemoteLayerTree,
-#else
-    DrawingAreaTypeImpl
+#elif USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+    DrawingAreaTypeCoordinatedGraphics
 #endif
 };
     
@@ -42,5 +44,8 @@ enum {
     ActivityStateChangeAsynchronous = 0
 };
 typedef uint64_t ActivityStateChangeID;
+
+enum DrawingAreaIdentifierType { };
+using DrawingAreaIdentifier = ObjectIdentifier<DrawingAreaIdentifierType>;
 
 } // namespace WebKit

@@ -27,7 +27,6 @@
 
 #include "HeapSnapshotBuilder.h"
 #include "TinyBloomFilter.h"
-#include <wtf/Optional.h>
 
 namespace JSC {
 
@@ -45,8 +44,8 @@ public:
     void finalize();
 
     bool isEmpty() const { return m_nodes.isEmpty(); }
-    std::optional<HeapSnapshotNode> nodeForCell(JSCell*);
-    std::optional<HeapSnapshotNode> nodeForObjectIdentifier(unsigned objectIdentifier);
+    Optional<HeapSnapshotNode> nodeForCell(JSCell*);
+    Optional<HeapSnapshotNode> nodeForObjectIdentifier(unsigned objectIdentifier);
 
 private:
     friend class HeapSnapshotBuilder;

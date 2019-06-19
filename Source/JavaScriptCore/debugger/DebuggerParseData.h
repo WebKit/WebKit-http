@@ -26,7 +26,6 @@
 #pragma once
 
 #include "ParserTokens.h"
-#include <wtf/Optional.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -60,7 +59,7 @@ public:
         m_positions.append({ DebuggerPausePositionType::Leave, position });
     }
 
-    std::optional<JSTextPosition> breakpointLocationForLineColumn(int line, int column);
+    Optional<JSTextPosition> breakpointLocationForLineColumn(int line, int column);
 
     void sort();
 

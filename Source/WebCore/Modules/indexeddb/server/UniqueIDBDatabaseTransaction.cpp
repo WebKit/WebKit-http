@@ -53,17 +53,18 @@ UniqueIDBDatabaseTransaction::UniqueIDBDatabaseTransaction(UniqueIDBDatabaseConn
     if (m_transactionInfo.mode() == IDBTransactionMode::Versionchange)
         m_originalDatabaseInfo = std::make_unique<IDBDatabaseInfo>(database->info());
 
-    database->server().registerTransaction(*this);
+    auto& server = database->server();
+    m_server = makeWeakPtr(server);
+    server.registerTransaction(*this);
 }
 
 UniqueIDBDatabaseTransaction::~UniqueIDBDatabaseTransaction()
 {
-    auto database = m_databaseConnection->database();
-    if (!database)
-        return;
+    if (auto database = m_databaseConnection->database())
+        database->transactionDestroyed(*this);
 
-    database->transactionDestroyed(*this);
-    database->server().unregisterTransaction(*this);
+    if (m_server)
+        m_server->unregisterTransaction(*this);
 }
 
 IDBDatabaseInfo* UniqueIDBDatabaseTransaction::originalDatabaseInfo() const
@@ -81,7 +82,7 @@ void UniqueIDBDatabaseTransaction::abort()
     auto database = m_databaseConnection->database();
     ASSERT(database);
 
-    database->abortTransaction(*this, [this, protectedThis](const IDBError& error) {
+    database->abortTransaction(*this, UniqueIDBDatabase::WaitForPendingTasks::Yes, [this, protectedThis](const IDBError& error) {
         LOG(IndexedDB, "UniqueIDBDatabaseTransaction::abort (callback)");
         m_databaseConnection->didAbortTransaction(*this, error);
     });
@@ -111,7 +112,8 @@ void UniqueIDBDatabaseTransaction::commit()
     RefPtr<UniqueIDBDatabaseTransaction> protectedThis(this);
 
     auto database = m_databaseConnection->database();
-    ASSERT(database);
+    if (!database || database->hardClosedForUserDelete())
+        return;
 
     database->commitTransaction(*this, [this, protectedThis](const IDBError& error) {
         LOG(IndexedDB, "UniqueIDBDatabaseTransaction::commit (callback)");
@@ -420,7 +422,7 @@ const Vector<uint64_t>& UniqueIDBDatabaseTransaction::objectStoreIdentifiers()
         return m_objectStoreIdentifiers;
 
     auto& info = m_databaseConnection->database()->info();
-    for (auto objectStoreName : info.objectStoreNames()) {
+    for (const auto& objectStoreName : info.objectStoreNames()) {
         auto objectStoreInfo = info.infoForExistingObjectStore(objectStoreName);
         ASSERT(objectStoreInfo);
         if (!objectStoreInfo)

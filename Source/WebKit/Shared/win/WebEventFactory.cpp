@@ -33,10 +33,11 @@
 #include <WebCore/WindowsKeyboardCodes.h>
 #include <windowsx.h>
 #include <wtf/ASCIICType.h>
-
-using namespace WebCore;
+#include <wtf/HexNumber.h>
 
 namespace WebKit {
+
+using namespace WebCore;
 
 static inline LPARAM relativeCursorPosition(HWND hwnd)
 {
@@ -105,28 +106,28 @@ static inline bool IsKeyInDownState(int vk)
     return ::GetKeyState(vk) & 0x8000;
 }
 
-static inline WebEvent::Modifiers modifiersForEvent(WPARAM wparam)
+static inline OptionSet<WebEvent::Modifier> modifiersForEvent(WPARAM wparam)
 {
-    unsigned modifiers = 0;
+    OptionSet<WebEvent::Modifier> modifiers;
     if (wparam & MK_CONTROL)
-        modifiers |= WebEvent::ControlKey;
+        modifiers.add(WebEvent::Modifier::ControlKey);
     if (wparam & MK_SHIFT)
-        modifiers |= WebEvent::ShiftKey;
+        modifiers.add(WebEvent::Modifier::ShiftKey);
     if (IsKeyInDownState(VK_MENU))
-        modifiers |= WebEvent::AltKey;
-    return static_cast<WebEvent::Modifiers>(modifiers);
+        modifiers.add(WebEvent::Modifier::AltKey);
+    return modifiers;
 }
 
-static inline WebEvent::Modifiers modifiersForCurrentKeyState()
+static inline OptionSet<WebEvent::Modifier> modifiersForCurrentKeyState()
 {
-    unsigned modifiers = 0;
+    OptionSet<WebEvent::Modifier> modifiers;
     if (IsKeyInDownState(VK_CONTROL))
-        modifiers |= WebEvent::ControlKey;
+        modifiers.add(WebEvent::Modifier::ControlKey);
     if (IsKeyInDownState(VK_SHIFT))
-        modifiers |= WebEvent::ShiftKey;
+        modifiers.add(WebEvent::Modifier::ShiftKey);
     if (IsKeyInDownState(VK_MENU))
-        modifiers |= WebEvent::AltKey;
-    return static_cast<WebEvent::Modifiers>(modifiers);
+        modifiers.add(WebEvent::Modifier::AltKey);
+    return modifiers;
 }
 
 static inline WebEvent::Type keyboardEventTypeForEvent(UINT message)
@@ -324,7 +325,7 @@ static String keyIdentifierFromEvent(WPARAM wparam, WebEvent::Type type)
     case VK_DELETE:
         return String("U+007F"); // Standard says that DEL becomes U+007F.
     default:
-        return String::format("U+%04X", toASCIIUpper(keyCode));
+        return makeString("U+", hex(toASCIIUpper(keyCode), 4));
     }
 }
 
@@ -394,7 +395,7 @@ WebMouseEvent WebEventFactory::createWebMouseEvent(HWND hWnd, UINT message, WPAR
     double timestamp = ::GetTickCount() * 0.001; // ::GetTickCount returns milliseconds (Chrome uses GetMessageTime() / 1000.0)
 
     int clickCount = WebKit::clickCount(type, button, position, timestamp);
-    WebEvent::Modifiers modifiers = modifiersForEvent(wParam);
+    auto modifiers = modifiersForEvent(wParam);
 
     return WebMouseEvent(type, button, 0, position, globalPosition, 0, 0, 0, clickCount, modifiers, WallTime::now(), didActivateWebView);
 }
@@ -407,7 +408,7 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(HWND hWnd, UINT message, WPAR
 
     WebWheelEvent::Granularity granularity = WebWheelEvent::ScrollByPixelWheelEvent;
 
-    WebEvent::Modifiers modifiers = modifiersForEvent(wParam);
+    auto modifiers = modifiersForEvent(wParam);
 
     int deltaX = 0;
     int deltaY = 0;
@@ -424,7 +425,7 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(HWND hWnd, UINT message, WPAR
         wheelTicksX = 0;
         wheelTicksY = delta;
     }
-    if (isMouseHWheel || (modifiers & WebEvent::ShiftKey)) {
+    if (isMouseHWheel || (modifiers & WebEvent::Modifier::ShiftKey)) {
         deltaX = delta * static_cast<float>(horizontalScrollChars()) * WebCore::cScrollbarPixelsPerLine;
         deltaY = 0;
         granularity = WebWheelEvent::ScrollByPixelWheelEvent;
@@ -455,7 +456,7 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(HWND hwnd, UINT message
     bool autoRepeat = HIWORD(lparam) & KF_REPEAT;
     bool isKeypad = isKeypadEvent(wparam, lparam, type);
     bool isSystemKey = isSystemKeyEvent(message);
-    WebEvent::Modifiers modifiers = modifiersForCurrentKeyState();
+    auto modifiers = modifiersForCurrentKeyState();
 
     return WebKeyboardEvent(type, text, unmodifiedText, keyIdentifier, windowsVirtualKeyCode, nativeVirtualKeyCode, macCharCode, autoRepeat, isKeypad, isSystemKey, modifiers, WallTime::now());
 }

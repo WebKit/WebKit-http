@@ -27,14 +27,17 @@
 #include "File.h"
 
 #include "BlobURL.h"
-#include "FileMetadata.h"
-#include "FileSystem.h"
 #include "MIMETypeRegistry.h"
 #include "ThreadableBlobRegistry.h"
 #include <wtf/DateMath.h>
+#include <wtf/FileMetadata.h>
+#include <wtf/FileSystem.h>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(File);
 
 Ref<File> File::createWithRelativePath(const String& path, const String& relativePath)
 {
@@ -63,7 +66,7 @@ File::File(const String& path, const String& nameOverride)
     ThreadableBlobRegistry::registerFileBlobURL(m_internalURL, path, m_type);
 }
 
-File::File(DeserializationContructor, const String& path, const URL& url, const String& type, const String& name, const std::optional<int64_t>& lastModified)
+File::File(DeserializationContructor, const String& path, const URL& url, const String& type, const String& name, const Optional<int64_t>& lastModified)
     : Blob(deserializationContructor, url, type, -1, path)
     , m_path(path)
     , m_name(name)
@@ -81,7 +84,7 @@ static BlobPropertyBag convertPropertyBag(const File::PropertyBag& initialBag)
 File::File(Vector<BlobPartVariant>&& blobPartVariants, const String& filename, const PropertyBag& propertyBag)
     : Blob(WTFMove(blobPartVariants), convertPropertyBag(propertyBag))
     , m_name(filename)
-    , m_lastModifiedDateOverride(propertyBag.lastModified.value_or(WallTime::now().secondsSinceEpoch().milliseconds()))
+    , m_lastModifiedDateOverride(propertyBag.lastModified.valueOr(WallTime::now().secondsSinceEpoch().milliseconds()))
 {
 }
 
@@ -112,11 +115,11 @@ int64_t File::lastModified() const
     // FIXME: This does sync-i/o on the main thread and also recalculates every time the method is called.
     // The i/o should be performed on a background thread,
     // and the result should be cached along with an asynchronous monitor for changes to the file.
-    time_t modificationTime;
-    if (FileSystem::getFileModificationTime(m_path, modificationTime) && FileSystem::isValidFileTime(modificationTime))
-        result = modificationTime * msPerSecond;
+    auto modificationTime = FileSystem::getFileModificationTime(m_path);
+    if (modificationTime)
+        result = modificationTime->secondsSinceEpoch().millisecondsAs<int64_t>();
     else
-        result = WallTime::now().secondsSinceEpoch().milliseconds();
+        result = WallTime::now().secondsSinceEpoch().millisecondsAs<int64_t>();
 
     return WTF::timeClip(result);
 }

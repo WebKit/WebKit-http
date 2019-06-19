@@ -64,6 +64,7 @@ NSString *NSTextInsertionUndoableAttributeName;
 @interface WebHTMLView (WebKitSecretsTextInputControllerIsAwareOf)
 - (WebFrame *)_frame;
 - (NSAttributedString *)_attributedStringFromDOMRange:(DOMRange *)range;
+- (NSAttributedString *)_legacyAttributedStringFrom:(DOMNode*)startContainer offset:(int)startOffset to:(DOMNode*)endContainer offset:(int)endOffset;
 @end
 
 @implementation WebHTMLView (DumpRenderTreeInputMethodHandler)
@@ -230,7 +231,7 @@ NSString *NSTextInsertionUndoableAttributeName;
         || aSelector == @selector(conversationIdentifier)
         || aSelector == @selector(substringFrom:length:)
         || aSelector == @selector(attributedSubstringFrom:length:)
-        || aSelector == @selector(legacyAttributedString:)
+        || aSelector == @selector(legacyAttributedString:offset:to:offset:)
         || aSelector == @selector(markedRange)
         || aSelector == @selector(selectedRange)
         || aSelector == @selector(firstRectForCharactersFrom:length:)
@@ -257,7 +258,7 @@ NSString *NSTextInsertionUndoableAttributeName;
         return @"substringFromRange";
     if (aSelector == @selector(attributedSubstringFrom:length:))
         return @"attributedSubstringFromRange";
-    if (aSelector == @selector(legacyAttributedString:))
+    if (aSelector == @selector(legacyAttributedString:offset:to:offset:))
         return @"legacyAttributedString";
     if (aSelector == @selector(firstRectForCharactersFrom:length:))
         return @"firstRectForCharacterRange";
@@ -372,15 +373,13 @@ NSString *NSTextInsertionUndoableAttributeName;
     return ret;
 }
 
-- (NSMutableAttributedString *)legacyAttributedString:(DOMRange*)range
+- (NSAttributedString *)legacyAttributedString:(DOMNode*)startContainer offset:(int)startOffset to:(DOMNode*)endContainer offset:(int)endOffset
 {
-    NSMutableAttributedString *string = [[[NSMutableAttributedString alloc] init] autorelease];
     id documentView = [[[webView mainFrame] frameView] documentView];
     if (![documentView isKindOfClass:[WebHTMLView class]])
-        return string;
+        return nil;
 
-    [string setAttributedString:[(WebHTMLView *)documentView _attributedStringFromDOMRange:range]];
-    return string;
+    return [(WebHTMLView *)documentView _legacyAttributedStringFrom:startContainer offset:startOffset to:endContainer offset:endOffset];
 }
 
 - (NSArray *)markedRange
@@ -542,10 +541,9 @@ NSString *NSTextInsertionUndoableAttributeName;
     
     id result = [inputMethodHandler callWebScriptMethod:@"call" withArguments:[NSArray arrayWithObjects:inputMethodHandler, eventParam, nil]];
     if (![result respondsToSelector:@selector(boolValue)] || ![result boolValue]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wundeclared-selector"
+        IGNORE_WARNINGS_BEGIN("undeclared-selector")
         [sender doCommandBySelector:@selector(noop:)]; // AppKit sends noop: if the ime does not handle an event
-#pragma clang diagnostic pop
+        IGNORE_WARNINGS_END
     }
 
     inputMethodView = nil;

@@ -38,8 +38,11 @@
 #include "HTMLInputElement.h"
 #include "HTMLLegendElement.h"
 #include "HTMLTextAreaElement.h"
+#include "Quirks.h"
 #include "RenderBox.h"
 #include "RenderTheme.h"
+#include "ScriptDisallowedScope.h"
+#include "Settings.h"
 #include "StyleTreeResolver.h"
 #include "ValidationMessage.h"
 #include <wtf/IsoMallocInlines.h>
@@ -79,7 +82,7 @@ HTMLFormControlElement::~HTMLFormControlElement()
 
 String HTMLFormControlElement::formEnctype() const
 {
-    const AtomicString& formEnctypeAttr = attributeWithoutSynchronization(formenctypeAttr);
+    const AtomString& formEnctypeAttr = attributeWithoutSynchronization(formenctypeAttr);
     if (formEnctypeAttr.isNull())
         return emptyString();
     return FormSubmission::Attributes::parseEncodingType(formEnctypeAttr);
@@ -110,13 +113,13 @@ bool HTMLFormControlElement::formNoValidate() const
 
 String HTMLFormControlElement::formAction() const
 {
-    const AtomicString& value = attributeWithoutSynchronization(formactionAttr);
+    const AtomString& value = attributeWithoutSynchronization(formactionAttr);
     if (value.isEmpty())
         return document().url();
     return getURLAttribute(formactionAttr);
 }
 
-void HTMLFormControlElement::setFormAction(const AtomicString& value)
+void HTMLFormControlElement::setFormAction(const AtomString& value)
 {
     setAttributeWithoutSynchronization(formactionAttr, value);
 }
@@ -144,7 +147,7 @@ void HTMLFormControlElement::setAncestorDisabled(bool isDisabled)
         disabledStateChanged();
 }
 
-void HTMLFormControlElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLFormControlElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == formAttr)
         formAttributeChanged();
@@ -279,7 +282,9 @@ static void removeInvalidElementToAncestorFromInsertionPoint(const HTMLFormContr
 
 Node::InsertedIntoAncestorResult HTMLFormControlElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    m_dataListAncestorState = Unknown;
+    if (m_dataListAncestorState == NotInsideDataList)
+        m_dataListAncestorState = Unknown;
+
     setNeedsWillValidateCheck();
     if (willValidate() && !isValidFormControlElement())
         addInvalidElementToAncestorFromInsertionPoint(*this, &parentOfInsertedTree);
@@ -302,12 +307,21 @@ void HTMLFormControlElement::removedFromAncestor(RemovalType removalType, Contai
     m_validationMessage = nullptr;
     if (m_disabledByAncestorFieldset)
         setAncestorDisabled(computeIsDisabledByFieldsetAncestor());
-    m_dataListAncestorState = Unknown;
+
+    bool wasInsideDataList = false;
+    if (m_dataListAncestorState == InsideDataList) {
+        m_dataListAncestorState = Unknown;
+        wasInsideDataList = true;
+    }
+
     HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
     FormAssociatedElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 
     if (wasMatchingInvalidPseudoClass)
         removeInvalidElementToAncestorFromInsertionPoint(*this, &oldParentOfRemovedTree);
+
+    if (wasInsideDataList)
+        setNeedsWillValidateCheck();
 }
 
 void HTMLFormControlElement::setChangedSinceLastFormControlChangeEvent(bool changed)
@@ -372,6 +386,8 @@ bool HTMLFormControlElement::isMouseFocusable() const
 #if PLATFORM(GTK) || PLATFORM(QT)
     return HTMLElement::isMouseFocusable();
 #else
+    if (needsMouseFocusableQuirk())
+        return HTMLElement::isMouseFocusable();
     return false;
 #endif
 }
@@ -516,7 +532,13 @@ void HTMLFormControlElement::focusAndShowValidationMessage()
 {
     // Calling focus() will scroll the element into view.
     focus();
-    updateVisibleValidationMessage();
+
+    // focus() will scroll the element into view and this scroll may happen asynchronously.
+    // Because scrolling the view hides the validation message, we need to show the validation
+    // message asynchronously as well.
+    callOnMainThread([this, protectedThis = makeRef(*this)] {
+        updateVisibleValidationMessage();
+    });
 }
 
 inline bool HTMLFormControlElement::isValidFormControlElement() const
@@ -536,8 +558,10 @@ void HTMLFormControlElement::willChangeForm()
 
 void HTMLFormControlElement::didChangeForm()
 {
+    ScriptDisallowedScope::InMainThread scriptDisallowedScope;
+
     FormAssociatedElement::didChangeForm();
-    if (RefPtr<HTMLFormElement> form = this->form()) {
+    if (auto* form = this->form()) {
         if (m_willValidateInitialized && m_willValidate && !isValidFormControlElement())
             form->registerInvalidAssociatedFormControl(*this);
     }
@@ -596,7 +620,7 @@ void HTMLFormControlElement::dispatchBlurEvent(RefPtr<Element>&& newFocusedEleme
 
 bool HTMLFormControlElement::shouldAutocorrect() const
 {
-    const AtomicString& autocorrectValue = attributeWithoutSynchronization(autocorrectAttr);
+    const AtomString& autocorrectValue = attributeWithoutSynchronization(autocorrectAttr);
     if (!autocorrectValue.isEmpty())
         return !equalLettersIgnoringASCIICase(autocorrectValue, "off");
     if (RefPtr<HTMLFormElement> form = this->form())
@@ -647,6 +671,12 @@ AutofillData HTMLFormControlElement::autofillData() const
     // owner's autocomplete attribute changed or the form owner itself changed.
 
     return AutofillData::createFromHTMLFormControlElement(*this);
+}
+
+// FIXME: We should remove the quirk once <rdar://problem/47334655> is fixed.
+bool HTMLFormControlElement::needsMouseFocusableQuirk() const
+{
+    return document().quirks().needsFormControlToBeMouseFocusable();
 }
 
 } // namespace Webcore

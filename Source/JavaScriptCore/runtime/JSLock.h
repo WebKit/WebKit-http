@@ -26,7 +26,7 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Threading.h>
-#include <wtf/text/AtomicStringTable.h>
+#include <wtf/text/AtomStringTable.h>
 
 namespace JSC {
 
@@ -92,11 +92,11 @@ public:
 
     VM* vm() { return m_vm; }
 
-    std::optional<RefPtr<Thread>> ownerThread() const
+    Optional<RefPtr<Thread>> ownerThread() const
     {
         if (m_hasOwnerThread)
             return m_ownerThread;
-        return std::nullopt;
+        return WTF::nullopt;
     }
     bool currentThreadIsHoldingLock() { return m_hasOwnerThread && m_ownerThread.get() == &Thread::current(); }
 
@@ -140,7 +140,7 @@ private:
     unsigned m_lockDropDepth;
     bool m_shouldReleaseHeapAccess;
     VM* m_vm;
-    AtomicStringTable* m_entryAtomicStringTable; 
+    AtomStringTable* m_entryAtomStringTable; 
 };
 
 } // namespace

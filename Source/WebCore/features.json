@@ -25,7 +25,7 @@
     {
         "name": "Beacon API",
         "status": {
-            "status": "Supported In Preview"
+            "status": "Supported"
         },
         "url": "https://www.w3.org/TR/beacon/",
         "webkit-url": "https://webkit.org/b/147885",
@@ -37,6 +37,15 @@
             "email": "cdumez@apple.com",
             "twitter": "@chris_dumez"
         }
+    },
+    {
+        "name": "CSS Animation Worklet API",
+        "status": {
+            "status": "Under Consideration"
+        },
+        "url": "https://drafts.css-houdini.org/css-animationworklet/",
+        "keywords": ["css", "houdini", "animation", "worklet"],
+        "category": "css"
     },
     {
         "name": "CSS Color Level 4",
@@ -52,7 +61,7 @@
     {
         "name": "CSS Font Display",
         "status": {
-            "status": "In Development",
+            "status": "Supported",
             "enabled-by-default": false
         },
         "url": "https://drafts.csswg.org/css-fonts-4/#font-display-desc",
@@ -108,6 +117,28 @@
         "category": "css"
     },
     {
+        "name": "CSS Layout API Level 1",
+        "status": {
+            "status": "Under Consideration"
+        },
+        "url": "https://drafts.css-houdini.org/css-layout-api/",
+        "keywords": ["css", "houdini", "layout", "worklet"],
+        "category": "css"
+    },
+    {
+        "name": "CSS Logical Properties and Values Level 1",
+        "status": {
+            "status": "In Development"
+        },
+        "url": "https://drafts.csswg.org/css-logical/",
+        "keywords": ["css", "css-logical", "flow-relative", "logical"],
+        "category": "css",
+        "contact": {
+            "name": "Oriol Brufau",
+            "email": "obrufau@igalia.com"
+        }
+    },
+    {
         "name": "CSS Media Queries Level 4",
         "url": "http://dev.w3.org/csswg/mediaqueries-4/",
         "keywords": ["css media queries", "media queries"],
@@ -116,10 +147,11 @@
     {
         "name": "CSS Painting API Level 1",
         "status": {
-            "status": "Under Consideration"
+            "status": "In Development"
         },
-        "url": "https://drafts.css-houdini.org/css-paint-api/",
-        "keywords": ["css", "houdini"],
+        "url": "https://drafts.css-houdini.org/css-paint-api-1/",
+        "keywords": ["css", "houdini", "worklet"],
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=190217",
         "category": "css"
     },
     {
@@ -131,10 +163,12 @@
     {
         "name": "CSS Properties and Values API Level 1",
         "status": {
-            "status": "Under Consideration"
+            "status": "In Development"
         },
         "url": "https://drafts.css-houdini.org/css-properties-values-api/",
-        "keywords": ["css", "houdini"],
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=189692",
+        "keywords": ["css", "houdini", "custom properties"],
+        "description": "An API for registering new CSS properties. Properties registered using this API are provided with a parse syntax that defines a type, inheritance behaviour, and an initial value.",
         "category": "css"
     },
     {
@@ -180,10 +214,25 @@
         }
     },
     {
+        "name": "CSS Shadow Parts",
+        "status": {
+            "status": "Under Consideration"
+        },
+        "url": "https://drafts.csswg.org/css-shadow-parts/",
+        "webkit-url": "https://webkit.org/b/149443",
+        "keywords": ["css selectors", "selectors", "shadow dom", "shadow parts"],
+        "category": "css",
+        "description": "Allows web components to define and expose stylable parts",
+        "contact": {
+            "name": "Ryosuke Niwa",
+            "email": "rniwa@webkit.org"
+        }
+    },
+    {
         "name": "CSS Text Decoration Level 4",
         "status": {
-            "status": "Under Consideration",
-            "enabled-by-default": false
+            "status": "Supported",
+            "enabled-by-default": true
         },
         "url": "https://drafts.csswg.org/css-text-decor-4/",
         "keywords": ["css text decoration", "text decoration"],
@@ -194,6 +243,16 @@
             "twitter": "@Litherum",
             "email": "mmaxfield@apple.com"
         }
+    },
+    {
+        "name": "CSS Typed OM Level 1",
+        "status": {
+            "status": "Under Development"
+        },
+        "url": "https://drafts.css-houdini.org/css-typed-om/",
+        "keywords": ["css", "houdini"],
+        "category": "css",
+        "description": "Exposes CSS values as typed JavaScript objects to facilitate their performant manipulation."
     },
     {
         "name": "CSS Variables",
@@ -383,11 +442,11 @@
     {
         "name": "Intersection Observer",
         "status": {
-            "status": "In Development"
+            "status": "Supported"
         },
         "url": "https://wicg.github.io/IntersectionObserver/",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=159475",
-        "keywords": ["intersection", "intersection observer"],
+        "keywords": ["intersection", "intersection observer", "intersectionobserver"],
         "description": "An API that can be used to understand the visibility and position of DOM elements relative to a containing element or to the top-level viewport."
     },
     {
@@ -430,13 +489,24 @@
             "enabled-by-default": true
         },
         "url": "https://w3c.github.io/performance-timeline/",
-        "keywords": ["performance", "performance observer", "performance timeline"],
+        "keywords": ["performance", "performance observer", "performanceobserver", "performance timeline"],
         "description": "An API to observe performance timeline entries at idle times.",
         "contact": {
             "name": "Joseph Pecoraro",
             "email": "joepeck@webkit.org",
             "twitter": "@JosephPecoraro"
         }
+    },
+    {
+        "name": "Pointer Events Level 2",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "https://www.w3.org/TR/pointerevents/",
+        "keywords": ["dom", "events", "touch", "mouse", "stylus"],
+        "category": "html",
+        "description": "Pointer Events describes events and related interfaces for handling hardware agnostic pointer input from devices including a mouse, pen, touchscreen, etc."
     },
     {
         "name": "Pointer Lock",
@@ -482,7 +552,7 @@
     {
         "name": "SVG in OpenType Fonts",
         "status": {
-            "status": "Under Consideration"
+            "status": "Supported"
         },
         "url": "https://www.microsoft.com/typography/otspec/svg.htm/",
         "keywords": ["svg", "font", "opentype", "OT-SVG"],
@@ -601,7 +671,22 @@
         "description": "A JavaScript API for web applications to perform cryptographic operations.",
         "contact": {
             "name": "Jiewen Tan",
-            "email": "jiewen_tan@apple.com"
+            "email": "jiewen_tan@apple.com",
+            "twitter": "@alanwaketan"
+        }
+    },
+    {
+        "name": "Web SQL Database",
+        "status": {
+            "status": "Removed In Preview"
+        },
+        "url": "https://dev.w3.org/html5/webdatabase/",
+        "keywords": ["websql", "web sql", "db", "storage", "database"],
+        "description": "An API for storing data in databases that can be queried using a variant of SQL.",
+        "contact": {
+            "name": "Jon Davis",
+            "twitter": "@jonathandavis",
+            "email": "web-evangelist@apple.com"
         }
     },
     {
@@ -655,6 +740,15 @@
             "twitter": "@svillarsenin",
             "email": "svillar@igalia.com"
         }
+    },
+    {
+        "name": "Worklets Level 1",
+        "status": {
+            "status": "Under Consideration"
+        },
+        "url": "https://drafts.css-houdini.org/worklets/",
+        "keywords": ["houdini", "worklet"],
+        "description": "An API for running scripts in stages of the rendering pipeline independent of the main javascript execution environment"
     }
     ],
 
@@ -793,7 +887,7 @@
     {
         "name": "Conic Gradients",
         "status": {
-            "status": "In Development"
+            "status": "Supported"
         },
         "url": "https://www.w3.org/TR/css4-images/#conic-gradients",
         "specification": "CSS Image Values and Replaced Content Module Level 4",
@@ -819,6 +913,22 @@
         }
     },
     {
+        "name": "Datalist Element",
+        "status": {
+            "status": "Supported"
+        },
+        "url": "https://html.spec.whatwg.org/multipage/form-elements.html#the-datalist-element",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=27247",
+        "specification": "HTML5",
+        "category": "html",
+        "description": "The datalist element represents a set of option elements that represent predefined options for other controls.",
+        "contact": {
+            "name": "Jon Davis",
+            "twitter": "@jonathandavis",
+            "email": "web-evangelist@apple.com"
+        }
+    },
+    {
         "name": "Download Attribute",
         "status": {
             "status": "Supported"
@@ -826,6 +936,7 @@
         "url": "https://html.spec.whatwg.org/multipage/semantics.html#downloading-resources",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=156056",
         "specification": "HTML5",
+        "category": "html",
         "description": "An attribute to an anchor or area element to indicate that a resource is intended to be downloaded for use later rather than immediately.",
         "contact": {
             "name": "Brent Fulgham",
@@ -853,7 +964,7 @@
     {
         "name": "File and Directory Entries API",
         "status": {
-            "status": "In Development"
+            "status": "Supported"
         },
         "url": "https://wicg.github.io/entries-api/",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=175976",
@@ -972,7 +1083,7 @@
     {
         "name": "MediaStream Recording API",
         "status": {
-            "status": "Under Consideration"
+            "status": "In Development"
         },
         "url": "https://w3c.github.io/mediacapture-record",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=85851",
@@ -1007,6 +1118,7 @@
         "url": "https://html.spec.whatwg.org/multipage/embedded-content.html#the-picture-element",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=116963",
         "specification": "HTML5",
+        "category": "html",
         "description": "Enable handling the art-direction responsive images use-case by defining multiple image sources in markup",
         "contact": {
             "name": "Yoav Weiss",
@@ -1028,13 +1140,28 @@
     {
         "name": "Readable Streams",
         "status": {
-            "status": "In Development",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "https://streams.spec.whatwg.org/#rs",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=138967",
         "specification": "Streams",
         "comment": "The implementation does not support ReadableStreamBYOBReader."
+    },
+    {
+        "name": "Resize Observer",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "https://drafts.csswg.org/resize-observer/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=157743",
+        "keywords": ["resize", "resize observer", "resizeobserver"],
+        "description": "An API for observing changes to Element's size.",
+        "contact": {
+            "name": "Cathie Chen",
+            "email": "cathiechen@igalia.com"
+        }
     },
     {
         "name": "Scroll Anchoring",
@@ -1124,7 +1251,7 @@
     {
         "name": "Subresource Integrity",
         "status": {
-            "status": "Supported In Preview"
+            "status": "Supported"
         },
         "url": "https://w3c.github.io/webappsec-subresource-integrity/",
         "description": "Extends script and link elements with an integrity attribute that contains a cryptographic hash of the representation of the resource the author expects to load.",
@@ -1161,7 +1288,7 @@
     {
         "name": "Variation Fonts",
         "status": {
-            "status": "In Development",
+            "status": "Supported",
             "enabled-by-default": false
         },
         "url": "https://drafts.csswg.org/css-fonts-4/",
@@ -1183,7 +1310,7 @@
     {
         "name": "Visual Viewport API",
         "status": {
-            "status": "In Development"
+            "status": "Supported In Preview"
         },
         "url": "https://wicg.github.io/visual-viewport/",
         "description": "A proposal to add explicit APIs to the Web for querying and setting the visual viewport.",
@@ -1192,7 +1319,7 @@
     {
         "name": "Web Audio",
         "status": {
-            "status": "In Development"
+            "status": "Partially Supported"
         },
         "url": "https://www.w3.org/TR/webaudio/",
         "keywords": ["audio", "webaudio"],
@@ -1202,12 +1329,17 @@
     {
         "name": "Web Authentication",
         "status": {
-            "status": "In Development"
+            "status": "Supported In Preview"
         },
         "url": "https://w3c.github.io/webauthn/",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=181943",
         "keywords": ["authentication", "credentials", "webauthn"],
-        "description": "An API enabling the creation and use of strong, attested, cryptographic scoped credentials by web applications, for the purpose of strongly authenticating users."
+        "description": "An API enabling the creation and use of strong, attested, cryptographic scoped credentials by web applications, for the purpose of strongly authenticating users.",
+        "contact": {
+            "name": "Jiewen Tan",
+            "email": "jiewen_tan@apple.com",
+            "twitter": "@alanwaketan"
+        }
     },
     {
         "name": "Web Bluetooth",
@@ -1230,7 +1362,7 @@
     {
         "name": "Web Share",
         "status": {
-            "status": "In Development"
+            "status": "Supported"
         },
         "url": "https://github.com/WICG/web-share/blob/master/docs/interface.md",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=171100",

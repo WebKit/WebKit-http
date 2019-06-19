@@ -29,15 +29,16 @@
 
 #include "Logging.h"
 #include <WebCore/BitmapImage.h>
-#include <WebCore/FileSystem.h>
 #include <WebCore/Image.h>
 #include <WebCore/SQLiteStatement.h>
 #include <WebCore/SQLiteTransaction.h>
 #include <WebCore/SharedBuffer.h>
-#include <WebCore/URL.h>
+#include <wtf/FileSystem.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/URL.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 // For methods that are meant to support API from the main thread - should not be called internally
 #define ASSERT_NOT_SYNC_THREAD() ASSERT(!m_syncThreadRunning || !IS_ICON_SYNC_THREAD())
@@ -1083,7 +1084,7 @@ void IconDatabase::performURLImport()
     // Note that IconInfo.stamp is only set when the icon data is retrieved from the server (and thus is not updated whether
     // we use it or not). This code works anyway because the IconDatabase downloads icons again if they are older than 4 days,
     // so if the timestamp goes back in time more than those 30 days we can be sure that the icon was not used at all.
-    String importQuery = String::format("SELECT PageURL.url, IconInfo.url, IconInfo.stamp FROM PageURL INNER JOIN IconInfo ON PageURL.iconID=IconInfo.iconID WHERE IconInfo.stamp > %.0f;", floor((WallTime::now() - notUsedIconExpirationTime).secondsSinceEpoch().seconds()));
+    String importQuery = makeString("SELECT PageURL.url, IconInfo.url, IconInfo.stamp FROM PageURL INNER JOIN IconInfo ON PageURL.iconID=IconInfo.iconID WHERE IconInfo.stamp > ", floor((WallTime::now() - notUsedIconExpirationTime).secondsSinceEpoch().seconds()), ';');
 
     SQLiteStatement query(m_syncDB, importQuery);
 

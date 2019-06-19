@@ -28,7 +28,6 @@
 #if ENABLE(DFG_JIT)
 
 #include "DFGAbstractHeap.h"
-#include "DFGEdgeUsesStructure.h"
 #include "DFGGraph.h"
 #include "DFGHeapLocation.h"
 #include "DFGLazyNode.h"
@@ -107,14 +106,11 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     // information that clobberize() passes to write() and def(). Other clients of clobberize() can
     // just ignore def() by using a NoOpClobberize functor.
 
-    if (edgesUseStructure(graph, node))
-        read(JSCell_structureID);
-    
     // We allow the runtime to perform a stack scan at any time. We don't model which nodes get implemented
     // by calls into the runtime. For debugging we might replace the implementation of any node with a call
     // to the runtime, and that call may walk stack. Therefore, each node must read() anything that a stack
     // scan would read. That's what this does.
-    for (InlineCallFrame* inlineCallFrame = node->origin.semantic.inlineCallFrame; inlineCallFrame; inlineCallFrame = inlineCallFrame->directCaller.inlineCallFrame) {
+    for (InlineCallFrame* inlineCallFrame = node->origin.semantic.inlineCallFrame(); inlineCallFrame; inlineCallFrame = inlineCallFrame->directCaller.inlineCallFrame()) {
         if (inlineCallFrame->isClosureCall)
             read(AbstractHeap(Stack, inlineCallFrame->stackOffset + CallFrameSlot::callee));
         if (inlineCallFrame->isVarargs())
@@ -127,7 +123,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     // The debugger's machinery is free to take a stack trace and try to read from
     // a scope which is expected to be flushed to the stack.
     if (graph.hasDebuggerEnabled()) {
-        ASSERT(!node->origin.semantic.inlineCallFrame);
+        ASSERT(!node->origin.semantic.inlineCallFrame());
         read(AbstractHeap(Stack, graph.m_codeBlock->scopeRegister()));
     }
     
@@ -176,6 +172,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case SameValue:
     case IsEmpty:
     case IsUndefined:
+    case IsUndefinedOrNull:
     case IsBoolean:
     case IsNumber:
     case NumberIsInteger:
@@ -262,9 +259,27 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(PureValue(node, node->queriedType()));
         return;
 
-    case BitAnd:
-    case BitOr:
-    case BitXor:
+    case ValueBitNot:
+        if (node->child1().useKind() == BigIntUse) {
+            def(PureValue(node));
+            return;
+        }
+        read(World);
+        write(Heap);
+        return;
+
+    case ArithBitNot:
+        if (node->child1().useKind() == UntypedUse) {
+            read(World);
+            write(Heap);
+            return;
+        }
+        def(PureValue(node));
+        return;
+
+    case ArithBitAnd:
+    case ArithBitOr:
+    case ArithBitXor:
     case BitLShift:
     case BitRShift:
     case BitURShift:
@@ -306,7 +321,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             if (mode.isInBounds()) {
                 read(Butterfly_publicLength);
                 read(IndexedInt32Properties);
-                def(HeapLocation(HasIndexedPropertyLoc, IndexedInt32Properties, node->child1(), node->child2()), LazyNode(node));
+                def(HeapLocation(HasIndexedPropertyLoc, IndexedInt32Properties, graph.varArgChild(node, 0), graph.varArgChild(node, 1)), LazyNode(node));
                 return;
             }
             read(Heap);
@@ -317,7 +332,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             if (mode.isInBounds()) {
                 read(Butterfly_publicLength);
                 read(IndexedDoubleProperties);
-                def(HeapLocation(HasIndexedPropertyLoc, IndexedDoubleProperties, node->child1(), node->child2()), LazyNode(node));
+                def(HeapLocation(HasIndexedPropertyLoc, IndexedDoubleProperties, graph.varArgChild(node, 0), graph.varArgChild(node, 1)), LazyNode(node));
                 return;
             }
             read(Heap);
@@ -328,7 +343,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             if (mode.isInBounds()) {
                 read(Butterfly_publicLength);
                 read(IndexedContiguousProperties);
-                def(HeapLocation(HasIndexedPropertyLoc, IndexedContiguousProperties, node->child1(), node->child2()), LazyNode(node));
+                def(HeapLocation(HasIndexedPropertyLoc, IndexedContiguousProperties, graph.varArgChild(node, 0), graph.varArgChild(node, 1)), LazyNode(node));
                 return;
             }
             read(Heap);
@@ -435,7 +450,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case Upsilon:
     case Phi:
     case PhantomLocal:
-    case SetArgument:
+    case SetArgumentDefinitely:
+    case SetArgumentMaybe:
     case Jump:
     case Branch:
     case Switch:
@@ -498,7 +514,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
 
     case CreateActivation: {
         SymbolTable* table = node->castOperand<SymbolTable*>();
-        if (table->singletonScope()->isStillValid())
+        if (table->singleton().isStillValid())
             write(Watchpoint_fire);
         read(HeapObjectCount);
         write(HeapObjectCount);
@@ -636,7 +652,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case InById:
     case HasOwnProperty:
     case ValueNegate:
-    case ValueAdd:
     case SetFunctionName:
     case GetDynamicVar:
     case PutDynamicVar:
@@ -653,6 +668,24 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case CreateThis:
     case InstanceOf:
     case StringValueOf:
+    case ObjectKeys:
+        read(World);
+        write(Heap);
+        return;
+
+    case ValueBitAnd:
+    case ValueBitXor:
+    case ValueBitOr:
+    case ValueAdd:
+    case ValueSub:
+    case ValueMul:
+    case ValueDiv:
+    case ValueMod:
+    case ValuePow:
+        if (node->isBinaryUseKind(BigIntUse)) {
+            def(PureValue(node));
+            return;
+        }
         read(World);
         write(Heap);
         return;
@@ -680,7 +713,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     }
 
     case CallEval:
-        ASSERT(!node->origin.semantic.inlineCallFrame);
+        ASSERT(!node->origin.semantic.inlineCallFrame());
         read(AbstractHeap(Stack, graph.m_codeBlock->scopeRegister()));
         read(AbstractHeap(Stack, virtualRegisterForArgument(0)));
         read(World);
@@ -1514,9 +1547,9 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         }
     }
 
-
     case NewObject:
     case NewRegexp:
+    case NewSymbol:
     case NewStringObject:
     case PhantomNewObject:
     case MaterializeNewObject:
@@ -1535,7 +1568,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case NewGeneratorFunction:
     case NewAsyncGeneratorFunction:
     case NewAsyncFunction:
-        if (node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid())
+        if (node->castOperand<FunctionExecutable*>()->singleton().isStillValid())
             write(Watchpoint_fire);
         read(HeapObjectCount);
         write(HeapObjectCount);
@@ -1614,17 +1647,18 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ToString:
     case CallStringConstructor:
         switch (node->child1().useKind()) {
-        case StringObjectUse:
-        case StringOrStringObjectUse:
-            // These don't def a pure value, unfortunately. I'll avoid load-eliminating these for
-            // now.
-            return;
-            
         case CellUse:
         case UntypedUse:
             read(World);
             write(Heap);
             return;
+
+        case StringObjectUse:
+        case StringOrStringObjectUse:
+            // These two StringObjectUse's are pure because if we emit this node with either
+            // of these UseKinds, we'll first emit a StructureCheck ensuring that we're the
+            // original String or StringObject structure. Therefore, we don't have an overridden
+            // valueOf, etc.
 
         case Int32Use:
         case Int52RepUse:

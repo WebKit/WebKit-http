@@ -31,6 +31,19 @@
 
 #include <WebCore/RefPtrCairo.h>
 #include <gtk/gtk.h>
+#include <wtf/glib/GRefPtr.h>
+
+#if USE(WPE_RENDERER)
+#include <wpe/fdo.h>
+#endif
+
+typedef void* EGLImageKHR;
+typedef struct _GdkGLContext GdkGLContext;
+struct wpe_fdo_egl_exported_image;
+
+namespace WebCore {
+class GLContext;
+}
 
 namespace WebKit {
 
@@ -42,16 +55,35 @@ public:
     static std::unique_ptr<AcceleratedBackingStoreWayland> create(WebPageProxy&);
     ~AcceleratedBackingStoreWayland();
 
-#if GTK_CHECK_VERSION(3, 16, 0)
-    bool canGdkUseGL() const;
-#endif
-
 private:
     AcceleratedBackingStoreWayland(WebPageProxy&);
 
+    void tryEnsureGLContext();
+#if USE(WPE_RENDERER)
+    void displayBuffer(struct wpe_fdo_egl_exported_image*);
+#endif
+
     bool paint(cairo_t*, const WebCore::IntRect&) override;
+    bool makeContextCurrent() override;
+#if USE(WPE_RENDERER)
+    void update(const LayerTreeContext&) override;
+    int renderHostFileDescriptor() override;
+#endif
 
     RefPtr<cairo_surface_t> m_surface;
+    bool m_glContextInitialized { false };
+#if GTK_CHECK_VERSION(3, 16, 0)
+    GRefPtr<GdkGLContext> m_gdkGLContext;
+#endif
+    std::unique_ptr<WebCore::GLContext> m_glContext;
+
+#if USE(WPE_RENDERER)
+    struct wpe_view_backend_exportable_fdo* m_exportable { nullptr };
+    uint64_t m_surfaceID { 0 };
+    unsigned m_viewTexture { 0 };
+    struct wpe_fdo_egl_exported_image* m_committedImage { nullptr };
+    struct wpe_fdo_egl_exported_image* m_pendingImage { nullptr };
+#endif
 };
 
 } // namespace WebKit

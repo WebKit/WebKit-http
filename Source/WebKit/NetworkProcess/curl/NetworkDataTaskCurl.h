@@ -25,9 +25,9 @@
 
 #pragma once
 
-#include "CurlRequestClient.h"
 #include "NetworkDataTask.h"
-#include <WebCore/NetworkLoadMetrics.h>
+#include <WebCore/CurlRequestClient.h>
+#include <WebCore/ProtectionSpace.h>
 #include <WebCore/ResourceResponse.h>
 
 namespace WebCore {
@@ -56,7 +56,6 @@ private:
 
     NetworkDataTaskCurl(NetworkSession&, NetworkDataTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentialsPolicy, WebCore::ContentSniffingPolicy, WebCore::ContentEncodingSniffingPolicy, bool shouldClearReferrerOnHTTPSToHTTPRedirect, bool dataTaskIsForMainFrameNavigation);
 
-    void suspend() override;
     void cancel() override;
     void resume() override;
     void invalidateAndCancel() override;
@@ -64,20 +63,24 @@ private:
 
     Ref<WebCore::CurlRequest> createCurlRequest(WebCore::ResourceRequest&&, RequestStatus = RequestStatus::NewRequest);
     void curlDidSendData(WebCore::CurlRequest&, unsigned long long, unsigned long long) override;
-    void curlDidReceiveResponse(WebCore::CurlRequest&, const WebCore::CurlResponse&) override;
+    void curlDidReceiveResponse(WebCore::CurlRequest&, WebCore::CurlResponse&&) override;
     void curlDidReceiveBuffer(WebCore::CurlRequest&, Ref<WebCore::SharedBuffer>&&) override;
-    void curlDidComplete(WebCore::CurlRequest&) override;
-    void curlDidFailWithError(WebCore::CurlRequest&, const WebCore::ResourceError&) override;
+    void curlDidComplete(WebCore::CurlRequest&, WebCore::NetworkLoadMetrics&&) override;
+    void curlDidFailWithError(WebCore::CurlRequest&, WebCore::ResourceError&&, WebCore::CertificateInfo&&) override;
+
+    void invokeDidReceiveResponse();
 
     bool shouldRedirectAsGET(const WebCore::ResourceRequest&, bool crossOrigin);
     void willPerformHTTPRedirection();
 
     void tryHttpAuthentication(WebCore::AuthenticationChallenge&&);
     void tryProxyAuthentication(WebCore::AuthenticationChallenge&&);
-    void restartWithCredential(const WebCore::Credential&);
+    void restartWithCredential(const WebCore::ProtectionSpace&, const WebCore::Credential&);
+
+    void tryServerTrustEvaluation(WebCore::AuthenticationChallenge&&);
 
     void appendCookieHeader(WebCore::ResourceRequest&);
-    void handleCookieHeaders(const WebCore::CurlResponse&);
+    void handleCookieHeaders(const WebCore::ResourceRequest&, const WebCore::CurlResponse&);
 
     State m_state { State::Suspended };
 
@@ -85,6 +88,7 @@ private:
     WebCore::ResourceResponse m_response;
     unsigned m_redirectCount { 0 };
     unsigned m_authFailureCount { 0 };
+    MonotonicTime m_startTime;
 };
 
 } // namespace WebKit

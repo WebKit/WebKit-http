@@ -78,7 +78,7 @@ public:
     static bool resourceLoadStatisticsEnabled() { return gResourceLoadStatisticsEnabledEnabled; }
     WEBCORE_EXPORT static void setResourceLoadStatisticsEnabled(bool);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WEBCORE_EXPORT static void setAudioSessionCategoryOverride(unsigned);
     static unsigned audioSessionCategoryOverride();
 
@@ -103,14 +103,6 @@ public:
     static void setShouldManageAudioSessionCategory(bool flag) { gManageAudioSession = flag; }
     static bool shouldManageAudioSessionCategory() { return gManageAudioSession; }
 #endif
-    
-#if ENABLE(MEDIA_STREAM)
-    static bool mockCaptureDevicesEnabled();
-    WEBCORE_EXPORT static void setMockCaptureDevicesEnabled(bool);
-
-    static bool mediaCaptureRequiresSecureConnection();
-    WEBCORE_EXPORT static void setMediaCaptureRequiresSecureConnection(bool);
-#endif
 
     WEBCORE_EXPORT static void setAllowsAnySSLCertificate(bool);
     static bool allowsAnySSLCertificate();
@@ -133,18 +125,13 @@ private:
     static bool gShouldUseHighResolutionTimers;
 #endif
     static bool gShouldRespectPriorityInCSSAttributeSetters;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     static bool gNetworkDataUsageTrackingEnabled;
     WEBCORE_EXPORT static bool gAVKitEnabled;
     WEBCORE_EXPORT static bool gShouldOptOutOfNetworkStateObservation;
     WEBCORE_EXPORT static bool gDisableScreenSizeOverride;
 #endif
     WEBCORE_EXPORT static bool gManageAudioSession;
-    
-#if ENABLE(MEDIA_STREAM)
-    static bool gMockCaptureDevicesEnabled;
-    static bool gMediaCaptureRequiresSecureConnection;
-#endif
 
     static bool gLowPowerVideoAudioBufferSizeEnabled;
     static bool gResourceLoadStatisticsEnabledEnabled;

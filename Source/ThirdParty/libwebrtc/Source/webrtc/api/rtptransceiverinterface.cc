@@ -10,6 +10,8 @@
 
 #include "api/rtptransceiverinterface.h"
 
+#include "rtc_base/checks.h"
+
 namespace webrtc {
 
 RtpTransceiverInit::RtpTransceiverInit() = default;
@@ -21,6 +23,11 @@ RtpTransceiverInit::~RtpTransceiverInit() = default;
 absl::optional<RtpTransceiverDirection>
 RtpTransceiverInterface::fired_direction() const {
   return absl::nullopt;
+}
+
+void RtpTransceiverInterface::SetCodecPreferences(
+    rtc::ArrayView<RtpCodecCapability>) {
+  RTC_NOTREACHED() << "Not implemented";
 }
 
 }  // namespace webrtc

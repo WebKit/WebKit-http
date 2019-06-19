@@ -61,8 +61,8 @@ template<typename T, typename U> struct Coder<std::pair<T, U>> {
     }
 };
 
-template<typename T> struct Coder<std::optional<T>> {
-    static void encode(Encoder& encoder, const std::optional<T>& optional)
+template<typename T> struct Coder<Optional<T>> {
+    static void encode(Encoder& encoder, const Optional<T>& optional)
     {
         if (!optional) {
             encoder << false;
@@ -73,14 +73,14 @@ template<typename T> struct Coder<std::optional<T>> {
         encoder << optional.value();
     }
     
-    static bool decode(Decoder& decoder, std::optional<T>& optional)
+    static bool decode(Decoder& decoder, Optional<T>& optional)
     {
         bool isEngaged;
         if (!decoder.decode(isEngaged))
             return false;
         
         if (!isEngaged) {
-            optional = std::nullopt;
+            optional = WTF::nullopt;
             return true;
         }
         
@@ -282,9 +282,9 @@ template<> struct Coder<WallTime> {
     }
 };
 
-template<> struct Coder<AtomicString> {
-    WTF_EXPORT_PRIVATE static void encode(Encoder&, const AtomicString&);
-    WTF_EXPORT_PRIVATE static bool decode(Decoder&, AtomicString&);
+template<> struct Coder<AtomString> {
+    WTF_EXPORT_PRIVATE static void encode(Encoder&, const AtomString&);
+    WTF_EXPORT_PRIVATE static bool decode(Decoder&, AtomString&);
 };
 
 template<> struct Coder<CString> {

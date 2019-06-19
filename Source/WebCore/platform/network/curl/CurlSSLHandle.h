@@ -73,7 +73,7 @@ public:
     bool canIgnoreAnyHTTPSCertificatesForHost(const String&) const;
 
     WEBCORE_EXPORT void setClientCertificateInfo(const String&, const String&, const String&);
-    std::optional<ClientCertificate> getSSLClientCertificate(const String&) const;
+    Optional<ClientCertificate> getSSLClientCertificate(const String&) const;
 
 private:
 #if NEED_OPENSSL_THREAD_SUPPORT
@@ -103,7 +103,7 @@ private:
     };
 #endif
 
-    String getCACertPathEnv();
+    void platformInitialize();
 
     String m_cipherList;
     String m_signatureAlgorithmsList;

@@ -36,6 +36,7 @@
 #include <WebCore/FrameLoader.h>
 #include <WebCore/Page.h>
 #include <WebCore/SchemeRegistry.h>
+#include <WebCore/Settings.h>
 #include <WebCore/SubframeLoader.h>
 #include <wtf/text/StringHash.h>
 
@@ -99,7 +100,7 @@ void WebPluginInfoProvider::refreshPlugins()
 #endif
 }
 
-Vector<PluginInfo> WebPluginInfoProvider::pluginInfo(Page& page, std::optional<Vector<SupportedPluginIdentifier>>& supportedPluginIdentifiers)
+Vector<PluginInfo> WebPluginInfoProvider::pluginInfo(Page& page, Optional<Vector<SupportedPluginIdentifier>>& supportedPluginIdentifiers)
 {
 #if ENABLE(NETSCAPE_PLUGIN_API)
     populatePluginCache(page);
@@ -115,9 +116,9 @@ Vector<PluginInfo> WebPluginInfoProvider::pluginInfo(Page& page, std::optional<V
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 }
 
-Vector<WebCore::PluginInfo> WebPluginInfoProvider::webVisiblePluginInfo(Page& page, const WebCore::URL& url)
+Vector<WebCore::PluginInfo> WebPluginInfoProvider::webVisiblePluginInfo(Page& page, const URL& url)
 {
-    std::optional<Vector<WebCore::SupportedPluginIdentifier>> supportedPluginIdentifiers;
+    Optional<Vector<WebCore::SupportedPluginIdentifier>> supportedPluginIdentifiers;
     auto plugins = pluginInfo(page, supportedPluginIdentifiers);
 
     plugins.removeAllMatching([&] (auto& plugin) {
@@ -146,12 +147,18 @@ Vector<WebCore::PluginInfo> WebPluginInfoProvider::webVisiblePluginInfo(Page& pa
 void WebPluginInfoProvider::populatePluginCache(const WebCore::Page& page)
 {
     if (!m_pluginCacheIsPopulated) {
-        HangDetectionDisabler hangDetectionDisabler;
-
-        if (!WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetPlugins(m_shouldRefreshPlugins),
-            Messages::WebProcessProxy::GetPlugins::Reply(m_cachedPlugins, m_cachedApplicationPlugins, m_cachedSupportedPluginIdentifiers), 0,
-            Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply))
-            return;
+#if PLATFORM(COCOA)
+        // Application plugins are not affected by enablePlugins setting, so we always need to scan plugins to get them.
+        bool shouldScanPlugins = true;
+#else
+        bool shouldScanPlugins = page.mainFrame().loader().subframeLoader().allowPlugins();
+#endif
+        if (shouldScanPlugins) {
+            HangDetectionDisabler hangDetectionDisabler;
+            if (!WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetPlugins(m_shouldRefreshPlugins),
+                Messages::WebProcessProxy::GetPlugins::Reply(m_cachedPlugins, m_cachedApplicationPlugins, m_cachedSupportedPluginIdentifiers), 0))
+                return;
+        }
 
         m_shouldRefreshPlugins = false;
         m_pluginCacheIsPopulated = true;
@@ -172,7 +179,7 @@ void WebPluginInfoProvider::populatePluginCache(const WebCore::Page& page)
 #endif
 
 #if PLATFORM(MAC)
-std::optional<WebCore::PluginLoadClientPolicy> WebPluginInfoProvider::pluginLoadClientPolicyForHost(const String& host, const WebCore::PluginInfo& info) const
+Optional<WebCore::PluginLoadClientPolicy> WebPluginInfoProvider::pluginLoadClientPolicyForHost(const String& host, const WebCore::PluginInfo& info) const
 {
     String hostToLookUp = host;
     String identifier = info.bundleIdentifier;
@@ -189,7 +196,7 @@ std::optional<WebCore::PluginLoadClientPolicy> WebPluginInfoProvider::pluginLoad
         }
     }
     if (policiesByIdentifierIterator == m_hostsToPluginIdentifierData.end())
-        return std::nullopt;
+        return WTF::nullopt;
 
     auto& policiesByIdentifier = policiesByIdentifierIterator->value;
 
@@ -203,7 +210,7 @@ std::optional<WebCore::PluginLoadClientPolicy> WebPluginInfoProvider::pluginLoad
     }
 
     if (identifierPolicyIterator == policiesByIdentifier.end())
-        return std::nullopt;
+        return WTF::nullopt;
 
     auto& versionsToPolicies = identifierPolicyIterator->value;
 
@@ -217,7 +224,7 @@ std::optional<WebCore::PluginLoadClientPolicy> WebPluginInfoProvider::pluginLoad
     }
 
     if (policyIterator == versionsToPolicies.end())
-        return std::nullopt;
+        return WTF::nullopt;
 
     return policyIterator->value;
 }

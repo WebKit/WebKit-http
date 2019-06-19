@@ -24,137 +24,81 @@
  */
 
 #import "config.h"
+
+#import "WKWebpagePreferencesInternal.h"
+#import "WKWebsiteDataStoreInternal.h"
 #import "_WKWebsitePoliciesInternal.h"
 
-#if WK_API_ENABLED
-
-#import "WKWebsiteDataStoreInternal.h"
-
 @implementation _WKWebsitePolicies
-
-- (void)dealloc
-{
-    _websitePolicies->API::WebsitePolicies::~WebsitePolicies();
-    
-    [super dealloc];
-}
 
 - (instancetype)init
 {
     if (!(self = [super init]))
         return nil;
-    
-    API::Object::constructInWrapper<API::WebsitePolicies>(self);
-    
+
+    _webpagePreferences = adoptNS([[WKWebpagePreferences alloc] init]);
     return self;
+}
+
+- (WKWebpagePreferences *)webpagePreferences
+{
+    return _webpagePreferences.get();
 }
 
 - (void)setContentBlockersEnabled:(BOOL)contentBlockersEnabled
 {
-    _websitePolicies->setContentBlockersEnabled(contentBlockersEnabled);
+    [_webpagePreferences _setContentBlockersEnabled:contentBlockersEnabled];
 }
 
 - (BOOL)contentBlockersEnabled
 {
-    return _websitePolicies->contentBlockersEnabled();
+    return [_webpagePreferences _contentBlockersEnabled];
 }
 
 - (void)setAllowedAutoplayQuirks:(_WKWebsiteAutoplayQuirk)allowedQuirks
 {
-    OptionSet<WebKit::WebsiteAutoplayQuirk> quirks;
-
-    if (allowedQuirks & _WKWebsiteAutoplayQuirkInheritedUserGestures)
-        quirks.add(WebKit::WebsiteAutoplayQuirk::InheritedUserGestures);
-
-    if (allowedQuirks & _WKWebsiteAutoplayQuirkSynthesizedPauseEvents)
-        quirks.add(WebKit::WebsiteAutoplayQuirk::SynthesizedPauseEvents);
-
-    if (allowedQuirks & _WKWebsiteAutoplayQuirkArbitraryUserGestures)
-        quirks.add(WebKit::WebsiteAutoplayQuirk::ArbitraryUserGestures);
-
-    _websitePolicies->setAllowedAutoplayQuirks(quirks);
+    [_webpagePreferences _setAllowedAutoplayQuirks:allowedQuirks];
 }
 
 - (_WKWebsiteAutoplayQuirk)allowedAutoplayQuirks
 {
-    _WKWebsiteAutoplayQuirk quirks = 0;
-    auto allowedQuirks = _websitePolicies->allowedAutoplayQuirks();
-
-    if (allowedQuirks.contains(WebKit::WebsiteAutoplayQuirk::InheritedUserGestures))
-        quirks |= _WKWebsiteAutoplayQuirkInheritedUserGestures;
-
-    if (allowedQuirks.contains(WebKit::WebsiteAutoplayQuirk::SynthesizedPauseEvents))
-        quirks |= _WKWebsiteAutoplayQuirkSynthesizedPauseEvents;
-
-    if (allowedQuirks.contains(WebKit::WebsiteAutoplayQuirk::ArbitraryUserGestures))
-        quirks |= _WKWebsiteAutoplayQuirkArbitraryUserGestures;
-
-    return quirks;
+    return [_webpagePreferences _allowedAutoplayQuirks];
 }
 
 - (void)setAutoplayPolicy:(_WKWebsiteAutoplayPolicy)policy
 {
-    switch (policy) {
-    case _WKWebsiteAutoplayPolicyDefault:
-        _websitePolicies->setAutoplayPolicy(WebKit::WebsiteAutoplayPolicy::Default);
-        break;
-    case _WKWebsiteAutoplayPolicyAllow:
-        _websitePolicies->setAutoplayPolicy(WebKit::WebsiteAutoplayPolicy::Allow);
-        break;
-    case _WKWebsiteAutoplayPolicyAllowWithoutSound:
-        _websitePolicies->setAutoplayPolicy(WebKit::WebsiteAutoplayPolicy::AllowWithoutSound);
-        break;
-    case _WKWebsiteAutoplayPolicyDeny:
-        _websitePolicies->setAutoplayPolicy(WebKit::WebsiteAutoplayPolicy::Deny);
-        break;
-    }
+    [_webpagePreferences _setAutoplayPolicy:policy];
 }
 
 - (_WKWebsiteAutoplayPolicy)autoplayPolicy
 {
-    switch (_websitePolicies->autoplayPolicy()) {
-    case WebKit::WebsiteAutoplayPolicy::Default:
-        return _WKWebsiteAutoplayPolicyDefault;
-    case WebKit::WebsiteAutoplayPolicy::Allow:
-        return _WKWebsiteAutoplayPolicyAllow;
-    case WebKit::WebsiteAutoplayPolicy::AllowWithoutSound:
-        return _WKWebsiteAutoplayPolicyAllowWithoutSound;
-    case WebKit::WebsiteAutoplayPolicy::Deny:
-        return _WKWebsiteAutoplayPolicyDeny;
-    }
+    return [_webpagePreferences _autoplayPolicy];
+}
+
+- (void)setDeviceOrientationAndMotionAccessPolicy:(_WKWebsiteDeviceOrientationAndMotionAccessPolicy)policy
+{
+    [_webpagePreferences _setDeviceOrientationAndMotionAccessPolicy:policy];
+}
+
+- (_WKWebsiteDeviceOrientationAndMotionAccessPolicy)deviceOrientationAndMotionAccessPolicy
+{
+    return [_webpagePreferences _deviceOrientationAndMotionAccessPolicy];
 }
 
 - (void)setPopUpPolicy:(_WKWebsitePopUpPolicy)policy
 {
-    switch (policy) {
-    case _WKWebsitePopUpPolicyDefault:
-        _websitePolicies->setPopUpPolicy(WebKit::WebsitePopUpPolicy::Default);
-        break;
-    case _WKWebsitePopUpPolicyAllow:
-        _websitePolicies->setPopUpPolicy(WebKit::WebsitePopUpPolicy::Allow);
-        break;
-    case _WKWebsitePopUpPolicyBlock:
-        _websitePolicies->setPopUpPolicy(WebKit::WebsitePopUpPolicy::Block);
-        break;
-    }
+    [_webpagePreferences _setPopUpPolicy:policy];
 }
 
 - (_WKWebsitePopUpPolicy)popUpPolicy
 {
-    switch (_websitePolicies->popUpPolicy()) {
-    case WebKit::WebsitePopUpPolicy::Default:
-        return _WKWebsitePopUpPolicyDefault;
-    case WebKit::WebsitePopUpPolicy::Allow:
-        return _WKWebsitePopUpPolicyAllow;
-    case WebKit::WebsitePopUpPolicy::Block:
-        return _WKWebsitePopUpPolicyBlock;
-    }
+    return [_webpagePreferences _popUpPolicy];
 }
 
 - (NSDictionary<NSString *, NSString *> *)customHeaderFields
 {
-    const auto& fields = _websitePolicies->customHeaderFields();
-    NSMutableDictionary *dictionary = [[[NSMutableDictionary alloc] initWithCapacity:fields.size()] autorelease];
+    auto& fields = static_cast<API::WebsitePolicies&>([_webpagePreferences _apiObject]).legacyCustomHeaderFields();
+    auto dictionary = [NSMutableDictionary dictionaryWithCapacity:fields.size()];
     for (const auto& field : fields)
         [dictionary setObject:field.value() forKey:field.name()];
     return dictionary;
@@ -162,37 +106,65 @@
 
 - (void)setCustomHeaderFields:(NSDictionary<NSString *, NSString *> *)fields
 {
+    auto websitePolicies = static_cast<API::WebsitePolicies&>([_webpagePreferences _apiObject]);
     Vector<WebCore::HTTPHeaderField> parsedFields;
     parsedFields.reserveInitialCapacity(fields.count);
-    
-    for (NSString* name in fields) {
+    for (NSString *name in fields) {
         auto field = WebCore::HTTPHeaderField::create(name, [fields objectForKey:name]);
         if (field && startsWithLettersIgnoringASCIICase(field->name(), "x-"))
             parsedFields.uncheckedAppend(WTFMove(*field));
     }
-    _websitePolicies->setCustomHeaderFields(WTFMove(parsedFields));
+    websitePolicies.setLegacyCustomHeaderFields(WTFMove(parsedFields));
 }
 
 - (WKWebsiteDataStore *)websiteDataStore
 {
-    return wrapper(_websitePolicies->websiteDataStore());
+    return [_webpagePreferences _websiteDataStore];
 }
 
 - (void)setWebsiteDataStore:(WKWebsiteDataStore *)websiteDataStore
 {
-    _websitePolicies->setWebsiteDataStore(websiteDataStore->_websiteDataStore.get());
+    [_webpagePreferences _setWebsiteDataStore:websiteDataStore];
+}
+
+- (void)setCustomUserAgent:(NSString *)customUserAgent
+{
+    [_webpagePreferences _setCustomUserAgent:customUserAgent];
+}
+
+- (NSString *)customUserAgent
+{
+    return [_webpagePreferences _customUserAgent];
+}
+
+- (void)setCustomJavaScriptUserAgentAsSiteSpecificQuirks:(NSString *)customUserAgent
+{
+    [_webpagePreferences _setCustomJavaScriptUserAgentAsSiteSpecificQuirks:customUserAgent];
+}
+
+- (NSString *)customJavaScriptUserAgentAsSiteSpecificQuirks
+{
+    return [_webpagePreferences _customJavaScriptUserAgentAsSiteSpecificQuirks];
+}
+
+- (void)setCustomNavigatorPlatform:(NSString *)customNavigatorPlatform
+{
+    [_webpagePreferences _setCustomNavigatorPlatform:customNavigatorPlatform];
+}
+
+- (NSString *)customNavigatorPlatform
+{
+    return [_webpagePreferences _customNavigatorPlatform];
 }
 
 - (NSString *)description
 {
-    return [NSString stringWithFormat:@"<%@: %p; contentBlockersEnabled = %d>", NSStringFromClass(self.class), self, self.contentBlockersEnabled];
+    return [NSString stringWithFormat:@"<%@ %@>", self.class, [_webpagePreferences description]];
 }
 
 - (API::Object&)_apiObject
 {
-    return *_websitePolicies;
+    return [_webpagePreferences _apiObject];
 }
 
 @end
-
-#endif

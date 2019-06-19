@@ -26,6 +26,7 @@
 #include "RenderLayerModelObject.h"
 
 #include "RenderLayer.h"
+#include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
 #include "RenderView.h"
 #include "Settings.h"
@@ -170,9 +171,7 @@ void RenderLayerModelObject::styleDidChange(StyleDifference diff, const RenderSt
             createLayer();
             if (parent() && !needsLayout() && containingBlock()) {
                 layer()->setRepaintStatus(NeedsFullRepaint);
-                // There is only one layer to update, it is not worth using |cachedOffset| since
-                // we are not sure the value will be used.
-                layer()->updateLayerPositions(0);
+                layer()->updateLayerPositions();
             }
         }
     } else if (layer() && layer()->parent()) {
@@ -221,7 +220,7 @@ void RenderLayerModelObject::styleDidChange(StyleDifference diff, const RenderSt
         }
     }
     if (oldStyle && oldStyle->scrollSnapArea() != newStyle.scrollSnapArea()) {
-        const RenderBox* scrollSnapBox = enclosingBox().findEnclosingScrollableContainer();
+        auto* scrollSnapBox = enclosingScrollableContainerForSnapping();
         if (scrollSnapBox && scrollSnapBox->layer()) {
             const RenderStyle& style = scrollSnapBox->style();
             if (style.scrollSnapType().strictness != ScrollSnapStrictness::None) {
@@ -238,7 +237,7 @@ void RenderLayerModelObject::styleDidChange(StyleDifference diff, const RenderSt
 bool RenderLayerModelObject::shouldPlaceBlockDirectionScrollbarOnLeft() const
 {
 // RTL Scrollbars require some system support, and this system support does not exist on certain versions of OS X. iOS uses a separate mechanism.
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     return false;
 #else
     switch (settings().userInterfaceDirectionPolicy()) {
@@ -283,6 +282,62 @@ void RenderLayerModelObject::computeRepaintLayoutRects(const RenderLayerModelObj
         clearRepaintLayoutRects();
     else
         setRepaintLayoutRects(RepaintLayoutRects(*this, repaintContainer, geometryMap));
+}
+
+bool RenderLayerModelObject::startTransition(double timeOffset, CSSPropertyID propertyId, const RenderStyle* fromStyle, const RenderStyle* toStyle)
+{
+    if (!layer() || !layer()->backing())
+        return false;
+    return layer()->backing()->startTransition(timeOffset, propertyId, fromStyle, toStyle);
+}
+
+void RenderLayerModelObject::transitionPaused(double timeOffset, CSSPropertyID propertyId)
+{
+    if (!layer() || !layer()->backing())
+        return;
+    layer()->backing()->transitionPaused(timeOffset, propertyId);
+}
+
+void RenderLayerModelObject::transitionFinished(CSSPropertyID propertyId)
+{
+    if (!layer() || !layer()->backing())
+        return;
+    layer()->backing()->transitionFinished(propertyId);
+}
+
+bool RenderLayerModelObject::startAnimation(double timeOffset, const Animation& animation, const KeyframeList& keyframes)
+{
+    if (!layer() || !layer()->backing())
+        return false;
+    return layer()->backing()->startAnimation(timeOffset, animation, keyframes);
+}
+
+void RenderLayerModelObject::animationPaused(double timeOffset, const String& name)
+{
+    if (!layer() || !layer()->backing())
+        return;
+    layer()->backing()->animationPaused(timeOffset, name);
+}
+
+void RenderLayerModelObject::animationSeeked(double timeOffset, const String& name)
+{
+    if (!layer() || !layer()->backing())
+        return;
+    layer()->backing()->animationSeeked(timeOffset, name);
+}
+
+void RenderLayerModelObject::animationFinished(const String& name)
+{
+    if (!layer() || !layer()->backing())
+        return;
+    layer()->backing()->animationFinished(name);
+}
+
+void RenderLayerModelObject::suspendAnimations(MonotonicTime time)
+{
+    if (!layer() || !layer()->backing())
+        return;
+    layer()->backing()->suspendAnimations(time);
 }
 
 } // namespace WebCore

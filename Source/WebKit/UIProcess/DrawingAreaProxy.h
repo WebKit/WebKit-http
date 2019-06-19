@@ -29,6 +29,7 @@
 #include "DrawingAreaInfo.h"
 #include "GenericCallback.h"
 #include "MessageReceiver.h"
+#include "MessageSender.h"
 #include <WebCore/FloatRect.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/IntSize.h>
@@ -48,14 +49,16 @@ namespace WebKit {
 class LayerTreeContext;
 class UpdateInfo;
 class WebPageProxy;
+class WebProcessProxy;
 
-class DrawingAreaProxy : public IPC::MessageReceiver {
+class DrawingAreaProxy : public IPC::MessageReceiver, protected IPC::MessageSender {
     WTF_MAKE_NONCOPYABLE(DrawingAreaProxy);
 
 public:
     virtual ~DrawingAreaProxy();
 
     DrawingAreaType type() const { return m_type; }
+    DrawingAreaIdentifier identifier() const { return m_identifier; }
 
     virtual void deviceScaleFactorDidChange() = 0;
 
@@ -77,8 +80,8 @@ public:
     virtual void commitTransientZoom(double, WebCore::FloatPoint) { }
 
 #if PLATFORM(MAC)
-    virtual void setViewExposedRect(std::optional<WebCore::FloatRect>);
-    std::optional<WebCore::FloatRect> viewExposedRect() const { return m_viewExposedRect; }
+    virtual void setViewExposedRect(Optional<WebCore::FloatRect>);
+    Optional<WebCore::FloatRect> viewExposedRect() const { return m_viewExposedRect; }
     void viewExposedRectChangedTimerFired();
 #endif
 
@@ -106,11 +109,17 @@ public:
 
     virtual void dispatchPresentationCallbacksAfterFlushingLayers(const Vector<CallbackID>&) { }
 
+    WebPageProxy& page() const { return m_webPageProxy; }
+    WebProcessProxy& process() { return m_process.get(); }
+    const WebProcessProxy& process() const { return m_process.get(); }
+
 protected:
-    explicit DrawingAreaProxy(DrawingAreaType, WebPageProxy&);
+    DrawingAreaProxy(DrawingAreaType, WebPageProxy&, WebProcessProxy&);
 
     DrawingAreaType m_type;
+    DrawingAreaIdentifier m_identifier;
     WebPageProxy& m_webPageProxy;
+    Ref<WebProcessProxy> m_process;
 
     WebCore::IntSize m_size;
     WebCore::IntSize m_scrollOffset;
@@ -121,6 +130,10 @@ protected:
 private:
     virtual void sizeDidChange() = 0;
 
+    IPC::Connection* messageSenderConnection() const final;
+    uint64_t messageSenderDestinationID() const final { return m_identifier.toUInt64(); }
+    bool sendMessage(std::unique_ptr<IPC::Encoder>, OptionSet<IPC::SendOption>) final;
+
     // Message handlers.
     // FIXME: These should be pure virtual.
     virtual void update(uint64_t /* backingStoreStateID */, const UpdateInfo&) { }
@@ -130,12 +143,11 @@ private:
     virtual void updateAcceleratedCompositingMode(uint64_t /* backingStoreStateID */, const LayerTreeContext&) { }
 #if PLATFORM(COCOA)
     virtual void didUpdateGeometry() { }
-    virtual void intrinsicContentSizeDidChange(const WebCore::IntSize&) { }
 
 #if PLATFORM(MAC)
     RunLoop::Timer<DrawingAreaProxy> m_viewExposedRectChangedTimer;
-    std::optional<WebCore::FloatRect> m_viewExposedRect;
-    std::optional<WebCore::FloatRect> m_lastSentViewExposedRect;
+    Optional<WebCore::FloatRect> m_viewExposedRect;
+    Optional<WebCore::FloatRect> m_lastSentViewExposedRect;
 #endif // PLATFORM(MAC)
 #endif
 };

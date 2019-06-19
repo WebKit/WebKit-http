@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #include "CachedImage.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "CustomHeaderFields.h"
 #include "DOMWindow.h"
 #include "DocumentLoader.h"
 #include "EventListener.h"
@@ -49,6 +50,7 @@
 #include "RenderElement.h"
 #include "Settings.h"
 #include <wtf/IsoMallocInlines.h>
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
 
@@ -56,7 +58,7 @@ WTF_MAKE_ISO_ALLOCATED_IMPL(ImageDocument);
 
 using namespace HTMLNames;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 class ImageEventListener final : public EventListener {
 public:
     static Ref<ImageEventListener> create(ImageDocument& document) { return adoptRef(*new ImageEventListener(document)); }
@@ -199,7 +201,7 @@ ImageDocument::ImageDocument(Frame& frame, const URL& url)
     : HTMLDocument(&frame, url, ImageDocumentClass)
     , m_imageElement(nullptr)
     , m_imageSizeIsKnown(false)
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     , m_didShrinkImage(false)
 #endif
     , m_shouldShrinkImage(frame.settings().shrinksStandaloneImagesToFit() && frame.isMainFrame())
@@ -233,18 +235,18 @@ void ImageDocument::createDocumentStructure()
     
     auto imageElement = ImageDocumentElement::create(*this);
     if (m_shouldShrinkImage)
-        imageElement->setAttribute(styleAttr, "-webkit-user-select:none; display:block; margin:auto;");
+        imageElement->setAttribute(styleAttr, "-webkit-user-select:none; display:block; margin:auto; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);");
     else
-        imageElement->setAttribute(styleAttr, "-webkit-user-select:none;");
+        imageElement->setAttribute(styleAttr, "-webkit-user-select:none; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);");
     imageElement->setLoadManually(true);
     imageElement->setSrc(url().string());
     imageElement->cachedImage()->setResponse(loader()->response());
     body->appendChild(imageElement);
     
     if (m_shouldShrinkImage) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         // Set the viewport to be in device pixels (rather than the default of 980).
-        processViewport("width=device-width"_s, ViewportArguments::ImageDocument);
+        processViewport("width=device-width,viewport-fit=cover"_s, ViewportArguments::ImageDocument);
 #else
         auto listener = ImageEventListener::create(*this);
         if (RefPtr<DOMWindow> window = this->domWindow())
@@ -270,10 +272,11 @@ void ImageDocument::imageUpdated()
     m_imageSizeIsKnown = true;
 
     if (m_shouldShrinkImage) {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         FloatSize screenSize = page()->chrome().screenSize();
         if (imageSize.width() > screenSize.width())
-            processViewport(String::format("width=%u", static_cast<unsigned>(imageSize.width().toInt())), ViewportArguments::ImageDocument);
+            processViewport(makeString("width=", imageSize.width().toInt(), ",viewport-fit=cover"), ViewportArguments::ImageDocument);
+
         if (page())
             page()->chrome().client().imageOrMediaDocumentSizeChanged(IntSize(imageSize.width(), imageSize.height()));
 #else
@@ -283,7 +286,7 @@ void ImageDocument::imageUpdated()
     }
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 float ImageDocument::scale()
 {
     if (!m_imageElement)
@@ -395,6 +398,9 @@ void ImageDocument::imageClicked(int x, int y)
         restoreImageSize();
 
         updateLayout();
+
+        if (!view())
+            return;
 
         float scale = this->scale();
 

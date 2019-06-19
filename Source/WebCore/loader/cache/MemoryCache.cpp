@@ -123,7 +123,7 @@ bool MemoryCache::add(CachedResource& resource)
     
     resourceAccessed(resource);
     
-    LOG(ResourceLoading, "MemoryCache::add Added '%s', resource %p\n", resource.url().string().latin1().data(), &resource);
+    LOG(ResourceLoading, "MemoryCache::add Added '%.255s', resource %p\n", resource.url().string().latin1().data(), &resource);
     return true;
 }
 
@@ -210,17 +210,13 @@ static CachedImageClient& dummyCachedImageClient()
     return client;
 }
 
-bool MemoryCache::addImageToCache(NativeImagePtr&& image, const URL& url, const String& domainForCachePartition)
+bool MemoryCache::addImageToCache(NativeImagePtr&& image, const URL& url, const String& domainForCachePartition, const PAL::SessionID& sessionID, const CookieJar* cookieJar)
 {
     ASSERT(image);
-    PAL::SessionID sessionID = PAL::SessionID::defaultSessionID();
     removeImageFromCache(url, domainForCachePartition); // Remove cache entry if it already exists.
 
-    RefPtr<BitmapImage> bitmapImage = BitmapImage::create(WTFMove(image), nullptr);
-    if (!bitmapImage)
-        return false;
-
-    auto cachedImage = std::make_unique<CachedImage>(url, bitmapImage.get(), sessionID, domainForCachePartition);
+    auto bitmapImage = BitmapImage::create(WTFMove(image), nullptr);
+    auto cachedImage = std::make_unique<CachedImage>(url, bitmapImage.ptr(), sessionID, cookieJar, domainForCachePartition);
 
     cachedImage->addClient(dummyCachedImageClient());
     cachedImage->setDecodedSize(bitmapImage->decodedSize());
@@ -298,6 +294,9 @@ void MemoryCache::pruneLiveResourcesToSize(unsigned targetSize, bool shouldDestr
 {
     if (m_inPruneResources)
         return;
+
+    LOG(ResourceLoading, "MemoryCache::pruneLiveResourcesToSize(%d, shouldDestroyDecodedDataForAllLiveResources = %d)", targetSize, shouldDestroyDecodedDataForAllLiveResources);
+
     SetForScope<bool> reentrancyProtector(m_inPruneResources, true);
 
     MonotonicTime currentTime = FrameView::currentPaintTimeStamp();
@@ -316,6 +315,8 @@ void MemoryCache::pruneLiveResourcesToSize(unsigned targetSize, bool shouldDestr
     while (it != m_liveDecodedResources.end()) {
         auto* current = *it;
 
+        LOG(ResourceLoading, " live resource %p %.255s - loaded %d, decodedSize %u", current, current->url().string().utf8().data(), current->isLoaded(), current->decodedSize());
+
         // Increment the iterator now because the call to destroyDecodedData() below
         // may cause a call to ListHashSet::remove() and invalidate the current
         // iterator. Note that this is safe because unlike iteration of most
@@ -328,8 +329,10 @@ void MemoryCache::pruneLiveResourcesToSize(unsigned targetSize, bool shouldDestr
         if (current->isLoaded() && current->decodedSize()) {
             // Check to see if the remaining resources are too new to prune.
             Seconds elapsedTime = currentTime - current->m_lastDecodedAccessTime;
-            if (!shouldDestroyDecodedDataForAllLiveResources && elapsedTime < cMinDelayBeforeLiveDecodedPrune)
+            if (!shouldDestroyDecodedDataForAllLiveResources && elapsedTime < cMinDelayBeforeLiveDecodedPrune) {
+                LOG(ResourceLoading, " current time is less than min delay before pruning (%.3fms)", elapsedTime.milliseconds());
                 return;
+            }
 
             // Destroy our decoded data. This will remove us from m_liveDecodedResources, and possibly move us
             // to a different LRU list in m_allResources.
@@ -343,6 +346,8 @@ void MemoryCache::pruneLiveResourcesToSize(unsigned targetSize, bool shouldDestr
 
 void MemoryCache::pruneDeadResources()
 {
+    LOG(ResourceLoading, "MemoryCache::pruneDeadResources");
+
     unsigned capacity = deadCapacity();
     if (capacity && m_deadSize <= capacity)
         return;
@@ -355,6 +360,9 @@ void MemoryCache::pruneDeadResourcesToSize(unsigned targetSize)
 {
     if (m_inPruneResources)
         return;
+
+    LOG(ResourceLoading, "MemoryCache::pruneDeadResourcesToSize(%d)", targetSize);
+
     SetForScope<bool> reentrancyProtector(m_inPruneResources, true);
  
     if (targetSize && m_deadSize <= targetSize)
@@ -366,9 +374,12 @@ void MemoryCache::pruneDeadResourcesToSize(unsigned targetSize)
         // destroyDecodedData() can alter the LRUList.
         auto lruList = copyToVector(*m_allResources[i]);
 
+        LOG(ResourceLoading, " lru list (size %lu) - flushing stage", lruList.size());
+
         // First flush all the decoded data in this queue.
         // Remove from the head, since this is the least frequently accessed of the objects.
         for (auto& resource : lruList) {
+            LOG(ResourceLoading, " lru resource %p - in cache %d, has clients %d, preloaded %d, loaded %d", resource, resource->inCache(), resource->hasClients(), resource->isPreloaded(), resource->isLoaded());
             if (!resource->inCache())
                 continue;
 
@@ -376,6 +387,9 @@ void MemoryCache::pruneDeadResourcesToSize(unsigned targetSize)
                 // Destroy our decoded data. This will remove us from 
                 // m_liveDecodedResources, and possibly move us to a different 
                 // LRU list in m_allResources.
+
+                LOG(ResourceLoading, " lru resource %p destroyDecodedData", resource);
+
                 resource->destroyDecodedData();
 
                 if (targetSize && m_deadSize <= targetSize)
@@ -383,9 +397,12 @@ void MemoryCache::pruneDeadResourcesToSize(unsigned targetSize)
             }
         }
 
+        LOG(ResourceLoading, " lru list (size %lu) - eviction stage", lruList.size());
+
         // Now evict objects from this list.
         // Remove from the head, since this is the least frequently accessed of the objects.
         for (auto& resource : lruList) {
+            LOG(ResourceLoading, " lru resource %p - in cache %d, has clients %d, preloaded %d, loaded %d", resource, resource->inCache(), resource->hasClients(), resource->isPreloaded(), resource->isLoaded());
             if (!resource->inCache())
                 continue;
 
@@ -418,7 +435,7 @@ void MemoryCache::setCapacities(unsigned minDeadBytes, unsigned maxDeadBytes, un
 void MemoryCache::remove(CachedResource& resource)
 {
     ASSERT(WTF::isMainThread());
-    LOG(ResourceLoading, "Evicting resource %p for '%s' from cache", &resource, resource.url().string().latin1().data());
+    LOG(ResourceLoading, "Evicting resource %p for '%.255s' from cache", &resource, resource.url().string().latin1().data());
     // The resource may have already been removed by someone other than our caller,
     // who needed a fresh copy for a reload. See <http://bugs.webkit.org/show_bug.cgi?id=12479#c6>.
     if (auto* resources = sessionResourceMap(resource.sessionID())) {
@@ -437,8 +454,10 @@ void MemoryCache::remove(CachedResource& resource)
             removeFromLRUList(resource);
             removeFromLiveDecodedResourcesList(resource);
             adjustSize(resource.hasClients(), -static_cast<long long>(resource.size()));
-        } else
+        } else {
             ASSERT(resources->get(key) != &resource);
+            LOG(ResourceLoading, "  resource %p is not in cache", &resource);
+        }
     }
 
     resource.deleteIfPossible();
@@ -518,7 +537,7 @@ void MemoryCache::removeResourcesWithOrigin(SecurityOrigin& origin)
                 resourcesWithOrigin.append(&resource);
                 continue;
             }
-            RefPtr<SecurityOrigin> resourceOrigin = SecurityOrigin::create(resource.url());
+            auto resourceOrigin = SecurityOrigin::create(resource.url());
             if (resourceOrigin->equal(&origin))
                 resourcesWithOrigin.append(&resource);
         }
@@ -775,7 +794,7 @@ void MemoryCache::dumpLRULists(bool includeLive) const
         WTFLogAlways("\nList %d:\n", i);
         for (auto* resource : *m_allResources[i]) {
             if (includeLive || !resource->hasClients())
-                WTFLogAlways("  %.100s %.1fK, %.1fK, accesses: %u, clients: %d\n", resource->url().string().utf8().data(), resource->decodedSize() / 1024.0f, (resource->encodedSize() + resource->overheadSize()) / 1024.0f, resource->accessCount(), resource->numberOfClients());
+                WTFLogAlways("  %p %.255s %.1fK, %.1fK, accesses: %u, clients: %d\n", resource, resource->url().string().utf8().data(), resource->decodedSize() / 1024.0f, (resource->encodedSize() + resource->overheadSize()) / 1024.0f, resource->accessCount(), resource->numberOfClients());
         }
     }
 }

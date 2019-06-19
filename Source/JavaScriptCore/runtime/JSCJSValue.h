@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -23,6 +23,7 @@
 #pragma once
 
 #include "JSExportMacros.h"
+#include "PureNaN.h"
 #include <functional>
 #include <math.h>
 #include <stddef.h>
@@ -59,7 +60,7 @@ class OSRExitCompiler;
 class SpeculativeJIT;
 }
 #endif
-#if !ENABLE(JIT)
+#if ENABLE(C_LOOP)
 namespace LLInt {
 class CLoop;
 }
@@ -108,8 +109,8 @@ union EncodedValueDescriptor {
 #endif
 };
 
-#define TagOffset (OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag))
-#define PayloadOffset (OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.payload))
+#define TagOffset (offsetof(EncodedValueDescriptor, asBits.tag))
+#define PayloadOffset (offsetof(EncodedValueDescriptor, asBits.payload))
 
 #if USE(JSVALUE64)
 #define CellPayloadOffset 0
@@ -147,7 +148,7 @@ class JSValue {
     friend class DFG::OSRExitCompiler;
     friend class DFG::SpeculativeJIT;
 #endif
-#if !ENABLE(JIT)
+#if ENABLE(C_LOOP)
     friend class LLInt::CLoop;
 #endif
 
@@ -210,6 +211,8 @@ public:
     int32_t asInt32() const;
     uint32_t asUInt32() const;
     int64_t asAnyInt() const;
+    uint32_t asUInt32AsAnyInt() const;
+    int32_t asInt32AsAnyInt() const;
     double asDouble() const;
     bool asBoolean() const;
     double asNumber() const;
@@ -227,6 +230,8 @@ public:
     bool isUndefinedOrNull() const;
     bool isBoolean() const;
     bool isAnyInt() const;
+    bool isUInt32AsAnyInt() const;
+    bool isInt32AsAnyInt() const;
     bool isNumber() const;
     bool isString() const;
     bool isBigInt() const;
@@ -259,9 +264,10 @@ public:
     double toNumber(ExecState*) const;
     
     Variant<JSBigInt*, double> toNumeric(ExecState*) const;
+    Variant<JSBigInt*, int32_t> toBigIntOrInt32(ExecState*) const;
 
     // toNumber conversion if it can be done without side effects.
-    std::optional<double> toNumberFromPrimitive() const;
+    Optional<double> toNumberFromPrimitive() const;
 
     JSString* toString(ExecState*) const; // On exception, this returns the empty string.
     JSString* toStringOrNull(ExecState*) const; // On exception, this returns null, to make exception checks faster.
@@ -547,10 +553,11 @@ ALWAYS_INLINE JSValue jsDoubleNumber(double d)
 ALWAYS_INLINE JSValue jsNumber(double d)
 {
     ASSERT(JSValue(d).isNumber());
+    ASSERT(!isImpureNaN(d));
     return JSValue(d);
 }
 
-ALWAYS_INLINE JSValue jsNumber(MediaTime t)
+ALWAYS_INLINE JSValue jsNumber(const MediaTime& t)
 {
     return jsNumber(t.toDouble());
 }

@@ -54,12 +54,14 @@ public:
     void setText(const String&);
     String text() const;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void layout() override;
 #endif
 
     RenderBlock* innerRenderer() const { return m_inner.get(); }
     void setInnerRenderer(RenderBlock&);
+
+    int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const override;
 
 private:
     void element() const = delete;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -225,7 +225,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
         RELEASE_ASSERT(table);
 
         CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(
-            materialization->origin(), exec->codeBlock());
+            materialization->origin(), exec->codeBlock()->baselineAlternative());
         Structure* structure = codeBlock->globalObject()->activationStructure();
 
         // It doesn't matter what values we initialize as bottom values inside the activation constructor because
@@ -278,7 +278,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
     case PhantomCreateRest:
     case PhantomDirectArguments:
     case PhantomClonedArguments: {
-        if (!materialization->origin().inlineCallFrame) {
+        if (!materialization->origin().inlineCallFrame()) {
             switch (materialization->type()) {
             case PhantomDirectArguments:
                 return DirectArguments::createByCopying(exec);
@@ -286,7 +286,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
                 return ClonedArguments::createWithMachineFrame(exec, exec, ArgumentsMode::Cloned);
             case PhantomCreateRest: {
                 CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(
-                    materialization->origin(), exec->codeBlock());
+                    materialization->origin(), exec->codeBlock()->baselineAlternative());
 
                 unsigned numberOfArgumentsToSkip = codeBlock->numberOfArgumentsToSkip();
                 JSGlobalObject* globalObject = codeBlock->globalObject();
@@ -303,7 +303,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
 
         // First figure out the argument count. If there isn't one then we represent the machine frame.
         unsigned argumentCount = 0;
-        if (materialization->origin().inlineCallFrame->isVarargs()) {
+        if (materialization->origin().inlineCallFrame()->isVarargs()) {
             for (unsigned i = materialization->properties().size(); i--;) {
                 const ExitPropertyValue& property = materialization->properties()[i];
                 if (property.location() != PromotedLocationDescriptor(ArgumentCountPLoc))
@@ -312,11 +312,11 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
                 break;
             }
         } else
-            argumentCount = materialization->origin().inlineCallFrame->argumentCountIncludingThis;
+            argumentCount = materialization->origin().inlineCallFrame()->argumentCountIncludingThis;
         RELEASE_ASSERT(argumentCount);
         
         JSFunction* callee = nullptr;
-        if (materialization->origin().inlineCallFrame->isClosureCall) {
+        if (materialization->origin().inlineCallFrame()->isClosureCall) {
             for (unsigned i = materialization->properties().size(); i--;) {
                 const ExitPropertyValue& property = materialization->properties()[i];
                 if (property.location() != PromotedLocationDescriptor(ArgumentsCalleePLoc))
@@ -326,11 +326,11 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
                 break;
             }
         } else
-            callee = materialization->origin().inlineCallFrame->calleeConstant();
+            callee = materialization->origin().inlineCallFrame()->calleeConstant();
         RELEASE_ASSERT(callee);
         
         CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(
-            materialization->origin(), exec->codeBlock());
+            materialization->origin(), exec->codeBlock()->baselineAlternative());
         
         // We have an inline frame and we have all of the data we need to recreate it.
         switch (materialization->type()) {
@@ -473,11 +473,17 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
 
         // For now, we use array allocation profile in the actual CodeBlock. It is OK since current NewArrayBuffer
         // and PhantomNewArrayBuffer are always bound to a specific op_new_array_buffer.
-        CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(materialization->origin(), exec->codeBlock());
-        Instruction* currentInstruction = &codeBlock->instructions()[materialization->origin().bytecodeIndex];
-        RELEASE_ASSERT(Interpreter::getOpcodeID(currentInstruction[0].u.opcode) == op_new_array_buffer);
-        auto* newArrayBuffer = bitwise_cast<OpNewArrayBuffer*>(currentInstruction);
-        ArrayAllocationProfile* profile = currentInstruction[3].u.arrayAllocationProfile;
+        CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(materialization->origin(), exec->codeBlock()->baselineAlternative());
+        const Instruction* currentInstruction = codeBlock->instructions().at(materialization->origin().bytecodeIndex()).ptr();
+        if (!currentInstruction->is<OpNewArrayBuffer>()) {
+            // This case can happen if Object.keys, an OpCall is first converted into a NewArrayBuffer which is then converted into a PhantomNewArrayBuffer.
+            // There is no need to update the array allocation profile in that case.
+            RELEASE_ASSERT(currentInstruction->is<OpCall>());
+            Structure* structure = exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(immutableButterfly->indexingMode());
+            return CommonSlowPaths::allocateNewArrayBuffer(vm, structure, immutableButterfly);
+        }
+        auto newArrayBuffer = currentInstruction->as<OpNewArrayBuffer>();
+        ArrayAllocationProfile* profile = &newArrayBuffer.metadata(codeBlock).m_arrayAllocationProfile;
 
         // FIXME: Share the code with CommonSlowPaths. Currently, codeBlock etc. are slightly different.
         IndexingType indexingMode = profile->selectIndexingType();
@@ -495,7 +501,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
             // We also cannot allocate a new butterfly from compilation threads since it's invalid to allocate cells from
             // a compilation thread.
             WTF::storeStoreFence();
-            codeBlock->constantRegister(newArrayBuffer->immutableButterfly()).set(vm, codeBlock, immutableButterfly);
+            codeBlock->constantRegister(newArrayBuffer.m_immutableButterfly.offset()).set(vm, codeBlock, immutableButterfly);
             WTF::storeStoreFence();
         }
 
@@ -506,7 +512,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
 
     case PhantomNewArrayWithSpread: {
         CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(
-            materialization->origin(), exec->codeBlock());
+            materialization->origin(), exec->codeBlock()->baselineAlternative());
         JSGlobalObject* globalObject = codeBlock->globalObject();
         Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
 
@@ -585,7 +591,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
             }
         }
         RELEASE_ASSERT(regExp);
-        CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(materialization->origin(), exec->codeBlock());
+        CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(materialization->origin(), exec->codeBlock()->baselineAlternative());
         Structure* structure = codeBlock->globalObject()->regExpStructure();
         return RegExpObject::create(vm, structure, regExp);
     }

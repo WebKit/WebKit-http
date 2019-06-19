@@ -35,8 +35,6 @@
 #import <WebKit/_WKUserStyleSheet.h>
 #import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED
-
 static bool receivedScriptMessage;
 static RetainPtr<WKScriptMessage> lastScriptMessage;
 
@@ -59,7 +57,7 @@ TEST(IndexedDB, DeleteRecovery)
     RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
     [[configuration userContentController] addScriptMessageHandler:handler.get() name:@"testHandler"];
 
-    [configuration.get().processPool _terminateStorageProcess];
+    [configuration.get().processPool _terminateNetworkProcess];
 
     // Copy the inconsistent database files to the database directory
     NSURL *url1 = [[NSBundle mainBundle] URLForResource:@"IDBDeleteRecovery" withExtension:@"sqlite3" subdirectory:@"TestWebKitAPI.resources"];
@@ -82,5 +80,3 @@ TEST(IndexedDB, DeleteRecovery)
 
     EXPECT_WK_STREQ(@"Deleted database", [lastScriptMessage body]);
 }
-
-#endif

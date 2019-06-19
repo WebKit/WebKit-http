@@ -78,11 +78,26 @@
 }
 
 .content-view:not(.tab).recording :matches(img, canvas) {
+    position: absolute;
     max-width: 100%;
     max-height: 100%;
 }
 
 .content-view:not(.tab).recording canvas.path {
-    position: absolute;
     z-index: 10;
+}
+
+@media (prefers-color-scheme: dark) {
+    .content-view:not(.tab).recording {
+        background-color: unset;
+    }
+
+    .content-view:not(.tab).recording > header > .slider-container {
+        background-color: unset;
+        border-color: var(--border-color-secondary);
+    }
+
+    .content-view:not(.tab).recording > header > .slider-container > input[type=range] {
+        background: none;
+    }
 }

@@ -31,7 +31,7 @@
 #import "SharedBuffer.h"
 #import <wtf/text/WTFString.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <CoreGraphics/CoreGraphics.h>
 #import <ImageIO/ImageIO.h>
 #import <MobileCoreServices/MobileCoreServices.h>
@@ -88,7 +88,7 @@ RetainPtr<CFDataRef> BitmapImage::tiffRepresentation(const Vector<NativeImagePtr
     if (!destination)
         return nullptr;
 
-    for (auto nativeImage : nativeImages)
+    for (const auto& nativeImage : nativeImages)
         CGImageDestinationAddImage(destination.get(), nativeImage.get(), 0);
 
     CGImageDestinationFinalize(destination.get());

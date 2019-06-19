@@ -26,8 +26,8 @@
 #pragma once
 
 #include "CacheModel.h"
-#include "NetworkSessionCreationParameters.h"
 #include "SandboxExtension.h"
+#include "WebsiteDataStoreParameters.h"
 #include <WebCore/Cookie.h>
 #include <wtf/ProcessID.h>
 #include <wtf/Vector.h>
@@ -51,66 +51,45 @@ struct NetworkProcessCreationParameters {
     void encode(IPC::Encoder&) const;
     static bool decode(IPC::Decoder&, NetworkProcessCreationParameters&);
 
-    bool privateBrowsingEnabled { false };
-    CacheModel cacheModel { CacheModelDocumentViewer };
-    int64_t diskCacheSizeOverride { -1 };
+    CacheModel cacheModel { CacheModel::DocumentViewer };
     bool canHandleHTTPSServerTrustEvaluation { true };
 
     String diskCacheDirectory;
     SandboxExtension::Handle diskCacheDirectoryExtensionHandle;
-    bool shouldEnableNetworkCacheEfficacyLogging { false };
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     bool shouldEnableNetworkCacheSpeculativeRevalidation { false };
 #endif
 #if PLATFORM(MAC)
     Vector<uint8_t> uiProcessCookieStorageIdentifier;
 #endif
-    Vector<WebCore::Cookie> defaultSessionPendingCookies;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     SandboxExtension::Handle cookieStorageDirectoryExtensionHandle;
     SandboxExtension::Handle containerCachesDirectoryExtensionHandle;
     SandboxExtension::Handle parentBundleDirectoryExtensionHandle;
 #endif
     bool shouldSuppressMemoryPressureHandler { false };
     bool shouldUseTestingNetworkSession { false };
-    Seconds loadThrottleLatency;
 
     Vector<String> urlSchemesRegisteredForCustomProtocols;
-    ProcessID presentingApplicationPID { 0 };
 
 #if PLATFORM(COCOA)
     String uiProcessBundleIdentifier;
     uint32_t uiProcessSDKVersion { 0 };
-    String sourceApplicationBundleIdentifier;
-    String sourceApplicationSecondaryIdentifier;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     String ctDataConnectionServiceType;
 #endif
-    String httpProxy;
-    String httpsProxy;
     RetainPtr<CFDataRef> networkATSContext;
     bool storageAccessAPIEnabled;
     bool suppressesConnectionTerminationOnSystemChange;
 #endif
 
-#if USE(SOUP) || PLATFORM(QT)
-    String cookiePersistentStoragePath;
-    uint32_t cookiePersistentStorageType { 0 };
+    WebsiteDataStoreParameters defaultDataStoreParameters;
+    
+#if USE(SOUP)
     HTTPCookieAcceptPolicy cookieAcceptPolicy { HTTPCookieAcceptPolicyAlways };
     bool ignoreTLSErrors { false };
     Vector<String> languages;
     WebCore::SoupNetworkProxySettings proxySettings;
-#elif USE(CURL)
-    String cookiePersistentStorageFile;
-#endif
-
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
-    bool logCookieInformation { false };
-#endif
-
-#if ENABLE(NETWORK_CAPTURE)
-    String recordReplayMode;
-    String recordReplayCacheLocation;
 #endif
 
     Vector<String> urlSchemesRegisteredAsSecure;
@@ -121,9 +100,18 @@ struct NetworkProcessCreationParameters {
     Vector<String> urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest;
     Vector<String> urlSchemesRegisteredAsCORSEnabled;
 
-#if ENABLE(PROXIMITY_NETWORKING)
-    unsigned wirelessContextIdentifier { 0 };
+#if ENABLE(SERVICE_WORKER)
+    String serviceWorkerRegistrationDirectory;
+    SandboxExtension::Handle serviceWorkerRegistrationDirectoryExtensionHandle;
+    Vector<String> urlSchemesServiceWorkersCanHandle;
+    bool shouldDisableServiceWorkerProcessTerminationDelay { false };
 #endif
+    bool shouldEnableITPDatabase { false };
+    bool isITPFirstPartyWebsiteDataRemovalEnabled { true };
+    uint32_t downloadMonitorSpeedMultiplier { 1 };
+    bool enableAdClickAttributionDebugMode { false };
+    String hstsStorageDirectory;
+    SandboxExtension::Handle hstsStorageDirectoryExtensionHandle;
 };
 
 } // namespace WebKit

@@ -27,7 +27,6 @@
 
 #include "CSSValueKeywords.h"
 #include "FileList.h"
-#include "FileSystem.h"
 #include "FloatRoundedRect.h"
 #include "FontDescription.h"
 #include "GRefPtrGtk.h"
@@ -55,6 +54,7 @@
 #include <gdk/gdk.h>
 #include <glib.h>
 #include <gtk/gtk.h>
+#include <wtf/FileSystem.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
@@ -166,6 +166,9 @@ enum RenderThemePart {
     SpinButtonDownButton,
 #if ENABLE(VIDEO)
     MediaButton,
+#endif
+#if GTK_CHECK_VERSION(3, 20, 0)
+    Window,
 #endif
 };
 
@@ -295,6 +298,7 @@ static GRefPtr<GdkPixbuf> loadThemedIcon(GtkStyleContext* context, const char* i
 }
 #endif // !GTK_CHECK_VERSION(3, 20, 0)
 
+#if ENABLE(VIDEO)
 static bool nodeHasPseudo(Node& node, const char* pseudo)
 {
     return is<Element>(node) && downcast<Element>(node).pseudo() == pseudo;
@@ -312,6 +316,7 @@ static bool nodeHasClass(Node* node, const char* className)
 
     return element.classNames().contains(className);
 }
+#endif // ENABLE(VIDEO)
 
 RenderThemeGtk::~RenderThemeGtk() = default;
 
@@ -922,15 +927,6 @@ bool RenderThemeGtk::paintMenuList(const RenderObject& renderObject, const Paint
 bool RenderThemeGtk::paintMenuListButtonDecorations(const RenderBox& object, const PaintInfo& info, const FloatRect& rect)
 {
     return paintMenuList(object, info, rect);
-}
-
-bool RenderThemeGtk::isControlStyled(const RenderStyle& style, const BorderData& border, const FillLayer& background, const Color& backgroundColor) const
-{
-    // To avoid rendering issues with dark themes, if text input elements have color styling, we don't style them with GTK.
-    if ((style.appearance() == TextFieldPart || style.appearance() == TextAreaPart || style.appearance() == SearchFieldPart) && style.color() != RenderStyle::initialColor())
-        return true;
-
-    return RenderTheme::isControlStyled(style, border, background, backgroundColor);
 }
 
 #if GTK_CHECK_VERSION(3, 20, 0)
@@ -1704,6 +1700,9 @@ static Color styleColor(RenderThemePart themePart, GtkStateFlags state, StyleCol
     case Button:
         gadget = &static_cast<RenderThemeButton&>(RenderThemeWidget::getOrCreate(RenderThemeWidget::Type::Button)).button();
         break;
+    case Window:
+        gadget = &static_cast<RenderThemeWindow&>(RenderThemeWidget::getOrCreate(RenderThemeWidget::Type::Window)).window();
+        break;
     }
 
     ASSERT(gadget);
@@ -1765,6 +1764,11 @@ Color RenderThemeGtk::platformInactiveListBoxSelectionForegroundColor(OptionSet<
     return styleColor(ListBox, GTK_STATE_FLAG_SELECTED, StyleColorForeground);
 }
 
+Color RenderThemeGtk::disabledTextColor(const Color&, const Color&) const
+{
+    return styleColor(Entry, GTK_STATE_FLAG_INSENSITIVE, StyleColorForeground);
+}
+
 Color RenderThemeGtk::systemColor(CSSValueID cssValueId, OptionSet<StyleColor::Options> options) const
 {
     switch (cssValueId) {
@@ -1772,9 +1776,28 @@ Color RenderThemeGtk::systemColor(CSSValueID cssValueId, OptionSet<StyleColor::O
         return styleColor(Button, GTK_STATE_FLAG_ACTIVE, StyleColorForeground);
     case CSSValueCaptiontext:
         return styleColor(Entry, GTK_STATE_FLAG_ACTIVE, StyleColorForeground);
-    default:
-        return RenderTheme::systemColor(cssValueId, options);
+    case CSSValueText:
+        return styleColor(Entry, GTK_STATE_FLAG_ACTIVE, StyleColorForeground);
+    case CSSValueGraytext:
+        return styleColor(Entry, GTK_STATE_FLAG_INSENSITIVE, StyleColorForeground);
+    case CSSValueWebkitControlBackground:
+        return styleColor(Entry, GTK_STATE_FLAG_ACTIVE, StyleColorBackground);
+#if GTK_CHECK_VERSION(3, 20, 0)
+    case CSSValueWindow: {
+        // Only get window color from the theme in dark mode.
+        gboolean preferDarkTheme = FALSE;
+        if (auto* settings = gtk_settings_get_default())
+            g_object_get(settings, "gtk-application-prefer-dark-theme", &preferDarkTheme, nullptr);
+        if (preferDarkTheme)
+            return styleColor(Window, GTK_STATE_FLAG_ACTIVE, StyleColorBackground);
+        break;
     }
+#endif
+    default:
+        break;
+    }
+
+    return RenderTheme::systemColor(cssValueId, options);
 }
 
 void RenderThemeGtk::platformColorsDidChange()

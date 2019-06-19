@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "AllocatorForMode.h"
 #include "AllocatorInlines.h"
 #include "CompleteSubspaceInlines.h"
 #include "CPU.h"
@@ -32,13 +33,16 @@
 #include "DeferGC.h"
 #include "FreeListInlines.h"
 #include "Handle.h"
+#include "HeapInlines.h"
 #include "IsoSubspaceInlines.h"
+#include "JSBigInt.h"
 #include "JSCast.h"
 #include "JSDestructibleObject.h"
 #include "JSObject.h"
 #include "JSString.h"
 #include "LocalAllocatorInlines.h"
 #include "MarkedBlock.h"
+#include "SlotVisitorInlines.h"
 #include "Structure.h"
 #include "Symbol.h"
 #include <wtf/CompilationThread.h>
@@ -144,12 +148,20 @@ ALWAYS_INLINE VM& ExecState::vm() const
     return *callee->markedBlock().vm();
 }
 
-template<typename CellType>
+template<typename CellType, SubspaceAccess>
 CompleteSubspace* JSCell::subspaceFor(VM& vm)
 {
     if (CellType::needsDestruction)
         return &vm.destructibleCellSpace;
-    return &vm.cellDangerousBitsSpace;
+    return &vm.cellSpace;
+}
+
+template<typename Type>
+inline Allocator allocatorForNonVirtualConcurrently(VM& vm, size_t allocationSize, AllocatorForMode mode)
+{
+    if (auto* subspace = subspaceForConcurrently<Type>(vm))
+        return subspace->allocatorForNonVirtual(allocationSize, mode);
+    return { };
 }
 
 template<typename T>
@@ -339,6 +351,8 @@ inline bool JSCell::toBoolean(ExecState* exec) const
 {
     if (isString())
         return static_cast<const JSString*>(this)->toBoolean();
+    if (isBigInt())
+        return static_cast<const JSBigInt*>(this)->toBoolean();
     return !structure(exec->vm())->masqueradesAsUndefined(exec->lexicalGlobalObject());
 }
 
@@ -346,6 +360,8 @@ inline TriState JSCell::pureToBoolean() const
 {
     if (isString())
         return static_cast<const JSString*>(this)->toBoolean() ? TrueTriState : FalseTriState;
+    if (isBigInt())
+        return static_cast<const JSBigInt*>(this)->toBoolean() ? TrueTriState : FalseTriState;
     if (isSymbol())
         return TrueTriState;
     return MixedTriState;
@@ -377,16 +393,20 @@ inline bool JSCellLock::isLocked() const
     return IndexingTypeLockAlgorithm::isLocked(*lock);
 }
 
-inline bool JSCell::mayBePrototype() const
+inline bool JSCell::perCellBit() const
 {
-    return TypeInfo::mayBePrototype(inlineTypeFlags());
+    return TypeInfo::perCellBit(inlineTypeFlags());
 }
 
-inline void JSCell::didBecomePrototype()
+inline void JSCell::setPerCellBit(bool value)
 {
-    if (mayBePrototype())
+    if (value == perCellBit())
         return;
-    m_flags |= static_cast<TypeInfo::InlineTypeFlags>(TypeInfoMayBePrototype);
+
+    if (value)
+        m_flags |= static_cast<TypeInfo::InlineTypeFlags>(TypeInfoPerCellBit);
+    else
+        m_flags &= ~static_cast<TypeInfo::InlineTypeFlags>(TypeInfoPerCellBit);
 }
 
 inline JSObject* JSCell::toObject(ExecState* exec, JSGlobalObject* globalObject) const

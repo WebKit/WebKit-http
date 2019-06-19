@@ -45,7 +45,7 @@ class StructureStubInfo;
 
 class GetByIdStatus {
 public:
-    enum State {
+    enum State : uint8_t {
         // It's uncached so we have no information.
         NoInformation,
         // It's cached for a simple access to a known object property with
@@ -141,7 +141,7 @@ public:
     ScopeOffset scopeOffset() const { return m_scopeOffset; }
     
     void markIfCheap(SlotVisitor&);
-    bool finalize(); // Return true if this gets to live.
+    bool finalize(VM&); // Return true if this gets to live.
     
     void dump(PrintStream&) const;
     
@@ -156,12 +156,13 @@ private:
     
     bool appendVariant(const GetByIdVariant&);
     
-    State m_state;
+    
     Vector<GetByIdVariant, 1> m_variants;
-    bool m_wasSeenInJIT { false };
     JSModuleNamespaceObject* m_moduleNamespaceObject { nullptr };
     JSModuleEnvironment* m_moduleEnvironment { nullptr };
     ScopeOffset m_scopeOffset { };
+    State m_state;
+    bool m_wasSeenInJIT { false };
 };
 
 } // namespace JSC

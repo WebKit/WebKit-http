@@ -33,7 +33,11 @@
 #include <thread>
 
 namespace bmalloc {
+
+DebugHeap* debugHeapCache { nullptr };
     
+DEFINE_STATIC_PER_PROCESS_STORAGE(DebugHeap);
+
 #if BOS(DARWIN)
 
 DebugHeap::DebugHeap(std::lock_guard<Mutex>&)
@@ -43,10 +47,10 @@ DebugHeap::DebugHeap(std::lock_guard<Mutex>&)
     malloc_set_zone_name(m_zone, "WebKit Using System Malloc");
 }
 
-void* DebugHeap::malloc(size_t size)
+void* DebugHeap::malloc(size_t size, bool crashOnFailure)
 {
     void* result = malloc_zone_malloc(m_zone, size);
-    if (!result)
+    if (!result && crashOnFailure)
         BCRASH();
     return result;
 }
@@ -59,10 +63,10 @@ void* DebugHeap::memalign(size_t alignment, size_t size, bool crashOnFailure)
     return result;
 }
 
-void* DebugHeap::realloc(void* object, size_t size)
+void* DebugHeap::realloc(void* object, size_t size, bool crashOnFailure)
 {
     void* result = malloc_zone_realloc(m_zone, object, size);
-    if (!result)
+    if (!result && crashOnFailure)
         BCRASH();
     return result;
 }
@@ -72,6 +76,19 @@ void DebugHeap::free(void* object)
     malloc_zone_free(m_zone, object);
 }
 
+void DebugHeap::scavenge()
+{
+    // Currently |goal| does not affect on the behavior of malloc_zone_pressure_relief if (1) we only scavenge one zone and (2) it is not nanomalloc.
+    constexpr size_t goal = 0;
+    malloc_zone_pressure_relief(m_zone, goal);
+}
+
+void DebugHeap::dump()
+{
+    constexpr bool verbose = true;
+    malloc_zone_print(m_zone, verbose);
+}
+
 #else
 
 DebugHeap::DebugHeap(std::lock_guard<Mutex>&)
@@ -79,10 +96,10 @@ DebugHeap::DebugHeap(std::lock_guard<Mutex>&)
 {
 }
 
-void* DebugHeap::malloc(size_t size)
+void* DebugHeap::malloc(size_t size, bool crashOnFailure)
 {
     void* result = ::malloc(size);
-    if (!result)
+    if (!result && crashOnFailure)
         BCRASH();
     return result;
 }
@@ -98,10 +115,10 @@ void* DebugHeap::memalign(size_t alignment, size_t size, bool crashOnFailure)
     return result;
 }
 
-void* DebugHeap::realloc(void* object, size_t size)
+void* DebugHeap::realloc(void* object, size_t size, bool crashOnFailure)
 {
     void* result = ::realloc(object, size);
-    if (!result)
+    if (!result && crashOnFailure)
         BCRASH();
     return result;
 }
@@ -110,7 +127,15 @@ void DebugHeap::free(void* object)
 {
     ::free(object);
 }
-    
+
+void DebugHeap::scavenge()
+{
+}
+
+void DebugHeap::dump()
+{
+}
+
 #endif
 
 // FIXME: This looks an awful lot like the code in wtf/Gigacage.cpp for large allocation.
@@ -124,7 +149,7 @@ void* DebugHeap::memalignLarge(size_t alignment, size_t size)
     if (!result)
         return nullptr;
     {
-        std::lock_guard<std::mutex> locker(m_lock);
+        std::lock_guard<Mutex> locker(mutex());
         m_sizeMap[result] = size;
     }
     return result;
@@ -137,7 +162,7 @@ void DebugHeap::freeLarge(void* base)
     
     size_t size;
     {
-        std::lock_guard<std::mutex> locker(m_lock);
+        std::lock_guard<Mutex> locker(mutex());
         size = m_sizeMap[base];
         size_t numErased = m_sizeMap.erase(base);
         RELEASE_BASSERT(numErased == 1);

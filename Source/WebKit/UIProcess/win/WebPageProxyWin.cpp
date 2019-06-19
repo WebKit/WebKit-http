@@ -27,8 +27,8 @@
 #include "config.h"
 #include "WebPageProxy.h"
 
-#include "NotImplemented.h"
 #include "PageClientImpl.h"
+#include <WebCore/SearchPopupMenuDB.h>
 #include <WebCore/UserAgent.h>
 
 namespace WebKit {
@@ -42,24 +42,32 @@ String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent
     return WebCore::standardUserAgent(applicationNameForUserAgent);
 }
 
-void WebPageProxy::saveRecentSearches(const String&, const Vector<WebCore::RecentSearch>&)
+void WebPageProxy::saveRecentSearches(const String& name, const Vector<WebCore::RecentSearch>& searchItems)
 {
-    notImplemented();
+    if (!name)
+        return;
+
+    return WebCore::SearchPopupMenuDB::singleton().saveRecentSearches(name, searchItems);
 }
 
-void WebPageProxy::loadRecentSearches(const String&, Vector<WebCore::RecentSearch>&)
+void WebPageProxy::loadRecentSearches(const String& name, CompletionHandler<void(Vector<WebCore::RecentSearch>&&)>&& completionHandler)
 {
-    notImplemented();
+    if (!name)
+        return completionHandler({ });
+
+    Vector<WebCore::RecentSearch> searchItems;
+    WebCore::SearchPopupMenuDB::singleton().loadRecentSearches(name, searchItems);
+    completionHandler(WTFMove(searchItems));
 }
 
-void WebPageProxy::editorStateChanged(const EditorState& editorState)
+void WebPageProxy::updateEditorState(const EditorState& editorState)
 {
     m_editorState = editorState;
 }
 
 PlatformWidget WebPageProxy::viewWidget()
 {
-    return static_cast<PageClientImpl&>(m_pageClient).viewWidget();
+    return static_cast<PageClientImpl&>(pageClient()).viewWidget();
 }
 
 

@@ -28,6 +28,7 @@
 
 #if JSC_OBJC_API_ENABLED
 #import "APICast.h"
+#import "APIUtils.h"
 #import "JSAPIWrapperObject.h"
 #import "JSCInlines.h"
 #import "JSCallbackObject.h"
@@ -39,7 +40,6 @@
 #import "WeakGCMap.h"
 #import "WeakGCMapInlines.h"
 #import <wtf/Vector.h>
-#import <wtf/spi/cocoa/NSMapTableSPI.h>
 #import <wtf/spi/darwin/dyldSPI.h>
 
 #include <mach-o/dyld.h>
@@ -47,7 +47,7 @@
 #if PLATFORM(APPLETV)
 #else
 static const int32_t firstJavaScriptCoreVersionWithInitConstructorSupport = 0x21A0400; // 538.4.0
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 static const uint32_t firstSDKVersionWithInitConstructorSupport = DYLD_IOS_VERSION_10_0;
 #elif PLATFORM(MAC)
 static const uint32_t firstSDKVersionWithInitConstructorSupport = 0xA0A00; // OSX 10.10.0
@@ -179,14 +179,31 @@ static NSMutableDictionary *createRenameMap(Protocol *protocol, BOOL isInstanceM
     return renameMap;
 }
 
-inline void putNonEnumerable(JSValue *base, NSString *propertyName, JSValue *value)
+inline void putNonEnumerable(JSContext *context, JSValue *base, NSString *propertyName, JSValue *value)
 {
-    [base defineProperty:propertyName descriptor:@{
-        JSPropertyDescriptorValueKey: value,
-        JSPropertyDescriptorWritableKey: @YES,
-        JSPropertyDescriptorEnumerableKey: @NO,
-        JSPropertyDescriptorConfigurableKey: @YES
-    }];
+    if (![base isObject])
+        return;
+    JSC::ExecState* exec = toJS([context JSGlobalContextRef]);
+    JSC::VM& vm = exec->vm();
+    JSC::JSLockHolder locker(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
+    JSC::JSObject* baseObject = JSC::asObject(toJS(exec, [base JSValueRef]));
+    auto name = OpaqueJSString::tryCreate(propertyName);
+    if (!name)
+        return;
+
+    JSC::PropertyDescriptor descriptor;
+    descriptor.setValue(toJS(exec, [value JSValueRef]));
+    descriptor.setEnumerable(false);
+    descriptor.setConfigurable(true);
+    descriptor.setWritable(true);
+    bool shouldThrow = false;
+    baseObject->methodTable(vm)->defineOwnProperty(baseObject, exec, name->identifier(&vm), descriptor, shouldThrow);
+
+    JSValueRef exception = 0;
+    if (handleExceptionIfNeeded(scope, exec, &exception) == ExceptionStatus::DidThrow)
+        [context valueFromNotifyException:exception];
 }
 
 static bool isInitFamilyMethod(NSString *name)
@@ -251,11 +268,20 @@ static void copyMethodsToObject(JSContext *context, Class objcClass, Protocol *p
             name = renameMap[name];
             if (!name)
                 name = selectorToPropertyName(nameCStr);
-            if ([object hasProperty:name])
+            auto exec = toJS([context JSGlobalContextRef]);
+            JSValue *existingMethod = object[name];
+            // ObjCCallbackFunction does a dynamic lookup for the
+            // selector before calling the method. In order to save
+            // memory we only put one callback object in any givin
+            // prototype chain. However, to handle the client trying
+            // to override normal builtins e.g. "toString" we check if
+            // the existing value on the prototype chain is an ObjC
+            // callback already.
+            if ([existingMethod isObject] && JSC::jsDynamicCast<JSC::ObjCCallbackFunction*>(exec->vm(), toJS(exec, [existingMethod JSValueRef])))
                 return;
             JSObjectRef method = objCCallbackFunctionForMethod(context, objcClass, protocol, isInstanceMethod, sel, types);
             if (method)
-                putNonEnumerable(object, name, [JSValue valueWithJSValueRef:method inContext:context]);
+                putNonEnumerable(context, object, name, [JSValue valueWithJSValueRef:method inContext:context]);
         }
     });
 
@@ -485,8 +511,9 @@ typedef std::pair<JSC::JSObject*, JSC::JSObject*> ConstructorPrototypePair;
 
         JSValue* prototype = [JSValue valueWithJSValueRef:toRef(jsPrototype) inContext:context];
         JSValue* constructor = [JSValue valueWithJSValueRef:toRef(jsConstructor) inContext:context];
-        putNonEnumerable(prototype, @"constructor", constructor);
-        putNonEnumerable(constructor, @"prototype", prototype);
+
+        putNonEnumerable(context, prototype, @"constructor", constructor);
+        putNonEnumerable(context, constructor, @"prototype", prototype);
 
         Protocol *exportProtocol = getJSExportProtocol();
         forEachProtocolImplementingProtocol(m_class, exportProtocol, ^(Protocol *protocol, bool&){
@@ -512,8 +539,8 @@ typedef std::pair<JSC::JSObject*, JSC::JSObject*> ConstructorPrototypePair;
         if (JSObjectRef method = objCCallbackFunctionForBlock(context, object)) {
             JSValue *constructor = [JSValue valueWithJSValueRef:method inContext:context];
             JSValue *prototype = [JSValue valueWithNewObjectInContext:context];
-            putNonEnumerable(constructor, @"prototype", prototype);
-            putNonEnumerable(prototype, @"constructor", constructor);
+            putNonEnumerable(context, constructor, @"prototype", prototype);
+            putNonEnumerable(context, prototype, @"constructor", constructor);
             return toJS(method);
         }
     }

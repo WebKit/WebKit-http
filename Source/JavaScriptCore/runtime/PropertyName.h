@@ -26,8 +26,10 @@
 #pragma once
 
 #include "Identifier.h"
+#include "JSGlobalObjectFunctions.h"
 #include "PrivateName.h"
 #include <wtf/Optional.h>
+#include <wtf/dtoa.h>
 
 namespace JSC {
 
@@ -67,9 +69,9 @@ public:
         return m_impl;
     }
 
-    AtomicStringImpl* publicName() const
+    AtomStringImpl* publicName() const
     {
-        return (!m_impl || m_impl->isSymbol()) ? nullptr : static_cast<AtomicStringImpl*>(m_impl);
+        return (!m_impl || m_impl->isSymbol()) ? nullptr : static_cast<AtomStringImpl*>(m_impl);
     }
 
     void dump(PrintStream& out) const
@@ -120,14 +122,32 @@ inline bool operator!=(PropertyName a, PropertyName b)
     return a.uid() != b.uid();
 }
 
-ALWAYS_INLINE std::optional<uint32_t> parseIndex(PropertyName propertyName)
+ALWAYS_INLINE Optional<uint32_t> parseIndex(PropertyName propertyName)
 {
     auto uid = propertyName.uid();
     if (!uid)
-        return std::nullopt;
+        return WTF::nullopt;
     if (uid->isSymbol())
-        return std::nullopt;
+        return WTF::nullopt;
     return parseIndex(*uid);
+}
+
+// https://www.ecma-international.org/ecma-262/9.0/index.html#sec-canonicalnumericindexstring
+ALWAYS_INLINE bool isCanonicalNumericIndexString(const PropertyName& propertyName)
+{
+    StringImpl* property = propertyName.uid();
+    if (!property)
+        return false;
+    if (property->isSymbol())
+        return false;
+    if (equal(property, "-0"))
+        return true;
+    double index = jsToNumber(property);
+    NumberToStringBuffer buffer;
+    const char* indexString = WTF::numberToString(index, buffer);
+    if (!equal(property, indexString))
+        return false;
+    return true;
 }
 
 } // namespace JSC

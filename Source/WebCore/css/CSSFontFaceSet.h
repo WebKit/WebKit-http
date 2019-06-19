@@ -68,7 +68,7 @@ public:
 
     ExceptionOr<bool> check(const String& font, const String& text);
 
-    CSSSegmentedFontFace* fontFace(FontSelectionRequest, const AtomicString& family);
+    CSSSegmentedFontFace* fontFace(FontSelectionRequest, const AtomString& family);
 
     enum class Status { Loading, Loaded };
     Status status() const { return m_status; }
@@ -97,7 +97,7 @@ private:
 
     static String familyNameFromPrimitive(const CSSPrimitiveValue&);
 
-    using FontSelectionKey = std::optional<FontSelectionRequest>;
+    using FontSelectionKey = Optional<FontSelectionRequest>;
     struct FontSelectionKeyHash {
         static unsigned hash(const FontSelectionKey& key) { return computeHash(key); }
         static bool equal(const FontSelectionKey& a, const FontSelectionKey& b) { return a == b; }
@@ -106,7 +106,7 @@ private:
     struct FontSelectionKeyHashTraits : SimpleClassHashTraits<FontSelectionKey> {
         static const bool emptyValueIsZero = false;
         static FontSelectionKey emptyValue() { return FontSelectionRequest { }; }
-        static void constructDeletedValue(FontSelectionKey& slot) { slot = std::nullopt; }
+        static void constructDeletedValue(FontSelectionKey& slot) { slot = WTF::nullopt; }
         static bool isDeletedValue(const FontSelectionKey& value) { return !value; }
     };
     using FontSelectionHashMap = HashMap<FontSelectionKey, RefPtr<CSSSegmentedFontFace>, FontSelectionKeyHash, FontSelectionKeyHashTraits>;
@@ -120,7 +120,7 @@ private:
     size_t m_facesPartitionIndex { 0 }; // All entries in m_faces before this index are CSS-connected.
     Status m_status { Status::Loaded };
     HashSet<CSSFontFaceSetClient*> m_clients;
-    CSSFontSelector* m_owningFontSelector;
+    WeakPtr<CSSFontSelector> m_owningFontSelector;
     unsigned m_activeCount { 0 };
 };
 

@@ -23,28 +23,27 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CompilationThread_h
-#define CompilationThread_h
+#pragma once
+
+#include <wtf/Threading.h>
 
 namespace WTF {
-
-WTF_EXPORT_PRIVATE bool exchangeIsCompilationThread(bool newValue);
 
 class CompilationScope {
 public:
     CompilationScope()
-        : m_oldValue(exchangeIsCompilationThread(true))
+        : m_oldValue(Thread::exchangeIsCompilationThread(true))
     {
     }
     
     ~CompilationScope()
     {
-        exchangeIsCompilationThread(m_oldValue);
+        Thread::exchangeIsCompilationThread(m_oldValue);
     }
     
     void leaveEarly()
     {
-        exchangeIsCompilationThread(m_oldValue);
+        Thread::exchangeIsCompilationThread(m_oldValue);
     }
 private:
     bool m_oldValue;
@@ -53,7 +52,3 @@ private:
 } // namespace WTF
 
 using WTF::CompilationScope;
-using WTF::exchangeIsCompilationThread;
-
-#endif // CompilationThread_h
-

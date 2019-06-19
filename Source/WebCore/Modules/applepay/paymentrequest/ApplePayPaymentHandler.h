@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,24 +52,30 @@ private:
     Document& document() const;
     PaymentCoordinator& paymentCoordinator() const;
 
-    ExceptionOr<ApplePaySessionPaymentRequest::TotalAndLineItems> computeTotalAndLineItems();
+    ExceptionOr<Vector<ApplePaySessionPaymentRequest::ShippingMethod>> computeShippingMethods();
+    ExceptionOr<ApplePaySessionPaymentRequest::TotalAndLineItems> computeTotalAndLineItems() const;
+    Vector<PaymentError> computeErrors(String&& error, AddressErrors&&, PayerErrorFields&&, JSC::JSObject* paymentMethodErrors) const;
+    void computeAddressErrors(String&& error, AddressErrors&&, Vector<PaymentError>&) const;
+    void computePayerErrors(PayerErrorFields&&, Vector<PaymentError>&) const;
+    ExceptionOr<void> computePaymentMethodErrors(JSC::JSObject* paymentMethodErrors, Vector<PaymentError>&) const;
 
-    ExceptionOr<void> shippingAddressUpdated(const String& error);
+    ExceptionOr<void> shippingAddressUpdated(Vector<PaymentError>&& errors);
     ExceptionOr<void> shippingOptionUpdated();
     ExceptionOr<void> paymentMethodUpdated();
 
     // PaymentHandler
     ExceptionOr<void> convertData(JSC::JSValue&&) final;
-    ExceptionOr<void> show() final;
+    ExceptionOr<void> show(Document&) final;
     void hide() final;
-    void canMakePayment(WTF::Function<void(bool)>&& completionHandler) final;
-    ExceptionOr<void> detailsUpdated(PaymentRequest::UpdateReason, const String& error) final;
+    void canMakePayment(Document&, WTF::Function<void(bool)>&& completionHandler) final;
+    ExceptionOr<void> detailsUpdated(PaymentRequest::UpdateReason, String&& error, AddressErrors&&, PayerErrorFields&&, JSC::JSObject* paymentMethodErrors) final;
     ExceptionOr<void> merchantValidationCompleted(JSC::JSValue&&) final;
-    void complete(std::optional<PaymentComplete>&&) final;
+    void complete(Optional<PaymentComplete>&&) final;
+    ExceptionOr<void> retry(PaymentValidationErrors&&) final;
 
     // PaymentSession
     unsigned version() const final;
-    void validateMerchant(const URL&) final;
+    void validateMerchant(URL&&) final;
     void didAuthorizePayment(const Payment&) final;
     void didSelectShippingMethod(const ApplePaySessionPaymentRequest::ShippingMethod&) final;
     void didSelectShippingContact(const PaymentContact&) final;
@@ -78,8 +84,8 @@ private:
 
     PaymentRequest::MethodIdentifier m_identifier;
     Ref<PaymentRequest> m_paymentRequest;
-    std::optional<ApplePayRequest> m_applePayRequest;
-    std::optional<ApplePayPaymentMethodType> m_selectedPaymentMethodType;
+    Optional<ApplePayRequest> m_applePayRequest;
+    Optional<ApplePayPaymentMethodType> m_selectedPaymentMethodType;
     bool m_isUpdating { false };
 };
 

@@ -26,51 +26,65 @@
 #pragma once
 
 #include "Connection.h"
+#include "ProcessThrottler.h"
 #include "WebBackForwardListItem.h"
-#include <WebCore/SecurityOriginData.h>
+#include "WebPageProxyMessages.h"
 #include <wtf/RefCounted.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebKit {
 
 class WebPageProxy;
 class WebProcessProxy;
 
-class SuspendedPageProxy : public RefCounted<SuspendedPageProxy> {
+enum class ShouldDelayClosingUntilEnteringAcceleratedCompositingMode : bool { No, Yes };
+
+class SuspendedPageProxy final: public IPC::MessageReceiver, public CanMakeWeakPtr<SuspendedPageProxy> {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<SuspendedPageProxy> create(WebPageProxy& page, WebProcessProxy& process, WebBackForwardListItem& item)
-    {
-        return adoptRef(*new SuspendedPageProxy(page, process, item));
-    }
-
-    virtual ~SuspendedPageProxy();
-
-    void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
+    SuspendedPageProxy(WebPageProxy&, Ref<WebProcessProxy>&&, uint64_t mainFrameID, ShouldDelayClosingUntilEnteringAcceleratedCompositingMode);
+    ~SuspendedPageProxy();
 
     WebPageProxy& page() const { return m_page; }
-    WebProcessProxy* process() const { return m_process; }
-    WebBackForwardListItem& item() const { return m_backForwardListItem; }
-    const WebCore::SecurityOriginData& origin() const { return m_origin; }
+    WebProcessProxy& process() { return m_process.get(); }
+    uint64_t mainFrameID() const { return m_mainFrameID; }
 
-    bool finishedSuspending() const { return m_finishedSuspending; }
+    bool pageIsClosedOrClosing() const;
 
-    void webProcessDidClose(WebProcessProxy&);
-    void destroyWebPageInWebProcess();
+    void waitUntilReadyToUnsuspend(CompletionHandler<void(SuspendedPageProxy*)>&&);
+    void unsuspend();
+
+    void pageEnteredAcceleratedCompositingMode();
+    void closeWithoutFlashing();
 
 #if !LOG_DISABLED
     const char* loggingString() const;
 #endif
 
 private:
-    SuspendedPageProxy(WebPageProxy&, WebProcessProxy&, WebBackForwardListItem&);
+    enum class SuspensionState : uint8_t { Suspending, FailedToSuspend, Suspended, Resumed };
+    void didProcessRequestToSuspend(SuspensionState);
+    void suspensionTimedOut();
 
-    void didFinishLoad();
+    void close();
+
+    // IPC::MessageReceiver
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) final;
 
     WebPageProxy& m_page;
-    WebProcessProxy* m_process;
-    Ref<WebBackForwardListItem> m_backForwardListItem;
-    WebCore::SecurityOriginData m_origin;
+    Ref<WebProcessProxy> m_process;
+    uint64_t m_mainFrameID;
+    bool m_isClosed { false };
+    ShouldDelayClosingUntilEnteringAcceleratedCompositingMode m_shouldDelayClosingUntilEnteringAcceleratedCompositingMode { ShouldDelayClosingUntilEnteringAcceleratedCompositingMode::No };
+    bool m_shouldCloseWhenEnteringAcceleratedCompositingMode { false };
 
-    bool m_finishedSuspending { false };
+    SuspensionState m_suspensionState { SuspensionState::Suspending };
+    CompletionHandler<void(SuspendedPageProxy*)> m_readyToUnsuspendHandler;
+    RunLoop::Timer<SuspendedPageProxy> m_suspensionTimeoutTimer;
+#if PLATFORM(IOS_FAMILY)
+    ProcessThrottler::BackgroundActivityToken m_suspensionToken;
+#endif
 };
 
 } // namespace WebKit

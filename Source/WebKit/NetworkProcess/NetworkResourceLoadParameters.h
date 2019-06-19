@@ -30,10 +30,7 @@
 #include "UserContentControllerIdentifier.h"
 #include <WebCore/ContentSecurityPolicyResponseHeaders.h>
 #include <WebCore/FetchOptions.h>
-#include <WebCore/ResourceLoaderOptions.h>
-#include <WebCore/ResourceRequest.h>
 #include <WebCore/SecurityOrigin.h>
-#include <pal/SessionID.h>
 #include <wtf/Seconds.h>
 
 namespace IPC {
@@ -54,19 +51,19 @@ public:
     Vector<RefPtr<SandboxExtension>> requestBodySandboxExtensions; // Created automatically for the sender.
     RefPtr<SandboxExtension> resourceSandboxExtension; // Created automatically for the sender.
     Seconds maximumBufferingTime;
-    Vector<String> derivedCachedDataTypesToRetrieve;
     RefPtr<WebCore::SecurityOrigin> sourceOrigin;
     WebCore::FetchOptions options;
-    std::optional<WebCore::ContentSecurityPolicyResponseHeaders> cspResponseHeaders;
+    Optional<WebCore::ContentSecurityPolicyResponseHeaders> cspResponseHeaders;
     WebCore::HTTPHeaderMap originalRequestHeaders;
     bool shouldRestrictHTTPResponseAccess { false };
     WebCore::PreflightPolicy preflightPolicy { WebCore::PreflightPolicy::Consider };
     bool shouldEnableCrossOriginResourcePolicy { false };
     Vector<RefPtr<WebCore::SecurityOrigin>> frameAncestorOrigins;
+    bool isHTTPSUpgradeEnabled { false };
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    WebCore::URL mainDocumentURL;
-    std::optional<UserContentControllerIdentifier> userContentControllerIdentifier;
+    URL mainDocumentURL;
+    Optional<UserContentControllerIdentifier> userContentControllerIdentifier;
 #endif
 };
 

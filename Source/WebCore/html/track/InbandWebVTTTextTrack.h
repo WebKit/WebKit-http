@@ -34,6 +34,7 @@
 namespace WebCore {
 
 class InbandWebVTTTextTrack final : public InbandTextTrack, private WebVTTParserClient {
+    WTF_MAKE_ISO_ALLOCATED(InbandWebVTTTextTrack);
 public:
     static Ref<InbandTextTrack> create(ScriptExecutionContext&, TextTrackClient&, InbandTextTrackPrivate&);
     virtual ~InbandWebVTTTextTrack();
@@ -47,6 +48,7 @@ private:
 
     void newCuesParsed() final;
     void newRegionsParsed() final;
+    void newStyleSheetsParsed() final;
     void fileFailedToParse() final;
 
 #if !RELEASE_LOG_DISABLED

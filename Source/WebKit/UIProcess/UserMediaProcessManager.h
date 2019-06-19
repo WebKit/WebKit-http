@@ -35,14 +35,10 @@ public:
 
     UserMediaProcessManager();
 
-    void addUserMediaPermissionRequestManagerProxy(UserMediaPermissionRequestManagerProxy&);
-    void removeUserMediaPermissionRequestManagerProxy(UserMediaPermissionRequestManagerProxy&);
-
     bool willCreateMediaStream(UserMediaPermissionRequestManagerProxy&, bool withAudio, bool withVideo);
     void muteCaptureMediaStreamsExceptIn(WebPageProxy&);
 
-    void startedCaptureSession(UserMediaPermissionRequestManagerProxy&);
-    void endedCaptureSession(UserMediaPermissionRequestManagerProxy&);
+    void revokeSandboxExtensionsIfNeeded(WebProcessProxy&);
 
     void setCaptureEnabled(bool);
     bool captureEnabled() const { return m_captureEnabled; }

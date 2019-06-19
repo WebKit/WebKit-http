@@ -39,10 +39,16 @@
 
 namespace WebCore {
 
-class RTCRtpSender : public RefCounted<RTCRtpSender>, public ScriptWrappable {
+class PeerConnectionBackend;
+struct RTCRtpCapabilities;
+
+class RTCRtpSender final : public RefCounted<RTCRtpSender>, public ScriptWrappable {
+    WTF_MAKE_ISO_ALLOCATED(RTCRtpSender);
 public:
-    static Ref<RTCRtpSender> create(Ref<MediaStreamTrack>&&, Vector<String>&& mediaStreamIds, std::unique_ptr<RTCRtpSenderBackend>&&);
-    static Ref<RTCRtpSender> create(String&& trackKind, Vector<String>&& mediaStreamIds, std::unique_ptr<RTCRtpSenderBackend>&&);
+    static Ref<RTCRtpSender> create(PeerConnectionBackend&, Ref<MediaStreamTrack>&&, Vector<String>&& mediaStreamIds, std::unique_ptr<RTCRtpSenderBackend>&&);
+    static Ref<RTCRtpSender> create(PeerConnectionBackend&, String&& trackKind, Vector<String>&& mediaStreamIds, std::unique_ptr<RTCRtpSenderBackend>&&);
+
+    static Optional<RTCRtpCapabilities> getCapabilities(ScriptExecutionContext&, const String& kind);
 
     MediaStreamTrack* track() { return m_track.get(); }
 
@@ -59,19 +65,24 @@ public:
 
     void replaceTrack(ScriptExecutionContext&, RefPtr<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&);
 
-    RTCRtpParameters getParameters();
-    void setParameters(const RTCRtpParameters&, DOMPromiseDeferred<void>&&);
+    RTCRtpSendParameters getParameters();
+    void setParameters(const RTCRtpSendParameters&, DOMPromiseDeferred<void>&&);
 
     RTCRtpSenderBackend* backend() { return m_backend.get(); }
 
+    void getStats(Ref<DeferredPromise>&&);
+
+    bool isCreatedBy(const PeerConnectionBackend&) const;
+
 private:
-    RTCRtpSender(String&& trackKind, Vector<String>&& mediaStreamIds, std::unique_ptr<RTCRtpSenderBackend>&&);
+    RTCRtpSender(PeerConnectionBackend&, String&& trackKind, Vector<String>&& mediaStreamIds, std::unique_ptr<RTCRtpSenderBackend>&&);
 
     RefPtr<MediaStreamTrack> m_track;
     String m_trackId;
     String m_trackKind;
     Vector<String> m_mediaStreamIds;
     std::unique_ptr<RTCRtpSenderBackend> m_backend;
+    WeakPtr<PeerConnectionBackend> m_connection;
 };
 
 } // namespace WebCore

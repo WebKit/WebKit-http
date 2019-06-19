@@ -71,6 +71,7 @@
 #include "DFGTypeCheckHoistingPhase.h"
 #include "DFGUnificationPhase.h"
 #include "DFGValidate.h"
+#include "DFGValueRepReductionPhase.h"
 #include "DFGVarargsForwardingPhase.h"
 #include "DFGVirtualRegisterAllocationPhase.h"
 #include "DFGWatchpointCollectionPhase.h"
@@ -135,13 +136,13 @@ Profiler::CompilationKind profilerCompilationKindForMode(CompilationMode mode)
 
 Plan::Plan(CodeBlock* passedCodeBlock, CodeBlock* profiledDFGCodeBlock,
     CompilationMode mode, unsigned osrEntryBytecodeIndex,
-    const Operands<JSValue>& mustHandleValues)
-    : m_vm(passedCodeBlock->vm())
+    const Operands<Optional<JSValue>>& mustHandleValues)
+    : m_mode(mode)
+    , m_vm(passedCodeBlock->vm())
     , m_codeBlock(passedCodeBlock)
     , m_profiledDFGCodeBlock(profiledDFGCodeBlock)
-    , m_mode(mode)
-    , m_osrEntryBytecodeIndex(osrEntryBytecodeIndex)
     , m_mustHandleValues(mustHandleValues)
+    , m_osrEntryBytecodeIndex(osrEntryBytecodeIndex)
     , m_compilation(UNLIKELY(m_vm->m_perBytecodeProfiler) ? adoptRef(new Profiler::Compilation(m_vm->m_perBytecodeProfiler->ensureBytecodesFor(m_codeBlock), profilerCompilationKindForMode(mode))) : nullptr)
     , m_inlineCallFrames(adoptRef(new InlineCallFrameSet()))
     , m_identifiers(m_codeBlock)
@@ -183,7 +184,7 @@ void Plan::compileInThread(ThreadData* threadData)
     CompilationScope compilationScope;
 
     if (logCompilationChanges(m_mode) || Options::logPhaseTimes())
-        dataLog("DFG(Plan) compiling ", *m_codeBlock, " with ", m_mode, ", number of instructions = ", m_codeBlock->instructionCount(), "\n");
+        dataLog("DFG(Plan) compiling ", *m_codeBlock, " with ", m_mode, ", instructions size = ", m_codeBlock->instructionsSize(), "\n");
 
     CompilationPath path = compileInThreadImpl();
 
@@ -424,6 +425,8 @@ Plan::CompilationPath Plan::compileInThreadImpl()
             RUN_PHASE(performCriticalEdgeBreaking);
             RUN_PHASE(performObjectAllocationSinking);
         }
+        if (Options::useValueRepElimination())
+            RUN_PHASE(performValueRepReduction);
         if (changed) {
             // State-at-tail and state-at-head will be invalid if we did strength reduction since
             // it might increase live ranges.
@@ -556,6 +559,7 @@ void Plan::reallyAdd(CommonData* commonData)
     m_identifiers.reallyAdd(*m_vm, commonData);
     m_weakReferences.reallyAdd(*m_vm, commonData);
     m_transitions.reallyAdd(*m_vm, commonData);
+    m_globalProperties.reallyAdd(m_codeBlock, m_identifiers, *commonData);
     commonData->recordedStatuses = WTFMove(m_recordedStatuses);
 }
 
@@ -570,12 +574,17 @@ void Plan::notifyReady()
     m_stage = Ready;
 }
 
+bool Plan::isStillValidOnMainThread()
+{
+    return m_globalProperties.isStillValidOnMainThread(*m_vm, m_identifiers);
+}
+
 CompilationResult Plan::finalizeWithoutNotifyingCallback()
 {
     // We will establish new references from the code block to things. So, we need a barrier.
     m_vm->heap.writeBarrier(m_codeBlock);
 
-    if (!isStillValid()) {
+    if (!isStillValidOnMainThread() || !isStillValid()) {
         CODEBLOCK_LOG_EVENT(m_codeBlock, "dfgFinalize", ("invalidated"));
         return CompilationInvalidated;
     }
@@ -633,8 +642,11 @@ void Plan::checkLivenessAndVisitChildren(SlotVisitor& visitor)
         return;
 
     cleanMustHandleValuesIfNecessary();
-    for (unsigned i = m_mustHandleValues.size(); i--;)
-        visitor.appendUnbarriered(m_mustHandleValues[i]);
+    for (unsigned i = m_mustHandleValues.size(); i--;) {
+        Optional<JSValue> value = m_mustHandleValues[i];
+        if (value)
+            visitor.appendUnbarriered(value.value());
+    }
 
     m_recordedStatuses.markIfCheap(visitor);
 
@@ -655,18 +667,19 @@ void Plan::checkLivenessAndVisitChildren(SlotVisitor& visitor)
 
 void Plan::finalizeInGC()
 {
-    m_recordedStatuses.finalizeWithoutDeleting();
+    ASSERT(m_vm);
+    m_recordedStatuses.finalizeWithoutDeleting(*m_vm);
 }
 
 bool Plan::isKnownToBeLiveDuringGC()
 {
     if (m_stage == Cancelled)
         return false;
-    if (!Heap::isMarked(m_codeBlock->ownerExecutable()))
+    if (!m_vm->heap.isMarked(m_codeBlock->ownerExecutable()))
         return false;
-    if (!Heap::isMarked(m_codeBlock->alternative()))
+    if (!m_vm->heap.isMarked(m_codeBlock->alternative()))
         return false;
-    if (!!m_profiledDFGCodeBlock && !Heap::isMarked(m_profiledDFGCodeBlock))
+    if (!!m_profiledDFGCodeBlock && !m_vm->heap.isMarked(m_profiledDFGCodeBlock))
         return false;
     return true;
 }
@@ -682,6 +695,7 @@ void Plan::cancel()
     m_inlineCallFrames = nullptr;
     m_watchpoints = DesiredWatchpoints();
     m_identifiers = DesiredIdentifiers();
+    m_globalProperties = DesiredGlobalProperties();
     m_weakReferences = DesiredWeakReferences();
     m_transitions = DesiredTransitions();
     m_callback = nullptr;
@@ -708,7 +722,7 @@ void Plan::cleanMustHandleValuesIfNecessary()
 
     for (unsigned local = m_mustHandleValues.numberOfLocals(); local--;) {
         if (!liveness[local])
-            m_mustHandleValues.local(local) = jsUndefined();
+            m_mustHandleValues.local(local) = WTF::nullopt;
     }
 }
 

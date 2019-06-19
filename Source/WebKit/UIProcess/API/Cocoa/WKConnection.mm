@@ -26,8 +26,6 @@
 #import "config.h"
 #import "WKConnectionInternal.h"
 
-#if WK_API_ENABLED
-
 #import "ObjCObjectGraph.h"
 #import "WKRetainPtr.h"
 #import "WKSharedAPICast.h"
@@ -36,7 +34,9 @@
 #import <wtf/WeakObjCPtr.h>
 #import <wtf/text/WTFString.h>
 
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 @implementation WKConnection {
+IGNORE_WARNINGS_END
     WeakObjCPtr<id <WKConnectionDelegate>> _delegate;
 }
 
@@ -49,7 +49,9 @@
 
 static void didReceiveMessage(WKConnectionRef, WKStringRef messageName, WKTypeRef messageBody, const void* clientInfo)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto connection = (__bridge WKConnection *)clientInfo;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     auto delegate = connection->_delegate.get();
 
     if ([delegate respondsToSelector:@selector(connection:didReceiveMessageWithName:body:)]) {
@@ -61,7 +63,9 @@ static void didReceiveMessage(WKConnectionRef, WKStringRef messageName, WKTypeRe
 
 static void didClose(WKConnectionRef, const void* clientInfo)
 {
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     auto connection = (__bridge WKConnection *)clientInfo;
+    ALLOW_DEPRECATED_DECLARATIONS_END
     auto delegate = connection->_delegate.get();
 
     if ([delegate respondsToSelector:@selector(connectionDidClose:)])
@@ -97,8 +101,8 @@ static void setUpClient(WKConnection *wrapper, WebKit::WebConnection& connection
 
 - (void)sendMessageWithName:(NSString *)messageName body:(id)messageBody
 {
-    RefPtr<WebKit::ObjCObjectGraph> wkMessageBody = WebKit::ObjCObjectGraph::create(messageBody);
-    self._connection.postMessage(messageName, wkMessageBody.get());
+    auto wkMessageBody = WebKit::ObjCObjectGraph::create(messageBody);
+    self._connection.postMessage(messageName, wkMessageBody.ptr());
 }
 
 - (WebKit::WebConnection&)_connection
@@ -114,5 +118,3 @@ static void setUpClient(WKConnection *wrapper, WebKit::WebConnection& connection
 }
 
 @end
-
-#endif // WK_API_ENABLED

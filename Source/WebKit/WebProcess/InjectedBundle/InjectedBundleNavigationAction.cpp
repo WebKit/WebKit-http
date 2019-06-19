@@ -37,42 +37,42 @@
 namespace WebKit {
 using namespace WebCore;
 
-static WebMouseEvent::Button mouseButtonForMouseEventData(const std::optional<NavigationAction::MouseEventData>& mouseEventData)
+static WebMouseEvent::Button mouseButtonForMouseEventData(const Optional<NavigationAction::MouseEventData>& mouseEventData)
 {
     if (mouseEventData && mouseEventData->buttonDown && mouseEventData->isTrusted)
         return static_cast<WebMouseEvent::Button>(mouseEventData->button);
     return WebMouseEvent::NoButton;
 }
 
-static WebMouseEvent::SyntheticClickType syntheticClickTypeForMouseEventData(const std::optional<NavigationAction::MouseEventData>& mouseEventData)
+static WebMouseEvent::SyntheticClickType syntheticClickTypeForMouseEventData(const Optional<NavigationAction::MouseEventData>& mouseEventData)
 {
     if (mouseEventData && mouseEventData->buttonDown && mouseEventData->isTrusted)
         return static_cast<WebMouseEvent::SyntheticClickType>(mouseEventData->syntheticClickType);
     return WebMouseEvent::NoTap;
 }
     
-static FloatPoint clickLocationInRootViewCoordinatesForMouseEventData(const std::optional<NavigationAction::MouseEventData>& mouseEventData)
+static FloatPoint clickLocationInRootViewCoordinatesForMouseEventData(const Optional<NavigationAction::MouseEventData>& mouseEventData)
 {
     if (mouseEventData && mouseEventData->buttonDown && mouseEventData->isTrusted)
         return mouseEventData->locationInRootViewCoordinates;
     return { };
 }
 
-WebEvent::Modifiers InjectedBundleNavigationAction::modifiersForNavigationAction(const NavigationAction& navigationAction)
+OptionSet<WebEvent::Modifier> InjectedBundleNavigationAction::modifiersForNavigationAction(const NavigationAction& navigationAction)
 {
-    uint32_t modifiers = 0;
+    OptionSet<WebEvent::Modifier> modifiers;
     auto keyStateEventData = navigationAction.keyStateEventData();
     if (keyStateEventData && keyStateEventData->isTrusted) {
         if (keyStateEventData->shiftKey)
-            modifiers |= WebEvent::ShiftKey;
+            modifiers.add(WebEvent::Modifier::ShiftKey);
         if (keyStateEventData->ctrlKey)
-            modifiers |= WebEvent::ControlKey;
+            modifiers.add(WebEvent::Modifier::ControlKey);
         if (keyStateEventData->altKey)
-            modifiers |= WebEvent::AltKey;
+            modifiers.add(WebEvent::Modifier::AltKey);
         if (keyStateEventData->metaKey)
-            modifiers |= WebEvent::MetaKey;
+            modifiers.add(WebEvent::Modifier::MetaKey);
     }
-    return static_cast<WebEvent::Modifiers>(modifiers);
+    return modifiers;
 }
 
 WebMouseEvent::Button InjectedBundleNavigationAction::mouseButtonForNavigationAction(const NavigationAction& navigationAction)

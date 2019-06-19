@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,7 +36,7 @@
 #include "WebProcess.h"
 #include <WebCore/Frame.h>
 #include <WebCore/PaymentCoordinator.h>
-#include <WebCore/URL.h>
+#include <wtf/URL.h>
 
 namespace WebKit {
 
@@ -51,94 +51,52 @@ WebPaymentCoordinator::~WebPaymentCoordinator()
     WebProcess::singleton().removeMessageReceiver(*this);
 }
 
-bool WebPaymentCoordinator::supportsVersion(unsigned version)
+void WebPaymentCoordinator::networkProcessConnectionClosed()
 {
-    ASSERT(version > 0);
-
-#if !ENABLE(APPLE_PAY_SESSION_V3)
-    static const unsigned currentVersion = 2;
-#elif !ENABLE(APPLE_PAY_SESSION_V4)
-    static const unsigned currentVersion = 3;
-#else
-    static const unsigned currentVersion = 4;
+#if ENABLE(APPLE_PAY_REMOTE_UI)
+    if (remoteUIEnabled())
+        didCancelPaymentSession();
 #endif
-
-    return version <= currentVersion;
 }
 
-const WebPaymentCoordinator::AvailablePaymentNetworksSet& WebPaymentCoordinator::availablePaymentNetworks()
+Optional<String> WebPaymentCoordinator::validatedPaymentNetwork(const String& paymentNetwork)
 {
-    if (m_availablePaymentNetworks)
-        return *m_availablePaymentNetworks;
+    if (!m_availablePaymentNetworks)
+        m_availablePaymentNetworks = platformAvailablePaymentNetworks();
 
-    m_availablePaymentNetworks = WebPaymentCoordinator::AvailablePaymentNetworksSet();
-
-    Vector<String> availablePaymentNetworks;
-    using AvailablePaymentNetworksMessage = Messages::WebPaymentCoordinatorProxy::AvailablePaymentNetworks;
-    if (m_webPage.sendSync(AvailablePaymentNetworksMessage(), AvailablePaymentNetworksMessage::Reply(availablePaymentNetworks))) {
-        for (auto& network : availablePaymentNetworks)
-            m_availablePaymentNetworks->add(network);
-    }
-
-    return *m_availablePaymentNetworks;
-}
-
-std::optional<String> WebPaymentCoordinator::validatedPaymentNetwork(const String& paymentNetwork)
-{
-    auto& paymentNetworks = availablePaymentNetworks();
-    auto result = paymentNetworks.find(paymentNetwork);
-    if (result == paymentNetworks.end())
-        return std::nullopt;
+    auto result = m_availablePaymentNetworks->find(paymentNetwork);
+    if (result == m_availablePaymentNetworks->end())
+        return WTF::nullopt;
     return *result;
 }
 
 bool WebPaymentCoordinator::canMakePayments()
 {
     bool canMakePayments;
-    if (!m_webPage.sendSync(Messages::WebPaymentCoordinatorProxy::CanMakePayments(), Messages::WebPaymentCoordinatorProxy::CanMakePayments::Reply(canMakePayments)))
+    if (!sendSync(Messages::WebPaymentCoordinatorProxy::CanMakePayments(), Messages::WebPaymentCoordinatorProxy::CanMakePayments::Reply(canMakePayments)))
         return false;
 
     return canMakePayments;
 }
 
-static uint64_t generateCanMakePaymentsWithActiveCardReplyID()
+void WebPaymentCoordinator::canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, CompletionHandler<void(bool)>&& completionHandler)
 {
-    static uint64_t canMakePaymentsWithActiveCardReplyID;
-
-    return ++canMakePaymentsWithActiveCardReplyID;
+    sendWithAsyncReply(Messages::WebPaymentCoordinatorProxy::CanMakePaymentsWithActiveCard(merchantIdentifier, domainName, m_webPage.sessionID()), WTFMove(completionHandler));
 }
 
-void WebPaymentCoordinator::canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler)
+void WebPaymentCoordinator::openPaymentSetup(const String& merchantIdentifier, const String& domainName, CompletionHandler<void(bool)>&& completionHandler)
 {
-    auto replyID = generateCanMakePaymentsWithActiveCardReplyID();
-
-    m_pendingCanMakePaymentsWithActiveCardCallbacks.add(replyID, WTFMove(completionHandler));
-    m_webPage.send(Messages::WebPaymentCoordinatorProxy::CanMakePaymentsWithActiveCard(merchantIdentifier, domainName, replyID));
+    sendWithAsyncReply(Messages::WebPaymentCoordinatorProxy::OpenPaymentSetup(merchantIdentifier, domainName), WTFMove(completionHandler));
 }
 
-static uint64_t generateOpenPaymentSetupReplyID()
-{
-    static uint64_t openPaymentSetupReplyID;
-
-    return ++openPaymentSetupReplyID;
-}
-
-void WebPaymentCoordinator::openPaymentSetup(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler)
-{
-    auto replyID = generateOpenPaymentSetupReplyID();
-
-    m_pendingOpenPaymentSetupCallbacks.add(replyID, WTFMove(completionHandler));
-    m_webPage.send(Messages::WebPaymentCoordinatorProxy::OpenPaymentSetup(merchantIdentifier, domainName, replyID));
-}
-
-bool WebPaymentCoordinator::showPaymentUI(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::ApplePaySessionPaymentRequest& paymentRequest)
+bool WebPaymentCoordinator::showPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLs, const WebCore::ApplePaySessionPaymentRequest& paymentRequest)
 {
     Vector<String> linkIconURLStrings;
     for (const auto& linkIconURL : linkIconURLs)
         linkIconURLStrings.append(linkIconURL.string());
 
     bool result;
-    if (!m_webPage.sendSync(Messages::WebPaymentCoordinatorProxy::ShowPaymentUI(originatingURL.string(), linkIconURLStrings, paymentRequest), Messages::WebPaymentCoordinatorProxy::ShowPaymentUI::Reply(result)))
+    if (!sendSync(Messages::WebPaymentCoordinatorProxy::ShowPaymentUI(m_webPage.pageID(), m_webPage.sessionID(), originatingURL.string(), linkIconURLStrings, paymentRequest), Messages::WebPaymentCoordinatorProxy::ShowPaymentUI::Reply(result)))
         return false;
 
     return result;
@@ -146,37 +104,37 @@ bool WebPaymentCoordinator::showPaymentUI(const WebCore::URL& originatingURL, co
 
 void WebPaymentCoordinator::completeMerchantValidation(const WebCore::PaymentMerchantSession& paymentMerchantSession)
 {
-    m_webPage.send(Messages::WebPaymentCoordinatorProxy::CompleteMerchantValidation(paymentMerchantSession));
+    send(Messages::WebPaymentCoordinatorProxy::CompleteMerchantValidation(paymentMerchantSession));
 }
 
-void WebPaymentCoordinator::completeShippingMethodSelection(std::optional<WebCore::ShippingMethodUpdate>&& update)
+void WebPaymentCoordinator::completeShippingMethodSelection(Optional<WebCore::ShippingMethodUpdate>&& update)
 {
-    m_webPage.send(Messages::WebPaymentCoordinatorProxy::CompleteShippingMethodSelection(update));
+    send(Messages::WebPaymentCoordinatorProxy::CompleteShippingMethodSelection(update));
 }
 
-void WebPaymentCoordinator::completeShippingContactSelection(std::optional<WebCore::ShippingContactUpdate>&& update)
+void WebPaymentCoordinator::completeShippingContactSelection(Optional<WebCore::ShippingContactUpdate>&& update)
 {
-    m_webPage.send(Messages::WebPaymentCoordinatorProxy::CompleteShippingContactSelection(update));
+    send(Messages::WebPaymentCoordinatorProxy::CompleteShippingContactSelection(update));
 }
 
-void WebPaymentCoordinator::completePaymentMethodSelection(std::optional<WebCore::PaymentMethodUpdate>&& update)
+void WebPaymentCoordinator::completePaymentMethodSelection(Optional<WebCore::PaymentMethodUpdate>&& update)
 {
-    m_webPage.send(Messages::WebPaymentCoordinatorProxy::CompletePaymentMethodSelection(update));
+    send(Messages::WebPaymentCoordinatorProxy::CompletePaymentMethodSelection(update));
 }
 
-void WebPaymentCoordinator::completePaymentSession(std::optional<WebCore::PaymentAuthorizationResult>&& result)
+void WebPaymentCoordinator::completePaymentSession(Optional<WebCore::PaymentAuthorizationResult>&& result)
 {
-    m_webPage.send(Messages::WebPaymentCoordinatorProxy::CompletePaymentSession(result));
+    send(Messages::WebPaymentCoordinatorProxy::CompletePaymentSession(result));
 }
 
 void WebPaymentCoordinator::abortPaymentSession()
 {
-    m_webPage.send(Messages::WebPaymentCoordinatorProxy::AbortPaymentSession());
+    send(Messages::WebPaymentCoordinatorProxy::AbortPaymentSession());
 }
 
 void WebPaymentCoordinator::cancelPaymentSession()
 {
-    m_webPage.send(Messages::WebPaymentCoordinatorProxy::CancelPaymentSession());
+    send(Messages::WebPaymentCoordinatorProxy::CancelPaymentSession());
 }
 
 void WebPaymentCoordinator::paymentCoordinatorDestroyed()
@@ -184,9 +142,38 @@ void WebPaymentCoordinator::paymentCoordinatorDestroyed()
     delete this;
 }
 
+bool WebPaymentCoordinator::isAlwaysOnLoggingAllowed() const
+{
+    return m_webPage.isAlwaysOnLoggingAllowed();
+}
+
+bool WebPaymentCoordinator::supportsUnrestrictedApplePay() const
+{
+#if ENABLE(APPLE_PAY_REMOTE_UI)
+    static bool hasEntitlement = WebProcess::singleton().parentProcessHasEntitlement("com.apple.private.WebKit.UnrestrictedApplePay");
+    return hasEntitlement;
+#else
+    return true;
+#endif
+}
+
+IPC::Connection* WebPaymentCoordinator::messageSenderConnection() const
+{
+#if ENABLE(APPLE_PAY_REMOTE_UI)
+    if (remoteUIEnabled())
+        return &WebProcess::singleton().ensureNetworkProcessConnection().connection();
+#endif
+    return WebProcess::singleton().parentProcessConnection();
+}
+
+uint64_t WebPaymentCoordinator::messageSenderDestinationID() const
+{
+    return m_webPage.pageID().toUInt64();
+}
+
 void WebPaymentCoordinator::validateMerchant(const String& validationURLString)
 {
-    paymentCoordinator().validateMerchant(WebCore::URL(WebCore::URL(), validationURLString));
+    paymentCoordinator().validateMerchant(URL(URL(), validationURLString));
 }
 
 void WebPaymentCoordinator::didAuthorizePayment(const WebCore::Payment& payment)
@@ -214,22 +201,19 @@ void WebPaymentCoordinator::didCancelPaymentSession()
     paymentCoordinator().didCancelPaymentSession();
 }
 
-void WebPaymentCoordinator::canMakePaymentsWithActiveCardReply(uint64_t requestID, bool canMakePayments)
-{
-    auto callback = m_pendingCanMakePaymentsWithActiveCardCallbacks.take(requestID);
-    callback(canMakePayments);
-}
-
-void WebPaymentCoordinator::openPaymentSetupReply(uint64_t requestID, bool result)
-{
-    auto callback = m_pendingOpenPaymentSetupCallbacks.take(requestID);
-    callback(result);
-}
-
 WebCore::PaymentCoordinator& WebPaymentCoordinator::paymentCoordinator()
 {
     return m_webPage.corePage()->paymentCoordinator();
 }
+
+#if ENABLE(APPLE_PAY_REMOTE_UI)
+bool WebPaymentCoordinator::remoteUIEnabled() const
+{
+    if (auto page = m_webPage.corePage())
+        return page->settings().applePayRemoteUIEnabled();
+    return false;
+}
+#endif
 
 }
 

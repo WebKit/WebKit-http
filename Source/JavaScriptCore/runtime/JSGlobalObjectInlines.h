@@ -52,7 +52,6 @@ ALWAYS_INLINE bool JSGlobalObject::stringPrototypeChainIsSane()
         && objectPrototypeIsSane();
 }
 
-
 ALWAYS_INLINE bool JSGlobalObject::isArrayPrototypeIteratorProtocolFastAndNonObservable()
 {
     // We're fast if we don't have any indexed properties on the prototype.

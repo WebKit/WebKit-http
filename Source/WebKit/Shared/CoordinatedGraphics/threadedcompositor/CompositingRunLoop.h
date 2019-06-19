@@ -23,10 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CompositingRunLoop_h
-#define CompositingRunLoop_h
+#pragma once
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(COORDINATED_GRAPHICS)
 
 #include <wtf/Atomics.h>
 #include <wtf/Condition.h>
@@ -48,45 +47,40 @@ public:
     void performTask(Function<void ()>&&);
     void performTaskSync(Function<void ()>&&);
 
+    void suspend();
+    void resume();
+
     Lock& stateLock() { return m_state.lock; }
 
     void scheduleUpdate();
     void scheduleUpdate(LockHolder&);
     void stopUpdates();
 
-    void compositionCompleted(LockHolder&);
     void updateCompleted(LockHolder&);
 
 private:
-    enum class CompositionState {
-        Idle,
-        InProgress,
-    };
     enum class UpdateState {
         Idle,
         Scheduled,
         InProgress,
-        PendingCompletion,
     };
 
     void updateTimerFired();
 
+    RunLoop* m_runLoop { nullptr };
     RunLoop::Timer<CompositingRunLoop> m_updateTimer;
     Function<void ()> m_updateFunction;
     Lock m_dispatchSyncConditionMutex;
     Condition m_dispatchSyncCondition;
 
-
     struct {
         Lock lock;
-        CompositionState composition { CompositionState::Idle };
         UpdateState update { UpdateState::Idle };
         bool pendingUpdate { false };
+        bool isSuspended { false };
     } m_state;
 };
 
 } // namespace WebKit
 
-#endif // USE(COORDINATED_GRAPHICS_THREADED)
-
-#endif // CompositingRunLoop_h
+#endif // USE(COORDINATED_GRAPHICS)

@@ -36,6 +36,7 @@ class Element;
 class RenderStyle;
 
 class CSSTransition final : public DeclarativeAnimation {
+    WTF_MAKE_ISO_ALLOCATED(CSSTransition);
 public:
     static Ref<CSSTransition> create(Element&, CSSPropertyID, MonotonicTime generationTime, const Animation&, const RenderStyle* oldStyle, const RenderStyle& newStyle, Seconds delay, Seconds duration, const RenderStyle& reversingAdjustedStartStyle, double);
     ~CSSTransition() = default;
@@ -49,7 +50,6 @@ public:
     const RenderStyle& reversingAdjustedStartStyle() const { return *m_reversingAdjustedStartStyle; }
     double reversingShorteningFactor() const { return m_reversingShorteningFactor; }
 
-    bool canBeListed() const final;
     void resolve(RenderStyle&) final;
 
 private:

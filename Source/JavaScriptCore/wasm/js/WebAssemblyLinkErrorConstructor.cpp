@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,15 +49,15 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyLinkError(ExecState* e
     auto& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue message = exec->argument(0);
-    auto* structure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), jsCast<InternalFunction*>(exec->jsCallee())->globalObject(vm)->WebAssemblyLinkErrorStructure());
+    auto* structure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), jsCast<InternalFunction*>(exec->jsCallee())->globalObject(vm)->webAssemblyLinkErrorStructure());
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    return JSValue::encode(JSWebAssemblyLinkError::create(exec, vm, structure, message));
+    RELEASE_AND_RETURN(scope, JSValue::encode(JSWebAssemblyLinkError::create(exec, vm, structure, message)));
 }
 
 static EncodedJSValue JSC_HOST_CALL callJSWebAssemblyLinkError(ExecState* exec)
 {
     JSValue message = exec->argument(0);
-    Structure* errorStructure = jsCast<InternalFunction*>(exec->jsCallee())->globalObject(exec->vm())->WebAssemblyLinkErrorStructure();
+    Structure* errorStructure = jsCast<InternalFunction*>(exec->jsCallee())->globalObject(exec->vm())->webAssemblyLinkErrorStructure();
     return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, nullptr, TypeNothing, false));
 }
 
@@ -75,7 +75,7 @@ Structure* WebAssemblyLinkErrorConstructor::createStructure(VM& vm, JSGlobalObje
 
 void WebAssemblyLinkErrorConstructor::finishCreation(VM& vm, WebAssemblyLinkErrorPrototype* prototype)
 {
-    Base::finishCreation(vm, "LinkError"_s);
+    Base::finishCreation(vm, "LinkError"_s, NameVisibility::Visible, NameAdditionMode::WithoutStructureTransition);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
 }

@@ -35,6 +35,7 @@
 #include "HTMLMapElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
+#include "HTTPParsers.h"
 #include "MathMLMathElement.h"
 #include "MathMLNames.h"
 #include "RenderMathMLBlock.h"
@@ -184,13 +185,13 @@ bool MathMLPresentationElement::isFlowContent(const Node& node)
         || htmlElement.hasTagName(HTMLNames::ulTag);
 }
 
-const MathMLElement::BooleanValue& MathMLPresentationElement::cachedBooleanAttribute(const QualifiedName& name, std::optional<BooleanValue>& attribute)
+const MathMLElement::BooleanValue& MathMLPresentationElement::cachedBooleanAttribute(const QualifiedName& name, Optional<BooleanValue>& attribute)
 {
     if (attribute)
         return attribute.value();
 
     // In MathML, attribute values are case-sensitive.
-    const AtomicString& value = attributeWithoutSynchronization(name);
+    const AtomString& value = attributeWithoutSynchronization(name);
     if (value == "true")
         attribute = BooleanValue::True;
     else if (value == "false")
@@ -294,21 +295,22 @@ MathMLElement::Length MathMLPresentationElement::parseMathMLLength(const String&
     // Instead, we just use isHTMLSpace and toFloat to parse these parts.
 
     // We first skip whitespace from both ends of the string.
-    StringView stringView = stripLeadingAndTrailingWhitespace(string);
+    StringView stringView = string;
+    StringView strippedLength = stripLeadingAndTrailingHTTPSpaces(stringView);
 
-    if (stringView.isEmpty())
+    if (strippedLength.isEmpty())
         return Length();
 
     // We consider the most typical case: a number followed by an optional unit.
-    UChar firstChar = stringView[0];
+    UChar firstChar = strippedLength[0];
     if (isASCIIDigit(firstChar) || firstChar == '-' || firstChar == '.')
-        return parseNumberAndUnit(stringView);
+        return parseNumberAndUnit(strippedLength);
 
     // Otherwise, we try and parse a named space.
-    return parseNamedSpace(stringView);
+    return parseNamedSpace(strippedLength);
 }
 
-const MathMLElement::Length& MathMLPresentationElement::cachedMathMLLength(const QualifiedName& name, std::optional<Length>& length)
+const MathMLElement::Length& MathMLPresentationElement::cachedMathMLLength(const QualifiedName& name, Optional<Length>& length)
 {
     if (length)
         return length.value();
@@ -321,15 +323,15 @@ bool MathMLPresentationElement::acceptsDisplayStyleAttribute()
     return hasTagName(mtableTag);
 }
 
-std::optional<bool> MathMLPresentationElement::specifiedDisplayStyle()
+Optional<bool> MathMLPresentationElement::specifiedDisplayStyle()
 {
     if (!acceptsDisplayStyleAttribute())
-        return std::nullopt;
+        return WTF::nullopt;
     const MathMLElement::BooleanValue& specifiedDisplayStyle = cachedBooleanAttribute(displaystyleAttr, m_displayStyle);
     return toOptionalBool(specifiedDisplayStyle);
 }
 
-MathMLElement::MathVariant MathMLPresentationElement::parseMathVariantAttribute(const AtomicString& attributeValue)
+MathMLElement::MathVariant MathMLPresentationElement::parseMathVariantAttribute(const AtomString& attributeValue)
 {
     // The mathvariant attribute values is case-sensitive.
     if (attributeValue == "normal")
@@ -371,23 +373,23 @@ MathMLElement::MathVariant MathMLPresentationElement::parseMathVariantAttribute(
     return MathVariant::None;
 }
 
-std::optional<MathMLElement::MathVariant> MathMLPresentationElement::specifiedMathVariant()
+Optional<MathMLElement::MathVariant> MathMLPresentationElement::specifiedMathVariant()
 {
     if (!acceptsMathVariantAttribute())
-        return std::nullopt;
+        return WTF::nullopt;
     if (!m_mathVariant)
         m_mathVariant = parseMathVariantAttribute(attributeWithoutSynchronization(mathvariantAttr));
-    return m_mathVariant.value() == MathVariant::None ? std::nullopt : m_mathVariant;
+    return m_mathVariant.value() == MathVariant::None ? WTF::nullopt : m_mathVariant;
 }
 
-void MathMLPresentationElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void MathMLPresentationElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     bool displayStyleAttribute = name == displaystyleAttr && acceptsDisplayStyleAttribute();
     bool mathVariantAttribute = name == mathvariantAttr && acceptsMathVariantAttribute();
     if (displayStyleAttribute)
-        m_displayStyle = std::nullopt;
+        m_displayStyle = WTF::nullopt;
     if (mathVariantAttribute)
-        m_mathVariant = std::nullopt;
+        m_mathVariant = WTF::nullopt;
     if ((displayStyleAttribute || mathVariantAttribute) && renderer())
         MathMLStyle::resolveMathMLStyleTree(renderer());
 

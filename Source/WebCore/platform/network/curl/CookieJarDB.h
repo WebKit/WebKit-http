@@ -29,45 +29,55 @@
 #include "SQLiteStatement.h"
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/Optional.h>
-#include <wtf/Vector.h>
 #include <wtf/text/StringHash.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
+enum class CookieAcceptPolicy {
+    Always,
+    Never,
+    OnlyFromMainDocumentDomain,
+    ExclusivelyFromMainDocumentDomain
+};
 
 class CookieJarDB {
     WTF_MAKE_NONCOPYABLE(CookieJarDB);
 
 public:
+    enum class Source : uint8_t {
+        Network,
+        Script
+    };
+
     void open();
-    bool isEnabled();
-    void setEnabled(bool);
+    bool isEnabled() const;
 
-    bool searchCookies(const String& requestUrl, const std::optional<bool>& httpOnly, const std::optional<bool>& secure, const std::optional<bool>& session, Vector<Cookie>& results);
-    int setCookie(const String& url, const String& cookie, bool fromJavaScript);
-    int setCookie(const Cookie&);
+    void setAcceptPolicy(CookieAcceptPolicy policy) { m_acceptPolicy = policy; }
+    CookieAcceptPolicy acceptPolicy() const { return m_acceptPolicy; }
 
-    int deleteCookie(const String& url, const String& name);
-    int deleteCookies(const String& url);
-    int deleteAllCookies();
+    Optional<Vector<Cookie>> searchCookies(const URL& firstParty, const URL& requestUrl, const Optional<bool>& httpOnly, const Optional<bool>& secure, const Optional<bool>& session);
+    bool setCookie(const URL& firstParty, const URL&, const String& cookie, Source);
+    bool setCookie(const Cookie&);
+
+    bool deleteCookie(const String& url, const String& name);
+    bool deleteCookies(const String& url);
+    bool deleteAllCookies();
 
     WEBCORE_EXPORT CookieJarDB(const String& databasePath);
     WEBCORE_EXPORT ~CookieJarDB();
 
 private:
-
-    bool m_isEnabled {true};
+    CookieAcceptPolicy m_acceptPolicy { CookieAcceptPolicy::Always };
     String m_databasePath;
 
-    bool m_detectedDatabaseCorruption {false};
+    bool m_detectedDatabaseCorruption { false };
 
     bool isOnMemory() const { return (m_databasePath == ":memory:"); };
 
     bool openDatabase();
     void closeDatabase();
 
-    void checkSQLiteReturnCode(int actual);
+    bool checkSQLiteReturnCode(int);
     void flagDatabaseCorruption();
     bool checkDatabaseCorruptionAndRemoveIfNeeded();
     String getCorruptionMarkerPath() const;
@@ -75,12 +85,18 @@ private:
     bool checkDatabaseValidity();
     void deleteAllDatabaseFiles();
 
-    void createPrepareStatement(const char* sql);
-    SQLiteStatement* getPrepareStatement(const char* sql);
-    int executeSimpleSql(const char* sql, bool ignoreError = false);
+    void verifySchemaVersion();
+    void deleteAllTables();
 
-    int deleteCookieInternal(const String& name, const String& domain, const String& path);
+    void createPrepareStatement(const String&);
+    SQLiteStatement& preparedStatement(const String&);
+    bool executeSql(const String&);
+
+    bool deleteCookieInternal(const String& name, const String& domain, const String& path);
     bool hasHttpOnlyCookie(const String& name, const String& domain, const String& path);
+    bool canAcceptCookie(const Cookie&, const URL& firstParty, const URL&, CookieJarDB::Source);
+    bool checkCookieAcceptPolicy(const URL& firstParty, const URL&);
+    bool hasCookies(const URL&);
 
     SQLiteDatabase m_database;
     HashMap<String, std::unique_ptr<SQLiteStatement>> m_statements;

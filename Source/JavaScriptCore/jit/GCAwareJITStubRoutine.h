@@ -67,8 +67,8 @@ protected:
 private:
     friend class JITStubRoutineSet;
 
-    bool m_mayBeExecuting;
-    bool m_isJettisoned;
+    bool m_mayBeExecuting { false };
+    bool m_isJettisoned { false };
 };
 
 // Use this if you want to mark one additional object during GC if your stub
@@ -89,19 +89,19 @@ private:
 
 // The stub has exception handlers in it. So it clears itself from exception
 // handling table when it dies. It also frees space in CodeOrigin table
-// for new exception handlers to use the same CallSiteIndex.
+// for new exception handlers to use the same DisposableCallSiteIndex.
 class GCAwareJITStubRoutineWithExceptionHandler : public MarkingGCAwareJITStubRoutine {
 public:
     typedef GCAwareJITStubRoutine Base;
 
-    GCAwareJITStubRoutineWithExceptionHandler(const MacroAssemblerCodeRef<JITStubRoutinePtrTag>&, VM&, const JSCell* owner, const Vector<JSCell*>&, CodeBlock*, CallSiteIndex);
+    GCAwareJITStubRoutineWithExceptionHandler(const MacroAssemblerCodeRef<JITStubRoutinePtrTag>&, VM&, const JSCell* owner, const Vector<JSCell*>&, CodeBlock*, DisposableCallSiteIndex);
 
     void aboutToDie() override;
     void observeZeroRefCount() override;
 
 private:
     CodeBlock* m_codeBlockWithExceptionHandler;
-    CallSiteIndex m_exceptionHandlerCallSiteIndex;
+    DisposableCallSiteIndex m_exceptionHandlerCallSiteIndex;
 };
 
 // Helper for easily creating a GC-aware JIT stub routine. For the varargs,
@@ -126,7 +126,7 @@ private:
 Ref<JITStubRoutine> createJITStubRoutine(
     const MacroAssemblerCodeRef<JITStubRoutinePtrTag>&, VM&, const JSCell* owner, bool makesCalls,
     const Vector<JSCell*>& = { }, 
-    CodeBlock* codeBlockForExceptionHandlers = nullptr, CallSiteIndex exceptionHandlingCallSiteIndex = CallSiteIndex(std::numeric_limits<unsigned>::max()));
+    CodeBlock* codeBlockForExceptionHandlers = nullptr, DisposableCallSiteIndex exceptionHandlingCallSiteIndex = DisposableCallSiteIndex());
 
 } // namespace JSC
 

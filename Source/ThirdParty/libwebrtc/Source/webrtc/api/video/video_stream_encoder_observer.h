@@ -11,6 +11,7 @@
 #ifndef API_VIDEO_VIDEO_STREAM_ENCODER_OBSERVER_H_
 #define API_VIDEO_VIDEO_STREAM_ENCODER_OBSERVER_H_
 
+#include <string>
 #include <vector>
 
 #include "absl/types/optional.h"
@@ -37,6 +38,7 @@ class VideoStreamEncoderObserver : public CpuOveruseMetricsObserver {
  public:
   // Number of resolution and framerate reductions (unset if disabled).
   struct AdaptationSteps {
+    AdaptationSteps();
     absl::optional<int> num_resolution_reductions = 0;
     absl::optional<int> num_framerate_reductions = 0;
   };
@@ -58,7 +60,7 @@ class VideoStreamEncoderObserver : public CpuOveruseMetricsObserver {
     kMediaOptimization
   };
 
-  virtual ~VideoStreamEncoderObserver() = default;
+  ~VideoStreamEncoderObserver() override = default;
 
   virtual void OnIncomingFrame(int width, int height) = 0;
 
@@ -66,6 +68,9 @@ class VideoStreamEncoderObserver : public CpuOveruseMetricsObserver {
   using CpuOveruseMetricsObserver::OnEncodedFrameTimeMeasured;
   virtual void OnSendEncodedImage(const EncodedImage& encoded_image,
                                   const CodecSpecificInfo* codec_info) = 0;
+
+  virtual void OnEncoderImplementationChanged(
+      const std::string& implementation_name) = 0;
 
   virtual void OnFrameDropped(DropReason reason) = 0;
 

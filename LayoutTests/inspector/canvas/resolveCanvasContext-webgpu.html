@@ -7,7 +7,7 @@ if (window.internals)
     window.internals.settings.setWebGPUEnabled(true);
 
 function load() {
-    window.contextWebGPU = document.body.appendChild(document.createElement("canvas")).getContext("webgpu");
+    window.contextWebGPU = document.body.appendChild(document.createElement("canvas")).getContext("gpu");
 
     runTest();
 }
@@ -30,7 +30,7 @@ function test()
             CanvasAgent.resolveCanvasContext(canvas.identifier, objectGroup)
             .then(({object}) => {
                 InspectorTest.expectEqual(object.type, "object", `Payload should have type "object".`);
-                InspectorTest.expectEqual(object.className, "WebGPURenderingContext", `Payload should have className "WebGPURenderingContext".`);
+                InspectorTest.expectEqual(object.className, "GPUCanvasContext", `Payload should have className "GPUCanvasContext".`);
             })
             .then(resolve, reject);
         }

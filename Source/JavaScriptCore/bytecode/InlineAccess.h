@@ -44,17 +44,13 @@ public:
     static constexpr size_t sizeForPropertyAccess()
     {
 #if CPU(X86_64)
-        return 23;
+        return 26;
 #elif CPU(X86)
         return 27;
 #elif CPU(ARM64)
         return 40;
-#elif CPU(ARM)
-#if CPU(ARM_THUMB2)
+#elif CPU(ARM_THUMB2)
         return 48;
-#else
-        return 52;
-#endif
 #elif CPU(MIPS)
         return 72;
 #else
@@ -66,17 +62,13 @@ public:
     static constexpr size_t sizeForPropertyReplace()
     {
 #if CPU(X86_64)
-        return 23;
+        return 26;
 #elif CPU(X86)
         return 27;
 #elif CPU(ARM64)
         return 40;
-#elif CPU(ARM)
-#if CPU(ARM_THUMB2)
+#elif CPU(ARM_THUMB2)
         return 48;
-#else
-        return 48;
-#endif
 #elif CPU(MIPS)
         return 72;
 #else
@@ -91,17 +83,13 @@ public:
     ALWAYS_INLINE static size_t sizeForLengthAccess()
     {
 #if CPU(X86_64)
-        size_t size = 26;
+        size_t size = 43;
 #elif CPU(X86)
         size_t size = 27;
 #elif CPU(ARM64)
-        size_t size = 32;
-#elif CPU(ARM)
-#if CPU(ARM_THUMB2)
+        size_t size = 44;
+#elif CPU(ARM_THUMB2)
         size_t size = 30;
-#else
-        size_t size = 32;
-#endif
 #elif CPU(MIPS)
         size_t size = 56;
 #else
@@ -114,6 +102,7 @@ public:
     static bool canGenerateSelfPropertyReplace(StructureStubInfo&, PropertyOffset);
     static bool generateSelfPropertyReplace(StructureStubInfo&, Structure*, PropertyOffset);
     static bool isCacheableArrayLength(StructureStubInfo&, JSArray*);
+    static bool isCacheableStringLength(StructureStubInfo&);
     static bool generateArrayLength(StructureStubInfo&, JSArray*);
     static void rewireStubAsJump(StructureStubInfo&, CodeLocationLabel<JITStubRoutinePtrTag>);
     static bool generateSelfInAccess(StructureStubInfo&, Structure*);
@@ -123,7 +112,7 @@ public:
     // various platforms. When adding a new type of IC, implement
     // its placeholder code here, and log the size. That way we
     // can intelligently choose sizes on various platforms.
-    NO_RETURN_DUE_TO_CRASH static void dumpCacheSizesAndCrash();
+    JS_EXPORT_PRIVATE NO_RETURN_DUE_TO_CRASH static void dumpCacheSizesAndCrash();
 };
 
 } // namespace JSC

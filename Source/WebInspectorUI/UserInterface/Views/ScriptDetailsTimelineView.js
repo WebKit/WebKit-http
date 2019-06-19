@@ -34,7 +34,7 @@ WI.ScriptDetailsTimelineView = class ScriptDetailsTimelineView extends WI.Timeli
         let columns = {name: {}, location: {}, callCount: {}, startTime: {}, totalTime: {}, selfTime: {}, averageTime: {}};
 
         columns.name.title = WI.UIString("Name");
-        columns.name.width = "10%";
+        columns.name.width = "30%";
         columns.name.icon = true;
         columns.name.disclosure = true;
         columns.name.locked = true;
@@ -87,6 +87,9 @@ WI.ScriptDetailsTimelineView = class ScriptDetailsTimelineView extends WI.Timeli
         timeline.addEventListener(WI.Timeline.Event.Refreshed, this._scriptTimelineRecordRefreshed, this);
 
         this._pendingRecords = [];
+
+        for (let record of timeline.records)
+            this._processRecord(record);
     }
 
     // Public
@@ -176,9 +179,11 @@ WI.ScriptDetailsTimelineView = class ScriptDetailsTimelineView extends WI.Timeli
         if (this.startTime !== this._oldStartTime || this.endTime !== this._oldEndTime) {
             let dataGridNode = this._dataGrid.children[0];
             while (dataGridNode) {
-                dataGridNode.updateRangeTimes(this.startTime, this.endTime);
                 if (dataGridNode.revealed)
-                    dataGridNode.refreshIfNeeded();
+                    dataGridNode.refresh();
+                else
+                    dataGridNode.needsRefresh();
+
                 dataGridNode = dataGridNode.traverseNextNode(false, null, true);
             }
 
@@ -199,10 +204,6 @@ WI.ScriptDetailsTimelineView = class ScriptDetailsTimelineView extends WI.Timeli
         if (!this._pendingRecords.length)
             return;
 
-        let zeroTime = this.zeroTime;
-        let startTime = this.startTime;
-        let endTime = this.endTime;
-
         for (let scriptTimelineRecord of this._pendingRecords) {
             let rootNodes = [];
             if (scriptTimelineRecord.profile) {
@@ -210,11 +211,15 @@ WI.ScriptDetailsTimelineView = class ScriptDetailsTimelineView extends WI.Timeli
                 rootNodes = scriptTimelineRecord.profile.topDownRootNodes;
             }
 
-            let dataGridNode = new WI.ScriptTimelineDataGridNode(scriptTimelineRecord, zeroTime);
+            let dataGridNode = new WI.ScriptTimelineDataGridNode(scriptTimelineRecord, {
+                graphDataSource: this,
+            });
             this._dataGrid.addRowInSortOrder(dataGridNode);
 
             for (let profileNode of rootNodes) {
-                let profileNodeDataGridNode = new WI.ProfileNodeDataGridNode(profileNode, zeroTime, startTime, endTime);
+                let profileNodeDataGridNode = new WI.ProfileNodeDataGridNode(profileNode, {
+                    graphDataSource: this,
+                });
                 this._dataGrid.addRowInSortOrder(profileNodeDataGridNode, dataGridNode);
             }
         }
@@ -224,12 +229,17 @@ WI.ScriptDetailsTimelineView = class ScriptDetailsTimelineView extends WI.Timeli
 
     _scriptTimelineRecordAdded(event)
     {
-        var scriptTimelineRecord = event.data.record;
+        let scriptTimelineRecord = event.data.record;
         console.assert(scriptTimelineRecord instanceof WI.ScriptTimelineRecord);
 
-        this._pendingRecords.push(scriptTimelineRecord);
+        this._processRecord(scriptTimelineRecord);
 
         this.needsLayout();
+    }
+
+    _processRecord(scriptTimelineRecord)
+    {
+        this._pendingRecords.push(scriptTimelineRecord);
     }
 
     _scriptTimelineRecordRefreshed(event)

@@ -32,6 +32,7 @@
 #include "RealtimeIncomingVideoSource.h"
 
 using CMSampleBufferRef = struct opaqueCMSampleBuffer*;
+using CVPixelBufferPoolRef = struct __CVPixelBufferPool*;
 using CVPixelBufferRef = struct __CVBuffer*;
 
 namespace WebCore {
@@ -43,7 +44,8 @@ public:
 private:
     RealtimeIncomingVideoSourceCocoa(rtc::scoped_refptr<webrtc::VideoTrackInterface>&&, String&&);
     void processNewSample(CMSampleBufferRef, unsigned, unsigned, MediaSample::VideoRotation);
-    CVPixelBufferRef pixelBufferFromVideoFrame(const webrtc::VideoFrame&);
+    RetainPtr<CVPixelBufferRef> pixelBufferFromVideoFrame(const webrtc::VideoFrame&);
+    CVPixelBufferPoolRef pixelBufferPool(size_t width, size_t height);
 
     // rtc::VideoSinkInterface
     void OnFrame(const webrtc::VideoFrame&) final;
@@ -55,7 +57,12 @@ private:
 #if !RELEASE_LOG_DISABLED
     size_t m_numberOfFrames { 0 };
 #endif
+    RetainPtr<CVPixelBufferPoolRef> m_pixelBufferPool;
+    size_t m_pixelBufferPoolWidth { 0 };
+    size_t m_pixelBufferPoolHeight { 0 };
 };
+
+RetainPtr<CVPixelBufferRef> createBlackPixelBuffer(size_t width, size_t height);
 
 } // namespace WebCore
 

@@ -5,14 +5,16 @@
     <meta name="robots" content="noodp">
 
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes, viewport-fit=cover">
-    
-    <title><?php if ( is_front_page() ) echo "WebKit"; 
+
+    <title><?php if ( is_front_page() ) echo "WebKit";
         else { wp_title(''); echo ' | WebKit'; } ?></title>
 
     <meta name="application-name" content="WebKit">
 
-    <link rel="stylesheet" type="text/css" href="<?php echo get_stylesheet_uri(); ?>?20171013" media="all">
+    <link rel="stylesheet" type="text/css" href="<?php echo get_stylesheet_uri(); ?>?20181220" media="all">
     <link rel="stylesheet" href="https://www.apple.com/wss/fonts?families=SF+Pro,v1" type="text/css">
+    <link rel="stylesheet" href="https://www.apple.com/wss/fonts?families=SF+Mono,v2" type="text/css">
+    <meta name="supported-color-schemes" content="light dark">
 
     <link rel="alternate" type="application/rss+xml" title="RSS 2.0" href="<?php bloginfo('rss2_url'); ?>">
     <link rel="alternate" type="text/xml" title="RSS .92" href="<?php bloginfo('rss_url'); ?>">
@@ -20,12 +22,11 @@
     <link rel="pingback" href="<?php bloginfo('pingback_url'); ?>">
 
     <link rel="shortcut icon" sizes="32x32" type="image/x-icon" href="/favicon.ico">
-    <link rel="mask-icon" href="tabicon.svg" color="#0088cc">
 
     <?php wp_head(); ?>
 </head>
 <body <?php body_class(); ?>>
-
+    <?php include_invert_lightness_filter(); ?>
     <header aria-label="WebKit.org Header" id="header">
         <div class="page-width">
         <a href="/"><div id="logo" class="site-logo">WebKit</div></a>
@@ -38,7 +39,7 @@
         </div>
     </header>
 
-<?php 
+<?php
 if ( is_front_page() )
     include('front-header.php');
 ?>

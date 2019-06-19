@@ -191,20 +191,22 @@ void rejectPromiseWithExceptionIfAny(JSC::ExecState& state, JSDOMGlobalObject& g
 
 Ref<DeferredPromise> createDeferredPromise(JSC::ExecState& state, JSDOMWindow& domWindow)
 {
-    JSC::JSPromiseDeferred* deferred = JSC::JSPromiseDeferred::create(&state, &domWindow);
+    JSC::JSPromiseDeferred* deferred = JSC::JSPromiseDeferred::tryCreate(&state, &domWindow);
     // deferred can only be null in workers.
-    ASSERT(deferred);
+    RELEASE_ASSERT(deferred);
     return DeferredPromise::create(domWindow, *deferred);
 }
 
-JSC::EncodedJSValue createRejectedPromiseWithTypeError(JSC::ExecState& state, const String& errorMessage)
+JSC::EncodedJSValue createRejectedPromiseWithTypeError(JSC::ExecState& state, const String& errorMessage, RejectedPromiseWithTypeErrorCause cause)
 {
     ASSERT(state.lexicalGlobalObject());
     auto& globalObject = *state.lexicalGlobalObject();
 
     auto promiseConstructor = globalObject.promiseConstructor();
     auto rejectFunction = promiseConstructor->get(&state, state.vm().propertyNames->builtinNames().rejectPrivateName());
-    auto rejectionValue = createTypeError(&state, errorMessage);
+    auto* rejectionValue = static_cast<ErrorInstance*>(createTypeError(&state, errorMessage));
+    if (cause == RejectedPromiseWithTypeErrorCause::NativeGetter)
+        rejectionValue->setNativeGetterTypeError();
 
     CallData callData;
     auto callType = getCallData(state.vm(), rejectFunction, callData);

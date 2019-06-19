@@ -16,8 +16,8 @@
 #include "api/video_codecs/video_decoder_factory.h"
 #include "api/video_codecs/video_encoder_factory.h"
 #include "api/videosourceproxy.h"
-#include "media/engine/convert_legacy_video_factory.h"
 #include "rtc_base/logging.h"
+#include "sdk/android/native_api/jni/java_types.h"
 #include "sdk/android/src/jni/androidvideotracksource.h"
 #include "sdk/android/src/jni/videodecoderfactorywrapper.h"
 #include "sdk/android/src/jni/videoencoderfactorywrapper.h"
@@ -28,22 +28,27 @@ namespace jni {
 VideoEncoderFactory* CreateVideoEncoderFactory(
     JNIEnv* jni,
     const JavaRef<jobject>& j_encoder_factory) {
-  return new VideoEncoderFactoryWrapper(jni, j_encoder_factory);
+  return IsNull(jni, j_encoder_factory)
+             ? nullptr
+             : new VideoEncoderFactoryWrapper(jni, j_encoder_factory);
 }
 
 VideoDecoderFactory* CreateVideoDecoderFactory(
     JNIEnv* jni,
     const JavaRef<jobject>& j_decoder_factory) {
-  return new VideoDecoderFactoryWrapper(jni, j_decoder_factory);
+  return IsNull(jni, j_decoder_factory)
+             ? nullptr
+             : new VideoDecoderFactoryWrapper(jni, j_decoder_factory);
 }
 
 void* CreateVideoSource(JNIEnv* env,
                         rtc::Thread* signaling_thread,
                         rtc::Thread* worker_thread,
-                        jboolean is_screencast) {
+                        jboolean is_screencast,
+                        jboolean align_timestamps) {
   rtc::scoped_refptr<AndroidVideoTrackSource> source(
-      new rtc::RefCountedObject<AndroidVideoTrackSource>(signaling_thread, env,
-                                                         is_screencast));
+      new rtc::RefCountedObject<AndroidVideoTrackSource>(
+          signaling_thread, env, is_screencast, align_timestamps));
   return VideoTrackSourceProxy::Create(signaling_thread, worker_thread, source)
       .release();
 }

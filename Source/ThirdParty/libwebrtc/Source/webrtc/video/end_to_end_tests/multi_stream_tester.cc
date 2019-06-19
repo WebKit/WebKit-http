@@ -14,11 +14,16 @@
 #include <utility>
 #include <vector>
 
+#include "api/test/simulated_network.h"
+#include "api/test/video/function_video_encoder_factory.h"
+#include "api/video/builtin_video_bitrate_allocator_factory.h"
+#include "call/fake_network_pipe.h"
+#include "call/simulated_network.h"
 #include "logging/rtc_event_log/rtc_event_log.h"
+#include "media/engine/internaldecoderfactory.h"
 #include "modules/video_coding/codecs/vp8/include/vp8.h"
 #include "test/call_test.h"
 #include "test/encoder_settings.h"
-#include "test/function_video_encoder_factory.h"
 
 namespace webrtc {
 
@@ -48,9 +53,11 @@ void MultiStreamTester::RunTest() {
   VideoSendStream* send_streams[kNumStreams];
   VideoReceiveStream* receive_streams[kNumStreams];
   test::FrameGeneratorCapturer* frame_generators[kNumStreams];
-  std::vector<std::unique_ptr<VideoDecoder>> allocated_decoders;
   test::FunctionVideoEncoderFactory encoder_factory(
       []() { return VP8Encoder::Create(); });
+  std::unique_ptr<VideoBitrateAllocatorFactory> bitrate_allocator_factory =
+      CreateBuiltinVideoBitrateAllocatorFactory();
+  InternalDecoderFactory decoder_factory;
 
   task_queue_->SendTask([&]() {
     sender_call = absl::WrapUnique(Call::Create(config));
@@ -71,6 +78,8 @@ void MultiStreamTester::RunTest() {
       VideoSendStream::Config send_config(sender_transport.get());
       send_config.rtp.ssrcs.push_back(ssrc);
       send_config.encoder_settings.encoder_factory = &encoder_factory;
+      send_config.encoder_settings.bitrate_allocator_factory =
+          bitrate_allocator_factory.get();
       send_config.rtp.payload_name = "VP8";
       send_config.rtp.payload_type = kVideoPayloadType;
       VideoEncoderConfig encoder_config;
@@ -88,8 +97,7 @@ void MultiStreamTester::RunTest() {
       receive_config.rtp.local_ssrc = test::CallTest::kReceiverLocalVideoSsrc;
       VideoReceiveStream::Decoder decoder =
           test::CreateMatchingDecoder(send_config);
-      allocated_decoders.push_back(
-          std::unique_ptr<VideoDecoder>(decoder.decoder));
+      decoder.decoder_factory = &decoder_factory;
       receive_config.decoders.push_back(decoder);
 
       UpdateReceiveConfig(i, &receive_config);
@@ -138,13 +146,22 @@ void MultiStreamTester::UpdateReceiveConfig(
 test::DirectTransport* MultiStreamTester::CreateSendTransport(
     test::SingleThreadedTaskQueueForTesting* task_queue,
     Call* sender_call) {
-  return new test::DirectTransport(task_queue, sender_call, payload_type_map_);
+  return new test::DirectTransport(
+      task_queue,
+      absl::make_unique<FakeNetworkPipe>(
+          Clock::GetRealTimeClock(),
+          absl::make_unique<SimulatedNetwork>(BuiltInNetworkBehaviorConfig())),
+      sender_call, payload_type_map_);
 }
 
 test::DirectTransport* MultiStreamTester::CreateReceiveTransport(
     test::SingleThreadedTaskQueueForTesting* task_queue,
     Call* receiver_call) {
-  return new test::DirectTransport(task_queue, receiver_call,
-                                   payload_type_map_);
+  return new test::DirectTransport(
+      task_queue,
+      absl::make_unique<FakeNetworkPipe>(
+          Clock::GetRealTimeClock(),
+          absl::make_unique<SimulatedNetwork>(BuiltInNetworkBehaviorConfig())),
+      receiver_call, payload_type_map_);
 }
 }  // namespace webrtc

@@ -12,6 +12,8 @@
 #ifndef MODULES_VIDEO_CODING_CODECS_VP9_VP9_IMPL_H_
 #define MODULES_VIDEO_CODING_CODECS_VP9_VP9_IMPL_H_
 
+#ifdef RTC_ENABLE_VP9
+
 #include <map>
 #include <memory>
 #include <vector>
@@ -20,7 +22,7 @@
 
 #include "media/base/vp9_profile.h"
 #include "modules/video_coding/codecs/vp9/vp9_frame_buffer_pool.h"
-#include "rtc_base/rate_statistics.h"
+#include "modules/video_coding/utility/framerate_controller.h"
 
 #include "vpx/vp8cx.h"
 #include "vpx/vpx_decoder.h"
@@ -46,12 +48,10 @@ class VP9EncoderImpl : public VP9Encoder {
 
   int RegisterEncodeCompleteCallback(EncodedImageCallback* callback) override;
 
-  int SetChannelParameters(uint32_t packet_loss, int64_t rtt) override;
-
   int SetRateAllocation(const VideoBitrateAllocation& bitrate_allocation,
                         uint32_t frame_rate) override;
 
-  const char* ImplementationName() const override;
+  EncoderInfo GetEncoderInfo() const override;
 
  private:
   // Determine number of encoder threads to use.
@@ -61,15 +61,18 @@ class VP9EncoderImpl : public VP9Encoder {
   int InitAndSetControlSettings(const VideoCodec* inst);
 
   void PopulateCodecSpecific(CodecSpecificInfo* codec_specific,
+                             absl::optional<int>* spatial_idx,
                              const vpx_codec_cx_pkt& pkt,
-                             uint32_t timestamp,
-                             bool first_frame_in_picture);
+                             uint32_t timestamp);
   void FillReferenceIndices(const vpx_codec_cx_pkt& pkt,
                             const size_t pic_num,
                             const bool inter_layer_predicted,
                             CodecSpecificInfoVP9* vp9_info);
   void UpdateReferenceBuffers(const vpx_codec_cx_pkt& pkt,
                               const size_t pic_num);
+  vpx_svc_ref_frame_config_t SetReferences(
+      bool is_key_pic,
+      size_t first_active_spatial_layer_id);
 
   bool ExplicitlyConfiguredSpatialLayers() const;
   bool SetSvcRates(const VideoBitrateAllocation& bitrate_allocation);
@@ -82,7 +85,7 @@ class VP9EncoderImpl : public VP9Encoder {
 
   void DeliverBufferedFrame(bool end_of_picture);
 
-  bool DropFrame(uint32_t rtp_timestamp);
+  bool DropFrame(uint8_t spatial_idx, uint32_t rtp_timestamp);
 
   // Determine maximum target for Intra frames
   //
@@ -109,17 +112,23 @@ class VP9EncoderImpl : public VP9Encoder {
   GofInfoVP9 gof_;  // Contains each frame's temporal information for
                     // non-flexible mode.
   bool force_key_frame_;
+  bool different_framerates_used_;
   size_t pics_since_key_;
   uint8_t num_temporal_layers_;
   uint8_t num_spatial_layers_;         // Number of configured SLs
   uint8_t num_active_spatial_layers_;  // Number of actively encoded SLs
+  bool layer_deactivation_requires_key_frame_;
   bool is_svc_;
   InterLayerPredMode inter_layer_pred_;
+  bool external_ref_control_;
+  const bool trusted_rate_controller_;
+  const bool full_superframe_drop_;
+  bool first_frame_in_picture_;
+  VideoBitrateAllocation current_bitrate_allocation_;
+  absl::optional<VideoBitrateAllocation> requested_bitrate_allocation_;
+  bool ss_info_needed_;
 
-  // Framerate controller.
-  absl::optional<float> target_framerate_fps_;
-  RateStatistics output_framerate_;
-  uint32_t last_encoded_frame_rtp_timestamp_;
+  std::vector<FramerateController> framerate_controller_;
 
   // Used for flexible mode.
   bool is_flexible_mode_;
@@ -131,6 +140,12 @@ class VP9EncoderImpl : public VP9Encoder {
           spatial_layer_id(spatial_layer_id),
           temporal_layer_id(temporal_layer_id) {}
     RefFrameBuffer() {}
+
+    bool operator==(const RefFrameBuffer& o) {
+      return pic_num == o.pic_num && spatial_layer_id == o.spatial_layer_id &&
+             temporal_layer_id == o.temporal_layer_id;
+    }
+
     size_t pic_num = 0;
     size_t spatial_layer_id = 0;
     size_t temporal_layer_id = 0;
@@ -161,7 +176,8 @@ class VP9DecoderImpl : public VP9Decoder {
   int ReturnFrame(const vpx_image_t* img,
                   uint32_t timestamp,
                   int64_t ntp_time_ms,
-                  int qp);
+                  int qp,
+                  const ColorSpace* explicit_color_space);
 
   // Memory pool used to share buffers between libvpx and webrtc.
   Vp9FrameBufferPool frame_buffer_pool_;
@@ -171,5 +187,7 @@ class VP9DecoderImpl : public VP9Decoder {
   bool key_frame_required_;
 };
 }  // namespace webrtc
+
+#endif  // RTC_ENABLE_VP9
 
 #endif  // MODULES_VIDEO_CODING_CODECS_VP9_VP9_IMPL_H_

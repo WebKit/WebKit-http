@@ -45,7 +45,7 @@ namespace FTL {
 // telling us the mapping between operands in bytecode and the arguments to
 // the call.
 
-enum ExitValueKind {
+enum ExitValueKind : uint8_t {
     InvalidExitValue,
     ExitValueDead,
     ExitValueArgument,
@@ -54,7 +54,6 @@ enum ExitValueKind {
     ExitValueInJSStackAsInt32,
     ExitValueInJSStackAsInt52,
     ExitValueInJSStackAsDouble,
-    ExitValueRecovery,
     ExitValueMaterializeNewObject
 };
 
@@ -80,7 +79,9 @@ public:
     {
         ExitValue result;
         result.m_kind = ExitValueInJSStack;
-        result.u.virtualRegister = reg.offset();
+        UnionType u;
+        u.virtualRegister = reg.offset();
+        result.m_value = WTFMove(u);
         return result;
     }
     
@@ -88,7 +89,9 @@ public:
     {
         ExitValue result;
         result.m_kind = ExitValueInJSStackAsInt32;
-        result.u.virtualRegister = reg.offset();
+        UnionType u;
+        u.virtualRegister = reg.offset();
+        result.m_value = WTFMove(u);
         return result;
     }
     
@@ -96,7 +99,9 @@ public:
     {
         ExitValue result;
         result.m_kind = ExitValueInJSStackAsInt52;
-        result.u.virtualRegister = reg.offset();
+        UnionType u;
+        u.virtualRegister = reg.offset();
+        result.m_value = WTFMove(u);
         return result;
     }
     
@@ -104,7 +109,9 @@ public:
     {
         ExitValue result;
         result.m_kind = ExitValueInJSStackAsDouble;
-        result.u.virtualRegister = reg.offset();
+        UnionType u;
+        u.virtualRegister = reg.offset();
+        result.m_value = WTFMove(u);
         return result;
     }
     
@@ -112,7 +119,9 @@ public:
     {
         ExitValue result;
         result.m_kind = ExitValueConstant;
-        result.u.constant = JSValue::encode(value);
+        UnionType u;
+        u.constant = JSValue::encode(value);
+        result.m_value = WTFMove(u);
         return result;
     }
     
@@ -120,18 +129,9 @@ public:
     {
         ExitValue result;
         result.m_kind = ExitValueArgument;
-        result.u.argument = argument.representation();
-        return result;
-    }
-    
-    static ExitValue recovery(RecoveryOpcode opcode, unsigned leftArgument, unsigned rightArgument, DataFormat format)
-    {
-        ExitValue result;
-        result.m_kind = ExitValueRecovery;
-        result.u.recovery.opcode = opcode;
-        result.u.recovery.leftArgument = leftArgument;
-        result.u.recovery.rightArgument = rightArgument;
-        result.u.recovery.format = format;
+        UnionType u;
+        u.argument = argument.representation();
+        result.m_value = WTFMove(u);
         return result;
     }
     
@@ -154,68 +154,40 @@ public:
     }
     bool isConstant() const { return kind() == ExitValueConstant; }
     bool isArgument() const { return kind() == ExitValueArgument; }
-    bool isRecovery() const { return kind() == ExitValueRecovery; }
     bool isObjectMaterialization() const { return kind() == ExitValueMaterializeNewObject; }
-    bool hasIndexInStackmapLocations() const { return isArgument() || isRecovery(); }
+    bool hasIndexInStackmapLocations() const { return isArgument(); }
     
     ExitArgument exitArgument() const
     {
         ASSERT(isArgument());
-        return ExitArgument(u.argument);
+        return ExitArgument(m_value.get().argument);
     }
     
-    unsigned leftRecoveryArgument() const
-    {
-        ASSERT(isRecovery());
-        return u.recovery.leftArgument;
-    }
-    
-    unsigned rightRecoveryArgument() const
-    {
-        ASSERT(isRecovery());
-        return u.recovery.rightArgument;
-    }
-
     void adjustStackmapLocationsIndexByOffset(unsigned offset)
     {
         ASSERT(hasIndexInStackmapLocations());
-        if (isArgument())
-            u.argument.argument += offset;
-        else {
-            ASSERT(isRecovery());
-            u.recovery.rightArgument += offset;
-            u.recovery.leftArgument += offset;
-        }
-    }
-    
-    DataFormat recoveryFormat() const
-    {
-        ASSERT(isRecovery());
-        return static_cast<DataFormat>(u.recovery.format);
-    }
-    
-    RecoveryOpcode recoveryOpcode() const
-    {
-        ASSERT(isRecovery());
-        return static_cast<RecoveryOpcode>(u.recovery.opcode);
+        ASSERT(isArgument());
+        UnionType u = m_value.get();
+        u.argument.argument += offset;
+        m_value = WTFMove(u);
     }
     
     JSValue constant() const
     {
         ASSERT(isConstant());
-        return JSValue::decode(u.constant);
+        return JSValue::decode(m_value.get().constant);
     }
     
     VirtualRegister virtualRegister() const
     {
         ASSERT(isInJSStackSomehow());
-        return VirtualRegister(u.virtualRegister);
+        return VirtualRegister(m_value.get().virtualRegister);
     }
     
     ExitTimeObjectMaterialization* objectMaterialization() const
     {
         ASSERT(isObjectMaterialization());
-        return u.newObjectMaterializationData;
+        return m_value.get().newObjectMaterializationData;
     }
 
     ExitValue withVirtualRegister(VirtualRegister virtualRegister) const
@@ -223,7 +195,9 @@ public:
         ASSERT(isInJSStackSomehow());
         ExitValue result;
         result.m_kind = m_kind;
-        result.u.virtualRegister = virtualRegister.offset();
+        UnionType u;
+        u.virtualRegister = virtualRegister.offset();
+        result.m_value = WTFMove(u);
         return result;
     }
     
@@ -242,18 +216,13 @@ public:
     
 private:
     ExitValueKind m_kind;
-    union {
+    union UnionType {
         ExitArgumentRepresentation argument;
         EncodedJSValue constant;
         int virtualRegister;
-        struct {
-            uint16_t leftArgument;
-            uint16_t rightArgument;
-            uint16_t opcode;
-            uint16_t format;
-        } recovery;
         ExitTimeObjectMaterialization* newObjectMaterializationData;
-    } u;
+    };
+    Packed<UnionType> m_value;
 };
 
 } } // namespace JSC::FTL

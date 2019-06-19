@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2002 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2007 Maks Orlovich
  *
@@ -31,6 +31,8 @@
 #include "Exception.h"
 #include "IndirectEvalExecutable.h"
 #include "Interpreter.h"
+#include "IntlDateTimeFormat.h"
+#include "IntlObject.h"
 #include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
@@ -42,6 +44,7 @@
 #include "Lexer.h"
 #include "LiteralParser.h"
 #include "Nodes.h"
+#include "ObjectConstructor.h"
 #include "JSCInlines.h"
 #include "ParseInt.h"
 #include "Parser.h"
@@ -55,10 +58,6 @@
 #include <wtf/MathExtras.h>
 #include <wtf/dtoa.h>
 #include <wtf/text/StringBuilder.h>
-#include <wtf/unicode/UTF8.h>
-
-using namespace WTF;
-using namespace Unicode;
 
 namespace JSC {
 
@@ -87,7 +86,7 @@ static JSValue encode(ExecState* exec, const Bitmap<256>& doNotEscape, const Cha
         return JSC::throwException(exec, scope, createURIError(exec, "String contained an illegal UTF-16 sequence."_s));
     };
 
-    StringBuilder builder;
+    StringBuilder builder(StringBuilder::OverflowHandler::RecordOverflow);
     builder.reserveCapacity(length);
 
     // 4. Repeat
@@ -146,11 +145,13 @@ static JSValue encode(ExecState* exec, const Bitmap<256>& doNotEscape, const Cha
             // 4-d-vi-1. Let jOctet be the value at index j within Octets.
             // 4-d-vi-2. Let S be a String containing three code units "%XY" where XY are two uppercase hexadecimal digits encoding the value of jOctet.
             // 4-d-vi-3. Let R be a new String value computed by concatenating the previous value of R and S.
-            builder.append(static_cast<LChar>('%'));
+            builder.append('%');
             appendByteAsHex(utf8OctetsBuffer[index], builder);
         }
     }
 
+    if (UNLIKELY(builder.hasOverflowed()))
+        return throwOutOfMemoryError(exec, scope);
     return jsString(exec, builder.toString());
 }
 
@@ -170,7 +171,7 @@ static JSValue decode(ExecState* exec, const CharType* characters, int length, c
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    StringBuilder builder;
+    StringBuilder builder(StringBuilder::OverflowHandler::RecordOverflow);
     int k = 0;
     UChar u = 0;
     while (k < length) {
@@ -180,10 +181,15 @@ static JSValue decode(ExecState* exec, const CharType* characters, int length, c
             int charLen = 0;
             if (k <= length - 3 && isASCIIHexDigit(p[1]) && isASCIIHexDigit(p[2])) {
                 const char b0 = Lexer<CharType>::convertHex(p[1], p[2]);
-                const int sequenceLen = UTF8SequenceLength(b0);
-                if (sequenceLen && k <= length - sequenceLen * 3) {
+                const int sequenceLen = 1 + U8_COUNT_TRAIL_BYTES(b0);
+                if (k <= length - sequenceLen * 3) {
                     charLen = sequenceLen * 3;
-                    char sequence[5];
+#if U_ICU_VERSION_MAJOR_NUM >= 60
+                    uint8_t sequence[U8_MAX_LENGTH];
+#else
+                    // In pre-60 ICU, U8_COUNT_TRAIL_BYTES returns 0..5
+                    uint8_t sequence[6];
+#endif
                     sequence[0] = b0;
                     for (int i = 1; i < sequenceLen; ++i) {
                         const CharType* q = p + i * 3;
@@ -195,16 +201,20 @@ static JSValue decode(ExecState* exec, const CharType* characters, int length, c
                         }
                     }
                     if (charLen != 0) {
-                        sequence[sequenceLen] = 0;
-                        const int character = decodeUTF8Sequence(sequence);
-                        if (character < 0 || character >= 0x110000)
+                        UChar32 character;
+                        int32_t offset = 0;
+                        U8_NEXT(sequence, offset, sequenceLen, character);
+                        if (character < 0)
                             charLen = 0;
-                        else if (character >= 0x10000) {
+                        else if (!U_IS_BMP(character)) {
                             // Convert to surrogate pair.
-                            builder.append(static_cast<UChar>(0xD800 | ((character - 0x10000) >> 10)));
-                            u = static_cast<UChar>(0xDC00 | ((character - 0x10000) & 0x3FF));
-                        } else
+                            ASSERT(U_IS_SUPPLEMENTARY(character));
+                            builder.append(U16_LEAD(character));
+                            u = U16_TRAIL(character);
+                        } else {
+                            ASSERT(!U_IS_SURROGATE(character));
                             u = static_cast<UChar>(character);
+                        }
                     }
                 }
             }
@@ -229,8 +239,9 @@ static JSValue decode(ExecState* exec, const CharType* characters, int length, c
         k++;
         builder.append(c);
     }
-    scope.release();
-    return jsString(&vm, builder.toString());
+    if (UNLIKELY(builder.hasOverflowed()))
+        return throwOutOfMemoryError(exec, scope);
+    RELEASE_AND_RETURN(scope, jsString(&vm, builder.toString()));
 }
 
 static JSValue decode(ExecState* exec, const Bitmap<256>& doNotUnescape, bool strict)
@@ -504,8 +515,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncEval(ExecState* exec)
     if (!eval)
         return encodedJSValue();
 
-    scope.release();
-    return JSValue::encode(vm.interpreter->execute(eval, exec, calleeGlobalObject->globalThis(), calleeGlobalObject->globalScope()));
+    RELEASE_AND_RETURN(scope, JSValue::encode(vm.interpreter->execute(eval, exec, calleeGlobalObject->globalThis(), calleeGlobalObject->globalScope())));
 }
 
 EncodedJSValue JSC_HOST_CALL globalFuncParseInt(ExecState* exec)
@@ -599,8 +609,8 @@ EncodedJSValue JSC_HOST_CALL globalFuncEscape(ExecState* exec)
                 if (doNotEscape.get(static_cast<LChar>(u)))
                     builder.append(*c);
                 else {
-                    builder.append(static_cast<LChar>('%'));
-                    appendByteAsHex(static_cast<LChar>(u), builder);
+                    builder.append('%');
+                    appendByteAsHex(u, builder);
                 }
             }
             return jsString(exec, builder.toString());
@@ -610,14 +620,13 @@ EncodedJSValue JSC_HOST_CALL globalFuncEscape(ExecState* exec)
         for (unsigned k = 0; k < view.length(); k++, c++) {
             UChar u = c[0];
             if (u >= doNotEscape.size()) {
-                builder.append(static_cast<LChar>('%'));
-                builder.append(static_cast<LChar>('u'));
+                builder.appendLiteral("%u");
                 appendByteAsHex(u >> 8, builder);
                 appendByteAsHex(u & 0xFF, builder);
             } else if (doNotEscape.get(static_cast<LChar>(u)))
                 builder.append(*c);
             else {
-                builder.append(static_cast<LChar>('%'));
+                builder.append('%');
                 appendByteAsHex(u, builder);
             }
         }
@@ -696,6 +705,13 @@ EncodedJSValue JSC_HOST_CALL globalFuncThrowTypeErrorArgumentsCalleeAndCaller(Ex
     return throwVMTypeError(exec, scope, "'arguments', 'callee', and 'caller' cannot be accessed in this context.");
 }
 
+EncodedJSValue JSC_HOST_CALL globalFuncMakeTypeError(ExecState* exec)
+{
+    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+    Structure* errorStructure = globalObject->errorStructure(ErrorType::TypeError);
+    return JSValue::encode(ErrorInstance::create(exec, errorStructure, exec->argument(0), nullptr, TypeNothing, false));
+}
+
 EncodedJSValue JSC_HOST_CALL globalFuncProtoGetter(ExecState* exec)
 {
     VM& vm = exec->vm();
@@ -714,8 +730,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncProtoGetter(ExecState* exec)
         return JSValue::encode(prototype);
     }
 
-    scope.release();
-    return JSValue::encode(thisObject->getPrototype(vm, exec));
+    RELEASE_AND_RETURN(scope, JSValue::encode(thisObject->getPrototype(vm, exec)));
 }
 
 EncodedJSValue JSC_HOST_CALL globalFuncProtoSetter(ExecState* exec)
@@ -782,36 +797,36 @@ EncodedJSValue JSC_HOST_CALL globalFuncBuiltinDescribe(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL globalFuncImportModule(ExecState* exec)
 {
     VM& vm = exec->vm();
-    auto catchScope = DECLARE_CATCH_SCOPE(vm);
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
 
     auto* globalObject = exec->lexicalGlobalObject();
 
-    auto* promise = JSPromiseDeferred::create(exec, globalObject);
-    CLEAR_AND_RETURN_IF_EXCEPTION(catchScope, encodedJSValue());
+    auto* promise = JSPromiseDeferred::tryCreate(exec, globalObject);
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+
+    auto catchScope = DECLARE_CATCH_SCOPE(vm);
+    auto reject = [&] (JSValue rejectionReason) {
+        catchScope.clearException();
+        promise->reject(exec, rejectionReason);
+        catchScope.clearException();
+        return JSValue::encode(promise->promise());
+    };
 
     auto sourceOrigin = exec->callerSourceOrigin();
     RELEASE_ASSERT(exec->argumentCount() == 1);
     auto* specifier = exec->uncheckedArgument(0).toString(exec);
-    if (Exception* exception = catchScope.exception()) {
-        catchScope.clearException();
-        promise->reject(exec, exception->value());
-        CLEAR_AND_RETURN_IF_EXCEPTION(catchScope, encodedJSValue());
-        return JSValue::encode(promise->promise());
-    }
+    if (Exception* exception = catchScope.exception())
+        return reject(exception->value());
 
     // We always specify parameters as undefined. Once dynamic import() starts accepting fetching parameters,
     // we should retrieve this from the arguments.
     JSValue parameters = jsUndefined();
     auto* internalPromise = globalObject->moduleLoader()->importModule(exec, specifier, parameters, sourceOrigin);
-    if (Exception* exception = catchScope.exception()) {
-        catchScope.clearException();
-        promise->reject(exec, exception->value());
-        CLEAR_AND_RETURN_IF_EXCEPTION(catchScope, encodedJSValue());
-        return JSValue::encode(promise->promise());
-    }
+    if (Exception* exception = catchScope.exception())
+        return reject(exception->value());
     promise->resolve(exec, internalPromise);
-    CLEAR_AND_RETURN_IF_EXCEPTION(catchScope, encodedJSValue());
 
+    catchScope.clearException();
     return JSValue::encode(promise->promise());
 }
 
@@ -830,5 +845,30 @@ EncodedJSValue JSC_HOST_CALL globalFuncPropertyIsEnumerable(ExecState* exec)
     bool enumerable = object->getOwnPropertyDescriptor(exec, propertyName, descriptor) && descriptor.enumerable();
     return JSValue::encode(jsBoolean(enumerable));
 }
+
+EncodedJSValue JSC_HOST_CALL globalFuncOwnKeys(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSObject* object = exec->argument(0).toObject(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    RELEASE_AND_RETURN(scope, JSValue::encode(ownPropertyKeys(exec, object, PropertyNameMode::StringsAndSymbols, DontEnumPropertiesMode::Include)));
+}
+
+#if ENABLE(INTL)
+EncodedJSValue JSC_HOST_CALL globalFuncDateTimeFormat(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+    IntlDateTimeFormat* dateTimeFormat = IntlDateTimeFormat::create(vm, globalObject->dateTimeFormatStructure());
+    dateTimeFormat->initializeDateTimeFormat(*exec, exec->argument(0), exec->argument(1));
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    double value = exec->argument(2).toNumber(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    RELEASE_AND_RETURN(scope, JSValue::encode(dateTimeFormat->format(*exec, value)));
+}
+#endif
 
 } // namespace JSC

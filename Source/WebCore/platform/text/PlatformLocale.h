@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 class FontCascade;
 #endif
 
@@ -40,7 +40,7 @@ class Locale {
     WTF_MAKE_NONCOPYABLE(Locale); WTF_MAKE_FAST_ALLOCATED;
 
 public:
-    static std::unique_ptr<Locale> create(const AtomicString& localeIdentifier);
+    static std::unique_ptr<Locale> create(const AtomString& localeIdentifier);
     static std::unique_ptr<Locale> createDefault();
 
     // Converts the specified number string to another number string localized
@@ -116,11 +116,11 @@ public:
     // display to the user. If an implementation doesn't support
     // localized dates the function should return an empty string.
     // FormatType can be used to specify if you want the short format. 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     String formatDateTime(const DateComponents&, FormatType = FormatTypeUnspecified);
 #else
     virtual String formatDateTime(const DateComponents&, FormatType = FormatTypeUnspecified) = 0;
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)
 #endif
 
     virtual ~Locale();

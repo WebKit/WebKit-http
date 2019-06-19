@@ -17,11 +17,17 @@
 
 #include "api/fec_controller.h"
 #include "api/test/video_quality_test_fixture.h"
+#include "api/video/video_bitrate_allocator_factory.h"
 #include "call/fake_network_pipe.h"
+#include "media/engine/internaldecoderfactory.h"
 #include "media/engine/internalencoderfactory.h"
 #include "test/call_test.h"
 #include "test/frame_generator.h"
 #include "test/layer_filtering_transport.h"
+#include "video/video_analyzer.h"
+#ifdef WEBRTC_WIN
+#include "modules/audio_device/win/core_audio_utility_win.h"
+#endif
 
 namespace webrtc {
 
@@ -29,7 +35,7 @@ class VideoQualityTest :
     public test::CallTest, public VideoQualityTestFixtureInterface {
  public:
   explicit VideoQualityTest(
-      std::unique_ptr<FecControllerFactoryInterface> fec_controller_factory);
+      std::unique_ptr<InjectionComponents> injection_components);
 
   void RunWithAnalyzer(const Params& params) override;
   void RunWithRenderers(const Params& params) override;
@@ -63,14 +69,16 @@ class VideoQualityTest :
 
   // Helper methods accessing only params_.
   std::string GenerateGraphTitle() const;
-  void CheckParams();
+  void CheckParamsAndInjectionComponents();
 
   // Helper methods for setting up the call.
   void CreateCapturers();
   std::unique_ptr<test::FrameGenerator> CreateFrameGenerator(size_t video_idx);
   void SetupThumbnailCapturers(size_t num_thumbnail_streams);
-  std::unique_ptr<VideoEncoder> CreateVideoEncoder(
+  std::unique_ptr<VideoDecoder> CreateVideoDecoder(
       const SdpVideoFormat& format);
+  std::unique_ptr<VideoEncoder> CreateVideoEncoder(const SdpVideoFormat& format,
+                                                   VideoAnalyzer* analyzer);
   void SetupVideo(Transport* send_transport, Transport* recv_transport);
   void SetupThumbnails(Transport* send_transport, Transport* recv_transport);
   void StartAudioStreams();
@@ -79,20 +87,27 @@ class VideoQualityTest :
   void StartThumbnails();
   void StopThumbnails();
   void DestroyThumbnailStreams();
+  // Helper method for creating a real ADM (using hardware) for all platforms.
+  rtc::scoped_refptr<AudioDeviceModule> CreateAudioDevice();
   void InitializeAudioDevice(Call::Config* send_call_config,
-                             Call::Config* recv_call_config);
+                             Call::Config* recv_call_config,
+                             bool use_real_adm);
   void SetupAudio(Transport* transport);
 
-  void StartEncodedFrameLogs(VideoSendStream* stream);
   void StartEncodedFrameLogs(VideoReceiveStream* stream);
 
   virtual std::unique_ptr<test::LayerFilteringTransport> CreateSendTransport();
   virtual std::unique_ptr<test::DirectTransport> CreateReceiveTransport();
 
-  std::vector<std::unique_ptr<test::VideoCapturer>> thumbnail_capturers_;
+  std::vector<std::unique_ptr<test::TestVideoCapturer>> thumbnail_capturers_;
   Clock* const clock_;
 
+  test::FunctionVideoDecoderFactory video_decoder_factory_;
+  InternalDecoderFactory internal_decoder_factory_;
   test::FunctionVideoEncoderFactory video_encoder_factory_;
+  test::FunctionVideoEncoderFactory video_encoder_factory_with_analyzer_;
+  std::unique_ptr<VideoBitrateAllocatorFactory>
+      video_bitrate_allocator_factory_;
   InternalEncoderFactory internal_encoder_factory_;
   std::vector<VideoSendStream::Config> thumbnail_send_configs_;
   std::vector<VideoEncoderConfig> thumbnail_encoder_configs_;
@@ -104,11 +119,21 @@ class VideoQualityTest :
   int send_logs_;
 
   Params params_;
+  std::unique_ptr<InjectionComponents> injection_components_;
+
+  // Set non-null when running with analyzer.
+  std::unique_ptr<VideoAnalyzer> analyzer_;
 
   // Note: not same as similarly named member in CallTest. This is the number of
   // separate send streams, the one in CallTest is the number of substreams for
   // a single send stream.
   size_t num_video_streams_;
+
+#ifdef WEBRTC_WIN
+  // Windows Core Audio based ADM needs to run on a COM initialized thread.
+  // Only referenced in combination with --audio --use_real_adm flags.
+  std::unique_ptr<webrtc_win::ScopedCOMInitializer> com_initializer_;
+#endif
 };
 
 }  // namespace webrtc

@@ -29,35 +29,24 @@
 #include "EventNames.h"
 #include "XMLHttpRequestProgressEvent.h"
 #include <wtf/Assertions.h>
-#include <wtf/text/AtomicString.h>
+#include <wtf/IsoMallocInlines.h>
+#include <wtf/text/AtomString.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(XMLHttpRequestUpload);
 
 XMLHttpRequestUpload::XMLHttpRequestUpload(XMLHttpRequest& request)
     : m_request(request)
 {
 }
 
-void XMLHttpRequestUpload::dispatchThrottledProgressEvent(bool lengthComputable, unsigned long long loaded, unsigned long long total)
-{
-    m_lengthComputable = lengthComputable;
-    m_loaded = loaded;
-    m_total = total;
-
-    dispatchEvent(XMLHttpRequestProgressEvent::create(eventNames().progressEvent, lengthComputable, loaded, total));
-}
-
-void XMLHttpRequestUpload::dispatchProgressEvent(const AtomicString& type)
+void XMLHttpRequestUpload::dispatchProgressEvent(const AtomString& type, unsigned long long loaded, unsigned long long total)
 {
     ASSERT(type == eventNames().loadstartEvent || type == eventNames().progressEvent || type == eventNames().loadEvent || type == eventNames().loadendEvent || type == eventNames().abortEvent || type == eventNames().errorEvent || type == eventNames().timeoutEvent);
 
-    if (type == eventNames().loadstartEvent) {
-        m_lengthComputable = false;
-        m_loaded = 0;
-        m_total = 0;
-    }
-
-    dispatchEvent(XMLHttpRequestProgressEvent::create(type, m_lengthComputable, m_loaded, m_total));
+    // https://xhr.spec.whatwg.org/#firing-events-using-the-progressevent-interface
+    dispatchEvent(XMLHttpRequestProgressEvent::create(type, !!total, loaded, total));
 }
 
 } // namespace WebCore

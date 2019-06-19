@@ -35,15 +35,14 @@ if (document.location.search.indexOf("?actually-attack") !== -1) {
     // Case: Initial load
     var link = document.createElement("a");
     link.target = "_blank";
+    link.rel = "opener";
     link.href = "?actually-attack";
     link.click(); // Open a new window.
 }
 
 function checkDidLoadVictim()
 {
-    try {
-        openerDocument.location.href
-    } catch (e) {
+    if (openerDocument.location.href == "about:blank") {
         // Victim loaded.
         window.clearInterval(intervalId);
 

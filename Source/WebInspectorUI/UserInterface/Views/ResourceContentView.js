@@ -51,9 +51,9 @@ WI.ResourceContentView = class ResourceContentView extends WI.ContentView
         resource.requestContent().then(this._contentAvailable.bind(this)).catch(this.showGenericErrorMessage.bind(this));
 
         if (!this.managesOwnIssues) {
-            WI.issueManager.addEventListener(WI.IssueManager.Event.IssueWasAdded, this._issueWasAdded, this);
+            WI.consoleManager.addEventListener(WI.ConsoleManager.Event.IssueAdded, this._issueWasAdded, this);
 
-            var issues = WI.issueManager.issuesForSourceCode(resource);
+            var issues = WI.consoleManager.issuesForSourceCode(resource);
             for (var i = 0; i < issues.length; ++i)
                 this.addIssue(issues[i]);
         }
@@ -84,6 +84,8 @@ WI.ResourceContentView = class ResourceContentView extends WI.ContentView
     showGenericNoContentMessage()
     {
         this.showMessage(WI.UIString("Resource has no content"));
+
+        this.dispatchEventToListeners(WI.ResourceContentView.Event.ContentError);
     }
 
     showGenericErrorMessage()
@@ -109,7 +111,7 @@ WI.ResourceContentView = class ResourceContentView extends WI.ContentView
         super.closed();
 
         if (!this.managesOwnIssues)
-            WI.issueManager.removeEventListener(null, null, this);
+            WI.consoleManager.removeEventListener(null, null, this);
     }
 
     // Protected
@@ -161,7 +163,7 @@ WI.ResourceContentView = class ResourceContentView extends WI.ContentView
         console.assert(!this.managesOwnIssues);
 
         var issue = event.data.issue;
-        if (!WI.IssueManager.issueMatchSourceCode(issue, this.resource))
+        if (!WI.ConsoleManager.issueMatchSourceCode(issue, this.resource))
             return;
 
         this.addIssue(issue);

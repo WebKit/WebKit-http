@@ -45,6 +45,7 @@
 
 - (void) findString:(NSString*) string withOptions:(NSStringCompareOptions) options;
 - (void) cancelFindString;
+- (void) cancelFindStringWithHighlightsCleared:(BOOL)cleared;
 - (void) focusOnSearchResultAtIndex:(NSUInteger) searchIndex;
 
 - (NSInteger) currentPageIndex;
@@ -55,6 +56,10 @@
 
 - (void) beginPDFViewRotation;
 - (void) endPDFViewRotation;
+
+#if HAVE(PDFHOSTVIEWCONTROLLER_SNAPSHOTTING)
+- (void) snapshotViewRect: (CGRect) rect snapshotWidth: (NSNumber*) width afterScreenUpdates: (BOOL) afterScreenUpdates withResult: (void (^)(UIImage* image)) completion;
+#endif
 
 @end
 

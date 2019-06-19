@@ -304,7 +304,6 @@ public:
     static constexpr size_t footerSize = blockSize - payloadSize;
 
     static_assert(payloadSize == ((blockSize - sizeof(MarkedBlock::Footer)) & ~(atomSize - 1)), "Payload size computed the alternate way should give the same result");
-    static_assert(footerSize >= minimumDistanceBetweenCellsFromDifferentOrigins, "Footer is not big enough to create the necessary distance between objects from different origins");
     
     static MarkedBlock::Handle* tryCreate(Heap&, AlignedMemoryAllocator*);
         
@@ -375,6 +374,11 @@ public:
     CountingLock& lock() { return footer().m_lock; }
     
     Subspace* subspace() const { return footer().m_subspace; }
+
+    void populatePage() const
+    {
+        *bitwise_cast<volatile uint8_t*>(&footer());
+    }
     
     static constexpr size_t offsetOfFooter = endAtom * atomSize;
 

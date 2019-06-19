@@ -37,8 +37,6 @@
 #import <wtf/Deque.h>
 #import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED
-
 static bool receivedScriptMessage;
 static Deque<RetainPtr<WKScriptMessage>> scriptMessages;
 
@@ -71,7 +69,7 @@ TEST(IndexedDB, IndexedDBMultiProcess)
     RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
     [[configuration userContentController] addScriptMessageHandler:handler.get() name:@"testHandler"];
 
-    [configuration.get().processPool _terminateStorageProcess];
+    [configuration.get().processPool _terminateNetworkProcess];
 
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
 
@@ -112,5 +110,3 @@ TEST(IndexedDB, IndexedDBMultiProcess)
     RetainPtr<NSString> string7 = (NSString *)[getNextMessage() body];
     EXPECT_WK_STREQ(@"Deleted!", string7.get());
 }
-
-#endif

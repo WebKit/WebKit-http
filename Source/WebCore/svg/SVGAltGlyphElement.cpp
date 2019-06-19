@@ -49,22 +49,22 @@ Ref<SVGAltGlyphElement> SVGAltGlyphElement::create(const QualifiedName& tagName,
     return adoptRef(*new SVGAltGlyphElement(tagName, document));
 }
 
-ExceptionOr<void> SVGAltGlyphElement::setGlyphRef(const AtomicString&)
+ExceptionOr<void> SVGAltGlyphElement::setGlyphRef(const AtomString&)
 {
     return Exception { NoModificationAllowedError };
 }
 
-const AtomicString& SVGAltGlyphElement::glyphRef() const
+const AtomString& SVGAltGlyphElement::glyphRef() const
 {
     return attributeWithoutSynchronization(SVGNames::glyphRefAttr);
 }
 
-ExceptionOr<void> SVGAltGlyphElement::setFormat(const AtomicString&)
+ExceptionOr<void> SVGAltGlyphElement::setFormat(const AtomString&)
 {
     return Exception { NoModificationAllowedError };
 }
 
-const AtomicString& SVGAltGlyphElement::format() const
+const AtomString& SVGAltGlyphElement::format() const
 {
     return attributeWithoutSynchronization(SVGNames::formatAttr);
 }
@@ -81,18 +81,18 @@ RenderPtr<RenderElement> SVGAltGlyphElement::createElementRenderer(RenderStyle&&
 
 bool SVGAltGlyphElement::hasValidGlyphElements(Vector<String>& glyphNames) const
 {
-    String target;
-    auto element = makeRefPtr(targetElementFromIRIString(getAttribute(SVGNames::hrefAttr, XLinkNames::hrefAttr), document(), &target));
+    // No need to support altGlyph referencing another node inside a shadow tree.
+    auto target = targetElementFromIRIString(getAttribute(SVGNames::hrefAttr, XLinkNames::hrefAttr), document());
 
-    if (is<SVGGlyphElement>(element)) {
-        glyphNames.append(target);
+    if (is<SVGGlyphElement>(target.element)) {
+        glyphNames.append(target.identifier);
         return true;
     }
+    
+    if (!is<SVGAltGlyphDefElement>(target.element))
+        return false;
 
-    if (is<SVGAltGlyphDefElement>(element) && downcast<SVGAltGlyphDefElement>(*element).hasValidGlyphElements(glyphNames))
-        return true;
-
-    return false;
+    return downcast<SVGAltGlyphDefElement>(*target.element).hasValidGlyphElements(glyphNames);
 }
 
 }

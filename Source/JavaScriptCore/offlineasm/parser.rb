@@ -177,11 +177,11 @@ def lex(str, file)
             end
             result << Token.new(CodeOrigin.new(file, lineNumber), $&)
             lineNumber += 1
-        when /\A[a-zA-Z]([a-zA-Z0-9_.]*)/
+        when /\A[a-zA-Z%]([a-zA-Z0-9_.%]*)/
             result << Token.new(CodeOrigin.new(file, lineNumber), $&)
         when /\A\.([a-zA-Z0-9_]*)/
             result << Token.new(CodeOrigin.new(file, lineNumber), $&)
-        when /\A_([a-zA-Z0-9_]*)/
+        when /\A_([a-zA-Z0-9_%]*)/
             result << Token.new(CodeOrigin.new(file, lineNumber), $&)
         when /\A([ \t]+)/
             # whitespace, ignore
@@ -228,11 +228,11 @@ def isKeyword(token)
 end
 
 def isIdentifier(token)
-    token =~ /\A[a-zA-Z]([a-zA-Z0-9_.]*)\Z/ and not isKeyword(token)
+    token =~ /\A[a-zA-Z%]([a-zA-Z0-9_.%]*)\Z/ and not isKeyword(token)
 end
 
 def isLabel(token)
-    token =~ /\A_([a-zA-Z0-9_]*)\Z/
+    token =~ /\A_([a-zA-Z0-9_%]*)\Z/
 end
 
 def isLocalLabel(token)
@@ -363,6 +363,23 @@ class Parser
         @idx += 1
         result
     end
+
+    def parseConstExpr
+        if @tokens[@idx] == "constexpr"
+            @idx += 1
+            skipNewLine
+            if @tokens[@idx] == "("
+                codeOrigin, text = parseTextInParens
+                text = text.join
+            else
+                codeOrigin, text = parseColonColon
+                text = text.join("::")
+            end
+            ConstExpr.forName(codeOrigin, text)
+        else
+            parseError
+        end
+    end
     
     def parseAddress(offset)
         parseError unless @tokens[@idx] == "["
@@ -387,13 +404,18 @@ class Parser
             @idx += 1
             b = parseVariable
             if @tokens[@idx] == "]"
-                result = BaseIndex.new(codeOrigin, a, b, 1, offset)
+                result = BaseIndex.new(codeOrigin, a, b, Immediate.new(codeOrigin, 1), offset)
             else
                 parseError unless @tokens[@idx] == ","
                 @idx += 1
-                parseError unless ["1", "2", "4", "8"].member? @tokens[@idx].string
-                c = @tokens[@idx].string.to_i
-                @idx += 1
+                if ["1", "2", "4", "8"].member? @tokens[@idx].string
+                    c = Immediate.new(codeOrigin, @tokens[@idx].string.to_i)
+                    @idx += 1
+                elsif @tokens[@idx] == "constexpr"
+                    c = parseConstExpr
+                else
+                    c = parseVariable
+                end
                 parseError unless @tokens[@idx] == "]"
                 result = BaseIndex.new(codeOrigin, a, b, c, offset)
             end
@@ -478,16 +500,7 @@ class Parser
             codeOrigin, names = parseColonColon
             Sizeof.forName(codeOrigin, names.join('::'))
         elsif @tokens[@idx] == "constexpr"
-            @idx += 1
-            skipNewLine
-            if @tokens[@idx] == "("
-                codeOrigin, text = parseTextInParens
-                text = text.join
-            else
-                codeOrigin, text = parseColonColon
-                text = text.join("::")
-            end
-            ConstExpr.forName(codeOrigin, text)
+            parseConstExpr
         elsif isLabel @tokens[@idx]
             result = LabelReference.new(@tokens[@idx].codeOrigin, Label.forName(@tokens[@idx].codeOrigin, @tokens[@idx].string))
             @idx += 1
@@ -840,17 +853,28 @@ class Parser
     end
 end
 
+def readTextFile(fileName)
+    data = IO::read(fileName)
+
+    # On Windows, files may contain CRLF line endings (for example, git client might
+    # automatically replace \n with \r\n on Windows) which will fail our parsing.
+    # Thus, we'll just remove all \r from the data (keeping just the \n characters)
+    data.delete!("\r")
+
+    return data
+end
+
 def parseData(data, fileName)
     parser = Parser.new(data, SourceFile.new(fileName))
     parser.parseSequence(nil, "")
 end
 
 def parse(fileName)
-    parseData(IO::read(fileName), fileName)
+    parseData(readTextFile(fileName), fileName)
 end
 
 def parseHash(fileName)
-    parser = Parser.new(IO::read(fileName), SourceFile.new(fileName))
+    parser = Parser.new(readTextFile(fileName), SourceFile.new(fileName))
     fileList = parser.parseIncludes(nil, "")
     fileListHash(fileList)
 end

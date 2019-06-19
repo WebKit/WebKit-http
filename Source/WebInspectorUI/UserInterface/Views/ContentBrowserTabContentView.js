@@ -154,14 +154,13 @@ WI.ContentBrowserTabContentView = class ContentBrowserTabContentView extends WI.
         if (shouldShowSidebar) {
             if (!this.navigationSidebarPanel.parentSidebar)
                 WI.navigationSidebar.addSidebarPanel(this.navigationSidebarPanel);
-        } else if (this.navigationSidebarPanel.parentSidebar)
-            WI.navigationSidebar.removeSidebarPanel(this.navigationSidebarPanel);
-
-        if (this.navigationSidebarPanel.parentSidebar) {
             WI.navigationSidebar.selectedSidebarPanel = this.navigationSidebarPanel;
             WI.navigationSidebar.collapsed = this.navigationSidebarCollapsedSetting.value;
-        } else
+        } else {
             WI.navigationSidebar.collapsed = true;
+            if (this.navigationSidebarPanel.parentSidebar)
+                WI.navigationSidebar.removeSidebarPanel(this.navigationSidebarPanel);
+        }
 
         this._ignoreNavigationSidebarPanelCollapsedEvent = false;
 
@@ -317,7 +316,7 @@ WI.ContentBrowserTabContentView = class ContentBrowserTabContentView extends WI.
         let treeElement = this.treeElementForRepresentedObject(representedObject);
 
         if (treeElement)
-            treeElement.revealAndSelect(true, false, true, true);
+            treeElement.revealAndSelect(true, false, true);
         else if (this.navigationSidebarPanel && this.navigationSidebarPanel.contentTreeOutline.selectedTreeElement)
             this.navigationSidebarPanel.contentTreeOutline.selectedTreeElement.deselect(true);
     }

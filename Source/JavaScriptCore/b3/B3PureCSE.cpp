@@ -31,6 +31,7 @@
 #include "B3Dominators.h"
 #include "B3PhaseScope.h"
 #include "B3Value.h"
+#include "B3ValueInlines.h"
 
 namespace JSC { namespace B3 {
 
@@ -68,7 +69,7 @@ Value* PureCSE::findMatch(const ValueKey& key, BasicBlock* block, Dominators& do
 
 bool PureCSE::process(Value* value, Dominators& dominators)
 {
-    if (value->opcode() == Identity)
+    if (value->opcode() == Identity || value->isConstant())
         return false;
 
     ValueKey key = value->key();

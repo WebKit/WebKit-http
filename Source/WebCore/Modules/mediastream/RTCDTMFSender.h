@@ -38,6 +38,7 @@ namespace WebCore {
 class MediaStreamTrack;
 
 class RTCDTMFSender final : public RefCounted<RTCDTMFSender>, public EventTargetWithInlineData, public ActiveDOMObject {
+    WTF_MAKE_ISO_ALLOCATED(RTCDTMFSender);
 public:
     virtual ~RTCDTMFSender();
 
@@ -47,7 +48,7 @@ public:
     int duration() const { return m_duration; }
     int interToneGap() const { return m_interToneGap; }
 
-    ExceptionOr<void> insertDTMF(const String& tones, std::optional<int> duration, std::optional<int> interToneGap);
+    ExceptionOr<void> insertDTMF(const String& tones, Optional<int> duration, Optional<int> interToneGap);
 
     using RefCounted::ref;
     using RefCounted::deref;

@@ -23,13 +23,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ScrollTypes_h
-#define ScrollTypes_h
+#pragma once
 
 #include <cstdint>
 #include <wtf/Assertions.h>
 
 namespace WebCore {
+
+enum class ScrollType : uint8_t {
+    User,
+    Programmatic
+};
 
 enum ScrollDirection : uint8_t {
     ScrollUp,
@@ -45,6 +49,10 @@ enum ScrollLogicalDirection : uint8_t {
     ScrollInlineDirectionForward
 };
 
+enum class ScrollPositionClamp : uint8_t {
+    None,
+    ToContentEdges,
+};
 
 inline ScrollDirection logicalToPhysical(ScrollLogicalDirection direction, bool isVertical, bool isFlipped)
 {
@@ -111,23 +119,37 @@ enum ScrollGranularity : uint8_t {
     ScrollByPixel
 };
 
-enum ScrollElasticity {
+enum ScrollElasticity : uint8_t {
     ScrollElasticityAutomatic,
     ScrollElasticityNone,
     ScrollElasticityAllowed
 };
 
-enum ScrollbarOrientation { HorizontalScrollbar, VerticalScrollbar };
+enum ScrollbarOrientation : uint8_t {
+    HorizontalScrollbar,
+    VerticalScrollbar
+};
 
-enum ScrollbarMode { ScrollbarAuto, ScrollbarAlwaysOff, ScrollbarAlwaysOn };
+enum ScrollbarMode : uint8_t {
+    ScrollbarAuto,
+    ScrollbarAlwaysOff,
+    ScrollbarAlwaysOn
+};
 
-enum ScrollbarControlSize { RegularScrollbar, SmallScrollbar };
+enum ScrollbarControlSize : uint8_t {
+    RegularScrollbar,
+    SmallScrollbar
+};
 
-enum class ScrollbarExpansionState { Regular, Expanded };
+enum class ScrollbarExpansionState : uint8_t {
+    Regular,
+    Expanded
+};
 
-enum class ScrollEventAxis { Horizontal, Vertical };
-
-typedef unsigned ScrollbarControlState;
+enum class ScrollEventAxis : uint8_t {
+    Horizontal,
+    Vertical
+};
 
 enum ScrollbarControlStateMask {
     ActiveScrollbarState = 1,
@@ -149,7 +171,7 @@ enum ScrollbarPart {
     AllParts = 0xffffffff
 };
 
-enum ScrollbarButtonsPlacement {
+enum ScrollbarButtonsPlacement : uint8_t {
     ScrollbarButtonsNone,
     ScrollbarButtonsSingle,
     ScrollbarButtonsDoubleStart,
@@ -157,42 +179,54 @@ enum ScrollbarButtonsPlacement {
     ScrollbarButtonsDoubleBoth
 };
 
-enum class ScrollbarStyle {
+enum class ScrollbarStyle : uint8_t {
     AlwaysVisible,
     Overlay
 };
 
-enum ScrollbarOverlayStyle {
+enum ScrollbarOverlayStyle: uint8_t {
     ScrollbarOverlayStyleDefault,
     ScrollbarOverlayStyleDark,
     ScrollbarOverlayStyleLight
 };
 
-typedef unsigned ScrollbarControlPartMask;
-
-enum ScrollPinningBehavior {
+enum ScrollPinningBehavior : uint8_t {
     DoNotPin,
     PinToTop,
     PinToBottom
 };
 
-enum class ScrollClamping {
+enum class ScrollClamping : uint8_t {
     Unclamped,
     Clamped
 };
 
-enum ScrollBehaviorForFixedElements {
+enum ScrollBehaviorForFixedElements : uint8_t {
     StickToDocumentBounds,
     StickToViewportBounds
 };
 
-enum class ScrollbarButtonPressAction {
+enum class ScrollbarButtonPressAction : uint8_t {
     None,
     CenterOnThumb,
     StartDrag,
     Scroll
 };
 
-}
+enum class SelectionRevealMode : uint8_t  {
+    Reveal,
+    RevealUpToMainFrame, // Scroll overflow and iframes, but not the main frame.
+    DoNotReveal
+};
 
-#endif
+enum class ScrollPositioningBehavior : uint8_t {
+    None,
+    Moves,
+    Stationary
+};
+
+using ScrollbarControlState = unsigned;
+using ScrollbarControlPartMask = unsigned;
+using ScrollingNodeID = uint64_t;
+
+} // namespace WebCore

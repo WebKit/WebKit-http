@@ -22,30 +22,38 @@
 #pragma once
 
 #if ENABLE(MEDIA_STREAM) && USE(LIBWEBRTC) && USE(GSTREAMER)
+#include "CaptureDevice.h"
 #include "GStreamerVideoCapturer.h"
-#include "RealtimeMediaSource.h"
+#include "RealtimeVideoSource.h"
 
 namespace WebCore {
 
-class GStreamerVideoCaptureSource : public RealtimeMediaSource {
+class GStreamerVideoCaptureSource : public RealtimeVideoSource {
 public:
-    static CaptureSourceOrError create(const String& deviceID, const MediaConstraints*);
+    static CaptureSourceOrError create(String&& deviceID, String&& hashSalt, const MediaConstraints*);
     WEBCORE_EXPORT static VideoCaptureFactory& factory();
 
-    const RealtimeMediaSourceCapabilities& capabilities() const override;
-    const RealtimeMediaSourceSettings& settings() const override;
+    // FIXME: Implement this.
+    WEBCORE_EXPORT static DisplayCaptureFactory& displayFactory(); 
+
+    const RealtimeMediaSourceCapabilities& capabilities() override;
+    const RealtimeMediaSourceSettings& settings() override;
     GstElement* pipeline() { return m_capturer->pipeline(); }
     GStreamerCapturer* capturer() { return m_capturer.get(); }
 
 protected:
-    GStreamerVideoCaptureSource(const String& deviceID, const String& name, const gchar * source_factory);
-    GStreamerVideoCaptureSource(GStreamerCaptureDevice);
+    GStreamerVideoCaptureSource(String&& deviceID, String&& name, String&& hashSalt, const gchar * source_factory);
+    GStreamerVideoCaptureSource(GStreamerCaptureDevice, String&& hashSalt);
     virtual ~GStreamerVideoCaptureSource();
     void startProducingData() override;
     void stopProducingData() override;
+    bool canResizeVideoFrames() const final { return true; }
+    void generatePresets() final;
 
-    mutable std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
-    mutable std::optional<RealtimeMediaSourceSettings> m_currentSettings;
+
+    mutable Optional<RealtimeMediaSourceCapabilities> m_capabilities;
+    mutable Optional<RealtimeMediaSourceSettings> m_currentSettings;
+    CaptureDevice::DeviceType deviceType() const override { return CaptureDevice::DeviceType::Camera; }
 
 private:
     static GstFlowReturn newSampleCallback(GstElement*, GStreamerVideoCaptureSource*);

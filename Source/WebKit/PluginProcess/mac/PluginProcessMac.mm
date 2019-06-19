@@ -47,6 +47,7 @@
 #import <mach/mach_vm.h>
 #import <mach/vm_statistics.h>
 #import <objc/runtime.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/LaunchServicesSPI.h>
 #import <pal/spi/mac/HIToolboxSPI.h>
@@ -55,8 +56,6 @@
 #import <sysexits.h>
 #import <wtf/HashSet.h>
 #import <wtf/NeverDestroyed.h>
-
-using namespace WebCore;
 
 const CFStringRef kLSPlugInBundleIdentifierKey = CFSTR("LSPlugInBundleIdentifierKey");
 
@@ -87,25 +86,6 @@ static bool rectCoversAnyScreen(NSRect rect)
     }
     return NO;
 }
-
-#ifndef NP_NO_CARBON
-static bool windowCoversAnyScreen(WindowRef window)
-{
-    HIRect bounds;
-    HIWindowGetBounds(window, kWindowStructureRgn, kHICoordSpaceScreenPixel, &bounds);
-
-    // Convert to Cocoa-style screen coordinates that use a Y offset relative to the zeroth screen's origin.
-    bounds.origin.y = NSHeight([(NSScreen *)[[NSScreen screens] objectAtIndex:0] frame]) - CGRectGetMaxY(bounds);
-
-    return rectCoversAnyScreen(NSRectFromCGRect(bounds));
-}
-
-static CGWindowID cgWindowID(WindowRef window)
-{
-    return reinterpret_cast<CGWindowID>(GetNativeWindowFromWindowRef(window));
-}
-
-#endif
 
 static bool windowCoversAnyScreen(NSWindow *window)
 {
@@ -163,94 +143,6 @@ static FullscreenWindowTracker& fullscreenWindowTracker()
     return fullscreenWindowTracker;
 }
 
-#if defined(__i386__)
-
-static bool shouldCallRealDebugger()
-{
-    static bool isUserbreakSet = false;
-    static dispatch_once_t flag;
-    dispatch_once(&flag, ^{
-        char* var = getenv("USERBREAK");
-
-        if (var)
-            isUserbreakSet = atoi(var);
-    });
-    
-    return isUserbreakSet;
-}
-
-static bool isWindowActive(WindowRef windowRef, bool& result)
-{
-#ifndef NP_NO_CARBON
-    if (NetscapePlugin* plugin = NetscapePlugin::netscapePluginFromWindow(windowRef)) {
-        result = plugin->isWindowActive();
-        return true;
-    }
-#endif
-    return false;
-}
-
-static UInt32 getCurrentEventButtonState()
-{
-#ifndef NP_NO_CARBON
-    return NetscapePlugin::buttonState();
-#else
-    ASSERT_NOT_REACHED();
-    return 0;
-#endif
-}
-
-static void carbonWindowShown(WindowRef window)
-{
-#ifndef NP_NO_CARBON
-    fullscreenWindowTracker().windowShown(window);
-#endif
-}
-
-static void carbonWindowHidden(WindowRef window)
-{
-#ifndef NP_NO_CARBON
-    fullscreenWindowTracker().windowHidden(window);
-#endif
-}
-
-static bool openCFURLRef(CFURLRef url, int32_t& status, CFURLRef* launchedURL)
-{
-    String launchedURLString;
-    if (!PluginProcess::singleton().openURL(URL(url).string(), status, launchedURLString))
-        return false;
-
-    if (!launchedURLString.isNull() && launchedURL)
-        *launchedURL = URL(ParsedURLString, launchedURLString).createCFURL().leakRef();
-    return true;
-}
-
-static bool isMallocTinyMemoryTag(int tag)
-{
-    switch (tag) {
-    case VM_MEMORY_MALLOC_TINY:
-        return true;
-
-    default:
-        return false;
-    }
-}
-
-static bool shouldMapMallocMemoryExecutable;
-
-static bool shouldMapMemoryExecutable(int flags)
-{
-    if (!shouldMapMallocMemoryExecutable)
-        return false;
-
-    if (!isMallocTinyMemoryTag((flags >> 24) & 0xff))
-        return false;
-
-    return true;
-}
-
-#endif
-
 static void setModal(bool modalWindowIsShowing)
 {
     PluginProcess::singleton().setModalWindowIsShowing(modalWindowIsShowing);
@@ -260,13 +152,12 @@ static unsigned modalCount;
 
 static void beginModal()
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     // Make sure to make ourselves the front process
     ProcessSerialNumber psn;
     GetCurrentProcess(&psn);
     SetFrontProcess(&psn);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     if (!modalCount++)
         setModal(true);
@@ -352,18 +243,6 @@ static void initializeShim()
 {
     // Initialize the shim for 32-bit only.
     const PluginProcessShimCallbacks callbacks = {
-#if defined(__i386__)
-        shouldCallRealDebugger,
-        isWindowActive,
-        getCurrentEventButtonState,
-        beginModal,
-        endModal,
-        carbonWindowShown,
-        carbonWindowHidden,
-        setModal,
-        openCFURLRef,
-        shouldMapMemoryExecutable,
-#endif
         stringCompare,
     };
 
@@ -526,16 +405,19 @@ void PluginProcess::platformInitializePluginProcess(PluginProcessCreationParamet
     // Disable Dark Mode in the plugin process to avoid rendering issues.
     [NSApp setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameAqua]];
 #endif
+#if HAVE(APP_SSO)
+    [NSURLSession _disableAppSSO];
+#endif
 }
 
-void PluginProcess::platformInitializeProcess(const ChildProcessInitializationParameters& parameters)
+void PluginProcess::platformInitializeProcess(const AuxiliaryProcessInitializationParameters& parameters)
 {
     initializeShim();
 
     initializeCocoaOverrides();
 
     bool experimentalPlugInSandboxProfilesEnabled = parameters.extraInitializationData.get("experimental-sandbox-plugin") == "1";
-    RuntimeEnabledFeatures::sharedFeatures().setExperimentalPlugInSandboxProfilesEnabled(experimentalPlugInSandboxProfilesEnabled);
+    WebCore::RuntimeEnabledFeatures::sharedFeatures().setExperimentalPlugInSandboxProfilesEnabled(experimentalPlugInSandboxProfilesEnabled);
 
     // FIXME: It would be better to proxy SetCursor calls over to the UI process instead of
     // allowing plug-ins to change the mouse cursor at any time.
@@ -557,65 +439,6 @@ void PluginProcess::platformInitializeProcess(const ChildProcessInitializationPa
     if (m_pluginBundleIdentifier == "com.adobe.acrobat.pdfviewerNPAPI")
         oldPluginProcessNameShouldEqualNewPluginProcessNameForAdobeReader = true;
 
-#if defined(__i386__)
-    if (m_pluginBundleIdentifier == "com.microsoft.SilverlightPlugin") {
-        // Set this so that any calls to mach_vm_map for pages reserved by malloc will be executable.
-        shouldMapMallocMemoryExecutable = true;
-
-        // Go through the address space looking for already existing malloc regions and change the
-        // protection to make them executable.
-        mach_vm_size_t size;
-        uint32_t depth = 0;
-        struct vm_region_submap_info_64 info = { };
-        mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
-        for (mach_vm_address_t addr = 0; ; addr += size) {
-            kern_return_t kr = mach_vm_region_recurse(mach_task_self(), &addr, &size, &depth, (vm_region_recurse_info_64_t)&info, &count);
-            if (kr != KERN_SUCCESS)
-                break;
-
-            if (isMallocTinyMemoryTag(info.user_tag))
-                mach_vm_protect(mach_task_self(), addr, size, false, info.protection | VM_PROT_EXECUTE);
-        }
-
-        // Silverlight expects the data segment of its coreclr library to be executable.
-        // Register with dyld to get notified when libraries are bound, then look for the
-        // coreclr image and make its __DATA segment executable.
-        _dyld_register_func_for_add_image([](const struct mach_header* mh, intptr_t vmaddr_slide) {
-            Dl_info imageInfo;
-            if (!dladdr(mh, &imageInfo))
-                return;
-
-            const char* pathSuffix = "/Silverlight.plugin/Contents/MacOS/CoreCLR.bundle/Contents/MacOS/coreclr";
-
-            int pathSuffixLength = strlen(pathSuffix);
-            int imageFilePathLength = strlen(imageInfo.dli_fname);
-
-            if (imageFilePathLength < pathSuffixLength)
-                return;
-
-            if (strcmp(imageInfo.dli_fname + (imageFilePathLength - pathSuffixLength), pathSuffix))
-                return;
-
-            unsigned long segmentSize;
-            const uint8_t* segmentData = getsegmentdata(mh, "__DATA", &segmentSize);
-            if (!segmentData)
-                return;
-
-            mach_vm_size_t size;
-            uint32_t depth = 0;
-            struct vm_region_submap_info_64 info = { };
-            mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
-            for (mach_vm_address_t addr = reinterpret_cast<mach_vm_address_t>(segmentData); addr < reinterpret_cast<mach_vm_address_t>(segmentData) + segmentSize ; addr += size) {
-                kern_return_t kr = mach_vm_region_recurse(mach_task_self(), &addr, &size, &depth, (vm_region_recurse_info_64_t)&info, &count);
-                if (kr != KERN_SUCCESS)
-                    break;
-
-                mach_vm_protect(mach_task_self(), addr, size, false, info.protection | VM_PROT_EXECUTE);
-            }
-        });
-    }
-#endif
-
     // FIXME: Workaround for Java not liking its plugin process to be suppressed - <rdar://problem/14267843>
     if (m_pluginBundleIdentifier == "com.oracle.java.JavaAppletPlugin")
         (new UserActivity("com.oracle.java.JavaAppletPlugin"))->start();
@@ -626,7 +449,7 @@ void PluginProcess::platformInitializeProcess(const ChildProcessInitializationPa
     }
 }
 
-void PluginProcess::initializeProcessName(const ChildProcessInitializationParameters& parameters)
+void PluginProcess::initializeProcessName(const AuxiliaryProcessInitializationParameters& parameters)
 {
     NSString *applicationName = [NSString stringWithFormat:WEB_UI_STRING("%@ (%@ Internet plug-in)", "visible name of the plug-in host process. The first argument is the plug-in name and the second argument is the application name."), [[(NSString *)m_pluginPath lastPathComponent] stringByDeletingPathExtension], (NSString *)parameters.uiProcessName];
     _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), _kLSDisplayNameKey, (CFStringRef)applicationName, nullptr);
@@ -634,7 +457,7 @@ void PluginProcess::initializeProcessName(const ChildProcessInitializationParame
         _LSSetApplicationInformationItem(kLSDefaultSessionID, _LSGetCurrentApplicationASN(), kLSPlugInBundleIdentifierKey, m_pluginBundleIdentifier.createCFString().get(), nullptr);
 }
 
-void PluginProcess::initializeSandbox(const ChildProcessInitializationParameters& parameters, SandboxInitializationParameters& sandboxParameters)
+void PluginProcess::initializeSandbox(const AuxiliaryProcessInitializationParameters& parameters, SandboxInitializationParameters& sandboxParameters)
 {
     // PluginProcess may already be sandboxed if its parent process was sandboxed, and launched a child process instead of an XPC service.
     // This is generally not expected, however we currently always spawn a child process to create a MIME type preferences file.
@@ -654,9 +477,6 @@ void PluginProcess::initializeSandbox(const ChildProcessInitializationParameters
         WTFLogAlways("PluginProcess: couldn't create NSURL cache directory '%s'\n", cacheDirectory);
         exit(EX_OSERR);
     }
-
-    if (PluginInfoStore::shouldAllowPluginToRunUnsandboxed(m_pluginBundleIdentifier))
-        return;
 
     bool parentIsSandboxed = parameters.connectionIdentifier.xpcConnection && connectedProcessIsSandboxed(parameters.connectionIdentifier.xpcConnection.get());
 
@@ -698,7 +518,7 @@ void PluginProcess::initializeSandbox(const ChildProcessInitializationParameters
 
     [[NSUserDefaults standardUserDefaults] registerDefaults:@{ @"NSUseRemoteSavePanel" : @YES }];
 
-    ChildProcess::initializeSandbox(parameters, sandboxParameters);
+    AuxiliaryProcess::initializeSandbox(parameters, sandboxParameters);
 }
 
 bool PluginProcess::shouldOverrideQuarantine()
@@ -708,7 +528,7 @@ bool PluginProcess::shouldOverrideQuarantine()
 
 void PluginProcess::stopRunLoop()
 {
-    ChildProcess::stopNSAppRunLoop();
+    AuxiliaryProcess::stopNSAppRunLoop();
 }
 
 } // namespace WebKit

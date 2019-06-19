@@ -34,12 +34,12 @@
 #include "JSDOMWrapperCache.h"
 #include "ScriptExecutionContext.h"
 #include "TestSupplemental.h"
-#include "URL.h"
 #include <JavaScriptCore/FunctionPrototype.h>
 #include <JavaScriptCore/HeapSnapshotBuilder.h>
 #include <JavaScriptCore/JSCInlines.h>
 #include <wtf/GetPtr.h>
 #include <wtf/PointerPreparations.h>
+#include <wtf/URL.h>
 
 #if ENABLE(Condition1) || ENABLE(Condition11) || ENABLE(Condition12) || ENABLE(Condition2) || ENABLE(Condition22) || ENABLE(Condition23)
 #include "JSDOMConvertStrings.h"
@@ -54,6 +54,11 @@
 #include "JSDOMGlobalObject.h"
 #include "JSNode.h"
 #include "JSTestObj.h"
+#endif
+
+#if ENABLE(Condition22) || ENABLE(Condition23)
+#include "JSDOMConvertSequences.h"
+#include <JavaScriptCore/JSArray.h>
 #endif
 
 
@@ -73,6 +78,9 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionImplementsMeth
 #endif
 #if ENABLE(Condition22) || ENABLE(Condition23)
 JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfaceConstructorFunctionImplementsMethod4(JSC::ExecState*);
+#endif
+#if ENABLE(Condition22) || ENABLE(Condition23)
+JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionTakeNodes(JSC::ExecState*);
 #endif
 #if ENABLE(Condition11) || ENABLE(Condition12)
 JSC::EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionSupplementalMethod1(JSC::ExecState*);
@@ -339,6 +347,11 @@ static const HashTableValue JSTestInterfacePrototypeTableValues[] =
 #endif
 #if ENABLE(Condition22) || ENABLE(Condition23)
     { "implementsMethod3", static_cast<unsigned>(JSC::PropertyAttribute::Function), NoIntrinsic, { (intptr_t)static_cast<RawNativeFunction>(jsTestInterfacePrototypeFunctionImplementsMethod3), (intptr_t) (0) } },
+#else
+    { 0, 0, NoIntrinsic, { 0, 0 } },
+#endif
+#if ENABLE(Condition22) || ENABLE(Condition23)
+    { "takeNodes", static_cast<unsigned>(JSC::PropertyAttribute::Function), NoIntrinsic, { (intptr_t)static_cast<RawNativeFunction>(jsTestInterfacePrototypeFunctionTakeNodes), (intptr_t) (0) } },
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
@@ -914,6 +927,23 @@ EncodedJSValue JSC_HOST_CALL jsTestInterfaceConstructorFunctionImplementsMethod4
 
 #endif
 
+#if ENABLE(Condition22) || ENABLE(Condition23)
+static inline JSC::EncodedJSValue jsTestInterfacePrototypeFunctionTakeNodesBody(JSC::ExecState* state, typename IDLOperation<JSTestInterface>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto implResult = impl.takeNodes();
+    return JSValue::encode(toJS<IDLSequence<IDLInterface<Node>>>(*state, *castedThis->globalObject(), WTFMove(implResult.nodes)));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestInterfacePrototypeFunctionTakeNodes(ExecState* state)
+{
+    return IDLOperation<JSTestInterface>::call<jsTestInterfacePrototypeFunctionTakeNodesBody>(*state, "takeNodes");
+}
+
+#endif
+
 #if ENABLE(Condition11) || ENABLE(Condition12)
 static inline JSC::EncodedJSValue jsTestInterfacePrototypeFunctionSupplementalMethod1Body(JSC::ExecState* state, typename IDLOperation<JSTestInterface>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
@@ -992,7 +1022,7 @@ void JSTestInterface::heapSnapshot(JSCell* cell, HeapSnapshotBuilder& builder)
     auto* thisObject = jsCast<JSTestInterface*>(cell);
     builder.setWrappedObjectForCell(cell, &thisObject->wrapped());
     if (thisObject->scriptExecutionContext())
-        builder.setLabelForCell(cell, String::format("url %s", thisObject->scriptExecutionContext()->url().string().utf8().data()));
+        builder.setLabelForCell(cell, "url " + thisObject->scriptExecutionContext()->url().string());
     Base::heapSnapshot(cell, builder);
 }
 

@@ -27,7 +27,7 @@ WI.DebuggerObserver = class DebuggerObserver
 {
     constructor()
     {
-        this._legacyScriptParsed = DebuggerAgent.hasEventParameter("scriptParsed", "hasSourceURL");
+        this._legacyScriptParsed = InspectorBackend.domains.Debugger.hasEventParameter("scriptParsed", "hasSourceURL");
     }
 
     // Events defined by the "Debugger" domain.
@@ -55,7 +55,8 @@ WI.DebuggerObserver = class DebuggerObserver
 
     scriptFailedToParse(url, scriptSource, startLine, errorLine, errorMessage)
     {
-        // FIXME: Not implemented.
+        // NOTE: A Console.messageAdded event will handle the error message.
+        WI.debuggerManager.scriptDidFail(this.target, url, scriptSource);
     }
 
     breakpointResolved(breakpointId, location)
@@ -80,6 +81,6 @@ WI.DebuggerObserver = class DebuggerObserver
 
     didSampleProbe(sample)
     {
-        WI.probeManager.didSampleProbe(this.target, sample);
+        WI.debuggerManager.didSampleProbe(this.target, sample);
     }
 };

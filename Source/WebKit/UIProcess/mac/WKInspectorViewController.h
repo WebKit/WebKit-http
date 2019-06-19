@@ -27,7 +27,7 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if PLATFORM(MAC) && WK_API_ENABLED
+#if PLATFORM(MAC)
 
 OBJC_CLASS WKWebView;
 
@@ -54,8 +54,10 @@ NS_ASSUME_NONNULL_BEGIN
 @optional
 - (void)inspectorViewControllerInspectorDidCrash:(WKInspectorViewController *)inspectorViewController;
 - (BOOL)inspectorViewControllerInspectorIsUnderTest:(WKInspectorViewController *)inspectorViewController;
+- (void)inspectorViewController:(WKInspectorViewController *)inspectorViewController willMoveToWindow:(NSWindow *)newWindow;
+- (void)inspectorViewControllerDidMoveToWindow:(WKInspectorViewController *)inspectorViewController;
 @end
 
 NS_ASSUME_NONNULL_END
 
-#endif // PLATFORM(MAC) && WK_API_ENABLED
+#endif // PLATFORM(MAC)

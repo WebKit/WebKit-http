@@ -32,10 +32,11 @@
 #include "SelectorChecker.h"
 #include <bitset>
 #include <memory>
+#include <wtf/Bitmap.h>
 #include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
-#include <wtf/text/AtomicStringHash.h>
+#include <wtf/text/AtomStringHash.h>
 #include <wtf/text/StringHash.h>
 
 namespace WebCore {
@@ -57,7 +58,6 @@ class Document;
 class Element;
 class Frame;
 class FrameView;
-class URL;
 class KeyframeList;
 class KeyframeValue;
 class MediaQueryEvaluator;
@@ -187,14 +187,14 @@ public:
     void setFontSize(FontCascadeDescription&, float size);
 
 public:
-    bool useSVGZoomRules();
-    bool useSVGZoomRulesForLength();
+    bool useSVGZoomRules() const;
+    bool useSVGZoomRulesForLength() const;
 
     static bool colorFromPrimitiveValueIsDerivedFromElement(const CSSPrimitiveValue&);
     Color colorFromPrimitiveValue(const CSSPrimitiveValue&, bool forVisitedLink = false) const;
 
-    bool hasSelectorForId(const AtomicString&) const;
-    bool hasSelectorForAttribute(const Element&, const AtomicString&) const;
+    bool hasSelectorForId(const AtomString&) const;
+    bool hasSelectorForAttribute(const Element&, const AtomString&) const;
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     ViewportStyleResolver* viewportStyleResolver() { return m_viewportStyleResolver.get(); }
@@ -207,6 +207,10 @@ public:
     void addAccessibilitySettingsDependentMediaQueryResult(const MediaQueryExpression&, bool result);
     bool hasAccessibilitySettingsDependentMediaQueries() const { return !m_accessibilitySettingsDependentMediaQueryResults.isEmpty(); }
     bool hasMediaQueriesAffectedByAccessibilitySettingsChange() const;
+
+    void addAppearanceDependentMediaQueryResult(const MediaQueryExpression&, bool result);
+    bool hasAppearanceDependentMediaQueries() const { return !m_appearanceDependentMediaQueryResults.isEmpty(); }
+    bool hasMediaQueriesAffectedByAppearanceChange() const;
 
     void addKeyframeStyle(Ref<StyleRuleKeyframes>&&);
 
@@ -267,7 +271,7 @@ public:
         CascadedProperties(TextDirection, WritingMode);
 
         struct Property {
-            void apply(StyleResolver&, const MatchResult*);
+            void apply(StyleResolver&, ApplyCascadedPropertyState&);
 
             CSSPropertyID id;
             CascadeLevel level;
@@ -281,9 +285,9 @@ public:
         void addNormalMatches(const MatchResult&, int startIndex, int endIndex, bool inheritedOnly = false);
         void addImportantMatches(const MatchResult&, int startIndex, int endIndex, bool inheritedOnly = false);
 
-        void applyDeferredProperties(StyleResolver&, const MatchResult*);
+        void applyDeferredProperties(StyleResolver&, ApplyCascadedPropertyState&);
 
-        HashMap<AtomicString, Property>& customProperties() { return m_customProperties; }
+        HashMap<AtomString, Property>& customProperties() { return m_customProperties; }
         bool hasCustomProperty(const String&) const;
         Property customProperty(const String&) const;
         
@@ -297,12 +301,15 @@ public:
         std::bitset<numCSSProperties + 2> m_propertyIsPresent;
 
         Vector<Property, 8> m_deferredProperties;
-        HashMap<AtomicString, Property> m_customProperties;
+        HashMap<AtomString, Property> m_customProperties;
 
         TextDirection m_direction;
         WritingMode m_writingMode;
     };
-    
+
+    void applyCascadedProperties(int firstProperty, int lastProperty, ApplyCascadedPropertyState&);
+    void applyCascadedCustomProperty(const String& name, ApplyCascadedPropertyState&);
+
 private:
     // This function fixes up the default font size if it detects that the current generic font family has changed. -dwh
     void checkForGenericFamilyChange(RenderStyle*, const RenderStyle* parentStyle);
@@ -312,6 +319,8 @@ private:
 #endif
 
     void adjustRenderStyle(RenderStyle&, const RenderStyle& parentStyle, const RenderStyle* parentBoxStyle, const Element*);
+    void adjustRenderStyleForSiteSpecificQuirks(RenderStyle&, const Element&);
+
     std::unique_ptr<GridPosition> adjustNamedGridItemPosition(const NamedGridAreaMap&, const NamedGridLinesMap&, const GridPosition&, GridPositionSide) const;
     
     void adjustStyleForInterCharacterRuby();
@@ -321,7 +330,10 @@ private:
     enum ShouldUseMatchedPropertiesCache { DoNotUseMatchedPropertiesCache = 0, UseMatchedPropertiesCache };
     void applyMatchedProperties(const MatchResult&, const Element&, ShouldUseMatchedPropertiesCache = UseMatchedPropertiesCache);
 
-    void applyCascadedProperties(CascadedProperties&, int firstProperty, int lastProperty, const MatchResult*);
+    enum CustomPropertyCycleTracking { Enabled = 0, Disabled };
+    template<CustomPropertyCycleTracking>
+    inline void applyCascadedPropertiesImpl(int firstProperty, int lastProperty, ApplyCascadedPropertyState&);
+
     void cascadeMatches(CascadedProperties&, const MatchResult&, bool important, int startIndex, int endIndex, bool inheritedOnly);
 
     void matchPageRules(MatchResult&, RuleSet*, bool isLeftPage, bool isFirstPage, const String& pageName);
@@ -334,7 +346,7 @@ private:
 
     DocumentRuleSets m_ruleSets;
 
-    typedef HashMap<AtomicStringImpl*, RefPtr<StyleRuleKeyframes>> KeyframesRuleMap;
+    typedef HashMap<AtomStringImpl*, RefPtr<StyleRuleKeyframes>> KeyframesRuleMap;
     KeyframesRuleMap m_keyframesRuleMap;
 
 public:
@@ -455,11 +467,12 @@ public:
     void setWritingMode(WritingMode writingMode) { m_state.setWritingMode(writingMode); }
     void setTextOrientation(TextOrientation textOrientation) { m_state.setTextOrientation(textOrientation); }
 
+    RefPtr<CSSValue> resolvedVariableValue(CSSPropertyID, const CSSValue&, ApplyCascadedPropertyState&) const;
+
 private:
     void cacheBorderAndBackground();
 
-    void applyProperty(CSSPropertyID, CSSValue*, SelectorChecker::LinkMatchMask = SelectorChecker::MatchDefault, const MatchResult* = nullptr);
-    RefPtr<CSSValue> resolvedVariableValue(CSSPropertyID, const CSSValue&);
+    void applyProperty(CSSPropertyID, CSSValue*, ApplyCascadedPropertyState&, SelectorChecker::LinkMatchMask = SelectorChecker::MatchDefault);
 
     void applySVGProperty(CSSPropertyID, CSSValue*);
 
@@ -487,6 +500,8 @@ private:
     // the last reference to a style declaration are garbage collected.
     void sweepMatchedPropertiesCache();
 
+    void adjustRenderStyleForTextAutosizing(RenderStyle&, const Element&);
+
     typedef HashMap<unsigned, MatchedPropertiesCacheItem> MatchedPropertiesCache;
     MatchedPropertiesCache m_matchedPropertiesCache;
 
@@ -501,6 +516,7 @@ private:
 
     Vector<MediaQueryResult> m_viewportDependentMediaQueryResults;
     Vector<MediaQueryResult> m_accessibilitySettingsDependentMediaQueryResults;
+    Vector<MediaQueryResult> m_appearanceDependentMediaQueryResults;
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     RefPtr<ViewportStyleResolver> m_viewportStyleResolver;
@@ -523,7 +539,20 @@ private:
     friend bool operator!=(const MatchRanges&, const MatchRanges&);
 };
 
-inline bool StyleResolver::hasSelectorForAttribute(const Element& element, const AtomicString &attributeName) const
+// State to use when applying properties, to keep track of which custom and high-priority
+// properties have been resolved.
+struct ApplyCascadedPropertyState {
+    StyleResolver* styleResolver;
+    StyleResolver::CascadedProperties* cascade;
+    const StyleResolver::MatchResult* matchResult;
+    Bitmap<numCSSProperties> appliedProperties = { };
+    HashSet<String> appliedCustomProperties = { };
+    Bitmap<numCSSProperties> inProgressProperties = { };
+    HashSet<String> inProgressPropertiesCustom = { };
+};
+
+
+inline bool StyleResolver::hasSelectorForAttribute(const Element& element, const AtomString &attributeName) const
 {
     ASSERT(!attributeName.isEmpty());
     if (element.isHTMLElement())
@@ -531,7 +560,7 @@ inline bool StyleResolver::hasSelectorForAttribute(const Element& element, const
     return m_ruleSets.features().attributeLocalNamesInRules.contains(attributeName);
 }
 
-inline bool StyleResolver::hasSelectorForId(const AtomicString& idValue) const
+inline bool StyleResolver::hasSelectorForId(const AtomString& idValue) const
 {
     ASSERT(!idValue.isEmpty());
     return m_ruleSets.features().idsInRules.contains(idValue);

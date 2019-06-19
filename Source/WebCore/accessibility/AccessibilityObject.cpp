@@ -33,7 +33,8 @@
 #include "AccessibilityRenderObject.h"
 #include "AccessibilityScrollView.h"
 #include "AccessibilityTable.h"
-#include "AccessibleSetValueEvent.h"
+#include "Chrome.h"
+#include "ChromeClient.h"
 #include "DOMTokenList.h"
 #include "Editing.h"
 #include "Editor.h"
@@ -41,6 +42,7 @@
 #include "Event.h"
 #include "EventDispatcher.h"
 #include "EventHandler.h"
+#include "EventNames.h"
 #include "FloatRect.h"
 #include "FocusController.h"
 #include "Frame.h"
@@ -52,6 +54,7 @@
 #include "HTMLMediaElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
+#include "HTMLTextAreaElement.h"
 #include "HitTestResult.h"
 #include "LocalizedStrings.h"
 #include "MathMLNames.h"
@@ -193,6 +196,9 @@ bool AccessibilityObject::isAccessibilityObjectSearchMatchAtIndex(AccessibilityO
     case AccessibilitySearchKey::Highlighted:
         return axObject->hasHighlighting();
             
+    case AccessibilitySearchKey::KeyboardFocusable:
+        return axObject->isKeyboardFocusable();
+        
     case AccessibilitySearchKey::ItalicFont:
         return axObject->hasItalicFont();
         
@@ -201,7 +207,7 @@ bool AccessibilityObject::isAccessibilityObjectSearchMatchAtIndex(AccessibilityO
         
     case AccessibilitySearchKey::Link: {
         bool isLink = axObject->isLink();
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         if (!isLink)
             isLink = axObject->isDescendantOfRole(AccessibilityRole::WebCoreLink);
 #endif
@@ -332,6 +338,7 @@ bool AccessibilityObject::accessibleNameDerivesFromContent() const
     case AccessibilityRole::Menu:
     case AccessibilityRole::MenuBar:
     case AccessibilityRole::ProgressIndicator:
+    case AccessibilityRole::Meter:
     case AccessibilityRole::RadioGroup:
     case AccessibilityRole::ScrollBar:
     case AccessibilityRole::Slider:
@@ -406,16 +413,19 @@ bool AccessibilityObject::isNonNativeTextControl() const
 
 bool AccessibilityObject::isLandmark() const
 {
-    AccessibilityRole role = roleValue();
-    
-    return role == AccessibilityRole::LandmarkBanner
-        || role == AccessibilityRole::LandmarkComplementary
-        || role == AccessibilityRole::LandmarkContentInfo
-        || role == AccessibilityRole::LandmarkDocRegion
-        || role == AccessibilityRole::LandmarkMain
-        || role == AccessibilityRole::LandmarkNavigation
-        || role == AccessibilityRole::LandmarkRegion
-        || role == AccessibilityRole::LandmarkSearch;
+    switch (roleValue()) {
+    case AccessibilityRole::LandmarkBanner:
+    case AccessibilityRole::LandmarkComplementary:
+    case AccessibilityRole::LandmarkContentInfo:
+    case AccessibilityRole::LandmarkDocRegion:
+    case AccessibilityRole::LandmarkMain:
+    case AccessibilityRole::LandmarkNavigation:
+    case AccessibilityRole::LandmarkRegion:
+    case AccessibilityRole::LandmarkSearch:
+        return true;
+    default:
+        return false;
+    }
 }
 
 bool AccessibilityObject::hasMisspelling() const
@@ -480,6 +490,39 @@ AccessibilityObject* AccessibilityObject::previousSiblingUnignored(int limit) co
             break;
     }
     return previous;
+}
+    
+FloatRect AccessibilityObject::convertFrameToSpace(const FloatRect& frameRect, AccessibilityConversionSpace conversionSpace) const
+{
+    ASSERT(isMainThread());
+    
+    // Find the appropriate scroll view to use to convert the contents to the window.
+    const auto parentAccessibilityScrollView = ancestorAccessibilityScrollView(false /* includeSelf */);
+    auto* parentScrollView = parentAccessibilityScrollView ? parentAccessibilityScrollView->scrollView() : nullptr;
+
+    auto snappedFrameRect = snappedIntRect(IntRect(frameRect));
+    if (parentScrollView)
+        snappedFrameRect = parentScrollView->contentsToRootView(snappedFrameRect);
+    
+    if (conversionSpace == AccessibilityConversionSpace::Screen) {
+        auto page = this->page();
+        if (!page)
+            return snappedFrameRect;
+
+        // If we have an empty chrome client (like SVG) then we should use the page
+        // of the scroll view parent to help us get to the screen rect.
+        if (parentAccessibilityScrollView && page->chrome().client().isEmptyChromeClient())
+            page = parentAccessibilityScrollView->page();
+        
+        snappedFrameRect = page->chrome().rootViewToAccessibilityScreen(snappedFrameRect);
+    }
+    
+    return snappedFrameRect;
+}
+    
+FloatRect AccessibilityObject::relativeFrame() const
+{
+    return convertFrameToSpace(elementRect(), AccessibilityConversionSpace::Page);
 }
 
 AccessibilityObject* AccessibilityObject::nextSiblingUnignored(int limit) const
@@ -713,21 +756,21 @@ void AccessibilityObject::findMatchingObjects(AccessibilitySearchCriteria* crite
 // Returns the range that is fewer positions away from the reference range.
 // NOTE: The after range is expected to ACTUALLY be after the reference range and the before
 // range is expected to ACTUALLY be before. These are not checked for performance reasons.
-static RefPtr<Range> rangeClosestToRange(Range* referenceRange, RefPtr<Range>&& afterRange, RefPtr<Range>&& beforeRange)
+static RefPtr<Range> rangeClosestToRange(RefPtr<Range> const& referenceRange, RefPtr<Range>&& afterRange, RefPtr<Range>&& beforeRange)
 {
     if (!referenceRange)
         return nullptr;
-    
+
     // The treeScope for shadow nodes may not be the same scope as another element in a document.
     // Comparisons may fail in that case, which are expected behavior and should not assert.
     if (afterRange && (referenceRange->endPosition().isNull() || ((afterRange->startPosition().anchorNode()->compareDocumentPosition(*referenceRange->endPosition().anchorNode()) & Node::DOCUMENT_POSITION_DISCONNECTED) == Node::DOCUMENT_POSITION_DISCONNECTED)))
         return nullptr;
-    ASSERT(!afterRange || afterRange->startPosition() >= referenceRange->endPosition());
-    
+    ASSERT(!afterRange || afterRange->compareBoundaryPoints(Range::START_TO_START, *referenceRange).releaseReturnValue() >= 0);
+
     if (beforeRange && (referenceRange->startPosition().isNull() || ((beforeRange->endPosition().anchorNode()->compareDocumentPosition(*referenceRange->startPosition().anchorNode()) & Node::DOCUMENT_POSITION_DISCONNECTED) == Node::DOCUMENT_POSITION_DISCONNECTED)))
         return nullptr;
-    ASSERT(!beforeRange || beforeRange->endPosition() <= referenceRange->startPosition());
-    
+    ASSERT(!beforeRange || beforeRange->compareBoundaryPoints(Range::START_TO_START, *referenceRange).releaseReturnValue() <= 0);
+
     if (!afterRange && !beforeRange)
         return nullptr;
     if (afterRange && !beforeRange)
@@ -741,7 +784,7 @@ static RefPtr<Range> rangeClosestToRange(Range* referenceRange, RefPtr<Range>&& 
     return positionsToAfterRange < positionsToBeforeRange ? afterRange : beforeRange;
 }
 
-RefPtr<Range> AccessibilityObject::rangeOfStringClosestToRangeInDirection(Range* referenceRange, AccessibilitySearchDirection searchDirection, Vector<String>& searchStrings) const
+RefPtr<Range> AccessibilityObject::rangeOfStringClosestToRangeInDirection(Range* referenceRange, AccessibilitySearchDirection searchDirection, Vector<String> const& searchStrings) const
 {
     Frame* frame = this->frame();
     if (!frame)
@@ -753,7 +796,7 @@ RefPtr<Range> AccessibilityObject::rangeOfStringClosestToRangeInDirection(Range*
     bool isBackwardSearch = searchDirection == AccessibilitySearchDirection::Previous;
     FindOptions findOptions { AtWordStarts, AtWordEnds, CaseInsensitive, StartInSelection };
     if (isBackwardSearch)
-        findOptions.add(Backwards);
+        findOptions.add(FindOptionFlag::Backwards);
     
     RefPtr<Range> closestStringRange = nullptr;
     for (const auto& searchString : searchStrings) {
@@ -799,87 +842,137 @@ RefPtr<Range> AccessibilityObject::elementRange() const
     return AXObjectCache::rangeForNodeContents(node());
 }
 
-String AccessibilityObject::selectText(AccessibilitySelectTextCriteria* criteria)
+RefPtr<Range> AccessibilityObject::findTextRange(Vector<String> const& searchStrings, RefPtr<Range> const& start, AccessibilitySearchTextDirection direction) const
 {
-    ASSERT(criteria);
-    
-    if (!criteria)
-        return String();
-    
-    Frame* frame = this->frame();
-    if (!frame)
-        return String();
-    
-    AccessibilitySelectTextActivity& activity = criteria->activity;
-    AccessibilitySelectTextAmbiguityResolution& ambiguityResolution = criteria->ambiguityResolution;
-    String& replacementString = criteria->replacementString;
-    Vector<String>& searchStrings = criteria->searchStrings;
-    
-    RefPtr<Range> selectedStringRange = selectionRange();
-    // When starting our search again, make this a zero length range so that search forwards will find this selected range if its appropriate.
-    selectedStringRange->setEnd(selectedStringRange->startContainer(), selectedStringRange->startOffset());
-    
-    RefPtr<Range> closestAfterStringRange = nullptr;
-    RefPtr<Range> closestBeforeStringRange = nullptr;
-    // Search forward if necessary.
-    if (ambiguityResolution == AccessibilitySelectTextAmbiguityResolution::ClosestAfter || ambiguityResolution == AccessibilitySelectTextAmbiguityResolution::ClosestTo)
-        closestAfterStringRange = rangeOfStringClosestToRangeInDirection(selectedStringRange.get(), AccessibilitySearchDirection::Next, searchStrings);
-    // Search backward if necessary.
-    if (ambiguityResolution == AccessibilitySelectTextAmbiguityResolution::ClosestBefore || ambiguityResolution == AccessibilitySelectTextAmbiguityResolution::ClosestTo)
-        closestBeforeStringRange = rangeOfStringClosestToRangeInDirection(selectedStringRange.get(), AccessibilitySearchDirection::Previous, searchStrings);
-    
-    // Determine which candidate is closest to the selection and perform the activity.
-    if (RefPtr<Range> closestStringRange = rangeClosestToRange(selectedStringRange.get(), WTFMove(closestAfterStringRange), WTFMove(closestBeforeStringRange))) {
+    RefPtr<Range> found;
+    if (direction == AccessibilitySearchTextDirection::Forward)
+        found = rangeOfStringClosestToRangeInDirection(start.get(), AccessibilitySearchDirection::Next, searchStrings);
+    else if (direction == AccessibilitySearchTextDirection::Backward)
+        found = rangeOfStringClosestToRangeInDirection(start.get(), AccessibilitySearchDirection::Previous, searchStrings);
+    else if (direction == AccessibilitySearchTextDirection::Closest) {
+        auto foundAfter = rangeOfStringClosestToRangeInDirection(start.get(), AccessibilitySearchDirection::Next, searchStrings);
+        auto foundBefore = rangeOfStringClosestToRangeInDirection(start.get(), AccessibilitySearchDirection::Previous, searchStrings);
+        found = rangeClosestToRange(start.get(), WTFMove(foundAfter), WTFMove(foundBefore));
+    }
+
+    if (found) {
         // If the search started within a text control, ensure that the result is inside that element.
         if (element() && element()->isTextField()) {
-            if (!closestStringRange->startContainer().isDescendantOrShadowDescendantOf(element()) || !closestStringRange->endContainer().isDescendantOrShadowDescendantOf(element()))
-                return String();
-        }
-        
-        String closestString = closestStringRange->text();
-        bool replaceSelection = false;
-        if (frame->selection().setSelectedRange(closestStringRange.get(), DOWNSTREAM, true)) {
-            switch (activity) {
-            case AccessibilitySelectTextActivity::FindAndCapitalize:
-                replacementString = capitalize(closestString, ' '); // FIXME: Needs to take locale into account to work correctly.
-                replaceSelection = true;
-                break;
-            case AccessibilitySelectTextActivity::FindAndUppercase:
-                replacementString = closestString.convertToUppercaseWithoutLocale(); // FIXME: Needs locale to work correctly.
-                replaceSelection = true;
-                break;
-            case AccessibilitySelectTextActivity::FindAndLowercase:
-                replacementString = closestString.convertToLowercaseWithoutLocale(); // FIXME: Needs locale to work correctly.
-                replaceSelection = true;
-                break;
-            case AccessibilitySelectTextActivity::FindAndReplace: {
-                replaceSelection = true;
-                // When applying find and replace activities, we want to match the capitalization of the replaced text,
-                // (unless we're replacing with an abbreviation.)
-                if (closestString.length() > 0 && replacementString.length() > 2 && replacementString != replacementString.convertToUppercaseWithoutLocale()) {
-                    if (closestString[0] == u_toupper(closestString[0]))
-                        replacementString = capitalize(replacementString, ' '); // FIXME: Needs to take locale into account to work correctly.
-                    else
-                        replacementString = replacementString.convertToLowercaseWithoutLocale(); // FIXME: Needs locale to work correctly.
-                }
-                break;
-            }
-            case AccessibilitySelectTextActivity::FindAndSelect:
-                break;
-            }
-            
-            // A bit obvious, but worth noting the API contract for this method is that we should
-            // return the replacement string when replacing, but the selected string if not.
-            if (replaceSelection) {
-                frame->editor().replaceSelectionWithText(replacementString, true, true);
-                return replacementString;
-            }
-            
-            return closestString;
+            if (!found->startContainer().isDescendantOrShadowDescendantOf(element())
+                || !found->endContainer().isDescendantOrShadowDescendantOf(element()))
+                return nullptr;
         }
     }
-    
-    return String();
+    return found;
+}
+
+Vector<RefPtr<Range>> AccessibilityObject::findTextRanges(AccessibilitySearchTextCriteria const& criteria) const
+{
+    Vector<RefPtr<Range>> result;
+
+    // Determine start range.
+    RefPtr<Range> startRange;
+    if (criteria.start == AccessibilitySearchTextStartFrom::Selection)
+        startRange = selectionRange();
+    else
+        startRange = elementRange();
+
+    if (startRange) {
+        // Collapse the range to the start unless searching from the end of the doc or searching backwards.
+        if (criteria.start == AccessibilitySearchTextStartFrom::Begin)
+            startRange->collapse(true);
+        else if (criteria.start == AccessibilitySearchTextStartFrom::End)
+            startRange->collapse(false);
+        else
+            startRange->collapse(criteria.direction != AccessibilitySearchTextDirection::Backward);
+    } else
+        return result;
+
+    RefPtr<Range> found;
+    switch (criteria.direction) {
+    case AccessibilitySearchTextDirection::Forward:
+    case AccessibilitySearchTextDirection::Backward:
+    case AccessibilitySearchTextDirection::Closest:
+        found = findTextRange(criteria.searchStrings, startRange, criteria.direction);
+        if (found)
+            result.append(found);
+        break;
+    case AccessibilitySearchTextDirection::All: {
+        auto findAll = [&](AccessibilitySearchTextDirection dir) {
+            found = findTextRange(criteria.searchStrings, startRange, dir);
+            while (found) {
+                result.append(found);
+                found = findTextRange(criteria.searchStrings, found, dir);
+            }
+        };
+        findAll(AccessibilitySearchTextDirection::Forward);
+        findAll(AccessibilitySearchTextDirection::Backward);
+        break;
+    }
+    }
+
+    return result;
+}
+
+Vector<String> AccessibilityObject::performTextOperation(AccessibilityTextOperation const& operation)
+{
+    Vector<String> result;
+
+    if (operation.textRanges.isEmpty())
+        return result;
+
+    Frame* frame = this->frame();
+    if (!frame)
+        return result;
+
+    for (auto textRange : operation.textRanges) {
+        if (!frame->selection().setSelectedRange(textRange.get(), DOWNSTREAM, FrameSelection::ShouldCloseTyping::Yes))
+            continue;
+
+        String text = textRange->text();
+        String replacementString = operation.replacementText;
+        bool replaceSelection = false;
+        switch (operation.type) {
+        case AccessibilityTextOperationType::Capitalize:
+            replacementString = capitalize(text, ' '); // FIXME: Needs to take locale into account to work correctly.
+            replaceSelection = true;
+            break;
+        case AccessibilityTextOperationType::Uppercase:
+            replacementString = text.convertToUppercaseWithoutLocale(); // FIXME: Needs locale to work correctly.
+            replaceSelection = true;
+            break;
+        case AccessibilityTextOperationType::Lowercase:
+            replacementString = text.convertToLowercaseWithoutLocale(); // FIXME: Needs locale to work correctly.
+            replaceSelection = true;
+            break;
+        case AccessibilityTextOperationType::Replace: {
+            replaceSelection = true;
+            // When applying find and replace activities, we want to match the capitalization of the replaced text,
+            // (unless we're replacing with an abbreviation.)
+            if (text.length() > 0
+                && replacementString.length() > 2
+                && replacementString != replacementString.convertToUppercaseWithoutLocale()) {
+                if (text[0] == u_toupper(text[0]))
+                    replacementString = capitalize(replacementString, ' '); // FIXME: Needs to take locale into account to work correctly.
+                else
+                    replacementString = replacementString.convertToLowercaseWithoutLocale(); // FIXME: Needs locale to work correctly.
+            }
+            break;
+        }
+        case AccessibilityTextOperationType::Select:
+            break;
+        }
+
+        // A bit obvious, but worth noting the API contract for this method is that we should
+        // return the replacement string when replacing, but the selected string if not.
+        if (replaceSelection) {
+            frame->editor().replaceSelectionWithText(replacementString, Editor::SelectReplacement::Yes, Editor::SmartReplace::Yes);
+            result.append(replacementString);
+        } else
+            result.append(text);
+    }
+
+    return result;
 }
 
 bool AccessibilityObject::hasAttributesRequiredForInclusion() const
@@ -912,6 +1005,7 @@ bool AccessibilityObject::isARIAControl(AccessibilityRole ariaRole)
 bool AccessibilityObject::isRangeControl() const
 {
     switch (roleValue()) {
+    case AccessibilityRole::Meter:
     case AccessibilityRole::ProgressIndicator:
     case AccessibilityRole::Slider:
     case AccessibilityRole::ScrollBar:
@@ -926,6 +1020,9 @@ bool AccessibilityObject::isRangeControl() const
 
 bool AccessibilityObject::isMeter() const
 {
+    if (ariaRoleAttribute() == AccessibilityRole::Meter)
+        return true;
+
 #if ENABLE(METER_ELEMENT)
     RenderObject* renderer = this->renderer();
     return renderer && renderer->isMeter();
@@ -974,17 +1071,17 @@ bool AccessibilityObject::press()
     if (document) {
         HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AccessibilityHitTest);
         HitTestResult hitTestResult(clickPoint());
-        document->renderView()->hitTest(request, hitTestResult);
-        if (hitTestResult.innerNode()) {
-            Node* innerNode = hitTestResult.innerNode()->deprecatedShadowAncestorNode();
-            if (is<Element>(*innerNode))
-                hitTestElement = downcast<Element>(innerNode);
-            else if (innerNode)
+        document->hitTest(request, hitTestResult);
+        if (auto* innerNode = hitTestResult.innerNode()) {
+            if (auto* shadowHost = innerNode->shadowHost())
+                hitTestElement = shadowHost;
+            else if (is<Element>(*innerNode))
+                hitTestElement = &downcast<Element>(*innerNode);
+            else
                 hitTestElement = innerNode->parentElement();
         }
     }
-    
-    
+
     // Prefer the actionElement instead of this node, if the actionElement is inside this node.
     Element* pressElement = this->element();
     if (!pressElement || actionElem->isDescendantOf(*pressElement))
@@ -995,18 +1092,10 @@ bool AccessibilityObject::press()
     if (hitTestElement && hitTestElement->isDescendantOf(*pressElement))
         pressElement = hitTestElement;
     
-    // dispatch accessibleclick event
-    if (auto* cache = axObjectCache()) {
-        if (auto* pressObject = cache->getOrCreate(pressElement)) {
-            if (pressObject->dispatchAccessibilityEventWithType(AccessibilityEventType::Click))
-                return true;
-        }
-    }
-    
     UserGestureIndicator gestureIndicator(ProcessingUserGesture, document);
     
     bool dispatchedTouchEvent = false;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (hasTouchEventListener())
         dispatchedTouchEvent = dispatchTouchEvent();
 #endif
@@ -1028,10 +1117,7 @@ bool AccessibilityObject::dispatchTouchEvent()
 Frame* AccessibilityObject::frame() const
 {
     Node* node = this->node();
-    if (!node)
-        return nullptr;
-    
-    return node->document().frame();
+    return node ? node->document().frame() : nullptr;
 }
 
 Frame* AccessibilityObject::mainFrame() const
@@ -1056,7 +1142,7 @@ Document* AccessibilityObject::topDocument() const
 
 String AccessibilityObject::language() const
 {
-    const AtomicString& lang = getAttribute(langAttr);
+    const AtomString& lang = getAttribute(langAttr);
     if (!lang.isEmpty())
         return lang;
 
@@ -1682,7 +1768,7 @@ bool AccessibilityObject::supportsAutoComplete() const
 
 String AccessibilityObject::autoCompleteValue() const
 {
-    const AtomicString& autoComplete = getAttribute(aria_autocompleteAttr);
+    const AtomString& autoComplete = getAttribute(aria_autocompleteAttr);
     if (equalLettersIgnoringASCIICase(autoComplete, "inline")
         || equalLettersIgnoringASCIICase(autoComplete, "list")
         || equalLettersIgnoringASCIICase(autoComplete, "both"))
@@ -1696,7 +1782,7 @@ bool AccessibilityObject::contentEditableAttributeIsEnabled(Element* element)
     if (!element)
         return false;
     
-    const AtomicString& contentEditableValue = element->attributeWithoutSynchronization(contenteditableAttr);
+    const AtomString& contentEditableValue = element->attributeWithoutSynchronization(contenteditableAttr);
     if (contentEditableValue.isNull())
         return false;
     
@@ -1786,16 +1872,25 @@ void AccessibilityObject::updateBackingStore()
         if (!document->view()->layoutContext().isInRenderTreeLayout() && !document->inRenderTreeUpdate() && !document->inStyleRecalc())
             document->updateLayoutIgnorePendingStylesheets();
     }
+
+    if (auto cache = axObjectCache())
+        cache->performDeferredCacheUpdate();
+    
     updateChildrenIfNecessary();
 }
 #endif
-    
+
+const AccessibilityScrollView* AccessibilityObject::ancestorAccessibilityScrollView(bool includeSelf) const
+{
+    return downcast<AccessibilityScrollView>(AccessibilityObject::matchedParent(*this, includeSelf, [] (const auto& object) {
+        return is<AccessibilityScrollView>(object);
+    }));
+}
+
 ScrollView* AccessibilityObject::scrollViewAncestor() const
 {
-    if (const AccessibilityObject* scrollParent = AccessibilityObject::matchedParent(*this, true, [] (const AccessibilityObject& object) {
-        return is<AccessibilityScrollView>(object);
-    }))
-        return downcast<AccessibilityScrollView>(*scrollParent).scrollView();
+    if (auto parentScrollView = ancestorAccessibilityScrollView(true/* includeSelf */))
+        return parentScrollView->scrollView();
     
     return nullptr;
 }
@@ -1955,7 +2050,7 @@ const String AccessibilityObject::defaultLiveRegionStatusForRole(AccessibilityRo
 #if HAVE(ACCESSIBILITY)
 const String& AccessibilityObject::actionVerb() const
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // FIXME: Need to add verbs for select elements.
     static NeverDestroyed<const String> buttonAction(AXButtonActionVerb());
     static NeverDestroyed<const String> textFieldAction(AXTextFieldActionVerb());
@@ -2146,86 +2241,39 @@ bool AccessibilityObject::hasAttribute(const QualifiedName& attribute) const
     return downcast<Element>(*node).hasAttributeWithoutSynchronization(attribute);
 }
     
-const AtomicString& AccessibilityObject::getAttribute(const QualifiedName& attribute) const
+const AtomString& AccessibilityObject::getAttribute(const QualifiedName& attribute) const
 {
     if (auto* element = this->element())
         return element->attributeWithoutSynchronization(attribute);
     return nullAtom();
 }
 
-bool AccessibilityObject::shouldDispatchAccessibilityEvent() const
+bool AccessibilityObject::replaceTextInRange(const String& replacementString, const PlainTextRange& range)
 {
-    bool shouldDispatch = RuntimeEnabledFeatures::sharedFeatures().accessibilityObjectModelEnabled();
-#if ENABLE(ACCESSIBILITY_EVENTS)
-    return shouldDispatch &= this->page()->settings().accessibilityEventsEnabled();
-#endif
-    return shouldDispatch;
-}
-
-bool AccessibilityObject::dispatchAccessibilityEvent(Event& event) const
-{
-    if (!shouldDispatchAccessibilityEvent())
+    if (!renderer() || !is<Element>(node()))
         return false;
-    
-    Vector<Element*> eventPath;
-    for (auto* parentObject = this; parentObject; parentObject = parentObject->parentObject()) {
-        if (parentObject->isWebArea())
-            break;
-        if (auto* parentElement = parentObject->element())
-            eventPath.append(parentElement);
+
+    auto& element = downcast<Element>(*renderer()->node());
+
+    // We should use the editor's insertText to mimic typing into the field.
+    // Also only do this when the field is in editing mode.
+    auto& frame = renderer()->frame();
+    if (element.shouldUseInputMethod()) {
+        frame.selection().setSelectedRange(rangeForPlainTextRange(range).get(), DOWNSTREAM, FrameSelection::ShouldCloseTyping::Yes);
+        frame.editor().replaceSelectionWithText(replacementString, Editor::SelectReplacement::No, Editor::SmartReplace::No);
+        return true;
     }
     
-    if (!eventPath.size())
-        return false;
-    
-    EventDispatcher::dispatchEvent(eventPath, event);
-    
-    // return true if preventDefault() was called, so that we don't execute the fallback behavior.
-    return event.defaultPrevented();
-}
-
-bool AccessibilityObject::dispatchAccessibilityEventWithType(AccessibilityEventType type) const
-{
-    AtomicString eventName;
-    switch (type) {
-    case AccessibilityEventType::ContextMenu:
-        eventName = eventNames().accessiblecontextmenuEvent;
-        break;
-    case AccessibilityEventType::Click:
-        eventName = eventNames().accessibleclickEvent;
-        break;
-    case AccessibilityEventType::Decrement:
-        eventName = eventNames().accessibledecrementEvent;
-        break;
-    case AccessibilityEventType::Dismiss:
-        eventName = eventNames().accessibledismissEvent;
-        break;
-    case AccessibilityEventType::Focus:
-        eventName = eventNames().accessiblefocusEvent;
-        break;
-    case AccessibilityEventType::Increment:
-        eventName = eventNames().accessibleincrementEvent;
-        break;
-    case AccessibilityEventType::ScrollIntoView:
-        eventName = eventNames().accessiblescrollintoviewEvent;
-        break;
-    case AccessibilityEventType::Select:
-        eventName = eventNames().accessibleselectEvent;
-        break;
-    default:
-        return false;
+    if (is<HTMLInputElement>(element)) {
+        downcast<HTMLInputElement>(element).setRangeText(replacementString, range.start, range.length, "");
+        return true;
     }
-    
-    auto event = Event::create(eventName, Event::CanBubble::Yes, Event::IsCancelable::Yes);
-    return dispatchAccessibilityEvent(event);
-}
+    if (is<HTMLTextAreaElement>(element)) {
+        downcast<HTMLTextAreaElement>(element).setRangeText(replacementString, range.start, range.length, "");
+        return true;
+    }
 
-bool AccessibilityObject::dispatchAccessibleSetValueEvent(const String& value) const
-{
-    if (!canSetValueAttribute())
-        return false;
-    auto event = AccessibleSetValueEvent::create(eventNames().accessiblesetvalueEvent, value);
-    return dispatchAccessibilityEvent(event);
+    return false;
 }
 
 // Lacking concrete evidence of orientation, horizontal means width > height. vertical is height > width;
@@ -2371,6 +2419,7 @@ static void initializeRoleMap()
         { "menuitem", AccessibilityRole::MenuItem },
         { "menuitemcheckbox", AccessibilityRole::MenuItemCheckbox },
         { "menuitemradio", AccessibilityRole::MenuItemRadio },
+        { "meter", AccessibilityRole::Meter },
         { "none", AccessibilityRole::Presentational },
         { "note", AccessibilityRole::DocumentNote },
         { "navigation", AccessibilityRole::LandmarkNavigation },
@@ -2428,7 +2477,9 @@ static ARIAReverseRoleMap& reverseAriaRoleMap()
 
 AccessibilityRole AccessibilityObject::ariaRoleToWebCoreRole(const String& value)
 {
-    ASSERT(!value.isEmpty());
+    if (value.isNull() || value.isEmpty())
+        return AccessibilityRole::Unknown;
+
     for (auto roleName : StringView(value).split(' ')) {
         AccessibilityRole role = ariaRoleMap().get<ASCIICaseInsensitiveStringViewHashTranslator>(roleName);
         if (static_cast<int>(role))
@@ -2525,12 +2576,12 @@ bool AccessibilityObject::supportsDatetimeAttribute() const
     return hasTagName(insTag) || hasTagName(delTag) || hasTagName(timeTag);
 }
 
-const AtomicString& AccessibilityObject::datetimeAttributeValue() const
+const AtomString& AccessibilityObject::datetimeAttributeValue() const
 {
     return getAttribute(datetimeAttr);
 }
     
-const AtomicString& AccessibilityObject::linkRelValue() const
+const AtomString& AccessibilityObject::linkRelValue() const
 {
     return getAttribute(relAttr);
 }
@@ -2582,11 +2633,11 @@ bool AccessibilityObject::isValueAutofilled() const
 
 const String AccessibilityObject::placeholderValue() const
 {
-    const AtomicString& placeholder = getAttribute(placeholderAttr);
+    const AtomString& placeholder = getAttribute(placeholderAttr);
     if (!placeholder.isEmpty())
         return placeholder;
     
-    const AtomicString& ariaPlaceholder = getAttribute(aria_placeholderAttr);
+    const AtomString& ariaPlaceholder = getAttribute(aria_placeholderAttr);
     if (!ariaPlaceholder.isEmpty())
         return ariaPlaceholder;
     
@@ -2628,18 +2679,18 @@ bool AccessibilityObject::supportsARIAAttributes() const
         || hasAttribute(aria_relevantAttr);
 }
     
-bool AccessibilityObject::liveRegionStatusIsEnabled(const AtomicString& liveRegionStatus)
+bool AccessibilityObject::liveRegionStatusIsEnabled(const AtomString& liveRegionStatus)
 {
     return equalLettersIgnoringASCIICase(liveRegionStatus, "polite") || equalLettersIgnoringASCIICase(liveRegionStatus, "assertive");
 }
     
 bool AccessibilityObject::supportsLiveRegion(bool excludeIfOff) const
 {
-    const AtomicString& liveRegionStatusValue = liveRegionStatus();
+    const AtomString& liveRegionStatusValue = liveRegionStatus();
     return excludeIfOff ? liveRegionStatusIsEnabled(liveRegionStatusValue) : !liveRegionStatusValue.isEmpty();
 }
 
-AccessibilityObject* AccessibilityObject::elementAccessibilityHitTest(const IntPoint& point) const
+AccessibilityObjectInterface* AccessibilityObject::elementAccessibilityHitTest(const IntPoint& point) const
 { 
     // Send the hit test back into the sub-frame if necessary.
     if (isAttachment()) {
@@ -2662,23 +2713,14 @@ AccessibilityObject* AccessibilityObject::elementAccessibilityHitTest(const IntP
     
 AXObjectCache* AccessibilityObject::axObjectCache() const
 {
-    Document* doc = document();
-    if (doc)
-        return doc->axObjectCache();
-    return nullptr;
+    auto* document = this->document();
+    return document ? document->axObjectCache() : nullptr;
 }
     
-AccessibilityObject* AccessibilityObject::focusedUIElement() const
+AccessibilityObjectInterface* AccessibilityObject::focusedUIElement() const
 {
-    Document* doc = document();
-    if (!doc)
-        return nullptr;
-    
-    Page* page = doc->page();
-    if (!page)
-        return nullptr;
-    
-    return AXObjectCache::focusedUIElementForPage(page);
+    auto* page = this->page();
+    return page ? AXObjectCache::focusedUIElementForPage(page) : nullptr;
 }
     
 AccessibilitySortDirection AccessibilityObject::sortDirection() const
@@ -2687,7 +2729,7 @@ AccessibilitySortDirection AccessibilityObject::sortDirection() const
     if (role != AccessibilityRole::RowHeader && role != AccessibilityRole::ColumnHeader)
         return AccessibilitySortDirection::Invalid;
 
-    const AtomicString& sortAttribute = getAttribute(aria_sortAttr);
+    const AtomString& sortAttribute = getAttribute(aria_sortAttr);
     if (equalLettersIgnoringASCIICase(sortAttribute, "ascending"))
         return AccessibilitySortDirection::Ascending;
     if (equalLettersIgnoringASCIICase(sortAttribute, "descending"))
@@ -2715,7 +2757,7 @@ bool AccessibilityObject::supportsHasPopup() const
 
 String AccessibilityObject::hasPopupValue() const
 {
-    const AtomicString& hasPopup = getAttribute(aria_haspopupAttr);
+    const AtomString& hasPopup = getAttribute(aria_haspopupAttr);
     if (equalLettersIgnoringASCIICase(hasPopup, "true")
         || equalLettersIgnoringASCIICase(hasPopup, "dialog")
         || equalLettersIgnoringASCIICase(hasPopup, "grid")
@@ -2754,7 +2796,7 @@ int AccessibilityObject::posInSet() const
     return getAttribute(aria_posinsetAttr).toInt();
 }
     
-const AtomicString& AccessibilityObject::identifierAttribute() const
+const AtomString& AccessibilityObject::identifierAttribute() const
 {
     return getAttribute(idAttr);
 }
@@ -2774,14 +2816,14 @@ void AccessibilityObject::classList(Vector<String>& classList) const
 
 bool AccessibilityObject::supportsPressed() const
 {
-    const AtomicString& expanded = getAttribute(aria_pressedAttr);
+    const AtomString& expanded = getAttribute(aria_pressedAttr);
     return equalLettersIgnoringASCIICase(expanded, "true") || equalLettersIgnoringASCIICase(expanded, "false");
 }
     
 bool AccessibilityObject::supportsExpanded() const
 {
     // Undefined values should not result in this attribute being exposed to ATs according to ARIA.
-    const AtomicString& expanded = getAttribute(aria_expandedAttr);
+    const AtomString& expanded = getAttribute(aria_expandedAttr);
     if (equalLettersIgnoringASCIICase(expanded, "true") || equalLettersIgnoringASCIICase(expanded, "false"))
         return true;
     switch (roleValue()) {
@@ -2834,7 +2876,7 @@ AccessibilityButtonState AccessibilityObject::checkboxOrRadioValue() const
     // If it's a toggle button, the aria-pressed attribute is consulted.
 
     if (isToggleButton()) {
-        const AtomicString& ariaPressed = getAttribute(aria_pressedAttr);
+        const AtomString& ariaPressed = getAttribute(aria_pressedAttr);
         if (equalLettersIgnoringASCIICase(ariaPressed, "true"))
             return AccessibilityButtonState::On;
         if (equalLettersIgnoringASCIICase(ariaPressed, "mixed"))
@@ -2842,7 +2884,7 @@ AccessibilityButtonState AccessibilityObject::checkboxOrRadioValue() const
         return AccessibilityButtonState::Off;
     }
     
-    const AtomicString& result = getAttribute(aria_checkedAttr);
+    const AtomString& result = getAttribute(aria_checkedAttr);
     if (equalLettersIgnoringASCIICase(result, "true"))
         return AccessibilityButtonState::On;
     if (equalLettersIgnoringASCIICase(result, "mixed")) {
@@ -2985,14 +3027,16 @@ bool AccessibilityObject::isOnscreen() const
 
 void AccessibilityObject::scrollToMakeVisible() const
 {
-    if (dispatchAccessibilityEventWithType(AccessibilityEventType::ScrollIntoView))
-        return;
-    
+    scrollToMakeVisible({ SelectionRevealMode::Reveal, ScrollAlignment::alignCenterIfNeeded, ScrollAlignment::alignCenterIfNeeded, ShouldAllowCrossOriginScrolling::Yes });
+}
+
+void AccessibilityObject::scrollToMakeVisible(const ScrollRectToVisibleOptions& options) const
+{
     if (isScrollView() && parentObject())
         parentObject()->scrollToMakeVisible();
 
     if (auto* renderer = this->renderer())
-        renderer->scrollRectToVisible(boundingBoxRect(), false, { SelectionRevealMode::Reveal, ScrollAlignment::alignCenterIfNeeded, ScrollAlignment::alignCenterIfNeeded, ShouldAllowCrossOriginScrolling::Yes });
+        renderer->scrollRectToVisible(boundingBoxRect(), false, options);
 }
 
 void AccessibilityObject::scrollToMakeVisibleWithSubFocus(const IntRect& subfocus) const
@@ -3230,7 +3274,7 @@ TextIteratorBehavior AccessibilityObject::textIteratorBehaviorForTextRange() con
 {
     TextIteratorBehavior behavior = TextIteratorIgnoresStyleVisibility;
     
-#if PLATFORM(GTK)
+#if USE(ATK)
     // We need to emit replaced elements for GTK, and present
     // them with the 'object replacement character' (0xFFFC).
     behavior = static_cast<TextIteratorBehavior>(behavior | TextIteratorEmitsObjectReplacementCharacters);
@@ -3352,7 +3396,7 @@ void AccessibilityObject::elementsFromAttribute(Vector<Element*>& elements, cons
 
     TreeScope& treeScope = node->treeScope();
 
-    const AtomicString& idList = getAttribute(attribute);
+    const AtomString& idList = getAttribute(attribute);
     if (idList.isEmpty())
         return;
 
@@ -3450,6 +3494,13 @@ bool AccessibilityObject::isFigureElement() const
     return node && node->hasTagName(figureTag);
 }
 
+bool AccessibilityObject::isKeyboardFocusable() const
+{
+    if (auto element = this->element())
+        return element->isFocusable();
+    return false;
+}
+
 bool AccessibilityObject::isOutput() const
 {
     Node* node = this->node();
@@ -3501,7 +3552,7 @@ void AccessibilityObject::ariaElementsReferencedByAttribute(AccessibilityChildre
         return;
 
     for (auto& element : descendantsOfType<Element>(node()->treeScope().rootNode())) {
-        const AtomicString& idList = element.attributeWithoutSynchronization(attribute);
+        const AtomString& idList = element.attributeWithoutSynchronization(attribute);
         if (!SpaceSplitString(idList, false).contains(id))
             continue;
 

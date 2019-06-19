@@ -122,7 +122,7 @@ void ProcessingInstruction::checkStyleSheet()
             // We need to make a synthetic XSLStyleSheet that is embedded.  It needs to be able
             // to kick off import/include loads that can hang off some parent sheet.
             if (m_isXSL) {
-                URL finalURL(ParsedURLString, m_localHref);
+                URL finalURL({ }, m_localHref);
                 m_sheet = XSLStyleSheet::createEmbedded(this, finalURL);
                 m_loading = false;
                 document().scheduleToApplyXSLTransforms();
@@ -167,7 +167,7 @@ void ProcessingInstruction::checkStyleSheet()
 #endif
             {
                 String charset = attributes->get("charset");
-                CachedResourceRequest request(document().completeURL(href), CachedResourceLoader::defaultCachedResourceOptions(), std::nullopt, charset.isEmpty() ? document().charset() : WTFMove(charset));
+                CachedResourceRequest request(document().completeURL(href), CachedResourceLoader::defaultCachedResourceOptions(), WTF::nullopt, charset.isEmpty() ? document().charset() : WTFMove(charset));
 
                 m_cachedSheet = document().cachedResourceLoader().requestCSSStyleSheet(WTFMove(request)).value_or(nullptr);
             }

@@ -26,9 +26,11 @@
 #include "config.h"
 #include "CacheStorageEngine.h"
 
+#include "Logging.h"
 #include "NetworkCacheCoders.h"
 #include "NetworkCacheIOChannel.h"
 #include <WebCore/SecurityOrigin.h>
+#include <WebCore/StorageQuotaManager.h>
 #include <wtf/RunLoop.h>
 #include <wtf/UUID.h>
 #include <wtf/text/StringBuilder.h>
@@ -41,25 +43,52 @@ using namespace NetworkCache;
 
 static inline String cachesListFilename(const String& cachesRootPath)
 {
-    return WebCore::FileSystem::pathByAppendingComponent(cachesRootPath, "cacheslist"_s);
+    return FileSystem::pathByAppendingComponent(cachesRootPath, "cacheslist"_s);
 }
 
 static inline String cachesOriginFilename(const String& cachesRootPath)
 {
-    return WebCore::FileSystem::pathByAppendingComponent(cachesRootPath, "origin"_s);
+    return FileSystem::pathByAppendingComponent(cachesRootPath, "origin"_s);
+}
+
+Ref<Caches> Caches::create(Engine& engine, WebCore::ClientOrigin&& origin, String&& rootPath, WebCore::StorageQuotaManager& quotaManager)
+{
+    auto caches = adoptRef(*new Caches { engine, WTFMove(origin), WTFMove(rootPath), quotaManager });
+    quotaManager.addUser(caches.get());
+    return caches;
+}
+
+Caches::Caches(Engine& engine, WebCore::ClientOrigin&& origin, String&& rootPath, WebCore::StorageQuotaManager& quotaManager)
+    : m_engine(&engine)
+    , m_origin(WTFMove(origin))
+    , m_rootPath(WTFMove(rootPath))
+    , m_quotaManager(makeWeakPtr(quotaManager))
+{
 }
 
 Caches::~Caches()
 {
     ASSERT(m_pendingWritingCachesToDiskCallbacks.isEmpty());
+
+    if (m_quotaManager)
+        m_quotaManager->removeUser(*this);
 }
 
-void Caches::retrieveOriginFromDirectory(const String& folderPath, WorkQueue& queue, WTF::CompletionHandler<void(std::optional<WebCore::ClientOrigin>&&)>&& completionHandler)
+void Caches::whenInitialized(CompletionHandler<void()>&& callback)
+{
+    initialize([callback = WTFMove(callback)](auto&& error) mutable {
+        if (error)
+            RELEASE_LOG_ERROR(CacheStorage, "Caches::initialize failed, reported space used will be zero");
+        callback();
+    });
+}
+
+void Caches::retrieveOriginFromDirectory(const String& folderPath, WorkQueue& queue, WTF::CompletionHandler<void(Optional<WebCore::ClientOrigin>&&)>&& completionHandler)
 {
     queue.dispatch([completionHandler = WTFMove(completionHandler), filename = cachesOriginFilename(folderPath)]() mutable {
-        if (!WebCore::FileSystem::fileExists(filename)) {
+        if (!FileSystem::fileExists(filename)) {
             RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)]() mutable {
-                completionHandler(std::nullopt);
+                completionHandler(WTF::nullopt);
             });
             return;
         }
@@ -68,20 +97,13 @@ void Caches::retrieveOriginFromDirectory(const String& folderPath, WorkQueue& qu
         channel->read(0, std::numeric_limits<size_t>::max(), nullptr, [completionHandler = WTFMove(completionHandler)](const Data& data, int error) mutable {
             ASSERT(RunLoop::isMain());
             if (error) {
-                completionHandler(std::nullopt);
+                RELEASE_LOG_ERROR(CacheStorage, "Caches::retrieveOriginFromDirectory failed reading channel with error %d", error);
+                completionHandler(WTF::nullopt);
                 return;
             }
             completionHandler(readOrigin(data));
         });
     });
-}
-
-Caches::Caches(Engine& engine, WebCore::ClientOrigin&& origin, String&& rootPath, uint64_t quota)
-    : m_engine(&engine)
-    , m_origin(WTFMove(origin))
-    , m_rootPath(WTFMove(rootPath))
-    , m_quota(quota)
-{
 }
 
 void Caches::storeOrigin(CompletionCallback&& completionHandler)
@@ -93,43 +115,43 @@ void Caches::storeOrigin(CompletionCallback&& completionHandler)
     encoder << m_origin.clientOrigin.protocol;
     encoder << m_origin.clientOrigin.host;
     encoder << m_origin.clientOrigin.port;
-    m_engine->writeFile(cachesOriginFilename(m_rootPath), Data { encoder.buffer(), encoder.bufferSize() }, [protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)] (std::optional<Error>&& error) mutable {
+    m_engine->writeFile(cachesOriginFilename(m_rootPath), Data { encoder.buffer(), encoder.bufferSize() }, [protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)] (Optional<Error>&& error) mutable {
         completionHandler(WTFMove(error));
     });
 }
 
-std::optional<WebCore::ClientOrigin> Caches::readOrigin(const Data& data)
+Optional<WebCore::ClientOrigin> Caches::readOrigin(const Data& data)
 {
     // FIXME: We should be able to use modern decoders for persistent data.
     WebCore::SecurityOriginData topOrigin, clientOrigin;
     WTF::Persistence::Decoder decoder(data.data(), data.size());
 
     if (!decoder.decode(topOrigin.protocol))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(topOrigin.host))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(topOrigin.port))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(clientOrigin.protocol))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(clientOrigin.host))
-        return std::nullopt;
+        return WTF::nullopt;
     if (!decoder.decode(clientOrigin.port))
-        return std::nullopt;
+        return WTF::nullopt;
     return WebCore::ClientOrigin { WTFMove(topOrigin), WTFMove(clientOrigin) };
 }
 
 void Caches::initialize(WebCore::DOMCacheEngine::CompletionCallback&& callback)
 {
     if (m_isInitialized) {
-        callback(std::nullopt);
+        callback(WTF::nullopt);
         return;
     }
 
     if (m_rootPath.isNull()) {
         makeDirty();
         m_isInitialized = true;
-        callback(std::nullopt);
+        callback(WTF::nullopt);
         return;
     }
 
@@ -138,8 +160,9 @@ void Caches::initialize(WebCore::DOMCacheEngine::CompletionCallback&& callback)
         return;
     }
 
-    auto storage = Storage::open(m_rootPath, Storage::Mode::Normal);
+    auto storage = Storage::open(m_rootPath, Storage::Mode::AvoidRandomness);
     if (!storage) {
+        RELEASE_LOG_ERROR(CacheStorage, "Caches::initialize failed opening storage");
         callback(Error::WriteDisk);
         return;
     }
@@ -148,8 +171,10 @@ void Caches::initialize(WebCore::DOMCacheEngine::CompletionCallback&& callback)
     m_storage = storage.releaseNonNull();
     m_storage->writeWithoutWaiting();
 
-    storeOrigin([this] (std::optional<Error>&& error) mutable {
+    storeOrigin([this] (Optional<Error>&& error) mutable {
         if (error) {
+            RELEASE_LOG_ERROR(CacheStorage, "Caches::initialize failed storing origin with error %d", static_cast<int>(*error));
+
             auto pendingCallbacks = WTFMove(m_pendingInitializationCallbacks);
             for (auto& callback : pendingCallbacks)
                 callback(Error::WriteDisk);
@@ -162,6 +187,8 @@ void Caches::initialize(WebCore::DOMCacheEngine::CompletionCallback&& callback)
             makeDirty();
 
             if (!result.has_value()) {
+                RELEASE_LOG_ERROR(CacheStorage, "Caches::initialize failed reading caches from disk with error %d", static_cast<int>(result.error()));
+
                 auto pendingCallbacks = WTFMove(m_pendingInitializationCallbacks);
                 for (auto& callback : pendingCallbacks)
                     callback(result.error());
@@ -197,7 +224,7 @@ void Caches::initializeSize()
             m_isInitialized = true;
             auto pendingCallbacks = WTFMove(m_pendingInitializationCallbacks);
             for (auto& callback : pendingCallbacks)
-                callback(std::nullopt);
+                callback(WTF::nullopt);
 
             return;
         }
@@ -233,11 +260,13 @@ void Caches::clear(CompletionHandler<void()>&& completionHandler)
         m_storage->clear(String { }, -WallTime::infinity(), [protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)]() mutable {
             ASSERT(RunLoop::isMain());
             protectedThis->clearMemoryRepresentation();
+            protectedThis->resetSpaceUsed();
             completionHandler();
         });
         return;
     }
     clearMemoryRepresentation();
+    resetSpaceUsed();
     clearPendingWritingCachesToDiskCallbacks();
     completionHandler();
 }
@@ -282,7 +311,7 @@ void Caches::open(const String& name, CacheIdentifierCallback&& callback)
     }
 
     if (auto* cache = find(name)) {
-        cache->open([cacheIdentifier = cache->identifier(), callback = WTFMove(callback)](std::optional<Error>&& error) mutable {
+        cache->open([cacheIdentifier = cache->identifier(), callback = WTFMove(callback)](Optional<Error>&& error) mutable {
             if (error) {
                 callback(makeUnexpected(error.value()));
                 return;
@@ -297,7 +326,7 @@ void Caches::open(const String& name, CacheIdentifierCallback&& callback)
     uint64_t cacheIdentifier = m_engine->nextCacheIdentifier();
     m_caches.append(Cache { *this, cacheIdentifier, Cache::State::Open, String { name }, createCanonicalUUIDString() });
 
-    writeCachesToDisk([callback = WTFMove(callback), cacheIdentifier](std::optional<Error>&& error) mutable {
+    writeCachesToDisk([callback = WTFMove(callback), cacheIdentifier](Optional<Error>&& error) mutable {
         callback(CacheIdentifierOperationResult { cacheIdentifier, !!error });
     });
 }
@@ -331,9 +360,16 @@ void Caches::remove(uint64_t identifier, CacheIdentifierCallback&& callback)
     m_removedCaches.append(WTFMove(m_caches[position]));
     m_caches.remove(position);
 
-    writeCachesToDisk([callback = WTFMove(callback), identifier](std::optional<Error>&& error) mutable {
+    writeCachesToDisk([callback = WTFMove(callback), identifier](Optional<Error>&& error) mutable {
         callback(CacheIdentifierOperationResult { identifier, !!error });
     });
+}
+
+bool Caches::hasActiveCache() const
+{
+    if (m_removedCaches.size())
+        return true;
+    return m_caches.findMatching([](const auto& item) { return item.isActive(); }) != notFound;
 }
 
 void Caches::dispose(Cache& cache)
@@ -341,7 +377,7 @@ void Caches::dispose(Cache& cache)
     auto position = m_removedCaches.findMatching([&](const auto& item) { return item.identifier() == cache.identifier(); });
     if (position != notFound) {
         if (m_storage)
-            m_storage->remove(cache.keys(), { });
+            m_storage->remove(cache.keys(), [] { });
 
         m_removedCaches.remove(position);
         return;
@@ -349,7 +385,7 @@ void Caches::dispose(Cache& cache)
     ASSERT(m_caches.findMatching([&](const auto& item) { return item.identifier() == cache.identifier(); }) != notFound);
     cache.clearMemoryRepresentation();
 
-    if (m_caches.findMatching([](const auto& item) { return item.isActive(); }) == notFound)
+    if (!hasActiveCache())
         clearMemoryRepresentation();
 }
 
@@ -367,11 +403,8 @@ static inline Data encodeCacheNames(const Vector<Cache>& caches)
     return Data { encoder.buffer(), encoder.bufferSize() };
 }
 
-static inline Expected<Vector<std::pair<String, String>>, Error> decodeCachesNames(const Data& data, int error)
+static inline Expected<Vector<std::pair<String, String>>, Error> decodeCachesNames(const Data& data)
 {
-    if (error)
-        return makeUnexpected(Error::ReadDisk);
-
     WTF::Persistence::Decoder decoder(data.data(), data.size());
     uint64_t count;
     if (!decoder.decode(count))
@@ -404,7 +437,7 @@ void Caches::readCachesFromDisk(WTF::Function<void(Expected<Vector<Cache>, Error
     }
 
     auto filename = cachesListFilename(m_rootPath);
-    if (!WebCore::FileSystem::fileExists(filename)) {
+    if (!FileSystem::fileExists(filename)) {
         callback(Vector<Cache> { });
         return;
     }
@@ -415,8 +448,15 @@ void Caches::readCachesFromDisk(WTF::Function<void(Expected<Vector<Cache>, Error
             return;
         }
 
-        auto result = decodeCachesNames(data, error);
+        if (error) {
+            RELEASE_LOG_ERROR(CacheStorage, "Caches::readCachesFromDisk failed reading caches from disk with error %d", error);
+            callback(makeUnexpected(Error::ReadDisk));
+            return;
+        }
+
+        auto result = decodeCachesNames(data);
         if (!result.has_value()) {
+            RELEASE_LOG_ERROR(CacheStorage, "Caches::decodeCachesNames failed decoding caches with error %d", static_cast<int>(result.error()));
             callback(makeUnexpected(result.error()));
             return;
         }
@@ -431,7 +471,7 @@ void Caches::writeCachesToDisk(CompletionCallback&& callback)
     ASSERT(!m_isWritingCachesToDisk);
     ASSERT(m_isInitialized);
     if (!shouldPersist()) {
-        callback(std::nullopt);
+        callback(WTF::nullopt);
         return;
     }
 
@@ -439,16 +479,19 @@ void Caches::writeCachesToDisk(CompletionCallback&& callback)
 
     if (m_caches.isEmpty()) {
         m_engine->removeFile(cachesListFilename(m_rootPath));
-        callback(std::nullopt);
+        callback(WTF::nullopt);
         return;
     }
 
     m_isWritingCachesToDisk = true;
-    m_engine->writeFile(cachesListFilename(m_rootPath), encodeCacheNames(m_caches), [this, protectedThis = makeRef(*this), callback = WTFMove(callback)](std::optional<Error>&& error) mutable {
+    m_engine->writeFile(cachesListFilename(m_rootPath), encodeCacheNames(m_caches), [this, protectedThis = makeRef(*this), callback = WTFMove(callback)](Optional<Error>&& error) mutable {
         m_isWritingCachesToDisk = false;
+        if (error)
+            RELEASE_LOG_ERROR(CacheStorage, "Caches::writeCachesToDisk failed writing caches to disk with error %d", static_cast<int>(*error));
+
         callback(WTFMove(error));
         while (!m_pendingWritingCachesToDiskCallbacks.isEmpty() && !m_isWritingCachesToDisk)
-            m_pendingWritingCachesToDiskCallbacks.takeFirst()(std::nullopt);
+            m_pendingWritingCachesToDiskCallbacks.takeFirst()(WTF::nullopt);
     });
 }
 
@@ -467,9 +510,20 @@ void Caches::readRecordsList(Cache& cache, NetworkCache::Storage::TraverseHandle
 
 void Caches::requestSpace(uint64_t spaceRequired, WebCore::DOMCacheEngine::CompletionCallback&& callback)
 {
-    // FIXME: Implement quota increase request.
-    ASSERT(m_quota < m_size + spaceRequired);
-    callback(Error::QuotaExceeded);
+    if (!m_quotaManager) {
+        callback(Error::QuotaExceeded);
+        return;
+    }
+
+    m_quotaManager->requestSpace(spaceRequired, [callback = WTFMove(callback)](auto decision) mutable {
+        switch (decision) {
+        case WebCore::StorageQuotaManager::Decision::Deny:
+            callback(Error::QuotaExceeded);
+            return;
+        case WebCore::StorageQuotaManager::Decision::Grant:
+            callback({ });
+        };
+    });
 }
 
 void Caches::writeRecord(const Cache& cache, const RecordInformation& recordInformation, Record&& record, uint64_t previousRecordSize, CompletionCallback&& callback)
@@ -480,16 +534,19 @@ void Caches::writeRecord(const Cache& cache, const RecordInformation& recordInfo
     m_size += recordInformation.size;
     m_size -= previousRecordSize;
 
-    ASSERT(m_size <= m_quota);
-
     if (!shouldPersist()) {
         m_volatileStorage.set(recordInformation.key, WTFMove(record));
-        callback(std::nullopt);
+        callback(WTF::nullopt);
         return;
     }
 
-    m_storage->store(Cache::encode(recordInformation, record), { }, [protectedStorage = makeRef(*m_storage), callback = WTFMove(callback)]() {
-        callback(std::nullopt);
+    m_storage->store(Cache::encode(recordInformation, record), { }, [protectedStorage = makeRef(*m_storage), callback = WTFMove(callback)](int error) mutable {
+        if (error) {
+            RELEASE_LOG_ERROR(CacheStorage, "Caches::writeRecord failed with error %d", error);
+            callback(Error::WriteDisk);
+            return;
+        }
+        callback(WTF::nullopt);
     });
 }
 
@@ -509,12 +566,14 @@ void Caches::readRecord(const NetworkCache::Key& key, WTF::Function<void(Expecte
 
     m_storage->retrieve(key, 4, [protectedStorage = makeRef(*m_storage), callback = WTFMove(callback)](std::unique_ptr<Storage::Record> storage, const Storage::Timings&) mutable {
         if (!storage) {
+            RELEASE_LOG_ERROR(CacheStorage, "Caches::readRecord failed reading record from disk");
             callback(makeUnexpected(Error::ReadDisk));
             return false;
         }
 
         auto record = Cache::decode(*storage);
         if (!record) {
+            RELEASE_LOG_ERROR(CacheStorage, "Caches::readRecord failed decoding record from disk");
             callback(makeUnexpected(Error::ReadDisk));
             return false;
         }
@@ -544,10 +603,19 @@ void Caches::removeCacheEntry(const NetworkCache::Key& key)
     m_storage->remove(key);
 }
 
+void Caches::resetSpaceUsed()
+{
+    m_size = 0;
+    if (m_quotaManager) {
+        m_quotaManager->removeUser(*this);
+        m_quotaManager->addUser(*this);
+    }
+}
+
 void Caches::clearMemoryRepresentation()
 {
     if (!m_isInitialized) {
-        ASSERT(m_caches.isEmpty() || !m_pendingInitializationCallbacks.isEmpty());
+        ASSERT(!m_storage || !hasActiveCache() || !m_pendingInitializationCallbacks.isEmpty());
         // m_storage might not be null in case Caches is being initialized. This is fine as nullify it below is a memory optimization.
         m_caches.clear();
         return;

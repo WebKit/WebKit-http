@@ -77,10 +77,8 @@ public:
     void scroll(const IntSize&, const IntRect&, const IntRect&) override;
     IntPoint screenToRootView(const IntPoint&) const override;
     IntRect rootViewToScreen(const IntRect&) const override;
-#if PLATFORM(IOS)
     IntPoint accessibilityScreenToRootView(const IntPoint&) const override;
     IntRect rootViewToAccessibilityScreen(const IntRect&) const override;
-#endif
     PlatformPageClient platformPageClient() const override;
     void setCursor(const Cursor&) override;
     void setCursorHiddenUntilMouseMoves(bool) override;
@@ -177,7 +175,7 @@ public:
     RefPtr<PopupMenu> createPopupMenu(PopupMenuClient&) const;
     RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient&) const;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // FIXME: Can we come up with a better name for this setter?
     void setDispatchViewportDataDidChangeSuppressed(bool dispatchViewportDataDidChangeSuppressed) { m_isDispatchViewportDataDidChangeSuppressed = dispatchViewportDataDidChangeSuppressed; }
 #endif
@@ -194,7 +192,7 @@ private:
     ChromeClient& m_client;
     PlatformDisplayID m_displayID { 0 };
     Vector<PopupOpeningObserver*> m_popupOpeningObservers;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool m_isDispatchViewportDataDidChangeSuppressed { false };
 #endif
 };

@@ -26,7 +26,7 @@
 .timeline-record-bar {
     position: absolute;
     height: 12px;
-    z-index: 1;
+    z-index: var(--timeline-record-z-index);
 
     --timeline-record-bar-has-inactive-segment-not-inactive-segment-border-start: 1px solid hsla(215, 67%, 53%, 0.7) !important;
 }
@@ -38,7 +38,12 @@
     border: 1px solid hsl(0, 0%, 78%);
     border-radius: 3px;
     min-width: 4px;
-    z-index: 1;
+    z-index: var(--timeline-record-z-index);
+}
+
+.timeline-record-bar.selected > .segment {
+    background-color: var(--selected-text-background-color) !important;
+    border-color: var(--glyph-color-active) !important;
 }
 
 .timeline-record-bar:not(.has-inactive-segment) > .segment {
@@ -73,20 +78,20 @@ body[dir=rtl] .timeline-record-bar.unfinished > .segment {
     border-bottom-left-radius: 0 !important;
 }
 
-:matches(:focus, .force-focus) .selected .timeline-record-bar > .segment {
+:focus .selected .timeline-record-bar > .segment {
     background-color: white !important;
     border: none !important;
 }
 
-:matches(:focus, .force-focus) .selected .timeline-record-bar > .segment.inactive {
+:focus .selected .timeline-record-bar > .segment.inactive {
     background-color: hsl(215, 63%, 85%) !important;
 }
 
-body[dir=ltr] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive) {
+body[dir=ltr] :focus .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive) {
     border-left: var(--timeline-record-bar-has-inactive-segment-not-inactive-segment-border-start);
 }
 
-body[dir=rtl] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive) {
+body[dir=rtl] :focus .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive) {
     border-right: var(--timeline-record-bar-has-inactive-segment-not-inactive-segment-border-start);
 }
 
@@ -106,8 +111,8 @@ body[dir=rtl] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-
 }
 
 
-.timeline-record-bar.timeline-record-type-layout.layout-timeline-record-paint > .segment,
-.timeline-record-bar.timeline-record-type-layout.layout-timeline-record-composite > .segment {
+.timeline-record-bar.timeline-record-type-layout.paint > .segment,
+.timeline-record-bar.timeline-record-type-layout.composite > .segment {
     background-color: hsl(76, 49%, 60%);
     border-color: hsl(79, 45%, 51%);
 }
@@ -117,7 +122,13 @@ body[dir=rtl] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-
     border-color: hsl(273, 33%, 58%);
 }
 
-.timeline-record-bar.timeline-record-type-script.script-timeline-record-garbage-collected > .segment {
+.timeline-record-bar.timeline-record-type-script.garbage-collected > .segment,
+.timeline-record-bar.timeline-record-type-heap-allocations > .segment {
     background-color: hsl(23, 69%, 73%);
     border-color: hsl(11, 54%, 62%);    
+}
+
+.timeline-record-bar.timeline-record-type-media > .segment {
+    background-color: hsl(143, 24%, 66%);
+    border-color: hsl(153, 24%, 51%);
 }

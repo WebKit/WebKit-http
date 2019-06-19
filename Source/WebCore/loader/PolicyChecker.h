@@ -31,7 +31,6 @@
 
 #include "FrameLoaderTypes.h"
 #include "ResourceRequest.h"
-#include "ShouldSkipSafeBrowsingCheck.h"
 #include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -55,14 +54,19 @@ class ResourceResponse;
 
 enum class ShouldContinue {
     Yes,
-    No,
-    ForSuspension
+    No
+};
+
+enum class NavigationPolicyDecision : uint8_t {
+    ContinueLoad,
+    IgnoreLoad,
+    StopAllLoads,
 };
 
 enum class PolicyDecisionMode { Synchronous, Asynchronous };
 
 using NewWindowPolicyDecisionFunction = CompletionHandler<void(const ResourceRequest&, WeakPtr<FormState>&&, const String& frameName, const NavigationAction&, ShouldContinue)>;
-using NavigationPolicyDecisionFunction = CompletionHandler<void(ResourceRequest&&, WeakPtr<FormState>&&, ShouldContinue)>;
+using NavigationPolicyDecisionFunction = CompletionHandler<void(ResourceRequest&&, WeakPtr<FormState>&&, NavigationPolicyDecision)>;
 
 class PolicyChecker {
     WTF_MAKE_NONCOPYABLE(PolicyChecker);
@@ -70,7 +74,7 @@ class PolicyChecker {
 public:
     explicit PolicyChecker(Frame&);
 
-    void checkNavigationPolicy(ResourceRequest&&, const ResourceResponse& redirectResponse, DocumentLoader*, RefPtr<FormState>&&, NavigationPolicyDecisionFunction&&, PolicyDecisionMode = PolicyDecisionMode::Asynchronous, ShouldSkipSafeBrowsingCheck = ShouldSkipSafeBrowsingCheck::No);
+    void checkNavigationPolicy(ResourceRequest&&, const ResourceResponse& redirectResponse, DocumentLoader*, RefPtr<FormState>&&, NavigationPolicyDecisionFunction&&, PolicyDecisionMode = PolicyDecisionMode::Asynchronous);
     void checkNavigationPolicy(ResourceRequest&&, const ResourceResponse& redirectResponse, NavigationPolicyDecisionFunction&&);
     void checkNewWindowPolicy(NavigationAction&&, ResourceRequest&&, RefPtr<FormState>&&, const String& frameName, NewWindowPolicyDecisionFunction&&);
 

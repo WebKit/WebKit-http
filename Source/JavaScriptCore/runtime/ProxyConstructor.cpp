@@ -87,8 +87,7 @@ static EncodedJSValue JSC_HOST_CALL proxyRevocableConstructorThrowError(ExecStat
 
 void ProxyConstructor::finishCreation(VM& vm, const char* name, JSGlobalObject* globalObject)
 {
-    Base::finishCreation(vm, name);
-
+    Base::finishCreation(vm, name, NameVisibility::Visible, NameAdditionMode::WithStructureTransition);
     putDirect(vm, vm.propertyNames->length, jsNumber(2), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
     putDirect(vm, makeIdentifier(vm, "revocable"), JSFunction::create(vm, globalObject, 2, "revocable"_s, makeRevocableProxy, NoIntrinsic, proxyRevocableConstructorThrowError));
 }
@@ -102,8 +101,7 @@ static EncodedJSValue JSC_HOST_CALL constructProxyObject(ExecState* exec)
     ArgList args(exec);
     JSValue target = args.at(0);
     JSValue handler = args.at(1);
-    scope.release();
-    return JSValue::encode(ProxyObject::create(exec, exec->lexicalGlobalObject(), target, handler));
+    RELEASE_AND_RETURN(scope, JSValue::encode(ProxyObject::create(exec, exec->lexicalGlobalObject(), target, handler)));
 }
 
 static EncodedJSValue JSC_HOST_CALL callProxy(ExecState* exec)

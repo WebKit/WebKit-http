@@ -58,6 +58,7 @@ InByIdStatus InByIdStatus::computeFor(CodeBlock* profiledBlock, ICStatusMap& map
     UNUSED_PARAM(map);
     UNUSED_PARAM(bytecodeIndex);
     UNUSED_PARAM(uid);
+    UNUSED_PARAM(didExit);
 #endif
 
     return result;
@@ -72,7 +73,8 @@ InByIdStatus InByIdStatus::computeFor(
     CodeBlock* profiledBlock, ICStatusMap& baselineMap,
     ICStatusContextStack& contextStack, CodeOrigin codeOrigin, UniquedStringImpl* uid)
 {
-    ExitFlag didExit = hasBadCacheExitSite(profiledBlock, codeOrigin.bytecodeIndex);
+    unsigned bytecodeIndex = codeOrigin.bytecodeIndex();
+    ExitFlag didExit = hasBadCacheExitSite(profiledBlock, bytecodeIndex);
     
     for (ICStatusContext* context : contextStack) {
         ICStatus status = context->get(codeOrigin);
@@ -80,7 +82,7 @@ InByIdStatus InByIdStatus::computeFor(
         auto bless = [&] (const InByIdStatus& result) -> InByIdStatus {
             if (!context->isInlined(codeOrigin)) {
                 InByIdStatus baselineResult = computeFor(
-                    profiledBlock, baselineMap, codeOrigin.bytecodeIndex, uid, didExit);
+                    profiledBlock, baselineMap, bytecodeIndex, uid, didExit);
                 baselineResult.merge(result);
                 return baselineResult;
             }
@@ -89,6 +91,7 @@ InByIdStatus InByIdStatus::computeFor(
             return result;
         };
         
+#if ENABLE(DFG_JIT)
         if (status.stubInfo) {
             InByIdStatus result;
             {
@@ -98,12 +101,13 @@ InByIdStatus InByIdStatus::computeFor(
             if (result.isSet())
                 return bless(result);
         }
+#endif
         
         if (status.inStatus)
             return bless(*status.inStatus);
     }
     
-    return computeFor(profiledBlock, baselineMap, codeOrigin.bytecodeIndex, uid, didExit);
+    return computeFor(profiledBlock, baselineMap, bytecodeIndex, uid, didExit);
 }
 #endif // ENABLE(JIT)
 
@@ -112,7 +116,7 @@ InByIdStatus InByIdStatus::computeForStubInfo(const ConcurrentJSLocker& locker, 
 {
     InByIdStatus result = InByIdStatus::computeForStubInfoWithoutExitSiteFeedback(locker, stubInfo, uid);
 
-    if (!result.takesSlowPath() && hasBadCacheExitSite(profiledBlock, codeOrigin.bytecodeIndex))
+    if (!result.takesSlowPath() && hasBadCacheExitSite(profiledBlock, codeOrigin.bytecodeIndex()))
         return InByIdStatus(TakesSlowPath);
     return result;
 }
@@ -139,7 +143,7 @@ InByIdStatus InByIdStatus::computeForStubInfoWithoutExitSiteFeedback(const Concu
         variant.m_offset = structure->getConcurrently(uid, attributes);
         if (!isValidOffset(variant.m_offset))
             return InByIdStatus(TakesSlowPath);
-        if (attributes & PropertyAttribute::CustomAccessor)
+        if (attributes & PropertyAttribute::CustomAccessorOrValue)
             return InByIdStatus(TakesSlowPath);
 
         variant.m_structureSet.add(structure);
@@ -254,10 +258,10 @@ void InByIdStatus::markIfCheap(SlotVisitor& visitor)
         variant.markIfCheap(visitor);
 }
 
-bool InByIdStatus::finalize()
+bool InByIdStatus::finalize(VM& vm)
 {
     for (InByIdVariant& variant : m_variants) {
-        if (!variant.finalize())
+        if (!variant.finalize(vm))
             return false;
     }
     return true;

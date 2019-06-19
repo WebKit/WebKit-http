@@ -34,8 +34,6 @@ class RangeBoundaryPoint {
 public:
     explicit RangeBoundaryPoint(Node* container);
 
-    explicit RangeBoundaryPoint(const RangeBoundaryPoint&);
-
     const Position toPosition() const;
 
     Node* container() const;
@@ -58,7 +56,7 @@ public:
 
 private:
     RefPtr<Node> m_containerNode;
-    mutable std::optional<unsigned> m_offsetInContainer { 0 };
+    mutable Optional<unsigned> m_offsetInContainer { 0 };
     RefPtr<Node> m_childBeforeBoundary;
 };
 
@@ -66,13 +64,6 @@ inline RangeBoundaryPoint::RangeBoundaryPoint(Node* container)
     : m_containerNode(container)
 {
     ASSERT(m_containerNode);
-}
-
-inline RangeBoundaryPoint::RangeBoundaryPoint(const RangeBoundaryPoint& other)
-    : m_containerNode(other.container())
-    , m_offsetInContainer(other.offset())
-    , m_childBeforeBoundary(other.childBefore())
-{
 }
 
 inline Node* RangeBoundaryPoint::container() const
@@ -124,7 +115,7 @@ inline void RangeBoundaryPoint::set(Ref<Node>&& container, unsigned offset, Node
 inline void RangeBoundaryPoint::setOffset(unsigned offset)
 {
     ASSERT(m_containerNode);
-    ASSERT(m_containerNode->offsetInCharacters());
+    ASSERT(m_containerNode->isCharacterDataNode());
     ASSERT(m_offsetInContainer);
     ASSERT(!m_childBeforeBoundary);
     m_offsetInContainer = offset;
@@ -135,7 +126,7 @@ inline void RangeBoundaryPoint::setToBeforeChild(Node& child)
     ASSERT(child.parentNode());
     m_childBeforeBoundary = child.previousSibling();
     m_containerNode = child.parentNode();
-    m_offsetInContainer = m_childBeforeBoundary ? std::nullopt : std::optional<unsigned>(0);
+    m_offsetInContainer = m_childBeforeBoundary ? WTF::nullopt : Optional<unsigned>(0);
 }
 
 inline void RangeBoundaryPoint::setToAfterChild(Node& child)
@@ -143,7 +134,7 @@ inline void RangeBoundaryPoint::setToAfterChild(Node& child)
     ASSERT(child.parentNode());
     m_childBeforeBoundary = &child;
     m_containerNode = child.parentNode();
-    m_offsetInContainer = m_childBeforeBoundary ? std::nullopt : std::optional<unsigned>(0);
+    m_offsetInContainer = m_childBeforeBoundary ? WTF::nullopt : Optional<unsigned>(0);
 }
 
 inline void RangeBoundaryPoint::setToStartOfNode(Ref<Node>&& container)
@@ -156,12 +147,12 @@ inline void RangeBoundaryPoint::setToStartOfNode(Ref<Node>&& container)
 inline void RangeBoundaryPoint::setToEndOfNode(Ref<Node>&& container)
 {
     m_containerNode = WTFMove(container);
-    if (m_containerNode->offsetInCharacters()) {
+    if (m_containerNode->isCharacterDataNode()) {
         m_offsetInContainer = m_containerNode->maxCharacterOffset();
         m_childBeforeBoundary = nullptr;
     } else {
         m_childBeforeBoundary = m_containerNode->lastChild();
-        m_offsetInContainer = m_childBeforeBoundary ? std::nullopt : std::optional<unsigned>(0);
+        m_offsetInContainer = m_childBeforeBoundary ? WTF::nullopt : Optional<unsigned>(0);
     }
 }
 
@@ -177,7 +168,7 @@ inline void RangeBoundaryPoint::childBeforeWillBeRemoved()
 
 inline void RangeBoundaryPoint::invalidateOffset() const
 {
-    m_offsetInContainer = std::nullopt;
+    m_offsetInContainer = WTF::nullopt;
 }
 
 inline bool operator==(const RangeBoundaryPoint& a, const RangeBoundaryPoint& b)

@@ -133,7 +133,7 @@ void InPlaceAbstractState::initialize()
                 if (!node)
                     format = FlushedJSValue;
                 else {
-                    ASSERT(node->op() == SetArgument);
+                    ASSERT(node->op() == SetArgumentDefinitely);
                     format = node->variableAccessData()->flushFormat();
                 }
 
@@ -234,7 +234,8 @@ bool InPlaceAbstractState::endBasicBlock()
             
             switch (node->op()) {
             case Phi:
-            case SetArgument:
+            case SetArgumentDefinitely:
+            case SetArgumentMaybe:
             case PhantomLocal:
             case Flush: {
                 // The block transfers the value from head to tail.
@@ -265,8 +266,23 @@ bool InPlaceAbstractState::endBasicBlock()
             }
             case SetLocal: {
                 // The block sets the variable, and potentially refines it, both
-                // before and after setting it.
-                destination = forNode(node->child1());
+                // before and after setting it. Since the SetLocal already did
+                // a type check based on the flush format's type, we're only interested
+                // in refinements within that type hierarchy. Otherwise, we may end up
+                // saying that any GetLocals reachable from this basic block load something
+                // outside of that hierarchy, e.g:
+                //
+                // a: JSConstant(jsNumber(0))
+                // b: SetLocal(Int32:@a, loc1, FlushedInt32)
+                // c: ArrayifyToStructure(Cell:@a)
+                // d: Jump(...)
+                //
+                // In this example, we can't trust whatever type ArrayifyToStructure sets
+                // @a to. We're only interested in the subset of that type that intersects
+                // with Int32.
+                AbstractValue value = forNode(node->child1());
+                value.filter(typeFilterFor(node->variableAccessData()->flushFormat()));
+                destination = value;
                 break;
             }
                 

@@ -199,7 +199,7 @@ void ScrollView::setDelegatesScrolling(bool delegatesScrolling)
 
 IntPoint ScrollView::contentsScrollPosition() const
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (platformWidget())
         return actualScrollPosition();
 #endif
@@ -208,14 +208,14 @@ IntPoint ScrollView::contentsScrollPosition() const
 
 void ScrollView::setContentsScrollPosition(const IntPoint& position)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (platformWidget())
         setActualScrollPosition(position);
 #endif
     setScrollPosition(position);
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 IntRect ScrollView::unobscuredContentRect(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
     return unobscuredContentRectInternal(scrollbarInclusion);
@@ -264,7 +264,7 @@ IntSize ScrollView::sizeForUnobscuredContent(VisibleContentRectIncludesScrollbar
 
 IntRect ScrollView::visibleContentRectInternal(VisibleContentRectIncludesScrollbars scrollbarInclusion, VisibleContentRectBehavior visibleContentRectBehavior) const
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (visibleContentRectBehavior == LegacyIOSDocumentViewRect) {
         if (platformWidget())
             return platformVisibleContentRect(scrollbarInclusion == IncludeScrollbars);
@@ -378,19 +378,6 @@ ScrollPosition ScrollView::documentScrollPositionRelativeToScrollableAreaOrigin(
     return scrollPosition() - IntSize(0, headerHeight());
 }
 
-int ScrollView::scrollSize(ScrollbarOrientation orientation) const
-{
-    // If no scrollbars are present, it does not indicate content is not be scrollable.
-    if (!m_horizontalScrollbar && !m_verticalScrollbar && !prohibitsScrolling()) {
-        IntSize scrollSize = m_contentsSize - visibleContentRect(LegacyIOSDocumentVisibleRect).size();
-        scrollSize.clampNegativeToZero();
-        return orientation == HorizontalScrollbar ? scrollSize.width() : scrollSize.height();
-    }
-
-    Scrollbar* scrollbar = ((orientation == HorizontalScrollbar) ? m_horizontalScrollbar : m_verticalScrollbar).get();
-    return scrollbar ? (scrollbar->totalSize() - scrollbar->visibleSize()) : 0;
-}
-
 void ScrollView::notifyPageThatContentAreaWillPaint() const
 {
 }
@@ -433,8 +420,8 @@ void ScrollView::handleDeferredScrollUpdateAfterContentSizeChange()
     else if (m_deferredScrollOffsets)
         scrollOffsetChangedViaPlatformWidgetImpl(m_deferredScrollOffsets.value().first, m_deferredScrollOffsets.value().second);
     
-    m_deferredScrollDelta = std::nullopt;
-    m_deferredScrollOffsets = std::nullopt;
+    m_deferredScrollDelta = WTF::nullopt;
+    m_deferredScrollOffsets = WTF::nullopt;
 }
 
 void ScrollView::scrollTo(const ScrollPosition& newPosition)
@@ -474,19 +461,6 @@ void ScrollView::completeUpdatesAfterScrollTo(const IntSize& scrollDelta)
     updateCompositingLayersAfterScrolling();
 }
 
-int ScrollView::scrollOffset(ScrollbarOrientation orientation) const
-{
-    ScrollOffset offset = scrollOffsetFromPosition(scrollPosition());
-
-    if (orientation == HorizontalScrollbar)
-        return offset.x();
-
-    if (orientation == VerticalScrollbar)
-        return offset.y();
-
-    return 0;
-}
-
 void ScrollView::setScrollPosition(const ScrollPosition& scrollPosition)
 {
     LOG_WITH_STREAM(Scrolling, stream << "ScrollView::setScrollPosition " << scrollPosition);
@@ -501,7 +475,7 @@ void ScrollView::setScrollPosition(const ScrollPosition& scrollPosition)
 
     ScrollPosition newScrollPosition = !delegatesScrolling() ? adjustScrollPositionWithinRange(scrollPosition) : scrollPosition;
 
-    if ((!delegatesScrolling() || !inProgrammaticScroll()) && newScrollPosition == this->scrollPosition())
+    if ((!delegatesScrolling() || currentScrollType() == ScrollType::User) && newScrollPosition == this->scrollPosition())
         return;
 
     if (requestScrollPositionUpdate(newScrollPosition))
@@ -528,7 +502,7 @@ IntSize ScrollView::overhangAmount() const
     IntSize stretch;
 
     // FIXME: use maximumScrollOffset()
-    ScrollOffset scrollOffset = scrollOffsetFromPosition(scrollPosition());
+    ScrollOffset scrollOffset = this->scrollOffset();
     if (scrollOffset.y() < 0)
         stretch.setHeight(scrollOffset.y());
     else if (totalContentsSize().height() && scrollOffset.y() > totalContentsSize().height() - visibleHeight())
@@ -542,6 +516,19 @@ IntSize ScrollView::overhangAmount() const
     return stretch;
 }
 
+bool ScrollView::managesScrollbars() const
+{
+#if PLATFORM(IOS_FAMILY)
+    return false;
+#else
+    if (platformWidget())
+        return false;
+    if (delegatesScrolling())
+        return false;
+    return true;
+#endif
+}
+
 void ScrollView::updateScrollbars(const ScrollPosition& desiredPosition)
 {
     LOG_WITH_STREAM(Scrolling, stream << "ScrollView::updateScrollbars " << desiredPosition);
@@ -549,7 +536,7 @@ void ScrollView::updateScrollbars(const ScrollPosition& desiredPosition)
     if (m_inUpdateScrollbars || prohibitsScrolling() || platformWidget())
         return;
     
-    if (delegatesScrolling()) {
+    if (!managesScrollbars()) {
         if (scrollOriginChanged()) {
             ScrollableArea::scrollToOffsetWithoutAnimation(scrollOffsetFromPosition(desiredPosition));
             resetScrollOriginChanged();
@@ -815,22 +802,68 @@ void ScrollView::scrollContentsSlowPath(const IntRect& updateRect)
 
 IntPoint ScrollView::viewToContents(const IntPoint& point) const
 {
+    if (delegatesScrolling())
+        return point;
+
     return point + toIntSize(documentScrollPositionRelativeToViewOrigin());
 }
 
 IntPoint ScrollView::contentsToView(const IntPoint& point) const
 {
+    if (delegatesScrolling())
+        return point;
+
     return point - toIntSize(documentScrollPositionRelativeToViewOrigin());
+}
+
+FloatPoint ScrollView::viewToContents(const FloatPoint& point) const
+{
+    if (delegatesScrolling())
+        return point;
+
+    return viewToContents(IntPoint(point));
+}
+
+FloatPoint ScrollView::contentsToView(const FloatPoint& point) const
+{
+    if (delegatesScrolling())
+        return point;
+
+    return contentsToView(IntPoint(point));
 }
 
 IntRect ScrollView::viewToContents(IntRect rect) const
 {
+    if (delegatesScrolling())
+        return rect;
+
+    rect.moveBy(documentScrollPositionRelativeToViewOrigin());
+    return rect;
+}
+
+FloatRect ScrollView::viewToContents(FloatRect rect) const
+{
+    if (delegatesScrolling())
+        return rect;
+
     rect.moveBy(documentScrollPositionRelativeToViewOrigin());
     return rect;
 }
 
 IntRect ScrollView::contentsToView(IntRect rect) const
 {
+    if (delegatesScrolling())
+        return rect;
+
+    rect.moveBy(-documentScrollPositionRelativeToViewOrigin());
+    return rect;
+}
+
+FloatRect ScrollView::contentsToView(FloatRect rect) const
+{
+    if (delegatesScrolling())
+        return rect;
+
     rect.moveBy(-documentScrollPositionRelativeToViewOrigin());
     return rect;
 }
@@ -847,9 +880,6 @@ IntPoint ScrollView::contentsToContainingViewContents(const IntPoint& point) con
 
 IntRect ScrollView::contentsToContainingViewContents(IntRect rect) const
 {
-    if (delegatesScrolling())
-        return convertToContainingView(contentsToView(rect));
-    
     if (const ScrollView* parentScrollView = parent()) {
         IntRect rectInContainingView = convertToContainingView(contentsToView(rect));
         return parentScrollView->viewToContents(rectInContainingView);
@@ -860,26 +890,32 @@ IntRect ScrollView::contentsToContainingViewContents(IntRect rect) const
 
 IntPoint ScrollView::rootViewToContents(const IntPoint& rootViewPoint) const
 {
-    if (delegatesScrolling())
-        return convertFromRootView(rootViewPoint);
-
     return viewToContents(convertFromRootView(rootViewPoint));
 }
 
 IntPoint ScrollView::contentsToRootView(const IntPoint& contentsPoint) const
 {
-    if (delegatesScrolling())
-        return convertToRootView(contentsPoint);
+    return convertToRootView(contentsToView(contentsPoint));
+}
 
+FloatPoint ScrollView::contentsToRootView(const FloatPoint& contentsPoint) const
+{
     return convertToRootView(contentsToView(contentsPoint));
 }
 
 IntRect ScrollView::rootViewToContents(const IntRect& rootViewRect) const
 {
-    if (delegatesScrolling())
-        return convertFromRootView(rootViewRect);
-
     return viewToContents(convertFromRootView(rootViewRect));
+}
+
+FloatRect ScrollView::rootViewToContents(const FloatRect& rootViewRect) const
+{
+    return viewToContents(convertFromRootView(rootViewRect));
+}
+
+FloatRect ScrollView::contentsToRootView(const FloatRect& contentsRect) const
+{
+    return convertToRootView(contentsToView(contentsRect));
 }
 
 IntPoint ScrollView::rootViewToTotalContents(const IntPoint& rootViewPoint) const
@@ -894,41 +930,26 @@ IntPoint ScrollView::rootViewToTotalContents(const IntPoint& rootViewPoint) cons
 
 IntRect ScrollView::contentsToRootView(const IntRect& contentsRect) const
 {
-    if (delegatesScrolling())
-        return convertToRootView(contentsRect);
-
     return convertToRootView(contentsToView(contentsRect));
 }
 
 IntPoint ScrollView::windowToContents(const IntPoint& windowPoint) const
 {
-    if (delegatesScrolling())
-        return convertFromContainingWindow(windowPoint);
-
     return viewToContents(convertFromContainingWindow(windowPoint));
 }
 
 IntPoint ScrollView::contentsToWindow(const IntPoint& contentsPoint) const
 {
-    if (delegatesScrolling())
-        return convertToContainingWindow(contentsPoint);
-
     return convertToContainingWindow(contentsToView(contentsPoint));
 }
 
 IntRect ScrollView::windowToContents(const IntRect& windowRect) const
 {
-    if (delegatesScrolling())
-        return convertFromContainingWindow(windowRect);
-
     return viewToContents(convertFromContainingWindow(windowRect));
 }
 
 IntRect ScrollView::contentsToWindow(const IntRect& contentsRect) const
 {
-    if (delegatesScrolling())
-        return convertToContainingWindow(contentsRect);
-
     return convertToContainingWindow(contentsToView(contentsRect));
 }
 

@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include <WebCore/CookiesStrategy.h>
 #include <WebCore/LoaderStrategy.h>
 #include <WebCore/PasteboardStrategy.h>
 #include <WebCore/PlatformStrategies.h>
@@ -34,7 +33,7 @@ struct PasteboardImage;
 struct PasteboardWebContent;
 struct PasteboardCustomData;
 
-class WebPlatformStrategies : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::PasteboardStrategy {
+class WebPlatformStrategies : public WebCore::PlatformStrategies, private WebCore::PasteboardStrategy {
 public:
     static void initializeIfNecessary();
     
@@ -42,22 +41,12 @@ private:
     WebPlatformStrategies();
     
     // WebCore::PlatformStrategies
-    WebCore::CookiesStrategy* createCookiesStrategy() override;
     WebCore::LoaderStrategy* createLoaderStrategy() override;
     WebCore::PasteboardStrategy* createPasteboardStrategy() override;
     WebCore::BlobRegistry* createBlobRegistry() override;
 
-    // WebCore::CookiesStrategy
-    std::pair<String, bool> cookiesForDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, WebCore::IncludeSecureCookies) override;
-    void setCookiesFromDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, const String&) override;
-    bool cookiesEnabled(const WebCore::NetworkStorageSession&) override;
-    std::pair<String, bool> cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, WebCore::IncludeSecureCookies) override;
-    std::pair<String, bool> cookieRequestHeaderFieldValue(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, WebCore::IncludeSecureCookies) override;
-    bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, Vector<WebCore::Cookie>&) override;
-    void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&) override;
-
     // WebCore::PasteboardStrategy
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void writeToPasteboard(const WebCore::PasteboardURL&, const String& pasteboardName) override;
     void writeToPasteboard(const WebCore::PasteboardWebContent&, const String& pasteboardName) override;
     void writeToPasteboard(const WebCore::PasteboardImage&, const String& pasteboardName) override;
@@ -65,11 +54,10 @@ private:
     int getPasteboardItemsCount(const String& pasteboardName) override;
     String readStringFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName) override;
     RefPtr<WebCore::SharedBuffer> readBufferFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName) override;
-    WebCore::URL readURLFromPasteboard(int index, const String& pasteboardName, String& title) override;
+    URL readURLFromPasteboard(int index, const String& pasteboardName, String& title) override;
     Vector<WebCore::PasteboardItemInfo> allPasteboardItemInfo(const String& pasteboardName) override;
     WebCore::PasteboardItemInfo informationForItemAtIndex(int index, const String& pasteboardName) override;
     void updateSupportedTypeIdentifiers(const Vector<String>& identifiers, const String& pasteboardName) override;
-    void getTypesByFidelityForItemAtIndex(Vector<String>& types, uint64_t index, const String& pasteboardName) override;
 #endif
     int getNumberOfFiles(const String& pasteboardName) override;
     void getTypes(Vector<String>& types, const String& pasteboardName) override;
@@ -80,7 +68,7 @@ private:
     long changeCount(const String& pasteboardName) override;
     String uniqueName() override;
     WebCore::Color color(const String& pasteboardName) override;
-    WebCore::URL url(const String& pasteboardName) override;
+    URL url(const String& pasteboardName) override;
 
     long writeCustomData(const WebCore::PasteboardCustomData&, const String& pasteboardName) override;
     Vector<String> typesSafeForDOMToReadAndWrite(const String& pasteboardName, const String& origin) override;

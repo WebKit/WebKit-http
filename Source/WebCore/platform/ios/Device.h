@@ -26,7 +26,7 @@
 #ifndef Device_h
 #define Device_h
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #include <wtf/Forward.h>
 #include <pal/spi/ios/MobileGestaltSPI.h>
@@ -34,13 +34,13 @@
 namespace WebCore {
 
 WEBCORE_EXPORT MGDeviceClass deviceClass();
-const WTF::String& deviceName();
+String deviceName(); // Thread-safe.
 
 // FIXME: Isn't this the same as deviceClass() == MGDeviceClassiPad?
 bool deviceHasIPadCapability();
 
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 #endif // Device_h

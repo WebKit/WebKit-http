@@ -30,12 +30,14 @@
 
 namespace WebCore {
 
+struct CSSRegisteredCustomProperty;
 class CSSValue;
 class StyleResolver;
+struct CSSRegisteredCustomProperty;
 
 class StyleBuilder {
 public:
-    static void applyProperty(CSSPropertyID, StyleResolver&, CSSValue&, bool isInitial, bool isInherit);
+    static void applyProperty(CSSPropertyID, StyleResolver&, CSSValue&, bool isInitial, bool isInherit, const CSSRegisteredCustomProperty*);
 };
 
 } // namespace WebCore

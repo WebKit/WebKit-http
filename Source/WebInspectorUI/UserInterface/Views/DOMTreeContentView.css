@@ -28,19 +28,13 @@
 }
 
 .content-view.dom-tree .tree-outline.dom {
-    --gutter-padding-start: 7px;
+    -webkit-padding-start: 7px;
 }
 
 .content-view.dom-tree.show-gutter .tree-outline.dom {
-    --gutter-padding-start: 20px;
-}
+    -webkit-padding-start: 20px;
 
-body[dir=ltr] .content-view.dom-tree .tree-outline.dom {
-    padding-left: var(--gutter-padding-start);
-}
-
-body[dir=rtl] .content-view.dom-tree .tree-outline.dom {
-    padding-right: var(--gutter-padding-start);
+    --item-pseudo-class-enabled-selection-before-start: 17px;
 }
 
 .content-view.dom-tree .tree-outline.dom li .status-image {
@@ -61,33 +55,28 @@ body[dir=rtl] .content-view.dom-tree .tree-outline.dom li .status-image {
 
 .content-view.dom-tree .tree-outline.dom li .status-image.breakpoint {
     width: 15px;
-    fill: var(--breakpoint-fill-color);
-    stroke: var(--breakpoint-stroke-color);
-    stroke-width: 1px;
+    fill: var(--breakpoint-color);
 }
 
-body:not(.window-inactive) .content-view.dom-tree .tree-outline.dom:focus li.selected .status-image.breakpoint {
-    stroke: white;
+body:not(.window-inactive) .content-view.dom-tree .tree-outline.dom:focus li:matches(.selected, .hovered) .status-image.breakpoint {
+    stroke: var(--selected-foreground-color);
 }
 
-.content-view.dom-tree .tree-outline.dom li .status-image.breakpoint.disabled {
-    fill: var(--breakpoint-disabled-fill-color);
-    stroke: var(--breakpoint-disabled-stroke-color);
+.content-view.dom-tree .tree-outline.dom:not(.breakpoints-disabled) li .status-image.breakpoint.disabled {
+    fill: var(--breakpoint-color-disabled);
 }
 
 .content-view.dom-tree .tree-outline.dom.breakpoints-disabled li .status-image.breakpoint {
-    fill: var(--breakpoint-unresolved-fill-color);
-    stroke: var(--breakpoint-unresolved-stroke-color);
-}
-
-.content-view.dom-tree .tree-outline.dom.breakpoints-disabled li .status-image.breakpoint.disabled {
-    fill: var(--breakpoint-unresolved-disabled-fill-color);
-    stroke: var(--breakpoint-unresolved-disabled-stroke-color);
+    filter: grayscale();
 }
 
 .content-view.dom-tree .tree-outline.dom li .status-image.breakpoint.subtree {
     fill: none;
-    opacity: 0.6;
+    stroke: var(--breakpoint-color);
+}
+
+body:not(.window-inactive) .content-view.dom-tree .tree-outline.dom:focus li:matches(.selected, .hovered) .status-image.breakpoint.subtree {
+    stroke: var(--selected-foreground-color);
 }
 
 .content-view.dom-tree .tree-outline.dom li.expanded .status-image.breakpoint.subtree {

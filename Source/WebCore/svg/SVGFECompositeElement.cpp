@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2007 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -35,7 +35,17 @@ inline SVGFECompositeElement::SVGFECompositeElement(const QualifiedName& tagName
     : SVGFilterPrimitiveStandardAttributes(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::feCompositeTag));
-    registerAttributes();
+
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::inAttr, &SVGFECompositeElement::m_in1>();
+        PropertyRegistry::registerProperty<SVGNames::in2Attr, &SVGFECompositeElement::m_in2>();
+        PropertyRegistry::registerProperty<SVGNames::operatorAttr, CompositeOperationType, &SVGFECompositeElement::m_svgOperator>();
+        PropertyRegistry::registerProperty<SVGNames::k1Attr, &SVGFECompositeElement::m_k1>();
+        PropertyRegistry::registerProperty<SVGNames::k2Attr, &SVGFECompositeElement::m_k2>();
+        PropertyRegistry::registerProperty<SVGNames::k3Attr, &SVGFECompositeElement::m_k3>();
+        PropertyRegistry::registerProperty<SVGNames::k4Attr, &SVGFECompositeElement::m_k4>();
+    });
 }
 
 Ref<SVGFECompositeElement> SVGFECompositeElement::create(const QualifiedName& tagName, Document& document)
@@ -43,56 +53,42 @@ Ref<SVGFECompositeElement> SVGFECompositeElement::create(const QualifiedName& ta
     return adoptRef(*new SVGFECompositeElement(tagName, document));
 }
 
-void SVGFECompositeElement::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::inAttr, &SVGFECompositeElement::m_in1>();
-    registry.registerAttribute<SVGNames::in2Attr, &SVGFECompositeElement::m_in2>();
-    registry.registerAttribute<SVGNames::operatorAttr, CompositeOperationType, &SVGFECompositeElement::m_svgOperator>();
-    registry.registerAttribute<SVGNames::k1Attr, &SVGFECompositeElement::m_k1>();
-    registry.registerAttribute<SVGNames::k2Attr, &SVGFECompositeElement::m_k2>();
-    registry.registerAttribute<SVGNames::k3Attr, &SVGFECompositeElement::m_k3>();
-    registry.registerAttribute<SVGNames::k4Attr, &SVGFECompositeElement::m_k4>();
-}
-
-void SVGFECompositeElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void SVGFECompositeElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == SVGNames::operatorAttr) {
         CompositeOperationType propertyValue = SVGPropertyTraits<CompositeOperationType>::fromString(value);
         if (propertyValue > 0)
-            m_svgOperator.setValue(propertyValue);
+            m_svgOperator->setBaseValInternal<CompositeOperationType>(propertyValue);
         return;
     }
 
     if (name == SVGNames::inAttr) {
-        m_in1.setValue(value);
+        m_in1->setBaseValInternal(value);
         return;
     }
 
     if (name == SVGNames::in2Attr) {
-        m_in2.setValue(value);
+        m_in2->setBaseValInternal(value);
         return;
     }
 
     if (name == SVGNames::k1Attr) {
-        m_k1.setValue(value.toFloat());
+        m_k1->setBaseValInternal(value.toFloat());
         return;
     }
 
     if (name == SVGNames::k2Attr) {
-        m_k2.setValue(value.toFloat());
+        m_k2->setBaseValInternal(value.toFloat());
         return;
     }
 
     if (name == SVGNames::k3Attr) {
-        m_k3.setValue(value.toFloat());
+        m_k3->setBaseValInternal(value.toFloat());
         return;
     }
 
     if (name == SVGNames::k4Attr) {
-        m_k4.setValue(value.toFloat());
+        m_k4->setBaseValInternal(value.toFloat());
         return;
     }
 
@@ -135,7 +131,7 @@ void SVGFECompositeElement::svgAttributeChanged(const QualifiedName& attrName)
     SVGFilterPrimitiveStandardAttributes::svgAttributeChanged(attrName);
 }
 
-RefPtr<FilterEffect> SVGFECompositeElement::build(SVGFilterBuilder* filterBuilder, Filter& filter)
+RefPtr<FilterEffect> SVGFECompositeElement::build(SVGFilterBuilder* filterBuilder, Filter& filter) const
 {
     auto input1 = filterBuilder->getEffectById(in1());
     auto input2 = filterBuilder->getEffectById(in2());
@@ -143,7 +139,7 @@ RefPtr<FilterEffect> SVGFECompositeElement::build(SVGFilterBuilder* filterBuilde
     if (!input1 || !input2)
         return nullptr;
 
-    RefPtr<FilterEffect> effect = FEComposite::create(filter, svgOperator(), k1(), k2(), k3(), k4());
+    auto effect = FEComposite::create(filter, svgOperator(), k1(), k2(), k3(), k4());
     FilterEffectVector& inputEffects = effect->inputEffects();
     inputEffects.reserveCapacity(2);
     inputEffects.append(input1);

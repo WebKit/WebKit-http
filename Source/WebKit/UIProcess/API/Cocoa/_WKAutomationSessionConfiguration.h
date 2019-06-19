@@ -25,13 +25,11 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
 
-WK_CLASS_AVAILABLE(macosx(10.13.4))
+WK_CLASS_AVAILABLE(macos(10.13.4), ios(12.2))
 @interface _WKAutomationSessionConfiguration : NSObject <NSCopying>
 
 @property (nonatomic) BOOL allowsInsecureMediaCapture;
@@ -40,5 +38,3 @@ WK_CLASS_AVAILABLE(macosx(10.13.4))
 @end
 
 NS_ASSUME_NONNULL_END
-
-#endif // WK_API_ENABLED

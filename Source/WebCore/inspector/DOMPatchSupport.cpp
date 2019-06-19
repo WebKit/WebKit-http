@@ -58,6 +58,8 @@ using HTMLNames::headTag;
 using HTMLNames::htmlTag;
 
 struct DOMPatchSupport::Digest {
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
+
     String sha1;
     String attrsSHA1;
     Node* node;
@@ -115,7 +117,7 @@ ExceptionOr<Node*> DOMPatchSupport::patchNode(Node& node, const String& markup)
 
     Node* previousSibling = node.previousSibling();
     // FIXME: This code should use one of createFragment* in markup.h
-    RefPtr<DocumentFragment> fragment = DocumentFragment::create(m_document);
+    auto fragment = DocumentFragment::create(m_document);
     if (m_document.isHTMLDocument())
         fragment->parseHTML(markup, node.parentElement() ? node.parentElement() : m_document.documentElement());
     else
@@ -143,7 +145,7 @@ ExceptionOr<Node*> DOMPatchSupport::patchNode(Node& node, const String& markup)
 
     if (innerPatchChildren(*parentNode, oldList, newList).hasException()) {
         // Fall back to total replace.
-        auto result = m_domEditor.replaceChild(*parentNode, *fragment, node);
+        auto result = m_domEditor.replaceChild(*parentNode, fragment.get(), node);
         if (result.hasException())
             return result.releaseException();
     }

@@ -66,10 +66,10 @@ void WebPopupMenuProxyGtk::selectItem(unsigned itemIndex)
     m_selectedItem = itemIndex;
 }
 
-void WebPopupMenuProxyGtk::activateItem(std::optional<unsigned> itemIndex)
+void WebPopupMenuProxyGtk::activateItem(Optional<unsigned> itemIndex)
 {
     if (m_client)
-        m_client->valueChangedForPopupMenu(this, itemIndex.value_or(m_selectedItem.value_or(-1)));
+        m_client->valueChangedForPopupMenu(this, itemIndex.valueOr(m_selectedItem.valueOr(-1)));
 }
 
 bool WebPopupMenuProxyGtk::activateItemAtPath(GtkTreePath* path)
@@ -95,11 +95,15 @@ void WebPopupMenuProxyGtk::treeViewRowActivatedCallback(GtkTreeView*, GtkTreePat
 
 gboolean WebPopupMenuProxyGtk::treeViewButtonReleaseEventCallback(GtkWidget* treeView, GdkEventButton* event, WebPopupMenuProxyGtk* popupMenu)
 {
-    if (event->button != GDK_BUTTON_PRIMARY)
+    guint button;
+    gdk_event_get_button(reinterpret_cast<GdkEvent*>(event), &button);
+    if (button != GDK_BUTTON_PRIMARY)
         return FALSE;
 
+    double x, y;
+    gdk_event_get_coords(reinterpret_cast<GdkEvent*>(event), &x, &y);
     GUniqueOutPtr<GtkTreePath> path;
-    if (!gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeView), event->x, event->y, &path.outPtr(), nullptr, nullptr, nullptr))
+    if (!gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeView), x, y, &path.outPtr(), nullptr, nullptr, nullptr))
         return FALSE;
 
     return popupMenu->activateItemAtPath(path.get());
@@ -119,7 +123,9 @@ gboolean WebPopupMenuProxyGtk::keyPressEventCallback(GtkWidget* widget, GdkEvent
     if (!popupMenu->m_device)
         return FALSE;
 
-    if (event->keyval == GDK_KEY_Escape) {
+    guint keyval;
+    gdk_event_get_keyval(reinterpret_cast<GdkEvent*>(event), &keyval);
+    if (keyval == GDK_KEY_Escape) {
         popupMenu->hidePopupMenu();
         return TRUE;
     }
@@ -348,7 +354,7 @@ void WebPopupMenuProxyGtk::hidePopupMenu()
         m_device = nullptr;
     }
 
-    activateItem(std::nullopt);
+    activateItem(WTF::nullopt);
 
     if (m_currentSearchString) {
         g_string_free(m_currentSearchString, TRUE);
@@ -368,21 +374,24 @@ void WebPopupMenuProxyGtk::cancelTracking()
     hidePopupMenu();
 }
 
-std::optional<unsigned> WebPopupMenuProxyGtk::typeAheadFindIndex(GdkEventKey* event)
+Optional<unsigned> WebPopupMenuProxyGtk::typeAheadFindIndex(GdkEventKey* event)
 {
-    gunichar keychar = gdk_keyval_to_unicode(event->keyval);
+    guint keyval;
+    gdk_event_get_keyval(reinterpret_cast<GdkEvent*>(event), &keyval);
+    gunichar keychar = gdk_keyval_to_unicode(keyval);
     if (!g_unichar_isprint(keychar))
-        return std::nullopt;
+        return WTF::nullopt;
 
-    if (event->time < m_previousKeyEventTime)
-        return std::nullopt;
+    uint32_t time = gdk_event_get_time(reinterpret_cast<GdkEvent*>(event));
+    if (time < m_previousKeyEventTime)
+        return WTF::nullopt;
 
     static const uint32_t typeaheadTimeoutMs = 1000;
-    if (event->time - m_previousKeyEventTime > typeaheadTimeoutMs) {
+    if (time - m_previousKeyEventTime > typeaheadTimeoutMs) {
         if (m_currentSearchString)
             g_string_truncate(m_currentSearchString, 0);
     }
-    m_previousKeyEventTime = event->time;
+    m_previousKeyEventTime = time;
 
     if (!m_currentSearchString)
         m_currentSearchString = g_string_new(nullptr);
@@ -409,7 +418,7 @@ std::optional<unsigned> WebPopupMenuProxyGtk::typeAheadFindIndex(GdkEventKey* ev
     GUniquePtr<char> normalizedPrefix(g_utf8_normalize(m_currentSearchString->str, prefixLength, G_NORMALIZE_ALL));
     GUniquePtr<char> prefix(normalizedPrefix ? g_utf8_casefold(normalizedPrefix.get(), -1) : nullptr);
     if (!prefix)
-        return std::nullopt;
+        return WTF::nullopt;
 
     model = gtk_tree_view_get_model(GTK_TREE_VIEW(m_treeView));
     for (unsigned i = 0; i < itemCount; i++, index = (index + 1) % itemCount) {
@@ -432,7 +441,7 @@ std::optional<unsigned> WebPopupMenuProxyGtk::typeAheadFindIndex(GdkEventKey* ev
             return index;
     }
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 bool WebPopupMenuProxyGtk::typeAheadFind(GdkEventKey* event)

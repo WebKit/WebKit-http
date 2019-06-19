@@ -28,9 +28,10 @@
 #include "FloatPoint.h"
 #include "FloatPoint3D.h"
 #include "IntPoint.h"
+#include <array>
 #include <string.h> //for memcpy
 #include <wtf/FastMalloc.h>
-#include <wtf/Optional.h>
+#include <wtf/Forward.h>
 
 #if USE(CA)
 typedef struct CATransform3D CATransform3D;
@@ -75,7 +76,7 @@ class TransformationMatrix {
     WTF_MAKE_FAST_ALLOCATED;
 public:
 
-#if (PLATFORM(IOS) && CPU(ARM_THUMB2)) || defined(TRANSFORMATION_MATRIX_USE_X86_64_SSE2)
+#if (PLATFORM(IOS_FAMILY) && CPU(ARM_THUMB2)) || defined(TRANSFORMATION_MATRIX_USE_X86_64_SSE2)
 #if COMPILER(MSVC)
     __declspec(align(16)) typedef double Matrix4[4][4];
 #else
@@ -287,7 +288,7 @@ public:
     WEBCORE_EXPORT static TransformationMatrix rectToRect(const FloatRect&, const FloatRect&);
 
     bool isInvertible() const; // If you call this this, you're probably doing it wrong.
-    WEBCORE_EXPORT std::optional<TransformationMatrix> inverse() const;
+    WEBCORE_EXPORT Optional<TransformationMatrix> inverse() const;
 
     // Decompose the matrix into its component parts.
     struct Decomposed2Type {
@@ -415,8 +416,8 @@ public:
     // Returns the matrix without 3D components.
     TransformationMatrix to2dTransform() const;
     
-    typedef float FloatMatrix4[16];
-    void toColumnMajorFloatArray(FloatMatrix4& result) const;
+    using FloatMatrix4 = std::array<float, 16>;
+    FloatMatrix4 toColumnMajorFloatArray() const;
 
     // A local-space layer is implicitly defined at the z = 0 plane, with its front side
     // facing the positive z-axis (i.e. a camera looking along the negative z-axis sees

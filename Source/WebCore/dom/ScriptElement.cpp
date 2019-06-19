@@ -128,7 +128,7 @@ void ScriptElement::dispatchErrorEvent()
     m_element.dispatchEvent(Event::create(eventNames().errorEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
-std::optional<ScriptElement::ScriptType> ScriptElement::determineScriptType(LegacyTypeSupport supportLegacyTypes) const
+Optional<ScriptElement::ScriptType> ScriptElement::determineScriptType(LegacyTypeSupport supportLegacyTypes) const
 {
     // FIXME: isLegacySupportedJavaScriptLanguage() is not valid HTML5. It is used here to maintain backwards compatibility with existing layout tests. The specific violations are:
     // - Allowing type=javascript. type= should only support MIME types, such as text/javascript.
@@ -142,7 +142,7 @@ std::optional<ScriptElement::ScriptType> ScriptElement::determineScriptType(Lega
             return ScriptType::Classic;
         if (isLegacySupportedJavaScriptLanguage(language))
             return ScriptType::Classic;
-        return std::nullopt;
+        return WTF::nullopt;
     }
     if (MIMETypeRegistry::isSupportedJavaScriptMIMEType(type.stripWhiteSpace()))
         return ScriptType::Classic;
@@ -154,13 +154,13 @@ std::optional<ScriptElement::ScriptType> ScriptElement::determineScriptType(Lega
     // Once "defer" is implemented, we can reconsider enabling modules in XHTML.
     // https://bugs.webkit.org/show_bug.cgi?id=123387
     if (!m_element.document().isHTMLDocument())
-        return std::nullopt;
+        return WTF::nullopt;
 
     // https://html.spec.whatwg.org/multipage/scripting.html#attr-script-type
     // Setting the attribute to an ASCII case-insensitive match for the string "module" means that the script is a module script.
     if (equalLettersIgnoringASCIICase(type, "module"))
         return ScriptType::Module;
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 // http://dev.w3.org/html5/spec/Overview.html#prepare-a-script
@@ -187,7 +187,7 @@ bool ScriptElement::prepareScript(const TextPosition& scriptStartPosition, Legac
         return false;
 
     ScriptType scriptType = ScriptType::Classic;
-    if (std::optional<ScriptType> result = determineScriptType(supportLegacyTypes))
+    if (Optional<ScriptType> result = determineScriptType(supportLegacyTypes))
         scriptType = result.value();
     else
         return false;
@@ -252,11 +252,11 @@ bool ScriptElement::prepareScript(const TextPosition& scriptStartPosition, Legac
     } else if ((isClassicExternalScript || scriptType == ScriptType::Module) && !hasAsyncAttribute() && !m_forceAsync) {
         m_willExecuteInOrder = true;
         ASSERT(m_loadableScript);
-        document.scriptRunner()->queueScriptForExecution(*this, *m_loadableScript, ScriptRunner::IN_ORDER_EXECUTION);
+        document.scriptRunner().queueScriptForExecution(*this, *m_loadableScript, ScriptRunner::IN_ORDER_EXECUTION);
     } else if (hasSourceAttribute() || scriptType == ScriptType::Module) {
         ASSERT(m_loadableScript);
         ASSERT(hasAsyncAttribute() || m_forceAsync);
-        document.scriptRunner()->queueScriptForExecution(*this, *m_loadableScript, ScriptRunner::ASYNC_EXECUTION);
+        document.scriptRunner().queueScriptForExecution(*this, *m_loadableScript, ScriptRunner::ASYNC_EXECUTION);
     } else if (!hasSourceAttribute() && m_parserInserted && !document.haveStylesheetsLoaded()) {
         ASSERT(scriptType == ScriptType::Classic);
         m_willBeParserExecuted = true;
@@ -264,7 +264,7 @@ bool ScriptElement::prepareScript(const TextPosition& scriptStartPosition, Legac
     } else {
         ASSERT(scriptType == ScriptType::Classic);
         TextPosition position = document.isInDocumentWrite() ? TextPosition() : scriptStartPosition;
-        executeClassicScript(ScriptSourceCode(scriptContent(), document.url(), position, JSC::SourceProviderSourceType::Program, InlineClassicScript::create(*this)));
+        executeClassicScript(ScriptSourceCode(scriptContent(), URL(document.url()), position, JSC::SourceProviderSourceType::Program, InlineClassicScript::create(*this)));
     }
 
     return true;
@@ -347,7 +347,7 @@ bool ScriptElement::requestModuleScript(const TextPosition& scriptStartPosition)
     auto script = LoadableModuleScript::create(nonce, emptyString(), crossOriginMode, scriptCharset(), m_element.localName(), m_element.isInUserAgentShadowTree());
 
     TextPosition position = m_element.document().isInDocumentWrite() ? TextPosition() : scriptStartPosition;
-    ScriptSourceCode sourceCode(scriptContent(), m_element.document().url(), position, JSC::SourceProviderSourceType::Module, script.copyRef());
+    ScriptSourceCode sourceCode(scriptContent(), URL(m_element.document().url()), position, JSC::SourceProviderSourceType::Module, script.copyRef());
 
     ASSERT(m_element.document().contentSecurityPolicy());
     const auto& contentSecurityPolicy = *m_element.document().contentSecurityPolicy();
@@ -417,8 +417,8 @@ void ScriptElement::dispatchLoadEventRespectingUserGestureIndicator()
 
 void ScriptElement::executeScriptAndDispatchEvent(LoadableScript& loadableScript)
 {
-    if (std::optional<LoadableScript::Error> error = loadableScript.error()) {
-        if (std::optional<LoadableScript::ConsoleMessage> message = error->consoleMessage)
+    if (Optional<LoadableScript::Error> error = loadableScript.error()) {
+        if (Optional<LoadableScript::ConsoleMessage> message = error->consoleMessage)
             m_element.document().addConsoleMessage(message->source, message->level, message->message);
         dispatchErrorEvent();
     } else if (!loadableScript.wasCanceled()) {
@@ -435,7 +435,7 @@ void ScriptElement::executePendingScript(PendingScript& pendingScript)
     else {
         ASSERT(!pendingScript.error());
         ASSERT_WITH_MESSAGE(scriptType() == ScriptType::Classic, "Module script always have a loadableScript pointer.");
-        executeClassicScript(ScriptSourceCode(scriptContent(), m_element.document().url(), pendingScript.startingPosition(), JSC::SourceProviderSourceType::Program, InlineClassicScript::create(*this)));
+        executeClassicScript(ScriptSourceCode(scriptContent(), URL(m_element.document().url()), pendingScript.startingPosition(), JSC::SourceProviderSourceType::Program, InlineClassicScript::create(*this)));
         dispatchLoadEventRespectingUserGestureIndicator();
     }
 }

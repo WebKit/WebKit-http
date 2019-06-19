@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,50 +47,54 @@
 
 namespace JSC {
     
-void JIT::emit_op_put_getter_by_id(Instruction* currentInstruction)
+void JIT::emit_op_put_getter_by_id(const Instruction* currentInstruction)
 {
-    int base = currentInstruction[1].u.operand;
-    int property = currentInstruction[2].u.operand;
-    int options = currentInstruction[3].u.operand;
-    int getter = currentInstruction[4].u.operand;
+    auto bytecode = currentInstruction->as<OpPutGetterById>();
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property;
+    int options = bytecode.m_attributes;
+    int getter = bytecode.m_accessor.offset();
 
     emitLoadPayload(base, regT1);
     emitLoadPayload(getter, regT3);
     callOperation(operationPutGetterById, regT1, m_codeBlock->identifier(property).impl(), options, regT3);
 }
 
-void JIT::emit_op_put_setter_by_id(Instruction* currentInstruction)
+void JIT::emit_op_put_setter_by_id(const Instruction* currentInstruction)
 {
-    int base = currentInstruction[1].u.operand;
-    int property = currentInstruction[2].u.operand;
-    int options = currentInstruction[3].u.operand;
-    int setter = currentInstruction[4].u.operand;
+    auto bytecode = currentInstruction->as<OpPutSetterById>();
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property;
+    int options = bytecode.m_attributes;
+    int setter = bytecode.m_accessor.offset();
 
     emitLoadPayload(base, regT1);
     emitLoadPayload(setter, regT3);
     callOperation(operationPutSetterById, regT1, m_codeBlock->identifier(property).impl(), options, regT3);
 }
 
-void JIT::emit_op_put_getter_setter_by_id(Instruction* currentInstruction)
+void JIT::emit_op_put_getter_setter_by_id(const Instruction* currentInstruction)
 {
-    int base = currentInstruction[1].u.operand;
-    int property = currentInstruction[2].u.operand;
-    int attribute = currentInstruction[3].u.operand;
-    int getter = currentInstruction[4].u.operand;
-    int setter = currentInstruction[5].u.operand;
+    auto bytecode = currentInstruction->as<OpPutGetterSetterById>();
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property;
+    int attributes = bytecode.m_attributes;
+    int getter = bytecode.m_getter.offset();
+    int setter = bytecode.m_setter.offset();
 
     emitLoadPayload(base, regT1);
     emitLoadPayload(getter, regT3);
     emitLoadPayload(setter, regT4);
-    callOperation(operationPutGetterSetter, regT1, m_codeBlock->identifier(property).impl(), attribute, regT3, regT4);
+    callOperation(operationPutGetterSetter, regT1, m_codeBlock->identifier(property).impl(), attributes, regT3, regT4);
 }
 
-void JIT::emit_op_put_getter_by_val(Instruction* currentInstruction)
+void JIT::emit_op_put_getter_by_val(const Instruction* currentInstruction)
 {
-    int base = currentInstruction[1].u.operand;
-    int property = currentInstruction[2].u.operand;
-    int32_t attributes = currentInstruction[3].u.operand;
-    int getter = currentInstruction[4].u.operand;
+    auto bytecode = currentInstruction->as<OpPutGetterByVal>();
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property.offset();
+    int32_t attributes = bytecode.m_attributes;
+    int getter = bytecode.m_accessor.offset();
 
     emitLoadPayload(base, regT2);
     emitLoad(property, regT1, regT0);
@@ -98,43 +102,48 @@ void JIT::emit_op_put_getter_by_val(Instruction* currentInstruction)
     callOperation(operationPutGetterByVal, regT2, JSValueRegs(regT1, regT0), attributes, regT3);
 }
 
-void JIT::emit_op_put_setter_by_val(Instruction* currentInstruction)
+void JIT::emit_op_put_setter_by_val(const Instruction* currentInstruction)
 {
-    int base = currentInstruction[1].u.operand;
-    int property = currentInstruction[2].u.operand;
-    int32_t attributes = currentInstruction[3].u.operand;
-    int getter = currentInstruction[4].u.operand;
+    auto bytecode = currentInstruction->as<OpPutSetterByVal>();
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property.offset();
+    int32_t attributes = bytecode.m_attributes;
+    int setter = bytecode.m_accessor.offset();
 
     emitLoadPayload(base, regT2);
     emitLoad(property, regT1, regT0);
-    emitLoadPayload(getter, regT3);
+    emitLoadPayload(setter, regT3);
     callOperation(operationPutSetterByVal, regT2, JSValueRegs(regT1, regT0), attributes, regT3);
 }
 
-void JIT::emit_op_del_by_id(Instruction* currentInstruction)
+void JIT::emit_op_del_by_id(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    int property = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpDelById>();
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property;
     emitLoad(base, regT1, regT0);
     callOperation(operationDeleteByIdJSResult, dst, JSValueRegs(regT1, regT0), m_codeBlock->identifier(property).impl());
 }
 
-void JIT::emit_op_del_by_val(Instruction* currentInstruction)
+void JIT::emit_op_del_by_val(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    int property = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpDelByVal>();
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property.offset();
     emitLoad2(base, regT1, regT0, property, regT3, regT2);
     callOperation(operationDeleteByValJSResult, dst, JSValueRegs(regT1, regT0), JSValueRegs(regT3, regT2));
 }
 
-void JIT::emit_op_get_by_val(Instruction* currentInstruction)
+void JIT::emit_op_get_by_val(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    int property = currentInstruction[3].u.operand;
-    ArrayProfile* profile = arrayProfileFor<OpGetByValShape>(currentInstruction);
+    auto bytecode = currentInstruction->as<OpGetByVal>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property.offset();
+    ArrayProfile* profile = &metadata.m_arrayProfile;
     ByValInfo* byValInfo = m_codeBlock->addByValInfo();
 
     emitLoad2(base, regT1, regT0, property, regT3, regT2);
@@ -177,7 +186,7 @@ void JIT::emit_op_get_by_val(Instruction* currentInstruction)
         resultOK.link(this);
     }
 
-    emitValueProfilingSite();
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
     emitStore(dst, regT1, regT0);
 
     Label nextHotPath = label();
@@ -185,17 +194,18 @@ void JIT::emit_op_get_by_val(Instruction* currentInstruction)
     m_byValCompilationInfo.append(ByValCompilationInfo(byValInfo, m_bytecodeOffset, notIndex, badType, mode, profile, done, nextHotPath));
 }
 
-JITGetByIdGenerator JIT::emitGetByValWithCachedId(ByValInfo* byValInfo, Instruction* currentInstruction, const Identifier& propertyName, Jump& fastDoneCase, Jump& slowDoneCase, JumpList& slowCases)
+JITGetByIdGenerator JIT::emitGetByValWithCachedId(ByValInfo* byValInfo, OpGetByVal bytecode, const Identifier& propertyName, Jump& fastDoneCase, Jump& slowDoneCase, JumpList& slowCases)
 {
-    int dst = currentInstruction[1].u.operand;
-
     // base: tag(regT1), payload(regT0)
     // property: tag(regT3), payload(regT2)
     // scratch: regT4
 
+    int dst = bytecode.m_dst.offset();
+
     slowCases.append(branchIfNotCell(regT3));
     emitByValIdentifierCheck(byValInfo, regT2, regT4, propertyName, slowCases);
 
+    const Instruction* currentInstruction = m_codeBlock->instructions().at(byValInfo->bytecodeIndex).ptr();
     JITGetByIdGenerator gen(
         m_codeBlock, CodeOrigin(m_bytecodeOffset), CallSiteIndex(currentInstruction), RegisterSet::stubUnavailableRegisters(),
         propertyName.impl(), JSValueRegs::payloadOnly(regT0), JSValueRegs(regT1, regT0), AccessType::Get);
@@ -206,18 +216,19 @@ JITGetByIdGenerator JIT::emitGetByValWithCachedId(ByValInfo* byValInfo, Instruct
     Label coldPathBegin = label();
     gen.slowPathJump().link(this);
 
-    Call call = callOperationWithProfile(operationGetByIdOptimize, dst, gen.stubInfo(), JSValueRegs(regT1, regT0), propertyName.impl());
+    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdOptimize, dst, gen.stubInfo(), JSValueRegs(regT1, regT0), propertyName.impl());
     gen.reportSlowPathCall(coldPathBegin, call);
     slowDoneCase = jump();
 
     return gen;
 }
 
-void JIT::emitSlow_op_get_by_val(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_get_by_val(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    int property = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpGetByVal>();
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property.offset();
     ByValInfo* byValInfo = m_byValCompilationInfo[m_byValInstructionIndex].byValInfo;
 
     linkSlowCaseIfNotJSCell(iter, base); // base cell check
@@ -229,7 +240,7 @@ void JIT::emitSlow_op_get_by_val(Instruction* currentInstruction, Vector<SlowCas
     emitNakedCall(CodeLocationLabel<NoPtrTag>(m_vm->getCTIStub(stringGetByValGenerator).retaggedCode<NoPtrTag>()));
     Jump failed = branchTestPtr(Zero, regT0);
     emitStoreCell(dst, regT0);
-    emitJumpSlowToHot(jump(), OPCODE_LENGTH(op_get_by_val));
+    emitJumpSlowToHot(jump(), currentInstruction->size());
     failed.link(this);
     notString.link(this);
     nonCell.link(this);
@@ -247,14 +258,22 @@ void JIT::emitSlow_op_get_by_val(Instruction* currentInstruction, Vector<SlowCas
     m_byValCompilationInfo[m_byValInstructionIndex].returnAddress = call;
     m_byValInstructionIndex++;
 
-    emitValueProfilingSite();
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
 }
 
-void JIT::emit_op_put_by_val(Instruction* currentInstruction)
+void JIT::emit_op_put_by_val_direct(const Instruction* currentInstruction)
 {
-    int base = currentInstruction[1].u.operand;
-    int property = currentInstruction[2].u.operand;
-    ArrayProfile* profile = arrayProfileFor<OpPutByValShape>(currentInstruction);
+    emit_op_put_by_val<OpPutByValDirect>(currentInstruction);
+}
+
+template<typename Op>
+void JIT::emit_op_put_by_val(const Instruction* currentInstruction)
+{
+    auto bytecode = currentInstruction->as<Op>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int base = bytecode.m_base.offset();
+    int property = bytecode.m_property.offset();
+    ArrayProfile* profile = &metadata.m_arrayProfile;
     ByValInfo* byValInfo = m_codeBlock->addByValInfo();
     
     emitLoad2(base, regT1, regT0, property, regT3, regT2);
@@ -274,16 +293,16 @@ void JIT::emit_op_put_by_val(Instruction* currentInstruction)
     JITArrayMode mode = chooseArrayMode(profile);
     switch (mode) {
     case JITInt32:
-        slowCases = emitInt32PutByVal(currentInstruction, badType);
+        slowCases = emitInt32PutByVal(bytecode, badType);
         break;
     case JITDouble:
-        slowCases = emitDoublePutByVal(currentInstruction, badType);
+        slowCases = emitDoublePutByVal(bytecode, badType);
         break;
     case JITContiguous:
-        slowCases = emitContiguousPutByVal(currentInstruction, badType);
+        slowCases = emitContiguousPutByVal(bytecode, badType);
         break;
     case JITArrayStorage:
-        slowCases = emitArrayStoragePutByVal(currentInstruction, badType);
+        slowCases = emitArrayStoragePutByVal(bytecode, badType);
         break;
     default:
         CRASH();
@@ -298,11 +317,13 @@ void JIT::emit_op_put_by_val(Instruction* currentInstruction)
     m_byValCompilationInfo.append(ByValCompilationInfo(byValInfo, m_bytecodeOffset, notIndex, badType, mode, profile, done, done));
 }
 
-JIT::JumpList JIT::emitGenericContiguousPutByVal(Instruction* currentInstruction, PatchableJump& badType, IndexingType indexingShape)
+template <typename Op>
+JIT::JumpList JIT::emitGenericContiguousPutByVal(Op bytecode, PatchableJump& badType, IndexingType indexingShape)
 {
-    int base = currentInstruction[1].u.operand;
-    int value = currentInstruction[3].u.operand;
-    ArrayProfile* profile = arrayProfileFor<OpPutByValShape>(currentInstruction);
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int base = bytecode.m_base.offset();
+    int value = bytecode.m_value.offset();
+    ArrayProfile* profile = &metadata.m_arrayProfile;
 
     JumpList slowCases;
     
@@ -331,7 +352,7 @@ JIT::JumpList JIT::emitGenericContiguousPutByVal(Instruction* currentInstruction
         Jump ready = jump();
         notInt.link(this);
         moveIntsToDouble(regT0, regT1, fpRegT0, fpRegT1);
-        slowCases.append(branchDouble(DoubleNotEqualOrUnordered, fpRegT0, fpRegT0));
+        slowCases.append(branchIfNaN(fpRegT0));
         ready.link(this);
         storeDouble(fpRegT0, BaseIndex(regT3, regT2, TimesEight));
         break;
@@ -357,11 +378,13 @@ JIT::JumpList JIT::emitGenericContiguousPutByVal(Instruction* currentInstruction
     return slowCases;
 }
 
-JIT::JumpList JIT::emitArrayStoragePutByVal(Instruction* currentInstruction, PatchableJump& badType)
+template <typename Op>
+JIT::JumpList JIT::emitArrayStoragePutByVal(Op bytecode, PatchableJump& badType)
 {
-    int base = currentInstruction[1].u.operand;
-    int value = currentInstruction[3].u.operand;
-    ArrayProfile* profile = arrayProfileFor<OpPutByValShape>(currentInstruction);
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int base = bytecode.m_base.offset();
+    int value = bytecode.m_value.offset();
+    ArrayProfile* profile = &metadata.m_arrayProfile;
 
     JumpList slowCases;
     
@@ -394,13 +417,14 @@ JIT::JumpList JIT::emitArrayStoragePutByVal(Instruction* currentInstruction, Pat
     return slowCases;
 }
 
-JITPutByIdGenerator JIT::emitPutByValWithCachedId(ByValInfo* byValInfo, Instruction* currentInstruction, PutKind putKind, const Identifier& propertyName, JumpList& doneCases, JumpList& slowCases)
+template <typename Op>
+JITPutByIdGenerator JIT::emitPutByValWithCachedId(ByValInfo* byValInfo, Op bytecode, PutKind putKind, const Identifier& propertyName, JumpList& doneCases, JumpList& slowCases)
 {
     // base: tag(regT1), payload(regT0)
     // property: tag(regT3), payload(regT2)
 
-    int base = currentInstruction[1].u.operand;
-    int value = currentInstruction[3].u.operand;
+    int base = bytecode.m_base.offset();
+    int value = bytecode.m_value.offset();
 
     slowCases.append(branchIfNotCell(regT3));
     emitByValIdentifierCheck(byValInfo, regT2, regT2, propertyName, slowCases);
@@ -411,6 +435,7 @@ JITPutByIdGenerator JIT::emitPutByValWithCachedId(ByValInfo* byValInfo, Instruct
     emitLoadPayload(base, regT0);
     emitLoad(value, regT3, regT2);
 
+    const Instruction* currentInstruction = m_codeBlock->instructions().at(byValInfo->bytecodeIndex).ptr();
     JITPutByIdGenerator gen(
         m_codeBlock, CodeOrigin(m_bytecodeOffset), CallSiteIndex(currentInstruction), RegisterSet::stubUnavailableRegisters(),
         JSValueRegs::payloadOnly(regT0), JSValueRegs(regT3, regT2), regT1, m_codeBlock->ecmaMode(), putKind);
@@ -430,18 +455,29 @@ JITPutByIdGenerator JIT::emitPutByValWithCachedId(ByValInfo* byValInfo, Instruct
     return gen;
 }
 
-void JIT::emitSlow_op_put_by_val(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_put_by_val(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
-    int base = currentInstruction[1].u.operand;
-    int property = currentInstruction[2].u.operand;
-    int value = currentInstruction[3].u.operand;
+    bool isDirect = currentInstruction->opcodeID() == op_put_by_val_direct;
+    int base;
+    int property;
+    int value;
+
+    auto load = [&](auto bytecode) {
+        base = bytecode.m_base.offset();
+        property = bytecode.m_property.offset();
+        value = bytecode.m_value.offset();
+    };
+
+    if (isDirect)
+        load(currentInstruction->as<OpPutByValDirect>());
+    else
+        load(currentInstruction->as<OpPutByVal>());
+
     ByValInfo* byValInfo = m_byValCompilationInfo[m_byValInstructionIndex].byValInfo;
     
     linkAllSlowCases(iter);
     Label slowPath = label();
     
-    bool isDirect = Interpreter::getOpcodeID(currentInstruction->u.opcode) == op_put_by_val_direct;
-
     // The register selection below is chosen to reduce register swapping on ARM.
     // Swapping shouldn't happen on other platforms.
     emitLoad(base, regT2, regT1);
@@ -454,11 +490,12 @@ void JIT::emitSlow_op_put_by_val(Instruction* currentInstruction, Vector<SlowCas
     m_byValInstructionIndex++;
 }
 
-void JIT::emit_op_try_get_by_id(Instruction* currentInstruction)
+void JIT::emit_op_try_get_by_id(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[3].u.operand));
+    auto bytecode = currentInstruction->as<OpTryGetById>();
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    const Identifier* ident = &(m_codeBlock->identifier(bytecode.m_property));
 
     emitLoad(base, regT1, regT0);
     emitJumpSlowCaseIfNotJSCell(base, regT1);
@@ -470,16 +507,17 @@ void JIT::emit_op_try_get_by_id(Instruction* currentInstruction)
     addSlowCase(gen.slowPathJump());
     m_getByIds.append(gen);
     
-    emitValueProfilingSite();
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
     emitStore(dst, regT1, regT0);
 }
 
-void JIT::emitSlow_op_try_get_by_id(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_try_get_by_id(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    int resultVReg = currentInstruction[1].u.operand;
-    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[3].u.operand));
+    auto bytecode = currentInstruction->as<OpTryGetById>();
+    int resultVReg = bytecode.m_dst.offset();
+    const Identifier* ident = &(m_codeBlock->identifier(bytecode.m_property));
 
     JITGetByIdGenerator& gen = m_getByIds[m_getByIdIndex++];
 
@@ -491,11 +529,12 @@ void JIT::emitSlow_op_try_get_by_id(Instruction* currentInstruction, Vector<Slow
 }
 
 
-void JIT::emit_op_get_by_id_direct(Instruction* currentInstruction)
+void JIT::emit_op_get_by_id_direct(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[3].u.operand));
+    auto bytecode = currentInstruction->as<OpGetByIdDirect>();
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    const Identifier* ident = &(m_codeBlock->identifier(bytecode.m_property));
 
     emitLoad(base, regT1, regT0);
     emitJumpSlowCaseIfNotJSCell(base, regT1);
@@ -507,38 +546,44 @@ void JIT::emit_op_get_by_id_direct(Instruction* currentInstruction)
     addSlowCase(gen.slowPathJump());
     m_getByIds.append(gen);
 
-    emitValueProfilingSite();
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
     emitStore(dst, regT1, regT0);
 }
 
-void JIT::emitSlow_op_get_by_id_direct(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_get_by_id_direct(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    int resultVReg = currentInstruction[1].u.operand;
-    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[3].u.operand));
+    auto bytecode = currentInstruction->as<OpGetByIdDirect>();
+    int resultVReg = bytecode.m_dst.offset();
+    const Identifier* ident = &(m_codeBlock->identifier(bytecode.m_property));
 
     JITGetByIdGenerator& gen = m_getByIds[m_getByIdIndex++];
 
     Label coldPathBegin = label();
 
-    Call call = callOperationWithProfile(operationGetByIdDirectOptimize, resultVReg, gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
+    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdDirectOptimize, resultVReg, gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
 
     gen.reportSlowPathCall(coldPathBegin, call);
 }
 
 
-void JIT::emit_op_get_by_id(Instruction* currentInstruction)
+void JIT::emit_op_get_by_id(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[3].u.operand));
+    auto bytecode = currentInstruction->as<OpGetById>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    const Identifier* ident = &(m_codeBlock->identifier(bytecode.m_property));
     
     emitLoad(base, regT1, regT0);
     emitJumpSlowCaseIfNotJSCell(base, regT1);
 
-    if (*ident == m_vm->propertyNames->length && shouldEmitProfiling())
-        emitArrayProfilingSiteForBytecodeIndexWithCell(regT0, regT2, m_bytecodeOffset);
+    if (*ident == m_vm->propertyNames->length && shouldEmitProfiling()) {
+        Jump notArrayLengthMode = branch8(NotEqual, AbsoluteAddress(&metadata.m_modeMetadata.mode), TrustedImm32(static_cast<uint8_t>(GetByIdMode::ArrayLength)));
+        emitArrayProfilingSiteWithCell(regT0, regT2, &metadata.m_modeMetadata.arrayLengthMode.arrayProfile);
+        notArrayLengthMode.link(this);
+    }
 
     JITGetByIdGenerator gen(
         m_codeBlock, CodeOrigin(m_bytecodeOffset), CallSiteIndex(currentInstruction), RegisterSet::stubUnavailableRegisters(),
@@ -547,32 +592,34 @@ void JIT::emit_op_get_by_id(Instruction* currentInstruction)
     addSlowCase(gen.slowPathJump());
     m_getByIds.append(gen);
 
-    emitValueProfilingSite();
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
     emitStore(dst, regT1, regT0);
 }
 
-void JIT::emitSlow_op_get_by_id(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_get_by_id(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    int resultVReg = currentInstruction[1].u.operand;
-    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[3].u.operand));
+    auto bytecode = currentInstruction->as<OpGetById>();
+    int resultVReg = bytecode.m_dst.offset();
+    const Identifier* ident = &(m_codeBlock->identifier(bytecode.m_property));
 
     JITGetByIdGenerator& gen = m_getByIds[m_getByIdIndex++];
     
     Label coldPathBegin = label();
     
-    Call call = callOperationWithProfile(operationGetByIdOptimize, resultVReg, gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
+    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdOptimize, resultVReg, gen.stubInfo(), JSValueRegs(regT1, regT0), ident->impl());
     
     gen.reportSlowPathCall(coldPathBegin, call);
 }
 
-void JIT::emit_op_get_by_id_with_this(Instruction* currentInstruction)
+void JIT::emit_op_get_by_id_with_this(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    int thisVReg = currentInstruction[3].u.operand;
-    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[4].u.operand));
+    auto bytecode = currentInstruction->as<OpGetByIdWithThis>();
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    int thisVReg = bytecode.m_thisValue.offset();
+    const Identifier* ident = &(m_codeBlock->identifier(bytecode.m_property));
     
     emitLoad(base, regT1, regT0);
     emitLoad(thisVReg, regT4, regT3);
@@ -586,35 +633,37 @@ void JIT::emit_op_get_by_id_with_this(Instruction* currentInstruction)
     addSlowCase(gen.slowPathJump());
     m_getByIdsWithThis.append(gen);
 
-    emitValueProfilingSite();
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
     emitStore(dst, regT1, regT0);
 }
 
-void JIT::emitSlow_op_get_by_id_with_this(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_get_by_id_with_this(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    int resultVReg = currentInstruction[1].u.operand;
-    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[4].u.operand));
+    auto bytecode = currentInstruction->as<OpGetByIdWithThis>();
+    int resultVReg = bytecode.m_dst.offset();
+    const Identifier* ident = &(m_codeBlock->identifier(bytecode.m_property));
 
     JITGetByIdWithThisGenerator& gen = m_getByIdsWithThis[m_getByIdWithThisIndex++];
     
     Label coldPathBegin = label();
     
-    Call call = callOperationWithProfile(operationGetByIdWithThisOptimize, resultVReg, gen.stubInfo(), JSValueRegs(regT1, regT0), JSValueRegs(regT4, regT3), ident->impl());
+    Call call = callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetByIdWithThisOptimize, resultVReg, gen.stubInfo(), JSValueRegs(regT1, regT0), JSValueRegs(regT4, regT3), ident->impl());
     
     gen.reportSlowPathCall(coldPathBegin, call);
 }
 
-void JIT::emit_op_put_by_id(Instruction* currentInstruction)
+void JIT::emit_op_put_by_id(const Instruction* currentInstruction)
 {
     // In order to be able to patch both the Structure, and the object offset, we store one pointer,
     // to just after the arguments have been loaded into registers 'hotPathBegin', and we generate code
     // such that the Structure & offset are always at the same distance from this.
     
-    int base = currentInstruction[1].u.operand;
-    int value = currentInstruction[3].u.operand;
-    int direct = currentInstruction[8].u.putByIdFlags & PutByIdIsDirect;
+    auto bytecode = currentInstruction->as<OpPutById>();
+    int base = bytecode.m_base.offset();
+    int value = bytecode.m_value.offset();
+    bool direct = !!(bytecode.m_flags & PutByIdIsDirect);
     
     emitLoad2(base, regT1, regT0, value, regT3, regT2);
     
@@ -633,12 +682,13 @@ void JIT::emit_op_put_by_id(Instruction* currentInstruction)
     m_putByIds.append(gen);
 }
 
-void JIT::emitSlow_op_put_by_id(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_put_by_id(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    int base = currentInstruction[1].u.operand;
-    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[2].u.operand));
+    auto bytecode = currentInstruction->as<OpPutById>();
+    int base = bytecode.m_base.offset();
+    const Identifier* ident = &(m_codeBlock->identifier(bytecode.m_property));
 
     Label coldPathBegin(this);
 
@@ -653,11 +703,12 @@ void JIT::emitSlow_op_put_by_id(Instruction* currentInstruction, Vector<SlowCase
     gen.reportSlowPathCall(coldPathBegin, call);
 }
 
-void JIT::emit_op_in_by_id(Instruction* currentInstruction)
+void JIT::emit_op_in_by_id(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int base = currentInstruction[2].u.operand;
-    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[3].u.operand));
+    auto bytecode = currentInstruction->as<OpInById>();
+    int dst = bytecode.m_dst.offset();
+    int base = bytecode.m_base.offset();
+    const Identifier* ident = &(m_codeBlock->identifier(bytecode.m_property));
 
     emitLoad(base, regT1, regT0);
     emitJumpSlowCaseIfNotJSCell(base, regT1);
@@ -672,12 +723,13 @@ void JIT::emit_op_in_by_id(Instruction* currentInstruction)
     emitStore(dst, regT1, regT0);
 }
 
-void JIT::emitSlow_op_in_by_id(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_in_by_id(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    int resultVReg = currentInstruction[1].u.operand;
-    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[3].u.operand));
+    auto bytecode = currentInstruction->as<OpInById>();
+    int resultVReg = bytecode.m_dst.offset();
+    const Identifier* ident = &(m_codeBlock->identifier(bytecode.m_property));
 
     JITInByIdGenerator& gen = m_inByIds[m_inByIdIndex++];
 
@@ -705,19 +757,33 @@ void JIT::emitResolveClosure(int dst, int scope, bool needsVarInjectionChecks, u
     emitStore(dst, regT1, regT0);
 }
 
-void JIT::emit_op_resolve_scope(Instruction* currentInstruction)
+void JIT::emit_op_resolve_scope(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int scope = currentInstruction[2].u.operand;
-    ResolveType resolveType = static_cast<ResolveType>(currentInstruction[4].u.operand);
-    unsigned depth = currentInstruction[5].u.operand;
+    auto bytecode = currentInstruction->as<OpResolveScope>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int dst = bytecode.m_dst.offset();
+    int scope = bytecode.m_scope.offset();
+    ResolveType resolveType = metadata.m_resolveType;
+    unsigned depth = metadata.m_localScopeDepth;
+
     auto emitCode = [&] (ResolveType resolveType) {
         switch (resolveType) {
         case GlobalProperty:
+        case GlobalPropertyWithVarInjectionChecks: {
+            JSScope* constantScope = JSScope::constantScopeForCodeBlock(resolveType, m_codeBlock);
+            RELEASE_ASSERT(constantScope);
+            emitVarInjectionCheck(needsVarInjectionChecks(resolveType));
+            load32(&metadata.m_globalLexicalBindingEpoch, regT1);
+            addSlowCase(branch32(NotEqual, AbsoluteAddress(m_codeBlock->globalObject()->addressOfGlobalLexicalBindingEpoch()), regT1));
+            move(TrustedImm32(JSValue::CellTag), regT1);
+            move(TrustedImmPtr(constantScope), regT0);
+            emitStore(dst, regT1, regT0);
+            break;
+        }
+
         case GlobalVar:
-        case GlobalLexicalVar:
-        case GlobalPropertyWithVarInjectionChecks:
         case GlobalVarWithVarInjectionChecks: 
+        case GlobalLexicalVar:
         case GlobalLexicalVarWithVarInjectionChecks: {
             JSScope* constantScope = JSScope::constantScopeForCodeBlock(resolveType, m_codeBlock);
             RELEASE_ASSERT(constantScope);
@@ -733,7 +799,7 @@ void JIT::emit_op_resolve_scope(Instruction* currentInstruction)
             break;
         case ModuleVar:
             move(TrustedImm32(JSValue::CellTag), regT1);
-            move(TrustedImmPtr(currentInstruction[6].u.jsCell.get()), regT0);
+            move(TrustedImmPtr(metadata.m_lexicalEnvironment.get()), regT0);
             emitStore(dst, regT1, regT0);
             break;
         case Dynamic:
@@ -746,10 +812,25 @@ void JIT::emit_op_resolve_scope(Instruction* currentInstruction)
         }
     };
     switch (resolveType) {
+    case GlobalProperty:
+    case GlobalPropertyWithVarInjectionChecks: {
+        JumpList skipToEnd;
+        load32(&metadata.m_resolveType, regT0);
+
+        Jump notGlobalProperty = branch32(NotEqual, regT0, TrustedImm32(resolveType));
+        emitCode(resolveType);
+        skipToEnd.append(jump());
+
+        notGlobalProperty.link(this);
+        emitCode(needsVarInjectionChecks(resolveType) ? GlobalLexicalVarWithVarInjectionChecks : GlobalLexicalVar);
+
+        skipToEnd.link(this);
+        break;
+    }
     case UnresolvedProperty:
     case UnresolvedPropertyWithVarInjectionChecks: {
         JumpList skipToEnd;
-        load32(&currentInstruction[4], regT0);
+        load32(&metadata.m_resolveType, regT0);
 
         Jump notGlobalProperty = branch32(NotEqual, regT0, TrustedImm32(GlobalProperty));
         emitCode(GlobalProperty);
@@ -809,13 +890,15 @@ void JIT::emitGetClosureVar(int scope, uintptr_t operand)
     load32(Address(regT0, JSLexicalEnvironment::offsetOfVariables() + operand * sizeof(Register) + PayloadOffset), regT0);
 }
 
-void JIT::emit_op_get_from_scope(Instruction* currentInstruction)
+void JIT::emit_op_get_from_scope(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int scope = currentInstruction[2].u.operand;
-    ResolveType resolveType = GetPutInfo(currentInstruction[4].u.operand).resolveType();
-    Structure** structureSlot = currentInstruction[5].u.structure.slot();
-    uintptr_t* operandSlot = reinterpret_cast<uintptr_t*>(&currentInstruction[6].u.pointer);
+    auto bytecode = currentInstruction->as<OpGetFromScope>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int dst = bytecode.m_dst.offset();
+    int scope = bytecode.m_scope.offset();
+    ResolveType resolveType = metadata.m_getPutInfo.resolveType();
+    Structure** structureSlot = metadata.m_structure.slot();
+    uintptr_t* operandSlot = reinterpret_cast<uintptr_t*>(&metadata.m_operand);
     
     auto emitCode = [&] (ResolveType resolveType, bool indirectLoadForOperand) {
         switch (resolveType) {
@@ -869,10 +952,25 @@ void JIT::emit_op_get_from_scope(Instruction* currentInstruction)
     };
 
     switch (resolveType) {
+    case GlobalProperty:
+    case GlobalPropertyWithVarInjectionChecks: {
+        JumpList skipToEnd;
+        load32(&metadata.m_getPutInfo, regT0);
+        and32(TrustedImm32(GetPutInfo::typeBits), regT0); // Load ResolveType into T0
+
+        Jump isNotGlobalProperty = branch32(NotEqual, regT0, TrustedImm32(resolveType));
+        emitCode(resolveType, false);
+        skipToEnd.append(jump());
+
+        isNotGlobalProperty.link(this);
+        emitCode(needsVarInjectionChecks(resolveType) ? GlobalLexicalVarWithVarInjectionChecks : GlobalLexicalVar, true);
+        skipToEnd.link(this);
+        break;
+    }
     case UnresolvedProperty:
     case UnresolvedPropertyWithVarInjectionChecks: {
         JumpList skipToEnd;
-        load32(&currentInstruction[4], regT0);
+        load32(&metadata.m_getPutInfo, regT0);
         and32(TrustedImm32(GetPutInfo::typeBits), regT0); // Load ResolveType into T0
 
         Jump isGlobalProperty = branch32(Equal, regT0, TrustedImm32(GlobalProperty));
@@ -902,16 +1000,17 @@ void JIT::emit_op_get_from_scope(Instruction* currentInstruction)
         emitCode(resolveType, false);
         break;
     }
-    emitValueProfilingSite();
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
     emitStore(dst, regT1, regT0);
 }
 
-void JIT::emitSlow_op_get_from_scope(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_get_from_scope(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    int dst = currentInstruction[1].u.operand;
-    callOperationWithProfile(operationGetFromScope, dst, currentInstruction);
+    auto bytecode = currentInstruction->as<OpGetFromScope>();
+    int dst = bytecode.m_dst.offset();
+    callOperationWithProfile(bytecode.metadata(m_codeBlock), operationGetFromScope, dst, currentInstruction);
 }
 
 void JIT::emitPutGlobalVariable(JSValue* operand, int value, WatchpointSet* set)
@@ -942,14 +1041,16 @@ void JIT::emitPutClosureVar(int scope, uintptr_t operand, int value, WatchpointS
     store32(regT2, Address(regT0, JSLexicalEnvironment::offsetOfVariables() + operand * sizeof(Register) + PayloadOffset));
 }
 
-void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
+void JIT::emit_op_put_to_scope(const Instruction* currentInstruction)
 {
-    int scope = currentInstruction[1].u.operand;
-    int value = currentInstruction[3].u.operand;
-    GetPutInfo getPutInfo = GetPutInfo(currentInstruction[4].u.operand);
+    auto bytecode = currentInstruction->as<OpPutToScope>();
+    auto& metadata = bytecode.metadata(m_codeBlock);
+    int scope = bytecode.m_scope.offset();
+    int value = bytecode.m_value.offset();
+    GetPutInfo getPutInfo = copiedGetPutInfo(bytecode);
     ResolveType resolveType = getPutInfo.resolveType();
-    Structure** structureSlot = currentInstruction[5].u.structure.slot();
-    uintptr_t* operandSlot = reinterpret_cast<uintptr_t*>(&currentInstruction[6].u.pointer);
+    Structure** structureSlot = metadata.m_structure.slot();
+    uintptr_t* operandSlot = reinterpret_cast<uintptr_t*>(&metadata.m_operand);
     
     auto emitCode = [&] (ResolveType resolveType, bool indirectLoadForOperand) {
         switch (resolveType) {
@@ -983,9 +1084,9 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
                 addSlowCase(branchIfEmpty(regT1));
             }
             if (indirectLoadForOperand)
-                emitPutGlobalVariableIndirect(bitwise_cast<JSValue**>(operandSlot), value, bitwise_cast<WatchpointSet**>(&currentInstruction[5]));
+                emitPutGlobalVariableIndirect(bitwise_cast<JSValue**>(operandSlot), value, &metadata.m_watchpointSet);
             else
-                emitPutGlobalVariable(bitwise_cast<JSValue*>(*operandSlot), value, currentInstruction[5].u.watchpointSet);
+                emitPutGlobalVariable(bitwise_cast<JSValue*>(*operandSlot), value, metadata.m_watchpointSet);
             break;
         }
         case LocalClosureVar:
@@ -993,7 +1094,7 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
         case ClosureVarWithVarInjectionChecks:
             emitWriteBarrier(scope, value, ShouldFilterValue);
             emitVarInjectionCheck(needsVarInjectionChecks(resolveType));
-            emitPutClosureVar(scope, *operandSlot, value, currentInstruction[5].u.watchpointSet);
+            emitPutClosureVar(scope, *operandSlot, value, metadata.m_watchpointSet);
             break;
         case ModuleVar:
         case Dynamic:
@@ -1006,10 +1107,29 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
     };
 
     switch (resolveType) {
+    case GlobalProperty:
+    case GlobalPropertyWithVarInjectionChecks: {
+        JumpList skipToEnd;
+        load32(&metadata.m_getPutInfo, regT0);
+        and32(TrustedImm32(GetPutInfo::typeBits), regT0); // Load ResolveType into T0
+
+        Jump isGlobalProperty = branch32(Equal, regT0, TrustedImm32(resolveType));
+        Jump isGlobalLexicalVar = branch32(Equal, regT0, TrustedImm32(needsVarInjectionChecks(resolveType) ? GlobalLexicalVarWithVarInjectionChecks : GlobalLexicalVar));
+        addSlowCase(jump()); // Dynamic, it can happen if we attempt to put a value to already-initialized const binding.
+
+        isGlobalLexicalVar.link(this);
+        emitCode(needsVarInjectionChecks(resolveType) ? GlobalLexicalVarWithVarInjectionChecks : GlobalLexicalVar, true);
+        skipToEnd.append(jump());
+
+        isGlobalProperty.link(this);
+        emitCode(resolveType, false);
+        skipToEnd.link(this);
+        break;
+    }
     case UnresolvedProperty:
     case UnresolvedPropertyWithVarInjectionChecks: {
         JumpList skipToEnd;
-        load32(&currentInstruction[4], regT0);
+        load32(&metadata.m_getPutInfo, regT0);
         and32(TrustedImm32(GetPutInfo::typeBits), regT0); // Load ResolveType into T0
 
         Jump isGlobalProperty = branch32(Equal, regT0, TrustedImm32(GlobalProperty));
@@ -1041,12 +1161,12 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
     }
 }
 
-void JIT::emitSlow_op_put_to_scope(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+void JIT::emitSlow_op_put_to_scope(const Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
     linkAllSlowCases(iter);
 
-    GetPutInfo getPutInfo = GetPutInfo(currentInstruction[4].u.operand);
-    ResolveType resolveType = getPutInfo.resolveType();
+    auto bytecode = currentInstruction->as<OpPutToScope>();
+    ResolveType resolveType = copiedGetPutInfo(bytecode).resolveType();
     if (resolveType == ModuleVar) {
         JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_throw_strict_mode_readonly_property_write_error);
         slowPathCall.call();
@@ -1054,24 +1174,26 @@ void JIT::emitSlow_op_put_to_scope(Instruction* currentInstruction, Vector<SlowC
         callOperation(operationPutToScope, currentInstruction);
 }
 
-void JIT::emit_op_get_from_arguments(Instruction* currentInstruction)
+void JIT::emit_op_get_from_arguments(const Instruction* currentInstruction)
 {
-    int dst = currentInstruction[1].u.operand;
-    int arguments = currentInstruction[2].u.operand;
-    int index = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpGetFromArguments>();
+    int dst = bytecode.m_dst.offset();
+    int arguments = bytecode.m_arguments.offset();
+    int index = bytecode.m_index;
     
     emitLoadPayload(arguments, regT0);
     load32(Address(regT0, DirectArguments::storageOffset() + index * sizeof(WriteBarrier<Unknown>) + TagOffset), regT1);
     load32(Address(regT0, DirectArguments::storageOffset() + index * sizeof(WriteBarrier<Unknown>) + PayloadOffset), regT0);
-    emitValueProfilingSite();
+    emitValueProfilingSite(bytecode.metadata(m_codeBlock));
     emitStore(dst, regT1, regT0);
 }
 
-void JIT::emit_op_put_to_arguments(Instruction* currentInstruction)
+void JIT::emit_op_put_to_arguments(const Instruction* currentInstruction)
 {
-    int arguments = currentInstruction[1].u.operand;
-    int index = currentInstruction[2].u.operand;
-    int value = currentInstruction[3].u.operand;
+    auto bytecode = currentInstruction->as<OpPutToArguments>();
+    int arguments = bytecode.m_arguments.offset();
+    int index = bytecode.m_index;
+    int value = bytecode.m_value.offset();
     
     emitWriteBarrier(arguments, value, ShouldFilterValue);
     

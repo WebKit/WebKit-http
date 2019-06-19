@@ -19,14 +19,14 @@
  */
 
 #include "config.h"
-#include "TextBreakIteratorInternalICU.h"
+#include <wtf/text/TextBreakIteratorInternalICU.h>
 
-#include "TextBreakIterator.h"
 #include <wtf/RetainPtr.h>
+#include <wtf/text/TextBreakIterator.h>
 
 namespace WTF {
 
-static Variant<TextBreakIteratorICU, TextBreakIteratorPlatform> mapModeToBackingIterator(StringView string, TextBreakIterator::Mode mode, const AtomicString& locale)
+static Variant<TextBreakIteratorICU, TextBreakIteratorPlatform> mapModeToBackingIterator(StringView string, TextBreakIterator::Mode mode, const AtomString& locale)
 {
     switch (mode) {
     case TextBreakIterator::Mode::Line:
@@ -38,7 +38,7 @@ static Variant<TextBreakIteratorICU, TextBreakIteratorPlatform> mapModeToBacking
     }
 }
 
-TextBreakIterator::TextBreakIterator(StringView string, Mode mode, const AtomicString& locale)
+TextBreakIterator::TextBreakIterator(StringView string, Mode mode, const AtomString& locale)
     : m_backing(mapModeToBackingIterator(string, mode, locale))
     , m_mode(mode)
     , m_locale(locale)

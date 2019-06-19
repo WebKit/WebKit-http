@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,17 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RealtimeMediaSourceSettings_h
-#define RealtimeMediaSourceSettings_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
 #include "RealtimeMediaSourceSupportedConstraints.h"
-#include <wtf/EnumTraits.h>
 #include <wtf/OptionSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 
 namespace WebCore {
 
@@ -104,12 +102,12 @@ public:
     void setEchoCancellation(bool echoCancellation) { m_echoCancellation = echoCancellation; }
 
     bool supportsDeviceId() const { return m_supportedConstraints.supportsDeviceId(); }
-    const AtomicString& deviceId() const { return m_deviceId; }
-    void setDeviceId(const AtomicString& deviceId) { m_deviceId = deviceId; }
+    const AtomString& deviceId() const { return m_deviceId; }
+    void setDeviceId(const AtomString& deviceId) { m_deviceId = deviceId; }
 
     bool supportsGroupId() const { return m_supportedConstraints.supportsGroupId(); }
-    const AtomicString& groupId() const { return m_groupId; }
-    void setGroupId(const AtomicString& groupId) { m_groupId = groupId; }
+    const AtomString& groupId() const { return m_groupId; }
+    void setGroupId(const AtomString& groupId) { m_groupId = groupId; }
 
     enum class DisplaySurfaceType {
         Monitor,
@@ -130,11 +128,13 @@ public:
     const RealtimeMediaSourceSupportedConstraints& supportedConstraints() const { return m_supportedConstraints; }
     void setSupportedConstraints(const RealtimeMediaSourceSupportedConstraints& supportedConstraints) { m_supportedConstraints = supportedConstraints; }
 
-    const AtomicString& label() const { return m_label; }
-    void setLabel(const AtomicString& label) { m_label = label; }
+    const AtomString& label() const { return m_label; }
+    void setLabel(const AtomString& label) { m_label = label; }
 
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, RealtimeMediaSourceSettings&);
+
+    static String convertFlagsToString(const OptionSet<RealtimeMediaSourceSettings::Flag>);
 
 private:
     uint32_t m_width { 0 };
@@ -147,9 +147,9 @@ private:
     uint32_t m_sampleSize { 0 };
     bool m_echoCancellation { 0 };
 
-    AtomicString m_deviceId;
-    AtomicString m_groupId;
-    AtomicString m_label;
+    AtomString m_deviceId;
+    AtomString m_groupId;
+    AtomString m_label;
 
     DisplaySurfaceType m_displaySurface { DisplaySurfaceType::Invalid };
     bool m_logicalSurface { 0 };
@@ -193,6 +193,8 @@ bool RealtimeMediaSourceSettings::decode(Decoder& decoder, RealtimeMediaSourceSe
         && decoder.decodeEnum(settings.m_facingMode);
 }
 
+String convertEnumerationToString(RealtimeMediaSourceSettings::VideoFacingMode);
+
 } // namespace WebCore
 
 namespace WTF {
@@ -208,8 +210,25 @@ template <> struct EnumTraits<WebCore::RealtimeMediaSourceSettings::VideoFacingM
     >;
 };
 
-}
+template<typename Type>
+struct LogArgument;
 
-#endif // RealtimeMediaSourceSettings_h
+template <>
+struct LogArgument<WebCore::RealtimeMediaSourceSettings::VideoFacingMode> {
+    static String toString(const WebCore::RealtimeMediaSourceSettings::VideoFacingMode mode)
+    {
+        return convertEnumerationToString(mode);
+    }
+};
+
+template <>
+struct LogArgument<OptionSet<WebCore::RealtimeMediaSourceSettings::Flag>> {
+    static String toString(const OptionSet<WebCore::RealtimeMediaSourceSettings::Flag> flags)
+    {
+        return WebCore::RealtimeMediaSourceSettings::convertFlagsToString(flags);
+    }
+};
+
+}; // namespace WTF
 
 #endif

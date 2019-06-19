@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CheckedArithmetic_h
-#define CheckedArithmetic_h
+#pragma once
 
 #include <wtf/Assertions.h>
 
@@ -71,6 +70,49 @@ enum class CheckedState {
     DidNotOverflow
 };
 
+class AssertNoOverflow {
+public:
+    static NO_RETURN_DUE_TO_ASSERT void overflowed()
+    {
+        ASSERT_NOT_REACHED();
+    }
+
+    void clearOverflow() { }
+
+    static NO_RETURN_DUE_TO_CRASH void crash()
+    {
+        CRASH();
+    }
+
+public:
+    constexpr bool hasOverflowed() const { return false; }
+};
+
+class ConditionalCrashOnOverflow {
+public:
+    void overflowed()
+    {
+        m_overflowed = true;
+        if (m_shouldCrashOnOverflow)
+            crash();
+    }
+
+    bool shouldCrashOnOverflow() const { return m_shouldCrashOnOverflow; }
+    void setShouldCrashOnOverflow(bool value) { m_shouldCrashOnOverflow = value; }
+
+    bool hasOverflowed() const { return m_overflowed; }
+    void clearOverflow() { m_overflowed = false; }
+
+    static NO_RETURN_DUE_TO_CRASH void crash()
+    {
+        CRASH();
+    }
+
+private:
+    bool m_overflowed { false };
+    bool m_shouldCrashOnOverflow { true };
+};
+
 class CrashOnOverflow {
 public:
     static NO_RETURN_DUE_TO_CRASH void overflowed()
@@ -96,11 +138,6 @@ protected:
     {
     }
 
-    void overflowed()
-    {
-        m_overflowed = true;
-    }
-
     void clearOverflow()
     {
         m_overflowed = false;
@@ -113,6 +150,7 @@ protected:
 
 public:
     bool hasOverflowed() const { return m_overflowed; }
+    void overflowed() { m_overflowed = true; }
 
 private:
     unsigned char m_overflowed;
@@ -207,6 +245,11 @@ template <typename T> struct RemoveChecked {
     static const CleanType DefaultValue = 0;    
 };
 
+template <typename T> struct RemoveChecked<Checked<T, ConditionalCrashOnOverflow>> {
+    using CleanType = typename RemoveChecked<T>::CleanType;
+    static const CleanType DefaultValue = 0;
+};
+
 template <typename T> struct RemoveChecked<Checked<T, CrashOnOverflow>> {
     typedef typename RemoveChecked<T>::CleanType CleanType;
     static const CleanType DefaultValue = 0;
@@ -270,7 +313,7 @@ template <typename LHS, typename RHS, typename ResultType> struct ArithmeticOper
 
     static inline bool add(LHS lhs, RHS rhs, ResultType& result) WARN_UNUSED_RETURN
     {
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
         ResultType temp;
         if (__builtin_add_overflow(lhs, rhs, &temp))
             return false;
@@ -294,7 +337,7 @@ template <typename LHS, typename RHS, typename ResultType> struct ArithmeticOper
 
     static inline bool sub(LHS lhs, RHS rhs, ResultType& result) WARN_UNUSED_RETURN
     {
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
         ResultType temp;
         if (__builtin_sub_overflow(lhs, rhs, &temp))
             return false;
@@ -317,7 +360,7 @@ template <typename LHS, typename RHS, typename ResultType> struct ArithmeticOper
 
     static inline bool multiply(LHS lhs, RHS rhs, ResultType& result) WARN_UNUSED_RETURN
     {
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
         ResultType temp;
         if (__builtin_mul_overflow(lhs, rhs, &temp))
             return false;
@@ -356,7 +399,7 @@ template <typename LHS, typename RHS, typename ResultType> struct ArithmeticOper
     // LHS and RHS are unsigned types so bounds checks are nice and easy
     static inline bool add(LHS lhs, RHS rhs, ResultType& result) WARN_UNUSED_RETURN
     {
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
         ResultType temp;
         if (__builtin_add_overflow(lhs, rhs, &temp))
             return false;
@@ -373,7 +416,7 @@ template <typename LHS, typename RHS, typename ResultType> struct ArithmeticOper
 
     static inline bool sub(LHS lhs, RHS rhs, ResultType& result) WARN_UNUSED_RETURN
     {
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
         ResultType temp;
         if (__builtin_sub_overflow(lhs, rhs, &temp))
             return false;
@@ -390,7 +433,7 @@ template <typename LHS, typename RHS, typename ResultType> struct ArithmeticOper
 
     static inline bool multiply(LHS lhs, RHS rhs, ResultType& result) WARN_UNUSED_RETURN
     {
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
         ResultType temp;
         if (__builtin_mul_overflow(lhs, rhs, &temp))
             return false;
@@ -415,7 +458,7 @@ template <typename LHS, typename RHS, typename ResultType> struct ArithmeticOper
 template <typename ResultType> struct ArithmeticOperations<int, unsigned, ResultType, true, false> {
     static inline bool add(int64_t lhs, int64_t rhs, ResultType& result)
     {
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
         ResultType temp;
         if (__builtin_add_overflow(lhs, rhs, &temp))
             return false;
@@ -434,7 +477,7 @@ template <typename ResultType> struct ArithmeticOperations<int, unsigned, Result
     
     static inline bool sub(int64_t lhs, int64_t rhs, ResultType& result)
     {
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
         ResultType temp;
         if (__builtin_sub_overflow(lhs, rhs, &temp))
             return false;
@@ -453,7 +496,7 @@ template <typename ResultType> struct ArithmeticOperations<int, unsigned, Result
 
     static inline bool multiply(int64_t lhs, int64_t rhs, ResultType& result)
     {
-#if COMPILER(GCC_OR_CLANG)
+#if COMPILER(GCC_COMPATIBLE)
         ResultType temp;
         if (__builtin_mul_overflow(lhs, rhs, &temp))
             return false;
@@ -498,9 +541,25 @@ template <typename ResultType> struct ArithmeticOperations<unsigned, int, Result
     }
 };
 
+template <class OverflowHandler, typename = typename std::enable_if<!std::is_scalar<OverflowHandler>::value>::type>
+inline constexpr bool observesOverflow() { return true; }
+
+template <>
+inline constexpr bool observesOverflow<AssertNoOverflow>() { return !ASSERT_DISABLED; }
+
 template <typename U, typename V, typename R> static inline bool safeAdd(U lhs, V rhs, R& result)
 {
     return ArithmeticOperations<U, V, R>::add(lhs, rhs, result);
+    return true;
+}
+
+template <class OverflowHandler, typename U, typename V, typename R, typename = typename std::enable_if<!std::is_scalar<OverflowHandler>::value>::type>
+static inline bool safeAdd(U lhs, V rhs, R& result)
+{
+    if (observesOverflow<OverflowHandler>())
+        return safeAdd(lhs, rhs, result);
+    result = lhs + rhs;
+    return true;
 }
 
 template <typename U, typename V, typename R> static inline bool safeSub(U lhs, V rhs, R& result)
@@ -508,9 +567,27 @@ template <typename U, typename V, typename R> static inline bool safeSub(U lhs, 
     return ArithmeticOperations<U, V, R>::sub(lhs, rhs, result);
 }
 
+template <class OverflowHandler, typename U, typename V, typename R, typename = typename std::enable_if<!std::is_scalar<OverflowHandler>::value>::type>
+static inline bool safeSub(U lhs, V rhs, R& result)
+{
+    if (observesOverflow<OverflowHandler>())
+        return safeSub(lhs, rhs, result);
+    result = lhs - rhs;
+    return true;
+}
+
 template <typename U, typename V, typename R> static inline bool safeMultiply(U lhs, V rhs, R& result)
 {
     return ArithmeticOperations<U, V, R>::multiply(lhs, rhs, result);
+}
+
+template <class OverflowHandler, typename U, typename V, typename R, typename = typename std::enable_if<!std::is_scalar<OverflowHandler>::value>::type>
+static inline bool safeMultiply(U lhs, V rhs, R& result)
+{
+    if (observesOverflow<OverflowHandler>())
+        return safeMultiply(lhs, rhs, result);
+    result = lhs * rhs;
+    return true;
 }
 
 template <typename U, typename V> static inline bool safeEquals(U lhs, V rhs)
@@ -532,6 +609,13 @@ public:
         : m_value(0)
     {
         this->overflowed();
+    }
+
+    Checked(const Checked& value)
+    {
+        if (value.hasOverflowed())
+            this->overflowed();
+        m_value = static_cast<T>(value.m_value);
     }
 
     template <typename U> Checked(U value)
@@ -632,11 +716,12 @@ public:
     }
 
     // Value accessors. unsafeGet() will crash if there's been an overflow.
-    T unsafeGet() const
+    template<typename U = T>
+    U unsafeGet() const
     {
         if (this->hasOverflowed())
             this->crash();
-        return m_value;
+        return static_cast<U>(m_value);
     }
     
     inline CheckedState safeGet(T& value) const WARN_UNUSED_RETURN
@@ -650,21 +735,21 @@ public:
     // Mutating assignment
     template <typename U> const Checked operator+=(U rhs)
     {
-        if (!safeAdd(m_value, rhs, m_value))
+        if (!safeAdd<OverflowHandler>(m_value, rhs, m_value))
             this->overflowed();
         return *this;
     }
 
     template <typename U> const Checked operator-=(U rhs)
     {
-        if (!safeSub(m_value, rhs, m_value))
+        if (!safeSub<OverflowHandler>(m_value, rhs, m_value))
             this->overflowed();
         return *this;
     }
 
     template <typename U> const Checked operator*=(U rhs)
     {
-        if (!safeMultiply(m_value, rhs, m_value))
+        if (!safeMultiply<OverflowHandler>(m_value, rhs, m_value))
             this->overflowed();
         return *this;
     }
@@ -788,7 +873,7 @@ template <typename U, typename V, typename OverflowHandler> static inline Checke
     V y = 0;
     bool overflowed = lhs.safeGet(x) == CheckedState::DidOverflow || rhs.safeGet(y) == CheckedState::DidOverflow;
     typename Result<U, V>::ResultType result = 0;
-    overflowed |= !safeAdd(x, y, result);
+    overflowed |= !safeAdd<OverflowHandler>(x, y, result);
     if (overflowed)
         return ResultOverflowed;
     return result;
@@ -800,7 +885,7 @@ template <typename U, typename V, typename OverflowHandler> static inline Checke
     V y = 0;
     bool overflowed = lhs.safeGet(x) == CheckedState::DidOverflow || rhs.safeGet(y) == CheckedState::DidOverflow;
     typename Result<U, V>::ResultType result = 0;
-    overflowed |= !safeSub(x, y, result);
+    overflowed |= !safeSub<OverflowHandler>(x, y, result);
     if (overflowed)
         return ResultOverflowed;
     return result;
@@ -812,7 +897,7 @@ template <typename U, typename V, typename OverflowHandler> static inline Checke
     V y = 0;
     bool overflowed = lhs.safeGet(x) == CheckedState::DidOverflow || rhs.safeGet(y) == CheckedState::DidOverflow;
     typename Result<U, V>::ResultType result = 0;
-    overflowed |= !safeMultiply(x, y, result);
+    overflowed |= !safeMultiply<OverflowHandler>(x, y, result);
     if (overflowed)
         return ResultOverflowed;
     return result;
@@ -904,6 +989,7 @@ template<typename T, typename... Args> bool productOverflows(Args... args)
 
 }
 
+using WTF::AssertNoOverflow;
 using WTF::Checked;
 using WTF::CheckedState;
 using WTF::CheckedInt8;
@@ -915,11 +1001,10 @@ using WTF::CheckedUint32;
 using WTF::CheckedInt64;
 using WTF::CheckedUint64;
 using WTF::CheckedSize;
+using WTF::ConditionalCrashOnOverflow;
 using WTF::CrashOnOverflow;
 using WTF::RecordOverflow;
 using WTF::checkedSum;
 using WTF::differenceOverflows;
 using WTF::productOverflows;
 using WTF::sumOverflows;
-
-#endif

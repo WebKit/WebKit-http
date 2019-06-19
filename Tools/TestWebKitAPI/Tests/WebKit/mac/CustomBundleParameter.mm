@@ -25,7 +25,7 @@
 
 #include "config.h"
 
-#if WK_HAVE_C_SPI && WK_API_ENABLED
+#if WK_HAVE_C_SPI
 
 #import "CustomBundleObject.h"
 #import "PlatformUtilities.h"
@@ -76,7 +76,7 @@ static void didFinishNavigation(WKPageRef page, WKNavigationRef, WKTypeRef userD
 
 TEST(WebKit, CustomBundleParameter)
 {
-    WKRetainPtr<WKContextRef> context(AdoptWK, Util::createContextForInjectedBundleTest("CustomBundleParameterTest"));
+    WKRetainPtr<WKContextRef> context = adoptWK(Util::createContextForInjectedBundleTest("CustomBundleParameterTest"));
     
     WKContextInjectedBundleClientV0 injectedBundleClient;
     memset(&injectedBundleClient, 0, sizeof(injectedBundleClient));
@@ -96,7 +96,7 @@ TEST(WebKit, CustomBundleParameter)
     
     WKPageSetPageNavigationClient(webView.page(), &loaderClient.base);
     
-    WKRetainPtr<WKURLRef> url(AdoptWK, Util::createURLForResource("simple", "html"));
+    WKRetainPtr<WKURLRef> url = adoptWK(Util::createURLForResource("simple", "html"));
     WKPageLoadURL(webView.page(), url.get());
     
     Util::run(&done);

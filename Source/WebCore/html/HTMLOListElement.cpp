@@ -30,11 +30,11 @@
 #include "RenderListItem.h"
 #include <wtf/IsoMallocInlines.h>
 
-// FIXME: There should be a standard way to turn a std::expected into a std::optional.
+// FIXME: There should be a standard way to turn a std::expected into a Optional.
 // Maybe we should put this into the header file for Expected and give it a better name.
-template<typename T, typename E> inline std::optional<T> optionalValue(Expected<T, E>&& expected)
+template<typename T, typename E> inline Optional<T> optionalValue(Expected<T, E>&& expected)
 {
-    return expected ? std::optional<T>(WTFMove(expected.value())) : std::nullopt;
+    return expected ? Optional<T>(WTFMove(expected.value())) : WTF::nullopt;
 }
 
 namespace WebCore {
@@ -66,7 +66,7 @@ bool HTMLOListElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLElement::isPresentationAttribute(name);
 }
 
-void HTMLOListElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
+void HTMLOListElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomString& value, MutableStyleProperties& style)
 {
     if (name == typeAttr) {
         if (value == "a")
@@ -83,7 +83,7 @@ void HTMLOListElement::collectStyleForPresentationAttribute(const QualifiedName&
         HTMLElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
-void HTMLOListElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLOListElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == startAttr) {
         int oldStart = start();

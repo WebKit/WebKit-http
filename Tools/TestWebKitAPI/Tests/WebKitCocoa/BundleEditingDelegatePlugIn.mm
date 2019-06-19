@@ -25,8 +25,6 @@
 
 #import "config.h"
 
-#if WK_API_ENABLED
-
 #import "BundleEditingDelegateProtocol.h"
 #import "PlatformUtilities.h"
 #import <WebKit/WKWebProcessPlugIn.h>
@@ -47,7 +45,7 @@
     RetainPtr<id <BundleEditingDelegateProtocol>> _remoteObject;
     BOOL _editingDelegateShouldInsertText;
     BOOL _shouldOverridePerformTwoStepDrop;
-    RetainPtr<NSDictionary<NSString *, NSString *>> _mimeTypeToReplacementURLMap;
+    BOOL _shouldWriteEmptyData;
 }
 
 - (void)webProcessPlugIn:(WKWebProcessPlugInController *)plugInController didCreateBrowserContextController:(WKWebProcessPlugInBrowserContextController *)browserContextController
@@ -63,8 +61,8 @@
     } else
         _editingDelegateShouldInsertText = YES;
 
+    _shouldWriteEmptyData = [[plugInController.parameters valueForKey:@"EditingDelegateShouldWriteEmptyData"] boolValue];
     _shouldOverridePerformTwoStepDrop = [[plugInController.parameters valueForKey:@"BundleOverridePerformTwoStepDrop"] boolValue];
-    _mimeTypeToReplacementURLMap = [plugInController.parameters valueForKey:@"MIMETypeToReplacementURLMap"];
 
     _WKRemoteObjectInterface *interface = [_WKRemoteObjectInterface remoteObjectInterfaceWithProtocol:@protocol(BundleEditingDelegateProtocol)];
     _remoteObject = [browserContextController._remoteObjectRegistry remoteObjectProxyWithInterface:interface];
@@ -87,7 +85,7 @@
 
 - (NSDictionary<NSString *, NSData *> *)_webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller pasteboardDataForRange:(WKWebProcessPlugInRangeHandle *)range
 {
-    return @{ @"org.webkit.data" : [NSData dataWithBytesNoCopy:(void*)"hello" length:5 freeWhenDone:NO] };
+    return @{ @"org.webkit.data" : _shouldWriteEmptyData ? NSData.data : [NSData dataWithBytesNoCopy:(void*)"hello" length:5 freeWhenDone:NO] };
 }
 
 - (void)_webProcessPlugInBrowserContextControllerDidWriteToPasteboard:(WKWebProcessPlugInBrowserContextController *)controller
@@ -100,12 +98,4 @@
     return _shouldOverridePerformTwoStepDrop;
 }
 
-- (NSString *)_webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller replacementURLForResource:(NSData *)resourceData mimeType:(NSString *)mimeType
-{
-    assert(!!resourceData);
-    return [_mimeTypeToReplacementURLMap objectForKey:mimeType];
-}
-
 @end
-
-#endif // WK_API_ENABLED

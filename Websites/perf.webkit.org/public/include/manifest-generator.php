@@ -9,6 +9,7 @@ class ManifestGenerator {
 
     function __construct($db) {
         $this->db = $db;
+        $this->elapsed_time = NULL;
     }
 
     function generate() {
@@ -25,8 +26,10 @@ class ManifestGenerator {
         foreach ($repositories_with_commit as &$row)
             $row = $row['commit_repository'];
 
-        $tests = (object)$this->tests();
+        // Query test metrics before tests so that every test a test metric references is guaranteed to exist
+        // even if there were new test metrics added by the time we fetched tests.
         $metrics = (object)$this->metrics();
+        $tests = (object)$this->tests();
         $platforms = (object)$this->platforms($platform_table, false);
         $dashboard = (object)$this->platforms($platform_table, true);
         $repositories = (object)$this->repositories($repositories_table, $repositories_with_commit);
@@ -47,7 +50,7 @@ class ManifestGenerator {
             'testAgeToleranceInHours' => config('testAgeToleranceInHours'),
         );
 
-        $this->manifest['elapsedTime'] = (microtime(true) - $start_time) * 1000;
+        $this->elapsed_time = (microtime(true) - $start_time) * 1000;
 
         return TRUE;
     }
@@ -55,7 +58,7 @@ class ManifestGenerator {
     function manifest() { return $this->manifest; }
 
     function store() {
-        return generate_data_file('manifest.json', json_encode($this->manifest));
+        return generate_json_data_with_elapsed_time_if_needed('manifest.json', $this->manifest, $this->elapsed_time);
     }
 
     private function tests() {

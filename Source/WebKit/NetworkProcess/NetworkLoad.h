@@ -31,37 +31,34 @@
 #include "NetworkLoadParameters.h"
 #include <WebCore/AuthenticationChallenge.h>
 #include <wtf/CompletionHandler.h>
-#include <wtf/Optional.h>
 #include <wtf/text/WTFString.h>
 
-#if ENABLE(NETWORK_CAPTURE)
-#include "NetworkCaptureRecorder.h"
-#include "NetworkCaptureReplayer.h"
-#endif
+namespace WebCore {
+class BlobRegistryImpl;
+}
 
 namespace WebKit {
 
-class NetworkLoad final : private NetworkDataTaskClient
-{
+class NetworkProcess;
+
+class NetworkLoad final : private NetworkDataTaskClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    NetworkLoad(NetworkLoadClient&, NetworkLoadParameters&&, NetworkSession&);
+    NetworkLoad(NetworkLoadClient&, WebCore::BlobRegistryImpl*, NetworkLoadParameters&&, NetworkSession&);
     ~NetworkLoad();
 
-    void setDefersLoading(bool);
     void cancel();
 
     bool isAllowedToAskUserForCredentials() const;
 
     const WebCore::ResourceRequest& currentRequest() const { return m_currentRequest; }
-    void clearCurrentRequest() { m_currentRequest = WebCore::ResourceRequest(); }
+    void updateRequestAfterRedirection(WebCore::ResourceRequest&) const;
 
     const NetworkLoadParameters& parameters() const { return m_parameters; }
 
     void continueWillSendRequest(WebCore::ResourceRequest&&);
-    void continueDidReceiveResponse();
 
-    void convertTaskToDownload(PendingDownload&, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
+    void convertTaskToDownload(PendingDownload&, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, ResponseCompletionHandler&&);
     void setPendingDownloadID(DownloadID);
     void setSuggestedFilename(const String&);
     void setPendingDownload(PendingDownload&);
@@ -72,40 +69,33 @@ public:
     String description() const;
 
 private:
-#if ENABLE(NETWORK_CAPTURE)
-    void initializeForRecord(NetworkSession&);
-    void initializeForReplay(NetworkSession&);
-#endif
-    void initialize(NetworkSession&);
+    void initialize(NetworkSession&, WebCore::BlobRegistryImpl*);
 
     // NetworkDataTaskClient
     void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler&&) final;
     void didReceiveChallenge(WebCore::AuthenticationChallenge&&, ChallengeCompletionHandler&&) final;
-    void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler&&) final;
+    void didReceiveResponse(WebCore::ResourceResponse&&, ResponseCompletionHandler&&) final;
     void didReceiveData(Ref<WebCore::SharedBuffer>&&) final;
     void didCompleteWithError(const WebCore::ResourceError&, const WebCore::NetworkLoadMetrics&) final;
     void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend) final;
     void wasBlocked() final;
     void cannotShowURL() final;
+    void wasBlockedByRestrictions() final;
 
     void notifyDidReceiveResponse(WebCore::ResourceResponse&&, ResponseCompletionHandler&&);
     void throttleDelayCompleted();
 
     std::reference_wrapper<NetworkLoadClient> m_client;
+    Ref<NetworkProcess> m_networkProcess;
     const NetworkLoadParameters m_parameters;
     CompletionHandler<void(WebCore::ResourceRequest&&)> m_redirectCompletionHandler;
     RefPtr<NetworkDataTask> m_task;
-    ResponseCompletionHandler m_responseCompletionHandler;
     
     struct Throttle;
     std::unique_ptr<Throttle> m_throttle;
+    Seconds m_loadThrottleLatency;
 
     WebCore::ResourceRequest m_currentRequest; // Updated on redirects.
-
-#if ENABLE(NETWORK_CAPTURE)
-    std::unique_ptr<NetworkCapture::Recorder> m_recorder;
-    std::unique_ptr<NetworkCapture::Replayer> m_replayer;
-#endif
 };
 
 } // namespace WebKit

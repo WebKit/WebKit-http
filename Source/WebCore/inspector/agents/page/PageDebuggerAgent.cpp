@@ -37,7 +37,6 @@
 #include "EventListener.h"
 #include "EventTarget.h"
 #include "Frame.h"
-#include "InspectorOverlay.h"
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
 #include "Page.h"
@@ -57,11 +56,9 @@ namespace WebCore {
 
 using namespace Inspector;
 
-PageDebuggerAgent::PageDebuggerAgent(PageAgentContext& context, InspectorPageAgent* pageAgent, InspectorOverlay* overlay)
+PageDebuggerAgent::PageDebuggerAgent(PageAgentContext& context)
     : WebDebuggerAgent(context)
-    , m_page(context.inspectedPage)
-    , m_pageAgent(pageAgent)
-    , m_overlay(overlay)
+    , m_inspectedPage(context.inspectedPage)
 {
 }
 
@@ -83,7 +80,7 @@ String PageDebuggerAgent::sourceMapURLForScript(const Script& script)
     static NeverDestroyed<String> sourceMapHTTPHeaderDeprecated(MAKE_STATIC_STRING_IMPL("X-SourceMap"));
 
     if (!script.url.isEmpty()) {
-        CachedResource* resource = m_pageAgent->cachedResource(&m_page.mainFrame(), URL(ParsedURLString, script.url));
+        CachedResource* resource = InspectorPageAgent::cachedResource(&m_inspectedPage.mainFrame(), URL({ }, script.url));
         if (resource) {
             String sourceMapHeader = resource->response().httpHeaderField(sourceMapHTTPHeader);
             if (!sourceMapHeader.isEmpty())
@@ -118,13 +115,13 @@ void PageDebuggerAgent::unmuteConsole()
 
 void PageDebuggerAgent::breakpointActionLog(JSC::ExecState& state, const String& message)
 {
-    m_pageAgent->page().console().addMessage(MessageSource::JS, MessageLevel::Log, message, createScriptCallStack(&state));
+    m_inspectedPage.console().addMessage(MessageSource::JS, MessageLevel::Log, message, createScriptCallStack(&state));
 }
 
 InjectedScript PageDebuggerAgent::injectedScriptForEval(ErrorString& errorString, const int* executionContextId)
 {
     if (!executionContextId) {
-        JSC::ExecState* scriptState = mainWorldExecState(&m_pageAgent->mainFrame());
+        JSC::ExecState* scriptState = mainWorldExecState(&m_inspectedPage.mainFrame());
         return injectedScriptManager().injectedScriptFor(scriptState);
     }
 
@@ -133,11 +130,6 @@ InjectedScript PageDebuggerAgent::injectedScriptForEval(ErrorString& errorString
         errorString = "Execution context with given id not found."_s;
 
     return injectedScript;
-}
-
-void PageDebuggerAgent::setOverlayMessage(ErrorString&, const String* message)
-{
-    m_overlay->setPausedInDebuggerMessage(message);
 }
 
 void PageDebuggerAgent::didClearMainFrameWindowObject()
@@ -164,7 +156,7 @@ void PageDebuggerAgent::mainFrameNavigated()
     setSuppressAllPauses(false);
 }
 
-void PageDebuggerAgent::didAddEventListener(EventTarget& target, const AtomicString& eventType, EventListener& listener, bool capture)
+void PageDebuggerAgent::didAddEventListener(EventTarget& target, const AtomString& eventType, EventListener& listener, bool capture)
 {
     if (!breakpointsActive())
         return;
@@ -177,10 +169,8 @@ void PageDebuggerAgent::didAddEventListener(EventTarget& target, const AtomicStr
         return;
 
     auto& registeredListener = eventListeners.at(position);
-    if (m_registeredEventListeners.contains(registeredListener.get())) {
-        ASSERT_NOT_REACHED();
+    if (m_registeredEventListeners.contains(registeredListener.get()))
         return;
-    }
 
     JSC::ExecState* scriptState = target.scriptExecutionContext()->execState();
     if (!scriptState)
@@ -192,7 +182,7 @@ void PageDebuggerAgent::didAddEventListener(EventTarget& target, const AtomicStr
     didScheduleAsyncCall(scriptState, InspectorDebuggerAgent::AsyncCallType::EventListener, identifier, registeredListener->isOnce());
 }
 
-void PageDebuggerAgent::willRemoveEventListener(EventTarget& target, const AtomicString& eventType, EventListener& listener, bool capture)
+void PageDebuggerAgent::willRemoveEventListener(EventTarget& target, const AtomString& eventType, EventListener& listener, bool capture)
 {
     auto& eventListeners = target.eventListeners(eventType);
     size_t listenerIndex = eventListeners.findMatching([&](auto& registeredListener) {
@@ -242,10 +232,8 @@ void PageDebuggerAgent::didPostMessage(const TimerBase& timer, JSC::ExecState& s
     if (!breakpointsActive())
         return;
 
-    if (m_postMessageTimers.contains(&timer)) {
-        ASSERT_NOT_REACHED();
+    if (m_postMessageTimers.contains(&timer))
         return;
-    }
 
     int postMessageIdentifier = m_nextPostMessageIdentifier++;
     m_postMessageTimers.set(&timer, postMessageIdentifier);

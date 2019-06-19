@@ -23,45 +23,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-body[dir] .resource-headers > section > .details {
+body[dir] .resource-headers > section.summary > .details {
     border-color: var(--network-system-color);
 }
 
-body[dir] .resource-headers > section.headers > .details {
+body[dir] .resource-headers > section:matches(.redirect, .headers) > .details {
     border-color: var(--network-header-color);
 }
 
-body[dir] .resource-headers > section.error > .details {
-    border-color: var(--network-error-color);
+.resource-headers .url + .url > .key {
+    color: transparent;
 }
 
-.resource-headers > section.error .key {
-    color: var(--network-error-color);
-}
-
-.resource-headers .details {
-    white-space: normal;
-    word-break: break-all;
-}
-
-.resource-headers .details .pair {
-    --resource-headers-value-indent: 15px;
-    -webkit-margin-start: var(--resource-headers-value-indent);
-}
-
-body[dir=rtl] .resource-headers .details .pair {
-    /* Don't include indents in RTL */
-    --resource-headers-value-indent: 0px;
-}
-
-.resource-headers .details .key {
+.resource-headers .summary .key {
     color: var(--network-system-color);
-    font-weight: 500;
-    -webkit-margin-start: calc(var(--resource-headers-value-indent) * -1);
-}
-
-.resource-headers .value {
-    color: black;
 }
 
 .resource-headers .header > .key {
@@ -73,13 +48,31 @@ body[dir=rtl] .resource-headers .details .pair {
     color: var(--network-pseudo-header-color);
 }
 
-.resource-headers .go-to-arrow {
-    vertical-align: top;
-    bottom: 1px;
+.resource-headers .go-to-link {
+    -webkit-user-select: text;
 }
 
-.resource-headers.showing-find-banner .search-highlight {
-    color: black;
-    background-color: hsla(53, 83%, 53%, 0.2);
-    border-bottom: 1px solid hsl(47, 82%, 60%);
+.resource-headers .pair.initiator > .value {
+    display: inline-flex;
+    align-items: center;
+}
+
+.resource-headers .call-stack {
+    position: relative;
+    width: 16px;
+    height: 13px;
+    margin-left: 3px;
+    content: url(../Images/CallStack.svg);
+    opacity: 0.5;
+    -webkit-user-select: none;
+}
+
+.resource-headers .call-stack:hover {
+    opacity: 0.8;
+}
+
+@media (prefers-color-scheme: dark) {
+    .resource-headers .call-stack {
+        filter: invert();
+    }
 }

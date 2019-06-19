@@ -29,6 +29,7 @@
 #include "RegularExpression.h"
 
 #include "Yarr.h"
+#include "YarrFlags.h"
 #include "YarrInterpreter.h"
 #include <wtf/Assertions.h>
 #include <wtf/BumpPointerAllocator.h>
@@ -42,11 +43,6 @@ public:
         return adoptRef(*new Private(pattern, caseSensitivity, multilineMode, unicodeMode));
     }
 
-    int lastMatchLength { -1 };
-
-    unsigned m_numSubpatterns;
-    std::unique_ptr<JSC::Yarr::BytecodePattern> m_regExpByteCode;
-
 private:
     Private(const String& pattern, TextCaseSensitivity caseSensitivity, MultilineMode multilineMode, UnicodeMode unicodeMode)
         : m_regExpByteCode(compile(pattern, caseSensitivity, multilineMode, unicodeMode))
@@ -55,16 +51,16 @@ private:
 
     std::unique_ptr<JSC::Yarr::BytecodePattern> compile(const String& patternString, TextCaseSensitivity caseSensitivity, MultilineMode multilineMode, UnicodeMode unicodeMode)
     {
-        RegExpFlags flags = NoFlags;
+        OptionSet<JSC::Yarr::Flags> flags;
 
         if (caseSensitivity == TextCaseInsensitive)
-            flags = static_cast<RegExpFlags>(flags | FlagIgnoreCase);
+            flags.add(Flags::IgnoreCase);
 
         if (multilineMode == MultilineEnabled)
-            flags = static_cast<RegExpFlags>(flags | FlagMultiline);
+            flags.add(Flags::Multiline);
 
         if (unicodeMode == UnicodeAwareMode)
-            flags = static_cast<RegExpFlags>(flags | FlagUnicode);
+            flags.add(Flags::Unicode);
 
         JSC::Yarr::YarrPattern pattern(patternString, flags, m_constructionErrorCode);
         if (JSC::Yarr::hasError(m_constructionErrorCode)) {
@@ -74,11 +70,16 @@ private:
 
         m_numSubpatterns = pattern.m_numSubpatterns;
 
-        return JSC::Yarr::byteCompile(pattern, &m_regexAllocator);
+        return JSC::Yarr::byteCompile(pattern, &m_regexAllocator, m_constructionErrorCode);
     }
 
-    BumpPointerAllocator m_regexAllocator;
     JSC::Yarr::ErrorCode m_constructionErrorCode { Yarr::ErrorCode::NoError };
+    BumpPointerAllocator m_regexAllocator;
+
+public:
+    int lastMatchLength { -1 };
+    unsigned m_numSubpatterns;
+    std::unique_ptr<JSC::Yarr::BytecodePattern> m_regExpByteCode;
 };
 
 RegularExpression::RegularExpression(const String& pattern, TextCaseSensitivity caseSensitivity, MultilineMode multilineMode, UnicodeMode unicodeMode)

@@ -33,17 +33,29 @@
 // Macro taken from WTF/wtf/Platform.h
 #if defined __has_include && __has_include(<CoreFoundation/CFPriv.h>)
 
-#if (defined(TARGET_IPHONE_SIMULATOR)  && TARGET_IPHONE_SIMULATOR)
+#if (defined(TARGET_IPHONE_SIMULATOR) && TARGET_IPHONE_SIMULATOR)
 #define ENABLE_VCP_ENCODER 0
-#elif (defined(TARGET_OS_IPHONE)  && TARGET_OS_IPHONE)
-#define ENABLE_VCP_ENCODER 0
-#elif (defined(TARGET_OS_MAC)  && TARGET_OS_MAC)
-#define ENABLE_VCP_ENCODER 0 //(__MAC_OS_X_VERSION_MAX_ALLOWED >= 101304)
+#define ENABLE_VCP_VTB_ENCODER 0
+#elif (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE)
+#define ENABLE_VCP_ENCODER 1
+#define ENABLE_VCP_VTB_ENCODER __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+#elif (defined(TARGET_OS_MAC) && TARGET_OS_MAC)
+#define ENABLE_VCP_ENCODER __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+#define ENABLE_VCP_VTB_ENCODER __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
 #endif
 
 #endif
 
+#if !defined(ENABLE_VCP_ENCODER)
+#define ENABLE_VCP_ENCODER 0
+#endif
+#if !defined(ENABLE_VCP_VTB_ENCODER)
+#define ENABLE_VCP_VTB_ENCODER 0
+#endif
+
+#if !defined(ALWAYS_INLINE)
 #define ALWAYS_INLINE inline
+#endif
 
 #ifdef __cplusplus
 #define WTF_EXTERN_C_BEGIN extern "C" {
@@ -105,11 +117,18 @@
         return pointer##name; \
     }
 
-#if ENABLE_VCP_ENCODER
+#if ENABLE_VCP_ENCODER || ENABLE_VCP_VTB_ENCODER
 
 #include <VideoProcessing/VideoProcessing.h>
 
 SOFT_LINK_FRAMEWORK_FOR_HEADER(webrtc, VideoProcessing)
+
+SOFT_LINK_FUNCTION_FOR_HEADER(webrtc, VideoProcessing, VPModuleInitialize, void, (), ())
+#define VPModuleInitialize softLink_VideoProcessing_VPModuleInitialize
+
+#endif
+
+#if ENABLE_VCP_ENCODER
 
 SOFT_LINK_FUNCTION_FOR_HEADER(webrtc, VideoProcessing, VCPCompressionSessionSetProperty, OSStatus, (VCPCompressionSessionRef session, CFStringRef key, CFTypeRef value), (session, key, value))
 #define VCPCompressionSessionSetProperty softLink_VideoProcessing_VCPCompressionSessionSetProperty
@@ -126,9 +145,8 @@ SOFT_LINK_FUNCTION_FOR_HEADER(webrtc, VideoProcessing, VCPCompressionSessionCrea
 SOFT_LINK_FUNCTION_FOR_HEADER(webrtc, VideoProcessing, VCPCompressionSessionInvalidate, void, (VCPCompressionSessionRef session), (session))
 #define VCPCompressionSessionInvalidate softLink_VideoProcessing_VCPCompressionSessionInvalidate
 
-SOFT_LINK_FUNCTION_FOR_HEADER(webrtc, VideoProcessing, VPModuleInitialize, void, (), ())
-#define VPModuleInitialize softLink_VideoProcessing_VPModuleInitialize
-
+#else
+using VCPCompressionSessionRef = void*;
 #endif // ENABLE_VCP_ENCODER
 
 #endif // __APPLE__

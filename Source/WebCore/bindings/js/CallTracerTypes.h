@@ -36,10 +36,12 @@
 #include "ImageBitmap.h"
 #include "ImageData.h"
 #include "Path2D.h"
+#include "TypedOMCSSImageValue.h"
 #include <JavaScriptCore/ArrayBuffer.h>
 #include <JavaScriptCore/ArrayBufferView.h>
 #include <JavaScriptCore/Float32Array.h>
 #include <JavaScriptCore/Int32Array.h>
+#include <JavaScriptCore/Uint32Array.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Variant.h>
 #include <wtf/Vector.h>
@@ -49,15 +51,20 @@
 #include "WebGLBuffer.h"
 #include "WebGLFramebuffer.h"
 #include "WebGLProgram.h"
+#include "WebGLQuery.h"
 #include "WebGLRenderbuffer.h"
+#include "WebGLSampler.h"
 #include "WebGLShader.h"
+#include "WebGLSync.h"
 #include "WebGLTexture.h"
+#include "WebGLTransformFeedback.h"
 #include "WebGLUniformLocation.h"
+#include "WebGLVertexArrayObject.h"
 #endif
 
 namespace WebCore {
 
-typedef Variant<
+using RecordCanvasActionVariant = Variant<
     CanvasDirection,
     CanvasFillRule,
     CanvasLineCap,
@@ -75,10 +82,15 @@ typedef Variant<
     WebGLBuffer*,
     WebGLFramebuffer*,
     WebGLProgram*,
+    WebGLQuery*,
     WebGLRenderbuffer*,
+    WebGLSampler*,
     WebGLShader*,
+    WebGLSync*,
     WebGLTexture*,
+    WebGLTransformFeedback*,
     WebGLUniformLocation*,
+    WebGLVertexArrayObject*,
 #endif
     RefPtr<ArrayBuffer>,
     RefPtr<ArrayBufferView>,
@@ -91,18 +103,25 @@ typedef Variant<
     RefPtr<HTMLVideoElement>,
 #endif
     RefPtr<ImageBitmap>,
+#if ENABLE(CSS_TYPED_OM)
+    RefPtr<TypedOMCSSImageValue>,
+#endif
     RefPtr<ImageData>,
     RefPtr<Int32Array>,
+    RefPtr<Uint32Array>,
+    Vector<String>,
     Vector<float>,
-    Vector<int>,
+    Vector<uint32_t>,
+    Vector<int32_t>,
     String,
     double,
     float,
+    uint64_t,
     int64_t,
     uint32_t,
     int32_t,
     uint8_t,
     bool
-> RecordCanvasActionVariant;
+>;
 
 } // namespace WebCore

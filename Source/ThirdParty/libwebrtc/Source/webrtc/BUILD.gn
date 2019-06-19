@@ -40,12 +40,14 @@ if (!build_with_chromium) {
     if (rtc_include_tests) {
       deps += [
         ":rtc_unittests",
+        ":slow_tests",
         ":video_engine_tests",
         ":webrtc_nonparallel_tests",
         ":webrtc_perf_tests",
         "call:fake_network_unittests",
         "common_audio:common_audio_unittests",
         "common_video:common_video_unittests",
+        "examples:examples_unittests",
         "media:rtc_media_unittests",
         "modules:modules_tests",
         "modules:modules_unittests",
@@ -54,10 +56,8 @@ if (!build_with_chromium) {
         "modules/remote_bitrate_estimator:bwe_simulations_tests",
         "modules/rtp_rtcp:test_packet_masks_metrics",
         "modules/video_capture:video_capture_internal_impl",
-        "ortc:ortc_unittests",
         "pc:peerconnection_unittests",
         "pc:rtc_pc_unittests",
-        "rtc_base:rtc_base_tests_utils",
         "stats:rtc_stats_unittests",
         "system_wrappers:system_wrappers_unittests",
         "test",
@@ -83,12 +83,25 @@ if (!build_with_chromium) {
   }
 }
 
+config("library_impl_config") {
+  # Build targets that contain WebRTC implementation need this macro to
+  # be defined in order to correctly export symbols when is_component_build
+  # is true.
+  # For more info see: rtc_base/build/rtc_export.h.
+  defines = [ "WEBRTC_LIBRARY_IMPL" ]
+}
+
 # Contains the defines and includes in common.gypi that are duplicated both as
 # target_defaults and direct_dependent_settings.
 config("common_inherited_config") {
   defines = []
   cflags = []
   ldflags = []
+
+  if (rtc_enable_symbol_export) {
+    defines = [ "WEBRTC_ENABLE_SYMBOL_EXPORT" ]
+  }
+
   if (build_with_mozilla) {
     defines += [ "WEBRTC_MOZILLA_BUILD" ]
   }
@@ -166,6 +179,32 @@ config("common_inherited_config") {
   }
 }
 
+# TODO(bugs.webrtc.org/9693): Remove the possibility to suppress this warning
+# as soon as WebRTC compiles without it.
+config("no_exit_time_destructors") {
+  if (is_clang) {
+    cflags = [ "-Wno-exit-time-destructors" ]
+  }
+}
+
+# TODO(bugs.webrtc.org/9693): Remove the possibility to suppress this warning
+# as soon as WebRTC compiles without it.
+config("no_global_constructors") {
+  if (is_clang) {
+    cflags = [ "-Wno-global-constructors" ]
+  }
+}
+
+config("rtc_prod_config") {
+  # Ideally, WebRTC production code (but not test code) should have these flags.
+  if (is_clang) {
+    cflags = [
+      "-Wexit-time-destructors",
+      "-Wglobal-constructors",
+    ]
+  }
+}
+
 config("common_config") {
   cflags = []
   cflags_c = []
@@ -183,8 +222,8 @@ config("common_config") {
     defines += [ "WEBRTC_INCLUDE_INTERNAL_AUDIO_DEVICE" ]
   }
 
-  if (!rtc_libvpx_build_vp9) {
-    defines += [ "RTC_DISABLE_VP9" ]
+  if (rtc_libvpx_build_vp9) {
+    defines += [ "RTC_ENABLE_VP9" ]
   }
 
   if (rtc_enable_sctp) {
@@ -320,6 +359,10 @@ config("common_config") {
 
 config("common_objc") {
   libs = [ "Foundation.framework" ]
+
+  if (rtc_use_metal_rendering) {
+    defines = [ "RTC_SUPPORTS_METAL" ]
+  }
 }
 
 if (!build_with_chromium) {
@@ -335,38 +378,37 @@ if (!build_with_chromium) {
 
     deps = [
       ":webrtc_common",
+      "api:libjingle_peerconnection_api",
       "api:transport_api",
       "audio",
       "call",
       "common_audio",
       "common_video",
+      "logging:rtc_event_log_api",
+      "logging:rtc_event_log_impl_base",
       "media",
       "modules",
       "modules/video_capture:video_capture_internal_impl",
-      "ortc",
+      "p2p:rtc_p2p",
+      "pc:libjingle_peerconnection",
+      "pc:peerconnection",
+      "pc:rtc_pc",
+      "pc:rtc_pc_base",
       "rtc_base",
       "sdk",
-      "system_wrappers:system_wrappers_default",
       "video",
     ]
 
-    # Additional factory functions to be exposed.
-    # Rational: These factories are small enough (89 KiB / 32+ MiB)
-    #           to be unconditionaly included for user convenience.
-    # That begin said:
-    # TODO(yvesg) Consider making all non-core APIs optional, so that users
-    #             can build a customized library tailored to their needs.
+    # Include audio and video codecs by default.
     deps += [
       "api/audio_codecs:builtin_audio_decoder_factory",
       "api/audio_codecs:builtin_audio_encoder_factory",
+      "api/video_codecs:builtin_video_decoder_factory",
+      "api/video_codecs:builtin_video_encoder_factory",
     ]
 
     if (build_with_mozilla) {
-      deps += [
-        "api/video:video_frame",
-        "system_wrappers:field_trial_default",
-        "system_wrappers:metrics_default",
-      ]
+      deps += [ "api/video:video_frame" ]
     } else {
       deps += [
         "api",
@@ -385,15 +427,20 @@ if (!build_with_chromium) {
 }
 
 rtc_source_set("webrtc_common") {
+  # Client code SHOULD NOT USE THIS TARGET, but for now it needs to be public
+  # because there exists client code that uses it.
+  # TODO(bugs.webrtc.org/9808): Move to private visibility as soon as that
+  # client code gets updated.
+  visibility = [ "*" ]
   sources = [
     "common_types.h",
   ]
   deps = [
     "api:array_view",
     "api/video:video_bitrate_allocation",
+    "api/video:video_frame",
     "rtc_base:checks",
-    "rtc_base:deprecation",
-    "rtc_base:stringutils",
+    "//third_party/abseil-cpp/absl/strings",
   ]
 
   if (!build_with_chromium && is_clang) {
@@ -428,16 +475,14 @@ if (rtc_include_tests) {
       "p2p:rtc_p2p_unittests",
       "rtc_base:rtc_base_approved_unittests",
       "rtc_base:rtc_base_tests_main",
-      "rtc_base:rtc_base_tests_utils",
       "rtc_base:rtc_base_unittests",
+      "rtc_base:rtc_json_unittests",
       "rtc_base:rtc_numerics_unittests",
       "rtc_base:rtc_task_queue_unittests",
       "rtc_base:sequenced_task_checker_unittests",
       "rtc_base:sigslot_unittest",
       "rtc_base:weak_ptr_unittests",
       "rtc_base/experiments:experiments_unittests",
-      "system_wrappers:metrics_default",
-      "system_wrappers:runtime_enabled_features_default",
     ]
 
     if (rtc_enable_protobuf) {
@@ -459,6 +504,17 @@ if (rtc_include_tests) {
     if (is_ios || is_mac) {
       deps += [ "sdk:rtc_unittests_objc" ]
     }
+  }
+
+  # This runs tests that must run in real time and therefore can take some
+  # time to execute. They are in a separate executable to avoid making the
+  # regular unittest suite too slow to run frequently.
+  rtc_test("slow_tests") {
+    testonly = true
+    deps = [
+      "modules/congestion_controller/goog_cc:goog_cc_slow_tests",
+      "test:test_main",
+    ]
   }
 
   # TODO(pbos): Rename test suite, this is no longer "just" for video targets.
@@ -486,7 +542,6 @@ if (rtc_include_tests) {
       # should move them to a more appropriate test suite.
       "call:call_tests",
       "modules/video_capture",
-      "rtc_base:rtc_base_tests_utils",
       "test:test_common",
       "test:test_main",
       "test:video_test_common",
@@ -572,13 +627,14 @@ if (rtc_include_tests) {
         "examples/androidjunit/src/org/appspot/apprtc/BluetoothManagerTest.java",
         "examples/androidjunit/src/org/appspot/apprtc/DirectRTCClientTest.java",
         "examples/androidjunit/src/org/appspot/apprtc/TCPChannelClientTest.java",
+        "sdk/android/tests/src/org/webrtc/AndroidVideoDecoderTest.java",
         "sdk/android/tests/src/org/webrtc/CameraEnumerationTest.java",
         "sdk/android/tests/src/org/webrtc/CodecTestHelper.java",
         "sdk/android/tests/src/org/webrtc/FakeMediaCodecWrapper.java",
         "sdk/android/tests/src/org/webrtc/GlGenericDrawerTest.java",
         "sdk/android/tests/src/org/webrtc/HardwareVideoEncoderTest.java",
-        "sdk/android/tests/src/org/webrtc/HardwareVideoDecoderTest.java",
         "sdk/android/tests/src/org/webrtc/ScalingSettingsTest.java",
+        "sdk/android/tests/src/org/webrtc/CryptoOptionsTest.java",
       ]
 
       deps = [

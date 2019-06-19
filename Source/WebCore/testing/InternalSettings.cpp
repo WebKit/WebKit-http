@@ -36,6 +36,7 @@
 #include "LocaleToScriptMapping.h"
 #include "Page.h"
 #include "PageGroup.h"
+#include "PlatformMediaSessionManager.h"
 #include "RenderTheme.h"
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
@@ -50,6 +51,10 @@
 #include "SoupNetworkSession.h"
 #endif
 
+#if PLATFORM(GTK)
+#include <gtk/gtk.h>
+#endif
+
 namespace WebCore {
 
 InternalSettings::Backup::Backup(Settings& settings)
@@ -57,6 +62,7 @@ InternalSettings::Backup::Backup(Settings& settings)
 #if ENABLE(TEXT_AUTOSIZING)
     , m_originalTextAutosizingEnabled(settings.textAutosizingEnabled())
     , m_originalTextAutosizingWindowSizeOverride(settings.textAutosizingWindowSizeOverride())
+    , m_originalTextAutosizingUsesIdempotentMode(settings.textAutosizingUsesIdempotentMode())
 #endif
     , m_originalMediaTypeOverride(settings.mediaTypeOverride())
     , m_originalCanvasUsesAcceleratedDrawing(settings.canvasUsesAcceleratedDrawing())
@@ -94,9 +100,8 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_deferredCSSParserEnabled(settings.deferredCSSParserEnabled())
     , m_inputEventsEnabled(settings.inputEventsEnabled())
     , m_incompleteImageBorderEnabled(settings.incompleteImageBorderEnabled())
-#if ENABLE(ACCESSIBILITY_EVENTS)
-    , m_accessibilityEventsEnabled(settings.accessibilityEventsEnabled())
-#endif
+    , m_shouldDispatchSyntheticMouseEventsWhenModifyingSelection(settings.shouldDispatchSyntheticMouseEventsWhenModifyingSelection())
+    , m_shouldDeactivateAudioSession(PlatformMediaSessionManager::shouldDeactivateAudioSession())
     , m_userInterfaceDirectionPolicy(settings.userInterfaceDirectionPolicy())
     , m_systemLayoutDirection(settings.systemLayoutDirection())
     , m_pdfImageCachingPolicy(settings.pdfImageCachingPolicy())
@@ -111,9 +116,6 @@ InternalSettings::Backup::Backup(Settings& settings)
 #if ENABLE(WEBGL2)
     , m_webGL2Enabled(RuntimeEnabledFeatures::sharedFeatures().webGL2Enabled())
 #endif
-#if ENABLE(WEBGPU)
-    , m_webGPUEnabled(RuntimeEnabledFeatures::sharedFeatures().webGPUEnabled())
-#endif
     , m_webVREnabled(RuntimeEnabledFeatures::sharedFeatures().webVREnabled())
 #if ENABLE(MEDIA_STREAM)
     , m_setScreenCaptureEnabled(RuntimeEnabledFeatures::sharedFeatures().screenCaptureEnabled())
@@ -123,7 +125,6 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_shouldManageAudioSessionCategory(DeprecatedGlobalSettings::shouldManageAudioSessionCategory())
 #endif
     , m_customPasteboardDataEnabled(RuntimeEnabledFeatures::sharedFeatures().customPasteboardDataEnabled())
-    , m_promptForStorageAccessAPIEnabled(RuntimeEnabledFeatures::sharedFeatures().storageAccessPromptsEnabled())
 {
 }
 
@@ -162,6 +163,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 #if ENABLE(TEXT_AUTOSIZING)
     settings.setTextAutosizingEnabled(m_originalTextAutosizingEnabled);
     settings.setTextAutosizingWindowSizeOverride(m_originalTextAutosizingWindowSizeOverride);
+    settings.setTextAutosizingUsesIdempotentMode(m_originalTextAutosizingUsesIdempotentMode);
 #endif
     settings.setMediaTypeOverride(m_originalMediaTypeOverride);
     settings.setCanvasUsesAcceleratedDrawing(m_originalCanvasUsesAcceleratedDrawing);
@@ -206,18 +208,14 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     FontCache::singleton().setShouldMockBoldSystemFontForAccessibility(m_shouldMockBoldSystemFontForAccessibility);
     settings.setFrameFlattening(m_frameFlattening);
     settings.setIncompleteImageBorderEnabled(m_incompleteImageBorderEnabled);
-#if ENABLE(ACCESSIBILITY_EVENTS)
-    settings.setAccessibilityEventsEnabled(m_accessibilityEventsEnabled);
-#endif
+    settings.setShouldDispatchSyntheticMouseEventsWhenModifyingSelection(m_shouldDispatchSyntheticMouseEventsWhenModifyingSelection);
+    PlatformMediaSessionManager::setShouldDeactivateAudioSession(m_shouldDeactivateAudioSession);
 
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     RuntimeEnabledFeatures::sharedFeatures().setIndexedDBWorkersEnabled(m_indexedDBWorkersEnabled);
 #endif
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(m_webGL2Enabled);
-#endif
-#if ENABLE(WEBGPU)
-    RuntimeEnabledFeatures::sharedFeatures().setWebGPUEnabled(m_webGPUEnabled);
 #endif
     RuntimeEnabledFeatures::sharedFeatures().setWebVREnabled(m_webVREnabled);
 #if ENABLE(MEDIA_STREAM)
@@ -228,8 +226,6 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 #if USE(AUDIO_SESSION)
     DeprecatedGlobalSettings::setShouldManageAudioSessionCategory(m_shouldManageAudioSessionCategory);
 #endif
-
-    RuntimeEnabledFeatures::sharedFeatures().setStorageAccessPromptsEnabled(m_promptForStorageAccessAPIEnabled);
 }
 
 class InternalSettingsWrapper : public Supplement<Page> {
@@ -286,6 +282,7 @@ void InternalSettings::resetToConsistentState()
     m_page->setPageScaleFactor(1, { 0, 0 });
     m_page->mainFrame().setPageAndTextZoomFactors(1, 1);
     m_page->setCanStartMedia(true);
+    setUseDarkAppearanceInternal(false);
 
     settings().setForcePendingWebGLPolicy(false);
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -428,6 +425,18 @@ ExceptionOr<void> InternalSettings::setTextAutosizingWindowSizeOverride(int widt
     return { };
 }
 
+ExceptionOr<void> InternalSettings::setTextAutosizingUsesIdempotentMode(bool enabled)
+{
+    if (!m_page)
+        return Exception { InvalidAccessError };
+#if ENABLE(TEXT_AUTOSIZING)
+    settings().setTextAutosizingUsesIdempotentMode(enabled);
+#else
+    UNUSED_PARAM(enabled);
+#endif
+    return { };
+}
+
 ExceptionOr<void> InternalSettings::setMediaTypeOverride(const String& mediaType)
 {
     if (!m_page)
@@ -461,7 +470,7 @@ ExceptionOr<void> InternalSettings::setMediaCaptureRequiresSecureConnection(bool
     if (!m_page)
         return Exception { InvalidAccessError };
 #if ENABLE(MEDIA_STREAM)
-    DeprecatedGlobalSettings::setMediaCaptureRequiresSecureConnection(requires);
+    m_page->settings().setMediaCaptureRequiresSecureConnection(requires);
 #else
     UNUSED_PARAM(requires);
 #endif
@@ -524,6 +533,30 @@ ExceptionOr<bool> InternalSettings::shouldDisplayTrackKind(const String& kind)
     UNUSED_PARAM(kind);
     return false;
 #endif
+}
+
+void InternalSettings::setUseDarkAppearanceInternal(bool useDarkAppearance)
+{
+#if PLATFORM(GTK)
+    // GTK doesn't allow to change the theme from the web process, but tests need to do it, so
+    // we do it here only for tests.
+    if (auto* settings = gtk_settings_get_default()) {
+        gboolean preferDarkTheme;
+        g_object_get(settings, "gtk-application-prefer-dark-theme", &preferDarkTheme, nullptr);
+        if (preferDarkTheme != useDarkAppearance)
+            g_object_set(settings, "gtk-application-prefer-dark-theme", useDarkAppearance, nullptr);
+    }
+#endif
+    ASSERT(m_page);
+    m_page->effectiveAppearanceDidChange(useDarkAppearance, m_page->useInactiveAppearance());
+}
+
+ExceptionOr<void> InternalSettings::setUseDarkAppearance(bool useDarkAppearance)
+{
+    if (!m_page)
+        return Exception { InvalidAccessError };
+    setUseDarkAppearanceInternal(useDarkAppearance);
+    return { };
 }
 
 ExceptionOr<void> InternalSettings::setStorageBlockingPolicy(const String& mode)
@@ -781,20 +814,15 @@ void InternalSettings::setScreenCaptureEnabled(bool enabled)
 #endif
 }
 
-void InternalSettings::setStorageAccessPromptsEnabled(bool enabled)
-{
-    RuntimeEnabledFeatures::sharedFeatures().setStorageAccessPromptsEnabled(enabled);
-}
-    
 ExceptionOr<String> InternalSettings::userInterfaceDirectionPolicy()
 {
     if (!m_page)
         return Exception { InvalidAccessError };
     switch (settings().userInterfaceDirectionPolicy()) {
     case UserInterfaceDirectionPolicy::Content:
-        return String { "Content"_s };
+        return "Content"_str;
     case UserInterfaceDirectionPolicy::System:
-        return String { "View"_s };
+        return "View"_str;
     }
     ASSERT_NOT_REACHED();
     return Exception { InvalidAccessError };
@@ -821,9 +849,9 @@ ExceptionOr<String> InternalSettings::systemLayoutDirection()
         return Exception { InvalidAccessError };
     switch (settings().systemLayoutDirection()) {
     case TextDirection::LTR:
-        return String { "LTR"_s };
+        return "LTR"_str;
     case TextDirection::RTL:
-        return String { "RTL"_s };
+        return "RTL"_str;
     }
     ASSERT_NOT_REACHED();
     return Exception { InvalidAccessError };
@@ -892,23 +920,19 @@ ExceptionOr<void> InternalSettings::setCustomPasteboardDataEnabled(bool enabled)
     return { };
 }
 
-ExceptionOr<void> InternalSettings::setAccessibilityEventsEnabled(bool enabled)
-{
-    if (!m_page)
-        return Exception { InvalidAccessError };
-#if ENABLE(ACCESSIBILITY_EVENTS)
-    settings().setAccessibilityEventsEnabled(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
-    return { };
-}
-
 ExceptionOr<void> InternalSettings::setIncompleteImageBorderEnabled(bool enabled)
 {
     if (!m_page)
         return Exception { InvalidAccessError };
     settings().setIncompleteImageBorderEnabled(enabled);
+    return { };
+}
+
+ExceptionOr<void> InternalSettings::setShouldDispatchSyntheticMouseEventsWhenModifyingSelection(bool shouldDispatch)
+{
+    if (!m_page)
+        return Exception { InvalidAccessError };
+    settings().setShouldDispatchSyntheticMouseEventsWhenModifyingSelection(shouldDispatch);
     return { };
 }
 
@@ -975,6 +999,11 @@ void InternalSettings::setForcedPrefersReducedMotionAccessibilityValue(InternalS
 bool InternalSettings::webAnimationsCSSIntegrationEnabled()
 {
     return RuntimeEnabledFeatures::sharedFeatures().webAnimationsCSSIntegrationEnabled();
+}
+
+void InternalSettings::setShouldDeactivateAudioSession(bool should)
+{
+    PlatformMediaSessionManager::setShouldDeactivateAudioSession(should);
 }
 
 // If you add to this class, make sure that you update the Backup class for test reproducability!

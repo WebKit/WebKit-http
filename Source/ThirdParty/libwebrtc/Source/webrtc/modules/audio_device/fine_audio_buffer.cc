@@ -10,6 +10,9 @@
 
 #include "modules/audio_device/fine_audio_buffer.h"
 
+#include <cstdint>
+#include <cstring>
+
 #include "modules/audio_device/audio_device_buffer.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
@@ -26,6 +29,7 @@ FineAudioBuffer::FineAudioBuffer(AudioDeviceBuffer* audio_device_buffer)
       playout_channels_(audio_device_buffer->PlayoutChannels()),
       record_channels_(audio_device_buffer->RecordingChannels()) {
   RTC_DCHECK(audio_device_buffer_);
+  RTC_DLOG(INFO) << __FUNCTION__;
   if (IsReadyForPlayout()) {
     RTC_DLOG(INFO) << "playout_samples_per_channel_10ms: "
                    << playout_samples_per_channel_10ms_;
@@ -38,7 +42,9 @@ FineAudioBuffer::FineAudioBuffer(AudioDeviceBuffer* audio_device_buffer)
   }
 }
 
-FineAudioBuffer::~FineAudioBuffer() {}
+FineAudioBuffer::~FineAudioBuffer() {
+  RTC_DLOG(INFO) << __FUNCTION__;
+}
 
 void FineAudioBuffer::ResetPlayout() {
   playout_buffer_.Clear();

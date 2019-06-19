@@ -38,6 +38,7 @@
 #include "HTMLHtmlElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLNames.h"
+#include "LengthFunctions.h"
 #include "Logging.h"
 #include "Page.h"
 #include "PathUtilities.h"
@@ -48,6 +49,7 @@
 #include "RenderDescendantIterator.h"
 #include "RenderFlexibleBox.h"
 #include "RenderFragmentedFlow.h"
+#include "RenderGrid.h"
 #include "RenderImage.h"
 #include "RenderImageResourceStyleImage.h"
 #include "RenderInline.h"
@@ -78,8 +80,6 @@
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/MathExtras.h>
 #include <wtf/StackStats.h>
-
-#include "RenderGrid.h"
 
 namespace WebCore {
 
@@ -147,7 +147,7 @@ RenderPtr<RenderElement> RenderElement::createFor(Element& element, RenderStyle&
         auto& styleImage = downcast<ImageContentData>(*contentData).image();
         auto image = createRenderer<RenderImage>(element, WTFMove(style), const_cast<StyleImage*>(&styleImage));
         image->setIsGeneratedContent();
-        return WTFMove(image);
+        return image;
     }
 
     switch (style.display()) {
@@ -159,6 +159,7 @@ RenderPtr<RenderElement> RenderElement::createFor(Element& element, RenderStyle&
             return createRenderer<RenderInline>(element, WTFMove(style));
         FALLTHROUGH; // Fieldsets should make a block flow if display:inline is set.
     case DisplayType::Block:
+    case DisplayType::FlowRoot:
     case DisplayType::InlineBlock:
     case DisplayType::Compact:
         return createRenderer<RenderBlockFlow>(element, WTFMove(style));
@@ -467,7 +468,6 @@ void RenderElement::didAttachChild(RenderObject& child, RenderObject*)
     // and stop creating layers at all for these cases - they're not used anyways.
     if (child.hasLayer() && !layerCreationAllowedForSubtree())
         downcast<RenderLayerModelObject>(child).layer()->removeOnlyThisLayer();
-    SVGRenderSupport::childAdded(*this, child);
 }
 
 RenderObject* RenderElement::attachRendererInternal(RenderPtr<RenderObject> child, RenderObject* beforeChild)
@@ -548,7 +548,7 @@ static void addLayers(RenderElement& renderer, RenderLayer* parentLayer, RenderE
             beforeChild = newObject->parent()->findNextLayer(parentLayer, newObject);
             newObject = nullptr;
         }
-        parentLayer->addChild(downcast<RenderLayerModelObject>(renderer).layer(), beforeChild);
+        parentLayer->addChild(*downcast<RenderLayerModelObject>(renderer).layer(), beforeChild);
         return;
     }
 
@@ -572,7 +572,7 @@ void RenderElement::removeLayers(RenderLayer* parentLayer)
         return;
 
     if (hasLayer()) {
-        parentLayer->removeChild(downcast<RenderLayerModelObject>(*this).layer());
+        parentLayer->removeChild(*downcast<RenderLayerModelObject>(*this).layer());
         return;
     }
 
@@ -589,8 +589,8 @@ void RenderElement::moveLayers(RenderLayer* oldParent, RenderLayer* newParent)
         RenderLayer* layer = downcast<RenderLayerModelObject>(*this).layer();
         ASSERT(oldParent == layer->parent());
         if (oldParent)
-            oldParent->removeChild(layer);
-        newParent->addChild(layer);
+            oldParent->removeChild(*layer);
+        newParent->addChild(*layer);
         return;
     }
 
@@ -701,6 +701,8 @@ void RenderElement::invalidateCachedFirstLineStyle()
 
 void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& newStyle)
 {
+    ASSERT(settings().shouldAllowUserInstalledFonts() || newStyle.fontDescription().shouldAllowUserInstalledFonts() == AllowUserInstalledFonts::No);
+
     auto* oldStyle = hasInitializedStyle() ? &style() : nullptr;
     if (oldStyle) {
         // If our z-index changes value or our visibility changes,
@@ -708,14 +710,10 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
         bool visibilityChanged = m_style.visibility() != newStyle.visibility()
             || m_style.zIndex() != newStyle.zIndex()
             || m_style.hasAutoZIndex() != newStyle.hasAutoZIndex();
-#if ENABLE(DASHBOARD_SUPPORT)
+
         if (visibilityChanged)
-            document().setAnnotatedRegionsDirty(true);
-#endif
-#if PLATFORM(IOS) && ENABLE(TOUCH_EVENTS)
-        if (visibilityChanged)
-            document().setTouchEventRegionsNeedUpdate();
-#endif
+            document().invalidateRenderingDependentRegions();
+
         if (visibilityChanged) {
             if (AXObjectCache* cache = document().existingAXObjectCache())
                 cache->childrenChanged(parent(), this);
@@ -734,8 +732,25 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
             }
         }
 
+        auto needsInvalidateEventRegion = [&] {
+            if (m_style.pointerEvents() != newStyle.pointerEvents())
+                return true;
+#if ENABLE(POINTER_EVENTS)
+            if (m_style.effectiveTouchActions() != newStyle.effectiveTouchActions())
+                return true;
+#endif
+            return false;
+        };
+
+        if (needsInvalidateEventRegion()) {
+            // Usually the event region gets updated as a result of paint invalidation. Here we need to request an update explicitly.
+            if (auto* layer = enclosingLayer())
+                layer->invalidateEventRegion();
+        }
+
         if (m_parent && (newStyle.outlineSize() < m_style.outlineSize() || shouldRepaintForStyleDifference(diff)))
             repaint();
+
         if (isFloating() && m_style.floating() != newStyle.floating()) {
             // For changes in float styles, we need to conceivably remove ourselves
             // from the floating objects list.
@@ -779,7 +794,7 @@ void RenderElement::styleWillChange(StyleDifference diff, const RenderStyle& new
         view().frameView().updateExtendBackgroundIfNecessary();
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 static bool areNonIdenticalCursorListsEqual(const RenderStyle* a, const RenderStyle* b)
 {
     ASSERT(a->cursors() != b->cursors());
@@ -829,7 +844,7 @@ void RenderElement::styleDidChange(StyleDifference diff, const RenderStyle* oldS
     // Don't check for repaint here; we need to wait until the layer has been
     // updated by subclasses before we know if we have to repaint (in setStyle()).
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (oldStyle && !areCursorsEqual(oldStyle, &style()))
         frame().eventHandler().scheduleCursorUpdate();
 #endif
@@ -973,11 +988,6 @@ void RenderElement::setNeedsSimplifiedNormalFlowLayout()
         setLayerNeedsFullRepaint();
 }
 
-RenderElement* RenderElement::hoverAncestor() const
-{
-    return parent();
-}
-
 static inline void paintPhase(RenderElement& element, PaintPhase phase, PaintInfo& paintInfo, const LayoutPoint& childPoint)
 {
     paintInfo.phase = phase;
@@ -990,7 +1000,7 @@ void RenderElement::paintAsInlineBlock(PaintInfo& paintInfo, const LayoutPoint& 
     // (See Appendix E.2, section 6.4 on inline block/table/replaced elements in the CSS2.1 specification.)
     // This is also used by other elements (e.g. flex items and grid items).
     PaintPhase paintPhaseToUse = isExcludedAndPlacedInBorder() ? paintInfo.phase : PaintPhase::Foreground;
-    if (paintInfo.phase == PaintPhase::Selection)
+    if (paintInfo.phase == PaintPhase::Selection || paintInfo.phase == PaintPhase::EventRegion)
         paint(paintInfo, childPoint);
     else if (paintInfo.phase == paintPhaseToUse) {
         paintPhase(*this, PaintPhase::BlockBackground, paintInfo, childPoint);
@@ -1131,18 +1141,18 @@ bool RenderElement::repaintAfterLayoutIfNeeded(const RenderLayerModelObject* rep
     // We didn't move, but we did change size. Invalidate the delta, which will consist of possibly
     // two rectangles (but typically only one).
     const RenderStyle& outlineStyle = outlineStyleForRepaint();
-    LayoutUnit outlineWidth = outlineStyle.outlineSize();
+    LayoutUnit outlineWidth { outlineStyle.outlineSize() };
     LayoutBoxExtent insetShadowExtent = style().getBoxShadowInsetExtent();
     LayoutUnit width = absoluteValue(newOutlineBox.width() - oldOutlineBox.width());
     if (width) {
         LayoutUnit shadowLeft;
         LayoutUnit shadowRight;
         style().getBoxShadowHorizontalExtent(shadowLeft, shadowRight);
-        LayoutUnit borderRight = is<RenderBox>(*this) ? downcast<RenderBox>(*this).borderRight() : LayoutUnit::fromPixel(0);
-        LayoutUnit boxWidth = is<RenderBox>(*this) ? downcast<RenderBox>(*this).width() : LayoutUnit();
+        LayoutUnit borderRight = is<RenderBox>(*this) ? downcast<RenderBox>(*this).borderRight() : 0_lu;
+        LayoutUnit boxWidth = is<RenderBox>(*this) ? downcast<RenderBox>(*this).width() : 0_lu;
         LayoutUnit minInsetRightShadowExtent = std::min<LayoutUnit>(-insetShadowExtent.right(), std::min(newBounds.width(), oldBounds.width()));
         LayoutUnit borderWidth = std::max(borderRight, std::max(valueForLength(style().borderTopRightRadius().width, boxWidth), valueForLength(style().borderBottomRightRadius().width, boxWidth)));
-        LayoutUnit decorationsWidth = std::max<LayoutUnit>(-outlineStyle.outlineOffset(), borderWidth + minInsetRightShadowExtent) + std::max(outlineWidth, shadowRight);
+        LayoutUnit decorationsWidth = std::max(LayoutUnit(-outlineStyle.outlineOffset()), borderWidth + minInsetRightShadowExtent) + std::max(outlineWidth, shadowRight);
         LayoutRect rightRect(newOutlineBox.x() + std::min(newOutlineBox.width(), oldOutlineBox.width()) - decorationsWidth,
             newOutlineBox.y(),
             width + decorationsWidth,
@@ -1158,12 +1168,12 @@ bool RenderElement::repaintAfterLayoutIfNeeded(const RenderLayerModelObject* rep
         LayoutUnit shadowTop;
         LayoutUnit shadowBottom;
         style().getBoxShadowVerticalExtent(shadowTop, shadowBottom);
-        LayoutUnit borderBottom = is<RenderBox>(*this) ? downcast<RenderBox>(*this).borderBottom() : LayoutUnit::fromPixel(0);
-        LayoutUnit boxHeight = is<RenderBox>(*this) ? downcast<RenderBox>(*this).height() : LayoutUnit();
+        LayoutUnit borderBottom = is<RenderBox>(*this) ? downcast<RenderBox>(*this).borderBottom() : 0_lu;
+        LayoutUnit boxHeight = is<RenderBox>(*this) ? downcast<RenderBox>(*this).height() : 0_lu;
         LayoutUnit minInsetBottomShadowExtent = std::min<LayoutUnit>(-insetShadowExtent.bottom(), std::min(newBounds.height(), oldBounds.height()));
         LayoutUnit borderHeight = std::max(borderBottom, std::max(valueForLength(style().borderBottomLeftRadius().height, boxHeight),
             valueForLength(style().borderBottomRightRadius().height, boxHeight)));
-        LayoutUnit decorationsHeight = std::max<LayoutUnit>(-outlineStyle.outlineOffset(), borderHeight + minInsetBottomShadowExtent) + std::max(outlineWidth, shadowBottom);
+        LayoutUnit decorationsHeight = std::max(LayoutUnit(-outlineStyle.outlineOffset()), borderHeight + minInsetBottomShadowExtent) + std::max(outlineWidth, shadowBottom);
         LayoutRect bottomRect(newOutlineBox.x(),
             std::min(newOutlineBox.maxY(), oldOutlineBox.maxY()) - decorationsHeight,
             std::max(newOutlineBox.width(), oldOutlineBox.width()),
@@ -1372,8 +1382,8 @@ Color RenderElement::selectionColor(CSSPropertyID colorProperty) const
     }
 
     if (frame().selection().isFocusedAndActive())
-        return theme().activeSelectionForegroundColor(document().styleColorOptions());
-    return theme().inactiveSelectionForegroundColor(document().styleColorOptions());
+        return theme().activeSelectionForegroundColor(styleColorOptions());
+    return theme().inactiveSelectionForegroundColor(styleColorOptions());
 }
 
 std::unique_ptr<RenderStyle> RenderElement::selectionPseudoStyle() const
@@ -1407,15 +1417,15 @@ Color RenderElement::selectionBackgroundColor() const
         return Color();
 
     if (frame().selection().shouldShowBlockCursor() && frame().selection().isCaret())
-        return theme().transformSelectionBackgroundColor(style().visitedDependentColorWithColorFilter(CSSPropertyColor), document().styleColorOptions());
+        return theme().transformSelectionBackgroundColor(style().visitedDependentColorWithColorFilter(CSSPropertyColor), styleColorOptions());
 
     std::unique_ptr<RenderStyle> pseudoStyle = selectionPseudoStyle();
     if (pseudoStyle && pseudoStyle->visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor).isValid())
-        return theme().transformSelectionBackgroundColor(pseudoStyle->visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor), document().styleColorOptions());
+        return theme().transformSelectionBackgroundColor(pseudoStyle->visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor), styleColorOptions());
 
     if (frame().selection().isFocusedAndActive())
-        return theme().activeSelectionBackgroundColor(document().styleColorOptions());
-    return theme().inactiveSelectionBackgroundColor(document().styleColorOptions());
+        return theme().activeSelectionBackgroundColor(styleColorOptions());
+    return theme().inactiveSelectionBackgroundColor(styleColorOptions());
 }
 
 bool RenderElement::getLeadingCorner(FloatPoint& point, bool& insideFixed) const
@@ -1627,13 +1637,13 @@ void RenderElement::drawLineForBoxSide(GraphicsContext& graphicsContext, const F
             switch (side) {
             case BSTop:
             case BSBottom:
-                drawBorderRect(snapRectToDevicePixels(x1, y1, length, thirdOfThickness, deviceScaleFactor));
-                drawBorderRect(snapRectToDevicePixels(x1, y2 - thirdOfThickness, length, thirdOfThickness, deviceScaleFactor));
+                drawBorderRect(snapRectToDevicePixels(LayoutRect(x1, y1, length, thirdOfThickness), deviceScaleFactor));
+                drawBorderRect(snapRectToDevicePixels(LayoutRect(x1, y2 - thirdOfThickness, length, thirdOfThickness), deviceScaleFactor));
                 break;
             case BSLeft:
             case BSRight:
-                drawBorderRect(snapRectToDevicePixels(x1, y1, thirdOfThickness, length, deviceScaleFactor));
-                drawBorderRect(snapRectToDevicePixels(x2 - thirdOfThickness, y1, thirdOfThickness, length, deviceScaleFactor));
+                drawBorderRect(snapRectToDevicePixels(LayoutRect(x1, y1, thirdOfThickness, length), deviceScaleFactor));
+                drawBorderRect(snapRectToDevicePixels(LayoutRect(x2 - thirdOfThickness, y1, thirdOfThickness, length), deviceScaleFactor));
                 break;
             }
 
@@ -1763,7 +1773,7 @@ void RenderElement::drawLineForBoxSide(GraphicsContext& graphicsContext, const F
             graphicsContext.setFillColor(color);
             bool wasAntialiased = graphicsContext.shouldAntialias();
             graphicsContext.setShouldAntialias(antialias);
-            drawBorderRect(snapRectToDevicePixels(x1, y1, x2 - x1, y2 - y1, deviceScaleFactor));
+            drawBorderRect(snapRectToDevicePixels(LayoutRect(x1, y1, x2 - x1, y2 - y1), deviceScaleFactor));
             graphicsContext.setShouldAntialias(wasAntialiased);
             graphicsContext.setStrokeStyle(oldStrokeStyle);
             return;
@@ -1817,6 +1827,51 @@ void RenderElement::drawLineForBoxSide(GraphicsContext& graphicsContext, const F
     }
 }
 
+static bool usePlatformFocusRingColorForOutlineStyleAuto()
+{
+#if PLATFORM(COCOA)
+    return true;
+#else
+    return false;
+#endif
+}
+
+static bool useShrinkWrappedFocusRingForOutlineStyleAuto()
+{
+#if PLATFORM(COCOA)
+    return true;
+#else
+    return false;
+#endif
+}
+
+static bool drawFocusRing(GraphicsContext& context, Page& page, const Path& path, const RenderStyle& style, Color focusRingColor)
+{
+    bool needsRepaint = false;
+#if PLATFORM(MAC)
+    context.drawFocusRing(path, page.focusController().timeSinceFocusWasSet().seconds(), needsRepaint, focusRingColor);
+    UNUSED_PARAM(style);
+#else
+    context.drawFocusRing(path, style.outlineWidth(), style.outlineOffset(), focusRingColor);
+    UNUSED_PARAM(page);
+#endif
+    return needsRepaint;
+}
+
+static bool drawFocusRing(GraphicsContext& context, Page& page, Vector<FloatRect> rects, const RenderStyle& style, Color focusRingColor)
+{
+    bool needsRepaint = false;
+#if PLATFORM(MAC)
+    context.drawFocusRing(rects, page.focusController().timeSinceFocusWasSet().seconds(), needsRepaint, focusRingColor);
+    UNUSED_PARAM(style);
+#else
+    context.drawFocusRing(rects, style.outlineWidth(), style.outlineOffset(), focusRingColor);
+    UNUSED_PARAM(page);
+#endif
+    return needsRepaint;
+}
+
+
 void RenderElement::paintFocusRing(PaintInfo& paintInfo, const RenderStyle& style, const Vector<LayoutRect>& focusRingRects)
 {
     ASSERT(style.outlineStyleIsAuto() == OutlineIsAuto::On);
@@ -1827,23 +1882,20 @@ void RenderElement::paintFocusRing(PaintInfo& paintInfo, const RenderStyle& styl
         rect.inflate(outlineOffset);
         pixelSnappedFocusRingRects.append(snapRectToDevicePixels(rect, deviceScaleFactor));
     }
-#if PLATFORM(MAC)
+    Color focusRingColor = usePlatformFocusRingColorForOutlineStyleAuto() ? RenderTheme::singleton().focusRingColor(styleColorOptions()) : style.visitedDependentColorWithColorFilter(CSSPropertyOutlineColor);
     bool needsRepaint;
-    if (style.hasBorderRadius()) {
+    if (useShrinkWrappedFocusRingForOutlineStyleAuto() && style.hasBorderRadius()) {
         Path path = PathUtilities::pathWithShrinkWrappedRectsForOutline(pixelSnappedFocusRingRects, style.border(), outlineOffset, style.direction(), style.writingMode(),
             document().deviceScaleFactor());
         if (path.isEmpty()) {
             for (auto rect : pixelSnappedFocusRingRects)
                 path.addRect(rect);
         }
-        paintInfo.context().drawFocusRing(path, page().focusController().timeSinceFocusWasSet().seconds(), needsRepaint, RenderTheme::focusRingColor(document().styleColorOptions()));
+        needsRepaint = drawFocusRing(paintInfo.context(), page(), path, style, focusRingColor);
     } else
-        paintInfo.context().drawFocusRing(pixelSnappedFocusRingRects, page().focusController().timeSinceFocusWasSet().seconds(), needsRepaint, RenderTheme::focusRingColor(document().styleColorOptions()));
+        needsRepaint = drawFocusRing(paintInfo.context(), page(), pixelSnappedFocusRingRects, style, focusRingColor);
     if (needsRepaint)
         page().focusController().setFocusedElementNeedsRepaint();
-#else
-    paintInfo.context().drawFocusRing(pixelSnappedFocusRingRects, style.outlineWidth(), style.outlineOffset(), style.visitedDependentColorWithColorFilter(CSSPropertyOutlineColor));
-#endif
 }
 
 void RenderElement::paintOutline(PaintInfo& paintInfo, const LayoutRect& paintRect)
@@ -1862,7 +1914,17 @@ void RenderElement::paintOutline(PaintInfo& paintInfo, const LayoutRect& paintRe
     // Only paint the focus ring by hand if the theme isn't able to draw it.
     if (styleToUse.outlineStyleIsAuto() == OutlineIsAuto::On && !theme().supportsFocusRing(styleToUse)) {
         Vector<LayoutRect> focusRingRects;
-        addFocusRingRects(focusRingRects, paintRect.location(), paintInfo.paintContainer);
+        LayoutRect paintRectToUse { paintRect };
+#if PLATFORM(IOS_FAMILY)
+        // Workaround for <rdar://problem/6209763>. Force the painting bounds of checkboxes and radio controls to be square.
+        // FIXME: Consolidate this code with the same code in RenderBox::paintBoxDecorations(). See <https://bugs.webkit.org/show_bug.cgi?id=194781>.
+        if (style().appearance() == CheckboxPart || style().appearance() == RadioPart) {
+            int width = std::min(paintRect.width(), paintRect.height());
+            int height = width;
+            paintRectToUse = IntRect { paintRect.x(), paintRect.y() + (downcast<RenderBox>(*this).height() - height) / 2, width, height }; // Vertically center the checkbox, like on desktop
+        }
+#endif
+        addFocusRingRects(focusRingRects, paintRectToUse.location(), paintInfo.paintContainer);
         paintFocusRing(paintInfo, styleToUse, focusRingRects);
     }
 

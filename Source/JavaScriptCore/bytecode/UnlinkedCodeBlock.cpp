@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2018 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,8 +34,10 @@
 #include "CodeCache.h"
 #include "ExecutableInfo.h"
 #include "FunctionOverrides.h"
+#include "InstructionStream.h"
 #include "JSCInlines.h"
 #include "JSString.h"
+#include "Opcode.h"
 #include "Parser.h"
 #include "PreciseJumpTargetsInlines.h"
 #include "SourceProvider.h"
@@ -43,7 +45,7 @@
 #include "SymbolTable.h"
 #include "UnlinkedEvalCodeBlock.h"
 #include "UnlinkedFunctionCodeBlock.h"
-#include "UnlinkedInstructionStream.h"
+#include "UnlinkedMetadataTableInlines.h"
 #include "UnlinkedModuleProgramCodeBlock.h"
 #include "UnlinkedProgramCodeBlock.h"
 #include <wtf/DataLog.h>
@@ -52,9 +54,8 @@ namespace JSC {
 
 const ClassInfo UnlinkedCodeBlock::s_info = { "UnlinkedCodeBlock", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(UnlinkedCodeBlock) };
 
-UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info, DebuggerMode debuggerMode)
+UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info, OptionSet<CodeGenerationMode> codeGenerationMode)
     : Base(*vm, structure)
-    , m_globalObjectRegister(VirtualRegister())
     , m_usesEval(info.usesEval())
     , m_isStrictMode(info.isStrictMode())
     , m_isConstructor(info.isConstructor())
@@ -64,24 +65,22 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_scriptMode(static_cast<unsigned>(info.scriptMode()))
     , m_isArrowFunctionContext(info.isArrowFunctionContext())
     , m_isClassContext(info.isClassContext())
-    , m_wasCompiledWithDebuggingOpcodes(debuggerMode == DebuggerMode::DebuggerOn || Options::forceDebuggerBytecodeGeneration())
+    , m_hasTailCalls(false)
     , m_constructorKind(static_cast<unsigned>(info.constructorKind()))
     , m_derivedContextType(static_cast<unsigned>(info.derivedContextType()))
     , m_evalContextType(static_cast<unsigned>(info.evalContextType()))
-    , m_hasTailCalls(false)
-    , m_features(0)
-    , m_didOptimize(MixedTriState)
+    , m_codeType(static_cast<unsigned>(codeType))
+    , m_didOptimize(static_cast<unsigned>(MixedTriState))
+    , m_age(0)
     , m_parseMode(info.parseMode())
-    , m_codeType(codeType)
-    , m_arrayProfileCount(0)
-    , m_arrayAllocationProfileCount(0)
-    , m_objectAllocationProfileCount(0)
-    , m_valueProfileCount(0)
-    , m_llintCallLinkInfoCount(0)
+    , m_codeGenerationMode(codeGenerationMode)
+    , m_metadata(UnlinkedMetadataTable::create())
 {
     for (auto& constantRegisterIndex : m_linkTimeConstants)
         constantRegisterIndex = 0;
     ASSERT(m_constructorKind == static_cast<unsigned>(info.constructorKind()));
+    ASSERT(m_codeType == static_cast<unsigned>(codeType));
+    ASSERT(m_didOptimize == static_cast<unsigned>(MixedTriState));
 }
 
 void UnlinkedCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -90,25 +89,30 @@ void UnlinkedCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
     auto locker = holdLock(thisObject->cellLock());
+    thisObject->m_age = std::min<unsigned>(static_cast<unsigned>(thisObject->m_age) + 1, maxAge);
     for (FunctionExpressionVector::iterator ptr = thisObject->m_functionDecls.begin(), end = thisObject->m_functionDecls.end(); ptr != end; ++ptr)
         visitor.append(*ptr);
     for (FunctionExpressionVector::iterator ptr = thisObject->m_functionExprs.begin(), end = thisObject->m_functionExprs.end(); ptr != end; ++ptr)
         visitor.append(*ptr);
     visitor.appendValues(thisObject->m_constantRegisters.data(), thisObject->m_constantRegisters.size());
-    if (thisObject->m_unlinkedInstructions)
-        visitor.reportExtraMemoryVisited(thisObject->m_unlinkedInstructions->sizeInBytes());
+    size_t extraMemory = thisObject->m_metadata->sizeInBytes();
+    if (thisObject->m_instructions)
+        extraMemory += thisObject->m_instructions->sizeInBytes();
+    visitor.reportExtraMemoryVisited(extraMemory);
 }
 
 size_t UnlinkedCodeBlock::estimatedSize(JSCell* cell, VM& vm)
 {
     UnlinkedCodeBlock* thisObject = jsCast<UnlinkedCodeBlock*>(cell);
-    size_t extraSize = thisObject->m_unlinkedInstructions ? thisObject->m_unlinkedInstructions->sizeInBytes() : 0;
+    size_t extraSize = thisObject->m_metadata->sizeInBytes();
+    if (thisObject->m_instructions)
+        extraSize += thisObject->m_instructions->sizeInBytes();
     return Base::estimatedSize(cell, vm) + extraSize;
 }
 
 int UnlinkedCodeBlock::lineNumberForBytecodeOffset(unsigned bytecodeOffset)
 {
-    ASSERT(bytecodeOffset < instructions().count());
+    ASSERT(bytecodeOffset < instructions().size());
     int divot { 0 };
     int startOffset { 0 };
     int endOffset { 0 };
@@ -139,13 +143,12 @@ inline void UnlinkedCodeBlock::getLineAndColumn(const ExpressionRangeInfo& info,
 }
 
 #ifndef NDEBUG
-static void dumpLineColumnEntry(size_t index, const UnlinkedInstructionStream& instructionStream, unsigned instructionOffset, unsigned line, unsigned column)
+static void dumpLineColumnEntry(size_t index, const InstructionStream& instructionStream, unsigned instructionOffset, unsigned line, unsigned column)
 {
-    const auto& instructions = instructionStream.unpackForDebugging();
-    OpcodeID opcode = instructions[instructionOffset].u.opcode;
+    const auto instruction = instructionStream.at(instructionOffset);
     const char* event = "";
-    if (opcode == op_debug) {
-        switch (instructions[instructionOffset + 1].u.operand) {
+    if (instruction->is<OpDebug>()) {
+        switch (instruction->as<OpDebug>().m_debugHookType) {
         case WillExecuteProgram: event = " WillExecuteProgram"; break;
         case DidExecuteProgram: event = " DidExecuteProgram"; break;
         case DidEnterCallFrame: event = " DidEnterCallFrame"; break;
@@ -155,7 +158,7 @@ static void dumpLineColumnEntry(size_t index, const UnlinkedInstructionStream& i
         case WillExecuteExpression: event = " WillExecuteExpression"; break;
         }
     }
-    dataLogF("  [%zu] pc %u @ line %u col %u : %s%s\n", index, instructionOffset, line, column, opcodeNames[opcode], event);
+    dataLogF("  [%zu] pc %u @ line %u col %u : %s%s\n", index, instructionOffset, line, column, instruction->name(), event);
 }
 
 void UnlinkedCodeBlock::dumpExpressionRangeInfo()
@@ -178,7 +181,7 @@ void UnlinkedCodeBlock::dumpExpressionRangeInfo()
 void UnlinkedCodeBlock::expressionRangeForBytecodeOffset(unsigned bytecodeOffset,
     int& divot, int& startOffset, int& endOffset, unsigned& line, unsigned& column) const
 {
-    ASSERT(bytecodeOffset < instructions().count());
+    ASSERT(bytecodeOffset < instructions().size());
 
     if (!m_expressionInfo.size()) {
         startOffset = 0;
@@ -304,20 +307,21 @@ UnlinkedCodeBlock::~UnlinkedCodeBlock()
 {
 }
 
-void UnlinkedCodeBlock::setInstructions(std::unique_ptr<UnlinkedInstructionStream> instructions)
+void UnlinkedCodeBlock::setInstructions(std::unique_ptr<InstructionStream> instructions)
 {
     ASSERT(instructions);
     {
         auto locker = holdLock(cellLock());
-        m_unlinkedInstructions = WTFMove(instructions);
+        m_instructions = WTFMove(instructions);
+        m_metadata->finalize();
     }
-    Heap::heap(this)->reportExtraMemoryAllocated(m_unlinkedInstructions->sizeInBytes());
+    Heap::heap(this)->reportExtraMemoryAllocated(m_instructions->sizeInBytes() + m_metadata->sizeInBytes());
 }
 
-const UnlinkedInstructionStream& UnlinkedCodeBlock::instructions() const
+const InstructionStream& UnlinkedCodeBlock::instructions() const
 {
-    ASSERT(m_unlinkedInstructions.get());
-    return *m_unlinkedInstructions;
+    ASSERT(m_instructions.get());
+    return *m_instructions;
 }
 
 UnlinkedHandlerInfo* UnlinkedCodeBlock::handlerForBytecodeOffset(unsigned bytecodeOffset, RequiredHandler requiredHandler)
@@ -332,21 +336,12 @@ UnlinkedHandlerInfo* UnlinkedCodeBlock::handlerForIndex(unsigned index, Required
     return UnlinkedHandlerInfo::handlerForIndex(m_rareData->m_exceptionHandlers, index, requiredHandler);
 }
 
-void UnlinkedCodeBlock::applyModification(BytecodeRewriter& rewriter, UnpackedInstructions& instructions)
+void UnlinkedCodeBlock::applyModification(BytecodeRewriter& rewriter, InstructionStreamWriter& instructions)
 {
     // Before applying the changes, we adjust the jumps based on the original bytecode offset, the offset to the jump target, and
     // the insertion information.
 
-    UnlinkedInstruction* instructionsBegin = instructions.begin(); // OOPS: make this an accessor on rewriter.
-
-    for (int bytecodeOffset = 0, instructionCount = instructions.size(); bytecodeOffset < instructionCount;) {
-        UnlinkedInstruction* current = instructionsBegin + bytecodeOffset;
-        OpcodeID opcodeID = current[0].u.opcode;
-        extractStoredJumpTargetsForBytecodeOffset(this, instructionsBegin, bytecodeOffset, [&](int32_t& relativeOffset) {
-            relativeOffset = rewriter.adjustJumpTarget(bytecodeOffset, bytecodeOffset + relativeOffset);
-        });
-        bytecodeOffset += opcodeLength(opcodeID);
-    }
+    rewriter.adjustJumpTargets();
 
     // Then, exception handlers should be adjusted.
     if (m_rareData) {
@@ -378,7 +373,7 @@ void UnlinkedCodeBlock::applyModification(BytecodeRewriter& rewriter, UnpackedIn
 
     // And recompute the jump target based on the modified unlinked instructions.
     m_jumpTargets.clear();
-    recomputePreciseJumpTargets(this, instructions.begin(), instructions.size(), m_jumpTargets);
+    recomputePreciseJumpTargets(this, instructions, m_jumpTargets);
 }
 
 void UnlinkedCodeBlock::shrinkToFit()
@@ -388,9 +383,7 @@ void UnlinkedCodeBlock::shrinkToFit()
     m_jumpTargets.shrinkToFit();
     m_propertyAccessInstructions.shrinkToFit();
     m_identifiers.shrinkToFit();
-    m_bitVectors.shrinkToFit();
     m_constantRegisters.shrinkToFit();
-    m_constantIdentifierSets.shrinkToFit();
     m_constantsSourceCodeRepresentation.shrinkToFit();
     m_functionDecls.shrinkToFit();
     m_functionExprs.shrinkToFit();
@@ -402,6 +395,8 @@ void UnlinkedCodeBlock::shrinkToFit()
         m_rareData->m_stringSwitchJumpTables.shrinkToFit();
         m_rareData->m_expressionInfoFatPositions.shrinkToFit();
         m_rareData->m_opProfileControlFlowBytecodeOffsets.shrinkToFit();
+        m_rareData->m_bitVectors.shrinkToFit();
+        m_rareData->m_constantIdentifierSets.shrinkToFit();
     }
 }
 
@@ -423,6 +418,18 @@ BytecodeLivenessAnalysis& UnlinkedCodeBlock::livenessAnalysisSlow(CodeBlock* cod
     }
     
     return *m_liveness;
+}
+
+void UnlinkedCodeBlock::addOutOfLineJumpTarget(InstructionStream::Offset bytecodeOffset, int target)
+{
+    RELEASE_ASSERT(target);
+    m_outOfLineJumpTargets.set(bytecodeOffset, target);
+}
+
+int UnlinkedCodeBlock::outOfLineJumpOffset(InstructionStream::Offset bytecodeOffset)
+{
+    ASSERT(m_outOfLineJumpTargets.contains(bytecodeOffset));
+    return m_outOfLineJumpTargets.get(bytecodeOffset);
 }
 
 } // namespace JSC

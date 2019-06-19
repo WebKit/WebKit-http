@@ -28,6 +28,7 @@
 
 #if ENABLE(WEBASSEMBLY)
 
+#include "JSCJSValueInlines.h"
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/StdLibExtras.h>
 #include <type_traits>
@@ -47,23 +48,133 @@ void Table::setLength(uint32_t length)
     ASSERT(m_mask == WTF::maskForSize(allocatedLength(length)));
 }
 
-RefPtr<Table> Table::create(uint32_t initial, std::optional<uint32_t> maximum)
+Table::Table(uint32_t initial, Optional<uint32_t> maximum, TableElementType type)
+    : m_type(type)
+    , m_maximum(maximum)
+    , m_owner(nullptr)
+{
+    setLength(initial);
+    ASSERT(!m_maximum || *m_maximum >= m_length);
+
+    // FIXME: It might be worth trying to pre-allocate maximum here. The spec recommends doing so.
+    // But for now, we're not doing that.
+    // FIXME this over-allocates and could be smarter about not committing all of that memory https://bugs.webkit.org/show_bug.cgi?id=181425
+    m_jsValues = MallocPtr<WriteBarrier<Unknown>>::malloc((sizeof(WriteBarrier<Unknown>) * Checked<size_t>(allocatedLength(m_length))).unsafeGet());
+    for (uint32_t i = 0; i < allocatedLength(m_length); ++i) {
+        new (&m_jsValues.get()[i]) WriteBarrier<Unknown>();
+        m_jsValues.get()[i].setStartingValue(jsNull());
+    }
+}
+
+RefPtr<Table> Table::tryCreate(uint32_t initial, Optional<uint32_t> maximum, TableElementType type)
 {
     if (!isValidLength(initial))
         return nullptr;
-    return adoptRef(new (NotNull, fastMalloc(sizeof(Table))) Table(initial, maximum));
+    switch (type) {
+    case TableElementType::Funcref:
+        return adoptRef(new FuncRefTable(initial, maximum));
+    case TableElementType::Anyref:
+        return adoptRef(new Table(initial, maximum));
+    }
+
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
-Table::~Table()
+Optional<uint32_t> Table::grow(uint32_t delta)
 {
+    RELEASE_ASSERT(m_owner);
+    if (delta == 0)
+        return length();
+
+    auto locker = holdLock(m_owner->cellLock());
+
+    using Checked = Checked<uint32_t, RecordOverflow>;
+    Checked newLengthChecked = length();
+    newLengthChecked += delta;
+    uint32_t newLength;
+    if (newLengthChecked.safeGet(newLength) == CheckedState::DidOverflow)
+        return WTF::nullopt;
+
+    if (maximum() && newLength > *maximum())
+        return WTF::nullopt;
+    if (!isValidLength(newLength))
+        return WTF::nullopt;
+
+    auto checkedGrow = [&] (auto& container, auto initializer) {
+        if (newLengthChecked.unsafeGet() > allocatedLength(m_length)) {
+            Checked reallocSizeChecked = allocatedLength(newLengthChecked.unsafeGet());
+            reallocSizeChecked *= sizeof(*container.get());
+            uint32_t reallocSize;
+            if (reallocSizeChecked.safeGet(reallocSize) == CheckedState::DidOverflow)
+                return false;
+            // FIXME this over-allocates and could be smarter about not committing all of that memory https://bugs.webkit.org/show_bug.cgi?id=181425
+            container.realloc(reallocSize);
+        }
+        for (uint32_t i = m_length; i < allocatedLength(newLength); ++i) {
+            new (&container.get()[i]) std::remove_reference_t<decltype(*container.get())>();
+            initializer(container.get()[i]);
+        }
+        return true;
+    };
+
+    if (auto* funcRefTable = asFuncrefTable()) {
+        if (!checkedGrow(funcRefTable->m_importableFunctions, [] (auto&) { }))
+            return WTF::nullopt;
+        if (!checkedGrow(funcRefTable->m_instances, [] (auto&) { }))
+            return WTF::nullopt;
+    }
+
+    if (!checkedGrow(m_jsValues, [] (WriteBarrier<Unknown>& slot) { slot.setStartingValue(jsNull()); }))
+        return WTF::nullopt;
+
+    setLength(newLength);
+    return newLength;
 }
 
-Table::Table(uint32_t initial, std::optional<uint32_t> maximum)
+void Table::clear(uint32_t index)
 {
-    setLength(initial);
-    m_maximum = maximum;
-    ASSERT(!m_maximum || *m_maximum >= m_length);
+    RELEASE_ASSERT(index < length());
+    RELEASE_ASSERT(m_owner);
+    if (auto* funcRefTable = asFuncrefTable()) {
+        funcRefTable->m_importableFunctions.get()[index & m_mask] = WasmToWasmImportableFunction();
+        ASSERT(funcRefTable->m_importableFunctions.get()[index & m_mask].signatureIndex == Wasm::Signature::invalidIndex); // We rely on this in compiled code.
+        funcRefTable->m_instances.get()[index & m_mask] = nullptr;
+    }
+    m_jsValues.get()[index & m_mask].setStartingValue(jsNull());
+}
 
+void Table::set(uint32_t index, JSValue value)
+{
+    RELEASE_ASSERT(index < length());
+    RELEASE_ASSERT(isAnyrefTable());
+    RELEASE_ASSERT(m_owner);
+    clear(index);
+    m_jsValues.get()[index & m_mask].set(*m_owner->vm(), m_owner, value);
+}
+
+JSValue Table::get(uint32_t index) const
+{
+    RELEASE_ASSERT(index < length());
+    RELEASE_ASSERT(m_owner);
+    return m_jsValues.get()[index & m_mask].get();
+}
+
+void Table::visitAggregate(SlotVisitor& visitor)
+{
+    RELEASE_ASSERT(m_owner);
+    auto locker = holdLock(m_owner->cellLock());
+    for (unsigned i = 0; i < m_length; ++i)
+        visitor.append(m_jsValues.get()[i]);
+}
+
+FuncRefTable* Table::asFuncrefTable()
+{
+    return m_type == TableElementType::Funcref ? static_cast<FuncRefTable*>(this) : nullptr;
+}
+
+FuncRefTable::FuncRefTable(uint32_t initial, Optional<uint32_t> maximum)
+    : Table(initial, maximum, TableElementType::Funcref)
+{
     // FIXME: It might be worth trying to pre-allocate maximum here. The spec recommends doing so.
     // But for now, we're not doing that.
     m_importableFunctions = MallocPtr<WasmToWasmImportableFunction>::malloc((sizeof(WasmToWasmImportableFunction) * Checked<size_t>(allocatedLength(m_length))).unsafeGet());
@@ -76,59 +187,13 @@ Table::Table(uint32_t initial, std::optional<uint32_t> maximum)
     }
 }
 
-std::optional<uint32_t> Table::grow(uint32_t delta)
-{
-    if (delta == 0)
-        return length();
-
-    using Checked = Checked<uint32_t, RecordOverflow>;
-    Checked newLengthChecked = length();
-    newLengthChecked += delta;
-    uint32_t newLength;
-    if (newLengthChecked.safeGet(newLength) == CheckedState::DidOverflow)
-        return std::nullopt;
-
-    if (maximum() && newLength > *maximum())
-        return std::nullopt;
-    if (!isValidLength(newLength))
-        return std::nullopt;
-
-    auto checkedGrow = [&] (auto& container) {
-        if (newLengthChecked.unsafeGet() > allocatedLength(m_length)) {
-            Checked reallocSizeChecked = allocatedLength(newLengthChecked.unsafeGet());
-            reallocSizeChecked *= sizeof(*container.get());
-            uint32_t reallocSize;
-            if (reallocSizeChecked.safeGet(reallocSize) == CheckedState::DidOverflow)
-                return false;
-            // FIXME this over-allocates and could be smarter about not committing all of that memory https://bugs.webkit.org/show_bug.cgi?id=181425
-            container.realloc(reallocSize);
-        }
-        for (uint32_t i = m_length; i < allocatedLength(newLength); ++i)
-            new (&container.get()[i]) std::remove_reference_t<decltype(*container.get())>();
-        return true;
-    };
-
-    if (!checkedGrow(m_importableFunctions))
-        return std::nullopt;
-    if (!checkedGrow(m_instances))
-        return std::nullopt;
-
-    setLength(newLength);
-
-    return newLength;
-}
-
-void Table::clearFunction(uint32_t index)
+void FuncRefTable::setFunction(uint32_t index, JSObject* optionalWrapper, WasmToWasmImportableFunction function, Instance* instance)
 {
     RELEASE_ASSERT(index < length());
-    m_importableFunctions.get()[index & m_mask] = WasmToWasmImportableFunction();
-    ASSERT(m_importableFunctions.get()[index & m_mask].signatureIndex == Wasm::Signature::invalidIndex); // We rely on this in compiled code.
-    m_instances.get()[index & m_mask] = nullptr;
-}
-
-void Table::setFunction(uint32_t index, WasmToWasmImportableFunction function, Instance* instance)
-{
-    RELEASE_ASSERT(index < length());
+    RELEASE_ASSERT(m_owner);
+    clear(index);
+    if (optionalWrapper)
+        m_jsValues.get()[index & m_mask].set(*m_owner->vm(), m_owner, optionalWrapper);
     m_importableFunctions.get()[index & m_mask] = function;
     m_instances.get()[index & m_mask] = instance;
 }

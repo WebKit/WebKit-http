@@ -52,8 +52,6 @@
 
 namespace WebCore {
 
-static const char loadResourceSynchronouslyMode[] = "loadResourceSynchronouslyMode";
-
 WorkerThreadableLoader::WorkerThreadableLoader(WorkerGlobalScope& workerGlobalScope, ThreadableLoaderClient& client, const String& taskMode, ResourceRequest&& request, const ThreadableLoaderOptions& options, const String& referrer)
     : m_workerGlobalScope(workerGlobalScope)
     , m_workerClientWrapper(ThreadableLoaderClientWrapper::create(client, options.initiator))
@@ -71,10 +69,9 @@ void WorkerThreadableLoader::loadResourceSynchronously(WorkerGlobalScope& worker
     WorkerRunLoop& runLoop = workerGlobalScope.thread().runLoop();
 
     // Create a unique mode just for this synchronous resource load.
-    String mode = loadResourceSynchronouslyMode;
-    mode.append(String::number(runLoop.createUniqueId()));
+    String mode = makeString("loadResourceSynchronouslyMode", runLoop.createUniqueId());
 
-    RefPtr<WorkerThreadableLoader> loader = WorkerThreadableLoader::create(workerGlobalScope, client, mode, WTFMove(request), options, String());
+    auto loader = WorkerThreadableLoader::create(workerGlobalScope, client, mode, WTFMove(request), options, String());
     MessageQueueWaitResult result = MessageQueueMessageReceived;
     while (!loader->done() && result != MessageQueueTerminated)
         result = runLoop.runInMode(&workerGlobalScope, mode);
@@ -89,6 +86,8 @@ void WorkerThreadableLoader::cancel()
 }
 
 struct LoaderTaskOptions {
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
+
     LoaderTaskOptions(const ThreadableLoaderOptions&, const String&, Ref<SecurityOrigin>&&);
     ThreadableLoaderOptions options;
     String referrer;

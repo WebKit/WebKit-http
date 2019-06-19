@@ -23,22 +23,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebProcessSupplement_h
-#define WebProcessSupplement_h
+#pragma once
 
-#include "ChildProcessSupplement.h"
+#include "AuxiliaryProcessSupplement.h"
 
 namespace WebKit {
 
 struct WebProcessCreationParameters;
+struct WebProcessDataStoreParameters;
 
-class WebProcessSupplement : public ChildProcessSupplement {
+class WebProcessSupplement : public AuxiliaryProcessSupplement {
 public:
-    virtual void initialize(const WebProcessCreationParameters&)
-    {
-    }
+    virtual void initialize(const WebProcessCreationParameters&) { }
+    virtual void setWebsiteDataStore(const WebProcessDataStoreParameters&) { }
 };
 
 } // namespace WebKit
-
-#endif // WebProcessSupplement_h

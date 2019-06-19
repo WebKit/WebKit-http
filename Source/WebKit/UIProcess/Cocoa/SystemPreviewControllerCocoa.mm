@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,17 +34,28 @@
 #import <QuickLook/QuickLook.h>
 #import <UIKit/UIViewController.h>
 #import <WebCore/MIMETypeRegistry.h>
+#import <WebCore/UTIUtilities.h>
+#import <pal/ios/QuickLookSoftLink.h>
 #import <pal/spi/ios/QuickLookSPI.h>
-#import <wtf/SoftLinking.h>
 #import <wtf/WeakObjCPtr.h>
 
-SOFT_LINK_FRAMEWORK(QuickLook)
-SOFT_LINK_CLASS(QuickLook, QLPreviewController);
-SOFT_LINK_CLASS(QuickLook, QLItem);
+#if HAVE(ARKIT_QUICK_LOOK_PREVIEW_ITEM)
+#import <pal/spi/ios/SystemPreviewSPI.h>
+SOFT_LINK_PRIVATE_FRAMEWORK(ARKit);
+SOFT_LINK_CLASS(ARKit, ARQuickLookPreviewItem);
+SOFT_LINK_PRIVATE_FRAMEWORK(AssetViewer);
+SOFT_LINK_CLASS(AssetViewer, ARQuickLookWebKitItem);
+#endif
 
 @interface _WKPreviewControllerDataSource : NSObject <QLPreviewControllerDataSource> {
     RetainPtr<NSItemProvider> _itemProvider;
+#if HAVE(ARKIT_QUICK_LOOK_PREVIEW_ITEM)
+    RetainPtr<ARQuickLookWebKitItem> _item;
+#else
     RetainPtr<QLItem> _item;
+#endif
+    URL _originatingPageURL;
+    URL _downloadedURL;
 };
 
 @property (strong) NSItemProviderCompletionHandler completionHandler;
@@ -54,11 +65,12 @@ SOFT_LINK_CLASS(QuickLook, QLItem);
 
 @implementation _WKPreviewControllerDataSource
 
-- (instancetype)initWithMIMEType:(NSString*)mimeType
+- (instancetype)initWithMIMEType:(NSString*)mimeType originatingPageURL:(URL)url
 {
     if (!(self = [super init]))
         return nil;
 
+    _originatingPageURL = url;
     _mimeType = [mimeType copy];
 
     return self;
@@ -84,17 +96,28 @@ SOFT_LINK_CLASS(QuickLook, QLItem);
     _itemProvider = adoptNS([[NSItemProvider alloc] init]);
     // FIXME: We are launching the preview controller before getting a response from the resource, which
     // means we don't actually know the real MIME type yet.
-    // FIXME: At the moment we only have one supported UTI, but if we start supporting more types,
-    // then we'll need a table.
-    static NSString *contentType = (__bridge NSString *) UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, CFSTR("usdz"), nil);
+    NSString *contentType = WebCore::UTIFromMIMEType("model/vnd.usdz+zip"_s);
 
-    _item = adoptNS([allocQLItemInstance() initWithPreviewItemProvider:_itemProvider.get() contentType:contentType previewTitle:@"Preview" fileSize:@(0)]);
+#if HAVE(ARKIT_QUICK_LOOK_PREVIEW_ITEM)
+    ARQuickLookPreviewItem *previewItem = [allocARQuickLookPreviewItemInstance() initWithFileAtURL:_downloadedURL];
+    previewItem.canonicalWebPageURL = _originatingPageURL;
+
+    _item = [allocARQuickLookWebKitItemInstance() initWithPreviewItemProvider:_itemProvider.get() contentType:contentType previewTitle:@"Preview" fileSize:@(0) previewItem:previewItem];
+#else
+    _item = adoptNS([PAL::allocQLItemInstance() initWithPreviewItemProvider:_itemProvider.get() contentType:contentType previewTitle:@"Preview" fileSize:@(0)]);
+#endif
     [_item setUseLoadingTimeout:NO];
 
     WeakObjCPtr<_WKPreviewControllerDataSource> weakSelf { self };
     [_itemProvider registerItemForTypeIdentifier:contentType loadHandler:[weakSelf = WTFMove(weakSelf)] (NSItemProviderCompletionHandler completionHandler, Class expectedValueClass, NSDictionary * options) {
-        if (auto strongSelf = weakSelf.get())
-            [strongSelf setCompletionHandler:completionHandler];
+        if (auto strongSelf = weakSelf.get()) {
+            // If the download happened instantly, the call to finish might have come before this
+            // loadHandler. In that case, call the completionHandler here.
+            if (!strongSelf->_downloadedURL.isEmpty())
+                completionHandler((NSURL*)strongSelf->_downloadedURL, nil);
+            else
+                [strongSelf setCompletionHandler:completionHandler];
+        }
     }];
     return _item.get();
 }
@@ -105,8 +128,10 @@ SOFT_LINK_CLASS(QuickLook, QLItem);
         [_item setPreviewItemProviderProgress:@(progress)];
 }
 
-- (void)finish:(WebCore::URL)url
+- (void)finish:(URL)url
 {
+    _downloadedURL = url;
+
     if (self.completionHandler)
         self.completionHandler((NSURL*)url, nil);
 }
@@ -193,7 +218,7 @@ SOFT_LINK_CLASS(QuickLook, QLItem);
 
 namespace WebKit {
 
-void SystemPreviewController::start(const String& mimeType, const WebCore::IntRect& fromRect)
+void SystemPreviewController::start(URL originatingPageURL, const String& mimeType, const WebCore::IntRect& fromRect)
 {
     ASSERT(!m_qlPreviewController);
     if (m_qlPreviewController)
@@ -204,12 +229,12 @@ void SystemPreviewController::start(const String& mimeType, const WebCore::IntRe
     if (!presentingViewController)
         return;
 
-    m_qlPreviewController = adoptNS([allocQLPreviewControllerInstance() init]);
+    m_qlPreviewController = adoptNS([PAL::allocQLPreviewControllerInstance() init]);
 
     m_qlPreviewControllerDelegate = adoptNS([[_WKPreviewControllerDelegate alloc] initWithSystemPreviewController:this fromRect:fromRect]);
     [m_qlPreviewController setDelegate:m_qlPreviewControllerDelegate.get()];
 
-    m_qlPreviewControllerDataSource = adoptNS([[_WKPreviewControllerDataSource alloc] initWithMIMEType:mimeType]);
+    m_qlPreviewControllerDataSource = adoptNS([[_WKPreviewControllerDataSource alloc] initWithMIMEType:mimeType originatingPageURL:originatingPageURL]);
     [m_qlPreviewController setDataSource:m_qlPreviewControllerDataSource.get()];
 
     [presentingViewController presentViewController:m_qlPreviewController.get() animated:YES completion:nullptr];
@@ -221,7 +246,7 @@ void SystemPreviewController::updateProgress(float progress)
         [m_qlPreviewControllerDataSource setProgress:progress];
 }
 
-void SystemPreviewController::finish(WebCore::URL url)
+void SystemPreviewController::finish(URL url)
 {
     if (m_qlPreviewControllerDataSource)
         [m_qlPreviewControllerDataSource finish:url];

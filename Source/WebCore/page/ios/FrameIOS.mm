@@ -25,7 +25,7 @@
 #import "config.h"
 #import "Frame.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "CSSAnimationController.h"
 #import "CommonVM.h"
@@ -81,14 +81,14 @@ void Frame::initWithSimpleHTMLDocument(const String& style, const URL& url)
 {
     m_loader->initForSynthesizedDocument(url);
 
-    RefPtr<HTMLDocument> document = HTMLDocument::createSynthesizedDocument(this, url);
+    auto document = HTMLDocument::createSynthesizedDocument(*this, url);
     document->setCompatibilityMode(DocumentCompatibilityMode::LimitedQuirksMode);
     document->createDOMWindow();
-    setDocument(document);
+    setDocument(document.copyRef());
 
-    auto rootElement = HTMLHtmlElement::create(*document);
+    auto rootElement = HTMLHtmlElement::create(document);
 
-    auto body = HTMLBodyElement::create(*document);
+    auto body = HTMLBodyElement::create(document);
     if (!style.isEmpty())
         body->setAttribute(HTMLNames::styleAttr, style);
 
@@ -390,9 +390,6 @@ Node* Frame::deepestNodeAtLocation(const FloatPoint& viewportLocation)
 Node* Frame::nodeRespondingToClickEvents(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation, SecurityOrigin* securityOrigin)
 {
     auto&& ancestorRespondingToClickEvents = [securityOrigin](const HitTestResult& hitTestResult, Node* terminationNode, IntRect* nodeBounds) -> Node* {
-        bool bodyHasBeenReached = false;
-        bool pointerCursorStillValid = true;
-
         if (nodeBounds)
             *nodeBounds = IntRect();
 
@@ -400,35 +397,8 @@ Node* Frame::nodeRespondingToClickEvents(const FloatPoint& viewportLocation, Flo
         if (!node || (securityOrigin && !securityOrigin->isSameOriginAs(node->document().securityOrigin())))
             return nullptr;
 
-        Node* pointerCursorNode = nullptr;
         for (; node && node != terminationNode; node = node->parentInComposedTree()) {
-            // We only accept pointer nodes before reaching the body tag.
-            if (node->hasTagName(HTMLNames::bodyTag)) {
-#if USE(UIKIT_EDITING)
-                // Make sure we cover the case of an empty editable body.
-                if (!pointerCursorNode && node->isContentEditable())
-                    pointerCursorNode = node;
-#endif
-                bodyHasBeenReached = true;
-                pointerCursorStillValid = false;
-            }
-
-            // If we already have a pointer, and we reach a table, don't accept it.
-            if (pointerCursorNode && (node->hasTagName(HTMLNames::tableTag) || node->hasTagName(HTMLNames::tbodyTag)))
-                pointerCursorStillValid = false;
-
-            // If we haven't reached the body, and we are still paying attention to pointer cursors, and the node has a pointer cursor...
-            if (pointerCursorStillValid && node->renderStyle() && node->renderStyle()->cursor() == CursorType::Pointer)
-                pointerCursorNode = node;
-            // We want the lowest unbroken chain of pointer cursors.
-            else if (pointerCursorNode)
-                pointerCursorStillValid = false;
-
             if (node->willRespondToMouseClickEvents() || node->willRespondToMouseMoveEvents() || (is<Element>(*node) && downcast<Element>(*node).isMouseFocusable())) {
-                // If we're at the body or higher, use the pointer cursor node (which may be null).
-                if (bodyHasBeenReached)
-                    node = pointerCursorNode;
-
                 // If we are interested about the frame, use it.
                 if (nodeBounds) {
                     // This is a check to see whether this node is an area element. The only way this can happen is if this is the first check.
@@ -446,6 +416,33 @@ Node* Frame::nodeRespondingToClickEvents(const FloatPoint& viewportLocation, Flo
     };
 
     return qualifyingNodeAtViewportLocation(viewportLocation, adjustedViewportLocation, WTFMove(ancestorRespondingToClickEvents), true);
+}
+
+Node* Frame::nodeRespondingToDoubleClickEvent(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation)
+{
+    auto&& ancestorRespondingToDoubleClickEvent = [](const HitTestResult& hitTestResult, Node* terminationNode, IntRect* nodeBounds) -> Node* {
+        if (nodeBounds)
+            *nodeBounds = IntRect();
+
+        auto* node = hitTestResult.innerNode();
+        if (!node)
+            return nullptr;
+
+        for (; node && node != terminationNode; node = node->parentInComposedTree()) {
+            if (!node->hasEventListeners(eventNames().dblclickEvent))
+                continue;
+#if ENABLE(TOUCH_EVENTS)
+            if (!node->allowsDoubleTapGesture())
+                continue;
+#endif
+            if (nodeBounds && node->renderer())
+                *nodeBounds = node->renderer()->absoluteBoundingBoxRect(true);
+            return node;
+        }
+        return nullptr;
+    };
+
+    return qualifyingNodeAtViewportLocation(viewportLocation, adjustedViewportLocation, WTFMove(ancestorRespondingToDoubleClickEvent), true);
 }
 
 Node* Frame::nodeRespondingToScrollWheelEvents(const FloatPoint& viewportLocation)
@@ -468,8 +465,8 @@ Node* Frame::nodeRespondingToScrollWheelEvents(const FloatPoint& viewportLocatio
             auto& style = renderer->style();
 
             if (renderer->hasOverflowClip()
-                && (style.overflowY() == Overflow::Auto || style.overflowY() == Overflow::Scroll || style.overflowY() == Overflow::Overlay
-                || style.overflowX() == Overflow::Auto || style.overflowX() == Overflow::Scroll || style.overflowX() == Overflow::Overlay)) {
+                && (style.overflowY() == Overflow::Auto || style.overflowY() == Overflow::Scroll
+                || style.overflowX() == Overflow::Auto || style.overflowX() == Overflow::Scroll)) {
                 scrollingAncestor = node;
             }
         }
@@ -655,19 +652,20 @@ NSArray *Frame::interpretationsForCurrentRoot() const
 
     Node* pastLastNode = rangeOfRootContents->pastLastNode();
     for (Node* node = rangeOfRootContents->firstNode(); node != pastLastNode; node = NodeTraversal::next(*node)) {
-        for (auto* marker : document()->markers().markersFor(node, DocumentMarker::DictationPhraseWithAlternatives)) {
+        ASSERT(node);
+        for (auto* marker : document()->markers().markersFor(*node, DocumentMarker::DictationPhraseWithAlternatives)) {
             // First, add text that precede the marker.
             if (precedingTextStartPosition != createLegacyEditingPosition(node, marker->startOffset())) {
-                RefPtr<Range> precedingTextRange = Range::create(*document(), precedingTextStartPosition, createLegacyEditingPosition(node, marker->startOffset()));
-                String precedingText = plainText(precedingTextRange.get());
+                auto precedingTextRange = Range::create(*document(), precedingTextStartPosition, createLegacyEditingPosition(node, marker->startOffset()));
+                String precedingText = plainText(precedingTextRange.ptr());
                 if (!precedingText.isEmpty()) {
                     for (auto& interpretation : interpretations)
                         append(interpretation, precedingText);
                 }
             }
 
-            RefPtr<Range> rangeForMarker = Range::create(*document(), createLegacyEditingPosition(node, marker->startOffset()), createLegacyEditingPosition(node, marker->endOffset()));
-            String visibleTextForMarker = plainText(rangeForMarker.get());
+            auto rangeForMarker = Range::create(*document(), createLegacyEditingPosition(node, marker->startOffset()), createLegacyEditingPosition(node, marker->endOffset()));
+            String visibleTextForMarker = plainText(rangeForMarker.ptr());
             size_t interpretationsCountForCurrentMarker = marker->alternatives().size() + 1;
             for (size_t i = 0; i < interpretationsCount; ++i) {
                 // Determine text for the ith interpretation. It will either be the visible text, or one of its
@@ -687,8 +685,8 @@ NSArray *Frame::interpretationsForCurrentRoot() const
     }
 
     // Finally, add any text after the last marker.
-    RefPtr<Range> afterLastMarkerRange = Range::create(*document(), precedingTextStartPosition, createLegacyEditingPosition(root, rootChildCount));
-    String textAfterLastMarker = plainText(afterLastMarkerRange.get());
+    auto afterLastMarkerRange = Range::create(*document(), precedingTextStartPosition, createLegacyEditingPosition(root, rootChildCount));
+    String textAfterLastMarker = plainText(afterLastMarkerRange.ptr());
     if (!textAfterLastMarker.isEmpty()) {
         for (auto& interpretation : interpretations)
             append(interpretation, textAfterLastMarker);
@@ -734,9 +732,11 @@ void Frame::overflowScrollPositionChangedForNode(const IntPoint& position, Node*
 
     RenderLayer& layer = *downcast<RenderBoxModelObject>(*renderer).layer();
 
-    layer.setIsUserScroll(isUserScroll);
+    auto oldScrollType = layer.currentScrollType();
+    layer.setCurrentScrollType(isUserScroll ? ScrollType::User : ScrollType::Programmatic);
     layer.scrollToOffsetWithoutAnimation(position);
-    layer.setIsUserScroll(false);
+    layer.setCurrentScrollType(oldScrollType);
+
     layer.didEndScroll(); // FIXME: Should we always call this?
 }
 
@@ -751,4 +751,4 @@ void Frame::resetAllGeolocationPermission()
 
 } // namespace WebCore
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

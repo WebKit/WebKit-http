@@ -200,3 +200,5 @@ Classes:
 Tags:
 - Name: WKErrorCode
   NSErrorDomain: WKErrorDomain
+- Name: WKContentMode
+  SwiftName: WKWebpagePreferences.ContentMode

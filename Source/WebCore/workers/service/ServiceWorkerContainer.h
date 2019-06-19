@@ -45,14 +45,14 @@ class DeferredPromise;
 class NavigatorBase;
 class ServiceWorker;
 
-enum class ServiceWorkerUpdateViaCache;
+enum class ServiceWorkerUpdateViaCache : uint8_t;
 enum class WorkerType;
 
 class ServiceWorkerContainer final : public EventTargetWithInlineData, public ActiveDOMObject, public ServiceWorkerJobClient {
     WTF_MAKE_NONCOPYABLE(ServiceWorkerContainer);
-    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_ISO_ALLOCATED(ServiceWorkerContainer);
 public:
-    ServiceWorkerContainer(ScriptExecutionContext&, NavigatorBase&);
+    ServiceWorkerContainer(ScriptExecutionContext*, NavigatorBase&);
     ~ServiceWorkerContainer();
 
     ServiceWorker* controller() const;
@@ -66,9 +66,11 @@ public:
     void updateRegistration(const URL& scopeURL, const URL& scriptURL, WorkerType, RefPtr<DeferredPromise>&&);
 
     void getRegistration(const String& clientURL, Ref<DeferredPromise>&&);
-    void scheduleTaskToUpdateRegistrationState(ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistrationState, const std::optional<ServiceWorkerData>&);
-    void scheduleTaskToFireUpdateFoundEvent(ServiceWorkerRegistrationIdentifier);
-    void scheduleTaskToFireControllerChangeEvent();
+    void updateRegistrationState(ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistrationState, const Optional<ServiceWorkerData>&);
+    void fireUpdateFoundEvent(ServiceWorkerRegistrationIdentifier);
+    void fireControllerChangeEvent();
+
+    void postMessage(MessageWithMessagePorts&&, ServiceWorkerData&& sourceData, String&& sourceOrigin);
 
     void getRegistrations(Ref<DeferredPromise>&&);
 
@@ -77,33 +79,30 @@ public:
     void addRegistration(ServiceWorkerRegistration&);
     void removeRegistration(ServiceWorkerRegistration&);
 
-    ServiceWorkerJob* job(ServiceWorkerJobIdentifier identifier) { return m_jobMap.get(identifier); }
+    ServiceWorkerJob* job(ServiceWorkerJobIdentifier);
 
     void startMessages();
-
-    void ref() final { refEventTarget(); }
-    void deref() final { derefEventTarget(); }
 
     bool isStopped() const { return m_isStopped; };
 
     bool isAlwaysOnLoggingAllowed() const;
 
 private:
-    void scheduleJob(Ref<ServiceWorkerJob>&&);
+    void scheduleJob(std::unique_ptr<ServiceWorkerJob>&&);
 
     void jobFailedWithException(ServiceWorkerJob&, const Exception&) final;
     void jobResolvedWithRegistration(ServiceWorkerJob&, ServiceWorkerRegistrationData&&, ShouldNotifyWhenResolved) final;
     void jobResolvedWithUnregistrationResult(ServiceWorkerJob&, bool unregistrationResult) final;
     void startScriptFetchForJob(ServiceWorkerJob&, FetchOptions::Cache) final;
-    void jobFinishedLoadingScript(ServiceWorkerJob&, const String& script, const ContentSecurityPolicyResponseHeaders&) final;
-    void jobFailedLoadingScript(ServiceWorkerJob&, const ResourceError&, std::optional<Exception>&&) final;
+    void jobFinishedLoadingScript(ServiceWorkerJob&, const String& script, const ContentSecurityPolicyResponseHeaders&, const String& referrerPolicy) final;
+    void jobFailedLoadingScript(ServiceWorkerJob&, const ResourceError&, Exception&&) final;
 
-    void jobDidFinish(ServiceWorkerJob&);
+    void notifyFailedFetchingScript(ServiceWorkerJob&, const ResourceError&);
+    void destroyJob(ServiceWorkerJob&);
 
-    void didFinishGetRegistrationRequest(uint64_t requestIdentifier, std::optional<ServiceWorkerRegistrationData>&&);
+    void didFinishGetRegistrationRequest(uint64_t requestIdentifier, Optional<ServiceWorkerRegistrationData>&&);
     void didFinishGetRegistrationsRequest(uint64_t requestIdentifier, Vector<ServiceWorkerRegistrationData>&&);
 
-    SWServerConnectionIdentifier connectionIdentifier() final;
     DocumentOrWorkerIdentifier contextIdentifier() final;
 
     SWClientConnection& ensureSWClientConnection();
@@ -116,12 +115,19 @@ private:
     void derefEventTarget() final;
     void stop() final;
 
+    void notifyRegistrationIsSettled(const ServiceWorkerRegistrationKey&);
+
     std::unique_ptr<ReadyPromise> m_readyPromise;
 
     NavigatorBase& m_navigator;
 
     RefPtr<SWClientConnection> m_swConnection;
-    HashMap<ServiceWorkerJobIdentifier, Ref<ServiceWorkerJob>> m_jobMap;
+
+    struct OngoingJob {
+        std::unique_ptr<ServiceWorkerJob> job;
+        RefPtr<PendingActivity<ServiceWorkerContainer>> pendingActivity;
+    };
+    HashMap<ServiceWorkerJobIdentifier, OngoingJob> m_jobMap;
 
     bool m_isStopped { false };
     HashMap<ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistration*> m_registrations;
@@ -142,6 +148,10 @@ private:
 
     uint64_t m_lastPendingPromiseIdentifier { 0 };
     HashMap<uint64_t, std::unique_ptr<PendingPromise>> m_pendingPromises;
+
+    uint64_t m_lastOngoingSettledRegistrationIdentifier { 0 };
+    HashMap<uint64_t, ServiceWorkerRegistrationKey> m_ongoingSettledRegistrations;
+
 };
 
 } // namespace WebCore

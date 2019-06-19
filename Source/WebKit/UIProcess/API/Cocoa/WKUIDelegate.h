@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 #import <WebKit/WKPreviewActionItem.h>
 
@@ -36,6 +34,7 @@ NS_ASSUME_NONNULL_BEGIN
 @class WKNavigationAction;
 @class WKOpenPanelParameters;
 @class WKPreviewElementInfo;
+@class WKSecurityOrigin;
 @class WKWebView;
 @class WKWebViewConfiguration;
 @class WKWindowFeatures;
@@ -50,7 +49,7 @@ NS_ASSUME_NONNULL_BEGIN
 /*! @abstract Creates a new web view.
  @param webView The web view invoking the delegate method.
  @param configuration The configuration to use when creating the new web
- view.
+ view. This configuration is a copy of webView.configuration.
  @param navigationAction The navigation action causing the new web view to
  be created.
  @param windowFeatures Window features requested by the webpage.
@@ -66,7 +65,7 @@ NS_ASSUME_NONNULL_BEGIN
   @discussion Your app should remove the web view from the view hierarchy and update
   the UI as needed, such as by closing the containing browser tab or window.
   */
-- (void)webViewDidClose:(WKWebView *)webView WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+- (void)webViewDidClose:(WKWebView *)webView WK_API_AVAILABLE(macos(10.11), ios(9.0));
 
 /*! @abstract Displays a JavaScript alert panel.
  @param webView The web view invoking the delegate method.
@@ -130,7 +129,7 @@ NS_ASSUME_NONNULL_BEGIN
  This method will only be invoked for elements that have default preview in WebKit, which is
  limited to links. In the future, it could be invoked for additional elements.
  */
-- (BOOL)webView:(WKWebView *)webView shouldPreviewElement:(WKPreviewElementInfo *)elementInfo WK_API_AVAILABLE(ios(10.0));
+- (BOOL)webView:(WKWebView *)webView shouldPreviewElement:(WKPreviewElementInfo *)elementInfo WK_API_DEPRECATED("This API will be replaced", ios(10.0, WK_IOS_TBA));
 
 /*! @abstract Allows your app to provide a custom view controller to show when the given element is peeked.
  @param webView The web view invoking the delegate method.
@@ -145,13 +144,13 @@ NS_ASSUME_NONNULL_BEGIN
  Returning nil will result in WebKit's default preview behavior. webView:commitPreviewingViewController: will only be invoked
  if a non-nil view controller was returned.
  */
-- (nullable UIViewController *)webView:(WKWebView *)webView previewingViewControllerForElement:(WKPreviewElementInfo *)elementInfo defaultActions:(NSArray<id <WKPreviewActionItem>> *)previewActions WK_API_AVAILABLE(ios(10.0));
+- (nullable UIViewController *)webView:(WKWebView *)webView previewingViewControllerForElement:(WKPreviewElementInfo *)elementInfo defaultActions:(NSArray<id <WKPreviewActionItem>> *)previewActions WK_API_DEPRECATED("This API will be replaced", ios(10.0, WK_IOS_TBA));
 
 /*! @abstract Allows your app to pop to the view controller it created.
  @param webView The web view invoking the delegate method.
  @param previewingViewController The view controller that is being popped.
  */
-- (void)webView:(WKWebView *)webView commitPreviewingViewController:(UIViewController *)previewingViewController WK_API_AVAILABLE(ios(10.0));
+- (void)webView:(WKWebView *)webView commitPreviewingViewController:(UIViewController *)previewingViewController WK_API_DEPRECATED("This API will be replaced", ios(10.0, WK_IOS_TBA));
 
 #endif // TARGET_OS_IPHONE
 
@@ -165,12 +164,10 @@ NS_ASSUME_NONNULL_BEGIN
 
  If you do not implement this method, the web view will behave as if the user selected the Cancel button.
  */
-- (void)webView:(WKWebView *)webView runOpenPanelWithParameters:(WKOpenPanelParameters *)parameters initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSArray<NSURL *> * _Nullable URLs))completionHandler WK_API_AVAILABLE(macosx(10.12));
+- (void)webView:(WKWebView *)webView runOpenPanelWithParameters:(WKOpenPanelParameters *)parameters initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(NSArray<NSURL *> * _Nullable URLs))completionHandler WK_API_AVAILABLE(macos(10.12));
 
 #endif
 
 @end
 
 NS_ASSUME_NONNULL_END
-
-#endif

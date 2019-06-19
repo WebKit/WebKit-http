@@ -7,13 +7,21 @@
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 compositing/ios [ Pass ]
+compositing/shared-backing/overflow-scroll [ Pass ]
+compositing/scrolling/async-overflow-scrolling [ Pass ]
+compositing/layer-creation/clipping-scope [ Pass ]
+fast/device-orientation [ Pass ]
 fast/history/ios [ Pass ]
 fast/scrolling/ios [ Pass ]
 fast/viewport/ios [ Pass ]
 fast/visual-viewport/ios/ [ Pass ]
-scrollingcoordinator/ios [ Pass ]
-tiled-drawing/ios [ Pass ]
-editing/selection/character-granularity-rect.html [ Failure ]
+scrollingcoordinator [ Pass ]
+scrollingcoordinator/mac [ Skip ]
+fast/web-share [ Pass ]
+editing/find [ Pass ]
+editing/input/ios [ Pass ]
+editing/pasteboard/ios [ Pass ]
+editing/undo-manager [ Pass ]
 
 accessibility/smart-invert.html [ Pass ]
 accessibility/smart-invert-reference.html [ Pass ]
@@ -40,7 +48,6 @@ webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpayment
 
 # skip in favor of tests in http/tests/paymentrequest
 imported/w3c/web-platform-tests/payment-request/payment-request-abort-method.https.html [ WontFix ]
-imported/w3c/web-platform-tests/payment-request/payment-request-canmakepayment-method.https.html [ WontFix ]
 imported/w3c/web-platform-tests/payment-request/payment-request-show-method.https.html [ WontFix ]
 imported/w3c/web-platform-tests/payment-request/rejects_if_not_active.https.html [ WontFix ]
 
@@ -49,6 +56,13 @@ webkit.org/b/170713 imported/w3c/web-platform-tests/css/css-ui/text-overflow-022
 http/tests/security/contentSecurityPolicy/manifest-src-allowed.html [ Pass ]
 http/tests/security/contentSecurityPolicy/manifest-src-blocked.html [ Pass ]
 applicationmanifest/ [ Pass ]
+
+# Skipped because of <rdar://problem/45388584>.
+http/tests/webAPIStatistics [ Skip ]
+
+# Non-fast scrollable region doesn't apply to iOS.
+scrollingcoordinator/non-fast-scrollable-region-scaled-iframe.html [ Skip ]
+scrollingcoordinator/non-fast-scrollable-region-transformed-iframe.html [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -80,10 +94,6 @@ js/dom/dom-static-property-for-in-iteration.html [ Failure ]
 
 # JavaScript tests that time out:
 js/dom/dfg-inline-resolve.html
-
-# Page overlay tests that fail:
-pageoverlay/overlay-large-document-scrolled.html [ Failure ]
-pageoverlay/overlay-large-document.html [ Failure ]
 
 # Scrollbar test that fail:
 scrollbars/corner-resizer-window-inactive.html [ ImageOnlyFailure ]
@@ -350,12 +360,15 @@ http/tests/security/javascriptURL/xss-ALLOWED-to-javascript-url-window-open.html
 http/tests/security/mixedContent/about-blank-iframe-in-main-frame.html
 http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame.html
 http/tests/security/referrer-policy-redirect-link.html
+http/tests/security/referrer-policy-redirect-link-downgrade.html
 http/tests/security/referrer-policy-rel-noreferrer.html
 http/tests/security/video-cross-origin-accessfailure.html
 http/tests/security/video-cross-origin-accesssameorigin.html
 http/tests/security/video-cross-origin-readback.html
 http/tests/websocket/tests/hybi/invalid-subprotocol-characters.html
 http/tests/xmlhttprequest/cross-origin-authorization-with-embedder.html
+
+http/wpt/service-workers/mac/ [ Skip ]
 
 # HTTP tests that are flaky:
 http/tests/navigation/forward-and-cancel.html [ Failure Pass ]
@@ -841,10 +854,6 @@ js/promises-tests/promises-tests-2-3-1.html
 js/promises-tests/promises-tests-2-3-2.html
 js/promises-tests/promises-tests-2-3-3.html
 js/promises-tests/promises-tests-2-3-4.html 
-sputnik/Conformance/07_Lexical_Conventions/7.4_Comments/S7.4_A5.html
-sputnik/Conformance/07_Lexical_Conventions/7.4_Comments/S7.4_A6.html
-sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A1.1_T2.html
-sputnik/Conformance/15_Native_Objects/15.5_String/15.5.4/15.5.4.19_String.prototype.toLocaleUpperCase/S15.5.4.19_A1_T1.html
 storage/websql/change-version.html
 
 # Flaky tests that assert/time out:
@@ -902,6 +911,8 @@ editing/selection/select-out-of-floated-non-editable-09.html [ Skip ]
 editing/selection/select-out-of-floated-non-editable-10.html [ Skip ]
 editing/selection/select-out-of-floated-non-editable-11.html [ Skip ]
 editing/selection/select-out-of-floated-non-editable-12.html [ Skip ]
+
+webkit.org/b/192088 media/no-fullscreen-when-hidden.html [ Failure Pass ]
 
 # Flaky as of 06/08/2015
 fast/loader/fragment-navigation-base-blank.html [ Failure Pass ]
@@ -1004,6 +1015,7 @@ fast/loader/location-hash-user-gesture.html [ Skip ]
 imported/blink/editing/selection/selectstart-event-crash.html [ Skip ]
 fast/dom/Window/post-message-user-action.html [ Skip ]
 fast/images/image-usemap-parsing.html [ Skip ]
+fast/shadow-dom/fullscreen-in-shadow-full-screen-ancestor.html [ Skip ]
 fast/shadow-dom/fullscreen-in-shadow-fullscreenElement.html [ Skip ]
 fast/shadow-dom/fullscreen-in-shadow-webkitCurrentFullScreenElement.html [ Skip ]
 fast/shadow-dom/fullscreen-in-slot-fullscreenElement.html [ Skip ]
@@ -1055,33 +1067,8 @@ webkit.org/b/155947 [ Debug ] fast/loader/scroll-position-restored-on-back.html 
 webkit.org/b/155948 transitions/cancel-transition.html [ Pass Failure ]
 webkit.org/b/155948 legacy-animation-engine/transitions/cancel-transition.html [ Pass Failure ]
 
-# <a download> does not work on iOS.
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-unset.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download-async-delegate.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-backslash.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-then-revoke.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-nodownload.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
-webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
-webkit.org/b/156067 http/tests/download/anchor-download-attribute-content-disposition.html [ Skip ]
-webkit.org/b/156067 http/tests/download/anchor-download-no-extension.html [ Skip ]
-webkit.org/b/156067 http/tests/download/anchor-download-redirect.html [ Skip ]
-webkit.org/b/156067 http/tests/download/anchor-load-after-download.html [ Skip ]
-webkit.org/b/156067 http/tests/download/area-download.html [ Skip ]
-webkit.org/b/156067 http/tests/security/anchor-download-allow-blob.html [ Skip ]
-webkit.org/b/156067 http/tests/security/anchor-download-allow-data.html [ Skip ]
-webkit.org/b/156067 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
-webkit.org/b/156067 http/tests/security/anchor-download-block-crossorigin.html [ Skip ]
-webkit.org/b/156067 http/tests/download/anchor-download-no-value.html [ Skip ]
-webkit.org/b/156067 http/tests/download/convert-cached-load-to-download.html [ Skip ]
+webkit.org/b/189686 webgl/2.0.0/conformance2/textures/misc/copy-texture-image-luma-format.html [ Skip ]
+webkit.org/b/189686 webgl/2.0.0/conformance/textures/misc/tex-image-and-sub-image-2d-with-array-buffer-view.html [ Skip ]
 
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-vary.html [ Pass Timeout ]
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-vary-no-body.html [ Pass Timeout ]
@@ -1112,6 +1099,10 @@ svg/animations/animate-linear-discrete-additive-b.svg [ ImageOnlyFailure ]
 svg/animations/animate-linear-discrete-additive-c.svg [ ImageOnlyFailure ]
 svg/animations/animate-linear-discrete-additive.svg [ ImageOnlyFailure ]
 svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg [ ImageOnlyFailure ]
+
+webkit.org/b/192045 css3/filters/blur-filter-page-scroll-parents.html
+webkit.org/b/192045 css3/filters/blur-filter-page-scroll-self.html
+webkit.org/b/192045 css3/filters/blur-filter-page-scroll.html
 
 webkit.org/b/159379 fast/history/page-cache-webdatabase-pending-transaction.html [ Pass Failure ]
 
@@ -1172,8 +1163,6 @@ fast/css/deferred-parsing/hover-test.html [ Skip ]
 # Skipped because there is no key to show the context menu
 fast/events/context-activated-by-key-event.html [ Skip ]
 
-webkit.org/b/168924 scrollingcoordinator/ios/non-stable-viewport-scroll.html [ Pass Failure ]
-
 webkit.org/b/169640 imported/w3c/web-platform-tests/html/webappapis/scripting/events/event-handler-javascript.html [ Failure ]
 
 webkit.org/b/169558 fast/history/ios/history-scroll-restoration.html [ Pass Failure ]
@@ -1199,8 +1188,6 @@ webkit.org/b/171613 http/tests/xmlhttprequest/supported-xml-content-types.html [
 webkit.org/b/171331 http/tests/preload/single_download_preload.html [ Pass Failure ]
 
 webkit.org/b/170699 [ Release ] imported/w3c/web-platform-tests/html/webappapis/timers/negative-settimeout.html [ Pass Failure ]
-
-webkit.org/b/171628 scrollingcoordinator/ios/nested-fixed-layer-positions.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/171638 [ Release ] http/tests/xmlhttprequest/methods.html [ Pass Timeout ]
 
@@ -1232,8 +1219,6 @@ webkit.org/b/176240 http/tests/websocket/tests/hybi/handshake-ok-with-legacy-web
 
 webkit.org/b/173608 webrtc/video-replace-muted-track.html [ Skip ]
 
-webkit.org/b/177501 webrtc/video-mute.html [ Pass Timeout ]
-
 webkit.org/b/187388 animations/needs-layout.html [ Pass ImageOnlyFailure ]
 webkit.org/b/172397 legacy-animation-engine/animations/needs-layout.html [ Pass ImageOnlyFailure ]
 
@@ -1245,16 +1230,9 @@ webkit.org/b/181167 imported/w3c/web-platform-tests/service-workers/service-work
 
 webkit.org/b/181392 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html [ Pass Failure ]
 
-webkit.org/b/172879 webrtc/video-unmute.html [ Skip ]
-
-webkit.org/b/181957 [ Release ] http/tests/misc/resource-timing-resolution.html [ Pass Failure ]
-
 webkit.org/b/181821 fast/visual-viewport/ios/caret-after-focus-in-fixed.html [ Pass Failure ]
 
 webkit.org/b/182144 [ Debug ] webgl/1.0.3/conformance/rendering/many-draw-calls.html [ Skip ]
-
-# This is marked as Pass to see if additional logging can reveal the cause of the flakiness.
-webkit.org/b/183714 [ Debug ] http/tests/storageAccess/grant-storage-access-under-opener.html [ Pass ]
 
 webkit.org/b/183860 http/wpt/service-workers/third-party-registration.html [ Pass Timeout ]
 
@@ -1265,7 +1243,6 @@ webkit.org/b/184783 compositing/ios/overflow-scroll-touch-tiles.html [ Pass Fail
 webkit.org/b/179853 [ Debug ] imported/blink/fast/text/international-iteration-simple-text.html [ Pass Failure ]
 
 # skip manual payment-request tests
-imported/w3c/web-platform-tests/payment-request/MerchantValidationEvent/complete-method-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-call-immediate-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-duplicate-shipping-options-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updateWith-incremental-update-manual.https.html [ Skip ]
@@ -1279,7 +1256,7 @@ imported/w3c/web-platform-tests/payment-request/change-shipping-option-manual.ht
 imported/w3c/web-platform-tests/payment-request/change-shipping-option-select-last-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/complete-method-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/methodName-attribute-manual.https.html [ Skip ]
-imported/w3c/web-platform-tests/payment-request/payment-response/onpayerdetailchange-attribute.manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/payment-response/onpayerdetailchange-attribute-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/payerEmail-attribute-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/payerName-attribute-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/payment-response/payerPhone-attribute-manual.https.html [ Skip ]
@@ -1299,3 +1276,57 @@ imported/w3c/web-platform-tests/payment-request/user-accepts-payment-request-alg
 
 webkit.org/b/189087 svg/animations/animate-end-attribute-numeric-precision.html [ Pass Failure ]
 
+webkit.org/b/190847 [ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/unregister-then-register-new-script.https.html [ Pass Failure ] 
+
+webkit.org/b/190848 imported/w3c/web-platform-tests/service-workers/service-worker/navigation-redirect-to-http.https.html [ Pass Failure ] 
+
+webkit.org/b/190850 [ Debug ] platform/ios/ios/plugin/youtube-flash-plugin-iframe-no-height-or-width.html [ Pass Failure ] 
+
+webkit.org/b/189641 [ Debug ] webgl/2.0.0/conformance/attribs/gl-vertexattribpointer.html [ Slow ]
+
+# Skip WebAuthN tests for hid authenticators
+http/wpt/webauthn/ctap-hid-failure.https.html [ Skip ]
+http/wpt/webauthn/ctap-hid-success.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-create-failure-hid-silent.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-create-failure-hid.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-create-success-hid.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-get-failure-hid-silent.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-get-failure-hid.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-get-success-hid.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-create-failure-u2f-silent.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-create-failure-u2f.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-create-success-u2f.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-get-failure-u2f-silent.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-get-failure-u2f.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-get-success-u2f.https.html [ Skip ]
+
+# FIXME: Unskip these tests once we have the fix for <rdar://problem/44930119>.
+fast/forms/auto-fill-button/caps-lock-indicator-should-be-visible-after-hiding-auto-fill-strong-password-button.html [ Skip ]
+fast/forms/auto-fill-button/caps-lock-indicator-should-not-be-visible-when-auto-fill-strong-password-button-is-visible.html [ Skip ]
+fast/forms/password-scrolled-after-caps-lock-toggled.html [ Skip ]
+fast/repaint/placeholder-after-caps-lock-hidden.html [ Skip ]
+
+webkit.org/b/194826 [ Debug ] http/tests/resourceLoadStatistics/do-not-block-top-level-navigation-redirect.html [ Pass Timeout ]
+
+webkit.org/b/195341 fast/viewport/ios/device-width-viewport-after-changing-view-scale.html [ Pass Failure ]
+webkit.org/b/195341 compositing/ios/overflow-scroll-update-overlap.html [ ImageOnlyFailure ]
+
+webkit.org/b/196013 fast/scrolling/rtl-scrollbars-sticky-overflow-scroll-2.html [ ImageOnlyFailure ]
+webkit.org/b/196013 fast/scrolling/rtl-scrollbars-sticky-overflow-scroll.html [ ImageOnlyFailure ]
+webkit.org/b/196013 fast/scrolling/rubber-band-shows-background.html [ ImageOnlyFailure ]
+
+webkit.org/b/196269 http/tests/resourceLoadStatistics/capped-lifetime-for-cookie-set-in-js-with-link-fragment-from-prevalent-resource.html [ Pass Timeout ]
+webkit.org/b/196269 http/tests/resourceLoadStatistics/capped-lifetime-for-cookie-set-in-js-with-link-query-and-fragment-from-prevalent-resource.html [ Pass Timeout ]
+webkit.org/b/196269 http/tests/resourceLoadStatistics/capped-lifetime-for-cookie-set-in-js-with-link-query-from-prevalent-resource.html [ Pass Timeout ]
+webkit.org/b/196269 http/tests/resourceLoadStatistics/capped-lifetime-for-cookie-set-in-js-without-link-decoration-from-prevalent-resource.html [ Pass Timeout ]
+
+# <rdar://problem/28233746>
+webkit.org/b/196274 imported/w3c/web-platform-tests/xhr/send-redirect-post-upload.htm [ Skip ]
+
+webkit.org/b/196633 imported/w3c/web-platform-tests/webrtc/RTCRtpReceiver-getSynchronizationSources.https.html [ Pass Failure ]
+
+webkit.org/b/197662 [ Debug ] imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-getStats.https.html [ Pass Failure ]
+
+webkit.org/b/198774 imported/w3c/web-platform-tests/websockets/bufferedAmount-unchanged-by-sync-xhr.any.worker.html [ Failure ]
+
+webkit.org/b/198185 http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html [ Skip ]

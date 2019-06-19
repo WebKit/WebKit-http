@@ -70,7 +70,7 @@ class BindingsTests:
             exit_code = e.exit_code
         return exit_code
 
-    def generate_supplemental_dependency(self, input_directory, supplemental_dependency_file, window_constructors_file, workerglobalscope_constructors_file, dedicatedworkerglobalscope_constructors_file, serviceworkerglobalscope_constructors_file):
+    def generate_supplemental_dependency(self, input_directory, supplemental_dependency_file, window_constructors_file, workerglobalscope_constructors_file, dedicatedworkerglobalscope_constructors_file, serviceworkerglobalscope_constructors_file, workletglobalscope_constructors_file, paintworkletglobalscope_constructors_file, testglobalscope_constructors_file):
         idl_files_list = tempfile.mkstemp()
         for input_file in os.listdir(input_directory):
             (name, extension) = os.path.splitext(input_file)
@@ -83,12 +83,16 @@ class BindingsTests:
                '-IWebCore/bindings/scripts',
                'WebCore/bindings/scripts/preprocess-idls.pl',
                '--idlFilesList', idl_files_list[1],
+               '--testGlobalContextName', 'TestGlobalObject',
                '--defines', '',
                '--supplementalDependencyFile', supplemental_dependency_file,
                '--windowConstructorsFile', window_constructors_file,
                '--workerGlobalScopeConstructorsFile', workerglobalscope_constructors_file,
                '--dedicatedWorkerGlobalScopeConstructorsFile', dedicatedworkerglobalscope_constructors_file,
-               '--serviceWorkerGlobalScopeConstructorsFile', serviceworkerglobalscope_constructors_file]
+               '--serviceWorkerGlobalScopeConstructorsFile', serviceworkerglobalscope_constructors_file,
+               '--workletGlobalScopeConstructorsFile', workletglobalscope_constructors_file,
+               '--paintWorkletGlobalScopeConstructorsFile', paintworkletglobalscope_constructors_file,
+               '--testGlobalScopeConstructorsFile', testglobalscope_constructors_file]
 
         exit_code = 0
         try:
@@ -125,6 +129,7 @@ class BindingsTests:
                     self.failures.append("(%s) %s" % (generator, output_file))
             elif self.verbose:
                 print('PASS: (%s) %s' % (generator, output_file))
+            sys.stdout.flush()
         return changes_found
 
     def test_matches_patterns(self, test):
@@ -185,13 +190,19 @@ class BindingsTests:
         workerglobalscope_constructors_file = tempfile.mkstemp()
         dedicatedworkerglobalscope_constructors_file = tempfile.mkstemp()
         serviceworkerglobalscope_constructors_file = tempfile.mkstemp()
-        if self.generate_supplemental_dependency(input_directory, supplemental_dependency_file[1], window_constructors_file[1], workerglobalscope_constructors_file[1], dedicatedworkerglobalscope_constructors_file[1], serviceworkerglobalscope_constructors_file[1]):
+        workletglobalscope_constructors_file = tempfile.mkstemp()
+        paintworkletglobalscope_constructors_file = tempfile.mkstemp()
+        testglobalscope_constructors_file = tempfile.mkstemp()
+        if self.generate_supplemental_dependency(input_directory, supplemental_dependency_file[1], window_constructors_file[1], workerglobalscope_constructors_file[1], dedicatedworkerglobalscope_constructors_file[1], serviceworkerglobalscope_constructors_file[1], workletglobalscope_constructors_file[1], paintworkletglobalscope_constructors_file[1], testglobalscope_constructors_file[1]):
             print('Failed to generate a supplemental dependency file.')
             self.close_and_remove(supplemental_dependency_file)
             self.close_and_remove(window_constructors_file)
             self.close_and_remove(workerglobalscope_constructors_file)
             self.close_and_remove(dedicatedworkerglobalscope_constructors_file)
             self.close_and_remove(serviceworkerglobalscope_constructors_file)
+            self.close_and_remove(workletglobalscope_constructors_file)
+            self.close_and_remove(paintworkletglobalscope_constructors_file)
+            self.close_and_remove(testglobalscope_constructors_file)
             return -1
 
         for generator in self.generators:
@@ -205,6 +216,9 @@ class BindingsTests:
         self.close_and_remove(workerglobalscope_constructors_file)
         self.close_and_remove(dedicatedworkerglobalscope_constructors_file)
         self.close_and_remove(serviceworkerglobalscope_constructors_file)
+        self.close_and_remove(workletglobalscope_constructors_file)
+        self.close_and_remove(paintworkletglobalscope_constructors_file)
+        self.close_and_remove(testglobalscope_constructors_file)
 
         if self.json_file_name:
             json_data = {

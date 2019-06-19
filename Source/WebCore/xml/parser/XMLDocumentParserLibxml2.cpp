@@ -53,7 +53,7 @@
 #include "XMLNSNames.h"
 #include "XMLDocumentParserScope.h"
 #include <libxml/parserInternals.h>
-#include <wtf/unicode/UTF8.h>
+#include <wtf/unicode/UTF8Conversion.h>
 
 #if ENABLE(XSLT)
 #include "XMLTreeViewer.h"
@@ -673,14 +673,14 @@ static inline String toString(const xmlChar* string)
     return String::fromUTF8(reinterpret_cast<const char*>(string));
 }
 
-static inline AtomicString toAtomicString(const xmlChar* string, size_t size)
+static inline AtomString toAtomString(const xmlChar* string, size_t size)
 {
-    return AtomicString::fromUTF8(reinterpret_cast<const char*>(string), size);
+    return AtomString::fromUTF8(reinterpret_cast<const char*>(string), size);
 }
 
-static inline AtomicString toAtomicString(const xmlChar* string)
+static inline AtomString toAtomString(const xmlChar* string)
 {
-    return AtomicString::fromUTF8(reinterpret_cast<const char*>(string));
+    return AtomString::fromUTF8(reinterpret_cast<const char*>(string));
 }
 
 struct _xmlSAX2Namespace {
@@ -693,8 +693,8 @@ static inline bool handleNamespaceAttributes(Vector<Attribute>& prefixedAttribut
 {
     xmlSAX2Namespace* namespaces = reinterpret_cast<xmlSAX2Namespace*>(libxmlNamespaces);
     for (int i = 0; i < numNamespaces; i++) {
-        AtomicString namespaceQName = xmlnsAtom();
-        AtomicString namespaceURI = toAtomicString(namespaces[i].uri);
+        AtomString namespaceQName = xmlnsAtom();
+        AtomString namespaceURI = toAtomString(namespaces[i].uri);
         if (namespaces[i].prefix)
             namespaceQName = "xmlns:" + toString(namespaces[i].prefix);
 
@@ -721,10 +721,10 @@ static inline bool handleElementAttributes(Vector<Attribute>& prefixedAttributes
     xmlSAX2Attributes* attributes = reinterpret_cast<xmlSAX2Attributes*>(libxmlAttributes);
     for (int i = 0; i < numAttributes; i++) {
         int valueLength = static_cast<int>(attributes[i].end - attributes[i].value);
-        AtomicString attrValue = toAtomicString(attributes[i].value, valueLength);
+        AtomString attrValue = toAtomString(attributes[i].value, valueLength);
         String attrPrefix = toString(attributes[i].prefix);
-        AtomicString attrURI = attrPrefix.isEmpty() ? nullAtom() : toAtomicString(attributes[i].uri);
-        AtomicString attrQName = attrPrefix.isEmpty() ? toAtomicString(attributes[i].localname) : attrPrefix + ":" + toString(attributes[i].localname);
+        AtomString attrURI = attrPrefix.isEmpty() ? nullAtom() : toAtomString(attributes[i].uri);
+        AtomString attrQName = attrPrefix.isEmpty() ? toAtomString(attributes[i].localname) : attrPrefix + ":" + toString(attributes[i].localname);
 
         auto result = Element::parseAttributeName(attrURI, attrQName);
         if (result.hasException())
@@ -761,9 +761,9 @@ void XMLDocumentParser::startElementNs(const xmlChar* xmlLocalName, const xmlCha
     if (!updateLeafTextNode())
         return;
 
-    AtomicString localName = toAtomicString(xmlLocalName);
-    AtomicString uri = toAtomicString(xmlURI);
-    AtomicString prefix = toAtomicString(xmlPrefix);
+    AtomString localName = toAtomString(xmlLocalName);
+    AtomString uri = toAtomString(xmlURI);
+    AtomString prefix = toAtomString(xmlPrefix);
 
     if (m_parsingFragment && uri.isNull()) {
         if (!prefix.isNull())
@@ -877,7 +877,7 @@ void XMLDocumentParser::endElementNs()
         // the libxml2 and Qt XMLDocumentParser implementations.
 
         if (scriptElement.readyToBeParserExecuted())
-            scriptElement.executeClassicScript(ScriptSourceCode(scriptElement.scriptContent(), document()->url(), m_scriptStartPosition, JSC::SourceProviderSourceType::Program, InlineClassicScript::create(scriptElement)));
+            scriptElement.executeClassicScript(ScriptSourceCode(scriptElement.scriptContent(), URL(document()->url()), m_scriptStartPosition, JSC::SourceProviderSourceType::Program, InlineClassicScript::create(scriptElement)));
         else if (scriptElement.willBeParserExecuted() && scriptElement.loadableScript()) {
             m_pendingScript = PendingScript::create(scriptElement, *scriptElement.loadableScript());
             m_pendingScript->setClient(*this);
@@ -1154,7 +1154,7 @@ static size_t convertUTF16EntityToUTF8(const UChar* utf16Entity, size_t numberOf
 {
     const char* originalTarget = target;
     auto conversionResult = WTF::Unicode::convertUTF16ToUTF8(&utf16Entity, utf16Entity + numberOfCodeUnits, &target, target + targetSize);
-    if (conversionResult != WTF::Unicode::conversionOK)
+    if (conversionResult != WTF::Unicode::ConversionOK)
         return 0;
 
     // Even though we must pass the length, libxml expects the entity string to be null terminated.
@@ -1387,6 +1387,9 @@ bool XMLDocumentParser::shouldAssociateConsoleMessagesWithTextPosition() const
 
 void XMLDocumentParser::stopParsing()
 {
+    if (m_sawError)
+        insertErrorMessageBlock();
+
     DocumentParser::stopParsing();
     if (context())
         xmlStopParser(context());
@@ -1453,7 +1456,7 @@ bool XMLDocumentParser::appendFragmentSource(const String& chunk)
 
 // --------------------------------
 
-using AttributeParseState = std::optional<HashMap<String, String>>;
+using AttributeParseState = Optional<HashMap<String, String>>;
 
 static void attributesStartElementNsHandler(void* closure, const xmlChar* xmlLocalName, const xmlChar* /*xmlPrefix*/, const xmlChar* /*xmlURI*/, int /*numNamespaces*/, const xmlChar** /*namespaces*/, int numAttributes, int /*numDefaulted*/, const xmlChar** libxmlAttributes)
 {
@@ -1476,7 +1479,7 @@ static void attributesStartElementNsHandler(void* closure, const xmlChar* xmlLoc
     }
 }
 
-std::optional<HashMap<String, String>> parseAttributes(const String& string)
+Optional<HashMap<String, String>> parseAttributes(const String& string)
 {
     String parseString = "<?xml version=\"1.0\"?><attrs " + string + " />";
 

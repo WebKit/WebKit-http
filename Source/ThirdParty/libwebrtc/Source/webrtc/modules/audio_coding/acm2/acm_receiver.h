@@ -11,6 +11,7 @@
 #ifndef MODULES_AUDIO_CODING_ACM2_ACM_RECEIVER_H_
 #define MODULES_AUDIO_CODING_ACM2_ACM_RECEIVER_H_
 
+#include <stdint.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -18,19 +19,21 @@
 
 #include "absl/types/optional.h"
 #include "api/array_view.h"
-#include "api/audio/audio_frame.h"
-#include "common_audio/vad/include/webrtc_vad.h"
+#include "api/audio_codecs/audio_decoder.h"
+#include "api/audio_codecs/audio_format.h"
 #include "modules/audio_coding/acm2/acm_resampler.h"
 #include "modules/audio_coding/acm2/call_statistics.h"
 #include "modules/audio_coding/include/audio_coding_module.h"
-#include "modules/audio_coding/neteq/include/neteq.h"
 #include "rtc_base/criticalsection.h"
 #include "rtc_base/thread_annotations.h"
 
 namespace webrtc {
 
+class Clock;
 struct CodecInst;
 class NetEq;
+struct RTPHeader;
+struct WebRtcRTPHeader;
 
 namespace acm2 {
 
@@ -143,13 +146,6 @@ class AcmReceiver {
   int SetMaximumDelay(int delay_ms);
 
   //
-  // Get least required delay computed based on channel conditions. Note that
-  // this is before applying any user-defined limits (specified by calling
-  // (SetMinimumDelay() and/or SetMaximumDelay()).
-  //
-  int LeastRequiredDelayMs() const;
-
-  //
   // Resets the initial delay to zero.
   //
   void ResetInitialDelay();
@@ -231,6 +227,7 @@ class AcmReceiver {
   //
   int DecoderByPayloadType(uint8_t payload_type,
                            CodecInst* codec) const;
+  absl::optional<SdpAudioFormat> DecoderByPayloadType(int payload_type) const;
 
   //
   // Enable NACK and set the maximum size of the NACK list. If NACK is already

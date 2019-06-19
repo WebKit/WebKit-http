@@ -36,6 +36,7 @@
 #include "FontCascade.h"
 #include "ImageBuffer.h"
 #include "MockMediaDevice.h"
+#include "RealtimeMediaSourceFactory.h"
 #include "RealtimeVideoSource.h"
 #include <wtf/RunLoop.h>
 
@@ -47,12 +48,10 @@ class GraphicsContext;
 class MockRealtimeVideoSource : public RealtimeVideoSource {
 public:
 
-    static CaptureSourceOrError create(const String& deviceID, const String& name, const MediaConstraints*);
-
-    static VideoCaptureFactory& factory();
+    static CaptureSourceOrError create(String&& deviceID, String&& name, String&& hashSalt, const MediaConstraints*);
 
 protected:
-    MockRealtimeVideoSource(const String& deviceID, const String& name);
+    MockRealtimeVideoSource(String&& deviceID, String&& name, String&& hashSalt);
 
     virtual void updateSampleBuffer() = 0;
 
@@ -63,17 +62,23 @@ protected:
     void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) override;
 
 private:
-    const RealtimeMediaSourceCapabilities& capabilities() const final;
-    const RealtimeMediaSourceSettings& settings() const final;
+    const RealtimeMediaSourceCapabilities& capabilities() final;
+    const RealtimeMediaSourceSettings& settings() final;
 
     void startProducingData() final;
     void stopProducingData() final;
+    bool isCaptureSource() const final { return true; }
+    CaptureDevice::DeviceType deviceType() const final { return CaptureDevice::DeviceType::Camera; }
+    bool supportsSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>) final;
+    void setSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>) final;
+    void setFrameRateWithPreset(double, RefPtr<VideoPreset>) final;
+    IntSize captureSize() const;
+
+    void generatePresets() final;
 
     void drawAnimation(GraphicsContext&);
     void drawText(GraphicsContext&);
     void drawBoxes(GraphicsContext&);
-
-    bool isCaptureSource() const final { return true; }
 
     void generateFrame();
     void startCaptureTimer();
@@ -81,7 +86,10 @@ private:
     void delaySamples(Seconds) override;
 
     bool mockCamera() const { return WTF::holds_alternative<MockCameraProperties>(m_device.properties); }
-    bool mockScreen() const { return WTF::holds_alternative<MockDisplayProperties>(m_device.properties); }
+    bool mockDisplay() const { return WTF::holds_alternative<MockDisplayProperties>(m_device.properties); }
+    bool mockScreen() const { return mockDisplayType(CaptureDevice::DeviceType::Screen); }
+    bool mockWindow() const { return mockDisplayType(CaptureDevice::DeviceType::Window); }
+    bool mockDisplayType(CaptureDevice::DeviceType) const;
 
     float m_baseFontSize { 0 };
     float m_bipBopFontSize { 0 };
@@ -98,11 +106,12 @@ private:
 
     unsigned m_frameNumber { 0 };
     RunLoop::Timer<MockRealtimeVideoSource> m_emitFrameTimer;
-    mutable std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
-    mutable std::optional<RealtimeMediaSourceSettings> m_currentSettings;
+    Optional<RealtimeMediaSourceCapabilities> m_capabilities;
+    Optional<RealtimeMediaSourceSettings> m_currentSettings;
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
     Color m_fillColor { Color::black };
     MockMediaDevice m_device;
+    RefPtr<VideoPreset> m_preset;
 };
 
 } // namespace WebCore

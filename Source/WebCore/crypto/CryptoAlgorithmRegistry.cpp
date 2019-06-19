@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CryptoAlgorithmRegistry.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CryptoAlgorithm.h"
 #include <wtf/Lock.h>
@@ -47,17 +47,17 @@ CryptoAlgorithmRegistry::CryptoAlgorithmRegistry()
     platformRegisterAlgorithms();
 }
 
-std::optional<CryptoAlgorithmIdentifier> CryptoAlgorithmRegistry::identifier(const String& name)
+Optional<CryptoAlgorithmIdentifier> CryptoAlgorithmRegistry::identifier(const String& name)
 {
     if (name.isEmpty())
-        return std::nullopt;
+        return WTF::nullopt;
 
     std::lock_guard<Lock> lock(registryMutex);
 
     // FIXME: How is it helpful to call isolatedCopy on the argument to find?
     auto identifier = m_identifiers.find(name.isolatedCopy());
     if (identifier == m_identifiers.end())
-        return std::nullopt;
+        return WTF::nullopt;
 
     return identifier->value;
 }
@@ -98,4 +98,4 @@ void CryptoAlgorithmRegistry::registerAlgorithm(const String& name, CryptoAlgori
 
 } // namespace WebCore
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

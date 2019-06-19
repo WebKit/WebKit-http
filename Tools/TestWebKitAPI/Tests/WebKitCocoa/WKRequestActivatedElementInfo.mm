@@ -33,7 +33,7 @@
 #import <WebKit/_WKActivatedElementInfo.h>
 #import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED && PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 namespace TestWebKitAPI {
 
@@ -72,6 +72,30 @@ TEST(WebKit, RequestActivatedElementInfoForLink)
     TestWebKitAPI::Util::run(&finished);
 }
     
+TEST(WebKit, RequestActivatedElementInfoForImage)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 215, 174)]);
+    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"icon" withExtension:@"png" subdirectory:@"TestWebKitAPI.resources"]];
+    [webView loadRequest:request];
+    [webView _test_waitForDidFinishNavigation];
+    
+    __block bool finished = false;
+    [webView _requestActivatedElementAtPosition:CGPointMake(50, 50) completionBlock: ^(_WKActivatedElementInfo *elementInfo) {
+        
+        EXPECT_TRUE(elementInfo.type == _WKActivatedElementTypeImage);
+        EXPECT_WK_STREQ(elementInfo.imageURL.lastPathComponent, "icon.png");
+        EXPECT_NOT_NULL(elementInfo.image);
+        EXPECT_EQ(elementInfo.boundingRect.size.width, 215);
+        EXPECT_EQ(elementInfo.boundingRect.size.height, 174);
+        EXPECT_EQ(elementInfo.image.size.width, 215);
+        EXPECT_EQ(elementInfo.image.size.height, 174);
+        
+        finished = true;
+    }];
+    
+    TestWebKitAPI::Util::run(&finished);
+}
+    
 TEST(WebKit, RequestActivatedElementInfoForBlank)
 {
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
@@ -90,7 +114,26 @@ TEST(WebKit, RequestActivatedElementInfoForBlank)
     
     TestWebKitAPI::Util::run(&finished);
 }
+
+TEST(WebKit, RequestActivatedElementInfoForBrokenImage)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView loadHTMLString:@"<html><head><meta name='viewport' content='initial-scale=1'></head><body style = 'margin: 0px;'><img  src='missing.gif' height='100' width='100'></body></html>" baseURL:nil];
+    [webView _test_waitForDidFinishNavigation];
     
+    __block bool finished = false;
+    [webView _requestActivatedElementAtPosition:CGPointMake(50, 50) completionBlock: ^(_WKActivatedElementInfo *elementInfo) {
+        
+        EXPECT_TRUE(elementInfo.type == _WKActivatedElementTypeUnspecified);
+        EXPECT_EQ(elementInfo.boundingRect.size.width, 100);
+        EXPECT_EQ(elementInfo.boundingRect.size.height, 100);
+        
+        finished = true;
+    }];
+    
+    TestWebKitAPI::Util::run(&finished);
+}
+
 TEST(WebKit, RequestActivatedElementInfoWithNestedSynchronousUpdates)
 {
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);

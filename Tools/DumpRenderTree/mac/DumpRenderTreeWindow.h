@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 #import <AppKit/AppKit.h>
 #else
 #import "UIKitSPI.h"
@@ -39,6 +39,9 @@
 
 @interface NSWindow (Details)
 
+- (void)_setWindowResolution:(CGFloat)resolution;
+
+// FIXME: Remove once the variant above exists on all platforms we need (cf. rdar://problem/47614795).
 - (void)_setWindowResolution:(CGFloat)resolution displayIfChanged:(BOOL)displayIfChanged;
 
 @end
@@ -47,7 +50,7 @@
 {
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 @property (nonatomic, retain) UIWindow *uiWindow;
 @property (nonatomic, retain) UIWebBrowserView *browserView;
 #endif

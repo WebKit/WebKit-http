@@ -89,12 +89,14 @@ bool ScrollAnimationKinetic::PerAxisData::animateScroll(Seconds timeDelta)
     m_velocity = -decelFriction * m_coef2 * exponentialPart;
 
     if (m_position < m_lower) {
+        m_velocity = m_lower - m_position;
         m_position = m_lower;
-        m_velocity = 0;
     } else if (m_position > m_upper) {
+        m_velocity = m_upper - m_position;
         m_position = m_upper;
-        m_velocity = 0;
-    } else if (fabs(m_velocity) < 1 || (lastTime && fabs(m_position - lastPosition) < 1)) {
+    }
+
+    if (fabs(m_velocity) < 1 || (lastTime && fabs(m_position - lastPosition) < 1)) {
         m_position = round(m_position);
         m_velocity = 0;
     }
@@ -114,8 +116,8 @@ ScrollAnimationKinetic::~ScrollAnimationKinetic() = default;
 void ScrollAnimationKinetic::stop()
 {
     m_animationTimer.stop();
-    m_horizontalData = std::nullopt;
-    m_verticalData = std::nullopt;
+    m_horizontalData = WTF::nullopt;
+    m_verticalData = WTF::nullopt;
 }
 
 void ScrollAnimationKinetic::start(const FloatPoint& initialPosition, const FloatPoint& velocity, bool mayHScroll, bool mayVScroll)
@@ -148,10 +150,10 @@ void ScrollAnimationKinetic::animationTimerFired()
     Seconds deltaToNextFrame = 1_s * ceil((currentTime - m_startTime).value() * frameRate) / frameRate - (currentTime - m_startTime);
 
     if (m_horizontalData && !m_horizontalData.value().animateScroll(deltaToNextFrame))
-        m_horizontalData = std::nullopt;
+        m_horizontalData = WTF::nullopt;
 
     if (m_verticalData && !m_verticalData.value().animateScroll(deltaToNextFrame))
-        m_verticalData = std::nullopt;
+        m_verticalData = WTF::nullopt;
 
     // If one of the axes didn't finish its animation we must continue it.
     if (m_horizontalData || m_verticalData)

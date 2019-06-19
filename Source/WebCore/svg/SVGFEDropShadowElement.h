@@ -1,6 +1,6 @@
 /*
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,7 +21,6 @@
 #pragma once
 
 #include "FEDropShadow.h"
-#include "SVGAnimatedNumber.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
 
 namespace WebCore {
@@ -33,41 +32,35 @@ public:
     
     void setStdDeviation(float stdDeviationX, float stdDeviationY);
 
-    String in1() const { return m_in1.currentValue(attributeOwnerProxy()); }
-    float dx() const { return m_dx.currentValue(attributeOwnerProxy()); }
-    float dy() const { return m_dy.currentValue(attributeOwnerProxy()); }
-    float stdDeviationX() const { return m_stdDeviationX.currentValue(attributeOwnerProxy()); }
-    float stdDeviationY() const { return m_stdDeviationY.currentValue(attributeOwnerProxy()); }
+    String in1() const { return m_in1->currentValue(); }
+    float dx() const { return m_dx->currentValue(); }
+    float dy() const { return m_dy->currentValue(); }
+    float stdDeviationX() const { return m_stdDeviationX->currentValue(); }
+    float stdDeviationY() const { return m_stdDeviationY->currentValue(); }
 
-    RefPtr<SVGAnimatedString> in1Animated() { return m_in1.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedNumber> dxAnimated() { return m_dx.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedNumber> dyAnimated() { return m_dy.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedNumber> stdDeviationXAnimated() { return m_stdDeviationX.animatedProperty(attributeOwnerProxy()); }
-    RefPtr<SVGAnimatedNumber> stdDeviationYAnimated() { return m_stdDeviationY.animatedProperty(attributeOwnerProxy()); }
+    SVGAnimatedString& in1Animated() { return m_in1; }
+    SVGAnimatedNumber& dxAnimated() { return m_dx; }
+    SVGAnimatedNumber& dyAnimated() { return m_dy; }
+    SVGAnimatedNumber& stdDeviationXAnimated() { return m_stdDeviationX; }
+    SVGAnimatedNumber& stdDeviationYAnimated() { return m_stdDeviationY; }
 
 private:
     SVGFEDropShadowElement(const QualifiedName&, Document&);
 
-    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGFEDropShadowElement, SVGFilterPrimitiveStandardAttributes>;
-    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
-    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
-    static void registerAttributes();
+    using PropertyRegistry = SVGPropertyOwnerRegistry<SVGFEDropShadowElement, SVGFilterPrimitiveStandardAttributes>;
+    const SVGPropertyRegistry& propertyRegistry() const final { return m_propertyRegistry; }
 
-    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
 
-    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
+    RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) const override;
 
-    static const AtomicString& stdDeviationXIdentifier();
-    static const AtomicString& stdDeviationYIdentifier();
-
-    AttributeOwnerProxy m_attributeOwnerProxy { *this };
-    SVGAnimatedStringAttribute m_in1;
-    SVGAnimatedNumberAttribute m_dx { 2 };
-    SVGAnimatedNumberAttribute m_dy { 2 };
-    SVGAnimatedNumberAttribute m_stdDeviationX { 2 };
-    SVGAnimatedNumberAttribute m_stdDeviationY { 2 };
+    PropertyRegistry m_propertyRegistry { *this };
+    Ref<SVGAnimatedString> m_in1 { SVGAnimatedString::create(this) };
+    Ref<SVGAnimatedNumber> m_dx { SVGAnimatedNumber::create(this, 2) };
+    Ref<SVGAnimatedNumber> m_dy { SVGAnimatedNumber::create(this, 2) };
+    Ref<SVGAnimatedNumber> m_stdDeviationX { SVGAnimatedNumber::create(this, 2) };
+    Ref<SVGAnimatedNumber> m_stdDeviationY { SVGAnimatedNumber::create(this, 2) };
 };
     
 } // namespace WebCore

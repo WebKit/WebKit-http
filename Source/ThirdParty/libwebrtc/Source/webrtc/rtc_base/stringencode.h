@@ -11,10 +11,12 @@
 #ifndef RTC_BASE_STRINGENCODE_H_
 #define RTC_BASE_STRINGENCODE_H_
 
-#include <sstream>
+#include <stddef.h>
 #include <string>
+#include <type_traits>
 #include <vector>
 
+#include "absl/types/optional.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/string_to_number.h"
 
@@ -164,6 +166,7 @@ std::string ToString(long long int s);
 std::string ToString(unsigned long long int s);
 
 std::string ToString(double t);
+std::string ToString(long double t);
 
 std::string ToString(const void* p);
 

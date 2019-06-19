@@ -31,6 +31,7 @@
 #include "LibWebRTCUtils.h"
 #include "RTCPeerConnection.h"
 #include "RTCRtpSender.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScriptExecutionContext.h"
 
 namespace WebCore {
@@ -76,6 +77,7 @@ void LibWebRTCRtpSenderBackend::replaceTrack(ScriptExecutionContext& context, RT
     }
     }
 
+    // FIXME: Remove this postTask once this whole function is executed as part of the RTCPeerConnection operation queue.
     context.postTask([protectedSender = makeRef(sender), promise = WTFMove(promise), track = WTFMove(track), this](ScriptExecutionContext&) mutable {
         if (protectedSender->isStopped())
             return;
@@ -88,33 +90,54 @@ void LibWebRTCRtpSenderBackend::replaceTrack(ScriptExecutionContext& context, RT
 
         bool hasTrack = protectedSender->track();
         protectedSender->setTrack(track.releaseNonNull());
-        if (!hasTrack) {
-            // FIXME: In case of unified plan, we should use m_rtcSender->SetTrack and no longer need m_peerConnectionBackend.
-            auto result = m_peerConnectionBackend->addTrack(*protectedSender->track(), { });
-            if (result.hasException()) {
-                promise.reject(result.releaseException());
-                return;
-            }
+
+        if (hasTrack) {
+            promise.resolve();
+            return;
+        }
+
+        if (RuntimeEnabledFeatures::sharedFeatures().webRTCUnifiedPlanEnabled()) {
+            m_source = nullptr;
+            m_peerConnectionBackend->setSenderSourceFromTrack(*this, *protectedSender->track());
+            promise.resolve();
+            return;
+        }
+
+        auto result = m_peerConnectionBackend->addTrack(*protectedSender->track(), { });
+        if (result.hasException()) {
+            promise.reject(result.releaseException());
+            return;
         }
         promise.resolve();
     });
 }
 
-RTCRtpParameters LibWebRTCRtpSenderBackend::getParameters() const
+RTCRtpSendParameters LibWebRTCRtpSenderBackend::getParameters() const
 {
     if (!m_rtcSender)
         return { };
 
-    return toRTCRtpParameters(m_rtcSender->GetParameters());
+    m_currentParameters = m_rtcSender->GetParameters();
+    return toRTCRtpSendParameters(*m_currentParameters);
 }
 
-void LibWebRTCRtpSenderBackend::setParameters(const RTCRtpParameters& parameters, DOMPromiseDeferred<void>&& promise)
+void LibWebRTCRtpSenderBackend::setParameters(const RTCRtpSendParameters& parameters, DOMPromiseDeferred<void>&& promise)
 {
     if (!m_rtcSender) {
         promise.reject(NotSupportedError);
         return;
     }
-    auto error = m_rtcSender->SetParameters(fromRTCRtpParameters(parameters));
+
+    if (!m_currentParameters) {
+        promise.reject(Exception { InvalidStateError, "getParameters must be called before setParameters"_s });
+        return;
+    }
+
+    auto rtcParameters = WTFMove(*m_currentParameters);
+    updateRTCRtpSendParameters(parameters, rtcParameters);
+    m_currentParameters = WTF::nullopt;
+
+    auto error = m_rtcSender->SetParameters(rtcParameters);
     if (!error.ok()) {
         promise.reject(Exception { InvalidStateError, error.message() });
         return;

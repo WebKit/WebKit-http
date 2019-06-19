@@ -26,44 +26,26 @@
 #include "config.h"
 #include "NetworkStorageSession.h"
 
+#include "RuntimeApplicationChecks.h"
 #include <pal/SessionID.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ProcessPrivilege.h>
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+#include "ResourceRequest.h"
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+#include "PublicSuffix.h"
+#endif
+#endif
 
 namespace WebCore {
 
 bool NetworkStorageSession::m_processMayUseCookieAPI = false;
 
-HashMap<PAL::SessionID, std::unique_ptr<NetworkStorageSession>>& NetworkStorageSession::globalSessionMap()
-{
-    static NeverDestroyed<HashMap<PAL::SessionID, std::unique_ptr<NetworkStorageSession>>> map;
-    return map;
-}
-
-NetworkStorageSession* NetworkStorageSession::storageSession(PAL::SessionID sessionID)
-{
-    if (sessionID == PAL::SessionID::defaultSessionID())
-        return &defaultStorageSession();
-    return globalSessionMap().get(sessionID);
-}
-
-void NetworkStorageSession::destroySession(PAL::SessionID sessionID)
-{
-    ASSERT(sessionID != PAL::SessionID::defaultSessionID());
-    globalSessionMap().remove(sessionID);
-}
-
-void NetworkStorageSession::forEach(const WTF::Function<void(const WebCore::NetworkStorageSession&)>& functor)
-{
-    functor(defaultStorageSession());
-    for (auto& storageSession : globalSessionMap().values())
-        functor(*storageSession);
-}
-
 bool NetworkStorageSession::processMayUseCookieAPI()
 {
     return m_processMayUseCookieAPI;
-};
+}
 
 void NetworkStorageSession::permitProcessToUseCookieAPI(bool value)
 {
@@ -73,5 +55,191 @@ void NetworkStorageSession::permitProcessToUseCookieAPI(bool value)
     else
         removeProcessPrivilege(ProcessPrivilege::CanAccessRawCookies);
 }
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+
+bool NetworkStorageSession::shouldBlockThirdPartyCookies(const RegistrableDomain& registrableDomain) const
+{
+    if (registrableDomain.isEmpty())
+        return false;
+
+    return m_registrableDomainsToBlockCookieFor.contains(registrableDomain);
+}
+
+bool NetworkStorageSession::shouldBlockCookies(const ResourceRequest& request, Optional<uint64_t> frameID, Optional<PageIdentifier> pageID) const
+{
+    return shouldBlockCookies(request.firstPartyForCookies(), request.url(), frameID, pageID);
+}
+    
+bool NetworkStorageSession::shouldBlockCookies(const URL& firstPartyForCookies, const URL& resource, Optional<uint64_t> frameID, Optional<PageIdentifier> pageID) const
+{
+    RegistrableDomain firstPartyDomain { firstPartyForCookies };
+    if (firstPartyDomain.isEmpty())
+        return false;
+
+    RegistrableDomain resourceDomain { resource };
+    if (resourceDomain.isEmpty())
+        return false;
+
+    if (firstPartyDomain == resourceDomain)
+        return false;
+
+    if (pageID && hasStorageAccess(resourceDomain, firstPartyDomain, frameID, pageID.value()))
+        return false;
+
+    return shouldBlockThirdPartyCookies(resourceDomain);
+}
+
+Optional<Seconds> NetworkStorageSession::maxAgeCacheCap(const ResourceRequest& request)
+{
+    if (m_cacheMaxAgeCapForPrevalentResources && shouldBlockCookies(request, WTF::nullopt, WTF::nullopt))
+        return m_cacheMaxAgeCapForPrevalentResources;
+    return WTF::nullopt;
+}
+
+void NetworkStorageSession::setAgeCapForClientSideCookies(Optional<Seconds> seconds)
+{
+    m_ageCapForClientSideCookies = seconds;
+    m_ageCapForClientSideCookiesShort = seconds ? Seconds { seconds->seconds() / 7. } : seconds;
+}
+
+void NetworkStorageSession::setPrevalentDomainsToBlockCookiesFor(const Vector<RegistrableDomain>& domains)
+{
+    m_registrableDomainsToBlockCookieFor.clear();
+    m_registrableDomainsToBlockCookieFor.add(domains.begin(), domains.end());
+}
+
+void NetworkStorageSession::removePrevalentDomains(const Vector<RegistrableDomain>& domains)
+{
+    for (auto& domain : domains)
+        m_registrableDomainsToBlockCookieFor.remove(domain);
+}
+
+bool NetworkStorageSession::hasStorageAccess(const RegistrableDomain& resourceDomain, const RegistrableDomain& firstPartyDomain, Optional<uint64_t> frameID, PageIdentifier pageID) const
+{
+    if (frameID) {
+        auto framesGrantedIterator = m_framesGrantedStorageAccess.find(pageID);
+        if (framesGrantedIterator != m_framesGrantedStorageAccess.end()) {
+            auto it = framesGrantedIterator->value.find(frameID.value());
+            if (it != framesGrantedIterator->value.end() && it->value == resourceDomain)
+                return true;
+        }
+    }
+
+    if (!firstPartyDomain.isEmpty()) {
+        auto pagesGrantedIterator = m_pagesGrantedStorageAccess.find(pageID);
+        if (pagesGrantedIterator != m_pagesGrantedStorageAccess.end()) {
+            auto it = pagesGrantedIterator->value.find(firstPartyDomain);
+            if (it != pagesGrantedIterator->value.end() && it->value == resourceDomain)
+                return true;
+        }
+    }
+
+    return false;
+}
+
+Vector<String> NetworkStorageSession::getAllStorageAccessEntries() const
+{
+    Vector<String> entries;
+    for (auto& innerMap : m_framesGrantedStorageAccess.values()) {
+        for (auto& value : innerMap.values())
+            entries.append(value.string());
+    }
+    return entries;
+}
+    
+void NetworkStorageSession::grantStorageAccess(const RegistrableDomain& resourceDomain, const RegistrableDomain& firstPartyDomain, Optional<uint64_t> frameID, PageIdentifier pageID)
+{
+    if (!frameID) {
+        if (firstPartyDomain.isEmpty())
+            return;
+        auto pagesGrantedIterator = m_pagesGrantedStorageAccess.find(pageID);
+        if (pagesGrantedIterator == m_pagesGrantedStorageAccess.end()) {
+            HashMap<RegistrableDomain, RegistrableDomain> entry;
+            entry.add(firstPartyDomain, resourceDomain);
+            m_pagesGrantedStorageAccess.add(pageID, entry);
+        } else {
+            auto firstPartyDomainIterator = pagesGrantedIterator->value.find(firstPartyDomain);
+            if (firstPartyDomainIterator == pagesGrantedIterator->value.end())
+                pagesGrantedIterator->value.add(firstPartyDomain, resourceDomain);
+            else
+                firstPartyDomainIterator->value = resourceDomain;
+        }
+        return;
+    }
+
+    auto pagesGrantedIterator = m_framesGrantedStorageAccess.find(pageID);
+    if (pagesGrantedIterator == m_framesGrantedStorageAccess.end()) {
+        HashMap<uint64_t, RegistrableDomain, DefaultHash<uint64_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint64_t>> entry;
+        entry.add(frameID.value(), resourceDomain);
+        m_framesGrantedStorageAccess.add(pageID, entry);
+    } else {
+        auto framesGrantedIterator = pagesGrantedIterator->value.find(frameID.value());
+        if (framesGrantedIterator == pagesGrantedIterator->value.end())
+            pagesGrantedIterator->value.add(frameID.value(), resourceDomain);
+        else
+            framesGrantedIterator->value = resourceDomain;
+    }
+}
+
+void NetworkStorageSession::removeStorageAccessForFrame(uint64_t frameID, PageIdentifier pageID)
+{
+    auto iteration = m_framesGrantedStorageAccess.find(pageID);
+    if (iteration == m_framesGrantedStorageAccess.end())
+        return;
+
+    iteration->value.remove(frameID);
+}
+
+void NetworkStorageSession::clearPageSpecificDataForResourceLoadStatistics(PageIdentifier pageID)
+{
+    m_pagesGrantedStorageAccess.remove(pageID);
+    m_framesGrantedStorageAccess.remove(pageID);
+    if (!m_navigationWithLinkDecorationTestMode)
+        m_navigatedToWithLinkDecorationByPrevalentResource.remove(pageID);
+}
+
+void NetworkStorageSession::removeAllStorageAccess()
+{
+    m_pagesGrantedStorageAccess.clear();
+    m_framesGrantedStorageAccess.clear();
+}
+
+void NetworkStorageSession::setCacheMaxAgeCapForPrevalentResources(Seconds seconds)
+{
+    m_cacheMaxAgeCapForPrevalentResources = seconds;
+}
+    
+void NetworkStorageSession::resetCacheMaxAgeCapForPrevalentResources()
+{
+    m_cacheMaxAgeCapForPrevalentResources = WTF::nullopt;
+}
+
+void NetworkStorageSession::didCommitCrossSiteLoadWithDataTransferFromPrevalentResource(const RegistrableDomain& toDomain, PageIdentifier pageID)
+{
+    m_navigatedToWithLinkDecorationByPrevalentResource.add(pageID, toDomain);
+}
+
+void NetworkStorageSession::resetCrossSiteLoadsWithLinkDecorationForTesting()
+{
+    m_navigatedToWithLinkDecorationByPrevalentResource.clear();
+    m_navigationWithLinkDecorationTestMode = true;
+}
+
+Optional<Seconds> NetworkStorageSession::clientSideCookieCap(const RegistrableDomain& firstParty, Optional<PageIdentifier> pageID) const
+{
+    if (!m_ageCapForClientSideCookies || !pageID || m_navigatedToWithLinkDecorationByPrevalentResource.isEmpty())
+        return m_ageCapForClientSideCookies;
+
+    auto domainIterator = m_navigatedToWithLinkDecorationByPrevalentResource.find(*pageID);
+    if (domainIterator == m_navigatedToWithLinkDecorationByPrevalentResource.end())
+        return m_ageCapForClientSideCookies;
+
+    if (domainIterator->value == firstParty)
+        return m_ageCapForClientSideCookiesShort;
+
+    return m_ageCapForClientSideCookies;
+}
+#endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 
 }

@@ -727,26 +727,31 @@ end
 class Variable < NoChildren
     attr_reader :name
     
-    def initialize(codeOrigin, name)
+    def initialize(codeOrigin, name, originalName = nil)
         super(codeOrigin)
         @name = name
+        @originalName = originalName
     end
     
     @@mapping = {}
     
-    def self.forName(codeOrigin, name)
+    def self.forName(codeOrigin, name, originalName = nil)
         unless @@mapping[name]
-            @@mapping[name] = Variable.new(codeOrigin, name)
+            @@mapping[name] = Variable.new(codeOrigin, name, originalName)
         end
         @@mapping[name]
     end
+
+    def originalName
+        @originalName || name
+    end
     
     def dump
-        name
+        originalName
     end
     
     def inspect
-        "<variable #{name} at #{codeOriginString}>"
+        "<variable #{originalName} at #{codeOriginString}>"
     end
 end
 
@@ -806,12 +811,16 @@ class BaseIndex < Node
         @base = base
         @index = index
         @scale = scale
-        raise unless [1, 2, 4, 8].member? @scale
         @offset = offset
     end
-    
+
+    def scaleValue
+        raise unless [1, 2, 4, 8].member? scale.value
+        scale.value
+    end
+
     def scaleShift
-        case scale
+        case scaleValue
         when 1
             0
         when 2
@@ -821,7 +830,7 @@ class BaseIndex < Node
         when 8
             3
         else
-            raise "Bad scale at #{codeOriginString}"
+            raise "Bad scale: #{scale.value} at #{codeOriginString}"
         end
     end
     
@@ -834,11 +843,11 @@ class BaseIndex < Node
     end
     
     def mapChildren
-        BaseIndex.new(codeOrigin, (yield @base), (yield @index), @scale, (yield @offset))
+        BaseIndex.new(codeOrigin, (yield @base), (yield @index), (yield @scale), (yield @offset))
     end
     
     def dump
-        "#{offset.dump}[#{base.dump}, #{index.dump}, #{scale}]"
+        "#{offset.dump}[#{base.dump}, #{index.dump}, #{scale.value}]"
     end
     
     def address?
@@ -929,7 +938,7 @@ class Instruction < Node
             $asm.putGlobalAnnotation
         when "emit"
             $asm.puts "#{operands[0].dump}"
-        when "tagReturnAddress", "untagReturnAddress", "removeCodePtrTag"
+        when "tagReturnAddress", "untagReturnAddress", "removeCodePtrTag", "untagArrayPtr"
         else
             raise "Unhandled opcode #{opcode} at #{codeOriginString}"
         end
@@ -961,7 +970,7 @@ class Error < NoChildren
 end
 
 class ConstExpr < NoChildren
-    attr_reader :variable, :value
+    attr_reader :value
 
     def initialize(codeOrigin, value)
         super(codeOrigin)
@@ -1016,11 +1025,10 @@ $labelMapping = {}
 $referencedExternLabels = Array.new
 
 class Label < NoChildren
-    attr_reader :name
-    
-    def initialize(codeOrigin, name)
+    def initialize(codeOrigin, name, definedInFile = false)
         super(codeOrigin)
         @name = name
+        @definedInFile = definedInFile
         @extern = true
         @global = false
     end
@@ -1029,7 +1037,7 @@ class Label < NoChildren
         if $labelMapping[name]
             raise "Label name collision: #{name}" unless $labelMapping[name].is_a? Label
         else
-            $labelMapping[name] = Label.new(codeOrigin, name)
+            $labelMapping[name] = Label.new(codeOrigin, name, definedInFile)
         end
         if definedInFile
             $labelMapping[name].clearExtern()
@@ -1076,6 +1084,10 @@ class Label < NoChildren
         @global
     end
 
+    def name
+        @name
+    end
+
     def dump
         "#{name}:"
     end
@@ -1102,6 +1114,9 @@ class LocalLabel < NoChildren
     
     def self.unique(comment)
         newName = "_#{comment}"
+        if $emitWinAsm and newName.length > 90
+            newName = newName[0...45] + "___" + newName[-45..-1]
+        end
         if $labelMapping[newName]
             while $labelMapping[newName = "_#{@@uniqueNameCounter}_#{comment}"]
                 @@uniqueNameCounter += 1
@@ -1421,7 +1436,9 @@ class IfThenElse < Node
     end
     
     def mapChildren
-        IfThenElse.new(codeOrigin, (yield @predicate), (yield @thenCase), (yield @elseCase))
+        ifThenElse = IfThenElse.new(codeOrigin, (yield @predicate), (yield @thenCase))
+        ifThenElse.elseCase = yield @elseCase
+        ifThenElse
     end
     
     def dump
@@ -1455,13 +1472,18 @@ end
 class MacroCall < Node
     attr_reader :name, :operands, :annotation
     
-    def initialize(codeOrigin, name, operands, annotation)
+    def initialize(codeOrigin, name, operands, annotation, originalName = nil)
         super(codeOrigin)
         @name = name
         @operands = operands
         raise unless @operands
         @operands.each{|v| raise unless v}
         @annotation = annotation
+        @originalName = originalName
+    end
+
+    def originalName
+        @originalName || name
     end
     
     def children
@@ -1469,11 +1491,11 @@ class MacroCall < Node
     end
     
     def mapChildren(&proc)
-        MacroCall.new(codeOrigin, @name, @operands.map(&proc), @annotation)
+        MacroCall.new(codeOrigin, @name, @operands.map(&proc), @annotation, @originalName)
     end
     
     def dump
-        "\t#{name}(" + operands.collect{|v| v.dump}.join(", ") + ")"
+        "\t#{originalName}(" + operands.collect{|v| v.dump}.join(", ") + ")"
     end
 end
 

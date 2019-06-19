@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WTF_Compiler_h
-#define WTF_Compiler_h
+#pragma once
 
 /* COMPILER() - the compiler being used to build the project */
 #define COMPILER(WTF_FEATURE) (defined WTF_COMPILER_##WTF_FEATURE  && WTF_COMPILER_##WTF_FEATURE)
@@ -81,14 +80,14 @@
 
 #endif // defined(__clang__)
 
-/* COMPILER(GCC_OR_CLANG) - GNU Compiler Collection or Clang */
+/* COMPILER(GCC_COMPATIBLE) - GNU Compiler Collection or compatibles */
 #if defined(__GNUC__)
-#define WTF_COMPILER_GCC_OR_CLANG 1
+#define WTF_COMPILER_GCC_COMPATIBLE 1
 #endif
 
 /* COMPILER(GCC) - GNU Compiler Collection */
 /* Note: This section must come after the Clang section since we check !COMPILER(CLANG) here. */
-#if COMPILER(GCC_OR_CLANG) && !COMPILER(CLANG)
+#if COMPILER(GCC_COMPATIBLE) && !COMPILER(CLANG)
 #define WTF_COMPILER_GCC 1
 
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
@@ -100,7 +99,7 @@
 
 #endif /* COMPILER(GCC) */
 
-#if COMPILER(GCC_OR_CLANG) && defined(NDEBUG) && !defined(__OPTIMIZE__) && !defined(RELEASE_WITHOUT_OPTIMIZATIONS)
+#if COMPILER(GCC_COMPATIBLE) && defined(NDEBUG) && !defined(__OPTIMIZE__) && !defined(RELEASE_WITHOUT_OPTIMIZATIONS)
 #error "Building release without compiler optimizations: WebKit will be slow. Set -DRELEASE_WITHOUT_OPTIMIZATIONS if this is intended."
 #endif
 
@@ -163,7 +162,7 @@
 
 /* In GCC functions marked with no_sanitize_address cannot call functions that are marked with always_inline and not marked with no_sanitize_address.
  * Therefore we need to give up on the enforcement of ALWAYS_INLINE when bulding with ASAN. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67368 */
-#if !defined(ALWAYS_INLINE) && COMPILER(GCC_OR_CLANG) && defined(NDEBUG) && !COMPILER(MINGW) && !(COMPILER(GCC) && ASAN_ENABLED)
+#if !defined(ALWAYS_INLINE) && COMPILER(GCC_COMPATIBLE) && defined(NDEBUG) && !COMPILER(MINGW) && !(COMPILER(GCC) && ASAN_ENABLED)
 #define ALWAYS_INLINE inline __attribute__((__always_inline__))
 #endif
 
@@ -219,7 +218,7 @@
 
 /* LIKELY */
 
-#if !defined(LIKELY) && COMPILER(GCC_OR_CLANG)
+#if !defined(LIKELY) && COMPILER(GCC_COMPATIBLE)
 #define LIKELY(x) __builtin_expect(!!(x), 1)
 #endif
 
@@ -229,7 +228,7 @@
 
 /* NEVER_INLINE */
 
-#if !defined(NEVER_INLINE) && COMPILER(GCC_OR_CLANG)
+#if !defined(NEVER_INLINE) && COMPILER(GCC_COMPATIBLE)
 #define NEVER_INLINE __attribute__((__noinline__))
 #endif
 
@@ -243,7 +242,7 @@
 
 /* NO_RETURN */
 
-#if !defined(NO_RETURN) && COMPILER(GCC_OR_CLANG)
+#if !defined(NO_RETURN) && COMPILER(GCC_COMPATIBLE)
 #define NO_RETURN __attribute((__noreturn__))
 #endif
 
@@ -268,7 +267,7 @@
 #endif
 
 /* RETURNS_NONNULL */
-#if !defined(RETURNS_NONNULL) && COMPILER(GCC_OR_CLANG)
+#if !defined(RETURNS_NONNULL) && COMPILER(GCC_COMPATIBLE)
 #define RETURNS_NONNULL __attribute__((returns_nonnull))
 #endif
 
@@ -310,7 +309,7 @@
 
 /* PURE_FUNCTION */
 
-#if !defined(PURE_FUNCTION) && COMPILER(GCC_OR_CLANG)
+#if !defined(PURE_FUNCTION) && COMPILER(GCC_COMPATIBLE)
 #define PURE_FUNCTION __attribute__((__pure__))
 #endif
 
@@ -320,7 +319,7 @@
 
 /* UNUSED_FUNCTION */
 
-#if !defined(UNUSED_FUNCTION) && COMPILER(GCC_OR_CLANG)
+#if !defined(UNUSED_FUNCTION) && COMPILER(GCC_COMPATIBLE)
 #define UNUSED_FUNCTION __attribute__((unused))
 #endif
 
@@ -330,7 +329,7 @@
 
 /* REFERENCED_FROM_ASM */
 
-#if !defined(REFERENCED_FROM_ASM) && COMPILER(GCC_OR_CLANG)
+#if !defined(REFERENCED_FROM_ASM) && COMPILER(GCC_COMPATIBLE)
 #define REFERENCED_FROM_ASM __attribute__((__used__))
 #endif
 
@@ -340,7 +339,7 @@
 
 /* UNLIKELY */
 
-#if !defined(UNLIKELY) && COMPILER(GCC_OR_CLANG)
+#if !defined(UNLIKELY) && COMPILER(GCC_COMPATIBLE)
 #define UNLIKELY(x) __builtin_expect(!!(x), 0)
 #endif
 
@@ -363,17 +362,18 @@
 
 /* UNUSED_PARAM */
 
-#if !defined(UNUSED_PARAM) && COMPILER(MSVC)
-#define UNUSED_PARAM(variable) (void)&variable
-#endif
-
 #if !defined(UNUSED_PARAM)
 #define UNUSED_PARAM(variable) (void)variable
 #endif
 
+/* UNUSED_VARIABLE */
+#if !defined(UNUSED_VARIABLE)
+#define UNUSED_VARIABLE(variable) UNUSED_PARAM(variable)
+#endif
+
 /* WARN_UNUSED_RETURN */
 
-#if !defined(WARN_UNUSED_RETURN) && COMPILER(GCC_OR_CLANG)
+#if !defined(WARN_UNUSED_RETURN) && COMPILER(GCC_COMPATIBLE)
 #define WARN_UNUSED_RETURN __attribute__((__warn_unused_result__))
 #endif
 
@@ -385,4 +385,81 @@
 #define __has_include(path) 0
 #endif
 
-#endif /* WTF_Compiler_h */
+/* IGNORE_WARNINGS */
+
+/* Can't use WTF_CONCAT() and STRINGIZE() because they are defined in
+ * StdLibExtras.h, which includes this file. */
+#define _COMPILER_CONCAT_I(a, b) a ## b
+#define _COMPILER_CONCAT(a, b) _COMPILER_CONCAT_I(a, b)
+
+#define _COMPILER_STRINGIZE(exp) #exp
+
+#define _COMPILER_WARNING_NAME(warning) "-W" warning
+
+#if COMPILER(GCC) || COMPILER(CLANG)
+#define IGNORE_WARNINGS_BEGIN_COND(cond, compiler, warning) \
+    _Pragma(_COMPILER_STRINGIZE(compiler diagnostic push)) \
+    _COMPILER_CONCAT(IGNORE_WARNINGS_BEGIN_IMPL_, cond)(compiler, warning)
+
+#define IGNORE_WARNINGS_BEGIN_IMPL_1(compiler, warning) \
+    _Pragma(_COMPILER_STRINGIZE(compiler diagnostic ignored warning))
+#define IGNORE_WARNINGS_BEGIN_IMPL_0(compiler, warning)
+#define IGNORE_WARNINGS_BEGIN_IMPL_(compiler, warning)
+
+
+#define IGNORE_WARNINGS_END_IMPL(compiler) _Pragma(_COMPILER_STRINGIZE(compiler diagnostic pop))
+
+#if defined(__has_warning)
+#define _IGNORE_WARNINGS_BEGIN_IMPL(compiler, warning) \
+    IGNORE_WARNINGS_BEGIN_COND(__has_warning(warning), compiler, warning)
+#else
+#define _IGNORE_WARNINGS_BEGIN_IMPL(compiler, warning) IGNORE_WARNINGS_BEGIN_COND(1, compiler, warning)
+#endif
+
+#define IGNORE_WARNINGS_BEGIN_IMPL(compiler, warning) \
+    _IGNORE_WARNINGS_BEGIN_IMPL(compiler, _COMPILER_WARNING_NAME(warning))
+
+#endif // COMPILER(GCC) || COMPILER(CLANG)
+
+
+#if COMPILER(GCC)
+#define IGNORE_GCC_WARNINGS_BEGIN(warning) IGNORE_WARNINGS_BEGIN_IMPL(GCC, warning)
+#define IGNORE_GCC_WARNINGS_END IGNORE_WARNINGS_END_IMPL(GCC)
+#else
+#define IGNORE_GCC_WARNINGS_BEGIN(warning)
+#define IGNORE_GCC_WARNINGS_END
+#endif
+
+#if COMPILER(CLANG)
+#define IGNORE_CLANG_WARNINGS_BEGIN(warning) IGNORE_WARNINGS_BEGIN_IMPL(clang, warning)
+#define IGNORE_CLANG_WARNINGS_END IGNORE_WARNINGS_END_IMPL(clang)
+#else
+#define IGNORE_CLANG_WARNINGS_BEGIN(warning)
+#define IGNORE_CLANG_WARNINGS_END
+#endif
+
+#if COMPILER(GCC) || COMPILER(CLANG)
+#define IGNORE_WARNINGS_BEGIN(warning) IGNORE_WARNINGS_BEGIN_IMPL(GCC, warning)
+#define IGNORE_WARNINGS_END IGNORE_WARNINGS_END_IMPL(GCC)
+#else
+#define IGNORE_WARNINGS_BEGIN(warning)
+#define IGNORE_WARNINGS_END
+#endif
+
+#define ALLOW_DEPRECATED_DECLARATIONS_BEGIN IGNORE_WARNINGS_BEGIN("deprecated-declarations")
+#define ALLOW_DEPRECATED_DECLARATIONS_END IGNORE_WARNINGS_END
+
+#define ALLOW_NEW_API_WITHOUT_GUARDS_BEGIN IGNORE_CLANG_WARNINGS_BEGIN("unguarded-availability-new")
+#define ALLOW_NEW_API_WITHOUT_GUARDS_END IGNORE_CLANG_WARNINGS_END
+
+#define ALLOW_UNUSED_PARAMETERS_BEGIN IGNORE_WARNINGS_BEGIN("unused-parameter")
+#define ALLOW_UNUSED_PARAMETERS_END IGNORE_WARNINGS_END
+
+#define ALLOW_NONLITERAL_FORMAT_BEGIN IGNORE_WARNINGS_BEGIN("format-nonliteral")
+#define ALLOW_NONLITERAL_FORMAT_END IGNORE_WARNINGS_END
+
+#define IGNORE_RETURN_TYPE_WARNINGS_BEGIN IGNORE_WARNINGS_BEGIN("return-type")
+#define IGNORE_RETURN_TYPE_WARNINGS_END IGNORE_WARNINGS_END
+
+#define IGNORE_NULL_CHECK_WARNINGS_BEGIN IGNORE_WARNINGS_BEGIN("nonnull")
+#define IGNORE_NULL_CHECK_WARNINGS_END IGNORE_WARNINGS_END

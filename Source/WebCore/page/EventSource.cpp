@@ -44,8 +44,11 @@
 #include "SecurityOrigin.h"
 #include "TextResourceDecoder.h"
 #include "ThreadableLoader.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(EventSource);
 
 const uint64_t EventSource::defaultReconnectDelay = 3000;
 
@@ -74,10 +77,10 @@ ExceptionOr<Ref<EventSource>> EventSource::create(ScriptExecutionContext& contex
     }
 
     auto source = adoptRef(*new EventSource(context, fullURL, eventSourceInit));
-    source->setPendingActivity(source.ptr());
+    source->setPendingActivity(source.get());
     source->scheduleInitialConnect();
     source->suspendIfNeeded();
-    return WTFMove(source);
+    return source;
 }
 
 EventSource::~EventSource()
@@ -125,7 +128,7 @@ void EventSource::networkRequestEnded()
     if (m_state != CLOSED)
         scheduleReconnect();
     else
-        unsetPendingActivity(this);
+        unsetPendingActivity(*this);
 }
 
 void EventSource::scheduleInitialConnect()
@@ -158,7 +161,7 @@ void EventSource::close()
         m_loader->cancel();
     else {
         m_state = CLOSED;
-        unsetPendingActivity(this);
+        unsetPendingActivity(*this);
     }
 }
 
@@ -260,7 +263,7 @@ void EventSource::abortConnectionAttempt()
         m_loader->cancel();
     else {
         m_state = CLOSED;
-        unsetPendingActivity(this);
+        unsetPendingActivity(*this);
     }
 
     ASSERT(m_state == CLOSED);
@@ -278,8 +281,8 @@ void EventSource::parseEventStream()
             m_discardTrailingNewline = false;
         }
 
-        std::optional<unsigned> lineLength;
-        std::optional<unsigned> fieldLength;
+        Optional<unsigned> lineLength;
+        Optional<unsigned> fieldLength;
         for (unsigned i = position; !lineLength && i < size; ++i) {
             switch (m_receiveBuffer[i]) {
             case ':':
@@ -315,7 +318,7 @@ void EventSource::parseEventStream()
         m_receiveBuffer.remove(0, position);
 }
 
-void EventSource::parseEventStreamLine(unsigned position, std::optional<unsigned> fieldLength, unsigned lineLength)
+void EventSource::parseEventStreamLine(unsigned position, Optional<unsigned> fieldLength, unsigned lineLength)
 {
     if (!lineLength) {
         if (!m_data.isEmpty())

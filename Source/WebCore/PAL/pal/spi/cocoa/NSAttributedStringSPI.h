@@ -27,7 +27,7 @@
 
 #import <wtf/SoftLinking.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import <UIKit/NSAttributedString.h>
 
@@ -91,6 +91,8 @@ SOFT_LINK_CONSTANT(UIFoundation, NSConvertedDocumentAttribute, NSString *)
 #define NSConvertedDocumentAttribute getNSConvertedDocumentAttribute()
 SOFT_LINK_CONSTANT(UIFoundation, NSCocoaVersionDocumentAttribute, NSString *)
 #define NSCocoaVersionDocumentAttribute getNSCocoaVersionDocumentAttribute()
+SOFT_LINK_CONSTANT(UIFoundation, NSBackgroundColorDocumentAttribute, NSString *)
+#define NSBackgroundColorDocumentAttribute getNSBackgroundColorDocumentAttribute()
 
 // We don't softlink NSSuperscriptAttributeName because UIFoundation stopped exporting it.
 // This attribute is being deprecated at the API level, but internally UIFoundation
@@ -105,4 +107,20 @@ static NSString *const NSSuperscriptAttributeName = @"NSSuperscript";
 - (BOOL)containsAttachments;
 @end
 
-#endif
+#endif // PLATFORM(IOS_FAMILY)
+
+#if PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101300)
+static NSString *const NSTextListMarkerCircle = @"{circle}";
+static NSString *const NSTextListMarkerDisc = @"{disc}";
+static NSString *const NSTextListMarkerSquare = @"{square}";
+static NSString *const NSTextListMarkerLowercaseHexadecimal = @"{lower-hexadecimal}";
+static NSString *const NSTextListMarkerUppercaseHexadecimal = @"{upper-hexadecimal}";
+static NSString *const NSTextListMarkerOctal = @"{octal}";
+static NSString *const NSTextListMarkerLowercaseAlpha = @"{lower-alpha}";
+static NSString *const NSTextListMarkerUppercaseAlpha = @"{upper-alpha}";
+static NSString *const NSTextListMarkerLowercaseLatin = @"{lower-latin}";
+static NSString *const NSTextListMarkerUppercaseLatin = @"{upper-latin}";
+static NSString *const NSTextListMarkerLowercaseRoman = @"{lower-roman}";
+static NSString *const NSTextListMarkerUppercaseRoman = @"{upper-roman}";
+static NSString *const NSTextListMarkerDecimal = @"{decimal}";
+#endif // PLATFORM(IOS_FAMILY) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101300)

@@ -12,13 +12,17 @@
 #include <utility>
 
 #include "api/video/video_stream_encoder_create.h"
+#include "modules/rtp_rtcp/source/rtp_header_extension_size.h"
 #include "modules/rtp_rtcp/source/rtp_sender.h"
 #include "rtc_base/logging.h"
+#include "system_wrappers/include/field_trial.h"
 #include "video/video_send_stream_impl.h"
 
 namespace webrtc {
 
 namespace {
+
+constexpr char kTargetBitrateRtcpFieldTrial[] = "WebRTC-Target-Bitrate-Rtcp";
 
 size_t CalculateMaxHeaderSize(const RtpConfig& config) {
   size_t header_size = kRtpHeaderSize;
@@ -26,10 +30,10 @@ size_t CalculateMaxHeaderSize(const RtpConfig& config) {
   size_t fec_extensions_size = 0;
   if (config.extensions.size() > 0) {
     RtpHeaderExtensionMap extensions_map(config.extensions);
-    extensions_size =
-        extensions_map.GetTotalLengthInBytes(RTPSender::VideoExtensionSizes());
+    extensions_size = RtpHeaderExtensionSize(RTPSender::VideoExtensionSizes(),
+                                             extensions_map);
     fec_extensions_size =
-        extensions_map.GetTotalLengthInBytes(RTPSender::FecExtensionSizes());
+        RtpHeaderExtensionSize(RTPSender::FecExtensionSizes(), extensions_map);
   }
   header_size += extensions_size;
   if (config.flexfec.payload_type >= 0) {
@@ -61,7 +65,7 @@ VideoSendStream::VideoSendStream(
     rtc::TaskQueue* worker_queue,
     CallStats* call_stats,
     RtpTransportControllerSendInterface* transport,
-    BitrateAllocator* bitrate_allocator,
+    BitrateAllocatorInterface* bitrate_allocator,
     SendDelayStats* send_delay_stats,
     RtcEventLog* event_log,
     VideoSendStream::Config config,
@@ -70,13 +74,13 @@ VideoSendStream::VideoSendStream(
     const std::map<uint32_t, RtpPayloadState>& suspended_payload_states,
     std::unique_ptr<FecController> fec_controller)
     : worker_queue_(worker_queue),
-      thread_sync_event_(false /* manual_reset */, false),
       stats_proxy_(Clock::GetRealTimeClock(),
                    config,
                    encoder_config.content_type),
       config_(std::move(config)),
       content_type_(encoder_config.content_type) {
   RTC_DCHECK(config_.encoder_settings.encoder_factory);
+  RTC_DCHECK(config_.encoder_settings.bitrate_allocator_factory);
 
   video_stream_encoder_ = CreateVideoStreamEncoder(num_cpu_cores, &stats_proxy_,
                                                    config_.encoder_settings,
@@ -103,9 +107,10 @@ VideoSendStream::VideoSendStream(
   // it was created on.
   thread_sync_event_.Wait(rtc::Event::kForever);
   send_stream_->RegisterProcessThread(module_process_thread);
-  // TODO(sprang): Enable this also for regular video calls if it works well.
-  if (encoder_config.content_type == VideoEncoderConfig::ContentType::kScreen) {
-    // Only signal target bitrate for screenshare streams, for now.
+  // TODO(sprang): Enable this also for regular video calls by default, if it
+  // works well.
+  if (encoder_config.content_type == VideoEncoderConfig::ContentType::kScreen ||
+      field_trial::IsEnabled(kTargetBitrateRtcpFieldTrial)) {
     video_stream_encoder_->SetBitrateAllocationObserver(send_stream_.get());
   }
 
@@ -196,24 +201,9 @@ void VideoSendStream::StopPermanentlyAndGetRtpStates(
   thread_sync_event_.Wait(rtc::Event::kForever);
 }
 
-void VideoSendStream::SetTransportOverhead(
-    size_t transport_overhead_per_packet) {
-  RTC_DCHECK_RUN_ON(&thread_checker_);
-  VideoSendStreamImpl* send_stream = send_stream_.get();
-  worker_queue_->PostTask([send_stream, transport_overhead_per_packet] {
-    send_stream->SetTransportOverhead(transport_overhead_per_packet);
-  });
-}
-
 bool VideoSendStream::DeliverRtcp(const uint8_t* packet, size_t length) {
   // Called on a network thread.
   return send_stream_->DeliverRtcp(packet, length);
-}
-
-void VideoSendStream::EnableEncodedFrameRecording(
-    const std::vector<rtc::PlatformFile>& files,
-    size_t byte_limit) {
-  send_stream_->EnableEncodedFrameRecording(files, byte_limit);
 }
 
 }  // namespace internal

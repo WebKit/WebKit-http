@@ -819,7 +819,7 @@ JSCValue* jsc_context_evaluate(JSCContext* context, const char* code, gssize len
 
 static JSValueRef evaluateScriptInContext(JSGlobalContextRef jsContext, String&& script, const char* uri, unsigned lineNumber, JSValueRef* exception)
 {
-    JSRetainPtr<JSStringRef> scriptJS(Adopt, OpaqueJSString::create(WTFMove(script)).leakRef());
+    JSRetainPtr<JSStringRef> scriptJS(Adopt, OpaqueJSString::tryCreate(WTFMove(script)).leakRef());
     JSRetainPtr<JSStringRef> sourceURI = uri ? adopt(JSStringCreateWithUTF8CString(uri)) : nullptr;
     return JSEvaluateScript(jsContext, scriptJS.get(), nullptr, sourceURI.get(), lineNumber, exception);
 }
@@ -878,7 +878,7 @@ JSCValue* jsc_context_evaluate_in_object(JSCContext* context, const char* code, 
     g_return_val_if_fail(object && !*object, nullptr);
 
     JSRetainPtr<JSGlobalContextRef> objectContext(Adopt,
-        instance ? jscClassCreateContextWithJSWrapper(objectClass, instance) : JSGlobalContextCreateInGroup(jscVirtualMachineGetContextGroup(context->priv->vm.get()), nullptr));
+        instance ? jscClassCreateContextWithJSWrapper(objectClass, context, instance) : JSGlobalContextCreateInGroup(jscVirtualMachineGetContextGroup(context->priv->vm.get()), nullptr));
     JSC::ExecState* exec = toJS(objectContext.get());
     JSC::VM& vm = exec->vm();
     auto* jsObject = vm.vmEntryGlobalObject(exec);
@@ -945,7 +945,7 @@ JSCCheckSyntaxResult jsc_context_check_syntax(JSCContext* context, const char* c
 
     String sourceURLString = uri ? String::fromUTF8(uri) : String();
     JSC::SourceCode source = JSC::makeSource(String::fromUTF8(code, length < 0 ? strlen(code) : length), JSC::SourceOrigin { sourceURLString },
-        sourceURLString, TextPosition(OrdinalNumber::fromOneBasedInt(lineNumber), OrdinalNumber()));
+        URL({ }, sourceURLString), TextPosition(OrdinalNumber::fromOneBasedInt(lineNumber), OrdinalNumber()));
     bool success = false;
     JSC::ParserError error;
     switch (mode) {

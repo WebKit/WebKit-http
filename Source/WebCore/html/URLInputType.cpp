@@ -36,11 +36,11 @@
 #include "HTMLParserIdioms.h"
 #include "InputTypeNames.h"
 #include "LocalizedStrings.h"
-#include "URL.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 
-const AtomicString& URLInputType::formControlType() const
+const AtomString& URLInputType::formControlType() const
 {
     return InputTypeNames::url();
 }

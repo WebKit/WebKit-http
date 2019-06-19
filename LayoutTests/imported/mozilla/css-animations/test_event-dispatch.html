@@ -1,4 +1,4 @@
-<!doctype html><!-- webkit-test-runner [ enableWebAnimationsCSSIntegration=true ] -->
+<!doctype html>
 <meta charset=utf-8>
 <title>Tests for CSS animation event dispatch</title>
 <link rel="help" href="https://drafts.csswg.org/css-animations-2/#event-dispatch"/>
@@ -307,7 +307,6 @@ promise_test(t => {
   });
 }, 'Call Animation.cancel after cancelling animation.');
 
-// FIXME: timeout
 promise_test(t => {
   const { animation, watcher, div } = setupAnimation(t, 'anim 1s');
 

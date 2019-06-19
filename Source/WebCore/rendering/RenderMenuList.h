@@ -47,7 +47,7 @@ public:
 
     HTMLSelectElement& selectElement() const;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     bool popupIsVisible() const { return m_popupIsVisible; }
 #endif
     void showPopup();
@@ -125,8 +125,8 @@ private:
     {
         return RenderBlock::baselinePosition(baseline, firstLine, direction, position);
     }
-    std::optional<int> firstLineBaseline() const override { return RenderBlock::firstLineBaseline(); }
-    std::optional<int> inlineBlockBaseline(LineDirectionMode direction) const override { return RenderBlock::inlineBlockBaseline(direction); }
+    Optional<int> firstLineBaseline() const override { return RenderBlock::firstLineBaseline(); }
+    Optional<int> inlineBlockBaseline(LineDirectionMode direction) const override { return RenderBlock::inlineBlockBaseline(direction); }
 
     void getItemBackgroundColor(unsigned listIndex, Color&, bool& itemHasCustomBackgroundColor) const;
 
@@ -145,11 +145,11 @@ private:
     bool m_needsOptionsWidthUpdate;
     int m_optionsWidth;
 
-    std::optional<int> m_lastActiveIndex;
+    Optional<int> m_lastActiveIndex;
 
     std::unique_ptr<RenderStyle> m_optionStyle;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     RefPtr<PopupMenu> m_popup;
     bool m_popupIsVisible;
 #endif

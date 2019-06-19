@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,13 +41,13 @@ namespace WebCore {
 
 class ScreenDisplayCaptureSourceMac : public DisplayCaptureSourceCocoa {
 public:
-    static CaptureSourceOrError create(const String&, const MediaConstraints*);
+    static CaptureSourceOrError create(String&&, const MediaConstraints*);
 
-    static std::optional<CaptureDevice> screenCaptureDeviceWithPersistentID(const String&);
+    static Optional<CaptureDevice> screenCaptureDeviceWithPersistentID(const String&);
     static void screenCaptureDevices(Vector<CaptureDevice>&);
 
 private:
-    ScreenDisplayCaptureSourceMac(uint32_t);
+    ScreenDisplayCaptureSourceMac(uint32_t, String&&);
     virtual ~ScreenDisplayCaptureSourceMac();
 
     static void displayReconfigurationCallBack(CGDirectDisplayID, CGDisplayChangeSummaryFlags, void*);
@@ -56,15 +56,21 @@ private:
 
     void frameAvailable(CGDisplayStreamFrameStatus, uint64_t, IOSurfaceRef, CGDisplayStreamUpdateRef);
 
-    void generateFrame() final;
+    DisplayCaptureSourceCocoa::DisplayFrameType generateFrame() final;
+    RealtimeMediaSourceSettings::DisplaySurfaceType surfaceType() const final { return RealtimeMediaSourceSettings::DisplaySurfaceType::Monitor; }
+
     void startProducingData() final;
     void stopProducingData() final;
-    void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) final;
     void commitConfiguration() final;
+    CaptureDevice::DeviceType deviceType() const final { return CaptureDevice::DeviceType::Screen; }
 
     bool createDisplayStream();
     void startDisplayStream();
-    
+
+#if !RELEASE_LOG_DISABLED
+    const char* logClassName() const override { return "ScreenDisplayCaptureSourceMac"; }
+#endif
+
     class DisplaySurface {
     public:
         DisplaySurface() = default;
@@ -93,8 +99,6 @@ private:
     mutable Lock m_currentFrameMutex;
     DisplaySurface m_currentFrame;
     RetainPtr<CGDisplayStreamRef> m_displayStream;
-    CGDisplayStreamFrameAvailableHandler m_frameAvailableBlock;
-
     OSObjectPtr<dispatch_queue_t> m_captureQueue;
 
     uint32_t m_displayID { 0 };

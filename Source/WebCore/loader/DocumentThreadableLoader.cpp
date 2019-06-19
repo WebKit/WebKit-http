@@ -46,6 +46,7 @@
 #include "LoadTiming.h"
 #include "LoaderStrategy.h"
 #include "Performance.h"
+#include "PlatformStrategies.h"
 #include "ProgressTracker.h"
 #include "ResourceError.h"
 #include "ResourceRequest.h"
@@ -61,7 +62,7 @@
 #include <wtf/Assertions.h>
 #include <wtf/Ref.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include <wtf/spi/darwin/dyldSPI.h>
 #endif
 
@@ -146,7 +147,7 @@ DocumentThreadableLoader::DocumentThreadableLoader(Document& document, Threadabl
     if (shouldSetHTTPHeadersToKeep())
         m_options.httpHeadersToKeep = httpHeadersToKeepFromCleaning(request.httpHeaderFields());
 
-    if (document.topDocument().isRunningUserScripts() && SchemeRegistry::isUserExtensionScheme(request.url().protocol().toStringWithoutCopying())) {
+    if (document.isRunningUserScripts() && SchemeRegistry::isUserExtensionScheme(request.url().protocol().toStringWithoutCopying())) {
         m_options.mode = FetchOptions::Mode::NoCors;
         m_options.filteringPolicy = ResponseFilteringPolicy::Disable;
     }
@@ -184,7 +185,7 @@ void DocumentThreadableLoader::makeCrossOriginAccessRequest(ResourceRequest&& re
 {
     ASSERT(m_options.mode == FetchOptions::Mode::Cors);
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool needsPreflightQuirk = IOSApplication::isMoviStarPlus() && applicationSDKVersion() < DYLD_IOS_VERSION_12_0 && (m_options.preflightPolicy == PreflightPolicy::Consider || m_options.preflightPolicy == PreflightPolicy::Force);
 #else
     bool needsPreflightQuirk = false;
@@ -274,7 +275,7 @@ void DocumentThreadableLoader::clearResource()
         resource->removeClient(*this);
     }
     if (m_preflightChecker)
-        m_preflightChecker = std::nullopt;
+        m_preflightChecker = WTF::nullopt;
 }
 
 void DocumentThreadableLoader::redirectReceived(CachedResource& resource, ResourceRequest&& request, const ResourceResponse& redirectResponse, CompletionHandler<void(ResourceRequest&&)>&& completionHandler)
@@ -473,7 +474,7 @@ void DocumentThreadableLoader::didFail(unsigned long, const ResourceError& error
         m_options.serviceWorkersMode = ServiceWorkersMode::None;
         makeCrossOriginAccessRequestWithPreflight(WTFMove(m_bypassingPreflightForServiceWorkerRequest.value()));
         ASSERT(m_bypassingPreflightForServiceWorkerRequest->isNull());
-        m_bypassingPreflightForServiceWorkerRequest = std::nullopt;
+        m_bypassingPreflightForServiceWorkerRequest = WTF::nullopt;
         return;
     }
 #endif
@@ -489,7 +490,7 @@ void DocumentThreadableLoader::preflightSuccess(ResourceRequest&& request)
     ResourceRequest actualRequest(WTFMove(request));
     updateRequestForAccessControl(actualRequest, securityOrigin(), m_options.storedCredentialsPolicy);
 
-    m_preflightChecker = std::nullopt;
+    m_preflightChecker = WTF::nullopt;
 
     // It should be ok to skip the security check since we already asked about the preflight request.
     loadRequest(WTFMove(actualRequest), SecurityCheckPolicy::SkipSecurityCheck);
@@ -497,7 +498,7 @@ void DocumentThreadableLoader::preflightSuccess(ResourceRequest&& request)
 
 void DocumentThreadableLoader::preflightFailure(unsigned long identifier, const ResourceError& error)
 {
-    m_preflightChecker = std::nullopt;
+    m_preflightChecker = WTF::nullopt;
 
     InspectorInstrumentation::didFailLoading(m_document.frame(), m_document.frame()->loader().documentLoader(), identifier, error);
 
@@ -622,8 +623,8 @@ void DocumentThreadableLoader::loadRequest(ResourceRequest&& request, SecurityCh
         if (options().initiatorContext == InitiatorContext::Worker)
             finishedTimingForWorkerLoad(resourceTiming);
         else {
-            if (document().domWindow() && document().domWindow()->performance())
-                document().domWindow()->performance()->addResourceTiming(WTFMove(resourceTiming));
+            if (auto* window = document().domWindow())
+                window->performance().addResourceTiming(WTFMove(resourceTiming));
         }
     }
 

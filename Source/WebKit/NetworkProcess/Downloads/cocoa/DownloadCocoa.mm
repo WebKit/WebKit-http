@@ -28,8 +28,9 @@
 
 #import "DataReference.h"
 #import "NetworkSessionCocoa.h"
-#import "SessionTracker.h"
+#import "WKDownloadProgress.h"
 #import <pal/spi/cf/CFNetworkSPI.h>
+#import <pal/spi/cocoa/NSProgressSPI.h>
 
 namespace WebKit {
 
@@ -39,7 +40,7 @@ void Download::resume(const IPC::DataReference& resumeData, const String& path, 
     if (m_sandboxExtension)
         m_sandboxExtension->consume();
 
-    auto* networkSession = SessionTracker::networkSession(m_sessionID);
+    auto* networkSession = m_downloadManager.client().networkSession(m_sessionID);
     if (!networkSession) {
         WTFLogAlways("Could not find network session with given session ID");
         return;
@@ -48,9 +49,26 @@ void Download::resume(const IPC::DataReference& resumeData, const String& path, 
     auto nsData = adoptNS([[NSData alloc] initWithBytes:resumeData.data() length:resumeData.size()]);
 
     // FIXME: This is a temporary workaround for <rdar://problem/34745171>.
-    NSMutableDictionary *dictionary = [NSPropertyListSerialization propertyListWithData:nsData.get() options:NSPropertyListImmutable format:0 error:nullptr];
+#if (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400)
+    static NSSet<Class> *plistClasses = nil;
+    static dispatch_once_t onceToken;
+
+    dispatch_once(&onceToken, ^{
+        plistClasses = [[NSSet setWithObjects:[NSDictionary class], [NSArray class], [NSString class], [NSNumber class], [NSData class], [NSURL class], [NSURLRequest class], nil] retain];
+    });
+    auto unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingFromData:nsData.get() error:nil]);
+    [unarchiver setDecodingFailurePolicy:NSDecodingFailurePolicyRaiseException];
+    auto dictionary = adoptNS(static_cast<NSMutableDictionary *>([[unarchiver decodeObjectOfClasses:plistClasses forKey:@"NSKeyedArchiveRootObjectKey"] mutableCopy]));
+    [unarchiver finishDecoding];
+    [dictionary setObject:static_cast<NSString*>(path) forKey:@"NSURLSessionResumeInfoLocalPath"];
+    auto encoder = adoptNS([[NSKeyedArchiver alloc] initRequiringSecureCoding:YES]);
+    [encoder encodeObject:dictionary.get() forKey:@"NSKeyedArchiveRootObjectKey"];
+    NSData *updatedData = [encoder encodedData];
+#else
+    NSMutableDictionary *dictionary = [NSPropertyListSerialization propertyListWithData:nsData.get() options:NSPropertyListMutableContainersAndLeaves format:0 error:nullptr];
     [dictionary setObject:static_cast<NSString*>(path) forKey:@"NSURLSessionResumeInfoLocalPath"];
     NSData *updatedData = [NSPropertyListSerialization dataWithPropertyList:dictionary format:NSPropertyListXMLFormat_v1_0 options:0 error:nullptr];
+#endif
 
     m_downloadTask = cocoaSession.downloadTaskWithResumeData(updatedData);
     cocoaSession.addDownloadID(m_downloadTask.get().taskIdentifier, m_downloadID);
@@ -62,12 +80,43 @@ void Download::resume(const IPC::DataReference& resumeData, const String& path, 
 void Download::platformCancelNetworkLoad()
 {
     ASSERT(m_downloadTask);
+
+    // The download's resume data is accessed in the network session delegate
+    // method -URLSession:task:didCompleteWithError: instead of inside this block,
+    // to avoid race conditions between the two. Calling -cancel is not sufficient
+    // here because CFNetwork won't provide the resume data unless we ask for it.
     [m_downloadTask cancelByProducingResumeData:^(NSData *resumeData) {
-        if (resumeData && resumeData.bytes && resumeData.length)
-            didCancel(IPC::DataReference(reinterpret_cast<const uint8_t*>(resumeData.bytes), resumeData.length));
-        else
-            didCancel({ });
+        UNUSED_PARAM(resumeData);
     }];
+}
+
+void Download::platformDestroyDownload()
+{
+    if (m_progress)
+#if USE(NSPROGRESS_PUBLISHING_SPI)
+        [m_progress _unpublish];
+#else
+        [m_progress unpublish];
+#endif
+}
+
+void Download::publishProgress(const URL& url, SandboxExtension::Handle&& sandboxExtensionHandle)
+{
+    ASSERT(!m_progress);
+    ASSERT(url.isValid());
+
+    auto sandboxExtension = SandboxExtension::create(WTFMove(sandboxExtensionHandle));
+
+    ASSERT(sandboxExtension);
+    if (!sandboxExtension)
+        return;
+
+    m_progress = adoptNS([[WKDownloadProgress alloc] initWithDownloadTask:m_downloadTask.get() download:this URL:(NSURL *)url sandboxExtension:sandboxExtension]);
+#if USE(NSPROGRESS_PUBLISHING_SPI)
+    [m_progress _publish];
+#else
+    [m_progress publish];
+#endif
 }
 
 }

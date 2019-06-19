@@ -172,6 +172,22 @@ void TestRunner::clearAllDatabases()
     databaseManager2->deleteAllIndexedDatabases();
 }
 
+void TestRunner::setIDBPerOriginQuota(uint64_t quota)
+{
+    COMPtr<IWebDatabaseManager> databaseManager;
+    COMPtr<IWebDatabaseManager> tmpDatabaseManager;
+    if (FAILED(WebKitCreateInstance(CLSID_WebDatabaseManager, 0, IID_IWebDatabaseManager, (void**)&tmpDatabaseManager)))
+        return;
+    if (FAILED(tmpDatabaseManager->sharedWebDatabaseManager(&databaseManager)))
+        return;
+
+    COMPtr<IWebDatabaseManager2> databaseManager2;
+    if (FAILED(databaseManager->QueryInterface(&databaseManager2)))
+        return;
+
+    databaseManager2->setIDBPerOriginQuota(quota);
+}
+
 void TestRunner::setStorageDatabaseIdleInterval(double)
 {
     // FIXME: Implement. Requires non-existant (on Windows) WebStorageManager
@@ -210,14 +226,14 @@ void TestRunner::clearBackForwardList()
     backForwardList->goToItem(item.get());
 }
 
-JSStringRef TestRunner::copyDecodedHostName(JSStringRef name)
+JSRetainPtr<JSStringRef> TestRunner::copyDecodedHostName(JSStringRef name)
 {
     // FIXME: Implement!
     fprintf(testResult, "ERROR: TestRunner::copyDecodedHostName(JSStringRef) not implemented\n");
     return 0;
 }
 
-JSStringRef TestRunner::copyEncodedHostName(JSStringRef name)
+JSRetainPtr<JSStringRef> TestRunner::copyEncodedHostName(JSStringRef name)
 {
     // FIXME: Implement!
     fprintf(testResult, "ERROR: TestRunner::copyEncodedHostName(JSStringRef) not implemented\n");
@@ -288,17 +304,23 @@ size_t TestRunner::webHistoryItemCount()
 void TestRunner::notifyDone()
 {
     // Same as on mac.  This can be shared.
-    if (m_waitToDump && !topLoadingFrame && !WorkQueue::singleton().count())
-        dump();
-    m_waitToDump = false;
+    if (m_waitToDump) {
+        m_waitToDump = false;
+        if (!topLoadingFrame && !DRT::WorkQueue::singleton().count())
+            dump();
+    } else
+        fprintf(stderr, "TestRunner::notifyDone() called unexpectedly.");
 }
 
 void TestRunner::forceImmediateCompletion()
 {
     // Same as on mac. This can be shared.
-    if (m_waitToDump && !WorkQueue::singleton().count())
-        dump();
-    m_waitToDump = false;
+    if (m_waitToDump) {
+        m_waitToDump = false;
+        if (!DRT::WorkQueue::singleton().count())
+            dump();
+    } else
+        fprintf(stderr, "TestRunner::forceImmediateCompletion() called unexpectedly.");
 }
 
 static wstring jsStringRefToWString(JSStringRef jsStr)
@@ -311,7 +333,7 @@ static wstring jsStringRefToWString(JSStringRef jsStr)
     return buffer.data();
 }
 
-JSStringRef TestRunner::pathToLocalResource(JSContextRef context, JSStringRef url)
+JSRetainPtr<JSStringRef> TestRunner::pathToLocalResource(JSContextRef context, JSStringRef url)
 {
     wstring input(JSStringGetCharactersPtr(url), JSStringGetLength(url));
 
@@ -321,7 +343,7 @@ JSStringRef TestRunner::pathToLocalResource(JSContextRef context, JSStringRef ur
         return nullptr;
     }
 
-    return JSStringCreateWithCharacters(localPath.c_str(), localPath.length());
+    return adopt(JSStringCreateWithCharacters(localPath.c_str(), localPath.length()));
 }
 
 void TestRunner::queueLoad(JSStringRef url, JSStringRef target)
@@ -338,17 +360,19 @@ void TestRunner::queueLoad(JSStringRef url, JSStringRef target)
     if (FAILED(response->URL(&responseURLBSTR.GetBSTR())))
         return;
     wstring responseURL(responseURLBSTR, responseURLBSTR.length());
-
-    // FIXME: We should do real relative URL resolution here.
-    int lastSlash = responseURL.rfind('/');
-    if (lastSlash != -1)
-        responseURL = responseURL.substr(0, lastSlash);
-
     wstring wURL = jsStringRefToWString(url);
-    wstring wAbsoluteURL = responseURL + TEXT("/") + wURL;
-    JSRetainPtr<JSStringRef> jsAbsoluteURL(Adopt, JSStringCreateWithCharacters(wAbsoluteURL.data(), wAbsoluteURL.length()));
 
-    WorkQueue::singleton().queue(new LoadItem(jsAbsoluteURL.get(), target));
+    DWORD bufferSize = responseURL.size() + wURL.size() + 1;
+    std::vector<wchar_t> buffer(bufferSize);
+    auto result = UrlCombine(responseURL.data(), wURL.data(), buffer.data(), &bufferSize, 0);
+    if (result == E_POINTER) {
+        buffer.resize(bufferSize);
+        result = UrlCombine(responseURL.data(), wURL.data(), buffer.data(), &bufferSize, 0);
+        ASSERT(result  == S_OK);
+    }
+
+    auto jsAbsoluteURL = adopt(JSStringCreateWithCharacters(buffer.data(), bufferSize));
+    DRT::WorkQueue::singleton().queue(new LoadItem(jsAbsoluteURL.get(), target));
 }
 
 void TestRunner::setAcceptsEditing(bool acceptsEditing)
@@ -377,6 +401,12 @@ void TestRunner::setAlwaysAcceptCookies(bool alwaysAcceptCookies)
     if (!::setAlwaysAcceptCookies(alwaysAcceptCookies))
         return;
     m_alwaysAcceptCookies = alwaysAcceptCookies;
+}
+
+void TestRunner::setOnlyAcceptFirstPartyCookies(bool onlyAcceptFirstPartyCookies)
+{
+    // FIXME: Implement.
+    fprintf(testResult, "ERROR: TestRunner::setOnlyAcceptFirstPartyCookies() not implemented\n");
 }
 
 void TestRunner::setAppCacheMaximumSize(unsigned long long size)
@@ -430,7 +460,7 @@ void TestRunner::setDatabaseQuota(unsigned long long quota)
     if (FAILED(tmpDatabaseManager->sharedWebDatabaseManager(&databaseManager)))
         return;
 
-    databaseManager->setQuota(TEXT("file:///"), quota);
+    databaseManager->setQuota(_bstr_t(L"file:///"), quota);
 }
 
 void TestRunner::goBack()
@@ -660,11 +690,6 @@ void TestRunner::setTabKeyCyclesThroughElements(bool shouldCycle)
         return;
 
     viewPrivate->setTabKeyCyclesThroughElements(shouldCycle ? TRUE : FALSE);
-}
-
-void TestRunner::setUseDashboardCompatibilityMode(bool flag)
-{
-    // Not implemented on Windows.
 }
 
 void TestRunner::setUserStyleSheetEnabled(bool flag)
@@ -991,7 +1016,7 @@ bool TestRunner::findString(JSContextRef context, JSStringRef target, JSObjectRe
 
     unsigned char options = 0;
 
-    JSRetainPtr<JSStringRef> lengthPropertyName(Adopt, JSStringCreateWithUTF8CString("length"));
+    auto lengthPropertyName = adopt(JSStringCreateWithUTF8CString("length"));
     JSValueRef lengthValue = JSObjectGetProperty(context, optionsArray, lengthPropertyName.get(), nullptr);
     if (!JSValueIsNumber(context, lengthValue))
         return false;
@@ -1004,7 +1029,7 @@ bool TestRunner::findString(JSContextRef context, JSStringRef target, JSObjectRe
         if (!JSValueIsString(context, value))
             continue;
 
-        JSRetainPtr<JSStringRef> optionName(Adopt, JSValueToStringCopy(context, value, nullptr));
+        auto optionName = adopt(JSValueToStringCopy(context, value, nullptr));
 
         if (JSStringIsEqualToUTF8CString(optionName.get(), "CaseInsensitive"))
             options |= WebFindOptionsCaseInsensitive;
@@ -1185,7 +1210,7 @@ void TestRunner::evaluateInWebInspector(JSStringRef script)
     inspectorPrivate->evaluateInFrontend(bstrT(script).GetBSTR());
 }
 
-JSStringRef TestRunner::inspectorTestStubURL()
+JSRetainPtr<JSStringRef> TestRunner::inspectorTestStubURL()
 {
     CFBundleRef webkitBundle = webKitBundle();
     if (!webkitBundle)
@@ -1195,7 +1220,7 @@ JSStringRef TestRunner::inspectorTestStubURL()
     if (!url)
         return nullptr;
 
-    return JSStringCreateWithCFString(CFURLGetString(url.get()));
+    return adopt(JSStringCreateWithCFString(CFURLGetString(url.get())));
 }
 
 typedef HashMap<unsigned, COMPtr<IWebScriptWorld> > WorldMap;

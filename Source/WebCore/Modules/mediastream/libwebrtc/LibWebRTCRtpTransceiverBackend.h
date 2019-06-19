@@ -30,19 +30,19 @@
 #include "LibWebRTCRtpSenderBackend.h"
 #include "RTCRtpTransceiverBackend.h"
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-parameter"
+ALLOW_UNUSED_PARAMETERS_BEGIN
 
 #include <webrtc/api/rtptransceiverinterface.h>
 #include <webrtc/rtc_base/scoped_ref_ptr.h>
 
-#pragma GCC diagnostic pop
+ALLOW_UNUSED_PARAMETERS_END
 
 namespace WebCore {
 
 class LibWebRTCRtpReceiverBackend;
 
 class LibWebRTCRtpTransceiverBackend final : public RTCRtpTransceiverBackend {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit LibWebRTCRtpTransceiverBackend(rtc::scoped_refptr<webrtc::RtpTransceiverInterface>&& rtcTransceiver)
         : m_rtcTransceiver(WTFMove(rtcTransceiver))
@@ -56,10 +56,11 @@ public:
 
 private:
     RTCRtpTransceiverDirection direction() const final;
-    std::optional<RTCRtpTransceiverDirection> currentDirection() const final;
+    Optional<RTCRtpTransceiverDirection> currentDirection() const final;
     void setDirection(RTCRtpTransceiverDirection) final;
     String mid() final;
     void stop() final;
+    bool stopped() const final;
 
     rtc::scoped_refptr<webrtc::RtpTransceiverInterface> m_rtcTransceiver;
 };

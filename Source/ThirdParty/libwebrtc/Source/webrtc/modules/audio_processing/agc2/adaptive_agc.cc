@@ -10,12 +10,10 @@
 
 #include "modules/audio_processing/agc2/adaptive_agc.h"
 
-#include <algorithm>
-#include <numeric>
-
 #include "common_audio/include/audio_util.h"
 #include "modules/audio_processing/agc2/vad_with_level.h"
 #include "modules/audio_processing/logging/apm_data_dumper.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 
@@ -27,27 +25,53 @@ AdaptiveAgc::AdaptiveAgc(ApmDataDumper* apm_data_dumper)
   RTC_DCHECK(apm_data_dumper);
 }
 
+AdaptiveAgc::AdaptiveAgc(ApmDataDumper* apm_data_dumper,
+                         const AudioProcessing::Config::GainController2& config)
+    : speech_level_estimator_(
+          apm_data_dumper,
+          config.adaptive_digital.level_estimator,
+          config.adaptive_digital.use_saturation_protector,
+          config.adaptive_digital.extra_saturation_margin_db),
+      gain_applier_(apm_data_dumper),
+      apm_data_dumper_(apm_data_dumper),
+      noise_level_estimator_(apm_data_dumper) {
+  RTC_DCHECK(apm_data_dumper);
+}
+
 AdaptiveAgc::~AdaptiveAgc() = default;
 
-void AdaptiveAgc::Process(AudioFrameView<float> float_frame) {
-  const VadWithLevel::LevelAndProbability vad_result =
-      vad_.AnalyzeFrame(float_frame);
+void AdaptiveAgc::Process(AudioFrameView<float> float_frame,
+                          float last_audio_level) {
+  auto signal_with_levels = SignalWithLevels(float_frame);
+  signal_with_levels.vad_result = vad_.AnalyzeFrame(float_frame);
   apm_data_dumper_->DumpRaw("agc2_vad_probability",
-                            vad_result.speech_probability);
-  apm_data_dumper_->DumpRaw("agc2_vad_rms_dbfs", vad_result.speech_rms_dbfs);
+                            signal_with_levels.vad_result.speech_probability);
+  apm_data_dumper_->DumpRaw("agc2_vad_rms_dbfs",
+                            signal_with_levels.vad_result.speech_rms_dbfs);
+  apm_data_dumper_->DumpRaw("agc2_vad_peak_dbfs",
+                            signal_with_levels.vad_result.speech_peak_dbfs);
 
-  apm_data_dumper_->DumpRaw("agc2_vad_peak_dbfs", vad_result.speech_peak_dbfs);
-  speech_level_estimator_.UpdateEstimation(vad_result);
+  speech_level_estimator_.UpdateEstimation(signal_with_levels.vad_result);
 
-  const float speech_level_dbfs = speech_level_estimator_.LatestLevelEstimate();
+  signal_with_levels.input_level_dbfs =
+      speech_level_estimator_.LatestLevelEstimate();
 
-  const float noise_level_dbfs = noise_level_estimator_.Analyze(float_frame);
+  signal_with_levels.input_noise_level_dbfs =
+      noise_level_estimator_.Analyze(float_frame);
 
-  apm_data_dumper_->DumpRaw("agc2_noise_estimate_dbfs", noise_level_dbfs);
+  apm_data_dumper_->DumpRaw("agc2_noise_estimate_dbfs",
+                            signal_with_levels.input_noise_level_dbfs);
+
+  signal_with_levels.limiter_audio_level_dbfs =
+      last_audio_level > 0 ? FloatS16ToDbfs(last_audio_level) : -90.f;
+  apm_data_dumper_->DumpRaw("agc2_last_limiter_audio_level",
+                            signal_with_levels.limiter_audio_level_dbfs);
+
+  signal_with_levels.estimate_is_confident =
+      speech_level_estimator_.LevelEstimationIsConfident();
 
   // The gain applier applies the gain.
-  gain_applier_.Process(speech_level_dbfs, noise_level_dbfs, vad_result,
-                        float_frame);
+  gain_applier_.Process(signal_with_levels);
 }
 
 void AdaptiveAgc::Reset() {

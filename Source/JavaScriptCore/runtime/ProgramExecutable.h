@@ -26,17 +26,17 @@
 #pragma once
 
 #include "ExecutableToCodeBlockEdge.h"
-#include "ScriptExecutable.h"
+#include "GlobalExecutable.h"
 
 namespace JSC {
 
-class ProgramExecutable final : public ScriptExecutable {
+class ProgramExecutable final : public GlobalExecutable {
     friend class LLIntOffsetsExtractor;
 public:
-    typedef ScriptExecutable Base;
+    using Base = GlobalExecutable;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
-    template<typename CellType>
+    template<typename CellType, SubspaceAccess>
     static IsoSubspace* subspaceFor(VM& vm)
     {
         return &vm.programExecutableSpace.space;
@@ -59,8 +59,6 @@ public:
         return bitwise_cast<ProgramCodeBlock*>(ExecutableToCodeBlockEdge::unwrap(m_programCodeBlock.get()));
     }
 
-    JSObject* checkSyntax(ExecState*);
-
     Ref<JITCode> generatedJITCode()
     {
         return generatedJITCodeForCall();
@@ -75,6 +73,8 @@ public:
 
     ExecutableInfo executableInfo() const { return ExecutableInfo(usesEval(), isStrictMode(), false, false, ConstructorKind::None, JSParserScriptMode::Classic, SuperBinding::NotNeeded, SourceParseMode::ProgramMode, derivedContextType(), isArrowFunctionContext(), false, EvalContextType::None); }
 
+    TemplateObjectMap& ensureTemplateObjectMap(VM&);
+
 private:
     friend class ExecutableBase;
     friend class ScriptExecutable;
@@ -85,6 +85,7 @@ private:
 
     WriteBarrier<UnlinkedProgramCodeBlock> m_unlinkedProgramCodeBlock;
     WriteBarrier<ExecutableToCodeBlockEdge> m_programCodeBlock;
+    std::unique_ptr<TemplateObjectMap> m_templateObjectMap;
 };
 
 } // namespace JSC

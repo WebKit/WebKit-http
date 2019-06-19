@@ -42,8 +42,8 @@ private:
     bool isRenderMathMLPadded() const final { return true; }
 
     void computePreferredLogicalWidths() final;
-    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
-    std::optional<int> firstLineBaseline() const final;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0_lu) final;
+    Optional<int> firstLineBaseline() const final;
 
     MathMLPaddedElement& element() const { return static_cast<MathMLPaddedElement&>(nodeForNonAnonymous()); }
     LayoutUnit voffset() const;

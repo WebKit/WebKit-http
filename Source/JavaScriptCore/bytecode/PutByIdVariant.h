@@ -44,19 +44,19 @@ public:
     
     PutByIdVariant()
         : m_kind(NotSet)
-        , m_newStructure(nullptr)
         , m_offset(invalidOffset)
+        , m_newStructure(nullptr)
     {
     }
     
     PutByIdVariant(const PutByIdVariant&);
     PutByIdVariant& operator=(const PutByIdVariant&);
 
-    static PutByIdVariant replace(const StructureSet&, PropertyOffset, const InferredType::Descriptor&);
+    static PutByIdVariant replace(const StructureSet&, PropertyOffset);
     
     static PutByIdVariant transition(
         const StructureSet& oldStructure, Structure* newStructure,
-        const ObjectPropertyConditionSet&, PropertyOffset, const InferredType::Descriptor&);
+        const ObjectPropertyConditionSet&, PropertyOffset);
     
     static PutByIdVariant setter(
         const StructureSet&, PropertyOffset, const ObjectPropertyConditionSet&,
@@ -105,11 +105,6 @@ public:
     
     void fixTransitionToReplaceIfNecessary();
 
-    InferredType::Descriptor requiredType() const
-    {
-        return m_requiredType;
-    }
-
     bool writesStructures() const;
     bool reallocatesStorage() const;
     bool makesCalls() const;
@@ -137,7 +132,7 @@ public:
     bool attemptToMerge(const PutByIdVariant& other);
     
     void markIfCheap(SlotVisitor&);
-    bool finalize();
+    bool finalize(VM&);
     
     void dump(PrintStream&) const;
     void dumpInContext(PrintStream&, DumpContext*) const;
@@ -146,11 +141,10 @@ private:
     bool attemptToMergeTransitionWithReplace(const PutByIdVariant& replace);
     
     Kind m_kind;
+    PropertyOffset m_offset;
     StructureSet m_oldStructure;
     Structure* m_newStructure { nullptr };
     ObjectPropertyConditionSet m_conditionSet;
-    PropertyOffset m_offset;
-    InferredType::Descriptor m_requiredType;
     std::unique_ptr<CallLinkStatus> m_callLinkStatus;
 };
 

@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2006-2017 Apple Inc. All rights reserved.
+ *  Copyright (C) 2006-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -25,6 +25,7 @@
 #include "CachedScriptFetcher.h"
 #include "CommonVM.h"
 #include "ContentSecurityPolicy.h"
+#include "CustomHeaderFields.h"
 #include "DocumentLoader.h"
 #include "Event.h"
 #include "Frame.h"
@@ -44,6 +45,7 @@
 #include "Page.h"
 #include "PageConsoleClient.h"
 #include "PageGroup.h"
+#include "PaymentCoordinator.h"
 #include "PluginViewBase.h"
 #include "RuntimeApplicationChecks.h"
 #include "ScriptDisallowedScope.h"
@@ -74,7 +76,7 @@ using namespace JSC;
 
 void ScriptController::initializeThreading()
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     JSC::initializeThreading();
     WTF::initializeMainThread();
 #endif
@@ -125,7 +127,7 @@ JSValue ScriptController::evaluateInWorld(const ScriptSourceCode& sourceCode, DO
 
     Ref<Frame> protector(m_frame);
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willEvaluateScript(m_frame, sourceURL, sourceCode.startLine());
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willEvaluateScript(m_frame, sourceURL, sourceCode.startLine(), sourceCode.startColumn());
 
     NakedPtr<JSC::Exception> evaluationException;
     JSValue returnValue = JSExecState::profiledEvaluate(&exec, JSC::ProfilingReason::Other, jsSourceCode, &proxy, evaluationException);
@@ -218,7 +220,7 @@ JSC::JSValue ScriptController::evaluateModule(const URL& sourceURL, JSModuleReco
 
     Ref<Frame> protector(m_frame);
 
-    auto cookie = InspectorInstrumentation::willEvaluateScript(m_frame, sourceURL, jsSourceCode.firstLine().oneBasedInt());
+    auto cookie = InspectorInstrumentation::willEvaluateScript(m_frame, sourceURL, jsSourceCode.firstLine().oneBasedInt(), jsSourceCode.startColumn().oneBasedInt());
 
     auto returnValue = moduleRecord.evaluate(&state);
     InspectorInstrumentation::didEvaluateScript(cookie, m_frame);
@@ -278,8 +280,11 @@ void ScriptController::setupModuleScriptHandlers(LoadableModuleScript& moduleScr
 
     RefPtr<LoadableModuleScript> moduleScript(&moduleScriptRef);
 
-    auto& fulfillHandler = *JSNativeStdFunction::create(state.vm(), proxy.window(), 1, String(), [moduleScript](ExecState* exec) {
+    auto& fulfillHandler = *JSNativeStdFunction::create(state.vm(), proxy.window(), 1, String(), [moduleScript](ExecState* exec) -> JSC::EncodedJSValue {
+        VM& vm = exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
         Identifier moduleKey = jsValueToModuleKey(exec, exec->argument(0));
+        RETURN_IF_EXCEPTION(scope, { });
         moduleScript->notifyLoadCompleted(*moduleKey.impl());
         return JSValue::encode(jsUndefined());
     });
@@ -295,7 +300,7 @@ void ScriptController::setupModuleScriptHandlers(LoadableModuleScript& moduleScr
                 case ModuleFetchFailureKind::WasErrored:
                     moduleScript->notifyLoadFailed(LoadableScript::Error {
                         LoadableScript::ErrorType::CachedScript,
-                        std::nullopt
+                        WTF::nullopt
                     });
                     break;
                 case ModuleFetchFailureKind::WasCanceled:
@@ -378,13 +383,15 @@ void ScriptController::disableWebAssembly(const String& errorMessage)
     jsWindowProxy->window()->setWebAssemblyEnabled(false, errorMessage);
 }
 
-bool ScriptController::canAccessFromCurrentOrigin(Frame* frame)
+bool ScriptController::canAccessFromCurrentOrigin(Frame* frame, Document& accessingDocument)
 {
     auto* state = JSExecState::currentState();
 
-    // If the current state is null we're in a call path where the DOM security check doesn't apply (eg. parser).
-    if (!state)
-        return true;
+    // If the current state is null we should use the accessing document for the security check.
+    if (!state) {
+        auto* targetDocument = frame ? frame->document() : nullptr;
+        return targetDocument && accessingDocument.securityOrigin().canAccess(targetDocument->securityOrigin());
+    }
 
     return BindingSecurity::shouldAllowAccessToFrame(state, frame);
 }
@@ -542,13 +549,34 @@ void ScriptController::clearScriptObjects()
 
 JSValue ScriptController::executeScriptInWorld(DOMWrapperWorld& world, const String& script, bool forceUserGesture, ExceptionDetails* exceptionDetails)
 {
-    UserGestureIndicator gestureIndicator(forceUserGesture ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
-    ScriptSourceCode sourceCode(script, m_frame.document()->url(), TextPosition(), JSC::SourceProviderSourceType::Program, CachedScriptFetcher::create(m_frame.document()->charset()));
+    UserGestureIndicator gestureIndicator(forceUserGesture ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : WTF::nullopt);
+    ScriptSourceCode sourceCode(script, URL(m_frame.document()->url()), TextPosition(), JSC::SourceProviderSourceType::Program, CachedScriptFetcher::create(m_frame.document()->charset()));
 
     if (!canExecuteScripts(AboutToExecuteScript) || isPaused())
         return { };
 
     return evaluateInWorld(sourceCode, world, exceptionDetails);
+}
+
+JSValue ScriptController::executeUserAgentScriptInWorld(DOMWrapperWorld& world, const String& script, bool forceUserGesture, ExceptionDetails* exceptionDetails)
+{
+    auto& document = *m_frame.document();
+    if (!shouldAllowUserAgentScripts(document))
+        return { };
+
+    document.setHasEvaluatedUserAgentScripts();
+    return executeScriptInWorld(world, script, forceUserGesture, exceptionDetails);
+}
+
+bool ScriptController::shouldAllowUserAgentScripts(Document& document) const
+{
+#if ENABLE(APPLE_PAY)
+    if (auto page = m_frame.page())
+        return page->paymentCoordinator().shouldAllowUserAgentScripts(document);
+#else
+    UNUSED_PARAM(document);
+#endif
+    return true;
 }
 
 bool ScriptController::canExecuteScripts(ReasonForCallingCanExecuteScripts reason)
@@ -571,8 +599,8 @@ bool ScriptController::canExecuteScripts(ReasonForCallingCanExecuteScripts reaso
 
 JSValue ScriptController::executeScript(const String& script, bool forceUserGesture, ExceptionDetails* exceptionDetails)
 {
-    UserGestureIndicator gestureIndicator(forceUserGesture ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
-    return executeScript(ScriptSourceCode(script, m_frame.document()->url(), TextPosition(), JSC::SourceProviderSourceType::Program, CachedScriptFetcher::create(m_frame.document()->charset())), exceptionDetails);
+    UserGestureIndicator gestureIndicator(forceUserGesture ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : WTF::nullopt);
+    return executeScript(ScriptSourceCode(script, URL(m_frame.document()->url()), TextPosition(), JSC::SourceProviderSourceType::Program, CachedScriptFetcher::create(m_frame.document()->charset())), exceptionDetails);
 }
 
 JSValue ScriptController::executeScript(const ScriptSourceCode& sourceCode, ExceptionDetails* exceptionDetails)
@@ -589,7 +617,7 @@ JSValue ScriptController::executeScript(const ScriptSourceCode& sourceCode, Exce
 
 bool ScriptController::executeIfJavaScriptURL(const URL& url, ShouldReplaceDocumentIfJavaScriptURL shouldReplaceDocumentIfJavaScriptURL)
 {
-    if (!protocolIsJavaScript(url))
+    if (!WTF::protocolIsJavaScript(url))
         return false;
 
     if (!m_frame.page() || !m_frame.document()->contentSecurityPolicy()->allowJavaScriptURLs(m_frame.document()->url(), eventHandlerPosition().m_line))

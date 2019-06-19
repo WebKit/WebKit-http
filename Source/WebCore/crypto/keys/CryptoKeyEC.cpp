@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CryptoKeyEC.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CryptoAlgorithmRegistry.h"
 #include "JsonWebKey.h"
@@ -38,7 +38,7 @@ static const ASCIILiteral P256 { "P-256"_s };
 static const ASCIILiteral P384 { "P-384"_s };
 static const ASCIILiteral P521 { "P-521"_s };
 
-static std::optional<CryptoKeyEC::NamedCurve> toNamedCurve(const String& curve)
+static Optional<CryptoKeyEC::NamedCurve> toNamedCurve(const String& curve)
 {
     if (curve == P256)
         return CryptoKeyEC::NamedCurve::P256;
@@ -47,12 +47,12 @@ static std::optional<CryptoKeyEC::NamedCurve> toNamedCurve(const String& curve)
     if (curve == P521)
         return CryptoKeyEC::NamedCurve::P521;
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
-CryptoKeyEC::CryptoKeyEC(CryptoAlgorithmIdentifier identifier, NamedCurve curve, CryptoKeyType type, PlatformECKey platformKey, bool extractable, CryptoKeyUsageBitmap usages)
+CryptoKeyEC::CryptoKeyEC(CryptoAlgorithmIdentifier identifier, NamedCurve curve, CryptoKeyType type, PlatformECKeyContainer&& platformKey, bool extractable, CryptoKeyUsageBitmap usages)
     : CryptoKey(identifier, type, extractable, usages)
-    , m_platformKey(platformKey)
+    , m_platformKey(WTFMove(platformKey))
     , m_curve(curve)
 {
     // Only CryptoKeyEC objects for supported curves should be created.
@@ -164,7 +164,7 @@ ExceptionOr<JsonWebKey> CryptoKeyEC::exportJwk() const
     result.ext = extractable();
     if (!platformAddFieldElements(result))
         return Exception { OperationError };
-    return WTFMove(result);
+    return result;
 }
 
 ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportSpki() const
@@ -231,4 +231,4 @@ auto CryptoKeyEC::algorithm() const -> KeyAlgorithm
 
 } // namespace WebCore
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

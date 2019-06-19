@@ -43,11 +43,11 @@
 #import <WebCore/FrameLoaderTypes.h>
 #import <WebCore/SecurityOrigin.h>
 #import <wtf/Assertions.h>
-#import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/ObjCRuntimeExtras.h>
 
 using namespace WebCore;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 @interface WebPluginController (SecretsIKnow)
 - (WebFrame *)webFrame; // FIXME: This file calls -[WebPluginController webFrame], which is not declared in WebPluginController.h.  Merge issue?  Are the plug-in files out of date?
 @end
@@ -87,9 +87,9 @@ using namespace WebCore;
 - (void)_continueWithPolicy:(PolicyAction)policy
 {
     if (_contextInfo)
-        wtfObjcMsgSend<void>(_resultObject, _resultSelector, (policy == PolicyAction::Use), _contextInfo);
+        wtfObjCMsgSend<void>(_resultObject, _resultSelector, (policy == PolicyAction::Use), _contextInfo);
     else     
-        wtfObjcMsgSend<void>(_resultObject, _resultSelector, (policy == PolicyAction::Use));
+        wtfObjCMsgSend<void>(_resultObject, _resultSelector, (policy == PolicyAction::Use));
 
     // this will call indirectly call cancel
     [_controller _webPluginContainerCancelCheckIfAllowedToLoadRequest:self];

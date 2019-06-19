@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,20 +36,20 @@ public:
 private:
     ~WebPaymentCoordinatorClient();
 
-    bool supportsVersion(unsigned) override;
-    std::optional<String> validatedPaymentNetwork(const String&) override;
+    Optional<String> validatedPaymentNetwork(const String&) override;
     bool canMakePayments() override;
-    void canMakePaymentsWithActiveCard(const String&, const String&, WTF::Function<void (bool)>&& completionHandler) override;
-    void openPaymentSetup(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler) override;
-    bool showPaymentUI(const WebCore::URL&, const Vector<WebCore::URL>& linkIconURLs, const WebCore::ApplePaySessionPaymentRequest&) override;
+    void canMakePaymentsWithActiveCard(const String&, const String&, CompletionHandler<void(bool)>&&) override;
+    void openPaymentSetup(const String& merchantIdentifier, const String& domainName, CompletionHandler<void(bool)>&&) override;
+    bool showPaymentUI(const URL&, const Vector<URL>& linkIconURLs, const WebCore::ApplePaySessionPaymentRequest&) override;
     void completeMerchantValidation(const WebCore::PaymentMerchantSession&) override;
-    void completeShippingMethodSelection(std::optional<WebCore::ShippingMethodUpdate>&&) override;
-    void completeShippingContactSelection(std::optional<WebCore::ShippingContactUpdate>&&) override;
-    void completePaymentMethodSelection(std::optional<WebCore::PaymentMethodUpdate>&&) override;
-    void completePaymentSession(std::optional<WebCore::PaymentAuthorizationResult>&&) override;
+    void completeShippingMethodSelection(Optional<WebCore::ShippingMethodUpdate>&&) override;
+    void completeShippingContactSelection(Optional<WebCore::ShippingContactUpdate>&&) override;
+    void completePaymentMethodSelection(Optional<WebCore::PaymentMethodUpdate>&&) override;
+    void completePaymentSession(Optional<WebCore::PaymentAuthorizationResult>&&) override;
     void abortPaymentSession() override;
     void cancelPaymentSession() override;
     void paymentCoordinatorDestroyed() override;
+    bool supportsUnrestrictedApplePay() const override;
 };
 
 #endif

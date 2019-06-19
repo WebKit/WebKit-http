@@ -325,9 +325,10 @@ private:
             case NewArrayBuffer:
             case NewTypedArray:
             case NewRegexp:
+            case NewStringObject:
+            case NewSymbol:
             case MaterializeNewObject:
             case MaterializeCreateActivation:
-            case NewStringObject:
             case MakeRope:
             case CreateActivation:
             case CreateDirectArguments:
@@ -477,13 +478,7 @@ private:
         if (clobbersExitState(m_graph, m_node))
             origin = origin.withInvalidExit();
         
-        NodeType type;
-        if (Options::useConcurrentBarriers())
-            type = FencedStoreBarrier;
-        else
-            type = StoreBarrier;
-        
-        m_insertionSet.insertNode(nodeIndex, SpecNone, type, origin, base);
+        m_insertionSet.insertNode(nodeIndex, SpecNone, FencedStoreBarrier, origin, base);
     }
     
     bool reallyInsertBarriers()

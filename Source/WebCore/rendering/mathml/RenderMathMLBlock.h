@@ -71,19 +71,19 @@ protected:
         // This function returns a value for the default rule thickness (TeX's \xi_8) to be used as a fallback when we lack a MATH table.
         // This arbitrary value of 0.05em was used in early WebKit MathML implementations for the thickness of the fraction bars.
         // Note that Gecko has a slower but more accurate version that measures the thickness of U+00AF MACRON to be more accurate and otherwise fallback to some arbitrary value.
-        return 0.05f * style().fontCascade().size();
+        return LayoutUnit(0.05f * style().fontCascade().size());
     }
 
     LayoutUnit mathAxisHeight() const;
-    LayoutUnit mirrorIfNeeded(LayoutUnit horizontalOffset, LayoutUnit boxWidth = 0) const;
+    LayoutUnit mirrorIfNeeded(LayoutUnit horizontalOffset, LayoutUnit boxWidth = 0_lu) const;
     LayoutUnit mirrorIfNeeded(LayoutUnit horizontalOffset, const RenderBox& child) const { return mirrorIfNeeded(horizontalOffset, child.logicalWidth()); }
 
     static LayoutUnit ascentForChild(const RenderBox& child)
     {
-        return child.firstLineBaseline().value_or(child.logicalHeight());
+        return child.firstLineBaseline().valueOr(child.logicalHeight());
     }
 
-    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0_lu) override;
     void layoutInvalidMarkup(bool relayoutChildren);
 
 private:
@@ -111,7 +111,7 @@ public:
 private:
     bool isRenderMathMLTable() const final { return true; }
     const char* renderName() const final { return "RenderMathMLTable"; }
-    std::optional<int> firstLineBaseline() const final;
+    Optional<int> firstLineBaseline() const final;
 
     Ref<MathMLStyle> m_mathMLStyle;
 };

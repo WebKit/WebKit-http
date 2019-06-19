@@ -32,3 +32,5 @@
 #else
 #define BEXPORT
 #endif
+
+#define BNOEXPORT

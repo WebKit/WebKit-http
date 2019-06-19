@@ -45,7 +45,8 @@ class VRPlatformDisplay;
 class VRPose;
 class VRStageParameters;
 
-class VRDisplay : public RefCounted<VRDisplay>, public VRPlatformDisplayClient, public EventTargetWithInlineData, public ActiveDOMObject {
+class VRDisplay final : public RefCounted<VRDisplay>, public VRPlatformDisplayClient, public EventTargetWithInlineData, public ActiveDOMObject {
+    WTF_MAKE_ISO_ALLOCATED(VRDisplay);
 public:
     static Ref<VRDisplay> create(ScriptExecutionContext&, WeakPtr<VRPlatformDisplay>&&);
 
@@ -127,7 +128,7 @@ private:
 
     RefPtr<ScriptedAnimationController> m_scriptedAnimationController;
 
-    std::optional<VRLayerInit> m_presentingLayer;
+    Optional<VRLayerInit> m_presentingLayer;
 };
 
 } // namespace WebCore

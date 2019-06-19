@@ -26,61 +26,67 @@
 #import "config.h"
 #import "UserAgent.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "Device.h"
 #import "SystemVersion.h"
+#import <pal/ios/UIKitSoftLink.h>
 #import <pal/spi/ios/MobileGestaltSPI.h>
 #import <pal/spi/ios/UIKitSPI.h>
 #import <wtf/RetainPtr.h>
-#import <wtf/SoftLinking.h>
-
-SOFT_LINK_FRAMEWORK(UIKit);
-SOFT_LINK_CLASS(UIKit, UIApplication);
 
 namespace WebCore {
 
 static inline bool isClassic()
 {
-    return [[getUIApplicationClass() sharedApplication] _isClassic];
+    return [[PAL::getUIApplicationClass() sharedApplication] _isClassic];
 }
 
 static inline bool isClassicPad()
 {
-    return [getUIApplicationClass() _classicMode] == UIApplicationSceneClassicModeOriginalPad;
+    return [PAL::getUIApplicationClass() _classicMode] == UIApplicationSceneClassicModeOriginalPad;
 }
 
 static inline bool isClassicPhone()
 {
-    return isClassic() && [getUIApplicationClass() _classicMode] != UIApplicationSceneClassicModeOriginalPad;
+    return isClassic() && [PAL::getUIApplicationClass() _classicMode] != UIApplicationSceneClassicModeOriginalPad;
 }
 
-static inline NSString *osNameForUserAgent()
+static inline String osNameForUserAgent()
 {
     if (deviceHasIPadCapability() && !isClassicPhone())
-        return @"OS";
-    return @"iPhone OS";
+        return "OS";
+    return "iPhone OS";
 }
 
-static inline NSString *deviceNameForUserAgent()
+static inline String deviceNameForUserAgent()
 {
     if (isClassic()) {
         if (isClassicPad())
-            return @"iPad";
-        return @"iPhone";
+            return "iPad"_s;
+        return "iPhone"_s;
     }
 
-    NSString *name = deviceName();
-#if PLATFORM(IOS_SIMULATOR)
-    NSUInteger location = [name rangeOfString:@" Simulator" options:NSBackwardsSearch].location;
-    if (location != NSNotFound && location > 0)
-        return [name substringToIndex:location];
+    static NeverDestroyed<String> name = [] {
+        auto name = deviceName();
+#if PLATFORM(IOS_FAMILY_SIMULATOR)
+        size_t location = name.find(" Simulator");
+        if (location != notFound)
+            return name.substring(0, location);
 #endif
+        return name;
+    }();
     return name;
 }
 
-String standardUserAgentWithApplicationName(const String& applicationName)
+String standardUserAgentWithApplicationName(const String& applicationName, UserAgentType type)
 {
+    if (type == UserAgentType::Desktop) {
+        String appNameSuffix = applicationName.isEmpty() ? "" : makeString(" ", applicationName);
+        return makeString("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko)", appNameSuffix);
+    }
+
+    // FIXME: Is this needed any more? Mac doesn't have this check,
     // Check to see if there is a user agent override for all WebKit clients.
     CFPropertyListRef override = CFPreferencesCopyAppValue(CFSTR("UserAgent"), CFSTR("com.apple.WebFoundation"));
     if (override) {
@@ -89,14 +95,12 @@ String standardUserAgentWithApplicationName(const String& applicationName)
         CFRelease(override);
     }
 
-    // FIXME: We should implement this with String and/or StringBuilder instead.
-    NSString *webKitVersion = userAgentBundleVersion();
-    NSString *osMarketingVersionString = systemMarketingVersionForUserAgentString();
-    if (applicationName.isEmpty())
-        return [NSString stringWithFormat:@"Mozilla/5.0 (%@; CPU %@ %@ like Mac OS X) AppleWebKit/%@ (KHTML, like Gecko)", deviceNameForUserAgent(), osNameForUserAgent(), osMarketingVersionString, webKitVersion];
-    return [NSString stringWithFormat:@"Mozilla/5.0 (%@; CPU %@ %@ like Mac OS X) AppleWebKit/%@ (KHTML, like Gecko) %@", deviceNameForUserAgent(), osNameForUserAgent(), osMarketingVersionString, webKitVersion, static_cast<NSString *>(applicationName)];
+    String osVersion = systemMarketingVersionForUserAgentString();
+    String appNameSuffix = applicationName.isEmpty() ? "" : makeString(" ", applicationName);
+
+    return makeString("Mozilla/5.0 (", deviceNameForUserAgent(), "; CPU ", osNameForUserAgent(), " ", osVersion, " like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko)", appNameSuffix);
 }
 
 } // namespace WebCore.
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

@@ -34,8 +34,6 @@
 #import <WebKit/_WKSessionState.h>
 #import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED
-
 static NSString *loadableURL1 = @"data:text/html,no%20error%20A";
 static NSString *loadableURL2 = @"data:text/html,no%20error%20B";
 static NSString *loadableURL3 = @"data:text/html,no%20error%20C";
@@ -103,6 +101,37 @@ TEST(WKBackForwardList, CanNotGoBackAfterRestoringEmptySessionState)
     EXPECT_EQ((NSUInteger)0, newList.forwardList.count);
 }
 
+TEST(WKBackForwardList, RestoringNilSessionState)
+{
+    auto webView = adoptNS([[WKWebView alloc] init]);
+
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:loadableURL1]]];
+    [webView _test_waitForDidFinishNavigation];
+
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:loadableURL2]]];
+    [webView _test_waitForDidFinishNavigation];
+
+    WKBackForwardList *list = [webView backForwardList];
+    EXPECT_EQ(YES, [webView canGoBack]);
+    EXPECT_EQ(NO, [webView canGoForward]);
+    EXPECT_EQ((NSUInteger)1, list.backList.count);
+    EXPECT_EQ((NSUInteger)0, list.forwardList.count);
+
+    auto singlePageWebView = adoptNS([[WKWebView alloc] init]);
+
+    [singlePageWebView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:loadableURL1]]];
+    [singlePageWebView _test_waitForDidFinishNavigation];
+
+    [webView _restoreSessionState:nil andNavigate:NO];
+
+    WKBackForwardList *newList = [webView backForwardList];
+
+    EXPECT_EQ(YES, [webView canGoBack]);
+    EXPECT_EQ(NO, [webView canGoForward]);
+    EXPECT_EQ((NSUInteger)1, newList.backList.count);
+    EXPECT_EQ((NSUInteger)0, newList.forwardList.count);
+}
+
 static bool done;
 static size_t navigations;
 
@@ -137,5 +166,3 @@ TEST(WKBackForwardList, WindowLocationAsyncPolicyDecision)
     TestWebKitAPI::Util::run(&done);
     EXPECT_STREQ(webView.get().backForwardList.currentItem.URL.absoluteString.UTF8String, simple.absoluteString.UTF8String);
 }
-
-#endif

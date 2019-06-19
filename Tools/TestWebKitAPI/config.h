@@ -27,15 +27,11 @@
 #include "cmakeconfig.h"
 #endif
 
-#include <JavaScriptCore/JSExportMacros.h>
-#ifndef BUILDING_JSCONLY__
-#include <WebCore/PlatformExportMacros.h>
-#include <pal/ExportMacros.h>
-#endif
+#include <wtf/Platform.h>
 
 #if defined(__APPLE__) && __APPLE__
 #ifdef __OBJC__
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import <Foundation/Foundation.h>
 #else
 #import <Cocoa/Cocoa.h>
@@ -43,11 +39,42 @@
 #endif
 #endif
 
-#include <stdint.h>
+#if defined(BUILDING_WITH_CMAKE)
 
-#if !PLATFORM(IOS) && !defined(BUILDING_JSCONLY__) && (!PLATFORM(WIN) || PLATFORM(WIN_CAIRO)) && !(PLATFORM(QT) && !defined(HAVE_WEBKIT2))
+// CMake path
+#if defined(BUILDING_TestJSC)
+#include <JavaScriptCore/JSExportMacros.h>
+#endif
+
+#if defined(BUILDING_TestWebCore)
+#include <JavaScriptCore/JSExportMacros.h>
+#include <WebCore/PlatformExportMacros.h>
+#include <pal/ExportMacros.h>
+#endif
+
+#if defined(BUILDING_TestWebKit)
+#include <JavaScriptCore/JSExportMacros.h>
+#include <WebCore/PlatformExportMacros.h>
+#include <pal/ExportMacros.h>
 #include <WebKit/WebKit2_C.h>
 #endif
+
+#else
+
+// XCode path
+#include <JavaScriptCore/JSExportMacros.h>
+#include <WebCore/PlatformExportMacros.h>
+#include <pal/ExportMacros.h>
+#if !PLATFORM(IOS_FAMILY)
+#include <WebKit/WebKit2_C.h>
+#endif
+#if PLATFORM(COCOA) && defined(__OBJC__)
+#import <WebKit/WebKit.h>
+#endif
+
+#endif
+
+#include <stdint.h>
 
 #ifdef __clang__
 // Work around the less strict coding standards of the gtest framework.
@@ -70,13 +97,10 @@
 #pragma clang diagnostic pop
 #endif
 
-#if PLATFORM(COCOA) && defined(__OBJC__)
-// FIXME: Get Cocoa tests working with CMake on Mac.
-#if !defined(BUILDING_WITH_CMAKE)
-#import <WebKit/WebKit.h>
-#endif
+#if !PLATFORM(IOS_FAMILY) && !defined(BUILDING_JSCONLY__)
+#define WK_HAVE_C_SPI 1
 #endif
 
-#if !PLATFORM(IOS) && !defined(BUILDING_JSCONLY__)
-#define WK_HAVE_C_SPI 1
+#if !PLATFORM(APPLETV)
+#define HAVE_SSL 1
 #endif

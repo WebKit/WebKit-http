@@ -26,6 +26,7 @@
 #pragma once
 
 #include "BlockDirectoryInlines.h"
+#include "HeapCellType.h"
 #include "JSCast.h"
 #include "MarkedBlock.h"
 #include "MarkedSpace.h"
@@ -76,15 +77,16 @@ void Subspace::forEachMarkedCell(const Func& func)
                     return IterationStatus::Continue;
                 });
         });
+    CellAttributes attributes = this->attributes();
     forEachLargeAllocation(
         [&] (LargeAllocation* allocation) {
             if (allocation->isMarked())
-                func(allocation->cell(), m_attributes.cellKind);
+                func(allocation->cell(), attributes.cellKind);
         });
 }
 
 template<typename Func>
-RefPtr<SharedTask<void(SlotVisitor&)>> Subspace::forEachMarkedCellInParallel(const Func& func)
+Ref<SharedTask<void(SlotVisitor&)>> Subspace::forEachMarkedCellInParallel(const Func& func)
 {
     class Task : public SharedTask<void(SlotVisitor&)> {
     public:
@@ -112,22 +114,23 @@ RefPtr<SharedTask<void(SlotVisitor&)>> Subspace::forEachMarkedCellInParallel(con
                 m_needToVisitLargeAllocations = false;
             }
             
+            CellAttributes attributes = m_subspace.attributes();
             m_subspace.forEachLargeAllocation(
                 [&] (LargeAllocation* allocation) {
                     if (allocation->isMarked())
-                        m_func(visitor, allocation->cell(), m_subspace.m_attributes.cellKind);
+                        m_func(visitor, allocation->cell(), attributes.cellKind);
                 });
         }
         
     private:
         Subspace& m_subspace;
-        RefPtr<SharedTask<MarkedBlock::Handle*()>> m_blockSource;
+        Ref<SharedTask<MarkedBlock::Handle*()>> m_blockSource;
         Func m_func;
         Lock m_lock;
         bool m_needToVisitLargeAllocations { true };
     };
     
-    return adoptRef(new Task(*this, func));
+    return adoptRef(*new Task(*this, func));
 }
 
 template<typename Func>
@@ -141,11 +144,17 @@ void Subspace::forEachLiveCell(const Func& func)
                     return IterationStatus::Continue;
                 });
         });
+    CellAttributes attributes = this->attributes();
     forEachLargeAllocation(
         [&] (LargeAllocation* allocation) {
             if (allocation->isLive())
-                func(allocation->cell(), m_attributes.cellKind);
+                func(allocation->cell(), attributes.cellKind);
         });
+}
+
+inline const CellAttributes& Subspace::attributes() const
+{
+    return m_heapCellType->attributes();
 }
 
 } // namespace JSC

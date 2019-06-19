@@ -41,27 +41,8 @@
 #import <objc/runtime.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
-#import <wtf/SoftLinking.h>
 
-typedef AVCaptureDevice AVCaptureDeviceTypedef;
-typedef AVCaptureSession AVCaptureSessionType;
-
-SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
-
-SOFT_LINK_CLASS(AVFoundation, AVCaptureDevice)
-SOFT_LINK_CLASS(AVFoundation, AVCaptureSession)
-
-SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeAudio, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeMuxed, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeVideo, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVCaptureDeviceWasConnectedNotification, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVCaptureDeviceWasDisconnectedNotification, NSString *)
-
-#define AVMediaTypeAudio getAVMediaTypeAudio()
-#define AVMediaTypeMuxed getAVMediaTypeMuxed()
-#define AVMediaTypeVideo getAVMediaTypeVideo()
-#define AVCaptureDeviceWasConnectedNotification getAVCaptureDeviceWasConnectedNotification()
-#define AVCaptureDeviceWasDisconnectedNotification getAVCaptureDeviceWasDisconnectedNotification()
+#import <pal/cocoa/AVFoundationSoftLink.h>
 
 using namespace WebCore;
 
@@ -72,8 +53,8 @@ using namespace WebCore;
 
 -(id)initWithCallback:(AVCaptureDeviceManager*)callback;
 -(void)disconnect;
--(void)deviceDisconnected:(NSNotification *)notification;
--(void)deviceConnected:(NSNotification *)notification;
+-(void)deviceConnectedDidChange:(NSNotification *)notification;
+-(void)observeValueForKeyPath:keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context;
 @end
 
 namespace WebCore {
@@ -85,10 +66,10 @@ Vector<CaptureDevice>& AVCaptureDeviceManager::captureDevicesInternal()
         return m_devices;
 
     static bool firstTime = true;
-    if (firstTime && !m_devices.size()) {
+    if (firstTime) {
         firstTime = false;
         refreshCaptureDevices();
-        registerForDeviceNotifications();
+        m_notifyWhenDeviceListChanges = true;
     }
 
     return m_devices;
@@ -99,49 +80,115 @@ const Vector<CaptureDevice>& AVCaptureDeviceManager::captureDevices()
     return captureDevicesInternal();
 }
 
-inline static bool deviceIsAvailable(AVCaptureDeviceTypedef *device)
+inline static bool deviceIsAvailable(AVCaptureDevice *device)
 {
     if (![device isConnected])
         return false;
 
-#if !PLATFORM(IOS)
-    if ([device isSuspended] || [device isInUseByAnotherApplication])
+#if !PLATFORM(IOS_FAMILY)
+    if ([device isSuspended])
         return false;
 #endif
 
     return true;
 }
 
-void AVCaptureDeviceManager::refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType type)
+void AVCaptureDeviceManager::updateCachedAVCaptureDevices()
 {
-    ASSERT(type == CaptureDevice::DeviceType::Camera || type == CaptureDevice::DeviceType::Microphone);
-
-    NSString *platformType = (type == CaptureDevice::DeviceType::Camera) ? AVMediaTypeVideo : AVMediaTypeAudio;
-
-    for (AVCaptureDeviceTypedef *platformDevice in [getAVCaptureDeviceClass() devices]) {
-
-        bool hasMatchingType = [platformDevice hasMediaType:platformType] || [platformDevice hasMediaType:AVMediaTypeMuxed];
-        if (!hasMatchingType)
-            continue;
-
-        CaptureDevice existingCaptureDevice = captureDeviceFromPersistentID(platformDevice.uniqueID);
-        if (existingCaptureDevice && existingCaptureDevice.type() == type)
-            continue;
-
-        CaptureDevice captureDevice(platformDevice.uniqueID, type, platformDevice.localizedName);
-        captureDevice.setEnabled(deviceIsAvailable(platformDevice));
-        m_devices.append(captureDevice);
+    auto* currentDevices = [PAL::getAVCaptureDeviceClass() devices];
+    auto changedDevices = adoptNS([[NSMutableArray alloc] init]);
+    for (AVCaptureDevice *cachedDevice in m_avCaptureDevices.get()) {
+        if (![currentDevices containsObject:cachedDevice])
+            [changedDevices addObject:cachedDevice];
     }
+
+    if ([changedDevices count]) {
+        for (AVCaptureDevice *device in changedDevices.get())
+            [device removeObserver:m_objcObserver.get() forKeyPath:@"suspended"];
+        [m_avCaptureDevices removeObjectsInArray:changedDevices.get()];
+    }
+
+    for (AVCaptureDevice *device in currentDevices) {
+
+        if (![device hasMediaType:AVMediaTypeVideo] && ![device hasMediaType:AVMediaTypeMuxed])
+            continue;
+
+        if ([m_avCaptureDevices.get() containsObject:device])
+            continue;
+
+        [device addObserver:m_objcObserver.get() forKeyPath:@"suspended" options:NSKeyValueObservingOptionNew context:(void *)nil];
+        [m_avCaptureDevices.get() addObject:device];
+    }
+
+}
+
+static inline CaptureDevice toCaptureDevice(AVCaptureDevice *device)
+{
+    CaptureDevice captureDevice { device.uniqueID, CaptureDevice::DeviceType::Camera, device.localizedName };
+    captureDevice.setEnabled(deviceIsAvailable(device));
+    return captureDevice;
+}
+
+bool AVCaptureDeviceManager::isMatchingExistingCaptureDevice(AVCaptureDevice *device)
+{
+    auto existingCaptureDevice = captureDeviceFromPersistentID(device.uniqueID);
+    if (!existingCaptureDevice)
+        return false;
+
+    return deviceIsAvailable(device) == existingCaptureDevice.enabled();
+}
+
+static inline bool isDefaultVideoCaptureDeviceFirst(const Vector<CaptureDevice>& devices, const String& defaultDeviceID)
+{
+    if (devices.isEmpty())
+        return false;
+    return devices[0].persistentId() == defaultDeviceID;
 }
 
 void AVCaptureDeviceManager::refreshCaptureDevices()
 {
-    refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType::Camera);
+    if (!m_avCaptureDevices) {
+        m_avCaptureDevices = adoptNS([[NSMutableArray alloc] init]);
+        registerForDeviceNotifications();
+    }
+
+    updateCachedAVCaptureDevices();
+
+    auto* currentDevices = [PAL::getAVCaptureDeviceClass() devices];
+    Vector<CaptureDevice> deviceList;
+
+    auto* defaultVideoDevice = [PAL::getAVCaptureDeviceClass() defaultDeviceWithMediaType: AVMediaTypeVideo];
+
+    bool deviceHasChanged = false;
+    if (defaultVideoDevice) {
+        deviceList.append(toCaptureDevice(defaultVideoDevice));
+        deviceHasChanged = !isDefaultVideoCaptureDeviceFirst(captureDevices(), defaultVideoDevice.uniqueID);
+    }
+    for (AVCaptureDevice *platformDevice in currentDevices) {
+        if (![platformDevice hasMediaType:AVMediaTypeVideo] && ![platformDevice hasMediaType:AVMediaTypeMuxed])
+            continue;
+
+        if (!deviceHasChanged && !isMatchingExistingCaptureDevice(platformDevice))
+            deviceHasChanged = true;
+
+        if (platformDevice.uniqueID == defaultVideoDevice.uniqueID)
+            continue;
+
+        deviceList.append(toCaptureDevice(platformDevice));
+    }
+
+    if (deviceHasChanged || m_devices.size() != deviceList.size()) {
+        deviceHasChanged = true;
+        m_devices = WTFMove(deviceList);
+    }
+
+    if (m_notifyWhenDeviceListChanges && deviceHasChanged)
+        deviceChanged();
 }
 
 bool AVCaptureDeviceManager::isAvailable()
 {
-    return AVFoundationLibrary();
+    return PAL::isAVFoundationFrameworkAvailable();
 }
 
 AVCaptureDeviceManager& AVCaptureDeviceManager::singleton()
@@ -159,37 +206,14 @@ AVCaptureDeviceManager::~AVCaptureDeviceManager()
 {
     [[NSNotificationCenter defaultCenter] removeObserver:m_objcObserver.get()];
     [m_objcObserver disconnect];
+    for (AVCaptureDevice *device in m_avCaptureDevices.get())
+        [device removeObserver:m_objcObserver.get() forKeyPath:@"suspended"];
 }
 
 void AVCaptureDeviceManager::registerForDeviceNotifications()
 {
-    [[NSNotificationCenter defaultCenter] addObserver:m_objcObserver.get() selector:@selector(deviceConnected:) name:AVCaptureDeviceWasConnectedNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:m_objcObserver.get() selector:@selector(deviceDisconnected:) name:AVCaptureDeviceWasDisconnectedNotification object:nil];
-}
-
-void AVCaptureDeviceManager::deviceConnected()
-{
-    refreshCaptureDevices();
-    deviceChanged();
-}
-
-void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceTypedef* device)
-{
-    auto& devices = captureDevicesInternal();
-
-    size_t count = devices.size();
-    if (!count)
-        return;
-
-    String deviceID = device.uniqueID;
-    for (size_t i = 0; i < count; ++i) {
-        if (devices[i].persistentId() == deviceID) {
-            LOG(Media, "AVCaptureDeviceManager::deviceDisconnected(%p), device %d disabled", this, i);
-            devices[i].setEnabled(false);
-        }
-    }
-
-    deviceChanged();
+    [[NSNotificationCenter defaultCenter] addObserver:m_objcObserver.get() selector:@selector(deviceConnectedDidChange:) name:AVCaptureDeviceWasConnectedNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:m_objcObserver.get() selector:@selector(deviceConnectedDidChange:) name:AVCaptureDeviceWasDisconnectedNotification object:nil];
 }
 
 } // namespace WebCore
@@ -208,23 +232,10 @@ void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceTypedef* device)
 - (void)disconnect
 {
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
-    m_callback = 0;
+    m_callback = nil;
 }
 
-- (void)deviceDisconnected:(NSNotification *)notification
-{
-    if (!m_callback)
-        return;
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (m_callback) {
-            AVCaptureDeviceTypedef *device = [notification object];
-            m_callback->deviceDisconnected(device);
-        }
-    });
-}
-
-- (void)deviceConnected:(NSNotification *)unusedNotification
+- (void)deviceConnectedDidChange:(NSNotification *)unusedNotification
 {
     UNUSED_PARAM(unusedNotification);
     if (!m_callback)
@@ -232,8 +243,21 @@ void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceTypedef* device)
 
     dispatch_async(dispatch_get_main_queue(), ^{
         if (m_callback)
-            m_callback->deviceConnected();
+            m_callback->refreshCaptureDevices();
     });
+}
+
+- (void)observeValueForKeyPath:keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context
+{
+    UNUSED_PARAM(object);
+    UNUSED_PARAM(context);
+    UNUSED_PARAM(change);
+
+    if (!m_callback)
+        return;
+
+    if ([keyPath isEqualToString:@"suspended"])
+        m_callback->refreshCaptureDevices();
 }
 
 @end

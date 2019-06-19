@@ -28,9 +28,8 @@
 
 #if ENABLE(WEBASSEMBLY)
 
+#include "CPU.h"
 #include "WasmPlan.h"
-
-#include <wtf/NumberOfCores.h>
 
 namespace JSC { namespace Wasm {
 
@@ -207,7 +206,7 @@ Worklist::Worklist()
     : m_lock(Box<Lock>::create())
     , m_planEnqueued(AutomaticThreadCondition::create())
 {
-    unsigned numberOfCompilationThreads = Options::useConcurrentJIT() ? WTF::numberOfProcessorCores() : 1;
+    unsigned numberOfCompilationThreads = Options::useConcurrentJIT() ? kernTCSMAwareNumberOfProcessorCores() : 1;
     m_threads.reserveCapacity(numberOfCompilationThreads);
     LockHolder locker(*m_lock);
     for (unsigned i = 0; i < numberOfCompilationThreads; i++)
@@ -232,7 +231,9 @@ Worklist& ensureWorklist()
 {
     static std::once_flag initializeWorklist;
     std::call_once(initializeWorklist, [] {
-        globalWorklist = new Worklist();
+        Worklist* worklist = new Worklist();
+        WTF::storeStoreFence();
+        globalWorklist = worklist;
     });
     return *globalWorklist;
 }

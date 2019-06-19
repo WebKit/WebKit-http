@@ -26,7 +26,7 @@
 #pragma once
 
 #include <stdint.h>
-#include <wtf/EnumTraits.h>
+#include <wtf/Forward.h>
 
 namespace IPC {
 class Decoder;
@@ -35,7 +35,7 @@ class Encoder;
 
 namespace WebKit {
 
-enum class LayerHostingMode {
+enum class LayerHostingMode : uint8_t {
     InProcess,
 #if HAVE(OUT_OF_PROCESS_LAYER_HOSTING)
     OutOfProcess

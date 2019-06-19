@@ -26,14 +26,17 @@
 #pragma once
 
 #include <JavaScriptCore/MarkingConstraint.h>
-#include <wtf/SharedTask.h>
-#include <wtf/Vector.h>
+
+namespace JSC {
+class VM;
+}
 
 namespace WebCore {
 
 class JSVMClientData;
 
 class DOMGCOutputConstraint : public JSC::MarkingConstraint {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     DOMGCOutputConstraint(JSC::VM&, JSVMClientData&);
     ~DOMGCOutputConstraint();

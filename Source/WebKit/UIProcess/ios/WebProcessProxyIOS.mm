@@ -26,20 +26,42 @@
 #import "config.h"
 #import "WebProcessProxy.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
-#import <WebCore/NotImplemented.h>
-
+#import "AccessibilitySupportSPI.h"
+#import "WKFullKeyboardAccessWatcher.h"
 #import "WebProcessMessages.h"
 
 namespace WebKit {
 
 bool WebProcessProxy::fullKeyboardAccessEnabled()
 {
-    notImplemented();
-    return false;
+#if ENABLE(FULL_KEYBOARD_ACCESS)
+    return [WKFullKeyboardAccessWatcher fullKeyboardAccessEnabled];
+#else
+    return NO;
+#endif
+}
+
+void WebProcessProxy::unblockAccessibilityServerIfNeeded()
+{
+    if (m_hasSentMessageToUnblockAccessibilityServer)
+        return;
+    if (!_AXSApplicationAccessibilityEnabled())
+        return;
+    if (!processIdentifier())
+        return;
+    if (!canSendMessage())
+        return;
+
+    SandboxExtension::Handle handle;
+    if (!SandboxExtension::createHandleForMachLookupByPid("com.apple.iphone.axserver-systemwide", processIdentifier(), handle))
+        return;
+
+    send(Messages::WebProcess::UnblockAccessibilityServer(handle), 0);
+    m_hasSentMessageToUnblockAccessibilityServer = true;
 }
 
 } // namespace WebKit
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

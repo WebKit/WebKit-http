@@ -43,6 +43,9 @@
 #import "WebUIDelegatePrivate.h"
 #import "WebViewInternal.h"
 #import <JavaScriptCore/InspectorAgentBase.h>
+#import <SecurityInterface/SFCertificatePanel.h>
+#import <SecurityInterface/SFCertificateView.h>
+#import <WebCore/CertificateInfo.h>
 #import <WebCore/Frame.h>
 #import <WebCore/InspectorController.h>
 #import <WebCore/InspectorFrontendClient.h>
@@ -50,10 +53,7 @@
 #import <WebCore/ScriptController.h>
 #import <WebKitLegacy/DOMExtensions.h>
 #import <algorithm>
-#import <wtf/SoftLinking.h>
 #import <wtf/text/Base64.h>
-
-SOFT_LINK_STAGED_FRAMEWORK(WebInspectorUI, PrivateFrameworks, A)
 
 using namespace WebCore;
 using namespace Inspector;
@@ -221,13 +221,15 @@ void WebInspectorFrontendClient::startWindowDrag()
 
 String WebInspectorFrontendClient::localizedStringsURL()
 {
-    // Call the soft link framework function to dlopen it, then [NSBundle bundleWithIdentifier:] will work.
-    WebInspectorUILibrary();
+    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
+    if (!bundle)
+        return String();
 
-    NSString *path = [[NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"] pathForResource:@"localizedStrings" ofType:@"js"];
-    if ([path length])
-        return [[NSURL fileURLWithPath:path] absoluteString];
-    return String();
+    NSString *path = [bundle pathForResource:@"localizedStrings" ofType:@"js"];
+    if (!path.length)
+        return String();
+    
+    return [NSURL fileURLWithPath:path isDirectory:NO].absoluteString;
 }
 
 void WebInspectorFrontendClient::bringToFront()
@@ -245,6 +247,13 @@ void WebInspectorFrontendClient::bringToFront()
 void WebInspectorFrontendClient::closeWindow()
 {
     [m_frontendWindowController.get() destroyInspectorView];
+}
+
+void WebInspectorFrontendClient::reopen()
+{
+    WebInspector* inspector = [m_inspectedWebView inspector];
+    [inspector close:nil];
+    [inspector show:nil];
 }
 
 void WebInspectorFrontendClient::attachWindow(DockSide)
@@ -270,10 +279,39 @@ void WebInspectorFrontendClient::setAttachedWindowWidth(unsigned)
     // Dock to right is not implemented in WebKit 1.
 }
 
+void WebInspectorFrontendClient::setSheetRect(const FloatRect& rect)
+{
+    m_sheetRect = rect;
+}
+
 void WebInspectorFrontendClient::inspectedURLChanged(const String& newURL)
 {
     m_inspectedURL = newURL;
     updateWindowTitle();
+}
+
+void WebInspectorFrontendClient::showCertificate(const CertificateInfo& certificateInfo)
+{
+    ASSERT(!certificateInfo.isEmpty());
+
+    RetainPtr<SFCertificatePanel> certificatePanel = adoptNS([[SFCertificatePanel alloc] init]);
+
+    NSWindow *window = [[m_frontendWindowController frontendWebView] window];
+    if (!window)
+        window = [NSApp keyWindow];
+
+#if HAVE(SEC_TRUST_SERIALIZATION)
+    [certificatePanel beginSheetForWindow:window modalDelegate:nil didEndSelector:NULL contextInfo:nullptr trust:certificateInfo.trust() showGroup:YES];
+#else
+    [certificatePanel beginSheetForWindow:window modalDelegate:nil didEndSelector:NULL contextInfo:nullptr certificates:(NSArray *)certificateInfo.certificateChain() showGroup:YES];
+#endif
+
+    // This must be called after the trust panel has been displayed, because the certificateView doesn't exist beforehand.
+    SFCertificateView *certificateView = [certificatePanel certificateView];
+    [certificateView setDisplayTrust:YES];
+    [certificateView setEditableTrust:NO];
+    [certificateView setDisplayDetails:YES];
+    [certificateView setDetailsDisclosed:YES];
 }
 
 void WebInspectorFrontendClient::updateWindowTitle() const
@@ -340,8 +378,9 @@ void WebInspectorFrontendClient::save(const String& suggestedURL, const String& 
     };
 
     NSWindow *frontendWindow = [[m_frontendWindowController frontendWebView] window];
-    if (frontendWindow)
-        [panel beginSheetModalForWindow:frontendWindow completionHandler:completionHandler];
+    NSWindow *window = frontendWindow ? frontendWindow : [NSApp keyWindow];
+    if (window)
+        [panel beginSheetModalForWindow:window completionHandler:completionHandler];
     else
         completionHandler([panel runModal]);
 }
@@ -428,26 +467,21 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 - (NSString *)inspectorPagePath
 {
-    // Call the soft link framework function to dlopen it, then [NSBundle bundleWithIdentifier:] will work.
-    WebInspectorUILibrary();
+    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
+    if (!bundle)
+        return nil;
 
-    NSString *path = [[NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"] pathForResource:@"Main" ofType:@"html"];
-    ASSERT([path length]);
-    return path;
+    return [bundle pathForResource:@"Main" ofType:@"html"];
 }
 
 - (NSString *)inspectorTestPagePath
 {
-    // Call the soft link framework function to dlopen it, then [NSBundle bundleWithIdentifier:] will work.
-    WebInspectorUILibrary();
-
-    NSString *path = [[NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"] pathForResource:@"Test" ofType:@"html"];
-
-    // We might not have a Test.html in Production builds.
-    if (!path)
+    NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.apple.WebInspectorUI"];
+    if (!bundle)
         return nil;
 
-    return path;
+    // We might not have a Test.html in Production builds.
+    return [bundle pathForResource:@"Test" ofType:@"html"];
 }
 
 // MARK: -
@@ -486,8 +520,10 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
 
 - (NSRect)window:(NSWindow *)window willPositionSheet:(NSWindow *)sheet usingRect:(NSRect)rect
 {
+    if (_frontendClient)
+        return NSMakeRect(0, _frontendClient->sheetRect().height(), _frontendClient->sheetRect().width(), 0);
+
     // AppKit doesn't know about our HTML toolbar, and places the sheet just a little bit too high.
-    // FIXME: It would be better to get the height of the toolbar and use it in this calculation.
     rect.origin.y -= 1;
     return rect;
 }
@@ -655,7 +691,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
     if (Page* frontendPage = _frontendClient->frontendPage())
         frontendPage->inspectorController().setInspectorFrontendClient(nullptr);
     if (Page* inspectedPage = [_inspectedWebView.get() page])
-        inspectedPage->inspectorController().disconnectFrontend(_inspectorClient);
+        inspectedPage->inspectorController().disconnectFrontend(*_inspectorClient);
 
     [[_inspectedWebView.get() inspector] releaseFrontend];
     _inspectorClient->releaseFrontend();
@@ -664,8 +700,7 @@ void WebInspectorFrontendClient::append(const String& suggestedURL, const String
         return;
     _destroyingInspectorView = YES;
 
-    if (_attachedToInspectedWebView)
-        [self close];
+    [self close];
 
     _visible = NO;
 

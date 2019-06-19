@@ -35,9 +35,9 @@
 #include <JavaScriptCore/MachineStackMarker.h>
 #include <JavaScriptCore/VM.h>
 #include <wtf/MainThread.h>
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "WebCoreThreadInternal.h"
 #endif
 
@@ -58,7 +58,7 @@ JSC::VM& commonVMSlow()
 
     vm.heap.acquireAccess(); // At any time, we may do things that affect the GC.
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     vm.setRunLoop(WebThreadRunLoop());
     vm.heap.machineThreads().addCurrentThread();
 #endif
@@ -83,7 +83,7 @@ Frame* lexicalFrameFromCommonVM()
     return nullptr;
 }
 
-void addImpureProperty(const AtomicString& propertyName)
+void addImpureProperty(const AtomString& propertyName)
 {
     commonVM().addImpureProperty(propertyName);
 }

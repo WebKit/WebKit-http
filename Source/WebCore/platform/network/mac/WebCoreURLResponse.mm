@@ -30,6 +30,7 @@
 #import "WebCoreURLResponse.h"
 
 #import "MIMETypeRegistry.h"
+#import "ResourceResponse.h"
 #import "UTIUtilities.h"
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/Assertions.h>
@@ -92,6 +93,7 @@ static CFDictionaryRef createExtensionToMIMETypeMap()
         CFSTR("me"),
         CFSTR("mesh"),
         CFSTR("mif"),
+        CFSTR("mjs"),
         CFSTR("movie"),
         CFSTR("mp2"),
         CFSTR("mpga"),
@@ -211,6 +213,7 @@ static CFDictionaryRef createExtensionToMIMETypeMap()
         CFSTR("application/x-troff-me"),
         CFSTR("model/mesh"),
         CFSTR("application/vnd.mif"),
+        CFSTR("text/javascript"),
         CFSTR("video/x-sgi-movie"),
         CFSTR("audio/mpeg"),
         CFSTR("audio/mpeg"),
@@ -329,12 +332,11 @@ void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse, bool isMainResourceL
 
 static bool schemeWasUpgradedDueToDynamicHSTS(NSURLRequest *request)
 {
-#if !USE(CFNETWORK_IGNORE_HSTS)
+#if HAVE(CFNETWORK_WITH_IGNORE_HSTS)
+    return [request _schemeWasUpgradedDueToDynamicHSTS];
+#else
     UNUSED_PARAM(request);
     return false;
-#else
-    return [request respondsToSelector:@selector(_schemeWasUpgradedDueToDynamicHSTS)]
-        && [request _schemeWasUpgradedDueToDynamicHSTS];
 #endif
 }
 
@@ -346,10 +348,7 @@ NSURLResponse *synthesizeRedirectResponseIfNecessary(NSURLRequest *currentReques
     if ([[[newRequest URL] scheme] isEqualToString:[[currentRequest URL] scheme]] && !schemeWasUpgradedDueToDynamicHSTS(newRequest))
         return nil;
 
-    // If the new request is a different protocol than the current request, synthesize a redirect response.
-    // This is critical for HSTS (<rdar://problem/14241270>).
-    NSDictionary *synthesizedResponseHeaderFields = @{ @"Location": [[newRequest URL] absoluteString], @"Cache-Control": @"no-store" };
-    return [[[NSHTTPURLResponse alloc] initWithURL:[currentRequest URL] statusCode:302 HTTPVersion:(NSString *)kCFHTTPVersion1_1 headerFields:synthesizedResponseHeaderFields] autorelease];
+    return [[ResourceResponse::syntheticRedirectResponse(URL([currentRequest URL]), URL([newRequest URL])).nsURLResponse() retain] autorelease];
 }
 
 }

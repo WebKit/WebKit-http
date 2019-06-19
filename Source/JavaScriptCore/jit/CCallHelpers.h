@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -183,7 +183,7 @@ private:
         }
     }
 
-#if CPU(MIPS) || (CPU(ARM) && !CPU(ARM_HARDFP))
+#if CPU(MIPS) || (CPU(ARM_THUMB2) && !CPU(ARM_HARDFP))
     template<unsigned NumCrossSources, unsigned NumberOfRegisters>
     ALWAYS_INLINE void setupStubCrossArgs(std::array<GPRReg, NumberOfRegisters> destinations, std::array<FPRReg, NumberOfRegisters> sources) {
         for (unsigned i = 0; i < NumCrossSources; i++) {
@@ -329,14 +329,9 @@ private:
 
         currentGPRArgument += extraGPRArgs;
         currentFPRArgument -= numCrossSources;
-#if COMPILER(GCC_OR_CLANG)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wtype-limits"
-#endif
+        IGNORE_WARNINGS_BEGIN("type-limits")
         ASSERT(currentGPRArgument >= GPRInfo::numberOfArgumentRegisters || currentFPRArgument >= FPRInfo::numberOfArgumentRegisters);
-#if COMPILER(GCC_OR_CLANG)
-#pragma GCC diagnostic pop
-#endif
+        IGNORE_WARNINGS_END
 
         unsigned pokeOffset = POKE_ARGUMENT_OFFSET + extraPoke;
         pokeOffset += std::max(currentGPRArgument, numberOfGPArgumentRegisters) - numberOfGPArgumentRegisters;
@@ -453,7 +448,7 @@ private:
         setupArgumentsImpl<OperationType>(argSourceRegs.addGPRArg().addPoke(), args...);
     }
 
-#elif CPU(ARM) || CPU(MIPS)
+#elif CPU(ARM_THUMB2) || CPU(MIPS)
 
     template<typename OperationType, unsigned numGPRArgs, unsigned numGPRSources, unsigned numFPRArgs, unsigned numFPRSources, unsigned numCrossSources, unsigned extraGPRArgs, unsigned extraPoke, typename... Args>
     void setupArgumentsImpl(ArgCollection<numGPRArgs, numGPRSources, numFPRArgs, numFPRSources, numCrossSources, extraGPRArgs, extraPoke> argSourceRegs, FPRReg arg, Args... args)
@@ -471,7 +466,7 @@ private:
             setupArgumentsImpl<OperationType>(updatedArgSourceRegs.addGPRExtraArg().addGPRExtraArg(), args...);
             return;
         }
-#elif CPU(ARM) && CPU(ARM_HARDFP)
+#elif CPU(ARM_THUMB2) && CPU(ARM_HARDFP)
         unsigned numberOfFPArgumentRegisters = FPRInfo::numberOfArgumentRegisters;
         unsigned currentFPArgCount = argSourceRegs.argCount(arg);
 
@@ -482,7 +477,7 @@ private:
         }
 #endif
 
-#if CPU(MIPS) || (CPU(ARM) && !CPU(ARM_HARDFP))
+#if CPU(MIPS) || (CPU(ARM_THUMB2) && !CPU(ARM_HARDFP))
         // On MIPS and ARM-softfp FP arguments can be passed in GP registers.
         unsigned numberOfGPArgumentRegisters = GPRInfo::numberOfArgumentRegisters;
         unsigned currentGPArgCount = argSourceRegs.argCount(GPRInfo::regT0);
@@ -597,7 +592,7 @@ private:
             pokeArgumentsAligned<OperationType>(argSourceRegs, arg.payloadGPR(), arg.tagGPR(), args...);
     }
 
-#endif // CPU(ARM) || CPU(MIPS)
+#endif // CPU(ARM_THUMB2) || CPU(MIPS)
 #endif // USE(JSVALUE64)
 
     template<typename OperationType, unsigned numGPRArgs, unsigned numGPRSources, unsigned numFPRArgs, unsigned numFPRSources, unsigned numCrossSources, unsigned extraGPRArgs, unsigned extraPoke, typename Arg, typename... Args>
@@ -674,11 +669,11 @@ private:
     ALWAYS_INLINE void setupArgumentsImpl(ArgCollection<numGPRArgs, numGPRSources, numFPRArgs, numFPRSources, numCrossSources, extraGPRArgs, extraPoke> argSourceRegs)
     {
         static_assert(FunctionTraits<OperationType>::arity == numGPRArgs + numFPRArgs, "One last sanity check");
-#if CPU(JSVALUE64) || CPU(X86)
+#if USE(JSVALUE64) || CPU(X86)
         static_assert(FunctionTraits<OperationType>::cCallArity() == numGPRArgs + numFPRArgs + extraPoke, "Check the CCall arity");
 #endif
         setupStubArgs<numGPRSources, GPRReg>(clampArrayToSize<numGPRSources, GPRReg>(argSourceRegs.gprDestinations), clampArrayToSize<numGPRSources, GPRReg>(argSourceRegs.gprSources));
-#if CPU(MIPS) || (CPU(ARM) && !CPU(ARM_HARDFP))
+#if CPU(MIPS) || (CPU(ARM_THUMB2) && !CPU(ARM_HARDFP))
         setupStubCrossArgs<numCrossSources>(argSourceRegs.crossDestinations, argSourceRegs.crossSources);
 #else
         static_assert(!numCrossSources, "shouldn't be used on this architecture.");
@@ -807,12 +802,12 @@ public:
 
         // We don't need the current frame beyond this point. Masquerade as our
         // caller.
-#if CPU(ARM) || CPU(ARM64)
+#if CPU(ARM_THUMB2) || CPU(ARM64)
         loadPtr(Address(framePointerRegister, CallFrame::returnPCOffset()), linkRegister);
         subPtr(TrustedImm32(2 * sizeof(void*)), newFrameSizeGPR);
-#if USE(POINTER_PROFILING)
+#if CPU(ARM64E)
         addPtr(TrustedImm32(sizeof(CallerFrameAndPC)), MacroAssembler::framePointerRegister, tempGPR);
-        untagPtr(linkRegister, tempGPR);
+        untagPtr(tempGPR, linkRegister);
 #endif
 #elif CPU(MIPS)
         loadPtr(Address(framePointerRegister, sizeof(void*)), returnAddressRegister);

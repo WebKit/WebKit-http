@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #import <Foundation/Foundation.h>
 
 /*! @enum WKUserScriptInjectionTime
@@ -39,11 +37,11 @@ NS_ASSUME_NONNULL_BEGIN
 typedef NS_ENUM(NSInteger, WKUserScriptInjectionTime) {
     WKUserScriptInjectionTimeAtDocumentStart,
     WKUserScriptInjectionTimeAtDocumentEnd
-} WK_API_AVAILABLE(macosx(10.10), ios(8.0));
+} WK_API_AVAILABLE(macos(10.10), ios(8.0));
 
 /*! A @link WKUserScript @/link object represents a script that can be injected into webpages.
  */
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface WKUserScript : NSObject <NSCopying>
 
 /* @abstract The script source code. */
@@ -65,5 +63,3 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @end
 
 NS_ASSUME_NONNULL_END
-
-#endif

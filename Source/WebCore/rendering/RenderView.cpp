@@ -34,7 +34,6 @@
 #include "HTMLIFrameElement.h"
 #include "HitTestResult.h"
 #include "ImageQualityController.h"
-#include "LayoutState.h"
 #include "NodeTraversal.h"
 #include "Page.h"
 #include "RenderDescendantIterator.h"
@@ -43,13 +42,13 @@
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
+#include "RenderLayoutState.h"
 #include "RenderMultiColumnFlow.h"
 #include "RenderMultiColumnSet.h"
 #include "RenderMultiColumnSpannerPlaceholder.h"
 #include "RenderQuote.h"
 #include "RenderTreeBuilder.h"
 #include "RenderWidget.h"
-#include "ScrollbarTheme.h"
 #include "Settings.h"
 #include "StyleInheritedData.h"
 #include "TransformState.h"
@@ -60,26 +59,6 @@
 namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(RenderView);
-
-struct FrameFlatteningLayoutDisallower {
-    FrameFlatteningLayoutDisallower(FrameView& frameView)
-        : m_frameView(frameView)
-        , m_disallowLayout(frameView.effectiveFrameFlattening() != FrameFlattening::Disabled)
-    {
-        if (m_disallowLayout)
-            m_frameView.startDisallowingLayout();
-    }
-
-    ~FrameFlatteningLayoutDisallower()
-    {
-        if (m_disallowLayout)
-            m_frameView.endDisallowingLayout();
-    }
-
-private:
-    FrameView& m_frameView;
-    bool m_disallowLayout { false };
-};
 
 RenderView::RenderView(Document& document, RenderStyle&& style)
     : RenderBlockFlow(document, WTFMove(style))
@@ -137,43 +116,9 @@ void RenderView::lazyRepaintTimerFired()
     m_renderersNeedingLazyRepaint.clear();
 }
 
-bool RenderView::hitTest(const HitTestRequest& request, HitTestResult& result)
-{
-    return hitTest(request, result.hitTestLocation(), result);
-}
-
-bool RenderView::hitTest(const HitTestRequest& request, const HitTestLocation& location, HitTestResult& result)
-{
-    document().updateLayout();
-    
-#if !ASSERT_DISABLED
-    SetForScope<bool> hitTestRestorer { m_inHitTesting, true };
-#endif
-
-    FrameFlatteningLayoutDisallower disallower(frameView());
-
-    bool resultLayer = layer()->hitTest(request, location, result);
-
-    // ScrollView scrollbars are not the same as RenderLayer scrollbars tested by RenderLayer::hitTestOverflowControls,
-    // so we need to test ScrollView scrollbars separately here. In case of using overlay scrollbars, the layer hit test
-    // will always work so we need to check the ScrollView scrollbars in that case too.
-    if (!resultLayer || ScrollbarTheme::theme().usesOverlayScrollbars()) {
-        // FIXME: Consider if this test should be done unconditionally.
-        if (request.allowsFrameScrollbars()) {
-            IntPoint windowPoint = frameView().contentsToWindow(location.roundedPoint());
-            if (Scrollbar* frameScrollbar = frameView().scrollbarAtPoint(windowPoint)) {
-                result.setScrollbar(frameScrollbar);
-                return true;
-            }
-        }
-    }
-
-    return resultLayer;
-}
-
 RenderBox::LogicalExtentComputedValues RenderView::computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit) const
 {
-    return { !shouldUsePrintingLayout() ? LayoutUnit(viewLogicalHeight()) : logicalHeight, LayoutUnit(), ComputedMarginValues() };
+    return { !shouldUsePrintingLayout() ? LayoutUnit(viewLogicalHeight()) : logicalHeight, 0_lu, ComputedMarginValues() };
 }
 
 void RenderView::updateLogicalWidth()
@@ -188,7 +133,7 @@ LayoutUnit RenderView::availableLogicalHeight(AvailableLogicalHeightType) const
     if (multiColumnFlow() && multiColumnFlow()->firstMultiColumnSet())
         return multiColumnFlow()->firstMultiColumnSet()->computedColumnHeight();
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // Workaround for <rdar://problem/7166808>.
     if (document().isPluginDocument() && frameView().useFixedLayout())
         return frameView().fixedLayoutSize().height();
@@ -209,7 +154,7 @@ void RenderView::layout()
 
     if (shouldUsePrintingLayout()) {
         if (!m_pageLogicalSize)
-            m_pageLogicalSize = LayoutSize(logicalWidth(), 0);
+            m_pageLogicalSize = LayoutSize(logicalWidth(), 0_lu);
         m_minPreferredLogicalWidth = m_pageLogicalSize->width();
         m_maxPreferredLogicalWidth = m_minPreferredLogicalWidth;
     }
@@ -234,7 +179,7 @@ void RenderView::layout()
     if (!needsLayout())
         return;
 
-    LayoutStateMaintainer statePusher(*this, { }, false, m_pageLogicalSize.value_or(LayoutSize()).height(), m_pageLogicalHeightChanged);
+    LayoutStateMaintainer statePusher(*this, { }, false, m_pageLogicalSize.valueOr(LayoutSize()).height(), m_pageLogicalHeightChanged);
 
     m_pageLogicalHeightChanged = false;
 
@@ -248,7 +193,7 @@ void RenderView::layout()
 
 LayoutUnit RenderView::pageOrViewLogicalHeight() const
 {
-    if (document().printing())
+    if (shouldUsePrintingLayout())
         return m_pageLogicalSize->height();
     
     if (multiColumnFlow() && !style().hasInlineColumnAxis()) {
@@ -263,9 +208,9 @@ LayoutUnit RenderView::clientLogicalWidthForFixedPosition() const
 {
     // FIXME: If the FrameView's fixedVisibleContentRect() is not empty, perhaps it should be consulted here too?
     if (frameView().fixedElementsLayoutRelativeToFrame())
-        return (isHorizontalWritingMode() ? frameView().visibleWidth() : frameView().visibleHeight()) / frameView().frame().frameScaleFactor();
+        return LayoutUnit((isHorizontalWritingMode() ? frameView().visibleWidth() : frameView().visibleHeight()) / frameView().frame().frameScaleFactor());
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (frameView().useCustomFixedPositionLayoutRect())
         return isHorizontalWritingMode() ? frameView().customFixedPositionLayoutRect().width() : frameView().customFixedPositionLayoutRect().height();
 #endif
@@ -280,9 +225,9 @@ LayoutUnit RenderView::clientLogicalHeightForFixedPosition() const
 {
     // FIXME: If the FrameView's fixedVisibleContentRect() is not empty, perhaps it should be consulted here too?
     if (frameView().fixedElementsLayoutRelativeToFrame())
-        return (isHorizontalWritingMode() ? frameView().visibleHeight() : frameView().visibleWidth()) / frameView().frame().frameScaleFactor();
+        return LayoutUnit((isHorizontalWritingMode() ? frameView().visibleHeight() : frameView().visibleWidth()) / frameView().frame().frameScaleFactor());
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (frameView().useCustomFixedPositionLayoutRect())
         return isHorizontalWritingMode() ? frameView().customFixedPositionLayoutRect().height() : frameView().customFixedPositionLayoutRect().width();
 #endif
@@ -514,7 +459,7 @@ void RenderView::repaintViewRectangle(const LayoutRect& repaintRect) const
         if (!ownerBox)
             return;
         LayoutRect viewRect = this->viewRect();
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
         // Don't clip using the visible rect since clipping is handled at a higher level on iPhone.
         LayoutRect adjustedRect = enclosingRect;
 #else
@@ -565,7 +510,7 @@ void RenderView::repaintViewAndCompositedLayers()
     repaintRootContents();
 
     RenderLayerCompositor& compositor = this->compositor();
-    if (compositor.inCompositingMode())
+    if (compositor.usesCompositing())
         compositor.repaintCompositedLayers();
 }
 
@@ -577,11 +522,11 @@ LayoutRect RenderView::visualOverflowRect() const
     return RenderBlockFlow::visualOverflowRect();
 }
 
-LayoutRect RenderView::computeRectForRepaint(const LayoutRect& rect, const RenderLayerModelObject* repaintContainer, RepaintContext context) const
+Optional<LayoutRect> RenderView::computeVisibleRectInContainer(const LayoutRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
 {
     // If a container was specified, and was not nullptr or the RenderView,
     // then we should have found it by now.
-    ASSERT_ARG(repaintContainer, !repaintContainer || repaintContainer == this);
+    ASSERT_ARG(container, !container || container == this);
 
     if (printing())
         return rect;
@@ -600,7 +545,7 @@ LayoutRect RenderView::computeRectForRepaint(const LayoutRect& rect, const Rende
         adjustedRect.moveBy(frameView().scrollPositionRespectingCustomFixedPosition());
     
     // Apply our transform if we have one (because of full page zooming).
-    if (!repaintContainer && layer() && layer()->transform())
+    if (!container && layer() && layer()->transform())
         adjustedRect = LayoutRect(layer()->transform()->mapRect(snapRectToDevicePixels(adjustedRect, document().deviceScaleFactor())));
     return adjustedRect;
 }
@@ -773,7 +718,7 @@ void RenderView::setBestTruncatedAt(int y, RenderBoxModelObject* forRenderer, bo
 
 bool RenderView::usesCompositing() const
 {
-    return m_compositor && m_compositor->inCompositingMode();
+    return m_compositor && m_compositor->usesCompositing();
 }
 
 RenderLayerCompositor& RenderView::compositor()
@@ -864,7 +809,7 @@ void RenderView::removeRendererWithPausedImageAnimations(RenderElement& renderer
         images.removeFirst(&image);
 }
 
-void RenderView::resumePausedImageAnimationsIfNeeded(IntRect visibleRect)
+void RenderView::resumePausedImageAnimationsIfNeeded(const IntRect& visibleRect)
 {
     Vector<std::pair<RenderElement*, CachedImage*>, 10> toRemove;
     for (auto& it : m_renderersWithPausedImageAnimation) {

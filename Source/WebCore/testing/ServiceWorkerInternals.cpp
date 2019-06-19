@@ -89,6 +89,19 @@ Vector<String> ServiceWorkerInternals::fetchResponseHeaderList(FetchResponse& re
     return headerNames;
 }
 
+#if !PLATFORM(MAC)
+String ServiceWorkerInternals::processName() const
+{
+    return "none"_s;
+}
+#endif
+
+bool ServiceWorkerInternals::isThrottleable() const
+{
+    auto* connection = SWContextManager::singleton().connection();
+    return connection ? connection->isThrottleable() : true;
+}
+
 } // namespace WebCore
 
 #endif

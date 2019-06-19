@@ -37,14 +37,12 @@
 #include <wtf/DateMath.h>
 #include <wtf/Language.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/text/CString.h>
+#include <wtf/Optional.h>
 #include <wtf/text/StringBuilder.h>
-#include <wtf/text/WTFString.h>
 #include <wtf/unicode/CharacterNames.h>
 
 
 namespace WebCore {
-using namespace WTF;
 
 // true if there is more to parse, after incrementing pos past whitespace.
 // Note: Might return pos == str.length()
@@ -260,11 +258,11 @@ bool parseHTTPRefresh(const String& refresh, double& delay, String& url)
     }
 }
 
-std::optional<WallTime> parseHTTPDate(const String& value)
+Optional<WallTime> parseHTTPDate(const String& value)
 {
     double dateInMillisecondsSinceEpoch = parseDateFromNullTerminatedCharacters(value.utf8().data());
     if (!std::isfinite(dateInMillisecondsSinceEpoch))
-        return std::nullopt;
+        return WTF::nullopt;
     // This assumes system_clock epoch equals Unix epoch which is true for all implementations but unspecified.
     // FIXME: The parsing function should be switched to WallTime too.
     return WallTime::fromRawSeconds(dateInMillisecondsSinceEpoch / 1000.0);
@@ -301,14 +299,23 @@ String filenameFromHTTPContentDisposition(const String& value)
 
 String extractMIMETypeFromMediaType(const String& mediaType)
 {
-    StringBuilder mimeType;
+    unsigned position = 0;
     unsigned length = mediaType.length();
-    mimeType.reserveCapacity(length);
-    for (unsigned i = 0; i < length; i++) {
-        UChar c = mediaType[i];
 
-        if (c == ';')
+    for (; position < length; ++position) {
+        UChar c = mediaType[position];
+        if (c != '\t' && c != ' ')
             break;
+    }
+
+    if (position == length)
+        return mediaType;
+
+    unsigned typeStart = position;
+
+    unsigned typeEnd = position;
+    for (; position < length; ++position) {
+        UChar c = mediaType[position];
 
         // While RFC 2616 does not allow it, other browsers allow multiple values in the HTTP media
         // type header field, Content-Type. In such cases, the media type string passed here may contain
@@ -319,19 +326,13 @@ String extractMIMETypeFromMediaType(const String& mediaType)
         if (c == ',')
             break;
 
-        // FIXME: The following is not correct. RFC 2616 allows linear white space before and
-        // after the MIME type, but not within the MIME type itself. And linear white space
-        // includes only a few specific ASCII characters; a small subset of isSpaceOrNewline.
-        // See https://bugs.webkit.org/show_bug.cgi?id=8644 for a bug tracking part of this.
-        if (isSpaceOrNewline(c))
-            continue;
+        if (c == '\t' || c == ' ' || c == ';')
+            break;
 
-        mimeType.append(c);
+        typeEnd = position + 1;
     }
 
-    if (mimeType.length() == length)
-        return mediaType;
-    return mimeType.toString();
+    return mediaType.substring(typeStart, typeEnd - typeStart);
 }
 
 String extractCharsetFromMediaType(const String& mediaType)
@@ -474,16 +475,17 @@ XSSProtectionDisposition parseXSSProtectionHeader(const String& header, String& 
     }
 }
 
-ContentTypeOptionsDisposition parseContentTypeOptionsHeader(const String& header)
+ContentTypeOptionsDisposition parseContentTypeOptionsHeader(StringView header)
 {
-    if (equalLettersIgnoringASCIICase(header.stripWhiteSpace(), "nosniff"))
+    StringView leftToken = header.left(header.find(','));
+    if (equalLettersIgnoringASCIICase(stripLeadingAndTrailingHTTPSpaces(leftToken), "nosniff"))
         return ContentTypeOptionsNosniff;
     return ContentTypeOptionsNone;
 }
 
 // For example: "HTTP/1.1 200 OK" => "OK".
 // Note that HTTP/2 does not include a reason phrase, so we return the empty atom.
-AtomicString extractReasonPhraseFromHTTPStatusLine(const String& statusLine)
+AtomString extractReasonPhraseFromHTTPStatusLine(const String& statusLine)
 {
     StringView view = statusLine;
     size_t spacePos = view.find(' ');
@@ -493,7 +495,7 @@ AtomicString extractReasonPhraseFromHTTPStatusLine(const String& statusLine)
     if (spacePos == notFound)
         return emptyAtom();
 
-    return view.substring(spacePos + 1).toAtomicString();
+    return view.substring(spacePos + 1).toAtomString();
 }
 
 XFrameOptionsDisposition parseXFrameOptionsHeader(const String& header)
@@ -768,15 +770,6 @@ size_t parseHTTPRequestBody(const char* data, size_t length, Vector<unsigned cha
     return length;
 }
 
-void parseAccessControlExposeHeadersAllowList(const String& headerValue, HTTPHeaderSet& headerSet)
-{
-    for (auto& header : headerValue.split(',')) {
-        String strippedHeader = header.stripWhiteSpace();
-        if (!strippedHeader.isEmpty())
-            headerSet.add(strippedHeader);
-    }
-}
-
 // Implements <https://fetch.spec.whatwg.org/#forbidden-header-name>.
 bool isForbiddenHeaderName(const String& name)
 {
@@ -866,19 +859,26 @@ bool isCrossOriginSafeRequestHeader(HTTPHeaderName name, const String& value)
 {
     switch (name) {
     case HTTPHeaderName::Accept:
-        return isValidAcceptHeaderValue(value);
+        if (!isValidAcceptHeaderValue(value))
+            return false;
+        break;
     case HTTPHeaderName::AcceptLanguage:
     case HTTPHeaderName::ContentLanguage:
-        return isValidLanguageHeaderValue(value);
+        if (!isValidLanguageHeaderValue(value))
+            return false;
+        break;
     case HTTPHeaderName::ContentType: {
         // Preflight is required for MIME types that can not be sent via form submission.
         String mimeType = extractMIMETypeFromMediaType(value);
-        return equalLettersIgnoringASCIICase(mimeType, "application/x-www-form-urlencoded") || equalLettersIgnoringASCIICase(mimeType, "multipart/form-data") || equalLettersIgnoringASCIICase(mimeType, "text/plain");
+        if (!(equalLettersIgnoringASCIICase(mimeType, "application/x-www-form-urlencoded") || equalLettersIgnoringASCIICase(mimeType, "multipart/form-data") || equalLettersIgnoringASCIICase(mimeType, "text/plain")))
+            return false;
+        break;
     }
     default:
         // FIXME: Should we also make safe other headers (DPR, Downlink, Save-Data...)? That would require validating their values.
         return false;
     }
+    return value.length() <= 128;
 }
 
 // Implements <https://fetch.spec.whatwg.org/#concept-method-normalize>.
@@ -910,21 +910,6 @@ CrossOriginResourcePolicy parseCrossOriginResourcePolicyHeader(StringView header
         return CrossOriginResourcePolicy::SameSite;
 
     return CrossOriginResourcePolicy::Invalid;
-}
-
-CrossOriginWindowPolicy parseCrossOriginWindowPolicyHeader(StringView header)
-{
-    header = stripLeadingAndTrailingHTTPSpaces(header);
-    if (header.isEmpty())
-        return CrossOriginWindowPolicy::Allow;
-
-    if (equalLettersIgnoringASCIICase(header, "deny"))
-        return CrossOriginWindowPolicy::Deny;
-
-    if (equalLettersIgnoringASCIICase(header, "allow-postmessage"))
-        return CrossOriginWindowPolicy::AllowPostMessage;
-
-    return CrossOriginWindowPolicy::Allow;
 }
 
 }

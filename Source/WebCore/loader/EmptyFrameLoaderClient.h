@@ -32,14 +32,14 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
 
     void frameLoaderDestroyed() override { }
 
-    std::optional<uint64_t> frameID() const override { return std::nullopt; }
-    std::optional<uint64_t> pageID() const override { return std::nullopt; }
+    Optional<uint64_t> frameID() const override { return WTF::nullopt; }
+    Optional<PageIdentifier> pageID() const override { return WTF::nullopt; }
     PAL::SessionID sessionID() const override;
 
     bool hasWebView() const final { return true; } // mainly for assertions
 
     void makeRepresentation(DocumentLoader*) final { }
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     bool forceLayoutOnRestoreFromPageCache() final { return false; }
 #endif
     void forceLayoutForNonHTML() final { }
@@ -59,7 +59,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
     bool canAuthenticateAgainstProtectionSpace(DocumentLoader*, unsigned long, const ProtectionSpace&) final { return false; }
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     RetainPtr<CFDictionaryRef> connectionProperties(DocumentLoader*, unsigned long) final { return nullptr; }
 #endif
 
@@ -75,7 +75,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
     void dispatchDidDispatchOnloadEvents() final { }
     void dispatchDidReceiveServerRedirectForProvisionalLoad() final { }
     void dispatchDidCancelClientRedirect() final { }
-    void dispatchWillPerformClientRedirect(const URL&, double, WallTime) final { }
+    void dispatchWillPerformClientRedirect(const URL&, double, WallTime, LockBackForwardList) final { }
     void dispatchDidChangeLocationWithinPage() final { }
     void dispatchDidPushStateWithinPage() final { }
     void dispatchDidReplaceStateWithinPage() final { }
@@ -83,19 +83,19 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
     void dispatchWillClose() final { }
     void dispatchDidStartProvisionalLoad() final { }
     void dispatchDidReceiveTitle(const StringWithDirection&) final { }
-    void dispatchDidCommitLoad(std::optional<HasInsecureContent>) final { }
-    void dispatchDidFailProvisionalLoad(const ResourceError&) final { }
+    void dispatchDidCommitLoad(Optional<HasInsecureContent>) final { }
+    void dispatchDidFailProvisionalLoad(const ResourceError&, WillContinueLoading) final { }
     void dispatchDidFailLoad(const ResourceError&) final { }
     void dispatchDidFinishDocumentLoad() final { }
     void dispatchDidFinishLoad() final { }
-    void dispatchDidReachLayoutMilestone(LayoutMilestones) final { }
+    void dispatchDidReachLayoutMilestone(OptionSet<LayoutMilestone>) final { }
 
     Frame* dispatchCreatePage(const NavigationAction&) final { return nullptr; }
     void dispatchShow() final { }
 
-    void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction&&) final { }
-    void dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String&, FramePolicyFunction&&) final;
-    void dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, const ResourceResponse& redirectResponse, FormState*, PolicyDecisionMode, ShouldSkipSafeBrowsingCheck, FramePolicyFunction&&) final;
+    void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, PolicyCheckIdentifier, const String&, FramePolicyFunction&&) final { }
+    void dispatchDecidePolicyForNewWindowAction(const NavigationAction&, const ResourceRequest&, FormState*, const String&, PolicyCheckIdentifier, FramePolicyFunction&&) final;
+    void dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, const ResourceResponse& redirectResponse, FormState*, PolicyDecisionMode, PolicyCheckIdentifier, FramePolicyFunction&&) final;
     void cancelPolicyCheck() final { }
 
     void dispatchUnableToImplementPolicy(const ResourceError&) final { }
@@ -153,7 +153,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
 
     void savePlatformDataToCachedFrame(CachedFrame*) final { }
     void transitionToCommittedFromCachedFrame(CachedFrame*) final { }
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void didRestoreFrameHierarchyForCachedFrame() final { }
 #endif
     void transitionToCommittedForNewPage() final { }
@@ -165,16 +165,14 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
 
     void updateGlobalHistory() final { }
     void updateGlobalHistoryRedirectLinks() final { }
-    bool shouldGoToHistoryItem(HistoryItem*) const final { return false; }
-    void updateGlobalHistoryItemForPage() final { }
+    bool shouldGoToHistoryItem(HistoryItem&) const final { return false; }
     void saveViewStateToItem(HistoryItem&) final { }
     bool canCachePage() const final { return false; }
     void didDisplayInsecureContent() final { }
     void didRunInsecureContent(SecurityOrigin&, const URL&) final { }
     void didDetectXSS(const URL&, bool) final { }
-    RefPtr<Frame> createFrame(const URL&, const String&, HTMLFrameOwnerElement&, const String&, bool, int, int) final;
+    RefPtr<Frame> createFrame(const URL&, const String&, HTMLFrameOwnerElement&, const String&) final;
     RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool) final;
-    void recreatePlugin(Widget*) final;
     RefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement&, const URL&, const Vector<String>&, const Vector<String>&) final;
 
     ObjectContentType objectContentType(const URL&, const String&) final { return ObjectContentType::None; }
@@ -200,7 +198,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
 #if USE(QUICK_LOOK)
     RefPtr<PreviewLoaderClient> createPreviewLoaderClient(const String&, const String&) final { return nullptr; }
 #endif
-#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
     bool hasFrameSpecificStorageAccess() final { return false; }
     void setHasFrameSpecificStorageAccess(bool) final { }
 #endif

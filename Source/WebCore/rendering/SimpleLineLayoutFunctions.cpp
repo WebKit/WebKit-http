@@ -28,6 +28,7 @@
 
 #include "BidiRun.h"
 #include "BidiRunList.h"
+#include "EventRegion.h"
 #include "FontCache.h"
 #include "Frame.h"
 #include "GraphicsContext.h"
@@ -76,6 +77,18 @@ FloatRect computeOverflow(const RenderBlockFlow& flow, const FloatRect& layoutRe
 
 void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
+    if (paintInfo.phase == PaintPhase::EventRegion) {
+        if (!flow.visibleToHitTesting())
+            return;
+        auto paintRect = paintInfo.rect;
+        paintRect.moveBy(-paintOffset);
+        for (auto run : layout.runResolver().rangeForRect(paintRect)) {
+            FloatRect visualOverflowRect = computeOverflow(flow, run.rect());
+            paintInfo.eventRegionContext->unite(enclosingIntRect(visualOverflowRect), flow.style());
+        }
+        return;
+    }
+
     if (paintInfo.phase != PaintPhase::Foreground)
         return;
 
@@ -93,13 +106,11 @@ void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& pai
         textPainter.setShadow(debugShadow.get());
     }
 
-    std::optional<TextDecorationPainter> textDecorationPainter;
+    Optional<TextDecorationPainter> textDecorationPainter;
     if (!style.textDecorationsInEffect().isEmpty()) {
         const RenderText* textRenderer = childrenOfType<RenderText>(flow).first();
         if (textRenderer) {
-            textDecorationPainter.emplace(paintInfo.context(), style.textDecorationsInEffect(), *textRenderer, false);
-            textDecorationPainter->setFont(style.fontCascade());
-            textDecorationPainter->setBaseline(style.fontMetrics().ascent());
+            textDecorationPainter.emplace(paintInfo.context(), style.textDecorationsInEffect(), *textRenderer, false, style.fontCascade());
         }
     }
 
@@ -252,10 +263,9 @@ Vector<FloatQuad> collectAbsoluteQuadsForRange(const RenderObject& renderer, uns
             quads.append(renderer.localToAbsoluteQuad(FloatQuad(runRect), UseTransforms, wasFixed));
             continue;
         }
-        ASSERT(start < run.end());
-        ASSERT(end > run.start());
         auto localStart = std::max(run.start(), start) - run.start();
         auto localEnd = std::min(run.end(), end) - run.start();
+        ASSERT(localStart <= localEnd);
         style.fontCascade().adjustSelectionRectForText(textRun, runRect, localStart, localEnd);
         quads.append(renderer.localToAbsoluteQuad(FloatQuad(runRect), UseTransforms, wasFixed));
     }
@@ -275,6 +285,10 @@ void simpleLineLayoutWillBeDeleted(const Layout& layout)
 
 bool canUseForLineBoxTree(RenderBlockFlow& flow, const Layout& layout)
 {
+    // Line breaking requires some context that SLL can't provide at the moment (see RootInlineBox::setLineBreakInfo).
+    if (layout.lineCount() > 1)
+        return false;
+
     if (layout.isPaginated())
         return false;
     
@@ -365,7 +379,7 @@ void generateLineBoxTree(RenderBlockFlow& flow, const Layout& layout)
         auto lineTop = firstRun.rect().y();
         auto lineHeight = firstRun.rect().height();
         rootLineBox.setLogicalTop(lineTop);
-        rootLineBox.setLineTopBottomPositions(lineTop, lineTop + lineHeight, lineTop, lineTop + lineHeight);
+        rootLineBox.setLineTopBottomPositions(LayoutUnit(lineTop), LayoutUnit(lineTop + lineHeight), LayoutUnit(lineTop), LayoutUnit(lineTop + lineHeight));
     }
 }
 

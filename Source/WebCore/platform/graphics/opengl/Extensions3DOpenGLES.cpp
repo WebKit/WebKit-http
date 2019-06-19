@@ -167,9 +167,6 @@ GC3Dboolean Extensions3DOpenGLES::isVertexArrayOES(Platform3DObject array)
 
 void Extensions3DOpenGLES::bindVertexArrayOES(Platform3DObject array)
 {
-    if (!array)
-        return;
-
     m_context->makeContextCurrent();
     if (m_glBindVertexArrayOES)
         m_glBindVertexArrayOES(array);
@@ -204,11 +201,6 @@ int Extensions3DOpenGLES::getGraphicsResetStatusARB()
 
     m_context->synthesizeGLError(GL_INVALID_OPERATION);
     return false;
-}
-
-void Extensions3DOpenGLES::setEXTContextLostCallback(std::unique_ptr<GraphicsContext3D::ContextLostCallback> callback)
-{
-    m_contextLostCallback = WTFMove(callback);
 }
 
 void Extensions3DOpenGLES::readnPixelsEXT(int x, int y, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, GC3Dsizei bufSize, void *data)

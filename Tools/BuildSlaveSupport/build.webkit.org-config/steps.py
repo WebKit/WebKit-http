@@ -390,6 +390,7 @@ class RunWebKitTests(shell.Test):
                "--no-build",
                "--no-show-results",
                "--no-new-test-results",
+               "--clobber-old-results",
                "--builder-name", WithProperties("%(buildername)s"),
                "--build-number", WithProperties("%(buildnumber)s"),
                "--master-name", "webkit.org",
@@ -502,12 +503,12 @@ class RunDashboardTests(RunWebKitTests):
         return RunWebKitTests.start(self)
 
 
-class RunUnitTests(TestWithFailureCount):
+class RunAPITests(TestWithFailureCount):
     name = "run-api-tests"
-    description = ["unit tests running"]
-    descriptionDone = ["unit-tests"]
+    description = ["api tests running"]
+    descriptionDone = ["api-tests"]
     command = ["python", "./Tools/Scripts/run-api-tests", "--no-build", WithProperties("--%(configuration)s"), "--verbose"]
-    failedTestsFormatString = "%d unit test%s failed or timed out"
+    failedTestsFormatString = "%d api test%s failed or timed out"
 
     def start(self):
         appendCustomBuildFlags(self, self.getProperty('platform'), self.getProperty('fullPlatform'))
@@ -598,7 +599,7 @@ class Run32bitJSCTests(TestWithFailureCount):
     description = ["32bit-jsc-tests running"]
     descriptionDone = ["32bit-jsc-tests"]
     jsonFileName = "jsc_32bit.json"
-    command = ["perl", "./Tools/Scripts/run-javascriptcore-tests", "--32-bit", "--no-build", "--no-fail-fast", "--json-output={0}".format(jsonFileName), WithProperties("--%(configuration)s")]
+    command = ["perl", "./Tools/Scripts/run-javascriptcore-tests", "--32-bit", "--no-build", "--no-fail-fast", "--no-jit", "--no-testair", "--no-testb3", "--no-testmasm", "--json-output={0}".format(jsonFileName), WithProperties("--%(configuration)s")]
     failedTestsFormatString = "%d regression%s found."
     logfiles = {"json": jsonFileName}
 
@@ -873,7 +874,7 @@ class TransferToS3(master.MasterShellCommand):
     minifiedArchive = WithProperties("archives/%(fullPlatform)s-%(architecture)s-%(configuration)s/minified-%(got_revision)s.zip")
     identifier = WithProperties("%(fullPlatform)s-%(architecture)s-%(configuration)s")
     revision = WithProperties("%(got_revision)s")
-    command = ["python", "./transfer-archive-to-s3", "--revision", revision, "--identifier", identifier, "--archive", archive]
+    command = ["python", "../Shared/transfer-archive-to-s3", "--revision", revision, "--identifier", identifier, "--archive", archive]
     haltOnFailure = True
 
     def __init__(self, **kwargs):

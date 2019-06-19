@@ -26,7 +26,7 @@
 .object-tree {
     position: relative;
     display: inline-block;
-    color: black;
+    color: var(--text-color);
     font-family: Menlo, monospace;
     font-size: 11px;
 }
@@ -47,6 +47,10 @@
     background-position: center;
 
     content: "";
+}
+
+body[dir=rtl] .object-tree > :matches(.title, .object-preview)::before {
+    transform: scaleX(-1);
 }
 
 .object-tree:not(.lossless-preview) > :matches(.title, .object-preview) {
@@ -101,6 +105,10 @@
 
 .object-tree.properties-only .object-tree-property .property-name {
     opacity: 1;
+}
+
+.object-tree.properties-only.json-only .object-tree-property.prototype-property {
+    display: none;
 }
 
 .tree-outline.object li {

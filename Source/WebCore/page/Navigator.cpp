@@ -37,54 +37,62 @@
 #include "Page.h"
 #include "PlatformStrategies.h"
 #include "PluginData.h"
+#include "ResourceLoadObserver.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Language.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/WeakPtr.h>
 
-
 namespace WebCore {
-using namespace WTF;
 
-Navigator::Navigator(ScriptExecutionContext& context, Frame& frame)
+WTF_MAKE_ISO_ALLOCATED_IMPL(Navigator);
+
+Navigator::Navigator(ScriptExecutionContext* context, DOMWindow& window)
     : NavigatorBase(context)
-    , DOMWindowProperty(&frame)
+    , DOMWindowProperty(&window)
 {
 }
 
 Navigator::~Navigator() = default;
 
-// If this function returns true, we need to hide the substring "4." that would otherwise
-// appear in the appVersion string. This is to avoid problems with old versions of a
-// library called OpenCube QuickMenu, which as of this writing is still being used on
-// sites such as nwa.com -- the library thinks Safari is Netscape 4 if we don't do this!
-static bool shouldHideFourDot(Frame& frame)
-{
-    auto* sourceURL = frame.script().sourceURL();
-    if (!sourceURL)
-        return false;
-    if (!(sourceURL->endsWith("/dqm_script.js") || sourceURL->endsWith("/dqm_loader.js") || sourceURL->endsWith("/tdqm_loader.js")))
-        return false;
-    return frame.settings().needsSiteSpecificQuirks();
-}
-
 String Navigator::appVersion() const
 {
-    if (!m_frame)
+    auto* frame = this->frame();
+    if (!frame)
         return String();
-    String appVersion = NavigatorBase::appVersion();
-    if (shouldHideFourDot(*m_frame))
-        appVersion.replace("4.", "4_");
-    return appVersion;
+    if (RuntimeEnabledFeatures::sharedFeatures().webAPIStatisticsEnabled())
+        ResourceLoadObserver::shared().logNavigatorAPIAccessed(*frame->document(), ResourceLoadStatistics::NavigatorAPI::AppVersion);
+    return NavigatorBase::appVersion();
 }
 
 const String& Navigator::userAgent() const
 {
-    if (m_userAgent.isNull() && m_frame && m_frame->page())
-        m_userAgent = m_frame->loader().userAgent(m_frame->document()->url());
+    auto* frame = this->frame();
+    if (!frame || !frame->page())
+        return m_userAgent;
+    if (RuntimeEnabledFeatures::sharedFeatures().webAPIStatisticsEnabled())
+        ResourceLoadObserver::shared().logNavigatorAPIAccessed(*frame->document(), ResourceLoadStatistics::NavigatorAPI::UserAgent);
+    if (m_userAgent.isNull())
+        m_userAgent = frame->loader().userAgentForJavaScript(frame->document()->url());
     return m_userAgent;
+}
+    
+String Navigator::platform() const
+{
+    auto* frame = this->frame();
+    if (!frame || !frame->page())
+        return m_platform;
+
+    if (m_platform.isNull())
+        m_platform = frame->loader().navigatorPlatform();
+    
+    if (m_platform.isNull())
+        m_platform = NavigatorBase::platform();
+    return m_platform;
 }
 
 void Navigator::userAgentChanged()
@@ -99,7 +107,8 @@ bool Navigator::onLine() const
 
 void Navigator::share(ScriptExecutionContext& context, ShareData data, Ref<DeferredPromise>&& promise)
 {
-    if (!m_frame || !m_frame->page()) {
+    auto* frame = this->frame();
+    if (!frame || !frame->page()) {
         promise->reject(TypeError);
         return;
     }
@@ -108,11 +117,14 @@ void Navigator::share(ScriptExecutionContext& context, ShareData data, Ref<Defer
         promise->reject(TypeError);
         return;
     }
-    
-    URL url = context.completeURL(data.url);
-    if (!url.isValid()) {
-        promise->reject(TypeError);
-        return;
+
+    Optional<URL> url;
+    if (!data.url.isEmpty()) {
+        url = context.completeURL(data.url);
+        if (!url->isValid()) {
+            promise->reject(TypeError);
+            return;
+        }
     }
     
     if (!UserGestureIndicator::processingUserGesture()) {
@@ -125,7 +137,7 @@ void Navigator::share(ScriptExecutionContext& context, ShareData data, Ref<Defer
         url,
     };
 
-    m_frame->page()->chrome().showShareSheet(shareData, [promise = WTFMove(promise)] (bool completed) {
+    frame->page()->chrome().showShareSheet(shareData, [promise = WTFMove(promise)] (bool completed) {
         if (completed) {
             promise->resolve();
             return;
@@ -136,51 +148,72 @@ void Navigator::share(ScriptExecutionContext& context, ShareData data, Ref<Defer
 
 DOMPluginArray& Navigator::plugins()
 {
+    if (RuntimeEnabledFeatures::sharedFeatures().webAPIStatisticsEnabled()) {
+        if (auto* frame = this->frame())
+            ResourceLoadObserver::shared().logNavigatorAPIAccessed(*frame->document(), ResourceLoadStatistics::NavigatorAPI::Plugins);
+    }
     if (!m_plugins)
-        m_plugins = DOMPluginArray::create(m_frame);
+        m_plugins = DOMPluginArray::create(window());
     return *m_plugins;
 }
 
 DOMMimeTypeArray& Navigator::mimeTypes()
 {
+    if (RuntimeEnabledFeatures::sharedFeatures().webAPIStatisticsEnabled()) {
+        if (auto* frame = this->frame())
+            ResourceLoadObserver::shared().logNavigatorAPIAccessed(*frame->document(), ResourceLoadStatistics::NavigatorAPI::MimeTypes);
+    }
     if (!m_mimeTypes)
-        m_mimeTypes = DOMMimeTypeArray::create(m_frame);
+        m_mimeTypes = DOMMimeTypeArray::create(window());
     return *m_mimeTypes;
 }
 
 bool Navigator::cookieEnabled() const
 {
-    if (!m_frame)
+    auto* frame = this->frame();
+    if (!frame)
         return false;
 
-    if (m_frame->page() && !m_frame->page()->settings().cookieEnabled())
+    if (RuntimeEnabledFeatures::sharedFeatures().webAPIStatisticsEnabled())
+        ResourceLoadObserver::shared().logNavigatorAPIAccessed(*frame->document(), ResourceLoadStatistics::NavigatorAPI::CookieEnabled);
+
+    auto* page = frame->page();
+    if (!page)
+        return false;
+    
+    if (!page->settings().cookieEnabled())
         return false;
 
-    auto* document = m_frame->document();
+    auto* document = frame->document();
     if (!document)
         return false;
 
-    return cookiesEnabled(*document);
+    return page->cookieJar().cookiesEnabled(*document);
 }
 
 bool Navigator::javaEnabled() const
 {
-    if (!m_frame)
+    auto* frame = this->frame();
+    if (!frame)
         return false;
 
-    if (!m_frame->settings().isJavaEnabled())
+    if (RuntimeEnabledFeatures::sharedFeatures().webAPIStatisticsEnabled())
+        ResourceLoadObserver::shared().logNavigatorAPIAccessed(*frame->document(), ResourceLoadStatistics::NavigatorAPI::JavaEnabled);
+
+    if (!frame->settings().isJavaEnabled())
         return false;
-    if (m_frame->document()->securityOrigin().isLocal() && !m_frame->settings().isJavaEnabledForLocalFiles())
+    if (frame->document()->securityOrigin().isLocal() && !frame->settings().isJavaEnabledForLocalFiles())
         return false;
 
     return true;
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 bool Navigator::standalone() const
 {
-    return m_frame && m_frame->settings().standalone();
+    auto* frame = this->frame();
+    return frame && frame->settings().standalone();
 }
 
 #endif

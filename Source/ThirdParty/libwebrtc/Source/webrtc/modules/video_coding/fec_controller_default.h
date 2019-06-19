@@ -26,7 +26,7 @@ class FecControllerDefault : public FecController {
   FecControllerDefault(Clock* clock,
                        VCMProtectionCallback* protection_callback);
   explicit FecControllerDefault(Clock* clock);
-  ~FecControllerDefault();
+  ~FecControllerDefault() override;
   void SetProtectionCallback(
       VCMProtectionCallback* protection_callback) override;
   void SetProtectionMethod(bool enable_fec, bool enable_nack) override;
@@ -41,7 +41,8 @@ class FecControllerDefault : public FecController {
                           int64_t round_trip_time_ms) override;
   void UpdateWithEncodedData(const size_t encoded_image_length,
                              const FrameType encoded_image_frametype) override;
-  bool UseLossVectorMask() override { return false; }
+  bool UseLossVectorMask() override;
+  float GetProtectionOverheadRateThreshold();
 
  private:
   enum { kBitrateAverageWinMs = 1000 };
@@ -52,6 +53,7 @@ class FecControllerDefault : public FecController {
       RTC_GUARDED_BY(crit_sect_);
   size_t max_payload_size_ RTC_GUARDED_BY(crit_sect_);
   RTC_DISALLOW_COPY_AND_ASSIGN(FecControllerDefault);
+  const float overhead_threshold_;
 };
 
 }  // namespace webrtc

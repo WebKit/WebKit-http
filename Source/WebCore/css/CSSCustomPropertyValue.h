@@ -25,89 +25,110 @@
 
 #pragma once
 
+#include "CSSRegisteredCustomProperty.h"
 #include "CSSValue.h"
-#include "CSSVariableData.h"
+#include "CSSVariableReferenceValue.h"
+#include "Length.h"
+#include "StyleImage.h"
 #include <wtf/RefPtr.h>
+#include <wtf/Variant.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+class CSSParserToken;
+class CSSVariableReferenceValue;
+class RenderStyle;
+
 class CSSCustomPropertyValue final : public CSSValue {
 public:
-    static Ref<CSSCustomPropertyValue> createWithVariableData(const AtomicString& name, Ref<CSSVariableData>&& value)
+    using VariantValue = Variant<Ref<CSSVariableReferenceValue>, CSSValueID, Ref<CSSVariableData>, Length, Ref<StyleImage>>;
+
+    static Ref<CSSCustomPropertyValue> createUnresolved(const AtomString& name, Ref<CSSVariableReferenceValue>&& value)
     {
-        return adoptRef(*new CSSCustomPropertyValue(name, WTFMove(value)));
-    }
-    
-    static Ref<CSSCustomPropertyValue> createWithID(const AtomicString& name, CSSValueID value)
-    {
-        return adoptRef(*new CSSCustomPropertyValue(name, value));
-    }
-    
-    static Ref<CSSCustomPropertyValue> createInvalid()
-    {
-        return adoptRef(*new CSSCustomPropertyValue(emptyString(), emptyString()));
-    }
-    
-    String customCSSText() const
-    {
-        if (!m_serialized) {
-            m_serialized = true;
-            if (m_value)
-                m_stringValue = m_value->tokenRange().serialize();
-            else if (m_valueId != CSSValueInvalid)
-                m_stringValue = getValueName(m_valueId);
-            else
-                m_stringValue = emptyString();
-        }
-        return m_stringValue;
+        return adoptRef(*new CSSCustomPropertyValue(name, { WTFMove(value) }));
     }
 
-    const AtomicString& name() const { return m_name; }
-    
-    bool equals(const CSSCustomPropertyValue& other) const { return m_name == other.m_name && m_value == other.m_value && m_valueId == other.m_valueId; }
-
-    bool containsVariables() const { return m_containsVariables; }
-    bool checkVariablesForCycles(const AtomicString& name, CustomPropertyValueMap&, HashSet<AtomicString>& seenProperties, HashSet<AtomicString>& invalidProperties) const;
-
-    void resolveVariableReferences(const CustomPropertyValueMap&, Vector<Ref<CSSCustomPropertyValue>>&) const;
-
-    CSSValueID valueID() const { return m_valueId; }
-    CSSVariableData* value() const { return m_value.get(); }
-
-private:
-    CSSCustomPropertyValue(const AtomicString& name, const String& serializedValue)
-        : CSSValue(CustomPropertyClass)
-        , m_name(name)
-        , m_stringValue(serializedValue)
-        , m_serialized(true)
+    static Ref<CSSCustomPropertyValue> createUnresolved(const AtomString& name, CSSValueID value)
     {
+        return adoptRef(*new CSSCustomPropertyValue(name, { value }));
     }
 
-    CSSCustomPropertyValue(const AtomicString& name, CSSValueID id)
-        : CSSValue(CustomPropertyClass)
-        , m_name(name)
-        , m_valueId(id)
+    static Ref<CSSCustomPropertyValue> createWithID(const AtomString& name, CSSValueID id)
     {
         ASSERT(id == CSSValueInherit || id == CSSValueInitial || id == CSSValueUnset || id == CSSValueRevert || id == CSSValueInvalid);
+        return adoptRef(*new CSSCustomPropertyValue(name, { id }));
+    }
+
+    static Ref<CSSCustomPropertyValue> createSyntaxAll(const AtomString& name, Ref<CSSVariableData>&& value)
+    {
+        return adoptRef(*new CSSCustomPropertyValue(name, { WTFMove(value) }));
     }
     
-    CSSCustomPropertyValue(const AtomicString& name, Ref<CSSVariableData>&& value)
+    static Ref<CSSCustomPropertyValue> createSyntaxLength(const AtomString& name, Length value)
+    {
+        ASSERT(!value.isUndefined());
+        ASSERT(!value.isCalculated());
+        return adoptRef(*new CSSCustomPropertyValue(name, { WTFMove(value) }));
+    }
+
+    static Ref<CSSCustomPropertyValue> createSyntaxImage(const AtomString& name, Ref<StyleImage>&& value)
+    {
+        return adoptRef(*new CSSCustomPropertyValue(name, { WTFMove(value) }));
+    }
+
+    static Ref<CSSCustomPropertyValue> create(const CSSCustomPropertyValue& other)
+    {
+        return adoptRef(*new CSSCustomPropertyValue(other));
+    }
+    
+    String customCSSText() const;
+
+    const AtomString& name() const { return m_name; }
+    bool isResolved() const  { return !WTF::holds_alternative<Ref<CSSVariableReferenceValue>>(m_value); }
+    bool isUnset() const  { return WTF::holds_alternative<CSSValueID>(m_value) && WTF::get<CSSValueID>(m_value) == CSSValueUnset; }
+    bool isInvalid() const  { return WTF::holds_alternative<CSSValueID>(m_value) && WTF::get<CSSValueID>(m_value) == CSSValueInvalid; }
+
+    const VariantValue& value() const { return m_value; }
+
+    Vector<CSSParserToken> tokens() const;
+    bool equals(const CSSCustomPropertyValue& other) const;
+
+private:
+    CSSCustomPropertyValue(const AtomString& name, VariantValue&& value)
         : CSSValue(CustomPropertyClass)
         , m_name(name)
         , m_value(WTFMove(value))
-        , m_valueId(CSSValueInternalVariableValue)
-        , m_containsVariables(m_value->needsVariableResolution())
+        , m_serialized(false)
     {
     }
+
+    CSSCustomPropertyValue(const CSSCustomPropertyValue& other)
+        : CSSValue(CustomPropertyClass)
+        , m_name(other.m_name)
+        , m_value(CSSValueUnset)
+        , m_stringValue(other.m_stringValue)
+        , m_serialized(other.m_serialized)
+    {
+        // No copy constructor for Ref<CSSVariableData>, so we have to do this ourselves
+        auto visitor = WTF::makeVisitor([&](const Ref<CSSVariableReferenceValue>& value) {
+            m_value = value.copyRef();
+        }, [&](const CSSValueID& value) {
+            m_value = value;
+        }, [&](const Ref<CSSVariableData>& value) {
+            m_value = value.copyRef();
+        }, [&](const Length& value) {
+            m_value = value;
+        }, [&](const Ref<StyleImage>& value) {
+            m_value = value.copyRef();
+        });
+        WTF::visit(visitor, other.m_value);
+    }
     
-    const AtomicString m_name;
-    
-    RefPtr<CSSVariableData> m_value;
-    CSSValueID m_valueId { CSSValueInvalid };
+    const AtomString m_name;
+    VariantValue m_value;
     
     mutable String m_stringValue;
-    bool m_containsVariables { false };
     mutable bool m_serialized { false };
 };
 

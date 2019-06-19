@@ -66,7 +66,7 @@ private:
     bool matchesReadWritePseudoClass() const final;
     RefPtr<Element> focusDelegate() final;
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     void defaultEventHandler(Event&) final;
     bool willRespondToMouseMoveEvents() final;
     bool willRespondToMouseClickEvents() final;
@@ -77,8 +77,8 @@ private:
 #endif
     void willDetachRenderers() final;
 
-    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle&, const RenderStyle*) final;
-    const AtomicString& shadowPseudoId() const final;
+    Optional<ElementStyle> resolveCustomStyle(const RenderStyle&, const RenderStyle*) final;
+    const AtomString& shadowPseudoId() const final;
 
     void startDragging();
     void stopDragging();
@@ -97,7 +97,7 @@ private:
     void unregisterForTouchEvents();
 #endif
 
-    AtomicString m_shadowPseudoId;
+    AtomString m_shadowPseudoId;
     bool m_inDragMode { false };
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -136,11 +136,11 @@ public:
 private:
     SliderContainerElement(Document&);
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
-    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle&, const RenderStyle*) final;
-    const AtomicString& shadowPseudoId() const final;
+    Optional<ElementStyle> resolveCustomStyle(const RenderStyle&, const RenderStyle*) final;
+    const AtomString& shadowPseudoId() const final;
     bool isSliderContainerElement() const final { return true; }
 
-    AtomicString m_shadowPseudoId;
+    AtomString m_shadowPseudoId;
 };
 
 } // namespace WebCore

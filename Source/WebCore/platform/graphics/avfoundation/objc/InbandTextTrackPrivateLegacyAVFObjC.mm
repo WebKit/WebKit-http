@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if ENABLE(VIDEO) && USE(AVFOUNDATION) && !HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT) && !PLATFORM(IOS)
+#if ENABLE(VIDEO) && USE(AVFOUNDATION) && !HAVE(AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT) && !PLATFORM(IOS_FAMILY)
 
 #import "InbandTextTrackPrivateLegacyAVFObjC.h"
 
@@ -33,24 +33,8 @@
 #import "Logging.h"
 #import "MediaPlayerPrivateAVFoundationObjC.h"
 #import <objc/runtime.h>
-#import <wtf/SoftLinking.h>
 
-SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
-
-SOFT_LINK_CLASS(AVFoundation, AVPlayerItem)
-SOFT_LINK_CLASS(AVFoundation, AVMetadataItem)
-#define AVMediaTypeClosedCaption getAVMediaTypeClosedCaption()
-
-SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeClosedCaption, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVMediaCharacteristicLegible, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVMetadataCommonKeyTitle, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVMetadataKeySpaceCommon, NSString *)
-
-#define AVPlayerItem getAVPlayerItemClass()
-#define AVMetadataItem getAVMetadataItemClass()
-#define AVMediaCharacteristicLegible getAVMediaCharacteristicLegible()
-#define AVMetadataCommonKeyTitle getAVMetadataCommonKeyTitle()
-#define AVMetadataKeySpaceCommon getAVMetadataKeySpaceCommon()
+#import <pal/cocoa/AVFoundationSoftLink.h>
 
 namespace WebCore {
 
@@ -94,17 +78,17 @@ bool InbandTextTrackPrivateLegacyAVFObjC::isEasyToRead() const
     return false;
 }
 
-AtomicString InbandTextTrackPrivateLegacyAVFObjC::label() const
+AtomString InbandTextTrackPrivateLegacyAVFObjC::label() const
 {
     if (!m_playerItemTrack)
         return emptyAtom();
 
     NSString *title = 0;
 
-    NSArray *titles = [AVMetadataItem metadataItemsFromArray:[[m_playerItemTrack assetTrack] commonMetadata] withKey:AVMetadataCommonKeyTitle keySpace:AVMetadataKeySpaceCommon];
+    NSArray *titles = [PAL::getAVMetadataItemClass() metadataItemsFromArray:[[m_playerItemTrack assetTrack] commonMetadata] withKey:AVMetadataCommonKeyTitle keySpace:AVMetadataKeySpaceCommon];
     if ([titles count]) {
         // If possible, return a title in one of the user's preferred languages.
-        NSArray *titlesForPreferredLanguages = [AVMetadataItem metadataItemsFromArray:titles filteredAndSortedAccordingToPreferredLanguages:[NSLocale preferredLanguages]];
+        NSArray *titlesForPreferredLanguages = [PAL::getAVMetadataItemClass() metadataItemsFromArray:titles filteredAndSortedAccordingToPreferredLanguages:[NSLocale preferredLanguages]];
         if ([titlesForPreferredLanguages count])
             title = [[titlesForPreferredLanguages objectAtIndex:0] stringValue];
 
@@ -112,10 +96,10 @@ AtomicString InbandTextTrackPrivateLegacyAVFObjC::label() const
             title = [[titles objectAtIndex:0] stringValue];
     }
 
-    return title ? AtomicString(title) : emptyAtom();
+    return title ? AtomString(title) : emptyAtom();
 }
 
-AtomicString InbandTextTrackPrivateLegacyAVFObjC::language() const
+AtomString InbandTextTrackPrivateLegacyAVFObjC::language() const
 {
     if (!m_playerItemTrack)
         return emptyAtom();

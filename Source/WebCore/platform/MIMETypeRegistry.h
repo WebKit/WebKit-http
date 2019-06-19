@@ -50,10 +50,6 @@ public:
     // Check to see if a MIME type is suitable for being loaded as an image, including SVG and Video (where supported).
     WEBCORE_EXPORT static bool isSupportedImageVideoOrSVGMIMEType(const String& mimeType);
 
-    // Check to see if a MIME type is suitable for being loaded as an image
-    // document in a frame.
-    WEBCORE_EXPORT static bool isSupportedImageResourceMIMEType(const String& mimeType);
-
     // Check to see if a MIME type is suitable for being encoded.
     static bool isSupportedImageMIMETypeForEncoding(const String& mimeType);
 
@@ -66,6 +62,9 @@ public:
 
     // Check to see if a MIME type is suitable for being loaded as a font.
     static bool isSupportedFontMIMEType(const String& mimeType);
+
+    // Check to see if a MIME type is a text media playlist type, such as an m3u8.
+    static bool isTextMediaPlaylistMIMEType(const String& mimeType);
 
     // Check to see if a non-image MIME type is suitable for being loaded as a
     // document in a frame. Does not include supported JavaScript and JSON MIME types.
@@ -88,9 +87,7 @@ public:
     static bool isPostScriptMIMEType(const String& mimeType);
     WEBCORE_EXPORT static bool isPDFOrPostScriptMIMEType(const String& mimeType);
 
-#if USE(SYSTEM_PREVIEW)
     WEBCORE_EXPORT static bool isSystemPreviewMIMEType(const String& mimeType);
-#endif
 
     // Check to see if a MIME type is suitable for being shown inside a page.
     // Returns true if any of isSupportedImageMIMEType(), isSupportedNonImageMIMEType(),
@@ -108,19 +105,14 @@ public:
     // makes this test is after many other tests are done on the MIME type.
     WEBCORE_EXPORT static bool isTextMIMEType(const String& mimeType);
 
-    // FIXME: WebKit coding style says we should not have the word "get" in the names of these functions.
     // FIXME: Would be nice to find a way to avoid exposing these sets, even worse exposing non-const references.
-    WEBCORE_EXPORT static HashSet<String, ASCIICaseInsensitiveHash>& getSupportedNonImageMIMETypes();
-
-    WEBCORE_EXPORT const static HashSet<String, ASCIICaseInsensitiveHash>& getSupportedImageMIMETypes();
-    const static HashSet<String, ASCIICaseInsensitiveHash>& getSupportedImageResourceMIMETypes();
-    WEBCORE_EXPORT const static HashSet<String, ASCIICaseInsensitiveHash>& getSupportedMediaMIMETypes();
-    WEBCORE_EXPORT const static HashSet<String, ASCIICaseInsensitiveHash>& getPDFMIMETypes();
-    WEBCORE_EXPORT const static HashSet<String, ASCIICaseInsensitiveHash>& getUnsupportedTextMIMETypes();
-
-#if USE(SYSTEM_PREVIEW)
-    WEBCORE_EXPORT const static HashSet<String, ASCIICaseInsensitiveHash>& getSystemPreviewMIMETypes();
-#endif
+    WEBCORE_EXPORT static const HashSet<String, ASCIICaseInsensitiveHash>& supportedImageMIMETypes();
+    static HashSet<String, ASCIICaseInsensitiveHash>& additionalSupportedImageMIMETypes();
+    WEBCORE_EXPORT static HashSet<String, ASCIICaseInsensitiveHash>& supportedNonImageMIMETypes();
+    WEBCORE_EXPORT static const HashSet<String, ASCIICaseInsensitiveHash>& supportedMediaMIMETypes();
+    WEBCORE_EXPORT static const HashSet<String, ASCIICaseInsensitiveHash>& pdfMIMETypes();
+    WEBCORE_EXPORT static const HashSet<String, ASCIICaseInsensitiveHash>& unsupportedTextMIMETypes();
+    WEBCORE_EXPORT static const HashSet<String, ASCIICaseInsensitiveHash>& systemPreviewMIMETypes();
 
     // FIXME: WebKit coding style says we should not have the word "get" in the name of this function.
     // FIXME: Unclear what the concept of a normalized MIME type is; currently it's a platform-specific notion.

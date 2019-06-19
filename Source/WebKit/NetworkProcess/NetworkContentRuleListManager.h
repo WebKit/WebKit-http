@@ -30,7 +30,6 @@
 #include "UserContentControllerIdentifier.h"
 #include "WebCompiledContentRuleListData.h"
 #include <WebCore/ContentExtensionsBackend.h>
-#include <WebCore/UserContentProvider.h>
 
 namespace IPC {
 class Connection;
@@ -39,9 +38,11 @@ class Decoder;
 
 namespace WebKit {
 
+class NetworkProcess;
+
 class NetworkContentRuleListManager {
 public:
-    NetworkContentRuleListManager();
+    NetworkContentRuleListManager(NetworkProcess&);
     ~NetworkContentRuleListManager();
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
@@ -50,13 +51,14 @@ public:
     void contentExtensionsBackend(UserContentControllerIdentifier, BackendCallback&&);
 
 private:
-    void addContentRuleLists(UserContentControllerIdentifier, const Vector<std::pair<String, WebCompiledContentRuleListData>>&);
+    void addContentRuleLists(UserContentControllerIdentifier, Vector<std::pair<String, WebCompiledContentRuleListData>>&&);
     void removeContentRuleList(UserContentControllerIdentifier, const String& name);
     void removeAllContentRuleLists(UserContentControllerIdentifier);
     void remove(UserContentControllerIdentifier);
 
     HashMap<UserContentControllerIdentifier, std::unique_ptr<WebCore::ContentExtensions::ContentExtensionsBackend>> m_contentExtensionBackends;
     HashMap<UserContentControllerIdentifier, Vector<BackendCallback>> m_pendingCallbacks;
+    NetworkProcess& m_networkProcess;
 };
 
 } // namespace WebKit

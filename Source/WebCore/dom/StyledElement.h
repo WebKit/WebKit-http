@@ -35,6 +35,7 @@ class Attribute;
 class MutableStyleProperties;
 class PropertySetCSSStyleDeclaration;
 class StyleProperties;
+class StylePropertyMap;
 
 class StyledElement : public Element {
     WTF_MAKE_ISO_ALLOCATED(StyledElement);
@@ -57,9 +58,12 @@ public:
     void synchronizeStyleAttributeInternal() const { StyledElement::synchronizeStyleAttributeInternal(const_cast<StyledElement*>(this)); }
     
     WEBCORE_EXPORT CSSStyleDeclaration& cssomStyle();
+#if ENABLE(CSS_TYPED_OM)
+    StylePropertyMap& ensureAttributeStyleMap();
+#endif
 
     const StyleProperties* presentationAttributeStyle() const;
-    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) { }
+    virtual void collectStyleForPresentationAttribute(const QualifiedName&, const AtomString&, MutableStyleProperties&) { }
 
 protected:
     StyledElement(const QualifiedName& name, Document& document, ConstructionType type)
@@ -67,7 +71,7 @@ protected:
     {
     }
 
-    void attributeChanged(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason = ModifiedDirectly) override;
+    void attributeChanged(const QualifiedName&, const AtomString& oldValue, const AtomString& newValue, AttributeModificationReason = ModifiedDirectly) override;
 
     virtual bool isPresentationAttribute(const QualifiedName&) const { return false; }
 
@@ -78,11 +82,11 @@ protected:
     void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
 
 private:
-    void styleAttributeChanged(const AtomicString& newStyleString, AttributeModificationReason);
+    void styleAttributeChanged(const AtomString& newStyleString, AttributeModificationReason);
 
     void inlineStyleChanged();
     PropertySetCSSStyleDeclaration* inlineStyleCSSOMWrapper();
-    void setInlineStyleFromString(const AtomicString&);
+    void setInlineStyleFromString(const AtomString&);
     MutableStyleProperties& ensureMutableInlineStyle();
 
     void rebuildPresentationAttributeStyle();

@@ -9,7 +9,7 @@ negative:
   type: SyntaxError
 ---*/
 
-throw "Test262: This statement should not be evaluated.";
-throw NotEarlyError;
+$DONOTEVALUATE();
+
 for (let a = 0 in {});
 

@@ -25,9 +25,10 @@
 
 [
     EnabledBySetting=MediaCapabilities,
-    ImplementationLacksVTable
+    ImplementationLacksVTable,
+    JSCustomHeader
 ]
 interface MediaCapabilities {
-  Promise<MediaCapabilitiesInfo> decodingInfo(MediaDecodingConfiguration configuration);
-  Promise<MediaCapabilitiesInfo> encodingInfo(MediaEncodingConfiguration configuration);
+  [CustomEnabled, CallWith=Document] Promise<MediaCapabilitiesDecodingInfo> decodingInfo(MediaDecodingConfiguration configuration);
+  [CustomEnabled] Promise<MediaCapabilitiesEncodingInfo> encodingInfo(MediaEncodingConfiguration configuration);
 };

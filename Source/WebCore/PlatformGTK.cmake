@@ -3,6 +3,7 @@ include(platform/FreeType.cmake)
 include(platform/GCrypt.cmake)
 include(platform/GStreamer.cmake)
 include(platform/ImageDecoders.cmake)
+include(platform/Soup.cmake)
 include(platform/TextureMapper.cmake)
 
 set(WebCore_OUTPUT_NAME WebCoreGTK)
@@ -11,16 +12,13 @@ list(APPEND WebCore_UNIFIED_SOURCE_LIST_FILES
     "SourcesGTK.txt"
 
     "platform/SourcesGLib.txt"
-    "platform/SourcesSoup.txt"
 )
 
-list(APPEND WebCore_INCLUDE_DIRECTORIES
-    "${THIRDPARTY_DIR}/ANGLE/"
-    "${THIRDPARTY_DIR}/ANGLE/include/KHR"
+list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/accessibility/atk"
     "${WEBCORE_DIR}/editing/atk"
     "${WEBCORE_DIR}/page/gtk"
-    "${WEBCORE_DIR}/platform/geoclue"
+    "${WEBCORE_DIR}/platform/generic"
     "${WEBCORE_DIR}/platform/gtk"
     "${WEBCORE_DIR}/platform/graphics/egl"
     "${WEBCORE_DIR}/platform/graphics/glx"
@@ -35,9 +33,14 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/mediastream/gstreamer"
     "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network/gtk"
-    "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/gtk"
 )
+
+if (USE_WPE_RENDERER)
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/graphics/libwpe"
+    )
+endif ()
 
 list(APPEND WebCorePlatformGTK_SOURCES
     editing/gtk/EditorGtk.cpp
@@ -74,24 +77,29 @@ list(APPEND WebCorePlatformGTK_SOURCES
     rendering/RenderThemeGtk.cpp
 )
 
-if (ENABLE_GEOLOCATION)
-    list(APPEND WebCore_SOURCES
-        ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c
-    )
-    execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} --variable dbus_interface geoclue-2.0 OUTPUT_VARIABLE GEOCLUE_DBUS_INTERFACE)
-    add_custom_command(
-         OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.h
-         COMMAND gdbus-codegen --interface-prefix org.freedesktop.GeoClue2. --c-namespace Geoclue --generate-c-code ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface ${GEOCLUE_DBUS_INTERFACE}
-    )
-    set_source_files_properties(${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
-endif ()
+list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
+    platform/graphics/x11/PlatformDisplayX11.h
+    platform/graphics/x11/XErrorTrapper.h
+    platform/graphics/x11/XUniquePtr.h
+    platform/graphics/x11/XUniqueResource.h
+
+    platform/gtk/CompositionResults.h
+    platform/gtk/GRefPtrGtk.h
+    platform/gtk/GUniquePtrGtk.h
+    platform/gtk/GtkUtilities.h
+    platform/gtk/GtkVersioning.h
+    platform/gtk/PasteboardHelper.h
+    platform/gtk/SelectionData.h
+
+    platform/text/enchant/TextCheckerEnchant.h
+)
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/css/mediaControlsGtk.css
 )
 
 set(WebCore_USER_AGENT_SCRIPTS
-    ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
+    ${WEBCORE_DIR}/en.lproj/mediaControlsLocalizedStrings.js
     ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.js
     ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsGtk.js
 )
@@ -100,14 +108,13 @@ set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/gtk/RenderTh
 
 list(APPEND WebCore_LIBRARIES
     ${ATK_LIBRARIES}
-    ${CAIRO_LIBRARIES}
     ${ENCHANT_LIBRARIES}
     ${GLIB_GIO_LIBRARIES}
     ${GLIB_GMODULE_LIBRARIES}
     ${GLIB_GOBJECT_LIBRARIES}
     ${GLIB_LIBRARIES}
+    ${LIBSECCOMP_LIBRARIES}
     ${LIBSECRET_LIBRARIES}
-    ${LIBSOUP_LIBRARIES}
     ${LIBTASN1_LIBRARIES}
     ${HYPHEN_LIBRARIES}
     ${UPOWERGLIB_LIBRARIES}
@@ -119,18 +126,29 @@ list(APPEND WebCore_LIBRARIES
     ${ZLIB_LIBRARIES}
 )
 
+if (USE_WPE_RENDERER)
+    list(APPEND WebCore_LIBRARIES
+        ${WPE_LIBRARIES}
+    )
+endif ()
+
 list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${ATK_INCLUDE_DIRS}
-    ${CAIRO_INCLUDE_DIRS}
     ${ENCHANT_INCLUDE_DIRS}
     ${GIO_UNIX_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
+    ${LIBSECCOMP_INCLUDE_DIRS}
     ${LIBSECRET_INCLUDE_DIRS}
-    ${LIBSOUP_INCLUDE_DIRS}
     ${LIBTASN1_INCLUDE_DIRS}
     ${UPOWERGLIB_INCLUDE_DIRS}
     ${ZLIB_INCLUDE_DIRS}
 )
+
+if (USE_WPE_RENDERER)
+    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+        ${WPE_INCLUDE_DIRS}
+    )
+endif ()
 
 if (USE_OPENGL_ES)
     list(APPEND WebCore_SOURCES
@@ -174,6 +192,10 @@ if (ENABLE_PLUGIN_PROCESS_GTK2)
 endif ()
 
 if (ENABLE_WAYLAND_TARGET)
+    list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
+        platform/graphics/wayland/PlatformDisplayWayland.h
+        platform/graphics/wayland/WlUniquePtr.h
+    )
     list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
         ${WAYLAND_INCLUDE_DIRS}
     )
@@ -186,6 +208,7 @@ add_library(WebCorePlatformGTK ${WebCore_LIBRARY_TYPE} ${WebCorePlatformGTK_SOUR
 add_dependencies(WebCorePlatformGTK WebCore)
 target_include_directories(WebCorePlatformGTK PRIVATE
     ${WebCore_INCLUDE_DIRECTORIES}
+    ${WebCore_PRIVATE_INCLUDE_DIRECTORIES}
 )
 target_include_directories(WebCorePlatformGTK SYSTEM PRIVATE
     ${WebCore_SYSTEM_INCLUDE_DIRECTORIES}
@@ -200,12 +223,16 @@ target_link_libraries(WebCorePlatformGTK
 
 include_directories(
     ${WebCore_INCLUDE_DIRECTORIES}
+    ${WebCore_PRIVATE_INCLUDE_DIRECTORIES}
     "${WEBCORE_DIR}/bindings/gobject/"
 )
 
 include_directories(SYSTEM
     ${WebCore_SYSTEM_INCLUDE_DIRECTORIES}
 )
+
+list(APPEND WebCoreTestSupport_LIBRARIES PRIVATE ${GTK_LIBRARIES})
+list(APPEND WebCoreTestSupport_SYSTEM_INCLUDE_DIRECTORIES ${GTK_INCLUDE_DIRS})
 
 add_definitions(-DBUILDING_WEBKIT)
 

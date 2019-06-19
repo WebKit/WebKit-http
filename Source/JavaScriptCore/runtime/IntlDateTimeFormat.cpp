@@ -504,7 +504,7 @@ void IntlDateTimeFormat::initializeDateTimeFormat(ExecState& exec, JSValue local
         RETURN_IF_EXCEPTION(scope, void());
         tz = canonicalizeTimeZoneName(originalTz);
         if (tz.isNull()) {
-            throwRangeError(&exec, scope, String::format("invalid time zone: %s", originalTz.utf8().data()));
+            throwRangeError(&exec, scope, "invalid time zone: " + originalTz);
             return;
         }
     } else
@@ -633,7 +633,7 @@ void IntlDateTimeFormat::initializeDateTimeFormat(ExecState& exec, JSValue local
     StringView skeletonView(skeleton);
     Vector<UChar, 32> patternBuffer(32);
     status = U_ZERO_ERROR;
-    auto patternLength = udatpg_getBestPattern(generator, skeletonView.upconvertedCharacters(), skeletonView.length(), patternBuffer.data(), patternBuffer.size(), &status);
+    auto patternLength = udatpg_getBestPatternWithOptions(generator, skeletonView.upconvertedCharacters(), skeletonView.length(), UDATPG_MATCH_HOUR_FIELD_LENGTH, patternBuffer.data(), patternBuffer.size(), &status);
     if (status == U_BUFFER_OVERFLOW_ERROR) {
         status = U_ZERO_ERROR;
         patternBuffer.grow(patternLength);
@@ -977,9 +977,10 @@ ASCIILiteral IntlDateTimeFormat::partTypeString(UDateFormatField field)
 #if U_ICU_VERSION_MAJOR_NUM < 58 || !defined(U_HIDE_DEPRECATED_API)
     case UDAT_FIELD_COUNT:
 #endif
+    // Any newer additions to the UDateFormatField enum should just be considered an "unknown" part.
+    default:
         return "unknown"_s;
     }
-    // Any newer additions to the UDateFormatField enum should just be considered an "unknown" part.
     return "unknown"_s;
 }
 

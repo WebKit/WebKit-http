@@ -72,8 +72,29 @@
     -webkit-user-select: none !important;
 }
 
+.formatted-node > .tree-outline.dom li.selected .selection-area {
+    background-color: transparent;
+}
+
 .formatted-node > .tree-outline.dom li.hovered:not(.selected) .selection-area {
     display: block;
     left: -1px;
     right: -2px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .formatted-object,
+    .formatted-node,
+    .formatted-error,
+    .formatted-map,
+    .formatted-set,
+    .formatted-weakmap,
+    .formatted-weakset {
+        color: var(--text-color);
+    }
+
+    .formatted-null,
+    .formatted-undefined {
+        color: var(--text-color-secondary);
+    }
 }

@@ -57,9 +57,6 @@ void PolymorphicCallNode::unlink(VM& vm)
 
 void PolymorphicCallNode::clearCallLinkInfo()
 {
-    if (Options::dumpDisassembly())
-        dataLog("Clearing call link info for polymorphic call at ", m_callLinkInfo->callReturnLocation(), ", ", m_callLinkInfo->codeOrigin(), "\n");
-
     m_callLinkInfo = nullptr;
 }
 
@@ -130,10 +127,10 @@ void PolymorphicCallStubRoutine::clearCallNodesFor(CallLinkInfo* info)
     }
 }
 
-bool PolymorphicCallStubRoutine::visitWeak(VM&)
+bool PolymorphicCallStubRoutine::visitWeak(VM& vm)
 {
     for (auto& variant : m_variants) {
-        if (!Heap::isMarked(variant.get()))
+        if (!vm.heap.isMarked(variant.get()))
             return false;
     }
     return true;

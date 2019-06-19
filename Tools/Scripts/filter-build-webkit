@@ -160,13 +160,15 @@ for (my $previousLine = "", my $line = <>; $line; $previousLine = $line, $line =
         printLine("$command $path", STYLE_PLAIN);
     } elsif ($line =~ /^offlineasm\: /) {
         printLine($line, STYLE_PLAIN);
-    } elsif ($line =~ /^Generating (\S+) from (\S+)/) {
-        printLine($line, STYLE_PLAIN);
     } elsif ($line =~ /^Generating bindings for the (\S+) builtin\./) {
         printLine("Generating $1 builtin", STYLE_PLAIN);
     } elsif ($line =~ /^Generating (bindings|messages? (header|receiver|dispatcher)|derived source) for (\S+)\.\.\./) {
         my ($command, $path) = ($1, basename($3));
         printLine("Generating $command $path", STYLE_PLAIN);
+    } elsif ($line =~ /^(Generating|Merging) (\S+) (from|for) (\S+)/) {
+        printLine($line, STYLE_PLAIN);
+    } elsif ($line =~ /^GXCF:/) {
+        printLine($line, STYLE_PLAIN);
     } elsif ($line =~ /^Pre-processing (\S+) sandbox profile/) {
         printLine($line, STYLE_PLAIN);
     } elsif ($line =~ /^(\S+\/cc).*?(\S+)\.(out|exp)/) {
@@ -272,7 +274,7 @@ sub shouldIgnoreLine($$)
     return 1 if $line =~ /created by an unsupported XCDependencyGraph build$/;
 
     if ($platform eq "win") {
-        return 1 if $line =~ /^\s*(touch|perl|cat|rm -f|bison|del|flex|python|\/usr\/bin\/g\+\+|gperf|echo|sed|if \[ \-f|WebCore\/generate-export-file) /;
+        return 1 if $line =~ /^\s*(touch|perl|cat|rm -f|del|python|\/usr\/bin\/g\+\+|gperf|echo|sed|if \[ \-f|WebCore\/generate-export-file) /;
         return 1 if $line =~ /^\s*(if not exist \"|if errorlevel 1)/;
         return 1 if $line =~ /(^\s*|MSB3073:\s+)(set |REM |cmd \/c)/;
         return 1 if $line =~ /^\s*[cC]:\\[pP]rogram [fF]iles.*\\.*\\(CL|midl)\.exe /;
@@ -290,7 +292,7 @@ sub shouldIgnoreLine($$)
         return 1 if $line =~ /MSB3073:\s+if not exist/;
         return 1 if $line =~ /which.exe bash/;
     } else {
-        return 1 if $line =~ /^(touch|perl|cat|rm -f|bison|flex|python|\/usr\/bin\/g\+\+|\/bin\/ln|gperf|echo|sed|if \[ \-f|WebCore\/generate-export-file|write-file|chmod) /;
+        return 1 if $line =~ /^(touch|perl|cat|rm -f|python|\/usr\/bin\/g\+\+|\/bin\/ln|gperf|echo|sed|if \[ \-f|WebCore\/generate-export-file|write-file|chmod) /;
         return 1 if $line =~ /^    / && !shouldShowSubsequentLine($previousLine);
         return 1 if $line =~ /^printf /;
         return 1 if $line =~ /^offlineasm: Nothing changed/;

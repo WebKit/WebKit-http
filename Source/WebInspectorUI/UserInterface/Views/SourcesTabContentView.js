@@ -25,24 +25,26 @@
 
 WI.SourcesTabContentView = class SourcesTabContentView extends WI.ContentBrowserTabContentView
 {
-    constructor(identifier)
+    constructor()
     {
         let tabBarItem = WI.GeneralTabBarItem.fromTabInfo(WI.SourcesTabContentView.tabInfo());
-        const detailsSidebarPanelConstructors = [WI.ResourceDetailsSidebarPanel, WI.ProbeDetailsSidebarPanel];
-        super(identifier || "sources", "sources", tabBarItem, WI.SourcesSidebarPanel, detailsSidebarPanelConstructors);
+        const detailsSidebarPanelConstructors = [WI.ResourceDetailsSidebarPanel, WI.ScopeChainDetailsSidebarPanel, WI.ProbeDetailsSidebarPanel];
+        super("sources", ["sources"], tabBarItem, WI.SourcesNavigationSidebarPanel, detailsSidebarPanelConstructors);
+
+        this._showScopeChainDetailsSidebarPanel = false;
     }
 
     static tabInfo()
     {
         return {
-            image: "Images/Resources.svg",
+            image: "Images/Sources.svg",
             title: WI.UIString("Sources"),
         };
     }
 
     static isTabAllowed()
     {
-        return WI.settings.experimentalEnableSourcesTab.value;
+        return !!WI.settings.experimentalEnableSourcesTab.value;
     }
 
     // Public
@@ -60,10 +62,49 @@ WI.SourcesTabContentView = class SourcesTabContentView extends WI.ContentBrowser
     canShowRepresentedObject(representedObject)
     {
         return representedObject instanceof WI.Frame
+            || representedObject instanceof WI.FrameCollection
             || representedObject instanceof WI.Resource
+            || representedObject instanceof WI.ResourceCollection
             || representedObject instanceof WI.Script
+            || representedObject instanceof WI.ScriptCollection
             || representedObject instanceof WI.CSSStyleSheet
-            || (representedObject instanceof WI.Collection && !(representedObject instanceof WI.CanvasCollection));
+            || representedObject instanceof WI.CSSStyleSheetCollection
+            || super.canShowRepresentedObject(representedObject);
+    }
+
+    showDetailsSidebarPanels()
+    {
+        super.showDetailsSidebarPanels();
+
+        if (!this._showScopeChainDetailsSidebarPanel)
+            return;
+
+        let scopeChainDetailsSidebarPanel = this.detailsSidebarPanels.find((item) => item instanceof WI.ScopeChainDetailsSidebarPanel);
+        if (!scopeChainDetailsSidebarPanel)
+            return;
+
+        let sidebar = scopeChainDetailsSidebarPanel.parentSidebar;
+        if (!sidebar)
+            return;
+
+        sidebar.selectedSidebarPanel = scopeChainDetailsSidebarPanel;
+        sidebar.collapsed = false;
+
+        this._showScopeChainDetailsSidebarPanel = false;
+    }
+
+    showScopeChainDetailsSidebarPanel()
+    {
+        this._showScopeChainDetailsSidebarPanel = true;
+    }
+
+    revealAndSelectBreakpoint(breakpoint)
+    {
+        console.assert(breakpoint instanceof WI.Breakpoint);
+
+        let treeElement = this.navigationSidebarPanel.treeElementForRepresentedObject(breakpoint);
+        if (treeElement)
+            treeElement.revealAndSelect();
     }
 };
 

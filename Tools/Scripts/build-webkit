@@ -74,6 +74,7 @@ my $coverageSupport = 0;
 my $shouldRunStaticAnalyzer = 0;
 my $noExperimentalFeatures = 0;
 my $ltoMode = "default";
+my $xcbuild = undef;
 my $startTime = time();
 my $archs32bit = 0;
 my $skipLibraryUpdate = 0;
@@ -115,12 +116,14 @@ Usage: $programName [options] [options to pass to build system]
   --simulator                       DEPRECATED alias of --ios-simulator
   --coverage                        Enable code coverage support (Mac only)
   --analyze                         Enable static anaylsis (iOS and Mac only)
-  --lto-mode=<mode>                 Set Link Time Optimization mode (full, thin, or none) (Xcode only)
+  --lto-mode=<mode>                 Set Link Time Optimization mode (full, thin, or none) (LLVM only)
+  --[no-]xcbuild                    Force the use of XCBuild or not
 
   --gtk                             Build the GTK+ port
   --qt                              Build the Qt port
   --wpe                             Build the WPE port
   --wincairo                        Build using Cairo (rather than CoreGraphics) on Windows
+  --playstation                     Build the PlayStation port
 
   --inspector-frontend              Copy Web Inspector user interface resources to the build directory
 
@@ -156,6 +159,7 @@ my %options = (
     'analyze' => \$shouldRunStaticAnalyzer,
     'no-experimental-features' => \$noExperimentalFeatures,
     'lto-mode=s' => \$ltoMode,
+    'xcbuild!' => \$xcbuild,
     'skip-library-update' => \$skipLibraryUpdate,
     'use-ccache!' => \$useCCache,
 );
@@ -202,7 +206,7 @@ if (!isCMakeBuild()) {
     }
 }
 
-if ((isAppleWebKit() || isWinCairo()) && !-d "WebKitLibraries") {
+if ((isAppleWebKit() || isWinCairo() || isPlayStation()) && !-d "WebKitLibraries") {
     die "Error: No WebKitLibraries directory found. Please do a fresh checkout.\n";
 }
 
@@ -210,6 +214,18 @@ my @options = ();
 
 if (isAppleCocoaWebKit()) {
     push @options, XcodeOptions();
+
+    if (not defined $xcbuild) {
+        $xcbuild = canUseXCBuild();
+    }
+
+    if ($xcbuild) {
+        push @options, "-UseNewBuildSystem=YES";
+        push @options, "USE_NEW_BUILD_SYSTEM=YES";
+    } else {
+        push @options, "-UseNewBuildSystem=NO";
+    }
+
     sub option($$)
     {
         my ($feature, $isEnabled) = @_;
@@ -264,10 +280,6 @@ if (isAppleCocoaWebKit()) {
     (system("perl Tools/Scripts/update-qtwebkit-win-libs") == 0) or die;
 }
 
-if (isAnyWindows()) {
-    system("python Tools/Scripts/update-vswhere.py");
-}
-
 # If asked to build just the WebKit project, overwrite the projects
 # list after all of the port specific tweaks have been made to
 # build options, etc.
@@ -300,16 +312,16 @@ if (isCMakeBuild() && (!isAnyWindows() || isQt())) {
     my @featureArgs = cmakeArgsFromFeatures(@features, !$noExperimentalFeatures);
     removeCMakeCache(@featureArgs);
 
-    buildCMakeProjectOrExit($clean, $prefixPath, $makeArgs, (cmakeBasedPortArguments(), @featureArgs), @cmakeArgs);
+    buildCMakeProjectOrExit($clean, $prefixPath, $makeArgs, @featureArgs, @cmakeArgs);
 }
 
 my $baseProductDir = baseProductDir();
-if (isAppleWinWebKit() || isWinCairo()) {
+if (isAppleWinWebKit() || isWinCairo() || isPlayStation()) {
     my @featureArgs = cmakeArgsFromFeatures(@features, !$noExperimentalFeatures);
     removeCMakeCache(@featureArgs);
 
     chdirWebKit();
-    if (exitStatus(generateBuildSystemFromCMakeProject($prefixPath, @cmakeArgs))) {
+    if (exitStatus(generateBuildSystemFromCMakeProject($prefixPath, @featureArgs, @cmakeArgs))) {
         die "Run Visual Studio 2017 installation vcvars.bat before build-webkit when using ninja";
     }
 
@@ -354,24 +366,24 @@ if (isAppleWinWebKit() || isWinCairo()) {
         if (exitStatus($result)) {
             exit exitStatus($result);
         }
+    }
 
-        # Build ImageDiff for host
-        my @command = File::Spec->catfile(getcwd(), "/Tools/Scripts/build-imagediff");
-        chdirWebKit();
-        if (!-e $command[0]) {
-          die "build-imagediff script not found";
-        }
+    # Build ImageDiff for host
+    my @command = File::Spec->catfile(getcwd(), "/Tools/Scripts/build-imagediff");
+    chdirWebKit();
+    if (!-e $command[0]) {
+        die "build-imagediff script not found";
+    }
 
-        if ($clean) {
-          push @command, " --clean";
-        }
-        push @command, argumentsForConfiguration();
-        push @command, @ARGV;
-        @command = extractNonMacOSHostConfiguration(\@command);
-        $result = system(@command);
-        if (exitStatus($result)) {
-            exit exitStatus($result);
-        }
+    if ($clean) {
+        push @command, " --clean";
+    }
+    push @command, argumentsForConfiguration();
+    push @command, @ARGV;
+    @command = extractNonMacOSHostConfiguration(\@command);
+    $result = system(@command);
+    if (exitStatus($result)) {
+        exit exitStatus($result);
     }
 }
 

@@ -29,26 +29,31 @@
 #include "config.h"
 #include "FetchRequest.h"
 
+#include "Document.h"
 #include "HTTPParsers.h"
+#include "JSAbortSignal.h"
+#include "Logging.h"
+#include "Quirks.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
+#include "Settings.h"
 
 namespace WebCore {
 
-static std::optional<Exception> setMethod(ResourceRequest& request, const String& initMethod)
+static Optional<Exception> setMethod(ResourceRequest& request, const String& initMethod)
 {
     if (!isValidHTTPToken(initMethod))
         return Exception { TypeError, "Method is not a valid HTTP token."_s };
     if (isForbiddenMethod(initMethod))
         return Exception { TypeError, "Method is forbidden."_s };
     request.setHTTPMethod(normalizeHTTPMethod(initMethod));
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 static ExceptionOr<String> computeReferrer(ScriptExecutionContext& context, const String& referrer)
 {
     if (referrer.isEmpty())
-        return String { "no-referrer"_s };
+        return "no-referrer"_str;
 
     // FIXME: Tighten the URL parsing algorithm according https://url.spec.whatwg.org/#concept-url-parser.
     URL referrerURL = context.completeURL(referrer);
@@ -56,15 +61,15 @@ static ExceptionOr<String> computeReferrer(ScriptExecutionContext& context, cons
         return Exception { TypeError, "Referrer is not a valid URL."_s };
 
     if (referrerURL.protocolIs("about") && referrerURL.path() == "client")
-        return String { "client"_s };
+        return "client"_str;
 
     if (!(context.securityOrigin() && context.securityOrigin()->canRequest(referrerURL)))
-        return String { "client"_s };
+        return "client"_str;
 
     return String { referrerURL.string() };
 }
 
-static std::optional<Exception> buildOptions(FetchOptions& options, ResourceRequest& request, String& referrer, ScriptExecutionContext& context, const FetchRequest::Init& init)
+static Optional<Exception> buildOptions(FetchOptions& options, ResourceRequest& request, String& referrer, ScriptExecutionContext& context, const FetchRequest::Init& init)
 {
     if (!init.window.isUndefinedOrNull() && !init.window.isEmpty())
         return Exception { TypeError, "Window can only be null."_s };
@@ -114,7 +119,7 @@ static std::optional<Exception> buildOptions(FetchOptions& options, ResourceRequ
             return exception;
     }
 
-    return std::nullopt;
+    return WTF::nullopt;
 }
 
 static bool methodCanHaveBody(const ResourceRequest& request)
@@ -140,6 +145,18 @@ ExceptionOr<void> FetchRequest::initializeOptions(const Init& init)
     return { };
 }
 
+static inline Optional<Exception> processInvalidSignal(ScriptExecutionContext& context)
+{
+    ASCIILiteral message { "FetchRequestInit.signal should be undefined, null or an AbortSignal object."_s };
+    context.addConsoleMessage(MessageSource::JS, MessageLevel::Warning, message);
+
+    if (is<Document>(context) && downcast<Document>(context).quirks().shouldIgnoreInvalidSignal())
+        return { };
+
+    RELEASE_LOG_ERROR(ResourceLoading, "FetchRequestInit.signal should be undefined, null or an AbortSignal object.");
+    return Exception { TypeError, message };
+}
+
 ExceptionOr<void> FetchRequest::initializeWith(const String& url, Init&& init)
 {
     ASSERT(scriptExecutionContext());
@@ -159,6 +176,15 @@ ExceptionOr<void> FetchRequest::initializeWith(const String& url, Init&& init)
     if (optionsResult.hasException())
         return optionsResult.releaseException();
 
+    if (init.signal) {
+        if (auto* signal = JSAbortSignal::toWrapped(scriptExecutionContext()->vm(), init.signal))
+            m_signal->follow(*signal);
+        else if (!init.signal.isUndefinedOrNull())  {
+            if (auto exception = processInvalidSignal(*scriptExecutionContext()))
+                return WTFMove(*exception);
+        }
+    }
+
     if (init.headers) {
         auto fillResult = m_headers->fill(*init.headers);
         if (fillResult.hasException())
@@ -177,9 +203,6 @@ ExceptionOr<void> FetchRequest::initializeWith(const String& url, Init&& init)
 
 ExceptionOr<void> FetchRequest::initializeWith(FetchRequest& input, Init&& init)
 {
-    if (input.isDisturbedOrLocked())
-        return Exception {TypeError, "Request input is disturbed or locked."_s };
-
     m_request = input.m_request;
     m_options = input.m_options;
     m_referrer = input.m_referrer;
@@ -187,6 +210,17 @@ ExceptionOr<void> FetchRequest::initializeWith(FetchRequest& input, Init&& init)
     auto optionsResult = initializeOptions(init);
     if (optionsResult.hasException())
         return optionsResult.releaseException();
+
+    if (init.signal && !init.signal.isUndefined()) {
+        if (auto* signal = JSAbortSignal::toWrapped(scriptExecutionContext()->vm(), init.signal))
+            m_signal->follow(*signal);
+        else if (!init.signal.isNull()) {
+            if (auto exception = processInvalidSignal(*scriptExecutionContext()))
+                return WTFMove(*exception);
+        }
+
+    } else
+        m_signal->follow(input.m_signal.get());
 
     if (init.headers) {
         auto fillResult = m_headers->fill(*init.headers);
@@ -203,6 +237,9 @@ ExceptionOr<void> FetchRequest::initializeWith(FetchRequest& input, Init&& init)
         if (setBodyResult.hasException())
             return setBodyResult.releaseException();
     } else {
+        if (input.isDisturbedOrLocked())
+            return Exception { TypeError, "Request input is disturbed or locked."_s };
+
         auto setBodyResult = setBody(input);
         if (setBodyResult.hasException())
             return setBodyResult.releaseException();
@@ -231,7 +268,7 @@ ExceptionOr<void> FetchRequest::setBody(FetchRequest& request)
         if (!methodCanHaveBody(m_request))
             return Exception { TypeError, makeString("Request has method '", m_request.httpMethod(), "' and cannot have a body") };
         // FIXME: If body has a readable stream, we should pipe it to this new body stream.
-        m_body = WTFMove(request.m_body);
+        m_body = WTFMove(*request.m_body);
         request.setDisturbed();
     }
 
@@ -242,7 +279,7 @@ ExceptionOr<void> FetchRequest::setBody(FetchRequest& request)
 
 ExceptionOr<Ref<FetchRequest>> FetchRequest::create(ScriptExecutionContext& context, Info&& input, Init&& init)
 {
-    auto request = adoptRef(*new FetchRequest(context, std::nullopt, FetchHeaders::create(FetchHeaders::Guard::Request), { }, { }, { }));
+    auto request = adoptRef(*new FetchRequest(context, WTF::nullopt, FetchHeaders::create(FetchHeaders::Guard::Request), { }, { }, { }));
 
     if (WTF::holds_alternative<String>(input)) {
         auto result = request->initializeWith(WTF::get<String>(input), WTFMove(init));
@@ -254,7 +291,7 @@ ExceptionOr<Ref<FetchRequest>> FetchRequest::create(ScriptExecutionContext& cont
             return result.releaseException();
     }
 
-    return WTFMove(request);
+    return request;
 }
 
 String FetchRequest::referrer() const
@@ -291,9 +328,10 @@ ExceptionOr<Ref<FetchRequest>> FetchRequest::clone(ScriptExecutionContext& conte
     if (isDisturbedOrLocked())
         return Exception { TypeError, "Body is disturbed or locked"_s };
 
-    auto clone = adoptRef(*new FetchRequest(context, std::nullopt, FetchHeaders::create(m_headers.get()), ResourceRequest { m_request }, FetchOptions { m_options}, String { m_referrer }));
+    auto clone = adoptRef(*new FetchRequest(context, WTF::nullopt, FetchHeaders::create(m_headers.get()), ResourceRequest { m_request }, FetchOptions { m_options}, String { m_referrer }));
     clone->cloneBody(*this);
-    return WTFMove(clone);
+    clone->m_signal->follow(m_signal);
+    return clone;
 }
 
 const char* FetchRequest::activeDOMObjectName() const

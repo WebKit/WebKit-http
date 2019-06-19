@@ -70,6 +70,7 @@ private:
 #define WASM_TRY_POP_EXPRESSION_STACK_INTO(result, what) do {                               \
         WASM_PARSER_FAIL_IF(m_expressionStack.isEmpty(), "can't pop empty stack in " what); \
         result = m_expressionStack.takeLast();                                              \
+        m_toKillAfterExpression.append(result);                                             \
     } while (0)
 
     template<OpType>
@@ -91,6 +92,8 @@ private:
     OpType m_currentOpcode;
     size_t m_currentOpcodeStartingOffset { 0 };
 
+    Vector<ExpressionType, 8> m_toKillAfterExpression;
+
     unsigned m_unreachableBlocks { 0 };
 };
 
@@ -102,7 +105,7 @@ FunctionParser<Context>::FunctionParser(Context& context, const uint8_t* functio
     , m_info(info)
 {
     if (verbose)
-        dataLogLn("Parsing function starting at: ", (uintptr_t)functionStart, " of length: ", functionLength);
+        dataLogLn("Parsing function starting at: ", (uintptr_t)functionStart, " of length: ", functionLength, " with signature: ", signature);
     m_context.setParser(this);
 }
 
@@ -136,6 +139,8 @@ auto FunctionParser<Context>::parseBody() -> PartialResult
     m_controlStack.append({ ExpressionList(), m_context.addTopLevel(m_signature.returnType()) });
     uint8_t op;
     while (m_controlStack.size()) {
+        ASSERT(m_toKillAfterExpression.isEmpty());
+
         m_currentOpcodeStartingOffset = m_offset;
         WASM_PARSER_FAIL_IF(!parseUInt8(op), "can't decode opcode");
         WASM_PARSER_FAIL_IF(!isValidOpType(op), "invalid opcode ", op);
@@ -149,8 +154,11 @@ auto FunctionParser<Context>::parseBody() -> PartialResult
 
         if (m_unreachableBlocks)
             WASM_FAIL_IF_HELPER_FAILS(parseUnreachableExpression());
-        else
+        else {
             WASM_FAIL_IF_HELPER_FAILS(parseExpression());
+            while (m_toKillAfterExpression.size())
+                m_context.didKill(m_toKillAfterExpression.takeLast());
+        }
     }
 
     ASSERT(op == OpType::End);
@@ -273,6 +281,50 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
         return { };
     }
 
+    case TableGet: {
+        WASM_PARSER_FAIL_IF(!Options::useWebAssemblyReferences(), "references are not enabled");
+        ExpressionType result, index;
+        WASM_TRY_POP_EXPRESSION_STACK_INTO(index, "table.get");
+        WASM_TRY_ADD_TO_CONTEXT(addTableGet(index, result));
+        m_expressionStack.append(result);
+        return { };
+    }
+
+    case TableSet: {
+        WASM_PARSER_FAIL_IF(!Options::useWebAssemblyReferences(), "references are not enabled");
+        ExpressionType val, index;
+        WASM_TRY_POP_EXPRESSION_STACK_INTO(val, "table.set");
+        WASM_TRY_POP_EXPRESSION_STACK_INTO(index, "table.set");
+        WASM_TRY_ADD_TO_CONTEXT(addTableSet(index, val));
+        return { };
+    }
+
+    case RefNull: {
+        WASM_PARSER_FAIL_IF(!Options::useWebAssemblyReferences(), "references are not enabled");
+        m_expressionStack.append(m_context.addConstant(Anyfunc, JSValue::encode(jsNull())));
+        return { };
+    }
+
+    case RefIsNull: {
+        WASM_PARSER_FAIL_IF(!Options::useWebAssemblyReferences(), "references are not enabled");
+        ExpressionType result, value;
+        WASM_TRY_POP_EXPRESSION_STACK_INTO(value, "ref.is_null");
+        WASM_TRY_ADD_TO_CONTEXT(addRefIsNull(value, result));
+        m_expressionStack.append(result);
+        return { };
+    }
+
+    case RefFunc: {
+        uint32_t index;
+        ExpressionType result;
+        WASM_PARSER_FAIL_IF(!Options::useWebAssemblyReferences(), "references are not enabled");
+        WASM_PARSER_FAIL_IF(!parseVarUInt32(index), "can't get index for ref.func");
+
+        WASM_TRY_ADD_TO_CONTEXT(addRefFunc(index, result));
+        m_expressionStack.append(result);
+        return { };
+    }
+
     case GetLocal: {
         uint32_t index;
         ExpressionType result;
@@ -333,10 +385,10 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
             args.uncheckedAppend(m_expressionStack[i]);
         m_expressionStack.shrink(firstArgumentIndex);
 
-        ExpressionType result = Context::emptyExpression;
+        ExpressionType result = Context::emptyExpression();
         WASM_TRY_ADD_TO_CONTEXT(addCall(functionIndex, calleeSignature, args, result));
 
-        if (result != Context::emptyExpression)
+        if (result != Context::emptyExpression())
             m_expressionStack.append(result);
 
         return { };
@@ -350,6 +402,7 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
         WASM_PARSER_FAIL_IF(!parseVarUInt1(reserved), "can't get call_indirect's reserved byte");
         WASM_PARSER_FAIL_IF(reserved, "call_indirect's 'reserved' varuint1 must be 0x0");
         WASM_PARSER_FAIL_IF(m_info.usedSignatures.size() <= signatureIndex, "call_indirect's signature index ", signatureIndex, " exceeds known signatures ", m_info.usedSignatures.size());
+        WASM_PARSER_FAIL_IF(m_info.tableInformation.type() != TableElementType::Funcref, "call_indirect is only valid when a table has type anyfunc");
 
         const Signature& calleeSignature = m_info.usedSignatures[signatureIndex].get();
         size_t argumentCount = calleeSignature.argumentCount() + 1; // Add the callee's index.
@@ -362,10 +415,10 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
             args.uncheckedAppend(m_expressionStack[i]);
         m_expressionStack.shrink(firstArgumentIndex);
 
-        ExpressionType result = Context::emptyExpression;
+        ExpressionType result = Context::emptyExpression();
         WASM_TRY_ADD_TO_CONTEXT(addCallIndirect(calleeSignature, args, result));
 
-        if (result != Context::emptyExpression)
+        if (result != Context::emptyExpression())
             m_expressionStack.append(result);
 
         return { };
@@ -409,7 +462,7 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
     case Br:
     case BrIf: {
         uint32_t target;
-        ExpressionType condition = Context::emptyExpression;
+        ExpressionType condition = Context::emptyExpression();
         WASM_PARSER_FAIL_IF(!parseVarUInt32(target), "can't get br / br_if's target");
         WASM_PARSER_FAIL_IF(target >= m_controlStack.size(), "br / br_if's target ", target, " exceeds control stack size ", m_controlStack.size());
         if (m_currentOpcode == BrIf)
@@ -481,7 +534,8 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
 
     case Drop: {
         WASM_PARSER_FAIL_IF(!m_expressionStack.size(), "can't drop on empty stack");
-        m_expressionStack.takeLast();
+        auto expression = m_expressionStack.takeLast();
+        m_toKillAfterExpression.append(expression);
         return { };
     }
 
@@ -627,6 +681,21 @@ auto FunctionParser<Context>::parseUnreachableExpression() -> PartialResult
     case I64Const: {
         int64_t unused;
         WASM_PARSER_FAIL_IF(!parseVarInt64(unused), "can't get immediate for ", m_currentOpcode, " in unreachable context");
+        return { };
+    }
+
+    case TableGet:
+    case TableSet:
+    case RefIsNull:
+    case RefNull: {
+        WASM_PARSER_FAIL_IF(!Options::useWebAssemblyReferences(), "references are not enabled");
+        return { };
+    }
+
+    case RefFunc: {
+        uint32_t unused;
+        WASM_PARSER_FAIL_IF(!parseVarUInt32(unused), "can't get immediate for ", m_currentOpcode, " in unreachable context");
+        WASM_PARSER_FAIL_IF(!Options::useWebAssemblyReferences(), "references are not enabled");
         return { };
     }
 

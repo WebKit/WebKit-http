@@ -56,14 +56,13 @@ enum {
 };
 
 typedef struct _JSCClassPrivate {
-    JSCContext* context;
+    JSGlobalContextRef context;
     CString name;
     JSClassRef jsClass;
     JSCClassVTable* vtable;
     GDestroyNotify destroyFunction;
     JSCClass* parentClass;
     JSC::Weak<JSC::JSObject> prototype;
-    HashMap<CString, JSC::Weak<JSC::JSObject>> constructors;
 } JSCClassPrivate;
 
 struct _JSCClass {
@@ -283,9 +282,6 @@ static void jscClassGetProperty(GObject* object, guint propID, GValue* value, GP
     JSCClass* jscClass = JSC_CLASS(object);
 
     switch (propID) {
-    case PROP_CONTEXT:
-        g_value_set_object(value, jscClass->priv->context);
-        break;
     case PROP_NAME:
         g_value_set_string(value, jscClass->priv->name.data());
         break;
@@ -303,7 +299,7 @@ static void jscClassSetProperty(GObject* object, guint propID, const GValue* val
 
     switch (propID) {
     case PROP_CONTEXT:
-        jscClass->priv->context = JSC_CONTEXT(g_value_get_object(value));
+        jscClass->priv->context = jscContextGetJSContext(JSC_CONTEXT(g_value_get_object(value)));
         break;
     case PROP_NAME:
         jscClass->priv->name = g_value_get_string(value);
@@ -347,7 +343,7 @@ static void jsc_class_class_init(JSCClassClass* klass)
             "JSCContext",
             "JSC Context",
             JSC_TYPE_CONTEXT,
-            static_cast<GParamFlags>(WEBKIT_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY)));
+            static_cast<GParamFlags>(WEBKIT_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY)));
 
     /**
      * JSCClass:name:
@@ -492,11 +488,11 @@ GRefPtr<JSCClass> jscClassCreate(JSCContext* context, const char* name, JSCClass
     JSClassDefinition prototypeDefinition = kJSClassDefinitionEmpty;
     prototypeDefinition.className = prototypeName.get();
     JSClassRef prototypeClass = JSClassCreate(&prototypeDefinition);
-    priv->prototype = jscContextGetOrCreateJSWrapper(priv->context, prototypeClass);
+    priv->prototype = jscContextGetOrCreateJSWrapper(context, prototypeClass);
     JSClassRelease(prototypeClass);
 
     if (priv->parentClass)
-        JSObjectSetPrototype(jscContextGetJSContext(priv->context), toRef(priv->prototype.get()), toRef(priv->parentClass->priv->prototype.get()));
+        JSObjectSetPrototype(jscContextGetJSContext(context), toRef(priv->prototype.get()), toRef(priv->parentClass->priv->prototype.get()));
     return jscClass;
 }
 
@@ -505,16 +501,16 @@ JSClassRef jscClassGetJSClass(JSCClass* jscClass)
     return jscClass->priv->jsClass;
 }
 
-JSC::JSObject* jscClassGetOrCreateJSWrapper(JSCClass* jscClass, gpointer wrappedObject)
+JSC::JSObject* jscClassGetOrCreateJSWrapper(JSCClass* jscClass, JSCContext* context, gpointer wrappedObject)
 {
     JSCClassPrivate* priv = jscClass->priv;
-    return jscContextGetOrCreateJSWrapper(priv->context, priv->jsClass, toRef(priv->prototype.get()), wrappedObject, priv->destroyFunction);
+    return jscContextGetOrCreateJSWrapper(context, priv->jsClass, toRef(priv->prototype.get()), wrappedObject, priv->destroyFunction);
 }
 
-JSGlobalContextRef jscClassCreateContextWithJSWrapper(JSCClass* jscClass, gpointer wrappedObject)
+JSGlobalContextRef jscClassCreateContextWithJSWrapper(JSCClass* jscClass, JSCContext* context, gpointer wrappedObject)
 {
     JSCClassPrivate* priv = jscClass->priv;
-    return jscContextCreateContextWithJSWrapper(priv->context, priv->jsClass, toRef(priv->prototype.get()), wrappedObject, priv->destroyFunction);
+    return jscContextCreateContextWithJSWrapper(context, priv->jsClass, toRef(priv->prototype.get()), wrappedObject, priv->destroyFunction);
 }
 
 void jscClassInvalidate(JSCClass* jscClass)
@@ -552,21 +548,27 @@ JSCClass* jsc_class_get_parent(JSCClass* jscClass)
     return jscClass->priv->parentClass;
 }
 
-static GRefPtr<JSCValue> jscClassCreateConstructor(JSCClass* jscClass, const char* name, GCallback callback, gpointer userData, GDestroyNotify destroyNotify, GType returnType, std::optional<Vector<GType>>&& parameters)
+static GRefPtr<JSCValue> jscClassCreateConstructor(JSCClass* jscClass, const char* name, GCallback callback, gpointer userData, GDestroyNotify destroyNotify, GType returnType, Optional<Vector<GType>>&& parameters)
 {
+    // If the constructor doesn't have arguments, we need to swap the fake instance and user data to ensure
+    // user data is the first parameter and fake instance ignored.
+    GRefPtr<GClosure> closure;
+    if (parameters && parameters->isEmpty() && userData)
+        closure = adoptGRef(g_cclosure_new_swap(callback, userData, reinterpret_cast<GClosureNotify>(reinterpret_cast<GCallback>(destroyNotify))));
+    else
+        closure = adoptGRef(g_cclosure_new(callback, userData, reinterpret_cast<GClosureNotify>(reinterpret_cast<GCallback>(destroyNotify))));
     JSCClassPrivate* priv = jscClass->priv;
-    GRefPtr<GClosure> closure = adoptGRef(g_cclosure_new(callback, userData, reinterpret_cast<GClosureNotify>(reinterpret_cast<GCallback>(destroyNotify))));
-    JSC::ExecState* exec = toJS(jscContextGetJSContext(priv->context));
+    JSC::ExecState* exec = toJS(priv->context);
     JSC::VM& vm = exec->vm();
     JSC::JSLockHolder locker(vm);
     auto* functionObject = JSC::JSCCallbackFunction::create(vm, exec->lexicalGlobalObject(), String::fromUTF8(name),
         JSC::JSCCallbackFunction::Type::Constructor, jscClass, WTFMove(closure), returnType, WTFMove(parameters));
-    auto constructor = jscContextGetOrCreateValue(priv->context, toRef(functionObject));
-    GRefPtr<JSCValue> prototype = jscContextGetOrCreateValue(priv->context, toRef(priv->prototype.get()));
+    auto context = jscContextGetOrCreate(priv->context);
+    auto constructor = jscContextGetOrCreateValue(context.get(), toRef(functionObject));
+    GRefPtr<JSCValue> prototype = jscContextGetOrCreateValue(context.get(), toRef(priv->prototype.get()));
     auto nonEnumerable = static_cast<JSCValuePropertyFlags>(JSC_VALUE_PROPERTY_CONFIGURABLE | JSC_VALUE_PROPERTY_WRITABLE);
     jsc_value_object_define_property_data(constructor.get(), "prototype", nonEnumerable, prototype.get());
     jsc_value_object_define_property_data(prototype.get(), "constructor", nonEnumerable, constructor.get());
-    priv->constructors.set(name, functionObject);
     return constructor;
 }
 
@@ -588,6 +590,9 @@ static GRefPtr<JSCValue> jscClassCreateConstructor(JSCClass* jscClass, const cha
  *
  * This function creates the constructor, which needs to be added to an object as a property to be able to use it. Use
  * jsc_context_set_value() to make the constructor available in the global object.
+ *
+ * Note that the value returned by @callback is adopted by @jsc_class, and the #GDestroyNotify passed to
+ * jsc_context_register_class() is responsible for disposing of it.
  *
  * Returns: (transfer full): a #JSCValue representing the class constructor.
  */
@@ -635,6 +640,9 @@ JSCValue* jsc_class_add_constructor(JSCClass* jscClass, const char* name, GCallb
  * This function creates the constructor, which needs to be added to an object as a property to be able to use it. Use
  * jsc_context_set_value() to make the constructor available in the global object.
  *
+ * Note that the value returned by @callback is adopted by @jsc_class, and the #GDestroyNotify passed to
+ * jsc_context_register_class() is responsible for disposing of it.
+ *
  * Returns: (transfer full): a #JSCValue representing the class constructor.
  */
 JSCValue* jsc_class_add_constructorv(JSCClass* jscClass, const char* name, GCallback callback, gpointer userData, GDestroyNotify destroyNotify, GType returnType, unsigned parametersCount, GType* parameterTypes)
@@ -676,6 +684,9 @@ JSCValue* jsc_class_add_constructorv(JSCClass* jscClass, const char* name, GCall
  * This function creates the constructor, which needs to be added to an object as a property to be able to use it. Use
  * jsc_context_set_value() to make the constructor available in the global object.
  *
+ * Note that the value returned by @callback is adopted by @jsc_class, and the #GDestroyNotify passed to
+ * jsc_context_register_class() is responsible for disposing of it.
+ *
  * Returns: (transfer full): a #JSCValue representing the class constructor.
  */
 JSCValue* jsc_class_add_constructor_variadic(JSCClass* jscClass, const char* name, GCallback callback, gpointer userData, GDestroyNotify destroyNotify, GType returnType)
@@ -689,20 +700,21 @@ JSCValue* jsc_class_add_constructor_variadic(JSCClass* jscClass, const char* nam
     if (!name)
         name = priv->name.data();
 
-    return jscClassCreateConstructor(jscClass, name ? name : priv->name.data(), callback, userData, destroyNotify, returnType, std::nullopt).leakRef();
+    return jscClassCreateConstructor(jscClass, name ? name : priv->name.data(), callback, userData, destroyNotify, returnType, WTF::nullopt).leakRef();
 }
 
-static void jscClassAddMethod(JSCClass* jscClass, const char* name, GCallback callback, gpointer userData, GDestroyNotify destroyNotify, GType returnType, std::optional<Vector<GType>>&& parameters)
+static void jscClassAddMethod(JSCClass* jscClass, const char* name, GCallback callback, gpointer userData, GDestroyNotify destroyNotify, GType returnType, Optional<Vector<GType>>&& parameters)
 {
     JSCClassPrivate* priv = jscClass->priv;
     GRefPtr<GClosure> closure = adoptGRef(g_cclosure_new(callback, userData, reinterpret_cast<GClosureNotify>(reinterpret_cast<GCallback>(destroyNotify))));
-    JSC::ExecState* exec = toJS(jscContextGetJSContext(priv->context));
+    JSC::ExecState* exec = toJS(priv->context);
     JSC::VM& vm = exec->vm();
     JSC::JSLockHolder locker(vm);
     auto* functionObject = toRef(JSC::JSCCallbackFunction::create(vm, exec->lexicalGlobalObject(), String::fromUTF8(name),
         JSC::JSCCallbackFunction::Type::Method, jscClass, WTFMove(closure), returnType, WTFMove(parameters)));
-    auto method = jscContextGetOrCreateValue(priv->context, functionObject);
-    GRefPtr<JSCValue> prototype = jscContextGetOrCreateValue(priv->context, toRef(priv->prototype.get()));
+    auto context = jscContextGetOrCreate(priv->context);
+    auto method = jscContextGetOrCreateValue(context.get(), functionObject);
+    GRefPtr<JSCValue> prototype = jscContextGetOrCreateValue(context.get(), toRef(priv->prototype.get()));
     auto nonEnumerable = static_cast<JSCValuePropertyFlags>(JSC_VALUE_PROPERTY_CONFIGURABLE | JSC_VALUE_PROPERTY_WRITABLE);
     jsc_value_object_define_property_data(prototype.get(), name, nonEnumerable, method.get());
 }
@@ -722,6 +734,11 @@ static void jscClassAddMethod(JSCClass* jscClass, const char* name, GCallback ca
  * @callback is called receiving the class instance as first parameter, followed by the method parameters and then
  * @user_data as last parameter. When the method is cleared in the #JSCClass context, @destroy_notify is called with
  * @user_data as parameter.
+ *
+ * Note that the value returned by @callback must be transfer full. In case of non-refcounted boxed types, you should use
+ * %G_TYPE_POINTER instead of the actual boxed #GType to ensure that the instance owned by #JSCClass is used.
+ * If you really want to return a new copy of the boxed type, use #JSC_TYPE_VALUE and return a #JSCValue created
+ * with jsc_value_new_object() that receives the copy as the instance parameter.
  */
 void jsc_class_add_method(JSCClass* jscClass, const char* name, GCallback callback, gpointer userData, GDestroyNotify destroyNotify, GType returnType, unsigned paramCount, ...)
 {
@@ -758,6 +775,11 @@ void jsc_class_add_method(JSCClass* jscClass, const char* name, GCallback callba
  * @callback is called receiving the class instance as first parameter, followed by the method parameters and then
  * @user_data as last parameter. When the method is cleared in the #JSCClass context, @destroy_notify is called with
  * @user_data as parameter.
+ *
+ * Note that the value returned by @callback must be transfer full. In case of non-refcounted boxed types, you should use
+ * %G_TYPE_POINTER instead of the actual boxed #GType to ensure that the instance owned by #JSCClass is used.
+ * If you really want to return a new copy of the boxed type, use #JSC_TYPE_VALUE and return a #JSCValue created
+ * with jsc_value_new_object() that receives the copy as the instance parameter.
  */
 void jsc_class_add_methodv(JSCClass* jscClass, const char* name, GCallback callback, gpointer userData, GDestroyNotify destroyNotify, GType returnType, unsigned parametersCount, GType *parameterTypes)
 {
@@ -790,6 +812,11 @@ void jsc_class_add_methodv(JSCClass* jscClass, const char* name, GCallback callb
  * @callback is called receiving the class instance as first parameter, followed by a #GPtrArray of #JSCValue<!-- -->s
  * with the method arguments and then @user_data as last parameter. When the method is cleared in the #JSCClass context,
  * @destroy_notify is called with @user_data as parameter.
+ *
+ * Note that the value returned by @callback must be transfer full. In case of non-refcounted boxed types, you should use
+ * %G_TYPE_POINTER instead of the actual boxed #GType to ensure that the instance owned by #JSCClass is used.
+ * If you really want to return a new copy of the boxed type, use #JSC_TYPE_VALUE and return a #JSCValue created
+ * with jsc_value_new_object() that receives the copy as the instance parameter.
  */
 void jsc_class_add_method_variadic(JSCClass* jscClass, const char* name, GCallback callback, gpointer userData, GDestroyNotify destroyNotify, GType returnType)
 {
@@ -798,7 +825,7 @@ void jsc_class_add_method_variadic(JSCClass* jscClass, const char* name, GCallba
     g_return_if_fail(callback);
     g_return_if_fail(jscClass->priv->context);
 
-    jscClassAddMethod(jscClass, name, callback, userData, destroyNotify, returnType, std::nullopt);
+    jscClassAddMethod(jscClass, name, callback, userData, destroyNotify, returnType, WTF::nullopt);
 }
 
 /**
@@ -816,6 +843,11 @@ void jsc_class_add_method_variadic(JSCClass* jscClass, const char* name, GCallba
  * value needs to be set, @setter is called receiving the the class instance as first parameter, followed
  * by the value to be set and then @user_data as the last parameter. When the property is cleared in the
  * #JSCClass context, @destroy_notify is called with @user_data as parameter.
+ *
+ * Note that the value returned by @getter must be transfer full. In case of non-refcounted boxed types, you should use
+ * %G_TYPE_POINTER instead of the actual boxed #GType to ensure that the instance owned by #JSCClass is used.
+ * If you really want to return a new copy of the boxed type, use #JSC_TYPE_VALUE and return a #JSCValue created
+ * with jsc_value_new_object() that receives the copy as the instance parameter.
  */
 void jsc_class_add_property(JSCClass* jscClass, const char* name, GType propertyType, GCallback getter, GCallback setter, gpointer userData, GDestroyNotify destroyNotify)
 {
@@ -827,6 +859,7 @@ void jsc_class_add_property(JSCClass* jscClass, const char* name, GType property
     JSCClassPrivate* priv = jscClass->priv;
     g_return_if_fail(priv->context);
 
-    GRefPtr<JSCValue> prototype = jscContextGetOrCreateValue(priv->context, toRef(priv->prototype.get()));
+    auto context = jscContextGetOrCreate(priv->context);
+    GRefPtr<JSCValue> prototype = jscContextGetOrCreateValue(context.get(), toRef(priv->prototype.get()));
     jsc_value_object_define_property_accessor(prototype.get(), name, JSC_VALUE_PROPERTY_CONFIGURABLE, propertyType, getter, setter, userData, destroyNotify);
 }

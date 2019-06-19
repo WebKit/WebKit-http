@@ -46,8 +46,10 @@ struct VMEntryRecord {
 
     JSObject* callee() const { return m_callee; }
 
-#if ENABLE(JIT) && NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
-    intptr_t calleeSaveRegistersBuffer[NUMBER_OF_CALLEE_SAVES_REGISTERS];
+#if !ENABLE(C_LOOP) && NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
+    CPURegister calleeSaveRegistersBuffer[NUMBER_OF_CALLEE_SAVES_REGISTERS];
+#elif ENABLE(C_LOOP)
+    CPURegister calleeSaveRegistersBuffer[1];
 #endif
 
     ExecState* prevTopCallFrame() { return m_prevTopCallFrame; }

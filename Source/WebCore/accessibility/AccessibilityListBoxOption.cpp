@@ -141,7 +141,7 @@ String AccessibilityListBoxOption::stringValue() const
     if (!m_optionElement)
         return String();
     
-    const AtomicString& ariaLabel = getAttribute(aria_labelAttr);
+    const AtomString& ariaLabel = getAttribute(aria_labelAttr);
     if (!ariaLabel.isNull())
         return ariaLabel;
     
@@ -175,9 +175,6 @@ void AccessibilityListBoxOption::setSelected(bool selected)
         return;
     
     if (!canSetSelectedAttribute())
-        return;
-    
-    if (selected && dispatchAccessibilityEventWithType(AccessibilityEventType::Select))
         return;
     
     bool isOptionSelected = isSelected();

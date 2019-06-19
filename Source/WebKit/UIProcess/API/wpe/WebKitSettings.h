@@ -394,6 +394,13 @@ webkit_settings_set_enable_media_stream                        (WebKitSettings *
                                                                 gboolean        enabled);
 
 WEBKIT_API gboolean
+webkit_settings_get_enable_mock_capture_devices                (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_enable_mock_capture_devices                (WebKitSettings *settings,
+                                                                gboolean        enabled);
+
+WEBKIT_API gboolean
 webkit_settings_get_enable_spatial_navigation                  (WebKitSettings *settings);
 
 WEBKIT_API void
@@ -434,6 +441,20 @@ webkit_settings_get_allow_universal_access_from_file_urls      (WebKitSettings *
 WEBKIT_API void
 webkit_settings_set_allow_universal_access_from_file_urls      (WebKitSettings *settings,
                                                                 gboolean        allowed);
+
+WEBKIT_API gboolean
+webkit_settings_get_enable_javascript_markup                   (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_enable_javascript_markup                   (WebKitSettings *settings,
+                                                                gboolean        enabled);
+
+WEBKIT_API gboolean
+webkit_settings_get_enable_media                               (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_enable_media                               (WebKitSettings *settings,
+                                                                gboolean        enabled);
 
 G_END_DECLS
 

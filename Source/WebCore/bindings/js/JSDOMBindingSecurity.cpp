@@ -77,6 +77,11 @@ bool BindingSecurity::shouldAllowAccessToFrame(ExecState& state, Frame& frame, S
     return false;
 }
 
+bool BindingSecurity::shouldAllowAccessToDOMWindow(ExecState& state, DOMWindow* globalObject, String& message)
+{
+    return globalObject && shouldAllowAccessToDOMWindow(state, *globalObject, message);
+}
+
 bool BindingSecurity::shouldAllowAccessToDOMWindow(ExecState& state, DOMWindow& globalObject, String& message)
 {
     if (BindingSecurity::shouldAllowAccessToDOMWindow(&state, globalObject, DoNotReportSecurityError))
@@ -90,6 +95,11 @@ bool BindingSecurity::shouldAllowAccessToDOMWindow(JSC::ExecState* state, DOMWin
     return canAccessDocument(state, target.document(), reportingOption);
 }
 
+bool BindingSecurity::shouldAllowAccessToDOMWindow(JSC::ExecState* state, DOMWindow* target, SecurityReportingOption reportingOption)
+{
+    return target && shouldAllowAccessToDOMWindow(state, *target, reportingOption);
+}
+
 bool BindingSecurity::shouldAllowAccessToFrame(JSC::ExecState* state, Frame* target, SecurityReportingOption reportingOption)
 {
     return target && canAccessDocument(state, target->document(), reportingOption);
@@ -98,21 +108,6 @@ bool BindingSecurity::shouldAllowAccessToFrame(JSC::ExecState* state, Frame* tar
 bool BindingSecurity::shouldAllowAccessToNode(JSC::ExecState& state, Node* target)
 {
     return !target || canAccessDocument(&state, &target->document(), LogSecurityError);
-}
-
-bool BindingSecurity::shouldAllowAccessToDOMWindowGivenMinimumCrossOriginWindowPolicy(JSC::ExecState* state, DOMWindow& target, CrossOriginWindowPolicy minimumCrossOriginWindowPolicy, SecurityReportingOption reportingOption)
-{
-    DOMWindow& source = activeDOMWindow(*state);
-    ASSERT(minimumCrossOriginWindowPolicy > CrossOriginWindowPolicy::Deny);
-
-    static_assert(CrossOriginWindowPolicy::Deny < CrossOriginWindowPolicy::AllowPostMessage && CrossOriginWindowPolicy::AllowPostMessage < CrossOriginWindowPolicy::Allow, "More restrictive cross-origin options should have lower values");
-
-    // Fast path.
-    auto effectiveCrossOriginWindowPolicy = std::min(source.crossOriginWindowPolicy(), target.crossOriginWindowPolicy());
-    if (effectiveCrossOriginWindowPolicy >= minimumCrossOriginWindowPolicy)
-        return true;
-
-    return shouldAllowAccessToDOMWindow(state, target, reportingOption);
 }
 
 } // namespace WebCore

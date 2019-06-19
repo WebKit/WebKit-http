@@ -13,17 +13,12 @@ if (NOT HAS_RUN_WEBKIT_COMMON)
         list(APPEND CMAKE_PROGRAM_PATH $ENV{SystemDrive}/cygwin/bin)
     endif ()
 
-    # TODO Enforce version requirement for gperf
-    find_package(Gperf 3.0.1 REQUIRED)
-
     # TODO Enforce version requirement for perl
     find_package(Perl 5.10.0 REQUIRED)
     find_package(PerlModules COMPONENTS JSON::PP REQUIRED)
 
+    set(Python_ADDITIONAL_VERSIONS 3)
     find_package(PythonInterp 2.7.0 REQUIRED)
-    if (PYTHON_VERSION_MAJOR GREATER 2)
-        message(FATAL_ERROR "Python 2 is required, but Python ${PYTHON_VERSION_MAJOR} was found.")
-    endif ()
 
     # We cannot check for RUBY_FOUND because it is set only when the full package is installed and
     # the only thing we need is the interpreter. Unlike Python, cmake does not provide a macro
@@ -59,6 +54,13 @@ if (NOT HAS_RUN_WEBKIT_COMMON)
 
     include(OptionsCommon)
     include(Options${PORT})
+
+    # Check gperf after including OptionsXXX.cmake since gperf is required only when ENABLE_WEBCORE is true,
+    # and ENABLE_WEBCORE is configured in OptionsXXX.cmake.
+    if (ENABLE_WEBCORE)
+        # TODO Enforce version requirement for gperf
+        find_package(Gperf 3.0.1 REQUIRED)
+    endif ()
 
     # -----------------------------------------------------------------------------
     # Job pool to avoid running too many memory hungry linker processes

@@ -30,41 +30,65 @@
 #include "LayoutUnit.h"
 #include "LayoutPoint.h"
 #include "LayoutRect.h"
+#include "MarginTypes.h"
+#include <wtf/Optional.h>
 
 namespace WebCore {
 namespace Layout {
 
 struct Position {
-    // FIXME: Use LayoutUnit<Horizontal> to avoid top/left vs. x/y confusion.
+    operator LayoutUnit() const { return value; }
+    LayoutUnit value;
+};
+
+inline bool operator<(const Position& a, const Position& b)
+{
+    return a.value < b.value;
+}
+
+inline bool operator==(const Position& a, const Position& b)
+{
+    return a.value == b.value;
+}
+
+struct Point {
+    // FIXME: Use Position<Horizontal>, Position<Vertical> to avoid top/left vs. x/y confusion.
     LayoutUnit x; // left
     LayoutUnit y; // top
 
-    Position() = default;
-    Position(LayoutUnit, LayoutUnit);
-    Position(LayoutPoint);
+    Point() = default;
+    Point(LayoutUnit, LayoutUnit);
+    Point(LayoutPoint);
+    static Point max() { return { LayoutUnit::max(), LayoutUnit::max() }; }
+
+    void move(LayoutSize);
     void moveBy(LayoutPoint);
     operator LayoutPoint() const { return { x, y }; }
 };
 
 // FIXME: Wrap these into structs.
-using PointInContextRoot = Position;
-using PointInContainingBlock = Position;
-using PositionInContextRoot = LayoutUnit;
-using PositionInContainingBlock = LayoutUnit;
+using PointInContextRoot = Point;
+using PositionInContextRoot = Position;
 
-inline Position::Position(LayoutPoint point)
+inline Point::Point(LayoutPoint point)
     : x(point.x())
     , y(point.y())
 {
 }
 
-inline Position::Position(LayoutUnit x, LayoutUnit y)
+inline Point::Point(LayoutUnit x, LayoutUnit y)
     : x(x)
     , y(y)
 {
 }
 
-inline void Position::moveBy(LayoutPoint offset)
+inline void Point::move(LayoutSize offset)
+{
+    x += offset.width();
+    y += offset.height();
+}
+
+inline void Point::moveBy(LayoutPoint offset)
 {
     x += offset.x();
     y += offset.y();
@@ -88,14 +112,13 @@ struct Edges {
 
 struct WidthAndMargin {
     LayoutUnit width;
-    HorizontalEdges margin;
-    HorizontalEdges nonComputedMargin;
+    UsedHorizontalMargin usedMargin;
+    ComputedHorizontalMargin computedMargin;
 };
 
 struct HeightAndMargin {
     LayoutUnit height;
-    VerticalEdges margin;
-    std::optional<VerticalEdges> collapsedMargin;
+    UsedVerticalMargin::NonCollapsedValues nonCollapsedMargin;
 };
 
 struct HorizontalGeometry {
@@ -108,6 +131,32 @@ struct VerticalGeometry {
     LayoutUnit top;
     LayoutUnit bottom;
     HeightAndMargin heightAndMargin;
+};
+
+struct UsedHorizontalValues {
+    explicit UsedHorizontalValues()
+        {
+        }
+
+    explicit UsedHorizontalValues(LayoutUnit containingBlockWidth)
+        : containingBlockWidth(containingBlockWidth)
+        {
+        }
+
+    explicit UsedHorizontalValues(Optional<LayoutUnit> containingBlockWidth, Optional<LayoutUnit> width, Optional<UsedHorizontalMargin> margin)
+        : containingBlockWidth(containingBlockWidth)
+        , width(width)
+        , margin(margin)
+        {
+        }
+
+    Optional<LayoutUnit> containingBlockWidth;
+    Optional<LayoutUnit> width;
+    Optional<UsedHorizontalMargin> margin;
+};
+
+struct UsedVerticalValues {
+    Optional<LayoutUnit> height;
 };
 
 }

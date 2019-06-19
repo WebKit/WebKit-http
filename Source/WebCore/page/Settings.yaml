@@ -74,7 +74,7 @@ defaultFontSize:
   onChange: setNeedsRecalcStyleInAllFrames
 defaultFixedFontSize:
   type: int
-  initial: 0
+  initial: 13
   onChange: setNeedsRecalcStyleInAllFrames
 
 editingBehaviorType:
@@ -115,9 +115,6 @@ javaScriptCanAccessClipboard:
   initial: false
 shouldPrintBackgrounds:
   initial: false
-usesDashboardBackwardCompatibilityMode:
-  initial: false
-  conditional: DASHBOARD_SUPPORT
 clipboardAccessPolicy:
   type: ClipboardAccessPolicy
   initial: ClipboardAccessPolicy::RequiresUserGesture
@@ -128,6 +125,7 @@ textAreasAreResizable:
 authorAndUserStylesEnabled:
   initial: true
   onChange: setNeedsRecalcStyleInAllFrames
+  inspectorOverride: true
 userStyleSheetLocation:
   type: URL
   onChange: userStyleSheetLocationChanged
@@ -179,6 +177,7 @@ scriptMarkupEnabled:
   initial: true
 needsSiteSpecificQuirks:
   initial: false
+  inspectorOverride: true
 domTimersThrottlingEnabled:
   initial: true
 webArchiveDebugModeEnabled:
@@ -218,8 +217,6 @@ xssAuditorEnabled:
   initial: false
 acceleratedCompositingForFixedPositionEnabled:
   initial: defaultAcceleratedCompositingForFixedPositionEnabled
-acceleratedCompositingForOverflowScrollEnabled:
-  initial: false
 rubberBandingForSubScrollableRegionsEnabled:
   initial: true
   conditional: RUBBER_BANDING
@@ -229,6 +226,8 @@ experimentalNotificationsEnabled:
 webGLEnabled:
   initial: false
 webGLErrorsToConsoleEnabled:
+  initial: true
+unhandledPromiseRejectionToConsoleEnabled:
   initial: true
 forceSoftwareWebGLRendering:
   initial: false
@@ -333,11 +332,20 @@ wantsBalancedSetDefersLoadingBehavior:
 requestAnimationFrameEnabled:
   initial: true
 
+HTTPSUpgradeEnabled:
+  initial: false
+
+thirdPartyIframeRedirectBlockingEnabled:
+  initial: true
+
 cookieEnabled:
   initial: true
 mediaEnabled:
   initial: defaultMediaEnabled
 DOMPasteAllowed:
+  initial: false
+
+domPasteAccessRequestsEnabled:
   initial: false
 
 # When enabled, window.blur() does not change focus, and
@@ -348,29 +356,47 @@ windowFocusRestricted:
 
 diagnosticLoggingEnabled:
   initial: false
+
 delegatesPageScaling:
   initial: false
+
 plugInSnapshottingEnabled:
   initial: false
+
 snapshotAllPlugIns:
   initial: false
+
 autostartOriginPlugInSnapshottingEnabled:
   initial: true
+
 primaryPlugInSnapshotDetectionEnabled:
   initial: true
+
 maximumPlugInSnapshotAttempts:
   type: unsigned
   initial: 20
+
 frameFlattening:
   type: FrameFlattening
   initial: FrameFlattening::Disabled
   onChange: setNeedsRelayoutAllFrames
+
 asyncFrameScrollingEnabled:
   initial: false
   onChange: setNeedsRelayoutAllFrames
 
+asyncOverflowScrollingEnabled:
+  initial: false
+  onChange: setNeedsRelayoutAllFrames
+
+legacyOverflowScrollingTouchEnabled:
+  initial: true
+  onChange: setNeedsRelayoutAllFrames
+  conditional: OVERFLOW_SCROLLING_TOUCH
+
 webSecurityEnabled:
   initial: true
+  inspectorOverride: true
 spatialNavigationEnabled:
   initial: false
 
@@ -395,6 +421,8 @@ smartInsertDeleteEnabled:
   initial: defaultSmartInsertDeleteEnabled
 selectTrailingWhitespaceEnabled:
   initial: defaultSelectTrailingWhitespaceEnabled
+selectionAcrossShadowBoundariesEnabled:
+  initial: true
 
 useLegacyBackgroundSizeShorthandBehavior:
   initial: false
@@ -413,6 +441,10 @@ minimumZoomFontSize:
   type: float
   initial: defaultMinimumZoomFontSize()
   conditional: TEXT_AUTOSIZING
+textAutosizingUsesIdempotentMode:
+  initial: false
+  onChange: setNeedsRecalcStyleInAllFrames
+  conditional: TEXT_AUTOSIZING
 
 subpixelAntialiasedLayerTextEnabled:
   initial: false
@@ -424,6 +456,9 @@ simpleLineLayoutDebugBordersEnabled:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
 
+contentChangeObserverEnabled:
+  initial: defaultContentChangeObserverEnabled()
+
 subpixelCSSOMElementMetricsEnabled:
   initial: false
 
@@ -431,11 +466,11 @@ useGiantTiles:
   initial: false
 
 mediaSourceEnabled:
-  initial: true
+  initial: platformDefaultMediaSourceEnabled()
   conditional: MEDIA_SOURCE
 
 sourceBufferChangeTypeEnabled:
-  initial: false
+  initial: true
   conditional: MEDIA_SOURCE
 
 # FIXME: Rename to allowMultiElementImplicitFormSubmission once we upstream the iOS changes to WebView.mm.
@@ -528,9 +563,6 @@ shouldConvertInvalidURLsToBlank:
 springTimingFunctionEnabled:
   initial: false
 
-conicGradientsEnabled:
-  initial: defaultConicGradient
-
 colorFilterEnabled:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
@@ -552,11 +584,14 @@ layoutViewportHeightExpansionFactor:
 
 # Runtime-enabled features
 visualViewportEnabled:
-  initial: false
+  initial: true
   onChange: setNeedsRecalcStyleInAllFrames
 
 visualViewportAPIEnabled:
   initial: false
+
+syntheticEditingCommandsEnabled:
+  initial: true
 
 CSSOMViewScrollingAPIEnabled:
   initial: false
@@ -630,15 +665,18 @@ fontLoadTimingOverride:
 shouldIgnoreFontLoadCompletions:
   initial: false
 
-paymentRequestEnabled:
-  initial: false
-  conditional: PAYMENT_REQUEST
-applePayEnabled:
-  initial: false
-  conditional: APPLE_PAY
 applePayCapabilityDisclosureAllowed:
-  initial: true
   conditional: APPLE_PAY
+  initial: true
+applePayEnabled:
+  conditional: APPLE_PAY
+  initial: defaultApplePayEnabled
+applePayRemoteUIEnabled:
+  conditional: APPLE_PAY_REMOTE_UI
+  initial: true
+paymentRequestEnabled:
+  conditional: PAYMENT_REQUEST
+  initial: false
 
 javaEnabled:
   initial: false
@@ -656,10 +694,11 @@ imagesEnabled:
   initial: true
   getter: areImagesEnabled
   onChange: imagesEnabledChanged
+  inspectorOverride: true
 scriptEnabled:
   initial: false
   getter: isScriptEnabled
-  onChange: scriptEnabledChanged
+  inspectorOverride: true
 pluginsEnabled:
   initial: false
   getter: arePluginsEnabled
@@ -700,6 +739,10 @@ shouldAllowUserInstalledFonts:
   initial: true
   onChange: setNeedsRecalcStyleInAllFrames
 
+resizeObserverEnabled:
+  initial: false
+  conditional: RESIZE_OBSERVER
+
 # Only set by Layout Tests.
 mediaTypeOverride:
   type: String
@@ -739,6 +782,16 @@ touchEventEmulationEnabled:
   getter: isTouchEventEmulationEnabled
   conditional: TOUCH_EVENTS
 
+deviceOrientationEventEnabled:
+  type: bool
+  initial: true
+  conditional: DEVICE_ORIENTATION
+
+deviceOrientationPermissionAPIEnabled:
+  type: bool
+  initial: false
+  conditional: DEVICE_ORIENTATION
+
 shouldEnableTextAutosizingBoost:
   type: bool
   initial: false
@@ -748,22 +801,63 @@ shouldEnableTextAutosizingBoost:
 mediaCapabilitiesEnabled:
   initial: false
 
-resourceLoadStatisticsDebugMode:
+mediaCapabilitiesExtensionsEnabled:
+  type: bool
   initial: false
 
 clientCoordinatesRelativeToLayoutViewport:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
 
-crossOriginWindowPolicySupportEnabled:
-  initial: false
-
-accessibilityEventsEnabled:
-  initial: true
-  conditional: ACCESSIBILITY_EVENTS
-
 incompleteImageBorderEnabled:
   initial: false
 
 shouldDeferAsynchronousScriptsUntilAfterDocumentLoad:
   initial: false
+
+shouldIgnoreMetaViewport:
+  initial: false
+
+videoQualityIncludesDisplayCompositingEnabled:
+  initial: false
+  conditional: VIDEO
+
+editableImagesEnabled:
+  initial: false
+
+adClickAttributionEnabled:
+  initial: false
+
+coreMathMLEnabled:
+  initial: false
+  onChange: setNeedsRecalcStyleInAllFrames
+
+blockingOfSmallPluginsEnabled:
+  initial: true
+
+shouldDecidePolicyBeforeLoadingQuickLookPreview:
+  initial: false
+
+shouldDispatchSyntheticMouseEventsWhenModifyingSelection:
+  initial: false
+
+allowViewportShrinkToFitContent:
+  initial: true
+
+# Deprecated
+
+iceCandidateFilteringEnabled:
+  initial: true
+  onChange: iceCandidateFilteringEnabledChanged
+  inspectorOverride: true
+
+mockCaptureDevicesEnabled:
+  initial: false
+  conditional: MEDIA_STREAM
+  onChange: mockCaptureDevicesEnabledChanged
+  inspectorOverride: true
+
+mediaCaptureRequiresSecureConnection:
+  initial: true
+  conditional: MEDIA_STREAM
+  inspectorOverride: true

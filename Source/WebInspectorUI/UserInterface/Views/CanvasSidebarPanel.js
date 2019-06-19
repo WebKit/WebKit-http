@@ -40,13 +40,22 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
         const altToolTip = WI.UIString("Stop recording canvas actions");
         this._recordButtonNavigationItem = new WI.ToggleButtonNavigationItem("record-start-stop", toolTip, altToolTip, "Images/Record.svg", "Images/Stop.svg", 13, 13);
         this._recordButtonNavigationItem.enabled = false;
+        this._recordButtonNavigationItem.buttonStyle = WI.ButtonNavigationItem.Style.ImageAndText;
+        this._recordButtonNavigationItem.label = WI.UIString("Start");
         this._recordButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._toggleRecording, this);
         this._navigationBar.addNavigationItem(this._recordButtonNavigationItem);
 
+        this._navigationBar.addNavigationItem(new WI.DividerNavigationItem);
+
+        let importButtonNavigationItem = new WI.ButtonNavigationItem("import-recording", WI.UIString("Import"), "Images/Import.svg", 15, 15);
+        importButtonNavigationItem.buttonStyle = WI.ButtonNavigationItem.Style.ImageAndText;
+        importButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
+        importButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._handleImportButtonNavigationItemClicked, this);
+        this._navigationBar.addNavigationItem(importButtonNavigationItem);
+
         this.addSubview(this._navigationBar);
 
-        const suppressFiltering = true;
-        this._canvasTreeOutline = this.createContentTreeOutline(suppressFiltering);
+        this._canvasTreeOutline = this.createContentTreeOutline({suppressFiltering: true});
         this._canvasTreeOutline.element.classList.add("canvas");
 
         this._recordingNavigationBar = new WI.NavigationBar;
@@ -62,11 +71,8 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
         this._recordingTreeOutline.customIndent = true;
         this._recordingTreeOutline.registerScrollVirtualizer(this._recordingContentContainer, 20);
 
-        this._canvasTreeOutline.addEventListener(WI.TreeOutline.Event.SelectionDidChange, this._treeOutlineSelectionDidChange, this);
-        this._recordingTreeOutline.addEventListener(WI.TreeOutline.Event.SelectionDidChange, this._treeOutlineSelectionDidChange, this);
-
-        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingStarted, this._updateRecordNavigationItem, this);
-        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingStopped, this._updateRecordNavigationItem, this);
+        this._canvasTreeOutline.addEventListener(WI.TreeOutline.Event.SelectionDidChange, this._treeSelectionDidChange, this);
+        this._recordingTreeOutline.addEventListener(WI.TreeOutline.Event.SelectionDidChange, this._treeSelectionDidChange, this);
 
         this._recordingProcessingOptionsContainer = null;
 
@@ -85,11 +91,15 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
         if (this._canvas === canvas)
             return;
 
-        if (this._canvas)
+        if (this._canvas) {
+            this._canvas.removeEventListener(null, null, this);
             this._canvas.recordingCollection.removeEventListener(null, null, this);
+        }
 
         this._canvas = canvas;
         if (this._canvas) {
+            this._canvas.addEventListener(WI.Canvas.Event.RecordingStarted, this._updateRecordNavigationItem, this);
+            this._canvas.addEventListener(WI.Canvas.Event.RecordingStopped, this._updateRecordNavigationItem, this);
             this._canvas.recordingCollection.addEventListener(WI.Collection.Event.ItemAdded, this._recordingAdded, this);
             this._canvas.recordingCollection.addEventListener(WI.Collection.Event.ItemRemoved, this._recordingRemoved, this);
         }
@@ -104,17 +114,15 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
         if (recording === this._recording)
             return;
 
-        if (this._recording) {
-            this._recording.removeEventListener(WI.Recording.Event.ProcessedAction, this._handleRecordingProcessedAction, this);
-            this._recording.removeEventListener(WI.Recording.Event.StartProcessingFrame, this._handleRecordingStartProcessingFrame, this);
-        }
+        if (this._recording)
+            this._recording.removeEventListener(null, null, this);
 
         if (recording)
             this.canvas = recording.source;
 
         this._recording = recording;
 
-        if (this._recording) {
+        if (this._recording && !this._recording.ready) {
             this._recording.addEventListener(WI.Recording.Event.ProcessedAction, this._handleRecordingProcessedAction, this);
             this._recording.addEventListener(WI.Recording.Event.StartProcessingFrame, this._handleRecordingStartProcessingFrame, this);
         }
@@ -159,12 +167,61 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
         this._selectedRecordingActionIndex = this._recording.actions.indexOf(action);
     }
 
+    updateRepresentedObjects()
+    {
+        let objects = this.contentBrowser.currentRepresentedObjects;
+
+        let canvas = objects.find((object) => object instanceof WI.Canvas);
+        if (canvas) {
+            this.canvas = canvas;
+            return;
+        }
+
+        let shaderProgram = objects.find((object) => object instanceof WI.ShaderProgram);
+        if (shaderProgram) {
+            this.canvas = shaderProgram.canvas;
+            let treeElement = this._canvasTreeOutline.findTreeElement(shaderProgram);
+            const omitFocus = false;
+            const selectedByUser = false;
+            treeElement.revealAndSelect(omitFocus, selectedByUser);
+            return;
+        }
+
+        let recording = objects.find((object) => object instanceof WI.Recording);
+        if (recording) {
+            this.canvas = recording.source;
+
+            this.recording = recording;
+
+            let recordingAction = objects.find((object) => object instanceof WI.RecordingAction);
+            if (recordingAction !== recording[WI.CanvasSidebarPanel.SelectedActionSymbol])
+                this.action = recordingAction;
+
+            return;
+        }
+
+        this.canvas = null;
+        this.recording = null;
+    }
+
     shown()
     {
         super.shown();
 
-        this.contentBrowser.addEventListener(WI.ContentBrowser.Event.CurrentRepresentedObjectsDidChange, this._currentRepresentedObjectsDidChange, this);
-        this._currentRepresentedObjectsDidChange();
+        this.contentBrowser.addEventListener(WI.ContentBrowser.Event.CurrentRepresentedObjectsDidChange, this.updateRepresentedObjects, this);
+        this.updateRepresentedObjects();
+
+        if (this._recording) {
+            this._recordingTreeOutline.updateVirtualizedElementsDebouncer.force();
+
+            let action = this._recording[WI.CanvasSidebarPanel.SelectedActionSymbol];
+            let treeElement = this._recordingTreeOutline.findTreeElement(action);
+            if (treeElement) {
+                const omitFocus = false;
+                const selectedByUser = false;
+                treeElement.revealAndSelect(omitFocus, selectedByUser);
+            }
+        }
     }
 
     hidden()
@@ -183,6 +240,11 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
     }
 
     // Protected
+
+    get scrollElement()
+    {
+        return this._recordingContentContainer;
+    }
 
     hasCustomFilters()
     {
@@ -246,52 +308,22 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
         if (!this._canvas)
             return;
 
-        if (this._canvas.isRecording)
-            WI.canvasManager.stopRecording();
-        else if (!WI.canvasManager.recordingCanvas) {
+        if (this._canvas.recordingActive)
+            this._canvas.stopRecording();
+        else {
             let singleFrame = event.data.nativeEvent.shiftKey;
-            WI.canvasManager.startRecording(this._canvas, singleFrame);
+            this._canvas.startRecording(singleFrame);
         }
     }
 
-    _currentRepresentedObjectsDidChange(event)
+    _handleImportButtonNavigationItemClicked(event)
     {
-        let objects = this.contentBrowser.currentRepresentedObjects;
-
-        let canvas = objects.find((object) => object instanceof WI.Canvas);
-        if (canvas) {
-            this.canvas = canvas;
-            return;
-        }
-
-        let shaderProgram = objects.find((object) => object instanceof WI.ShaderProgram);
-        if (shaderProgram) {
-            this.canvas = shaderProgram.canvas;
-            let treeElement = this._canvasTreeOutline.findTreeElement(shaderProgram);
-            const omitFocus = false;
-            const selectedByUser = false;
-            treeElement.revealAndSelect(omitFocus, selectedByUser);
-            return;
-        }
-
-        let recording = objects.find((object) => object instanceof WI.Recording);
-        if (recording) {
-            this.recording = recording;
-
-            let recordingAction = objects.find((object) => object instanceof WI.RecordingAction);
-            if (recordingAction !== recording[WI.CanvasSidebarPanel.SelectedActionSymbol])
-                this.action = recordingAction;
-
-            return;
-        }
-
-        this.canvas = null;
-        this.recording = null;
+        WI.FileUtilities.importJSON((result) => WI.canvasManager.processJSON(result));
     }
 
-    _treeOutlineSelectionDidChange(event)
+    _treeSelectionDidChange(event)
     {
-        let treeElement = event.data.selectedElement;
+        let treeElement = event.target.selectedTreeElement;
         if (!treeElement)
             return;
 
@@ -317,6 +349,8 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
         if (!recordingContentView)
             return;
 
+        this.contentBrowser.showContentView(recordingContentView);
+
         this._selectedRecordingActionIndex = treeElement.index;
         recordingContentView.updateActionIndex(this._selectedRecordingActionIndex);
     }
@@ -339,7 +373,7 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
         const selectedByUser = false;
         canvasTreeElement.revealAndSelect(omitFocus, selectedByUser);
 
-        if (WI.Canvas.ContextType.Canvas2D || this._canvas.contextType === WI.Canvas.ContextType.WebGL)
+        if (WI.Canvas.ContextType.Canvas2D || this._canvas.contextType === WI.Canvas.ContextType.WebGL || this._canvas.contextType === WI.Canvas.ContextType.WebGL2)
             this._recordButtonNavigationItem.enabled = true;
 
         this.recording = null;
@@ -349,13 +383,15 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
     {
         this._recordingTreeOutline.removeChildren();
 
-        if (!this._recording) {
-            if (this._recordingProcessingOptionsContainer) {
-                this._recordingProcessingOptionsContainer.remove();
-                this._recordingProcessingOptionsContainer = null;
-            }
-            return;
+        this._selectedRecordingActionIndex = NaN;
+
+        if (this._recordingProcessingOptionsContainer) {
+            this._recordingProcessingOptionsContainer.remove();
+            this._recordingProcessingOptionsContainer = null;
         }
+
+        if (!this._recording)
+            return;
 
         if (!this._recording.ready) {
             if (!this._recording.processing)
@@ -436,14 +472,13 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
 
     _updateRecordNavigationItem()
     {
-        if (!this._canvas || !(this._canvas.contextType === WI.Canvas.ContextType.Canvas2D || this._canvas.contextType === WI.Canvas.ContextType.WebGL)) {
+        if (!this._canvas || !(this._canvas.contextType === WI.Canvas.ContextType.Canvas2D || this._canvas.contextType === WI.Canvas.ContextType.WebGL || this._canvas.contextType === WI.Canvas.ContextType.WebGL2)) {
             this._recordButtonNavigationItem.enabled = false;
             return;
         }
 
-        let isRecording = this._canvas.isRecording;
-        this._recordButtonNavigationItem.enabled = isRecording || !WI.canvasManager.recordingCanvas;
-        this._recordButtonNavigationItem.toggled = isRecording;
+        this._recordButtonNavigationItem.toggled = this._canvas.recordingActive;
+        this._recordButtonNavigationItem.label = this._recordButtonNavigationItem.toggled ? WI.UIString("Stop") : WI.UIString("Start");
     }
 
     _updateRecordingScopeBar()
@@ -486,16 +521,13 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
         if (!selectedScopeBarItem) {
             selectedScopeBarItem = scopeBarItems[0];
 
-            const exclusive = true;
-            const className = null;
-            const hidden = true;
-            this._placeholderScopeBarItem = new WI.ScopeBarItem("canvas-recording-scope-bar-item-placeholder", WI.UIString("Recordings"), exclusive, className, hidden);
+            this._placeholderScopeBarItem = new WI.ScopeBarItem("canvas-recording-scope-bar-item-placeholder", WI.UIString("Recordings"), {exclusive: true, hidden: true});
             this._placeholderScopeBarItem.selected = true;
 
             scopeBarItems.unshift(this._placeholderScopeBarItem);
         }
 
-        this._scopeBar = new WI.ScopeBar("canvas-recordinga-scope-bar", scopeBarItems, selectedScopeBarItem, true);
+        this._scopeBar = new WI.ScopeBar("canvas-recording-scope-bar", scopeBarItems, selectedScopeBarItem, true);
         this._scopeBar.addEventListener(WI.ScopeBar.Event.SelectionChanged, this._scopeBarSelectionChanged, this);
         this._recordingNavigationBar.insertNavigationItem(this._scopeBar, 0);
     }
@@ -557,12 +589,18 @@ WI.CanvasSidebarPanel = class CanvasSidebarPanel extends WI.NavigationSidebarPan
         console.assert(isInitialStateAction || this._recordingTreeOutline.children.lastValue instanceof WI.FolderTreeElement, "There should be a WI.FolderTreeElement for the frame for this action.");
         this._createRecordingActionTreeElement(action, index, isInitialStateAction ? this._recordingTreeOutline : this._recordingTreeOutline.children.lastValue);
 
-        if (isInitialStateAction && !this._recording[WI.CanvasSidebarPanel.SelectedActionSymbol])
-            this.action = action;
+        if (!this._recording[WI.CanvasSidebarPanel.SelectedActionSymbol]) {
+            console.assert(action === this._recording.actions[0]);
+            this.action = this._recording.actions[0];
+        }
 
-        if (action === this._recording.actions.lastValue && this._recordingProcessingOptionsContainer) {
-            this._recordingProcessingOptionsContainer.remove();
-            this._recordingProcessingOptionsContainer = null;
+        if (this._recording.ready) {
+            this._recording.removeEventListener(null, null, this);
+
+            if (this._recordingProcessingOptionsContainer) {
+                this._recordingProcessingOptionsContainer.remove();
+                this._recordingProcessingOptionsContainer = null;
+            }
         }
     }
 

@@ -38,20 +38,28 @@ WI.RecordingActionTreeElement = class RecordingActionTreeElement extends WI.Gene
         this._index = index;
         this._copyText = copyText;
 
-        this.representedObject.addEventListener(WI.RecordingAction.Event.ValidityChanged, this._handleValidityChanged, this);
+        if (this.representedObject.valid)
+            this.representedObject.addEventListener(WI.RecordingAction.Event.ValidityChanged, this._handleValidityChanged, this);
     }
 
     // Static
 
     static _generateDOM(recordingAction, recordingType)
     {
-        function createParameterElement(parameter, swizzleType) {
+        let parameterCount = recordingAction.parameters.length;
+
+        function createParameterElement(parameter, swizzleType, index) {
             let parameterElement = document.createElement("span");
             parameterElement.classList.add("parameter");
 
             switch (swizzleType) {
             case WI.Recording.Swizzle.Number:
-                parameterElement.textContent = parameter.maxDecimals(2);
+                var constantNameForParameter = WI.RecordingAction.constantNameForParameter(recordingType, recordingAction.name, parameter, index, parameterCount);
+                if (constantNameForParameter) {
+                    parameterElement.classList.add("constant");
+                    parameterElement.textContent = "context." + constantNameForParameter;
+                } else
+                    parameterElement.textContent = parameter.maxDecimals(2);
                 break;
 
             case WI.Recording.Swizzle.Boolean:
@@ -82,6 +90,11 @@ WI.RecordingActionTreeElement = class RecordingActionTreeElement extends WI.Gene
             case WI.Recording.Swizzle.WebGLShader:
             case WI.Recording.Swizzle.WebGLProgram:
             case WI.Recording.Swizzle.WebGLUniformLocation:
+            case WI.Recording.Swizzle.WebGLQuery:
+            case WI.Recording.Swizzle.WebGLSampler:
+            case WI.Recording.Swizzle.WebGLSync:
+            case WI.Recording.Swizzle.WebGLTransformFeedback:
+            case WI.Recording.Swizzle.WebGLVertexArrayObject:
                 parameterElement.classList.add("swizzled");
                 parameterElement.textContent = WI.Recording.displayNameForSwizzleType(swizzleType);
                 break;
@@ -98,11 +111,20 @@ WI.RecordingActionTreeElement = class RecordingActionTreeElement extends WI.Gene
         let titleFragment = document.createDocumentFragment();
         let copyText = recordingAction.name;
 
+        let contextReplacer = recordingAction.contextReplacer;
+        if (contextReplacer) {
+            copyText = contextReplacer + "." + copyText;
+
+            let contextReplacerContainer = titleFragment.appendChild(document.createElement("span"));
+            contextReplacerContainer.classList.add("context-replacer");
+            contextReplacerContainer.textContent = contextReplacer;
+        }
+
         let nameContainer = titleFragment.appendChild(document.createElement("span"));
         nameContainer.classList.add("name");
         nameContainer.textContent = recordingAction.name;
 
-        if (!recordingAction.parameters.length)
+        if (!parameterCount)
             return {titleFragment, copyText};
 
         let parametersContainer = titleFragment.appendChild(document.createElement("span"));
@@ -113,10 +135,10 @@ WI.RecordingActionTreeElement = class RecordingActionTreeElement extends WI.Gene
         else
             copyText += " = ";
 
-        for (let i = 0; i < recordingAction.parameters.length; ++i) {
+        for (let i = 0; i < parameterCount; ++i) {
             let parameter = recordingAction.parameters[i];
             let swizzleType = recordingAction.swizzleTypes[i];
-            let parameterElement = createParameterElement(parameter, swizzleType);
+            let parameterElement = createParameterElement(parameter, swizzleType, i);
             parametersContainer.appendChild(parameterElement);
 
             if (i)
@@ -133,13 +155,7 @@ WI.RecordingActionTreeElement = class RecordingActionTreeElement extends WI.Gene
             let swatch = WI.RecordingActionTreeElement._createSwatchForColorParameters(colorParameters);
             if (swatch) {
                 let insertionIndex = recordingAction.parameters.indexOf(colorParameters[0]);
-                let parameterElement = parametersContainer.children[insertionIndex];
-                parametersContainer.insertBefore(swatch.element, parameterElement);
-
-                if (recordingAction.swizzleTypes[insertionIndex] === WI.Recording.Swizzle.String) {
-                    parameterElement.textContent = swatch.value.toString();
-                    parameterElement.classList.add("color");
-                }
+                parametersContainer.insertBefore(swatch.element, parametersContainer.children[insertionIndex]);
             }
         }
 
@@ -181,7 +197,7 @@ WI.RecordingActionTreeElement = class RecordingActionTreeElement extends WI.Gene
         case 1:
         case 2:
             if (typeof parameters[0] === "string")
-                color = WI.Color.fromString(parameters[0]);
+                color = WI.Color.fromString(parameters[0].trim());
             else if (!isNaN(parameters[0]))
                 rgb = WI.Color.normalized2rgb(parameters[0], parameters[0], parameters[0]);
             break;
@@ -215,7 +231,7 @@ WI.RecordingActionTreeElement = class RecordingActionTreeElement extends WI.Gene
 
     static _getClassNames(recordingAction)
     {
-        let classNames = ["action"];
+        let classNames = ["recording-action"];
 
         if (recordingAction instanceof WI.RecordingInitialStateAction) {
             classNames.push("initial-state");
@@ -240,129 +256,121 @@ WI.RecordingActionTreeElement = class RecordingActionTreeElement extends WI.Gene
 
     static _classNameForAction(recordingAction)
     {
-        function classNameForActionName(name) {
-            switch (name) {
-            case "arc":
-            case "arcTo":
-                return "arc";
+        if (recordingAction.contextReplacer)
+            return "has-context-replacer";
 
-            case "globalAlpha":
-            case "globalCompositeOperation":
-            case "setAlpha":
-            case "setGlobalAlpha":
-            case "setCompositeOperation":
-            case "setGlobalCompositeOperation":
-                return "composite";
+        switch (recordingAction.name) {
+        case "arc":
+        case "arcTo":
+            return "arc";
 
-            case "bezierCurveTo":
-            case "quadraticCurveTo":
-                return "curve";
+        case "globalAlpha":
+        case "globalCompositeOperation":
+        case "setAlpha":
+        case "setGlobalAlpha":
+        case "setCompositeOperation":
+        case "setGlobalCompositeOperation":
+            return "composite";
 
-            case "clearRect":
-            case "fill":
-            case "fillRect":
-            case "fillText":
-                return "fill";
+        case "bezierCurveTo":
+        case "quadraticCurveTo":
+            return "curve";
 
-            case "createImageData":
-            case "drawFocusIfNeeded":
-            case "drawImage":
-            case "drawImageFromRect":
-            case "filter":
-            case "getImageData":
-            case "imageSmoothingEnabled":
-            case "imageSmoothingQuality":
-            case "putImageData":
-            case "webkitImageSmoothingEnabled":
-                return "image";
+        case "clearRect":
+        case "fill":
+        case "fillRect":
+        case "fillText":
+            return "fill";
 
-            case "getLineDash":
-            case "lineCap":
-            case "lineDashOffset":
-            case "lineJoin":
-            case "lineWidth":
-            case "miterLimit":
-            case "setLineCap":
-            case "setLineDash":
-            case "setLineJoin":
-            case "setLineWidth":
-            case "setMiterLimit":
-            case "webkitLineDash":
-            case "webkitLineDashOffset":
-                return "line-style";
+        case "createImageData":
+        case "drawFocusIfNeeded":
+        case "drawImage":
+        case "drawImageFromRect":
+        case "filter":
+        case "getImageData":
+        case "imageSmoothingEnabled":
+        case "imageSmoothingQuality":
+        case "putImageData":
+        case "transferFromImageBitmap":
+        case "webkitImageSmoothingEnabled":
+            return "image";
 
-            case "closePath":
-            case "lineTo":
-                return "line-to";
+        case "getLineDash":
+        case "lineCap":
+        case "lineDashOffset":
+        case "lineJoin":
+        case "lineWidth":
+        case "miterLimit":
+        case "setLineCap":
+        case "setLineDash":
+        case "setLineJoin":
+        case "setLineWidth":
+        case "setMiterLimit":
+        case "webkitLineDash":
+        case "webkitLineDashOffset":
+            return "line-style";
 
-            case "beginPath":
-            case "moveTo":
-                return "move-to";
+        case "closePath":
+        case "lineTo":
+            return "line-to";
 
-            case "isPointInPath":
-                return "point-in-path";
+        case "beginPath":
+        case "moveTo":
+            return "move-to";
 
-            case "isPointInStroke":
-                return "point-in-stroke";
+        case "isPointInPath":
+            return "point-in-path";
 
-            case "clearShadow":
-            case "setShadow":
-            case "shadowBlur":
-            case "shadowColor":
-            case "shadowOffsetX":
-            case "shadowOffsetY":
-                return "shadow";
+        case "isPointInStroke":
+            return "point-in-stroke";
 
-            case "createLinearGradient":
-            case "createPattern":
-            case "createRadialGradient":
-            case "fillStyle":
-            case "setFillColor":
-            case "setStrokeColor":
-            case "strokeStyle":
-                return "style";
+        case "clearShadow":
+        case "setShadow":
+        case "shadowBlur":
+        case "shadowColor":
+        case "shadowOffsetX":
+        case "shadowOffsetY":
+            return "shadow";
 
-            case "stroke":
-            case "strokeRect":
-            case "strokeText":
-                return "stroke";
+        case "createLinearGradient":
+        case "createPattern":
+        case "createRadialGradient":
+        case "fillStyle":
+        case "setFillColor":
+        case "setStrokeColor":
+        case "strokeStyle":
+            return "style";
 
-            case "direction":
-            case "font":
-            case "measureText":
-            case "textAlign":
-            case "textBaseline":
-                return "text";
+        case "stroke":
+        case "strokeRect":
+        case "strokeText":
+            return "stroke";
 
-            case "getTransform":
-            case "resetTransform":
-            case "rotate":
-            case "scale":
-            case "setTransform":
-            case "transform":
-            case "translate":
-                return "transform";
+        case "direction":
+        case "font":
+        case "measureText":
+        case "textAlign":
+        case "textBaseline":
+            return "text";
 
-            case "clip":
-            case "ellipse":
-            case "rect":
-            case "restore":
-            case "save":
-                return name;
-            }
+        case "getTransform":
+        case "resetTransform":
+        case "rotate":
+        case "scale":
+        case "setTransform":
+        case "transform":
+        case "translate":
+            return "transform";
 
-            console.warn("No class name for action " + name);
-            return "";
+        case "clip":
+        case "ellipse":
+        case "rect":
+        case "restore":
+        case "save":
+            return recordingAction.name;
         }
 
-        const name = recordingAction.name;
-        let className = WI.RecordingActionTreeElement._memoizedActionClassNames.get(name);
-        if (!className) {
-            className = classNameForActionName(name);
-            WI.RecordingActionTreeElement._memoizedActionClassNames.set(name, className);
-        }
-
-        return className;
+        return "name-unknown";
     }
 
     // Public
@@ -399,11 +407,9 @@ WI.RecordingActionTreeElement = class RecordingActionTreeElement extends WI.Gene
 
         this.element.dataset.index = this._index.toLocaleString();
 
-        if (WI.settings.experimentalRecordingHasVisualEffect.value && this.representedObject.valid && this.representedObject.isVisual && !this.representedObject.hasVisibleEffect) {
-            this.addClassName("no-visible-effect");
-
-            const title = WI.UIString("This action causes no visual change");
-            this.status = WI.ImageUtilities.useSVGSymbol("Images/Warning.svg", "warning", title);
+        if (this.representedObject.valid && this.representedObject.warning) {
+            this.addClassName("warning");
+            this.status = WI.ImageUtilities.useSVGSymbol("Images/Warning.svg", "warning", this.representedObject.warning);
         }
     }
 
@@ -415,10 +421,22 @@ WI.RecordingActionTreeElement = class RecordingActionTreeElement extends WI.Gene
 
         contextMenu.appendSeparator();
 
-        let callFrame = this.representedObject.trace[0];
-        if (callFrame) {
-            contextMenu.appendItem(WI.UIString("Reveal in Resources Tab"), () => {
-                WI.showSourceCodeLocation(callFrame.sourceCodeLocation, {
+        let sourceCodeLocation = null;
+        for (let callFrame of this.representedObject.trace) {
+            if (callFrame.sourceCodeLocation) {
+                sourceCodeLocation = callFrame.sourceCodeLocation;
+                break;
+            }
+        }
+
+        if (sourceCodeLocation) {
+            let label = null;
+            if (WI.settings.experimentalEnableSourcesTab.value)
+                label = WI.UIString("Reveal in Sources Tab");
+            else
+                label = WI.UIString("Reveal in Resources Tab");
+            contextMenu.appendItem(label, () => {
+                WI.showSourceCodeLocation(sourceCodeLocation, {
                     ignoreNetworkTab: true,
                     ignoreSearchTab: true,
                 });
@@ -435,7 +453,7 @@ WI.RecordingActionTreeElement = class RecordingActionTreeElement extends WI.Gene
     _handleValidityChanged(event)
     {
         this.addClassName("invalid");
+
+        this.representedObject.removeEventListener(null, null, this);
     }
 };
-
-WI.RecordingActionTreeElement._memoizedActionClassNames = new Map;

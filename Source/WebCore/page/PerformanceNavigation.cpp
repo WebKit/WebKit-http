@@ -31,6 +31,7 @@
 #include "config.h"
 #include "PerformanceNavigation.h"
 
+#include "CustomHeaderFields.h"
 #include "DocumentLoader.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -38,17 +39,18 @@
 
 namespace WebCore {
 
-PerformanceNavigation::PerformanceNavigation(Frame* frame)
-    : DOMWindowProperty(frame)
+PerformanceNavigation::PerformanceNavigation(DOMWindow* window)
+    : DOMWindowProperty(window)
 {
 }
 
 unsigned short PerformanceNavigation::type() const
 {
-    if (!m_frame)
+    auto* frame = this->frame();
+    if (!frame)
         return TYPE_NAVIGATE;
 
-    DocumentLoader* documentLoader = m_frame->loader().documentLoader();
+    DocumentLoader* documentLoader = frame->loader().documentLoader();
     if (!documentLoader)
         return TYPE_NAVIGATE;
 
@@ -65,10 +67,11 @@ unsigned short PerformanceNavigation::type() const
 
 unsigned short PerformanceNavigation::redirectCount() const
 {
-    if (!m_frame)
+    auto* frame = this->frame();
+    if (!frame)
         return 0;
 
-    DocumentLoader* loader = m_frame->loader().documentLoader();
+    DocumentLoader* loader = frame->loader().documentLoader();
     if (!loader)
         return 0;
 

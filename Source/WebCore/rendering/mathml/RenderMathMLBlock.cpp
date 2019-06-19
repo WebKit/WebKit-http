@@ -75,11 +75,11 @@ static LayoutUnit axisHeight(const RenderStyle& style)
     // If we have a MATH table we just return the AxisHeight constant.
     const auto& primaryFont = style.fontCascade().primaryFont();
     if (auto* mathData = primaryFont.mathData())
-        return mathData->getMathConstant(primaryFont, OpenTypeMathData::AxisHeight);
+        return LayoutUnit(mathData->getMathConstant(primaryFont, OpenTypeMathData::AxisHeight));
 
     // Otherwise, the idea is to try and use the middle of operators as the math axis which we thus approximate by "half of the x-height".
     // Note that Gecko has a slower but more accurate version that measures half of the height of U+2212 MINUS SIGN.
-    return style.fontMetrics().xHeight() / 2;
+    return LayoutUnit(style.fontMetrics().xHeight() / 2);
 }
 
 LayoutUnit RenderMathMLBlock::mathAxisHeight() const
@@ -102,7 +102,7 @@ int RenderMathMLBlock::baselinePosition(FontBaseline baselineType, bool firstLin
     if (linePositionMode == PositionOfInteriorLineBoxes)
         return 0;
 
-    return firstLineBaseline().value_or(RenderBlock::baselinePosition(baselineType, firstLine, direction, linePositionMode));
+    return firstLineBaseline().valueOr(RenderBlock::baselinePosition(baselineType, firstLine, direction, linePositionMode));
 }
 
 #if ENABLE(DEBUG_MATH_LAYOUT)
@@ -145,29 +145,29 @@ LayoutUnit toUserUnits(const MathMLElement::Length& length, const RenderStyle& s
     switch (length.type) {
     // Zoom for physical units needs to be accounted for.
     case MathMLElement::LengthType::Cm:
-        return style.effectiveZoom() * length.value * cssPixelsPerInch / 2.54f;
+        return LayoutUnit(style.effectiveZoom() * length.value * cssPixelsPerInch / 2.54f);
     case MathMLElement::LengthType::In:
-        return style.effectiveZoom() * length.value * cssPixelsPerInch;
+        return LayoutUnit(style.effectiveZoom() * length.value * cssPixelsPerInch);
     case MathMLElement::LengthType::Mm:
-        return style.effectiveZoom() * length.value * cssPixelsPerInch / 25.4f;
+        return LayoutUnit(style.effectiveZoom() * length.value * cssPixelsPerInch / 25.4f);
     case MathMLElement::LengthType::Pc:
-        return style.effectiveZoom() * length.value * cssPixelsPerInch / 6;
+        return LayoutUnit(style.effectiveZoom() * length.value * cssPixelsPerInch / 6);
     case MathMLElement::LengthType::Pt:
-        return style.effectiveZoom() * length.value * cssPixelsPerInch / 72;
+        return LayoutUnit(style.effectiveZoom() * length.value * cssPixelsPerInch / 72);
     case MathMLElement::LengthType::Px:
-        return style.effectiveZoom() * length.value;
+        return LayoutUnit(style.effectiveZoom() * length.value);
 
     // Zoom for logical units is accounted for either in the font info or referenceValue.
     case MathMLElement::LengthType::Em:
-        return length.value * style.fontCascade().size();
+        return LayoutUnit(length.value * style.fontCascade().size());
     case MathMLElement::LengthType::Ex:
-        return length.value * style.fontMetrics().xHeight();
+        return LayoutUnit(length.value * style.fontMetrics().xHeight());
     case MathMLElement::LengthType::MathUnit:
-        return length.value * style.fontCascade().size() / 18;
+        return LayoutUnit(length.value * style.fontCascade().size() / 18);
     case MathMLElement::LengthType::Percentage:
-        return referenceValue * length.value / 100;
+        return LayoutUnit(referenceValue * length.value / 100);
     case MathMLElement::LengthType::UnitLess:
-        return referenceValue * length.value;
+        return LayoutUnit(referenceValue * length.value);
     case MathMLElement::LengthType::ParsingFailed:
         return referenceValue;
     case MathMLElement::LengthType::Infinity:
@@ -178,11 +178,11 @@ LayoutUnit toUserUnits(const MathMLElement::Length& length, const RenderStyle& s
     }
 }
 
-std::optional<int> RenderMathMLTable::firstLineBaseline() const
+Optional<int> RenderMathMLTable::firstLineBaseline() const
 {
     // By default the vertical center of <mtable> is aligned on the math axis.
     // This is different than RenderTable::firstLineBoxBaseline, which returns the baseline of the first row of a <table>.
-    return std::optional<int>(logicalHeight() / 2 + axisHeight(style()));
+    return Optional<int>(logicalHeight() / 2 + axisHeight(style()));
 }
 
 void RenderMathMLBlock::layoutItems(bool relayoutChildren)
@@ -190,7 +190,7 @@ void RenderMathMLBlock::layoutItems(bool relayoutChildren)
     LayoutUnit verticalOffset = borderBefore() + paddingBefore();
     LayoutUnit horizontalOffset = borderStart() + paddingStart();
 
-    LayoutUnit preferredHorizontalExtent = 0;
+    LayoutUnit preferredHorizontalExtent;
     for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         LayoutUnit childHorizontalExtent = child->maxPreferredLogicalWidth() - child->horizontalBorderAndPaddingExtent();
         LayoutUnit childHorizontalMarginBoxExtent = child->horizontalBorderAndPaddingExtent() + childHorizontalExtent;
@@ -252,6 +252,8 @@ void RenderMathMLBlock::layoutBlock(bool relayoutChildren, LayoutUnit)
 
     repainter.repaintAfterLayout();
 
+    updateScrollInfoAfterLayout();
+
     clearNeedsLayout();
 }
 
@@ -265,6 +267,7 @@ void RenderMathMLBlock::layoutInvalidMarkup(bool relayoutChildren)
     setLogicalWidth(0);
     setLogicalHeight(0);
     layoutPositionedObjects(relayoutChildren);
+    updateScrollInfoAfterLayout();
     clearNeedsLayout();
 }
 

@@ -32,6 +32,7 @@
 #include "ResourceResponse.h"
 #include "ScriptExecutionContext.h"
 #include "SharedBuffer.h"
+#include <wtf/CompletionHandler.h>
 
 namespace WebCore {
 
@@ -44,7 +45,8 @@ enum class Error {
     ReadDisk,
     WriteDisk,
     QuotaExceeded,
-    Internal
+    Internal,
+    Stopped
 };
 
 Exception convertToExceptionAndLog(ScriptExecutionContext*, Error);
@@ -82,7 +84,7 @@ struct CacheInfos {
     CacheInfos isolatedCopy();
 
     template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static std::optional<CacheInfos> decode(Decoder&);
+    template<class Decoder> static Optional<CacheInfos> decode(Decoder&);
 
     Vector<CacheInfo> infos;
     uint64_t updateCounter;
@@ -90,7 +92,7 @@ struct CacheInfos {
 
 struct CacheIdentifierOperationResult {
     template<class Encoder> void encode(Encoder&) const;
-    template<class Decoder> static std::optional<CacheIdentifierOperationResult> decode(Decoder&);
+    template<class Decoder> static Optional<CacheIdentifierOperationResult> decode(Decoder&);
 
     uint64_t identifier { 0 };
     // True in case storing cache list on the filesystem failed.
@@ -98,19 +100,19 @@ struct CacheIdentifierOperationResult {
 };
 
 using CacheIdentifierOrError = Expected<CacheIdentifierOperationResult, Error>;
-using CacheIdentifierCallback = WTF::Function<void(const CacheIdentifierOrError&)>;
+using CacheIdentifierCallback = CompletionHandler<void(const CacheIdentifierOrError&)>;
 
 using RecordIdentifiersOrError = Expected<Vector<uint64_t>, Error>;
-using RecordIdentifiersCallback = WTF::Function<void(RecordIdentifiersOrError&&)>;
+using RecordIdentifiersCallback = CompletionHandler<void(RecordIdentifiersOrError&&)>;
 
 
 using CacheInfosOrError = Expected<CacheInfos, Error>;
-using CacheInfosCallback = WTF::Function<void(CacheInfosOrError&&)>;
+using CacheInfosCallback = CompletionHandler<void(CacheInfosOrError&&)>;
 
 using RecordsOrError = Expected<Vector<Record>, Error>;
-using RecordsCallback = WTF::Function<void(RecordsOrError&&)>;
+using RecordsCallback = CompletionHandler<void(RecordsOrError&&)>;
 
-using CompletionCallback = WTF::Function<void(std::optional<Error>&&)>;
+using CompletionCallback = CompletionHandler<void(Optional<Error>&&)>;
 
 template<class Encoder> inline void CacheInfos::encode(Encoder& encoder) const
 {
@@ -118,17 +120,17 @@ template<class Encoder> inline void CacheInfos::encode(Encoder& encoder) const
     encoder << updateCounter;
 }
 
-template<class Decoder> inline std::optional<CacheInfos> CacheInfos::decode(Decoder& decoder)
+template<class Decoder> inline Optional<CacheInfos> CacheInfos::decode(Decoder& decoder)
 {
-    std::optional<Vector<CacheInfo>> infos;
+    Optional<Vector<CacheInfo>> infos;
     decoder >> infos;
     if (!infos)
-        return std::nullopt;
+        return WTF::nullopt;
 
-    std::optional<uint64_t> updateCounter;
+    Optional<uint64_t> updateCounter;
     decoder >> updateCounter;
     if (!updateCounter)
-        return std::nullopt;
+        return WTF::nullopt;
 
     return {{ WTFMove(*infos), WTFMove(*updateCounter) }};
 }
@@ -139,17 +141,17 @@ template<class Encoder> inline void CacheIdentifierOperationResult::encode(Encod
     encoder << hadStorageError;
 }
 
-template<class Decoder> inline std::optional<CacheIdentifierOperationResult> CacheIdentifierOperationResult::decode(Decoder& decoder)
+template<class Decoder> inline Optional<CacheIdentifierOperationResult> CacheIdentifierOperationResult::decode(Decoder& decoder)
 {
-    std::optional<uint64_t> identifier;
+    Optional<uint64_t> identifier;
     decoder >> identifier;
     if (!identifier)
-        return std::nullopt;
+        return WTF::nullopt;
 
-    std::optional<bool> hadStorageError;
+    Optional<bool> hadStorageError;
     decoder >> hadStorageError;
     if (!hadStorageError)
-        return std::nullopt;
+        return WTF::nullopt;
     return {{ WTFMove(*identifier), WTFMove(*hadStorageError) }};
 }
 

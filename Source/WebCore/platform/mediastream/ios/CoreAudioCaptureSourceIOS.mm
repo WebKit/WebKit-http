@@ -26,26 +26,13 @@
 #include "config.h"
 #include "CoreAudioCaptureSourceIOS.h"
 
-#if ENABLE(MEDIA_STREAM) && PLATFORM(IOS)
+#if ENABLE(MEDIA_STREAM) && PLATFORM(IOS_FAMILY)
 
 #import "Logging.h"
 #import <AVFoundation/AVAudioSession.h>
 #import <wtf/MainThread.h>
-#import <wtf/SoftLinking.h>
 
-typedef AVAudioSession AVAudioSessionType;
-
-SOFT_LINK_FRAMEWORK(AVFoundation)
-SOFT_LINK_CLASS(AVFoundation, AVAudioSession)
-
-SOFT_LINK_CONSTANT(AVFoundation, AVAudioSessionInterruptionNotification, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVAudioSessionInterruptionTypeKey, NSString *)
-SOFT_LINK_CONSTANT(AVFoundation, AVAudioSessionMediaServicesWereResetNotification, NSString *)
-
-#define AVAudioSession getAVAudioSessionClass()
-#define AVAudioSessionInterruptionNotification getAVAudioSessionInterruptionNotification()
-#define AVAudioSessionInterruptionTypeKey getAVAudioSessionInterruptionTypeKey()
-#define AVAudioSessionMediaServicesWereResetNotification getAVAudioSessionMediaServicesWereResetNotification()
+#import <pal/cocoa/AVFoundationSoftLink.h>
 
 using namespace WebCore;
 
@@ -68,7 +55,7 @@ using namespace WebCore;
     _callback = callback;
 
     NSNotificationCenter* center = [NSNotificationCenter defaultCenter];
-    AVAudioSessionType* session = [AVAudioSession sharedInstance];
+    AVAudioSession* session = [PAL::getAVAudioSessionClass() sharedInstance];
 
     [center addObserver:self selector:@selector(handleInterruption:) name:AVAudioSessionInterruptionNotification object:session];
     [center addObserver:self selector:@selector(sessionMediaServicesWereReset:) name:AVAudioSessionMediaServicesWereResetNotification object:session];
@@ -95,7 +82,7 @@ using namespace WebCore;
 
     if ([[notification.userInfo valueForKey:AVAudioSessionInterruptionTypeKey] intValue] == AVAudioSessionInterruptionTypeEnded) {
         NSError *error = nil;
-        [[AVAudioSession sharedInstance] setActive:YES error:&error];
+        [[PAL::getAVAudioSessionClass() sharedInstance] setActive:YES error:&error];
 
 #if !LOG_DISABLED
         if (error)
@@ -139,6 +126,12 @@ CoreAudioCaptureSourceFactory& CoreAudioCaptureSourceFactory::singleton()
     return factory.get();
 }
 
+void CoreAudioCaptureSourceFactory::setAudioCapturePageState(bool interrupted, bool pageMuted)
+{
+    if (auto* activeSource = this->activeSource())
+        activeSource->setInterrupted(interrupted, pageMuted);
 }
 
-#endif // ENABLE(MEDIA_STREAM) && PLATFORM(IOS)
+}
+
+#endif // ENABLE(MEDIA_STREAM) && PLATFORM(IOS_FAMILY)

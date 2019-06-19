@@ -78,9 +78,6 @@ WI.Sidebar = class Sidebar extends WI.View
         console.assert(index >= 0 && index <= this._sidebarPanels.length);
         this._sidebarPanels.splice(index, 0, sidebarPanel);
 
-        let referenceView = this._sidebarPanels[index + 1] || null;
-        this.insertSubviewBefore(sidebarPanel, referenceView);
-
         if (this._navigationBar) {
             console.assert(sidebarPanel.navigationItem);
             this._navigationBar.insertNavigationItem(sidebarPanel.navigationItem, index);
@@ -93,12 +90,12 @@ WI.Sidebar = class Sidebar extends WI.View
         if (!sidebarPanel)
             return;
 
-        sidebarPanel.selected = false;
-
         if (sidebarPanel.visible) {
             sidebarPanel.hidden();
             sidebarPanel.visibilityDidChange();
         }
+
+        sidebarPanel.selected = false;
 
         if (this._selectedSidebarPanel === sidebarPanel) {
             var index = this._sidebarPanels.indexOf(sidebarPanel);
@@ -106,7 +103,6 @@ WI.Sidebar = class Sidebar extends WI.View
         }
 
         this._sidebarPanels.remove(sidebarPanel);
-        this.removeSubview(sidebarPanel);
 
         if (this._navigationBar) {
             console.assert(sidebarPanel.navigationItem);
@@ -126,14 +122,10 @@ WI.Sidebar = class Sidebar extends WI.View
             return;
 
         if (this._selectedSidebarPanel) {
-            var wasVisible = this._selectedSidebarPanel.visible;
-
+            this._selectedSidebarPanel.hidden();
+            this._selectedSidebarPanel.visibilityDidChange();
             this._selectedSidebarPanel.selected = false;
-
-            if (wasVisible) {
-                this._selectedSidebarPanel.hidden();
-                this._selectedSidebarPanel.visibilityDidChange();
-            }
+            this.removeSubview(this._selectedSidebarPanel);
         }
 
         this._selectedSidebarPanel = sidebarPanel || null;
@@ -142,12 +134,10 @@ WI.Sidebar = class Sidebar extends WI.View
             this._navigationBar.selectedNavigationItem = sidebarPanel ? sidebarPanel.navigationItem : null;
 
         if (this._selectedSidebarPanel) {
+            this.addSubview(this._selectedSidebarPanel);
             this._selectedSidebarPanel.selected = true;
-
-            if (this._selectedSidebarPanel.visible) {
-                this._selectedSidebarPanel.shown();
-                this._selectedSidebarPanel.visibilityDidChange();
-            }
+            this._selectedSidebarPanel.shown();
+            this._selectedSidebarPanel.visibilityDidChange();
         }
 
         this.dispatchEventToListeners(WI.Sidebar.Event.SidebarPanelSelected);

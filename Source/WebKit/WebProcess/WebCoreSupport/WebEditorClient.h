@@ -28,6 +28,10 @@
 #include <WebCore/EditorClient.h>
 #include <WebCore/TextCheckerClient.h>
 
+namespace WebCore {
+enum class DOMPasteAccessResponse : uint8_t;
+}
+
 namespace WebKit {
 
 class WebPage;
@@ -60,12 +64,15 @@ private:
     bool shouldMoveRangeAfterDelete(WebCore::Range*, WebCore::Range*) final;
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    void registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& preferredFileName, Ref<WebCore::SharedBuffer>&&) final;
-    void registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& filePath) final;
+    void registerAttachmentIdentifier(const String&, const String& contentType, const String& preferredFileName, Ref<WebCore::SharedBuffer>&&) final;
+    void registerAttachmentIdentifier(const String&, const String& contentType, const String& filePath) final;
+    void registerAttachmentIdentifier(const String&) final;
+    void registerAttachments(Vector<WebCore::SerializedAttachmentData>&&) final;
     void cloneAttachmentData(const String& fromIdentifier, const String& toIdentifier) final;
-    void didInsertAttachmentWithIdentifier(const String& identifier, const String& source) final;
+    void didInsertAttachmentWithIdentifier(const String& identifier, const String& source, bool hasEnclosingImage) final;
     void didRemoveAttachmentWithIdentifier(const String& identifier) final;
     bool supportsClientSideAttachmentData() const final { return true; }
+    Vector<WebCore::SerializedAttachmentData> serializedAttachmentDataForIdentifiers(const Vector<String>&) final;
 #endif
 
     void didBeginEditing() final;
@@ -80,11 +87,12 @@ private:
     void willWriteSelectionToPasteboard(WebCore::Range*) final;
     void didWriteSelectionToPasteboard() final;
     void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData) final;
-    String replacementURLForResource(Ref<WebCore::SharedBuffer>&& resourceData, const String& mimeType) final;
     
     void registerUndoStep(WebCore::UndoStep&) final;
     void registerRedoStep(WebCore::UndoStep&) final;
     void clearUndoRedoOperations() final;
+
+    WebCore::DOMPasteAccessResponse requestDOMPasteAccess(const String& originIdentifier) final;
 
     bool canCopyCut(WebCore::Frame*, bool defaultValue) const final;
     bool canPaste(WebCore::Frame*, bool defaultValue) const final;
@@ -94,8 +102,8 @@ private:
     void undo() final;
     void redo() final;
 
-    void handleKeyboardEvent(WebCore::KeyboardEvent*) final;
-    void handleInputMethodKeydown(WebCore::KeyboardEvent*) final;
+    void handleKeyboardEvent(WebCore::KeyboardEvent&) final;
+    void handleInputMethodKeydown(WebCore::KeyboardEvent&) final;
     
     void textFieldDidBeginEditing(WebCore::Element*) final;
     void textFieldDidEndEditing(WebCore::Element*) final;
@@ -132,7 +140,8 @@ private:
 #endif
 
 #if PLATFORM(GTK)
-    bool executePendingEditorCommands(WebCore::Frame*, const Vector<WTF::String>&, bool);
+    bool executePendingEditorCommands(WebCore::Frame&, const Vector<WTF::String>&, bool);
+    bool handleGtkEditorCommand(WebCore::Frame&, const String& command, bool);
     void getEditorCommandsForKeyEvent(const WebCore::KeyboardEvent*, Vector<WTF::String>&);
 #endif
 #if PLATFORM(GTK) || PLATFORM(QT)
@@ -165,13 +174,14 @@ private:
     bool shouldShowUnicodeMenu() final;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     void startDelayingAndCoalescingContentChangeNotifications() final;
     void stopDelayingAndCoalescingContentChangeNotifications() final;
     bool hasRichlyEditableSelection() final;
     int getPasteboardItemsCount() final;
     RefPtr<WebCore::DocumentFragment> documentFragmentFromDelegate(int index) final;
     bool performsTwoStepPaste(WebCore::DocumentFragment*) final;
+    void updateStringForFind(const String&) final;
 #endif
 
     bool performTwoStepDrop(WebCore::DocumentFragment&, WebCore::Range&, bool isMove) final;

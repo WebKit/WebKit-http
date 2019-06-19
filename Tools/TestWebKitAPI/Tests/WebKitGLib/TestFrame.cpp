@@ -23,23 +23,29 @@
 
 static void testWebKitFrameMainFrame(WebViewTest* test, gconstpointer)
 {
-    g_assert(test->runWebProcessTest("WebKitFrame", "main-frame"));
+    g_assert_true(test->runWebProcessTest("WebKitFrame", "main-frame"));
 }
 
 static void testWebKitFrameURI(WebViewTest* test, gconstpointer)
 {
-    g_assert(test->runWebProcessTest("WebKitFrame", "uri"));
+    g_assert_true(test->runWebProcessTest("WebKitFrame", "uri"));
 }
 
 static void testWebKitFrameJavaScriptContext(WebViewTest* test, gconstpointer)
 {
-    g_assert(test->runWebProcessTest("WebKitFrame", "javascript-context"));
+    g_assert_true(test->runWebProcessTest("WebKitFrame", "javascript-context"));
 }
 
 static void testWebKitFrameJavaScriptValues(WebViewTest* test, gconstpointer)
 {
     static const char* testHTML = "<html><body><p id='paragraph'>This is a test</p><img id='image' src='foo.png'></body></html>";
-    g_assert(test->runWebProcessTest("WebKitFrame", "javascript-values", testHTML));
+    g_assert_true(test->runWebProcessTest("WebKitFrame", "javascript-values", testHTML));
+}
+
+static void testWebKitFrameSubframe(WebViewTest* test, gconstpointer)
+{
+    static const char* testHTML = "<html><body><iframe src='resource:///org/webkit/glib/tests/form-in-frame.html' id='frame'></iframe></body></html>";
+    g_assert_true(test->runWebProcessTest("WebKitFrame", "subframe", testHTML));
 }
 
 void beforeAll()
@@ -48,6 +54,7 @@ void beforeAll()
     WebViewTest::add("WebKitFrame", "uri", testWebKitFrameURI);
     WebViewTest::add("WebKitFrame", "javascript-context", testWebKitFrameJavaScriptContext);
     WebViewTest::add("WebKitFrame", "javascript-values", testWebKitFrameJavaScriptValues);
+    WebViewTest::add("WebKitFrame", "subframe", testWebKitFrameSubframe);
 }
 
 void afterAll()

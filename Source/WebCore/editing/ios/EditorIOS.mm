@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,7 @@
 #import "config.h"
 #import "Editor.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "CSSComputedStyleDeclaration.h"
 #import "CSSPrimitiveValueMappings.h"
@@ -83,7 +83,7 @@ void Editor::setTextAlignmentForChangedBaseWritingDirection(WritingDirection dir
     // If the text has left or right alignment, flip left->right and right->left. 
     // Otherwise, do nothing.
 
-    RefPtr<EditingStyle> selectionStyle = EditingStyle::styleAtSelectionStart(m_frame.selection().selection());
+    auto selectionStyle = EditingStyle::styleAtSelectionStart(m_frame.selection().selection());
     if (!selectionStyle || !selectionStyle->style())
          return;
 
@@ -97,13 +97,13 @@ void Editor::setTextAlignmentForChangedBaseWritingDirection(WritingDirection dir
     case TextAlignMode::Start:
     case TextAlignMode::End: {
         switch (direction) {
-        case NaturalWritingDirection:
+        case WritingDirection::Natural:
             // no-op
             break;
-        case LeftToRightWritingDirection:
+        case WritingDirection::LeftToRight:
             newValue = "left";
             break;
-        case RightToLeftWritingDirection:
+        case WritingDirection::RightToLeft:
             newValue = "right";
             break;
         }
@@ -131,24 +131,24 @@ void Editor::setTextAlignmentForChangedBaseWritingDirection(WritingDirection dir
     if (focusedElement && (is<HTMLTextAreaElement>(*focusedElement) || (is<HTMLInputElement>(*focusedElement)
         && (downcast<HTMLInputElement>(*focusedElement).isTextField()
             || downcast<HTMLInputElement>(*focusedElement).isSearchField())))) {
-        if (direction == NaturalWritingDirection)
+        if (direction == WritingDirection::Natural)
             return;
         downcast<HTMLElement>(*focusedElement).setAttributeWithoutSynchronization(alignAttr, newValue);
         m_frame.document()->updateStyleIfNeeded();
         return;
     }
 
-    RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+    auto style = MutableStyleProperties::create();
     style->setProperty(CSSPropertyTextAlign, newValue);
-    applyParagraphStyle(style.get());
+    applyParagraphStyle(style.ptr());
 }
 
 void Editor::removeUnchangeableStyles()
 {
     // This function removes styles that the user cannot modify by applying their default values.
     
-    RefPtr<EditingStyle> editingStyle = EditingStyle::create(m_frame.document()->bodyOrFrameset());
-    RefPtr<MutableStyleProperties> defaultStyle = editingStyle.get()->style()->mutableCopy();
+    auto editingStyle = EditingStyle::create(m_frame.document()->bodyOrFrameset());
+    auto defaultStyle = editingStyle->style()->mutableCopy();
     
     // Text widgets implement background color via the UIView property. Their body element will not have one.
     defaultStyle->setProperty(CSSPropertyBackgroundColor, "rgba(255, 255, 255, 0.0)");
@@ -164,7 +164,7 @@ void Editor::removeUnchangeableStyles()
     defaultStyle->removeProperty(CSSPropertyWebkitTextDecorationsInEffect); // implements underline
 
     // FIXME add EditAction::MatchStlye <rdar://problem/9156507> Undo rich text's paste & match style should say "Undo Match Style"
-    applyStyleToSelection(defaultStyle.get(), EditAction::ChangeAttributes);
+    applyStyleToSelection(defaultStyle.ptr(), EditAction::ChangeAttributes);
 }
 
 static void getImage(Element& imageElement, RefPtr<Image>& image, CachedImage*& cachedImage)
@@ -209,25 +209,16 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
 
     Position beforeImagePosition(&imageElement, Position::PositionIsBeforeAnchor);
     Position afterImagePosition(&imageElement, Position::PositionIsAfterAnchor);
-    RefPtr<Range> imageRange = Range::create(imageElement.document(), beforeImagePosition, afterImagePosition);
-    client()->getClientPasteboardDataForRange(imageRange.get(), pasteboardImage.clientTypes, pasteboardImage.clientData);
+    auto imageRange = Range::create(imageElement.document(), beforeImagePosition, afterImagePosition);
+    client()->getClientPasteboardDataForRange(imageRange.ptr(), pasteboardImage.clientTypes, pasteboardImage.clientData);
 
     pasteboard.write(pasteboardImage);
 }
 
-// FIXME: Should give this function a name that makes it clear it adds resources to the document loader as a side effect.
-// Or refactor so it does not do that.
-RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard, Range& context, bool allowPlainText, bool& chosePlainText)
-{
-    WebContentReader reader(m_frame, context, allowPlainText);
-    pasteboard.read(reader);
-    chosePlainText = reader.madeFragmentFromPlainText;
-    return WTFMove(reader.fragment);
-}
-
-void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText, MailBlockquoteHandling mailBlockquoteHandling)
+void Editor::pasteWithPasteboard(Pasteboard* pasteboard, OptionSet<PasteOption> options)
 {
     RefPtr<Range> range = selectedRange();
+    bool allowPlainText = options.contains(PasteOption::AllowPlainText);
     WebContentReader reader(m_frame, *range, allowPlainText);
     int numberOfPasteboardItems = client()->getPasteboardItemsCount();
     for (int i = 0; i < numberOfPasteboardItems; ++i) {
@@ -243,8 +234,11 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText, Ma
         fragment = webContentFromPasteboard(*pasteboard, *range, allowPlainText, chosePlainTextIgnored);
     }
 
+    if (fragment && options.contains(PasteOption::AsQuotation))
+        quoteFragmentForPasting(*fragment);
+
     if (fragment && shouldInsertFragment(*fragment, range.get(), EditorInsertAction::Pasted))
-        pasteAsFragment(fragment.releaseNonNull(), canSmartReplaceWithPasteboard(*pasteboard), false, mailBlockquoteHandling);
+        pasteAsFragment(fragment.releaseNonNull(), canSmartReplaceWithPasteboard(*pasteboard), false, options.contains(PasteOption::IgnoreMailBlockquote) ? MailBlockquoteHandling::IgnoreBlockquote : MailBlockquoteHandling::RespectBlockquote);
 }
 
 void Editor::insertDictationPhrases(Vector<Vector<String>>&& dictationPhrases, RetainPtr<id> metadata)
@@ -285,8 +279,13 @@ void Editor::setDictationPhrasesAsChildOfElement(const Vector<Vector<String>>& d
 
     element.appendChild(createFragmentFromText(*context, dictationPhrasesBuilder.toString()));
 
+    auto weakElement = makeWeakPtr(element);
+
     // We need a layout in order to add markers below.
     document().updateLayout();
+
+    if (!weakElement)
+        return;
 
     if (!element.firstChild()->isTextNode()) {
         // Shouldn't happen.
@@ -301,13 +300,13 @@ void Editor::setDictationPhrasesAsChildOfElement(const Vector<Vector<String>>& d
         int dictationPhraseEnd = previousDictationPhraseStart + dictationPhraseLength;
         if (interpretations.size() > 1) {
             auto dictationPhraseRange = Range::create(document(), &textNode, previousDictationPhraseStart, &textNode, dictationPhraseEnd);
-            document().markers().addDictationPhraseWithAlternativesMarker(dictationPhraseRange.ptr(), interpretations);
+            document().markers().addDictationPhraseWithAlternativesMarker(dictationPhraseRange, interpretations);
         }
         previousDictationPhraseStart = dictationPhraseEnd;
     }
 
     auto resultRange = Range::create(document(), &textNode, 0, &textNode, textNode.length());
-    document().markers().addDictationResultMarker(resultRange.ptr(), metadata);
+    document().markers().addDictationResultMarker(resultRange, metadata);
 
     client()->respondToChangedContents();
 }
@@ -396,4 +395,4 @@ void Editor::ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping()
 
 } // namespace WebCore
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

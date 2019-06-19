@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,12 +34,12 @@
 #include "DFGBasicBlockInlines.h"
 #include "DFGGraph.h"
 #include "DFGInPlaceAbstractState.h"
-#include "DFGInferredTypeCheck.h"
 #include "DFGInsertionSet.h"
 #include "DFGPhase.h"
 #include "GetByIdStatus.h"
 #include "JSCInlines.h"
 #include "PutByIdStatus.h"
+#include "StructureCache.h"
 
 namespace JSC { namespace DFG {
 
@@ -323,7 +323,7 @@ private:
                             // However, a constant value propagated in DFG is not filtered.
                             // So here, we check the propagated value is actually an atomic string.
                             // And if it's not, we just ignore.
-                            if (impl->isAtomic())
+                            if (impl->isAtom())
                                 constantUid = static_cast<const UniquedStringImpl*>(impl);
                         }
                     }
@@ -341,7 +341,9 @@ private:
                 JSValue right = m_state.forNode(node->child2()).value();
                 if (left && right && left.isInt32() && right.isInt32()
                     && static_cast<uint32_t>(left.asInt32()) < static_cast<uint32_t>(right.asInt32())) {
-                    node->remove(m_graph);
+
+                    Node* zero = m_insertionSet.insertConstant(indexInBlock, node->origin, jsNumber(0));
+                    node->convertToIdentityOn(zero);
                     eliminated = true;
                     break;
                 }
@@ -362,7 +364,7 @@ private:
                 
                 unsigned index = checkedIndex.unsafeGet();
                 Node* arguments = node->child1().node();
-                InlineCallFrame* inlineCallFrame = arguments->origin.semantic.inlineCallFrame;
+                InlineCallFrame* inlineCallFrame = arguments->origin.semantic.inlineCallFrame();
                 
                 // Don't try to do anything if the index is known to be outside our static bounds. Note
                 // that our static bounds are usually strictly larger than the dynamic bounds. The
@@ -410,10 +412,11 @@ private:
                 
                 Node* length = emitCodeToGetArgumentsArrayLength(
                     m_insertionSet, arguments, indexInBlock, node->origin);
-                m_insertionSet.insertNode(
+                Node* check = m_insertionSet.insertNode(
                     indexInBlock, SpecNone, CheckInBounds, node->origin,
                     node->child2(), Edge(length, Int32Use));
                 node->convertToGetStack(data);
+                node->child1() = Edge(check, UntypedUse);
                 eliminated = true;
                 break;
             }
@@ -477,8 +480,7 @@ private:
                         && variant.oldStructure().onlyStructure() == variant.newStructure()) {
                         variant = PutByIdVariant::replace(
                             variant.oldStructure(),
-                            variant.offset(),
-                            variant.requiredType());
+                            variant.offset());
                         changed = true;
                     }
                 }
@@ -673,7 +675,7 @@ private:
                     if (constant.isString()) {
                         JSString* string = asString(constant);
                         const StringImpl* impl = string->tryGetValueImpl();
-                        if (impl && impl->isAtomic()) {
+                        if (impl && impl->isAtom()) {
                             unsigned identifierNumber = m_graph.identifiers().ensure(const_cast<UniquedStringImpl*>(static_cast<const UniquedStringImpl*>(impl)));
                             node->convertToInById(identifierNumber);
                             changed = true;
@@ -694,7 +696,7 @@ private:
             }
 
             case ToThis: {
-                ToThisResult result = isToThisAnIdentity(m_graph.m_vm, m_graph.executableFor(node->origin.semantic)->isStrictMode(), m_state.forNode(node->child1()));
+                ToThisResult result = isToThisAnIdentity(m_graph.m_vm, m_graph.isStrictModeFor(node->origin.semantic), m_state.forNode(node->child1()));
                 if (result == ToThisResult::Identity) {
                     node->convertToIdentity();
                     changed = true;
@@ -727,10 +729,6 @@ private:
                                         StorageAccessData* data = m_graph.m_storageAccessData.add();
                                         data->offset = knownPolyProtoOffset;
                                         data->identifierNumber = m_graph.identifiers().ensure(m_graph.m_vm.propertyNames->builtinNames().polyProtoName().impl());
-                                        InferredType::Descriptor inferredType = InferredType::Top;
-                                        data->inferredType = inferredType;
-                                        m_graph.registerInferredType(inferredType);
-
                                         NodeOrigin origin = node->origin.withInvalidExit();
                                         Node* prototypeNode = m_insertionSet.insertConstant(
                                             indexInBlock + 1, origin, m_graph.freeze(prototype));
@@ -753,15 +751,37 @@ private:
 
             case ObjectCreate: {
                 if (JSValue base = m_state.forNode(node->child1()).m_value) {
-                    if (base.isNull()) {
-                        JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
-                        node->convertToNewObject(m_graph.registerStructure(globalObject->nullPrototypeObjectStructure()));
+                    JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
+                    Structure* structure = nullptr;
+                    if (base.isNull())
+                        structure = globalObject->nullPrototypeObjectStructure();
+                    else if (base.isObject())
+                        structure = globalObject->vm().structureCache.emptyObjectStructureConcurrently(globalObject, base.getObject(), JSFinalObject::defaultInlineCapacity());
+                    
+                    if (structure) {
+                        node->convertToNewObject(m_graph.registerStructure(structure));
                         changed = true;
                         break;
                     }
-                    // FIXME: We should get a structure for a constant prototype. We need to allow concurrent
-                    // access to StructureCache from compiler threads.
-                    // https://bugs.webkit.org/show_bug.cgi?id=186199
+                }
+                break;
+            }
+
+            case ObjectKeys: {
+                if (node->child1().useKind() == ObjectUse) {
+                    auto& structureSet = m_state.forNode(node->child1()).m_structure;
+                    if (structureSet.isFinite() && structureSet.size() == 1) {
+                        RegisteredStructure structure = structureSet.onlyStructure();
+                        if (auto* rareData = structure->rareDataConcurrently()) {
+                            if (auto* immutableButterfly = rareData->cachedOwnKeysConcurrently()) {
+                                if (m_graph.isWatchingHavingABadTimeWatchpoint(node)) {
+                                    node->convertToNewArrayBuffer(m_graph.freeze(immutableButterfly));
+                                    changed = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
                 break;
             }
@@ -1055,7 +1075,7 @@ private:
     
     void emitGetByOffset(
         unsigned indexInBlock, Node* node, Edge childEdge, unsigned identifierNumber,
-        PropertyOffset offset, const InferredType::Descriptor& inferredType = InferredType::Top)
+        PropertyOffset offset)
     {
         childEdge.setUseKind(KnownCellUse);
         
@@ -1071,7 +1091,6 @@ private:
         StorageAccessData& data = *m_graph.m_storageAccessData.add();
         data.offset = offset;
         data.identifierNumber = identifierNumber;
-        data.inferredType = inferredType;
         
         node->convertToGetByOffset(data, propertyStorage, childEdge);
     }
@@ -1082,8 +1101,6 @@ private:
         Edge childEdge = node->child1();
 
         addBaseCheck(indexInBlock, node, baseValue, variant.oldStructure());
-        insertInferredTypeCheck(
-            m_insertionSet, indexInBlock, origin, node->child2().node(), variant.requiredType());
 
         node->child1().setUseKind(KnownCellUse);
         childEdge.setUseKind(KnownCellUse);

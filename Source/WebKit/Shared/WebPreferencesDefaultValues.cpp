@@ -31,13 +31,15 @@
 #include <wtf/spi/darwin/dyldSPI.h>
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "VersionChecks.h"
 #endif
 
+namespace WebKit {
+
 bool defaultPassiveTouchListenersAsDefaultOnDocument()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     return linkedOnOrAfter(WebKit::SDKVersion::FirstThatDefaultsToPassiveTouchListenersOnDocument);
 #else
     return true;
@@ -46,7 +48,9 @@ bool defaultPassiveTouchListenersAsDefaultOnDocument()
 
 bool defaultCustomPasteboardDataEnabled()
 {
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110300
+#if PLATFORM(IOSMAC)
+    return true;
+#elif PLATFORM(IOS_FAMILY)
     return WebCore::IOSApplication::isMobileSafari() || dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_11_3;
 #elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
     return WebCore::MacApplication::isSafari() || dyld_get_program_sdk_version() > DYLD_MACOSX_VERSION_10_13;
@@ -57,3 +61,13 @@ bool defaultCustomPasteboardDataEnabled()
 #endif
 }
 
+#if ENABLE(TEXT_AUTOSIZING) && !PLATFORM(IOS_FAMILY)
+
+bool defaultTextAutosizingUsesIdempotentMode()
+{
+    return false;
+}
+
+#endif // ENABLE(TEXT_AUTOSIZING) && !PLATFORM(IOS_FAMILY)
+
+} // namespace WebKit

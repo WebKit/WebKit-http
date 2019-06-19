@@ -87,7 +87,7 @@ WI.LayerDetailsSidebarPanel = class LayerDetailsSidebarPanel extends WI.DetailsS
                 title: WI.UIString("Paints"),
                 sortable: true,
                 aligned: "right",
-                width: "50px",
+                width: "70px",
             },
             memory: {
                 title: WI.UIString("Memory"),
@@ -162,9 +162,9 @@ WI.LayerDetailsSidebarPanel = class LayerDetailsSidebarPanel extends WI.DetailsS
 
         if (node.layer.isGeneratedContent || node.layer.isReflection || node.layer.isAnonymous) {
             const usePageCoordinates = true;
-            WI.domTreeManager.highlightRect(node.layer.bounds, usePageCoordinates);
+            WI.domManager.highlightRect(node.layer.bounds, usePageCoordinates);
         } else
-            WI.domTreeManager.highlightDOMNode(node.layer.nodeId);
+            WI.domManager.highlightDOMNode(node.layer.nodeId);
     }
 
     _dataGridMouseLeave(event)
@@ -174,7 +174,7 @@ WI.LayerDetailsSidebarPanel = class LayerDetailsSidebarPanel extends WI.DetailsS
 
     _hideDOMNodeHighlight()
     {
-        WI.domTreeManager.hideDOMNodeHighlight();
+        WI.domManager.hideDOMNodeHighlight();
         this._hoveredDataGridNode = null;
     }
 

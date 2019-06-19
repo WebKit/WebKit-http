@@ -35,10 +35,10 @@
 #import <WebCore/JSExecState.h>
 #import <WebCore/Node.h>
 #import <WebCore/ThreadCheck.h>
-#import <WebCore/URL.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebScriptObjectPrivate.h>
 #import <wtf/GetPtr.h>
+#import <wtf/URL.h>
 #import <wtf/Variant.h>
 
 #define IMPL reinterpret_cast<WebCore::HTMLOptionsCollection*>(_internal)
@@ -90,7 +90,7 @@
     WebCore::JSMainThreadNullState state;
     if (!option)
         raiseTypeErrorException();
-    raiseOnDOMError(IMPL->add(core(option), std::optional<WebCore::HTMLOptionsCollection::HTMLElementOrInt> { static_cast<int>(index) }));
+    raiseOnDOMError(IMPL->add(core(option), Optional<WebCore::HTMLOptionsCollection::HTMLElementOrInt> { static_cast<int>(index) }));
 }
 
 - (void)remove:(unsigned)index

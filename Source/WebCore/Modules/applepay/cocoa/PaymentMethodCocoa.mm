@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,10 +50,10 @@ static ApplePayPaymentPass::ActivationState convert(PKPaymentPassActivationState
     }
 }
 
-static std::optional<ApplePayPaymentPass> convert(PKPaymentPass *paymentPass)
+static Optional<ApplePayPaymentPass> convert(PKPaymentPass *paymentPass)
 {
     if (!paymentPass)
-        return std::nullopt;
+        return WTF::nullopt;
 
     ApplePayPaymentPass result;
 
@@ -70,7 +70,7 @@ static std::optional<ApplePayPaymentPass> convert(PKPaymentPass *paymentPass)
     return result;
 }
 
-static std::optional<ApplePayPaymentMethod::Type> convert(PKPaymentMethodType paymentMethodType)
+static Optional<ApplePayPaymentMethod::Type> convert(PKPaymentMethodType paymentMethodType)
 {
     switch (paymentMethodType) {
     case PKPaymentMethodTypeDebit:
@@ -82,7 +82,7 @@ static std::optional<ApplePayPaymentMethod::Type> convert(PKPaymentMethodType pa
     case PKPaymentMethodTypeStore:
         return ApplePayPaymentMethod::Type::Store;
     case PKPaymentMethodTypeUnknown:
-        return std::nullopt;
+        return WTF::nullopt;
     }
 }
 
@@ -101,9 +101,23 @@ static ApplePayPaymentMethod convert(PKPaymentMethod *paymentMethod)
     return result;
 }
 
+PaymentMethod::PaymentMethod() = default;
+
+PaymentMethod::PaymentMethod(RetainPtr<PKPaymentMethod>&& pkPaymentMethod)
+    : m_pkPaymentMethod { WTFMove(pkPaymentMethod) }
+{
+}
+
+PaymentMethod::~PaymentMethod() = default;
+
 ApplePayPaymentMethod PaymentMethod::toApplePayPaymentMethod() const
 {
     return convert(m_pkPaymentMethod.get());
+}
+
+PKPaymentMethod *PaymentMethod::pkPaymentMethod() const
+{
+    return m_pkPaymentMethod.get();
 }
 
 }

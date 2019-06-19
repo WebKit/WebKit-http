@@ -1,3 +1,78 @@
+2019-04-16  Jon Lee  <jonlee@apple.com>
+
+        [MotionMark] The text "kkkj" is causing Firefox console warning: `unreachable code after return statement`
+        https://bugs.webkit.org/show_bug.cgi?id=196814
+
+        Reviewed by Wenson Hsieh.
+
+        * MotionMark/resources/extensions.js:
+        (subtract.subtract.sampleY):
+        * MotionMark1.1/resources/extensions.js:
+        (subtract.subtract.sampleY):
+
+2019-03-27  Saam Barati  <sbarati@apple.com>
+
+        JetStream 2 should not report time values as scores
+        https://bugs.webkit.org/show_bug.cgi?id=196334
+
+        Reviewed by Yusuke Suzuki.
+
+        * JetStream2.0/JetStreamDriver.js:
+        (toTimeValue):
+        (Driver.prototype.async.reportScoreToRunBenchmarkRunner):
+
+2019-03-27  Saam barati  <sbarati@apple.com>
+
+        Unreviewed. Fix individual benchmark description urls to go to in-depth.html instead of about.html
+
+        * JetStream2.0/JetStreamDriver.js:
+        (Driver.prototype.prepareToRun.text.div.id.string_appeared_here.h3):
+
+2019-03-26  Jon Davis  <jond@apple.com>
+
+        Update BrowserBench for JetStream2.
+        https://bugs.webkit.org/show_bug.cgi?id=196273
+
+        Reviewed by Saam Barati.
+
+        * index.html:
+        * resources/JetStream2-Logo.png: Added.
+        * resources/JetStream2-Logo@2x.png: Added.
+        * resources/main.css:
+        (.benchmark:hover img): Improved hover effect for the JetStream2 logo.
+
+2019-03-25  Saam barati  <sbarati@apple.com>
+
+        Update browserbench.org/JetStream2.0 to the latest version.
+
+        Rubber-stamped by Filip Pizlo.
+
+        * JetStream2.0: Replaced with ../../PerformanceTests/JetStream2.
+
+2019-03-18  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Rename JetStream directory to JetStream1.1
+
+        * JetStream: Removed.
+        * JetStream1.1: Copied from Websites/browserbench.org/JetStream.
+
+2019-01-09  Saam Barati  <sbarati@apple.com>
+
+        Merge the latest version of JetStream2.0 to browserbench.org.
+
+        Rubber-stamped by Ryosuke Niwa.
+
+        * JetStream2.0: Copied from PerformanceTests/JetStream2.
+
+2018-10-11  Jon Lee  <jonlee@apple.com>
+
+        Update default hyperlink for MotionMark to MotionMark 1.1
+        https://bugs.webkit.org/show_bug.cgi?id=190491
+
+        Reviewed by Ryosuke Niwa.
+
+        * index.html:
+
 2018-08-14  Jon Lee  <jonlee@apple.com>
 
         Add MotionMark 1.1 to browserbench

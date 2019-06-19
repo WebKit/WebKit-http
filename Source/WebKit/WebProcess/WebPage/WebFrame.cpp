@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,7 +29,6 @@
 #include "APIArray.h"
 #include "DownloadManager.h"
 #include "FrameInfoData.h"
-#include "InjectedBundleFileHandle.h"
 #include "InjectedBundleHitTestResult.h"
 #include "InjectedBundleNodeHandle.h"
 #include "InjectedBundleRangeHandle.h"
@@ -111,7 +110,7 @@ static uint64_t generateListenerID()
 Ref<WebFrame> WebFrame::createWithCoreMainFrame(WebPage* page, WebCore::Frame* coreFrame)
 {
     auto frame = create(std::unique_ptr<WebFrameLoaderClient>(static_cast<WebFrameLoaderClient*>(&coreFrame->loader().client())));
-    page->send(Messages::WebPageProxy::DidCreateMainFrame(frame->frameID()), page->pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
+    page->send(Messages::WebPageProxy::DidCreateMainFrame(frame->frameID()));
 
     frame->m_coreFrame = coreFrame;
     frame->m_coreFrame->tree().setName(String());
@@ -122,7 +121,7 @@ Ref<WebFrame> WebFrame::createWithCoreMainFrame(WebPage* page, WebCore::Frame* c
 Ref<WebFrame> WebFrame::createSubframe(WebPage* page, const String& frameName, HTMLFrameOwnerElement* ownerElement)
 {
     auto frame = create(std::make_unique<WebFrameLoaderClient>());
-    page->send(Messages::WebPageProxy::DidCreateSubframe(frame->frameID()), page->pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
+    page->send(Messages::WebPageProxy::DidCreateSubframe(frame->frameID()));
 
     auto coreFrame = Frame::create(page->corePage(), ownerElement, frame->m_frameLoaderClient.get());
     frame->m_coreFrame = coreFrame.ptr();
@@ -211,12 +210,13 @@ void WebFrame::invalidate()
     m_coreFrame = 0;
 }
 
-uint64_t WebFrame::setUpPolicyListener(WebCore::FramePolicyFunction&& policyFunction, ForNavigationAction forNavigationAction)
+uint64_t WebFrame::setUpPolicyListener(WebCore::PolicyCheckIdentifier identifier, WebCore::FramePolicyFunction&& policyFunction, ForNavigationAction forNavigationAction)
 {
     // FIXME: <rdar://5634381> We need to support multiple active policy listeners.
 
     invalidatePolicyListener();
 
+    m_policyIdentifier = identifier;
     m_policyListenerID = generateListenerID();
     m_policyFunction = WTFMove(policyFunction);
     m_policyFunctionForNavigationAction = forNavigationAction;
@@ -233,6 +233,7 @@ uint64_t WebFrame::setUpWillSubmitFormListener(CompletionHandler<void()>&& compl
 
 void WebFrame::continueWillSubmitForm(uint64_t listenerID)
 {
+    Ref<WebFrame> protectedThis(*this);
     if (auto completionHandler = m_willSubmitFormCompletionHandlers.take(listenerID))
         completionHandler();
     invalidatePolicyListener();
@@ -245,8 +246,10 @@ void WebFrame::invalidatePolicyListener()
 
     m_policyDownloadID = { };
     m_policyListenerID = 0;
+    auto identifier = m_policyIdentifier;
+    m_policyIdentifier = WTF::nullopt;
     if (auto function = std::exchange(m_policyFunction, nullptr))
-        function(PolicyAction::Ignore);
+        function(PolicyAction::Ignore, *identifier);
     m_policyFunctionForNavigationAction = ForNavigationAction::No;
 
     auto willSubmitFormCompletionHandlers = WTFMove(m_willSubmitFormCompletionHandlers);
@@ -254,19 +257,13 @@ void WebFrame::invalidatePolicyListener()
         completionHandler();
 }
 
-void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action, uint64_t navigationID, DownloadID downloadID, std::optional<WebsitePoliciesData>&& websitePolicies)
+void WebFrame::didReceivePolicyDecision(uint64_t listenerID, WebCore::PolicyCheckIdentifier identifier, PolicyAction action, uint64_t navigationID, DownloadID downloadID, Optional<WebsitePoliciesData>&& websitePolicies)
 {
-    if (!m_coreFrame)
+    if (!m_coreFrame || !m_policyListenerID || listenerID != m_policyListenerID || !m_policyFunction)
         return;
 
-    if (!m_policyListenerID)
-        return;
-
-    if (listenerID != m_policyListenerID)
-        return;
-
-    if (!m_policyFunction)
-        return;
+    ASSERT(identifier == m_policyIdentifier);
+    m_policyIdentifier = WTF::nullopt;
 
     FramePolicyFunction function = WTFMove(m_policyFunction);
     bool forNavigationAction = m_policyFunctionForNavigationAction == ForNavigationAction::Yes;
@@ -282,7 +279,7 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action
             documentLoader->setNavigationID(navigationID);
     }
 
-    function(action);
+    function(action, identifier);
 }
 
 void WebFrame::startDownload(const WebCore::ResourceRequest& request, const String& suggestedName)
@@ -467,9 +464,13 @@ String WebFrame::innerText() const
 WebFrame* WebFrame::parentFrame() const
 {
     if (!m_coreFrame || !m_coreFrame->ownerElement())
-        return 0;
+        return nullptr;
 
-    return WebFrame::fromCoreFrame(*m_coreFrame->ownerElement()->document().frame());
+    auto* frame = m_coreFrame->ownerElement()->document().frame();
+    if (!frame)
+        return nullptr;
+
+    return WebFrame::fromCoreFrame(*frame);
 }
 
 Ref<API::Array> WebFrame::childFrames()
@@ -509,7 +510,7 @@ unsigned WebFrame::pendingUnloadCount() const
     return m_coreFrame->document()->domWindow()->pendingUnloadEventListeners();
 }
 
-bool WebFrame::allowsFollowingLink(const WebCore::URL& url) const
+bool WebFrame::allowsFollowingLink(const URL& url) const
 {
     if (!m_coreFrame)
         return true;
@@ -519,11 +520,17 @@ bool WebFrame::allowsFollowingLink(const WebCore::URL& url) const
 
 JSGlobalContextRef WebFrame::jsContext()
 {
+    if (!m_coreFrame)
+        return nullptr;
+
     return toGlobalRef(m_coreFrame->script().globalObject(mainThreadNormalWorld())->globalExec());
 }
 
 JSGlobalContextRef WebFrame::jsContextForWorld(InjectedBundleScriptWorld* world)
 {
+    if (!m_coreFrame)
+        return nullptr;
+
     return toGlobalRef(m_coreFrame->script().globalObject(world->coreWorld())->globalExec());
 }
 
@@ -735,18 +742,6 @@ JSValueRef WebFrame::jsWrapperForWorld(InjectedBundleRangeHandle* rangeHandle, I
     return toRef(exec, toJS(exec, globalObject, rangeHandle->coreRange()));
 }
 
-JSValueRef WebFrame::jsWrapperForWorld(InjectedBundleFileHandle* fileHandle, InjectedBundleScriptWorld* world)
-{
-    if (!m_coreFrame)
-        return nullptr;
-
-    JSDOMWindow* globalObject = m_coreFrame->script().globalObject(world->coreWorld());
-    ExecState* exec = globalObject->globalExec();
-
-    JSLockHolder lock(exec);
-    return toRef(exec, toJS(exec, globalObject, fileHandle->coreFile()));
-}
-
 String WebFrame::counterValue(JSObjectRef element)
 {
     if (!toJS(element)->inherits<JSElement>(*toJS(element)->vm()))
@@ -815,23 +810,23 @@ void WebFrame::setTextDirection(const String& direction)
         return;
 
     if (direction == "auto")
-        m_coreFrame->editor().setBaseWritingDirection(NaturalWritingDirection);
+        m_coreFrame->editor().setBaseWritingDirection(WritingDirection::Natural);
     else if (direction == "ltr")
-        m_coreFrame->editor().setBaseWritingDirection(LeftToRightWritingDirection);
+        m_coreFrame->editor().setBaseWritingDirection(WritingDirection::LeftToRight);
     else if (direction == "rtl")
-        m_coreFrame->editor().setBaseWritingDirection(RightToLeftWritingDirection);
+        m_coreFrame->editor().setBaseWritingDirection(WritingDirection::RightToLeft);
 }
 
 void WebFrame::documentLoaderDetached(uint64_t navigationID)
 {
-    if (auto * page = this->page())
+    if (auto* page = this->page())
         page->send(Messages::WebPageProxy::DidDestroyNavigation(navigationID));
 }
 
 #if PLATFORM(COCOA)
 RetainPtr<CFDataRef> WebFrame::webArchiveData(FrameFilterFunction callback, void* context)
 {
-    RefPtr<LegacyWebArchive> archive = LegacyWebArchive::create(*coreFrame()->document(), [this, callback, context](Frame& frame) -> bool {
+    auto archive = LegacyWebArchive::create(*coreFrame()->document(), [this, callback, context](Frame& frame) -> bool {
         if (!callback)
             return true;
 

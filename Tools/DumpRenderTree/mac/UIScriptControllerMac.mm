@@ -89,6 +89,22 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
     });
 }
 
+void UIScriptController::resignFirstResponder()
+{
+}
+
+void UIScriptController::setViewScale(double)
+{
+}
+
+void UIScriptController::setMinimumEffectiveWidth(double)
+{
+}
+
+void UIScriptController::setAllowsViewportShrinkToFit(bool)
+{
+}
+
 void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef)
 {
 }
@@ -183,6 +199,39 @@ bool UIScriptController::isWindowContentViewFirstResponder() const
 bool UIScriptController::isShowingDataListSuggestions() const
 {
     return false;
+}
+
+void UIScriptController::setShareSheetCompletesImmediatelyWithResolution(bool)
+{
+}
+    
+JSObjectRef UIScriptController::calendarType() const
+{
+    return nullptr;
+}
+
+void UIScriptController::setDefaultCalendarType(JSStringRef calendarIdentifier)
+{
+}
+
+void UIScriptController::toggleCapsLock(JSValueRef callback)
+{
+    doAsyncTask(callback);
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::lastUndoLabel() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::firstRedoLabel() const
+{
+    return nullptr;
+}
+
+NSUndoManager *UIScriptController::platformUndoManager() const
+{
+    return nil;
 }
 
 }

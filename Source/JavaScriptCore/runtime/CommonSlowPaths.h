@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "BytecodeStructs.h"
 #include "CodeBlock.h"
 #include "CodeSpecializationKind.h"
 #include "DirectArguments.h"
@@ -71,11 +72,16 @@ ALWAYS_INLINE int numberOfStackPaddingSlotsWithExtraSlots(CodeBlock* codeBlock, 
     return numberOfStackPaddingSlots(codeBlock, argumentCountIncludingThis) + numberOfExtraSlots(argumentCountIncludingThis);
 }
 
-ALWAYS_INLINE int arityCheckFor(ExecState* exec, VM& vm, CodeSpecializationKind kind)
+ALWAYS_INLINE CodeBlock* codeBlockFromCallFrameCallee(ExecState* exec, CodeSpecializationKind kind)
 {
     JSFunction* callee = jsCast<JSFunction*>(exec->jsCallee());
     ASSERT(!callee->isHostFunction());
-    CodeBlock* newCodeBlock = callee->jsExecutable()->codeBlockFor(kind);
+    return callee->jsExecutable()->codeBlockFor(kind);
+}
+
+ALWAYS_INLINE int arityCheckFor(ExecState* exec, VM& vm, CodeSpecializationKind kind)
+{
+    CodeBlock* newCodeBlock = codeBlockFromCallFrameCallee(exec, kind);
     ASSERT(exec->argumentCountIncludingThis() < static_cast<unsigned>(newCodeBlock->numParameters()));
     int padding = numberOfStackPaddingSlotsWithExtraSlots(newCodeBlock, exec->argumentCountIncludingThis());
     
@@ -103,45 +109,54 @@ inline bool opInByVal(ExecState* exec, JSValue baseVal, JSValue propName, ArrayP
     if (propName.getUInt32(i)) {
         if (arrayProfile)
             arrayProfile->observeIndexedRead(vm, baseObj, i);
-        scope.release();
-        return baseObj->hasProperty(exec, i);
+        RELEASE_AND_RETURN(scope, baseObj->hasProperty(exec, i));
     }
 
     auto property = propName.toPropertyKey(exec);
     RETURN_IF_EXCEPTION(scope, false);
-    scope.release();
-    return baseObj->hasProperty(exec, property);
+    RELEASE_AND_RETURN(scope, baseObj->hasProperty(exec, property));
 }
 
 inline void tryCachePutToScopeGlobal(
-    ExecState* exec, CodeBlock* codeBlock, Instruction* pc, JSObject* scope,
-    GetPutInfo getPutInfo, PutPropertySlot& slot, const Identifier& ident)
+    ExecState* exec, CodeBlock* codeBlock, OpPutToScope& bytecode, JSObject* scope,
+    PutPropertySlot& slot, const Identifier& ident)
 {
     // Covers implicit globals. Since they don't exist until they first execute, we didn't know how to cache them at compile time.
-    ResolveType resolveType = getPutInfo.resolveType();
-    if (resolveType != GlobalProperty && resolveType != GlobalPropertyWithVarInjectionChecks 
-        && resolveType != UnresolvedProperty && resolveType != UnresolvedPropertyWithVarInjectionChecks)
-        return;
+    auto& metadata = bytecode.metadata(exec);
+    ResolveType resolveType = metadata.m_getPutInfo.resolveType();
 
-    if (resolveType == UnresolvedProperty || resolveType == UnresolvedPropertyWithVarInjectionChecks) {
+    switch (resolveType) {
+    case UnresolvedProperty:
+    case UnresolvedPropertyWithVarInjectionChecks: {
         if (scope->isGlobalObject()) {
-            ResolveType newResolveType = resolveType == UnresolvedProperty ? GlobalProperty : GlobalPropertyWithVarInjectionChecks;
-            resolveType = newResolveType;
-            getPutInfo = GetPutInfo(getPutInfo.resolveMode(), newResolveType, getPutInfo.initializationMode());
+            ResolveType newResolveType = needsVarInjectionChecks(resolveType) ? GlobalPropertyWithVarInjectionChecks : GlobalProperty;
+            resolveType = newResolveType; // Allow below caching mechanism to kick in.
             ConcurrentJSLocker locker(codeBlock->m_lock);
-            pc[4].u.operand = getPutInfo.operand();
-        } else if (scope->isGlobalLexicalEnvironment()) {
+            metadata.m_getPutInfo = GetPutInfo(metadata.m_getPutInfo.resolveMode(), newResolveType, metadata.m_getPutInfo.initializationMode());
+            break;
+        }
+        FALLTHROUGH;
+    }
+    case GlobalProperty:
+    case GlobalPropertyWithVarInjectionChecks: {
+         // Global Lexical Binding Epoch is changed. Update op_get_from_scope from GlobalProperty to GlobalLexicalVar.
+        if (scope->isGlobalLexicalEnvironment()) {
             JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalLexicalEnvironment*>(scope);
-            ResolveType newResolveType = resolveType == UnresolvedProperty ? GlobalLexicalVar : GlobalLexicalVarWithVarInjectionChecks;
-            pc[4].u.operand = GetPutInfo(getPutInfo.resolveMode(), newResolveType, getPutInfo.initializationMode()).operand();
+            ResolveType newResolveType = needsVarInjectionChecks(resolveType) ? GlobalLexicalVarWithVarInjectionChecks : GlobalLexicalVar;
+            metadata.m_getPutInfo = GetPutInfo(metadata.m_getPutInfo.resolveMode(), newResolveType, metadata.m_getPutInfo.initializationMode());
             SymbolTableEntry entry = globalLexicalEnvironment->symbolTable()->get(ident.impl());
             ASSERT(!entry.isNull());
             ConcurrentJSLocker locker(codeBlock->m_lock);
-            pc[5].u.watchpointSet = entry.watchpointSet();
-            pc[6].u.pointer = static_cast<void*>(globalLexicalEnvironment->variableAt(entry.scopeOffset()).slot());
+            metadata.m_watchpointSet = entry.watchpointSet();
+            metadata.m_operand = reinterpret_cast<uintptr_t>(globalLexicalEnvironment->variableAt(entry.scopeOffset()).slot());
+            return;
         }
+        break;
     }
-    
+    default:
+        return;
+    }
+
     if (resolveType == GlobalProperty || resolveType == GlobalPropertyWithVarInjectionChecks) {
         VM& vm = exec->vm();
         JSGlobalObject* globalObject = codeBlock->globalObject();
@@ -161,33 +176,47 @@ inline void tryCachePutToScopeGlobal(
         scope->structure(vm)->didCachePropertyReplacement(vm, slot.cachedOffset());
 
         ConcurrentJSLocker locker(codeBlock->m_lock);
-        pc[5].u.structure.set(vm, codeBlock, scope->structure(vm));
-        pc[6].u.operand = slot.cachedOffset();
+        metadata.m_structure.set(vm, codeBlock, scope->structure(vm));
+        metadata.m_operand = slot.cachedOffset();
     }
 }
 
 inline void tryCacheGetFromScopeGlobal(
-    ExecState* exec, VM& vm, Instruction* pc, JSObject* scope, PropertySlot& slot, const Identifier& ident)
+    ExecState* exec, VM& vm, OpGetFromScope& bytecode, JSObject* scope, PropertySlot& slot, const Identifier& ident)
 {
-    GetPutInfo getPutInfo(pc[4].u.operand);
-    ResolveType resolveType = getPutInfo.resolveType();
+    auto& metadata = bytecode.metadata(exec);
+    ResolveType resolveType = metadata.m_getPutInfo.resolveType();
 
-    if (resolveType == UnresolvedProperty || resolveType == UnresolvedPropertyWithVarInjectionChecks) {
+    switch (resolveType) {
+    case UnresolvedProperty:
+    case UnresolvedPropertyWithVarInjectionChecks: {
         if (scope->isGlobalObject()) {
-            ResolveType newResolveType = resolveType == UnresolvedProperty ? GlobalProperty : GlobalPropertyWithVarInjectionChecks;
+            ResolveType newResolveType = needsVarInjectionChecks(resolveType) ? GlobalPropertyWithVarInjectionChecks : GlobalProperty;
             resolveType = newResolveType; // Allow below caching mechanism to kick in.
             ConcurrentJSLocker locker(exec->codeBlock()->m_lock);
-            pc[4].u.operand = GetPutInfo(getPutInfo.resolveMode(), newResolveType, getPutInfo.initializationMode()).operand();
-        } else if (scope->isGlobalLexicalEnvironment()) {
+            metadata.m_getPutInfo = GetPutInfo(metadata.m_getPutInfo.resolveMode(), newResolveType, metadata.m_getPutInfo.initializationMode());
+            break;
+        }
+        FALLTHROUGH;
+    }
+    case GlobalProperty:
+    case GlobalPropertyWithVarInjectionChecks: {
+         // Global Lexical Binding Epoch is changed. Update op_get_from_scope from GlobalProperty to GlobalLexicalVar.
+        if (scope->isGlobalLexicalEnvironment()) {
             JSGlobalLexicalEnvironment* globalLexicalEnvironment = jsCast<JSGlobalLexicalEnvironment*>(scope);
-            ResolveType newResolveType = resolveType == UnresolvedProperty ? GlobalLexicalVar : GlobalLexicalVarWithVarInjectionChecks;
+            ResolveType newResolveType = needsVarInjectionChecks(resolveType) ? GlobalLexicalVarWithVarInjectionChecks : GlobalLexicalVar;
             SymbolTableEntry entry = globalLexicalEnvironment->symbolTable()->get(ident.impl());
             ASSERT(!entry.isNull());
             ConcurrentJSLocker locker(exec->codeBlock()->m_lock);
-            pc[4].u.operand = GetPutInfo(getPutInfo.resolveMode(), newResolveType, getPutInfo.initializationMode()).operand();
-            pc[5].u.watchpointSet = entry.watchpointSet();
-            pc[6].u.pointer = static_cast<void*>(globalLexicalEnvironment->variableAt(entry.scopeOffset()).slot());
+            metadata.m_getPutInfo = GetPutInfo(metadata.m_getPutInfo.resolveMode(), newResolveType, metadata.m_getPutInfo.initializationMode());
+            metadata.m_watchpointSet = entry.watchpointSet();
+            metadata.m_operand = reinterpret_cast<uintptr_t>(globalLexicalEnvironment->variableAt(entry.scopeOffset()).slot());
+            return;
         }
+        break;
+    }
+    default:
+        return;
     }
 
     // Covers implicit globals. Since they don't exist until they first execute, we didn't know how to cache them at compile time.
@@ -199,8 +228,8 @@ inline void tryCacheGetFromScopeGlobal(
             Structure* structure = scope->structure(vm);
             {
                 ConcurrentJSLocker locker(codeBlock->m_lock);
-                pc[5].u.structure.set(vm, codeBlock, structure);
-                pc[6].u.operand = slot.cachedOffset();
+                metadata.m_structure.set(vm, codeBlock, structure);
+                metadata.m_operand = slot.cachedOffset();
             }
             structure->startWatchingPropertyForReplacements(vm, slot.cachedOffset());
         }
@@ -283,7 +312,7 @@ struct Instruction;
 #define SLOW_PATH
     
 #define SLOW_PATH_DECL(name) \
-extern "C" SlowPathReturnType SLOW_PATH name(ExecState* exec, Instruction* pc)
+extern "C" SlowPathReturnType SLOW_PATH name(ExecState* exec, const Instruction* pc)
     
 #define SLOW_PATH_HIDDEN_DECL(name) \
 SLOW_PATH_DECL(name) WTF_INTERNAL
@@ -325,6 +354,7 @@ SLOW_PATH_HIDDEN_DECL(slow_path_lshift);
 SLOW_PATH_HIDDEN_DECL(slow_path_rshift);
 SLOW_PATH_HIDDEN_DECL(slow_path_urshift);
 SLOW_PATH_HIDDEN_DECL(slow_path_unsigned);
+SLOW_PATH_HIDDEN_DECL(slow_path_bitnot);
 SLOW_PATH_HIDDEN_DECL(slow_path_bitand);
 SLOW_PATH_HIDDEN_DECL(slow_path_bitor);
 SLOW_PATH_HIDDEN_DECL(slow_path_bitxor);
@@ -343,8 +373,8 @@ SLOW_PATH_HIDDEN_DECL(slow_path_has_structure_property);
 SLOW_PATH_HIDDEN_DECL(slow_path_has_indexed_property);
 SLOW_PATH_HIDDEN_DECL(slow_path_get_direct_pname);
 SLOW_PATH_HIDDEN_DECL(slow_path_get_property_enumerator);
-SLOW_PATH_HIDDEN_DECL(slow_path_next_structure_enumerator_pname);
-SLOW_PATH_HIDDEN_DECL(slow_path_next_generic_enumerator_pname);
+SLOW_PATH_HIDDEN_DECL(slow_path_enumerator_structure_pname);
+SLOW_PATH_HIDDEN_DECL(slow_path_enumerator_generic_pname);
 SLOW_PATH_HIDDEN_DECL(slow_path_to_index_string);
 SLOW_PATH_HIDDEN_DECL(slow_path_profile_type_clear_log);
 SLOW_PATH_HIDDEN_DECL(slow_path_unreachable);
@@ -365,6 +395,6 @@ SLOW_PATH_HIDDEN_DECL(slow_path_new_array_with_spread);
 SLOW_PATH_HIDDEN_DECL(slow_path_new_array_buffer);
 SLOW_PATH_HIDDEN_DECL(slow_path_spread);
 
-using SlowPathFunction = SlowPathReturnType(SLOW_PATH *)(ExecState*, Instruction*);
+using SlowPathFunction = SlowPathReturnType(SLOW_PATH *)(ExecState*, const Instruction*);
 
 } // namespace JSC

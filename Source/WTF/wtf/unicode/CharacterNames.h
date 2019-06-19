@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CharacterNames_h
-#define CharacterNames_h
+#pragma once
 
 #include <unicode/utypes.h>
 
@@ -47,6 +46,7 @@ const UChar blackUpPointingTriangle = 0x25B2;
 const UChar bullet = 0x2022;
 const UChar bullseye = 0x25CE;
 const UChar carriageReturn = 0x000D;
+const UChar combiningEnclosingKeycap = 0x20E3;
 const UChar ethiopicPrefaceColon = 0x1366;
 const UChar ethiopicWordspace = 0x1361;
 const UChar firstStrongIsolate = 0x2068;
@@ -115,6 +115,7 @@ using WTF::Unicode::blackUpPointingTriangle;
 using WTF::Unicode::bullet;
 using WTF::Unicode::bullseye;
 using WTF::Unicode::carriageReturn;
+using WTF::Unicode::combiningEnclosingKeycap;
 using WTF::Unicode::ethiopicPrefaceColon;
 using WTF::Unicode::ethiopicWordspace;
 using WTF::Unicode::firstStrongIsolate;
@@ -167,5 +168,3 @@ using WTF::Unicode::zeroWidthJoiner;
 using WTF::Unicode::zeroWidthNoBreakSpace;
 using WTF::Unicode::zeroWidthNonJoiner;
 using WTF::Unicode::zeroWidthSpace;
-
-#endif // CharacterNames_h

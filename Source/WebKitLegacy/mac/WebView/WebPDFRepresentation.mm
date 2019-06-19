@@ -26,7 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 
 #import "WebPDFRepresentation.h"
 
@@ -37,10 +37,9 @@
 #import "WebPDFView.h"
 #import "WebTypesInternal.h"
 #import <JavaScriptCore/JSContextRef.h>
-#import <JavaScriptCore/JSStringRef.h>
-#import <JavaScriptCore/JSStringRefCF.h>
+#import <JavaScriptCore/OpaqueJSString.h>
 #import <wtf/Assertions.h>
-#import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/ObjCRuntimeExtras.h>
 #import <wtf/RetainPtr.h>
 
 @implementation WebPDFRepresentation
@@ -129,19 +128,13 @@
     [doc release];
     doc = nil;
 
-    NSUInteger scriptCount = [scripts count];
-    if (!scriptCount)
+    if (![scripts count])
         return;
 
     JSGlobalContextRef ctx = JSGlobalContextCreate(0);
     JSObjectRef jsPDFDoc = makeJSPDFDoc(ctx, dataSource);
-
-    for (NSUInteger i = 0; i < scriptCount; ++i) {
-        JSStringRef script = JSStringCreateWithCFString((CFStringRef)[scripts objectAtIndex:i]);
-        JSEvaluateScript(ctx, script, jsPDFDoc, 0, 0, 0);
-        JSStringRelease(script);
-    }
-
+    for (NSString *script in scripts)
+        JSEvaluateScript(ctx, OpaqueJSString::tryCreate(script).get(), jsPDFDoc, nullptr, 0, nullptr);
     JSGlobalContextRelease(ctx);
 }
 
@@ -164,4 +157,4 @@
 
 @end
 
-#endif // !PLATFORM(IOS)
+#endif // !PLATFORM(IOS_FAMILY)

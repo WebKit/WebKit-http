@@ -32,62 +32,116 @@
 #include "config.h"
 #include "ParsedContentType.h"
 
+#include "HTTPParsers.h"
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
-class DummyParsedContentType {
-public:
-    void setContentType(const SubstringRange&) const { }
-    void setContentTypeParameter(const SubstringRange&, const SubstringRange&) const { }
-};
-
-static void skipSpaces(const String& input, unsigned& startIndex)
+static void skipSpaces(StringView input, unsigned& startIndex)
 {
-    while (startIndex < input.length() && input[startIndex] == ' ')
+    while (startIndex < input.length() && isHTTPSpace(input[startIndex]))
         ++startIndex;
 }
 
-static bool isTokenCharacter(char c)
+static bool isQuotedStringTokenCharacter(UChar c)
+{
+    return (c >= ' ' && c <= '~') || (c >= 0x80 && c <= 0xFF) || c == '\t';
+}
+
+static bool isTokenCharacter(UChar c)
 {
     return isASCII(c) && c > ' ' && c != '"' && c != '(' && c != ')' && c != ',' && c != '/' && (c < ':' || c > '@') && (c < '[' || c > ']');
 }
 
-static SubstringRange parseToken(const String& input, unsigned& startIndex)
+using CharacterMeetsCondition = bool (*)(UChar);
+
+static Optional<StringView> parseToken(StringView input, unsigned& startIndex, CharacterMeetsCondition characterMeetsCondition, Mode mode, bool skipTrailingWhitespace = false)
 {
     unsigned inputLength = input.length();
     unsigned tokenStart = startIndex;
     unsigned& tokenEnd = startIndex;
 
     if (tokenEnd >= inputLength)
-        return SubstringRange();
+        return WTF::nullopt;
 
-    while (tokenEnd < inputLength) {
-        if (!isTokenCharacter(input[tokenEnd]))
-            return SubstringRange(tokenStart, tokenEnd - tokenStart);
+    while (tokenEnd < inputLength && characterMeetsCondition(input[tokenEnd])) {
+        if (mode == Mode::Rfc2045 && !isTokenCharacter(input[tokenEnd]))
+            break;
         ++tokenEnd;
     }
 
-    return SubstringRange(tokenStart, tokenEnd - tokenStart);
+    if (tokenEnd == tokenStart)
+        return WTF::nullopt;
+    if (skipTrailingWhitespace) {
+        while (input[tokenEnd - 1] == ' ')
+            --tokenEnd;
+    }
+    return input.substring(tokenStart, tokenEnd - tokenStart);
 }
 
-static SubstringRange parseQuotedString(const String& input, unsigned& startIndex)
+static bool isNotQuoteOrBackslash(UChar ch)
+{
+    return ch != '"' && ch != '\\';
+}
+
+static String collectHTTPQuotedString(StringView input, unsigned& startIndex)
+{
+    ASSERT(input[startIndex] == '"');
+    unsigned inputLength = input.length();
+    unsigned& position = startIndex;
+    position++;
+    StringBuilder builder;
+    while (true) {
+        unsigned positionStart = position;
+        parseToken(input, position, isNotQuoteOrBackslash, Mode::MimeSniff);
+        builder.append(input.substring(positionStart, position - positionStart));
+        if (position >= inputLength)
+            break;
+        UChar quoteOrBackslash = input[position++];
+        if (quoteOrBackslash == '\\') {
+            if (position >= inputLength) {
+                builder.append(quoteOrBackslash);
+                break;
+            }
+            builder.append(input[position++]);
+        } else {
+            ASSERT(quoteOrBackslash == '"');
+            break;
+        }
+
+    }
+    return builder.toString();
+}
+
+static bool containsNonTokenCharacters(StringView input, Mode mode)
+{
+    if (mode == Mode::MimeSniff)
+        return !isValidHTTPToken(input.toStringWithoutCopying());
+    for (unsigned index = 0; index < input.length(); ++index) {
+        if (!isTokenCharacter(input[index]))
+            return true;
+    }
+    return false;
+}
+
+static Optional<StringView> parseQuotedString(StringView input, unsigned& startIndex)
 {
     unsigned inputLength = input.length();
     unsigned quotedStringStart = startIndex + 1;
     unsigned& quotedStringEnd = startIndex;
 
     if (quotedStringEnd >= inputLength)
-        return SubstringRange();
+        return WTF::nullopt;
 
     if (input[quotedStringEnd++] != '"' || quotedStringEnd >= inputLength)
-        return SubstringRange();
+        return WTF::nullopt;
 
     bool lastCharacterWasBackslash = false;
     char currentCharacter;
     while ((currentCharacter = input[quotedStringEnd++]) != '"' || lastCharacterWasBackslash) {
         if (quotedStringEnd >= inputLength)
-            return SubstringRange();
+            return WTF::nullopt;
         if (currentCharacter == '\\' && !lastCharacterWasBackslash) {
             lastCharacterWasBackslash = true;
             continue;
@@ -95,12 +149,9 @@ static SubstringRange parseQuotedString(const String& input, unsigned& startInde
         if (lastCharacterWasBackslash)
             lastCharacterWasBackslash = false;
     }
-    return SubstringRange(quotedStringStart, quotedStringEnd - quotedStringStart - 1);
-}
-
-static String substringForRange(const String& string, const SubstringRange& range)
-{
-    return string.substring(range.first, range.second);
+    if (input[quotedStringEnd - 1] == '"')
+        quotedStringEnd++;
+    return input.substring(quotedStringStart, quotedStringEnd - quotedStringStart);
 }
 
 // From http://tools.ietf.org/html/rfc2045#section-5.1:
@@ -149,60 +200,121 @@ static String substringForRange(const String& string, const SubstringRange& rang
 //               ; Must be in quoted-string,
 //               ; to use within parameter values
 
-template <class ReceiverType>
-bool parseContentType(const String& contentType, ReceiverType& receiver)
+static bool isNotForwardSlash(UChar ch)
 {
+    return ch != '/';
+}
+
+static bool isNotSemicolon(UChar ch)
+{
+    return ch != ';';
+}
+
+static bool isNotSemicolonOrEqualSign(UChar ch)
+{
+    return ch != ';' && ch != '=';
+}
+
+static bool containsNewline(UChar ch)
+{
+    return ch == '\r' || ch == '\n';
+}
+
+bool ParsedContentType::parseContentType(Mode mode)
+{
+    if (mode == Mode::Rfc2045 && m_contentType.find(containsNewline) != notFound)
+        return false;
     unsigned index = 0;
-    unsigned contentTypeLength = contentType.length();
-    skipSpaces(contentType, index);
+    unsigned contentTypeLength = m_contentType.length();
+    skipSpaces(m_contentType, index);
     if (index >= contentTypeLength)  {
-        LOG_ERROR("Invalid Content-Type string '%s'", contentType.ascii().data());
+        LOG_ERROR("Invalid Content-Type string '%s'", m_contentType.ascii().data());
+        return false;
+    }
+
+    unsigned contentTypeStart = index;
+    auto typeRange = parseToken(m_contentType, index, isNotForwardSlash, mode);
+    if (!typeRange || containsNonTokenCharacters(*typeRange, mode)) {
+        LOG_ERROR("Invalid Content-Type, invalid type value.");
+        return false;
+    }
+
+    if (index >= contentTypeLength || m_contentType[index++] != '/') {
+        LOG_ERROR("Invalid Content-Type, missing '/'.");
+        return false;
+    }
+
+    auto subTypeRange = parseToken(m_contentType, index, isNotSemicolon, mode, mode == Mode::MimeSniff);
+    if (!subTypeRange || containsNonTokenCharacters(*subTypeRange, mode)) {
+        LOG_ERROR("Invalid Content-Type, invalid subtype value.");
         return false;
     }
 
     // There should not be any quoted strings until we reach the parameters.
-    size_t semiColonIndex = contentType.find(';', index);
+    size_t semiColonIndex = m_contentType.find(';', contentTypeStart);
     if (semiColonIndex == notFound) {
-        receiver.setContentType(SubstringRange(index, contentTypeLength - index));
+        setContentType(m_contentType.substring(contentTypeStart, contentTypeLength - contentTypeStart), mode);
         return true;
     }
 
-    receiver.setContentType(SubstringRange(index, semiColonIndex - index));
+    setContentType(m_contentType.substring(contentTypeStart, semiColonIndex - contentTypeStart), mode);
     index = semiColonIndex + 1;
     while (true) {
-        skipSpaces(contentType, index);
-        SubstringRange keyRange = parseToken(contentType, index);
-        if (!keyRange.second || index >= contentTypeLength) {
+        skipSpaces(m_contentType, index);
+        auto keyRange = parseToken(m_contentType, index, isNotSemicolonOrEqualSign, mode);
+        if (mode == Mode::Rfc2045 && (!keyRange || index >= contentTypeLength)) {
             LOG_ERROR("Invalid Content-Type parameter name.");
             return false;
         }
 
         // Should we tolerate spaces here?
-        if (contentType[index++] != '=' || index >= contentTypeLength) {
-            LOG_ERROR("Invalid Content-Type malformed parameter.");
-            return false;
+        if (mode == Mode::Rfc2045) {
+            if (index >= contentTypeLength || m_contentType[index++] != '=') {
+                LOG_ERROR("Invalid Content-Type malformed parameter.");
+                return false;
+            }
+        } else {
+            if (index >= contentTypeLength)
+                break;
+            if (m_contentType[index] != '=' && m_contentType[index] != ';') {
+                LOG_ERROR("Invalid Content-Type malformed parameter.");
+                return false;
+            }
+            if (m_contentType[index++] == ';')
+                continue;
+        }
+        String parameterName = keyRange->toString();
+
+        // Should we tolerate spaces here?
+        String parameterValue;
+        Optional<StringView> valueRange;
+        if (index < contentTypeLength && m_contentType[index] == '"') {
+            if (mode == Mode::MimeSniff) {
+                parameterValue = collectHTTPQuotedString(m_contentType, index);
+                parseToken(m_contentType, index, isNotSemicolon, mode);
+            } else
+                valueRange = parseQuotedString(m_contentType, index);
+        } else
+            valueRange = parseToken(m_contentType, index, isNotSemicolon, mode, mode == Mode::MimeSniff);
+
+
+        if (parameterValue.isNull()) {
+            if (!valueRange) {
+                if (mode == Mode::MimeSniff)
+                    continue;
+                LOG_ERROR("Invalid Content-Type, invalid parameter value.");
+                return false;
+            }
+            parameterValue = valueRange->toString();
         }
 
         // Should we tolerate spaces here?
-        String value;
-        SubstringRange valueRange;
-        if (contentType[index] == '"')
-            valueRange = parseQuotedString(contentType, index);
-        else
-            valueRange = parseToken(contentType, index);
-
-        if (!valueRange.second) {
-            LOG_ERROR("Invalid Content-Type, invalid parameter value.");
-            return false;
-        }
-
-        // Should we tolerate spaces here?
-        if (index < contentTypeLength && contentType[index++] != ';') {
+        if (mode == Mode::Rfc2045 && index < contentTypeLength && m_contentType[index++] != ';') {
             LOG_ERROR("Invalid Content-Type, invalid character at the end of key/value parameter.");
             return false;
         }
 
-        receiver.setContentTypeParameter(keyRange, valueRange);
+        setContentTypeParameter(parameterName, parameterValue, mode);
 
         if (index >= contentTypeLength)
             return true;
@@ -211,19 +323,22 @@ bool parseContentType(const String& contentType, ReceiverType& receiver)
     return true;
 }
 
-bool isValidContentType(const String& contentType)
+Optional<ParsedContentType> ParsedContentType::create(const String& contentType, Mode mode)
 {
-    if (contentType.contains('\r') || contentType.contains('\n'))
-        return false;
+    ParsedContentType parsedContentType(mode == Mode::Rfc2045 ? contentType : stripLeadingAndTrailingHTTPSpaces(contentType));
+    if (!parsedContentType.parseContentType(mode))
+        return WTF::nullopt;
+    return { WTFMove(parsedContentType) };
+}
 
-    DummyParsedContentType parsedContentType = DummyParsedContentType();
-    return parseContentType<DummyParsedContentType>(contentType, parsedContentType);
+bool isValidContentType(const String& contentType, Mode mode)
+{
+    return ParsedContentType::create(contentType, mode) != WTF::nullopt;
 }
 
 ParsedContentType::ParsedContentType(const String& contentType)
-    : m_contentType(contentType.stripWhiteSpace())
+    : m_contentType(contentType)
 {
-    parseContentType<ParsedContentType>(m_contentType, *this);
 }
 
 String ParsedContentType::charset() const
@@ -231,24 +346,73 @@ String ParsedContentType::charset() const
     return parameterValueForName("charset");
 }
 
+void ParsedContentType::setCharset(String&& charset)
+{
+    m_parameterValues.set("charset"_s, WTFMove(charset));
+}
+
 String ParsedContentType::parameterValueForName(const String& name) const
 {
-    return m_parameters.get(name);
+    return m_parameterValues.get(name);
 }
 
 size_t ParsedContentType::parameterCount() const
 {
-    return m_parameters.size();
+    return m_parameterValues.size();
 }
 
-void ParsedContentType::setContentType(const SubstringRange& contentRange)
+void ParsedContentType::setContentType(StringView contentRange, Mode mode)
 {
-    m_mimeType = substringForRange(m_contentType, contentRange).stripWhiteSpace();
+    m_mimeType = contentRange.toString();
+    if (mode == Mode::MimeSniff)
+        m_mimeType = stripLeadingAndTrailingHTTPSpaces(m_mimeType).convertToASCIILowercase();
+    else
+        m_mimeType = m_mimeType.stripWhiteSpace();
 }
 
-void ParsedContentType::setContentTypeParameter(const SubstringRange& key, const SubstringRange& value)
+static bool containsNonQuoteStringTokenCharacters(const String& input)
 {
-    m_parameters.set(substringForRange(m_contentType, key), substringForRange(m_contentType, value));
+    for (unsigned index = 0; index < input.length(); ++index) {
+        if (!isQuotedStringTokenCharacter(input[index]))
+            return true;
+    }
+    return false;
+}
+
+void ParsedContentType::setContentTypeParameter(const String& keyName, const String& keyValue, Mode mode)
+{
+    String name = keyName;
+    if (mode == Mode::MimeSniff) {
+        if (m_parameterValues.contains(name) || !isValidHTTPToken(name) || containsNonQuoteStringTokenCharacters(keyValue))
+            return;
+        name = name.convertToASCIILowercase();
+    }
+    m_parameterValues.set(name, keyValue);
+    m_parameterNames.append(name);
+}
+
+String ParsedContentType::serialize() const
+{
+    StringBuilder builder;
+    builder.append(m_mimeType);
+    for (auto& name : m_parameterNames) {
+        builder.append(';');
+        builder.append(name);
+        builder.append('=');
+        String value = m_parameterValues.get(name);
+        if (value.isEmpty() || !isValidHTTPToken(value)) {
+            builder.append('"');
+            for (unsigned index = 0; index < value.length(); ++index) {
+                auto ch = value[index];
+                if (ch == '\\' || ch =='"')
+                    builder.append('\\');
+                builder.append(ch);
+            }
+            builder.append('"');
+        } else
+            builder.append(value);
+    }
+    return builder.toString();
 }
 
 }

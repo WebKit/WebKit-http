@@ -2,8 +2,9 @@
 ---
 skip:
   # (uncomment to skip tests based on path)
-  # paths:
-    # - time-clip-to-integer.js # https://bugs.webkit.org/show_bug.cgi?id=185563
+  paths:
+    # https://bugs.webkit.org/show_bug.cgi?id=192920
+    - test/intl402/NumberFormat/prototype/formatToParts
   features:
     - SharedArrayBuffer
     - Atomics
@@ -16,8 +17,20 @@ skip:
     - Symbol.matchAll
     # https://bugs.webkit.org/show_bug.cgi?id=174931
     - regexp-lookbehind
-    # https://bugs.webkit.org/show_bug.cgi?id=126608
-    - u180e
+
+    - class-fields-public
+    - class-fields-private
+    - class-methods-private
+    - class-static-fields-public
+    - class-static-fields-private
+    - class-static-methods-private
+    - Intl.DateTimeFormat-datetimestyle
+    - Intl.DateTimeFormat-formatRange
+    - Intl.ListFormat
+    - Intl.Locale
+    - Intl.NumberFormat-unified
+    - Intl.RelativeTimeFormat
+    - Intl.Segmenter
   files:
     - test/built-ins/Array/prototype/reverse/length-exceeding-integer-limit-with-object.js
     - test/built-ins/Array/prototype/unshift/length-near-integer-limit.js
@@ -49,6 +62,8 @@ skip:
     # https://bugs.webkit.org/show_bug.cgi?id=186691
     - test/built-ins/Reflect/ownKeys/return-on-corresponding-order-large-index.js
 
-    # https://bugs.webkit.org/show_bug.cgi?id=186785
-    - test/built-ins/global/global-object.js
-    - test/built-ins/global/property-descriptor.js
+    # https://bugs.webkit.org/show_bug.cgi?id=192920
+    - test/intl402/PluralRules/prototype/resolvedOptions/order.js
+    - test/intl402/PluralRules/prototype/resolvedOptions/pluralCategories.js
+    - test/intl402/NumberFormat/prototype/format/format-fraction-digits.js
+    - test/intl402/NumberFormat/prototype/format/format-significant-digits.js

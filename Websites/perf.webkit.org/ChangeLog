@@ -1,3 +1,586 @@
+2019-06-13  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Custom analysis task configurator should allow supplying commit prefix and revision starts 'r'.
+        https://bugs.webkit.org/show_bug.cgi?id=198847
+
+        Reviewed by Ryosuke Niwa.
+
+        Custom analysis task configurator should not require full SHA to start an A/B test.
+        Custom analysis task configurator should accept svn revision starts with 'r'.
+
+        * browser-tests/custom-analysis-task-configurator-tests.js: Added a unit test for this change.
+        * public/api/commits.php: Extend this API to allow prefix matching when fethcing a single commit.
+        * public/include/commit-log-fetcher.php: Added a function to fetch a commit with prefix.
+        * public/v3/components/custom-analysis-task-configurator.js: Add UI support for accepting partial revision.
+        (CustomAnalysisTaskConfigurator.prototype._computeCommitSet):
+        (CustomAnalysisTaskConfigurator.prototype.async._resolveRevision):
+        (CustomAnalysisTaskConfigurator.prototype._buildTestabilityList):
+        * public/v3/models/commit-log.js:
+        (CommitLog.async.fetchForSingleRevision): Added third argument to specify prefix matching which defaults to false.
+        * server-tests/api-commits-tests.js: Added unit tests.
+        * unit-tests/commit-log-tests.js: Added a unit test.
+
+2019-05-15  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Perf dashboard erroneously rejects a build request to build owned components when there are no patches.
+        https://bugs.webkit.org/show_bug.cgi?id=197928
+
+        Reviewed by Ryosuke Niwa.
+
+        Fix a bug that build type build request that only builds owned components failed to pass sanity check when there
+        is no repository accepts patch in triggerable repository group.
+        Add a sanity check to throw an error when build request type is build but there is no repository group template.
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer.prototype._propertiesForBuildRequest): Changed sanity check the always requires repository accepts patch when there is a build to make it also works for build request only builds owned components.
+        (BuildbotSyncer._parseRepositoryGroup): Added check for repository group templates not null  when build requiest type is build.
+        * unit-tests/buildbot-syncer-tests.js: Added unit tests for this change.
+        * unit-tests/resources/mock-v3-models.js: Added mock date for unit tests.
+
+2019-05-14  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Pruning old file logic should not stop after removing 10 files if there are more files to be removed.
+        https://bugs.webkit.org/show_bug.cgi?id=197870
+
+        Reviewed by Ryosuke Niwa.
+
+        Pruning old file logic should keep removing removable files to make enough space for a new file upload.
+        It should only attempt to remve the files that have not been removed.
+
+        * public/include/uploaded-file-helpers.php: Modified 'prune_old_files' to allow to remove more than 10 files.
+        Fixed a bug that a removed file keep getting removed but never free up new space.
+        * server-tests/privileged-api-upload-file-tests.js:
+        (makeRandomAlnumStringForLength): Helper function to generate random content for a given length.
+        * server-tests/resources/test-server.js: Update total file size limit for this change.
+        (TestServer.prototype.testConfig):
+
+2019-03-25  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Primary cluster of measurement set should always contain latest point.
+        https://bugs.webkit.org/show_bug.cgi?id=196243
+
+        Reviewed by Ryosuke Niwa.
+
+        Fix a bug in measurement-set api that primary cluster may not contain latest data point as
+        'carry_over' row may not be updated.
+
+        * public/api/measurement-set.php: Should always keep 'carry_over' data points up to date.
+        * server-tests/api-measurement-set-tests.js: Added an unit test for this change.
+        Fixed a typo.
+
+2019-03-21  Dewei Zhu  <dewei_zhu@apple.com>
+
+        'custom-configuration-test-group-form' should update test name when selected test or platform changes.
+        https://bugs.webkit.org/show_bug.cgi?id=196114
+
+        Reviewed by Ryosuke Niwa.
+
+        r240104 fixes commit sets unnecessarily get updated even there is no change.
+        However, this made changing test or platform no longer triggers 'commitSetChange' action.
+        Test name should change not only when 'commitSet' gets change, but also platform or test changes.
+        Renaming the action name from 'commitSetChange' to a more accurate description 'testConfigChange'.
+        Dispatch 'testConfigChange' when platform or test changes.
+
+        * browser-tests/custom-analysis-task-configurator-tests.js: Changed action name to 'commitSetChange'.
+        * public/v3/components/custom-analysis-task-configurator.js:
+        (CustomAnalysisTaskConfigurator.prototype._didUpdateSelectedPlatforms): Should dispatch 'commitSetChange' action.
+        (CustomAnalysisTaskConfigurator.prototype._updateCommitSetMap): Changed action name to 'commitSetChange'.
+        * public/v3/components/custom-configuration-test-group-form.js: Added a unit test for this change.
+        (CustomConfigurationTestGroupForm.prototype.didConstructShadowTree):
+
+2019-03-18  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Fix a bug from r226303 that latest build time is not correctly calculated.
+        https://bugs.webkit.org/show_bug.cgi?id=195912
+
+        Reviewed by Ryosuke Niwa.
+
+        Time series is ordered by revision time which does not grantee the build time is
+        monotonically increasing.
+
+        * public/v3/pages/test-freshness-page.js: Use the latest build time instead of the build time of
+        last point on the chart.
+
+2019-03-13  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Test freshness page should improve the ability to correlating issues from same builder.
+        https://bugs.webkit.org/show_bug.cgi?id=195242
+
+        Reviewed by Ryosuke Niwa.
+
+        Added the ability to highlight indicators with same builder when mouse is hovering over one indicator.
+        This is a very useful visualization for correlating issues specific to a builder.
+        Added tooltip with latest build link when hovering over an indicator.
+
+        * public/v3/components/freshness-indicator.js:
+        (FreshnessIndicator): Removed 'summary' field as it's no longer needed.
+        Added 'highlighted' field.
+        (FreshnessIndicator.prototype.update): Added 'highlighted' argument.
+        (FreshnessIndicator.prototype.didConstructShadowTree): Make indicator to dispatch mouse enter and leave
+        messages so that UI can highlight corresponding cells.
+        (FreshnessIndicator.prototype.render):
+        (FreshnessIndicator.cssTemplate):
+        * public/v3/pages/test-freshness-page.js: Added tooltip to show latest build time and build link.
+        Added logic to manually compute table body height.
+        (TestFreshnessPage):
+        (TestFreshnessPage.prototype.didConstructShadowTree):
+        (TestFreshnessPage.prototype._fetchTestResults):
+        (TestFreshnessPage.prototype.render):
+        (TestFreshnessPage.prototype._renderTooltip):
+        (TestFreshnessPage.prototype._constructTableCell):
+        (TestFreshnessPage.cssTemplate):
+
+2019-02-26  Dewei Zhu  <dewei_zhu@apple.com>
+
+        The table head of test freshness page should not scroll with the page.
+        https://bugs.webkit.org/show_bug.cgi?id=195092
+
+        Reviewed by Ryosuke Niwa.
+
+        Fix the location of the freshness table head to make it easier to corelate cell with test.
+
+        * public/v3/pages/test-freshness-page.js: Changed some style rules to make the table head fixed.
+        (TestFreshnessPage.prototype._renderTable):
+        (TestFreshnessPage.cssTemplate):
+
+2019-01-17  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Analyzing a chart that does not exist should not halt whole run-analysis script.
+        https://bugs.webkit.org/show_bug.cgi?id=193563
+
+        Reviewed by Ryosuke Niwa.
+
+        Halting whole run-analysis script while there is any invalid chart specified in Manifest makes the script fragile.
+        Run-analysis is also responsible for adding retry and sending notification which should not be block by this error.
+        Skipping analyzing the corresponding configuration seems reasonable.
+
+        * public/v3/models/measurement-set.js:
+        (MeasurementSet.prototype._ensureClusterPromise): Only add callback when callback is specified.
+        This will help to fix 'UnhandledPromiseRejectionWarning' while running the test.
+        * tools/js/measurement-set-analyzer.js:
+        (MeasurementSetAnalyzer.prototype.async._analyzeMeasurementSet): Catch the exception while failing to fetch a measurement set and skip the analysis for this config.
+        * unit-tests/measurement-set-analyzer-tests.js: Added unit tests for this.
+
+2019-01-17  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Updating commit in OSBuildFetcher should respect revision range in config.
+        https://bugs.webkit.org/show_bug.cgi?id=193558
+
+        Reviewed by Ryosuke Niwa.
+
+        OSBuildFetcher._fetchAvailableBuilds should filter out commits those are not in
+        revision range specified by cofnig.
+
+        * server-tests/tools-os-build-fetcher-tests.js: Added a unit test for this change.
+        * tools/js/os-build-fetcher.js:
+        (prototype.async._fetchAvailableBuilds): Filter out commits from update list if commit
+        revision is out of range.
+
+2018-12-31  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Test group results notification should not say a build request to build had failed even when it had successfully completed.
+        https://bugs.webkit.org/show_bug.cgi?id=193064
+
+        Reviewed by Ryosuke Niwa.
+
+        Should show 'Build completed' or 'Build failed' for build type build requests.
+
+        * browser-tests/test-group-result-page-tests.js: Added a unit test to guard this bug.
+        * tools/js/test-group-result-page.js: Show 'Build completed' or 'Build failed' for build type build requests.
+
+2018-12-21  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Add UI in analysis task page to show commit testability information.
+        https://bugs.webkit.org/show_bug.cgi?id=192972
+
+        Reviewed by Ryosuke Niwa.
+
+        Add UI in custom analysis task configuration and customizable test group form to show testability information.
+        Fix a bug in 'CustomAnalysisTaskConfigurator._updateCommitSetMap' that 'currentComparison' is incorrectly set.
+        SQL to update existing database:
+            ALTER TABLE commits ADD COLUMN IF NOT EXISTS commit_testability varchar(128) DEFAULT NULL;
+
+        * browser-tests/custom-analysis-task-configurator-tests.js: Added a unit test for the bug in
+        'CustomAnalysisTaskConfigurator._updateCommitSetMap'.
+        Added a unit test to make sure 'CustomAnalysisTaskConfigurator' still works when commit fetching never returns.
+        * browser-tests/index.html: Imported ''custom-analysis-task-configurator-tests.js'.
+        * init-database.sql: Increase 'commit_testability' field length from 64 characters to 128.
+        * public/v3/components/custom-analysis-task-configurator.js: Added UI to show testability information.
+        (CustomAnalysisTaskConfigurator):
+        (CustomAnalysisTaskConfigurator.prototype._didUpdateSelectedPlatforms): Should reset related field for corresponding
+        repositories that user does not specify revision.
+        (CustomAnalysisTaskConfigurator.prototype._updateMapFromSpecifiedRevisionsForConfiguration): A helper function
+        to update '_specifiedCommits' and '_invalidRevisionsByConfiguration' per '_specifiedRevisions'.
+        (CustomAnalysisTaskConfigurator.prototype.render):
+        (CustomAnalysisTaskConfigurator.prototype._updateCommitSetMap): Fixed a bug that 'currentComparison' is incorrectly set.
+        (CustomAnalysisTaskConfigurator.prototype._computeCommitSet):
+        (CustomAnalysisTaskConfigurator.prototype.async._fetchCommitsForConfiguration):
+        (CustomAnalysisTaskConfigurator.prototype.async._resolveRevision):
+        (CustomAnalysisTaskConfigurator.prototype._buildRevisionTable):
+        (CustomAnalysisTaskConfigurator.prototype._buildTestabilityList):
+        (CustomAnalysisTaskConfigurator.prototype._selectRepositoryGroup):
+        (CustomAnalysisTaskConfigurator.prototype._buildRevisionInput):
+        (CustomAnalysisTaskConfigurator.cssTemplate):
+        * public/v3/components/customizable-test-group-form.js: Added UI to show testability information.
+        (CustomizableTestGroupForm.prototype._renderCustomRevisionTable):
+        (CustomizableTestGroupForm.prototype._constructTestabilityRows.):
+        (CustomizableTestGroupForm.prototype._constructTestabilityRows):
+        (CustomizableTestGroupForm.prototype._constructRevisionRadioButtons):
+        Changing either revision editor or radio button should trigger a re-render as testability
+        information for updated revision may change.
+        (CustomizableTestGroupForm.cssTemplate):
+        * public/v3/models/commit-set.js:
+        (IntermediateCommitSet.prototype.commitsWithTestability): Renamed from 'commitsWithTestabilityWarnings'.
+        (IntermediateCommitSet.prototype.commitsWithTestabilityWarnings): Deleted.
+
+2018-12-14  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Extend commits table to contain testability information.
+        https://bugs.webkit.org/show_bug.cgi?id=191557
+
+        Reviewed by Ryosuke Niwa.
+
+        Added the ability to store testability message in commits table.
+        Refactored '/api/report-commits' to support updating commit only.
+        Updated os version syncing script to be able to update testability information.
+
+        * init-database.sql: Added 'commit_testability' field to 'commits' table.
+        * public/api/report-commits.php: Refactor this api to allow only update existing commits.
+        * public/include/commit-log-fetcher.php: Expose testability warning information in this API.
+        * public/include/commit-updater.php: Added 'CommitUpdater' to manage commit insert and update.
+        * public/v3/models/commit-log.js: CommitLog object should expose testability warning information.
+        (CommitLog.prototype.updateSingleton):
+        (CommitLog.prototype.testability):
+        * public/v3/models/commit-set.js: Added 'commitsWithTestability' and 'commits' to CommitSet and
+        IntermediateCommitSet instances.
+        (CommitSet.prototype.commitsWithTestability):
+        (CommitSet.prototype.commits):
+        (IntermediateCommitSet.prototype.commitsWithTestability):
+        (IntermediateCommitSet.prototype.commits):
+        * server-tests/api-report-commits-tests.js: Added unit tests for '/api/report-commits' when `insert=false`.
+        * server-tests/tools-os-build-fetcher-tests.js: Added and updated unit tests.
+        * tools/js/os-build-fetcher.js: Added the ability to update commit testability warnings.
+        (async.fetchReportAndUpdateCommits):
+        (prototype.async.fetchReportAndUpdateBuilds):
+        (prototype.async._fetchAvailableBuilds):
+        (prototype.async._commitsForAvailableBuilds):
+        (prototype._commitsWithinRange):
+        (prototype.async._reportCommits):
+        (fetchAndReportAllInOrder): Deleted.
+        (prototype.fetchAndReportNewBuilds): Deleted.
+        (prototype._fetchAvailableBuilds): Deleted.
+        (prototype._commitsForAvailableBuilds): Deleted.
+        (prototype._submitCommits): Deleted.
+        * tools/sync-os-versions.js:
+        * unit-tests/commit-log-tests.js: Added a unit test for 'testability'.
+        * unit-tests/commit-set-tests.js: Added unit tests for 'commitsWithTestability'.
+
+2018-11-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Manifest file can contain a test metric which references a non-existent test
+        https://bugs.webkit.org/show_bug.cgi?id=191796
+
+        Reviewed by Dewei Zhu.
+
+        The bug was caused by a race condition between the manifest file fetching the list of tests and test metrics
+        and new tests and test metrics being added. Because we would fetch tests before test metrics, it was possible
+        for new test metrics which references a test not included in the fetched tests to be present in the test metrics.
+
+        Fixed the bug by changing the order of the queries so that test metrics are fetched before tests. This guarantees
+        that any test referenced by a test metric always exists and thefore included in the manifest file.
+
+        Unfortunately no new tests beucase this involes a race condition.
+
+        * public/include/manifest-generator.php:
+
+2018-11-13  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Add cache for CommitLog objects to avoid refetching same commit.
+        https://bugs.webkit.org/show_bug.cgi?id=191621
+
+        Reviewed by Ryosuke Niwa.
+
+        Added a cache for fully fetched commit log objects to avoid refetching.
+
+        * public/v3/models/commit-log.js:
+        (CommitLog): Added assertion for id.
+        Removed unused 'remoteId' as it has been removed since r198479.
+        (CommitLog.async.fetchBetweenRevisions): Turned it into async function.
+        (CommitLog.async.fetchForSingleRevision): Added the logic to check cache before fetching.
+        (CommitLog._constructFromRawData): Added logic to add entries to cache.
+        * public/v3/models/repository.js: Added the ability to track fetched commit for certain repository.
+        (Repository.commitForRevision): Fixed measurement set not passing commit id while constructing a
+        commit log object.
+        (Repository.setCommitForRevision): Sets commit for a given revision.
+        * public/v3/models/commit-set.js: Fixed unit tests.
+        * unit-tests/commit-log-tests.js: Added unit tests for this change.
+        Fixed existing tests.
+        * unit-tests/commit-set-range-bisector-tests.js: Fixed unit tests.
+        * unit-tests/commit-set-tests.js: Fixed unit tests.
+
+2018-11-08  Dewei Zhu  <dewei_zhu@apple.com>
+
+        commit time returned by '/api/measurement-set' should match the one returned by '/api/commits'.
+        https://bugs.webkit.org/show_bug.cgi?id=191457
+
+        Reviewed by Dean Jackson and Ryosuke Niwa.
+
+        Commit time returned by '/api/measurement-set' sometimes is calculated by 'epoch from ..'.
+        This function may return a floating number with 5 or 6 decimal digits due to double precision limitations.
+        However, some commits may be reported with 6 decimal decimal.
+        So the commit time for those commits will sometime be rounded to 5 decimal digits.
+        In order to avoid front end assertion failure in CommitLog, Database::to_js_time need to round to 5 digits.
+
+        * public/include/db.php: Change the behavior to match that of postgres.
+        Added logic to avoid losing precision in php.
+        * server-tests/api-measurement-set-tests.js: Added unit tests for this bug.
+        (queryPlatformAndMetric): Fix a bug that arguments are not used at all.
+
+2018-11-07  Dewei Zhu  <dewei_zhu@apple.com>
+
+        "/api/report" does not check commit time correctly.
+        https://bugs.webkit.org/show_bug.cgi?id=191351
+
+        Reviewed by Ryosuke Niwa.
+
+        Test result report API does not convert formated time string to timestamp correctly
+        which result in not checking commit time correctly.
+
+        * public/include/report-processor.php: Use 'strtotime' instead of 'floatval'.
+        Accepts the time delta within 1 seconds.
+        * server-tests/api-report-tests.js: Added unit tests.
+        (reportWitMismatchingCommitTime):
+        (reportWithOneSecondCommitTimeDifference):
+
+2018-11-06  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Custom test group form should use commit set map before customization as the behavior of radio buttons.
+        https://bugs.webkit.org/show_bug.cgi?id=191347
+
+        Reviewed by Ryosuke Niwa.
+
+        The radio button behavior should always set the same revision while editing the revision input.
+        That means we should not use the intermediate commit set map but use the commit set map before
+        "Customize" link is clicked.
+
+        * browser-tests/customizable-test-group-form-tests.js: Added a unit test for this bug.
+        * public/v3/components/customizable-test-group-form.js: Pass uncustomized commit set so that the radio button
+        behavoir preserves.
+        (CustomizableTestGroupForm):
+        (CustomizableTestGroupForm.prototype.setCommitSetMap):
+        (CustomizableTestGroupForm.prototype.didConstructShadowTree):
+        (CustomizableTestGroupForm.prototype.render):
+        (CustomizableTestGroupForm.prototype._renderCustomRevisionTable):
+        (CustomizableTestGroupForm.prototype._constructTableBodyList):
+        (CustomizableTestGroupForm.prototype._constructTableRowForCommitsWithoutOwner):
+        (CustomizableTestGroupForm.prototype._constructTableRowForCommitsWithOwner):
+        (CustomizableTestGroupForm.prototype._constructRevisionRadioButtons):
+
+2018-11-06  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Customizable test group form should not reset manually edited commit value sometimes.
+        https://bugs.webkit.org/show_bug.cgi?id=190863
+
+        Reviewed by Ryosuke Niwa.
+
+        After changing the radio button and manually editing the commit value, commit value should not be reset
+        while changing the name of the test group.
+        Add the logic to prompt warning when manually typed commit does not exist.
+
+        * browser-tests/customizable-test-group-form-tests.js: Added a unit test for this bug.
+        * browser-tests/index.html:
+        * public/v3/components/customizable-test-group-form.js: Should always update commit set as long as
+        the repository of that row does not have a owner repository.
+        (CustomizableTestGroupForm.prototype._constructTableRowForCommitsWithoutOwner):
+        (CustomizableTestGroupForm.prototype._constructTableRowForCommitsWithOwner):
+        (CustomizableTestGroupForm.prototype._constructRevisionRadioButtons):
+
+2018-10-16  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Unreviewed, rolling out r236996.
+
+        Temporarily rollout to fix a manifest generation bug.
+        "lastModified" field for certain platform & metric configurations may be missing.
+
+        Reverted changeset:
+
+        "ManifestGenerator shouldn't need more than 1GB of memory or
+        run for 30 seconds"
+        https://bugs.webkit.org/show_bug.cgi?id=190393
+        https://trac.webkit.org/changeset/236996
+
+2018-10-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard: add a test for aggregating subtests without a matching metric in /api/report
+        https://bugs.webkit.org/show_bug.cgi?id=190544
+
+        Rubber-stamped by Keith Miller and unofficially reviewed by Dewei Zhu.
+
+        Added tests for reporting results to /api/report where a test with aggregated metrics has a subtest
+        without a matching metric type. The aggregation should simply skip such a subtest instead of returning
+        an error or aggregating with a mismatching metric type.
+
+        * server-tests/api-report-tests.js:
+        (.makeReport): Extracted out of a test case.
+
+2018-10-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r236956. Use array_get to avoid warnings.
+
+        * public/include/report-processor.php:
+
+2018-10-09  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Performance dashboard should show added iterations due failed build requests.
+        https://bugs.webkit.org/show_bug.cgi?id=190419
+
+        Reviewed by Ryosuke Niwa.
+
+        Added UI to show added build requests due to previous failed build requests.
+        Updated the retry/bisect button to default to initial repetition count when test group is created.
+
+        * public/v3/pages/analysis-task-page.js: Added a div to show added build requests.
+        Retry and bisect button should default to initial repetion count.
+        (AnalysisTaskTestGroupPane.prototype._renderCurrentTestGroup):
+        (AnalysisTaskTestGroupPane.cssTemplate):
+
+2018-10-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        ManifestGenerator shouldn't need more than 1GB of memory or run for 30 seconds
+        https://bugs.webkit.org/show_bug.cgi?id=190393
+
+        Reviewed by Antti Koivisto and unofficially reviewed by Dewei Zhu.
+
+        This patch reduces the runtime of /api/manifest from 13s to 7s and reduces the memory requirement from
+        1GB to 400MB for the internal dashboard in my local testing.
+
+        The biggest perf win comes from avoid running a complex query over test_configurations to compute
+        the latest modified date across different test configuration types ("current" vs. "baseline").
+        Instead, we now fetch the entire table row by row and compute the latest modified date in memory.
+
+        Also call intval in many more places to avoid generating double quotes, which is a pretty significant
+        proportion of the JSON file size at this point.
+
+        Finally, use references in more places to avoid deep copying of arrays.
+
+        * public/include/manifest-generator.php:
+        (ManifestGenerator::generate): Skip the generation of "dashboard" since it's only used by v1 UI.
+        (ManifestGenerator::tests): Don't copy each row.
+        (ManifestGenerator::metrics): Ditto.
+        (ManifestGenerator::platforms): Implement the aforementioned optimization. Instead of grouping
+        test configurations for a given metric and platform together, fetch them all and do in-memory
+        processing in PHP. Avoid more copying as well.
+        (ManifestGenerator::repositories): Avoid more copying.
+        (ManifestGenerator::bug_trackers): Ditto.
+        (ManifestGenerator::fetch_triggerables): Ditto.
+
+2018-10-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        /api/report takes 15+ minutes submitting some test results
+        https://bugs.webkit.org/show_bug.cgi?id=190382
+
+        Rubber-stamped by Alexey Proskuryakov and unofficially reviewed by Dewei Zhu.
+
+        The issue was that recursively_ensure_tests would issue thousands of dependent queries.
+
+        Since most reporting of results would be happening after all the tests and test metrics had been created,
+        simply fetch the list of all tests and test metrics upfront in memory.
+
+        This would slow-down the reporting of other test results but in practice doesn't matter (an extra few seconds
+        of overhead) but for slow reporting, it can significantly reduce the runtime from ~10 minutes to ~10 seconds.
+
+        * public/include/report-processor.php:
+        (ReportProcessor::process): Call fetch_tests before recursively_ensure_tests.
+        (ReportProcessor::fetch_tests): Added. This builds up a mapping of tests based on a parent test ID as well as
+        a mapping of metrics per test based on its name and then its aggregator's name.
+        (ReportProcessor::recursively_ensure_tests): Added. Use the in-memory maps built in fetch_tests when possible.
+        (ReportProcessor::aggregator_list_if_exists): Take a reference instead of passing it by value.
+        (TestRunsGenerator::add_aggregated_metric): Now takes metric ID. The code to add the test metric had been moved
+        to recursively_ensure_tests.
+
+2018-10-01  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Add retry for test groups with failed build requests.
+        https://bugs.webkit.org/show_bug.cgi?id=190188
+
+        Reviewed by Ryosuke Niwa.
+
+        Added retry logic in run-analysis script.
+        Current retry logic will only be triggered when there is at least one successful build request for each commit set
+        in a test group.
+
+        * init-database.sql: Added 'testgroup_initial_repetition_count' and 'testgroup_may_need_more_requests'.
+        SQL to update existing database:
+        '''
+        BEGIN;
+            ALTER TABLE analysis_test_groups
+                ADD COLUMN testgroup_initial_repetition_count integer DEFAULT NULL,
+                ADD COLUMN testgroup_may_need_more_requests boolean DEFAULT FALSE;
+            UPDATE analysis_test_groups SET testgroup_initial_repetition_count = (
+                SELECT DISTINCT(COUNT(*)) FROM build_requests WHERE request_group = testgroup_id AND request_order >= 0 GROUP BY request_commit_set
+            );
+            ALTER TABLE analysis_test_groups ALTER COLUMN testgroup_initial_repetition_count DROP DEFAULT, ALTER COLUMN testgroup_may_need_more_requests SET NOT NULL;
+        END;
+        '''
+        'testgroup_initial_repetition_count' represents the number of successful build request for each commit set when
+        test group is created.
+        'testgroup_may_need_more_requests' will be set when any build request in test group is set to 'failed'.
+        * public/api/build-requests.php: Added the logic to set 'testgroup_may_need_more_requests'.
+        * public/api/test-groups.php: Updated 'ready-for-notification' to 'ready-for-further-processing' so that it returns finished test
+        groups those either have 'needs_notification' or  'may_need_more_requests' set.
+        * public/include/commit-sets-helpers.php: Set 'initial_repetition_count' to repetition count.
+        * public/privileged-api/update-test-group.php: Added APIs to add build request for a test group and
+        update 'may_need_more_requests' flag.
+        * public/v3/models/test-group.js:
+        (TestGroup): Added '_mayNeedMoreRequests' and '_initialRepetitionCount' field.
+        Refactored code that interacts with '/api/update-test-group'.
+        (TestGroup.prototype.updateSingleton):
+        (TestGroup.prototype.mayNeedMoreRequests):
+        (TestGroup.prototype.initialRepetitionCount):
+        (TestGroup.prototype.async._updateBuildRequest):
+        (TestGroup.prototype.updateName):
+        (TestGroup.prototype.updateHiddenFlag):
+        (TestGroup.prototype.async.didSendNotification):
+        (TestGroup.prototype.async.addMoreBuildRequests):
+        (TestGroup.prototype.async.clearMayNeedMoreBuildRequests): Added API to clear 'may_need_more_requests' flag.
+        (TestGroup.fetchAllReadyForFurtherProcessing): Refactored 'TestGroup.fetchAllWithNotificationReady' to return test groups either
+        have 'needs_notification' or  'may_need_more_requests' set.
+        (TestGroup.fetchAllThatMayNeedMoreRequests): Fetches test groups those may need more build requests.
+        * server-tests/api-test-groups.js: Added unit tests.
+        * server-tests/privileged-api-add-build-requests-tests.js: Added unit tests for 'add-build-requests' API.
+        * server-tests/privileged-api-update-test-group-tests.js: Added unit tests.
+        * server-tests/resources/mock-data.js:
+        (MockData.addMockData):
+        * server-tests/resources/test-server.js:
+        (TestServer.prototype._determinePgsqlDirectory): Fixed a bug that 'childProcess.execFileSync' may return a buffer.
+        * tools/run-analysis.js: Added logic to add extra build request before sennding notification.
+        * tools/js/retry-failed-build-requests.js:
+        (async.createAdditionalBuildRequestsForTestGroupsWithFailedRequests): Module that add extra build requests.
+        * unit-tests/retry-failed-build-requests-tests.js: Added.
+        * unit-tests/test-groups-tests.js: Added unit tests.
+
+2018-09-21  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Apache can return a corrupt manifest file while ManifestGenerator::store is running
+        https://bugs.webkit.org/show_bug.cgi?id=189822
+
+        Reviewed by Ryosuke Niwa.
+
+        Updating a file on performance dashboard should be transactional between php and apache.
+        Otherwise, partial content may be served.
+
+        * public/api/measurement-set.php: Adapted invocation of 'generate_json_date_with_elapsed_time_if_needed'.
+        * public/api/runs.php: Adapted invocation of 'generate_json_date_with_elapsed_time_if_needed'.
+        * public/include/db.php: Make creating file transactionaly by taking advantage of
+        'move/rename' operation is atomic in OS.
+        Added logic to avoid overwriting file if all content except specified filed are identical.
+        * public/include/json-header.php: Added a helper function that added 'status' but does not
+        convert content to json.
+        * public/include/manifest-generator.php: Adapted invocation of 'generate_json_date_with_elapsed_time_if_needed'.
+        * public/shared/statistics.js: Removed unnecessary logging.
+        (Statistics.new.sampleMeanAndVarianceFromMultipleSamples):
+        * server-tests/api-manifest-tests.js: Updated one unit test.
+
 2018-08-22  Dewei Zhu  <dewei_zhu@apple.com>
 
         Show t-test results based on individual measurements to analysis task page.

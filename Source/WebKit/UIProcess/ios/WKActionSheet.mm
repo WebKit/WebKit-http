@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WKActionSheet.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "UIKitSPI.h"
 #import <wtf/RetainPtr.h>
@@ -51,12 +51,14 @@
 
     _arrowDirections = UIPopoverArrowDirectionAny;
 
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if (UI_USER_INTERFACE_IDIOM() != UIUserInterfaceIdiomPhone) {
         // Only iPads support popovers that rotate. UIActionSheets actually block rotation on iPhone/iPod Touch
         NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
         [center addObserver:self selector:@selector(willRotate) name:UIWindowWillRotateNotification object:nil];
         [center addObserver:self selector:@selector(didRotate) name:UIWindowDidRotateNotification object:nil];
     }
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     return self;
 }
@@ -79,11 +81,13 @@
 {
     // Calculate the presentation rect just before showing.
     CGRect presentationRect = CGRectZero;
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if (UI_USER_INTERFACE_IDIOM() != UIUserInterfaceIdiomPhone) {
         presentationRect = [self _presentationRectForStyle:style];
         if (CGRectIsEmpty(presentationRect))
             return NO;
     }
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     _currentPresentationStyle = style;
     return [self presentSheetFromRect:presentationRect];
@@ -218,7 +222,9 @@
         return;
 
     CGRect presentationRect = [self _presentationRectForStyle:_currentPresentationStyle];
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     BOOL wasPresentedViewControllerModal = [_presentedViewControllerWhileRotating isModalInPopover];
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
     if (!CGRectIsEmpty(presentationRect) || wasPresentedViewControllerModal) {
         // Re-present the popover only if we are still pointing to content onscreen, or if we can't dismiss it without losing information.
@@ -255,4 +261,4 @@
 
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

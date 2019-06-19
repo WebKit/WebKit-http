@@ -30,6 +30,7 @@
 
 #include "ExecutableAllocator.h"
 #include "MachineContext.h"
+#include "WasmCapabilities.h"
 #include "WasmExceptionType.h"
 #include "WasmMemory.h"
 #include "WasmThunks.h"
@@ -50,9 +51,9 @@ static const bool verbose = false;
 static Lock codeLocationsLock;
 static LazyNeverDestroyed<HashSet<std::tuple<void*, void*>>> codeLocations; // (start, end)
 
-#if ENABLE(WEBASSEMBLY_FAST_MEMORY)
-
 static bool fastHandlerInstalled { false };
+
+#if ENABLE(WEBASSEMBLY_FAST_MEMORY)
 
 static SignalAction trapHandler(Signal, SigInfo& sigInfo, PlatformRegisters& context)
 {
@@ -123,20 +124,23 @@ bool fastMemoryEnabled()
 
 void enableFastMemory()
 {
+#if ENABLE(WEBASSEMBLY_FAST_MEMORY)
     static std::once_flag once;
     std::call_once(once, [] {
+        if (!Wasm::isSupported())
+            return;
+
         if (!Options::useWebAssemblyFastMemory())
             return;
 
-#if ENABLE(WEBASSEMBLY_FAST_MEMORY)
         installSignalHandler(Signal::BadAccess, [] (Signal signal, SigInfo& sigInfo, PlatformRegisters& ucontext) {
             return trapHandler(signal, sigInfo, ucontext);
         });
 
         codeLocations.construct();
         fastHandlerInstalled = true;
-#endif // ENABLE(WEBASSEMBLY_FAST_MEMORY)
     });
+#endif // ENABLE(WEBASSEMBLY_FAST_MEMORY)
 }
     
 } } // namespace JSC::Wasm

@@ -69,7 +69,7 @@ inline JSC::JSGlobalObject* toJSGlobalObject(JSGlobalContextRef context)
 inline JSC::JSValue toJS(JSC::ExecState* exec, JSValueRef v)
 {
     ASSERT_UNUSED(exec, exec);
-#if USE(JSVALUE32_64)
+#if !CPU(ADDRESS64)
     JSC::JSCell* jsCell = reinterpret_cast<JSC::JSCell*>(const_cast<OpaqueJSValue*>(v));
     if (!jsCell)
         return JSC::jsNull();
@@ -79,7 +79,7 @@ inline JSC::JSValue toJS(JSC::ExecState* exec, JSValueRef v)
     else
         result = jsCell;
 #else
-    JSC::JSValue result = JSC::JSValue::decode(reinterpret_cast<JSC::EncodedJSValue>(const_cast<OpaqueJSValue*>(v)));
+    JSC::JSValue result = bitwise_cast<JSC::JSValue>(v);
 #endif
     if (!result)
         return JSC::jsNull();
@@ -91,13 +91,13 @@ inline JSC::JSValue toJS(JSC::ExecState* exec, JSValueRef v)
 inline JSC::JSValue toJSForGC(JSC::ExecState* exec, JSValueRef v)
 {
     ASSERT_UNUSED(exec, exec);
-#if USE(JSVALUE32_64)
+#if !CPU(ADDRESS64)
     JSC::JSCell* jsCell = reinterpret_cast<JSC::JSCell*>(const_cast<OpaqueJSValue*>(v));
     if (!jsCell)
         return JSC::JSValue();
     JSC::JSValue result = jsCell;
 #else
-    JSC::JSValue result = JSC::JSValue::decode(reinterpret_cast<JSC::EncodedJSValue>(const_cast<OpaqueJSValue*>(v)));
+    JSC::JSValue result = bitwise_cast<JSC::JSValue>(v);
 #endif
     if (result && result.isCell())
         RELEASE_ASSERT(result.asCell()->methodTable(exec->vm()));
@@ -128,19 +128,24 @@ inline JSC::VM* toJS(JSContextGroupRef g)
     return reinterpret_cast<JSC::VM*>(const_cast<OpaqueJSContextGroup*>(g));
 }
 
-inline JSValueRef toRef(JSC::ExecState* exec, JSC::JSValue v)
+inline JSValueRef toRef(JSC::VM& vm, JSC::JSValue v)
 {
-    ASSERT(exec->vm().currentThreadIsHoldingAPILock());
-#if USE(JSVALUE32_64)
+    ASSERT(vm.currentThreadIsHoldingAPILock());
+#if !CPU(ADDRESS64)
     if (!v)
         return 0;
     if (!v.isCell())
-        return reinterpret_cast<JSValueRef>(JSC::jsAPIValueWrapper(exec, v).asCell());
+        return reinterpret_cast<JSValueRef>(JSC::JSAPIValueWrapper::create(vm, v));
     return reinterpret_cast<JSValueRef>(v.asCell());
 #else
-    UNUSED_PARAM(exec);
-    return reinterpret_cast<JSValueRef>(JSC::JSValue::encode(v));
+    UNUSED_PARAM(vm);
+    return bitwise_cast<JSValueRef>(v);
 #endif
+}
+
+inline JSValueRef toRef(JSC::ExecState* exec, JSC::JSValue v)
+{
+    return toRef(exec->vm(), v);
 }
 
 inline JSObjectRef toRef(JSC::JSObject* o)

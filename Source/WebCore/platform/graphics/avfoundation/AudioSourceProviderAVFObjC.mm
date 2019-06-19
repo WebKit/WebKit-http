@@ -48,14 +48,10 @@
 #endif
 
 #import <pal/cf/CoreMediaSoftLink.h>
+#import <pal/cocoa/AVFoundationSoftLink.h>
 
-SOFT_LINK_FRAMEWORK(AVFoundation)
 SOFT_LINK_FRAMEWORK(MediaToolbox)
 SOFT_LINK_FRAMEWORK(AudioToolbox)
-
-SOFT_LINK_CLASS(AVFoundation, AVPlayerItem)
-SOFT_LINK_CLASS(AVFoundation, AVMutableAudioMix)
-SOFT_LINK_CLASS(AVFoundation, AVMutableAudioMixInputParameters)
 
 SOFT_LINK(AudioToolbox, AudioConverterConvertComplexBuffer, OSStatus, (AudioConverterRef inAudioConverter, UInt32 inNumberPCMFrames, const AudioBufferList* inInputData, AudioBufferList* outOutputData), (inAudioConverter, inNumberPCMFrames, inInputData, outOutputData))
 SOFT_LINK(AudioToolbox, AudioConverterNew, OSStatus, (const AudioStreamBasicDescription* inSourceFormat, const AudioStreamBasicDescription* inDestinationFormat, AudioConverterRef* outAudioConverter), (inSourceFormat, inDestinationFormat, outAudioConverter))
@@ -69,7 +65,8 @@ namespace WebCore {
 using namespace PAL;
 static const double kRingBufferDuration = 1;
 
-struct AudioSourceProviderAVFObjC::TapStorage {
+class AudioSourceProviderAVFObjC::TapStorage : public ThreadSafeRefCounted<AudioSourceProviderAVFObjC::TapStorage> {
+public:
     TapStorage(AudioSourceProviderAVFObjC* _this) : _this(_this) { }
     AudioSourceProviderAVFObjC* _this;
     Lock mutex;
@@ -206,7 +203,7 @@ void AudioSourceProviderAVFObjC::createMix()
     ASSERT(m_avPlayerItem);
     ASSERT(m_client);
 
-    m_avAudioMix = adoptNS([allocAVMutableAudioMixInstance() init]);
+    m_avAudioMix = adoptNS([PAL::allocAVMutableAudioMixInstance() init]);
 
     MTAudioProcessingTapCallbacks callbacks = {
         0,
@@ -223,7 +220,7 @@ void AudioSourceProviderAVFObjC::createMix()
     ASSERT(tap);
     ASSERT(m_tap == tap);
 
-    RetainPtr<AVMutableAudioMixInputParameters> parameters = adoptNS([allocAVMutableAudioMixInputParametersInstance() init]);
+    RetainPtr<AVMutableAudioMixInputParameters> parameters = adoptNS([PAL::allocAVMutableAudioMixInputParametersInstance() init]);
     [parameters setAudioTapProcessor:m_tap.get()];
 
     CMPersistentTrackID trackID = m_avAssetTrack.get().trackID;
@@ -237,10 +234,13 @@ void AudioSourceProviderAVFObjC::initCallback(MTAudioProcessingTapRef tap, void*
 {
     ASSERT(tap);
     AudioSourceProviderAVFObjC* _this = static_cast<AudioSourceProviderAVFObjC*>(clientInfo);
-    _this->m_tap = tap;
-    _this->m_tapStorage = new TapStorage(_this);
+    _this->m_tap = adoptCF(tap);
+    _this->m_tapStorage = adoptRef(new TapStorage(_this));
     _this->init(clientInfo, tapStorageOut);
-    *tapStorageOut = _this->m_tapStorage;
+    *tapStorageOut = _this->m_tapStorage.get();
+
+    // ref balanced by deref in finalizeCallback:
+    _this->m_tapStorage->ref();
 }
 
 void AudioSourceProviderAVFObjC::finalizeCallback(MTAudioProcessingTapRef tap)
@@ -248,11 +248,12 @@ void AudioSourceProviderAVFObjC::finalizeCallback(MTAudioProcessingTapRef tap)
     ASSERT(tap);
     TapStorage* tapStorage = static_cast<TapStorage*>(MTAudioProcessingTapGetStorage(tap));
 
-    std::lock_guard<Lock> lock(tapStorage->mutex);
-
-    if (tapStorage->_this)
-        tapStorage->_this->finalize();
-    delete tapStorage;
+    {
+        std::lock_guard<Lock> lock(tapStorage->mutex);
+        if (tapStorage->_this)
+            tapStorage->_this->finalize();
+    }
+    tapStorage->deref();
 }
 
 void AudioSourceProviderAVFObjC::prepareCallback(MTAudioProcessingTapRef tap, CMItemCount maxFrames, const AudioStreamBasicDescription *processingFormat)

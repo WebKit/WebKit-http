@@ -47,7 +47,10 @@ WI.TimelineRecordingProgressView = class TimelineRecordingProgressView extends W
 
     // Public
 
-    get visible() { return this._visible; }
+    get visible()
+    {
+        return this._visible;
+    }
 
     set visible(x)
     {

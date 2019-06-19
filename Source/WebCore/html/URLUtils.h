@@ -83,13 +83,15 @@ String URLUtils<T>::toJSON() const
 template <typename T>
 String URLUtils<T>::origin() const
 {
-    RefPtr<SecurityOrigin> origin = SecurityOrigin::create(href());
+    auto origin = SecurityOrigin::create(href());
     return origin->toString();
 }
 
 template <typename T>
 String URLUtils<T>::protocol() const
 {
+    if (WTF::protocolIsJavaScript(href()))
+        return "javascript:"_s;
     return makeString(href().protocol(), ':');
 }
 
@@ -174,7 +176,7 @@ void URLUtils<T>::setHost(const String& value)
             // requires setting the port to "0" if it is set to empty string.
             url.setHostAndPort(value.substring(0, separator + 1) + '0');
         } else {
-            if (isDefaultPortForProtocol(port, url.protocol()))
+            if (WTF::isDefaultPortForProtocol(port, url.protocol()))
                 url.setHostAndPort(value.substring(0, separator));
             else
                 url.setHostAndPort(value.substring(0, portEnd));
@@ -235,7 +237,7 @@ void URLUtils<T>::setPort(const String& value)
     // requires setting the port to "0" if it is set to empty string.
     // FIXME: http://url.spec.whatwg.org/ doesn't appear to require this; test what browsers do
     unsigned port = value.toUInt();
-    if (isDefaultPortForProtocol(port, url.protocol()))
+    if (WTF::isDefaultPortForProtocol(port, url.protocol()))
         url.removePort();
     else
         url.setPort(port);
@@ -295,7 +297,7 @@ String URLUtils<T>::hash() const
     String fragmentIdentifier = href().fragmentIdentifier();
     if (fragmentIdentifier.isEmpty())
         return emptyString();
-    return AtomicString(String("#" + fragmentIdentifier));
+    return AtomString(String("#" + fragmentIdentifier));
 }
 
 template <typename T>

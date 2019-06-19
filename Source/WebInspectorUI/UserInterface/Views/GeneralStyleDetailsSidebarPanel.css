@@ -87,18 +87,10 @@
     width: 15px;
     min-width: 15px;
     height: 15px;
+    -webkit-margin-start: 6px;
     content: url(../Images/Plus15.svg);
     opacity: 0.7;
 
-    --panel-details-css-style-content-options-container-new-rule-margin-start: 6px;
-}
-
-body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .options-container > .new-rule {
-    margin-left: var(--panel-details-css-style-content-options-container-new-rule-margin-start);
-}
-
-body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .options-container > .new-rule {
-    margin-right: var(--panel-details-css-style-content-options-container-new-rule-margin-start);
 }
 
 .sidebar > .panel.details.css-style > .content ~ .options-container > .filter-bar {
@@ -107,33 +99,44 @@ body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .options-containe
 }
 
 .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle {
+    position: relative;
     margin: 0 0 1px;
+    -webkit-margin-end: 5px;
     padding: 2px 4px 3px;
+    color: var(--text-color);
     background: none;
     border: none;
     border-radius: 3px;
     white-space: nowrap;
     -webkit-appearance: none;
-
-    --panel-details-css-style-content-options-container-toggle-class-toggle-margin-end: 5px;
 }
 
-body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle {
-    margin-right: var(--panel-details-css-style-content-options-container-toggle-class-toggle-margin-end);
+.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle::before {
+    position: absolute;
+    content: "";
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 3px;
+    opacity: var(--glyph-opacity);
+    z-index: -1;
 }
 
-body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle {
-    margin-left: var(--panel-details-css-style-content-options-container-toggle-class-toggle-margin-end);
-}
-
-.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle.selected {
+.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle:matches(.selected, :hover) {
     color: var(--selected-foreground-color);
-    background-color: var(--selected-background-color);
 }
 
-.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle:not(.selected):hover {
-    color: var(--selected-foreground-color);
-    background-color: var(--selected-background-color-hover);
+.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle:matches(.selected, :hover)::before {
+    background-color: var(--glyph-color-active);
+}
+
+.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle:not(.selected):hover::before {
+    opacity: 0.5;
+}
+
+.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle.selected:active::before {
+    filter: brightness(0.8);
 }
 
 .sidebar > .panel.details.css-style > .content:not(.supports-new-rule) ~ .options-container > .new-rule,
@@ -150,7 +153,6 @@ body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .options-containe
     overflow-y: scroll;
 }
 
-/* FIXME: <https://webkit.org/b/152674> Elements with the "hidden" attribute still show up if "display: flex;" */
 .sidebar > .panel.details.css-style > .content ~ .class-list-container[hidden] {
     display: none;
 }
@@ -164,16 +166,6 @@ body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .options-containe
     flex-grow: 1;
     height: 18px;
     margin: 0;
-
-    --panel-details-css-style-content-class-list-container-new-class-class-name-input-margin-start: 2px;
-}
-
-body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input {
-    margin-left: var(--panel-details-css-style-content-class-list-container-new-class-class-name-input-margin-start);
-}
-
-body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input {
-    margin-right: var(--panel-details-css-style-content-class-list-container-new-class-class-name-input-margin-start);
 }
 
 .sidebar > .panel.details.css-style > .content ~ .class-list-container > *:matches(.new-class, .class-toggle) {
@@ -212,4 +204,14 @@ body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .class-list-conta
 
 .sidebar > .panel.details.css-style > .content.filter-in-progress .filter-property-non-matching {
     opacity: 0.5;
+}
+
+@media (prefers-color-scheme: dark) {
+    .sidebar > .panel.details.css-style > .content > .pseudo-classes > .group > label {
+        color: var(--text-color-secondary);
+    }
+
+    .sidebar > .panel.details.css-style > .content ~ .options-container > .new-rule {
+        filter: var(--filter-invert);
+    }
 }

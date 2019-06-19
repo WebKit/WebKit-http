@@ -4,8 +4,6 @@ import time
 from threading import Event
 
 from launch_time import LaunchTimeBenchmark, DefaultLaunchTimeHandler
-import feedback_server
-
 
 class NewTabBenchmark(LaunchTimeBenchmark):
     def _parse_wait_time(self, string):
@@ -56,6 +54,9 @@ class NewTabBenchmark(LaunchTimeBenchmark):
 
     def group_init(self):
         self.launch_browser()
+
+    def get_test_name(self):
+        return "NewTabBenchmark"
 
     def will_parse_arguments(self):
         self.argument_parser.add_argument('-g', '--groups', type=int,

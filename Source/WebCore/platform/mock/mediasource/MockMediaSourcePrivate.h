@@ -53,12 +53,17 @@ public:
     void seekToTime(const MediaTime&);
     MediaTime seekToTime(const MediaTime&, const MediaTime& negativeThreshold, const MediaTime& positiveThreshold);
 
-    std::optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics();
+    Optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics();
 
     void incrementTotalVideoFrames() { ++m_totalVideoFrames; }
     void incrementDroppedFrames() { ++m_droppedVideoFrames; }
     void incrementCorruptedFrames() { ++m_corruptedVideoFrames; }
     void incrementTotalFrameDelayBy(const MediaTime& delay) { m_totalFrameDelay += delay; }
+
+#if !RELEASE_LOG_DISABLED
+    const Logger& mediaSourceLogger() const;
+    const void* mediaSourceLogIdentifier();
+#endif
 
 private:
     MockMediaSourcePrivate(MockMediaPlayerMediaSource&, MediaSourcePrivateClient&);

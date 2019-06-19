@@ -31,6 +31,7 @@
 #include <wtf/HashSet.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -78,12 +79,13 @@ public:
     void registerDatabaseConnection(UniqueIDBDatabaseConnection&);
     void unregisterDatabaseConnection(UniqueIDBDatabaseConnection&);
     void connectionToClientClosed();
-
+    bool isClosed() { return m_isClosed; }
 private:
     IDBConnectionToClient(IDBConnectionToClientDelegate&);
     
-    Ref<IDBConnectionToClientDelegate> m_delegate;
+    WeakPtr<IDBConnectionToClientDelegate> m_delegate;
     HashSet<UniqueIDBDatabaseConnection*> m_databaseConnections;
+    bool m_isClosed { false };
 };
 
 } // namespace IDBServer

@@ -35,6 +35,7 @@ class AudioBus;
 class AudioContext;
     
 class OfflineAudioDestinationNode final : public AudioDestinationNode {
+    WTF_MAKE_ISO_ALLOCATED(OfflineAudioDestinationNode);
 public:
     static Ref<OfflineAudioDestinationNode> create(AudioContext& context, AudioBuffer* renderTarget)
     {
@@ -65,10 +66,7 @@ private:
     // Rendering thread.
     RefPtr<Thread> m_renderThread;
     bool m_startedRendering;
-    void offlineRender();
-    
-    // For completion callback on main thread.
-    void notifyComplete();
+    bool offlineRender();
 };
 
 } // namespace WebCore

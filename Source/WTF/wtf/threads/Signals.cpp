@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "Signals.h"
+#include <wtf/threads/Signals.h>
 
 #if USE(PTHREADS) && HAVE(MACHINE_CONTEXT)
 
@@ -257,6 +257,9 @@ void installSignalHandler(Signal signal, SignalHandler&& handler)
             struct sigaction action;
             action.sa_sigaction = jscSignalHandler;
             auto result = sigfillset(&action.sa_mask);
+            RELEASE_ASSERT(!result);
+            // Do not block this signal since it is used on non-Darwin systems to suspend and resume threads.
+            result = sigdelset(&action.sa_mask, SigThreadSuspendResume);
             RELEASE_ASSERT(!result);
             action.sa_flags = SA_SIGINFO;
             auto systemSignals = toSystemSignal(signal);

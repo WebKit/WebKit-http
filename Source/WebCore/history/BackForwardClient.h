@@ -42,11 +42,11 @@ public:
 
     virtual void addItem(Ref<HistoryItem>&&) = 0;
 
-    virtual void goToItem(HistoryItem*) = 0;
+    virtual void goToItem(HistoryItem&) = 0;
         
-    virtual HistoryItem* itemAtIndex(int) = 0;
-    virtual int backListCount() = 0;
-    virtual int forwardListCount() = 0;
+    virtual RefPtr<HistoryItem> itemAtIndex(int) = 0;
+    virtual unsigned backListCount() const = 0;
+    virtual unsigned forwardListCount() const = 0;
 
     virtual void close() = 0;
 };

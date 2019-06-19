@@ -21,12 +21,15 @@
       href="https://github.com/"/>
   <repository type="git" name="chromium.googlesource.com"
       href="https://chromium.googlesource.com/webm/"/>
+  <repository type="git" name="aomedia.googlesource.com"
+      href="https://aomedia.googlesource.com/"/>
+  <repository type="tarball" name="ffmpeg" href="https://ffmpeg.org/releases/"/>
 
-  <autotools id="orc" autogenargs="--disable-gtk-doc" autogen-sh="configure">
-    <branch module="orc/orc-${version}.tar.xz" version="0.4.28"
+  <meson id="orc" mesonargs="-Dgtk_doc=disabled">
+    <branch module="orc/orc-${version}.tar.xz" version="0.4.29"
             repo="gstreamer"
-            hash="sha256:bfcd7c6563b05672386c4eedfc4c0d4a0a12b4b4775b74ec6deb88fc2bcd83ce"/>
-  </autotools>
+            hash="sha256:4f8901f9144b5ec17dffdb33548b5f4c7f8049b0d1023be3462cdd64ec5a3ab2"/>
+  </meson>
 
   <autotools id="openh264" supports-non-srcdir-builds="no" autogen-sh="pseudo-configure">
     <branch module="cisco/openh264/archive/v${version}.tar.gz" version="1.5.0"
@@ -36,78 +39,88 @@
   </autotools>
 
   <autotools id="libvpx"
-    autogen-template="%(srcdir)s/configure --prefix=%(prefix)s --enable-pic --as=yasm --disable-unit-tests --size-limit=16384x16384 --enable-postproc --enable-multi-res-encoding --enable-temporal-denoising --enable-vp9-temporal-denoising --enable-vp9-postproc --enable-shared">
+    autogen-template="%(srcdir)s/configure --prefix=%(prefix)s --enable-pic --as=yasm --disable-unit-tests --size-limit=16384x16384 --enable-postproc --enable-multi-res-encoding --enable-temporal-denoising --enable-vp9-temporal-denoising --enable-vp9-postproc --enable-shared --disable-avx512">
     <branch repo="chromium.googlesource.com" checkoutdir="libvpx" tag="v1.7.0"/>
   </autotools>
 
-  <autotools id="gstreamer" autogen-sh="configure" autogenargs="--disable-gtk-doc --disable-introspection --disable-examples --disable-tests">
+  <cmake id="aom" cmakeargs="-DBUILD_SHARED_LIBS=1">
+    <branch repo="aomedia.googlesource.com" module="aom" checkoutdir="aom" branch="master"
+            revision="master" tag="cdb083e84a71d6d31163a4f64f18dc1328fd782c" />
+  </cmake>
+
+  <autotools id="libsrtp">
+    <branch repo="github-tarball" module="cisco/libsrtp/archive/v${version}.tar.gz" version="2.2.0"
+            checkoutdir="libsrtp-${version}"/>
+  </autotools>
+
+  <meson id="gstreamer" mesonargs="-Dgtk_doc=disabled -Dintrospection=disabled -Dexamples=disabled -Dtests=disabled">
     <dependencies>
       <dep package="orc"/>
     </dependencies>
-    <branch hash="sha:28d82b0d261544a9bf85b429399929e4986eb00efcf1ce16cc71d269a4c3186c" module="gstreamer/gstreamer-${version}.tar.xz" repo="gstreamer" version="1.14.1">
+    <branch hash="sha256:0e8e2f7118be437cba879353970cf83c2acced825ecb9275ba05d9186ef07c00" module="gstreamer/gstreamer-${version}.tar.xz" repo="gstreamer" version="1.16.0">
     </branch>
-  </autotools>
+  </meson>
 
-  <autotools id="gst-plugins-base"
-             autogen-sh="configure"
-             autogenargs="--disable-examples --disable-gtk-doc --disable-introspection">
+  <meson id="gst-plugins-base" mesonargs="-Dgtk_doc=disabled -Dintrospection=disabled -Dexamples=disabled">
     <if condition-set="wpe">
-      <autogenargs value="--disable-pango"/>
+      <autogenargs value="-Dpango=disabled"/>
     </if>
     <dependencies>
       <dep package="gstreamer"/>
     </dependencies>
-    <branch hash="sha:1026c7c3082d825d9b5d034c1a6dd8a4ebab60eb3738b0a0afde4ad2dc0b0db5" module="gst-plugins-base/gst-plugins-base-${version}.tar.xz" repo="gstreamer" version="1.14.1" >
-      <patch file="gst-plugins-base-0001-parsebin-Post-STREAM_COLLECTION-on-EVENT_STREAM_COLL.patch" strip="1"/> <!-- Merged as 89d0e9cc92a86aa0227ee87406737b6d31670aea -->
+    <branch hash="sha256:4093aa7b51e28fb24dfd603893fead8d1b7782f088b05ed0f22a21ef176fb5ae" module="gst-plugins-base/gst-plugins-base-${version}.tar.xz" repo="gstreamer" version="1.16.0" >
     </branch>
-  </autotools>
+  </meson>
 
-  <autotools id="gst-plugins-good" autogen-sh="configure" autogenargs="--disable-examples --disable-gtk-doc --disable-introspection">
+  <meson id="gst-plugins-good" mesonargs="-Dgtk_doc=disabled -Dintrospection=disabled -Dexamples=disabled -Dgtk3=disabled">
     <dependencies>
       <dep package="gst-plugins-base"/>
       <dep package="libvpx"/>
     </dependencies>
 
-    <branch hash="sha:34ec062ddb766a32377532e039781f4a16fbc3e8b449e642605bacab26a99172" module="gst-plugins-good/gst-plugins-good-${version}.tar.xz" repo="gstreamer" version="1.14.1">
-      <patch file="gst-plugins-good-0002-qtdemux-add-context-for-a-preferred-protection.patch" strip="1" /> <!-- Merged as ee4b45da24cb7465b416c230597f8efc7b2c45cb -->
-      <patch file="gst-plugins-good-0003-qtdemux-also-push-buffers-without-encryption-info-in.patch" strip="1" /> <!-- Merged as 844423ff99e281fc831303b92861ed43ce5c1518 -->
-      <patch file="gst-plugins-good-0001-qtdemux-Do-not-run-the-preferred-decryptor-context-q.patch" strip="1" /> <!-- Merged as 3e063703b3a51b8aaa7f75f36c4660c583a60e93 -->
-      <patch file="gst-plugins-good-0002-qtdemux-Do-not-unref-a-NULL-stream_tags.patch" strip="1" /> <!-- Merged as 43a540b1cd9f162d3dae5d50e36703dfaf558a3e -->
-      <patch file="gst-plugins-good-0003-qtdemux-Clarify-field-name-about-stream-encryption-s.patch" strip="1" /> <!-- Merged as 0fbde2a07928ba79b7a4ddb4585f6b1de36a74bb -->
+    <branch hash="sha256:654adef33380d604112f702c2927574cfc285e31307b79e584113858838bb0fd" module="gst-plugins-good/gst-plugins-good-${version}.tar.xz" repo="gstreamer" version="1.16.0">
+      <patch file="gst-plugins-good-scaletempo-Advertise-interleaved-layout-in-caps-temp.patch" strip="1"/> <!-- Merged upstream, should be shipped in 1.16.1 -->
     </branch>
-  </autotools>
+  </meson>
 
-  <autotools id="gst-plugins-bad" autogen-sh="configure" autogenargs="--disable-examples --disable-gtk-doc --disable-introspection">
+  <meson id="gst-plugins-bad" mesonargs="-Dgtk_doc=disabled -Dintrospection=disabled -Dexamples=disabled">
     <dependencies>
       <dep package="graphene"/>
       <dep package="gst-plugins-base"/>
       <dep package="openh264"/>
+      <dep package="aom"/>
+      <dep package="libsrtp"/>
     </dependencies>
-    <branch hash="sha:2a77c6908032aafdf2cd2e5823fec948f16a25c2d1497a953828d762dc20d61a" module="gst-plugins-bad/gst-plugins-bad-${version}.tar.xz" repo="gstreamer" version="1.14.1" />
+    <branch hash="sha256:22139de35626ada6090bdfa3423b27b7fc15a0198331d25c95e6b12cb1072b05" module="gst-plugins-bad/gst-plugins-bad-${version}.tar.xz" repo="gstreamer" version="1.16.0">
+    </branch>
+  </meson>
+
+  <autotools id="ffmpeg" autogen-template="%(srcdir)s/configure --prefix=%(prefix)s --enable-static --enable-pic --disable-avdevice --disable-postproc --disable-swscale --disable-programs --disable-ffplay --disable-ffprobe --disable-ffmpeg --disable-encoder=flac --disable-protocols --disable-devices --disable-network --disable-hwaccels --disable-dxva2 --disable-vdpau --disable-filters --enable-filter=yadif --disable-doc --disable-d3d11va --disable-dxva2 --disable-audiotoolbox --disable-videotoolbox --disable-vaapi --disable-crystalhd --disable-mediacodec --disable-nvenc --disable-mmal --disable-omx --disable-omx-rpi --disable-cuda --disable-cuvid --disable-libmfx --disable-libnpp --disable-iconv --disable-jni --disable-v4l2_m2m --enable-optimizations">
+    <branch repo="ffmpeg" version="4.0.4" module="ffmpeg-${version}.tar.gz" hash="sha256:80bb685abfcdda7c9b6c9c5caf1d8dbb927858050d7377c2b8f3488c7e8a9b7f"/>
   </autotools>
 
-  <autotools id="gst-libav" autogen-sh="configure" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
+  <meson id="gst-libav" mesonargs="-Dgtk_doc=disabled">
     <dependencies>
       <dep package="gst-plugins-base"/>
+      <dep package="ffmpeg"/>
     </dependencies>
-    <branch hash="sha:eff80a02d2f2fb9f34b67e9a26e9954d3218c7aa18e863f2a47805fa7066029d" module="gst-libav/gst-libav-${version}.tar.xz" repo="gstreamer" version="1.14.1" />
-  </autotools>
+    <branch hash="sha256:dfac119043a9cfdcacd7acde77f674ab172cf2537b5812be52f49e9cddc53d9a" module="gst-libav/gst-libav-${version}.tar.xz" repo="gstreamer" version="1.16.0" />
+  </meson>
 
-  <autotools id="gstreamer-vaapi" autogen-sh="configure" autogenargs="--disable-examples --disable-gtk-doc">
-    <branch hash="sha:585c3ddb0c39220de0a33e5d0ed6196a108b8407ec3538d7c64617713b4434e8" module="gstreamer-vaapi/gstreamer-vaapi-${version}.tar.xz" repo="gstreamer" version="1.14.1" />
+  <meson id="gstreamer-vaapi" mesonargs="-Dgtk_doc=disabled -Dexamples=disabled">
+    <branch hash="sha256:4e7fce626ee0590dca74b5a8341d25bac76307945131a970b414fc5895f5171f" module="gstreamer-vaapi/gstreamer-vaapi-${version}.tar.xz" repo="gstreamer" version="1.16.0" />
     <dependencies>
       <dep package="gstreamer"/>
       <dep package="gst-plugins-base"/>
       <dep package="gst-plugins-bad"/>
       <dep package="libva"/>
     </dependencies>
-   </autotools>
+  </meson>
 
-   <autotools id="libva" autogenargs="--enable-va-messaging=no">
-     <branch module="intel/libva/releases/download/${version}/libva-${version}.tar.bz2" version="2.1.0"
-             hash="sha:f3fa953a11d3210c3a4ee79031abdbe0863d5ce13d9b3f93f315f1eec60a4b0f"
-            checkoutdir="libva-${version}" repo="github-tarball"/>
-   </autotools>
-
+  <meson id="libva" mesonargs="-Denable_va_messaging=false">
+    <branch module="intel/libva/archive/${version}.tar.gz" version="2.4.1"
+            hash="sha256:68ca8d071dcb84ac82e3c6d7f02a55937d9f690fcb215853f4aa1de8d459812f"
+           checkoutdir="libva-${version}" repo="github-tarball"/>
+  </meson>
 
 </moduleset>

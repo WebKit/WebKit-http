@@ -10,6 +10,10 @@
 
 #include "modules/audio_processing/agc2/adaptive_mode_level_estimator_agc.h"
 
+#include <cmath>
+#include <vector>
+
+#include "modules/audio_processing/agc2/agc2_common.h"
 #include "modules/audio_processing/include/audio_frame_view.h"
 
 namespace webrtc {
@@ -17,7 +21,7 @@ namespace webrtc {
 AdaptiveModeLevelEstimatorAgc::AdaptiveModeLevelEstimatorAgc(
     ApmDataDumper* apm_data_dumper)
     : level_estimator_(apm_data_dumper) {
-  set_target_level_dbfs(kDefaultLevelDbfs);
+  set_target_level_dbfs(kDefaultAgc2LevelHeadroomDbfs);
 }
 
 // |audio| must be mono; in a multi-channel stream, provide the first (usually

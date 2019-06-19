@@ -110,7 +110,7 @@ class WinPort(ApplePort):
         actual_text = delegate_regexp.sub("", actual_text)
         return expected_text != actual_text
 
-    def default_baseline_search_path(self):
+    def default_baseline_search_path(self, **kwargs):
         version_name_map = VersionNameMap.map(self.host.platform)
         if self._os_version < self.VERSION_MIN or self._os_version > self.VERSION_MAX:
             fallback_versions = [self._os_version]
@@ -153,20 +153,6 @@ class WinPort(ApplePort):
 
     def show_results_html_file(self, results_filename):
         self._run_script('run-safari', [abspath_to_uri(SystemHost().platform, results_filename)])
-
-    def _runtime_feature_list(self):
-        supported_features_command = [self._path_to_driver(), '--print-supported-features']
-        try:
-            output = self._executive.run_command(supported_features_command, ignore_errors=True)
-        except OSError as e:
-            _log.warn("Exception running driver: %s, %s.  Driver must be built before calling WebKitPort.test_expectations()." % (supported_features_command, e))
-            return None
-
-        # Note: win/DumpRenderTree.cpp does not print a leading space before the features_string.
-        match_object = re.match("SupportedFeatures:\s*(?P<features_string>.*)\s*", output)
-        if not match_object:
-            return None
-        return match_object.group('features_string').split(' ')
 
     def _build_path(self, *comps):
         """Returns the full path to the test driver (DumpRenderTree)."""
@@ -217,7 +203,7 @@ class WinPort(ApplePort):
     def path_to_api_test_binaries(self):
         return {binary.split('.')[0]: self._build_path(binary) for binary in self.API_TEST_BINARY_NAMES}
 
-    def test_search_path(self):
+    def test_search_path(self, **kwargs):
         test_fallback_names = [path for path in self.baseline_search_path() if not path.startswith(self._webkit_baseline_path('mac'))]
         return map(self._webkit_baseline_path, test_fallback_names)
 
@@ -395,13 +381,13 @@ class WinPort(ApplePort):
         except:
             _log.warn("Failed to delete preference files.")
 
-    def setup_test_run(self, device_class=None):
+    def setup_test_run(self, device_type=None):
         atexit.register(self.restore_crash_log_saving)
         self.setup_crash_log_saving()
         self.prevent_error_dialogs()
         self.delete_sem_locks()
         self.delete_preference_files()
-        super(WinPort, self).setup_test_run(device_class)
+        super(WinPort, self).setup_test_run(device_type)
 
     def clean_up_test_run(self):
         self.allow_error_dialogs()
@@ -425,11 +411,7 @@ class WinPort(ApplePort):
         _log.debug('looking for crash log for %s:%s' % (name, str(pid)))
         deadline = now + 5 * int(self.get_option('child_processes', 1))
         while not crash_log and now <= deadline:
-            # If the system_pid hasn't been determined yet, just try with the passed in pid.  We'll be checking again later
-            system_pid = self._executive.pid_to_system_pid.get(pid)
-            if system_pid == None:
-                break  # We haven't mapped cygwin pid->win pid yet
-            crash_log = crash_logs.find_newest_log(name, system_pid, include_errors=True, newer_than=newer_than)
+            crash_log = crash_logs.find_newest_log(name, pid, include_errors=True, newer_than=newer_than)
             if not wait_for_log:
                 break
             if not crash_log or not [line for line in crash_log.splitlines() if line.startswith('quit:')]:
@@ -480,13 +462,35 @@ class WinCairoPort(WinPort):
 
     DEFAULT_ARCHITECTURE = 'x86_64'
 
-    def default_baseline_search_path(self):
+    def default_baseline_search_path(self, **kwargs):
+        return map(self._webkit_baseline_path, self._search_paths())
+
+    def _port_specific_expectations_files(self, **kwargs):
+        return map(lambda x: self._filesystem.join(self._webkit_baseline_path(x), 'TestExpectations'), reversed(self._search_paths()))
+
+    def _search_paths(self):
+        paths = []
         version_name_map = VersionNameMap.map(self.host.platform)
         if self._os_version < self.VERSION_MIN or self._os_version > self.VERSION_MAX:
-            fallback_versions = [self._os_version]
+            versions = [self._os_version]
         else:
             sorted_versions = sorted(version_name_map.mapping_for_platform(platform=self.port_name).values())
-            fallback_versions = sorted_versions[sorted_versions.index(self._os_version):]
-        fallback_names = ['wincairo-' + version_name_map.to_name(version, platform=self.port_name).lower().replace(' ', '') for version in fallback_versions]
-        fallback_names.append('wincairo')
-        return map(self._webkit_baseline_path, fallback_names)
+            versions = sorted_versions[sorted_versions.index(self._os_version):]
+
+        normalize = lambda version: version.lower().replace(' ', '')
+        to_name = lambda version: version_name_map.to_name(version, platform=self.port_name)
+
+        wk_version = 'wk2' if self.get_option('webkit_test_runner') else 'wk1'
+
+        for version in versions:
+            name = self.port_name + '-' + normalize(to_name(version))
+            paths.append(name + '-' + wk_version)
+            paths.append(name)
+
+        paths.append(self.port_name + '-' + wk_version)
+        paths.append(self.port_name)
+        if self.get_option('webkit_test_runner'):
+            paths.append('wk2')
+        paths.extend(self.get_option("additional_platform_directory", []))
+
+        return paths

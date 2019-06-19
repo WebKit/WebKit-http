@@ -33,9 +33,12 @@
 #include "IDBKeyData.h"
 #include "ScriptExecutionContext.h"
 #include <JavaScriptCore/JSCJSValue.h>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 using namespace JSC;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(IDBKeyRange);
 
 Ref<IDBKeyRange> IDBKeyRange::create(RefPtr<IDBKey>&& lower, RefPtr<IDBKey>&& upper, bool isLowerOpen, bool isUpperOpen)
 {
@@ -92,9 +95,10 @@ ExceptionOr<Ref<IDBKeyRange>> IDBKeyRange::upperBound(ExecState& state, JSValue 
 ExceptionOr<Ref<IDBKeyRange>> IDBKeyRange::bound(ExecState& state, JSValue lowerValue, JSValue upperValue, bool lowerOpen, bool upperOpen)
 {
     auto lower = scriptValueToIDBKey(state, lowerValue);
+    if (!lower->isValid())
+        return Exception { DataError };
     auto upper = scriptValueToIDBKey(state, upperValue);
-
-    if (!lower->isValid() || !upper->isValid())
+    if (!upper->isValid())
         return Exception { DataError };
     if (upper->isLessThan(lower.get()))
         return Exception { DataError };

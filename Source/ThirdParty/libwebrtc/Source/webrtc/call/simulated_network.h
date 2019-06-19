@@ -26,17 +26,17 @@ namespace webrtc {
 // Class simulating a network link. This is a simple and naive solution just
 // faking capacity and adding an extra transport delay in addition to the
 // capacity introduced delay.
-class SimulatedNetwork : public NetworkSimulationInterface {
+class SimulatedNetwork : public NetworkBehaviorInterface {
  public:
-  using Config = NetworkSimulationInterface::SimulatedNetworkConfig;
+  using Config = BuiltInNetworkBehaviorConfig;
   explicit SimulatedNetwork(Config config, uint64_t random_seed = 1);
   ~SimulatedNetwork() override;
 
   // Sets a new configuration. This won't affect packets already in the pipe.
-  void SetConfig(const Config& config) override;
+  void SetConfig(const Config& config);
   void PauseTransmissionUntil(int64_t until_us);
 
-  // NetworkSimulationInterface
+  // NetworkBehaviorInterface
   bool EnqueuePacket(PacketInFlightInfo packet) override;
   std::vector<PacketDeliveryInfo> DequeueDeliverablePackets(
       int64_t receive_time_us) override;
@@ -49,6 +49,7 @@ class SimulatedNetwork : public NetworkSimulationInterface {
     int64_t arrival_time_us;
   };
   rtc::CriticalSection config_lock_;
+  bool reset_capacity_delay_error_ RTC_GUARDED_BY(config_lock_) = false;
 
   // |process_lock| guards the data structures involved in delay and loss
   // processes, such as the packet queues.
@@ -56,7 +57,7 @@ class SimulatedNetwork : public NetworkSimulationInterface {
   std::queue<PacketInfo> capacity_link_ RTC_GUARDED_BY(process_lock_);
   Random random_;
 
-  std::deque<PacketInfo> delay_link_;
+  std::deque<PacketInfo> delay_link_ RTC_GUARDED_BY(process_lock_);
 
   // Link configuration.
   Config config_ RTC_GUARDED_BY(config_lock_);

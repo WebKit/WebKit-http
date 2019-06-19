@@ -76,10 +76,12 @@ private:
         float y { 0 };
         float k { 0 };
         float a { 0 };
+
+        CMYKAColor(const CMYKAColor&) = default;
     };
 
     struct CurrentColor {
-        std::optional<float> overrideAlpha;
+        Optional<float> overrideAlpha;
     };
 
     CanvasStyle(CurrentColor);

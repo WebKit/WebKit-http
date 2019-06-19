@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "LayerRepresentation.h"
+#include "RemoteLayerTreeNode.h"
 #include "RemoteLayerTreeTransaction.h"
 #include <WebCore/PlatformCALayer.h>
 #include <wtf/HashMap.h>
@@ -33,6 +33,7 @@
 
 OBJC_CLASS CAAnimation;
 OBJC_CLASS WKAnimationDelegate;
+OBJC_CLASS WKEmbeddedView;
 
 namespace WebKit {
 
@@ -40,14 +41,16 @@ class RemoteLayerTreeDrawingAreaProxy;
 class WebPageProxy;
 
 class RemoteLayerTreeHost {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit RemoteLayerTreeHost(RemoteLayerTreeDrawingAreaProxy&);
-    virtual ~RemoteLayerTreeHost();
+    ~RemoteLayerTreeHost();
 
-    LayerOrView *getLayer(WebCore::GraphicsLayer::PlatformLayerID) const;
-    LayerOrView *rootLayer() const { return m_rootLayer; }
+    RemoteLayerTreeNode* nodeForID(WebCore::GraphicsLayer::PlatformLayerID) const;
+    RemoteLayerTreeNode* rootNode() const { return m_rootNode; }
 
-    static WebCore::GraphicsLayer::PlatformLayerID layerID(CALayer*);
+    CALayer *layerForID(WebCore::GraphicsLayer::PlatformLayerID) const;
+    CALayer *rootLayer() const;
 
     // Returns true if the root layer changed.
     bool updateLayerTree(const RemoteLayerTreeTransaction&, float indicatorScaleFactor  = 1);
@@ -61,6 +64,7 @@ public:
     void animationDidStart(WebCore::GraphicsLayer::PlatformLayerID, CAAnimation *, MonotonicTime startTime);
     void animationDidEnd(WebCore::GraphicsLayer::PlatformLayerID, CAAnimation *);
 
+    void detachFromDrawingArea();
     void clearLayers();
 
     // Detach the root layer; it will be reattached upon the next incoming commit.
@@ -70,19 +74,23 @@ public:
     // This avoids keeping an outstanding InUse reference when suspended.
     void mapAllIOSurfaceBackingStore();
 
-    LayerOrView* layerWithIDForTesting(uint64_t) const;
+    CALayer *layerWithIDForTesting(uint64_t) const;
 
 private:
-    LayerOrView *createLayer(const RemoteLayerTreeTransaction::LayerCreationProperties&, const RemoteLayerTreeTransaction::LayerProperties*);
-    static void setLayerID(CALayer *, WebCore::GraphicsLayer::PlatformLayerID);
+    void createLayer(const RemoteLayerTreeTransaction::LayerCreationProperties&);
+    std::unique_ptr<RemoteLayerTreeNode> makeNode(const RemoteLayerTreeTransaction::LayerCreationProperties&);
+
+    RetainPtr<WKEmbeddedView> createEmbeddedView(const RemoteLayerTreeTransaction::LayerCreationProperties&);
 
     void layerWillBeRemoved(WebCore::GraphicsLayer::PlatformLayerID);
 
-    RemoteLayerTreeDrawingAreaProxy& m_drawingArea;
-    LayerOrView *m_rootLayer;
-    HashMap<WebCore::GraphicsLayer::PlatformLayerID, RetainPtr<LayerOrView>> m_layers;
+    RemoteLayerTreeDrawingAreaProxy* m_drawingArea { nullptr };
+    RemoteLayerTreeNode* m_rootNode { nullptr };
+    HashMap<WebCore::GraphicsLayer::PlatformLayerID, std::unique_ptr<RemoteLayerTreeNode>> m_nodes;
     HashMap<WebCore::GraphicsLayer::PlatformLayerID, RetainPtr<WKAnimationDelegate>> m_animationDelegates;
-    bool m_isDebugLayerTreeHost;
+    HashMap<WebCore::GraphicsLayer::EmbeddedViewID, RetainPtr<WKEmbeddedView>> m_embeddedViews;
+    HashMap<WebCore::GraphicsLayer::PlatformLayerID, WebCore::GraphicsLayer::EmbeddedViewID> m_layerToEmbeddedViewMap;
+    bool m_isDebugLayerTreeHost { false };
 };
 
 } // namespace WebKit

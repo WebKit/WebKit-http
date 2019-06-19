@@ -33,8 +33,6 @@
 #include "BufferSource.h"
 #include "MediaKeyStatus.h"
 #include <JavaScriptCore/JSCJSValueInlines.h>
-#include <wtf/Optional.h>
-#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -62,7 +60,7 @@ public:
     class Iterator {
     public:
         explicit Iterator(MediaKeyStatusMap&);
-        std::optional<WTF::KeyValuePair<BufferSource::VariantType, MediaKeyStatus>> next();
+        Optional<WTF::KeyValuePair<BufferSource::VariantType, MediaKeyStatus>> next();
 
     private:
         Ref<MediaKeyStatusMap> m_map;

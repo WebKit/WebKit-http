@@ -26,9 +26,10 @@
 #import "config.h"
 #import "WebChromeClient.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "DrawingArea.h"
+#import "EditableImageControllerMessages.h"
 #import "UIKitSPI.h"
 #import "WebCoreArgumentCoders.h"
 #import "WebFrame.h"
@@ -36,6 +37,7 @@
 #import "WebPage.h"
 #import "WebPageProxyMessages.h"
 #import <WebCore/AudioSession.h>
+#import <WebCore/ContentChangeObserver.h>
 #import <WebCore/Icon.h>
 #import <WebCore/NotImplemented.h>
 #import <wtf/RefPtr.h>
@@ -47,15 +49,12 @@ using namespace WebCore;
 
 void WebChromeClient::didPreventDefaultForEvent()
 {
-    notImplemented();
+    if (!m_page.mainFrame())
+        return;
+    ContentChangeObserver::didPreventDefaultForEvent(*m_page.mainFrame());
 }
 
 #endif
-
-void WebChromeClient::elementDidRefocus(WebCore::Element& element)
-{
-    elementDidFocus(element);
-}
 
 void WebChromeClient::didReceiveMobileDocType(bool isMobileDoctype)
 {
@@ -70,11 +69,6 @@ void WebChromeClient::setNeedsScrollNotifications(WebCore::Frame&, bool)
 void WebChromeClient::observedContentChange(WebCore::Frame&)
 {
     m_page.completePendingSyntheticClickForContentChangeObserver();
-}
-
-void WebChromeClient::clearContentChangeObservers(WebCore::Frame&)
-{
-    notImplemented();
 }
 
 void WebChromeClient::notifyRevealedSelectionByScrollingFrame(WebCore::Frame&)
@@ -159,6 +153,34 @@ RefPtr<Icon> WebChromeClient::createIconForFiles(const Vector<String>& filenames
     return Icon::createIconForImage(iconForFile([NSURL fileURLWithPath:filenames[0] isDirectory:NO]).CGImage);
 }
 
+void WebChromeClient::associateEditableImageWithAttachment(GraphicsLayer::EmbeddedViewID embeddedViewID, const String& attachmentID)
+{
+#if HAVE(PENCILKIT)
+    m_page.send(Messages::EditableImageController::AssociateWithAttachment(embeddedViewID, attachmentID));
+#else
+    UNUSED_PARAM(embeddedViewID);
+    UNUSED_PARAM(attachmentID);
+#endif
+}
+
+void WebChromeClient::didCreateEditableImage(GraphicsLayer::EmbeddedViewID embeddedViewID)
+{
+#if HAVE(PENCILKIT)
+    m_page.send(Messages::EditableImageController::DidCreateEditableImage(embeddedViewID));
+#else
+    UNUSED_PARAM(embeddedViewID);
+#endif
+}
+
+void WebChromeClient::didDestroyEditableImage(GraphicsLayer::EmbeddedViewID embeddedViewID)
+{
+#if HAVE(PENCILKIT)
+    m_page.send(Messages::EditableImageController::DidDestroyEditableImage(embeddedViewID));
+#else
+    UNUSED_PARAM(embeddedViewID);
+#endif
+}
+
 } // namespace WebKit
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

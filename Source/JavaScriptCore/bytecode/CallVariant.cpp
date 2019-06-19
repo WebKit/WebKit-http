@@ -31,9 +31,9 @@
 
 namespace JSC {
 
-bool CallVariant::finalize()
+bool CallVariant::finalize(VM& vm)
 {
-    if (m_callee && !Heap::isMarked(m_callee))
+    if (m_callee && !vm.heap.isMarked(m_callee))
         return false;
     return true;
 }
@@ -88,7 +88,12 @@ void CallVariant::dump(PrintStream& out) const
         return;
     }
     
-    out.print("Executable: ", *executable());
+    if (ExecutableBase* executable = this->executable()) {
+        out.print("(Executable: ", *executable, ")");
+        return;
+    }
+
+    out.print("Non-executable callee: ", *nonExecutableCallee());
 }
 
 CallVariantList variantListWithVariant(const CallVariantList& list, CallVariant variantToAdd)

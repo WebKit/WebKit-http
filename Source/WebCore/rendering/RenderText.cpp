@@ -1,7 +1,7 @@
 /*
  * (C) 1999 Lars Knoll (knoll@kde.org)
  * (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004-2007, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2019 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Andrew Wellington (proton@wiretapped.net)
  * Copyright (C) 2006 Graham Dennis (graham.dennis@gmail.com)
  *
@@ -51,12 +51,11 @@
 #include "VisiblePosition.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/text/StringBuffer.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/TextBreakIterator.h>
 #include <wtf/unicode/CharacterNames.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "Document.h"
 #include "EditorClient.h"
 #include "LogicalSelectionOffsetCaches.h"
@@ -64,10 +63,9 @@
 #include "SelectionRect.h"
 #endif
 
-
 namespace WebCore {
-using namespace WTF;
-using namespace Unicode;
+
+using namespace WTF::Unicode;
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(RenderText);
 
@@ -142,30 +140,25 @@ static HashMap<const RenderText*, WeakPtr<RenderInline>>& inlineWrapperForDispla
     return map;
 }
 
+static inline UChar convertNoBreakSpace(UChar character)
+{
+    return character == noBreakSpace ? ' ' : character;
+}
+
 String capitalize(const String& string, UChar previousCharacter)
 {
-    // FIXME: Need to change this to use u_strToTitle instead of u_totitle and to consider locale.
-
-    if (string.isNull())
-        return string;
+    // FIXME: Change this to use u_strToTitle instead of u_totitle and to consider locale.
 
     unsigned length = string.length();
-    auto& stringImpl = *string.impl();
 
-    if (length >= std::numeric_limits<unsigned>::max())
-        CRASH();
+    // Prepend the previous character, and convert NO BREAK SPACE to SPACE so ICU will see a word separator.
+    Vector<UChar> wordBreakCharacters;
+    wordBreakCharacters.grow(length + 1);
+    wordBreakCharacters[0] = convertNoBreakSpace(previousCharacter);
+    for (unsigned i = 1; i < length + 1; i++)
+        wordBreakCharacters[i] = convertNoBreakSpace(string[i - 1]);
 
-    StringBuffer<UChar> stringWithPrevious(length + 1);
-    stringWithPrevious[0] = previousCharacter == noBreakSpace ? ' ' : previousCharacter;
-    for (unsigned i = 1; i < length + 1; i++) {
-        // Replace NO BREAK SPACE with a real space since ICU does not treat it as a word separator.
-        if (stringImpl[i - 1] == noBreakSpace)
-            stringWithPrevious[i] = ' ';
-        else
-            stringWithPrevious[i] = stringImpl[i - 1];
-    }
-
-    auto* boundary = wordBreakIterator(StringView(stringWithPrevious.characters(), length + 1));
+    auto* boundary = wordBreakIterator(StringView { wordBreakCharacters.data(), length + 1 });
     if (!boundary)
         return string;
 
@@ -176,12 +169,12 @@ String capitalize(const String& string, UChar previousCharacter)
     int32_t startOfWord = ubrk_first(boundary);
     for (endOfWord = ubrk_next(boundary); endOfWord != UBRK_DONE; startOfWord = endOfWord, endOfWord = ubrk_next(boundary)) {
         if (startOfWord) // Ignore first char of previous string
-            result.append(stringImpl[startOfWord - 1] == noBreakSpace ? noBreakSpace : u_totitle(stringWithPrevious[startOfWord]));
+            result.append(string[startOfWord - 1] == noBreakSpace ? noBreakSpace : u_totitle(wordBreakCharacters[startOfWord]));
         for (int i = startOfWord + 1; i < endOfWord; i++)
-            result.append(stringImpl[i - 1]);
+            result.append(string[i - 1]);
     }
 
-    return result.toString();
+    return result == string ? string : result.toString();
 }
 
 inline RenderText::RenderText(Node& node, const String& text)
@@ -199,7 +192,16 @@ inline RenderText::RenderText(Node& node, const String& text)
     ASSERT(!m_text.isNull());
     setIsText();
     m_canUseSimpleFontCodePath = computeCanUseSimpleFontCodePath();
-    view().frameView().incrementVisuallyNonEmptyCharacterCount(text.impl()->length());
+
+    // FIXME: Find out how to increment the visually non empty character count when the font becomes available.
+    auto isTextVisible = false;
+    if (auto* parentElement = node.parentElement()) {
+        auto* style = parentElement->renderer() ? &parentElement->renderer()->style() : nullptr;
+        isTextVisible = style && style->visibility() == Visibility::Visible && !style->fontCascade().isLoadingCustomFonts();
+    }
+
+    if (isTextVisible)
+        view().frameView().incrementVisuallyNonEmptyCharacterCount(text);
 }
 
 RenderText::RenderText(Text& textNode, const String& text)
@@ -338,7 +340,7 @@ Vector<IntRect> RenderText::absoluteRectsForRange(unsigned start, unsigned end, 
     return m_lineBoxes.absoluteRectsForRange(*this, start, end, useSelectionHeight, wasFixed);
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 // This function is similar in spirit to addLineBoxRects, but returns rectangles
 // which are annotated with additional state which helps the iPhone draw selections in its unique way.
 // Full annotations are added in this class.
@@ -376,8 +378,8 @@ void RenderText::collectSelectionRects(Vector<SelectionRect>& rects, unsigned st
         RenderBlock* containingBlock = this->containingBlock();
         // Map rect, extended left to leftOffset, and right to rightOffset, through transforms to get minX and maxX.
         LogicalSelectionOffsetCaches cache(*containingBlock);
-        LayoutUnit leftOffset = containingBlock->logicalLeftSelectionOffset(*containingBlock, box->logicalTop(), cache);
-        LayoutUnit rightOffset = containingBlock->logicalRightSelectionOffset(*containingBlock, box->logicalTop(), cache);
+        LayoutUnit leftOffset = containingBlock->logicalLeftSelectionOffset(*containingBlock, LayoutUnit(box->logicalTop()), cache);
+        LayoutUnit rightOffset = containingBlock->logicalRightSelectionOffset(*containingBlock, LayoutUnit(box->logicalTop()), cache);
         LayoutRect extentsRect = rect;
         if (box->isHorizontal()) {
             extentsRect.setX(leftOffset);
@@ -702,6 +704,7 @@ LineBreakIteratorMode mapLineBreakToIteratorMode(LineBreak lineBreak)
     switch (lineBreak) {
     case LineBreak::Auto:
     case LineBreak::AfterWhiteSpace:
+    case LineBreak::Anywhere:
         return LineBreakIteratorMode::Default;
     case LineBreak::Loose:
         return LineBreakIteratorMode::Loose;
@@ -799,7 +802,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
     bool isSpace = false;
     bool firstWord = true;
     bool firstLine = true;
-    std::optional<unsigned> nextBreakable;
+    Optional<unsigned> nextBreakable;
     unsigned lastWordBoundary = 0;
 
     WordTrailingSpace wordTrailingSpace(style);
@@ -819,13 +822,14 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
         minimumSuffixLength = after < 0 ? 2 : after;
     }
 
-    std::optional<int> firstGlyphLeftOverflow;
+    Optional<int> firstGlyphLeftOverflow;
 
     bool breakNBSP = style.autoWrap() && style.nbspMode() == NBSPMode::Space;
     
     // Note the deliberate omission of word-wrap and overflow-wrap from this breakAll check. Those
     // do not affect minimum preferred sizes. Note that break-word is a non-standard value for
     // word-break, but we support it as though it means break-all.
+    bool breakAnywhere = style.lineBreak() == LineBreak::Anywhere && style.autoWrap();
     bool breakAll = (style.wordBreak() == WordBreak::BreakAll || style.wordBreak() == WordBreak::BreakWord) && style.autoWrap();
     bool keepAllWords = style.wordBreak() == WordBreak::KeepAll;
     bool canUseLineBreakShortcut = iteratorMode == LineBreakIteratorMode::Default;
@@ -874,7 +878,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
             continue;
         }
 
-        bool hasBreak = breakAll || isBreakable(breakIterator, i, nextBreakable, breakNBSP, canUseLineBreakShortcut, keepAllWords);
+        bool hasBreak = breakAll || isBreakable(breakIterator, i, nextBreakable, breakNBSP, canUseLineBreakShortcut, keepAllWords, breakAnywhere);
         bool betweenWords = true;
         unsigned j = i;
         while (c != '\n' && !isSpaceAccordingToStyle(c, style) && c != '\t' && (c != softHyphen || style.hyphens() == Hyphens::None)) {
@@ -882,7 +886,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
             if (j == length)
                 break;
             c = string[j];
-            if (isBreakable(breakIterator, j, nextBreakable, breakNBSP, canUseLineBreakShortcut, keepAllWords) && characterAt(j - 1) != softHyphen)
+            if (isBreakable(breakIterator, j, nextBreakable, breakNBSP, canUseLineBreakShortcut, keepAllWords, breakAnywhere) && characterAt(j - 1) != softHyphen)
                 break;
             if (breakAll) {
                 betweenWords = false;
@@ -895,7 +899,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
             float currMinWidth = 0;
             bool isSpace = (j < length) && isSpaceAccordingToStyle(c, style);
             float w;
-            std::optional<float> wordTrailingSpaceWidth;
+            Optional<float> wordTrailingSpaceWidth;
             if (isSpace)
                 wordTrailingSpaceWidth = wordTrailingSpace.width(fallbackFonts);
             if (wordTrailingSpaceWidth)
@@ -912,7 +916,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
 
                 if (suffixStart) {
                     float suffixWidth;
-                    std::optional<float> wordTrailingSpaceWidth;
+                    Optional<float> wordTrailingSpaceWidth;
                     if (isSpace)
                         wordTrailingSpaceWidth = wordTrailingSpace.width(fallbackFonts);
                     if (wordTrailingSpaceWidth)
@@ -995,7 +999,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
         }
     }
 
-    glyphOverflow.left = firstGlyphLeftOverflow.value_or(glyphOverflow.left);
+    glyphOverflow.left = firstGlyphLeftOverflow.valueOr(glyphOverflow.left);
 
     if ((needsWordSpacing && length > 1) || (ignoringSpaces && !firstWord))
         currMaxWidth += wordSpacing;
@@ -1054,7 +1058,7 @@ Vector<std::pair<unsigned, unsigned>> RenderText::draggedContentRangesBetweenOff
     if (!textNode())
         return { };
 
-    auto markers = document().markers().markersFor(textNode(), DocumentMarker::DraggedContent);
+    auto markers = document().markers().markersFor(*textNode(), DocumentMarker::DraggedContent);
     if (markers.isEmpty())
         return { };
 
@@ -1160,13 +1164,15 @@ void RenderText::setRenderedText(const String& newText)
 
     if (m_useBackslashAsYenSymbol)
         m_text.replace('\\', yenSign);
+    
+    const auto& style = this->style();
+    if (style.textTransform() != TextTransform::None)
+        m_text = applyTextTransform(style, m_text, previousCharacter());
 
-    m_text = applyTextTransform(style(), m_text, previousCharacter());
-
-    switch (style().textSecurity()) {
+    switch (style.textSecurity()) {
     case TextSecurity::None:
         break;
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     // We use the same characters here as for list markers.
     // See the listMarkerText function in RenderListMarker.cpp.
     case TextSecurity::Circle:
@@ -1285,6 +1291,10 @@ String RenderText::textWithoutConvertingBackslashToYenSymbol() const
 {
     if (!m_useBackslashAsYenSymbol || style().textSecurity() != TextSecurity::None)
         return text();
+
+    if (style().textTransform() == TextTransform::None)
+        return originalText();
+
     return applyTextTransform(style(), originalText(), previousCharacter());
 }
 
@@ -1501,13 +1511,13 @@ int RenderText::previousOffset(int current) const
         return current - 1;
 
     CachedTextBreakIterator iterator(text(), TextBreakIterator::Mode::Caret, nullAtom());
-    return iterator.preceding(current).value_or(current - 1);
+    return iterator.preceding(current).valueOr(current - 1);
 }
 
 int RenderText::previousOffsetForBackwardDeletion(int current) const
 {
     CachedTextBreakIterator iterator(text(), TextBreakIterator::Mode::Delete, nullAtom());
-    return iterator.preceding(current).value_or(0);
+    return iterator.preceding(current).valueOr(0);
 }
 
 int RenderText::nextOffset(int current) const
@@ -1516,7 +1526,7 @@ int RenderText::nextOffset(int current) const
         return current + 1;
 
     CachedTextBreakIterator iterator(text(), TextBreakIterator::Mode::Caret, nullAtom());
-    return iterator.following(current).value_or(current + 1);
+    return iterator.following(current).valueOr(current + 1);
 }
 
 bool RenderText::computeCanUseSimpleFontCodePath() const
@@ -1536,9 +1546,9 @@ void RenderText::momentarilyRevealLastTypedCharacter(unsigned offsetAfterLastTyp
     secureTextTimer->restart(offsetAfterLastTypedCharacter);
 }
 
-StringView RenderText::stringView(unsigned start, std::optional<unsigned> stop) const
+StringView RenderText::stringView(unsigned start, Optional<unsigned> stop) const
 {
-    unsigned destination = stop.value_or(text().length());
+    unsigned destination = stop.valueOr(text().length());
     ASSERT(start <= length());
     ASSERT(destination <= length());
     ASSERT(start <= destination);

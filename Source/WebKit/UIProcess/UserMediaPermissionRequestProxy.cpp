@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2014 Igalia S.L.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -30,7 +30,7 @@
 namespace WebKit {
 using namespace WebCore;
 
-UserMediaPermissionRequestProxy::UserMediaPermissionRequestProxy(UserMediaPermissionRequestManagerProxy& manager, uint64_t userMediaID, uint64_t mainFrameID, uint64_t frameID, Ref<WebCore::SecurityOrigin>&& userMediaDocumentOrigin, Ref<WebCore::SecurityOrigin>&& topLevelDocumentOrigin, Vector<WebCore::CaptureDevice>&& audioDevices, Vector<WebCore::CaptureDevice>&& videoDevices, String&& deviceIDHashSalt, WebCore::MediaStreamRequest&& request)
+UserMediaPermissionRequestProxy::UserMediaPermissionRequestProxy(UserMediaPermissionRequestManagerProxy& manager, uint64_t userMediaID, uint64_t mainFrameID, uint64_t frameID, Ref<WebCore::SecurityOrigin>&& userMediaDocumentOrigin, Ref<WebCore::SecurityOrigin>&& topLevelDocumentOrigin, Vector<WebCore::CaptureDevice>&& audioDevices, Vector<WebCore::CaptureDevice>&& videoDevices, WebCore::MediaStreamRequest&& request)
     : m_manager(&manager)
     , m_userMediaID(userMediaID)
     , m_mainFrameID(mainFrameID)
@@ -39,61 +39,41 @@ UserMediaPermissionRequestProxy::UserMediaPermissionRequestProxy(UserMediaPermis
     , m_topLevelDocumentSecurityOrigin(WTFMove(topLevelDocumentOrigin))
     , m_eligibleVideoDevices(WTFMove(videoDevices))
     , m_eligibleAudioDevices(WTFMove(audioDevices))
-    , m_deviceIdentifierHashSalt(WTFMove(deviceIDHashSalt))
     , m_request(WTFMove(request))
 {
 }
 
+#if ENABLE(MEDIA_STREAM)
+static inline void setDeviceAsFirst(Vector<CaptureDevice>& devices, const String& deviceID)
+{
+    size_t index = devices.findMatching([&deviceID](const auto& device) {
+        return device.persistentId() == deviceID;
+    });
+    ASSERT(index != notFound);
+
+    if (index) {
+        auto device = devices[index];
+        ASSERT(device.enabled());
+
+        devices.remove(index);
+        devices.insert(0, WTFMove(device));
+    }
+}
+#endif
+
 void UserMediaPermissionRequestProxy::allow(const String& audioDeviceUID, const String& videoDeviceUID)
 {
-    ASSERT(m_manager);
-    if (!m_manager)
-        return;
-
 #if ENABLE(MEDIA_STREAM)
-    CaptureDevice audioDevice;
-    if (!audioDeviceUID.isEmpty()) {
-        size_t index = m_eligibleAudioDevices.findMatching([&](const auto& device) {
-            return device.persistentId() == audioDeviceUID;
-        });
-        ASSERT(index != notFound);
-
-        if (index != notFound)
-            audioDevice = m_eligibleAudioDevices[index];
-
-        ASSERT(audioDevice.enabled());
-    }
-
-    CaptureDevice videoDevice;
-    if (!videoDeviceUID.isEmpty()) {
-        size_t index = m_eligibleVideoDevices.findMatching([&](const auto& device) {
-            return device.persistentId() == videoDeviceUID;
-        });
-        ASSERT(index != notFound);
-
-        if (index != notFound)
-            videoDevice = m_eligibleVideoDevices[index];
-
-        ASSERT(videoDevice.enabled());
-    }
-
-    m_manager->userMediaAccessWasGranted(m_userMediaID, WTFMove(audioDevice), WTFMove(videoDevice));
+    if (!audioDeviceUID.isEmpty())
+        setDeviceAsFirst(m_eligibleAudioDevices, audioDeviceUID);
+    if (!videoDeviceUID.isEmpty())
+        setDeviceAsFirst(m_eligibleVideoDevices, videoDeviceUID);
 #else
     UNUSED_PARAM(audioDeviceUID);
     UNUSED_PARAM(videoDeviceUID);
 #endif
 
-    invalidate();
-}
-
-void UserMediaPermissionRequestProxy::allow(WebCore::CaptureDevice&& audioDevice, WebCore::CaptureDevice&& videoDevice)
-{
-    ASSERT(m_manager);
-    if (!m_manager)
-        return;
-
-    m_manager->userMediaAccessWasGranted(m_userMediaID, WTFMove(audioDevice), WTFMove(videoDevice));
-    invalidate();
+    allow();
 }
 
 void UserMediaPermissionRequestProxy::allow()
@@ -102,10 +82,7 @@ void UserMediaPermissionRequestProxy::allow()
     if (!m_manager)
         return;
 
-    auto audioDevice = !m_eligibleAudioDevices.isEmpty() ? m_eligibleAudioDevices[0] : CaptureDevice();
-    auto videoDevice = !m_eligibleVideoDevices.isEmpty() ? m_eligibleVideoDevices[0] : CaptureDevice();
-
-    m_manager->userMediaAccessWasGranted(m_userMediaID, WTFMove(audioDevice), WTFMove(videoDevice));
+    m_manager->grantRequest(*this);
     invalidate();
 }
 
@@ -114,7 +91,7 @@ void UserMediaPermissionRequestProxy::deny(UserMediaAccessDenialReason reason)
     if (!m_manager)
         return;
 
-    m_manager->userMediaAccessWasDenied(m_userMediaID, reason);
+    m_manager->denyRequest(*this, reason);
     invalidate();
 }
 
@@ -135,6 +112,28 @@ Vector<String> UserMediaPermissionRequestProxy::audioDeviceUIDs() const
     return WTF::map(m_eligibleAudioDevices, [] (auto& device) {
         return device.persistentId();
     });
+}
+
+String convertEnumerationToString(UserMediaPermissionRequestProxy::UserMediaAccessDenialReason enumerationValue)
+{
+    static const NeverDestroyed<String> values[] = {
+        MAKE_STATIC_STRING_IMPL("NoConstraints"),
+        MAKE_STATIC_STRING_IMPL("UserMediaDisabled"),
+        MAKE_STATIC_STRING_IMPL("NoCaptureDevices"),
+        MAKE_STATIC_STRING_IMPL("InvalidConstraint"),
+        MAKE_STATIC_STRING_IMPL("HardwareError"),
+        MAKE_STATIC_STRING_IMPL("PermissionDenied"),
+        MAKE_STATIC_STRING_IMPL("OtherFailure"),
+    };
+    static_assert(static_cast<size_t>(UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::NoConstraints) == 0, "UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::NoConstraints is not 0 as expected");
+    static_assert(static_cast<size_t>(UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::UserMediaDisabled) == 1, "UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::UserMediaDisabled is not 1 as expected");
+    static_assert(static_cast<size_t>(UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::NoCaptureDevices) == 2, "UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::NoCaptureDevices is not 2 as expected");
+    static_assert(static_cast<size_t>(UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::InvalidConstraint) == 3, "UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::InvalidConstraint is not 3 as expected");
+    static_assert(static_cast<size_t>(UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::HardwareError) == 4, "UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::HardwareError is not 4 as expected");
+    static_assert(static_cast<size_t>(UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::PermissionDenied) == 5, "UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::PermissionDenied is not 5 as expected");
+    static_assert(static_cast<size_t>(UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::OtherFailure) == 6, "UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::OtherFailure is not 6 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return values[static_cast<size_t>(enumerationValue)];
 }
 
 } // namespace WebKit

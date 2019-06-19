@@ -26,6 +26,7 @@
 #pragma once
 
 #include "PageClient.h"
+#include <wtf/WeakObjCPtr.h>
 
 @class WKWebView;
 
@@ -42,13 +43,18 @@ public:
     void isPlayingAudioWillChange() final;
     void isPlayingAudioDidChange() final;
 
+    bool scrollingUpdatesDisabledForTesting() final;
+
 #if ENABLE(ATTACHMENT_ELEMENT)
     void didInsertAttachment(API::Attachment&, const String& source) final;
     void didRemoveAttachment(API::Attachment&) final;
+    void didInvalidateDataForAttachment(API::Attachment&) final;
+    NSFileWrapper *allocFileWrapperInstance() const final;
+    NSSet *serializableFileWrapperClasses() const final;
 #endif
 
 protected:
-    WKWebView *m_webView;
+    WeakObjCPtr<WKWebView> m_webView;
 };
 
 }

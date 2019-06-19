@@ -36,8 +36,6 @@
 #import <WebKit/_WKProcessPoolConfiguration.h>
 #import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED
-
 static bool readyToContinue;
 
 @interface LocalStorageClearMessageHandler : NSObject <WKScriptMessageHandler>
@@ -109,7 +107,7 @@ NSString *swizzledBundleIdentifierWebBookmarksD()
 
 NSString *defaultWebsiteCacheDirectory()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     return nil;
 #else
     return @"~/Library/Caches/TestWebKitAPI/WebKit";
@@ -118,7 +116,7 @@ NSString *defaultWebsiteCacheDirectory()
 
 NSString *defaultApplicationCacheDirectory()
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // This is to mirror a quirk in WebsiteDataStore::defaultApplicationCacheDirectory and catch any regressions.
     return [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches/com.apple.WebAppCache"];
 #else
@@ -128,9 +126,9 @@ NSString *defaultApplicationCacheDirectory()
 
 TEST(WKWebView, ClearAppCache)
 {
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // On iOS, MobileSafari and webbookmarksd need to share the same AppCache directory.
-    TestWebKitAPI::InstanceMethodSwizzler swizzle([NSBundle class], @selector(bundleIdentifier), reinterpret_cast<IMP>(swizzledBundleIdentifierWebBookmarksD));
+    InstanceMethodSwizzler swizzle([NSBundle class], @selector(bundleIdentifier), reinterpret_cast<IMP>(swizzledBundleIdentifierWebBookmarksD));
 #endif
 
     // Start with a clean slate of WebsiteData.
@@ -208,4 +206,3 @@ TEST(WKWebView, ClearAppCache)
     }];
     TestWebKitAPI::Util::run(&readyToContinue);
 }
-#endif

@@ -30,10 +30,10 @@
 #include "ApplicationCacheGroup.h"
 #include "ApplicationCacheResource.h"
 #include "ContentSecurityPolicy.h"
+#include "CustomHeaderFields.h"
 #include "DocumentLoader.h"
 #include "DOMApplicationCache.h"
 #include "EventNames.h"
-#include "FileSystem.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
@@ -44,6 +44,7 @@
 #include "ResourceRequest.h"
 #include "Settings.h"
 #include "SubresourceLoader.h"
+#include <wtf/FileSystem.h>
 #include <wtf/UUID.h>
 
 namespace WebCore {
@@ -296,10 +297,10 @@ bool ApplicationCacheHost::canCacheInPageCache()
 void ApplicationCacheHost::setDOMApplicationCache(DOMApplicationCache* domApplicationCache)
 {
     ASSERT(!m_domApplicationCache || !domApplicationCache);
-    m_domApplicationCache = domApplicationCache;
+    m_domApplicationCache = makeWeakPtr(domApplicationCache);
 }
 
-void ApplicationCacheHost::notifyDOMApplicationCache(const AtomicString& eventType, int total, int done)
+void ApplicationCacheHost::notifyDOMApplicationCache(const AtomString& eventType, int total, int done)
 {
     if (eventType != eventNames().progressEvent)
         InspectorInstrumentation::updateApplicationCacheStatus(m_documentLoader.frame());
@@ -370,17 +371,18 @@ ApplicationCacheHost::CacheInfo ApplicationCacheHost::applicationCacheInfo()
     return { cache->manifestResource()->url(), 0, 0, cache->estimatedSizeInStorage() };
 }
 
-static Ref<Event> createApplicationCacheEvent(const AtomicString& eventType, int total, int done)
+static Ref<Event> createApplicationCacheEvent(const AtomString& eventType, int total, int done)
 {
     if (eventType == eventNames().progressEvent)
         return ProgressEvent::create(eventType, true, done, total);
     return Event::create(eventType, Event::CanBubble::No, Event::IsCancelable::No);
 }
 
-void ApplicationCacheHost::dispatchDOMEvent(const AtomicString& eventType, int total, int done)
+void ApplicationCacheHost::dispatchDOMEvent(const AtomString& eventType, int total, int done)
 {
-    if (!m_domApplicationCache)
+    if (!m_domApplicationCache || !m_domApplicationCache->frame())
         return;
+
     m_domApplicationCache->dispatchEvent(createApplicationCacheEvent(eventType, total, done));
 }
 

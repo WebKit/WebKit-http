@@ -27,10 +27,12 @@
 #include "StructureRareData.h"
 
 #include "AdaptiveInferredPropertyValueWatchpointBase.h"
+#include "JSImmutableButterfly.h"
 #include "JSPropertyNameEnumerator.h"
 #include "JSString.h"
 #include "JSCInlines.h"
 #include "ObjectPropertyConditionSet.h"
+#include "ObjectToStringAdaptiveStructureWatchpoint.h"
 
 namespace JSC {
 
@@ -70,21 +72,14 @@ void StructureRareData::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(thisObject->m_previous);
     visitor.append(thisObject->m_objectToStringValue);
     visitor.append(thisObject->m_cachedPropertyNameEnumerator);
-}
-
-JSPropertyNameEnumerator* StructureRareData::cachedPropertyNameEnumerator() const
-{
-    return m_cachedPropertyNameEnumerator.get();
-}
-
-void StructureRareData::setCachedPropertyNameEnumerator(VM& vm, JSPropertyNameEnumerator* enumerator)
-{
-    m_cachedPropertyNameEnumerator.set(vm, this, enumerator);
+    auto* cachedOwnKeys = thisObject->m_cachedOwnKeys.unvalidatedGet();
+    if (cachedOwnKeys != cachedOwnKeysSentinel())
+        visitor.appendUnbarriered(cachedOwnKeys);
 }
 
 // ----------- Object.prototype.toString() helper watchpoint classes -----------
 
-class ObjectToStringAdaptiveInferredPropertyValueWatchpoint : public AdaptiveInferredPropertyValueWatchpointBase {
+class ObjectToStringAdaptiveInferredPropertyValueWatchpoint final : public AdaptiveInferredPropertyValueWatchpointBase {
 public:
     typedef AdaptiveInferredPropertyValueWatchpointBase Base;
     ObjectToStringAdaptiveInferredPropertyValueWatchpoint(const ObjectPropertyCondition&, StructureRareData*);
@@ -93,20 +88,6 @@ private:
     bool isValid() const override;
     void handleFire(VM&, const FireDetail&) override;
 
-    StructureRareData* m_structureRareData;
-};
-
-class ObjectToStringAdaptiveStructureWatchpoint : public Watchpoint {
-public:
-    ObjectToStringAdaptiveStructureWatchpoint(const ObjectPropertyCondition&, StructureRareData*);
-
-    void install(VM&);
-
-protected:
-    void fireInternal(VM&, const FireDetail&) override;
-    
-private:
-    ObjectPropertyCondition m_key;
     StructureRareData* m_structureRareData;
 };
 
@@ -168,42 +149,30 @@ void StructureRareData::setObjectToStringValue(ExecState* exec, VM& vm, Structur
     m_objectToStringValue.set(vm, this, value);
 }
 
-inline void StructureRareData::clearObjectToStringValue()
+void StructureRareData::clearObjectToStringValue()
 {
     m_objectToStringAdaptiveWatchpointSet.clear();
     m_objectToStringAdaptiveInferredValueWatchpoint.reset();
     m_objectToStringValue.clear();
 }
 
-// ------------- Methods for Object.prototype.toString() helper watchpoint classes --------------
-
-ObjectToStringAdaptiveStructureWatchpoint::ObjectToStringAdaptiveStructureWatchpoint(const ObjectPropertyCondition& key, StructureRareData* structureRareData)
-    : m_key(key)
-    , m_structureRareData(structureRareData)
+void StructureRareData::finalizeUnconditionally(VM& vm)
 {
-    RELEASE_ASSERT(key.watchingRequiresStructureTransitionWatchpoint());
-    RELEASE_ASSERT(!key.watchingRequiresReplacementWatchpoint());
-}
-
-void ObjectToStringAdaptiveStructureWatchpoint::install(VM& vm)
-{
-    RELEASE_ASSERT(m_key.isWatchable());
-
-    m_key.object()->structure(vm)->addTransitionWatchpoint(this);
-}
-
-void ObjectToStringAdaptiveStructureWatchpoint::fireInternal(VM& vm, const FireDetail&)
-{
-    if (!m_structureRareData->isLive())
-        return;
-
-    if (m_key.isWatchable(PropertyCondition::EnsureWatchability)) {
-        install(vm);
-        return;
+    if (m_objectToStringAdaptiveInferredValueWatchpoint) {
+        if (!m_objectToStringAdaptiveInferredValueWatchpoint->key().isStillLive(vm)) {
+            clearObjectToStringValue();
+            return;
+        }
     }
-
-    m_structureRareData->clearObjectToStringValue();
+    for (auto* watchpoint : m_objectToStringAdaptiveWatchpointSet) {
+        if (!watchpoint->key().isStillLive(vm)) {
+            clearObjectToStringValue();
+            return;
+        }
+    }
 }
+
+// ------------- Methods for Object.prototype.toString() helper watchpoint classes --------------
 
 ObjectToStringAdaptiveInferredPropertyValueWatchpoint::ObjectToStringAdaptiveInferredPropertyValueWatchpoint(const ObjectPropertyCondition& key, StructureRareData* structureRareData)
     : Base(key)

@@ -37,6 +37,8 @@
 #include <wtf/Assertions.h>
 #include <wtf/NeverDestroyed.h>
 
+namespace DRT {
+
 static const unsigned queueLength = 1024;
 
 static WorkQueueItem* theQueue[queueLength];
@@ -106,4 +108,6 @@ bool WorkQueue::processWork()
 
     // If we're done and we didn't start a load, then we're really done, so return true.
     return !startedLoad;
+}
+
 }

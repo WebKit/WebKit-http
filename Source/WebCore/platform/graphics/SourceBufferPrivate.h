@@ -34,6 +34,7 @@
 #if ENABLE(MEDIA_SOURCE)
 
 #include "MediaPlayer.h"
+#include <wtf/Logger.h>
 
 namespace WebCore {
 
@@ -54,17 +55,21 @@ public:
     virtual MediaPlayer::ReadyState readyState() const = 0;
     virtual void setReadyState(MediaPlayer::ReadyState) = 0;
 
-    virtual void flush(const AtomicString&) { }
-    virtual void enqueueSample(Ref<MediaSample>&&, const AtomicString&) { }
-    virtual void allSamplesInTrackEnqueued(const AtomicString&) { }
-    virtual bool isReadyForMoreSamples(const AtomicString&) { return false; }
+    virtual void flush(const AtomString&) { }
+    virtual void enqueueSample(Ref<MediaSample>&&, const AtomString&) { }
+    virtual void allSamplesInTrackEnqueued(const AtomString&) { }
+    virtual bool isReadyForMoreSamples(const AtomString&) { return false; }
     virtual void setActive(bool) { }
-    virtual void stopAskingForMoreSamples(const AtomicString&) { }
-    virtual void notifyClientWhenReadyForMoreSamples(const AtomicString&) { }
+    virtual void notifyClientWhenReadyForMoreSamples(const AtomString&) { }
 
-    virtual Vector<String> enqueuedSamplesForTrackID(const AtomicString&) { return { }; }
+    virtual Vector<String> enqueuedSamplesForTrackID(const AtomString&) { return { }; }
 
     virtual bool canSwitchToType(const ContentType&) { return false; }
+
+#if !RELEASE_LOG_DISABLED
+    virtual const Logger& sourceBufferLogger() const = 0;
+    virtual const void* sourceBufferLogIdentifier() = 0;
+#endif
 };
 
 }

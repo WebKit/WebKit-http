@@ -43,7 +43,7 @@ typedef ProcessSuppressionDisabledCounter::Token ProcessSuppressionDisabledToken
 
 class ProcessThrottlerClient;
 
-class ProcessThrottler : private ProcessAssertionClient {
+class ProcessThrottler : private ProcessAssertion::Client {
 public:
     enum ForegroundActivityCounterType { };
     typedef RefCounter<ForegroundActivityCounterType> ForegroundActivityCounter;
@@ -60,6 +60,7 @@ public:
     void didConnectToProcess(ProcessID);
     void processReadyToSuspend();
     void didCancelProcessSuspension();
+    bool shouldBeRunnable() const { return m_foregroundCounter.value() || m_backgroundCounter.value(); }
 
 private:
     AssertionState assertionState();
@@ -68,7 +69,7 @@ private:
     void suspendTimerFired();
 
     // ProcessAssertionClient
-    void assertionWillExpireImminently() override;
+    void uiAssertionWillExpireImminently() override;
 
     ProcessThrottlerClient& m_process;
     std::unique_ptr<ProcessAssertion> m_assertion;
@@ -77,6 +78,7 @@ private:
     BackgroundActivityCounter m_backgroundCounter;
     int m_suspendMessageCount { 0 };
     bool m_shouldTakeUIBackgroundAssertion;
+    bool m_uiAssertionExpired { false };
 };
 
 inline ProcessThrottler::ForegroundActivityToken ProcessThrottler::foregroundActivityToken() const

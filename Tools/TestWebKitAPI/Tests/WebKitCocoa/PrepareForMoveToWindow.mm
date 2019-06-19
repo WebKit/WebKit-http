@@ -26,7 +26,7 @@
 #import "config.h"
 #import <WebKit/WKFoundation.h>
 
-#if PLATFORM(MAC) && WK_API_ENABLED
+#if PLATFORM(MAC)
 
 #import "PlatformUtilities.h"
 #import "Test.h"
@@ -51,6 +51,27 @@ TEST(WKWebView, PrepareForMoveToWindow)
         [window.get().contentView addSubview:webView.get()];
         isDone = true;
     }];
+
+    TestWebKitAPI::Util::run(&isDone);
+}
+
+
+TEST(WKWebView, PrepareForMoveToWindowThenClose)
+{
+    auto webView = adoptNS([[WKWebView alloc] init]);
+
+    NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"simple" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    [webView loadRequest:request];
+
+    [webView _test_waitForDidFinishNavigation];
+
+    RetainPtr<NSWindow> window = adoptNS([[NSWindow alloc] initWithContentRect:[webView frame] styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO]);
+
+    [webView _prepareForMoveToWindow:window.get() completionHandler:[webView, window] {
+        isDone = true;
+    }];
+
+    [webView _close];
 
     TestWebKitAPI::Util::run(&isDone);
 }

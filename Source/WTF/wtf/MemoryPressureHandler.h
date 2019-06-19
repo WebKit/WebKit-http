@@ -94,6 +94,10 @@ public:
 
     WTF_EXPORT_PRIVATE static MemoryUsagePolicy currentMemoryUsagePolicy();
 
+#if PLATFORM(COCOA)
+    WTF_EXPORT_PRIVATE void setDispatchQueue(dispatch_queue_t);
+#endif
+
     class ReliefLogger {
     public:
         explicit ReliefLogger(const char *log)
@@ -131,11 +135,11 @@ public:
             size_t resident { 0 };
             size_t physical { 0 };
         };
-        std::optional<MemoryUsage> platformMemoryUsage();
+        Optional<MemoryUsage> platformMemoryUsage();
         void logMemoryUsageChange();
 
         const char* m_logString;
-        std::optional<MemoryUsage> m_initialMemory;
+        Optional<MemoryUsage> m_initialMemory;
 
         WTF_EXPORT_PRIVATE static bool s_loggingEnabled;
     };
@@ -149,6 +153,8 @@ public:
     WebsamProcessState processState() const { return m_processState; }
 
     WTF_EXPORT_PRIVATE static void setPageCount(unsigned);
+
+    void setShouldLogMemoryMemoryPressureEvents(bool shouldLog) { m_shouldLogMemoryMemoryPressureEvents = shouldLog; }
 
 private:
     size_t thresholdForMemoryKill();
@@ -175,18 +181,19 @@ private:
 
     unsigned m_pageCount { 0 };
 
-    bool m_installed { false };
     LowMemoryHandler m_lowMemoryHandler;
 
     std::atomic<bool> m_underMemoryPressure;
+    bool m_installed { false };
     bool m_isSimulatingMemoryPressure { false };
+    bool m_shouldLogMemoryMemoryPressureEvents { true };
+    bool m_hasInvokedDidExceedInactiveLimitWhileActiveCallback { false };
 
     std::unique_ptr<RunLoop::Timer<MemoryPressureHandler>> m_measurementTimer;
     MemoryUsagePolicy m_memoryUsagePolicy { MemoryUsagePolicy::Unrestricted };
     WTF::Function<void()> m_memoryKillCallback;
     WTF::Function<void(bool)> m_memoryPressureStatusChangedCallback;
     WTF::Function<void()> m_didExceedInactiveLimitWhileActiveCallback;
-    bool m_hasInvokedDidExceedInactiveLimitWhileActiveCallback { false };
 
 #if OS(WINDOWS)
     void windowsMeasurementTimerFired();
@@ -197,6 +204,10 @@ private:
 #if OS(LINUX)
     RunLoop::Timer<MemoryPressureHandler> m_holdOffTimer;
     void holdOffTimerFired();
+#endif
+
+#if PLATFORM(COCOA)
+    dispatch_queue_t m_dispatchQueue { nullptr };
 #endif
 };
 

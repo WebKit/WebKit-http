@@ -28,7 +28,6 @@
 
 #include "Event.h"
 #include "EventNames.h"
-#include "HTMLDocument.h"
 #include "HTMLNames.h"
 #include "HTMLPictureElement.h"
 #include "Logging.h"
@@ -48,7 +47,7 @@ using namespace HTMLNames;
 
 inline HTMLSourceElement::HTMLSourceElement(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document)
-    , ActiveDOMObject(&document)
+    , ActiveDOMObject(document)
     , m_errorEventTimer(*this, &HTMLSourceElement::errorEventTimerFired)
 {
     LOG(Media, "HTMLSourceElement::HTMLSourceElement - %p", this);
@@ -155,12 +154,12 @@ void HTMLSourceElement::stop()
     cancelPendingErrorEvent();
 }
 
-void HTMLSourceElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLSourceElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     HTMLElement::parseAttribute(name, value);
     if (name == srcsetAttr || name == sizesAttr || name == mediaAttr || name == typeAttr) {
         if (name == mediaAttr)
-            m_cachedParsedMediaAttribute = std::nullopt;
+            m_cachedParsedMediaAttribute = WTF::nullopt;
         auto parent = makeRefPtr(parentNode());
         if (is<HTMLPictureElement>(parent))
             downcast<HTMLPictureElement>(*parent).sourcesChanged();

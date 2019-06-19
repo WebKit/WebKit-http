@@ -27,13 +27,11 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MainThread_h
-#define MainThread_h
+#pragma once
 
 #include <stdint.h>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
-#include <wtf/Optional.h>
 #include <wtf/ThreadingPrimitives.h>
 
 namespace WTF {
@@ -48,12 +46,14 @@ WTF_EXPORT_PRIVATE void callOnMainThread(Function<void()>&&);
 WTF_EXPORT_PRIVATE void callOnMainThreadAndWait(Function<void()>&&);
 
 #if PLATFORM(COCOA)
+WTF_EXPORT_PRIVATE void dispatchAsyncOnMainThreadWithWebThreadLockIfNeeded(void (^block)());
 WTF_EXPORT_PRIVATE void callOnWebThreadOrDispatchAsyncOnMainThread(void (^block)());
 #endif
 
 WTF_EXPORT_PRIVATE void setMainThreadCallbacksPaused(bool paused);
 
 WTF_EXPORT_PRIVATE bool isMainThread();
+WTF_EXPORT_PRIVATE bool isMainThreadIfInitialized();
 
 WTF_EXPORT_PRIVATE bool canAccessThreadLocalDataForThread(Thread&);
 
@@ -68,17 +68,6 @@ inline bool isWebThread() { return isMainThread(); }
 inline bool isUIThread() { return isMainThread(); }
 #endif // USE(WEB_THREAD)
 
-WTF_EXPORT_PRIVATE void initializeGCThreads();
-
-enum class GCThreadType {
-    Main,
-    Helper
-};
-
-void printInternal(PrintStream&, GCThreadType);
-
-WTF_EXPORT_PRIVATE void registerGCThread(GCThreadType);
-WTF_EXPORT_PRIVATE std::optional<GCThreadType> mayBeGCThread();
 WTF_EXPORT_PRIVATE bool isMainThreadOrGCThread();
 
 // NOTE: these functions are internal to the callOnMainThread implementation.
@@ -98,7 +87,6 @@ void initializeMainThreadToProcessMainThreadPlatform();
 
 } // namespace WTF
 
-using WTF::GCThreadType;
 using WTF::callOnMainThread;
 using WTF::callOnMainThreadAndWait;
 using WTF::canAccessThreadLocalDataForThread;
@@ -106,14 +94,12 @@ using WTF::isMainThread;
 using WTF::isMainThreadOrGCThread;
 using WTF::isUIThread;
 using WTF::isWebThread;
-using WTF::mayBeGCThread;
 using WTF::setMainThreadCallbacksPaused;
 #if PLATFORM(COCOA)
+using WTF::dispatchAsyncOnMainThreadWithWebThreadLockIfNeeded;
 using WTF::callOnWebThreadOrDispatchAsyncOnMainThread;
 #endif
 #if USE(WEB_THREAD)
 using WTF::initializeWebThread;
 using WTF::initializeApplicationUIThread;
 #endif
-
-#endif // MainThread_h

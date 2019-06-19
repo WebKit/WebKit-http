@@ -27,7 +27,6 @@
 #include "WebFrameNetworkingContext.h"
 
 #include "NetworkSession.h"
-#include "SessionTracker.h"
 #include "WebFrame.h"
 #include "WebPage.h"
 #include "WebsiteDataStoreParameters.h"
@@ -39,30 +38,13 @@
 namespace WebKit {
 using namespace WebCore;
 
-void WebFrameNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&& parameters)
+void WebFrameNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&&)
 {
-    auto sessionID = parameters.networkSessionParameters.sessionID;
-    ASSERT(isMainThread());
-    ASSERT(sessionID.isEphemeral());
-
-    if (NetworkStorageSession::storageSession(sessionID))
-        return;
-
-    // FIXME: Implement to ensure a data storage session.
 }
 
 WebFrameNetworkingContext::WebFrameNetworkingContext(WebFrame* frame)
     : FrameNetworkingContext(frame->coreFrame())
 {
-}
-
-NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
-{
-    if (frame()) {
-        if (auto* storageSession = NetworkStorageSession::storageSession(frame()->page()->sessionID()))
-            return *storageSession;
-    }
-    return NetworkStorageSession::defaultStorageSession();
 }
 
 WebFrameLoaderClient* WebFrameNetworkingContext::webFrameLoaderClient() const

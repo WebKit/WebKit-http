@@ -59,14 +59,29 @@ if (WTF_CPU_ARM)
     endif ()
 endif ()
 
+# Use ld.lld when building with LTO
+CMAKE_DEPENDENT_OPTION(USE_LD_LLD "Use LLD linker" ON
+                       "LTO_MODE;NOT USE_LD_GOLD;NOT WIN32" OFF)
+if (USE_LD_LLD)
+    execute_process(COMMAND ${CMAKE_C_COMPILER} -fuse-ld=lld -Wl,--version ERROR_QUIET OUTPUT_VARIABLE LD_VERSION)
+    if ("${LD_VERSION}" MATCHES "LLD")
+        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld -Wl,--disable-new-dtags")
+        set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld -Wl,--disable-new-dtags")
+        set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -fuse-ld=lld -Wl,--disable-new-dtags")
+    else ()
+        set(USE_LD_LLD OFF)
+    endif ()
+endif ()
+
 # Use ld.gold if it is available and isn't disabled explicitly
 CMAKE_DEPENDENT_OPTION(USE_LD_GOLD "Use GNU gold linker" ON
-                       "NOT CXX_ACCEPTS_MFIX_CORTEX_A53_835769;NOT ARM_TRADITIONAL_DETECTED;NOT WIN32;NOT APPLE" OFF)
+                       "NOT CXX_ACCEPTS_MFIX_CORTEX_A53_835769;NOT ARM_TRADITIONAL_DETECTED;NOT WIN32;NOT APPLE;NOT USE_LD_LLD" OFF)
 if (USE_LD_GOLD)
     execute_process(COMMAND ${CMAKE_C_COMPILER} -fuse-ld=gold -Wl,--version ERROR_QUIET OUTPUT_VARIABLE LD_VERSION)
     if ("${LD_VERSION}" MATCHES "GNU gold")
         set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold -Wl,--disable-new-dtags")
         set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold -Wl,--disable-new-dtags")
+        set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -fuse-ld=gold -Wl,--disable-new-dtags")
     else ()
         message(WARNING "GNU gold linker isn't available, using the default system linker.")
         set(USE_LD_GOLD OFF)
@@ -122,6 +137,7 @@ WEBKIT_CHECK_HAVE_INCLUDE(HAVE_STRINGS_H strings.h)
 WEBKIT_CHECK_HAVE_INCLUDE(HAVE_SYS_PARAM_H sys/param.h)
 WEBKIT_CHECK_HAVE_INCLUDE(HAVE_SYS_TIME_H sys/time.h)
 WEBKIT_CHECK_HAVE_INCLUDE(HAVE_SYS_TIMEB_H sys/timeb.h)
+WEBKIT_CHECK_HAVE_INCLUDE(HAVE_LINUX_MEMFD_H linux/memfd.h)
 
 # Check for functions
 WEBKIT_CHECK_HAVE_FUNCTION(HAVE_ALIGNED_MALLOC _aligned_malloc)
@@ -134,6 +150,9 @@ WEBKIT_CHECK_HAVE_FUNCTION(HAVE_VASPRINTF vasprintf)
 
 # Check for symbols
 WEBKIT_CHECK_HAVE_SYMBOL(HAVE_REGEX_H regexec regex.h)
+if (NOT (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin"))
+WEBKIT_CHECK_HAVE_SYMBOL(HAVE_PTHREAD_MAIN_NP pthread_main_np pthread_np.h)
+endif ()
 # Windows has signal.h but is missing symbols that are used in calls to signal.
 WEBKIT_CHECK_HAVE_SYMBOL(HAVE_SIGNAL_H SIGTRAP signal.h)
 

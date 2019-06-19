@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,7 +36,7 @@
 #include "ThunkGenerators.h"
 
 #if ENABLE(WEBASSEMBLY)
-#include "WasmContext.h"
+#include "WasmContextInlines.h"
 #include "WasmMemoryInformation.h"
 #endif
 
@@ -44,92 +44,10 @@ namespace JSC {
 
 ExecutableBase* AssemblyHelpers::executableFor(const CodeOrigin& codeOrigin)
 {
-    if (!codeOrigin.inlineCallFrame)
+    auto* inlineCallFrame = codeOrigin.inlineCallFrame();
+    if (!inlineCallFrame)
         return m_codeBlock->ownerExecutable();
-    
-    return codeOrigin.inlineCallFrame->baselineCodeBlock->ownerExecutable();
-}
-
-AssemblyHelpers::JumpList AssemblyHelpers::branchIfNotType(
-    JSValueRegs regs, GPRReg tempGPR, const InferredType::Descriptor& descriptor, TagRegistersMode mode)
-{
-    AssemblyHelpers::JumpList result;
-
-    switch (descriptor.kind()) {
-    case InferredType::Bottom:
-        result.append(jump());
-        break;
-
-    case InferredType::Boolean:
-        result.append(branchIfNotBoolean(regs, tempGPR));
-        break;
-
-    case InferredType::Other:
-        result.append(branchIfNotOther(regs, tempGPR));
-        break;
-
-    case InferredType::Int32:
-        result.append(branchIfNotInt32(regs, mode));
-        break;
-
-    case InferredType::Number:
-        result.append(branchIfNotNumber(regs, tempGPR, mode));
-        break;
-
-    case InferredType::String:
-        result.append(branchIfNotCell(regs, mode));
-        result.append(branchIfNotString(regs.payloadGPR()));
-        break;
-
-    case InferredType::Symbol:
-        result.append(branchIfNotCell(regs, mode));
-        result.append(branchIfNotSymbol(regs.payloadGPR()));
-        break;
-
-    case InferredType::BigInt:
-        result.append(branchIfNotCell(regs, mode));
-        result.append(branchIfNotBigInt(regs.payloadGPR()));
-        break;
-
-    case InferredType::ObjectWithStructure:
-        result.append(branchIfNotCell(regs, mode));
-        result.append(
-            branchStructure(
-                NotEqual,
-                Address(regs.payloadGPR(), JSCell::structureIDOffset()),
-                descriptor.structure()));
-        break;
-
-    case InferredType::ObjectWithStructureOrOther: {
-        Jump ok = branchIfOther(regs, tempGPR);
-        result.append(branchIfNotCell(regs, mode));
-        result.append(
-            branchStructure(
-                NotEqual,
-                Address(regs.payloadGPR(), JSCell::structureIDOffset()),
-                descriptor.structure()));
-        ok.link(this);
-        break;
-    }
-
-    case InferredType::Object:
-        result.append(branchIfNotCell(regs, mode));
-        result.append(branchIfNotObject(regs.payloadGPR()));
-        break;
-
-    case InferredType::ObjectOrOther: {
-        Jump ok = branchIfOther(regs, tempGPR);
-        result.append(branchIfNotCell(regs, mode));
-        result.append(branchIfNotObject(regs.payloadGPR()));
-        ok.link(this);
-        break;
-    }
-
-    case InferredType::Top:
-        break;
-    }
-
-    return result;
+    return inlineCallFrame->baselineCodeBlock->ownerExecutable();
 }
 
 AssemblyHelpers::Jump AssemblyHelpers::branchIfFastTypedArray(GPRReg baseGPR)
@@ -160,7 +78,7 @@ void AssemblyHelpers::decrementSuperSamplerCount()
     
 void AssemblyHelpers::purifyNaN(FPRReg fpr)
 {
-    MacroAssembler::Jump notNaN = branchDouble(DoubleEqual, fpr, fpr);
+    MacroAssembler::Jump notNaN = branchIfNotNaN(fpr);
     static const double NaN = PNaN;
     loadDouble(TrustedImmPtr(&NaN), fpr);
     notNaN.link(this);
@@ -451,15 +369,29 @@ void AssemblyHelpers::loadProperty(GPRReg object, GPRReg offset, JSValueRegs res
 void AssemblyHelpers::emitLoadStructure(VM& vm, RegisterID source, RegisterID dest, RegisterID scratch)
 {
 #if USE(JSVALUE64)
-    ASSERT(dest != scratch);
-    load32(MacroAssembler::Address(source, JSCell::structureIDOffset()), dest);
-    loadPtr(vm.heap.structureIDTable().base(), scratch);
-    loadPtr(MacroAssembler::BaseIndex(scratch, dest, MacroAssembler::TimesEight), dest);
+#if CPU(ARM64)
+    RegisterID scratch2 = dataTempRegister;
+#elif CPU(X86_64)
+    RegisterID scratch2 = scratchRegister();
 #else
+#error "Unsupported cpu"
+#endif
+
+    ASSERT(dest != scratch);
+    ASSERT(dest != scratch2);
+    ASSERT(scratch != scratch2);
+
+    load32(MacroAssembler::Address(source, JSCell::structureIDOffset()), scratch2);
+    loadPtr(vm.heap.structureIDTable().base(), scratch);
+    rshift32(scratch2, TrustedImm32(StructureIDTable::s_numberOfEntropyBits), dest);
+    loadPtr(MacroAssembler::BaseIndex(scratch, dest, MacroAssembler::TimesEight), dest);
+    lshiftPtr(TrustedImm32(StructureIDTable::s_entropyBitsShiftForStructurePointer), scratch2);
+    xorPtr(scratch2, dest);
+#else // not USE(JSVALUE64)
     UNUSED_PARAM(scratch);
     UNUSED_PARAM(vm);
     loadPtr(MacroAssembler::Address(source, JSCell::structureIDOffset()), dest);
-#endif
+#endif // not USE(JSVALUE64)
 }
 
 void AssemblyHelpers::makeSpaceOnStackForCCall()
@@ -758,7 +690,7 @@ void AssemblyHelpers::emitConvertValueToBoolean(VM& vm, JSValueRegs value, GPRRe
 {
     // Implements the following control flow structure:
     // if (value is cell) {
-    //     if (value is string)
+    //     if (value is string or value is BigInt)
     //         result = !!value->length
     //     else {
     //         do evil things for masquerades-as-undefined
@@ -775,12 +707,9 @@ void AssemblyHelpers::emitConvertValueToBoolean(VM& vm, JSValueRegs value, GPRRe
     JumpList done;
 
     auto notCell = branchIfNotCell(value);
-    auto isCellButNotString = branchIfNotString(value.payloadGPR());
-    load32(Address(value.payloadGPR(), JSString::offsetOfLength()), result);
-    compare32(invert ? Equal : NotEqual, result, TrustedImm32(0), result);
-    done.append(jump());
+    auto isString = branchIfString(value.payloadGPR());
+    auto isBigInt = branchIfBigInt(value.payloadGPR());
 
-    isCellButNotString.link(this);
     if (shouldCheckMasqueradesAsUndefined) {
         ASSERT(scratchIfShouldCheckMasqueradesAsUndefined != InvalidGPRReg);
         JumpList isNotMasqueradesAsUndefined;
@@ -795,6 +724,16 @@ void AssemblyHelpers::emitConvertValueToBoolean(VM& vm, JSValueRegs value, GPRRe
         isNotMasqueradesAsUndefined.link(this);
     }
     move(invert ? TrustedImm32(0) : TrustedImm32(1), result);
+    done.append(jump());
+
+    isString.link(this);
+    move(TrustedImmPtr(jsEmptyString(&vm)), result);
+    comparePtr(invert ? Equal : NotEqual, value.payloadGPR(), result, result);
+    done.append(jump());
+
+    isBigInt.link(this);
+    load32(Address(value.payloadGPR(), JSBigInt::offsetOfLength()), result);
+    compare32(invert ? Equal : NotEqual, result, TrustedImm32(0), result);
     done.append(jump());
 
     notCell.link(this);
@@ -831,7 +770,7 @@ AssemblyHelpers::JumpList AssemblyHelpers::branchIfValue(VM& vm, JSValueRegs val
 {
     // Implements the following control flow structure:
     // if (value is cell) {
-    //     if (value is string)
+    //     if (value is string or value is BigInt)
     //         result = !!value->length
     //     else {
     //         do evil things for masquerades-as-undefined
@@ -849,12 +788,10 @@ AssemblyHelpers::JumpList AssemblyHelpers::branchIfValue(VM& vm, JSValueRegs val
     JumpList truthy;
 
     auto notCell = branchIfNotCell(value);
-    auto isCellButNotString = branchIfNotString(value.payloadGPR());
-    truthy.append(branchTest32(invert ? Zero : NonZero, Address(value.payloadGPR(), JSString::offsetOfLength())));
-    done.append(jump());
+    auto isString = branchIfString(value.payloadGPR());
+    auto isBigInt = branchIfBigInt(value.payloadGPR());
 
     if (shouldCheckMasqueradesAsUndefined) {
-        isCellButNotString.link(this);
         ASSERT(scratchIfShouldCheckMasqueradesAsUndefined != InvalidGPRReg);
         JumpList isNotMasqueradesAsUndefined;
         isNotMasqueradesAsUndefined.append(branchTest8(Zero, Address(value.payloadGPR(), JSCell::typeInfoFlagsOffset()), TrustedImm32(MasqueradesAsUndefined)));
@@ -874,10 +811,18 @@ AssemblyHelpers::JumpList AssemblyHelpers::branchIfValue(VM& vm, JSValueRegs val
             truthy.append(isNotMasqueradesAsUndefined);
     } else {
         if (invert)
-            done.append(isCellButNotString);
+            done.append(jump());
         else
-            truthy.append(isCellButNotString);
+            truthy.append(jump());
     }
+
+    isString.link(this);
+    truthy.append(branchPtr(invert ? Equal : NotEqual, value.payloadGPR(), TrustedImmPtr(jsEmptyString(&vm))));
+    done.append(jump());
+
+    isBigInt.link(this);
+    truthy.append(branchTest32(invert ? Zero : NonZero, Address(value.payloadGPR(), JSBigInt::offsetOfLength())));
+    done.append(jump());
 
     notCell.link(this);
     auto notInt32 = branchIfNotInt32(value);
@@ -982,7 +927,7 @@ void AssemblyHelpers::debugCall(VM& vm, V_DebugOperation_EPP function, void* arg
     move(TrustedImmPtr(scratchBuffer->addressOfActiveLength()), GPRInfo::regT0);
     storePtr(TrustedImmPtr(scratchSize), GPRInfo::regT0);
 
-#if CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)
+#if CPU(X86_64) || CPU(ARM_THUMB2) || CPU(ARM64) || CPU(MIPS)
     move(TrustedImmPtr(buffer), GPRInfo::argumentGPR2);
     move(TrustedImmPtr(argument), GPRInfo::argumentGPR1);
     move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
@@ -1060,41 +1005,6 @@ void AssemblyHelpers::emitPreparePreciseIndexMask32(GPRReg index, GPRReg length,
         subPtr(length, result);
     }
     rshiftPtr(TrustedImm32(preciseIndexMaskShift<void*>()), result);
-}
-
-void AssemblyHelpers::emitDynamicPoison(GPRReg base, GPRReg poisonValue)
-{
-#if CPU(X86_64) || (CPU(ARM64) && !defined(__ILP32__))
-    lshiftPtr(TrustedImm32(40), poisonValue);
-    addPtr(poisonValue, base);
-#else
-    UNUSED_PARAM(base);
-    UNUSED_PARAM(poisonValue);
-#endif
-}
-
-void AssemblyHelpers::emitDynamicPoisonOnLoadedType(GPRReg base, GPRReg actualType, JSType expectedType)
-{
-#if CPU(X86_64) || (CPU(ARM64) && !defined(__ILP32__))
-    xor32(TrustedImm32(expectedType), actualType);
-    emitDynamicPoison(base, actualType);
-#else
-    UNUSED_PARAM(base);
-    UNUSED_PARAM(actualType);
-    UNUSED_PARAM(expectedType);
-#endif
-}
-
-void AssemblyHelpers::emitDynamicPoisonOnType(GPRReg base, GPRReg scratch, JSType expectedType)
-{
-#if CPU(X86_64) || (CPU(ARM64) && !defined(__ILP32__))
-    load8(Address(base, JSCell::typeInfoTypeOffset()), scratch);
-    emitDynamicPoisonOnLoadedType(base, scratch, expectedType);
-#else
-    UNUSED_PARAM(base);
-    UNUSED_PARAM(scratch);
-    UNUSED_PARAM(expectedType);
-#endif
 }
 
 } // namespace JSC

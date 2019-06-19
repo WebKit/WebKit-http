@@ -33,6 +33,7 @@
 #include "AudioNodeInput.h"
 #include "AudioNodeOutput.h"
 #include "Reverb.h"
+#include <wtf/IsoMallocInlines.h>
 
 // Note about empirical tuning:
 // The maximum FFT size affects reverb performance and accuracy.
@@ -44,9 +45,13 @@ const size_t MaxFFTSize = 32768;
 
 namespace WebCore {
 
+WTF_MAKE_ISO_ALLOCATED_IMPL(ConvolverNode);
+
 ConvolverNode::ConvolverNode(AudioContext& context, float sampleRate)
     : AudioNode(context, sampleRate)
 {
+    setNodeType(NodeTypeConvolver);
+
     addInput(std::make_unique<AudioNodeInput>(this));
     addOutput(std::make_unique<AudioNodeOutput>(this, 2));
 
@@ -54,8 +59,6 @@ ConvolverNode::ConvolverNode(AudioContext& context, float sampleRate)
     m_channelCount = 2;
     m_channelCountMode = ClampedMax;
     m_channelInterpretation = AudioBus::Speakers;
-
-    setNodeType(NodeTypeConvolver);
     
     initialize();
 }

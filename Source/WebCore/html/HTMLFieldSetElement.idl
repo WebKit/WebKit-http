@@ -18,13 +18,13 @@
  */
 
 interface HTMLFieldSetElement : HTMLElement {
-    [Reflect] attribute boolean disabled;
+    [CEReactions=NotNeeded, Reflect] attribute boolean disabled;
     readonly attribute HTMLFormElement form;
-    [Reflect] attribute DOMString name;
+    [CEReactions=NotNeeded, Reflect] attribute DOMString name;
 
     readonly attribute DOMString type;
 
-    readonly attribute HTMLFormControlsCollection elements;
+    readonly attribute HTMLCollection elements;
 
     readonly attribute boolean         willValidate;
     readonly attribute ValidityState   validity;

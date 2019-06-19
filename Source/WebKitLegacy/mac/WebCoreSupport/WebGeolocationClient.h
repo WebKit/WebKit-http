@@ -40,14 +40,14 @@ public:
     void geolocationDestroyed() override;
     void startUpdating() override;
     void stopUpdating() override;
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // FIXME: unify this with Mac on OpenSource.
     void setEnableHighAccuracy(bool) override;
 #else
     void setEnableHighAccuracy(bool) override { }
 #endif
 
-    std::optional<WebCore::GeolocationPosition> lastPosition() override;
+    Optional<WebCore::GeolocationPosition> lastPosition() override;
 
     void requestPermission(WebCore::Geolocation&) override;
     void cancelPermissionRequest(WebCore::Geolocation&) override { };

@@ -25,6 +25,10 @@
 
 #pragma once
 
+namespace WTF {
+class String;
+}
+
 namespace WebCore {
 
 enum class EditAction : uint8_t {
@@ -50,7 +54,8 @@ enum class EditAction : uint8_t {
     AlignRight,
     Center,
     Justify,
-    SetWritingDirection,
+    SetInlineWritingDirection,
+    SetBlockWritingDirection,
     Subscript,
     Superscript,
     Underline,
@@ -84,8 +89,13 @@ enum class EditAction : uint8_t {
     FormatBlock,
     InsertOrderedList,
     InsertUnorderedList,
+    ConvertToOrderedList,
+    ConvertToUnorderedList,
     Indent,
-    Outdent
+    Outdent,
+    InsertEditableImage
 };
+
+WTF::String undoRedoLabel(EditAction);
 
 } // namespace WebCore

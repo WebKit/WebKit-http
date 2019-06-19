@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include "api/crypto/cryptooptions.h"
 #include "p2p/base/dtlstransportinternal.h"
 #include "p2p/base/icetransportinternal.h"
 #include "rtc_base/buffer.h"
@@ -22,6 +23,7 @@
 #include "rtc_base/constructormagic.h"
 #include "rtc_base/sslstreamadapter.h"
 #include "rtc_base/stream.h"
+#include "rtc_base/strings/string_builder.h"
 #include "rtc_base/thread_checker.h"
 
 namespace rtc {
@@ -93,15 +95,12 @@ class DtlsTransport : public DtlsTransportInternal {
   //
   // |crypto_options| are the options used for the DTLS handshake. This affects
   // whether GCM crypto suites are negotiated.
-  // TODO(zhihuang): Remove this once we switch to JsepTransportController.
-  explicit DtlsTransport(IceTransportInternal* ice_transport,
-                         const rtc::CryptoOptions& crypto_options);
   explicit DtlsTransport(std::unique_ptr<IceTransportInternal> ice_transport,
-                         const rtc::CryptoOptions& crypto_options);
+                         const webrtc::CryptoOptions& crypto_options);
 
   ~DtlsTransport() override;
 
-  const rtc::CryptoOptions& crypto_options() const override;
+  const webrtc::CryptoOptions& crypto_options() const override;
   DtlsTransportState dtls_state() const override;
   const std::string& transport_name() const override;
   int component() const override;
@@ -180,12 +179,12 @@ class DtlsTransport : public DtlsTransportInternal {
   int SetOption(rtc::Socket::Option opt, int value) override;
 
   std::string ToString() const {
-    const char RECEIVING_ABBREV[2] = {'_', 'R'};
-    const char WRITABLE_ABBREV[2] = {'_', 'W'};
-    std::stringstream ss;
-    ss << "DtlsTransport[" << transport_name_ << "|" << component_ << "|"
+    const absl::string_view RECEIVING_ABBREV[2] = {"_", "R"};
+    const absl::string_view WRITABLE_ABBREV[2] = {"_", "W"};
+    rtc::StringBuilder sb;
+    sb << "DtlsTransport[" << transport_name_ << "|" << component_ << "|"
        << RECEIVING_ABBREV[receiving()] << WRITABLE_ABBREV[writable()] << "]";
-    return ss.str();
+    return sb.Release();
   }
 
  private:
@@ -195,7 +194,7 @@ class DtlsTransport : public DtlsTransportInternal {
   void OnReadPacket(rtc::PacketTransportInternal* transport,
                     const char* data,
                     size_t size,
-                    const rtc::PacketTime& packet_time,
+                    const int64_t& packet_time_us,
                     int flags);
   void OnSentPacket(rtc::PacketTransportInternal* transport,
                     const rtc::SentPacket& sent_packet);
@@ -219,9 +218,8 @@ class DtlsTransport : public DtlsTransportInternal {
   std::string transport_name_;
   int component_;
   DtlsTransportState dtls_state_ = DTLS_TRANSPORT_NEW;
-  // Underlying ice_transport, not owned by this class.
-  IceTransportInternal* const ice_transport_;
-  std::unique_ptr<IceTransportInternal> owned_ice_transport_;
+  // Underlying ice_transport, owned by this class.
+  std::unique_ptr<IceTransportInternal> ice_transport_;
   std::unique_ptr<rtc::SSLStreamAdapter> dtls_;  // The DTLS stream
   StreamInterfaceChannel*
       downward_;  // Wrapper for ice_transport_, owned by dtls_.
@@ -230,7 +228,7 @@ class DtlsTransport : public DtlsTransportInternal {
   rtc::scoped_refptr<rtc::RTCCertificate> local_certificate_;
   absl::optional<rtc::SSLRole> dtls_role_;
   rtc::SSLProtocolVersion ssl_max_version_;
-  rtc::CryptoOptions crypto_options_;
+  webrtc::CryptoOptions crypto_options_;
   rtc::Buffer remote_fingerprint_value_;
   std::string remote_fingerprint_algorithm_;
 

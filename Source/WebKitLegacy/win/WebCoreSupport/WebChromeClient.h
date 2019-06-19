@@ -98,8 +98,11 @@ public:
 
     WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) const final;
     WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) const final;
+    WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) const final;
+    WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) const final;
     PlatformPageClient platformPageClient() const final;
     void contentsSizeChanged(WebCore::Frame&, const WebCore::IntSize&) const final;
+    void intrinsicContentsSizeChanged(const WebCore::IntSize&) const final;
 
     void mouseDidMoveOverElement(const WebCore::HitTestResult&, unsigned modifierFlags) final;
     bool shouldUnavailablePluginMessageBeButton(WebCore::RenderEmbeddedObject::PluginUnavailabilityReason) const final;
@@ -123,7 +126,7 @@ public:
 
     // Pass 0 as the GraphicsLayer to detatch the root layer.
     void attachRootGraphicsLayer(WebCore::Frame&, WebCore::GraphicsLayer*) final;
-    void attachViewOverlayGraphicsLayer(WebCore::Frame&, WebCore::GraphicsLayer*) final;
+    void attachViewOverlayGraphicsLayer(WebCore::GraphicsLayer*) final;
     // Sets a flag to specify that the next time content is drawn to the window,
     // the changes appear on the screen in synchrony with updates to GraphicsLayers.
     void setNeedsOneShotDrawingSynchronization() final { }
@@ -168,6 +171,8 @@ public:
     bool shouldUseTiledBackingForFrameView(const WebCore::FrameView&) const final;
 
     RefPtr<WebCore::Icon> createIconForFiles(const Vector<String>&) final;
+
+    void didFinishLoadingImageForElement(WebCore::HTMLImageElement&) final;
 
 private:
     COMPtr<IWebUIDelegate> uiDelegate();

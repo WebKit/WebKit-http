@@ -1,4 +1,4 @@
-# Copyright (C) 2018 Apple Inc. All rights reserved.
+# Copyright (C) 2018-2019 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -21,19 +21,27 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-from buildbot.process import factory, properties
+from buildbot.process import factory
 from buildbot.steps import trigger
 
-from steps import *
-
-Property = properties.Property
+from steps import (ApplyPatch, CheckOutSource, CheckPatchRelevance, CheckStyle,
+                   CompileJSCOnly, CompileJSCOnlyToT, CompileWebKit, ConfigureBuild,
+                   DownloadBuiltProduct, ExtractBuiltProduct, KillOldProcesses,
+                   PrintConfiguration, ReRunJavaScriptCoreTests, RunAPITests, RunBindingsTests,
+                   RunJavaScriptCoreTests, RunJavaScriptCoreTestsToT, RunWebKit1Tests, RunWebKitPerlTests,
+                   RunWebKitPyTests, RunWebKitTests, UnApplyPatchIfRequired, ValidatePatch)
 
 
 class Factory(factory.BuildFactory):
-    def __init__(self, platform, configuration=None, architectures=None, buildOnly=True, additionalArguments=None, **kwargs):
+    def __init__(self, platform, configuration=None, architectures=None, buildOnly=True, triggers=None, additionalArguments=None, checkRelevance=False, **kwargs):
         factory.BuildFactory.__init__(self)
-        self.addStep(ConfigureBuild(platform, configuration, architectures, buildOnly, additionalArguments))
+        self.addStep(ConfigureBuild(platform, configuration, architectures, buildOnly, triggers, additionalArguments))
+        if checkRelevance:
+            self.addStep(CheckPatchRelevance())
+        self.addStep(ValidatePatch())
+        self.addStep(PrintConfiguration())
         self.addStep(CheckOutSource())
+        self.addStep(ApplyPatch())
 
 
 class StyleFactory(Factory):
@@ -44,8 +52,7 @@ class StyleFactory(Factory):
 
 class BindingsFactory(Factory):
     def __init__(self, platform, configuration=None, architectures=None, additionalArguments=None, **kwargs):
-        Factory.__init__(self, platform, configuration, architectures, False, additionalArguments)
-        self.addStep(CheckPatchRelevance())
+        Factory.__init__(self, platform, configuration, architectures, False, additionalArguments, checkRelevance=True)
         self.addStep(RunBindingsTests())
 
 
@@ -57,32 +64,15 @@ class WebKitPerlFactory(Factory):
 
 class WebKitPyFactory(Factory):
     def __init__(self, platform, configuration=None, architectures=None, additionalArguments=None, **kwargs):
-        Factory.__init__(self, platform, configuration, architectures, False, additionalArguments)
-        self.addStep(CheckPatchRelevance())
+        Factory.__init__(self, platform, configuration, architectures, False, additionalArguments, checkRelevance=True)
         self.addStep(RunWebKitPyTests())
 
 
 class BuildFactory(Factory):
-    def __init__(self, platform, configuration=None, architectures=None, additionalArguments=None, triggers=None, **kwargs):
-        Factory.__init__(self, platform, configuration, architectures, False, additionalArguments)
+    def __init__(self, platform, configuration=None, architectures=None, triggers=None, additionalArguments=None, **kwargs):
+        Factory.__init__(self, platform, configuration, architectures, False, triggers, additionalArguments)
         self.addStep(KillOldProcesses())
-        self.addStep(CleanBuild())
         self.addStep(CompileWebKit())
-        self.addStep(UnApplyPatchIfRequired())
-        self.addStep(CompileWebKitToT())
-        if triggers:
-            self.addStep(ArchiveBuiltProduct())
-            self.addStep(UploadBuiltProduct())
-            self.addStep(trigger.Trigger(schedulerNames=triggers, set_properties=self.propertiesToPassToTriggers() or {}))
-
-    def propertiesToPassToTriggers(self):
-        return {
-            "ewspatchid": Property("ewspatchid"),
-            "configuration": Property("configuration"),
-            "platform": Property("platform"),
-            "fullPlatform": Property("fullPlatform"),
-            "architecture": Property("architecture"),
-        }
 
 
 class TestFactory(Factory):
@@ -104,8 +94,7 @@ class TestFactory(Factory):
 
 class JSCTestsFactory(Factory):
     def __init__(self, platform, configuration='release', architectures=None, additionalArguments=None, **kwargs):
-        Factory.__init__(self, platform, configuration, architectures, False, additionalArguments)
-        self.addStep(CheckPatchRelevance())
+        Factory.__init__(self, platform, configuration, architectures, False, additionalArguments, checkRelevance=True)
         self.addStep(CompileJSCOnly())
         self.addStep(UnApplyPatchIfRequired())
         self.addStep(CompileJSCOnlyToT())

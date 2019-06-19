@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2019 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,7 +51,7 @@ typedef enum {
     kJSTypeNumber,
     kJSTypeString,
     kJSTypeObject,
-    kJSTypeSymbol JSC_API_AVAILABLE(macosx(JSC_MAC_TBA), ios(JSC_IOS_TBA))
+    kJSTypeSymbol JSC_API_AVAILABLE(macos(10.15), ios(13.0))
 } JSType;
 
 /*!
@@ -82,7 +82,7 @@ typedef enum {
     kJSTypedArrayTypeFloat64Array,
     kJSTypedArrayTypeArrayBuffer,
     kJSTypedArrayTypeNone,
-} JSTypedArrayType JSC_API_AVAILABLE(macosx(10.12), ios(10.0));
+} JSTypedArrayType JSC_API_AVAILABLE(macos(10.12), ios(10.0));
 
 #ifdef __cplusplus
 extern "C" {
@@ -144,21 +144,21 @@ JS_EXPORT bool JSValueIsString(JSContextRef ctx, JSValueRef value);
 
 /*!
 @function
+@abstract       Tests whether a JavaScript value's type is the symbol type.
+@param ctx      The execution context to use.
+@param value    The JSValue to test.
+@result         true if value's type is the symbol type, otherwise false.
+*/
+JS_EXPORT bool JSValueIsSymbol(JSContextRef ctx, JSValueRef value) JSC_API_AVAILABLE(macos(10.15), ios(13.0));
+
+/*!
+@function
 @abstract       Tests whether a JavaScript value's type is the object type.
 @param ctx  The execution context to use.
 @param value    The JSValue to test.
 @result         true if value's type is the object type, otherwise false.
 */
 JS_EXPORT bool JSValueIsObject(JSContextRef ctx, JSValueRef value);
-
-/*!
-@function
-@abstract       Tests whether a JavaScript value's type is the symbol type.
-@param ctx      The execution context to use.
-@param value    The JSValue to test.
-@result         true if value's type is the symbol type, otherwise false.
-*/
-JS_EXPORT bool JSValueIsSymbol(JSContextRef ctx, JSValueRef value) JSC_API_AVAILABLE(macosx(JSC_MAC_TBA), ios(JSC_IOS_TBA));
 
 
 /*!
@@ -178,7 +178,7 @@ JS_EXPORT bool JSValueIsObjectOfClass(JSContextRef ctx, JSValueRef value, JSClas
 @param value    The JSValue to test.
 @result         true if value is an array, otherwise false.
 */
-JS_EXPORT bool JSValueIsArray(JSContextRef ctx, JSValueRef value) JSC_API_AVAILABLE(macosx(10.11), ios(9.0));
+JS_EXPORT bool JSValueIsArray(JSContextRef ctx, JSValueRef value) JSC_API_AVAILABLE(macos(10.11), ios(9.0));
 
 /*!
 @function
@@ -187,7 +187,7 @@ JS_EXPORT bool JSValueIsArray(JSContextRef ctx, JSValueRef value) JSC_API_AVAILA
 @param value    The JSValue to test.
 @result         true if value is a date, otherwise false.
 */
-JS_EXPORT bool JSValueIsDate(JSContextRef ctx, JSValueRef value) JSC_API_AVAILABLE(macosx(10.11), ios(9.0));
+JS_EXPORT bool JSValueIsDate(JSContextRef ctx, JSValueRef value) JSC_API_AVAILABLE(macos(10.11), ios(9.0));
 
 /*!
 @function
@@ -197,7 +197,7 @@ JS_EXPORT bool JSValueIsDate(JSContextRef ctx, JSValueRef value) JSC_API_AVAILAB
 @param exception    A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
 @result             A value of type JSTypedArrayType that identifies value's Typed Array type, or kJSTypedArrayTypeNone if the value is not a Typed Array object.
  */
-JS_EXPORT JSTypedArrayType JSValueGetTypedArrayType(JSContextRef ctx, JSValueRef value, JSValueRef* exception) JSC_API_AVAILABLE(macosx(10.12), ios(10.0));
+JS_EXPORT JSTypedArrayType JSValueGetTypedArrayType(JSContextRef ctx, JSValueRef value, JSValueRef* exception) JSC_API_AVAILABLE(macos(10.12), ios(10.0));
 
 /* Comparing values */
 
@@ -271,15 +271,6 @@ JS_EXPORT JSValueRef JSValueMakeNumber(JSContextRef ctx, double number);
 
 /*!
 @function
-@abstract            Creates a JavaScript value of the symbol type.
-@param ctx           The execution context to use.
-@param description   A description of the newly created symbol value.
-@result              A unique JSValue of the symbol type, whose description matches the one provided.
-*/
-JS_EXPORT JSValueRef JSValueMakeSymbol(JSContextRef ctx, JSStringRef description) JSC_API_AVAILABLE(macosx(JSC_MAC_TBA), ios(JSC_IOS_TBA));
-
-/*!
-@function
 @abstract       Creates a JavaScript value of the string type.
 @param ctx  The execution context to use.
 @param string   The JSString to assign to the newly created JSValue. The
@@ -287,6 +278,15 @@ JS_EXPORT JSValueRef JSValueMakeSymbol(JSContextRef ctx, JSStringRef description
 @result         A JSValue of the string type, representing the value of string.
 */
 JS_EXPORT JSValueRef JSValueMakeString(JSContextRef ctx, JSStringRef string);
+
+/*!
+ @function
+ @abstract            Creates a JavaScript value of the symbol type.
+ @param ctx           The execution context to use.
+ @param description   A description of the newly created symbol value.
+ @result              A unique JSValue of the symbol type, whose description matches the one provided.
+ */
+JS_EXPORT JSValueRef JSValueMakeSymbol(JSContextRef ctx, JSStringRef description) JSC_API_AVAILABLE(macos(10.15), ios(13.0));
 
 /* Converting to and from JSON formatted strings */
 
@@ -297,7 +297,7 @@ JS_EXPORT JSValueRef JSValueMakeString(JSContextRef ctx, JSStringRef string);
  @param string   The JSString containing the JSON string to be parsed.
  @result         A JSValue containing the parsed value, or NULL if the input is invalid.
  */
-JS_EXPORT JSValueRef JSValueMakeFromJSONString(JSContextRef ctx, JSStringRef string) JSC_API_AVAILABLE(macosx(10.7), ios(7.0));
+JS_EXPORT JSValueRef JSValueMakeFromJSONString(JSContextRef ctx, JSStringRef string) JSC_API_AVAILABLE(macos(10.7), ios(7.0));
 
 /*!
  @function
@@ -308,7 +308,7 @@ JS_EXPORT JSValueRef JSValueMakeFromJSONString(JSContextRef ctx, JSStringRef str
  @param exception A pointer to a JSValueRef in which to store an exception, if any. Pass NULL if you do not care to store an exception.
  @result         A JSString with the result of serialization, or NULL if an exception is thrown.
  */
-JS_EXPORT JSStringRef JSValueCreateJSONString(JSContextRef ctx, JSValueRef value, unsigned indent, JSValueRef* exception) JSC_API_AVAILABLE(macosx(10.7), ios(7.0));
+JS_EXPORT JSStringRef JSValueCreateJSONString(JSContextRef ctx, JSValueRef value, unsigned indent, JSValueRef* exception) JSC_API_AVAILABLE(macos(10.7), ios(7.0));
 
 /* Converting to primitive values */
 

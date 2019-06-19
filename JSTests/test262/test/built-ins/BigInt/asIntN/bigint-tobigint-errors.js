@@ -9,6 +9,15 @@ info: |
   2. Let bigint ? ToBigInt(bigint).
 features: [BigInt, computed-property-names, Symbol, Symbol.toPrimitive]
 ---*/
+assert.sameValue(typeof BigInt, 'function');
+assert.sameValue(typeof BigInt.asIntN, 'function');
+
+assert.throws(TypeError, function () {
+  BigInt.asIntN();
+}, "ToBigInt: no argument => undefined => TypeError");
+assert.throws(TypeError, function () {
+  BigInt.asIntN(0);
+}, "ToBigInt: no argument => undefined => TypeError");
 
 assert.throws(TypeError, function() {
   BigInt.asIntN(0, undefined);

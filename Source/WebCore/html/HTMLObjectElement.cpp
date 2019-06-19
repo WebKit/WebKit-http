@@ -52,7 +52,7 @@
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/Ref.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #include "RuntimeApplicationChecks.h"
 #include <wtf/spi/darwin/dyldSPI.h>
 #endif
@@ -101,7 +101,7 @@ bool HTMLObjectElement::isPresentationAttribute(const QualifiedName& name) const
     return HTMLPlugInImageElement::isPresentationAttribute(name);
 }
 
-void HTMLObjectElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
+void HTMLObjectElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomString& value, MutableStyleProperties& style)
 {
     if (name == borderAttr)
         applyBorderAttributeToStyle(value, style);
@@ -109,7 +109,7 @@ void HTMLObjectElement::collectStyleForPresentationAttribute(const QualifiedName
         HTMLPlugInImageElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
-void HTMLObjectElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLObjectElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     bool invalidateRenderer = false;
 
@@ -203,7 +203,7 @@ void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<S
     // Turn the attributes of the <object> element into arrays, but don't override <param> values.
     if (hasAttributes()) {
         for (const Attribute& attribute : attributesIterator()) {
-            const AtomicString& name = attribute.name().localName();
+            const AtomString& name = attribute.name().localName();
             if (!uniqueParamNames.contains(name.impl())) {
                 paramNames.append(name.string());
                 paramValues.append(attribute.value().string());
@@ -242,30 +242,7 @@ bool HTMLObjectElement::hasFallbackContent() const
     }
     return false;
 }
-    
-bool HTMLObjectElement::shouldAllowQuickTimeClassIdQuirk()
-{
-    // This site-specific hack maintains compatibility with Mac OS X Wiki Server,
-    // which embeds QuickTime movies using an object tag containing QuickTime's
-    // ActiveX classid. Treat this classid as valid only if OS X Server's unique
-    // 'generator' meta tag is present. Only apply this quirk if there is no
-    // fallback content, which ensures the quirk will disable itself if Wiki
-    // Server is updated to generate an alternate embed tag as fallback content.
 
-    if (!document().page()
-        || !document().page()->settings().needsSiteSpecificQuirks()
-        || hasFallbackContent()
-        || !equalLettersIgnoringASCIICase(attributeWithoutSynchronization(classidAttr), "clsid:02bf25d5-8c17-4b23-bc80-d3488abddc6b"))
-        return false;
-
-    for (auto& metaElement : descendantsOfType<HTMLMetaElement>(document())) {
-        if (equalLettersIgnoringASCIICase(metaElement.name(), "generator") && startsWithLettersIgnoringASCIICase(metaElement.content(), "mac os x server web services server"))
-            return true;
-    }
-
-    return false;
-}
-    
 bool HTMLObjectElement::hasValidClassId()
 {
 #if PLATFORM(QT)
@@ -274,9 +251,6 @@ bool HTMLObjectElement::hasValidClassId()
 #endif
 
     if (MIMETypeRegistry::isJavaAppletMIMEType(serviceType()) && protocolIs(attributeWithoutSynchronization(classidAttr), "java"))
-        return true;
-    
-    if (shouldAllowQuickTimeClassIdQuirk())
         return true;
 
     // HTML5 says that fallback content should be rendered if a non-empty
@@ -373,7 +347,7 @@ bool HTMLObjectElement::isURLAttribute(const Attribute& attribute) const
     return attribute.name() == dataAttr || attribute.name() == codebaseAttr || (attribute.name() == usemapAttr && attribute.value().string()[0] != '#') || HTMLPlugInImageElement::isURLAttribute(attribute);
 }
 
-const AtomicString& HTMLObjectElement::imageSourceURL() const
+const AtomString& HTMLObjectElement::imageSourceURL() const
 {
     return attributeWithoutSynchronization(dataAttr);
 }
@@ -506,7 +480,7 @@ void HTMLObjectElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) cons
 
     // FIXME: Passing a string that starts with "#" to the completeURL function does
     // not seem like it would work. The image element has similar but not identical code.
-    const AtomicString& useMap = attributeWithoutSynchronization(usemapAttr);
+    const AtomString& useMap = attributeWithoutSynchronization(usemapAttr);
     if (useMap.startsWith('#'))
         addSubresourceURL(urls, document().completeURL(useMap));
 }

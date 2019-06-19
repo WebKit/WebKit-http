@@ -1,3 +1,596 @@
+2019-06-05  Jon Davis  <jond@apple.com>
+
+        Fix icons positioned incorrectly when a featured image is used
+        https://bugs.webkit.org/show_bug.cgi?id=198535
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/themes/webkit/style.css:
+        (.tile .background-image.loaded svg):
+        (.tile .featured-image::before):
+
+2019-06-05  Jon Davis  <jond@apple.com>
+
+        Improve accessibility on webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=198531
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/themes/webkit/functions.php: Added menuitem ARIA role to links
+        * wp-content/themes/webkit/widgets/post.php: Added aria-label to SVG icons
+
+2019-06-04  Jon Davis  <jond@apple.com>
+
+        Improve performance of the lazy image loader
+        https://bugs.webkit.org/show_bug.cgi?id=198530
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/themes/webkit/scripts/global.js:
+        (enableScrollableTables):
+        (lazyLoadImages):
+        (findParentMenu): Deleted.
+        (i.m.menus.m.targetMenu.targetMenuClass.indexOf): Deleted.
+        (inView): Deleted.
+        (): Deleted.
+        (loadImage.else.img.onload): Deleted.
+        (loadImage): Deleted.
+        (onMovement): Deleted.
+        (updateImages): Deleted.
+
+2019-05-06  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Add demos to webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=196951
+
+        Reviewed by Dean Jackson.
+
+        Add simple triangle and spinning textured cube demos to the website.
+        Add Web GPU to experimental-features.html.
+
+        * demos/webgpu/css/style.css: Added.
+        (body):
+        (canvas):
+        (body.error canvas):
+        (h1):
+        (#container):
+        (select):
+        (div#log):
+        (body.error):
+        (body.error #contents):
+        (#error):
+        (@media (max-width: 480px)):
+        (body.error #error):
+        (#error h2):
+        (#error p):
+        * demos/webgpu/hello-cube.html: Added.
+        * demos/webgpu/hello-triangle.html: Added.
+        * demos/webgpu/index.html: Added.
+        * demos/webgpu/resources/circle.svg: Added.
+        * demos/webgpu/resources/hello-cube.png: Added.
+        * demos/webgpu/resources/hello-triangle.png: Added.
+        * demos/webgpu/resources/safari-alpha.png: Added.
+        * demos/webgpu/scripts/gl-matrix-min.js: Added.
+        (return.n):
+        (return.n.d):
+        (return.):
+        (return.get n.n):
+        (return.n.o):
+        * demos/webgpu/scripts/hello-triangle.js: Added.
+        (async.helloTriangle):
+        * experimental-features.html:
+
+2019-03-28  Jon Davis  <jond@apple.com>
+
+        Fix font family for WebKit.org
+        https://bugs.webkit.org/show_bug.cgi?id=196311
+
+        Reviewed by Myles C. Maxfield.
+
+        * wp-content/themes/webkit/header.php: Added SF Mono loading
+        * wp-content/themes/webkit/style.css:
+        (html): Use Text font by default
+        (h1,): Use Display font for large headings
+        (.nextrouter-copy): Use Display font for routers
+
+2019-02-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Codify the naming convention for fooIfExists
+        https://bugs.webkit.org/show_bug.cgi?id=194930
+
+        Reviewed by Darin Adler.
+
+        Updating the coding style guideline after the discussion following
+        https://lists.webkit.org/pipermail/webkit-dev/2013-June/025056.html
+
+        * code-style.md:
+
+2019-02-20  Jon Davis  <jond@apple.com>
+
+        Added macOS Mojave builds to the WebKit Build Archives.
+        https://bugs.webkit.org/show_bug.cgi?id=190908
+
+        Reviewed by Lucas Forschler.
+
+        * wp-content/themes/webkit/build-archives.php:
+
+2019-02-07  Jon Davis  <jond@apple.com>
+
+        Fixed animation positioning when homepage animation completes
+        https://bugs.webkit.org/show_bug.cgi?id=194395
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/themes/webkit/front-header.php:
+
+2019-02-07  Jon Davis  <jond@apple.com>
+
+        Disable the WP emoji polyfill
+        https://bugs.webkit.org/show_bug.cgi?id=194394
+
+        Reviewed by Devin Rousso.
+
+        * wp-content/themes/webkit/functions.php:
+
+2019-02-07  Jon Davis  <jond@apple.com>
+
+        Fixed responsive design issues for the Contribute drop-down menu and pagination
+        https://bugs.webkit.org/show_bug.cgi?id=194393
+
+        Reviewed by Devin Rousso.
+
+        The short viewport breakpoint styles should apply for small width
+        windows as well, and pagination styles need to accommodate wrapped
+        text labels.
+
+        * wp-content/themes/webkit/style.css:
+        (.pagination .page-numbers,):
+        (@media only screen and (max-height: 415px) and (max-width: 920px)):
+        (@media only screen and (max-height: 415px)): Deleted.
+
+2019-02-04  Jon Davis  <jond@apple.com>
+
+        Add demos for Intersection Observer API
+        https://bugs.webkit.org/show_bug.cgi?id=194219
+
+        Reviewed by Simon Fraser.
+
+        * demos/intersection-observer/lazy-image-load/index.html: Added.
+        * demos/intersection-observer/lazy-image-load/scripts.js: Added.
+        (ImageLoader):
+        (ImageLoader.prototype.findImages):
+        (ImageLoader.prototype.smallURLForImage):
+        (ImageLoader.prototype.largeURLForImage):
+        (ImageLoader.prototype.setupObserver):
+        (ImageLoader.prototype.intersectionsChanged):
+        * demos/intersection-observer/lazy-image-load/style.css: Added.
+        (body):
+        (section):
+        (header):
+        (.main):
+        (.main img):
+        (.stories):
+        (.world, .local):
+        (.world):
+        (.local):
+        (.ad):
+        (.contents):
+        (.sidebar):
+        (.links):
+        (.main-story):
+        (.main-story img):
+        (.top-story):
+        (.top-story img):
+        (.mid-story img):
+        (.link-group):
+        (.link-group img):
+        (.link-group ul):
+        (.link-group li):
+        (footer):
+        (footer ul):
+        (footer a):
+        (.footer-col):
+        * demos/intersection-observer/simple/script.js: Added.
+        (addToLog):
+        (clearLog):
+        (stringFromRect):
+        (intersectedCallback):
+        * demos/intersection-observer/simple/simple-observer-iframe.html: Added.
+        * demos/intersection-observer/simple/simple-observer-root-margin.html: Added.
+        * demos/intersection-observer/simple/simple-observer.html: Added.
+        * demos/intersection-observer/simple/styles.css: Added.
+        (body):
+        (.results):
+        (.results button):
+        (h2):
+        (#logging):
+        * demos/intersection-observer/triggered-animation/index.html: Added.
+        * demos/intersection-observer/triggered-animation/script.js: Added.
+        (AnimationManager):
+        (AnimationManager.prototype.setupObserver):
+        (AnimationManager.prototype.intersectionsChanged):
+        * demos/intersection-observer/triggered-animation/style.css: Added.
+        (body):
+        (p):
+        (.animation-container h1):
+        (.animation-container):
+        (.animation-container .box):
+        (.slide.box):
+        (.animation-container.visible > .slide.box):
+        (.slide.animation-container div:nth-of-type(1)):
+        (.slide.animation-container div:nth-of-type(2)):
+        (.slide.animation-container div:nth-of-type(3)):
+        (.spin):
+        (.animation-container.visible .spin):
+        (@keyframes spin):
+        (to):
+        (.animation-container.svg):
+        (.animation-container.svg path):
+        (.animation-container.svg.visible):
+        (@keyframes stroke-move):
+        (.animation-container.svg circle):
+        (.animation-container.svg.visible circle):
+        (.animation-container.svg circle:nth-of-type(2)):
+        (.animation-container.svg circle:nth-of-type(3)):
+        (.animation-container.svg circle:nth-of-type(4)):
+        (.animation-container.svg circle:nth-of-type(5)):
+        (@keyframes circle-scale):
+
+2019-01-25  Jon Davis  <jond@apple.com>
+
+        Added feature status entry for "Removed in Preview"
+        https://bugs.webkit.org/show_bug.cgi?id=193794
+
+        Reviewed by Joseph Pecoraro.
+
+        * wp-content/themes/webkit/status.php:
+
+2018-12-20  Jon Davis  <jond@apple.com>
+
+        Ensure new styles are served on webkit.org.
+        https://bugs.webkit.org/show_bug.cgi?id=192953
+
+        Rubber-stamped by Devin Rousso.
+
+        * tabicon.svg: Removed as vector icons are no longer preferred.
+        * wp-content/themes/webkit/header.php: Updated stylesheet datestamp.
+
+2018-12-20  Jon Davis  <jond@apple.com>
+
+        Added a dark mode color scheme.
+        https://bugs.webkit.org/show_bug.cgi?id=192930
+
+        Reviewed by Timothy Hatcher.
+
+        * .htaccess: Added convenience redirects for /features and /css-features
+        * wp-content/themes/webkit/build-archives.php: Customized dark color styles for the page.
+        * wp-content/themes/webkit/css-status.php: Implemented new design and dark styles support.
+        * wp-content/themes/webkit/front-header.php: Added dark color styles.
+        * wp-content/themes/webkit/functions.php: Added new feature status navigation menu.
+        * wp-content/themes/webkit/header.php: Specify support for light and dark color schemes.
+        * wp-content/themes/webkit/images/chevron-dark.svg: Added.
+        * wp-content/themes/webkit/images/chevron.svg: Switch to HSL color.
+        * wp-content/themes/webkit/images/filter.svg: Added.
+        * wp-content/themes/webkit/images/icons.svg: Use currentColor for dark mode.
+        * wp-content/themes/webkit/images/invert-lightness.svg: Added.
+        * wp-content/themes/webkit/images/search.svg: Added.
+        * wp-content/themes/webkit/sitemap.php: Customized dark color styles for the page.
+        * wp-content/themes/webkit/status.php: Updated design and dark styles support.
+        * wp-content/themes/webkit/style.css: Added dark style rules and switched to custom properties.
+        (:root):
+        (@media(prefers-color-scheme:dark)):
+        (body):
+        (a):
+        (a,):
+        (hr):
+        (code):
+        (main):
+        (a[name]):
+        (p > a[name]::before):
+        (a[name]:hover):
+        (a[name]:hover::before):
+        (p:hover > a[name]::before):
+        (input[type=text]):
+        (input[type=submit]):
+        (.screen-reader-text:focus):
+        (.pagination .page-numbers,):
+        (.pagination .menu-item a):
+        (.pagination .page-numbers:not(.current, .dots):hover):
+        (.pagination .dots,):
+        (.connected.pagination .menu-item):
+        (.connected.pagination .menu-item:hover a):
+        (.connected.pagination .menu-item:first-child a):
+        (.connected.pagination .menu-item:last-child a):
+        (.connected.pagination .menu-item.current-menu-item a,):
+        (.menu-feature-pages-container):
+        (.nextrouter):
+        (.nextrouter.previous):
+        (.nextrouter:hover,):
+        (.nextrouter a):
+        (.nextrouter-copy):
+        (.nextrouter .label):
+        (.nextrouter .link):
+        (.tiles):
+        (.tile):
+        (.tile .background-image):
+        (.tile .background-image svg):
+        (.tile.category-web-inspector svg):
+        (.tile.category-performance svg):
+        (.tile.category-javascript svg):
+        (.tile.category-css svg):
+        (.tile.category-standards svg):
+        (.tile.category-contributing svg):
+        (.tile.category-storage svg):
+        (.tile.category-layout svg):
+        (.tile.category-safari-technology-preview svg):
+        (.tile.category-accessibility svg):
+        (.tile.category-security svg):
+        (.tile.category-privacy svg):
+        (.tile .background-image.loaded):
+        (.tile:not(.has-post-thumbnail) .background-image,):
+        (.featured-tile .tile-content):
+        (.background-vignette):
+        (.tag-window .background-image):
+        (.tag-window .background-vignette):
+        (.featured-tile.tag-dark .background-vignette):
+        (.featured-tile.tag-dark .tile-content):
+        (.featured-tile.tag-dark .tile-content a):
+        (.icon-tile .icon):
+        (.icon-tile,):
+        (.gray-tile):
+        (.gray-tile a):
+        (.amber-tile):
+        (.blue-tile):
+        (.twitter-tile):
+        (.icon.twitter-icon):
+        (pre):
+        (code .keyword,):
+        (code .keyword.builtin,):
+        (code .keyword.type):
+        (code .preprocessor):
+        (code .comment):
+        (code .comment .doc):
+        (code .identifier):
+        (code .string,):
+        (code .escaped):
+        (code .number,):
+        (code .regex,):
+        (code .attribute.value):
+        (code .operator):
+        (code .keyword.operator):
+        (code .whitespace):
+        (code .error):
+        (code .doctype):
+        (code .property):
+        (code.xml .comment,):
+        (code.xml .preprocessor .keyword):
+        (code.xml .meta,):
+        (code.cpp .preprocessor .identifier):
+        (pre::-moz-selection,):
+        (pre::selection, pre span::selection):
+        (code.css .attribute,):
+        (code.css .keyword):
+        (code.css .number):
+        (article h1,):
+        (article .byline p):
+        (article thead, article tfoot):
+        (article tr):
+        (article blockquote):
+        (.post .bodycopy > p:last-child:after):
+        (article div.note):
+        (article .foreword):
+        (article .cliptop):
+        (article .clipbottom):
+        (article .clipright):
+        (article .clipleft):
+        (article .mattewhite):
+        (article .mattewhite:not(.widescreen)):
+        (figure.table):
+        (article figcaption):
+        (article figcaption::before):
+        (.table-of-contents):
+        (.site-logo):
+        (.feature-header:after,):
+        (header nav a,):
+        (header nav a:hover,):
+        (.sub-menu-layer):
+        (.sub-menu-layer:after):
+        (.sub-menu-layer:before):
+        (@media only screen and (max-width: 920px)):
+        (header .menu):
+        (header nav a):
+        (header .menu > .menu-item > .sub-menu):
+        (@media only screen and (max-width: 690px)):
+        (article .scrollable):
+        (@media only screen and (max-width: 600px)):
+        (.table-of-contents label:after):
+        (@media only screen and (max-width: 415px)):
+        (article .invert-brightness,):
+        (.preserve-color, video):
+        (.preserve-color:hover,):
+        (.nextrouter .link,):
+        (.search-input):
+        (.filters-toggle-button):
+        (a > code): Deleted.
+        (.pagination .page-numbers): Deleted.
+        (.nextrouter:hover): Deleted.
+        (.nextrouter.previous:hover): Deleted.
+        (.icon-tile, .icon-tile a): Deleted.
+        (.gray-tile, .gray-tile a): Deleted.
+        (code .string, code .char): Deleted.
+        (code .number, code .tag): Deleted.
+        (code .regex, code .attribute): Deleted.
+        (code.xml .meta, code.xml .meta .keyword): Deleted.
+        (code::-moz-selection, code span::-moz-selection): Deleted.
+        (code::selection, code span::selection): Deleted.
+        (article h1 a): Deleted.
+        (.feature-header:after): Deleted.
+        (.feature.opened .feature-header:after): Deleted.
+        * wp-content/themes/webkit/team.php: Customized dark color styles for the page.
+
+2018-12-01  Simon Fraser  <simon.fraser@apple.com>
+
+        webkit.org/css-status is broken
+        https://bugs.webkit.org/show_bug.cgi?id=192278
+
+        Reviewed by Zalan Bujtas.
+
+        Remove a stray '='.
+
+        * wp-content/themes/webkit/css-status.php:
+
+2018-11-09  Jon Davis  <jond@apple.com>
+
+        Clean-up stray whitespace in theme files
+        https://bugs.webkit.org/show_bug.cgi?id=191430
+
+        Reviewed by Dean Jackson.
+
+        * wp-content/themes/webkit/css-status.php:
+        * wp-content/themes/webkit/footer.php:
+        * wp-content/themes/webkit/front-page.php:
+        * wp-content/themes/webkit/includes.php:
+        * wp-content/themes/webkit/nightly-start.php:
+        * wp-content/themes/webkit/nightly-survey.php:
+        * wp-content/themes/webkit/page.php:
+        * wp-content/themes/webkit/scripts/global.js:
+        * wp-content/themes/webkit/scripts/searchbuilds.js:
+        (initsearch):
+        (initsearch.displayError):
+        * wp-content/themes/webkit/single.php:
+        * wp-content/themes/webkit/sitemap.php:
+        * wp-content/themes/webkit/team.php:
+        * wp-content/themes/webkit/widgets/icon.php:
+        * wp-content/themes/webkit/widgets/page.php:
+
+2018-11-02  Jon Davis  <jond@apple.com>
+
+        Follow-up fix for the webkit.org blog index page
+        https://bugs.webkit.org/show_bug.cgi?id=191216
+
+        Reviewed by Timothy Hatcher.
+
+        * wp-content/themes/webkit/index.php:
+
+2018-11-02  Jon Davis  <jond@apple.com>
+
+        Improved the SVG icons to use SVG symbols
+        https://bugs.webkit.org/show_bug.cgi?id=191205
+
+        Reviewed by Timothy Hatcher.
+
+        This change makes it far easier to add new SVG icons to the
+        icons.svg sprite and provides better positioning control
+        over the icons within the blog post tile frame.
+
+        * wp-content/themes/webkit/front-page.php:
+        * wp-content/themes/webkit/functions.php:
+        * wp-content/themes/webkit/header.php:
+        * wp-content/themes/webkit/images/icons.svg:
+        * wp-content/themes/webkit/index.php:
+        * wp-content/themes/webkit/loop.php:
+        * wp-content/themes/webkit/style.css:
+        (@supports ( -webkit-backdrop-filter: blur(10px) )):
+        (footer):
+        (#icons):
+        (.tile .background-image):
+        (.tile .background-image svg):
+        (.tile.category-web-inspector svg):
+        (.tile.category-performance svg):
+        (.tile.category-javascript svg):
+        (.tile.category-css svg):
+        (.tile.category-standards svg):
+        (.tile.category-contributing svg):
+        (.tile.category-storage svg):
+        (.tile.category-layout svg):
+        (.tile.category-safari-technology-preview svg):
+        (.tile.category-accessibility svg):
+        (.tile.category-security svg):
+        (.tile.category-privacy svg):
+        (header .menu-item-has-children .label-toggle::after):
+        (@media only screen and (max-width: 920px)):
+        (.main-menu.label-toggle):
+        (header .menu):
+        (@media only screen and (max-width: 690px)):
+        (@media only screen and (max-width: 415px)):
+        (@media only screen and (max-height: 415px)):
+        (.tile.category-web-inspector .background-image): Deleted.
+        (.tile.category-performance .background-image): Deleted.
+        (.tile.category-javascript .background-image): Deleted.
+        (.tile.category-css .background-image): Deleted.
+        (.tile.category-standards .background-image): Deleted.
+        (.tile.category-contributing .background-image): Deleted.
+        (.tile.category-storage .background-image): Deleted.
+        (.tile.category-layout .background-image): Deleted.
+        (.tile.category-safari-technology-preview .background-image): Deleted.
+        (.tile.category-accessibility .background-image): Deleted.
+        (.tile.tag-console .background-image,): Deleted.
+        (.tile.tag-console .background-image): Deleted.
+        (.tile.tag-debugger .background-image): Deleted.
+        (.tile.tag-shortcuts .background-image): Deleted.
+        (.tile.tag-timeline .background-image): Deleted.
+        * wp-content/themes/webkit/widgets/post.php:
+
+2018-11-01  Jon Davis  <jond@apple.com>
+
+        Prevent homepage animation for users that prefer reduced motion
+        https://bugs.webkit.org/show_bug.cgi?id=188211
+
+        Reviewed by Timothy Hatcher.
+
+        * wp-content/themes/webkit/front-header.php:
+
+2018-10-25  Jon Davis  <jond@apple.com>
+
+        Added support for "deprecated" feature status
+        https://bugs.webkit.org/show_bug.cgi?id=187615
+
+        Reviewed by Joseph Pecoraro.
+
+        * wp-content/themes/webkit/status.php:
+
+2018-10-12  Devin Rousso  <drousso@apple.com>
+
+        Add a demo for WebInspector scanvas debugging.
+
+        * demos/canvas-debugging/index.html: Added.
+
+2018-10-08  Justin Fan  <justin_fan@apple.com>
+
+        WebGPU: Rename old WebGPU prototype to WebMetal
+        https://bugs.webkit.org/show_bug.cgi?id=190325
+        <rdar://problem/44990443>
+
+        Reviewed by Dean Jackson.
+
+        Rename WebGPU prototype files to WebMetal in preparation for implementing the new (Oct 2018) WebGPU interface.
+
+        * demos/webgpu/shared.js: Removed.
+        * demos/webmetal/2d.html: Renamed from Websites/webkit.org/demos/webgpu/2d.html.
+        * demos/webmetal/2d.jpg: Renamed from Websites/webkit.org/demos/webgpu/2d.jpg.
+        * demos/webmetal/2d.js: Renamed from Websites/webkit.org/demos/webgpu/2d.js.
+        (init):
+        * demos/webmetal/circle.svg: Renamed from Websites/webkit.org/demos/webgpu/circle.svg.
+        * demos/webmetal/cubes.html: Renamed from Websites/webkit.org/demos/webgpu/cubes.html.
+        * demos/webmetal/cubes.jpg: Renamed from Websites/webkit.org/demos/webgpu/cubes.jpg.
+        * demos/webmetal/cubes.js: Renamed from Websites/webkit.org/demos/webgpu/cubes.js.
+        (init):
+        * demos/webmetal/gl-matrix-min.js: Renamed from Websites/webkit.org/demos/webgpu/gl-matrix-min.js.
+        * demos/webmetal/hello.html: Renamed from Websites/webkit.org/demos/webgpu/hello.html.
+        * demos/webmetal/hello.jpg: Renamed from Websites/webkit.org/demos/webgpu/hello.jpg.
+        * demos/webmetal/hello.js: Renamed from Websites/webkit.org/demos/webgpu/hello.js.
+        (init):
+        * demos/webmetal/index.html: Renamed from Websites/webkit.org/demos/webgpu/index.html.
+        * demos/webmetal/shared.css: Renamed from Websites/webkit.org/demos/webgpu/shared.css.
+        * demos/webmetal/shared.js: Added.
+        (const.hasWebMetal):
+        (const.checkForWebMetal):
+        * demos/webmetal/simple.html: Renamed from Websites/webkit.org/demos/webgpu/simple.html.
+        * demos/webmetal/simple.jpg: Renamed from Websites/webkit.org/demos/webgpu/simple.jpg.
+        * demos/webmetal/simple.js: Renamed from Websites/webkit.org/demos/webgpu/simple.js.
+        (init):
+        * experimental-features.html:
+
 2018-09-05  Fujii Hironori  <Hironori.Fujii@sony.com>
 
         Update code style guidelines for using namespace inside a namespace definition
@@ -8,7 +601,7 @@
         "using namespace" statements should be inside namespace definitions for
         unified source builds.
 
-        * code-style.md(#using-position): 
+        * code-style.md(#using-position):
 
 2018-08-31  Dean Jackson  <dino@apple.com>
 

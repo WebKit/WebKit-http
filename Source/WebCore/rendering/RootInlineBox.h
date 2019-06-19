@@ -104,7 +104,7 @@ public:
 
     bool lineCanAccommodateEllipsis(bool ltr, int blockEdge, int lineBoxEdge, int ellipsisWidth);
     // Return the truncatedWidth, the width of the truncated text + ellipsis.
-    float placeEllipsis(const AtomicString& ellipsisStr, bool ltr, float blockLeftEdge, float blockRightEdge, float ellipsisWidth, InlineBox* markupBox = nullptr);
+    float placeEllipsis(const AtomString& ellipsisStr, bool ltr, float blockLeftEdge, float blockRightEdge, float ellipsisWidth, InlineBox* markupBox = nullptr);
     // Return the position of the EllipsisBox or -1.
     float placeEllipsisBox(bool ltr, float blockLeftEdge, float blockRightEdge, float ellipsisWidth, float &truncatedWidth, bool& foundBox) final;
 
@@ -207,7 +207,7 @@ private:
     bool includeInitialLetterForBox(InlineBox&) const;
     bool includeMarginForBox(InlineBox&) const;
 
-    LayoutUnit lineSnapAdjustment(LayoutUnit delta = 0) const;
+    LayoutUnit lineSnapAdjustment(LayoutUnit delta = 0_lu) const;
 
     LayoutUnit beforeAnnotationsAdjustment() const;
 

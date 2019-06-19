@@ -1,4 +1,4 @@
-# Copyright (C) 2017 Apple Inc. All rights reserved.
+# Copyright (C) 2017-2019 Apple Inc. All rights reserved.
 # Copyright (C) 2010 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -77,14 +77,25 @@ class ServerProcess(object):
         self._treat_no_data_as_crash = treat_no_data_as_crash
         self._target_host = target_host or port_obj.host
         self._pid = None
+        self._system_pid = None
+        self._child_processes = {}
         self._reset()
 
         # See comment in imports for why we need the win32 APIs and can't just use select.
         # FIXME: there should be a way to get win32 vs. cygwin from platforminfo.
         self._use_win32_apis = sys.platform.startswith('win')
 
+    def child_processes(self):
+        return self._child_processes
+
+    def set_child_processes(self, child_processes):
+        self._child_processes = child_processes
+
     def pid(self):
         return self._pid
+
+    def system_pid(self):
+        return self._system_pid
 
     def _reset(self):
         if getattr(self, '_proc', None):
@@ -123,6 +134,8 @@ class ServerProcess(object):
             env=self._env,
             universal_newlines=self._universal_newlines)
         self._pid = self._proc.pid
+        self._system_pid = int(self._port._filesystem.read_text_file('/proc/%d/winpid' % self._pid)) if self._port.host.platform.is_cygwin() else self._pid
+        self._child_processes = {}
         if not self._use_win32_apis:
             self._set_file_nonblocking(self._proc.stdout)
             self._set_file_nonblocking(self._proc.stderr)
@@ -195,6 +208,14 @@ class ServerProcess(object):
     def read_stdout_line(self, deadline):
         return self._read(deadline, self._pop_stdout_line_if_ready)
 
+    def has_available_stdout(self):
+        if not self.has_crashed() and self._use_win32_apis:
+            self._wait_for_data_and_update_buffers_using_win32_apis(0)
+        elif not self.has_crashed():
+            self._wait_for_data_and_update_buffers_using_select(0)
+
+        return bool(self._output)
+
     def read_stderr_line(self, deadline):
         return self._read(deadline, self._pop_stderr_line_if_ready)
 
@@ -248,7 +269,7 @@ class ServerProcess(object):
         return output
 
     def _wait_for_data_and_update_buffers_using_select(self, deadline, stopping=False):
-        if self._proc.stdout.closed or self._proc.stderr.closed:
+        if not self._proc or self._proc.stdout.closed or self._proc.stderr.closed:
             # If the process crashed and is using FIFOs, like Chromium Android, the
             # stdout and stderr pipes will be closed.
             return
@@ -292,12 +313,16 @@ class ServerProcess(object):
             pass
 
     def _wait_for_data_and_update_buffers_using_win32_apis(self, deadline):
+        if not self._proc:
+            return
+
         # See http://code.activestate.com/recipes/440554-module-to-allow-asynchronous-subprocess-use-on-win/
         # and http://docs.activestate.com/activepython/2.6/pywin32/modules.html
         # for documentation on all of these win32-specific modules.
         out_fh = msvcrt.get_osfhandle(self._proc.stdout.fileno())
         err_fh = msvcrt.get_osfhandle(self._proc.stderr.fileno())
-        while time.time() < deadline:
+        checking = True
+        while checking:
             output = self._non_blocking_read_win32(out_fh)
             error = self._non_blocking_read_win32(err_fh)
             if output or error:
@@ -309,6 +334,7 @@ class ServerProcess(object):
             if self._proc.poll() is not None:
                 return
             time.sleep(0.01)
+            checking = time.time() < deadline
 
     def _non_blocking_read_win32(self, handle):
         try:
@@ -364,6 +390,9 @@ class ServerProcess(object):
         # Only bother to check for leaks or stderr if the process is still running.
         if self.poll() is None:
             self._port.check_for_leaks(self.process_name(), self.pid())
+            for child_process_name in self._child_processes.keys():
+                for child_process_id in self._child_processes[child_process_name]:
+                    self._port.check_for_leaks(child_process_name, child_process_id)
 
         if self._proc.stdin:
             self._proc.stdin.close()

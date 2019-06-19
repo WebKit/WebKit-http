@@ -3,54 +3,68 @@
 # WebCore), then put it there instead.
 
 macro(WEBKIT_COMPUTE_SOURCES _framework)
+    set(_derivedSourcesPath ${${_framework}_DERIVED_SOURCES_DIR})
+
     foreach (_sourcesListFile IN LISTS ${_framework}_UNIFIED_SOURCE_LIST_FILES)
-      configure_file("${CMAKE_CURRENT_SOURCE_DIR}/${_sourcesListFile}" "${DERIVED_SOURCES_DIR}/${_framework}/${_sourcesListFile}" COPYONLY)
+      configure_file("${CMAKE_CURRENT_SOURCE_DIR}/${_sourcesListFile}" "${_derivedSourcesPath}/${_sourcesListFile}" COPYONLY)
       message(STATUS "Using source list file: ${_sourcesListFile}")
 
       list(APPEND _sourceListFileTruePaths "${CMAKE_CURRENT_SOURCE_DIR}/${_sourcesListFile}")
     endforeach ()
 
-    if (WIN32 AND INTERNAL_BUILD)
-        set(WTF_SCRIPTS_DIR "${CMAKE_BINARY_DIR}/../include/private/WTF/Scripts")
+    if (ENABLE_UNIFIED_BUILDS)
+        execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
+            "--derived-sources-path" "${_derivedSourcesPath}"
+            "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
+            "--print-bundled-sources"
+            "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
+            ${_sourceListFileTruePaths}
+            RESULT_VARIABLE _resultTmp
+            OUTPUT_VARIABLE _outputTmp)
+
+        if (${_resultTmp})
+             message(FATAL_ERROR "generate-unified-source-bundles.rb exited with non-zero status, exiting")
+        endif ()
+
+        foreach (_sourceFileTmp IN LISTS _outputTmp)
+            set_source_files_properties(${_sourceFileTmp} PROPERTIES HEADER_FILE_ONLY ON)
+            list(APPEND ${_framework}_HEADERS ${_sourceFileTmp})
+        endforeach ()
+        unset(_sourceFileTmp)
+
+        execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
+            "--derived-sources-path" "${_derivedSourcesPath}"
+            "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
+            "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
+            ${_sourceListFileTruePaths}
+            RESULT_VARIABLE  _resultTmp
+            OUTPUT_VARIABLE _outputTmp)
+
+        if (${_resultTmp})
+            message(FATAL_ERROR "generate-unified-source-bundles.rb exited with non-zero status, exiting")
+        endif ()
+
+        list(APPEND ${_framework}_SOURCES ${_outputTmp})
+        unset(_resultTmp)
+        unset(_outputTmp)
     else ()
-        set(WTF_SCRIPTS_DIR "${FORWARDING_HEADERS_DIR}/wtf/Scripts")
+        execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
+            "--derived-sources-path" "${_derivedSourcesPath}"
+            "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
+            "--print-all-sources"
+            "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
+            ${_sourceListFileTruePaths}
+            RESULT_VARIABLE _resultTmp
+            OUTPUT_VARIABLE _outputTmp)
+
+        if (${_resultTmp})
+             message(FATAL_ERROR "generate-unified-source-bundles.rb exited with non-zero status, exiting")
+        endif ()
+
+        list(APPEND ${_framework}_SOURCES ${_outputTmp})
+        unset(_resultTmp)
+        unset(_outputTmp)
     endif ()
-
-    execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
-        "--derived-sources-path" "${DERIVED_SOURCES_DIR}/${_framework}"
-        "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
-        "--print-bundled-sources"
-        "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
-        ${_sourceListFileTruePaths}
-        RESULT_VARIABLE _resultTmp
-        OUTPUT_VARIABLE _outputTmp)
-
-    if (${_resultTmp})
-         message(FATAL_ERROR "generate-unified-source-bundles.rb exited with non-zero status, exiting")
-    endif ()
-
-    foreach (_sourceFileTmp IN LISTS _outputTmp)
-        set_source_files_properties(${_sourceFileTmp} PROPERTIES HEADER_FILE_ONLY ON)
-        list(APPEND ${_framework}_HEADERS ${_sourceFileTmp})
-    endforeach ()
-    unset(_sourceFileTmp)
-
-    execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
-        "--derived-sources-path" "${DERIVED_SOURCES_DIR}/${_framework}"
-        "--source-tree-path" ${CMAKE_CURRENT_SOURCE_DIR}
-        "--feature-flags" "${UNIFIED_SOURCE_LIST_ENABLED_FEATURES}"
-        ${_sourceListFileTruePaths}
-        RESULT_VARIABLE  _resultTmp
-        OUTPUT_VARIABLE _outputTmp)
-
-    if (${_resultTmp})
-        message(FATAL_ERROR "generate-unified-source-bundles.rb exited with non-zero status, exiting")
-    endif ()
-
-    list(APPEND ${_framework}_SOURCES ${_outputTmp})
-    unset(_platformSourcesFile)
-    unset(_resultTmp)
-    unset(_outputTmp)
 endmacro()
 
 macro(WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS)
@@ -139,16 +153,41 @@ macro(WEBKIT_FRAMEWORK_DECLARE _target)
     add_library(${_target} ${${_target}_LIBRARY_TYPE} "${CMAKE_BINARY_DIR}/cmakeconfig.h")
 endmacro()
 
-macro(WEBKIT_FRAMEWORK _target)
-    target_sources(${_target} PRIVATE
-        ${${_target}_HEADERS}
-        ${${_target}_SOURCES}
+macro(WEBKIT_EXECUTABLE_DECLARE _target)
+    add_executable(${_target} "${CMAKE_BINARY_DIR}/cmakeconfig.h")
+endmacro()
+
+# Private macro for setting the properties of a target.
+# Rather than just having _target like WEBKIT_FRAMEWORK and WEBKIT_EXECUTABLE the parameters are
+# split into _target_logical_name, which is used for variable expansion, and _target_cmake_name.
+# This is done to support WEBKIT_WRAP_EXECUTABLE which uses the _target_logical_name variables
+# but requires a different _target_cmake_name.
+macro(_WEBKIT_TARGET _target_logical_name _target_cmake_name)
+    target_sources(${_target_cmake_name} PRIVATE
+        ${${_target_logical_name}_HEADERS}
+        ${${_target_logical_name}_SOURCES}
     )
-    target_include_directories(${_target} PUBLIC "$<BUILD_INTERFACE:${${_target}_INCLUDE_DIRECTORIES}>")
-    target_include_directories(${_target} SYSTEM PRIVATE "$<BUILD_INTERFACE:${${_target}_SYSTEM_INCLUDE_DIRECTORIES}>")
-    target_include_directories(${_target} PRIVATE "$<BUILD_INTERFACE:${${_target}_PRIVATE_INCLUDE_DIRECTORIES}>")
-    target_link_libraries(${_target} ${${_target}_LIBRARIES})
-    set_target_properties(${_target} PROPERTIES COMPILE_DEFINITIONS "BUILDING_${_target}")
+    target_include_directories(${_target_cmake_name} PUBLIC "$<BUILD_INTERFACE:${${_target_logical_name}_INCLUDE_DIRECTORIES}>")
+    target_include_directories(${_target_cmake_name} SYSTEM PRIVATE "$<BUILD_INTERFACE:${${_target_logical_name}_SYSTEM_INCLUDE_DIRECTORIES}>")
+    target_include_directories(${_target_cmake_name} PRIVATE "$<BUILD_INTERFACE:${${_target_logical_name}_PRIVATE_INCLUDE_DIRECTORIES}>")
+
+    target_compile_definitions(${_target_cmake_name} PRIVATE "BUILDING_${_target_logical_name}")
+    if (${_target_logical_name}_DEFINITIONS)
+        target_compile_definitions(${_target_cmake_name} PUBLIC ${${_target_logical_name}_DEFINITIONS})
+    endif ()
+    if (${_target_logical_name}_PRIVATE_DEFINITIONS)
+        target_compile_definitions(${_target_cmake_name} PRIVATE ${${_target_logical_name}_PRIVATE_DEFINITIONS})
+    endif ()
+
+    target_link_libraries(${_target_cmake_name} ${${_target_logical_name}_LIBRARIES})
+
+    if (${_target_logical_name}_DEPENDENCIES)
+        add_dependencies(${_target_cmake_name} ${${_target_logical_name}_DEPENDENCIES})
+    endif ()
+endmacro()
+
+macro(WEBKIT_FRAMEWORK _target)
+    _WEBKIT_TARGET(${_target} ${_target})
 
     if (${_target}_OUTPUT_NAME)
         set_target_properties(${_target} PROPERTIES OUTPUT_NAME ${${_target}_OUTPUT_NAME})
@@ -175,6 +214,52 @@ macro(WEBKIT_FRAMEWORK _target)
         endif ()
         install(TARGETS ${_target} FRAMEWORK DESTINATION ${LIB_INSTALL_DIR})
     endif ()
+endmacro()
+
+# FIXME Move into WEBKIT_FRAMEWORK after all libraries are using this macro
+macro(WEBKIT_FRAMEWORK_TARGET _target)
+    add_library(${_target}_PostBuild INTERFACE)
+    target_link_libraries(${_target}_PostBuild INTERFACE ${${_target}_INTERFACE_LIBRARIES})
+    target_include_directories(${_target}_PostBuild INTERFACE ${${_target}_INTERFACE_INCLUDE_DIRECTORIES})
+    add_dependencies(${_target}_PostBuild ${${_target}_INTERFACE_DEPENDENCIES})
+    add_library(WebKit::${_target} ALIAS ${_target}_PostBuild)
+endmacro()
+
+macro(WEBKIT_EXECUTABLE _target)
+    _WEBKIT_TARGET(${_target} ${_target})
+
+    if (${_target}_OUTPUT_NAME)
+        set_target_properties(${_target} PROPERTIES OUTPUT_NAME ${${_target}_OUTPUT_NAME})
+    endif ()
+endmacro()
+
+macro(WEBKIT_WRAP_EXECUTABLE _target)
+    set(oneValueArgs TARGET_NAME)
+    set(multiValueArgs SOURCES LIBRARIES)
+    cmake_parse_arguments(opt "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+    if (opt_TARGET_NAME)
+        set(_wrapped_target_name ${opt_TARGET_NAME})
+    else ()
+        set(_wrapped_target_name ${_target}Lib)
+    endif ()
+
+    add_library(${_wrapped_target_name} SHARED "${CMAKE_BINARY_DIR}/cmakeconfig.h")
+
+    _WEBKIT_TARGET(${_target} ${_wrapped_target_name})
+
+    # Unset values
+    unset(${_target}_HEADERS)
+    unset(${_target}_DEFINITIONS)
+    unset(${_target}_PRIVATE_DEFINITIONS)
+    unset(${_target}_INCLUDE_DIRECTORIES)
+    unset(${_target}_SYSTEM_INCLUDE_DIRECTORIES)
+    unset(${_target}_PRIVATE_INCLUDE_DIRECTORIES)
+
+    # Reset the sources
+    set(${_target}_SOURCES ${opt_SOURCES})
+    set(${_target}_LIBRARIES ${opt_LIBRARIES})
+    set(${_target}_DEPENDENCIES ${_wrapped_target_name})
 endmacro()
 
 macro(WEBKIT_CREATE_FORWARDING_HEADER _target_directory _file)
@@ -236,50 +321,35 @@ endmacro()
 function(WEBKIT_MAKE_FORWARDING_HEADERS framework)
     set(options FLATTENED)
     set(oneValueArgs DESTINATION TARGET_NAME)
-    set(multiValueArgs DIRECTORIES EXTRA_DIRECTORIES DERIVED_SOURCE_DIRECTORIES FILES)
+    set(multiValueArgs DIRECTORIES FILES)
     cmake_parse_arguments(opt "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     set(headers ${opt_FILES})
-    if (opt_DESTINATION)
-        set(destination ${opt_DESTINATION})
-    else ()
-        set(destination ${FORWARDING_HEADERS_DIR}/${framework})
-    endif ()
-    file(MAKE_DIRECTORY ${destination})
+    file(MAKE_DIRECTORY ${opt_DESTINATION})
     foreach (dir IN LISTS opt_DIRECTORIES)
         file(GLOB files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} ${dir}/*.h)
         list(APPEND headers ${files})
     endforeach ()
     set(fwd_headers)
     foreach (header IN LISTS headers)
+        if (IS_ABSOLUTE ${header})
+            set(src_header ${header})
+        else ()
+            set(src_header ${CMAKE_CURRENT_SOURCE_DIR}/${header})
+        endif ()
         if (opt_FLATTENED)
             get_filename_component(header_filename ${header} NAME)
-            set(fwd_header ${destination}/${header_filename})
+            set(fwd_header ${opt_DESTINATION}/${header_filename})
         else ()
             get_filename_component(header_dir ${header} DIRECTORY)
-            file(MAKE_DIRECTORY ${destination}/${header_dir})
-            set(fwd_header ${destination}/${header})
+            file(MAKE_DIRECTORY ${opt_DESTINATION}/${header_dir})
+            set(fwd_header ${opt_DESTINATION}/${header})
         endif ()
         add_custom_command(OUTPUT ${fwd_header}
-            COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/${header} ${fwd_header}
+            COMMAND ${CMAKE_COMMAND} -E copy ${src_header} ${fwd_header}
             MAIN_DEPENDENCY ${header}
             VERBATIM
         )
         list(APPEND fwd_headers ${fwd_header})
-    endforeach ()
-    foreach (dir IN LISTS opt_EXTRA_DIRECTORIES)
-        set(dir ${CMAKE_CURRENT_SOURCE_DIR}/${dir})
-        file(GLOB_RECURSE files RELATIVE ${dir} ${dir}/*.h)
-        foreach (header IN LISTS files)
-            get_filename_component(header_dir ${header} DIRECTORY)
-            file(MAKE_DIRECTORY ${destination}/${header_dir})
-            set(fwd_header ${destination}/${header})
-            add_custom_command(OUTPUT ${fwd_header}
-                COMMAND ${CMAKE_COMMAND} -E copy ${dir}/${header} ${fwd_header}
-                MAIN_DEPENDENCY ${dir}/${header}
-                VERBATIM
-            )
-            list(APPEND fwd_headers ${fwd_header})
-        endforeach ()
     endforeach ()
     if (opt_TARGET_NAME)
         set(target_name ${opt_TARGET_NAME})
@@ -288,27 +358,37 @@ function(WEBKIT_MAKE_FORWARDING_HEADERS framework)
     endif ()
     add_custom_target(${target_name} DEPENDS ${fwd_headers})
     add_dependencies(${framework} ${target_name})
-    if (opt_DERIVED_SOURCE_DIRECTORIES)
-        set(script ${CMAKE_CURRENT_BINARY_DIR}/makeForwardingHeaders.cmake)
-        set(content "")
-        foreach (dir IN LISTS opt_DERIVED_SOURCE_DIRECTORIES)
-            string(CONCAT content ${content}
-                "file(GLOB headers \"${dir}/*.h\")\n"
-                "foreach (header IN LISTS headers)\n"
-                "    get_filename_component(header_filename \${header} NAME)\n"
-                "    execute_process(COMMAND \${CMAKE_COMMAND} -E copy_if_different \${header} ${destination}/\${header_filename} RESULT_VARIABLE result)\n"
-                "    if (NOT \${result} EQUAL 0)\n"
-                "        message(FATAL_ERROR \"Failed to copy \${header}: \${result}\")\n"
-                "    endif ()\n"
-                "endforeach ()\n"
-            )
-        endforeach ()
-        file(WRITE ${script} ${content})
-        add_custom_command(TARGET ${framework} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -P ${script}
+endfunction()
+
+function(WEBKIT_COPY_FILES target_name)
+    set(options FLATTENED)
+    set(oneValueArgs DESTINATION)
+    set(multiValueArgs FILES)
+    cmake_parse_arguments(opt "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    set(files ${opt_FILES})
+    set(dst_files)
+    foreach (file IN LISTS files)
+        if (IS_ABSOLUTE ${file})
+            set(src_file ${file})
+        else ()
+            set(src_file ${CMAKE_CURRENT_SOURCE_DIR}/${file})
+        endif ()
+        if (opt_FLATTENED)
+            get_filename_component(filename ${file} NAME)
+            set(dst_file ${opt_DESTINATION}/${filename})
+        else ()
+            get_filename_component(file_dir ${file} DIRECTORY)
+            file(MAKE_DIRECTORY ${opt_DESTINATION}/${file_dir})
+            set(dst_file ${opt_DESTINATION}/${file})
+        endif ()
+        add_custom_command(OUTPUT ${dst_file}
+            COMMAND ${CMAKE_COMMAND} -E copy ${src_file} ${dst_file}
+            MAIN_DEPENDENCY ${file}
             VERBATIM
         )
-    endif ()
+        list(APPEND dst_files ${dst_file})
+    endforeach ()
+    add_custom_target(${target_name} DEPENDS ${dst_files})
 endfunction()
 
 # Helper macros for debugging CMake problems.

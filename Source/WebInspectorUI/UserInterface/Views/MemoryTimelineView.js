@@ -41,8 +41,7 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         let overviewElement = contentElement.appendChild(document.createElement("div"));
         overviewElement.classList.add("overview");
 
-        function createChartContainer(parentElement, subtitle, tooltip)
-        {
+        function createChartContainer(parentElement, subtitle, tooltip) {
             let chartElement = parentElement.appendChild(document.createElement("div"));
             chartElement.classList.add("chart");
 
@@ -59,6 +58,7 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         let usageTooltip = WI.UIString("Breakdown of each memory category at the end of the selected time range");
         let usageChartContainerElement = createChartContainer(overviewElement, WI.UIString("Breakdown"), usageTooltip);
         this._usageCircleChart = new WI.CircleChart({size: 120, innerRadiusRatio: 0.5});
+        this.addSubview(this._usageCircleChart);
         usageChartContainerElement.appendChild(this._usageCircleChart.element);
         this._usageLegendElement = usageChartContainerElement.appendChild(document.createElement("div"));
         this._usageLegendElement.classList.add("legend", "usage");
@@ -69,6 +69,7 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         let maxComparisonTooltip = WI.UIString("Comparison of total memory size at the end of the selected time range to the maximum memory size in this recording");
         let maxComparisonChartContainerElement = createChartContainer(overviewElement, WI.UIString("Max Comparison"), maxComparisonTooltip);
         this._maxComparisonCircleChart = new WI.CircleChart({size: 120, innerRadiusRatio: 0.5});
+        this.addSubview(this._maxComparisonCircleChart);
         maxComparisonChartContainerElement.appendChild(this._maxComparisonCircleChart.element);
         this._maxComparisonLegendElement = maxComparisonChartContainerElement.appendChild(document.createElement("div"));
         this._maxComparisonLegendElement.classList.add("legend", "maximum");
@@ -93,6 +94,11 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         this._maxComparisonCurrentSizeElement = null;
 
         timeline.addEventListener(WI.Timeline.Event.RecordAdded, this._memoryTimelineRecordAdded, this);
+
+        this.element.addEventListener("mousemove", this._handleGraphMouseMove.bind(this));
+
+        for (let record of timeline.records)
+            this._processRecord(record);
     }
 
     // Static
@@ -111,6 +117,8 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         }
     }
 
+    static get memoryCategoryViewHeight() { return 75; }
+
     // Public
 
     shown()
@@ -118,11 +126,6 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         super.shown();
 
         this._timelineRuler.updateLayout(WI.View.LayoutReason.Resize);
-    }
-
-    hidden()
-    {
-        super.hidden();
     }
 
     closed()
@@ -137,6 +140,11 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
 
         this._maxSize = 0;
 
+        this.clear();
+    }
+
+    clear()
+    {
         this._cachedLegendRecord = null;
         this._cachedLegendMaxSize = undefined;
         this._cachedLegendCurrentSize = undefined;
@@ -162,8 +170,18 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
 
     get showsFilterBar() { return false; }
 
+    initialLayout()
+    {
+        super.initialLayout();
+
+        this.element.style.setProperty("--memory-category-view-height", MemoryTimelineView.memoryCategoryViewHeight + "px");
+    }
+
     layout()
     {
+        if (this.layoutReason === WI.View.LayoutReason.Resize)
+            return;
+
         // Always update timeline ruler.
         this._timelineRuler.zeroTime = this.zeroTime;
         this._timelineRuler.startTime = this.startTime;
@@ -174,17 +192,19 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
 
         let graphStartTime = this.startTime;
         let graphEndTime = this.endTime;
+        let secondsPerPixel = this._timelineRuler.secondsPerPixel;
         let visibleEndTime = Math.min(this.endTime, this.currentTime);
 
         let discontinuities = this._recording.discontinuitiesInTimeRange(graphStartTime, visibleEndTime);
 
-        // Don't include the record before the graph start if the graph start is within a gap.
-        let includeRecordBeforeStart = !discontinuities.length || discontinuities[0].startTime > graphStartTime;
-
-        // FIXME: <https://webkit.org/b/153759> Web Inspector: Memory Timelines should better extend to future data
-        let visibleRecords = this.representedObject.recordsInTimeRange(graphStartTime, visibleEndTime, includeRecordBeforeStart);
-        if (!visibleRecords.length)
+        let visibleRecords = this.representedObject.recordsInTimeRange(graphStartTime, visibleEndTime, {
+            includeRecordBeforeStart: !discontinuities.length || discontinuities[0].startTime > graphStartTime,
+            includeRecordAfterEnd: true,
+        });
+        if (!visibleRecords.length || (visibleRecords.length === 1 && visibleRecords[0].endTime < graphStartTime)) {
+            this.clear();
             return;
+        }
 
         // Update total usage chart with the last record's data.
         let lastRecord = visibleRecords.lastValue;
@@ -200,34 +220,33 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         this._maxComparisonCircleChart.updateLayout();
         this._updateMaxComparisonLegend(lastRecord.totalSize);
 
-        // FIXME: <https://webkit.org/b/153758> Web Inspector: Memory Timeline View should be responsive / resizable
-        const categoryViewWidth = 800;
-        const categoryViewHeight = 75;
-
-        let secondsPerPixel = (graphEndTime - graphStartTime) / categoryViewWidth;
-
         let categoryDataMap = {};
         for (let categoryView of this._categoryViews)
             categoryDataMap[categoryView.category] = {dataPoints: [], max: -Infinity, min: Infinity};
 
         for (let record of visibleRecords) {
             let time = record.startTime;
-            let discontinuity = null;
-            if (discontinuities.length && discontinuities[0].endTime < time)
-                discontinuity = discontinuities.shift();
+            let startDiscontinuity = null;
+            let endDiscontinuity = null;
+            if (discontinuities.length && discontinuities[0].endTime < time) {
+                startDiscontinuity = discontinuities.shift();
+                endDiscontinuity = startDiscontinuity;
+                while (discontinuities.length && discontinuities[0].endTime < time)
+                    endDiscontinuity = discontinuities.shift();
+            }
 
             for (let category of record.categories) {
                 let categoryData = categoryDataMap[category.type];
 
-                if (discontinuity) {
+                if (startDiscontinuity) {
                     if (categoryData.dataPoints.length) {
                         let previousDataPoint = categoryData.dataPoints.lastValue;
-                        categoryData.dataPoints.push({time: discontinuity.startTime, size: previousDataPoint.size});
+                        categoryData.dataPoints.push({time: startDiscontinuity.startTime, size: previousDataPoint.size});
                     }
 
-                    categoryData.dataPoints.push({time: discontinuity.startTime, size: 0});
-                    categoryData.dataPoints.push({time: discontinuity.endTime, size: 0});
-                    categoryData.dataPoints.push({time: discontinuity.endTime, size: category.size});
+                    categoryData.dataPoints.push({time: startDiscontinuity.startTime, size: 0});
+                    categoryData.dataPoints.push({time: endDiscontinuity.endTime, size: 0});
+                    categoryData.dataPoints.push({time: endDiscontinuity.endTime, size: category.size});
                 }
 
                 categoryData.dataPoints.push({time, size: category.size});
@@ -241,9 +260,7 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         if (discontinuities.length)
             visibleEndTime = discontinuities[0].startTime;
 
-        function layoutCategoryView(categoryView, categoryData) {
-            let {dataPoints, min, max} = categoryData;
-
+        function layoutCategoryView(categoryView, {dataPoints, min, max}) {
             if (min === Infinity)
                 min = 0;
             if (max === -Infinity)
@@ -256,11 +273,14 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
             function xScale(time) {
                 return (time - graphStartTime) / secondsPerPixel;
             }
-            function yScale(size) {
-                return categoryViewHeight - (((size - graphMin) / graphMax) * categoryViewHeight);
+
+            let size = new WI.Size(xScale(graphEndTime), MemoryTimelineView.memoryCategoryViewHeight);
+
+            function yScale(value) {
+                return size.height - (((value - graphMin) / graphMax) * size.height);
             }
 
-            categoryView.layoutWithDataPoints(dataPoints, visibleEndTime, min, max, xScale, yScale);
+            categoryView.updateChart(dataPoints, size, visibleEndTime, min, max, xScale, yScale);
         }
 
         for (let categoryView of this._categoryViews)
@@ -268,6 +288,34 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
     }
 
     // Private
+
+    _graphPositionForMouseEvent(event)
+    {
+        let chartElement = event.target.closest(".area-chart, .stacked-area-chart, .range-chart");
+        if (!chartElement)
+            return NaN;
+
+        let chartRect = chartElement.getBoundingClientRect();
+        let position = event.pageX - chartRect.left;
+
+        if (WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL)
+            return chartRect.width - position;
+        return position;
+    }
+
+    _handleGraphMouseMove(event)
+    {
+        let mousePosition = this._graphPositionForMouseEvent(event);
+        if (isNaN(mousePosition)) {
+            this.dispatchEventToListeners(WI.TimelineView.Event.ScannerHide);
+            return;
+        }
+
+        let secondsPerPixel = this._timelineRuler.secondsPerPixel;
+        let time = this.startTime + (mousePosition * secondsPerPixel);
+
+        this.dispatchEventToListeners(WI.TimelineView.Event.ScannerShow, {time});
+    }
 
     _clearUsageLegend()
     {
@@ -310,8 +358,10 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
 
     _clearMaxComparisonLegend()
     {
-        this._maxComparisonMaximumSizeElement.textContent = emDash;
-        this._maxComparisonCurrentSizeElement.textContent = emDash;
+        if (this._maxComparisonMaximumSizeElement)
+            this._maxComparisonMaximumSizeElement.textContent = emDash;
+        if (this._maxComparisonCurrentSizeElement)
+            this._maxComparisonCurrentSizeElement.textContent = emDash;
 
         let totalElement = this._maxComparisonCircleChart.centerElement.firstChild;
         if (totalElement)
@@ -353,12 +403,18 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         function appendLegendRow(legendElement, swatchClass, label, tooltip) {
             let rowElement = legendElement.appendChild(document.createElement("div"));
             rowElement.classList.add("row");
+
             let swatchElement = rowElement.appendChild(document.createElement("div"));
             swatchElement.classList.add("swatch", swatchClass);
-            let labelElement = rowElement.appendChild(document.createElement("p"));
+
+            let valueContainer = rowElement.appendChild(document.createElement("div"));
+            valueContainer.classList.add("value");
+
+            let labelElement = valueContainer.appendChild(document.createElement("div"));
             labelElement.classList.add("label");
             labelElement.textContent = label;
-            let sizeElement = rowElement.appendChild(document.createElement("p"));
+
+            let sizeElement = valueContainer.appendChild(document.createElement("div"));
             sizeElement.classList.add("size");
 
             if (tooltip)
@@ -373,6 +429,7 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
             // Per-category graph.
             let categoryView = new WI.MemoryCategoryView(type, WI.MemoryTimelineView.displayNameForCategory(type));
             this._categoryViews.push(categoryView);
+            this.addSubview(categoryView);
             if (!lastCategoryViewElement)
                 this._detailsContainerElement.appendChild(categoryView.element);
             else
@@ -397,12 +454,17 @@ WI.MemoryTimelineView = class MemoryTimelineView extends WI.TimelineView
         let memoryTimelineRecord = event.data.record;
         console.assert(memoryTimelineRecord instanceof WI.MemoryTimelineRecord);
 
+        this._processRecord(memoryTimelineRecord);
+
+        if (memoryTimelineRecord.startTime >= this.startTime && memoryTimelineRecord.endTime <= this.endTime)
+            this.needsLayout();
+    }
+
+    _processRecord(memoryTimelineRecord)
+    {
         if (!this._didInitializeCategories)
             this._initializeCategoryViews(memoryTimelineRecord);
 
         this._maxSize = Math.max(this._maxSize, memoryTimelineRecord.totalSize);
-
-        if (memoryTimelineRecord.startTime >= this.startTime && memoryTimelineRecord.endTime <= this.endTime)
-            this.needsLayout();
     }
 };

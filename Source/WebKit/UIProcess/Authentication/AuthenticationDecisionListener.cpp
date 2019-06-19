@@ -26,7 +26,9 @@
 #include "config.h"
 #include "AuthenticationDecisionListener.h"
 
+#include "AuthenticationChallengeDisposition.h"
 #include "AuthenticationChallengeProxy.h"
+#include "AuthenticationManager.h"
 #include "AuthenticationManagerMessages.h"
 #include "WebCertificateInfo.h"
 #include "WebCredential.h"
@@ -35,38 +37,21 @@
 
 namespace WebKit {
 
-AuthenticationDecisionListener::AuthenticationDecisionListener(AuthenticationChallengeProxy* authenticationChallenge)
-    : m_challengeProxy(authenticationChallenge)
+AuthenticationDecisionListener::AuthenticationDecisionListener(CompletionHandler<void(AuthenticationChallengeDisposition, const WebCore::Credential&)>&& completionHandler)
+    : m_completionHandler(WTFMove(completionHandler))
 {
 }
 
-void AuthenticationDecisionListener::useCredential(WebCredential* credential)
+AuthenticationDecisionListener::~AuthenticationDecisionListener()
 {
-    if (m_challengeProxy)
-        m_challengeProxy->useCredential(credential);
+    if (m_completionHandler)
+        m_completionHandler(AuthenticationChallengeDisposition::Cancel, { });
 }
 
-void AuthenticationDecisionListener::cancel()
+void AuthenticationDecisionListener::completeChallenge(AuthenticationChallengeDisposition disposition, const WebCore::Credential& credential)
 {
-    if (m_challengeProxy)
-        m_challengeProxy->cancel();
+    if (m_completionHandler)
+        m_completionHandler(disposition, credential);
 }
 
-void AuthenticationDecisionListener::performDefaultHandling()
-{
-    if (m_challengeProxy)
-        m_challengeProxy->performDefaultHandling();
-}
-
-void AuthenticationDecisionListener::rejectProtectionSpaceAndContinue()
-{
-    if (m_challengeProxy)
-        m_challengeProxy->rejectProtectionSpaceAndContinue();
-}
-
-void AuthenticationDecisionListener::detachChallenge()
-{
-    m_challengeProxy = 0;
-}
-    
 } // namespace WebKit

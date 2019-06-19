@@ -32,9 +32,9 @@
 #import "WebKitLogging.h"
 #import "WebView.h"
 #import "WebViewData.h"
-#import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/ObjCRuntimeExtras.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 #import "WebViewInternal.h"
 #import <WebCore/WebCoreThreadMessage.h>
 #endif
@@ -78,21 +78,17 @@ WebHistoryDelegateImplementationCache* WebViewGetHistoryDelegateImplementations(
 // preventing more ObjC message dispatch and compensating for the expense of the @try/@catch.
 
 typedef float (*ObjCMsgSendFPRet)(id, SEL, ...);
-#if !PLATFORM(IOS)
-#if defined(__i386__)
-static const ObjCMsgSendFPRet objc_msgSend_float_return = reinterpret_cast<ObjCMsgSendFPRet>(objc_msgSend_fpret);
-#else
+#if !PLATFORM(IOS_FAMILY)
 static const ObjCMsgSendFPRet objc_msgSend_float_return = reinterpret_cast<ObjCMsgSendFPRet>(objc_msgSend);
-#endif
 #endif
 
 static inline id CallDelegate(WebView *self, id delegate, SEL selector)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return nil;
     @try {
-        return wtfObjcMsgSend<id>(delegate, selector, self);
+        return wtfObjCMsgSend<id>(delegate, selector, self);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -121,11 +117,11 @@ static inline id CallDelegate(WebView *self, id delegate, SEL selector)
 
 static inline id CallDelegate(WebView *self, id delegate, SEL selector, id object)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return nil;
     @try {
-        return wtfObjcMsgSend<id>(delegate, selector, self, object);
+        return wtfObjCMsgSend<id>(delegate, selector, self, object);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -155,11 +151,11 @@ static inline id CallDelegate(WebView *self, id delegate, SEL selector, id objec
 
 static inline id CallDelegate(WebView *self, id delegate, SEL selector, NSRect rect)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return nil;
     @try {
-        return wtfObjcMsgSend<id>(delegate, selector, self, rect);
+        return wtfObjCMsgSend<id>(delegate, selector, self, rect);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -189,11 +185,11 @@ static inline id CallDelegate(WebView *self, id delegate, SEL selector, NSRect r
 
 static inline id CallDelegate(WebView *self, id delegate, SEL selector, id object1, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return nil;
     @try {
-        return wtfObjcMsgSend<id>(delegate, selector, self, object1, object2);
+        return wtfObjCMsgSend<id>(delegate, selector, self, object1, object2);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -224,11 +220,11 @@ static inline id CallDelegate(WebView *self, id delegate, SEL selector, id objec
 
 static inline id CallDelegate(WebView *self, id delegate, SEL selector, id object, BOOL boolean)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return nil;
     @try {
-        return wtfObjcMsgSend<id>(delegate, selector, self, object, boolean);
+        return wtfObjCMsgSend<id>(delegate, selector, self, object, boolean);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -259,11 +255,11 @@ static inline id CallDelegate(WebView *self, id delegate, SEL selector, id objec
 
 static inline id CallDelegate(WebView *self, id delegate, SEL selector, id object1, id object2, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return nil;
     @try {
-        return wtfObjcMsgSend<id>(delegate, selector, self, object1, object2, object3);
+        return wtfObjCMsgSend<id>(delegate, selector, self, object1, object2, object3);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -295,11 +291,11 @@ static inline id CallDelegate(WebView *self, id delegate, SEL selector, id objec
 
 static inline id CallDelegate(WebView *self, id delegate, SEL selector, id object, NSUInteger integer)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return nil;
     @try {
-        return wtfObjcMsgSend<id>(delegate, selector, self, object, integer);
+        return wtfObjCMsgSend<id>(delegate, selector, self, object, integer);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -330,7 +326,7 @@ static inline id CallDelegate(WebView *self, id delegate, SEL selector, id objec
 
 static inline float CallDelegateReturningFloat(WebView *self, id delegate, SEL selector)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return 0.0f;
     @try {
@@ -360,11 +356,11 @@ static inline float CallDelegateReturningFloat(WebView *self, id delegate, SEL s
 
 static inline BOOL CallDelegateReturningBoolean(BOOL result, WebView *self, id delegate, SEL selector)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return result;
     @try {
-        return wtfObjcMsgSend<BOOL>(delegate, selector, self);
+        return wtfObjCMsgSend<BOOL>(delegate, selector, self);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -390,11 +386,11 @@ static inline BOOL CallDelegateReturningBoolean(BOOL result, WebView *self, id d
 
 static inline BOOL CallDelegateReturningBoolean(BOOL result, WebView *self, id delegate, SEL selector, id object)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return result;
     @try {
-        return wtfObjcMsgSend<BOOL>(delegate, selector, self, object);
+        return wtfObjCMsgSend<BOOL>(delegate, selector, self, object);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -421,11 +417,11 @@ static inline BOOL CallDelegateReturningBoolean(BOOL result, WebView *self, id d
 
 static inline BOOL CallDelegateReturningBoolean(BOOL result, WebView *self, id delegate, SEL selector, id object, BOOL boolean)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return result;
     @try {
-        return wtfObjcMsgSend<BOOL>(delegate, selector, self, object, boolean);
+        return wtfObjCMsgSend<BOOL>(delegate, selector, self, object, boolean);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -456,7 +452,7 @@ static inline BOOL CallDelegateReturningBoolean(BOOL result, WebView *self, id d
     if (!delegate || ![delegate respondsToSelector:selector])
         return result;
     @try {
-        return wtfObjcMsgSend<BOOL>(delegate, selector, self, object, boolean, object2);
+        return wtfObjCMsgSend<BOOL>(delegate, selector, self, object, boolean, object2);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -465,11 +461,11 @@ static inline BOOL CallDelegateReturningBoolean(BOOL result, WebView *self, id d
 
 static inline BOOL CallDelegateReturningBoolean(BOOL result, WebView *self, id delegate, SEL selector, id object1, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate || ![delegate respondsToSelector:selector])
         return result;
     @try {
-        return wtfObjcMsgSend<BOOL>(delegate, selector, self, object1, object2);
+        return wtfObjCMsgSend<BOOL>(delegate, selector, self, object1, object2);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -495,7 +491,7 @@ static inline BOOL CallDelegateReturningBoolean(BOOL result, WebView *self, id d
 #endif
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 static inline BOOL CallDelegateReturningBoolean(BOOL result, WebView *self, id delegate, SEL selector, id object1, id object2, BOOL boolean)
 {
     if (!delegate || ![delegate respondsToSelector:selector])
@@ -521,7 +517,7 @@ static inline BOOL CallDelegateReturningBoolean(BOOL result, WebView *self, id d
 
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate)
         return nil;
     @try {
@@ -554,7 +550,7 @@ static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SE
 
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, NSUInteger integer)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate)
         return nil;
     @try {
@@ -588,7 +584,7 @@ static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SE
 
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, id object)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate)
         return nil;
     @try {
@@ -620,7 +616,7 @@ static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SE
 #endif
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 static inline id CallDelegateInWebThread(IMP implementation, WebView *self, id delegate, SEL selector, id object1, id object2)
 {
     if (!delegate)
@@ -669,11 +665,11 @@ static inline id CallDelegateInWebThread(IMP implementation, WebView *self, id d
     return nil;
 }
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, id object1, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate)
         return nil;
     @try {
@@ -706,7 +702,7 @@ static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SE
 #endif
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, id object, double double1)
 {
     if (!delegate)
@@ -734,7 +730,7 @@ static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SE
 
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, id object1, id object2, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate)
         return nil;
     @try {
@@ -770,7 +766,7 @@ static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SE
 
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, id object1, id object2, id object3, id object4)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate)
         return nil;
     @try {
@@ -807,7 +803,7 @@ static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SE
 
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, id object1, NSInteger integer, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate)
         return nil;
     @try {
@@ -841,7 +837,7 @@ static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SE
 #endif
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, id object1, NSInteger integer1, int integer2, id object2)
 #else
 static inline id CallDelegateInWebThread(IMP implementation, WebView *self, id delegate, SEL selector, id object1, NSInteger integer1, int integer2, id object2)
@@ -871,7 +867,7 @@ static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SE
 
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, id object1, id object2, NSInteger integer, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate)
         return nil;
     @try {
@@ -906,7 +902,7 @@ static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SE
 #endif
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 static inline id CallDelegateInWebThread(IMP implementation, WebView *self, id delegate, SEL selector, id object1, NSInteger integer, id object2)
 {
     if (!delegate)
@@ -931,7 +927,7 @@ static inline id CallDelegateInWebThread(IMP implementation, WebView *self, id d
 }
 #endif
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, id object1, NSInteger integer1, id object2, NSInteger integer2, id object3)
 #else
 static inline id CallDelegateInWebThread(IMP implementation, WebView *self, id delegate, SEL selector, id object1, NSInteger integer1, id object2, NSInteger integer2, id object3)
@@ -947,7 +943,7 @@ static inline id CallDelegateInWebThread(IMP implementation, WebView *self, id d
     return nil;
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, id object1, NSInteger integer, id object2, id object3, id object4)
 #else
 static inline id CallDelegateInWebThread(IMP implementation, WebView *self, id delegate, SEL selector, id object1, NSInteger integer, id object2, id object3, id object4)
@@ -965,7 +961,7 @@ static inline id CallDelegateInWebThread(IMP implementation, WebView *self, id d
 
 static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SEL selector, id object1, NSTimeInterval interval, id object2, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     if (!delegate)
         return nil;
     @try {
@@ -1002,7 +998,7 @@ static inline id CallDelegate(IMP implementation, WebView *self, id delegate, SE
 
 id CallUIDelegate(WebView *self, SEL selector)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(self, self->_private->UIDelegate, selector);
 #else
     return CallDelegate(self, [self _UIDelegateForSelector:selector], selector);
@@ -1011,7 +1007,7 @@ id CallUIDelegate(WebView *self, SEL selector)
 
 id CallUIDelegate(WebView *self, SEL selector, id object)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(self, self->_private->UIDelegate, selector, object);
 #else
     return CallDelegate(self, [self _UIDelegateForSelector:selector], selector, object);
@@ -1020,7 +1016,7 @@ id CallUIDelegate(WebView *self, SEL selector, id object)
 
 id CallUIDelegate(WebView *self, SEL selector, id object, BOOL boolean)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(self, self->_private->UIDelegate, selector, object, boolean);
 #else
     return CallDelegate(self, [self _UIDelegateForSelector:selector], selector, object, boolean);
@@ -1029,7 +1025,7 @@ id CallUIDelegate(WebView *self, SEL selector, id object, BOOL boolean)
 
 id CallUIDelegate(WebView *self, SEL selector, NSRect rect)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(self, self->_private->UIDelegate, selector, rect);
 #else
     return CallDelegate(self, [self _UIDelegateForSelector:selector], selector, rect);
@@ -1038,7 +1034,7 @@ id CallUIDelegate(WebView *self, SEL selector, NSRect rect)
 
 id CallUIDelegate(WebView *self, SEL selector, id object1, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(self, self->_private->UIDelegate, selector, object1, object2);
 #else
     return CallDelegate(self, [self _UIDelegateForSelector:selector], selector, object1, object2);
@@ -1047,7 +1043,7 @@ id CallUIDelegate(WebView *self, SEL selector, id object1, id object2)
 
 id CallUIDelegate(WebView *self, SEL selector, id object1, id object2, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(self, self->_private->UIDelegate, selector, object1, object2, object3);
 #else
     return CallDelegate(self, [self _UIDelegateForSelector:selector], selector, object1, object2, object3);
@@ -1056,7 +1052,7 @@ id CallUIDelegate(WebView *self, SEL selector, id object1, id object2, id object
 
 id CallUIDelegate(WebView *self, SEL selector, id object, NSUInteger integer)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(self, self->_private->UIDelegate, selector, object, integer);
 #else
     return CallDelegate(self, [self _UIDelegateForSelector:selector], selector, object, integer);
@@ -1065,7 +1061,7 @@ id CallUIDelegate(WebView *self, SEL selector, id object, NSUInteger integer)
 
 float CallUIDelegateReturningFloat(WebView *self, SEL selector)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegateReturningFloat(self, self->_private->UIDelegate, selector);
 #else
     return CallDelegateReturningFloat(self, [self _UIDelegateForSelector:selector], selector);
@@ -1074,7 +1070,7 @@ float CallUIDelegateReturningFloat(WebView *self, SEL selector)
 
 BOOL CallUIDelegateReturningBoolean(BOOL result, WebView *self, SEL selector)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegateReturningBoolean(result, self, self->_private->UIDelegate, selector);
 #else
     return CallDelegateReturningBoolean(result, self, [self _UIDelegateForSelector:selector], selector);
@@ -1083,7 +1079,7 @@ BOOL CallUIDelegateReturningBoolean(BOOL result, WebView *self, SEL selector)
 
 BOOL CallUIDelegateReturningBoolean(BOOL result, WebView *self, SEL selector, id object)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegateReturningBoolean(result, self, self->_private->UIDelegate, selector, object);
 #else
     return CallDelegateReturningBoolean(result, self, [self _UIDelegateForSelector:selector], selector, object);
@@ -1092,7 +1088,7 @@ BOOL CallUIDelegateReturningBoolean(BOOL result, WebView *self, SEL selector, id
 
 BOOL CallUIDelegateReturningBoolean(BOOL result, WebView *self, SEL selector, id object, BOOL boolean)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegateReturningBoolean(result, self, self->_private->UIDelegate, selector, object, boolean);
 #else
     return CallDelegateReturningBoolean(result, self, [self _UIDelegateForSelector:selector], selector, object, boolean);
@@ -1101,7 +1097,7 @@ BOOL CallUIDelegateReturningBoolean(BOOL result, WebView *self, SEL selector, id
 
 BOOL CallUIDelegateReturningBoolean(BOOL result, WebView *self, SEL selector, id object, BOOL boolean, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegateReturningBoolean(result, self, self->_private->UIDelegate, selector, object, boolean, object2);
 #else
     return CallDelegateReturningBoolean(result, self, [self _UIDelegateForSelector:selector], selector, object, boolean, object2);
@@ -1110,14 +1106,14 @@ BOOL CallUIDelegateReturningBoolean(BOOL result, WebView *self, SEL selector, id
 
 BOOL CallUIDelegateReturningBoolean(BOOL result, WebView *self, SEL selector, id object1, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegateReturningBoolean(result, self, self->_private->UIDelegate, selector, object1, object2);
 #else
     return CallDelegateReturningBoolean(result, self, [self _UIDelegateForSelector:selector], selector, object1, object2);
 #endif
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 BOOL CallUIDelegateReturningBoolean(BOOL result, WebView *self, SEL selector, id object1, id object2, BOOL boolean)
 {
     return CallDelegateReturningBoolean(result, self, [self _UIDelegateForSelector:selector], selector, object1, object2, boolean);
@@ -1126,7 +1122,7 @@ BOOL CallUIDelegateReturningBoolean(BOOL result, WebView *self, SEL selector, id
 
 id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->frameLoadDelegate, selector);
 #else
     return CallDelegate(implementation, self, [self _frameLoadDelegateForwarder], selector);
@@ -1135,7 +1131,7 @@ id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector)
 
 id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, NSUInteger integer)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->frameLoadDelegate, selector, integer);
 #else
     return CallDelegate(implementation, self, [self _frameLoadDelegateForwarder], selector, integer);
@@ -1144,7 +1140,7 @@ id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, NSUInt
 
 id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, id object)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->frameLoadDelegate, selector, object);
 #else
     return CallDelegate(implementation, self, [self _frameLoadDelegateForwarder], selector, object);
@@ -1153,7 +1149,7 @@ id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, id obj
 
 id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, id object1, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->frameLoadDelegate, selector, object1, object2);
 #else
     return CallDelegate(implementation, self, [self _frameLoadDelegateForwarder], selector, object1, object2);
@@ -1162,7 +1158,7 @@ id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, id obj
 
 id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, id object1, id object2, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->frameLoadDelegate, selector, object1, object2, object3);
 #else
     return CallDelegate(implementation, self, [self _frameLoadDelegateForwarder], selector, object1, object2, object3);
@@ -1171,7 +1167,7 @@ id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, id obj
 
 id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, id object1, id object2, id object3, id object4)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->frameLoadDelegate, selector, object1, object2, object3, object4);
 #else
     return CallDelegate(implementation, self, [self _frameLoadDelegateForwarder], selector, object1, object2, object3, object4);
@@ -1180,14 +1176,14 @@ id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, id obj
 
 id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, id object1, NSTimeInterval interval, id object2, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->frameLoadDelegate, selector, object1, interval, object2, object3);
 #else
     return CallDelegate(implementation, self, [self _frameLoadDelegateForwarder], selector, object1, interval, object2, object3);
 #endif
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, id object, double double1)
 {
     return CallDelegate(implementation, self, [self _frameLoadDelegateForwarder], selector, object, double1);
@@ -1197,7 +1193,7 @@ id CallFrameLoadDelegate(IMP implementation, WebView *self, SEL selector, id obj
 BOOL CallFrameLoadDelegateReturningBoolean(BOOL result, IMP implementation, WebView *self, SEL selector)
 {
     @try {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
         return reinterpret_cast<BOOL (*)(id, SEL, WebView *)>(objc_msgSend)(self->_private->frameLoadDelegate, selector, self);
 #else
         return reinterpret_cast<BOOL (*)(id, SEL, WebView *)>(objc_msgSend)([self _frameLoadDelegateForwarder], selector, self);
@@ -1210,7 +1206,7 @@ BOOL CallFrameLoadDelegateReturningBoolean(BOOL result, IMP implementation, WebV
 
 id CallResourceLoadDelegate(IMP implementation, WebView *self, SEL selector, id object1, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->resourceProgressDelegate, selector, object1, object2);
 #else
     return CallDelegate(implementation, self, [self _resourceLoadDelegateForwarder], selector, object1, object2);
@@ -1219,7 +1215,7 @@ id CallResourceLoadDelegate(IMP implementation, WebView *self, SEL selector, id 
 
 id CallResourceLoadDelegate(IMP implementation, WebView *self, SEL selector, id object1, id object2, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->resourceProgressDelegate, selector, object1, object2, object3);
 #else
     return CallDelegate(implementation, self, [self _resourceLoadDelegateForwarder], selector, object1, object2, object3);
@@ -1228,7 +1224,7 @@ id CallResourceLoadDelegate(IMP implementation, WebView *self, SEL selector, id 
 
 id CallResourceLoadDelegate(IMP implementation, WebView *self, SEL selector, id object1, id object2, id object3, id object4)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->resourceProgressDelegate, selector, object1, object2, object3, object4);
 #else
     return CallDelegate(implementation, self, [self _resourceLoadDelegateForwarder], selector, object1, object2, object3, object4);
@@ -1237,7 +1233,7 @@ id CallResourceLoadDelegate(IMP implementation, WebView *self, SEL selector, id 
 
 id CallResourceLoadDelegate(IMP implementation, WebView *self, SEL selector, id object1, NSInteger integer, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->resourceProgressDelegate, selector, object1, integer, object2);
 #else
     return CallDelegate(implementation, self, [self _resourceLoadDelegateForwarder], selector, object1, integer, object2);
@@ -1246,14 +1242,14 @@ id CallResourceLoadDelegate(IMP implementation, WebView *self, SEL selector, id 
 
 id CallResourceLoadDelegate(IMP implementation, WebView *self, SEL selector, id object1, id object2, NSInteger integer, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->resourceProgressDelegate, selector, object1, object2, integer, object3);
 #else
     return CallDelegate(implementation, self, [self _resourceLoadDelegateForwarder], selector, object1, object2, integer, object3);
 #endif
 }
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 id CallResourceLoadDelegateInWebThread(IMP implementation, WebView *self, SEL selector, id object1, id object2)
 {
     return CallDelegateInWebThread(implementation, self, self->_private->resourceProgressDelegate, selector, object1, object2);
@@ -1283,12 +1279,12 @@ id CallFrameLoadDelegateInWebThread(IMP implementation, WebView *self, SEL selec
 {
     return CallDelegateInWebThread(implementation, self, self->_private->frameLoadDelegate, selector, integer);
 }
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)
 
 BOOL CallResourceLoadDelegateReturningBoolean(BOOL result, IMP implementation, WebView *self, SEL selector, id object1)
 {
     @try {
-        return wtfObjcMsgSend<BOOL>(self->_private->resourceProgressDelegate, selector, self, object1);
+        return wtfObjCMsgSend<BOOL>(self->_private->resourceProgressDelegate, selector, self, object1);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -1298,7 +1294,7 @@ BOOL CallResourceLoadDelegateReturningBoolean(BOOL result, IMP implementation, W
 BOOL CallResourceLoadDelegateReturningBoolean(BOOL result, IMP implementation, WebView *self, SEL selector, id object1, id object2)
 {
     @try {
-        return wtfObjcMsgSend<BOOL>(self->_private->resourceProgressDelegate, selector, self, object1, object2);
+        return wtfObjCMsgSend<BOOL>(self->_private->resourceProgressDelegate, selector, self, object1, object2);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -1308,7 +1304,7 @@ BOOL CallResourceLoadDelegateReturningBoolean(BOOL result, IMP implementation, W
 BOOL CallResourceLoadDelegateReturningBoolean(BOOL result, IMP implementation, WebView *self, SEL selector, id object1, id object2, id object3)
 {
     @try {
-        return wtfObjcMsgSend<BOOL>(self->_private->resourceProgressDelegate, selector, self, object1, object2, object3);
+        return wtfObjCMsgSend<BOOL>(self->_private->resourceProgressDelegate, selector, self, object1, object2, object3);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -1317,7 +1313,7 @@ BOOL CallResourceLoadDelegateReturningBoolean(BOOL result, IMP implementation, W
 
 id CallScriptDebugDelegate(IMP implementation, WebView *self, SEL selector, id object1, id object2, NSInteger integer, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->scriptDebugDelegate, selector, object1, object2, integer, object3);
 #else
     return CallDelegateInWebThread(implementation, self, self->_private->scriptDebugDelegate, selector, object1, object2, integer, object3);
@@ -1326,7 +1322,7 @@ id CallScriptDebugDelegate(IMP implementation, WebView *self, SEL selector, id o
 
 id CallScriptDebugDelegate(IMP implementation, WebView *self, SEL selector, id object1, NSInteger integer1, id object2, NSInteger integer2, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->scriptDebugDelegate, selector, object1, integer1, object2, integer2, object3);
 #else
     return CallDelegateInWebThread(implementation, self, self->_private->scriptDebugDelegate, selector, object1, integer1, object2, integer2, object3);
@@ -1335,7 +1331,7 @@ id CallScriptDebugDelegate(IMP implementation, WebView *self, SEL selector, id o
 
 id CallScriptDebugDelegate(IMP implementation, WebView *self, SEL selector, id object1, NSInteger integer, id object2, id object3, id object4)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->scriptDebugDelegate, selector, object1, integer, object2, object3, object4);
 #else
     return CallDelegateInWebThread(implementation, self, self->_private->scriptDebugDelegate, selector, object1, integer, object2, object3, object4);
@@ -1344,7 +1340,7 @@ id CallScriptDebugDelegate(IMP implementation, WebView *self, SEL selector, id o
 
 id CallScriptDebugDelegate(IMP implementation, WebView *self, SEL selector, id object1, NSInteger integer1, int integer2, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     return CallDelegate(implementation, self, self->_private->scriptDebugDelegate, selector, object1, integer1, integer2, object2);
 #else
     return CallDelegateInWebThread(implementation, self, self->_private->scriptDebugDelegate, selector, object1, integer1, integer2, object2);
@@ -1375,12 +1371,12 @@ id CallHistoryDelegate(IMP implementation, WebView *self, SEL selector, id objec
 
 id CallFormDelegate(WebView *self, SEL selector, id object1, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     id delegate = self->_private->formDelegate;
     if (!delegate || ![delegate respondsToSelector:selector])
         return nil;
     @try {
-        return wtfObjcMsgSend<id>(delegate, selector, object1, object2);
+        return wtfObjCMsgSend<id>(delegate, selector, object1, object2);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -1411,12 +1407,12 @@ id CallFormDelegate(WebView *self, SEL selector, id object1, id object2)
 
 id CallFormDelegate(WebView *self, SEL selector, id object1, id object2, id object3)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     id delegate = self->_private->formDelegate;
     if (!delegate || ![delegate respondsToSelector:selector])
         return nil;
     @try {
-        return wtfObjcMsgSend<id>(delegate, selector, object1, object2, object3);
+        return wtfObjCMsgSend<id>(delegate, selector, object1, object2, object3);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -1448,12 +1444,12 @@ id CallFormDelegate(WebView *self, SEL selector, id object1, id object2, id obje
 
 id CallFormDelegate(WebView *self, SEL selector, id object1, id object2, id object3, id object4, id object5)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     id delegate = self->_private->formDelegate;
     if (!delegate || ![delegate respondsToSelector:selector])
         return nil;
     @try {
-        return wtfObjcMsgSend<id>(delegate, selector, object1, object2, object3, object4, object5);
+        return wtfObjCMsgSend<id>(delegate, selector, object1, object2, object3, object4, object5);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }
@@ -1487,12 +1483,12 @@ id CallFormDelegate(WebView *self, SEL selector, id object1, id object2, id obje
 
 BOOL CallFormDelegateReturningBoolean(BOOL result, WebView *self, SEL selector, id object1, SEL selectorArg, id object2)
 {
-#if !PLATFORM(IOS)
+#if !PLATFORM(IOS_FAMILY)
     id delegate = self->_private->formDelegate;
     if (!delegate || ![delegate respondsToSelector:selector])
         return result;
     @try {
-        return wtfObjcMsgSend<BOOL>(delegate, selector, object1, selectorArg, object2);
+        return wtfObjCMsgSend<BOOL>(delegate, selector, object1, selectorArg, object2);
     } @catch(id exception) {
         ReportDiscardedDelegateException(selector, exception);
     }

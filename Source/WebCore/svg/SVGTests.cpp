@@ -24,7 +24,6 @@
 
 #include "DOMImplementation.h"
 #include "HTMLNames.h"
-#include "SVGAttributeOwnerProxy.h"
 #include "SVGElement.h"
 #include "SVGNames.h"
 #include "SVGStringList.h"
@@ -109,28 +108,16 @@ static const HashSet<String, ASCIICaseInsensitiveHash>& supportedSVGFeatures()
 
 SVGTests::SVGTests(SVGElement* contextElement)
     : m_contextElement(*contextElement)
+    , m_requiredFeatures(SVGStringList::create(contextElement))
+    , m_requiredExtensions(SVGStringList::create(contextElement))
+    , m_systemLanguage(SVGStringList::create(contextElement))
 {
-    registerAttributes();
-}
-
-void SVGTests::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::requiredFeaturesAttr, &SVGTests::m_requiredFeatures>();
-    registry.registerAttribute<SVGNames::requiredExtensionsAttr, &SVGTests::m_requiredExtensions>();
-    registry.registerAttribute<SVGNames::systemLanguageAttr, &SVGTests::m_systemLanguage>();
-}
-
-SVGTests::AttributeRegistry& SVGTests::attributeRegistry()
-{
-    return AttributeOwnerProxy::attributeRegistry();
-}
-
-bool SVGTests::isKnownAttribute(const QualifiedName& attributeName)
-{
-    return AttributeOwnerProxy::isKnownAttribute(attributeName);
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::requiredFeaturesAttr, &SVGTests::m_requiredFeatures>();
+        PropertyRegistry::registerProperty<SVGNames::requiredExtensionsAttr, &SVGTests::m_requiredExtensions>();
+        PropertyRegistry::registerProperty<SVGNames::systemLanguageAttr, &SVGTests::m_systemLanguage>();
+    });
 }
 
 bool SVGTests::hasExtension(const String& extension)
@@ -145,34 +132,34 @@ bool SVGTests::hasExtension(const String& extension)
 
 bool SVGTests::isValid() const
 {
-    for (auto& feature : m_requiredFeatures.value()) {
+    for (auto& feature : m_requiredFeatures->items()) {
         if (feature.isEmpty() || !supportedSVGFeatures().contains(feature))
             return false;
     }
-    for (auto& language : m_systemLanguage.value()) {
+    for (auto& language : m_systemLanguage->items()) {
         if (language != defaultLanguage().substring(0, 2))
             return false;
     }
-    for (auto& extension : m_requiredExtensions.value()) {
+    for (auto& extension : m_requiredExtensions->items()) {
         if (!hasExtension(extension))
             return false;
     }
     return true;
 }
 
-void SVGTests::parseAttribute(const QualifiedName& attributeName, const AtomicString& value)
+void SVGTests::parseAttribute(const QualifiedName& attributeName, const AtomString& value)
 {
     if (attributeName == requiredFeaturesAttr)
-        m_requiredFeatures.value().reset(value);
+        m_requiredFeatures->reset(value);
     if (attributeName == requiredExtensionsAttr)
-        m_requiredExtensions.value().reset(value);
+        m_requiredExtensions->reset(value);
     if (attributeName == systemLanguageAttr)
-        m_systemLanguage.value().reset(value);
+        m_systemLanguage->reset(value);
 }
 
 void SVGTests::svgAttributeChanged(const QualifiedName& attrName)
 {
-    if (!isKnownAttribute(attrName))
+    if (!PropertyRegistry::isKnownAttribute(attrName))
         return;
 
     if (!m_contextElement.isConnected())
@@ -185,24 +172,6 @@ void SVGTests::addSupportedAttributes(HashSet<QualifiedName>& supportedAttribute
     supportedAttributes.add(requiredFeaturesAttr);
     supportedAttributes.add(requiredExtensionsAttr);
     supportedAttributes.add(systemLanguageAttr);
-}
-
-Ref<SVGStringList> SVGTests::requiredFeatures()
-{
-    m_requiredFeatures.setShouldSynchronize(true);
-    return SVGStringList::create(m_contextElement, m_requiredFeatures.value());
-}
-
-Ref<SVGStringList> SVGTests::requiredExtensions()
-{
-    m_requiredExtensions.setShouldSynchronize(true);
-    return SVGStringList::create(m_contextElement, m_requiredExtensions.value());
-}
-
-Ref<SVGStringList> SVGTests::systemLanguage()
-{
-    m_systemLanguage.setShouldSynchronize(true);
-    return SVGStringList::create(m_contextElement, m_systemLanguage.value());
 }
 
 bool SVGTests::hasFeatureForLegacyBindings(const String& feature, const String& version)

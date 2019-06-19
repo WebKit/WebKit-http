@@ -25,7 +25,9 @@
 #include "Event.h"
 #include "EventContext.h"
 #include "EventNames.h"
+#include "FullscreenManager.h"
 #include "HTMLSlotElement.h"
+#include "MouseEvent.h"
 #include "Node.h"
 #include "PseudoElement.h"
 #include "ShadowRoot.h"
@@ -35,21 +37,21 @@ namespace WebCore {
 
 class WindowEventContext final : public EventContext {
 public:
-    WindowEventContext(Node&, DOMWindow&, EventTarget&);
+    WindowEventContext(Node&, DOMWindow&, EventTarget&, int closedShadowDepth);
 private:
-    void handleLocalEvents(Event&) const final;
+    void handleLocalEvents(Event&, EventInvokePhase) const final;
 };
 
-inline WindowEventContext::WindowEventContext(Node& node, DOMWindow& currentTarget, EventTarget& target)
-    : EventContext(&node, &currentTarget, &target)
+inline WindowEventContext::WindowEventContext(Node& node, DOMWindow& currentTarget, EventTarget& target, int closedShadowDepth)
+    : EventContext(&node, &currentTarget, &target, closedShadowDepth)
 {
 }
 
-void WindowEventContext::handleLocalEvents(Event& event) const
+void WindowEventContext::handleLocalEvents(Event& event, EventInvokePhase phase) const
 {
     event.setTarget(m_target.get());
     event.setCurrentTarget(m_currentTarget.get());
-    m_currentTarget->fireEventListeners(event);
+    m_currentTarget->fireEventListeners(event, phase);
 }
 
 static inline bool shouldEventCrossShadowBoundary(Event& event, ShadowRoot& shadowRoot, EventTarget& target)
@@ -58,7 +60,7 @@ static inline bool shouldEventCrossShadowBoundary(Event& event, ShadowRoot& shad
     // Video-only full screen is a mode where we use the shadow DOM as an implementation
     // detail that should not be detectable by the web content.
     if (is<Node>(target)) {
-        if (auto* element = downcast<Node>(target).document().webkitCurrentFullScreenElement()) {
+        if (auto* element = downcast<Node>(target).document().fullscreenManager().currentFullscreenElement()) {
             // FIXME: We assume that if the full screen element is a media element that it's
             // the video-only full screen. Both here and elsewhere. But that is probably wrong.
             if (element->isMediaElement() && shadowRoot.host() == element)
@@ -111,28 +113,31 @@ EventPath::EventPath(Node& originalTarget, Event& event)
 
 void EventPath::buildPath(Node& originalTarget, Event& event)
 {
-    using MakeEventContext = std::unique_ptr<EventContext> (*)(Node&, EventTarget*, EventTarget*);
-    MakeEventContext makeEventContext = [] (Node& node, EventTarget* currentTarget, EventTarget* target) {
-        return std::make_unique<EventContext>(&node, currentTarget, target);
+    using MakeEventContext = std::unique_ptr<EventContext> (*)(Node&, EventTarget*, EventTarget*, int closedShadowDepth);
+    MakeEventContext makeEventContext = [] (Node& node, EventTarget* currentTarget, EventTarget* target, int closedShadowDepth) {
+        return std::make_unique<EventContext>(&node, currentTarget, target, closedShadowDepth);
     };
     if (is<MouseEvent>(event) || event.isFocusEvent()) {
-        makeEventContext = [] (Node& node, EventTarget* currentTarget, EventTarget* target) -> std::unique_ptr<EventContext> {
-            return std::make_unique<MouseOrFocusEventContext>(node, currentTarget, target);
+        makeEventContext = [] (Node& node, EventTarget* currentTarget, EventTarget* target, int closedShadowDepth) -> std::unique_ptr<EventContext> {
+            return std::make_unique<MouseOrFocusEventContext>(node, currentTarget, target, closedShadowDepth);
         };
     }
 #if ENABLE(TOUCH_EVENTS)
     if (is<TouchEvent>(event)) {
-        makeEventContext = [] (Node& node, EventTarget* currentTarget, EventTarget* target) -> std::unique_ptr<EventContext> {
-            return std::make_unique<TouchEventContext>(node, currentTarget, target);
+        makeEventContext = [] (Node& node, EventTarget* currentTarget, EventTarget* target, int closedShadowDepth) -> std::unique_ptr<EventContext> {
+            return std::make_unique<TouchEventContext>(node, currentTarget, target, closedShadowDepth);
         };
     }
 #endif
 
     Node* node = nodeOrHostIfPseudoElement(&originalTarget);
     Node* target = node ? eventTargetRespectingTargetRules(*node) : nullptr;
+    int closedShadowDepth = 0;
+    // Depths are used to decided which nodes are excluded in event.composedPath when the tree is mutated during event dispatching.
+    // They could be negative for nodes outside the shadow tree of the target node.
     while (node) {
         while (node) {
-            m_path.append(makeEventContext(*node, eventTargetRespectingTargetRules(*node), target));
+            m_path.append(makeEventContext(*node, eventTargetRespectingTargetRules(*node), target, closedShadowDepth));
 
             if (is<ShadowRoot>(*node))
                 break;
@@ -144,7 +149,7 @@ void EventPath::buildPath(Node& originalTarget, Event& event)
                     ASSERT(target);
                     if (target) {
                         if (auto* window = downcast<Document>(*node).domWindow())
-                            m_path.append(std::make_unique<WindowEventContext>(*node, *window, *target));
+                            m_path.append(std::make_unique<WindowEventContext>(*node, *window, *target, closedShadowDepth));
                     }
                 }
                 return;
@@ -153,6 +158,8 @@ void EventPath::buildPath(Node& originalTarget, Event& event)
             auto* shadowRootOfParent = parent->shadowRoot();
             if (UNLIKELY(shadowRootOfParent)) {
                 if (auto* assignedSlot = shadowRootOfParent->findAssignedSlot(*node)) {
+                    if (shadowRootOfParent->mode() != ShadowRootMode::Open)
+                        closedShadowDepth++;
                     // node is assigned to a slot. Continue dispatching the event at this slot.
                     parent = assignedSlot;
                 }
@@ -165,6 +172,8 @@ void EventPath::buildPath(Node& originalTarget, Event& event)
         if (!shouldEventCrossShadowBoundary(event, shadowRoot, originalTarget))
             return;
         node = shadowRoot.host();
+        if (shadowRoot.mode() != ShadowRootMode::Open)
+            closedShadowDepth--;
         if (exitingShadowTreeOfTarget)
             target = eventTargetRespectingTargetRules(*node);
     }
@@ -251,32 +260,55 @@ void EventPath::retargetTouchLists(const TouchEvent& event)
 #endif
 
 // https://dom.spec.whatwg.org/#dom-event-composedpath
+// Any node whose depth computed in EventPath::buildPath is greater than the context object is excluded.
+// Because we can exit out of a closed shadow tree and re-enter another closed shadow tree via a slot,
+// we decrease the *allowed depth* whenever we moved to a "shallower" (closer-to-document) tree.
 Vector<EventTarget*> EventPath::computePathUnclosedToTarget(const EventTarget& target) const
 {
     Vector<EventTarget*> path;
-    path.reserveInitialCapacity(m_path.size());
-    const Node* targetNode = nullptr;
-    if (is<Node>(target))
-        targetNode = &downcast<Node>(target);
-    else if (is<DOMWindow>(target)) {
-        targetNode = downcast<DOMWindow>(target).document();
-        ASSERT(targetNode);
-    }
-    for (auto& context : m_path) {
-        auto* currentTarget = context->currentTarget();
-        if (!is<Node>(currentTarget) || !targetNode || !targetNode->isClosedShadowHidden(downcast<Node>(*currentTarget)))
-            path.uncheckedAppend(currentTarget);
-    }
+    auto pathSize = m_path.size();
+    RELEASE_ASSERT(pathSize);
+    path.reserveInitialCapacity(pathSize);
+
+    auto currentTargetIndex = m_path.findMatching([&target] (auto& context) {
+        return context->currentTarget() == &target;
+    });
+    RELEASE_ASSERT(currentTargetIndex != notFound);
+    auto currentTargetDepth = m_path[currentTargetIndex]->closedShadowDepth();
+
+    auto appendTargetWithLesserDepth = [&path] (const EventContext& currentContext, int& currentDepthAllowed) {
+        auto depth = currentContext.closedShadowDepth();
+        bool contextIsInsideInnerShadowTree = depth > currentDepthAllowed;
+        if (contextIsInsideInnerShadowTree)
+            return;
+        bool movedOutOfShadowTree = depth < currentDepthAllowed;
+        if (movedOutOfShadowTree)
+            currentDepthAllowed = depth;
+        path.uncheckedAppend(currentContext.currentTarget());
+    };
+
+    auto currentDepthAllowed = currentTargetDepth;
+    auto i = currentTargetIndex;
+    do {
+        appendTargetWithLesserDepth(*m_path[i], currentDepthAllowed);
+    } while (i--);
+    path.reverse();
+
+    currentDepthAllowed = currentTargetDepth;
+    for (auto i = currentTargetIndex + 1; i < pathSize; ++i)
+        appendTargetWithLesserDepth(*m_path[i], currentDepthAllowed);
+    
     return path;
 }
 
 EventPath::EventPath(const Vector<Element*>& targets)
 {
+    // FIXME: This function seems wrong. Why are we not firing events in the closed shadow trees?
     for (auto* target : targets) {
         ASSERT(target);
         Node* origin = *targets.begin();
         if (!target->isClosedShadowHidden(*origin))
-            m_path.append(std::make_unique<EventContext>(target, target, origin));
+            m_path.append(std::make_unique<EventContext>(target, target, origin, 0));
     }
 }
 
@@ -285,7 +317,7 @@ EventPath::EventPath(const Vector<EventTarget*>& targets)
     for (auto* target : targets) {
         ASSERT(target);
         ASSERT(!is<Node>(target));
-        m_path.append(std::make_unique<EventContext>(nullptr, target, *targets.begin()));
+        m_path.append(std::make_unique<EventContext>(nullptr, target, *targets.begin(), 0));
     }
 }
 

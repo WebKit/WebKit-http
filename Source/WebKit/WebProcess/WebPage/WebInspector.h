@@ -28,7 +28,6 @@
 #include "APIObject.h"
 #include "Connection.h"
 #include "MessageReceiver.h"
-#include <JavaScriptCore/InspectorFrontendChannel.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
 
@@ -36,7 +35,7 @@ namespace WebKit {
 
 class WebPage;
 
-class WebInspector : public API::ObjectImpl<API::Object::Type::BundleInspector>, private IPC::Connection::Client, public Inspector::FrontendChannel {
+class WebInspector : public API::ObjectImpl<API::Object::Type::BundleInspector>, private IPC::Connection::Client {
 public:
     static Ref<WebInspector> create(WebPage*);
 
@@ -44,18 +43,12 @@ public:
 
     void updateDockingAvailability();
 
-    void sendMessageToFrontend(const String& message) override;
-    ConnectionType connectionType() const override { return ConnectionType::Local; }
-
     // Implemented in generated WebInspectorMessageReceiver.cpp
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     // IPC::Connection::Client
     void didClose(IPC::Connection&) override { close(); }
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference) override { close(); }
-
-    // Called by WebInspector messages
-    void connectionEstablished();
 
     void show();
     void close();
@@ -81,7 +74,7 @@ public:
     void stopElementSelection();
     void elementSelectionChanged(bool);
 
-    void sendMessageToBackend(const String&);
+    void setFrontendConnection(IPC::Attachment);
 
     void disconnectFromPage() { close(); }
 
@@ -94,14 +87,17 @@ private:
     bool canAttachWindow();
 
     // Called from WebInspectorClient
-    void openFrontendConnection(bool underTest);
+    void openLocalInspectorFrontend(bool underTest);
     void closeFrontendConnection();
 
     void bringToFront();
 
+    void whenFrontendConnectionEstablished(Function<void()>&&);
+
     WebPage* m_page;
 
     RefPtr<IPC::Connection> m_frontendConnection;
+    Vector<Function<void()>> m_frontendConnectionActions;
 
     bool m_attached { false };
     bool m_previousCanAttach { false };

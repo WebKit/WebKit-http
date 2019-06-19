@@ -8,13 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 #include <algorithm>
+#include <string>
+#include <utility>
 
 #include "rtc_base/atomicops.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/logging.h"
 #include "rtc_base/messagequeue.h"
-#include "rtc_base/stringencode.h"
 #include "rtc_base/thread.h"
+#include "rtc_base/timeutils.h"
 #include "rtc_base/trace_event.h"
 
 namespace rtc {
@@ -48,18 +50,9 @@ class RTC_SCOPED_LOCKABLE MarkProcessingCritScope {
 //------------------------------------------------------------------
 // MessageQueueManager
 
-MessageQueueManager* MessageQueueManager::instance_ = nullptr;
-
 MessageQueueManager* MessageQueueManager::Instance() {
-  // Note: This is not thread safe, but it is first called before threads are
-  // spawned.
-  if (!instance_)
-    instance_ = new MessageQueueManager;
-  return instance_;
-}
-
-bool MessageQueueManager::IsInitialized() {
-  return instance_ != nullptr;
+  static MessageQueueManager* const instance = new MessageQueueManager;
+  return instance;
 }
 
 MessageQueueManager::MessageQueueManager() : processing_(0) {}
@@ -77,18 +70,9 @@ void MessageQueueManager::AddInternal(MessageQueue* message_queue) {
 }
 
 void MessageQueueManager::Remove(MessageQueue* message_queue) {
-  // If there isn't a message queue manager instance, then there isn't a queue
-  // to remove.
-  if (!instance_)
-    return;
   return Instance()->RemoveInternal(message_queue);
 }
 void MessageQueueManager::RemoveInternal(MessageQueue* message_queue) {
-  // If this is the last MessageQueue, destroy the manager as well so that
-  // we don't leak this object at program shutdown. As mentioned above, this is
-  // not thread-safe, but this should only happen at program termination (when
-  // the ThreadManager is destroyed, and threads are no longer active).
-  bool destroy = false;
   {
     CritScope cs(&crit_);
     // Prevent changes while the list of message queues is processed.
@@ -99,19 +83,10 @@ void MessageQueueManager::RemoveInternal(MessageQueue* message_queue) {
     if (iter != message_queues_.end()) {
       message_queues_.erase(iter);
     }
-    destroy = message_queues_.empty();
-  }
-  if (destroy) {
-    instance_ = nullptr;
-    delete this;
   }
 }
 
 void MessageQueueManager::Clear(MessageHandler* handler) {
-  // If there isn't a message queue manager instance, then there aren't any
-  // queues to remove this handler from.
-  if (!instance_)
-    return;
   return Instance()->ClearInternal(handler);
 }
 void MessageQueueManager::ClearInternal(MessageHandler* handler) {
@@ -124,10 +99,7 @@ void MessageQueueManager::ClearInternal(MessageHandler* handler) {
   }
 }
 
-void MessageQueueManager::ProcessAllMessageQueues() {
-  if (!instance_) {
-    return;
-  }
+void MessageQueueManager::ProcessAllMessageQueuesForTesting() {
   return Instance()->ProcessAllMessageQueuesInternal();
 }
 
@@ -153,7 +125,7 @@ void MessageQueueManager::ProcessAllMessageQueuesInternal() {
   {
     MarkProcessingCritScope cs(&crit_, &processing_);
     for (MessageQueue* queue : message_queues_) {
-      if (!queue->IsProcessingMessages()) {
+      if (!queue->IsProcessingMessagesForTesting()) {
         // If the queue is not processing messages, it can
         // be ignored. If we tried to post a message to it, it would be dropped
         // or ignored.
@@ -163,11 +135,15 @@ void MessageQueueManager::ProcessAllMessageQueuesInternal() {
                          new ScopedIncrement(&queues_not_done));
     }
   }
-  // Note: One of the message queues may have been on this thread, which is why
-  // we can't synchronously wait for queues_not_done to go to 0; we need to
-  // process messages as well.
+
+  rtc::Thread* current = rtc::Thread::Current();
+  // Note: One of the message queues may have been on this thread, which is
+  // why we can't synchronously wait for queues_not_done to go to 0; we need
+  // to process messages as well.
   while (AtomicOps::AcquireLoad(&queues_not_done) > 0) {
-    rtc::Thread::Current()->ProcessMessages(0);
+    if (current) {
+      current->ProcessMessages(0);
+    }
   }
 }
 
@@ -221,7 +197,7 @@ void MessageQueue::DoDestroy() {
   // is going away.
   SignalQueueDestroyed();
   MessageQueueManager::Remove(this);
-  Clear(nullptr);
+  ClearInternal(nullptr, MQID_ANY, nullptr);
 
   if (ss_) {
     ss_->SetMessageQueue(nullptr);
@@ -245,7 +221,7 @@ bool MessageQueue::IsQuitting() {
   return AtomicOps::AcquireLoad(&stop_) != 0;
 }
 
-bool MessageQueue::IsProcessingMessages() {
+bool MessageQueue::IsProcessingMessagesForTesting() {
   return !IsQuitting();
 }
 
@@ -374,8 +350,10 @@ void MessageQueue::Post(const Location& posted_from,
                         uint32_t id,
                         MessageData* pdata,
                         bool time_sensitive) {
-  if (IsQuitting())
+  if (IsQuitting()) {
+    delete pdata;
     return;
+  }
 
   // Keep thread safe
   // Add the message to the end of the queue
@@ -431,6 +409,7 @@ void MessageQueue::DoDelayPost(const Location& posted_from,
                                uint32_t id,
                                MessageData* pdata) {
   if (IsQuitting()) {
+    delete pdata;
     return;
   }
 
@@ -476,7 +455,12 @@ void MessageQueue::Clear(MessageHandler* phandler,
                          uint32_t id,
                          MessageList* removed) {
   CritScope cs(&crit_);
+  ClearInternal(phandler, id, removed);
+}
 
+void MessageQueue::ClearInternal(MessageHandler* phandler,
+                                 uint32_t id,
+                                 MessageList* removed) {
   // Remove messages with phandler
 
   if (fPeekKeep_ && msgPeek_.Match(phandler, id)) {

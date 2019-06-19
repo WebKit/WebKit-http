@@ -90,14 +90,7 @@ RenderWidget* HTMLEmbedElement::renderWidgetLoadingPlugin() const
     return findWidgetRenderer(this);
 }
 
-bool HTMLEmbedElement::isPresentationAttribute(const QualifiedName& name) const
-{
-    if (name == hiddenAttr)
-        return true;
-    return HTMLPlugInImageElement::isPresentationAttribute(name);
-}
-
-void HTMLEmbedElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomicString& value, MutableStyleProperties& style)
+void HTMLEmbedElement::collectStyleForPresentationAttribute(const QualifiedName& name, const AtomString& value, MutableStyleProperties& style)
 {
     if (name == hiddenAttr) {
         if (equalLettersIgnoringASCIICase(value, "yes") || equalLettersIgnoringASCIICase(value, "true")) {
@@ -113,7 +106,7 @@ static bool hasTypeOrSrc(const HTMLEmbedElement& embed)
     return embed.hasAttributeWithoutSynchronization(typeAttr) || embed.hasAttributeWithoutSynchronization(srcAttr);
 }
 
-void HTMLEmbedElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
+void HTMLEmbedElement::parseAttribute(const QualifiedName& name, const AtomString& value)
 {
     if (name == typeAttr) {
         m_serviceType = value.string().left(value.find(';')).convertToASCIILowercase();
@@ -221,12 +214,6 @@ bool HTMLEmbedElement::rendererIsNeeded(const RenderStyle& style)
         }
     }
 
-#if ENABLE(DASHBOARD_SUPPORT)
-    // Workaround for <rdar://problem/6642221>.
-    if (document().settings().usesDashboardBackwardCompatibilityMode())
-        return true;
-#endif
-
     return HTMLPlugInImageElement::rendererIsNeeded(style);
 }
 
@@ -235,7 +222,7 @@ bool HTMLEmbedElement::isURLAttribute(const Attribute& attribute) const
     return attribute.name() == srcAttr || HTMLPlugInImageElement::isURLAttribute(attribute);
 }
 
-const AtomicString& HTMLEmbedElement::imageSourceURL() const
+const AtomString& HTMLEmbedElement::imageSourceURL() const
 {
     return attributeWithoutSynchronization(srcAttr);
 }

@@ -25,30 +25,72 @@
 
 #include "config.h"
 #include "CSSCustomPropertyValue.h"
-
+#include "CSSTokenizer.h"
 
 namespace WebCore {
 
-bool CSSCustomPropertyValue::checkVariablesForCycles(const AtomicString& name, CustomPropertyValueMap& customProperties, HashSet<AtomicString>& seenProperties, HashSet<AtomicString>& invalidProperties) const
+bool CSSCustomPropertyValue::equals(const CSSCustomPropertyValue& other) const
 {
-    ASSERT(containsVariables());
-    if (m_value)
-        return m_value->checkVariablesForCycles(name, customProperties, seenProperties, invalidProperties);
-    return true;
+    if (m_name != other.m_name || m_value.index() != other.m_value.index())
+        return false;
+    return WTF::switchOn(m_value, [&](const Ref<CSSVariableReferenceValue>& value) {
+        return value.get() == WTF::get<Ref<CSSVariableReferenceValue>>(other.m_value).get();
+    }, [&](const CSSValueID& value) {
+        return value == WTF::get<CSSValueID>(other.m_value);
+    }, [&](const Ref<CSSVariableData>& value) {
+        return value.get() == WTF::get<Ref<CSSVariableData>>(other.m_value).get();
+    }, [&](const Length& value) {
+        return value == WTF::get<Length>(other.m_value);
+    }, [&](const Ref<StyleImage>& value) {
+        return value.get() == WTF::get<Ref<StyleImage>>(other.m_value).get();
+    });
 }
 
-void CSSCustomPropertyValue::resolveVariableReferences(const CustomPropertyValueMap& customProperties, Vector<Ref<CSSCustomPropertyValue>>& resolvedValues) const
+String CSSCustomPropertyValue::customCSSText() const
 {
-    ASSERT(containsVariables());
-    if (!m_value)
-        return;
-    
-    ASSERT(m_value->needsVariableResolution());
-    RefPtr<CSSVariableData> resolvedData = m_value->resolveVariableReferences(customProperties);
-    if (resolvedData)
-        resolvedValues.append(CSSCustomPropertyValue::createWithVariableData(m_name, resolvedData.releaseNonNull()));
-    else
-        resolvedValues.append(CSSCustomPropertyValue::createWithID(m_name, CSSValueInvalid));
+    if (!m_serialized) {
+        m_serialized = true;
+
+        WTF::switchOn(m_value, [&](const Ref<CSSVariableReferenceValue>& value) {
+            m_stringValue = value->cssText();
+        }, [&](const CSSValueID& value) {
+            m_stringValue = getValueName(value);
+        }, [&](const Ref<CSSVariableData>& value) {
+            m_stringValue = value->tokenRange().serialize();
+        }, [&](const Length& value) {
+            m_stringValue = CSSPrimitiveValue::create(value.value(), CSSPrimitiveValue::CSS_PX)->cssText();
+        }, [&](const Ref<StyleImage>& value) {
+            m_stringValue = value->cssValue()->cssText();
+        });
+    }
+    return m_stringValue;
+}
+
+Vector<CSSParserToken> CSSCustomPropertyValue::tokens() const
+{
+    Vector<CSSParserToken> result;
+
+    WTF::switchOn(m_value, [&](const Ref<CSSVariableReferenceValue>&) {
+        ASSERT_NOT_REACHED();
+    }, [&](const CSSValueID&) {
+        // Do nothing
+    }, [&](const Ref<CSSVariableData>& value) {
+        result.appendVector(value->tokens());
+    }, [&](const Length&) {
+        CSSTokenizer tokenizer(cssText());
+
+        auto tokenizerRange = tokenizer.tokenRange();
+        while (!tokenizerRange.atEnd())
+            result.append(tokenizerRange.consume());
+    }, [&](const Ref<StyleImage>&) {
+        CSSTokenizer tokenizer(cssText());
+
+        auto tokenizerRange = tokenizer.tokenRange();
+        while (!tokenizerRange.atEnd())
+            result.append(tokenizerRange.consume());
+    });
+
+    return result;
 }
 
 }

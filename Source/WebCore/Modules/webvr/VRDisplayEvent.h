@@ -32,17 +32,17 @@ namespace WebCore {
 
 class VRDisplayEvent final : public Event {
 public:
-    static Ref<VRDisplayEvent> create(const AtomicString& type, const RefPtr<VRDisplay>& display, std::optional<VRDisplayEventReason>&& reason)
+    static Ref<VRDisplayEvent> create(const AtomString& type, const RefPtr<VRDisplay>& display, Optional<VRDisplayEventReason>&& reason)
     {
         return adoptRef(*new VRDisplayEvent(type, display, WTFMove(reason)));
     }
 
     struct Init : EventInit {
         RefPtr<VRDisplay> display;
-        std::optional<VRDisplayEventReason> reason;
+        Optional<VRDisplayEventReason> reason;
     };
 
-    static Ref<VRDisplayEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
+    static Ref<VRDisplayEvent> create(const AtomString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
         return adoptRef(*new VRDisplayEvent(type, initializer, isTrusted));
     }
@@ -50,17 +50,17 @@ public:
     virtual ~VRDisplayEvent();
 
     RefPtr<VRDisplay> display() const { return m_display; }
-    const std::optional<VRDisplayEventReason>& reason() const { return m_reason; }
+    const Optional<VRDisplayEventReason>& reason() const { return m_reason; }
 
 private:
-    VRDisplayEvent(const AtomicString&, const Init&, IsTrusted);
-    VRDisplayEvent(const AtomicString&, const RefPtr<VRDisplay>&, std::optional<VRDisplayEventReason>&&);
+    VRDisplayEvent(const AtomString&, const Init&, IsTrusted);
+    VRDisplayEvent(const AtomString&, const RefPtr<VRDisplay>&, Optional<VRDisplayEventReason>&&);
 
     // Event
     EventInterface eventInterface() const override;
 
     RefPtr<VRDisplay> m_display;
-    std::optional<VRDisplayEventReason> m_reason;
+    Optional<VRDisplayEventReason> m_reason;
 };
 
 } // namespace WebCore

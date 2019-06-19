@@ -36,11 +36,14 @@
 
 #include "EventNames.h"
 #include "JSRTCSessionDescription.h"
+#include "LibWebRTCCertificateGenerator.h"
 #include "Logging.h"
 #include "Page.h"
 #include "RTCIceCandidate.h"
 #include "RTCPeerConnection.h"
 #include "RTCPeerConnectionIceEvent.h"
+#include "RTCRtpCapabilities.h"
+#include "RTCTrackEvent.h"
 #include "RuntimeEnabledFeatures.h"
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringConcatenateNumbers.h>
@@ -56,6 +59,18 @@ static std::unique_ptr<PeerConnectionBackend> createNoPeerConnectionBackend(RTCP
 }
 
 CreatePeerConnectionBackend PeerConnectionBackend::create = createNoPeerConnectionBackend;
+
+Optional<RTCRtpCapabilities> PeerConnectionBackend::receiverCapabilities(ScriptExecutionContext&, const String&)
+{
+    ASSERT_NOT_REACHED();
+    return { };
+}
+
+Optional<RTCRtpCapabilities> PeerConnectionBackend::senderCapabilities(ScriptExecutionContext&, const String&)
+{
+    ASSERT_NOT_REACHED();
+    return { };
+}
 #endif
 
 PeerConnectionBackend::PeerConnectionBackend(RTCPeerConnection& peerConnection)
@@ -86,7 +101,7 @@ void PeerConnectionBackend::createOfferSucceeded(String&& sdp)
 
     ASSERT(m_offerAnswerPromise);
     m_offerAnswerPromise->resolve(RTCSessionDescription::Init { RTCSdpType::Offer, filterSDP(WTFMove(sdp)) });
-    m_offerAnswerPromise = std::nullopt;
+    m_offerAnswerPromise = WTF::nullopt;
 }
 
 void PeerConnectionBackend::createOfferFailed(Exception&& exception)
@@ -99,7 +114,7 @@ void PeerConnectionBackend::createOfferFailed(Exception&& exception)
 
     ASSERT(m_offerAnswerPromise);
     m_offerAnswerPromise->reject(WTFMove(exception));
-    m_offerAnswerPromise = std::nullopt;
+    m_offerAnswerPromise = WTF::nullopt;
 }
 
 void PeerConnectionBackend::createAnswer(RTCAnswerOptions&& options, PeerConnection::SessionDescriptionPromise&& promise)
@@ -121,7 +136,7 @@ void PeerConnectionBackend::createAnswerSucceeded(String&& sdp)
 
     ASSERT(m_offerAnswerPromise);
     m_offerAnswerPromise->resolve(RTCSessionDescription::Init { RTCSdpType::Answer, WTFMove(sdp) });
-    m_offerAnswerPromise = std::nullopt;
+    m_offerAnswerPromise = WTF::nullopt;
 }
 
 void PeerConnectionBackend::createAnswerFailed(Exception&& exception)
@@ -134,7 +149,7 @@ void PeerConnectionBackend::createAnswerFailed(Exception&& exception)
 
     ASSERT(m_offerAnswerPromise);
     m_offerAnswerPromise->reject(WTFMove(exception));
-    m_offerAnswerPromise = std::nullopt;
+    m_offerAnswerPromise = WTF::nullopt;
 }
 
 static inline bool isLocalDescriptionTypeValidForState(RTCSdpType type, RTCSignalingState state)
@@ -180,7 +195,7 @@ void PeerConnectionBackend::setLocalDescriptionSucceeded()
     ASSERT(m_setDescriptionPromise);
 
     m_setDescriptionPromise->resolve();
-    m_setDescriptionPromise = std::nullopt;
+    m_setDescriptionPromise = WTF::nullopt;
 }
 
 void PeerConnectionBackend::setLocalDescriptionFailed(Exception&& exception)
@@ -194,7 +209,7 @@ void PeerConnectionBackend::setLocalDescriptionFailed(Exception&& exception)
     ASSERT(m_setDescriptionPromise);
 
     m_setDescriptionPromise->reject(WTFMove(exception));
-    m_setDescriptionPromise = std::nullopt;
+    m_setDescriptionPromise = WTF::nullopt;
 }
 
 static inline bool isRemoteDescriptionTypeValidForState(RTCSdpType type, RTCSignalingState state)
@@ -234,13 +249,28 @@ void PeerConnectionBackend::setRemoteDescriptionSucceeded()
     ASSERT(isMainThread());
     ALWAYS_LOG(LOGIDENTIFIER, "Set remote description succeeded");
 
+    ASSERT(!m_peerConnection.isClosed());
+
+    auto events = WTFMove(m_pendingTrackEvents);
+    for (auto& event : events) {
+        auto& track = event.track.get();
+
+        m_peerConnection.fireEvent(RTCTrackEvent::create(eventNames().trackEvent, Event::CanBubble::No, Event::IsCancelable::No, WTFMove(event.receiver), WTFMove(event.track), WTFMove(event.streams), WTFMove(event.transceiver)));
+
+        if (m_peerConnection.isClosed())
+            return;
+
+        // FIXME: As per spec, we should set muted to 'false' when starting to receive the content from network.
+        track.source().setMuted(false);
+    }
+
     if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_setDescriptionPromise);
 
     m_setDescriptionPromise->resolve();
-    m_setDescriptionPromise = std::nullopt;
+    m_setDescriptionPromise = WTF::nullopt;
 }
 
 void PeerConnectionBackend::setRemoteDescriptionFailed(Exception&& exception)
@@ -248,13 +278,20 @@ void PeerConnectionBackend::setRemoteDescriptionFailed(Exception&& exception)
     ASSERT(isMainThread());
     ALWAYS_LOG(LOGIDENTIFIER, "Set remote description failed:", exception.message());
 
-    if (m_peerConnection.isClosed())
-        return;
+    ASSERT(m_pendingTrackEvents.isEmpty());
+    m_pendingTrackEvents.clear();
 
+    ASSERT(!m_peerConnection.isClosed());
     ASSERT(m_setDescriptionPromise);
 
     m_setDescriptionPromise->reject(WTFMove(exception));
-    m_setDescriptionPromise = std::nullopt;
+    m_setDescriptionPromise = WTF::nullopt;
+}
+
+void PeerConnectionBackend::addPendingTrackEvent(PendingTrackEvent&& event)
+{
+    ASSERT(!m_peerConnection.isClosed());
+    m_pendingTrackEvents.append(WTFMove(event));
 }
 
 static String extractIPAddres(const String& sdp)
@@ -273,40 +310,8 @@ void PeerConnectionBackend::addIceCandidate(RTCIceCandidate* iceCandidate, DOMPr
     ASSERT(!m_peerConnection.isClosed());
 
     if (!iceCandidate) {
-        if (m_waitingForMDNSResolution) {
-            m_finishedReceivingCandidates = true;
-            m_endOfIceCandidatePromise = WTFMove(promise);
-            return;
-        }
         endOfIceCandidates(WTFMove(promise));
         return;
-    }
-
-    if (RuntimeEnabledFeatures::sharedFeatures().mdnsICECandidatesEnabled()) {
-        auto name = extractIPAddres(iceCandidate->candidate());
-        if (name.endsWith(".local")) {
-            ++m_waitingForMDNSResolution;
-            auto& document = downcast<Document>(*m_peerConnection.scriptExecutionContext());
-            auto& provider = document.page()->libWebRTCProvider();
-            provider.resolveMDNSName(document.sessionID(), name, [peerConnection = makeRef(m_peerConnection), this, name, iceCandidate = makeRef(*iceCandidate), promise = WTFMove(promise)] (LibWebRTCProvider::IPAddressOrError&& result) mutable {
-                if (peerConnection->isStopped())
-                    return;
-
-                --m_waitingForMDNSResolution;
-                if (!result.has_value()) {
-                    if (result.error() != MDNSRegisterError::Timeout)
-                        peerConnection->scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, makeString("MDNS resolution of a host candidate failed with error", (unsigned)result.error()));
-                    return;
-                }
-
-                auto candidate = iceCandidate->candidate();
-                candidate.replace(name, result.value());
-                iceCandidate->setCandidate(WTFMove(candidate));
-                m_addIceCandidatePromise = WTFMove(promise);
-                this->doAddIceCandidate(iceCandidate);
-            });
-            return;
-        }
     }
 
     // FIXME: As per https://w3c.github.io/webrtc-pc/#dom-rtcpeerconnection-addicecandidate(), this check should be done before enqueuing the task.
@@ -326,14 +331,10 @@ void PeerConnectionBackend::addIceCandidateSucceeded()
     if (m_peerConnection.isClosed())
         return;
 
-    // FIXME: Update remote description and set ICE connection state to checking if not already done so.
     ASSERT(m_addIceCandidatePromise);
 
     m_addIceCandidatePromise->resolve();
-    m_addIceCandidatePromise = std::nullopt;
-
-    if (!m_waitingForMDNSResolution && m_finishedReceivingCandidates)
-        endOfIceCandidates(WTFMove(*m_endOfIceCandidatePromise));
+    m_addIceCandidatePromise = WTF::nullopt;
 }
 
 void PeerConnectionBackend::addIceCandidateFailed(Exception&& exception)
@@ -347,10 +348,7 @@ void PeerConnectionBackend::addIceCandidateFailed(Exception&& exception)
     ASSERT(m_addIceCandidatePromise);
 
     m_addIceCandidatePromise->reject(WTFMove(exception));
-    m_addIceCandidatePromise = std::nullopt;
-
-    if (!m_waitingForMDNSResolution && m_finishedReceivingCandidates)
-        endOfIceCandidates(WTFMove(*m_endOfIceCandidatePromise));
+    m_addIceCandidatePromise = WTF::nullopt;
 }
 
 void PeerConnectionBackend::fireICECandidateEvent(RefPtr<RTCIceCandidate>&& candidate, String&& serverURL)
@@ -437,7 +435,7 @@ void PeerConnectionBackend::newICECandidate(String&& sdp, String&& mid, unsigned
     if (sdp.find(" host ", 0) != notFound) {
         // FIXME: We might need to clear all pending candidates when setting again local description.
         m_pendingICECandidates.append(PendingICECandidate { String { sdp }, WTFMove(mid), sdpMLineIndex, WTFMove(serverURL) });
-        if (RuntimeEnabledFeatures::sharedFeatures().mdnsICECandidatesEnabled()) {
+        if (RuntimeEnabledFeatures::sharedFeatures().webRTCMDNSICECandidatesEnabled()) {
             auto ipAddress = extractIPAddres(sdp);
             // We restrict to IPv4 candidates for now.
             if (ipAddress.contains('.'))
@@ -512,9 +510,11 @@ void PeerConnectionBackend::updateSignalingState(RTCSignalingState newSignalingS
 
 void PeerConnectionBackend::stop()
 {
-    m_offerAnswerPromise = std::nullopt;
-    m_setDescriptionPromise = std::nullopt;
-    m_addIceCandidatePromise = std::nullopt;
+    m_offerAnswerPromise = WTF::nullopt;
+    m_setDescriptionPromise = WTF::nullopt;
+    m_addIceCandidatePromise = WTF::nullopt;
+
+    m_pendingTrackEvents.clear();
 
     doStop();
 }
@@ -543,6 +543,18 @@ ExceptionOr<Ref<RTCRtpTransceiver>> PeerConnectionBackend::addTransceiver(const 
 ExceptionOr<Ref<RTCRtpTransceiver>> PeerConnectionBackend::addTransceiver(Ref<MediaStreamTrack>&&, const RTCRtpTransceiverInit&)
 {
     return Exception { NotSupportedError, "Not implemented"_s };
+}
+
+void PeerConnectionBackend::generateCertificate(Document& document, const CertificateInformation& info, DOMPromiseDeferred<IDLInterface<RTCCertificate>>&& promise)
+{
+#if USE(LIBWEBRTC)
+    LibWebRTCCertificateGenerator::generateCertificate(document.securityOrigin(), document.page()->libWebRTCProvider(), info, WTFMove(promise));
+#else
+    UNUSED_PARAM(document);
+    UNUSED_PARAM(expires);
+    UNUSED_PARAM(type);
+    promise.reject(NotSupportedError);
+#endif
 }
 
 #if !RELEASE_LOG_DISABLED

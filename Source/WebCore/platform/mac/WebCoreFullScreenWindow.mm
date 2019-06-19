@@ -25,7 +25,7 @@
 
 #import "config.h"
 
-#if ENABLE(FULLSCREEN_API) && !PLATFORM(IOS)
+#if ENABLE(FULLSCREEN_API) && !PLATFORM(IOS_FAMILY)
 
 #import "WebCoreFullScreenWindow.h"
 
@@ -51,6 +51,17 @@
     [self setHasShadow:NO];
 
     return self;
+}
+
+- (NSRect)constrainFrameRect:(NSRect)frameRect toScreen:(NSScreen *)screen
+{
+    UNUSED_PARAM(screen);
+    return frameRect;
+}
+
+- (BOOL)canBecomeMainWindow
+{
+    return NO;
 }
 
 - (BOOL)canBecomeKeyWindow

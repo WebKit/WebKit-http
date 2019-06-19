@@ -69,10 +69,10 @@ static bool isValidSimpleColor(StringView string)
 }
 
 // https://html.spec.whatwg.org/multipage/common-microsyntaxes.html#rules-for-parsing-simple-colour-values
-static std::optional<RGBA32> parseSimpleColorValue(StringView string)
+static Optional<RGBA32> parseSimpleColorValue(StringView string)
 {
     if (!isValidSimpleColor(string))
-        return std::nullopt;
+        return WTF::nullopt;
     return makeRGB(toASCIIHexValue(string[1], string[2]), toASCIIHexValue(string[3], string[4]), toASCIIHexValue(string[5], string[6]));
 }
 
@@ -90,7 +90,7 @@ bool ColorInputType::isMouseFocusable() const
 bool ColorInputType::isKeyboardFocusable(KeyboardEvent*) const
 {
     ASSERT(element());
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     if (element()->isReadOnly())
         return false;
 
@@ -109,7 +109,7 @@ bool ColorInputType::isPresentingAttachedView() const
     return !!m_chooser;
 }
 
-const AtomicString& ColorInputType::formControlType() const
+const AtomString& ColorInputType::formControlType() const
 {
     return InputTypeNames::color();
 }
@@ -145,9 +145,9 @@ void ColorInputType::createShadowSubtree()
 
     Document& document = element()->document();
     auto wrapperElement = HTMLDivElement::create(document);
-    wrapperElement->setPseudo(AtomicString("-webkit-color-swatch-wrapper", AtomicString::ConstructFromLiteral));
+    wrapperElement->setPseudo(AtomString("-webkit-color-swatch-wrapper", AtomString::ConstructFromLiteral));
     auto colorSwatch = HTMLDivElement::create(document);
-    colorSwatch->setPseudo(AtomicString("-webkit-color-swatch", AtomicString::ConstructFromLiteral));
+    colorSwatch->setPseudo(AtomString("-webkit-color-swatch", AtomString::ConstructFromLiteral));
     wrapperElement->appendChild(colorSwatch);
     element()->userAgentShadowRoot()->appendChild(wrapperElement);
 

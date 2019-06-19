@@ -36,14 +36,17 @@ class TouchList;
 class EventContext {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    EventContext(Node*, EventTarget* currentTarget, EventTarget*);
+    using EventInvokePhase = EventTarget::EventInvokePhase;
+
+    EventContext(Node*, EventTarget* currentTarget, EventTarget*, int closedShadowDepth);
     virtual ~EventContext();
 
     Node* node() const { return m_node.get(); }
     EventTarget* currentTarget() const { return m_currentTarget.get(); }
     EventTarget* target() const { return m_target.get(); }
+    int closedShadowDepth() const { return m_closedShadowDepth; }
 
-    virtual void handleLocalEvents(Event&) const;
+    virtual void handleLocalEvents(Event&, EventInvokePhase) const;
 
     virtual bool isMouseOrFocusEventContext() const;
     virtual bool isTouchEventContext() const;
@@ -56,18 +59,19 @@ protected:
     RefPtr<Node> m_node;
     RefPtr<EventTarget> m_currentTarget;
     RefPtr<EventTarget> m_target;
+    int m_closedShadowDepth { 0 };
 };
 
 class MouseOrFocusEventContext final : public EventContext {
 public:
-    MouseOrFocusEventContext(Node&, EventTarget* currentTarget, EventTarget*);
+    MouseOrFocusEventContext(Node&, EventTarget* currentTarget, EventTarget*, int closedShadowDepth);
     virtual ~MouseOrFocusEventContext();
 
     Node* relatedTarget() const { return m_relatedTarget.get(); }
     void setRelatedTarget(Node*);
 
 private:
-    void handleLocalEvents(Event&) const final;
+    void handleLocalEvents(Event&, EventInvokePhase) const final;
     bool isMouseOrFocusEventContext() const final;
 
     RefPtr<Node> m_relatedTarget;
@@ -77,14 +81,14 @@ private:
 
 class TouchEventContext final : public EventContext {
 public:
-    TouchEventContext(Node&, EventTarget* currentTarget, EventTarget*);
+    TouchEventContext(Node&, EventTarget* currentTarget, EventTarget*, int closedShadowDepth);
     virtual ~TouchEventContext();
 
     enum TouchListType { Touches, TargetTouches, ChangedTouches };
     TouchList& touchList(TouchListType);
 
 private:
-    void handleLocalEvents(Event&) const final;
+    void handleLocalEvents(Event&, EventInvokePhase) const final;
     bool isTouchEventContext() const final;
 
     void checkReachability(const Ref<TouchList>&) const;

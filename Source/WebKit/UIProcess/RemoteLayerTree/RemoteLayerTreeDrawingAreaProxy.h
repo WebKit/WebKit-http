@@ -40,10 +40,11 @@ class RemoteScrollingCoordinatorTransaction;
 
 class RemoteLayerTreeDrawingAreaProxy final : public DrawingAreaProxy {
 public:
-    explicit RemoteLayerTreeDrawingAreaProxy(WebPageProxy&);
+    RemoteLayerTreeDrawingAreaProxy(WebPageProxy&, WebProcessProxy&);
     virtual ~RemoteLayerTreeDrawingAreaProxy();
 
-    const RemoteLayerTreeHost& remoteLayerTreeHost() const { return m_remoteLayerTreeHost; }
+    const RemoteLayerTreeHost& remoteLayerTreeHost() const { return *m_remoteLayerTreeHost; }
+    std::unique_ptr<RemoteLayerTreeHost> detachRemoteLayerTreeHost();
 
     void acceleratedAnimationDidStart(uint64_t layerID, const String& key, MonotonicTime startTime);
     void acceleratedAnimationDidEnd(uint64_t layerID, const String& key);
@@ -57,7 +58,7 @@ public:
 
     bool isAlwaysOnLoggingAllowed() const;
 
-    LayerOrView* layerWithIDForTesting(uint64_t) const;
+    CALayer *layerWithIDForTesting(uint64_t) const;
 
 private:
     void sizeDidChange() override;
@@ -69,10 +70,10 @@ private:
     void dispatchAfterEnsuringDrawing(WTF::Function<void (CallbackBase::Error)>&&) override;
 
 #if PLATFORM(MAC)
-    void setViewExposedRect(std::optional<WebCore::FloatRect>) override;
+    void setViewExposedRect(Optional<WebCore::FloatRect>) override;
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     WKOneShotDisplayLinkHandler *displayLinkHandler();
 #endif
 
@@ -100,7 +101,7 @@ private:
     
     void sendUpdateGeometry();
 
-    RemoteLayerTreeHost m_remoteLayerTreeHost;
+    std::unique_ptr<RemoteLayerTreeHost> m_remoteLayerTreeHost;
     bool m_isWaitingForDidUpdateGeometry { false };
     enum DidUpdateMessageState { DoesNotNeedDidUpdate, NeedsDidUpdate, MissedCommit };
     DidUpdateMessageState m_didUpdateMessageState { DoesNotNeedDidUpdate };

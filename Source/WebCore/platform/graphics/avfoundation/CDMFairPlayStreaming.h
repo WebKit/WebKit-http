@@ -32,6 +32,8 @@
 
 namespace WebCore {
 
+struct FourCC;
+
 class CDMFactoryFairPlayStreaming final : public CDMFactory {
 public:
     static CDMFactoryFairPlayStreaming& singleton();
@@ -51,7 +53,7 @@ public:
     CDMPrivateFairPlayStreaming();
     virtual ~CDMPrivateFairPlayStreaming();
 
-    bool supportsInitDataType(const AtomicString&) const override;
+    bool supportsInitDataType(const AtomString&) const override;
     bool supportsConfiguration(const CDMKeySystemConfiguration&) const override;
     bool supportsConfigurationWithRestrictions(const CDMKeySystemConfiguration&, const CDMRestrictions&) const override;
     bool supportsSessionTypeWithConfiguration(CDMSessionType&, const CDMKeySystemConfiguration&) const override;
@@ -63,17 +65,20 @@ public:
     void loadAndInitialize() override;
     bool supportsServerCertificates() const override;
     bool supportsSessions() const override;
-    bool supportsInitData(const AtomicString&, const SharedBuffer&) const override;
+    bool supportsInitData(const AtomString&, const SharedBuffer&) const override;
     RefPtr<SharedBuffer> sanitizeResponse(const SharedBuffer&) const override;
-    std::optional<String> sanitizeSessionId(const String&) const override;
+    Optional<String> sanitizeSessionId(const String&) const override;
 
-    static const AtomicString& sinfName();
-    static std::optional<Vector<Ref<SharedBuffer>>> extractKeyIDsSinf(const SharedBuffer&);
+    static const AtomString& sinfName();
+    static Optional<Vector<Ref<SharedBuffer>>> extractKeyIDsSinf(const SharedBuffer&);
     static RefPtr<SharedBuffer> sanitizeSinf(const SharedBuffer&);
 
-    static const AtomicString& skdName();
-    static std::optional<Vector<Ref<SharedBuffer>>> extractKeyIDsSkd(const SharedBuffer&);
+    static const AtomString& skdName();
+    static Optional<Vector<Ref<SharedBuffer>>> extractKeyIDsSkd(const SharedBuffer&);
     static RefPtr<SharedBuffer> sanitizeSkd(const SharedBuffer&);
+
+    static const Vector<FourCC>& validFairPlayStreamingSchemes();
+    static const Vector<uint8_t>& fairPlaySystemID();
 };
 
 }

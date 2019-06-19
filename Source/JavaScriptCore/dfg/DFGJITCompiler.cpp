@@ -102,10 +102,8 @@ void JITCompiler::linkOSRExits()
             addLinkTask([target, osrExitThunkLabel] (LinkBuffer& linkBuffer) {
                 linkBuffer.link(target, osrExitThunkLabel);
             });
-        } else {
-            OSRExit& exit = m_jitCode->osrExit[i];
-            exit.setPatchableCodeOffset(patchableJump());
-        }
+        } else
+            info.m_patchableJump = patchableJump();
     }
 }
 
@@ -300,9 +298,9 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
     for (unsigned i = 0; i < m_jitCode->osrExit.size(); ++i) {
         OSRExitCompilationInfo& info = m_exitCompilationInfo[i];
         if (!Options::useProbeOSRExit()) {
+            linkBuffer.link(info.m_patchableJump.m_jump, target);
             OSRExit& exit = m_jitCode->osrExit[i];
-            linkBuffer.link(exit.getPatchableCodeOffsetAsJump(), target);
-            exit.correctJump(linkBuffer);
+            exit.m_patchableJumpLocation = linkBuffer.locationOf<JSInternalPtrTag>(info.m_patchableJump);
         }
         if (info.m_replacementSource.isSet()) {
             m_jitCode->common.jumpReplacements.append(JumpReplacement(
@@ -389,7 +387,7 @@ void JITCompiler::compile()
     emitStoreCodeOrigin(CodeOrigin(0));
 
     if (maxFrameExtentForSlowPathCall)
-        addPtr(TrustedImm32(-maxFrameExtentForSlowPathCall), stackPointerRegister);
+        addPtr(TrustedImm32(-static_cast<int32_t>(maxFrameExtentForSlowPathCall)), stackPointerRegister);
 
     m_speculative->callOperationWithCallFrameRollbackOnException(operationThrowStackOverflowError, m_codeBlock);
 
@@ -465,7 +463,7 @@ void JITCompiler::compileFunction()
     emitStoreCodeOrigin(CodeOrigin(0));
 
     if (maxFrameExtentForSlowPathCall)
-        addPtr(TrustedImm32(-maxFrameExtentForSlowPathCall), stackPointerRegister);
+        addPtr(TrustedImm32(-static_cast<int32_t>(maxFrameExtentForSlowPathCall)), stackPointerRegister);
 
     m_speculative->callOperationWithCallFrameRollbackOnException(operationThrowStackOverflowError, m_codeBlock);
     
@@ -485,8 +483,8 @@ void JITCompiler::compileFunction()
         branch32(AboveOrEqual, GPRInfo::regT1, TrustedImm32(m_codeBlock->numParameters())).linkTo(fromArityCheck, this);
         emitStoreCodeOrigin(CodeOrigin(0));
         if (maxFrameExtentForSlowPathCall)
-            addPtr(TrustedImm32(-maxFrameExtentForSlowPathCall), stackPointerRegister);
-        m_speculative->callOperationWithCallFrameRollbackOnException(m_codeBlock->m_isConstructor ? operationConstructArityCheck : operationCallArityCheck, GPRInfo::regT0);
+            addPtr(TrustedImm32(-static_cast<int32_t>(maxFrameExtentForSlowPathCall)), stackPointerRegister);
+        m_speculative->callOperationWithCallFrameRollbackOnException(m_codeBlock->isConstructor() ? operationConstructArityCheck : operationCallArityCheck, GPRInfo::regT0);
         if (maxFrameExtentForSlowPathCall)
             addPtr(TrustedImm32(maxFrameExtentForSlowPathCall), stackPointerRegister);
         branchTest32(Zero, GPRInfo::returnValueGPR).linkTo(fromArityCheck, this);
@@ -576,7 +574,7 @@ void JITCompiler::noticeOSREntry(BasicBlock& basicBlock, JITCompiler::Label bloc
     if (!basicBlock.intersectionOfCFAHasVisited)
         return;
 
-    OSREntryData* entry = m_jitCode->appendOSREntryData(basicBlock.bytecodeBegin, linkBuffer.offsetOf(blockHead));
+    OSREntryData* entry = m_jitCode->appendOSREntryData(basicBlock.bytecodeBegin, linkBuffer.locationOf<OSREntryPtrTag>(blockHead));
 
     entry->m_expectedValues = basicBlock.intersectionOfPastValuesAtHead;
         
@@ -586,12 +584,12 @@ void JITCompiler::noticeOSREntry(BasicBlock& basicBlock, JITCompiler::Label bloc
     for (size_t argument = 0; argument < basicBlock.variablesAtHead.numberOfArguments(); ++argument) {
         Node* node = basicBlock.variablesAtHead.argument(argument);
         if (!node || !node->shouldGenerate())
-            entry->m_expectedValues.argument(argument).makeHeapTop();
+            entry->m_expectedValues.argument(argument).makeBytecodeTop();
     }
     for (size_t local = 0; local < basicBlock.variablesAtHead.numberOfLocals(); ++local) {
         Node* node = basicBlock.variablesAtHead.local(local);
         if (!node || !node->shouldGenerate())
-            entry->m_expectedValues.local(local).makeHeapTop();
+            entry->m_expectedValues.local(local).makeBytecodeTop();
         else {
             VariableAccessData* variable = node->variableAccessData();
             entry->m_machineStackUsed.set(variable->machineLocal().toLocal());

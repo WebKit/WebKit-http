@@ -25,20 +25,26 @@
 #include "StyledElement.h"
 
 #include "AttributeChangeInvalidation.h"
+#include "CSSComputedStyleDeclaration.h"
 #include "CSSImageValue.h"
 #include "CSSParser.h"
+#include "CSSPrimitiveValue.h"
+#include "CSSPropertyParser.h"
 #include "CSSStyleSheet.h"
 #include "CSSValuePool.h"
 #include "CachedResource.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMTokenList.h"
+#include "ElementRareData.h"
 #include "HTMLElement.h"
 #include "HTMLParserIdioms.h"
 #include "InspectorInstrumentation.h"
 #include "PropertySetCSSStyleDeclaration.h"
 #include "ScriptableDocumentParser.h"
 #include "StyleProperties.h"
+#include "StylePropertyMap.h"
 #include "StyleResolver.h"
+#include "TypedOMCSSUnparsedValue.h"
 #include <wtf/HashFunctions.h>
 #include <wtf/IsoMallocInlines.h>
 
@@ -70,6 +76,60 @@ CSSStyleDeclaration& StyledElement::cssomStyle()
     return ensureMutableInlineStyle().ensureInlineCSSStyleDeclaration(*this);
 }
 
+#if ENABLE(CSS_TYPED_OM)
+
+class StyledElementInlineStylePropertyMap final : public StylePropertyMap {
+public:
+    static Ref<StylePropertyMap> create(StyledElement& element)
+    {
+        return adoptRef(*new StyledElementInlineStylePropertyMap(element));
+    }
+
+private:
+    RefPtr<TypedOMCSSStyleValue> get(const String& property) const final
+    {
+        ASSERT(m_element); // Hitting this assertion would imply a GC bug. Element is collected while this property map is alive.
+        if (!m_element)
+            return nullptr;
+        return extractInlineProperty(property, *m_element);
+    }
+
+    explicit StyledElementInlineStylePropertyMap(StyledElement& element)
+        : m_element(&element)
+    {
+    }
+
+    void clearElement() override { m_element = nullptr; }
+
+    static RefPtr<TypedOMCSSStyleValue> extractInlineProperty(const String& name, StyledElement& element)
+    {
+        if (!element.inlineStyle())
+            return nullptr;
+
+        if (isCustomPropertyName(name)) {
+            auto value = element.inlineStyle()->getCustomPropertyCSSValue(name);
+            return StylePropertyMapReadOnly::customPropertyValueOrDefault(name, element.document(), value.get(), &element);
+        }
+
+        CSSPropertyID propertyID = cssPropertyID(name);
+        if (!propertyID)
+            return nullptr;
+
+        auto value = element.inlineStyle()->getPropertyCSSValue(propertyID);
+        return StylePropertyMapReadOnly::reifyValue(value.get(), element.document(), &element);
+    }
+
+    StyledElement* m_element { nullptr };
+};
+
+StylePropertyMap& StyledElement::ensureAttributeStyleMap()
+{
+    if (!attributeStyleMap())
+        setAttributeStyleMap(StyledElementInlineStylePropertyMap::create(*this));
+    return *attributeStyleMap();
+}
+#endif
+
 MutableStyleProperties& StyledElement::ensureMutableInlineStyle()
 {
     RefPtr<StyleProperties>& inlineStyle = ensureUniqueElementData().m_inlineStyle;
@@ -80,7 +140,7 @@ MutableStyleProperties& StyledElement::ensureMutableInlineStyle()
     return downcast<MutableStyleProperties>(*inlineStyle);
 }
 
-void StyledElement::attributeChanged(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason reason)
+void StyledElement::attributeChanged(const QualifiedName& name, const AtomString& oldValue, const AtomString& newValue, AttributeModificationReason reason)
 {
     if (oldValue != newValue) {
         if (name == styleAttr)
@@ -108,7 +168,7 @@ static bool usesStyleBasedEditability(const StyleProperties& properties)
     return properties.getPropertyCSSValue(CSSPropertyWebkitUserModify);
 }
 
-void StyledElement::setInlineStyleFromString(const AtomicString& newStyleString)
+void StyledElement::setInlineStyleFromString(const AtomString& newStyleString)
 {
     RefPtr<StyleProperties>& inlineStyle = elementData()->m_inlineStyle;
 
@@ -130,7 +190,7 @@ void StyledElement::setInlineStyleFromString(const AtomicString& newStyleString)
         document().setHasElementUsingStyleBasedEditability();
 }
 
-void StyledElement::styleAttributeChanged(const AtomicString& newStyleString, AttributeModificationReason reason)
+void StyledElement::styleAttributeChanged(const AtomString& newStyleString, AttributeModificationReason reason)
 {
     WTF::OrdinalNumber startLineNumber = WTF::OrdinalNumber::beforeFirst();
     if (document().scriptableDocumentParser() && !document().isInDocumentWrite())
@@ -146,7 +206,7 @@ void StyledElement::styleAttributeChanged(const AtomicString& newStyleString, At
     elementData()->setStyleAttributeIsDirty(false);
 
     invalidateStyle();
-    InspectorInstrumentation::didInvalidateStyleAttr(document(), *this);
+    InspectorInstrumentation::didInvalidateStyleAttr(*this);
 }
 
 void StyledElement::invalidateStyleAttribute()
@@ -171,7 +231,7 @@ void StyledElement::invalidateStyleAttribute()
 void StyledElement::inlineStyleChanged()
 {
     invalidateStyleAttribute();
-    InspectorInstrumentation::didInvalidateStyleAttr(document(), *this);
+    InspectorInstrumentation::didInvalidateStyleAttr(*this);
 }
     
 bool StyledElement::setInlineStyleProperty(CSSPropertyID propertyID, CSSValueID identifier, bool important)

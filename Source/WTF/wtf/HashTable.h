@@ -32,6 +32,7 @@
 #include <wtf/HashTraits.h>
 #include <wtf/Lock.h>
 #include <wtf/MathExtras.h>
+#include <wtf/RandomNumber.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/ValueCheck.h>
 
@@ -379,6 +380,20 @@ namespace WTF {
         const_iterator begin() const { return isEmpty() ? end() : makeConstIterator(m_table); }
         const_iterator end() const { return makeKnownGoodConstIterator(m_table + m_tableSize); }
 
+        iterator random()
+        {
+            if (isEmpty())
+                return end();
+
+            while (1) {
+                auto& bucket = m_table[weakRandomUint32() & m_tableSizeMask];
+                if (!isEmptyOrDeletedBucket(bucket))
+                    return makeKnownGoodIterator(&bucket);
+            };
+        }
+
+        const_iterator random() const { return static_cast<const_iterator>(const_cast<HashTable*>(this)->random()); }
+
         unsigned size() const { return m_keyCount; }
         unsigned capacity() const { return m_tableSize; }
         bool isEmpty() const { return !m_keyCount; }
@@ -409,6 +424,7 @@ namespace WTF {
         void clear();
 
         static bool isEmptyBucket(const ValueType& value) { return isHashTraitsEmptyValue<KeyTraits>(Extractor::extract(value)); }
+        static bool isReleasedWeakBucket(const ValueType& value) { return isHashTraitsReleasedWeakValue<KeyTraits>(Extractor::extract(value)); }
         static bool isDeletedBucket(const ValueType& value) { return KeyTraits::isDeletedValue(Extractor::extract(value)); }
         static bool isEmptyOrDeletedBucket(const ValueType& value) { return isEmptyBucket(value) || isDeletedBucket(value); }
 
@@ -448,11 +464,15 @@ namespace WTF {
         void removeAndInvalidate(ValueType*);
         void remove(ValueType*);
 
+        static constexpr unsigned computeBestTableSize(unsigned keyCount);
         bool shouldExpand() const { return (m_keyCount + m_deletedCount) * m_maxLoad >= m_tableSize; }
         bool mustRehashInPlace() const { return m_keyCount * m_minLoad < m_tableSize * 2; }
         bool shouldShrink() const { return m_keyCount * m_minLoad < m_tableSize && m_tableSize > KeyTraits::minimumTableSize; }
         ValueType* expand(ValueType* entry = nullptr);
         void shrink() { rehash(m_tableSize / 2, nullptr); }
+        void shrinkToBestSize();
+    
+        void deleteReleasedWeakBuckets();
 
         ValueType* rehash(unsigned newTableSize, ValueType* entry);
         ValueType* reinsert(ValueType&&);
@@ -1131,7 +1151,7 @@ namespace WTF {
         m_keyCount -= removedBucketCount;
 
         if (shouldShrink())
-            shrink();
+            shrinkToBestSize();
         
         internalCheckTableConsistency();
         return removedBucketCount;
@@ -1163,6 +1183,9 @@ namespace WTF {
     template<typename Key, typename Value, typename Extractor, typename HashFunctions, typename Traits, typename KeyTraits>
     auto HashTable<Key, Value, Extractor, HashFunctions, Traits, KeyTraits>::expand(ValueType* entry) -> ValueType*
     {
+        if (KeyTraits::hasIsReleasedWeakValueFunction)
+            deleteReleasedWeakBuckets();
+
         unsigned newSize;
         if (m_tableSize == 0)
             newSize = KeyTraits::minimumTableSize;
@@ -1172,6 +1195,42 @@ namespace WTF {
             newSize = m_tableSize * 2;
 
         return rehash(newSize, entry);
+    }
+
+    template<typename Key, typename Value, typename Extractor, typename HashFunctions, typename Traits, typename KeyTraits>
+    constexpr unsigned HashTable<Key, Value, Extractor, HashFunctions, Traits, KeyTraits>::computeBestTableSize(unsigned keyCount)
+    {
+        unsigned bestTableSize = WTF::roundUpToPowerOfTwo(keyCount) * 2;
+
+        // With maxLoad at 1/2 and minLoad at 1/6, our average load is 2/6.
+        // If we are getting halfway between 2/6 and 1/2 (past 5/12), we double the size to avoid being too close to
+        // loadMax and bring the ratio close to 2/6. This give us a load in the bounds [3/12, 5/12).
+        bool aboveThreeQuarterLoad = keyCount * 12 >= bestTableSize * 5;
+        if (aboveThreeQuarterLoad)
+            bestTableSize *= 2;
+
+        unsigned minimumTableSize = KeyTraits::minimumTableSize;
+        return std::max(bestTableSize, minimumTableSize);
+    }
+
+    template<typename Key, typename Value, typename Extractor, typename HashFunctions, typename Traits, typename KeyTraits>
+    void HashTable<Key, Value, Extractor, HashFunctions, Traits, KeyTraits>::shrinkToBestSize()
+    {
+        unsigned minimumTableSize = KeyTraits::minimumTableSize;
+        rehash(std::max(minimumTableSize, computeBestTableSize(m_keyCount)), nullptr);
+    }
+
+    template<typename Key, typename Value, typename Extractor, typename HashFunctions, typename Traits, typename KeyTraits>
+    void HashTable<Key, Value, Extractor, HashFunctions, Traits, KeyTraits>::deleteReleasedWeakBuckets()
+    {
+        for (unsigned i = 0; i < m_tableSize; ++i) {
+            auto& entry = m_table[i];
+            if (isReleasedWeakBucket(entry)) {
+                deleteBucket(entry);
+                ++m_deletedCount;
+                --m_keyCount;
+            }
+        }
     }
 
     template<typename Key, typename Value, typename Extractor, typename HashFunctions, typename Traits, typename KeyTraits>
@@ -1198,20 +1257,28 @@ namespace WTF {
 
         Value* newEntry = nullptr;
         for (unsigned i = 0; i != oldTableSize; ++i) {
-            if (isDeletedBucket(oldTable[i])) {
-                ASSERT(std::addressof(oldTable[i]) != entry);
+            auto& oldEntry = oldTable[i];
+            if (isDeletedBucket(oldEntry)) {
+                ASSERT(std::addressof(oldEntry) != entry);
                 continue;
             }
 
-            if (isEmptyBucket(oldTable[i])) {
-                ASSERT(std::addressof(oldTable[i]) != entry);
+            if (isEmptyBucket(oldEntry)) {
+                ASSERT(std::addressof(oldEntry) != entry);
                 oldTable[i].~ValueType();
                 continue;
             }
 
-            Value* reinsertedEntry = reinsert(WTFMove(oldTable[i]));
-            oldTable[i].~ValueType();
-            if (std::addressof(oldTable[i]) == entry) {
+            if (isReleasedWeakBucket(oldEntry)) {
+                ASSERT(std::addressof(oldEntry) != entry);
+                oldEntry.~ValueType();
+                --m_keyCount;
+                continue;
+            }
+
+            Value* reinsertedEntry = reinsert(WTFMove(oldEntry));
+            oldEntry.~ValueType();
+            if (std::addressof(oldEntry) == entry) {
                 ASSERT(!newEntry);
                 newEntry = reinsertedEntry;
             }
@@ -1259,17 +1326,7 @@ namespace WTF {
         if (!otherKeyCount)
             return;
 
-        unsigned bestTableSize = WTF::roundUpToPowerOfTwo(otherKeyCount) * 2;
-
-        // With maxLoad at 1/2 and minLoad at 1/6, our average load is 2/6.
-        // If we are getting halfway between 2/6 and 1/2 (past 5/12), we double the size to avoid being too close to
-        // loadMax and bring the ratio close to 2/6. This give us a load in the bounds [3/12, 5/12).
-        bool aboveThreeQuarterLoad = otherKeyCount * 12 >= bestTableSize * 5;
-        if (aboveThreeQuarterLoad)
-            bestTableSize *= 2;
-
-        unsigned minimumTableSize = KeyTraits::minimumTableSize;
-        m_tableSize = std::max<unsigned>(bestTableSize, minimumTableSize);
+        m_tableSize = computeBestTableSize(otherKeyCount);
         m_tableSizeMask = m_tableSize - 1;
         m_keyCount = otherKeyCount;
         m_table = allocateTable(m_tableSize);
@@ -1366,11 +1423,12 @@ namespace WTF {
                 continue;
             }
 
-            const_iterator it = find(Extractor::extract(*entry));
+            auto& key = Extractor::extract(*entry);
+            const_iterator it = find(key);
             ASSERT(entry == it.m_position);
             ++count;
 
-            ValueCheck<Key>::checkConsistency(it->key);
+            ValueCheck<Key>::checkConsistency(key);
         }
 
         ASSERT(count == m_keyCount);

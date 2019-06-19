@@ -95,6 +95,8 @@ Storage::Record Entry::encodeAsStorageRecord() const
     if (isRedirect)
         m_redirectRequest->encodeWithoutPlatformData(encoder);
 
+    encoder << m_maxAgeCap;
+    
     encoder.encodeChecksum();
 
     Data header(encoder.buffer(), encoder.bufferSize());
@@ -133,6 +135,8 @@ std::unique_ptr<Entry> Entry::decodeStorageRecord(const Storage::Record& storage
             return nullptr;
     }
 
+    decoder.decode(entry->m_maxAgeCap);
+    
     if (!decoder.verifyChecksum()) {
         LOG(NetworkCache, "(NetworkProcess) checksum verification failure\n");
         return nullptr;
@@ -141,13 +145,21 @@ std::unique_ptr<Entry> Entry::decodeStorageRecord(const Storage::Record& storage
     return entry;
 }
 
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+bool Entry::hasReachedPrevalentResourceAgeCap() const
+{
+    return m_maxAgeCap && WebCore::computeCurrentAge(response(), timeStamp()) > m_maxAgeCap;
+}
+
+void Entry::capMaxAge(const Seconds seconds)
+{
+    m_maxAgeCap = seconds;
+}
+#endif
+
 #if ENABLE(SHAREABLE_RESOURCE)
 void Entry::initializeShareableResourceHandleFromStorageRecord() const
 {
-    auto* cache = NetworkProcess::singleton().cache();
-    if (!cache)
-        return;
-
     auto sharedMemory = m_sourceStorageRecord.body.tryCreateSharedMemory();
     if (!sharedMemory)
         return;
@@ -207,13 +219,13 @@ void Entry::asJSON(StringBuilder& json, const Storage::RecordInfo& info) const
     json.appendNumber(info.bodySize);
     json.appendLiteral(",\n");
     json.appendLiteral("\"worth\": ");
-    json.appendNumber(info.worth);
+    json.appendFixedPrecisionNumber(info.worth);
     json.appendLiteral(",\n");
     json.appendLiteral("\"partition\": ");
     json.appendQuotedJSONString(m_key.partition());
     json.appendLiteral(",\n");
     json.appendLiteral("\"timestamp\": ");
-    json.appendNumber(m_timeStamp.secondsSinceEpoch().milliseconds());
+    json.appendFixedPrecisionNumber(m_timeStamp.secondsSinceEpoch().milliseconds());
     json.appendLiteral(",\n");
     json.appendLiteral("\"URL\": ");
     json.appendQuotedJSONString(m_response.url().string());

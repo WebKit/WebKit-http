@@ -14,6 +14,8 @@
 #include <memory>
 #include <vector>
 
+#include "api/test/simulated_network.h"
+#include "call/simulated_packet_receiver.h"
 #include "call/video_send_stream.h"
 #include "modules/rtp_rtcp/include/rtp_header_parser.h"
 #include "rtc_base/criticalsection.h"
@@ -69,9 +71,7 @@ class RtpRtcpObserver {
  protected:
   RtpRtcpObserver() : RtpRtcpObserver(0) {}
   explicit RtpRtcpObserver(int event_timeout_ms)
-      : observation_complete_(false, false),
-        parser_(RtpHeaderParser::Create()),
-        timeout_ms_(event_timeout_ms) {
+      : parser_(RtpHeaderParser::Create()), timeout_ms_(event_timeout_ms) {
     parser_->RegisterRtpHeaderExtension(kRtpExtensionTransmissionTimeOffset,
                                         kTOffsetExtensionId);
     parser_->RegisterRtpHeaderExtension(kRtpExtensionAbsoluteSendTime,
@@ -96,20 +96,7 @@ class PacketTransport : public test::DirectTransport {
                   RtpRtcpObserver* observer,
                   TransportType transport_type,
                   const std::map<uint8_t, MediaType>& payload_type_map,
-                  const FakeNetworkPipe::Config& configuration)
-      : test::DirectTransport(task_queue,
-                              configuration,
-                              send_call,
-                              payload_type_map),
-        observer_(observer),
-        transport_type_(transport_type) {}
-
-  PacketTransport(SingleThreadedTaskQueueForTesting* task_queue,
-                  Call* send_call,
-                  RtpRtcpObserver* observer,
-                  TransportType transport_type,
-                  const std::map<uint8_t, MediaType>& payload_type_map,
-                  std::unique_ptr<FakeNetworkPipe> nw_pipe)
+                  std::unique_ptr<SimulatedPacketReceiverInterface> nw_pipe)
       : test::DirectTransport(task_queue,
                               std::move(nw_pipe),
                               send_call,

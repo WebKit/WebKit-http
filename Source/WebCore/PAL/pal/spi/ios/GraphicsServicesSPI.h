@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,7 @@
 
 #import <wtf/Platform.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #if USE(APPLE_INTERNAL_SDK)
 
@@ -42,6 +42,13 @@ uint64_t GSCurrentEventTimestamp(void);
 CFStringRef GSSystemRootDirectory(void);
 void GSFontInitialize(void);
 void GSFontPurgeFontCache(void);
+
+typedef struct __GSKeyboard* GSKeyboardRef;
+uint32_t GSKeyboardGetModifierState(GSKeyboardRef);
+Boolean GSEventIsHardwareKeyboardAttached();
+void GSEventSetHardwareKeyboardAttached(Boolean attached, uint8_t country);
+
+extern const char *kGSEventHardwareKeyboardAvailabilityChangedNotification;
 
 WTF_EXTERN_C_END
 

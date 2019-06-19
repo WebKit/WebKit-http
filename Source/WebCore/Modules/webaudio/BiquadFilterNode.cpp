@@ -27,15 +27,19 @@
 #if ENABLE(WEB_AUDIO)
 
 #include "BiquadFilterNode.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(BiquadFilterNode);
 
 BiquadFilterNode::BiquadFilterNode(AudioContext& context, float sampleRate)
     : AudioBasicProcessorNode(context, sampleRate)
 {
+    setNodeType(NodeTypeBiquadFilter);
+
     // Initially setup as lowpass filter.
     m_processor = std::make_unique<BiquadProcessor>(context, sampleRate, 1, false);
-    setNodeType(NodeTypeBiquadFilter);
 }
 
 BiquadFilterType BiquadFilterNode::type() const

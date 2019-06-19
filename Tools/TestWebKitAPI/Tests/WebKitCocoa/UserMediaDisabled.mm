@@ -37,9 +37,6 @@
 #import <WebKit/_WKProcessPoolConfiguration.h>
 #import <wtf/RetainPtr.h>
 
-#if WK_API_ENABLED
-
-static bool refuseRequest = false;
 static bool wasPrompted = false;
 
 static bool receivedScriptMessage = false;
@@ -62,14 +59,9 @@ static RetainPtr<WKScriptMessage> lastScriptMessage;
 
 @implementation UserMediaUIDelegate
 
-- (void)_webView:(WKWebView *)webView requestUserMediaAuthorizationForDevices:(NSUInteger)devices url:(NSURL *)url mainFrameURL:(NSURL *)mainFrameURL decisionHandler:(void (^)(BOOL))decisionHandler
+- (void)_webView:(WKWebView *)webView requestMediaCaptureAuthorization: (_WKCaptureDevices)devices decisionHandler:(void (^)(BOOL))decisionHandler
 {
     wasPrompted = true;
-
-    if (refuseRequest) {
-        decisionHandler(NO);
-        return;
-    }
 
     BOOL needsMicrophoneAuthorized = devices & _WKCaptureDeviceMicrophone;
     BOOL needsCameraAuthorized = devices & _WKCaptureDeviceCamera;
@@ -81,14 +73,9 @@ static RetainPtr<WKScriptMessage> lastScriptMessage;
     decisionHandler(YES);
 }
 
-- (void)_webView:(WKWebView *)webView checkUserMediaPermissionForURL:(NSURL *)url mainFrameURL:(NSURL *)mainFrameURL frameIdentifier:(NSUInteger)frameIdentifier decisionHandler:(void (^)(NSString *, BOOL))decisionHandler
+- (void)_webView:(WKWebView *)webView includeSensitiveMediaDeviceDetails:(void (^)(BOOL includeSensitiveDetails))decisionHandler
 {
-    if (refuseRequest) {
-        decisionHandler(nil, NO);
-        return;
-    }
-
-    decisionHandler(@"0x987654321", NO);
+    decisionHandler(NO);
 }
 @end
 
@@ -142,4 +129,15 @@ TEST_F(MediaCaptureDisabledTest, EnableAndDisable)
     loadTestAndWaitForMessage("allowed");
     EXPECT_TRUE(wasPrompted);
 }
-#endif
+
+TEST_F(MediaCaptureDisabledTest, UnsecureContext)
+{
+    auto preferences = [m_webView configuration].preferences;
+    preferences._mediaCaptureRequiresSecureConnection = YES;
+
+    receivedScriptMessage = false;
+    [m_webView loadHTMLString:@"<html><body><script>window.webkit.messageHandlers.testHandler.postMessage(Navigator.prototype.hasOwnProperty('mediaDevices') ? 'has' : 'none');</script></body></html>" baseURL: [[NSURL alloc] initWithString:@"http://test.org"]];
+
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+    EXPECT_STREQ([(NSString *)[lastScriptMessage body] UTF8String], "none");
+}

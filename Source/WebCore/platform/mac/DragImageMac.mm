@@ -41,12 +41,12 @@
 #import "Page.h"
 #import "StringTruncator.h"
 #import "TextIndicator.h"
-#import "URL.h"
 #import "WebKitNSImageExtras.h"
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/CoreTextSPI.h>
 #import <pal/spi/cocoa/URLFormattingSPI.h>
 #import <wtf/SoftLinking.h>
+#import <wtf/URL.h>
 
 #if !HAVE(URL_FORMATTING) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 SOFT_LINK_PRIVATE_FRAMEWORK_OPTIONAL(LinkPresentation)
@@ -71,10 +71,9 @@ RetainPtr<NSImage> scaleDragImage(RetainPtr<NSImage> image, FloatSize scale)
     NSSize newSize = NSMakeSize((originalSize.width * scale.width()), (originalSize.height * scale.height()));
     newSize.width = roundf(newSize.width);
     newSize.height = roundf(newSize.height);
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [image setScalesWhenResized:YES];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     [image setSize:newSize];
     return image;
 }
@@ -301,9 +300,7 @@ DragImageRef createDragImageForLink(Element& element, URL& url, const String& ti
 {
     LinkImageLayout layout(url, title);
 
-    Page* page = element.document().page();
-
-    LocalDefaultSystemAppearance localAppearance(true, page ? page->useDarkAppearance() : false);
+    LocalDefaultSystemAppearance localAppearance(element.document().useDarkAppearance(element.computedStyle()));
 
     auto imageSize = layout.boundingRect.size();
 #if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
@@ -312,10 +309,9 @@ DragImageRef createDragImageForLink(Element& element, URL& url, const String& ti
     RetainPtr<NSImage> dragImage = adoptNS([[NSImage alloc] initWithSize:imageSize]);
     [dragImage _web_lockFocusWithDeviceScaleFactor:deviceScaleFactor];
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     GraphicsContext context((CGContextRef)[NSGraphicsContext currentContext].graphicsPort);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
     context.translate(linkImageShadowRadius, linkImageShadowRadius - linkImageShadowOffsetY);

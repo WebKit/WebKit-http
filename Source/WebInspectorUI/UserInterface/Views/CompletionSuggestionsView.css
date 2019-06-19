@@ -67,11 +67,17 @@
     overflow: hidden;
     text-overflow: ellipsis;
 
-    color: black;
+    color: var(--text-color);
 }
 
 .completion-suggestions-container:not(:active) > .item.selected,
 .completion-suggestions-container > .item:active {
     background-color: var(--selected-background-color);
     color: white;
+}
+
+@media (prefers-color-scheme: dark) {
+    .completion-suggestions {
+        background-color: var(--overlay-background);
+    }
 }

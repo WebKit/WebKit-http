@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
     ConstructorCallWith=Document,
     ConstructorMayThrowException,
     EnabledBySetting=ApplePay,
+    EnabledForContext,
 ] interface ApplePaySession : EventTarget {
     const unsigned short STATUS_SUCCESS = 0;
     const unsigned short STATUS_FAILURE = 1;
@@ -40,14 +41,14 @@
     const unsigned short STATUS_PIN_INCORRECT = 6;
     const unsigned short STATUS_PIN_LOCKOUT = 7;
 
-    [CallWith=ScriptExecutionContext, MayThrowException] static boolean supportsVersion(unsigned long version);
-    [CallWith=ScriptExecutionContext, MayThrowException] static boolean canMakePayments();
-    [CallWith=ScriptExecutionContext, MayThrowException] static Promise<boolean> canMakePaymentsWithActiveCard(DOMString merchantIdentifier);
-    [CallWith=ScriptExecutionContext, MayThrowException] static Promise<boolean> openPaymentSetup(DOMString merchantIdentifier);
+    [CallWith=Document, MayThrowException] static boolean supportsVersion(unsigned long version);
+    [CallWith=Document, MayThrowException] static boolean canMakePayments();
+    [CallWith=Document, MayThrowException] static Promise<boolean> canMakePaymentsWithActiveCard(DOMString merchantIdentifier);
+    [CallWith=Document, MayThrowException] static Promise<boolean> openPaymentSetup(DOMString merchantIdentifier);
 
-    [MayThrowException] void begin();
+    [CallWith=Document, MayThrowException] void begin();
     [MayThrowException] void abort();
-    [MayThrowException, CallWith=ScriptState] void completeMerchantValidation(any merchantSession);
+    [MayThrowException, CallWith=ExecState] void completeMerchantValidation(any merchantSession);
     [MayThrowException, Conditional=APPLE_PAY_SESSION_V3] void completeShippingMethodSelection(ApplePayShippingMethodUpdate update);
     [MayThrowException, Conditional=APPLE_PAY_SESSION_V3] void completeShippingContactSelection(ApplePayShippingContactUpdate update);
     [MayThrowException, Conditional=APPLE_PAY_SESSION_V3] void completePaymentMethodSelection(ApplePayPaymentMethodUpdate update);

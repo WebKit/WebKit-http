@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "B3AtomicValue.h"
+#include "B3ValueInlines.h"
 
 #if ENABLE(B3_JIT)
 
@@ -41,13 +42,8 @@ void AtomicValue::dumpMeta(CommaPrinter& comma, PrintStream& out) const
     MemoryValue::dumpMeta(comma, out);
 }
 
-Value* AtomicValue::cloneImpl() const
-{
-    return new AtomicValue(*this);
-}
-
 AtomicValue::AtomicValue(AtomicValue::AtomicValueRMW, Kind kind, Origin origin, Width width, Value* operand, Value* pointer, MemoryValue::OffsetType offset, HeapRange range, HeapRange fenceRange)
-    : MemoryValue(CheckedOpcode, kind, operand->type(), origin, offset, range, fenceRange, operand, pointer)
+    : MemoryValue(CheckedOpcode, kind, operand->type(), Two, origin, offset, range, fenceRange, operand, pointer)
     , m_width(width)
 {
     ASSERT(bestType(GP, accessWidth()) == accessType());
@@ -66,7 +62,7 @@ AtomicValue::AtomicValue(AtomicValue::AtomicValueRMW, Kind kind, Origin origin, 
 }
 
 AtomicValue::AtomicValue(AtomicValue::AtomicValueCAS, Kind kind, Origin origin, Width width, Value* expectedValue, Value* newValue, Value* pointer, MemoryValue::OffsetType offset, HeapRange range, HeapRange fenceRange)
-    : MemoryValue(CheckedOpcode, kind, kind.opcode() == AtomicWeakCAS ? Int32 : expectedValue->type(), origin, offset, range, fenceRange, expectedValue, newValue, pointer)
+    : MemoryValue(CheckedOpcode, kind, kind.opcode() == AtomicWeakCAS ? Int32 : expectedValue->type(), Three, origin, offset, range, fenceRange, expectedValue, newValue, pointer)
     , m_width(width)
 {
     ASSERT(bestType(GP, accessWidth()) == accessType());

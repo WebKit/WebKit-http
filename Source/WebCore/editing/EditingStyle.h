@@ -35,9 +35,7 @@
 #include "CSSValueKeywords.h"
 #include "StyleProperties.h"
 #include "WritingDirection.h"
-#include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/TriState.h>
 #include <wtf/text/WTFString.h>
 
@@ -110,7 +108,7 @@ public:
 
     MutableStyleProperties* style() { return m_mutableStyle.get(); }
     Ref<MutableStyleProperties> styleWithResolvedTextDecorations() const;
-    bool textDirection(WritingDirection&) const;
+    Optional<WritingDirection> textDirection() const;
     bool isEmpty() const;
     void setStyle(RefPtr<MutableStyleProperties>&&);
     void overrideWithStyle(const StyleProperties&);
@@ -149,6 +147,7 @@ public:
     void removeStyleFromRulesAndContext(StyledElement&, Node* context);
     void removePropertiesInElementDefaultStyle(Element&);
     void forceInline();
+    void addDisplayContents();
     bool convertPositionStyle();
     bool isFloating();
     int legacyFontSize(Document&) const;

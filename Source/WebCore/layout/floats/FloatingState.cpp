@@ -31,7 +31,7 @@
 #include "FormattingContext.h"
 #include "LayoutBox.h"
 #include "LayoutContainer.h"
-#include "LayoutContext.h"
+#include "LayoutState.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -41,12 +41,12 @@ WTF_MAKE_ISO_ALLOCATED_IMPL(FloatingState);
 
 FloatingState::FloatItem::FloatItem(const Box& layoutBox, const FloatingState& floatingState)
     : m_layoutBox(makeWeakPtr(layoutBox))
-    , m_absoluteDisplayBox(FormattingContext::mapBoxToAncestor(floatingState.layoutContext(), layoutBox, downcast<Container>(floatingState.root())))
+    , m_absoluteDisplayBox(FormattingContext::mapBoxToAncestor(floatingState.layoutState(), layoutBox, downcast<Container>(floatingState.root())))
 {
 }
 
-FloatingState::FloatingState(LayoutContext& layoutContext, const Box& formattingContextRoot)
-    : m_layoutContext(layoutContext)
+FloatingState::FloatingState(LayoutState& layoutState, const Box& formattingContextRoot)
+    : m_layoutState(layoutState)
     , m_formattingContextRoot(makeWeakPtr(formattingContextRoot))
 {
 }
@@ -83,20 +83,93 @@ void FloatingState::append(const Box& layoutBox)
     ASSERT(belongsToThisFloatingContext(layoutBox, *m_formattingContextRoot));
     ASSERT(is<Container>(*m_formattingContextRoot));
 
-    m_floats.append({ layoutBox, *this });
+    auto newFloatItem = FloatItem { layoutBox, *this };
+    if (m_floats.isEmpty())
+        return m_floats.append(newFloatItem);
+
+    auto& displayBox = m_layoutState.displayBoxForLayoutBox(layoutBox);
+    auto isLeftPositioned = layoutBox.isLeftFloatingPositioned();
+    // When adding a new float item to the list, we have to ensure that it is definitely the left(right)-most item.
+    // Normally it is, but negative horizontal margins can push the float box beyond another float box.
+    // Float items in m_floats list should stay in horizontal position order (left/right edge) on the same vertical position.
+    auto hasNegativeHorizontalMargin = (isLeftPositioned && displayBox.marginStart() < 0) || (!isLeftPositioned && displayBox.marginEnd() < 0);
+    if (!hasNegativeHorizontalMargin)
+        return m_floats.append(newFloatItem);
+
+    for (int i = m_floats.size() - 1; i >= 0; --i) {
+        auto& floatItem = m_floats[i];
+        if (isLeftPositioned != floatItem.isLeftPositioned())
+            continue;
+        if (newFloatItem.rectWithMargin().top() < floatItem.rectWithMargin().bottom())
+            continue;
+        if ((isLeftPositioned && newFloatItem.rectWithMargin().right() >= floatItem.rectWithMargin().right())
+            || (!isLeftPositioned && newFloatItem.rectWithMargin().left() <= floatItem.rectWithMargin().left()))
+            return m_floats.insert(i + 1, newFloatItem);
+    }
+    return m_floats.insert(0, newFloatItem);
 }
 
-std::optional<LayoutUnit> FloatingState::bottom(const Box& formattingContextRoot, Clear type) const
+FloatingState::Constraints FloatingState::constraints(PositionInContextRoot verticalPosition, const Box& formattingContextRoot) const
+{
+    if (isEmpty())
+        return { };
+
+    // 1. Convert vertical position if this floating context is inherited.
+    // 2. Find the inner left/right floats at verticalPosition.
+    // 3. Convert left/right positions back to formattingContextRoot's cooridnate system.
+    auto coordinateMappingIsRequired = &root() != &formattingContextRoot;
+    auto adjustedPosition = Point { 0, verticalPosition };
+    LayoutSize adjustingDelta;
+
+    if (coordinateMappingIsRequired) {
+        adjustedPosition = FormattingContext::mapPointToAncestor(m_layoutState, adjustedPosition, downcast<Container>(formattingContextRoot), downcast<Container>(root()));
+        adjustingDelta = { adjustedPosition.x, adjustedPosition.y - verticalPosition };
+    }
+
+    Constraints constraints;
+    for (int index = m_floats.size() - 1; index >= 0; --index) {
+        auto& floatItem = m_floats[index];
+
+        if (constraints.left && floatItem.isLeftPositioned())
+            continue;
+
+        if (constraints.right && !floatItem.isLeftPositioned())
+            continue;
+
+        auto rect = floatItem.rectWithMargin();
+        if (!(rect.top() <= adjustedPosition.y && adjustedPosition.y < rect.bottom()))
+            continue;
+
+        if (floatItem.isLeftPositioned())
+            constraints.left = PointInContextRoot { rect.right(), rect.bottom() };
+        else
+            constraints.right = PointInContextRoot { rect.left(), rect.bottom() };
+
+        if (constraints.left && constraints.right)
+            break;
+    }
+
+    if (coordinateMappingIsRequired) {
+        if (constraints.left)
+            constraints.left->move(-adjustingDelta);
+
+        if (constraints.right)
+            constraints.right->move(-adjustingDelta);
+    }
+    return constraints;
+}
+
+Optional<PositionInContextRoot> FloatingState::bottom(const Box& formattingContextRoot, Clear type) const
 {
     if (m_floats.isEmpty())
         return { };
 
     // TODO: Currently this is only called once for each formatting context root with floats per layout.
     // Cache the value if we end up calling it more frequently (and update it at append/remove).
-    std::optional<LayoutUnit> bottom;
+    Optional<PositionInContextRoot> bottom;
     for (auto& floatItem : m_floats) {
-        // Ignore floats from other formatting contexts when the floating state is inherited.
-        if (!floatItem.inFormattingContext(formattingContextRoot))
+        // Ignore floats from ancestor formatting contexts when the floating state is inherited.
+        if (!floatItem.isDescendantOfFormattingRoot(formattingContextRoot))
             continue;
 
         if ((type == Clear::Left && !floatItem.isLeftPositioned())
@@ -105,12 +178,33 @@ std::optional<LayoutUnit> FloatingState::bottom(const Box& formattingContextRoot
 
         auto floatsBottom = floatItem.rectWithMargin().bottom();
         if (bottom) {
-            bottom = std::max(*bottom, floatsBottom);
+            bottom = std::max<PositionInContextRoot>(*bottom, { floatsBottom });
             continue;
         }
-        bottom = floatsBottom;
+        bottom = PositionInContextRoot { floatsBottom };
     }
     return bottom;
+}
+
+Optional<PositionInContextRoot> FloatingState::top(const Box& formattingContextRoot) const
+{
+    if (m_floats.isEmpty())
+        return { };
+
+    Optional<PositionInContextRoot> top;
+    for (auto& floatItem : m_floats) {
+        // Ignore floats from ancestor formatting contexts when the floating state is inherited.
+        if (!floatItem.isDescendantOfFormattingRoot(formattingContextRoot))
+            continue;
+
+        auto floatTop = floatItem.rectWithMargin().top();
+        if (top) {
+            top = std::max<PositionInContextRoot>(*top, { floatTop });
+            continue;
+        }
+        top = PositionInContextRoot { floatTop };
+    }
+    return top;
 }
 
 }

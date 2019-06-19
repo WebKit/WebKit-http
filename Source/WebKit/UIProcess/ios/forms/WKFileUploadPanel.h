@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import <UIKit/UIViewController.h>
 
@@ -43,6 +43,8 @@ class WebOpenPanelResultListenerProxy;
 - (instancetype)initWithView:(WKContentView *)view;
 - (void)presentWithParameters:(API::OpenPanelParameters*)parameters resultListener:(WebKit::WebOpenPanelResultListenerProxy*)listener;
 - (void)dismiss;
+
+- (NSArray<NSString *> *)currentAvailableActionTitles;
 @end
 
 @protocol WKFileUploadPanelDelegate <NSObject>
@@ -50,4 +52,4 @@ class WebOpenPanelResultListenerProxy;
 - (void)fileUploadPanelDidDismiss:(WKFileUploadPanel *)fileUploadPanel;
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

@@ -25,8 +25,6 @@
 
 #import <WebKit/WKFoundation.h>
 
-#if WK_API_ENABLED
-
 #if TARGET_OS_IPHONE
 #import <Foundation/Foundation.h>
 #else
@@ -53,12 +51,12 @@ typedef NS_ENUM(NSInteger, WKNavigationType) {
     WKNavigationTypeReload,
     WKNavigationTypeFormResubmitted,
     WKNavigationTypeOther = -1,
-} WK_API_AVAILABLE(macosx(10.10), ios(8.0));
+} WK_API_AVAILABLE(macos(10.10), ios(8.0));
 
 /*! 
 A WKNavigationAction object contains information about an action that may cause a navigation, used for making policy decisions.
  */
-WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
+WK_CLASS_AVAILABLE(macos(10.10), ios(8.0))
 @interface WKNavigationAction : NSObject
 
 /*! @abstract The frame requesting the navigation.
@@ -93,5 +91,3 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @end
 
 NS_ASSUME_NONNULL_END
-
-#endif

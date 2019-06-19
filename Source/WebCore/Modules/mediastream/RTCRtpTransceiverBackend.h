@@ -35,11 +35,12 @@ public:
     virtual ~RTCRtpTransceiverBackend() = default;
 
     virtual RTCRtpTransceiverDirection direction() const = 0;
-    virtual std::optional<RTCRtpTransceiverDirection> currentDirection() const = 0;
+    virtual Optional<RTCRtpTransceiverDirection> currentDirection() const = 0;
     virtual void setDirection(RTCRtpTransceiverDirection) = 0;
 
     virtual String mid() = 0;
     virtual void stop() = 0;
+    virtual bool stopped() const = 0;
 };
 
 } // namespace WebCore

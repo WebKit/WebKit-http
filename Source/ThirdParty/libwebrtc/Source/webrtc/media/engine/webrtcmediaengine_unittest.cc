@@ -12,6 +12,7 @@
 
 #include "api/audio_codecs/builtin_audio_decoder_factory.h"
 #include "api/audio_codecs/builtin_audio_encoder_factory.h"
+#include "api/video/builtin_video_bitrate_allocator_factory.h"
 #include "api/video_codecs/builtin_video_decoder_factory.h"
 #include "api/video_codecs/builtin_video_encoder_factory.h"
 #include "media/engine/webrtcmediaengine.h"
@@ -29,7 +30,7 @@ std::vector<RtpExtension> MakeUniqueExtensions() {
   for (int i = 0; i < 7; ++i) {
     result.push_back(RtpExtension(name, 1 + i));
     name[0]++;
-    result.push_back(RtpExtension(name, 14 - i));
+    result.push_back(RtpExtension(name, 255 - i));
     name[0]++;
   }
   return result;
@@ -40,7 +41,7 @@ std::vector<RtpExtension> MakeRedundantExtensions() {
   char name[] = "a";
   for (int i = 0; i < 7; ++i) {
     result.push_back(RtpExtension(name, 1 + i));
-    result.push_back(RtpExtension(name, 14 - i));
+    result.push_back(RtpExtension(name, 255 - i));
     name[0]++;
   }
   return result;
@@ -84,7 +85,7 @@ TEST(WebRtcMediaEngineTest, ValidateRtpExtensions_OutOfRangeId_Low) {
 
 TEST(WebRtcMediaEngineTest, ValidateRtpExtensions_OutOfRangeId_High) {
   std::vector<RtpExtension> extensions = MakeUniqueExtensions();
-  extensions.push_back(RtpExtension("foo", 15));
+  extensions.push_back(RtpExtension("foo", 256));
   EXPECT_FALSE(ValidateRtpExtensions(extensions));
 }
 
@@ -96,7 +97,7 @@ TEST(WebRtcMediaEngineTest, ValidateRtpExtensions_OverlappingIds_StartOfSet) {
 
 TEST(WebRtcMediaEngineTest, ValidateRtpExtensions_OverlappingIds_EndOfSet) {
   std::vector<RtpExtension> extensions = MakeUniqueExtensions();
-  extensions.push_back(RtpExtension("foo", 14));
+  extensions.push_back(RtpExtension("foo", 255));
   EXPECT_FALSE(ValidateRtpExtensions(extensions));
 }
 
@@ -246,6 +247,17 @@ TEST(WebRtcMediaEngineFactoryTest, CreateWithBuiltinDecoders) {
       webrtc::CreateBuiltinVideoEncoderFactory(),
       webrtc::CreateBuiltinVideoDecoderFactory(), nullptr /* audio_mixer */,
       webrtc::AudioProcessingBuilder().Create()));
+  EXPECT_TRUE(engine);
+}
+
+TEST(WebRtcMediaEngineFactoryTest, CreateWithVideoBitrateFactory) {
+  std::unique_ptr<MediaEngineInterface> engine(WebRtcMediaEngineFactory::Create(
+      nullptr /* adm */, webrtc::CreateBuiltinAudioEncoderFactory(),
+      webrtc::CreateBuiltinAudioDecoderFactory(),
+      webrtc::CreateBuiltinVideoEncoderFactory(),
+      webrtc::CreateBuiltinVideoDecoderFactory(),
+      webrtc::CreateBuiltinVideoBitrateAllocatorFactory(),
+      nullptr /* audio_mixer */, webrtc::AudioProcessingBuilder().Create()));
   EXPECT_TRUE(engine);
 }
 

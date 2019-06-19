@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "WebFixedPositionContent.h"
 #import "WebFixedPositionContentInternal.h"
@@ -170,7 +170,7 @@ WebFixedPositionContentData::~WebFixedPositionContentData()
     });
 }
 
-- (void)setViewportConstrainedLayers:(WTF::HashMap<CALayer *, std::unique_ptr<WebCore::ViewportConstraints>>&)layerMap stickyContainerMap:(WTF::HashMap<CALayer*, CALayer*>&)stickyContainers
+- (void)setViewportConstrainedLayers:(WTF::HashMap<CALayer *, std::unique_ptr<WebCore::ViewportConstraints>>&)layerMap stickyContainerMap:(const WTF::HashMap<CALayer*, CALayer*>&)stickyContainers
 {
     auto locker = holdLock(webFixedPositionContentDataLock);
 
@@ -195,4 +195,4 @@ WebFixedPositionContentData::~WebFixedPositionContentData()
 
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

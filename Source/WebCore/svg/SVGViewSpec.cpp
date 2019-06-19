@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007, 2010 Rob Buis <buis@kde.org>
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2018-2019 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -22,7 +22,6 @@
 #include "SVGViewSpec.h"
 
 #include "Document.h"
-#include "SVGAnimatedTransformList.h"
 #include "SVGElement.h"
 #include "SVGFitToViewBox.h"
 #include "SVGNames.h"
@@ -33,19 +32,14 @@
 namespace WebCore {
 
 SVGViewSpec::SVGViewSpec(SVGElement& contextElement)
-    : SVGFitToViewBox(&contextElement, PropertyIsReadOnly)
-    , m_contextElement(&contextElement)
-    , m_attributeOwnerProxy(*this, contextElement)
+    : SVGFitToViewBox(&contextElement, SVGPropertyAccess::ReadOnly)
+    , m_contextElement(makeWeakPtr(contextElement))
+    , m_transform(SVGTransformList::create(&contextElement, SVGPropertyAccess::ReadOnly))
 {
-    registerAttributes();
-}
-
-void SVGViewSpec::registerAttributes()
-{
-    auto& registry = attributeRegistry();
-    if (!registry.isEmpty())
-        return;
-    registry.registerAttribute<SVGNames::transformAttr, &SVGViewSpec::m_transform>();
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        PropertyRegistry::registerProperty<SVGNames::transformAttr, &SVGViewSpec::m_transform>();
+    });
 }
 
 SVGElement* SVGViewSpec::viewTarget() const
@@ -58,18 +52,10 @@ SVGElement* SVGViewSpec::viewTarget() const
     return downcast<SVGElement>(element);
 }
 
-RefPtr<SVGTransformList> SVGViewSpec::transform()
-{
-    if (!m_contextElement)
-        return nullptr;
-    // Return the animVal here, as its readonly by default - which is exactly what we want here.
-    return m_transform.animatedProperty(m_attributeOwnerProxy)->animVal();
-}
-
 void SVGViewSpec::reset()
 {
     m_viewTargetString = emptyString();
-    m_transform.resetValue();
+    m_transform->clearItems();
     SVGFitToViewBox::reset();
     SVGZoomAndPan::reset();
 }
@@ -152,7 +138,7 @@ bool SVGViewSpec::parseViewSpec(const String& viewSpec)
             if (currViewSpec >= end || *currViewSpec != '(')
                 return false;
             currViewSpec++;
-            SVGTransformable::parseTransformAttribute(m_transform.value(), currViewSpec, end, SVGTransformable::DoNotClearList);
+            m_transform->parse(currViewSpec, end);
             if (currViewSpec >= end || *currViewSpec != ')')
                 return false;
             currViewSpec++;

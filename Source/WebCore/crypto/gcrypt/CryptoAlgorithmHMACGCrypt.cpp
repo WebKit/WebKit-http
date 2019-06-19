@@ -29,7 +29,7 @@
 #include "config.h"
 #include "CryptoAlgorithmHMAC.h"
 
-#if ENABLE(SUBTLE_CRYPTO)
+#if ENABLE(WEB_CRYPTO)
 
 #include "CryptoKeyHMAC.h"
 #include <pal/crypto/gcrypt/Handle.h>
@@ -55,31 +55,31 @@ static int getGCryptDigestAlgorithm(CryptoAlgorithmIdentifier hashFunction)
     }
 }
 
-static std::optional<Vector<uint8_t>> calculateSignature(int algorithm, const Vector<uint8_t>& key, const uint8_t* data, size_t dataLength)
+static Optional<Vector<uint8_t>> calculateSignature(int algorithm, const Vector<uint8_t>& key, const uint8_t* data, size_t dataLength)
 {
     const void* keyData = key.data() ? key.data() : reinterpret_cast<const uint8_t*>("");
 
     PAL::GCrypt::Handle<gcry_mac_hd_t> hd;
     gcry_error_t err = gcry_mac_open(&hd, algorithm, 0, nullptr);
     if (err)
-        return std::nullopt;
+        return WTF::nullopt;
 
     err = gcry_mac_setkey(hd, keyData, key.size());
     if (err)
-        return std::nullopt;
+        return WTF::nullopt;
 
     err = gcry_mac_write(hd, data, dataLength);
     if (err)
-        return std::nullopt;
+        return WTF::nullopt;
 
     size_t digestLength = gcry_mac_get_algo_maclen(algorithm);
     Vector<uint8_t> signature(digestLength);
     err = gcry_mac_read(hd, signature.data(), &digestLength);
     if (err)
-        return std::nullopt;
+        return WTF::nullopt;
 
     signature.resize(digestLength);
-    return WTFMove(signature);
+    return signature;
 }
 
 ExceptionOr<Vector<uint8_t>> CryptoAlgorithmHMAC::platformSign(const CryptoKeyHMAC& key, const Vector<uint8_t>& data)
@@ -109,4 +109,4 @@ ExceptionOr<bool> CryptoAlgorithmHMAC::platformVerify(const CryptoKeyHMAC& key, 
 
 }
 
-#endif // ENABLE(SUBTLE_CRYPTO)
+#endif // ENABLE(WEB_CRYPTO)

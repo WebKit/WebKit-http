@@ -39,23 +39,25 @@
 namespace Inspector {
 class InspectorAgent;
 class InspectorDebuggerAgent;
+class InspectorScriptProfilerAgent;
 }
 
 namespace WebCore {
 
 class InspectorApplicationCacheAgent;
-class InspectorCanvasAgent;
+class InspectorCPUProfilerAgent;
 class InspectorCSSAgent;
+class InspectorCanvasAgent;
 class InspectorDOMAgent;
 class InspectorDOMDebuggerAgent;
 class InspectorDOMStorageAgent;
 class InspectorDatabaseAgent;
 class InspectorLayerTreeAgent;
-class InspectorWorkerAgent;
 class InspectorMemoryAgent;
 class InspectorNetworkAgent;
 class InspectorPageAgent;
 class InspectorTimelineAgent;
+class InspectorWorkerAgent;
 class Page;
 class PageDebuggerAgent;
 class PageHeapAgent;
@@ -101,6 +103,9 @@ public:
     PageRuntimeAgent* pageRuntimeAgent() const { return m_pageRuntimeAgent; }
     void setPageRuntimeAgent(PageRuntimeAgent* agent) { m_pageRuntimeAgent = agent; }
 
+    Inspector::InspectorScriptProfilerAgent* inspectorScriptProfilerAgent() const { return m_inspectorScriptProfilerAgent; }
+    void setInspectorScriptProfilerAgent(Inspector::InspectorScriptProfilerAgent* agent) { m_inspectorScriptProfilerAgent = agent; }
+
     InspectorTimelineAgent* inspectorTimelineAgent() const { return m_inspectorTimelineAgent; }
     void setInspectorTimelineAgent(InspectorTimelineAgent* agent) { m_inspectorTimelineAgent = agent; }
 
@@ -111,6 +116,9 @@ public:
     void setInspectorDOMStorageAgent(InspectorDOMStorageAgent* agent) { m_inspectorDOMStorageAgent = agent; }
 
 #if ENABLE(RESOURCE_USAGE)
+    InspectorCPUProfilerAgent* inspectorCPUProfilerAgent() const { return m_inspectorCPUProfilerAgent; }
+    void setInspectorCPUProfilerAgent(InspectorCPUProfilerAgent* agent) { m_inspectorCPUProfilerAgent = agent; }
+
     InspectorMemoryAgent* inspectorMemoryAgent() const { return m_inspectorMemoryAgent; }
     void setInspectorMemoryAgent(InspectorMemoryAgent* agent) { m_inspectorMemoryAgent = agent; }
 #endif
@@ -153,10 +161,12 @@ private:
     InspectorDOMAgent* m_inspectorDOMAgent { nullptr };
     InspectorNetworkAgent* m_inspectorNetworkAgent { nullptr };
     PageRuntimeAgent* m_pageRuntimeAgent { nullptr };
+    Inspector::InspectorScriptProfilerAgent* m_inspectorScriptProfilerAgent { nullptr };
     InspectorTimelineAgent* m_inspectorTimelineAgent { nullptr };
     InspectorTimelineAgent* m_persistentInspectorTimelineAgent { nullptr };
     InspectorDOMStorageAgent* m_inspectorDOMStorageAgent { nullptr };
 #if ENABLE(RESOURCE_USAGE)
+    InspectorCPUProfilerAgent* m_inspectorCPUProfilerAgent { nullptr };
     InspectorMemoryAgent* m_inspectorMemoryAgent { nullptr };
 #endif
     InspectorDatabaseAgent* m_inspectorDatabaseAgent { nullptr };

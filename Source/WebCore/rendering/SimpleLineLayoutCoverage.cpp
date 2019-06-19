@@ -135,9 +135,6 @@ static void printReason(AvoidanceReason reason, TextStream& stream)
     case FlowHasNonAutoLineBreak:
         stream << "line-break is not auto";
         break;
-    case FlowHasNonAutoTrailingWord:
-        stream << "-apple-trailing-word is not auto";
-        break;
     case FlowHasSVGFont:
         stream << "SVG font";
         break;
@@ -193,7 +190,10 @@ static void printReason(AvoidanceReason reason, TextStream& stream)
         stream << "column with vertical-align != baseline";
         break;
     case MultiColumnFlowIsFloating:
-        stream << "column with floating objecgts";
+        stream << "column with floating objects";
+        break;
+    case FlowIncludesDocumentMarkers:
+        stream << "text includes document markers";
         break;
     case FlowTextIsEmpty:
     case FlowHasNoChild:

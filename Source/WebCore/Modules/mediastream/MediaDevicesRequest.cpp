@@ -79,71 +79,59 @@ void MediaDevicesRequest::contextDestroyed()
     ContextDestructionObserver::contextDestroyed();
 }
 
-void MediaDevicesRequest::filterDeviceList(Vector<Ref<MediaDeviceInfo>>& devices)
-{
-#if !PLATFORM(COCOA)
-    UNUSED_PARAM(devices);
-#else
-
-#if PLATFORM(IOS)
-    static const int defaultCameraCount = 2;
-#endif
-#if PLATFORM(MAC)
-    static const int defaultCameraCount = 1;
-#endif
-    static const int defaultMicrophoneCount = 1;
-
-    int cameraCount = 0;
-    int microphoneCount = 0;
-    devices.removeAllMatching([&](const Ref<MediaDeviceInfo>& device) -> bool {
-        if (device->kind() == MediaDeviceInfo::Kind::Videoinput && ++cameraCount > defaultCameraCount)
-            return true;
-        if (device->kind() == MediaDeviceInfo::Kind::Audioinput && ++microphoneCount > defaultMicrophoneCount)
-            return true;
-
-        return false;
-    });
-
-#endif
-}
-
 void MediaDevicesRequest::start()
 {
+    auto& document = downcast<Document>(*scriptExecutionContext());
+    auto* controller = UserMediaController::from(document.page());
+    if (!controller) {
+        callOnMainThread([protectedThis = makeRef(*this)]() {
+            protectedThis->m_promise.resolve({ });
+        });
+
+        return;
+    }
+
+    auto microphoneAccess = controller->canCallGetUserMedia(document, { UserMediaController::CaptureType::Microphone });
+    auto cameraAccess = controller->canCallGetUserMedia(document, { UserMediaController::CaptureType::Camera });
+    bool canAccessMicrophone = microphoneAccess == UserMediaController::GetUserMediaAccess::CanCall;
+    bool canAccessCamera = cameraAccess == UserMediaController::GetUserMediaAccess::CanCall;
+    if (!canAccessMicrophone && !canAccessCamera) {
+        controller->logGetUserMediaDenial(document, !canAccessMicrophone ? microphoneAccess : cameraAccess, UserMediaController::BlockedCaller::EnumerateDevices);
+        callOnMainThread([protectedThis = makeRef(*this)]() {
+            protectedThis->m_promise.resolve({ });
+        });
+
+        return;
+    }
+
     // This lambda keeps |this| alive until the request completes or is canceled.
-    auto completion = [this, protectedThis = makeRef(*this)] (const Vector<CaptureDevice>& captureDevices, const String& deviceIdentifierHashSalt, bool originHasPersistentAccess) mutable {
+    auto completion = [this, protectedThis = makeRef(*this), canAccessMicrophone, canAccessCamera] (const Vector<CaptureDevice>& captureDevices, const String& deviceIdentifierHashSalt, bool) mutable {
 
         m_enumerationRequest = nullptr;
 
         if (!scriptExecutionContext())
             return;
 
-        Document& document = downcast<Document>(*scriptExecutionContext());
+        auto& document = downcast<Document>(*scriptExecutionContext());
         document.setDeviceIDHashSalt(deviceIdentifierHashSalt);
 
         Vector<Ref<MediaDeviceInfo>> devices;
         for (auto& deviceInfo : captureDevices) {
-            auto label = emptyString();
-            if (originHasPersistentAccess || document.hasHadCaptureMediaStreamTrack())
-                label = deviceInfo.label();
-
-            auto id = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(deviceInfo.persistentId(), deviceIdentifierHashSalt);
-            if (id.isEmpty())
+            if (!canAccessMicrophone && deviceInfo.type() == CaptureDevice::DeviceType::Microphone)
+                continue;
+            if (!canAccessCamera && deviceInfo.type() == CaptureDevice::DeviceType::Camera)
                 continue;
 
-            auto groupId = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(deviceInfo.groupId(), deviceIdentifierHashSalt);
             auto deviceType = deviceInfo.type() == CaptureDevice::DeviceType::Microphone ? MediaDeviceInfo::Kind::Audioinput : MediaDeviceInfo::Kind::Videoinput;
-            devices.append(MediaDeviceInfo::create(scriptExecutionContext(), label, id, groupId, deviceType));
+            devices.append(MediaDeviceInfo::create(scriptExecutionContext(), deviceInfo.label(), deviceInfo.persistentId(), deviceInfo.groupId(), deviceType));
         }
-
-        if (!originHasPersistentAccess && !document.hasHadCaptureMediaStreamTrack())
-            filterDeviceList(devices);
 
         callOnMainThread([protectedThis = makeRef(*this), devices = WTFMove(devices)]() mutable {
             protectedThis->m_promise.resolve(devices);
         });
     };
 
-    m_enumerationRequest = MediaDevicesEnumerationRequest::create(*downcast<Document>(scriptExecutionContext()), WTFMove(completion));
+    m_enumerationRequest = MediaDevicesEnumerationRequest::create(document, WTFMove(completion));
     m_enumerationRequest->start();
 }
 

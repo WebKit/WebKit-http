@@ -62,6 +62,9 @@ ALWAYS_INLINE JSArray* createRegExpMatchesArray(
     VM& vm, JSGlobalObject* globalObject, JSString* input, const String& inputValue,
     RegExp* regExp, unsigned startOffset, MatchResult& result)
 {
+    if (validateDFGDoesGC)
+        RELEASE_ASSERT(vm.heap.expectDoesGC());
+
     Vector<int, 32> subpatternResults;
     int position = regExp->matchInline(vm, inputValue, startOffset, subpatternResults);
     if (position == -1) {
@@ -117,7 +120,7 @@ ALWAYS_INLINE JSArray* createRegExpMatchesArray(
             int start = subpatternResults[2 * i];
             JSValue value;
             if (start >= 0)
-                value = JSRopeString::createSubstringOfResolved(vm, &deferralContext, input, start, subpatternResults[2 * i + 1] - start);
+                value = jsSubstringOfResolved(vm, &deferralContext, input, start, subpatternResults[2 * i + 1] - start);
             else
                 value = jsUndefined();
             array->initializeIndexWithoutBarrier(scope, i, value);
@@ -141,7 +144,7 @@ ALWAYS_INLINE JSArray* createRegExpMatchesArray(
             int start = subpatternResults[2 * i];
             JSValue value;
             if (start >= 0)
-                value = JSRopeString::createSubstringOfResolved(vm, &deferralContext, input, start, subpatternResults[2 * i + 1] - start);
+                value = jsSubstringOfResolved(vm, &deferralContext, input, start, subpatternResults[2 * i + 1] - start);
             else
                 value = jsUndefined();
             array->initializeIndexWithoutBarrier(scope, i, value, ArrayWithContiguous);

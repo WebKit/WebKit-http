@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,6 +59,7 @@ SOFT_LINK_CLASS_OPTIONAL(PIP, PIPViewController)
 
 using WebCore::VideoFullscreenModel;
 using WebCore::HTMLMediaElementEnums;
+using WebCore::MediaPlayerEnums;
 using WebCore::VideoFullscreenInterfaceMac;
 using WebCore::VideoFullscreenChangeObserver;
 using WebCore::PlaybackSessionModel;
@@ -193,7 +194,7 @@ enum class PIPState {
     [_pipViewController setPlaying:_playing];
     [self setVideoDimensions:NSEqualSizes(_videoDimensions, NSZeroSize) ? frame.size : _videoDimensions];
     if (_videoFullscreenInterfaceMac && _videoFullscreenInterfaceMac->videoFullscreenModel())
-        _videoFullscreenInterfaceMac->videoFullscreenModel()->setVideoLayerGravity(VideoFullscreenModel::VideoGravityResizeAspectFill);
+        _videoFullscreenInterfaceMac->videoFullscreenModel()->setVideoLayerGravity(MediaPlayerEnums::VideoGravityResizeAspectFill);
 
     _videoViewContainer = adoptNS([[WebVideoViewContainer alloc] initWithFrame:frame]);
     [_videoViewContainer setVideoViewContainerDelegate:self];
@@ -271,8 +272,11 @@ enum class PIPState {
 {
     ASSERT_UNUSED(pip, pip == _pipViewController);
 
-    if (!_videoFullscreenInterfaceMac || !_videoFullscreenInterfaceMac->videoFullscreenChangeObserver())
+    if (!_videoFullscreenInterfaceMac)
         return YES;
+    
+    if (_videoFullscreenInterfaceMac->videoFullscreenChangeObserver())
+        _videoFullscreenInterfaceMac->videoFullscreenChangeObserver()->fullscreenMayReturnToInline();
 
     _videoFullscreenInterfaceMac->requestHideAndExitPiP();
 
@@ -283,30 +287,37 @@ enum class PIPState {
 {
     ASSERT_UNUSED(pip, pip == _pipViewController);
 
-    if (_videoFullscreenInterfaceMac && _videoFullscreenInterfaceMac->videoFullscreenModel() && _videoViewContainer && _returningWindow && !NSEqualRects(_returningRect, NSZeroRect)) {
+    if (!_videoFullscreenInterfaceMac)
+        return;
+
+    if (_pipState != PIPState::ExitingPIP) {
+        // We got told to close without going through -pipActionStop, nor by exlicitly being asked to in -exitPiP:.
+        // Call -pipActionStop: here in order to set the fullscreen state to an expected value.
+        [self pipActionStop:pip];
+    }
+
+    if (_videoFullscreenInterfaceMac->videoFullscreenModel() && _videoViewContainer && _returningWindow && !NSEqualRects(_returningRect, NSZeroRect)) {
         [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
             context.allowsImplicitAnimation = NO;
             [_videoViewContainer setFrame:_returningRect];
             _videoFullscreenInterfaceMac->videoFullscreenModel()->setVideoLayerFrame([_videoViewContainer bounds]);
-            _videoFullscreenInterfaceMac->videoFullscreenModel()->setVideoLayerGravity(VideoFullscreenModel::VideoGravityResizeAspect);
+            _videoFullscreenInterfaceMac->videoFullscreenModel()->setVideoLayerGravity(MediaPlayerEnums::VideoGravityResizeAspect);
 
             [[_returningWindow contentView] addSubview:_videoViewContainer.get() positioned:NSWindowAbove relativeTo:nil];
         } completionHandler:nil];
     }
 
-    if (_videoFullscreenInterfaceMac) {
-        if (!self.isExitingToStandardFullscreen) {
-            if (VideoFullscreenModel* videoFullscreenModel = _videoFullscreenInterfaceMac->videoFullscreenModel()) {
-                videoFullscreenModel->didExitPictureInPicture();
-                videoFullscreenModel->setVideoLayerGravity(VideoFullscreenModel::VideoGravityResizeAspect);
-            }
+    if (!self.isExitingToStandardFullscreen) {
+        if (VideoFullscreenModel* videoFullscreenModel = _videoFullscreenInterfaceMac->videoFullscreenModel()) {
+            videoFullscreenModel->didExitPictureInPicture();
+            videoFullscreenModel->setVideoLayerGravity(MediaPlayerEnums::VideoGravityResizeAspect);
         }
-
-        _videoFullscreenInterfaceMac->clearMode(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
-
-        if (VideoFullscreenChangeObserver* fullscreenChangeObserver = _videoFullscreenInterfaceMac->videoFullscreenChangeObserver())
-            fullscreenChangeObserver->didExitFullscreen();
     }
+
+    if (VideoFullscreenChangeObserver* fullscreenChangeObserver = _videoFullscreenInterfaceMac->videoFullscreenChangeObserver())
+        fullscreenChangeObserver->didExitFullscreen();
+
+    _videoFullscreenInterfaceMac->clearMode(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
 }
 
 - (void)pipActionPlay:(PIPViewController *)pip
@@ -355,8 +366,8 @@ VideoFullscreenInterfaceMac::VideoFullscreenInterfaceMac(PlaybackSessionInterfac
 
 VideoFullscreenInterfaceMac::~VideoFullscreenInterfaceMac()
 {
-    if (m_playbackSessionInterface->playbackSessionModel())
-        m_playbackSessionInterface->playbackSessionModel()->removeClient(*this);
+    if (auto* model = m_playbackSessionInterface->playbackSessionModel())
+        model->removeClient(*this);
     if (m_videoFullscreenModel)
         m_videoFullscreenModel->removeClient(*this);
 }
@@ -365,14 +376,14 @@ void VideoFullscreenInterfaceMac::setVideoFullscreenModel(VideoFullscreenModel* 
 {
     if (m_videoFullscreenModel)
         m_videoFullscreenModel->removeClient(*this);
-    m_videoFullscreenModel = model;
+    m_videoFullscreenModel = makeWeakPtr(model);
     if (m_videoFullscreenModel)
         m_videoFullscreenModel->addClient(*this);
 }
 
 void VideoFullscreenInterfaceMac::setVideoFullscreenChangeObserver(VideoFullscreenChangeObserver* observer)
 {
-    m_fullscreenChangeObserver = observer;
+    m_fullscreenChangeObserver = makeWeakPtr(observer);
 }
 
 void VideoFullscreenInterfaceMac::setMode(HTMLMediaElementEnums::VideoFullscreenMode mode)
@@ -436,6 +447,7 @@ void VideoFullscreenInterfaceMac::enterFullscreen()
 {
     LOG(Fullscreen, "VideoFullscreenInterfaceMac::enterFullscreen(%p)", this);
 
+    RELEASE_ASSERT(m_videoFullscreenModel);
     if (mode() == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture) {
         m_videoFullscreenModel->willEnterPictureInPicture();
         [m_webVideoFullscreenInterfaceObjC enterPIP];
@@ -499,8 +511,8 @@ void VideoFullscreenInterfaceMac::invalidate()
 {
     LOG(Fullscreen, "VideoFullscreenInterfaceMac::invalidate(%p)", this);
 
-    m_videoFullscreenModel = nil;
-    m_fullscreenChangeObserver = nil;
+    m_videoFullscreenModel = nullptr;
+    m_fullscreenChangeObserver = nullptr;
 
     cleanupFullscreen();
 

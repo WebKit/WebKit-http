@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,7 +53,7 @@ static MacroAssemblerCodeRef<JITThunkPtrTag> genericGenerationThunkGenerator(
 
     if (frameAndStackAdjustmentRequirement == FrameAndStackAdjustmentRequirement::Needed) {
         // This needs to happen before we use the scratch buffer because this function also uses the scratch buffer.
-        adjustFrameAndStackInOSRExitCompilerThunk<FTL::JITCode>(jit, vm, JITCode::FTLJIT);
+        adjustFrameAndStackInOSRExitCompilerThunk<FTL::JITCode>(jit, vm, JITType::FTLJIT);
     }
     
     // Note that the "return address" will be the ID that we pass to the generation function.
@@ -115,8 +115,8 @@ static MacroAssemblerCodeRef<JITThunkPtrTag> genericGenerationThunkGenerator(
 
     restoreAllRegisters(jit, buffer);
 
-#if CPU(ARM64) && USE(POINTER_PROFILING)
-    jit.untagPtr(AssemblyHelpers::linkRegister, resultTag);
+#if CPU(ARM64E)
+    jit.untagPtr(resultTag, AssemblyHelpers::linkRegister);
     jit.tagReturnAddress();
 #else
     UNUSED_PARAM(resultTag);

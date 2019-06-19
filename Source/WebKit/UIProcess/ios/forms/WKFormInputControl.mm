@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WKFormInputControl.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
 
 #import "UIKitSPI.h"
 #import "WKContentView.h"
@@ -47,6 +47,15 @@ using namespace WebKit;
 - (NSObject<WKFormControl> *)innerControl;
 @end
 
+@interface WKDateTimePopover : WKFormRotatingAccessoryPopover<WKFormControl> {
+    RetainPtr<WKDateTimePopoverViewController> _viewController;
+    WKContentView *_view;
+}
+- (id)initWithView:(WKContentView *)view datePickerMode:(UIDatePickerMode)mode;
+- (WKDateTimePopoverViewController *)viewController;
+@property (nonatomic, readonly) NSString *calendarType;
+@end
+
 @interface WKDateTimePicker : NSObject<WKFormControl> {
     RetainPtr<UIDatePicker> _datePicker;
     NSString *_formatString;
@@ -56,14 +65,7 @@ using namespace WebKit;
 }
 - (id)initWithView:(WKContentView *)view datePickerMode:(UIDatePickerMode)mode;
 - (UIDatePicker *)datePicker;
-@end
 
-@interface WKDateTimePopover : WKFormRotatingAccessoryPopover<WKFormControl> {
-    RetainPtr<WKDateTimePopoverViewController> _viewController;
-    WKContentView* _view;
-}
-- (id)initWithView:(WKContentView *)view datePickerMode:(UIDatePickerMode)mode;
-- (WKDateTimePopoverViewController *) viewController;
 @end
 
 @implementation WKDateTimePicker
@@ -86,7 +88,7 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
     _view = view;
     _shouldRemoveTimeZoneInformation = NO;
     _isTimeInput = NO;
-    switch (view.assistedNodeInformation.elementType) {
+    switch (view.focusedElementInformation.elementType) {
     case InputType::Date:
         _formatString = kDateFormatString;
         break;
@@ -104,20 +106,36 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
         break;
    }
 
-    CGSize size = currentUserInterfaceIdiomIsPad() ? [UIPickerView defaultSizeForCurrentOrientation] : [UIKeyboard defaultSizeForInterfaceOrientation:[UIApp interfaceOrientation]];
+    auto size = currentUserInterfaceIdiomIsPad() ? [UIPickerView defaultSizeForCurrentOrientation] : [UIKeyboard defaultSizeForInterfaceOrientation:view.interfaceOrientation];
 
     _datePicker = adoptNS([[UIDatePicker alloc] initWithFrame:CGRectMake(0, 0, size.width, size.height)]);
     _datePicker.get().datePickerMode = mode;
     _datePicker.get().hidden = NO;
+    
+    if ([self shouldPresentGregorianCalendar:view.focusedElementInformation])
+        _datePicker.get().calendar = [NSCalendar calendarWithIdentifier:NSCalendarIdentifierGregorian];
+    
     [_datePicker addTarget:self action:@selector(_dateChangeHandler:) forControlEvents:UIControlEventValueChanged];
 
     return self;
+}
+
+- (NSString *)calendarType
+{
+    return _datePicker.get().calendar.calendarIdentifier;
 }
 
 - (void)dealloc
 {
     [_datePicker removeTarget:self action:NULL forControlEvents:UIControlEventValueChanged];
     [super dealloc];
+}
+
+- (BOOL)shouldPresentGregorianCalendar:(const FocusedElementInformation&)nodeInfo
+{
+    return nodeInfo.autofillFieldName == WebCore::AutofillFieldName::CcExpMonth
+        || nodeInfo.autofillFieldName == WebCore::AutofillFieldName::CcExp
+        || nodeInfo.autofillFieldName == WebCore::AutofillFieldName::CcExpYear;
 }
 
 - (UIView *)controlView
@@ -146,7 +164,7 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
 - (void)_dateChangedSetAsNumber
 {
     NSDate *date = [_datePicker date];
-    [_view page]->setAssistedNodeValueAsNumber(([date timeIntervalSince1970] + [self _timeZoneOffsetFromGMT:date]) * kMillisecondsPerSecond);
+    [_view page]->setFocusedElementValueAsNumber(([date timeIntervalSince1970] + [self _timeZoneOffsetFromGMT:date]) * kMillisecondsPerSecond);
 }
 
 - (RetainPtr<NSDateFormatter>)dateFormatterForPicker
@@ -164,7 +182,7 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
     // Force English locale because that is what HTML5 value parsing expects.
     RetainPtr<NSDateFormatter> dateFormatter = [self dateFormatterForPicker];
 
-    [_view page]->setAssistedNodeValue([dateFormatter stringFromDate:[_datePicker date]]);
+    [_view page]->setFocusedElementValue([dateFormatter stringFromDate:[_datePicker date]]);
 }
 
 - (void)_dateChanged
@@ -191,8 +209,8 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
 
     // Currently no value for the <input>. Start the picker with the current time.
     // Also, update the actual <input> value.
-    NSString *value = _view.assistedNodeInformation.value;
-    if (_view.assistedNodeInformation.value.isEmpty()) {
+    NSString *value = _view.focusedElementInformation.value;
+    if (_view.focusedElementInformation.value.isEmpty()) {
         [_datePicker setDate:[NSDate date]];
         [self _dateChanged];
         return;
@@ -208,7 +226,7 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
     }
 
     // Convert the number value to a date object for the fields affected by timezones.
-    NSTimeInterval secondsSince1970 = _view.assistedNodeInformation.valueAsNumber / kMillisecondsPerSecond;
+    NSTimeInterval secondsSince1970 = _view.focusedElementInformation.valueAsNumber / kMillisecondsPerSecond;
     NSInteger timeZoneOffset = [self _timeZoneOffsetFromGMT:[NSDate dateWithTimeIntervalSince1970:secondsSince1970]];
     NSTimeInterval adjustedSecondsSince1970 = secondsSince1970 - timeZoneOffset;
     [_datePicker setDate:[NSDate dateWithTimeIntervalSince1970:adjustedSecondsSince1970]];
@@ -221,65 +239,52 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
 @end
 
 // WKFormInputControl
-@implementation WKFormInputControl {
-    RetainPtr<id<WKFormControl>> _control;
-}
+@implementation WKFormInputControl
 
 - (instancetype)initWithView:(WKContentView *)view
 {
-    if (!(self = [super init]))
-        return nil;
-
     UIDatePickerMode mode;
 
-    switch (view.assistedNodeInformation.elementType) {
+    switch (view.focusedElementInformation.elementType) {
     case InputType::Date:
         mode = UIDatePickerModeDate;
         break;
-
     case InputType::DateTimeLocal:
         mode = UIDatePickerModeDateAndTime;
         break;
-
     case InputType::Time:
         mode = UIDatePickerModeTime;
         break;
-
     case InputType::Month:
         mode = (UIDatePickerMode)UIDatePickerModeYearAndMonth;
         break;
-
     default:
         [self release];
         return nil;
     }
 
+    RetainPtr<NSObject <WKFormControl>> control;
     if (currentUserInterfaceIdiomIsPad())
-        _control = adoptNS([[WKDateTimePopover alloc] initWithView:view datePickerMode:mode]);
+        control = adoptNS([[WKDateTimePopover alloc] initWithView:view datePickerMode:mode]);
     else
-        _control = adoptNS([[WKDateTimePicker alloc] initWithView:view datePickerMode:mode]);
-
-    return self;
-
-}
-
-- (void)beginEditing
-{
-    [_control controlBeginEditing];
-}
-
-- (void)endEditing
-{
-    [_control controlEndEditing];
-}
-
-- (UIView *)assistantView
-{
-    return [_control controlView];
+        control = adoptNS([[WKDateTimePicker alloc] initWithView:view datePickerMode:mode]);
+    return [super initWithView:view control:WTFMove(control)];
 }
 
 @end
 
+@implementation WKFormInputControl (WKTesting)
+
+- (NSString *)dateTimePickerCalendarType
+{
+    if ([self.control isKindOfClass:WKDateTimePicker.class])
+        return [(WKDateTimePicker *)self.control calendarType];
+    if ([self.control isKindOfClass:WKDateTimePopover.class])
+        return [(WKDateTimePopover *)self.control calendarType];
+    return nil;
+}
+
+@end
 
 @implementation WKDateTimePopoverViewController
 
@@ -309,7 +314,7 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
 
 - (void)clear:(id)sender
 {
-    [_view page]->setAssistedNodeValue(String());
+    [_view page]->setFocusedElementValue(String());
 }
 
 - (id)initWithView:(WKContentView *)view datePickerMode:(UIDatePickerMode)mode
@@ -324,22 +329,20 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
     CGFloat popoverHeight = _viewController.get().view.frame.size.height;
     [_viewController setPreferredContentSize:CGSizeMake(popoverWidth, popoverHeight)];
     [_viewController setEdgesForExtendedLayout:UIRectEdgeNone];
-    [_viewController setTitle:_view.assistedNodeInformation.title];
+    [_viewController setTitle:_view.focusedElementInformation.title];
 
     // Always have a navigation controller with a clear button, and a title if the input element has a title.
     RetainPtr<UINavigationController> navigationController = adoptNS([[UINavigationController alloc] initWithRootViewController:_viewController.get()]);
     UINavigationItem *navigationItem = navigationController.get().navigationBar.topItem;
     NSString *clearString = WEB_UI_STRING_KEY("Clear", "Clear Button Date Popover", "Clear button in date input popover");
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     UIBarButtonItem *clearButton = [[[UIBarButtonItem alloc] initWithTitle:clearString style:UIBarButtonItemStyleBordered target:self action:@selector(clear:)] autorelease];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     [navigationItem setRightBarButtonItem:clearButton];
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     RetainPtr<UIPopoverController> controller = adoptNS([[UIPopoverController alloc] initWithContentViewController:navigationController.get()]);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     [self setPopoverController:controller.get()];
 
     return self;
@@ -358,6 +361,8 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
 
 - (void)controlEndEditing
 {
+    [self dismissPopoverAnimated:NO];
+    [_viewController.get().innerControl controlEndEditing];
 }
 
 - (UIView *)controlView
@@ -365,6 +370,12 @@ static const NSTimeInterval kMillisecondsPerSecond = 1000;
     return nil;
 }
 
+- (NSString *)calendarType
+{
+    WKDateTimePicker *dateTimePicker = (WKDateTimePicker *)self.viewController.innerControl;
+    return dateTimePicker.datePicker.calendar.calendarIdentifier;
+}
+
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS_FAMILY)

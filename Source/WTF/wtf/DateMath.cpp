@@ -70,18 +70,17 @@
  */
 
 #include "config.h"
-#include "DateMath.h"
-
-#include "Assertions.h"
-#include "ASCIICType.h"
-#include "MathExtras.h"
-#include "StdLibExtras.h"
+#include <wtf/DateMath.h>
 
 #include <algorithm>
 #include <limits.h>
 #include <limits>
 #include <stdint.h>
 #include <time.h>
+#include <wtf/Assertions.h>
+#include <wtf/ASCIICType.h>
+#include <wtf/MathExtras.h>
+#include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
 
 #if OS(WINDOWS)
@@ -123,16 +122,16 @@ static const int firstDayOfMonth[2][12] = {
     {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335}
 };
 
+#if !OS(WINDOWS) || HAVE(TM_GMTOFF)
 static inline void getLocalTime(const time_t* localTime, struct tm* localTM)
 {
-#if COMPILER(MSVC)
-    localtime_s(localTM, localTime);
-#elif HAVE(LOCALTIME_R)
+#if HAVE(LOCALTIME_R)
     localtime_r(localTime, localTM);
 #else
     localtime_s(localTime, localTM);
 #endif
 }
+#endif
 
 bool isLeapYear(int year)
 {
@@ -895,7 +894,7 @@ double parseDateFromNullTerminatedCharacters(const char* dateString, bool& haveT
     if (day < 0)
         return std::numeric_limits<double>::quiet_NaN();
 
-    std::optional<int> year;
+    Optional<int> year;
     if (day > 31) {
         // ### where is the boundary and what happens below?
         if (*dateString != '/')
@@ -978,7 +977,7 @@ double parseDateFromNullTerminatedCharacters(const char* dateString, bool& haveT
             if (*newPosStr != ':')
                 return std::numeric_limits<double>::quiet_NaN();
             // There was no year; the number was the hour.
-            year = std::nullopt;
+            year = WTF::nullopt;
         } else {
             // in the normal case (we parsed the year), advance to the next number
             dateString = ++newPosStr;

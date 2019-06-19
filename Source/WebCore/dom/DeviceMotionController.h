@@ -37,18 +37,18 @@ class DeviceMotionData;
 class DeviceMotionController final : public DeviceController {
     WTF_MAKE_NONCOPYABLE(DeviceMotionController);
 public:
-    explicit DeviceMotionController(DeviceMotionClient*);
+    explicit DeviceMotionController(DeviceMotionClient&);
     virtual ~DeviceMotionController() = default;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS_FAMILY)
     // FIXME: We should look to reconcile the iOS and OpenSource differences with this class
-    // so that we can either remove these methods or remove the PLATFORM(IOS)-guard.
+    // so that we can either remove these methods or remove the PLATFORM(IOS_FAMILY)-guard.
     void suspendUpdates();
     void resumeUpdates();
 #endif
 
     void didChangeDeviceMotion(DeviceMotionData*);
-    DeviceMotionClient* deviceMotionClient();
+    DeviceMotionClient& deviceMotionClient();
 
     bool hasLastData() override;
     RefPtr<Event> getLastEvent() override;

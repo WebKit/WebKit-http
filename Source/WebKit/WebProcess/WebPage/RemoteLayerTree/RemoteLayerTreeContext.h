@@ -35,6 +35,7 @@
 
 namespace WebKit {
 
+class GraphicsLayerCARemote;
 class PlatformCALayerRemote;
 class WebPage;
 
@@ -44,8 +45,11 @@ public:
     explicit RemoteLayerTreeContext(WebPage&);
     ~RemoteLayerTreeContext();
 
-    void layerWasCreated(PlatformCALayerRemote&, WebCore::PlatformCALayer::LayerType);
-    void layerWillBeDestroyed(PlatformCALayerRemote&);
+    void layerDidEnterContext(PlatformCALayerRemote&, WebCore::PlatformCALayer::LayerType);
+    void layerWillLeaveContext(PlatformCALayerRemote&);
+
+    void graphicsLayerDidEnterContext(GraphicsLayerCARemote&);
+    void graphicsLayerWillLeaveContext(GraphicsLayerCARemote&);
 
     void backingStoreWasCreated(RemoteLayerBackingStore&);
     void backingStoreWillBeDestroyed(RemoteLayerBackingStore&);
@@ -72,17 +76,25 @@ public:
     void setNextFlushIsForImmediatePaint(bool nextFlushIsForImmediatePaint) { m_nextFlushIsForImmediatePaint = nextFlushIsForImmediatePaint; }
     bool nextFlushIsForImmediatePaint() const { return m_nextFlushIsForImmediatePaint; }
 
+    void adoptLayersFromContext(RemoteLayerTreeContext&);
+    
+#if PLATFORM(IOS_FAMILY)
+    bool canShowWhileLocked() const;
+#endif
+
 private:
     // WebCore::GraphicsLayerFactory
-    std::unique_ptr<WebCore::GraphicsLayer> createGraphicsLayer(WebCore::GraphicsLayer::Type, WebCore::GraphicsLayerClient&) override;
+    Ref<WebCore::GraphicsLayer> createGraphicsLayer(WebCore::GraphicsLayer::Type, WebCore::GraphicsLayerClient&) override;
 
     WebPage& m_webPage;
 
     HashMap<WebCore::GraphicsLayer::PlatformLayerID, RemoteLayerTreeTransaction::LayerCreationProperties> m_createdLayers;
     Vector<WebCore::GraphicsLayer::PlatformLayerID> m_destroyedLayers;
 
-    HashMap<WebCore::GraphicsLayer::PlatformLayerID, PlatformCALayerRemote*> m_liveLayers;
+    HashMap<WebCore::GraphicsLayer::PlatformLayerID, PlatformCALayerRemote*> m_livePlatformLayers;
     HashMap<WebCore::GraphicsLayer::PlatformLayerID, PlatformCALayerRemote*> m_layersWithAnimations;
+
+    HashSet<GraphicsLayerCARemote*> m_liveGraphicsLayers;
 
     RemoteLayerBackingStoreCollection m_backingStoreCollection;
     

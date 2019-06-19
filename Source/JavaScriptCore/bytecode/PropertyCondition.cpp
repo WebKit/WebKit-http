@@ -161,7 +161,7 @@ bool PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint(
         unsigned currentAttributes;
         PropertyOffset currentOffset = structure->getConcurrently(uid(), currentAttributes);
         if (currentOffset != invalidOffset) {
-            if (currentAttributes & (PropertyAttribute::ReadOnly | PropertyAttribute::Accessor | PropertyAttribute::CustomAccessor)) {
+            if (currentAttributes & (PropertyAttribute::ReadOnly | PropertyAttribute::Accessor | PropertyAttribute::CustomAccessorOrValue)) {
                 if (PropertyConditionInternal::verbose) {
                     dataLog(
                         "Invalid because we expected not to have a setter, but we have one at offset ",
@@ -352,15 +352,15 @@ bool PropertyCondition::isWatchable(
         && isWatchableWhenValid(structure, effort);
 }
 
-bool PropertyCondition::isStillLive() const
+bool PropertyCondition::isStillLive(VM& vm) const
 {
-    if (hasPrototype() && prototype() && !Heap::isMarked(prototype()))
+    if (hasPrototype() && prototype() && !vm.heap.isMarked(prototype()))
         return false;
     
     if (hasRequiredValue()
         && requiredValue()
         && requiredValue().isCell()
-        && !Heap::isMarked(requiredValue().asCell()))
+        && !vm.heap.isMarked(requiredValue().asCell()))
         return false;
     
     return true;

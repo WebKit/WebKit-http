@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
+#import "config.h"
 #import "PlatformCAFilters.h"
 
 #import "FloatConversion.h"
@@ -32,8 +32,9 @@
 #import <QuartzCore/QuartzCore.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
 #import <wtf/BlockObjCExceptions.h>
+#import <wtf/text/StringConcatenateNumbers.h>
 
-using namespace WebCore;
+namespace WebCore {
 
 // FIXME: Should share these values with CSSFilter::build() (https://bugs.webkit.org/show_bug.cgi?id=76008).
 static const double sepiaFullConstants[3][3] = {
@@ -68,10 +69,9 @@ void PlatformCAFilters::setFiltersOnLayer(PlatformLayer* layer, const FilterOper
     BEGIN_BLOCK_OBJC_EXCEPTIONS
     
     RetainPtr<NSMutableArray> array = adoptNS([[NSMutableArray alloc] init]);
-    static NeverDestroyed<String> filterNamePrefix(MAKE_STATIC_STRING_IMPL("filter_"));
 
     for (unsigned i = 0; i < filters.size(); ++i) {
-        String filterName = filterNamePrefix.get() + String::number(i);
+        String filterName = makeString("filter_", i);
         const FilterOperation& filterOperation = *filters.at(i);
         switch (filterOperation.type()) {
         case FilterOperation::DEFAULT:
@@ -692,3 +692,5 @@ const char* PlatformCAFilters::animatedFilterPropertyName(FilterOperation::Opera
     }
 #endif
 }
+
+} // namespace WebCore

@@ -28,7 +28,7 @@
 #if ENABLE(MATHML)
 
 #include <unicode/utypes.h>
-#include <wtf/Optional.h>
+#include <wtf/Forward.h>
 
 namespace WebCore {
 
@@ -52,7 +52,7 @@ struct Property {
     // Default operator properties are all set to "false".
     unsigned short flags { 0 };
 };
-std::optional<Property> search(UChar32, Form, bool explicitForm);
+Optional<Property> search(UChar32, Form, bool explicitForm);
 bool isVertical(UChar32);
 }
 

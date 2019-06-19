@@ -324,7 +324,7 @@ protected:
     void assignColors()
     {
         ASSERT(m_simplifyWorklist.isEmpty());
-        ASSERT(!m_spillWorklist.bitCount());
+        ASSERT(m_spillWorklist.isEmpty());
 
         // Reclaim as much memory as possible.
         m_interferenceEdges.clear();
@@ -466,7 +466,7 @@ protected:
             return m_value & 0xffffffff;
         }
 
-        bool operator==(const InterferenceEdge other) const
+        bool operator==(const InterferenceEdge& other) const
         {
             return m_value == other.m_value;
         }
@@ -669,7 +669,7 @@ public:
                 assertInvariants();
             }
 
-            if (m_spillWorklist.bitCount()) {
+            if (!m_spillWorklist.isEmpty()) {
                 selectSpill();
                 changed = true;
                 ASSERT(m_simplifyWorklist.size() == 1);
@@ -678,7 +678,7 @@ public:
 
         if (!ASSERT_DISABLED) {
             ASSERT(!m_simplifyWorklist.size());
-            ASSERT(!m_spillWorklist.bitCount());
+            ASSERT(m_spillWorklist.isEmpty());
             IndexType firstNonRegIndex = m_lastPrecoloredRegisterIndex + 1;
             for (IndexType i = firstNonRegIndex; i < m_degrees.size(); ++i)
                 ASSERT(hasBeenSimplified(i));
@@ -992,14 +992,14 @@ public:
                 coalesce();
             else if (!m_freezeWorklist.isEmpty())
                 freeze();
-            else if (m_spillWorklist.bitCount())
+            else if (!m_spillWorklist.isEmpty())
                 selectSpill();
 
             if (traceDebug) {
                 dataLog("After Graph simplification iteration\n");
                 dumpWorkLists(WTF::dataFile());
             }
-        } while (!m_simplifyWorklist.isEmpty() || !m_worklistMoves.isEmpty() || !m_freezeWorklist.isEmpty() || m_spillWorklist.bitCount());
+        } while (!m_simplifyWorklist.isEmpty() || !m_worklistMoves.isEmpty() || !m_freezeWorklist.isEmpty() || !m_spillWorklist.isEmpty());
 
         assignColors();
     }
@@ -1673,7 +1673,7 @@ protected:
         m_worklistMoves.startAddingLowPriorityMoves();
         for (BasicBlock* block : m_code) {
             for (Inst& inst : *block) {
-                if (std::optional<unsigned> defArgIndex = inst.shouldTryAliasingDef()) {
+                if (Optional<unsigned> defArgIndex = inst.shouldTryAliasingDef()) {
                     Arg op1 = inst.args[*defArgIndex - 2];
                     Arg op2 = inst.args[*defArgIndex - 1];
                     Arg dest = inst.args[*defArgIndex];

@@ -26,8 +26,8 @@
 #include "WebKitWebsiteDataManagerPrivate.h"
 #include "WebKitWebsiteDataPrivate.h"
 #include "WebsiteDataFetchOption.h"
-#include <WebCore/FileSystem.h>
 #include <glib/gi18n-lib.h>
+#include <wtf/FileSystem.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/glib/WTFGType.h>
 
@@ -132,7 +132,9 @@ static void webkitWebsiteDataManagerGetProperty(GObject* object, guint propID, G
         g_value_set_string(value, webkit_website_data_manager_get_indexeddb_directory(manager));
         break;
     case PROP_WEBSQL_DIRECTORY:
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         g_value_set_string(value, webkit_website_data_manager_get_websql_directory(manager));
+        ALLOW_DEPRECATED_DECLARATIONS_END
         break;
     case PROP_IS_EPHEMERAL:
         g_value_set_boolean(value, webkit_website_data_manager_is_ephemeral(manager));
@@ -317,6 +319,8 @@ static void webkit_website_data_manager_class_init(WebKitWebsiteDataManagerClass
      * The directory where WebSQL databases will be stored.
      *
      * Since: 2.10
+     *
+     * Deprecated: 2.24. WebSQL is no longer supported. Use IndexedDB instead.
      */
     g_object_class_install_property(
         gObjectClass,
@@ -326,7 +330,7 @@ static void webkit_website_data_manager_class_init(WebKitWebsiteDataManagerClass
             _("WebSQL Directory"),
             _("The directory where WebSQL databases will be stored"),
             nullptr,
-            static_cast<GParamFlags>(WEBKIT_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY)));
+            static_cast<GParamFlags>(WEBKIT_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_DEPRECATED)));
 
     /**
      * WebKitWebsiteDataManager:is-ephemeral:
@@ -349,7 +353,7 @@ static void webkit_website_data_manager_class_init(WebKitWebsiteDataManagerClass
             static_cast<GParamFlags>(WEBKIT_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY)));
 }
 
-WebKitWebsiteDataManager* webkitWebsiteDataManagerCreate(WebsiteDataStore::Configuration&& configuration)
+WebKitWebsiteDataManager* webkitWebsiteDataManagerCreate(Ref<WebsiteDataStoreConfiguration>&& configuration)
 {
     WebKitWebsiteDataManager* manager = WEBKIT_WEBSITE_DATA_MANAGER(g_object_new(WEBKIT_TYPE_WEBSITE_DATA_MANAGER, nullptr));
     manager->priv->websiteDataStore = API::WebsiteDataStore::createLegacy(WTFMove(configuration));
@@ -361,16 +365,16 @@ API::WebsiteDataStore& webkitWebsiteDataManagerGetDataStore(WebKitWebsiteDataMan
 {
     WebKitWebsiteDataManagerPrivate* priv = manager->priv;
     if (!priv->websiteDataStore) {
-        WebsiteDataStore::Configuration configuration;
-        configuration.localStorageDirectory = !priv->localStorageDirectory ?
-            API::WebsiteDataStore::defaultLocalStorageDirectory() : WebCore::FileSystem::stringFromFileSystemRepresentation(priv->localStorageDirectory.get());
-        configuration.networkCacheDirectory = !priv->diskCacheDirectory ?
-            API::WebsiteDataStore::defaultNetworkCacheDirectory() : WebCore::FileSystem::pathByAppendingComponent(WebCore::FileSystem::stringFromFileSystemRepresentation(priv->diskCacheDirectory.get()), networkCacheSubdirectory);
-        configuration.applicationCacheDirectory = !priv->applicationCacheDirectory ?
-            API::WebsiteDataStore::defaultApplicationCacheDirectory() : WebCore::FileSystem::stringFromFileSystemRepresentation(priv->applicationCacheDirectory.get());
-        configuration.webSQLDatabaseDirectory = !priv->webSQLDirectory ?
-            API::WebsiteDataStore::defaultWebSQLDatabaseDirectory() : WebCore::FileSystem::stringFromFileSystemRepresentation(priv->webSQLDirectory.get());
-        configuration.mediaKeysStorageDirectory = API::WebsiteDataStore::defaultMediaKeysStorageDirectory();
+        auto configuration = WebsiteDataStoreConfiguration::create();
+        configuration->setLocalStorageDirectory(!priv->localStorageDirectory ?
+            API::WebsiteDataStore::defaultLocalStorageDirectory() : FileSystem::stringFromFileSystemRepresentation(priv->localStorageDirectory.get()));
+        configuration->setNetworkCacheDirectory(!priv->diskCacheDirectory ?
+            API::WebsiteDataStore::defaultNetworkCacheDirectory() : FileSystem::pathByAppendingComponent(FileSystem::stringFromFileSystemRepresentation(priv->diskCacheDirectory.get()), networkCacheSubdirectory));
+        configuration->setApplicationCacheDirectory(!priv->applicationCacheDirectory ?
+            API::WebsiteDataStore::defaultApplicationCacheDirectory() : FileSystem::stringFromFileSystemRepresentation(priv->applicationCacheDirectory.get()));
+        configuration->setWebSQLDatabaseDirectory(!priv->webSQLDirectory ?
+            API::WebsiteDataStore::defaultWebSQLDatabaseDirectory() : FileSystem::stringFromFileSystemRepresentation(priv->webSQLDirectory.get()));
+        configuration->setMediaKeysStorageDirectory(API::WebsiteDataStore::defaultMediaKeysStorageDirectory());
         priv->websiteDataStore = API::WebsiteDataStore::createLegacy(WTFMove(configuration));
     }
 
@@ -532,7 +536,7 @@ const gchar* webkit_website_data_manager_get_disk_cache_directory(WebKitWebsiteD
 
     if (!priv->diskCacheDirectory) {
         // The default directory already has the subdirectory.
-        priv->diskCacheDirectory.reset(g_strdup(WebCore::FileSystem::directoryName(API::WebsiteDataStore::defaultNetworkCacheDirectory()).utf8().data()));
+        priv->diskCacheDirectory.reset(g_strdup(FileSystem::directoryName(API::WebsiteDataStore::defaultNetworkCacheDirectory()).utf8().data()));
     }
     return priv->diskCacheDirectory.get();
 }
@@ -592,6 +596,8 @@ const gchar* webkit_website_data_manager_get_indexeddb_directory(WebKitWebsiteDa
  * Returns: (allow-none): the directory where WebSQL databases are stored or %NULL if @manager is ephemeral.
  *
  * Since: 2.10
+ *
+ * Deprecated: 2.24. WebSQL is no longer supported. Use IndexedDB instead.
  */
 const gchar* webkit_website_data_manager_get_websql_directory(WebKitWebsiteDataManager* manager)
 {
@@ -649,6 +655,8 @@ static OptionSet<WebsiteDataType> toWebsiteDataTypes(WebKitWebsiteDataTypes type
 #endif
     if (types & WEBKIT_WEBSITE_DATA_COOKIES)
         returnValue.add(WebsiteDataType::Cookies);
+    if (types & WEBKIT_WEBSITE_DATA_DEVICE_ID_HASH_SALT)
+        returnValue.add(WebsiteDataType::DeviceIdHashSalt);
     return returnValue;
 }
 
@@ -727,6 +735,10 @@ void webkit_website_data_manager_remove(WebKitWebsiteDataManager* manager, WebKi
 {
     g_return_if_fail(WEBKIT_IS_WEBSITE_DATA_MANAGER(manager));
     g_return_if_fail(websiteData);
+
+    // We have to remove the hash salts when cookies are removed.
+    if (types & WEBKIT_WEBSITE_DATA_COOKIES)
+        types = static_cast<WebKitWebsiteDataTypes>(types | WEBKIT_WEBSITE_DATA_DEVICE_ID_HASH_SALT);
 
     Vector<WebsiteDataRecord> records;
     for (GList* item = websiteData; item; item = g_list_next(item)) {
