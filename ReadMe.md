@@ -15,6 +15,7 @@ Development of code specific to the Qt port happens here. You should clone this 
 Branches:
 
 * `master` - mirror of WebKit upstream, without any Qt-specific code
+* `qtwebkit-dev` - development of future QtWebKit version, based on `master`
 * `qtwebkit-stable` - Qt-specific fixes and improvements are integrated here first
 * `qtwebkit-5.212` - current release branch, which is `qtwebkit-stable` with commits backported from `master`
 
