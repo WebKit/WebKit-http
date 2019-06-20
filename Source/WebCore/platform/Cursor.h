@@ -140,7 +140,7 @@ namespace WebCore {
 #if ENABLE(MOUSE_CURSOR_SCALE)
             , m_imageScaleFactor(1)
 #endif
-            , m_platformCursor(0)
+            , m_platformCursor(nullptr)
 #endif // !PLATFORM(IOS)
         {
         }
@@ -181,7 +181,9 @@ namespace WebCore {
         float m_imageScaleFactor;
 #endif
 
-#if !USE(APPKIT)
+#if PLATFORM(QT)
+        mutable std::unique_ptr<QCursor> m_platformCursor;
+#elif !USE(APPKIT)
         mutable PlatformCursor m_platformCursor;
 #else
         mutable RetainPtr<NSCursor> m_platformCursor;

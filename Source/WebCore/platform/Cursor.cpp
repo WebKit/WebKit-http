@@ -154,7 +154,7 @@ Cursor::Cursor(Image* image, const IntPoint& hotSpot)
 #if ENABLE(MOUSE_CURSOR_SCALE)
     , m_imageScaleFactor(1)
 #endif
-    , m_platformCursor(0)
+    , m_platformCursor(nullptr)
 {
 }
 
@@ -174,11 +174,17 @@ Cursor::Cursor(Type type)
 #if ENABLE(MOUSE_CURSOR_SCALE)
     , m_imageScaleFactor(1)
 #endif
-    , m_platformCursor(0)
+    , m_platformCursor(nullptr)
 {
 }
 
-#if !PLATFORM(COCOA)
+#if PLATFORM(QT)
+PlatformCursor Cursor::platformCursor() const
+{
+    ensurePlatformCursor();
+    return m_platformCursor.get();
+}
+#elif !PLATFORM(COCOA)
 
 PlatformCursor Cursor::platformCursor() const
 {

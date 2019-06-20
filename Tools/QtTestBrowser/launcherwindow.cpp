@@ -106,6 +106,8 @@ LauncherWindow::LauncherWindow(WindowOptions* data, QGraphicsScene* sharedScene)
     createChrome();
 #if !defined(QT_NO_FILEDIALOG) && !defined(QT_NO_MESSAGEBOX)
     connect(page(), SIGNAL(downloadRequested(const QNetworkRequest&)), this, SLOT(downloadRequest(const QNetworkRequest&)));
+    connect(page()->networkAccessManager(), SIGNAL(sslErrors(QNetworkReply*, const QList<QSslError>&)),
+            this, SLOT(showSSLErrorConfirmation(QNetworkReply*, const QList<QSslError>&)));
 #endif
 }
 
@@ -1166,7 +1168,7 @@ void LauncherWindow::showSSLErrorConfirmation(QNetworkReply* reply, const QList<
     errorStrings += "</ul>";
 
     QMessageBox sslWarningBox;
-    sslWarningBox.setText("SSL handshake problem");
+    sslWarningBox.setText("TLS handshake problem");
     sslWarningBox.setInformativeText(errorStrings);
     sslWarningBox.setStandardButtons(QMessageBox::Abort | QMessageBox::Ignore);
     sslWarningBox.setDefaultButton(QMessageBox::Abort);
