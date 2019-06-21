@@ -5,5 +5,5 @@ sudo: false
 git:
   depth: 3
   sparse_checkout: .travis-sparse-checkout
-script: Tools/Scripts/check-webkit-style -g origin/qtwebkit-stable..
+script: echo "Pull requests to qtwebkit-5.212 are forbidden, please target them to qtwebkit-stable or qtwebkit-dev" && false
 install: true
