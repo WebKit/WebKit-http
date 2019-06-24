@@ -1360,63 +1360,18 @@ void MediaPlayerPrivateGStreamerBase::setStreamVolumeElement(GstStreamVolume* vo
     g_signal_connect_swapped(m_volumeElement.get(), "notify::mute", G_CALLBACK(muteChangedCallback), this);
 }
 
-#if PLATFORM(BCM_NEXUS)
-// utility function for bcm nexus seek functionality
-static GstElement* findVideoSink(GstElement *element)
-{
-    GstElement* re = nullptr;
-
-    GST_DEBUG("Element: %s", gst_element_get_name(element));
-    if (GST_IS_BIN(element)) {
-        GstIterator* it = gst_bin_iterate_elements(GST_BIN(element));
-        GValue item = G_VALUE_INIT;
-        bool done = false;
-        while (!done) {
-            switch (gst_iterator_next(it, &item)) {
-                case GST_ITERATOR_OK:
-                {
-                    GstElement *next = GST_ELEMENT(g_value_get_object(&item));
-                    done = (re = findVideoSink(next));
-                    g_value_reset (&item);
-                    break;
-                }
-                case GST_ITERATOR_RESYNC:
-                    gst_iterator_resync (it);
-                    break;
-                case GST_ITERATOR_ERROR:
-                case GST_ITERATOR_DONE:
-                    done = true;
-                    break;
-            }
-        }
-        g_value_unset (&item);
-        gst_iterator_free(it);
-    } else if (GST_IS_VIDEO_DECODER(element)) {
-         GST_DEBUG("Element: %s", gst_element_get_name(element));
-        re = element;
-    } else if (g_strstr_len(gst_element_get_name(element), 13, "brcmvideosink")) {
-        GST_DEBUG("Element: %s", gst_element_get_name(element));
-        re = element;
-    }
-    return re;
-}
-#endif
-
 unsigned MediaPlayerPrivateGStreamerBase::decodedFrameCount() const
 {
     guint64 decodedFrames = 0;
-    if (m_fpsSink) {
-        g_object_get(m_fpsSink.get(), "frames-rendered", &decodedFrames, nullptr);
+    GstElement* sink = m_fpsSink.get();
+
+    if (!sink)
+        sink = m_videoSink ? m_videoSink.get() : getElement(m_pipeline.get(), ElementType::SINK, MediaType::VIDEO);
+
+    if (sink && g_object_class_find_property(G_OBJECT_GET_CLASS(sink), "frames-rendered")) {
+        g_object_get(sink, "frames-rendered", &decodedFrames, nullptr);
         GST_DEBUG("frames decoded: %llu",  decodedFrames);
     }
-#if PLATFORM(BCM_NEXUS)
-    GstElement* videoSink = nullptr;
-    videoSink = findVideoSink(m_pipeline.get());
-    if (videoSink) {
-        g_object_get(videoSink, "frames-rendered", &decodedFrames, nullptr);
-        GST_DEBUG("frames decoded: %llu",  decodedFrames);
-    }
-#endif
     return static_cast<unsigned>(decodedFrames);
 }
 

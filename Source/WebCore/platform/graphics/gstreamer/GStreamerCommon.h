@@ -110,9 +110,22 @@ private:
     bool m_isValid { false };
 };
 
+enum class ElementType : int {
+    SINK,
+    DECODER,
+    ELEMENT_COUNT
+};
+
+enum class MediaType : int {
+    AUDIO,
+    VIDEO,
+    MEDIA_COUNT
+};
+
 bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* capsString);
 void connectSimpleBusMessageCallback(GstElement *pipeline);
 void disconnectSimpleBusMessageCallback(GstElement *pipeline);
+GstElement* getElement(GstElement* container, ElementType, MediaType);
 
 }
 
