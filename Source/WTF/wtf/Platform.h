@@ -1357,7 +1357,9 @@
 #endif
 
 #if WTF_DEFAULT_EVENT_LOOP
-#if USE(GLIB)
+#if PLATFORM(QT)
+/* Define nothing */
+#elif USE(GLIB)
 /* Use GLib's event loop abstraction. Primarily GTK port uses it. */
 #define USE_GLIB_EVENT_LOOP 1
 #elif OS(WINDOWS)

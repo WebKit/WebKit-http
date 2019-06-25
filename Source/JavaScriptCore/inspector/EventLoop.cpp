@@ -28,8 +28,10 @@
 
 #if OS(WINDOWS)
 #include <windows.h>
-#elif USE(GLIB)
+#elif USE(GLIB_EVENT_LOOP)
 #include <glib.h>
+#elif PLATFORM(QT)
+#include <QCoreApplication>
 #endif
 
 namespace Inspector {
@@ -65,8 +67,10 @@ void EventLoop::cycle()
     // paused and can still access and evalute script in the JSContext.
     CFTimeInterval timeInterval = 0.05;
     CFRunLoopRunInMode(remoteInspectorRunLoopMode(), timeInterval, true);
-#elif USE(GLIB)
+#elif USE(GLIB_EVENT_LOOP)
     g_main_context_iteration(NULL, FALSE);
+#elif PLATFORM(QT)
+    QCoreApplication::processEvents(QEventLoop::WaitForMoreEvents);
 #endif
 }
 
