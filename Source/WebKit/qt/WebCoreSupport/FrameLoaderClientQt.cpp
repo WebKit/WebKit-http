@@ -213,6 +213,8 @@ FrameLoaderClientQt::FrameLoaderClientQt()
     , m_pluginView(0)
     , m_hasSentResponseToPlugin(false)
     , m_isOriginatingLoad(false)
+    , m_isDisplayingErrorPage(false)
+    , m_shouldSuppressLoadStarted(false)
 {
 }
 
@@ -1089,6 +1091,9 @@ bool FrameLoaderClientQt::callErrorPageExtension(const WebCore::ResourceError& e
     if (!page->errorPageExtension(&option, &output))
         return false;
 
+    m_isDisplayingErrorPage = true;
+    m_shouldSuppressLoadStarted = true;
+
     URL baseUrl(output.baseUrl);
     URL failingUrl(option.url);
 
@@ -1098,6 +1103,9 @@ bool FrameLoaderClientQt::callErrorPageExtension(const WebCore::ResourceError& e
     // FIXME: visibility?
     WebCore::SubstituteData substituteData(buffer, failingUrl, response, SubstituteData::SessionHistoryVisibility::Hidden);
     m_frame->loader().load(WebCore::FrameLoadRequest(m_frame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/, substituteData));
+
+    m_shouldSuppressLoadStarted = false;
+
     return true;
 }
 
@@ -1107,8 +1115,7 @@ void FrameLoaderClientQt::dispatchDidFailProvisionalLoad(const WebCore::Resource
         printf("%s - didFailProvisionalLoadWithError\n", qPrintable(drtDescriptionSuitableForTestResult(m_frame)));
 
     if (!error.isNull() && !error.isCancellation()) {
-        if (callErrorPageExtension(error))
-            return;
+        callErrorPageExtension(error);
     }
 
     if (m_webFrame)
@@ -1121,8 +1128,7 @@ void FrameLoaderClientQt::dispatchDidFailLoad(const WebCore::ResourceError& erro
         printf("%s - didFailLoadWithError\n", qPrintable(drtDescriptionSuitableForTestResult(m_frame)));
 
     if (!error.isNull() && !error.isCancellation()) {
-        if (callErrorPageExtension(error))
-            return;
+        callErrorPageExtension(error);
     }
 
     if (m_webFrame)
@@ -1534,11 +1540,19 @@ QWebFrameAdapter* FrameLoaderClientQt::webFrame() const
 
 void FrameLoaderClientQt::emitLoadStarted()
 {
+    if (m_shouldSuppressLoadStarted)
+        return;
+
+    m_isDisplayingErrorPage = false;
+
     m_webFrame->emitLoadStarted(m_isOriginatingLoad);
 }
 
 void FrameLoaderClientQt::emitLoadFinished(bool ok)
 {
+    if (ok && m_isDisplayingErrorPage)
+        return;
+
     // Signal handlers can lead to a new load, that will use the member again.
     const bool wasOriginatingLoad = m_isOriginatingLoad;
     m_isOriginatingLoad = false;
