@@ -241,7 +241,7 @@ public:
     explicit GstVideoFrameHolder(GstSample* sample, TextureMapperGL::Flags flags, bool gstGLEnabled)
     {
         GstVideoInfo videoInfo;
-        if (UNLIKELY(!getSampleVideoInfo(sample, videoInfo)))
+        if (UNLIKELY(!(sample && getSampleVideoInfo(sample, videoInfo))))
             return;
 
         m_size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
@@ -293,7 +293,7 @@ public:
     {
         ASSERT(!m_textureID);
         GstVideoGLTextureUploadMeta* meta;
-        if ((meta = gst_buffer_get_video_gl_texture_upload_meta(m_buffer))) {
+        if (m_buffer && (meta = gst_buffer_get_video_gl_texture_upload_meta(m_buffer))) {
             if (meta->n_textures == 1) { // BRGx & BGRA formats use only one texture.
                 guint ids[4] = { texture.id(), 0, 0, 0 };
 
@@ -302,8 +302,15 @@ public:
             }
         }
 
+        if (!m_isMapped)
+            return;
+
         int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&m_videoFrame, 0);
         const void* srcData = GST_VIDEO_FRAME_PLANE_DATA(&m_videoFrame, 0);
+
+        if (!srcData)
+            return;
+
         texture.updateContents(srcData, WebCore::IntRect(0, 0, m_size.width(), m_size.height()), WebCore::IntPoint(0, 0), stride);
     }
 
@@ -786,7 +793,7 @@ void MediaPlayerPrivateGStreamerBase::swapBuffersIfNeeded()
 void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
 {
     auto sampleLocker = holdLock(m_sampleMutex);
-    if (!GST_IS_SAMPLE(m_sample.get()))
+    if (!(GST_IS_SAMPLE(m_sample.get()) && gst_sample_get_buffer(m_sample.get())))
         return;
 
     auto proxyOperation =
@@ -1012,7 +1019,7 @@ bool MediaPlayerPrivateGStreamerBase::copyVideoTextureToPlatformTexture(Graphics
 
     auto sampleLocker = holdLock(m_sampleMutex);
 
-    if (!GST_IS_SAMPLE(m_sample.get()))
+    if (!(GST_IS_SAMPLE(m_sample.get()) && gst_sample_get_buffer(m_sample.get())))
         return false;
 
     std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), texMapFlagFromOrientation(m_videoSourceOrientation), true);
@@ -1039,7 +1046,7 @@ NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
 
     auto sampleLocker = holdLock(m_sampleMutex);
 
-    if (!GST_IS_SAMPLE(m_sample.get()))
+    if (!(GST_IS_SAMPLE(m_sample.get()) && gst_sample_get_buffer(m_sample.get())))
         return nullptr;
 
     std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), texMapFlagFromOrientation(m_videoSourceOrientation), true);
