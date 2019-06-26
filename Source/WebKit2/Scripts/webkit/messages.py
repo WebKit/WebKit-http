@@ -169,11 +169,11 @@ def forward_declarations_for_namespace(namespace, kind_and_types):
 def forward_declarations_and_headers(receiver):
     types_by_namespace = collections.defaultdict(set)
 
-    headers = set([
-        '"Arguments.h"',
-        '"MessageEncoder.h"',
-        '"StringReference.h"',
-    ])
+    header_conditions = {
+        '"Arguments.h"' : [],
+        '"MessageEncoder.h"' : [],
+        '"StringReference.h"': []
+    }
 
     non_template_wtf_types = frozenset([
         'String',
@@ -181,7 +181,7 @@ def forward_declarations_and_headers(receiver):
 
     for message in receiver.messages:
         if message.reply_parameters != None and message.has_attribute(DELAYED_ATTRIBUTE):
-            headers.add('<wtf/ThreadSafeRefCounted.h>')
+            header_conditions['<wtf/ThreadSafeRefCounted.h>'] = []
             types_by_namespace['IPC'].update([('class', 'Connection')])
 
     type_conditions = {}
@@ -192,7 +192,6 @@ def forward_declarations_and_headers(receiver):
         if not parameter.condition in type_conditions[parameter.type]:
             type_conditions[parameter.type].append(parameter.condition)
 
-    header_conditions = {}
     for parameter in receiver.iterparameters():
         type = parameter.type
         conditions = type_conditions[type]

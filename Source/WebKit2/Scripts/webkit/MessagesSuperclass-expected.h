@@ -25,13 +25,12 @@
 #ifndef WebPageMessages_h
 #define WebPageMessages_h
 
+#include "ArgumentCoders.h"
 #include "Arguments.h"
 #include "MessageEncoder.h"
 #include "StringReference.h"
+#include <wtf/text/WTFString.h>
 
-namespace WTF {
-    class String;
-}
 
 namespace Messages {
 namespace WebPage {

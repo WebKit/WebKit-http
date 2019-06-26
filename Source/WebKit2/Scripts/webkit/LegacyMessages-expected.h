@@ -27,13 +27,27 @@
 
 #if (ENABLE(WEBKIT2) && (NESTED_MASTER_CONDITION || MASTER_OR && MASTER_AND))
 
+#include "ArgumentCoders.h"
 #include "Arguments.h"
 #include "Connection.h"
+#if ENABLE(DEPRECATED_FEATURE) || ENABLE(EXPERIMENTAL_FEATURE)
+#include "DummyType.h"
+#endif
+#if PLATFORM(MAC)
+#include "MachPort.h"
+#endif
 #include "MessageEncoder.h"
 #include "Plugin.h"
 #include "StringReference.h"
+#include "WebCoreArgumentCoders.h"
+#if (ENABLE(TOUCH_EVENTS) && (NESTED_MESSAGE_CONDITION && SOME_OTHER_MESSAGE_CONDITION)) || (ENABLE(TOUCH_EVENTS) && (NESTED_MESSAGE_CONDITION || SOME_OTHER_MESSAGE_CONDITION))
+#include "WebEvent.h"
+#endif
+#include "WebPreferencesStore.h"
 #include <WebCore/GraphicsLayer.h>
+#if PLATFORM(MAC)
 #include <WebCore/KeyboardEvent.h>
+#endif
 #include <WebCore/PluginData.h>
 #include <utility>
 #include <wtf/HashMap.h>
@@ -42,18 +56,7 @@
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
-    class MachPort;
     class Connection;
-    class DummyType;
-}
-
-namespace WTF {
-    class String;
-}
-
-namespace WebKit {
-    class WebTouchEvent;
-    class WebPreferencesStore;
 }
 
 namespace Messages {
