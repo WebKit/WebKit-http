@@ -104,7 +104,7 @@ bool TestMultipleAttributes::DelayedReply::send()
 
 namespace WebKit {
 
-void WebPage::didReceiveWebPageMessage(IPC::Connection*, IPC::MessageDecoder& decoder)
+void WebPage::didReceiveWebPageMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
 {
     if (decoder.messageName() == Messages::WebPage::LoadURL::name()) {
         IPC::handleMessage<Messages::WebPage::LoadURL>(decoder, this, &WebPage::loadURL);
@@ -184,11 +184,12 @@ void WebPage::didReceiveWebPageMessage(IPC::Connection*, IPC::MessageDecoder& de
         return;
     }
 #endif
+    UNUSED_PARAM(connection);
     UNUSED_PARAM(decoder);
     ASSERT_NOT_REACHED();
 }
 
-void WebPage::didReceiveSyncWebPageMessage(IPC::Connection* connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+void WebPage::didReceiveSyncWebPageMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
 {
     if (decoder.messageName() == Messages::WebPage::CreatePlugin::name()) {
         IPC::handleMessage<Messages::WebPage::CreatePlugin>(decoder, *replyEncoder, this, &WebPage::createPlugin);
@@ -216,6 +217,7 @@ void WebPage::didReceiveSyncWebPageMessage(IPC::Connection* connection, IPC::Mes
         return;
     }
 #endif
+    UNUSED_PARAM(connection);
     UNUSED_PARAM(decoder);
     UNUSED_PARAM(replyEncoder);
     ASSERT_NOT_REACHED();

@@ -42,9 +42,9 @@
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
+    class MachPort;
     class Connection;
     class DummyType;
-    class MachPort;
 }
 
 namespace WTF {
@@ -52,8 +52,8 @@ namespace WTF {
 }
 
 namespace WebKit {
-    struct WebPreferencesStore;
     class WebTouchEvent;
+    class WebPreferencesStore;
 }
 
 namespace Messages {
