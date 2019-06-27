@@ -68,6 +68,16 @@ void initializeMainThreadPlatform()
     webkit_main_thread_invoker();
 }
 
+bool isMainThread()
+{
+    return webkit_main_thread_invoker()->thread() == QThread::currentThread();
+}
+
+bool isMainThreadIfInitialized()
+{
+    return isMainThread();
+}
+
 void scheduleDispatchFunctionsOnMainThread()
 {
     QCoreApplication::postEvent(webkit_main_thread_invoker(), new QEvent(static_cast<QEvent::Type>(s_mainThreadInvokerEventType)));
