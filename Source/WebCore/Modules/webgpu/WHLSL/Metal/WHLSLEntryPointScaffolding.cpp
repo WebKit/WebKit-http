@@ -37,6 +37,7 @@
 #include "WHLSLStageInOutSemantic.h"
 #include "WHLSLStructureDefinition.h"
 #include "WHLSLTypeNamer.h"
+#include <algorithm>
 #include <wtf/Optional.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringConcatenateNumbers.h>
@@ -143,20 +144,34 @@ String EntryPointScaffolding::resourceHelperTypes()
     StringBuilder stringBuilder;
     for (size_t i = 0; i < m_layout.size(); ++i) {
         stringBuilder.append(makeString("struct ", m_namedBindGroups[i].structName, " {\n"));
+        Vector<std::pair<unsigned, String>> structItems;
         for (size_t j = 0; j < m_layout[i].bindings.size(); ++j) {
             auto iterator = m_resourceMap.find(&m_layout[i].bindings[j]);
             if (iterator == m_resourceMap.end())
                 continue;
-            auto& unnamedType = *m_entryPointItems.inputs[iterator->value].unnamedType;
-            auto& referenceType = downcast<AST::ReferenceType>(unnamedType);
-            auto mangledTypeName = m_typeNamer.mangledNameForType(referenceType.elementType());
-            auto addressSpace = toString(referenceType.addressSpace());
-            auto elementName = m_namedBindGroups[i].namedBindings[j].elementName;
-            auto index = m_namedBindGroups[i].namedBindings[j].index;
-            stringBuilder.append(makeString("    ", addressSpace, " ", mangledTypeName, "* ", elementName, " [[id(", index, ")]];\n"));
-            if (auto lengthInformation = m_namedBindGroups[i].namedBindings[j].lengthInformation)
-                stringBuilder.append(makeString("    uint2 ", lengthInformation->elementName, " [[id(", lengthInformation->index, ")]];\n"));
+            auto& type = m_entryPointItems.inputs[iterator->value].unnamedType->unifyNode();
+            if (is<AST::UnnamedType>(type) && is<AST::ReferenceType>(downcast<AST::UnnamedType>(type))) {
+                auto& referenceType = downcast<AST::ReferenceType>(downcast<AST::UnnamedType>(type));
+                auto mangledTypeName = m_typeNamer.mangledNameForType(referenceType.elementType());
+                auto addressSpace = toString(referenceType.addressSpace());
+                auto elementName = m_namedBindGroups[i].namedBindings[j].elementName;
+                auto index = m_namedBindGroups[i].namedBindings[j].index;
+                structItems.append(std::make_pair(index, makeString(addressSpace, " ", mangledTypeName, "* ", elementName, " [[id(", index, ")]];")));
+                if (auto lengthInformation = m_namedBindGroups[i].namedBindings[j].lengthInformation)
+                    structItems.append(std::make_pair(lengthInformation->index, makeString("uint2 ", lengthInformation->elementName, " [[id(", lengthInformation->index, ")]];")));
+            } else if (is<AST::NamedType>(type) && is<AST::NativeTypeDeclaration>(downcast<AST::NamedType>(type))) {
+                auto& namedType = downcast<AST::NativeTypeDeclaration>(downcast<AST::NamedType>(type));
+                auto mangledTypeName = m_typeNamer.mangledNameForType(namedType);
+                auto elementName = m_namedBindGroups[i].namedBindings[j].elementName;
+                auto index = m_namedBindGroups[i].namedBindings[j].index;
+                structItems.append(std::make_pair(index, makeString(mangledTypeName, ' ', elementName, " [[id(", index, ")]];")));
+            }
         }
+        std::sort(structItems.begin(), structItems.end(), [](const std::pair<unsigned, String>& left, const std::pair<unsigned, String>& right) {
+            return left.first < right.first;
+        });
+        for (const auto& structItem : structItems)
+            stringBuilder.append(makeString("    ", structItem.second, '\n'));
         stringBuilder.append("};\n\n");
     }
     return stringBuilder.toString();

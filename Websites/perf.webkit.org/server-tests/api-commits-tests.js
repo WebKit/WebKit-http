@@ -5,6 +5,7 @@ const assert = require('assert');
 const TestServer = require('./resources/test-server.js');
 const addSlaveForReport = require('./resources/common-operations.js').addSlaveForReport;
 const prepareServerTest = require('./resources/common-operations.js').prepareServerTest;
+const submitReport = require('./resources/common-operations.js').submitReport;
 
 describe("/api/commits/", function () {
     prepareServerTest(this);
@@ -34,6 +35,27 @@ describe("/api/commits/", function () {
                 "time": "2017-01-20T03:49:37.887Z",
                 "author": {"name": "Commit Queue", "account": "commit-queue@webkit.org"},
                 "message": "another message",
+            }
+        ]
+    }
+
+    const commitsOnePrefixOfTheOther = {
+        "slaveName": "someSlave",
+        "slavePassword": "somePassword",
+        "commits": [
+            {
+                "repository": "WebKit",
+                "revision": "21094",
+                "time": "2017-01-20T02:52:34.577Z",
+                "author": {"name": "Zalan Bujtas", "account": "zalan@apple.com"},
+                "message": "a message",
+            },
+            {
+                "repository": "WebKit",
+                "revision": "210949",
+                "time": "2017-01-20T03:23:50.645Z",
+                "author": {"name": "Chris Dumez", "account": "cdumez@apple.com"},
+                "message": "some message",
             }
         ]
     }
@@ -79,6 +101,21 @@ describe("/api/commits/", function () {
         revision: '210951',
         time: '2017-01-20T03:56:20.045Z'
     }
+
+    const report = [{
+        "buildNumber": "124",
+        "buildTime": "2015-10-27T15:34:51",
+        "builderName": "someBuilder",
+        "builderPassword": "somePassword",
+        "platform": "some platform",
+        "tests": {"Speedometer-2": {"metrics": {"Score": {"current": [[100]]}}}},
+        "revisions": {
+            "WebKit": {
+                "timestamp": "2017-01-20T02:52:34.577Z",
+                "revision": "210948"
+            }
+        }
+    }];
 
     function assertCommitIsSameAsOneSubmitted(commit, submitted)
     {
@@ -237,6 +274,28 @@ describe("/api/commits/", function () {
                 assert.equal(result['commits'].length, 1);
                 assert.equal(result['commits'][0]['revision'], systemVersionCommits['commits'][0]['revision']);
             });
+        });
+
+        it("should always return a commit as long as there is an existing 'current' type test run for a given platform", async () => {
+            const remote = TestServer.remoteAPI();
+            const db = TestServer.database();
+            await db.insert('tests', {name: 'A-Test'});
+            await submitReport(report);
+            await db.query(`DELETE FROM tests WHERE test_name = 'A-Test'`);
+
+            const platforms = await db.selectAll('platforms');
+            assert.equal(platforms.length, 1);
+
+            const test_metrics = await db.selectAll('test_metrics');
+            assert.equal(test_metrics.length, 1);
+
+            const tests = await db.selectAll('tests');
+            assert.equal(tests.length, 1);
+
+            assert(test_metrics[0].id != tests[0].id);
+
+            const response = await remote.getJSON(`/api/commits/WebKit/latest?platform=${platforms[0].id}`);
+            assert(response.commits.length);
         });
     });
 
@@ -420,6 +479,16 @@ describe("/api/commits/", function () {
             await remote.postJSONWithStatus('/api/report-commits/', subversionCommits);
             const result = await remote.getJSON('/api/commits/WebKit/21094?prefix-match=true');
             assert.equal(result['status'], 'AmbiguousRevisionPrefix');
+        });
+
+        it("should not return 'AmbiguousRevisionPrefix' when there is a commit revision extract matches specified revision prefix", async () => {
+            const remote = TestServer.remoteAPI();
+            await addSlaveForReport(commitsOnePrefixOfTheOther);
+            await remote.postJSONWithStatus('/api/report-commits/', commitsOnePrefixOfTheOther);
+            const result = await remote.getJSON('/api/commits/WebKit/21094?prefix-match=true');
+            assert.equal(result['status'], 'OK');
+            assert.deepEqual(result['commits'].length, 1);
+            assertCommitIsSameAsOneSubmitted(result['commits'][0], commitsOnePrefixOfTheOther['commits'][0]);
         });
 
         it("should return 'UnknownCommit' when no commit is found for a revision prefix", async () => {

@@ -1,3 +1,478 @@
+2019-06-26  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [RemoteInspector] Add address argument to listen for RemoteInspectorServer Socket implementation.
+        https://bugs.webkit.org/show_bug.cgi?id=199035
+
+        Reviewed by Ross Kirsling.
+
+        Added new argument `address` to start listening. 
+
+        * inspector/remote/socket/RemoteInspectorServer.cpp:
+        (Inspector::RemoteInspectorServer::start):
+        * inspector/remote/socket/RemoteInspectorServer.h:
+        * inspector/remote/socket/posix/RemoteInspectorSocketPOSIX.cpp:
+        (Inspector::Socket::listen):
+        * inspector/remote/socket/win/RemoteInspectorSocketWin.cpp:
+        (Inspector::Socket::listen):
+
+2019-06-26  Keith Miller  <keith_miller@apple.com>
+
+        speciesConstruct needs to throw if the result is a DataView
+        https://bugs.webkit.org/show_bug.cgi?id=199231
+
+        Reviewed by Mark Lam.
+
+        Previously, we only checked that the result was a
+        JSArrayBufferView, which can include DataViews. This is incorrect
+        as the result should be only be a TypedArray.
+
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::speciesConstruct):
+
+2019-06-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Implement console.countReset
+        https://bugs.webkit.org/show_bug.cgi?id=199200
+
+        Reviewed by Devin Rousso.
+
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        (Inspector::JSGlobalObjectConsoleClient::countReset):
+        * inspector/JSGlobalObjectConsoleClient.h:
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        (Inspector::InspectorConsoleAgent::getCounterLabel):
+        (Inspector::InspectorConsoleAgent::count):
+        (Inspector::InspectorConsoleAgent::countReset):
+        * inspector/agents/InspectorConsoleAgent.h:
+        * runtime/ConsoleClient.h:
+        * runtime/ConsoleObject.cpp:
+        (JSC::ConsoleObject::finishCreation):
+        (JSC::consoleProtoFuncCountReset):
+
+2019-06-26  Keith Miller  <keith_miller@apple.com>
+
+        remove unneeded didBecomePrototype() calls
+        https://bugs.webkit.org/show_bug.cgi?id=199221
+
+        Reviewed by Saam Barati.
+
+        Since we now set didBecomePrototype in Structure::create we don't
+        need to set it expliticly in most of our finishCreation
+        methods. The only exception to this is object prototype, which we
+        set as the prototype of function prototype late (via
+        setPrototypeWithoutTransition).
+
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        (Inspector::JSInjectedScriptHostPrototype::finishCreation):
+        * inspector/JSJavaScriptCallFramePrototype.cpp:
+        (Inspector::JSJavaScriptCallFramePrototype::finishCreation):
+        * runtime/ArrayIteratorPrototype.cpp:
+        (JSC::ArrayIteratorPrototype::finishCreation):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+        * runtime/AsyncFromSyncIteratorPrototype.cpp:
+        (JSC::AsyncFromSyncIteratorPrototype::finishCreation):
+        * runtime/AsyncFunctionPrototype.cpp:
+        (JSC::AsyncFunctionPrototype::finishCreation):
+        * runtime/AsyncGeneratorFunctionPrototype.cpp:
+        (JSC::AsyncGeneratorFunctionPrototype::finishCreation):
+        * runtime/AsyncGeneratorPrototype.cpp:
+        (JSC::AsyncGeneratorPrototype::finishCreation):
+        * runtime/AsyncIteratorPrototype.cpp:
+        (JSC::AsyncIteratorPrototype::finishCreation):
+        * runtime/GeneratorFunctionPrototype.cpp:
+        (JSC::GeneratorFunctionPrototype::finishCreation):
+        * runtime/GeneratorPrototype.cpp:
+        (JSC::GeneratorPrototype::finishCreation):
+        * runtime/IteratorPrototype.cpp:
+        (JSC::IteratorPrototype::finishCreation):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/MapIteratorPrototype.cpp:
+        (JSC::MapIteratorPrototype::finishCreation):
+        * runtime/MapPrototype.cpp:
+        (JSC::MapPrototype::finishCreation):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::ObjectPrototype::finishCreation):
+        * runtime/RegExpStringIteratorPrototype.cpp:
+        (JSC::RegExpStringIteratorPrototype::finishCreation):
+        * runtime/SetIteratorPrototype.cpp:
+        (JSC::SetIteratorPrototype::finishCreation):
+        * runtime/SetPrototype.cpp:
+        (JSC::SetPrototype::finishCreation):
+        * runtime/StringIteratorPrototype.cpp:
+        (JSC::StringIteratorPrototype::finishCreation):
+        * runtime/WeakMapPrototype.cpp:
+        (JSC::WeakMapPrototype::finishCreation):
+        * runtime/WeakObjectRefPrototype.cpp:
+        (JSC::WeakObjectRefPrototype::finishCreation):
+        * runtime/WeakSetPrototype.cpp:
+        (JSC::WeakSetPrototype::finishCreation):
+
+2019-06-25  Keith Miller  <keith_miller@apple.com>
+
+        Structure::create should call didBecomePrototype()
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+
+        Reviewed by Filip Pizlo.
+
+        Structure::create should also assert that the indexing type makes sense
+        for the prototype being used.
+
+        * runtime/JSObject.h:
+        * runtime/Structure.cpp:
+        (JSC::Structure::isValidPrototype):
+        (JSC::Structure::changePrototypeTransition):
+        * runtime/Structure.h:
+        (JSC::Structure::create): Deleted.
+        * runtime/StructureInlines.h:
+        (JSC::Structure::create):
+        (JSC::Structure::setPrototypeWithoutTransition):
+
+2019-06-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Implement console.timeLog
+        https://bugs.webkit.org/show_bug.cgi?id=199184
+
+        Reviewed by Devin Rousso.
+
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        (Inspector::JSGlobalObjectConsoleClient::timeLog):
+        * inspector/JSGlobalObjectConsoleClient.h:
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        (Inspector::InspectorConsoleAgent::logTiming):
+        (Inspector::InspectorConsoleAgent::stopTiming):
+        * inspector/agents/InspectorConsoleAgent.h:
+        * runtime/ConsoleClient.h:
+        * runtime/ConsoleObject.cpp:
+        (JSC::ConsoleObject::finishCreation):
+        (JSC::consoleProtoFuncTimeLog):
+
+2019-06-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r245586): static assertion failed: Match result and EncodedMatchResult should be the same size
+        https://bugs.webkit.org/show_bug.cgi?id=198518
+
+        Reviewed by Keith Miller.
+
+        r245586 made some bad assumptions about the size of size_t, which we can solve using the
+        CPU(ADDRESS32) guard that I didn't know about.
+
+        This solution was developed by Mark Lam and Keith Miller. I'm just preparing the patch.
+
+        * runtime/MatchResult.h:
+
+2019-06-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r246714.
+        https://bugs.webkit.org/show_bug.cgi?id=199179
+
+        revert to do patch in a different way. (Requested by keith_mi_
+        on #webkit).
+
+        Reverted changeset:
+
+        "All prototypes should call didBecomePrototype()"
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+        https://trac.webkit.org/changeset/246714
+
+2019-06-24  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Add Array.prototype.{flat,flatMap} to unscopables
+        https://bugs.webkit.org/show_bug.cgi?id=194322
+
+        Reviewed by Keith Miller.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+
+2019-06-24  Mark Lam  <mark.lam@apple.com>
+
+        ArraySlice needs to keep the source array alive.
+        https://bugs.webkit.org/show_bug.cgi?id=197374
+        <rdar://problem/50304429>
+
+        Reviewed by Michael Saboff and Filip Pizlo.
+
+        The implementation of the FTL ArraySlice intrinsics may GC while allocating the
+        result array and its butterfly.  Previously, ArraySlice already keeps the source
+        butterfly alive in order to copy from it to the new butterfly after the allocation.
+        Unfortunately, this is not enough.  We also need to keep the source array alive
+        so that GC will scan the values in the butterfly as well.  Note: the butterfly
+        does not have a visitChildren() method to do this scan.  It's the parent object's
+        responsibility to do the scanning.
+
+        This patch fixes this by introducing a keepAlive() utility method, and we use it
+        to keep the source array alive while allocating the result array and butterfly.
+
+        keepAlive() works by using a patchpoint to communicate to B3 that a value (the
+        source array in this case) is still in use.  It also uses a fence to keep B3 from
+        relocating the patchpoint, which may defeat the fix.
+
+        For the DFG's SpeculativeJIT::compileArraySlice(), we may have lucked out and the
+        source array cell is kept alive.  This patch makes it explicit that we should
+        keep its cell alive till after the result array has been allocated.
+
+        For the Baseline JIT and LLInt, we use the arrayProtoFuncSlice() runtime function
+        and there is no issue because the source array (in "thisObj") is in the element
+        copying loop that follows the allocation of the result array.  However, for
+        documentation purposes, this patch adds a call to HeapCell::use() to indicate that
+        the source array need to kept alive at least until after the allocation of the
+        result array.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArraySlice):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileArraySlice):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateJSArray):
+        (JSC::FTL::DFG::LowerDFGToB3::keepAlive):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSlice):
+
+2019-06-22  Robin Morisset  <rmorisset@apple.com> and Yusuke Suzuki  <ysuzuki@apple.com>
+
+        All prototypes should call didBecomePrototype()
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+
+        Reviewed by Saam Barati.
+
+        Otherwise we won't remember to run haveABadTime() when someone adds to them an indexed accessor.
+
+        I added a check used in both Structure::finishCreation() and Structure::changePrototypeTransition to make sure we don't
+        create structures with invalid prototypes.
+        It found a lot of objects that are used as prototypes in JSGlobalObject and yet were missing didBecomePrototype() in their finishCreation().
+        Somewhat surprisingly, some of them have names like FunctionConstructor and not only FooPrototype.
+
+        * runtime/BigIntPrototype.cpp:
+        (JSC::BigIntPrototype::finishCreation):
+        * runtime/BooleanPrototype.cpp:
+        (JSC::BooleanPrototype::finishCreation):
+        * runtime/DatePrototype.cpp:
+        (JSC::DatePrototype::finishCreation):
+        * runtime/ErrorConstructor.cpp:
+        (JSC::ErrorConstructor::finishCreation):
+        * runtime/ErrorPrototype.cpp:
+        (JSC::ErrorPrototype::finishCreation):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::FunctionConstructor::finishCreation):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::FunctionPrototype::finishCreation):
+        * runtime/IntlCollatorPrototype.cpp:
+        (JSC::IntlCollatorPrototype::finishCreation):
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatPrototype::finishCreation):
+        * runtime/IntlNumberFormatPrototype.cpp:
+        (JSC::IntlNumberFormatPrototype::finishCreation):
+        * runtime/IntlPluralRulesPrototype.cpp:
+        (JSC::IntlPluralRulesPrototype::finishCreation):
+        * runtime/JSArrayBufferPrototype.cpp:
+        (JSC::JSArrayBufferPrototype::finishCreation):
+        * runtime/JSDataViewPrototype.cpp:
+        (JSC::JSDataViewPrototype::finishCreation):
+        * runtime/JSGenericTypedArrayViewPrototypeInlines.h:
+        (JSC::JSGenericTypedArrayViewPrototype<ViewClass>::finishCreation):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::createConsoleProperty):
+        * runtime/JSPromisePrototype.cpp:
+        (JSC::JSPromisePrototype::finishCreation):
+        * runtime/JSTypedArrayViewConstructor.cpp:
+        (JSC::JSTypedArrayViewConstructor::finishCreation):
+        * runtime/JSTypedArrayViewPrototype.cpp:
+        (JSC::JSTypedArrayViewPrototype::finishCreation):
+        * runtime/NumberPrototype.cpp:
+        (JSC::NumberPrototype::finishCreation):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        * runtime/Structure.cpp:
+        (JSC::Structure::isValidPrototype):
+        (JSC::Structure::changePrototypeTransition):
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::setPrototypeWithoutTransition):
+        * runtime/SymbolPrototype.cpp:
+        (JSC::SymbolPrototype::finishCreation):
+        * wasm/js/WebAssemblyCompileErrorPrototype.cpp:
+        (JSC::WebAssemblyCompileErrorPrototype::finishCreation):
+        * wasm/js/WebAssemblyInstancePrototype.cpp:
+        (JSC::WebAssemblyInstancePrototype::finishCreation):
+        * wasm/js/WebAssemblyLinkErrorPrototype.cpp:
+        (JSC::WebAssemblyLinkErrorPrototype::finishCreation):
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        (JSC::WebAssemblyMemoryPrototype::finishCreation):
+        * wasm/js/WebAssemblyModulePrototype.cpp:
+        (JSC::WebAssemblyModulePrototype::finishCreation):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::WebAssemblyPrototype::finishCreation):
+        * wasm/js/WebAssemblyRuntimeErrorPrototype.cpp:
+        (JSC::WebAssemblyRuntimeErrorPrototype::finishCreation):
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+        (JSC::WebAssemblyTablePrototype::finishCreation):
+
+2019-06-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Strict, Sloppy and Arrow functions should have different classInfo
+        https://bugs.webkit.org/show_bug.cgi?id=197631
+
+        Reviewed by Saam Barati.
+
+        If a constructor inherits a builtin class, it creates a Structure which is subclassing the builtin class.
+        This is done by using InternalFunction::createSubclassStructure. But to accelerate the common cases, we
+        cache the created structure in InternalFunctionAllocationProfile. Whether the cache is valid is checked
+        by comparing classInfo of the cached structure and the given base structure. This implicitly assume that
+        each builtin class's InternalFunction creates an instance based on one structure.
+
+        However, Function constructor is an exception: Function constructor creates an instance which has different
+        structures based on a parameter. If a strict code is given (e.g. "'use strict'"), it creates a function
+        instance with strict function structure.
+
+        As a result, InternalFunctionAllocationProfile incorrectly caches the structure. Consider the following code.
+
+            class A extends Function { };
+            let a = new A("'use strict'");
+            let b = new A("");
+
+        While `a` and `b` should have different structures, `A` caches the structure for `a`, and reuse it even the given
+        code is not a strict code. This is problematic: We are separating structures of strict, sloppy, and arrow functions
+        because they have different properties. However, in the above case, a and b have the same structure while they have
+        different properties. So it causes incorrect structure-based caching in JSC. One of the example is HasOwnPropertyCache.
+
+        In this patch, we introduce JSStrictFunction, JSSloppyFunction, and JSArrowFunction classes and classInfos. This design
+        works well and already partially accepted for JSGeneratorFunction, JSAsyncGeneratorFunction, and JSAsyncFunction. Each
+        structure now has a different classInfo so that InternalFunctionAllocationProfile correctly caches and invalidates the
+        cached one based on the classInfo. Since we already have different structures for these instances, and DFG and FTL
+        optimizations are based on JSFunctionType (not classInfo), introducing these three classInfo do not break the optimization.
+
+        Note that structures on ArrayConstructor does not cause the same problem. It only uses Undecided indexing typed array
+        structure in InternalFunctionAllocationProfile, and once haveABadTime happens, it clears InternalFunctionAllocationProfile.
+
+        * runtime/JSAsyncFunction.h: This subspaceFor is not necessary since it is defined in JSFunction. And we already ensure that
+        sizeof(JSAsyncFunction) == sizeof(JSFunction).
+        * runtime/JSAsyncGeneratorFunction.cpp:
+        * runtime/JSAsyncGeneratorFunction.h: Ditto.
+        * runtime/JSFunction.cpp:
+        * runtime/JSFunction.h:
+        * runtime/JSGeneratorFunction.h: Ditto.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+
+2019-06-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] ClassExpr should not store result in the middle of evaluation
+        https://bugs.webkit.org/show_bug.cgi?id=199106
+
+        Reviewed by Tadeu Zagallo.
+
+        Let's consider the case,
+
+            let a = class A {
+                static get[a=0x12345678]() {
+                }
+            };
+
+        When evaluating `class A` expression, we should not use the local register for `let a`
+        until we finally store it to that register. Otherwise, `a=0x12345678` will override it.
+        Out BytecodeGenerator does that this by using tempDestination and finalDestination, but
+        we did not do that in ClassExprNode.
+
+        This patch leverages tempDestination and finalDestination to store `class A` result finally,
+        while we attempt to reduce mov.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ClassExprNode::emitBytecode):
+
+2019-06-21  Sihui Liu  <sihui_liu@apple.com>
+
+        openDatabase should return an empty object when WebSQL is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=198805
+
+        Reviewed by Geoffrey Garen.
+
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::createFunctionThatMasqueradesAsUndefined):
+        * runtime/JSFunction.h:
+
+2019-06-21  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Remove extra check in RegExp @matchSlow
+        https://bugs.webkit.org/show_bug.cgi?id=198846
+
+        Reviewed by Joseph Pecoraro.
+
+        Type of RegExp `exec` result is already asserted in @regExpExec.
+
+        * builtins/RegExpPrototype.js:
+        (globalPrivate.matchSlow): Remove isObject check.
+
+2019-06-20  Justin Michaud  <justin_michaud@apple.com>
+
+        [WASM-References] Add extra tests for Wasm references + fix element parsing and subtyping bugs
+        https://bugs.webkit.org/show_bug.cgi?id=199044
+
+        Reviewed by Saam Barati.
+
+        Fix parsing table indices from the element section. The byte that we previously read as the table index actually tells us how to parse the table index.
+        Fix some areas where we got the isSubtype check wrong, causing funcrefs to not be considred anyrefs.
+
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::unify):
+        * wasm/WasmSectionParser.cpp:
+        (JSC::Wasm::SectionParser::parseElement):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::unify):
+
+2019-06-18  Darin Adler  <darin@apple.com>
+
+        Tidy up the remaining bits of the AtomicString to AtomString rename
+        https://bugs.webkit.org/show_bug.cgi?id=198990
+
+        Reviewed by Michael Catanzaro.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::speculateStringIdentAndLoadStorage): Use flagIsAtom.
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile): Ditto.
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile): Ditto.
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileHasOwnProperty): Ditto.
+        (JSC::FTL::DFG::LowerDFGToB3::speculateStringIdent): Ditto.
+
+2019-06-19  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Optimize `resolve` method lookup in Promise static methods
+        https://bugs.webkit.org/show_bug.cgi?id=198864
+
+        Reviewed by Yusuke Suzuki.
+
+        Lookup `resolve` method only once in Promise.{all,allSettled,race}.
+        (https://github.com/tc39/ecma262/pull/1506)
+
+        Already implemented in V8.
+
+        * builtins/PromiseConstructor.js:
+
+2019-06-19  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Some of the ASSERTs in CachedTypes.cpp should be RELEASE_ASSERTs
+        https://bugs.webkit.org/show_bug.cgi?id=199030
+
+        Reviewed by Mark Lam.
+
+        These assertions represent strong assumptions that the cache makes so
+        it's not safe to keep executing if they fail.
+
+        * runtime/CachedTypes.cpp:
+        (JSC::Encoder::malloc):
+        (JSC::Encoder::Page::alignEnd):
+        (JSC::Decoder::ptrForOffsetFromBase):
+        (JSC::Decoder::handleForEnvironment const):
+        (JSC::Decoder::setHandleForEnvironment):
+        (JSC::CachedPtr::get const):
+        (JSC::CachedOptional::encode):
+        (JSC::CachedOptional::decodeAsPtr const): Deleted.
+
 2019-06-19  Adrian Perez de Castro  <aperez@igalia.com>
 
         [WPE][GTK] Fix build with unified sources disabled

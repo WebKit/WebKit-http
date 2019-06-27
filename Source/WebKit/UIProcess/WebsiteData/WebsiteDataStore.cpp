@@ -516,6 +516,24 @@ void WebsiteDataStore::fetchDataAndApply(OptionSet<WebsiteDataType> dataTypes, O
         });
     }
 
+#if PLATFORM(COCOA)
+    if (dataTypes.contains(WebsiteDataType::Credentials) && isPersistent()) {
+        for (auto& processPool : processPools()) {
+            if (!processPool->networkProcess())
+                continue;
+            
+            callbackAggregator->addPendingCallback();
+            WTF::CompletionHandler<void(Vector<WebCore::SecurityOriginData>&&)> completionHandler = [callbackAggregator](Vector<WebCore::SecurityOriginData>&& origins) mutable {
+                WebsiteData websiteData;
+                for (auto& origin : origins)
+                    websiteData.entries.append(WebsiteData::Entry { origin, WebsiteDataType::Credentials, 0 });
+                callbackAggregator->removePendingCallback(WTFMove(websiteData));
+            };
+            processPool->networkProcess()->sendWithAsyncReply(Messages::NetworkProcess::OriginsWithPersistentCredentials(), WTFMove(completionHandler));
+        }
+    }
+#endif
+
 #if ENABLE(NETSCAPE_PLUGIN_API)
     if (dataTypes.contains(WebsiteDataType::PlugInData) && isPersistent()) {
         class State {
@@ -620,6 +638,9 @@ static ProcessAccessType computeWebProcessAccessTypeForDataRemoval(OptionSet<Web
     ProcessAccessType processAccessType = ProcessAccessType::None;
 
     if (dataTypes.contains(WebsiteDataType::MemoryCache))
+        processAccessType = std::max(processAccessType, ProcessAccessType::OnlyIfLaunched);
+
+    if (dataTypes.contains(WebsiteDataType::Credentials))
         processAccessType = std::max(processAccessType, ProcessAccessType::OnlyIfLaunched);
 
     return processAccessType;
@@ -1066,6 +1087,19 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
                 callbackAggregator->removePendingCallback();
             });
         });
+    }
+
+    if (dataTypes.contains(WebsiteDataType::Credentials) && isPersistent()) {
+        for (auto& processPool : processPools()) {
+            if (!processPool->networkProcess())
+                continue;
+            
+            callbackAggregator->addPendingCallback();
+            WTF::CompletionHandler<void()> completionHandler = [callbackAggregator]() mutable {
+                callbackAggregator->removePendingCallback();
+            };
+            processPool->networkProcess()->sendWithAsyncReply(Messages::NetworkProcess::RemoveCredentialsWithOrigins(origins), WTFMove(completionHandler));
+        }
     }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -1717,8 +1751,10 @@ bool WebsiteDataStore::isAssociatedProcessPool(WebProcessPool& processPool) cons
 HashSet<RefPtr<WebProcessPool>> WebsiteDataStore::processPools(size_t count, bool ensureAPoolExists) const
 {
     HashSet<RefPtr<WebProcessPool>> processPools;
-    for (auto& process : processes())
-        processPools.add(&process->processPool());
+    for (auto& process : processes()) {
+        if (auto* processPool = process->processPoolIfExists())
+            processPools.add(processPool);
+    }
 
     if (processPools.isEmpty()) {
         // Check if we're one of the legacy data stores.

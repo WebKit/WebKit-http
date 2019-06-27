@@ -853,11 +853,14 @@ void InspectorInstrumentation::addMessageToConsoleImpl(InstrumentingAgents& inst
 
 void InspectorInstrumentation::consoleCountImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* state, Ref<ScriptArguments>&& arguments)
 {
-    if (!instrumentingAgents.inspectorEnvironment().developerExtrasEnabled())
-        return;
-
     if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
         consoleAgent->count(state, WTFMove(arguments));
+}
+
+void InspectorInstrumentation::consoleCountResetImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* state, Ref<ScriptArguments>&& arguments)
+{
+    if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
+        consoleAgent->countReset(state, WTFMove(arguments));
 }
 
 void InspectorInstrumentation::takeHeapSnapshotImpl(InstrumentingAgents& instrumentingAgents, const String& title)
@@ -884,6 +887,15 @@ void InspectorInstrumentation::startConsoleTimingImpl(InstrumentingAgents& instr
 
     if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
         consoleAgent->startTiming(title);
+}
+
+void InspectorInstrumentation::logConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, const String& title, Ref<Inspector::ScriptArguments>&& arguments)
+{
+    if (!instrumentingAgents.inspectorEnvironment().developerExtrasEnabled())
+        return;
+
+    if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
+        consoleAgent->logTiming(title, WTFMove(arguments));
 }
 
 void InspectorInstrumentation::stopConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, const String& title, Ref<ScriptCallStack>&& stack)

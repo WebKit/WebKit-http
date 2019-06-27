@@ -1,3 +1,168 @@
+2019-06-26  Keith Miller  <keith_miller@apple.com>
+
+        speciesConstruct needs to throw if the result is a DataView
+        https://bugs.webkit.org/show_bug.cgi?id=199231
+
+        Reviewed by Mark Lam.
+
+        * stress/typedarray-filter.js:
+        (subclasses.forEach):
+        * stress/typedarray-map.js:
+        (subclasses.forEach):
+        * stress/typedarray-slice.js:
+        (typedArrays.forEach):
+        * stress/typedarray-subarray.js:
+        (subclasses.forEach):
+
+2019-06-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r246714.
+        https://bugs.webkit.org/show_bug.cgi?id=199179
+
+        revert to do patch in a different way. (Requested by keith_mi_
+        on #webkit).
+
+        Reverted changeset:
+
+        "All prototypes should call didBecomePrototype()"
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+        https://trac.webkit.org/changeset/246714
+
+2019-06-24  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Add Array.prototype.{flat,flatMap} to unscopables
+        https://bugs.webkit.org/show_bug.cgi?id=194322
+
+        Reviewed by Keith Miller.
+
+        * stress/unscopables.js: Fix test.
+        * test262/expectations.yaml: Mark 2 test cases as passing.
+
+2019-06-21  Mark Lam  <mark.lam@apple.com>
+
+        ArraySlice needs to keep the source array alive.
+        https://bugs.webkit.org/show_bug.cgi?id=197374
+        <rdar://problem/50304429>
+
+        Reviewed by Michael Saboff and Filip Pizlo.
+
+        * stress/array-slice-must-keep-source-array-alive.js: Added.
+
+2019-06-22  Robin Morisset  <rmorisset@apple.com> and Yusuke Suzuki  <ysuzuki@apple.com>
+
+        All prototypes should call didBecomePrototype()
+        https://bugs.webkit.org/show_bug.cgi?id=196315
+
+        Reviewed by Saam Barati.
+
+        * stress/function-prototype-indexed-accessor.js: Added.
+
+2019-06-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Strict, Sloppy and Arrow functions should have different classInfo
+        https://bugs.webkit.org/show_bug.cgi?id=197631
+
+        Reviewed by Saam Barati.
+
+        * stress/has-own-property-arguments.js: Added.
+        (shouldBe):
+        (A):
+
+2019-06-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] ClassExpr should not store result in the middle of evaluation
+        https://bugs.webkit.org/show_bug.cgi?id=199106
+
+        Reviewed by Tadeu Zagallo.
+
+        * stress/class-expression-should-store-result-at-last.js: Added.
+        (shouldThrow):
+        (shouldThrow.let.a):
+
+2019-06-20  Justin Michaud  <justin_michaud@apple.com>
+
+        [WASM-References] Add extra tests for Wasm references + fix element parsing and subtyping bugs
+        https://bugs.webkit.org/show_bug.cgi?id=199044
+
+        Reviewed by Saam Barati.
+
+        Add wasm references spec tests as well as a worker test.
+
+        * wasm.yaml:
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.emitters.Element):
+        * wasm/js-api/element.js:
+        (assert.throws.new.WebAssembly.Module.builder.WebAssembly):
+        * wasm/references-spec-tests/ref_is_null.js: Added.
+        (hostref):
+        (is_hostref):
+        (is_funcref):
+        (eq_ref):
+        (let.handler.get target):
+        (register):
+        (module):
+        (instance):
+        (call):
+        (get instance):
+        (exports):
+        (run):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (try.f):
+        (catch):
+        (assert_exhaustion):
+        (assert_return):
+        (assert_return_canonical_nan):
+        (assert_return_arithmetic_nan):
+        (assert_return_ref):
+        (assert_return_func):
+        * wasm/references-spec-tests/ref_null.js: Added.
+        (hostref):
+        (is_hostref):
+        (is_funcref):
+        (eq_ref):
+        (let.handler.get target):
+        (register):
+        (module):
+        (instance):
+        (call):
+        (get instance):
+        (exports):
+        (run):
+        (assert_malformed):
+        (assert_invalid):
+        (assert_unlinkable):
+        (assert_uninstantiable):
+        (assert_trap):
+        (try.f):
+        (catch):
+        (assert_exhaustion):
+        (assert_return):
+        (assert_return_canonical_nan):
+        (assert_return_arithmetic_nan):
+        (assert_return_ref):
+        (assert_return_func):
+        * wasm/references/element_parsing.js: Added.
+        (module):
+        * wasm/references/func_ref.js:
+        * wasm/references/multitable.js:
+        * wasm/references/table_misc.js:
+        (TableSize.0.End.End.WebAssembly):
+        * wasm/references/validation.js:
+        (assert.throws):
+
+2019-06-19  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Optimize `resolve` method lookup in Promise static methods
+        https://bugs.webkit.org/show_bug.cgi?id=198864
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/expectations.yaml: Mark 18 test cases as passing.
+
 2019-06-19  Justin Michaud  <justin_michaud@apple.com>
 
         [WASM-References] Rename anyfunc to funcref

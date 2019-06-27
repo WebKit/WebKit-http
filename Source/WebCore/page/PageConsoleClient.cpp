@@ -175,6 +175,11 @@ void PageConsoleClient::count(JSC::ExecState* exec, Ref<ScriptArguments>&& argum
     InspectorInstrumentation::consoleCount(m_page, exec, WTFMove(arguments));
 }
 
+void PageConsoleClient::countReset(JSC::ExecState* exec, Ref<ScriptArguments>&& arguments)
+{
+    InspectorInstrumentation::consoleCountReset(m_page, exec, WTFMove(arguments));
+}
+
 void PageConsoleClient::profile(JSC::ExecState* exec, const String& title)
 {
     // FIXME: <https://webkit.org/b/153499> Web Inspector: console.profile should use the new Sampling Profiler
@@ -195,6 +200,11 @@ void PageConsoleClient::takeHeapSnapshot(JSC::ExecState*, const String& title)
 void PageConsoleClient::time(JSC::ExecState*, const String& title)
 {
     InspectorInstrumentation::startConsoleTiming(m_page.mainFrame(), title);
+}
+
+void PageConsoleClient::timeLog(JSC::ExecState*, const String& title, Ref<ScriptArguments>&& arguments)
+{
+    InspectorInstrumentation::logConsoleTiming(m_page.mainFrame(), title, WTFMove(arguments));
 }
 
 void PageConsoleClient::timeEnd(JSC::ExecState* exec, const String& title)

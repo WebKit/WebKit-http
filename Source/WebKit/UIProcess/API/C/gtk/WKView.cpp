@@ -48,3 +48,18 @@ void WKViewSetFocus(WKViewRef viewRef, bool focused)
 {
     webkitWebViewBaseSetFocus(toImpl(viewRef), focused);
 }
+
+void WKViewSetEnableBackForwardNavigationGesture(WKViewRef viewRef, bool enabled)
+{
+    webkitWebViewBaseSetEnableBackForwardNavigationGesture(toImpl(viewRef), enabled);
+}
+
+bool WKViewBeginBackSwipeForTesting(WKViewRef viewRef)
+{
+    return webkitWebViewBaseBeginBackSwipeForTesting(toImpl(viewRef));
+}
+
+bool WKViewCompleteBackSwipeForTesting(WKViewRef viewRef)
+{
+    return webkitWebViewBaseCompleteBackSwipeForTesting(toImpl(viewRef));
+}

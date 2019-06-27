@@ -100,6 +100,13 @@ PASS descriptor.configurable is true
 PASS descriptor.writable is true
 PASS descriptor.enumerable is true
 
+console.countReset
+PASS typeof console.countReset is "function"
+PASS console.countReset.length is 0
+PASS descriptor.configurable is true
+PASS descriptor.writable is true
+PASS descriptor.enumerable is true
+
 console.profile
 PASS typeof console.profile is "function"
 PASS console.profile.length is 0
@@ -117,6 +124,13 @@ PASS descriptor.enumerable is true
 console.time
 PASS typeof console.time is "function"
 PASS console.time.length is 0
+PASS descriptor.configurable is true
+PASS descriptor.writable is true
+PASS descriptor.enumerable is true
+
+console.timeLog
+PASS typeof console.timeLog is "function"
+PASS console.timeLog.length is 0
 PASS descriptor.configurable is true
 PASS descriptor.writable is true
 PASS descriptor.enumerable is true

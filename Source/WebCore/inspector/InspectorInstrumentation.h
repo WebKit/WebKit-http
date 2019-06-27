@@ -223,9 +223,14 @@ public:
 
     static void consoleCount(Page&, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&);
     static void consoleCount(WorkerGlobalScope&, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&);
+    static void consoleCountReset(Page&, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&);
+    static void consoleCountReset(WorkerGlobalScope&, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&);
+
     static void takeHeapSnapshot(Frame&, const String& title);
     static void startConsoleTiming(Frame&, const String& title);
     static void startConsoleTiming(WorkerGlobalScope&, const String& title);
+    static void logConsoleTiming(Frame&, const String& title, Ref<Inspector::ScriptArguments>&&);
+    static void logConsoleTiming(WorkerGlobalScope&, const String& title, Ref<Inspector::ScriptArguments>&&);
     static void stopConsoleTiming(Frame&, const String& title, Ref<Inspector::ScriptCallStack>&&);
     static void stopConsoleTiming(WorkerGlobalScope&, const String& title, Ref<Inspector::ScriptCallStack>&&);
     static void consoleTimeStamp(Frame&, Ref<Inspector::ScriptArguments>&&);
@@ -401,9 +406,11 @@ private:
     static void addMessageToConsoleImpl(InstrumentingAgents&, std::unique_ptr<Inspector::ConsoleMessage>);
 
     static void consoleCountImpl(InstrumentingAgents&, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&);
+    static void consoleCountResetImpl(InstrumentingAgents&, JSC::ExecState*, Ref<Inspector::ScriptArguments>&&);
     static void takeHeapSnapshotImpl(InstrumentingAgents&, const String& title);
     static void startConsoleTimingImpl(InstrumentingAgents&, Frame&, const String& title);
     static void startConsoleTimingImpl(InstrumentingAgents&, const String& title);
+    static void logConsoleTimingImpl(InstrumentingAgents&, const String& title, Ref<Inspector::ScriptArguments>&&);
     static void stopConsoleTimingImpl(InstrumentingAgents&, Frame&, const String& title, Ref<Inspector::ScriptCallStack>&&);
     static void stopConsoleTimingImpl(InstrumentingAgents&, const String& title, Ref<Inspector::ScriptCallStack>&&);
     static void consoleTimeStampImpl(InstrumentingAgents&, Frame&, Ref<Inspector::ScriptArguments>&&);
@@ -1390,6 +1397,16 @@ inline void InspectorInstrumentation::consoleCount(WorkerGlobalScope& workerGlob
     consoleCountImpl(instrumentingAgentsForWorkerGlobalScope(workerGlobalScope), state, WTFMove(arguments));
 }
 
+inline void InspectorInstrumentation::consoleCountReset(Page& page, JSC::ExecState* state, Ref<Inspector::ScriptArguments>&& arguments)
+{
+    consoleCountResetImpl(instrumentingAgentsForPage(page), state, WTFMove(arguments));
+}
+
+inline void InspectorInstrumentation::consoleCountReset(WorkerGlobalScope& workerGlobalScope, JSC::ExecState* state, Ref<Inspector::ScriptArguments>&& arguments)
+{
+    consoleCountResetImpl(instrumentingAgentsForWorkerGlobalScope(workerGlobalScope), state, WTFMove(arguments));
+}
+
 inline void InspectorInstrumentation::takeHeapSnapshot(Frame& frame, const String& title)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
@@ -1406,6 +1423,17 @@ inline void InspectorInstrumentation::startConsoleTiming(Frame& frame, const Str
 inline void InspectorInstrumentation::startConsoleTiming(WorkerGlobalScope& workerGlobalScope, const String& title)
 {
     startConsoleTimingImpl(instrumentingAgentsForWorkerGlobalScope(workerGlobalScope), title);
+}
+
+inline void InspectorInstrumentation::logConsoleTiming(Frame& frame, const String& title, Ref<Inspector::ScriptArguments>&& arguments)
+{
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
+        logConsoleTimingImpl(*instrumentingAgents, title, WTFMove(arguments));
+}
+
+inline void InspectorInstrumentation::logConsoleTiming(WorkerGlobalScope& workerGlobalScope, const String& title, Ref<Inspector::ScriptArguments>&& arguments)
+{
+    logConsoleTimingImpl(instrumentingAgentsForWorkerGlobalScope(workerGlobalScope), title, WTFMove(arguments));
 }
 
 inline void InspectorInstrumentation::stopConsoleTiming(Frame& frame, const String& title, Ref<Inspector::ScriptCallStack>&& stack)

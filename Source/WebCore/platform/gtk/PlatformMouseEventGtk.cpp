@@ -39,18 +39,14 @@ namespace WebCore {
 // Keep this in sync with the other platform event constructors
 PlatformMouseEvent::PlatformMouseEvent(GdkEventButton* event)
 {
-    gdouble x, y, rootX, rootY;
-    GdkModifierType state;
-    guint button;
-
+    gdouble x, y;
     gdk_event_get_coords(reinterpret_cast<GdkEvent*>(event), &x, &y);
+    gdouble rootX, rootY;
     gdk_event_get_root_coords(reinterpret_cast<GdkEvent*>(event), &rootX, &rootY);
+    GdkModifierType state;
     gdk_event_get_state(reinterpret_cast<GdkEvent*>(event), &state);
-#ifndef GTK_API_VERSION_2
+    guint button;
     gdk_event_get_button(reinterpret_cast<GdkEvent*>(event), &button);
-#else
-    button = event->button;
-#endif
 
     m_timestamp = wallTimeForEvent(event);
     m_position = IntPoint(static_cast<int>(x), static_cast<int>(y));
@@ -70,12 +66,7 @@ PlatformMouseEvent::PlatformMouseEvent(GdkEventButton* event)
     if (PlatformKeyboardEvent::modifiersContainCapsLock(state))
         m_modifiers.add(PlatformEvent::Modifier::CapsLockKey);
 
-#if GTK_CHECK_VERSION(3, 10, 0)
     GdkEventType type = gdk_event_get_event_type(reinterpret_cast<GdkEvent*>(event));
-#else
-    GdkEventType type = event->type;
-#endif
-
     switch (type) {
     case GDK_BUTTON_PRESS:
     case GDK_2BUTTON_PRESS:
@@ -130,12 +121,7 @@ PlatformMouseEvent::PlatformMouseEvent(GdkEventMotion* motion)
     if (PlatformKeyboardEvent::modifiersContainCapsLock(state))
         m_modifiers.add(PlatformEvent::Modifier::CapsLockKey);
 
-#if GTK_CHECK_VERSION(3, 10, 0)
     GdkEventType type = gdk_event_get_event_type(reinterpret_cast<GdkEvent*>(motion));
-#else
-    GdkEventType type = motion->type;
-#endif
-
     switch (type) {
     case GDK_MOTION_NOTIFY:
         m_type = PlatformEvent::MouseMoved;

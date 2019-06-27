@@ -58,9 +58,16 @@ NameResolver::NameResolver(NameContext& nameContext)
 
 NameResolver::NameResolver(NameResolver& parentResolver, NameContext& nameContext)
     : m_nameContext(nameContext)
+    , m_parentNameResolver(&parentResolver)
 {
     m_isResolvingCalls = parentResolver.m_isResolvingCalls;
     setCurrentFunctionDefinition(parentResolver.m_currentFunction);
+}
+
+NameResolver::~NameResolver()
+{
+    if (error() && m_parentNameResolver)
+        m_parentNameResolver->setError();
 }
 
 void NameResolver::visit(AST::TypeReference& typeReference)
@@ -113,9 +120,17 @@ void NameResolver::visit(AST::Block& block)
 void NameResolver::visit(AST::IfStatement& ifStatement)
 {
     checkErrorAndVisit(ifStatement.conditional());
-    NameContext nameContext(&m_nameContext);
-    NameResolver newNameResolver(*this, nameContext);
-    newNameResolver.checkErrorAndVisit(ifStatement.body());
+    if (error())
+        return;
+
+    {
+        NameContext nameContext(&m_nameContext);
+        NameResolver newNameResolver(*this, nameContext);
+        newNameResolver.checkErrorAndVisit(ifStatement.body());
+    }
+    if (error())
+        return;
+
     if (ifStatement.elseBody()) {
         NameContext nameContext(&m_nameContext);
         NameResolver newNameResolver(*this, nameContext);
@@ -126,6 +141,9 @@ void NameResolver::visit(AST::IfStatement& ifStatement)
 void NameResolver::visit(AST::WhileLoop& whileLoop)
 {
     checkErrorAndVisit(whileLoop.conditional());
+    if (error())
+        return;
+
     NameContext nameContext(&m_nameContext);
     NameResolver newNameResolver(*this, nameContext);
     newNameResolver.checkErrorAndVisit(whileLoop.body());
@@ -133,9 +151,12 @@ void NameResolver::visit(AST::WhileLoop& whileLoop)
 
 void NameResolver::visit(AST::DoWhileLoop& whileLoop)
 {
-    NameContext nameContext(&m_nameContext);
-    NameResolver newNameResolver(*this, nameContext);
-    newNameResolver.checkErrorAndVisit(whileLoop.body());
+    {
+        NameContext nameContext(&m_nameContext);
+        NameResolver newNameResolver(*this, nameContext);
+        newNameResolver.checkErrorAndVisit(whileLoop.body());
+    }
+
     checkErrorAndVisit(whileLoop.conditional());
 }
 
@@ -256,6 +277,13 @@ void NameResolver::visit(AST::EnumerationMemberLiteral& enumerationMemberLiteral
     }
     
     setError();
+}
+
+void NameResolver::visit(AST::NativeFunctionDeclaration& nativeFunctionDeclaration)
+{
+    NameContext newNameContext(&m_nameContext);
+    NameResolver newNameResolver(newNameContext);
+    newNameResolver.Visitor::visit(nativeFunctionDeclaration);
 }
 
 // FIXME: https://bugs.webkit.org/show_bug.cgi?id=198167 Make sure all the names have been resolved.

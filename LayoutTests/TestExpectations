@@ -563,9 +563,9 @@ webkit.org/b/179608 imported/w3c/web-platform-tests/xhr/access-control-preflight
 webkit.org/b/179608 imported/w3c/web-platform-tests/xhr/access-control-preflight-sync-not-supported.htm [ Failure ]
 webkit.org/b/179608 imported/w3c/web-platform-tests/xhr/send-conditional-cors.htm [ Failure ]
 webkit.org/b/179611 imported/w3c/web-platform-tests/xhr/send-entity-body-document.htm [ Pass Failure ]
-imported/w3c/web-platform-tests/IndexedDB/nested-cloning-large-multiple.html [ Skip ]
-imported/w3c/web-platform-tests/IndexedDB/nested-cloning-large.html [ Skip ]
-imported/w3c/web-platform-tests/IndexedDB/nested-cloning-small.html [ Skip ]
+webkit.org/b/184066 imported/w3c/web-platform-tests/IndexedDB/nested-cloning-large-multiple.html [ Skip ]
+webkit.org/b/184066 imported/w3c/web-platform-tests/IndexedDB/nested-cloning-large.html [ Skip ]
+webkit.org/b/184066 imported/w3c/web-platform-tests/IndexedDB/nested-cloning-small.html [ Skip ]
 imported/w3c/web-platform-tests/css/cssom/interfaces.html [ Pass Timeout ]
 [ Debug ] imported/w3c/web-platform-tests/css/cssom-view/interfaces.html [ Skip ]
 webkit.org/b/182292 imported/w3c/web-platform-tests/css/cssom-view/scrollingElement-quirks-dynamic-001.html [ ImageOnlyFailure ]
@@ -1770,7 +1770,7 @@ storage/indexeddb/properties-disabled-at-runtime.html [ Failure ]
 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry-big.htm [ Failure ]
 
 # Test is crashing
-imported/w3c/web-platform-tests/IndexedDB/keypath-exceptions.htm [ Skip ]
+webkit.org/b/184065 imported/w3c/web-platform-tests/IndexedDB/keypath-exceptions.htm [ Skip ]
 
 # SQLite backend tests that timeout
 storage/indexeddb/modern/transaction-scheduler-1.html [ Skip ]
@@ -3326,6 +3326,31 @@ imported/w3c/web-platform-tests/websockets/closing-handshake/002.html [ Pass Fai
 imported/w3c/web-platform-tests/websockets/constructor/006.html [ Pass Failure ]
 imported/w3c/web-platform-tests/websockets/cookies/001.html [ Pass Failure ]
 imported/w3c/web-platform-tests/websockets/interfaces/CloseEvent/clean-close.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/close-invalid.any.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/url/001.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/close/close-replace.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/constructor/017.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/send/003.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/send/004.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/url/002.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/url/003.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/url/004.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/readyState/001.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/send/001.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/events/001.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/events/002.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/events/006.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/events/003.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/bufferedAmount/bufferedAmount-readonly.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/bufferedAmount/bufferedAmount-initial.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/constants/003.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/events/007.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/events/008.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/events/009.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/events/004.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/constants/002.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/constants/001.html [ Pass Failure ]
+webkit.org/b/199013 imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/constants/004.html [ Pass Failure ]
 
 # Timing out WebSocket tests.
 imported/w3c/web-platform-tests/websockets/Create-blocked-port.any.worker.html [ Skip ]
@@ -3413,3 +3438,7 @@ imported/w3c/web-platform-tests/websockets/Secure-Send-unpaired-surrogates.any.w
 
 # iOS only
 fast/dom/linkify-phone-numbers.html [ ImageOnlyFailure ]
+
+webkit.org/b/199039 editing/deleting/smart-delete-paragraph-003.html [ Skip ]
+
+webkit.org/b/199028 webgpu/whlsl-test-harness-test.html [ Slow ]

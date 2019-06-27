@@ -28,6 +28,7 @@
 #include "ChromeClient.h"
 #include "GraphicsLayerClient.h"
 #include "GraphicsLayerUpdater.h"
+#include "LayerAncestorClippingStack.h"
 #include "RenderLayer.h"
 #include <wtf/HashMap.h>
 #include <wtf/OptionSet.h>
@@ -88,9 +89,21 @@ enum class CompositingReason {
 enum class ScrollCoordinationRole {
     ViewportConstrained = 1 << 0,
     Scrolling           = 1 << 1,
-    FrameHosting        = 1 << 2,
-    Positioning         = 1 << 3,
+    ScrollingProxy      = 1 << 2,
+    FrameHosting        = 1 << 3,
+    Positioning         = 1 << 4,
 };
+
+static constexpr OptionSet<ScrollCoordinationRole> allScrollCoordinationRoles()
+{
+    return {
+        ScrollCoordinationRole::Scrolling,
+        ScrollCoordinationRole::ScrollingProxy,
+        ScrollCoordinationRole::ViewportConstrained,
+        ScrollCoordinationRole::FrameHosting,
+        ScrollCoordinationRole::Positioning
+    };
+}
 
 #if PLATFORM(IOS_FAMILY)
 class LegacyWebKitScrollingLayerCoordinator {
@@ -201,7 +214,10 @@ public:
     bool updateLayerCompositingState(RenderLayer&, RequiresCompositingData&, CompositingChangeRepaint = CompositingChangeRepaintNow);
 
     // Whether layer's backing needs a graphics layer to do clipping by an ancestor (non-stacking-context parent with overflow).
-    bool clippedByAncestor(RenderLayer&) const;
+    bool clippedByAncestor(RenderLayer&, const RenderLayer* compositingAncestor) const;
+
+    bool updateAncestorClippingStack(const RenderLayer&, const RenderLayer* compositingAncestor) const;
+
     // Whether layer's backing needs a graphics layer to clip z-order children of the given layer.
     static bool clipsCompositingDescendants(const RenderLayer&);
 
@@ -246,7 +262,10 @@ public:
 
     GraphicsLayer* scrollContainerLayer() const { return m_scrollContainerLayer.get(); }
     GraphicsLayer* scrolledContentsLayer() const { return m_scrolledContentsLayer.get(); }
+    GraphicsLayer* clipLayer() const { return m_clipLayer.get(); }
     GraphicsLayer* rootContentsLayer() const { return m_rootContentsLayer.get(); }
+
+    GraphicsLayer* layerForClipping() const {  return m_clipLayer ? m_clipLayer.get() : m_scrollContainerLayer.get();  }
 
 #if ENABLE(RUBBER_BANDING)
     GraphicsLayer* headerLayer() const { return m_layerForHeader.get(); }
@@ -437,8 +456,8 @@ private:
 
     void updateOverflowControlsLayers();
 
-    void updateLayersForScrollPosition();
-    void updateScrollContainerGeometry();
+    void updateScrollLayerPosition();
+    void updateScrollLayerClipping();
 
     FloatPoint positionForClipLayer() const;
 
@@ -478,7 +497,7 @@ private:
     bool requiresCompositingForEditableImage(RenderLayerModelObject&) const;
     bool requiresCompositingForIndirectReason(const RenderLayer&, bool hasCompositedDescendants, bool has3DTransformedDescendants, bool paintsIntoProvidedBacking, IndirectCompositingReason&) const;
 
-    static bool layerContainingBlockCrossesCoordinatedScrollingBoundary(const RenderLayer&, const RenderLayer& compositedAncestor);
+    static ScrollPositioningBehavior layerScrollBehahaviorRelativeToCompositedAncestor(const RenderLayer&, const RenderLayer& compositedAncestor);
 
     static bool styleChangeMayAffectIndirectCompositingReasons(const RenderStyle& oldStyle, const RenderStyle& newStyle);
 
@@ -488,13 +507,17 @@ private:
     };
 
     ScrollingNodeID attachScrollingNode(RenderLayer&, ScrollingNodeType, struct ScrollingTreeState&);
+    ScrollingNodeID registerScrollingNodeID(ScrollingCoordinator&, ScrollingNodeID, ScrollingNodeType, struct ScrollingTreeState&);
+
+    OptionSet<ScrollCoordinationRole> coordinatedScrollingRolesForLayer(const RenderLayer&) const;
 
     // Returns the ScrollingNodeID which acts as the parent for children.
-    ScrollingNodeID updateScrollCoordinationForLayer(RenderLayer&, struct ScrollingTreeState&, OptionSet<ScrollCoordinationRole>, OptionSet<ScrollingNodeChangeFlags>);
+    ScrollingNodeID updateScrollCoordinationForLayer(RenderLayer&, struct ScrollingTreeState&, OptionSet<ScrollingNodeChangeFlags>);
 
     // These return the ScrollingNodeID which acts as the parent for children.
     ScrollingNodeID updateScrollingNodeForViewportConstrainedRole(RenderLayer&, struct ScrollingTreeState&, OptionSet<ScrollingNodeChangeFlags>);
     ScrollingNodeID updateScrollingNodeForScrollingRole(RenderLayer&, struct ScrollingTreeState&, OptionSet<ScrollingNodeChangeFlags>);
+    ScrollingNodeID updateScrollingNodeForScrollingProxyRole(RenderLayer&, struct ScrollingTreeState&, OptionSet<ScrollingNodeChangeFlags>);
     ScrollingNodeID updateScrollingNodeForFrameHostingRole(RenderLayer&, struct ScrollingTreeState&, OptionSet<ScrollingNodeChangeFlags>);
     ScrollingNodeID updateScrollingNodeForPositioningRole(RenderLayer&, struct ScrollingTreeState&, OptionSet<ScrollingNodeChangeFlags>);
 
@@ -508,6 +531,10 @@ private:
 
     LayoutRect rootParentRelativeScrollableRect() const;
     LayoutRect parentRelativeScrollableRect(const RenderLayer&, const RenderLayer* ancestorLayer) const;
+
+    // Returns list of layers and their clip rects required to clip the given layer, which include clips in the
+    // containing block chain between the given layer and its composited ancestor.
+    Vector<CompositedClipData> computeAncestorClippingStack(const RenderLayer&, const RenderLayer* compositingAncestor) const;
 
     bool requiresScrollLayer(RootLayerAttachment) const;
     bool requiresHorizontalScrollbarLayer() const;
@@ -571,6 +598,7 @@ private:
     RefPtr<GraphicsLayer> m_rootContentsLayer;
 
     // Enclosing clipping layer for iframe content
+    RefPtr<GraphicsLayer> m_clipLayer;
     RefPtr<GraphicsLayer> m_scrollContainerLayer;
     RefPtr<GraphicsLayer> m_scrolledContentsLayer;
 

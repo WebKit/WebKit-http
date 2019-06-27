@@ -39,9 +39,9 @@ import ews.config as config
 class StatusBubble(View):
     # These queue names are from shortname in https://trac.webkit.org/browser/webkit/trunk/Tools/BuildSlaveSupport/ews-build/config.json
     # FIXME: Auto-generate this list https://bugs.webkit.org/show_bug.cgi?id=195640
-    ALL_QUEUES = ['api-ios', 'api-mac', 'bindings', 'gtk', 'ios', 'ios-sim', 'ios-wk2', 'jsc', 'mac', 'mac-32bit', 'mac-32bit-wk2',
+    ALL_QUEUES = ['ios', 'api-ios', 'api-mac', 'bindings', 'gtk', 'ios-sim', 'ios-wk2', 'jsc', 'mac', 'mac-32bit', 'mac-32bit-wk2',
                     'mac-debug', 'mac-debug-wk1', 'mac-wk1', 'mac-wk2', 'style', 'webkitperl', 'webkitpy', 'win', 'wincairo', 'wpe']
-    ENABLED_QUEUES = ['api-ios', 'api-mac', 'bindings', 'webkitperl', 'webkitpy']
+    ENABLED_QUEUES = ['ios', 'api-ios', 'api-mac', 'bindings', 'webkitperl', 'webkitpy']
     # FIXME: Auto-generate the queue's trigger relationship
     QUEUE_TRIGGERS = {
         'api-ios': 'ios-sim',
@@ -155,7 +155,7 @@ class StatusBubble(View):
 
     def _does_build_contains_any_failed_step(self, build):
         for step in build.step_set.all():
-            if step.result and step.result != Buildbot.SUCCESS and step.result != Buildbot.WARNINGS:
+            if step.result and step.result != Buildbot.SUCCESS and step.result != Buildbot.WARNINGS and step.result != Buildbot.SKIPPED:
                 return True
         return False
 

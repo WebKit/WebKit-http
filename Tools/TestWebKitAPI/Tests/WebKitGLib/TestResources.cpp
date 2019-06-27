@@ -31,7 +31,7 @@ static const char* kIndexHtml =
     "<html><head>"
     " <link rel='stylesheet' href='/style.css' type='text/css'>"
     " <script language='javascript' src='/javascript.js'></script>"
-    "</head><body>WebKitGTK+ resources test</body></html>";
+    "</head><body>WebKitGTK resources test</body></html>";
 
 static const char* kStyleCSS =
     "body {"
@@ -216,7 +216,7 @@ static void testWebViewResources(ResourcesTest* test, gconstpointer)
     g_assert_null(test->subresources());
 
     // Load simple page without subresources.
-    test->loadHtml("<html><body>Testing WebKitGTK+</body></html>", 0);
+    test->loadHtml("<html><body>Testing WebKitGTK</body></html>", 0);
     test->waitUntilLoadFinished();
     WebKitWebResource* resource = webkit_web_view_get_main_resource(test->m_webView);
     g_assert_nonnull(resource);
@@ -751,7 +751,6 @@ public:
     unsigned m_resourcesToStartPending;
 };
 
-#if SOUP_CHECK_VERSION(2, 49, 91)
 static void testWebViewSyncRequestOnMaxConns(SyncRequestOnMaxConnsTest* test, gconstpointer)
 {
     WTF::GMutexLocker<GMutex> lock(s_serverMutex);
@@ -786,7 +785,6 @@ static void testWebViewSyncRequestOnMaxConns(SyncRequestOnMaxConnsTest* test, gc
     if (context.unlockServerSourceID)
         g_source_remove(context.unlockServerSourceID);
 }
-#endif
 
 static void addCacheHTTPHeadersToResponse(SoupMessage* message)
 {
@@ -923,9 +921,7 @@ void beforeAll()
     Test::add("WebKitWebResource", "get-data-empty", testWebResourceGetDataEmpty);
     SingleResourceLoadTest::add("WebKitWebView", "history-cache", testWebViewResourcesHistoryCache);
     SendRequestTest::add("WebKitWebPage", "send-request", testWebResourceSendRequest);
-#if SOUP_CHECK_VERSION(2, 49, 91)
     SyncRequestOnMaxConnsTest::add("WebKitWebView", "sync-request-on-max-conns", testWebViewSyncRequestOnMaxConns);
-#endif
 }
 
 void afterAll()

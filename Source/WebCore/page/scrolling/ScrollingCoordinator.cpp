@@ -272,7 +272,7 @@ GraphicsLayer* ScrollingCoordinator::counterScrollingLayerForFrameView(FrameView
 GraphicsLayer* ScrollingCoordinator::insetClipLayerForFrameView(FrameView& frameView)
 {
     if (auto* renderView = frameView.frame().contentRenderer())
-        return renderView->compositor().scrollContainerLayer();
+        return renderView->compositor().clipLayer();
     return nullptr;
 }
 
@@ -463,6 +463,9 @@ TextStream& operator<<(TextStream& ts, ScrollingNodeType nodeType)
         break;
     case ScrollingNodeType::Overflow:
         ts << "overflow-scrolling";
+        break;
+    case ScrollingNodeType::OverflowProxy:
+        ts << "overflow-scroll-proxy";
         break;
     case ScrollingNodeType::Fixed:
         ts << "fixed";

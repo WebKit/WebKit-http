@@ -58,6 +58,7 @@ class ExperimentalFeature;
 class FrameHandle;
 class FrameInfo;
 class HitTestResult;
+class MessageListener;
 class Navigation;
 class NavigationAction;
 class NavigationData;
@@ -137,6 +138,7 @@ WK_ADD_API_MAPPING(WKIconDatabaseRef, WebIconDatabase)
 WK_ADD_API_MAPPING(WKInspectorRef, WebInspectorProxy)
 WK_ADD_API_MAPPING(WKMediaSessionFocusManagerRef, WebMediaSessionFocusManager)
 WK_ADD_API_MAPPING(WKMediaSessionMetadataRef, WebMediaSessionMetadata)
+WK_ADD_API_MAPPING(WKMessageListenerRef, API::MessageListener)
 WK_ADD_API_MAPPING(WKNavigationActionRef, API::NavigationAction)
 WK_ADD_API_MAPPING(WKNavigationDataRef, API::NavigationData)
 WK_ADD_API_MAPPING(WKNavigationRef, API::Navigation)
@@ -367,29 +369,29 @@ inline HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(WKHTTPCookieAcceptPolicy 
 {
     switch (policy) {
     case kWKHTTPCookieAcceptPolicyAlways:
-        return HTTPCookieAcceptPolicyAlways;
+        return HTTPCookieAcceptPolicy::AlwaysAccept;
     case kWKHTTPCookieAcceptPolicyNever:
-        return HTTPCookieAcceptPolicyNever;
+        return HTTPCookieAcceptPolicy::Never;
     case kWKHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain:
-        return HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain;
+        return HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain;
     case kWKHTTPCookieAcceptPolicyExclusivelyFromMainDocumentDomain:
-        return HTTPCookieAcceptPolicyExclusivelyFromMainDocumentDomain;
+        return HTTPCookieAcceptPolicy::ExclusivelyFromMainDocumentDomain;
     }
 
     ASSERT_NOT_REACHED();
-    return HTTPCookieAcceptPolicyAlways;
+    return HTTPCookieAcceptPolicy::AlwaysAccept;
 }
 
 inline WKHTTPCookieAcceptPolicy toAPI(HTTPCookieAcceptPolicy policy)
 {
     switch (policy) {
-    case HTTPCookieAcceptPolicyAlways:
+    case HTTPCookieAcceptPolicy::AlwaysAccept:
         return kWKHTTPCookieAcceptPolicyAlways;
-    case HTTPCookieAcceptPolicyNever:
+    case HTTPCookieAcceptPolicy::Never:
         return kWKHTTPCookieAcceptPolicyNever;
-    case HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain:
+    case HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain:
         return kWKHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain;
-    case HTTPCookieAcceptPolicyExclusivelyFromMainDocumentDomain:
+    case HTTPCookieAcceptPolicy::ExclusivelyFromMainDocumentDomain:
         return kWKHTTPCookieAcceptPolicyExclusivelyFromMainDocumentDomain;
     }
 

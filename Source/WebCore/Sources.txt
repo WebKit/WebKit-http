@@ -312,6 +312,7 @@ Modules/webgpu/WHLSL/WHLSLAutoInitializeVariables.cpp
 Modules/webgpu/WHLSL/WHLSLInferTypes.cpp
 Modules/webgpu/WHLSL/WHLSLLexer.cpp
 Modules/webgpu/WHLSL/WHLSLParser.cpp
+Modules/webgpu/WHLSL/WHLSLCheckTextureReferences.cpp
 Modules/webgpu/WHLSL/WHLSLChecker.cpp
 Modules/webgpu/WHLSL/WHLSLGatherEntryPointItems.cpp
 Modules/webgpu/WHLSL/WHLSLCheckDuplicateFunctions.cpp
@@ -1602,6 +1603,7 @@ page/scrolling/ScrollingStateFrameHostingNode.cpp
 page/scrolling/ScrollingStateFrameScrollingNode.cpp
 page/scrolling/ScrollingStateNode.cpp
 page/scrolling/ScrollingStateOverflowScrollingNode.cpp
+page/scrolling/ScrollingStateOverflowScrollProxyNode.cpp
 page/scrolling/ScrollingStatePositionedNode.cpp
 page/scrolling/ScrollingStateScrollingNode.cpp
 page/scrolling/ScrollingStateStickyNode.cpp
@@ -1871,6 +1873,7 @@ platform/mediastream/RealtimeMediaSourceFactory.cpp
 platform/mediastream/RealtimeMediaSourceSettings.cpp
 platform/mediastream/RealtimeOutgoingAudioSource.cpp
 platform/mediastream/RealtimeOutgoingVideoSource.cpp
+platform/mediastream/RealtimeVideoCaptureSource.cpp
 platform/mediastream/RealtimeVideoSource.cpp
 
 platform/mediastream/libwebrtc/LibWebRTCProvider.cpp
@@ -1983,6 +1986,7 @@ rendering/InlineElementBox.cpp
 rendering/InlineFlowBox.cpp
 rendering/InlineIterator.cpp
 rendering/InlineTextBox.cpp
+rendering/LayerAncestorClippingStack.cpp
 rendering/LayerOverlapMap.cpp
 rendering/LayoutDisallowedScope.cpp
 rendering/LayoutRepainter.cpp

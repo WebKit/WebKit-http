@@ -54,11 +54,7 @@ static const double swipeOverlayShadowGradientAlpha[] = { 1, 0.99, 0.98, 0.95, 0
 
 static bool isEventStop(GdkEventScroll* event)
 {
-#if GTK_CHECK_VERSION(3, 20, 0)
     return gdk_event_is_scroll_stop_event(reinterpret_cast<GdkEvent*>(event));
-#else
-    return !event->delta_x && !event->delta_y;
-#endif
 }
 
 void ViewGestureController::platformTeardown()
@@ -84,9 +80,9 @@ bool ViewGestureController::PendingSwipeTracker::scrollEventCanInfluenceSwipe(Gd
     GdkDevice* device = gdk_event_get_source_device(reinterpret_cast<GdkEvent*>(event));
     GdkInputSource source = gdk_device_get_source(device);
 
-    // FIXME: Should it maybe be allowed on mice/trackpoints as well? The GDK_SCROLL_SMOOTH
-    // requirement already filters out most mice, and it works pretty well on a trackpoint
-    return gdk_event_get_scroll_deltas(reinterpret_cast<GdkEvent*>(event), nullptr, nullptr) && (source == GDK_SOURCE_TOUCHPAD || source == GDK_SOURCE_TOUCHSCREEN);
+    bool isDeviceAllowed = source == GDK_SOURCE_TOUCHPAD || source == GDK_SOURCE_TOUCHSCREEN || m_viewGestureController.m_isSimulatedSwipe;
+
+    return gdk_event_get_scroll_deltas(reinterpret_cast<GdkEvent*>(event), nullptr, nullptr) && isDeviceAllowed;
 }
 
 static bool isTouchEvent(GdkEventScroll* event)
@@ -316,6 +312,13 @@ void ViewGestureController::beginSwipeGesture(WebBackForwardListItem* targetItem
         }
     }
 
+    if (!m_currentSwipeSnapshotPattern) {
+        GdkRGBA color;
+        auto* context = gtk_widget_get_style_context(m_webPageProxy.viewWidget());
+        if (gtk_style_context_lookup_color(context, "theme_base_color", &color))
+            m_currentSwipeSnapshotPattern = adoptRef(cairo_pattern_create_rgba(color.red, color.green, color.blue, color.alpha));
+    }
+
     if (!m_currentSwipeSnapshotPattern)
         m_currentSwipeSnapshotPattern = adoptRef(cairo_pattern_create_rgb(1, 1, 1));
 }
@@ -328,6 +331,8 @@ void ViewGestureController::handleSwipeGesture(WebBackForwardListItem*, double, 
 void ViewGestureController::draw(cairo_t* cr, cairo_pattern_t* pageGroup)
 {
     bool swipingLeft = isPhysicallySwipingLeft(m_swipeProgressTracker.direction());
+    bool swipingBack = m_swipeProgressTracker.direction() == SwipeDirection::Back;
+    bool isRTL = m_webPageProxy.userInterfaceLayoutDirection() == WebCore::UserInterfaceLayoutDirection::RTL;
     float progress = m_swipeProgressTracker.progress();
 
     double width = m_webPageProxy.drawingArea()->size().width();
@@ -336,6 +341,8 @@ void ViewGestureController::draw(cairo_t* cr, cairo_pattern_t* pageGroup)
     double swipingLayerOffset = (swipingLeft ? 0 : width) + floor(width * progress);
 
     double dimmingProgress = swipingLeft ? 1 - progress : -progress;
+    if (isRTL)
+        dimmingProgress = 1 - dimmingProgress;
 
     double remainingSwipeDistance = dimmingProgress * width;
     double shadowFadeDistance = swipeOverlayShadowWidth;
@@ -344,7 +351,7 @@ void ViewGestureController::draw(cairo_t* cr, cairo_pattern_t* pageGroup)
     if (remainingSwipeDistance < shadowFadeDistance)
         shadowOpacity = (remainingSwipeDistance / shadowFadeDistance) * swipeOverlayShadowOpacity;
 
-    RefPtr<cairo_pattern_t> shadowPattern = adoptRef(cairo_pattern_create_linear(0, 0, -swipeOverlayShadowWidth, 0));
+    RefPtr<cairo_pattern_t> shadowPattern = adoptRef(cairo_pattern_create_linear(0, 0, swipeOverlayShadowWidth, 0));
     for (int i = 0; i < 16; i++) {
         double offset = swipeOverlayShadowGradientOffsets[i];
         double alpha = swipeOverlayShadowGradientAlpha[i] * shadowOpacity;
@@ -353,8 +360,11 @@ void ViewGestureController::draw(cairo_t* cr, cairo_pattern_t* pageGroup)
 
     cairo_save(cr);
 
-    cairo_rectangle(cr, 0, 0, swipingLayerOffset, height);
-    cairo_set_source(cr, swipingLeft ? m_currentSwipeSnapshotPattern.get() : pageGroup);
+    if (isRTL)
+        cairo_rectangle(cr, swipingLayerOffset, 0, width - swipingLayerOffset, height);
+    else
+        cairo_rectangle(cr, 0, 0, swipingLayerOffset, height);
+    cairo_set_source(cr, swipingBack ? m_currentSwipeSnapshotPattern.get() : pageGroup);
     cairo_fill_preserve(cr);
 
     cairo_set_source_rgba(cr, 0, 0, 0, dimmingProgress * swipeOverlayDimmingOpacity);
@@ -363,13 +373,21 @@ void ViewGestureController::draw(cairo_t* cr, cairo_pattern_t* pageGroup)
     cairo_translate(cr, swipingLayerOffset, 0);
 
     if (progress) {
-        cairo_rectangle(cr, -swipeOverlayShadowWidth, 0, swipeOverlayShadowWidth, height);
+        cairo_save(cr);
+        if (!isRTL)
+            cairo_scale(cr, -1, 1);
+        cairo_rectangle(cr, 0, 0, swipeOverlayShadowWidth, height);
         cairo_set_source(cr, shadowPattern.get());
         cairo_fill(cr);
+        cairo_restore(cr);
     }
 
-    cairo_rectangle(cr, 0, 0, width - swipingLayerOffset, height);
-    cairo_set_source(cr, swipingLeft ? pageGroup : m_currentSwipeSnapshotPattern.get());
+    if (isRTL) {
+        cairo_translate(cr, -width, 0);
+        cairo_rectangle(cr, width - swipingLayerOffset, 0, swipingLayerOffset, height);
+    } else
+        cairo_rectangle(cr, 0, 0, width - swipingLayerOffset, height);
+    cairo_set_source(cr, swipingBack ? pageGroup : m_currentSwipeSnapshotPattern.get());
     cairo_fill(cr);
 
     cairo_restore(cr);
@@ -397,14 +415,61 @@ void ViewGestureController::removeSwipeSnapshot()
     m_swipeProgressTracker.reset();
 }
 
-bool ViewGestureController::beginSimulatedSwipeInDirectionForTesting(SwipeDirection)
+static GUniquePtr<GdkEvent> createScrollEvent(GtkWidget* widget, double xDelta, double yDelta)
 {
-    return false;
+    GdkWindow* window = gtk_widget_get_window(widget);
+
+    int x, y;
+    gdk_window_get_root_origin(window, &x, &y);
+
+    int width = gdk_window_get_width(window);
+    int height = gdk_window_get_height(window);
+
+    GUniquePtr<GdkEvent> event(gdk_event_new(GDK_SCROLL));
+    event->scroll.time = GDK_CURRENT_TIME;
+    event->scroll.x = width / 2;
+    event->scroll.y = height / 2;
+    event->scroll.x_root = x + width / 2;
+    event->scroll.y_root = y + height / 2;
+    event->scroll.direction = GDK_SCROLL_SMOOTH;
+    event->scroll.delta_x = xDelta;
+    event->scroll.delta_y = yDelta;
+    event->scroll.state = 0;
+    event->scroll.is_stop = !xDelta && !yDelta;
+    event->scroll.window = GDK_WINDOW(g_object_ref(window));
+    gdk_event_set_screen(event.get(), gdk_window_get_screen(window));
+    gdk_event_set_device(event.get(), gdk_device_manager_get_client_pointer(gdk_display_get_device_manager(gdk_window_get_display(window))));
+    gdk_event_set_source_device(event.get(), gdk_device_manager_get_client_pointer(gdk_display_get_device_manager(gdk_window_get_display(window))));
+
+    return event;
+}
+
+bool ViewGestureController::beginSimulatedSwipeInDirectionForTesting(SwipeDirection direction)
+{
+    if (!canSwipeInDirection(direction))
+        return false;
+
+    m_isSimulatedSwipe = true;
+
+    double delta = swipeTouchpadBaseWidth / gtkScrollDeltaMultiplier * 0.75;
+
+    if (isPhysicallySwipingLeft(direction))
+        delta = -delta;
+
+    GUniquePtr<GdkEvent> event = createScrollEvent(m_webPageProxy.viewWidget(), delta, 0);
+    gtk_widget_event(m_webPageProxy.viewWidget(), event.get());
+
+    return true;
 }
 
 bool ViewGestureController::completeSimulatedSwipeInDirectionForTesting(SwipeDirection)
 {
-    return false;
+    GUniquePtr<GdkEvent> event = createScrollEvent(m_webPageProxy.viewWidget(), 0, 0);
+    gtk_widget_event(m_webPageProxy.viewWidget(), event.get());
+
+    m_isSimulatedSwipe = false;
+
+    return true;
 }
 
 } // namespace WebKit

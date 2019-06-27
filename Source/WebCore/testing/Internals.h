@@ -35,6 +35,7 @@
 #include "OrientationNotifier.h"
 #include "PageConsoleClient.h"
 #include "RealtimeMediaSource.h"
+#include "TextIndicator.h"
 #include <JavaScriptCore/Float32Array.h>
 #include <wtf/Optional.h>
 
@@ -53,6 +54,7 @@ class AudioContext;
 class CacheStorageConnection;
 class DOMRect;
 class DOMRectList;
+class DOMRectReadOnly;
 class DOMURL;
 class DOMWindow;
 class Document;
@@ -351,9 +353,10 @@ public:
         LAYER_TREE_INCLUDES_PAINTING_PHASES = 8,
         LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16,
         LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32,
-        LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED = 64,
-        LAYER_TREE_INCLUDES_ROOT_LAYER_PROPERTIES = 128,
-        LAYER_TREE_INCLUDES_EVENT_REGION = 256,
+        LAYER_TREE_INCLUDES_CLIPPING = 64,
+        LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED = 128,
+        LAYER_TREE_INCLUDES_ROOT_LAYER_PROPERTIES = 256,
+        LAYER_TREE_INCLUDES_EVENT_REGION = 512,
     };
     ExceptionOr<String> layerTreeAsText(Document&, unsigned short flags) const;
     ExceptionOr<uint64_t> layerIDForElement(Element&);
@@ -827,6 +830,28 @@ public:
     void setXHRMaximumIntervalForUserGestureForwarding(XMLHttpRequest&, double);
 
     void setIsPlayingToAutomotiveHeadUnit(bool);
+    
+    struct TextIndicatorInfo {
+        RefPtr<DOMRectReadOnly> textBoundingRectInRootViewCoordinates;
+        
+        TextIndicatorInfo();
+        TextIndicatorInfo(const WebCore::TextIndicatorData&);
+        ~TextIndicatorInfo();
+    };
+        
+    struct TextIndicatorOptions {
+        bool useBoundingRectAndPaintAllContentForComplexRanges { false };
+        
+        WebCore::TextIndicatorOptions core()
+        {
+            WebCore::TextIndicatorOptions options = 0;
+            if (useBoundingRectAndPaintAllContentForComplexRanges)
+                options = options | TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges;
+            return options;
+        }
+    };
+
+    TextIndicatorInfo textIndicatorForRange(const Range&, TextIndicatorOptions);
 
 private:
     explicit Internals(Document&);

@@ -42,6 +42,7 @@
 #include "ScrollingStateFixedNode.h"
 #include "ScrollingStateFrameHostingNode.h"
 #include "ScrollingStateFrameScrollingNode.h"
+#include "ScrollingStateOverflowScrollProxyNode.h"
 #include "ScrollingStateOverflowScrollingNode.h"
 #include "ScrollingStatePositionedNode.h"
 #include "ScrollingStateStickyNode.h"
@@ -446,15 +447,25 @@ void AsyncScrollingCoordinator::reconcileScrollingState(FrameView& frameView, co
 
 void AsyncScrollingCoordinator::reconcileScrollPosition(FrameView& frameView, ScrollingLayerPositionAction scrollingLayerPositionAction)
 {
+#if PLATFORM(IOS_FAMILY)
+    // Doing all scrolling like this (UIScrollView style) would simplify code.
     auto* scrollContainerLayer = scrollContainerLayerForFrameView(frameView);
     if (!scrollContainerLayer)
         return;
-
-    // This uses scrollPosition because the root content layer accounts for scrollOrigin (see FrameView::positionForRootContentLayer()).
     if (scrollingLayerPositionAction == ScrollingLayerPositionAction::Set)
         scrollContainerLayer->setBoundsOrigin(frameView.scrollPosition());
     else
         scrollContainerLayer->syncBoundsOrigin(frameView.scrollPosition());
+#else
+    // This uses scrollPosition because the root content layer accounts for scrollOrigin (see FrameView::positionForRootContentLayer()).
+    auto* scrolledContentsLayer = scrolledContentsLayerForFrameView(frameView);
+    if (!scrolledContentsLayer)
+        return;
+    if (scrollingLayerPositionAction == ScrollingLayerPositionAction::Set)
+        scrolledContentsLayer->setPosition(-frameView.scrollPosition());
+    else
+        scrolledContentsLayer->syncPosition(-frameView.scrollPosition());
+#endif
 }
 
 void AsyncScrollingCoordinator::scrollableAreaScrollbarLayerDidChange(ScrollableArea& scrollableArea, ScrollbarOrientation orientation)
@@ -683,7 +694,7 @@ void AsyncScrollingCoordinator::setViewportConstraintedNodeConstraints(Scrolling
     }
 }
 
-void AsyncScrollingCoordinator::setPositionedNodeGeometry(ScrollingNodeID nodeID, const LayoutConstraints& constraints)
+void AsyncScrollingCoordinator::setPositionedNodeConstraints(ScrollingNodeID nodeID, const AbsolutePositionConstraints& constraints)
 {
     auto* node = m_scrollingStateTree->stateNodeForID(nodeID);
     if (!node)
@@ -700,9 +711,16 @@ void AsyncScrollingCoordinator::setRelatedOverflowScrollingNodes(ScrollingNodeID
     if (!node)
         return;
 
-    ASSERT(is<ScrollingStatePositionedNode>(*node));
-    if (auto* positionedNode = downcast<ScrollingStatePositionedNode>(node))
-        positionedNode->setRelatedOverflowScrollingNodes(WTFMove(relatedNodes));
+    if (is<ScrollingStatePositionedNode>(node))
+        downcast<ScrollingStatePositionedNode>(node)->setRelatedOverflowScrollingNodes(WTFMove(relatedNodes));
+    else if (is<ScrollingStateOverflowScrollProxyNode>(node)) {
+        auto* overflowScrollProxyNode = downcast<ScrollingStateOverflowScrollProxyNode>(node);
+        if (!relatedNodes.isEmpty())
+            overflowScrollProxyNode->setOverflowScrollingNode(relatedNodes[0]);
+        else
+            overflowScrollProxyNode->setOverflowScrollingNode(0);
+    } else
+        ASSERT_NOT_REACHED();
 }
 
 void AsyncScrollingCoordinator::setSynchronousScrollingReasons(FrameView& frameView, SynchronousScrollingReasons reasons)

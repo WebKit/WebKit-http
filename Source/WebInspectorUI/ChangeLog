@@ -1,3 +1,347 @@
+2019-06-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Update legacy backend commands after enum name change
+        https://bugs.webkit.org/show_bug.cgi?id=199250
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Protocol/Legacy/11.3/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/12.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/12.2/InspectorBackendCommands.js:
+
+2019-06-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: Elements: the forced pseudo-class indicator isn't visible when hovering
+        https://bugs.webkit.org/show_bug.cgi?id=199166
+
+        Reviewed by Matt Baker.
+
+        Make the pseudo-class indicator into its own element instead of being a `::before`.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement):
+        (WI.DOMTreeElement.prototype.updateSelectionArea):
+        (WI.DOMTreeElement.prototype.updateTitle):
+        (WI.DOMTreeElement.prototype._updatePseudoClassIndicator): Added.
+        (WI.DOMTreeElement.prototype.get pseudoClassesEnabled): Deleted.
+        (WI.DOMTreeElement.prototype._nodePseudoClassesDidChange): Deleted.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom):
+        (.tree-outline.dom li .pseudo-class-indicator): Added.
+        (body[dir=ltr] .tree-outline.dom li .pseudo-class-indicator): Added.
+        (body[dir=rtl] .tree-outline.dom li .pseudo-class-indicator): Added.
+        (.tree-outline.dom:focus li.selected .pseudo-class-indicator): Added.
+        (.tree-outline.dom li.pseudo-class-enabled > .selection-area::before): Deleted.
+        (body[dir=ltr] .tree-outline.dom li.pseudo-class-enabled > .selection-area::before): Deleted.
+        (body[dir=rtl] .tree-outline.dom li.pseudo-class-enabled > .selection-area::before): Deleted.
+        (.tree-outline.dom:focus li.selected.pseudo-class-enabled > .selection-area::before): Deleted.
+
+        * UserInterface/Views/FormattedValue.css:
+        (.formatted-node > .tree-outline.dom):
+        Adjust the indent of any `DOMTreeOutline` so there's more room for the pseudo-class
+        indicator, such as in the Console.
+
+2019-06-25  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Elements: show shadow DOM by default
+        https://bugs.webkit.org/show_bug.cgi?id=199128
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Setting.js:
+
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        Overriding the default value isn't necessary since the default is now true.
+
+2019-06-25  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION(r246621): Web Inspector: Styles: property may get removed when editing after deleting value
+        https://bugs.webkit.org/show_bug.cgi?id=199143
+        <rdar://problem/52042815>
+
+        Reviewed by Matt Baker.
+
+        r246621 affected when WI.CSSStyleDeclaration.Event.PropertiesChanged event is fired, which caused
+        SpreadsheetCSSStyleDeclarationEditor to possibly enter a state when `focused` property is
+        incorrectly set to false.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyRemoved): Removed.
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyWillRemove): Added.
+        Renamed from "removed" to "willRemove" since we need to call it before the property DOM element
+        is detached from the document.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.remove):
+        Don't set focused to false when the removed property wasn't focused.
+        This code need to exist because removing focused element from the DOM doesn't trigger blur event.
+
+2019-06-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Implement console.timeLog
+        https://bugs.webkit.org/show_bug.cgi?id=199184
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WI.ConsoleMessageView.prototype._appendMessageTextAndArguments):
+        Time messages (like timeLog) do not include their messageText
+        in their parameters list. So to behave more like normal logs
+        build a parameter list that includes it at the front.
+
+2019-06-23  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r246684): Dark Mode: dashboard buttons should have no background
+        https://bugs.webkit.org/show_bug.cgi?id=199136
+        <rdar://problem/52035798>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DefaultDashboardView.css:
+        (@media (prefers-color-scheme: dark)):
+        (.toolbar .dashboard .item.button,):
+
+2019-06-23  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: show green highlight for newly added properties only when name and value are present
+        https://bugs.webkit.org/show_bug.cgi?id=199131
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.updateStatus):
+
+2019-06-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION(r241980): Web Inspector: Styles: Pressing Tab/Enter on last property no longer focuses on selector on next rule
+        https://bugs.webkit.org/show_bug.cgi?id=199125
+        <rdar://problem/52011182>
+
+        Reviewed by Matt Baker.
+
+        Since SpreadsheetSelectorField's focus handler was removed in r241980, focusing on the selector element
+        doesn't start editing it.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.startEditingRuleSelector):
+
+2019-06-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: unbalanced quotes and parenthesis aren't displayed as property closed after editing values
+        https://bugs.webkit.org/show_bug.cgi?id=199090
+        <rdar://problem/51965431>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidBlur):
+        Unbalanced quotes and parenthesis are fixed inside of CSSProperty's rawValue setter.
+        Render the value from the model, not the view.
+
+2019-06-21  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: remove unused DataGrid style .force-focus
+        https://bugs.webkit.org/show_bug.cgi?id=199112
+        <rdar://problem/51993412>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.css:
+        (.timeline-view.heap-allocations > .data-grid:not(:focus) tr.selected.invalid):
+        (.timeline-view.heap-allocations > .data-grid:not(:focus, .force-focus) tr.selected.invalid): Deleted.
+
+        * UserInterface/Views/ResourceTreeElement.css:
+        (.item.resource.resource-type-websocket:not(.selected) .status .ready-state.open,):
+        (.item.resource.resource-type-websocket:not(.selected) .status .ready-state.connecting,):
+        Missed in https://bugs.webkit.org/show_bug.cgi?id=190480.
+
+2019-06-21  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: remove .legacy-mac/.latest-mac CSS classes, standardize on .latest-mac UI
+        https://bugs.webkit.org/show_bug.cgi?id=199109
+        <rdar://problem/51991129>
+
+        Reviewed by Timothy Hatcher.
+
+        Drop legacy macOS version support from Web Inspector UI.
+
+        * UserInterface/Base/Main.js:
+
+        * UserInterface/Views/DefaultDashboardView.css:
+        (@media (prefers-color-scheme: dark)):
+        (body.latest-mac .toolbar .dashboard .item.button): Deleted.
+
+        * UserInterface/Views/Toolbar.css:
+        (.toolbar):
+        (.toolbar .item.button,):
+        (.toolbar .search-bar > input[type="search"]):
+        (.toolbar .search-bar > input[type="search"]:focus):
+        (@media (-webkit-min-device-pixel-ratio: 2)):
+        (.toolbar .item.button:active):
+        (body.window-inactive .toolbar .item.button,):
+        (@media (prefers-color-scheme: dark)):
+        (.toolbar .search-bar > input[type="search"]::placeholder):
+        (body.window-inactive .toolbar .search-bar > input[type="search"]::placeholder):
+        (body.window-inactive .toolbar .search-bar > input[type="search"]::-webkit-search-results-button):
+        (.toolbar .dashboard-container):
+        (body .toolbar): Deleted.
+        (body.legacy-mac .toolbar .item.button,): Deleted.
+        (body.legacy-mac .toolbar .search-bar > input[type="search"]): Deleted.
+        (body.legacy-mac .toolbar .search-bar > input[type="search"]:focus): Deleted.
+        (body.legacy-mac .toolbar .item.button:active): Deleted.
+        (body.window-inactive.legacy-mac .toolbar .item.button,): Deleted.
+        (body.latest-mac .toolbar .item.button,): Deleted.
+        (body.latest-mac .toolbar .search-bar > input[type="search"]): Deleted.
+        (body.latest-mac .toolbar .search-bar > input[type="search"]:focus): Deleted.
+        (body.latest-mac .toolbar .item.button:active): Deleted.
+        (body.latest-mac.window-inactive .toolbar .item.button,): Deleted.
+        (body.latest-mac .toolbar .search-bar > input[type="search"]::placeholder): Deleted.
+        (body.latest-mac.window-inactive .toolbar .search-bar > input[type="search"]::placeholder): Deleted.
+        (body.latest-mac.window-inactive .toolbar .search-bar > input[type="search"]::-webkit-search-results-button): Deleted.
+        (body.latest-mac .toolbar .dashboard-container): Deleted.
+
+2019-06-20  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: rename shadowRootPushed parameter to match protocol
+        https://bugs.webkit.org/show_bug.cgi?id=199098
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Protocol/DOMObserver.js:
+        (WI.DOMObserver.prototype.shadowRootPushed):
+
+2019-06-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Error "null is not an object (evaluating 'syntaxTree.containersOfPosition')" when setting a breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=199082
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.textEditorExecutionHighlightRange):
+        The script syntax tree may be fetched even if the resource hasn't finished parsing (or had
+        a syntax error), so it's possible for it to be `null`.
+
+2019-06-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Dark Mode: inactive tab bar item should get darker on hover
+        https://bugs.webkit.org/show_bug.cgi?id=199022
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Views/TabBar.css:
+        (.tab-bar:not(.animating) > .item:not(.selected, .disabled):hover):
+        (@media not (prefers-color-scheme: dark) .tab-bar:not(.animating) > .item:not(.selected, .disabled):hover > .icon):
+        (@media (prefers-color-scheme: dark) .tab-bar):
+        (@media (prefers-color-scheme: dark) .tab-bar > .item):
+        (@media (prefers-color-scheme: dark) .tab-bar > .item:not(.disabled).selected):
+        (@media (prefers-color-scheme: dark) .tab-bar:not(.animating) > .item:not(.selected):hover):
+        (@media (prefers-color-scheme: dark) body.window-inactive .tab-bar):
+        (@media (prefers-color-scheme: dark) body.window-inactive .tab-bar > .item):
+        (@media (prefers-color-scheme: dark) body.window-inactive .tab-bar > .item.selected):
+
+        * UserInterface/Views/Toolbar.css:
+        (@media (prefers-color-scheme: dark) body .toolbar):
+
+2019-06-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: setting a breakpoint on a non-JavaScript line should immediately show as unresolved
+        https://bugs.webkit.org/show_bug.cgi?id=199033
+
+        Reviewed by Matt Baker.
+
+        Remove the `shouldSpeculativelyResolve` parameter, as it was resolving breakpoints even in
+        the case that there were no resolved locations for the given breakpoint.
+
+        In the case that there are resolved locations, the breakpoint would've already been resolved
+        by the time that `shouldSpeculativelyResolve` would've taken effect, so it's unnecessary.
+
+        This parameter was only used when setting a breakpoint from a `SourceCodeTextEditor` gutter.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype.addBreakpoint):
+        (WI.DebuggerManager.prototype._setBreakpoint):
+        (WI.DebuggerManager.prototype._setBreakpoint.didSetBreakpoint):
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.textEditorBreakpointAdded):
+
+2019-06-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Edit -> Tag doesn't do anything for html, head, and body elements
+        https://bugs.webkit.org/show_bug.cgi?id=199052
+        <rdar://problem/51923906>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype.populateDOMNodeContextMenu):
+         - Don't show an "Edit > Tag" for <html>, <head>, and <body> nodes
+         - Disable any "Edit" submenu item if it's target is already being edited
+         - Prevent "Add" submenu items from being shown for text nodes
+
+2019-06-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: Debugger: current call frame indicator isn't vertically centered
+        https://bugs.webkit.org/show_bug.cgi?id=199015
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CallFrameTreeElement.css:
+        (.tree-outline .item.call-frame .status):
+
+2019-06-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION(r240946): Web Inspector: Styles: Pasting multiple properties has issues
+        https://bugs.webkit.org/show_bug.cgi?id=198505
+        <rdar://problem/51374780>
+
+        Reviewed by Matt Baker.
+
+        Since r240946, setting WI.CSSStyleDeclaration.prototype.text updates the text immediately.
+        When WI.CSSStyleDeclaration.prototype.update gets called after setting text, it exits early
+        without firing WI.CSSStyleDeclaration.Event.PropertiesChanged.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration):
+        (WI.CSSStyleDeclaration.prototype.set text):
+
+2019-06-19  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove unused _pendingFilter from NetworkTableContentView
+        https://bugs.webkit.org/show_bug.cgi?id=199026
+
+        Reviewed by Devin Rousso.
+
+        This flag is no longer set as of https://trac.webkit.org/changeset/225895.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype._processPendingEntries):
+
+2019-06-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: TypeError: undefined is not an object (evaluating 'sourceCodePosition.lineNumber')
+        https://bugs.webkit.org/show_bug.cgi?id=199019
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        (WI.linkifyLocation):
+
+2019-06-19  Zhifei Fang  <zhifei_fang@apple.com>
+
+        Correct the error object link color in dark mode.
+        https://bugs.webkit.org/show_bug.cgi?id=198033
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ErrorObjectView.css:
+        (@media (prefers-dark-interface)):
+        (.error-object-link-container):
+
 2019-06-18  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Network: detail view shouldn't stay open when the related entry is removed

@@ -75,6 +75,11 @@ void JSGlobalObjectConsoleClient::count(ExecState* exec, Ref<ScriptArguments>&& 
     m_consoleAgent->count(exec, WTFMove(arguments));
 }
 
+void JSGlobalObjectConsoleClient::countReset(ExecState* exec, Ref<ScriptArguments>&& arguments)
+{
+    m_consoleAgent->countReset(exec, WTFMove(arguments));
+}
+
 void JSGlobalObjectConsoleClient::profile(JSC::ExecState*, const String& title)
 {
     if (!m_consoleAgent->enabled())
@@ -151,6 +156,11 @@ void JSGlobalObjectConsoleClient::takeHeapSnapshot(JSC::ExecState*, const String
 void JSGlobalObjectConsoleClient::time(ExecState*, const String& title)
 {
     m_consoleAgent->startTiming(title);
+}
+
+void JSGlobalObjectConsoleClient::timeLog(ExecState*, const String& title, Ref<ScriptArguments>&& arguments)
+{
+    m_consoleAgent->logTiming(title, WTFMove(arguments));
 }
 
 void JSGlobalObjectConsoleClient::timeEnd(ExecState* exec, const String& title)

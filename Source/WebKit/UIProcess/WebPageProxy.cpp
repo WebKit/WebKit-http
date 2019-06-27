@@ -710,8 +710,9 @@ void WebPageProxy::handleSynchronousMessage(IPC::Connection& connection, const S
         return completionHandler({ });
 
     RefPtr<API::Object> returnData;
-    m_injectedBundleClient->didReceiveSynchronousMessageFromInjectedBundle(this, messageName, m_process->transformHandlesToObjects(messageBody.object()).get(), returnData);
-    completionHandler(UserData(m_process->transformObjectsToHandles(returnData.get())));
+    m_injectedBundleClient->didReceiveSynchronousMessageFromInjectedBundle(this, messageName, m_process->transformHandlesToObjects(messageBody.object()).get(), [completionHandler = WTFMove(completionHandler), process = m_process.copyRef()] (RefPtr<API::Object>&& returnData) mutable {
+        completionHandler(UserData(process->transformObjectsToHandles(returnData.get())));
+    });
 }
 
 void WebPageProxy::launchProcess(const RegistrableDomain& registrableDomain)
@@ -1054,19 +1055,29 @@ bool WebPageProxy::tryClose()
     return false;
 }
 
-bool WebPageProxy::maybeInitializeSandboxExtensionHandle(WebProcessProxy& process, const URL& url, SandboxExtension::Handle& sandboxExtensionHandle)
+void WebPageProxy::maybeInitializeSandboxExtensionHandle(WebProcessProxy& process, const URL& url, const URL& resourceDirectoryURL, SandboxExtension::Handle& sandboxExtensionHandle)
 {
     if (!url.isLocalFile())
-        return false;
+        return;
+
+    if (!resourceDirectoryURL.isEmpty()) {
+        if (process.hasAssumedReadAccessToURL(resourceDirectoryURL))
+            return;
+
+        if (SandboxExtension::createHandle(resourceDirectoryURL.fileSystemPath(), SandboxExtension::Type::ReadOnly, sandboxExtensionHandle)) {
+            m_process->assumeReadAccessToBaseURL(*this, resourceDirectoryURL);
+            return;
+        }
+    }
 
     if (process.hasAssumedReadAccessToURL(url))
-        return false;
+        return;
 
     // Inspector resources are in a directory with assumed access.
     ASSERT_WITH_SECURITY_IMPLICATION(!WebKit::isInspectorPage(*this));
 
-    SandboxExtension::createHandle("/", SandboxExtension::Type::ReadOnly, sandboxExtensionHandle);
-    return true;
+    if (SandboxExtension::createHandle("/", SandboxExtension::Type::ReadOnly, sandboxExtensionHandle))
+        willAcquireUniversalFileReadSandboxExtension(process);
 }
 
 #if !PLATFORM(COCOA)
@@ -1113,16 +1124,15 @@ void WebPageProxy::loadRequestWithNavigationShared(Ref<WebProcessProxy>&& proces
     LoadParameters loadParameters;
     loadParameters.navigationID = navigation.navigationID();
     loadParameters.request = WTFMove(request);
-    loadParameters.shouldOpenExternalURLsPolicy = (uint64_t)shouldOpenExternalURLsPolicy;
+    loadParameters.shouldOpenExternalURLsPolicy = shouldOpenExternalURLsPolicy;
     loadParameters.userData = UserData(process->transformObjectsToHandles(userData).get());
     loadParameters.shouldTreatAsContinuingLoad = shouldTreatAsContinuingLoad == ShouldTreatAsContinuingLoad::Yes;
     loadParameters.websitePolicies = WTFMove(websitePolicies);
     loadParameters.lockHistory = navigation.lockHistory();
     loadParameters.lockBackForwardList = navigation.lockBackForwardList();
     loadParameters.clientRedirectSourceForHistory = navigation.clientRedirectSourceForHistory();
-    bool createdExtension = maybeInitializeSandboxExtensionHandle(process, url, loadParameters.sandboxExtensionHandle);
-    if (createdExtension)
-        willAcquireUniversalFileReadSandboxExtension(process);
+    maybeInitializeSandboxExtensionHandle(process, url, m_pageLoadState.resourceDirectoryURL(), loadParameters.sandboxExtensionHandle);
+
     addPlatformLoadParameters(loadParameters);
 
     process->send(Messages::WebPage::LoadRequest(loadParameters), m_pageID);
@@ -1162,14 +1172,14 @@ RefPtr<API::Navigation> WebPageProxy::loadFile(const String& fileURLString, cons
 
     auto transaction = m_pageLoadState.transaction();
 
-    m_pageLoadState.setPendingAPIRequestURL(transaction, fileURLString);
+    m_pageLoadState.setPendingAPIRequestURL(transaction, fileURLString, resourceDirectoryURL);
 
     String resourceDirectoryPath = resourceDirectoryURL.fileSystemPath();
 
     LoadParameters loadParameters;
     loadParameters.navigationID = navigation->navigationID();
     loadParameters.request = fileURL;
-    loadParameters.shouldOpenExternalURLsPolicy = (uint64_t)ShouldOpenExternalURLsPolicy::ShouldNotAllow;
+    loadParameters.shouldOpenExternalURLsPolicy = ShouldOpenExternalURLsPolicy::ShouldNotAllow;
     loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
     SandboxExtension::createHandle(resourceDirectoryPath, SandboxExtension::Type::ReadOnly, loadParameters.sandboxExtensionHandle);
     addPlatformLoadParameters(loadParameters);
@@ -1181,7 +1191,7 @@ RefPtr<API::Navigation> WebPageProxy::loadFile(const String& fileURLString, cons
     return navigation;
 }
 
-RefPtr<API::Navigation> WebPageProxy::loadData(const IPC::DataReference& data, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData)
+RefPtr<API::Navigation> WebPageProxy::loadData(const IPC::DataReference& data, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
 {
     RELEASE_LOG_IF_ALLOWED(Loading, "loadData: webPID = %i, pageID = %" PRIu64, m_process->processIdentifier(), m_pageID.toUInt64());
 
@@ -1194,11 +1204,11 @@ RefPtr<API::Navigation> WebPageProxy::loadData(const IPC::DataReference& data, c
         launchProcess({ });
 
     auto navigation = m_navigationState->createLoadDataNavigation(std::make_unique<API::SubstituteData>(data.vector(), MIMEType, encoding, baseURL, userData));
-    loadDataWithNavigationShared(m_process.copyRef(), navigation, data, MIMEType, encoding, baseURL, userData, ShouldTreatAsContinuingLoad::No);
+    loadDataWithNavigationShared(m_process.copyRef(), navigation, data, MIMEType, encoding, baseURL, userData, ShouldTreatAsContinuingLoad::No, WTF::nullopt, shouldOpenExternalURLsPolicy);
     return navigation;
 }
 
-void WebPageProxy::loadDataWithNavigationShared(Ref<WebProcessProxy>&& process, API::Navigation& navigation, const IPC::DataReference& data, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData, ShouldTreatAsContinuingLoad shouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&& websitePolicies)
+void WebPageProxy::loadDataWithNavigationShared(Ref<WebProcessProxy>&& process, API::Navigation& navigation, const IPC::DataReference& data, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData, ShouldTreatAsContinuingLoad shouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&& websitePolicies, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
 {
     RELEASE_LOG_IF_ALLOWED(Loading, "loadDataWithNavigation: webPID = %i, pageID = %" PRIu64, process->processIdentifier(), m_pageID.toUInt64());
 
@@ -1217,6 +1227,7 @@ void WebPageProxy::loadDataWithNavigationShared(Ref<WebProcessProxy>&& process, 
     loadParameters.shouldTreatAsContinuingLoad = shouldTreatAsContinuingLoad == ShouldTreatAsContinuingLoad::Yes;
     loadParameters.userData = UserData(process->transformObjectsToHandles(userData).get());
     loadParameters.websitePolicies = WTFMove(websitePolicies);
+    loadParameters.shouldOpenExternalURLsPolicy = shouldOpenExternalURLsPolicy;
     addPlatformLoadParameters(loadParameters);
 
     process->assumeReadAccessToBaseURL(*this, baseURL);
@@ -1342,9 +1353,7 @@ RefPtr<API::Navigation> WebPageProxy::reload(OptionSet<WebCore::ReloadOption> op
         m_pageLoadState.setPendingAPIRequestURL(transaction, url);
 
         // We may not have an extension yet if back/forward list was reinstated after a WebProcess crash or a browser relaunch
-        bool createdExtension = maybeInitializeSandboxExtensionHandle(m_process, URL(URL(), url), sandboxExtensionHandle);
-        if (createdExtension)
-            willAcquireUniversalFileReadSandboxExtension(m_process);
+        maybeInitializeSandboxExtensionHandle(m_process, URL(URL(), url), currentResourceDirectoryURL(), sandboxExtensionHandle);
     }
 
     if (!hasRunningProcess())
@@ -5741,6 +5750,7 @@ void WebPageProxy::requestDOMPasteAccess(const WebCore::IntRect& elementRect, co
 void WebPageProxy::backForwardAddItem(BackForwardListItemState&& itemState)
 {
     auto item = WebBackForwardListItem::create(WTFMove(itemState), pageID());
+    item->setResourceDirectoryURL(currentResourceDirectoryURL());
     m_backForwardList->addItem(WTFMove(item));
 }
 
@@ -5763,9 +5773,7 @@ void WebPageProxy::backForwardGoToItemShared(Ref<WebProcessProxy>&& process, con
         return completionHandler({ });
 
     SandboxExtension::Handle sandboxExtensionHandle;
-    bool createdExtension = maybeInitializeSandboxExtensionHandle(process, URL(URL(), item->url()), sandboxExtensionHandle);
-    if (createdExtension)
-        willAcquireUniversalFileReadSandboxExtension(process);
+    maybeInitializeSandboxExtensionHandle(process, URL(URL(), item->url()), item->resourceDirectoryURL(),  sandboxExtensionHandle);
     m_backForwardList->goToItem(*item);
     completionHandler(WTFMove(sandboxExtensionHandle));
 }
@@ -6827,6 +6835,16 @@ String WebPageProxy::currentURL() const
     if (url.isEmpty() && m_backForwardList->currentItem())
         url = m_backForwardList->currentItem()->url();
     return url;
+}
+
+URL WebPageProxy::currentResourceDirectoryURL() const
+{
+    auto resourceDirectoryURL = m_pageLoadState.resourceDirectoryURL();
+    if (!resourceDirectoryURL.isEmpty())
+        return resourceDirectoryURL;
+    if (auto* item = m_backForwardList->currentItem())
+        return item->resourceDirectoryURL();
+    return { };
 }
 
 void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
@@ -9272,6 +9290,13 @@ void WebPageProxy::configureLoggingChannel(const String& channelName, WTFLogChan
     UNUSED_PARAM(level);
 #endif
 }
+
+#if HAVE(APP_SSO)
+void WebPageProxy::decidePolicyForSOAuthorizationLoad(const String& extension, CompletionHandler<void(SOAuthorizationLoadPolicy)>&& completionHandler)
+{
+    m_navigationClient->decidePolicyForSOAuthorizationLoad(*this, SOAuthorizationLoadPolicy::Allow, extension, WTFMove(completionHandler));
+}
+#endif
 
 } // namespace WebKit
 

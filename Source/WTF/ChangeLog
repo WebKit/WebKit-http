@@ -1,3 +1,209 @@
+2019-06-26  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove unneeded #include <wtf/glib/GRefPtr.h>
+        https://bugs.webkit.org/show_bug.cgi?id=199228
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/MemoryPressureHandler.h:
+
+2019-06-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION: ( r246394 ) webgpu/whlsl-buffer-fragment.html and webgpu/whlsl-buffer-vertex.html are failing
+        https://bugs.webkit.org/show_bug.cgi?id=199012
+
+        Reviewed by Saam Barati.
+
+        * wtf/Platform.h:
+
+2019-06-25  Keith Miller  <keith_miller@apple.com>
+
+        CagedPtr doesn't merge PAC bits back into the resulting caged pointer.
+        https://bugs.webkit.org/show_bug.cgi?id=199214
+
+        Reviewed by Yusuke Suzuki.
+
+        The current code means that caging will just strip the any failed
+        authentication bits. Adding this code doesn't appear to be a
+        regression on iPhone Xs.
+
+        * wtf/CagedPtr.h:
+        (WTF::CagedPtr::get const):
+        (WTF::CagedPtr::getMayBeNull const):
+        (WTF::CagedPtr::getUnsafe const):
+        (WTF::CagedPtr::mergePointers):
+
+2019-06-25  Sam Weinig  <weinig@apple.com>
+
+        Experiment with simple structured bindings use
+        https://bugs.webkit.org/show_bug.cgi?id=198905
+
+        Reviewed by Darin Adler.
+
+        * wtf/URLHelpers.cpp:
+        (WTF::URLHelpers::mapHostNames):
+        Simplify code using c++ structured bindings (https://en.cppreference.com/w/cpp/language/structured_binding)
+        to see if all the platforms will work with it.
+
+2019-06-25  Adam Barth  <abarth@webkit.org>
+
+        [fuchsia] Update to newer zx_clock_get syscall
+        https://bugs.webkit.org/show_bug.cgi?id=199191
+
+        Reviewed by Sam Weinig.
+
+        Fuchsia has changed the zx_clock_get syscall to return the clock value
+        via an out parameter rather than via its return value. This change
+        makes zx_clock_get consistent with all the other syscalls.
+
+        This patch updates our use of zx_clock_get to use the new syscall. The
+        old syscall is no longer supported by Fuchsia.
+
+        * wtf/fuchsia/CPUTimeFuchsia.cpp:
+        (WTF::CPUTime::get): Switch to using the out parameter.
+        (WTF::CPUTime::forCurrentThread): Switch to using the out parameter.
+
+2019-06-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fully rename WebKitGTK+ -> WebKitGTK everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=199159
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/URLParser.cpp:
+        (WTF::URLParser::internationalDomainNameTranscoder):
+
+2019-06-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Require GCC 7
+        https://bugs.webkit.org/show_bug.cgi?id=198914
+
+        Reviewed by Darin Adler.
+
+        Remove now-stale GCC version check.
+
+        * wtf/Compiler.h:
+
+2019-06-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Add OverflowScrollProxyNodes to the scrolling tree
+        https://bugs.webkit.org/show_bug.cgi?id=199132
+
+        Reviewed by Antti Koivisto.
+        
+        Setting indent is useful if you want to make a new stream with the indent of an
+        existing stream.
+
+        * wtf/text/TextStream.h:
+        (WTF::TextStream::setIndent):
+
+2019-06-20  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Try to use C++14 std::enable_if_t in CheckedArithmetic.h again
+        https://bugs.webkit.org/show_bug.cgi?id=199099
+
+        Reviewed by Ross Kirsling.
+
+        r242235 changed CheckedArithmetic to not use C++14. Let's try
+        C++14 again.
+
+        * wtf/CheckedArithmetic.h: Use C++14 std::make_unsigned_t and std::enable_if_t.
+
+2019-06-18  Darin Adler  <darin@apple.com>
+
+        Tidy up the remaining bits of the AtomicString to AtomString rename
+        https://bugs.webkit.org/show_bug.cgi?id=198990
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/text/AtomString.cpp: Fix a comment.
+        * wtf/text/AtomString.h: Tweak formatting a bit. Use nullptr instead of 0.
+        Removed "using AtomicString = AtomString".
+        * wtf/text/AtomStringImpl.cpp:
+        (WTF::CStringTranslator::translate): Use setIsAtom instead of setIsAtomic.
+        (WTF::UCharBufferTranslator::translate): Ditto.
+        (WTF::HashAndUTF8CharactersTranslator::translate): Ditto.
+        (WTF::SubstringTranslator::translate): Ditto.
+        (WTF::LCharBufferTranslator::translate): Ditto.
+        (WTF::BufferFromStaticDataTranslator::translate): Ditto.
+        (WTF::AtomStringImpl::addSlowCase): Ditto.
+        (WTF::AtomStringImpl::lookUpSlowCase): Updated assertion message.
+
+        * wtf/text/AtomStringImpl.h: Tweaked the implementation of add.
+        Updated comments to say AtomString.
+
+        * wtf/text/AtomStringTable.cpp:
+        (WTF::AtomStringTable::~AtomStringTable): Use setIsAtom.
+
+        * wtf/text/StringImpl.h: Updated name of StringAtomic and
+        s_hashFlagStringKindIsAtom. Renamed to flagIsAtom and setIsAtom.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::isSafeToSendToAnotherThread const): Updated comment.
+
+2019-06-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove support for GTK2 plugins
+        https://bugs.webkit.org/show_bug.cgi?id=199065
+
+        Reviewed by Sergio Villar Senin.
+
+        * wtf/Platform.h:
+        * wtf/glib/GTypedefs.h:
+
+2019-06-19  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [bmalloc] IsoHeap's initialization is racy with IsoHeap::isInitialized
+        https://bugs.webkit.org/show_bug.cgi?id=199053
+
+        Reviewed by Saam Barati.
+
+        Add constexpr static functions to generate pseudo random numbers from __LINE__.
+
+        * wtf/WeakRandom.h:
+        (WTF::WeakRandom::nextState):
+        (WTF::WeakRandom::generate):
+        (WTF::WeakRandom::advance):
+
+2019-06-19  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Add WTF::crossThreadCopy(T&&) to utilize String::isolatedCopy() &&
+        https://bugs.webkit.org/show_bug.cgi?id=198957
+
+        Reviewed by Alex Christensen.
+
+        &&-qualified String::isolatedCopy() has a optimization path which
+        does just WTFMove if it isSafeToSendToAnotherThread which means
+        the object hasOneRef.
+
+        However, WTF::crossThreadCopy was using only &-qualified
+        isolatedCopy. To use the optimization, added
+        WTF::crossThreadCopy(T&&) overloading.
+
+        * wtf/CrossThreadCopier.h:
+        (WTF::crossThreadCopy): Added a overload of (T&&).
+        * wtf/CrossThreadTask.h:
+        (WTF::createCrossThreadTask): Removed explicit template arguments of crossThreadCopy.
+
+2019-06-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Network: replace CFNetwork SPI with new API where able
+        https://bugs.webkit.org/show_bug.cgi?id=198762
+
+        Reviewed by Timothy Hatcher.
+
+        * wtf/Platform.h:
+
+2019-06-19  Alex Christensen  <achristensen@webkit.org>
+
+        Add a unit test for client certificate authentication
+        https://bugs.webkit.org/show_bug.cgi?id=197800
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/spi/cocoa/SecuritySPI.h:
+        Move declarations from ArgumentCodersCF.cpp so they can be shared.
+
 2019-06-19  Adrian Perez de Castro  <aperez@igalia.com>
 
         [WPE][GTK] Fix build with unified sources disabled

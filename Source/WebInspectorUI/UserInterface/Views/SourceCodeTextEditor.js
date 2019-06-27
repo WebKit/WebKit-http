@@ -1297,8 +1297,7 @@ WI.SourceCodeTextEditor = class SourceCodeTextEditor extends WI.TextEditor
         this._addBreakpointWithEditorLineInfo(breakpoint, lineInfo);
 
         this._ignoreBreakpointAddedBreakpoint = breakpoint;
-        const shouldSpeculativelyResolveBreakpoint = true;
-        WI.debuggerManager.addBreakpoint(breakpoint, shouldSpeculativelyResolveBreakpoint);
+        WI.debuggerManager.addBreakpoint(breakpoint);
         this._ignoreBreakpointAddedBreakpoint = null;
 
         // Return the more accurate location and breakpoint info.
@@ -1438,6 +1437,12 @@ WI.SourceCodeTextEditor = class SourceCodeTextEditor extends WI.TextEditor
         };
 
         script.requestScriptSyntaxTree((syntaxTree) => {
+            // After requesting the tree, we still might get a null tree from a parse error.
+            if (!syntaxTree) {
+                callback(null);
+                return;
+            }
+
             // Convert to the position within the inline script before querying the AST.
             position = toInlineScriptPosition(position);
             let nodes = syntaxTree.containersOfPosition(position);

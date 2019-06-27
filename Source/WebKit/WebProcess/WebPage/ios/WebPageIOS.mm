@@ -714,18 +714,24 @@ void WebPage::completePendingSyntheticClickForContentChangeObserver()
     if (!m_pendingSyntheticClickNode)
         return;
     auto observedContentChange = m_pendingSyntheticClickNode->document().contentChangeObserver().observedContentChange();
-    // Only dispatch the click if the document didn't get changed by any timers started by the move event.
-    if (observedContentChange == WKContentNoChange) {
-        LOG(ContentObservation, "No chage was observed -> click.");
-        completeSyntheticClick(*m_pendingSyntheticClickNode, m_pendingSyntheticClickLocation, m_pendingSyntheticClickModifiers, WebCore::OneFingerTap, m_pendingSyntheticClickPointerId);
-    } else {
-        // Ensure that the mouse is on the most recent content.
-        dispatchSyntheticMouseMove(m_page->mainFrame(), m_pendingSyntheticClickLocation, m_pendingSyntheticClickModifiers, m_pendingSyntheticClickPointerId);
-        LOG(ContentObservation, "Observed meaningful visible change -> hover.");
-    }
+    callOnMainThread([protectedThis = makeRefPtr(this), targetNode = Ref<Node>(*m_pendingSyntheticClickNode), originalDocument = makeWeakPtr(m_pendingSyntheticClickNode->document()), observedContentChange, location = m_pendingSyntheticClickLocation, modifiers = m_pendingSyntheticClickModifiers, pointerId = m_pendingSyntheticClickPointerId] {
+        if (protectedThis->m_isClosed || !protectedThis->corePage())
+            return;
+        if (!originalDocument || &targetNode->document() != originalDocument)
+            return;
 
+        // Only dispatch the click if the document didn't get changed by any timers started by the move event.
+        if (observedContentChange == WKContentNoChange) {
+            LOG(ContentObservation, "No chage was observed -> click.");
+            protectedThis->completeSyntheticClick(targetNode, location, modifiers, WebCore::OneFingerTap, pointerId);
+            return;
+        }
+        // Ensure that the mouse is on the most recent content.
+        LOG(ContentObservation, "Observed meaningful visible change -> hover.");
+        dispatchSyntheticMouseMove(protectedThis->corePage()->mainFrame(), location, modifiers, pointerId);
+    });
     m_pendingSyntheticClickNode = nullptr;
-    m_pendingSyntheticClickLocation = FloatPoint();
+    m_pendingSyntheticClickLocation = { };
     m_pendingSyntheticClickModifiers = { };
     m_pendingSyntheticClickPointerId = 0;
 }
@@ -2492,7 +2498,7 @@ static void linkIndicatorPositionInformation(WebPage& page, Element& element, El
 
     auto linkRange = rangeOfContents(linkElement);
     float deviceScaleFactor = page.corePage()->deviceScaleFactor();
-    const float marginInPoints = 4;
+    const float marginInPoints = request.linkIndicatorShouldHaveLegacyMargins ? 4 : 0;
 
     auto textIndicator = TextIndicator::createWithRange(linkRange.get(),
         TextIndicatorOptionTightlyFitContent | TextIndicatorOptionRespectTextColor | TextIndicatorOptionPaintBackgrounds |
@@ -2620,9 +2626,6 @@ static void selectionPositionInformation(WebPage& page, const InteractionInforma
         return;
 
     RenderObject* renderer = hitNode->renderer();
-    if (!request.readonly)
-        page.corePage()->focusController().setFocusedFrame(result.innerNodeFrame());
-
     info.bounds = renderer->absoluteBoundingBoxRect(true);
     // We don't want to select blocks that are larger than 97% of the visible area of the document.
     if (is<HTMLAttachmentElement>(*hitNode)) {
@@ -3314,10 +3317,16 @@ bool WebPage::immediatelyShrinkToFitContent()
 
     static const int toleratedHorizontalScrollingDistance = 20;
     static const int maximumExpandedLayoutWidth = 1280;
+
+    auto scaledViewWidth = [&] () -> int {
+        return std::round(m_viewportConfiguration.viewLayoutSize().width() / m_viewportConfiguration.initialScale());
+    };
+
     int originalContentWidth = view->contentsWidth();
+    int originalViewWidth = scaledViewWidth();
     int originalLayoutWidth = m_viewportConfiguration.layoutWidth();
-    int originalHorizontalOverflowAmount = originalContentWidth - originalLayoutWidth;
-    if (originalHorizontalOverflowAmount <= toleratedHorizontalScrollingDistance || originalLayoutWidth >= maximumExpandedLayoutWidth || originalContentWidth <= m_viewportConfiguration.viewLayoutSize().width())
+    int originalHorizontalOverflowAmount = originalContentWidth - originalViewWidth;
+    if (originalHorizontalOverflowAmount <= toleratedHorizontalScrollingDistance || originalLayoutWidth >= maximumExpandedLayoutWidth || originalContentWidth <= originalViewWidth)
         return false;
 
     auto changeMinimumEffectiveDeviceWidth = [this, mainDocument] (int targetLayoutWidth) -> bool {
@@ -3331,7 +3340,7 @@ bool WebPage::immediatelyShrinkToFitContent()
 
     m_viewportConfiguration.setIsKnownToLayOutWiderThanViewport(true);
     double originalMinimumDeviceWidth = m_viewportConfiguration.minimumEffectiveDeviceWidth();
-    if (changeMinimumEffectiveDeviceWidth(std::min(maximumExpandedLayoutWidth, originalContentWidth)) && view->contentsWidth() - m_viewportConfiguration.layoutWidth() > originalHorizontalOverflowAmount) {
+    if (changeMinimumEffectiveDeviceWidth(std::min(maximumExpandedLayoutWidth, originalContentWidth)) && view->contentsWidth() - scaledViewWidth() > originalHorizontalOverflowAmount) {
         changeMinimumEffectiveDeviceWidth(originalMinimumDeviceWidth);
         m_viewportConfiguration.setIsKnownToLayOutWiderThanViewport(false);
     }

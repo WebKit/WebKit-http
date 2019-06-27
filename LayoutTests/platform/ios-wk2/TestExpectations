@@ -1334,3 +1334,15 @@ webkit.org/b/198185 http/tests/resourceLoadStatistics/website-data-removal-for-s
 webkit.org/b/176030 http/tests/websocket/tests/hybi/send-object-tostring-check.html [ Pass Failure ]
 
 webkit.org/b/199013 [ Debug ] imported/w3c/web-platform-tests/websockets/Create-Secure-verify-url-set-non-default-port.any.html [ Pass Failure ]
+
+webkit.org/b/196495 fast/viewport/ios/viewport-shrink-to-fit-on-new-navigation.html [ Pass Failure ]
+
+webkit.org/b/199071 [ Release ] imported/blink/fast/css/user-select-none.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/190882 [ Debug ] animations/change-one-anim.html [ Pass Failure ]
+
+webkit.org/b/199196 [ Release ] imported/mozilla/svg/text/textpath-selection.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/199196 [ Release ] imported/mozilla/svg/text/selectSubString-2.svg [ Pass ImageOnlyFailure ]
+
+webkit.org/b/199213 [ Release ] imported/blink/editing/selection/deleteFromDocument-crash.html [ Pass ImageOnlyFailure ]
+

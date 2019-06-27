@@ -56,10 +56,7 @@ typedef D2D_VECTOR_4F D2D1_VECTOR_4F;
 #endif
 
 #if PLATFORM(GTK)
-typedef struct _GdkColor GdkColor;
-#ifndef GTK_API_VERSION_2
 typedef struct _GdkRGBA GdkRGBA;
-#endif
 #endif
 
 namespace WTF {
@@ -264,12 +261,8 @@ public:
 #endif
 
 #if PLATFORM(GTK)
-    Color(const GdkColor&);
-    // We can't sensibly go back to GdkColor without losing the alpha value
-#ifndef GTK_API_VERSION_2
     Color(const GdkRGBA&);
     operator GdkRGBA() const;
-#endif
 #endif
 
 #if USE(CG)

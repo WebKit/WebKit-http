@@ -41,11 +41,7 @@
 #include <WebCore/QtX11ImageConversion.h>
 #elif PLATFORM(GTK)
 #include <gtk/gtk.h>
-#ifndef GTK_API_VERSION_2
 #include <gtk/gtkx.h>
-#endif
-#include <gdk/gdkx.h>
-#include <WebCore/GtkVersioning.h>
 #endif
 
 #if USE(CAIRO)

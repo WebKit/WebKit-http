@@ -982,6 +982,11 @@ static void validate(WKWebViewConfiguration *configuration)
     return [NSURL _web_URLWithWTFString:_page->pageLoadState().activeURL()];
 }
 
+- (NSURL *)_resourceDirectoryURL
+{
+    return _page->currentResourceDirectoryURL();
+}
+
 - (BOOL)isLoading
 {
     return _page->pageLoadState().isLoading();
@@ -6670,7 +6675,6 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 {
     auto infoRequest = WebKit::InteractionInformationRequest(WebCore::roundedIntPoint(position));
     infoRequest.includeSnapshot = true;
-    infoRequest.readonly = true;
 
     [_contentView doAfterPositionInformationUpdate:[capturedBlock = makeBlockPtr(block)] (WebKit::InteractionInformationAtPosition information) {
         capturedBlock([_WKActivatedElementInfo activatedElementInfoWithInteractionInformationAtPosition:information]);

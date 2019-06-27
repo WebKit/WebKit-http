@@ -138,6 +138,9 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
     remove(replacement = null)
     {
+        if (this._delegate && typeof this._delegate.spreadsheetStylePropertyWillRemove === "function")
+            this._delegate.spreadsheetStylePropertyWillRemove(this);
+
         this.element.remove();
 
         if (replacement)
@@ -146,9 +149,6 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             this._property.remove();
 
         this.detached();
-
-        if (this._delegate && typeof this._delegate.spreadsheetStylePropertyRemoved === "function")
-            this._delegate.spreadsheetStylePropertyRemoved(this);
     }
 
     update()
@@ -313,7 +313,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         if (!this._property.enabled)
             classNames.push("disabled");
 
-        if (this._property.modified)
+        if (this._property.modified && this._property.name && this._property.rawValue)
             classNames.push("modified");
 
         if (this._selected)
@@ -402,7 +402,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         }
 
         if (textField === this._valueTextField)
-            this._renderValue(this._valueElement.textContent);
+            this._renderValue(this._property.rawValue);
 
         if (typeof this._delegate.spreadsheetStylePropertyFocusMoved === "function")
             this._delegate.spreadsheetStylePropertyFocusMoved(this, {direction: null});

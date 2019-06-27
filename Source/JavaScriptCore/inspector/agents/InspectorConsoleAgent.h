@@ -71,14 +71,17 @@ public:
     void addMessageToConsole(std::unique_ptr<ConsoleMessage>);
 
     void startTiming(const String& title);
+    void logTiming(const String& title, Ref<ScriptArguments>&&);
     void stopTiming(const String& title, Ref<ScriptCallStack>&&);
     void takeHeapSnapshot(const String& title);
     void count(JSC::ExecState*, Ref<ScriptArguments>&&);
+    void countReset(JSC::ExecState*, Ref<ScriptArguments>&&);
 
     void getLoggingChannels(ErrorString&, RefPtr<JSON::ArrayOf<Protocol::Console::Channel>>&) override;
     void setLoggingChannelLevel(ErrorString&, const String& channel, const String& level) override;
 
 protected:
+    void getCounterLabel(Ref<ScriptArguments>&&, String& title, String& identifier);
     void addConsoleMessage(std::unique_ptr<ConsoleMessage>);
 
     InjectedScriptManager& m_injectedScriptManager;

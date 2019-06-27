@@ -38,7 +38,7 @@ void InteractionInformationRequest::encode(IPC::Encoder& encoder) const
     encoder << point;
     encoder << includeSnapshot;
     encoder << includeLinkIndicator;
-    encoder << readonly;
+    encoder << linkIndicatorShouldHaveLegacyMargins;
 }
 
 bool InteractionInformationRequest::decode(IPC::Decoder& decoder, InteractionInformationRequest& result)
@@ -52,7 +52,7 @@ bool InteractionInformationRequest::decode(IPC::Decoder& decoder, InteractionInf
     if (!decoder.decode(result.includeLinkIndicator))
         return false;
 
-    if (!decoder.decode(result.readonly))
+    if (!decoder.decode(result.linkIndicatorShouldHaveLegacyMargins))
         return false;
 
     return true;
@@ -69,7 +69,7 @@ bool InteractionInformationRequest::isValidForRequest(const InteractionInformati
     if (other.includeLinkIndicator && !includeLinkIndicator)
         return false;
 
-    if (!other.readonly && readonly)
+    if (other.linkIndicatorShouldHaveLegacyMargins != linkIndicatorShouldHaveLegacyMargins)
         return false;
 
     return true;
@@ -83,7 +83,7 @@ bool InteractionInformationRequest::isApproximatelyValidForRequest(const Interac
     if (other.includeLinkIndicator && !includeLinkIndicator)
         return false;
 
-    if (!other.readonly && readonly)
+    if (other.linkIndicatorShouldHaveLegacyMargins != linkIndicatorShouldHaveLegacyMargins)
         return false;
     
     return (other.point - point).diagonalLengthSquared() <= 4;

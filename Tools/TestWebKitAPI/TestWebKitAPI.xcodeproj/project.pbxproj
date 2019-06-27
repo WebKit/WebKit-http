@@ -319,6 +319,7 @@
 		5C23DF0B2246015800F454B6 /* Challenge.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5C23DF0A2245C9D700F454B6 /* Challenge.mm */; };
 		5C2936931D5BF70D00DEAB1E /* CookieAcceptPolicy.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5C2936911D5BF63E00DEAB1E /* CookieAcceptPolicy.mm */; };
 		5C2936961D5C00ED00DEAB1E /* CookieMessage.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5C2936941D5BFD1900DEAB1E /* CookieMessage.html */; };
+		5C3B1D2622A74F6700BCF4D0 /* ContextMenus.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5C3B1D2522A74EA400BCF4D0 /* ContextMenus.mm */; };
 		5C4259462266A68A0039AA7A /* BasicProposedCredentialPlugIn.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5C42594422669E9B0039AA7A /* BasicProposedCredentialPlugIn.mm */; };
 		5C4A84951F7EEFFC00ACFC54 /* Configuration.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5C4A84941F7EEFD400ACFC54 /* Configuration.mm */; };
 		5C69BDD51F82A7EF000F4F4B /* JavaScriptDuringNavigation.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5C69BDD41F82A7EB000F4F4B /* JavaScriptDuringNavigation.mm */; };
@@ -349,6 +350,7 @@
 		5CCB10E3213457D800AC5AF0 /* RestoreSessionStateWithoutNavigation.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CCB10DE2134579D00AC5AF0 /* RestoreSessionStateWithoutNavigation.mm */; };
 		5CCB10E4213457E000AC5AF0 /* ShouldGoToBackForwardListItem.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CCB10DF2134579D00AC5AF0 /* ShouldGoToBackForwardListItem.mm */; };
 		5CE354D91E70DA5C00BEFE3B /* WKContentExtensionStore.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CE354D81E70D9C300BEFE3B /* WKContentExtensionStore.mm */; };
+		5CE7594922A883D200C12409 /* TestContextMenuDriver.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CE7594722A883A500C12409 /* TestContextMenuDriver.mm */; };
 		5CEAB5E11FA939F400A77FAA /* _WKInputDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CEAB5DF1FA937CB00A77FAA /* _WKInputDelegate.mm */; };
 		5CF540E92257E67C00E6BC0E /* DownloadThread.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CF540E82257E64B00E6BC0E /* DownloadThread.mm */; };
 		5CFACF63226F73C60056C7D0 /* libboringssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5CFACF62226F73C60056C7D0 /* libboringssl.a */; };
@@ -643,6 +645,8 @@
 		8E4A85371E1D1AB200F53B0F /* GridPosition.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8E4A85361E1D1AA100F53B0F /* GridPosition.cpp */; };
 		930AD402150698D00067970F /* lots-of-text.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 930AD401150698B30067970F /* lots-of-text.html */; };
 		9310CD381EF708FB0050FFE0 /* Function.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9310CD361EF708FB0050FFE0 /* Function.cpp */; };
+		931C281D22BC55F2001D98C4 /* WebSQLBasics.mm in Sources */ = {isa = PBXBuildFile; fileRef = 931C281C22BC55A7001D98C4 /* WebSQLBasics.mm */; };
+		931C281E22BC579A001D98C4 /* opendatabase-always-exists.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 931C281B22BC5583001D98C4 /* opendatabase-always-exists.html */; };
 		9329AA291DE3F81E003ABD07 /* TextBreakIterator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9329AA281DE3F81E003ABD07 /* TextBreakIterator.cpp */; };
 		932AE53D1D371047005DFFAF /* focus-inputs.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 93575C551D30366E000D604D /* focus-inputs.html */; };
 		933D631D1FCB76200032ECD6 /* Hasher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 933D631B1FCB76180032ECD6 /* Hasher.cpp */; };
@@ -1281,6 +1285,7 @@
 				CEA6CF2819CCF69D0064F5A7 /* open-and-close-window.html in Copy Resources */,
 				7CCB99231D3B4A46003922F6 /* open-multiple-external-url.html in Copy Resources */,
 				468BC45522653A1000A36C96 /* open-window-then-write-to-it.html in Copy Resources */,
+				931C281E22BC579A001D98C4 /* opendatabase-always-exists.html in Copy Resources */,
 				290A9BB91735F63800D71BBC /* OpenNewWindow.html in Copy Resources */,
 				83148B09202AC78D00BADE99 /* override-builtins-test.html in Copy Resources */,
 				CEBCA1391E3A807A00C73293 /* page-with-csp-iframe.html in Copy Resources */,
@@ -1470,6 +1475,7 @@
 		26F52EB018288F0F0023D412 /* geolocationWatchPosition.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = geolocationWatchPosition.html; sourceTree = "<group>"; };
 		26F52EB118288F0F0023D412 /* geolocationWatchPositionWithHighAccuracy.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = geolocationWatchPositionWithHighAccuracy.html; sourceTree = "<group>"; };
 		26F6E1EF1ADC749B00DE696B /* DFAMinimizer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DFAMinimizer.cpp; sourceTree = "<group>"; };
+		278DE64B22B8D611004E0E7A /* CrossThreadCopier.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CrossThreadCopier.cpp; sourceTree = "<group>"; };
 		290A9BB51735DE8A00D71BBC /* CloseNewWindowInNavigationPolicyDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CloseNewWindowInNavigationPolicyDelegate.mm; sourceTree = "<group>"; };
 		290A9BB81735F42300D71BBC /* OpenNewWindow.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = OpenNewWindow.html; sourceTree = "<group>"; };
 		290F4274172A1FDE00939FF0 /* custom-protocol-sync-xhr.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "custom-protocol-sync-xhr.html"; sourceTree = "<group>"; };
@@ -1766,6 +1772,7 @@
 		5C23DF0A2245C9D700F454B6 /* Challenge.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = Challenge.mm; sourceTree = "<group>"; };
 		5C2936911D5BF63E00DEAB1E /* CookieAcceptPolicy.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CookieAcceptPolicy.mm; sourceTree = "<group>"; };
 		5C2936941D5BFD1900DEAB1E /* CookieMessage.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = CookieMessage.html; sourceTree = "<group>"; };
+		5C3B1D2522A74EA400BCF4D0 /* ContextMenus.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ContextMenus.mm; sourceTree = "<group>"; };
 		5C42594422669E9B0039AA7A /* BasicProposedCredentialPlugIn.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = BasicProposedCredentialPlugIn.mm; sourceTree = "<group>"; };
 		5C4A84941F7EEFD400ACFC54 /* Configuration.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = Configuration.mm; sourceTree = "<group>"; };
 		5C5E633D1D0B67940085A025 /* UniqueRef.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = UniqueRef.cpp; sourceTree = "<group>"; };
@@ -1797,6 +1804,8 @@
 		5CCB10DF2134579D00AC5AF0 /* ShouldGoToBackForwardListItem.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ShouldGoToBackForwardListItem.mm; sourceTree = "<group>"; };
 		5CCB10E02134579D00AC5AF0 /* ResponsivenessTimer.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ResponsivenessTimer.mm; sourceTree = "<group>"; };
 		5CE354D81E70D9C300BEFE3B /* WKContentExtensionStore.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKContentExtensionStore.mm; sourceTree = "<group>"; };
+		5CE7594722A883A500C12409 /* TestContextMenuDriver.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = TestContextMenuDriver.mm; path = cocoa/TestContextMenuDriver.mm; sourceTree = "<group>"; };
+		5CE7594822A883A500C12409 /* TestContextMenuDriver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TestContextMenuDriver.h; path = cocoa/TestContextMenuDriver.h; sourceTree = "<group>"; };
 		5CEAB5DF1FA937CB00A77FAA /* _WKInputDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = _WKInputDelegate.mm; sourceTree = "<group>"; };
 		5CF540E82257E64B00E6BC0E /* DownloadThread.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DownloadThread.mm; sourceTree = "<group>"; };
 		5CFACF62226F73C60056C7D0 /* libboringssl.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libboringssl.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1921,6 +1930,8 @@
 		8E4A85361E1D1AA100F53B0F /* GridPosition.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GridPosition.cpp; sourceTree = "<group>"; };
 		930AD401150698B30067970F /* lots-of-text.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "lots-of-text.html"; sourceTree = "<group>"; };
 		9310CD361EF708FB0050FFE0 /* Function.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Function.cpp; sourceTree = "<group>"; };
+		931C281B22BC5583001D98C4 /* opendatabase-always-exists.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "opendatabase-always-exists.html"; sourceTree = "<group>"; };
+		931C281C22BC55A7001D98C4 /* WebSQLBasics.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WebSQLBasics.mm; sourceTree = "<group>"; };
 		9329AA281DE3F81E003ABD07 /* TextBreakIterator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TextBreakIterator.cpp; sourceTree = "<group>"; };
 		9331407B17B4419000F083B1 /* DidNotHandleKeyDown.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DidNotHandleKeyDown.cpp; sourceTree = "<group>"; };
 		933D631B1FCB76180032ECD6 /* Hasher.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Hasher.cpp; sourceTree = "<group>"; };
@@ -2538,6 +2549,8 @@
 				F44A530D21B8976900DBB99C /* InstanceMethodSwizzler.h */,
 				F44A531021B8976900DBB99C /* InstanceMethodSwizzler.mm */,
 				0F139E721A423A2B00F590F5 /* PlatformUtilitiesCocoa.mm */,
+				5CE7594822A883A500C12409 /* TestContextMenuDriver.h */,
+				5CE7594722A883A500C12409 /* TestContextMenuDriver.mm */,
 				2D1C04A51D76298B000A6816 /* TestNavigationDelegate.h */,
 				2D1C04A61D76298B000A6816 /* TestNavigationDelegate.mm */,
 				A14FC58D1B8AE36500D107EB /* TestProtocol.h */,
@@ -2614,6 +2627,7 @@
 				A14FC5861B8991B600D107EB /* ContentFiltering.mm */,
 				A14FC5891B89927100D107EB /* ContentFilteringPlugIn.mm */,
 				5CA1DED81F74A87100E71BD3 /* ContentRuleListNotification.mm */,
+				5C3B1D2522A74EA400BCF4D0 /* ContextMenus.mm */,
 				5C2936911D5BF63E00DEAB1E /* CookieAcceptPolicy.mm */,
 				5C19A5231FD0F32600EEA323 /* CookiePrivateBrowsing.mm */,
 				9B1056411F9045C700D5583F /* CopyHTML.mm */,
@@ -2761,6 +2775,7 @@
 				C1D8EE212028E8E3008EB141 /* WebProcessTerminate.mm */,
 				5120C83C1E6750790025B250 /* WebsiteDataStoreCustomPaths.mm */,
 				5C9E56841DF9143D00C9EE33 /* WebsitePolicies.mm */,
+				931C281C22BC55A7001D98C4 /* WebSQLBasics.mm */,
 				2E5C77061FA70136005932C3 /* WKAttachmentTests.mm */,
 				1F83571A1D3FFB0E00E3967B /* WKBackForwardList.mm */,
 				5CE354D81E70D9C300BEFE3B /* WKContentExtensionStore.mm */,
@@ -3121,6 +3136,7 @@
 				CDB5DFFE21360ED800D3E189 /* now-playing.html */,
 				93E2D2751ED7D51700FA76F6 /* offscreen-iframe-of-media-document.html */,
 				7CCB99221D3B44E7003922F6 /* open-multiple-external-url.html */,
+				931C281B22BC5583001D98C4 /* opendatabase-always-exists.html */,
 				CEBCA1341E3A803400C73293 /* page-with-csp-iframe.html */,
 				CEBCA1351E3A803400C73293 /* page-with-csp.html */,
 				CEBCA1361E3A803400C73293 /* page-without-csp-iframe.html */,
@@ -3399,6 +3415,7 @@
 				A7A966DA140ECCC8005EF9B4 /* CheckedArithmeticOperations.cpp */,
 				0F30CB5B1FCE1792004B5323 /* ConcurrentPtrHashSet.cpp */,
 				0FEAE3671B7D19CB00CE17F2 /* Condition.cpp */,
+				278DE64B22B8D611004E0E7A /* CrossThreadCopier.cpp */,
 				51714EB91D087416004723C4 /* CrossThreadTask.cpp */,
 				26A2C72E15E2E73C005B1A14 /* CString.cpp */,
 				7AA021BA1AB09EA70052953F /* DateMath.cpp */,
@@ -4168,6 +4185,7 @@
 				37FB72971DB2E82F00E41BE4 /* ContextMenuDefaultItemsHaveTags.mm in Sources */,
 				8349D3C21DB96DDE004A9F65 /* ContextMenuDownload.mm in Sources */,
 				CD0BD0A61F79924D001AB2CF /* ContextMenuImgWithVideo.mm in Sources */,
+				5C3B1D2622A74F6700BCF4D0 /* ContextMenus.mm in Sources */,
 				5C2936931D5BF70D00DEAB1E /* CookieAcceptPolicy.mm in Sources */,
 				51D1249B1E785425002B2820 /* CookieManager.cpp in Sources */,
 				5C19A5241FD0F60100EEA323 /* CookiePrivateBrowsing.mm in Sources */,
@@ -4471,6 +4489,7 @@
 				5C9B548E223C4CBE00B150C4 /* TCPServer.cpp in Sources */,
 				7CCE7F161A411AE600447C4C /* TerminateTwice.cpp in Sources */,
 				7CCE7EA91A411A1D00447C4C /* TestBrowsingContextLoadDelegate.mm in Sources */,
+				5CE7594922A883D200C12409 /* TestContextMenuDriver.mm in Sources */,
 				F46128CB211D475100D9FADB /* TestDraggingInfo.mm in Sources */,
 				F4E0A2B82122847400AF7C7F /* TestFilePromiseReceiver.mm in Sources */,
 				F4F5BB5221667BAA002D06B9 /* TestFontOptions.mm in Sources */,
@@ -4521,6 +4540,7 @@
 				536770341CC8022800D425B1 /* WebScriptObjectDescription.mm in Sources */,
 				5120C83D1E6751290025B250 /* WebsiteDataStoreCustomPaths.mm in Sources */,
 				5C9E56851DF9145400C9EE33 /* WebsitePolicies.mm in Sources */,
+				931C281D22BC55F2001D98C4 /* WebSQLBasics.mm in Sources */,
 				7CCE7ED41A411A7E00447C4C /* WebViewCanPasteURL.mm in Sources */,
 				5C0BF8911DD599A900B00328 /* WebViewCanPasteZeroPng.mm in Sources */,
 				7C83E0421D0A63FD00FEBCF3 /* WebViewCloseInsideDidFinishLoadForFrame.mm in Sources */,

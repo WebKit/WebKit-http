@@ -1145,6 +1145,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/mediastream/RealtimeMediaSourceFactory.h
     platform/mediastream/RealtimeMediaSourceSettings.h
     platform/mediastream/RealtimeMediaSourceSupportedConstraints.h
+    platform/mediastream/RealtimeVideoCaptureSource.h
     platform/mediastream/RealtimeVideoSource.h
     platform/mediastream/VideoPreset.h
     platform/mediastream/WebAudioSourceProvider.h
@@ -1242,6 +1243,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     rendering/HitTestResult.h
     rendering/InlineBox.h
     rendering/InlineFlowBox.h
+    rendering/LayerAncestorClippingStack.h
     rendering/LayerFragment.h
     rendering/MarkedText.h
     rendering/OrderIterator.h

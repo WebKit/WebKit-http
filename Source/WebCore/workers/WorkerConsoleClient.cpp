@@ -55,9 +55,19 @@ void WorkerConsoleClient::count(JSC::ExecState* exec, Ref<ScriptArguments>&& arg
     InspectorInstrumentation::consoleCount(m_workerGlobalScope, exec, WTFMove(arguments));
 }
 
+void WorkerConsoleClient::countReset(JSC::ExecState* exec, Ref<ScriptArguments>&& arguments)
+{
+    InspectorInstrumentation::consoleCountReset(m_workerGlobalScope, exec, WTFMove(arguments));
+}
+
 void WorkerConsoleClient::time(JSC::ExecState*, const String& title)
 {
     InspectorInstrumentation::startConsoleTiming(m_workerGlobalScope, title);
+}
+
+void WorkerConsoleClient::timeLog(JSC::ExecState*, const String& title, Ref<ScriptArguments>&& arguments)
+{
+    InspectorInstrumentation::logConsoleTiming(m_workerGlobalScope, title, WTFMove(arguments));
 }
 
 void WorkerConsoleClient::timeEnd(JSC::ExecState* exec, const String& title)

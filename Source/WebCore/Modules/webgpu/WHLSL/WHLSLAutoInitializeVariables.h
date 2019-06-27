@@ -33,7 +33,7 @@ namespace WHLSL {
 
 class Program;
 
-void autoInitializeVariables(Program&);
+bool autoInitializeVariables(Program&);
 
 }
 

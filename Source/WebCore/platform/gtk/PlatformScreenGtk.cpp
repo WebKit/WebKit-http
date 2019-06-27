@@ -33,7 +33,6 @@
 
 #include "FloatRect.h"
 #include "FrameView.h"
-#include "GtkVersioning.h"
 #include "HostWindow.h"
 #include "NotImplemented.h"
 #include "Widget.h"
@@ -47,40 +46,28 @@
 
 namespace WebCore {
 
-static GtkWidget* getToplevel(GtkWidget* widget)
+static GdkVisual* systemVisual()
 {
-    GtkWidget* toplevel = gtk_widget_get_toplevel(widget);
-    return gtk_widget_is_toplevel(toplevel) ? toplevel : 0;
+    if (auto* screen = gdk_screen_get_default())
+        return gdk_screen_get_system_visual(screen);
+
+    return nullptr;
 }
 
-static GdkVisual* getVisual(Widget* widget)
+int screenDepth(Widget*)
 {
-    GtkWidget* container = widget ? GTK_WIDGET(widget->root()->hostWindow()->platformPageClient()) : 0;
-    if (!container) {
-        GdkScreen* screen = gdk_screen_get_default();
-        return screen ? gdk_screen_get_system_visual(screen) : 0;
-    }
+    if (auto* visual = systemVisual())
+        return gdk_visual_get_depth(visual);
 
-    if (!gtk_widget_get_realized(container))
-        container = getToplevel(container);
-    return container ? gdk_window_get_visual(gtk_widget_get_window(container)) : 0;
+    return 24;
 }
 
-int screenDepth(Widget* widget)
+int screenDepthPerComponent(Widget*)
 {
-    GdkVisual* visual = getVisual(widget);
-    if (!visual)
-        return 24;
-    return gdk_visual_get_depth(visual);
-}
+    if (auto* visual = systemVisual())
+        return gdk_visual_get_bits_per_rgb(visual);
 
-int screenDepthPerComponent(Widget* widget)
-{
-    GdkVisual* visual = getVisual(widget);
-    if (!visual)
-        return 8;
-
-    return gdk_visual_get_bits_per_rgb(visual);
+    return 8;
 }
 
 bool screenIsMonochrome(Widget* widget)
@@ -150,68 +137,36 @@ void setScreenDPIObserverHandler(Function<void()>&& handler, void* context)
     }
 }
 
-#if !GTK_CHECK_VERSION(3, 22, 0)
-static GdkScreen* getScreen(GtkWidget* widget)
+FloatRect screenRect(Widget*)
 {
-    return gtk_widget_has_screen(widget) ? gtk_widget_get_screen(widget) : gdk_screen_get_default();
-}
-#endif
-
-FloatRect screenRect(Widget* widget)
-{
-    GtkWidget* container = widget ? GTK_WIDGET(widget->root()->hostWindow()->platformPageClient()) : 0;
-    if (container)
-        container = getToplevel(container);
-
     GdkRectangle geometry;
-#if GTK_CHECK_VERSION(3, 22, 0)
-    GdkDisplay* display = container ? gtk_widget_get_display(container) : gdk_display_get_default();
+    GdkDisplay* display = gdk_display_get_default();
     if (!display)
-        return FloatRect();
+        return { };
 
-    GdkMonitor* monitor = container ? gdk_display_get_monitor_at_window(display, gtk_widget_get_window(container)) : gdk_display_get_monitor(display, 0);
+    auto* monitor = gdk_display_get_monitor(display, 0);
+    if (!monitor)
+        return { };
 
     gdk_monitor_get_geometry(monitor, &geometry);
-#else
-    GdkScreen* screen = container ? getScreen(container) : gdk_screen_get_default();
-    if (!screen)
-        return FloatRect();
-
-    gint monitor = container ? gdk_screen_get_monitor_at_window(screen, gtk_widget_get_window(container)) : 0;
-
-    gdk_screen_get_monitor_geometry(screen, monitor, &geometry);
-#endif // !GTK_CHECK_VERSION(3, 22, 0)
 
     return FloatRect(geometry.x, geometry.y, geometry.width, geometry.height);
 }
 
-FloatRect screenAvailableRect(Widget* widget)
+FloatRect screenAvailableRect(Widget*)
 {
-    GtkWidget* container = widget ? GTK_WIDGET(widget->root()->hostWindow()->platformPageClient()) : 0;
-    if (container && !gtk_widget_get_realized(container))
-        return screenRect(widget);
-
     GdkRectangle workArea;
-#if GTK_CHECK_VERSION(3, 22, 0)
-    GdkDisplay* display = container ? gtk_widget_get_display(container) : gdk_display_get_default();
+    GdkDisplay* display = gdk_display_get_default();
     if (!display)
-        return FloatRect();
+        return { };
 
-    GdkMonitor* monitor = container ? gdk_display_get_monitor_at_window(display, gtk_widget_get_window(container)) : gdk_display_get_monitor(display, 0);
+    auto* monitor = gdk_display_get_monitor(display, 0);
+    if (!monitor)
+        return { };
 
     gdk_monitor_get_workarea(monitor, &workArea);
-#else
-    GdkScreen* screen = container ? getScreen(container) : gdk_screen_get_default();
-    if (!screen)
-        return FloatRect();
-
-    gint monitor = container ? gdk_screen_get_monitor_at_window(screen, gtk_widget_get_window(container)) : 0;
-
-    gdk_screen_get_monitor_workarea(screen, monitor, &workArea);
-#endif // !GTK_CHECK_VERSION(3, 22, 0)
 
     return FloatRect(workArea.x, workArea.y, workArea.width, workArea.height);
-
 }
 
 bool screenSupportsExtendedColor(Widget*)
@@ -220,86 +175,14 @@ bool screenSupportsExtendedColor(Widget*)
 }
 
 #if ENABLE(TOUCH_EVENTS)
-#ifdef GTK_API_VERSION_2
 bool screenHasTouchDevice()
 {
-    return false;
-}
-
-bool screenIsTouchPrimaryInputDevice()
-{
-    return false;
-}
-#else // GTK_API_VERSION_2
-#if !GTK_CHECK_VERSION(3, 20, 0)
-static void deviceAddedCallback(GdkDeviceManager*, GdkDevice*);
-static void deviceRemovedCallback(GdkDeviceManager*, GdkDevice*);
-
-static HashSet<GdkDevice*>& touchDevices()
-{
-    static LazyNeverDestroyed<HashSet<GdkDevice*>> touchDeviceSet;
-    static std::once_flag onceKey;
-    std::call_once(onceKey, [] {
-        touchDeviceSet.construct();
-
-        auto* display = gdk_display_get_default();
-        if (!display)
-            return;
-
-        auto* deviceManager = gdk_display_get_device_manager(display);
-        if (!deviceManager)
-            return;
-
-        GUniquePtr<GList> devices(gdk_device_manager_list_devices(deviceManager, GDK_DEVICE_TYPE_SLAVE));
-        for (GList* it = devices.get(); it; it = g_list_next(it)) {
-            auto* device = GDK_DEVICE(it->data);
-            if (gdk_device_get_source(device) == GDK_SOURCE_TOUCHSCREEN)
-                touchDeviceSet->add(device);
-        }
-
-        g_signal_connect(deviceManager, "device-added", G_CALLBACK(deviceAddedCallback), nullptr);
-        g_signal_connect(deviceManager, "device-removed", G_CALLBACK(deviceRemovedCallback), nullptr);
-    });
-
-    return touchDeviceSet;
-}
-
-static inline bool isTouchDevice(GdkDevice* device)
-{
-    return gdk_device_get_device_type(device) == GDK_DEVICE_TYPE_SLAVE && gdk_device_get_source(device) == GDK_SOURCE_TOUCHSCREEN;
-}
-
-static void deviceAddedCallback(GdkDeviceManager*, GdkDevice* device)
-{
-    if (!isTouchDevice(device))
-        return;
-
-    ASSERT(!touchDevices().contains(device));
-    touchDevices().add(device);
-}
-
-static void deviceRemovedCallback(GdkDeviceManager*, GdkDevice* device)
-{
-    if (!isTouchDevice(device))
-        return;
-
-    ASSERT(touchDevices().contains(device));
-    touchDevices().remove(device);
-}
-#endif // !GTK_CHECK_VERSION(3, 20, 0)
-
-bool screenHasTouchDevice()
-{
-#if GTK_CHECK_VERSION(3, 20, 0)
     auto* display = gdk_display_get_default();
     if (!display)
         return true;
 
     auto* seat = gdk_display_get_default_seat(display);
     return seat ? gdk_seat_get_capabilities(seat) & GDK_SEAT_CAPABILITY_TOUCH : true;
-#else
-    return !touchDevices().isEmpty();
-#endif
 }
 
 bool screenIsTouchPrimaryInputDevice()
@@ -308,23 +191,13 @@ bool screenIsTouchPrimaryInputDevice()
     if (!display)
         return true;
 
-#if GTK_CHECK_VERSION(3, 20, 0)
     auto* seat = gdk_display_get_default_seat(display);
     if (!seat)
         return true;
 
     auto* device = gdk_seat_get_pointer(seat);
-#else
-    auto* deviceManager = gdk_display_get_device_manager(display);
-    if (!deviceManager)
-        return true;
-
-    auto* device = gdk_device_manager_get_client_pointer(deviceManager);
-#endif
-
     return device ? gdk_device_get_source(device) == GDK_SOURCE_TOUCHSCREEN : true;
 }
-#endif // !GTK_API_VERSION_2
 #endif // ENABLE(TOUCH_EVENTS)
 
 } // namespace WebCore

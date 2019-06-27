@@ -1089,7 +1089,6 @@ webkit.org/b/155607 inspector/heap/snapshot.html [ Pass Failure ]
 webkit.org/b/143719 inspector/console/console-api.html [ Pass Timeout ]
 webkit.org/b/156078 inspector/console/heapSnapshot.html [ Pass Timeout ]
 webkit.org/b/182620 inspector/console/clearMessages.html [ Pass Timeout ]
-webkit.org/b/158006 inspector/console/console-time.html [ Pass Failure ]
 webkit.org/b/183880 [ Debug ] inspector/console/messageAdded-from-named-evaluations.html [ Slow ]
 webkit.org/b/156634 inspector/formatting/formatting-javascript.html [ Pass Timeout ]
 webkit.org/b/158948 inspector/timeline [ Pass Timeout ]
@@ -1787,6 +1786,9 @@ webkit.org/b/192956 [ Sierra ] webgpu [ Skip ]
 webkit.org/b/192956 [ Sierra ] inspector/canvas/create-context-webgpu.html [ Skip ]
 webkit.org/b/192956 [ Sierra ] inspector/canvas/resolveCanvasContext-webgpu.html [ Skip ]
 
+webkit.org/b/199076 [ HighSierra ] webgpu/whlsl-test-harness-test.html [ Skip ]
+webkit.org/b/199028 [ HighSierra ] webgpu/msl-harness-test.html [ Skip ]
+
 webkit.org/b/189680 platform/mac/media/audio-session-category-video-paused.html [ Pass Timeout ]
 
 webkit.org/b/195466 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay.html [ Pass Failure ]
@@ -1883,11 +1885,6 @@ imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_pointerlo
 imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_pointermove_in_pointerlock-manual.html [ Skip ]
 imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_pointermove_on_chorded_mouse_button_when_locked-manual.html [ Skip ]
 
-webkit.org/b/197005 imported/w3c/web-platform-tests/pointerevents/pointerevent_lostpointercapture_is_first.html [ Skip ]
-webkit.org/b/197007 imported/w3c/web-platform-tests/pointerevents/pointerlock/pointerevent_coordinates_when_locked.html [ Skip ]
-webkit.org/b/197009 imported/w3c/web-platform-tests/pointerevents/pointerevent_setpointercapture_invalid_pointerid.html [ Failure Pass ]
-webkit.org/b/197058 imported/w3c/web-platform-tests/pointerevents/pointerevent_mouse_pointercapture_in_frame.html [ Failure Pass ]
-
 webkit.org/b/192501 [ Debug ] animations/play-state-in-shorthand.html [ Pass Failure ]
 
 webkit.org/b/197473 imported/w3c/web-platform-tests/resource-timing/resource-timing-level1.sub.html [ Pass Failure ]
@@ -1937,3 +1934,7 @@ webkit.org/b/175678 media/W3C/video/events/event_progress.html [ Pass Failure ]
 [ Mojave+ ] webaudio/oscillator-sine.html [ Skip ]
 
 webkit.org/b/199013 [ Debug Mojave+ ] imported/w3c/web-platform-tests/websockets/Create-Secure-verify-url-set-non-default-port.any.html [ Pass Failure ]
+
+webkit.org/b/190882 [ Mojave+ ] animations/change-one-anim.html [ Pass Failure ]
+
+webkit.org/b/195635 scrollingcoordinator/mac/multiple-fixed.html [ Pass Timeout ]

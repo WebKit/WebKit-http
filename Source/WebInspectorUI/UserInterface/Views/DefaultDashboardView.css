@@ -200,8 +200,9 @@ body:not(.web) .toolbar .dashboard.default > :matches(.resourcesCount, .resource
         filter: var(--filter-invert);
     }
 
-    body.latest-mac .toolbar .dashboard .item.button {
-        background: unset;
+    .toolbar .dashboard .item.button,
+    .toolbar .dashboard .item.button:active {
+        background: none;
     }
 
     .dashboard-container .advance-arrow {

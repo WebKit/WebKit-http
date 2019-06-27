@@ -85,7 +85,7 @@ function aptIfElse {
 }
 
 function installDependenciesWithApt {
-    # These are dependencies necessary for building WebKitGTK+.
+    # These are dependencies necessary for building WebKitGTK.
     packages=" \
         autoconf \
         automake \
@@ -112,7 +112,6 @@ function installDependenciesWithApt {
         libgirepository1.0-dev \
         libgl1-mesa-dev \
         libgl1-mesa-glx \
-        libgtk2.0-dev \
         libgtk-3-dev \
         libgstreamer1.0-dev \
         libgstreamer-plugins-bad1.0-dev \
@@ -239,7 +238,7 @@ function installDependenciesWithApt {
 }
 
 function installDependenciesWithPacman {
-    # These are dependencies necessary for building WebKitGTK+.
+    # These are dependencies necessary for building WebKitGTK.
     packages=" \
         alsa-lib \
         autoconf \
@@ -282,7 +281,6 @@ function installDependenciesWithPacman {
         gobject-introspection \
         mesa \
         mesa-libgl \
-        gtk2 \
         gtk3 \
         libsystemd \
         libjpeg-turbo \
@@ -407,7 +405,7 @@ call python2 in the WebKit folder:
 
     https://wiki.archlinux.org/index.php/Python#Dealing_with_version_problem_in_build_scripts
 
-Alternatively, you may use a Python 2.x virtualenv while hacking on WebKitGTK+:
+Alternatively, you may use a Python 2.x virtualenv while hacking on WebKitGTK:
 
     https://wiki.archlinux.org/index.php/Python/Virtual_environment
 
@@ -415,7 +413,7 @@ EOF
 }
 
 function installDependenciesWithDnf {
-    # These are dependencies necessary for building WebKitGTK+.
+    # These are dependencies necessary for building WebKitGTK.
     packages=" \
         atk-devel \
         alsa-lib-devel \
@@ -434,7 +432,6 @@ function installDependenciesWithDnf {
         gstreamer1-plugins-bad-free-devel \
         gstreamer1-plugins-base-devel \
         gtk-doc \
-        gtk2-devel \
         gtk3-devel \
         hyphen-devel \
         intltool \
