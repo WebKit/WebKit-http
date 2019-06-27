@@ -56,6 +56,13 @@ if (USE_UNIX_DOMAIN_SOCKETS)
     QTWEBKIT_GENERATE_MOC_FILES_CPP(WTF qt/WorkQueueQt.cpp)
 endif ()
 
+if (UNIX)
+    list(APPEND WTF_SOURCES
+        posix/OSAllocatorPOSIX.cpp
+        posix/ThreadingPOSIX.cpp
+    )
+endif ()
+
 if (USE_GLIB)
     list(APPEND WTF_SOURCES
         glib/GRefPtr.cpp
@@ -66,6 +73,12 @@ if (USE_GLIB)
     list(APPEND WTF_LIBRARIES
         ${GLIB_GOBJECT_LIBRARIES}
         ${GLIB_LIBRARIES}
+    )
+    list(APPEND WTF_PUBLIC_HEADERS
+        glib/GLibUtilities.h
+        glib/GRefPtr.h
+        glib/GTypedefs.h
+        glib/GUniquePtr.h
     )
 endif ()
 
