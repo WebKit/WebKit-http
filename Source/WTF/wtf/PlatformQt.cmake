@@ -1,3 +1,5 @@
+target_compile_definitions(WTF PRIVATE QT_NO_KEYWORDS)
+
 list(APPEND WTF_SOURCES
     qt/FileSystemQt.cpp
     qt/LanguageQt.cpp

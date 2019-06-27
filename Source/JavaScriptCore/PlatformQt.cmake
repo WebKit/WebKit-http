@@ -2,6 +2,8 @@ if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
     add_definitions(-DSTATICALLY_LINKED_WITH_WTF)
 endif ()
 
+target_compile_definitions(JavaScriptCore PRIVATE QT_NO_KEYWORDS)
+
 list(APPEND JavaScriptCore_SOURCES
     API/JSStringRefQt.cpp
 )

@@ -37,10 +37,6 @@
 #include <wtf/MathExtras.h>
 #include <wtf/SmallPtrSet.h>
 
-#if PLATFORM(QT)
-#undef emit
-#endif
-
 namespace JSC {
 
     enum OpcodeID : unsigned;
