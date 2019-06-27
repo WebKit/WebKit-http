@@ -38,7 +38,7 @@ void VisitedLinkStoreQt::removeAllVisitedLinks()
     m_visitedLinkHashes.clear();
 }
 
-bool VisitedLinkStoreQt::isLinkVisited(WebCore::Page&, WebCore::LinkHash linkHash, const WebCore::URL& baseURL, const WTF::AtomicString& attributeURL)
+bool VisitedLinkStoreQt::isLinkVisited(WebCore::Page&, WebCore::LinkHash linkHash, const WebCore::URL& baseURL, const WTF::AtomString& attributeURL)
 {
     // If the Qt4.4 interface for the history is used, we will have to fallback
     // to the old global history.

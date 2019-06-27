@@ -284,7 +284,7 @@ float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun&, unsigned, 
     return 0.f;
 }
 
-void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, unsigned /* from */, unsigned /* to */) const
+void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */, const TextRun& /* run */, const AtomString& /* mark */, const FloatPoint& /* point */, unsigned /* from */, unsigned /* to */) const
 {
     notImplemented();
 }

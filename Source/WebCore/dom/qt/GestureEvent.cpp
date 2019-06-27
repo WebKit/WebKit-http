@@ -30,13 +30,13 @@
 #if ENABLE(QT_GESTURE_EVENTS)
 
 #include "Element.h"
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 
 namespace WebCore {
 
 RefPtr<GestureEvent> GestureEvent::create(AbstractView* view, const PlatformGestureEvent& event)
 {
-    AtomicString eventType;
+    AtomString eventType;
     switch (event.type()) {
     case PlatformEvent::GestureTap:
         eventType = eventNames().gesturetapEvent; break;
@@ -53,7 +53,7 @@ EventInterface GestureEvent::eventInterface() const
     return EventInterfaceType;
 }
 
-GestureEvent::GestureEvent(const AtomicString& type, MonotonicTime timestamp, AbstractView* view, int screenX, int screenY, int clientX, int clientY, OptionSet<Modifier> modifiers)
+GestureEvent::GestureEvent(const AtomString& type, MonotonicTime timestamp, AbstractView* view, int screenX, int screenY, int clientX, int clientY, OptionSet<Modifier> modifiers)
     : MouseRelatedEvent(type, CanBubble::Yes, IsCancelable::Yes, IsComposed::Yes, timestamp, view, 0, IntPoint(screenX, screenY), IntPoint(clientX, clientY)
 #if ENABLE(POINTER_LOCK)
         , IntPoint(0, 0)

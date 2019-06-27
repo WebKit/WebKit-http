@@ -91,7 +91,7 @@ FontPlatformData::FontPlatformData(float size, bool bold, bool oblique, FontOrie
         m_data = adoptRef(new FontPlatformDataPrivate(size, bold, oblique));
 }
 
-FontPlatformData::FontPlatformData(const FontDescription& description, const AtomicString& familyName, int wordSpacing, int letterSpacing)
+FontPlatformData::FontPlatformData(const FontDescription& description, const AtomString& familyName, int wordSpacing, int letterSpacing)
     : m_data(adoptRef(new FontPlatformDataPrivate()))
 {
     QFont font;

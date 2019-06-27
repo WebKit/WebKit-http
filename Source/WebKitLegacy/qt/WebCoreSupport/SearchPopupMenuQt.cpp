@@ -34,11 +34,11 @@ PopupMenu* SearchPopupMenuQt::popupMenu()
     return m_popup.get();
 }
 
-void SearchPopupMenuQt::saveRecentSearches(const WTF::AtomicString& name, const Vector<RecentSearch>&)
+void SearchPopupMenuQt::saveRecentSearches(const WTF::AtomString& name, const Vector<RecentSearch>&)
 {
 }
 
-void SearchPopupMenuQt::loadRecentSearches(const WTF::AtomicString& name, Vector<RecentSearch>&)
+void SearchPopupMenuQt::loadRecentSearches(const WTF::AtomString& name, Vector<RecentSearch>&)
 {
 }
 

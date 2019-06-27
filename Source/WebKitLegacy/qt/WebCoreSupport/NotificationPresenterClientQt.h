@@ -115,7 +115,7 @@ public:
     void clearCachedPermissions();
 
 private:
-    void sendEvent(Notification*, const AtomicString& eventName);
+    void sendEvent(Notification*, const AtomString& eventName);
     void displayNotification(Notification*);
     void removeReplacedNotificationFromQueue(Notification*);
     void detachNotification(Notification*);

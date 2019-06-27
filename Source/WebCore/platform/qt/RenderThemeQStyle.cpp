@@ -307,7 +307,7 @@ void RenderThemeQStyle::adjustButtonStyle(StyleResolver& styleResolver, RenderSt
     fontDescription.setComputedSize(style.fontSize());
 #endif
 
-    Vector<AtomicString> families;
+    Vector<AtomString> families;
     families.append(m_buttonFontFamily);
     fontDescription.setFamilies(families);
     style.setFontDescription(fontDescription);

@@ -386,7 +386,7 @@ void NotificationPresenterClientQt::sendDisplayEvent(NotificationWrapper* wrappe
         sendEvent(notification, "show");
 }
 
-void NotificationPresenterClientQt::sendEvent(Notification* notification, const AtomicString& eventName)
+void NotificationPresenterClientQt::sendEvent(Notification* notification, const AtomString& eventName)
 {
     if (notification->scriptExecutionContext())
         notification->dispatchEvent(Event::create(eventName, false, true));
