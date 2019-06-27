@@ -85,8 +85,8 @@ public:
 #elif USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)
     RunLoop& runLoop() const { return *m_runLoop; }
 #elif PLATFORM(QT) && USE(UNIX_DOMAIN_SOCKETS)
-    QSocketNotifier* registerSocketEventHandler(int, QSocketNotifier::Type, std::function<void()>);
-    void dispatchOnTermination(QProcess*, std::function<void()>);
+    QSocketNotifier* registerSocketEventHandler(int, QSocketNotifier::Type, WTF::Function<void()>&&);
+    void dispatchOnTermination(QProcess*, WTF::Function<void()>&&);
 #endif
 
 private:
