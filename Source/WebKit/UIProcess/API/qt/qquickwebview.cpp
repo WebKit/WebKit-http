@@ -612,7 +612,7 @@ void QQuickWebViewPrivate::processDidCrash(WKPageRef, const void* clientInfo)
     QQuickWebViewPrivate* d = toQQuickWebViewPrivate(clientInfo);
     QQuickWebView* q = d->q_ptr;
 
-    QUrl url(URL(WebCore::ParsedURLString, d->webPageProxy->urlAtProcessExit()));
+    QUrl url(URL({ }, d->webPageProxy->urlAtProcessExit()));
     qWarning("WARNING: The web process experienced a crash on '%s'.", qPrintable(url.toString(QUrl::RemoveUserInfo)));
 
     d->pageEventHandler->resetGestureRecognizers();

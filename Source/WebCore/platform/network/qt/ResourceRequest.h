@@ -39,7 +39,7 @@ class NetworkingContext;
     class ResourceRequest : public ResourceRequestBase {
     public:
         ResourceRequest(const String& url) 
-            : ResourceRequestBase(URL(ParsedURLString, url), ResourceRequestCachePolicy::UseProtocolCachePolicy)
+            : ResourceRequestBase(URL({ }, url), ResourceRequestCachePolicy::UseProtocolCachePolicy)
         {
         }
 

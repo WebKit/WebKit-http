@@ -187,7 +187,7 @@ void MediaPlayerPrivateQt::commitLoad(const String& url)
         m_webCorePlayer->readyStateChanged();
     }
 
-    URL kUrl(ParsedURLString, url);
+    URL kUrl({ }, url);
     const QUrl rUrl = kUrl;
     const QString scheme = rUrl.scheme().toLower();
 
