@@ -137,7 +137,7 @@ RunLoop::TimerBase::~TimerBase()
 void RunLoop::TimerBase::start(Seconds nextFireInterval, bool repeat)
 {
     stop();
-    int millis = static_cast<int>(nextFireInterval.milliseconds());
+    int millis = nextFireInterval.millisecondsAs<int>();
     m_isRepeating = repeat;
     m_ID = m_runLoop->m_timerObject->startTimer(millis);
     ASSERT(m_ID);
