@@ -135,7 +135,6 @@ list(APPEND WebCore_SOURCES
     platform/qt/SharedBufferQt.cpp
     platform/qt/TemporaryLinkStubsQt.cpp
     platform/qt/ThirdPartyCookiesQt.cpp
-    platform/qt/URLQt.cpp
     platform/qt/UserAgentQt.cpp
     platform/qt/WidgetQt.cpp
 
