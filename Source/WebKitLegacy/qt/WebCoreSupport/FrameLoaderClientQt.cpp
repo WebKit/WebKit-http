@@ -120,7 +120,7 @@ static QString drtPrintFrameUserGestureStatus(WebCore::Frame* frame)
     return QString::fromLatin1("Frame with user gesture \"%1\"").arg(QLatin1String("false"));
 }
 
-static QString drtDescriptionSuitableForTestResult(const WebCore::URL& kurl)
+static QString drtDescriptionSuitableForTestResult(const WTF::URL& kurl)
 {
     if (kurl.isEmpty() || !kurl.isLocalFile())
         return kurl.string();

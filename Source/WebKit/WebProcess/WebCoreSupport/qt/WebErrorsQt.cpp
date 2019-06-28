@@ -89,7 +89,7 @@ ResourceError pluginWillHandleLoadError(const ResourceResponse& response)
                          QCoreApplication::translate("QWebFrame", "Loading is handled by the media engine"));
 }
 
-ResourceError internalError(const WebCore::URL& url)
+ResourceError internalError(const WTF::URL& url)
 {
     return ResourceError(API::Error::webKitErrorDomain(), kWKErrorInternal, url,
                          QCoreApplication::translate("QWebFrame", "WebKit encountered an internal error"));

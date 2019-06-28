@@ -35,9 +35,10 @@
 #include "HTMLFormElement.h"
 #include "ResourceResponse.h"
 #include "SharedBuffer.h"
-#include "URL.h"
+
+#include <QObject>
 #include <QUrl>
-#include <qobject.h>
+#include <wtf/URL.h>
 
 QT_BEGIN_NAMESPACE
 class QNetworkReply;
@@ -180,7 +181,7 @@ public:
     Ref<WebCore::DocumentLoader> createDocumentLoader(const WebCore::ResourceRequest&, const WebCore::SubstituteData&) override;
     void setTitle(const StringWithDirection&, const URL&) override;
 
-    String userAgent(const WebCore::URL&) override;
+    String userAgent(const WTF::URL&) override;
 
     void savePlatformDataToCachedFrame(WebCore::CachedFrame*) override;
     void transitionToCommittedFromCachedFrame(WebCore::CachedFrame*) override;
@@ -252,7 +253,7 @@ private:
     WebCore::PluginView* m_pluginView;
     bool m_hasSentResponseToPlugin;
 
-    URL m_lastRequestedUrl;
+    WTF::URL m_lastRequestedUrl;
     bool m_isOriginatingLoad;
 };
 

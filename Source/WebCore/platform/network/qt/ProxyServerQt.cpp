@@ -26,7 +26,6 @@
 #include "config.h"
 #include "ProxyServer.h"
 
-#include "URL.h"
 #include "NetworkingContext.h"
 
 #include <QNetworkAccessManager>
@@ -34,6 +33,7 @@
 #include <QNetworkProxyFactory>
 #include <QNetworkProxyQuery>
 #include <QUrl>
+#include <wtf/URL.h>
 
 namespace WebCore {
 

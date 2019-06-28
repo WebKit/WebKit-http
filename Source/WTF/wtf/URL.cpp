@@ -40,6 +40,10 @@
 #include <wtf/text/StringHash.h>
 #include <wtf/text/TextStream.h>
 
+#if PLATFORM(QT)
+#include <QUrl>
+#endif
+
 namespace WTF {
 
 typedef Vector<char, 512> CharBuffer;
@@ -230,7 +234,7 @@ String URL::baseAsString() const
     return m_string.left(m_pathAfterLastSlash);
 }
 
-#if !USE(CF)
+#if !PLATFORM(QT) && !USE(CF)
 
 String URL::fileSystemPath() const
 {
@@ -240,6 +244,24 @@ String URL::fileSystemPath() const
     return decodeEscapeSequencesFromParsedURL(StringView(path()));
 }
 
+#endif
+
+#if PLATFORM(QT)
+// It's placed here because decodeEscapeSequencesFromParsedURL is static
+String URL::fileSystemPath() const
+{
+    if (!isValid())
+        return String();
+
+    if (isLocalFile())
+        return QUrl(*this).toLocalFile();
+
+    // A valid qrc resource path begins with a colon.
+    if (protocolIs("qrc"))
+        return ":" + decodeEscapeSequencesFromParsedURL(StringView(path()));
+
+    return String();
+}
 #endif
 
 #ifdef NDEBUG

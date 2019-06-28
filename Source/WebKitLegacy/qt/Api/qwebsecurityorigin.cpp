@@ -22,7 +22,6 @@
 
 #include "ApplicationCacheStorage.h"
 #include "DatabaseManager.h"
-#include "URL.h"
 #include "SchemeRegistry.h"
 #include "SecurityOrigin.h"
 #include "SecurityPolicy.h"
@@ -30,6 +29,7 @@
 #include "qwebdatabase_p.h"
 #include "qwebsecurityorigin_p.h"
 #include <QStringList>
+#include <wtf/URL.h>
 
 using namespace WebCore;
 

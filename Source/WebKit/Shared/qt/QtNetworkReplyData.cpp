@@ -28,11 +28,11 @@
 
 #include "ArgumentCodersQt.h"
 #include "SharedMemory.h"
-#include "URL.h"
 #include "WebCoreArgumentCoders.h"
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <wtf/Noncopyable.h>
+#include <wtf/URL.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebKit {

@@ -35,7 +35,7 @@ public:
 
     void removeAllVisitedLinks();
 
-    bool isLinkVisited(WebCore::Page&, WebCore::LinkHash, const WebCore::URL& baseURL, const AtomString& attributeURL) override;
+    bool isLinkVisited(WebCore::Page&, WebCore::LinkHash, const WTF::URL& baseURL, const AtomString& attributeURL) override;
     void addVisitedLink(WebCore::Page&, WebCore::LinkHash) override;
 
 private:

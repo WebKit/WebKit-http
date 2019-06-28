@@ -33,8 +33,8 @@
 #include "FloatRect.h"
 #include "MediaProducer.h"
 #include "QtPlatformPlugin.h"
-#include "URL.h"
 #include <wtf/RefCounted.h>
+#include <wtf/URL.h>
 #include <wtf/text/WTFString.h>
 
 QT_BEGIN_NAMESPACE

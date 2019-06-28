@@ -31,9 +31,9 @@
 #include "KeyedEncoderQt.h"
 #include "Page.h"
 #include "PageGroup.h"
-#include "URL.h"
 #include "VisitedLinkStoreQt.h"
 #include <QWebPageAdapter.h>
+#include <wtf/URL.h>
 #include <wtf/text/WTFString.h>
 
 #include <QSharedData>

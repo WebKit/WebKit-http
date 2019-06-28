@@ -54,7 +54,6 @@
 #include "ShadowBlur.h"
 #include "TransformationMatrix.h"
 #include "TransparencyLayer.h"
-#include "URL.h"
 
 #include <QBrush>
 #include <QGradient>
@@ -70,6 +69,7 @@
 #include <QVector>
 #include <private/qpdf_p.h>
 #include <wtf/MathExtras.h>
+#include <wtf/URL.h>
 
 #if OS(WINDOWS)
 QT_BEGIN_NAMESPACE

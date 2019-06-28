@@ -52,12 +52,12 @@ private:
     WebCore::PluginStrategy* createPluginStrategy() override;
     
     // WebCore::CookiesStrategy
-    String cookiesForDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) override;
-    void setCookiesFromDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, const String&) override;
-    bool cookiesEnabled(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) override;
-    String cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&) override;
-    bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, Vector<WebCore::Cookie>&) override;
-    void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&) override;
+    String cookiesForDOM(const WebCore::NetworkStorageSession&, const WTF::URL& firstParty, const WTF::URL&) override;
+    void setCookiesFromDOM(const WebCore::NetworkStorageSession&, const WTF::URL& firstParty, const WTF::URL&, const String&) override;
+    bool cookiesEnabled(const WebCore::NetworkStorageSession&, const WTF::URL& firstParty, const WTF::URL&) override;
+    String cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WTF::URL& firstParty, const WTF::URL&) override;
+    bool getRawCookies(const WebCore::NetworkStorageSession&, const WTF::URL& firstParty, const WTF::URL&, Vector<WebCore::Cookie>&) override;
+    void deleteCookie(const WebCore::NetworkStorageSession&, const WTF::URL&, const String&) override;
 
     // WebCore::PluginStrategy
     void refreshPlugins() override;

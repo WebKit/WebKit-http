@@ -99,7 +99,7 @@ void WebPage::platformDetach()
 {
 }
 
-String WebPage::platformUserAgent(const WebCore::URL&) const
+String WebPage::platformUserAgent(const WTF::URL&) const
 {
     return String();
 }

@@ -20,34 +20,22 @@
 #include "config.h"
 #include "URL.h"
 
-#include "TextEncoding.h"
-#include "qurl.h"
+#include "URLParser.h"
 
-namespace WebCore {
+#include <QUrl>
+
+namespace WTF {
 
 URL::URL(const QUrl& url)
 {
-    *this = URL(URL(), url.toEncoded().constData(), UTF8Encoding());
+    QByteArray encoded = url.toEncoded();
+    URLParser parser(encoded.constData(), { });
+    *this = parser.result();
 }
 
 URL::operator QUrl() const
 {
     return QUrl(m_string);
-}
-
-String URL::fileSystemPath() const
-{
-    if (!isValid())
-        return String();
-
-    if (protocolIs("file"))
-        return static_cast<QUrl>(*this).toLocalFile();
-
-    // A valid qrc resource path begins with a colon.
-    if (protocolIs("qrc"))
-        return ":" + decodeURLEscapeSequences(path());
-
-    return String();
 }
 
 }

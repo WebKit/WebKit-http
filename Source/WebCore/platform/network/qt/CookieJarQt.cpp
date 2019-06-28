@@ -30,7 +30,6 @@
 #include "CookieJarQt.h"
 
 #include "Cookie.h"
-#include "URL.h"
 #include "NetworkingContext.h"
 #include "NetworkStorageSession.h"
 #include "NotImplemented.h"
@@ -42,6 +41,7 @@
 #include <QNetworkCookie>
 #include <QStringList>
 #include <QVariant>
+#include <wtf/URL.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 

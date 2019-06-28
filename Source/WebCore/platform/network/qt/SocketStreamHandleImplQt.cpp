@@ -32,12 +32,12 @@
 #include "config.h"
 #include "SocketStreamHandleImpl.h"
 
-#include "URL.h"
 #include "Logging.h"
 #include "NotImplemented.h"
 #include "SocketStreamError.h"
 #include "SocketStreamHandleClient.h"
 #include "SocketStreamHandlePrivate.h"
+#include <wtf/URL.h>
 
 namespace WebCore {
 
