@@ -116,8 +116,8 @@ public:
         return m_data->size;
     }
 
-    FontOrientation orientation() const { return Horizontal; } // FIXME: Implement.
-    void setOrientation(FontOrientation) { } // FIXME: Implement.
+    FontOrientation orientation() const { return FontOrientation::Horizontal; } // QTFIXME: Implement.
+    void setOrientation(FontOrientation) { } // QTFIXME: Implement.
     FontPlatformData cloneWithOrientation(const FontPlatformData& source, FontOrientation orientation);
     RefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
 
