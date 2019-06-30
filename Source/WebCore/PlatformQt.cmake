@@ -1,5 +1,5 @@
 include(platform/ImageDecoders.cmake)
-include(platform/TextureMapper.cmake)
+#include(platform/TextureMapper.cmake)
 
 if (NOT USE_LIBJPEG)
     list(REMOVE_ITEM WebCore_SOURCES
@@ -59,11 +59,11 @@ list(APPEND WebCore_SOURCES
     platform/audio/qt/AudioBusQt.cpp
 
     platform/graphics/ImageSource.cpp
-    platform/graphics/PlatformDisplay.cpp
+#    platform/graphics/PlatformDisplay.cpp
     platform/graphics/WOFFFileFormat.cpp
 
-    platform/graphics/texmap/BitmapTextureImageBuffer.cpp
-    platform/graphics/texmap/TextureMapperImageBuffer.cpp
+#    platform/graphics/texmap/BitmapTextureImageBuffer.cpp
+#    platform/graphics/texmap/TextureMapperImageBuffer.cpp
 
     platform/graphics/qt/ColorQt.cpp
     platform/graphics/qt/FloatPointQt.cpp
@@ -76,25 +76,24 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/FontQt.cpp
     platform/graphics/qt/GlyphPageTreeNodeQt.cpp
     platform/graphics/qt/GradientQt.cpp
-    platform/graphics/qt/GraphicsContextQt.cpp
+#    platform/graphics/qt/GraphicsContextQt.cpp
     platform/graphics/qt/IconQt.cpp
-    platform/graphics/qt/ImageBufferDataQt.cpp
+#    platform/graphics/qt/ImageBufferDataQt.cpp
     platform/graphics/qt/ImageBufferQt.cpp
     platform/graphics/qt/ImageDecoderQt.cpp
-    platform/graphics/qt/ImageQt.cpp
+#    platform/graphics/qt/ImageQt.cpp
     platform/graphics/qt/IntPointQt.cpp
     platform/graphics/qt/IntRectQt.cpp
     platform/graphics/qt/IntSizeQt.cpp
     platform/graphics/qt/PathQt.cpp
     platform/graphics/qt/PatternQt.cpp
-    platform/graphics/qt/StillImageQt.cpp
+#    platform/graphics/qt/StillImageQt.cpp
     platform/graphics/qt/TileQt.cpp
     platform/graphics/qt/TransformationMatrixQt.cpp
 
-    platform/graphics/x11/PlatformDisplayX11.cpp
+#    platform/graphics/x11/PlatformDisplayX11.cpp
     platform/graphics/x11/XUniqueResource.cpp
 
-    platform/network/NetworkStorageSessionStub.cpp
     platform/network/MIMESniffing.cpp
 
     platform/network/qt/BlobUrlConversion.cpp
