@@ -1,3 +1,318 @@
+2019-07-02  Antti Koivisto  <antti@apple.com>
+
+        Crash when adding inline stylesheet to shadow tree in document with null base URL
+        https://bugs.webkit.org/show_bug.cgi?id=199400
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/shadow-dom/stylesheet-in-shadow-without-base-url-crash-expected.txt: Added.
+        * fast/shadow-dom/stylesheet-in-shadow-without-base-url-crash.html: Added.
+
+2019-07-01  Justin Michaud  <justin_michaud@apple.com>
+
+        [Wasm-References] Disable references by default
+        https://bugs.webkit.org/show_bug.cgi?id=199390
+
+        Reviewed by Saam Barati.
+
+        * workers/wasm-references.html:
+
+2019-07-01  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r245498): Timelines: CPU: discontinuities are filled in by the next record
+        https://bugs.webkit.org/show_bug.cgi?id=198927
+
+        Reviewed by Matt Baker.
+
+        * inspector/unit-tests/set-utilities.html:
+        * inspector/unit-tests/set-utilities-expected.txt:
+
+2019-07-01  Russell Epstein  <russell_e@apple.com>
+
+        Layout Test imported/blink/fast/multicol/span/overflow-on-viewport.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=199387
+
+        Unreviewed Test Gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2019-07-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS 13] editing/selection/ios/dispatch-mouse-events-when-modifying-selection-quirk.html fails on trunk
+        https://bugs.webkit.org/show_bug.cgi?id=199384
+
+        Reviewed by Tim Horton.
+
+        Adjust this test to show the callout menu by tapping on the caret rect, rather than the center of the editable
+        area. Currently, tapping the center of the editable area twice results in a double tap, which fails to trigger
+        the callout bar.
+
+        * editing/selection/ios/dispatch-mouse-events-when-modifying-selection-quirk.html:
+
+2019-07-01  Chris Dumez  <cdumez@apple.com>
+
+        It should not be possible to trigger a load while in the middle of restoring a page in PageCache
+        https://bugs.webkit.org/show_bug.cgi?id=199190
+        <rdar://problem/52114552>
+
+        Reviewed by Brady Eidson.
+
+        Add layout test coverage.
+
+        * http/tests/security/navigate-when-restoring-cached-page-expected.txt: Added.
+        * http/tests/security/navigate-when-restoring-cached-page.html: Added.
+        * http/tests/security/resources/navigate-when-restoring-cached-page-frame.html: Added.
+        * http/tests/security/resources/navigate-when-restoring-cached-page-victim.html: Added.
+
+2019-07-01  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r246844.
+
+        Broke 12 tests in imported/w3c/web-platform-
+        tests/pointerevents/
+
+        Reverted changeset:
+
+        "[Pointer Events] Respect pointer capture when dispatching
+        mouse boundary events and updating :hover"
+        https://bugs.webkit.org/show_bug.cgi?id=198999
+        https://trac.webkit.org/changeset/246844
+
+2019-07-01  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r246958.
+
+        Broke inspector/dom/getAccessibilityPropertiesForNode.html
+
+        Reverted changeset:
+
+        "Enhance support of aria-haspopup per ARIA 1.1 specification."
+        https://bugs.webkit.org/show_bug.cgi?id=199216
+        https://trac.webkit.org/changeset/246958
+
+2019-07-01  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] Exiting from fullscreen scrolls to top of page
+        https://bugs.webkit.org/show_bug.cgi?id=199338
+        <rdar://problem/51273017>
+
+        Reviewed by Jer Noble.
+
+        * fullscreen/fullscreen-restore-scroll-position-expected.txt: Added.
+        * fullscreen/fullscreen-restore-scroll-position.html: Added.
+
+2019-07-01  Russell Epstein  <russell_e@apple.com>
+
+        Layout Test imported/mozilla/svg/text/selectSubString.svg is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=199370
+
+        Unreviewed Test Gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2019-07-01  Zalan Bujtas  <zalan@apple.com>
+
+        Tapping on the bottom part of youtube video behaves as if controls were visible
+        https://bugs.webkit.org/show_bug.cgi?id=199349
+        <rdar://problem/51955744>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/opacity-change-happens-on-touchstart-with-transition2-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/opacity-change-happens-on-touchstart-with-transition2.html: Added.
+
+2019-07-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        iOS: REGRESSION(async scroll): Caret doesn't scroll when scrolling textarea
+        https://bugs.webkit.org/show_bug.cgi?id=198217
+        <rdar://problem/51097296>
+
+        Reviewed by Simon Fraser.
+
+        Add a new layout test to check that the text selection views are updated after scrolling in a fast overflow
+        scrolling container.
+
+        * editing/selection/ios/update-selection-after-overflow-scroll-expected.txt: Added.
+        * editing/selection/ios/update-selection-after-overflow-scroll.html: Added.
+
+2019-06-30  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed, rolling out r246959.
+
+        svg/clip-path/clip-hidpi.svg is flaky on mac-wk2-ews
+
+        Reverted changeset:
+
+        "LayoutTests svg/clip-path/clip-hidpi.svg isn't working as
+        expected due to a syntax error"
+        https://bugs.webkit.org/show_bug.cgi?id=199313
+        https://trac.webkit.org/changeset/246959
+
+2019-06-30  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        LayoutTests svg/clip-path/clip-hidpi.svg isn't working as expected due to a syntax error
+        https://bugs.webkit.org/show_bug.cgi?id=199313
+
+        Reviewed by Carlos Garcia Campos.
+
+        * svg/clip-path/clip-hidpi.svg: Fix the syntax error by replacing '->' with '=>'.
+        Call testRunner.waitUntilDone() before testRunner.notifyDone().
+        * svg/clip-path/clip-hidpi-expected.svg: Call testRunner.setBackingScaleFactor().
+
+2019-06-30  Andres Gonzalez  <andresg_22@apple.com>
+
+        Enhance support of aria-haspopup per ARIA 1.1 specification.
+        https://bugs.webkit.org/show_bug.cgi?id=199216
+        <rdar://problem/46221342>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/button-with-aria-haspopup-role-expected.txt:
+        * accessibility/button-with-aria-haspopup-role.html:
+        * accessibility/ios-simulator/button-with-aria-haspopup-role-expected.txt:
+        * accessibility/ios-simulator/button-with-aria-haspopup-role.html:
+
+2019-06-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove a PLATFORM(IOS_FAMILY) related to repaint offsets in composited scrolling layers
+        https://bugs.webkit.org/show_bug.cgi?id=199342
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/events/touch/ios/touch-event-regions/scrolled-overflow-expected.txt: Added.
+        * fast/events/touch/ios/touch-event-regions/scrolled-overflow.html: Added.
+
+2019-06-28  Zalan Bujtas  <zalan@apple.com>
+
+        [Text autosizing][iPadOS] bing.com is hard to read even with boosted text because of the line height
+        https://bugs.webkit.org/show_bug.cgi?id=199318
+        <rdar://problem/51826096>
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/text-autosizing/ios/idempotentmode/line-height-boosting-expected.txt: Added.
+        * fast/text-autosizing/ios/idempotentmode/line-height-boosting.html: Added.
+
+2019-06-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix the test added in r246868 on iOS debug simulator.
+
+        * editing/pasteboard/paste-contents-with-side-effects.html:
+
+2019-06-27  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Select all with existing range selection replaces range instead of selecting all text
+        https://bugs.webkit.org/show_bug.cgi?id=197950
+        <rdar://problem/50245131>
+
+        Reviewed by Wenson Hsieh.
+
+        Add a test to ensure that pressing Command + A performs a "select all" even when there
+        is an existing range selection.
+
+        * fast/events/ios/select-all-with-existing-selection-expected.txt: Added.
+        * fast/events/ios/select-all-with-existing-selection.html: Added.
+
+2019-06-27  Russell Epstein  <russell_e@apple.com>
+
+        Layout Test fast/parser/parser-yield-timing.html was flaky due to strict tolerance, increased tolerance.
+        https://bugs.webkit.org/show_bug.cgi?id=199280
+
+        Reviewed by Tim Horton.
+
+        * fast/parser/parser-yield-timing-expected.txt:
+        * fast/parser/parser-yield-timing.html:
+        * platform/mac-wk1/TestExpectations:
+
+2019-06-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        REGRESSION (r246888): fast/dom/navigator-detached-no-crash.html failing on Apple High Sierra Release WK2 (Tests)
+        https://bugs.webkit.org/show_bug.cgi?id=199284
+
+        Unreviewed test gardening.
+
+        * platform/mac-highsierra/fast/dom/navigator-detached-no-crash-expected.txt: Rebaseline test after r246888.
+
+2019-06-27  Russell Epstein  <russell_e@apple.com>
+
+        Layout Test fast/parser/parser-yield-timing.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=199280
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2019-06-27  Antoine Quint  <graouts@apple.com>
+
+        pointerevents/ios/pointer-events-implicit-capture.html fails on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=199259
+
+        Reviewed by Dean Jackson.
+
+        The assumptions made by this test were incorrect. The "gotpointercapture" event should not be dispatched
+        until the next pointer event is dispatched after setting pointer capture. Even though pointer capture is
+        set implicitly on "pointerdown" on non-mouse devices, the event will only be fired once a "pointermove" or
+        "pointerup" event is dispatched.
+
+        * pointerevents/ios/pointer-events-implicit-capture.html:
+
+2019-06-27  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, fix test failures after r246876.
+
+        * inspector/worker/console-basic-expected.txt:
+
+2019-06-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, rebaseline test after r246876.
+
+        * inspector/worker/console-basic-expected.txt:
+
+2019-06-27  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Skip WebGPU tests on High Sierra since WebGPU is disabled.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2019-06-27  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (touch-action): Can't scroll vertically when touching a horizontally-scrollable element on instagram.com
+        https://bugs.webkit.org/show_bug.cgi?id=199268
+        <rdar://problem/52246473>
+
+        Reviewed by Antoine Quint.
+
+        * pointerevents/ios/touch-action-region-manipulation-expected.txt: Added.
+        * pointerevents/ios/touch-action-region-manipulation.html: Added.
+
+2019-06-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: throw an error if console.count/console.countReset is called with an object that throws an error from toString
+        https://bugs.webkit.org/show_bug.cgi?id=199252
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/console/console-count.html:
+        * inspector/console/console-count-expected.txt:
+        * inspector/console/console-api-expected.txt:
+
+2019-06-27  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Implement arrays and MakeArrayReference
+        https://bugs.webkit.org/show_bug.cgi?id=198414
+
+        Reviewed by Myles C. Maxfield.
+
+        * webgpu/whlsl-huge-array-expected.txt: Added.
+        * webgpu/whlsl-huge-array.html: Added.
+        * webgpu/whlsl-make-array-reference-expected.txt: Added.
+        * webgpu/whlsl-make-array-reference.html: Added.
+        * webgpu/whlsl-simple-arrays-expected.txt: Added.
+        * webgpu/whlsl-simple-arrays.html: Added.
+        * webgpu/whlsl-two-dimensional-array-expected.txt: Added.
+        * webgpu/whlsl-two-dimensional-array.html: Added.
+
 2019-06-26  Simon Fraser  <simon.fraser@apple.com>
 
         [Async overflow scrolling] Fix missing or misplaced content inside overflow:scroll

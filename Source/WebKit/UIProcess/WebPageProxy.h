@@ -980,7 +980,7 @@ public:
 
     void effectiveAppearanceDidChange();
     bool useDarkAppearance() const;
-    bool useInactiveAppearance() const;
+    bool useElevatedUserInterfaceLevel() const;
 
 #if PLATFORM(COCOA)
     // Called by the web process through a message.
@@ -1402,6 +1402,7 @@ public:
 
 #if PLATFORM(IOS_FAMILY)
     void setIsKeyboardAnimatingIn(bool isKeyboardAnimatingIn) { m_isKeyboardAnimatingIn = isKeyboardAnimatingIn; }
+    bool waitingForPostLayoutEditorStateUpdateAfterFocusingElement() const { return m_waitingForPostLayoutEditorStateUpdateAfterFocusingElement; }
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS_FAMILY)

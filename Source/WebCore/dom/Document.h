@@ -564,7 +564,7 @@ public:
     float deviceScaleFactor() const;
 
     WEBCORE_EXPORT bool useSystemAppearance() const;
-    WEBCORE_EXPORT bool useInactiveAppearance() const;
+    WEBCORE_EXPORT bool useElevatedUserInterfaceLevel() const;
     WEBCORE_EXPORT bool useDarkAppearance(const RenderStyle*) const;
 
     OptionSet<StyleColor::Options> styleColorOptions(const RenderStyle*) const;
@@ -760,8 +760,7 @@ public:
     void hoveredElementDidDetach(Element&);
     void elementInActiveChainDidDetach(Element&);
 
-    enum class CaptureChange : uint8_t { Yes, No };
-    void updateHoverActiveState(const HitTestRequest&, Element*, CaptureChange = CaptureChange::No);
+    void updateHoverActiveState(const HitTestRequest&, Element*);
 
     // Updates for :target (CSS3 selector).
     void setCSSTarget(Element*);

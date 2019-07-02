@@ -35,7 +35,9 @@
 #include "ScrollingStateTree.h"
 #include "ScrollingTreeFrameScrollingNode.h"
 #include "ScrollingTreeNode.h"
+#include "ScrollingTreeOverflowScrollProxyNode.h"
 #include "ScrollingTreeOverflowScrollingNode.h"
+#include "ScrollingTreePositionedNode.h"
 #include "ScrollingTreeScrollingNode.h"
 #include <wtf/SetForScope.h>
 #include <wtf/text/TextStream.h>
@@ -169,7 +171,8 @@ void ScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> scrollin
         unvisitedNodes.add(nodeID);
 
     m_overflowRelatedNodesMap.clear();
-    m_nodesWithRelatedOverflow.clear();
+    m_activeOverflowScrollProxyNodes.clear();
+    m_activePositionedNodes.clear();
 
     // orphanNodes keeps child nodes alive while we rebuild child lists.
     OrphanScrollingNodeMap orphanNodes;
@@ -218,7 +221,7 @@ void ScrollingTree::updateTreeFromStateNode(const ScrollingStateNode* stateNode,
         auto parentIt = m_nodeMap.find(parentNodeID);
         ASSERT_WITH_SECURITY_IMPLICATION(parentIt != m_nodeMap.end());
         if (parentIt != m_nodeMap.end()) {
-            auto* parent = parentIt->value;
+            auto* parent = parentIt->value.get();
 
             auto* oldParent = node->parent();
             if (oldParent)

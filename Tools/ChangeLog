@@ -1,3 +1,239 @@
+2019-07-02  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Make PrintConfiguration platform aware
+        https://bugs.webkit.org/show_bug.cgi?id=196657
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (PrintConfiguration): Specified platform-specific command lists.
+        (PrintConfiguration.run): Override run method and specify platform specific commands.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-tests.
+
+2019-07-01  Justin Michaud  <justin_michaud@apple.com>
+
+        [Wasm-References] Disable references by default
+        https://bugs.webkit.org/show_bug.cgi?id=199390
+
+        Reviewed by Saam Barati.
+
+        * Scripts/run-jsc-stress-tests:
+
+2019-07-01  Joonghun Park  <pjh0718@gmail.com>
+
+        Unreviewed. Revert r246965 to fix build break
+        since r247019 reverted its related changes.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::popupValue const): Deleted.
+
+2019-07-01  Alex Christensen  <achristensen@webkit.org>
+
+        Add new decidePolicyForNavigationAction SPI with preferences and userInfo
+        https://bugs.webkit.org/show_bug.cgi?id=199371
+        <rdar://problem/52352905>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Navigation.mm:
+        (-[NavigationActionSPIDelegate webView:didFinishNavigation:]):
+        (-[NavigationActionSPIDelegate _webView:decidePolicyForNavigationAction:preferences:userInfo:decisionHandler:]):
+        (-[NavigationActionSPIDelegate spiCalled]):
+        (TEST):
+
+2019-07-01  Alex Christensen  <achristensen@webkit.org>
+
+        Deprecate _webView:showCustomSheetForElement: after transition to UIContextMenuInteraction
+        https://bugs.webkit.org/show_bug.cgi?id=199296
+        <rdar://problem/51041960>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        (-[DragAndDropSimulator _webView:showCustomSheetForElement:]):
+
+2019-07-01  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r246958.
+
+        Broke inspector/dom/getAccessibilityPropertiesForNode.html
+
+        Reverted changeset:
+
+        "Enhance support of aria-haspopup per ARIA 1.1 specification."
+        https://bugs.webkit.org/show_bug.cgi?id=199216
+        https://trac.webkit.org/changeset/246958
+
+2019-07-01  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, GTK a11y tests fix after r246958
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::popupValue const):
+
+2019-06-30  Andres Gonzalez  <andresg_22@apple.com>
+
+        Enhance support of aria-haspopup per ARIA 1.1 specification.
+        https://bugs.webkit.org/show_bug.cgi?id=199216
+        <rdar://problem/46221342>
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (getPopupValueCallback):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (AccessibilityUIElement::popupValue const):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::popupValue const):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::popupValue const):
+
+2019-06-28  Robin Morisset  <rmorisset@apple.com>
+
+        Adding myself as a reviewer to contributors.json.
+
+        Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-06-28  Jer Noble  <jer.noble@apple.com>
+
+        Add new -[WKWebView _closeAllMediaPresentations] SPI
+        https://bugs.webkit.org/show_bug.cgi?id=199294
+        <rdar://problem/51965958>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewCloseAllMediaPresentations.mm: Added.
+        (TEST):
+
+2019-06-28  Sihui Liu  <sihui_liu@apple.com>
+
+        Add a regression test for change r246901
+        https://bugs.webkit.org/show_bug.cgi?id=199290
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/LocalStoragePersistence.mm:
+        (-[LocalStorageNavigationDelegate webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/localstorage-open-window-private.html: Added.
+
+2019-06-28  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove traces of ENABLE_ICONDATABASE remaining after its removal in 219733
+        https://bugs.webkit.org/show_bug.cgi?id=199317
+
+        Reviewed by Michael Catanzaro.
+
+        While IconDatabase and all code using it was removed,
+        ENABLE_ICONDATABASE still exists as build option and C++ macro.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * gtk/manifest.txt.in: Remove reference to unused urlIcon.png file.
+        * wpe/manifest.txt.in: Remove reference to unused urlIcon.png file.
+
+2019-06-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        -[WKContentView _selectionClipRects] returns a bogus value in -reloadInputViews when focusing an element
+        https://bugs.webkit.org/show_bug.cgi?id=199310
+        <rdar://problem/52292137>
+
+        Reviewed by Megan Gardner.
+
+        Add a new API test to verify that _selectionClipRects returns the correct value when invoked under the scope of
+        _elementDidFocus.
+
+        * TestWebKitAPI/Tests/ios/KeyboardInputTestsIOS.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/ios/TestInputDelegate.h:
+        * TestWebKitAPI/Tests/ios/TestInputDelegate.mm:
+        (-[TestInputDelegate setDidStartInputSessionHandler:]):
+        (-[TestInputDelegate didStartInputSessionHandler]):
+
+        Add plumbing for a handler block in TestInputDelegate.
+
+        (-[TestInputDelegate setWillStartInputSessionHandler:]):
+
+        Drive-by style fixes to add a space between id and < for Objective-C protocols.
+
+        (-[TestInputDelegate willStartInputSessionHandler]):
+        (-[TestInputDelegate _webView:willStartInputSession:]):
+        (-[TestInputDelegate _webView:didStartInputSession:]):
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+        Add a declaration for _selectionClipRects.
+
+2019-06-27  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r244633): e-mail with "height: 100%" causes unstable layout.
+        https://bugs.webkit.org/show_bug.cgi?id=199303
+        <rdar://problem/51340927>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/AutoLayoutIntegration.mm:
+        (TEST):
+
+2019-06-27  Beth Dakin  <bdakin@apple.com>
+
+        Upstream use of MACCATALYST
+        https://bugs.webkit.org/show_bug.cgi?id=199245
+        rdar://problem/51687723
+
+        Reviewed by Tim Horton.
+
+        * ContentExtensionTester/Configurations/SDKVariant.xcconfig:
+        * DumpRenderTree/mac/Configurations/SDKVariant.xcconfig:
+        * ImageDiff/cg/Configurations/SDKVariant.xcconfig:
+        * MiniBrowser/Configurations/SDKVariant.xcconfig:
+        * MobileMiniBrowser/Configurations/SDKVariant.xcconfig:
+        * Scripts/webkitpy/generate_xcfilelists_lib/generators.py:
+        (JavaScriptCoreGenerator):
+        (WebCoreGenerator):
+        (WebKitGenerator):
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * TestWebKitAPI/Configurations/SDKVariant.xcconfig:
+        * TestWebKitAPI/Tests/WebKitCocoa/SafeBrowsing.mm:
+        * WebEditingTester/Configurations/SDKVariant.xcconfig:
+        * WebKitLauncher/Configurations/SDKVariant.xcconfig:
+        * WebKitTestRunner/Configurations/SDKVariant.xcconfig:
+        * lldb/lldbWebKitTester/Configurations/SDKVariant.xcconfig:
+
+2019-06-27  Saam Barati  <sbarati@apple.com>
+
+        Make WEBGPU enabled only on Mojave and later.
+
+        Rubber-stamped by Myles C. Maxfield.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2019-06-27  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Do not print worker environment variables in each build step
+        https://bugs.webkit.org/show_bug.cgi?id=197319
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (CheckOutSource.__init__): Disabled logging of environment variables.
+        (ApplyPatch.__init__): Ditto.
+        (KillOldProcesses.__init__): Ditto.
+        (ArchiveBuiltProduct.__init__): Ditto.
+        (DownloadBuiltProduct.__init__): Ditto.
+        (ExtractBuiltProduct.__init__): Ditto.
+        (RunAPITests.__init__): Ditto.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Updated unit-tests accordingly.
+
 2019-06-26  Jiewen Tan  <jiewen_tan@apple.com>
 
         SubFrameSOAuthorizationSession should preserve the referrer header when fall back to web path

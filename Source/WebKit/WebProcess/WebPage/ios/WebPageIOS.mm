@@ -214,7 +214,7 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
     // immediately so that the UIProcess can update UI, including the position of the caret.
     bool needsLayout = !frame.view() || frame.view()->needsLayout();
     bool requiresPostLayoutData = frame.editor().hasComposition();
-#if !PLATFORM(IOSMAC)
+#if !PLATFORM(MACCATALYST)
     requiresPostLayoutData |= m_keyboardIsAttached;
 #endif
     if ((shouldIncludePostLayoutData == IncludePostLayoutDataHint::No || needsLayout) && !requiresPostLayoutData) {
@@ -664,18 +664,23 @@ void WebPage::handleSyntheticClick(Node& nodeRespondingToClick, const WebCore::F
     }
 
     auto& respondingDocument = nodeRespondingToClick.document();
+    auto& contentChangeObserver = respondingDocument.contentChangeObserver();
+    auto targetNodeisConsideredHidden = contentChangeObserver.hiddenTouchTarget() == &nodeRespondingToClick || ContentChangeObserver::isConsideredHidden(nodeRespondingToClick);
     {
         LOG_WITH_STREAM(ContentObservation, stream << "handleSyntheticClick: node(" << &nodeRespondingToClick << ") " << location);
         ContentChangeObserver::MouseMovedScope observingScope(respondingDocument);
         auto& mainFrame = m_page->mainFrame();
         dispatchSyntheticMouseMove(mainFrame, location, modifiers, pointerId);
         mainFrame.document()->updateStyleIfNeeded();
+        if (m_isClosed)
+            return;
     }
 
-    if (m_isClosed)
+    if (targetNodeisConsideredHidden) {
+        LOG(ContentObservation, "handleSyntheticClick: target node is considered hidden -> hover.");
         return;
+    }
 
-    auto& contentChangeObserver = respondingDocument.contentChangeObserver();
     auto observedContentChange = contentChangeObserver.observedContentChange();
     auto targetNodeTriggersClick = nodeAlwaysTriggersClick(nodeRespondingToClick);
 
@@ -1303,6 +1308,9 @@ static IntRect selectionBoxForRange(WebCore::Range* range)
 
 void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uint32_t gestureType, uint32_t gestureState, bool isInteractingWithFocusedElement, CallbackID callbackID)
 {
+    if (static_cast<GestureRecognizerState>(gestureState) == GestureRecognizerState::Began)
+        setFocusedFrameBeforeSelectingTextAtLocation(point);
+
     auto& frame = m_page->focusController().focusedOrMainFrame();
     VisiblePosition position = visiblePositionInFocusedNodeForPoint(frame, point, isInteractingWithFocusedElement);
 
@@ -1367,7 +1375,7 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
         if (position.rootEditableElement())
             range = Range::create(*frame.document(), position, position);
         else
-#if !PLATFORM(IOSMAC)
+#if !PLATFORM(MACCATALYST)
             range = wordRangeFromPosition(position);
 #else
             switch (wkGestureState) {
@@ -2022,8 +2030,18 @@ static inline bool rectIsTooBigForSelection(const IntRect& blockRect, const Fram
     return blockRect.height() > frame.view()->unobscuredContentRect().height() * factor;
 }
 
+void WebPage::setFocusedFrameBeforeSelectingTextAtLocation(const IntPoint& point)
+{
+    auto result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
+    auto* hitNode = result.innerNode();
+    if (hitNode && hitNode->renderer())
+        m_page->focusController().setFocusedFrame(result.innerNodeFrame());
+}
+
 void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, uint32_t granularity, bool isInteractingWithFocusedElement, CallbackID callbackID)
 {
+    setFocusedFrameBeforeSelectingTextAtLocation(point);
+
     auto& frame = m_page->focusController().focusedOrMainFrame();
     RefPtr<Range> range = rangeForGranularityAtPoint(frame, point, granularity, isInteractingWithFocusedElement);
     if (!isInteractingWithFocusedElement) {
@@ -2640,7 +2658,7 @@ static void selectionPositionInformation(WebPage& page, const InteractionInforma
             info.isSelectable = !isAssistableElement(*downcast<Element>(hitNode)) && !rectIsTooBigForSelection(info.bounds, *result.innerNodeFrame());
     }
 
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     bool isInsideFixedPosition;
     VisiblePosition caretPosition(renderer->positionForPoint(request.point, nullptr));
     info.caretRect = caretPosition.absoluteCaretBounds(&isInsideFixedPosition);
@@ -2969,6 +2987,8 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
         information.autocapitalizeType = AutocapitalizeTypeNone;
         information.isAutocorrect = false;
     }
+
+    information.shouldAvoidResizingWhenInputViewBoundsChange = m_focusedElement->document().quirks().shouldAvoidResizingWhenInputViewBoundsChange();
 }
 
 void WebPage::autofillLoginCredentials(const String& username, const String& password)

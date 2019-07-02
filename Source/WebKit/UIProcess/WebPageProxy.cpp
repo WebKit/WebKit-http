@@ -7219,7 +7219,7 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
     parameters.layerHostingMode = m_layerHostingMode;
     parameters.controlledByAutomation = m_controlledByAutomation;
     parameters.useDarkAppearance = useDarkAppearance();
-    parameters.useInactiveAppearance = useInactiveAppearance();
+    parameters.useElevatedUserInterfaceLevel = useElevatedUserInterfaceLevel();
 #if PLATFORM(MAC)
     parameters.colorSpace = pageClient().colorSpace();
     parameters.useSystemAppearance = m_useSystemAppearance;
@@ -8747,9 +8747,9 @@ bool WebPageProxy::useDarkAppearance() const
     return pageClient().effectiveAppearanceIsDark();
 }
 
-bool WebPageProxy::useInactiveAppearance() const
+bool WebPageProxy::useElevatedUserInterfaceLevel() const
 {
-    return pageClient().effectiveAppearanceIsInactive();
+    return pageClient().effectiveUserInterfaceLevelIsElevated();
 }
 
 void WebPageProxy::effectiveAppearanceDidChange()
@@ -8757,7 +8757,7 @@ void WebPageProxy::effectiveAppearanceDidChange()
     if (!hasRunningProcess())
         return;
 
-    m_process->send(Messages::WebPage::EffectiveAppearanceDidChange(useDarkAppearance(), useInactiveAppearance()), m_pageID);
+    m_process->send(Messages::WebPage::EffectiveAppearanceDidChange(useDarkAppearance(), useElevatedUserInterfaceLevel()), m_pageID);
 }
 
 #if PLATFORM(COCOA)

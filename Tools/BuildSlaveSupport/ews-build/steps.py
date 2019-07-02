@@ -96,6 +96,7 @@ class CheckOutSource(git.Git):
                                                 retry=self.CHECKOUT_DELAY_AND_MAX_RETRIES_PAIR,
                                                 timeout=2 * 60 * 60,
                                                 alwaysUseLatest=True,
+                                                logEnviron=False,
                                                 method='clean',
                                                 progress=True,
                                                 **kwargs)
@@ -140,6 +141,9 @@ class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
     flunkOnFailure = True
     haltOnFailure = True
     command = ['Tools/Scripts/svn-apply', '--force', '.buildbot-diff']
+
+    def __init__(self, **kwargs):
+        super(ApplyPatch, self).__init__(timeout=5 * 60, logEnviron=False, **kwargs)
 
     def _get_patch(self):
         sourcestamp = self.build.getSourceStamp(self.getProperty('codebase', ''))
@@ -761,7 +765,7 @@ class KillOldProcesses(shell.Compile):
     command = ['python', 'Tools/BuildSlaveSupport/kill-old-processes', 'buildbot']
 
     def __init__(self, **kwargs):
-        super(KillOldProcesses, self).__init__(timeout=60, **kwargs)
+        super(KillOldProcesses, self).__init__(timeout=60, logEnviron=False, **kwargs)
 
 
 class RunWebKitTests(shell.Test):
@@ -840,6 +844,9 @@ class ArchiveBuiltProduct(shell.ShellCommand):
     description = ['archiving built product']
     descriptionDone = ['Archived built product']
     haltOnFailure = True
+
+    def __init__(self, **kwargs):
+        super(ArchiveBuiltProduct, self).__init__(logEnviron=False, **kwargs)
 
 
 class UploadBuiltProduct(transfer.FileUpload):
@@ -920,6 +927,9 @@ class DownloadBuiltProduct(shell.ShellCommand):
             return {u'step': u'Failed to download built product from S3'}
         return super(DownloadBuiltProduct, self).getResultSummary()
 
+    def __init__(self, **kwargs):
+        super(DownloadBuiltProduct, self).__init__(logEnviron=False, **kwargs)
+
 
 class ExtractBuiltProduct(shell.ShellCommand):
     command = ['python', 'Tools/BuildSlaveSupport/built-product-archive',
@@ -929,6 +939,9 @@ class ExtractBuiltProduct(shell.ShellCommand):
     descriptionDone = ['Extracted built product']
     haltOnFailure = True
     flunkOnFailure = True
+
+    def __init__(self, **kwargs):
+        super(ExtractBuiltProduct, self).__init__(logEnviron=False, **kwargs)
 
 
 class RunAPITests(TestWithFailureCount):
@@ -940,6 +953,9 @@ class RunAPITests(TestWithFailureCount):
     command = ['python', 'Tools/Scripts/run-api-tests', '--no-build',
                WithProperties('--%(configuration)s'), '--verbose', '--json-output={0}'.format(jsonFileName)]
     failedTestsFormatString = '%d api test%s failed or timed out'
+
+    def __init__(self, **kwargs):
+        super(RunAPITests, self).__init__(logEnviron=False, **kwargs)
 
     def start(self):
         appendCustomBuildFlags(self, self.getProperty('platform'), self.getProperty('fullPlatform'))
@@ -1159,20 +1175,33 @@ class PrintConfiguration(steps.ShellSequence):
     flunkOnFailure = False
     warnOnFailure = False
     logEnviron = False
-    command_list = [['hostname'],
+    command_list_generic = [['hostname'],
                     ['df', '-hl'],
-                    ['date'],
-                    ['sw_vers'],
-                    ['xcodebuild', '-sdk', '-version']]
+                    ['date']]
+    command_list_apple = [['sw_vers'], ['xcodebuild', '-sdk', '-version']]
+    command_list_linux = [['uname', '-a']]
+    command_list_win = [[]]  # TODO: add windows specific commands here
 
     def __init__(self, **kwargs):
         super(PrintConfiguration, self).__init__(timeout=60, **kwargs)
         self.commands = []
         self.log_observer = logobserver.BufferLogObserver(wantStderr=True)
         self.addLogObserver('stdio', self.log_observer)
-        # FIXME: Check platform before running platform specific commands.
-        for command in self.command_list:
+
+    def run(self):
+        command_list = list(self.command_list_generic)
+        platform = self.getProperty('platform')
+        platform = platform.split('-')[0]
+        if platform in ('mac', 'ios', '*'):
+            command_list.extend(self.command_list_apple)
+        elif platform in ('gtk', 'wpe'):
+            command_list.extend(self.command_list_linux)
+        elif platform in ('win', 'wincairo'):
+            command_list.extend(self.command_list_win)
+
+        for command in command_list:
             self.commands.append(util.ShellArg(command=command, logfile='stdio'))
+        return super(PrintConfiguration, self).run()
 
     def convert_build_to_os_name(self, build):
         if not build:
@@ -1201,7 +1230,7 @@ class PrintConfiguration(steps.ShellSequence):
         if self.results != SUCCESS:
             return {u'step': u'Failed to print configuration'}
         logText = self.log_observer.getStdout() + self.log_observer.getStderr()
-        configuration = u''
+        configuration = u'Printed configuration'
         match = re.search('ProductVersion:[ \t]*(.+?)\n', logText)
         if match:
             os_version = match.group(1).strip()

@@ -79,15 +79,11 @@ static bool isScrolledBy(WKChildScrollView* scrollView, UIView *hitView)
             return true;
 
         auto* node = RemoteLayerTreeNode::forCALayer(view.layer);
-        if (node && scrollLayerID && node->relatedScrollContainerIDs().contains(scrollLayerID)) {
-            switch (node->relatedScrollContainerPositioningBehavior()) {
-            case WebCore::ScrollPositioningBehavior::Moves:
+        if (node && scrollLayerID) {
+            if (node->actingScrollContainerID() == scrollLayerID)
                 return true;
-            case WebCore::ScrollPositioningBehavior::Stationary:
+            if (node->stationaryScrollContainerIDs().contains(scrollLayerID))
                 return false;
-            case WebCore::ScrollPositioningBehavior::None:
-                ASSERT_NOT_REACHED();
-            }
         }
     }
 
@@ -123,6 +119,27 @@ OptionSet<WebCore::TouchAction> touchActionsForPoint(UIView *rootView, const Web
     return node->eventRegion().touchActionsForPoint(WebCore::IntPoint(hitViewPoint));
 }
 #endif
+
+UIScrollView *findActingScrollParent(UIScrollView *scrollView, const RemoteLayerTreeHost& host)
+{
+    HashSet<WebCore::GraphicsLayer::PlatformLayerID> scrollersToSkip;
+
+    for (UIView *view = [scrollView superview]; view; view = [view superview]) {
+        if ([view isKindOfClass:[WKChildScrollView class]] && !scrollersToSkip.contains(RemoteLayerTreeNode::layerID(view.layer))) {
+            // FIXME: Ideally we would return the scroller we want in all cases but the current UIKit SPI only allows returning a non-ancestor.
+            return nil;
+        }
+        if (auto* node = RemoteLayerTreeNode::forCALayer(view.layer)) {
+            if (auto* actingParent = host.nodeForID(node->actingScrollContainerID())) {
+                if ([actingParent->uiView() isKindOfClass:[UIScrollView class]])
+                    return (UIScrollView *)actingParent->uiView();
+            }
+
+            scrollersToSkip.add(node->stationaryScrollContainerIDs().begin(), node->stationaryScrollContainerIDs().end());
+        }
+    }
+    return nil;
+}
 
 }
 
@@ -210,7 +227,7 @@ OptionSet<WebCore::TouchAction> touchActionsForPoint(UIView *rootView, const Web
     if ((self = [super initWithFrame:frame])) {
         CALayerHost *layer = (CALayerHost *)self.layer;
         layer.contextId = contextID;
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
         // When running iOS apps on macOS, kCAContextIgnoresHitTest isn't respected; instead, we avoid
         // hit-testing to the remote context by disabling hit-testing on its host layer. See
         // <rdar://problem/40591107> for more details.

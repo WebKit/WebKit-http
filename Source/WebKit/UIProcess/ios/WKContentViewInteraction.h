@@ -220,7 +220,7 @@ struct WKAutoCorrectionData {
     RetainPtr<UITapGestureRecognizer> _stylusSingleTapGestureRecognizer;
     RetainPtr<WKInspectorNodeSearchGestureRecognizer> _inspectorNodeSearchGestureRecognizer;
 
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     RetainPtr<UIHoverGestureRecognizer> _hoverGestureRecognizer;
     RetainPtr<_UILookupGestureRecognizer> _lookupGestureRecognizer;
     CGPoint _lastHoverLocation;
@@ -254,6 +254,7 @@ struct WKAutoCorrectionData {
     RetainPtr<UIViewController> _contextMenuLegacyPreviewController;
     RetainPtr<UIMenu> _contextMenuLegacyMenu;
     BOOL _contextMenuHasRequestedLegacyData;
+    BOOL _contextMenuActionProviderDelegateNeedsOverride;
     RetainPtr<UITargetedPreview> _contextMenuInteractionTargetedPreview;
 #endif
     RetainPtr<UIPreviewItemController> _previewItemController;
@@ -524,7 +525,8 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 
 - (void)_didStartProvisionalLoadForMainFrame;
 
-@property (nonatomic, readonly, getter=_shouldUseContextMenus) BOOL _shouldUseContextMenus;
+@property (nonatomic, readonly) BOOL _shouldUseContextMenus;
+@property (nonatomic, readonly) BOOL _shouldAvoidResizingWhenInputViewBoundsChange;
 
 @end
 

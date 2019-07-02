@@ -856,8 +856,11 @@ static OptionSet<TouchAction> computeEffectiveTouchActions(const RenderStyle& st
     if (effectiveTouchActions.contains(TouchAction::None))
         return { TouchAction::None };
 
-    if (effectiveTouchActions.contains(TouchAction::Auto) || effectiveTouchActions.contains(TouchAction::Manipulation))
+    if (effectiveTouchActions.containsAny({ TouchAction::Auto, TouchAction::Manipulation }))
         return touchActions;
+
+    if (touchActions.containsAny({ TouchAction::Auto, TouchAction::Manipulation }))
+        return effectiveTouchActions;
 
     auto sharedTouchActions = effectiveTouchActions & touchActions;
     if (sharedTouchActions.isEmpty())
@@ -889,14 +892,34 @@ void StyleResolver::adjustRenderStyleForTextAutosizing(RenderStyle& style, const
     if (style.textSizeAdjust().isNone())
         return;
 
+    float initialScale = document().page() ? document().page()->initialScale() : 1;
+    auto adjustLineHeightIfNeeded = [&](auto computedFontSize) {
+        auto lineHeight = style.specifiedLineHeight();
+        constexpr static unsigned eligibleFontSize = 12;
+        if (computedFontSize * initialScale >= eligibleFontSize)
+            return;
+
+        constexpr static float boostFactor = 1.25;
+        auto minimumLineHeight = boostFactor * computedFontSize;
+        if (!lineHeight.isFixed() || lineHeight.value() >= minimumLineHeight)
+            return;
+
+        style.setLineHeight({ minimumLineHeight, Fixed });
+    };
+
     if (!style.isIdempotentTextAutosizingCandidate())
+        return adjustLineHeightIfNeeded(style.computedFontSize());
+
+    auto fontDescription = style.fontDescription();
+    auto initialComputedFontSize = fontDescription.computedSize(); 
+    auto adjustedFontSize = AutosizeStatus::idempotentTextSize(fontDescription.specifiedSize(), initialScale);
+    if (initialComputedFontSize == adjustedFontSize)
         return;
 
-    float initialScale = document().page() ? document().page()->initialScale() : 1;
-    auto fontDescription = style.fontDescription();
-    fontDescription.setComputedSize(AutosizeStatus::idempotentTextSize(fontDescription.specifiedSize(), initialScale));
+    fontDescription.setComputedSize(adjustedFontSize);
     style.setFontDescription(WTFMove(fontDescription));
     style.fontCascade().update(&document().fontSelector());
+    adjustLineHeightIfNeeded(adjustedFontSize);
 }
 #endif
 

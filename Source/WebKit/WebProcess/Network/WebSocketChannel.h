@@ -41,6 +41,8 @@ class DataReference;
 
 namespace WebKit {
 
+class PendingMessage;
+
 class WebSocketChannel : public IPC::MessageSender, public IPC::MessageReceiver, public WebCore::ThreadableWebSocketChannel, public RefCounted<WebSocketChannel>, public Identified<WebSocketChannel> {
 public:
     static Ref<WebSocketChannel> create(WebCore::Document&, WebCore::WebSocketChannelClient&);
@@ -49,7 +51,6 @@ public:
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
 
     void networkProcessCrashed();
-    void didFail();
 
     using RefCounted<WebSocketChannel>::ref;
     using RefCounted<WebSocketChannel>::deref;
@@ -74,23 +75,29 @@ private:
     void derefThreadableWebSocketChannel() final { deref(); }
 
     // Message receivers
-    void didConnect();
-    void didReceiveText(const String&);
-    void didReceiveBinaryData(const IPC::DataReference&);
-    void didClose(unsigned short code, const String&);
+    void didConnect(String&&);
+    void didReceiveText(String&&);
+    void didReceiveBinaryData(IPC::DataReference&&);
+    void didClose(unsigned short code, String&&);
+    void didReceiveMessageError(String&&);
 
     // MessageSender
     IPC::Connection* messageSenderConnection() const final;
     uint64_t messageSenderDestinationID() const final;
 
+    bool increaseBufferedAmount(size_t);
+    void decreaseBufferedAmount(size_t);
+    template<typename T> void sendMessage(T&&, size_t byteLength);
     void enqueueTask(Function<void()>&&);
 
     WeakPtr<WebCore::Document> m_document;
     WeakPtr<WebCore::WebSocketChannelClient> m_client;
+    String m_subprotocol;
     size_t m_bufferedAmount { 0 };
     bool m_isClosing { false };
     bool m_isSuspended { false };
     Deque<Function<void()>> m_pendingTasks;
+    Deque<std::unique_ptr<PendingMessage>> m_pendingMessages;
 };
 
 } // namespace WebKit

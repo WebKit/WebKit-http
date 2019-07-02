@@ -123,7 +123,7 @@
 #import <WebCore/WebItemProviderPasteboard.h>
 #endif
 
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
 #import "NativeWebMouseEvent.h"
 #import <UIKit/UIHoverGestureRecognizer.h>
 #import <UIKit/_UILookupGestureRecognizer.h>
@@ -146,7 +146,7 @@
 #import <WebCore/TouchAction.h>
 #endif
 
-#if !PLATFORM(IOSMAC)
+#if !PLATFORM(MACCATALYST)
 #import "ManagedConfigurationSPI.h"
 #import <wtf/SoftLinking.h>
 
@@ -734,7 +734,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [_touchEventGestureRecognizer setDelegate:self];
     [self addGestureRecognizer:_touchEventGestureRecognizer.get()];
 
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     _hoverGestureRecognizer = adoptNS([[UIHoverGestureRecognizer alloc] initWithTarget:self action:@selector(_hoverGestureRecognizerChanged:)]);
     [_hoverGestureRecognizer setDelegate:self];
     [self addGestureRecognizer:_hoverGestureRecognizer.get()];
@@ -869,7 +869,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [_touchEventGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_touchEventGestureRecognizer.get()];
 
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     [_hoverGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_hoverGestureRecognizer.get()];
     
@@ -972,7 +972,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [self removeGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     [self removeGestureRecognizer:_hoverGestureRecognizer.get()];
     [self removeGestureRecognizer:_lookupGestureRecognizer.get()];
 #endif
@@ -988,7 +988,7 @@ static inline bool hasFocusedElement(WebKit::FocusedElementInformation focusedEl
     [self addGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_stylusSingleTapGestureRecognizer.get()];
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     [self addGestureRecognizer:_hoverGestureRecognizer.get()];
     [self addGestureRecognizer:_lookupGestureRecognizer.get()];
 #endif
@@ -1513,7 +1513,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 - (void)_showTapHighlight
 {
     auto shouldPaintTapHighlight = [&](const WebCore::FloatRect& rect) {
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
         UNUSED_PARAM(rect);
         return NO;
 #else
@@ -1763,6 +1763,10 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 {
     if (!hasFocusedElement(_focusedElementInformation))
         return CGRectNull;
+
+    if (_page->waitingForPostLayoutEditorStateUpdateAfterFocusingElement())
+        return _focusedElementInformation.elementRect;
+
     return _page->editorState().postLayoutData().focusedElementRect;
 }
 
@@ -1789,7 +1793,7 @@ static BOOL isBuiltInScrollViewGestureRecognizer(UIGestureRecognizer *recognizer
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
     isForcePressGesture = (preventingGestureRecognizer == _textSelectionAssistant.get().forcePressGesture);
 #endif
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     if ((preventingGestureRecognizer == _textSelectionAssistant.get().loupeGesture) && (preventedGestureRecognizer == _highlightLongPressGestureRecognizer || preventedGestureRecognizer == _longPressGestureRecognizer || preventedGestureRecognizer == _textSelectionAssistant.get().forcePressGesture))
         return YES;
 #endif
@@ -1811,7 +1815,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         return YES;
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     if (isSamePair(gestureRecognizer, otherGestureRecognizer, _textSelectionAssistant.get().loupeGesture, _textSelectionAssistant.get().forcePressGesture))
         return YES;
 
@@ -1866,7 +1870,9 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         return;
 
     auto element = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeAttachment URL:(NSURL *)_positionInformation.url imageURL:(NSURL *)_positionInformation.imageURL location:_positionInformation.request.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:nil]);
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [uiDelegate _webView:_webView showCustomSheetForElement:element.get()];
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 - (void)_showLinkSheet
@@ -2989,7 +2995,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
         if (!textLength || textLength > 200)
             return NO;
 
-#if !PLATFORM(IOSMAC)
+#if !PLATFORM(MACCATALYST)
         if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:getMCFeatureDefinitionLookupAllowed()] == MCRestrictedBoolExplicitNo)
             return NO;
 #endif
@@ -3001,7 +3007,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
         if (editorState.isInPasswordField)
             return NO;
 
-#if !PLATFORM(IOSMAC)
+#if !PLATFORM(MACCATALYST)
         if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:getMCFeatureDefinitionLookupAllowed()] == MCRestrictedBoolExplicitNo)
             return NO;
 #endif
@@ -3051,9 +3057,10 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
     }
 
     if (action == @selector(selectAll:)) {
-        if (!editorState.selectionIsNone && !editorState.selectionIsRange)
-            return YES;
-        return NO;
+        // By platform convention we don't show Select All in the callout menu for a range selection.
+        if ([sender isKindOfClass:UIMenuController.class])
+            return !editorState.selectionIsNone && !editorState.selectionIsRange;
+        return !editorState.selectionIsNone && self.hasContent;
     }
 
     if (action == @selector(replace:))
@@ -3199,7 +3206,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
 
 - (void)_defineForWebView:(id)sender
 {
-#if !PLATFORM(IOSMAC)
+#if !PLATFORM(MACCATALYST)
     if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:getMCFeatureDefinitionLookupAllowed()] == MCRestrictedBoolExplicitNo)
         return;
 #endif
@@ -4114,7 +4121,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
     if (range)
         return;
-#if !PLATFORM(IOSMAC)
+#if !PLATFORM(MACCATALYST)
     if (!hasFocusedElement(_focusedElementInformation))
         return;
 #endif
@@ -4247,7 +4254,7 @@ static WebKit::WritingDirection coreWritingDirection(NSWritingDirection directio
 /* Hit testing. */
 - (UITextPosition *)closestPositionToPoint:(CGPoint)point
 {
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     WebKit::InteractionInformationRequest request(WebCore::roundedIntPoint(point));
     [self requestAsynchronousPositionInformationUpdate:request];
     if ([self _currentPositionInformationIsApproximatelyValidForRequest:request] && _positionInformation.isSelectable)
@@ -5295,6 +5302,7 @@ static RetainPtr<NSObject <WKFormPeripheral>> createInputPeripheralWithView(WebK
 
     _focusedElementInformation.elementType = WebKit::InputType::None;
     _focusedElementInformation.shouldSynthesizeKeyEventsForEditing = false;
+    _focusedElementInformation.shouldAvoidResizingWhenInputViewBoundsChange = false;
     _inputPeripheral = nil;
     _focusRequiresStrongPasswordAssistance = NO;
 
@@ -5804,7 +5812,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
 #if ENABLE(PLATFORM_DRIVEN_TEXT_CHECKING)
 - (void)replaceSelectionOffset:(NSInteger)selectionOffset length:(NSUInteger)length withAnnotatedString:(NSAttributedString *)annotatedString relativeReplacementRange:(NSRange)relativeReplacementRange
 {
-    _textCheckingController->replaceRelativeToSelection(annotatedString, selectionOffset, length, relativeReplacementRange.location != NSNotFound);
+    _textCheckingController->replaceRelativeToSelection(annotatedString, selectionOffset, length, relativeReplacementRange.location, relativeReplacementRange.length);
 }
 
 - (void)removeAnnotation:(NSAttributedStringKey)annotationName forSelectionOffset:(NSInteger)selectionOffset length:(NSUInteger)length
@@ -5996,7 +6004,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     _shareSheet = adoptNS([[WKShareSheet alloc] initWithView:_webView]);
     [_shareSheet setDelegate:self];
 
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     if (!rect) {
         auto hoverLocationInWebView = [self convertPoint:_lastHoverLocation toView:_webView];
         rect = WebCore::FloatRect(hoverLocationInWebView.x, hoverLocationInWebView.y, 1, 1);
@@ -6123,6 +6131,7 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
     id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
     
     if ([uiDelegate respondsToSelector:@selector(_webView:showCustomSheetForElement:)]) {
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         if ([uiDelegate _webView:_webView showCustomSheetForElement:element]) {
 #if ENABLE(DATA_INTERACTION)
             BOOL shouldCancelAllTouches = !_dragDropInteractionState.dragSession();
@@ -6130,14 +6139,13 @@ static BOOL allPasteboardItemOriginsMatchOrigin(UIPasteboard *pasteboard, const 
             BOOL shouldCancelAllTouches = YES;
 #endif
 
-ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             // Prevent tap-and-hold and panning.
             if (shouldCancelAllTouches)
                 [UIApp _cancelAllTouches];
-ALLOW_DEPRECATED_DECLARATIONS_END
 
             return YES;
         }
+        ALLOW_DEPRECATED_DECLARATIONS_END
     }
 
     return NO;
@@ -6214,6 +6222,11 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     return linkedOnOrAfter(WebKit::SDKVersion::FirstThatHasUIContextMenuInteraction);
 #endif
     return NO;
+}
+
+- (BOOL)_shouldAvoidResizingWhenInputViewBoundsChange
+{
+    return _focusedElementInformation.shouldAvoidResizingWhenInputViewBoundsChange;
 }
 
 - (UIView *)containerViewForTargetedPreviews
@@ -7246,7 +7259,7 @@ static WebKit::DocumentEditingContextRequest toWebRequest(UIWKDocumentRequest *r
 
 #endif // PLATFORM(WATCHOS)
 
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
 - (void)_lookupGestureRecognized:(UIGestureRecognizer *)gestureRecognizer
 {
     NSPoint locationInViewCoordinates = [gestureRecognizer locationInView:self];
@@ -7775,8 +7788,9 @@ static NSString *titleForMenu(bool isLink, bool showLinkPreviews, const URL& url
         _contextMenuLegacyPreviewController = nullptr;
         _contextMenuLegacyMenu = nullptr;
         _contextMenuHasRequestedLegacyData = NO;
+        _contextMenuActionProviderDelegateNeedsOverride = NO;
 
-        UIContextMenuActionProvider actionMenuProvider = [weakSelf = WeakObjCPtr<WKContentView>(self)] (NSArray<UIMenuElement *> *suggestedActions) -> UIMenu * {
+        UIContextMenuActionProvider actionMenuProvider = [weakSelf = WeakObjCPtr<WKContentView>(self)] (NSArray<UIMenuElement *> *) -> UIMenu * {
             auto strongSelf = weakSelf.get();
             if (!strongSelf)
                 return nil;
@@ -7806,57 +7820,39 @@ static NSString *titleForMenu(bool isLink, bool showLinkPreviews, const URL& url
         if (!strongSelf)
             return completion(nil);
 
-        if (!configurationFromWKUIDelegate) {
-
-            strongSelf->_contextMenuElementInfo = nil;
-
-            // At this point we have an object we might want to show a context menu for, but the
-            // client was unable to handle it. Before giving up, we ask DataDetectors.
-
-#if ENABLE(DATA_DETECTION)
-            // FIXME: Support JavaScript urls here. But make sure they don't show a preview.
-            // <rdar://problem/50572283>
-            if (!linkURL.protocolIsInHTTPFamily() && !WebCore::DataDetection::canBePresentedByDataDetectors(linkURL))
-                return completion(nil);
-
-            BEGIN_BLOCK_OBJC_EXCEPTIONS;
-            auto ddContextMenuActionClass = getDDContextMenuActionClass();
-            if ([ddContextMenuActionClass respondsToSelector:@selector(contextMenuConfigurationWithURL:inView:context:menuIdentifier:)]) {
-                NSDictionary *context = [strongSelf dataDetectionContextForPositionInformation:strongSelf->_positionInformation];
-                UIContextMenuConfiguration *configurationFromDD = [ddContextMenuActionClass contextMenuConfigurationForURL:linkURL identifier:strongSelf->_positionInformation.dataDetectorIdentifier selectedText:[strongSelf selectedText] results:strongSelf->_positionInformation.dataDetectorResults.get() inView:strongSelf.get() context:context menuIdentifier:nil];
-                if (strongSelf->_showLinkPreviews)
-                    return completion(configurationFromDD);
-                return completion([UIContextMenuConfiguration configurationWithIdentifier:[configurationFromDD identifier] previewProvider:[configurationFromDD previewProvider] actionProvider:[configurationFromDD actionProvider]]);
-            }
-            END_BLOCK_OBJC_EXCEPTIONS;
-#endif
-            return completion(nil);
+        if (configurationFromWKUIDelegate) {
+            strongSelf->_contextMenuActionProviderDelegateNeedsOverride = YES;
+            completion(configurationFromWKUIDelegate);
+            return;
         }
 
-        id<NSCopying> identifier = [configurationFromWKUIDelegate identifier];
-        UIContextMenuContentPreviewProvider contentPreviewProvider = [configurationFromWKUIDelegate previewProvider];
-        UIContextMenuActionProvider actionMenuProvider = [configurationFromWKUIDelegate actionProvider];
+        // At this point we have an object we might want to show a context menu for, but the
+        // client was unable to handle it. Before giving up, we ask DataDetectors.
 
-        auto actionProviderWrapper = [actionProviderFromUIDelegate = makeBlockPtr(actionMenuProvider), weakSelf = WTFMove(weakSelf)] (NSArray<UIMenuElement *> *suggestedActions) -> UIMenu * {
-            auto strongSelf = weakSelf.get();
-            if (!strongSelf)
-                return nil;
+        strongSelf->_contextMenuElementInfo = nil;
 
-            auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithInteractionInformationAtPosition:strongSelf->_positionInformation]);
-            RetainPtr<NSArray<_WKElementAction *>> defaultActionsFromAssistant = strongSelf->_positionInformation.isLink ? [strongSelf->_actionSheetAssistant defaultActionsForLinkSheet:elementInfo.get()] : [strongSelf->_actionSheetAssistant defaultActionsForImageSheet:elementInfo.get()];
+#if ENABLE(DATA_DETECTION)
+        // FIXME: Support JavaScript urls here. But make sure they don't show a preview.
+        // <rdar://problem/50572283>
+        if (!linkURL.protocolIsInHTTPFamily() && !WebCore::DataDetection::canBePresentedByDataDetectors(linkURL))
+            return completion(nil);
 
-            auto menuElements = menuElementsFromDefaultActions(defaultActionsFromAssistant, elementInfo);
-
-            if (actionProviderFromUIDelegate)
-                return actionProviderFromUIDelegate(menuElements);
-
-            auto title = titleForMenu(strongSelf->_positionInformation.isLink, strongSelf->_showLinkPreviews, strongSelf->_positionInformation.url, strongSelf->_positionInformation.title);
-            return [UIMenu menuWithTitle:title children:menuElements];
-        };
-
-        completion([UIContextMenuConfiguration configurationWithIdentifier:identifier previewProvider:contentPreviewProvider actionProvider:actionProviderWrapper]);
+        BEGIN_BLOCK_OBJC_EXCEPTIONS;
+        auto ddContextMenuActionClass = getDDContextMenuActionClass();
+        if ([ddContextMenuActionClass respondsToSelector:@selector(contextMenuConfigurationWithURL:inView:context:menuIdentifier:)]) {
+            NSDictionary *context = [strongSelf dataDetectionContextForPositionInformation:strongSelf->_positionInformation];
+            UIContextMenuConfiguration *configurationFromDD = [ddContextMenuActionClass contextMenuConfigurationForURL:linkURL identifier:strongSelf->_positionInformation.dataDetectorIdentifier selectedText:[strongSelf selectedText] results:strongSelf->_positionInformation.dataDetectorResults.get() inView:strongSelf.get() context:context menuIdentifier:nil];
+            strongSelf->_contextMenuActionProviderDelegateNeedsOverride = YES;
+            if (strongSelf->_showLinkPreviews)
+                return completion(configurationFromDD);
+            return completion([UIContextMenuConfiguration configurationWithIdentifier:[configurationFromDD identifier] previewProvider:nil actionProvider:[configurationFromDD actionProvider]]);
+        }
+        END_BLOCK_OBJC_EXCEPTIONS;
+#endif
+        return completion(nil);
     });
 
+    _contextMenuActionProviderDelegateNeedsOverride = NO;
     _contextMenuElementInfo = wrapper(API::ContextMenuElementInfo::create(_positionInformation));
     if ([uiDelegate respondsToSelector:@selector(_webView:contextMenuConfigurationForElement:completionHandler:)]) {
         auto checker = WebKit::CompletionHandlerCallChecker::create(uiDelegate, @selector(_webView:contextMenuConfigurationForElement:completionHandler:));
@@ -7876,6 +7872,17 @@ static NSString *titleForMenu(bool isLink, bool showLinkPreviews, const URL& url
         }).get()];
     } else
         completionBlock(nil);
+}
+
+- (NSArray<UIMenuElement *> *)_contextMenuInteraction:(UIContextMenuInteraction *)interaction overrideSuggestedActionsForConfiguration:(UIContextMenuConfiguration *)configuration
+{
+    if (_contextMenuActionProviderDelegateNeedsOverride) {
+        auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithInteractionInformationAtPosition:_positionInformation]);
+        RetainPtr<NSArray<_WKElementAction *>> defaultActionsFromAssistant = _positionInformation.isLink ? [_actionSheetAssistant defaultActionsForLinkSheet:elementInfo.get()] : [_actionSheetAssistant defaultActionsForImageSheet:elementInfo.get()];
+        return menuElementsFromDefaultActions(defaultActionsFromAssistant, elementInfo);
+    }
+    // If we're here we're in the legacy path, which ignores the suggested actions anyway.
+    return nil;
 }
 
 static RetainPtr<UIImage> uiImageForImage(WebCore::Image* image)
@@ -7944,9 +7951,6 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
 
 - (UITargetedPreview *)_createTargetedPreviewIfPossible
 {
-    if (_contextMenuInteractionTargetedPreview)
-        return _contextMenuInteractionTargetedPreview.get();
-
     RetainPtr<UITargetedPreview> targetedPreview;
 
     if (_positionInformation.isLink && _positionInformation.linkIndicator.contentImage) {
@@ -7990,7 +7994,7 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
 
 - (UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction previewForDismissingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
 {
-    return [self _createTargetedPreviewIfPossible];
+    return std::exchange(_contextMenuInteractionTargetedPreview, nil).autorelease();
 }
 
 - (void)contextMenuInteraction:(UIContextMenuInteraction *)interaction willCommitWithAnimator:(id<UIContextMenuInteractionCommitAnimating>)animator
@@ -8070,7 +8074,6 @@ static RetainPtr<UITargetedPreview> createFallbackTargetedPreview(UIView *rootVi
     _contextMenuLegacyMenu = nullptr;
     _contextMenuHasRequestedLegacyData = NO;
     _contextMenuElementInfo = nullptr;
-    _contextMenuInteractionTargetedPreview = nil;
 }
 
 #endif // USE(UICONTEXTMENU)
