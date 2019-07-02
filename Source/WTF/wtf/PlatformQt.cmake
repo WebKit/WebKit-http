@@ -1,7 +1,6 @@
 target_compile_definitions(WTF PRIVATE QT_NO_KEYWORDS)
 
 list(APPEND WTF_SOURCES
-    qt/FileSystemQt.cpp
     qt/LanguageQt.cpp
     qt/MainThreadQt.cpp
     qt/RunLoopQt.cpp
@@ -11,6 +10,16 @@ list(APPEND WTF_SOURCES
     text/qt/TextBreakIteratorInternalICUQt.cpp
 )
 QTWEBKIT_GENERATE_MOC_FILES_CPP(WTF qt/MainThreadQt.cpp qt/RunLoopQt.cpp)
+
+if (WIN32)
+    list(APPEND WTF_SOURCES
+        win/FileSystemWin.cpp
+    )
+else ()
+    list(APPEND WTF_SOURCES
+        posix/FileSystemPOSIX.cpp
+    )
+endif ()
 
 if (USE_MACH_PORTS)
     list(APPEND WTF_FORWARDING_HEADERS_FILES

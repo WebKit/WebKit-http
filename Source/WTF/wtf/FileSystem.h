@@ -42,14 +42,6 @@
 #include <wtf/RetainPtr.h>
 #endif
 
-#if PLATFORM(QT)
-#include <QFile>
-#include <QLibrary>
-#if defined(Q_OS_WIN32)
-#include <windows.h>
-#endif
-#endif
-
 #if USE(CF) || (PLATFORM(QT) && defined(Q_OS_MACOS))
 typedef const struct __CFData* CFDataRef;
 #endif
@@ -71,10 +63,7 @@ struct FileMetadata;
 namespace FileSystemImpl {
 
 // PlatformFileHandle
-#if PLATFORM(QT)
-typedef QFile* PlatformFileHandle;
-const PlatformFileHandle invalidPlatformFileHandle = 0;
-#elif USE(GLIB) && !OS(WINDOWS)
+#if USE(GLIB) && !OS(WINDOWS) && !PLATFORM(QT)
 typedef GFileIOStream* PlatformFileHandle;
 const PlatformFileHandle invalidPlatformFileHandle = 0;
 #elif OS(WINDOWS)
