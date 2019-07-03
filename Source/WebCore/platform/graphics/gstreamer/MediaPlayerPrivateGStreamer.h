@@ -185,6 +185,8 @@ private:
     void clearTracks();
 #endif
 
+    long long determineTotalBytes() const;
+
 protected:
     bool m_buffering;
     int m_bufferingPercentage;
@@ -255,7 +257,7 @@ private:
     bool m_hasVideo;
     bool m_hasAudio;
     RunLoop::Timer<MediaPlayerPrivateGStreamer> m_readyTimerHandler;
-    mutable unsigned long long m_totalBytes;
+    mutable long long m_totalBytes;
     URL m_url;
     bool m_preservesPitch;
     mutable std::optional<Seconds> m_lastQueryTime;
