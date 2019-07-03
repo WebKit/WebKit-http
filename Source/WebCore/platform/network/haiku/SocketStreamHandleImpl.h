@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Google Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,72 +29,64 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SocketStreamHandleImpl_h
-#define SocketStreamHandleImpl_h
+#pragma once
 
 #include "SocketStreamHandle.h"
-
-#include "NetworkingContext.h"
 #include <pal/SessionID.h>
-
-#include <support/Locker.h>
-#include <Socket.h>
-#include <set>
+#include <wtf/Function.h>
+#include <wtf/Lock.h>
+#include <wtf/MessageQueue.h>
 #include <wtf/RefCounted.h>
 #include <wtf/StreamBuffer.h>
+#include <wtf/Threading.h>
+#include <wtf/UniqueArray.h>
+
+#include <OS.h>
 
 namespace WebCore {
 
-    class AuthenticationChallenge;
-    class Credential;
-    class SocketStreamHandleClient;
+class SocketStreamHandleClient;
+class StorageSessionProvider;
 
-    class SocketStreamHandleImpl : public SocketStreamHandle {
-    public:
-        static 			Ref<SocketStreamHandleImpl> create(const URL& url,
-							SocketStreamHandleClient& client, PAL::SessionID id,
-							const String&, SourceApplicationAuditToken&&,
-							const StorageSessionProvider* provider)
-							{ return adoptRef(*new SocketStreamHandleImpl(url, client, provider)); }
-        virtual 		~SocketStreamHandleImpl();
+class SocketStreamHandleImpl : public SocketStreamHandle {
+public:
+    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID, const String&, SourceApplicationAuditToken&&, const StorageSessionProvider* provider) { return adoptRef(*new SocketStreamHandleImpl(url, client, provider)); }
 
-        WEBCORE_EXPORT void platformSend(const uint8_t* data, size_t length, Function<void(bool)>&&) final;
-		WEBCORE_EXPORT void platformSendHandshake(const uint8_t* data, size_t length, const WTF::Optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
-        WEBCORE_EXPORT void platformClose() final;
-    protected:
-		WTF::Optional<size_t>	platformSendInternal(const uint8_t* data, size_t length);
-		size_t 			bufferedAmount() final;
-		bool			sendPendingData();
+    virtual ~SocketStreamHandleImpl();
 
-    private:
-        				SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&,
-							const StorageSessionProvider*);
-        // No authentication for streams per se, but proxy may ask for credentials.
-        void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
-        void receivedCredential(const AuthenticationChallenge&, const Credential&);
-        void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&);
-        void receivedCancellation(const AuthenticationChallenge&);
-        void receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&);
-        void receivedChallengeRejection(const AuthenticationChallenge&);
+    WEBCORE_EXPORT void platformSend(const uint8_t* data, size_t length, Function<void(bool)>&&) final;
+    WEBCORE_EXPORT void platformSendHandshake(const uint8_t* data, size_t length, const Optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
+    WEBCORE_EXPORT void platformClose() final;
 
-        static void 		AsyncHandleRead(void* object);
+private:
+    WEBCORE_EXPORT SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&, const StorageSessionProvider*);
 
-        static int32        AsyncReadThread(void* object);
-        static int32        AsyncWriteThread(void* object);
+    size_t bufferedAmount() final;
+    Optional<size_t> platformSendInternal(const uint8_t*, size_t);
+    bool sendPendingData();
 
-		thread_id			fReadThreadId;
-		thread_id			fWriteThreadId;
+    void threadEntryPoint();
+    void handleError(status_t);
+    void stopThread();
 
-        BSocket* 			socket;
+    void callOnWorkerThread(Function<void()>&&);
+    void executeTasks();
 
-        static std::set<void*> liveObjects;
+    static const size_t kReadBufferSize = 4 * 1024;
 
-    	RefPtr<const StorageSessionProvider> m_storageSessionProvider;
+    RefPtr<const StorageSessionProvider> m_storageSessionProvider;
+    RefPtr<Thread> m_workerThread;
+    std::atomic<bool> m_running { true };
 
-		StreamBuffer<uint8_t, 1024 * 1024> m_buffer;
-		static const unsigned maxBufferSize = 100 * 1024 * 1024;
-    };
+    MessageQueue<Function<void()>> m_taskQueue;
 
-}  // namespace WebCore
+    bool m_hasPendingWriteData { false };
+    size_t m_writeBufferSize { 0 };
+    size_t m_writeBufferOffset { 0 };
+    UniqueArray<uint8_t> m_writeBuffer;
 
-#endif  // SocketStreamHandleImpl_h
+    StreamBuffer<uint8_t, 1024 * 1024> m_buffer;
+    static const unsigned maxBufferSize = 100 * 1024 * 1024;
+};
+
+} // namespace WebCore
