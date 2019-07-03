@@ -58,6 +58,11 @@ void KeyedEncoderQt::encodeUInt32(const String& key, uint32_t value)
     currentObject().insert(key, value);
 }
 
+void KeyedEncoderQt::encodeUInt64(const WTF::String& key, uint64_t value)
+{
+    currentObject().insert(key, (quint64)value);
+}
+
 void KeyedEncoderQt::encodeInt32(const String& key, int32_t value)
 {
     currentObject().insert(key, value);

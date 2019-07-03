@@ -113,6 +113,13 @@ bool KeyedDecoderQt::decodeUInt32(const String& key, uint32_t& value)
     });
 }
 
+bool KeyedDecoderQt::decodeUInt64(const WTF::String& key, uint64_t& value)
+{
+    return decodeNumber(key, value, [](const QVariant& var, bool* ok) {
+        return var.toULongLong(ok);
+    });
+}
+
 bool KeyedDecoderQt::decodeInt32(const String& key, int32_t& value)
 {
     return decodeNumber(key, value, [](const QVariant& var, bool* ok) {

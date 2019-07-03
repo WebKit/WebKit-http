@@ -48,6 +48,7 @@ public:
     void encodeBytes(const String& key, const uint8_t*, size_t) override;
     void encodeBool(const String& key, bool) override;
     void encodeUInt32(const String& key, uint32_t) override;
+    void encodeUInt64(const String& key, uint64_t) override;
     void encodeInt32(const String& key, int32_t) override;
     void encodeInt64(const String& key, int64_t) override;
     void encodeFloat(const String& key, float) override;
