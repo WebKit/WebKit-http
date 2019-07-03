@@ -451,13 +451,8 @@ else ()
 endif ()
 
 if (MACOS_USE_SYSTEM_ICU)
-    # Use system ICU library and bundled headers
-    set(ICU_INCLUDE_DIRS
-        "${WEBCORE_DIR}/icu"
-        "${JAVASCRIPTCORE_DIR}/icu"
-        "${WTF_DIR}/icu"
-    )
-    set(ICU_LIBRARIES libicucore.dylib)
+    add_definitions(-DU_DISABLE_RENAMING=1 -DU_SHOW_CPLUSPLUS_API=0)
+    include(target/icu)
 else ()
     find_package(ICU REQUIRED COMPONENTS data i18n uc)
 endif ()
