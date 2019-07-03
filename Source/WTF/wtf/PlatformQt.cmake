@@ -113,7 +113,7 @@ if (APPLE)
         cocoa/CPUTimeCocoa.cpp
         cocoa/WorkQueueCocoa.cpp
 
-        text/cf/AtomicStringImplCF.cpp
+        text/cf/AtomStringImplCF.cpp
         text/cf/StringCF.cpp
         text/cf/StringImplCF.cpp
         text/cf/StringViewCF.cpp
