@@ -54,8 +54,6 @@ Cursor::Cursor(const Cursor& other)
 {
 }
 
-Cursor::~Cursor() = default;
-
 Cursor& Cursor::operator=(const Cursor& other)
 {
     m_type = other.m_type;
