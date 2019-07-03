@@ -411,7 +411,7 @@ void QQuickWebViewPrivate::initialize(WKPageConfigurationRef configurationRef)
     preferences.setForceCompositingMode(true);
     preferences.setAllowFileAccessFromFileURLs(true);
 
-    webPageProxy->setURLSchemeHandlerForScheme(QrcSchemeHandler::create(), ASCIILiteral("qrc"));
+    webPageProxy->setURLSchemeHandlerForScheme(QrcSchemeHandler::create(), "qrc"_s);
 
     q_ptr->setAcceptedMouseButtons(Qt::MouseButtonMask);
     q_ptr->setAcceptHoverEvents(true);
@@ -957,7 +957,7 @@ void QQuickWebViewPrivate::updateUserStyleSheets()
 
 void QQuickWebViewPrivate::updateSchemeDelegates()
 {
-    webPageProxy->setURLSchemeHandlerForScheme(QrcSchemeHandler::create(), ASCIILiteral("qrc"));
+    webPageProxy->setURLSchemeHandlerForScheme(QrcSchemeHandler::create(), "qrc"_s);
 
     QQmlListProperty<QQuickUrlSchemeDelegate> schemes = experimental->schemeDelegates();
     for (int i = 0, numSchemes = experimental->schemeDelegates_Count(&schemes); i < numSchemes; ++i) {

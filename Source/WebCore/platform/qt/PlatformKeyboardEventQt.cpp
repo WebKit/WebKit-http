@@ -827,7 +827,7 @@ static String keyTextForKeyEvent(const QKeyEvent* event)
 #define MAKE_TEXT_FOR_KEY(QtKey, Character) \
     case Qt::Key_##QtKey: \
         if (unmodified && event->text().isNull()) \
-            return ASCIILiteral(#Character); \
+            return #Character##_s; \
         break;
 
     MAKE_TEXT_FOR_KEY(0, 0);

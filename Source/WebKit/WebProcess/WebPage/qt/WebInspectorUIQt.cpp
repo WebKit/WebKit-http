@@ -38,7 +38,7 @@ bool WebInspectorUI::canSave()
 
 String WebInspectorUI::localizedStringsURL()
 {
-    return ASCIILiteral("qrc:///org/webkitgtk/inspector/Localizations/en.lproj/localizedStrings.js");
+    return "qrc:///org/webkitgtk/inspector/Localizations/en.lproj/localizedStrings.js"_s;
 }
 
 } // namespace WebKit

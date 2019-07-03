@@ -289,7 +289,7 @@ void InspectorFrontendClientQt::frontendLoaded()
 
 String InspectorFrontendClientQt::localizedStringsURL()
 {
-    return ASCIILiteral("qrc:/webkit/inspector/Localizations/en.lproj/localizedStrings.js");
+    return "qrc:/webkit/inspector/Localizations/en.lproj/localizedStrings.js"_s;
 }
 
 void InspectorFrontendClientQt::bringToFront()
