@@ -33,6 +33,8 @@
 
 #include <QKeyEvent>
 #include <ctype.h>
+#include <wtf/CheckedArithmetic.h>
+#include <wtf/HexNumber.h>
 #include <wtf/WallTime.h>
 
 namespace WebCore {
@@ -345,12 +347,12 @@ String keyIdentifierForQtKeyCode(int keyCode)
         return "U+007F"_s; // return "Del"_s;
     default:
         if (keyCode < 128)
-            return String::format("U+%04X", toASCIIUpper(keyCode));
+            return makeString("U+", hex(toASCIIUpper(keyCode), 4));
         return String();
     }
 }
 
-int windowsKeyCodeForKeyEvent(unsigned int keycode, bool isKeypad)
+int windowsKeyCodeForKeyEvent(int keycode, bool isKeypad)
 {
     // Determine wheter the event comes from the keypad
     if (isKeypad) {
@@ -872,20 +874,25 @@ static String keyTextForKeyEvent(const QKeyEvent* event)
     return event->text();
 }
 
+template<typename ToType, typename FromType>
+inline ToType safeCastOrNull(FromType value)
+{
+    return WTF::isInBounds<ToType>(value) ? static_cast<ToType>(value) : 0;
+}
+
 PlatformKeyboardEvent::PlatformKeyboardEvent(QKeyEvent* event, bool useNativeVirtualKeyAsDOMKey)
 {
-    const int state = event->modifiers();
+    const auto state = event->modifiers();
     m_type = (event->type() == QEvent::KeyRelease) ? PlatformEvent::KeyUp : PlatformEvent::KeyDown;
 
-    m_modifiers = 0;
     if ((state & Qt::ShiftModifier) || event->key() == Qt::Key_Backtab) // Simulate Shift+Tab with Key_Backtab
-        m_modifiers |= ShiftKey;
+        m_modifiers.add(Modifier::ShiftKey);
     if (state & Qt::ControlModifier)
-        m_modifiers |= CtrlKey;
+        m_modifiers.add(Modifier::ControlKey);
     if (state & Qt::AltModifier)
-        m_modifiers |= AltKey;
+        m_modifiers.add(Modifier::AltKey);
     if (state & Qt::MetaModifier)
-        m_modifiers |= MetaKey;
+        m_modifiers.add(Modifier::MetaKey);
 
     m_useNativeVirtualKeyAsDOMKey = useNativeVirtualKeyAsDOMKey;
     m_text = keyTextForKeyEvent<false>(event);
@@ -894,16 +901,15 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(QKeyEvent* event, bool useNativeVir
     m_autoRepeat = event->isAutoRepeat();
     m_isKeypad = (state & Qt::KeypadModifier);
     m_isSystemKey = false;
-    m_nativeVirtualKeyCode = event->nativeVirtualKey();
+    int nativeVirtualKeyCode = safeCastOrNull<int>(event->nativeVirtualKey());
     // If QKeyEvent::nativeVirtualKey() is valid (!=0) and useNativeVirtualKeyAsDOMKey is set,
     // then it is a special case desired by QtWebKit embedder to send domain specific keys
     // to Web Applications intented for platforms like HbbTV,CE-HTML,OIPF,..etc.
-    if (useNativeVirtualKeyAsDOMKey && m_nativeVirtualKeyCode)
-        m_windowsVirtualKeyCode = m_nativeVirtualKeyCode;
+    if (useNativeVirtualKeyAsDOMKey && nativeVirtualKeyCode)
+        m_windowsVirtualKeyCode = nativeVirtualKeyCode;
     else
         m_windowsVirtualKeyCode = windowsKeyCodeForKeyEvent(event->key(), m_isKeypad);
 
-    m_macCharCode = 0;
     m_qtEvent = event;
     m_timestamp = WTF::WallTime::now();
 }
