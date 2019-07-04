@@ -1418,7 +1418,7 @@ int main(int argc, char* argv[])
 
     testMarkingConstraintsAndHeapFinalizers();
 
-#if USE(CF)
+#if USE(CF) && !PLATFORM(QT)
     testCFStrings();
 #endif
 
