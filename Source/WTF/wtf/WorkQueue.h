@@ -32,7 +32,7 @@
 #include <wtf/Seconds.h>
 #include <wtf/Threading.h>
 
-#if USE(COCOA_EVENT_LOOP)
+#if USE(COCOA_EVENT_LOOP) || (PLATFORM(QT) && USE(MACH_PORTS))
 #include <dispatch/dispatch.h>
 #endif
 
