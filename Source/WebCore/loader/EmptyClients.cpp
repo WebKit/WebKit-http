@@ -306,6 +306,13 @@ private:
 #if PLATFORM(COCOA) || PLATFORM(WIN)
     ResourceError blockedError(const ResourceRequest&) const final { return { }; }
 #endif
+
+#if PLATFORM(QT)
+    QObject* originatingObject() const override { return nullptr; }
+    QNetworkAccessManager* networkAccessManager() const final { return nullptr; }
+    bool mimeSniffingEnabled() const final { return false; }
+    bool thirdPartyCookiePolicyPermission(const QUrl&) const final { return false; }
+#endif
 };
 
 class EmptyInspectorClient final : public InspectorClient {
