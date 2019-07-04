@@ -99,7 +99,7 @@ list(APPEND WebCore_SOURCES
     platform/network/qt/BlobUrlConversion.cpp
     platform/network/qt/CookieJarQt.cpp
     platform/network/qt/CredentialStorageQt.cpp
-    platform/network/qt/DNSQt.cpp
+    platform/network/qt/DNSResolveQueueQt.cpp
     platform/network/qt/NetworkStateNotifierQt.cpp
     platform/network/qt/NetworkStorageSessionQt.cpp
     platform/network/qt/ProxyServerQt.cpp
@@ -145,7 +145,7 @@ list(APPEND WebCore_SOURCES
 )
 
 QTWEBKIT_GENERATE_MOC_FILES_CPP(WebCore
-    platform/network/qt/DNSQt.cpp
+    platform/network/qt/DNSResolveQueueQt.cpp
     platform/qt/MainThreadSharedTimerQt.cpp
 )
 
