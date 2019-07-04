@@ -87,8 +87,8 @@ public:
     {
     }
 
-
     void setWidth(qreal width) { QPointF::setX(width); }
+    void setHeight(qreal height) { QPointF::setY(height); }
     qreal width() const { return QPointF::x(); }
     qreal height() const { return QPointF::y(); }
 };
