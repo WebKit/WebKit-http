@@ -382,7 +382,7 @@ Vector<String> listDirectory(const String& path, const String& filter)
     return entries;
 }
 
-#if !USE(CF)
+#if !USE(CF) || PLATFORM(QT)
 String stringFromFileSystemRepresentation(const char* path)
 {
     if (!path)
