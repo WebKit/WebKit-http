@@ -135,3 +135,44 @@ if (UNIX AND NOT APPLE)
         endif ()
     endif ()
 endif ()
+
+# From PlatformJSCOnly.cmake
+if (WIN32)
+    list(APPEND WTF_SOURCES
+        win/MemoryFootprintWin.cpp
+    )
+    list(APPEND WTF_PUBLIC_HEADERS
+        win/Win32Handle.h
+    )
+elseif (APPLE)
+    file(COPY mac/MachExceptions.defs DESTINATION ${WTF_DERIVED_SOURCES_DIR})
+    add_custom_command(
+        OUTPUT
+            ${WTF_DERIVED_SOURCES_DIR}/MachExceptionsServer.h
+            ${WTF_DERIVED_SOURCES_DIR}/mach_exc.h
+            ${WTF_DERIVED_SOURCES_DIR}/mach_excServer.c
+            ${WTF_DERIVED_SOURCES_DIR}/mach_excUser.c
+        MAIN_DEPENDENCY mac/MachExceptions.defs
+        WORKING_DIRECTORY ${WTF_DERIVED_SOURCES_DIR}
+        COMMAND mig -sheader MachExceptionsServer.h MachExceptions.defs
+        VERBATIM)
+    list(APPEND WTF_SOURCES
+        cocoa/MemoryFootprintCocoa.cpp
+        ${WTF_DERIVED_SOURCES_DIR}/mach_excServer.c
+        ${WTF_DERIVED_SOURCES_DIR}/mach_excUser.c
+    )
+elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    list(APPEND WTF_SOURCES
+        linux/CurrentProcessMemoryStatus.cpp
+        linux/MemoryFootprintLinux.cpp
+        linux/MemoryPressureHandlerLinux.cpp
+    )
+    list(APPEND WTF_PUBLIC_HEADERS
+        linux/CurrentProcessMemoryStatus.h
+    )
+else ()
+    list(APPEND WTF_SOURCES
+        generic/MemoryFootprintGeneric.cpp
+        generic/MemoryPressureHandlerGeneric.cpp
+    )
+endif ()
