@@ -80,7 +80,7 @@ public:
 
     WTF_EXPORT_PRIVATE static void concurrentApply(size_t iterations, WTF::Function<void(size_t index)>&&);
 
-#if USE(COCOA_EVENT_LOOP)
+#if USE(COCOA_EVENT_LOOP) || (PLATFORM(QT) && USE(MACH_PORTS))
     dispatch_queue_t dispatchQueue() const { return m_dispatchQueue; }
 #elif USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)
     RunLoop& runLoop() const { return *m_runLoop; }
@@ -104,7 +104,7 @@ private:
     void performWorkOnRegisteredWorkThread();
 #endif
 
-#if USE(COCOA_EVENT_LOOP)
+#if USE(COCOA_EVENT_LOOP) || (PLATFORM(QT) && USE(MACH_PORTS))
     static void executeFunction(void*);
     dispatch_queue_t m_dispatchQueue;
 #elif USE(WINDOWS_EVENT_LOOP)
