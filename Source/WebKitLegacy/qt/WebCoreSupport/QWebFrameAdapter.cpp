@@ -231,7 +231,7 @@ QString QWebFrameAdapter::toHtml() const
 {
     if (!frame->document())
         return QString();
-    return createMarkup(*frame->document());
+    return serializeFragment(*frame->document(), SerializedNodes::SubtreeIncludingNode);
 }
 
 QString QWebFrameAdapter::toPlainText() const
