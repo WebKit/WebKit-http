@@ -141,7 +141,7 @@ static QStyleFacadeOption initSliderStyleOption(Scrollbar& scrollbar, QObject* w
 
 bool ScrollbarThemeQStyle::paint(Scrollbar& scrollbar, GraphicsContext& graphicsContext, const IntRect& dirtyRect)
 {
-    if (graphicsContext.updatingControlTints()) {
+    if (graphicsContext.invalidatingControlTints()) {
         scrollbar.invalidateRect(dirtyRect);
         return false;
     }
@@ -200,7 +200,7 @@ void ScrollbarThemeQStyle::invalidatePart(Scrollbar& scrollbar, ScrollbarPart)
     scrollbar.invalidate();
 }
 
-int ScrollbarThemeQStyle::scrollbarThickness(ScrollbarControlSize controlSize)
+int ScrollbarThemeQStyle::scrollbarThickness(ScrollbarControlSize controlSize, ScrollbarExpansionState)
 {
     const bool mini = controlSize != RegularScrollbar;
     return m_qStyle->scrollBarExtent(mini);
@@ -236,7 +236,7 @@ int ScrollbarThemeQStyle::trackLength(Scrollbar& scrollbar)
     return scrollbar.orientation() == HorizontalScrollbar ? track.width() : track.height();
 }
 
-void ScrollbarThemeQStyle::paintScrollCorner(ScrollView*, GraphicsContext& context, const IntRect& rect)
+void ScrollbarThemeQStyle::paintScrollCorner(GraphicsContext& context, const IntRect& rect)
 {
     StylePainterQStyle p(this, context);
     if (!p.isValid())

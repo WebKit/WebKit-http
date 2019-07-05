@@ -40,7 +40,7 @@ public:
     ~ScrollbarThemeQStyle() final;
 
     bool paint(Scrollbar&, GraphicsContext&, const IntRect& dirtyRect) final;
-    void paintScrollCorner(ScrollView*, GraphicsContext&, const IntRect& cornerRect) final;
+    void paintScrollCorner(GraphicsContext&, const IntRect& cornerRect) final;
 
     ScrollbarPart hitTest(Scrollbar&, const IntPoint&) final;
 
@@ -53,7 +53,7 @@ public:
     int trackPosition(Scrollbar&) final;
     int trackLength(Scrollbar&) final;
 
-    int scrollbarThickness(ScrollbarControlSize = RegularScrollbar) final;
+    int scrollbarThickness(ScrollbarControlSize = RegularScrollbar, ScrollbarExpansionState = ScrollbarExpansionState::Expanded) final;
 
     QStyleFacade* qStyle() { return m_qStyle.get(); }
 

@@ -714,7 +714,7 @@ void RenderThemeQtMobile::computeSizeBasedOnStyle(RenderStyle& renderStyle) cons
         renderStyle.setMinHeight(Length(size.height(), Fixed));
 }
 
-void RenderThemeQtMobile::adjustButtonStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeQtMobile::adjustButtonStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     // Ditch the border.
     style.resetBorder();
@@ -722,9 +722,10 @@ void RenderThemeQtMobile::adjustButtonStyle(StyleResolver&, RenderStyle& style, 
     FontCascadeDescription fontDescription = style.fontDescription();
     fontDescription.setIsAbsoluteSize(true);
 
-    fontDescription.setSpecifiedSize(style.fontSize());
-    fontDescription.setComputedSize(style.fontSize());
+    fontDescription.setSpecifiedSize(style.computedFontPixelSize());
+    fontDescription.setComputedSize(style.computedFontPixelSize());
 
+    // QTFIXME: style.setFontDescription(WTFMove(fontDescription)); ?
     style.setLineHeight(RenderStyle::initialLineHeight());
     setButtonSize(style);
     setButtonPadding(style);
@@ -755,7 +756,7 @@ bool RenderThemeQtMobile::paintButton(const RenderObject& o, const PaintInfo& i,
     return false;
 }
 
-void RenderThemeQtMobile::adjustTextFieldStyle(StyleResolver&, RenderStyle& style, Element*) const
+void RenderThemeQtMobile::adjustTextFieldStyle(StyleResolver&, RenderStyle& style, const Element*) const
 {
     // Resetting the style like this leads to differences like:
     // - RenderTextControl {INPUT} at (2,2) size 168x25 [bgcolor=#FFFFFF] border: (2px inset #000000)]
@@ -807,7 +808,7 @@ bool RenderThemeQtMobile::paintTextField(const RenderObject& o, const PaintInfo&
     return false;
 }
 
-void RenderThemeQtMobile::adjustMenuListStyle(StyleResolver& styleResolver, RenderStyle& style, Element* e) const
+void RenderThemeQtMobile::adjustMenuListStyle(StyleResolver& styleResolver, RenderStyle& style, const Element* e) const
 {
     RenderThemeQt::adjustMenuListStyle(styleResolver, style, e);
     style.setPaddingLeft(Length(menuListPadding, Fixed));
@@ -847,13 +848,13 @@ bool RenderThemeQtMobile::paintMenuListButton(RenderObject& o, const PaintInfo& 
     return false;
 }
 
-double RenderThemeQtMobile::animationDurationForProgressBar(RenderProgress& renderProgress) const
+Seconds RenderThemeQtMobile::animationDurationForProgressBar(RenderProgress& renderProgress) const
 {
     if (renderProgress.isDeterminate())
-        return 0;
+        return 0_s;
     // Our animation goes back and forth so we need to make it last twice as long
     // and we need the numerator to be an odd number to ensure we get a progress value of 0.5.
-    return (2 * progressAnimationGranularity +1) / progressBarChunkPercentage * animationRepeatIntervalForProgressBar(renderProgress);
+    return animationRepeatIntervalForProgressBar(renderProgress) * (progressAnimationGranularity * 2 + 1) / progressBarChunkPercentage;
 }
 
 bool RenderThemeQtMobile::paintProgressBar(const RenderObject& o, const PaintInfo& pi, const IntRect& r)
@@ -866,7 +867,7 @@ bool RenderThemeQtMobile::paintProgressBar(const RenderObject& o, const PaintInf
         return true;
 
     auto& renderProgress = downcast<RenderProgress>(o);
-    const bool isRTL = (renderProgress.style().direction() == RTL);
+    const bool isRTL = (renderProgress.style().direction() == TextDirection::RTL);
 
     if (renderProgress.isDeterminate())
         p.drawProgress(r, renderProgress.position(), !isRTL);
@@ -923,7 +924,7 @@ bool RenderThemeQtMobile::checkMultiple(const RenderObject& o) const
     return select ? select->multiple() : false;
 }
 
-void RenderThemeQtMobile::adjustSliderThumbSize(RenderStyle& style, Element* element) const
+void RenderThemeQtMobile::adjustSliderThumbSize(RenderStyle& style, const Element* element) const
 {
     const ControlPart part = style.appearance();
     if (part == SliderThumbHorizontalPart || part == SliderThumbVerticalPart) {

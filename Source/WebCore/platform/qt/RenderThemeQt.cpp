@@ -33,7 +33,6 @@
 #include "CSSValueKeywords.h"
 #include "ChromeClient.h"
 #include "Color.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FileList.h"
 #include "GraphicsContext.h"
 #include "HTMLInputElement.h"
@@ -95,19 +94,11 @@ ScrollbarTheme* RenderThemeQt::customScrollbarTheme()
     return scrollbarTheme;
 }
 
-static RefPtr<RenderTheme> createTheme(Page* page)
+RenderTheme& RenderTheme::singleton()
 {
     if (themeFactory)
-        return themeFactory(page);
-    return RenderThemeQtMobile::create(page);
-}
-
-RefPtr<RenderTheme> RenderTheme::themeForPage(Page* page)
-{
-    if (page)
-        return createTheme(page);
-    static RenderTheme* fallback = createTheme(0).leakRef();
-    return fallback;
+        return themeFactory();
+    return RenderThemeQtMobile::singleton();
 }
 
 // Remove this when SearchFieldPart is style-able in RenderTheme::isControlStyled()
@@ -117,7 +108,7 @@ bool RenderThemeQt::isControlStyled(const RenderStyle& style, const BorderData& 
     case SearchFieldPart:
         // Test the style to see if the UA border and background match.
         return (style.border() != border
-                || *style.backgroundLayers() != fill
+                || style.backgroundLayers() != fill
                 || style.visitedDependentColor(CSSPropertyBackgroundColor) != backgroundColor);
     default:
         return RenderTheme::isControlStyled(style, border, fill, backgroundColor);
@@ -263,7 +254,7 @@ Color RenderThemeQt::platformFocusRingColor(OptionSet<StyleColor::Options>) cons
     return colorPalette().brush(QPalette::Active, QPalette::Highlight).color();
 }
 
-Color RenderThemeQt::systemColor(CSSValueID cssValueId, OptionSet<StyleColor::Options>) const
+Color RenderThemeQt::systemColor(CSSValueID cssValueId, OptionSet<StyleColor::Options> options) const
 {
     QPalette pal = colorPalette();
     switch (cssValueId) {
@@ -271,8 +262,9 @@ Color RenderThemeQt::systemColor(CSSValueID cssValueId, OptionSet<StyleColor::Op
         return pal.brush(QPalette::Active, QPalette::ButtonText).color();
     case CSSValueCaptiontext:
         return pal.brush(QPalette::Active, QPalette::Text).color();
+    // QTFIXME: links?
     default:
-        return RenderTheme::systemColor(cssValueId);
+        return RenderTheme::systemColor(cssValueId, options);
     }
 }
 
@@ -338,7 +330,7 @@ void RenderThemeQt::adjustMenuListStyle(StyleResolver&, RenderStyle& style, cons
     style.setHeight(Length(Auto));
 
     // White-space is locked to pre
-    style.setWhiteSpace(PRE);
+    style.setWhiteSpace(WhiteSpace::Pre);
 
     computeSizeBasedOnStyle(style);
 
@@ -352,7 +344,7 @@ void RenderThemeQt::adjustMenuListButtonStyle(StyleResolver&, RenderStyle& style
     style.setHeight(Length(Auto));
 
     // White-space is locked to pre
-    style.setWhiteSpace(PRE);
+    style.setWhiteSpace(WhiteSpace::Pre);
 
     computeSizeBasedOnStyle(style);
 
@@ -423,7 +415,7 @@ void RenderThemeQt::adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderSty
 {
     // Logic taken from RenderThemeChromium.cpp.
     // Scale the button size based on the font size.
-    float fontScale = style.fontSize() / defaultControlFontPixelSize;
+    float fontScale = style.computedFontPixelSize() / defaultControlFontPixelSize;
     int cancelButtonSize = lroundf(qMin(qMax(minCancelButtonSize, defaultCancelButtonSize * fontScale), maxCancelButtonSize));
     style.setWidth(Length(cancelButtonSize, Fixed));
     style.setHeight(Length(cancelButtonSize, Fixed));
@@ -473,9 +465,9 @@ bool RenderThemeQt::paintSearchFieldCancelButton(const RenderBox& box, const Pai
     FloatPoint paintingPos = convertToPaintingPosition(inputBox, box, cancelButtonRect.location(), r.location());
     cancelButtonRect.setLocation(paintingPos);
 
-    static Image* cancelImage = Image::loadPlatformResource("searchCancelButton").leakRef();
-    static Image* cancelPressedImage = Image::loadPlatformResource("searchCancelButtonPressed").leakRef();
-    pi.context().drawImage(isPressed(box) ? *cancelPressedImage : *cancelImage, cancelButtonRect);
+    static Ref<Image> cancelImage = Image::loadPlatformResource("searchCancelButton");
+    static Ref<Image> cancelPressedImage = Image::loadPlatformResource("searchCancelButtonPressed");
+    pi.context().drawImage(isPressed(box) ? cancelPressedImage : cancelImage, cancelButtonRect);
     return false;
 }
 
@@ -892,11 +884,11 @@ String RenderThemeQt::fileListNameForWidth(const FileList* fileList, const FontC
 void RenderThemeQt::updateCachedSystemFontDescription(CSSValueID, FontCascadeDescription& fontDescription) const
 {
     QFontInfo fi(qGuiApp->font());
-    fontDescription.setOneFamily(fi.family());
+    fontDescription.setOneFamily(String(fi.family()));
     fontDescription.setSpecifiedSize(fi.pixelSize());
     fontDescription.setIsAbsoluteSize(true);
-    fontDescription.setWeight((fi.bold() ? FontWeightBold : FontWeightNormal));
-    fontDescription.setItalic(fi.italic() ? FontItalicOn : FontItalicOff);
+    fontDescription.setWeight((fi.bold() ? boldWeightValue() : normalWeightValue()));
+    fontDescription.setItalic(fi.italic() ? italicValue() : normalItalicValue());
 }
 
 StylePainter::StylePainter(GraphicsContext& context)
