@@ -391,13 +391,4 @@ void Pasteboard::updateSystemPasteboard()
 #endif
 }
 
-void Pasteboard::writePasteboard(const Pasteboard& sourcePasteboard)
-{
-    ASSERT(isForCopyAndPaste());
-#ifndef QT_NO_CLIPBOARD
-    QGuiApplication::clipboard()->setMimeData(sourcePasteboard.clipboardData());
-    sourcePasteboard.invalidateWritableData();
-#endif
-}
-
 }
