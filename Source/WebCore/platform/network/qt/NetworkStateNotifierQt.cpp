@@ -65,7 +65,8 @@ void NetworkStateNotifierPrivate::initialize()
 {
     m_configurationManager = std::make_unique<QNetworkConfigurationManager>();
     setOnlineState(m_configurationManager->isOnline());
-    connect(m_configurationManager.get(), SIGNAL(onlineStateChanged(bool)), this, SLOT(setOnlineState(bool)));
+    connect(m_configurationManager.get(), &QNetworkConfigurationManager::onlineStateChanged,
+        this, &NetworkStateNotifierPrivate::setOnlineState);
 }
 
 NetworkStateNotifierPrivate::~NetworkStateNotifierPrivate()
