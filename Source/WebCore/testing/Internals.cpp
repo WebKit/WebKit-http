@@ -525,7 +525,7 @@ void Internals::resetToConsistentState(Page& page)
     page.setLowPowerModeEnabledOverrideForTesting(WTF::nullopt);
 
 #if PLATFORM(QT)
-    if (NetworkingContext* context = page->mainFrame().loader().networkingContext()) {
+    if (NetworkingContext* context = page.mainFrame().loader().networkingContext()) {
         if (QNetworkAccessManager* qnam = context->networkAccessManager())
             qnam->clearAccessCache();
     }
