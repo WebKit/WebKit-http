@@ -20,7 +20,7 @@
 #include "config.h"
 #include "NetworkStateNotifier.h"
 
-#if (PLATFORM(QT) && !defined(QT_NO_BEARERMANAGEMENT))
+#ifndef QT_NO_BEARERMANAGEMENT
 
 #include "NetworkStateNotifierPrivate.h"
 #include <QNetworkConfigurationManager>
@@ -69,27 +69,16 @@ void NetworkStateNotifierPrivate::initialize()
         this, &NetworkStateNotifierPrivate::setOnlineState);
 }
 
-NetworkStateNotifierPrivate::~NetworkStateNotifierPrivate()
-{
-}
+NetworkStateNotifierPrivate::~NetworkStateNotifierPrivate() = default;
 
-void NetworkStateNotifier::updateState()
+void NetworkStateNotifier::updateStateWithoutNotifying()
 {
-    if (m_isOnLine == p->effectivelyOnline())
-        return;
-
     m_isOnLine = p->effectivelyOnline();
-
-    for (auto& listener : m_listeners)
-        listener(m_isOnLine.value());
 }
 
-NetworkStateNotifier::NetworkStateNotifier()
-    : m_isOnLine(true), m_updateStateTimer([] {
-        singleton().updateState();
-    })
+void NetworkStateNotifier::startObserving()
 {
-    p = new NetworkStateNotifierPrivate(this);
+    p = std::make_unique<NetworkStateNotifierPrivate>(this);
     m_isOnLine = p->effectivelyOnline();
 }
 

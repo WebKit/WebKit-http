@@ -32,6 +32,10 @@
 #include "WebCoreThread.h"
 #endif
 
+#if PLATFORM(QT)
+#include "NetworkStateNotifierPrivate.h"
+#endif
+
 namespace WebCore {
 
 static const Seconds updateStateSoonInterval { 2_s };

@@ -22,6 +22,8 @@
 
 #include <QObject>
 
+#ifndef QT_NO_BEARERMANAGEMENT
+
 QT_BEGIN_NAMESPACE
 class QNetworkConfigurationManager;
 QT_END_NAMESPACE
@@ -53,5 +55,7 @@ public:
 };
 
 } // namespace WebCore
+
+#endif // QT_NO_BEARERMANAGEMENT
 
 #endif

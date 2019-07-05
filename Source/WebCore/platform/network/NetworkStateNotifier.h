@@ -100,7 +100,7 @@ private:
 
 #if (PLATFORM(QT) && !defined(QT_NO_BEARERMANAGEMENT))
     friend class NetworkStateNotifierPrivate;
-    NetworkStateNotifierPrivate* p;
+    std::unique_ptr<NetworkStateNotifierPrivate> p;
 #endif
 };
 
