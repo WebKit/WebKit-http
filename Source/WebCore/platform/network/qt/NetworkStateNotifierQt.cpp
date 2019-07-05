@@ -28,13 +28,11 @@
 
 namespace WebCore {
 
-NetworkStateNotifierPrivate::NetworkStateNotifierPrivate(NetworkStateNotifier* notifier)
+NetworkStateNotifierPrivate::NetworkStateNotifierPrivate(NetworkStateNotifier& notifier)
     : m_online(false)
     , m_networkAccessAllowed(true)
     , m_notifier(notifier)
 {
-    ASSERT(notifier);
-
     // Initialization is delayed because QNetworkConfigurationManager starts a new thread that causes
     // deadlock on Mac because all the static initializers share the same lock. Both NetworkStateNotifier and Qt internals
     // triggered in new thread use static initializer. See also: http://openradar.appspot.com/11217150.
@@ -48,7 +46,7 @@ void NetworkStateNotifierPrivate::setNetworkAccessAllowed(bool isAllowed)
 
     m_networkAccessAllowed = isAllowed;
     if (m_online)
-        m_notifier->updateState();
+        m_notifier.updateState();
 }
 
 void NetworkStateNotifierPrivate::setOnlineState(bool isOnline)
@@ -58,7 +56,7 @@ void NetworkStateNotifierPrivate::setOnlineState(bool isOnline)
 
     m_online = isOnline;
     if (m_networkAccessAllowed)
-        m_notifier->updateState();
+        m_notifier.updateState();
 }
 
 void NetworkStateNotifierPrivate::initialize()
@@ -78,7 +76,7 @@ void NetworkStateNotifier::updateStateWithoutNotifying()
 
 void NetworkStateNotifier::startObserving()
 {
-    p = std::make_unique<NetworkStateNotifierPrivate>(this);
+    p = std::make_unique<NetworkStateNotifierPrivate>(*this);
     m_isOnLine = p->effectivelyOnline();
 }
 

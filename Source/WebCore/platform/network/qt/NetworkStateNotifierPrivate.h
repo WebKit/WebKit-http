@@ -35,7 +35,7 @@ class NetworkStateNotifier;
 class NetworkStateNotifierPrivate final : public QObject {
     Q_OBJECT
 public:
-    NetworkStateNotifierPrivate(NetworkStateNotifier*);
+    NetworkStateNotifierPrivate(NetworkStateNotifier&);
     ~NetworkStateNotifierPrivate();
 
     void setNetworkAccessAllowed(bool);
@@ -51,7 +51,7 @@ public:
     std::unique_ptr<QNetworkConfigurationManager> m_configurationManager;
     bool m_online;
     bool m_networkAccessAllowed;
-    NetworkStateNotifier* m_notifier;
+    NetworkStateNotifier& m_notifier;
 };
 
 } // namespace WebCore
