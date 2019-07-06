@@ -356,23 +356,19 @@ Vector<String> Pasteboard::types()
     return vector;
 }
 
-Vector<String> Pasteboard::readFilenames()
+void Pasteboard::read(PasteboardFileReader& reader)
 {
     const QMimeData* data = readData();
     if (!data)
-        return Vector<String>();
+        return;
 
     Vector<String> fileList;
-    QList<QUrl> urls = data->urls();
-
-    for (int i = 0; i < urls.size(); i++) {
-        QUrl url = urls[i];
+    const auto urls = data->urls();
+    for (const QUrl& url : urls) {
         if (url.scheme() != QLatin1String("file"))
             continue;
-        fileList.append(url.toLocalFile());
+        reader.readFilename(url.toLocalFile());
     }
-
-    return fileList;
 }
 
 #if ENABLE(DRAG_SUPPORT)
