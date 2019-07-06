@@ -323,6 +323,12 @@ String Pasteboard::readString(const String& type)
     return stringData;
 }
 
+String Pasteboard::readStringInCustomData(const String&)
+{
+    notImplemented();
+    return { };
+}
+
 void Pasteboard::writeString(const String& type, const String& data)
 {
     if (!m_writableData)
@@ -341,7 +347,13 @@ void Pasteboard::writeString(const String& type, const String& data)
     }
 }
 
-Vector<String> Pasteboard::types()
+Vector<String> Pasteboard::typesSafeForBindings(const String&)
+{
+    notImplemented();
+    return { };
+}
+
+Vector<String> Pasteboard::typesForLegacyUnsafeBindings()
 {
     const QMimeData* data = readData();
     if (!data)
@@ -351,9 +363,7 @@ Vector<String> Pasteboard::types()
     QStringList formats = data->formats();
     for (int i = 0; i < formats.count(); ++i)
         result.add(formats.at(i));
-    Vector<String> vector;
-    copyToVector(result, vector);
-    return vector;
+    return copyToVector(result);
 }
 
 void Pasteboard::read(PasteboardFileReader& reader)
@@ -372,7 +382,7 @@ void Pasteboard::read(PasteboardFileReader& reader)
 }
 
 #if ENABLE(DRAG_SUPPORT)
-void Pasteboard::setDragImage(DragImageRef, const IntPoint&)
+void Pasteboard::setDragImage(DragImage, const IntPoint&)
 {
     notImplemented();
 }
