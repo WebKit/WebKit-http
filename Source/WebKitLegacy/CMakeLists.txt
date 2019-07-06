@@ -49,21 +49,21 @@ set(WebKit_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKit/private)
 WEBKIT_FRAMEWORK(WebKitLegacy)
 
 if (${PORT} STREQUAL "Qt")
-    set_target_properties(WebKit PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
-    install(TARGETS WebKit EXPORT WebKitTargets
+    set_target_properties(WebKitLegacy PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
+    install(TARGETS WebKitLegacy EXPORT WebKitTargets
             DESTINATION "${LIB_INSTALL_DIR}"
             RUNTIME DESTINATION "${BIN_INSTALL_DIR}"
     )
     if (MSVC AND NOT QT_STATIC_BUILD)
-        install(FILES $<TARGET_PDB_FILE:WebKit> DESTINATION "${BIN_INSTALL_DIR}" OPTIONAL)
+        install(FILES $<TARGET_PDB_FILE:WebKitLegacy> DESTINATION "${BIN_INSTALL_DIR}" OPTIONAL)
     endif ()
 
     if (NOT MSVC)
-        ADD_PREFIX_HEADER(WebKit "${WEBKIT_DIR}/qt/WebKitPrefix.h")
+        ADD_PREFIX_HEADER(WebKitLegacy "${WEBKITLEGACY_DIR}/qt/WebKitPrefix.h")
     endif ()
 
     if (MACOS_BUILD_FRAMEWORKS)
-        set_target_properties(WebKit PROPERTIES
+        set_target_properties(WebKitLegacy PROPERTIES
             FRAMEWORK_VERSION ${PROJECT_VERSION_MAJOR}
             SOVERSION ${MACOS_COMPATIBILITY_VERSION}
             MACOSX_FRAMEWORK_IDENTIFIER org.qt-project.QtWebKit
@@ -72,15 +72,15 @@ if (${PORT} STREQUAL "Qt")
 
     if (USE_LINKER_VERSION_SCRIPT)
         set(VERSION_SCRIPT "${CMAKE_BINARY_DIR}/QtWebKit.version")
-        add_custom_command(TARGET WebKit PRE_LINK
+        add_custom_command(TARGET WebKitLegacy PRE_LINK
             COMMAND ${PERL_EXECUTABLE} ${TOOLS_DIR}/qt/generate-version-script.pl ${Qt5_VERSION} > ${VERSION_SCRIPT}
             VERBATIM
         )
-        set_target_properties(WebKit PROPERTIES LINK_FLAGS -Wl,--version-script,${VERSION_SCRIPT})
+    set_target_properties(WebKitLegacy PROPERTIES LINK_FLAGS -Wl,--version-script,${VERSION_SCRIPT})
     endif ()
 
-    if (ENABLE_WEBKIT2)
-        add_dependencies(WebKit WebKit2)
+    if (ENABLE_WEBKIT)
+        add_dependencies(WebKitLegacy WebKit)
     endif ()
 endif ()
 
