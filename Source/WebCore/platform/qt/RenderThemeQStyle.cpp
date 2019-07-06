@@ -107,9 +107,10 @@ void StylePainterQStyle::setupStyleOption()
     }
 }
 
-RefPtr<RenderTheme> RenderThemeQStyle::create(Page* page)
+RenderTheme& RenderThemeQStyle::singleton()
 {
-    return adoptRef(new RenderThemeQStyle(page));
+    static NeverDestroyed<RenderThemeQStyle> theme(nullptr);
+    return theme;
 }
 
 static QtStyleFactoryFunction styleFactoryFunction;

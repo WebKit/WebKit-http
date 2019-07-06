@@ -30,6 +30,8 @@
 #include <QSharedPointer>
 #include <QString>
 
+#include <type_traits>
+
 QT_BEGIN_NAMESPACE
 class QPainter;
 QT_END_NAMESPACE
@@ -41,6 +43,8 @@ class RenderStyle;
 class HTMLMediaElement;
 class StylePainter;
 class ScrollbarTheme;
+
+using QtThemeFactoryFunction = std::add_pointer_t<RenderTheme&()>;
 
 class RenderThemeQt : public RenderTheme {
 

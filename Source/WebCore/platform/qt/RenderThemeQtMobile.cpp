@@ -630,9 +630,10 @@ void StylePainterMobile::drawSliderThumb(const QRect & rect, bool pressed) const
 }
 
 
-RefPtr<RenderTheme> RenderThemeQtMobile::create(Page* page)
+RenderTheme& RenderThemeQtMobile::singleton()
 {
-    return adoptRef(new RenderThemeQtMobile(page));
+    static NeverDestroyed<RenderThemeQtMobile> theme(nullptr);
+    return theme;
 }
 
 RenderThemeQtMobile::RenderThemeQtMobile(Page* page)

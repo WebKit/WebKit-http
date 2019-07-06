@@ -38,11 +38,11 @@ class RenderThemeQStyle final : public RenderThemeQt {
 private:
     friend class StylePainterQStyle;
 
+public:
     RenderThemeQStyle(Page*);
     ~RenderThemeQStyle();
 
-public:
-    static RefPtr<RenderTheme> create(Page*);
+    static RenderTheme& singleton();
 
     static void setStyleFactoryFunction(QtStyleFactoryFunction);
     static QtStyleFactoryFunction styleFactory();
