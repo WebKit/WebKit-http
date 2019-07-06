@@ -455,7 +455,7 @@ const Cursor& grabbingCursor()
     return c;
 }
 
-#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WIN)
+#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WIN) && !PLATFORM(QT)
 void Cursor::ensurePlatformCursor() const
 {
     notImplemented();

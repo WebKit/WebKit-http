@@ -387,7 +387,7 @@ TextStream& operator<<(TextStream& ts, const Image& image)
     return ts;
 }
 
-#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WIN)
+#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WIN) && !PLATFORM(QT)
 
 void BitmapImage::invalidatePlatformData()
 {
@@ -399,5 +399,5 @@ Ref<Image> Image::loadPlatformResource(const char* resource)
     return BitmapImage::create();
 }
 
-#endif // !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WIN)
+#endif // !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WIN) && !PLATFORM(QT)
 }

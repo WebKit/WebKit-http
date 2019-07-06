@@ -280,7 +280,7 @@ DragImage::~DragImage()
         deleteDragImage(m_dragImageRef);
 }
 
-#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WIN)
+#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WIN) && !PLATFORM(QT)
 
 IntSize dragImageSize(DragImageRef)
 {

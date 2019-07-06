@@ -4495,7 +4495,7 @@ void EventHandler::setImmediateActionStage(ImmediateActionStage stage)
     m_immediateActionStage = stage;
 }
 
-#if !PLATFORM(COCOA)
+#if !PLATFORM(COCOA) && !PLATFORM(QT)
 OptionSet<PlatformEvent::Modifier> EventHandler::accessKeyModifiers()
 {
     return PlatformEvent::Modifier::AltKey;
@@ -4552,9 +4552,9 @@ void EventHandler::focusDocumentView()
     if (Page* page = m_frame.page())
         page->focusController().setFocusedFrame(&m_frame);
 }
-#endif // !PLATFORM(COCOA)
+#endif // !PLATFORM(COCOA) && !PLATFORM(QT)
 
-#if !PLATFORM(COCOA) && !PLATFORM(WIN)
+#if !PLATFORM(COCOA) && !PLATFORM(WIN) && !PLATFORM(QT)
 bool EventHandler::eventActivatedView(const PlatformMouseEvent&) const
 {
     notImplemented();
@@ -4566,6 +4566,6 @@ bool EventHandler::passMouseMoveEventToSubframe(MouseEventWithHitTestResults& me
     subframe->eventHandler().handleMouseMoveEvent(mev.event(), hoveredNode);
     return true;
 }
-#endif // !PLATFORM(COCOA) && !PLATFORM(WIN)
+#endif // !PLATFORM(COCOA) && !PLATFORM(WIN) && !PLATFORM(QT)
 
 } // namespace WebCore

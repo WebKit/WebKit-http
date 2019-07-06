@@ -43,21 +43,6 @@ namespace WebCore {
 
 class URL;
 
-void getSupportedKeySizes(Vector<String>&)
-{
-    notImplemented();
-}
-
-String signedPublicKeyAndChallengeString(unsigned, const String&, const URL&)
-{
-    return String();
-}
-
-void setCookieStoragePrivateBrowsingEnabled(bool)
-{
-    notImplemented();
-}
-
 void stopObservingCookieChanges()
 {
     notImplemented();

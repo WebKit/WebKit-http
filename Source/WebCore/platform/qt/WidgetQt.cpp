@@ -46,19 +46,9 @@
 
 namespace WebCore {
 
-Widget::Widget(PlatformWidget widget)
-{
-    init(widget);
-}
-
 Widget::~Widget()
 {
     Q_ASSERT(!parent());
-}
-
-IntRect Widget::frameRect() const
-{
-    return m_frame;
 }
 
 void Widget::setFrameRect(const IntRect& rect)
