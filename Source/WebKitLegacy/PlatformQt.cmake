@@ -183,6 +183,7 @@ list(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
 
 # This files are not really port-independent
 list(REMOVE_ITEM WebKitLegacy_SOURCES
+    WebCoreSupport/NetworkStorageSessionMap.cpp
     WebCoreSupport/WebViewGroup.cpp
 )
 
