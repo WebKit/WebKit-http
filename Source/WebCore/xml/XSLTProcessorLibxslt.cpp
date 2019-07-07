@@ -314,7 +314,7 @@ bool XSLTProcessor::transformToString(Node& sourceNode, String& mimeType, String
     }
     m_stylesheet->clearDocuments();
 
-#if OS(DARWIN) && !PLATFORM(GTK)
+#if OS(DARWIN) && !PLATFORM(GTK) && !PLATFORM(QT)
     int origXsltMaxDepth = *xsltMaxDepth;
     *xsltMaxDepth = 1000;
 #else
@@ -374,7 +374,7 @@ bool XSLTProcessor::transformToString(Node& sourceNode, String& mimeType, String
     }
 
     sheet->method = origMethod;
-#if OS(DARWIN) && !PLATFORM(GTK)
+#if OS(DARWIN) && !PLATFORM(GTK) && !PLATFORM(QT)
     *xsltMaxDepth = origXsltMaxDepth;
 #else
     xsltMaxDepth = origXsltMaxDepth;
