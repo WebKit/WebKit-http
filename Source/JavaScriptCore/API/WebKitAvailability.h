@@ -68,7 +68,7 @@
 
 #endif /* !TARGET_OS_IPHONE && __MAC_OS_X_VERSION_MIN_REQUIRED < 101100 */
 
-#if defined(BUILDING_GTK__)
+#if defined(BUILDING_GTK__) || defined(BUILDING_QT__)
 #undef JSC_API_AVAILABLE
 #define JSC_API_AVAILABLE(...)
 #endif
