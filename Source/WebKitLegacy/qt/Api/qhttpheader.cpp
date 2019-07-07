@@ -19,7 +19,6 @@
     Boston, MA 02110-1301, USA.
 */
 
-#include "config.h"
 #include "qhttpheader_p.h"
 
 using namespace WebKit;

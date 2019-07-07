@@ -19,7 +19,6 @@
  *
  */
 
-#include "config.h"
 #include "QtWebComboBox.h"
 
 #ifndef QT_NO_COMBOBOX

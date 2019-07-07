@@ -18,7 +18,6 @@
  *
  */
 
-#include "config.h"
 #include "QWebPageAdapter.h"
 
 #include "BackForwardController.h"

@@ -18,7 +18,6 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#include "config.h"
 #include "DefaultFullScreenVideoHandler.h"
 
 #if USE(QT_MULTIMEDIA)

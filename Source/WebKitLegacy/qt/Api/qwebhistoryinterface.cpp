@@ -19,7 +19,6 @@
     This class provides all functionality needed for tracking global history.
 */
 
-#include "config.h"
 #include "qwebhistoryinterface.h"
 
 #include <QCoreApplication>

@@ -18,7 +18,6 @@
  *
  */
 
-#include "config.h"
 #include "QtPluginWidgetAdapter.h"
 
 QtPluginWidgetAdapter::QtPluginWidgetAdapter()

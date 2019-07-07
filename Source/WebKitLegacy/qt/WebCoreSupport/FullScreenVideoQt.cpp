@@ -18,7 +18,6 @@
  *
  */
 
-#include "config.h"
 #include "FullScreenVideoQt.h"
 
 #include "ChromeClientQt.h"

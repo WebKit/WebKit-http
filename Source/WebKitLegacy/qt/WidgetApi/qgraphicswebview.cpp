@@ -18,7 +18,6 @@
     Boston, MA 02110-1301, USA.
 */
 
-#include "config.h"
 #include "qgraphicswebview.h"
 
 #if !defined(QT_NO_GRAPHICSVIEW)

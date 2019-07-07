@@ -18,7 +18,6 @@
  *
  */
 
-#include "config.h"
 #include "QGraphicsWidgetPluginImpl.h"
 
 #include <QGraphicsScene>

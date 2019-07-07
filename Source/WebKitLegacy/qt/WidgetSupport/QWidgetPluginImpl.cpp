@@ -18,7 +18,6 @@
  *
  */
 
-#include "config.h"
 #include "QWidgetPluginImpl.h"
 
 #include <QWidget>

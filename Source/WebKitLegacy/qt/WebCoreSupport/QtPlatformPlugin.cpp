@@ -18,7 +18,6 @@
  *
  */
 
-#include "config.h"
 #include "QtPlatformPlugin.h"
 
 #include <QCoreApplication>

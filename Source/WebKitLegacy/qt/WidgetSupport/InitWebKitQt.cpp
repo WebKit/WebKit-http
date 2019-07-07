@@ -18,7 +18,6 @@
  *
  */
 
-#include "config.h"
 #include "InitWebKitQt.h"
 
 #include "InitWebCoreQt.h"

@@ -18,7 +18,6 @@
  *
  */
 
-#include "config.h"
 #include "QtPrintContext.h"
 
 #include "GraphicsContext.h"

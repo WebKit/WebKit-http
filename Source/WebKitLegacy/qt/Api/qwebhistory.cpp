@@ -17,7 +17,6 @@
     Boston, MA 02110-1301, USA.
 */
 
-#include "config.h"
 #include "qwebhistory.h"
 #include "qwebhistory_p.h"
 

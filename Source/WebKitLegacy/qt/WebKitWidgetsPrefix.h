@@ -2,7 +2,6 @@
 #include "cmakeconfig.h"
 #endif
 
-#include "config.h"
 
 #if OS(WINDOWS)
 

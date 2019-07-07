@@ -18,7 +18,6 @@
  *
  */
 
-#include "config.h"
 #include "QWebFrameAdapter.h"
 
 #include "APICast.h"

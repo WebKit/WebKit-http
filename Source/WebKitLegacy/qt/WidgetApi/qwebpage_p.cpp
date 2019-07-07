@@ -19,7 +19,6 @@
     Boston, MA 02110-1301, USA.
 */
 
-#include "config.h"
 #include "qwebpage_p.h"
 
 #include "qwebframe_p.h"

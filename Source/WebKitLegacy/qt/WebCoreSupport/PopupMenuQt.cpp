@@ -23,7 +23,6 @@
  *
  */
 
-#include "config.h"
 #include "PopupMenuQt.h"
 
 #include "ChromeClientQt.h"

@@ -19,7 +19,6 @@
  *
  */
 
-#include "config.h"
 #include "TextureMapperLayerClientQt.h"
 
 #include "Frame.h"

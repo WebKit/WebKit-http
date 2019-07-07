@@ -18,7 +18,6 @@
  * Boston, MA 02110-1301, USA.
  *
  */
-#include "config.h"
 #include "QtFallbackWebPopup.h"
 
 #ifndef QT_NO_COMBOBOX
