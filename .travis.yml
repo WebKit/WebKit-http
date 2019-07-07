@@ -5,5 +5,5 @@ sudo: false
 git:
   depth: 3
   sparse_checkout: .travis-sparse-checkout
-script: Tools/Scripts/check-webkit-style -g origin/qtwebkit-stable..
+script: Tools/Scripts/check-webkit-style -g origin/qtwebkit-dev-wip..
 install: true
