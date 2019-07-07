@@ -55,7 +55,7 @@ namespace WebCore {
 
 #if ENABLE(DRAG_SUPPORT)
 #if defined(Q_OS_MACOS)
-const double EventHandler::TextDragDelay { 0.15_s };
+const Seconds EventHandler::TextDragDelay { 0.15_s };
 #else
 const Seconds EventHandler::TextDragDelay { 0.0_s };
 #endif
@@ -122,9 +122,9 @@ OptionSet<PlatformEvent::Modifier> EventHandler::accessKeyModifiers()
     // and the MetaModifier value corresponds to the Control keys.
     // See http://doc.qt.io/qt-5/qt.html#KeyboardModifier-enum
     if (UNLIKELY(QCoreApplication::testAttribute(Qt::AA_MacDontSwapCtrlAndMeta)))
-        return { PlatformEvent::CtrlKey, PlatformEvent::AltKey };
+        return { PlatformEvent::Modifier::ControlKey, PlatformEvent::Modifier::AltKey };
     else
-        return { PlatformEvent::MetaKey, PlatformEvent::AltKey };
+        return { PlatformEvent::Modifier::MetaKey, PlatformEvent::Modifier::AltKey };
 #else
     return PlatformEvent::Modifier::AltKey;
 #endif
