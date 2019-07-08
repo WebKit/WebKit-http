@@ -229,6 +229,11 @@ void Pasteboard::write(const PasteboardURL& pasteboardURL)
         updateSystemPasteboard();
 }
 
+void Pasteboard::writeTrustworthyWebURLsPboardType(const PasteboardURL&)
+{
+    notImplemented();
+}
+
 void Pasteboard::writeImage(Element& node, const URL& url, const String& title)
 {
     if (!(node.renderer() && node.renderer()->isImage()))
@@ -364,6 +369,17 @@ Vector<String> Pasteboard::typesForLegacyUnsafeBindings()
     for (int i = 0; i < formats.count(); ++i)
         result.add(formats.at(i));
     return copyToVector(result);
+}
+
+String Pasteboard::readOrigin()
+{
+    notImplemented(); // webkit.org/b/177633: [GTK] Move to new Pasteboard API
+    return { };
+}
+
+void Pasteboard::read(PasteboardWebContentReader&, WebContentReadingPolicy)
+{
+    notImplemented();
 }
 
 void Pasteboard::read(PasteboardFileReader& reader)
