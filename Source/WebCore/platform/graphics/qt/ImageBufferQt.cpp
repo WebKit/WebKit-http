@@ -137,7 +137,7 @@ void ImageBuffer::platformTransformColorSpace(const std::array<uint8_t, 256>& lo
     m_data.m_impl->platformTransformColorSpace(lookUpTable);
 }
 
-template <Multiply multiplied>
+template <AlphaPremultiplication premultiplied>
 RefPtr<Uint8ClampedArray> getImageData(const IntRect& unscaledRect, float scale, const ImageBufferData& imageData, const IntSize& size,
     ImageBuffer::CoordinateSystem coordinateSystem)
 {
@@ -152,7 +152,7 @@ RefPtr<Uint8ClampedArray> getImageData(const IntRect& unscaledRect, float scale,
 
     RefPtr<Uint8ClampedArray> result = Uint8ClampedArray::createUninitialized(rect.width() * rect.height() * 4);
 
-    QImage::Format format = (multiplied == Unmultiplied) ? QImage::Format_RGBA8888 : QImage::Format_RGBA8888_Premultiplied;
+    QImage::Format format = (premultiplied == AlphaPremultiplication::Unpremultiplied) ? QImage::Format_RGBA8888 : QImage::Format_RGBA8888_Premultiplied;
     QImage image(result->data(), rect.width(), rect.height(), format);
     if (coordinateSystem == ImageBuffer::LogicalCoordinateSystem)
         image.setDevicePixelRatio(scale);
@@ -171,15 +171,15 @@ RefPtr<Uint8ClampedArray> getImageData(const IntRect& unscaledRect, float scale,
 
 RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
 {
-    return getImageData<Unmultiplied>(rect, m_resolutionScale, m_data, m_size, coordinateSystem);
+    return getImageData<AlphaPremultiplication::Unpremultiplied>(rect, m_resolutionScale, m_data, m_size, coordinateSystem);
 }
 
 RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
 {
-    return getImageData<Premultiplied>(rect, m_resolutionScale, m_data, m_size, coordinateSystem);
+    return getImageData<AlphaPremultiplication::Premultiplied>(rect, m_resolutionScale, m_data, m_size, coordinateSystem);
 }
 
-void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem coordinateSystem)
+void ImageBuffer::putByteArray(const Uint8ClampedArray& source, AlphaPremultiplication sourceFormat, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem coordinateSystem)
 {
     ASSERT(sourceRect.width() > 0);
     ASSERT(sourceRect.height() > 0);
@@ -205,8 +205,8 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
     }
 
     // Let drawImage deal with the conversion.
-    QImage::Format format = (multiplied == Unmultiplied) ? QImage::Format_RGBA8888 : QImage::Format_RGBA8888_Premultiplied;
-    QImage image(source->data(), scaledSourceSize.width(), scaledSourceSize.height(), format);
+    QImage::Format format = (sourceFormat == AlphaPremultiplication::Unpremultiplied) ? QImage::Format_RGBA8888 : QImage::Format_RGBA8888_Premultiplied;
+    QImage image(source.data(), scaledSourceSize.width(), scaledSourceSize.height(), format);
     image.setDevicePixelRatio(m_resolutionScale);
 
     m_data.m_painter->setCompositionMode(QPainter::CompositionMode_Source);
