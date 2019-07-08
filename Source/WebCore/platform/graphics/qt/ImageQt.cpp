@@ -278,7 +278,7 @@ void BitmapImage::draw(GraphicsContext& ctxt, const FloatRect& dst,
 
     CompositeOperator previousOperator = ctxt.compositeOperation();
     BlendMode previousBlendMode = ctxt.blendModeOperation();
-    ctxt.setCompositeOperation(!image->hasAlpha() && op == CompositeSourceOver && blendMode == BlendModeNormal ? CompositeCopy : op, blendMode);
+    ctxt.setCompositeOperation(!image->hasAlpha() && op == CompositeSourceOver && blendMode == BlendMode::Normal ? CompositeCopy : op, blendMode);
 
     if (ctxt.hasShadow()) {
         ShadowBlur shadow(ctxt.state());
