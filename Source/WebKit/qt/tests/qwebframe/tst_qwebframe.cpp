@@ -170,12 +170,7 @@ void tst_QWebFrame::progressSignal()
 
     ::waitForSignal(m_view, SIGNAL(loadFinished(bool)));
 
-    QVERIFY(progressSpy.size() >= 2);
-
-    // WebKit defines initialProgressValue as 10%, not 0%
-    QCOMPARE(progressSpy.first().first().toInt(), 10);
-
-    // But we always end at 100%
+    QVERIFY(progressSpy.size() >= 1);
     QCOMPARE(progressSpy.last().first().toInt(), 100);
 }
 
