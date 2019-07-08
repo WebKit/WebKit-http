@@ -86,14 +86,6 @@ RenderWidget* HTMLObjectElement::renderWidgetLoadingPlugin() const
     return renderWidget(); // This will return 0 if the renderer is not a RenderWidget.
 }
 
-#if PLATFORM(QT)
-static bool isQtPluginServiceType(const String& serviceType)
-{
-    return equalLettersIgnoringASCIICase(serviceType, "application/x-qt-plugin")
-        || equalLettersIgnoringASCIICase(serviceType, "application/x-qt-styled-widget");
-}
-#endif
-
 bool HTMLObjectElement::isPresentationAttribute(const QualifiedName& name) const
 {
     if (name == borderAttr)
@@ -175,7 +167,7 @@ void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<S
         // FIXME: url adjustment does not belong in this function.
         if (url.isEmpty() && urlParameter.isEmpty() && (equalLettersIgnoringASCIICase(name, "src") || equalLettersIgnoringASCIICase(name, "movie") || equalLettersIgnoringASCIICase(name, "code") || equalLettersIgnoringASCIICase(name, "url")))
 #if PLATFORM(QT)
-                if(!isQtPluginServiceType(serviceType))
+                if(!MIMETypeRegistry::isApplicationPluginMIMEType(serviceType))
 #endif
         {
             urlParameter = stripLeadingAndTrailingHTMLSpaces(param.value());
@@ -219,7 +211,7 @@ void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<S
     // if we know that resource points to a plug-in.
 
 #if PLATFORM(QT)
-    if (isQtPluginServiceType(serviceType))
+    if (MIMETypeRegistry::isApplicationPluginMIMEType(serviceType))
         return;
 #endif
 
@@ -246,7 +238,7 @@ bool HTMLObjectElement::hasFallbackContent() const
 bool HTMLObjectElement::hasValidClassId()
 {
 #if PLATFORM(QT)
-    if (isQtPluginServiceType(serviceType()))
+    if (MIMETypeRegistry::isApplicationPluginMIMEType(serviceType()))
         return true;
 #endif
 

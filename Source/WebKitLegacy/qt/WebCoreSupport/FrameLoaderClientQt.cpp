@@ -1282,7 +1282,7 @@ ObjectContentType FrameLoaderClientQt::objectContentType(const URL& url, const S
     // qDebug()<<" ++++++++++++++++ url is "<<url.string()<<", mime = "<<mimeTypeIn;
     QFileInfo fi(url.path());
     String extension = fi.suffix();
-    if (mimeTypeIn == "application/x-qt-plugin" || mimeTypeIn == "application/x-qt-styled-widget")
+    if (MIMETypeRegistry::isApplicationPluginMIMEType(mimeTypeIn))
         return ObjectContentOtherPlugin;
 
     if (url.isEmpty() && !mimeTypeIn.length())
@@ -1424,11 +1424,11 @@ RefPtr<Widget> FrameLoaderClientQt::createPlugin(const IntSize& pluginSize, HTML
 
     QObject* pluginAdapter = 0;
 
-    if (mimeType == "application/x-qt-plugin" || mimeType == "application/x-qt-styled-widget") {
+    if (MIMETypeRegistry::isApplicationPluginMIMEType(mimeType)) {
         pluginAdapter = m_webFrame->pageAdapter->createPlugin(classid, qurl, params, values);
 #ifndef QT_NO_STYLE_STYLESHEET
         QtPluginWidgetAdapter* widget = qobject_cast<QtPluginWidgetAdapter*>(pluginAdapter);
-        if (widget && mimeType == "application/x-qt-styled-widget") {
+        if (widget && equalLettersIgnoringASCIICase(mimeType, "application/x-qt-styled-widget")) {
 
             StringBuilder styleSheet;
             styleSheet.append(element->getAttribute("style"));

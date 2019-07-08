@@ -132,8 +132,8 @@ String MIMETypeRegistry::getNormalizedMIMEType(const String& mimeTypeName)
 
 bool MIMETypeRegistry::isApplicationPluginMIMEType(const String& mimeType)
 {
-    return mimeType.startsWith("application/x-qt-plugin"_s, false)
-        || mimeType.startsWith("application/x-qt-styled-widget"_s, false);
+    return equalLettersIgnoringASCIICase(mimeType, "application/x-qt-plugin")
+        || equalLettersIgnoringASCIICase(mimeType, "application/x-qt-styled-widget");
 }
 
 }
