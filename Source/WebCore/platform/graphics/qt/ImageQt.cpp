@@ -159,10 +159,10 @@ void Image::setPlatformResource(const char* name, const QPixmap& pixmap)
         graphics().add(name, WebGraphicVector { pixmap });
 }
 
-void Image::drawPattern(GraphicsContext& ctxt, const FloatRect& tileRect, const AffineTransform& patternTransform,
-    const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
+void Image::drawPattern(GraphicsContext& ctxt, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform,
+    const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
 {
-    ctxt.drawPattern(*this, tileRect, patternTransform, phase, spacing, op, destRect, blendMode);
+    ctxt.drawPattern(*this, destRect, tileRect, patternTransform, phase, spacing, op, blendMode);
 
     if (imageObserver())
         imageObserver()->didDraw(this);

@@ -126,10 +126,10 @@ void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, 
     m_data.m_impl->draw(destContext, destRect, srcRect, op, blendMode, &destContext == &context());
 }
 
-void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                              const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
+void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
+                              const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
 {
-    m_data.m_impl->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode, &destContext == &context());
+    m_data.m_impl->drawPattern(destContext, destRect, srcRect, patternTransform, phase, spacing, op, blendMode, &destContext == &context());
 }
 
 void ImageBuffer::platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable)

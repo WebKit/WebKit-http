@@ -498,8 +498,8 @@ void GraphicsContext::drawEllipse(const FloatRect& rect)
     m_data->p()->drawEllipse(rect);
 }
 
-void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const AffineTransform& patternTransform,
-    const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect &destRect, BlendMode blendMode)
+void GraphicsContext::drawPattern(Image& image, const FloatRect &destRect, const FloatRect& tileRect, const AffineTransform& patternTransform,
+    const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
 {
     if (paintingDisabled() || !patternTransform.isInvertible())
         return;
@@ -509,7 +509,7 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& tileRect, const
         return;
 
     if (isRecording()) {
-        m_displayListRecorder->drawPattern(image, tileRect, patternTransform, phase, spacing, op, destRect, blendMode);
+        m_displayListRecorder->drawPattern(image, destRect, tileRect, patternTransform, phase, spacing, op, blendMode);
         return;
     }
 

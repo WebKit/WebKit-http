@@ -56,9 +56,9 @@ struct ImageBufferDataPrivate {
     virtual void draw(GraphicsContext& destContext, const FloatRect& destRect,
         const FloatRect& srcRect, CompositeOperator, BlendMode,
         bool ownContext) = 0;
-    virtual void drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
+    virtual void drawPattern(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
         const FloatPoint& phase, const FloatSize& spacing, CompositeOperator,
-        const FloatRect& destRect, BlendMode, bool ownContext) = 0;
+        BlendMode, bool ownContext) = 0;
     virtual void clip(GraphicsContext&, const IntRect& floatRect) const = 0;
     virtual void platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable) = 0;
 };
