@@ -62,7 +62,8 @@ ImageBuffer::ImageBuffer(const IntSize& size, ColorSpace, QOpenGLContext* compat
 }
 #endif
 
-ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace, RenderingMode /*renderingMode*/, bool& success)
+// QTFIXME: Use HostWindow to implement ACCELERATED_2D_CANVAS
+ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace, RenderingMode /*renderingMode*/, const HostWindow*, bool& success)
     : m_data(size, resolutionScale)
     , m_size(size * resolutionScale)
     , m_logicalSize(size)
@@ -97,7 +98,8 @@ GraphicsContext& ImageBuffer::context() const
     return *m_data.m_context;
 }
 
-RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
+// QTFIXME: Use PreserveResolution?
+RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, PreserveResolution) const
 {
     if (copyBehavior == CopyBackingStore)
         return m_data.m_impl->copyImage();
@@ -105,7 +107,7 @@ RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavio
     return m_data.m_impl->image();
 }
 
-RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, ScaleBehavior)
+RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, PreserveResolution)
 {
     return imageBuffer->m_data.m_impl->takeImage();
 }
@@ -169,13 +171,19 @@ RefPtr<Uint8ClampedArray> getImageData(const IntRect& unscaledRect, float scale,
     return result;
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, IntSize* pixelArrayDimensions, CoordinateSystem coordinateSystem) const
 {
+    // QTFIXME: Check, make it closer to ImageBufferCairo
+    if (pixelArrayDimensions)
+        *pixelArrayDimensions = m_size;
     return getImageData<AlphaPremultiplication::Unpremultiplied>(rect, m_resolutionScale, m_data, m_size, coordinateSystem);
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, IntSize* pixelArrayDimensions, CoordinateSystem coordinateSystem) const
 {
+    // QTFIXME: Check, make it closer to ImageBufferCairo
+    if (pixelArrayDimensions)
+        *pixelArrayDimensions = m_size;
     return getImageData<AlphaPremultiplication::Premultiplied>(rect, m_resolutionScale, m_data, m_size, coordinateSystem);
 }
 
@@ -218,7 +226,7 @@ void ImageBuffer::putByteArray(const Uint8ClampedArray& source, AlphaPremultipli
         m_data.m_painter->restore();
 }
 
-static bool encodeImage(const QPixmap& pixmap, const String& format, const double* quality, QByteArray& data)
+static bool encodeImage(const QPixmap& pixmap, const String& format, Optional<double> quality, QByteArray& data)
 {
     int compressionQuality = -1;
     if (format == "jpeg" || format == "webp") {
@@ -235,7 +243,8 @@ static bool encodeImage(const QPixmap& pixmap, const String& format, const doubl
     return success;
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, const double* quality, CoordinateSystem) const
+// QTFIXME: Use PreserveResolution?
+String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, PreserveResolution) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 

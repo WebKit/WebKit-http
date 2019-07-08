@@ -87,7 +87,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/GradientQt.cpp
 #    platform/graphics/qt/GraphicsContextQt.cpp
     platform/graphics/qt/IconQt.cpp
-#    platform/graphics/qt/ImageBufferDataQt.cpp
+    platform/graphics/qt/ImageBufferDataQt.cpp
     platform/graphics/qt/ImageBufferQt.cpp
     platform/graphics/qt/ImageDecoderQt.cpp
 #    platform/graphics/qt/ImageQt.cpp
