@@ -143,7 +143,7 @@ struct ImageBufferDataPrivateAccelerated final : public TextureMapperPlatformLay
         const FloatPoint& phase, const FloatSize& spacing, CompositeOperator,
         const FloatRect& destRect, BlendMode, bool ownContext) final;
     void clip(GraphicsContext&, const IntRect& floatRect) const final;
-    void platformTransformColorSpace(const Vector<int>& lookUpTable) final;
+    void platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable) final;
 
     // TextureMapperPlatformLayer:
     void paintToTextureMapper(TextureMapper&, const FloatRect&, const TransformationMatrix& modelViewMatrix = TransformationMatrix(), float opacity = 1.0) final;
@@ -261,7 +261,7 @@ void ImageBufferDataPrivateAccelerated::clip(GraphicsContext& context, const Int
     context.pushTransparencyLayerInternal(rect, 1.0, alphaMask);
 }
 
-void ImageBufferDataPrivateAccelerated::platformTransformColorSpace(const Vector<int>& lookUpTable)
+void ImageBufferDataPrivateAccelerated::platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable)
 {
     QPainter* painter = paintDevice()->paintEngine()->painter();
 
@@ -363,7 +363,7 @@ struct ImageBufferDataPrivateUnaccelerated final : public ImageBufferDataPrivate
         const FloatPoint& phase, const FloatSize& spacing, CompositeOperator,
         const FloatRect& destRect, BlendMode, bool ownContext) final;
     void clip(GraphicsContext&, const IntRect& floatRect) const final;
-    void platformTransformColorSpace(const Vector<int>& lookUpTable) final;
+    void platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable) final;
 
     QPixmap m_pixmap;
     RefPtr<Image> m_image;
@@ -440,7 +440,7 @@ void ImageBufferDataPrivateUnaccelerated::clip(GraphicsContext& context, const I
     context.pushTransparencyLayerInternal(rect, 1.0, alphaMask);
 }
 
-void ImageBufferDataPrivateUnaccelerated::platformTransformColorSpace(const Vector<int>& lookUpTable)
+void ImageBufferDataPrivateUnaccelerated::platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable)
 {
     QPainter* painter = paintDevice()->paintEngine()->painter();
 

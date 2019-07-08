@@ -60,7 +60,7 @@ struct ImageBufferDataPrivate {
         const FloatPoint& phase, const FloatSize& spacing, CompositeOperator,
         const FloatRect& destRect, BlendMode, bool ownContext) = 0;
     virtual void clip(GraphicsContext&, const IntRect& floatRect) const = 0;
-    virtual void platformTransformColorSpace(const Vector<int>& lookUpTable) = 0;
+    virtual void platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable) = 0;
 };
 
 class ImageBufferData {
