@@ -57,9 +57,20 @@ Path::Path(const Path& other)
 {
 }
 
+Path::Path(Path&& other)
+{
+    m_path.swap(other.m_path);
+}
+
 Path& Path::operator=(const Path& other)
 {
     m_path = other.m_path;
+    return *this;
+}
+
+Path& Path::operator=(Path&& other)
+{
+    m_path.swap(other.m_path);
     return *this;
 }
 
