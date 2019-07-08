@@ -119,7 +119,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/IconQt.cpp
     platform/graphics/qt/ImageBufferDataQt.cpp
     platform/graphics/qt/ImageBufferQt.cpp
-    platform/graphics/qt/ImageDecoderQt.cpp
+#    platform/graphics/qt/ImageDecoderQt.cpp
     platform/graphics/qt/ImageQt.cpp
     platform/graphics/qt/IntPointQt.cpp
     platform/graphics/qt/IntRectQt.cpp

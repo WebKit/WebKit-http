@@ -37,6 +37,10 @@
 #include "WEBPImageDecoder.h"
 #endif
 
+//#if PLATFORM(QT)
+//#include "ImageDecoderQt.h"
+//#endif
+
 #include <algorithm>
 #include <cmath>
 
@@ -149,6 +153,10 @@ RefPtr<ScalableImageDecoder> ScalableImageDecoder::create(SharedBuffer& data, Al
 
     if (matchesBMPSignature(contents))
         return BMPImageDecoder::create(alphaOption, gammaAndColorProfileOption);
+
+//#if PLATFORM(QT)
+//    return ImageDecoderQt::create(data, alphaOption, gammaAndColorProfileOption);
+//#endif
 
     return nullptr;
 }
