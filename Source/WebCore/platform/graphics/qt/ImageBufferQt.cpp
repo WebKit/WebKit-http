@@ -226,8 +226,15 @@ void ImageBuffer::putByteArray(const Uint8ClampedArray& source, AlphaPremultipli
         m_data.m_painter->restore();
 }
 
-static bool encodeImage(const QPixmap& pixmap, const String& format, Optional<double> quality, QByteArray& data)
+static bool encodeImage(const QPixmap& pixmap, const String& mimeType, Optional<double> quality, QByteArray& data)
 {
+    ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
+
+    // QImageWriter does not support mimetypes. It does support Qt image formats (png,
+    // gif, jpeg..., xpm) so skip the image/ to get the Qt image format used to encode
+    // the m_pixmap image.
+    String format = mimeType.substring(sizeof "image");
+
     int compressionQuality = -1;
     if (format == "jpeg" || format == "webp") {
         compressionQuality = 100;
@@ -246,15 +253,9 @@ static bool encodeImage(const QPixmap& pixmap, const String& format, Optional<do
 // QTFIXME: Use PreserveResolution?
 String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, PreserveResolution) const
 {
-    ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
-
-    // QImageWriter does not support mimetypes. It does support Qt image formats (png,
-    // gif, jpeg..., xpm) so skip the image/ to get the Qt image format used to encode
-    // the m_pixmap image.
-
     RefPtr<Image> image = copyImage(DontCopyBackingStore);
     QByteArray data;
-    if (!encodeImage(*image->nativeImageForCurrentFrame(), mimeType.substring(sizeof "image"), quality, data))
+    if (!encodeImage(*image->nativeImageForCurrentFrame(), mimeType, quality, data))
         return "data:,";
 
     return "data:" + mimeType + ";base64," + data.toBase64().data();
