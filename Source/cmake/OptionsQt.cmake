@@ -187,9 +187,7 @@ else ()
     set(USE_MEDIA_FOUNDATION_DEFAULT OFF)
 endif ()
 
-if (WTF_CPU_X86_64 AND NOT WIN32)
-    set(ENABLE_FTL_DEFAULT ON)
-else ()
+if (WIN32)
     set(ENABLE_FTL_DEFAULT OFF)
 endif ()
 
