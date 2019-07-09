@@ -43,7 +43,7 @@ MainThreadSharedTimer& MainThreadSharedTimer::singleton()
     return instance;
 }
 
-#if USE(CF) || OS(WINDOWS)
+#if USE(CF) || OS(WINDOWS) || PLATFORM(QT)
 MainThreadSharedTimer::MainThreadSharedTimer() = default;
 #else
 MainThreadSharedTimer::MainThreadSharedTimer()

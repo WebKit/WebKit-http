@@ -57,7 +57,7 @@ private:
     MainThreadSharedTimer();
 
     WTF::Function<void()> m_firedFunction;
-#if !USE(CF) && !OS(WINDOWS)
+#if !USE(CF) && !OS(WINDOWS) && !PLATFORM(QT)
     RunLoop::Timer<MainThreadSharedTimer> m_timer;
 #endif
 };
