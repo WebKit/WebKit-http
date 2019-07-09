@@ -36,7 +36,7 @@
 #include <dispatch/dispatch.h>
 #endif
 
-#if USE(WINDOWS_EVENT_LOOP)
+#if USE(WINDOWS_EVENT_LOOP) || (PLATFORM(QT) && OS(WINDOWS))
 #include <wtf/HashMap.h>
 #include <wtf/ThreadingPrimitives.h>
 #include <wtf/Vector.h>
@@ -95,7 +95,7 @@ private:
     void platformInitialize(const char* name, Type, QOS);
     void platformInvalidate();
 
-#if USE(WINDOWS_EVENT_LOOP)
+#if USE(WINDOWS_EVENT_LOOP) || (PLATFORM(QT) && OS(WINDOWS))
     static void CALLBACK timerCallback(void* context, BOOLEAN timerOrWaitFired);
     static DWORD WINAPI workThreadCallback(void* context);
 
@@ -107,7 +107,7 @@ private:
 #if USE(COCOA_EVENT_LOOP) || (PLATFORM(QT) && USE(MACH_PORTS))
     static void executeFunction(void*);
     dispatch_queue_t m_dispatchQueue;
-#elif USE(WINDOWS_EVENT_LOOP)
+#elif USE(WINDOWS_EVENT_LOOP) || (PLATFORM(QT) && OS(WINDOWS))
     volatile LONG m_isWorkThreadRegistered;
 
     Lock m_functionQueueLock;
