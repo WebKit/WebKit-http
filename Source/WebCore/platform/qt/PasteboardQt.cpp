@@ -100,6 +100,12 @@ std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop(const DragData& dra
 }
 #endif
 
+// QTFIXME: Check if we need to create QMimeData
+Pasteboard::Pasteboard()
+    : Pasteboard(nullptr, false)
+{
+}
+
 Pasteboard::Pasteboard(const QMimeData* readableClipboard, bool isForDragAndDrop)
     : m_selectionMode(false)
     , m_readableData(readableClipboard)
