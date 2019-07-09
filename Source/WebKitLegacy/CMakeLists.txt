@@ -36,11 +36,11 @@ WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 if (MSVC)
     if (NOT ${PORT} STREQUAL "Qt")
-        ADD_PRECOMPILED_HEADER("WebKitPrefix.h" "win/WebKitPrefix.cpp" WebKitLegacy_SOURCES)
+        WEBKIT_ADD_PRECOMPILED_HEADER("WebKitPrefix.h" "win/WebKitPrefix.cpp" WebKitLegacy_SOURCES)
         list(APPEND WebKitLegacy_SOURCES win/WebKit.resources/WebKit.rc)
         add_definitions(/DWEBKIT_EXPORTS /DFRAMEWORK_NAME=WebKitLegacy)
     else ()
-        ADD_PRECOMPILED_HEADER("WebKitPrefix.h" "qt/WebKitPrefix.cpp" WebKitLegacy_SOURCES)
+        WEBKIT_ADD_PRECOMPILED_HEADER("WebKitPrefix.h" "qt/WebKitPrefix.cpp" WebKitLegacy_SOURCES)
     endif ()
 endif ()
 

@@ -719,7 +719,7 @@ if (MSVC)
         ${DERIVED_SOURCES_WEBKIT_DIR}
     )
 
-    ADD_PRECOMPILED_HEADER("WebKitWidgetsPrefix.h" "qt/WebKitWidgetsPrefix.cpp" WebKitWidgets_SOURCES)
+    WEBKIT_ADD_PRECOMPILED_HEADER("WebKitWidgetsPrefix.h" "qt/WebKitWidgetsPrefix.cpp" WebKitWidgets_SOURCES)
 endif ()
 
 if (QT_STATIC_BUILD)
