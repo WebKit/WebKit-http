@@ -92,10 +92,7 @@ if (WIN32)
         threads/BinarySemaphore.cpp
     )
     list(APPEND WTF_SOURCES
-        threads/win/BinarySemaphoreWin.cpp
-
         win/CPUTimeWin.cpp
-        win/WorkItemWin.cpp
         win/WorkQueueWin.cpp
     )
     list(APPEND WTF_LIBRARIES
