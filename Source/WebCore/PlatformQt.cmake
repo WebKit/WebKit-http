@@ -1,6 +1,8 @@
 include(platform/ImageDecoders.cmake)
 #include(platform/TextureMapper.cmake)
 
+set(WebCore_OUTPUT_NAME WebCore)
+
 if (NOT USE_LIBJPEG)
     list(REMOVE_ITEM WebCore_SOURCES
         platform/image-decoders/jpeg/JPEGImageDecoder.cpp
