@@ -53,14 +53,6 @@
 
 namespace WebCore {
 
-#if ENABLE(DRAG_SUPPORT)
-#if defined(Q_OS_MACOS)
-const Seconds EventHandler::TextDragDelay { 0.15_s };
-#else
-const Seconds EventHandler::TextDragDelay { 0.0_s };
-#endif
-#endif
-
 bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
 {
     return !isKeyboardOptionTab(*event);
