@@ -3329,9 +3329,12 @@ void tst_QWebPage::contextMenuPopulatedOnce()
     QList<QAction *> list = contextMenu->actions();
     QStringList entries;
     while (!list.isEmpty()) {
-        QString entry = list.takeFirst()->text();
-        QVERIFY(!entries.contains(entry));
-        entries << entry;
+        const QAction* action = list.takeFirst();
+        if (!action->isSeparator()) {
+            QString entry = action->text();
+            QVERIFY(!entries.contains(entry));
+            entries << entry;
+        }
     }
 }
 
