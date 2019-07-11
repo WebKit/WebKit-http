@@ -187,36 +187,4 @@ void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
     context.leakRef();
 }
 
-#if PLATFORM(QT)
-void WorkQueue::registerHandle(HANDLE handle, const std::function<void()>& function)
-{
-    RefPtr<HandleWorkItem> handleItem = HandleWorkItem::createByAdoptingHandle(handle, function, this);
-
-    {
-        MutexLocker lock(m_handlesLock);
-        ASSERT_ARG(handle, !m_handles.contains(handle));
-        m_handles.set(handle, handleItem);
-    }
-
-    HANDLE waitHandle;
-    if (!::RegisterWaitForSingleObject(&waitHandle, handle, handleCallback, handleItem.get(), INFINITE, WT_EXECUTEDEFAULT)) {
-        DWORD error = ::GetLastError();
-        ASSERT_NOT_REACHED();
-    }
-    handleItem->setWaitHandle(waitHandle);
-}
-
-void WorkQueue::unregisterAndCloseHandle(HANDLE handle)
-{
-    RefPtr<HandleWorkItem> item;
-    {
-        MutexLocker locker(m_handlesLock);
-        ASSERT_ARG(handle, m_handles.contains(handle));
-        item = m_handles.take(handle);
-    }
-
-    unregisterWaitAndDestroyItemSoon(item.release());
-}
-#endif
-
 } // namespace WTF
