@@ -12,6 +12,9 @@ list(APPEND WTF_SOURCES
 QTWEBKIT_GENERATE_MOC_FILES_CPP(WTF qt/MainThreadQt.cpp qt/RunLoopQt.cpp)
 
 if (WIN32)
+    list(APPEND WTF_PUBLIC_HEADERS
+        text/win/WCharStringEXtras.h
+    )
     list(APPEND WTF_SOURCES
         win/FileSystemWin.cpp
         win/OSAllocatorWin.cpp
