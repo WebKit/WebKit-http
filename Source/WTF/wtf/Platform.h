@@ -1171,7 +1171,7 @@
 #include <wtf/glib/GTypedefs.h>
 #endif
 
-#if !defined(USE_EXPORT_MACROS) && (PLATFORM(COCOA) || PLATFORM(QT) || OS(WINDOWS))
+#if !defined(USE_EXPORT_MACROS) && (PLATFORM(COCOA) || (OS(WINDOWS) && !PLATFORM(QT)))
 #define USE_EXPORT_MACROS 1
 #endif
 
