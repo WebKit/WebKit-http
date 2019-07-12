@@ -90,9 +90,6 @@ if (USE_GLIB)
 endif ()
 
 if (WIN32)
-    list(REMOVE_ITEM WTF_SOURCES
-        threads/BinarySemaphore.cpp
-    )
     list(APPEND WTF_SOURCES
         win/CPUTimeWin.cpp
         win/WorkQueueWin.cpp
