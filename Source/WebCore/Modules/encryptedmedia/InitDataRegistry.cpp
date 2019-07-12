@@ -41,7 +41,10 @@ namespace WebCore {
 
 namespace {
     const uint32_t kCencMaxBoxSize = 64 * KB;
-    const uint8_t playreadyXMLMagic[10] = { 0x8c, 0x03, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x82, 0x03 };
+    constexpr uint8_t playreadyXMLMagicOffset = 10;
+    // L("<WRMHEADER")
+    const uint8_t playreadyXMLMagic[] = { 0x3c, 0x00, 0x57, 0x00, 0x52, 0x00, 0x4d, 0x00, 0x48, 0x00, 0x45, 0x00, 0x41, 0x00, 0x44, 0x00, 0x45, 0x00, 0x52, 0x00 };
+
 }
 
 static std::optional<Vector<Ref<SharedBuffer>>> extractKeyIDsKeyids(const SharedBuffer& buffer)
@@ -120,7 +123,7 @@ static std::optional<Vector<Ref<SharedBuffer>>> extractKeyIDsCenc(const SharedBu
     // Proper fix would be to synthesize PSSH boxes from qtdemux in
     // these cases, but that would probably break the Playready CDM,
     // what a mess.
-    if (buffer.size() > 10 && !memcmp(buffer.data(), playreadyXMLMagic, 10))
+    if (buffer.size() > playreadyXMLMagicOffset + sizeof(playreadyXMLMagic) && !memcmp(buffer.data() + playreadyXMLMagicOffset, playreadyXMLMagic, sizeof(playreadyXMLMagic)))
         return keyIDs;
 
     auto view = JSC::DataView::create(buffer.tryCreateArrayBuffer(), offset, buffer.size());
