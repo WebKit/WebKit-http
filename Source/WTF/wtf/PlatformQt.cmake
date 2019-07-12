@@ -19,8 +19,8 @@ if (WIN32)
         win/FileSystemWin.cpp
         win/OSAllocatorWin.cpp
         win/PathWalker.cpp
-        win/ThreadingWin.cpp
         win/ThreadSpecificWin.cpp
+        win/ThreadingWin.cpp
     )
 else ()
     list(APPEND WTF_SOURCES
