@@ -14,10 +14,14 @@ QTWEBKIT_GENERATE_MOC_FILES_CPP(WTF qt/MainThreadQt.cpp qt/RunLoopQt.cpp)
 if (WIN32)
     list(APPEND WTF_SOURCES
         win/FileSystemWin.cpp
+        win/OSAllocatorWin.cpp
+        win/ThreadingWin.cp
     )
 else ()
     list(APPEND WTF_SOURCES
         posix/FileSystemPOSIX.cpp
+        posix/OSAllocatorPOSIX.cpp
+        posix/ThreadingPOSIX.cpp
     )
 endif ()
 
@@ -59,13 +63,6 @@ if (USE_UNIX_DOMAIN_SOCKETS)
         unix/UniStdExtrasUnix.cpp
     )
     QTWEBKIT_GENERATE_MOC_FILES_CPP(WTF qt/WorkQueueQt.cpp)
-endif ()
-
-if (UNIX)
-    list(APPEND WTF_SOURCES
-        posix/OSAllocatorPOSIX.cpp
-        posix/ThreadingPOSIX.cpp
-    )
 endif ()
 
 if (USE_GLIB)
