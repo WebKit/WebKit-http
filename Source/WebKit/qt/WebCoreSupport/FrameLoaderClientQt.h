@@ -30,11 +30,8 @@
 #ifndef FrameLoaderClientQt_h
 #define FrameLoaderClientQt_h
 
-#include "FormState.h"
 #include "FrameLoaderClient.h"
-#include "HTMLFormElement.h"
 #include "ResourceResponse.h"
-#include "SharedBuffer.h"
 #include "URL.h"
 #include <QUrl>
 #include <qobject.h>
