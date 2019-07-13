@@ -34,19 +34,19 @@ namespace WebCore {
 
     class StillImage final : public Image {
     public:
-        static RefPtr<StillImage> create(const QPixmap& pixmap)
+        static Ref<StillImage> create(const QPixmap& pixmap)
         {
-            return adoptRef(new StillImage(pixmap));
+            return adoptRef(*new StillImage(pixmap));
         }
 
-        static RefPtr<StillImage> createForRendering(const QPixmap* pixmap)
+        static Ref<StillImage> createForRendering(const QPixmap* pixmap)
         {
-            return adoptRef(new StillImage(pixmap));
+            return adoptRef(*new StillImage(pixmap));
         }
 
-        static RefPtr<StillImage> create(QPixmap&& pixmap)
+        static Ref<StillImage> create(QPixmap&& pixmap)
         {
-            return adoptRef(new StillImage(WTFMove(pixmap)));
+            return adoptRef(*new StillImage(WTFMove(pixmap)));
         }
 
         bool currentFrameKnownToBeOpaque() const override;

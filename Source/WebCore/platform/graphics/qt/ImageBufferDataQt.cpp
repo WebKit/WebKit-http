@@ -243,15 +243,15 @@ void ImageBufferDataPrivateAccelerated::draw(GraphicsContext& destContext, const
             return;
         }
     }
-    RefPtr<Image> image = StillImage::create(QPixmap::fromImage(toQImage()));
-    destContext.drawImage(*image, destRect, srcRect, ImagePaintingOptions(op, blendMode, DoNotRespectImageOrientation));
+    Ref<Image> image = StillImage::create(QPixmap::fromImage(toQImage()));
+    destContext.drawImage(image, destRect, srcRect, ImagePaintingOptions(op, blendMode, DoNotRespectImageOrientation));
 }
 
 
 void ImageBufferDataPrivateAccelerated::drawPattern(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
     const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode, bool /*ownContext*/)
 {
-    RefPtr<Image> image = StillImage::create(QPixmap::fromImage(toQImage()));
+    Ref<Image> image = StillImage::create(QPixmap::fromImage(toQImage()));
     image->drawPattern(destContext, destRect, srcRect, patternTransform, phase, spacing, op, blendMode);
 }
 
@@ -366,7 +366,7 @@ struct ImageBufferDataPrivateUnaccelerated final : public ImageBufferDataPrivate
     void platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable) final;
 
     QPixmap m_pixmap;
-    RefPtr<Image> m_image;
+    Ref<Image> m_image;
 };
 
 ImageBufferDataPrivateUnaccelerated::ImageBufferDataPrivateUnaccelerated(const FloatSize& size, float scale)
@@ -415,7 +415,7 @@ void ImageBufferDataPrivateUnaccelerated::draw(GraphicsContext& destContext, con
         RefPtr<Image> copy = copyImage();
         destContext.drawImage(*copy, destRect, srcRect, ImagePaintingOptions(op, blendMode, DecodingMode::Synchronous, ImageOrientationDescription()));
     } else
-        destContext.drawImage(*m_image, destRect, srcRect, ImagePaintingOptions(op, blendMode, DecodingMode::Synchronous, ImageOrientationDescription()));
+        destContext.drawImage(m_image, destRect, srcRect, ImagePaintingOptions(op, blendMode, DecodingMode::Synchronous, ImageOrientationDescription()));
 }
 
 void ImageBufferDataPrivateUnaccelerated::drawPattern(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,

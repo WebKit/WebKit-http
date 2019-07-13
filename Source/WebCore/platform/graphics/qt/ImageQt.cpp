@@ -146,7 +146,7 @@ bool FrameData::clear(bool clearMetadata)
 // Image Class
 // ================================================
 
-RefPtr<Image> Image::loadPlatformResource(const char* name)
+Ref<Image> Image::loadPlatformResource(const char* name)
 {
     return StillImage::create(loadResourcePixmap(name));
 }
