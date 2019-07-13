@@ -778,10 +778,14 @@ String validationMessagePatternMismatchText()
     return String();
 }
 
-String validationMessageTooLongText(int, int)
+String validationMessageTooShortText(int, int minLength)
 {
-    notImplemented();
-    return String();
+    return QCoreApplication::translate("QWebPage", "Use at least %n characters", "Validation message", minLength);
+}
+
+String validationMessageTooLongText(int, int maxLength)
+{
+    return QCoreApplication::translate("QWebPage", "Use no more than %n characters", "Validation message", maxLength);
 }
 
 String validationMessageRangeUnderflowText(const String&)
