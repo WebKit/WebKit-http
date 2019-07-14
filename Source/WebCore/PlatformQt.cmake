@@ -92,10 +92,11 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/ImageBufferDataQt.cpp
     platform/graphics/qt/ImageBufferQt.cpp
     platform/graphics/qt/ImageDecoderQt.cpp
-#    platform/graphics/qt/ImageQt.cpp
+    platform/graphics/qt/ImageQt.cpp
     platform/graphics/qt/IntPointQt.cpp
     platform/graphics/qt/IntRectQt.cpp
     platform/graphics/qt/IntSizeQt.cpp
+    platform/graphics/qt/NativeImageQt.cpp
     platform/graphics/qt/PathQt.cpp
     platform/graphics/qt/PatternQt.cpp
     platform/graphics/qt/StillImageQt.cpp
