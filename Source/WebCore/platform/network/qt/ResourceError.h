@@ -43,7 +43,7 @@ public:
     {
     }
 
-    void doPlatformIsolatedCopy(const ResourceError&);
+    void doPlatformIsolatedCopy(const ResourceError&) {}
 
 };
 

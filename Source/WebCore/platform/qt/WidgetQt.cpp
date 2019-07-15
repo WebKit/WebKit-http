@@ -96,6 +96,10 @@ void Widget::hide()
         client->setWidgetVisible(this, false);
 }
 
+void Widget::paint(GraphicsContext&, const IntRect&, SecurityOriginPaintPolicy)
+{
+}
+
 void Widget::setIsSelected(bool)
 {
     notImplemented();

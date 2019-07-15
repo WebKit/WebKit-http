@@ -96,4 +96,14 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
     return std::make_unique<FontPlatformData>(fontDescription, familyName);
 }
 
+const AtomString& FontCache::platformAlternateFamilyName(const AtomString&)
+{
+    return nullAtom();
+}
+
+Vector<FontSelectionCapabilities> FontCache::getFontSelectionCapabilitiesInFamily(const AtomString&, AllowUserInstalledFonts)
+{
+    return { };
+}
+
 } // namespace WebCore

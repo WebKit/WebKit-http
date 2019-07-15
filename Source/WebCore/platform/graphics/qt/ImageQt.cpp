@@ -32,6 +32,7 @@
 #include "config.h"
 #include "Image.h"
 
+#include "BitmapImage.h"
 #include "GraphicsContext.h"
 #include "ImageObserver.h"
 #include "StillImageQt.h"
@@ -115,6 +116,10 @@ void Image::setPlatformResource(const char* name, const QPixmap& pixmap)
         graphics().remove(name);
     else
         graphics().add(name, WebGraphicVector { pixmap });
+}
+
+void BitmapImage::invalidatePlatformData()
+{
 }
 
 } // namespace WebCore

@@ -288,11 +288,6 @@ float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun&, unsigned, 
     return 0.f;
 }
 
-void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */, const TextRun& /* run */, const AtomString& /* mark */, const FloatPoint& /* point */, unsigned /* from */, unsigned /* to */) const
-{
-    notImplemented();
-}
-
 void FontCascade::drawGlyphs(GraphicsContext& context, const Font& font, const GlyphBuffer& glyphBuffer, unsigned from, unsigned numGlyphs, const FloatPoint& point, FontSmoothingMode)
 {
     if (!font.platformData().size())

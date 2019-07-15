@@ -512,6 +512,30 @@ String AXLinkActionVerb()
     return String();
 }
 
+String AXAutoFillCredentialsLabel()
+{
+    notImplemented();
+    return String();
+}
+
+String AXAutoFillContactsLabel()
+{
+    notImplemented();
+    return String();
+}
+
+String AXAutoFillStrongPasswordLabel()
+{
+    notImplemented();
+    return String();
+}
+
+String AXAutoFillCreditCardLabel()
+{
+    notImplemented();
+    return String();
+}
+
 String autoFillStrongPasswordLabel()
 {
     notImplemented();

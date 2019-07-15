@@ -419,4 +419,30 @@ void Pasteboard::updateSystemPasteboard()
 #endif
 }
 
+Pasteboard::FileContentState Pasteboard::fileContentState()
+{
+    notImplemented();
+    return FileContentState::NoFileOrImageData;
+}
+
+void Pasteboard::write(const PasteboardWebContent&)
+{
+}
+
+void Pasteboard::write(const PasteboardImage&)
+{
+}
+
+void Pasteboard::writeMarkup(const String&)
+{
+}
+
+void Pasteboard::writeCustomData(const PasteboardCustomData&)
+{
+}
+
+void Pasteboard::write(const Color&)
+{
+}
+
 }
