@@ -21,6 +21,8 @@
 #include "config.h"
 #include "QWebFrameData.h"
 
+#include "Document.h"
+#include "HTMLFormElement.h"
 #include "FrameLoaderClientQt.h"
 #include "MainFrame.h"
 #include "Page.h"

@@ -18,6 +18,8 @@
  *
  */
 
+#pragma once
+
 #include "QtDialogRunner.h"
 #include "WKRetainPtr.h"
 #include "WKStringQt.h"

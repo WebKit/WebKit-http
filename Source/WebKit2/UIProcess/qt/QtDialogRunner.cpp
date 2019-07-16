@@ -218,4 +218,5 @@ void QtDialogRunner::onDatabaseQuotaAccepted(quint64 quota)
 
 } // namespace WebKit
 
+#include "moc_DialogContextObjects.cpp"
 #include "moc_QtDialogRunner.cpp"

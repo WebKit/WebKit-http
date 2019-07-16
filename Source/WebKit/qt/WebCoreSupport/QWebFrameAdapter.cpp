@@ -31,6 +31,7 @@
 #include "FrameLoaderClientQt.h"
 #include "FrameView.h"
 #include "HTMLCollection.h"
+#include "HTMLFormElement.h"
 #include "HTMLMetaElement.h"
 #include "HTTPParsers.h"
 #include "HitTestResult.h"

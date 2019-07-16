@@ -19,6 +19,8 @@
  *
  */
 
+#pragma once
+
 #include <QColor>
 #include <QObject>
 #include <QRectF>

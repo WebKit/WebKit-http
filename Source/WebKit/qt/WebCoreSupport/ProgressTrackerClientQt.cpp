@@ -26,9 +26,11 @@
 #include "config.h"
 #include "ProgressTrackerClientQt.h"
 
+#include "Document.h"
 #include "EventHandler.h"
 #include "Frame.h"
 #include "FrameLoaderClientQt.h"
+#include "HTMLFormElement.h"
 #include "ProgressTracker.h"
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"

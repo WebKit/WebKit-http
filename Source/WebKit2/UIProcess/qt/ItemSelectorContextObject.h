@@ -24,6 +24,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#pragma once
+
 #include "WebPopupItem.h"
 #include <QtCore/QAbstractListModel>
 #include <QtCore/QRectF>
