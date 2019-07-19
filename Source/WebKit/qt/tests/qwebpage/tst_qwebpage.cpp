@@ -3100,15 +3100,6 @@ void tst_QWebPage::findText()
     }
 }
 
-static QString getMimeTypeForExtension(const QString &ext)
-{
-    QMimeType mimeType = QMimeDatabase().mimeTypeForFile(QStringLiteral("filename.") + ext.toLower(), QMimeDatabase::MatchExtension);
-    if (mimeType.isValid() && !mimeType.isDefault())
-        return mimeType.name();
-
-    return QString();
-}
-
 void tst_QWebPage::supportedContentType()
 {
     QStringList contentTypes;
@@ -3116,18 +3107,13 @@ void tst_QWebPage::supportedContentType()
     // Add supported non image types...
     contentTypes << "text/html" << "text/xml" << "text/xsl" << "text/plain" << "text/"
                  << "application/xml" << "application/xhtml+xml" << "application/vnd.wap.xhtml+xml"
-                 << "application/rss+xml" << "application/atom+xml" << "application/json";
+                 << "application/rss+xml" << "application/atom+xml" << "application/json"
+    // Add JPEG MIME type
+                 << "image/jpeg";
 
 #if ENABLE_MHTML
     contentTypes << "application/x-mimearchive";
 #endif
-
-    // Add supported image types...
-    Q_FOREACH(const QByteArray& imageType, QImageWriter::supportedImageFormats()) {
-        const QString mimeType = getMimeTypeForExtension(imageType);
-        if (!mimeType.isEmpty())
-            contentTypes << mimeType;
-    }
 
     // Get the mime types supported by webkit...
     const QStringList supportedContentTypes = m_page->supportedContentTypes();
