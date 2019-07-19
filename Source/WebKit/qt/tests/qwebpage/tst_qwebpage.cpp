@@ -2926,15 +2926,13 @@ void tst_QWebPage::originatingObjectInNetworkRequests()
     m_page->setNetworkAccessManager(networkManager);
     networkManager->requests.clear();
 
-    m_view->setHtml(QString("<frameset cols=\"25%,75%\"><frame src=\"data:text/html,"
-                            "<head><meta http-equiv='refresh' content='1'></head>foo \">"
-                            "<frame src=\"data:text/html,bar\"></frameset>"), QUrl());
+    m_view->setHtml(QString("<frameset cols=\"25%,75%\"><frame src=\"qrc:///frame_c.html\">"
+                            "<frame src=\"qrc:///frame_b.html\"></frameset>"), QUrl());
     QVERIFY(::waitForSignal(m_view, SIGNAL(loadFinished(bool))));
 
     QCOMPARE(networkManager->requests.count(), 2);
 
     QList<QWebFrame*> childFrames = m_page->mainFrame()->childFrames();
-    QEXPECT_FAIL("", "https://bugs.webkit.org/show_bug.cgi?id=118660", Continue);
     QCOMPARE(childFrames.count(), 2);
 
     for (int i = 0; i < 2; ++i)
