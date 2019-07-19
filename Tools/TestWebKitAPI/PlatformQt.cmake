@@ -2,10 +2,10 @@ set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/Te
 set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY_WTF "${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WTF")
 
 
-#add_definitions(
-#    -DROOT_BUILD_DIR="${CMAKE_BINARY_DIR}"
-#    -DQT_NO_CAST_FROM_ASCII
-#)
+add_definitions(
+    -DROOT_BUILD_DIR="${CMAKE_BINARY_DIR}"
+    -DQT_NO_CAST_FROM_ASCII
+)
 
 #if (WIN32)
 #    add_definitions(-DUSE_CONSOLE_ENTRY_POINT)
@@ -17,11 +17,12 @@ set(test_main_SOURCES
     ${TESTWEBKITAPI_DIR}/qt/main.cpp
 )
 
-list(APPEND test_wtf_LIBRARIES
-    Qt5::Core
+list(APPEND TestWTF_LIBRARIES
+    Qt5::Gui
 )
 
 target_sources(TestWTF PRIVATE
+    ${test_main_SOURCES}
     qt/UtilitiesQt.cpp
 )
 
