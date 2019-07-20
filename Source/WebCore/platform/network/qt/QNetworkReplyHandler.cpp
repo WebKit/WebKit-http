@@ -712,7 +712,7 @@ void QNetworkReplyHandler::forwardData()
     // FIXME: We need API to get unflattened array of data segments to convert it to non-contiguous SharedBuffer
 
     qint64 bytesAvailable = m_replyWrapper->reply()->bytesAvailable();
-    Vector<uint8_t> buffer(8128); // smaller than 8192 to fit within 8k including overhead.
+    Vector<char> buffer(8128); // smaller than 8192 to fit within 8k including overhead.
     while (bytesAvailable > 0 && !m_queue.deferSignals()) {
         qint64 readSize = m_replyWrapper->reply()->read(buffer.data(), buffer.size());
         if (readSize <= 0)
@@ -723,7 +723,7 @@ void QNetworkReplyHandler::forwardData()
         // FIXME: https://bugs.webkit.org/show_bug.cgi?id=19793
         // -1 means we do not provide any data about transfer size to inspector so it would use
         // Content-Length headers or content size to show transfer size.
-        client->didReceiveBuffer(m_resourceHandle, SharedBuffer::create(buffer), -1);
+        client->didReceiveBuffer(m_resourceHandle, SharedBuffer::create(WTFMove(buffer)), -1);
         // Check if the request has been aborted or this reply-handler was otherwise released.
         if (wasAborted() || !m_replyWrapper)
             break;
@@ -843,7 +843,7 @@ void QNetworkReplyHandler::start()
     if (timeoutInSeconds > 0 && timeoutInSeconds < (INT_MAX / 1000))
         m_timeoutTimer.start(timeoutInSeconds * 1000, this);
 
-    if (m_resourceHandle->firstRequest().reportUploadProgress())
+//    if (m_resourceHandle->firstRequest().reportUploadProgress())
         connect(m_replyWrapper->reply(), SIGNAL(uploadProgress(qint64, qint64)), this, SLOT(uploadProgress(qint64, qint64)));
 }
 
