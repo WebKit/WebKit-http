@@ -22,6 +22,7 @@
 #include "QNetworkReplyHandler.h"
 
 #include "BlobData.h"
+#include "BlobRegistry.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
 #include "NetworkingContext.h"
@@ -85,7 +86,7 @@ void FormDataIODevice::prepareFormElements()
     if (!m_formData)
         return;
 
-    m_formData = m_formData->resolveBlobReferences();
+    m_formData = m_formData->resolveBlobReferences(blobRegistry());
 
     // Take a deep copy of the FormDataElements
     m_formElements = m_formData->elements();
@@ -95,15 +96,18 @@ void FormDataIODevice::prepareFormElements()
 qint64 FormDataIODevice::computeSize()
 {
     for (const auto& element : m_formElements) {
-        if (element.m_type == FormDataElement::Type::Data)
-            m_dataSize += element.m_data.size();
-        else {
-            QFileInfo fi(element.m_filename);
-            qint64 fileEnd = fi.size();
-            if (element.m_fileLength != BlobDataItem::toEndOfFile)
-                fileEnd = qMin<qint64>(fi.size(), element.m_fileStart + element.m_fileLength);
-            m_fileSize += qMax<qint64>(0, fileEnd - element.m_fileStart);
-        }
+        switchOn(element.data,
+            [&] (const Vector<char>& bytes) {
+                m_dataSize += bytes.size();
+            }, [&] (const FormDataElement::EncodedFileData& fileData) {
+                QFileInfo fi(fileData.filename);
+                qint64 fileEnd = fi.size();
+                if (fileData.fileLength != BlobDataItem::toEndOfFile)
+                    fileEnd = qMin<qint64>(fi.size(), fileData.fileStart + fileData.fileLength);
+                m_fileSize += qMax<qint64>(0, fileEnd - fileData.fileStart);
+            }, [&] (const FormDataElement::EncodedBlobData&) {
+                // QTFIXME
+            });
     }
     return m_dataSize + m_fileSize;
 }
@@ -112,6 +116,7 @@ void FormDataIODevice::moveToNextElement()
 {
     if (m_currentFile)
         m_currentFile->close();
+    //m_currentFile = 0?
     m_currentDelta = 0;
 
     m_formElements.remove(0);
@@ -124,34 +129,33 @@ void FormDataIODevice::prepareCurrentElement()
     if (m_formElements.isEmpty())
         return;
 
-    switch (m_formElements[0].m_type) {
-    case FormDataElement::Type::Data:
-        return;
-    case FormDataElement::Type::EncodedFile:
-        openFileForCurrentElement();
-        break;
-    default:
-        // At this point encodedBlob should already have been handled.
-        ASSERT_NOT_REACHED();
-    }
+    switchOn(m_formElements[0].data,
+        [&] (const Vector<char>&) {
+            // Nothing to do
+        }, [&] (const FormDataElement::EncodedFileData& fileData) {
+            openFileForCurrentElement(fileData);
+        }, [&] (const FormDataElement::EncodedBlobData&) {
+            // At this point encodedBlob should already have been handled.
+            ASSERT_NOT_REACHED();
+    });
 }
 
-void FormDataIODevice::openFileForCurrentElement()
+void FormDataIODevice::openFileForCurrentElement(const FormDataElement::EncodedFileData& fileData)
 {
     if (!m_currentFile)
         m_currentFile = new QFile;
 
-    m_currentFile->setFileName(m_formElements[0].m_filename);
+    m_currentFile->setFileName(fileData.filename);
     m_currentFile->open(QFile::ReadOnly);
-    if (FileSystem::isValidFileTime(m_formElements[0].m_expectedFileModificationTime)) {
+    if (fileData.expectedFileModificationTime) {
         QFileInfo info(*m_currentFile);
-        if (!info.exists() || static_cast<time_t>(m_formElements[0].m_expectedFileModificationTime) < info.lastModified().toTime_t()) {
+        if (!info.exists() || fileData.expectedFileModificationTime.value().secondsSinceEpoch().value() < info.lastModified().toSecsSinceEpoch()) {
             moveToNextElement();
             return;
         }
     }
-    if (m_formElements[0].m_fileStart)
-        m_currentFile->seek(m_formElements[0].m_fileStart);
+    if (fileData.fileStart)
+        m_currentFile->seek(fileData.fileStart);
 }
 
 // m_formElements[0] is the current item. If the destination buffer is
@@ -163,31 +167,33 @@ qint64 FormDataIODevice::readData(char* destination, qint64 size)
 
     qint64 copied = 0;
     while (copied < size && !m_formElements.isEmpty()) {
-        const FormDataElement& element = m_formElements[0];
-        const qint64 available = size-copied;
+        const qint64 available = size - copied;
 
-        if (element.m_type == FormDataElement::Type::Data) {
-            const qint64 toCopy = qMin<qint64>(available, element.m_data.size() - m_currentDelta);
-            memcpy(destination+copied, element.m_data.data()+m_currentDelta, toCopy); 
-            m_currentDelta += toCopy;
-            copied += toCopy;
+        switchOn(m_formElements[0].data,
+            [&] (const Vector<char>& bytes) {
+                const qint64 toCopy = qMin<qint64>(available, bytes.size() - m_currentDelta);
+                memcpy(destination + copied, bytes.data()+m_currentDelta, toCopy);
+                m_currentDelta += toCopy;
+                copied += toCopy;
 
-            if (m_currentDelta == element.m_data.size())
-                moveToNextElement();
-        } else if (element.m_type == FormDataElement::Type::EncodedFile) {
-            quint64 toCopy = available;
-            if (element.m_fileLength != BlobDataItem::toEndOfFile)
-                toCopy = qMin<qint64>(toCopy, element.m_fileLength - m_currentDelta);
-            const QByteArray data = m_currentFile->read(toCopy);
-            memcpy(destination+copied, data.constData(), data.size());
-            m_currentDelta += data.size();
-            copied += data.size();
+                if (m_currentDelta == bytes.size())
+                    moveToNextElement();
+            }, [&] (const FormDataElement::EncodedFileData& fileData) {
+                quint64 toCopy = available;
+                if (fileData.fileLength != BlobDataItem::toEndOfFile)
+                    toCopy = qMin<qint64>(toCopy, fileData.fileLength - m_currentDelta);
+                const QByteArray data = m_currentFile->read(toCopy);
+                memcpy(destination+copied, data.constData(), data.size());
+                m_currentDelta += data.size();
+                copied += data.size();
 
-            if (m_currentFile->atEnd() || !m_currentFile->isOpen())
-                moveToNextElement();
-            else if (element.m_fileLength != BlobDataItem::toEndOfFile && m_currentDelta == element.m_fileLength)
-                moveToNextElement();
-        }
+                if (m_currentFile->atEnd() || !m_currentFile->isOpen())
+                    moveToNextElement();
+                else if (fileData.fileLength != BlobDataItem::toEndOfFile && m_currentDelta == fileData.fileLength)
+                    moveToNextElement();
+            }, [&] (const FormDataElement::EncodedBlobData&) {
+                // QTFIXME
+            });
     }
 
     return copied;
