@@ -137,7 +137,7 @@ public:
     void forwardData();
     void sendResponseIfNeeded();
 
-    void continueWillSendRequest(const ResourceRequest&);
+    void continueWillSendRequest(ResourceRequest&&);
     void continueDidReceiveResponse();
 
     static ResourceError errorForReply(QNetworkReply*);
@@ -148,7 +148,7 @@ private Q_SLOTS:
 private:
     void start();
     String httpMethod() const;
-    void continueAfterWillSendRequest(const ResourceRequest&);
+    void continueAfterWillSendRequest(ResourceRequest&&);
     void redirect(ResourceResponse&, const QUrl&);
     bool wasAborted() const { return !m_resourceHandle; }
     QNetworkReply* sendNetworkRequest(QNetworkAccessManager*, const ResourceRequest&);
