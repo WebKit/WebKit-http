@@ -45,52 +45,54 @@
 
 namespace WebCore {
 
-class WebCoreSynchronousLoader final : public ResourceHandleClient {
-public:
-    WebCoreSynchronousLoader(ResourceError& error, ResourceResponse& response, Vector<char>& data)
-        : m_error(error)
-        , m_response(response)
-        , m_data(data)
-    {}
+//class WebCoreSynchronousLoader final : public ResourceHandleClient {
+//public:
+//    WebCoreSynchronousLoader(ResourceError& error, ResourceResponse& response, Vector<char>& data)
+//        : m_error(error)
+//        , m_response(response)
+//        , m_data(data)
+//    {}
 
-    void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&) override;
-    void didReceiveResponse(ResourceHandle*, const ResourceResponse& response) override { m_response = response; }
-    void didReceiveData(ResourceHandle*, const char*, unsigned, int) override;
-    void didReceiveBuffer(ResourceHandle*, RefPtr<SharedBuffer>&&, int /*encodedDataLength*/) override;
-    void didFinishLoading(ResourceHandle*) override {}
-    void didFail(ResourceHandle*, const ResourceError& error) override { m_error = error; }
-private:
-    ResourceError& m_error;
-    ResourceResponse& m_response;
-    Vector<char>& m_data;
-};
+//    void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&) override;
+//    void didReceiveResponse(ResourceHandle*, const ResourceResponse& response) override { m_response = response; }
+//    void didReceiveData(ResourceHandle*, const char*, unsigned, int) override;
+//    void didReceiveBuffer(ResourceHandle*, Ref<SharedBuffer>&&, int /*encodedDataLength*/) override;
+//    void didFinishLoading(ResourceHandle*) override {}
+//    void didFail(ResourceHandle*, const ResourceError& error) override { m_error = error; }
+//private:
+//    ResourceError& m_error;
+//    ResourceResponse& m_response;
+//    Vector<char>& m_data;
+//};
 
-void WebCoreSynchronousLoader::willSendRequest(ResourceHandle* handle, ResourceRequest& request, const ResourceResponse& /*redirectResponse*/)
-{
-    // FIXME: This needs to be fixed to follow the redirect correctly even for cross-domain requests.
-    if (!protocolHostAndPortAreEqual(handle->firstRequest().url(), request.url())) {
-        ASSERT(m_error.isNull());
-        m_error.setType(ResourceErrorBase::Type::Cancellation);
-        request = ResourceRequest();
-        return;
-    }
-}
+//void WebCoreSynchronousLoader::willSendRequest(ResourceHandle* handle, ResourceRequest& request, const ResourceResponse& /*redirectResponse*/)
+//{
+//    // FIXME: This needs to be fixed to follow the redirect correctly even for cross-domain requests.
+//    if (!protocolHostAndPortAreEqual(handle->firstRequest().url(), request.url())) {
+//        ASSERT(m_error.isNull());
+//        m_error.setType(ResourceErrorBase::Type::Cancellation);
+//        request = ResourceRequest();
+//        return;
+//    }
+//}
 
-void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char*, unsigned, int)
-{
-    ASSERT_NOT_REACHED();
-}
+//void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char*, unsigned, int)
+//{
+//    ASSERT_NOT_REACHED();
+//}
 
-void WebCoreSynchronousLoader::didReceiveBuffer(ResourceHandle*, RefPtr<SharedBuffer>&& buffer, int)
-{
-    // This pattern is suggested by SharedBuffer.h.
-    const char* segment;
-    unsigned position = 0;
-    while (unsigned length = WTFMove(buffer)->getSomeData(segment, position)) {
-        m_data.append(segment, length);
-        position += length;
-    }
-}
+//void WebCoreSynchronousLoader::didReceiveBuffer(ResourceHandle*, Ref<SharedBuffer>&& buffer, int)
+//{
+//    // This pattern is suggested by SharedBuffer.h.
+////    const char* segment;
+//    unsigned position = 0;
+////    while (auto segment = WTFMove(buffer)->getSomeData(position)) {
+//    while (data.size() > position) {
+//        auto incrementalData = data.getSomeData(position);
+//        m_data.append(segment.data(), segment.size());
+//        position += length;
+//    }
+//}
 
 ResourceHandleInternal::~ResourceHandleInternal()
 {
@@ -133,22 +135,23 @@ void ResourceHandle::cancel()
 
 void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentialsPolicy /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
-    WebCoreSynchronousLoader syncLoader(error, response, data);
-    auto handle = adoptRef(*new ResourceHandle(context, request, &syncLoader, true, false));
+    // QTFIXME
+//    WebCoreSynchronousLoader syncLoader(error, response, data);
+//    auto handle = adoptRef(*new ResourceHandle(context, request, &syncLoader, true, false));
 
-    ResourceHandleInternal* d = handle->getInternal();
-    if (!d->m_user.isEmpty() || !d->m_pass.isEmpty()) {
-        // If credentials were specified for this request, add them to the url,
-        // so that they will be passed to QNetworkRequest.
-        URL urlWithCredentials(d->m_firstRequest.url());
-        urlWithCredentials.setUser(d->m_user);
-        urlWithCredentials.setPass(d->m_pass);
-        d->m_firstRequest.setURL(urlWithCredentials);
-    }
+//    ResourceHandleInternal* d = handle->getInternal();
+//    if (!d->m_user.isEmpty() || !d->m_pass.isEmpty()) {
+//        // If credentials were specified for this request, add them to the url,
+//        // so that they will be passed to QNetworkRequest.
+//        URL urlWithCredentials(d->m_firstRequest.url());
+//        urlWithCredentials.setUser(d->m_user);
+//        urlWithCredentials.setPass(d->m_pass);
+//        d->m_firstRequest.setURL(urlWithCredentials);
+//    }
 
-    // starting in deferred mode gives d->m_job the chance of being set before sending the request.
-    d->m_job = new QNetworkReplyHandler(handle.ptr(), QNetworkReplyHandler::SynchronousLoad, true);
-    d->m_job->setLoadingDeferred(false);
+//    // starting in deferred mode gives d->m_job the chance of being set before sending the request.
+//    d->m_job = new QNetworkReplyHandler(handle.ptr(), QNetworkReplyHandler::SynchronousLoad, true);
+//    d->m_job->setLoadingDeferred(false);
 }
 
 void ResourceHandle::platformSetDefersLoading(bool defers)
