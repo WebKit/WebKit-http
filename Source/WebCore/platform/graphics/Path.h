@@ -77,7 +77,7 @@ typedef void PlatformPath;
 
 #if PLATFORM(QT)
 /* QPainterPath is valued based */
-typedef PlatformPath PlatformPathPtr;
+typedef const PlatformPath& PlatformPathPtr;
 #else
 typedef PlatformPath* PlatformPathPtr;
 #endif
@@ -233,7 +233,8 @@ namespace WebCore {
         COMPtr<ID2D1GeometrySink> m_activePath;
         size_t m_openFigureCount { 0 };
 #elif PLATFORM(QT)
-        PlatformPathPtr m_path;
+        /* QPainterPath is valued based */
+        QPainterPath m_path;
 #else
         PlatformPathPtr m_path { nullptr };
 #endif
