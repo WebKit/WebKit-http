@@ -19,15 +19,16 @@
 
 #include "qwebsecurityorigin.h"
 
-#include <WebCore/ApplicationCacheStorage.h>
-#include <WebCore/DatabaseManager.h>
-#include <WebCore/SchemeRegistry.h>
-#include <WebCore/SecurityOrigin.h>
-#include <WebCore/SecurityPolicy.h>
 #include "qwebdatabase.h"
 #include "qwebdatabase_p.h"
 #include "qwebsecurityorigin_p.h"
+
 #include <QStringList>
+#include <WebCore/ApplicationCacheStorage.h>
+#include <WebCore/DatabaseTracker.h>
+#include <WebCore/SchemeRegistry.h>
+#include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityPolicy.h>
 #include <wtf/URL.h>
 
 using namespace WebCore;
@@ -95,7 +96,7 @@ QWebSecurityOrigin& QWebSecurityOrigin::operator=(const QWebSecurityOrigin& othe
 */
 QString QWebSecurityOrigin::scheme() const
 {
-    return d->origin->protocol();
+    return d->origin.protocol;
 }
 
 /*!
@@ -103,7 +104,7 @@ QString QWebSecurityOrigin::scheme() const
 */
 QString QWebSecurityOrigin::host() const
 {
-    return d->origin->host();
+    return d->origin.host;
 }
 
 /*!
@@ -111,7 +112,7 @@ QString QWebSecurityOrigin::host() const
 */
 int QWebSecurityOrigin::port() const
 {
-    return d->origin->port();
+    return d->origin.port.valueOr(0);
 }
 
 /*!
@@ -120,7 +121,7 @@ int QWebSecurityOrigin::port() const
 */
 qint64 QWebSecurityOrigin::databaseUsage() const
 {
-    return DatabaseManager::singleton().usageForOrigin(d->origin.get());
+    return DatabaseTracker::singleton().usage(d->origin);
 }
 
 /*!
@@ -128,7 +129,7 @@ qint64 QWebSecurityOrigin::databaseUsage() const
 */
 qint64 QWebSecurityOrigin::databaseQuota() const
 {
-    return DatabaseManager::singleton().quotaForOrigin(d->origin.get());
+    return DatabaseTracker::singleton().quota(d->origin);
 }
 
 /*!
@@ -140,7 +141,7 @@ qint64 QWebSecurityOrigin::databaseQuota() const
 */
 void QWebSecurityOrigin::setDatabaseQuota(qint64 quota)
 {
-    DatabaseManager::singleton().setQuota(d->origin.get(), quota);
+    DatabaseTracker::singleton().setQuota(d->origin, quota);
 }
 
 void QWebSecurityOrigin::setApplicationCacheQuota(qint64 quota)
@@ -169,11 +170,11 @@ QList<QWebSecurityOrigin> QWebSecurityOrigin::allOrigins()
 {
     QList<QWebSecurityOrigin> webOrigins;
 
-    Vector<RefPtr<SecurityOrigin> > coreOrigins;
-    DatabaseManager::singleton().origins(coreOrigins);
+    Vector<SecurityOriginData> coreOrigins = DatabaseTracker::singleton().origins();
+    webOrigins.reserve(coreOrigins.size());
 
-    for (unsigned i = 0; i < coreOrigins.size(); ++i) {
-        QWebSecurityOriginPrivate* priv = new QWebSecurityOriginPrivate(coreOrigins[i].get());
+    for (const auto& coreOrigin : coreOrigins) {
+        QWebSecurityOriginPrivate* priv = new QWebSecurityOriginPrivate(coreOrigin);
         webOrigins.append(priv);
     }
 
@@ -187,13 +188,11 @@ QList<QWebDatabase> QWebSecurityOrigin::databases() const
 {
     QList<QWebDatabase> databases;
 
-    Vector<String> nameVector;
+    Vector<String> nameVector = DatabaseTracker::singleton().databaseNames(d->origin);
 
-    if (!DatabaseManager::singleton().databaseNamesForOrigin(d->origin.get(), nameVector))
-        return databases;
-    for (unsigned i = 0; i < nameVector.size(); ++i) {
+    for (const auto& name : nameVector) {
         QWebDatabasePrivate* priv = new QWebDatabasePrivate();
-        priv->name = nameVector[i];
+        priv->name = name;
         priv->origin = this->d->origin;
         QWebDatabase webDatabase(priv);
         databases.append(webDatabase);
@@ -243,12 +242,13 @@ void QWebSecurityOrigin::removeLocalScheme(const QString& scheme)
 QStringList QWebSecurityOrigin::localSchemes()
 {
     QStringList list;
-    const URLSchemesMap& map = SchemeRegistry::localSchemes();
-    URLSchemesMap::const_iterator end = map.end();
-    for (URLSchemesMap::const_iterator i = map.begin(); i != end; ++i) {
-        const QString scheme = *i;
-        list.append(scheme);
-    }
+    // QTFIXME
+//    const URLSchemesMap& map = SchemeRegistry::localSchemes();
+//    URLSchemesMap::const_iterator end = map.end();
+//    for (URLSchemesMap::const_iterator i = map.begin(); i != end; ++i) {
+//        const QString scheme = *i;
+//        list.append(scheme);
+//    }
     return list;
 }
 
@@ -258,7 +258,7 @@ QStringList QWebSecurityOrigin::localSchemes()
 */
 QWebSecurityOrigin::QWebSecurityOrigin(const QUrl& url)
 {
-    d = new QWebSecurityOriginPrivate(SecurityOrigin::create(URL(url)));
+    d = new QWebSecurityOriginPrivate(SecurityOriginData::fromURL(URL(url)));
 }
 
 /*!
@@ -270,7 +270,8 @@ QWebSecurityOrigin::QWebSecurityOrigin(const QUrl& url)
 */
 void QWebSecurityOrigin::addAccessWhitelistEntry(const QString& scheme, const QString& host, SubdomainSetting subdomainSetting)
 {
-    SecurityPolicy::addOriginAccessWhitelistEntry(*(d->origin), scheme, host, subdomainSetting == AllowSubdomains);
+    Ref<SecurityOrigin> sourceOrigin(SecurityOrigin::create(d->origin.protocol, d->origin.host, d->origin.port));
+    SecurityPolicy::addOriginAccessWhitelistEntry(sourceOrigin, scheme, host, subdomainSetting == AllowSubdomains);
 }
 
 /*!
@@ -279,7 +280,8 @@ void QWebSecurityOrigin::addAccessWhitelistEntry(const QString& scheme, const QS
 */
 void QWebSecurityOrigin::removeAccessWhitelistEntry(const QString& scheme, const QString& host, SubdomainSetting subdomainSetting)
 {
-    SecurityPolicy::removeOriginAccessWhitelistEntry(*(d->origin), scheme, host, subdomainSetting == AllowSubdomains);
+    Ref<SecurityOrigin> sourceOrigin(SecurityOrigin::create(d->origin.protocol, d->origin.host, d->origin.port));
+    SecurityPolicy::removeOriginAccessWhitelistEntry(sourceOrigin, scheme, host, subdomainSetting == AllowSubdomains);
 }
 
 

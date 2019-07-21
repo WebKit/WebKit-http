@@ -20,20 +20,18 @@
 #ifndef _WEBSECURITYORIGIN_P_H_
 #define _WEBSECURITYORIGIN_P_H_
 
-#include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityOriginData.h>
 #include <wtf/RefPtr.h>
 
 class QWebSecurityOriginPrivate : public QSharedData {
 public:
-    QWebSecurityOriginPrivate(WTF::Ref<WebCore::SecurityOrigin>&& o)
-    {
-        Q_ASSERT(o);
-        origin = WTFMove(o);
-    }
-    ~QWebSecurityOriginPrivate()
+    QWebSecurityOriginPrivate(const WebCore::SecurityOriginData& o)
+        : origin(o)
     {
     }
-    WTF::RefPtr<WebCore::SecurityOrigin> origin;
+
+    ~QWebSecurityOriginPrivate() = default;
+    WebCore::SecurityOriginData origin;
 };
 
 #endif

@@ -23,7 +23,7 @@
 #include "qwebsecurityorigin.h"
 #include "qwebsecurityorigin_p.h"
 #include <WebCore/DatabaseDetails.h>
-#include <WebCore/DatabaseManager.h>
+#include <WebCore/DatabaseTracker.h>
 
 using namespace WebCore;
 
@@ -85,7 +85,7 @@ QString QWebDatabase::name() const
 */
 QString QWebDatabase::displayName() const
 {
-    DatabaseDetails details = DatabaseManager::singleton().detailsForNameAndOrigin(d->name, d->origin.get());
+    DatabaseDetails details = DatabaseTracker::singleton().detailsForNameAndOrigin(d->name, d->origin);
     return details.displayName();
 }
 
@@ -94,7 +94,7 @@ QString QWebDatabase::displayName() const
 */
 qint64 QWebDatabase::expectedSize() const
 {
-    DatabaseDetails details = DatabaseManager::singleton().detailsForNameAndOrigin(d->name, d->origin.get());
+    DatabaseDetails details = DatabaseTracker::singleton().detailsForNameAndOrigin(d->name, d->origin);
     return details.expectedUsage();
 }
 
@@ -103,7 +103,7 @@ qint64 QWebDatabase::expectedSize() const
 */
 qint64 QWebDatabase::size() const
 {
-    DatabaseDetails details = DatabaseManager::singleton().detailsForNameAndOrigin(d->name, d->origin.get());
+    DatabaseDetails details = DatabaseTracker::singleton().detailsForNameAndOrigin(d->name, d->origin);
     return details.currentUsage();
 }
 
@@ -134,7 +134,7 @@ QWebDatabase::QWebDatabase(QWebDatabasePrivate* priv)
 */
 QString QWebDatabase::fileName() const
 {
-    return DatabaseManager::singleton().fullPathForDatabase(d->origin.get(), d->name, false);
+    return DatabaseTracker::singleton().fullPathForDatabase(d->origin, d->name, false);
 }
 
 /*!
@@ -142,7 +142,7 @@ QString QWebDatabase::fileName() const
 */
 QWebSecurityOrigin QWebDatabase::origin() const
 {
-    QWebSecurityOriginPrivate* priv = new QWebSecurityOriginPrivate(d->origin.get());
+    QWebSecurityOriginPrivate* priv = new QWebSecurityOriginPrivate(d->origin);
     QWebSecurityOrigin origin(priv);
     return origin;
 }
@@ -153,7 +153,7 @@ QWebSecurityOrigin QWebDatabase::origin() const
 */
 void QWebDatabase::removeDatabase(const QWebDatabase& db)
 {
-    DatabaseManager::singleton().deleteDatabase(db.d->origin.get(), db.d->name);
+    DatabaseTracker::singleton().deleteDatabase(db.d->origin, db.d->name);
 }
 
 /*!
@@ -165,7 +165,7 @@ void QWebDatabase::removeDatabase(const QWebDatabase& db)
 */
 void QWebDatabase::removeAllDatabases()
 {
-    DatabaseManager::singleton().deleteAllDatabases();
+    DatabaseTracker::singleton().deleteAllDatabasesImmediately();
 }
 
 /*!

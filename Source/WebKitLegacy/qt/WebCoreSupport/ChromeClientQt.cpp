@@ -32,7 +32,6 @@
 #include "ApplicationCacheStorage.h"
 #include "ColorChooser.h"
 #include "ColorChooserClient.h"
-#include "DatabaseManager.h"
 #include "Document.h"
 #include "FileChooser.h"
 #include "FileIconLoader.h"
@@ -49,13 +48,14 @@
 #include "NetworkingContext.h"
 #include "NotImplemented.h"
 #include "Page.h"
+#include <WebCore/DatabaseTracker.h>
 #include "PopupMenuQt.h"
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
 #include "QWebPageClient.h"
 #include "ScrollbarTheme.h"
 #include "SearchPopupMenuQt.h"
-#include "SecurityOrigin.h"
+#include <WebCore/SecurityOrigin.h>
 #if USE(TILED_BACKING_STORE)
 #include "TiledBackingStore.h"
 #endif
@@ -506,8 +506,9 @@ void ChromeClientQt::exceededDatabaseQuota(Frame& frame, const String& databaseN
 {
     quint64 quota = QWebSettings::offlineStorageDefaultQuota();
 
-    if (!DatabaseManager::singleton().hasEntryForOrigin(frame->document()->securityOrigin()))
-        DatabaseManager::singleton().setQuota(frame->document()->securityOrigin(), quota);
+    const auto& securityOriginData = frame.document()->securityOrigin().data();
+    if (!DatabaseTracker::singleton().usage(securityOriginData))
+        DatabaseTracker::singleton().setQuota(securityOriginData, quota);
 
     m_webPage->databaseQuotaExceeded(QWebFrameAdapter::kit(frame), databaseName);
 }

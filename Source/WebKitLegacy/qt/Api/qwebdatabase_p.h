@@ -22,7 +22,7 @@
 #include <QString>
 #include <QtCore/qshareddata.h>
 
-#include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityOriginData.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -30,7 +30,7 @@
 class QWebDatabasePrivate : public QSharedData {
 public:
     WTF::String name;
-    WTF::RefPtr<WebCore::SecurityOrigin> origin;
+    WebCore::SecurityOriginData origin;
 };
 
 #endif

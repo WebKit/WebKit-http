@@ -1137,7 +1137,8 @@ void QWebSettings::setOfflineStoragePath(const QString& path)
 {
     WebCore::initializeWebCoreQt();
     QWebSettings::globalSettings()->d->offlineDatabasePath = path;
-    WebCore::DatabaseManager::singleton().setDatabaseDirectoryPath(path);
+    // QTFIXME: Should we make it actually switchable at run time?
+    WebCore::DatabaseTracker::singleton().initializeTracker(path);
 }
 
 /*!
