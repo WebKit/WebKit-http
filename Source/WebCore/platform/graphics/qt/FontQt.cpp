@@ -117,6 +117,17 @@ void Font::platformCharWidthInit()
     m_maxCharWidth = rawFont.maxCharWidth();
 }
 
+// QTFIXME: Copied from pathForGlyphs() from FontCascadeQt.cpp
+Path Font::platformPathForGlyph(Glyph glyph) const
+{
+    Path path;
+    QPainterPath platformPath = path.ensurePlatformPath();
+    QRawFont rawFont(m_platformData.rawFont());
+    QPainterPath glyphPath = rawFont.pathForGlyph(glyph);
+    platformPath.addPath(glyphPath);
+    return path;
+}
+
 void Font::platformDestroy()
 {
 }
