@@ -233,7 +233,7 @@ my @features = (
       define => "ENABLE_CSS_REGIONS", default => 1, value => \$cssRegionsSupport },
 
     { option => "css-compositing", desc => "Toggle CSS Compositing support",
-      define => "ENABLE_CSS_COMPOSITING", default => isAppleWebKit(), value => \$cssCompositingSupport },
+      define => "ENABLE_CSS_COMPOSITING", default => (isAppleWebKit() || isQt()), value => \$cssCompositingSupport },
 
     { option => "custom-elements", desc => "Toggle custom elements support",
       define => "ENABLE_CUSTOM_ELEMENTS", default => (isAppleMacWebKit() || isIOSWebKit()), value => \$customElementsSupport },
