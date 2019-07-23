@@ -91,12 +91,17 @@ ImageDrawResult StillImage::draw(GraphicsContext& ctxt, const FloatRect& dst,
 
     if (ctxt.hasShadow()) {
         ShadowBlur shadow(ctxt.state());
-        shadow.drawShadowLayer(ctxt.platformContext().getCTM(), ctxt.platformContext().clipBounds(), normalizedDst,
-            [normalizedSrc, normalizedDst, m_pixmap](GraphicsContext& shadowContext)
-        {
-            QPainter* shadowPainter = shadowContext.platformContext();
-            shadowPainter->drawPixmap(normalizedDst, *m_pixmap, normalizedSrc);
-        });
+        const auto& pixmap = *m_pixmap;
+        shadow.drawShadowLayer(ctxt.getCTM(), ctxt.clipBounds(), normalizedDst,
+            [normalizedSrc, normalizedDst, &pixmap](GraphicsContext& shadowContext)
+            {
+                QPainter* shadowPainter = shadowContext.platformContext();
+                shadowPainter->drawPixmap(normalizedDst, pixmap, normalizedSrc);
+            },
+            [&ctxt](ImageBuffer& layerImage, const FloatPoint& layerOrigin, const FloatSize& layerSize)
+            {
+                ctxt.drawImageBuffer(layerImage, FloatRect(roundedIntPoint(layerOrigin), layerSize), FloatRect(FloatPoint(), layerSize), ctxt.compositeOperation());
+            });
     }
 
     ctxt.platformContext()->drawPixmap(normalizedDst, *m_pixmap, normalizedSrc);
