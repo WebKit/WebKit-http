@@ -30,13 +30,14 @@
  */
 
 #include "config.h"
-#include "SocketStreamHandleImpl.h"
+#include "SocketStreamHandle.h"
 
 #include "Logging.h"
 #include "NotImplemented.h"
 #include "SocketStreamError.h"
 #include "SocketStreamHandleClient.h"
 #include "SocketStreamHandlePrivate.h"
+#include "StorageSessionProvider.h"
 #include <wtf/URL.h>
 
 namespace WebCore {
@@ -59,9 +60,9 @@ SocketStreamHandlePrivate::SocketStreamHandlePrivate(SocketStreamHandleImpl* str
 
     initConnections();
 
-    unsigned int port = url.port() ? url.port() : (isSecure ? 443 : 80);
+    unsigned int port = url.port() ? url.port().value() : (isSecure ? 443 : 80);
 
-    QString host = url.host().value();
+    QString host = url.host().toStringWithoutCopying(); // QTFIXME: Convert StringView to QString directly?
     if (isSecure) {
 #ifndef QT_NO_SSL
         static_cast<QSslSocket*>(m_socket)->connectToHostEncrypted(host, port);
@@ -102,25 +103,25 @@ void SocketStreamHandlePrivate::initConnections()
 
 void SocketStreamHandlePrivate::socketConnected()
 {
-    if (m_streamHandle && m_streamHandle->client()) {
+    if (m_streamHandle) {
         m_streamHandle->m_state = SocketStreamHandle::Open;
-        m_streamHandle->client()->didOpenSocketStream(m_streamHandle);
+        m_streamHandle->m_client.didOpenSocketStream(*m_streamHandle);
     }
 }
 
 void SocketStreamHandlePrivate::socketReadyRead()
 {
-    if (m_streamHandle && m_streamHandle->client()) {
+    if (m_streamHandle) {
         QByteArray data = m_socket->read(m_socket->bytesAvailable());
-        m_streamHandle->client()->didReceiveSocketStreamData(m_streamHandle, data.constData(), data.size());
+        m_streamHandle->m_client.didReceiveSocketStreamData(*m_streamHandle, data.constData(), data.size());
     }
 }
 
-int SocketStreamHandlePrivate::send(const uint8_t* data, size_t len)
+Optional<size_t> SocketStreamHandlePrivate::send(const uint8_t* data, size_t len)
 {
     if (!m_socket || m_socket->state() != QAbstractSocket::ConnectedState)
-        return false;
-    quint64 sentSize = m_socket->write(data, len);
+        return WTF::nullopt;
+    size_t sentSize = static_cast<size_t>(m_socket->write(reinterpret_cast<const char*>(data), len));
     QMetaObject::invokeMethod(this, "socketSentData", Qt::QueuedConnection);
     return sentSize;
 }
@@ -129,7 +130,7 @@ void SocketStreamHandlePrivate::close()
 {
     if (m_socket && m_streamHandle && m_streamHandle->m_state == SocketStreamHandle::Connecting) {
         m_socket->abort();
-        m_streamHandle->client()->didCloseSocketStream(m_streamHandle);
+        m_streamHandle->m_client.didCloseSocketStream(*m_streamHandle);
         return;
     }
     if (m_socket && m_socket->state() == QAbstractSocket::ConnectedState)
@@ -154,25 +155,26 @@ void SocketStreamHandlePrivate::socketError(QAbstractSocket::SocketError error)
 
 void SocketStreamHandlePrivate::socketClosedCallback()
 {
-    if (m_streamHandle && m_streamHandle->client()) {
+    if (m_streamHandle) {
         SocketStreamHandleImpl* streamHandle = m_streamHandle;
         m_streamHandle = 0;
         // This following call deletes _this_. Nothing should be after it.
-        streamHandle->client()->didCloseSocketStream(streamHandle);
+        streamHandle->m_client.didCloseSocketStream(*streamHandle);
     }
 }
 
 void SocketStreamHandlePrivate::socketErrorCallback(int error)
 {
     // FIXME - in the future, we might not want to treat all errors as fatal.
-    if (m_streamHandle && m_streamHandle->client()) {
+    if (m_streamHandle) {
         SocketStreamHandleImpl* streamHandle = m_streamHandle;
         m_streamHandle = 0;
 
-        streamHandle->client()->didFailSocketStream(streamHandle, SocketStreamError(error, m_socket->errorString()));
+        // QTFIXME: Add URL
+        streamHandle->m_client.didFailSocketStream(*streamHandle, SocketStreamError(error, String(), m_socket->errorString()));
 
         // This following call deletes _this_. Nothing should be after it.
-        streamHandle->client()->didCloseSocketStream(streamHandle);
+        streamHandle->m_client.didCloseSocketStream(*streamHandle);
     }
 }
 
@@ -183,17 +185,17 @@ void SocketStreamHandlePrivate::socketSslErrors(const QList<QSslError>& error)
 }
 #endif
 
-SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient* client)
+SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandleClient& client)
     : SocketStreamHandle(url, client)
 {
-    LOG(Network, "SocketStreamHandle %p new client %p", this, m_client);
+    LOG(Network, "SocketStreamHandle %p new client %p", this, &m_client);
     m_p = new SocketStreamHandlePrivate(this, url);
 }
 
-SocketStreamHandleImpl::SocketStreamHandleImpl(QTcpSocket* socket, SocketStreamHandleClient* client)
+SocketStreamHandleImpl::SocketStreamHandleImpl(QTcpSocket* socket, SocketStreamHandleClient& client)
     : SocketStreamHandle(URL(), client)
 {
-    LOG(Network, "SocketStreamHandle %p new client %p", this, m_client);
+    LOG(Network, "SocketStreamHandle %p new client %p", this, &m_client);
     m_p = new SocketStreamHandlePrivate(this, socket);
     if (socket->isOpen())
         m_state = Open;
@@ -202,15 +204,15 @@ SocketStreamHandleImpl::SocketStreamHandleImpl(QTcpSocket* socket, SocketStreamH
 SocketStreamHandleImpl::~SocketStreamHandleImpl()
 {
     LOG(Network, "SocketStreamHandle %p delete", this);
-    setClient(0);
+    // QTFIXME check
+//    setClient(0);
     delete m_p;
 }
 
-void SocketStreamHandleImpl::platformSend(const uint8_t* data, size_t len, Function<void(bool)>&& completionHandler)
+Optional<size_t> SocketStreamHandleImpl::platformSendInternal(const uint8_t* data, size_t length)
 {
     LOG(Network, "SocketStreamHandle %p platformSend", this);
-    int bytesWritten = m_p->send(data, len);
-    completionHandler(bytesWritten == len);
+    return m_p->send(data, length);
 }
 
 void SocketStreamHandleImpl::platformClose()

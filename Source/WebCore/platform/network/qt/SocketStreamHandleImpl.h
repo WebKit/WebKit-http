@@ -33,8 +33,9 @@
 #ifndef SocketStreamHandle_h
 #define SocketStreamHandle_h
 
-#include "SocketStreamHandleBase.h"
+#include "SocketStreamHandle.h"
 
+#include <pal/SessionID.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/StreamBuffer.h>
@@ -54,21 +55,25 @@ namespace WebCore {
     class NetworkingContext;
     class SocketStreamHandleClient;
     class SocketStreamHandlePrivate;
+    class StorageSessionProvider;
 
     class SocketStreamHandleImpl final : public SocketStreamHandle {
     public:
-        static RefPtr<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient* client, NetworkingContext&) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
-        static RefPtr<SocketStreamHandleImpl> create(QTcpSocket* socket, SocketStreamHandleClient* client) { return adoptRef(*new SocketStreamHandleImpl(socket, client)); }
+        static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID, const String&, SourceApplicationAuditToken&&, const StorageSessionProvider*)
+        {
+            return adoptRef(*new SocketStreamHandleImpl(url, client));
+        }
+        static RefPtr<SocketStreamHandleImpl> create(QTcpSocket* socket, SocketStreamHandleClient& client) { return adoptRef(*new SocketStreamHandleImpl(socket, client)); }
 
-        ~SocketStreamHandle();
+        ~SocketStreamHandleImpl();
 
         WEBCORE_EXPORT void platformSend(const uint8_t* data, size_t length, Function<void(bool)>&& completionHandler) final;
         WEBCORE_EXPORT void platformSendHandshake(const uint8_t* data, size_t length, const Optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
         WEBCORE_EXPORT void platformClose() final;
 
     private:
-        SocketStreamHandle(const URL&, SocketStreamHandleClient*);
-        SocketStreamHandle(QTcpSocket*, SocketStreamHandleClient*);
+        SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
+        SocketStreamHandleImpl(QTcpSocket*, SocketStreamHandleClient&);
 
         bool sendPendingData();
         size_t bufferedAmount() final;
@@ -79,6 +84,8 @@ namespace WebCore {
         void receivedCredential(const AuthenticationChallenge&, const Credential&);
         void receivedRequestToContinueWithoutCredential(const AuthenticationChallenge&);
         void receivedCancellation(const AuthenticationChallenge&);
+
+        RefPtr<const StorageSessionProvider> m_storageSessionProvider;
 
         StreamBuffer<uint8_t, 1024 * 1024> m_buffer;
         static const unsigned maxBufferSize = 100 * 1024 * 1024;
