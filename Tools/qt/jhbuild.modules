@@ -74,7 +74,8 @@
     </branch>
   </autotools>
 
-  <autotools id="harfbuzz" autogen-sh="configure">
+  <autotools id="harfbuzz" autogen-sh="configure"
+             autogenargs="--with-cairo=no">
     <dependencies>
       <dep package="icu"/>
     </dependencies>
