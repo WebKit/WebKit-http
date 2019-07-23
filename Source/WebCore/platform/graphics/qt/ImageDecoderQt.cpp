@@ -367,7 +367,7 @@ IntSize ImageDecoderQt::size() const
     return IntSize(image.width(), image.height());
 }
 
-std::optional<IntPoint> ImageDecoderQt::hotSpot() const
+Optional<IntPoint> ImageDecoderQt::hotSpot() const
 {
     return IntPoint();
 }
