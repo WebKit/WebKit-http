@@ -101,6 +101,7 @@ list(APPEND WebCore_SOURCES
     platform/network/qt/CredentialStorageQt.cpp
     platform/network/qt/DNSQt.cpp
     platform/network/qt/NetworkStateNotifierQt.cpp
+    platform/network/qt/NetworkStorageSessionQt.cpp
     platform/network/qt/ProxyServerQt.cpp
     platform/network/qt/QNetworkReplyHandler.cpp
     platform/network/qt/QtMIMETypeSniffer.cpp
