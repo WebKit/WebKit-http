@@ -22,7 +22,7 @@
 #include <QString>
 #include <QtCore/qshareddata.h>
 
-#include "SecurityOrigin.h"
+#include <WebCore/SecurityOrigin.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 

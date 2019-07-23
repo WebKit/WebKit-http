@@ -20,7 +20,7 @@
 #ifndef FrameNetworkingContextQt_h
 #define FrameNetworkingContextQt_h
 
-#include "FrameNetworkingContext.h"
+#include <WebCore/FrameNetworkingContext.h>
 
 namespace WebCore {
 

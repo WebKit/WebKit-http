@@ -26,8 +26,7 @@
 #ifndef ContextMenuClientQt_h
 #define ContextMenuClientQt_h
 
-#include "ContextMenuClient.h"
-
+#include <WebCore/ContextMenuClient.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {

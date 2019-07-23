@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "HistoryItem.h"
+#include <WebCore/HistoryItem.h>
 
 namespace WebCore {
 

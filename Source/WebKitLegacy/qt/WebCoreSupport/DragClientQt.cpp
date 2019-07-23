@@ -36,7 +36,7 @@
 
 #include <QDrag>
 #include <QMimeData>
-#include <QWebPageClient.h>
+#include <WebCore/QWebPageClient.h>
 
 namespace WebCore {
 

@@ -19,11 +19,11 @@
 
 #include "qwebsecurityorigin.h"
 
-#include "ApplicationCacheStorage.h"
-#include "DatabaseManager.h"
-#include "SchemeRegistry.h"
-#include "SecurityOrigin.h"
-#include "SecurityPolicy.h"
+#include <WebCore/ApplicationCacheStorage.h>
+#include <WebCore/DatabaseManager.h>
+#include <WebCore/SchemeRegistry.h>
+#include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityPolicy.h>
 #include "qwebdatabase.h"
 #include "qwebdatabase_p.h"
 #include "qwebsecurityorigin_p.h"

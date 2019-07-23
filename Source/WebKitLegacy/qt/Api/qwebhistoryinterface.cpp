@@ -21,12 +21,9 @@
 
 #include "qwebhistoryinterface.h"
 
-#include <QCoreApplication>
-
-#include "PageGroup.h"
 #include "VisitedLinkStoreQt.h"
+#include <QCoreApplication>
 #include <wtf/text/WTFString.h>
-
 
 static QWebHistoryInterface* default_interface;
 

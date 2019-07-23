@@ -25,9 +25,7 @@
 
 #include "ContextMenuClientQt.h"
 
-#include "ContextMenu.h"
-#include "HitTestResult.h"
-#include "NotImplemented.h"
+#include <WebCore/NotImplemented.h>
 
 namespace WebCore {
     

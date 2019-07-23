@@ -39,7 +39,6 @@
 #include "HTMLNames.h"
 #include "KeyboardEvent.h"
 #include "NotImplemented.h"
-#include "Page.h"
 #include "Pasteboard.h"
 #include "PlatformKeyboardEvent.h"
 #include "QWebPageAdapter.h"
@@ -49,9 +48,10 @@
 #include "SpatialNavigation.h"
 #include "StyleProperties.h"
 #include "WindowsKeyboardCodes.h"
-#include "qguiapplication.h"
+#include <WebCore/Range.h>
 
 #include <QClipboard>
+#include <QGuiApplication>
 #include <QKeyEvent>
 #include <QKeySequence>
 #include <stdio.h>

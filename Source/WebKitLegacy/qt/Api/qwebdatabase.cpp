@@ -22,8 +22,8 @@
 #include "qwebdatabase_p.h"
 #include "qwebsecurityorigin.h"
 #include "qwebsecurityorigin_p.h"
-#include "DatabaseDetails.h"
-#include "DatabaseManager.h"
+#include <WebCore/DatabaseDetails.h>
+#include <WebCore/DatabaseManager.h>
 
 using namespace WebCore;
 

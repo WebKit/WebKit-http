@@ -33,152 +33,11 @@ endif ()
 QTWEBKIT_SKIP_AUTOMOC(WebKitLegacy)
 
 list(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}"
-    "${DERIVED_SOURCES_DIR}"
-    "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
-    "${DERIVED_SOURCES_WEBCORE_DIR}"
-    "${JAVASCRIPTCORE_DIR}"
-    "${THIRDPARTY_DIR}/ANGLE"
-    "${THIRDPARTY_DIR}/ANGLE/include/KHR"
-
-    # Copied from WebCore/CMakeLists.txt
-    "${WEBCORE_DIR}/Modules/airplay"
-    "${WEBCORE_DIR}/Modules/battery"
-    "${WEBCORE_DIR}/Modules/encryptedmedia"
-    "${WEBCORE_DIR}/Modules/fetch"
-    "${WEBCORE_DIR}/Modules/geolocation"
-    "${WEBCORE_DIR}/Modules/indexeddb"
-    "${WEBCORE_DIR}/Modules/indexeddb/client"
-    "${WEBCORE_DIR}/Modules/indexeddb/legacy"
-    "${WEBCORE_DIR}/Modules/indexeddb/server"
-    "${WEBCORE_DIR}/Modules/indexeddb/shared"
-    "${WEBCORE_DIR}/Modules/indieui"
-    "${WEBCORE_DIR}/Modules/mediacontrols/"
-    "${WEBCORE_DIR}/Modules/mediasession"
-    "${WEBCORE_DIR}/Modules/mediasource"
-    "${WEBCORE_DIR}/Modules/mediastream"
-    "${WEBCORE_DIR}/Modules/navigatorcontentutils"
-    "${WEBCORE_DIR}/Modules/notifications"
-    "${WEBCORE_DIR}/Modules/plugins"
-    "${WEBCORE_DIR}/Modules/proximity"
-    "${WEBCORE_DIR}/Modules/quota"
-    "${WEBCORE_DIR}/Modules/speech"
-    "${WEBCORE_DIR}/Modules/streams"
-    "${WEBCORE_DIR}/Modules/vibration"
-    "${WEBCORE_DIR}/Modules/webaudio"
-    "${WEBCORE_DIR}/Modules/webdatabase"
-    "${WEBCORE_DIR}/Modules/websockets"
-    "${WEBCORE_DIR}/accessibility"
-    "${WEBCORE_DIR}/bindings"
-    "${WEBCORE_DIR}/bindings/generic"
-    "${WEBCORE_DIR}/bindings/js"
-    "${WEBCORE_DIR}/bridge"
-    "${WEBCORE_DIR}/bridge/c"
-    "${WEBCORE_DIR}/bridge/jsc"
-    "${WEBCORE_DIR}/contentextensions"
-    "${WEBCORE_DIR}/crypto"
-    "${WEBCORE_DIR}/crypto/algorithms"
-    "${WEBCORE_DIR}/crypto/keys"
-    "${WEBCORE_DIR}/crypto/parameters"
-    "${WEBCORE_DIR}/css"
-    "${WEBCORE_DIR}/cssjit"
-    "${WEBCORE_DIR}/dom"
-    "${WEBCORE_DIR}/dom/default"
-    "${WEBCORE_DIR}/editing"
-    "${WEBCORE_DIR}/fileapi"
-    "${WEBCORE_DIR}/history"
-    "${WEBCORE_DIR}/html"
-    "${WEBCORE_DIR}/html/canvas"
-    "${WEBCORE_DIR}/html/forms"
-    "${WEBCORE_DIR}/html/parser"
-    "${WEBCORE_DIR}/html/shadow"
-    "${WEBCORE_DIR}/html/track"
-    "${WEBCORE_DIR}/inspector"
-    "${WEBCORE_DIR}/loader"
-    "${WEBCORE_DIR}/loader/appcache"
-    "${WEBCORE_DIR}/loader/archive"
-    "${WEBCORE_DIR}/loader/archive/mhtml"
-    "${WEBCORE_DIR}/loader/cache"
-    "${WEBCORE_DIR}/loader/icon"
-    "${WEBCORE_DIR}/mathml"
-    "${WEBCORE_DIR}/page"
-    "${WEBCORE_DIR}/page/animation"
-    "${WEBCORE_DIR}/page/csp"
-    "${WEBCORE_DIR}/page/scrolling"
-    "${WEBCORE_DIR}/platform"
-    "${WEBCORE_DIR}/platform/animation"
-    "${WEBCORE_DIR}/platform/audio"
-    "${WEBCORE_DIR}/platform/graphics"
-    "${WEBCORE_DIR}/platform/graphics/cpu/arm"
-    "${WEBCORE_DIR}/platform/graphics/cpu/arm/filters"
-    "${WEBCORE_DIR}/platform/graphics/displaylists"
-    "${WEBCORE_DIR}/platform/graphics/filters"
-    "${WEBCORE_DIR}/platform/graphics/filters/texmap"
-    "${WEBCORE_DIR}/platform/graphics/harfbuzz"
-    "${WEBCORE_DIR}/platform/graphics/harfbuzz/ng"
-    "${WEBCORE_DIR}/platform/graphics/opentype"
-    "${WEBCORE_DIR}/platform/graphics/texmap"
-    "${WEBCORE_DIR}/platform/graphics/transforms"
-    "${WEBCORE_DIR}/platform/image-decoders"
-    "${WEBCORE_DIR}/platform/image-decoders/bmp"
-    "${WEBCORE_DIR}/platform/image-decoders/gif"
-    "${WEBCORE_DIR}/platform/image-decoders/ico"
-    "${WEBCORE_DIR}/platform/image-decoders/jpeg"
-    "${WEBCORE_DIR}/platform/image-decoders/png"
-    "${WEBCORE_DIR}/platform/image-decoders/webp"
-    "${WEBCORE_DIR}/platform/mediastream"
-    "${WEBCORE_DIR}/platform/mock"
-    "${WEBCORE_DIR}/platform/mock/mediasource"
-    "${WEBCORE_DIR}/platform/network"
-    "${WEBCORE_DIR}/platform/sql"
-    "${WEBCORE_DIR}/platform/text"
-    "${WEBCORE_DIR}/platform/text/icu"
-    "${WEBCORE_DIR}/plugins"
-    "${WEBCORE_DIR}/rendering"
-    "${WEBCORE_DIR}/rendering/line"
-    "${WEBCORE_DIR}/rendering/mathml"
-    "${WEBCORE_DIR}/rendering/shapes"
-    "${WEBCORE_DIR}/rendering/style"
-    "${WEBCORE_DIR}/rendering/svg"
-    "${WEBCORE_DIR}/replay"
-    "${WEBCORE_DIR}/storage"
-    "${WEBCORE_DIR}/style"
-    "${WEBCORE_DIR}/svg"
-    "${WEBCORE_DIR}/svg/animation"
-    "${WEBCORE_DIR}/svg/graphics"
-    "${WEBCORE_DIR}/svg/graphics/filters"
-    "${WEBCORE_DIR}/svg/properties"
-    "${WEBCORE_DIR}/testing/js"
-    "${WEBCORE_DIR}/websockets"
-    "${WEBCORE_DIR}/workers"
-    "${WEBCORE_DIR}/xml"
-    "${WEBCORE_DIR}/xml/parser"
-
-    "${WEBCORE_DIR}/bridge/qt"
-    "${WEBCORE_DIR}/history/qt"
-    "${WEBCORE_DIR}/platform"
-    "${WEBCORE_DIR}/platform/animation"
-    "${WEBCORE_DIR}/platform/qt"
-    "${WEBCORE_DIR}/platform/audio/qt"
-    "${WEBCORE_DIR}/platform/graphics"
-    "${WEBCORE_DIR}/platform/graphics/qt"
-    "${WEBCORE_DIR}/platform/graphics/gpu/qt"
-    "${WEBCORE_DIR}/platform/graphics/surfaces/qt"
-    "${WEBCORE_DIR}/platform/network"
-    "${WEBCORE_DIR}/platform/network/qt"
-    "${WEBCORE_DIR}/platform/text/qt"
-    "${WEBCORE_DIR}/plugins/qt"
-    "${WEBCORE_DIR}/rendering"
-    "${WEBCORE_DIR}/rendering/style"
-
-    "${WEBKIT_DIR}/.."
-    "${WEBKIT_DIR}/Storage"
-    "${WEBKIT_DIR}/qt"
-    "${WEBKIT_DIR}/qt/Api"
-    "${WEBKIT_DIR}/qt/WebCoreSupport"
-    "${WEBKIT_DIR}/win/Plugins"
-
-    "${WTF_DIR}"
+    "${WEBKITLEGACY_DIR}/Storage"
+    "${WEBKITLEGACY_DIR}/qt"
+    "${WEBKITLEGACY_DIR}/qt/Api"
+    "${WEBKITLEGACY_DIR}/qt/WebCoreSupport"
+    "${WEBKITLEGACY_DIR}/win/Plugins"
 )
 
 # This files are not really port-independent
@@ -358,7 +217,30 @@ if (NOT SHARED_CORE)
     endif ()
 endif ()
 
-WEBKIT_CREATE_FORWARDING_HEADERS(QtWebKit DIRECTORIES qt/Api)
+#WEBKIT_CREATE_FORWARDING_HEADERS(QtWebKit DIRECTORIES qt/Api)
+
+set(QtWebKit_PUBLIC_FRAMEWORK_HEADERS
+    qt/Api/qwebdatabase.h
+    qt/Api/qwebelement.h
+    qt/Api/qwebfullscreenrequest.h
+    qt/Api/qwebfullscreenvideohandler.h
+    qt/Api/qwebhistory.h
+    qt/Api/qwebhistoryinterface.h
+    qt/Api/qwebkitglobal.h
+    qt/Api/qwebkitplatformplugin.h
+    qt/Api/qwebpluginfactory.h
+    qt/Api/qwebscriptworld.h
+    qt/Api/qwebsecurityorigin.h
+    qt/Api/qwebsettings.h
+)
+
+WEBKIT_MAKE_FORWARDING_HEADERS(WebKitLegacy
+    TARGET_NAME QtWebKitFrameworkHeaders
+    DESTINATION ${WebKitLegacy_FRAMEWORK_HEADERS_DIR}/QtWebKit
+    FILES ${QtWebKit_PUBLIC_FRAMEWORK_HEADERS}
+    FLATTENED
+)
+add_dependencies(QtWebKitFrameworkHeaders WebCorePrivateFrameworkHeaders)
 
 ecm_generate_headers(
     QtWebKitLegacy_FORWARDING_HEADERS

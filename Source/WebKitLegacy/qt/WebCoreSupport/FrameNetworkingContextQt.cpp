@@ -19,7 +19,6 @@
 
 #include "FrameNetworkingContextQt.h"
 
-#include "NotImplemented.h"
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
 #include "qwebsettings.h"
@@ -27,6 +26,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkCookie>
 #include <QNetworkCookieJar>
+#include <WebCore/NotImplemented.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {

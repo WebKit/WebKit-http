@@ -26,7 +26,7 @@
 #ifndef DragClientQt_h
 #define DragClientQt_h
 
-#include "DragClient.h"
+#include <WebCore/DragClient.h>
 
 namespace WebCore {
 

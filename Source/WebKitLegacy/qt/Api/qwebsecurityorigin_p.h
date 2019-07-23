@@ -20,7 +20,7 @@
 #ifndef _WEBSECURITYORIGIN_P_H_
 #define _WEBSECURITYORIGIN_P_H_
 
-#include "SecurityOrigin.h"
+#include <WebCore/SecurityOrigin.h>
 #include <wtf/RefPtr.h>
 
 class QWebSecurityOriginPrivate : public QSharedData {
