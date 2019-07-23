@@ -49,6 +49,7 @@
 #include "FloatConversion.h"
 #include "ImageBuffer.h"
 #include "ImageBufferDataQt.h"
+#include "NativeImageQt.h"
 #include "Path.h"
 #include "Pattern.h"
 #include "ShadowBlur.h"
@@ -504,8 +505,8 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect &destRect, const
     if (paintingDisabled() || !patternTransform.isInvertible())
         return;
 
-    QPixmap* framePixmap = image.nativeImageForCurrentFrame();
-    if (!framePixmap) // If it's too early we won't have an image yet.
+    auto* frameImage = image.nativeImageForCurrentFrame();
+    if (!frameImage) // If it's too early we won't have an image yet.
         return;
 
     if (m_impl) {
@@ -525,15 +526,15 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect &destRect, const
     if (!dr.width() || !dr.height() || !tr.width() || !tr.height())
         return;
 
-    QPixmap pixmap = *framePixmap;
-    if (tr.x() || tr.y() || tr.width() != pixmap.width() || tr.height() != pixmap.height())
-        pixmap = pixmap.copy(tr);
+    QImage qImage = *frameImage;
+    if (tr.x() || tr.y() || tr.width() != qImage.width() || tr.height() != qImage.height())
+        qImage = qImage.copy(tr);
 
     QPoint trTopLeft = tr.topLeft();
 
     CompositeOperator previousOperator = compositeOperation();
 
-    setCompositeOperation(!pixmap.hasAlpha() && op == CompositeSourceOver ? CompositeCopy : op);
+    setCompositeOperation(!qImage.hasAlphaChannel() && op == CompositeSourceOver ? CompositeCopy : op);
 
     QPainter* p = platformContext();
     QTransform transform(patternTransform);
@@ -542,23 +543,27 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect &destRect, const
     QTransform targetScaleTransform = QTransform::fromScale(combinedTransform.m11(), combinedTransform.m22());
     QTransform transformWithTargetScale = transform * targetScaleTransform;
 
-    // If this would draw more than one scaled tile, we scale the pixmap first and then use the result to draw.
+    // If this would draw more than one scaled tile, we scale the image first and then use the result to draw.
     if (transformWithTargetScale.type() == QTransform::TxScale) {
         QRectF tileRectInTargetCoords = (transformWithTargetScale * QTransform().translate(phase.x(), phase.y())).mapRect(tr);
 
         bool tileWillBePaintedOnlyOnce = tileRectInTargetCoords.contains(dr);
         if (!tileWillBePaintedOnlyOnce) {
-            QSizeF scaledSize(qreal(pixmap.width()) * transformWithTargetScale.m11(), qreal(pixmap.height()) * transformWithTargetScale.m22());
-            QPixmap scaledPixmap(scaledSize.toSize());
-            if (pixmap.hasAlpha())
-                scaledPixmap.fill(Qt::transparent);
+            QSizeF scaledSize(qreal(qImage.width()) * transformWithTargetScale.m11(), qreal(qImage.height()) * transformWithTargetScale.m22());
+            QImage scaledImage;
+            if (qImage.hasAlphaChannel()) {
+                scaledImage = QImage(scaledSize.toSize(), NativeImageQt::defaultFormatForAlphaEnabledImages());
+                scaledImage.fill(Qt::transparent);
+            } else
+                scaledImage = QImage(scaledSize.toSize(), NativeImageQt::defaultFormatForOpaqueImages());
+
             {
-                QPainter painter(&scaledPixmap);
+                QPainter painter(&scaledImage);
                 painter.setCompositionMode(QPainter::CompositionMode_Source);
                 painter.setRenderHints(p->renderHints());
-                painter.drawPixmap(QRect(0, 0, scaledPixmap.width(), scaledPixmap.height()), pixmap);
+                painter.drawImage(QRect(0, 0, scaledImage.width(), scaledImage.height()), qImage);
             }
-            pixmap = scaledPixmap;
+            qImage = scaledImage;
             trTopLeft = transformWithTargetScale.map(trTopLeft);
             transform = targetScaleTransform.inverted().translate(transform.dx(), transform.dy());
         }
@@ -568,7 +573,7 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect &destRect, const
     transform *= QTransform().translate(phase.x(), phase.y());
     transform.translate(trTopLeft.x(), trTopLeft.y());
 
-    QBrush b(pixmap);
+    QBrush b(qImage);
     b.setTransform(transform);
     p->fillRect(dr, b);
 
@@ -1284,7 +1289,7 @@ void GraphicsContext::clearPlatformShadow()
 {
 }
 
-void GraphicsContext::pushTransparencyLayerInternal(const QRect &rect, qreal opacity, QPixmap& alphaMask)
+void GraphicsContext::pushTransparencyLayerInternal(const QRect &rect, qreal opacity, QImage& alphaMask)
 {
     QPainter* p = m_data->p();
 
@@ -1319,7 +1324,7 @@ void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
         h = int(qBound(qreal(0), deviceClip.height(), (qreal)h) + 2);
     }
 
-    QPixmap emptyAlphaMask;
+    QImage emptyAlphaMask;
     m_data->layers.push(new TransparencyLayer(p, QRect(x, y, w, h), opacity, emptyAlphaMask));
     ++m_data->layerCount;
 }
@@ -1331,14 +1336,14 @@ void GraphicsContext::popTransparencyLayerInternal()
     ASSERT(layer->saveCounter == 0);
     layer->painter.resetTransform();
     layer->painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
-    layer->painter.drawPixmap(QPoint(), layer->alphaMask);
+    layer->painter.drawImage(QPoint(), layer->alphaMask);
     layer->painter.end();
 
     QPainter* p = m_data->p();
     p->save();
     p->resetTransform();
     p->setOpacity(layer->opacity);
-    p->drawPixmap(layer->offset, layer->pixmap);
+    p->drawImage(layer->offset, layer->image);
     p->restore();
 
     delete layer;
@@ -1363,7 +1368,7 @@ void GraphicsContext::endPlatformTransparencyLayer()
     p->save();
     p->resetTransform();
     p->setOpacity(layer->opacity);
-    p->drawPixmap(layer->offset, layer->pixmap);
+    p->drawImage(layer->offset, layer->image);
     p->restore();
 
     delete layer;

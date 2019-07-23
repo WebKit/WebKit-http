@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Eric Seidel <eric@webkit.org>
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -10,10 +10,10 @@
  *    notice, this list of conditions and the following disclaimer in the
  *    documentation and/or other materials provided with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE COMPUTER, INC. ``AS IS'' AND ANY
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE COMPUTER, INC. OR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
  * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
  * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
  * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
@@ -24,23 +24,20 @@
  */
 
 #include "config.h"
-#include "Pattern.h"
+#include "ImageBackingStore.h"
 
-#include "Image.h"
+#include <QImage>
 
 namespace WebCore {
 
-QBrush Pattern::createPlatformPattern() const
+NativeImagePtr ImageBackingStore::image() const
 {
-    auto* image = tileImage().nativeImageForCurrentFrame();
-    if (!image)
-        return QBrush();
-
-    // Qt merges patter space and user space itself
-    QBrush brush(*image);
-    brush.setTransform(m_patternSpaceTransformation);
-
-    return brush;
+    m_pixels->ref();
+    // QTFIXME: Ownership of QImage?
+    return new QImage(reinterpret_cast<unsigned char*>(const_cast<uint32_t*>(m_pixelsPtr)),
+        size().width(), size().height(), QImage::Format_ARGB32, [](void* data) {
+        static_cast<SharedBuffer*>(data)->deref();
+    }, m_pixels.get());
 }
 
-}
+} // namespace WebCore

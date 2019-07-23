@@ -34,19 +34,19 @@ namespace WebCore {
 
     class StillImage final : public Image {
     public:
-        static Ref<StillImage> create(const QPixmap& pixmap)
+        static Ref<StillImage> create(const QImage& image)
         {
-            return adoptRef(*new StillImage(pixmap));
+            return adoptRef(*new StillImage(image));
         }
 
-        static Ref<StillImage> createForRendering(const QPixmap* pixmap)
+        static Ref<StillImage> createForRendering(const QImage* image)
         {
-            return adoptRef(*new StillImage(pixmap));
+            return adoptRef(*new StillImage(image));
         }
 
-        static Ref<StillImage> create(QPixmap&& pixmap)
+        static Ref<StillImage> create(QImage&& image)
         {
-            return adoptRef(*new StillImage(WTFMove(pixmap)));
+            return adoptRef(*new StillImage(WTFMove(image)));
         }
 
         bool currentFrameKnownToBeOpaque() const override;
@@ -60,13 +60,13 @@ namespace WebCore {
         ImageDrawResult draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, DecodingMode, ImageOrientationDescription) override;
 
     private:
-        StillImage(const QPixmap&);
-        StillImage(const QPixmap*);
-        StillImage(QPixmap&&);
+        StillImage(const QImage&);
+        StillImage(const QImage*);
+        StillImage(QImage&&);
         ~StillImage() override;
         
-        const QPixmap* m_pixmap;
-        bool m_ownsPixmap;
+        const QImage* m_image;
+        bool m_ownsImage;
     };
 
 }

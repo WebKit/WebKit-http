@@ -39,7 +39,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
-typedef Vector<QPixmap, 3> WebGraphicVector;
+typedef Vector<QImage, 3> WebGraphicVector;
 typedef HashMap<CString, WebGraphicVector> WebGraphicHash;
 
 static WebGraphicHash& graphics()
@@ -49,37 +49,37 @@ static WebGraphicHash& graphics()
     if (hash.get().isEmpty()) {
         // QWebSettings::MissingImageGraphic
         hash.get().add("missingImage", WebGraphicVector { {
-            QPixmap(QStringLiteral(":webkit/resources/missingImage.png")),
-            QPixmap(QStringLiteral(":webkit/resources/missingImage@2x.png")),
-            QPixmap(QStringLiteral(":webkit/resources/missingImage@3x.png"))
+            QImage(QStringLiteral(":webkit/resources/missingImage.png")),
+            QImage(QStringLiteral(":webkit/resources/missingImage@2x.png")),
+            QImage(QStringLiteral(":webkit/resources/missingImage@3x.png"))
         } });
 
         // QWebSettings::MissingPluginGraphic
         hash.get().add("nullPlugin", WebGraphicVector { {
-            QPixmap(QStringLiteral(":webkit/resources/nullPlugin.png")),
-            QPixmap(QStringLiteral(":webkit/resources/nullPlugin@2x.png"))
+            QImage(QStringLiteral(":webkit/resources/nullPlugin.png")),
+            QImage(QStringLiteral(":webkit/resources/nullPlugin@2x.png"))
         } });
 
         // QWebSettings::DefaultFrameIconGraphic
         hash.get().add("urlIcon", WebGraphicVector { {
-            QPixmap(QStringLiteral(":webkit/resources/urlIcon.png"))
+            QImage(QStringLiteral(":webkit/resources/urlIcon.png"))
         } });
 
         // QWebSettings::TextAreaSizeGripCornerGraphic
         hash.get().add("textAreaResizeCorner", WebGraphicVector { {
-            QPixmap(QStringLiteral(":webkit/resources/textAreaResizeCorner.png")),
-            QPixmap(QStringLiteral(":webkit/resources/textAreaResizeCorner@2x.png"))
+            QImage(QStringLiteral(":webkit/resources/textAreaResizeCorner.png")),
+            QImage(QStringLiteral(":webkit/resources/textAreaResizeCorner@2x.png"))
         } });
     }
 
     return hash;
 }
 
-static QPixmap loadResourcePixmapForScale(const CString& name, size_t scale)
+static QImage loadResourcePixmapForScale(const CString& name, size_t scale)
 {
     const auto& iterator = graphics().find(name);
     if (iterator == graphics().end())
-        return QPixmap();
+        return QImage();
 
     WebGraphicVector v = iterator->value;
     if (scale <= v.size())
@@ -88,7 +88,7 @@ static QPixmap loadResourcePixmapForScale(const CString& name, size_t scale)
     return v.last();
 }
 
-static QPixmap loadResourcePixmap(const char* name)
+static QImage loadResourcePixmap(const char* name)
 {
     int length = strlen(name);
 
@@ -110,7 +110,7 @@ Ref<Image> Image::loadPlatformResource(const char* name)
     return StillImage::create(loadResourcePixmap(name));
 }
 
-void Image::setPlatformResource(const char* name, const QPixmap& pixmap)
+void Image::setPlatformResource(const char* name, const QImage& pixmap)
 {
     if (pixmap.isNull())
         graphics().remove(name);

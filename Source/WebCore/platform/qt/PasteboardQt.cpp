@@ -252,12 +252,12 @@ void Pasteboard::writeImage(Element& node, const URL& url, const String& title)
     Image* image = cachedImage->imageForRenderer(node.renderer());
     ASSERT(image);
 
-    QPixmap* pixmap = image->nativeImageForCurrentFrame();
-    if (!pixmap)
+    QImage* nativeImage = image->nativeImageForCurrentFrame();
+    if (!nativeImage)
         return;
     if (!m_writableData)
         m_writableData = new QMimeData;
-    m_writableData->setImageData(pixmap->toImage());
+    m_writableData->setImageData(*nativeImage);
     if (!title.isEmpty())
         m_writableData->setText(title);
     m_writableData->setUrls(QList<QUrl>() << url);

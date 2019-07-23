@@ -42,7 +42,7 @@ typedef struct CGImage *CGImageRef;
 OBJC_CLASS NSImage;
 #elif PLATFORM(QT)
 QT_BEGIN_NAMESPACE
-class QPixmap;
+class QImage;
 QT_END_NAMESPACE
 #elif PLATFORM(WIN)
 typedef struct HBITMAP__* HBITMAP;
@@ -67,7 +67,7 @@ typedef RetainPtr<CGImageRef> DragImageRef;
 #elif PLATFORM(MAC)
 typedef RetainPtr<NSImage> DragImageRef;
 #elif PLATFORM(QT)
-typedef QPixmap* DragImageRef;
+typedef QImage* DragImageRef;
 #elif PLATFORM(WIN)
 typedef HBITMAP DragImageRef;
 #elif USE(CAIRO)

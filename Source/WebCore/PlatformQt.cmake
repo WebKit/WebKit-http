@@ -134,6 +134,8 @@ list(APPEND WebCore_SOURCES
 #    platform/graphics/x11/PlatformDisplayX11.cpp
     platform/graphics/x11/XUniqueResource.cpp
 
+    platform/image-decoders/qt/ImageBackingStoreQt.cpp
+
     platform/network/MIMESniffing.cpp
 
     platform/network/qt/BlobUrlConversion.cpp

@@ -32,6 +32,7 @@
 
 #include "GraphicsContext.h"
 #include "IntRect.h"
+#include "NativeImageQt.h"
 #include "StillImageQt.h"
 
 #include <QImage>
@@ -350,7 +351,7 @@ GraphicsSurfaceToken ImageBufferDataPrivateAccelerated::graphicsSurfaceToken() c
 
 struct ImageBufferDataPrivateUnaccelerated final : public ImageBufferDataPrivate {
     ImageBufferDataPrivateUnaccelerated(const FloatSize&, float scale);
-    QPaintDevice* paintDevice() final { return m_pixmap.isNull() ? 0 : &m_pixmap; }
+    QPaintDevice* paintDevice() final { return m_nativeImage.isNull() ? 0 : &m_nativeImage; }
     QImage toQImage() const final;
     RefPtr<Image> image() const final;
     RefPtr<Image> copyImage() const final;
@@ -365,46 +366,36 @@ struct ImageBufferDataPrivateUnaccelerated final : public ImageBufferDataPrivate
     void clip(GraphicsContext&, const IntRect& floatRect) const final;
     void platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable) final;
 
-    QPixmap m_pixmap;
+    QImage m_nativeImage;
     Ref<Image> m_image;
 };
 
 ImageBufferDataPrivateUnaccelerated::ImageBufferDataPrivateUnaccelerated(const FloatSize& size, float scale)
-    : m_pixmap(IntSize(size * scale))
-    , m_image(StillImage::createForRendering(&m_pixmap))
+    : m_nativeImage(IntSize(size * scale), NativeImageQt::defaultFormatForAlphaEnabledImages())
+    , m_image(StillImage::createForRendering(&m_nativeImage))
 {
-    m_pixmap.fill(QColor(Qt::transparent));
-    m_pixmap.setDevicePixelRatio(scale);
+    m_nativeImage.fill(QColor(Qt::transparent));
+    m_nativeImage.setDevicePixelRatio(scale);
 }
 
 QImage ImageBufferDataPrivateUnaccelerated::toQImage() const
 {
-    QPaintEngine* paintEngine = m_pixmap.paintEngine();
-    if (!paintEngine || paintEngine->type() != QPaintEngine::Raster)
-        return m_pixmap.toImage();
-
-    // QRasterPixmapData::toImage() will deep-copy the backing QImage if there's an active QPainter on it.
-    // For performance reasons, we don't want that here, so we temporarily redirect the paint engine.
-    QPaintDevice* currentPaintDevice = paintEngine->paintDevice();
-    paintEngine->setPaintDevice(0);
-    QImage image = m_pixmap.toImage();
-    paintEngine->setPaintDevice(currentPaintDevice);
-    return image;
+    return m_nativeImage;
 }
 
 RefPtr<Image> ImageBufferDataPrivateUnaccelerated::image() const
 {
-    return StillImage::createForRendering(&m_pixmap);
+    return StillImage::createForRendering(&m_nativeImage);
 }
 
 RefPtr<Image> ImageBufferDataPrivateUnaccelerated::copyImage() const
 {
-    return StillImage::create(m_pixmap);
+    return StillImage::create(m_nativeImage);
 }
 
 RefPtr<Image> ImageBufferDataPrivateUnaccelerated::takeImage()
 {
-    return StillImage::create(WTFMove(m_pixmap));
+    return StillImage::create(WTFMove(m_nativeImage));
 }
 
 void ImageBufferDataPrivateUnaccelerated::draw(GraphicsContext& destContext, const FloatRect& destRect,
@@ -432,11 +423,11 @@ void ImageBufferDataPrivateUnaccelerated::drawPattern(GraphicsContext& destConte
 
 void ImageBufferDataPrivateUnaccelerated::clip(GraphicsContext& context, const IntRect& rect) const
 {
-    QPixmap* nativeImage = m_image->nativeImageForCurrentFrame();
+    auto* nativeImage = m_image->nativeImageForCurrentFrame();
     if (!nativeImage)
         return;
 
-    QPixmap alphaMask = *nativeImage;
+    QImage alphaMask = *nativeImage;
     context.pushTransparencyLayerInternal(rect, 1.0, alphaMask);
 }
 
@@ -448,27 +439,26 @@ void ImageBufferDataPrivateUnaccelerated::platformTransformColorSpace(const std:
     if (isPainting)
         painter->end();
 
-    QImage image = toQImage().convertToFormat(QImage::Format_ARGB32);
-    ASSERT(!image.isNull());
+    ASSERT(!m_nativeImage.isNull());
 
-    uchar* bits = image.bits();
-    const int bytesPerLine = image.bytesPerLine();
+    uchar* bits = m_nativeImage.bits();
+    const int bytesPerLine = m_nativeImage.bytesPerLine();
 
-    for (int y = 0; y < m_pixmap.height(); ++y) {
+    for (int y = 0; y < m_nativeImage.height(); ++y) {
         quint32* scanLine = reinterpret_cast_ptr<quint32*>(bits + y * bytesPerLine);
-        for (int x = 0; x < m_pixmap.width(); ++x) {
-            QRgb& pixel = scanLine[x];
-            pixel = qRgba(lookUpTable[qRed(pixel)],
-                          lookUpTable[qGreen(pixel)],
-                          lookUpTable[qBlue(pixel)],
-                          qAlpha(pixel));
+        for (int x = 0; x < m_nativeImage.width(); ++x) {
+            QRgb& premultipliedPixel = scanLine[x];
+            QRgb pixel = qUnpremultiply(premultipliedPixel);
+            premultipliedPixel = qPremultiply(qRgba(
+                lookUpTable[qRed(pixel)],
+                lookUpTable[qGreen(pixel)],
+                lookUpTable[qBlue(pixel)],
+                qAlpha(pixel)));
         }
     }
 
-    m_pixmap = QPixmap::fromImage(image);
-
     if (isPainting)
-        painter->begin(&m_pixmap);
+        painter->begin(&m_nativeImage);
 }
 
 // ---------------------- ImageBufferData

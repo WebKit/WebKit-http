@@ -48,17 +48,17 @@ struct TransparencyLayer {
     WTF_MAKE_NONCOPYABLE(TransparencyLayer);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    TransparencyLayer(const QPainter* p, const QRect &rect, qreal opacity, QPixmap& alphaMask)
+    TransparencyLayer(const QPainter* p, const QRect &rect, qreal opacity, QImage& alphaMask)
         : opacity(opacity)
         , alphaMask(alphaMask)
         , saveCounter(1) // see the comment for saveCounter
     {
         int devicePixelRatio = p->device()->devicePixelRatio();
-        pixmap = QPixmap(rect.width() * devicePixelRatio, rect.height() * devicePixelRatio);
-        pixmap.setDevicePixelRatio(devicePixelRatio);
+        image = QImage(rect.width() * devicePixelRatio, rect.height() * devicePixelRatio, NativeImageQt::defaultFormatForAlphaEnabledImages());
+        image.setDevicePixelRatio(devicePixelRatio);
         offset = rect.topLeft();
-        pixmap.fill(Qt::transparent);
-        painter.begin(&pixmap);
+        image.fill(Qt::transparent);
+        painter.begin(&image);
         painter.setRenderHints(p->renderHints());
         painter.translate(-offset);
         painter.setPen(p->pen());
@@ -72,12 +72,12 @@ public:
     {
     }
 
-    QPixmap pixmap;
+    QImage image;
     QPoint offset;
     QPainter painter;
     qreal opacity;
     // for clipToImageBuffer
-    QPixmap alphaMask;
+    QImage alphaMask;
     // saveCounter is only used in combination with alphaMask
     // otherwise, its value is unspecified
     int saveCounter;

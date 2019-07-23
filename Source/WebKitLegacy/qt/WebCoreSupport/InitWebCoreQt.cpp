@@ -46,6 +46,7 @@
 
 #include "qwebelement_p.h"
 #include <JavaScriptCore/runtime/InitializeThreading.h>
+#include <QPixmap>
 #include <wtf/MainThread.h>
 
 namespace WebKit {
@@ -76,7 +77,7 @@ Q_DECL_EXPORT void initializeWebKitQt()
 
 Q_DECL_EXPORT void setImagePlatformResource(const char* name, const QPixmap& pixmap)
 {
-    WebCore::Image::setPlatformResource(name, pixmap);
+    WebCore::Image::setPlatformResource(name, pixmap.toImage());
 }
 
 }

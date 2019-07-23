@@ -226,7 +226,7 @@ void ImageBuffer::putByteArray(const Uint8ClampedArray& source, AlphaPremultipli
         m_data.m_painter->restore();
 }
 
-static bool encodeImage(const QPixmap& pixmap, const String& mimeType, Optional<double> quality, QByteArray& data)
+static bool encodeImage(const QImage& image, const String& mimeType, Optional<double> quality, QByteArray& data)
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
@@ -244,7 +244,7 @@ static bool encodeImage(const QPixmap& pixmap, const String& mimeType, Optional<
 
     QBuffer buffer(&data);
     buffer.open(QBuffer::WriteOnly);
-    bool success = pixmap.save(&buffer, format.utf8().data(), compressionQuality);
+    bool success = image.save(&buffer, format.utf8().data(), compressionQuality);
     buffer.close();
 
     return success;

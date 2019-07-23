@@ -53,7 +53,7 @@ IntSize nativeImageSize(const NativeImagePtr& image)
 
 bool nativeImageHasAlpha(const NativeImagePtr& image)
 {
-    return !image || image->hasAlpha();
+    return !image || image->hasAlphaChannel();
 }
 
 Color nativeImageSinglePixelSolidColor(const NativeImagePtr& image)
@@ -61,7 +61,7 @@ Color nativeImageSinglePixelSolidColor(const NativeImagePtr& image)
     if (!image || image->width() != 1 || image->height() != 1)
         return Color();
 
-    return QColor::fromRgba(image->toImage().pixel(0, 0));
+    return QColor::fromRgba(image->pixel(0, 0));
 }
 
 void drawNativeImage(const NativeImagePtr& image, GraphicsContext& ctxt, const FloatRect& destRect, const FloatRect& srcRect, const IntSize& srcSize, CompositeOperator op, BlendMode blendMode, const ImageOrientation&)
@@ -73,7 +73,7 @@ void drawNativeImage(const NativeImagePtr& image, GraphicsContext& ctxt, const F
 
     CompositeOperator previousOperator = ctxt.compositeOperation();
     BlendMode previousBlendMode = ctxt.blendModeOperation();
-    ctxt.setCompositeOperation(!image->hasAlpha() && op == CompositeSourceOver && blendMode == BlendMode::Normal ? CompositeCopy : op, blendMode);
+    ctxt.setCompositeOperation(!image->hasAlphaChannel() && op == CompositeSourceOver && blendMode == BlendMode::Normal ? CompositeCopy : op, blendMode);
 
     if (ctxt.hasShadow()) {
         ShadowBlur shadow(ctxt.state());
@@ -82,7 +82,7 @@ void drawNativeImage(const NativeImagePtr& image, GraphicsContext& ctxt, const F
             [normalizedSrc, normalizedDst, &pixmap](GraphicsContext& shadowContext)
             {
                 QPainter* shadowPainter = shadowContext.platformContext();
-                shadowPainter->drawPixmap(normalizedDst, pixmap, normalizedSrc);
+                shadowPainter->drawImage(normalizedDst, pixmap, normalizedSrc);
             },
             [&ctxt](ImageBuffer& layerImage, const FloatPoint& layerOrigin, const FloatSize& layerSize)
             {
@@ -90,7 +90,7 @@ void drawNativeImage(const NativeImagePtr& image, GraphicsContext& ctxt, const F
             });
     }
 
-    ctxt.platformContext()->drawPixmap(normalizedDst, *image, normalizedSrc);
+    ctxt.platformContext()->drawImage(normalizedDst, *image, normalizedSrc);
 
     ctxt.setCompositeOperation(previousOperator, previousBlendMode);
 }
