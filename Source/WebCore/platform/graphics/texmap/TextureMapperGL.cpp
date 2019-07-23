@@ -206,11 +206,11 @@ void TextureMapperGL::beginPainting(PaintFlags flags)
     data().previousScissorState = glIsEnabled(GL_SCISSOR_TEST);
     data().previousDepthState = glIsEnabled(GL_DEPTH_TEST);
 #if PLATFORM(QT)
-    if (m_context) { // QTFIXME: r224912
-        QPainter* painter = m_context->platformContext();
-        painter->save();
-        painter->beginNativePainting();
-    }
+//    if (m_context) { // QTFIXME: r224912
+//        QPainter* painter = m_context->platformContext();
+//        painter->save();
+//        painter->beginNativePainting();
+//    }
 #endif
     glDisable(GL_DEPTH_TEST);
     glEnable(GL_SCISSOR_TEST);
@@ -252,11 +252,11 @@ void TextureMapperGL::endPainting()
         glDisable(GL_DEPTH_TEST);
 
 #if PLATFORM(QT)
-    if (!m_context) // QTFIXME: r224912
-        return;
-    QPainter* painter = m_context->platformContext();
-    painter->endNativePainting();
-    painter->restore();
+//    if (!m_context) // QTFIXME: r224912
+//        return;
+//    QPainter* painter = m_context->platformContext();
+//    painter->endNativePainting();
+//    painter->restore();
 #endif
 
 #if !USE(OPENGL_ES)

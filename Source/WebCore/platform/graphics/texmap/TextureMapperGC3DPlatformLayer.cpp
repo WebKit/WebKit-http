@@ -20,7 +20,7 @@
 #include "config.h"
 #include "TextureMapperGC3DPlatformLayer.h"
 
-#if ENABLE(GRAPHICS_CONTEXT_3D) && USE(TEXTURE_MAPPER) && !USE(NICOSIA)
+#if ENABLE(GRAPHICS_CONTEXT_3D) && USE(TEXTURE_MAPPER) && !USE(NICOSIA) && !PLATFORM(QT)
 
 #include "BitmapTextureGL.h"
 #include "GLContext.h"

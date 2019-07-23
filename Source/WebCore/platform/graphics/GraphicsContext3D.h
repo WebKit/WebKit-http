@@ -1571,7 +1571,7 @@ private:
 #if USE(NICOSIA) && USE(TEXTURE_MAPPER)
     friend class Nicosia::GC3DLayer;
     std::unique_ptr<Nicosia::GC3DLayer> m_nicosiaLayer;
-#elif USE(TEXTURE_MAPPER)
+#elif USE(TEXTURE_MAPPER) && !PLATFORM(QT)
     friend class TextureMapperGC3DPlatformLayer;
     std::unique_ptr<TextureMapperGC3DPlatformLayer> m_texmapLayer;
 #else
@@ -1592,7 +1592,7 @@ private:
     unsigned m_statusCheckCount { 0 };
     bool m_failNextStatusCheck { false };
 
-#if USE(CAIRO)
+#if USE(CAIRO) || PLATFORM(QT)
     Platform3DObject m_vao { 0 };
 #endif
 

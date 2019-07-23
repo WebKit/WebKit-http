@@ -28,7 +28,7 @@
 #include "config.h"
 #include "GraphicsContext3D.h"
 
-#if ENABLE(GRAPHICS_CONTEXT_3D) && USE(TEXTURE_MAPPER)
+#if ENABLE(GRAPHICS_CONTEXT_3D) && USE(TEXTURE_MAPPER) && !PLATFORM(QT)
 
 #include "GraphicsContext3DPrivate.h"
 #include "TextureMapperGC3DPlatformLayer.h"

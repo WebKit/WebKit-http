@@ -98,7 +98,7 @@ void BitmapTexturePool::releaseUnusedTexturesTimerFired()
 RefPtr<BitmapTexture> BitmapTexturePool::createTexture(const BitmapTexture::Flags flags)
 {
 #if PLATFORM(QT) && USE(TEXTURE_MAPPER_GL)
-    if (!m_context3D) // QTFIXME r220521
+    if (true/*!m_context3D*/) // QTFIXME r220521
         return BitmapTextureImageBuffer::create();
 #endif
 #if USE(TEXTURE_MAPPER_GL)

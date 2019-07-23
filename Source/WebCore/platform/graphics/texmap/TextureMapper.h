@@ -94,6 +94,10 @@ public:
     void setPatternTransform(const TransformationMatrix& p) { m_patternTransform = p; }
     void setWrapMode(WrapMode m) { m_wrapMode = m; }
 
+#if PLATFORM(QT)
+    AccelerationMode accelerationMode() const { return m_accelerationMode; }
+#endif
+
 protected:
     std::unique_ptr<BitmapTexturePool> m_texturePool;
 
@@ -113,6 +117,10 @@ private:
     bool m_isMaskMode { false };
     TransformationMatrix m_patternTransform;
     WrapMode m_wrapMode { StretchWrap };
+
+#if PLATFORM(QT)
+    AccelerationMode m_accelerationMode;
+#endif
 };
 
 }
