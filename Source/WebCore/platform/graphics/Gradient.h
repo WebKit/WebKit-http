@@ -141,12 +141,13 @@ public:
     PlatformGradient createPlatformGradient(float globalAlpha);
 #endif
 
+    PlatformGradient platformGradient();
+
 private:
     Gradient(LinearData&&);
     Gradient(RadialData&&);
     Gradient(ConicData&&);
 
-    PlatformGradient platformGradient();
     void platformInit() { m_gradient = nullptr; }
     void platformDestroy();
 
