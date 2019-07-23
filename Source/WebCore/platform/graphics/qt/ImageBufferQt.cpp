@@ -166,7 +166,7 @@ RefPtr<Uint8ClampedArray> getImageData(const IntRect& unscaledRect, float scale,
     painter.drawImage(QPoint(0, 0), imageData.m_impl->toQImage(), rect);
     painter.end();
 
-    return result.release();
+    return result;
 }
 
 RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const

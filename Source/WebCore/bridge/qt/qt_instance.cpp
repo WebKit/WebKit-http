@@ -135,7 +135,7 @@ RefPtr<QtInstance> QtInstance::getQtInstance(QObject* o, RootObject* rootObject,
     RefPtr<QtInstance> ret = QtInstance::create(o, rootObject, ownership);
     cachedInstances.insert(o, ret.get());
 
-    return ret.release();
+    return ret;
 }
 
 bool QtInstance::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)

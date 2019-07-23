@@ -42,7 +42,7 @@ public:
     void endClip() final;
     IntRect clipBounds() final { return currentContext()->clipBounds(); }
     IntSize maxTextureSize() const final;
-    PassRefPtr<BitmapTexture> createTexture() final { return BitmapTextureImageBuffer::create(); }
+    RefPtr<BitmapTexture> createTexture() final { return BitmapTextureImageBuffer::create(); }
 
     inline GraphicsContext* currentContext()
     {

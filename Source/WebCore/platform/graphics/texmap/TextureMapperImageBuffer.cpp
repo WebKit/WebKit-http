@@ -180,7 +180,7 @@ void TextureMapperImageBuffer::drawNumber(int number, const Color& color, const 
 #endif
 }
 
-PassRefPtr<BitmapTexture> BitmapTextureImageBuffer::applyFilters(TextureMapper&, const FilterOperations& filters)
+RefPtr<BitmapTexture> BitmapTextureImageBuffer::applyFilters(TextureMapper&, const FilterOperations& filters)
 {
     ASSERT_UNUSED(filters, filters.isEmpty());
 
