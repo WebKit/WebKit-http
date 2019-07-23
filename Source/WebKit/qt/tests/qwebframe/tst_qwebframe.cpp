@@ -463,7 +463,7 @@ void tst_QWebFrame::setHtmlWithBaseURL()
 
     QDir::setCurrent(TESTS_SOURCE_DIR);
 
-    QString html("<html><body><p>hello world</p><img src='resources/image2.png'/></body></html>");
+    QString html("<html><body><p>hello world</p><img src='qwebframe/resources/image.png'/></body></html>");
 
     QWebPage page;
     QWebFrame* frame = page.mainFrame();
