@@ -18,6 +18,7 @@ if (WIN32)
     list(APPEND WTF_SOURCES
         text/win/StringWin.cpp
 
+        win/DbgHelperWin.cpp
         win/FileSystemWin.cpp
         win/OSAllocatorWin.cpp
         win/PathWalker.cpp
@@ -25,6 +26,7 @@ if (WIN32)
         win/ThreadingWin.cpp
     )
     list(APPEND WTF_LIBRARIES
+        dbghelp
         shlwapi
     )
 else ()
