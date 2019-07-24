@@ -369,7 +369,7 @@ IntSize ImageDecoderQt::size() const
 
 Optional<IntPoint> ImageDecoderQt::hotSpot() const
 {
-    return IntPoint();
+    return WTF::nullopt;
 }
 
 }
