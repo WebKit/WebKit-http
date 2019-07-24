@@ -16,6 +16,8 @@ if (WIN32)
         text/win/WCharStringEXtras.h
     )
     list(APPEND WTF_SOURCES
+        text/win/StringWin.cpp
+
         win/FileSystemWin.cpp
         win/OSAllocatorWin.cpp
         win/PathWalker.cpp
