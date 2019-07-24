@@ -22,6 +22,7 @@
 #include "config.h"
 #include "FontCustomPlatformData.h"
 
+#include "FontDescription.h"
 #include "FontPlatformData.h"
 #include "SharedBuffer.h"
 #include <QStringList>

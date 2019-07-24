@@ -67,19 +67,7 @@ static inline QFont::Weight toQFontWeight(FontSelectionValue fontWeight)
 }
 #endif
 
-static inline bool isEmptyValue(const float size, const bool bold, const bool oblique)
-{
-     // this is the empty value by definition of the trait FontDataCacheKeyTraits
-    return !bold && !oblique && size == 0.f;
-}
-
-FontPlatformData::FontPlatformData(float size, bool bold, bool oblique, FontOrientation, FontWidthVariant, TextRenderingMode)
-{
-    if (!isEmptyValue(size, bold, oblique))
-        m_data = adoptRef(new FontPlatformDataPrivate(size, bold, oblique));
-}
-
-FontPlatformData::FontPlatformData(const FontDescription& description, const AtomString& familyName, int wordSpacing, int letterSpacing)
+FontPlatformData::FontPlatformData(const FontDescription& description, const AtomString& familyName)
     : m_data(adoptRef(new FontPlatformDataPrivate()))
 {
     QFont font;
@@ -87,47 +75,41 @@ FontPlatformData::FontPlatformData(const FontDescription& description, const Ato
     font.setFamily(familyName.string());
     if (requestedSize)
         font.setPixelSize(requestedSize);
-    font.setItalic(description.italic() != std::nullopt);
+    font.setItalic(isItalic(description.italic()));
     font.setWeight(toQFontWeight(description.weight()));
-    font.setWordSpacing(wordSpacing);
-    font.setLetterSpacing(QFont::AbsoluteSpacing, letterSpacing);
 
     if (!FontCascade::shouldUseSmoothing())
         font.setStyleStrategy(static_cast<QFont::StyleStrategy>(QFont::NoAntialias | QFont::ForceOutline));
     else
         font.setStyleStrategy(QFont::ForceOutline);
 
-    m_data->bold = font.bold();
     // WebKit allows font size zero but QFont does not. We will return
     // m_data->size if a font size of zero is requested and pixelSize()
     // otherwise.
-    m_data->size = (!requestedSize) ? requestedSize : font.pixelSize();
+    m_size = (!requestedSize) ? requestedSize : font.pixelSize();
     m_data->rawFont = QRawFont::fromFont(font, QFontDatabase::Any);
 }
 
-FontPlatformData::FontPlatformData(const FontPlatformData& other, float size)
-    : m_data(adoptRef(new FontPlatformDataPrivate()))
+FontPlatformData FontPlatformData::cloneWithSize(const FontPlatformData& source, float size)
 {
-    m_data->rawFont = other.m_data->rawFont;
-    m_data->bold = other.m_data->bold;
-    m_data->oblique = other.m_data->oblique;
-    m_data->rawFont.setPixelSize(size);
-    m_data->size = m_data->rawFont.pixelSize();
+    FontPlatformData copy(source);
+    copy.m_data = adoptRef(new FontPlatformDataPrivate());
+    ASSERT(source.m_data);
+    copy.m_data->rawFont = source.m_data->rawFont;
+    copy.m_data->rawFont.setPixelSize(size);
+    copy.m_size = copy.m_data->rawFont.pixelSize();
+    return copy;
 }
 
-bool FontPlatformData::operator==(const FontPlatformData& other) const
+bool FontPlatformData::platformIsEqual(const FontPlatformData& other) const
 {
     if (m_data == other.m_data)
         return true;
 
-    if (!m_data || !other.m_data || m_data->isDeletedValue || other.m_data->isDeletedValue)
+    if (!m_data || !other.m_data)
         return false;
 
-    const bool equals = (m_data->size == other.m_data->size
-                         && m_data->bold == other.m_data->bold
-                         && m_data->oblique == other.m_data->oblique
-                         && m_data->rawFont == other.m_data->rawFont);
-    return equals;
+    return m_data->rawFont == other.m_data->rawFont;
 }
 
 RefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
@@ -148,25 +130,17 @@ unsigned FontPlatformData::hash() const
 {
     if (!m_data)
         return 0;
-    if (m_data->isDeletedValue)
+    if (isHashTableDeletedValue())
         return 1;
     return qHash(m_data->rawFont.familyName()) ^ qHash(m_data->rawFont.style())
             ^ qHash(m_data->rawFont.weight())
-            ^ qHash(*reinterpret_cast<quint32*>(&m_data->size));
+            ^ qHash(*reinterpret_cast<const quint32*>(&m_size));
 }
 
-// Fixme: orientation
-FontPlatformData FontPlatformData::cloneWithOrientation(const FontPlatformData& source, FontOrientation orientation)
-{
-    FontPlatformData copy(source);
-    return copy;
-}
-
-
-#ifndef NDEBUG
+#if !LOG_DISABLED
 String FontPlatformData::description() const
 {
-    return String();
+    return nullString();
 }
 #endif
 
