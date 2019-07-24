@@ -11,10 +11,7 @@ if (JPEG_DEFINITIONS)
     add_definitions(${JPEG_DEFINITIONS})
 endif ()
 
-list(APPEND WebCore_INCLUDE_DIRECTORIES
-    "${THIRDPARTY_DIR}/ANGLE/"
-    "${THIRDPARTY_DIR}/ANGLE/include/KHR"
-    "${WEBCORE_DIR}/Modules/gamepad"
+list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bridge/qt"
     "${WEBCORE_DIR}/dom/qt"
     "${WEBCORE_DIR}/editing/qt"
@@ -52,11 +49,14 @@ list(APPEND WebCore_SOURCES
 
     page/qt/DragControllerQt.cpp
     page/qt/EventHandlerQt.cpp
-    page/qt/TouchAdjustment.cpp
 
-    platform/KillRingNone.cpp
+    platform/ScrollAnimationKinetic.cpp
+    platform/ScrollAnimationSmooth.cpp
+    platform/UserAgentQuirks.cpp
 
     platform/audio/qt/AudioBusQt.cpp
+
+    platform/generic/ScrollAnimatorGeneric.cpp
 
     platform/graphics/ImageSource.cpp
 #    platform/graphics/PlatformDisplay.cpp
@@ -184,6 +184,12 @@ endif ()
 if (ENABLE_GRAPHICS_CONTEXT_3D)
     list(APPEND WebCore_SOURCES
         platform/graphics/qt/GraphicsContext3DQt.cpp
+    )
+endif ()
+
+if (ENABLE_TOUCH_ADJUSTMENT)
+    list(APPEND WebCore_SOURCES
+        page/qt/TouchAdjustment.cpp
     )
 endif ()
 
@@ -337,7 +343,7 @@ if (ENABLE_VIDEO)
         ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.css
     )
     set(WebCore_USER_AGENT_SCRIPTS
-        ${WEBCORE_DIR}/English.lproj/mediaControlsLocalizedStrings.js
+        ${WEBCORE_DIR}/en.lproj/mediaControlsLocalizedStrings.js
         ${WEBCORE_DIR}/Modules/mediacontrols/mediaControlsBase.js
     )
     set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/qt/RenderThemeQt.cpp)
