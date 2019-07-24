@@ -70,11 +70,11 @@ private Q_SLOTS:
 
 
 private:
-    QWebPage* page;
-    QWebFrame* frame;
-    QWebHistory* hist;
+    QWebPage* page { nullptr };
+    QWebFrame* frame { nullptr };
+    QWebHistory* hist { nullptr };
     QScopedPointer<SignalBarrier> loadFinishedBarrier;
-    int histsize;
+    int histsize {0};
 };
 
 tst_QWebHistory::tst_QWebHistory()

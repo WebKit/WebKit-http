@@ -99,10 +99,10 @@ private Q_SLOTS:
     void loadInSignalHandlers();
 
 private:
-    QWebView* m_view;
-    QWebPage* m_page;
-    QWebView* m_inputFieldsTestView;
-    int m_inputFieldTestPaintCount;
+    QWebView* m_view { nullptr };
+    QWebPage* m_page { nullptr };
+    QWebView* m_inputFieldsTestView { nullptr };
+    int m_inputFieldTestPaintCount { 0 };
 };
 
 bool tst_QWebFrame::eventFilter(QObject* watched, QEvent* event)

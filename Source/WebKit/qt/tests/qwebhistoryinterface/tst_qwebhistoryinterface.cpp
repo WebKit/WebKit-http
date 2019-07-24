@@ -42,11 +42,8 @@ private Q_SLOTS:
     void visitedLinks();
 
 private:
-
-
-private:
-    QWebView* m_view;
-    QWebPage* m_page;
+    QWebView* m_view { nullptr };
+    QWebPage* m_page { nullptr };
 };
 
 tst_QWebHistoryInterface::tst_QWebHistoryInterface()

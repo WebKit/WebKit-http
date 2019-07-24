@@ -217,8 +217,8 @@ private Q_SLOTS:
 #endif
 
 private:
-    QWebView* m_view;
-    QWebPage* m_page;
+    QWebView* m_view { nullptr };
+    QWebPage* m_page { nullptr };
     QString tmpDirPath() const
     {
         static QString tmpd = QDir::tempPath() + "/tst_qwebpage-"
@@ -379,7 +379,7 @@ public:
     }
 
 private: 
-    bool m_allowGeolocation;
+    bool m_allowGeolocation { false };
 };
 
 // [Qt] tst_QWebPage::infiniteLoopJS() timeouts with DFG JIT
