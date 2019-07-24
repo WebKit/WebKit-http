@@ -167,7 +167,7 @@ void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<S
         // FIXME: url adjustment does not belong in this function.
         if (url.isEmpty() && urlParameter.isEmpty() && (equalLettersIgnoringASCIICase(name, "src") || equalLettersIgnoringASCIICase(name, "movie") || equalLettersIgnoringASCIICase(name, "code") || equalLettersIgnoringASCIICase(name, "url")))
 #if PLATFORM(QT)
-                if(!MIMETypeRegistry::isApplicationPluginMIMEType(serviceType))
+            if (!MIMETypeRegistry::isApplicationPluginMIMEType(serviceType))
 #endif
         {
             urlParameter = stripLeadingAndTrailingHTMLSpaces(param.value());

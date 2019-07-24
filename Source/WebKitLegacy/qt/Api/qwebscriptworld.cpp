@@ -20,8 +20,8 @@
 #include "qwebscriptworld.h"
 #include "qwebscriptworld_p.h"
 
-#include "ScriptController.h"
 #include <QStringList>
+#include <WebCore/ScriptController.h>
 #include <wtf/URL.h>
 
 using namespace WebCore;

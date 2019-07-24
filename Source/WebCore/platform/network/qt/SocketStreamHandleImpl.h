@@ -36,8 +36,7 @@
 #include "SocketStreamHandle.h"
 
 #include <pal/SessionID.h>
-#include <wtf/RefPtr.h>
-#include <wtf/RefCounted.h>
+#include <wtf/Ref.h>
 #include <wtf/StreamBuffer.h>
 
 #if !PLATFORM(QT)

@@ -32,7 +32,8 @@ namespace WebCore {
 class DnsPrefetchHelper : public QObject {
     Q_OBJECT
 public:
-    DnsPrefetchHelper() : QObject() { }
+    DnsPrefetchHelper()
+        : QObject() { }
 
 public Q_SLOTS:
     void lookup(const String& hostname)

@@ -20,40 +20,39 @@
 #include "config.h"
 #include "qt_runtime.h"
 
+#include "JSDOMBinding.h"
+#include "JSDOMWindow.h"
+#include "JSDocument.h"
+#include "JSHTMLElement.h"
+#include "qt_instance.h"
+#include "qt_pixmapruntime.h"
+
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/BooleanObject.h>
 #include <JavaScriptCore/DateInstance.h>
+#include <JavaScriptCore/Error.h>
 #include <JavaScriptCore/FunctionPrototype.h>
 #include <JavaScriptCore/JSArray.h>
 #include <JavaScriptCore/JSContextRefPrivate.h>
 #include <JavaScriptCore/JSDateMath.h>
-#include "JSDOMBinding.h"
-#include "JSDOMWindow.h"
-#include "JSDocument.h"
+#include <JavaScriptCore/JSFunction.h>
 #include <JavaScriptCore/JSGlobalObject.h>
-#include "JSHTMLElement.h"
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/JSObject.h>
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <JavaScriptCore/JSTypedArrays.h>
 #include <JavaScriptCore/PropertyNameArray.h>
-#include "qdatetime.h"
-#include "qdebug.h"
-#include "qmetaobject.h"
-#include "qmetatype.h"
-#include "qobject.h"
-#include "qstringlist.h"
-#include "qt_instance.h"
-#include "qt_pixmapruntime.h"
-#include "qvarlengtharray.h"
-#include <JavaScriptCore/JSFunction.h>
-
-#include <wtf/DateMath.h>
-
+#include <QDateTime>
+#include <QDebug>
+#include <QMetaObject>
+#include <QMetaType>
+#include <QObject>
+#include <QStringList>
+#include <QVarLengthArray>
 #include <limits.h>
-#include <JavaScriptCore/Error.h>
 #include <runtime_array.h>
 #include <runtime_object.h>
+#include <wtf/DateMath.h>
 
 // QtScript has these
 Q_DECLARE_METATYPE(QObjectList);

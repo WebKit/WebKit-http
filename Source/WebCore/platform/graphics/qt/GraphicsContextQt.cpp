@@ -639,8 +639,7 @@ void GraphicsContext::fillPath(const Path& path)
     platformPath.setFillRule(toQtFillRule(fillRule()));
 
     if (hasShadow()) {
-        if (mustUseShadowBlur() || m_state.fillPattern || m_state.fillGradient)
-        {
+        if (mustUseShadowBlur() || m_state.fillPattern || m_state.fillGradient) {
             const auto& state = m_state;
             const auto& oldBrush = p->brush();
             ShadowBlur shadow(state);
