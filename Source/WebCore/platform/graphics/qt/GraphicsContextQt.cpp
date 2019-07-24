@@ -399,8 +399,8 @@ void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point
     if (strokeStyle() == NoStroke)
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawLine(point1, point2);
+    if (m_impl) {
+        m_impl->drawLine(point1, point2);
         return;
     }
 
@@ -508,8 +508,8 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect &destRect, const
     if (!framePixmap) // If it's too early we won't have an image yet.
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawPattern(image, destRect, tileRect, patternTransform, phase, spacing, op, blendMode);
+    if (m_impl) {
+        m_impl->drawPattern(image, destRect, tileRect, patternTransform, phase, spacing, op, blendMode);
         return;
     }
 
@@ -641,21 +641,25 @@ void GraphicsContext::fillPath(const Path& path)
     if (hasShadow()) {
         if (mustUseShadowBlur() || m_state.fillPattern || m_state.fillGradient)
         {
-            ShadowBlur shadow(m_state);
-            GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, platformPath.controlPointRect());
-            if (shadowContext) {
-                QPainter* shadowPainter = shadowContext->platformContext();
-                if (m_state.fillPattern) {
-                    shadowPainter->fillPath(platformPath, QBrush(m_state.fillPattern->createPlatformPattern()));
-                } else if (m_state.fillGradient) {
-                    QBrush brush(*m_state.fillGradient->platformGradient());
-                    brush.setTransform(m_state.fillGradient->gradientSpaceTransform());
-                    shadowPainter->fillPath(platformPath, brush);
-                } else {
-                    shadowPainter->fillPath(platformPath, p->brush());
-                }
-                shadow.endShadowLayer(*this);
-            }
+            const auto& state = m_state;
+            const auto& oldBrush = p->brush();
+            ShadowBlur shadow(state);
+            shadow.drawShadowLayer(getCTM(), clipBounds(), platformPath.controlPointRect(),
+                [&state, &platformPath, &oldBrush](GraphicsContext& shadowContext) {
+                    QPainter* shadowPainter = shadowContext.platformContext();
+                    if (state.fillPattern) {
+                        shadowPainter->fillPath(platformPath, QBrush(state.fillPattern->createPlatformPattern()));
+                    } else if (state.fillGradient) {
+                        QBrush brush(*state.fillGradient->platformGradient());
+                        brush.setTransform(state.fillGradient->gradientSpaceTransform());
+                        shadowPainter->fillPath(platformPath, brush);
+                    } else {
+                        shadowPainter->fillPath(platformPath, oldBrush);
+                    }
+                },
+                [this](ImageBuffer& layerImage, const FloatPoint& layerOrigin, const FloatSize& layerSize) {
+                    drawImageBuffer(layerImage, FloatRect(roundedIntPoint(layerOrigin), layerSize), FloatRect(FloatPoint(), layerSize), compositeOperation());
+                });
         } else {
             QPointF offset(m_state.shadowOffset.width(), m_state.shadowOffset.height());
             p->translate(offset);
@@ -705,23 +709,27 @@ void GraphicsContext::strokePath(const Path& path)
     if (hasShadow()) {
         if (mustUseShadowBlur() || m_state.strokePattern || m_state.strokeGradient)
         {
-            ShadowBlur shadow(m_state);
+            const auto& state = m_state;
+            const auto& oldPen = p->pen();
+            ShadowBlur shadow(state);
             FloatRect boundingRect = platformPath.controlPointRect();
             boundingRect.inflate(pen.miterLimit() + pen.widthF());
-            GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, boundingRect);
-            if (shadowContext) {
-                QPainter* shadowPainter = shadowContext->platformContext();
-                if (m_state.strokeGradient) {
-                    QBrush brush(*m_state.strokeGradient->platformGradient());
-                    brush.setTransform(m_state.strokeGradient->gradientSpaceTransform());
-                    QPen shadowPen(pen);
-                    shadowPen.setBrush(brush);
-                    fillPathStroke(shadowPainter, platformPath, shadowPen);
-                } else {
-                    fillPathStroke(shadowPainter, platformPath, pen);
-                }
-                shadow.endShadowLayer(*this);
-            }
+            shadow.drawShadowLayer(getCTM(), clipBounds(), boundingRect,
+                [&state, &platformPath, &oldPen](GraphicsContext& shadowContext) {
+                    QPainter* shadowPainter = shadowContext.platformContext();
+                    if (state.strokeGradient) {
+                        QBrush brush(*state.strokeGradient->platformGradient());
+                        brush.setTransform(state.strokeGradient->gradientSpaceTransform());
+                        QPen shadowPen(oldPen);
+                        shadowPen.setBrush(brush);
+                        fillPathStroke(shadowPainter, platformPath, shadowPen);
+                    } else {
+                        fillPathStroke(shadowPainter, platformPath, oldPen);
+                    }
+                },
+            [this](ImageBuffer& layerImage, const FloatPoint& layerOrigin, const FloatSize& layerSize) {
+                drawImageBuffer(layerImage, FloatRect(roundedIntPoint(layerOrigin), layerSize), FloatRect(FloatPoint(), layerSize), compositeOperation());
+            });
         } else {
             QPointF offset(m_state.shadowOffset.width(), m_state.shadowOffset.height());
             p->translate(offset);
@@ -747,7 +755,7 @@ void GraphicsContext::strokePath(const Path& path)
         fillPathStroke(p, platformPath, pen);
 }
 
-static inline void drawRepeatPattern(QPainter* p, Pattern& pattern, const FloatRect& rect)
+static inline void drawRepeatPattern(QPainter* p, const Pattern& pattern, const FloatRect& rect)
 {
     const QBrush brush = pattern.createPlatformPattern();
     if (brush.style() != Qt::TexturePattern)
@@ -799,12 +807,15 @@ void GraphicsContext::fillRect(const FloatRect& rect)
     if (m_state.fillPattern) {
         if (hasShadow()) {
             ShadowBlur shadow(m_state);
-            GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, normalizedRect);
-            if (shadowContext) {
-                QPainter* shadowPainter = shadowContext->platformContext();
-                drawRepeatPattern(shadowPainter, *m_state.fillPattern, normalizedRect);
-                shadow.endShadowLayer(*this);
-            }
+            const auto& fillPattern = *m_state.fillPattern;
+            shadow.drawShadowLayer(getCTM(), clipBounds(), normalizedRect,
+            [&fillPattern, &normalizedRect](GraphicsContext& shadowContext) {
+                QPainter* shadowPainter = shadowContext.platformContext();
+                drawRepeatPattern(shadowPainter, fillPattern, normalizedRect);
+            },
+            [this](ImageBuffer& layerImage, const FloatPoint& layerOrigin, const FloatSize& layerSize) {
+                drawImageBuffer(layerImage, FloatRect(roundedIntPoint(layerOrigin), layerSize), FloatRect(FloatPoint(), layerSize), compositeOperation());
+            });
         }
         drawRepeatPattern(p, *m_state.fillPattern, normalizedRect);
     } else if (m_state.fillGradient) {
@@ -812,12 +823,14 @@ void GraphicsContext::fillRect(const FloatRect& rect)
         brush.setTransform(m_state.fillGradient->gradientSpaceTransform());
         if (hasShadow()) {
             ShadowBlur shadow(m_state);
-            GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, normalizedRect);
-            if (shadowContext) {
-                QPainter* shadowPainter = shadowContext->platformContext();
+            shadow.drawShadowLayer(getCTM(), clipBounds(), normalizedRect,
+            [&brush, &normalizedRect](GraphicsContext& shadowContext) {
+                QPainter* shadowPainter = shadowContext.platformContext();
                 shadowPainter->fillRect(normalizedRect, brush);
-                shadow.endShadowLayer(*this);
-            }
+            },
+            [this](ImageBuffer& layerImage, const FloatPoint& layerOrigin, const FloatSize& layerSize) {
+                drawImageBuffer(layerImage, FloatRect(roundedIntPoint(layerOrigin), layerSize), FloatRect(FloatPoint(), layerSize), compositeOperation());
+            });
         }
         p->fillRect(normalizedRect, brush);
     } else {
@@ -827,12 +840,15 @@ void GraphicsContext::fillRect(const FloatRect& rect)
                 // drawRectShadowWithTiling does not work with rotations, and the fallback of
                 // drawing though clipToImageBuffer() produces scaling artifacts for us.
                 if (!getCTM().preservesAxisAlignment()) {
-                    GraphicsContext* shadowContext = shadow.beginShadowLayer(*this, normalizedRect);
-                    if (shadowContext) {
-                        QPainter* shadowPainter = shadowContext->platformContext();
-                        shadowPainter->fillRect(normalizedRect, p->brush());
-                        shadow.endShadowLayer(*this);
-                    }
+                    const auto& brush = p->brush();
+                    shadow.drawShadowLayer(getCTM(), clipBounds(), normalizedRect,
+                    [&brush, &normalizedRect](GraphicsContext& shadowContext) {
+                        QPainter* shadowPainter = shadowContext.platformContext();
+                        shadowPainter->fillRect(normalizedRect, brush);
+                    },
+                    [this](ImageBuffer& layerImage, const FloatPoint& layerOrigin, const FloatSize& layerSize) {
+                        drawImageBuffer(layerImage, FloatRect(roundedIntPoint(layerOrigin), layerSize), FloatRect(FloatPoint(), layerSize), compositeOperation());
+                    });
                 } else
                     shadow.drawRectShadow(*this, FloatRoundedRect(rect));
             } else {
@@ -1021,22 +1037,22 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width,
     drawFocusRingForPath(m_data->p(), path, color, m_data->antiAliasingForRectsAndLines);
 }
 
-void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, bool printing, bool doubleLines)
+void GraphicsContext::drawLineForText(const FloatRect& rect, bool printing, bool doubleUnderlines, StrokeStyle strokeStyle)
 {
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
+    if (m_impl) {
         DashArray widths;
-        widths.append(width);
+        widths.append(rect.width());
         widths.append(0);
-        m_displayListRecorder->drawLinesForText(origin, widths, printing, doubleLines, strokeThickness());
+        m_impl->drawLinesForText(rect.location(), rect.height(), widths, printing, doubleUnderlines);
         return;
     }
 
     Color localStrokeColor(strokeColor());
 
-    FloatRect bounds = computeLineBoundsAndAntialiasingModeForText(origin, width, printing, localStrokeColor);
+    FloatRect bounds = computeLineBoundsAndAntialiasingModeForText(rect, printing, localStrokeColor);
     bool strokeColorChanged = strokeColor() != localStrokeColor;
     bool strokeThicknessChanged = strokeThickness() != bounds.height();
     bool needSavePen = strokeColorChanged || strokeThicknessChanged;
@@ -1062,7 +1078,7 @@ void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, boo
 
     p->drawLine(startPoint, endPoint);
 
-    if (doubleLines) {
+    if (doubleUnderlines) {
         // The space between double underlines is equal to the height of the underline
         // so distance between line centers is 2x height
         startPoint.setY(startPoint.y() + 2 * bounds.height());
@@ -1077,7 +1093,7 @@ void GraphicsContext::drawLineForText(const FloatPoint& origin, float width, boo
 }
 
 // NOTE: this code is based on GraphicsContextCG implementation
-void GraphicsContext::drawLinesForText(const FloatPoint& origin, const DashArray& widths, bool printing, bool doubleLines)
+void GraphicsContext::drawLinesForText(const FloatPoint& origin, float thickness, const DashArray& widths, bool printing, bool doubleLines, StrokeStyle strokeStyle)
 {
     if (paintingDisabled())
         return;
@@ -1085,14 +1101,14 @@ void GraphicsContext::drawLinesForText(const FloatPoint& origin, const DashArray
     if (widths.size() <= 0)
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawLinesForText(origin, widths, printing, doubleLines, strokeThickness());
+    if (m_impl) {
+        m_impl->drawLinesForText(origin, thickness, widths, printing, doubleLines);
         return;
     }
 
     Color localStrokeColor(strokeColor());
 
-    FloatRect bounds = computeLineBoundsAndAntialiasingModeForText(origin, widths.last(), printing, localStrokeColor);
+    FloatRect bounds = computeLineBoundsAndAntialiasingModeForText(FloatRect(origin, FloatSize(widths.last(), thickness)), printing, localStrokeColor);
     bool fillColorIsNotEqualToStrokeColor = fillColor() != localStrokeColor;
 
     // FIXME: drawRects() is significantly slower than drawLine() for thin lines (<= 1px)
@@ -1202,12 +1218,7 @@ static void drawErrorUnderline(QPainter *painter, qreal x, qreal y, qreal width,
     painter->drawPath(path);
 }
 
-void GraphicsContext::updateDocumentMarkerResources()
-{
-    // Unnecessary, since our document markers don't use resources.
-}
-
-void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& origin, float width, DocumentMarkerLineStyle style)
+void GraphicsContext::drawDotsForDocumentMarker(const FloatRect& rect, DocumentMarkerLineStyle style)
 {
     if (paintingDisabled())
         return;
@@ -1215,18 +1226,19 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& origin, float 
     QPainter* painter = platformContext();
     const QPen originalPen = painter->pen();
 
-    switch (style) {
-    case DocumentMarkerSpellingLineStyle:
+    // QTFIXME: Handle dark theme
+    switch (style.mode) {
+    case DocumentMarkerLineStyle::Mode::Spelling:
         painter->setPen(Qt::red);
         break;
-    case DocumentMarkerGrammarLineStyle:
+    case DocumentMarkerLineStyle::Mode::Grammar:
         painter->setPen(Qt::green);
         break;
     default:
         return;
     }
 
-    drawErrorUnderline(painter, origin.x(), origin.y(), width, cMisspellingLineThickness);
+    drawErrorUnderline(painter, rect.x(), rect.y(), rect.width(), rect.height());
     painter->setPen(originalPen);
 }
 
@@ -1593,7 +1605,7 @@ void GraphicsContext::set3DTransform(const TransformationMatrix& transform)
 }
 #endif
 
-void GraphicsContext::setURLForRect(const URL& url, const IntRect& rect)
+void GraphicsContext::setURLForRect(const URL& url, const FloatRect& rect)
 {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
     if (paintingDisabled())
