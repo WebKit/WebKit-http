@@ -83,7 +83,7 @@ Vector<String> FontCache::systemFontFamilies()
 
 Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
 {
-    const AtomString fallbackFamily = QFont(/*fontDescription.firstFamily()*/).lastResortFamily(); // FIXME
+    const AtomString fallbackFamily = String(QFont(/*fontDescription.firstFamily()*/).lastResortFamily()); // FIXME
     FontPlatformData platformData(fontDescription, fallbackFamily);
     return fontForPlatformData(platformData);
 }
@@ -91,7 +91,7 @@ Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescripti
 std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomString& familyName, const FontFeatureSettings*, const FontVariantSettings*, FontSelectionSpecifiedCapabilities)
 {
     QFontDatabase db;
-    if (!db.hasFamily(familyName))
+    if (!db.hasFamily(familyName.string()))
         return nullptr;
     return std::make_unique<FontPlatformData>(fontDescription, familyName);
 }

@@ -84,7 +84,7 @@ FontPlatformData::FontPlatformData(const FontDescription& description, const Ato
 {
     QFont font;
     int requestedSize = description.computedPixelSize();
-    font.setFamily(familyName);
+    font.setFamily(familyName.string());
     if (requestedSize)
         font.setPixelSize(requestedSize);
     font.setItalic(description.italic() != std::nullopt);
