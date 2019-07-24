@@ -1339,7 +1339,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     WebCore::Frame *frame = core(self);
     FloatPoint viewportLocation(*aViewportLocation);
     FloatPoint adjustedLocation;
-    WebCore::Node *node = frame->nodeRespondingToClickEvents(viewportLocation, adjustedLocation);
+    WebCore::Node *node = frame->approximateNodeAtViewportLocationLegacy(viewportLocation, adjustedLocation);
     *aViewportLocation = adjustedLocation;
     return kit(node);
 }
@@ -2160,7 +2160,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (void)setAccessibleName:(NSString *)name
 {
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
     if (!AXObjectCache::accessibilityEnabled())
         return;
     
@@ -2177,7 +2177,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (BOOL)enhancedAccessibilityEnabled
 {
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
     return AXObjectCache::accessibilityEnhancedUserInterfaceEnabled();
 #else
     return NO;
@@ -2186,7 +2186,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (void)setEnhancedAccessibility:(BOOL)enable
 {
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
     AXObjectCache::setEnhancedUserInterfaceAccessibility(enable);
 #endif
 }
@@ -2202,7 +2202,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (id)accessibilityRoot
 {
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
     if (!AXObjectCache::accessibilityEnabled()) {
         AXObjectCache::enableAccessibility();
 #if !PLATFORM(IOS_FAMILY)
@@ -2361,7 +2361,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return nil;
-    return [[[WebElementDictionary alloc] initWithHitTestResult:coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowUserAgentShadowContent)] autorelease];
+    return [[[WebElementDictionary alloc] initWithHitTestResult:coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent)] autorelease];
 }
 
 - (NSURL *)_unreachableURL

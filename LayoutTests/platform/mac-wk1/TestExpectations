@@ -56,6 +56,7 @@ http/tests/ssl/media-stream
 inspector/page/overrideSetting-MockCaptureDevicesEnabled.html [ Skip ]
 
 # Datalist is unsupported in WK1
+accessibility/datalist.html [ WontFix ]
 fast/forms/datalist [ WontFix ]
 imported/w3c/web-platform-tests/html/semantics/forms/the-datalist-element [ WontFix ]
 
@@ -208,6 +209,7 @@ http/tests/security/xss-DENIED-xsl-external-entity.xml [ Skip ]
 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-sync-xhr-in-main-frame.html [ Skip ]
 
 webkit.org/b/187230 editing/mac/pasteboard/can-copy-url-without-title.html [ Skip ]
+webkit.org/b/187230 editing/mac/style/do-not-crash-when-showing-font-panel.html [ Skip ]
 
 ### END OF (1) Failures with bug reports
 ########################################
@@ -735,6 +737,9 @@ webkit.org/b/195623 http/tests/cache/link-prefetch-main-resource-iframe.html [ S
 
 webkit.org/b/197371 http/wpt/prefetch/link-prefetch-main-resource-redirect.html [ Skip ]
 
+webkit.org/b/199632 http/wpt/prefetch/beforeload.html [ Skip ]
+webkit.org/b/199632 http/wpt/prefetch/beforeload-dynamic.html [ Skip ]
+
 webkit.org/b/198177 pointerevents/mouse/compatibility-mouse-events-prevention-mouse-pressed.html [ Skip ]
 
 webkit.org/b/198459 [ HighSierra Debug ] inspector/canvas/recording-2d-full.html [ Slow ]
@@ -746,3 +751,25 @@ webkit.org/b/198676 imported/w3c/web-platform-tests/content-security-policy/repo
 
 webkit.org/b/199242 [ Debug ] http/tests/performance/performance-resource-timing-resourcetimingbufferfull-shrinking-buffer-crash.html [ Pass Failure ]
 
+# <rdar://problem/42625657> REGRESSION (Mojave): 12 fast/images tests timing out on WK1
+[ Mojave+ ] fast/images/animated-heics-draw.html [ Skip ]
+[ Mojave+ ] fast/images/animated-heics-verify.html [ Skip ]
+
+# <rdar://problem/51229282> REGRESSION: [ Catalina WK1 ] Three image tests are failing with an extra pixel of boarder
+[ Catalina+ ] http/tests/security/cached-svg-image-with-css-cross-domain.html [ ImageOnlyFailure ]
+[ Catalina+ ] http/tests/security/svg-image-with-css-cross-domain.html [ ImageOnlyFailure ]
+[ Catalina+ ] imported/blink/svg/as-image/svgview-references.html [ ImageOnlyFailure ]
+
+# <rdar://problem/51528699> REGRESSION: [ Catalina WK1 ] compositing/clipping/cached-cliprect-with-compositing-boundary.html is failing
+[ Catalina+ ] compositing/clipping/cached-cliprect-with-compositing-boundary.html [ ImageOnlyFailure ]
+
+# <rdar://problem/51529302> REGRESSION: [ Catalina WK1 ] svg/dom/complex-svgView-specification.html is failing
+[ Catalina+ ] svg/dom/complex-svgView-specification.html [ ImageOnlyFailure ]
+
+# <rdar://problem/51529218> REGRESSION: [ Catalina WK1 ] fast/replaced/outline-replaced-elements-offset.html is failing
+[ Catalina+ ] fast/replaced/outline-replaced-elements-offset.html [ ImageOnlyFailure ]
+
+# <rdar://problem/51529033> REGRESSION: [ Catalina WK1 ] compositing/geometry/composited-frame-contents.html is failing
+[ Catalina+ ] compositing/geometry/composited-frame-contents.html  [ ImageOnlyFailure ]
+
+webkit.org/b/200002 [ Mojave Debug ] imported/blink/storage/indexeddb/blob-basics-metadata.html [ Timeout ]

@@ -237,7 +237,6 @@ static Ref<WebsiteDataStoreConfiguration> legacyWebsiteDataStoreConfiguration(AP
     configuration->setIndexedDBDatabaseDirectory(String(processPoolConfiguration.indexedDBDatabaseDirectory()));
     configuration->setResourceLoadStatisticsDirectory(String(processPoolConfiguration.resourceLoadStatisticsDirectory()));
     configuration->setNetworkCacheDirectory(String(processPoolConfiguration.diskCacheDirectory()));
-    configuration->setJavaScriptConfigurationDirectory(String(processPoolConfiguration.javaScriptConfigurationDirectory()));
 
     return configuration;
 }
@@ -887,7 +886,9 @@ void WebProcessPool::sendWebProcessDataStoreParameters(WebProcessProxy& process,
         parameters.applicationCacheDirectory = m_resolvedPaths.applicationCacheDirectory;
     if (!parameters.applicationCacheDirectory.isEmpty())
         SandboxExtension::createHandleWithoutResolvingPath(parameters.applicationCacheDirectory, SandboxExtension::Type::ReadWrite, parameters.applicationCacheDirectoryExtensionHandle);
-    parameters.applicationCacheFlatFileSubdirectoryName = m_configuration->applicationCacheFlatFileSubdirectoryName();
+    parameters.applicationCacheFlatFileSubdirectoryName = websiteDataStore.applicationCacheFlatFileSubdirectoryName();
+    if (parameters.applicationCacheFlatFileSubdirectoryName.isEmpty())
+        parameters.applicationCacheFlatFileSubdirectoryName = m_configuration->applicationCacheFlatFileSubdirectoryName();
 
     parameters.webSQLDatabaseDirectory = websiteDataStore.resolvedDatabaseDirectory();
     if (parameters.webSQLDatabaseDirectory.isEmpty())
@@ -907,11 +908,13 @@ void WebProcessPool::sendWebProcessDataStoreParameters(WebProcessProxy& process,
     if (!parameters.mediaKeyStorageDirectory.isEmpty())
         SandboxExtension::createHandleWithoutResolvingPath(parameters.mediaKeyStorageDirectory, SandboxExtension::Type::ReadWrite, parameters.mediaKeyStorageDirectoryExtensionHandle);
 
-    if (javaScriptConfigurationFileEnabled()) {
+    
+    if (!m_javaScriptConfigurationDirectory.isEmpty())
+        parameters.javaScriptConfigurationDirectory = m_javaScriptConfigurationDirectory;
+    else if (javaScriptConfigurationFileEnabled())
         parameters.javaScriptConfigurationDirectory = websiteDataStore.resolvedJavaScriptConfigurationDirectory();
-        if (!parameters.javaScriptConfigurationDirectory.isEmpty())
-            SandboxExtension::createHandleWithoutResolvingPath(parameters.javaScriptConfigurationDirectory, SandboxExtension::Type::ReadWrite, parameters.javaScriptConfigurationDirectoryExtensionHandle);
-    }
+    if (!parameters.javaScriptConfigurationDirectory.isEmpty())
+        SandboxExtension::createHandleWithoutResolvingPath(parameters.javaScriptConfigurationDirectory, SandboxExtension::Type::ReadWrite, parameters.javaScriptConfigurationDirectoryExtensionHandle);
 
     parameters.resourceLoadStatisticsEnabled = websiteDataStore.resourceLoadStatisticsEnabled();
 
@@ -1764,6 +1767,12 @@ void WebProcessPool::clearCachedCredentials()
 {
     if (m_networkProcess)
         m_networkProcess->send(Messages::NetworkProcess::ClearCachedCredentials(), 0);
+}
+
+void WebProcessPool::clearPermanentCredentialsForProtectionSpace(WebCore::ProtectionSpace&& protectionSpace, CompletionHandler<void()>&& completionHandler)
+{
+    if (m_networkProcess)
+        m_networkProcess->sendWithAsyncReply(Messages::NetworkProcess::ClearPermanentCredentialsForProtectionSpace(protectionSpace), WTFMove(completionHandler));
 }
 
 void WebProcessPool::terminateNetworkProcess()

@@ -32,7 +32,7 @@
 #include "config.h"
 #include "WebKitAccessible.h"
 
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
 
 #include "AXObjectCache.h"
 #include "AccessibilityList.h"
@@ -467,7 +467,7 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
         attributeSet = addToAtkAttributeSet(attributeSet, "autocomplete", coreObject->autoCompleteValue().utf8().data());
 
     if (coreObject->supportsHasPopup())
-        attributeSet = addToAtkAttributeSet(attributeSet, "haspopup", coreObject->hasPopupValue().utf8().data());
+        attributeSet = addToAtkAttributeSet(attributeSet, "haspopup", coreObject->popupValue().utf8().data());
 
     if (coreObject->supportsCurrent())
         attributeSet = addToAtkAttributeSet(attributeSet, "current", coreObject->currentValue().utf8().data());
@@ -520,7 +520,10 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
 
         // The HTML AAM maps several elements to ARIA landmark roles. In order for the type of landmark
         // to be obtainable in the same fashion as an ARIA landmark, fall back on the computedRoleString.
-        if (coreObject->ariaRoleAttribute() == AccessibilityRole::Unknown && coreObject->isLandmark())
+        // We also want to do this for the style-format-group element types so that the type of format
+        // group it is doesn't get lost to a generic platform role.
+        if (coreObject->ariaRoleAttribute() == AccessibilityRole::Unknown
+            && (coreObject->isLandmark() || coreObject->isStyleFormatGroup()))
             attributeSet = addToAtkAttributeSet(attributeSet, "xml-roles", computedRoleString.utf8().data());
     }
 
@@ -799,12 +802,23 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
         return ATK_ROLE_DESCRIPTION_TERM;
     case AccessibilityRole::DescriptionListDetail:
         return ATK_ROLE_DESCRIPTION_VALUE;
-    case AccessibilityRole::Inline:
-        if (coreObject->isSubscriptStyleGroup())
-            return ATK_ROLE_SUBSCRIPT;
-        if (coreObject->isSuperscriptStyleGroup())
-            return ATK_ROLE_SUPERSCRIPT;
+    case AccessibilityRole::Deletion:
+#if ATK_CHECK_VERSION(2, 33, 3)
+        return ATK_ROLE_CONTENT_DELETION;
+#else
         return ATK_ROLE_STATIC;
+#endif
+    case AccessibilityRole::Insertion:
+#if ATK_CHECK_VERSION(2, 33, 3)
+        return ATK_ROLE_CONTENT_INSERTION;
+#else
+        return ATK_ROLE_STATIC;
+#endif
+    case AccessibilityRole::Subscript:
+        return ATK_ROLE_SUBSCRIPT;
+    case AccessibilityRole::Superscript:
+        return ATK_ROLE_SUPERSCRIPT;
+    case AccessibilityRole::Inline:
     case AccessibilityRole::SVGTextPath:
     case AccessibilityRole::SVGTSpan:
     case AccessibilityRole::Time:
@@ -1355,4 +1369,4 @@ const char* webkitAccessibleCacheAndReturnAtkProperty(WebKitAccessible* accessib
     return (*propertyPtr).data();
 }
 
-#endif // HAVE(ACCESSIBILITY)
+#endif // ENABLE(ACCESSIBILITY)

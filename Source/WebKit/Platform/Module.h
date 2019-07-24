@@ -50,7 +50,7 @@ namespace WebKit {
 class Module {
     WTF_MAKE_NONCOPYABLE(Module);
 public:
-    Module(const String& path);
+    explicit Module(const String& path);
     ~Module();
 
     bool load();

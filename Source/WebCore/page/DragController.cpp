@@ -135,12 +135,6 @@ static PlatformMouseEvent createMouseEvent(const DragData& dragData)
 DragController::DragController(Page& page, DragClient& client)
     : m_page(page)
     , m_client(client)
-    , m_numberOfItemsToBeAccepted(0)
-    , m_dragHandlingMethod(DragHandlingMethod::None)
-    , m_dragDestinationAction(DragDestinationActionNone)
-    , m_dragSourceAction(DragSourceActionNone)
-    , m_didInitiateDrag(false)
-    , m_sourceDragOperation(DragOperationNone)
 {
 }
 
@@ -284,7 +278,7 @@ bool DragController::performDragOperation(const DragData& dragData)
         return false;
 
     m_client.willPerformDragDestinationAction(DragDestinationActionLoad, dragData);
-    FrameLoadRequest frameLoadRequest { m_page.mainFrame(), { urlString }, shouldOpenExternalURLsPolicy };
+    FrameLoadRequest frameLoadRequest { m_page.mainFrame(), ResourceRequest { urlString }, shouldOpenExternalURLsPolicy };
     frameLoadRequest.setIsRequestFromClientOrUserInput();
     m_page.mainFrame().loader().load(WTFMove(frameLoadRequest));
     return true;
@@ -656,7 +650,7 @@ bool DragController::canProcessDrag(const DragData& dragData)
     if (!m_page.mainFrame().contentRenderer())
         return false;
 
-    result = m_page.mainFrame().eventHandler().hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active);
+    result = m_page.mainFrame().eventHandler().hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent);
 
     auto* dragNode = result.innerNonSharedNode();
     if (!dragNode)
@@ -905,7 +899,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
         return false;
 
     Ref<Frame> protector(src);
-    HitTestResult hitTestResult = src.eventHandler().hitTestResultAtPoint(dragOrigin, HitTestRequest::ReadOnly | HitTestRequest::Active);
+    HitTestResult hitTestResult = src.eventHandler().hitTestResultAtPoint(dragOrigin, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent);
 
     bool sourceContainsHitNode = state.source->containsIncludingShadowDOM(hitTestResult.innerNode());
     if (!sourceContainsHitNode) {

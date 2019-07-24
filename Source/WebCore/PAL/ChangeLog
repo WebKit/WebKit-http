@@ -1,3 +1,133 @@
+2019-07-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Make some constructors explicit
+        https://bugs.webkit.org/show_bug.cgi?id=199981
+
+        Reviewed by Daniel Bates.
+
+        Make explicit public constructors of objects that take POD or String& arguments,
+        to reduce the changes of the compiler doing implicit conversions.
+
+        * pal/system/cocoa/SleepDisablerCocoa.cpp:
+        (PAL::SleepDisablerCocoa::SleepDisablerCocoa):
+        * pal/system/cocoa/SleepDisablerCocoa.h:
+
+2019-07-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Fast and complex text codepaths disagree about how to lay out bopomofo with tone marks
+        https://bugs.webkit.org/show_bug.cgi?id=199912
+        <rdar://problem/52182454>
+
+        Reviewed by Simon Fraser.
+
+        * pal/spi/cocoa/CoreTextSPI.h:
+
+2019-07-17  Antoine Quint  <graouts@apple.com>
+
+        Disable Pointer Events prior to watchOS 6
+        https://bugs.webkit.org/show_bug.cgi?id=199890
+        <rdar://problem/53206113>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        New York font erroneously gets synthetic bold
+        https://bugs.webkit.org/show_bug.cgi?id=199653
+        <rdar://problem/51692592>
+
+        Reviewed by Simon Fraser.
+
+        * pal/spi/cocoa/CoreTextSPI.h:
+
+2019-07-11  Jonathan Bedard  <jbedard@apple.com>
+
+        [iOS 13] Enable WebKit build
+        https://bugs.webkit.org/show_bug.cgi?id=199481
+        <rdar://problem/52619048>
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cocoa/NSProgressSPI.h: We need the NSProgress SPI in public builds because NSProgress API
+        is marked unavailable on iOS, watchOS and tvOS.
+        * pal/spi/ios/CoreUISPI.h: Add CUIStyleEffectConfiguration.appearanceName SPI.
+        * pal/spi/ios/DataDetectorsUISPI.h: Add UIContextMenuConfiguration.contextMenuConfigurationForURL SPI.
+        * pal/spi/ios/SystemPreviewSPI.h: Add ARQuickLookWebKitItem.initWithPreviewItemProvider SPI.
+        * pal/spi/ios/UIKitSPI.h: Add systemBrownColor, UIColor.tableCellDefaultSelectionTintColor should be marked nullable.
+        * pal/spi/mac/AVFoundationSPI.h: Add AVOutputDevice.name SPI.
+
+2019-07-10  Alex Christensen  <achristensen@webkit.org>
+
+        Allow CMake to build WebCore on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=198979
+
+        Reviewed by Don Olmstead.
+
+        * pal/PlatformMac.cmake:
+
+2019-07-08  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Enable only on the most recent version of the supported iOS family
+        https://bugs.webkit.org/show_bug.cgi?id=199562
+        <rdar://problem/52766511>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247159.
+
+        IndexedDB layout tests are failing the new assert.
+
+        Reverted changeset:
+
+        "ASSERT that a sessionID is valid when encoding it"
+        https://bugs.webkit.org/show_bug.cgi?id=199302
+        https://trac.webkit.org/changeset/247159
+
+2019-07-05  Youenn Fablet  <youenn@apple.com>
+
+        ASSERT that a sessionID is valid when encoding it
+        https://bugs.webkit.org/show_bug.cgi?id=199302
+
+        Reviewed by Darin Adler.
+
+        ASSERT that a sessionID is valid at encoding/decoding time.
+
+        * pal/SessionID.h:
+        (PAL::SessionID::encode const):
+        (PAL::SessionID::decode):
+
+2019-07-03  Jonathan Bedard  <jbedard@apple.com>
+
+        [Catalina] Enable WebKit build
+        https://bugs.webkit.org/show_bug.cgi?id=199209
+
+        Reviewed by Darin Adler.
+
+        * pal/spi/cf/CFNetworkSPI.h: Add new NSURLSessionConfiguration SPI.
+        * pal/spi/mac/AVFoundationSPI.h: resourceConservationLevelWhilePaused should
+        be defined after AVPlayerResourceConservationLevel.
+        * pal/spi/mac/NSViewSPI.h: Add subviewsIvar.
+
+2019-07-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r246616.
+
+        Caused http/tests/inspector/network/har/har-page.html to fail
+        on Catalina.
+
+        Reverted changeset:
+
+        "Web Inspector: Network: replace CFNetwork SPI with new API
+        where able"
+        https://bugs.webkit.org/show_bug.cgi?id=198762
+        https://trac.webkit.org/changeset/246616
+
 2019-06-28  Brent Fulgham  <bfulgham@apple.com>
 
         [FTW] Build WebCore

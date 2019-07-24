@@ -1056,10 +1056,11 @@
       "emails" : [
          "clopez@igalia.com"
       ],
-      "expertise" : "The WebKitGTK port, Tools, Build/test infrastructure",
+      "expertise" : "The WebKitGTK and WPE ports, Tools, Build/test infrastructure",
       "nicks" : [
          "clopez"
-      ]
+      ],
+      "status" : "committer"
    },
    "Carlos Eduardo Ramalho" : {
       "emails" : [
@@ -4250,6 +4251,14 @@
          "olliej"
       ]
    },
+   "Olivier Blin" : {
+      "emails" : [
+         "olivier.blin@softathome.com"
+      ],
+      "nicks" : [
+         "blino"
+      ]
+   },
    "Oriol Brufau" : {
       "emails" : [
          "obrufau@igalia.com"
@@ -4669,6 +4678,12 @@
          "rkirsling"
       ],
       "status" : "reviewer"
+   },
+   "Russell Epstein" : {
+      "emails" : [
+         "repstein@apple.com"
+      ],
+      "status" : "committer"
    },
    "Ruth Fong" : {
       "emails" : [

@@ -30,8 +30,11 @@
 #import "DictionaryLookup.h"
 #import "Document.h"
 #import "EventHandler.h"
+#import "HTMLMediaElement.h"
 #import "HitTestResult.h"
+#import "MediaPlayerPrivate.h"
 #import "Range.h"
+#import <AVFoundation/AVPlayer.h>
 #import <pal/ios/UIKitSoftLink.h>
 #import <wtf/cocoa/NSURLExtras.h>
 
@@ -61,12 +64,25 @@ ExceptionOr<RefPtr<Range>> Internals::rangeForDictionaryLookupAtLocation(int x, 
 
     document->updateLayoutIgnorePendingStylesheets();
 
-    HitTestResult result = document->frame()->mainFrame().eventHandler().hitTestResultAtPoint(IntPoint(x, y));
+    HitTestResult result = document->frame()->mainFrame().eventHandler().hitTestResultAtPoint(IntPoint(x, y), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
     RefPtr<Range> range;
     std::tie(range, std::ignore) = DictionaryLookup::rangeAtHitTestResult(result);
     return WTFMove(range);
 }
 
+#endif
+
+#if ENABLE(VIDEO)
+double Internals::privatePlayerVolume(const HTMLMediaElement& element)
+{
+    auto corePlayer = element.player();
+    if (!corePlayer)
+        return 0;
+    auto player = corePlayer->objCAVFoundationAVPlayer();
+    if (!player)
+        return 0;
+    return [player volume];
+}
 #endif
 
 }

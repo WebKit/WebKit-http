@@ -91,6 +91,7 @@
 #include "PointerCaptureController.h"
 #include "PointerLockController.h"
 #include "ProgressTracker.h"
+#include "RenderDescendantIterator.h"
 #include "RenderLayerCompositor.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
@@ -121,7 +122,6 @@
 #include "VisitedLinkState.h"
 #include "VisitedLinkStore.h"
 #include "VoidCallback.h"
-#include "WebGLStateTracker.h"
 #include "WheelEventDeltaFilter.h"
 #include "Widget.h"
 #include <wtf/FileSystem.h>
@@ -151,6 +151,10 @@
 
 #if ENABLE(DATA_INTERACTION)
 #include "SelectionRect.h"
+#endif
+
+#if ENABLE(WEBGL)
+#include "WebGLStateTracker.h"
 #endif
 
 namespace WebCore {
@@ -233,7 +237,9 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_validationMessageClient(WTFMove(pageConfiguration.validationMessageClient))
     , m_diagnosticLoggingClient(WTFMove(pageConfiguration.diagnosticLoggingClient))
     , m_performanceLoggingClient(WTFMove(pageConfiguration.performanceLoggingClient))
+#if ENABLE(WEBGL)
     , m_webGLStateTracker(WTFMove(pageConfiguration.webGLStateTracker))
+#endif
 #if ENABLE(SPEECH_SYNTHESIS)
     , m_speechSynthesisClient(WTFMove(pageConfiguration.speechSynthesisClient))
 #endif
@@ -3015,5 +3021,28 @@ void Page::didFinishLoadingImageForElement(HTMLImageElement& element)
 {
     chrome().client().didFinishLoadingImageForElement(element);
 }
+
+#if ENABLE(TEXT_AUTOSIZING)
+void Page::recomputeTextAutoSizingInAllFrames()
+{
+    ASSERT(settings().textAutosizingEnabled() && settings().textAutosizingUsesIdempotentMode());
+    for (auto* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (!frame->document())
+            continue;
+        auto& document = *frame->document();
+        if (!document.renderView() || !document.styleScope().resolverIfExists())
+            continue;
+
+        auto& styleResolver = document.styleScope().resolver();
+        for (auto& renderer : descendantsOfType<RenderElement>(*document.renderView())) {
+            if (auto* element = renderer.element()) {
+                auto needsLayout = styleResolver.adjustRenderStyleForTextAutosizing(renderer.mutableStyle(), *element);
+                if (needsLayout)
+                    renderer.setNeedsLayout();
+            }
+        }
+    }
+}
+#endif
 
 } // namespace WebCore

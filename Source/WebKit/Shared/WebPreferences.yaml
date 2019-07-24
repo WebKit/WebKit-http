@@ -130,10 +130,6 @@ WebGLEnabled:
   type: bool
   defaultValue: true
 
-ForceSoftwareWebGLRendering:
-  type: bool
-  defaultValue: false
-
 Accelerated2dCanvasEnabled:
   type: bool
   defaultValue: false
@@ -1126,6 +1122,10 @@ ShouldAllowUserInstalledFonts:
   type: bool
   defaultValue: true
 
+ShouldAllowDesignSystemUIFonts:
+  type: bool
+  defaultValue: false
+
 MediaCapabilitiesEnabled:
   type: bool
   defaultValue: true
@@ -1193,6 +1193,11 @@ SourceBufferChangeTypeEnabled:
   type: bool
   defaultValue: true
   condition: ENABLE(MEDIA_SOURCE)
+
+DialogElementEnabled:
+  type: bool
+  defaultValue: false
+  webcoreBinding: RuntimeEnabledFeatures
 
 EncryptedMediaAPIEnabled:
   type: bool
@@ -1349,15 +1354,6 @@ CSSCustomPropertiesAndValuesEnabled:
   humanReadableDescription: "Enable CSS Custom Properties and Values API"
   webcoreBinding: RuntimeEnabledFeatures
   category: experimental
-
-DarkModeCSSEnabled:
-  type: bool
-  defaultValue: true
-  humanReadableName: "Dark Mode CSS Support"
-  humanReadableDescription: "Enable Dark Mode CSS Support"
-  webcoreBinding: RuntimeEnabledFeatures
-  category: experimental
-  condition: ENABLE(DARK_MODE_CSS)
 
 CSSPaintingAPIEnabled:
   type: bool

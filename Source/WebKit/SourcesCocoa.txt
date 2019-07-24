@@ -428,8 +428,9 @@ UIProcess/ios/WKPDFPageNumberIndicator.mm
 UIProcess/ios/WKPDFView.mm
 UIProcess/ios/WKScrollView.mm
 UIProcess/ios/WKSyntheticFlagsChangedWebEvent.mm
-UIProcess/ios/WKSyntheticTapGestureRecognizer.m
+UIProcess/ios/WKSyntheticTapGestureRecognizer.mm
 UIProcess/ios/WKSystemPreviewView.mm
+UIProcess/ios/WKTouchActionGestureRecognizer.m
 UIProcess/ios/WKWebEvent.mm
 
 UIProcess/Launcher/mac/ProcessLauncherMac.mm

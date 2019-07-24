@@ -126,6 +126,7 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
+    ResetPotentialTapSecurityOrigin()
     TouchEventSync(WebKit::WebTouchEvent event) -> (bool handled) Synchronous
 #endif
 #if !ENABLE(IOS_TOUCH_EVENTS) && ENABLE(TOUCH_EVENTS)
@@ -286,6 +287,7 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
     FindStringMatches(String string, uint32_t findOptions, unsigned maxMatchCount)
     GetImageForFindMatch(uint32_t matchIndex)
     SelectFindMatch(uint32_t matchIndex)
+    IndicateFindMatch(uint32_t matchIndex)
     HideFindUI()
     CountStringMatches(String string, uint32_t findOptions, unsigned maxMatchCount)
     ReplaceMatches(Vector<uint32_t> matchIndices, String replacementText, bool selectionOnly, WebKit::CallbackID callbackID)
@@ -451,7 +453,7 @@ GenerateSyntheticEditingCommand(enum:uint8_t WebKit::SyntheticEditingCommandType
 #if PLATFORM(MAC)
     InsertDictatedTextAsync(String text, struct WebKit::EditingRange replacementRange, Vector<WebCore::DictationAlternative> dictationAlternatives, bool registerUndoGroup)
     AttributedSubstringForCharacterRangeAsync(struct WebKit::EditingRange range, WebKit::CallbackID callbackID);
-    FontAtSelection(WebKit::CallbackID callbackID);
+    FontAtSelection(WebKit::CallbackID callbackID)
 #endif
 
     SetAlwaysShowsHorizontalScroller(bool alwaysShowsHorizontalScroller)

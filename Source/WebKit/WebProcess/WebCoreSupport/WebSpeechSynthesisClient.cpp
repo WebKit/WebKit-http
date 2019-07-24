@@ -43,18 +43,32 @@ const Vector<RefPtr<WebCore::PlatformSpeechSynthesisVoice>>& WebSpeechSynthesisC
     m_page.sendSync(Messages::WebPageProxy::SpeechSynthesisVoiceList(), voiceList);
 
     m_voices.clear();
-    for (auto& voice : voiceList) {
+    for (auto& voice : voiceList)
         m_voices.append(WebCore::PlatformSpeechSynthesisVoice::create(voice.voiceURI, voice.name, voice.lang, voice.localService, voice.defaultLang));
-        
-    }
     return m_voices;
+}
+
+WebCore::SpeechSynthesisClientObserver* WebSpeechSynthesisClient::corePageObserver() const
+{
+    if (m_page.corePage() && m_page.corePage()->speechSynthesisClient() && m_page.corePage()->speechSynthesisClient()->observer())
+        return m_page.corePage()->speechSynthesisClient()->observer().get();
+    return nullptr;
 }
 
 void WebSpeechSynthesisClient::speak(RefPtr<WebCore::PlatformSpeechSynthesisUtterance> utterance)
 {
-    WTF::CompletionHandler<void()> completionHandler = [this, weakThis = makeWeakPtr(*this)]() mutable {
-        if (weakThis)
-            m_page.corePage()->speechSynthesisClient()->observer()->didFinishSpeaking();
+    WTF::CompletionHandler<void()> startedCompletionHandler = [this, weakThis = makeWeakPtr(*this)]() mutable {
+        if (!weakThis)
+            return;
+        if (auto observer = corePageObserver())
+            observer->didStartSpeaking();
+    };
+
+    WTF::CompletionHandler<void()> finishedCompletionHandler = [this, weakThis = makeWeakPtr(*this)]() mutable {
+        if (!weakThis)
+            return;
+        if (auto observer = corePageObserver())
+            observer->didFinishSpeaking();
     };
 
     auto voice = utterance->voice();
@@ -63,10 +77,9 @@ void WebSpeechSynthesisClient::speak(RefPtr<WebCore::PlatformSpeechSynthesisUtte
     auto lang = voice ? voice->lang() : "";
     auto localService = voice ? voice->localService() : false;
     auto isDefault = voice ? voice->isDefault() : false;
-
-    m_page.sendWithAsyncReply(Messages::WebPageProxy::SpeechSynthesisSpeak(utterance->text(), utterance->lang(), utterance->volume(), utterance->rate(), utterance->pitch(), utterance->startTime(), voiceURI, name, lang, localService, isDefault), WTFMove(completionHandler));
-
-    m_page.corePage()->speechSynthesisClient()->observer()->didStartSpeaking();
+    
+    m_page.sendWithAsyncReply(Messages::WebPageProxy::SpeechSynthesisSetFinishedCallback(), WTFMove(finishedCompletionHandler));
+    m_page.sendWithAsyncReply(Messages::WebPageProxy::SpeechSynthesisSpeak(utterance->text(), utterance->lang(), utterance->volume(), utterance->rate(), utterance->pitch(), utterance->startTime(), voiceURI, name, lang, localService, isDefault), WTFMove(startedCompletionHandler));
 }
 
 void WebSpeechSynthesisClient::cancel()
@@ -77,8 +90,10 @@ void WebSpeechSynthesisClient::cancel()
 void WebSpeechSynthesisClient::pause()
 {
     WTF::CompletionHandler<void()> completionHandler = [this, weakThis = makeWeakPtr(*this)]() mutable {
-        if (weakThis)
-            m_page.corePage()->speechSynthesisClient()->observer()->didPauseSpeaking();
+        if (!weakThis)
+            return;
+        if (auto observer = corePageObserver())
+            observer->didPauseSpeaking();
     };
     
     m_page.sendWithAsyncReply(Messages::WebPageProxy::SpeechSynthesisPause(), WTFMove(completionHandler));
@@ -87,8 +102,10 @@ void WebSpeechSynthesisClient::pause()
 void WebSpeechSynthesisClient::resume()
 {
     WTF::CompletionHandler<void()> completionHandler = [this, weakThis = makeWeakPtr(*this)]() mutable {
-        if (weakThis)
-            m_page.corePage()->speechSynthesisClient()->observer()->didResumeSpeaking();
+        if (!weakThis)
+            return;
+        if (auto observer = corePageObserver())
+            observer->didResumeSpeaking();
     };
     
     m_page.sendWithAsyncReply(Messages::WebPageProxy::SpeechSynthesisResume(), WTFMove(completionHandler));

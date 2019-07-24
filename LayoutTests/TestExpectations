@@ -41,9 +41,9 @@ fast/events/pointer/ios [ Skip ]
 fast/events/touch/ios [ Skip ]
 fast/history/ios [ Skip ]
 fast/scrolling/ios [ Skip ]
+fast/scrolling/ipad [ Skip ]
 fast/text/mac [ Skip ]
 scrollingcoordinator [ Skip ]
-fast/content-observation [ Skip ]
 media/mac [ Skip ]
 media/ios [ Skip ]
 fast/text-autosizing [ Skip ]
@@ -1670,6 +1670,10 @@ webkit.org/b/148884 imported/w3c/web-platform-tests/html/semantics/forms/textfie
 webkit.org/b/190626 imported/w3c/web-platform-tests/html/semantics/forms/the-datalist-element/datalistoptions.html [ Failure ]
 webkit.org/b/190613 imported/blink/fast/forms/datalist/slider-appearance-with-ticks-crash.html [ Skip ]
 
+# Tests require WTR and disabling of user installed fonts. Reenabling them in supported platforms
+fast/text/user-installed-fonts/extended-character.html [ Skip ]
+fast/text/user-installed-fonts/extended-character-with-user-font.html [ Skip ]
+
 # Does timeout
 imported/w3c/web-platform-tests/webaudio/idlharness.https.html [ Skip ]
 # Do assert in OfflineAudioContext
@@ -2204,6 +2208,7 @@ webkit.org/b/170122 http/tests/preload/single_download_preload_headers_charset.p
 ########################################
 ### START OF -disabled tests
 
+webkit.org/b/199431 accessibility/set-selected-text-range-after-newline.html [ Skip ]
 webkit.org/b/20871 js/garbage-collect-after-string-appends.html [ Skip ]
 webkit.org/b/58323 compositing/objects/composited-object-alignment.html [ Skip ]
 webkit.org/b/48454 compositing/tiling/huge-layer-resize.html [ Skip ]
@@ -2333,12 +2338,10 @@ webkit.org/b/112755 fast/css3-text/css3-text-indent/getComputedStyle [ Skip ]
 webkit.org/b/3652 fast/dom/HTMLLinkElement/link-and-subresource-test.html [ Skip ]
 webkit.org/b/3652 fast/dom/HTMLLinkElement/link-and-subresource-test-nonexistent.html [ Skip ]
 webkit.org/b/3652 fast/dom/HTMLLinkElement/prefetch.html [ Skip ]
-webkit.org/b/3652 fast/dom/HTMLLinkElement/prefetch-beforeload.html [ Skip ]
 webkit.org/b/3652 fast/dom/HTMLLinkElement/prefetch-onerror.html [ Skip ]
 webkit.org/b/3652 fast/dom/HTMLLinkElement/prefetch-onload.html [ Skip ]
 webkit.org/b/3652 fast/dom/HTMLLinkElement/prefetch-too-many-clients.html [ Skip ]
 webkit.org/b/3652 fast/dom/HTMLLinkElement/subresource.html [ Skip ]
-webkit.org/b/3652 http/tests/misc/link-rel-prefetch-and-subresource.html [ Skip ]
 webkit.org/b/3652 http/tests/misc/prefetch-purpose.html [ Skip ]
 
 # First-party-only cookie policy only supported on Cocoa platforms.
@@ -3441,4 +3444,14 @@ fast/dom/linkify-phone-numbers.html [ ImageOnlyFailure ]
 
 webkit.org/b/199039 editing/deleting/smart-delete-paragraph-003.html [ Skip ]
 
-webkit.org/b/199028 webgpu/whlsl-test-harness-test.html [ Slow ]
+webkit.org/b/199028 webgpu/whlsl/test-harness-test.html [ Slow ]
+
+imported/w3c/web-platform-tests/css/cssom-view/offsetTopLeft-inline.html [ ImageOnlyFailure ]
+
+# These tests only work on systems with the design system ui fonts installed.
+fast/text/design-system-ui-11.html [ ImageOnlyFailure ]
+fast/text/design-system-ui-12.html [ ImageOnlyFailure ]
+fast/text/design-system-ui-13.html [ ImageOnlyFailure ]
+fast/text/design-system-ui-14.html [ ImageOnlyFailure ]
+fast/text/design-system-ui-15.html [ ImageOnlyFailure ]
+fast/text/design-system-ui-16.html [ ImageOnlyFailure ]

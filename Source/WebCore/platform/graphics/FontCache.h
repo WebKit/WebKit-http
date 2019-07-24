@@ -128,7 +128,8 @@ struct FontDescriptionKey {
 private:
     static std::array<unsigned, 2> makeFlagsKey(const FontDescription& description)
     {
-        unsigned first = static_cast<unsigned>(description.script()) << 14
+        unsigned first = static_cast<unsigned>(description.script()) << 15
+            | static_cast<unsigned>(description.shouldAllowDesignSystemUIFonts()) << 14
             | static_cast<unsigned>(description.shouldAllowUserInstalledFonts()) << 13
             | static_cast<unsigned>(description.fontStyleAxis() == FontStyleAxis::slnt) << 12
             | static_cast<unsigned>(description.opticalSizing()) << 11
@@ -196,6 +197,8 @@ public:
     Vector<String> systemFontFamilies();
     void platformInit();
 
+    static bool isSystemFontForbiddenForEditing(const String&);
+
 #if PLATFORM(COCOA)
     WEBCORE_EXPORT static void setFontWhitelist(const Vector<String>&);
 #endif
@@ -251,6 +254,7 @@ public:
     };
     PrewarmInformation collectPrewarmInformation() const;
     void prewarm(const PrewarmInformation&);
+    void prewarmGlobally();
 
 private:
     FontCache();

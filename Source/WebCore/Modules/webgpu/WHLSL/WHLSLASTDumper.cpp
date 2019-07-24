@@ -134,11 +134,7 @@ void ASTDumper::visit(AST::EnumerationDefinition& enumerationDefinition)
 
 void ASTDumper::visit(AST::EnumerationMember& enumerationMember)
 {
-    m_out.print(enumerationMember.name());
-    if (enumerationMember.value()) {
-        m_out.print(" = ");
-        visit(*enumerationMember.value());
-    }
+    m_out.print(enumerationMember.name(), " = ", enumerationMember.value());
 }
 
 void ASTDumper::visit(AST::FunctionDefinition& functionDefinition)
@@ -500,11 +496,6 @@ void ASTDumper::visit(AST::Return& returnStatement)
         m_out.print(" ");
         visit(*returnStatement.value());
     }
-}
-
-void ASTDumper::visit(AST::Trap&)
-{
-    m_out.print("trap");
 }
 
 void ASTDumper::visit(AST::SwitchStatement& switchStatement)

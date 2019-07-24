@@ -25,6 +25,8 @@
 
 #pragma once
 
+#if ENABLE(WEBGL)
+
 #include "ANGLEWebKitBridge.h"
 #include "GraphicsContext3DAttributes.h"
 #include "GraphicsTypes3D.h"
@@ -71,6 +73,9 @@ typedef CGLContextObj PlatformGraphicsContext3D;
 
 #if USE(ANGLE)
 typedef void* PlatformGraphicsContext3D;
+typedef void* PlatformGraphicsContext3DDisplay;
+typedef void* PlatformGraphicsContext3DSurface;
+typedef void* PlatformGraphicsContext3DConfig;
 #endif // USE(ANGLE)
 
 OBJC_CLASS CALayer;
@@ -1068,14 +1073,18 @@ public:
     void getIntegerv(GC3Denum pname, GC3Dint* value);
     void getInteger64v(GC3Denum pname, GC3Dint64* value);
     void getProgramiv(Platform3DObject program, GC3Denum pname, GC3Dint* value);
+#if !USE(ANGLE)
     void getNonBuiltInActiveSymbolCount(Platform3DObject program, GC3Denum pname, GC3Dint* value);
+#endif // !USE(ANGLE)
     String getProgramInfoLog(Platform3DObject);
     String getUnmangledInfoLog(Platform3DObject[2], GC3Dsizei, const String&);
     void getRenderbufferParameteriv(GC3Denum target, GC3Denum pname, GC3Dint* value);
     void getShaderiv(Platform3DObject, GC3Denum pname, GC3Dint* value);
     String getShaderInfoLog(Platform3DObject);
     void getShaderPrecisionFormat(GC3Denum shaderType, GC3Denum precisionType, GC3Dint* range, GC3Dint* precision);
+#if !USE(ANGLE)
     String getShaderSource(Platform3DObject);
+#endif // !USE(ANGLE)
     String getString(GC3Denum name);
     void getTexParameterfv(GC3Denum target, GC3Denum pname, GC3Dfloat* value);
     void getTexParameteriv(GC3Denum target, GC3Denum pname, GC3Dint* value);
@@ -1141,8 +1150,10 @@ public:
 
     void useProgram(Platform3DObject);
     void validateProgram(Platform3DObject);
+#if !USE(ANGLE)
     bool checkVaryingsPacking(Platform3DObject vertexShader, Platform3DObject fragmentShader) const;
     bool precisionsMatch(Platform3DObject vertexShader, Platform3DObject fragmentShader) const;
+#endif
 
     void vertexAttrib1f(GC3Duint index, GC3Dfloat x);
     void vertexAttrib1fv(GC3Duint index, const GC3Dfloat* values);
@@ -1199,6 +1210,11 @@ public:
     void allocateIOSurfaceBackingStore(IntSize);
     void updateFramebufferTextureBackingStoreFromLayer();
     void updateCGLContext();
+#endif
+
+#if USE(ANGLE) && PLATFORM(MAC)
+    void allocateIOSurfaceBackingStore(IntSize);
+    void updateFramebufferTextureBackingStoreFromLayer();
 #endif
 #endif // PLATFORM(COCOA)
 
@@ -1378,7 +1394,10 @@ private:
 #if PLATFORM(COCOA)
     RetainPtr<WebGLLayer> m_webGLLayer;
     PlatformGraphicsContext3D m_contextObj { nullptr };
-#endif
+#if USE(ANGLE)
+    PlatformGraphicsContext3DDisplay m_displayObj { nullptr };
+#endif // USE(ANGLE)
+#endif // PLATFORM(COCOA)
 
 #if PLATFORM(WIN) && USE(CA)
     RefPtr<PlatformCALayer> m_webGLLayer;
@@ -1412,6 +1431,7 @@ private:
         }
     };
 
+#if !USE(ANGLE)
     // FIXME: Shaders are never removed from this map, even if they and their program are deleted.
     // This is bad, and it also relies on the fact we never reuse Platform3DObject numbers.
     typedef HashMap<Platform3DObject, ShaderSourceEntry> ShaderSourceMap;
@@ -1450,6 +1470,7 @@ private:
     Optional<String> originalSymbolInShaderSourceMap(Platform3DObject shader, ANGLEShaderSymbolType, const String& name);
 
     std::unique_ptr<ShaderNameHash> nameHashMapForShaders;
+#endif // !USE(ANGLE)
 
 #if PLATFORM(QT)
     std::unique_ptr<Extensions3DOpenGLCommon> m_extensions;
@@ -1473,7 +1494,7 @@ private:
     RenderStyle m_renderStyle;
     Vector<Vector<float>> m_vertexArray;
 
-#if !PLATFORM(QT)
+#if !USE(ANGLE) && !PLATFORM(QT)
     ANGLEWebKitBridge m_compiler;
 #endif
 
@@ -1490,6 +1511,10 @@ private:
 
     bool m_layerComposited { false };
     GC3Duint m_internalColorFormat { 0 };
+
+#if USE(ANGLE)
+    PlatformGraphicsContext3DSurface m_pbuffer;
+#endif
 
     struct GraphicsContext3DState {
         GC3Duint boundFBO { 0 };
@@ -1577,3 +1602,5 @@ private:
 };
 
 } // namespace WebCore
+
+#endif

@@ -307,6 +307,7 @@ Modules/websockets/WorkerThreadableWebSocketChannel.cpp
 Modules/webgpu/GPUCanvasContext.cpp
 Modules/webgpu/NavigatorGPU.cpp
 Modules/webgpu/WHLSL/WHLSLComputeDimensions.cpp
+Modules/webgpu/WHLSL/WHLSLStandardLibraryUtilities.cpp
 Modules/webgpu/WHLSL/WHLSLASTDumper.cpp
 Modules/webgpu/WHLSL/WHLSLAutoInitializeVariables.cpp
 Modules/webgpu/WHLSL/WHLSLInferTypes.cpp
@@ -366,6 +367,7 @@ Modules/webgpu/WebGPUComputePassEncoder.cpp
 Modules/webgpu/WebGPUComputePipeline.cpp
 Modules/webgpu/WebGPUComputePipelineDescriptor.cpp
 Modules/webgpu/WebGPUDevice.cpp
+Modules/webgpu/WebGPUDeviceErrorScopes.cpp
 Modules/webgpu/WebGPUQueue.cpp
 Modules/webgpu/WebGPUPipelineLayout.cpp
 Modules/webgpu/WebGPUPipelineLayoutDescriptor.cpp
@@ -1104,6 +1106,7 @@ html/HTMLDListElement.cpp
 html/HTMLDataElement.cpp
 html/HTMLDataListElement.cpp
 html/HTMLDetailsElement.cpp
+html/HTMLDialogElement.cpp
 html/HTMLDirectoryElement.cpp
 html/HTMLDivElement.cpp
 html/HTMLDocument.cpp
@@ -1223,6 +1226,7 @@ html/URLSearchParams.cpp
 html/ValidationMessage.cpp
 html/WeekInputType.cpp
 
+html/canvas/ANGLEInstancedArrays.cpp
 html/canvas/CanvasGradient.cpp
 html/canvas/CanvasPath.cpp
 html/canvas/CanvasPattern.cpp
@@ -1230,11 +1234,56 @@ html/canvas/CanvasRenderingContext.cpp
 html/canvas/CanvasRenderingContext2D.cpp
 html/canvas/CanvasRenderingContext2DBase.cpp
 html/canvas/CanvasStyle.cpp
+html/canvas/EXTBlendMinMax.cpp
+html/canvas/EXTFragDepth.cpp
+html/canvas/EXTShaderTextureLOD.cpp
+html/canvas/EXTsRGB.cpp
+html/canvas/EXTTextureFilterAnisotropic.cpp
 html/canvas/ImageBitmapRenderingContext.cpp
+html/canvas/OESElementIndexUint.cpp
+html/canvas/OESStandardDerivatives.cpp
+html/canvas/OESTextureFloat.cpp
+html/canvas/OESTextureFloatLinear.cpp
+html/canvas/OESTextureHalfFloat.cpp
+html/canvas/OESTextureHalfFloatLinear.cpp
+html/canvas/OESVertexArrayObject.cpp
 html/canvas/OffscreenCanvasRenderingContext2D.cpp
 html/canvas/PaintRenderingContext2D.cpp
 html/canvas/Path2D.cpp
 html/canvas/PlaceholderRenderingContext.cpp
+html/canvas/WebGL2RenderingContext.cpp
+html/canvas/WebGLBuffer.cpp
+html/canvas/WebGLCompressedTextureASTC.cpp
+html/canvas/WebGLCompressedTextureATC.cpp
+html/canvas/WebGLCompressedTexturePVRTC.cpp
+html/canvas/WebGLCompressedTextureS3TC.cpp
+html/canvas/WebGLContextEvent.cpp
+html/canvas/WebGLContextGroup.cpp
+html/canvas/WebGLContextObject.cpp
+html/canvas/WebGLDebugRendererInfo.cpp
+html/canvas/WebGLDebugShaders.cpp
+html/canvas/WebGLDepthTexture.cpp
+html/canvas/WebGLDrawBuffers.cpp
+html/canvas/WebGLExtension.cpp
+html/canvas/WebGLFramebuffer.cpp
+html/canvas/WebGLLoseContext.cpp
+html/canvas/WebGLObject.cpp
+html/canvas/WebGLProgram.cpp
+html/canvas/WebGLQuery.cpp
+html/canvas/WebGLRenderbuffer.cpp
+html/canvas/WebGLRenderingContext.cpp
+html/canvas/WebGLRenderingContextBase.cpp
+html/canvas/WebGLSampler.cpp
+html/canvas/WebGLShader.cpp
+html/canvas/WebGLShaderPrecisionFormat.cpp
+html/canvas/WebGLSharedObject.cpp
+html/canvas/WebGLSync.cpp
+html/canvas/WebGLTexture.cpp
+html/canvas/WebGLTransformFeedback.cpp
+html/canvas/WebGLUniformLocation.cpp
+html/canvas/WebGLVertexArrayObject.cpp
+html/canvas/WebGLVertexArrayObjectBase.cpp
+html/canvas/WebGLVertexArrayObjectOES.cpp
 
 html/forms/FileIconLoader.cpp
 
@@ -1261,6 +1310,7 @@ html/parser/XSSAuditor.cpp
 html/parser/XSSAuditorDelegate.cpp
 
 html/shadow/AutoFillButtonElement.cpp
+html/shadow/DataListButtonElement.cpp
 html/shadow/DetailsMarkerControl.cpp
 html/shadow/MediaControlElementTypes.cpp
 html/shadow/MediaControlElements.cpp
@@ -1367,6 +1417,9 @@ layout/layouttree/LayoutInlineContainer.cpp
 layout/layouttree/LayoutLineBreakBox.cpp
 layout/layouttree/LayoutReplaced.cpp
 layout/layouttree/LayoutTreeBuilder.cpp
+layout/tableformatting/TableFormattingContext.cpp
+layout/tableformatting/TableFormattingState.cpp
+layout/tableformatting/TableInvalidation.cpp
 
 loader/AdClickAttribution.cpp
 loader/CanvasActivityRecord.cpp
@@ -1719,6 +1772,7 @@ platform/audio/ZeroPole.cpp
 
 platform/encryptedmedia/CDMFactory.cpp
 
+platform/graphics/ANGLEWebKitBridge.cpp
 platform/graphics/BitmapImage.cpp
 platform/graphics/Color.cpp
 platform/graphics/ColorUtilities.cpp
@@ -1825,7 +1879,11 @@ platform/graphics/filters/SourceAlpha.cpp
 platform/graphics/filters/SourceGraphic.cpp
 platform/graphics/filters/SpotLightSource.cpp
 
+platform/graphics/gpu/GPUBuffer.cpp
 platform/graphics/gpu/GPUDevice.cpp
+platform/graphics/gpu/GPUError.cpp
+platform/graphics/gpu/GPUErrorScopes.cpp
+platform/graphics/gpu/GPUValidationError.cpp
 platform/graphics/gpu/GPUPipelineLayout.cpp
 platform/graphics/gpu/GPUProgrammablePassEncoder.cpp
 
@@ -2755,9 +2813,11 @@ JSGPUBufferDescriptor.cpp
 JSGPUBufferUsage.cpp
 JSGPUCompareFunction.cpp
 JSGPUDepthStencilStateDescriptor.cpp
+JSGPUErrorFilter.cpp
 JSGPUExtent3D.cpp
 JSGPULoadOp.cpp
 JSGPUOrigin3D.cpp
+JSGPUOutOfMemoryError.cpp
 JSGPURequestAdapterOptions.cpp
 JSGPUSamplerDescriptor.cpp
 JSGPUShaderStageBit.cpp
@@ -2765,6 +2825,7 @@ JSGPUStoreOp.cpp
 JSGPUTextureDescriptor.cpp
 JSGPUTextureFormat.cpp
 JSGPUTextureUsage.cpp
+JSGPUValidationError.cpp
 JSGPUVertexAttributeDescriptor.cpp
 JSGPUVertexBufferDescriptor.cpp
 JSGPUVertexInputDescriptor.cpp
@@ -2790,6 +2851,7 @@ JSHTMLDListElement.cpp
 JSHTMLDataElement.cpp
 JSHTMLDataListElement.cpp
 JSHTMLDetailsElement.cpp
+JSHTMLDialogElement.cpp
 JSHTMLDirectoryElement.cpp
 JSHTMLDivElement.cpp
 JSHTMLDocument.cpp
@@ -3317,6 +3379,7 @@ JSWebGPUComputePassEncoder.cpp
 JSWebGPUComputePipeline.cpp
 JSWebGPUComputePipelineDescriptor.cpp
 JSWebGPUDevice.cpp
+JSWebGPUDeviceErrorScopes.cpp
 JSWebGPUQueue.cpp
 JSWebGPUPipelineDescriptorBase.cpp
 JSWebGPUPipelineLayout.cpp

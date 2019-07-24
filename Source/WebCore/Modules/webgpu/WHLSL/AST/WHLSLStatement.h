@@ -28,7 +28,6 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLLexer.h"
-#include "WHLSLValue.h"
 #include <wtf/UniqueRef.h>
 
 namespace WebCore {
@@ -37,11 +36,10 @@ namespace WHLSL {
 
 namespace AST {
 
-class Statement : public Value {
-    using Base = Value;
+class Statement {
 public:
-    Statement(Lexer::Token&& origin)
-        : Base(WTFMove(origin))
+    Statement(CodeLocation codeLocation)
+        : m_codeLocation(codeLocation)
     {
     }
 
@@ -62,9 +60,14 @@ public:
     virtual bool isStatementList() const { return false; }
     virtual bool isSwitchCase() const { return false; }
     virtual bool isSwitchStatement() const { return false; }
-    virtual bool isTrap() const { return false; }
     virtual bool isVariableDeclarationsStatement() const { return false; }
     virtual bool isWhileLoop() const { return false; }
+
+    CodeLocation codeLocation() const { return m_codeLocation; }
+    void updateCodeLocation(CodeLocation location) { m_codeLocation = location; }
+
+private:
+    CodeLocation m_codeLocation;
 };
 
 using Statements = Vector<UniqueRef<Statement>>;

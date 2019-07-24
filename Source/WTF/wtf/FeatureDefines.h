@@ -179,6 +179,12 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #endif
 #endif
 
+#if PLATFORM(MACCATALYST) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000)
+#if !defined(USE_UIKIT_KEYBOARD_ADDITIONS)
+#define USE_UIKIT_KEYBOARD_ADDITIONS 1
+#endif
+#endif
+
 #if !defined(HAVE_VISIBILITY_PROPAGATION_VIEW)
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000
 #define HAVE_VISIBILITY_PROPAGATION_VIEW 1
@@ -404,6 +410,10 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #define ENABLE_3D_TRANSFORMS 0
 #endif
 
+#if !defined(ENABLE_ACCESSIBILITY)
+#define ENABLE_ACCESSIBILITY 1
+#endif
+
 #if !defined(ENABLE_ACCELERATED_2D_CANVAS)
 #define ENABLE_ACCELERATED_2D_CANVAS 0
 #endif
@@ -608,10 +618,6 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 
 #if !defined(ENABLE_MOUSE_FORCE_EVENTS)
 #define ENABLE_MOUSE_FORCE_EVENTS 1
-#endif
-
-#if !defined(ENABLE_NAVIGATOR_CONTENT_UTILS)
-#define ENABLE_NAVIGATOR_CONTENT_UTILS 0
 #endif
 
 #if !defined(ENABLE_NETSCAPE_PLUGIN_API)

@@ -64,7 +64,6 @@
 #include "WebPreferences.h"
 #include "WebPageProxyMessages.h"
 #include "WebPopupMenuProxy.h"
-#include "WebProcessLifetimeTracker.h"
 #include "WebUndoStepID.h"
 #include "WebsitePoliciesData.h"
 #include <WebCore/ActivityState.h>
@@ -292,6 +291,7 @@ struct DocumentEditingContext;
 struct DocumentEditingContextRequest;
 struct EditingRange;
 struct EditorState;
+struct FontInfo;
 struct FrameInfoData;
 struct InsertTextOptions;
 struct InteractionInformationRequest;
@@ -351,7 +351,7 @@ typedef GenericCallback<const Optional<WebCore::ApplicationManifest>&> Applicati
 
 #if PLATFORM(MAC)
 typedef GenericCallback<const AttributedString&, const EditingRange&> AttributedStringForCharacterRangeCallback;
-typedef GenericCallback<const String&, double, bool> FontAtSelectionCallback;
+typedef GenericCallback<const FontInfo&, double, bool> FontAtSelectionCallback;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -421,8 +421,6 @@ public:
     WebsiteDataStore& websiteDataStore() { return m_websiteDataStore; }
 
     void addPreviouslyVisitedPath(const String&);
-
-    WebProcessLifetimeTracker& webProcessLifetimeTracker() { return m_webProcessLifetimeTracker; }
 
 #if ENABLE(DATA_DETECTION)
     NSArray *dataDetectionResults() { return m_dataDetectionResults.get(); }
@@ -676,6 +674,7 @@ public:
 
     void setViewportConfigurationViewLayoutSize(const WebCore::FloatSize&, double scaleFactor, double minimumEffectiveDeviceWidth);
     void setMaximumUnobscuredSize(const WebCore::FloatSize&);
+    WebCore::FloatSize maximumUnobscuredSize() const { return m_maximumUnobscuredSize; }
     void setDeviceOrientation(int32_t);
     int32_t deviceOrientation() const { return m_deviceOrientation; }
     void setOverrideViewportArguments(const Optional<WebCore::ViewportArguments>&);
@@ -809,7 +808,7 @@ public:
 #if PLATFORM(MAC)
     void insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<WebCore::TextAlternativeWithRange>& dictationAlternatives, bool registerUndoGroup);
     void attributedSubstringForCharacterRangeAsync(const EditingRange&, WTF::Function<void (const AttributedString&, const EditingRange&, CallbackBase::Error)>&&);
-    void fontAtSelection(WTF::Function<void (const String&, double, bool, CallbackBase::Error)>&&);
+    void fontAtSelection(Function<void(const FontInfo&, double, bool, CallbackBase::Error)>&&);
 
     void startWindowDrag();
     NSWindow *platformWindow();
@@ -854,6 +853,7 @@ public:
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
+    void resetPotentialTapSecurityOrigin();
     void handleTouchEventSynchronously(NativeWebTouchEvent&);
     void handleTouchEventAsynchronously(const NativeWebTouchEvent&);
 
@@ -1009,6 +1009,7 @@ public:
     void findStringMatches(const String&, FindOptions, unsigned maxMatchCount);
     void getImageForFindMatch(int32_t matchIndex);
     void selectFindMatch(int32_t matchIndex);
+    void indicateFindMatch(int32_t matchIndex);
     void didGetImageForFindMatch(const ShareableBitmap::Handle& contentImageHandle, uint32_t matchIndex);
     void hideFindUI();
     void countStringMatches(const String&, FindOptions, unsigned maxMatchCount);
@@ -1282,9 +1283,6 @@ public:
 
     void didFinishCheckingText(uint64_t requestID, const Vector<WebCore::TextCheckingResult>&);
     void didCancelCheckingText(uint64_t requestID);
-
-    void connectionWillOpen(IPC::Connection&);
-    void webProcessWillShutDown();
 
     void didSaveToPageCache();
         
@@ -1563,6 +1561,7 @@ public:
 #if ENABLE(SPEECH_SYNTHESIS)
     void speechSynthesisVoiceList(CompletionHandler<void(Vector<WebSpeechSynthesisVoice>&&)>&&);
     void speechSynthesisSpeak(const String&, const String&, float volume, float rate, float pitch, MonotonicTime startTime, const String& voiceURI, const String& voiceName, const String& voiceLang, bool localService, bool defaultVoice, CompletionHandler<void()>&&);
+    void speechSynthesisSetFinishedCallback(CompletionHandler<void()>&&);
     void speechSynthesisCancel();
     void speechSynthesisPause(CompletionHandler<void()>&&);
     void speechSynthesisResume(CompletionHandler<void()>&&);
@@ -1590,6 +1589,10 @@ public:
     void requestStorageSpace(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, WTF::CompletionHandler<void(uint64_t)>&&);
 
     URL currentResourceDirectoryURL() const;
+
+#if ENABLE(MEDIA_STREAM)
+    void setMockCaptureDevicesEnabledOverride(Optional<bool>);
+#endif
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, WebCore::PageIdentifier, Ref<API::PageConfiguration>&&);
@@ -1908,7 +1911,7 @@ private:
     void rectForCharacterRangeCallback(const WebCore::IntRect&, const EditingRange&, CallbackID);
 #if PLATFORM(MAC)
     void attributedStringForCharacterRangeCallback(const AttributedString&, const EditingRange&, CallbackID);
-    void fontAtSelectionCallback(const String&, double, bool, CallbackID);
+    void fontAtSelectionCallback(const FontInfo&, double, bool, CallbackID);
 #endif
 #if PLATFORM(IOS_FAMILY)
     void gestureCallback(const WebCore::IntPoint&, uint32_t gestureType, uint32_t gestureState, uint32_t flags, CallbackID);
@@ -2129,6 +2132,7 @@ private:
 
     struct SpeechSynthesisData;
     SpeechSynthesisData& speechSynthesisData();
+    void resetSpeechSynthesizer();
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -2169,8 +2173,6 @@ private:
     Ref<WebProcessProxy> m_process;
     Ref<WebPageGroup> m_pageGroup;
     Ref<WebPreferences> m_preferences;
-
-    WebProcessLifetimeTracker m_webProcessLifetimeTracker { *this };
 
     Ref<WebUserContentControllerProxy> m_userContentController;
     Ref<VisitedLinkStore> m_visitedLinkStore;
@@ -2577,6 +2579,7 @@ private:
     struct SpeechSynthesisData {
         std::unique_ptr<WebCore::PlatformSpeechSynthesizer> synthesizer;
         RefPtr<WebCore::PlatformSpeechSynthesisUtterance> utterance;
+        CompletionHandler<void()> speakingStartedCompletionHandler;
         CompletionHandler<void()> speakingFinishedCompletionHandler;
         CompletionHandler<void()> speakingPausedCompletionHandler;
         CompletionHandler<void()> speakingResumedCompletionHandler;

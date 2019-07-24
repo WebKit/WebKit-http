@@ -136,6 +136,14 @@
 #include "PointerLockController.h"
 #endif
 
+#if ENABLE(POINTER_EVENTS)
+#include "RuntimeEnabledFeatures.h"
+#endif
+
+#if PLATFORM(IOS_FAMILY)
+#include "DOMTimerHoldingTank.h"
+#endif
+
 namespace WebCore {
 
 using namespace HTMLNames;
@@ -701,7 +709,8 @@ bool EventHandler::handleMousePressEventSingleClick(const MouseEventWithHitTestR
 
 #if PLATFORM(IOS_FAMILY)
     // The text selection assistant will handle selection in the case where we are already editing the node
-    if (newSelection.rootEditableElement() == targetNode->rootEditableElement())
+    auto* editableRoot = newSelection.rootEditableElement();
+    if (editableRoot && editableRoot == targetNode->rootEditableElement())
         return true;
 #endif
 
@@ -1211,8 +1220,7 @@ HitTestResult EventHandler::hitTestResultAtPoint(const LayoutPoint& point, HitTe
     if (!document)
         return result;
 
-    // hitTestResultAtPoint is specifically used to hitTest into all frames, thus it always allows child frame content.
-    HitTestRequest request(hitType | HitTestRequest::AllowChildFrameContent);
+    HitTestRequest request(hitType);
     document->hitTest(request, result);
     if (!request.readOnly())
         m_frame.document()->updateHoverActiveState(request, result.targetElement());
@@ -2491,8 +2499,24 @@ void EventHandler::setCapturingMouseEventsElement(Element* element)
     m_eventHandlerWillResetCapturingMouseEventsElement = false;
 }
 
+#if ENABLE(POINTER_EVENTS)
+void EventHandler::pointerCaptureElementDidChange(Element* element)
+{
+    if (m_capturingMouseEventsElement == element)
+        return;
+
+    setCapturingMouseEventsElement(element);
+
+    // Now that we have a new capture element, we need to dispatch boundary mouse events.
+    updateMouseEventTargetNode(element, m_lastPlatformMouseEvent, FireMouseOverOut::Yes);
+}
+#endif
+
 MouseEventWithHitTestResults EventHandler::prepareMouseEvent(const HitTestRequest& request, const PlatformMouseEvent& mouseEvent)
 {
+#if ENABLE(POINTER_EVENTS)
+    m_lastPlatformMouseEvent = mouseEvent;
+#endif
     Ref<Frame> protectedFrame(m_frame);
     ASSERT(m_frame.document());
     return m_frame.document()->prepareMouseEvent(request, documentPointForWindowPoint(m_frame, mouseEvent.position()), mouseEvent);
@@ -3516,6 +3540,10 @@ bool EventHandler::internalKeyEvent(const PlatformKeyboardEvent& initialKeyEvent
     if (accessibilityPreventsEventPropagation(keydown))
         keydown->stopPropagation();
 
+#if PLATFORM(IOS_FAMILY)
+    DeferDOMTimersForScope deferralScope { m_frame.document()->quirks().needsDeferKeyDownAndKeyPressTimersUntilNextEditingCommand() };
+#endif
+
     element->dispatchEvent(keydown);
     if (handledByInputMethod)
         return true;
@@ -4332,7 +4360,7 @@ bool EventHandler::handleTouchEvent(const PlatformTouchEvent& event)
         if (pointState == PlatformTouchPoint::TouchPressed) {
             HitTestResult result;
             if (freshTouchEvents) {
-                result = hitTestResultAtPoint(pagePoint, hitType);
+                result = hitTestResultAtPoint(pagePoint, hitType | HitTestRequest::AllowChildFrameContent);
                 m_originatingTouchPointTargetKey = touchPointTargetKey;
             } else if (m_originatingTouchPointDocument.get() && m_originatingTouchPointDocument->frame()) {
                 LayoutPoint pagePointInOriginatingDocument = documentPointForWindowPoint(*m_originatingTouchPointDocument->frame(), point.pos());

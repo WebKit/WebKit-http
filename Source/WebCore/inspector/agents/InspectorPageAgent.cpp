@@ -93,6 +93,7 @@ using namespace Inspector;
     macro(MockCaptureDevicesEnabled) \
     macro(NeedsSiteSpecificQuirks) \
     macro(ScriptEnabled) \
+    macro(WebRTCEncryptionEnabled) \
     macro(WebSecurityEnabled)
 
 static bool decodeBuffer(const char* buffer, unsigned size, const String& textEncodingName, String* result)
@@ -387,6 +388,8 @@ void InspectorPageAgent::disable(ErrorString&)
 
 #undef DISABLE_INSPECTOR_OVERRIDE_SETTING
 
+    m_client->setMockCaptureDevicesEnabledOverride(WTF::nullopt);
+
     m_instrumentingAgents.setInspectorPageAgent(nullptr);
 }
 
@@ -419,6 +422,13 @@ void InspectorPageAgent::overrideUserAgent(ErrorString&, const String* value)
     m_userAgentOverride = value ? *value : String();
 }
 
+static inline Optional<bool> asOptionalBool(const bool* value)
+{
+    if (!value)
+        return WTF::nullopt;
+    return *value;
+}
+
 void InspectorPageAgent::overrideSetting(ErrorString& errorString, const String& settingString, const bool* value)
 {
     if (settingString.isEmpty()) {
@@ -432,22 +442,21 @@ void InspectorPageAgent::overrideSetting(ErrorString& errorString, const String&
         return;
     }
 
+    auto overrideValue = asOptionalBool(value);
     switch (setting.value()) {
 #define CASE_INSPECTOR_OVERRIDE_SETTING(name) \
-    case Inspector::Protocol::Page::Setting::name: { \
-        if (value) \
-            m_inspectedPage.settings().set##name##InspectorOverride(*value); \
-        else \
-            m_inspectedPage.settings().set##name##InspectorOverride(WTF::nullopt); \
-        return; \
-    } \
+    case Inspector::Protocol::Page::Setting::name:                              \
+        m_inspectedPage.settings().set##name##InspectorOverride(overrideValue); \
+        break;                                                                  \
 
     FOR_EACH_INSPECTOR_OVERRIDE_SETTING(CASE_INSPECTOR_OVERRIDE_SETTING)
 
 #undef CASE_INSPECTOR_OVERRIDE_SETTING
     }
 
-    ASSERT_NOT_REACHED();
+    // Update the UIProcess / client for particular overrides.
+    if (setting.value() == Inspector::Protocol::Page::Setting::MockCaptureDevicesEnabled)
+        m_client->setMockCaptureDevicesEnabledOverride(overrideValue);
 }
 
 static Inspector::Protocol::Page::CookieSameSitePolicy cookieSameSitePolicyJSON(Cookie::SameSitePolicy policy)

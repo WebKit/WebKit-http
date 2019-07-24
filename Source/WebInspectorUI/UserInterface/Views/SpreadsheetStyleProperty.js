@@ -73,8 +73,6 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
                 this._toggle();
                 this._select();
             }, this._element);
-
-            this._element.copyHandler = this;
         }
     }
 
@@ -336,11 +334,6 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         return matches;
     }
 
-    handleCopyEvent(event)
-    {
-        this._delegate.spreadsheetStylePropertyCopy(event, this);
-    }
-
     // SpreadsheetTextField delegate
 
     spreadsheetTextFieldWillStartEditing(textField)
@@ -359,16 +352,14 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
     spreadsheetTextFieldDidCommit(textField, {direction})
     {
-        let propertyName = this._nameTextField.value.trim();
-        let propertyValue = this._valueTextField.value.trim();
         let willRemoveProperty = false;
         let isEditingName = textField === this._nameTextField;
 
-        if (!propertyName || (!propertyValue && !isEditingName && direction === "forward"))
+        if (!this._property.name || (!this._property.rawValue && !isEditingName && direction === "forward"))
             willRemoveProperty = true;
 
         if (!isEditingName && !willRemoveProperty)
-            this._renderValue(propertyValue);
+            this._renderValue(this._property.rawValue);
 
         if (direction === "forward") {
             if (isEditingName && !willRemoveProperty) {

@@ -3,6 +3,7 @@
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 #
 
+accessibility/insert-newline.html [ Pass ]
 css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
 fast/frames/sandboxed-iframe-close-top-noclose.html [ Failure ]
 fast/multicol/flexbox-rows.html [ Skip ]
@@ -123,3 +124,5 @@ imported/w3c/web-platform-tests/css/css-lists/list-and-writing-mode-001.html [ F
 webkit.org/b/195466 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute-width-1000px.html [ Pass Failure ]
 webkit.org/b/195466 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay.html [ Pass Failure ]
 webkit.org/b/195466 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/error-codes/error.html [ Pass Failure ]
+
+imported/w3c/web-platform-tests/wasm [ Skip ]

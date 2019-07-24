@@ -31,6 +31,7 @@
 #include "WHLSLAST.h"
 #include "WHLSLASTDumper.h"
 #include "WHLSLNameContext.h"
+#include "WHLSLProgram.h"
 #include "WHLSLResolveOverloadImpl.h"
 #include "WHLSLResolvingType.h"
 #include "WHLSLVisitor.h"
@@ -69,12 +70,11 @@ private:
 #else
         String functionName = "<zero-init>"_s;
 #endif
-        auto callExpression = makeUniqueRef<AST::CallExpression>(variableDeclaration.origin(), WTFMove(functionName), Vector<UniqueRef<AST::Expression>>());
+        auto callExpression = std::make_unique<AST::CallExpression>(variableDeclaration.codeLocation(), WTFMove(functionName), Vector<UniqueRef<AST::Expression>>());
         callExpression->setType(type->clone());
         callExpression->setTypeAnnotation(AST::RightValue());
-        callExpression->setOverloads(m_castFunctions);
         Vector<std::reference_wrapper<ResolvingType>> argumentTypes;
-        auto* function = resolveFunctionOverload(*callExpression->overloads(), argumentTypes, type);
+        auto* function = resolveFunctionOverload(m_castFunctions, argumentTypes, type);
         if (!function) {
             setError();
             return;

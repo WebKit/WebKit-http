@@ -218,10 +218,6 @@ using namespace WTF;
 - (id)_newFirstResponderAfterResigning;
 @end
 
-@interface NSView (SubviewsIvar)
-@property (nullable, assign, setter=_setSubviewsIvar:) NSMutableArray<__kindof NSView *> *_subviewsIvar;
-@end
-
 #if !HAVE(SUBVIEWS_IVAR_SPI)
 @implementation NSView (SubviewsIvar)
 
@@ -729,7 +725,9 @@ extern "C" NSString *NSTextInputReplacementRangeAttributeName;
 - (void)_recursiveDisplayRectIfNeededIgnoringOpacity:(NSRect)rect isVisibleRect:(BOOL)isVisibleRect rectIsVisibleRectForView:(NSView *)visibleView topView:(BOOL)topView;
 - (void)_recursiveDisplayAllDirtyWithLockFocus:(BOOL)needsLockFocus visRect:(NSRect)visRect;
 #if PLATFORM(MAC)
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+- (void)_recursive:(BOOL)recursive displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)graphicsContext stopAtLayerBackedViews:(BOOL)stopAtLayerBackedViews;
+#elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
 - (void)_recursive:(BOOL)recursive displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)graphicsContext shouldChangeFontReferenceColor:(BOOL)shouldChangeFontReferenceColor stopAtLayerBackedViews:(BOOL)stopAtLayerBackedViews;
 #elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 - (void)_recursive:(BOOL)recurse displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)context shouldChangeFontReferenceColor:(BOOL)shouldChangeFontReferenceColor;
@@ -1674,7 +1672,9 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 // Don't let AppKit even draw subviews. We take care of that.
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+- (void)_recursive:(BOOL)recursive displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)graphicsContext stopAtLayerBackedViews:(BOOL)stopAtLayerBackedViews
+#elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
 - (void)_recursive:(BOOL)recursive displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)graphicsContext shouldChangeFontReferenceColor:(BOOL)shouldChangeFontReferenceColor stopAtLayerBackedViews:(BOOL)stopAtLayerBackedViews
 #elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 - (void)_recursive:(BOOL)recurse displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)context shouldChangeFontReferenceColor:(BOOL)shouldChangeFontReferenceColor
@@ -1683,7 +1683,9 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 #endif
 {
     [self _setAsideSubviews];
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500
+    [super _recursive:recursive displayRectIgnoringOpacity:displayRect inContext:graphicsContext stopAtLayerBackedViews:stopAtLayerBackedViews];
+#elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     [super _recursive:recursive displayRectIgnoringOpacity:displayRect inContext:graphicsContext shouldChangeFontReferenceColor:shouldChangeFontReferenceColor stopAtLayerBackedViews:stopAtLayerBackedViews];
 #elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     [super _recursive:recurse displayRectIgnoringOpacity:displayRect inContext:context shouldChangeFontReferenceColor:shouldChangeFontReferenceColor];
@@ -7093,7 +7095,7 @@ static CGImageRef selectionImage(Frame* frame, bool forceBlackText)
     Frame* coreFrame = core([self _frame]);
     if (!coreFrame)
         return nil;
-    HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active
+    HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent
         | (allow ? 0 : HitTestRequest::DisallowUserAgentShadowContent);
     return [[[WebElementDictionary alloc] initWithHitTestResult:coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(point), hitType)] autorelease];
 }

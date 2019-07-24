@@ -33,6 +33,7 @@
 #import "DataReference.h"
 #import "EditingRange.h"
 #import "EditorState.h"
+#import "FontInfo.h"
 #import "InjectedBundleHitTestResult.h"
 #import "PDFKitImports.h"
 #import "PDFPlugin.h"
@@ -378,20 +379,33 @@ void WebPage::attributedSubstringForCharacterRangeAsync(const EditingRange& edit
 
 void WebPage::fontAtSelection(CallbackID callbackID)
 {
-    String fontName;
-    double fontSize = 0;
     bool selectionHasMultipleFonts = false;
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
-    
-    if (!frame.selection().selection().isNone()) {
-        if (auto* font = frame.editor().fontForSelection(selectionHasMultipleFonts)) {
-            if (auto ctFont = font->getCTFont()) {
-                fontName = adoptCF(CTFontCopyPostScriptName(ctFont)).get();
-                fontSize = CTFontGetSize(ctFont);
-            }
-        }
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+
+    if (frame.selection().selection().isNone()) {
+        send(Messages::WebPageProxy::FontAtSelectionCallback({ }, 0, false, callbackID));
+        return;
     }
-    send(Messages::WebPageProxy::FontAtSelectionCallback(fontName, fontSize, selectionHasMultipleFonts, callbackID));
+
+    auto* font = frame.editor().fontForSelection(selectionHasMultipleFonts);
+    if (!font) {
+        send(Messages::WebPageProxy::FontAtSelectionCallback({ }, 0, false, callbackID));
+        return;
+    }
+
+    auto ctFont = font->getCTFont();
+    if (!ctFont) {
+        send(Messages::WebPageProxy::FontAtSelectionCallback({ }, 0, false, callbackID));
+        return;
+    }
+
+    auto fontDescriptor = adoptCF(CTFontCopyFontDescriptor(ctFont));
+    if (!fontDescriptor) {
+        send(Messages::WebPageProxy::FontAtSelectionCallback({ }, 0, false, callbackID));
+        return;
+    }
+
+    send(Messages::WebPageProxy::FontAtSelectionCallback({ adoptCF(CTFontDescriptorCopyAttributes(fontDescriptor.get())) }, CTFontGetSize(ctFont), selectionHasMultipleFonts, callbackID));
 }
     
 
@@ -590,7 +604,7 @@ void WebPage::shouldDelayWindowOrderingEvent(const WebKit::WebMouseEvent& event,
 
     bool result = false;
 #if ENABLE(DRAG_SUPPORT)
-    HitTestResult hitResult = frame.eventHandler().hitTestResultAtPoint(frame.view()->windowToContents(event.position()), HitTestRequest::ReadOnly | HitTestRequest::Active);
+    HitTestResult hitResult = frame.eventHandler().hitTestResultAtPoint(frame.view()->windowToContents(event.position()), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent);
     if (hitResult.isSelected())
         result = frame.eventHandler().eventMayStartDrag(platform(event));
 #endif
@@ -607,7 +621,7 @@ void WebPage::acceptsFirstMouse(int eventNumber, const WebKit::WebMouseEvent& ev
 
     auto& frame = m_page->focusController().focusedOrMainFrame();
 
-    HitTestResult hitResult = frame.eventHandler().hitTestResultAtPoint(frame.view()->windowToContents(event.position()), HitTestRequest::ReadOnly | HitTestRequest::Active);
+    HitTestResult hitResult = frame.eventHandler().hitTestResultAtPoint(frame.view()->windowToContents(event.position()), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent);
     frame.eventHandler().setActivationEventNumber(eventNumber);
     bool result = false;
 #if ENABLE(DRAG_SUPPORT)
@@ -838,7 +852,7 @@ void WebPage::performImmediateActionHitTestAtLocation(WebCore::FloatPoint locati
     }
 
     IntPoint locationInContentCoordinates = mainFrame.view()->rootViewToContents(roundedIntPoint(locationInViewCoordinates));
-    HitTestResult hitTestResult = mainFrame.eventHandler().hitTestResultAtPoint(locationInContentCoordinates);
+    HitTestResult hitTestResult = mainFrame.eventHandler().hitTestResultAtPoint(locationInContentCoordinates, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
 
     bool immediateActionHitTestPreventsDefault = false;
     Element* element = hitTestResult.targetElement();
@@ -946,7 +960,7 @@ std::tuple<RefPtr<WebCore::Range>, NSDictionary *> WebPage::lookupTextAtLocation
         return { nullptr, nil };
 
     auto point = roundedIntPoint(locationInViewCoordinates);
-    auto result = mainFrame.eventHandler().hitTestResultAtPoint(m_page->mainFrame().view()->windowToContents(point));
+    auto result = mainFrame.eventHandler().hitTestResultAtPoint(m_page->mainFrame().view()->windowToContents(point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
     return DictionaryLookup::rangeAtHitTestResult(result);
 }
 

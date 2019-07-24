@@ -35,6 +35,7 @@
 #include <wtf/Lock.h>
 #include <wtf/MonotonicTime.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/RunLoop.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/ThreadSpecific.h>
 #include <wtf/Threading.h>
@@ -126,6 +127,16 @@ void dispatchFunctionsFromMainThread()
     }
 }
 
+bool isMainRunLoop()
+{
+    return RunLoop::isMain();
+}
+
+void callOnMainRunLoop(Function<void()>&& function)
+{
+    RunLoop::main().dispatch(WTFMove(function));
+}
+
 void callOnMainThread(Function<void()>&& function)
 {
     ASSERT(function);
@@ -163,9 +174,15 @@ bool isMainThreadOrGCThread()
     return isMainThread();
 }
 
-void callOnMainThreadAndWait(WTF::Function<void()>&& function)
+enum class MainStyle : bool {
+    Thread,
+    RunLoop
+};
+
+static void callOnMainAndWait(WTF::Function<void()>&& function, MainStyle mainStyle)
 {
-    if (isMainThread()) {
+
+    if (mainStyle == MainStyle::Thread ? isMainThread() : isMainRunLoop()) {
         function();
         return;
     }
@@ -175,18 +192,36 @@ void callOnMainThreadAndWait(WTF::Function<void()>&& function)
 
     bool isFinished = false;
 
-    callOnMainThread([&, function = WTFMove(function)] {
+    auto functionImpl = [&, function = WTFMove(function)] {
         function();
 
         std::lock_guard<Lock> lock(mutex);
         isFinished = true;
         conditionVariable.notifyOne();
-    });
+    };
+
+    switch (mainStyle) {
+    case MainStyle::Thread:
+        callOnMainThread(WTFMove(functionImpl));
+        break;
+    case MainStyle::RunLoop:
+        callOnMainRunLoop(WTFMove(functionImpl));
+    };
 
     std::unique_lock<Lock> lock(mutex);
     conditionVariable.wait(lock, [&] {
         return isFinished;
     });
+}
+
+void callOnMainRunLoopAndWait(WTF::Function<void()>&& function)
+{
+    callOnMainAndWait(WTFMove(function), MainStyle::RunLoop);
+}
+
+void callOnMainThreadAndWait(WTF::Function<void()>&& function)
+{
+    callOnMainAndWait(WTFMove(function), MainStyle::Thread);
 }
 
 } // namespace WTF

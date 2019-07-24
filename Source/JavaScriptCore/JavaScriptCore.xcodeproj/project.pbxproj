@@ -898,7 +898,6 @@
 		52CD0F5D2242F569004A18A5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 51F0EB6105C86C6B00E6DF1B /* Foundation.framework */; };
 		52CD0F5E2242F569004A18A5 /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 932F5BD90822A1C700736975 /* JavaScriptCore.framework */; };
 		52CD0F682242F71C004A18A5 /* testdfg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 52CD0F672242F71C004A18A5 /* testdfg.cpp */; };
-		52D13091221CE176009C836C /* foo.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = 52D1308F221CE03A009C836C /* foo.js */; };
 		52F6C35E1E71EB080081F4CC /* WebAssemblyWrapperFunction.h in Headers */ = {isa = PBXBuildFile; fileRef = 52F6C35C1E71EB080081F4CC /* WebAssemblyWrapperFunction.h */; };
 		530A66B91FA3E78B0026A545 /* UnifiedSource3-mm.mm in Sources */ = {isa = PBXBuildFile; fileRef = 530A66B11FA3E77A0026A545 /* UnifiedSource3-mm.mm */; };
 		530A66BA1FA3E78B0026A545 /* UnifiedSource4-mm.mm in Sources */ = {isa = PBXBuildFile; fileRef = 530A66B81FA3E77E0026A545 /* UnifiedSource4-mm.mm */; };
@@ -1082,7 +1081,6 @@
 		539FB8BA1C99DA7C00940FA1 /* JSArrayInlines.h in Headers */ = {isa = PBXBuildFile; fileRef = 539FB8B91C99DA7C00940FA1 /* JSArrayInlines.h */; };
 		53B4BD121F68B32500D2BEA3 /* WasmOps.h in Headers */ = {isa = PBXBuildFile; fileRef = 533B15DE1DC7F463004D500A /* WasmOps.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		53B601EC2034B8C5006BE667 /* JSCast.h in Headers */ = {isa = PBXBuildFile; fileRef = 53B601EB2034B8C5006BE667 /* JSCast.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		53C3D5E521ECE7720087FDFC /* basic.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = 53C3D5E421ECE6CE0087FDFC /* basic.js */; };
 		53C4F66B21B1A409002FD009 /* JSAPIGlobalObject.h in Headers */ = {isa = PBXBuildFile; fileRef = 53C4F66A21B1A409002FD009 /* JSAPIGlobalObject.h */; };
 		53C6FEEF1E8ADFA900B18425 /* WasmOpcodeOrigin.h in Headers */ = {isa = PBXBuildFile; fileRef = 53C6FEEE1E8ADFA900B18425 /* WasmOpcodeOrigin.h */; };
 		53CA730A1EA533D80076049D /* WasmBBQPlan.h in Headers */ = {isa = PBXBuildFile; fileRef = 53CA73081EA533D80076049D /* WasmBBQPlan.h */; };
@@ -1111,7 +1109,6 @@
 		5C4196622270E0000047B7CD /* InspectorBackendDispatcherCompatibility.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5C4196612270DFF30047B7CD /* InspectorBackendDispatcherCompatibility.cpp */; };
 		5C4E8E961DBEBE620036F1FC /* JSONParseTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5C4E8E941DBEBDA20036F1FC /* JSONParseTest.cpp */; };
 		5D5D8AD10E0D0EBE00F9C692 /* libedit.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D5D8AD00E0D0EBE00F9C692 /* libedit.dylib */; };
-		5DBB151B131D0B310056AD36 /* testapi.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = 14D857740A4696C80032146C /* testapi.js */; };
 		5DBB1525131D0BD70056AD36 /* minidom.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = 1412110D0A48788700480255 /* minidom.js */; };
 		5DE6E5B30E1728EC00180407 /* create_hash_table in Headers */ = {isa = PBXBuildFile; fileRef = F692A8540255597D01FF60F7 /* create_hash_table */; settings = {ATTRIBUTES = (); }; };
 		623A37EC1B87A7C000754209 /* RegisterMap.h in Headers */ = {isa = PBXBuildFile; fileRef = 623A37EB1B87A7BD00754209 /* RegisterMap.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1234,10 +1231,12 @@
 		86976E5F1FA3E8BC00E7C4E1 /* BigIntConstructor.h in Headers */ = {isa = PBXBuildFile; fileRef = 86976E571FA3754000E7C4E1 /* BigIntConstructor.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		869EBCB70E8C6D4A008722CC /* ResultType.h in Headers */ = {isa = PBXBuildFile; fileRef = 869EBCB60E8C6D4A008722CC /* ResultType.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		86ADD1450FDDEA980006EEC2 /* ARMv7Assembler.h in Headers */ = {isa = PBXBuildFile; fileRef = 86ADD1430FDDEA980006EEC2 /* ARMv7Assembler.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		86ADD1450FDDEA980006FFCC /* ARMv7Registers.h in Headers */ = {isa = PBXBuildFile; fileRef = 86ADD1430FDDEA980006FFCC /* ARMv7Registers.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		86ADD1460FDDEA980006EEC2 /* MacroAssemblerARMv7.h in Headers */ = {isa = PBXBuildFile; fileRef = 86ADD1440FDDEA980006EEC2 /* MacroAssemblerARMv7.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		86C36EEA0EE1289D00B3DF59 /* MacroAssembler.h in Headers */ = {isa = PBXBuildFile; fileRef = 86C36EE90EE1289D00B3DF59 /* MacroAssembler.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		86C568E111A213EE0007F7F0 /* MacroAssemblerMIPS.h in Headers */ = {isa = PBXBuildFile; fileRef = 86C568DE11A213EE0007F7F0 /* MacroAssemblerMIPS.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		86C568E211A213EE0007F7F0 /* MIPSAssembler.h in Headers */ = {isa = PBXBuildFile; fileRef = 86C568DF11A213EE0007F7F0 /* MIPSAssembler.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		86C568E211A213EE0007F7FF /* MIPSRegisters.h in Headers */ = {isa = PBXBuildFile; fileRef = 86C568DF11A213EE0007F7FF /* MIPSRegisters.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		86CC85A10EE79A4700288682 /* JITInlines.h in Headers */ = {isa = PBXBuildFile; fileRef = 86CC85A00EE79A4700288682 /* JITInlines.h */; };
 		86CCEFDE0F413F8900FD7F9E /* JITCode.h in Headers */ = {isa = PBXBuildFile; fileRef = 86CCEFDD0F413F8900FD7F9E /* JITCode.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		86D2221A167EF9440024C804 /* testapi.mm in Sources */ = {isa = PBXBuildFile; fileRef = 86D22219167EF9440024C804 /* testapi.mm */; };
@@ -1285,6 +1284,9 @@
 		933040040E6A749400786E6A /* SmallStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = 93303FEA0E6A72C000786E6A /* SmallStrings.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		960097A60EBABB58007A7297 /* LabelScope.h in Headers */ = {isa = PBXBuildFile; fileRef = 960097A50EBABB58007A7297 /* LabelScope.h */; };
 		9688CB150ED12B4E001D649F /* AssemblerBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 9688CB130ED12B4E001D649F /* AssemblerBuffer.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		9688CB160ED12B4E001D6491 /* X86Registers.h in Headers */ = {isa = PBXBuildFile; fileRef = 9688CB140ED12B4E001D6491 /* X86Registers.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		9688CB160ED12B4E001D6492 /* X86_64Registers.h in Headers */ = {isa = PBXBuildFile; fileRef = 9688CB140ED12B4E001D6492 /* X86_64Registers.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		9688CB160ED12B4E001D6499 /* RegisterInfo.h in Headers */ = {isa = PBXBuildFile; fileRef = 9688CB140ED12B4E001D6499 /* RegisterInfo.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		9688CB160ED12B4E001D649F /* X86Assembler.h in Headers */ = {isa = PBXBuildFile; fileRef = 9688CB140ED12B4E001D649F /* X86Assembler.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		969A07230ED1CE3300F1F681 /* BytecodeGenerator.h in Headers */ = {isa = PBXBuildFile; fileRef = 969A07210ED1CE3300F1F681 /* BytecodeGenerator.h */; };
 		969A072A0ED1CE6900F1F681 /* Label.h in Headers */ = {isa = PBXBuildFile; fileRef = 969A07270ED1CE6900F1F681 /* Label.h */; };
@@ -1347,6 +1349,7 @@
 		A18193E41B4E0CDB00FC1029 /* IntlCollatorPrototype.lut.h in Headers */ = {isa = PBXBuildFile; fileRef = A18193E21B4E0CDB00FC1029 /* IntlCollatorPrototype.lut.h */; };
 		A1A009C01831A22D00CF8711 /* MacroAssemblerARM64.h in Headers */ = {isa = PBXBuildFile; fileRef = 8640923C156EED3B00566CB2 /* MacroAssemblerARM64.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		A1A009C11831A26E00CF8711 /* ARM64Assembler.h in Headers */ = {isa = PBXBuildFile; fileRef = 8640923B156EED3B00566CB2 /* ARM64Assembler.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		A1A009C11831A26E00CF8722 /* ARM64Registers.h in Headers */ = {isa = PBXBuildFile; fileRef = 8640923B156EED3B00566CC2 /* ARM64Registers.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		A1B9E23A1B4E0D6700BC7FED /* IntlCollator.h in Headers */ = {isa = PBXBuildFile; fileRef = A1B9E2341B4E0D6700BC7FED /* IntlCollator.h */; };
 		A1B9E23C1B4E0D6700BC7FED /* IntlCollatorConstructor.h in Headers */ = {isa = PBXBuildFile; fileRef = A1B9E2361B4E0D6700BC7FED /* IntlCollatorConstructor.h */; };
 		A1B9E23E1B4E0D6700BC7FED /* IntlCollatorPrototype.h in Headers */ = {isa = PBXBuildFile; fileRef = A1B9E2381B4E0D6700BC7FED /* IntlCollatorPrototype.h */; };
@@ -1570,7 +1573,6 @@
 		AD2FCC1F1DB59CB200B3E736 /* WebAssemblyRuntimeErrorPrototype.lut.h in Headers */ = {isa = PBXBuildFile; fileRef = AD2FCC131DB59C5900B3E736 /* WebAssemblyRuntimeErrorPrototype.lut.h */; };
 		AD2FCC201DB59CB200B3E736 /* WebAssemblyTableConstructor.lut.h in Headers */ = {isa = PBXBuildFile; fileRef = AD2FCC141DB59C5900B3E736 /* WebAssemblyTableConstructor.lut.h */; };
 		AD2FCC211DB59CB200B3E736 /* WebAssemblyTablePrototype.lut.h in Headers */ = {isa = PBXBuildFile; fileRef = AD2FCC151DB59C5900B3E736 /* WebAssemblyTablePrototype.lut.h */; };
-		AD2FCC2D1DB838FD00B3E736 /* WebAssemblyPrototype.h in Headers */ = {isa = PBXBuildFile; fileRef = AD2FCC271DB838C400B3E736 /* WebAssemblyPrototype.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		AD412B341E7B2E9E008AF157 /* WasmContext.h in Headers */ = {isa = PBXBuildFile; fileRef = AD412B321E7B2E8A008AF157 /* WasmContext.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		AD4252511E5D0E14009D2A97 /* FullCodeOrigin.h in Headers */ = {isa = PBXBuildFile; fileRef = AD4252501E5D0DEB009D2A97 /* FullCodeOrigin.h */; };
 		AD4937C41DDBE6140077C807 /* AbstractModuleRecord.h in Headers */ = {isa = PBXBuildFile; fileRef = AD4937C21DDBE60A0077C807 /* AbstractModuleRecord.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1879,7 +1881,6 @@
 		FEB51F6C1A97B688001F921C /* Regress141809.mm in Sources */ = {isa = PBXBuildFile; fileRef = FEB51F6B1A97B688001F921C /* Regress141809.mm */; };
 		FEB58C15187B8B160098EF0B /* ErrorHandlingScope.h in Headers */ = {isa = PBXBuildFile; fileRef = FEB58C13187B8B160098EF0B /* ErrorHandlingScope.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FECB8B271D25BB85006F2463 /* FunctionOverridesTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FECB8B251D25BB6E006F2463 /* FunctionOverridesTest.cpp */; };
-		FECB8B2A1D25CB5A006F2463 /* testapi-function-overrides.js in Copy Support Script */ = {isa = PBXBuildFile; fileRef = FECB8B291D25CABB006F2463 /* testapi-function-overrides.js */; };
 		FED287B215EC9A5700DA8161 /* LLIntOpcode.h in Headers */ = {isa = PBXBuildFile; fileRef = FED287B115EC9A5700DA8161 /* LLIntOpcode.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FED94F2F171E3E2300BE77A4 /* Watchdog.h in Headers */ = {isa = PBXBuildFile; fileRef = FED94F2C171E3E2300BE77A4 /* Watchdog.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		FEF040511AAE662D00BD28B0 /* CompareAndSwapTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEF040501AAE662D00BD28B0 /* CompareAndSwapTest.cpp */; };
@@ -2073,20 +2074,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		5DBB1511131D0B130056AD36 /* Copy Support Script */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 12;
-			dstPath = testapiScripts;
-			dstSubfolderSpec = 16;
-			files = (
-				53C3D5E521ECE7720087FDFC /* basic.js in Copy Support Script */,
-				52D13091221CE176009C836C /* foo.js in Copy Support Script */,
-				FECB8B2A1D25CB5A006F2463 /* testapi-function-overrides.js in Copy Support Script */,
-				5DBB151B131D0B310056AD36 /* testapi.js in Copy Support Script */,
-			);
-			name = "Copy Support Script";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		5DBB1524131D0BA10056AD36 /* Copy Support Script */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -3947,6 +3934,7 @@
 		863C6D991521111200585E4E /* YarrCanonicalize.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = YarrCanonicalize.h; path = yarr/YarrCanonicalize.h; sourceTree = "<group>"; };
 		863C6D9A1521111200585E4E /* YarrCanonicalizeUCS2.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; name = YarrCanonicalizeUCS2.js; path = yarr/YarrCanonicalizeUCS2.js; sourceTree = "<group>"; };
 		8640923B156EED3B00566CB2 /* ARM64Assembler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ARM64Assembler.h; sourceTree = "<group>"; };
+		8640923B156EED3B00566CC2 /* ARM64Registers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ARM64Registers.h; sourceTree = "<group>"; };
 		8640923C156EED3B00566CB2 /* MacroAssemblerARM64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MacroAssemblerARM64.h; sourceTree = "<group>"; };
 		865A30F0135007E100CDB49E /* JSCJSValueInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSCJSValueInlines.h; sourceTree = "<group>"; };
 		866739D013BFDE710023D87C /* BigInteger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BigInteger.h; sourceTree = "<group>"; };
@@ -3975,6 +3963,7 @@
 		86A054481556451B00445157 /* LowLevelInterpreter64.asm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.asm.asm; lineEnding = 0; name = LowLevelInterpreter64.asm; path = llint/LowLevelInterpreter64.asm; sourceTree = "<group>"; };
 		86A90ECF0EE7D51F00AB350D /* JITArithmetic.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JITArithmetic.cpp; sourceTree = "<group>"; };
 		86ADD1430FDDEA980006EEC2 /* ARMv7Assembler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ARMv7Assembler.h; sourceTree = "<group>"; };
+		86ADD1430FDDEA980006FFCC /* ARMv7Registers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ARMv7Registers.h; sourceTree = "<group>"; };
 		86ADD1440FDDEA980006EEC2 /* MacroAssemblerARMv7.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MacroAssemblerARMv7.h; sourceTree = "<group>"; };
 		86B5822C14D22F5F00A9C306 /* ProfileTreeNode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ProfileTreeNode.h; sourceTree = "<group>"; };
 		86B5822E14D2373B00A9C306 /* CodeProfile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CodeProfile.cpp; sourceTree = "<group>"; };
@@ -3984,6 +3973,7 @@
 		86C36EE90EE1289D00B3DF59 /* MacroAssembler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MacroAssembler.h; sourceTree = "<group>"; };
 		86C568DE11A213EE0007F7F0 /* MacroAssemblerMIPS.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MacroAssemblerMIPS.h; sourceTree = "<group>"; };
 		86C568DF11A213EE0007F7F0 /* MIPSAssembler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MIPSAssembler.h; sourceTree = "<group>"; };
+		86C568DF11A213EE0007F7FF /* MIPSRegisters.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MIPSRegisters.h; sourceTree = "<group>"; };
 		86CC85A00EE79A4700288682 /* JITInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JITInlines.h; sourceTree = "<group>"; };
 		86CC85A20EE79B7400288682 /* JITCall.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JITCall.cpp; sourceTree = "<group>"; };
 		86CC85C30EE7A89400288682 /* JITPropertyAccess.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JITPropertyAccess.cpp; sourceTree = "<group>"; };
@@ -4073,6 +4063,9 @@
 		95C18D3E0C90E7EF00E72F73 /* JSRetainPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSRetainPtr.h; sourceTree = "<group>"; };
 		960097A50EBABB58007A7297 /* LabelScope.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LabelScope.h; sourceTree = "<group>"; };
 		9688CB130ED12B4E001D649F /* AssemblerBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AssemblerBuffer.h; sourceTree = "<group>"; };
+		9688CB140ED12B4E001D6491 /* X86Registers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = X86Registers.h; sourceTree = "<group>"; };
+		9688CB140ED12B4E001D6492 /* X86_64Registers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = X86_64Registers.h; sourceTree = "<group>"; };
+		9688CB140ED12B4E001D6499 /* RegisterInfo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RegisterInfo.h; sourceTree = "<group>"; };
 		9688CB140ED12B4E001D649F /* X86Assembler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = X86Assembler.h; sourceTree = "<group>"; };
 		969A07200ED1CE3300F1F681 /* BytecodeGenerator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = BytecodeGenerator.cpp; sourceTree = "<group>"; };
 		969A07210ED1CE3300F1F681 /* BytecodeGenerator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BytecodeGenerator.h; sourceTree = "<group>"; };
@@ -4518,8 +4511,6 @@
 		AD2FCC131DB59C5900B3E736 /* WebAssemblyRuntimeErrorPrototype.lut.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebAssemblyRuntimeErrorPrototype.lut.h; sourceTree = "<group>"; };
 		AD2FCC141DB59C5900B3E736 /* WebAssemblyTableConstructor.lut.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebAssemblyTableConstructor.lut.h; sourceTree = "<group>"; };
 		AD2FCC151DB59C5900B3E736 /* WebAssemblyTablePrototype.lut.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WebAssemblyTablePrototype.lut.h; sourceTree = "<group>"; };
-		AD2FCC261DB838C400B3E736 /* WebAssemblyPrototype.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = WebAssemblyPrototype.cpp; path = js/WebAssemblyPrototype.cpp; sourceTree = "<group>"; };
-		AD2FCC271DB838C400B3E736 /* WebAssemblyPrototype.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WebAssemblyPrototype.h; path = js/WebAssemblyPrototype.h; sourceTree = "<group>"; };
 		AD2FCC321DC4045300B3E736 /* WasmFormat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WasmFormat.cpp; sourceTree = "<group>"; };
 		AD412B321E7B2E8A008AF157 /* WasmContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WasmContext.h; sourceTree = "<group>"; };
 		AD412B351E7B57C0008AF157 /* AllowMacroScratchRegisterUsageIf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AllowMacroScratchRegisterUsageIf.h; sourceTree = "<group>"; };
@@ -4822,6 +4813,7 @@
 		E39D9D841D39000600667282 /* InterpreterInlines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InterpreterInlines.h; sourceTree = "<group>"; };
 		E39DA4A41B7E8B7C0084F33A /* JSModuleRecord.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSModuleRecord.cpp; sourceTree = "<group>"; };
 		E39DA4A51B7E8B7C0084F33A /* JSModuleRecord.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSModuleRecord.h; sourceTree = "<group>"; };
+		E39E030D22D9EA3E00408C18 /* WebAssembly.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = WebAssembly.js; sourceTree = "<group>"; };
 		E39EEAF12281244C008474F4 /* ObjectToStringAdaptiveStructureWatchpoint.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ObjectToStringAdaptiveStructureWatchpoint.cpp; sourceTree = "<group>"; };
 		E39EEAF22281244C008474F4 /* ObjectToStringAdaptiveStructureWatchpoint.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ObjectToStringAdaptiveStructureWatchpoint.h; sourceTree = "<group>"; };
 		E3A0531621342B660022EC14 /* WasmStreamingParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WasmStreamingParser.h; sourceTree = "<group>"; };
@@ -7857,7 +7849,9 @@
 				AD412B351E7B57C0008AF157 /* AllowMacroScratchRegisterUsageIf.h */,
 				8640923B156EED3B00566CB2 /* ARM64Assembler.h */,
 				FE1E2C3D2240D2F600F6B729 /* ARM64EAssembler.h */,
+				8640923B156EED3B00566CC2 /* ARM64Registers.h */,
 				86ADD1430FDDEA980006EEC2 /* ARMv7Assembler.h */,
+				86ADD1430FDDEA980006FFCC /* ARMv7Registers.h */,
 				9688CB130ED12B4E001D649F /* AssemblerBuffer.h */,
 				86D3B2C110156BDE002865E7 /* AssemblerBufferWithConstantPool.h */,
 				43C392AA1C3BEB0000241F53 /* AssemblerCommon.h */,
@@ -7886,6 +7880,7 @@
 				860161E20F3A83C100F84710 /* MacroAssemblerX86Common.h */,
 				65860177185A8F5E00030EEE /* MaxFrameExtentForSlowPathCall.h */,
 				86C568DF11A213EE0007F7F0 /* MIPSAssembler.h */,
+				86C568DF11A213EE0007F7FF /* MIPSRegisters.h */,
 				FE63DD551EA9BC5D00103A69 /* Printer.cpp */,
 				FE63DD531EA9B60E00103A69 /* Printer.h */,
 				FE10AAF31F46826D009DEDC5 /* ProbeContext.cpp */,
@@ -7893,8 +7888,11 @@
 				FEB41CCB1F73284200C5481E /* ProbeFrame.h */,
 				FE10AAE91F44D510009DEDC5 /* ProbeStack.cpp */,
 				FE10AAEA1F44D512009DEDC5 /* ProbeStack.h */,
+				9688CB140ED12B4E001D6499 /* RegisterInfo.h */,
 				FE533CA01F217C310016A1FE /* testmasm.cpp */,
+				9688CB140ED12B4E001D6492 /* X86_64Registers.h */,
 				9688CB140ED12B4E001D649F /* X86Assembler.h */,
+				9688CB140ED12B4E001D6491 /* X86Registers.h */,
 			);
 			path = assembler;
 			sourceTree = "<group>";
@@ -8360,6 +8358,7 @@
 				A1E0451B1C25B4B100BB663C /* StringPrototype.js */,
 				534C457A1BC703DC007476A7 /* TypedArrayConstructor.js */,
 				53917E831B791CB8000EBD33 /* TypedArrayPrototype.js */,
+				E39E030D22D9EA3E00408C18 /* WebAssembly.js */,
 			);
 			path = builtins;
 			sourceTree = "<group>";
@@ -8422,8 +8421,6 @@
 				AD2FCB9B1DB585A600B3E736 /* WebAssemblyModulePrototype.h */,
 				AD4937C51DDCDCF00077C807 /* WebAssemblyModuleRecord.cpp */,
 				AD4937C61DDCDCF00077C807 /* WebAssemblyModuleRecord.h */,
-				AD2FCC261DB838C400B3E736 /* WebAssemblyPrototype.cpp */,
-				AD2FCC271DB838C400B3E736 /* WebAssemblyPrototype.h */,
 				AD2FCBBC1DB58DA400B3E736 /* WebAssemblyRuntimeErrorConstructor.cpp */,
 				AD2FCBBD1DB58DA400B3E736 /* WebAssemblyRuntimeErrorConstructor.h */,
 				AD2FCBBE1DB58DA400B3E736 /* WebAssemblyRuntimeErrorPrototype.cpp */,
@@ -8638,7 +8635,9 @@
 				0F6B1CB91861244C00845D97 /* ArityCheckMode.h in Headers */,
 				A1A009C11831A26E00CF8711 /* ARM64Assembler.h in Headers */,
 				FE1E2C402240DD6200F6B729 /* ARM64EAssembler.h in Headers */,
+				A1A009C11831A26E00CF8722 /* ARM64Registers.h in Headers */,
 				86ADD1450FDDEA980006EEC2 /* ARMv7Assembler.h in Headers */,
+				86ADD1450FDDEA980006FFCC /* ARMv7Registers.h in Headers */,
 				0F8335B81639C1EA001443B5 /* ArrayAllocationProfile.h in Headers */,
 				A7A8AF3517ADB5F3005AB174 /* ArrayBuffer.h in Headers */,
 				0FFC99D5184EE318009C10AB /* ArrayBufferNeuteringWatchpointSet.h in Headers */,
@@ -9671,6 +9670,7 @@
 				7C008CE7187631B600955C24 /* Microtask.h in Headers */,
 				FE2A87601F02381600EB31B2 /* MinimumReservedZoneSize.h in Headers */,
 				86C568E211A213EE0007F7F0 /* MIPSAssembler.h in Headers */,
+				86C568E211A213EE0007F7FF /* MIPSRegisters.h in Headers */,
 				C4703CD7192844CC0013FBEA /* models.py in Headers */,
 				E3794E761B77EB97005543AE /* ModuleAnalyzer.h in Headers */,
 				9F63434577274FAFB9336C38 /* ModuleNamespaceAccessCase.h in Headers */,
@@ -9797,6 +9797,7 @@
 				E328C6C91DA432F900D255FD /* RegisterAtOffset.h in Headers */,
 				E328C6C81DA4306100D255FD /* RegisterAtOffsetList.h in Headers */,
 				969A072B0ED1CE6900F1F681 /* RegisterID.h in Headers */,
+				9688CB160ED12B4E001D6499 /* RegisterInfo.h in Headers */,
 				623A37EC1B87A7C000754209 /* RegisterMap.h in Headers */,
 				0FC314121814559100033232 /* RegisterSet.h in Headers */,
 				0FD0E5F01E46BF250006AB08 /* RegisterState.h in Headers */,
@@ -10060,7 +10061,6 @@
 				AD2FCC031DB58DAD00B3E736 /* WebAssemblyModulePrototype.h in Headers */,
 				AD2FCC1D1DB59CB200B3E736 /* WebAssemblyModulePrototype.lut.h in Headers */,
 				AD4937C81DDD0AAE0077C807 /* WebAssemblyModuleRecord.h in Headers */,
-				AD2FCC2D1DB838FD00B3E736 /* WebAssemblyPrototype.h in Headers */,
 				AD2FCBF91DB58DAD00B3E736 /* WebAssemblyRuntimeErrorConstructor.h in Headers */,
 				AD2FCC1E1DB59CB200B3E736 /* WebAssemblyRuntimeErrorConstructor.lut.h in Headers */,
 				AD2FCBFB1DB58DAD00B3E736 /* WebAssemblyRuntimeErrorPrototype.h in Headers */,
@@ -10076,7 +10076,9 @@
 				A7DCB97312E5193F00911940 /* WriteBarrier.h in Headers */,
 				C2B6D75318A33793004A9301 /* WriteBarrierInlines.h in Headers */,
 				0FC8150A14043BF500CFA603 /* WriteBarrierSupport.h in Headers */,
+				9688CB160ED12B4E001D6492 /* X86_64Registers.h in Headers */,
 				9688CB160ED12B4E001D649F /* X86Assembler.h in Headers */,
+				9688CB160ED12B4E001D6491 /* X86Registers.h in Headers */,
 				9959E92E1BD17FA4001AA413 /* xxd.pl in Headers */,
 				451539B912DC994500EF7AC4 /* Yarr.h in Headers */,
 				E3282BBB1FE930AF00EDAF71 /* YarrErrorCode.h in Headers */,
@@ -10184,7 +10186,7 @@
 			buildPhases = (
 				14BD59BC0A3E8F9000BAF59C /* Sources */,
 				14BD59BD0A3E8F9000BAF59C /* Frameworks */,
-				5DBB1511131D0B130056AD36 /* Copy Support Script */,
+				5366FDB222D5485B00BF94AF /* Copy Support Scripts */,
 				5DAFD6CD146B6B6E00FBEFB4 /* Install Support Script */,
 			);
 			buildRules = (
@@ -10515,6 +10517,24 @@
 			shellPath = /bin/sh;
 			shellScript = "Scripts/check-xcfilelists.sh\n";
 		};
+		5366FDB222D5485B00BF94AF /* Copy Support Scripts */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy Support Scripts";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "rsync -r ${SRCROOT}/API/tests/testapiScripts ${BUILT_PRODUCTS_DIR}\n";
+		};
 		53B4BD091F68AF8900D2BEA3 /* Generate Unified Sources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -10598,7 +10618,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "if [[ \"${SKIP_INSTALL}\" == \"NO\" ]]; then\n    cp \"${SRCROOT}/API/tests/testapi.js\" \"${DSTROOT}${INSTALL_PATH}/testapi.js\"\nfi\n";
+			shellScript = "if [[ \"${SKIP_INSTALL}\" == \"NO\" ]]; then\n    cp \"${SRCROOT}/API/tests/testapiScripts/testapi.js\" \"${DSTROOT}${INSTALL_PATH}/testapi.js\"\nfi\n";
 		};
 		5DF7E1CC188E6B87003F9A46 /* Copy jsc into JavaScriptCore.framework */ = {
 			isa = PBXShellScriptBuildPhase;

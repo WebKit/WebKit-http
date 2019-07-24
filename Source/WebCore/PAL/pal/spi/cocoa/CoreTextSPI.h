@@ -62,6 +62,15 @@ typedef CF_OPTIONS(CFOptionFlags, CTFontFallbackOption) {
     kCTFontFallbackOptionDefault = kCTFontFallbackOptionSystem | kCTFontFallbackOptionUserInstalled,
 };
 
+typedef CF_ENUM(uint8_t, CTCompositionLanguage)
+{
+    kCTCompositionLanguageUnset,
+    kCTCompositionLanguageNone,
+    kCTCompositionLanguageJapanese,
+    kCTCompositionLanguageSimplifiedChinese,
+    kCTCompositionLanguageTraditionalChinese,
+};
+
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED == 101400) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED == 120000)
 extern const CFStringRef kCTTypesetterOptionAllowUnboundedLayout;
 #endif
@@ -106,10 +115,17 @@ CTFontDescriptorRef CTFontDescriptorCreateLastResort();
 
 CFArrayRef CTFontManagerCreateFontDescriptorsFromData(CFDataRef);
 
+void CTParagraphStyleSetCompositionLanguage(CTParagraphStyleRef, CTCompositionLanguage);
+
 extern const CFStringRef kCTFontCSSWeightAttribute;
 extern const CFStringRef kCTFontCSSWidthAttribute;
 extern const CFStringRef kCTFontDescriptorTextStyleAttribute;
 extern const CFStringRef kCTFontUIFontDesignTrait;
+
+extern const CFStringRef kCTFontUIFontDesignDefault;
+extern const CFStringRef kCTFontUIFontDesignSerif;
+extern const CFStringRef kCTFontUIFontDesignMonospaced;
+extern const CFStringRef kCTFontUIFontDesignRounded;
 
 extern const CFStringRef kCTFrameMaximumNumberOfLinesAttributeName;
 

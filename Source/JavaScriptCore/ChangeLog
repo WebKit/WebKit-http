@@ -1,3 +1,1125 @@
+2019-07-23  Justin Michaud  <justin_michaud@apple.com>
+
+        Sometimes we miss removable CheckInBounds
+        https://bugs.webkit.org/show_bug.cgi?id=200018
+
+        Reviewed by Saam Barati.
+
+        We failed to remove the CheckInBounds bounds because we did not see that the index was nonnegative. This is because we do not see the relationship between the two
+        separate zero constants that appear in the IR for the given test case. This patch re-adds the hack to de-duplicate m_zero that was removed in 
+        <https://trac.webkit.org/changeset/241228/webkit>.
+
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+
+2019-07-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [bmalloc] Each IsoPage gets 1MB VA because VMHeap::tryAllocateLargeChunk rounds up
+        https://bugs.webkit.org/show_bug.cgi?id=200024
+
+        Reviewed by Saam Barati.
+
+        Discussed and we decided to use this VM tag for IsoHeap instead of CLoop stack.
+
+        * interpreter/CLoopStack.cpp:
+        (JSC::CLoopStack::CLoopStack):
+
+2019-07-22  Saam Barati  <sbarati@apple.com>
+
+        Turn off Wasm fast memory on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=200016
+        <rdar://problem/53417726>
+
+        Reviewed by Yusuke Suzuki.
+
+        We turned them on when we disabled Gigacage on iOS. However, we re-enabled
+        Gigacage on iOS, but forgot to turn wasm fast memories back off.
+
+        * runtime/Options.h:
+
+2019-07-22  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed non-unified build fix.
+
+        * runtime/CachedTypes.h:
+
+2019-07-20  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Make DFG Local CSE and AI conservative for huge basic block
+        https://bugs.webkit.org/show_bug.cgi?id=199929
+        <rdar://problem/49309924>
+
+        Reviewed by Filip Pizlo.
+
+        In CNN page, the main thread hangs several seconds. On less-powerful devices (like iPhone7), it hangs for ~11 seconds. This is not an acceptable behavior.
+        The reason of this is that the DFG compiler takes too long time in the compilation for a particular function. It takes 8765 ms even in powerful x64 machine!
+        DFG compiler is concurrent one. However, when GC requires all the peripheral threads to be stopped, the main thread needs to wait for the DFG compiler's stop.
+        DFG compiler stops at GC safepoints, and they are inserted between DFG phases. So, if some of DFG phases take very long time, the main thread is blocked during that.
+        As a result, the main thread is blocked due to this pathological compilation.
+
+        By measuring the time taken in each DFG phase, we found that our AI and CSE phase have a problem having quadratic complexity for # of DFG nodes in a basic block.
+        In this patch, we add a threshold for # of DFG nodes in a basic block. If a basic block exceeds this threshold, we use conservative but O(1) algorithm for AI and Local CSE phase.
+        We did not add this threshold for Global CSE since FTL has another bytecode cost threshold which prevents us from compiling the large functions. But on the other hand,
+        DFG should compile them because DFG is intended to be a fast compiler even for a bit larger CodeBlock.
+
+        We first attempted to reduce the threshold for DFG compilation. We are using 100000 bytecode cost for DFG compilation and it is very large. However, we found that bytecode cost
+        is not the problem in CNN page. The problematic function has 67904 cost, and it takes 8765 ms in x64 machine. However, JetStream2/octane-zlib has 61949 function and it only takes
+        ~400 ms. This difference comes from the # of DFG nodes in a basic block. The problematic function has 43297 DFG nodes in one basic block and it makes AI and Local CSE super time-consuming.
+        Rather than relying on the bytecode cost which a bit indirectly related to this pathological compile-time, we should look into # of DFG nodes in a basic block which is more directly
+        related to this problem. And we also found that 61949's Octane-zlib function is very critical for performance. This fact makes a bit hard to pick a right threshold: 67904 causes the problem,
+        and 61949 must be compiled. This is why this patch is introducing conservative analysis instead of adjusting the threshold for DFG.
+
+        This patch has two changes.
+
+        1. DFG AI has structure transition tracking which has quadratic complexity
+
+        Structure transition tracking takes very long time since its complexity is O(N^2) where N is # of DFG nodes in a basic block.
+        CNN has very pathological script and it shows 43297 DFG nodes. We should reduce the complexity of this algorithm.
+        For now, we just say "structures are clobbered" if # of DFG nodes in a basic block exceeds the threshold (20000).
+        We could improve the current algorithm from O(N^2) to O(2N) without being conservative, and I'm tracking this in [1].
+
+        2. DFG Local CSE has quadratic complexity
+
+        Local CSE's clobbering iterates all the impure heap values to remove the clobbered one. Since # of impure heap values tend to be proportional to # of DFG nodes we visited,
+        each CSE for a basic block gets O(N^2) complexity. To avoid this, we introduce HugeMap. This has the same interface to LargeMap and SmallMap in CSE, but its clobbering
+        implementation just clears the map completely. We can further make this O(N) without introducing conservative behavior by using epochs. For now, we do not see such a huge basic block in
+        JetStream2 and Speedometer2 so I'll track it in a separate bug[2].
+
+        This patch reduces the compilation time from ~11 seconds to ~200 ms.
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=199959
+        [2]: https://bugs.webkit.org/show_bug.cgi?id=200014
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::observeTransition):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::observeTransitions):
+        * dfg/DFGCSEPhase.cpp:
+        * runtime/Options.h:
+
+2019-07-22  Zhifei Fang  <zhifei_fang@apple.com>
+
+        Need to skip test cache directory data vault for non internal build
+        https://bugs.webkit.org/show_bug.cgi?id=199951
+
+        Reviewed by Alexey Proskuryakov.
+
+        * API/tests/testapi.mm:
+        (testBytecodeCacheValidation): "Cache directory `/private/tmp` is not a data vault" this error message will only be created for internal build see JSScript.mm:97
+
+2019-07-17  Antoine Quint  <graouts@apple.com>
+
+        Disable Pointer Events prior to watchOS 6
+        https://bugs.webkit.org/show_bug.cgi?id=199890
+        <rdar://problem/53206113>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-07-17  Keith Miller  <keith_miller@apple.com>
+
+        Force useLLInt to true on arm64_32
+        https://bugs.webkit.org/show_bug.cgi?id=199882
+        <rdar://problem/53207586>
+
+        Reviewed by Yusuke Suzuki.
+
+        Some jsc tests set useLLInt=false but on arm64_32 we don't support the JIT.
+        This causes the option coherency checker to get angry. We should force
+        useLLInt=true on arm64_32 unless useJIT=true.
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2019-07-17  Christopher Reid  <chris.reid@sony.com>
+
+        Bytecode cache should use FileSystem
+        https://bugs.webkit.org/show_bug.cgi?id=199759
+
+        Reviewed by Yusuke Suzuki.
+
+        Update bytecode cache to use platform generic FileSystem calls.
+
+        * API/JSScript.mm:
+        * CMakeLists.txt:
+        * jsc.cpp:
+        * runtime/CachePayload.cpp:
+        * runtime/CachePayload.h:
+        * runtime/CachedBytecode.h:
+        * runtime/CachedTypes.cpp:
+        * runtime/CachedTypes.h:
+        * runtime/CodeCache.cpp:
+        * runtime/CodeCache.h:
+        * runtime/Completion.cpp:
+        * runtime/Completion.h:
+
+2019-07-17  Mark Lam  <mark.lam@apple.com>
+
+        ArgumentsEliminationPhase should insert KillStack nodes before PutStack nodes that it adds.
+        https://bugs.webkit.org/show_bug.cgi?id=199821
+        <rdar://problem/52452328>
+
+        Reviewed by Filip Pizlo.
+
+        Excluding the ArgumentsEliminationPhase, PutStack nodes are converted from SetLocal
+        nodes in the SSAConversionPhase.  SetLocal nodes are always preceded by MovHint nodes,
+        and the SSAConversionPhase always inserts a KillStack node before a MovHint node.
+        Hence, a PutStack node is always preceded by a KillStack node.
+
+        However, the ArgumentsEliminationPhase can convert LoadVarargs nodes into a series
+        of one or more PutStacks nodes, and it prepends MovHint nodes before the PutStack
+        nodes.  However, it neglects to prepend KillStack nodes as well.  Since the
+        ArgumentsEliminationPhase runs after the SSAConversionPhase, the PutStack nodes
+        added during ArgumentsElimination will not be preceded by KillStack nodes.
+
+        This patch fixes this by inserting a KillStack in the ArgumentsEliminationPhase
+        before it inserts a MovHint and a PutStack node.
+
+        Consider this test case which can manifest the above issue as a crash:
+
+            function inlinee(value) {
+                ...
+                let tmp = value + 1;
+            }
+
+            function reflect() {
+                return inlinee.apply(undefined, arguments);
+            }
+
+            function test(arr) {
+                let object = inlinee.apply(undefined, arr);   // Uses a lot of SetArgumentMaybe nodes.
+                reflect();    // Calls with a LoadVararg, which gets converted into a PutStack of a constant.
+            }
+
+        In this test case, we have a scenario where a SetArgumentMaybe's stack
+        slot is reused as the stack slot for a PutStack later.  Here, the PutStack will
+        put a constant undefined value.  Coincidentally, the SetArgumentMaybe may also
+        initialize that stack slot to a constant undefined value.  Note that by the time
+        the PutStack executes, the SetArgumentMaybe's stack slot is dead.  The liveness of
+        these 2 values are distinct.
+
+        However, because we were missing a KillStack before the PutStack, OSR availability
+        analysis gets misled into thinking that the PutStack constant value is still in the
+        stack slot because the value left there by the SetArgumentMaybe hasn't been killed
+        off yet.  As a result, OSR exit code will attempt to recover the PutStack's undefined
+        constant by loading from the stack slot instead of materializing it.  Since
+        SetArgumentMaybe may not actually initialize the stack slot, we get a crash in OSR
+        exit when we try to recover the PutStack constant value from the stack slot, and
+        end up using what ever junk value we read from there.
+
+        Fixing the ArgumentsEliminationPhase to insert KillStack before the PutStack
+        removes this conflation of the PutStack's constant value with the SetArgumentMaybe's
+        constant value in the same stack slot.  And, OSR availability analysis will no
+        longer be misled to load the PutStack's constant value from the stack, but will
+        materialize the constant instead.
+
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+
+2019-07-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247505.
+        https://bugs.webkit.org/show_bug.cgi?id=199871
+
+        "Caused failed ASSERT in stress test" (Requested by creid on
+        #webkit).
+
+        Reverted changeset:
+
+        "Bytecode cache should use FileSystem"
+        https://bugs.webkit.org/show_bug.cgi?id=199759
+        https://trac.webkit.org/changeset/247505
+
+2019-07-16  Christopher Reid  <chris.reid@sony.com>
+
+        Bytecode cache should use FileSystem
+        https://bugs.webkit.org/show_bug.cgi?id=199759
+
+        Reviewed by Yusuke Suzuki.
+
+        Update bytecode cache to use platform generic FileSystem calls.
+
+        * API/JSScript.mm:
+        * CMakeLists.txt:
+        * jsc.cpp:
+        * runtime/CachePayload.cpp:
+        * runtime/CachePayload.h:
+        * runtime/CachedBytecode.h:
+        * runtime/CachedTypes.cpp:
+        * runtime/CachedTypes.h:
+        * runtime/CodeCache.cpp:
+        * runtime/CodeCache.h:
+        * runtime/Completion.cpp:
+        * runtime/Completion.h:
+
+2019-07-16  Joonghun Park  <pjh0718@gmail.com>
+
+        [GTK] Fix a build warning in JavaScriptCore/API/tests/testapi.c
+        https://bugs.webkit.org/show_bug.cgi?id=199824
+
+        Reviewed by Alex Christensen.
+
+        * API/tests/testapi.c:
+        (main):
+
+2019-07-15  Keith Miller  <keith_miller@apple.com>
+
+        JSGlobalObject type macros should support feature flags and WeakRef should have one
+        https://bugs.webkit.org/show_bug.cgi?id=199601
+
+        Reviewed by Mark Lam.
+
+        This patch refactors the various builtin type macros to have a
+        parameter, which is the feature flag enabling it.  Since most
+        builtin types are enabled by default this patch adds a new global
+        bool typeExposedByDefault for clarity. Note, because static hash
+        tables have no concept of feature flags we can't use feature flags
+        with lazy properties. This is probably not a big deal as features
+        that are off by default won't be allocated anywhere we care about
+        memory usage anyway.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::stringObjectStructure const):
+        (JSC::JSGlobalObject::bigIntObjectStructure const): Deleted.
+        * runtime/Options.h:
+        * wasm/js/JSWebAssembly.cpp:
+
+2019-07-15  Keith Miller  <keith_miller@apple.com>
+
+        A Possible Issue of Object.create method
+        https://bugs.webkit.org/show_bug.cgi?id=199744
+
+        Reviewed by Yusuke Suzuki.
+
+        We should call toObject on the properties argument if it was not undefined.
+        See: https://tc39.es/ecma262/#sec-object.create
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorCreate):
+
+2019-07-15  Saagar Jha  <saagarjha@apple.com>
+
+        Keyword lookup can use memcmp to get around unaligned load undefined behavior
+        https://bugs.webkit.org/show_bug.cgi?id=199650
+
+        Reviewed by Yusuke Suzuki.
+
+        Replace KeywordLookup's hand-rolled "memcmp" with the standard version, which reduces the need to deal with
+        endianness and unaligned loads.
+
+        * KeywordLookupGenerator.py:
+        (Trie.printSubTreeAsC): Use memcmp instead of macros to test for matches.
+        (Trie.printAsC): Unspecialize Lexer::parseKeyword as templating over the character type reduces the amount of
+        code we need to generate and moves this task out of the Python script and into the C++ compiler.
+
+2019-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve wasm wpt test results by fixing miscellaneous issues
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+
+        Reviewed by Mark Lam.
+
+        This patch fixes miscellaneous issues in our Wasm JS API implementation to improve WPT score.
+        I picked trivial ones in this patch to make this easily reviewable.
+
+        1. Remove WebAssemblyPrototype. It does not exist in the spec. Merging WebAssemblyPrototype into JSWebAssembly.
+        2. Fix various attributes. It does not match to the usual JSC builtin's convention. But this change
+           is correct because they are changed to be matched against WebIDL definition, and WebAssembly implementation
+           follows WebIDL. In the future, we could move WebCore WebIDL things into WTF layer and even use (or leverage
+           some of utility functions) in our WebAssembly JS API implementation.
+        3. Fix how we interpret "present" in WebAssembly spec. This does not mean [[HasProperty]] result. It follows to
+           WebIDL spec, and it means that [[Get]] result is not undefined.
+        4. Add argument count check to Module.customSections, which is required because the method is defined in WebIDL.
+        5. Fix toNonWrappingUint32 to match it to WebIDL's conversion rule.
+
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * builtins/WebAssembly.js: Renamed from Source/JavaScriptCore/builtins/WebAssemblyPrototype.js.
+        * jit/Repatch.cpp:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::moduleLoaderParseModule):
+        * wasm/js/JSWebAssembly.cpp:
+        (JSC::JSWebAssembly::create):
+        (JSC::JSWebAssembly::finishCreation):
+        (JSC::reject):
+        (JSC::webAssemblyModuleValidateAsyncInternal):
+        (JSC::webAssemblyCompileFunc):
+        (JSC::resolve):
+        (JSC::JSWebAssembly::webAssemblyModuleValidateAsync):
+        (JSC::instantiate):
+        (JSC::compileAndInstantiate):
+        (JSC::JSWebAssembly::instantiate):
+        (JSC::webAssemblyModuleInstantinateAsyncInternal):
+        (JSC::JSWebAssembly::webAssemblyModuleInstantinateAsync):
+        (JSC::webAssemblyInstantiateFunc):
+        (JSC::webAssemblyValidateFunc):
+        (JSC::webAssemblyCompileStreamingInternal):
+        (JSC::webAssemblyInstantiateStreamingInternal):
+        * wasm/js/JSWebAssembly.h:
+        * wasm/js/JSWebAssemblyHelpers.h:
+        (JSC::toNonWrappingUint32):
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::WebAssemblyCompileErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::WebAssemblyInstanceConstructor::finishCreation):
+        * wasm/js/WebAssemblyInstancePrototype.cpp:
+        * wasm/js/WebAssemblyLinkErrorConstructor.cpp:
+        (JSC::WebAssemblyLinkErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        (JSC::WebAssemblyMemoryConstructor::finishCreation):
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::webAssemblyModuleCustomSections):
+        (JSC::WebAssemblyModuleConstructor::finishCreation):
+        * wasm/js/WebAssemblyPrototype.cpp: Removed.
+        * wasm/js/WebAssemblyPrototype.h: Removed.
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::WebAssemblyRuntimeErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::constructJSWebAssemblyTable):
+        (JSC::WebAssemblyTableConstructor::finishCreation):
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+
+2019-07-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r247440.
+
+        Broke builds
+
+        Reverted changeset:
+
+        "[JSC] Improve wasm wpt test results by fixing miscellaneous
+        issues"
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+        https://trac.webkit.org/changeset/247440
+
+2019-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve wasm wpt test results by fixing miscellaneous issues
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+
+        Reviewed by Mark Lam.
+
+        This patch fixes miscellaneous issues in our Wasm JS API implementation to improve WPT score.
+        I picked trivial ones in this patch to make this easily reviewable.
+
+        1. Remove WebAssemblyPrototype. It does not exist in the spec. Merging WebAssemblyPrototype into JSWebAssembly.
+        2. Fix various attributes. It does not match to the usual JSC builtin's convention. But this change
+           is correct because they are changed to be matched against WebIDL definition, and WebAssembly implementation
+           follows WebIDL. In the future, we could move WebCore WebIDL things into WTF layer and even use (or leverage
+           some of utility functions) in our WebAssembly JS API implementation.
+        3. Fix how we interpret "present" in WebAssembly spec. This does not mean [[HasProperty]] result. It follows to
+           WebIDL spec, and it means that [[Get]] result is not undefined.
+        4. Add argument count check to Module.customSections, which is required because the method is defined in WebIDL.
+        5. Fix toNonWrappingUint32 to match it to WebIDL's conversion rule.
+
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * builtins/WebAssembly.js: Renamed from Source/JavaScriptCore/builtins/WebAssemblyPrototype.js.
+        * jit/Repatch.cpp:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::moduleLoaderParseModule):
+        * wasm/js/JSWebAssembly.cpp:
+        (JSC::JSWebAssembly::create):
+        (JSC::JSWebAssembly::finishCreation):
+        (JSC::reject):
+        (JSC::webAssemblyModuleValidateAsyncInternal):
+        (JSC::webAssemblyCompileFunc):
+        (JSC::resolve):
+        (JSC::JSWebAssembly::webAssemblyModuleValidateAsync):
+        (JSC::instantiate):
+        (JSC::compileAndInstantiate):
+        (JSC::JSWebAssembly::instantiate):
+        (JSC::webAssemblyModuleInstantinateAsyncInternal):
+        (JSC::JSWebAssembly::webAssemblyModuleInstantinateAsync):
+        (JSC::webAssemblyInstantiateFunc):
+        (JSC::webAssemblyValidateFunc):
+        (JSC::webAssemblyCompileStreamingInternal):
+        (JSC::webAssemblyInstantiateStreamingInternal):
+        * wasm/js/JSWebAssembly.h:
+        * wasm/js/JSWebAssemblyHelpers.h:
+        (JSC::toNonWrappingUint32):
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::WebAssemblyCompileErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::WebAssemblyInstanceConstructor::finishCreation):
+        * wasm/js/WebAssemblyInstancePrototype.cpp:
+        * wasm/js/WebAssemblyLinkErrorConstructor.cpp:
+        (JSC::WebAssemblyLinkErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        (JSC::WebAssemblyMemoryConstructor::finishCreation):
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::webAssemblyModuleCustomSections):
+        (JSC::WebAssemblyModuleConstructor::finishCreation):
+        * wasm/js/WebAssemblyPrototype.cpp: Removed.
+        * wasm/js/WebAssemblyPrototype.h: Removed.
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::WebAssemblyRuntimeErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::constructJSWebAssemblyTable):
+        (JSC::WebAssemblyTableConstructor::finishCreation):
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+
+2019-07-15  Youenn Fablet  <youenn@apple.com>
+
+        Enable a debug WebRTC mode without any encryption
+        https://bugs.webkit.org/show_bug.cgi?id=199177
+        <rdar://problem/52074986>
+
+        Reviewed by Eric Carlson.
+
+        * inspector/protocol/Page.json:
+
+2019-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, attempt to fix production builds after r247403.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2019-07-15  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Concurrent GC should not rely on current phase to determine if it's safe to steal conn
+        https://bugs.webkit.org/show_bug.cgi?id=199786
+        <rdar://problem/52505197>
+
+        Reviewed by Saam Barati.
+
+        In r246507, we fixed a race condition in the concurrent GC where the mutator might steal
+        the conn from the collector thread while it transitions from the End phase to NotRunning.
+        However, that fix was not sufficient. In the case that the mutator steals the conn, and the
+        execution interleaves long enough for the mutator to progress to a different collection phase,
+        the collector will resume in a phase other than NotRunning, and hence the check added to
+        NotRunning will not suffice. To fix that, we add a new variable to track whether the collector
+        thread is running (m_collectorThreadIsRunning) and use it to determine whether it's safe to
+        steal the conn, rather than relying on m_currentPhase.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::runNotRunningPhase):
+        (JSC::Heap::requestCollection):
+        * heap/Heap.h:
+
+2019-07-12  Keith Miller  <keith_miller@apple.com>
+
+        Add API to get all the dependencies of a given JSScript
+        https://bugs.webkit.org/show_bug.cgi?id=199746
+
+        Reviewed by Saam Barati.
+
+        The method only returns the dependencies if the module was
+        actually evaluated. Technically, we know what the dependencies are
+        at the satisfy phase but for API simplicity we only provide that
+        information if the module graph was complete enough to at least
+        run.
+
+        This patch also fixes an issue where we would allow import
+        specifiers that didn't start "./" or "/". For reference, We have
+        this restriction to be consistent with the web/node. The
+        restriction exists in order to preserve namespace for
+        builtin-modules.
+
+        Lastly, this patch makes it so that we copy all scripts in the
+        API/tests/testapiScripts directory so they don't have to be
+        individually added to the xcode project.
+
+        * API/JSAPIGlobalObject.mm:
+        (JSC::computeValidImportSpecifier):
+        (JSC::JSAPIGlobalObject::moduleLoaderResolve):
+        (JSC::JSAPIGlobalObject::moduleLoaderImportModule):
+        * API/JSContext.mm:
+        (-[JSContext dependencyIdentifiersForModuleJSScript:]):
+        * API/JSContextPrivate.h:
+        * API/JSScript.h:
+        * API/tests/testapi.mm:
+        (testFetchWithTwoCycle):
+        (testFetchWithThreeCycle):
+        (testModuleBytecodeCache):
+        (+[JSContextFileLoaderDelegate newContext]):
+        (-[JSContextFileLoaderDelegate fetchModuleScript:]):
+        (-[JSContextFileLoaderDelegate findScriptForKey:]):
+        (-[JSContextFileLoaderDelegate context:fetchModuleForIdentifier:withResolveHandler:andRejectHandler:]):
+        (testDependenciesArray):
+        (testDependenciesEvaluationError):
+        (testDependenciesSyntaxError):
+        (testDependenciesBadImportId):
+        (testDependenciesMissingImport):
+        (testObjectiveCAPI):
+        * API/tests/testapiScripts/dependencyListTests/badModuleImportId.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/bar.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/dependenciesEntry.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/foo.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/missingImport.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/referenceError.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/syntaxError.js: Added.
+        * API/tests/testapiScripts/testapi-function-overrides.js: Renamed from Source/JavaScriptCore/API/tests/testapi-function-overrides.js.
+        * API/tests/testapiScripts/testapi.js: Renamed from Source/JavaScriptCore/API/tests/testapi.js.
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/ModuleLoader.js:
+        (dependencyKeysIfEvaluated):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::dependencyKeysIfEvaluated):
+        * runtime/JSModuleLoader.h:
+        * shell/CMakeLists.txt:
+
+2019-07-12  Justin Michaud  <justin_michaud@apple.com>
+
+        B3 should reduce (integer) Sub(Neg(x), y) to Neg(Add(x, y))
+        https://bugs.webkit.org/show_bug.cgi?id=196371
+
+        Reviewed by Keith Miller.
+
+        Adding these strength reductions gives 2x a (x86) and 3x (arm64) performance improvement
+        on the microbenchmark.
+
+        * b3/B3ReduceStrength.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::testSubSub):
+        (JSC::B3::testSubSub2):
+        (JSC::B3::testSubAdd):
+        (JSC::B3::testSubFirstNeg):
+        (JSC::B3::run):
+
+2019-07-12  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueBitLShift into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=192664
+
+        Reviewed by Saam Barati.
+
+        This patch is splitting the `BitLShift` into `ArithBitLShift` and
+        `ValueBitLShift` to handle BigInt speculation more efficiently during
+        DFG and FTL layers. Following the same approach of other `ValueBitOps`,
+        `ValueBitLShift` handles Untyped and BigInt speculations, while
+        `ArithBitLShift` handles number and boolean operands and always results into
+        Int32. 
+
+        * bytecode/BytecodeList.rb:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        * bytecode/Opcode.h:
+        * dfg/DFGAbstractInterpreter.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::handleConstantBinaryBitwiseOp):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+
+        We moved `BitLShift` constant fold rules to a new method
+        `handleConstantBinaryBitwiseOp` to be reused by `ArithBitLShift` and
+        `ValueBitLShift`. This also enables support of constant folding on other
+        bitwise operations like `ValueBitAnd`, `ValueBitOr` and `ValueBitXor`, when
+        their binary use kind is UntypedUse. Such cases can happen on those
+        nodes because fixup phase is conservative.
+
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::isWithinPowerOfTwo):
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicGetter):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+
+        We parse `op_lshift` as `ArithBitLShift` when its operands are numbers.
+        Otherwise, we fallback to `ValueBitLShift` and rely on fixup phase to
+        convert `ValueBitLShift` into `ArithBitLShift` when possible.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+
+        `ArithBitLShift` has the same clobberize rules as former `BitLShift`.
+        `ValueBitLShift` only clobberize world when it is UntypedUse.
+
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+
+        `ValueBitLShift` can GC when `BigIntUse` because it allocates new
+        JSBigInts to perform this operation. It also can GC on UntypedUse
+        because of observable user code.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+
+        `ValueBitLShift` and `ArithBitLShift` has the same fixup rules of
+        other binary bitwise operations. In the case of `ValueBitLShift`
+        We check if we should speculate on BigInt or Untyped and fallback to
+        `ArithBitLShift` when both cheks fail.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+
+        We updated `operationValueBitLShift` to handle BigInt cases. Also, we
+        added `operationBitLShiftBigInt` that is used when we compile
+        `ValueBitLValueBitLShift(BigIntUse)`.
+
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+
+        `ValueBitLShift`'s prediction propagation rules differs from other
+        bitwise operations, because using only heap prediction for this node causes
+        significant performance regression on Octane's zlib and mandreel.
+        The reason is because of cases where a function is compiled but the
+        instruction `op_lshift` was never executed before. If we use
+        `getPrediction()` we will emit a `ForceOSRExit`, resulting in more OSR
+        than desired. To solve such issue, we are then using
+        `getPredictionWithoutOSR()` and falling back to `getHeapPrediction()`
+        only on cases where we can't rely on node's input types.
+
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueLShiftOp):
+        (JSC::DFG::SpeculativeJIT::compileShiftOp):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::shiftOp):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithBitLShift):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueBitLShift):
+        (JSC::FTL::DFG::LowerDFGToB3::compileBitLShift): Deleted.
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+
+2019-07-12  Keith Miller  <keith_miller@apple.com>
+
+        getIndexQuickly should be const
+        https://bugs.webkit.org/show_bug.cgi?id=199747
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/Butterfly.h:
+        (JSC::Butterfly::indexingPayload const):
+        (JSC::Butterfly::arrayStorage const):
+        (JSC::Butterfly::contiguousInt32 const):
+        (JSC::Butterfly::contiguousDouble const):
+        (JSC::Butterfly::contiguous const):
+        * runtime/JSObject.h:
+        (JSC::JSObject::canGetIndexQuickly const):
+        (JSC::JSObject::getIndexQuickly const):
+        (JSC::JSObject::tryGetIndexQuickly const):
+        (JSC::JSObject::canGetIndexQuickly): Deleted.
+        (JSC::JSObject::getIndexQuickly): Deleted.
+
+2019-07-11  Justin Michaud  <justin_michaud@apple.com>
+
+        Add b3 macro lowering for CheckMul on arm64
+        https://bugs.webkit.org/show_bug.cgi?id=199251
+
+        Reviewed by Robin Morisset.
+
+        - Lower CheckMul for 32-bit arguments on arm64 into a mul and then an overflow check.
+        - Add a new opcode to air on arm64 for smull (multiplySignExtend32).
+        - Fuse sign extend 32 + mul into smull (taking two 32-bit arguments and producing 64 bits). 
+        - 1.25x speedup on power of two microbenchmark, 1.15x speedup on normal constant microbenchmark, 
+          and no change on the no-constant benchmark.
+        Also, skip some of the b3 tests that were failing before this patch so that the new tests can run
+        to completion.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::multiplySignExtend32):
+        * assembler/testmasm.cpp:
+        (JSC::testMul32SignExtend):
+        (JSC::run):
+        * b3/B3LowerMacros.cpp:
+        * b3/B3LowerToAir.cpp:
+        * b3/air/AirOpcode.opcodes:
+        * b3/testb3.cpp:
+        (JSC::B3::testMulArgs32SignExtend):
+        (JSC::B3::testMulImm32SignExtend):
+        (JSC::B3::testMemoryFence):
+        (JSC::B3::testStoreFence):
+        (JSC::B3::testLoadFence):
+        (JSC::B3::testPinRegisters):
+        (JSC::B3::run):
+
+2019-07-11  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, revert r243617.
+        https://bugs.webkit.org/show_bug.cgi?id=196341
+
+        Mark pointed out that JSVirtualMachine can be gone in the other thread while we are executing GC constraint-solving.
+        This patch does not account that JavaScriptCore.framework is multi-thread safe: JSVirtualMachine wrapper can be destroyed,
+        and [JSVirtualMachine dealloc] can be executed in any threads while the VM is retained and used in the other thread (e.g.
+        destroyed from AutoReleasePool in some thread).
+
+        * API/JSContext.mm:
+        (-[JSContext initWithVirtualMachine:]):
+        (-[JSContext dealloc]):
+        (-[JSContext initWithGlobalContextRef:]):
+        (-[JSContext wrapperMap]):
+        (+[JSContext contextWithJSGlobalContextRef:]):
+        * API/JSVirtualMachine.mm:
+        (initWrapperCache):
+        (wrapperCache):
+        (+[JSVMWrapperCache addWrapper:forJSContextGroupRef:]):
+        (+[JSVMWrapperCache wrapperForJSContextGroupRef:]):
+        (-[JSVirtualMachine initWithContextGroupRef:]):
+        (-[JSVirtualMachine dealloc]):
+        (+[JSVirtualMachine virtualMachineWithContextGroupRef:]):
+        (-[JSVirtualMachine contextForGlobalContextRef:]):
+        (-[JSVirtualMachine addContext:forGlobalContextRef:]):
+        (scanExternalObjectGraph):
+        (scanExternalRememberedSet):
+        * API/JSVirtualMachineInternal.h:
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::setWrapperMap):
+        (JSC::JSGlobalObject::setAPIWrapper): Deleted.
+        (JSC::JSGlobalObject::apiWrapper const): Deleted.
+        * runtime/VM.h:
+
+2019-07-10  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Optimize join of large empty arrays
+        https://bugs.webkit.org/show_bug.cgi?id=199636
+
+        Reviewed by Mark Lam.
+
+        Replicate the behavior of `str.repeat(count)` when performing `new Array(count + 1).join(str)`.
+        I added two new microbenchmarks:
+        - large-empty-array-join, which does not use the result of the join and runs ~44x faster and uses ~18x less memory.
+        - large-empty-array-join-resolve-rope, which uses the result of the join and runs 2x faster.
+
+                                                    baseline                    diff
+        large-empty-array-join                2713.9698+-72.7621    ^     61.2335+-10.4836       ^ definitely 44.3217x faster
+        large-empty-array-join-resolve-string   26.5517+-0.3995     ^     12.9309+-0.5516        ^ definitely 2.0533x faster
+
+        large-empty-array-join memory usage with baseline (dirty):
+            733012 kB current_mem
+            756824 kB lifetime_peak
+
+        large-empty-array-join memory usage with diff (dirty):
+            41904 kB current_mem
+            41972 kB lifetime_peak
+
+        Additionally, I ran JetStream2, sunspider and v8-spider and all were neutral.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::fastJoin):
+
+2019-07-08  Keith Miller  <keith_miller@apple.com>
+
+        Enable Intl.PluralRules and Intl.NumberFormatToParts by default
+        https://bugs.webkit.org/show_bug.cgi?id=199288
+
+        Reviewed by Yusuke Suzuki.
+
+        These features have been around for a while. We should turn them on by default.
+
+        * runtime/IntlNumberFormatPrototype.cpp:
+        (JSC::IntlNumberFormatPrototype::finishCreation):
+        * runtime/IntlObject.cpp:
+        (JSC::IntlObject::finishCreation): Deleted.
+        * runtime/IntlObject.h:
+        * runtime/Options.h:
+
+2019-07-08  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Enable only on the most recent version of the supported iOS family
+        https://bugs.webkit.org/show_bug.cgi?id=199562
+        <rdar://problem/52766511>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-07-06  Michael Saboff  <msaboff@apple.com>
+
+        switch(String) needs to check for exceptions when resolving the string
+        https://bugs.webkit.org/show_bug.cgi?id=199541
+
+        Reviewed by Mark Lam.
+
+        Added exception checks for resolved Strings in switch processing for all tiers.
+
+        * dfg/DFGOperations.cpp:
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+
+2019-07-05  Mark Lam  <mark.lam@apple.com>
+
+        ArgumentsEliminationPhase::eliminateCandidatesThatInterfere() should not decrement nodeIndex pass zero.
+        https://bugs.webkit.org/show_bug.cgi?id=199533
+        <rdar://problem/52669111>
+
+        Reviewed by Filip Pizlo.
+
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+
+2019-07-05  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, fix build failure on ARM64_32
+        https://bugs.webkit.org/show_bug.cgi?id=182434
+
+        Implicit narrowing from uint64_t to uint32_t happens. We should explicitly narrow it because we already checked
+        the `length` is <= UINT32_MAX.
+
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSpeciesCreate):
+
+2019-07-05  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        [JSC] Clean up ArraySpeciesCreate
+        https://bugs.webkit.org/show_bug.cgi?id=182434
+
+        Reviewed by Yusuke Suzuki.
+
+        We have duplicate code in arraySpeciesCreate, filter, map, concatSlowPath of ArrayPrototype.js
+        and speciesConstructArray of ArrayPrototype.cpp. This patch fixes cross-realm Array constructor
+        detection in native speciesConstructArray, upgrades `length` type to correctly handle large integers,
+        and exposes it as @arraySpeciesCreate. Also removes now unused @isArrayConstructor private function.
+        Native speciesConstructArray is preferred because it has fast path via speciesWatchpointIsValid.
+
+        Thoroughly benchmarked: this change progresses ARES-6 by 0-1%.
+
+        * builtins/ArrayPrototype.js:
+        (filter):
+        (map):
+        (globalPrivate.concatSlowPath):
+        (globalPrivate.arraySpeciesCreate): Deleted.
+        * builtins/BuiltinNames.h:
+        * runtime/ArrayConstructor.cpp:
+        (JSC::arrayConstructorPrivateFuncIsArrayConstructor): Deleted.
+        * runtime/ArrayConstructor.h:
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncSpeciesCreate):
+        * runtime/ArrayPrototype.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+
+2019-07-05  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Unreviewed, change the value used to scribble Heap::m_worldState
+        https://bugs.webkit.org/show_bug.cgi?id=199498
+
+        Follow-up after r247160. The value used to scribble should have the
+        conn bit set.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::~Heap):
+
+2019-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247115.
+
+        Breaks lldbWebKitTester (and by extension, test-webkitpy)
+
+        Reverted changeset:
+
+        "[WHLSL] Standard library is too big to directly include in
+        WebCore"
+        https://bugs.webkit.org/show_bug.cgi?id=198186
+        https://trac.webkit.org/changeset/247115
+
+2019-07-05  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Scribble Heap::m_worldState on destructor
+        https://bugs.webkit.org/show_bug.cgi?id=199498
+
+        Reviewed by Sam Weinig.
+
+        The worldState is dumped when we crash due to a failed checkConn, and
+        this will make it clear if the heap has already been destroyed.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::~Heap):
+
+2019-07-03  Sam Weinig  <weinig@apple.com>
+
+        Adopt simple structured bindings in more places
+        https://bugs.webkit.org/show_bug.cgi?id=199247
+
+        Reviewed by Alex Christensen.
+
+        Replaces simple uses of std::tie() with structured bindings. Does not touch
+        uses of std::tie() that are not initial declarations, use std::ignore or in
+        case where the binding is captured by a lambda, as structured bindings don't
+        work for those cases yet.
+
+        * runtime/PromiseDeferredTimer.cpp:
+        (JSC::PromiseDeferredTimer::doWork):
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+        * wasm/js/JSWebAssemblyHelpers.h:
+        (JSC::createSourceBufferFromValue):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::webAssemblyValidateFunc):
+
+2019-07-03  Keith Miller  <keith_miller@apple.com>
+
+        PACCage should first cage leaving PAC bits intact then authenticate
+        https://bugs.webkit.org/show_bug.cgi?id=199372
+
+        Reviewed by Saam Barati.
+
+        This ordering prevents someone from taking a signed pointer from
+        outside the gigacage and using it in a struct that expects a caged
+        pointer. Previously, the PACCaging just double checked that the PAC
+        bits were valid for the original pointer.
+
+
+               +---------------------------+
+               |       |        |          |
+               | "PAC" | "base" | "offset" +----+
+               |       |        |          |    |
+               +---------------------------+    | Caging
+                |                               |
+                |                               |
+                |                               v
+                |                +---------------------------+
+                |                |       |        |          |
+                | Bit Merge      | 00000 |  base  | "offset" |
+                |                |       |        |          |
+                |                +---------------------------+
+                |                               |
+                |                               |
+                v                               |  Bit Merge
+          +---------------------------+         |
+          |       |        |          |         |
+          | "PAC" |  base  | "offset" +<--------+
+          |       |        |          |
+          +---------------------------+
+                      |
+                      |
+                      | Authenticate
+                      |
+                      v
+          +---------------------------+
+          |       |        |          |
+          | Auth  |  base  | "offset" |
+          |       |        |          |
+          +---------------------------+
+
+        The above ascii art graph shows how the PACCage system works. The
+        key take away is that even if someone passes in a valid, signed
+        pointer outside the cage it will still fail to authenticate as the
+        "base" bits will change before authentication.
+
+
+        * assembler/MacroAssemblerARM64E.h:
+        * assembler/testmasm.cpp:
+        (JSC::testCagePreservesPACFailureBit):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::caged):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::cageConditionally):
+        * llint/LowLevelInterpreter64.asm:
+
+2019-07-03  Paulo Matos  <pmatos@igalia.com>
+
+        Refactoring of architectural Register Information
+        https://bugs.webkit.org/show_bug.cgi?id=198604
+
+        Reviewed by Keith Miller.
+
+        The goal of this patch is to centralize the register information per platform
+        but access it in a platform independent way. The patch as been implemented for all
+        known platforms: ARM64, ARMv7, MIPS, X86 and X86_64. Register information has
+        been centralized in an architecture per-file: each file is called assembler/<arch>Registers.h.
+
+        RegisterInfo.h is used as a forwarding header to choose which register information to load.
+        assembler/<arch>Assembler.h and jit/RegisterSet.cpp use this information in a platform
+        independent way.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::gprName): Use register names from register info file.
+        (JSC::ARM64Assembler::sprName): likewise.
+        (JSC::ARM64Assembler::fprName): likewise.
+        * assembler/ARM64Registers.h: Added.
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::gprName): Use register names from register info file.
+        (JSC::ARMv7Assembler::sprName): likewise.
+        (JSC::ARMv7Assembler::fprName): likewise.
+        * assembler/ARMv7Registers.h: Added.
+        * assembler/MIPSAssembler.h:
+        (JSC::MIPSAssembler::gprName): Use register names from register info file.
+        (JSC::MIPSAssembler::sprName): likewise.
+        (JSC::MIPSAssembler::fprName): likewise.
+        * assembler/MIPSRegisters.h: Added.
+        * assembler/RegisterInfo.h: Added.
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::gprName): Use register names from register info file.
+        (JSC::X86Assembler::sprName): likewise.
+        (JSC::X86Assembler::fprName): likewise.
+        * assembler/X86Registers.h: Added.
+        * assembler/X86_64Registers.h: Added.
+        * jit/GPRInfo.h: Fix typo in comment (s/basline/baseline).
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::reservedHardwareRegisters): Use register properties from register info file.
+        (JSC::RegisterSet::calleeSaveRegisters): likewise.
+
+2019-07-02  Michael Saboff  <msaboff@apple.com>
+
+        Exception from For..of loop destructured assignment eliminates TDZ checks in subsequent code
+        https://bugs.webkit.org/show_bug.cgi?id=199395
+
+        Reviewed by Filip Pizlo.
+
+        For destructuring assignmests, the assignment might throw a reference error if
+        the RHS cannot be coerced.  The current bytecode generated for such assignments
+        optimizes out the TDZ check after the coercible check.
+
+        By saving the current state of the TDZ stack before processing the setting of 
+        target destructured values and then restoring afterwards, we won't optimize out
+        later TDZ check(s).
+
+        A similar change of saving / restoring the TDZ stack where exceptions might
+        happen was done for for..in loops in change set r232219.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ObjectPatternNode::bindValue const):
+
+2019-07-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247041.
+        https://bugs.webkit.org/show_bug.cgi?id=199425
+
+        broke some iOS arm64e tests (Requested by keith_miller on
+        #webkit).
+
+        Reverted changeset:
+
+        "PACCage should first cage leaving PAC bits intact then
+        authenticate"
+        https://bugs.webkit.org/show_bug.cgi?id=199372
+        https://trac.webkit.org/changeset/247041
+
+2019-07-02  Keith Miller  <keith_miller@apple.com>
+
+        Frozen Arrays length assignment should throw in strict mode
+        https://bugs.webkit.org/show_bug.cgi?id=199365
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::put):
+
 2019-07-02  Paulo Matos  <pmatos@linki.tools>
 
         Fix typo in if/else block and remove dead assignment

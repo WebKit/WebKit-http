@@ -73,10 +73,6 @@ enum SpellcheckAttributeState {
     SpellcheckAttributeDefault
 };
 
-#if ENABLE(POINTER_EVENTS)
-enum class TouchAction : uint8_t;
-#endif
-
 class Element : public ContainerNode {
     WTF_MAKE_ISO_ALLOCATED(Element);
 public:
@@ -468,7 +464,6 @@ public:
     virtual bool isRequiredFormControl() const { return false; }
     virtual bool isInRange() const { return false; }
     virtual bool isOutOfRange() const { return false; }
-    virtual bool isFrameElementBase() const { return false; }
     virtual bool isUploadButton() const { return false; }
     virtual bool isSliderContainerElement() const { return false; }
 
@@ -606,7 +601,6 @@ public:
     ElementIdentifier createElementIdentifier();
 
 #if ENABLE(POINTER_EVENTS)
-    OptionSet<TouchAction> computedTouchActions() const;
 #if ENABLE(OVERFLOW_SCROLLING_TOUCH)
     ScrollingNodeID nearestScrollingNodeIDUsingTouchOverflowScrolling() const;
 #endif

@@ -18,6 +18,7 @@ fast/visual-viewport/ios/ [ Pass ]
 scrollingcoordinator [ Pass ]
 scrollingcoordinator/mac [ Skip ]
 fast/web-share [ Pass ]
+editing/caret/ios [ Pass ]
 editing/find [ Pass ]
 editing/input/ios [ Pass ]
 editing/pasteboard/ios [ Pass ]
@@ -694,6 +695,7 @@ editing/undo/undo-delete-boundary.html [ Failure ]
 editing/undo/undo-delete.html [ Failure ]
 editing/undo/undo-misspellings.html [ Failure ]
 editing/undo/undo-typing-001.html [ Failure ]
+editing/caret/ios/emoji.html [ Failure ]
 
 # Editing tests that time out:
 editing/selection/designmode-no-caret.html
@@ -994,6 +996,7 @@ fast/forms/indeterminate-progress-inline-height.html [ Failure ]
 fast/forms/input-appearance-spinbutton.html [ Failure ]
 fast/replaced/border-radius-clip.html [ Failure ]
 accessibility/ios-simulator/press-fires-touch-events.html [ Skip ]
+webkit.org/b/199431 accessibility/ios-simulator/set-selected-text-range-after-newline.html [ Skip ]
 
 fast/text/combining-character-sequence-vertical.html [ ImageOnlyFailure ]
 fast/text/vertical-quotation-marks.html [ ImageOnlyFailure ]
@@ -1335,7 +1338,7 @@ webkit.org/b/176030 http/tests/websocket/tests/hybi/send-object-tostring-check.h
 
 webkit.org/b/199013 [ Debug ] imported/w3c/web-platform-tests/websockets/Create-Secure-verify-url-set-non-default-port.any.html [ Pass Failure ]
 
-webkit.org/b/196495 fast/viewport/ios/viewport-shrink-to-fit-on-new-navigation.html [ Pass Failure ]
+webkit.org/b/196495 fast/viewport/ios/viewport-shrink-to-fit-on-new-navigation.html [ Failure ]
 
 webkit.org/b/199071 [ Release ] imported/blink/fast/css/user-select-none.html [ Pass ImageOnlyFailure ]
 
@@ -1350,3 +1353,15 @@ webkit.org/b/199370 [ Release ] imported/mozilla/svg/text/selectSubString.svg [ 
 
 webkit.org/b/199387 imported/blink/fast/multicol/span/overflow-on-viewport.html [ Pass ImageOnlyFailure ]
 
+# <rdar://problem/51751714> iOS 13: Multiple fast/scrolling/ios tests failing with unexpected scrollbars appearing in result
+fast/scrolling/ios/mixing-user-and-programmatic-scroll-002.html [ ImageOnlyFailure ]
+fast/scrolling/ios/mixing-user-and-programmatic-scroll-003.html [ ImageOnlyFailure ]
+fast/scrolling/ios/mixing-user-and-programmatic-scroll-006.html [ ImageOnlyFailure ]
+fast/scrolling/ios/scroll-iframe-001.html [ ImageOnlyFailure ]
+fast/scrolling/ios/scroll-iframe-002.html [ ImageOnlyFailure ]
+fast/scrolling/ios/scroll-iframe-003.html [ ImageOnlyFailure ]
+fast/scrolling/ios/scroll-iframe-004.html [ ImageOnlyFailure ]
+fast/scrolling/ios/hit-testing-iframe-006.html [ ImageOnlyFailure ]
+
+# <rdar://problem/52699318> fast/scrolling/ios/body-overflow-hidden-height-100-percent-keyboard.html is timing out
+fast/scrolling/ios/body-overflow-hidden-height-100-percent-keyboard.html [ Pass Timeout ]

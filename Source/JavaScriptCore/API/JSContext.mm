@@ -85,15 +85,13 @@
     };
 
     [self ensureWrapperMap];
-
-    toJSGlobalObject(m_context)->setAPIWrapper((__bridge void*)self);
+    [m_virtualMachine addContext:self forGlobalContextRef:m_context];
 
     return self;
 }
 
 - (void)dealloc
 {
-    toJSGlobalObject(m_context)->setAPIWrapper((__bridge void*)nil);
     m_exception.clear();
     JSGlobalContextRelease(m_context);
     [m_virtualMachine release];
@@ -144,6 +142,32 @@
         JSValueRef exceptionValue = toRef(exec, scope.exception()->value());
         scope.clearException();
         return [JSValue valueWithNewPromiseRejectedWithReason:[JSValue valueWithJSValueRef:exceptionValue inContext:self] inContext:self];
+    }
+    return [JSValue valueWithJSValueRef:toRef(vm, result) inContext:self];
+}
+
+- (JSValue *)dependencyIdentifiersForModuleJSScript:(JSScript *)script
+{
+    JSC::ExecState* exec = toJS(m_context);
+    JSC::VM& vm = exec->vm();
+    JSC::JSLockHolder locker(vm);
+
+    if (script.type != kJSScriptTypeModule) {
+        self.exceptionHandler(self, [JSValue valueWithNewErrorFromMessage:@"script is not a module" inContext:self]);
+        return [JSValue valueWithUndefinedInContext:self];
+    }
+
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    JSC::JSArray* result = exec->lexicalGlobalObject()->moduleLoader()->dependencyKeysIfEvaluated(exec, JSC::jsString(&vm, [[script sourceURL] absoluteString]));
+    if (scope.exception()) {
+        JSValueRef exceptionValue = toRef(exec, scope.exception()->value());
+        scope.clearException();
+        return [self valueFromNotifyException:exceptionValue];
+    }
+
+    if (!result) {
+        self.exceptionHandler(self, [JSValue valueWithNewErrorFromMessage:@"script has not run in context or was not evaluated successfully" inContext:self]);
+        return [JSValue valueWithUndefinedInContext:self];
     }
     return [JSValue valueWithJSValueRef:toRef(vm, result) inContext:self];
 }
@@ -310,7 +334,7 @@
         context.exception = exceptionValue;
     };
 
-    toJSGlobalObject(m_context)->setAPIWrapper((__bridge void*)self);
+    [m_virtualMachine addContext:self forGlobalContextRef:m_context];
 
     return self;
 }
@@ -360,7 +384,7 @@
 
 - (JSWrapperMap *)wrapperMap
 {
-    return toJSGlobalObject(m_context)->wrapperMap();
+    return toJS(m_context)->lexicalGlobalObject()->wrapperMap();
 }
 
 - (JSValue *)wrapperForJSObject:(JSValueRef)value
@@ -371,7 +395,8 @@
 
 + (JSContext *)contextWithJSGlobalContextRef:(JSGlobalContextRef)globalContext
 {
-    JSContext *context = (__bridge JSContext *)toJSGlobalObject(globalContext)->apiWrapper();
+    JSVirtualMachine *virtualMachine = [JSVirtualMachine virtualMachineWithContextGroupRef:toRef(&toJS(globalContext)->vm())];
+    JSContext *context = [virtualMachine contextForGlobalContextRef:globalContext];
     if (!context)
         context = [[[JSContext alloc] initWithGlobalContextRef:globalContext] autorelease];
     return context;

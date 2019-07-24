@@ -32,6 +32,7 @@
 
 #include "Database.h"
 #include "DatabaseTracker.h"
+#include "Document.h"
 #include "InspectorDatabaseResource.h"
 #include "InstrumentingAgents.h"
 #include "SQLError.h"
@@ -47,7 +48,6 @@
 #include <JavaScriptCore/InspectorFrontendRouter.h>
 #include <wtf/JSONValues.h>
 #include <wtf/Vector.h>
-
 
 namespace WebCore {
 
@@ -278,9 +278,9 @@ void InspectorDatabaseAgent::executeSQL(const String& databaseId, const String& 
         return;
     }
 
-    database->transaction(TransactionCallback::create(&database->scriptExecutionContext(), query, requestCallback.copyRef()),
-        TransactionErrorCallback::create(&database->scriptExecutionContext(), requestCallback.copyRef()),
-        TransactionSuccessCallback::create(&database->scriptExecutionContext()));
+    database->transaction(TransactionCallback::create(&database->document(), query, requestCallback.copyRef()),
+        TransactionErrorCallback::create(&database->document(), requestCallback.copyRef()),
+        TransactionSuccessCallback::create(&database->document()));
 }
 
 String InspectorDatabaseAgent::databaseId(Database& database)

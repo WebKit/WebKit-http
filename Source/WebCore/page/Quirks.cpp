@@ -27,11 +27,13 @@
 #include "Quirks.h"
 
 #include "CustomHeaderFields.h"
+#include "DOMTokenList.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "HTMLMetaElement.h"
 #include "HTMLObjectElement.h"
 #include "LayoutUnit.h"
+#include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 
 namespace WebCore {
@@ -57,44 +59,9 @@ inline bool Quirks::needsQuirks() const
     return m_document && m_document->settings().needsSiteSpecificQuirks();
 }
 
-bool Quirks::shouldIgnoreShrinkToFitContent() const
-{
-#if PLATFORM(IOS_FAMILY)
-    if (!needsQuirks())
-        return false;
-
-    auto host = m_document->topDocument().url().host();
-    if (equalLettersIgnoringASCIICase(host, "outlook.live.com"))
-        return true;
-#endif
-    return false;
-}
-
-Optional<LayoutUnit> Quirks::overriddenViewLayoutWidth(LayoutUnit currentViewLayoutWidth) const
-{
-#if PLATFORM(IOS_FAMILY)
-    if (!needsQuirks())
-        return { };
-
-    auto host = m_document->topDocument().url().host();
-    if (equalLettersIgnoringASCIICase(host, "outlook.live.com")) {
-        if (currentViewLayoutWidth <= 989 || currentViewLayoutWidth >= 1132)
-            return { };
-        return { 989 };
-    }
-#else
-    UNUSED_PARAM(currentViewLayoutWidth);
-#endif
-    return { };
-}
-
 bool Quirks::shouldIgnoreInvalidSignal() const
 {
-    if (!needsQuirks())
-        return false;
-
-    auto host = m_document->topDocument().url().host();
-    return equalLettersIgnoringASCIICase(host, "www.thrivepatientportal.com");
+    return needsQuirks();
 }
 
 bool Quirks::needsFormControlToBeMouseFocusable() const
@@ -238,6 +205,21 @@ bool Quirks::shouldDispatchSyntheticMouseEventsWhenModifyingSelection() const
     return false;
 }
 
+bool Quirks::needsYouTubeMouseOutQuirk() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (m_document->settings().shouldDispatchSyntheticMouseOutAfterSyntheticClick())
+        return true;
+
+    if (!needsQuirks())
+        return false;
+
+    return equalLettersIgnoringASCIICase(m_document->url().host(), "www.youtube.com");
+#else
+    return false;
+#endif
+}
+
 bool Quirks::shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() const
 {
     if (!needsQuirks())
@@ -247,8 +229,22 @@ bool Quirks::shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAr
 }
 
 #if ENABLE(TOUCH_EVENTS)
+bool Quirks::isAmazon() const
+{
+    return topPrivatelyControlledDomain(m_document->topDocument().url().host().toString()).startsWith("amazon.");
+}
+
+bool Quirks::isGoogleMaps() const
+{
+    auto& url = m_document->topDocument().url();
+    return topPrivatelyControlledDomain(url.host().toString()).startsWith("google.") && url.path().startsWithIgnoringASCIICase("/maps/");
+}
+
 bool Quirks::shouldDispatchSimulatedMouseEvents() const
 {
+    if (RuntimeEnabledFeatures::sharedFeatures().mouseEventsSimulationEnabled())
+        return true;
+
     if (!needsQuirks())
         return false;
 
@@ -256,11 +252,14 @@ bool Quirks::shouldDispatchSimulatedMouseEvents() const
     if (!loader || loader->simulatedMouseEventsDispatchPolicy() != SimulatedMouseEventsDispatchPolicy::Allow)
         return false;
 
+    if (isAmazon())
+        return true;
+    if (isGoogleMaps())
+        return true;
+
     auto& url = m_document->topDocument().url();
     auto host = url.host();
 
-    if (equalLettersIgnoringASCIICase(host, "amazon.com") || host.endsWithIgnoringASCIICase(".amazon.com"))
-        return true;
     if (equalLettersIgnoringASCIICase(host, "wix.com") || host.endsWithIgnoringASCIICase(".wix.com"))
         return true;
     if ((equalLettersIgnoringASCIICase(host, "desmos.com") || host.endsWithIgnoringASCIICase(".desmos.com")) && url.path().startsWithIgnoringASCIICase("/calculator/"))
@@ -275,26 +274,56 @@ bool Quirks::shouldDispatchSimulatedMouseEvents() const
         return true;
     if (equalLettersIgnoringASCIICase(host, "flipkart.com") || host.endsWithIgnoringASCIICase(".flipkart.com"))
         return true;
-    if (equalLettersIgnoringASCIICase(host, "www.google.com") && url.path().startsWithIgnoringASCIICase("/maps/"))
-        return true;
     if (equalLettersIgnoringASCIICase(host, "trailers.apple.com"))
         return true;
-    if (equalLettersIgnoringASCIICase(host, "naver.com") || host.endsWithIgnoringASCIICase(".naver.com"))
+    if (equalLettersIgnoringASCIICase(host, "soundcloud.com"))
         return true;
+    if (equalLettersIgnoringASCIICase(host, "naver.com"))
+        return true;
+    // Disable the quirk for tv.naver.com subdomain to be able to simulate hover on videos.
+    if (host.endsWithIgnoringASCIICase(".naver.com"))
+        return !equalLettersIgnoringASCIICase(host, "tv.naver.com");
     return false;
 }
 
-bool Quirks::shouldDispatchSimulatedMouseEventsOnTarget(EventTarget* target) const
+bool Quirks::shouldDispatchedSimulatedMouseEventsAssumeDefaultPrevented(EventTarget* target) const
 {
     if (!needsQuirks() || !shouldDispatchSimulatedMouseEvents())
         return false;
 
+    if (isAmazon() && is<Element>(target)) {
+        // When panning on an Amazon product image, we're either touching on the #magnifierLens element
+        // or its previous sibling.
+        auto& element = downcast<Element>(*target);
+        if (element.getIdAttribute() == "magnifierLens")
+            return true;
+        if (auto* sibling = element.nextElementSibling())
+            return sibling->getIdAttribute() == "magnifierLens";
+    }
+
+    if (equalLettersIgnoringASCIICase(m_document->topDocument().url().host(), "soundcloud.com") && is<Element>(target))
+        return downcast<Element>(*target).classList().contains("sceneLayer");
+
+    return false;
+}
+
+Optional<Event::IsCancelable> Quirks::simulatedMouseEventTypeForTarget(EventTarget* target) const
+{
+    if (!shouldDispatchSimulatedMouseEvents())
+        return { };
+
     // On Google Maps, we want to limit simulated mouse events to dragging the little man that allows entering into Street View.
-    auto& url = m_document->topDocument().url();
-    auto host = url.host();
-    if (equalLettersIgnoringASCIICase(host, "www.google.com") && url.path().startsWithIgnoringASCIICase("/maps/"))
-        return is<Element>(target) && downcast<Element>(target)->getAttribute("class") == "widget-expand-button-pegman-icon";
-    return true;
+    if (isGoogleMaps()) {
+        if (is<Element>(target) && downcast<Element>(target)->getAttribute("class") == "widget-expand-button-pegman-icon")
+            return Event::IsCancelable::Yes;
+        return { };
+    }
+
+    auto host = m_document->topDocument().url().host();
+    if (equalLettersIgnoringASCIICase(host, "desmos.com") || host.endsWithIgnoringASCIICase(".desmos.com"))
+        return Event::IsCancelable::No;
+
+    return Event::IsCancelable::Yes;
 }
 #endif
 
@@ -325,6 +354,22 @@ bool Quirks::shouldDisablePointerEventsQuirk() const
         return true;
 #endif
     return false;
+}
+
+bool Quirks::needsDeferKeyDownAndKeyPressTimersUntilNextEditingCommand() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (m_document->settings().needsDeferKeyDownAndKeyPressTimersUntilNextEditingCommandQuirk())
+        return true;
+
+    if (!needsQuirks())
+        return false;
+
+    auto& url = m_document->topDocument().url();
+    return equalLettersIgnoringASCIICase(url.host(), "docs.google.com") && url.path().startsWithIgnoringASCIICase("/spreadsheets/");
+#else
+    return false;
+#endif
 }
 
 // FIXME(<rdar://problem/50394969>): Remove after desmos.com adopts inputmode="none".
@@ -392,5 +437,12 @@ bool Quirks::needsYouTubeOverflowScrollQuirk() const
 #endif
 }
 
+bool Quirks::shouldAvoidScrollingWhenFocusedContentIsVisible() const
+{
+    if (!needsQuirks())
+        return false;
+
+    return equalLettersIgnoringASCIICase(m_document->url().host(), "www.zillow.com");
+}
 
 }

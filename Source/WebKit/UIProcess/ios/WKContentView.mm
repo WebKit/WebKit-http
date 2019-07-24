@@ -149,10 +149,7 @@
 // as soon as reasonably possible. See <rdar://problem/51759247>.
 static NSArray *keyCommandsPlaceholderHackForEvernote(id self, SEL _cmd)
 {
-    struct objc_super super { 0 };
-    super.receiver = self;
-    super.super_class = class_getSuperclass(object_getClass(self));
-
+    struct objc_super super = { self, class_getSuperclass(object_getClass(self)) };
     using SuperKeyCommandsFunction = NSArray *(*)(struct objc_super*, SEL);
     return reinterpret_cast<SuperKeyCommandsFunction>(&objc_msgSendSuper)(&super, @selector(keyCommands));
 }
@@ -580,13 +577,6 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     [self _setupVisibilityPropagationView];
 }
 #endif
-
-- (void)_didCommitLoadForMainFrame
-{
-    [self _elementDidBlur];
-    [self _cancelLongPressGestureRecognizer];
-    [_webView _didCommitLoadForMainFrame];
-}
 
 - (void)_didCommitLayerTree:(const WebKit::RemoteLayerTreeTransaction&)layerTreeTransaction
 {

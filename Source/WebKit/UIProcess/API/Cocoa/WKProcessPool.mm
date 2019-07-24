@@ -403,6 +403,18 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     _processPool->setAutomationSession(automationSession ? automationSession->_session.get() : nullptr);
 }
 
+- (NSURL *)_javaScriptConfigurationDirectory
+{
+    return [NSURL fileURLWithPath:_processPool->javaScriptConfigurationDirectory() isDirectory:YES];
+}
+
+- (void)_setJavaScriptConfigurationDirectory:(NSURL *)directory
+{
+    if (directory && ![directory isFileURL])
+        [NSException raise:NSInvalidArgumentException format:@"%@ is not a file URL", directory];
+    _processPool->setJavaScriptConfigurationDirectory(directory.path);
+}
+
 - (void)_addSupportedPlugin:(NSString *) domain named:(NSString *) name withMimeTypes: (NSSet<NSString *> *) nsMimeTypes withExtensions: (NSSet<NSString *> *) nsExtensions
 {
     HashSet<String> mimeTypes;
@@ -629,6 +641,13 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 - (BOOL)_networkProcessHasEntitlementForTesting:(NSString *)entitlement
 {
     return _processPool->networkProcessHasEntitlementForTesting(entitlement);
+}
+
+- (void)_clearPermanentCredentialsForProtectionSpace:(NSURLProtectionSpace *)protectionSpace completionHandler:(void(^)())completionHandler
+{
+    _processPool->clearPermanentCredentialsForProtectionSpace(WebCore::ProtectionSpace(protectionSpace), [completionHandler = makeBlockPtr(completionHandler)] {
+        completionHandler();
+    });
 }
 
 @end

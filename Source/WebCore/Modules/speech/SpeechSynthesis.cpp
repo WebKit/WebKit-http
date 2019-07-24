@@ -110,7 +110,6 @@ bool SpeechSynthesis::paused() const
 
 void SpeechSynthesis::startSpeakingImmediately(SpeechSynthesisUtterance& utterance)
 {
-    ASSERT(!m_currentSpeechUtterance);
     utterance.setStartTime(MonotonicTime::now());
     m_currentSpeechUtterance = &utterance;
     m_isPaused = false;
@@ -152,12 +151,12 @@ void SpeechSynthesis::cancel()
     m_utteranceQueue.clear();
     if (m_speechSynthesisClient)
         m_speechSynthesisClient->cancel();
-    else if (m_platformSpeechSynthesizer)
+    else if (m_platformSpeechSynthesizer) {
         m_platformSpeechSynthesizer->cancel();
+        // The platform should have called back immediately and cleared the current utterance.
+        ASSERT(!m_currentSpeechUtterance);
+    }
     current = nullptr;
-
-    // The platform should have called back immediately and cleared the current utterance.
-    ASSERT(!m_currentSpeechUtterance);
 }
 
 void SpeechSynthesis::pause()
@@ -225,31 +224,43 @@ void SpeechSynthesis::boundaryEventOccurred(PlatformSpeechSynthesisUtterance& ut
 
 void SpeechSynthesis::didStartSpeaking()
 {
+    if (!m_currentSpeechUtterance)
+        return;
     didStartSpeaking(*m_currentSpeechUtterance->platformUtterance());
 }
 
 void SpeechSynthesis::didFinishSpeaking()
 {
+    if (!m_currentSpeechUtterance)
+        return;
     didFinishSpeaking(*m_currentSpeechUtterance->platformUtterance());
 }
 
 void SpeechSynthesis::didPauseSpeaking()
 {
+    if (!m_currentSpeechUtterance)
+        return;
     didPauseSpeaking(*m_currentSpeechUtterance->platformUtterance());
 }
 
 void SpeechSynthesis::didResumeSpeaking()
 {
+    if (!m_currentSpeechUtterance)
+        return;
     didResumeSpeaking(*m_currentSpeechUtterance->platformUtterance());
 }
 
 void SpeechSynthesis::speakingErrorOccurred()
 {
+    if (!m_currentSpeechUtterance)
+        return;
     speakingErrorOccurred(*m_currentSpeechUtterance->platformUtterance());
 }
 
 void SpeechSynthesis::boundaryEventOccurred(bool wordBoundary, unsigned charIndex)
 {
+    if (!m_currentSpeechUtterance)
+        return;
     boundaryEventOccurred(*m_currentSpeechUtterance->platformUtterance(), wordBoundary ? SpeechBoundary::SpeechWordBoundary : SpeechBoundary::SpeechSentenceBoundary, charIndex);
 }
 

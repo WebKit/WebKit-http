@@ -98,10 +98,13 @@ NetworkResourceLoader::NetworkResourceLoader(NetworkResourceLoadParameters&& par
     , m_fileReferences(connection.resolveBlobReferences(m_parameters))
     , m_isAllowedToAskUserForCredentials { m_parameters.clientCredentialPolicy == ClientCredentialPolicy::MayAskClientForCredentials }
     , m_bufferingTimer { *this, &NetworkResourceLoader::bufferingTimerFired }
-    , m_cache { sessionID().isEphemeral() ? nullptr : connection.networkProcess().cache() }
     , m_shouldCaptureExtraNetworkLoadMetrics(m_connection->captureExtraNetworkLoadMetricsEnabled())
 {
     ASSERT(RunLoop::isMain());
+
+    if (auto* session = connection.networkProcess().networkSession(sessionID()))
+        m_cache = session->cache();
+
     // FIXME: This is necessary because of the existence of EmptyFrameLoaderClient in WebCore.
     //        Once bug 116233 is resolved, this ASSERT can just be "m_webPageID && m_webFrameID"
     ASSERT((m_parameters.webPageID && m_parameters.webFrameID) || m_parameters.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials);
@@ -213,7 +216,7 @@ void NetworkResourceLoader::retrieveCacheEntry(const ResourceRequest& request)
     RefPtr<NetworkResourceLoader> loader(this);
     if (isMainFrameLoad()) {
         ASSERT(m_parameters.options.mode == FetchOptions::Mode::Navigate);
-        if (auto session = m_connection->networkProcess().networkSession(sessionID())) {
+        if (auto* session = m_connection->networkProcess().networkSession(sessionID())) {
             if (auto entry = session->prefetchCache().take(request.url())) {
                 if (!entry->redirectRequest.isNull()) {
                     auto maxAgeCap = validateCacheEntryForMaxAgeCapValidation(request, entry->redirectRequest, entry->response);
@@ -691,7 +694,7 @@ void NetworkResourceLoader::didFinishWithRedirectResponse(WebCore::ResourceReque
     redirectResponse.setType(ResourceResponse::Type::Opaqueredirect);
     if (!isCrossOriginPrefetch())
         didReceiveResponse(WTFMove(redirectResponse), [] (auto) { });
-    else if (auto session = m_connection->networkProcess().networkSession(sessionID()))
+    else if (auto* session = m_connection->networkProcess().networkSession(sessionID()))
         session->prefetchCache().storeRedirect(m_networkLoad->currentRequest().url(), WTFMove(redirectResponse), WTFMove(redirectRequest));
 
     WebCore::NetworkLoadMetrics networkLoadMetrics;
@@ -820,7 +823,7 @@ void NetworkResourceLoader::tryStoreAsCacheEntry()
         return;
 
     if (isCrossOriginPrefetch()) {
-        if (auto session = m_connection->networkProcess().networkSession(sessionID()))
+        if (auto* session = m_connection->networkProcess().networkSession(sessionID()))
             session->prefetchCache().store(m_networkLoad->currentRequest().url(), WTFMove(m_response), WTFMove(m_bufferedDataForCache));
         return;
     }
@@ -981,7 +984,7 @@ bool NetworkResourceLoader::shouldCaptureExtraNetworkLoadMetrics() const
 #if ENABLE(RESOURCE_LOAD_STATISTICS) && !RELEASE_LOG_DISABLED
 bool NetworkResourceLoader::shouldLogCookieInformation(NetworkConnectionToWebProcess& connection, const PAL::SessionID& sessionID)
 {
-    if (auto session = connection.networkProcess().networkSession(sessionID))
+    if (auto* session = connection.networkProcess().networkSession(sessionID))
         return session->shouldLogCookieInformation();
     return false;
 }

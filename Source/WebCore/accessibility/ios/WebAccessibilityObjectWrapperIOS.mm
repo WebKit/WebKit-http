@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WebAccessibilityObjectWrapperIOS.h"
 
-#if HAVE(ACCESSIBILITY) && PLATFORM(IOS_FAMILY)
+#if ENABLE(ACCESSIBILITY) && PLATFORM(IOS_FAMILY)
 
 #import "AccessibilityAttachment.h"
 #import "AccessibilityMediaObject.h"
@@ -503,6 +503,14 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     return m_object->hasPopup();
 }
 
+- (NSString *)accessibilityPopupValue
+{
+    if (![self _prepareAccessibilityCall])
+        return nil;
+
+    return m_object->popupValue();
+}
+
 - (NSString *)accessibilityLanguage
 {
     if (![self _prepareAccessibilityCall])
@@ -584,9 +592,8 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
 
 - (AccessibilityObjectWrapper*)_accessibilityTableAncestor
 {
-    
     if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, [] (const AccessibilityObject& object) {
-        return object.isTable();
+        return object.roleValue() == AccessibilityRole::Table;
     }))
         return parent->wrapper();
     return nil;
@@ -935,6 +942,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case AccessibilityRole::Column:
     case AccessibilityRole::ColumnHeader:
     case AccessibilityRole::Definition:
+    case AccessibilityRole::Deletion:
     case AccessibilityRole::DescriptionList:
     case AccessibilityRole::DescriptionListTerm:
     case AccessibilityRole::DescriptionListDetail:
@@ -960,6 +968,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case AccessibilityRole::HelpTag:
     case AccessibilityRole::Ignored:
     case AccessibilityRole::Inline:
+    case AccessibilityRole::Insertion:
     case AccessibilityRole::Label:
     case AccessibilityRole::LandmarkBanner:
     case AccessibilityRole::LandmarkComplementary:
@@ -1000,6 +1009,8 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case AccessibilityRole::SpinButtonPart:
     case AccessibilityRole::SplitGroup:
     case AccessibilityRole::Splitter:
+    case AccessibilityRole::Subscript:
+    case AccessibilityRole::Superscript:
     case AccessibilityRole::Summary:
     case AccessibilityRole::SystemWide:
     case AccessibilityRole::SVGRoot:
@@ -2550,6 +2561,14 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
     return m_object->replaceTextInRange(string, PlainTextRange(range));
 }
 
+- (BOOL)_accessibilityInsertText:(NSString *)text
+{
+    if (![self _prepareAccessibilityCall])
+        return NO;
+
+    return m_object->insertText(text);
+}
+
 // A convenience method for getting the accessibility objects of a NSRange. Currently used only by DRT.
 - (NSArray *)elementsForRange:(NSRange)range
 {
@@ -3163,4 +3182,4 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
 
 @end
 
-#endif // HAVE(ACCESSIBILITY) && PLATFORM(IOS_FAMILY)
+#endif // ENABLE(ACCESSIBILITY) && PLATFORM(IOS_FAMILY)

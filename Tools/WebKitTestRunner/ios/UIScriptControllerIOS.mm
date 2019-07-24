@@ -157,6 +157,18 @@ void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef callback
     }];
 }
 
+void UIScriptController::ensurePositionInformationIsUpToDateAt(long x, long y, JSValueRef callback)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    [webView _requestActivatedElementAtPosition:CGPointMake(x, y) completionBlock:^(_WKActivatedElementInfo *) {
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+}
+
 void UIScriptController::doAfterVisibleContentRectUpdate(JSValueRef callback)
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -623,6 +635,11 @@ void UIScriptController::keyboardAccessoryBarPrevious()
 bool UIScriptController::isShowingKeyboard() const
 {
     return TestController::singleton().mainWebView()->platformView().showingKeyboard;
+}
+
+bool UIScriptController::hasInputSession() const
+{
+    return TestController::singleton().mainWebView()->platformView().isInteractingWithFormControl;
 }
 
 void UIScriptController::applyAutocorrection(JSStringRef newString, JSStringRef oldString, JSValueRef callback)

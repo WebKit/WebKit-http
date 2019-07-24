@@ -47,7 +47,7 @@ using GetValuesCallback = CompletionHandler<void(const HashMap<String, String>&)
 
 class StorageManager : public IPC::Connection::WorkQueueMessageReceiver {
 public:
-    static Ref<StorageManager> create(const String& localStorageDirectory);
+    static Ref<StorageManager> create(String&& localStorageDirectory);
     ~StorageManager();
 
     void createSessionStorageNamespace(uint64_t storageNamespaceID, unsigned quotaInBytes);
@@ -57,7 +57,7 @@ public:
     void cloneSessionStorageNamespace(uint64_t storageNamespaceID, uint64_t newStorageNamespaceID);
 
     void processDidCloseConnection(IPC::Connection&);
-    void waitUntilWritesFinished();
+    void waitUntilTasksFinished();
     void suspend(CompletionHandler<void()>&&);
     void resume();
 
@@ -73,12 +73,11 @@ public:
 
     void getLocalStorageOriginDetails(Function<void(Vector<LocalStorageDatabaseTracker::OriginDetails>&&)>&& completionHandler);
 
-    // IPC::Connection::WorkQueueMessageReceiver.
-    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>& replyEncoder) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>& replyEncoder);
 
 private:
-    explicit StorageManager(const String& localStorageDirectory);
+    explicit StorageManager(String&& localStorageDirectory);
 
     // Message handlers.
     void createLocalStorageMap(IPC::Connection&, uint64_t storageMapID, uint64_t storageNamespaceID, WebCore::SecurityOriginData&&);
@@ -86,7 +85,8 @@ private:
     void createSessionStorageMap(IPC::Connection&, uint64_t storageMapID, uint64_t storageNamespaceID, WebCore::SecurityOriginData&&);
     void destroyStorageMap(IPC::Connection&, uint64_t storageMapID);
 
-    void getValues(IPC::Connection&, WebCore::SecurityOriginData&&, uint64_t storageMapID, uint64_t storageMapSeed, GetValuesCallback&&);
+    void getValues(IPC::Connection&, uint64_t storageMapID, uint64_t storageMapSeed, GetValuesCallback&&);
+    void prewarm(IPC::Connection&, uint64_t storageMapID);
     void setItem(IPC::Connection&, WebCore::SecurityOriginData&&, uint64_t storageMapID, uint64_t sourceStorageAreaID, uint64_t storageMapSeed, const String& key, const String& value, const String& urlString);
     void setItems(IPC::Connection&, uint64_t storageMapID, const HashMap<String, String>& items);
     void removeItem(IPC::Connection&, WebCore::SecurityOriginData&&, uint64_t storageMapID, uint64_t sourceStorageAreaID, uint64_t storageMapSeed, const String& key, const String& urlString);
@@ -112,6 +112,7 @@ private:
     HashMap<uint64_t, RefPtr<SessionStorageNamespace>> m_sessionStorageNamespaces;
 
     HashMap<std::pair<IPC::Connection::UniqueID, uint64_t>, RefPtr<StorageArea>> m_storageAreasByConnection;
+    HashSet<IPC::Connection::UniqueID> m_connections;
 
     enum class State {
         Running,

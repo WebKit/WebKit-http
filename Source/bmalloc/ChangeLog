@@ -1,3 +1,96 @@
+2019-07-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [bmalloc] Each IsoPage gets 1MB VA because VMHeap::tryAllocateLargeChunk rounds up
+        https://bugs.webkit.org/show_bug.cgi?id=200024
+
+        Reviewed by Saam Barati.
+
+        When we allocate IsoHeap's page, we reused VMHeap::tryAllocateLargeChunk. However, this function is originally designed
+        to be used for Large allocation in bmalloc (e.g. allocating Chunk in bmalloc). As a result, this function rounds up the
+        requested size with 1MB (bmalloc::chunkSize). As a result, all IsoHeap's 16KB page gets 1MB VA while it just uses 16KB of
+        the allocated region. This leads to VA exhaustion since IsoHeap now uses 64x VA than we expected!
+
+        This patch fixes the above VA exhaustion issue by allocating a page by using tryVMAllocate. When allocating a page, we start
+        using a VM tag for IsoHeap. We discussed at e-mail and we decided reusing a VM tag previously assigned to CLoop Stack since
+        this is less profitable. Since this tag is not Malloc-related tag, Leaks tool can scan memory region conservatively without
+        registering allocated region into Zone, which was previously done in VMHeap and that's why we reused VMHeap for IsoHeap.
+
+        * bmalloc/BVMTags.h:
+        * bmalloc/IsoPage.cpp:
+        (bmalloc::IsoPageBase::allocatePageMemory):
+        * bmalloc/IsoTLS.cpp:
+        (bmalloc::IsoTLS::ensureEntries):
+        * bmalloc/VMAllocate.h:
+        (bmalloc::vmAllocate):
+
+2019-07-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, follow-up fix for tls->size() access
+        https://bugs.webkit.org/show_bug.cgi?id=200019
+
+        * bmalloc/IsoTLS.cpp:
+        (bmalloc::IsoTLS::ensureEntries):
+        (bmalloc::IsoTLS::destructor):
+
+2019-07-22  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [bmalloc] IsoTLS is not deallocated in TLS destructor
+        https://bugs.webkit.org/show_bug.cgi?id=200019
+
+        Reviewed by Mark Lam.
+
+        TLS destructor for IsoTLS needs to deallocate memory used for IsoTLS itself.
+        While we are correctly deallocating old IsoTLS when extending it to the new one,
+        we lack deallocation when the thread is destroyed. IsoTLS is per-thread, so we
+        should destroy IsoTLS when a thread finishes.
+
+        * bmalloc/IsoTLS.cpp:
+        (bmalloc::IsoTLS::ensureEntries):
+        (bmalloc::IsoTLS::destructor):
+
+2019-07-12  Keith Miller  <keith_miller@apple.com>
+
+        Increase JSValue cage size on iOS and reduce the max slide
+        https://bugs.webkit.org/show_bug.cgi?id=199765
+
+        Reviewed by Saam Barati.
+
+        Since the WebContent jetsam limit has changed we sometimes run out
+        of JSValue cage VA space causing us to run out of memory for
+        arrays. This change makes the JSValue cage a more reasonable upper
+        limit for what should be possible without jetsamming.
+
+        The worst case memory mapping with this configuration is has not
+        changed from before. Under both configurations we could map 36GB
+        with a temporary mapping of 38GB (to align the VA to 2GB).
+
+        * bmalloc/Gigacage.h:
+
+2019-07-03  Keith Miller  <keith_miller@apple.com>
+
+        PACCage should first cage leaving PAC bits intact then authenticate
+        https://bugs.webkit.org/show_bug.cgi?id=199372
+
+        Reviewed by Saam Barati.
+
+        * bmalloc/ProcessCheck.mm:
+        (bmalloc::shouldProcessUnconditionallyUseBmalloc):
+
+2019-07-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247041.
+        https://bugs.webkit.org/show_bug.cgi?id=199425
+
+        broke some iOS arm64e tests (Requested by keith_miller on
+        #webkit).
+
+        Reverted changeset:
+
+        "PACCage should first cage leaving PAC bits intact then
+        authenticate"
+        https://bugs.webkit.org/show_bug.cgi?id=199372
+        https://trac.webkit.org/changeset/247041
+
 2019-07-02  Keith Miller  <keith_miller@apple.com>
 
         PACCage should first cage leaving PAC bits intact then authenticate

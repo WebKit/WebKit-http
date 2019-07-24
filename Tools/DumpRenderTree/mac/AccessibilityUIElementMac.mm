@@ -71,6 +71,7 @@ typedef void (*AXPostedNotificationCallback)(id element, NSString* notification,
 
 @interface NSObject (WebKitAccessibilityAdditions)
 - (BOOL)accessibilityReplaceRange:(NSRange)range withText:(NSString *)string;
+- (BOOL)_accessibilityInsertText:(NSString *)text;
 - (NSArray *)accessibilityArrayAttributeValues:(NSString *)attribute index:(NSUInteger)index maxCount:(NSUInteger)maxCount;
 - (NSUInteger)accessibilityIndexOfChild:(id)child;
 - (NSUInteger)accessibilityArrayAttributeCount:(NSString *)attribute;
@@ -1626,6 +1627,17 @@ bool AccessibilityUIElement::hasPopup() const
     return false;
 }
 
+JSRetainPtr<JSStringRef> AccessibilityUIElement::popupValue() const
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    id value = [m_element accessibilityAttributeValue:@"AXPopupValue"];
+    if ([value isKindOfClass:[NSString class]])
+        return [value createJSStringRef];
+    END_AX_OBJC_EXCEPTIONS
+
+    return [@"false" createJSStringRef];
+}
+
 void AccessibilityUIElement::takeFocus()
 {
     BEGIN_AX_OBJC_EXCEPTIONS
@@ -1701,6 +1713,14 @@ bool AccessibilityUIElement::replaceTextInRange(JSStringRef string, int location
 {
     BEGIN_AX_OBJC_EXCEPTIONS
     return [m_element accessibilityReplaceRange:NSMakeRange(location, length) withText:[NSString stringWithJSStringRef:string]];
+    END_AX_OBJC_EXCEPTIONS
+    return false;
+}
+
+bool AccessibilityUIElement::insertText(JSStringRef text)
+{
+    BEGIN_AX_OBJC_EXCEPTIONS
+    return [m_element _accessibilityInsertText:[NSString stringWithJSStringRef:text]];
     END_AX_OBJC_EXCEPTIONS
     return false;
 }

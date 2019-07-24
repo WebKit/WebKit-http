@@ -393,7 +393,7 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
 #endif
 #if PLATFORM(COCOA) || PLATFORM(GTK)
     , m_viewGestureGeometryCollector(std::make_unique<ViewGestureGeometryCollector>(*this))
-#elif HAVE(ACCESSIBILITY) && PLATFORM(GTK)
+#elif ENABLE(ACCESSIBILITY) && PLATFORM(GTK)
     , m_accessibilityObject(nullptr)
 #endif
     , m_setCanStartMediaTimer(RunLoop::main(), this, &WebPage::setCanStartMediaTimerFired)
@@ -439,6 +439,9 @@ WebPage::WebPage(PageIdentifier pageID, WebPageCreationParameters&& parameters)
 #endif
 #if ENABLE(VIEWPORT_RESIZING)
     , m_shrinkToFitContentTimer(*this, &WebPage::shrinkToFitContentTimerFired, 0_s)
+#endif
+#if ENABLE(TEXT_AUTOSIZING)
+    , m_textAutoSizingAdjustmentTimer(*this, &WebPage::textAutoSizingAdjustmentTimerFired)
 #endif
 {
     ASSERT(m_pageID);
@@ -1354,7 +1357,9 @@ PluginView* WebPage::pluginViewForFrame(Frame* frame)
 
 void WebPage::executeEditingCommand(const String& commandName, const String& argument)
 {
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    platformWillPerformEditingCommand();
+
+    auto& frame = m_page->focusController().focusedOrMainFrame();
 
     if (PluginView* pluginView = focusedPluginViewForFrame(frame)) {
         pluginView->handleEditingCommand(commandName, argument);
@@ -1492,6 +1497,10 @@ void WebPage::close()
 
 #if ENABLE(VIEWPORT_RESIZING)
     m_shrinkToFitContentTimer.stop();
+#endif
+
+#if ENABLE(TEXT_AUTOSIZING)
+    m_textAutoSizingAdjustmentTimer.stop();
 #endif
 
 #if ENABLE(CONTEXT_MENUS)
@@ -2722,7 +2731,7 @@ static bool isContextClick(const PlatformMouseEvent& event)
 static bool handleContextMenuEvent(const PlatformMouseEvent& platformMouseEvent, WebPage* page)
 {
     IntPoint point = page->corePage()->mainFrame().view()->windowToContents(platformMouseEvent.position());
-    HitTestResult result = page->corePage()->mainFrame().eventHandler().hitTestResultAtPoint(point);
+    HitTestResult result = page->corePage()->mainFrame().eventHandler().hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
 
     Frame* frame = &page->corePage()->mainFrame();
     if (result.innerNonSharedNode())
@@ -3036,7 +3045,7 @@ void WebPage::dispatchTouchEvent(const WebTouchEvent& touchEvent, bool& handled)
     if (handled && oldFocusedElement) {
         auto newFocusedFrame = makeRefPtr(m_page->focusController().focusedFrame());
         auto newFocusedElement = makeRefPtr(newFocusedFrame ? newFocusedFrame->document()->focusedElement() : nullptr);
-        if (oldFocusedElement == newFocusedElement)
+        if (oldFocusedElement == newFocusedElement && isTransparentOrFullyClipped(*newFocusedElement))
             elementDidRefocus(*newFocusedElement);
     }
 }
@@ -3054,6 +3063,11 @@ void WebPage::touchEventSync(const WebTouchEvent& touchEvent, CompletionHandler<
 
     if (auto reply = WTFMove(m_pendingSynchronousTouchEventReply))
         reply(handled);
+}
+
+void WebPage::resetPotentialTapSecurityOrigin()
+{
+    m_potentialTapSecurityOrigin = nullptr;
 }
 
 void WebPage::updatePotentialTapSecurityOrigin(const WebTouchEvent& touchEvent, bool wasHandled)
@@ -4234,6 +4248,11 @@ void WebPage::selectFindMatch(uint32_t matchIndex)
     findController().selectFindMatch(matchIndex);
 }
 
+void WebPage::indicateFindMatch(uint32_t matchIndex)
+{
+    findController().indicateFindMatch(matchIndex);
+}
+
 void WebPage::hideFindUI()
 {
     findController().hideFindUI();
@@ -5317,7 +5336,9 @@ void WebPage::setTextAsync(const String& text)
 
 void WebPage::insertTextAsync(const String& text, const EditingRange& replacementEditingRange, InsertTextOptions&& options)
 {
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    platformWillPerformEditingCommand();
+
+    auto& frame = m_page->focusController().focusedOrMainFrame();
 
     Ref<Frame> protector(frame);
 
@@ -5364,7 +5385,7 @@ void WebPage::getSelectedRangeAsync(CallbackID callbackID)
 
 void WebPage::characterIndexForPointAsync(const WebCore::IntPoint& point, CallbackID callbackID)
 {
-    HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(point);
+    HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
     Frame* frame = result.innerNonSharedNode() ? result.innerNodeFrame() : &m_page->focusController().focusedOrMainFrame();
     
     RefPtr<Range> range = frame->rangeForPoint(result.roundedPointInInnerNodeFrame());
@@ -5391,7 +5412,9 @@ void WebPage::firstRectForCharacterRangeAsync(const EditingRange& editingRange, 
 
 void WebPage::setCompositionAsync(const String& text, const Vector<CompositionUnderline>& underlines, const EditingRange& selection, const EditingRange& replacementEditingRange)
 {
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    platformWillPerformEditingCommand();
+
+    auto& frame = m_page->focusController().focusedOrMainFrame();
 
     if (frame.selection().selection().isContentEditable()) {
         RefPtr<Range> replacementRange;
@@ -5407,6 +5430,8 @@ void WebPage::setCompositionAsync(const String& text, const Vector<CompositionUn
 
 void WebPage::confirmCompositionAsync()
 {
+    platformWillPerformEditingCommand();
+
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     frame.editor().confirmComposition();
 }
@@ -5925,6 +5950,10 @@ void WebPage::didCommitLoad(WebFrame* frame)
 
 #if ENABLE(VIEWPORT_RESIZING)
     m_shrinkToFitContentTimer.stop();
+#endif
+
+#if ENABLE(TEXT_AUTOSIZING)
+    m_textAutoSizingAdjustmentTimer.stop();
 #endif
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
@@ -6731,17 +6760,20 @@ void WebPage::simulateDeviceOrientationChange(double alpha, double beta, double 
 #if ENABLE(SPEECH_SYNTHESIS)
 void WebPage::speakingErrorOccurred()
 {
-    corePage()->speechSynthesisClient()->observer()->speakingErrorOccurred();
+    if (auto observer = corePage()->speechSynthesisClient()->observer())
+        observer->speakingErrorOccurred();
 }
 
 void WebPage::boundaryEventOccurred(bool wordBoundary, unsigned charIndex)
 {
-    corePage()->speechSynthesisClient()->observer()->boundaryEventOccurred(wordBoundary, charIndex);
+    if (auto observer = corePage()->speechSynthesisClient()->observer())
+        observer->boundaryEventOccurred(wordBoundary, charIndex);
 }
 
 void WebPage::voicesDidChange()
 {
-    corePage()->speechSynthesisClient()->observer()->voicesChanged();
+    if (auto observer = corePage()->speechSynthesisClient()->observer())
+        observer->voicesChanged();
 }
 #endif
 
@@ -6925,6 +6957,13 @@ void WebPage::didFinishLoadingImageForElement(WebCore::HTMLImageElement&)
 {
 }
 
+#endif
+
+#if ENABLE(TEXT_AUTOSIZING)
+void WebPage::textAutoSizingAdjustmentTimerFired()
+{
+    m_page->recomputeTextAutoSizingInAllFrames();
+}
 #endif
 
 } // namespace WebKit

@@ -546,6 +546,7 @@ enum CompositingPolicy {
 
     [Conditional=VIDEO] boolean elementShouldBufferData(HTMLMediaElement media);
     [Conditional=VIDEO] DOMString elementBufferingPolicy(HTMLMediaElement media);
+    [Conditional=VIDEO] double privatePlayerVolume(HTMLMediaElement media);
 
     [Conditional=LEGACY_ENCRYPTED_MEDIA] void initializeMockCDM();
     [Conditional=ENCRYPTED_MEDIA] MockCDMFactory registerMockCDM();
@@ -607,6 +608,7 @@ enum CompositingPolicy {
     [Conditional=WEB_RTC] void setEnumeratingAllNetworkInterfacesEnabled(boolean enabled);
     [Conditional=WEB_RTC] void stopPeerConnection(RTCPeerConnection connection);
     [Conditional=WEB_RTC] void clearPeerConnectionFactory();
+    [Conditional=WEB_RTC] void setEnableWebRTCEncryption(boolean enabled);
 
     [Conditional=VIDEO] void simulateSystemSleep();
     [Conditional=VIDEO] void simulateSystemWake();

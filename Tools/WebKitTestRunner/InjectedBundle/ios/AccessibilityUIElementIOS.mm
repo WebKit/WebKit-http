@@ -58,6 +58,7 @@ typedef void (*AXPostedNotificationCallback)(id element, NSString* notification,
 - (NSRange)_accessibilitySelectedTextRange;
 - (void)_accessibilitySetSelectedTextRange:(NSRange)range;
 - (BOOL)accessibilityReplaceRange:(NSRange)range withText:(NSString *)string;
+- (BOOL)_accessibilityInsertText:(NSString *)text;
 - (void)accessibilitySetPostedNotificationCallback:(AXPostedNotificationCallback)function withContext:(void*)context;
 - (CGFloat)_accessibilityMinValue;
 - (CGFloat)_accessibilityMaxValue;
@@ -87,6 +88,7 @@ typedef void (*AXPostedNotificationCallback)(id element, NSString* notification,
 - (NSString *)accessibilityTextualContext;
 - (NSString *)accessibilityRoleDescription;
 - (BOOL)accessibilityHasPopup;
+- (NSString *)accessibilityPopupValue;
 - (NSString *)accessibilityColorStringValue;
 
 // TextMarker related
@@ -1058,6 +1060,11 @@ bool AccessibilityUIElement::hasPopup() const
     return [m_element accessibilityHasPopup];
 }
 
+JSRetainPtr<JSStringRef> AccessibilityUIElement::popupValue() const
+{
+    return [[m_element accessibilityPopupValue] createJSStringRef];
+}
+
 void AccessibilityUIElement::takeFocus()
 {
     // FIXME: implement
@@ -1155,6 +1162,11 @@ RefPtr<AccessibilityTextMarker> AccessibilityUIElement::startTextMarkerForBounds
 bool AccessibilityUIElement::replaceTextInRange(JSStringRef string, int location, int length)
 {
     return [m_element accessibilityReplaceRange:NSMakeRange(location, length) withText:[NSString stringWithJSStringRef:string]];
+}
+
+bool AccessibilityUIElement::insertText(JSStringRef text)
+{
+    return [m_element _accessibilityInsertText:[NSString stringWithJSStringRef:text]];
 }
 
 RefPtr<AccessibilityTextMarker> AccessibilityUIElement::textMarkerForPoint(int x, int y)

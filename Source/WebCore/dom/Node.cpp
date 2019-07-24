@@ -2065,7 +2065,7 @@ void Node::moveNodeToNewDocument(Document& oldDocument, Document& newDocument)
 
         unsigned numTouchEventListeners = 0;
 #if ENABLE(TOUCH_EVENTS)
-        if (newDocument.quirks().shouldDispatchSimulatedMouseEvents() || RuntimeEnabledFeatures::sharedFeatures().mouseEventsSimulationEnabled()) {
+        if (newDocument.quirks().shouldDispatchSimulatedMouseEvents()) {
             for (auto& name : eventNames().extendedTouchRelatedEventNames())
                 numTouchEventListeners += eventListeners(name).size();
         } else {
@@ -2481,7 +2481,7 @@ void Node::defaultEventHandler(Event& event)
         // Capture the target node's visibility state before dispatching touchStart.
         if (is<Element>(*this) && eventType == eventNames().touchstartEvent) {
             auto& contentChangeObserver = document().contentChangeObserver(); 
-            if (ContentChangeObserver::isConsideredHidden(*this))
+            if (ContentChangeObserver::isVisuallyHidden(*this))
                 contentChangeObserver.setHiddenTouchTarget(downcast<Element>(*this));
             else
                 contentChangeObserver.resetHiddenTouchTarget();

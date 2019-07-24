@@ -28,6 +28,7 @@
 #include "JSCast.h"
 #include "ParserModes.h"
 #include "VariableEnvironment.h"
+#include <wtf/FileSystem.h>
 #include <wtf/HashMap.h>
 #include <wtf/MallocPtr.h>
 
@@ -109,7 +110,7 @@ private:
 };
 
 JS_EXPORT_PRIVATE RefPtr<CachedBytecode> encodeCodeBlock(VM&, const SourceCodeKey&, const UnlinkedCodeBlock*);
-JS_EXPORT_PRIVATE RefPtr<CachedBytecode> encodeCodeBlock(VM&, const SourceCodeKey&, const UnlinkedCodeBlock*, int fd, BytecodeCacheError&);
+JS_EXPORT_PRIVATE RefPtr<CachedBytecode> encodeCodeBlock(VM&, const SourceCodeKey&, const UnlinkedCodeBlock*, FileSystem::PlatformFileHandle fd, BytecodeCacheError&);
 
 UnlinkedCodeBlock* decodeCodeBlockImpl(VM&, const SourceCodeKey&, Ref<CachedBytecode>);
 

@@ -10,29 +10,45 @@ html, body {
     margin: 0;
 }
 
-textarea {
+textarea, #target {
     width: 100%;
     height: 100px;
-    font-size: 50px;
-    text-align: center;
+    position: absolute;
+    top: 0;
+}
+
+#target {
+    background-color: tomato;
+    z-index: 1;
+    opacity: 0.25;
+}
+
+textarea {
+    opacity: 0;
+}
+
+#description {
+    margin-top: 100px;
 }
 </style>
 </head>
 <body>
     <textarea></textarea>
+    <div id="target"></div>
     <pre id="description"></pre>
     <pre id="console"></pre>
 </body>
 <script>
     jsTestIsAsync = true;
     textarea = document.querySelector("textarea");
+    target = document.getElementById("target");
+    target.addEventListener("touchstart", event => event.preventDefault());
 
-    description("Verifies that the keyboard shows up even after preventing default on touchstart. To manually test, tap the textarea; the textarea should remain focused, and the keyboard should appear.");
+    description("Verifies that the keyboard shows up even after preventing default on touchstart when focusing a hidden editable area. To manually test, tap the red box; the textarea should remain focused, and the keyboard should appear.");
 
-    textarea.addEventListener("touchstart", event => event.preventDefault());
     addEventListener("load", async () => {
         textarea.focus();
-        await UIHelper.activateElementAndWaitForInputSession(textarea);
+        await UIHelper.activateElementAndWaitForInputSession(target);
         testPassed("keyboard was shown.");
         shouldBe("document.activeElement", "textarea");
         textarea.blur();

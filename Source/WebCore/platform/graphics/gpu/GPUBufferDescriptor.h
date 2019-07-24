@@ -36,6 +36,11 @@ struct GPUBufferDescriptor {
     GPUBufferUsageFlags usage;
 };
 
+enum class GPUBufferMappedOption {
+    IsMapped,
+    NotMapped
+};
+
 } // namespace WebCore
 
 #endif // ENABLE(WEBGPU)

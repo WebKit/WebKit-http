@@ -33,6 +33,7 @@
 #import "ColorSpaceData.h"
 #import "DataReference.h"
 #import "EditorState.h"
+#import "FontInfo.h"
 #import "InsertTextOptions.h"
 #import "MenuUtilities.h"
 #import "NativeWebKeyboardEvent.h"
@@ -240,28 +241,26 @@ void WebPageProxy::attributedStringForCharacterRangeCallback(const AttributedStr
     callback->performCallbackWithReturnValue(string, actualRange);
 }
 
-void WebPageProxy::fontAtSelection(WTF::Function<void (const String&, double, bool, CallbackBase::Error)>&& callbackFunction)
+void WebPageProxy::fontAtSelection(Function<void(const FontInfo&, double, bool, CallbackBase::Error)>&& callback)
 {
     if (!hasRunningProcess()) {
-        callbackFunction(String(), 0, false, CallbackBase::Error::Unknown);
+        callback({ }, 0, false, CallbackBase::Error::Unknown);
         return;
     }
-    
-    auto callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivityToken());
-    
+
+    auto callbackID = m_callbacks.put(WTFMove(callback), m_process->throttler().backgroundActivityToken());
     process().send(Messages::WebPage::FontAtSelection(callbackID), m_pageID);
 }
 
-void WebPageProxy::fontAtSelectionCallback(const String& fontName, double fontSize, bool selectionHasMultipleFonts, CallbackID callbackID)
+void WebPageProxy::fontAtSelectionCallback(const FontInfo& fontInfo, double fontSize, bool selectionHasMultipleFonts, CallbackID callbackID)
 {
     auto callback = m_callbacks.take<FontAtSelectionCallback>(callbackID);
     if (!callback) {
         // FIXME: Log error or assert.
-        // this can validly happen if a load invalidated the callback, though
         return;
     }
-    
-    callback->performCallbackWithReturnValue(fontName, fontSize, selectionHasMultipleFonts);
+
+    callback->performCallbackWithReturnValue(fontInfo, fontSize, selectionHasMultipleFonts);
 }
 
 String WebPageProxy::stringSelectionForPasteboard()

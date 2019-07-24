@@ -836,6 +836,15 @@ static JSValueRef replaceTextInRangeCallback(JSContextRef context, JSObjectRef f
     return JSValueMakeBoolean(context, toAXElement(thisObject)->replaceTextInRange(text.get(), position, length));
 }
 
+static JSValueRef insertTextCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    if (!argumentCount)
+        return JSValueMakeUndefined(context);
+
+    auto text = adopt(JSValueToStringCopy(context, arguments[0], exception));
+    return JSValueMakeBoolean(context, toAXElement(thisObject)->insertText(text.get()));
+}
+
 static JSValueRef attributedStringForTextMarkerRangeContainsAttributeCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     AccessibilityTextMarkerRange* markerRange = 0;
@@ -1403,6 +1412,11 @@ static JSValueRef getHasPopupCallback(JSContextRef context, JSObjectRef thisObje
     return JSValueMakeBoolean(context, toAXElement(thisObject)->hasPopup());
 }
 
+static JSValueRef getPopupValueCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef, JSValueRef*)
+{
+    return JSValueMakeString(context, toAXElement(thisObject)->popupValue().get());
+}
+
 static JSValueRef hierarchicalLevelCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef, JSValueRef*)
 {
     return JSValueMakeNumber(context, toAXElement(thisObject)->hierarchicalLevel());
@@ -1644,6 +1658,11 @@ bool AccessibilityUIElement::replaceTextInRange(JSStringRef, int, int)
     return false;
 }
 
+bool AccessibilityUIElement::insertText(JSStringRef)
+{
+    return false;
+}
+
 int AccessibilityUIElement::textMarkerRangeLength(AccessibilityTextMarkerRange*)
 {
     return 0;
@@ -1863,6 +1882,7 @@ JSClassRef AccessibilityUIElement::getJSClass()
         { "isOffScreen", getIsOffScreenCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "isCollapsed", getIsCollapsedCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "hasPopup", getHasPopupCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "popupValue", getPopupValueCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "valueDescription", getValueDescriptionCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "hierarchicalLevel", hierarchicalLevelCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "documentEncoding", getDocumentEncodingCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -1970,6 +1990,7 @@ JSClassRef AccessibilityUIElement::getJSClass()
         { "selectedTextMarkerRange", selectedTextMarkerRangeCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "resetSelectedTextMarkerRange", resetSelectedTextMarkerRangeCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "replaceTextInRange", replaceTextInRangeCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "insertText", insertTextCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "attributedStringForTextMarkerRangeContainsAttribute", attributedStringForTextMarkerRangeContainsAttributeCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "indexForTextMarker", indexForTextMarkerCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "isTextMarkerValid", isTextMarkerValidCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },

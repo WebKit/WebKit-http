@@ -45,7 +45,7 @@ _log = logging.getLogger(__name__)
 class MacPort(DarwinPort):
     port_name = "mac"
 
-    CURRENT_VERSION = Version(10, 14)
+    CURRENT_VERSION = Version(10, 15)
 
     SDK = 'macosx'
 
@@ -276,6 +276,9 @@ class MacPort(DarwinPort):
 
         # FIXME: Remove this after <rdar://problem/51191120> is fixed.
         logging_patterns.append((re.compile('GVA warning: getFreeDRMInstanceCount, maxDRMInstanceCount: .*\n'), ''))
+
+        # FIXME: Remove this after <rdar://problem/52897406> is fixed.
+        logging_patterns.append((re.compile('VPA info:.*\n'), ''))
 
         return logging_patterns
 

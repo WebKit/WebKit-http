@@ -532,10 +532,8 @@ WI.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WI.NavigationSideba
         } else if (breakpoint instanceof WI.URLBreakpoint) {
             constructor = WI.URLBreakpointTreeElement;
 
-            if (breakpoint === WI.domDebuggerManager.allRequestsBreakpoint) {
-                options.className = WI.DebuggerSidebarPanel.AssertionIconStyleClassName;
+            if (breakpoint === WI.domDebuggerManager.allRequestsBreakpoint)
                 options.title = WI.repeatedUIString.allRequests();
-            }
         } else {
             let sourceCode = breakpoint.sourceCodeLocation && breakpoint.sourceCodeLocation.displaySourceCode;
             if (!sourceCode)
@@ -1065,11 +1063,12 @@ WI.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WI.NavigationSideba
                 (treeElement) => treeElement.representedObject === WI.debuggerManager.allExceptionsBreakpoint,
                 (treeElement) => treeElement.representedObject === WI.debuggerManager.uncaughtExceptionsBreakpoint,
                 (treeElement) => treeElement.representedObject === WI.debuggerManager.assertionFailuresBreakpoint,
-                (treeElement) => treeElement.representedObject === WI.domDebuggerManager.allRequestsBreakpoint,
                 (treeElement) => treeElement instanceof WI.BreakpointTreeElement || treeElement instanceof WI.ResourceTreeElement || treeElement instanceof WI.ScriptTreeElement,
                 (treeElement) => treeElement instanceof WI.EventBreakpointTreeElement,
                 (treeElement) => treeElement instanceof WI.DOMNodeTreeElement,
+                (treeElement) => treeElement.representedObject === DebuggerSidebarPanel.__windowEventTargetRepresentedObject,
                 (treeElement) => treeElement instanceof WI.DOMBreakpointTreeElement,
+                (treeElement) => treeElement.representedObject === WI.domDebuggerManager.allRequestsBreakpoint,
                 (treeElement) => treeElement instanceof WI.URLBreakpointTreeElement,
             ];
 

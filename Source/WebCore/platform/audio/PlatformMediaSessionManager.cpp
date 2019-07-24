@@ -209,11 +209,6 @@ bool PlatformMediaSessionManager::sessionWillBeginPlayback(PlatformMediaSession&
         return false;
     }
 
-    if (m_processIsSuspended) {
-        ALWAYS_LOG(LOGIDENTIFIER, session.logIdentifier(), " returning false because process is suspended");
-        return false;
-    }
-
 #if USE(AUDIO_SESSION)
     if (activeAudioSessionRequired()) {
         if (!AudioSession::sharedSession().tryToSetActive(true)) {
@@ -368,6 +363,10 @@ void PlatformMediaSessionManager::processWillSuspend()
         return;
     m_processIsSuspended = true;
 
+    forEachSession([&] (auto& session) {
+        session.client().processIsSuspendedChanged();
+    });
+
 #if USE(AUDIO_SESSION)
     if (m_becameActive && shouldDeactivateAudioSession()) {
         AudioSession::sharedSession().tryToSetActive(false);
@@ -382,6 +381,10 @@ void PlatformMediaSessionManager::processDidResume()
     if (!m_processIsSuspended)
         return;
     m_processIsSuspended = false;
+
+    forEachSession([&] (auto& session) {
+        session.client().processIsSuspendedChanged();
+    });
 
 #if USE(AUDIO_SESSION)
     if (!m_becameActive && activeAudioSessionRequired()) {

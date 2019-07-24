@@ -46,11 +46,40 @@ void AutosizeStatus::updateStatus(RenderStyle& style)
 {
     auto result = style.autosizeStatus().fields();
 
-    if (style.display() == DisplayType::None)
-        result.add(Fields::DisplayNone);
+    auto shouldAvoidAutosizingEntireSubtree = [&] {
+        if (style.display() == DisplayType::None)
+            return true;
 
-    if (style.hasOutOfFlowPosition())
-        result.add(Fields::OutOfFlowPosition);
+        if (!style.lineHeight().isSpecified() || style.whiteSpace() == WhiteSpace::NoWrap)
+            return false;
+
+        const float maximumDifferenceBetweenFixedLineHeightAndFontSize = 6;
+        if (style.lineHeight().isFixed() && style.lineHeight().value() - style.fontDescription().specifiedSize() > maximumDifferenceBetweenFixedLineHeightAndFontSize)
+            return false;
+
+        Optional<Length> heightOrMaxHeightAsLength;
+        if (style.height().isFixed() && style.maxHeight().isAuto())
+            heightOrMaxHeightAsLength = style.height();
+        else if (style.maxHeight().isFixed())
+            heightOrMaxHeightAsLength = style.maxHeight();
+
+        if (!heightOrMaxHeightAsLength)
+            return false;
+
+        float heightOrMaxHeight = heightOrMaxHeightAsLength->value();
+        float computedLineHeight = style.computedLineHeight();
+        if (computedLineHeight <= 0)
+            return false;
+
+        float approximateNumberOfLines = heightOrMaxHeight / computedLineHeight;
+        const int maximumNumberOfLines = 5;
+        const float thresholdForConsideringAnApproximateNumberOfLinesToBeCloseToAnInteger = 0.01;
+        return approximateNumberOfLines <= maximumNumberOfLines + thresholdForConsideringAnApproximateNumberOfLinesToBeCloseToAnInteger
+            && approximateNumberOfLines - std::floor(approximateNumberOfLines) <= thresholdForConsideringAnApproximateNumberOfLinesToBeCloseToAnInteger;
+    };
+
+    if (shouldAvoidAutosizingEntireSubtree())
+        result.add(Fields::AvoidSubtree);
 
     if (style.height().isFixed())
         result.add(Fields::FixedHeight);
@@ -58,14 +87,8 @@ void AutosizeStatus::updateStatus(RenderStyle& style)
     if (style.width().isFixed())
         result.add(Fields::FixedWidth);
 
-    if (style.maxWidth().isFixed())
-        result.add(Fields::FixedMaxWidth);
-
     if (style.overflowX() == Overflow::Hidden)
         result.add(Fields::OverflowXHidden);
-
-    if (style.overflowY() == Overflow::Hidden)
-        result.add(Fields::OverflowYHidden);
 
     if (style.isFloating())
         result.add(Fields::Floating);

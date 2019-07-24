@@ -34,13 +34,13 @@ from twisted.internet import error, reactor
 from twisted.python import failure, log
 from twisted.trial import unittest
 
-from steps import (AnalyzeAPITestsResults, AnalyzeCompileWebKitResults, ApplyPatch, ArchiveBuiltProduct, ArchiveTestResults,
-                   CheckOutSource, CheckOutSpecificRevision, CheckPatchRelevance, CheckStyle, CleanBuild, CleanWorkingDirectory,
+from steps import (AnalyzeAPITestsResults, AnalyzeCompileWebKitResults, AnalyzeLayoutTestsResults, ApplyPatch, ArchiveBuiltProduct, ArchiveTestResults,
+                   CheckOutSource, CheckOutSpecificRevision, CheckPatchRelevance, CheckStyle, CleanBuild, CleanUpGitIndexLock, CleanWorkingDirectory,
                    CompileJSCOnly, CompileJSCOnlyToT, CompileWebKit, CompileWebKitToT, ConfigureBuild,
-                   DownloadBuiltProduct, ExtractBuiltProduct, ExtractTestResults, KillOldProcesses,
-                   PrintConfiguration, ReRunAPITests, ReRunJavaScriptCoreTests, RunAPITests, RunAPITestsWithoutPatch,
-                   RunBindingsTests, RunJavaScriptCoreTests, RunJavaScriptCoreTestsToT, RunWebKit1Tests, RunWebKitPerlTests,
-                   RunWebKitPyTests, RunWebKitTests, TestWithFailureCount, Trigger, TransferToS3, UnApplyPatchIfRequired,
+                   DownloadBuiltProduct, ExtractBuiltProduct, ExtractTestResults, InstallGtkDependencies, InstallWpeDependencies, KillOldProcesses,
+                   PrintConfiguration, ReRunAPITests, ReRunJavaScriptCoreTests, ReRunWebKitTests, RunAPITests, RunAPITestsWithoutPatch,
+                   RunBindingsTests, RunEWSBuildbotCheckConfig, RunEWSUnitTests, RunJavaScriptCoreTests, RunJavaScriptCoreTestsToT, RunWebKit1Tests,
+                   RunWebKitPerlTests, RunWebKitPyTests, RunWebKitTests, TestWithFailureCount, Trigger, TransferToS3, UnApplyPatchIfRequired,
                    UploadBuiltProduct, UploadTestResults, ValidatePatch)
 
 # Workaround for https://github.com/buildbot/buildbot/issues/4669
@@ -123,6 +123,9 @@ class BuildStepMixinAdditions(BuildStepMixin):
 
     def setProperty(self, name, value, source='Unknown'):
         self.properties.setProperty(name, value, source)
+
+    def getProperty(self, name):
+        return self.properties.getProperty(name)
 
     def expectAddedURLs(self, added_urls):
         self._expected_added_urls = added_urls
@@ -211,7 +214,7 @@ class TestCheckStyle(BuildStepMixinAdditions, unittest.TestCase):
 
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/check-webkit-style'],
+                        command=['python', 'Tools/Scripts/check-webkit-style'],
                         )
             + 0,
         )
@@ -226,7 +229,7 @@ class TestCheckStyle(BuildStepMixinAdditions, unittest.TestCase):
 
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/check-webkit-style'],
+                        command=['python', 'Tools/Scripts/check-webkit-style'],
                         )
             + 2,
         )
@@ -241,7 +244,7 @@ class TestCheckStyle(BuildStepMixinAdditions, unittest.TestCase):
 
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/check-webkit-style'],
+                        command=['python', 'Tools/Scripts/check-webkit-style'],
                         )
             + ExpectShell.log('stdio', stdout='''ERROR: Source/WebCore/layout/FloatingContext.cpp:36:  Code inside a namespace should not be indented.  [whitespace/indent] [4]
 ERROR: Source/WebCore/layout/FormattingContext.h:94:  Weird number of spaces at line-start.  Are you using a 4-space indent?  [whitespace/indent] [3]
@@ -263,7 +266,7 @@ Total errors found: 8 in 48 files''')
 
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/check-webkit-style'],
+                        command=['python', 'Tools/Scripts/check-webkit-style'],
                         )
             + ExpectShell.log('stdio', stdout='Total errors found: 0 in 6 files')
             + 0,
@@ -279,7 +282,7 @@ Total errors found: 8 in 48 files''')
 
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/check-webkit-style'],
+                        command=['python', 'Tools/Scripts/check-webkit-style'],
                         )
             + ExpectShell.log('stdio', stdout='Total errors found: 0 in 0 files')
             + 2,
@@ -302,7 +305,8 @@ class TestRunBindingsTests(BuildStepMixinAdditions, unittest.TestCase):
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         timeout=300,
-                        command=['Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(self.jsonFileName)],
+                        logEnviron=False,
+                        command=['python', 'Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(self.jsonFileName)],
                         logfiles={'json': self.jsonFileName},
                         )
             + 0,
@@ -315,7 +319,8 @@ class TestRunBindingsTests(BuildStepMixinAdditions, unittest.TestCase):
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         timeout=300,
-                        command=['Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(self.jsonFileName)],
+                        logEnviron=False,
+                        command=['python', 'Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(self.jsonFileName)],
                         logfiles={'json': self.jsonFileName},
                         )
             + ExpectShell.log('stdio', stdout='FAIL: (JS) JSTestInterface.cpp')
@@ -337,7 +342,8 @@ class TestRunWebKitPerlTests(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(RunWebKitPerlTests())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/test-webkitperl'],
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/test-webkitperl'],
                         timeout=120,
                         )
             + 0,
@@ -349,7 +355,8 @@ class TestRunWebKitPerlTests(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(RunWebKitPerlTests())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/test-webkitperl'],
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/test-webkitperl'],
                         timeout=120,
                         )
             + ExpectShell.log('stdio', stdout='''Failed tests:  1-3, 5-7, 9, 11-13
@@ -375,7 +382,8 @@ class TestWebKitPyTests(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(RunWebKitPyTests())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/test-webkitpy', '--json-output={0}'.format(self.jsonFileName)],
+                        logEnviron=False,
+                        command=['python', 'Tools/Scripts/test-webkitpy', '--json-output={0}'.format(self.jsonFileName)],
                         logfiles={'json': self.jsonFileName},
                         timeout=120,
                         )
@@ -388,7 +396,8 @@ class TestWebKitPyTests(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(RunWebKitPyTests())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/test-webkitpy', '--json-output={0}'.format(self.jsonFileName)],
+                        logEnviron=False,
+                        command=['python', 'Tools/Scripts/test-webkitpy', '--json-output={0}'.format(self.jsonFileName)],
                         logfiles={'json': self.jsonFileName},
                         timeout=120,
                         )
@@ -397,6 +406,78 @@ FAILED (failures=1, errors=0)''')
             + 2,
         )
         self.expectOutcome(result=FAILURE, state_string='webkitpy-tests (failure)')
+        return self.runStep()
+
+
+class TestRunEWSBuildbotCheckConfig(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(RunEWSBuildbotCheckConfig())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='build/Tools/BuildSlaveSupport/ews-build',
+                        timeout=120,
+                        logEnviron=False,
+                        command=['buildbot', 'checkconfig'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Passed buildbot checkconfig')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(RunEWSBuildbotCheckConfig())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='build/Tools/BuildSlaveSupport/ews-build',
+                        timeout=120,
+                        logEnviron=False,
+                        command=['buildbot', 'checkconfig'],
+                        )
+            + ExpectShell.log('stdio', stdout='Configuration Errors:  builder(s) iOS-12-Debug-Build-EWS have no schedulers to drive them')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Failed buildbot checkconfig')
+        return self.runStep()
+
+
+class TestRunEWSUnitTests(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(RunEWSUnitTests())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=120,
+                        logEnviron=False,
+                        command=['python', 'Tools/BuildSlaveSupport/ews-build/runUnittests.py'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Passed EWS unit tests')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(RunEWSUnitTests())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=120,
+                        logEnviron=False,
+                        command=['python', 'Tools/BuildSlaveSupport/ews-build/runUnittests.py'],
+                        )
+            + ExpectShell.log('stdio', stdout='Unhandled Error. Traceback (most recent call last): Keys in cmd missing from expectation: [logfiles.json]')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Failed EWS unit tests')
         return self.runStep()
 
 
@@ -472,6 +553,114 @@ class TestCleanBuild(BuildStepMixinAdditions, unittest.TestCase):
         return self.runStep()
 
 
+class TestCleanUpGitIndexLock(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(CleanUpGitIndexLock())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=120,
+                        logEnviron=False,
+                        command=['rm', '-f', '.git/index.lock'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Deleted .git/index.lock')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(CleanUpGitIndexLock())
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        timeout=120,
+                        logEnviron=False,
+                        command=['rm', '-f', '.git/index.lock'],
+                        )
+            + ExpectShell.log('stdio', stdout='Unexpected error.')
+            + 1,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Deleted .git/index.lock (failure)')
+        return self.runStep()
+
+
+class TestInstallGtkDependencies(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(InstallGtkDependencies())
+        self.assertEqual(InstallGtkDependencies.haltOnFailure, False)
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/update-webkitgtk-libs'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Updated gtk dependencies')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(InstallGtkDependencies())
+        self.assertEqual(InstallGtkDependencies.haltOnFailure, False)
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/update-webkitgtk-libs'],
+                        )
+            + ExpectShell.log('stdio', stdout='Unexpected error.')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Updated gtk dependencies (failure)')
+        return self.runStep()
+
+
+class TestInstallWpeDependencies(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(InstallWpeDependencies())
+        self.assertEqual(InstallWpeDependencies.haltOnFailure, False)
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/update-webkitwpe-libs'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Updated wpe dependencies')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(InstallWpeDependencies())
+        self.assertEqual(InstallWpeDependencies.haltOnFailure, False)
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/update-webkitwpe-libs'],
+                        )
+            + ExpectShell.log('stdio', stdout='Unexpected error.')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Updated wpe dependencies (failure)')
+        return self.runStep()
+
+
 class TestCompileWebKit(BuildStepMixinAdditions, unittest.TestCase):
     def setUp(self):
         self.longMessage = True
@@ -486,7 +675,38 @@ class TestCompileWebKit(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'release')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-webkit', '--release'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Compiled WebKit')
+        return self.runStep()
+
+    def test_success_gtk(self):
+        self.setupStep(CompileWebKit())
+        self.setProperty('platform', 'gtk')
+        self.setProperty('fullPlatform', 'gtk')
+        self.setProperty('configuration', 'release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/build-webkit', '--release', '--gtk'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Compiled WebKit')
+        return self.runStep()
+
+    def test_success_wpe(self):
+        self.setupStep(CompileWebKit())
+        self.setProperty('platform', 'wpe')
+        self.setProperty('fullPlatform', 'wpe')
+        self.setProperty('configuration', 'release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/build-webkit', '--release', '--wpe'],
                         )
             + 0,
         )
@@ -499,6 +719,7 @@ class TestCompileWebKit(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'debug')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-webkit', '--debug'],
                         )
             + ExpectShell.log('stdio', stdout='1 error generated.')
@@ -523,6 +744,7 @@ class TestCompileWebKitToT(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('patchFailedToBuild', True)
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-webkit', '--release'],
                         )
             + 0,
@@ -537,6 +759,7 @@ class TestCompileWebKitToT(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('patchFailedTests', True)
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-webkit', '--debug'],
                         )
             + ExpectShell.log('stdio', stdout='1 error generated.')
@@ -595,6 +818,7 @@ class TestCompileJSCOnly(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'release')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-jsc', '--release'],
                         )
             + 0,
@@ -608,6 +832,7 @@ class TestCompileJSCOnly(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'debug')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-jsc', '--debug'],
                         )
             + ExpectShell.log('stdio', stdout='1 error generated.')
@@ -632,6 +857,7 @@ class TestCompileJSCOnlyToT(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('patchFailedToBuild', 'True')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-jsc', '--release'],
                         )
             + 0,
@@ -646,6 +872,7 @@ class TestCompileJSCOnlyToT(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('patchFailedToBuild', 'True')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-jsc', '--debug'],
                         )
             + ExpectShell.log('stdio', stdout='1 error generated.')
@@ -803,17 +1030,36 @@ class TestRunJavaScriptCoreTestsToT(BuildStepMixinAdditions, unittest.TestCase):
 class TestRunWebKitTests(BuildStepMixinAdditions, unittest.TestCase):
     def setUp(self):
         self.longMessage = True
+        self.jsonFileName = 'layout-test-results/full_results.json'
+        self.results_json_regressions = '''ADD_RESULTS({"tests":{"imported":{"w3c":{"web-platform-tests":{"IndexedDB":{"interleaved-cursors-large.html":{"report":"REGRESSION","expected":"PASS","actual":"TEXT"}},"wasm":{"jsapi":{"interface.any.html":{"report":"REGRESSION","expected":"PASS","actual":"TEXT"},"instance":{"constructor-bad-imports.any.html":{"report":"REGRESSION","expected":"PASS","actual":"TEXT"}},"global":{"constructor.any.html":{"report":"REGRESSION","expected":"PASS","actual":"TEXT"},"constructor.any.worker.html":{"report":"REGRESSION","expected":"PASS","actual":"TEXT"},"toString.any.html":{"report":"REGRESSION","expected":"PASS","actual":"TEXT"}},"constructor":{"instantiate-bad-imports.any.html":{"report":"REGRESSION","expected":"PASS","actual":"TEXT"},"instantiate-bad-imports.any.worker.html":{"report":"REGRESSION","expected":"PASS","actual":"TEXT"}},"interface.any.worker.html":{"report":"REGRESSION","expected":"PASS","actual":"TEXT"}}}}},"blink":{"storage":{"indexeddb":{"blob-valid-before-commit.html":{"report":"REGRESSION","expected":"PASS","actual":"TIMEOUT","has_stderr":true}}}}}},"skipped":23256,"num_regressions":10,"other_crashes":{},"interrupted":true,"num_missing":0,"layout_tests_dir":"/Volumes/Data/worker/iOS-12-Simulator-WK2-Tests-EWS/build/LayoutTests","version":4,"num_passes":32056,"pixel_tests_enabled":false,"date":"06:21AM on July 15, 2019","has_pretty_patch":true,"fixable":23267,"num_flaky":0,"uses_expectations_file":true});
+        '''
+        self.results_json_flakes = '''ADD_RESULTS({"tests":{"http":{"tests":{"workers":{"service":{"service-worker-resource-timing.https.html":{"report":"FLAKY","expected":"PASS","actual":"TIMEOUT PASS","has_stderr":true}}},"xmlhttprequest":{"post-content-type-document.html":{"report":"FLAKY","expected":"PASS","actual":"TIMEOUT PASS"}}}},"imported":{"blink":{"storage":{"indexeddb":{"blob-valid-before-commit.html":{"report":"FLAKY","expected":"PASS","actual":"TIMEOUT PASS","has_stderr":true}}},"fast":{"text":{"international":{"repaint-glyph-bounds.html":{"report":"FLAKY","expected":"PASS","actual":"IMAGE PASS","reftest_type":["=="],"image_diff_percent":0.08}}}}}}},"skipped":13176,"num_regressions":0,"other_crashes":{},"interrupted":false,"num_missing":0,"layout_tests_dir":"/Volumes/Data/worker/iOS-12-Simulator-WK2-Tests-EWS/build/LayoutTests","version":4,"num_passes":42185,"pixel_tests_enabled":false,"date":"06:54AM on July 17, 2019","has_pretty_patch":true,"fixable":55356,"num_flaky":4,"uses_expectations_file":true});
+        '''
+        self.results_json_mix_flakes_and_regression = '''ADD_RESULTS({"tests":{"http":{"tests":{"IndexedDB":{"collect-IDB-objects.https.html":{"report":"FLAKY","expected":"PASS","actual":"TEXT PASS"}},"xmlhttprequest":{"on-network-timeout-error-during-preflight.html":{"report":"FLAKY","expected":"PASS","actual":"TIMEOUT PASS"}}}},"transitions":{"lengthsize-transition-to-from-auto.html":{"report":"FLAKY","expected":"PASS","actual":"TIMEOUT PASS"}},"imported":{"blink":{"storage":{"indexeddb":{"blob-valid-before-commit.html":{"report":"FLAKY","expected":"PASS","actual":"TIMEOUT PASS","has_stderr":true}}}}},"fast":{"text":{"font-weight-fallback.html":{"report":"FLAKY","expected":"PASS","actual":"TIMEOUT PASS","has_stderr":true,"reftest_type":["=="]}},"scrolling":{"ios":{"reconcile-layer-position-recursive.html":{"report":"REGRESSION","expected":"PASS","actual":"TEXT"}}}}},"skipped":13174,"num_regressions":1,"other_crashes":{},"interrupted":false,"num_missing":0,"layout_tests_dir":"/Volumes/Data/worker/iOS-12-Simulator-WK2-Tests-EWS/build/LayoutTests","version":4,"num_passes":42158,"pixel_tests_enabled":false,"date":"11:28AM on July 16, 2019","has_pretty_patch":true,"fixable":55329,"num_flaky":5,"uses_expectations_file":true});
+        '''
+
+        self.results_json_with_newlines = '''ADD_RESULTS({"tests":{"http":{"tests":{"IndexedDB":{"collect-IDB-objects.https.html":{"report":"FLAKY","expected":"PASS","actual":"TEXT PASS"}},"xmlhttprequest":{"on-network-timeout-error-during-preflight.html":{"report":"FLAKY","expected":"PASS","actual":"TIMEOUT PASS"}}}},"transitions":{"lengthsize-trans
+ition-to-from-auto.html":{"report":"FLAKY","expected":"PASS","actual":"TIMEOUT PASS"}},"imported":{"blink":{"storage":{"indexeddb":{"blob-valid-before-commit.html":{"report":"FLAKY","expected":"PASS","actual":"TIMEOUT PASS","has_stderr":true}}}}},"fast":{"text":{"font-weight-fallback.html":{"report":"FLAKY","expected":"PASS","actual":"TIMEOUT PASS","has_stderr":true,"reftest_type":["=="]}},"scrolling":{"ios":{"reconcile-layer-position-recursive.html":{"report":"REGRESSION","expected":"PASS","actual":"TEXT"}}}}},"skipped":13174,"num_regressions":1,"other_crashes":{},"interrupted":false,"num_missing":0,"layout_tests_dir":"/Volumes/Data/worker/iOS-12-Simulator-WK2-Tests-EWS/build/LayoutTes
+ts","version":4,"num_passes":42158,"pixel_tests_enabled":false,"date":"11:28AM on July 16, 2019","has_pretty_patch":true,"fixable":55329,"num_flaky":5,"uses_expectations_file":true});
+        '''
+
         return self.setUpBuildStep()
 
     def tearDown(self):
         return self.tearDownBuildStep()
 
-    def test_success(self):
+    def configureStep(self):
         self.setupStep(RunWebKitTests())
+        self.property_exceed_failure_limit = 'first_results_exceed_failure_limit'
+        self.property_failures = 'first_run_failures'
+
+    def test_success(self):
+        self.configureStep()
         self.setProperty('fullPlatform', 'ios-simulator')
         self.setProperty('configuration', 'release')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logfiles={'json': self.jsonFileName},
                         command=['python', 'Tools/Scripts/run-webkit-tests', '--no-build', '--no-new-test-results', '--no-show-results', '--exit-after-n-failures', '30', '--skip-failing-tests', '--release', '--results-directory', 'layout-test-results', '--debug-rwt-logging'],
                         )
             + 0,
@@ -821,12 +1067,127 @@ class TestRunWebKitTests(BuildStepMixinAdditions, unittest.TestCase):
         self.expectOutcome(result=SUCCESS, state_string='Passed layout tests')
         return self.runStep()
 
-    def test_failure(self):
-        self.setupStep(RunWebKitTests())
+    def test_warnings(self):
+        self.configureStep()
         self.setProperty('fullPlatform', 'ios-simulator')
         self.setProperty('configuration', 'release')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logfiles={'json': self.jsonFileName},
+                        command=['python', 'Tools/Scripts/run-webkit-tests', '--no-build', '--no-new-test-results', '--no-show-results', '--exit-after-n-failures', '30', '--skip-failing-tests', '--release', '--results-directory', 'layout-test-results', '--debug-rwt-logging'],
+                        )
+            + 0
+            + ExpectShell.log('stdio', stdout='''Unexpected flakiness: timeouts (2)
+                              imported/blink/storage/indexeddb/blob-valid-before-commit.html [ Timeout Pass ]
+                              storage/indexeddb/modern/deleteindex-2.html [ Timeout Pass ]'''),
+        )
+        self.expectOutcome(result=WARNINGS, state_string='2 flakes')
+        return self.runStep()
+
+    def test_parse_results_json_regression(self):
+        self.configureStep()
+        self.setProperty('fullPlatform', 'ios-simulator')
+        self.setProperty('configuration', 'release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logfiles={'json': self.jsonFileName},
+                        command=['python', 'Tools/Scripts/run-webkit-tests', '--no-build', '--no-new-test-results', '--no-show-results', '--exit-after-n-failures', '30', '--skip-failing-tests', '--release', '--results-directory', 'layout-test-results', '--debug-rwt-logging'],
+                        )
+            + 2
+            + ExpectShell.log('json', stdout=self.results_json_regressions),
+        )
+        self.expectOutcome(result=FAILURE, state_string='layout-tests (failure)')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty(self.property_exceed_failure_limit), True)
+        self.assertEqual(self.getProperty(self.property_failures),
+                            ["imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors-large.html",
+                             "imported/w3c/web-platform-tests/wasm/jsapi/interface.any.html",
+                             "imported/w3c/web-platform-tests/wasm/jsapi/instance/constructor-bad-imports.any.html",
+                             "imported/w3c/web-platform-tests/wasm/jsapi/global/constructor.any.html",
+                             "imported/w3c/web-platform-tests/wasm/jsapi/global/constructor.any.worker.html",
+                             "imported/w3c/web-platform-tests/wasm/jsapi/global/toString.any.html",
+                             "imported/w3c/web-platform-tests/wasm/jsapi/interface.any.worker.html",
+                             "imported/w3c/web-platform-tests/wasm/jsapi/constructor/instantiate-bad-imports.any.html",
+                             "imported/w3c/web-platform-tests/wasm/jsapi/constructor/instantiate-bad-imports.any.worker.html",
+                             "imported/blink/storage/indexeddb/blob-valid-before-commit.html"])
+        return rc
+
+    def test_parse_results_json_flakes(self):
+        self.configureStep()
+        self.setProperty('fullPlatform', 'ios-simulator')
+        self.setProperty('configuration', 'release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logfiles={'json': self.jsonFileName},
+                        command=['python', 'Tools/Scripts/run-webkit-tests', '--no-build', '--no-new-test-results', '--no-show-results', '--exit-after-n-failures', '30', '--skip-failing-tests', '--release', '--results-directory', 'layout-test-results', '--debug-rwt-logging'],
+                        )
+            + 0
+            + ExpectShell.log('json', stdout=self.results_json_flakes),
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Passed layout tests')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty(self.property_exceed_failure_limit), False)
+        self.assertEqual(self.getProperty(self.property_failures), [])
+        return rc
+
+    def test_parse_results_json_flakes_and_regressions(self):
+        self.configureStep()
+        self.setProperty('fullPlatform', 'ios-simulator')
+        self.setProperty('configuration', 'release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logfiles={'json': self.jsonFileName},
+                        command=['python', 'Tools/Scripts/run-webkit-tests', '--no-build', '--no-new-test-results', '--no-show-results', '--exit-after-n-failures', '30', '--skip-failing-tests', '--release', '--results-directory', 'layout-test-results', '--debug-rwt-logging'],
+                        )
+            + 2
+            + ExpectShell.log('json', stdout=self.results_json_mix_flakes_and_regression),
+        )
+        self.expectOutcome(result=FAILURE, state_string='layout-tests (failure)')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty(self.property_exceed_failure_limit), False)
+        self.assertEqual(self.getProperty(self.property_failures), ['fast/scrolling/ios/reconcile-layer-position-recursive.html'])
+        return rc
+
+    def test_parse_results_json_with_newlines(self):
+        self.configureStep()
+        self.setProperty('fullPlatform', 'ios-simulator')
+        self.setProperty('configuration', 'release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logfiles={'json': self.jsonFileName},
+                        command=['python', 'Tools/Scripts/run-webkit-tests', '--no-build', '--no-new-test-results', '--no-show-results', '--exit-after-n-failures', '30', '--skip-failing-tests', '--release', '--results-directory', 'layout-test-results', '--debug-rwt-logging'],
+                        )
+            + 2
+            + ExpectShell.log('json', stdout=self.results_json_with_newlines),
+        )
+        self.expectOutcome(result=FAILURE, state_string='layout-tests (failure)')
+        rc = self.runStep()
+        self.assertEqual(self.getProperty(self.property_exceed_failure_limit), False)
+        self.assertEqual(self.getProperty(self.property_failures), ['fast/scrolling/ios/reconcile-layer-position-recursive.html'])
+        return rc
+
+    def test_unexpected_error(self):
+        self.configureStep()
+        self.setProperty('fullPlatform', 'mac-highsierra')
+        self.setProperty('configuration', 'debug')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logfiles={'json': self.jsonFileName},
+                        command=['python', 'Tools/Scripts/run-webkit-tests', '--no-build', '--no-new-test-results', '--no-show-results', '--exit-after-n-failures', '30', '--skip-failing-tests', '--debug', '--results-directory', 'layout-test-results', '--debug-rwt-logging'],
+                        )
+            + ExpectShell.log('stdio', stdout='Unexpected error.')
+            + 254,
+        )
+        self.expectOutcome(result=RETRY, state_string='layout-tests (retry)')
+        return self.runStep()
+
+    def test_failure(self):
+        self.configureStep()
+        self.setProperty('fullPlatform', 'ios-simulator')
+        self.setProperty('configuration', 'release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logfiles={'json': self.jsonFileName},
                         command=['python', 'Tools/Scripts/run-webkit-tests', '--no-build', '--no-new-test-results', '--no-show-results', '--exit-after-n-failures', '30', '--skip-failing-tests', '--release', '--results-directory', 'layout-test-results', '--debug-rwt-logging'],
                         )
             + ExpectShell.log('stdio', stdout='9 failures found.')
@@ -836,9 +1197,17 @@ class TestRunWebKitTests(BuildStepMixinAdditions, unittest.TestCase):
         return self.runStep()
 
 
+class TestReRunWebKitTests(TestRunWebKitTests):
+    def configureStep(self):
+        self.setupStep(ReRunWebKitTests())
+        self.property_exceed_failure_limit = 'second_results_exceed_failure_limit'
+        self.property_failures = 'second_run_failures'
+
+
 class TestRunWebKit1Tests(BuildStepMixinAdditions, unittest.TestCase):
     def setUp(self):
         self.longMessage = True
+        self.jsonFileName = 'layout-test-results/full_results.json'
         return self.setUpBuildStep()
 
     def tearDown(self):
@@ -850,6 +1219,7 @@ class TestRunWebKit1Tests(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'debug')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logfiles={'json': self.jsonFileName},
                         command=['python', 'Tools/Scripts/run-webkit-tests', '--no-build', '--no-new-test-results', '--no-show-results', '--exit-after-n-failures', '30', '--skip-failing-tests', '--debug', '--dump-render-tree', '--results-directory', 'layout-test-results', '--debug-rwt-logging'],
                         )
             + 0,
@@ -863,6 +1233,7 @@ class TestRunWebKit1Tests(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'release')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logfiles={'json': self.jsonFileName},
                         command=['python', 'Tools/Scripts/run-webkit-tests', '--no-build', '--no-new-test-results', '--no-show-results', '--exit-after-n-failures', '30', '--skip-failing-tests', '--release', '--dump-render-tree', '--results-directory', 'layout-test-results', '--debug-rwt-logging'],
                         )
             + ExpectShell.log('stdio', stdout='9 failures found.')
@@ -871,6 +1242,111 @@ class TestRunWebKit1Tests(BuildStepMixinAdditions, unittest.TestCase):
         self.expectOutcome(result=FAILURE, state_string='layout-tests (failure)')
         return self.runStep()
 
+
+class TestAnalyzeLayoutTestsResults(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def configureStep(self):
+        self.setupStep(AnalyzeLayoutTestsResults())
+        self.setProperty('first_results_exceed_failure_limit', False)
+        self.setProperty('second_results_exceed_failure_limit', False)
+        self.setProperty('clean_tree_results_exceed_failure_limit', False)
+        self.setProperty('clean_tree_run_failures', [])
+
+    def test_failure_introduced_by_patch(self):
+        self.configureStep()
+        self.setProperty('first_run_failures', ["jquery/offset.html"])
+        self.setProperty('second_run_failures', ["jquery/offset.html"])
+        self.expectOutcome(result=FAILURE, state_string='Found 1 new Test failure: jquery/offset.html (failure)')
+        return self.runStep()
+
+    def test_failure_on_clean_tree(self):
+        self.configureStep()
+        self.setProperty('first_run_failures', ["jquery/offset.html"])
+        self.setProperty('second_run_failures', ["jquery/offset.html"])
+        self.setProperty('clean_tree_run_failures', ["jquery/offset.html"])
+        self.expectOutcome(result=SUCCESS, state_string='Passed layout tests')
+        return self.runStep()
+
+    def test_flaky_and_consistent_failures_without_clean_tree_failures(self):
+        self.configureStep()
+        self.setProperty('first_run_failures', ['test1', 'test2'])
+        self.setProperty('second_run_failures', ['test1'])
+        self.expectOutcome(result=FAILURE, state_string='Found 1 new Test failure: test1 (failure)')
+        return self.runStep()
+
+    def test_flaky_and_inconsistent_failures_without_clean_tree_failures(self):
+        self.configureStep()
+        self.setProperty('first_run_failures', ['test1', 'test2'])
+        self.setProperty('second_run_failures', ['test3'])
+        self.expectOutcome(result=RETRY, state_string='Unable to confirm if test failures are introduced by patch, retrying build (retry)')
+        return self.runStep()
+
+    def test_flaky_and_inconsistent_failures_with_clean_tree_failures(self):
+        self.configureStep()
+        self.setProperty('first_run_failures', ['test1', 'test2'])
+        self.setProperty('second_run_failures', ['test3'])
+        self.setProperty('clean_tree_run_failures', ['test1', 'test2', 'test3'])
+        self.expectOutcome(result=RETRY, state_string='Unable to confirm if test failures are introduced by patch, retrying build (retry)')
+        return self.runStep()
+
+    def test_flaky_and_consistent_failures_with_clean_tree_failures(self):
+        self.configureStep()
+        self.setProperty('first_run_failures', ['test1', 'test2'])
+        self.setProperty('second_run_failures', ['test1'])
+        self.setProperty('clean_tree_run_failures', ['test1', 'test2'])
+        self.expectOutcome(result=RETRY, state_string='Unable to confirm if test failures are introduced by patch, retrying build (retry)')
+        return self.runStep()
+
+    def test_first_run_exceed_failure_limit(self):
+        self.configureStep()
+        self.setProperty('first_results_exceed_failure_limit', True)
+        self.setProperty('first_run_failures',  ['test{}'.format(i) for i in range(0, 30)])
+        self.setProperty('second_run_failures', [])
+        self.expectOutcome(result=RETRY, state_string='Unable to confirm if test failures are introduced by patch, retrying build (retry)')
+        return self.runStep()
+
+    def test_second_run_exceed_failure_limit(self):
+        self.configureStep()
+        self.setProperty('first_run_failures', [])
+        self.setProperty('second_results_exceed_failure_limit', True)
+        self.setProperty('second_run_failures',  ['test{}'.format(i) for i in range(0, 30)])
+        self.expectOutcome(result=RETRY, state_string='Unable to confirm if test failures are introduced by patch, retrying build (retry)')
+        return self.runStep()
+
+    def test_clean_tree_exceed_failure_limit(self):
+        self.configureStep()
+        self.setProperty('first_run_failures', ['test1'])
+        self.setProperty('second_run_failures', ['test1'])
+        self.setProperty('clean_tree_results_exceed_failure_limit', True)
+        self.setProperty('clean_tree_run_failures',  ['test{}'.format(i) for i in range(0, 30)])
+        self.expectOutcome(result=RETRY, state_string='Unable to confirm if test failures are introduced by patch, retrying build (retry)')
+        return self.runStep()
+
+    def test_clean_tree_has_lot_of_failures(self):
+        self.configureStep()
+        self.setProperty('first_results_exceed_failure_limit', True)
+        self.setProperty('first_run_failures', ['test{}'.format(i) for i in range(0, 30)])
+        self.setProperty('second_results_exceed_failure_limit', True)
+        self.setProperty('second_run_failures', ['test{}'.format(i) for i in range(0, 30)])
+        self.setProperty('clean_tree_run_failures', ['test{}'.format(i) for i in range(0, 27)])
+        self.expectOutcome(result=RETRY, state_string='Unable to confirm if test failures are introduced by patch, retrying build (retry)')
+        return self.runStep()
+
+    def test_clean_tree_has_some_failures(self):
+        self.configureStep()
+        self.setProperty('first_results_exceed_failure_limit', True)
+        self.setProperty('first_run_failures', ['test{}'.format(i) for i in range(0, 30)])
+        self.setProperty('second_results_exceed_failure_limit', True)
+        self.setProperty('second_run_failures', ['test{}'.format(i) for i in range(0, 30)])
+        self.setProperty('clean_tree_run_failures', ['test{}'.format(i) for i in range(0, 10)])
+        self.expectOutcome(result=FAILURE, state_string='Found 30 new Test failures: test1, test0, test3, test2, test5, test4, test7, test6, test9, test8, test24, test25, test26, test27, test20, test21, test22, test23, test28, test29, test19, test18, test11, test10, test13, test12, test15, test14, test17, test16 (failure)')
+        return self.runStep()
 
 class TestCheckOutSpecificRevision(BuildStepMixinAdditions, unittest.TestCase):
     def setUp(self):
@@ -887,6 +1363,7 @@ class TestCheckOutSpecificRevision(BuildStepMixinAdditions, unittest.TestCase):
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         timeout=1200,
+                        logEnviron=False,
                         command=['git', 'checkout', '1a3425cb92dbcbca12a10aa9514f1b77c76dc26'],
                         )
             + 0,
@@ -901,6 +1378,7 @@ class TestCheckOutSpecificRevision(BuildStepMixinAdditions, unittest.TestCase):
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         timeout=1200,
+                        logEnviron=False,
                         command=['git', 'checkout', '1a3425cb92dbcbca12a10aa9514f1b77c76dc26'],
                         )
             + ExpectShell.log('stdio', stdout='Unexpected failure')
@@ -928,7 +1406,8 @@ class TestCleanWorkingDirectory(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(CleanWorkingDirectory())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/clean-webkit'],
+                        logEnviron=False,
+                        command=['python', 'Tools/Scripts/clean-webkit'],
                         )
             + 0,
         )
@@ -939,7 +1418,8 @@ class TestCleanWorkingDirectory(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(CleanWorkingDirectory())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/clean-webkit'],
+                        logEnviron=False,
+                        command=['python', 'Tools/Scripts/clean-webkit'],
                         )
             + ExpectShell.log('stdio', stdout='Unexpected failure.')
             + 2,
@@ -962,7 +1442,8 @@ class TestUnApplyPatchIfRequired(BuildStepMixinAdditions, unittest.TestCase):
         self.expectHidden(False)
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/clean-webkit'],
+                        logEnviron=False,
+                        command=['python', 'Tools/Scripts/clean-webkit'],
                         )
             + 0,
         )
@@ -975,7 +1456,8 @@ class TestUnApplyPatchIfRequired(BuildStepMixinAdditions, unittest.TestCase):
         self.expectHidden(False)
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
-                        command=['Tools/Scripts/clean-webkit'],
+                        logEnviron=False,
+                        command=['python', 'Tools/Scripts/clean-webkit'],
                         )
             + ExpectShell.log('stdio', stdout='Unexpected failure.')
             + 2,
@@ -1430,6 +1912,7 @@ class TestArchiveTestResults(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'release')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['python', 'Tools/BuildSlaveSupport/test-result-archive', '--platform=ios-simulator',  '--release', 'archive'],
                         )
             + 0,
@@ -1444,6 +1927,7 @@ class TestArchiveTestResults(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'debug')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['python', 'Tools/BuildSlaveSupport/test-result-archive', '--platform=mac',  '--debug', 'archive'],
                         )
             + ExpectShell.log('stdio', stdout='Unexpected failure.')
@@ -1708,8 +2192,6 @@ BuildVersion:	17G7024'''),
 
         self.expectRemoteCommands(
             ExpectShell(command=['hostname'], workdir='wkdir', timeout=60, logEnviron=False) + 0,
-            ExpectShell(command=['df', '-hl'], workdir='wkdir', timeout=60, logEnviron=False) + 0,
-            ExpectShell(command=['date'], workdir='wkdir', timeout=60, logEnviron=False) + 0,
         )
         self.expectOutcome(result=SUCCESS, state_string='Printed configuration')
         return self.runStep()

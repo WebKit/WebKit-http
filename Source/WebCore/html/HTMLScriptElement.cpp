@@ -28,6 +28,7 @@
 #include "EventNames.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
+#include "RuntimeEnabledFeatures.h"
 #include "Text.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/Ref.h>
@@ -182,6 +183,23 @@ void HTMLScriptElement::dispatchLoadEvent()
 Ref<Element> HTMLScriptElement::cloneElementWithoutAttributesAndChildren(Document& targetDocument)
 {
     return adoptRef(*new HTMLScriptElement(tagQName(), targetDocument, false, alreadyStarted()));
+}
+
+void HTMLScriptElement::setReferrerPolicyForBindings(const AtomString& value)
+{
+    setAttributeWithoutSynchronization(referrerpolicyAttr, value);
+}
+
+String HTMLScriptElement::referrerPolicyForBindings() const
+{
+    return referrerPolicyToString(referrerPolicy());
+}
+
+ReferrerPolicy HTMLScriptElement::referrerPolicy() const
+{
+    if (RuntimeEnabledFeatures::sharedFeatures().referrerPolicyAttributeEnabled())
+        return parseReferrerPolicy(attributeWithoutSynchronization(referrerpolicyAttr), ReferrerPolicySource::ReferrerPolicyAttribute).valueOr(ReferrerPolicy::EmptyString);
+    return ReferrerPolicy::EmptyString;
 }
 
 }

@@ -63,7 +63,6 @@
 #include "WHLSLMakePointerExpression.h"
 #include "WHLSLNativeFunctionDeclaration.h"
 #include "WHLSLNativeTypeDeclaration.h"
-#include "WHLSLNode.h"
 #include "WHLSLNullLiteral.h"
 #include "WHLSLNumThreadsFunctionAttribute.h"
 #include "WHLSLPointerType.h"
@@ -83,13 +82,11 @@
 #include "WHLSLSwitchCase.h"
 #include "WHLSLSwitchStatement.h"
 #include "WHLSLTernaryExpression.h"
-#include "WHLSLTrap.h"
 #include "WHLSLType.h"
 #include "WHLSLTypeArgument.h"
 #include "WHLSLTypeDefinition.h"
 #include "WHLSLTypeReference.h"
 #include "WHLSLUnsignedIntegerLiteral.h"
-#include "WHLSLValue.h"
 #include "WHLSLVariableDeclaration.h"
 #include "WHLSLVariableDeclarationsStatement.h"
 #include "WHLSLVariableReference.h"
@@ -143,13 +140,17 @@ private:
         No
     };
     Unexpected<Error> fail(const String& message, TryToPeek = TryToPeek::Yes);
-    Expected<Lexer::Token, Error> peek();
-    Expected<Lexer::Token, Error> peekFurther();
-    bool peekTypes(const Vector<Lexer::Token::Type>&);
-    Optional<Lexer::Token> tryType(Lexer::Token::Type);
-    Optional<Lexer::Token> tryTypes(const Vector<Lexer::Token::Type>&);
-    Expected<Lexer::Token, Error> consumeType(Lexer::Token::Type);
-    Expected<Lexer::Token, Error> consumeTypes(const Vector<Lexer::Token::Type>&);
+    Expected<Token, Error> peek();
+    Expected<Token, Error> peekFurther();
+    bool peekType(Token::Type);
+    template <Token::Type... types>
+    bool peekTypes();
+    Optional<Token> tryType(Token::Type);
+    template <Token::Type... types>
+    Optional<Token> tryTypes();
+    Expected<Token, Error> consumeType(Token::Type);
+    template <Token::Type... types>
+    Expected<Token, Error> consumeTypes();
 
     Expected<Variant<int, unsigned>, Error> consumeIntegralLiteral();
     Expected<unsigned, Error> consumeNonNegativeIntegralLiteral();
@@ -157,12 +158,14 @@ private:
     Expected<AST::TypeArgument, Error> parseTypeArgument();
     Expected<AST::TypeArguments, Error> parseTypeArguments();
     struct TypeSuffixAbbreviated {
-        Lexer::Token token;
+        AST::CodeLocation location;
+        Token token;
         Optional<unsigned> numElements;
     };
     Expected<TypeSuffixAbbreviated, Error> parseTypeSuffixAbbreviated();
     struct TypeSuffixNonAbbreviated {
-        Lexer::Token token;
+        AST::CodeLocation location;
+        Token token;
         Optional<AST::AddressSpace> addressSpace;
         Optional<unsigned> numElements;
     };
@@ -175,12 +178,12 @@ private:
     Expected<AST::ResourceSemantic, Error> parseResourceSemantic();
     Expected<AST::SpecializationConstantSemantic, Error> parseSpecializationConstantSemantic();
     Expected<AST::StageInOutSemantic, Error> parseStageInOutSemantic();
-    Expected<Optional<AST::Semantic>, Error> parseSemantic();
+    Expected<std::unique_ptr<AST::Semantic>, Error> parseSemantic();
     AST::Qualifiers parseQualifiers();
     Expected<AST::StructureElement, Error> parseStructureElement();
     Expected<AST::StructureDefinition, Error> parseStructureDefinition();
     Expected<AST::EnumerationDefinition, Error> parseEnumerationDefinition();
-    Expected<AST::EnumerationMember, Error> parseEnumerationMember();
+    Expected<AST::EnumerationMember, Error> parseEnumerationMember(int64_t defaultValue);
     Expected<AST::NativeTypeDeclaration, Error> parseNativeTypeDeclaration();
     Expected<AST::NumThreadsFunctionAttribute, Error> parseNumThreadsFunctionAttribute();
     Expected<AST::AttributeBlock, Error> parseAttributeBlock();
@@ -195,7 +198,7 @@ private:
     Expected<AST::NativeFunctionDeclaration, Error> parseNativeFunctionDeclaration();
 
     Expected<AST::Block, Error> parseBlock();
-    Expected<AST::Block, Error> parseBlockBody(Lexer::Token&& origin);
+    Expected<AST::Block, Error> parseBlockBody();
     Expected<AST::IfStatement, Error> parseIfStatement();
     Expected<AST::SwitchStatement, Error> parseSwitchStatement();
     Expected<AST::SwitchCase, Error> parseSwitchCase();
@@ -224,8 +227,8 @@ private:
 
     Expected<UniqueRef<AST::Expression>, Error> parseExpression();
     Expected<UniqueRef<AST::Expression>, Error> parsePossibleTernaryConditional();
-    Expected<UniqueRef<AST::Expression>, Error> completeTernaryConditional(Lexer::Token&& origin, UniqueRef<AST::Expression>&& predicate);
-    Expected<UniqueRef<AST::Expression>, Error> completeAssignment(Lexer::Token&& origin, UniqueRef<AST::Expression>&& left);
+    Expected<UniqueRef<AST::Expression>, Error> completeTernaryConditional(UniqueRef<AST::Expression>&& predicate);
+    Expected<UniqueRef<AST::Expression>, Error> completeAssignment(UniqueRef<AST::Expression>&& left);
     Expected<UniqueRef<AST::Expression>, Error> parsePossibleLogicalBinaryOperation();
     Expected<UniqueRef<AST::Expression>, Error> completePossibleLogicalBinaryOperation(UniqueRef<AST::Expression>&& previous);
     Expected<UniqueRef<AST::Expression>, Error> parsePossibleRelationalBinaryOperation();

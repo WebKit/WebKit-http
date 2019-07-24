@@ -1,3 +1,2708 @@
+2019-07-23  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Implement errors for GPURenderPipeline creation
+        https://bugs.webkit.org/show_bug.cgi?id=200046
+
+        Reviewed by Myles C. Maxfield.
+
+        Add test to cover reproducible render pipeline creation errors.
+
+        * webgpu/js/webgpu-functions.js:
+        (runTestsWithDevice):
+        * webgpu/render-pipeline-errors-expected.txt: Added.
+        * webgpu/render-pipeline-errors.html: Added.
+
+2019-07-23  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        CanvasRenderingContext2D.setTransfrom() reads only the aliases attributes of DOMMatrix2DInit
+        https://bugs.webkit.org/show_bug.cgi?id=199850
+
+        Reviewed by Simon Fraser.
+
+        * fast/canvas/setTransfrom-aliases-transform-expected.html: Added.
+        * fast/canvas/setTransfrom-aliases-transform.html: Added.
+
+2019-07-23  Tim Horton  <timothy_horton@apple.com>
+
+        Long press hint of AirPods buy buttons are tall and narrow during animation
+        https://bugs.webkit.org/show_bug.cgi?id=200036
+        <rdar://problem/53145697>
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/text-indicator/text-indicator-with-tiny-child-expected.txt: Added.
+        * fast/text-indicator/text-indicator-with-tiny-child.html: Added.
+
+2019-07-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS 10.15] Web process crashes when attempting to show the font panel via Font > Show Fonts
+        https://bugs.webkit.org/show_bug.cgi?id=200021
+        <rdar://problem/53301325>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new layout test to verify that attempting to show the font panel doesn't crash the web process in WebKit2.
+        This test is skipped in WebKit1, since EventSender::contextClick() in WebKit1 only returns an array of strings
+        corresponding to the titles of each menu item.
+
+        * editing/mac/style/do-not-crash-when-showing-font-panel-expected.txt: Added.
+        * editing/mac/style/do-not-crash-when-showing-font-panel.html: Added.
+        * platform/mac-wk1/TestExpectations:
+
+2019-07-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebKit should strip away system font names from the pasted content
+        https://bugs.webkit.org/show_bug.cgi?id=199975
+        <rdar://problem/53336353>
+
+        Reviewed by Darin Adler.
+
+        Added a test for ClipboardData.getData returning the original markup and execCommand('insertHTML', ~)
+        not stripping away system font names.
+
+        * editing/pasteboard/paste-cocoa-writer-markup-with-system-fonts-expected.txt: Added.
+        * editing/pasteboard/paste-cocoa-writer-markup-with-system-fonts.html: Added.
+
+2019-07-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix WebView iframe rendering in macOS Catalina
+        https://bugs.webkit.org/show_bug.cgi?id=200022
+        rdar://problem/49102040
+
+        Reviewed by Darin Adler.
+        
+        New test for rendering of overlapping iframes, defects when we fail to setAsideSubviews
+        in WebView. 
+
+        * fast/frames/frames-not-double-painted-expected.html: Added.
+        * fast/frames/frames-not-double-painted.html: Added.
+
+2019-07-22  Youenn Fablet  <youenn@apple.com>
+
+        Make sure the player underlying volume is correctly set after creating a new player
+        https://bugs.webkit.org/show_bug.cgi?id=199974
+        <rdar://problem/52762559>
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/media/128kbps-44khz.mp3: Added.
+        * http/tests/media/audio-volume-zero-expected.txt: Added.
+        * http/tests/media/audio-volume-zero.html: Added.
+
+2019-07-22  Truitt Savell  <tsavell@apple.com>
+
+        [ Mojave Debug WK1 ] Layout Test imported/blink/storage/indexeddb/blob-basics-metadata.html is Timing out (200002)
+        https://bugs.webkit.org/show_bug.cgi?id=200002
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2019-07-21  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Checker needs to setError() when a property access node can't commit its base type
+        https://bugs.webkit.org/show_bug.cgi?id=199978
+
+        Reviewed by Dean Jackson.
+
+        * webgpu/whlsl/null-array-property-access-expected.txt: Added.
+        * webgpu/whlsl/null-array-property-access.html: Added.
+
+2019-07-21  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Return the zero-value enum in the enum-from-integer constructor when the integer is not a valid enum value
+        https://bugs.webkit.org/show_bug.cgi?id=199853
+
+        Reviewed by Dean Jackson.
+
+        * webgpu/whlsl/enum-integer-constructor-expected.txt: Added.
+        * webgpu/whlsl/enum-integer-constructor.html: Added.
+
+2019-07-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Fast and complex text codepaths disagree about how to lay out bopomofo with tone marks
+        https://bugs.webkit.org/show_bug.cgi?id=199912
+        <rdar://problem/52182454>
+
+        Reviewed by Simon Fraser.
+
+        * css3/font-feature-font-face-local-expected.html:
+        * css3/font-feature-font-face-local.html:
+        * editing/mac/selection/word-thai-expected.txt:
+        * editing/mac/selection/word-thai.html:
+        * fast/text/international/system-language/composition-expected.txt: Added.
+        * fast/text/international/system-language/composition.html: Added.
+        * platform/ios/fast/text/crash-complex-text-surrogate-expected.txt:
+        * svg/custom/glyph-selection-arabic-forms-expected.txt:
+
+2019-07-20  Andres Gonzalez  <andresg_22@apple.com>
+
+        Add accessibilityInsertText for text insertion in edit fields.
+        https://bugs.webkit.org/show_bug.cgi?id=199973
+
+        Reviewed by Chris Fleizach.
+
+        Tests for inserting a newline in the middle of a text line and checking
+        that the insertion point and text ranges are correct.
+        * accessibility/insert-newline-expected.txt: Added.
+        * accessibility/insert-newline.html: Added.
+        * accessibility/ios-simulator/insert-newline-expected.txt: Added.
+        * accessibility/ios-simulator/insert-newline.html: Added.
+
+2019-07-20  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Make enums work
+        https://bugs.webkit.org/show_bug.cgi?id=199634
+
+        Reviewed by Robin Morisset.
+
+        * webgpu/whlsl/enums-2-expected.txt: Added.
+        * webgpu/whlsl/enums-2.html: Added.
+        * webgpu/whlsl/enums-expected.txt: Added.
+        * webgpu/whlsl/enums.html: Added.
+
+2019-07-19  Jonathan Bedard  <jbedard@apple.com>
+
+        fast/scrolling/ipad/* tests running on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=199969
+        <rdar://problem/52531653>
+
+        Unreviewed test gardening.
+
+        * TestExpectations: Skip fast/scrolling/ipad on all platforms.
+        * platform/ios/TestExpectations: Move to generic TestExpectations.
+
+2019-07-19  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Entering 2FA code on idmsa.apple.com causes unexpected scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=199949
+        <rdar://problem/49944428>
+
+        Reviewed by Tim Horton and Megan Gardner.
+
+        Add a new layout test to verify that moving focus between horizontally adjacent form controls doesn't induce
+        vertical scrolling.
+
+        * fast/forms/ios/no-scrolling-when-moving-focus-between-adjacent-fields-expected.txt: Added.
+        * fast/forms/ios/no-scrolling-when-moving-focus-between-adjacent-fields.html: Added.
+
+2019-07-19  Antoine Quint  <graouts@apple.com>
+
+        Links stop working after long-pressing a link (WK1)
+        https://bugs.webkit.org/show_bug.cgi?id=199952
+        <rdar://problem/52291860>
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/events/touch/ios/click-after-long-press-expected.txt: Added.
+        * fast/events/touch/ios/click-after-long-press.html: Added.
+
+2019-07-19  Alex Christensen  <achristensen@webkit.org>
+
+        Rebase fast/forms/ios/typing-in-input-in-iframe.html after r244141
+        https://bugs.webkit.org/show_bug.cgi?id=199875
+        <rdar://problem/50060561>
+
+        Reviewed by Megan Gardner.
+
+        With r247571 and its justification, we need to rebase another test.
+
+        * fast/forms/ios/typing-in-input-in-iframe-expected.txt:
+        * fast/forms/ios/typing-in-input-in-iframe.html:
+
+2019-07-19  Antoine Quint  <graouts@apple.com>
+
+        Unable to bring up custom media controls on iOS for video.sina.cn
+        https://bugs.webkit.org/show_bug.cgi?id=199889
+        <rdar://problem/51883919>
+
+        Unreviewed test gardening.
+
+        This new test can only run on Internal bots.
+
+        * platform/ios/TestExpectations:
+
+2019-07-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Remove pywebsockets from thirdparty
+        https://bugs.webkit.org/show_bug.cgi?id=199710
+
+        Reviewed by Jonathan Bedard.
+
+        Update two tests that timeout with the new pywebsocket version, because the server doesn't close the connection
+        after handshake.AbortedByUserException(). Simply assume onopen to be called a success in handshake like other
+        tests using handshake.AbortedByUserException() do.
+
+        * http/tests/websocket/tests/hybi/handshake-ok-with-legacy-sec-websocket-response-headers-expected.txt:
+        * http/tests/websocket/tests/hybi/handshake-ok-with-legacy-sec-websocket-response-headers.html:
+        * http/tests/websocket/tests/hybi/handshake-ok-with-legacy-websocket-response-headers-expected.txt:
+        * http/tests/websocket/tests/hybi/handshake-ok-with-legacy-websocket-response-headers.html:
+
+2019-07-18  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [iOS Sim] Multiple quicklook tests are failing
+        https://bugs.webkit.org/show_bug.cgi?id=191711
+
+        Reviewed by Simon Fraser.
+
+        Rebaseline expected results for quicklook layout tests.
+
+        * platform/ios/TestExpectations:
+        * platform/ios/quicklook/powerpoint-expected.txt:
+        * platform/ios/quicklook/powerpoint-legacy-expected.txt:
+        * platform/ios/quicklook/resources/numbers-expected.pdf:
+        * quicklook/resources/keynote-expected.pdf:
+        * quicklook/resources/pages-expected.pdf:
+
+2019-07-18  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] The button and buttons properties are incorrect on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=199910
+        <rdar://problem/52778374>
+
+        Reviewed by Dean Jackson.
+
+        * pointerevents/ios/pointer-event-button-and-buttons-expected.txt: Added.
+        * pointerevents/ios/pointer-event-button-and-buttons-pointer-cancel-expected.txt: Added.
+        * pointerevents/ios/pointer-event-button-and-buttons-pointer-cancel.html: Added.
+        * pointerevents/ios/pointer-event-button-and-buttons.html: Added.
+
+2019-07-18  Alex Christensen  <achristensen@webkit.org>
+
+        Rebase fast/forms/ios/delete-in-input-in-iframe.html after r244141
+        https://bugs.webkit.org/show_bug.cgi?id=199875
+        <rdar://problem/50060561>
+
+        Reviewed by Megan Gardner.
+
+        In r202295, we added an ios-specific quirk to prevent scrolling on iOS because of UIKit/WebKit scrolling discrepancies.
+        In r244141, we changed the scrolling behavior to be more like macOS, and the test was broken.  Since this was an intentional
+        change and the bugs reported in rdar://problem/26805722 (initially fixed by r202295) and rdar://problem/49225507 (fixed by r244141)
+        are both behaving as desired, the intentional change in r244141 should be reflected by new test expectations.
+        We do want typing in an input field in an iframe to scroll as we type.
+
+        * fast/forms/ios/delete-in-input-in-iframe-expected.txt:
+        * fast/forms/ios/delete-in-input-in-iframe.html:
+
+2019-07-18  Youenn Fablet  <youenn@apple.com>
+
+        Make sure to set kCTFontFallbackOptionAttribute to kCTFontFallbackOptionSystem for system fonts
+        https://bugs.webkit.org/show_bug.cgi?id=199769
+        <rdar://problem/49390297>
+
+        Reviewed by Myles C. Maxfield.
+
+        Tests require WTR and recent MacOS, hence why they are disabled elsewhere.
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * fast/text/user-installed-fonts/extended-character-expected.html: Added.
+        * fast/text/user-installed-fonts/extended-character-with-user-font-expected-mismatch.html: Added.
+        * fast/text/user-installed-fonts/extended-character-with-user-font.html: Added.
+        * fast/text/user-installed-fonts/extended-character.html: Added.
+
+2019-07-18  Truitt Savell  <tsavell@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/html/semantics/interactive-elements/the-dialog-element/centering.html
+        https://bugs.webkit.org/show_bug.cgi?id=199839
+
+        Unreviewed test gardening.
+
+        * platform/ios/imported/w3c/web-platform-tests/html/semantics/interactive-elements/the-dialog-element/centering-expected.txt:
+
+2019-07-17  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed test gardening for WinCairo port
+
+        * platform/wincairo-wk1/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2019-07-17  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] The lexer should not choke on a single '/'
+        https://bugs.webkit.org/show_bug.cgi?id=199886
+
+        Reviewed by Myles Maxfield.
+
+        Added a new basic test of division.
+
+        * webgpu/whlsl/float-math.html:
+
+2019-07-17  Antoine Quint  <graouts@apple.com>
+
+        Unable to bring up custom media controls on iOS for video.sina.cn
+        https://bugs.webkit.org/show_bug.cgi?id=199889
+        <rdar://problem/51883919>
+
+        Reviewed by Dean Jackson.
+
+        This test replicates the scenario found on video.sina.cn that caused the issue: a <video> element originally has the "controls"
+        attribute and is not set to autoplay. This means the tap gesture recognizer is created to track a tap for the video to play. Then
+        the "controls" attribute is removed and we dispatch a tap on the video which would previously have *not* caused a "click" event to
+        eventually be dispatched on the <video> element since the tap gesture recognizer would call preventDefault(). With this patch applied,
+        we get the "click" event because the tap gesture recognizer is disabled once the controls are no longer visible.
+
+        * media/modern-media-controls/media-controller/ios/media-controller-allows-click-over-video-with-no-controls-expected.txt: Added.
+        * media/modern-media-controls/media-controller/ios/media-controller-allows-click-over-video-with-no-controls.html: Added.
+
+2019-07-17  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Avoid lots of compositing backing store for offscreen position:fixed descendants
+        https://bugs.webkit.org/show_bug.cgi?id=199819
+        rdar://problem/51977416
+
+        Reviewed by Zalan Bujtas.
+
+        * compositing/layer-creation/fixed-position-change-out-of-view-in-view.html:
+        * compositing/layer-creation/fixed-position-descendants-out-of-view-expected.txt: Added.
+        * compositing/layer-creation/fixed-position-descendants-out-of-view.html: Added.
+        * compositing/layer-creation/fixed-position-out-of-view.html:
+        * platform/ios-wk2/fast/scrolling/ios/reconcile-layer-position-recursive-expected.txt: Added.
+
+2019-07-17  Alex Christensen  <achristensen@webkit.org>
+
+        Add a runtime-disabled dialog element skeleton
+        https://bugs.webkit.org/show_bug.cgi?id=199839
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline WK2 test expectations.
+
+        * platform/ios-wk2/imported/w3c/web-platform-tests/custom-elements/builtin-coverage-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/dom/nodes/Node-cloneNode-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/semantics/interfaces-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/custom-elements/builtin-coverage-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/dom/nodes/Node-cloneNode-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/html/semantics/interfaces-expected.txt:
+
+2019-07-17  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=199878
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/compositing/overflow/textarea-scroll-touch-expected.txt:
+        * platform/gtk/fast/events/shadow-event-path-2-expected.txt:
+        * platform/gtk/fast/events/shadow-event-path-expected.txt:
+        * platform/wpe/TestExpectations:
+
+2019-07-17  Olivier Blin  <olivier.blin@softathome.com>
+
+        Web Inspector: application/xml content not shown
+        https://bugs.webkit.org/show_bug.cgi?id=199861
+
+        Reviewed by Devin Rousso.
+
+        * inspector/unit-tests/mimetype-utilities-expected.txt:
+        * inspector/unit-tests/mimetype-utilities.html:
+        Test for shouldTreatMIMETypeAsText.
+
+2019-07-17  Daniel Bates  <dabates@apple.com>
+
+        Typing into a cell in a Google Sheet lags behind by one character
+        https://bugs.webkit.org/show_bug.cgi?id=199587
+        <rdar://problem/51616845>
+
+        Reviewed by Brent Fulgham.
+
+        Add a test that enables the quirk and ensures that the DOM is up-to-date on expiration of a
+        zero timer scheduled from keydown, keypress, keyup, and input.
+
+        * fast/events/ios/dom-update-on-keydown-quirk-expected.txt: Added.
+        * fast/events/ios/dom-update-on-keydown-quirk.html: Added.
+
+2019-07-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Move WHLSL tests to their own folder
+        https://bugs.webkit.org/show_bug.cgi?id=199838
+
+        Reviewed by Robin Morisset.
+
+        webgpu/whlsl-foo.html => webgpu/whlsl/foo.html
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * webgpu/msl-harness-test.html:
+        * webgpu/whlsl-arbitrary-vertex-attribute-locations-expected.html: Removed.
+        * webgpu/whlsl-buffer-fragment-expected.html: Removed.
+        * webgpu/whlsl-buffer-vertex-expected.html: Removed.
+        * webgpu/whlsl-dereference-pointer-should-type-check-expected.html: Removed.
+        * webgpu/whlsl-do-while-loop-continue-expected.html: Removed.
+        * webgpu/whlsl-do-while-loop-expected.html: Removed.
+        * webgpu/whlsl-dont-crash-parsing-enum-expected.html: Removed.
+        * webgpu/whlsl-dot-expressions-expected.html: Removed.
+        * webgpu/whlsl-ensure-proper-variable-lifetime-2-expected.html: Removed.
+        * webgpu/whlsl-ensure-proper-variable-lifetime-3-expected.html: Removed.
+        * webgpu/whlsl-ensure-proper-variable-lifetime-expected.html: Removed.
+        * webgpu/whlsl-expected.html: Removed.
+        * webgpu/whlsl-loops-expected.html: Removed.
+        * webgpu/whlsl-nested-dot-expression-rvalue-expected.html: Removed.
+        * webgpu/whlsl-return-local-variable-expected.html: Removed.
+        * webgpu/whlsl-store-to-property-updates-properly-expected.html: Removed.
+        * webgpu/whlsl-textures-load-expected.html: Removed.
+        * webgpu/whlsl-textures-sample-expected.html: Removed.
+        * webgpu/whlsl-while-loop-break-expected.html: Removed.
+        * webgpu/whlsl-while-loop-continue-expected.html: Removed.
+        * webgpu/whlsl-zero-initialize-values-2-expected.html: Removed.
+        * webgpu/whlsl-zero-initialize-values-expected.html: Removed.
+        * webgpu/whlsl/arbitrary-vertex-attribute-locations-expected.html: Copied from LayoutTests/webgpu/propertyresolver/ander-abstract-lvalue-expected.html.
+        * webgpu/whlsl/arbitrary-vertex-attribute-locations.html: Renamed from LayoutTests/webgpu/whlsl-arbitrary-vertex-attribute-locations.html.
+        * webgpu/whlsl/argument-evaluation-order-expected.txt: Renamed from LayoutTests/webgpu/whlsl-argument-evaluation-order-expected.txt.
+        * webgpu/whlsl/argument-evaluation-order.html: Renamed from LayoutTests/webgpu/whlsl-argument-evaluation-order.html.
+        * webgpu/whlsl/array-length-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-array-length-spec-tests-expected.txt.
+        * webgpu/whlsl/array-length-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-array-length-spec-tests.html.
+        * webgpu/whlsl/array-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-array-spec-tests-expected.txt.
+        * webgpu/whlsl/array-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-array-spec-tests.html.
+        * webgpu/whlsl/bad-add-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bad-add-expected.txt.
+        * webgpu/whlsl/bad-add.html: Renamed from LayoutTests/webgpu/whlsl-bad-add.html.
+        * webgpu/whlsl/bad-ander-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bad-ander-expected.txt.
+        * webgpu/whlsl/bad-ander.html: Renamed from LayoutTests/webgpu/whlsl-bad-ander.html.
+        * webgpu/whlsl/bad-literals-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bad-literals-expected.txt.
+        * webgpu/whlsl/bad-literals.html: Renamed from LayoutTests/webgpu/whlsl-bad-literals.html.
+        * webgpu/whlsl/bitwise-bool-ops-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bitwise-bool-ops-expected.txt.
+        * webgpu/whlsl/bitwise-bool-ops.html: Renamed from LayoutTests/webgpu/whlsl-bitwise-bool-ops.html.
+        * webgpu/whlsl/bools-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bools-expected.txt.
+        * webgpu/whlsl/bools.html: Renamed from LayoutTests/webgpu/whlsl-bools.html.
+        * webgpu/whlsl/buffer-fragment-expected.html: Copied from LayoutTests/webgpu/propertyresolver/ander-expected.html.
+        * webgpu/whlsl/buffer-fragment.html: Renamed from LayoutTests/webgpu/whlsl-buffer-fragment.html.
+        * webgpu/whlsl/buffer-length-expected.txt: Renamed from LayoutTests/webgpu/whlsl-buffer-length-expected.txt.
+        * webgpu/whlsl/buffer-length.html: Renamed from LayoutTests/webgpu/whlsl-buffer-length.html.
+        * webgpu/whlsl/buffer-vertex-expected.html: Copied from LayoutTests/webgpu/propertyresolver/ander-lvalue-3-levels-expected.html.
+        * webgpu/whlsl/buffer-vertex.html: Renamed from LayoutTests/webgpu/whlsl-buffer-vertex.html.
+        * webgpu/whlsl/builtin-vectors-2-expected.txt: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors-2-expected.txt.
+        * webgpu/whlsl/builtin-vectors-2.html: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors-2.html.
+        * webgpu/whlsl/builtin-vectors-expected.txt: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors-expected.txt.
+        * webgpu/whlsl/builtin-vectors.html: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors.html.
+        * webgpu/whlsl/casts-expected.txt: Renamed from LayoutTests/webgpu/whlsl-casts-expected.txt.
+        * webgpu/whlsl/casts.html: Renamed from LayoutTests/webgpu/whlsl-casts.html.
+        * webgpu/whlsl/checker-should-set-type-of-read-modify-write-variables-expected.txt: Renamed from LayoutTests/webgpu/whlsl-checker-should-set-type-of-read-modify-write-variables-expected.txt.
+        * webgpu/whlsl/checker-should-set-type-of-read-modify-write-variables.html: Renamed from LayoutTests/webgpu/whlsl-checker-should-set-type-of-read-modify-write-variables.html.
+        * webgpu/whlsl/comment-parsing-expected.txt: Renamed from LayoutTests/webgpu/whlsl-comment-parsing-expected.txt.
+        * webgpu/whlsl/comment-parsing.html: Renamed from LayoutTests/webgpu/whlsl-comment-parsing.html.
+        * webgpu/whlsl/compute-expected.txt: Renamed from LayoutTests/webgpu/whlsl-compute-expected.txt.
+        * webgpu/whlsl/compute.html: Renamed from LayoutTests/webgpu/whlsl-compute.html.
+        * webgpu/whlsl/copy-expected.txt: Renamed from LayoutTests/webgpu/whlsl-copy-expected.txt.
+        * webgpu/whlsl/copy.html: Renamed from LayoutTests/webgpu/whlsl-copy.html.
+        * webgpu/whlsl/dereference-ordering-expected.txt: Renamed from LayoutTests/webgpu/whlsl-dereference-ordering-expected.txt.
+        * webgpu/whlsl/dereference-ordering.html: Renamed from LayoutTests/webgpu/whlsl-dereference-ordering.html.
+        * webgpu/whlsl/dereference-pointer-should-type-check-expected.html: Copied from LayoutTests/webgpu/propertyresolver/ander-lvalue-expected.html.
+        * webgpu/whlsl/dereference-pointer-should-type-check.html: Renamed from LayoutTests/webgpu/whlsl-dereference-pointer-should-type-check.html.
+        * webgpu/whlsl/do-while-loop-break-expected.html: Copied from LayoutTests/webgpu/whlsl-do-while-loop-break-expected.html.
+        * webgpu/whlsl/do-while-loop-break.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-break.html.
+        * webgpu/whlsl/do-while-loop-continue-expected.html: Copied from LayoutTests/webgpu/propertyresolver/getter-expected.html.
+        * webgpu/whlsl/do-while-loop-continue.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-continue.html.
+        * webgpu/whlsl/do-while-loop-expected.html: Copied from LayoutTests/webgpu/propertyresolver/indexer-ander-abstract-lvalue-expected.html.
+        * webgpu/whlsl/do-while-loop.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop.html.
+        * webgpu/whlsl/dont-crash-parsing-enum-expected.html: Copied from LayoutTests/webgpu/propertyresolver/indexer-ander-expected.html.
+        * webgpu/whlsl/dont-crash-parsing-enum.html: Renamed from LayoutTests/webgpu/whlsl-dont-crash-parsing-enum.html.
+        * webgpu/whlsl/dot-expressions-expected.html: Copied from LayoutTests/webgpu/propertyresolver/indexer-ander-lvalue-3-levels-expected.html.
+        * webgpu/whlsl/dot-expressions.html: Renamed from LayoutTests/webgpu/whlsl-dot-expressions.html.
+        * webgpu/whlsl/double-not-expected.txt: Renamed from LayoutTests/webgpu/whlsl-double-not-expected.txt.
+        * webgpu/whlsl/double-not.html: Renamed from LayoutTests/webgpu/whlsl-double-not.html.
+        * webgpu/whlsl/duplicate-types-should-not-produce-duplicate-ctors-expected.txt: Renamed from LayoutTests/webgpu/whlsl-duplicate-types-should-not-produce-duplicate-ctors-expected.txt.
+        * webgpu/whlsl/duplicate-types-should-not-produce-duplicate-ctors.html: Renamed from LayoutTests/webgpu/whlsl-duplicate-types-should-not-produce-duplicate-ctors.html.
+        * webgpu/whlsl/duplicates-expected.txt: Renamed from LayoutTests/webgpu/whlsl-duplicates-expected.txt.
+        * webgpu/whlsl/duplicates.html: Renamed from LayoutTests/webgpu/whlsl-duplicates.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-2-expected.html: Copied from LayoutTests/webgpu/propertyresolver/indexer-ander-lvalue-expected.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-2.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-2.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-3-expected.html: Copied from LayoutTests/webgpu/propertyresolver/indexer-getter-expected.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-3.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-3.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-expected.html: Copied from LayoutTests/webgpu/propertyresolver/indexer-setter-abstract-lvalue-3-levels-expected.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime.html.
+        * webgpu/whlsl/enum-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-enum-spec-tests-expected.txt.
+        * webgpu/whlsl/enum-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-enum-spec-tests.html.
+        * webgpu/whlsl/equality-expected.txt: Renamed from LayoutTests/webgpu/whlsl-equality-expected.txt.
+        * webgpu/whlsl/equality.html: Renamed from LayoutTests/webgpu/whlsl-equality.html.
+        * webgpu/whlsl/float-math-expected.txt: Renamed from LayoutTests/webgpu/whlsl-float-math-expected.txt.
+        * webgpu/whlsl/float-math.html: Renamed from LayoutTests/webgpu/whlsl-float-math.html.
+        * webgpu/whlsl/getter-setter-type-expected.txt: Renamed from LayoutTests/webgpu/whlsl-getter-setter-type-expected.txt.
+        * webgpu/whlsl/getter-setter-type.html: Renamed from LayoutTests/webgpu/whlsl-getter-setter-type.html.
+        * webgpu/whlsl/huge-array-expected.txt: Renamed from LayoutTests/webgpu/whlsl-huge-array-expected.txt.
+        * webgpu/whlsl/huge-array.html: Renamed from LayoutTests/webgpu/whlsl-huge-array.html.
+        * webgpu/whlsl/if-statement-expected.txt: Renamed from LayoutTests/webgpu/whlsl-if-statement-expected.txt.
+        * webgpu/whlsl/if-statement.html: Renamed from LayoutTests/webgpu/whlsl-if-statement.html.
+        * webgpu/whlsl/increment-decrement-expected.txt: Renamed from LayoutTests/webgpu/whlsl-increment-decrement-expected.txt.
+        * webgpu/whlsl/increment-decrement.html: Renamed from LayoutTests/webgpu/whlsl-increment-decrement.html.
+        * webgpu/whlsl/index-ander-expected.txt: Renamed from LayoutTests/webgpu/whlsl-index-ander-expected.txt.
+        * webgpu/whlsl/index-ander.html: Renamed from LayoutTests/webgpu/whlsl-index-ander.html.
+        * webgpu/whlsl/index-getter-setter-expected.txt: Renamed from LayoutTests/webgpu/whlsl-index-getter-setter-expected.txt.
+        * webgpu/whlsl/index-getter-setter.html: Renamed from LayoutTests/webgpu/whlsl-index-getter-setter.html.
+        * webgpu/whlsl/index-setter-getter-expected.txt: Renamed from LayoutTests/webgpu/whlsl-index-setter-getter-expected.txt.
+        * webgpu/whlsl/index-setter-getter.html: Renamed from LayoutTests/webgpu/whlsl-index-setter-getter.html.
+        * webgpu/whlsl/int-bit-math-expected.txt: Renamed from LayoutTests/webgpu/whlsl-int-bit-math-expected.txt.
+        * webgpu/whlsl/int-bit-math.html: Renamed from LayoutTests/webgpu/whlsl-int-bit-math.html.
+        * webgpu/whlsl/int-literal-compare-expected.txt: Renamed from LayoutTests/webgpu/whlsl-int-literal-compare-expected.txt.
+        * webgpu/whlsl/int-literal-compare.html: Renamed from LayoutTests/webgpu/whlsl-int-literal-compare.html.
+        * webgpu/whlsl/js/test-harness.js: Renamed from LayoutTests/webgpu/js/whlsl-test-harness.js.
+        (isScalar):
+        (convertTypeToArrayType):
+        (convertTypeToWHLSLType):
+        (whlslArgumentType):
+        (convertToWHLSLOutputType):
+        (convertToWHLSLInputType):
+        (WebGPUUnsupportedError):
+        (Data):
+        (Data.prototype.async.getArrayBuffer):
+        (Data.prototype.get type):
+        (Data.prototype.get isBuffer):
+        (Data.prototype.get buffer):
+        (Data.prototype.get byteLength):
+        (Harness):
+        (Harness.prototype.async.requestDevice):
+        (Harness.prototype.set isWHLSL):
+        (Harness.prototype.get isWHLSL):
+        (Harness.prototype.async.callTypedFunction):
+        (Harness.prototype.callVoidFunction):
+        (Harness.prototype.async.checkCompileFail):
+        (Harness.prototype.get device):
+        (Harness.prototype._clearResults):
+        (Harness.prototype._setUpArguments):
+        (Harness.prototype.async._callFunction):
+        (makeBool):
+        (makeInt):
+        (makeUchar):
+        (makeUint):
+        (makeFloat):
+        (makeFloat4):
+        (makeFloat4x4):
+        (processArrays):
+        (async.callBoolFunction):
+        (async.callIntFunction):
+        (async.callUcharFunction):
+        (async.callUintFunction):
+        (async.callFloatFunction):
+        (async.callFloat4Function):
+        (async.callFloat4x4Function):
+        (async.checkFail):
+        (callVoidFunction):
+        (const.webGPUPromiseTest):
+        * webgpu/whlsl/logical-negation-expected.txt: Renamed from LayoutTests/webgpu/whlsl-logical-negation-expected.txt.
+        * webgpu/whlsl/logical-negation.html: Renamed from LayoutTests/webgpu/whlsl-logical-negation.html.
+        * webgpu/whlsl/loops-break-expected.html: Renamed from LayoutTests/webgpu/whlsl-loops-break-expected.html.
+        * webgpu/whlsl/loops-break.html: Renamed from LayoutTests/webgpu/whlsl-loops-break.html.
+        * webgpu/whlsl/loops-continue-expected.html: Copied from LayoutTests/webgpu/whlsl-nested-loop-expected.html.
+        * webgpu/whlsl/loops-continue.html: Renamed from LayoutTests/webgpu/whlsl-loops-continue.html.
+        * webgpu/whlsl/loops-expected.html: Copied from LayoutTests/webgpu/propertyresolver/indexer-setter-abstract-lvalue-expected.html.
+        * webgpu/whlsl/loops-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-loops-spec-tests-expected.txt.
+        * webgpu/whlsl/loops-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-loops-spec-tests.html.
+        * webgpu/whlsl/loops.html: Renamed from LayoutTests/webgpu/whlsl-loops.html.
+        * webgpu/whlsl/lots-of-local-variables-expected.txt: Renamed from LayoutTests/webgpu/whlsl-lots-of-local-variables-expected.txt.
+        * webgpu/whlsl/lots-of-local-variables.html: Renamed from LayoutTests/webgpu/whlsl-lots-of-local-variables.html.
+        * webgpu/whlsl/lvalues-expected.txt: Renamed from LayoutTests/webgpu/whlsl-lvalues-expected.txt.
+        * webgpu/whlsl/lvalues.html: Renamed from LayoutTests/webgpu/whlsl-lvalues.html.
+        * webgpu/whlsl/make-array-ref-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-make-array-ref-spec-tests-expected.txt.
+        * webgpu/whlsl/make-array-ref-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-make-array-ref-spec-tests.html.
+        * webgpu/whlsl/make-array-reference-expected.txt: Renamed from LayoutTests/webgpu/whlsl-make-array-reference-expected.txt.
+        * webgpu/whlsl/make-array-reference.html: Renamed from LayoutTests/webgpu/whlsl-make-array-reference.html.
+        * webgpu/whlsl/matrices-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrices-spec-tests-expected.txt.
+        * webgpu/whlsl/matrices-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-matrices-spec-tests.html.
+        * webgpu/whlsl/matrix-2-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrix-2-expected.txt.
+        * webgpu/whlsl/matrix-2.html: Renamed from LayoutTests/webgpu/whlsl-matrix-2.html.
+        * webgpu/whlsl/matrix-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrix-expected.txt.
+        * webgpu/whlsl/matrix-memory-layout-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrix-memory-layout-expected.txt.
+        * webgpu/whlsl/matrix-memory-layout.html: Renamed from LayoutTests/webgpu/whlsl-matrix-memory-layout.html.
+        * webgpu/whlsl/matrix.html: Renamed from LayoutTests/webgpu/whlsl-matrix.html.
+        * webgpu/whlsl/nested-dot-expression-rvalue-expected.html: Copied from LayoutTests/webgpu/propertyresolver/indexer-setter-expected.html.
+        * webgpu/whlsl/nested-dot-expression-rvalue.html: Renamed from LayoutTests/webgpu/whlsl-nested-dot-expression-rvalue.html.
+        * webgpu/whlsl/nested-loop-expected.html: Copied from LayoutTests/webgpu/whlsl-do-while-loop-break-expected.html.
+        * webgpu/whlsl/nested-loop.html: Renamed from LayoutTests/webgpu/whlsl-nested-loop.html.
+        * webgpu/whlsl/null-arg-expected.txt: Renamed from LayoutTests/webgpu/whlsl-null-arg-expected.txt.
+        * webgpu/whlsl/null-arg.html: Renamed from LayoutTests/webgpu/whlsl-null-arg.html.
+        * webgpu/whlsl/null-array-ref.html: Renamed from LayoutTests/webgpu/whlsl-null-array-ref.html.
+        * webgpu/whlsl/null-dereference-expected.txt: Renamed from LayoutTests/webgpu/whlsl-null-dereference-expected.txt.
+        * webgpu/whlsl/null-dereference.html: Renamed from LayoutTests/webgpu/whlsl-null-dereference.html.
+        * webgpu/whlsl/oob-access-expected.txt: Renamed from LayoutTests/webgpu/whlsl-oob-access-expected.txt.
+        * webgpu/whlsl/oob-access.html: Renamed from LayoutTests/webgpu/whlsl-oob-access.html.
+        * webgpu/whlsl/operator-overload-expected.txt: Renamed from LayoutTests/webgpu/whlsl-operator-overload-expected.txt.
+        * webgpu/whlsl/operator-overload.html: Renamed from LayoutTests/webgpu/whlsl-operator-overload.html.
+        * webgpu/whlsl/overload-expected.txt: Renamed from LayoutTests/webgpu/whlsl-overload-expected.txt.
+        * webgpu/whlsl/overload.html: Renamed from LayoutTests/webgpu/whlsl-overload.html.
+        * webgpu/whlsl/override-subscript-expected.txt: Renamed from LayoutTests/webgpu/whlsl-override-subscript-expected.txt.
+        * webgpu/whlsl/override-subscript.html: Renamed from LayoutTests/webgpu/whlsl-override-subscript.html.
+        * webgpu/whlsl/plus-equals-expected.txt: Renamed from LayoutTests/webgpu/whlsl-plus-equals-expected.txt.
+        * webgpu/whlsl/plus-equals.html: Renamed from LayoutTests/webgpu/whlsl-plus-equals.html.
+        * webgpu/whlsl/pointer-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-pointer-spec-tests-expected.txt.
+        * webgpu/whlsl/pointer-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-pointer-spec-tests.html.
+        * webgpu/whlsl/postfix-prefix-expected.txt: Renamed from LayoutTests/webgpu/whlsl-postfix-prefix-expected.txt.
+        * webgpu/whlsl/postfix-prefix.html: Renamed from LayoutTests/webgpu/whlsl-postfix-prefix.html.
+        * webgpu/whlsl/propertyresolver/ander-abstract-lvalue-expected.html: Copied from LayoutTests/webgpu/propertyresolver/ander-abstract-lvalue-expected.html.
+        * webgpu/whlsl/propertyresolver/ander-abstract-lvalue.html: Renamed from LayoutTests/webgpu/propertyresolver/ander-abstract-lvalue.html.
+        * webgpu/whlsl/propertyresolver/ander-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/ander-expected.html.
+        * webgpu/whlsl/propertyresolver/ander-lvalue-3-levels-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/ander-lvalue-3-levels-expected.html.
+        * webgpu/whlsl/propertyresolver/ander-lvalue-3-levels.html: Renamed from LayoutTests/webgpu/propertyresolver/ander-lvalue-3-levels.html.
+        * webgpu/whlsl/propertyresolver/ander-lvalue-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/ander-lvalue-expected.html.
+        * webgpu/whlsl/propertyresolver/ander-lvalue.html: Renamed from LayoutTests/webgpu/propertyresolver/ander-lvalue.html.
+        * webgpu/whlsl/propertyresolver/ander.html: Renamed from LayoutTests/webgpu/propertyresolver/ander.html.
+        * webgpu/whlsl/propertyresolver/getter-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/getter-expected.html.
+        * webgpu/whlsl/propertyresolver/getter.html: Renamed from LayoutTests/webgpu/propertyresolver/getter.html.
+        * webgpu/whlsl/propertyresolver/indexer-ander-abstract-lvalue-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-ander-abstract-lvalue-expected.html.
+        * webgpu/whlsl/propertyresolver/indexer-ander-abstract-lvalue.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-ander-abstract-lvalue.html.
+        * webgpu/whlsl/propertyresolver/indexer-ander-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-ander-expected.html.
+        * webgpu/whlsl/propertyresolver/indexer-ander-lvalue-3-levels-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-ander-lvalue-3-levels-expected.html.
+        * webgpu/whlsl/propertyresolver/indexer-ander-lvalue-3-levels.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-ander-lvalue-3-levels.html.
+        * webgpu/whlsl/propertyresolver/indexer-ander-lvalue-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-ander-lvalue-expected.html.
+        * webgpu/whlsl/propertyresolver/indexer-ander-lvalue.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-ander-lvalue.html.
+        * webgpu/whlsl/propertyresolver/indexer-ander.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-ander.html.
+        * webgpu/whlsl/propertyresolver/indexer-getter-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-getter-expected.html.
+        * webgpu/whlsl/propertyresolver/indexer-getter.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-getter.html.
+        * webgpu/whlsl/propertyresolver/indexer-setter-abstract-lvalue-3-levels-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-setter-abstract-lvalue-3-levels-expected.html.
+        * webgpu/whlsl/propertyresolver/indexer-setter-abstract-lvalue-3-levels.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-setter-abstract-lvalue-3-levels.html.
+        * webgpu/whlsl/propertyresolver/indexer-setter-abstract-lvalue-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-setter-abstract-lvalue-expected.html.
+        * webgpu/whlsl/propertyresolver/indexer-setter-abstract-lvalue.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-setter-abstract-lvalue.html.
+        * webgpu/whlsl/propertyresolver/indexer-setter-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-setter-expected.html.
+        * webgpu/whlsl/propertyresolver/indexer-setter-lvalue-expected.html: Copied from LayoutTests/webgpu/propertyresolver/indexer-setter-lvalue-expected.html.
+        * webgpu/whlsl/propertyresolver/indexer-setter-lvalue.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-setter-lvalue.html.
+        * webgpu/whlsl/propertyresolver/indexer-setter.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-setter.html.
+        * webgpu/whlsl/propertyresolver/setter-abstract-lvalue-3-levels-expected.html: Copied from LayoutTests/webgpu/propertyresolver/setter-abstract-lvalue-3-levels-expected.html.
+        * webgpu/whlsl/propertyresolver/setter-abstract-lvalue-3-levels.html: Renamed from LayoutTests/webgpu/propertyresolver/setter-abstract-lvalue-3-levels.html.
+        * webgpu/whlsl/propertyresolver/setter-abstract-lvalue-expected.html: Copied from LayoutTests/webgpu/propertyresolver/setter-abstract-lvalue-expected.html.
+        * webgpu/whlsl/propertyresolver/setter-abstract-lvalue.html: Renamed from LayoutTests/webgpu/propertyresolver/setter-abstract-lvalue.html.
+        * webgpu/whlsl/propertyresolver/setter-lvalue-expected.html: Copied from LayoutTests/webgpu/propertyresolver/setter-lvalue-expected.html.
+        * webgpu/whlsl/propertyresolver/setter-lvalue.html: Renamed from LayoutTests/webgpu/propertyresolver/setter-lvalue.html.
+        * webgpu/whlsl/read-modify-write-expected.txt: Renamed from LayoutTests/webgpu/whlsl-read-modify-write-expected.txt.
+        * webgpu/whlsl/read-modify-write-high-zombies-expected.txt: Renamed from LayoutTests/webgpu/whlsl-read-modify-write-high-zombies-expected.txt.
+        * webgpu/whlsl/read-modify-write-high-zombies.html: Renamed from LayoutTests/webgpu/whlsl-read-modify-write-high-zombies.html.
+        * webgpu/whlsl/read-modify-write.html: Renamed from LayoutTests/webgpu/whlsl-read-modify-write.html.
+        * webgpu/whlsl/recursive-structs-expected.txt: Renamed from LayoutTests/webgpu/whlsl-recursive-structs-expected.txt.
+        * webgpu/whlsl/recursive-structs.html: Renamed from LayoutTests/webgpu/whlsl-recursive-structs.html.
+        * webgpu/whlsl/return-local-variable-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/indexer-setter-lvalue-expected.html.
+        * webgpu/whlsl/return-local-variable.html: Renamed from LayoutTests/webgpu/whlsl-return-local-variable.html.
+        * webgpu/whlsl/return-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-return-spec-tests-expected.txt.
+        * webgpu/whlsl/return-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-return-spec-tests.html.
+        * webgpu/whlsl/setter-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-setter-spec-tests-expected.txt.
+        * webgpu/whlsl/setter-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-setter-spec-tests.html.
+        * webgpu/whlsl/simple-arrays-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-arrays-expected.txt.
+        * webgpu/whlsl/simple-arrays.html: Renamed from LayoutTests/webgpu/whlsl-simple-arrays.html.
+        * webgpu/whlsl/simple-getter-setter-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-getter-setter-expected.txt.
+        * webgpu/whlsl/simple-getter-setter.html: Renamed from LayoutTests/webgpu/whlsl-simple-getter-setter.html.
+        * webgpu/whlsl/simple-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-tests-expected.txt.
+        * webgpu/whlsl/simple-tests.html: Renamed from LayoutTests/webgpu/whlsl-simple-tests.html.
+        * webgpu/whlsl/simple-while-loop-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-while-loop-expected.txt.
+        * webgpu/whlsl/simple-while-loop.html: Renamed from LayoutTests/webgpu/whlsl-simple-while-loop.html.
+        * webgpu/whlsl/store-null-expected.txt: Renamed from LayoutTests/webgpu/whlsl-store-null-expected.txt.
+        * webgpu/whlsl/store-null.html: Renamed from LayoutTests/webgpu/whlsl-store-null.html.
+        * webgpu/whlsl/store-to-property-updates-properly-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/setter-abstract-lvalue-3-levels-expected.html.
+        * webgpu/whlsl/store-to-property-updates-properly.html: Renamed from LayoutTests/webgpu/whlsl-store-to-property-updates-properly.html.
+        * webgpu/whlsl/struct-expected.txt: Renamed from LayoutTests/webgpu/whlsl-struct-expected.txt.
+        * webgpu/whlsl/struct.html: Renamed from LayoutTests/webgpu/whlsl-struct.html.
+        * webgpu/whlsl/switch-expected.txt: Renamed from LayoutTests/webgpu/whlsl-switch-expected.txt.
+        * webgpu/whlsl/switch.html: Renamed from LayoutTests/webgpu/whlsl-switch.html.
+        * webgpu/whlsl/ternary-spec-test-expected.txt: Renamed from LayoutTests/webgpu/whlsl-ternary-spec-test-expected.txt.
+        * webgpu/whlsl/ternary-spec-test.html: Renamed from LayoutTests/webgpu/whlsl-ternary-spec-test.html.
+        * webgpu/whlsl/test-harness-test-expected.txt: Renamed from LayoutTests/webgpu/whlsl-test-harness-test-expected.txt.
+        * webgpu/whlsl/test-harness-test.html: Renamed from LayoutTests/webgpu/whlsl-test-harness-test.html.
+        * webgpu/whlsl/textures-getdimensions-expected.txt: Renamed from LayoutTests/webgpu/whlsl-textures-getdimensions-expected.txt.
+        * webgpu/whlsl/textures-getdimensions.html: Renamed from LayoutTests/webgpu/whlsl-textures-getdimensions.html.
+        * webgpu/whlsl/textures-load-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/setter-abstract-lvalue-expected.html.
+        * webgpu/whlsl/textures-load.html: Renamed from LayoutTests/webgpu/whlsl-textures-load.html.
+        * webgpu/whlsl/textures-sample-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/setter-lvalue-expected.html.
+        * webgpu/whlsl/textures-sample.html: Renamed from LayoutTests/webgpu/whlsl-textures-sample.html.
+        * webgpu/whlsl/two-dimensional-array-expected.txt: Renamed from LayoutTests/webgpu/whlsl-two-dimensional-array-expected.txt.
+        * webgpu/whlsl/two-dimensional-array.html: Renamed from LayoutTests/webgpu/whlsl-two-dimensional-array.html.
+        * webgpu/whlsl/type-mismatch-expected.txt: Renamed from LayoutTests/webgpu/whlsl-type-mismatch-expected.txt.
+        * webgpu/whlsl/type-mismatch.html: Renamed from LayoutTests/webgpu/whlsl-type-mismatch.html.
+        * webgpu/whlsl/uint-bitwise-expected.txt: Renamed from LayoutTests/webgpu/whlsl-uint-bitwise-expected.txt.
+        * webgpu/whlsl/uint-bitwise.html: Renamed from LayoutTests/webgpu/whlsl-uint-bitwise.html.
+        * webgpu/whlsl/use-undefined-variable-2-expected.txt: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable-2-expected.txt.
+        * webgpu/whlsl/use-undefined-variable-2.html: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable-2.html.
+        * webgpu/whlsl/use-undefined-variable-expected.txt: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable-expected.txt.
+        * webgpu/whlsl/use-undefined-variable.html: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable.html.
+        * webgpu/whlsl/variable-shadowing-expected.txt: Renamed from LayoutTests/webgpu/whlsl-variable-shadowing-expected.txt.
+        * webgpu/whlsl/variable-shadowing.html: Renamed from LayoutTests/webgpu/whlsl-variable-shadowing.html.
+        * webgpu/whlsl/vector-syntax-expected.txt: Renamed from LayoutTests/webgpu/whlsl-vector-syntax-expected.txt.
+        * webgpu/whlsl/vector-syntax.html: Renamed from LayoutTests/webgpu/whlsl-vector-syntax.html.
+        * webgpu/whlsl/while-loop-break-expected.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-break-expected.html.
+        * webgpu/whlsl/while-loop-break.html: Renamed from LayoutTests/webgpu/whlsl-while-loop-break.html.
+        * webgpu/whlsl/while-loop-continue-expected.html: Copied from LayoutTests/webgpu/propertyresolver/ander-abstract-lvalue-expected.html.
+        * webgpu/whlsl/while-loop-continue.html: Renamed from LayoutTests/webgpu/whlsl-while-loop-continue.html.
+        * webgpu/whlsl/whlsl-expected.html: Renamed from LayoutTests/webgpu/propertyresolver/ander-abstract-lvalue-expected.html.
+        * webgpu/whlsl/whlsl.html: Renamed from LayoutTests/webgpu/whlsl.html.
+        * webgpu/whlsl/wrong-argument-length-expected.txt: Renamed from LayoutTests/webgpu/whlsl-wrong-argument-length-expected.txt.
+        * webgpu/whlsl/wrong-argument-length.html: Renamed from LayoutTests/webgpu/whlsl-wrong-argument-length.html.
+        * webgpu/whlsl/wrong-types-expected.txt: Renamed from LayoutTests/webgpu/whlsl-wrong-types-expected.txt.
+        * webgpu/whlsl/wrong-types.html: Renamed from LayoutTests/webgpu/whlsl-wrong-types.html.
+        * webgpu/whlsl/zero-initialize-values-2-expected.html: Renamed from LayoutTests/webgpu/whlsl-nested-loop-expected.html.
+        * webgpu/whlsl/zero-initialize-values-2.html: Renamed from LayoutTests/webgpu/whlsl-zero-initialize-values-2.html.
+        * webgpu/whlsl/zero-initialize-values-expected.html: Renamed from LayoutTests/webgpu/whlsl-loops-continue-expected.html.
+        * webgpu/whlsl/zero-initialize-values.html: Renamed from LayoutTests/webgpu/whlsl-zero-initialize-values.html.
+
+2019-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r247501.
+
+        Introduced 100 failures on Mojave WK2.
+
+        Reverted changeset:
+
+        "[WHLSL] Move WHLSL tests to their own folder"
+        https://bugs.webkit.org/show_bug.cgi?id=199838
+        https://trac.webkit.org/changeset/247501
+
+2019-07-17  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed test gardening for WinCairo port
+
+        * platform/wincairo-wk1/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2019-07-17  Rob Buis  <rbuis@igalia.com>
+
+        Add referrerpolicy attribute support for <script> elements
+        https://bugs.webkit.org/show_bug.cgi?id=185550
+
+        Reviewed by Youenn Fablet.
+
+        Add tests for scripts with various referrerpolicy attribute values.
+
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/same-origin.html: Added.
+        * http/tests/referrer-policy-script/no-referrer/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/no-referrer/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/no-referrer/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer/same-origin.html: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-script/origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin/same-origin.html: Added.
+        * http/tests/referrer-policy-script/same-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/same-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/same-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/same-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/same-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/same-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-script/strict-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/strict-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/strict-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-script/unsafe-url/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/unsafe-url/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/unsafe-url/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/unsafe-url/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/unsafe-url/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/unsafe-url/same-origin.html: Added.
+        * http/tests/referrer-policy/resources/script.php: Added.
+        * platform/win/TestExpectations:
+
+2019-07-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Move WHLSL tests to their own folder
+        https://bugs.webkit.org/show_bug.cgi?id=199838
+
+        Reviewed by Robin Morisset.
+
+        webgpu/whlsl-foo.html => webgpu/whlsl/foo.html
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * webgpu/whlsl/arbitrary-vertex-attribute-locations-expected.html: Renamed from LayoutTests/webgpu/whlsl-while-loop-continue-expected.html.
+        * webgpu/whlsl/arbitrary-vertex-attribute-locations.html: Renamed from LayoutTests/webgpu/whlsl-arbitrary-vertex-attribute-locations.html.
+        * webgpu/whlsl/argument-evaluation-order-expected.txt: Renamed from LayoutTests/webgpu/whlsl-argument-evaluation-order-expected.txt.
+        * webgpu/whlsl/argument-evaluation-order.html: Renamed from LayoutTests/webgpu/whlsl-argument-evaluation-order.html.
+        * webgpu/whlsl/array-length-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-array-length-spec-tests-expected.txt.
+        * webgpu/whlsl/array-length-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-array-length-spec-tests.html.
+        * webgpu/whlsl/array-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-array-spec-tests-expected.txt.
+        * webgpu/whlsl/array-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-array-spec-tests.html.
+        * webgpu/whlsl/bad-add-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bad-add-expected.txt.
+        * webgpu/whlsl/bad-add.html: Renamed from LayoutTests/webgpu/whlsl-bad-add.html.
+        * webgpu/whlsl/bad-ander-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bad-ander-expected.txt.
+        * webgpu/whlsl/bad-ander.html: Renamed from LayoutTests/webgpu/whlsl-bad-ander.html.
+        * webgpu/whlsl/bad-literals-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bad-literals-expected.txt.
+        * webgpu/whlsl/bad-literals.html: Renamed from LayoutTests/webgpu/whlsl-bad-literals.html.
+        * webgpu/whlsl/bitwise-bool-ops-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bitwise-bool-ops-expected.txt.
+        * webgpu/whlsl/bitwise-bool-ops.html: Renamed from LayoutTests/webgpu/whlsl-bitwise-bool-ops.html.
+        * webgpu/whlsl/bools-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bools-expected.txt.
+        * webgpu/whlsl/bools.html: Renamed from LayoutTests/webgpu/whlsl-bools.html.
+        * webgpu/whlsl/buffer-fragment-expected.html: Renamed from LayoutTests/webgpu/whlsl-textures-sample-expected.html.
+        * webgpu/whlsl/buffer-fragment.html: Renamed from LayoutTests/webgpu/whlsl-buffer-fragment.html.
+        * webgpu/whlsl/buffer-length-expected.txt: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable-expected.txt.
+        * webgpu/whlsl/buffer-length.html: Renamed from LayoutTests/webgpu/whlsl-buffer-length.html.
+        * webgpu/whlsl/buffer-vertex-expected.html: Renamed from LayoutTests/webgpu/whlsl-textures-load-expected.html.
+        * webgpu/whlsl/buffer-vertex.html: Renamed from LayoutTests/webgpu/whlsl-buffer-vertex.html.
+        * webgpu/whlsl/builtin-vectors-2-expected.txt: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors-2-expected.txt.
+        * webgpu/whlsl/builtin-vectors-2.html: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors-2.html.
+        * webgpu/whlsl/builtin-vectors-expected.txt: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors-expected.txt.
+        * webgpu/whlsl/builtin-vectors.html: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors.html.
+        * webgpu/whlsl/casts-expected.txt: Renamed from LayoutTests/webgpu/whlsl-casts-expected.txt.
+        * webgpu/whlsl/casts.html: Renamed from LayoutTests/webgpu/whlsl-casts.html.
+        * webgpu/whlsl/checker-should-set-type-of-read-modify-write-variables-expected.txt: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable-2-expected.txt.
+        * webgpu/whlsl/checker-should-set-type-of-read-modify-write-variables.html: Renamed from LayoutTests/webgpu/whlsl-checker-should-set-type-of-read-modify-write-variables.html.
+        * webgpu/whlsl/comment-parsing-expected.txt: Renamed from LayoutTests/webgpu/whlsl-comment-parsing-expected.txt.
+        * webgpu/whlsl/comment-parsing.html: Renamed from LayoutTests/webgpu/whlsl-comment-parsing.html.
+        * webgpu/whlsl/compute-expected.txt: Renamed from LayoutTests/webgpu/whlsl-two-dimensional-array-expected.txt.
+        * webgpu/whlsl/compute.html: Renamed from LayoutTests/webgpu/whlsl-compute.html.
+        * webgpu/whlsl/copy-expected.txt: Renamed from LayoutTests/webgpu/whlsl-copy-expected.txt.
+        * webgpu/whlsl/copy.html: Renamed from LayoutTests/webgpu/whlsl-copy.html.
+        * webgpu/whlsl/dereference-ordering-expected.txt: Renamed from LayoutTests/webgpu/whlsl-dereference-ordering-expected.txt.
+        * webgpu/whlsl/dereference-ordering.html: Renamed from LayoutTests/webgpu/whlsl-dereference-ordering.html.
+        * webgpu/whlsl/dereference-pointer-should-type-check-expected.html: Renamed from LayoutTests/webgpu/whlsl-store-to-property-updates-properly-expected.html.
+        * webgpu/whlsl/dereference-pointer-should-type-check.html: Renamed from LayoutTests/webgpu/whlsl-dereference-pointer-should-type-check.html.
+        * webgpu/whlsl/do-while-loop-break-expected.html: Renamed from LayoutTests/webgpu/whlsl-zero-initialize-values-expected.html.
+        * webgpu/whlsl/do-while-loop-break.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-break.html.
+        * webgpu/whlsl/do-while-loop-continue-expected.html: Renamed from LayoutTests/webgpu/whlsl-return-local-variable-expected.html.
+        * webgpu/whlsl/do-while-loop-continue.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-continue.html.
+        * webgpu/whlsl/do-while-loop-expected.html: Renamed from LayoutTests/webgpu/whlsl-nested-dot-expression-rvalue-expected.html.
+        * webgpu/whlsl/do-while-loop.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop.html.
+        * webgpu/whlsl/dont-crash-parsing-enum-expected.html: Renamed from LayoutTests/webgpu/whlsl-loops-expected.html.
+        * webgpu/whlsl/dont-crash-parsing-enum.html: Renamed from LayoutTests/webgpu/whlsl-dont-crash-parsing-enum.html.
+        * webgpu/whlsl/dot-expressions-expected.html: Renamed from LayoutTests/webgpu/whlsl-expected.html.
+        * webgpu/whlsl/dot-expressions.html: Renamed from LayoutTests/webgpu/whlsl-dot-expressions.html.
+        * webgpu/whlsl/double-not-expected.txt: Renamed from LayoutTests/webgpu/whlsl-double-not-expected.txt.
+        * webgpu/whlsl/double-not.html: Renamed from LayoutTests/webgpu/whlsl-double-not.html.
+        * webgpu/whlsl/duplicate-types-should-not-produce-duplicate-ctors-expected.txt: Renamed from LayoutTests/webgpu/whlsl-textures-getdimensions-expected.txt.
+        * webgpu/whlsl/duplicate-types-should-not-produce-duplicate-ctors.html: Renamed from LayoutTests/webgpu/whlsl-duplicate-types-should-not-produce-duplicate-ctors.html.
+        * webgpu/whlsl/duplicates-expected.txt: Renamed from LayoutTests/webgpu/whlsl-duplicates-expected.txt.
+        * webgpu/whlsl/duplicates.html: Renamed from LayoutTests/webgpu/whlsl-duplicates.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-2-expected.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-expected.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-2.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-2.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-3-expected.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-3-expected.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-3.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-3.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-expected.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-2-expected.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime.html.
+        * webgpu/whlsl/enum-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-enum-spec-tests-expected.txt.
+        * webgpu/whlsl/enum-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-enum-spec-tests.html.
+        * webgpu/whlsl/equality-expected.txt: Renamed from LayoutTests/webgpu/whlsl-equality-expected.txt.
+        * webgpu/whlsl/equality.html: Renamed from LayoutTests/webgpu/whlsl-equality.html.
+        * webgpu/whlsl/expected.html: Renamed from LayoutTests/webgpu/whlsl-dot-expressions-expected.html.
+        * webgpu/whlsl/float-math-expected.txt: Renamed from LayoutTests/webgpu/whlsl-float-math-expected.txt.
+        * webgpu/whlsl/float-math.html: Renamed from LayoutTests/webgpu/whlsl-float-math.html.
+        * webgpu/whlsl/getter-setter-type-expected.txt: Renamed from LayoutTests/webgpu/whlsl-getter-setter-type-expected.txt.
+        * webgpu/whlsl/getter-setter-type.html: Renamed from LayoutTests/webgpu/whlsl-getter-setter-type.html.
+        * webgpu/whlsl/huge-array-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-arrays-expected.txt.
+        * webgpu/whlsl/huge-array.html: Renamed from LayoutTests/webgpu/whlsl-huge-array.html.
+        * webgpu/whlsl/if-statement-expected.txt: Renamed from LayoutTests/webgpu/whlsl-if-statement-expected.txt.
+        * webgpu/whlsl/if-statement.html: Renamed from LayoutTests/webgpu/whlsl-if-statement.html.
+        * webgpu/whlsl/increment-decrement-expected.txt: Renamed from LayoutTests/webgpu/whlsl-increment-decrement-expected.txt.
+        * webgpu/whlsl/increment-decrement.html: Renamed from LayoutTests/webgpu/whlsl-increment-decrement.html.
+        * webgpu/whlsl/index-ander-expected.txt: Renamed from LayoutTests/webgpu/whlsl-index-ander-expected.txt.
+        * webgpu/whlsl/index-ander.html: Renamed from LayoutTests/webgpu/whlsl-index-ander.html.
+        * webgpu/whlsl/index-getter-setter-expected.txt: Renamed from LayoutTests/webgpu/whlsl-index-getter-setter-expected.txt.
+        * webgpu/whlsl/index-getter-setter.html: Renamed from LayoutTests/webgpu/whlsl-index-getter-setter.html.
+        * webgpu/whlsl/index-setter-getter-expected.txt: Renamed from LayoutTests/webgpu/whlsl-index-setter-getter-expected.txt.
+        * webgpu/whlsl/index-setter-getter.html: Renamed from LayoutTests/webgpu/whlsl-index-setter-getter.html.
+        * webgpu/whlsl/int-bit-math-expected.txt: Renamed from LayoutTests/webgpu/whlsl-int-bit-math-expected.txt.
+        * webgpu/whlsl/int-bit-math.html: Renamed from LayoutTests/webgpu/whlsl-int-bit-math.html.
+        * webgpu/whlsl/int-literal-compare-expected.txt: Renamed from LayoutTests/webgpu/whlsl-int-literal-compare-expected.txt.
+        * webgpu/whlsl/int-literal-compare.html: Renamed from LayoutTests/webgpu/whlsl-int-literal-compare.html.
+        * webgpu/whlsl/logical-negation-expected.txt: Renamed from LayoutTests/webgpu/whlsl-logical-negation-expected.txt.
+        * webgpu/whlsl/logical-negation.html: Renamed from LayoutTests/webgpu/whlsl-logical-negation.html.
+        * webgpu/whlsl/loops-break-expected.html: Renamed from LayoutTests/webgpu/whlsl-zero-initialize-values-2-expected.html.
+        * webgpu/whlsl/loops-break.html: Renamed from LayoutTests/webgpu/whlsl-loops-break.html.
+        * webgpu/whlsl/loops-continue-expected.html: Renamed from LayoutTests/webgpu/whlsl-while-loop-break-expected.html.
+        * webgpu/whlsl/loops-continue.html: Renamed from LayoutTests/webgpu/whlsl-loops-continue.html.
+        * webgpu/whlsl/loops-expected.html: Renamed from LayoutTests/webgpu/whlsl-dont-crash-parsing-enum-expected.html.
+        * webgpu/whlsl/loops-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-loops-spec-tests-expected.txt.
+        * webgpu/whlsl/loops-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-loops-spec-tests.html.
+        * webgpu/whlsl/loops.html: Renamed from LayoutTests/webgpu/whlsl-loops.html.
+        * webgpu/whlsl/lots-of-local-variables-expected.txt: Renamed from LayoutTests/webgpu/whlsl-lots-of-local-variables-expected.txt.
+        * webgpu/whlsl/lots-of-local-variables.html: Renamed from LayoutTests/webgpu/whlsl-lots-of-local-variables.html.
+        * webgpu/whlsl/lvalues-expected.txt: Renamed from LayoutTests/webgpu/whlsl-lvalues-expected.txt.
+        * webgpu/whlsl/lvalues.html: Renamed from LayoutTests/webgpu/whlsl-lvalues.html.
+        * webgpu/whlsl/make-array-ref-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-make-array-ref-spec-tests-expected.txt.
+        * webgpu/whlsl/make-array-ref-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-make-array-ref-spec-tests.html.
+        * webgpu/whlsl/make-array-reference-expected.txt: Renamed from LayoutTests/webgpu/whlsl-read-modify-write-high-zombies-expected.txt.
+        * webgpu/whlsl/make-array-reference.html: Renamed from LayoutTests/webgpu/whlsl-make-array-reference.html.
+        * webgpu/whlsl/matrices-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrices-spec-tests-expected.txt.
+        * webgpu/whlsl/matrices-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-matrices-spec-tests.html.
+        * webgpu/whlsl/matrix-2-expected.txt: Renamed from LayoutTests/webgpu/whlsl-read-modify-write-expected.txt.
+        * webgpu/whlsl/matrix-2.html: Renamed from LayoutTests/webgpu/whlsl-matrix-2.html.
+        * webgpu/whlsl/matrix-expected.txt: Renamed from LayoutTests/webgpu/whlsl-oob-access-expected.txt.
+        * webgpu/whlsl/matrix-memory-layout-expected.txt: Renamed from LayoutTests/webgpu/whlsl-null-dereference-expected.txt.
+        * webgpu/whlsl/matrix-memory-layout.html: Renamed from LayoutTests/webgpu/whlsl-matrix-memory-layout.html.
+        * webgpu/whlsl/matrix.html: Renamed from LayoutTests/webgpu/whlsl-matrix.html.
+        * webgpu/whlsl/nested-dot-expression-rvalue-expected.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-expected.html.
+        * webgpu/whlsl/nested-dot-expression-rvalue.html: Renamed from LayoutTests/webgpu/whlsl-nested-dot-expression-rvalue.html.
+        * webgpu/whlsl/nested-loop-expected.html: Renamed from LayoutTests/webgpu/whlsl-nested-loop-expected.html.
+        * webgpu/whlsl/nested-loop.html: Renamed from LayoutTests/webgpu/whlsl-nested-loop.html.
+        * webgpu/whlsl/null-arg-expected.txt: Renamed from LayoutTests/webgpu/whlsl-null-arg-expected.txt.
+        * webgpu/whlsl/null-arg.html: Renamed from LayoutTests/webgpu/whlsl-null-arg.html.
+        * webgpu/whlsl/null-array-ref.html: Renamed from LayoutTests/webgpu/whlsl-null-array-ref.html.
+        * webgpu/whlsl/null-dereference-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrix-memory-layout-expected.txt.
+        * webgpu/whlsl/null-dereference.html: Renamed from LayoutTests/webgpu/whlsl-null-dereference.html.
+        * webgpu/whlsl/oob-access-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrix-expected.txt.
+        * webgpu/whlsl/oob-access.html: Renamed from LayoutTests/webgpu/whlsl-oob-access.html.
+        * webgpu/whlsl/operator-overload-expected.txt: Renamed from LayoutTests/webgpu/whlsl-operator-overload-expected.txt.
+        * webgpu/whlsl/operator-overload.html: Renamed from LayoutTests/webgpu/whlsl-operator-overload.html.
+        * webgpu/whlsl/overload-expected.txt: Renamed from LayoutTests/webgpu/whlsl-overload-expected.txt.
+        * webgpu/whlsl/overload.html: Renamed from LayoutTests/webgpu/whlsl-overload.html.
+        * webgpu/whlsl/override-subscript-expected.txt: Renamed from LayoutTests/webgpu/whlsl-override-subscript-expected.txt.
+        * webgpu/whlsl/override-subscript.html: Renamed from LayoutTests/webgpu/whlsl-override-subscript.html.
+        * webgpu/whlsl/plus-equals-expected.txt: Renamed from LayoutTests/webgpu/whlsl-plus-equals-expected.txt.
+        * webgpu/whlsl/plus-equals.html: Renamed from LayoutTests/webgpu/whlsl-plus-equals.html.
+        * webgpu/whlsl/pointer-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-pointer-spec-tests-expected.txt.
+        * webgpu/whlsl/pointer-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-pointer-spec-tests.html.
+        * webgpu/whlsl/postfix-prefix-expected.txt: Renamed from LayoutTests/webgpu/whlsl-postfix-prefix-expected.txt.
+        * webgpu/whlsl/postfix-prefix.html: Renamed from LayoutTests/webgpu/whlsl-postfix-prefix.html.
+        * webgpu/whlsl/read-modify-write-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrix-2-expected.txt.
+        * webgpu/whlsl/read-modify-write-high-zombies-expected.txt: Renamed from LayoutTests/webgpu/whlsl-make-array-reference-expected.txt.
+        * webgpu/whlsl/read-modify-write-high-zombies.html: Renamed from LayoutTests/webgpu/whlsl-read-modify-write-high-zombies.html.
+        * webgpu/whlsl/read-modify-write.html: Renamed from LayoutTests/webgpu/whlsl-read-modify-write.html.
+        * webgpu/whlsl/recursive-structs-expected.txt: Renamed from LayoutTests/webgpu/whlsl-recursive-structs-expected.txt.
+        * webgpu/whlsl/recursive-structs.html: Renamed from LayoutTests/webgpu/whlsl-recursive-structs.html.
+        * webgpu/whlsl/return-local-variable-expected.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-continue-expected.html.
+        * webgpu/whlsl/return-local-variable.html: Renamed from LayoutTests/webgpu/whlsl-return-local-variable.html.
+        * webgpu/whlsl/return-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-return-spec-tests-expected.txt.
+        * webgpu/whlsl/return-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-return-spec-tests.html.
+        * webgpu/whlsl/setter-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-setter-spec-tests-expected.txt.
+        * webgpu/whlsl/setter-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-setter-spec-tests.html.
+        * webgpu/whlsl/simple-arrays-expected.txt: Renamed from LayoutTests/webgpu/whlsl-huge-array-expected.txt.
+        * webgpu/whlsl/simple-arrays.html: Renamed from LayoutTests/webgpu/whlsl-simple-arrays.html.
+        * webgpu/whlsl/simple-getter-setter-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-getter-setter-expected.txt.
+        * webgpu/whlsl/simple-getter-setter.html: Renamed from LayoutTests/webgpu/whlsl-simple-getter-setter.html.
+        * webgpu/whlsl/simple-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-tests-expected.txt.
+        * webgpu/whlsl/simple-tests.html: Renamed from LayoutTests/webgpu/whlsl-simple-tests.html.
+        * webgpu/whlsl/simple-while-loop-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-while-loop-expected.txt.
+        * webgpu/whlsl/simple-while-loop.html: Renamed from LayoutTests/webgpu/whlsl-simple-while-loop.html.
+        * webgpu/whlsl/store-null-expected.txt: Renamed from LayoutTests/webgpu/whlsl-store-null-expected.txt.
+        * webgpu/whlsl/store-null.html: Renamed from LayoutTests/webgpu/whlsl-store-null.html.
+        * webgpu/whlsl/store-to-property-updates-properly-expected.html: Renamed from LayoutTests/webgpu/whlsl-dereference-pointer-should-type-check-expected.html.
+        * webgpu/whlsl/store-to-property-updates-properly.html: Renamed from LayoutTests/webgpu/whlsl-store-to-property-updates-properly.html.
+        * webgpu/whlsl/struct-expected.txt: Renamed from LayoutTests/webgpu/whlsl-struct-expected.txt.
+        * webgpu/whlsl/struct.html: Renamed from LayoutTests/webgpu/whlsl-struct.html.
+        * webgpu/whlsl/switch-expected.txt: Renamed from LayoutTests/webgpu/whlsl-switch-expected.txt.
+        * webgpu/whlsl/switch.html: Renamed from LayoutTests/webgpu/whlsl-switch.html.
+        * webgpu/whlsl/ternary-spec-test-expected.txt: Renamed from LayoutTests/webgpu/whlsl-ternary-spec-test-expected.txt.
+        * webgpu/whlsl/ternary-spec-test.html: Renamed from LayoutTests/webgpu/whlsl-ternary-spec-test.html.
+        * webgpu/whlsl/test-harness-test-expected.txt: Renamed from LayoutTests/webgpu/whlsl-test-harness-test-expected.txt.
+        * webgpu/whlsl/test-harness-test.html: Renamed from LayoutTests/webgpu/whlsl-test-harness-test.html.
+        * webgpu/whlsl/textures-getdimensions-expected.txt: Renamed from LayoutTests/webgpu/whlsl-duplicate-types-should-not-produce-duplicate-ctors-expected.txt.
+        * webgpu/whlsl/textures-getdimensions.html: Renamed from LayoutTests/webgpu/whlsl-textures-getdimensions.html.
+        * webgpu/whlsl/textures-load-expected.html: Renamed from LayoutTests/webgpu/whlsl-buffer-vertex-expected.html.
+        * webgpu/whlsl/textures-load.html: Renamed from LayoutTests/webgpu/whlsl-textures-load.html.
+        * webgpu/whlsl/textures-sample-expected.html: Renamed from LayoutTests/webgpu/whlsl-buffer-fragment-expected.html.
+        * webgpu/whlsl/textures-sample.html: Renamed from LayoutTests/webgpu/whlsl-textures-sample.html.
+        * webgpu/whlsl/two-dimensional-array-expected.txt: Renamed from LayoutTests/webgpu/whlsl-compute-expected.txt.
+        * webgpu/whlsl/two-dimensional-array.html: Renamed from LayoutTests/webgpu/whlsl-two-dimensional-array.html.
+        * webgpu/whlsl/type-mismatch-expected.txt: Renamed from LayoutTests/webgpu/whlsl-type-mismatch-expected.txt.
+        * webgpu/whlsl/type-mismatch.html: Renamed from LayoutTests/webgpu/whlsl-type-mismatch.html.
+        * webgpu/whlsl/uint-bitwise-expected.txt: Renamed from LayoutTests/webgpu/whlsl-uint-bitwise-expected.txt.
+        * webgpu/whlsl/uint-bitwise.html: Renamed from LayoutTests/webgpu/whlsl-uint-bitwise.html.
+        * webgpu/whlsl/use-undefined-variable-2-expected.txt: Renamed from LayoutTests/webgpu/whlsl-checker-should-set-type-of-read-modify-write-variables-expected.txt.
+        * webgpu/whlsl/use-undefined-variable-2.html: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable-2.html.
+        * webgpu/whlsl/use-undefined-variable-expected.txt: Renamed from LayoutTests/webgpu/whlsl-buffer-length-expected.txt.
+        * webgpu/whlsl/use-undefined-variable.html: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable.html.
+        * webgpu/whlsl/variable-shadowing-expected.txt: Renamed from LayoutTests/webgpu/whlsl-variable-shadowing-expected.txt.
+        * webgpu/whlsl/variable-shadowing.html: Renamed from LayoutTests/webgpu/whlsl-variable-shadowing.html.
+        * webgpu/whlsl/vector-syntax-expected.txt: Renamed from LayoutTests/webgpu/whlsl-vector-syntax-expected.txt.
+        * webgpu/whlsl/vector-syntax.html: Renamed from LayoutTests/webgpu/whlsl-vector-syntax.html.
+        * webgpu/whlsl/while-loop-break-expected.html: Renamed from LayoutTests/webgpu/whlsl-loops-continue-expected.html.
+        * webgpu/whlsl/while-loop-break.html: Renamed from LayoutTests/webgpu/whlsl-while-loop-break.html.
+        * webgpu/whlsl/while-loop-continue-expected.html: Renamed from LayoutTests/webgpu/whlsl-arbitrary-vertex-attribute-locations-expected.html.
+        * webgpu/whlsl/while-loop-continue.html: Renamed from LayoutTests/webgpu/whlsl-while-loop-continue.html.
+        * webgpu/whlsl/whlsl.html: Renamed from LayoutTests/webgpu/whlsl.html.
+        * webgpu/whlsl/wrong-argument-length-expected.txt: Renamed from LayoutTests/webgpu/whlsl-wrong-argument-length-expected.txt.
+        * webgpu/whlsl/wrong-argument-length.html: Renamed from LayoutTests/webgpu/whlsl-wrong-argument-length.html.
+        * webgpu/whlsl/wrong-types-expected.txt: Renamed from LayoutTests/webgpu/whlsl-wrong-types-expected.txt.
+        * webgpu/whlsl/wrong-types.html: Renamed from LayoutTests/webgpu/whlsl-wrong-types.html.
+        * webgpu/whlsl/zero-initialize-values-2-expected.html: Renamed from LayoutTests/webgpu/whlsl-loops-break-expected.html.
+        * webgpu/whlsl/zero-initialize-values-2.html: Renamed from LayoutTests/webgpu/whlsl-zero-initialize-values-2.html.
+        * webgpu/whlsl/zero-initialize-values-expected.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-break-expected.html.
+        * webgpu/whlsl/zero-initialize-values.html: Renamed from LayoutTests/webgpu/whlsl-zero-initialize-values.html.
+
+2019-07-16  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Convert GPUComputePipeline LOG statements to generate GPUErrors
+        https://bugs.webkit.org/show_bug.cgi?id=199773
+
+        Reviewed by Myles C. Maxfield.
+
+        Add a test to ensure GPUComputePipeline errors generate correctly.
+        Rework checkFail in the WHLSL test harness to check for GPUError.
+
+        * webgpu/compute-pipeline-errors-expected.txt: Added.
+        * webgpu/compute-pipeline-errors.html: Added.
+        * webgpu/error-scopes-test.html:
+        * webgpu/js/webgpu-functions.js:
+        (runTestsWithDevice): Runs tests in an object all with the same device.
+        * webgpu/js/whlsl-test-harness.js: Add shader compilation error checking.
+        (Harness.prototype.async.callTypedFunction):
+        (Harness.prototype.async.checkCompileFail):
+        (Harness.prototype.async._callFunction):
+        (Harness):
+        (async.checkFail):
+        (Harness.prototype._callFunction): Deleted.
+        * webgpu/whlsl-recursive-structs-expected.txt: Remove a WHLSL compiler buggy test.
+        * webgpu/whlsl-recursive-structs.html:
+        * webgpu/whlsl-test-harness-test-expected.txt:
+        * webgpu/whlsl-test-harness-test.html:
+
+2019-07-10  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Implement GPUError and error scopes
+        https://bugs.webkit.org/show_bug.cgi?id=199655
+
+        Reviewed by Myles C. Maxfield.
+
+        Add a test to cover the cases outlined in the WebGPU error handling design doc.
+
+        * webgpu/error-scopes-test-expected.txt: Added.
+        * webgpu/error-scopes-test.html: Added.
+
+2019-07-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247493.
+        https://bugs.webkit.org/show_bug.cgi?id=199841
+
+        "The new whlsl-for-loop.html test is failing on the bots"
+        (Requested by rmorisset on #webkit).
+
+        Reverted changeset:
+
+        "[WHLSL] Desugar for loops and while loops"
+        https://bugs.webkit.org/show_bug.cgi?id=199726
+        https://trac.webkit.org/changeset/247493
+
+2019-07-16  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Desugar for loops and while loops
+        https://bugs.webkit.org/show_bug.cgi?id=199726
+
+        Reviewed by Myles C. Maxfield.
+
+        I added the for-loop tests from Test.mjs (with help from Saam).
+        I did not add the foo9 and foo10 tests, as they are forbidden by the behavior checker in the C++ implementation (and by the spec).
+
+        I also changed one test from whlsl-return-spec-tests.html to assert_fail, because it relied on a lone variable declaration in an if, which is forbidden by the spec.
+
+        * webgpu/whlsl-for-loop-expected.txt: Added.
+        * webgpu/whlsl-for-loop.html: Added.
+        * webgpu/whlsl-return-spec-tests.html:
+
+2019-07-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Text autosizing] [iPadOS] Paragraph text on the front page of LinkedIn.com is not boosted
+        https://bugs.webkit.org/show_bug.cgi?id=199827
+        <rdar://problem/53152660>
+
+        Reviewed by Zalan Bujtas.
+
+        Add a new test case, inspired by paragraph text in a post on linkedin.com. This text should get autosized.
+
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates-expected.txt:
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates.html:
+
+2019-07-16  Rob Buis  <rbuis@igalia.com>
+
+        Remove support for beforeload on link=prefetch
+        https://bugs.webkit.org/show_bug.cgi?id=199632
+
+        Reviewed by Youenn Fablet.
+
+        Add tests to verify that beforeload event is not called for link
+        rel=prefetch.
+
+
+        * TestExpectations:
+        * fast/dom/HTMLLinkElement/prefetch-beforeload-expected.txt: Removed.
+        * fast/dom/HTMLLinkElement/prefetch-beforeload.html: Removed.
+        * http/wpt/prefetch/beforeload-dynamic-expected.txt: Added.
+        * http/wpt/prefetch/beforeload-dynamic.html: Added.
+        * http/wpt/prefetch/beforeload-expected.txt: Added.
+        * http/wpt/prefetch/beforeload.html: Added.
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2019-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [macOS WK2] Layout Test http/tests/storageAccess/request-and-grant-access-then-navigate-cross-site-should-not-have-access.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=198670
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Mark test as flaky.
+
+2019-07-15  Keith Miller  <keith_miller@apple.com>
+
+        JSGlobalObject type macros should support feature flags and WeakRef should have one
+        https://bugs.webkit.org/show_bug.cgi?id=199601
+
+        Reviewed by Mark Lam.
+
+        Add JSC option requirements for WeakRef tests.
+
+        * js/script-tests/weakref-async-is-collected.js:
+        * js/script-tests/weakref-eventually-collects-values.js:
+        * js/script-tests/weakref-microtasks-dont-collect.js:
+        * js/script-tests/weakref-weakset-consistency.js:
+        * js/weakref-async-is-collected.html:
+        * js/weakref-eventually-collects-values.html:
+        * js/weakref-microtasks-dont-collect.html:
+        * js/weakref-weakset-consistency.html:
+
+2019-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247444.
+
+        Caused two scrolling tests to fail on iOS Simulator
+
+        Reverted changeset:
+
+        "Typing into a cell in a Google Sheet lags behind by one
+        character"
+        https://bugs.webkit.org/show_bug.cgi?id=199587
+        https://trac.webkit.org/changeset/247444
+
+2019-07-15  Keith Miller  <keith_miller@apple.com>
+
+        A Possible Issue of Object.create method
+        https://bugs.webkit.org/show_bug.cgi?id=199744
+
+        Reviewed by Yusuke Suzuki.
+
+        Rebaseline error message due to change of error point.
+
+        * js/Object-create-expected.txt:
+
+2019-07-15  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Matrix memory layout should match HLSL by laying out columns linearly
+        https://bugs.webkit.org/show_bug.cgi?id=199215
+
+        Reviewed by Myles C. Maxfield.
+
+        * webgpu/whlsl-matrix-memory-layout-expected.txt: Added.
+        * webgpu/whlsl-matrix-memory-layout.html: Added.
+        * webgpu/whlsl-test-harness-test.html:
+
+2019-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Text autosizing] [iPadOS] Product label text is clipped in portrait mode on the front page of sephora.com
+        https://bugs.webkit.org/show_bug.cgi?id=199806
+        <rdar://problem/52902482>
+
+        Reviewed by Zalan Bujtas.
+
+        Add a new test case to an existing layout test, which mimics the product label text on sephora.com's front page.
+
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates-expected.txt:
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates.html:
+
+2019-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        New York font erroneously gets synthetic bold
+        https://bugs.webkit.org/show_bug.cgi?id=199653
+        <rdar://problem/51692592>
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+        * fast/text/design-system-ui-10-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-10.html: Added.
+        * fast/text/design-system-ui-11-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-11.html: Added.
+        * fast/text/design-system-ui-12-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-12.html: Added.
+        * fast/text/design-system-ui-13-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-13.html: Added.
+        * fast/text/design-system-ui-14-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-14.html: Added.
+        * fast/text/design-system-ui-15-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-15.html: Added.
+        * fast/text/design-system-ui-16-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-16.html: Added.
+        * fast/text/design-system-ui-2-expected.html: Added.
+        * fast/text/design-system-ui-2.html: Added.
+        * fast/text/design-system-ui-3-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-3.html: Added.
+        * fast/text/design-system-ui-4-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-4.html: Added.
+        * fast/text/design-system-ui-5-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-5.html: Added.
+        * fast/text/design-system-ui-6-expected.html: Added.
+        * fast/text/design-system-ui-6.html: Added.
+        * fast/text/design-system-ui-7-expected.html: Added.
+        * fast/text/design-system-ui-7.html: Added.
+        * fast/text/design-system-ui-8-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-8.html: Added.
+        * fast/text/design-system-ui-9-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-9.html: Added.
+        * fast/text/design-system-ui-expected.html: Added.
+        * fast/text/design-system-ui.html: Added.
+        * platform/mac/TestExpectations:
+
+2019-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve wasm wpt test results by fixing miscellaneous issues
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+
+        Reviewed by Mark Lam.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/win/TestExpectations:
+
+2019-07-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r247440.
+
+        Broke builds
+
+        Reverted changeset:
+
+        "[JSC] Improve wasm wpt test results by fixing miscellaneous
+        issues"
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+        https://trac.webkit.org/changeset/247440
+
+2019-07-15  Daniel Bates  <dabates@apple.com>
+
+        Typing into a cell in a Google Sheet lags behind by one character
+        https://bugs.webkit.org/show_bug.cgi?id=199587
+        <rdar://problem/51616845>
+
+        Reviewed by Brent Fulgham.
+
+        Add a test that enables the quirk and ensures that the DOM is up-to-date on expiration of a
+        zero timer scheduled from keydown, keypress, keyup, and input.
+
+        * fast/events/ios/dom-update-on-keydown-quirk-expected.txt: Added.
+        * fast/events/ios/dom-update-on-keydown-quirk.html: Added.
+
+2019-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247397, r247378, r247366.
+
+        Broke watchOS builds.
+
+        Reverted changesets:
+
+        "[WebGPU] Implement GPUError and error scopes"
+        https://bugs.webkit.org/show_bug.cgi?id=199655
+        https://trac.webkit.org/changeset/247366/webkit
+
+        "[WebGPU] Move error scopes out of GPUDevice for more portable error generation"
+        https://bugs.webkit.org/show_bug.cgi?id=199740
+        https://trac.webkit.org/changeset/247397/webkit
+
+2019-07-15  Rob Buis  <rbuis@igalia.com>
+
+        MathML WPT test for RadicalDegreeBottomRaisePercent fails
+        https://bugs.webkit.org/show_bug.cgi?id=183631
+
+        Reviewed by Frédéric Wang.
+
+        Adjust test expectations.
+
+        * platform/ios/mathml/presentation/roots-expected.txt:
+        * platform/mac/mathml/presentation/roots-expected.txt:
+        * platform/win/mathml/presentation/roots-expected.txt:
+
+2019-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve wasm wpt test results by fixing miscellaneous issues
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+
+        Reviewed by Mark Lam.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/win/TestExpectations:
+
+2019-07-15  Youenn Fablet  <youenn@apple.com>
+
+        Enable a debug WebRTC mode without any encryption
+        https://bugs.webkit.org/show_bug.cgi?id=199177
+        <rdar://problem/52074986>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/disable-encryption-expected.txt: Added.
+        * webrtc/disable-encryption.html: Added.
+
+2019-07-15  Youenn Fablet  <youenn@apple.com>
+
+        Filter SDP c lines
+        https://bugs.webkit.org/show_bug.cgi?id=199791
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/datachannel/filter-ice-candidate.html:
+
+2019-07-14  Dean Jackson  <dino@apple.com>
+
+        WebGL not supported on WKWebView on UIKit for Mac
+        https://bugs.webkit.org/show_bug.cgi?id=199785
+        <rdar://problem/52911449>
+
+        Reviewed by Antoine Quint.
+
+        Even though we don't yet run tests on UIKit for Mac, we
+        should have the most simple "is WebGL working?" ref test.
+
+        * webgl/smell-test-expected.html: Added.
+        * webgl/smell-test.html: Added.
+
+2019-07-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Text autosizing] [iPadOS] Further adjust our heuristics to determine text autosizing candidates
+        https://bugs.webkit.org/show_bug.cgi?id=199780
+        <rdar://problem/52289088>
+
+        Reviewed by Simon Fraser.
+
+        Rebaseline an existing idempotent text autosizing test, and add an additional test case.
+
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates-expected.txt:
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates.html:
+
+2019-07-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Don't do async overflow scrolling for visibility:hidden scrollers
+        https://bugs.webkit.org/show_bug.cgi?id=199779
+
+        Reviewed by Dean Jackson.
+
+        * compositing/scrolling/async-overflow-scrolling/visibility-hidden-scrollers-expected.txt: Added.
+        * compositing/scrolling/async-overflow-scrolling/visibility-hidden-scrollers.html: Added.
+        * platform/ios-wk2/compositing/scrolling/async-overflow-scrolling/visibility-hidden-scrollers-expected.txt: Added.
+
+2019-07-13  Zalan Bujtas  <zalan@apple.com>
+
+        Cannot bring up custom media controls at all on v.youku.com
+        https://bugs.webkit.org/show_bug.cgi?id=199699
+        <rdar://problem/51835327>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/visibility-hidden-iframe-click-expected.txt: Added.
+        * fast/events/touch/ios/visibility-hidden-iframe-click.html: Added.
+        * fast/events/touch/ios/visibility-hidden-nested-iframe-click-expected.txt: Added.
+        * fast/events/touch/ios/visibility-hidden-nested-iframe-click.html: Added.
+
+2019-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Stopping a cloned MediaStream video track should not stop any other video track
+        https://bugs.webkit.org/show_bug.cgi?id=199635
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/mediastreamtrack-video-clone-expected.txt:
+        * fast/mediastream/mediastreamtrack-video-clone.html:
+
+2019-07-12  Timothy Hatcher  <timothy@apple.com>
+
+        Drop DarkModeCSSEnabled as an experimental feature and always enable it.
+        https://bugs.webkit.org/show_bug.cgi?id=199725
+        rdar://problem/52970972
+
+        Reviewed by Megan Gardner.
+
+        Removed <!-- webkit-test-runner [ experimental:DarkModeCSSEnabled=true ] -->
+        from all dark mode tests.
+
+        * css-dark-mode/color-scheme-css-parse.html:
+        * css-dark-mode/color-scheme-css.html:
+        * css-dark-mode/color-scheme-meta.html:
+        * css-dark-mode/color-scheme-priority.html:
+        * css-dark-mode/color-scheme-scrollbar.html:
+        * css-dark-mode/default-colors.html:
+        * css-dark-mode/older-syntax/supported-color-schemes-css.html:
+        * css-dark-mode/older-syntax/supported-color-schemes-meta.html:
+        * css-dark-mode/older-systems/color-scheme-css.html:
+        * css-dark-mode/older-systems/color-scheme-meta.html:
+        * css-dark-mode/older-systems/prefers-color-scheme.html:
+        * css-dark-mode/prefers-color-scheme-picture-element.html:
+        * css-dark-mode/prefers-color-scheme.html:
+
+2019-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        New York font erroneously gets synthetic bold
+        https://bugs.webkit.org/show_bug.cgi?id=199653
+        <rdar://problem/51692592>
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+        * fast/text/design-system-ui-10-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-10.html: Added.
+        * fast/text/design-system-ui-11-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-11.html: Added.
+        * fast/text/design-system-ui-12-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-12.html: Added.
+        * fast/text/design-system-ui-13-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-13.html: Added.
+        * fast/text/design-system-ui-14-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-14.html: Added.
+        * fast/text/design-system-ui-15-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-15.html: Added.
+        * fast/text/design-system-ui-16-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-16.html: Added.
+        * fast/text/design-system-ui-2-expected.html: Added.
+        * fast/text/design-system-ui-2.html: Added.
+        * fast/text/design-system-ui-3-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-3.html: Added.
+        * fast/text/design-system-ui-4-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-4.html: Added.
+        * fast/text/design-system-ui-5-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-5.html: Added.
+        * fast/text/design-system-ui-6-expected.html: Added.
+        * fast/text/design-system-ui-6.html: Added.
+        * fast/text/design-system-ui-7-expected.html: Added.
+        * fast/text/design-system-ui-7.html: Added.
+        * fast/text/design-system-ui-8-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-8.html: Added.
+        * fast/text/design-system-ui-9-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-9.html: Added.
+        * fast/text/design-system-ui-expected.html: Added.
+        * fast/text/design-system-ui.html: Added.
+        * platform/mac/TestExpectations:
+
+2019-07-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] Rebaseline css3/blending tests with an empty homedir.
+
+        It seems this tests are sensible to some configuration of some
+        library as they produce different output (the layers with more left
+        margin) depending on that. The test pass on both cases, but the
+        check with the expected result fails, so it is flagged as failing.
+
+        This rebaselines the results to those that happen when running with
+        an empty/temporal homedir on Debian 10 to match what happens on the
+        bots. For more info see bugs 169916 and 199738.
+
+        Unreviewed gardening commit.
+
+        * platform/gtk/css3/blending/svg-blend-layer-blend-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-blend-expected.txt:
+        * platform/gtk/css3/blending/svg-blend-layer-clip-path-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-clip-path-expected.txt:
+        * platform/gtk/css3/blending/svg-blend-layer-filter-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-filter-expected.txt:
+        * platform/gtk/css3/blending/svg-blend-layer-mask-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-mask-expected.txt:
+        * platform/gtk/css3/blending/svg-blend-layer-opacity-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-opacity-expected.txt:
+        * platform/wpe/TestExpectations: css3/blending/svg-isolation-isolated-group.html passes with an empty homedir.
+        * platform/wpe/css3/blending/svg-blend-layer-blend-expected.png:
+        * platform/wpe/css3/blending/svg-blend-layer-blend-expected.txt:
+        * platform/wpe/css3/blending/svg-blend-layer-clip-path-expected.png:
+        * platform/wpe/css3/blending/svg-blend-layer-clip-path-expected.txt:
+        * platform/wpe/css3/blending/svg-blend-layer-filter-expected.png:
+        * platform/wpe/css3/blending/svg-blend-layer-filter-expected.txt:
+        * platform/wpe/css3/blending/svg-blend-layer-mask-expected.png:
+        * platform/wpe/css3/blending/svg-blend-layer-mask-expected.txt:
+        * platform/wpe/css3/blending/svg-blend-layer-opacity-expected.png:
+        * platform/wpe/css3/blending/svg-blend-layer-opacity-expected.txt:
+
+2019-07-11  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] fast/events/ios/rotation/orientationchange-event-listener-on.body.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=199732
+        <rdar://problem/52693087>
+
+        Reviewed by Alex Christensen.
+
+        Stop logging in each event listener to not be reliant on the order in which listener are called.
+        Instead, simply make sure all event listeners that should be called were actually called.
+
+        * fast/events/ios/rotation/orientationchange-event-listener-on.body-expected.txt:
+        * fast/events/ios/rotation/orientationchange-event-listener-on.body.html:
+
+2019-07-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make the test added in r247327 more reliable.
+
+        * editing/selection/ios/autoscroll-with-top-content-inset-2.html:
+
+2019-07-11  Russell Epstein  <russell_e@apple.com>
+
+        Layout Test fast/viewport/ios/viewport-shrink-to-fit-on-new-navigation.html is Failing Consistently on iOS-WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=199731
+
+        Unreviewed Test Gardening
+
+        * platform/ios-wk2/TestExpectations:
+
+2019-07-11  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Implement GPUError and error scopes
+        https://bugs.webkit.org/show_bug.cgi?id=199655
+
+        Reviewed by Myles C. Maxfield.
+
+        Add a test to cover the cases outlined in the WebGPU error handling design doc.
+
+        * webgpu/error-scopes-test-expected.txt: Added.
+        * webgpu/error-scopes-test.html: Added.
+
+2019-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247314.
+        https://bugs.webkit.org/show_bug.cgi?id=199721
+
+        Caused performance regression. (Requested by deanj on
+        #webkit).
+
+        Reverted changeset:
+
+        "Disable speculative loading if cache is not to be used for
+        the load"
+        https://bugs.webkit.org/show_bug.cgi?id=199644
+        https://trac.webkit.org/changeset/247314
+
+2019-07-11  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Can't place caret or select in content that overflows a contenteditable element
+        https://bugs.webkit.org/show_bug.cgi?id=199741
+        rdar://problem/50545233
+
+        Reviewed by Wenson Hsieh.
+        
+        Re-enable editing/caret/ios, fixing the result of emoji.html which for some reason was
+        checked in as an html file (the test still fails).
+
+        * editing/caret/ios/caret-in-overflow-area-expected.txt: Added.
+        * editing/caret/ios/caret-in-overflow-area.html: Added.
+        * editing/caret/ios/emoji-expected.txt: Renamed from LayoutTests/editing/caret/ios/emoji-expected.html.
+        * editing/caret/ios/fixed-caret-position-after-scroll-expected.txt:
+        * editing/caret/ios/fixed-caret-position-after-scroll.html:
+        * editing/selection/ios/place-selection-in-overflow-area-expected.txt: Added.
+        * editing/selection/ios/place-selection-in-overflow-area.html: Added.
+        * editing/selection/ios/selection-extends-into-overflow-area-expected.txt: Added.
+        * editing/selection/ios/selection-extends-into-overflow-area.html: Added.
+        * platform/ios-wk2/TestExpectations:
+
+2019-07-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add test expectations and baselines for iOS 13
+        https://bugs.webkit.org/show_bug.cgi?id=199329
+
+        Reviewed by Jonathan Bedard.
+
+        * platform/ios-12/*: Move iOS 12 specific baselines to their own directory.
+        * platform/ios/*: Add iOS 13 baselines and test expectations.
+
+2019-07-11  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening. Update expectations after r247346.
+
+        * platform/gtk/TestExpectations:
+
+2019-07-11  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for ARIA roles insertion, deletion, subscript, superscript, and time
+        https://bugs.webkit.org/show_bug.cgi?id=199692
+
+        Reviewed by Chris Fleizach.
+
+        Add the new roles to the existing role-exposure tests and update expectations accordingly.
+
+        * accessibility/gtk/object-attributes-expected.txt:
+        * accessibility/gtk/object-attributes.html:
+        * accessibility/gtk/xml-roles-exposed-expected.txt:
+        * accessibility/gtk/xml-roles-exposed.html:
+        * accessibility/roles-computedRoleString.html:
+        * accessibility/roles-exposed.html:
+        * platform/gtk/accessibility/roles-computedRoleString-expected.txt:
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/mac-wk2/accessibility/roles-exposed-expected.txt:
+        * platform/mac/accessibility/roles-computedRoleString-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+        * platform/wpe/accessibility/roles-computedRoleString-expected.txt:
+        * platform/wpe/accessibility/roles-exposed-expected.txt:
+
+2019-07-10  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Import all tests that pass without compiler changes from the JS reference test suite
+        https://bugs.webkit.org/show_bug.cgi?id=199595
+
+        Rubber stamped by Robin Morisset.
+
+        * webgpu/whlsl-argument-evaluation-order-expected.txt: Added.
+        * webgpu/whlsl-argument-evaluation-order.html: Added.
+        * webgpu/whlsl-array-length-spec-tests-expected.txt: Added.
+        * webgpu/whlsl-array-length-spec-tests.html: Added.
+        * webgpu/whlsl-array-spec-tests-expected.txt:
+        * webgpu/whlsl-array-spec-tests.html:
+        * webgpu/whlsl-bad-add-expected.txt: Added.
+        * webgpu/whlsl-bad-add.html: Added.
+        * webgpu/whlsl-bools-expected.txt: Added.
+        * webgpu/whlsl-bools.html: Added.
+        * webgpu/whlsl-casts-expected.txt: Added.
+        * webgpu/whlsl-casts.html: Added.
+        * webgpu/whlsl-comment-parsing-expected.txt: Added.
+        * webgpu/whlsl-comment-parsing.html: Added.
+        * webgpu/whlsl-copy-expected.txt: Added.
+        * webgpu/whlsl-copy.html: Added.
+        * webgpu/whlsl-dereference-ordering-expected.txt: Added.
+        * webgpu/whlsl-dereference-ordering.html: Added.
+        * webgpu/whlsl-double-not-expected.txt: Added.
+        * webgpu/whlsl-double-not.html: Added.
+        * webgpu/whlsl-duplicates-expected.txt: Added.
+        * webgpu/whlsl-duplicates.html: Added.
+        * webgpu/whlsl-increment-decrement-expected.txt: Added.
+        * webgpu/whlsl-increment-decrement.html: Added.
+        * webgpu/whlsl-index-ander-expected.txt: Added.
+        * webgpu/whlsl-index-ander.html: Added.
+        * webgpu/whlsl-index-setter-getter-expected.txt: Added.
+        * webgpu/whlsl-index-setter-getter.html: Added.
+        * webgpu/whlsl-logical-negation-expected.txt: Added.
+        * webgpu/whlsl-logical-negation.html: Added.
+        * webgpu/whlsl-lots-of-local-variables-expected.txt: Added.
+        * webgpu/whlsl-lots-of-local-variables.html: Added.
+        * webgpu/whlsl-lvalues-expected.txt: Added.
+        * webgpu/whlsl-lvalues.html: Added.
+        * webgpu/whlsl-null-arg-expected.txt: Added.
+        * webgpu/whlsl-null-arg.html: Added.
+        * webgpu/whlsl-operator-overload-expected.txt: Added.
+        * webgpu/whlsl-operator-overload.html: Added.
+        * webgpu/whlsl-overload-expected.txt: Added.
+        * webgpu/whlsl-overload.html: Added.
+        * webgpu/whlsl-setter-spec-tests-expected.txt: Added.
+        * webgpu/whlsl-setter-spec-tests.html: Added.
+        * webgpu/whlsl-store-null-expected.txt: Added.
+        * webgpu/whlsl-store-null.html: Added.
+        * webgpu/whlsl-struct-expected.txt: Added.
+        * webgpu/whlsl-struct.html: Added.
+        * webgpu/whlsl-switch-expected.txt: Added.
+        * webgpu/whlsl-switch.html: Added.
+        * webgpu/whlsl-variable-shadowing-expected.txt: Added.
+        * webgpu/whlsl-variable-shadowing.html: Added.
+        * webgpu/whlsl-vector-syntax-expected.txt: Added.
+        * webgpu/whlsl-vector-syntax.html: Added.
+
+2019-07-10  Truitt Savell  <tsavell@apple.com>
+
+        Marking webgpu/whlsl-builtin-vectors-2.html as Slow after https://trac.webkit.org/changeset/247319/webkit
+        https://bugs.webkit.org/show_bug.cgi?id=199651
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-07-10  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver ignored role="presentation" on <table> HTML elements
+        https://bugs.webkit.org/show_bug.cgi?id=199659
+
+        Reviewed by Zalan Bujtas.
+
+        * accessibility/ios-simulator/tables-lists-expected.txt:
+        * accessibility/ios-simulator/tables-lists.html:
+
+2019-07-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [iOS] REGRESSION(r244851): Revealing caret sometimes fails when content inset is used
+        https://bugs.webkit.org/show_bug.cgi?id=199662
+
+        Reviewed by Simon Fraser.
+
+        Added a regression test.
+
+        * editing/selection/ios/autoscroll-with-top-content-inset-2-expected.txt: Added.
+        * editing/selection/ios/autoscroll-with-top-content-inset-2.html: Added.
+
+2019-07-10  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL Import more JS reference spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=199651
+
+        Rubber stamped by Robin Morisset.
+
+        * webgpu/whlsl-builtin-vectors-2-expected.txt: Added.
+        * webgpu/whlsl-builtin-vectors-2.html: Added.
+        * webgpu/whlsl-builtin-vectors-expected.txt: Added.
+        * webgpu/whlsl-builtin-vectors.html: Added.
+        * webgpu/whlsl-getter-setter-type-expected.txt: Added.
+        * webgpu/whlsl-getter-setter-type.html: Added.
+        * webgpu/whlsl-loops-spec-tests-expected.txt: Added.
+        * webgpu/whlsl-loops-spec-tests.html: Added.
+        * webgpu/whlsl-null-array-ref.html: Added.
+        * webgpu/whlsl-override-subscript-expected.txt: Added.
+        * webgpu/whlsl-override-subscript.html: Added.
+        * webgpu/whlsl-plus-equals-expected.txt: Added.
+        * webgpu/whlsl-plus-equals.html: Added.
+        * webgpu/whlsl-recursive-structs-expected.txt: Added.
+        * webgpu/whlsl-recursive-structs.html: Added.
+        * webgpu/whlsl-ternary-spec-test-expected.txt: Added.
+        * webgpu/whlsl-ternary-spec-test.html: Added.
+        * webgpu/whlsl-wrong-argument-length-expected.txt: Added.
+        * webgpu/whlsl-wrong-argument-length.html: Added.
+        * webgpu/whlsl-wrong-types-expected.txt: Added.
+        * webgpu/whlsl-wrong-types.html: Added.
+
+2019-07-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247223.
+        https://bugs.webkit.org/show_bug.cgi?id=199679
+
+        Caused perf regression. (Requested by deanj on #webkit).
+
+        Reverted changeset:
+
+        "[iPadOS] Viewport pops while loading sohu.com, xinhuanet.com,
+        and various other websites"
+        https://bugs.webkit.org/show_bug.cgi?id=199575
+        https://trac.webkit.org/changeset/247223
+
+2019-07-10  Youenn Fablet  <youenn@apple.com>
+
+        Disable speculative loading if cache is not to be used for the load
+        https://bugs.webkit.org/show_bug.cgi?id=199644
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/fetch/disable-speculative-for-reload-expected.txt: Added.
+        * http/wpt/fetch/disable-speculative-for-reload.html: Added.
+        * http/wpt/fetch/resources/iframe-with-image.py: Added.
+        (main):
+        * http/wpt/fetch/resources/image-load-count.py: Added.
+        (main):
+        * http/wpt/fetch/resources/image-load.py: Added.
+        (main):
+
+2019-07-10  Youenn Fablet  <youenn@apple.com>
+
+        openDatabase property should not be enumerable on DOMWindow
+        https://bugs.webkit.org/show_bug.cgi?id=199672
+        <rdar://problem/52809000>
+
+        Reviewed by Chris Dumez.
+
+        * storage/websql/openDatabase-deprecation-expected.txt: Added.
+        * storage/websql/openDatabase-deprecation.html: Added.
+
+2019-07-10  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] Enable support for CSS_COMPOSITING
+        https://bugs.webkit.org/show_bug.cgi?id=199513
+
+        Reviewed by Michael Catanzaro.
+
+        Rebaseline the tests that pass after enabling CSS_COMPOSITING.
+        The feature works is most of the cases, but there are still some tests/cases not working.
+
+        There are also some new failures marked related to SVG blending (css3/blending/svg*), but those were already failing before.
+        So its unrelated to this change.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/css3/blending/background-blend-mode-default-value-expected.png:
+        * platform/gtk/css3/blending/background-blend-mode-different-image-formats-expected.png:
+        * platform/gtk/css3/blending/background-blend-mode-image-color-expected.png:
+        * platform/gtk/css3/blending/background-blend-mode-image-image-expected.png:
+        * platform/gtk/css3/blending/background-blend-mode-single-layer-no-blending-expected.png:
+        * platform/gtk/css3/blending/blend-mode-background-expected.png:
+        * platform/gtk/css3/blending/blend-mode-background-expected.txt:
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-append-non-stacking-context-blending-expected.png: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-append-non-stacking-context-blending-expected.txt: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-append-stacking-context-blending-expected.png: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-append-stacking-context-blending-expected.txt: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-turn-off-blending-expected.png: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-turn-off-blending-expected.txt: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-turn-off-blending-no-isolation-expected.png: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-turn-off-blending-no-isolation-expected.txt: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-turn-off-stacking-context-expected.png: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-turn-off-stacking-context-expected.txt: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-turn-on-blending-expected.png: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-turn-on-blending-expected.txt: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-turn-on-stacking-context-expected.png: Added.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-turn-on-stacking-context-expected.txt: Added.
+        * platform/gtk/css3/blending/blend-mode-overflow-expected.png: Added.
+        * platform/gtk/css3/blending/blend-mode-overflow-expected.txt: Added.
+        * platform/gtk/css3/blending/blend-mode-simple-expected.png: Added.
+        * platform/gtk/css3/blending/blend-mode-simple-expected.txt: Added.
+        * platform/gtk/css3/blending/repaint/blend-mode-turn-off-isolation-no-effect-expected.txt: Added.
+        * platform/gtk/css3/blending/svg-blend-layer-blend-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-blend-expected.txt:
+        * platform/gtk/css3/blending/svg-blend-layer-clip-path-expected.png: Added.
+        * platform/gtk/css3/blending/svg-blend-layer-clip-path-expected.txt: Added.
+        * platform/gtk/css3/blending/svg-blend-layer-filter-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-filter-expected.txt:
+        * platform/gtk/css3/blending/svg-blend-layer-mask-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-mask-expected.txt:
+        * platform/gtk/css3/blending/svg-blend-layer-opacity-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-opacity-expected.txt:
+        * platform/wpe/TestExpectations:
+        * platform/wpe/css3/blending/background-blend-mode-default-value-expected.png: Added.
+        * platform/wpe/css3/blending/background-blend-mode-default-value-expected.txt: Added.
+        * platform/wpe/css3/blending/background-blend-mode-different-image-formats-expected.png: Added.
+        * platform/wpe/css3/blending/background-blend-mode-different-image-formats-expected.txt: Added.
+        * platform/wpe/css3/blending/background-blend-mode-gif-color-2-expected.png: Added.
+        * platform/wpe/css3/blending/background-blend-mode-gif-color-2-expected.txt: Added.
+        * platform/wpe/css3/blending/background-blend-mode-gif-color-expected.png: Added.
+        * platform/wpe/css3/blending/background-blend-mode-gif-color-expected.txt: Added.
+        * platform/wpe/css3/blending/background-blend-mode-image-color-expected.png: Added.
+        * platform/wpe/css3/blending/background-blend-mode-image-color-expected.txt: Added.
+        * platform/wpe/css3/blending/background-blend-mode-image-image-expected.png: Added.
+        * platform/wpe/css3/blending/background-blend-mode-image-image-expected.txt: Added.
+        * platform/wpe/css3/blending/background-blend-mode-single-layer-no-blending-expected.png: Added.
+        * platform/wpe/css3/blending/background-blend-mode-single-layer-no-blending-expected.txt: Added.
+        * platform/wpe/css3/blending/blend-mode-background-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-background-expected.txt: Copied from LayoutTests/platform/gtk/css3/blending/blend-mode-background-expected.txt.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-append-non-stacking-context-blending-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-append-non-stacking-context-blending-expected.txt: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-append-stacking-context-blending-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-append-stacking-context-blending-expected.txt: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-remove-non-stacking-context-blending-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-remove-non-stacking-context-blending-expected.txt: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-remove-stacking-context-blending-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-remove-stacking-context-blending-expected.txt: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-turn-off-blending-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-turn-off-blending-expected.txt: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-turn-off-blending-no-isolation-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-turn-off-blending-no-isolation-expected.txt: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-turn-off-stacking-context-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-turn-off-stacking-context-expected.txt: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-turn-on-blending-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-turn-on-blending-expected.txt: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-turn-on-stacking-context-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-isolation-flags-turn-on-stacking-context-expected.txt: Added.
+        * platform/wpe/css3/blending/blend-mode-overflow-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-overflow-expected.txt: Added.
+        * platform/wpe/css3/blending/blend-mode-simple-expected.png: Added.
+        * platform/wpe/css3/blending/blend-mode-simple-expected.txt: Added.
+        * platform/wpe/css3/blending/repaint/blend-mode-turn-off-isolation-no-effect-expected.txt: Added.
+        * platform/wpe/css3/blending/svg-blend-layer-blend-expected.png: Added.
+        * platform/wpe/css3/blending/svg-blend-layer-blend-expected.txt: Added.
+        * platform/wpe/css3/blending/svg-blend-layer-clip-path-expected.png: Added.
+        * platform/wpe/css3/blending/svg-blend-layer-clip-path-expected.txt: Added.
+        * platform/wpe/css3/blending/svg-blend-layer-filter-expected.png: Added.
+        * platform/wpe/css3/blending/svg-blend-layer-filter-expected.txt: Added.
+        * platform/wpe/css3/blending/svg-blend-layer-mask-expected.png: Added.
+        * platform/wpe/css3/blending/svg-blend-layer-mask-expected.txt: Added.
+        * platform/wpe/css3/blending/svg-blend-layer-opacity-expected.png: Added.
+        * platform/wpe/css3/blending/svg-blend-layer-opacity-expected.txt: Added.
+
+2019-07-09  Andres Gonzalez  <andresg_22@apple.com>
+
+        AX: HTML datalist accessibility is not exposed by WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=196998
+        <rdar://problem/49962521>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/datalist-expected.txt: Added.
+        * accessibility/datalist.html: Added.
+
+2019-07-09  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Import another round of JS spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=199647
+
+        Reviewed by Myles C. Maxfield.
+
+        This patch also removes the unneded <!-- webkit-test-runner [ experimental:WebGPUEnabled=true ] -->
+        comments in various tests.
+
+        * webgpu/bind-groups.html:
+        * webgpu/blit-commands.html:
+        * webgpu/map-read-buffers.html:
+        * webgpu/map-write-buffers.html:
+        * webgpu/msl-harness-test.html:
+        * webgpu/pipeline-layouts.html:
+        * webgpu/queue-creation.html:
+        * webgpu/render-command-encoding.html:
+        * webgpu/shader-modules.html:
+        * webgpu/textures-textureviews.html:
+        * webgpu/whlsl-array-spec-tests.html:
+        * webgpu/whlsl-bad-ander-expected.txt: Added.
+        * webgpu/whlsl-bad-ander.html: Added.
+        * webgpu/whlsl-bad-literals-expected.txt: Added.
+        * webgpu/whlsl-bad-literals.html: Added.
+        * webgpu/whlsl-bitwise-bool-ops.html:
+        * webgpu/whlsl-enum-spec-tests.html:
+        * webgpu/whlsl-equality.html:
+        * webgpu/whlsl-float-math-expected.txt: Added.
+        * webgpu/whlsl-float-math.html: Added.
+        * webgpu/whlsl-index-getter-setter-expected.txt: Added.
+        * webgpu/whlsl-index-getter-setter.html: Added.
+        * webgpu/whlsl-int-bit-math-expected.txt: Added.
+        * webgpu/whlsl-int-bit-math.html: Added.
+        * webgpu/whlsl-int-literal-compare.html:
+        * webgpu/whlsl-make-array-ref-spec-tests-expected.txt: Added.
+        * webgpu/whlsl-make-array-ref-spec-tests.html: Added.
+        * webgpu/whlsl-matrices-spec-tests.html:
+        * webgpu/whlsl-pointer-spec-tests-expected.txt: Added.
+        * webgpu/whlsl-pointer-spec-tests.html: Added.
+        * webgpu/whlsl-postfix-prefix-expected.txt: Added.
+        * webgpu/whlsl-postfix-prefix.html: Added.
+        * webgpu/whlsl-return-spec-tests.html:
+        * webgpu/whlsl-simple-getter-setter.html:
+        * webgpu/whlsl-simple-tests.html:
+        * webgpu/whlsl-simple-while-loop.html:
+        * webgpu/whlsl-test-harness-test.html:
+        * webgpu/whlsl-type-mismatch.html:
+        * webgpu/whlsl-uint-bitwise.html:
+
+2019-07-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, address TestExpectations linter warning.
+
+        * TestExpectations: Delete entry for fast/content-observation since
+        the directory doesn't exist anymore.
+
+2019-07-09  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Add another group of WHLSL JS reference spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=199642
+
+        Reviewed by Robin Morisset.
+
+        * webgpu/whlsl-array-spec-tests-expected.txt: Added.
+        * webgpu/whlsl-array-spec-tests.html: Added.
+        * webgpu/whlsl-enum-spec-tests-expected.txt: Added.
+        * webgpu/whlsl-enum-spec-tests.html: Added.
+        * webgpu/whlsl-equality-expected.txt: Added.
+        * webgpu/whlsl-equality.html: Added.
+        * webgpu/whlsl-matrices-spec-tests-expected.txt: Added.
+        * webgpu/whlsl-matrices-spec-tests.html: Added.
+        * webgpu/whlsl-return-spec-tests-expected.txt: Added.
+        * webgpu/whlsl-return-spec-tests.html: Added.
+        * webgpu/whlsl-simple-getter-setter-expected.txt: Added.
+        * webgpu/whlsl-simple-getter-setter.html: Added.
+        * webgpu/whlsl-simple-while-loop-expected.txt: Added.
+        * webgpu/whlsl-simple-while-loop.html: Added.
+
+2019-07-09  Youenn Fablet  <youenn@apple.com>
+
+        XHR CORS requests logged twice in the server
+        https://bugs.webkit.org/show_bug.cgi?id=199492
+        <rdar://problem/52757558>
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/fetch/disable-speculative-load-for-xhr-and-fetch-loads-expected.txt: Added.
+        * http/wpt/fetch/disable-speculative-load-for-xhr-and-fetch-loads.html: Added.
+        * http/wpt/fetch/resources/fetch-xhr-load.py: Added.
+        (main):
+        * http/wpt/fetch/resources/xhr-and-fetch.html: Added.
+
+2019-07-09  Rob Buis  <rbuis@igalia.com>
+
+        Remove rel=subresource tests
+        https://bugs.webkit.org/show_bug.cgi?id=199616
+
+        Reviewed by Ryosuke Niwa.
+
+        Remove rel=subresource references by deleting or using rel=prefetch
+        instead.
+
+        * TestExpectations:
+        * fast/dom/HTMLLinkElement/cachedresource-types.html:
+        * http/tests/misc/link-rel-prefetch-and-subresource.html: Removed.
+        * webarchive/test-link-rel-subresource-beforeload-expected.webarchive: Removed.
+        * webarchive/test-link-rel-subresource-beforeload.html: Removed.
+
+2019-07-09  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Scroll indicators should not show for scrollable content with touch-action: none
+        https://bugs.webkit.org/show_bug.cgi?id=199618
+
+        Reviewed by Simon Fraser.
+
+        Add a new test that swipes "overflow: scroll" content which would show scroll indicators without scrolling
+        prior to this patch.
+
+        * pointerevents/ios/touch-action-none-no-scroll-indicators-expected.html: Added.
+        * pointerevents/ios/touch-action-none-no-scroll-indicators.html: Added.
+
+2019-07-09  Charlie Turner  <cturner@igalia.com>
+
+        [GStreamer] HLS media test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=199620
+
+        Unreviewed gardening commit.
+
+        * platform/gtk/TestExpectations:
+
+2019-07-09  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r244906): Crash in WebCore::positionOffsetValue
+        https://bugs.webkit.org/show_bug.cgi?id=199613
+        <rdar://problem/51518172>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/css/getComputedStyle/sticky-scroll-container-crash-expected.txt: Added.
+        * fast/css/getComputedStyle/sticky-scroll-container-crash.html: Added.
+
+2019-07-09  Cathie Chen  <cathiechen@igalia.com>
+
+        Support writing-mode and direction for scrollIntoViewOptions.
+        https://bugs.webkit.org/show_bug.cgi?id=161611
+
+        Reviewed by Frédéric Wang and Simon Fraser.
+
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/css/cssom-view/scrollIntoView-horizontal-tb-writing-mode-and-rtl-direction-expected.txt: Removed.
+
+2019-07-08  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL Import 23 new JS reference spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=199604
+
+        Reviewed by Myles C. Maxfield.
+
+        This moves some stuff down into whlsl-test-harness which are needed by
+        all tests. This also adds a new checkFail that ensures the program never
+        runs (e.g, it has a compile error).
+
+        * webgpu/js/whlsl-test-harness.js:
+        (async.checkFail):
+        (const.webGPUPromiseTest):
+        * webgpu/whlsl-bitwise-bool-ops-expected.txt:
+        * webgpu/whlsl-bitwise-bool-ops.html:
+        * webgpu/whlsl-int-literal-compare-expected.txt: Added.
+        * webgpu/whlsl-int-literal-compare.html: Added.
+        * webgpu/whlsl-simple-tests-expected.txt: Added.
+        * webgpu/whlsl-simple-tests.html: Added.
+        * webgpu/whlsl-type-mismatch-expected.txt: Added.
+        * webgpu/whlsl-type-mismatch.html: Added.
+        * webgpu/whlsl-uint-bitwise-expected.txt: Added.
+        * webgpu/whlsl-uint-bitwise.html: Added.
+
+2019-07-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS 13] paste-does-not-fire-promises-while-sanitizing-web-content.html times out when run with multiple iterations
+        https://bugs.webkit.org/show_bug.cgi?id=199597
+
+        Reviewed by Tim Horton.
+
+        Make this test more robust to work around bugs in iOS 13 that currently prevent some single tap gestures from
+        being recognized, due to conflicts with double tap gesture recognizers.
+        -   Make both the subframe and editable element taller, so that they're easier to hit.
+        -   Tap twice when attempting to trigger a paste, in hopes that at least one of the taps will be recognized as a
+            single click.
+        -   Make several event listeners one-shot, to prevent the double tap gesture from triggering paste twice.
+
+        * editing/pasteboard/paste-does-not-fire-promises-while-sanitizing-web-content.html:
+
+2019-07-08  Keith Miller  <keith_miller@apple.com>
+
+        Enable Intl.PluralRules and Intl.NumberFormatToParts by default
+        https://bugs.webkit.org/show_bug.cgi?id=199288
+
+        Reviewed by Yusuke Suzuki.
+
+        Remove runtime flag from testing.
+
+        * js/intl-numberformat-format-to-parts.html:
+        * js/intl-pluralrules.html:
+        * js/script-tests/intl-numberformat-format-to-parts.js:
+        * js/script-tests/intl-pluralrules.js:
+
+2019-07-08  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Support select all in non-editable element
+        https://bugs.webkit.org/show_bug.cgi?id=199257
+        <rdar://problem/52553667>
+
+        Reviewed by Wenson Hsieh.
+
+        Add a test to ensure that we can perform Select All even when a non-editable element is focused.
+
+        Also disallow testing of Command + A until we fix <https://bugs.webkit.org/show_bug.cgi?id=199475>.
+        Otherwise, the test fast/events/ios/key-events-comprehensive/key-events-meta.html fails since
+        Command + A now triggers page selection even in a non-editable (the purpose of this change)
+        and hence Command + C also triggers the copy command. The triggering of these commands causes
+        the test to fail the Command + A and Command + C sub-tests since no keypress event is dispatched
+        for the key that triggered these key commands. This is expected, but Command + A should not have
+        triggered selection as key-tester.js calls preventDefault() from a keypress handler. That's
+        the bug. See <https://bugs.webkit.org/show_bug.cgi?id=199475> for more details.
+
+        * editing/selection/ios/select-all-non-editable-text-using-keyboard-expected.txt: Added.
+        * editing/selection/ios/select-all-non-editable-text-using-keyboard.html: Added.
+        * fast/events/ios/key-events-comprehensive/key-events-meta-expected.txt: Updated result.
+        * fast/events/ios/resources/key-tester.js: Disallow Command + A until we fix <https://bugs.webkit.org/show_bug.cgi?id=199475>.
+        * platform/ios/TestExpectations: Skip the test until the fix for <rdar://problem/48322899>
+        has shipped.
+
+2019-07-08  Daniel Bates  <dabates@apple.com>
+
+        Command + . generates Escape with key identifier Period, should be Escape
+        https://bugs.webkit.org/show_bug.cgi?id=199393
+        <rdar://problem/52498001>
+
+        Reviewed by Wenson Hsieh.
+
+        Update test result.
+
+        * fast/events/ios/key-events-comprehensive/key-events-meta-expected.txt:
+
+2019-07-08  Charlie Turner  <cturner@igalia.com>
+
+        [GTK] Some media fragment tests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=132248
+
+        Reviewed by Eric Carlson.
+
+        These tests look like they're flakey due to a small stop time. I'm
+        surmising that based on the bot's load, we step over the 0.5 mark
+        often. When I run this locally, despite running the fragment tests
+        100 times, I saw no timeouts.
+
+        I have seen crashes in the flakiness dashboard, but I would prefer
+        for these to have separate bugs so that we can squash them rather
+        than allowing them to linger. Having them expected to crash means
+        we have no crash logs to investigate.
+
+        Updated the baselines in the LayoutTests/ directory to reflect the
+        new stop time delta.
+
+        * media/media-fragments/media-fragments.js:
+        (pause): Increase stop delta, on simulator builds the stddev
+        crossed the 0.5s mark, and I suspect on GTK builds, our bots being
+        heavily loaded cause the majority of timeouts.
+        * platform/gtk/TestExpectations: Remove expectations.
+
+2019-07-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add test expectations and baselines for Catalina
+        https://bugs.webkit.org/show_bug.cgi?id=199328
+
+        Reviewed by Jonathan Bedard.
+
+        * platfrom/mac/*: Adding Catalina test expectations and baselines.
+        * platform/mac-mojave/*: Migrating Mojave baselines from platform/mac directory.
+
+2019-07-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iPadOS] Viewport pops while loading sohu.com, xinhuanet.com, and various other websites
+        https://bugs.webkit.org/show_bug.cgi?id=199575
+        <rdar://problem/51842220>
+
+        Reviewed by Simon Fraser.
+
+        Adjusts an existing layout test, and introduces a new test to verify that the shrink-to-fit heuristic is given a
+        chance to run before document load. See WebKit ChangeLog for more details.
+
+        * fast/viewport/ios/shrink-to-fit-content-before-document-load-expected.txt: Added.
+        * fast/viewport/ios/shrink-to-fit-content-before-document-load.html: Added.
+        * fast/viewport/ios/shrink-to-fit-content-temporary-overflow.html:
+
+        Tweak this layout test to add the temporarily overflowing element after document load.
+
+2019-07-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unable to paste from Notes into Excel 365 spreadsheet
+        https://bugs.webkit.org/show_bug.cgi?id=199565
+        <rdar://problem/43615497>
+
+        Reviewed by Chris Dumez.
+
+        Add a test to verify that promises scheduled right before a programmatic paste resolve in the middle of the
+        paste, while creating a document for web content sanitization. See WebCore ChangeLog for more details.
+
+        * editing/pasteboard/paste-does-not-fire-promises-while-sanitizing-web-content-expected.txt: Added.
+        * editing/pasteboard/paste-does-not-fire-promises-while-sanitizing-web-content.html: Added.
+
+2019-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Unable to play videos on xfinity.com/stream on macOS Catalina
+        https://bugs.webkit.org/show_bug.cgi?id=199576
+        <rdar://problem/50101264>
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline existing test.
+
+        * http/wpt/fetch/request-abort-expected.txt:
+
+2019-07-08  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] "touch-action: none" does not prevent double-tap-to-zoom
+        https://bugs.webkit.org/show_bug.cgi?id=199571
+        <rdar://problem/51715002>
+
+        Reviewed by Wenson Hsieh.
+
+        Add two new tests that check that setting "touch-action: none" on an element does not allow double-tap-to-zoom
+        and that "touch-action: manipulation" allows it.
+
+        * pointerevents/ios/touch-action-manipulation-double-tap-to-zoom-expected.txt: Added.
+        * pointerevents/ios/touch-action-manipulation-double-tap-to-zoom.html: Added.
+        * pointerevents/ios/touch-action-none-double-tap-to-zoom-expected.txt: Added.
+        * pointerevents/ios/touch-action-none-double-tap-to-zoom.html: Added.
+        * pointerevents/utils.js:
+        (const.ui.new.UIController.prototype.doubleTapToZoom):
+
+2019-07-08  Charlie Turner  <cturner@igalia.com>
+
+        [GStreamer] media/video-volume.html broken after switching from cubic to linear scaling
+        https://bugs.webkit.org/show_bug.cgi?id=199505
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        PulseAudio has a conversion process from volume's in
+        double-precision to uint32_t volumes. Depending on the environment
+        can introduce rounding errors. Be more lenient in our comparison
+        code.
+
+        * media/video-volume-expected.txt: Update baseline
+        * media/video-volume.html: Compare volume values within a
+        reasonable tolerance.
+
+2019-07-08  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Enable only on the most recent version of the supported iOS family
+        https://bugs.webkit.org/show_bug.cgi?id=199562
+        <rdar://problem/52766511>
+
+        Reviewed by Dean Jackson.
+
+        * js/dom/navigator-maxtouchpoints-expected.txt: Since ENABLE_POINTER_EVENTS is now disabled by default, navigator.maxTouchPoints
+        is "undefined" in thed default case.
+        * platform/mac/js/dom/navigator-maxtouchpoints-expected.txt: But 0 on macOS.
+
+2019-07-07  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Difficult to control videos on iqiyi.com as the actions are mouse hover
+        https://bugs.webkit.org/show_bug.cgi?id=199542
+        <rdar://problem/51886813>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/tap-on-1px-height-content-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/tap-on-1px-height-content.html: Added.
+        * fast/events/touch/ios/content-observation/tap-on-1px-width-content-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/tap-on-1px-width-content.html: Added.
+
+2019-07-06  Cathie Chen  <cathiechen@igalia.com>
+
+        Import css/cssom-view testcases from WPT.
+        https://bugs.webkit.org/show_bug.cgi?id=199509
+
+        Reviewed by Frédéric Wang.
+
+        * TestExpectations:
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/css/cssom-view/offsetTopLeft-empty-inline-expected.txt: Added.
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/css/cssom-view/offsetTopLeft-leading-space-inline-expected.txt: Added.
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/css/cssom-view/scrollIntoView-horizontal-tb-writing-mode-and-rtl-direction-expected.txt: Added.
+        * tests-options.json:
+
+2019-07-05  Youenn Fablet  <youenn@apple.com> and Simon Fraser  <simon.fraser@apple.com>
+
+        Trigger a compositing update when video element is changing
+        https://bugs.webkit.org/show_bug.cgi?id=199522
+        <rdar://problem/47297159>
+
+        Reviewed by Simon Fraser.
+
+        * compositing/video/video-update-rendering-expected.txt: Added.
+        * compositing/video/video-update-rendering.html: Added.
+
+2019-07-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [iOS] Crash in WebKit::WebPage::positionInformation via Range::startPosition
+        https://bugs.webkit.org/show_bug.cgi?id=199503
+
+        Reviewed by Wenson Hsieh.
+
+        Added a regression test for the crash.
+
+        * editing/input/delete-text-in-composition-expected.txt: Added.
+        * editing/input/delete-text-in-composition.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.ensurePositionInformationUpdateForElement): Added.
+
+2019-07-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Standard library is too big to directly include in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=198186
+        <rdar://problem/51288898>
+
+        Reviewed by Saam Barati.
+
+        The standard library doesn't include any matrix constructors that broadcast a single value
+        to every field in a matrix. https://bugs.webkit.org/show_bug.cgi?id=199333
+
+        * webgpu/whlsl-matrix.html:
+
+2019-07-05  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] REGRESSION (r247015): facebook photo/video upload button is unresponsive to user interaction.
+        https://bugs.webkit.org/show_bug.cgi?id=199502
+        <rdar://problem/52547473>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/opacity-change-happens-on-touchstart-with-transition3-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/opacity-change-happens-on-touchstart-with-transition3.html: Added.
+
+2019-07-05  Youenn Fablet  <youenn@apple.com>
+
+        [iOS] Local capture MediaStreamTrack does not render in portrait mode
+        https://bugs.webkit.org/show_bug.cgi?id=199519
+        <rdar://problem/52689720>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-rotation-expected.txt:
+        * webrtc/video-rotation.html:
+
+2019-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247115.
+
+        Breaks lldbWebKitTester (and by extension, test-webkitpy)
+
+        Reverted changeset:
+
+        "[WHLSL] Standard library is too big to directly include in
+        WebCore"
+        https://bugs.webkit.org/show_bug.cgi?id=198186
+        https://trac.webkit.org/changeset/247115
+
+2019-07-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Click events on outer page are not being dispatched correctly after touch-zooming within an iframe
+        https://bugs.webkit.org/show_bug.cgi?id=185001
+        <rdar://problem/40569615>
+
+        Reviewed by Simon Fraser.
+
+        Add a new layout test to verify that after interacting with an element with touch event handlers in a cross-
+        origin subframe, the user is still able to click on elements on the top level document.
+
+        * http/tests/events/touch/ios/click-after-handling-touch-in-cross-origin-frame.https-expected.txt: Added.
+        * http/tests/events/touch/ios/click-after-handling-touch-in-cross-origin-frame.https.html: Added.
+        * http/tests/events/touch/ios/resources/touch-target.html: Added.
+
+2019-07-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Touching media controls sometimes shows software keyboard
+        https://bugs.webkit.org/show_bug.cgi?id=199490
+        <rdar://problem/52076270>
+
+        Reviewed by Eric Carlson.
+
+        Adds a new layout test to verify that the keyboard only appears after a handled touch event if the focused
+        element is inside a hidden editable area; otherwise, the keyboard should not be present.
+
+        * fast/events/touch/ios/do-not-show-keyboard-after-preventing-touchstart-expected.txt: Added.
+        * fast/events/touch/ios/do-not-show-keyboard-after-preventing-touchstart.html: Added.
+
+        This test passes as long as we didn't begin showing the keyboard after tapping.
+
+        * fast/events/touch/ios/show-keyboard-after-preventing-touchstart-expected.txt:
+        * fast/events/touch/ios/show-keyboard-after-preventing-touchstart.html:
+
+        Adjust this existing test to make the focused textarea hidden.
+
+        * resources/ui-helper.js:
+        (window.UIHelper.hasInputSession):
+
+        Add a new testing hook to check whether there is an active input session.
+
+2019-07-05  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Respect pointer capture when dispatching mouse boundary events and updating :hover
+        https://bugs.webkit.org/show_bug.cgi?id=198999
+        <rdar://problem/51979477>
+
+        Reviewed by Dean Jackson.
+
+        Update some WK1-specific expectations.
+
+        * platform/mac-wk1/imported/w3c/web-platform-tests/pointerevents/pointerevent_boundary_events_at_implicit_release_hoverable_pointers-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/pointerevents/pointerevent_setpointercapture_relatedtarget-expected.txt:
+
+2019-07-04  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] didFinishTransition triggers a nested style recalc via isConsideredClickable
+        https://bugs.webkit.org/show_bug.cgi?id=199506
+        <rdar://problem/52656221>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/events/touch/ios/content-observation/animation-end-with-visiblity-change-and-recursive-update-style-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/animation-end-with-visiblity-change-and-recursive-update-style.html: Added.
+
+2019-07-04  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Limit mouseOut dispatching after synthetic click to YouTube.com
+        https://bugs.webkit.org/show_bug.cgi?id=199497
+        <rdar://problem/52361019>
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/events/touch/ios/content-observation/mouse-out-event-should-fire-on-click.html:
+        * fast/events/touch/ios/content-observation/mouse-out-event-should-not-fire-on-click-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/mouse-out-event-should-not-fire-on-click.html: Copied from LayoutTests/fast/events/touch/ios/content-observation/mouse-out-event-should-fire-on-click.html.
+
+2019-07-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Some layers inside overflow:scroll don't move back to correct positions when the contents are shrunk
+        https://bugs.webkit.org/show_bug.cgi?id=199464
+        rdar://problem/52613285
+
+        Reviewed by Sam Weinig.
+
+        * compositing/scrolling/async-overflow-scrolling/become-non-scrollable-with-child-expected.html: Added.
+        * compositing/scrolling/async-overflow-scrolling/become-non-scrollable-with-child.html: Added.
+
+2019-07-03  Justin Fan  <justin_fan@apple.com>
+
+        [WHLSL] Support float4x4 in test harness
+        https://bugs.webkit.org/show_bug.cgi?id=199484
+
+        Reviewed by Myles C. Maxfield.
+
+        Support WHLSL float4x4 parameters in the WHLSL test harness.
+
+        * webgpu/js/whlsl-test-harness.js:
+        (isScalar):
+        (convertTypeToArrayType):
+        (convertTypeToWHLSLType):
+        (Data):
+        (makeFloat4):
+        (makeFloat4x4):
+        (processArrays):
+        (async.callFloat4x4Function):
+        (isVectorType): Deleted. Replaced with isScalar.
+
+        Add some float4x4 sanity checks:
+        * webgpu/whlsl-test-harness-test-expected.txt:
+        * webgpu/whlsl-test-harness-test.html:
+
+2019-07-03  Simon Fraser  <simon.fraser@apple.com>
+
+        RELEASE_ASSERT in WebCore: WebCore::ScrollingStateTree::insertNode()
+        https://bugs.webkit.org/show_bug.cgi?id=199479
+        rdar://problem/52392556
+
+        Reviewed by Zalan Bujtas.
+
+        * scrollingcoordinator/scrolling-tree/scrolling-proxy-with-no-scrolling-layer-expected.txt: Added.
+        * scrollingcoordinator/scrolling-tree/scrolling-proxy-with-no-scrolling-layer.html: Added.
+
+2019-07-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Standard library is too big to directly include in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=198186
+        <rdar://problem/51288898>
+
+        Reviewed by Saam Barati.
+
+        The standard library doesn't include any matrix constructors that broadcast a single value
+        to every field in a matrix. https://bugs.webkit.org/show_bug.cgi?id=199333
+
+        * webgpu/whlsl-matrix.html:
+
+2019-07-03  Daniel Bates  <dabates@apple.com>
+
+        Skip the test added in r246810 as it requires the simulator to be preconfigured with a Pinyin keyboard
+        <rdar://problem/52608620>
+
+        We will remove this prerequisite in <https://bugs.webkit.org/show_bug.cgi?id=199472>.
+
+        * platform/ios/TestExpectations:
+
+2019-07-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (iOS 13): Tapping an element with a click event handler no longer clears the selection
+        https://bugs.webkit.org/show_bug.cgi?id=199430
+
+        Reviewed by Tim Horton.
+
+        Add and adjust layout tests to verify that calling preventDefault() on mousedown on iOS causes an existing
+        selection to not be cleared, and that tapping in an element with a click handler clears out the selection.
+
+        * editing/selection/ios/clear-selection-after-tapping-on-element-with-click-handler-expected.txt: Added.
+        * editing/selection/ios/clear-selection-after-tapping-on-element-with-click-handler.html: Added.
+        * editing/selection/ios/persist-selection-after-tapping-on-element-with-mousedown-handler-expected.txt: Renamed.
+        * editing/selection/ios/persist-selection-after-tapping-on-element-with-mousedown-handler.html:
+
+        Renamed from LayoutTests/editing/selection/ios/persist-selection-after-tapping-on-element-with-click-handler.html,
+        and adjusted to call preventDefault() on mousedown events instead of click events. Also, remove a bit of
+        trailing whitespace.
+
+2019-07-03  Russell Epstein  <russell_e@apple.com>
+
+        Rebaseline fast/events/ios/keydown-keyup-special-keys-in-non-editable-element.html
+        https://bugs.webkit.org/show_bug.cgi?id=199459
+
+        Unreviewed Test Gardening.
+
+        * fast/events/ios/keydown-keyup-special-keys-in-non-editable-element-expected.txt:
+
+2019-07-03  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r244356): Drop down menus collapse without user input - Ebay.com
+        https://bugs.webkit.org/show_bug.cgi?id=199457
+        <rdar://problem/52386563>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/tap-on-input-type-button-element-with-async-clickable-change-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/tap-on-input-type-button-element-with-async-clickable-change.html: Copied from LayoutTests/fast/events/touch/ios/content-observation/tap-on-input-type-button-element.html.
+        * fast/events/touch/ios/content-observation/tap-on-input-type-button-element-with-clickable-change-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/tap-on-input-type-button-element-with-clickable-change.html: Copied from LayoutTests/fast/events/touch/ios/content-observation/tap-on-input-type-button-element.html.
+        * fast/events/touch/ios/content-observation/tap-on-input-type-button-element.html:
+
+2019-07-03  Andres Gonzalez  <andresg_22@apple.com>
+
+        Safari hanging while loading pages - WebCore::AccessibilityRenderObject::visiblePositionRangeForLine.
+        https://bugs.webkit.org/show_bug.cgi?id=199434
+        <rdar://problem/52475140>
+
+        Reviewed by Chris Fleizach.
+
+        Disabled the tests that were passing for workaround. The workaround had
+        to be roll out cause it is hanging Safari.
+        * TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+
+2019-07-02  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        imported/blink/animations/display-inline-style-adjust.html isn't a valid ref test
+        https://bugs.webkit.org/show_bug.cgi?id=199311
+
+        Reviewed by Simon Fraser.
+
+        These tests are depending on platform font metrics. They were
+        created for a Blink bug, doesn't seem useful for WebKit. Just
+        removed them.
+
+        * imported/blink/animations/display-inline-style-adjust.html: Deleted.
+        * legacy-animation-engine/imported/blink/animations/display-inline-style-adjust.html: Deleted.
+        * platform/gtk/TestExpectations: Unmarked them.
+        * platform/ios/TestExpectations: Ditto.
+        * platform/wpe/TestExpectations: Ditto.
+
+2019-07-02  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Assertion fires when animating the 'class' attribute of an SVG element
+        https://bugs.webkit.org/show_bug.cgi?id=197372
+
+        Reviewed by Ryosuke Niwa.
+
+        * svg/animations/animated-bool-externalResourcesRequired-instances-expected.svg: Added.
+        * svg/animations/animated-bool-externalResourcesRequired-instances.svg: Added.
+        * svg/animations/animated-string-class-instances-expected.svg: Added.
+        * svg/animations/animated-string-class-instances.svg: Added.
+        * svg/animations/animated-string-href-expected.svg: Added.
+        * svg/animations/animated-string-href.svg: Added.
+
+2019-07-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [macOS WK2] REGRESSION (r242313): Layout Test scrollingcoordinator/mac/multiple-fixed.html is a flaky time out and image diff
+        https://bugs.webkit.org/show_bug.cgi?id=195635
+
+        Unreviewed test gardening.
+
+        Move test expectation entry to a more specific file.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2019-07-02  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Change whlsl-two-dimensional-array.html to not be flaky on AMD Radeon Pro GPUs
+        https://bugs.webkit.org/show_bug.cgi?id=199424
+
+        Reviewed by Myles C. Maxfield.
+
+        * webgpu/whlsl-two-dimensional-array.html:
+
+2019-07-02  Andres Gonzalez  <andresg_22@apple.com>
+
+        Enhance support of aria-haspopup per ARIA 1.1 specification.
+        https://bugs.webkit.org/show_bug.cgi?id=199216
+        <rdar://problem/46221342>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/button-with-aria-haspopup-role-expected.txt:
+        * accessibility/button-with-aria-haspopup-role.html:
+        * accessibility/ios-simulator/button-with-aria-haspopup-role-expected.txt:
+        * accessibility/ios-simulator/button-with-aria-haspopup-role.html:
+
+2019-07-02  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Import bitwise bool tests
+        https://bugs.webkit.org/show_bug.cgi?id=199093
+
+        Reviewed by Myles C. Maxfield.
+
+        This patch makes it so that we can mark bools as input and output types in the
+        WHLSL harness. Since bool is not something WHLSL itself allows as an entrypoint
+        input/output type (because we don't specify its bit pattern), we convert between
+        bool and int in the input and output of the function. For now,  we don't support
+        a buffer of bools for the input type as a simplification, so we don't have to worry
+        about dynamically converting an int buffer to a bool buffer. We could add this
+        in the future if we found it helpful, but we don't have a strong reason for supporting
+        it right now.
+        
+        This patch also starts the process of importing the WHLSL test suite by importing bool
+        bit op tests.
+
+        * webgpu/js/whlsl-test-harness.js:
+        (convertTypeToArrayType):
+        (whlslArgumentType):
+        (convertToWHLSLOutputType):
+        (convertToWHLSLInputType):
+        (Data):
+        (Harness.prototype.get isWHLSL):
+        (Harness.prototype.async.callTypedFunction):
+        (Harness.prototype._setUpArguments):
+        (callVoidFunction):
+        * webgpu/whlsl-bitwise-bool-ops-expected.txt: Added.
+        * webgpu/whlsl-bitwise-bool-ops.html: Added.
+        * webgpu/whlsl-test-harness-test-expected.txt:
+        * webgpu/whlsl-test-harness-test.html:
+
+2019-07-02  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Fix CookieJarCurl::getRawCookie.
+        https://bugs.webkit.org/show_bug.cgi?id=199300
+
+        Reviewed by Fujii Hironori.
+
+        * http/tests/inspector/page/get-cookies-expected.txt: Added.
+        * http/tests/inspector/page/get-cookies.html: Added.
+        * http/tests/inspector/page/resources/set-cookie.php: Added.
+        * platform/wincairo-wk1/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2019-07-02  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Cannot tab cycle through credit card fields on antonsvpatisserie.com checkout page
+        https://bugs.webkit.org/show_bug.cgi?id=196053
+        <rdar://problem/49093034>
+
+        Reviewed by Wenson Hsieh.
+
+        Add some tests.
+
+        * fast/events/ios/tab-cycle-expected.txt: Added.
+        * fast/events/ios/tab-cycle.html: Added.
+        * fast/events/ios/tab-into-text-field-inside-iframe-expected.txt: Added.
+        * fast/events/ios/tab-into-text-field-inside-iframe.html: Added.
+
+2019-07-02  Daniel Bates  <dabates@apple.com>
+
+        Left and right option key has Unidentified key identifier
+        https://bugs.webkit.org/show_bug.cgi?id=199392
+        <rdar://problem/52497604>
+
+        Reviewed by Wenson Hsieh.
+
+        Update test results.
+
+        * fast/events/ios/key-events-comprehensive/key-events-control-option-expected.txt:
+        * fast/events/ios/key-events-comprehensive/key-events-meta-option-expected.txt:
+        * fast/events/ios/key-events-comprehensive/key-events-option-expected.txt:
+        * fast/events/ios/key-events-comprehensive/key-events-option-shift-expected.txt:
+
 2019-07-02  Antti Koivisto  <antti@apple.com>
 
         Crash when adding inline stylesheet to shadow tree in document with null base URL

@@ -316,28 +316,18 @@ void FrameView::init()
 {
     reset();
 
-    m_margins = LayoutSize(-1, -1); // undefined
     m_size = LayoutSize();
 
-    // Propagate the marginwidth/height and scrolling modes to the view.
-    Element* ownerElement = frame().ownerElement();
-    if (is<HTMLFrameElementBase>(ownerElement)) {
-        HTMLFrameElementBase& frameElement = downcast<HTMLFrameElementBase>(*ownerElement);
-        if (frameElement.scrollingMode() == ScrollbarAlwaysOff)
-            setCanHaveScrollbars(false);
-        LayoutUnit marginWidth = frameElement.marginWidth();
-        LayoutUnit marginHeight = frameElement.marginHeight();
-        if (marginWidth != -1)
-            setMarginWidth(marginWidth);
-        if (marginHeight != -1)
-            setMarginHeight(marginHeight);
-    }
+    // Propagate the scrolling mode to the view.
+    auto* ownerElement = frame().ownerElement();
+    if (is<HTMLFrameElementBase>(ownerElement) && downcast<HTMLFrameElementBase>(*ownerElement).scrollingMode() == ScrollbarAlwaysOff)
+        setCanHaveScrollbars(false);
 
     Page* page = frame().page();
     if (page && page->chrome().client().shouldPaintEntireContents())
         setPaintsEntireContents(true);
 }
-    
+
 void FrameView::prepareForDetach()
 {
     detachCustomScrollbars();
@@ -489,18 +479,6 @@ bool FrameView::scheduleAnimation()
         return false;
     page->chrome().scheduleAnimation();
     return true;
-}
-
-void FrameView::setMarginWidth(LayoutUnit w)
-{
-    // make it update the rendering area when set
-    m_margins.setWidth(w);
-}
-
-void FrameView::setMarginHeight(LayoutUnit h)
-{
-    // make it update the rendering area when set
-    m_margins.setHeight(h);
 }
 
 FrameFlattening FrameView::effectiveFrameFlattening() const
@@ -1676,10 +1654,7 @@ void FrameView::updateLayoutViewport()
             LayoutPoint newOrigin = computeLayoutViewportOrigin(visualViewportRect(), minStableLayoutViewportOrigin(), maxStableLayoutViewportOrigin(), layoutViewport, StickToDocumentBounds);
             setLayoutViewportOverrideRect(LayoutRect(newOrigin, m_layoutViewportOverrideRect.value().size()));
         }
-        if (frame().settings().visualViewportAPIEnabled()) {
-            if (auto* window = frame().window())
-                window->visualViewport().update();
-        }
+        layoutOrVisualViewportChanged();
         return;
     }
 
@@ -1688,10 +1663,7 @@ void FrameView::updateLayoutViewport()
         setBaseLayoutViewportOrigin(newLayoutViewportOrigin);
         LOG_WITH_STREAM(Scrolling, stream << "layoutViewport changed to " << layoutViewportRect());
     }
-    if (frame().settings().visualViewportAPIEnabled()) {
-        if (auto* window = frame().window())
-            window->visualViewport().update();
-    }
+    layoutOrVisualViewportChanged();
 }
 
 LayoutPoint FrameView::minStableLayoutViewportOrigin() const
@@ -1971,12 +1943,18 @@ void FrameView::viewportContentsChanged()
     });
 }
 
-IntRect FrameView::visualViewportRectExpandedByContentInsets() const
+IntRect FrameView::viewRectExpandedByContentInsets() const
 {
-    FloatRect unobscuredContentRect = this->visualViewportRect();
+    FloatRect viewRect;
+    if (delegatesScrolling() && platformWidget())
+        viewRect = unobscuredContentRect();
+    else
+        viewRect = visualViewportRect();
+
     if (auto* page = frame().page())
-        unobscuredContentRect.expand(page->contentInsets());
-    return IntRect(unobscuredContentRect);
+        viewRect.expand(page->contentInsets());
+
+    return IntRect(viewRect);
 }
 
 bool FrameView::fixedElementsLayoutRelativeToFrame() const
@@ -2764,16 +2742,22 @@ void FrameView::updateTiledBackingAdaptiveSizing()
     tiledBacking->setScrollability(computeScrollability());
 }
 
-#if PLATFORM(IOS_FAMILY)
-
-void FrameView::didUpdateViewportOverrideRects()
+// FIXME: This shouldn't be called from outside; FrameView should call it when the relevant viewports change.
+void FrameView::layoutOrVisualViewportChanged()
 {
     if (!frame().settings().visualViewportAPIEnabled())
         return;
 
     if (auto* window = frame().window())
         window->visualViewport().update();
+
+    if (auto* page = frame().page()) {
+        if (auto* scrollingCoordinator = page->scrollingCoordinator())
+            scrollingCoordinator->frameViewVisualViewportChanged(*this);
+    }
 }
+
+#if PLATFORM(IOS_FAMILY)
 
 void FrameView::unobscuredContentSizeChanged()
 {
@@ -2921,7 +2905,7 @@ void FrameView::setNeedsLayoutAfterViewConfigurationChange()
 void FrameView::setNeedsCompositingConfigurationUpdate()
 {
     RenderView* renderView = this->renderView();
-    if (renderView->usesCompositing()) {
+    if (renderView && renderView->usesCompositing()) {
         if (auto* rootLayer = renderView->layer())
             rootLayer->setNeedsCompositingConfigurationUpdate();
         renderView->compositor().scheduleCompositingLayerUpdate();

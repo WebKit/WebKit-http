@@ -29,7 +29,7 @@
 #import "config.h"
 #import "WebAccessibilityObjectWrapperMac.h"
 
-#if HAVE(ACCESSIBILITY) && PLATFORM(MAC)
+#if ENABLE(ACCESSIBILITY) && PLATFORM(MAC)
 
 #import "AXObjectCache.h"
 #import "AccessibilityARIAGridRow.h"
@@ -235,6 +235,10 @@ using namespace HTMLNames;
 
 #ifndef NSAccessibilityHasPopupAttribute
 #define NSAccessibilityHasPopupAttribute @"AXHasPopup"
+#endif
+
+#ifndef NSAccessibilityPopupValueAttribute
+#define NSAccessibilityPopupValueAttribute @"AXPopupValue"
 #endif
 
 #ifndef NSAccessibilityPlaceholderValueAttribute
@@ -2172,6 +2176,10 @@ static AccessibilityRoleMap createAccessibilityRoleMap()
         { AccessibilityRole::GraphicsObject, NSAccessibilityGroupRole },
         { AccessibilityRole::GraphicsSymbol, NSAccessibilityImageRole },
         { AccessibilityRole::Caption, NSAccessibilityGroupRole },
+        { AccessibilityRole::Deletion, NSAccessibilityGroupRole },
+        { AccessibilityRole::Insertion, NSAccessibilityGroupRole },
+        { AccessibilityRole::Subscript, NSAccessibilityGroupRole },
+        { AccessibilityRole::Superscript, NSAccessibilityGroupRole },
     };
     AccessibilityRoleMap roleMap;
     for (auto& role : roles)
@@ -2377,6 +2385,15 @@ ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     if (m_object->isSwitch())
         return NSAccessibilitySwitchSubrole;
 
+    if (role == AccessibilityRole::Insertion)
+        return @"AXInsertStyleGroup";
+    if (role == AccessibilityRole::Deletion)
+        return @"AXDeleteStyleGroup";
+    if (role == AccessibilityRole::Superscript)
+        return @"AXSuperscriptStyleGroup";
+    if (role == AccessibilityRole::Subscript)
+        return @"AXSubscriptStyleGroup";
+
     if (m_object->isStyleFormatGroup()) {
         if (Node* node = m_object->node()) {
             if (node->hasTagName(kbdTag))
@@ -2391,14 +2408,6 @@ ALLOW_DEPRECATED_DECLARATIONS_BEGIN
                 return @"AXVariableStyleGroup";
             if (node->hasTagName(citeTag))
                 return @"AXCiteStyleGroup";
-            if (node->hasTagName(insTag))
-                return @"AXInsertStyleGroup";
-            if (node->hasTagName(delTag))
-                return @"AXDeleteStyleGroup";
-            if (node->hasTagName(supTag))
-                return @"AXSuperscriptStyleGroup";
-            if (node->hasTagName(subTag))
-                return @"AXSubscriptStyleGroup";
         }
     }
     
@@ -3379,10 +3388,10 @@ IGNORE_WARNINGS_END
     
     if ([attributeName isEqualToString:@"AXAutocompleteValue"])
         return m_object->autoCompleteValue();
-    
-    if ([attributeName isEqualToString:@"AXHasPopUpValue"])
-        return m_object->hasPopupValue();
-    
+
+    if ([attributeName isEqualToString:NSAccessibilityPopupValueAttribute])
+        return m_object->popupValue();
+
     if ([attributeName isEqualToString:@"AXKeyShortcutsValue"])
         return m_object->keyShortcutsValue();
     
@@ -3821,6 +3830,14 @@ IGNORE_WARNINGS_END
     return m_object->replaceTextInRange(string, PlainTextRange(range));
 }
 
+- (BOOL)_accessibilityInsertText:(NSString *)text
+{
+    if (![self updateObjectBackingStore])
+        return NO;
+
+    return m_object->insertText(text);
+}
+
 IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 - (void)accessibilitySetValue:(id)value forAttribute:(NSString*)attributeName
 IGNORE_WARNINGS_END
@@ -4238,7 +4255,9 @@ IGNORE_WARNINGS_END
     }
     
     if ([attribute isEqualToString:@"AXTextMarkerRangeForLine"]) {
-        VisiblePositionRange vpRange = m_object->visiblePositionRangeForLine([number intValue]);
+        VisiblePositionRange vpRange;
+        if ([number unsignedIntegerValue] != NSNotFound)
+            vpRange = m_object->visiblePositionRangeForLine([number unsignedIntValue]);
         return [self textMarkerRangeFromVisiblePositions:vpRange.start endPosition:vpRange.end];
     }
     
@@ -4637,4 +4656,4 @@ ALLOW_DEPRECATED_DECLARATIONS_END
 
 @end
 
-#endif // HAVE(ACCESSIBILITY) && PLATFORM(MAC)
+#endif // ENABLE(ACCESSIBILITY) && PLATFORM(MAC)

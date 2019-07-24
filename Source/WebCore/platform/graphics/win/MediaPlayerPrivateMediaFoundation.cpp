@@ -63,7 +63,8 @@ static const double tenMegahertz = 10000000;
 namespace WebCore {
 
 MediaPlayerPrivateMediaFoundation::MediaPlayerPrivateMediaFoundation(MediaPlayer* player) 
-    : m_player(player)
+    : m_weakThis(makeWeakPtr(this))
+    , m_player(player)
     , m_visible(false)
     , m_loadingProgress(false)
     , m_paused(true)
@@ -430,7 +431,7 @@ bool MediaPlayerPrivateMediaFoundation::endCreatedMediaSource(IMFAsyncResult* as
     hr = asyncResult->GetStatus();
     m_loadingProgress = SUCCEEDED(hr);
 
-    callOnMainThread([weakPtr = makeWeakPtr(*this)] {
+    callOnMainThread([weakPtr = m_weakThis] {
         if (!weakPtr)
             return;
         weakPtr->onCreatedMediaSource();
@@ -459,7 +460,7 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
 
     switch (mediaEventType) {
     case MESessionTopologySet: {
-        callOnMainThread([weakPtr = makeWeakPtr(*this)] {
+        callOnMainThread([weakPtr = m_weakThis] {
             if (!weakPtr)
                 return;
             weakPtr->onTopologySet();
@@ -468,7 +469,7 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
     }
 
     case MESessionStarted: {
-        callOnMainThread([weakPtr = makeWeakPtr(*this)] {
+        callOnMainThread([weakPtr = m_weakThis] {
             if (!weakPtr)
                 return;
             weakPtr->onSessionStarted();
@@ -477,7 +478,7 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
     }
 
     case MEBufferingStarted: {
-        callOnMainThread([weakPtr = makeWeakPtr(*this)] {
+        callOnMainThread([weakPtr = m_weakThis] {
             if (!weakPtr)
                 return;
             weakPtr->onBufferingStarted();
@@ -486,7 +487,7 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
     }
 
     case MEBufferingStopped: {
-        callOnMainThread([weakPtr = makeWeakPtr(*this)] {
+        callOnMainThread([weakPtr = m_weakThis] {
             if (!weakPtr)
                 return;
             weakPtr->onBufferingStopped();
@@ -495,7 +496,7 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
     }
 
     case MESessionEnded: {
-        callOnMainThread([weakPtr = makeWeakPtr(*this)] {
+        callOnMainThread([weakPtr = m_weakThis] {
             if (!weakPtr)
                 return;
             weakPtr->onSessionEnded();
@@ -1593,7 +1594,7 @@ HRESULT MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::processInputNot
     
     // Invalidate the video area
     if (m_mediaPlayer) {
-        callOnMainThread([weakPtr = makeWeakPtr(*m_mediaPlayer)] {
+        callOnMainThread([weakPtr = m_mediaPlayer->m_weakThis] {
             if (weakPtr)
                 weakPtr->invalidateFrameView();
         });

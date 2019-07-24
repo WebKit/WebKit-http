@@ -66,16 +66,22 @@ MediaStreamTrack::MediaStreamTrack(ScriptExecutionContext& context, Ref<MediaStr
 
     m_private->addObserver(*this);
 
+    if (!isCaptureTrack())
+        return;
+
     if (auto document = this->document()) {
+        if (document->page() && document->page()->mutedState())
+            setMuted(true);
         document->addAudioProducer(*this);
-        if (isCaptureTrack() && document->page() && document->page()->mutedState())
-            setMuted(document->page()->mutedState());
     }
 }
 
 MediaStreamTrack::~MediaStreamTrack()
 {
     m_private->removeObserver(*this);
+
+    if (!isCaptureTrack())
+        return;
 
     if (auto document = this->document())
         document->removeAudioProducer(*this);

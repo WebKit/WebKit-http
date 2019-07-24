@@ -1,8 +1,8 @@
-<!DOCTYPE html><!-- webkit-test-runner [ experimental:WebGPUEnabled=true ] -->
+<!DOCTYPE html>
 <html>
 <meta charset=utf-8>
 <title>Test the WHLSL test harness.</title>
-<script src="js/whlsl-test-harness.js"></script>
+<script src="whlsl/js/test-harness.js"></script>
 <script src="../resources/testharness.js"></script>
 <script src="../resources/testharnessreport.js"></script>
 <script>
@@ -204,15 +204,6 @@ const checkFloat4s = (body, argValues = [], expected = [0, 1, 2, 3]) => {
                 assert_approx_equals(result[i], expected[i], epsilon, "Test returned expected value.");
         });
     }, "Return an expected float4 value.");
-}
-
-const webGPUPromiseTest = (testFunc, msg) => {
-    promise_test(async () => { 
-        return testFunc().catch(e => {
-        if (!(e instanceof WebGPUUnsupportedError))
-            throw e;
-        });
-    }, msg);
 }
 </script>
 </html>

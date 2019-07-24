@@ -57,7 +57,7 @@ using namespace WebCore;
 
 void WebPage::platformInitialize()
 {
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
     // Create the accessible object (the plug) that will serve as the
     // entry point to the Web process, and send a message to the UI
     // process to connect the two worlds through the accessibility
@@ -200,7 +200,7 @@ void WebPage::showEmojiPicker(Frame& frame)
         if (!result.isEmpty())
             frame->editor().insertText(result, nullptr);
     };
-    sendWithAsyncReply(Messages::WebPageProxy::ShowEmojiPicker(frame.selection().absoluteCaretBounds()), WTFMove(completionHandler));
+    sendWithAsyncReply(Messages::WebPageProxy::ShowEmojiPicker(frame.view()->contentsToRootView(frame.selection().absoluteCaretBounds())), WTFMove(completionHandler));
 }
 
 void WebPage::effectiveAppearanceDidChange(bool useDarkAppearance, bool useInactiveAppearance)

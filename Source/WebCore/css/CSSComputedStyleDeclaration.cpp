@@ -790,12 +790,11 @@ static RefPtr<CSSValue> positionOffsetValue(const RenderStyle& style, CSSPropert
         }
         LayoutUnit containingBlockSize;
         if (box.isStickilyPositioned()) {
-            const RenderBox& enclosingScrollportBox =
-                box.enclosingScrollportBox();
-            if (isVerticalProperty == enclosingScrollportBox.isHorizontalWritingMode())
-                containingBlockSize = enclosingScrollportBox.contentLogicalHeight();
+            auto& enclosingClippingBox = box.enclosingClippingBoxForStickyPosition();
+            if (isVerticalProperty == enclosingClippingBox.isHorizontalWritingMode())
+                containingBlockSize = enclosingClippingBox.contentLogicalHeight();
             else
-                containingBlockSize = enclosingScrollportBox.contentLogicalWidth();
+                containingBlockSize = enclosingClippingBox.contentLogicalWidth();
         } else {
             if (isVerticalProperty == containingBlock->isHorizontalWritingMode()) {
                 containingBlockSize = box.isOutOfFlowPositioned()
@@ -4030,9 +4029,6 @@ RefPtr<CSSValue> ComputedStyleExtractor::valueForPropertyInStyle(const RenderSty
 
 #if ENABLE(DARK_MODE_CSS)
         case CSSPropertyColorScheme: {
-            if (!RuntimeEnabledFeatures::sharedFeatures().darkModeCSSEnabled())
-                return nullptr;
-
             auto colorScheme = style.colorScheme();
             if (colorScheme.isAuto())
                 return cssValuePool.createIdentifierValue(CSSValueAuto);

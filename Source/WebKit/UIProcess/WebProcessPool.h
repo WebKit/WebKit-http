@@ -43,6 +43,7 @@
 #include "VisitedLinkStore.h"
 #include "WebContextClient.h"
 #include "WebContextConnectionClient.h"
+#include "WebPreferencesStore.h"
 #include "WebProcessProxy.h"
 #include <WebCore/CrossSiteNavigationDataTransfer.h>
 #include <WebCore/ProcessIdentifier.h>
@@ -100,6 +101,7 @@ class HighPerformanceGraphicsUsageSampler;
 class UIGamepad;
 class PerActivityStateCPUUsageSampler;
 class ServiceWorkerProcessProxy;
+class SuspendedPageProxy;
 class WebAutomationSession;
 class WebContextSupplement;
 class WebPageGroup;
@@ -308,6 +310,7 @@ public:
     void setAllowsAnySSLCertificateForWebSocket(bool);
 
     void clearCachedCredentials();
+    void clearPermanentCredentialsForProtectionSpace(WebCore::ProtectionSpace&&, CompletionHandler<void()>&&);
     void terminateNetworkProcess();
     void sendNetworkProcessWillSuspendImminently();
     void sendNetworkProcessDidResume();
@@ -526,6 +529,9 @@ public:
 
     void disableDelayedWebProcessLaunch() { m_isDelayedWebProcessLaunchDisabled = true; }
 
+    void setJavaScriptConfigurationDirectory(String&& directory) { m_javaScriptConfigurationDirectory = directory; }
+    const String& javaScriptConfigurationDirectory() const { return m_javaScriptConfigurationDirectory; }
+    
 private:
     void platformInitialize();
 
@@ -723,6 +729,7 @@ private:
 
     bool m_memoryCacheDisabled { false };
     bool m_javaScriptConfigurationFileEnabled { false };
+    String m_javaScriptConfigurationDirectory;
     bool m_alwaysRunsAtBackgroundPriority;
     bool m_shouldTakeUIBackgroundAssertion;
     bool m_shouldMakeNextWebProcessLaunchFailForTesting { false };

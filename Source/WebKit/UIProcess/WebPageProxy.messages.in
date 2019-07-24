@@ -186,7 +186,7 @@ messages -> WebPageProxy {
 #endif
 #if PLATFORM(MAC)
     AttributedStringForCharacterRangeCallback(struct WebKit::AttributedString string, struct WebKit::EditingRange actualRange, WebKit::CallbackID callbackID)
-    FontAtSelectionCallback(String fontName, double fontSize, bool selectioHasMultipleFonts, WebKit::CallbackID callbackID)
+    FontAtSelectionCallback(struct WebKit::FontInfo fontInfo, double fontSize, bool selectionHasMultipleFonts, WebKit::CallbackID callbackID)
 #endif
     FontAttributesCallback(struct WebCore::FontAttributes attributes, WebKit::CallbackID callbackID)
 #if PLATFORM(IOS_FAMILY)
@@ -568,6 +568,7 @@ messages -> WebPageProxy {
 #if ENABLE(SPEECH_SYNTHESIS)
     SpeechSynthesisVoiceList() -> (Vector<WebKit::WebSpeechSynthesisVoice> voiceList) Synchronous
     SpeechSynthesisSpeak(String text, String lang, float volume, float rate, float pitch, MonotonicTime startTime, String voiceURI, String voiceName, String voiceLang, bool localService, bool defaultVoice) -> () Async
+    SpeechSynthesisSetFinishedCallback() -> () Async
     SpeechSynthesisCancel()
     SpeechSynthesisPause() -> () Async
     SpeechSynthesisResume() -> () Async

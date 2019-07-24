@@ -262,6 +262,7 @@
 #if PLATFORM(IOS_FAMILY)
 #include "ContentChangeObserver.h"
 #include "CSSFontSelector.h"
+#include "DOMTimerHoldingTank.h"
 #include "DeviceMotionClientIOS.h"
 #include "DeviceMotionController.h"
 #include "DeviceOrientationClientIOS.h"
@@ -318,6 +319,10 @@
 #endif
 #if ENABLE(WEBGPU)
 #include "GPUCanvasContext.h"
+#endif
+
+#if ENABLE(POINTER_EVENTS)
+#include "PointerCaptureController.h"
 #endif
 
 namespace WebCore {
@@ -1882,12 +1887,8 @@ void Document::resolveStyle(ResolveStyleType type)
             element->updateShadowTree();
     }
 
-    // FIXME: We should update style on our ancestor chain before proceeding (especially for seamless),
-    // however doing so currently causes several tests to crash, as Frame::setDocument calls Document::attach
-    // before setting the DOMWindow on the Frame, or the SecurityOrigin on the document. The attach, in turn
-    // resolves style (here) and then when we resolve style on the parent chain, we may end up
-    // re-attaching our containing iframe, which when asked HTMLFrameElementBase::isURLAllowed
-    // hits a null-dereference due to security code always assuming the document has a SecurityOrigin.
+    // FIXME: We should update style on our ancestor chain before proceeding, however doing so at
+    // the time this comment was originally written caused several tests to crash.
 
     {
         ScriptDisallowedScope::InMainThread scriptDisallowedScope;
@@ -2474,7 +2475,7 @@ void Document::prepareForDestruction()
 
     m_undoManager->removeAllItems();
 
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
     if (this != &topDocument()) {
         // Let the ax cache know that this subframe goes out of scope.
         if (auto* cache = existingAXObjectCache())
@@ -3732,8 +3733,29 @@ MouseEventWithHitTestResults Document::prepareMouseEvent(const HitTestRequest& r
     HitTestResult result(documentPoint);
     hitTest(request, result);
 
-    if (!request.readOnly())
-        updateHoverActiveState(request, result.targetElement());
+    auto captureElementChanged = CaptureChange::No;
+    if (!request.readOnly()) {
+        auto targetElement = makeRefPtr(result.targetElement());
+#if ENABLE(POINTER_EVENTS)
+        if (auto* page = this->page()) {
+            // Before we dispatch a new mouse event, we must run the Process Pending Capture Element steps as defined
+            // in https://w3c.github.io/pointerevents/#process-pending-pointer-capture.
+            auto& pointerCaptureController = page->pointerCaptureController();
+            auto* previousCaptureElement = pointerCaptureController.pointerCaptureElement(this, event.pointerId());
+            pointerCaptureController.processPendingPointerCapture(event.pointerId());
+            auto* captureElement = pointerCaptureController.pointerCaptureElement(this, event.pointerId());
+            // If the capture element has changed while running the Process Pending Capture Element steps then
+            // we need to indicate that when calling updateHoverActiveState to be sure that the :active and :hover
+            // element chains are updated.
+            if (previousCaptureElement != captureElement)
+                captureElementChanged = CaptureChange::Yes;
+            // If we have a capture element, we must target it instead of what would normally hit-test for this event.
+            if (captureElement)
+                targetElement = captureElement;
+        }
+#endif
+        updateHoverActiveState(request, targetElement.get(), captureElementChanged);
+    }
 
     return MouseEventWithHitTestResults(event, result);
 }
@@ -4433,11 +4455,6 @@ void Document::nodeWillBeRemoved(Node& node)
 
     if (is<Text>(node))
         m_markers->removeMarkers(node);
-
-#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
-    if (m_touchActionElements && is<Element>(node))
-        m_touchActionElements->remove(&downcast<Element>(node));
-#endif
 }
 
 static Node* fallbackFocusNavigationStartingNodeAfterRemoval(Node& node)
@@ -5645,8 +5662,10 @@ void Document::finishedParsing()
     if (!m_documentTiming.domContentLoadedEventStart)
         m_documentTiming.domContentLoadedEventStart = MonotonicTime::now();
 
-    // FIXME: Schdule a task to fire DOMContentLoaded event instead. See webkit.org/b/82931
-    MicrotaskQueue::mainThreadQueue().performMicrotaskCheckpoint();
+    if (!page() || !page()->isForSanitizingWebContent()) {
+        // FIXME: Schedule a task to fire DOMContentLoaded event instead. See webkit.org/b/82931
+        MicrotaskQueue::mainThreadQueue().performMicrotaskCheckpoint();
+    }
 
     dispatchEvent(Event::create(eventNames().DOMContentLoadedEvent, Event::CanBubble::Yes, Event::IsCancelable::No));
 
@@ -6093,10 +6112,10 @@ void Document::addMessage(MessageSource source, MessageLevel level, const String
 
 void Document::postTask(Task&& task)
 {
-    callOnMainThread([documentReference = makeWeakPtr(*this), task = WTFMove(task)]() mutable {
+    callOnMainThread([documentID = identifier(), task = WTFMove(task)]() mutable {
         ASSERT(isMainThread());
 
-        Document* document = documentReference.get();
+        auto* document = allDocumentsMap().get(documentID);
         if (!document)
             return;
 
@@ -6740,7 +6759,7 @@ static Element* findNearestCommonComposedAncestor(Element* elementA, Element* el
     return nullptr;
 }
 
-void Document::updateHoverActiveState(const HitTestRequest& request, Element* innerElement)
+void Document::updateHoverActiveState(const HitTestRequest& request, Element* innerElement, CaptureChange captureElementChanged)
 {
     ASSERT(!request.readOnly());
 
@@ -6779,8 +6798,8 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
 
     // If the mouse is down and if this is a mouse move event, we want to restrict changes in
     // :hover/:active to only apply to elements that are in the :active chain that we froze
-    // at the time the mouse went down.
-    bool mustBeInActiveChain = request.active() && request.move();
+    // at the time the mouse went down, unless the capture element changed.
+    bool mustBeInActiveChain = request.active() && request.move() && captureElementChanged == CaptureChange::No;
 
     RefPtr<Element> oldHoveredElement = WTFMove(m_hoveredElement);
 
@@ -6950,6 +6969,20 @@ OptionSet<StyleColor::Options> Document::styleColorOptions(const RenderStyle* st
     if (useElevatedUserInterfaceLevel())
         options.add(StyleColor::Options::UseElevatedUserInterfaceLevel);
     return options;
+}
+
+CompositeOperator Document::compositeOperatorForBackgroundColor(const Color& color, const RenderObject& renderer) const
+{
+    if (LIKELY(!settings().punchOutWhiteBackgroundsInDarkMode() || !Color::isWhiteColor(color) || !renderer.useDarkAppearance()))
+        return CompositeSourceOver;
+
+    auto* frameView = view();
+    if (!frameView)
+        return CompositeSourceOver;
+
+    // Mail on macOS uses a transparent view, and on iOS it is an opaque view. We need to
+    // use different composite modes to get the right results in this case.
+    return frameView->isTransparent() ? CompositeDestinationOut : CompositeDestinationIn;
 }
 
 void Document::didAssociateFormControl(Element& element)
@@ -8149,39 +8182,23 @@ void Document::setPaintWorkletGlobalScopeForName(const String& name, Ref<PaintWo
 }
 #endif
 
-#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
-void Document::updateTouchActionElements(Element& element, const RenderStyle& style)
-{
-    bool changed = false;
-
-    if (style.touchActions() != TouchAction::Auto) {
-        if (!m_touchActionElements)
-            m_touchActionElements = std::make_unique<HashSet<RefPtr<Element>>>();
-        changed |= m_touchActionElements->add(&element).isNewEntry;
-    } else if (m_touchActionElements)
-        changed |= m_touchActionElements->remove(&element);
-
-    if (!changed)
-        return;
-
-    Page* page = this->page();
-    if (!page)
-        return;
-
-    if (FrameView* frameView = view()) {
-        if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
-            scrollingCoordinator->frameViewEventTrackingRegionsChanged(*frameView);
-    }
-}
-#endif
-
 #if PLATFORM(IOS_FAMILY)
+
 ContentChangeObserver& Document::contentChangeObserver()
 {
     if (!m_contentChangeObserver)
         m_contentChangeObserver = std::make_unique<ContentChangeObserver>(*this);
     return *m_contentChangeObserver; 
 }
+
+DOMTimerHoldingTank& Document::domTimerHoldingTank()
+{
+    if (m_domTimerHoldingTank)
+        return *m_domTimerHoldingTank;
+    m_domTimerHoldingTank = std::make_unique<DOMTimerHoldingTank>();
+    return *m_domTimerHoldingTank;
+}
+
 #endif
 
 bool Document::hasEvaluatedUserAgentScripts() const

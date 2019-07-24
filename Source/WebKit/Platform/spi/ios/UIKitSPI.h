@@ -1003,6 +1003,9 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 
 @interface UITextEffectsWindow : UIAutoRotatingWindow
 + (UITextEffectsWindow *)sharedTextEffectsWindow;
+#if HAVE(UISCENE)
++ (UITextEffectsWindow *)sharedTextEffectsWindowForWindowScene:(UIWindowScene *)windowScene;
+#endif // HAVE(UISCENE)
 @end
 
 @interface _UIVisualEffectLayerConfig : NSObject
@@ -1114,6 +1117,9 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 - (void)_setContentOffsetWithDecelerationAnimation:(CGPoint)contentOffset;
 - (CGPoint)_adjustedContentOffsetForContentOffset:(CGPoint)contentOffset;
 - (void)_flashScrollIndicatorsPersistingPreviousFlashes:(BOOL)persisting;
+
+@property (nonatomic) BOOL tracksImmediatelyWhileDecelerating;
+@property (nonatomic, getter=_avoidsJumpOnInterruptedBounce, setter=_setAvoidsJumpOnInterruptedBounce:) BOOL _avoidsJumpOnInterruptedBounce;
 @end
 
 @interface UIPeripheralHost (IPI)
@@ -1130,8 +1136,11 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 @property (nonatomic, readonly) UIKeyboardInputMode *currentInputModeInPreference;
 @end
 
+@class CALayerHost;
+
 @interface _UILayerHostView : UIView
 - (instancetype)initWithFrame:(CGRect)frame pid:(pid_t)pid contextID:(uint32_t)contextID;
+@property (nonatomic, readonly, retain) CALayerHost *layerHost;
 @end
 
 @interface _UIRemoteView : _UILayerHostView

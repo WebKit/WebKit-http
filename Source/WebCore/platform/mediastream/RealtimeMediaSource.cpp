@@ -69,10 +69,9 @@ void RealtimeMediaSource::addObserver(RealtimeMediaSource::Observer& observer)
 void RealtimeMediaSource::removeObserver(RealtimeMediaSource::Observer& observer)
 {
     auto locker = holdLock(m_observersLock);
-
     m_observers.remove(&observer);
     if (m_observers.isEmpty())
-        stop();
+        stopBeingObserved();
 }
 
 void RealtimeMediaSource::setInterrupted(bool interrupted, bool pageMuted)
@@ -1035,13 +1034,10 @@ void RealtimeMediaSource::setEchoCancellation(bool echoCancellation)
     notifySettingsDidChangeObservers(RealtimeMediaSourceSettings::Flag::EchoCancellation);
 }
 
-void RealtimeMediaSource::scheduleDeferredTask(WTF::Function<void()>&& function)
+void RealtimeMediaSource::scheduleDeferredTask(Function<void()>&& function)
 {
     ASSERT(function);
-    callOnMainThread([weakThis = makeWeakPtr(*this), function = WTFMove(function)] {
-        if (!weakThis)
-            return;
-
+    callOnMainThread([protectedThis = makeRef(*this), function = WTFMove(function)] {
         function();
     });
 }

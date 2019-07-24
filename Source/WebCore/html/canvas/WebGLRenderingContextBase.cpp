@@ -121,11 +121,6 @@ static const Seconds checkContextLossHandlingDelay { 3_s };
 
 namespace {
     
-    Platform3DObject objectOrZero(WebGLObject* object)
-    {
-        return object ? object->object() : 0;
-    }
-
     GC3Dint clamp(GC3Dint value, GC3Dint min, GC3Dint max)
     {
         if (value < min)
@@ -570,9 +565,6 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(Can
                 isPendingPolicyResolution = true;
             }
         }
-
-        if (frame->settings().forceSoftwareWebGLRendering())
-            attributes.forceSoftwareRenderer = true;
 
         if (frame->settings().forceWebGLUsesLowPower()) {
             if (attributes.powerPreference == GraphicsContext3DPowerPreference::HighPerformance)
@@ -2679,7 +2671,11 @@ WebGLAny WebGLRenderingContextBase::getProgramParameter(WebGLProgram* program, G
         return value;
     case GraphicsContext3D::ACTIVE_ATTRIBUTES:
     case GraphicsContext3D::ACTIVE_UNIFORMS:
+#if USE(ANGLE)
+        m_context->getProgramiv(objectOrZero(program), pname, &value);
+#else
         m_context->getNonBuiltInActiveSymbolCount(objectOrZero(program), pname, &value);
+#endif // USE(ANGLE)
         return value;
     default:
         synthesizeGLError(GraphicsContext3D::INVALID_ENUM, "getProgramParameter", "invalid parameter name");
@@ -2998,7 +2994,11 @@ RefPtr<WebGLUniformLocation> WebGLRenderingContextBase::getUniformLocation(WebGL
         return nullptr;
 
     GC3Dint activeUniforms = 0;
+#if USE(ANGLE)
+    m_context->getProgramiv(objectOrZero(program), GraphicsContext3D::ACTIVE_UNIFORMS, &activeUniforms);
+#else
     m_context->getNonBuiltInActiveSymbolCount(objectOrZero(program), GraphicsContext3D::ACTIVE_UNIFORMS, &activeUniforms);
+#endif
     for (GC3Dint i = 0; i < activeUniforms; i++) {
         ActiveInfo info;
         if (!m_context->getActiveUniform(objectOrZero(program), i, info))
@@ -3212,10 +3212,18 @@ bool WebGLRenderingContextBase::linkProgramWithoutInvalidatingAttribLocations(We
 
     RefPtr<WebGLShader> vertexShader = program->getAttachedShader(GraphicsContext3D::VERTEX_SHADER);
     RefPtr<WebGLShader> fragmentShader = program->getAttachedShader(GraphicsContext3D::FRAGMENT_SHADER);
-    if (!vertexShader || !vertexShader->isValid() || !fragmentShader || !fragmentShader->isValid() || !m_context->precisionsMatch(objectOrZero(vertexShader.get()), objectOrZero(fragmentShader.get())) || !m_context->checkVaryingsPacking(objectOrZero(vertexShader.get()), objectOrZero(fragmentShader.get()))) {
+    if (!vertexShader || !vertexShader->isValid() || !fragmentShader || !fragmentShader->isValid()) {
         program->setLinkStatus(false);
         return false;
     }
+
+#if !USE(ANGLE)
+    if (!m_context->precisionsMatch(objectOrZero(vertexShader.get()), objectOrZero(fragmentShader.get()))
+        || !m_context->checkVaryingsPacking(objectOrZero(vertexShader.get()), objectOrZero(fragmentShader.get()))) {
+        program->setLinkStatus(false);
+        return false;
+    }
+#endif
 
     m_context->linkProgram(objectOrZero(program));
     return true;

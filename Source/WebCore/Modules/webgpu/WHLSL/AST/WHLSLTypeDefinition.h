@@ -29,7 +29,6 @@
 
 #include "WHLSLLexer.h"
 #include "WHLSLNamedType.h"
-#include "WHLSLNode.h"
 #include "WHLSLUnnamedType.h"
 #include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
@@ -42,8 +41,8 @@ namespace AST {
 
 class TypeDefinition : public NamedType {
 public:
-    TypeDefinition(Lexer::Token&& origin, String&& name, UniqueRef<UnnamedType>&& type)
-        : NamedType(WTFMove(origin), WTFMove(name))
+    TypeDefinition(CodeLocation location, String&& name, UniqueRef<UnnamedType>&& type)
+        : NamedType(location, WTFMove(name))
         , m_type(WTFMove(type))
     {
     }

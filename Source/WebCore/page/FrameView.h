@@ -4,7 +4,7 @@
              (C) 1998, 1999 Torben Weis (weis@kde.org)
              (C) 1999 Lars Knoll (knoll@kde.org)
              (C) 1999 Antti Koivisto (koivisto@kde.org)
-   Copyright (C) 2004-2017 Apple Inc. All rights reserved.
+   Copyright (C) 2004-2019 Apple Inc. All rights reserved.
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Library General Public
@@ -94,11 +94,6 @@ public:
 
     int mapFromLayoutToCSSUnits(LayoutUnit) const;
     LayoutUnit mapFromCSSToLayoutUnits(int) const;
-
-    LayoutUnit marginWidth() const { return m_margins.width(); } // -1 means default
-    LayoutUnit marginHeight() const { return m_margins.height(); } // -1 means default
-    void setMarginWidth(LayoutUnit);
-    void setMarginHeight(LayoutUnit);
 
     WEBCORE_EXPORT void setCanHaveScrollbars(bool) final;
     WEBCORE_EXPORT void updateCanHaveScrollbars();
@@ -260,6 +255,7 @@ public:
     // If set, overrides the default "m_layoutViewportOrigin, size of initial containing block" rect.
     // Used with delegated scrolling (i.e. iOS).
     WEBCORE_EXPORT void setLayoutViewportOverrideRect(Optional<LayoutRect>, TriggerLayoutOrNot = TriggerLayoutOrNot::Yes);
+    Optional<LayoutRect> layoutViewportOverrideRect() const { return m_layoutViewportOverrideRect; }
 
     WEBCORE_EXPORT void setVisualViewportOverrideRect(Optional<LayoutRect>);
 
@@ -272,7 +268,9 @@ public:
     // This is different than visibleContentRect() in that it ignores negative (or overly positive)
     // offsets from rubber-banding, and it takes zooming into account. 
     LayoutRect viewportConstrainedVisibleContentRect() const;
-    
+
+    WEBCORE_EXPORT void layoutOrVisualViewportChanged();
+
     LayoutRect rectForFixedPositionLayout() const;
 
     void viewportContentsChanged();
@@ -329,7 +327,7 @@ public:
     WEBCORE_EXPORT static LayoutRect rectForViewportConstrainedObjects(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements);
 #endif
 
-    IntRect visualViewportRectExpandedByContentInsets() const;
+    IntRect viewRectExpandedByContentInsets() const;
     
     bool fixedElementsLayoutRelativeToFrame() const;
 
@@ -399,6 +397,8 @@ public:
     void updateIsVisuallyNonEmpty();
     void updateSignificantRenderedTextMilestoneIfNeeded();
     bool isVisuallyNonEmpty() const { return m_isVisuallyNonEmpty; }
+    WEBCORE_EXPORT bool qualifiesAsVisuallyNonEmpty() const;
+
     WEBCORE_EXPORT void enableAutoSizeMode(bool enable, const IntSize& minSize);
     WEBCORE_EXPORT void setAutoSizeFixedMinimumHeight(int);
     bool isAutoSizeEnabled() const { return m_shouldAutoSize; }
@@ -595,10 +595,6 @@ public:
     void updateTiledBackingAdaptiveSizing();
     TiledBacking::Scrollability computeScrollability() const;
 
-#if PLATFORM(IOS_FAMILY)
-    WEBCORE_EXPORT void didUpdateViewportOverrideRects();
-#endif
-
     void addPaintPendingMilestones(OptionSet<LayoutMilestone>);
     void firePaintRelatedMilestonesIfNeeded();
     void fireLayoutRelatedMilestonesIfNeeded();
@@ -792,7 +788,6 @@ private:
 
     void markRootOrBodyRendererDirty() const;
 
-    bool qualifiesAsVisuallyNonEmpty() const;
     bool qualifiesAsSignificantRenderedText() const;
     void updateHasReachedSignificantRenderedTextThreshold();
 
@@ -840,7 +835,6 @@ private:
     MonotonicTime m_lastPaintTime;
 
     LayoutSize m_size;
-    LayoutSize m_margins;
 
     Color m_baseBackgroundColor { Color::white };
     IntSize m_lastViewportSize;

@@ -108,7 +108,6 @@ set(JavaScriptCore_OBJECT_LUT_SOURCES
     wasm/js/WebAssemblyMemoryPrototype.cpp
     wasm/js/WebAssemblyModuleConstructor.cpp
     wasm/js/WebAssemblyModulePrototype.cpp
-    wasm/js/WebAssemblyPrototype.cpp
     wasm/js/WebAssemblyRuntimeErrorConstructor.cpp
     wasm/js/WebAssemblyRuntimeErrorPrototype.cpp
     wasm/js/WebAssemblyTableConstructor.cpp
@@ -224,7 +223,7 @@ add_custom_command(
 if (WTF_OS_MAC_OS_X)
     execute_process(COMMAND bash -c "date +'%s'" OUTPUT_VARIABLE BUILD_TIME OUTPUT_STRIP_TRAILING_WHITESPACE)
 else ()
-    set(BUILD_TIME 0)
+    string(TIMESTAMP BUILD_TIME "%s")
 endif ()
 
 file(WRITE ${JavaScriptCore_DERIVED_SOURCES_DIR}/BytecodeCacheVersion.h "#define JSC_BYTECODE_CACHE_VERSION ${BUILD_TIME}\n")
@@ -436,7 +435,9 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     API/OpaqueJSString.h
 
     assembler/ARM64Assembler.h
+    assembler/ARM64Registers.h
     assembler/ARMv7Assembler.h
+    assembler/ARMv7Registers.h
     assembler/AbortReason.h
     assembler/AbstractMacroAssembler.h
     assembler/AssemblerBuffer.h
@@ -446,6 +447,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     assembler/CodeLocation.h
     assembler/LinkBuffer.h
     assembler/MIPSAssembler.h
+    assembler/MIPSRegisters.h
     assembler/MacroAssembler.h
     assembler/MacroAssemblerARM64.h
     assembler/MacroAssemblerARMv7.h
@@ -456,7 +458,10 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     assembler/MacroAssemblerX86Common.h
     assembler/MacroAssemblerX86_64.h
     assembler/Printer.h
+    assembler/RegisterInfo.h
     assembler/X86Assembler.h
+    assembler/X86Registers.h
+    assembler/X86_64Registers.h
 
     bindings/ScriptFunctionCall.h
     bindings/ScriptObject.h
@@ -1005,8 +1010,8 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     wasm/WasmPageCount.h
     wasm/WasmTierUpCount.h
 
+    wasm/js/JSWebAssembly.h
     wasm/js/JSWebAssemblyModule.h
-    wasm/js/WebAssemblyPrototype.h
 
 
     yarr/RegularExpression.h
@@ -1214,7 +1219,7 @@ set(JavaScriptCore_BUILTINS_SOURCES
     ${JAVASCRIPTCORE_DIR}/builtins/StringPrototype.js
     ${JAVASCRIPTCORE_DIR}/builtins/TypedArrayConstructor.js
     ${JAVASCRIPTCORE_DIR}/builtins/TypedArrayPrototype.js
-    ${JAVASCRIPTCORE_DIR}/builtins/WebAssemblyPrototype.js
+    ${JAVASCRIPTCORE_DIR}/builtins/WebAssembly.js
 )
 
 add_custom_command(

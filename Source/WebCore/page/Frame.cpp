@@ -117,6 +117,9 @@ static const Seconds scrollFrequency { 1000_s / 60. };
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, frameCounter, ("Frame"));
 
+// We prewarm local storage for at most 5 origins in a given page.
+static const unsigned maxlocalStoragePrewarmingCount { 5 };
+
 static inline Frame* parentFromOwnerElement(HTMLFrameOwnerElement* ownerElement)
 {
     if (!ownerElement)
@@ -728,7 +731,7 @@ String Frame::displayStringModifiedByEncoding(const String& str) const
 
 VisiblePosition Frame::visiblePositionForPoint(const IntPoint& framePoint) const
 {
-    HitTestResult result = eventHandler().hitTestResultAtPoint(framePoint, HitTestRequest::ReadOnly | HitTestRequest::Active);
+    HitTestResult result = eventHandler().hitTestResultAtPoint(framePoint, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::AllowChildFrameContent);
     Node* node = result.innerNonSharedNode();
     if (!node)
         return VisiblePosition();
@@ -750,7 +753,7 @@ Document* Frame::documentAtPoint(const IntPoint& point)
     HitTestResult result = HitTestResult(pt);
 
     if (contentRenderer())
-        result = eventHandler().hitTestResultAtPoint(pt);
+        result = eventHandler().hitTestResultAtPoint(pt, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
     return result.innerNode() ? &result.innerNode()->document() : 0;
 }
 
@@ -963,23 +966,6 @@ void Frame::deviceOrPageScaleFactorChanged()
         root->compositor().deviceOrPageScaleFactorChanged();
 }
 
-bool Frame::isURLAllowed(const URL& url) const
-{
-    // We allow one level of self-reference because some sites depend on that,
-    // but we don't allow more than one.
-    if (m_page->subframeCount() >= Page::maxNumberOfFrames)
-        return false;
-    bool foundSelfReference = false;
-    for (const Frame* frame = this; frame; frame = frame->tree().parent()) {
-        if (equalIgnoringFragmentIdentifier(frame->document()->url(), url)) {
-            if (foundSelfReference)
-                return false;
-            foundSelfReference = true;
-        }
-    }
-    return true;
-}
-
 bool Frame::isAlwaysOnLoggingAllowed() const
 {
     return page() && page()->isAlwaysOnLoggingAllowed();
@@ -990,6 +976,19 @@ void Frame::dropChildren()
     ASSERT(isMainFrame());
     while (Frame* child = tree().firstChild())
         tree().removeChild(*child);
+}
+
+void Frame::didPrewarmLocalStorage()
+{
+    ASSERT(isMainFrame());
+    ASSERT(m_localStoragePrewarmingCount < maxlocalStoragePrewarmingCount);
+    ++m_localStoragePrewarmingCount;
+}
+
+bool Frame::mayPrewarmLocalStorage() const
+{
+    ASSERT(isMainFrame());
+    return m_localStoragePrewarmingCount < maxlocalStoragePrewarmingCount;
 }
 
 void Frame::selfOnlyRef()

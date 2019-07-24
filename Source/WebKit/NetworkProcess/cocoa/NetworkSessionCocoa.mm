@@ -550,13 +550,8 @@ static bool canNSURLSessionTrustEvaluate()
     return [NSURLSession respondsToSelector:@selector(_strictTrustEvaluate: queue: completionHandler:)];
 }
 
-static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, NSURLAuthenticationChallenge *challenge, OSStatus trustResult, NetworkDataTaskCocoa::TaskIdentifier taskIdentifier, NetworkDataTaskCocoa* networkDataTask, CompletionHandler<void(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential)>&& completionHandler)
+static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, NSURLAuthenticationChallenge *challenge, NetworkDataTaskCocoa::TaskIdentifier taskIdentifier, NetworkDataTaskCocoa* networkDataTask, CompletionHandler<void(NSURLSessionAuthChallengeDisposition disposition, NSURLCredential *credential)>&& completionHandler)
 {
-    if (trustResult == noErr) {
-        completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
-        return;
-    }
-
     session->continueDidReceiveChallenge(challenge, taskIdentifier, networkDataTask, [completionHandler = WTFMove(completionHandler), secTrust = retainPtr(challenge.protectionSpace.serverTrust)] (WebKit::AuthenticationChallengeDisposition disposition, const WebCore::Credential& credential) mutable {
         // FIXME: UIProcess should send us back non nil credentials but the credential IPC encoder currently only serializes ns credentials for username/password.
         if (disposition == WebKit::AuthenticationChallengeDisposition::UseCredential && !credential.nsCredential()) {
@@ -594,8 +589,14 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, NS
 #if HAVE(CFNETWORK_NSURLSESSION_STRICTRUSTEVALUATE)
             if (canNSURLSessionTrustEvaluate()) {
                 auto* networkDataTask = [self existingTask:task];
-                auto decisionHandler = makeBlockPtr([_session = _session.copyRef(), completionHandler = makeBlockPtr(completionHandler), taskIdentifier, networkDataTask = RefPtr<NetworkDataTaskCocoa>(networkDataTask)](NSURLAuthenticationChallenge *challenge, OSStatus trustResult) mutable {
-                    processServerTrustEvaluation(_session.get(), challenge, trustResult, taskIdentifier, networkDataTask.get(), WTFMove(completionHandler));
+                auto decisionHandler = makeBlockPtr([_session = makeWeakPtr(_session.get()), completionHandler = makeBlockPtr(completionHandler), taskIdentifier, networkDataTask = RefPtr<NetworkDataTaskCocoa>(networkDataTask)](NSURLAuthenticationChallenge *challenge, OSStatus trustResult) mutable {
+                    auto task = WTFMove(networkDataTask);
+                    auto* session = _session.get();
+                    if (trustResult == noErr || !session) {
+                        completionHandler(NSURLSessionAuthChallengePerformDefaultHandling, nil);
+                        return;
+                    }
+                    processServerTrustEvaluation(session, challenge, taskIdentifier, task.get(), WTFMove(completionHandler));
                 });
                 [NSURLSession _strictTrustEvaluate:challenge queue:[NSOperationQueue mainQueue].underlyingQueue completionHandler:decisionHandler.get()];
                 return;
@@ -682,7 +683,7 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, NS
         if (networkDataTask->shouldCaptureExtraNetworkLoadMetrics()) {
             networkLoadMetrics.priority = toNetworkLoadPriority(task.priority);
 
-#if HAVE(CFNETWORK_NSURLSESSIONTASKTRANSACTIONMETRICS_SPI)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
             networkLoadMetrics.remoteAddress = String(m._remoteAddressAndPort);
             networkLoadMetrics.connectionIdentifier = String([m._connectionIdentifier UUIDString]);
 #endif
@@ -698,21 +699,7 @@ static inline void processServerTrustEvaluation(NetworkSessionCocoa *session, NS
             }];
             networkLoadMetrics.requestHeaders = WTFMove(requestHeaders);
 
-#if HAVE(CFNETWORK_NSURLSESSIONTASKTRANSACTIONMETRICS_ADDITIONS)
-            networkLoadMetrics.requestHeaderBytesSent = 0;
-            networkLoadMetrics.requestBodyBytesSent = 0;
-            networkLoadMetrics.responseHeaderBytesReceived = 0;
-            networkLoadMetrics.responseBodyBytesReceived = 0;
-            networkLoadMetrics.responseBodyDecodedSize = 0;
-
-            for (NSURLSessionTaskTransactionMetrics *transactionMetrics in metrics.transactionMetrics) {
-                networkLoadMetrics.requestHeaderBytesSent += transactionMetrics.countOfRequestHeaderBytesSent;
-                networkLoadMetrics.requestBodyBytesSent += transactionMetrics.countOfRequestBodyBytesSent;
-                networkLoadMetrics.responseHeaderBytesReceived += transactionMetrics.countOfResponseHeaderBytesReceived;
-                networkLoadMetrics.responseBodyBytesReceived += transactionMetrics.countOfResponseBodyBytesReceived;
-                networkLoadMetrics.responseBodyDecodedSize += transactionMetrics.countOfResponseBodyBytesAfterDecoding;
-            }
-#elif HAVE(CFNETWORK_NSURLSESSIONTASKTRANSACTIONMETRICS_SPI)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
             uint64_t requestHeaderBytesSent = 0;
             uint64_t responseHeaderBytesReceived = 0;
             uint64_t responseBodyBytesReceived = 0;
@@ -938,7 +925,7 @@ static NSDictionary *proxyDictionary(const URL& httpProxy, const URL& httpsProxy
 }
 
 NetworkSessionCocoa::NetworkSessionCocoa(NetworkProcess& networkProcess, NetworkSessionCreationParameters&& parameters)
-    : NetworkSession(networkProcess, parameters.sessionID, parameters.localStorageDirectory, parameters.localStorageDirectoryExtensionHandle)
+    : NetworkSession(networkProcess, parameters)
     , m_boundInterfaceIdentifier(parameters.boundInterfaceIdentifier)
     , m_sourceApplicationBundleIdentifier(parameters.sourceApplicationBundleIdentifier)
     , m_sourceApplicationSecondaryIdentifier(parameters.sourceApplicationSecondaryIdentifier)

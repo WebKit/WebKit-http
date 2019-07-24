@@ -1,3 +1,308 @@
+2019-07-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS 10.15] Web process crashes when attempting to show the font panel via Font > Show Fonts
+        https://bugs.webkit.org/show_bug.cgi?id=200021
+        <rdar://problem/53301325>
+
+        Reviewed by Ryosuke Niwa.
+
+        Implement a new editing client hook. In WebKit1, this always returns true on macOS and false on iOS.
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2019-07-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix WebView iframe rendering in macOS Catalina
+        https://bugs.webkit.org/show_bug.cgi?id=200022
+        rdar://problem/49102040
+
+        Reviewed by Darin Adler.
+
+        Adapt to internal NSView method renames in Catalina.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _recursive:displayRectIgnoringOpacity:inContext:stopAtLayerBackedViews:_recursive:displayRectIgnoringOpacity:inContext:shouldChangeFontReferenceColor:stopAtLayerBackedViews:_recursive:displayRectIgnoringOpacity:inContext:shouldChangeFontReferenceColor:_recursive:displayRectIgnoringOpacity:inContext:topView:]):
+        (-[WebHTMLView _recursive:displayRectIgnoringOpacity:inContext:shouldChangeFontReferenceColor:stopAtLayerBackedViews:_recursive:displayRectIgnoringOpacity:inContext:shouldChangeFontReferenceColor:_recursive:displayRectIgnoringOpacity:inContext:topView:]): Deleted.
+
+2019-07-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable CSSOMViewScrollingAPIEnabled in WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=200008
+        rdar://problem/53409062
+
+        Reviewed by Tim Horton.
+
+        Default WebKitCSSOMViewScrollingAPIEnabledPreferenceKey to YES, so that 
+        CSSOMViewScrollingAPIEnabled is on for both WebKit1 and WebKit2.
+
+        DumpRenderTree already turns this preference on, so this change is not
+        detected by tests.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2019-07-22  Youenn Fablet  <youenn@apple.com>
+
+        Disable MediaRecorder for legacy WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=200001
+        <rdar://problem/53400030>
+
+        Reviewed by Eric Carlson.
+
+        Disable MediaRecorder by default in legacy WebKit.
+        Add SPI to set/get this preference.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences _mediaRecorderEnabled]):
+        (-[WebPreferences _setMediaRecorderEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+
+2019-07-18  Alex Christensen  <achristensen@webkit.org>
+
+        Unify builds in WebKitLegacy/mac/DOM
+        https://bugs.webkit.org/show_bug.cgi?id=199771
+
+        Reviewed by Geoffrey Garen.
+
+        * DOM/DOMAbstractView.mm:
+        * DOM/DOMAttr.mm:
+        * DOM/DOMBlob.mm:
+        * DOM/DOMCDATASection.mm:
+        * DOM/DOMCSSFontFaceRule.mm:
+        * DOM/DOMCSSImportRule.mm:
+        * DOM/DOMCSSMediaRule.mm:
+        * DOM/DOMCSSPageRule.mm:
+        * DOM/DOMCSSPrimitiveValue.mm:
+        * DOM/DOMCSSRule.mm:
+        * DOM/DOMCSSRuleList.mm:
+        * DOM/DOMCSSStyleDeclaration.mm:
+        * DOM/DOMCSSStyleRule.mm:
+        * DOM/DOMCSSStyleSheet.mm:
+        * DOM/DOMCSSUnknownRule.mm:
+        * DOM/DOMCSSValue.mm:
+        * DOM/DOMCSSValueList.mm:
+        * DOM/DOMCharacterData.mm:
+        * DOM/DOMComment.mm:
+        * DOM/DOMCounter.mm:
+        * DOM/DOMDocument.mm:
+        * DOM/DOMDocumentFragment.mm:
+        * DOM/DOMDocumentType.mm:
+        * DOM/DOMEvent.mm:
+        * DOM/DOMFile.mm:
+        * DOM/DOMFileList.mm:
+        * DOM/DOMHTMLAnchorElement.mm:
+        * DOM/DOMHTMLAppletElement.mm:
+        * DOM/DOMHTMLAreaElement.mm:
+        * DOM/DOMHTMLBRElement.mm:
+        * DOM/DOMHTMLBaseElement.mm:
+        * DOM/DOMHTMLBaseFontElement.mm:
+        * DOM/DOMHTMLBodyElement.mm:
+        * DOM/DOMHTMLButtonElement.mm:
+        * DOM/DOMHTMLCanvasElement.mm:
+        * DOM/DOMHTMLCollection.mm:
+        * DOM/DOMHTMLDListElement.mm:
+        * DOM/DOMHTMLDirectoryElement.mm:
+        * DOM/DOMHTMLDivElement.mm:
+        * DOM/DOMHTMLDocument.mm:
+        * DOM/DOMHTMLElement.mm:
+        * DOM/DOMHTMLEmbedElement.mm:
+        * DOM/DOMHTMLFieldSetElement.mm:
+        * DOM/DOMHTMLFontElement.mm:
+        * DOM/DOMHTMLFormElement.mm:
+        * DOM/DOMHTMLFrameElement.mm:
+        * DOM/DOMHTMLFrameSetElement.mm:
+        * DOM/DOMHTMLHRElement.mm:
+        * DOM/DOMHTMLHeadElement.mm:
+        * DOM/DOMHTMLHeadingElement.mm:
+        * DOM/DOMHTMLHtmlElement.mm:
+        * DOM/DOMHTMLIFrameElement.mm:
+        * DOM/DOMHTMLImageElement.mm:
+        * DOM/DOMHTMLInputElement.mm:
+        * DOM/DOMHTMLLIElement.mm:
+        * DOM/DOMHTMLLabelElement.mm:
+        * DOM/DOMHTMLLegendElement.mm:
+        * DOM/DOMHTMLLinkElement.mm:
+        * DOM/DOMHTMLMapElement.mm:
+        * DOM/DOMHTMLMarqueeElement.mm:
+        * DOM/DOMHTMLMediaElement.mm:
+        * DOM/DOMHTMLMenuElement.mm:
+        * DOM/DOMHTMLMetaElement.mm:
+        * DOM/DOMHTMLModElement.mm:
+        * DOM/DOMHTMLOListElement.mm:
+        * DOM/DOMHTMLObjectElement.mm:
+        * DOM/DOMHTMLOptGroupElement.mm:
+        * DOM/DOMHTMLOptionElement.mm:
+        * DOM/DOMHTMLOptionsCollection.mm:
+        * DOM/DOMHTMLParagraphElement.mm:
+        * DOM/DOMHTMLParamElement.mm:
+        * DOM/DOMHTMLPreElement.mm:
+        * DOM/DOMHTMLQuoteElement.mm:
+        * DOM/DOMHTMLScriptElement.mm:
+        * DOM/DOMHTMLSelectElement.mm:
+        * DOM/DOMHTMLStyleElement.mm:
+        * DOM/DOMHTMLTableCaptionElement.mm:
+        * DOM/DOMHTMLTableCellElement.mm:
+        * DOM/DOMHTMLTableColElement.mm:
+        * DOM/DOMHTMLTableElement.mm:
+        * DOM/DOMHTMLTableRowElement.mm:
+        * DOM/DOMHTMLTableSectionElement.mm:
+        * DOM/DOMHTMLTitleElement.mm:
+        * DOM/DOMHTMLUListElement.mm:
+        * DOM/DOMHTMLVideoElement.mm:
+        * DOM/DOMKeyboardEvent.mm:
+        * DOM/DOMMediaError.mm:
+        * DOM/DOMMediaList.mm:
+        * DOM/DOMMouseEvent.mm:
+        * DOM/DOMMutationEvent.mm:
+        * DOM/DOMNamedNodeMap.mm:
+        * DOM/DOMNodeIterator.mm:
+        * DOM/DOMNodeList.mm:
+        * DOM/DOMOverflowEvent.mm:
+        * DOM/DOMProcessingInstruction.mm:
+        * DOM/DOMProgressEvent.mm:
+        * DOM/DOMRGBColor.mm:
+        * DOM/DOMRange.mm:
+        * DOM/DOMRect.mm:
+        * DOM/DOMStyleSheet.mm:
+        * DOM/DOMStyleSheetList.mm:
+        * DOM/DOMText.mm:
+        * DOM/DOMTextEvent.mm:
+        * DOM/DOMTimeRanges.mm:
+        * DOM/DOMTokenList.mm:
+        * DOM/DOMTreeWalker.mm:
+        * DOM/DOMUIEvent.mm:
+        * DOM/DOMWheelEvent.mm:
+        * DOM/DOMXPath.mm:
+        * DOM/DOMXPathExpression.mm:
+        * DOM/DOMXPathResult.mm:
+
+2019-07-17  Antoine Quint  <graouts@apple.com>
+
+        Disable Pointer Events prior to watchOS 6
+        https://bugs.webkit.org/show_bug.cgi?id=199890
+        <rdar://problem/53206113>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-07-17  Zalan Bujtas  <zalan@apple.com>
+
+        Unable to tap buttons at top of Wells Fargo app’s Payees screen
+        https://bugs.webkit.org/show_bug.cgi?id=199846
+        <rdar://problem/48112220>
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame approximateNodeAtViewportLocation:]):
+
+2019-07-17  Alex Christensen  <achristensen@webkit.org>
+
+        Add a runtime-disabled dialog element skeleton
+        https://bugs.webkit.org/show_bug.cgi?id=199839
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences dialogElementEnabled]):
+        (-[WebPreferences setDialogElementEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+        Add SPI to enable the dialog element for tests.
+
+2019-07-15  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Remove software rendering and simplify context creation on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=199789
+
+        Reviewed by Sam Weinig.
+
+        Remove force software WebGL setting.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences forceSoftwareWebGLRendering]): Deleted.
+        (-[WebPreferences setForceSoftwareWebGLRendering:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2019-07-13  Zalan Bujtas  <zalan@apple.com>
+
+        Cannot bring up custom media controls at all on v.youku.com
+        https://bugs.webkit.org/show_bug.cgi?id=199699
+        <rdar://problem/51835327>
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::actionDictionary const):
+        * WebView/WebFrame.mm:
+        (-[WebFrame elementAtPoint:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView elementAtPoint:allowShadowContent:]):
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController performHitTestAtPoint:]):
+
+2019-07-12  Alex Christensen  <achristensen@webkit.org>
+
+        Begin unifying WebKitLegacy sources
+        https://bugs.webkit.org/show_bug.cgi?id=199730
+
+        Reviewed by Keith Miller.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2019-07-11  Pablo Saavedra  <psaavedra@igalia.com>
+
+        [WPE][GTK] Build failure with ENABLE_ACCESSIBILITY=OFF
+        https://bugs.webkit.org/show_bug.cgi?id=199625
+
+        Added ENABLE(ACCESSIBILITY) and replaced HAVE(ACCESSIBILITY)
+        with ENABLE(ACCESSIBILITY) in the code.
+
+        Additionally, the TestRunner code generator now honors the
+        Conditional IDL format.
+
+        Reviewed by Konstantin Tokarev.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame setAccessibleName:]):
+        (-[WebFrame enhancedAccessibilityEnabled]):
+        (-[WebFrame setEnhancedAccessibility:]):
+        (-[WebFrame accessibilityRoot]):
+
+2019-07-08  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Enable only on the most recent version of the supported iOS family
+        https://bugs.webkit.org/show_bug.cgi?id=199562
+        <rdar://problem/52766511>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-07-03  Sam Weinig  <weinig@apple.com>
+
+        Adopt simple structured bindings in more places
+        https://bugs.webkit.org/show_bug.cgi?id=199247
+
+        Reviewed by Alex Christensen.
+
+        Replaces simple uses of std::tie() with structured bindings. Does not touch
+        uses of std::tie() that are not initial declarations, use std::ignore or in
+        case where the binding is captured by a lambda, as structured bindings don't
+        work for those cases yet.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _animationControllerForText]):
+
 2019-07-02  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Debug: "Reset Web Inspector" should also clear the saved window size and attachment side

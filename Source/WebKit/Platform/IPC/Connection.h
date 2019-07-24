@@ -100,7 +100,7 @@ template<typename AsyncReplyResult> struct AsyncReplyError {
 class MachMessage;
 class UnixMessage;
 
-class Connection : public ThreadSafeRefCounted<Connection, WTF::DestructionThread::Main> {
+class Connection : public ThreadSafeRefCounted<Connection, WTF::DestructionThread::MainRunLoop> {
 public:
     class Client : public MessageReceiver {
     public:
@@ -275,6 +275,8 @@ private:
     
     std::unique_ptr<Decoder> waitForSyncReply(uint64_t syncRequestID, Seconds timeout, OptionSet<SendSyncOption>);
 
+    bool dispatchMessageToWorkQueueReceiver(std::unique_ptr<Decoder>&);
+
     // Called on the connection work queue.
     void processIncomingMessage(std::unique_ptr<Decoder>);
     void processIncomingSyncReply(std::unique_ptr<Decoder>);
@@ -338,7 +340,9 @@ private:
     bool m_isConnected;
     Ref<WorkQueue> m_connectionQueue;
 
-    HashMap<StringReference, std::pair<RefPtr<WorkQueue>, RefPtr<WorkQueueMessageReceiver>>> m_workQueueMessageReceivers;
+    Lock m_workQueueMessageReceiversMutex;
+    using WorkQueueMessageReceiverMap = HashMap<StringReference, std::pair<RefPtr<WorkQueue>, RefPtr<WorkQueueMessageReceiver>>>;
+    WorkQueueMessageReceiverMap m_workQueueMessageReceivers;
 
     unsigned m_inSendSyncCount;
     unsigned m_inDispatchMessageCount;
@@ -366,7 +370,7 @@ private:
     HashMap<uint64_t, ReplyHandler> m_replyHandlers;
 
     struct WaitForMessageState;
-    WaitForMessageState* m_waitingForMessage;
+    WaitForMessageState* m_waitingForMessage { nullptr };
 
     class SyncMessageState;
 

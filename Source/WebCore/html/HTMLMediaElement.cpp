@@ -5387,22 +5387,8 @@ void HTMLMediaElement::updateVolume()
 #else
     // Avoid recursion when the player reports volume changes.
     if (!processingMediaPlayerCallback()) {
-        Page* page = document().page();
-        double volumeMultiplier = page ? page->mediaVolume() : 1;
-        bool shouldMute = effectiveMuted();
-
-        if (m_mediaController) {
-            volumeMultiplier *= m_mediaController->volume();
-            shouldMute = m_mediaController->muted() || (page && page->isAudioMuted());
-        }
-
-#if ENABLE(MEDIA_SESSION)
-        if (m_shouldDuck)
-            volumeMultiplier *= 0.25;
-#endif
-
-        m_player->setMuted(shouldMute);
-        m_player->setVolume(m_volume * volumeMultiplier);
+        m_player->setMuted(effectiveMuted());
+        m_player->setVolume(effectiveVolume());
     }
 
 #if ENABLE(MEDIA_SESSION)
@@ -5470,10 +5456,11 @@ void HTMLMediaElement::updatePlayState()
         if (playerPaused) {
             m_mediaSession->clientWillBeginPlayback();
 
-            // Set rate, muted before calling play in case they were set before the media engine was setup.
-            // The media engine should just stash the rate and muted values since it isn't already playing.
+            // Set rate, muted and volume before calling play in case they were set before the media engine was set up.
+            // The media engine should just stash the rate, muted and volume values since it isn't already playing.
             m_player->setRate(requestedPlaybackRate());
             m_player->setMuted(effectiveMuted());
+            m_player->setVolume(effectiveVolume());
 
             if (m_firstTimePlaying) {
                 // Log that a media element was played.
@@ -6928,6 +6915,9 @@ HTMLMediaElement::SleepType HTMLMediaElement::shouldDisableSleep() const
         return SleepType::System;
 #endif
 
+    if (PlatformMediaSessionManager::sharedManager().processIsSuspended())
+        return SleepType::None;
+
     bool shouldBeAbleToSleep = !hasVideo() || !hasAudio();
 #if ENABLE(MEDIA_STREAM)
     // Remote media stream video tracks may have their corresponding audio tracks being played outside of the media element. Let's ensure to not IDLE the screen in that case.
@@ -7747,6 +7737,12 @@ bool HTMLMediaElement::processingUserGestureForMedia() const
 {
     return document().processingUserGestureForMedia();
 }
+
+void HTMLMediaElement::processIsSuspendedChanged()
+{
+    updateSleepDisabling();
+}
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 
 void HTMLMediaElement::scheduleUpdateMediaState()
@@ -7875,9 +7871,23 @@ void HTMLMediaElement::pageMutedStateDidChange()
     }
 }
 
+double HTMLMediaElement::effectiveVolume() const
+{
+    auto* page = document().page();
+    double volumeMultiplier = page ? page->mediaVolume() : 1;
+    if (m_mediaController)
+        volumeMultiplier *= m_mediaController->volume();
+#if ENABLE(MEDIA_SESSION)
+    if (m_shouldDuck)
+        volumeMultiplier *= 0.25;
+#endif
+
+    return m_volume * volumeMultiplier;
+}
+
 bool HTMLMediaElement::effectiveMuted() const
 {
-    return muted() || (document().page() && document().page()->isAudioMuted());
+    return muted() || (m_mediaController && m_mediaController->muted()) || (document().page() && document().page()->isAudioMuted());
 }
 
 bool HTMLMediaElement::doesHaveAttribute(const AtomString& attribute, AtomString* value) const

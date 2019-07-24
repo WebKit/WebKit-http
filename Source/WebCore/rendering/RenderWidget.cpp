@@ -141,8 +141,8 @@ bool RenderWidget::setWidgetGeometry(const LayoutRect& frame)
     if (!weakThis)
         return true;
 
-    if (boundsChanged && isComposited())
-        layer()->backing()->updateAfterWidgetResize();
+    if (boundsChanged)
+        view().compositor().widgetDidChangeSize(*this);
 
     return oldFrameRect.size() != newFrameRect.size();
 }
@@ -362,7 +362,9 @@ RenderWidget* RenderWidget::find(const Widget& widget)
 
 bool RenderWidget::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction action)
 {
-    if (request.allowsChildFrameContent() && is<FrameView>(widget()) && downcast<FrameView>(*widget()).renderView()) {
+    auto shouldHitTestChildFrameContent = request.allowsChildFrameContent() || (request.allowsVisibleChildFrameContent() && visibleToHitTesting());
+    auto hasRenderView = is<FrameView>(widget()) && downcast<FrameView>(*widget()).renderView();
+    if (shouldHitTestChildFrameContent && hasRenderView) {
         FrameView& childFrameView = downcast<FrameView>(*widget());
 
         LayoutPoint adjustedLocation = accumulatedOffset + location();

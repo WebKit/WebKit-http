@@ -28,6 +28,8 @@ from buildbot.steps.source import git
 from buildbot.steps.worker import CompositeStepMixin
 from twisted.internet import defer
 
+from layout_test_failures import LayoutTestFailures
+
 import json
 import re
 import requests
@@ -89,6 +91,7 @@ class ConfigureBuild(buildstep.BuildStep):
 class CheckOutSource(git.Git):
     name = 'clean-and-update-working-directory'
     CHECKOUT_DELAY_AND_MAX_RETRIES_PAIR = (0, 2)
+    haltOnFailure = False
 
     def __init__(self, **kwargs):
         self.repourl = 'https://git.webkit.org/git/WebKit.git'
@@ -102,10 +105,26 @@ class CheckOutSource(git.Git):
                                                 **kwargs)
 
     def getResultSummary(self):
+        if self.results == FAILURE:
+            self.build.addStepsAfterCurrentStep([CleanUpGitIndexLock()])
+
         if self.results != SUCCESS:
             return {u'step': u'Failed to updated working directory'}
         else:
             return {u'step': u'Cleaned and updated working directory'}
+
+
+class CleanUpGitIndexLock(shell.ShellCommand):
+    name = 'clean-git-index-lock'
+    command = ['rm', '-f', '.git/index.lock']
+    descriptionDone = ['Deleted .git/index.lock']
+
+    def __init__(self, **kwargs):
+        super(CleanUpGitIndexLock, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
+
+    def evaluateCommand(self, cmd):
+        self.build.buildFinished(['Git issue, retrying build'], RETRY)
+        return super(CleanUpGitIndexLock, self).evaluateCommand(cmd)
 
 
 class CheckOutSpecificRevision(shell.ShellCommand):
@@ -113,6 +132,9 @@ class CheckOutSpecificRevision(shell.ShellCommand):
     descriptionDone = ['Checked out required revision']
     flunkOnFailure = False
     haltOnFailure = False
+
+    def __init__(self, **kwargs):
+        super(CheckOutSpecificRevision, self).__init__(logEnviron=False, **kwargs)
 
     def doStepIf(self, step):
         return self.getProperty('ews_revision', False)
@@ -131,7 +153,10 @@ class CleanWorkingDirectory(shell.ShellCommand):
     descriptionDone = ['Cleaned working directory']
     flunkOnFailure = True
     haltOnFailure = True
-    command = ['Tools/Scripts/clean-webkit']
+    command = ['python', 'Tools/Scripts/clean-webkit']
+
+    def __init__(self, **kwargs):
+        super(CleanWorkingDirectory, self).__init__(logEnviron=False, **kwargs)
 
 
 class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
@@ -140,7 +165,7 @@ class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
     descriptionDone = ['Applied patch']
     flunkOnFailure = True
     haltOnFailure = True
-    command = ['Tools/Scripts/svn-apply', '--force', '.buildbot-diff']
+    command = ['perl', 'Tools/Scripts/svn-apply', '--force', '.buildbot-diff']
 
     def __init__(self, **kwargs):
         super(ApplyPatch, self).__init__(timeout=5 * 60, logEnviron=False, **kwargs)
@@ -181,6 +206,10 @@ class CheckPatchRelevance(buildstep.BuildStep):
         'Tools',
     ]
 
+    services_paths = [
+        'Tools/BuildSlaveSupport/ews-build',
+    ]
+
     jsc_paths = [
         'JSTests/',
         'Source/JavaScriptCore/',
@@ -209,6 +238,7 @@ class CheckPatchRelevance(buildstep.BuildStep):
 
     group_to_paths_mapping = {
         'bindings': bindings_paths,
+        'services-ews': services_paths,
         'jsc': jsc_paths,
         'webkitpy': webkitpy_paths,
     }
@@ -473,7 +503,7 @@ class CheckStyle(TestWithFailureCount):
     descriptionDone = ['check-webkit-style']
     flunkOnFailure = True
     failedTestsFormatString = '%d style error%s'
-    command = ['Tools/Scripts/check-webkit-style']
+    command = ['python', 'Tools/Scripts/check-webkit-style']
 
     def countFailures(self, cmd):
         log_text = self.log_observer.getStdout() + self.log_observer.getStderr()
@@ -491,10 +521,10 @@ class RunBindingsTests(shell.ShellCommand):
     flunkOnFailure = True
     jsonFileName = 'bindings_test_results.json'
     logfiles = {'json': jsonFileName}
-    command = ['Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(jsonFileName)]
+    command = ['python', 'Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(jsonFileName)]
 
     def __init__(self, **kwargs):
-        super(RunBindingsTests, self).__init__(timeout=5 * 60, **kwargs)
+        super(RunBindingsTests, self).__init__(timeout=5 * 60, logEnviron=False, **kwargs)
 
     def start(self):
         self.log_observer = logobserver.BufferLogObserver()
@@ -538,10 +568,38 @@ class RunWebKitPerlTests(shell.ShellCommand):
     description = ['webkitperl-tests running']
     descriptionDone = ['webkitperl-tests']
     flunkOnFailure = True
-    command = ['Tools/Scripts/test-webkitperl']
+    command = ['perl', 'Tools/Scripts/test-webkitperl']
 
     def __init__(self, **kwargs):
-        super(RunWebKitPerlTests, self).__init__(timeout=2 * 60, **kwargs)
+        super(RunWebKitPerlTests, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
+
+
+class RunEWSUnitTests(shell.ShellCommand):
+    name = 'ews-unit-tests'
+    description = ['ews-unit-tests running']
+    command = ['python', 'Tools/BuildSlaveSupport/ews-build/runUnittests.py']
+
+    def __init__(self, **kwargs):
+        super(RunEWSUnitTests, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
+
+    def getResultSummary(self):
+        if self.results == SUCCESS:
+            return {u'step': u'Passed EWS unit tests'}
+        return {u'step': u'Failed EWS unit tests'}
+
+
+class RunEWSBuildbotCheckConfig(shell.ShellCommand):
+    name = 'buildbot-check-config'
+    description = ['buildbot-checkconfig running']
+    command = ['buildbot', 'checkconfig']
+
+    def __init__(self, **kwargs):
+        super(RunEWSBuildbotCheckConfig, self).__init__(workdir='build/Tools/BuildSlaveSupport/ews-build', timeout=2 * 60, logEnviron=False, **kwargs)
+
+    def getResultSummary(self):
+        if self.results == SUCCESS:
+            return {u'step': u'Passed buildbot checkconfig'}
+        return {u'step': u'Failed buildbot checkconfig'}
 
 
 class RunWebKitPyTests(shell.ShellCommand):
@@ -551,10 +609,10 @@ class RunWebKitPyTests(shell.ShellCommand):
     flunkOnFailure = True
     jsonFileName = 'webkitpy_test_results.json'
     logfiles = {'json': jsonFileName}
-    command = ['Tools/Scripts/test-webkitpy', '--json-output={0}'.format(jsonFileName)]
+    command = ['python', 'Tools/Scripts/test-webkitpy', '--json-output={0}'.format(jsonFileName)]
 
     def __init__(self, **kwargs):
-        super(RunWebKitPyTests, self).__init__(timeout=2 * 60, **kwargs)
+        super(RunWebKitPyTests, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
 
     def start(self):
         self.log_observer = logobserver.BufferLogObserver()
@@ -593,6 +651,28 @@ class RunWebKitPyTests(shell.ShellCommand):
         log.addStdout(message)
 
 
+class InstallGtkDependencies(shell.ShellCommand):
+    name = 'jhbuild'
+    description = ['updating gtk dependencies']
+    descriptionDone = ['Updated gtk dependencies']
+    command = ['perl', 'Tools/Scripts/update-webkitgtk-libs']
+    haltOnFailure = False
+
+    def __init__(self, **kwargs):
+        super(InstallGtkDependencies, self).__init__(logEnviron=False, **kwargs)
+
+
+class InstallWpeDependencies(shell.ShellCommand):
+    name = 'jhbuild'
+    description = ['updating wpe dependencies']
+    descriptionDone = ['Updated wpe dependencies']
+    command = ['perl', 'Tools/Scripts/update-webkitwpe-libs']
+    haltOnFailure = False
+
+    def __init__(self, **kwargs):
+        super(InstallWpeDependencies, self).__init__(logEnviron=False, **kwargs)
+
+
 def appendCustomBuildFlags(step, platform, fullPlatform):
     # FIXME: Make a common 'supported platforms' list.
     if platform not in ('gtk', 'wincairo', 'ios', 'jsc-only', 'wpe'):
@@ -612,6 +692,10 @@ class CompileWebKit(shell.Compile):
     warningPattern = '.*arning: .*'
     haltOnFailure = False
     command = ['perl', 'Tools/Scripts/build-webkit', WithProperties('--%(configuration)s')]
+
+    def __init__(self, skipUpload=False, **kwargs):
+        self.skipUpload = skipUpload
+        super(CompileWebKit, self).__init__(logEnviron=False, **kwargs)
 
     def start(self):
         platform = self.getProperty('platform')
@@ -639,9 +723,20 @@ class CompileWebKit(shell.Compile):
     def evaluateCommand(self, cmd):
         if cmd.didFail():
             self.setProperty('patchFailedToBuild', True)
-            self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(), CompileWebKitToT(), AnalyzeCompileWebKitResults()])
+            steps_to_add = [UnApplyPatchIfRequired()]
+            platform = self.getProperty('platform')
+            if platform == 'wpe':
+                steps_to_add.append(InstallWpeDependencies())
+            elif platform == 'gtk':
+                steps_to_add.append(InstallGtkDependencies())
+            steps_to_add.append(CompileWebKitToT())
+            steps_to_add.append(AnalyzeCompileWebKitResults())
+            # Using a single addStepsAfterCurrentStep because of https://github.com/buildbot/buildbot/issues/4874
+            self.build.addStepsAfterCurrentStep(steps_to_add)
         else:
-            self.build.addStepsAfterCurrentStep([ArchiveBuiltProduct(), UploadBuiltProduct(), TransferToS3()])
+            triggers = self.getProperty('triggers', None)
+            if triggers or not self.skipUpload:
+                self.build.addStepsAfterCurrentStep([ArchiveBuiltProduct(), UploadBuiltProduct(), TransferToS3()])
 
         return super(CompileWebKit, self).evaluateCommand(cmd)
 
@@ -773,6 +868,8 @@ class RunWebKitTests(shell.Test):
     description = ['layout-tests running']
     descriptionDone = ['layout-tests']
     resultDirectory = 'layout-test-results'
+    jsonFileName = 'layout-test-results/full_results.json'
+    logfiles = {'json': jsonFileName}
     command = ['python', 'Tools/Scripts/run-webkit-tests',
                '--no-build',
                '--no-new-test-results',
@@ -782,6 +879,12 @@ class RunWebKitTests(shell.Test):
                WithProperties('--%(configuration)s')]
 
     def start(self):
+        self.log_observer = logobserver.BufferLogObserver(wantStderr=True)
+        self.addLogObserver('stdio', self.log_observer)
+        self.log_observer_json = logobserver.BufferLogObserver()
+        self.addLogObserver('json', self.log_observer_json)
+
+        self.incorrectLayoutLines = []
         platform = self.getProperty('platform')
         appendCustomBuildFlags(self, platform, self.getProperty('fullPlatform'))
         additionalArguments = self.getProperty('additionalArguments')
@@ -793,9 +896,83 @@ class RunWebKitTests(shell.Test):
             self.setCommand(self.command + additionalArguments)
         return shell.Test.start(self)
 
+    # FIXME: This will break if run-webkit-tests changes its default log formatter.
+    nrwt_log_message_regexp = re.compile(r'\d{2}:\d{2}:\d{2}(\.\d+)?\s+\d+\s+(?P<message>.*)')
+
+    def _strip_python_logging_prefix(self, line):
+        match_object = self.nrwt_log_message_regexp.match(line)
+        if match_object:
+            return match_object.group('message')
+        return line
+
+    def _parseRunWebKitTestsOutput(self, logText):
+        incorrectLayoutLines = []
+        expressions = [
+            ('flakes', re.compile(r'Unexpected flakiness.+\((\d+)\)')),
+            ('new passes', re.compile(r'Expected to .+, but passed:\s+\((\d+)\)')),
+            ('missing results', re.compile(r'Regressions: Unexpected missing results\s+\((\d+)\)')),
+            ('failures', re.compile(r'Regressions: Unexpected.+\((\d+)\)')),
+        ]
+        testFailures = {}
+
+        for line in logText.splitlines():
+            if line.find('Exiting early') >= 0 or line.find('leaks found') >= 0:
+                incorrectLayoutLines.append(self._strip_python_logging_prefix(line))
+                continue
+            for name, expression in expressions:
+                match = expression.search(line)
+
+                if match:
+                    testFailures[name] = testFailures.get(name, 0) + int(match.group(1))
+                    break
+
+                # FIXME: Parse file names and put them in results
+
+        for name in testFailures:
+            incorrectLayoutLines.append(str(testFailures[name]) + ' ' + name)
+
+        self.incorrectLayoutLines = incorrectLayoutLines
+
+    def commandComplete(self, cmd):
+        shell.Test.commandComplete(self, cmd)
+        logText = self.log_observer.getStdout() + self.log_observer.getStderr()
+        logTextJson = self.log_observer_json.getStdout()
+
+        first_results = LayoutTestFailures.results_from_string(logTextJson)
+
+        if first_results:
+            self.setProperty('first_results_exceed_failure_limit', first_results.did_exceed_test_failure_limit)
+            self.setProperty('first_run_failures', first_results.failing_tests)
+        self._parseRunWebKitTestsOutput(logText)
+
+    def evaluateResult(self, cmd):
+        result = SUCCESS
+
+        if self.incorrectLayoutLines:
+            if len(self.incorrectLayoutLines) == 1:
+                line = self.incorrectLayoutLines[0]
+                if line.find('were new') >= 0 or line.find('was new') >= 0 or line.find(' leak') >= 0:
+                    return WARNINGS
+
+            for line in self.incorrectLayoutLines:
+                if line.find('flakes') >= 0 or line.find('new passes') >= 0 or line.find('missing results') >= 0:
+                    result = WARNINGS
+                else:
+                    return FAILURE
+
+        # Return code from Tools/Scripts/layout_tests/run_webkit_tests.py.
+        # This means that an exception was raised when running run-webkit-tests and
+        # was never handled.
+        if cmd.rc == 254:
+            return RETRY
+        if cmd.rc != 0:
+            return FAILURE
+
+        return result
+
     def evaluateCommand(self, cmd):
-        rc = super(RunWebKitTests, self).evaluateCommand(cmd)
-        if rc == SUCCESS:
+        rc = self.evaluateResult(cmd)
+        if rc == SUCCESS or rc == WARNINGS:
             message = 'Passed layout tests'
             self.descriptionDone = message
             self.build.results = SUCCESS
@@ -804,13 +981,22 @@ class RunWebKitTests(shell.Test):
             self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(), ExtractTestResults(), ReRunWebKitTests()])
         return rc
 
+    def getResultSummary(self):
+        status = self.name
+
+        if self.results != SUCCESS and self.incorrectLayoutLines:
+            status = u' '.join(self.incorrectLayoutLines)
+            return {u'step': status}
+
+        return super(RunWebKitTests, self).getResultSummary()
+
 
 class ReRunWebKitTests(RunWebKitTests):
     name = 're-run-layout-tests'
 
     def evaluateCommand(self, cmd):
-        rc = shell.Test.evaluateCommand(self, cmd)
-        if rc == SUCCESS:
+        rc = self.evaluateResult(cmd)
+        if rc == SUCCESS or rc == WARNINGS:
             message = 'Passed layout tests'
             self.descriptionDone = message
             self.build.results = SUCCESS
@@ -820,14 +1006,140 @@ class ReRunWebKitTests(RunWebKitTests):
             self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(identifier='rerun'), ExtractTestResults(identifier='rerun'), UnApplyPatchIfRequired(), CompileWebKitToT(), RunWebKitTestsWithoutPatch()])
         return rc
 
+    def commandComplete(self, cmd):
+        shell.Test.commandComplete(self, cmd)
+        logText = self.log_observer.getStdout() + self.log_observer.getStderr()
+        logTextJson = self.log_observer_json.getStdout()
+
+        second_results = LayoutTestFailures.results_from_string(logTextJson)
+
+        if second_results:
+            self.setProperty('second_results_exceed_failure_limit', second_results.did_exceed_test_failure_limit)
+            self.setProperty('second_run_failures', second_results.failing_tests)
+        self._parseRunWebKitTestsOutput(logText)
+
 
 class RunWebKitTestsWithoutPatch(RunWebKitTests):
     name = 'run-layout-tests-without-patch'
 
     def evaluateCommand(self, cmd):
         rc = shell.Test.evaluateCommand(self, cmd)
-        self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(identifier='clean-tree'), ExtractTestResults(identifier='clean-tree')])
+        self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(identifier='clean-tree'), ExtractTestResults(identifier='clean-tree'), AnalyzeLayoutTestsResults()])
         return rc
+
+    def commandComplete(self, cmd):
+        shell.Test.commandComplete(self, cmd)
+        logText = self.log_observer.getStdout() + self.log_observer.getStderr()
+        logTextJson = self.log_observer_json.getStdout()
+
+        clean_tree_results = LayoutTestFailures.results_from_string(logTextJson)
+
+        if clean_tree_results:
+            self.setProperty('clean_tree_results_exceed_failure_limit', clean_tree_results.did_exceed_test_failure_limit)
+            self.setProperty('clean_tree_run_failures', clean_tree_results.failing_tests)
+        self._parseRunWebKitTestsOutput(logText)
+
+
+class AnalyzeLayoutTestsResults(buildstep.BuildStep):
+    name = 'analyze-layout-tests-results'
+    description = ['analyze-layout-test-results']
+    descriptionDone = ['analyze-layout-tests-results']
+
+    def report_failure(self, new_failures):
+        self.finished(FAILURE)
+        self.build.results = FAILURE
+        pluralSuffix = 's' if len(new_failures) > 1 else ''
+        new_failures_string = ', '.join([failure_name for failure_name in new_failures])
+        message = 'Found {} new Test failure{}: {}'.format(len(new_failures), pluralSuffix, new_failures_string)
+        self.descriptionDone = message
+        self.build.buildFinished([message], FAILURE)
+        return defer.succeed(None)
+
+    def report_pre_existing_failures(self, clean_tree_failures):
+        self.finished(SUCCESS)
+        self.build.results = SUCCESS
+        self.descriptionDone = 'Passed layout tests'
+        pluralSuffix = 's' if len(clean_tree_failures) > 1 else ''
+        clean_tree_failures_string = ', '.join([failure_name for failure_name in clean_tree_failures])
+        message = 'Found {} pre-existing test failure{}: {}'.format(len(clean_tree_failures), pluralSuffix, clean_tree_failures_string)
+        self.build.buildFinished([message], SUCCESS)
+        return defer.succeed(None)
+
+    def retry_build(self, message=''):
+        self.finished(RETRY)
+        message = 'Unable to confirm if test failures are introduced by patch, retrying build'
+        self.descriptionDone = message
+        self.build.buildFinished([message], RETRY)
+        return defer.succeed(None)
+
+    def _results_failed_different_tests(self, first_results_failing_tests, second_results_failing_tests):
+        return first_results_failing_tests != second_results_failing_tests
+
+    def _report_flaky_tests(self, flaky_tests):
+        #TODO: implement this
+        pass
+
+    def start(self):
+        first_results_did_exceed_test_failure_limit = self.getProperty('first_results_exceed_failure_limit')
+        first_results_failing_tests = set(self.getProperty('first_run_failures', []))
+        second_results_did_exceed_test_failure_limit = self.getProperty('second_results_exceed_failure_limit')
+        second_results_failing_tests = set(self.getProperty('second_run_failures', []))
+        clean_tree_results_did_exceed_test_failure_limit = self.getProperty('clean_tree_results_exceed_failure_limit')
+        clean_tree_results_failing_tests = set(self.getProperty('clean_tree_run_failures', []))
+
+        if first_results_did_exceed_test_failure_limit and second_results_did_exceed_test_failure_limit:
+            if (len(first_results_failing_tests) - len(clean_tree_results_failing_tests)) <= 5:
+                # If we've made it here, then many tests are failing with the patch applied, but
+                # if the clean tree is also failing many tests, even if it's not quite as many,
+                # then we can't be certain that the discrepancy isn't due to flakiness, and hence we must defer judgement.
+                return self.retry_build()
+            return self.report_failure(first_results_failing_tests)
+
+        if second_results_did_exceed_test_failure_limit:
+            if clean_tree_results_did_exceed_test_failure_limit:
+                return self.retry_build()
+            failures_introduced_by_patch = first_results_failing_tests - clean_tree_results_failing_tests
+            if failures_introduced_by_patch:
+                return self.report_failure(failures_introduced_by_patch)
+            return self.retry_build()
+
+        if first_results_did_exceed_test_failure_limit:
+            if clean_tree_results_did_exceed_test_failure_limit:
+                return self.retry_build()
+            failures_introduced_by_patch = second_results_failing_tests - clean_tree_results_failing_tests
+            if failures_introduced_by_patch:
+                return self.report_failure(failures_introduced_by_patch)
+            return self.retry_build()
+
+        if self._results_failed_different_tests(first_results_failing_tests, second_results_failing_tests):
+            tests_that_only_failed_first = first_results_failing_tests.difference(second_results_failing_tests)
+            self._report_flaky_tests(tests_that_only_failed_first)
+
+            tests_that_only_failed_second = second_results_failing_tests.difference(first_results_failing_tests)
+            self._report_flaky_tests(tests_that_only_failed_second)
+
+            tests_that_consistently_failed = first_results_failing_tests.intersection(second_results_failing_tests)
+            if tests_that_consistently_failed:
+                if clean_tree_results_did_exceed_test_failure_limit:
+                    return self.retry_build()
+                failures_introduced_by_patch = tests_that_consistently_failed - clean_tree_results_failing_tests
+                if failures_introduced_by_patch:
+                    return self.report_failure(failures_introduced_by_patch)
+
+            # At this point we know that at least one test flaked, but no consistent failures
+            # were introduced. This is a bit of a grey-zone.
+            return self.retry_build()
+
+        if clean_tree_results_did_exceed_test_failure_limit:
+            return self.retry_build()
+        failures_introduced_by_patch = first_results_failing_tests - clean_tree_results_failing_tests
+        if failures_introduced_by_patch:
+            return self.report_failure(failures_introduced_by_patch)
+
+        # At this point, we know that the first and second runs had the exact same failures,
+        # and that those failures are all present on the clean tree, so we can say with certainty
+        # that the patch is good.
+        return self.report_pre_existing_failures(clean_tree_results_failing_tests)
 
 
 class RunWebKit1Tests(RunWebKitTests):
@@ -1119,6 +1431,9 @@ class ArchiveTestResults(shell.ShellCommand):
     descriptionDone = ['Archived test results']
     haltOnFailure = True
 
+    def __init__(self, **kwargs):
+        super(ArchiveTestResults, self).__init__(logEnviron=False, **kwargs)
+
 
 class UploadTestResults(transfer.FileUpload):
     name = 'upload-test-results'
@@ -1175,11 +1490,9 @@ class PrintConfiguration(steps.ShellSequence):
     flunkOnFailure = False
     warnOnFailure = False
     logEnviron = False
-    command_list_generic = [['hostname'],
-                    ['df', '-hl'],
-                    ['date']]
-    command_list_apple = [['sw_vers'], ['xcodebuild', '-sdk', '-version']]
-    command_list_linux = [['uname', '-a']]
+    command_list_generic = [['hostname']]
+    command_list_apple = [['df', '-hl'], ['date'], ['sw_vers'], ['xcodebuild', '-sdk', '-version']]
+    command_list_linux = [['df', '-hl'], ['date'], ['uname', '-a']]
     command_list_win = [[]]  # TODO: add windows specific commands here
 
     def __init__(self, **kwargs):
@@ -1190,7 +1503,7 @@ class PrintConfiguration(steps.ShellSequence):
 
     def run(self):
         command_list = list(self.command_list_generic)
-        platform = self.getProperty('platform')
+        platform = self.getProperty('platform', '*')
         platform = platform.split('-')[0]
         if platform in ('mac', 'ios', '*'):
             command_list.extend(self.command_list_apple)

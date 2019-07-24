@@ -157,12 +157,15 @@ public:
     WEBCORE_EXPORT void dispatchFakeMouseMoveEventSoon();
     void dispatchFakeMouseMoveEventSoonInQuad(const FloatQuad&);
 
-    WEBCORE_EXPORT HitTestResult hitTestResultAtPoint(const LayoutPoint&, HitTestRequest::HitTestRequestType hitType = HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent, const LayoutSize& padding = LayoutSize()) const;
+    WEBCORE_EXPORT HitTestResult hitTestResultAtPoint(const LayoutPoint&, HitTestRequest::HitTestRequestType, const LayoutSize& padding = LayoutSize()) const;
 
     bool mousePressed() const { return m_mousePressed; }
     Node* mousePressNode() const { return m_mousePressNode.get(); }
 
     WEBCORE_EXPORT void setCapturingMouseEventsElement(Element*);
+#if ENABLE(POINTER_EVENTS)
+    void pointerCaptureElementDidChange(Element*);
+#endif
 
 #if ENABLE(DRAG_SUPPORT)
     struct DragTargetResponse {
@@ -620,6 +623,9 @@ private:
     IntPoint m_mouseDownPos; // In our view's coords.
     WallTime m_mouseDownTimestamp;
     PlatformMouseEvent m_mouseDown;
+#if ENABLE(POINTER_EVENTS)
+    PlatformMouseEvent m_lastPlatformMouseEvent;
+#endif
 
 #if PLATFORM(COCOA)
     NSView *m_mouseDownView { nullptr };

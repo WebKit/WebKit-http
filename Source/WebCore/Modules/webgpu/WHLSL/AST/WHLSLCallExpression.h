@@ -42,8 +42,8 @@ class NamedType;
 
 class CallExpression : public Expression {
 public:
-    CallExpression(Lexer::Token&& origin, String&& name, Vector<UniqueRef<Expression>>&& arguments)
-        : Expression(WTFMove(origin))
+    CallExpression(CodeLocation location, String&& name, Vector<UniqueRef<Expression>>&& arguments)
+        : Expression(location)
         , m_name(WTFMove(name))
         , m_arguments(WTFMove(arguments))
     {
@@ -67,26 +67,21 @@ public:
 
     bool isCast() { return m_castReturnType; }
     NamedType* castReturnType() { return m_castReturnType; }
-    bool hasOverloads() const { return static_cast<bool>(m_overloads); }
-    Optional<Vector<std::reference_wrapper<FunctionDeclaration>, 1>>& overloads() { return m_overloads; }
-    void setOverloads(const Vector<std::reference_wrapper<FunctionDeclaration>, 1>& overloads)
+    FunctionDeclaration& function()
     {
-        assert(!hasOverloads());
-        m_overloads = overloads;
+        ASSERT(m_function);
+        return *m_function;
     }
-
-    FunctionDeclaration* function() { return m_function; }
 
     void setFunction(FunctionDeclaration& functionDeclaration)
     {
-        assert(!m_function);
+        ASSERT(!m_function);
         m_function = &functionDeclaration;
     }
 
 private:
     String m_name;
     Vector<UniqueRef<Expression>> m_arguments;
-    Optional<Vector<std::reference_wrapper<FunctionDeclaration>, 1>> m_overloads;
     FunctionDeclaration* m_function { nullptr };
     NamedType* m_castReturnType { nullptr };
 };

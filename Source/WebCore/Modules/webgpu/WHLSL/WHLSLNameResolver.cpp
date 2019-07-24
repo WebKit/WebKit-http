@@ -28,7 +28,6 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WHLSLCallExpression.h"
 #include "WHLSLDoWhileLoop.h"
 #include "WHLSLDotExpression.h"
 #include "WHLSLEnumerationDefinition.h"
@@ -38,9 +37,8 @@
 #include "WHLSLIfStatement.h"
 #include "WHLSLNameContext.h"
 #include "WHLSLProgram.h"
-#include "WHLSLPropertyAccessExpression.h"
+#include "WHLSLReplaceWith.h"
 #include "WHLSLResolveOverloadImpl.h"
-#include "WHLSLReturn.h"
 #include "WHLSLScopedSetAdder.h"
 #include "WHLSLTypeReference.h"
 #include "WHLSLVariableDeclaration.h"
@@ -60,8 +58,6 @@ NameResolver::NameResolver(NameResolver& parentResolver, NameContext& nameContex
     : m_nameContext(nameContext)
     , m_parentNameResolver(&parentResolver)
 {
-    m_isResolvingCalls = parentResolver.m_isResolvingCalls;
-    setCurrentFunctionDefinition(parentResolver.m_currentFunction);
 }
 
 NameResolver::~NameResolver()
@@ -72,9 +68,6 @@ NameResolver::~NameResolver()
 
 void NameResolver::visit(AST::TypeReference& typeReference)
 {
-    if (m_isResolvingCalls)
-        return;
-
     ScopedSetAdder<AST::TypeReference*> adder(m_typeReferences, &typeReference);
     if (!adder.isNewEntry()) {
         setError();
@@ -82,6 +75,8 @@ void NameResolver::visit(AST::TypeReference& typeReference)
     }
 
     Visitor::visit(typeReference);
+    if (error())
+        return;
     if (typeReference.maybeResolvedType()) // FIXME: https://bugs.webkit.org/show_bug.cgi?id=198161 Shouldn't we know by now whether the type has been resolved or not?
         return;
 
@@ -105,6 +100,8 @@ void NameResolver::visit(AST::FunctionDefinition& functionDefinition)
     NameContext newNameContext(&m_nameContext);
     NameResolver newNameResolver(*this, newNameContext);
     checkErrorAndVisit(functionDefinition.type());
+    if (error())
+        return;
     for (auto& parameter : functionDefinition.parameters())
         newNameResolver.checkErrorAndVisit(parameter);
     newNameResolver.checkErrorAndVisit(functionDefinition.block());
@@ -189,26 +186,6 @@ void NameResolver::visit(AST::VariableReference& variableReference)
     }
 }
 
-void NameResolver::visit(AST::Return& returnStatement)
-{
-    ASSERT(m_currentFunction);
-    returnStatement.setFunction(m_currentFunction);
-    Visitor::visit(returnStatement);
-}
-
-void NameResolver::visit(AST::PropertyAccessExpression& propertyAccessExpression)
-{
-    if (m_isResolvingCalls) {
-        if (auto* getterFunctions = m_nameContext.getFunctions(propertyAccessExpression.getterFunctionName()))
-            propertyAccessExpression.setPossibleGetterOverloads(*getterFunctions);
-        if (auto* setterFunctions = m_nameContext.getFunctions(propertyAccessExpression.setterFunctionName()))
-            propertyAccessExpression.setPossibleSetterOverloads(*setterFunctions);
-        if (auto* anderFunctions = m_nameContext.getFunctions(propertyAccessExpression.anderFunctionName()))
-            propertyAccessExpression.setPossibleAnderOverloads(*anderFunctions);
-    }
-    Visitor::visit(propertyAccessExpression);
-}
-
 void NameResolver::visit(AST::DotExpression& dotExpression)
 {
     if (is<AST::VariableReference>(dotExpression.base())) {
@@ -220,8 +197,7 @@ void NameResolver::visit(AST::DotExpression& dotExpression)
                 AST::EnumerationDefinition& enumerationDefinition = downcast<AST::EnumerationDefinition>(type);
                 auto memberName = dotExpression.fieldName();
                 if (auto* member = enumerationDefinition.memberByName(memberName)) {
-                    Lexer::Token origin = dotExpression.origin();
-                    auto enumerationMemberLiteral = AST::EnumerationMemberLiteral::wrap(WTFMove(origin), WTFMove(baseName), WTFMove(memberName), enumerationDefinition, *member);
+                    auto enumerationMemberLiteral = AST::EnumerationMemberLiteral::wrap(dotExpression.codeLocation(), WTFMove(baseName), WTFMove(memberName), enumerationDefinition, *member);
                     AST::replaceWith<AST::EnumerationMemberLiteral>(dotExpression, WTFMove(enumerationMemberLiteral));
                     return;
                 }
@@ -232,31 +208,6 @@ void NameResolver::visit(AST::DotExpression& dotExpression)
     }
 
     Visitor::visit(dotExpression);
-}
-
-void NameResolver::visit(AST::CallExpression& callExpression)
-{
-    if (m_isResolvingCalls) {
-        if (!callExpression.hasOverloads()) {
-            if (auto* functions = m_nameContext.getFunctions(callExpression.name()))
-                callExpression.setOverloads(*functions);
-            else {
-                if (auto* types = m_nameContext.getTypes(callExpression.name())) {
-                    if (types->size() == 1) {
-                        if (auto* functions = m_nameContext.getFunctions("operator cast"_str)) {
-                            callExpression.setCastData((*types)[0].get());
-                            callExpression.setOverloads(*functions);
-                        }
-                    }
-                }
-            }
-        }
-        if (!callExpression.hasOverloads()) {
-            setError();
-            return;
-        }
-    }
-    Visitor::visit(callExpression);
 }
 
 void NameResolver::visit(AST::EnumerationMemberLiteral& enumerationMemberLiteral)
@@ -316,31 +267,15 @@ bool resolveNamesInTypes(Program& program, NameResolver& nameResolver)
 bool resolveTypeNamesInFunctions(Program& program, NameResolver& nameResolver)
 {
     for (auto& functionDefinition : program.functionDefinitions()) {
-        nameResolver.setCurrentFunctionDefinition(&functionDefinition);
         nameResolver.checkErrorAndVisit(functionDefinition);
         if (nameResolver.error())
             return false;
     }
-    nameResolver.setCurrentFunctionDefinition(nullptr);
     for (auto& nativeFunctionDeclaration : program.nativeFunctionDeclarations()) {
         nameResolver.checkErrorAndVisit(nativeFunctionDeclaration);
         if (nameResolver.error())
             return false;
     }
-    return true;
-}
-
-bool resolveCallsInFunctions(Program& program, NameResolver& nameResolver)
-{
-    nameResolver.setIsResolvingCalls(true);
-    for (auto& functionDefinition : program.functionDefinitions()) {
-        nameResolver.setCurrentFunctionDefinition(&functionDefinition);
-        nameResolver.checkErrorAndVisit(functionDefinition);
-        if (nameResolver.error())
-            return false;
-    }
-    nameResolver.setCurrentFunctionDefinition(nullptr);
-    nameResolver.setIsResolvingCalls(false);
     return true;
 }
 

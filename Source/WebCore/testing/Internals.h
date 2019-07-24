@@ -535,6 +535,7 @@ public:
     void stopPeerConnection(RTCPeerConnection&);
     void clearPeerConnectionFactory();
     void applyRotationForOutgoingVideoSources(RTCPeerConnection&);
+    void setEnableWebRTCEncryption(bool);
 #endif
 
     String getImageSourceURL(Element&);
@@ -549,6 +550,7 @@ public:
 
     bool elementShouldBufferData(HTMLMediaElement&);
     String elementBufferingPolicy(HTMLMediaElement&);
+    double privatePlayerVolume(const HTMLMediaElement&);
 #endif
 
     bool isSelectPopupVisible(HTMLSelectElement&);

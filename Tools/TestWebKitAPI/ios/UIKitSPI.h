@@ -32,6 +32,7 @@
 #import <UIKit/UIApplication_Private.h>
 #import <UIKit/UIBarButtonItemGroup_Private.h>
 #import <UIKit/UICalloutBar.h>
+#import <UIKit/UIKeyboardImpl.h>
 #import <UIKit/UIKeyboard_Private.h>
 #import <UIKit/UIResponder_Private.h>
 #import <UIKit/UITextInputMultiDocument.h>
@@ -40,6 +41,11 @@
 #import <UIKit/UIViewController_Private.h>
 #import <UIKit/UIWKTextInteractionAssistant.h>
 #import <UIKit/UIWebFormAccessory.h>
+
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+#import <UIKit/UIWebBrowserView.h>
+#import <UIKit/UIWebView_Private.h>
+IGNORE_WARNINGS_END
 
 #if PLATFORM(IOS)
 @protocol UIDragSession;
@@ -76,6 +82,8 @@ WTF_EXTERN_C_END
 @end
 
 @class WebEvent;
+
+@class UITextInputArrowKeyHistory;
 
 @protocol UITextInputPrivate <UITextInput, UITextInputTraits_Private>
 - (UITextInputTraits *)textInputTraits;
@@ -151,6 +159,17 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 @protocol UIWKInteractionViewProtocol
 - (void)requestAutocorrectionRectsForString:(NSString *)input withCompletionHandler:(void (^)(UIWKAutocorrectionRects *rectsForInput))completionHandler;
 @end
+
+IGNORE_WARNINGS_BEGIN("deprecated-implementations")
+
+@interface UIWebBrowserView : UIView <UIKeyInput>
+@end
+
+@interface UIWebView (Private)
+- (UIWebBrowserView *)_browserView;
+@end
+
+IGNORE_WARNINGS_END
 
 #endif
 

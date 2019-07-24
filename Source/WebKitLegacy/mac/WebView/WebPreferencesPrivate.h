@@ -275,9 +275,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 - (BOOL)webGL2Enabled;
 - (void)setWebGL2Enabled:(BOOL)enabled;
 
-- (BOOL)forceSoftwareWebGLRendering;
-- (void)setForceSoftwareWebGLRendering:(BOOL)forced;
-
 - (BOOL)forceLowPowerGPUForWebGL;
 - (void)setForceWebGLUsesLowPower:(BOOL)forceLowPower;
 
@@ -370,6 +367,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 
 - (BOOL)isInheritURIQueryComponentEnabled;
 - (void)setEnableInheritURIQueryComponent:(BOOL)flag;
+
+- (BOOL)_mediaRecorderEnabled;
+- (void)_setMediaRecorderEnabled:(BOOL)flag;
 
 // Other private methods
 #if TARGET_OS_IPHONE
@@ -548,6 +548,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 
 - (void)setCustomPasteboardDataEnabled:(BOOL)flag;
 - (BOOL)customPasteboardDataEnabled;
+
+- (void)setDialogElementEnabled:(BOOL)enabled;
+- (BOOL)dialogElementEnabled;
 
 - (BOOL)cacheAPIEnabled;
 - (void)setCacheAPIEnabled:(BOOL)enabled;

@@ -39,15 +39,21 @@ ALWAYS_INLINE uint32_t toNonWrappingUint32(ExecState* exec, JSValue value)
 {
     VM& vm = exec->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    double doubleValue = value.toInteger(exec);
+
+    if (value.isUInt32())
+        return value.asUInt32();
+
+    double doubleValue = value.toNumber(exec);
     RETURN_IF_EXCEPTION(throwScope, { });
-    if (doubleValue < 0 || doubleValue > UINT_MAX) {
-        throwException(exec, throwScope,
-            createRangeError(exec, "Expect an integer argument in the range: [0, 2^32 - 1]"_s));
-        return { };
+
+    if (!std::isnan(doubleValue) && !std::isinf(doubleValue)) {
+        double truncedValue = trunc(doubleValue);
+        if (truncedValue >= 0 && truncedValue <= UINT_MAX)
+            return static_cast<uint32_t>(truncedValue);
     }
 
-    return static_cast<uint32_t>(doubleValue);
+    throwException(exec, throwScope, createTypeError(exec, "Expect an integer argument in the range: [0, 2^32 - 1]"_s));
+    return { };
 }
 
 ALWAYS_INLINE std::pair<const uint8_t*, size_t> getWasmBufferFromValue(ExecState* exec, JSValue value)
@@ -83,9 +89,7 @@ ALWAYS_INLINE std::pair<const uint8_t*, size_t> getWasmBufferFromValue(ExecState
 ALWAYS_INLINE Vector<uint8_t> createSourceBufferFromValue(VM& vm, ExecState* exec, JSValue value)
 {
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    const uint8_t* data;
-    size_t byteSize;
-    std::tie(data, byteSize) = getWasmBufferFromValue(exec, value);
+    auto [data, byteSize] = getWasmBufferFromValue(exec, value);
     RETURN_IF_EXCEPTION(throwScope, Vector<uint8_t>());
 
     Vector<uint8_t> result;

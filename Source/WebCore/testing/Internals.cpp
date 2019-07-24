@@ -505,7 +505,7 @@ void Internals::resetToConsistentState(Page& page)
     PlatformMediaSessionManager::sharedManager().setWillIgnoreSystemInterruptions(true);
 #endif
     PlatformMediaSessionManager::sharedManager().setIsPlayingToAutomotiveHeadUnit(false);
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
     AXObjectCache::setEnhancedUserInterfaceAccessibility(false);
     AXObjectCache::disableAccessibility();
 #endif
@@ -543,6 +543,7 @@ void Internals::resetToConsistentState(Page& page)
     WebCore::useRealRTCPeerConnectionFactory(rtcProvider);
     rtcProvider.disableNonLocalhostConnections();
     RuntimeEnabledFeatures::sharedFeatures().setWebRTCVP8CodecEnabled(true);
+    page.settings().setWebRTCEncryptionEnabled(true);
 #endif
 
     page.settings().setStorageAccessAPIEnabled(false);
@@ -1521,6 +1522,14 @@ void Internals::clearPeerConnectionFactory()
 void Internals::applyRotationForOutgoingVideoSources(RTCPeerConnection& connection)
 {
     connection.applyRotationForOutgoingVideoSources();
+}
+
+void Internals::setEnableWebRTCEncryption(bool value)
+{
+#if USE(LIBWEBRTC)
+    if (auto* page = contextDocument()->page())
+        page->settings().setWebRTCEncryptionEnabled(value);
+#endif
 }
 #endif
 
@@ -4599,6 +4608,13 @@ bool Internals::userPrefersReducedMotion() const
 {
     return false;
 }
+
+#if ENABLE(VIDEO)
+double Internals::privatePlayerVolume(const HTMLMediaElement& element)
+{
+    return 0;
+}
+#endif
 
 #endif
 

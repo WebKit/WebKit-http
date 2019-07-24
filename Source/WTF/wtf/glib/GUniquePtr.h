@@ -30,6 +30,7 @@
 #endif
 
 #include <gio/gio.h>
+#include <utility>
 #include <wtf/Noncopyable.h>
 
 namespace WTF {
@@ -84,11 +85,9 @@ public:
         return m_ptr;
     }
 
-    GUniquePtr<T> release()
+    T* release()
     {
-        GUniquePtr<T> ptr(m_ptr);
-        m_ptr = nullptr;
-        return ptr;
+        return std::exchange(m_ptr, nullptr);
     }
 
     T& operator*() const

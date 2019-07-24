@@ -48,6 +48,7 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameSelection.h"
+#include "HTMLDataListElement.h"
 #include "HTMLDetailsElement.h"
 #include "HTMLFormControlElement.h"
 #include "HTMLInputElement.h"
@@ -105,14 +106,14 @@ void AccessibilityObject::detach(AccessibilityDetachmentType detachmentType, AXO
     // no children are left with dangling pointers to their parent.
     clearChildren();
 
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
     setWrapper(nullptr);
 #endif
 }
 
 bool AccessibilityObject::isDetached() const
 {
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
     return !wrapper();
 #else
     return true;
@@ -1790,7 +1791,7 @@ bool AccessibilityObject::contentEditableAttributeIsEnabled(Element* element)
     return contentEditableValue.isEmpty() || equalLettersIgnoringASCIICase(contentEditableValue, "true");
 }
     
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
 int AccessibilityObject::lineForPosition(const VisiblePosition& visiblePos) const
 {
     if (visiblePos.isNull() || !node())
@@ -1860,7 +1861,7 @@ unsigned AccessibilityObject::doAXLineForIndex(unsigned index)
     return lineForPosition(visiblePositionForIndex(index, false));
 }
 
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
 void AccessibilityObject::updateBackingStore()
 {
     if (!axObjectCache())
@@ -1924,7 +1925,7 @@ FrameView* AccessibilityObject::documentFrameView() const
     return object->documentFrameView();
 }
 
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
 const AccessibilityObject::AccessibilityChildrenVector& AccessibilityObject::children(bool updateChildrenIfNeeded)
 {
     if (updateChildrenIfNeeded)
@@ -2047,7 +2048,7 @@ const String AccessibilityObject::defaultLiveRegionStatusForRole(AccessibilityRo
     }
 }
     
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
 const String& AccessibilityObject::actionVerb() const
 {
 #if !PLATFORM(IOS_FAMILY)
@@ -2276,6 +2277,22 @@ bool AccessibilityObject::replaceTextInRange(const String& replacementString, co
     return false;
 }
 
+bool AccessibilityObject::insertText(const String& text)
+{
+    if (!renderer() || !is<Element>(node()))
+        return false;
+
+    auto& element = downcast<Element>(*renderer()->node());
+
+    // Only try to insert text if the field is in editing mode.
+    if (!element.shouldUseInputMethod())
+        return false;
+
+    // Use Editor::insertText to mimic typing into the field.
+    auto& editor = renderer()->frame().editor();
+    return editor.insertText(text, nullptr);
+}
+
 // Lacking concrete evidence of orientation, horizontal means width > height. vertical is height > width;
 AccessibilityOrientation AccessibilityObject::orientation() const
 {
@@ -2344,6 +2361,7 @@ static void initializeRoleMap()
         { "checkbox", AccessibilityRole::CheckBox },
         { "complementary", AccessibilityRole::LandmarkComplementary },
         { "contentinfo", AccessibilityRole::LandmarkContentInfo },
+        { "deletion", AccessibilityRole::Deletion },
         { "dialog", AccessibilityRole::ApplicationDialog },
         { "directory", AccessibilityRole::Directory },
         // The 'doc-*' roles are defined the ARIA DPUB mobile: https://www.w3.org/TR/dpub-aam-1.0/ 
@@ -2406,6 +2424,7 @@ static void initializeRoleMap()
         { "group", AccessibilityRole::ApplicationGroup },
         { "heading", AccessibilityRole::Heading },
         { "img", AccessibilityRole::Image },
+        { "insertion", AccessibilityRole::Insertion },
         { "link", AccessibilityRole::WebCoreLink },
         { "list", AccessibilityRole::List },
         { "listitem", AccessibilityRole::ListItem },
@@ -2439,6 +2458,8 @@ static void initializeRoleMap()
         { "slider", AccessibilityRole::Slider },
         { "spinbutton", AccessibilityRole::SpinButton },
         { "status", AccessibilityRole::ApplicationStatus },
+        { "subscript", AccessibilityRole::Subscript },
+        { "superscript", AccessibilityRole::Superscript },
         { "switch", AccessibilityRole::Switch },
         { "tab", AccessibilityRole::Tab },
         { "tablist", AccessibilityRole::TabList },
@@ -2446,6 +2467,7 @@ static void initializeRoleMap()
         { "text", AccessibilityRole::StaticText },
         { "textbox", AccessibilityRole::TextArea },
         { "term", AccessibilityRole::Term },
+        { "time", AccessibilityRole::Time },
         { "timer", AccessibilityRole::ApplicationTimer },
         { "toolbar", AccessibilityRole::Toolbar },
         { "tooltip", AccessibilityRole::UserInterfaceTooltip },
@@ -2758,25 +2780,49 @@ bool AccessibilityObject::supportsHasPopup() const
     return hasAttribute(aria_haspopupAttr) || isComboBox();
 }
 
-String AccessibilityObject::hasPopupValue() const
+String AccessibilityObject::popupValue() const
 {
-    const AtomString& hasPopup = getAttribute(aria_haspopupAttr);
-    if (equalLettersIgnoringASCIICase(hasPopup, "true")
-        || equalLettersIgnoringASCIICase(hasPopup, "dialog")
-        || equalLettersIgnoringASCIICase(hasPopup, "grid")
-        || equalLettersIgnoringASCIICase(hasPopup, "listbox")
-        || equalLettersIgnoringASCIICase(hasPopup, "menu")
-        || equalLettersIgnoringASCIICase(hasPopup, "tree"))
+    static const NeverDestroyed<HashSet<String>> allowedPopupValues(std::initializer_list<String> {
+        "menu", "listbox", "tree", "grid", "dialog"
+    });
+
+    auto hasPopup = getAttribute(aria_haspopupAttr).convertToASCIILowercase();
+    if (hasPopup.isNull() || hasPopup.isEmpty()) {
+        // In ARIA 1.1, the implicit value for combobox became "listbox."
+        if (isComboBox() || hasDatalist())
+            return "listbox";
+        return "false";
+    }
+
+    if (allowedPopupValues->contains(hasPopup))
         return hasPopup;
 
-    // In ARIA 1.1, the implicit value for combobox became "listbox."
-    if (isComboBox() && hasPopup.isEmpty())
-        return "listbox";
+    // aria-haspopup specification states that true must be treated as menu.
+    if (hasPopup == "true")
+        return "menu";
 
     // The spec states that "User agents must treat any value of aria-haspopup that is not
     // included in the list of allowed values, including an empty string, as if the value
     // false had been provided."
     return "false";
+}
+
+bool AccessibilityObject::hasDatalist() const
+{
+#if ENABLE(DATALIST_ELEMENT)
+    auto datalistId = getAttribute(listAttr);
+    if (datalistId.isNull() || datalistId.isEmpty())
+        return false;
+
+    auto element = this->element();
+    if (!element)
+        return false;
+
+    auto datalist = element->treeScope().getElementById(datalistId);
+    return is<HTMLDataListElement>(datalist);
+#else
+    return false;
+#endif
 }
 
 bool AccessibilityObject::supportsSetSize() const
@@ -3477,18 +3523,6 @@ bool AccessibilityObject::isStyleFormatGroup() const
     || node->hasTagName(varTag) || node->hasTagName(citeTag)
     || node->hasTagName(insTag) || node->hasTagName(delTag)
     || node->hasTagName(supTag) || node->hasTagName(subTag);
-}
-
-bool AccessibilityObject::isSubscriptStyleGroup() const
-{
-    Node* node = this->node();
-    return node && node->hasTagName(subTag);
-}
-
-bool AccessibilityObject::isSuperscriptStyleGroup() const
-{
-    Node* node = this->node();
-    return node && node->hasTagName(supTag);
 }
 
 bool AccessibilityObject::isFigureElement() const

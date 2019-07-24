@@ -46,6 +46,7 @@
 #import "WKKeyboardScrollingAnimator.h"
 #import "WKShareSheet.h"
 #import "WKSyntheticTapGestureRecognizer.h"
+#import "WKTouchActionGestureRecognizer.h"
 #import "_WKFormInputSession.h"
 #import <UIKit/UIView.h>
 #import <WebCore/ActivityState.h>
@@ -220,6 +221,10 @@ struct WKAutoCorrectionData {
     RetainPtr<UITapGestureRecognizer> _stylusSingleTapGestureRecognizer;
     RetainPtr<WKInspectorNodeSearchGestureRecognizer> _inspectorNodeSearchGestureRecognizer;
 
+#if ENABLE(POINTER_EVENTS)
+    RetainPtr<WKTouchActionGestureRecognizer> _touchActionGestureRecognizer;
+#endif
+
 #if PLATFORM(MACCATALYST)
     RetainPtr<UIHoverGestureRecognizer> _hoverGestureRecognizer;
     RetainPtr<_UILookupGestureRecognizer> _lookupGestureRecognizer;
@@ -340,6 +345,7 @@ struct WKAutoCorrectionData {
     BOOL _resigningFirstResponder;
     BOOL _needsDeferredEndScrollingSelectionUpdate;
     BOOL _isChangingFocus;
+    BOOL _isFocusingElementWithKeyboard;
     BOOL _isBlurringFocusedElement;
 
     BOOL _focusRequiresStrongPasswordAssistance;
@@ -384,11 +390,15 @@ struct WKAutoCorrectionData {
 #if ENABLE(DATA_INTERACTION)
     , UIDragInteractionDelegate, UIDropInteractionDelegate
 #endif
+#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
+    , WKTouchActionGestureRecognizerDelegate
+#endif
 >
 
 @property (nonatomic, readonly) CGPoint lastInteractionLocation;
 @property (nonatomic, readonly) BOOL isEditable;
 @property (nonatomic, readonly) BOOL shouldHideSelectionWhenScrolling;
+@property (nonatomic, readonly) BOOL shouldIgnoreKeyboardWillHideNotification;
 @property (nonatomic, readonly) const WebKit::InteractionInformationAtPosition& positionInformation;
 @property (nonatomic, readonly) const WebKit::WKAutoCorrectionData& autocorrectionData;
 @property (nonatomic, readonly) const WebKit::FocusedElementInformation& focusedElementInformation;
@@ -524,9 +534,11 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_handleAutocorrectionContext:(const WebKit::WebAutocorrectionContext&)context;
 
 - (void)_didStartProvisionalLoadForMainFrame;
+- (void)_didCommitLoadForMainFrame;
 
 @property (nonatomic, readonly) BOOL _shouldUseContextMenus;
 @property (nonatomic, readonly) BOOL _shouldAvoidResizingWhenInputViewBoundsChange;
+@property (nonatomic, readonly) BOOL _shouldAvoidScrollingWhenFocusedContentIsVisible;
 
 @end
 

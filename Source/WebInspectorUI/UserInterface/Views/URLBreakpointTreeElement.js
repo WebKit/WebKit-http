@@ -29,8 +29,9 @@ WI.URLBreakpointTreeElement = class URLBreakpointTreeElement extends WI.GeneralT
     {
         console.assert(breakpoint instanceof WI.URLBreakpoint);
 
-        if (!className)
-            className = WI.BreakpointTreeElement.GenericLineIconStyleClassName;
+        let classNames = ["breakpoint", "url"];
+        if (className)
+            classNames.push(className);
 
         let subtitle;
         if (!title) {
@@ -41,7 +42,7 @@ WI.URLBreakpointTreeElement = class URLBreakpointTreeElement extends WI.GeneralT
                 subtitle = "/" + breakpoint.url + "/";
         }
 
-        super(["breakpoint", "url", className], title, subtitle, breakpoint);
+        super(classNames, title, subtitle, breakpoint);
 
         this.status = WI.ImageUtilities.useSVGSymbol("Images/Breakpoint.svg");
         this.status.className = WI.BreakpointTreeElement.StatusImageElementStyleClassName;
@@ -113,8 +114,6 @@ WI.URLBreakpointTreeElement = class URLBreakpointTreeElement extends WI.GeneralT
         let breakpoint = this.representedObject;
         let label = breakpoint.disabled ? WI.UIString("Enable Breakpoint") : WI.UIString("Disable Breakpoint");
         contextMenu.appendItem(label, this._toggleBreakpoint.bind(this));
-
-        contextMenu.appendSeparator();
 
         contextMenu.appendItem(WI.UIString("Delete Breakpoint"), () => {
             WI.domDebuggerManager.removeURLBreakpoint(breakpoint);

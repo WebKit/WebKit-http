@@ -52,6 +52,7 @@
 - (void)loadTestPageNamed:(NSString *)pageName;
 - (void)synchronouslyLoadHTMLString:(NSString *)html;
 - (void)synchronouslyLoadHTMLString:(NSString *)html baseURL:(NSURL *)url;
+- (void)synchronouslyLoadRequest:(NSURLRequest *)request;
 - (void)synchronouslyLoadTestPageNamed:(NSString *)pageName;
 - (BOOL)_synchronouslyExecuteEditCommand:(NSString *)command argument:(NSString *)argument;
 - (void)expectElementTagsInOrder:(NSArray<NSString *> *)tagNames;
@@ -86,7 +87,7 @@
 @end
 
 @interface TestWKWebView (IOSOnly)
-@property (nonatomic, readonly) UIView <UITextInputPrivate, UITextInputInternal, UITextInputMultiDocument, UIWKInteractionViewProtocol> *textInputContentView;
+@property (nonatomic, readonly) UIView <UITextInputPrivate, UITextInputInternal, UITextInputMultiDocument, UIWKInteractionViewProtocol, UITextInputTokenizer> *textInputContentView;
 @property (nonatomic, readonly) RetainPtr<NSArray> selectionRectsAfterPresentationUpdate;
 @property (nonatomic, readonly) CGRect caretViewRectInContentCoordinates;
 @property (nonatomic, readonly) NSArray<NSValue *> *selectionViewRectsInContentCoordinates;

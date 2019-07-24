@@ -110,6 +110,7 @@ RenderStyle resolveForDocument(const Document& document)
     fontDescription.setRenderingMode(settings.fontRenderingMode());
     fontDescription.setOneFamily(standardFamily);
     fontDescription.setShouldAllowUserInstalledFonts(settings.shouldAllowUserInstalledFonts() ? AllowUserInstalledFonts::Yes : AllowUserInstalledFonts::No);
+    fontDescription.setShouldAllowDesignSystemUIFonts(settings.shouldAllowDesignSystemUIFonts());
 
     fontDescription.setKeywordSizeFromIdentifier(CSSValueMedium);
     int size = fontSizeForKeyword(CSSValueMedium, false, document);
@@ -117,9 +118,7 @@ RenderStyle resolveForDocument(const Document& document)
     bool useSVGZoomRules = document.isSVGDocument();
     fontDescription.setComputedSize(computedFontSizeFromSpecifiedSize(size, fontDescription.isAbsoluteSize(), useSVGZoomRules, &documentStyle, document));
 
-    FontOrientation fontOrientation;
-    NonCJKGlyphOrientation glyphOrientation;
-    std::tie(fontOrientation, glyphOrientation) = documentStyle.fontAndGlyphOrientation();
+    auto [fontOrientation, glyphOrientation] = documentStyle.fontAndGlyphOrientation();
     fontDescription.setOrientation(fontOrientation);
     fontDescription.setNonCJKGlyphOrientation(glyphOrientation);
 

@@ -898,6 +898,7 @@ private:
     bool canProduceAudio() const final;
     bool processingUserGestureForMedia() const final;
     bool hasMediaStreamSource() const final;
+    void processIsSuspendedChanged() final;
 
     void pageMutedStateDidChange() override;
 
@@ -906,6 +907,7 @@ private:
 #endif
 
     bool effectiveMuted() const;
+    double effectiveVolume() const;
 
     void registerWithDocument(Document&);
     void unregisterWithDocument(Document&);

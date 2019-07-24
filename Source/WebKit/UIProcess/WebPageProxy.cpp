@@ -449,9 +449,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, Pag
     if (!m_configuration->drawsBackground())
         m_backgroundColor = Color(Color::transparent);
 
-    m_webProcessLifetimeTracker.addObserver(m_visitedLinkStore);
-    m_webProcessLifetimeTracker.addObserver(m_websiteDataStore);
-
     updateActivityState();
     updateThrottleState();
     updateHiddenPageThrottlingAutoIncreases();
@@ -817,13 +814,6 @@ void WebPageProxy::finishAttachingToWebProcess(IsProcessSwap isProcessSwap)
 {
     ASSERT(m_process->state() != AuxiliaryProcessProxy::State::Terminated);
 
-    if (m_process->state() == AuxiliaryProcessProxy::State::Running) {
-        // In the process-swap case, the ProvisionalPageProxy constructor already took care of calling webPageEnteringWebProcess()
-        // when the process was provisional.
-        if (isProcessSwap != IsProcessSwap::Yes)
-            m_webProcessLifetimeTracker.webPageEnteringWebProcess(m_process);
-    }
-
     updateActivityState();
     updateThrottleState();
 
@@ -1017,8 +1007,6 @@ void WebPageProxy::close()
     m_fullscreenClient = std::make_unique<API::FullscreenClient>();
 #endif
 
-    m_webProcessLifetimeTracker.pageWasInvalidated();
-
     m_process->processPool().removeAllSuspendedPagesForPage(*this);
 
     m_process->send(Messages::WebPage::Close(), m_pageID);
@@ -1076,8 +1064,16 @@ void WebPageProxy::maybeInitializeSandboxExtensionHandle(WebProcessProxy& proces
     // Inspector resources are in a directory with assumed access.
     ASSERT_WITH_SECURITY_IMPLICATION(!WebKit::isInspectorPage(*this));
 
-    if (SandboxExtension::createHandle("/", SandboxExtension::Type::ReadOnly, sandboxExtensionHandle))
+    if (SandboxExtension::createHandle("/", SandboxExtension::Type::ReadOnly, sandboxExtensionHandle)) {
         willAcquireUniversalFileReadSandboxExtension(process);
+        return;
+    }
+
+    // We failed to issue an universal file read access sandbox, fall back to issuing one for the base URL instead.
+    auto baseURL = URL(URL(), url.baseAsString());
+    auto basePath = baseURL.fileSystemPath();
+    if (!basePath.isNull() && SandboxExtension::createHandle(basePath, SandboxExtension::Type::ReadOnly, sandboxExtensionHandle))
+        m_process->assumeReadAccessToBaseURL(*this, baseURL);
 }
 
 #if !PLATFORM(COCOA)
@@ -1368,6 +1364,10 @@ RefPtr<API::Navigation> WebPageProxy::reload(OptionSet<WebCore::ReloadOption> op
 
     m_process->send(Messages::WebPage::Reload(navigation->navigationID(), options.toRaw(), sandboxExtensionHandle), m_pageID);
     m_process->responsivenessTimer().start();
+
+#if ENABLE(SPEECH_SYNTHESIS)
+    resetSpeechSynthesizer();
+#endif
 
     return navigation;
 }
@@ -1711,7 +1711,7 @@ void WebPageProxy::viewDidLeaveWindow()
     closeOverlayedViews();
 #if PLATFORM(IOS_FAMILY) && HAVE(AVKIT) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     // When leaving the current page, close the video fullscreen.
-    if (m_videoFullscreenManager)
+    if (m_videoFullscreenManager && m_videoFullscreenManager->hasMode(WebCore::HTMLMediaElementEnums::VideoFullscreenModeStandard))
         m_videoFullscreenManager->requestHideAndExitFullscreen();
 #endif
 }
@@ -1865,15 +1865,14 @@ void WebPageProxy::updateHiddenPageThrottlingAutoIncreases()
 
 void WebPageProxy::layerHostingModeDidChange()
 {
-    if (!hasRunningProcess())
-        return;
-
     LayerHostingMode layerHostingMode = pageClient().viewLayerHostingMode();
     if (m_layerHostingMode == layerHostingMode)
         return;
 
     m_layerHostingMode = layerHostingMode;
-    m_process->send(Messages::WebPage::SetLayerHostingMode(layerHostingMode), m_pageID);
+
+    if (hasRunningProcess())
+        m_process->send(Messages::WebPage::SetLayerHostingMode(layerHostingMode), m_pageID);
 }
 
 void WebPageProxy::waitForDidUpdateActivityState(ActivityStateChangeID activityStateChangeID)
@@ -2686,6 +2685,14 @@ void WebPageProxy::handleTouchEventSynchronously(NativeWebTouchEvent& event)
 
     if (event.allTouchPointsAreReleased())
         m_touchAndPointerEventTracking.reset();
+}
+
+void WebPageProxy::resetPotentialTapSecurityOrigin()
+{
+    if (!hasRunningProcess())
+        return;
+
+    m_process->send(Messages::WebPage::ResetPotentialTapSecurityOrigin(), m_pageID);
 }
 
 void WebPageProxy::handleTouchEventAsynchronously(const NativeWebTouchEvent& event)
@@ -3596,6 +3603,11 @@ void WebPageProxy::getImageForFindMatch(int32_t matchIndex)
 void WebPageProxy::selectFindMatch(int32_t matchIndex)
 {
     m_process->send(Messages::WebPage::SelectFindMatch(matchIndex), m_pageID);
+}
+
+void WebPageProxy::indicateFindMatch(int32_t matchIndex)
+{
+    m_process->send(Messages::WebPage::IndicateFindMatch(matchIndex), m_pageID);
 }
 
 void WebPageProxy::hideFindUI()
@@ -5221,18 +5233,6 @@ void WebPageProxy::mouseDidMoveOverElement(WebHitTestResultData&& hitTestResultD
     m_lastMouseMoveHitTestResult = API::HitTestResult::create(hitTestResultData);
     auto modifiers = OptionSet<WebEvent::Modifier>::fromRaw(opaqueModifiers);
     m_uiClient->mouseDidMoveOverElement(*this, hitTestResultData, modifiers, m_process->transformHandlesToObjects(userData.object()).get());
-}
-
-void WebPageProxy::connectionWillOpen(IPC::Connection& connection)
-{
-    ASSERT_UNUSED(connection, &connection == m_process->connection());
-
-    m_webProcessLifetimeTracker.webPageEnteringWebProcess(m_process);
-}
-
-void WebPageProxy::webProcessWillShutDown()
-{
-    m_webProcessLifetimeTracker.webPageLeavingWebProcess(m_process);
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -6871,9 +6871,7 @@ void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
     // For bringup of process swapping, NavigationSwap termination will not go out to clients.
     // If it does *during* process swapping, and the client triggers a reload, that causes bizarre WebKit re-entry.
     // FIXME: This might have to change
-    if (reason == ProcessTerminationReason::NavigationSwap)
-        m_webProcessLifetimeTracker.webPageLeavingWebProcess(m_process);
-    else {
+    if (reason != ProcessTerminationReason::NavigationSwap) {
         navigationState().clearAllNavigations();
         dispatchProcessDidTerminate(reason);
     }
@@ -7098,6 +7096,10 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
 
 #if ENABLE(POINTER_LOCK)
     requestPointerUnlock();
+#endif
+    
+#if ENABLE(SPEECH_SYNTHESIS)
+    resetSpeechSynthesizer();
 #endif
 }
 
@@ -7363,10 +7365,17 @@ void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originI
 
 void WebPageProxy::requestStorageSpace(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, CompletionHandler<void(uint64_t)>&& completionHandler)
 {
+    RELEASE_LOG_IF_ALLOWED(Storage, "requestStorageSpace for frame %" PRIu64 ", current quota %" PRIu64 " current usage %" PRIu64 " expected usage %" PRIu64, frameID, currentQuota, currentDatabaseUsage, expectedUsage);
+
     StorageRequests::singleton().processOrAppend([this, protectedThis = makeRef(*this), pageURL = currentURL(), frameID, originIdentifier, databaseName, displayName, currentQuota, currentOriginUsage, currentDatabaseUsage, expectedUsage, completionHandler = WTFMove(completionHandler)]() mutable {
-        this->makeStorageSpaceRequest(frameID, originIdentifier, databaseName, displayName, currentQuota, currentOriginUsage, currentDatabaseUsage, expectedUsage, [this, protectedThis = WTFMove(protectedThis), pageURL = WTFMove(pageURL), completionHandler = WTFMove(completionHandler), currentQuota](auto quota) mutable {
-            if (quota <= currentQuota && this->currentURL() == pageURL)
+        this->makeStorageSpaceRequest(frameID, originIdentifier, databaseName, displayName, currentQuota, currentOriginUsage, currentDatabaseUsage, expectedUsage, [this, protectedThis = WTFMove(protectedThis), frameID, pageURL = WTFMove(pageURL), completionHandler = WTFMove(completionHandler), currentQuota](auto quota) mutable {
+
+            RELEASE_LOG_IF_ALLOWED(Storage, "requestStorageSpace response for frame %" PRIu64 ", quota %" PRIu64, frameID, quota);
+
+            if (quota <= currentQuota && this->currentURL() == pageURL) {
+                RELEASE_LOG_IF_ALLOWED(Storage, "storage space increase denied");
                 m_isQuotaIncreaseDenied =  true;
+            }
             completionHandler(quota);
             StorageRequests::singleton().processNextIfAny();
         });
@@ -7435,6 +7444,11 @@ UserMediaPermissionRequestManagerProxy& WebPageProxy::userMediaPermissionRequest
 
     m_userMediaPermissionRequestManager = std::make_unique<UserMediaPermissionRequestManagerProxy>(*this);
     return *m_userMediaPermissionRequestManager;
+}
+
+void WebPageProxy::setMockCaptureDevicesEnabledOverride(Optional<bool> enabled)
+{
+    userMediaPermissionRequestManager().setMockCaptureDevicesEnabledOverride(enabled);
 }
 #endif
 
@@ -9163,10 +9177,25 @@ void WebPageProxy::markAdClickAttributionsAsExpiredForTesting(CompletionHandler<
 }
 
 #if ENABLE(SPEECH_SYNTHESIS)
+
+void WebPageProxy::resetSpeechSynthesizer()
+{
+    if (!m_speechSynthesisData)
+        return;
+    
+    auto& synthesisData = speechSynthesisData();
+    synthesisData.speakingFinishedCompletionHandler = nullptr;
+    synthesisData.speakingStartedCompletionHandler = nullptr;
+    synthesisData.speakingPausedCompletionHandler = nullptr;
+    synthesisData.speakingResumedCompletionHandler = nullptr;
+    if (synthesisData.synthesizer)
+        synthesisData.synthesizer->resetState();
+}
+
 WebPageProxy::SpeechSynthesisData& WebPageProxy::speechSynthesisData()
 {
     if (!m_speechSynthesisData)
-        m_speechSynthesisData = SpeechSynthesisData { std::make_unique<PlatformSpeechSynthesizer>(this), nullptr, nullptr, nullptr, nullptr };
+        m_speechSynthesisData = SpeechSynthesisData { std::make_unique<PlatformSpeechSynthesizer>(this), nullptr, nullptr, nullptr, nullptr, nullptr };
     return *m_speechSynthesisData;
 }
 
@@ -9180,6 +9209,11 @@ void WebPageProxy::speechSynthesisVoiceList(CompletionHandler<void(Vector<WebSpe
     completionHandler(WTFMove(result));
 }
 
+void WebPageProxy::speechSynthesisSetFinishedCallback(CompletionHandler<void()>&& completionHandler)
+{
+    speechSynthesisData().speakingFinishedCompletionHandler = WTFMove(completionHandler);
+}
+
 void WebPageProxy::speechSynthesisSpeak(const String& text, const String& lang, float volume, float rate, float pitch, MonotonicTime startTime, const String& voiceURI, const String& voiceName, const String& voiceLang, bool localService, bool defaultVoice, CompletionHandler<void()>&& completionHandler)
 {
     auto voice = WebCore::PlatformSpeechSynthesisVoice::create(voiceURI, voiceName, voiceLang, localService, defaultVoice);
@@ -9191,8 +9225,8 @@ void WebPageProxy::speechSynthesisSpeak(const String& text, const String& lang, 
     utterance->setPitch(pitch);
     utterance->setVoice(&voice.get());
 
+    speechSynthesisData().speakingStartedCompletionHandler = WTFMove(completionHandler);
     speechSynthesisData().utterance = WTFMove(utterance);
-    speechSynthesisData().speakingFinishedCompletionHandler = WTFMove(completionHandler);
     speechSynthesisData().synthesizer->speak(m_speechSynthesisData->utterance.get());
 }
 

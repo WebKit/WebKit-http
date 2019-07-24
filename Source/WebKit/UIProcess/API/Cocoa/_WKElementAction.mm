@@ -29,6 +29,7 @@
 #if PLATFORM(IOS_FAMILY)
 
 #import "GestureTypes.h"
+#import "Logging.h"
 #import "WKActionSheetAssistant.h"
 #import "WKContentViewInteraction.h"
 #import "_WKActivatedElementInfoInternal.h"
@@ -59,6 +60,10 @@ static UIActionIdentifier const WKElementActionTypeShareIdentifier = @"WKElement
 static UIActionIdentifier const WKElementActionTypeOpenInNewTabIdentifier = @"WKElementActionTypeOpenInNewTab";
 static UIActionIdentifier const WKElementActionTypeOpenInNewWindowIdentifier = @"WKElementActionTypeOpenInNewWindow";
 static UIActionIdentifier const WKElementActionTypeDownloadIdentifier = @"WKElementActionTypeDownload";
+UIActionIdentifier const WKElementActionTypeToggleShowLinkPreviewsIdentifier = @"WKElementActionTypeToggleShowLinkPreviews";
+
+static NSString * const webkitShowLinkPreviewsPreferenceKey = @"WebKitShowLinkPreviews";
+static NSString * const webkitShowLinkPreviewsPreferenceChangedNotification = @"WebKitShowLinkPreviewsPreferenceChanged";
 
 @implementation _WKElementAction  {
     RetainPtr<NSString> _title;
@@ -122,7 +127,11 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
     case _WKElementActionTypeCopy:
         title = WEB_UI_STRING_KEY("Copy", "Copy (ActionSheet)", "Title for Copy Link or Image action button");
         handler = ^(WKActionSheetAssistant *assistant, _WKActivatedElementInfo *actionInfo) {
+            if ([assistant.delegate respondsToSelector:@selector(actionSheetAssistant:willStartInteractionWithElement:)])
+                [assistant.delegate actionSheetAssistant:assistant willStartInteractionWithElement:actionInfo];
             [assistant.delegate actionSheetAssistant:assistant performAction:WebKit::SheetAction::Copy];
+            if ([assistant.delegate respondsToSelector:@selector(actionSheetAssistantDidStopInteraction:)])
+                [assistant.delegate actionSheetAssistantDidStopInteraction:assistant];
         };
         break;
     case _WKElementActionTypeOpen:
@@ -134,7 +143,11 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
     case _WKElementActionTypeSaveImage:
         title = WEB_UI_STRING("Add to Photos", "Title for Add to Photos action button");
         handler = ^(WKActionSheetAssistant *assistant, _WKActivatedElementInfo *actionInfo) {
+            if ([assistant.delegate respondsToSelector:@selector(actionSheetAssistant:willStartInteractionWithElement:)])
+                [assistant.delegate actionSheetAssistant:assistant willStartInteractionWithElement:actionInfo];
             [assistant.delegate actionSheetAssistant:assistant performAction:WebKit::SheetAction::SaveImage];
+            if ([assistant.delegate respondsToSelector:@selector(actionSheetAssistantDidStopInteraction:)])
+                [assistant.delegate actionSheetAssistantDidStopInteraction:assistant];
         };
         break;
 #if HAVE(SAFARI_SERVICES_FRAMEWORK)
@@ -151,6 +164,17 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
             [assistant.delegate actionSheetAssistant:assistant shareElementWithURL:actionInfo.URL ?: actionInfo.imageURL rect:actionInfo.boundingRect];
         };
         break;
+    case _WKElementActionToggleShowLinkPreviews: {
+        bool showingLinkPreviews = true;
+        if (NSNumber *value = [[NSUserDefaults standardUserDefaults] objectForKey:webkitShowLinkPreviewsPreferenceKey])
+            showingLinkPreviews = value.boolValue;
+
+        title = showingLinkPreviews ? WEB_UI_STRING("Hide Link Previews", "Title for Hide Link Previews action button") : WEB_UI_STRING("Show Link Previews", "Title for Show Link Previews action button");
+        handler = ^(WKActionSheetAssistant *, _WKActivatedElementInfo *) {
+            [[NSUserDefaults standardUserDefaults] setBool:!showingLinkPreviews forKey:webkitShowLinkPreviewsPreferenceKey];
+        };
+        break;
+    }
     default:
         [NSException raise:NSInvalidArgumentException format:@"There is no standard web element action of type %ld.", (long)type];
         return nil;
@@ -215,6 +239,8 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
         return [UIImage systemImageNamed:@"square.grid.2x2"];
     case _WKElementActionTypeDownload:
         return [UIImage systemImageNamed:@"arrow.down.circle"];
+    case _WKElementActionToggleShowLinkPreviews:
+        return [UIImage systemImageNamed:@"eye.fill"];
     }
 }
 
@@ -243,6 +269,8 @@ static UIActionIdentifier elementActionTypeToUIActionIdentifier(_WKElementAction
         return WKElementActionTypeOpenInNewWindowIdentifier;
     case _WKElementActionTypeDownload:
         return WKElementActionTypeDownloadIdentifier;
+    case _WKElementActionToggleShowLinkPreviews:
+        return WKElementActionTypeToggleShowLinkPreviewsIdentifier;
     }
 }
 
@@ -270,6 +298,8 @@ static _WKElementActionType uiActionIdentifierToElementActionType(UIActionIdenti
         return _WKElementActionTypeOpenInNewWindow;
     if ([identifier isEqualToString:WKElementActionTypeDownloadIdentifier])
         return _WKElementActionTypeDownload;
+    if ([identifier isEqualToString:WKElementActionTypeToggleShowLinkPreviewsIdentifier])
+        return _WKElementActionToggleShowLinkPreviews;
 
     return _WKElementActionTypeCustom;
 }
@@ -284,14 +314,10 @@ static _WKElementActionType uiActionIdentifierToElementActionType(UIActionIdenti
     UIImage *image = [_WKElementAction imageForElementActionType:self.type];
     UIActionIdentifier identifier = elementActionTypeToUIActionIdentifier(self.type);
 
-    return [UIAction actionWithTitle:self.title image:image identifier:identifier handler:[weakSelf = WeakObjCPtr<_WKElementAction>(self), weakElementInfo = WeakObjCPtr<_WKActivatedElementInfo>(elementInfo)] (UIAction *) {
-        auto strongSelf = weakSelf.get();
-        if (!strongSelf)
-            return;
-        auto strongElementInfo = weakElementInfo.get();
-        if (!strongElementInfo)
-            return;
-        [strongSelf runActionWithElementInfo:strongElementInfo.get()];
+    return [UIAction actionWithTitle:self.title image:image identifier:identifier handler:[retainedSelf = retainPtr(self), retainedInfo = retainPtr(elementInfo)] (UIAction *) {
+        auto elementAction = retainedSelf.get();
+        RELEASE_LOG(ContextMenu, "Executing action for type: %s", elementActionTypeToUIActionIdentifier([elementAction type]).UTF8String);
+        [elementAction runActionWithElementInfo:retainedInfo.get()];
     }];
 }
 #else

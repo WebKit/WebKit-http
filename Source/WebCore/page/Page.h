@@ -388,6 +388,7 @@ public:
 #if ENABLE(TEXT_AUTOSIZING)
     float textAutosizingWidth() const { return m_textAutosizingWidth; }
     void setTextAutosizingWidth(float textAutosizingWidth) { m_textAutosizingWidth = textAutosizingWidth; }
+    WEBCORE_EXPORT void recomputeTextAutoSizingInAllFrames();
 #endif
 
     const FloatBoxExtent& fullscreenInsets() const { return m_fullscreenInsets; }
@@ -657,6 +658,9 @@ public:
     void clearTrigger() { m_testTrigger = nullptr; }
     bool expectsWheelEventTriggers() const { return !!m_testTrigger; }
 
+    void setIsForSanitizingWebContent() { m_isForSanitizingWebContent = true; }
+    bool isForSanitizingWebContent() const { return m_isForSanitizingWebContent; }
+
 #if ENABLE(VIDEO)
     bool allowsMediaDocumentInlinePlayback() const { return m_allowsMediaDocumentInlinePlayback; }
     WEBCORE_EXPORT void setAllowsMediaDocumentInlinePlayback(bool);
@@ -696,7 +700,9 @@ public:
     Optional<CompositingPolicy> compositingPolicyOverride() const { return m_compositingPolicyOverride; }
     void setCompositingPolicyOverride(Optional<CompositingPolicy> policy) { m_compositingPolicyOverride = policy; }
 
+#if ENABLE(WEBGL)
     WebGLStateTracker* webGLStateTracker() const { return m_webGLStateTracker.get(); }
+#endif
 
 #if ENABLE(SPEECH_SYNTHESIS)
     SpeechSynthesisClient* speechSynthesisClient() const { return m_speechSynthesisClient.get(); }
@@ -797,8 +803,10 @@ private:
     std::unique_ptr<ValidationMessageClient> m_validationMessageClient;
     std::unique_ptr<DiagnosticLoggingClient> m_diagnosticLoggingClient;
     std::unique_ptr<PerformanceLoggingClient> m_performanceLoggingClient;
-    
+
+#if ENABLE(WEBGL)
     std::unique_ptr<WebGLStateTracker> m_webGLStateTracker;
+#endif
 
 #if ENABLE(SPEECH_SYNTHESIS)
     std::unique_ptr<SpeechSynthesisClient> m_speechSynthesisClient;
@@ -995,6 +1003,8 @@ private:
     bool m_mediaPlaybackIsSuspended { false };
     bool m_mediaBufferingIsSuspended { false };
     bool m_inUpdateRendering { false };
+
+    bool m_isForSanitizingWebContent { false };
 };
 
 inline PageGroup& Page::group()

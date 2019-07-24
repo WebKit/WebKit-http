@@ -41,12 +41,12 @@
 #include "JSModuleNamespaceObject.h"
 #include "JSModuleRecord.h"
 #include "JSSourceCode.h"
+#include "JSWebAssembly.h"
 #include "ModuleAnalyzer.h"
 #include "Nodes.h"
 #include "ObjectConstructor.h"
 #include "Parser.h"
 #include "ParserError.h"
-#include "WebAssemblyPrototype.h"
 
 namespace JSC {
 
@@ -86,6 +86,7 @@ const ClassInfo JSModuleLoader::s_info = { "ModuleLoader", &Base::s_info, &modul
     loadModule                     JSBuiltin                                  DontEnum|Function 3
     linkAndEvaluateModule          JSBuiltin                                  DontEnum|Function 2
     requestImportModule            JSBuiltin                                  DontEnum|Function 3
+    dependencyKeysIfEvaluated      JSBuiltin                                  DontEnum|Function 1
     getModuleNamespaceObject       moduleLoaderGetModuleNamespaceObject       DontEnum|Function 1
     parseModule                    moduleLoaderParseModule                    DontEnum|Function 2
     requestedModules               moduleLoaderRequestedModules               DontEnum|Function 1
@@ -123,6 +124,26 @@ static String printableModuleKey(ExecState* exec, JSValue key)
         return propertyName.impl();
     }
     return vm.propertyNames->emptyIdentifier.impl();
+}
+
+JSArray* JSModuleLoader::dependencyKeysIfEvaluated(ExecState* exec, JSValue key)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSObject* function = jsCast<JSObject*>(get(exec, vm.propertyNames->builtinNames().dependencyKeysIfEvaluatedPublicName()));
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    CallData callData;
+    CallType callType = JSC::getCallData(vm, function, callData);
+    ASSERT(callType != CallType::None);
+
+    MarkedArgumentBuffer arguments;
+    arguments.append(key);
+
+    JSValue result = call(exec, function, callType, callData, this, arguments);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+
+    return jsDynamicCast<JSArray*>(vm, result);
 }
 
 JSValue JSModuleLoader::provideFetch(ExecState* exec, JSValue key, const SourceCode& sourceCode)
@@ -392,7 +413,7 @@ EncodedJSValue JSC_HOST_CALL moduleLoaderParseModule(ExecState* exec)
 
 #if ENABLE(WEBASSEMBLY)
     if (sourceCode.provider()->sourceType() == SourceProviderSourceType::WebAssembly)
-        return JSValue::encode(WebAssemblyPrototype::instantiate(exec, deferred, moduleKey, jsSourceCode));
+        return JSValue::encode(JSWebAssembly::instantiate(exec, deferred, moduleKey, jsSourceCode));
 #endif
 
     CodeProfiling profile(sourceCode);

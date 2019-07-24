@@ -28,7 +28,6 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLLexer.h"
-#include "WHLSLNode.h"
 
 namespace WebCore {
 
@@ -36,10 +35,10 @@ namespace WHLSL {
 
 namespace AST {
 
-class BaseFunctionAttribute : public Node {
+class BaseFunctionAttribute {
 public:
-    BaseFunctionAttribute(Lexer::Token&& origin)
-        : m_origin(WTFMove(origin))
+    BaseFunctionAttribute(CodeLocation location)
+        : m_codeLocation(location)
     {
     }
 
@@ -49,7 +48,7 @@ public:
     BaseFunctionAttribute(BaseFunctionAttribute&&) = default;
 
 private:
-    Lexer::Token m_origin;
+    CodeLocation m_codeLocation;
 };
 
 } // namespace AST

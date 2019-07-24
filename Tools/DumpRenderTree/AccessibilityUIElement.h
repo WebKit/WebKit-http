@@ -164,6 +164,7 @@ public:
     bool isMultiLine() const;
     bool isIndeterminate() const;
     bool hasPopup() const;
+    JSRetainPtr<JSStringRef> popupValue() const;
     int hierarchicalLevel() const;
     double clickPointX();
     double clickPointY();
@@ -282,6 +283,7 @@ public:
     void resetSelectedTextMarkerRange();
     bool setSelectedVisibleTextRange(AccessibilityTextMarkerRange*);
     bool replaceTextInRange(JSStringRef, int position, int length);
+    bool insertText(JSStringRef);
 
     JSRetainPtr<JSStringRef> stringForTextMarkerRange(AccessibilityTextMarkerRange*);
     JSRetainPtr<JSStringRef> attributedStringForTextMarkerRange(AccessibilityTextMarkerRange*);

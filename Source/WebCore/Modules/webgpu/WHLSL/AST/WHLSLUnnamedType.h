@@ -28,7 +28,6 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLLexer.h"
-#include "WHLSLNode.h"
 #include "WHLSLType.h"
 #include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
@@ -41,8 +40,8 @@ namespace AST {
 
 class UnnamedType : public Type {
 public:
-    UnnamedType(Lexer::Token&& origin)
-        : m_origin(WTFMove(origin))
+    UnnamedType(CodeLocation location)
+        : m_codeLocation(location)
     {
     }
 
@@ -66,10 +65,10 @@ public:
     virtual unsigned hash() const = 0;
     virtual bool operator==(const UnnamedType&) const = 0;
 
-    const Lexer::Token& origin() const { return m_origin; }
+    const CodeLocation& codeLocation() const { return m_codeLocation; }
 
 private:
-    Lexer::Token m_origin;
+    CodeLocation m_codeLocation;
 };
 
 } // namespace AST

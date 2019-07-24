@@ -85,11 +85,6 @@ public:
     void setDirectoryUploadEnabled(bool isEnabled) { m_isDirectoryUploadEnabled = isEnabled; }
     bool directoryUploadEnabled() const { return m_isDirectoryUploadEnabled; }
 
-#if ENABLE(DARK_MODE_CSS)
-    void setDarkModeCSSEnabled(bool isEnabled) { m_isDarkModeCSSEnabled = isEnabled; }
-    bool darkModeCSSEnabled() const { return m_isDarkModeCSSEnabled; }
-#endif
-
     void setDataTransferItemsEnabled(bool areEnabled) { m_areDataTransferItemsEnabled = areEnabled; }
     bool dataTransferItemsEnabled() const { return m_areDataTransferItemsEnabled; }
 
@@ -202,6 +197,9 @@ public:
 
     void setWebSQLDisabled(bool isDisabled) { m_webSQLEnabled = !isDisabled; }
     bool webSQLEnabled() const { return m_webSQLEnabled; }
+
+    void setDialogElementEnabled(bool isEnabled) { m_dialogElementEnabled = isEnabled; }
+    bool dialogElementEnabled() const { return m_dialogElementEnabled; }
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     void setAttachmentElementEnabled(bool areEnabled) { m_isAttachmentElementEnabled = areEnabled; }
@@ -418,6 +416,7 @@ private:
     bool m_CSSCustomPropertiesAndValuesEnabled { false };
     bool m_pointerEventsEnabled { true };
     bool m_syntheticEditingCommandsEnabled { true };
+    bool m_dialogElementEnabled { false };
     bool m_webSQLEnabled { true };
     bool m_pageAtRuleSupportEnabled { false };
 
@@ -435,10 +434,6 @@ private:
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     bool m_isAttachmentElementEnabled { false };
-#endif
-
-#if ENABLE(DARK_MODE_CSS)
-    bool m_isDarkModeCSSEnabled { true };
 #endif
 
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)

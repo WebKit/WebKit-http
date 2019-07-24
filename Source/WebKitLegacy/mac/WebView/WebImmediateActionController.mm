@@ -149,7 +149,7 @@ using namespace WebCore;
     if (!coreFrame)
         return;
 
-    _hitTestResult = coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(viewPoint));
+    _hitTestResult = coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(viewPoint), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
     coreFrame->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::PerformedHitTest);
 
     if (Element* element = _hitTestResult.targetElement())
@@ -558,9 +558,7 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
     if (!frame)
         return nil;
 
-    RefPtr<Range> dictionaryRange;
-    NSDictionary *options;
-    std::tie(dictionaryRange, options) = DictionaryLookup::rangeAtHitTestResult(_hitTestResult);
+    auto [dictionaryRange, options] = DictionaryLookup::rangeAtHitTestResult(_hitTestResult);
     if (!dictionaryRange)
         return nil;
 
