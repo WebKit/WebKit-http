@@ -135,6 +135,11 @@ public:
 
     Cursor() = default;
 
+#if PLATFORM(QT)
+    Cursor(const Cursor&);
+    Cursor& operator=(const Cursor&);
+#endif
+
 #if !PLATFORM(IOS_FAMILY)
 
     WEBCORE_EXPORT static const Cursor& fromType(Cursor::Type);
