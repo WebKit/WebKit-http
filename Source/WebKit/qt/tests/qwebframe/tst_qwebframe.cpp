@@ -1268,7 +1268,7 @@ void tst_QWebFrame::setUrlHistory()
     QCOMPARE(spy.count(), expectedLoadFinishedCount);
     QCOMPARE(frame->url(), url);
     QCOMPARE(frame->requestedUrl(), url);
-    QCOMPARE(m_page->history()->count(), 0);
+    QCOMPARE(m_page->history()->count(), 1);
 
     url = QUrl("qrc:/test1.html");
     frame->setUrl(url);
@@ -1277,14 +1277,14 @@ void tst_QWebFrame::setUrlHistory()
     QCOMPARE(spy.count(), expectedLoadFinishedCount);
     QCOMPARE(frame->url(), url);
     QCOMPARE(frame->requestedUrl(), url);
-    QCOMPARE(m_page->history()->count(), 1);
+    QCOMPARE(m_page->history()->count(), 2);
 
     frame->setUrl(QUrl());
     expectedLoadFinishedCount++;
     QCOMPARE(spy.count(), expectedLoadFinishedCount);
     QCOMPARE(frame->url(), aboutBlank);
     QCOMPARE(frame->requestedUrl(), QUrl());
-    QCOMPARE(m_page->history()->count(), 1);
+    QCOMPARE(m_page->history()->count(), 2);
 
     // Loading same page as current in history, so history count doesn't change.
     url = QUrl("qrc:/test1.html");
@@ -1294,7 +1294,7 @@ void tst_QWebFrame::setUrlHistory()
     QCOMPARE(spy.count(), expectedLoadFinishedCount);
     QCOMPARE(frame->url(), url);
     QCOMPARE(frame->requestedUrl(), url);
-    QCOMPARE(m_page->history()->count(), 1);
+    QCOMPARE(m_page->history()->count(), 2);
 
     url = QUrl("qrc:/test2.html");
     frame->setUrl(url);
@@ -1303,7 +1303,7 @@ void tst_QWebFrame::setUrlHistory()
     QCOMPARE(spy.count(), expectedLoadFinishedCount);
     QCOMPARE(frame->url(), url);
     QCOMPARE(frame->requestedUrl(), url);
-    QCOMPARE(m_page->history()->count(), 2);
+    QCOMPARE(m_page->history()->count(), 3);
 }
 
 void tst_QWebFrame::setUrlUsingStateObject()
