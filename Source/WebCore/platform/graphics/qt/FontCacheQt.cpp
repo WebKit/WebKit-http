@@ -81,6 +81,11 @@ Vector<String> FontCache::systemFontFamilies()
     return families;
 }
 
+bool FontCache::isSystemFontForbiddenForEditing(const String&)
+{
+    return false;
+}
+
 Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
 {
     const AtomString fallbackFamily = String(QFont(/*fontDescription.firstFamily()*/).lastResortFamily()); // FIXME
