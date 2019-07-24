@@ -189,12 +189,6 @@ endif ()
 
 if (ENABLE_NETSCAPE_PLUGIN_API)
     if (WIN32)
-        list(APPEND WebCore_FORWARDING_HEADERS_FILES
-            platform/graphics/win/LocalWindowsContext.h
-
-            platform/win/BitmapInfo.h
-            platform/win/WebCoreInstanceHandle.h
-        )
         list(APPEND WebCore_SOURCES
             platform/graphics/win/TransformationMatrixWin.cpp
 
@@ -206,20 +200,10 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
             version
         )
     elseif (PLUGIN_BACKEND_XLIB)
-        list(APPEND WebCore_FORWARDING_HEADERS_FILES
-           plugins/qt/QtX11ImageConversion.h
-        )
         list(APPEND WebCore_SOURCES
             plugins/qt/QtX11ImageConversion.cpp
         )
     endif ()
-endif ()
-
-if (ENABLE_SMOOTH_SCROLLING)
-    list(APPEND WebCore_SOURCES
-        platform/ScrollAnimationSmooth.cpp
-        platform/ScrollAnimatorSmooth.cpp
-    )
 endif ()
 
 # Do it in the WebCore to support SHARED_CORE since WebKitWidgets won't load WebKitLegacy in that case.
@@ -361,35 +345,6 @@ endif ()
 
 # Build the include path with duplicates removed
 list(REMOVE_DUPLICATES WebCore_SYSTEM_INCLUDE_DIRECTORIES)
-
-# TODO: Think how to unify fwd headers handling throughout WebKit
-set(WebCore_FORWARDING_HEADERS_DIRECTORIES
-    bridge
-    dom
-    html
-    loader
-    page
-    platform
-    rendering
-    storage
-
-    Modules/indexeddb/legacy
-    Modules/indexeddb/shared
-
-    bindings/js
-
-    bridge/c
-    bridge/jsc
-
-    platform/graphics
-    platform/network
-    platform/sql
-    platform/text
-
-    platform/network/qt
-)
-
-WEBKIT_CREATE_FORWARDING_HEADERS(WebCore DIRECTORIES ${WebCore_FORWARDING_HEADERS_DIRECTORIES} FILES ${WebCore_FORWARDING_HEADERS_FILES})
 
 list(APPEND WebCoreTestSupport_LIBRARIES
     WebCore
