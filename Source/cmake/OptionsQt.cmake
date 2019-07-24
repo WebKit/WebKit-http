@@ -778,6 +778,10 @@ endif ()
 # From OptionsWin.cmake
 if (WIN32)
     add_definitions(-DNOMINMAX -DUNICODE -D_UNICODE -D_WINDOWS)
+
+    # If <winsock2.h> is not included before <windows.h> redefinition errors occur
+    # unless _WINSOCKAPI_ is defined before <windows.h> is included
+    add_definitions(-D_WINSOCKAPI_=)
 endif ()
 
 if (MSVC)
