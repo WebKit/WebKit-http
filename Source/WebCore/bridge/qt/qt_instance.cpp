@@ -20,15 +20,15 @@
 #include "config.h"
 #include "qt_instance.h"
 
-#include "APICast.h"
+#include <JavaScriptCore/APICast.h>
 #include "CommonVM.h"
-#include "Error.h"
+#include <JavaScriptCore/Error.h>
 #include "JSDOMBinding.h"
 #include "JSDOMWindowBase.h"
-#include "JSGlobalObject.h"
-#include "JSLock.h"
-#include "ObjectPrototype.h"
-#include "PropertyNameArray.h"
+#include <JavaScriptCore/FunctionPrototype.h>
+#include <JavaScriptCore/JSGlobalObject.h>
+#include <JavaScriptCore/JSLock.h>
+#include <JavaScriptCore/PropertyNameArray.h>
 #include "qt_class.h"
 #include "qt_runtime.h"
 #include "runtime_object.h"
@@ -50,7 +50,7 @@ class QtRuntimeObject : public RuntimeObject {
 public:
     typedef RuntimeObject Base;
 
-    static QtRuntimeObject* create(VM& vm, Structure* structure, Ref<Instance>&& instance)
+    static QtRuntimeObject* create(VM& vm, Structure* structure, RefPtr<Instance>&& instance)
     {
         QtRuntimeObject* object = new (allocateCell<QtRuntimeObject>(vm.heap)) QtRuntimeObject(vm, structure, WTFMove(instance));
         object->finishCreation(vm);
@@ -69,18 +69,18 @@ protected:
     // static const unsigned StructureFlags = RuntimeObject::StructureFlags | OverridesVisitChildren;
 
 private:
-    QtRuntimeObject(VM&, Structure*, Ref<Instance>&&);
+    QtRuntimeObject(VM&, Structure*, RefPtr<Instance>&&);
 };
 
 const ClassInfo QtRuntimeObject::s_info = { "QtRuntimeObject", &RuntimeObject::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(QtRuntimeObject) };
 
-QtRuntimeObject::QtRuntimeObject(VM& vm, Structure* structure, Ref<Instance>&& instance)
+QtRuntimeObject::QtRuntimeObject(VM& vm, Structure* structure, RefPtr<Instance>&& instance)
     : RuntimeObject(vm, structure, WTFMove(instance))
 {
 }
 
 // QtInstance
-QtInstance::QtInstance(QObject* o, Ref<RootObject>&& rootObject, ValueOwnership ownership)
+QtInstance::QtInstance(QObject* o, RefPtr<RootObject>&& rootObject, ValueOwnership ownership)
     : Instance(WTFMove(rootObject))
     , m_class(0)
     , m_object(o)
@@ -91,7 +91,7 @@ QtInstance::QtInstance(QObject* o, Ref<RootObject>&& rootObject, ValueOwnership 
 
 QtInstance::~QtInstance()
 {
-    JSLockHolder lock(commonVM());
+    JSLockHolder lock(WebCore::commonVM());
 
     cachedInstances.remove(m_hashkey);
 
@@ -118,7 +118,7 @@ QtInstance::~QtInstance()
 
 RefPtr<QtInstance> QtInstance::getQtInstance(QObject* o, RootObject* rootObject, ValueOwnership ownership)
 {
-    JSLockHolder lock(commonVM());
+    JSLockHolder lock(WebCore::commonVM());
 
     foreach (QtInstance* instance, cachedInstances.values(o))
         if (instance->rootObject() == rootObject) {
@@ -339,10 +339,10 @@ JSValue QtField::valueFromInstance(ExecState* exec, const Instance* inst) const
     return throwException(exec, scope, createError(exec, msg.toLatin1().constData()));
 }
 
-void QtField::setValueToInstance(ExecState* exec, const Instance* inst, JSValue aValue) const
+bool QtField::setValueToInstance(ExecState* exec, const Instance* inst, JSValue aValue) const
 {
     if (m_type == ChildObject) // QtScript doesn't allow setting to a named child
-        return;
+        return false;
 
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
@@ -359,20 +359,21 @@ void QtField::setValueToInstance(ExecState* exec, const Instance* inst, JSValue 
         QVariant val = convertValueToQVariant(toRef(exec), toRef(exec, aValue), argtype, 0, &exception);
         if (exception) {
             throwException(exec, scope, toJS(exec, exception));
-            return;
+            return false;
         }
         if (m_type == MetaProperty) {
             if (m_property.isWritable())
-                m_property.write(obj, val);
+                return m_property.write(obj, val);
         }
 #ifndef QT_NO_PROPERTIES
         else if (m_type == DynamicProperty)
-            obj->setProperty(m_dynamicProperty.constData(), val);
+            return obj->setProperty(m_dynamicProperty.constData(), val);
 #endif
     } else {
         QString msg = QString(QLatin1String("cannot access member `%1' of deleted QObject")).arg(QLatin1String(name()));
         throwException(exec, scope, createError(exec, msg.toLatin1().constData()));
     }
+    return false;
 }
 
 

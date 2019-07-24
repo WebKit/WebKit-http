@@ -35,7 +35,7 @@
 #include "MIMETypeRegistry.h"
 #include "StillImageQt.h"
 #include <JavaScriptCore/JSCInlines.h>
-#include <runtime/TypedArrayInlines.h>
+#include <JavaScriptCore/TypedArrayInlines.h>
 #include <wtf/text/WTFString.h>
 
 #include <QBuffer>

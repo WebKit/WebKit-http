@@ -21,7 +21,7 @@
 #define qt_pixmapruntime_h
 
 #include "BridgeJSC.h"
-#include "JavaScript.h"
+#include <JavaScriptCore/JavaScript.h>
 #include <QVariant>
 
 namespace JSC {

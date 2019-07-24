@@ -8,6 +8,10 @@ list(APPEND JavaScriptCore_SOURCES
     API/JSStringRefQt.cpp
 )
 
+list(APPEND JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
+    runtime/JSDateMath.h
+)
+
 list(APPEND JavaScriptCore_SYSTEM_INCLUDE_DIRECTORIES
     ${Qt5Core_INCLUDE_DIRS}
 )

@@ -21,10 +21,10 @@
 #define qt_instance_h
 
 #include "BridgeJSC.h"
-#include "JSWeakObjectMapRefPrivate.h"
-#include "Weak.h"
-#include "WeakInlines.h"
 #include "runtime_root.h"
+#include <JavaScriptCore/JSWeakObjectMapRefPrivate.h>
+#include <JavaScriptCore/Weak.h>
+#include <JavaScriptCore/WeakInlines.h>
 #include <QPointer>
 #include <qhash.h>
 #include <qset.h>
@@ -94,7 +94,7 @@ public:
     static QtInstance* getInstance(ExecState*, JSObject*);
 
 private:
-    static RefPtr<QtInstance> create(QObject *instance, Ref<RootObject>&& rootObject, ValueOwnership ownership)
+    static RefPtr<QtInstance> create(QObject *instance, RefPtr<RootObject>&& rootObject, ValueOwnership ownership)
     {
         return adoptRef(new QtInstance(instance, WTFMove(rootObject), ownership));
     }
@@ -102,7 +102,7 @@ private:
     friend class QtClass;
     friend class QtField;
     friend class QtRuntimeMethod;
-    QtInstance(QObject*, Ref<RootObject>&&, ValueOwnership); // Factory produced only..
+    QtInstance(QObject*, RefPtr<RootObject>&&, ValueOwnership); // Factory produced only..
     mutable QtClass* m_class;
     QPointer<QObject> m_object;
     QObject* m_hashkey;

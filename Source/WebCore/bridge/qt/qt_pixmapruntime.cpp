@@ -19,17 +19,17 @@
 #include "config.h"
 #include "qt_pixmapruntime.h"
 
-#include "APICast.h"
+#include <JavaScriptCore/APICast.h>
 #include "CachedImage.h"
 #include "HTMLImageElement.h"
 #include "ImageData.h"
 #include "IntSize.h"
 #include "JSDOMBinding.h"
-#include "JSGlobalObject.h"
+#include <JavaScriptCore/JSGlobalObject.h>
 #include "JSHTMLImageElement.h"
 #include "JSImageData.h"
-#include "JSRetainPtr.h"
-#include "JavaScript.h"
+#include <JavaScriptCore/JSRetainPtr.h>
+#include <JavaScriptCore/JavaScript.h>
 #include "RenderElement.h"
 #include "StillImageQt.h"
 #include <QBuffer>
@@ -142,7 +142,7 @@ static JSValueRef assignToHTMLImageElement(JSContextRef context, JSObjectRef /*f
     // We now know that we have a valid <img> element as the argument, we can attach the pixmap to it.
     RefPtr<StillImage> stillImage = WebCore::StillImage::create(toPixmap(data));
     HTMLImageElement* imageElement = JSHTMLImageElement::toWrapped(vm, jsObject);
-    imageElement->setCachedImage(new CachedImage(stillImage.get(), PAL::SessionID::defaultSessionID()));
+    imageElement->setCachedImage(new CachedImage(stillImage.get(), PAL::SessionID::defaultSessionID(), /*CookieJar*/ nullptr));
     return JSValueMakeUndefined(context);
 }
 

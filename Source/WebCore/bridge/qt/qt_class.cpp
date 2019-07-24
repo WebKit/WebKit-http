@@ -20,11 +20,11 @@
 #include "config.h"
 #include "qt_class.h"
 
-#include "APICast.h"
-#include "Identifier.h"
 #include "qt_instance.h"
 #include "qt_runtime.h"
 
+#include <JavaScriptCore/APICast.h>
+#include <JavaScriptCore/Identifier.h>
 #include <qdebug.h>
 #include <qmetaobject.h>
 
