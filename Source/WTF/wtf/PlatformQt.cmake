@@ -22,6 +22,9 @@ if (WIN32)
         win/ThreadSpecificWin.cpp
         win/ThreadingWin.cpp
     )
+    list(APPEND WTF_LIBRARIES
+        shlwapi
+    )
 else ()
     list(APPEND WTF_SOURCES
         posix/FileSystemPOSIX.cpp
