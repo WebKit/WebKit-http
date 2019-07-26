@@ -28,15 +28,14 @@
 #ifndef PlatformStrategiesQt_h
 #define PlatformStrategiesQt_h
 
-#include <LoaderStrategy.h>
-#include <PlatformStrategies.h>
-#include <PluginStrategy.h>
+#include <WebCore/LoaderStrategy.h>
+#include <WebCore/PlatformStrategies.h>
 
 namespace WebCore {
 class PasteboardStrategy;
 }
 
-class PlatformStrategiesQt : public WebCore::PlatformStrategies, private WebCore::PluginStrategy {
+class PlatformStrategiesQt final : public WebCore::PlatformStrategies {
     friend class WTF::NeverDestroyed<PlatformStrategiesQt>;
 public:
     static void initialize();
@@ -44,18 +43,9 @@ public:
 private:
     PlatformStrategiesQt();
 
-    // WebCore::PlatformStrategies
-    WebCore::LoaderStrategy* createLoaderStrategy() override;
-    WebCore::PasteboardStrategy* createPasteboardStrategy() override;
-    WebCore::PluginStrategy* createPluginStrategy() override;
-
-    // WebCore::PluginStrategy
-    void refreshPlugins() override;
-    void getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
-    void getWebVisiblePluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
-
-    // PlatformStrategies interface
-    WebCore::BlobRegistry* createBlobRegistry() override;
+    WebCore::LoaderStrategy* createLoaderStrategy() final;
+    WebCore::PasteboardStrategy* createPasteboardStrategy() final;
+    WebCore::BlobRegistry* createBlobRegistry() final;
 };
 
 #endif // PlatformStrategiesQt_h

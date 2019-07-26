@@ -74,6 +74,7 @@ list(APPEND WebKitLegacy_SOURCES
     qt/WebCoreSupport/InspectorServerQt.cpp
     qt/WebCoreSupport/NotificationPresenterClientQt.cpp
     qt/WebCoreSupport/PlatformStrategiesQt.cpp
+    qt/WebCoreSupport/PluginInfoProviderQt.cpp
     qt/WebCoreSupport/PopupMenuQt.cpp
     qt/WebCoreSupport/ProgressTrackerClientQt.cpp
     qt/WebCoreSupport/QWebFrameAdapter.cpp
