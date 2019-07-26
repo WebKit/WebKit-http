@@ -41,7 +41,6 @@
 #include <NotImplemented.h>
 #include <Page.h>
 #include <PageGroup.h>
-#include <PlatformCookieJar.h>
 #include <PluginDatabase.h>
 #include <QCoreApplication>
 #include <QLocale>
@@ -61,12 +60,6 @@ PlatformStrategiesQt::PlatformStrategiesQt()
     setPlatformStrategies(this);
 }
 
-
-CookiesStrategy* PlatformStrategiesQt::createCookiesStrategy()
-{
-    return this;
-}
-
 LoaderStrategy* PlatformStrategiesQt::createLoaderStrategy()
 {
     return new WebResourceLoadScheduler;
@@ -80,36 +73,6 @@ PasteboardStrategy* PlatformStrategiesQt::createPasteboardStrategy()
 PluginStrategy* PlatformStrategiesQt::createPluginStrategy()
 {
     return this;
-}
-
-String PlatformStrategiesQt::cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
-{
-    return WebCore::cookiesForDOM(session, firstParty, url);
-}
-
-void PlatformStrategiesQt::setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, const String& cookieString)
-{
-    WebCore::setCookiesFromDOM(session, firstParty, url, cookieString);
-}
-
-bool PlatformStrategiesQt::cookiesEnabled(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
-{
-    return WebCore::cookiesEnabled(session, firstParty, url);
-}
-
-String PlatformStrategiesQt::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
-{
-    return WebCore::cookieRequestHeaderFieldValue(session, firstParty, url);
-}
-
-bool PlatformStrategiesQt::getRawCookies(const NetworkStorageSession& session, const URL& firstParty, const URL& url, Vector<Cookie>& rawCookies)
-{
-    return WebCore::getRawCookies(session, firstParty, url, rawCookies);
-}
-
-void PlatformStrategiesQt::deleteCookie(const NetworkStorageSession& session, const URL& url, const String& cookieName)
-{
-    WebCore::deleteCookie(session, url, cookieName);
 }
 
 void PlatformStrategiesQt::refreshPlugins()

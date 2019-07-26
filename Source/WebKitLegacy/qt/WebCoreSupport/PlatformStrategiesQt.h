@@ -28,7 +28,6 @@
 #ifndef PlatformStrategiesQt_h
 #define PlatformStrategiesQt_h
 
-#include <CookiesStrategy.h>
 #include <LoaderStrategy.h>
 #include <PlatformStrategies.h>
 #include <PluginStrategy.h>
@@ -37,7 +36,7 @@ namespace WebCore {
 class PasteboardStrategy;
 }
 
-class PlatformStrategiesQt : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::PluginStrategy {
+class PlatformStrategiesQt : public WebCore::PlatformStrategies, private WebCore::PluginStrategy {
     friend class WTF::NeverDestroyed<PlatformStrategiesQt>;
 public:
     static void initialize();
@@ -46,18 +45,9 @@ private:
     PlatformStrategiesQt();
 
     // WebCore::PlatformStrategies
-    WebCore::CookiesStrategy* createCookiesStrategy() override;
     WebCore::LoaderStrategy* createLoaderStrategy() override;
     WebCore::PasteboardStrategy* createPasteboardStrategy() override;
     WebCore::PluginStrategy* createPluginStrategy() override;
-    
-    // WebCore::CookiesStrategy
-    String cookiesForDOM(const WebCore::NetworkStorageSession&, const WTF::URL& firstParty, const WTF::URL&) override;
-    void setCookiesFromDOM(const WebCore::NetworkStorageSession&, const WTF::URL& firstParty, const WTF::URL&, const String&) override;
-    bool cookiesEnabled(const WebCore::NetworkStorageSession&, const WTF::URL& firstParty, const WTF::URL&) override;
-    String cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WTF::URL& firstParty, const WTF::URL&) override;
-    bool getRawCookies(const WebCore::NetworkStorageSession&, const WTF::URL& firstParty, const WTF::URL&, Vector<WebCore::Cookie>&) override;
-    void deleteCookie(const WebCore::NetworkStorageSession&, const WTF::URL&, const String&) override;
 
     // WebCore::PluginStrategy
     void refreshPlugins() override;
