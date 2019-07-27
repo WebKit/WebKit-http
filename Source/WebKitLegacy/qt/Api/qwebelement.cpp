@@ -240,8 +240,10 @@ QWebElement QWebElement::findFirst(const QString &selectorQuery) const
 {
     if (!m_element)
         return QWebElement();
-    ExceptionCode exception = 0; // ###
-    return QWebElement(m_element->querySelector(selectorQuery, exception));
+    auto queryResult = m_element->querySelector(selectorQuery);
+    if (queryResult.hasException())
+        return QWebElement();
+    return QWebElement(queryResult.releaseReturnValue());
 }
 
 /*!
@@ -966,15 +968,11 @@ void QWebElement::appendInside(const QString &markup)
     if (!m_element)
         return;
 
-    if (!m_element->isHTMLElement())
+    auto createFragmentResult = createContextualFragment(*m_element, markup, AllowScriptingContent);
+    if (createFragmentResult.hasException())
         return;
 
-    ExceptionCode exception = 0;
-    RefPtr<DocumentFragment> fragment =  createContextualFragment(markup, downcast<HTMLElement>(m_element), AllowScriptingContent, exception);
-    if (!fragment)
-        return;
-
-    m_element->appendChild(*fragment, exception);
+    m_element->appendChild(createFragmentResult.releaseReturnValue());
 }
 
 /*!
@@ -1011,18 +1009,14 @@ void QWebElement::prependInside(const QString &markup)
     if (!m_element)
         return;
 
-    if (!m_element->isHTMLElement())
-        return;
-
-    ExceptionCode exception = 0;
-    RefPtr<DocumentFragment> fragment =  createContextualFragment(markup, downcast<HTMLElement>(m_element), AllowScriptingContent, exception);
-    if (!fragment)
+    auto createFragmentResult = createContextualFragment(*m_element, markup, AllowScriptingContent);
+    if (createFragmentResult.hasException())
         return;
 
     if (m_element->hasChildNodes())
-        m_element->insertBefore(*fragment, m_element->firstChild(), exception);
+        m_element->insertBefore(createFragmentResult.releaseReturnValue(), m_element->firstChild());
     else
-        m_element->appendChild(*fragment, exception);
+        m_element->appendChild(createFragmentResult.releaseReturnValue());
 }
 
 
@@ -1063,13 +1057,14 @@ void QWebElement::prependOutside(const QString &markup)
     if (!parent)
         return;
 
-    if (!parent->isHTMLElement())
+    if (!parent->isElementNode())
         return;
 
-    ExceptionCode exception = 0;
-    RefPtr<DocumentFragment> fragment = createContextualFragment(markup, downcast<HTMLElement>(parent), AllowScriptingContent, exception);
+    auto createFragmentResult = createContextualFragment(downcast<Element>(*parent), markup, AllowScriptingContent);
+    if (createFragmentResult.hasException())
+        return;
 
-    parent->insertBefore(fragment, m_element, exception);
+    parent->insertBefore(createFragmentResult.releaseReturnValue(), m_element);
 }
 
 /*!
@@ -1112,16 +1107,17 @@ void QWebElement::appendOutside(const QString &markup)
     if (!parent)
         return;
 
-    if (!parent->isHTMLElement())
+    if (!parent->isElementNode())
         return;
 
-    ExceptionCode exception = 0;
-    RefPtr<DocumentFragment> fragment = createContextualFragment(markup, downcast<HTMLElement>(parent), AllowScriptingContent, exception);
+    auto createFragmentResult = createContextualFragment(downcast<Element>(*parent), markup, AllowScriptingContent);
+    if (createFragmentResult.hasException())
+        return;
 
     if (!m_element->nextSibling())
-        parent->appendChild(fragment, exception);
+        parent->appendChild(createFragmentResult.releaseReturnValue());
     else
-        parent->insertBefore(fragment, m_element->nextSibling(), exception);
+        parent->insertBefore(createFragmentResult.releaseReturnValue(), m_element->nextSibling());
 }
 
 /*!
@@ -1255,13 +1251,12 @@ void QWebElement::encloseContentsWith(const QString &markup)
     if (!m_element->parentNode())
         return;
 
-    if (!m_element->isHTMLElement())
+    auto createFragmentResult = createContextualFragment(*m_element, markup, AllowScriptingContent);
+    if (createFragmentResult.hasException())
         return;
 
-    ExceptionCode exception = 0;
-    RefPtr<DocumentFragment> fragment =  createContextualFragment(markup, downcast<HTMLElement>(m_element), AllowScriptingContent, exception);
-
-    if (!fragment || !fragment->firstChild())
+    auto fragment = createFragmentResult.releaseReturnValue();
+    if (!fragment->firstChild())
         return;
 
     RefPtr<Node> insertionPoint = findInsertionPoint(fragment->firstChild());
@@ -1328,13 +1323,15 @@ void QWebElement::encloseWith(const QString &markup)
     if (!parent)
         return;
 
-    if (!parent->isHTMLElement())
+    if (!parent->isElementNode())
         return;
 
-    ExceptionCode exception = 0;
-    RefPtr<DocumentFragment> fragment = createContextualFragment(markup, downcast<HTMLElement>(parent), AllowScriptingContent, exception);
+    auto createFragmentResult = createContextualFragment(downcast<Element>(*parent), markup, AllowScriptingContent);
+    if (createFragmentResult.hasException())
+        return;
 
-    if (!fragment || !fragment->firstChild())
+    auto fragment = createFragmentResult.releaseReturnValue();
+    if (!fragment->firstChild())
         return;
 
     RefPtr<Node> insertionPoint = findInsertionPoint(fragment->firstChild());
@@ -1487,7 +1484,7 @@ void QWebElement::endExitFullScreen()
 class QWebElementCollectionPrivate : public QSharedData
 {
 public:
-    static QWebElementCollectionPrivate* create(const Ref<ContainerNode>&& &context, const QString &query);
+    static QWebElementCollectionPrivate* create(ContainerNode* context, const QString &query);
 
     RefPtr<NodeList> m_result;
 
@@ -1495,19 +1492,18 @@ private:
     inline QWebElementCollectionPrivate() {}
 };
 
-QWebElementCollectionPrivate* QWebElementCollectionPrivate::create(const Ref<ContainerNode>&& &context, const QString &query)
+QWebElementCollectionPrivate* QWebElementCollectionPrivate::create(ContainerNode* context, const QString &query)
 {
     if (!context)
-        return 0;
+        return nullptr;
 
     // Let WebKit do the hard work hehehe
-    ExceptionCode exception = 0; // ###
-    RefPtr<NodeList> nodes = context->querySelectorAll(query, exception);
-    if (!nodes)
-        return 0;
+    auto queryResult = context->querySelectorAll(query);
+    if (queryResult.hasException())
+        return nullptr;
 
     QWebElementCollectionPrivate* priv = new QWebElementCollectionPrivate;
-    priv->m_result = nodes;
+    priv->m_result = queryResult.releaseReturnValue();
     return priv;
 }
 
