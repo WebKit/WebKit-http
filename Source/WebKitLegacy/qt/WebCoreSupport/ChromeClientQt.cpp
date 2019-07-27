@@ -41,7 +41,6 @@
 #include "FrameLoaderClientQt.h"
 #include "FrameView.h"
 #include "Geolocation.h"
-#include "GraphicsLayer.h"
 #include "HTMLFormElement.h"
 #include "HitTestResult.h"
 #include "Icon.h"
@@ -57,7 +56,6 @@
 #include "ScrollbarTheme.h"
 #include "SearchPopupMenuQt.h"
 #include "SecurityOrigin.h"
-#include "TextureMapperLayerClientQt.h"
 #if USE(TILED_BACKING_STORE)
 #include "TiledBackingStore.h"
 #endif
@@ -83,6 +81,11 @@
 #if USE(QT_MULTIMEDIA)
 #include "MediaPlayerPrivateQt.h"
 #endif
+#endif
+
+#if USE(TEXTURE_MAPPER)
+#include "TextureMapperLayerClientQt.h"
+#include <WebCore/GraphicsLayer.h>
 #endif
 
 namespace WebCore {
@@ -130,9 +133,13 @@ FloatRect ChromeClientQt::windowRect()
 
 bool ChromeClientQt::allowsAcceleratedCompositing() const
 {
+#if USE(TEXTURE_MAPPER)
     if (!platformPageClient())
         return false;
     return true;
+#else
+    return false;
+#endif
 }
 
 FloatRect ChromeClientQt::pageRect()
@@ -575,23 +582,29 @@ void ChromeClientQt::setCursor(const Cursor& cursor)
 
 void ChromeClientQt::attachRootGraphicsLayer(Frame& frame, GraphicsLayer* graphicsLayer)
 {
+#if USE(TEXTURE_MAPPER)
     if (!m_textureMapperLayerClient)
         m_textureMapperLayerClient = std::make_unique<TextureMapperLayerClientQt>(m_webPage->mainFrameAdapter());
     m_textureMapperLayerClient->setRootGraphicsLayer(graphicsLayer);
+#endif
 }
 
 void ChromeClientQt::setNeedsOneShotDrawingSynchronization()
 {
+#if USE(TEXTURE_MAPPER)
     // we want the layers to synchronize next time we update the screen anyway
     if (m_textureMapperLayerClient)
         m_textureMapperLayerClient->markForSync(false);
+#endif
 }
 
 void ChromeClientQt::scheduleCompositingLayerFlush()
 {
+#if USE(TEXTURE_MAPPER)
     // we want the layers to synchronize ASAP
     if (m_textureMapperLayerClient)
         m_textureMapperLayerClient->markForSync(true);
+#endif
 }
 
 ChromeClient::CompositingTriggerFlags ChromeClientQt::allowedCompositingTriggers() const

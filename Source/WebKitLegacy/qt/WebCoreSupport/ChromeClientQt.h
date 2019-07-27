@@ -214,7 +214,9 @@ public:
 
     mutable QtPlatformPlugin m_platformPlugin;
 
+#if USE(TEXTURE_MAPPER)
     std::unique_ptr<TextureMapperLayerClientQt> m_textureMapperLayerClient;
+#endif
 };
 }
 

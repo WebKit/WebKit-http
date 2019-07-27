@@ -18,8 +18,9 @@
  * Boston, MA 02110-1301, USA.
  *
  */
-#ifndef TextureMapperLayerClientQt_h
-#define TextureMapperLayerClientQt_h
+#pragma once
+
+#if USE(TEXTURE_MAPPER)
 
 #include "GraphicsLayer.h"
 #include "TextureMapper.h"

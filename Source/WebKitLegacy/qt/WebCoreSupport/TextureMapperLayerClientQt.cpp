@@ -21,6 +21,8 @@
 
 #include "TextureMapperLayerClientQt.h"
 
+#if USE(TEXTURE_MAPPER)
+
 #include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsLayerTextureMapper.h"
@@ -150,3 +152,5 @@ QWebPageClient* TextureMapperLayerClientQt::pageClient() const
 {
     return m_frame.pageAdapter->client.data();
 }
+
+#endif // USE(TEXTURE_MAPPER)
