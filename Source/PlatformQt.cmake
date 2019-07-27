@@ -1,10 +1,9 @@
 # Automoc
 
-# QTFIXME
-#set(TARGETS_WITH_AUTOMOC
-#    WebKitLegacy
-#    WebKitWidgets
-#)
+set(TARGETS_WITH_AUTOMOC
+    WebKitLegacy
+    WebKitWidgets
+)
 if (ENABLE_WEBKIT)
     list(APPEND TARGETS_WITH_AUTOMOC
         WebKit
@@ -63,18 +62,17 @@ endif ()
 
 # Installation
 
-# QTFIXME
-#target_compile_definitions(WebKitLegacy INTERFACE QT_WEBKIT_LIB)
-#target_include_directories(WebKitLegacy INTERFACE
-#    $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}>
-#    $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}/QtWebKit>
-#)
-#
-#target_compile_definitions(WebKitWidgets INTERFACE QT_WEBKITWIDGETS_LIB)
-#target_include_directories(WebKitWidgets INTERFACE
-#    $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}>
-#    $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets>
-#)
+target_compile_definitions(WebKitLegacy INTERFACE QT_WEBKIT_LIB)
+target_include_directories(WebKitLegacy INTERFACE
+    $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}>
+    $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}/QtWebKit>
+)
+
+target_compile_definitions(WebKitWidgets INTERFACE QT_WEBKITWIDGETS_LIB)
+target_include_directories(WebKitWidgets INTERFACE
+    $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}>
+    $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets>
+)
 
 set(QTWEBKIT_PACKAGE_INIT "
 macro(find_dependency_with_major_and_minor _dep _major _minor)
