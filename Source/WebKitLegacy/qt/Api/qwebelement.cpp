@@ -255,8 +255,7 @@ void QWebElement::setPlainText(const QString &text)
 {
     if (!m_element || !m_element->isHTMLElement())
         return;
-    ExceptionCode exception = 0;
-    static_cast<HTMLElement*>(m_element)->setInnerText(text, exception);
+    static_cast<HTMLElement*>(m_element)->setInnerText(text);
 }
 
 /*!
@@ -287,10 +286,7 @@ void QWebElement::setOuterXml(const QString &markup)
 {
     if (!m_element || !m_element->isHTMLElement())
         return;
-
-    ExceptionCode exception = 0;
-
-    static_cast<HTMLElement*>(m_element)->setOuterHTML(markup, exception);
+    static_cast<HTMLElement*>(m_element)->setOuterHTML(markup);
 }
 
 /*!
@@ -327,10 +323,7 @@ void QWebElement::setInnerXml(const QString &markup)
 {
     if (!m_element || !m_element->isHTMLElement())
         return;
-
-    ExceptionCode exception = 0;
-
-    static_cast<HTMLElement*>(m_element)->setInnerHTML(markup, exception);
+    static_cast<HTMLElement*>(m_element)->setInnerHTML(markup);
 }
 
 /*!
@@ -363,8 +356,7 @@ void QWebElement::setAttribute(const QString &name, const QString &value)
 {
     if (!m_element)
         return;
-    ExceptionCode exception = 0;
-    m_element->setAttribute(name, value, exception);
+    m_element->setAttribute(String(name), String(value));
 }
 
 /*!
@@ -378,8 +370,7 @@ void QWebElement::setAttributeNS(const QString &namespaceUri, const QString &nam
 {
     if (!m_element)
         return;
-    WebCore::ExceptionCode exception = 0;
-    m_element->setAttributeNS(namespaceUri, name, value, exception);
+    m_element->setAttributeNS(String(namespaceUri), String(name), String(value));
 }
 
 /*!
@@ -960,8 +951,7 @@ void QWebElement::appendInside(const QWebElement &element)
     if (!m_element || element.isNull())
         return;
 
-    ExceptionCode exception = 0;
-    m_element->appendChild(*element.m_element, exception);
+    m_element->appendChild(*element.m_element);
 }
 
 /*!
@@ -1003,12 +993,10 @@ void QWebElement::prependInside(const QWebElement &element)
     if (!m_element || element.isNull())
         return;
 
-    ExceptionCode exception = 0;
-
     if (m_element->hasChildNodes())
-        m_element->insertBefore(*element.m_element, m_element->firstChild(), exception);
+        m_element->insertBefore(*element.m_element, m_element->firstChild());
     else
-        m_element->appendChild(*element.m_element, exception);
+        m_element->appendChild(*element.m_element);
 }
 
 /*!
@@ -1056,8 +1044,7 @@ void QWebElement::prependOutside(const QWebElement &element)
     if (!m_element->parentNode())
         return;
 
-    ExceptionCode exception = 0;
-    m_element->parentNode()->insertBefore(*element.m_element, m_element, exception);
+    m_element->parentNode()->insertBefore(*element.m_element, m_element);
 }
 
 /*!
@@ -1103,11 +1090,10 @@ void QWebElement::appendOutside(const QWebElement &element)
     if (!m_element->parentNode())
         return;
 
-    ExceptionCode exception = 0;
     if (!m_element->nextSibling())
-        m_element->parentNode()->appendChild(*element.m_element, exception);
+        m_element->parentNode()->appendChild(*element.m_element);
     else
-        m_element->parentNode()->insertBefore(*element.m_element, m_element->nextSibling(), exception);
+        m_element->parentNode()->insertBefore(*element.m_element, m_element->nextSibling());
 }
 
 /*!
@@ -1167,8 +1153,7 @@ QWebElement &QWebElement::takeFromDocument()
     if (!m_element)
         return *this;
 
-    ExceptionCode exception = 0;
-    m_element->remove(exception);
+    m_element->remove();
 
     return *this;
 }
@@ -1183,8 +1168,7 @@ void QWebElement::removeFromDocument()
     if (!m_element)
         return;
 
-    ExceptionCode exception = 0;
-    m_element->remove(exception);
+    m_element->remove();
     m_element->deref();
     m_element = 0;
 }
@@ -1244,19 +1228,17 @@ void QWebElement::encloseContentsWith(const QWebElement &element)
     if (!insertionPoint)
         return;
 
-    ExceptionCode exception = 0;
-
     // reparent children
     for (RefPtr<Node> child = m_element->firstChild(); child;) {
         RefPtr<Node> next = child->nextSibling();
-        insertionPoint->appendChild(child, exception);
+        insertionPoint->appendChild(*child);
         child = next;
     }
 
     if (m_element->hasChildNodes())
-        m_element->insertBefore(*element.m_element, m_element->firstChild(), exception);
+        m_element->insertBefore(*element.m_element, m_element->firstChild());
     else
-        m_element->appendChild(*element.m_element, exception);
+        m_element->appendChild(*element.m_element);
 }
 
 /*!
@@ -1290,14 +1272,14 @@ void QWebElement::encloseContentsWith(const QString &markup)
     // reparent children
     for (RefPtr<Node> child = m_element->firstChild(); child;) {
         RefPtr<Node> next = child->nextSibling();
-        insertionPoint->appendChild(child, exception);
+        insertionPoint->appendChild(*child);
         child = next;
     }
 
     if (m_element->hasChildNodes())
-        m_element->insertBefore(*fragment, m_element->firstChild(), exception);
+        m_element->insertBefore(fragment, m_element->firstChild());
     else
-        m_element->appendChild(*fragment, exception);
+        m_element->appendChild(fragment);
 }
 
 /*!
@@ -1323,13 +1305,12 @@ void QWebElement::encloseWith(const QWebElement &element)
     Node* parent = m_element->parentNode();
     Node* siblingNode = m_element->nextSibling();
 
-    ExceptionCode exception = 0;
-    insertionPoint->appendChild(m_element, exception);
+    insertionPoint->appendChild(*m_element);
 
     if (!siblingNode)
-        parent->appendChild(element.m_element, exception);
+        parent->appendChild(*element.m_element);
     else
-        parent->insertBefore(element.m_element, siblingNode, exception);
+        parent->insertBefore(*element.m_element, siblingNode);
 }
 
 /*!
@@ -1367,12 +1348,12 @@ void QWebElement::encloseWith(const QString &markup)
     // we no longer have access to the nodes it contained.
     Node* siblingNode = m_element->nextSibling();
 
-    insertionPoint->appendChild(m_element, exception);
+    insertionPoint->appendChild(*m_element);
 
     if (!siblingNode)
-        parent->appendChild(fragment, exception);
+        parent->appendChild(fragment);
     else
-        parent->insertBefore(fragment, siblingNode, exception);
+        parent->insertBefore(fragment, siblingNode);
 }
 
 /*!
