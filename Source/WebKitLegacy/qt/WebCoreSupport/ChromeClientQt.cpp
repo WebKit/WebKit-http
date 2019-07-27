@@ -87,40 +87,6 @@
 
 namespace WebCore {
 
-#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
-class RefreshAnimation final : public QAbstractAnimation {
-public:
-    RefreshAnimation(ChromeClientQt* chromeClient)
-        : QAbstractAnimation()
-        , m_chromeClient(chromeClient)
-        , m_animationScheduled(false)
-    { }
-
-    int duration() const final { return -1; }
-
-    void scheduleAnimation()
-    {
-        m_animationScheduled = true;
-        if (state() != QAbstractAnimation::Running)
-            QMetaObject::invokeMethod(this, "start", Qt::QueuedConnection);
-    }
-
-protected:
-    void updateCurrentTime(int currentTime) final
-    {
-        UNUSED_PARAM(currentTime);
-        if (m_animationScheduled) {
-            m_animationScheduled = false;
-            m_chromeClient->serviceScriptedAnimations();
-        } else
-            stop();
-    }
-private:
-    ChromeClientQt* m_chromeClient;
-    bool m_animationScheduled;
-};
-#endif
-
 bool ChromeClientQt::dumpVisitedLinksCallbacks = false;
 
 ChromeClientQt::ChromeClientQt(QWebPageAdapter* webPageAdapter)
@@ -606,20 +572,6 @@ void ChromeClientQt::setCursor(const Cursor& cursor)
     UNUSED_PARAM(cursor);
 #endif
 }
-
-#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
-void ChromeClientQt::scheduleAnimation()
-{
-    if (!m_refreshAnimation)
-        m_refreshAnimation = std::make_unique<RefreshAnimation>(this);
-    m_refreshAnimation->scheduleAnimation();
-}
-
-void ChromeClientQt::serviceScriptedAnimations()
-{
-    m_webPage->mainFrameAdapter().frame->view()->serviceScriptedAnimations(WallTime::now());
-}
-#endif
 
 void ChromeClientQt::attachRootGraphicsLayer(Frame& frame, GraphicsLayer* graphicsLayer)
 {
