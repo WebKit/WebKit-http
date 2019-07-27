@@ -392,8 +392,8 @@ QString QWebElement::attribute(const QString &name, const QString &defaultValue)
 {
     if (!m_element)
         return QString();
-    if (m_element->hasAttribute(name))
-        return m_element->getAttribute(name);
+    if (m_element->hasAttribute(String(name)))
+        return m_element->getAttribute(String(name)).string();
     else
         return defaultValue;
 }
@@ -408,8 +408,8 @@ QString QWebElement::attributeNS(const QString &namespaceUri, const QString &nam
 {
     if (!m_element)
         return QString();
-    if (m_element->hasAttributeNS(namespaceUri, name))
-        return m_element->getAttributeNS(namespaceUri, name);
+    if (m_element->hasAttributeNS(String(namespaceUri), String(name)))
+        return m_element->getAttributeNS(String(namespaceUri), String(name)).string();
     else
         return defaultValue;
 }
@@ -424,7 +424,7 @@ bool QWebElement::hasAttribute(const QString &name) const
 {
     if (!m_element)
         return false;
-    return m_element->hasAttribute(name);
+    return m_element->hasAttribute(String(name));
 }
 
 /*!
@@ -437,7 +437,7 @@ bool QWebElement::hasAttributeNS(const QString &namespaceUri, const QString &nam
 {
     if (!m_element)
         return false;
-    return m_element->hasAttributeNS(namespaceUri, name);
+    return m_element->hasAttributeNS(String(namespaceUri), String(name));
 }
 
 /*!
@@ -449,7 +449,7 @@ void QWebElement::removeAttribute(const QString &name)
 {
     if (!m_element)
         return;
-    m_element->removeAttribute(name);
+    m_element->removeAttribute(String(name));
 }
 
 /*!
@@ -462,7 +462,7 @@ void QWebElement::removeAttributeNS(const QString &namespaceUri, const QString &
 {
     if (!m_element)
         return;
-    m_element->removeAttributeNS(namespaceUri, name);
+    m_element->removeAttributeNS(String(namespaceUri), String(name));
 }
 
 /*!
@@ -495,7 +495,7 @@ QStringList QWebElement::attributeNames(const QString& namespaceUri) const
         for (unsigned i = 0; i < attrsCount; ++i) {
             const Attribute& attribute = m_element->attributeAt(i);
             if (namespaceUriString == attribute.namespaceURI())
-                attributeNameList.append(attribute.localName());
+                attributeNameList.append(attribute.localName().string());
         }
     }
     return attributeNameList;
@@ -563,7 +563,7 @@ QString QWebElement::prefix() const
 {
     if (!m_element)
         return QString();
-    return m_element->prefix();
+    return m_element->prefix().string();
 }
 
 /*!
@@ -574,7 +574,7 @@ QString QWebElement::localName() const
 {
     if (!m_element)
         return QString();
-    return m_element->localName();
+    return m_element->localName().string();
 }
 
 /*!
@@ -585,7 +585,7 @@ QString QWebElement::namespaceUri() const
 {
     if (!m_element)
         return QString();
-    return m_element->namespaceURI();
+    return m_element->namespaceURI().string();
 }
 
 /*!

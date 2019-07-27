@@ -286,7 +286,7 @@ QMultiMap<QString, QString> QWebFrameAdapter::metaData() const
     unsigned len = list->length();
     for (unsigned i = 0; i < len; i++) {
         HTMLMetaElement* meta = static_cast<HTMLMetaElement*>(list->item(i));
-        map.insert(meta->name(), meta->content());
+        map.insert(meta->name().string(), meta->content().string());
     }
     return map;
 }
@@ -458,7 +458,7 @@ QWebSecurityOrigin QWebFrameAdapter::securityOrigin() const
 
 QString QWebFrameAdapter::uniqueName() const
 {
-    return frame->tree().uniqueName();
+    return frame->tree().uniqueName().string();
 }
 
 // This code is copied from ChromeClientGtk.cpp.

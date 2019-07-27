@@ -105,27 +105,27 @@ void QWebSettingsPrivate::apply()
 
         QString family = fontFamilies.value(QWebSettings::StandardFont,
                                             global->fontFamilies.value(QWebSettings::StandardFont));
-        settings->setStandardFontFamily(family);
+        settings->setStandardFontFamily(String(family));
 
         family = fontFamilies.value(QWebSettings::FixedFont,
                                     global->fontFamilies.value(QWebSettings::FixedFont));
-        settings->setFixedFontFamily(family);
+        settings->setFixedFontFamily(String(family));
 
         family = fontFamilies.value(QWebSettings::SerifFont,
                                     global->fontFamilies.value(QWebSettings::SerifFont));
-        settings->setSerifFontFamily(family);
+        settings->setSerifFontFamily(String(family));
 
         family = fontFamilies.value(QWebSettings::SansSerifFont,
                                     global->fontFamilies.value(QWebSettings::SansSerifFont));
-        settings->setSansSerifFontFamily(family);
+        settings->setSansSerifFontFamily(String(family));
 
         family = fontFamilies.value(QWebSettings::CursiveFont,
                                     global->fontFamilies.value(QWebSettings::CursiveFont));
-        settings->setCursiveFontFamily(family);
+        settings->setCursiveFontFamily(String(family));
 
         family = fontFamilies.value(QWebSettings::FantasyFont,
                                     global->fontFamilies.value(QWebSettings::FantasyFont));
-        settings->setFantasyFontFamily(family);
+        settings->setFantasyFontFamily(String(family));
 
         int size = fontSizes.value(QWebSettings::MinimumFontSize,
                                    global->fontSizes.value(QWebSettings::MinimumFontSize));
