@@ -236,11 +236,6 @@ void FrameLoaderClientQt::setFrame(QWebFrameAdapter* webFrame, Frame* frame)
         m_webFrame->handle(), SIGNAL(titleChanged(QString)));
 }
 
-void FrameLoaderClientQt::callPolicyFunction(FramePolicyFunction function, PolicyAction action)
-{
-    function(action);
-}
-
 bool FrameLoaderClientQt::hasWebView() const
 {
     // notImplemented();
@@ -521,11 +516,11 @@ void FrameLoaderClientQt::cancelPolicyCheck()
 }
 
 
-void FrameLoaderClientQt::dispatchWillSubmitForm(Ref<FormState>&&, FramePolicyFunction function)
+void FrameLoaderClientQt::dispatchWillSubmitForm(FormState&, CompletionHandler<void()>&& completionHandler)
 {
     notImplemented();
     // FIXME: This is surely too simple.
-    callPolicyFunction(function, PolicyUse);
+    completionHandler();
 }
 
 void FrameLoaderClientQt::setMainFrameDocumentReady(bool)
@@ -1119,7 +1114,7 @@ WebCore::Frame* FrameLoaderClientQt::dispatchCreatePage(const WebCore::Navigatio
     return newPage->mainFrameAdapter().frame;
 }
 
-void FrameLoaderClientQt::dispatchDecidePolicyForResponse(const WebCore::ResourceResponse& response, const WebCore::ResourceRequest&, FramePolicyFunction function)
+void FrameLoaderClientQt::dispatchDecidePolicyForResponse(const WebCore::ResourceResponse& response, const WebCore::ResourceRequest&, PolicyCheckIdentifier id, const String& downloadAttribute, FramePolicyFunction&& function)
 {
     // We need to call directly here.
     switch (response.httpStatusCode()) {
@@ -1127,19 +1122,19 @@ void FrameLoaderClientQt::dispatchDecidePolicyForResponse(const WebCore::Resourc
         // FIXME: a 205 response requires that the requester reset the document view.
         // Fallthrough
     case HTTPNoContent:
-        callPolicyFunction(function, PolicyIgnore);
+        function(PolicyAction::Ignore, id);
         return;
     }
 
     if (WebCore::contentDispositionType(response.httpHeaderField(HTTPHeaderName::ContentDisposition)) == WebCore::ContentDispositionAttachment)
-        callPolicyFunction(function, PolicyDownload);
+        function(PolicyAction::Download, id);
     else if (canShowMIMEType(response.mimeType()))
-        callPolicyFunction(function, PolicyUse);
+        function(PolicyAction::Use, id);
     else
-        callPolicyFunction(function, PolicyDownload);
+        function(PolicyAction::Download, id);
 }
 
-void FrameLoaderClientQt::dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, Ref<WebCore::FormState>&&, const WTF::String&, FramePolicyFunction function)
+void FrameLoaderClientQt::dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, FormState*, const WTF::String&, PolicyCheckIdentifier id, FramePolicyFunction&& function)
 {
     Q_ASSERT(m_webFrame);
     QNetworkRequest r(request.toNetworkRequest(m_frame->loader().networkingContext()));
@@ -1148,18 +1143,16 @@ void FrameLoaderClientQt::dispatchDecidePolicyForNewWindowAction(const WebCore::
         if (action.type() == NavigationType::FormSubmitted || action.type() == NavigationType::FormResubmitted)
             m_frame->loader().resetMultipleFormSubmissionProtection();
 
-        if (action.type() == NavigationType::LinkClicked && r.url().hasFragment()) {
-            ResourceRequest emptyRequest;
-            m_frame->loader().activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
-        }
+        if (action.type() == NavigationType::LinkClicked && r.url().hasFragment())
+            m_frame->loader().activeDocumentLoader()->setLastCheckedRequest(ResourceRequest());
 
-        callPolicyFunction(function, PolicyIgnore);
+        function(PolicyAction::Ignore, id);
         return;
     }
-    callPolicyFunction(function, PolicyUse);
+    function(PolicyAction::Use, id);
 }
 
-void FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, Ref<WebCore::FormState>&&, FramePolicyFunction function)
+void FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, const ResourceResponse& redirectResponse, WebCore::FormState*, PolicyDecisionMode, PolicyCheckIdentifier id, FramePolicyFunction&& function)
 {
     Q_ASSERT(m_webFrame);
     QNetworkRequest r(request.toNetworkRequest(m_frame->loader().networkingContext()));
@@ -1181,12 +1174,12 @@ void FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction(const WebCore:
             (node) ? qPrintable(QString::fromLatin1(" originating from ") + drtDescriptionSuitableForTestResult(node, 0)) : "");
 
         if (policyDelegatePermissive)
-            result = PolicyUse;
+            result = PolicyAction::Use;
         else
-            result = PolicyIgnore;
+            result = PolicyAction::Ignore;
 
         m_webFrame->pageAdapter->acceptNavigationRequest(m_webFrame, r, (int)action.type());
-        callPolicyFunction(function, result);
+        function(result, id);
         return;
     }
 
@@ -1199,10 +1192,10 @@ void FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction(const WebCore:
             m_frame->loader().activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
         }
 
-        callPolicyFunction(function, PolicyIgnore);
+        function(PolicyAction::Ignore, id);
         return;
     }
-    callPolicyFunction(function, PolicyUse);
+    function(PolicyAction::Use, id);
 }
 
 void FrameLoaderClientQt::dispatchUnableToImplementPolicy(const WebCore::ResourceError&)

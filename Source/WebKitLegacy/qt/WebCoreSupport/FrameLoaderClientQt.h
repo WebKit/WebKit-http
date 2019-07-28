@@ -64,7 +64,6 @@ class FrameLoaderClientQt : public QObject, public FrameLoaderClient {
     Q_OBJECT
 
     friend class ::QWebFrameAdapter;
-    void callPolicyFunction(FramePolicyFunction, PolicyAction);
     bool callErrorPageExtension(const ResourceError&);
 
 Q_SIGNALS:
@@ -122,15 +121,15 @@ public:
     WebCore::Frame* dispatchCreatePage(const WebCore::NavigationAction&) override;
     void dispatchShow() override;
 
-    void dispatchDecidePolicyForResponse(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, FramePolicyFunction) override;
-    void dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, Ref<FormState>&&, const WTF::String&, FramePolicyFunction) override;
-    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, Ref<FormState>&&, FramePolicyFunction) override;
+    void dispatchDecidePolicyForResponse(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, PolicyCheckIdentifier, const String& downloadAttribute, FramePolicyFunction&&) override;
+    void dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, FormState*, const String&, PolicyCheckIdentifier, FramePolicyFunction&&) override;
+    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, const ResourceResponse& redirectResponse, FormState*, PolicyDecisionMode, PolicyCheckIdentifier, FramePolicyFunction&&) override;
     void cancelPolicyCheck() override;
 
     void dispatchUnableToImplementPolicy(const WebCore::ResourceError&) override;
 
     void dispatchWillSendSubmitEvent(Ref<FormState>&&) override { }
-    void dispatchWillSubmitForm(Ref<FormState>&&, FramePolicyFunction) override;
+    void dispatchWillSubmitForm(FormState&, CompletionHandler<void()>&&) override;
 
     void revertToProvisionalState(DocumentLoader*) override { }
     void setMainDocumentError(DocumentLoader*, const ResourceError&) override;
