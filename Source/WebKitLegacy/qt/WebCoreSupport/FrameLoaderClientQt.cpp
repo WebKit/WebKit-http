@@ -70,7 +70,6 @@
 #include "ResourceLoader.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
-#include "ScriptController.h"
 #include "Settings.h"
 #include "SubframeLoader.h"
 #include "SubresourceLoader.h"
@@ -114,7 +113,7 @@ static QString drtDescriptionSuitableForTestResult(WebCore::Frame* webCoreFrame)
 
 static QString drtPrintFrameUserGestureStatus(WebCore::Frame* frame)
 {
-    if (WebCore::ScriptController::processingUserGesture())
+    if (WebCore::UserGestureIndicator::processingUserGesture())
         return QString::fromLatin1("Frame with user gesture \"%1\"").arg(QLatin1String("true"));
     return QString::fromLatin1("Frame with user gesture \"%1\"").arg(QLatin1String("false"));
 }
