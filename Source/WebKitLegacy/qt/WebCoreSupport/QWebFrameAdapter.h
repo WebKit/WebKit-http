@@ -208,9 +208,6 @@ public:
     QWebPageAdapter* pageAdapter;
 
 // protected:
-    bool allowsScrolling;
-    int marginWidth;
-    int marginHeight;
     Qt::ScrollBarPolicy horizontalScrollBarPolicy;
     Qt::ScrollBarPolicy verticalScrollBarPolicy;
 #if ENABLE(ORIENTATION_EVENTS) && HAVE(QTSENSORS)

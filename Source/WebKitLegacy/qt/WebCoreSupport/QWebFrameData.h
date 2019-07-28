@@ -39,9 +39,5 @@ public:
     WebCore::Page* page;
     RefPtr<WebCore::Frame> frame;
     WebCore::FrameLoaderClientQt* frameLoaderClient;
-
     WTF::String referrer;
-    bool allowsScrolling;
-    int marginWidth;
-    int marginHeight;
 };

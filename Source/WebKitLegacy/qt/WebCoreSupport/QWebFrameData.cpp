@@ -30,9 +30,6 @@ QWebFrameData::QWebFrameData(WebCore::Page* parentPage, WebCore::Frame* parentFr
     : name(frameName)
     , ownerElement(ownerFrameElement)
     , page(parentPage)
-    , allowsScrolling(true)
-    , marginWidth(0)
-    , marginHeight(0)
 {
     // mainframe is already created in WebCore::Page, just use it.
     if (!parentFrame || !ownerElement) {

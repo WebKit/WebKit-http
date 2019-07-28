@@ -90,9 +90,6 @@ static inline ResourceRequestCachePolicy cacheLoadControlToCachePolicy(uint cach
 
 QWebFrameAdapter::QWebFrameAdapter()
     : pageAdapter(0)
-    , allowsScrolling(true)
-    , marginWidth(-1)
-    , marginHeight(-1)
     , horizontalScrollBarPolicy(Qt::ScrollBarAsNeeded)
     , verticalScrollBarPolicy(Qt::ScrollBarAsNeeded)
     , frame(0)
@@ -345,9 +342,6 @@ void QWebFrameAdapter::init(QWebPageAdapter* pageAdapter)
 void QWebFrameAdapter::init(QWebPageAdapter* pageAdapter, QWebFrameData* frameData)
 {
     this->pageAdapter = pageAdapter;
-    allowsScrolling = frameData->allowsScrolling;
-    marginWidth = frameData->marginWidth;
-    marginHeight = frameData->marginHeight;
     frame = frameData->frame.get();
     frameLoaderClient = frameData->frameLoaderClient;
     frameLoaderClient->setFrame(this, frame);

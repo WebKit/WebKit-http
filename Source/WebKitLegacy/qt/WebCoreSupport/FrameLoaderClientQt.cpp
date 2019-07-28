@@ -1219,11 +1219,7 @@ RefPtr<Frame> FrameLoaderClientQt::createFrame(const URL& url, const String& nam
         return 0;
 
     QWebFrameData frameData(m_frame->page(), m_frame, ownerElement, name);
-
     frameData.referrer = referrer;
-    frameData.allowsScrolling = allowsScrolling;
-    frameData.marginWidth = marginWidth;
-    frameData.marginHeight = marginHeight;
 
     QWebFrameAdapter* childWebFrame = m_webFrame->createChildFrame(&frameData);
     // The creation of the frame may have run arbitrary JavaScript that removed it from the page already.
