@@ -26,89 +26,89 @@ using namespace WebCore;
 static QString undoNameForEditAction(const EditAction editAction)
 {
     switch (editAction) {
-    case EditActionUnspecified:
+    case EditAction::Unspecified:
         return QString();
-    case EditActionInsert:
+    case EditAction::Insert:
         return QObject::tr("Insert");
-    case EditActionSetColor:
+    case EditAction::SetColor:
         return QObject::tr("Set Color");
-    case EditActionSetBackgroundColor:
+    case EditAction::SetBackgroundColor:
         return QObject::tr("Set Background Color");
-    case EditActionTurnOffKerning:
+    case EditAction::TurnOffKerning:
         return QObject::tr("Turn Off Kerning");
-    case EditActionTightenKerning:
+    case EditAction::TightenKerning:
         return QObject::tr("Tighten Kerning");
-    case EditActionLoosenKerning:
+    case EditAction::LoosenKerning:
         return QObject::tr("Loosen Kerning");
-    case EditActionUseStandardKerning:
+    case EditAction::UseStandardKerning:
         return QObject::tr("Use Standard Kerning");
-    case EditActionTurnOffLigatures:
+    case EditAction::TurnOffLigatures:
         return QObject::tr("Turn Off Ligatures");
-    case EditActionUseStandardLigatures:
+    case EditAction::UseStandardLigatures:
         return QObject::tr("Use Standard Ligatures");
-    case EditActionUseAllLigatures:
+    case EditAction::UseAllLigatures:
         return QObject::tr("Use All Ligatures");
-    case EditActionRaiseBaseline:
+    case EditAction::RaiseBaseline:
         return QObject::tr("Raise Baseline");
-    case EditActionLowerBaseline:
+    case EditAction::LowerBaseline:
         return QObject::tr("Lower Baseline");
-    case EditActionSetTraditionalCharacterShape:
+    case EditAction::SetTraditionalCharacterShape:
         return QObject::tr("Set Traditional Character Shape");
-    case EditActionSetFont:
+    case EditAction::SetFont:
         return QObject::tr("Set Font");
-    case EditActionChangeAttributes:
+    case EditAction::ChangeAttributes:
         return QObject::tr("Change Attributes");
-    case EditActionAlignLeft:
+    case EditAction::AlignLeft:
         return QObject::tr("Align Left");
-    case EditActionAlignRight:
+    case EditAction::AlignRight:
         return QObject::tr("Align Right");
-    case EditActionCenter:
+    case EditAction::Center:
         return QObject::tr("Center");
-    case EditActionJustify:
+    case EditAction::Justify:
         return QObject::tr("Justify");
-    case EditActionSetWritingDirection:
+    case EditAction::SetWritingDirection:
         return QObject::tr("Set Writing Direction");
-    case EditActionSubscript:
+    case EditAction::Subscript:
         return QObject::tr("Subscript");
-    case EditActionBold:
+    case EditAction::Bold:
         return QObject::tr("Bold");
-    case EditActionItalics:
+    case EditAction::Italics:
         return QObject::tr("Italic");
-    case EditActionSuperscript:
+    case EditAction::Superscript:
         return QObject::tr("Superscript");
-    case EditActionUnderline:
+    case EditAction::Underline:
         return QObject::tr("Underline");
-    case EditActionOutline:
+    case EditAction::Outline:
         return QObject::tr("Outline");
-    case EditActionUnscript:
+    case EditAction::Unscript:
         return QObject::tr("Unscript");
-    case EditActionDrag:
+    case EditAction::Drag:
         return QObject::tr("Drag");
-    case EditActionCut:
+    case EditAction::Cut:
         return QObject::tr("Cut");
-    case EditActionPaste:
+    case EditAction::Paste:
         return QObject::tr("Paste");
-    case EditActionDelete:
+    case EditAction::Delete:
         return QObject::tr("Delete");
-    case EditActionDictation:
+    case EditAction::Dictation:
         return QObject::tr("Dictation");
-    case EditActionPasteFont:
+    case EditAction::PasteFont:
         return QObject::tr("Paste Font");
-    case EditActionPasteRuler:
+    case EditAction::PasteRuler:
         return QObject::tr("Paste Ruler");
-    case EditActionTyping:
+    case EditAction::Typing:
         return QObject::tr("Typing");
-    case EditActionCreateLink:
+    case EditAction::CreateLink:
         return QObject::tr("Create Link");
-    case EditActionUnlink:
+    case EditAction::Unlink:
         return QObject::tr("Unlink");
-    case EditActionInsertList:
+    case EditAction::InsertList:
         return QObject::tr("Insert List");
-    case EditActionFormatBlock:
+    case EditAction::FormatBlock:
         return QObject::tr("Formatting");
-    case EditActionIndent:
+    case EditAction::Indent:
         return QObject::tr("Indent");
-    case EditActionOutdent:
+    case EditAction::Outdent:
         return QObject::tr("Outdent");
     }
 
