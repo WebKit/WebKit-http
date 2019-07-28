@@ -31,20 +31,18 @@
 
 #include "NotificationPresenterClientQt.h"
 
-#include "Document.h"
-#include "Event.h"
-#include "EventNames.h"
-#include "MainFrame.h"
-#include "Notification.h"
-#include "Page.h"
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
-#include "QtPlatformPlugin.h"
-#include "ScriptExecutionContext.h"
-#include "SecurityOrigin.h"
-#include "URL.h"
-#include "UserGestureIndicator.h"
 #include "qwebkitglobal.h"
+
+#include <WebCore/Document.h>
+#include <WebCore/Event.h>
+#include <WebCore/EventNames.h>
+#include <WebCore/Frame.h>
+#include <WebCore/Notification.h>
+#include <WebCore/NotificationPermissionCallback.h>
+#include <WebCore/Page.h>
+#include <WebCore/ScriptExecutionContext.h>
 
 namespace WebCore {
 
@@ -115,7 +113,7 @@ const QUrl NotificationWrapper::iconUrl() const
 #if ENABLE(NOTIFICATIONS)
     Notification* notification = NotificationPresenterClientQt::notificationPresenter()->notificationForWrapper(this);
     if (notification)
-        return notification->iconURL();
+        return notification->icon();
 #endif
     return QUrl();
 }
@@ -175,7 +173,7 @@ bool NotificationPresenterClientQt::show(Notification* notification)
     // FIXME: workers based notifications are not supported yet.
     if (notification->scriptExecutionContext()->isWorkerGlobalScope())
         return false;
-    notification->setPendingActivity(notification);
+    notification->setPendingActivity(*notification);
     if (!notification->tag().isEmpty())
         removeReplacedNotificationFromQueue(notification);
     if (dumpNotification)
@@ -245,7 +243,7 @@ void NotificationPresenterClientQt::notificationClicked(NotificationWrapper* wra
     Notification* notification =  notificationForWrapper(wrapper);
     if (notification) {
         // Make sure clicks on notifications are treated as user gestures.
-        UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture);
+        UserGestureIndicator gestureIndicator(ProcessingUserGesture);
         sendEvent(notification, eventNames().clickEvent);
     }
 }
@@ -291,15 +289,15 @@ void NotificationPresenterClientQt::notificationControllerDestroyed()
 {
 }
 
-void NotificationPresenterClientQt::requestPermission(ScriptExecutionContext* context, Ref<NotificationPermissionCallback>&& callback)
+void NotificationPresenterClientQt::requestPermission(ScriptExecutionContext* context, RefPtr<NotificationPermissionCallback>&& callback)
 {
     if (dumpNotification)
         printf("DESKTOP NOTIFICATION PERMISSION REQUESTED: %s\n", QString(context->securityOrigin()->toString()).toUtf8().constData());
 
     NotificationClient::Permission permission = checkPermission(context);
-    if (permission != NotificationClient::PermissionNotAllowed) {
+    if (permission != NotificationClient::Permission::Default) {
         if (callback)
-            callback->handleEvent(Notification::permissionString(permission));
+            callback->handleEvent(permission);
         return;
     }
 
@@ -326,7 +324,7 @@ bool NotificationPresenterClientQt::hasPendingPermissionRequests(ScriptExecution
 
 NotificationClient::Permission NotificationPresenterClientQt::checkPermission(ScriptExecutionContext* context)
 {
-    return m_cachedPermissions.value(context, NotificationClient::PermissionNotAllowed);
+    return m_cachedPermissions.value(context, NotificationClient::Permission::Default);
 }
 
 void NotificationPresenterClientQt::cancelRequestsForPermission(ScriptExecutionContext* context)
@@ -358,7 +356,7 @@ void NotificationPresenterClientQt::setNotificationsAllowedForFrame(Frame* frame
     if (!frame->document())
         return;
 
-    NotificationClient::Permission permission = allowed ? NotificationClient::PermissionAllowed : NotificationClient::PermissionDenied;
+    NotificationClient::Permission permission = allowed ? NotificationClient::Permission::Granted : NotificationClient::Permission::Denied;
     m_cachedPermissions.insert(frame->document(), permission);
 
     QHash<ScriptExecutionContext*,  CallbacksInfo>::iterator iter = m_pendingPermissionRequests.begin();
@@ -373,7 +371,7 @@ void NotificationPresenterClientQt::setNotificationsAllowedForFrame(Frame* frame
     QList<RefPtr<NotificationPermissionCallback> >& callbacks = iter.value().m_callbacks;
     Q_FOREACH(const RefPtr<NotificationPermissionCallback>& callback, callbacks) {
         if (callback)
-            callback->handleEvent(Notification::permissionString(permission));
+            callback->handleEvent(permission);
     }
     m_pendingPermissionRequests.remove(iter.key());
 }
@@ -388,7 +386,7 @@ void NotificationPresenterClientQt::sendDisplayEvent(NotificationWrapper* wrappe
 void NotificationPresenterClientQt::sendEvent(Notification* notification, const AtomString& eventName)
 {
     if (notification->scriptExecutionContext())
-        notification->dispatchEvent(Event::create(eventName, false, true));
+        notification->dispatchEvent(Event::create(eventName, Event::CanBubble::No, Event::IsCancelable::Yes));
 }
 
 void NotificationPresenterClientQt::clearCachedPermissions()
@@ -422,8 +420,7 @@ void NotificationPresenterClientQt::removeReplacedNotificationFromQueue(Notifica
 void NotificationPresenterClientQt::detachNotification(Notification* notification)
 {
     delete m_notifications.take(notification);
-    notification->detachPresenter();
-    notification->unsetPendingActivity(notification);
+    notification->unsetPendingActivity(*notification);
 }
 
 void NotificationPresenterClientQt::dumpReplacedIdText(Notification* notification)
@@ -435,8 +432,8 @@ void NotificationPresenterClientQt::dumpReplacedIdText(Notification* notificatio
 void NotificationPresenterClientQt::dumpShowText(Notification* notification)
 {
     printf("DESKTOP NOTIFICATION:%s icon %s, title %s, text %s\n",
-        notification->dir() == "rtl" ? "(RTL)" : "",
-        QString(notification->iconURL().string()).toUtf8().constData(), QString(notification->title()).toUtf8().constData(),
+        notification->dir() == NotificationDirection::Rtl ? "(RTL)" : "",
+        QString(notification->icon().string()).toUtf8().constData(), QString(notification->title()).toUtf8().constData(),
         QString(notification->body()).toUtf8().constData());
 }
 

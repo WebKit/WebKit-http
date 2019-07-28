@@ -32,13 +32,11 @@
 #ifndef NotificationPresenterClientQt_h
 #define NotificationPresenterClientQt_h
 
-#include "NotificationClient.h"
 #include "QtPlatformPlugin.h"
-#include "Timer.h"
-#include "qwebkitplatformplugin.h"
-
 #include <QMultiHash>
 #include <QScopedPointer>
+#include <WebCore/NotificationClient.h>
+#include <WebCore/Timer.h>
 
 class QWebFrameAdapter;
 class QWebPageAdapter;
@@ -88,7 +86,7 @@ public:
     void cancel(Notification*) override;
     void notificationObjectDestroyed(Notification*) override;
     void notificationControllerDestroyed() override;
-    void requestPermission(ScriptExecutionContext*, Ref<NotificationPermissionCallback>&&) override;
+    void requestPermission(ScriptExecutionContext*, RefPtr<NotificationPermissionCallback>&&) override;
     bool hasPendingPermissionRequests(ScriptExecutionContext*) const override;
     NotificationClient::Permission checkPermission(ScriptExecutionContext*) override;
     void cancelRequestsForPermission(ScriptExecutionContext*) override;
