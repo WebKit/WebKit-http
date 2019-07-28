@@ -21,8 +21,9 @@
 #include "QWebFrameData.h"
 
 #include "FrameLoaderClientQt.h"
-#include "MainFrame.h"
-#include "Page.h"
+#include <WebCore/Frame.h>
+#include <WebCore/FrameLoader.h>
+#include <WebCore/Page.h>
 
 using namespace WebCore;
 
@@ -43,5 +44,5 @@ QWebFrameData::QWebFrameData(WebCore::Page* parentPage, WebCore::Frame* parentFr
     // FIXME: All of the below should probably be moved over into WebCore
     frame->tree().setName(name);
     if (parentFrame)
-        parentFrame->tree().appendChild(frame);
+        parentFrame->tree().appendChild(*frame);
 }
