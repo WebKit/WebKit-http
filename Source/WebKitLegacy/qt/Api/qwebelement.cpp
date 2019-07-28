@@ -1184,24 +1184,15 @@ void QWebElement::removeAllChildren()
 
 // FIXME: This code, and all callers are wrong, and have no place in a
 // WebKit implementation.  These should be replaced with WebCore implementations.
-static RefPtr<Node> findInsertionPoint(Ref<Node>&& root)
+static RefPtr<Node> findInsertionPoint(Node* root)
 {
-    RefPtr<Node> node = WTFMove(root);
+    RefPtr<Node> node = root;
 
     // Go as far down the tree as possible.
     while (node->hasChildNodes() && node->firstChild()->isElementNode())
         node = node->firstChild();
 
     // TODO: Implement SVG support
-    if (node->isHTMLElement()) {
-        HTMLElement* element = static_cast<HTMLElement*>(node.get());
-
-        // The insert point could be a non-enclosable tag and it can thus
-        // never have children, so go one up. Get the parent element, and not
-        // note as a root note will always exist.
-        if (element->ieForbidsInsertHTML())
-            node = node->parentElement();
-    }
 
     return node;
 }
@@ -1619,7 +1610,7 @@ void QWebElementCollection::append(const QWebElementCollection &other)
         }
     }
 
-    d->m_result = StaticNodeList::adopt(nodes);
+    d->m_result = StaticNodeList::create(WTFMove(nodes));
 }
 
 /*!
