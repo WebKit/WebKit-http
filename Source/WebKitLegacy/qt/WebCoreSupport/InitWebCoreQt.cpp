@@ -104,8 +104,6 @@ Q_DECL_EXPORT void initializeWebCoreQt()
     auto& memoryCache = MemoryCache::singleton();
     if (!memoryCache.disabled())
         memoryCache.setDeadDecodedDataDeletionInterval(60_s);
-    WebCore::RuntimeEnabledFeatures::sharedFeatures().setCSSCompositingEnabled(true);
-    WebCore::RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(true);
 
     initialized = true;
 }

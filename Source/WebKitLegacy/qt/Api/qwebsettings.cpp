@@ -181,10 +181,6 @@ void QWebSettingsPrivate::apply()
         value = attributes.value(QWebSettings::MediaEnabled, global->attributes.value(QWebSettings::MediaEnabled));
         settings->setMediaEnabled(value);
 
-        value = attributes.value(QWebSettings::CSSRegionsEnabled,
-                                 global->attributes.value(QWebSettings::CSSRegionsEnabled));
-        WebCore::RuntimeEnabledFeatures::sharedFeatures().setCSSRegionsEnabled(value);
-
         value = attributes.value(QWebSettings::HyperlinkAuditingEnabled,
                                  global->attributes.value(QWebSettings::HyperlinkAuditingEnabled));
 
