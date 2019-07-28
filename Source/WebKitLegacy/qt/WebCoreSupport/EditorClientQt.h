@@ -44,8 +44,6 @@ class EditorClientQt : public EditorClient {
 public:
     EditorClientQt(QWebPageAdapter*);
     
-    void pageDestroyed() override;
-    
     bool shouldDeleteRange(Range*) override;
     bool smartInsertDeleteEnabled() override;
 #if USE(AUTOMATIC_TEXT_REPLACEMENT)
@@ -109,7 +107,6 @@ public:
     bool supportsGlobalSelection() override;
 
     void didApplyStyle() override;
-    void didChangeSelectionAndUpdateLayout() override;
     void discardedComposition(Frame *) override;
     void overflowScrollPositionChanged() override;
 

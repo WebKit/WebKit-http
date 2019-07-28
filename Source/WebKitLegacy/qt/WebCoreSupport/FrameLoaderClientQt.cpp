@@ -446,19 +446,6 @@ void FrameLoaderClientQt::dispatchDidReceiveTitle(const StringWithDirection& tit
 }
 
 
-void FrameLoaderClientQt::dispatchDidChangeIcons(WebCore::IconType)
-{
-    if (dumpFrameLoaderCallbacks)
-        printf("%s - didChangeIcons\n", qPrintable(drtDescriptionSuitableForTestResult(m_frame)));
-
-    if (!m_webFrame)
-        return;
-
-    // FIXME: In order to get notified of icon URLS' changes, add a notification.
-    // emit iconsChanged();
-}
-
-
 void FrameLoaderClientQt::dispatchDidCommitLoad()
 {
     if (dumpFrameLoaderCallbacks)
@@ -1016,11 +1003,6 @@ bool FrameLoaderClientQt::shouldUseCredentialStorage(DocumentLoader*, unsigned l
 }
 
 void FrameLoaderClientQt::dispatchDidReceiveAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge&)
-{
-    notImplemented();
-}
-
-void FrameLoaderClientQt::dispatchDidCancelAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge&)
 {
     notImplemented();
 }

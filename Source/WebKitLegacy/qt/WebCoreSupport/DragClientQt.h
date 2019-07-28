@@ -36,7 +36,6 @@ class DragClientQt : public DragClient {
 public:
     DragClientQt(ChromeClient* chromeClient) : m_chromeClient(chromeClient) { };
     void willPerformDragDestinationAction(DragDestinationAction, DragData&) override;
-    DragDestinationAction actionMaskForDrag(DragData&) override;
     void dragControllerDestroyed() override;
     DragSourceAction dragSourceActionMaskForPoint(const IntPoint&) override;
     void willPerformDragSourceAction(DragSourceAction, const IntPoint&, DataTransfer&) override;

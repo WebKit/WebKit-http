@@ -66,11 +66,6 @@ static inline DragOperation dropActionToDragOperation(Qt::DropActions action)
     return result;
 }
 
-DragDestinationAction DragClientQt::actionMaskForDrag(DragData&)
-{
-    return DragDestinationActionAny;
-}
-
 void DragClientQt::willPerformDragDestinationAction(DragDestinationAction, DragData&)
 {
 }

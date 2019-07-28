@@ -93,7 +93,6 @@ public:
     void dispatchWillSendRequest(WebCore::DocumentLoader*, unsigned long, WebCore::ResourceRequest&, const WebCore::ResourceResponse&) override;
     bool shouldUseCredentialStorage(DocumentLoader*, unsigned long identifier) override;
     void dispatchDidReceiveAuthenticationChallenge(DocumentLoader*, unsigned long identifier, const AuthenticationChallenge&) override;
-    void dispatchDidCancelAuthenticationChallenge(DocumentLoader*, unsigned long identifier, const AuthenticationChallenge&) override;
     void dispatchDidReceiveResponse(WebCore::DocumentLoader*, unsigned long, const WebCore::ResourceResponse&) override;
     void dispatchDidReceiveContentLength(WebCore::DocumentLoader*, unsigned long, int) override;
     void dispatchDidFinishLoading(WebCore::DocumentLoader*, unsigned long) override;
@@ -113,7 +112,6 @@ public:
     void dispatchDidReceiveIcon() override;
     void dispatchDidStartProvisionalLoad() override;
     void dispatchDidReceiveTitle(const StringWithDirection&) override;
-    void dispatchDidChangeIcons(WebCore::IconType) override;
     void dispatchDidCommitLoad() override;
     void dispatchDidFailProvisionalLoad(const ResourceError&) override;
     void dispatchDidFailLoad(const WebCore::ResourceError&) override;
@@ -197,7 +195,6 @@ public:
 
     RefPtr<Frame> createFrame(const URL&, const String& name, HTMLFrameOwnerElement*, const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight) override;
     RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool) override;
-    void recreatePlugin(Widget*) override { }
     void redirectDataToPlugin(Widget* pluginWidget) override;
 
     RefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL, const Vector<String>& paramNames, const Vector<String>& paramValues) override;
