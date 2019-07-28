@@ -44,4 +44,6 @@ QWEBKIT_EXPORT QString qWebKitVersion();
 QWEBKIT_EXPORT int qWebKitMajorVersion();
 QWEBKIT_EXPORT int qWebKitMinorVersion();
 
+#define APPLICATION_CACHE_STORAGE_BROKEN
+
 #endif // QWEBKITGLOBAL_H

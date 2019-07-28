@@ -146,7 +146,9 @@ void QWebSecurityOrigin::setDatabaseQuota(qint64 quota)
 
 void QWebSecurityOrigin::setApplicationCacheQuota(qint64 quota)
 {
+#ifndef APPLICATION_CACHE_STORAGE_BROKEN
     WebCore::ApplicationCacheStorage::singleton().storeUpdatedQuotaForOrigin(d->origin.get(), quota);
+#endif
 }
 /*!
     Destroys the security origin.
