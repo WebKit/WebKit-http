@@ -432,12 +432,12 @@ void FrameLoaderClientQt::dispatchDidReceiveTitle(const StringWithDirection& tit
 {
     // FIXME: Use direction of title.
     if (dumpFrameLoaderCallbacks)
-        printf("%s - didReceiveTitle: %s\n", qPrintable(drtDescriptionSuitableForTestResult(m_frame)), qPrintable(QString(title.string())));
+        printf("%s - didReceiveTitle: %s\n", qPrintable(drtDescriptionSuitableForTestResult(m_frame)), qPrintable(QString(title.string)));
 
     if (!m_webFrame)
         return;
 
-    emit titleChanged(title.string());
+    emit titleChanged(title.string);
 }
 
 
@@ -626,7 +626,7 @@ void FrameLoaderClientQt::setTitle(const StringWithDirection& title, const URL& 
     if (dumpHistoryCallbacks) {
         printf("WebView updated the title for history URL \"%s\" to \"%s\".\n",
             qPrintable(drtDescriptionSuitableForTestResult(url)),
-            qPrintable(QString(title.string())));
+            qPrintable(QString(title.string)));
     }
 }
 
@@ -701,7 +701,7 @@ void FrameLoaderClientQt::updateGlobalHistory()
     if (dumpHistoryCallbacks) {
         printf("WebView navigated to url \"%s\" with title \"%s\" with HTTP equivalent method \"%s\".  The navigation was %s and was %s%s.\n",
             qPrintable(drtDescriptionSuitableForTestResult(loader->urlForHistory())),
-            qPrintable(QString(loader->title().string())),
+            qPrintable(QString(loader->title().string)),
             qPrintable(QString(loader->request().httpMethod())),
             ((loader->substituteData().isValid() || (loader->response().httpStatusCode() >= 400)) ? "a failure" : "successful"),
             ((!loader->clientRedirectSourceForHistory().isEmpty()) ? "a client redirect from " : "not a client redirect"),

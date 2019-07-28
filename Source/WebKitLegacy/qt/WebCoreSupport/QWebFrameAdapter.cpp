@@ -408,7 +408,7 @@ QWebElement QWebFrameAdapter::ownerElement() const
 QString QWebFrameAdapter::title() const
 {
     if (frame->document())
-        return frame->loader().documentLoader()->title().string();
+        return frame->loader().documentLoader()->title().string;
     return QString();
 }
 
