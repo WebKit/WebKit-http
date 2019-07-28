@@ -167,7 +167,7 @@ public:
     // which usually will happen when panning, pinching and rotation ends, or when scale or position are changed manually.
     IntSize visibleSize() const final { return visibleContentRect(LegacyIOSDocumentVisibleRect).size(); }
 
-#if USE(COORDINATED_GRAPHICS)
+#if USE(COORDINATED_GRAPHICS) || PLATFORM(QT)
     virtual void setFixedVisibleContentRect(const IntRect& visibleContentRect) { m_fixedVisibleContentRect = visibleContentRect; }
     IntRect fixedVisibleContentRect() const { return m_fixedVisibleContentRect; }
 #endif
