@@ -32,17 +32,18 @@
 
 namespace WebCore {
 
-static void mouseEventModifiersFromQtKeyboardModifiers(Qt::KeyboardModifiers keyboardModifiers, unsigned& modifiers)
+static OptionSet<PlatformEvent::Modifier> mouseEventModifiersFromQtKeyboardModifiers(Qt::KeyboardModifiers keyboardModifiers)
 {
-    modifiers = 0;
+    OptionSet<PlatformEvent::Modifier> modifiers;
     if (keyboardModifiers & Qt::ShiftModifier)
-        modifiers |= PlatformEvent::ShiftKey;
+        modifiers.add(PlatformEvent::Modifier::ShiftKey);
     if (keyboardModifiers & Qt::ControlModifier)
-        modifiers |= PlatformEvent::CtrlKey;
+        modifiers.add(PlatformEvent::Modifier::ControlKey);
     if (keyboardModifiers & Qt::AltModifier)
-        modifiers |= PlatformEvent::AltKey;
+        modifiers.add(PlatformEvent::Modifier::AltKey);
     if (keyboardModifiers & Qt::MetaModifier)
-        modifiers |= PlatformEvent::MetaKey;
+        modifiers.add(PlatformEvent::Modifier::MetaKey);
+    return modifiers;
 }
 
 static void mouseEventTypeAndMouseButtonFromQEvent(const QEvent* event, PlatformEvent::Type& mouseEventType, MouseButton& mouseButton)
@@ -111,7 +112,7 @@ WebKitPlatformMouseEvent::WebKitPlatformMouseEvent(QInputEvent* event, int click
     }
 
     m_clickCount = clickCount;
-    mouseEventModifiersFromQtKeyboardModifiers(event->modifiers(), m_modifiers);
+    m_modifiers = mouseEventModifiersFromQtKeyboardModifiers(event->modifiers());
 }
 
 PlatformMouseEvent convertMouseEvent(QInputEvent* event, int clickCount)
@@ -149,7 +150,7 @@ void WebKitPlatformWheelEvent::applyDelta(int delta, Qt::Orientation orientation
 WebKitPlatformWheelEvent::WebKitPlatformWheelEvent(QWheelEvent* e, int wheelScrollLines)
 {
     m_timestamp = WTF::currentTime();
-    mouseEventModifiersFromQtKeyboardModifiers(e->modifiers(), m_modifiers);
+    m_modifiers = mouseEventModifiersFromQtKeyboardModifiers(e->modifiers());
     m_position = e->pos();
     m_globalPosition = e->globalPos();
     m_granularity = ScrollByPixelWheelEvent;
@@ -212,7 +213,7 @@ WebKitPlatformTouchEvent::WebKitPlatformTouchEvent(QTouchEvent* event)
         m_touchPoints.append(WebKitPlatformTouchPoint(points.at(i), state));
     }
 
-    mouseEventModifiersFromQtKeyboardModifiers(event->modifiers(), m_modifiers);
+    m_modifiers = mouseEventModifiersFromQtKeyboardModifiers(event->modifiers());
 
     m_timestamp = WTF::currentTime();
 }
