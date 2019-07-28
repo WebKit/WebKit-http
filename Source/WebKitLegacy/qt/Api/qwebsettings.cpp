@@ -994,8 +994,7 @@ void QWebSettings::setObjectCacheCapacities(int cacheMinDeadCapacity, int cacheM
     memoryCache.setCapacities(qMax(0, cacheMinDeadCapacity),
                               qMax(0, cacheMaxDead),
                               qMax(0, totalCapacity));
-    memoryCache.setDeadDecodedDataDeletionInterval(disableCache ? std::chrono::seconds{0}
-                                                                : std::chrono::seconds{60});
+    memoryCache.setDeadDecodedDataDeletionInterval(disableCache ? 0_s : 60_s);
 }
 
 /*!

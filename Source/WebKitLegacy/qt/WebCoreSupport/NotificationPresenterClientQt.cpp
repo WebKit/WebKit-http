@@ -50,7 +50,7 @@ namespace WebCore {
 
 #if ENABLE(NOTIFICATIONS)
 
-const double notificationTimeout = 10.0;
+const Seconds notificationTimeout = 10_s;
 
 bool NotificationPresenterClientQt::dumpNotification = false;
 
@@ -201,7 +201,7 @@ void NotificationPresenterClientQt::displayNotification(Notification* notificati
 #endif
     }
 
-    wrapper->m_displayEventTimer.startOneShot(0);
+    wrapper->m_displayEventTimer.startOneShot(0_s);
 
     // Make sure the notification was not cancelled during handling the display event
     if (m_notifications.find(notification) == m_notifications.end())
