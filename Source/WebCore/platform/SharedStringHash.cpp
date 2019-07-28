@@ -304,4 +304,13 @@ SharedStringHash computeVisitedLinkHash(const URL& base, const AtomString& attri
     return computeSharedStringHashInline(url.data(), url.size());
 }
 
+#if PLATFORM(QT)
+void visitedURL(const URL& base, const AtomString& attributeURL, Vector<UChar, 512>& buffer)
+{
+    auto upconvertedCharacters = StringView(attributeURL.string()).upconvertedCharacters();
+    const UChar* characters = upconvertedCharacters;
+    computeSharedStringHashInline(base, characters, attributeURL.length(), buffer);
+}
+#endif
+
 } // namespace WebCore

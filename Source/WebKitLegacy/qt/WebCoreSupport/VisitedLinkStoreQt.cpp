@@ -38,7 +38,7 @@ void VisitedLinkStoreQt::removeAllVisitedLinks()
     m_visitedLinkHashes.clear();
 }
 
-bool VisitedLinkStoreQt::isLinkVisited(WebCore::Page&, WebCore::LinkHash linkHash, const WTF::URL& baseURL, const WTF::AtomString& attributeURL)
+bool VisitedLinkStoreQt::isLinkVisited(WebCore::Page&, WebCore::SharedStringHash linkHash, const WTF::URL& baseURL, const WTF::AtomString& attributeURL)
 {
     // If the Qt4.4 interface for the history is used, we will have to fallback
     // to the old global history.
@@ -46,14 +46,14 @@ bool VisitedLinkStoreQt::isLinkVisited(WebCore::Page&, WebCore::LinkHash linkHas
     QWebHistoryInterface* iface = QWebHistoryInterface::defaultInterface();
     if (iface) {
         Vector<UChar, 512> url;
-        visitedURL(baseURL, attributeURL, url);
+        WebCore::visitedURL(baseURL, attributeURL, url);
         return iface->historyContains(QString(reinterpret_cast<QChar*>(url.data()), url.size()));
     }
 
     return m_visitedLinkHashes.contains(linkHash);
 }
 
-void VisitedLinkStoreQt::addVisitedLink(WebCore::Page&, WebCore::LinkHash linkHash)
+void VisitedLinkStoreQt::addVisitedLink(WebCore::Page&, WebCore::SharedStringHash linkHash)
 {
     m_visitedLinkHashes.add(linkHash);
     invalidateStylesForLink(linkHash);

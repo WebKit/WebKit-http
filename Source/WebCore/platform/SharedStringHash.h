@@ -60,4 +60,11 @@ WEBCORE_EXPORT SharedStringHash computeSharedStringHash(const UChar* url, unsign
 // look like a relative URL.
 SharedStringHash computeVisitedLinkHash(const URL& base, const AtomString& attributeURL);
 
+#if PLATFORM(QT)
+// Resolves the potentially relative URL "attributeURL" relative to the given
+// base URL, and returns the hash of the string that will be used for visited.
+// It will return an empty Vector in case of errors.
+void visitedURL(const URL& base, const AtomString& attributeURL, Vector<UChar, 512>&);
+#endif
+
 } // namespace WebCore

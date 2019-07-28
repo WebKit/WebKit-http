@@ -26,7 +26,7 @@
 #ifndef VisitedLinkStoreQt_h
 #define VisitedLinkStoreQt_h
 
-#include <WebCore/LinkHash.h>
+#include <WebCore/SharedStringHash.h>
 #include <WebCore/VisitedLinkStore.h>
 
 class VisitedLinkStoreQt final : public WebCore::VisitedLinkStore {
@@ -35,13 +35,13 @@ public:
 
     void removeAllVisitedLinks();
 
-    bool isLinkVisited(WebCore::Page&, WebCore::LinkHash, const WTF::URL& baseURL, const AtomString& attributeURL) override;
-    void addVisitedLink(WebCore::Page&, WebCore::LinkHash) override;
+    bool isLinkVisited(WebCore::Page&, WebCore::SharedStringHash, const WTF::URL& baseURL, const AtomString& attributeURL) override;
+    void addVisitedLink(WebCore::Page&, WebCore::SharedStringHash) override;
 
 private:
     VisitedLinkStoreQt();
 
-    HashSet<WebCore::LinkHash, WebCore::LinkHashHash> m_visitedLinkHashes;
+    HashSet<WebCore::SharedStringHash, WebCore::SharedStringHashHash> m_visitedLinkHashes;
 };
 
 #endif
