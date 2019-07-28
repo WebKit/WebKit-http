@@ -47,6 +47,15 @@ enum class XSSProtectionDisposition {
     BlockEnabled,
 };
 
+#if PLATFORM(QT)
+enum ContentDispositionType {
+    ContentDispositionNone,
+    ContentDispositionInline,
+    ContentDispositionAttachment,
+    ContentDispositionOther
+};
+#endif
+
 enum ContentTypeOptionsDisposition {
     ContentTypeOptionsNone,
     ContentTypeOptionsNosniff
@@ -68,6 +77,9 @@ enum class CrossOriginResourcePolicy {
     Invalid
 };
 
+#if PLATFORM(QT)
+ContentDispositionType contentDispositionType(const String&);
+#endif
 bool isValidReasonPhrase(const String&);
 bool isValidHTTPHeaderValue(const String&);
 bool isValidAcceptHeaderValue(const String&);
