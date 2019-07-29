@@ -30,8 +30,8 @@
 #ifndef EditorClientQt_h
 #define EditorClientQt_h
 
-#include "EditorClient.h"
 #include "TextCheckerClientQt.h"
+#include <WebCore/EditorClient.h>
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 
@@ -49,7 +49,7 @@ public:
 #if USE(AUTOMATIC_TEXT_REPLACEMENT)
     void toggleSmartInsertDelete() override;
 #endif
-    bool isSelectTrailingWhitespaceEnabled() override;
+    bool isSelectTrailingWhitespaceEnabled() const override;
     bool isContinuousSpellCheckingEnabled() override;
     void toggleContinuousSpellChecking() override;
     bool isGrammarCheckingEnabled() override;
@@ -74,8 +74,8 @@ public:
     void didWriteSelectionToPasteboard() override;
     void getClientPasteboardDataForRange(Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer> >& pasteboardData) override;
 
-    void registerUndoStep(Rer<UndoStep>&&) override;
-    void registerRedoStep(Ref<UndoStep>&&) override;
+    void registerUndoStep(UndoStep&) override;
+    void registerRedoStep(UndoStep&) override;
     void clearUndoRedoOperations() override;
 
     bool canCopyCut(Frame*, bool defaultValue) const override;
@@ -86,8 +86,8 @@ public:
     void undo() override;
     void redo() override;
 
-    void handleKeyboardEvent(KeyboardEvent*) override;
-    void handleInputMethodKeydown(KeyboardEvent*) override;
+    void handleKeyboardEvent(KeyboardEvent&) override;
+    void handleInputMethodKeydown(KeyboardEvent&) override;
 
     void textFieldDidBeginEditing(Element*) override;
     void textFieldDidEndEditing(Element*) override;

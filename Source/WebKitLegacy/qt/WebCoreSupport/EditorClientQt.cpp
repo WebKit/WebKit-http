@@ -30,30 +30,29 @@
 
 #include "EditorClientQt.h"
 
-#include "Document.h"
-#include "Editor.h"
-#include "FocusController.h"
-#include "Frame.h"
-#include "HTMLElement.h"
-#include "HTMLInputElement.h"
-#include "HTMLNames.h"
-#include "KeyboardEvent.h"
-#include "NotImplemented.h"
-#include "Pasteboard.h"
-#include "PlatformKeyboardEvent.h"
 #include "QWebPageAdapter.h"
-#include "QWebPageClient.h"
-#include "Range.h"
-#include "Settings.h"
-#include "SpatialNavigation.h"
-#include "StyleProperties.h"
-#include "WindowsKeyboardCodes.h"
-#include <WebCore/Range.h>
 
 #include <QClipboard>
 #include <QGuiApplication>
 #include <QKeyEvent>
 #include <QKeySequence>
+#include <WebCore/Editor.h>
+#include <WebCore/EventNames.h>
+#include <WebCore/FocusController.h>
+#include <WebCore/Frame.h>
+#include <WebCore/HTMLInputElement.h>
+#include <WebCore/HTMLNames.h>
+#include <WebCore/KeyboardEvent.h>
+#include <WebCore/NotImplemented.h>
+#include <WebCore/Page.h>
+#include <WebCore/Pasteboard.h>
+#include <WebCore/PlatformKeyboardEvent.h>
+#include <WebCore/QWebPageClient.h>
+#include <WebCore/Range.h>
+#include <WebCore/Settings.h>
+#include <WebCore/SpatialNavigation.h>
+#include <WebCore/StyleProperties.h>
+#include <WebCore/WindowsKeyboardCodes.h>
 #include <stdio.h>
 
 
@@ -137,7 +136,7 @@ bool EditorClientQt::shouldInsertText(const String& string, Range* range, Editor
         };
 
         printf("EDITING DELEGATE: shouldInsertText:%s replacingDOMRange:%s givenAction:%s\n",
-            QString(string).toUtf8().constData(), dumpRange(range).toUtf8().constData(), insertactionstring[action]);
+            QString(string).toUtf8().constData(), dumpRange(range).toUtf8().constData(), insertactionstring[static_cast<int>(action)]);
     }
     return acceptsEditing;
 }
@@ -204,7 +203,7 @@ void EditorClientQt::respondToChangedSelection(Frame* frame)
         Pasteboard::createForGlobalSelection()->writeSelection(*frame->selection().toNormalizedRange().get(), frame->editor().canSmartCopyOrDelete(), *frame);
 
     m_page->respondToChangedSelection();
-    if (!frame->editor().ignoreCompositionSelectionChange())
+    if (!frame->editor().ignoreSelectionChanges()) // QTFIXME: check
         emit m_page->microFocusChanged();
 }
 
@@ -227,17 +226,17 @@ void EditorClientQt::getClientPasteboardDataForRange(Range*, Vector<String>&, Ve
 {
 }
 
-void EditorClientQt::registerUndoStep(WTF::Ref<WebCore::UndoStep>&& step)
+void EditorClientQt::registerUndoStep(UndoStep& step)
 {
 #ifndef QT_NO_UNDOSTACK
     Frame& frame = m_page->page->focusController().focusedOrMainFrame();
     if (m_inUndoRedo || !frame.editor().lastEditCommand() /* HACK!! Don't recreate undos */)
         return;
-    m_page->registerUndoStep(WTFMove(step));
+    m_page->registerUndoStep(step);
 #endif // QT_NO_UNDOSTACK
 }
 
-void EditorClientQt::registerRedoStep(WTF::Ref<WebCore::UndoStep>&&)
+void EditorClientQt::registerRedoStep(UndoStep&)
 {
 }
 
@@ -304,7 +303,7 @@ bool EditorClientQt::shouldInsertNode(Node* node, Range* range, EditorInsertActi
         };
 
         printf("EDITING DELEGATE: shouldInsertNode:%s replacingDOMRange:%s givenAction:%s\n", dumpPath(*node).toUtf8().constData(),
-            dumpRange(range).toUtf8().constData(), insertactionstring[action]);
+            dumpRange(range).toUtf8().constData(), insertactionstring[static_cast<int>(action)]);
     }
     return acceptsEditing;
 }
@@ -328,7 +327,7 @@ void EditorClientQt::toggleSmartInsertDelete()
 }
 #endif
 
-bool EditorClientQt::isSelectTrailingWhitespaceEnabled()
+bool EditorClientQt::isSelectTrailingWhitespaceEnabled() const
 {
     Page* page = m_page->page;
     if (!page)
@@ -400,11 +399,11 @@ const char* editorCommandForKeyDownEvent(const KeyboardEvent* event)
     return mapKey ? keyDownCommandsMap.get(mapKey) : 0;
 }
 
-void EditorClientQt::handleKeyboardEvent(KeyboardEvent* event)
+void EditorClientQt::handleKeyboardEvent(KeyboardEvent& event)
 {
     Frame& frame = m_page->page->focusController().focusedOrMainFrame();
 
-    const PlatformKeyboardEvent* kevent = event->keyEvent();
+    const PlatformKeyboardEvent* kevent = event.underlyingPlatformEvent();
     if (!kevent || kevent->type() == PlatformEvent::KeyUp)
         return;
 
@@ -438,15 +437,15 @@ void EditorClientQt::handleKeyboardEvent(KeyboardEvent* event)
                 return;
 
             m_page->triggerActionForKeyEvent(kevent->qtEvent());
-            event->setDefaultHandled();
+            event.setDefaultHandled();
             return;
         }
 #endif // QT_NO_SHORTCUT
         {
-            String commandName = editorCommandForKeyDownEvent(event);
+            String commandName = editorCommandForKeyDownEvent(&event);
             if (!commandName.isEmpty()) {
                 if (frame.editor().command(commandName).execute()) // Event handled.
-                    event->setDefaultHandled();
+                    event.setDefaultHandled();
                 return;
             }
 
@@ -459,7 +458,7 @@ void EditorClientQt::handleKeyboardEvent(KeyboardEvent* event)
             bool shouldInsertText = false;
             if (kevent->type() != PlatformEvent::KeyDown && !kevent->text().isEmpty()) {
 
-                if (kevent->ctrlKey()) {
+                if (kevent->controlKey()) {
                     if (kevent->altKey())
                         shouldInsertText = true;
                 } else {
@@ -473,8 +472,8 @@ void EditorClientQt::handleKeyboardEvent(KeyboardEvent* event)
             }
 
             if (shouldInsertText) {
-                frame.editor().insertText(kevent->text(), event);
-                event->setDefaultHandled();
+                frame.editor().insertText(kevent->text(), &event);
+                event.setDefaultHandled();
                 return;
             }
         }
@@ -495,17 +494,17 @@ void EditorClientQt::handleKeyboardEvent(KeyboardEvent* event)
             {
 #ifndef QT_NO_SHORTCUT
                 m_page->triggerActionForKeyEvent(kevent->qtEvent());
-                event->setDefaultHandled();
+                event.setDefaultHandled();
 #endif
                 return;
             }
         case VK_PRIOR: // PageUp
         case VK_NEXT: // PageDown
             {
-                String commandName = editorCommandForKeyDownEvent(event);
+                String commandName = editorCommandForKeyDownEvent(&event);
                 ASSERT(!commandName.isEmpty());
                 frame.editor().command(commandName).execute();
-                event->setDefaultHandled();
+                event.setDefaultHandled();
                 return;
             }
         }
@@ -514,13 +513,13 @@ void EditorClientQt::handleKeyboardEvent(KeyboardEvent* event)
 #ifndef QT_NO_SHORTCUT
     if (kevent->qtEvent() == QKeySequence::Copy) {
         m_page->triggerCopyAction();
-        event->setDefaultHandled();
+        event.setDefaultHandled();
         return;
     }
 #endif // QT_NO_SHORTCUT
 }
 
-void EditorClientQt::handleInputMethodKeydown(KeyboardEvent*)
+void EditorClientQt::handleInputMethodKeydown(KeyboardEvent&)
 {
 }
 
