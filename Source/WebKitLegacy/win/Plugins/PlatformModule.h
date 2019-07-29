@@ -30,10 +30,31 @@
 
 #pragma once
 
+#if PLATFORM(QT) && !OS(WINDOWS)
+#include <QLibrary>
+#endif
+
+#if OS(WINDOWS)
+
 typedef HMODULE PlatformModule;
+
+#elif PLATFORM(QT)
+
+#if defined(Q_OS_MACOS)
+typedef CFBundleRef PlatformModule;
+#elif !defined(QT_NO_LIBRARY)
+typedef QLibrary* PlatformModule;
+#else
+typedef void* PlatformModule;
+#endif
+
+#else
+typedef void* PlatformModule;
+#endif
 
 namespace WebCore {
 
+#if OS(WINDOWS)
 struct PlatformModuleVersion {
     unsigned leastSig;
     unsigned mostSig;
@@ -51,5 +72,21 @@ struct PlatformModuleVersion {
     }
 
 };
+#else
+typedef unsigned PlatformModuleVersion;
+#endif
+
+#if PLATFORM(QT) && !OS(WINDOWS)
+inline void unloadModule(PlatformModule module)
+{
+#if defined(Q_OS_MACOS)
+    CFRelease(module);
+    return true;
+#elif !defined(QT_NO_LIBRARY)
+    module->unload();
+    delete module;
+#endif
+}
+#endif
 
 } // namespace WebCore

@@ -76,7 +76,11 @@ void PluginPackage::freeLibraryTimerFired()
     ASSERT(m_module);
     // Do nothing if the module got loaded again meanwhile
     if (!m_loadCount) {
+#if OS(WINDOWS)
         ::FreeLibrary(m_module);
+#elif PLATFORM(QT)
+        unloadModule(m_module);
+#endif
         m_module = 0;
     }
 }
@@ -163,6 +167,7 @@ void PluginPackage::setEnabled(bool enabled)
     m_isEnabled = enabled;
 }
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
 RefPtr<PluginPackage> PluginPackage::createPackage(const String& path, const time_t& lastModified)
 {
     RefPtr<PluginPackage> package = adoptRef(new PluginPackage(path, lastModified));
@@ -172,6 +177,7 @@ RefPtr<PluginPackage> PluginPackage::createPackage(const String& path, const tim
 
     return package;
 }
+#endif
 
 #if ENABLE(NETSCAPE_PLUGIN_METADATA_CACHE)
 Ref<PluginPackage> PluginPackage::createPackageFromCache(const String& path, const time_t& lastModified, const String& name, const String& description, const String& mimeDescription)
@@ -249,14 +255,12 @@ void PluginPackage::determineModuleVersionFromDescription()
         // push the major/minor up 8 bits. Thus on Unix, Flash's version may be
         // 0x0a000000 instead of 0x000a0000.
 
-        Vector<String> versionParts;
-        m_description.substring(16).split(' ', /*allowEmptyEntries =*/ false, versionParts);
+        Vector<String> versionParts = m_description.substring(16).split(' ');
         if (versionParts.isEmpty())
             return;
 
         if (versionParts.size() >= 1) {
-            Vector<String> majorMinorParts;
-            versionParts[0].split('.', majorMinorParts);
+            Vector<String> majorMinorParts = versionParts[0].split('.');
             if (majorMinorParts.size() >= 1) {
                 bool converted = false;
                 unsigned major = majorMinorParts[0].toUInt(&converted);

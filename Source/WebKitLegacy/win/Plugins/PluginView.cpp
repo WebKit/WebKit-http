@@ -30,7 +30,9 @@
 #include "PluginDatabase.h"
 #include "PluginDebug.h"
 #include "PluginPackage.h"
+#if !PLATFORM(QT)
 #include "WebFrameLoaderClient.h"
+#endif
 #include <JavaScriptCore/JSCJSValue.h>
 #include <JavaScriptCore/JSLock.h>
 #include <WebCore/BridgeJSC.h>
@@ -288,8 +290,11 @@ bool PluginView::start()
 void PluginView::mediaCanStart(Document&)
 {
     ASSERT(!m_isStarted);
+#if !PLATFORM(QT)
+    // QTFIXME: Should we handle this too?
     if (!start())
         static_cast<WebFrameLoaderClient&>(parentFrame()->loader().client()).dispatchDidFailToStartPlugin(*this);
+#endif
 }
 
 PluginView::~PluginView()

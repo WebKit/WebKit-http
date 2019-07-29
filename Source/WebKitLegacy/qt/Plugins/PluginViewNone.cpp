@@ -25,8 +25,8 @@
 
 #include "PluginView.h"
 
-#include "BridgeJSC.h"
-#include <runtime/JSObject.h>
+#include <JavaScriptCore/JSObject.h>
+#include <WebCore/BridgeJSC.h>
 
 using namespace WTF;
 
@@ -44,15 +44,15 @@ void PluginView::hide()
 {
 }
 
-void PluginView::paint(GraphicsContext&, const IntRect&)
+void PluginView::paint(GraphicsContext&, const IntRect&, Widget::SecurityOriginPaintPolicy)
 {
 }
 
-void PluginView::handleKeyboardEvent(KeyboardEvent*)
+void PluginView::handleKeyboardEvent(KeyboardEvent&)
 {
 }
 
-void PluginView::handleMouseEvent(MouseEvent*)
+void PluginView::handleMouseEvent(MouseEvent&)
 {
 }
 
