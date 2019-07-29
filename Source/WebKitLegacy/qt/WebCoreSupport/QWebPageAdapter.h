@@ -20,7 +20,6 @@
 #ifndef QWebPageAdapter_h
 #define QWebPageAdapter_h
 
-#include "QWebPageClient.h"
 #include "qwebelement.h"
 #include "qwebhistory.h"
 

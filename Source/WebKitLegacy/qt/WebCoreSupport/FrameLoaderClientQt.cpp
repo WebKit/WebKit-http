@@ -48,6 +48,7 @@
 #include <QMouseEvent>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QPalette>
 #include <QStringList>
 #include <WebCore/DOMWindow.h>
 #include <WebCore/DocumentLoader.h>
@@ -62,6 +63,7 @@
 #include <WebCore/MouseEvent.h>
 #include <WebCore/PluginData.h>
 #include <WebCore/QNetworkReplyHandler.h>
+#include <WebCore/QWebPageClient.h>
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceHandleInternal.h>
 #include <WebCore/Settings.h>
