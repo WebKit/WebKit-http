@@ -20,31 +20,10 @@
 
 #include "qwebsettings.h"
 
+#include "InitWebCoreQt.h"
+#include "PluginDatabase.h"
 #include "qwebplugindatabase_p.h"
 
-#include "ApplicationCacheStorage.h"
-#include "CrossOriginPreflightResultCache.h"
-#include "DatabaseManager.h"
-#include "FontCache.h"
-#include "GCController.h"
-// QTFIXME: There is no IconDatabase anymore
-//#include "IconDatabase.h"
-#include "Image.h"
-#if ENABLE(ICONDATABASE)
-#include "IconDatabaseClientQt.h"
-#endif
-#include "InitWebCoreQt.h"
-#include "IntSize.h"
-#include "MemoryCache.h"
-#include "NetworkStateNotifier.h"
-#include "Page.h"
-#include "PageCache.h"
-#include "PluginDatabase.h"
-#include "RuntimeEnabledFeatures.h"
-#include "Settings.h"
-#include "SharedBuffer.h"
-#include "StorageThread.h"
-#include "WorkerThread.h"
 #include <QDir>
 #include <QFileInfo>
 #include <QFont>
@@ -53,17 +32,36 @@
 #include <QSharedData>
 #include <QStandardPaths>
 #include <QUrl>
+#include <WebCore/ApplicationCacheStorage.h>
+#include <WebCore/CrossOriginPreflightResultCache.h>
+#include <WebCore/DatabaseTracker.h>
+#include <WebCore/FontCache.h>
+#include <WebCore/GCController.h>
+#include <WebCore/Image.h>
+#include <WebCore/MemoryCache.h>
+#include <WebCore/MemoryRelease.h>
+#include <WebCore/NetworkStateNotifier.h>
+#include <WebCore/Page.h>
+#include <WebCore/PageCache.h>
+#include <WebCore/RuntimeEnabledFeatures.h>
+#include <WebCore/Settings.h>
+#include <WebCore/WorkerThread.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/FileSystem.h>
 #include <wtf/URL.h>
 #include <wtf/text/WTFString.h>
 
-
+#if ENABLE(ICONDATABASE)
+// QTFIXME: There is no IconDatabase anymore
+//#include "IconDatabase.h"
+#include "IconDatabaseClientQt.h"
+#include "IntSize.h"
+#endif
 
 QWEBKIT_EXPORT void qt_networkAccessAllowed(bool isAllowed)
 {
 #ifndef QT_NO_BEARERMANAGEMENT
-    WebCore::networkStateNotifier().setNetworkAccessAllowed(isAllowed);
+    WebCore::NetworkStateNotifier::singleton().setNetworkAccessAllowed(isAllowed);
 #endif
 }
 
@@ -230,7 +228,7 @@ void QWebSettingsPrivate::apply()
 
         value = attributes.value(QWebSettings::FrameFlatteningEnabled,
                                       global->attributes.value(QWebSettings::FrameFlatteningEnabled));
-        settings->setFrameFlatteningEnabled(value);
+        settings->setFrameFlattening(value ? WebCore::FrameFlattening::FullyEnabled : WebCore::FrameFlattening::Disabled);
 
         QUrl location = !userStyleSheetLocation.isEmpty() ? userStyleSheetLocation : global->userStyleSheetLocation;
         settings->setUserStyleSheetLocation(WTF::URL(location));
@@ -1263,16 +1261,16 @@ void QWebSettings::enablePersistentStorage(const QString& path)
 
         storagePath = QStandardPaths::writableLocation(QStandardPaths::DataLocation);
         if (storagePath.isEmpty())
-            storagePath = WebCore::pathByAppendingComponent(QDir::homePath(), QCoreApplication::applicationName());
+            storagePath = FileSystem::pathByAppendingComponent(QDir::homePath(), QCoreApplication::applicationName());
     } else
         storagePath = path;
 
-    WebCore::makeAllDirectories(storagePath);
+    FileSystem::makeAllDirectories(storagePath);
 
     QWebSettings::setIconDatabasePath(storagePath);
     QWebSettings::setOfflineWebApplicationCachePath(storagePath);
-    QWebSettings::setOfflineStoragePath(WebCore::pathByAppendingComponent(storagePath, "Databases"));
-    QWebSettings::globalSettings()->setLocalStoragePath(WebCore::pathByAppendingComponent(storagePath, "LocalStorage"));
+    QWebSettings::setOfflineStoragePath(FileSystem::pathByAppendingComponent(storagePath, "Databases"));
+    QWebSettings::globalSettings()->setLocalStoragePath(FileSystem::pathByAppendingComponent(storagePath, "LocalStorage"));
     QWebSettings::globalSettings()->setAttribute(QWebSettings::LocalStorageEnabled, true);
     QWebSettings::globalSettings()->setAttribute(QWebSettings::OfflineStorageDatabaseEnabled, true);
     QWebSettings::globalSettings()->setAttribute(QWebSettings::OfflineWebApplicationCacheEnabled, true);
