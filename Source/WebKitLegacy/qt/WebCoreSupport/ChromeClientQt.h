@@ -52,7 +52,7 @@ class FileIconLoader;
 class FloatRect;
 class Page;
 class RefreshAnimation;
-struct FrameLoadRequest;
+class FrameLoadRequest;
 class QtAbstractWebPopup;
 struct ViewportArguments;
 #if ENABLE(VIDEO)

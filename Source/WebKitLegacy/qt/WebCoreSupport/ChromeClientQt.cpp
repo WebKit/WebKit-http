@@ -29,49 +29,37 @@
 
 #include "ChromeClientQt.h"
 
-#include "ApplicationCacheStorage.h"
-#include "ColorChooser.h"
-#include "ColorChooserClient.h"
-#include "Document.h"
-#include "FileChooser.h"
-#include "FileIconLoader.h"
-#include "FrameLoadRequest.h"
-#include "FrameLoader.h"
-#include "FrameLoaderClientQt.h"
-#include "FrameView.h"
-#include "Geolocation.h"
-#include "HTMLFormElement.h"
-#include "HitTestResult.h"
-#include "Icon.h"
-#include "MainFrame.h"
-#include "NavigationAction.h"
-#include "NetworkingContext.h"
-#include "NotImplemented.h"
-#include "Page.h"
-#include <WebCore/DatabaseTracker.h>
 #include "PopupMenuQt.h"
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
-#include "QWebPageClient.h"
-#include "ScrollbarTheme.h"
 #include "SearchPopupMenuQt.h"
-#include <WebCore/SecurityOrigin.h>
-#if USE(TILED_BACKING_STORE)
-#include "TiledBackingStore.h"
-#endif
-#include "ViewportArguments.h"
-#include "WindowFeatures.h"
 #include "qwebfullscreenrequest.h"
 #include "qwebkitplatformplugin.h"
 #include "qwebsecurityorigin.h"
 #include "qwebsecurityorigin_p.h"
 #include "qwebsettings.h"
-#include <qabstractanimation.h>
-#include <qdebug.h>
-#include <qeventloop.h>
-#include <qwindow.h>
+
+#include <QEventLoop>
+#include <QWindow>
+#include <WebCore/ApplicationCacheStorage.h>
+#include <WebCore/ColorChooser.h>
+#include <WebCore/ColorChooserClient.h>
+#include <WebCore/DatabaseTracker.h>
+#include <WebCore/Document.h>
+#include <WebCore/FileChooser.h>
+#include <WebCore/FileIconLoader.h>
 #include <WebCore/FullscreenManager.h>
+#include <WebCore/HitTestResult.h>
+#include <WebCore/Icon.h>
+#include <WebCore/NotImplemented.h>
+#include <WebCore/QWebPageClient.h>
+#include <WebCore/SecurityOrigin.h>
+#include <WebCore/WindowFeatures.h>
 #include <wtf/WallTime.h>
+
+#if USE(TILED_BACKING_STORE)
+#include "TiledBackingStore.h"
+#endif
 
 #if ENABLE(VIDEO) && ((USE(GSTREAMER) && USE(NATIVE_FULLSCREEN_VIDEO)) || USE(QT_MULTIMEDIA))
 #include "FullScreenVideoQt.h"
@@ -566,7 +554,7 @@ void ChromeClientQt::runOpenPanel(Frame& frame, FileChooser& fileChooser)
 
 void ChromeClientQt::loadIconForFiles(const Vector<String>& filenames, FileIconLoader& loader)
 {
-    loader.notifyFinished(Icon::createIconForFiles(filenames));
+    loader.iconLoaded(Icon::createIconForFiles(filenames));
 }
 
 void ChromeClientQt::setCursor(const Cursor& cursor)
@@ -683,7 +671,7 @@ bool ChromeClientQt::supportsFullScreenForElement(const Element&, bool withKeybo
 
 void ChromeClientQt::enterFullScreenForElement(Element& element)
 {
-    m_webPage->fullScreenRequested(QWebFullScreenRequest::createEnterRequest(m_webPage, QWebElement(element)));
+    m_webPage->fullScreenRequested(QWebFullScreenRequest::createEnterRequest(m_webPage, QWebElement(&element)));
 }
 
 void ChromeClientQt::exitFullScreenForElement(Element* element)
@@ -732,7 +720,7 @@ bool ChromeClientQt::selectItemAlignmentFollowsMenuWritingDirection()
 
 RefPtr<PopupMenu> ChromeClientQt::createPopupMenu(PopupMenuClient& client) const
 {
-    return adoptRef(new PopupMenuQt(client, this));
+    return adoptRef(new PopupMenuQt(&client, this));
 }
 
 RefPtr<SearchPopupMenu> ChromeClientQt::createSearchPopupMenu(PopupMenuClient& client) const
