@@ -18,13 +18,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#include "PopupMenu.h"
 #include "SearchPopupMenuQt.h"
+#include <WebCore/PopupMenu.h>
 
 namespace WebCore {
 
 SearchPopupMenuQt::SearchPopupMenuQt(RefPtr<PopupMenu>&& popup)
-    : m_popup(popup)
+    : m_popup(WTFMove(popup))
 {
 }
 

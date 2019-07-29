@@ -29,6 +29,7 @@ static QString undoNameForEditAction(const EditAction editAction)
     case EditAction::Unspecified:
         return QString();
     case EditAction::Insert:
+    case EditAction::InsertFromDrop:
         return QObject::tr("Insert");
     case EditAction::SetColor:
         return QObject::tr("Set Color");
@@ -66,7 +67,8 @@ static QString undoNameForEditAction(const EditAction editAction)
         return QObject::tr("Center");
     case EditAction::Justify:
         return QObject::tr("Justify");
-    case EditAction::SetWritingDirection:
+    case EditAction::SetBlockWritingDirection:
+    case EditAction::SetInlineWritingDirection:
         return QObject::tr("Set Writing Direction");
     case EditAction::Subscript:
         return QObject::tr("Subscript");
@@ -82,7 +84,7 @@ static QString undoNameForEditAction(const EditAction editAction)
         return QObject::tr("Outline");
     case EditAction::Unscript:
         return QObject::tr("Unscript");
-    case EditAction::Drag:
+    case EditAction::DeleteByDrag:
         return QObject::tr("Drag");
     case EditAction::Cut:
         return QObject::tr("Cut");
@@ -96,13 +98,23 @@ static QString undoNameForEditAction(const EditAction editAction)
         return QObject::tr("Paste Font");
     case EditAction::PasteRuler:
         return QObject::tr("Paste Ruler");
-    case EditAction::Typing:
+    case EditAction::TypingDeleteSelection:
+    case EditAction::TypingDeleteBackward:
+    case EditAction::TypingDeleteForward:
+    case EditAction::TypingDeleteWordBackward:
+    case EditAction::TypingDeleteWordForward:
+    case EditAction::TypingDeleteLineBackward:
+    case EditAction::TypingDeleteLineForward:
+    case EditAction::TypingInsertText:
+    case EditAction::TypingInsertLineBreak:
+    case EditAction::TypingInsertParagraph:
         return QObject::tr("Typing");
     case EditAction::CreateLink:
         return QObject::tr("Create Link");
     case EditAction::Unlink:
         return QObject::tr("Unlink");
-    case EditAction::InsertList:
+    case EditAction::InsertOrderedList:
+    case EditAction::InsertUnorderedList:
         return QObject::tr("Insert List");
     case EditAction::FormatBlock:
         return QObject::tr("Formatting");
@@ -116,11 +128,11 @@ static QString undoNameForEditAction(const EditAction editAction)
     return QString();
 }
 
-UndoStepQt::UndoStepQt(WTF::RefPtr<UndoStep> step)
+UndoStepQt::UndoStepQt(UndoStep& step)
     : m_step(step)
     , m_first(true)
 {
-    m_text = undoNameForEditAction(step->editingAction());
+    m_text = undoNameForEditAction(step.editingAction());
 }
 
 
@@ -134,15 +146,13 @@ void UndoStepQt::redo()
         m_first = false;
         return;
     }
-    if (m_step)
-        m_step->reapply();
+    m_step->reapply();
 }
 
 
 void UndoStepQt::undo()
 {
-    if (m_step)
-        m_step->unapply();
+    m_step->unapply();
 }
 
 QString UndoStepQt::text() const

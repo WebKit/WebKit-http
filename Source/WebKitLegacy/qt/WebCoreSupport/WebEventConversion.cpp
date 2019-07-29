@@ -21,13 +21,13 @@
 
 #include "WebEventConversion.h"
 
-#include "PlatformGestureEvent.h"
-#include "PlatformMouseEvent.h"
-#include "PlatformTouchEvent.h"
-#include "PlatformTouchPoint.h"
-#include "PlatformWheelEvent.h"
 #include <QTouchEvent>
 #include <QWheelEvent>
+#include <WebCore/PlatformGestureEvent.h>
+#include <WebCore/PlatformMouseEvent.h>
+#include <WebCore/PlatformTouchEvent.h>
+#include <WebCore/PlatformTouchPoint.h>
+#include <WebCore/PlatformWheelEvent.h>
 #include <wtf/WallTime.h>
 
 namespace WebCore {
@@ -149,7 +149,7 @@ void WebKitPlatformWheelEvent::applyDelta(int delta, Qt::Orientation orientation
 
 WebKitPlatformWheelEvent::WebKitPlatformWheelEvent(QWheelEvent* e, int wheelScrollLines)
 {
-    m_timestamp = WTF::currentTime();
+    m_timestamp = WallTime::now();
     m_modifiers = mouseEventModifiersFromQtKeyboardModifiers(e->modifiers());
     m_position = e->pos();
     m_globalPosition = e->globalPos();

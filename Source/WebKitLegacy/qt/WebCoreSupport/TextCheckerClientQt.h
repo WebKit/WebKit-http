@@ -30,9 +30,9 @@
 #define TextCheckerClientQt_h
 
 #include "QtPlatformPlugin.h"
-#include "TextCheckerClient.h"
 #include "qwebkitplatformplugin.h"
 
+#include <WebCore/TextCheckerClient.h>
 #include <wtf/Forward.h>
 
 namespace WebCore {
@@ -45,8 +45,8 @@ public:
     void checkSpellingOfString(StringView, int* misspellingLocation, int* misspellingLength) final;
     String getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord) final;
     void checkGrammarOfString(StringView, Vector<GrammarDetail>&, int* badGrammarLocation, int* badGrammarLength) final;
-    void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses) final;
-    void requestCheckingOfString(WTF::Ref<WebCore::TextCheckingRequest>&&) final { }
+    void getGuessesForWord(const String& word, const String& context, const VisibleSelection&, Vector<String>& guesses) final;
+    void requestCheckingOfString(WebCore::TextCheckingRequest&, const VisibleSelection&) final { }
 
     virtual bool isContinousSpellCheckingEnabled();
     virtual void toggleContinousSpellChecking();

@@ -20,7 +20,6 @@
 #ifndef QtPluginWidgetAdapter_h
 #define QtPluginWidgetAdapter_h
 
-#include <PlatformExportMacros.h>
 #include <QObject>
 #include <QRect>
 #include <QString>

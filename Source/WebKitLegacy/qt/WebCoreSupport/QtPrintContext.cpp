@@ -20,10 +20,10 @@
 
 #include "QtPrintContext.h"
 
-#include "GraphicsContext.h"
-#include "IntRect.h"
-#include "PrintContext.h"
 #include "QWebFrameAdapter.h"
+#include <WebCore/GraphicsContext.h>
+#include <WebCore/IntRect.h>
+#include <WebCore/PrintContext.h>
 
 using namespace WebCore;
 

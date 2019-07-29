@@ -28,7 +28,6 @@
 
 #include "TextCheckerClientQt.h"
 
-#include "NotImplemented.h"
 #include "QtPlatformPlugin.h"
 
 #include <QStringList>
@@ -111,7 +110,7 @@ void TextCheckerClientQt::checkGrammarOfString(StringView view, Vector<GrammarDe
     }
 }
 
-void TextCheckerClientQt::getGuessesForWord(const String& word, const String& context, Vector<String>& guesses)
+void TextCheckerClientQt::getGuessesForWord(const String& word, const String& context, const VisibleSelection&, Vector<String>& guesses)
 {
     if (!loadSpellChecker())
         return;

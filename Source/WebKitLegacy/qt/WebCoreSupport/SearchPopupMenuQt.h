@@ -21,7 +21,7 @@
 #ifndef SearchPopupMenuQt_h
 #define SearchPopupMenuQt_h
 
-#include "SearchPopupMenu.h"
+#include <WebCore/SearchPopupMenu.h>
 
 namespace WebCore {
 
