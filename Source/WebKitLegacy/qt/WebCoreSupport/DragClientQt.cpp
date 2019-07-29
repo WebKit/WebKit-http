@@ -25,14 +25,14 @@
 
 #include "DragClientQt.h"
 
-#include "ChromeClient.h"
-#include "DataTransfer.h"
-#include "DragController.h"
-#include "EventHandler.h"
-#include "Frame.h"
-#include "Page.h"
-#include "Pasteboard.h"
-#include "PlatformMouseEvent.h"
+#include <WebCore/ChromeClient.h>
+#include <WebCore/DataTransfer.h>
+#include <WebCore/DragController.h>
+#include <WebCore/EventHandler.h>
+#include <WebCore/Frame.h>
+#include <WebCore/Page.h>
+#include <WebCore/Pasteboard.h>
+#include <WebCore/PlatformMouseEvent.h>
 
 #include <QDrag>
 #include <QMimeData>
@@ -66,7 +66,7 @@ static inline DragOperation dropActionToDragOperation(Qt::DropActions action)
     return result;
 }
 
-void DragClientQt::willPerformDragDestinationAction(DragDestinationAction, DragData&)
+void DragClientQt::willPerformDragDestinationAction(DragDestinationAction, const DragData&)
 {
 }
 
@@ -84,9 +84,12 @@ void DragClientQt::willPerformDragSourceAction(DragSourceAction, const IntPoint&
 {
 }
 
-void DragClientQt::startDrag(DragImageRef dragImage, const IntPoint& dragImageOrigin, const IntPoint& eventPos, DataTransfer& dataTransfer, Frame& frame, bool)
+void DragClientQt::startDrag(DragItem dragItem, DataTransfer& dataTransfer, Frame& frame)
 {
 #if ENABLE(DRAG_SUPPORT)
+    DragImageRef dragImage = dragItem.image.get();
+    auto dragImageOrigin = dragItem.dragLocationInContentCoordinates;
+    auto eventPos = dragItem.eventPositionInContentCoordinates;
     QMimeData* clipboardData = dataTransfer.pasteboard().clipboardData();
     dataTransfer.pasteboard().invalidateWritableData();
     PlatformPageClient pageClient = m_chromeClient->platformPageClient();
@@ -103,7 +106,7 @@ void DragClientQt::startDrag(DragImageRef dragImage, const IntPoint& dragImageOr
         Qt::DropAction actualDropAction = drag->exec(dragOperationsToDropActions(dragOperationMask));
 
         // Send dragEnd event
-        PlatformMouseEvent me(m_chromeClient->screenToRootView(QCursor::pos()), QCursor::pos(), LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, 0, ForceAtClick);
+        PlatformMouseEvent me(m_chromeClient->screenToRootView(QCursor::pos()), QCursor::pos(), LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, WallTime::now(), ForceAtClick, SyntheticClickType::NoTap, WebCore::mousePointerID);
         frame.eventHandler().dragSourceEndedAt(me, dropActionToDragOperation(actualDropAction));
     }
     frame.page()->dragController().dragEnded();
