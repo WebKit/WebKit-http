@@ -29,16 +29,15 @@ namespace WebCore {
 class QWebScriptWorldPrivate : public QSharedData {
 public:
     QWebScriptWorldPrivate(WTF::Ref<WebCore::DOMWrapperWorld>&& o)
+        : world(WTFMove(o))
     {
-        Q_ASSERT(o);
-        world = WTFMove(o);
     }
 
     ~QWebScriptWorldPrivate()
     {
     }
 
-    WTF::RefPtr<WebCore::DOMWrapperWorld> world;
+    WTF::Ref<WebCore::DOMWrapperWorld> world;
 };
 
 #endif

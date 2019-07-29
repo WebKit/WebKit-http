@@ -47,7 +47,7 @@ QWebScriptWorld &QWebScriptWorld::operator=(const QWebScriptWorld& other)
 
 DOMWrapperWorld* QWebScriptWorld::world() const
 {
-    return d ? d->world.get() : 0;
+    return d ? d->world.ptr() : nullptr;
 }
 
 /*!
