@@ -60,7 +60,7 @@ SocketStreamHandlePrivate::SocketStreamHandlePrivate(SocketStreamHandleImpl* str
 
     initConnections();
 
-    unsigned port = url.port() ? url.port().value() : (isSecure ? 443 : 80);
+    unsigned port = url.port().valueOr(isSecure ? 443 : 80);
 
     QString host = url.host().toStringWithoutCopying(); // QTFIXME: Convert StringView to QString directly?
     if (isSecure) {
