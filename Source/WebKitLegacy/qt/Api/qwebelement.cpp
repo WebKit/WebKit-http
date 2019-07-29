@@ -19,42 +19,24 @@
 
 #include "qwebelement.h"
 
-#include "APICast.h"
+#include "QWebFrameAdapter.h"
 #include "qwebelement_p.h"
-#include "CSSComputedStyleDeclaration.h"
-#include "CSSParser.h"
-#include "CSSRule.h"
-#include "CSSRuleList.h"
-#include "CSSStyleRule.h"
-#include "Document.h"
-#include "DocumentFragment.h"
-#include "FrameView.h"
-#include "GraphicsContext.h"
-#include "HTMLElement.h"
-#include "StyleProperties.h"
-#include "StyleRule.h"
-#include "Completion.h"
-#include "JSGlobalObject.h"
-#include "JSHTMLElement.h"
-#include "JSObject.h"
-#include "PropertyNameArray.h"
-#include <QWebFrameAdapter.h>
-#include <parser/SourceCode.h>
-#include "qt_runtime.h"
-#include "NodeList.h"
-#include "RenderImage.h"
-#include "ScriptController.h"
-#include "ScriptSourceCode.h"
-#include "ScriptState.h"
-#include "StaticNodeList.h"
-#include "StyleResolver.h"
-#include "markup.h"
-#include "runtime_root.h"
-#include <JSDocument.h>
-#include <wtf/Vector.h>
-#include <wtf/text/CString.h>
-
+#include <JavaScriptCore/APICast.h>
+#include <JavaScriptCore/Completion.h>
 #include <QPainter>
+#include <WebCore/DocumentFragment.h>
+#include <WebCore/FrameView.h>
+#include <WebCore/FullscreenManager.h>
+#include <WebCore/HTMLElement.h>
+#include <WebCore/JSDocument.h>
+#include <WebCore/JSElement.h>
+#include <WebCore/RenderElement.h>
+#include <WebCore/ScriptController.h>
+#include <WebCore/ScriptSourceCode.h>
+#include <WebCore/StaticNodeList.h>
+#include <WebCore/markup.h>
+#include <WebCore/qt_runtime.h>
+#include <wtf/NakedPtr.h>
 
 using namespace WebCore;
 
