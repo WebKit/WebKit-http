@@ -645,7 +645,9 @@ QVariant convertValueToQVariant(JSContextRef context, JSValueRef value, QMetaTyp
             if (QtPixmapRuntime::canHandle(static_cast<QMetaType::Type>(hint))) {
                 ret = QtPixmapRuntime::toQt(context, object, static_cast<QMetaType::Type>(hint), exception);
             } else if (customRuntimeConversions()->contains(hint)) {
-                ret = customRuntimeConversions()->value(hint).toVariantFunc(toJS(object), &dist, visitedObjects);
+                ExecState* exec = toJS(context);
+                JSLockHolder locker(exec);
+                ret = customRuntimeConversions()->value(hint).toVariantFunc(exec, toJS(object), &dist, visitedObjects);
                 if (dist == 0)
                     break;
             } else if (hint == (QMetaType::Type) qMetaTypeId<QVariant>()) {

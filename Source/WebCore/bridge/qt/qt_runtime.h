@@ -133,7 +133,7 @@ private:
 };
 
 
-typedef QVariant (*ConvertToVariantFunction)(JSObject* object, int *distance, HashSet<JSObjectRef>* visitedObjects);
+typedef QVariant (*ConvertToVariantFunction)(ExecState* exec, JSObject* object, int *distance, HashSet<JSObjectRef>* visitedObjects);
 typedef JSValue (*ConvertToJSValueFunction)(ExecState* exec, WebCore::JSDOMGlobalObject* globalObject, const QVariant& variant);
 
 void registerCustomType(int qtMetaTypeId, ConvertToVariantFunction, ConvertToJSValueFunction);

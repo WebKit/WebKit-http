@@ -690,7 +690,7 @@ QWebFrame *QWebElement::webFrame() const
     return frameAdapter->apiHandle();
 }
 
-static bool setupScriptContext(WebCore::Element* element, ScriptState*& state)
+static bool setupScriptContext(WebCore::Element* element, JSC::ExecState*& state)
 {
     if (!element)
         return false;
@@ -721,7 +721,7 @@ QVariant QWebElement::evaluateJavaScript(const QString& scriptSource)
     if (scriptSource.isEmpty())
         return QVariant();
 
-    ScriptState* state = 0;
+    JSC::ExecState* state = nullptr;
 
     if (!setupScriptContext(m_element, state))
         return QVariant();
@@ -729,7 +729,7 @@ QVariant QWebElement::evaluateJavaScript(const QString& scriptSource)
     JSC::JSLockHolder lock(state);
     RefPtr<Element> protect = m_element;
 
-    JSC::JSValue thisValue = toJS(state, toJSDOMGlobalObject(&m_element->document(), state), m_element);
+    JSC::JSValue thisValue = toJS(state, toJSDOMWindow(m_element->document().frame(), currentWorld(*state)), m_element);
     if (!thisValue)
         return QVariant();
 
@@ -2047,22 +2047,23 @@ Element* QtWebElementRuntime::get(const QWebElement& element)
     return element.m_element;
 }
 
-static QVariant convertJSValueToWebElementVariant(JSC::JSObject* object, int *distance, HashSet<JSObjectRef>* visitedObjects)
+static QVariant convertJSValueToWebElementVariant(JSC::ExecState* exec, JSC::JSObject* object, int *distance, HashSet<JSObjectRef>* visitedObjects)
 {
+    JSC::VM& vm = exec->vm();
     Element* element = 0;
     QVariant ret;
-    if (object && object->inherits(JSElement::info())) {
-        element = JSElement::toWrapped(object);
+    if (object && object->inherits<JSElement>(vm)) {
+        element = JSElement::toWrapped(vm, object);
         *distance = 0;
         // Allow other objects to reach this one. This won't cause our algorithm to
         // loop since when we find an Element we do not recurse.
         visitedObjects->remove(toRef(object));
-    } else if (object && object->inherits(JSDocument::info())) {
+    } else if (object && object->inherits<JSElement>(vm)) {
         // To support TestRunnerQt::nodesFromRect(), used in DRT, we do an implicit
         // conversion from 'document' to the QWebElement representing the 'document.documentElement'.
         // We can't simply use a QVariantMap in nodesFromRect() because it currently times out
         // when serializing DOMMimeType and DOMPlugin, even if we limit the recursion.
-        element = JSDocument::toWrapped(object)->documentElement();
+        element = JSDocument::toWrapped(vm, object)->documentElement();
     }
 
     return QVariant::fromValue<QWebElement>(QtWebElementRuntime::create(element));
