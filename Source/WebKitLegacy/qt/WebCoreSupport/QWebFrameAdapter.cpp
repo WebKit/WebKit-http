@@ -235,8 +235,8 @@ QString QWebFrameAdapter::toHtml() const
 
 QString QWebFrameAdapter::toPlainText() const
 {
-    if (frame->view() && frame->view()->layoutPending())
-        frame->view()->layout();
+    if (frame->view() && frame->view()->layoutContext().isLayoutPending())
+        frame->view()->layoutContext().layout();
 
     Element* documentElement = frame->document()->documentElement();
     if (documentElement)
@@ -942,7 +942,7 @@ void QWebFrameAdapter::setCustomLayoutSize(const QSize& size)
     } else if (view->useFixedLayout())
         view->setUseFixedLayout(false);
 
-    view->layout();
+    view->layoutContext().layout();
 }
 
 void QWebFrameAdapter::setFixedVisibleContentRect(const QRect& rect)
@@ -960,7 +960,7 @@ void QWebFrameAdapter::setViewportSize(const QSize& size)
     ASSERT(view);
     view->resize(size);
     if (view->needsLayout())
-        view->layout();
+        view->layoutContext().layout();
     view->adjustViewSize();
 }
 
