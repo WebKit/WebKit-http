@@ -26,6 +26,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkCookie>
 #include <QNetworkCookieJar>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
 #include <wtf/NeverDestroyed.h>
 
@@ -43,16 +44,16 @@ void FrameNetworkingContextQt::setSession(std::unique_ptr<NetworkStorageSession>
     m_session = WTFMove(session);
 }
 
-RefPtr<FrameNetworkingContextQt> FrameNetworkingContextQt::create(Frame* frame, QObject* originatingObject, bool mimeSniffingEnabled)
+Ref<FrameNetworkingContextQt> FrameNetworkingContextQt::create(Frame* frame, QObject* originatingObject, bool mimeSniffingEnabled)
 {
-    RefPtr<FrameNetworkingContextQt> self = adoptRef(new FrameNetworkingContextQt(frame, originatingObject, mimeSniffingEnabled));
-    self->setSession(std::make_unique<NetworkStorageSession>(self.get()));
+    Ref<FrameNetworkingContextQt> self = adoptRef(*new FrameNetworkingContextQt(frame, originatingObject, mimeSniffingEnabled));
+    self->setSession(std::make_unique<NetworkStorageSession>(PAL::SessionID::defaultSessionID(), self.ptr()));
     return self;
 }
 
-NetworkStorageSession& FrameNetworkingContextQt::storageSession() const
+NetworkStorageSession* FrameNetworkingContextQt::storageSession() const
 {
-    return *m_session;
+    return m_session.get();
 }
 
 QObject* FrameNetworkingContextQt::originatingObject() const
