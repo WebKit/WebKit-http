@@ -30,11 +30,9 @@
 #ifndef FrameLoaderClientQt_h
 #define FrameLoaderClientQt_h
 
-#include "FormState.h"
-#include "FrameLoaderClient.h"
-#include "HTMLFormElement.h"
-#include "ResourceResponse.h"
-#include "SharedBuffer.h"
+#include <WebCore/FormState.h>
+#include <WebCore/FrameLoaderClient.h>
+#include <WebCore/ResourceResponse.h>
 
 #include <QObject>
 #include <QUrl>
@@ -60,7 +58,7 @@ class ResourceLoader;
 
 struct LoadErrorResetToken;
 
-class FrameLoaderClientQt : public QObject, public FrameLoaderClient {
+class FrameLoaderClientQt final : public QObject, public FrameLoaderClient {
     Q_OBJECT
 
     friend class ::QWebFrameAdapter;
@@ -80,6 +78,11 @@ public:
     bool hasWebView() const override; // mainly for assertions
 
     void makeRepresentation(DocumentLoader*) override { }
+
+    Optional<PageIdentifier> pageID() const final;
+    Optional<uint64_t> frameID() const final;
+    PAL::SessionID sessionID() const final;
+
     void forceLayoutForNonHTML() override;
 
     void setCopiesOnScroll() override;
@@ -101,7 +104,7 @@ public:
     void dispatchDidDispatchOnloadEvents() override;
     void dispatchDidReceiveServerRedirectForProvisionalLoad() override;
     void dispatchDidCancelClientRedirect() override;
-    void dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate) override;
+    void dispatchWillPerformClientRedirect(const URL&, double interval, WallTime fireDate, LockBackForwardList) override;
     void dispatchDidNavigateWithinPage() override;
     void dispatchDidChangeLocationWithinPage() override;
     void dispatchDidPushStateWithinPage() override;
@@ -111,12 +114,12 @@ public:
     void dispatchDidReceiveIcon() override;
     void dispatchDidStartProvisionalLoad() override;
     void dispatchDidReceiveTitle(const StringWithDirection&) override;
-    void dispatchDidCommitLoad() override;
-    void dispatchDidFailProvisionalLoad(const ResourceError&) override;
+    void dispatchDidCommitLoad(Optional<HasInsecureContent>) override;
+    void dispatchDidFailProvisionalLoad(const ResourceError&, WillContinueLoading) override;
     void dispatchDidFailLoad(const WebCore::ResourceError&) override;
     void dispatchDidFinishDocumentLoad() override;
     void dispatchDidFinishLoad() override;
-    void dispatchDidLayout(WebCore::LayoutMilestones) override;
+    void dispatchDidReachLayoutMilestone(OptionSet<LayoutMilestone>) override;
 
     WebCore::Frame* dispatchCreatePage(const WebCore::NavigationAction&) override;
     void dispatchShow() override;
@@ -146,9 +149,9 @@ public:
 
     void updateGlobalHistory() override;
     void updateGlobalHistoryRedirectLinks() override;
-    bool shouldGoToHistoryItem(HistoryItem*) const override;
+    bool shouldGoToHistoryItem(HistoryItem&) const override;
     void didDisplayInsecureContent() override;
-    void didRunInsecureContent(SecurityOrigin*, const URL&) override;
+    void didRunInsecureContent(SecurityOrigin&, const URL&) override;
     void didDetectXSS(const URL&, bool didBlockEntirePage) override;
 
     ResourceError cancelledError(const ResourceRequest&) override;
@@ -169,7 +172,7 @@ public:
     String generatedMIMETypeForURLScheme(const String& URLScheme) const override;
 
     void frameLoadCompleted() override;
-    void saveViewStateToItem(WebCore::HistoryItem*) override;
+    void saveViewStateToItem(WebCore::HistoryItem&) override;
     void restoreViewState() override;
     void provisionalLoadStarted() override;
     void didFinishLoad() override;
@@ -190,20 +193,20 @@ public:
     void dispatchDidBecomeFrameset(bool) override;
 
     bool canCachePage() const override;
-    void convertMainResourceLoadToDownload(DocumentLoader*,SessionID, const ResourceRequest&, const WebCore::ResourceResponse&) override;
+    void convertMainResourceLoadToDownload(DocumentLoader*, PAL::SessionID, const ResourceRequest&, const WebCore::ResourceResponse&) override;
 
-    RefPtr<Frame> createFrame(const URL&, const String& name, HTMLFrameOwnerElement*, const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight) override;
-    RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool) override;
-    void redirectDataToPlugin(Widget* pluginWidget) override;
+    RefPtr<Frame> createFrame(const URL&, const String& name, HTMLFrameOwnerElement&, const String& referrer) override;
+    RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&, const Vector<String>&, const String&, bool) override;
+    void redirectDataToPlugin(Widget& pluginWidget) override;
 
-    RefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL, const Vector<String>& paramNames, const Vector<String>& paramValues) override;
+    RefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement&, const URL& baseURL, const Vector<String>& paramNames, const Vector<String>& paramValues) override;
 
     ObjectContentType objectContentType(const URL&, const String& mimeTypeIn) override;
     String overrideMediaType() const override;
 
     void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&) override;
 
-    void registerForIconNotification(bool) override;
+    void registerForIconNotification() override;
 
     void willReplaceMultipartContent() override;
     void didReplaceMultipartContent() override;
@@ -211,7 +214,7 @@ public:
     void updateCachedDocumentLoader(DocumentLoader &) override;
     void prefetchDNS(const WTF::String &) override;
 
-    RefPtr<FrameNetworkingContext> createNetworkingContext() override;
+    Ref<FrameNetworkingContext> createNetworkingContext() override;
 
     const URL& lastRequestedUrl() const { return m_lastRequestedUrl; }
 
