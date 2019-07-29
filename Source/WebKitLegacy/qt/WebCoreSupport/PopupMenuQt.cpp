@@ -26,9 +26,8 @@
 #include "PopupMenuQt.h"
 
 #include "ChromeClientQt.h"
-#include "FrameView.h"
-#include "PopupMenuClient.h"
-#include "qwebkitplatformplugin.h"
+#include <WebCore/FrameView.h>
+#include <WebCore/PopupMenuClient.h>
 
 class SelectData : public QWebSelectData {
 public:

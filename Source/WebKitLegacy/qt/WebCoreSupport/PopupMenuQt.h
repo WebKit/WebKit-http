@@ -20,8 +20,8 @@
 #ifndef PopupMenuQt_h
 #define PopupMenuQt_h
 
-#include "PopupMenu.h"
 #include <QObject>
+#include <WebCore/PopupMenu.h>
 
 class QWebSelectData;
 class QWebSelectMethod;

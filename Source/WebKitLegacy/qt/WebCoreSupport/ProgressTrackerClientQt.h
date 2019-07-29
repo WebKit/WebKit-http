@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "ProgressTrackerClient.h"
+#include <WebCore/ProgressTrackerClient.h>
 
 #include <QObject>
 

@@ -25,10 +25,11 @@
 
 #include "ProgressTrackerClientQt.h"
 
-#include "EventHandler.h"
-#include "Frame.h"
+#include <WebCore/EventHandler.h>
+#include <WebCore/Frame.h>
+#include <WebCore/FrameLoader.h>
 #include "FrameLoaderClientQt.h"
-#include "ProgressTracker.h"
+#include <WebCore/ProgressTracker.h>
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
 #include "WebEventConversion.h"
