@@ -721,11 +721,10 @@ QString QWebSettings::defaultTextEncoding() const
 */
 void QWebSettings::setIconDatabasePath(const QString& path)
 {
-    WebCore::initializeWebCoreQt();
 #if ENABLE(ICONDATABASE)
+    WebCore::initializeWebCoreQt();
     // Make sure that IconDatabaseClientQt is instantiated.
     WebCore::IconDatabaseClientQt::instance();
-#endif
 
     WebCore::IconDatabase::delayDatabaseCleanup();
 
@@ -742,6 +741,7 @@ void QWebSettings::setIconDatabasePath(const QString& path)
         db.setEnabled(false);
         db.close();
     }
+#endif
 }
 
 /*!
@@ -752,10 +752,12 @@ void QWebSettings::setIconDatabasePath(const QString& path)
 */
 QString QWebSettings::iconDatabasePath()
 {
+#if ENABLE(ICONDATABASE)
     WebCore::initializeWebCoreQt();
     if (WebCore::iconDatabase().isEnabled() && WebCore::iconDatabase().isOpen())
         return WebCore::iconDatabase().databasePath();
     else
+#endif
         return QString();
 }
 
@@ -764,9 +766,11 @@ QString QWebSettings::iconDatabasePath()
 */
 void QWebSettings::clearIconDatabase()
 {
+#if ENABLE(ICONDATABASE)
     WebCore::initializeWebCoreQt();
     if (WebCore::iconDatabase().isEnabled() && WebCore::iconDatabase().isOpen())
         WebCore::iconDatabase().removeAllIcons();
+#endif
 }
 
 /*!
@@ -781,6 +785,7 @@ void QWebSettings::clearIconDatabase()
 */
 QIcon QWebSettings::iconForUrl(const QUrl& url)
 {
+#if ENABLE(ICONDATABASE)
     WebCore::initializeWebCoreQt();
     QPixmap* icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(WTF::URL(url).string(),
                                 WebCore::IntSize(16, 16));
@@ -788,6 +793,8 @@ QIcon QWebSettings::iconForUrl(const QUrl& url)
         return QIcon();
 
     return* icon;
+#endif
+    return QIcon();
 }
 
 /*!

@@ -77,7 +77,7 @@ list(APPEND WebKitLegacy_SOURCES
     qt/WebCoreSupport/FrameLoaderClientQt.cpp
     qt/WebCoreSupport/FrameNetworkingContextQt.cpp
     qt/WebCoreSupport/HistorySerialization.cpp
-    qt/WebCoreSupport/IconDatabaseClientQt.cpp
+#    qt/WebCoreSupport/IconDatabaseClientQt.cpp
     qt/WebCoreSupport/InitWebCoreQt.cpp
     qt/WebCoreSupport/InspectorClientQt.cpp
     qt/WebCoreSupport/InspectorServerQt.cpp
