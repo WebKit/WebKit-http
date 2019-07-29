@@ -177,10 +177,10 @@ static inline QWebPageAdapter::VisibilityState webCoreVisibilityStateToWebPageVi
     }
 }
 
-static WebCore::FrameLoadRequest frameLoadRequest(const QUrl &url, WebCore::Frame *frame)
+static WebCore::FrameLoadRequest frameLoadRequest(const QUrl &url, WebCore::Frame& frame)
 {
-    return WebCore::FrameLoadRequest(frame->document()->securityOrigin(),
-        WebCore::ResourceRequest(url, frame->loader().outgoingReferrer()),
+    return WebCore::FrameLoadRequest(frame.document()->securityOrigin(),
+        WebCore::ResourceRequest(url, frame.loader().outgoingReferrer()),
         LockHistory::No,
         LockBackForwardList::No,
         MaybeSendReferrer,
@@ -191,9 +191,9 @@ static WebCore::FrameLoadRequest frameLoadRequest(const QUrl &url, WebCore::Fram
         );
 }
 
-static void openNewWindow(const QUrl& url, Frame* frame)
+static void openNewWindow(const QUrl& url, Frame& frame)
 {
-    if (Page* oldPage = frame->page()) {
+    if (Page* oldPage = frame.page()) {
         WindowFeatures features;
         NavigationAction action;
         FrameLoadRequest request = frameLoadRequest(url, frame);
@@ -1115,7 +1115,7 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
         }
         // fall through
     case OpenLinkInNewWindow:
-        openNewWindow(hitTestResult->linkUrl, &frame);
+        openNewWindow(hitTestResult->linkUrl, frame);
         break;
     case OpenLinkInThisWindow:
         frame.loader().loadFrameRequest(frameLoadRequest(hitTestResult->linkUrl, &frame), /*event*/ 0, /*FormState*/ 0);
@@ -1124,7 +1124,7 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
         URL url = frame.loader().documentLoader()->unreachableURL();
         if (url.isEmpty())
             url = frame.loader().documentLoader()->url();
-        openNewWindow(url, &frame);
+        openNewWindow(url, frame);
         break;
         }
     case CopyLinkToClipboard:
@@ -1134,7 +1134,7 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
         editor.copyURL(hitTestResult->linkUrl, hitTestResult->linkText);
         break;
     case OpenImageInNewWindow:
-        openNewWindow(hitTestResult->imageUrl, &frame);
+        openNewWindow(hitTestResult->imageUrl, frame);
         break;
     case DownloadImageToDisk:
         frame.loader().client().startDownload(WebCore::ResourceRequest(hitTestResult->imageUrl, frame.loader().outgoingReferrer()));
