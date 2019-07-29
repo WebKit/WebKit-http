@@ -225,6 +225,7 @@ public:
     QUrl url;
 
     static QWebFrameAdapter* kit(const WebCore::Frame*);
+    static QWebFrameAdapter* kit(const WebCore::Frame& frame) { return kit(&frame); }
 
 //    friend class ChromeClientQt;
 };

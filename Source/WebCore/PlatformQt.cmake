@@ -36,10 +36,17 @@ list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
+    bindings/js/CachedScriptSourceProvider.h
+    bindings/js/ScriptSourceCode.h
+
     bridge/qt/qt_instance.h
     bridge/qt/qt_runtime.h
 
     dom/StaticNodeList.h
+
+    loader/NavigationScheduler.h
+
+    loader/cache/CachedScript.h
 
     page/SpatialNavigation.h
 

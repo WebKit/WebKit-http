@@ -20,47 +20,41 @@
 
 #include "QWebFrameAdapter.h"
 
-#include "APICast.h"
-#include "Chrome.h"
 #include "ChromeClientQt.h"
-#include "DocumentLoader.h"
-#include "EventHandler.h"
-#include "FocusController.h"
-#include "FrameLoadRequest.h"
 #include "FrameLoaderClientQt.h"
-#include "FrameView.h"
-#include "HTMLCollection.h"
-#include "HTMLMetaElement.h"
-#include "HTTPParsers.h"
-#include "HitTestResult.h"
-#include "InspectorController.h"
-#include "JSDOMWindowBase.h"
-#include "MainFrame.h"
-#include "NavigationScheduler.h"
-#include "NetworkingContext.h"
-#include "NodeList.h"
-#include "Page.h"
 #include "QWebFrameData.h"
 #include "QWebPageAdapter.h"
-#include "RenderObject.h"
-#include "ScriptController.h"
-#include "ScriptSourceCode.h"
-#include "ScriptValue.h"
-#include "SubstituteData.h"
-#if USE(TILED_BACKING_STORE)
-#include "TiledBackingStore.h"
-#endif
-#include "URL.h"
-#include "htmlediting.h"
-#include "markup.h"
-#include "qt_runtime.h"
 #include "qwebsecurityorigin.h"
 #include "qwebsecurityorigin_p.h"
 #include "qwebsettings.h"
-#include <IntRect.h>
-#include <IntSize.h>
+
+#include <JavaScriptCore/APICast.h>
 #include <QFileInfo>
 #include <QNetworkRequest>
+#include <WebCore/DocumentLoader.h>
+#include <WebCore/Editing.h>
+#include <WebCore/EventHandler.h>
+#include <WebCore/FocusController.h>
+#include <WebCore/FrameLoadRequest.h>
+#include <WebCore/HTMLCollection.h>
+#include <WebCore/HTMLMetaElement.h>
+#include <WebCore/HTTPParsers.h>
+#include <WebCore/HitTestResult.h>
+#include <WebCore/InspectorController.h>
+#include <WebCore/IntRect.h>
+#include <WebCore/IntSize.h>
+#include <WebCore/NavigationScheduler.h>
+#include <WebCore/NetworkingContext.h>
+#include <WebCore/ResourceRequest.h>
+#include <WebCore/ScriptController.h>
+#include <WebCore/ScriptSourceCode.h>
+#include <WebCore/SubstituteData.h>
+#include <WebCore/markup.h>
+#include <WebCore/qt_runtime.h>
+
+#if USE(TILED_BACKING_STORE)
+#include "TiledBackingStore.h"
+#endif
 
 #if ENABLE(QT_GESTURE_EVENTS)
 #include "PlatformGestureEvent.h"
@@ -77,15 +71,15 @@ static inline ResourceRequestCachePolicy cacheLoadControlToCachePolicy(uint cach
 {
     switch (cacheLoadControl) {
     case QNetworkRequest::AlwaysNetwork:
-        return WebCore::ReloadIgnoringCacheData;
+        return ResourceRequestCachePolicy::ReloadIgnoringCacheData;
     case QNetworkRequest::PreferCache:
-        return WebCore::ReturnCacheDataElseLoad;
+        return ResourceRequestCachePolicy::ReturnCacheDataElseLoad;
     case QNetworkRequest::AlwaysCache:
-        return WebCore::ReturnCacheDataDontLoad;
+        return ResourceRequestCachePolicy::ReturnCacheDataDontLoad;
     default:
         break;
     }
-    return WebCore::UseProtocolCachePolicy;
+    return ResourceRequestCachePolicy::UseProtocolCachePolicy;
 }
 
 QWebFrameAdapter::QWebFrameAdapter()
@@ -153,7 +147,7 @@ void QWebFrameAdapter::load(const QNetworkRequest& req, QNetworkAccessManager::O
     if (!body.isEmpty())
         request.setHTTPBody(WebCore::FormData::create(body.constData(), body.size()));
 
-    frame->loader().load(WebCore::FrameLoadRequest(frame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/));
+    frame->loader().load(WebCore::FrameLoadRequest(*frame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/));
 
     if (frame->tree().parent())
         pageAdapter->insideOpenCall = false;
@@ -186,11 +180,11 @@ QVariant QWebFrameAdapter::evaluateJavaScript(const QString &scriptSource)
     ScriptController& scriptController = frame->script();
     QVariant rc;
     int distance = 0;
-    Deprecated::ScriptValue value = scriptController.executeScript(ScriptSourceCode(scriptSource));
+    JSC::JSValue value = scriptController.executeScript(ScriptSourceCode(scriptSource));
     JSC::ExecState* exec = scriptController.globalObject(mainThreadNormalWorld())->globalExec();
     JSValueRef* ignoredException = 0;
     exec->vm().apiLock().lock();
-    JSValueRef valueRef = toRef(exec, value.jsValue());
+    JSValueRef valueRef = toRef(exec, value);
     exec->vm().apiLock().unlock();
     rc = JSC::Bindings::convertValueToQVariant(toRef(exec), valueRef, QMetaType::Void, &distance, ignoredException);
     return rc;
@@ -223,7 +217,7 @@ void QWebFrameAdapter::addToJavaScriptWindowObject(const QString& name, QObject*
     JSC::JSObject* runtimeObject = JSC::Bindings::QtInstance::getQtInstance(object, root, valueOwnership)->createRuntimeObject(exec);
 
     JSC::PutPropertySlot slot(window);
-    window->methodTable()->put(window, exec, JSC::Identifier::fromString(&exec->vm(), reinterpret_cast_ptr<const UChar*>(name.constData()), name.length()), runtimeObject, slot);
+    window->methodTable(exec->vm())->put(window, exec, JSC::Identifier::fromString(&exec->vm(), reinterpret_cast_ptr<const UChar*>(name.constData()), name.length()), runtimeObject, slot);
 }
 
 QString QWebFrameAdapter::toHtml() const
@@ -260,7 +254,7 @@ void QWebFrameAdapter::setContent(const QByteArray &data, const QString &mimeTyp
     WebCore::ResourceResponse response(URL(), WTF::String(actualMimeType), buffer->size(), encoding);
     // FIXME: visibility?
     WebCore::SubstituteData substituteData(WTFMove(buffer), URL(), response, SubstituteData::SessionHistoryVisibility::Hidden);
-    frame->loader().load(WebCore::FrameLoadRequest(frame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/, substituteData));
+    frame->loader().load(WebCore::FrameLoadRequest(*frame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/, substituteData));
 }
 
 void QWebFrameAdapter::setHtml(const QString &html, const QUrl &baseUrl)
@@ -272,7 +266,7 @@ void QWebFrameAdapter::setHtml(const QString &html, const QUrl &baseUrl)
     WebCore::ResourceResponse response(URL(), "text/html"_s, data->size(), "utf-8"_s);
     // FIXME: visibility?
     WebCore::SubstituteData substituteData(WTFMove(data), URL(), response, SubstituteData::SessionHistoryVisibility::Hidden);
-    frame->loader().load(WebCore::FrameLoadRequest(frame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/, substituteData));
+    frame->loader().load(WebCore::FrameLoadRequest(*frame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow /*FIXME*/, substituteData));
 }
 
 QMultiMap<QString, QString> QWebFrameAdapter::metaData() const
@@ -295,8 +289,7 @@ QPoint QWebFrameAdapter::scrollPosition() const
 {
     if (!frame || !frame->view())
         return QPoint();
-    return QPoint(frame->view()->scrollOffset(HorizontalScrollbar),
-                  frame->view()->scrollOffset(VerticalScrollbar));
+    return QPoint(frame->view()->scrollOffset());
 }
 
 QRect QWebFrameAdapter::frameRect() const
@@ -379,7 +372,8 @@ QWebHitTestResultPrivate* QWebFrameAdapter::hitTestContent(const QPoint& pos) co
     if (!frame->view() || !frame->contentRenderer())
         return 0;
 
-    HitTestResult result = frame->eventHandler().hitTestResultAtPoint(frame->view()->windowToContents(pos), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowShadowContent);
+    HitTestResult result = frame->eventHandler().hitTestResultAtPoint(frame->view()->windowToContents(pos),
+        HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowUserAgentShadowContent);
 
     if (result.scrollbar())
         return 0;
@@ -489,7 +483,7 @@ static void coalesceRectsIfPossible(const QRect& clipRect, QVector<QRect>& rects
 void QWebFrameAdapter::renderRelativeCoords(QPainter* painter, int layers, const QRegion& clip)
 {
     GraphicsContext context(painter);
-    if (context.paintingDisabled() && !context.updatingControlTints())
+    if (context.paintingDisabled() && !context.invalidatingControlTints())
         return;
 
     if (!frame->view() || !frame->contentRenderer())
@@ -791,7 +785,7 @@ WebCore::Scrollbar* QWebFrameAdapter::verticalScrollBar() const
 void QWebFrameAdapter::updateBackgroundRecursively(const QColor& backgroundColor)
 {
     ASSERT(frame->view());
-    frame->view()->updateBackgroundRecursively(backgroundColor, /*transparent*/ !backgroundColor.alpha());
+    frame->view()->updateBackgroundRecursively(Color(backgroundColor));
 }
 
 void QWebFrameAdapter::cancelLoad()
