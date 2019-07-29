@@ -905,41 +905,7 @@ QPixmap QWebSettings::webGraphic(WebGraphic type)
 void QWebSettings::clearMemoryCaches()
 {
     WebCore::initializeWebCoreQt();
-
-    //FIXME: This code is very similar to QtTestSupport::clearMemoryCaches().
-
-    // Turn the cache on and off.  Disabling the object cache will remove all
-    // resources from the cache.  They may still live on if they are referenced
-    // by some Web page though.
-    auto& memoryCache = WebCore::MemoryCache::singleton();
-    if (!memoryCache.disabled()) {
-        memoryCache.setDisabled(true);
-        memoryCache.setDisabled(false);
-    }
-
-    auto& pageCache = WebCore::PageCache::singleton();
-    int pageCacheMaxSize = pageCache.maxSize();
-    // Setting size to 0, makes all pages be released.
-    pageCache.setMaxSize(0);
-    pageCache.setMaxSize(pageCacheMaxSize);
-
-    // Invalidating the font cache and freeing all inactive font data.
-    WebCore::FontCache::singleton().invalidate();
-
-    // Empty the Cross-Origin Preflight cache
-    WebCore::CrossOriginPreflightResultCache::singleton().empty();
-
-    // Drop JIT compiled code from ExecutableAllocator.
-    WebCore::GCController::singleton().deleteAllCode();
-    // Garbage Collect to release the references of CachedResource from dead objects.
-    WebCore::GCController::singleton().garbageCollectNow();
-
-    // FastMalloc has lock-free thread specific caches that can only be cleared from the thread itself.
-    WebCore::StorageThread::releaseFastMallocFreeMemoryInAllThreads();
-#if ENABLE(WORKERS)
-    WebCore::WorkerThread::releaseFastMallocFreeMemoryInAllThreads();
-#endif
-    WTF::releaseFastMallocFreeMemory();        
+    WebCore::releaseMemory(Critical::Yes, Synchronous::Yes);
 }
 
 /*!
