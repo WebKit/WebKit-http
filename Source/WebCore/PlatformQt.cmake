@@ -36,11 +36,31 @@ list(APPEND WebCore_PRIVATE_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
+    bridge/qt/qt_instance.h
+    bridge/qt/qt_runtime.h
+
+    dom/StaticNodeList.h
+
+    page/SpatialNavigation.h
+
+    platform/graphics/qt/ImageBufferDataQt.h
+
+    platform/network/HTTPStatusCodes.h
+    platform/network/MIMESniffing.h
+    platform/network/ResourceHandleInternal.h
+
+    platform/network/qt/AuthenticationChallenge.h
     platform/network/qt/CertificateInfo.h
+    platform/network/qt/QNetworkReplyHandler.h
+    platform/network/qt/QtMIMETypeSniffer.h
     platform/network/qt/ResourceError.h
     platform/network/qt/ResourceRequest.h
     platform/network/qt/ResourceResponse.h
 
+    platform/qt/KeyedDecoderQt.h
+    platform/qt/KeyedEncoderQt.h
+    platform/qt/PlatformGestureEvent.h
+    platform/qt/QStyleFacade.h
     platform/qt/QWebPageClient.h
 )
 

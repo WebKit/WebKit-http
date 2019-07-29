@@ -24,7 +24,7 @@
 #define QStyleFacadeImp_h
 
 #include <QPointer>
-#include <QStyleFacade.h>
+#include <WebCore/QStyleFacade.h>
 
 QT_BEGIN_NAMESPACE
 class QStyle;
