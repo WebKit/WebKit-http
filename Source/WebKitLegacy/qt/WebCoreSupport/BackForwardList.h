@@ -31,13 +31,17 @@
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
 
+class QWebPageAdapter;
+
 typedef Vector<Ref<WebCore::HistoryItem>> HistoryItemVector;
 typedef HashSet<RefPtr<WebCore::HistoryItem>> HistoryItemHashSet;
 
 class BackForwardList : public WebCore::BackForwardClient {
 public: 
-    static Ref<BackForwardList> create() { return adoptRef(*new BackForwardList()); }
+    static Ref<BackForwardList> create(QWebPageAdapter& page) { return adoptRef(*new BackForwardList(page)); }
     virtual ~BackForwardList();
+
+    QWebPageAdapter& page() { return m_page; }
 
     void addItem(Ref<WebCore::HistoryItem>&&) override;
     void goBack();
@@ -67,10 +71,11 @@ public:
     HistoryItemVector& entries();
 
 private:
-    explicit BackForwardList();
+    explicit BackForwardList(QWebPageAdapter&);
 
     HistoryItemVector m_entries;
     HistoryItemHashSet m_entryHash;
+    QWebPageAdapter& m_page;
     unsigned m_current;
     unsigned m_capacity;
     bool m_closed;

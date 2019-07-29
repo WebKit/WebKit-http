@@ -39,6 +39,7 @@
 #include "QWebFrameData.h"
 #include "QWebPageAdapter.h"
 #include "QtPluginWidgetAdapter.h"
+#include "qwebhistory_p.h"
 #include "qwebhistoryinterface.h"
 #include "qwebpluginfactory.h"
 #include "qwebsettings.h"
@@ -769,7 +770,7 @@ void FrameLoaderClientQt::didDetectXSS(const URL&, bool)
     notImplemented();
 }
 
-void FrameLoaderClientQt::saveViewStateToItem(WebCore::HistoryItem* item)
+void FrameLoaderClientQt::saveViewStateToItem(WebCore::HistoryItem& item)
 {
     QWebHistoryItem historyItem(new QWebHistoryItemPrivate(item));
     m_webFrame->pageAdapter->emitSaveFrameStateRequested(m_webFrame, &historyItem);

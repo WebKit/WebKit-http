@@ -24,7 +24,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "WebKitDLL.h"
 #include "BackForwardList.h"
 
 #include <WebCore/Frame.h>
@@ -40,8 +39,9 @@ static const unsigned NoCurrentItemIndex = UINT_MAX;
 
 using namespace WebCore;
 
-BackForwardList::BackForwardList()
-    : m_current(NoCurrentItemIndex)
+BackForwardList::BackForwardList(QWebPageAdapter& page)
+    : m_page(page)
+    , m_current(NoCurrentItemIndex)
     , m_capacity(DefaultCapacity)
     , m_closed(true)
     , m_enabled(true)

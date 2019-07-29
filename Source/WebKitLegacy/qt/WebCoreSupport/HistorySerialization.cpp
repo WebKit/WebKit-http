@@ -26,44 +26,47 @@
 
 #include "HistorySerialization.h"
 
-#include "FormData.h"
-#include "KeyedDecoderQt.h"
-#include "KeyedEncoderQt.h"
+#include <WebCore/FormData.h>
+#include <WebCore/KeyedDecoderQt.h>
+#include <WebCore/KeyedEncoderQt.h>
 
 namespace WebCore {
 
+enum class FormDataType {
+    Data,
+    EncodedFile,
+    EncodedBlob,
+};
+
 static void encodeElement(KeyedEncoder& encoder, const FormDataElement& element)
 {
-    encoder.encodeEnum("type", element.m_type);
-
-    switch (element.m_type) {
-    case FormDataElement::Type::Data:
-        encoder.encodeBytes("data", reinterpret_cast<const uint8_t*>(element.m_data.data()), element.m_data.size());
-        return;
-    case FormDataElement::Type::EncodedFile:
-        encoder.encodeString("filename", element.m_filename);
-        encoder.encodeString("generatedFilename", element.m_generatedFilename);
-        encoder.encodeBool("shouldGenerateFile", element.m_shouldGenerateFile);
-        encoder.encodeInt64("fileStart", element.m_fileStart);
-        encoder.encodeInt64("fileLength", element.m_fileLength);
-        encoder.encodeDouble("expectedFileModificationTime", element.m_expectedFileModificationTime);
-        return;
-
-    case FormDataElement::Type::EncodedBlob:
-        encoder.encodeString("url", element.m_url.string());
-        return;
-    }
-
-    ASSERT_NOT_REACHED();
+    switchOn(element.data,
+        [&] (const Vector<char>& bytes) {
+            encoder.encodeEnum("type", FormDataType::Data);
+            encoder.encodeBytes("data", reinterpret_cast<const uint8_t*>(bytes.data()), bytes.size());
+        }, [&] (const FormDataElement::EncodedFileData& fileData) {
+            encoder.encodeEnum("type", FormDataType::EncodedFile);
+            encoder.encodeString("filename", fileData.filename);
+            encoder.encodeString("generatedFilename", fileData.generatedFilename);
+            encoder.encodeBool("shouldGenerateFile", fileData.shouldGenerateFile);
+            encoder.encodeInt64("fileStart", fileData.fileStart);
+            encoder.encodeInt64("fileLength", fileData.fileLength);
+            if (fileData.expectedFileModificationTime)
+                encoder.encodeDouble("expectedFileModificationTime", fileData.expectedFileModificationTime.value().secondsSinceEpoch().seconds());
+        }, [&] (const FormDataElement::EncodedBlobData& blobData) {
+            encoder.encodeEnum("type", FormDataType::EncodedBlob);
+            encoder.encodeString("url", blobData.url.string());
+        });
 }
 
 static bool decodeElement(KeyedDecoder& decoder, FormDataElement& element)
 {
-    if (!decoder.decodeEnum("type", element.m_type, [](FormDataElement::Type type) {
+    FormDataType type;
+    if (!decoder.decodeEnum("type", type, [](FormDataType type) {
         switch (type) {
-        case FormDataElement::Type::Data:
-        case FormDataElement::Type::EncodedFile:
-        case FormDataElement::Type::EncodedBlob:
+        case FormDataType::Data:
+        case FormDataType::EncodedFile:
+        case FormDataType::EncodedBlob:
             return true;
         }
 
@@ -71,18 +74,21 @@ static bool decodeElement(KeyedDecoder& decoder, FormDataElement& element)
     }))
         return false;
 
-    switch (element.m_type) {
-    case FormDataElement::Type::Data:
-        if (!decoder.decodeBytes("data", element.m_data))
+    switch (type) {
+    case FormDataType::Data: {
+        Vector<char> bytes;
+        if (!decoder.decodeBytes("data", bytes))
             return false;
+        element.data = WTFMove(bytes);
         break;
-
-    case FormDataElement::Type::EncodedFile: {
-        if (!decoder.decodeString("filename", element.m_filename))
+    }
+    case FormDataType::EncodedFile: {
+        FormDataElement::EncodedFileData fileData;
+        if (!decoder.decodeString("filename", fileData.filename))
             return false;
-        if (!decoder.decodeString("generatedFilename", element.m_generatedFilename))
+        if (!decoder.decodeString("generatedFilename", fileData.generatedFilename))
             return false;
-        if (!decoder.decodeBool("shouldGenerateFile", element.m_shouldGenerateFile))
+        if (!decoder.decodeBool("shouldGenerateFile", fileData.shouldGenerateFile))
             return false;
 
         int64_t fileStart;
@@ -97,22 +103,23 @@ static bool decodeElement(KeyedDecoder& decoder, FormDataElement& element)
         if (fileLength != BlobDataItem::toEndOfFile && fileLength < fileStart)
             return false;
 
-        double expectedFileModificationTime;
-        if (!decoder.decodeDouble("expectedFileModificationTime", expectedFileModificationTime))
-            return false;
+        fileData.fileStart = fileStart;
+        fileData.fileLength = fileLength;
 
-        element.m_fileStart = fileStart;
-        element.m_fileLength = fileLength;
-        element.m_expectedFileModificationTime = expectedFileModificationTime;
+        double expectedFileModificationTime; // Optional field
+        if (decoder.decodeDouble("expectedFileModificationTime", expectedFileModificationTime))
+            fileData.expectedFileModificationTime = WallTime::fromRawSeconds(expectedFileModificationTime);
+
+        element.data = WTFMove(fileData);
         break;
     }
 
-    case FormDataElement::Type::EncodedBlob: {
+    case FormDataType::EncodedBlob: {
         String blobURLString;
         if (!decoder.decodeString("url", blobURLString))
             return false;
 
-        element.m_url = URL(URL(), blobURLString);
+        element.data = FormDataElement::EncodedBlobData { URL(URL(), blobURLString) };
         break;
     }
     }
@@ -188,7 +195,7 @@ static void encodeBackForwardTreeNode(KeyedEncoder& encoder, const HistoryItem& 
 
     encoder.encodeFloat("pageScaleFactor", item.pageScaleFactor());
 
-    encoder.encodeConditionalObject("stateObject", item.stateObject().get(), [](KeyedEncoder& encoder, const SerializedScriptValue& stateObject) {
+    encoder.encodeConditionalObject("stateObject", item.stateObject(), [](KeyedEncoder& encoder, const SerializedScriptValue& stateObject) {
         encoder.encodeBytes("data", stateObject.data().data(), stateObject.data().size());
     });
 
