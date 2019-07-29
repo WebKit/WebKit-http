@@ -30,21 +30,22 @@
 
 #include "InspectorClientQt.h"
 
-#include "FrameView.h"
-#include "InspectorController.h"
 #include "InspectorServerQt.h"
-#include "MainFrame.h"
-#include "NotImplemented.h"
-#include "Page.h"
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
-#include "ScriptDebugServer.h"
+
+#include <JavaScriptCore/ScriptDebugServer.h>
 #include <QCoreApplication>
 #include <QFile>
 #include <QNetworkRequest>
 #include <QSettings>
 #include <QUrl>
 #include <QVariant>
+#include <WebCore/Frame.h>
+#include <WebCore/FrameView.h>
+#include <WebCore/InspectorController.h>
+#include <WebCore/NotImplemented.h>
+#include <WebCore/Page.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
@@ -214,13 +215,13 @@ void InspectorClientQt::releaseFrontendPage()
 void InspectorClientQt::attachAndReplaceRemoteFrontend(InspectorServerRequestHandlerQt* channel)
 {
     m_remoteFrontEndChannel = channel;
-    m_inspectedWebPage->page->inspectorController().connectFrontend(this);
+    m_inspectedWebPage->page->inspectorController().connectFrontend(*this);
 }
 
 void InspectorClientQt::detachRemoteFrontend()
 {
     m_remoteFrontEndChannel = nullptr;
-    m_inspectedWebPage->page->inspectorController().disconnectFrontend(this);
+    m_inspectedWebPage->page->inspectorController().disconnectFrontend(*this);
 }
 
 void InspectorClientQt::closeFrontendWindow()
@@ -250,18 +251,18 @@ InspectorClientQt::ConnectionType InspectorClientQt::connectionType() const
     return ConnectionType::Local;
 }
 
-bool InspectorClientQt::sendMessageToFrontend(const String& message)
+void InspectorClientQt::sendMessageToFrontend(const String& message)
 {
     if (m_remoteFrontEndChannel) {
         WTF::CString msg = message.utf8();
         m_remoteFrontEndChannel->webSocketSend(msg.data(), msg.length());
-        return true;
+        return;
     }
     if (!m_frontendWebPage)
-        return false;
+        return;
 
     Page* frontendPage = m_frontendWebPage->page;
-    return doDispatchMessageOnFrontendPage(frontendPage, message);
+    doDispatchMessageOnFrontendPage(frontendPage, message);
 }
 
 InspectorFrontendClientQt::InspectorFrontendClientQt(QWebPageAdapter* inspectedWebPage, InspectorController* inspectedPageController, std::unique_ptr<QObject> inspectorView, WebCore::Page* inspectorPage, InspectorClientQt* inspectorClient)
@@ -305,6 +306,12 @@ void InspectorFrontendClientQt::closeWindow()
     destroyInspectorView(true);
 }
 
+void InspectorFrontendClientQt::reopen()
+{
+    // QTFIXME
+    notImplemented();
+}
+
 void InspectorFrontendClientQt::attachWindow(DockSide)
 {
     notImplemented();
@@ -331,6 +338,11 @@ void InspectorFrontendClientQt::inspectedURLChanged(const String& newURL)
     updateWindowTitle();
 }
 
+void InspectorFrontendClientQt::showCertificate(const WebCore::CertificateInfo&)
+{
+    notImplemented();
+}
+
 void InspectorFrontendClientQt::updateWindowTitle()
 {
     QString caption = QCoreApplication::translate("QWebPage", "Web Inspector - %2").arg(m_inspectedURL);
@@ -352,8 +364,8 @@ void InspectorFrontendClientQt::destroyInspectorView(bool notifyInspectorControl
         m_inspectedWebPage->setInspectorFrontend(nullptr);
     }
 
-    if (notifyInspectorController)
-        m_inspectedWebPage->page->inspectorController().disconnectFrontend(m_inspectorClient);
+    if (notifyInspectorController && m_inspectorClient) // QTFIXME
+        m_inspectedWebPage->page->inspectorController().disconnectFrontend(*m_inspectorClient);
 
     // If we delete view right here it will delete QWebPageAdapter in the middle
     // of mouseReleaseEvent()
@@ -370,5 +382,10 @@ void InspectorFrontendClientQt::inspectorClientDestroyed()
     m_inspectorClient = 0;
     m_inspectedWebPage = 0;
 }
+
+void InspectorFrontendClientQt::setSheetRect(const WebCore::FloatRect&)
+{
+    notImplemented();
 }
 
+}

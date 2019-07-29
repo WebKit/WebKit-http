@@ -30,9 +30,9 @@
 #ifndef InspectorClientQt_h
 #define InspectorClientQt_h
 
-#include "InspectorClient.h"
-#include <inspector/InspectorFrontendChannel.h>
-#include "InspectorFrontendClientLocal.h"
+#include <JavaScriptCore/InspectorFrontendChannel.h>
+#include <WebCore/InspectorClient.h>
+#include <WebCore/InspectorFrontendClientLocal.h>
 
 #include <QObject>
 #include <QString>
@@ -60,7 +60,7 @@ public:
     void hideHighlight() override;
 
     ConnectionType connectionType() const override;
-    bool sendMessageToFrontend(const String&) override;
+    void sendMessageToFrontend(const String&) override;
 
     void releaseFrontendPage();
 
@@ -91,6 +91,7 @@ public:
 
     void bringToFront() override;
     void closeWindow() override;
+    void reopen() final;
 
     void attachWindow(DockSide) override;
     void detachWindow() override;
@@ -99,6 +100,9 @@ public:
     void setAttachedWindowWidth(unsigned) override;
 
     void inspectedURLChanged(const String& newURL) override;
+    void showCertificate(const CertificateInfo&) final;
+
+    void setSheetRect(const WebCore::FloatRect&) final;
 
     void inspectorClientDestroyed();
 

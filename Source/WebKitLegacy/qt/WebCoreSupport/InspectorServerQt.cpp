@@ -20,9 +20,6 @@
 #include "InspectorServerQt.h"
 
 #include "InspectorClientQt.h"
-#include "InspectorController.h"
-#include "MIMETypeRegistry.h"
-#include "Page.h"
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
 #include "qhttpheader_p.h"
@@ -32,6 +29,9 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QUrl>
+#include <WebCore/InspectorController.h>
+#include <WebCore/MIMETypeRegistry.h>
+#include <WebCore/Page.h>
 #include <qendian.h>
 #include <wtf/SHA1.h>
 #include <wtf/text/Base64.h>
