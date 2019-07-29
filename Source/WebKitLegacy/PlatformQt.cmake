@@ -244,7 +244,7 @@ WEBKIT_MAKE_FORWARDING_HEADERS(WebKitLegacy
 add_dependencies(QtWebKitFrameworkHeaders WebCorePrivateFrameworkHeaders)
 
 ecm_generate_headers(
-    QtWebKitLegacy_FORWARDING_HEADERS
+    QtWebKit_FORWARDING_HEADERS
     HEADER_NAMES
         QWebDatabase
         QWebElement,QWebElementCollection
@@ -268,13 +268,13 @@ ecm_generate_headers(
     OUTPUT_DIR
         "${FORWARDING_HEADERS_DIR}/QtWebKit"
     REQUIRED_HEADERS
-        QtWebKitLegacy_HEADERS
+        QtWebKit_HEADERS
 )
 
 set(WebKitLegacy_PUBLIC_HEADERS
     qt/Api/qwebkitglobal.h
-    ${QtWebKitLegacy_HEADERS}
-    ${QtWebKitLegacy_FORWARDING_HEADERS}
+    ${QtWebKit_HEADERS}
+    ${QtWebKit_FORWARDING_HEADERS}
 )
 
 generate_version_header("${FORWARDING_HEADERS_DIR}/QtWebKit/qtwebkitversion.h"
@@ -390,62 +390,62 @@ if (NOT MACOS_BUILD_FRAMEWORKS)
         DESCRIPTION "Qt WebKit module"
         INCLUDE_INSTALL_DIR "${KDE_INSTALL_INCLUDEDIR}/QtWebKit"
         DEPS "${WEBKIT_PKGCONFIG_DEPS}"
-        FILENAME_VAR WebKitLegacy_PKGCONFIG_FILENAME
+        FILENAME_VAR QtWebKit_PKGCONFIG_FILENAME
     )
     set(ECM_PKGCONFIG_INSTALL_DIR "${LIB_INSTALL_DIR}/pkgconfig" CACHE PATH "The directory where pkgconfig will be installed to.")
-    install(FILES ${WebKitLegacy_PKGCONFIG_FILENAME} DESTINATION ${ECM_PKGCONFIG_INSTALL_DIR} COMPONENT Data)
+    install(FILES ${QtWebKit_PKGCONFIG_FILENAME} DESTINATION ${ECM_PKGCONFIG_INSTALL_DIR} COMPONENT Data)
 endif ()
 
 if (KDE_INSTALL_USE_QT_SYS_PATHS)
-    set(WebKitLegacy_PRI_ARGUMENTS
+    set(QtWebKit_PRI_ARGUMENTS
         BIN_INSTALL_DIR "$$QT_MODULE_BIN_BASE"
         LIB_INSTALL_DIR "$$QT_MODULE_LIB_BASE"
     )
     if (MACOS_BUILD_FRAMEWORKS)
-        list(APPEND WebKitLegacy_PRI_ARGUMENTS
+        list(APPEND QtWebKit_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_LIB_BASE/QtWebKit.framework/Headers"
             MODULE_CONFIG "lib_bundle"
         )
-        list(APPEND WebKitLegacy_Private_PRI_ARGUMENTS
+        list(APPEND QtWebKit_Private_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_LIB_BASE/QtWebKit.framework/Headers/${PROJECT_VERSION}"
             INCLUDE_INSTALL_DIR2 "$$QT_MODULE_LIB_BASE/QtWebKit.framework/Headers/${PROJECT_VERSION}/QtWebKit"
         )
     else ()
-        list(APPEND WebKitLegacy_PRI_ARGUMENTS
+        list(APPEND QtWebKit_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_INCLUDE_BASE"
             INCLUDE_INSTALL_DIR2 "$$QT_MODULE_INCLUDE_BASE/QtWebKit"
         )
-        list(APPEND WebKitLegacy_Private_PRI_ARGUMENTS
+        list(APPEND QtWebKit_Private_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_INCLUDE_BASE/QtWebKit/${PROJECT_VERSION}"
             INCLUDE_INSTALL_DIR2 "$$QT_MODULE_INCLUDE_BASE/QtWebKit/${PROJECT_VERSION}/QtWebKit"
         )
     endif ()
 else ()
-    set(WebKitLegacy_PRI_ARGUMENTS
+    set(QtWebKit_PRI_ARGUMENTS
         SET_RPATH ON
     )
     if (MACOS_BUILD_FRAMEWORKS)
-        list(APPEND WebKitLegacy_PRI_ARGUMENTS
+        list(APPEND QtWebKit_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "${LIB_INSTALL_DIR}/QtWebKit.framework/Headers"
             MODULE_CONFIG "lib_bundle"
         )
-        list(APPEND WebKitLegacy_Private_PRI_ARGUMENTS
+        list(APPEND QtWebKit_Private_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "${LIB_INSTALL_DIR}/QtWebKit.framework/Headers/${PROJECT_VERSION}"
             INCLUDE_INSTALL_DIR2 "${LIB_INSTALL_DIR}/QtWebKit.framework/Headers/${PROJECT_VERSION}/QtWebKit"
         )
     else ()
-        list(APPEND WebKitLegacy_PRI_ARGUMENTS
+        list(APPEND QtWebKit_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR}
             INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKit"
         )
-        list(APPEND WebKitLegacy_Private_PRI_ARGUMENTS
+        list(APPEND QtWebKit_Private_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}"
             INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}/QtWebKit"
         )
     endif ()
 endif ()
 
-list(APPEND WebKitLegacy_Private_PRI_ARGUMENTS MODULE_CONFIG "internal_module no_link")
+list(APPEND QtWebKit_Private_PRI_ARGUMENTS MODULE_CONFIG "internal_module no_link")
 
 if (MACOS_BUILD_FRAMEWORKS)
     set(WebKitLegacy_OUTPUT_NAME QtWebKit)
@@ -463,8 +463,8 @@ ecm_generate_pri_file(
     DEFINES QT_WEBKIT_LIB
     QT_MODULES webkit
     EXTRA_LIBS "${WEBKIT_PRI_EXTRA_LIBS}"
-    FILENAME_VAR WebKitLegacy_PRI_FILENAME
-    ${WebKitLegacy_PRI_ARGUMENTS}
+    FILENAME_VAR QtWebKit_PRI_FILENAME
+    ${QtWebKit_PRI_ARGUMENTS}
 )
 ecm_generate_pri_file(
     BASE_NAME webkit_private
@@ -475,11 +475,11 @@ ecm_generate_pri_file(
     DEFINES " "
     QT_MODULES webkit
     EXTRA_LIBS " "
-    FILENAME_VAR WebKitLegacy_Private_PRI_FILENAME
-    ${WebKitLegacy_Private_PRI_ARGUMENTS}
+    FILENAME_VAR QtWebKit_Private_PRI_FILENAME
+    ${QtWebKit_Private_PRI_ARGUMENTS}
 )
 install(
-    FILES ${WebKitLegacy_PRI_FILENAME} ${WebKitLegacy_Private_PRI_FILENAME}
+    FILES ${QtWebKit_PRI_FILENAME} ${QtWebKit_Private_PRI_FILENAME}
     DESTINATION ${ECM_MKSPECS_INSTALL_DIR}
     COMPONENT Data
 )
