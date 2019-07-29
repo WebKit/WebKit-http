@@ -762,63 +762,63 @@ QVariant QWebElement::evaluateJavaScript(const QString& scriptSource)
 
 QString QWebElement::styleProperty(const QString &name, StyleResolveStrategy strategy) const
 {
-    if (!m_element || !m_element->isStyledElement())
-        return QString();
+//    if (!m_element || !m_element->isStyledElement())
+//        return QString();
 
-    CSSPropertyID propID = cssPropertyID(name);
+//    CSSPropertyID propID = cssPropertyID(String(name));
 
-    if (!propID)
-        return QString();
+//    if (!propID)
+//        return QString();
 
-    if (strategy == InlineStyle) {
-        const StyleProperties* style = static_cast<StyledElement*>(m_element)->inlineStyle();
-        if (!style)
-            return QString();
-        return style->getPropertyValue(propID);
-    }
+//    if (strategy == InlineStyle) {
+//        const StyleProperties* style = static_cast<StyledElement*>(m_element)->inlineStyle();
+//        if (!style)
+//            return QString();
+//        return style->getPropertyValue(propID);
+//    }
 
-    if (strategy == CascadedStyle) {
-        const StyleProperties* style = static_cast<StyledElement*>(m_element)->inlineStyle();
-        if (style && style->propertyIsImportant(propID))
-            return style->getPropertyValue(propID);
+//    if (strategy == CascadedStyle) {
+//        const StyleProperties* style = static_cast<StyledElement*>(m_element)->inlineStyle();
+//        if (style && style->propertyIsImportant(propID))
+//            return style->getPropertyValue(propID);
 
-        // We are going to resolve the style property by walking through the
-        // list of non-inline matched CSS rules for the element, looking for
-        // the highest priority definition.
+//        // We are going to resolve the style property by walking through the
+//        // list of non-inline matched CSS rules for the element, looking for
+//        // the highest priority definition.
 
-        // Get an array of matched CSS rules for the given element sorted
-        // by importance and inheritance order. This include external CSS
-        // declarations, as well as embedded and inline style declarations.
+//        // Get an array of matched CSS rules for the given element sorted
+//        // by importance and inheritance order. This include external CSS
+//        // declarations, as well as embedded and inline style declarations.
 
-        Document& document = m_element->document();
-        Vector<RefPtr<StyleRule>> rules = document.ensureStyleResolver().styleRulesForElement(m_element, StyleResolver::AuthorCSSRules | StyleResolver::CrossOriginCSSRules);
-        for (int i = rules.size(); i > 0; --i) {
-            if (!rules[i - 1]->isStyleRule())
-                continue;
-            StyleRule* styleRule = static_cast<StyleRule*>(rules[i - 1].get());
+//        Document& document = m_element->document();
+//        Vector<RefPtr<StyleRule>> rules = document.ensureStyleResolver().styleRulesForElement(m_element, StyleResolver::AuthorCSSRules | StyleResolver::CrossOriginCSSRules);
+//        for (int i = rules.size(); i > 0; --i) {
+//            if (!rules[i - 1]->isStyleRule())
+//                continue;
+//            StyleRule* styleRule = static_cast<StyleRule*>(rules[i - 1].get());
 
-            if (styleRule->properties().propertyIsImportant(propID))
-                return styleRule->properties().getPropertyValue(propID);
+//            if (styleRule->properties().propertyIsImportant(propID))
+//                return styleRule->properties().getPropertyValue(propID);
 
-            if (!style || style->getPropertyValue(propID).isEmpty())
-                style = &styleRule->properties();
-        }
+//            if (!style || style->getPropertyValue(propID).isEmpty())
+//                style = &styleRule->properties();
+//        }
 
-        if (!style)
-            return QString();
-        return style->getPropertyValue(propID);
-    }
+//        if (!style)
+//            return QString();
+//        return style->getPropertyValue(propID);
+//    }
 
-    if (strategy == ComputedStyle) {
-        if (!m_element || !m_element->isStyledElement())
-            return QString();
+//    if (strategy == ComputedStyle) {
+//        if (!m_element || !m_element->isStyledElement())
+//            return QString();
 
-        RefPtr<CSSComputedStyleDeclaration> style = CSSComputedStyleDeclaration::create(m_element, true);
-        if (!propID || !style)
-            return QString();
+//        RefPtr<CSSComputedStyleDeclaration> style = CSSComputedStyleDeclaration::create(m_element, true);
+//        if (!propID || !style)
+//            return QString();
 
-        return style->getPropertyValue(propID);
-    }
+//        return style->getPropertyValue(propID);
+//    }
 
     return QString();
 }
@@ -848,8 +848,8 @@ void QWebElement::setStyleProperty(const QString &name, const QString &value)
         adjustedValue = adjustedValue.trimmed();
     }
 
-    CSSPropertyID propID = cssPropertyID(name);
-    static_cast<StyledElement*>(m_element)->setInlineStyleProperty(propID, adjustedValue, important);
+//    CSSPropertyID propID = cssPropertyID(name);
+//    static_cast<StyledElement*>(m_element)->setInlineStyleProperty(propID, adjustedValue, important);
 }
 
 /*!
