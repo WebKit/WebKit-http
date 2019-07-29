@@ -29,25 +29,17 @@
 
 #include "InitWebCoreQt.h"
 
-#include "Chrome.h"
-#include "ChromeClientQt.h"
-#include "Font.h"
-#include "Image.h"
-#include "Logging.h"
-#include "MemoryCache.h"
-#include "NotImplemented.h"
-#include "Page.h"
 #include "PlatformStrategiesQt.h"
-#include "RenderThemeQStyle.h"
-#include "RuntimeEnabledFeatures.h"
-#include "ScriptController.h"
-#include "ScrollbarThemeQStyle.h"
-#include "SecurityPolicy.h"
-
 #include "qwebelement_p.h"
-#include <JavaScriptCore/runtime/InitializeThreading.h>
+
+#include <JavaScriptCore/InitializeThreading.h>
 #include <QPixmap>
+#include <WebCore/Image.h>
+#include <WebCore/MemoryCache.h>
+#include <WebCore/RuntimeEnabledFeatures.h>
+#include <WebCore/SecurityPolicy.h>
 #include <wtf/MainThread.h>
+#include <wtf/RunLoop.h>
 
 namespace WebKit {
 
