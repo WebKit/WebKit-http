@@ -35,6 +35,7 @@
 #include <JavaScriptCore/InitializeThreading.h>
 #include <QPixmap>
 #include <WebCore/Image.h>
+#include <WebCore/LogInitialization.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/SecurityPolicy.h>
@@ -83,7 +84,7 @@ Q_DECL_EXPORT void initializeWebCoreQt()
         return;
 
 #if !LOG_DISABLED
-    WebCore::initializeLoggingChannelsIfNecessary();
+    WebCore::initializeLogChannelsIfNecessary();
 #endif // !LOG_DISABLED
     JSC::initializeThreading();
     WTF::initializeMainThread();
