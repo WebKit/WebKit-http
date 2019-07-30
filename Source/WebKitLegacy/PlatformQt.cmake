@@ -32,12 +32,19 @@ endif ()
 
 QTWEBKIT_SKIP_AUTOMOC(WebKitLegacy)
 
+set(QtWebKit_FRAMEWORK_HEADERS_DIR "${CMAKE_BINARY_DIR}/include/QtWebKit")
+set(QtWebKitWidgets_FRAMEWORK_HEADERS_DIR "${CMAKE_BINARY_DIR}/include/QtWebKitWidgets")
+
 list(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
-    "${WEBKITLEGACY_DIR}/Storage"
-    "${WEBKITLEGACY_DIR}/qt"
+    "${CMAKE_BINARY_DIR}/include"
     "${WEBKITLEGACY_DIR}/qt/Api"
     "${WEBKITLEGACY_DIR}/qt/WebCoreSupport"
+)
+
+list(APPEND WebKitLegacy_PRIVATE_INCLUDE_DIRECTORIES
+    "${WEBKITLEGACY_DIR}/Storage"
     "${WEBKITLEGACY_DIR}/win/Plugins"
+    "${WebKitLegacy_DERIVED_SOURCES_DIR}"
 )
 
 # This files are not really port-independent
@@ -186,7 +193,7 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
     endif ()
 
     if (WIN32)
-        list(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
+        list(APPEND WebKitLegacy_PRIVATE_INCLUDE_DIRECTORIES
             ${WEBCORE_DIR}/platform/win
         )
 
@@ -220,8 +227,6 @@ if (NOT SHARED_CORE)
     endif ()
 endif ()
 
-#WEBKIT_CREATE_FORWARDING_HEADERS(QtWebKit DIRECTORIES qt/Api)
-
 set(QtWebKit_PUBLIC_FRAMEWORK_HEADERS
     qt/Api/qwebdatabase.h
     qt/Api/qwebelement.h
@@ -239,7 +244,7 @@ set(QtWebKit_PUBLIC_FRAMEWORK_HEADERS
 
 WEBKIT_MAKE_FORWARDING_HEADERS(WebKitLegacy
     TARGET_NAME QtWebKitFrameworkHeaders
-    DESTINATION ${WebKitLegacy_FRAMEWORK_HEADERS_DIR}/QtWebKit
+    DESTINATION ${QtWebKit_FRAMEWORK_HEADERS_DIR}
     FILES ${QtWebKit_PUBLIC_FRAMEWORK_HEADERS}
     FLATTENED
 )
@@ -268,7 +273,7 @@ ecm_generate_headers(
     RELATIVE
         qt/Api
     OUTPUT_DIR
-        "${FORWARDING_HEADERS_DIR}/QtWebKit"
+        ${QtWebKit_FRAMEWORK_HEADERS_DIR}
     REQUIRED_HEADERS
         QtWebKit_HEADERS
 )
@@ -279,16 +284,16 @@ set(WebKitLegacy_PUBLIC_HEADERS
     ${QtWebKit_FORWARDING_HEADERS}
 )
 
-generate_version_header("${FORWARDING_HEADERS_DIR}/QtWebKit/qtwebkitversion.h"
+generate_version_header("${QtWebKit_FRAMEWORK_HEADERS_DIR}/qtwebkitversion.h"
     WebKitLegacy_PUBLIC_HEADERS
     QTWEBKIT
 )
 
-generate_header("${FORWARDING_HEADERS_DIR}/QtWebKit/QtWebKitVersion"
+generate_header("${QtWebKit_FRAMEWORK_HEADERS_DIR}/QtWebKitVersion"
     WebKitLegacy_PUBLIC_HEADERS
     "#include \"qtwebkitversion.h\"")
 
-generate_header("${FORWARDING_HEADERS_DIR}/QtWebKit/QtWebKitDepends"
+generate_header("${QtWebKit_FRAMEWORK_HEADERS_DIR}/QtWebKitDepends"
     WebKitLegacy_PUBLIC_HEADERS
     "#ifdef __cplusplus /* create empty PCH in C mode */
 #include <QtCore/QtCore>
@@ -495,9 +500,18 @@ endif ()
 
 ############     WebKitWidgets     ############
 
+WEBKIT_FRAMEWORK_DECLARE(WebKitWidgets)
+
 set(WebKitWidgets_INCLUDE_DIRECTORIES
-    "${WEBKIT_DIR}/qt/WidgetApi"
-    "${WEBKIT_DIR}/qt/WidgetSupport"
+    "${CMAKE_BINARY_DIR}/include"
+)
+
+set(WebKitWidgets_PRIVATE_INCLUDE_DIRECTORIES
+    "${CMAKE_BINARY_DIR}"
+    "${WEBKITLEGACY_DIR}/qt/WidgetApi"
+    "${WEBKITLEGACY_DIR}/qt/WidgetSupport"
+    "${WTF_FRAMEWORK_HEADERS_DIR}"
+    "${WebCore_PRIVATE_FRAMEWORK_HEADERS_DIR}"
 )
 
 set(WebKitWidgets_SOURCES
@@ -545,7 +559,21 @@ if (USE_QT_MULTIMEDIA)
     )
 endif ()
 
-WEBKIT_CREATE_FORWARDING_HEADERS(QtWebKitWidgets DIRECTORIES qt/WidgetApi)
+set(QtWebKitWidgets_PUBLIC_FRAMEWORK_HEADERS
+    qt/WidgetApi/qgraphicswebview.h
+    qt/WidgetApi/qwebframe.h
+    qt/WidgetApi/qwebinspector.h
+    qt/WidgetApi/qwebpage.h
+    qt/WidgetApi/qwebview.h
+)
+
+WEBKIT_MAKE_FORWARDING_HEADERS(WebKitWidgets
+    TARGET_NAME QtWebKitWidgetsFrameworkHeaders
+    DESTINATION ${QtWebKitWidgets_FRAMEWORK_HEADERS_DIR}
+    FILES ${QtWebKitWidgets_PUBLIC_FRAMEWORK_HEADERS}
+    FLATTENED
+)
+add_dependencies(QtWebKitWidgetsFrameworkHeaders QtWebKitFrameworkHeaders)
 
 ecm_generate_headers(
     QtWebKitWidgets_FORWARDING_HEADERS
@@ -565,7 +593,7 @@ ecm_generate_headers(
     RELATIVE
         qt/WidgetApi
     OUTPUT_DIR
-        "${FORWARDING_HEADERS_DIR}/QtWebKitWidgets"
+        ${QtWebKitWidgets_FRAMEWORK_HEADERS_DIR}
     REQUIRED_HEADERS
         QtWebKitWidgets_HEADERS
 )
@@ -575,16 +603,16 @@ set(WebKitWidgets_PUBLIC_HEADERS
     ${QtWebKitWidgets_FORWARDING_HEADERS}
 )
 
-generate_version_header("${FORWARDING_HEADERS_DIR}/QtWebKitWidgets/qtwebkitwidgetsversion.h"
+generate_version_header("${QtWebKitWidgets_FRAMEWORK_HEADERS_DIR}/qtwebkitwidgetsversion.h"
     WebKitWidgets_PUBLIC_HEADERS
     QTWEBKITWIDGETS
 )
 
-generate_header("${FORWARDING_HEADERS_DIR}/QtWebKitWidgets/QtWebKitWidgetsVersion"
+generate_header("${QtWebKitWidgets_FRAMEWORK_HEADERS_DIR}/QtWebKitWidgetsVersion"
     WebKitWidgets_PUBLIC_HEADERS
     "#include \"qtwebkitwidgetsversion.h\"")
 
-generate_header("${FORWARDING_HEADERS_DIR}/QtWebKitWidgets/QtWebKitWidgetsDepends"
+generate_header("${QtWebKitWidgets_FRAMEWORK_HEADERS_DIR}/QtWebKitWidgetsDepends"
     WebKitWidgets_PUBLIC_HEADERS
     "#ifdef __cplusplus /* create empty PCH in C mode */
 #include <QtCore/QtCore>
@@ -733,7 +761,6 @@ endif ()
 
 set(WebKitWidgets_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKitWidgets/private)
 
-WEBKIT_FRAMEWORK_DECLARE(WebKitWidgets)
 WEBKIT_FRAMEWORK(WebKitWidgets)
 add_dependencies(WebKitWidgets WebKitLegacy)
 set_target_properties(WebKitWidgets PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
