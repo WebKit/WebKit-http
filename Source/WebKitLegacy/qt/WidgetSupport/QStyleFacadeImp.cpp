@@ -32,7 +32,7 @@
 #include <QStyleOption>
 
 #include <QWebPageAdapter.h>
-#include <QWebPageClient.h>
+#include <WebCore/QWebPageClient.h>
 
 using namespace WebCore;
 

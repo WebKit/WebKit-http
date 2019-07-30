@@ -21,7 +21,6 @@
 #ifndef PageClientQt_h
 #define PageClientQt_h
 
-#include "QWebPageClient.h"
 #include "qgraphicswebview.h"
 #include "qwebframe.h"
 #include "qwebframe_p.h"
@@ -35,6 +34,7 @@
 #include <qstyleoption.h>
 #include <qtimer.h>
 #include <qwidget.h>
+#include <WebCore/QWebPageClient.h>
 
 namespace WebCore {
 

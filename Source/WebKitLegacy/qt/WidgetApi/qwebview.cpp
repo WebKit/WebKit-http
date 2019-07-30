@@ -21,7 +21,6 @@
 
 #include "qwebview.h"
 
-#include "QWebPageClient.h"
 #include "qwebframe.h"
 #include "qwebpage_p.h"
 #ifndef QT_NO_ACCESSIBILITY
@@ -35,6 +34,7 @@
 #if HAVE(QTPRINTSUPPORT)
 #include <qprinter.h>
 #endif
+#include <WebCore/QWebPageClient.h>
 
 class QWebViewPrivate {
 public:

@@ -27,6 +27,7 @@
 #include "qwebpage.h"
 
 #include <QPointer>
+#include <memory>
 #include <qevent.h>
 #include <qgesture.h>
 #include <qgraphicssceneevent.h>

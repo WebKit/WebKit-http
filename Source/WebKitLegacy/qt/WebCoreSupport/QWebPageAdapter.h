@@ -23,6 +23,7 @@
 #include "qwebelement.h"
 #include "qwebhistory.h"
 
+#include <memory>
 #include <qbasictimer.h>
 #include <qevent.h>
 #include <qnetworkrequest.h>

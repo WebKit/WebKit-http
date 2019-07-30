@@ -23,11 +23,11 @@
 #ifndef QT_NO_COMBOBOX
 
 #include "QWebPageAdapter.h"
-#include "QWebPageClient.h"
 #include "QtWebComboBox.h"
 #include "qgraphicswebview.h"
 #include <QGraphicsProxyWidget>
 #include <QtGui/QStandardItemModel>
+#include <WebCore/QWebPageClient.h>
 
 namespace WebCore {
 

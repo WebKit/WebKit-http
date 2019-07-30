@@ -20,10 +20,9 @@
 
 #include "PageClientQt.h"
 
-#include "Widget.h"
-
 #include <QGraphicsScene>
 #include <QGraphicsView>
+#include <WebCore/Widget.h>
 
 #if defined(Q_WS_X11)
 #include <QX11Info>

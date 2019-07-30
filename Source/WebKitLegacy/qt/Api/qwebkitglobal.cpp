@@ -19,7 +19,7 @@
 
 #include "qwebkitglobal.h"
 
-#include <WebKitLegacy/WebKitVersion.h>
+#include "WebKitVersion.h"
 
 /*!
     \relates QWebPage

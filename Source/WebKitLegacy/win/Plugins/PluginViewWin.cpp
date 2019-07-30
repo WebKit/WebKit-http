@@ -84,8 +84,8 @@
 #endif
 
 #if PLATFORM(QT)
-#include "QWebPageClient.h"
 #include <QWindow>
+#include <WebCore/QWebPageClient.h>
 #endif
 
 static inline HWND windowHandleForPageClient(PlatformPageClient client)
