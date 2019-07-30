@@ -772,7 +772,7 @@ if (MSVC AND NOT QT_STATIC_BUILD)
     install(FILES $<TARGET_PDB_FILE:WebKitWidgets> DESTINATION "${BIN_INSTALL_DIR}" OPTIONAL)
 endif ()
 
-if (NOT MSVC AND WIN32)
+if (NOT MSVC)
     ADD_PREFIX_HEADER(WebKitWidgets "qt/WebKitWidgetsPrefix.h")
 endif ()
 
