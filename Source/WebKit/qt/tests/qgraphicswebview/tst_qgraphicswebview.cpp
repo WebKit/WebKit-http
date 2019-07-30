@@ -190,6 +190,7 @@ void tst_QGraphicsWebView::widgetsRenderingThroughCache()
     // 1. Reference without tiling.
     webView->settings()->setAttribute(QWebSettings::TiledBackingStoreEnabled, false);
     QPixmap referencePixmap(view.size());
+    QApplication::processEvents();
     widget->render(&referencePixmap);
 
     // 2. With tiling.
