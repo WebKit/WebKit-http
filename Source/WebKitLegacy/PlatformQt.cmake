@@ -61,6 +61,7 @@ list(APPEND WebKitLegacy_SOURCES
     qt/Api/qwebsecurityorigin.cpp
     qt/Api/qwebsettings.cpp
 
+    qt/WebCoreSupport/BackForwardList.cpp
     qt/WebCoreSupport/ChromeClientQt.cpp
     qt/WebCoreSupport/ContextMenuClientQt.cpp
     qt/WebCoreSupport/DragClientQt.cpp
