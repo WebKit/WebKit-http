@@ -1,19 +1,9 @@
 set(QtTestBrowser_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
-    "${CMAKE_SOURCE_DIR}/Source"
-    "${DERIVED_SOURCES_WEBKIT_DIR}"
-    "${FORWARDING_HEADERS_DIR}"
-    "${FORWARDING_HEADERS_DIR}/QtWebKit"
-    "${FORWARDING_HEADERS_DIR}/QtWebKitWidgets"
-    "${JAVASCRIPTCORE_DIR}"
-    "${JAVASCRIPTCORE_DIR}/runtime"
-    "${WEBCORE_DIR}"
-    "${WEBCORE_DIR}/platform"
-    "${WEBCORE_DIR}/platform/qt"
-    "${WEBKIT_DIR}/qt/Api"
-    "${WEBKIT_DIR}/qt/WebCoreSupport"
-    "${WEBKIT_DIR}/qt/WidgetApi"
-    "${WTF_DIR}"
+    "${CMAKE_BINARY_DIR}/include"
+    "${CMAKE_BINARY_DIR}/include/QtWebKit"
+    "${CMAKE_BINARY_DIR}/include/QtWebKitWidgets"
+    "${WTF_FRAMEWORK_HEADERS_DIR}"
 )
 
 set(QtTestBrowser_SOURCES
