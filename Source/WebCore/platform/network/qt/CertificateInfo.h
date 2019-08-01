@@ -26,17 +26,40 @@
 #ifndef CertificateInfo_h
 #define CertificateInfo_h
 
+#include "CertificateInfoBase.h"
 #include "NotImplemented.h"
+#include <wtf/persistence/PersistentCoders.h>
 
 namespace WebCore {
 
-class CertificateInfo {
+class CertificateInfo : public CertificateInfoBase {
 public:
     CertificateInfo() { }
 
     bool containsNonRootSHA1SignedCertificate() const { notImplemented(); return false; }
+    Optional<SummaryInfo> summaryInfo() const { notImplemented(); return WTF::nullopt; }
+    bool isEmpty() const { notImplemented(); return true; }
 };
 
-}
+} // namespace WebCore
+
+namespace WTF {
+namespace Persistence {
+
+template<> struct Coder<WebCore::CertificateInfo> {
+    static void encode(Encoder&, const WebCore::CertificateInfo&)
+    {
+        notImplemented();
+    }
+
+    static bool decode(Decoder&, WebCore::CertificateInfo&)
+    {
+        notImplemented();
+        return false;
+    }
+};
+
+} // namespace WTF::Persistence
+} // namespace WTF
 
 #endif
