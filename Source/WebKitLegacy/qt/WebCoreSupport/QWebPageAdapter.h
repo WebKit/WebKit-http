@@ -299,7 +299,7 @@ public:
 
     static QWebPageAdapter* kit(WebCore::Page*);
     WebCore::ViewportArguments viewportArguments() const;
-    void registerUndoStep(WTF::Ref<WebCore::UndoStep>&&);
+    void registerUndoStep(WebCore::UndoStep&);
 
     void setNetworkAccessManager(QNetworkAccessManager*);
     QNetworkAccessManager* networkAccessManager();

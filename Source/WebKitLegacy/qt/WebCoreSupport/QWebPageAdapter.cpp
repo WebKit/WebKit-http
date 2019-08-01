@@ -20,76 +20,32 @@
 
 #include "QWebPageAdapter.h"
 
-#include "BackForwardController.h"
-#include "CSSComputedStyleDeclaration.h"
-#include "CSSParser.h"
-#include "Chrome.h"
+#include "BackForwardList.h"
 #include "ChromeClientQt.h"
-#include "ClientRect.h"
-#include "ContextMenu.h"
 #include "ContextMenuClientQt.h"
-#include "ContextMenuController.h"
-#include "DocumentLoader.h"
 #include "DragClientQt.h"
-#include "DragController.h"
-#include "DragData.h"
-#include "Editor.h"
 #include "EditorClientQt.h"
-#include "EventHandler.h"
-#include "FocusController.h"
-#include "FrameLoadRequest.h"
 #include "FrameLoaderClientQt.h"
-#include "FrameSelection.h"
-#include "FrameView.h"
 #include "GeolocationPermissionClientQt.h"
-#include "HTMLFormElement.h"
-#include "HTMLFrameOwnerElement.h"
-#include "HTMLInputElement.h"
-#include "HTMLMediaElement.h"
-#include "HitTestResult.h"
 #include "InitWebCoreQt.h"
 #include "InspectorClientQt.h"
-#include "InspectorController.h"
 #include "InspectorServerQt.h"
-#include "LocalizedStrings.h"
-#include "MIMETypeRegistry.h"
-#include "MainFrame.h"
-#include "MemoryCache.h"
-#include "NetworkingContext.h"
-#include "NodeList.h"
 #include "NotificationPresenterClientQt.h"
-#include "PageConfiguration.h"
-#include "PageGroup.h"
-#include "Pasteboard.h"
-#include "PlatformKeyboardEvent.h"
-#include "PlatformMouseEvent.h"
-#include "PlatformTouchEvent.h"
-#include "PlatformWheelEvent.h"
+#include "PageStorageSessionProvider.h"
 #include "PluginDatabase.h"
+#include "PluginInfoProviderQt.h"
 #include "PluginPackage.h"
-#include "ProgressTracker.h"
 #include "ProgressTrackerClientQt.h"
 #include "QWebFrameAdapter.h"
-#include "RenderTextControl.h"
-#include "SchemeRegistry.h"
-#include "Scrollbar.h"
-#include "ScrollbarTheme.h"
-#include "Settings.h"
-#include "TextIterator.h"
 #include "UndoStepQt.h"
-#include "UserAgentQt.h"
-#include "UserContentController.h"
-#include "UserGestureIndicator.h"
 #include "VisitedLinkStoreQt.h"
 #include "WebDatabaseProvider.h"
 #include "WebEventConversion.h"
 #include "WebKitVersion.h"
 #include "WebStorageNamespaceProvider.h"
-#include "WindowFeatures.h"
 #include "qwebhistory_p.h"
 #include "qwebpluginfactory.h"
 #include "qwebsettings.h"
-#include <Page.h>
 #include <QBitArray>
 #include <QGuiApplication>
 #include <QMimeData>
@@ -99,6 +55,48 @@
 #include <QTextCharFormat>
 #include <QTouchEvent>
 #include <QWheelEvent>
+#include <WebCore/ApplicationCacheStorage.h>
+#include <WebCore/BackForwardController.h>
+#include <WebCore/CacheStorageProvider.h>
+#include <WebCore/Chrome.h>
+#include <WebCore/ContextMenu.h>
+#include <WebCore/ContextMenuController.h>
+#include <WebCore/CookieJar.h>
+#include <WebCore/DocumentLoader.h>
+#include <WebCore/DragController.h>
+#include <WebCore/Editor.h>
+#include <WebCore/EventHandler.h>
+#include <WebCore/FocusController.h>
+#include <WebCore/FrameLoadRequest.h>
+#include <WebCore/FrameSelection.h>
+#include <WebCore/HTMLFormElement.h>
+#include <WebCore/HTMLInputElement.h>
+#include <WebCore/HitTestResult.h>
+#include <WebCore/InspectorController.h>
+#include <WebCore/LibWebRTCProvider.h>
+#include <WebCore/LocalizedStrings.h>
+#include <WebCore/MIMETypeRegistry.h>
+#include <WebCore/MemoryCache.h>
+#include <WebCore/NavigationAction.h>
+#include <WebCore/NetworkingContext.h>
+#include <WebCore/PageConfiguration.h>
+#include <WebCore/PlatformKeyboardEvent.h>
+#include <WebCore/PlatformMouseEvent.h>
+#include <WebCore/ProgressTracker.h>
+#include <WebCore/QWebPageClient.h>
+#include <WebCore/RenderTextControl.h>
+#include <WebCore/SchemeRegistry.h>
+#include <WebCore/ScrollbarTheme.h>
+#include <WebCore/Settings.h>
+#include <WebCore/SocketProvider.h>
+#include <WebCore/TextIterator.h>
+#include <WebCore/UserAgentQt.h>
+#include <WebCore/UserContentController.h>
+#include <WebCore/UserGestureIndicator.h>
+#include <WebCore/VisibilityState.h>
+#include <WebCore/WindowFeatures.h>
+#include <WebCore/markup.h>
+#include <wtf/UniqueRef.h>
 
 #if ENABLE(DEVICE_ORIENTATION)
 #include "DeviceMotionClientMock.h"
@@ -162,14 +160,14 @@ static inline Qt::DropAction dragOpToDropAction(unsigned actions)
     return result;
 }
 
-static inline QWebPageAdapter::VisibilityState webCoreVisibilityStateToWebPageVisibilityState(WebCore::PageVisibilityState state)
+static inline QWebPageAdapter::VisibilityState webCoreVisibilityStateToWebPageVisibilityState(WebCore::VisibilityState state)
 {
     switch (state) {
-    case WebCore::PageVisibilityStatePrerender:
+    case WebCore::VisibilityState::Prerender:
         return QWebPageAdapter::VisibilityStatePrerender;
-    case WebCore::PageVisibilityStateVisible:
+    case WebCore::VisibilityState::Visible:
         return QWebPageAdapter::VisibilityStateVisible;
-    case WebCore::PageVisibilityStateHidden:
+    case WebCore::VisibilityState::Hidden:
         return QWebPageAdapter::VisibilityStateHidden;
     default:
         ASSERT(false);
@@ -179,15 +177,17 @@ static inline QWebPageAdapter::VisibilityState webCoreVisibilityStateToWebPageVi
 
 static WebCore::FrameLoadRequest frameLoadRequest(const QUrl &url, WebCore::Frame& frame)
 {
-    return WebCore::FrameLoadRequest(frame.document()->securityOrigin(),
+    return WebCore::FrameLoadRequest(*frame.document(), frame.document()->securityOrigin(),
         WebCore::ResourceRequest(url, frame.loader().outgoingReferrer()),
+        { },
         LockHistory::No,
         LockBackForwardList::No,
         MaybeSendReferrer,
         // FIXME: Are these arguments right for all call sites?
         AllowNavigationToInvalidURL::Yes,
         NewFrameOpenerPolicy::Allow,
-        ShouldOpenExternalURLsPolicy::ShouldAllow
+        ShouldOpenExternalURLsPolicy::ShouldAllow,
+        InitiatedByMainFrame::Yes
         );
 }
 
@@ -198,7 +198,7 @@ static void openNewWindow(const QUrl& url, Frame& frame)
         NavigationAction action;
         FrameLoadRequest request = frameLoadRequest(url, frame);
         if (Page* newPage = oldPage->chrome().createWindow(frame, request, features, action)) {
-            newPage->mainFrame().loader().loadFrameRequest(request, /*event*/ 0, /*FormState*/ 0);
+            newPage->mainFrame().loader().loadFrameRequest(WTFMove(request), /*event*/ nullptr, /*FormState*/ nullptr);
             newPage->chrome().show();
         }
     }
@@ -234,20 +234,29 @@ void QWebPageAdapter::initializeWebCorePage()
 #if ENABLE(GEOLOCATION) || ENABLE(DEVICE_ORIENTATION)
     const bool useMock = QWebPageAdapter::drtRun;
 #endif
-    PageConfiguration pageConfiguration;
+    auto storageProvider = PageStorageSessionProvider::create();
+    PageConfiguration pageConfiguration {
+        makeUniqueRef<EditorClientQt>(this),
+        SocketProvider::create(),
+        LibWebRTCProvider::create(),
+        CacheStorageProvider::create(),
+        BackForwardList::create(*this),
+        CookieJar::create(storageProvider.copyRef())
+    };
+    pageConfiguration.applicationCacheStorage = ApplicationCacheStorage::create({ }, { }); // QTFIXME
     pageConfiguration.chromeClient = new ChromeClientQt(this);
     pageConfiguration.contextMenuClient = new ContextMenuClientQt();
-    pageConfiguration.editorClient = new EditorClientQt(this);
     pageConfiguration.dragClient = new DragClientQt(pageConfiguration.chromeClient);
     pageConfiguration.inspectorClient = new InspectorClientQt(this);
     pageConfiguration.loaderClientForMainFrame = new FrameLoaderClientQt();
     pageConfiguration.progressTrackerClient = new ProgressTrackerClientQt(this);
     pageConfiguration.databaseProvider = &WebDatabaseProvider::singleton();
-    pageConfiguration.storageNamespaceProvider = WebStorageNamespaceProvider::create(
+    pageConfiguration.pluginInfoProvider = &WebKit::PluginInfoProviderQt::singleton();
+    pageConfiguration.storageNamespaceProvider = WebKit::WebStorageNamespaceProvider::create(
         QWebSettings::globalSettings()->localStoragePath());
-    pageConfiguration.userContentController = &userContentProvider();
+    pageConfiguration.userContentProvider = &userContentProvider();
     pageConfiguration.visitedLinkStore = &VisitedLinkStoreQt::singleton();
-    page = new Page(pageConfiguration);
+    page = new Page(WTFMove(pageConfiguration));
 
 #if ENABLE(GEOLOCATION)
     if (useMock) {
@@ -294,7 +303,7 @@ void QWebPageAdapter::initializeWebCorePage()
     WebCore::provideNotification(page, NotificationPresenterClientQt::notificationPresenter());
 #endif
 
-    history.d = new QWebHistoryPrivate(static_cast<WebCore::BackForwardList*>(page->backForward().client()));
+    history.d = new QWebHistoryPrivate(static_cast<BackForwardList*>(&page->backForward().client()));
 }
 
 QWebPageAdapter::~QWebPageAdapter()
@@ -331,9 +340,9 @@ ViewportArguments QWebPageAdapter::viewportArguments() const
 }
 
 
-void QWebPageAdapter::registerUndoStep(WTF::Ref<WebCore::UndoStep>&& step)
+void QWebPageAdapter::registerUndoStep(UndoStep& step)
 {
-    createUndoStep(QSharedPointer<UndoStepQt>(new UndoStepQt(WTFMove(step))));
+    createUndoStep(QSharedPointer<UndoStepQt>(new UndoStepQt(step)));
 }
 
 void QWebPageAdapter::setVisibilityState(VisibilityState state)
@@ -396,7 +405,7 @@ QString QWebPageAdapter::selectedHtml() const
     RefPtr<Range> range = page->focusController().focusedOrMainFrame().editor().selectedRange();
     if (!range)
         return QString();
-    return range->toHTML();
+    return serializePreservingVisualAppearance(*range);
 }
 
 bool QWebPageAdapter::isContentEditable() const
@@ -420,28 +429,28 @@ void QWebPageAdapter::setContentEditable(bool editable)
 
 bool QWebPageAdapter::findText(const QString& subString, FindFlag options)
 {
-    ::WebCore::FindOptions webCoreFindOptions = 0;
+    WebCore::FindOptions webCoreFindOptions;
 
     if (!(options & FindCaseSensitively))
-        webCoreFindOptions |= WebCore::CaseInsensitive;
+        webCoreFindOptions.add(WebCore::CaseInsensitive);
 
     if (options & FindBackward)
-        webCoreFindOptions |= WebCore::Backwards;
+        webCoreFindOptions.add(WebCore::Backwards);
 
     if (options & FindWrapsAroundDocument)
-        webCoreFindOptions |= WebCore::WrapAround;
+        webCoreFindOptions.add(WebCore::WrapAround);
 
     if (options & FindAtWordBeginningsOnly)
-        webCoreFindOptions |= WebCore::AtWordStarts;
+        webCoreFindOptions.add(WebCore::AtWordStarts);
 
     if (options & TreatMedialCapitalAsWordBeginning)
-        webCoreFindOptions |= WebCore::TreatMedialCapitalAsWordStart;
+        webCoreFindOptions.add(WebCore::TreatMedialCapitalAsWordStart);
 
     if (options & FindBeginsInSelection)
-        webCoreFindOptions |= WebCore::StartInSelection;
+        webCoreFindOptions.add(WebCore::StartInSelection);
 
     if (options & FindAtWordEndingsOnly)
-        webCoreFindOptions |= WebCore::AtWordEnds;
+        webCoreFindOptions.add(WebCore::AtWordEnds);
 
     if (options & HighlightAllOccurrences) {
         if (subString.isEmpty()) {
@@ -456,7 +465,7 @@ bool QWebPageAdapter::findText(const QString& subString, FindFlag options)
         Frame* frame = page->mainFrame().tree().firstChild();
         while (frame) {
             frame->selection().clear();
-            frame = frame->tree().traverseNextWithWrap(false);
+            frame = frame->tree().traverseNext(CanWrap::No);
         }
     }
 
@@ -674,7 +683,7 @@ void QWebPageAdapter::inputMethodEvent(QInputMethodEvent *ev)
 
     Node* node = 0;
     if (frame.selection().selection().rootEditableElement())
-        node = frame.selection().selection().rootEditableElement()->deprecatedShadowAncestorNode();
+        node = frame.selection().selection().rootEditableElement()->shadowHost();
 
     Vector<CompositionUnderline> underlines;
     bool hasSelection = false;
@@ -683,9 +692,16 @@ void QWebPageAdapter::inputMethodEvent(QInputMethodEvent *ev)
         const QInputMethodEvent::Attribute& a = ev->attributes().at(i);
         switch (a.type) {
         case QInputMethodEvent::TextFormat: {
+            Color color = Color::black;
+            CompositionUnderlineColor compositionUnderlineColor = CompositionUnderlineColor::TextColor;
+
             QTextCharFormat textCharFormat = a.value.value<QTextFormat>().toCharFormat();
             QColor qcolor = textCharFormat.underlineColor();
-            underlines.append(CompositionUnderline(qMin(a.start, (a.start + a.length)), qMax(a.start, (a.start + a.length)), Color(makeRGBA(qcolor.red(), qcolor.green(), qcolor.blue(), qcolor.alpha())), false));
+            if (qcolor.isValid()) {
+                color = qcolor;
+                compositionUnderlineColor = CompositionUnderlineColor::GivenColor;
+            }
+            underlines.append(CompositionUnderline(qMin(a.start, (a.start + a.length)), qMax(a.start, (a.start + a.length)), compositionUnderlineColor, color, false));
             break;
         }
         case QInputMethodEvent::Cursor: {
@@ -774,7 +790,7 @@ QVariant QWebPageAdapter::inputMethodQuery(Qt::InputMethodQuery property) const
     }
     case Qt::ImFont: {
         if (renderTextControl) {
-            RenderStyle& renderStyle = renderTextControl->style();
+            const auto& renderStyle = renderTextControl->style();
             return QVariant(QFont(renderStyle.fontCascade().syntheticFont()));
         }
         return QVariant(QFont());
@@ -844,8 +860,7 @@ void QWebPageAdapter::dynamicPropertyChangeEvent(QObject* obj, QDynamicPropertyC
         }
     } else if (event->propertyName() == "_q_deadDecodedDataDeletionInterval") {
         double interval = obj->property("_q_deadDecodedDataDeletionInterval").toDouble();
-        MemoryCache::singleton().setDeadDecodedDataDeletionInterval(
-                std::chrono::milliseconds { static_cast<std::chrono::milliseconds::rep>(interval * 1000) });
+        MemoryCache::singleton().setDeadDecodedDataDeletionInterval(Seconds(interval));
     }  else if (event->propertyName() == "_q_useNativeVirtualKeyAsDOMKey") {
         m_useNativeVirtualKeyAsDOMKey = obj->property("_q_useNativeVirtualKeyAsDOMKey").toBool();
     }
@@ -953,8 +968,8 @@ QStringList QWebPageAdapter::supportedContentTypes() const
 {
     QStringList mimeTypes;
 
-    extractContentTypeFromHash(MIMETypeRegistry::getSupportedImageMIMETypes(), mimeTypes);
-    extractContentTypeFromHash(MIMETypeRegistry::getSupportedNonImageMIMETypes(), mimeTypes);
+    extractContentTypeFromHash(MIMETypeRegistry::supportedImageMIMETypes(), mimeTypes);
+    extractContentTypeFromHash(MIMETypeRegistry::supportedNonImageMIMETypes(), mimeTypes);
     if (page->settings().arePluginsEnabled())
         extractContentTypeFromPluginVector(PluginDatabase::installedPlugins()->plugins(), mimeTypes);
 
@@ -1071,7 +1086,7 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
     switch (action) {
     case OpenLink:
         if (Frame* targetFrame = hitTestResult->webCoreFrame) {
-            targetFrame->loader().loadFrameRequest(frameLoadRequest(hitTestResult->linkUrl, targetFrame), /*event*/ 0, /*FormState*/ 0);
+            targetFrame->loader().loadFrameRequest(frameLoadRequest(hitTestResult->linkUrl, *targetFrame), /*event*/ 0, /*FormState*/ 0);
             break;
         }
         // fall through
@@ -1079,7 +1094,7 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
         openNewWindow(hitTestResult->linkUrl, frame);
         break;
     case OpenLinkInThisWindow:
-        frame.loader().loadFrameRequest(frameLoadRequest(hitTestResult->linkUrl, &frame), /*event*/ 0, /*FormState*/ 0);
+        frame.loader().loadFrameRequest(frameLoadRequest(hitTestResult->linkUrl, frame), /*event*/ 0, /*FormState*/ 0);
         break;
     case OpenFrameInNewWindow: {
         URL url = frame.loader().documentLoader()->unreachableURL();
@@ -1116,18 +1131,22 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
         mainFrameAdapter().frame->loader().stopForUserCancel();
         updateNavigationActions();
         break;
-    case Reload:
-        mainFrameAdapter().frame->loader().reload(endToEndReload);
+    case Reload: {
+        OptionSet<ReloadOption> options;
+        if (endToEndReload)
+            options.add(ReloadOption::FromOrigin);
+        mainFrameAdapter().frame->loader().reload(options);
         break;
+    }
 
     case SetTextDirectionDefault:
-        editor.setBaseWritingDirection(NaturalWritingDirection);
+        editor.setBaseWritingDirection(WritingDirection::Natural);
         break;
     case SetTextDirectionLeftToRight:
-        editor.setBaseWritingDirection(LeftToRightWritingDirection);
+        editor.setBaseWritingDirection(WritingDirection::LeftToRight);
         break;
     case SetTextDirectionRightToLeft:
-        editor.setBaseWritingDirection(RightToLeftWritingDirection);
+        editor.setBaseWritingDirection(WritingDirection::RightToLeft);
         break;
 #if ENABLE(VIDEO)
     case ToggleMediaControls:
@@ -1149,7 +1168,7 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
     case ToggleVideoFullscreen:
         if (HTMLMediaElement* mediaElt = mediaElement(hitTestResult->innerNonSharedNode)) {
             if (mediaElt->isVideo() && mediaElt->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
-                UserGestureIndicator indicator(DefinitelyProcessingUserGesture);
+                UserGestureIndicator indicator(ProcessingUserGesture);
                 mediaElt->toggleFullscreenState();
             }
         }
