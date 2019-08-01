@@ -836,52 +836,7 @@ typedef struct {
 
 void QWebPageAdapter::dynamicPropertyChangeEvent(QObject* obj, QDynamicPropertyChangeEvent* event)
 {
-    if (event->propertyName() == "_q_viewMode") {
-        page->setViewMode(Page::stringToViewMode(obj->property("_q_viewMode").toString()));
-// FIXME:
-//  CustomHTMLTokenizerChunkSize -> private setting defaultParserChunkSize
-//  CustomHTMLTokenizerTimeDelay -> Settings::maxParseDuration
-//  RepaintThrottling -> "Nowadays we throttle layer flushes" (r162837)
-#if 0
-    } else if (event->propertyName() == "_q_HTMLTokenizerChunkSize") {
-        int chunkSize = obj->property("_q_HTMLTokenizerChunkSize").toInt();
-        page->setCustomHTMLTokenizerChunkSize(chunkSize);
-    } else if (event->propertyName() == "_q_HTMLTokenizerTimeDelay") {
-        double timeDelay = obj->property("_q_HTMLTokenizerTimeDelay").toDouble();
-        page->setCustomHTMLTokenizerTimeDelay(timeDelay);
-    } else if (event->propertyName() == "_q_RepaintThrottlingDeferredRepaintDelay") {
-        double p = obj->property("_q_RepaintThrottlingDeferredRepaintDelay").toDouble();
-        FrameView::setRepaintThrottlingDeferredRepaintDelay(p);
-    } else if (event->propertyName() == "_q_RepaintThrottlingnInitialDeferredRepaintDelayDuringLoading") {
-        double p = obj->property("_q_RepaintThrottlingnInitialDeferredRepaintDelayDuringLoading").toDouble();
-        FrameView::setRepaintThrottlingnInitialDeferredRepaintDelayDuringLoading(p);
-    } else if (event->propertyName() == "_q_RepaintThrottlingMaxDeferredRepaintDelayDuringLoading") {
-        double p = obj->property("_q_RepaintThrottlingMaxDeferredRepaintDelayDuringLoading").toDouble();
-        FrameView::setRepaintThrottlingMaxDeferredRepaintDelayDuringLoading(p);
-    } else if (event->propertyName() == "_q_RepaintThrottlingDeferredRepaintDelayIncrementDuringLoading") {
-        double p = obj->property("_q_RepaintThrottlingDeferredRepaintDelayIncrementDuringLoading").toDouble();
-        FrameView::setRepaintThrottlingDeferredRepaintDelayIncrementDuringLoading(p);
-    } else if (event->propertyName() == "_q_RepaintThrottlingPreset") {
-        static const QRepaintThrottlingPreset presets[] = {
-            {   "NoThrottling",     0,      0,      0,      0 },
-            {   "Legacy",       0.025,      0,    2.5,    0.5 },
-            {   "Minimal",       0.01,      0,      1,    0.2 },
-            {   "Medium",       0.025,      1,      5,    0.5 },
-            {   "Heavy",          0.1,      2,     10,      1 }
-        };
-
-        QString p = obj->property("_q_RepaintThrottlingPreset").toString();
-        for (size_t i = 0; i < sizeof(presets) / sizeof(presets[0]); i++) {
-            if (p == QLatin1String(presets[i].name)) {
-                FrameView::setRepaintThrottlingDeferredRepaintDelay(presets[i].deferredRepaintDelay);
-                FrameView::setRepaintThrottlingnInitialDeferredRepaintDelayDuringLoading(presets[i].initialDeferredRepaintDelayDuringLoading);
-                FrameView::setRepaintThrottlingMaxDeferredRepaintDelayDuringLoading(presets[i].maxDeferredRepaintDelayDuringLoading);
-                FrameView::setRepaintThrottlingDeferredRepaintDelayIncrementDuringLoading(presets[i].deferredRepaintDelayIncrementDuringLoading);
-                break;
-            }
-        }
-#endif
-    } else if (event->propertyName() == "_q_webInspectorServerPort") {
+    if (event->propertyName() == "_q_webInspectorServerPort") {
         QVariant port = obj->property("_q_webInspectorServerPort");
         if (port.isValid()) {
             InspectorServerQt* inspectorServer = InspectorServerQt::server();
