@@ -32,13 +32,18 @@ namespace WebCore {
 class FontDescription;
 class FontPlatformData;
 class SharedBuffer;
+struct FontSelectionSpecifiedCapabilities;
+struct FontVariantSettings;
+
+template <typename T> class FontTaggedSettings;
+typedef FontTaggedSettings<int> FontFeatureSettings;
 
 struct FontCustomPlatformData {
     WTF_MAKE_NONCOPYABLE(FontCustomPlatformData); WTF_MAKE_FAST_ALLOCATED;
 public:
     FontCustomPlatformData() { }
 
-    FontPlatformData fontPlatformData(const FontDescription&, bool bold, bool italic);
+    FontPlatformData fontPlatformData(const FontDescription&, bool bold, bool italic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities);
 
     static bool supportsFormat(const String&);
 

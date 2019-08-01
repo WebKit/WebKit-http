@@ -320,12 +320,13 @@ std::unique_ptr<DisplayList::DisplayList> FontCascade::displayListForTextRun(Gra
     if (codePathToUse != Complex && (enableKerning() || requiresShaping()) && (from || destination != run.length()))
         codePathToUse = Complex;
     
-#if PLATFORM(QT)
-    if (codePathToUse == Complex) {
-        drawComplexText(context, run, point, from, to);
-        return 0;
-    }
-#endif
+    // QTFIXME We cannot produce DisplayList in this way!
+//#if PLATFORM(QT)
+//    if (codePathToUse == Complex) {
+//        drawComplexText(context, run, point, from, to);
+//        return 0;
+//    }
+//#endif
 
     GlyphBuffer glyphBuffer;
     float startX = glyphBufferForTextRun(codePathToUse, run, from, destination, glyphBuffer);

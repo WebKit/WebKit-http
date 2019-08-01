@@ -81,7 +81,7 @@ public:
 class FontPlatformData {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    FontPlatformData(float size, bool bold, bool oblique);
+    FontPlatformData(float size, bool bold, bool oblique, FontOrientation = FontOrientation::Horizontal, FontWidthVariant = FontWidthVariant::RegularWidth, TextRenderingMode = TextRenderingMode::AutoTextRendering);
     FontPlatformData(const FontDescription&, const AtomString& familyName, int wordSpacing = 0, int letterSpacing = 0);
     FontPlatformData(const FontPlatformData&, float size);
     FontPlatformData(const QRawFont& rawFont)
@@ -118,8 +118,9 @@ public:
 
     FontOrientation orientation() const { return FontOrientation::Horizontal; } // QTFIXME: Implement.
     void setOrientation(FontOrientation) { } // QTFIXME: Implement.
-    FontPlatformData cloneWithOrientation(const FontPlatformData& source, FontOrientation orientation);
+    static FontPlatformData cloneWithOrientation(const FontPlatformData& source, FontOrientation orientation);
     RefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
+    bool syntheticOblique() const { return false; } // QTFIXME: Implement.
 
     unsigned hash() const;
 
