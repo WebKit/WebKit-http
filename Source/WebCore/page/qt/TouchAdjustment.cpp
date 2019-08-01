@@ -81,10 +81,10 @@ bool nodeRespondsToTapGesture(Node* node)
         Element* element = downcast<Element>(node);
         if (element->isMouseFocusable())
             return true;
-        if (element->childrenAffectedByActive() || element->childrenAffectedByHover())
+        if (element->styleAffectedByActive() || element->childrenAffectedByHover())
             return true;
     }
-    if (RenderStyle* renderStyle = node->renderStyle()) {
+    if (const auto* renderStyle = node->renderStyle()) {
         if (renderStyle->affectedByActive() || renderStyle->affectedByHover())
             return true;
     }
