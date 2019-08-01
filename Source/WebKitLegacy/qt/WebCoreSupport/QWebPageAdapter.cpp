@@ -753,8 +753,12 @@ QVariant QWebPageAdapter::inputMethodQuery(Qt::InputMethodQuery property) const
     RenderObject* renderer = 0;
     RenderTextControl* renderTextControl = 0;
 
-    if (frame->selection().selection().rootEditableElement())
-        renderer = frame->selection().selection().rootEditableElement()->deprecatedShadowAncestorNode()->renderer();
+    if (auto* rootEditableElement = frame->selection().selection().rootEditableElement()) {
+        if (auto* shadowHost = rootEditableElement->shadowHost())
+            renderer = shadowHost->renderer();
+        else
+            renderer = rootEditableElement->renderer();
+    }
 
     if (renderer && renderer->isTextControl())
         renderTextControl = downcast<RenderTextControl>(renderer);
