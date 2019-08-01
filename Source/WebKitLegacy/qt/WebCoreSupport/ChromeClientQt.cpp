@@ -532,6 +532,13 @@ std::unique_ptr<ColorChooser> ChromeClientQt::createColorChooser(ColorChooserCli
 }
 #endif
 
+#if ENABLE(DATALIST_ELEMENT)
+std::unique_ptr<DataListSuggestionPicker> ChromeClientQt::createDataListSuggestionPicker(DataListSuggestionsClient&)
+{
+    return nullptr;
+}
+#endif
+
 void ChromeClientQt::runOpenPanel(Frame& frame, FileChooser& fileChooser)
 {
     QStringList suggestedFileNames;
@@ -730,6 +737,30 @@ RefPtr<SearchPopupMenu> ChromeClientQt::createSearchPopupMenu(PopupMenuClient& c
 
 void ChromeClientQt::attachViewOverlayGraphicsLayer(WebCore::GraphicsLayer*)
 {
+}
+
+IntPoint ChromeClientQt::accessibilityScreenToRootView(const IntPoint&) const
+{
+    return { };
+}
+
+IntRect ChromeClientQt::rootViewToAccessibilityScreen(const IntRect&) const
+{
+    return { };
+}
+
+void ChromeClientQt::didFinishLoadingImageForElement(HTMLImageElement&)
+{
+    // ?
+}
+
+void ChromeClientQt::intrinsicContentsSizeChanged(const IntSize&) const
+{
+}
+
+RefPtr<Icon> ChromeClientQt::createIconForFiles(const Vector<WTF::String>& filenames)
+{
+    return Icon::createIconForFiles(filenames);
 }
 
 } // namespace WebCore
