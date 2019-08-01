@@ -29,6 +29,7 @@
 
 #include "ChromeClientQt.h"
 
+#include "DataListSuggestionPickerQt.h"
 #include "PopupMenuQt.h"
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
@@ -535,6 +536,7 @@ std::unique_ptr<ColorChooser> ChromeClientQt::createColorChooser(ColorChooserCli
 #if ENABLE(DATALIST_ELEMENT)
 std::unique_ptr<DataListSuggestionPicker> ChromeClientQt::createDataListSuggestionPicker(DataListSuggestionsClient&)
 {
+    // QTFIXME: Implement DataListSuggestionPickerQt
     return nullptr;
 }
 #endif
