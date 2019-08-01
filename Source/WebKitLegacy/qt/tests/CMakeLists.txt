@@ -1,19 +1,5 @@
 remove_definitions(-DQT_ASCII_CAST_WARNINGS)
 
-include_directories(
-    "${CMAKE_SOURCE_DIR}/Source"
-    "${FORWARDING_HEADERS_DIR}"
-    "${WEBKIT_DIR}/qt/Api"
-    "${WEBKIT_DIR}/qt/WidgetApi"
-)
-
-include_directories(SYSTEM
-    ${ICU_INCLUDE_DIRS}
-    ${Qt5Gui_PRIVATE_INCLUDE_DIRS}
-    ${Qt5Widgets_INCLUDE_DIRS}
-    ${Qt5Test_INCLUDE_DIRS}
-)
-
 if (ENABLE_TEST_SUPPORT)
     add_definitions(-DHAVE_QTTESTSUPPORT)
 endif ()
@@ -55,7 +41,18 @@ foreach (testName ${QtWK1ApiTests})
     endif ()
 
     add_executable(tst_${testName} ${tst_${testName}_SOURCES})
-    target_include_directories(tst_${testName} PRIVATE ${testName})
+
+    target_include_directories(tst_${testName} PRIVATE
+        ${testName}
+        "${CMAKE_BINARY_DIR}/include"
+        "${CMAKE_BINARY_DIR}/include/QtWebKit"
+        "${CMAKE_BINARY_DIR}/include/QtWebKitWidgets"
+    )
+
+    target_include_directories(tst_${testName} SYSTEM PRIVATE
+        ${Qt5Gui_PRIVATE_INCLUDE_DIRS}
+    )
+
     target_link_libraries(tst_${testName} ${QtWK1ApiTests_LIBRARIES})
     set_target_properties(tst_${testName} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${QtWK1ApiTests_RUNTIME_OUTPUT_DIRECTORY} AUTOMOC ON)
 
