@@ -646,6 +646,37 @@ void EditorClientQt::overflowScrollPositionChanged()
 {
 }
 
+void EditorClientQt::didEndUserTriggeredSelectionChanges()
+{
+}
+
+void EditorClientQt::updateEditorStateAfterLayoutIfEditabilityChanged()
+{
+}
+
+DOMPasteAccessResponse EditorClientQt::requestDOMPasteAccess(const WTF::String& originIdentifier)
+{
+    return WebCore::DOMPasteAccessResponse::DeniedForGesture;
+}
+
+void EditorClientQt::canceledComposition()
+{
+}
+
+void EditorClientQt::didUpdateComposition()
+{
+}
+
+bool EditorClientQt::performTwoStepDrop(DocumentFragment&, Range& destination, bool isMove)
+{
+    return false;
+}
+
+bool EditorClientQt::canShowFontPanel() const
+{
+    return false;
+}
+
 }
 
 // vim: ts=4 sw=4 et

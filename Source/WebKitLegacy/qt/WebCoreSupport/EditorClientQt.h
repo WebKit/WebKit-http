@@ -110,6 +110,14 @@ public:
     void discardedComposition(Frame *) override;
     void overflowScrollPositionChanged() override;
 
+    void didEndUserTriggeredSelectionChanges() final;
+    void updateEditorStateAfterLayoutIfEditabilityChanged() final;
+    DOMPasteAccessResponse requestDOMPasteAccess(const WTF::String& originIdentifier) final;
+    void canceledComposition() final;
+    void didUpdateComposition() final;
+    bool performTwoStepDrop(DocumentFragment&, Range& destination, bool isMove) final;
+    bool canShowFontPanel() const final;
+
     bool isEditing() const;
 
     static bool dumpEditingCallbacks;
