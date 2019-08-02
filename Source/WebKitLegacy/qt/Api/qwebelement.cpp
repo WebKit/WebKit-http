@@ -369,8 +369,7 @@ QString QWebElement::attribute(const QString &name, const QString &defaultValue)
         return QString();
     if (m_element->hasAttribute(String(name)))
         return m_element->getAttribute(String(name)).string();
-    else
-        return defaultValue;
+    return defaultValue;
 }
 
 /*!
@@ -385,8 +384,7 @@ QString QWebElement::attributeNS(const QString &namespaceUri, const QString &nam
         return QString();
     if (m_element->hasAttributeNS(String(namespaceUri), String(name)))
         return m_element->getAttributeNS(String(namespaceUri), String(name)).string();
-    else
-        return defaultValue;
+    return defaultValue;
 }
 
 /*!
