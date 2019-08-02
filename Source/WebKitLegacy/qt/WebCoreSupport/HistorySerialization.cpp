@@ -47,8 +47,6 @@ static void encodeElement(KeyedEncoder& encoder, const FormDataElement& element)
         }, [&] (const FormDataElement::EncodedFileData& fileData) {
             encoder.encodeEnum("type", FormDataType::EncodedFile);
             encoder.encodeString("filename", fileData.filename);
-            encoder.encodeString("generatedFilename", fileData.generatedFilename);
-            encoder.encodeBool("shouldGenerateFile", fileData.shouldGenerateFile);
             encoder.encodeInt64("fileStart", fileData.fileStart);
             encoder.encodeInt64("fileLength", fileData.fileLength);
             if (fileData.expectedFileModificationTime)
@@ -85,10 +83,6 @@ static bool decodeElement(KeyedDecoder& decoder, FormDataElement& element)
     case FormDataType::EncodedFile: {
         FormDataElement::EncodedFileData fileData;
         if (!decoder.decodeString("filename", fileData.filename))
-            return false;
-        if (!decoder.decodeString("generatedFilename", fileData.generatedFilename))
-            return false;
-        if (!decoder.decodeBool("shouldGenerateFile", fileData.shouldGenerateFile))
             return false;
 
         int64_t fileStart;
