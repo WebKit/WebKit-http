@@ -27,8 +27,11 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WHLSLLexer.h"
+#include "WHLSLCodeLocation.h"
 #include "WHLSLType.h"
+#include <wtf/FastMalloc.h>
+#include <wtf/Noncopyable.h>
+#include <wtf/RefCounted.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
 
@@ -38,7 +41,9 @@ namespace WHLSL {
 
 namespace AST {
 
-class UnnamedType : public Type {
+class UnnamedType : public Type, public RefCounted<UnnamedType> {
+    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(UnnamedType);
 public:
     UnnamedType(CodeLocation location)
         : m_codeLocation(location)
@@ -46,9 +51,6 @@ public:
     }
 
     virtual ~UnnamedType() = default;
-
-    UnnamedType(const UnnamedType&) = delete;
-    UnnamedType(UnnamedType&&) = default;
 
     bool isUnnamedType() const override { return true; }
     virtual bool isTypeReference() const { return false; }
@@ -60,10 +62,10 @@ public:
     virtual const Type& unifyNode() const { return *this; }
     virtual Type& unifyNode() { return *this; }
 
-    virtual UniqueRef<UnnamedType> clone() const = 0;
-
     virtual unsigned hash() const = 0;
     virtual bool operator==(const UnnamedType&) const = 0;
+
+    virtual String toString() const = 0;
 
     const CodeLocation& codeLocation() const { return m_codeLocation; }
 

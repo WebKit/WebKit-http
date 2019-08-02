@@ -44,7 +44,10 @@ interface ID2D1DCRenderTarget;
 interface ID2D1RenderTarget;
 interface ID2D1Factory;
 interface ID2D1SolidColorBrush;
-typedef ID2D1RenderTarget PlatformGraphicsContext;
+namespace WebCore {
+class PlatformContextDirect2D;
+}
+typedef WebCore::PlatformContextDirect2D PlatformGraphicsContext;
 #elif USE(CAIRO)
 namespace WebCore {
 class PlatformContextCairo;
@@ -286,6 +289,14 @@ public:
         InvalidatingImagesWithAsyncDecodes
     };
     GraphicsContext(PaintInvalidationReasons);
+
+#if USE(DIRECT2D)
+    enum class BitmapRenderingContextType : uint8_t {
+        CPUMemory,
+        GPUMemory
+    };
+    WEBCORE_EXPORT GraphicsContext(PlatformGraphicsContext*, BitmapRenderingContextType);
+#endif
 
     WEBCORE_EXPORT bool hasPlatformContext() const;
     WEBCORE_EXPORT PlatformGraphicsContext* platformContext() const;
@@ -620,8 +631,7 @@ private:
 
 #if USE(DIRECT2D)
     void platformInit(HDC, ID2D1RenderTarget**, RECT, bool hasAlpha = false);
-    void drawWithoutShadow(const FloatRect& boundingRect, const WTF::Function<void(ID2D1RenderTarget*)>&);
-    void drawWithShadow(const FloatRect& boundingRect, const WTF::Function<void(ID2D1RenderTarget*)>&);
+    void platformInit(PlatformContextDirect2D*, BitmapRenderingContextType);
 #endif
 
     void savePlatformState();

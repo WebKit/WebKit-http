@@ -281,15 +281,35 @@ static void clearBackingSharingLayerProviders(Vector<WeakPtr<RenderLayer>>& shar
 
 void RenderLayerBacking::setBackingSharingLayers(Vector<WeakPtr<RenderLayer>>&& sharingLayers)
 {
+    bool sharingLayersChanged = m_backingSharingLayers != sharingLayers;
+    if (sharingLayersChanged) {
+        // For layers that used to share and no longer do, and are not composited, recompute repaint rects.
+        for (auto& oldSharingLayer : m_backingSharingLayers) {
+            // Layers that go from shared to composited have their repaint rects recomputed in RenderLayerCompositor::updateBacking().
+            // FIXME: Two O(n^2) traversals in this funtion. Probably OK because sharing lists are usually small, but still.
+            if (!sharingLayers.contains(oldSharingLayer) && !oldSharingLayer->isComposited())
+                oldSharingLayer->computeRepaintRectsIncludingDescendants();
+        }
+    }
+
     clearBackingSharingLayerProviders(m_backingSharingLayers);
 
     if (sharingLayers != m_backingSharingLayers)
-        setContentsNeedDisplay(); // This could be optimize to only repaint rects for changed layers.
+        setContentsNeedDisplay(); // This could be optimized to only repaint rects for changed layers.
 
+    auto oldSharingLayers = WTFMove(m_backingSharingLayers);
     m_backingSharingLayers = WTFMove(sharingLayers);
 
     for (auto& layerWeakPtr : m_backingSharingLayers)
         layerWeakPtr->setBackingProviderLayer(&m_owningLayer);
+
+    if (sharingLayersChanged) {
+        // For layers that are newly sharing, recompute repaint rects.
+        for (auto& currentSharingLayer : m_backingSharingLayers) {
+            if (!oldSharingLayers.contains(currentSharingLayer))
+                currentSharingLayer->computeRepaintRectsIncludingDescendants();
+        }
+    }
 }
 
 void RenderLayerBacking::removeBackingSharingLayer(RenderLayer& layer)
@@ -401,7 +421,8 @@ void RenderLayerBacking::adjustTiledBackingCoverage()
 {
     if (m_isFrameLayerWithTiledBacking) {
         auto tileCoverage = computePageTiledBackingCoverage(m_owningLayer);
-        tiledBacking()->setTileCoverage(tileCoverage);
+        if (auto* tiledBacking = this->tiledBacking())
+            tiledBacking->setTileCoverage(tileCoverage);
     }
 
     if (m_owningLayer.hasCompositedScrollableOverflow() && m_scrolledContentsLayer) {
@@ -2846,15 +2867,16 @@ static RefPtr<Pattern> patternForTouchAction(TouchAction touchAction, FloatSize 
 {
     auto toIndex = [](TouchAction touchAction) -> unsigned {
         switch (touchAction) {
-        case TouchAction::Manipulation:
-            return 1;
-        case TouchAction::PanX:
-            return 2;
-        case TouchAction::PanY:
-            return 3;
-        case TouchAction::PinchZoom:
-            return 4;
         case TouchAction::None:
+            return 1;
+        case TouchAction::Manipulation:
+            return 2;
+        case TouchAction::PanX:
+            return 3;
+        case TouchAction::PanY:
+            return 4;
+        case TouchAction::PinchZoom:
+            return 5;
         case TouchAction::Auto:
             break;
         }
@@ -2867,6 +2889,7 @@ static RefPtr<Pattern> patternForTouchAction(TouchAction touchAction, FloatSize 
         FloatSize phase;
     };
     static const TouchActionAndRGB actionsAndColors[] = {
+        { TouchAction::Auto, "auto"_s, { } },
         { TouchAction::None, "none"_s, { } },
         { TouchAction::Manipulation, "manip"_s, { } },
         { TouchAction::PanX, "pan-x"_s, { } },

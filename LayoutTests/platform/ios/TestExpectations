@@ -37,6 +37,7 @@ perf/accessibility-title-ui-element.html
 fullscreen
 http/tests/fullscreen
 compositing/no-compositing-when-fulll-screen-is-present.html
+webkit.org/b/200308 fast/events/touch/ios/content-observation/non-visible-content-change-in-fullscreen-mode.html [ Skip ]
 
 # WebGPU is not enabled on iOS Simulator.
 webgpu [ Skip ]
@@ -3236,8 +3237,6 @@ media/controls-after-reload.html [ Skip ]
 editing/selection/ios/select-non-editable-text-using-keyboard.html [ Skip ]
 editing/selection/ios/select-all-non-editable-text-using-keyboard.html [ Skip ]
 
-webkit.org/b/199472 fast/events/ios/keydown-keyup-keypress-keys-in-non-editable-using-chinese-keyboard.html [ Skip ]
-
 # Dark Mode is iOS 13 and later.
 css-dark-mode [ Pass ]
 css-dark-mode/older-systems [ Skip ]
@@ -3285,10 +3284,6 @@ media/video-ended-event-negative-playback.html [ Failure ]
 media/video-played-collapse.html [ Failure ]
 media/video-played-ranges-1.html [ Failure ]
 media/video-played-reset.html [ Failure ]
-
-# Skip tests timing out for <rdar://problem/48616298>
-fast/viewport/ios/constant-width-viewport-after-changing-view-scale.html [ Skip ]
-fast/viewport/ios/ignore-minimum-device-width-for-page-with-viewport-device-width.html [ Skip ]
 
 # <rdar://problem/51055223> (iOS 13): jsc-layout-tests.yaml/js/script-tests/intl-numberformat.js.layout is failing
 js/intl-numberformat.html [ Failure ]
@@ -3344,3 +3339,7 @@ fast/text/international/system-language/han-quotes.html [ ImageOnlyFailure ]
 
 # <rdar://problem/52689856> storage/websql/test-authorizer.html is failing
 storage/websql/test-authorizer.html [ Failure ]
+
+# rdar://53551736 (Layout Test editing/pasteboard/paste-and-sanitize.html is a Flaky Failure on iOS 13)
+editing/pasteboard/paste-and-sanitize.html [ Pass Failure ]
+

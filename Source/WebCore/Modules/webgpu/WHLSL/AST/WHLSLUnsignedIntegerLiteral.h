@@ -28,8 +28,8 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLExpression.h"
-#include "WHLSLLexer.h"
 #include "WHLSLUnsignedIntegerLiteralType.h"
+#include <wtf/FastMalloc.h>
 
 namespace WebCore {
 
@@ -38,6 +38,7 @@ namespace WHLSL {
 namespace AST {
 
 class UnsignedIntegerLiteral : public Expression {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     UnsignedIntegerLiteral(CodeLocation location, unsigned value)
         : Expression(location)
@@ -64,7 +65,7 @@ public:
         UnsignedIntegerLiteral result(codeLocation(), m_value);
         result.m_type = m_type.clone();
         if (auto* resolvedType = m_type.maybeResolvedType())
-            result.m_type.resolve(resolvedType->clone());
+            result.m_type.resolve(const_cast<AST::UnnamedType&>(*resolvedType));
         copyTypeTo(result);
         return result;
     }

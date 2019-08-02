@@ -85,6 +85,7 @@
 #include <wtf/OptionSet.h>
 #include <wtf/ProcessPrivilege.h>
 #include <wtf/RunLoop.h>
+#include <wtf/UniqueRef.h>
 #include <wtf/text/AtomString.h>
 
 #if ENABLE(SEC_ITEM_SHIM)
@@ -99,6 +100,7 @@
 #endif
 
 #if USE(SOUP)
+#include "NetworkSessionSoup.h"
 #include <WebCore/DNSResolveQueueSoup.h>
 #include <WebCore/SoupNetworkSession.h>
 #endif
@@ -150,8 +152,8 @@ NetworkProcess::NetworkProcess(AuxiliaryProcessInitializationParameters&& parame
 #endif
 
 #if USE(SOUP)
-    DNSResolveQueueSoup::setGlobalDefaultNetworkStorageSessionAccessor([this]() -> NetworkStorageSession& {
-        return defaultStorageSession();
+    DNSResolveQueueSoup::setGlobalDefaultSoupSessionAccessor([this]() -> SoupSession* {
+        return static_cast<NetworkSessionSoup&>(*networkSession(PAL::SessionID::defaultSessionID())).soupSession();
     });
 #endif
 
@@ -273,8 +275,9 @@ void NetworkProcess::lowMemoryHandler(Critical critical)
 
     WTF::releaseFastMallocFreeMemory();
 
-    for (auto& networkSession : m_networkSessions.values())
-        networkSession.get().clearPrefetchCache();
+    forEachNetworkSession([](auto& networkSession) {
+        networkSession.clearPrefetchCache();
+    });
 }
 
 void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&& parameters)
@@ -485,6 +488,12 @@ void NetworkProcess::initializeStorageQuota(const WebsiteDataStoreParameters& pa
     managers.setDefaultQuotas(parameters.perOriginStorageQuota, parameters.perThirdPartyOriginStorageQuota);
 }
 
+void NetworkProcess::forEachNetworkSession(const Function<void(NetworkSession&)>& functor)
+{
+    for (auto& session : m_networkSessions.values())
+        functor(*session);
+}
+
 void NetworkProcess::switchToNewTestingSession()
 {
 #if PLATFORM(COCOA)
@@ -501,9 +510,7 @@ void NetworkProcess::switchToNewTestingSession()
     }
 
     m_defaultNetworkStorageSession = std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID(), WTFMove(session), WTFMove(cookieStorage));
-#elif USE(SOUP)
-    m_defaultNetworkStorageSession = std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID(), std::make_unique<WebCore::SoupNetworkSession>());
-#elif USE(CURL)
+#elif USE(CURL) || USE(SOUP)
     m_defaultNetworkStorageSession = std::make_unique<WebCore::NetworkStorageSession>(PAL::SessionID::defaultSessionID());
 #endif
 }
@@ -535,9 +542,7 @@ void NetworkProcess::ensureSession(const PAL::SessionID& sessionID, const String
     }
 
     addResult.iterator->value = std::make_unique<NetworkStorageSession>(sessionID, WTFMove(storageSession), WTFMove(cookieStorage));
-#elif USE(SOUP)
-    addResult.iterator->value = std::make_unique<NetworkStorageSession>(sessionID, std::make_unique<SoupNetworkSession>(sessionID));
-#elif USE(CURL)
+#elif USE(CURL) || USE(SOUP)
     addResult.iterator->value = std::make_unique<NetworkStorageSession>(sessionID);
 #endif
 }
@@ -576,7 +581,7 @@ NetworkSession* NetworkProcess::networkSessionByConnection(IPC::Connection& conn
     return sessionID.isValid() ? networkSession(sessionID) : nullptr;
 }
 
-void NetworkProcess::setSession(const PAL::SessionID& sessionID, Ref<NetworkSession>&& session)
+void NetworkProcess::setSession(const PAL::SessionID& sessionID, std::unique_ptr<NetworkSession>&& session)
 {
     ASSERT(RunLoop::isMain());
     ASSERT(sessionID.isValid());
@@ -593,10 +598,14 @@ void NetworkProcess::destroySession(const PAL::SessionID& sessionID)
     if (!sessionID.isValid())
         return;
 
+#if !USE(SOUP)
+    // Soup based ports destroy the default session right before the process exits to avoid leaking
+    // network resources like the cookies database.
     ASSERT(sessionID != PAL::SessionID::defaultSessionID());
+#endif
 
     if (auto session = m_networkSessions.take(sessionID))
-        session->get().invalidateAndCancel();
+        session->invalidateAndCancel();
     m_networkStorageSessions.remove(sessionID);
     m_sessionsControlledByAutomation.remove(sessionID);
     CacheStorage::Engine::destroyEngine(*this, sessionID);
@@ -1145,8 +1154,16 @@ void NetworkProcess::setShouldClassifyResourcesBeforeDataRecordsRemoval(PAL::Ses
 
 void NetworkProcess::setResourceLoadStatisticsEnabled(bool enabled)
 {
-    for (auto& networkSession : m_networkSessions.values())
-        networkSession.get().setResourceLoadStatisticsEnabled(enabled);
+    forEachNetworkSession([enabled](auto& networkSession) {
+        networkSession.setResourceLoadStatisticsEnabled(enabled);
+    });
+}
+
+void NetworkProcess::setResourceLoadStatisticsLogTestingEvent(bool enabled)
+{
+    forEachNetworkSession([enabled](auto& networkSession) {
+        networkSession.setResourceLoadStatisticsLogTestingEvent(enabled);
+    });
 }
 
 void NetworkProcess::setResourceLoadStatisticsDebugMode(PAL::SessionID sessionID, bool debugMode, CompletionHandler<void()>&& completionHandler)
@@ -1358,11 +1375,11 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
     }
 #endif
     if (websiteDataTypes.contains(WebsiteDataType::DiskCache)) {
-        for (auto& session : networkSessions().values()) {
-            fetchDiskCacheEntries(session->cache(), sessionID, fetchOptions, [callbackAggregator = WTFMove(callbackAggregator)](auto entries) mutable {
+        forEachNetworkSession([sessionID, fetchOptions, &callbackAggregator](auto& session) {
+            fetchDiskCacheEntries(session.cache(), sessionID, fetchOptions, [callbackAggregator = callbackAggregator.copyRef()](auto entries) mutable {
                 callbackAggregator->m_websiteData.entries.appendVector(entries);
             });
-        }
+        });
     }
 }
 
@@ -1518,8 +1535,9 @@ void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, Optio
 #endif
 
     if (websiteDataTypes.contains(WebsiteDataType::DiskCache) && !sessionID.isEphemeral()) {
-        for (auto& session : networkSessions().values())
-            clearDiskCacheEntries(session->cache(), originDatas, [clearTasksHandler = WTFMove(clearTasksHandler)] { });
+        forEachNetworkSession([originDatas, &clearTasksHandler](auto& session) {
+            clearDiskCacheEntries(session.cache(), originDatas, [clearTasksHandler = clearTasksHandler.copyRef()] { });
+        });
     }
 
     if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
@@ -1753,8 +1771,10 @@ void NetworkProcess::deleteWebsiteDataForRegistrableDomains(PAL::SessionID sessi
 #endif
 
     if (websiteDataTypes.contains(WebsiteDataType::DiskCache)) {
-        for (auto& session : networkSessions().values()) {
-            fetchDiskCacheEntries(session->cache(), sessionID, fetchOptions, [domainsToDeleteAllButCookiesFor, callbackAggregator = callbackAggregator.copyRef(), session = session.copyRef()](auto entries) mutable {
+        forEachNetworkSession([sessionID, fetchOptions, &domainsToDeleteAllButCookiesFor, &callbackAggregator](auto& session) {
+            fetchDiskCacheEntries(session.cache(), sessionID, fetchOptions, [domainsToDeleteAllButCookiesFor, callbackAggregator = callbackAggregator.copyRef(), session = makeWeakPtr(&session)](auto entries) mutable {
+                if (!session)
+                    return;
 
                 Vector<SecurityOriginData> entriesToDelete;
                 for (auto& entry : entries) {
@@ -1765,7 +1785,7 @@ void NetworkProcess::deleteWebsiteDataForRegistrableDomains(PAL::SessionID sessi
                 }
                 clearDiskCacheEntries(session->cache(), entriesToDelete, [callbackAggregator = callbackAggregator.copyRef()] { });
             });
-        }
+        });
     }
 
     auto dataTypesForUIProcess = WebsiteData::filter(websiteDataTypes, WebsiteDataProcessType::UI);
@@ -1887,11 +1907,11 @@ void NetworkProcess::registrableDomainsWithWebsiteData(PAL::SessionID sessionID,
 #endif
     
     if (websiteDataTypes.contains(WebsiteDataType::DiskCache)) {
-        for (auto& session : networkSessions().values()) {
-            fetchDiskCacheEntries(session->cache(), sessionID, fetchOptions, [callbackAggregator = callbackAggregator.copyRef()](auto entries) mutable {
+        forEachNetworkSession([sessionID, fetchOptions, &callbackAggregator](auto& session) {
+            fetchDiskCacheEntries(session.cache(), sessionID, fetchOptions, [callbackAggregator = callbackAggregator.copyRef()](auto entries) mutable {
                 callbackAggregator->m_websiteData.entries.appendVector(entries);
             });
-        }
+        });
     }
 }
 #endif // ENABLE(RESOURCE_LOAD_STATISTICS)
@@ -1989,11 +2009,11 @@ void NetworkProcess::setCacheModel(CacheModel cacheModel)
         diskFreeSize /= KB * 1000;
         calculateURLCacheSizes(cacheModel, diskFreeSize, urlCacheMemoryCapacity, urlCacheDiskCapacity);
     }
-    
-    for (auto& session : networkSessions().values()) {
-        if (auto* cache = session->cache())
+
+    forEachNetworkSession([urlCacheDiskCapacity](auto& session) {
+        if (auto* cache = session.cache())
             cache->setCapacity(urlCacheDiskCapacity);
-    }
+    });
 }
 
 void NetworkProcess::setCanHandleHTTPSServerTrustEvaluation(bool value)
@@ -2087,8 +2107,9 @@ void NetworkProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend 
     }
 #endif
 
-    for (auto& session : m_networkSessions)
-        session.value->storageManager().suspend([callbackAggregator] { });
+    forEachNetworkSession([&callbackAggregator](auto& session) {
+        session.storageManager().suspend([callbackAggregator] { });
+    });
 }
 
 void NetworkProcess::processWillSuspendImminently()
@@ -2100,6 +2121,12 @@ void NetworkProcess::processWillSuspendImminently()
 #endif
     actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::No);
     RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::processWillSuspendImminently() END", this);
+}
+
+void NetworkProcess::processWillSuspendImminentlyForTestingSync(CompletionHandler<void()>&& completionHandler)
+{
+    processWillSuspendImminently();
+    completionHandler();
 }
 
 void NetworkProcess::prepareToSuspend()
@@ -2158,8 +2185,9 @@ void NetworkProcess::resume()
         server->resume();
 #endif
 
-    for (auto& session : m_networkSessions)
-        session.value->storageManager().resume();
+    forEachNetworkSession([](auto& session) {
+        session.storageManager().resume();
+    });
 }
 
 void NetworkProcess::prefetchDNS(const String& hostname)

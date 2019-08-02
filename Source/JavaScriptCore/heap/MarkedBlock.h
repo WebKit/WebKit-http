@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2019 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -146,8 +146,6 @@ public:
         
         void unsweepWithNoNewlyAllocated();
         
-        void zap(const FreeList&);
-        
         void shrink();
             
         void visitWeakSet(SlotVisitor&);
@@ -200,6 +198,10 @@ public:
         void didAddToDirectory(BlockDirectory*, size_t index);
         void didRemoveFromDirectory();
         
+        void* start() const { return &m_block->atoms()[0]; }
+        void* end() const { return &m_block->atoms()[m_endAtom]; }
+        bool contains(void* p) const { return start() <= p && p < end(); }
+
         void dumpState(PrintStream&);
         
     private:
@@ -304,6 +306,9 @@ public:
     static constexpr size_t footerSize = blockSize - payloadSize;
 
     static_assert(payloadSize == ((blockSize - sizeof(MarkedBlock::Footer)) & ~(atomSize - 1)), "Payload size computed the alternate way should give the same result");
+    // Some of JSCell types assume that the last JSCell in a MarkedBlock has a subsequent memory region (Footer) that can still safely accessed.
+    // For example, JSRopeString assumes that it can safely access up to 2 bytes beyond the JSRopeString cell.
+    static_assert(sizeof(Footer) >= sizeof(uint16_t));
     
     static MarkedBlock::Handle* tryCreate(Heap&, AlignedMemoryAllocator*);
         

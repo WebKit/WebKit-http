@@ -48,6 +48,25 @@
 
 namespace WebCore {
 
+Ref<ThreadableWebSocketChannel> ThreadableWebSocketChannel::create(Document& document, WebSocketChannelClient& client, SocketProvider& provider)
+{
+#if USE(SOUP)
+    auto channel = provider.createWebSocketChannel(document, client);
+    ASSERT(channel);
+    return channel.releaseNonNull();
+#else
+
+#if HAVE(NSURLSESSION_WEBSOCKET)
+    if (RuntimeEnabledFeatures::sharedFeatures().isNSURLSessionWebSocketEnabled()) {
+        if (auto channel = provider.createWebSocketChannel(document, client))
+            return channel.releaseNonNull();
+    }
+#endif
+
+    return WebSocketChannel::create(document, client, provider);
+#endif
+}
+
 Ref<ThreadableWebSocketChannel> ThreadableWebSocketChannel::create(ScriptExecutionContext& context, WebSocketChannelClient& client, SocketProvider& provider)
 {
     if (is<WorkerGlobalScope>(context)) {
@@ -56,22 +75,7 @@ Ref<ThreadableWebSocketChannel> ThreadableWebSocketChannel::create(ScriptExecuti
         return WorkerThreadableWebSocketChannel::create(workerGlobalScope, client, makeString("webSocketChannelMode", runLoop.createUniqueId()), provider);
     }
 
-    auto& document = downcast<Document>(context);
-
-    bool shouldProviderCreateSocketChannel = false;
-#if HAVE(NSURLSESSION_WEBSOCKET)
-    shouldProviderCreateSocketChannel = RuntimeEnabledFeatures::sharedFeatures().isNSURLSessionWebSocketEnabled();
-#endif
-#if USE(SOUP)
-    shouldProviderCreateSocketChannel = getenv("WEBKIT_USE_SOUP_WEBSOCKETS");
-#endif
-
-    if (shouldProviderCreateSocketChannel) {
-        if (auto channel = provider.createWebSocketChannel(document, client))
-            return channel.releaseNonNull();
-    }
-
-    return WebSocketChannel::create(document, client, provider);
+    return create(downcast<Document>(context), client, provider);
 }
 
 Optional<ThreadableWebSocketChannel::ValidatedURL> ThreadableWebSocketChannel::validateURL(Document& document, const URL& requestedURL)

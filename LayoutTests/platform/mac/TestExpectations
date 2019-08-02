@@ -227,6 +227,10 @@ storage/storagequota-query-usage.html
 storage/storagequota-request-quota.html
 fast/workers/worker-storagequota-query-usage.html
 
+# Software keyboard is not supported.
+fast/events/autoscroll-with-software-keyboard.html [ Skip ]
+fast/events/autoscroll-when-input-is-offscreen.html [ Skip ]
+
 # HTTP 204 (No Content) should be ignored
 webkit.org/b/60206 http/tests/navigation/response204.html
 
@@ -1094,12 +1098,10 @@ webkit.org/b/156634 inspector/formatting/formatting-javascript.html [ Pass Timeo
 webkit.org/b/158948 inspector/timeline [ Pass Timeout ]
 webkit.org/b/191539 http/tests/inspector/network/resource-security-connection.html [ Skip ]
 
-webkit.org/b/187622 [ Debug ] inspector/view/asynchronous-layout.html [ Pass Timeout ]
-
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
-# Touch events is not enabled on Mac
-webkit.org/b/149592 fast/shadow-dom/touch-event-ios.html [ Failure ]
+# Touch events are not enabled on Mac
+webkit.org/b/149592 fast/shadow-dom/touch-event-ios.html [ Skip ]
 
 webkit.org/b/149819 [ Debug Sierra+ ] compositing/video/video-poster.html [ Pass Crash ]
 
@@ -1383,7 +1385,6 @@ media/modern-media-controls/scrubber-support/ipad [ Skip ]
 webkit.org/b/169876 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html [ Pass Timeout ]
 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Pass Failure ]
 media/modern-media-controls/media-controller/media-controller-auto-hide-pause.html [ Pass Failure ]
-webkit.org/b/187420 media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Pass Timeout ]
 media/modern-media-controls/media-controller/media-controller-auto-hide.html [ Pass Failure ]
 
 webkit.org/b/178126 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html [ Skip ]
@@ -1961,9 +1962,6 @@ webkit.org/b/195635 scrollingcoordinator/mac/multiple-fixed.html [ Pass Timeout 
 # <rdar://problem/51525184>
 [ Catalina+ ] imported/w3c/web-platform-tests/css/css-lists/content-property/marker-text-matches-armenian.html [ ImageOnlyFailure ]
 
-# <rdar://problem/51751581>
-[ Catalina+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-schemes.html [ Failure ]
-
 # <rdar://problem/51762717>
 [ Catalina+ ] http/wpt/resource-timing/rt-cors.html [ Pass Failure ]
 [ Catalina+ ] http/wpt/resource-timing/rt-cors.worker.html [ Pass Failure ]
@@ -1973,6 +1971,9 @@ webkit.org/b/195635 scrollingcoordinator/mac/multiple-fixed.html [ Pass Timeout 
 [ Catalina+ ] http/wpt/resource-timing/rt-initiatorType-element.html [ Pass Failure ]
 [ Catalina+ ] http/wpt/resource-timing/rt-initiatorType-xmlhttprequest.html [ Pass Failure ]
 
+# <rdar://problem/52689856> storage/websql/test-authorizer.html is failing
+[ Catalina+ ] storage/websql/test-authorizer.html [ Failure ]
+
 # These tests require the design system ui fonts to be installed.
 [ Catalina+ ] fast/text/design-system-ui-11.html [ Pass ]
 [ Catalina+ ] fast/text/design-system-ui-12.html [ Pass ]
@@ -1980,3 +1981,5 @@ webkit.org/b/195635 scrollingcoordinator/mac/multiple-fixed.html [ Pass Timeout 
 [ Catalina+ ] fast/text/design-system-ui-14.html [ Pass ]
 [ Catalina+ ] fast/text/design-system-ui-15.html [ Pass ]
 [ Catalina+ ] fast/text/design-system-ui-16.html [ Pass ]
+
+webkit.org/b/200258 [ Debug ] imported/w3c/web-platform-tests/wasm/jsapi/interface.any.worker.html [ Pass Failure ]

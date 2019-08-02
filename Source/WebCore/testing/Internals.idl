@@ -164,6 +164,7 @@ enum CompositingPolicy {
     JSGenerateToJSObject,
 ] dictionary TextIndicatorInfo {
     DOMRectReadOnly textBoundingRectInRootViewCoordinates;
+    DOMRectList textRectsInBoundingRectCoordinates;
 };
 
 [
@@ -171,6 +172,8 @@ enum CompositingPolicy {
     JSGenerateToJSObject,
 ] dictionary TextIndicatorOptions {
     boolean useBoundingRectAndPaintAllContentForComplexRanges = false;
+    boolean computeEstimatedBackgroundColor = false;
+    boolean respectTextColor = false;
 };
 
 [
@@ -378,6 +381,8 @@ enum CompositingPolicy {
 
     [MayThrowException] readonly attribute boolean areSVGAnimationsPaused;
     [MayThrowException] double svgAnimationsInterval(SVGSVGElement element);
+
+    boolean testProcessIncomingSyncMessagesWhenWaitingForSyncReply();
 
     // Flags for layerTreeAsText.
     const unsigned short LAYER_TREE_INCLUDES_VISIBLE_RECTS = 1;
@@ -689,6 +694,7 @@ enum CompositingPolicy {
     [Conditional=WEB_RTC] void setH264HardwareEncoderAllowed(boolean allowed);
     [Conditional=WEB_RTC] void applyRotationForOutgoingVideoSources(RTCPeerConnection connection);
 
+    [Conditional=MEDIA_STREAM] void setMockAudioTrackChannelNumber(MediaStreamTrack track, unsigned short count);
     [Conditional=MEDIA_STREAM] void setShouldInterruptAudioOnPageVisibilityChange(boolean shouldInterrupt);
     [Conditional=MEDIA_STREAM] void setCameraMediaStreamTrackOrientation(MediaStreamTrack track, short orientation);
     [Conditional=MEDIA_STREAM] void observeMediaStreamTrack(MediaStreamTrack track);
@@ -776,4 +782,6 @@ enum CompositingPolicy {
     void setIsPlayingToAutomotiveHeadUnit(boolean value);
 
     TextIndicatorInfo textIndicatorForRange(Range range, TextIndicatorOptions options);
+
+    void addPrefetchLoadEventListener(HTMLLinkElement link, EventListener? callback);
 };

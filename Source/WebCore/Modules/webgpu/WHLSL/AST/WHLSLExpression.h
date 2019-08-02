@@ -28,8 +28,9 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLAddressSpace.h"
-#include "WHLSLLexer.h"
+#include "WHLSLCodeLocation.h"
 #include "WHLSLUnnamedType.h"
+#include <wtf/FastMalloc.h>
 #include <wtf/Optional.h>
 #include <wtf/UniqueRef.h>
 
@@ -40,6 +41,7 @@ namespace WHLSL {
 namespace AST {
 
 class Expression {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     Expression(CodeLocation codeLocation)
         : m_codeLocation(codeLocation)
@@ -62,7 +64,7 @@ public:
         return *m_type;
     }
 
-    void setType(UniqueRef<UnnamedType>&& type)
+    void setType(Ref<UnnamedType> type)
     {
         ASSERT(!m_type);
         m_type = WTFMove(type);
@@ -85,7 +87,7 @@ public:
     void copyTypeTo(Expression& other) const
     {
         if (auto* resolvedType = const_cast<Expression*>(this)->maybeResolvedType())
-            other.setType(resolvedType->clone());
+            other.setType(*resolvedType);
         if (auto* typeAnnotation = maybeTypeAnnotation())
             other.setTypeAnnotation(TypeAnnotation(*typeAnnotation));
     }
@@ -117,7 +119,7 @@ public:
 
 private:
     CodeLocation m_codeLocation;
-    Optional<UniqueRef<UnnamedType>> m_type;
+    RefPtr<UnnamedType> m_type;
     Optional<TypeAnnotation> m_typeAnnotation;
 };
 

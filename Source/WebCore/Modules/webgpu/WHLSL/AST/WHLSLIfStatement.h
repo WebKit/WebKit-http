@@ -28,9 +28,9 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLExpression.h"
-#include "WHLSLLexer.h"
 #include "WHLSLStatement.h"
 #include <memory>
+#include <wtf/FastMalloc.h>
 #include <wtf/UniqueRef.h>
 
 namespace WebCore {
@@ -40,6 +40,7 @@ namespace WHLSL {
 namespace AST {
 
 class IfStatement : public Statement {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     IfStatement(CodeLocation location, UniqueRef<Expression>&& conditional, UniqueRef<Statement>&& body, std::unique_ptr<Statement>&& elseBody)
         : Statement(location)

@@ -59,6 +59,7 @@
 
 #if PLATFORM(IOS_FAMILY)
 #include "PlatformLayer.h"
+#include "WKContentObservation.h"
 #define NSResponder WAKResponder
 #ifndef __OBJC__
 class WAKResponder;
@@ -234,9 +235,6 @@ public:
     // the new cache.
     virtual void reachedApplicationCacheOriginQuota(SecurityOrigin&, int64_t totalSpaceNeeded) = 0;
 
-    virtual bool shouldReplaceWithGeneratedFileForUpload(const String& path, String& generatedFilename);
-    virtual String generateReplacementFile(const String& path);
-
 #if ENABLE(IOS_TOUCH_EVENTS)
     virtual void didPreventDefaultForEvent() = 0;
 #endif
@@ -246,7 +244,7 @@ public:
 #if PLATFORM(IOS_FAMILY)
     virtual void didReceiveMobileDocType(bool) = 0;
     virtual void setNeedsScrollNotifications(Frame&, bool) = 0;
-    virtual void observedContentChange(Frame&) = 0;
+    virtual void didFinishContentChangeObserving(Frame&, WKContentChange) = 0;
     virtual void notifyRevealedSelectionByScrollingFrame(Frame&) = 0;
 
     enum LayoutType { NormalLayout, Scroll };
@@ -380,6 +378,8 @@ public:
     virtual void makeFirstResponder() { }
     virtual void assistiveTechnologyMakeFirstResponder() { }
 #endif
+
+    virtual bool testProcessIncomingSyncMessagesWhenWaitingForSyncReply() { return true; }
 
 #if PLATFORM(IOS_FAMILY)
     // FIXME: Come up with a more descriptive name for this function and make it platform independent (if possible).

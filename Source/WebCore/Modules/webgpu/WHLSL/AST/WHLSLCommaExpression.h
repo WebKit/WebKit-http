@@ -28,7 +28,7 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLExpression.h"
-#include "WHLSLLexer.h"
+#include <wtf/FastMalloc.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/Vector.h>
 
@@ -39,6 +39,7 @@ namespace WHLSL {
 namespace AST {
 
 class CommaExpression : public Expression {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     CommaExpression(CodeLocation location, Vector<UniqueRef<Expression>>&& list)
         : Expression(location)

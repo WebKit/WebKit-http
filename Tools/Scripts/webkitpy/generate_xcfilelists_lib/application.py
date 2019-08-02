@@ -95,8 +95,10 @@ class Application(object):
             "JavaScriptCore":   Generators.JavaScriptCoreGenerator,
             "WebCore":          Generators.WebCoreGenerator,
             "WebKit":           Generators.WebKitGenerator,
+            "WebKitLegacy":     Generators.WebKitLegacyGenerator,
             "DumpRenderTree":   Generators.DumpRenderTreeGenerator,
             "WebKitTestRunner": Generators.WebKitTestRunnerGenerator,
+            "TestWebKitAPI":    Generators.TestWebKitAPIGenerator,
         }
 
         self.supported_project_tags = None

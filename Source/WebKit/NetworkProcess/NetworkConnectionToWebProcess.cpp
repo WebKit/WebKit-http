@@ -34,6 +34,7 @@
 #include "NetworkProcess.h"
 #include "NetworkProcessConnectionMessages.h"
 #include "NetworkProcessMessages.h"
+#include "NetworkProcessProxyMessages.h"
 #include "NetworkRTCMonitorMessages.h"
 #include "NetworkRTCProviderMessages.h"
 #include "NetworkRTCSocketMessages.h"
@@ -311,11 +312,9 @@ void NetworkConnectionToWebProcess::didClose(IPC::Connection& connection)
 #endif
 
 #if ENABLE(INDEXED_DATABASE)
-    auto idbConnections = m_webIDBConnections;
+    auto idbConnections = std::exchange(m_webIDBConnections, { });
     for (auto& connection : idbConnections.values())
         connection->disconnectedFromWebProcess();
-
-    m_webIDBConnections.clear();
 #endif
     
 #if ENABLE(SERVICE_WORKER)
@@ -409,6 +408,14 @@ void NetworkConnectionToWebProcess::performSynchronousLoad(NetworkResourceLoadPa
     auto loader = NetworkResourceLoader::create(WTFMove(loadParameters), *this, WTFMove(reply));
     m_networkResourceLoaders.add(identifier, loader.copyRef());
     loader->start();
+}
+
+void NetworkConnectionToWebProcess::testProcessIncomingSyncMessagesWhenWaitingForSyncReply(WebCore::PageIdentifier webPageID, Messages::NetworkConnectionToWebProcess::TestProcessIncomingSyncMessagesWhenWaitingForSyncReply::DelayedReply&& reply)
+{
+    bool handled = false;
+    if (!m_networkProcess->parentProcessConnection()->sendSync(Messages::NetworkProcessProxy::TestProcessIncomingSyncMessagesWhenWaitingForSyncReply(webPageID), Messages::NetworkProcessProxy::TestProcessIncomingSyncMessagesWhenWaitingForSyncReply::Reply(handled), 0))
+        return reply(false);
+    reply(handled);
 }
 
 void NetworkConnectionToWebProcess::loadPing(NetworkResourceLoadParameters&& loadParameters)
@@ -689,13 +696,12 @@ void NetworkConnectionToWebProcess::logSubresourceRedirect(PAL::SessionID sessio
 
 void NetworkConnectionToWebProcess::resourceLoadStatisticsUpdated(Vector<WebCore::ResourceLoadStatistics>&& statistics)
 {
-    for (auto& networkSession : networkProcess().networkSessions().values()) {
-        if (networkSession->sessionID().isEphemeral())
-            continue;
+    auto* networkSession = networkProcess().networkSessionByConnection(connection());
+    if (!networkSession)
+        return;
 
-        if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
-            resourceLoadStatistics->resourceLoadStatisticsUpdated(WTFMove(statistics));
-    }
+    if (auto* resourceLoadStatistics = networkSession->resourceLoadStatistics())
+        resourceLoadStatistics->resourceLoadStatisticsUpdated(WTFMove(statistics));
 }
 
 void NetworkConnectionToWebProcess::hasStorageAccess(PAL::SessionID sessionID, const RegistrableDomain& subFrameDomain, const RegistrableDomain& topFrameDomain, uint64_t frameID, PageIdentifier pageID, CompletionHandler<void(bool)>&& completionHandler)

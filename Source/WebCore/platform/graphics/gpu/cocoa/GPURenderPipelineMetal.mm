@@ -101,8 +101,6 @@ static Optional<WHLSL::TextureFormat> convertTextureFormat(GPUTextureFormat form
     switch (format) {
     case GPUTextureFormat::Rgba8unorm:
         return WHLSL::TextureFormat::RGBA8Unorm;
-    case GPUTextureFormat::Rgba8uint:
-        return WHLSL::TextureFormat::RGBA8Uint;
     case GPUTextureFormat::Bgra8unorm:
         return WHLSL::TextureFormat::BGRA8Unorm;
     case GPUTextureFormat::Depth32floatStencil8:
@@ -344,7 +342,7 @@ static bool trySetMetalFunctions(MTLLibrary *vertexMetalLibrary, MTLLibrary *fra
 
         auto function = adoptNS([vertexMetalLibrary newFunctionWithName:vertexEntryPointName]);
         if (!function) {
-            errorScopes.generatePrefixedError(makeString("Cannot create vertex MTLFunction \"", vertexEntryPointName, "\"!"));
+            errorScopes.generatePrefixedError(makeString("Cannot create vertex MTLFunction '", vertexEntryPointName, "'!"));
             return false;
         }
 
@@ -363,7 +361,7 @@ static bool trySetMetalFunctions(MTLLibrary *vertexMetalLibrary, MTLLibrary *fra
         auto function = adoptNS([fragmentMetalLibrary newFunctionWithName:fragmentEntryPointName]);
 
         if (!function) {
-            errorScopes.generatePrefixedError(makeString("Cannot create fragment MTLFunction \"", fragmentEntryPointName, "\"!"));
+            errorScopes.generatePrefixedError(makeString("Cannot create fragment MTLFunction '", fragmentEntryPointName, "'!"));
             return false;
         }
 
@@ -392,7 +390,7 @@ static bool trySetFunctions(const GPUPipelineStageDescriptor& vertexStage, const
 
         auto whlslCompileResult = WHLSL::prepare(whlslSource, *whlslDescriptor);
         if (!whlslCompileResult) {
-            errorScopes.generatePrefixedError("WHLSL compilation failed!");
+            errorScopes.generatePrefixedError(makeString("WHLSL compile error: ", whlslCompileResult.error()));
             return false;
         }
 

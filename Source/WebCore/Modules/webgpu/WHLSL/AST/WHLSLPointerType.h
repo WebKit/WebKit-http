@@ -27,8 +27,10 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WHLSLLexer.h"
+#include "WHLSLCodeLocation.h"
 #include "WHLSLReferenceType.h"
+#include <wtf/FastMalloc.h>
+#include <wtf/Noncopyable.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
 
@@ -38,25 +40,25 @@ namespace WHLSL {
 
 namespace AST {
 
-class PointerType : public ReferenceType {
+class PointerType final : public ReferenceType {
+    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(PointerType);
     using Base = ReferenceType;
-public:
-    PointerType(CodeLocation location, AddressSpace addressSpace, UniqueRef<UnnamedType> elementType)
+
+    PointerType(CodeLocation location, AddressSpace addressSpace, Ref<UnnamedType> elementType)
         : Base(location, addressSpace, WTFMove(elementType))
     {
+    }
+public:
+
+    static Ref<PointerType> create(CodeLocation location, AddressSpace addressSpace, Ref<UnnamedType> elementType)
+    {
+        return adoptRef(*new PointerType(location, addressSpace, WTFMove(elementType)));
     }
 
     virtual ~PointerType() = default;
 
-    PointerType(const PointerType&) = delete;
-    PointerType(PointerType&&) = default;
-
     bool isPointerType() const override { return true; }
-
-    UniqueRef<UnnamedType> clone() const override
-    {
-        return makeUniqueRef<PointerType>(codeLocation(), addressSpace(), elementType().clone());
-    }
 
     unsigned hash() const override
     {
@@ -70,6 +72,11 @@ public:
 
         return addressSpace() == downcast<PointerType>(other).addressSpace()
             && elementType() == downcast<PointerType>(other).elementType();
+    }
+
+    String toString() const override
+    {
+        return makeString(elementType().toString(), '*');
     }
 
 private:

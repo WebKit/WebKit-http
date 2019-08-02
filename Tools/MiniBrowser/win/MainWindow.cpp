@@ -29,6 +29,7 @@
 #include "Common.h"
 #include "MiniBrowserLibResource.h"
 #include "WebKitLegacyBrowserWindow.h"
+#include <CoreFoundation/CoreFoundation.h>
 
 #if ENABLE(WEBKIT)
 #include "WebKitBrowserWindow.h"
@@ -98,7 +99,7 @@ Ref<MainWindow> MainWindow::create()
     return adoptRef(*new MainWindow());
 }
 
-bool MainWindow::init(BrowserWindowFactory factory, HINSTANCE hInstance, bool usesLayeredWebView, bool pageLoadTesting)
+bool MainWindow::init(BrowserWindowFactory factory, HINSTANCE hInstance, bool usesLayeredWebView)
 {
     registerClass(hInstance);
 
@@ -116,13 +117,14 @@ bool MainWindow::init(BrowserWindowFactory factory, HINSTANCE hInstance, bool us
 
     float scaleFactor = WebCore::deviceScaleFactorForWindow(nullptr);
     m_hBackButtonWnd = CreateWindow(L"BUTTON", L"<", WS_CHILD | WS_VISIBLE  | BS_TEXT, 0, 0, 0, 0, m_hMainWnd, reinterpret_cast<HMENU>(IDM_HISTORY_BACKWARD), hInstance, 0);
-    m_hForwardButtonWnd = CreateWindow(L"BUTTON", L">", WS_CHILD | WS_VISIBLE | BS_TEXT, scaleFactor * controlButtonWidth, 0, 0, 0, m_hMainWnd, reinterpret_cast<HMENU>(IDM_HISTORY_FORWARD), hInstance, 0);
-    m_hURLBarWnd = CreateWindow(L"EDIT", 0, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOVSCROLL, scaleFactor * controlButtonWidth * 2, 0, 0, 0, m_hMainWnd, 0, hInstance, 0);
+    m_hForwardButtonWnd = CreateWindow(L"BUTTON", L">", WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, m_hMainWnd, reinterpret_cast<HMENU>(IDM_HISTORY_FORWARD), hInstance, 0);
+    m_hReloadButtonWnd = CreateWindow(L"BUTTON", L"↺", WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, m_hMainWnd, reinterpret_cast<HMENU>(IDM_RELOAD), hInstance, 0);
+    m_hURLBarWnd = CreateWindow(L"EDIT", 0, WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOVSCROLL, 0, 0, 0, 0, m_hMainWnd, 0, hInstance, 0);
 
     DefEditProc = reinterpret_cast<WNDPROC>(GetWindowLongPtr(m_hURLBarWnd, GWLP_WNDPROC));
     SetWindowLongPtr(m_hURLBarWnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(EditProc));
 
-    m_browserWindow = factory(m_hMainWnd, m_hURLBarWnd, usesLayeredWebView, pageLoadTesting);
+    m_browserWindow = factory(m_hMainWnd, m_hURLBarWnd, usesLayeredWebView);
     if (!m_browserWindow)
         return false;
     HRESULT hr = m_browserWindow->init();
@@ -147,7 +149,8 @@ void MainWindow::resizeSubViews()
 
     MoveWindow(m_hBackButtonWnd, 0, 0, width, height, TRUE);
     MoveWindow(m_hForwardButtonWnd, width, 0, width, height, TRUE);
-    MoveWindow(m_hURLBarWnd, width * 2, 0, rcClient.right, height, TRUE);
+    MoveWindow(m_hReloadButtonWnd, width * 2, 0, width, height, TRUE);
+    MoveWindow(m_hURLBarWnd, width * 3, 0, rcClient.right - width * 3, height, TRUE);
 
     if (m_browserWindow->usesLayeredWebView() || !m_browserWindow->hwnd())
         return;
@@ -224,6 +227,9 @@ LRESULT CALLBACK MainWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
             break;
         case IDM_ACTUAL_SIZE:
             thisWindow->browserWindow()->resetZoom();
+            break;
+        case IDM_RELOAD:
+            thisWindow->browserWindow()->reload();
             break;
         case IDM_ZOOM_IN:
             thisWindow->browserWindow()->zoomIn();
@@ -428,9 +434,19 @@ INT_PTR CALLBACK MainWindow::customUserAgentDialogProc(HWND hDlg, UINT message, 
     return (INT_PTR)FALSE;
 }
 
-void MainWindow::loadURL(BSTR url)
+void MainWindow::loadURL(std::wstring url)
 {
-    if (FAILED(m_browserWindow->loadURL(url)))
+    if (::PathFileExists(url.c_str()) || ::PathIsUNC(url.c_str())) {
+        wchar_t fileURL[INTERNET_MAX_URL_LENGTH];
+        DWORD fileURLLength = _countof(fileURL);
+
+        if (SUCCEEDED(::UrlCreateFromPath(url.c_str(), fileURL, &fileURLLength, 0)))
+            url = fileURL;
+    }
+    if (url.find(L"://") == url.npos)
+        url = L"http://" + url;
+
+    if (FAILED(m_browserWindow->loadURL(_bstr_t(url.c_str()))))
         return;
 
     SetFocus(m_browserWindow->hwnd());
@@ -441,8 +457,7 @@ void MainWindow::onURLBarEnter()
     wchar_t strPtr[INTERNET_MAX_URL_LENGTH];
     GetWindowText(m_hURLBarWnd, strPtr, INTERNET_MAX_URL_LENGTH);
     strPtr[INTERNET_MAX_URL_LENGTH - 1] = 0;
-    _bstr_t bstr(strPtr);
-    loadURL(bstr.GetBSTR());
+    loadURL(strPtr);
 }
 
 void MainWindow::updateDeviceScaleFactor()

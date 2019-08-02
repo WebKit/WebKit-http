@@ -40,6 +40,7 @@
 #include "ShouldGrandfatherStatistics.h"
 #include "StorageAccessStatus.h"
 #include "WebCompiledContentRuleList.h"
+#include "WebPageMessages.h"
 #include "WebPageProxy.h"
 #include "WebProcessMessages.h"
 #include "WebProcessPool.h"
@@ -268,7 +269,7 @@ void NetworkProcessProxy::didReceiveSyncMessage(IPC::Connection& connection, IPC
     if (dispatchSyncMessage(connection, decoder, replyEncoder))
         return;
 
-    ASSERT_NOT_REACHED();
+    didReceiveSyncNetworkProcessProxyMessage(connection, decoder, replyEncoder);
 }
 
 void NetworkProcessProxy::didClose(IPC::Connection&)
@@ -980,6 +981,12 @@ void NetworkProcessProxy::sendProcessWillSuspendImminently()
     if (canSendMessage())
         send(Messages::NetworkProcess::ProcessWillSuspendImminently(), 0);
 }
+
+void NetworkProcessProxy::sendProcessWillSuspendImminentlyForTesting()
+{
+    if (canSendMessage())
+        sendSync(Messages::NetworkProcess::ProcessWillSuspendImminentlyForTestingSync(), Messages::NetworkProcess::ProcessWillSuspendImminentlyForTestingSync::Reply(), 0);
+}
     
 void NetworkProcessProxy::sendPrepareToSuspend()
 {
@@ -1201,6 +1208,18 @@ void NetworkProcessProxy::clearUploadAssertion()
 {
     ASSERT(m_uploadAssertion);
     m_uploadAssertion = nullptr;
+}
+
+void NetworkProcessProxy::testProcessIncomingSyncMessagesWhenWaitingForSyncReply(WebCore::PageIdentifier webPageID, Messages::NetworkProcessProxy::TestProcessIncomingSyncMessagesWhenWaitingForSyncReply::DelayedReply&& reply)
+{
+    auto* page = WebProcessProxy::webPage(webPageID);
+    if (!page)
+        return reply(false);
+
+    bool handled = false;
+    if (!page->sendSync(Messages::WebPage::TestProcessIncomingSyncMessagesWhenWaitingForSyncReply(), Messages::WebPage::TestProcessIncomingSyncMessagesWhenWaitingForSyncReply::Reply(handled), Seconds::infinity(), IPC::SendSyncOption::ForceDispatchWhenDestinationIsWaitingForUnboundedSyncReply))
+        return reply(false);
+    reply(handled);
 }
 
 #if ENABLE(INDEXED_DATABASE)

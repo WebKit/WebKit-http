@@ -28,8 +28,9 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLAddressSpace.h"
-#include "WHLSLLexer.h"
+#include "WHLSLCodeLocation.h"
 #include "WHLSLUnnamedType.h"
+#include <wtf/FastMalloc.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
 
@@ -40,18 +41,18 @@ namespace WHLSL {
 namespace AST {
 
 class ReferenceType : public UnnamedType {
-public:
-    ReferenceType(CodeLocation location, AddressSpace addressSpace, UniqueRef<UnnamedType>&& elementType)
+    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(ReferenceType);
+protected:
+    ReferenceType(CodeLocation location, AddressSpace addressSpace, Ref<UnnamedType> elementType)
         : UnnamedType(location)
         , m_addressSpace(addressSpace)
         , m_elementType(WTFMove(elementType))
     {
     }
+public:
 
     virtual ~ReferenceType() = default;
-
-    ReferenceType(const ReferenceType&) = delete;
-    ReferenceType(ReferenceType&&) = default;
 
     bool isReferenceType() const override { return true; }
 
@@ -66,7 +67,7 @@ public:
 
 private:
     AddressSpace m_addressSpace;
-    UniqueRef<UnnamedType> m_elementType;
+    Ref<UnnamedType> m_elementType;
 };
 
 } // namespace AST

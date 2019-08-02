@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,6 +40,7 @@
 #include "JSONObject.h"
 #include "JSProxy.h"
 #include "JSString.h"
+#include "Parser.h"
 #include "ShadowChicken.h"
 #include "Snippet.h"
 #include "SnippetParams.h"
@@ -222,6 +223,7 @@ public:
 
     static void visitChildren(JSCell* thisObject, SlotVisitor& visitor)
     {
+        ASSERT_GC_OBJECT_INHERITS(thisObject, info());
         Base::visitChildren(thisObject, visitor);
         visitor.addOpaqueRoot(thisObject);
     }
@@ -325,6 +327,7 @@ public:
 
     static void visitChildren(JSCell* cell, SlotVisitor& visitor)
     {
+        ASSERT_GC_OBJECT_INHERITS(cell, info());
         Base::visitChildren(cell, visitor);
         ImpureGetter* thisObject = jsCast<ImpureGetter*>(cell);
         visitor.append(thisObject->m_delegate);
@@ -784,7 +787,7 @@ public:
         return object;
     }
 
-    static EncodedJSValue JSC_HOST_CALL safeFunction(ExecState* exec)
+    static EncodedJSValue JSC_HOST_CALL functionWithTypeCheck(ExecState* exec)
     {
         VM& vm = exec->vm();
         auto scope = DECLARE_THROW_SCOPE(vm);
@@ -795,7 +798,7 @@ public:
         return JSValue::encode(jsNumber(thisObject->value()));
     }
 
-    static EncodedJSValue JIT_OPERATION unsafeFunction(ExecState* exec, DOMJITNode* node)
+    static EncodedJSValue JIT_OPERATION functionWithoutTypeCheck(ExecState* exec, DOMJITNode* node)
     {
         VM& vm = exec->vm();
         NativeCallFrameTracer tracer(&vm, exec);
@@ -823,12 +826,12 @@ private:
     void finishCreation(VM&, JSGlobalObject*);
 };
 
-static const DOMJIT::Signature DOMJITFunctionObjectSignature((uintptr_t)DOMJITFunctionObject::unsafeFunction, DOMJITFunctionObject::info(), DOMJIT::Effect::forRead(DOMJIT::HeapRange::top()), SpecInt32Only);
+static const DOMJIT::Signature DOMJITFunctionObjectSignature((DOMJIT::FunctionWithoutTypeCheck)DOMJITFunctionObject::functionWithoutTypeCheck, DOMJITFunctionObject::info(), DOMJIT::Effect::forRead(DOMJIT::HeapRange::top()), SpecInt32Only);
 
 void DOMJITFunctionObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    putDirectNativeFunction(vm, globalObject, Identifier::fromString(&vm, "func"), 0, safeFunction, NoIntrinsic, &DOMJITFunctionObjectSignature, static_cast<unsigned>(PropertyAttribute::ReadOnly));
+    putDirectNativeFunction(vm, globalObject, Identifier::fromString(&vm, "func"), 0, functionWithTypeCheck, NoIntrinsic, &DOMJITFunctionObjectSignature, static_cast<unsigned>(PropertyAttribute::ReadOnly));
 }
 
 class DOMJITCheckSubClassObject : public DOMJITNode {
@@ -855,7 +858,7 @@ public:
         return object;
     }
 
-    static EncodedJSValue JSC_HOST_CALL safeFunction(ExecState* exec)
+    static EncodedJSValue JSC_HOST_CALL functionWithTypeCheck(ExecState* exec)
     {
         VM& vm = exec->vm();
         auto scope = DECLARE_THROW_SCOPE(vm);
@@ -866,7 +869,7 @@ public:
         return JSValue::encode(jsNumber(thisObject->value()));
     }
 
-    static EncodedJSValue JIT_OPERATION unsafeFunction(ExecState* exec, DOMJITNode* node)
+    static EncodedJSValue JIT_OPERATION functionWithoutTypeCheck(ExecState* exec, DOMJITNode* node)
     {
         VM& vm = exec->vm();
         NativeCallFrameTracer tracer(&vm, exec);
@@ -877,12 +880,12 @@ private:
     void finishCreation(VM&, JSGlobalObject*);
 };
 
-static const DOMJIT::Signature DOMJITCheckSubClassObjectSignature((uintptr_t)DOMJITCheckSubClassObject::unsafeFunction, DOMJITCheckSubClassObject::info(), DOMJIT::Effect::forRead(DOMJIT::HeapRange::top()), SpecInt32Only);
+static const DOMJIT::Signature DOMJITCheckSubClassObjectSignature((DOMJIT::FunctionWithoutTypeCheck)DOMJITCheckSubClassObject::functionWithoutTypeCheck, DOMJITCheckSubClassObject::info(), DOMJIT::Effect::forRead(DOMJIT::HeapRange::top()), SpecInt32Only);
 
 void DOMJITCheckSubClassObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    putDirectNativeFunction(vm, globalObject, Identifier::fromString(&vm, "func"), 0, safeFunction, NoIntrinsic, &DOMJITCheckSubClassObjectSignature, static_cast<unsigned>(PropertyAttribute::ReadOnly));
+    putDirectNativeFunction(vm, globalObject, Identifier::fromString(&vm, "func"), 0, functionWithTypeCheck, NoIntrinsic, &DOMJITCheckSubClassObjectSignature, static_cast<unsigned>(PropertyAttribute::ReadOnly));
 }
 
 class DOMJITGetterBaseJSObject : public DOMJITNode {
@@ -1388,6 +1391,15 @@ static EncodedJSValue JSC_HOST_CALL functionGC(ExecState* exec)
 static EncodedJSValue JSC_HOST_CALL functionEdenGC(ExecState* exec)
 {
     VMInspector::edenGC(exec);
+    return JSValue::encode(jsUndefined());
+}
+
+// Dumps the hashes of all subspaces currently registered with the VM.
+// Usage: $vm.dumpSubspaceHashes()
+static EncodedJSValue JSC_HOST_CALL functionDumpSubspaceHashes(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    VMInspector::dumpSubspaceHashes(&vm);
     return JSValue::encode(jsUndefined());
 }
 
@@ -2184,6 +2196,11 @@ static EncodedJSValue JSC_HOST_CALL functionTotalGCTime(ExecState* exec)
     return JSValue::encode(jsNumber(vm.heap.totalGCTime().seconds()));
 }
 
+static EncodedJSValue JSC_HOST_CALL functionParseCount(ExecState*)
+{
+    return JSValue::encode(jsNumber(globalParseCount.load()));
+}
+
 void JSDollarVM::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
@@ -2217,6 +2234,7 @@ void JSDollarVM::finishCreation(VM& vm)
 
     addFunction(vm, "gc", functionGC, 0);
     addFunction(vm, "edenGC", functionEdenGC, 0);
+    addFunction(vm, "dumpSubspaceHashes", functionDumpSubspaceHashes, 0);
 
     addFunction(vm, "callFrame", functionCallFrame, 1);
     addFunction(vm, "codeBlockFor", functionCodeBlockFor, 1);
@@ -2297,6 +2315,8 @@ void JSDollarVM::finishCreation(VM& vm)
     addFunction(vm, "deltaBetweenButterflies", functionDeltaBetweenButterflies, 2);
     
     addFunction(vm, "totalGCTime", functionTotalGCTime, 0);
+
+    addFunction(vm, "parseCount", functionParseCount, 0);
 }
 
 void JSDollarVM::addFunction(VM& vm, JSGlobalObject* globalObject, const char* name, NativeFunction function, unsigned arguments)

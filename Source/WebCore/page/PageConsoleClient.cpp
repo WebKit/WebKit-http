@@ -29,22 +29,32 @@
 #include "config.h"
 #include "PageConsoleClient.h"
 
+#include "CachedImage.h"
 #include "CanvasRenderingContext2D.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Document.h"
+#include "ElementChildIterator.h"
 #include "Frame.h"
 #include "FrameSnapshotting.h"
 #include "HTMLCanvasElement.h"
+#include "HTMLImageElement.h"
+#include "HTMLPictureElement.h"
+#include "HTMLVideoElement.h"
+#include "Image.h"
+#include "ImageBitmap.h"
 #include "ImageBitmapRenderingContext.h"
 #include "ImageBuffer.h"
+#include "ImageData.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
 #include "IntRect.h"
 #include "JSCanvasRenderingContext2D.h"
 #include "JSExecState.h"
 #include "JSHTMLCanvasElement.h"
+#include "JSImageBitmap.h"
 #include "JSImageBitmapRenderingContext.h"
+#include "JSImageData.h"
 #include "JSNode.h"
 #include "JSOffscreenCanvas.h"
 #include "Node.h"
@@ -105,11 +115,22 @@ void PageConsoleClient::unmute()
 
 void PageConsoleClient::addMessage(std::unique_ptr<Inspector::ConsoleMessage>&& consoleMessage)
 {
-    if (consoleMessage->source() != MessageSource::CSS && consoleMessage->type() != MessageType::Image && !m_page.usesEphemeralSession()) {
-        m_page.chrome().client().addMessageToConsole(consoleMessage->source(), consoleMessage->level(), consoleMessage->message(), consoleMessage->line(), consoleMessage->column(), consoleMessage->url());
+    if (!m_page.usesEphemeralSession()) {
+        String message;
+        if (consoleMessage->type() == MessageType::Image) {
+            ASSERT(consoleMessage->arguments());
+            consoleMessage->arguments()->getFirstArgumentAsString(message);
+        } else
+            message = consoleMessage->message();
+        m_page.chrome().client().addMessageToConsole(consoleMessage->source(), consoleMessage->level(), message, consoleMessage->line(), consoleMessage->column(), consoleMessage->url());
 
-        if (m_page.settings().logsPageMessagesToSystemConsoleEnabled() || shouldPrintExceptions())
-            ConsoleClient::printConsoleMessage(MessageSource::ConsoleAPI, MessageType::Log, consoleMessage->level(), consoleMessage->message(), consoleMessage->url(), consoleMessage->line(), consoleMessage->column());
+        if (UNLIKELY(m_page.settings().logsPageMessagesToSystemConsoleEnabled() || shouldPrintExceptions())) {
+            if (consoleMessage->type() == MessageType::Image) {
+                ASSERT(consoleMessage->arguments());
+                ConsoleClient::printConsoleMessageWithArguments(MessageSource::ConsoleAPI, MessageType::Log, consoleMessage->level(), consoleMessage->arguments()->globalState(), *consoleMessage->arguments());
+            } else
+                ConsoleClient::printConsoleMessage(MessageSource::ConsoleAPI, MessageType::Log, consoleMessage->level(), consoleMessage->message(), consoleMessage->url(), consoleMessage->line(), consoleMessage->column());
+        }
     }
 
     InspectorInstrumentation::addMessageToConsole(m_page, WTFMove(consoleMessage));
@@ -222,12 +243,8 @@ static JSC::JSObject* objectArgumentAt(ScriptArguments& arguments, unsigned inde
     return arguments.argumentCount() > index ? arguments.argumentAt(index).getObject() : nullptr;
 }
 
-static CanvasRenderingContext* canvasRenderingContext(JSC::VM& vm, ScriptArguments& arguments)
+static CanvasRenderingContext* canvasRenderingContext(JSC::VM& vm, JSC::JSValue target)
 {
-    auto* target = objectArgumentAt(arguments, 0);
-    if (!target)
-        return nullptr;
-
     if (auto* canvas = JSHTMLCanvasElement::toWrapped(vm, target))
         return canvas->renderingContext();
     if (auto* canvas = JSOffscreenCanvas::toWrapped(vm, target))
@@ -249,56 +266,127 @@ static CanvasRenderingContext* canvasRenderingContext(JSC::VM& vm, ScriptArgumen
 
 void PageConsoleClient::record(JSC::ExecState* state, Ref<ScriptArguments>&& arguments)
 {
-    if (auto* context = canvasRenderingContext(state->vm(), arguments))
-        InspectorInstrumentation::consoleStartRecordingCanvas(*context, *state, objectArgumentAt(arguments, 1));
+    if (auto* target = objectArgumentAt(arguments, 0)) {
+        if (auto* context = canvasRenderingContext(state->vm(), target))
+            InspectorInstrumentation::consoleStartRecordingCanvas(*context, *state, objectArgumentAt(arguments, 1));
+    }
 }
 
 void PageConsoleClient::recordEnd(JSC::ExecState* state, Ref<ScriptArguments>&& arguments)
 {
-    if (auto* context = canvasRenderingContext(state->vm(), arguments))
-        InspectorInstrumentation::didFinishRecordingCanvasFrame(*context, true);
+    if (auto* target = objectArgumentAt(arguments, 0)) {
+        if (auto* context = canvasRenderingContext(state->vm(), target))
+            InspectorInstrumentation::didFinishRecordingCanvasFrame(*context, true);
+    }
 }
 
 void PageConsoleClient::screenshot(JSC::ExecState* state, Ref<ScriptArguments>&& arguments)
 {
-    FAST_RETURN_IF_NO_FRONTENDS(void());
+    String dataURL;
+    JSC::JSValue target;
 
-    Frame& frame = m_page.mainFrame();
+    if (arguments->argumentCount()) {
+        auto possibleTarget = arguments->argumentAt(0);
 
-    std::unique_ptr<ImageBuffer> snapshot;
+        if (auto* node = JSNode::toWrapped(state->vm(), possibleTarget)) {
+            target = possibleTarget;
+            if (UNLIKELY(InspectorInstrumentation::hasFrontends())) {
+                std::unique_ptr<ImageBuffer> snapshot;
 
-    auto* target = objectArgumentAt(arguments, 0);
-    if (target) {
-        auto* node = JSNode::toWrapped(state->vm(), target);
-        if (!node)
+                // Only try to do something special for subclasses of Node if they're detached from the DOM tree.
+                if (!node->document().contains(node)) {
+                    auto snapshotImageElement = [&snapshot] (HTMLImageElement& imageElement) {
+                        if (auto* cachedImage = imageElement.cachedImage()) {
+                            auto* image = cachedImage->image();
+                            if (image && image != &Image::nullImage()) {
+                                snapshot = ImageBuffer::create(image->size(), RenderingMode::Unaccelerated);
+                                snapshot->context().drawImage(*image, FloatPoint(0, 0));
+                            }
+                        }
+                    };
+
+                    if (is<HTMLImageElement>(node))
+                        snapshotImageElement(downcast<HTMLImageElement>(*node));
+                    else if (is<HTMLPictureElement>(node)) {
+                        if (auto* firstImage = childrenOfType<HTMLImageElement>(downcast<HTMLPictureElement>(*node)).first())
+                            snapshotImageElement(*firstImage);
+                    } else if (is<HTMLVideoElement>(node)) {
+                        auto& videoElement = downcast<HTMLVideoElement>(*node);
+                        unsigned videoWidth = videoElement.videoWidth();
+                        unsigned videoHeight = videoElement.videoHeight();
+                        snapshot = ImageBuffer::create(FloatSize(videoWidth, videoHeight), RenderingMode::Unaccelerated);
+                        videoElement.paintCurrentFrameInContext(snapshot->context(), FloatRect(0, 0, videoWidth, videoHeight));
+                    }
+                }
+
+                if (!snapshot)
+                    snapshot = WebCore::snapshotNode(m_page.mainFrame(), *node);
+
+                if (snapshot)
+                    dataURL = snapshot->toDataURL("image/png"_s, WTF::nullopt, PreserveResolution::Yes);
+            }
+        } else if (auto* imageData = JSImageData::toWrapped(state->vm(), possibleTarget)) {
+            target = possibleTarget;
+            if (UNLIKELY(InspectorInstrumentation::hasFrontends())) {
+                auto sourceSize = imageData->size();
+                if (auto imageBuffer = ImageBuffer::create(sourceSize, RenderingMode::Unaccelerated)) {
+                    IntRect sourceRect(IntPoint(), sourceSize);
+                    imageBuffer->putByteArray(*imageData->data(), AlphaPremultiplication::Unpremultiplied, sourceSize, sourceRect, IntPoint());
+                    dataURL = imageBuffer->toDataURL("image/png"_s, WTF::nullopt, PreserveResolution::Yes);
+                }
+            }
+        } else if (auto* imageBitmap = JSImageBitmap::toWrapped(state->vm(), possibleTarget)) {
+            target = possibleTarget;
+            if (UNLIKELY(InspectorInstrumentation::hasFrontends())) {
+                if (auto* imageBuffer = imageBitmap->buffer())
+                    dataURL = imageBuffer->toDataURL("image/png"_s, WTF::nullopt, PreserveResolution::Yes);
+            }
+        } else if (auto* context = canvasRenderingContext(state->vm(), possibleTarget)) {
+            auto& canvas = context->canvasBase();
+            if (is<HTMLCanvasElement>(canvas)) {
+                target = possibleTarget;
+                if (UNLIKELY(InspectorInstrumentation::hasFrontends())) {
+#if ENABLE(WEBGL)
+                    if (is<WebGLRenderingContextBase>(context))
+                        downcast<WebGLRenderingContextBase>(context)->setPreventBufferClearForInspector(true);
+#endif
+
+                    auto result = downcast<HTMLCanvasElement>(canvas).toDataURL("image/png"_s);
+
+#if ENABLE(WEBGL)
+                    if (is<WebGLRenderingContextBase>(context))
+                        downcast<WebGLRenderingContextBase>(context)->setPreventBufferClearForInspector(false);
+#endif
+
+                    if (!result.hasException())
+                        dataURL = result.releaseReturnValue().string;
+                }
+            }
+
+            // FIXME: <https://webkit.org/b/180833> Web Inspector: support OffscreenCanvas for Canvas related operations
+        }
+    }
+
+    if (UNLIKELY(InspectorInstrumentation::hasFrontends())) {
+        if (!target) {
+            // If no target is provided, capture an image of the viewport.
+            IntRect imageRect(IntPoint::zero(), m_page.mainFrame().view()->sizeForVisibleContent());
+            if (auto snapshot = WebCore::snapshotFrameRect(m_page.mainFrame(), imageRect, SnapshotOptionsInViewCoordinates))
+                dataURL = snapshot->toDataURL("image/png"_s, WTF::nullopt, PreserveResolution::Yes);
+        }
+
+        if (dataURL.isEmpty()) {
+            addMessage(std::make_unique<Inspector::ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Image, MessageLevel::Error, "Could not capture screenshot"_s, WTFMove(arguments)));
             return;
-
-        snapshot = WebCore::snapshotNode(frame, *node);
-    } else {
-        // If no target is provided, capture an image of the viewport.
-        IntRect imageRect(IntPoint::zero(), frame.view()->sizeForVisibleContent());
-        snapshot = WebCore::snapshotFrameRect(frame, imageRect, SnapshotOptionsInViewCoordinates);
+        }
     }
 
-    if (!snapshot) {
-        addMessage(std::make_unique<Inspector::ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Log, MessageLevel::Error, "Could not capture screenshot"_s, arguments.copyRef()));
-        return;
-    }
-
-    String dataURL = snapshot->toDataURL("image/png"_s, WTF::nullopt, PreserveResolution::Yes);
-    if (dataURL.isEmpty()) {
-        addMessage(std::make_unique<Inspector::ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Log, MessageLevel::Error, "Could not capture screenshot"_s, arguments.copyRef()));
-        return;
-    }
-
-    if (target) {
-        // Log the argument before sending the image for it.
-        String messageText;
-        arguments->getFirstArgumentAsString(messageText);
-        addMessage(std::make_unique<Inspector::ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Log, MessageLevel::Log, messageText, arguments.copyRef()));
-    }
-
-    addMessage(std::make_unique<Inspector::ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Image, MessageLevel::Log, dataURL));
+    Vector<JSC::Strong<JSC::Unknown>> adjustedArguments;
+    adjustedArguments.append({ state->vm(), target ? target : JSC::jsNontrivialString(state, "Viewport"_s) });
+    for (size_t i = (!target ? 0 : 1); i < arguments->argumentCount(); ++i)
+        adjustedArguments.append({ state->vm(), arguments->argumentAt(i) });
+    arguments = ScriptArguments::create(*state, WTFMove(adjustedArguments));
+    addMessage(std::make_unique<Inspector::ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::Image, MessageLevel::Log, dataURL, WTFMove(arguments)));
 }
 
 } // namespace WebCore

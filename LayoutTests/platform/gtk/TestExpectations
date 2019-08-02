@@ -177,10 +177,6 @@ webkit.org/b/98927 fast/dom/DeviceOrientation [ Skip ]
 fast/history/page-cache-notification-non-suspendable.html
 fast/history/page-cache-notification-suspendable.html
 
-# Datalist is not yet enabled.
-accessibility/datalist.html [ Skip ]
-webkit.org/b/98934 fast/forms/datalist [ Skip ]
-
 # ENABLE_INPUT_TYPE_* are not enabled.
 webkit.org/b/98936 fast/forms/date [ Skip ]
 webkit.org/b/98936 fast/forms/datetime [ Skip ]
@@ -1171,6 +1167,19 @@ fast/text/variations/optical-sizing-trak-2.html [ Skip ]
 
 # The test directly sends Cocoa events
 swipe/pushState-programmatic-back-while-swiping-crash.html [ Skip ]
+
+# GTK port doesn't suport datalist in range elements
+fast/forms/datalist/input-appearance-range-with-datalist-rtl.html [ Skip ]
+fast/forms/datalist/update-range-with-datalist.html [ Skip ]
+
+# Inspector tests don't work with platform WebSockets API
+webkit.org/b/200162 http/tests/websocket/tests/hybi/inspector/ [ Skip ]
+
+# Server cookie not handled with platform WebSockets API
+webkit.org/b/200165 imported/w3c/web-platform-tests/websockets/cookies/002.html [ Failure ]
+webkit.org/b/200165 imported/w3c/web-platform-tests/websockets/cookies/007.html [ Failure ]
+
+webkit.org/b/200338 http/tests/websocket/tests/hybi/client-close.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures.
@@ -3799,14 +3808,13 @@ webkit.org/b/199009 fast/text/variations/optical-sizing-units.html [ ImageOnlyFa
 webkit.org/b/199859 imported/w3c/web-platform-tests/css/css-text/line-break/line-break-anywhere-001.html [ ImageOnlyFailure ]
 
 webkit.org/b/199860 accessibility/button-with-aria-haspopup-role.html [ Failure ]
+webkit.org/b/199860 accessibility/datalist.html [ Failure ]
 webkit.org/b/199868 accessibility/gtk/aria-haspopup.html [ Failure ]
 
 webkit.org/b/199440 fast/mediastream/apply-constraints-video.html [ Failure ]
 webkit.org/b/199440 fast/mediastream/getUserMedia-video-rescaling.html [ Failure ]
 
 webkit.org/b/199437 compositing/geometry/limit-layer-bounds-clipping-ancestor.html [ Failure ]
-
-webkit.org/b/199441 http/tests/websocket/tests/hybi/deflate-frame-parameter.html [ Failure ]
 
 webkit.org/b/199872 http/tests/inspector/network/resource-sizes-network.html [ Failure ]
 
@@ -3939,6 +3947,15 @@ imported/w3c/web-platform-tests/css/css-multicol/multicol-width-ch-001.xht [ Pas
 
 imported/w3c/web-platform-tests/service-workers/service-worker/svg-target-reftest.https.html [ Pass ]
 
+# permessage-deflate WebSocket extension
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-comp-bit-onoff.html [ Pass ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-invalid-parameter.html [ Pass ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-parameter.html [ Pass ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-set-bfinal.html [ Pass ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-split-frames.html [ Pass ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-unsolicited-negotiation-response.html [ Pass ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-window-bits.html [ Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of PASSING tests. See top of file where to put new expectations.
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -3995,6 +4012,11 @@ webkit.org/b/160119 legacy-animation-engine/animations/negative-delay.html [ Pas
 webkit.org/b/160119 css3/masking/mask-base64.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/160119 media/video-object-fit-change.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/200301 storage/websql/alter-to-info-table.html [ Failure ]
+webkit.org/b/200301 storage/websql/test-authorizer.html [ Failure ]
+
+webkit.org/b/200302 accessibility/media-with-aria-label.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of tests failing due to THREADED COMPOSITOR enablement. Don't put random test

@@ -198,6 +198,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(bool, reportTotalCompileTimes, false, Normal, nullptr) \
     v(bool, reportParseTimes, false, Normal, "dumps JS function signature and the time it took to parse") \
     v(bool, reportBytecodeCompileTimes, false, Normal, "dumps JS function signature and the time it took to bytecode compile") \
+    v(bool, countParseTimes, false, Normal, "counts parse times") \
     v(bool, verboseExitProfile, false, Normal, nullptr) \
     v(bool, verboseCFA, false, Normal, nullptr) \
     v(bool, verboseDFGFailure, false, Normal, nullptr) \
@@ -240,6 +241,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(bool, useBumpAllocator, true, Normal, nullptr) \
     v(bool, stealEmptyBlocksFromOtherAllocators, true, Normal, nullptr) \
     v(bool, eagerlyUpdateTopCallFrame, false, Normal, nullptr) \
+    v(bool, dumpZappedCellCrashData, false, Normal, nullptr) \
     \
     v(bool, useOSREntryToDFG, true, Normal, nullptr) \
     v(bool, useOSREntryToFTL, true, Normal, nullptr) \
@@ -494,6 +496,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(bool, useWebAssemblyReferences, false, Normal, "Allow types from the wasm references spec.") \
     v(bool, useWeakRefs, false, Normal, "Expose the WeakRef constructor.") \
     v(bool, useBigInt, false, Normal, "If true, we will enable BigInt support.") \
+    v(bool, useNullishCoalescing, false, Normal, "Enable support for the ?? operator.") \
     v(bool, useArrayAllocationProfiling, true, Normal, "If true, we will use our normal array allocation profiling. If false, the allocation profile will always claim to be undecided.") \
     v(bool, forcePolyProto, false, Normal, "If true, create_this will always create an object with a poly proto structure.") \
     v(bool, forceMiniVMMode, false, Normal, "If true, it will force mini VM mode on.") \

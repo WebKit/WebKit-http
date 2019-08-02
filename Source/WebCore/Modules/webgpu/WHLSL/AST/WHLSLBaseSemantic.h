@@ -27,8 +27,9 @@
 
 #if ENABLE(WEBGPU)
 
+#include "WHLSLCodeLocation.h"
 #include "WHLSLEntryPointType.h"
-#include "WHLSLLexer.h"
+#include <wtf/FastMalloc.h>
 #include <wtf/Optional.h>
 
 namespace WebCore {
@@ -43,6 +44,7 @@ class FunctionDefinition;
 class UnnamedType;
 
 class BaseSemantic {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     BaseSemantic(CodeLocation location)
         : m_codeLocation(location)

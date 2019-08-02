@@ -657,6 +657,15 @@ fast/animation/request-animation-frame-in-two-pages.html [ Skip ]
 imported/w3c/web-platform-tests/pointerevents [ Skip ]
 pointerevents [ Skip ]
 
+# permessage-deflate WebSocket extension only supported by Soup based ports
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-comp-bit-onoff.html [ Skip ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-invalid-parameter.html [ Skip ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-parameter.html [ Skip ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-set-bfinal.html [ Skip ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-split-frames.html [ Skip ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-unsolicited-negotiation-response.html [ Skip ]
+http/tests/websocket/tests/hybi/imported/blink/permessage-deflate-window-bits.html [ Skip ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -744,7 +753,8 @@ webkit.org/b/134982 inspector/debugger/setBreakpoint-dfg-and-modify-local.html [
 webkit.org/b/161951 [ Debug ] inspector/debugger/paused-scopes.html [ Skip ]
 
 # User interaction is a WK2 concept.
-inspector/runtime/evaluate-userGestureEmulation-userIsInteracting.html [ Skip ]
+inspector/debugger/evaluateOnCallFrame-emulateUserGesture-userIsInteracting.html [ Skip ]
+inspector/runtime/evaluate-emulateUserGesture-userIsInteracting.html [ Skip ]
 
 # These conformance tests are no longer in sync with the latest specification
 # and expect compareDocumentPosition() to return:
@@ -2208,7 +2218,6 @@ webkit.org/b/170122 http/tests/preload/single_download_preload_headers_charset.p
 ########################################
 ### START OF -disabled tests
 
-webkit.org/b/199431 accessibility/set-selected-text-range-after-newline.html [ Skip ]
 webkit.org/b/20871 js/garbage-collect-after-string-appends.html [ Skip ]
 webkit.org/b/58323 compositing/objects/composited-object-alignment.html [ Skip ]
 webkit.org/b/48454 compositing/tiling/huge-layer-resize.html [ Skip ]

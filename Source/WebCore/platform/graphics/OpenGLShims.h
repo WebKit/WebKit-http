@@ -25,6 +25,9 @@
 #include <qopenglfunctions.h>
 #include <QOpenGLContext>
 #include <QSurface>
+#elif OS(WINDOWS)
+#include <GL/gl.h>
+#include <GLES2/gl2.h>
 #else
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -44,6 +47,7 @@ OpenGLFunctionTable* openGLFunctionTable();
 
 #if OS(WINDOWS)
 #define GLAPIENTRY __stdcall
+typedef char GLchar;
 #else
 #define GLAPIENTRY
 #endif

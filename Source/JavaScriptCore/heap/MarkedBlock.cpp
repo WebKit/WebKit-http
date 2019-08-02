@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -161,7 +161,7 @@ void MarkedBlock::Handle::stopAllocating(const FreeList& freeList)
             if (MarkedBlockInternal::verbose)
                 dataLog("Free cell: ", RawPointer(cell), "\n");
             if (m_attributes.destruction == NeedsDestruction)
-                cell->zap();
+                cell->zap(HeapCell::StopAllocating);
             block().clearNewlyAllocated(cell);
         });
     
@@ -203,15 +203,6 @@ void MarkedBlock::Handle::resumeAllocating(FreeList& freeList)
     // Re-create our free list from before stopping allocation. Note that this may return an empty
     // freelist, in which case the block will still be Marked!
     sweep(&freeList);
-}
-
-void MarkedBlock::Handle::zap(const FreeList& freeList)
-{
-    freeList.forEach(
-        [&] (HeapCell* cell) {
-            if (m_attributes.destruction == NeedsDestruction)
-                cell->zap();
-        });
 }
 
 void MarkedBlock::aboutToMarkSlow(HeapVersion markingVersion)

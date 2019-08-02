@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -119,6 +119,8 @@ public:
 
     bool isEmpty() { return m_collectorStack.isEmpty() && m_mutatorStack.isEmpty(); }
 
+    bool isFirstVisit() const { return m_isFirstVisit; }
+
     void didStartMarking();
     void reset();
     void clearMarkStacks();
@@ -211,8 +213,6 @@ private:
     template<typename ContainerType>
     void appendToMarkStack(ContainerType&, JSCell*);
     
-    void appendToMutatorMarkStack(const JSCell*);
-    
     void noteLiveAuxiliaryCell(HeapCell*);
     
     void visitChildren(const JSCell*);
@@ -226,6 +226,10 @@ private:
 
     bool hasWork(const AbstractLocker&);
     bool didReachTermination(const AbstractLocker&);
+
+#if CPU(X86_64)
+    NEVER_INLINE NO_RETURN_DUE_TO_CRASH NOT_TAIL_CALLED void reportZappedCellAndCrash(JSCell*);
+#endif
 
     template<typename Func>
     IterationStatus forEachMarkStack(const Func&);

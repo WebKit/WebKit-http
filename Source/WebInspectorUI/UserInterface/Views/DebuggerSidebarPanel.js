@@ -157,7 +157,7 @@ WI.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WI.NavigationSideba
         breakpointNavigationBarWrapper.appendChild(breakpointNavigationBar.element);
 
         this._createBreakpointButton = new WI.ButtonNavigationItem("create-breakpoint", WI.UIString("Create Breakpoint"), "Images/Plus13.svg", 13, 13);
-        this._createBreakpointButton.element.addEventListener("mousedown", this._handleCreateBreakpointMouseDown.bind(this));
+        WI.addMouseDownContextMenuHandlers(this._createBreakpointButton.element, this._populateCreateBreakpointContextMenu.bind(this));
         breakpointNavigationBar.addNavigationItem(this._createBreakpointButton);
 
         let breakpointsGroup = new WI.DetailsSectionGroup([breakpointsRow]);
@@ -584,7 +584,7 @@ WI.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WI.NavigationSideba
     {
         var issues = WI.consoleManager.issuesForSourceCode(sourceCode);
         for (var issue of issues)
-            this._addIssue(issue);
+            this._addIssue(issue, sourceCode);
     }
 
     _addTreeElementForSourceCodeToTreeOutline(sourceCode, treeOutline)
@@ -1397,13 +1397,14 @@ WI.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WI.NavigationSideba
         this._pauseReasonLinkContainerElement.appendChild(linkElement);
     }
 
-    _addIssue(issueMessage)
+    _addIssue(issueMessage, sourceCode)
     {
         let issueTreeElement = this._scriptsContentTreeOutline.findTreeElement(issueMessage);
         if (issueTreeElement)
             return issueTreeElement;
 
-        let parentTreeElement = this._addTreeElementForSourceCodeToTreeOutline(issueMessage.sourceCodeLocation.sourceCode, this._scriptsContentTreeOutline);
+        console.assert(sourceCode || (issueMessage.sourceCodeLocation && issueMessage.sourceCodeLocation.sourceCode));
+        let parentTreeElement = this._addTreeElementForSourceCodeToTreeOutline(sourceCode || issueMessage.sourceCodeLocation.sourceCode, this._scriptsContentTreeOutline);
         if (!parentTreeElement)
             return null;
 
@@ -1464,18 +1465,8 @@ WI.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WI.NavigationSideba
             setting.value = !!treeElement.parent;
     }
 
-    _handleCreateBreakpointMouseDown(event)
+    _populateCreateBreakpointContextMenu(contextMenu)
     {
-        if (this._ignoreCreateBreakpointMouseDown)
-            return;
-
-        this._ignoreCreateBreakpointMouseDown = true;
-
-        let contextMenu = WI.ContextMenu.createFromEvent(event);
-        contextMenu.addBeforeShowCallback(() => {
-            this._ignoreCreateBreakpointMouseDown = false;
-        });
-
         // COMPATIBILITY (iOS 10): DebuggerAgent.setPauseOnAssertions did not exist yet.
         if (InspectorBackend.domains.Debugger.setPauseOnAssertions) {
             let assertionFailuresBreakpointShown = WI.settings.showAssertionFailuresBreakpoint.value;
@@ -1516,8 +1507,6 @@ WI.DebuggerSidebarPanel = class DebuggerSidebarPanel extends WI.NavigationSideba
                 popover.show(this._createBreakpointButton.element, [WI.RectEdge.MAX_Y, WI.RectEdge.MIN_Y, WI.RectEdge.MAX_X]);
             });
         }
-
-        contextMenu.show();
     }
 };
 

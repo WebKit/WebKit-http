@@ -180,7 +180,15 @@ WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore(NetworkSession& n
 WebResourceLoadStatisticsStore::~WebResourceLoadStatisticsStore()
 {
     ASSERT(RunLoop::isMain());
+    ASSERT(!m_statisticsStore);
+    ASSERT(!m_persistentStorage);
+}
 
+void WebResourceLoadStatisticsStore::didDestroyNetworkSession()
+{
+    ASSERT(RunLoop::isMain());
+
+    m_networkSession = nullptr;
     flushAndDestroyPersistentStore();
 }
 
@@ -288,13 +296,11 @@ void WebResourceLoadStatisticsStore::hasStorageAccess(const RegistrableDomain& s
             return;
         }
 
-        if (m_statisticsStore) {
-            m_statisticsStore->hasStorageAccess(subFrameDomain, topFrameDomain, frameID, pageID, [completionHandler = WTFMove(completionHandler)](bool hasStorageAccess) mutable {
-                postTaskReply([completionHandler = WTFMove(completionHandler), hasStorageAccess]() mutable {
-                    completionHandler(hasStorageAccess);
-                });
+        m_statisticsStore->hasStorageAccess(subFrameDomain, topFrameDomain, frameID, pageID, [completionHandler = WTFMove(completionHandler)](bool hasStorageAccess) mutable {
+            postTaskReply([completionHandler = WTFMove(completionHandler), hasStorageAccess]() mutable {
+                completionHandler(hasStorageAccess);
             });
-        }
+        });
     });
 }
 
@@ -335,6 +341,9 @@ void WebResourceLoadStatisticsStore::requestStorageAccess(const RegistrableDomai
             return;
         case StorageAccessStatus::RequiresUserPrompt:
             {
+            if (!m_networkSession)
+                return completionHandler(StorageAccessWasGranted::No, StorageAccessPromptWasShown::No);
+
             CompletionHandler<void(bool)> requestConfirmationCompletionHandler = [this, protectedThis = protectedThis.copyRef(), subFrameDomain, topFrameDomain, frameID, pageID, completionHandler = WTFMove(completionHandler)] (bool userDidGrantAccess) mutable {
                 if (userDidGrantAccess)
                     grantStorageAccess(subFrameDomain, topFrameDomain, frameID, pageID, StorageAccessPromptWasShown::Yes, WTFMove(completionHandler));
@@ -358,13 +367,11 @@ void WebResourceLoadStatisticsStore::requestStorageAccess(const RegistrableDomai
             return;
         }
 
-        if (m_statisticsStore) {
-            m_statisticsStore->requestStorageAccess(WTFMove(subFrameDomain), WTFMove(topFrameDomain), frameID, pageID, [statusHandler = WTFMove(statusHandler)](StorageAccessStatus status) mutable {
-                postTaskReply([statusHandler = WTFMove(statusHandler), status]() mutable {
-                    statusHandler(status);
-                });
+        m_statisticsStore->requestStorageAccess(WTFMove(subFrameDomain), WTFMove(topFrameDomain), frameID, pageID, [statusHandler = WTFMove(statusHandler)](StorageAccessStatus status) mutable {
+            postTaskReply([statusHandler = WTFMove(statusHandler), status]() mutable {
+                statusHandler(status);
             });
-        }
+        });
     });
 }
 
@@ -392,13 +399,11 @@ void WebResourceLoadStatisticsStore::grantStorageAccess(const RegistrableDomain&
             return;
         }
 
-        if (m_statisticsStore) {
-            m_statisticsStore->grantStorageAccess(WTFMove(subFrameDomain), WTFMove(topFrameDomain), frameID, pageID, promptWasShown, [promptWasShown, completionHandler = WTFMove(completionHandler)](StorageAccessWasGranted wasGrantedAccess) mutable {
-                postTaskReply([wasGrantedAccess, promptWasShown, completionHandler = WTFMove(completionHandler)]() mutable {
-                    completionHandler(wasGrantedAccess, promptWasShown);
-                });
+        m_statisticsStore->grantStorageAccess(WTFMove(subFrameDomain), WTFMove(topFrameDomain), frameID, pageID, promptWasShown, [promptWasShown, completionHandler = WTFMove(completionHandler)](StorageAccessWasGranted wasGrantedAccess) mutable {
+            postTaskReply([wasGrantedAccess, promptWasShown, completionHandler = WTFMove(completionHandler)]() mutable {
+                completionHandler(wasGrantedAccess, promptWasShown);
             });
-        }
+        });
     });
 }
 
@@ -870,16 +875,14 @@ void WebResourceLoadStatisticsStore::scheduleClearInMemoryAndPersistent(ShouldGr
             postTaskReply(WTFMove(completionHandler));
         });
 
-        if (m_statisticsStore) {
-            m_statisticsStore->clear([this, protectedThis = protectedThis.copyRef(), shouldGrandfather, callbackAggregator = callbackAggregator.copyRef()] () mutable {
-                if (shouldGrandfather == ShouldGrandfatherStatistics::Yes) {
-                    if (m_statisticsStore)
-                        m_statisticsStore->grandfatherExistingWebsiteData([callbackAggregator = WTFMove(callbackAggregator)]() mutable { });
-                    else
-                        RELEASE_LOG(ResourceLoadStatistics, "WebResourceLoadStatisticsStore::scheduleClearInMemoryAndPersistent After being cleared, m_statisticsStore is null when trying to grandfather data.");
-                }
-            });
-        }
+        m_statisticsStore->clear([this, protectedThis = protectedThis.copyRef(), shouldGrandfather, callbackAggregator = callbackAggregator.copyRef()] () mutable {
+            if (shouldGrandfather == ShouldGrandfatherStatistics::Yes) {
+                if (m_statisticsStore)
+                    m_statisticsStore->grandfatherExistingWebsiteData([callbackAggregator = WTFMove(callbackAggregator)]() mutable { });
+                else
+                    RELEASE_LOG(ResourceLoadStatistics, "WebResourceLoadStatisticsStore::scheduleClearInMemoryAndPersistent After being cleared, m_statisticsStore is null when trying to grandfather data.");
+            }
+        });
     });
 }
 
@@ -1003,7 +1006,7 @@ void WebResourceLoadStatisticsStore::logTestingEvent(const String& event)
 {
     ASSERT(RunLoop::isMain());
 
-    if (m_networkSession)
+    if (m_networkSession && m_networkSession->enableResourceLoadStatisticsLogTestingEvent())
         m_networkSession->networkProcess().parentProcessConnection()->send(Messages::NetworkProcessProxy::LogTestingEvent(m_networkSession->sessionID(), event), 0);
 }
 

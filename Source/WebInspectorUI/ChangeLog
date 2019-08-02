@@ -1,3 +1,217 @@
+2019-08-01  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, remove `emulateUserGesture` parameter from `Debugger.evaluateOnCallFrame` for iOS 13
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * UserInterface/Protocol/Legacy/13.0/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-13.0.json:
+        The iOS 13 protocol has already been decided, so these shouldn't have been added unless they
+        were cherry-picked in.
+
+2019-07-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: support emulateUserGesture parameter in Debugger.evaluateOnCallFrame
+        https://bugs.webkit.org/show_bug.cgi?id=200272
+
+        Reviewed by Joseph Pecoraro.
+
+        When paused, evaluating in the console should still respect the "Emulate User Gesture" checkbox.
+
+        * UserInterface/Controllers/RuntimeManager.js:
+        (WI.RuntimeManager.prototype.evaluateInInspectedWindow):
+
+        * UserInterface/Protocol/Legacy/13.0/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-13.0.json:
+
+2019-07-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Uncaught Exception: TypeError: null is not an object (evaluating 'issueMessage.sourceCodeLocation.sourceCode')
+        https://bugs.webkit.org/show_bug.cgi?id=200296
+
+        Reviewed by Joseph Pecoraro.
+
+        When fetching all `WI.IssueMessage`s for a given `WI.SourceCode`, the `WI.IssueMessage` may
+        be associated in a different way (e.g. by url, instead of `WI.SourceCodeLocation`). As such,
+        we should pass the `WI.SourceCode` along, and use it when adding the `WI.IssueTreeElement`.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._addIssuesForSourceCode):
+        (WI.DebuggerSidebarPanel.prototype._addIssue):
+
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel.prototype._addIssue):
+        (WI.SourcesNavigationSidebarPanel.prototype._addIssuesForSourceCode):
+
+2019-07-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: provide a way to disable/breakpoint all event listeners for a given DOM node or event type
+        https://bugs.webkit.org/show_bug.cgi?id=200233
+
+        Reviewed by Joseph Pecoraro.
+
+        Often, when trying to debug issues with DOM events, it's extremely tedious to have to go
+        through event listeners one by one and disable them (or set a breakpoint). This patch adds
+        a way of performing these "state modifications" in batch operations, based on the current
+        grouping method of the Event Listeners section.
+
+        * UserInterface/Controllers/DOMManager.js:
+        (WI.DOMManager.supportsDisablingEventListeners): Added.
+        (WI.DOMManager.supportsEventListenerBreakpoints): Added.
+        Common convenience functions for checking for protocol support.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.createEventListenerSection):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.css:
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners .details-section.event-listener-section > .header > .event-listener-options): Added.
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners .details-section.event-listener-section:hover > .header > .event-listener-options): Added.
+        Add an options element that shows a context menu:
+         - "Disable Event Listeners"/"Enable Event Listeners"
+         - "Add Breakpoints"/"Delete Breakpoints"
+        Each action applies the corresponding state to all event listeners in that section.
+
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WI.EventListenerSectionGroup):
+        (WI.EventListenerSectionGroup.prototype.get supportsStateModification): Added.
+        (WI.EventListenerSectionGroup.prototype.get isEventListenerDisabled): Added.
+        (WI.EventListenerSectionGroup.prototype.set isEventListenerDisabled): Added.
+        (WI.EventListenerSectionGroup.prototype.get hasEventListenerBreakpoint): Added.
+        (WI.EventListenerSectionGroup.prototype.set hasEventListenerBreakpoint): Added.
+        (WI.EventListenerSectionGroup.prototype._updateDisabledToggle): Added.
+        (WI.EventListenerSectionGroup.prototype._updateBreakpointToggle): Added.
+        (WI.EventListenerSectionGroup.prototype._createDisabledToggleRow): Deleted.
+        (WI.EventListenerSectionGroup.prototype._createBreakpointToggleRow): Deleted.
+        Expose a way to modify the event listener's state so that the UI (e.g. checkbox and title)
+        also get's updated.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-07-30  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Resources: Display outline around images when viewing image collections
+        https://bugs.webkit.org/show_bug.cgi?id=200212
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/CollectionContentView.css:
+        (.content-view.collection .resource.image img):
+        (.content-view.collection .resource.image img:hover):
+
+2019-07-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Resources: add a "Show Grid" navigation item for the Images collection
+        https://bugs.webkit.org/show_bug.cgi?id=200260
+
+        Reviewed by Joseph Pecoraro.
+
+        Each subview `WI.ImageResourceContentView` already listens for changes to the underlying
+        `WI.settings.showImageGrid` and adds the `.show-grid` class if enabled. As such, this change
+        just adds a `WI.ButtonNavigationItem` for toggling `WI.settings.showImageGrid` from the
+        Images "folder".
+
+        * UserInterface/Views/ResourceCollectionContentView.js:
+        (WI.ResourceCollectionContentView):
+        (WI.ResourceCollectionContentView.prototype.get navigationItems):
+        (WI.ResourceCollectionContentView.prototype.attached): Added.
+        (WI.ResourceCollectionContentView.prototype.detached): Added.
+        (WI.ResourceCollectionContentView.prototype._updateImageTypeScopeBar):
+        Drive-by: hide the image type `WI.ScopeBar` if there's only one type of image.
+        (WI.ResourceCollectionContentView.prototype._handleShowGridButtonClicked): Added.
+        (WI.ResourceCollectionContentView.prototype._handleShowImageGridSettingChanged): Added.
+
+2019-07-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add -webkit-* keywords for *-height CSS properties
+        https://bugs.webkit.org/show_bug.cgi?id=200240
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+        * UserInterface/Views/Main.css:
+        (.message-text-view):
+        * UserInterface/Views/Toolbar.css:
+        (.toolbar .control-section):
+        (.toolbar .item-section):
+        Replace `-webkit-min-content` with `min-content`.
+
+2019-07-26  Greg Doolittle  <gr3g@apple.com>
+
+        Web Inspector: AXI: Audit: Typo of "some" as "somee"
+        https://bugs.webkit.org/show_bug.cgi?id=200166
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Controllers/AuditManager.js:
+        (WI.AuditManager.prototype._addDefaultTests):
+        (WI.AuditManager):
+
+2019-07-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: no context menu items work when context menu clicking on "Add Breakpoint"
+        https://bugs.webkit.org/show_bug.cgi?id=199953
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.addMouseDownContextMenuHandlers): Added.
+        Create a helper function for managing elements that show a context menu on "mousedown".
+
+        * UserInterface/Base/SearchUtilities.js:
+        (WI.SearchUtilities.createSettingsButton):
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView.prototype.initialLayout):
+        (WI.CanvasContentView.prototype._populateCanvasElementButtonContextMenu): Added.
+        (WI.CanvasContentView.prototype._populateViewShaderButtonContextMenu): Added.
+        (WI.CanvasContentView.prototype._populateViewRecordingButtonContextMenu): Added.
+        (WI.CanvasContentView.prototype._handleCanvasElementButtonMouseDown): Deleted.
+        (WI.CanvasContentView.prototype._handleViewShaderButtonMouseDown): Deleted.
+        (WI.CanvasContentView.prototype._handleViewRecordingButtonMouseDown): Deleted.
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel):
+        (WI.DebuggerSidebarPanel.prototype._populateCreateBreakpointContextMenu): Added.
+        (WI.DebuggerSidebarPanel.prototype._handleCreateBreakpointMouseDown): Deleted.
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel):
+        (WI.SourcesNavigationSidebarPanel.prototype._populateResourceGroupingModeContextMenu): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._populateCreateBreakpointContextMenu): Added.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleResourceGroupingModeMouseDown): Deleted.
+        (WI.SourcesNavigationSidebarPanel.prototype._handleCreateBreakpointMouseDown): Deleted.
+
+        * UserInterface/Views/TabBar.js:
+        (WI.TabBar):
+        (WI.TabBar.prototype._handleTabPickerTabContextMenu): Deleted.
+        * UserInterface/Views/LegacyTabBar.js:
+        (WI.LegacyTabBar):
+        (WI.LegacyTabBar.prototype._handleTabPickerTabContextMenu): Deleted.
+        Remove the "contextmenu" handler on the tab picker, as that's already used by the entire
+        tab bar to show/hide tabs.
+
+2019-07-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: print the target of `console.screenshot` last so the target is the closest item to the image
+        https://bugs.webkit.org/show_bug.cgi?id=199308
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WI.ConsoleMessageView.prototype.render):
+        (WI.ConsoleMessageView.prototype._appendMessageTextAndArguments):
+        (WI.ConsoleMessageView.prototype._handleContextMenu):
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-image > .console-message-body > :matches(hr, img)): Added.
+        (.console-image > .console-message-body > hr): Added.
+        (.console-image > .console-message-body > img): Added.
+        (.console-log-level.console-image::before): Added.
+        (.console-message-body > .console-image): Deleted.
+        (.console-log-level.console-image-container::before): Deleted.
+        Allow `ConsoleMessage.MessageType.Image` to be an `ConsoleMessage.MessageLevel.Error`, and
+        print the message (and extra parameters) in that case.
+        Drive-by: reorganize the switch-case so all paths have the same `default` case.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
 2019-07-23  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: Styles: Command-X should cut selected properties

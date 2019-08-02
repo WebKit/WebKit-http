@@ -21,6 +21,7 @@
 #define GLContext_h
 
 #include "GraphicsContext3D.h"
+#include "IntSize.h"
 #include "PlatformDisplay.h"
 #include <wtf/Noncopyable.h>
 
@@ -41,6 +42,8 @@ typedef struct _cairo_device cairo_device_t;
 #endif
 
 namespace WebCore {
+
+class IntSize;
 
 class GLContext {
     WTF_MAKE_NONCOPYABLE(GLContext); WTF_MAKE_FAST_ALLOCATED;

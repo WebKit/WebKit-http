@@ -59,16 +59,15 @@ static const int maxHistorySize = 10;
 
 typedef _com_ptr_t<_com_IIID<IWebMutableURLRequest, &__uuidof(IWebMutableURLRequest)>> IWebMutableURLRequestPtr;
 
-Ref<BrowserWindow> WebKitLegacyBrowserWindow::create(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView, bool pageLoadTesting)
+Ref<BrowserWindow> WebKitLegacyBrowserWindow::create(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView)
 {
-    return adoptRef(*new WebKitLegacyBrowserWindow(mainWnd, urlBarWnd, useLayeredWebView, pageLoadTesting));
+    return adoptRef(*new WebKitLegacyBrowserWindow(mainWnd, urlBarWnd, useLayeredWebView));
 }
 
-WebKitLegacyBrowserWindow::WebKitLegacyBrowserWindow(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView, bool pageLoadTesting)
+WebKitLegacyBrowserWindow::WebKitLegacyBrowserWindow(HWND mainWnd, HWND urlBarWnd, bool useLayeredWebView)
     : m_hMainWnd(mainWnd)
     , m_hURLBarWnd(urlBarWnd)
     , m_useLayeredWebView(useLayeredWebView)
-    , m_pageLoadTestClient(std::make_unique<PageLoadTestClient>(this, pageLoadTesting))
 {
 }
 
@@ -475,15 +474,6 @@ HRESULT WebKitLegacyBrowserWindow::loadURL(const BSTR& passedURL)
     if (!passedURL)
         return E_INVALIDARG;
 
-    _bstr_t urlBStr(passedURL);
-    if (!!urlBStr && (::PathFileExists(urlBStr) || ::PathIsUNC(urlBStr))) {
-        TCHAR fileURL[INTERNET_MAX_URL_LENGTH];
-        DWORD fileURLLength = sizeof(fileURL) / sizeof(fileURL[0]);
-
-        if (SUCCEEDED(::UrlCreateFromPath(urlBStr, fileURL, &fileURLLength, 0)))
-            urlBStr = fileURL;
-    }
-
     IWebFramePtr frame;
     HRESULT hr = m_webView->mainFrame(&frame.GetInterfacePtr());
     if (FAILED(hr))
@@ -494,7 +484,7 @@ HRESULT WebKitLegacyBrowserWindow::loadURL(const BSTR& passedURL)
     if (FAILED(hr))
         return hr;
 
-    hr = request->initWithURL(wcsstr(static_cast<wchar_t*>(urlBStr), L"://") ? urlBStr : _bstr_t(L"http://") + urlBStr, WebURLRequestUseProtocolCachePolicy, 60);
+    hr = request->initWithURL(passedURL, WebURLRequestUseProtocolCachePolicy, 60);
     if (FAILED(hr))
         return hr;
 
@@ -506,11 +496,6 @@ HRESULT WebKitLegacyBrowserWindow::loadURL(const BSTR& passedURL)
     hr = frame->loadRequest(request);
 
     return hr;
-}
-
-void WebKitLegacyBrowserWindow::exitProgram()
-{
-    ::PostMessage(m_hMainWnd, static_cast<UINT>(WM_COMMAND), MAKELPARAM(IDM_EXIT, 0), 0);
 }
 
 void WebKitLegacyBrowserWindow::setUserAgent(_bstr_t& customUserAgent)
@@ -531,6 +516,15 @@ _bstr_t WebKitLegacyBrowserWindow::userAgent()
 }
 
 typedef _com_ptr_t<_com_IIID<IWebIBActions, &__uuidof(IWebIBActions)>> IWebIBActionsPtr;
+
+void WebKitLegacyBrowserWindow::reload()
+{
+    IWebIBActionsPtr webActions;
+    if (FAILED(m_webView->QueryInterface(IID_IWebIBActions, reinterpret_cast<void**>(&webActions.GetInterfacePtr()))))
+        return;
+
+    webActions->reload(nullptr);
+}
 
 void WebKitLegacyBrowserWindow::resetZoom()
 {

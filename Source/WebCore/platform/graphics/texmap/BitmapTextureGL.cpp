@@ -28,6 +28,7 @@
 #include "FilterOperations.h"
 #include "Image.h"
 #include "LengthFunctions.h"
+#include "NativeImage.h"
 #include "NotImplemented.h"
 #include "TextureMapperShaderProgram.h"
 #include "Timer.h"
@@ -44,6 +45,11 @@
 #include "RefPtrCairo.h"
 #include <cairo.h>
 #include <wtf/text/CString.h>
+#endif
+
+#if USE(DIRECT2D)
+#include <d2d1.h>
+#include <wincodec.h>
 #endif
 
 #if OS(DARWIN)
@@ -174,6 +180,29 @@ void BitmapTextureGL::updateContents(Image* image, const IntRect& targetRect, co
         qImage = frameImage->toImage();
     imageData = reinterpret_cast<const char*>(qImage.constBits());
     bytesPerLine = qImage.bytesPerLine();
+#elif USE(DIRECT2D)
+    // We can't access the bitmap's memory when it is in the middle of a BeginDraw/EndDraw
+    WICRect rcLock = { 0, 0, targetRect.width(), targetRect.height() };
+
+    COMPtr<IWICBitmapLock> bitmapData;
+    HRESULT hr = frameImage->Lock(&rcLock, WICBitmapLockRead, &bitmapData);
+    if (!SUCCEEDED(hr))
+        return;
+
+    UINT stride = 0;
+    hr = bitmapData->GetStride(&stride);
+    if (!SUCCEEDED(hr))
+        return;
+
+    bytesPerLine = stride;
+
+    UINT bufferSize = 0;
+    WICInProcPointer dataPtr = nullptr;
+    hr = bitmapData->GetDataPointer(&bufferSize, &dataPtr);
+    if (!SUCCEEDED(hr))
+        return;
+
+    imageData = reinterpret_cast<char*>(dataPtr);
 #endif
 
     updateContents(imageData, targetRect, offset, bytesPerLine);

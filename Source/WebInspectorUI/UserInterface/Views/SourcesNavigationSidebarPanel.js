@@ -188,7 +188,7 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         breakpointNavigationBarWrapper.appendChild(breakpointNavigationBar.element);
 
         this._createBreakpointButton = new WI.ButtonNavigationItem("create-breakpoint", WI.UIString("Create Breakpoint"), "Images/Plus13.svg", 13, 13);
-        this._createBreakpointButton.element.addEventListener("mousedown", this._handleCreateBreakpointMouseDown.bind(this));
+        WI.addMouseDownContextMenuHandlers(this._createBreakpointButton.element, this._populateCreateBreakpointContextMenu.bind(this));
         breakpointNavigationBar.addNavigationItem(this._createBreakpointButton);
 
         let breakpointsGroup = new WI.DetailsSectionGroup([breakpointsRow]);
@@ -219,7 +219,7 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
 
         let resourceGroupingModeNavigationItem = new WI.ButtonNavigationItem("grouping-mode", WI.UIString("Grouping Mode"), "Images/Gear.svg", 15, 15);
         resourceGroupingModeNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
-        resourceGroupingModeNavigationItem.element.addEventListener("mousedown", this._handleResourceGroupingModeMouseDown.bind(this));
+        WI.addMouseDownContextMenuHandlers(resourceGroupingModeNavigationItem.element, this._populateResourceGroupingModeContextMenu.bind(this));
         this._resourcesNavigationBar.addNavigationItem(resourceGroupingModeNavigationItem);
 
         this._resourcesTreeOutline = this.contentTreeOutline;
@@ -1025,11 +1025,12 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         return breakpoints;
     }
 
-    _addIssue(issueMessage)
+    _addIssue(issueMessage, sourceCode)
     {
         let issueTreeElement = this._resourcesTreeOutline.findTreeElement(issueMessage);
         if (!issueTreeElement) {
-            let parentTreeElement = this._resourcesTreeOutline.findTreeElement(issueMessage.sourceCodeLocation.sourceCode);
+            console.assert(sourceCode || (issueMessage.sourceCodeLocation && issueMessage.sourceCodeLocation.sourceCode));
+            let parentTreeElement = this._resourcesTreeOutline.findTreeElement(sourceCode || issueMessage.sourceCodeLocation.sourceCode);
             if (!parentTreeElement)
                 return null;
 
@@ -1068,7 +1069,7 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
     _addIssuesForSourceCode(sourceCode)
     {
         for (let issue of WI.consoleManager.issuesForSourceCode(sourceCode))
-            this._addIssue(issue);
+            this._addIssue(issue, sourceCode);
     }
 
     _updateTemporarilyDisabledBreakpointsButtons()
@@ -1399,18 +1400,8 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         this.updateFilter();
     }
 
-    _handleResourceGroupingModeMouseDown(event)
+    _populateResourceGroupingModeContextMenu(contextMenu)
     {
-        if (this._ignoreResourceGroupingModeMouseDown)
-            return;
-
-        this._ignoreResourceGroupingModeMouseDown = true;
-
-        let contextMenu = WI.ContextMenu.createFromEvent(event);
-        contextMenu.addBeforeShowCallback(() => {
-            this._ignoreResourceGroupingModeMouseDown = false;
-        });
-
         function addOption(mode, label) {
             contextMenu.appendCheckboxItem(label, () => {
                 WI.settings.resourceGroupingMode.value = mode;
@@ -1418,8 +1409,6 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         }
         addOption(WI.Resource.GroupingMode.Path, WI.UIString("Group by Path"));
         addOption(WI.Resource.GroupingMode.Type, WI.UIString("Group by Type"));
-
-        contextMenu.show();
     }
 
     _handleTreeSelectionDidChange(event)
@@ -1518,18 +1507,8 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
         this.element.style.setProperty("--breakpoints-count", count);
     }
 
-    _handleCreateBreakpointMouseDown(event)
+    _populateCreateBreakpointContextMenu(contextMenu)
     {
-        if (this._ignoreCreateBreakpointMouseDown)
-            return;
-
-        this._ignoreCreateBreakpointMouseDown = true;
-
-        let contextMenu = WI.ContextMenu.createFromEvent(event);
-        contextMenu.addBeforeShowCallback(() => {
-            this._ignoreCreateBreakpointMouseDown = false;
-        });
-
         // COMPATIBILITY (iOS 10): DebuggerAgent.setPauseOnAssertions did not exist yet.
         if (InspectorBackend.domains.Debugger.setPauseOnAssertions) {
             let assertionFailuresBreakpointShown = WI.settings.showAssertionFailuresBreakpoint.value;
@@ -1570,8 +1549,6 @@ WI.SourcesNavigationSidebarPanel = class SourcesNavigationSidebarPanel extends W
                 popover.show(this._createBreakpointButton.element, [WI.RectEdge.MAX_Y, WI.RectEdge.MIN_Y, WI.RectEdge.MAX_X]);
             });
         }
-
-        contextMenu.show();
     }
 
     _handleResourceGroupingModeChanged(event)

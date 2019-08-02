@@ -36,50 +36,50 @@ namespace WebCore {
 
 namespace WHLSL {
 
-bool synthesizeEnumerationFunctions(Program& program)
+Expected<void, Error> synthesizeEnumerationFunctions(Program& program)
 {
     bool isOperator = true;
     for (auto& enumerationDefinition : program.enumerationDefinitions()) {
         auto location = enumerationDefinition->codeLocation();
         {
-            auto variableDeclaration1 = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), UniqueRef<AST::UnnamedType>(AST::TypeReference::wrap(location, enumerationDefinition)), String(), nullptr, nullptr);
-            auto variableDeclaration2 = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), UniqueRef<AST::UnnamedType>(AST::TypeReference::wrap(location, enumerationDefinition)), String(), nullptr, nullptr);
+            auto variableDeclaration1 = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), AST::TypeReference::wrap(location, enumerationDefinition), String(), nullptr, nullptr);
+            auto variableDeclaration2 = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), AST::TypeReference::wrap(location, enumerationDefinition), String(), nullptr, nullptr);
             AST::VariableDeclarations parameters;
             parameters.append(WTFMove(variableDeclaration1));
             parameters.append(WTFMove(variableDeclaration2));
             AST::NativeFunctionDeclaration nativeFunctionDeclaration(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, AST::TypeReference::wrap(location, program.intrinsics().boolType()), "operator=="_str, WTFMove(parameters), nullptr, isOperator));
             if (!program.append(WTFMove(nativeFunctionDeclaration)))
-                return false;
+                return makeUnexpected(Error("Cannot create operator== for enum type."));
         }
 
         {
-            auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), UniqueRef<AST::UnnamedType>(AST::TypeReference::wrap(location, enumerationDefinition)), String(), nullptr, nullptr);
+            auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), AST::TypeReference::wrap(location, enumerationDefinition), String(), nullptr, nullptr);
             AST::VariableDeclarations parameters;
             parameters.append(WTFMove(variableDeclaration));
-            AST::NativeFunctionDeclaration nativeFunctionDeclaration(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, enumerationDefinition->type().clone(), "operator.value"_str, WTFMove(parameters), nullptr, isOperator));
+            AST::NativeFunctionDeclaration nativeFunctionDeclaration(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, enumerationDefinition->type(), "operator.value"_str, WTFMove(parameters), nullptr, isOperator));
             if (!program.append(WTFMove(nativeFunctionDeclaration)))
-                return false;
+                return makeUnexpected(Error("Cannot create operator.value for enum type."));
         }
 
         {
-            auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), UniqueRef<AST::UnnamedType>(AST::TypeReference::wrap(location, enumerationDefinition)), String(), nullptr, nullptr);
+            auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), AST::TypeReference::wrap(location, enumerationDefinition), String(), nullptr, nullptr);
             AST::VariableDeclarations parameters;
             parameters.append(WTFMove(variableDeclaration));
-            AST::NativeFunctionDeclaration nativeFunctionDeclaration(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, enumerationDefinition->type().clone(), "operator cast"_str, WTFMove(parameters), nullptr, isOperator));
+            AST::NativeFunctionDeclaration nativeFunctionDeclaration(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, enumerationDefinition->type(), "operator cast"_str, WTFMove(parameters), nullptr, isOperator));
             if (!program.append(WTFMove(nativeFunctionDeclaration)))
-                return false;
+                return makeUnexpected(Error("Cannot create copy constructor for enum type."));
         }
 
         {
-            auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), enumerationDefinition->type().clone(), String(), nullptr, nullptr);
+            auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), &enumerationDefinition->type(), String(), nullptr, nullptr);
             AST::VariableDeclarations parameters;
             parameters.append(WTFMove(variableDeclaration));
-            AST::NativeFunctionDeclaration nativeFunctionDeclaration(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, UniqueRef<AST::UnnamedType>(AST::TypeReference::wrap(location, enumerationDefinition)), "operator cast"_str, WTFMove(parameters), nullptr, isOperator));
+            AST::NativeFunctionDeclaration nativeFunctionDeclaration(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, AST::TypeReference::wrap(location, enumerationDefinition), "operator cast"_str, WTFMove(parameters), nullptr, isOperator));
             if (!program.append(WTFMove(nativeFunctionDeclaration)))
-                return false;
+                return makeUnexpected(Error("Cannot create 'operator cast' for enum type."));
         }
     }
-    return true;
+    return { };
 }
 
 } // namespace WHLSL

@@ -51,7 +51,7 @@ class NetworkSocketChannel : public IPC::MessageSender, public IPC::MessageRecei
 public:
     static std::unique_ptr<NetworkSocketChannel> create(NetworkConnectionToWebProcess&, PAL::SessionID, const WebCore::ResourceRequest&, const String& protocol, uint64_t identifier);
 
-    NetworkSocketChannel(NetworkConnectionToWebProcess&, RefPtr<NetworkSession>&&, const WebCore::ResourceRequest&, const String& protocol, uint64_t identifier);
+    NetworkSocketChannel(NetworkConnectionToWebProcess&, NetworkSession*, const WebCore::ResourceRequest&, const String& protocol, uint64_t identifier);
     ~NetworkSocketChannel();
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
@@ -59,7 +59,7 @@ public:
     friend class WebSocketTask;
 
 private:
-    void didConnect(const String& subprotocol);
+    void didConnect(const String& subprotocol, const String& extensions);
     void didReceiveText(const String&);
     void didReceiveBinaryData(const uint8_t* data, size_t length);
     void didClose(unsigned short code, const String& reason);
@@ -76,7 +76,7 @@ private:
 
     NetworkConnectionToWebProcess& m_connectionToWebProcess;
     uint64_t m_identifier;
-    RefPtr<NetworkSession> m_session;
+    WeakPtr<NetworkSession> m_session;
     std::unique_ptr<WebSocketTask> m_socket;
 
     enum class State { Open, Closing, Closed };

@@ -39,18 +39,18 @@ namespace WebCore {
 
 namespace WHLSL {
 
-bool synthesizeStructureAccessors(Program& program)
+Expected<void, Error> synthesizeStructureAccessors(Program& program)
 {
     bool isOperator = true;
     for (auto& structureDefinition : program.structureDefinitions()) {
         for (auto& structureElement : structureDefinition->structureElements()) {
             // The ander: operator&.field
             auto createAnder = [&](AST::AddressSpace addressSpace) -> AST::NativeFunctionDeclaration {
-                auto argumentType = makeUniqueRef<AST::PointerType>(structureElement.codeLocation(), addressSpace, AST::TypeReference::wrap(structureElement.codeLocation(), structureDefinition));
-                auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(structureElement.codeLocation(), AST::Qualifiers(), UniqueRef<AST::UnnamedType>(WTFMove(argumentType)), String(), nullptr, nullptr);
+                auto argumentType = AST::PointerType::create(structureElement.codeLocation(), addressSpace, AST::TypeReference::wrap(structureElement.codeLocation(), structureDefinition));
+                auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(structureElement.codeLocation(), AST::Qualifiers(), WTFMove(argumentType), String(), nullptr, nullptr);
                 AST::VariableDeclarations parameters;
                 parameters.append(WTFMove(variableDeclaration));
-                auto returnType = makeUniqueRef<AST::PointerType>(structureElement.codeLocation(), addressSpace, structureElement.type().clone());
+                auto returnType = AST::PointerType::create(structureElement.codeLocation(), addressSpace, structureElement.type());
                 AST::NativeFunctionDeclaration nativeFunctionDeclaration(AST::FunctionDeclaration(structureElement.codeLocation(), AST::AttributeBlock(), WTF::nullopt, WTFMove(returnType), makeString("operator&.", structureElement.name()), WTFMove(parameters), nullptr, isOperator));
                 return nativeFunctionDeclaration;
             };
@@ -58,10 +58,10 @@ bool synthesizeStructureAccessors(Program& program)
                 || !program.append(createAnder(AST::AddressSpace::Device))
                 || !program.append(createAnder(AST::AddressSpace::Threadgroup))
                 || !program.append(createAnder(AST::AddressSpace::Thread)))
-                return false;
+                return makeUnexpected(Error("Can not create ander"));
         }
     }
-    return true;
+    return { };
 }
 
 } // namespace WHLSL

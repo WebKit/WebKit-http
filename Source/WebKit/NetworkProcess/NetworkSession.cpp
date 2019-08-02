@@ -56,7 +56,7 @@
 namespace WebKit {
 using namespace WebCore;
 
-Ref<NetworkSession> NetworkSession::create(NetworkProcess& networkProcess, NetworkSessionCreationParameters&& parameters)
+std::unique_ptr<NetworkSession> NetworkSession::create(NetworkProcess& networkProcess, NetworkSessionCreationParameters&& parameters)
 {
 #if PLATFORM(COCOA)
     return NetworkSessionCocoa::create(networkProcess, WTFMove(parameters));
@@ -81,6 +81,9 @@ NetworkStorageSession* NetworkSession::networkStorageSession() const
 NetworkSession::NetworkSession(NetworkProcess& networkProcess, const NetworkSessionCreationParameters& parameters)
     : m_sessionID(parameters.sessionID)
     , m_networkProcess(networkProcess)
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    , m_enableResourceLoadStatisticsLogTestingEvent(parameters.enableResourceLoadStatisticsLogTestingEvent)
+#endif
     , m_adClickAttribution(makeUniqueRef<AdClickAttributionManager>(parameters.sessionID))
     , m_storageManager(StorageManager::create(String(parameters.localStorageDirectory)))
 {
@@ -107,9 +110,24 @@ NetworkSession::NetworkSession(NetworkProcess& networkProcess, const NetworkSess
 
 NetworkSession::~NetworkSession()
 {
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    destroyResourceLoadStatistics();
+#endif
+
     m_storageManager->resume();
     m_storageManager->waitUntilTasksFinished();
 }
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+void NetworkSession::destroyResourceLoadStatistics()
+{
+    if (!m_resourceLoadStatistics)
+        return;
+
+    m_resourceLoadStatistics->didDestroyNetworkSession();
+    m_resourceLoadStatistics = nullptr;
+}
+#endif
 
 void NetworkSession::invalidateAndCancel()
 {
@@ -129,7 +147,7 @@ void NetworkSession::setResourceLoadStatisticsEnabled(bool enable)
 {
     ASSERT(!m_isInvalidated);
     if (!enable) {
-        m_resourceLoadStatistics = nullptr;
+        destroyResourceLoadStatistics();
         return;
     }
 

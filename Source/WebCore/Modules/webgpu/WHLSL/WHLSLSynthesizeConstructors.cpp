@@ -145,7 +145,7 @@ private:
     Vector<std::reference_wrapper<AST::NamedType>> m_namedTypes;
 };
 
-bool synthesizeConstructors(Program& program)
+Expected<void, Error> synthesizeConstructors(Program& program)
 {
     FindAllTypes findAllTypes;
     findAllTypes.checkErrorAndVisit(program);
@@ -158,15 +158,17 @@ bool synthesizeConstructors(Program& program)
         auto& unnamedType = unnamedTypeKey.unnamedType();
         auto location = unnamedType.codeLocation();
 
-        auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), unnamedType.clone(), String(), nullptr, nullptr);
-        AST::VariableDeclarations parameters;
-        parameters.append(WTFMove(variableDeclaration));
-        AST::NativeFunctionDeclaration copyConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, unnamedType.clone(), "operator cast"_str, WTFMove(parameters), nullptr, isOperator));
-        program.append(WTFMove(copyConstructor));
+        {
+            auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), &unnamedType, String(), nullptr, nullptr);
+            AST::VariableDeclarations parameters;
+            parameters.append(WTFMove(variableDeclaration));
+            AST::NativeFunctionDeclaration copyConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, unnamedType, "operator cast"_str, WTFMove(parameters), nullptr, isOperator));
+            program.append(WTFMove(copyConstructor));
+        }
 
-        AST::NativeFunctionDeclaration defaultConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, unnamedType.clone(), "operator cast"_str, AST::VariableDeclarations(), nullptr, isOperator));
+        AST::NativeFunctionDeclaration defaultConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, unnamedType, "operator cast"_str, AST::VariableDeclarations(), nullptr, isOperator));
         if (!program.append(WTFMove(defaultConstructor)))
-            return false;
+            return makeUnexpected(Error("Could not synthesize default constructor"));
     }
 
     for (auto& namedType : namedTypes) {
@@ -177,7 +179,7 @@ bool synthesizeConstructors(Program& program)
 
         auto location = namedType.get().codeLocation();
 
-        auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), UniqueRef<AST::UnnamedType>(AST::TypeReference::wrap(location, namedType.get())), String(), nullptr, nullptr);
+        auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), AST::TypeReference::wrap(location, namedType.get()), String(), nullptr, nullptr);
         AST::VariableDeclarations parameters;
         parameters.append(WTFMove(variableDeclaration));
         AST::NativeFunctionDeclaration copyConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, AST::TypeReference::wrap(location, namedType.get()), "operator cast"_str, WTFMove(parameters), nullptr, isOperator));
@@ -190,9 +192,9 @@ bool synthesizeConstructors(Program& program)
         }
         AST::NativeFunctionDeclaration defaultConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, AST::TypeReference::wrap(location, namedType.get()), "operator cast"_str, AST::VariableDeclarations(), nullptr, isOperator));
         if (!program.append(WTFMove(defaultConstructor)))
-            return false;
+            return makeUnexpected(Error("Could not synthesize default constructor"));
     }
-    return true;
+    return { };
 }
 
 } // namespace WHLSL
