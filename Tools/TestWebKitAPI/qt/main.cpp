@@ -25,6 +25,7 @@
 #include "qquickwebview_p.h"
 #endif
 #include <QGuiApplication>
+#include <QTimer>
 
 void addQtWebProcessToPath()
 {
@@ -70,5 +71,9 @@ int main(int argc, char** argv)
     QGuiApplication app(argc, argv);
     addQtWebProcessToPath();
 
-    return TestWebKitAPI::TestsController::singleton().run(argc, argv) ? EXIT_SUCCESS : EXIT_FAILURE;
+    QTimer::singleShot(0, [&app, &argc, &argv]() {
+        int status = (TestWebKitAPI::TestsController::singleton().run(argc, argv)) ? EXIT_SUCCESS : EXIT_FAILURE;
+        app.exit(status);
+    });
+    return app.exec();
 }
