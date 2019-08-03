@@ -32,8 +32,8 @@
 #include "BitmapImage.h"
 #include <wtf/FileSystem.h>
 #include "Image.h"
-#include <SQLiteStatement.h>
-#include <SQLiteTransaction.h>
+#include <WebCore/SQLiteStatement.h>
+#include <WebCore/SQLiteTransaction.h>
 #include "SharedBuffer.h"
 #include <wtf/text/StringConcatenateNumbers.h>
 #include <wtf/URL.h>

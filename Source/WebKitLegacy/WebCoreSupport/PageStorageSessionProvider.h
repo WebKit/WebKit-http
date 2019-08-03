@@ -26,9 +26,9 @@
 #pragma once
 
 #include "NetworkStorageSessionMap.h"
-#include <NetworkStorageSession.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/Page.h>
-#include <StorageSessionProvider.h>
+#include <WebCore/StorageSessionProvider.h>
 #include <wtf/WeakPtr.h>
 
 class PageStorageSessionProvider final : public WebCore::StorageSessionProvider {

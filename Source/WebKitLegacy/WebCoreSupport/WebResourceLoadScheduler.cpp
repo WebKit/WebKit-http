@@ -25,16 +25,16 @@
 #include "WebResourceLoadScheduler.h"
 
 #include "PingHandle.h"
-#include <WebCore/dom/Document.h>
-#include <WebCore/loader/DocumentLoader.h>
-#include <WebCore/loader/FetchOptions.h>
-#include <WebCore/page/Frame.h>
-#include <WebCore/loader/FrameLoader.h>
-#include <WebCore/loader/NetscapePlugInStreamLoader.h>
-#include <WebCore/platform/network/NetworkStateNotifier.h>
-#include <WebCore/platform/PlatformStrategies.h>
-#include <WebCore/platform/network/haiku/ResourceRequest.h>
-#include <WebCore/loader/SubresourceLoader.h>
+#include <WebCore/Document.h>
+#include <WebCore/DocumentLoader.h>
+#include <WebCore/FetchOptions.h>
+#include <WebCore/Frame.h>
+#include <WebCore/FrameLoader.h>
+#include <WebCore/NetscapePlugInStreamLoader.h>
+#include <WebCore/NetworkStateNotifier.h>
+#include <WebCore/PlatformStrategies.h>
+#include <WebCore/ResourceRequest.h>
+#include <WebCore/SubresourceLoader.h>
 #include <wtf/MainThread.h>
 #include <wtf/SetForScope.h>
 #include <wtf/URL.h>

@@ -25,12 +25,12 @@
 
 #pragma once
 
-#include <WebCore/platform/network/haiku/ResourceError.h>
-#include <WebCore/platform/network/ResourceHandle.h>
-#include <WebCore/platform/network/ResourceHandleClient.h>
-#include <WebCore/platform/network/haiku/ResourceRequest.h>
-#include <WebCore/platform/network/haiku/ResourceResponse.h>
-#include <WebCore/platform/Timer.h>
+#include <WebCore/ResourceError.h>
+#include <WebCore/ResourceHandle.h>
+#include <WebCore/ResourceHandleClient.h>
+#include <WebCore/ResourceRequest.h>
+#include <WebCore/ResourceResponse.h>
+#include <WebCore/Timer.h>
 #include <wtf/CompletionHandler.h>
 
 // This class triggers asynchronous loads independent of the networking context staying alive (i.e., auditing pingbacks).

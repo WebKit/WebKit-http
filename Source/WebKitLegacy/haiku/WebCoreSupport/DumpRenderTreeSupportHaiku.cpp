@@ -43,7 +43,7 @@
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PageGroup.h"
-#include <ScriptController.h>
+#include <WebCore/ScriptController.h>
 #include <Settings.h>
 #include "UserContentTypes.h"
 

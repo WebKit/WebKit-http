@@ -342,125 +342,19 @@ if (ENABLE_ACCESSIBILITY)
     )
 endif ()
 
-# FIXME: We do not need everything from all of these directories.
-# Move some to WebCore_FORWARDING_HEADERS_FILES once people start actually maintaining this.
-set(WebCore_FORWARDING_HEADERS_DIRECTORIES
-    accessibility
-    animation
-    bindings
-    bridge
-    contentextensions
-    crypto
-	css
-    dom
-    editing
-    fileapi
-    history
-    html
-    inspector
-    loader
-    page
-    platform
-    plugins
-    rendering
-    replay
-    storage
-    style
-    svg
-    websockets
-    workers
-    xml
+list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
+    platform/network/haiku/AuthenticationChallenge.h
+    platform/network/haiku/CertificateInfo.h
+    platform/network/haiku/ResourceError.h
+    platform/network/haiku/ResourceRequest.h
+    platform/network/haiku/ResourceResponse.h
+    platform/network/haiku/SocketStreamHandleImpl.h
 
-    dom/messageports/
+    html/InputTypeNames.h
+    platform/DateTimeChooser.h
+    platform/DateTimeChooserClient.h
 
-    Modules/applicationmanifest
-    Modules/cache
-    Modules/fetch
-    Modules/geolocation
-    Modules/mediastream
-    Modules/websockets
-
-    Modules/indexeddb
-
-    Modules/indexeddb/client
-    Modules/indexeddb/shared
-    Modules/indexeddb/server
-    Modules/notifications
-    Modules/webdatabase
-
-    bindings/js
-
-    bridge/c
-    bridge/jsc
-
-    css/parser
-
-    inspector/agents
-
-    html/canvas
-    html/forms
-    html/parser
-    html/shadow
-    html/track
-
-    loader/appcache
-    loader/archive
-    loader/cache
-    loader/icon
-    loader/archive/mhtml
-
-
-    page/animation
-    page/csp
-    page/scrolling
-    page/haiku
-
-    platform/animation
-    platform/audio
-	platform/graphics
-    platform/mediacapabilities
-    platform/mock
-    platform/network
-    platform/sql
-    platform/text
-    platform/haiku
-    platform/mediastream
-    platform/network/haiku
-
-    platform/graphics/filters
-    platform/graphics/opengl
-    platform/graphics/opentype
-    platform/graphics/texmap
-    platform/graphics/haiku
-
-    platform/mediastream/libwebrtc
-
-    platform/text/transcoder
-
-    PAL/pal
-
-    rendering/line
-    rendering/shapes
-    rendering/style
-    rendering/svg
-
-    svg/animation
-    svg/graphics
-    svg/properties
-
-    svg/graphics/filters
-
-    workers/service
-    workers/service/context
+    platform/graphics/haiku/StillImageHaiku.h
+    platform/graphics/haiku/ImageBufferDataHaiku.h
+    platform/graphics/Image.h
 )
-
-set(WebCore_FORWARDING_HEADERS_FILES
-    fileapi/Blob.h
-
-	loader/FrameLoader.h
-
-	platform/graphics/transforms/TransformationMatrix.h
-    platform/PlatformExportMacros.h
-)
-
-WEBKIT_CREATE_FORWARDING_HEADERS(WebCore DIRECTORIES ${WebCore_FORWARDING_HEADERS_DIRECTORIES} FILES ${WebCore_FORWARDING_HEADERS_FILES})

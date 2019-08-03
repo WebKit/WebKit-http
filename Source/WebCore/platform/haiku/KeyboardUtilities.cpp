@@ -26,7 +26,6 @@
  */
 
 #include "config.h"
-#include "KeyboardUtilities.h"
 
 #include "KeyboardEvent.h"
 #include "WindowsKeyboardCodes.h"

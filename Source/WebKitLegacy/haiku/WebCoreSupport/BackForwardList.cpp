@@ -29,7 +29,7 @@
 #include "Frame.h"
 #include "WebCore/FrameLoader.h"
 #include "WebCore/FrameLoaderClient.h"
-#include <SerializedScriptValue.h>
+#include <WebCore/SerializedScriptValue.h>
 
 #include "WebCore/HistoryItem.h"
 #include "WebCore/PageCache.h"

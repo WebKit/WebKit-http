@@ -34,7 +34,6 @@
 #include "EditorClientHaiku.h"
 
 #include "Document.h"
-#include "EditCommand.h"
 #include "Editor.h"
 #include "FocusController.h"
 #include "Frame.h"

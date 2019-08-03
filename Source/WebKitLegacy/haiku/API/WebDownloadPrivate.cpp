@@ -31,7 +31,6 @@
 #include "NetworkingContext.h"
 #include "NotImplemented.h"
 #include "ResourceHandle.h"
-#include "ResourceHandleInternal.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "TextEncoding.h"

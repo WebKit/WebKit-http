@@ -24,10 +24,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include "config.h"
-#include "DateTimeChooser.h"
 
-#include "DateTimeChooserClient.h"
-#include "InputTypeNames.h"
+#include <WebCore/DateTimeChooser.h>
+#include <WebCore/DateTimeChooserClient.h>
+#include <WebCore/InputTypeNames.h>
 
 #include <support/Locker.h>
 #include <locale/Collator.h>

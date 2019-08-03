@@ -28,8 +28,8 @@
 #include "CertificateInfo.h"
 
 #include "NotImplemented.h"
-#include <ResourceError.h>
-#include <ResourceResponse.h>
+#include "ResourceError.h"
+#include "ResourceResponse.h"
 
 namespace WebCore {
 
