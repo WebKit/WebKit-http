@@ -59,16 +59,16 @@ class LoopHandler: public BHandler
         {
             if (message->what == 'loop')
                 m_loop->iterate();
-			else if (message->what == 'tmrf') {
-				RunLoop::TimerBase* timer
-					= (RunLoop::TimerBase*)message->GetPointer("timer");
-				timer->fired();
-			} else if (message->what == 'daft') {
-				RunLoopDispatchHandler* handler
-					= (RunLoopDispatchHandler*)message->GetPointer("handler");
-				handler->function();
-				delete handler;
-			} else
+            else if (message->what == 'tmrf') {
+                RunLoop::TimerBase* timer
+                    = (RunLoop::TimerBase*)message->GetPointer("timer");
+                timer->fired();
+            } else if (message->what == 'daft') {
+                RunLoopDispatchHandler* handler
+                    = (RunLoopDispatchHandler*)message->GetPointer("handler");
+                handler->function();
+                delete handler;
+            } else
                 BHandler::MessageReceived(message);
         }
 
