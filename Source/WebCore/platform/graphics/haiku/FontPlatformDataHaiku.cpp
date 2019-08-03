@@ -39,22 +39,22 @@ font_family FontPlatformData::m_FallbackFixedFontFamily = "Noto Mono";
 font_family FontPlatformData::m_FallbackStandardFontFamily = "Noto Sans";
 
 void
-FontPlatformData::findMatchingFontFamily(const AtomicString& familyName, font_family* fontFamily)
+FontPlatformData::findMatchingFontFamily(const AtomicString& familyName, font_family& fontFamily)
 {
     CString familyNameUTF8 = familyName.string().utf8();
     if (BFont().SetFamilyAndStyle(familyNameUTF8.data(), 0) == B_OK)
-        strncpy(*fontFamily, familyNameUTF8.data(), B_FONT_FAMILY_LENGTH + 1);
+        strlcpy(fontFamily, familyNameUTF8.data(), B_FONT_FAMILY_LENGTH);
     else {
         // If no font family is found for the given name, we use a generic font.
         if (familyName.contains("Sans"))
-            strncpy(*fontFamily, m_FallbackSansSerifFontFamily, B_FONT_FAMILY_LENGTH + 1);
+            strlcpy(fontFamily, m_FallbackSansSerifFontFamily, B_FONT_FAMILY_LENGTH);
         else if (familyName.contains("Serif"))
-            strncpy(*fontFamily, m_FallbackSerifFontFamily, B_FONT_FAMILY_LENGTH + 1);
+            strlcpy(fontFamily, m_FallbackSerifFontFamily, B_FONT_FAMILY_LENGTH);
         else if (familyName.contains("Mono"))
-            strncpy(*fontFamily, m_FallbackFixedFontFamily, B_FONT_FAMILY_LENGTH + 1);
+            strlcpy(fontFamily, m_FallbackFixedFontFamily, B_FONT_FAMILY_LENGTH);
         else {
             // This is the fallback font.
-            strncpy(*fontFamily, m_FallbackStandardFontFamily, B_FONT_FAMILY_LENGTH + 1);
+            strlcpy(fontFamily, m_FallbackStandardFontFamily, B_FONT_FAMILY_LENGTH);
         }
     }
 }
@@ -91,7 +91,7 @@ FontPlatformData::FontPlatformData(const FontDescription& fontDescription, const
     m_font->SetSize(fontDescription.computedSize());
 
     font_family fontFamily;
-    findMatchingFontFamily(familyName, &fontFamily);
+    findMatchingFontFamily(familyName, fontFamily);
 
     font_style fontStyle;
     findMatchingFontStyle(fontFamily, fontDescription.weight() == boldWeightValue(), fontDescription.italic() != WTF::nullopt, &fontStyle);

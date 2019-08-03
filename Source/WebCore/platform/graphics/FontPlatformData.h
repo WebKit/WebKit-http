@@ -260,7 +260,7 @@ private:
 #endif
 #if PLATFORM(HAIKU)
     static void findMatchingFontFamily(const AtomicString& familyName,
-		font_family* fontFamily);
+		font_family& fontFamily);
 #endif
 
 #if PLATFORM(COCOA)
