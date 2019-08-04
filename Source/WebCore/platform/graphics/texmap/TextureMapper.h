@@ -41,7 +41,6 @@ class FilterOperations;
 class TextureMapper {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    enum AccelerationMode { SoftwareMode, OpenGLMode };
     enum PaintFlag {
         PaintingMirrored = 1 << 0,
     };
@@ -53,9 +52,9 @@ public:
 
     typedef unsigned PaintFlags;
 
-    WEBCORE_EXPORT static std::unique_ptr<TextureMapper> create(AccelerationMode newMode = SoftwareMode);
+    WEBCORE_EXPORT static std::unique_ptr<TextureMapper> create();
 
-    explicit TextureMapper(AccelerationMode);
+    explicit TextureMapper();
     virtual ~TextureMapper();
 
     enum ExposedEdges {
@@ -94,10 +93,6 @@ public:
     void setPatternTransform(const TransformationMatrix& p) { m_patternTransform = p; }
     void setWrapMode(WrapMode m) { m_wrapMode = m; }
 
-#if PLATFORM(QT)
-    AccelerationMode accelerationMode() const { return m_accelerationMode; }
-#endif
-
 protected:
     std::unique_ptr<BitmapTexturePool> m_texturePool;
 
@@ -117,10 +112,6 @@ private:
     bool m_isMaskMode { false };
     TransformationMatrix m_patternTransform;
     WrapMode m_wrapMode { StretchWrap };
-
-#if PLATFORM(QT)
-    AccelerationMode m_accelerationMode;
-#endif
 };
 
 }

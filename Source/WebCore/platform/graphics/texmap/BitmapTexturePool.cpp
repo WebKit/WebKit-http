@@ -31,22 +31,11 @@
 #include "BitmapTextureGL.h"
 #endif
 
-#if PLATFORM(QT)
-#include "BitmapTextureImageBuffer.h"
-#endif
-
 namespace WebCore {
 
 static const Seconds releaseUnusedSecondsTolerance { 3_s };
 static const Seconds releaseUnusedTexturesTimerInterval { 500_ms };
 
-
-#if PLATFORM(QT)
-BitmapTexturePool::BitmapTexturePool()
-    : m_releaseUnusedTexturesTimer(RunLoop::current(), this, &BitmapTexturePool::releaseUnusedTexturesTimerFired)
-{
-}
-#endif
 
 #if USE(TEXTURE_MAPPER_GL)
 BitmapTexturePool::BitmapTexturePool(const TextureMapperContextAttributes& contextAttributes)
@@ -97,14 +86,8 @@ void BitmapTexturePool::releaseUnusedTexturesTimerFired()
 
 RefPtr<BitmapTexture> BitmapTexturePool::createTexture(const BitmapTexture::Flags flags)
 {
-#if PLATFORM(QT) && USE(TEXTURE_MAPPER_GL)
-    if (true/*!m_context3D*/) // QTFIXME r220521
-        return BitmapTextureImageBuffer::create();
-#endif
 #if USE(TEXTURE_MAPPER_GL)
     return BitmapTextureGL::create(m_contextAttributes, flags);
-#elif PLATFORM(QT)
-    return BitmapTextureImageBuffer::create();
 #else
     UNUSED_PARAM(flags);
     return nullptr;
