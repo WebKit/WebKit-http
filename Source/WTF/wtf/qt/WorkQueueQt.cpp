@@ -55,7 +55,6 @@ public:
 
     ~WorkItemQt()
     {
-        m_queue->deref();
     }
 
     Q_SLOT void execute()
@@ -74,7 +73,7 @@ public:
         executeAndDelete();
     }
 
-    WorkQueue* m_queue;
+    RefPtr<WorkQueue> m_queue;
     QObject* m_source;
     const char* m_signal;
     WTF::Function<void()> m_function;
