@@ -22,10 +22,10 @@
 
 #if USE(TEXTURE_MAPPER)
 
-#include "GraphicsLayer.h"
-#include "TextureMapper.h"
-#include "TextureMapperFPSCounter.h"
-#include "Timer.h"
+#include <WebCore/GraphicsLayer.h>
+#include <WebCore/TextureMapper.h>
+#include <WebCore/TextureMapperFPSCounter.h>
+#include <WebCore/Timer.h>
 
 class QWebFrameAdapter;
 class QWebPageClient;
@@ -53,7 +53,7 @@ private:
     QWebPageClient* pageClient() const;
 
     QWebFrameAdapter& m_frame;
-    std::unique_ptr<GraphicsLayer> m_rootGraphicsLayer;
+    RefPtr<GraphicsLayer> m_rootGraphicsLayer;
     Timer m_syncTimer;
     WebCore::TextureMapperLayer* m_rootTextureMapperLayer;
     std::unique_ptr<WebCore::TextureMapper> m_textureMapper;

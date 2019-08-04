@@ -31,6 +31,7 @@
 #include <JavaScriptCore/APICast.h>
 #include <QFileInfo>
 #include <QNetworkRequest>
+#include <WebCore/Chrome.h>
 #include <WebCore/DocumentLoader.h>
 #include <WebCore/Editing.h>
 #include <WebCore/EventHandler.h>

@@ -1,5 +1,5 @@
 include(platform/ImageDecoders.cmake)
-#include(platform/TextureMapper.cmake)
+include(platform/TextureMapper.cmake)
 
 set(WebCore_OUTPUT_NAME WebCore)
 

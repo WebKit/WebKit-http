@@ -52,10 +52,6 @@ typedef HWND PlatformPluginWidget;
 typedef PlatformWidget PlatformPluginWidget;
 #endif
 #if PLATFORM(QT)
-#if USE(TEXTURE_MAPPER)
-#include "TextureMapperPlatformLayer.h"
-#endif
-
 #include <QImage>
 QT_BEGIN_NAMESPACE
 class QPainter;
