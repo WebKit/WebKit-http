@@ -151,6 +151,7 @@ list(APPEND WebCore_SOURCES
     platform/network/qt/ResourceHandleQt.cpp
     platform/network/qt/ResourceRequestQt.cpp
     platform/network/qt/ResourceResponseQt.cpp
+    platform/network/qt/SharedCookieJarQt.cpp
     platform/network/qt/SocketStreamHandleImplQt.cpp
     platform/network/qt/SynchronousLoaderClientQt.cpp
 
@@ -193,9 +194,9 @@ QTWEBKIT_GENERATE_MOC_FILES_CPP(WebCore
 )
 
 QTWEBKIT_GENERATE_MOC_FILES_H(WebCore
-    platform/network/qt/CookieJarQt.h
     platform/network/qt/QNetworkReplyHandler.h
     platform/network/qt/QtMIMETypeSniffer.h
+    platform/network/qt/SharedCookieJarQt.h
 )
 
 QTWEBKIT_GENERATE_MOC_FILE_H(WebCore platform/network/qt/NetworkStateNotifierPrivate.h platform/network/qt/NetworkStateNotifierQt.cpp)

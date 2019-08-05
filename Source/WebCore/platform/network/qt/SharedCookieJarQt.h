@@ -18,14 +18,11 @@
  *
  */
 
-#ifndef CookieJarQt_h
-#define CookieJarQt_h
+#pragma once
 
 #include "SQLiteDatabase.h"
 
-#include <QtCore/QObject>
-#include <QtNetwork/QNetworkCookieJar>
-
+#include <QNetworkCookieJar>
 #include <wtf/HashSet.h>
 #include <wtf/text/WTFString.h>
 
@@ -56,5 +53,3 @@ private:
 };
 
 }
-
-#endif
