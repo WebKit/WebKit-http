@@ -3219,7 +3219,7 @@ bool QWebPage::supportsExtension(Extension extension) const
     if (extension == ChooseMultipleFilesExtension)
         return true;
 #endif
-    return extension == ErrorPageExtension;
+    return extension == ErrorPageExtension && d->settings->testAttribute(QWebSettings::ErrorPageEnabled);
 }
 
 /*!
