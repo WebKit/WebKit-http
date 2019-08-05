@@ -341,11 +341,21 @@ void tst_QWebFrame::requestedUrlAfterSetAndLoadFailures()
     const QUrl second("http://abcdef.abcdef/another_page.html");
     QVERIFY(first != second);
 
+    page.settings()->setAttribute(QWebSettings::ErrorPageEnabled, false);
+
     frame->load(second);
     ::waitForSignal(frame, SIGNAL(loadFinished(bool)));
     QCOMPARE(frame->url(), first);
     QCOMPARE(frame->requestedUrl(), second);
     QVERIFY(!spy.at(1).first().toBool());
+
+    page.settings()->setAttribute(QWebSettings::ErrorPageEnabled, true);
+
+    frame->load(second);
+    ::waitForSignal(frame, SIGNAL(loadFinished(bool)));
+    QCOMPARE(frame->url(), second);
+    QCOMPARE(frame->requestedUrl(), second);
+    QVERIFY(!spy.at(2).first().toBool());
 }
 
 void tst_QWebFrame::javaScriptWindowObjectCleared_data()
