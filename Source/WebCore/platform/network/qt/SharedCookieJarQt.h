@@ -39,7 +39,7 @@ public:
     bool deleteCookie(const QNetworkCookie&) final;
     void deleteCookiesForHostnames(const Vector<String>&);
     void deleteAllCookies();
-    void deleteAllCookiesModifiedSince(std::chrono::system_clock::time_point);
+    void deleteAllCookiesModifiedSince(WallTime);
     bool setCookiesFromUrl(const QList<QNetworkCookie>&, const QUrl&) final;
     void loadCookies();
 

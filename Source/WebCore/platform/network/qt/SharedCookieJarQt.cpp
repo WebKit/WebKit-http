@@ -137,7 +137,7 @@ void SharedCookieJarQt::deleteAllCookies()
     setAllCookies(QList<QNetworkCookie>());
 }
 
-void SharedCookieJarQt::deleteAllCookiesModifiedSince(std::chrono::system_clock::time_point)
+void SharedCookieJarQt::deleteAllCookiesModifiedSince(WallTime)
 {
     // QTFIXME
     notImplemented();

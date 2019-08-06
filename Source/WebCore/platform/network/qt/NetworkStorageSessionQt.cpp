@@ -29,8 +29,21 @@
 #include "Cookie.h"
 #include "CookieRequestHeaderFieldProxy.h"
 #include "NetworkingContext.h"
+#include "SharedCookieJarQt.h"
+#include "ThirdPartyCookiesQt.h"
+#include <QNetworkAccessManager>
+#include <QNetworkCookie>
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
+
+static void appendCookie(StringBuilder& builder, const QNetworkCookie& cookie)
+{
+    if (!builder.isEmpty())
+        builder.append("; ");
+    QByteArray rawData = cookie.toRawForm(QNetworkCookie::NameAndValueOnly);
+    builder.append(rawData.constData(), rawData.length());
+}
 
 NetworkStorageSession::NetworkStorageSession(PAL::SessionID sessionID, NetworkingContext*)
     : m_sessionID(sessionID)
@@ -41,21 +54,63 @@ NetworkStorageSession::~NetworkStorageSession()
 {
 }
 
+NetworkingContext* NetworkStorageSession::context() const
+{
+    return m_context.get();
+}
+
 void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, Optional<uint64_t> frameID, Optional<PageIdentifier> pageID, const String& value) const
 {
-    //cookieStorage().setCookiesFromDOM(*this, firstParty, sameSiteInfo, url, frameID, pageID, value);
+    QNetworkCookieJar* jar = context() ? context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
+    if (!jar)
+        return;
+
+    QUrl urlForCookies(url);
+    QUrl firstPartyUrl(firstParty);
+    if (!thirdPartyCookiePolicyPermits(context(), urlForCookies, firstPartyUrl))
+        return;
+
+    CString cookieString = value.latin1();
+    QList<QNetworkCookie> cookies = QNetworkCookie::parseCookies(QByteArray::fromRawData(cookieString.data(), cookieString.length()));
+    QList<QNetworkCookie>::Iterator it = cookies.begin();
+    while (it != cookies.end()) {
+        if (it->isHttpOnly())
+            it = cookies.erase(it);
+        else
+            ++it;
+    }
+
+    jar->setCookiesFromUrl(cookies, urlForCookies);
 }
 
 bool NetworkStorageSession::cookiesEnabled() const
 {
-    //return cookieStorage().cookiesEnabled(*this);
-    return false;
+    return context() ? context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
 }
 
 std::pair<String, bool> NetworkStorageSession::cookiesForDOM(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, Optional<uint64_t> frameID, Optional<PageIdentifier> pageID, IncludeSecureCookies includeSecureCookies) const
 {
-    //return cookieStorage().cookiesForDOM(*this, firstParty, sameSiteInfo, url, frameID, pageID, includeSecureCookies);
-    return {};
+    QNetworkCookieJar* jar = context() ? context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
+    if (!jar)
+        return { };
+
+    QUrl urlForCookies(url);
+    QUrl firstPartyUrl(firstParty);
+    if (!thirdPartyCookiePolicyPermits(context(), urlForCookies, firstPartyUrl))
+        return { };
+
+    // QTFIXME: Filter out secure cookies if needed
+    QList<QNetworkCookie> cookies = jar->cookiesForUrl(urlForCookies);
+    if (cookies.isEmpty())
+        return { };
+
+    StringBuilder builder;
+    for (const auto& cookie : cookies) {
+        if (cookie.isHttpOnly())
+            continue;
+        appendCookie(builder, cookie);
+    }
+    return { builder.toString(), false }; // QTFIXME: secure cookies
 }
 
 void NetworkStorageSession::setCookies(const Vector<Cookie>&, const URL&, const URL&)
@@ -80,24 +135,33 @@ void NetworkStorageSession::deleteCookie(const URL& url, const String& cookie) c
 
 void NetworkStorageSession::deleteAllCookies()
 {
-    //cookieStorage().deleteAllCookies(*this);
+    ASSERT(!context()); // Not yet implemented for cookie jars other than the shared one.
+    SharedCookieJarQt* jar = SharedCookieJarQt::shared();
+    if (jar)
+        jar->deleteAllCookies();
 }
 
-void NetworkStorageSession::deleteAllCookiesModifiedSince(WallTime since)
+void NetworkStorageSession::deleteAllCookiesModifiedSince(WallTime time)
 {
-    //cookieStorage().deleteAllCookiesModifiedSince(*this, since);
+    ASSERT(!context()); // Not yet implemented for cookie jars other than the shared one.
+    SharedCookieJarQt* jar = SharedCookieJarQt::shared();
+    if (jar)
+        jar->deleteAllCookiesModifiedSince(time);
 }
 
 void NetworkStorageSession::deleteCookiesForHostnames(const Vector<String>& hostnames, IncludeHttpOnlyCookies includeHttpOnlyCookies)
 {
-    // FIXME: Not yet implemented.
+    // QTFIXME: Not yet implemented.
     UNUSED_PARAM(includeHttpOnlyCookies);
     deleteCookiesForHostnames(hostnames);
 }
 
-void NetworkStorageSession::deleteCookiesForHostnames(const Vector<String>& cookieHostNames)
+void NetworkStorageSession::deleteCookiesForHostnames(const Vector<String>& hostNames)
 {
-    //cookieStorage().deleteCookiesForHostnames(*this, cookieHostNames);
+    ASSERT(!context()); // Not yet implemented for cookie jars other than the shared one.
+    SharedCookieJarQt* jar = SharedCookieJarQt::shared();
+    if (jar)
+        jar->deleteCookiesForHostnames(hostNames);
 }
 
 Vector<Cookie> NetworkStorageSession::getAllCookies()
@@ -108,7 +172,10 @@ Vector<Cookie> NetworkStorageSession::getAllCookies()
 
 void NetworkStorageSession::getHostnamesWithCookies(HashSet<String>& hostnames)
 {
-    //cookieStorage().getHostnamesWithCookies(*this, hostnames);
+    ASSERT(!context()); // Not yet implemented for cookie jars other than the shared one.
+    SharedCookieJarQt* jar = SharedCookieJarQt::shared();
+    if (jar)
+        jar->getHostnamesWithCookies(hostnames);
 }
 
 Vector<Cookie> NetworkStorageSession::getCookies(const URL&)
@@ -119,7 +186,9 @@ Vector<Cookie> NetworkStorageSession::getCookies(const URL&)
 
 bool NetworkStorageSession::getRawCookies(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, Optional<uint64_t> frameID, Optional<PageIdentifier> pageID, Vector<Cookie>& rawCookies) const
 {
-    return false; //cookieStorage().getRawCookies(*this, firstParty, sameSiteInfo, url, frameID, pageID, rawCookies);
+    // QTFIXME: Not yet implemented
+    rawCookies.clear();
+    return false; // return true when implemented
 }
 
 void NetworkStorageSession::flushCookieStore()
@@ -129,12 +198,23 @@ void NetworkStorageSession::flushCookieStore()
 
 std::pair<String, bool> NetworkStorageSession::cookieRequestHeaderFieldValue(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, Optional<uint64_t> frameID, Optional<PageIdentifier> pageID, IncludeSecureCookies includeSecureCookies) const
 {
-    return {}; //cookieStorage().cookieRequestHeaderFieldValue(*this, firstParty, sameSiteInfo, url, frameID, pageID, includeSecureCookies);
+    QNetworkCookieJar* jar = context() ? context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
+    if (!jar)
+        return { };
+
+    QList<QNetworkCookie> cookies = jar->cookiesForUrl(QUrl(url));
+    if (cookies.isEmpty())
+        return { };
+
+    StringBuilder builder;
+    for (const auto& cookie : cookies)
+        appendCookie(builder, cookie);
+    return { builder.toString(), false };
 }
 
 std::pair<String, bool> NetworkStorageSession::cookieRequestHeaderFieldValue(const CookieRequestHeaderFieldProxy& headerFieldProxy) const
 {
-    return {}; //cookieStorage().cookieRequestHeaderFieldValue(*this, headerFieldProxy.firstParty, headerFieldProxy.sameSiteInfo, headerFieldProxy.url, headerFieldProxy.frameID, headerFieldProxy.pageID, headerFieldProxy.includeSecureCookies);
+    return cookieRequestHeaderFieldValue(headerFieldProxy.firstParty, headerFieldProxy.sameSiteInfo, headerFieldProxy.url, headerFieldProxy.frameID, headerFieldProxy.pageID, headerFieldProxy.includeSecureCookies);
 }
 
 } // namespace WebCore
