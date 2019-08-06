@@ -38,6 +38,9 @@
 #if USE(QUICK_LOOK)
 #include "QuickLook.h"
 #endif
+#if PLATFORM(QT)
+#include <QStringList>
+#endif
 
 namespace WebCore {
 
@@ -238,6 +241,19 @@ void SchemeRegistry::removeURLSchemeRegisteredAsLocal(const String& scheme)
 
     localURLSchemes().remove(scheme);
 }
+
+#if PLATFORM(QT)
+QStringList SchemeRegistry::localSchemes()
+{
+    QStringList result;
+    Locker<Lock> locker(schemeRegistryLock);
+    for (const auto& scheme : builtinLocalURLSchemes())
+        result.append(scheme);
+    for (const auto& scheme : localURLSchemes())
+        result.append(scheme);
+    return result;
+}
+#endif
 
 static URLSchemesMap& schemesAllowingLocalStorageAccessInPrivateBrowsing()
 {
