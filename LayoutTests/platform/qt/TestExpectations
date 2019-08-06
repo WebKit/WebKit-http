@@ -925,8 +925,6 @@ fast/text/font-kerning.html [ ImageOnlyFailure ]
 fast/text/multiple-feature-properties.html [ ImageOnlyFailure ]
 #229
 fast/text/kerning-with-TextLayout.html [ ImageOnlyFailure ]
-#230
-fast/gradients/css3-color-stop-invalid.html [ ImageOnlyFailure ]
 #231
 fast/images/animated-png.html [ ImageOnlyFailure ]
 fast/backgrounds/animated-gif-as-background.html [ Missing ]

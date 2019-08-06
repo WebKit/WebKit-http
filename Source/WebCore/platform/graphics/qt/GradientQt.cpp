@@ -66,6 +66,10 @@ QGradient* Gradient::platformGradient()
     qreal lastStop(0.0);
     const qreal lastStopDiff = 0.0000001;
     while (stopIterator != m_stops.end()) {
+        // Drop gradient stops after 1.0 to avoid overwriting color at 1.0
+        if (lastStop >= 1)
+            break;
+
         stopColor.setRgbF(stopIterator->red, stopIterator->green, stopIterator->blue, stopIterator->alpha);
         if (qFuzzyCompare(lastStop, qreal(stopIterator->stop)))
             lastStop = stopIterator->stop + lastStopDiff;
@@ -78,6 +82,8 @@ QGradient* Gradient::platformGradient()
                 lastStop += innerRadius / outerRadius;
         }
 
+        // Clamp stop position to 1.0, otherwise QGradient will ignore it
+        // https://bugs.webkit.org/show_bug.cgi?id=41484
         qreal stopPosition = qMin(lastStop, qreal(1.0f));
 
         if (m_radial && reversed)
