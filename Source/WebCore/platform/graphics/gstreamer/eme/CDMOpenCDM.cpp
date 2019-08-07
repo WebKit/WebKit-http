@@ -306,7 +306,7 @@ Ref<CDMInstanceOpenCDM::Session> CDMInstanceOpenCDM::Session::create(CDMInstance
     return adoptRef(*new Session(parent, source, keySystem, mimeType, WTFMove(initData), licenseType, WTFMove(customData)));
 }
 
-void CDMInstanceOpenCDM::Session::openCDMNotification(const OpenCDMSession* ocdmSession, void* userData, Notification method, const char* name, const uint8_t message[], uint16_t messageLength)
+void CDMInstanceOpenCDM::Session::openCDMNotification(const OpenCDMSession*, void* userData, Notification method, const char* name, const uint8_t message[], uint16_t messageLength)
 {
     GST_DEBUG("Got '%s' OCDM notification", name);
     Session* session = reinterpret_cast<Session*>(userData);
