@@ -59,9 +59,14 @@ NetworkingContext* NetworkStorageSession::context() const
     return m_context.get();
 }
 
+QNetworkCookieJar* NetworkStorageSession::cookieJar() const
+{
+    return context() ? context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
+}
+
 void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, Optional<uint64_t> frameID, Optional<PageIdentifier> pageID, const String& value) const
 {
-    QNetworkCookieJar* jar = context() ? context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
+    QNetworkCookieJar* jar = cookieJar();
     if (!jar)
         return;
 
@@ -85,12 +90,12 @@ void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty, const SameS
 
 bool NetworkStorageSession::cookiesEnabled() const
 {
-    return context() ? context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
+    return cookieJar();
 }
 
 std::pair<String, bool> NetworkStorageSession::cookiesForDOM(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, Optional<uint64_t> frameID, Optional<PageIdentifier> pageID, IncludeSecureCookies includeSecureCookies) const
 {
-    QNetworkCookieJar* jar = context() ? context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
+    QNetworkCookieJar* jar = cookieJar();
     if (!jar)
         return { };
 
@@ -198,7 +203,7 @@ void NetworkStorageSession::flushCookieStore()
 
 std::pair<String, bool> NetworkStorageSession::cookieRequestHeaderFieldValue(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, Optional<uint64_t> frameID, Optional<PageIdentifier> pageID, IncludeSecureCookies includeSecureCookies) const
 {
-    QNetworkCookieJar* jar = context() ? context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
+    QNetworkCookieJar* jar = cookieJar();
     if (!jar)
         return { };
 
