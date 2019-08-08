@@ -500,6 +500,12 @@ endif ()
 
 ############     WebKitWidgets     ############
 
+if (QT_STATIC_BUILD)
+    set(WebKitWidgets_LIBRARY_TYPE STATIC)
+else ()
+    set(WebKitWidgets_LIBRARY_TYPE SHARED)
+endif ()
+
 WEBKIT_FRAMEWORK_DECLARE(WebKitWidgets)
 
 set(WebKitWidgets_INCLUDE_DIRECTORIES
@@ -751,12 +757,6 @@ if (MSVC)
     )
 
     WEBKIT_ADD_PRECOMPILED_HEADER("WebKitWidgetsPrefix.h" "qt/WebKitWidgetsPrefix.cpp" WebKitWidgets_SOURCES)
-endif ()
-
-if (QT_STATIC_BUILD)
-    set(WebKitWidgets_LIBRARY_TYPE STATIC)
-else ()
-    set(WebKitWidgets_LIBRARY_TYPE SHARED)
 endif ()
 
 set(WebKitWidgets_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKitWidgets/private)
