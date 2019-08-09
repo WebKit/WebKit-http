@@ -1378,7 +1378,11 @@ static void testCFStrings(void)
 }
 #endif
 
+#if PLATFORM(QT)
+int qt_main(int argc, char* argv[])
+#else
 int main(int argc, char* argv[])
+#endif
 {
 #if OS(WINDOWS)
     // Cygwin calls SetErrorMode(SEM_FAILCRITICALERRORS), which we will inherit. This is bad for
