@@ -30,16 +30,30 @@
 
 #include <QVector>
 #include <private/qtldurl_p.h>
+#include <private/qurl_p.h>
 #include <wtf/URL.h>
 
 namespace WebCore {
+
+static inline QByteArray asciiStringToByteArrayNoCopy(const String& string)
+{
+    ASSERT(string.is8Bit());
+    return QByteArray::fromRawData(reinterpret_cast<const char*>(string.characters8()), string.length());
+}
+
+static QString fromAce(const String& domain)
+{
+    if (domain.is8Bit())
+        return QUrl::fromAce(asciiStringToByteArrayNoCopy(domain.convertToASCIILowercase()));
+    return QString(domain).toLower();
+}
 
 bool isPublicSuffix(const String& domain)
 {
     if (domain.isEmpty())
         return false;
 
-    return qIsEffectiveTLD(domain.convertToASCIILowercase());
+    return qIsEffectiveTLD(fromAce(domain));
 }
 
 String topPrivatelyControlledDomain(const String& domain)
