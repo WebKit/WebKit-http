@@ -345,6 +345,7 @@ endif ()
 list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/network/haiku/AuthenticationChallenge.h
     platform/network/haiku/CertificateInfo.h
+    platform/network/haiku/HaikuFormDataStream.h
     platform/network/haiku/ResourceError.h
     platform/network/haiku/ResourceRequest.h
     platform/network/haiku/ResourceResponse.h

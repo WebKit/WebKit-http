@@ -29,7 +29,7 @@
 #include "UIScriptController.h"
 #include <JavaScriptCore/JSContextRef.h>
 #include <JavaScriptCore/JSValueRef.h>
-#include <WebCore/platform/graphics/FloatRect.h>
+#include <WebCore/FloatRect.h>
 
 using namespace WTR;
 

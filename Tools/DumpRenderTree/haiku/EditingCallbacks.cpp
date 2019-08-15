@@ -33,9 +33,9 @@
 #include "DumpRenderTree.h"
 #include "EditorClientHaiku.h"
 #include "EditorInsertAction.h"
-#include "Node.h"
-#include "Range.h"
-#include "StyleProperties.h"
+#include <WebCore/Node.h>
+#include <WebCore/Range.h>
+#include <WebCore/StyleProperties.h>
 #include "TestRunner.h"
 #include "TextAffinity.h"
 #include "WebViewConstants.h"

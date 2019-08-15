@@ -35,7 +35,6 @@ LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/svg"
     "${WEBCORE_DIR}/svg/animation"
     "${WEBCORE_DIR}/svg/properties"
-    "${WEBCORE_DIR}/style"
     "${WTF_DIR}"
     "${LIBXML2_INCLUDE_DIR}"
     "${LIBXSLT_INCLUDE_DIR}"
