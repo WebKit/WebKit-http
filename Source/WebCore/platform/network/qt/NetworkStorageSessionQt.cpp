@@ -45,23 +45,13 @@ static void appendCookie(StringBuilder& builder, const QNetworkCookie& cookie)
     builder.append(rawData.constData(), rawData.length());
 }
 
-NetworkStorageSession::NetworkStorageSession(PAL::SessionID sessionID, NetworkingContext*)
+NetworkStorageSession::NetworkStorageSession(PAL::SessionID sessionID)
     : m_sessionID(sessionID)
 {
 }
 
 NetworkStorageSession::~NetworkStorageSession()
 {
-}
-
-NetworkingContext* NetworkStorageSession::context() const
-{
-    return m_context.get();
-}
-
-QNetworkCookieJar* NetworkStorageSession::cookieJar() const
-{
-    return context() ? context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
 }
 
 void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, Optional<uint64_t> frameID, Optional<PageIdentifier> pageID, const String& value) const
@@ -72,7 +62,7 @@ void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty, const SameS
 
     QUrl urlForCookies(url);
     QUrl firstPartyUrl(firstParty);
-    if (!thirdPartyCookiePolicyPermits(context(), urlForCookies, firstPartyUrl))
+    if (!thirdPartyCookiePolicyPermits(this, urlForCookies, firstPartyUrl))
         return;
 
     CString cookieString = value.latin1();
@@ -101,7 +91,7 @@ std::pair<String, bool> NetworkStorageSession::cookiesForDOM(const URL& firstPar
 
     QUrl urlForCookies(url);
     QUrl firstPartyUrl(firstParty);
-    if (!thirdPartyCookiePolicyPermits(context(), urlForCookies, firstPartyUrl))
+    if (!thirdPartyCookiePolicyPermits(this, urlForCookies, firstPartyUrl))
         return { };
 
     // QTFIXME: Filter out secure cookies if needed
@@ -140,7 +130,7 @@ void NetworkStorageSession::deleteCookie(const URL& url, const String& cookie) c
 
 void NetworkStorageSession::deleteAllCookies()
 {
-    ASSERT(!context()); // Not yet implemented for cookie jars other than the shared one.
+    ASSERT(!m_cookieJar); // Not yet implemented for cookie jars other than the shared one.
     SharedCookieJarQt* jar = SharedCookieJarQt::shared();
     if (jar)
         jar->deleteAllCookies();
@@ -148,7 +138,7 @@ void NetworkStorageSession::deleteAllCookies()
 
 void NetworkStorageSession::deleteAllCookiesModifiedSince(WallTime time)
 {
-    ASSERT(!context()); // Not yet implemented for cookie jars other than the shared one.
+    ASSERT(!m_cookieJar); // Not yet implemented for cookie jars other than the shared one.
     SharedCookieJarQt* jar = SharedCookieJarQt::shared();
     if (jar)
         jar->deleteAllCookiesModifiedSince(time);
@@ -163,7 +153,7 @@ void NetworkStorageSession::deleteCookiesForHostnames(const Vector<String>& host
 
 void NetworkStorageSession::deleteCookiesForHostnames(const Vector<String>& hostNames)
 {
-    ASSERT(!context()); // Not yet implemented for cookie jars other than the shared one.
+    ASSERT(!m_cookieJar); // Not yet implemented for cookie jars other than the shared one.
     SharedCookieJarQt* jar = SharedCookieJarQt::shared();
     if (jar)
         jar->deleteCookiesForHostnames(hostNames);
@@ -177,7 +167,7 @@ Vector<Cookie> NetworkStorageSession::getAllCookies()
 
 void NetworkStorageSession::getHostnamesWithCookies(HashSet<String>& hostnames)
 {
-    ASSERT(!context()); // Not yet implemented for cookie jars other than the shared one.
+    ASSERT(!m_cookieJar); // Not yet implemented for cookie jars other than the shared one.
     SharedCookieJarQt* jar = SharedCookieJarQt::shared();
     if (jar)
         jar->getHostnamesWithCookies(hostnames);

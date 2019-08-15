@@ -61,9 +61,7 @@ typedef struct _SoupCookieJar SoupCookieJar;
 #endif
 
 #if PLATFORM(QT)
-QT_BEGIN_NAMESPACE
-class QNetworkCookieJar;
-QT_END_NAMESPACE
+#include "ThirdPartyCookiesQt.h"
 #endif
 
 namespace WebCore {
@@ -119,12 +117,21 @@ public:
     WEBCORE_EXPORT void setCookieDatabase(UniqueRef<CookieJarDB>&&);
 
     WEBCORE_EXPORT void setProxySettings(CurlProxySettings&&);
+#elif PLATFORM(QT)
+    WEBCORE_EXPORT NetworkStorageSession(PAL::SessionID);
+    ~NetworkStorageSession();
+
+    QNetworkCookieJar* cookieJar() const { return m_cookieJar; }
+    void setCookieJar(QNetworkCookieJar* jar) { m_cookieJar = jar; }
+
+    ThirdPartyCookiePolicy thirdPartyCookiePolicy() const { return m_thirdPartyCookiePolicy; }
+    void setThirdPartyCookiePolicy(ThirdPartyCookiePolicy policy) { m_thirdPartyCookiePolicy = policy; }
+
 #else
     WEBCORE_EXPORT NetworkStorageSession(PAL::SessionID, NetworkingContext*);
     ~NetworkStorageSession();
 
     NetworkingContext* context() const;
-    QNetworkCookieJar* cookieJar() const;
 #endif
 
     WEBCORE_EXPORT bool cookiesEnabled() const;
@@ -180,6 +187,9 @@ private:
 #elif USE(CURL)
     UniqueRef<CookieJarCurl> m_cookieStorage;
     mutable UniqueRef<CookieJarDB> m_cookieDatabase;
+#elif PLATFORM(QT)
+    QNetworkCookieJar* m_cookieJar { nullptr };
+    ThirdPartyCookiePolicy m_thirdPartyCookiePolicy { ThirdPartyCookiePolicy::Allow };
 #else
     RefPtr<NetworkingContext> m_context;
 #endif

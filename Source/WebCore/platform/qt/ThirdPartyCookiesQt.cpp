@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2011 Robert Hogan <robert@roberthogan.net>
  *
  * This library is free software; you can redistribute it and/or
@@ -21,10 +22,11 @@
 #include "ThirdPartyCookiesQt.h"
 
 #include "Document.h"
-#include "NetworkingContext.h"
+#include "NetworkStorageSession.h"
 
 #include <QList>
 #include <QNetworkAccessManager>
+#include <QNetworkCookie>
 #include <QNetworkCookieJar>
 
 namespace WebCore {
@@ -55,15 +57,12 @@ static bool urlsShareSameDomain(const QUrl& url, const QUrl& firstPartyUrl)
     return false;
 }
 
-bool thirdPartyCookiePolicyPermits(NetworkingContext* context, const QUrl& url, const QUrl& firstPartyUrl)
+bool thirdPartyCookiePolicyPermits(const NetworkStorageSession* storageSession, const QUrl& url, const QUrl& firstPartyUrl)
 {
-    if (!context)
+    if (!storageSession)
         return true;
 
-    if (!context->networkAccessManager())
-        return true;
-
-    QNetworkCookieJar* jar = context->networkAccessManager()->cookieJar();
+    QNetworkCookieJar* jar = storageSession->cookieJar();
     if (!jar)
         return true;
 
@@ -73,7 +72,19 @@ bool thirdPartyCookiePolicyPermits(NetworkingContext* context, const QUrl& url, 
     if (urlsShareSameDomain(url, firstPartyUrl))
         return true;
 
-    return context->thirdPartyCookiePolicyPermission(url);
+    switch (storageSession->thirdPartyCookiePolicy()) {
+    case ThirdPartyCookiePolicy::Allow:
+        return true;
+    case ThirdPartyCookiePolicy::Block:
+        return false;
+    case ThirdPartyCookiePolicy::AllowWithExistingCookies: {
+        QList<QNetworkCookie> cookies = jar->cookiesForUrl(url);
+        return !cookies.isEmpty();
+    }
+    default:
+        break;
+    }
+    return false;
 }
 
 }

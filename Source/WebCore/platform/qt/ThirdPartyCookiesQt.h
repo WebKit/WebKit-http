@@ -26,9 +26,15 @@ class QUrl;
 QT_END_NAMESPACE
 
 namespace WebCore {
-class NetworkingContext;
+class NetworkStorageSession;
 
-bool thirdPartyCookiePolicyPermits(NetworkingContext*, const QUrl&, const QUrl& firstPartyUrl);
+enum class ThirdPartyCookiePolicy {
+    Allow,
+    Block,
+    AllowWithExistingCookies
+};
+
+bool thirdPartyCookiePolicyPermits(const NetworkStorageSession*, const QUrl&, const QUrl& firstPartyUrl);
 
 }
 

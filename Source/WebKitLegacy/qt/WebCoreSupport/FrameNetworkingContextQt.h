@@ -37,7 +37,6 @@ private:
     QObject* originatingObject() const override;
     QNetworkAccessManager* networkAccessManager() const override;
     bool mimeSniffingEnabled() const override;
-    bool thirdPartyCookiePolicyPermission(const QUrl&) const override;
 
     mutable std::unique_ptr<NetworkStorageSession> m_session;
     QObject* m_originatingObject;

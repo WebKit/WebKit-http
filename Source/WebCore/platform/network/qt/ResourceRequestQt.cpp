@@ -21,6 +21,7 @@
 #include "ResourceRequest.h"
 
 #include "BlobUrlConversion.h"
+#include "NetworkStorageSession.h"
 #include "NetworkingContext.h"
 #include "ThirdPartyCookiesQt.h"
 
@@ -116,7 +117,7 @@ QNetworkRequest ResourceRequest::toNetworkRequest(NetworkingContext *context) co
         break;
     }
 
-    if (!allowCookies() || !thirdPartyCookiePolicyPermits(context, url(), firstPartyForCookies())) {
+    if (!allowCookies() || !thirdPartyCookiePolicyPermits(context->storageSession(), url(), firstPartyForCookies())) {
         request.setAttribute(QNetworkRequest::CookieSaveControlAttribute, QNetworkRequest::Manual);
         request.setAttribute(QNetworkRequest::CookieLoadControlAttribute, QNetworkRequest::Manual);
     }

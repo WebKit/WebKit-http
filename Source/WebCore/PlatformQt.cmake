@@ -69,6 +69,7 @@ list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/qt/PlatformGestureEvent.h
     platform/qt/QStyleFacade.h
     platform/qt/QWebPageClient.h
+    platform/qt/ThirdPartyCookiesQt.h
     platform/qt/UserAgentQt.h
 )
 

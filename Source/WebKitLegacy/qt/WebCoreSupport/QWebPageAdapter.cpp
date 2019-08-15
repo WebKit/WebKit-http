@@ -31,12 +31,12 @@
 #include "InspectorClientQt.h"
 #include "InspectorServerQt.h"
 #include "NotificationPresenterClientQt.h"
-#include "PageStorageSessionProvider.h"
 #include "PluginDatabase.h"
 #include "PluginInfoProviderQt.h"
 #include "PluginPackage.h"
 #include "ProgressTrackerClientQt.h"
 #include "QWebFrameAdapter.h"
+#include "QWebPageStorageSessionProvider.h"
 #include "UndoStepQt.h"
 #include "VisitedLinkStoreQt.h"
 #include "WebDatabaseProvider.h"
@@ -51,6 +51,8 @@
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QNetworkAccessManager>
+#include <QNetworkCookie>
+#include <QNetworkCookieJar>
 #include <QStyleHints>
 #include <QTextCharFormat>
 #include <QTouchEvent>
@@ -78,6 +80,7 @@
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/NavigationAction.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NetworkingContext.h>
 #include <WebCore/PageConfiguration.h>
 #include <WebCore/PlatformKeyboardEvent.h>
@@ -234,7 +237,7 @@ void QWebPageAdapter::initializeWebCorePage()
 #if ENABLE(GEOLOCATION) || ENABLE(DEVICE_ORIENTATION)
     const bool useMock = QWebPageAdapter::drtRun;
 #endif
-    auto storageProvider = PageStorageSessionProvider::create();
+    auto storageProvider = WebKit::QWebPageStorageSessionProvider::create(*this);
     PageConfiguration pageConfiguration {
         makeUniqueRef<EditorClientQt>(this),
         SocketProvider::create(),

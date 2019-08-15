@@ -44,7 +44,6 @@ private:
 
     QNetworkAccessManager* networkAccessManager() const override;
     bool mimeSniffingEnabled() const override { return m_mimeSniffingEnabled; }
-    bool thirdPartyCookiePolicyPermission(const QUrl&) const override { /*TODO. Used QWebSettings in WK1.*/ return true; }
     WebCore::NetworkStorageSession& storageSession() const override;
 
     std::unique_ptr<QObject> m_originatingObject;

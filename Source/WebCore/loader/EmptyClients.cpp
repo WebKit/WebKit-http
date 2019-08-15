@@ -313,7 +313,6 @@ private:
     QObject* originatingObject() const override { return nullptr; }
     QNetworkAccessManager* networkAccessManager() const final { return nullptr; }
     bool mimeSniffingEnabled() const final { return false; }
-    bool thirdPartyCookiePolicyPermission(const QUrl&) const final { return false; }
 #endif
 };
 

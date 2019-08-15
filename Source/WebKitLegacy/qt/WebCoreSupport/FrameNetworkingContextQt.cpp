@@ -21,11 +21,10 @@
 
 #include "QWebFrameAdapter.h"
 #include "QWebPageAdapter.h"
+#include "QWebPageStorageSessionProvider.h"
 #include "qwebsettings.h"
 
 #include <QNetworkAccessManager>
-#include <QNetworkCookie>
-#include <QNetworkCookieJar>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
 #include <wtf/NeverDestroyed.h>
@@ -47,12 +46,17 @@ void FrameNetworkingContextQt::setSession(std::unique_ptr<NetworkStorageSession>
 Ref<FrameNetworkingContextQt> FrameNetworkingContextQt::create(Frame* frame, QObject* originatingObject, bool mimeSniffingEnabled)
 {
     Ref<FrameNetworkingContextQt> self = adoptRef(*new FrameNetworkingContextQt(frame, originatingObject, mimeSniffingEnabled));
-    self->setSession(std::make_unique<NetworkStorageSession>(PAL::SessionID::defaultSessionID(), self.ptr()));
+    self->setSession(std::make_unique<NetworkStorageSession>(PAL::SessionID::defaultSessionID()));
+    self->m_session->setCookieJar(self->networkAccessManager()->cookieJar());
     return self;
 }
 
 NetworkStorageSession* FrameNetworkingContextQt::storageSession() const
 {
+    auto* pageAdapter = QWebFrameAdapter::kit(frame())->pageAdapter;
+    ASSERT(pageAdapter);
+    m_session->setCookieJar(pageAdapter->networkAccessManager()->cookieJar());
+    m_session->setThirdPartyCookiePolicy(WebKit::thirdPartyCookiePolicy(*QWebSettings::globalSettings())); // TODO: Support per-page setting?
     return m_session.get();
 }
 
@@ -69,24 +73,6 @@ QNetworkAccessManager* FrameNetworkingContextQt::networkAccessManager() const
 bool FrameNetworkingContextQt::mimeSniffingEnabled() const
 {
     return m_mimeSniffingEnabled;
-}
-
-bool FrameNetworkingContextQt::thirdPartyCookiePolicyPermission(const QUrl& url) const
-{
-    switch (QWebSettings::globalSettings()->thirdPartyCookiePolicy()) {
-    case QWebSettings::AlwaysAllowThirdPartyCookies:
-        return true;
-    case QWebSettings::AlwaysBlockThirdPartyCookies:
-        return false;
-    case QWebSettings::AllowThirdPartyWithExistingCookies: {
-        QList<QNetworkCookie> cookies = networkAccessManager()->cookieJar()->cookiesForUrl(url);
-        return !cookies.isEmpty();
-    }
-    default:
-        break;
-    }
-
-    return false;
 }
 
 }
