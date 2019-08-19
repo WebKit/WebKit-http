@@ -33,10 +33,7 @@
 #include <QStandardPaths>
 #include <QUrl>
 #include <WebCore/ApplicationCacheStorage.h>
-#include <WebCore/CrossOriginPreflightResultCache.h>
 #include <WebCore/DatabaseTracker.h>
-#include <WebCore/FontCache.h>
-#include <WebCore/GCController.h>
 #include <WebCore/Image.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/MemoryRelease.h>
