@@ -94,14 +94,15 @@ private Q_SLOTS:
     void setUrlThenLoads_data();
     void setUrlThenLoads();
     void loadFinishedAfterNotFoundError();
+    void signalsDuringErrorHandling();
     void loadInSignalHandlers_data();
     void loadInSignalHandlers();
 
 private:
-    QWebView* m_view;
-    QWebPage* m_page;
-    QWebView* m_inputFieldsTestView;
-    int m_inputFieldTestPaintCount;
+    QWebView* m_view { nullptr };
+    QWebPage* m_page { nullptr };
+    QWebView* m_inputFieldsTestView { nullptr };
+    int m_inputFieldTestPaintCount { 0 };
 };
 
 bool tst_QWebFrame::eventFilter(QObject* watched, QEvent* event)
@@ -169,12 +170,7 @@ void tst_QWebFrame::progressSignal()
 
     ::waitForSignal(m_view, SIGNAL(loadFinished(bool)));
 
-    QVERIFY(progressSpy.size() >= 2);
-
-    // WebKit defines initialProgressValue as 10%, not 0%
-    QCOMPARE(progressSpy.first().first().toInt(), 10);
-
-    // But we always end at 100%
+    QVERIFY(progressSpy.size() >= 1);
     QCOMPARE(progressSpy.last().first().toInt(), 100);
 }
 
@@ -345,11 +341,21 @@ void tst_QWebFrame::requestedUrlAfterSetAndLoadFailures()
     const QUrl second("http://abcdef.abcdef/another_page.html");
     QVERIFY(first != second);
 
+    page.settings()->setAttribute(QWebSettings::ErrorPageEnabled, false);
+
     frame->load(second);
     ::waitForSignal(frame, SIGNAL(loadFinished(bool)));
     QCOMPARE(frame->url(), first);
     QCOMPARE(frame->requestedUrl(), second);
     QVERIFY(!spy.at(1).first().toBool());
+
+    page.settings()->setAttribute(QWebSettings::ErrorPageEnabled, true);
+
+    frame->load(second);
+    ::waitForSignal(frame, SIGNAL(loadFinished(bool)));
+    QCOMPARE(frame->url(), second);
+    QCOMPARE(frame->requestedUrl(), second);
+    QVERIFY(!spy.at(2).first().toBool());
 }
 
 void tst_QWebFrame::javaScriptWindowObjectCleared_data()
@@ -467,7 +473,7 @@ void tst_QWebFrame::setHtmlWithBaseURL()
 
     QDir::setCurrent(TESTS_SOURCE_DIR);
 
-    QString html("<html><body><p>hello world</p><img src='resources/image2.png'/></body></html>");
+    QString html("<html><body><p>hello world</p><img src='qwebframe/resources/image.png'/></body></html>");
 
     QWebPage page;
     QWebFrame* frame = page.mainFrame();
@@ -1272,7 +1278,7 @@ void tst_QWebFrame::setUrlHistory()
     QCOMPARE(spy.count(), expectedLoadFinishedCount);
     QCOMPARE(frame->url(), url);
     QCOMPARE(frame->requestedUrl(), url);
-    QCOMPARE(m_page->history()->count(), 0);
+    QCOMPARE(m_page->history()->count(), 1);
 
     url = QUrl("qrc:/test1.html");
     frame->setUrl(url);
@@ -1281,14 +1287,14 @@ void tst_QWebFrame::setUrlHistory()
     QCOMPARE(spy.count(), expectedLoadFinishedCount);
     QCOMPARE(frame->url(), url);
     QCOMPARE(frame->requestedUrl(), url);
-    QCOMPARE(m_page->history()->count(), 1);
+    QCOMPARE(m_page->history()->count(), 2);
 
     frame->setUrl(QUrl());
     expectedLoadFinishedCount++;
     QCOMPARE(spy.count(), expectedLoadFinishedCount);
     QCOMPARE(frame->url(), aboutBlank);
     QCOMPARE(frame->requestedUrl(), QUrl());
-    QCOMPARE(m_page->history()->count(), 1);
+    QCOMPARE(m_page->history()->count(), 2);
 
     // Loading same page as current in history, so history count doesn't change.
     url = QUrl("qrc:/test1.html");
@@ -1298,7 +1304,7 @@ void tst_QWebFrame::setUrlHistory()
     QCOMPARE(spy.count(), expectedLoadFinishedCount);
     QCOMPARE(frame->url(), url);
     QCOMPARE(frame->requestedUrl(), url);
-    QCOMPARE(m_page->history()->count(), 1);
+    QCOMPARE(m_page->history()->count(), 2);
 
     url = QUrl("qrc:/test2.html");
     frame->setUrl(url);
@@ -1307,7 +1313,7 @@ void tst_QWebFrame::setUrlHistory()
     QCOMPARE(spy.count(), expectedLoadFinishedCount);
     QCOMPARE(frame->url(), url);
     QCOMPARE(frame->requestedUrl(), url);
-    QCOMPARE(m_page->history()->count(), 2);
+    QCOMPARE(m_page->history()->count(), 3);
 }
 
 void tst_QWebFrame::setUrlUsingStateObject()
@@ -1470,6 +1476,30 @@ void tst_QWebFrame::loadFinishedAfterNotFoundError()
     QTRY_COMPARE(spy.count(), 1);
     const bool wasLoadOk = spy.at(0).at(0).toBool();
     QVERIFY(!wasLoadOk);
+}
+
+void tst_QWebFrame::signalsDuringErrorHandling()
+{
+    QWebPage page;
+    QWebFrame* frame = page.mainFrame();
+
+    QSignalSpy loadStartedSpy(frame, &QWebFrame::loadStarted);
+    QSignalSpy loadFinishedSpy(frame, &QWebFrame::loadFinished);
+    FakeNetworkManager* networkManager = new FakeNetworkManager(&page);
+    page.setNetworkAccessManager(networkManager);
+
+    frame->setUrl(FakeReply::urlFor404ErrorWithoutContents);
+    QTRY_COMPARE(loadStartedSpy.count(), 1);
+    QTRY_COMPARE(loadFinishedSpy.count(), 1);
+    bool wasLoadOk = loadFinishedSpy.at(0).at(0).toBool();
+    QVERIFY(!wasLoadOk);
+
+    frame->load(QUrl("http://example.com"));
+    waitForSignal(frame, SIGNAL(loadFinished(bool)));
+    QCOMPARE(loadStartedSpy.count(), 2);
+    QCOMPARE(loadFinishedSpy.count(), 2);
+    wasLoadOk = loadFinishedSpy.at(1).at(0).toBool();
+    QVERIFY(wasLoadOk);
 }
 
 class URLSetter : public QObject {

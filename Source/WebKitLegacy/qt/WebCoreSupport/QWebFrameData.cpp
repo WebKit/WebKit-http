@@ -20,6 +20,8 @@
 
 #include "QWebFrameData.h"
 
+#include "Document.h"
+#include "HTMLFormElement.h"
 #include "FrameLoaderClientQt.h"
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>

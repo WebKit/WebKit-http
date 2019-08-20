@@ -1,0 +1,85 @@
+layer at (0,0) size 800x600
+  RenderView at (0,0) size 800x600
+layer at (0,0) size 800x566 isolatesBlending
+  RenderBlock {HTML} at (0,0) size 800x566
+    RenderBody {BODY} at (8,16) size 784x534
+      RenderBlock {UL} at (0,0) size 784x534
+        RenderBlock {OL} at (40,0) size 744x136
+          RenderListItem {LI} at (40,0) size 704x17
+            RenderListMarker at (-20,0) size 16x17: "1"
+            RenderText {#text} at (0,0) size 298x17
+              text run at (0,0) width 298: "No blending. Duck should be yellow everywhere."
+          RenderListItem {LI} at (40,17) size 704x17
+            RenderListMarker at (-20,0) size 16x17: "2"
+            RenderText {#text} at (0,0) size 501x17
+              text run at (0,0) width 501: "Simple blending. Duck should be a horizontal rainbow inside, and blue on overflow."
+          RenderListItem {LI} at (40,34) size 704x34
+            RenderListMarker at (-20,0) size 16x17: "3"
+            RenderText {#text} at (0,0) size 685x34
+              text run at (0,0) width 685: "Parent is a stacking context. Duck should be a horizontal rainbow inside, and yellow on overflow (since there is no"
+              text run at (0,17) width 197: "background there to blend with)."
+          RenderListItem {LI} at (40,68) size 704x17
+            RenderListMarker at (-20,0) size 16x17: "4"
+            RenderText {#text} at (0,0) size 637x17
+              text run at (0,0) width 637: "Intermediate parent - no stacking context. Duck should be a vertical gradient inside, and blue on overflow."
+          RenderListItem {LI} at (40,85) size 704x34
+            RenderListMarker at (-20,0) size 16x17: "5"
+            RenderText {#text} at (0,0) size 666x34
+              text run at (0,0) width 666: "Intermediate parent with grandparent stacking context. Duck should be a vertical gradient inside, and yellow on"
+              text run at (0,17) width 57: "overflow."
+          RenderListItem {LI} at (40,119) size 704x17
+            RenderListMarker at (-20,0) size 16x17: "6"
+            RenderText {#text} at (0,0) size 597x17
+              text run at (0,0) width 597: "Intermediate parent has overflow. Duck should be a vertical gradient inside, and overflow is hidden."
+        RenderBlock (anonymous) at (40,168) size 744x366
+          RenderBlock {DIV} at (0,0) size 180x180
+          RenderText {#text} at (180,166) size 4x17
+            text run at (180,166) width 4: " "
+          RenderText {#text} at (0,0) size 0x0
+          RenderBlock {DIV} at (184,0) size 180x180
+          RenderText {#text} at (364,166) size 4x17
+            text run at (364,166) width 4: " "
+          RenderText {#text} at (0,0) size 0x0
+          RenderBlock {DIV} at (368,0) size 180x180
+          RenderText {#text} at (548,166) size 4x17
+            text run at (548,166) width 4: " "
+          RenderText {#text} at (0,0) size 0x0
+          RenderBlock {DIV} at (552,0) size 180x180
+          RenderText {#text} at (0,0) size 0x0
+          RenderText {#text} at (0,0) size 0x0
+          RenderBlock {DIV} at (0,183) size 180x180
+          RenderText {#text} at (180,349) size 4x17
+            text run at (180,349) width 4: " "
+          RenderText {#text} at (0,0) size 0x0
+          RenderBlock {DIV} at (184,183) size 180x180
+          RenderText {#text} at (0,0) size 0x0
+layer at (48,184) size 150x150
+  RenderBlock (relative positioned) {DIV} at (0,0) size 150x150
+layer at (68,204) size 150x150
+  RenderImage {IMG} at (20,20) size 150x150
+layer at (232,184) size 150x150
+  RenderBlock (relative positioned) {DIV} at (0,0) size 150x150
+layer at (252,204) size 150x150 blendMode: difference
+  RenderImage {IMG} at (20,20) size 150x150
+layer at (416,184) size 150x150 isolatesBlending
+  RenderBlock (relative positioned) {DIV} at (0,0) size 150x150
+layer at (436,204) size 150x150 blendMode: difference
+  RenderImage {IMG} at (20,20) size 150x150
+layer at (600,184) size 150x150
+  RenderBlock (relative positioned) {DIV} at (0,0) size 150x150
+layer at (610,194) size 150x150
+  RenderBlock (positioned) {DIV} at (10,10) size 150x150
+layer at (630,214) size 150x150 blendMode: difference
+  RenderImage {IMG} at (20,20) size 150x150
+layer at (48,367) size 150x150 isolatesBlending
+  RenderBlock (relative positioned) {DIV} at (0,0) size 150x150
+layer at (58,377) size 150x150
+  RenderBlock (positioned) {DIV} at (10,10) size 150x150
+layer at (78,397) size 150x150 blendMode: difference
+  RenderImage {IMG} at (20,20) size 150x150
+layer at (232,367) size 150x150 isolatesBlending
+  RenderBlock (relative positioned) {DIV} at (0,0) size 150x150
+layer at (242,377) size 150x150 scrollWidth 170 scrollHeight 170
+  RenderBlock (positioned) {DIV} at (10,10) size 150x150
+layer at (262,397) size 150x150 backgroundClip at (242,377) size 150x150 clip at (242,377) size 150x150 blendMode: difference
+  RenderImage {IMG} at (20,20) size 150x150

@@ -173,7 +173,6 @@ private Q_SLOTS:
     void errorPageExtension();
     void errorPageExtensionInIFrames();
     void errorPageExtensionInFrameset();
-    void errorPageExtensionLoadFinished();
     void userAgentApplicationName();
     void userAgentNewlineStripping();
     void undoActionHaveCustomText();
@@ -217,8 +216,8 @@ private Q_SLOTS:
 #endif
 
 private:
-    QWebView* m_view;
-    QWebPage* m_page;
+    QWebView* m_view { nullptr };
+    QWebPage* m_page { nullptr };
     QString tmpDirPath() const
     {
         static QString tmpd = QDir::tempPath() + "/tst_qwebpage-"
@@ -379,7 +378,7 @@ public:
     }
 
 private: 
-    bool m_allowGeolocation;
+    bool m_allowGeolocation { false };
 };
 
 // [Qt] tst_QWebPage::infiniteLoopJS() timeouts with DFG JIT
@@ -2755,35 +2754,6 @@ void tst_QWebPage::errorPageExtensionInFrameset()
     m_view->setPage(0);
 }
 
-void tst_QWebPage::errorPageExtensionLoadFinished()
-{
-    ErrorPage page;
-    m_view->setPage(&page);
-
-    QSignalSpy spyLoadFinished(m_view, SIGNAL(loadFinished(bool)));
-    QSignalSpy spyFrameLoadFinished(m_view->page()->mainFrame(), SIGNAL(loadFinished(bool)));
-
-    m_view->setUrl(QUrl("data:text/html,foo"));
-    QTRY_COMPARE(spyLoadFinished.count(), 1);
-    QTRY_COMPARE(spyFrameLoadFinished.count(), 1);
-
-    const bool loadSucceded = spyLoadFinished.at(0).at(0).toBool();
-    QVERIFY(loadSucceded);
-    const bool frameLoadSucceded = spyFrameLoadFinished.at(0).at(0).toBool();
-    QVERIFY(frameLoadSucceded);
-
-    m_view->page()->mainFrame()->setUrl(QUrl("http://non.existent/url"));
-    QTRY_COMPARE(spyLoadFinished.count(), 2);
-    QTRY_COMPARE(spyFrameLoadFinished.count(), 2);
-
-    const bool nonExistantLoadSucceded = spyLoadFinished.at(1).at(0).toBool();
-    QVERIFY(nonExistantLoadSucceded);
-    const bool nonExistantFrameLoadSucceded = spyFrameLoadFinished.at(1).at(0).toBool();
-    QVERIFY(nonExistantFrameLoadSucceded);
-
-    m_view->setPage(0);
-}
-
 class FriendlyWebPage : public QWebPage
 {
 public:
@@ -2926,15 +2896,13 @@ void tst_QWebPage::originatingObjectInNetworkRequests()
     m_page->setNetworkAccessManager(networkManager);
     networkManager->requests.clear();
 
-    m_view->setHtml(QString("<frameset cols=\"25%,75%\"><frame src=\"data:text/html,"
-                            "<head><meta http-equiv='refresh' content='1'></head>foo \">"
-                            "<frame src=\"data:text/html,bar\"></frameset>"), QUrl());
+    m_view->setHtml(QString("<frameset cols=\"25%,75%\"><frame src=\"qrc:///frame_c.html\">"
+                            "<frame src=\"qrc:///frame_b.html\"></frameset>"), QUrl());
     QVERIFY(::waitForSignal(m_view, SIGNAL(loadFinished(bool))));
 
     QCOMPARE(networkManager->requests.count(), 2);
 
     QList<QWebFrame*> childFrames = m_page->mainFrame()->childFrames();
-    QEXPECT_FAIL("", "https://bugs.webkit.org/show_bug.cgi?id=118660", Continue);
     QCOMPARE(childFrames.count(), 2);
 
     for (int i = 0; i < 2; ++i)
@@ -3102,15 +3070,6 @@ void tst_QWebPage::findText()
     }
 }
 
-static QString getMimeTypeForExtension(const QString &ext)
-{
-    QMimeType mimeType = QMimeDatabase().mimeTypeForFile(QStringLiteral("filename.") + ext.toLower(), QMimeDatabase::MatchExtension);
-    if (mimeType.isValid() && !mimeType.isDefault())
-        return mimeType.name();
-
-    return QString();
-}
-
 void tst_QWebPage::supportedContentType()
 {
     QStringList contentTypes;
@@ -3118,18 +3077,13 @@ void tst_QWebPage::supportedContentType()
     // Add supported non image types...
     contentTypes << "text/html" << "text/xml" << "text/xsl" << "text/plain" << "text/"
                  << "application/xml" << "application/xhtml+xml" << "application/vnd.wap.xhtml+xml"
-                 << "application/rss+xml" << "application/atom+xml" << "application/json";
+                 << "application/rss+xml" << "application/atom+xml" << "application/json"
+    // Add JPEG MIME type
+                 << "image/jpeg";
 
 #if ENABLE_MHTML
     contentTypes << "application/x-mimearchive";
 #endif
-
-    // Add supported image types...
-    Q_FOREACH(const QByteArray& imageType, QImageWriter::supportedImageFormats()) {
-        const QString mimeType = getMimeTypeForExtension(imageType);
-        if (!mimeType.isEmpty())
-            contentTypes << mimeType;
-    }
 
     // Get the mime types supported by webkit...
     const QStringList supportedContentTypes = m_page->supportedContentTypes();
@@ -3329,9 +3283,12 @@ void tst_QWebPage::contextMenuPopulatedOnce()
     QList<QAction *> list = contextMenu->actions();
     QStringList entries;
     while (!list.isEmpty()) {
-        QString entry = list.takeFirst()->text();
-        QVERIFY(!entries.contains(entry));
-        entries << entry;
+        const QAction* action = list.takeFirst();
+        if (!action->isSeparator()) {
+            QString entry = action->text();
+            QVERIFY(!entries.contains(entry));
+            entries << entry;
+        }
     }
 }
 

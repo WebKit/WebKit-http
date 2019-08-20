@@ -30,7 +30,7 @@ qhp.QtWebKit.subprojects.qmltypes.selectors = qmlclass
 qhp.QtWebKit.subprojects.qmltypes.sortPages = true
 
 headerdirs = WebKit/qt/Api WebKit/qt/WidgetApi WebKit2/UIProcess/API/qt
-sourcedirs = WebKit/qt/Api WebKit/qt/WidgetApi WebKit/qt/docs Source/JavaScriptCore/qt/api WebKit2/UIProcess/API/qt
+sourcedirs = WebKit/qt/Api WebKit/qt/WidgetApi WebKit/qt/docs WebKit2/UIProcess/API/qt
 exampledirs = WebKit/qt/docs
 imagedirs = WebKit/qt/docs
 

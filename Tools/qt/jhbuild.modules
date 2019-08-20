@@ -17,7 +17,6 @@
       <dep package="gst-plugins-good"/>
       <dep package="gst-plugins-bad"/>
       <dep package="gst-libav"/>
-      <dep package="openwebrtc"/>
       <dep package="qt"/>
       <if condition-set="linux">
         <dep package="llvm"/>
@@ -75,7 +74,8 @@
     </branch>
   </autotools>
 
-  <autotools id="harfbuzz" autogen-sh="configure">
+  <autotools id="harfbuzz" autogen-sh="configure"
+             autogenargs="--with-cairo=no">
     <dependencies>
       <dep package="icu"/>
     </dependencies>
@@ -107,21 +107,20 @@
     </branch>
   </autotools>
 
-  <autotools id="fontconfig" 
-             autogen-sh="configure"
-             autogenargs="--enable-libxml2">
+  <autotools id="fontconfig"
+             autogenargs="--enable-libxml2 --disable-docs"
+             supports-non-srcdir-builds="no">
+    <if condition-set="macos">
+      <autogenargs value="--with-add-fonts=/System/Library/Fonts,/Library/Fonts,~/Library/Fonts"/>
+    </if>
     <dependencies>
       <dep package="freetype6"/>
       <dep package="libxml2"/>
     </dependencies>
-    <branch module="software/fontconfig/release/fontconfig-2.11.1.tar.gz" version="2.11.1"
+    <branch module="software/fontconfig/release/fontconfig-2.12.4.tar.bz2" version="2.12.4"
             repo="freedesktop.org"
-            hash="sha256:b6b066c7dce3f436fdc0dfbae9d36122b38094f4f53bd8dffd45e195b0540d8d"
-            md5sum="e75e303b4f7756c2b16203a57ac87eba">
-      <patch file="fontconfig-2.11.1-no-bitmaps.patch" strip="0"/>
-    </branch>
+            hash="sha256:668293fcc4b3c59765cdee5cee05941091c0879edcc24dfec5455ef83912e45c"/>
   </autotools>
-
 
   <autotools id="libxml2" supports-non-srcdir-builds="no"
              autogen-sh="./autogen.sh; ./configure --without-python --without-valid --without-xinclude --without-xptr --without-c14n --without-catalog --without-regexps --without-zlib --without-lzma --without-schemas --without-schematron --without-threads --without-legacy --without-http --without-iconv --with-icu">
@@ -219,46 +218,6 @@
             repo="gstreamer"
             hash="sha256:5a1ce28876aee93cb4f3d090f0e807915a5d9bc1325e3480dd302b85aeb4291c"
             md5sum="361638fa45466c5050bcde6bfe10fa46"/>
-  </autotools>
-
-  <autotools id="libusrsctp" supports-non-srcdir-builds="no" autogen-sh="./bootstrap; ./configure --disable-warnings-as-errors">
-    <branch repo="github.com" module="sctplab/usrsctp.git" checkoutdir="usrsctp" tag="078ff3252f73327e0ac11d6fd5eff62011f6646e"/>
-   </autotools>
-
-   <autotools id="gst-plugins-openwebrtc" supports-parallel-builds="no" supports-non-srcdir-builds="no" autogen-sh="./autogen.sh; ./configure">
-     <if condition-set="macos">
-       <makeargs value="CFLAGS+=-Wno-error"/>
-     </if>
-     <dependencies>
-       <dep package="gst-plugins-base"/>
-       <dep package="libusrsctp"/>
-     </dependencies>
-    <branch repo="github.com" module="EricssonResearch/openwebrtc-gst-plugins.git" checkoutdir="gst-plugins-openwebrtc" tag="e359b67484af90f416ea35e301205d2b53c77a14"/>
-   </autotools>
-
-  <autotools id="libnice" supports-non-srcdir-builds="no">
-    <dependencies>
-      <dep package="gstreamer"/>
-    </dependencies>
-    <branch repo="nice.freedesktop.org" module="releases/libnice-0.1.10.tar.gz" checkoutdir="libnice" version="0.1.10"
-            hash="sha256:1dbfb663b730889ae8cab13a2913fe557d581f70b513c918bbbd0b7d3eefebc9"
-            md5sum="27b62d0093ce29a39df1c6fcf0bb4396" size="903083">
-    </branch>
-  </autotools>
-
-  <autotools id="openwebrtc" autogenargs="--enable-bridge=no --enable-owr-gst=yes --disable-tests">
-     <if condition-set="macos">
-       <makeargs value="CFLAGS+=-Wno-error"/>
-     </if>
-    <dependencies>
-      <dep package="gst-plugins-openwebrtc"/>
-      <dep package="libnice"/>
-     </dependencies>
-    <branch repo="github.com-tarball" module="EricssonResearch/openwebrtc/archive/13516c7f79a0c48bb411464f7613d4b426c70f5b.tar.gz" checkoutdir="openwebrtc" version="13516c7f79a0c48bb411464f7613d4b426c70f5b"
-            hash="sha256:c849d36d97c17a198a5d9c180f13f14c7897c9236e2384ea11029e23b09b59ac"
-            md5sum="13516c7f79a0c48bb411464f7613d4b426c70f5b.tar.gz" size="258936">
-      <patch file="openwebrtc-no-gtk-doc.patch" strip="1"/>
-    </branch>
   </autotools>
 
   <autotools id="icu"

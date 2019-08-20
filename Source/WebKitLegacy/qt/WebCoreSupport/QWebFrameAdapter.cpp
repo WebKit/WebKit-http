@@ -37,6 +37,7 @@
 #include <WebCore/FocusController.h>
 #include <WebCore/FrameLoadRequest.h>
 #include <WebCore/HTMLCollection.h>
+#include <WebCore/HTMLFormElement.h>
 #include <WebCore/HTMLMetaElement.h>
 #include <WebCore/HTTPParsers.h>
 #include <WebCore/HitTestResult.h>

@@ -1,0 +1,50 @@
+--- a/src/gui/painting/qdrawhelper.cpp	2014-12-05 19:24:36.000000000 +0300
++++ b/src/gui/painting/qdrawhelper.cpp	2019-08-03 15:31:42.034910641 +0300
+@@ -3506,8 +3506,10 @@
+ }
+ 
+ /*
+-   if Sca.Da + Dca.Sa >= Sa.Da
++   if Sca.Da + Dca.Sa > Sa.Da
+        Dca' = Sa.Da + Sca.(1 - Da) + Dca.(1 - Sa)
++   else if Sca == Sa
++       Dca' = Dca.Sa + Sca.(1 - Da) + Dca.(1 - Sa)
+    otherwise
+        Dca' = Dca.Sa/(1-Sca/Sa) + Sca.(1 - Da) + Dca.(1 - Sa)
+ */
+@@ -3518,8 +3520,10 @@
+     const int src_da = src * da;
+ 
+     const int temp = src * (255 - da) + dst * (255 - sa);
+-    if (src_da + dst_sa >= sa_da)
++    if (src_da + dst_sa > sa_da)
+         return qt_div_255(sa_da + temp);
++    else if (src == sa || sa == 0)
++        return qt_div_255(temp);
+     else
+         return qt_div_255(255 * dst_sa / (255 - 255 * src / sa) + temp);
+ }
+@@ -3589,8 +3593,10 @@
+ }
+ 
+ /*
+-   if Sca.Da + Dca.Sa <= Sa.Da
++   if Sca.Da + Dca.Sa < Sa.Da
+        Dca' = Sca.(1 - Da) + Dca.(1 - Sa)
++   else if Sca == 0
++       Dca' = Dca.Sa + Sca.(1 - Da) + Dca.(1 - Sa)
+    otherwise
+        Dca' = Sa.(Sca.Da + Dca.Sa - Sa.Da)/Sca + Sca.(1 - Da) + Dca.(1 - Sa)
+ */
+@@ -3602,8 +3608,10 @@
+ 
+     const int temp = src * (255 - da) + dst * (255 - sa);
+ 
+-    if (src == 0 || src_da + dst_sa <= sa_da)
++    if (src_da + dst_sa < sa_da)
+         return qt_div_255(temp);
++    else if (src == 0)
++        return qt_div_255(dst_sa + temp);
+     return qt_div_255(sa * (src_da + dst_sa - sa_da) / src + temp);
+ }
+ 

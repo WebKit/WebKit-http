@@ -123,7 +123,7 @@ String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const
 
 bool cookiesEnabled(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& /*url*/)
 {
-    return true;
+    return session.context() ? session.context()->networkAccessManager()->cookieJar() : SharedCookieJarQt::shared();
 }
 
 bool getRawCookies(const NetworkStorageSession& session, const URL& /*firstParty*/, const URL& /*url*/, Vector<Cookie>& rawCookies)

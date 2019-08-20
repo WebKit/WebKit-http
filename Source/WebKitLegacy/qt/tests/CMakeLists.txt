@@ -1,5 +1,7 @@
 remove_definitions(-DQT_ASCII_CAST_WARNINGS)
 
+add_definitions(-DTESTS_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/")
+
 if (ENABLE_TEST_SUPPORT)
     add_definitions(-DHAVE_QTTESTSUPPORT)
 endif ()

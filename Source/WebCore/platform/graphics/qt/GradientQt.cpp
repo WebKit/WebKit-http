@@ -74,6 +74,10 @@ QGradient* Gradient::platformGradient()
     const qreal lastStopDiff = 0.0000001;
 
     for (auto stop : m_stops) {
+        // Drop gradient stops after 1.0 to avoid overwriting color at 1.0
+        if (lastStop >= 1)
+            break;
+
         stopColor.setRgbF(stop.color.red(), stop.color.green(), stop.color.blue(), stop.color.alpha());
         if (qFuzzyCompare(lastStop, qreal(stop.offset)))
             lastStop = stop.offset + lastStopDiff;
@@ -91,6 +95,8 @@ QGradient* Gradient::platformGradient()
             },
             [&] (const ConicData&) {});
 
+        // Clamp stop position to 1.0, otherwise QGradient will ignore it
+        // https://bugs.webkit.org/show_bug.cgi?id=41484
         qreal stopPosition = qMin(lastStop, qreal(1.0f));
 
         WTF::switchOn(m_data,

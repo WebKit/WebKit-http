@@ -93,7 +93,9 @@ FontPlatformData::FontPlatformData(const FontDescription& description, const Ato
     font.setLetterSpacing(QFont::AbsoluteSpacing, letterSpacing);
 
     if (!FontCascade::shouldUseSmoothing())
-        font.setStyleStrategy(QFont::NoAntialias);
+        font.setStyleStrategy(static_cast<QFont::StyleStrategy>(QFont::NoAntialias | QFont::ForceOutline));
+    else
+        font.setStyleStrategy(QFont::ForceOutline);
 
     m_data->bold = font.bold();
     // WebKit allows font size zero but QFont does not. We will return

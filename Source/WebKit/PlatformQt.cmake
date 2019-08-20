@@ -156,6 +156,9 @@ list(APPEND WebKit_SOURCES
     UIProcess/gstreamer/WebPageProxyGStreamer.cpp
 
     UIProcess/qt/BackingStoreQt.cpp
+    UIProcess/qt/ColorChooserContextObject.h
+    UIProcess/qt/DialogContextObjects.h
+    UIProcess/qt/ItemSelectorContextObject.cpp
     UIProcess/qt/PageViewportControllerClientQt.cpp
     UIProcess/qt/QrcSchemeHandler.cpp
     UIProcess/qt/QtDialogRunner.cpp

@@ -588,19 +588,10 @@ void QNetworkReplyHandler::sendResponseIfNeeded()
                               m_replyWrapper->reply()->header(QNetworkRequest::ContentLengthHeader).toLongLong(),
                               m_replyWrapper->encoding());
 
-    if (url.isLocalFile()) {
-        if (client->usesAsyncCallbacks()) {
-            setLoadingDeferred(true);
-            client->didReceiveResponseAsync(m_resourceHandle, response);
-        } else
-            client->didReceiveResponse(m_resourceHandle, response);
-        return;
-    }
-
-    // The status code is equal to 0 for protocols not in the HTTP family.
-    int statusCode = m_replyWrapper->reply()->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
 
     if (url.protocolIsInHTTPFamily()) {
+        // The status code is equal to 0 for protocols not in the HTTP family.
+        int statusCode = m_replyWrapper->reply()->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         response.setHTTPStatusCode(statusCode);
         response.setHTTPStatusText(m_replyWrapper->reply()->attribute(QNetworkRequest::HttpReasonPhraseAttribute).toByteArray().constData());
 

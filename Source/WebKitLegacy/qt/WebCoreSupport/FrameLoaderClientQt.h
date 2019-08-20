@@ -254,6 +254,10 @@ private:
 
     WTF::URL m_lastRequestedUrl;
     bool m_isOriginatingLoad;
+
+    // QTFIXME: consider introducing some sort of flags for storing state
+    bool m_isDisplayingErrorPage;
+    bool m_shouldSuppressLoadStarted;
 };
 
 }

@@ -74,9 +74,9 @@ private Q_SLOTS:
     void addElementToHead();
 
 private:
-    QWebView* m_view;
-    QWebPage* m_page;
-    QWebFrame* m_mainFrame;
+    QWebView* m_view { nullptr };
+    QWebPage* m_page { nullptr };
+    QWebFrame* m_mainFrame { nullptr };
 };
 
 tst_QWebElement::tst_QWebElement()
