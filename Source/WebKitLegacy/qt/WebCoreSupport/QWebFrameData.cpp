@@ -20,11 +20,11 @@
 
 #include "QWebFrameData.h"
 
-#include "Document.h"
-#include "HTMLFormElement.h"
 #include "FrameLoaderClientQt.h"
+#include <WebCore/Document.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
+#include <WebCore/HTMLFormElement.h>
 #include <WebCore/Page.h>
 
 using namespace WebCore;
