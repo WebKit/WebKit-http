@@ -34,7 +34,7 @@
 #include "NotificationPresenterClientQt.h"
 #include "WorkQueue.h"
 #include "WorkQueueItemQt.h"
-#include <JSStringRefQt.h>
+#include <JavaScriptCore/JSStringRefQt.h>
 #include <QCoreApplication>
 #include <QDir>
 #include <QLocale>
@@ -109,7 +109,7 @@ void TestRunnerQt::processWork()
     // qDebug() << ">>>processWork";
 
     // if we didn't start a new load, then we finished all the commands, so we're ready to dump state
-    if (WorkQueue::singleton().processWork() && !shouldWaitUntilDone()) {
+    if (DRT::WorkQueue::singleton().processWork() && !shouldWaitUntilDone()) {
         emit done();
         m_hasDumped = true;
     }
@@ -138,8 +138,8 @@ void TestRunnerQt::maybeDump(bool /*success*/)
     if (m_hasDumped)
         return;
 
-    WorkQueue::singleton().setFrozen(true); // first complete load freezes the queue for the rest of this test
-    if (WorkQueue::singleton().count())
+    DRT::WorkQueue::singleton().setFrozen(true); // first complete load freezes the queue for the rest of this test
+    if (DRT::WorkQueue::singleton().count())
         QTimer::singleShot(0, this, SLOT(processWork()));
     else if (!shouldWaitUntilDone()) {
         emit done();
@@ -332,40 +332,40 @@ void TestRunnerQt::queueBackNavigation(int howFarBackward)
 {
     //qDebug() << ">>>queueBackNavigation" << howFarBackward;
     for (int i = 0; i != howFarBackward; ++i)
-        WorkQueue::singleton().queue(new BackItem(1));
+        DRT::WorkQueue::singleton().queue(new BackItem(1));
 }
 
 void TestRunnerQt::queueForwardNavigation(int howFarForward)
 {
     //qDebug() << ">>>queueForwardNavigation" << howFarForward;
     for (int i = 0; i != howFarForward; ++i)
-        WorkQueue::singleton().queue(new ForwardItem(1));
+        DRT::WorkQueue::singleton().queue(new ForwardItem(1));
 }
 
 void TestRunnerQt::queueLoadHTMLString(const QString& content, const QString& baseURL, const QString& failingURL)
 {
     if (failingURL.isEmpty())
-        WorkQueue::singleton().queue(new LoadHTMLStringItem(JSStringCreateWithQString(content).get(), JSStringCreateWithQString(baseURL).get()));
+        DRT::WorkQueue::singleton().queue(new LoadHTMLStringItem(JSStringCreateWithQString(content).get(), JSStringCreateWithQString(baseURL).get()));
     else
-        WorkQueue::singleton().queue(new LoadAlternateHTMLStringItem(JSStringCreateWithQString(content), JSStringCreateWithQString(baseURL), JSStringCreateWithQString(failingURL)));
+        DRT::WorkQueue::singleton().queue(new LoadAlternateHTMLStringItem(JSStringCreateWithQString(content), JSStringCreateWithQString(baseURL), JSStringCreateWithQString(failingURL)));
 }
 
 void TestRunnerQt::queueReload()
 {
     //qDebug() << ">>>queueReload";
-    WorkQueue::singleton().queue(new ReloadItem());
+    DRT::WorkQueue::singleton().queue(new ReloadItem());
 }
 
 void TestRunnerQt::queueLoadingScript(const QString& script)
 {
     //qDebug() << ">>>queueLoadingScript" << script;
-    WorkQueue::singleton().queue(new LoadingScriptItem(JSStringCreateWithQString(script).get()));
+    DRT::WorkQueue::singleton().queue(new LoadingScriptItem(JSStringCreateWithQString(script).get()));
 }
 
 void TestRunnerQt::queueNonLoadingScript(const QString& script)
 {
     //qDebug() << ">>>queueNonLoadingScript" << script;
-    WorkQueue::singleton().queue(new NonLoadingScriptItem(JSStringCreateWithQString(script).get()));
+    DRT::WorkQueue::singleton().queue(new NonLoadingScriptItem(JSStringCreateWithQString(script).get()));
 }
 
 void TestRunnerQt::provisionalLoad()
@@ -786,7 +786,7 @@ void TestRunner::queueLoad(JSStringRef url, JSStringRef target)
     DumpRenderTree* drt = DumpRenderTree::instance();
     QUrl mainResourceUrl = drt->webPage()->mainFrame()->url();
     QString absoluteUrl = mainResourceUrl.resolved(QUrl(JSStringCopyQString(url))).toEncoded();
-    WorkQueue::singleton().queue(new LoadItem(JSStringCreateWithQString(absoluteUrl).get(), target));
+    DRT::WorkQueue::singleton().queue(new LoadItem(JSStringCreateWithQString(absoluteUrl).get(), target));
 }
 
 void TestRunner::removeAllVisitedLinks()
@@ -850,7 +850,7 @@ void TestRunner::overridePreference(JSStringRef key, JSStringRef value)
 {
 }
 
-JSStringRef TestRunner::pathToLocalResource(JSContextRef, JSStringRef url)
+JSRetainPtr<JSStringRef> TestRunner::pathToLocalResource(JSContextRef, JSStringRef url)
 {
     return JSStringCreateWithUTF8CString(0); // ### Take impl from WTR
 }
@@ -975,6 +975,10 @@ void TestRunner::display()
 {
 }
 
+void TestRunner::displayAndTrackRepaints()
+{
+}
+
 void TestRunner::dispatchPendingLoadRequests()
 {
 }
@@ -988,7 +992,7 @@ bool TestRunner::callShouldCloseOnWebView()
     return false;
 }
 
-JSStringRef TestRunner::copyDecodedHostName(JSStringRef name)
+JSRetainPtr<JSStringRef> TestRunner::copyDecodedHostName(JSStringRef name)
 {
     return JSStringCreateWithUTF8CString(0);
 }
@@ -1049,10 +1053,6 @@ void TestRunner::setUserStyleSheetLocation(JSStringRef path)
 {
 }
 
-void TestRunner::setUseDashboardCompatibilityMode(bool flag)
-{
-}
-
 void TestRunner::setTabKeyCyclesThroughElements(bool)
 {
 }
@@ -1073,7 +1073,7 @@ void TestRunner::setPersistentUserStyleSheetLocation(JSStringRef path)
 {
 }
 
-void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed)
+void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed, bool providesFloorLevel, double floorLevel)
 {
 }
 
@@ -1134,10 +1134,6 @@ void TestRunner::setValueForUser(JSContextRef, JSValueRef nodeObject, JSStringRe
 {
 }
 
-void TestRunner::setViewModeMediaFeature(JSStringRef)
-{
-}
-
 void TestRunner::removeOriginAccessWhitelistEntry(JSStringRef sourceOrigin, JSStringRef destinationProtocol, JSStringRef destinationHost, bool allowDestinationSubdomains)
 {
 }
@@ -1160,7 +1156,7 @@ void TestRunner::evaluateScriptInIsolatedWorldAndReturnValue(unsigned worldID, J
 {
 }
 
-JSStringRef TestRunner::copyEncodedHostName(JSStringRef name)
+JSRetainPtr<JSStringRef> TestRunner::copyEncodedHostName(JSStringRef name)
 {
     return JSStringCreateWithUTF8CString(0);
 }
@@ -1174,8 +1170,10 @@ void TestRunner::execCommand(JSStringRef name, JSStringRef value)
 {
 }
 
-JSStringRef TestRunner::inspectorTestStubURL()
+JSRetainPtr<JSStringRef> TestRunner::inspectorTestStubURL()
 {
     return JSStringCreateWithUTF8CString("qrc:/webkit/inspector/UserInterface/TestStub.html");
 }
 
+
+#include "moc_DumpRenderTreeQt.cpp"

@@ -31,7 +31,7 @@
 
 #include "DumpRenderTreeQt.h"
 #include "DumpRenderTreeSupportQt.h"
-#include "JSStringRefQt.h"
+#include <JavaScriptCore/JSStringRefQt.h>
 
 QWebFrame* findFrameNamed(const QString& frameName, QWebFrame* frame)
 {

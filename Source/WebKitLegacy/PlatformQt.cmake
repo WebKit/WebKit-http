@@ -32,9 +32,6 @@ endif ()
 
 QTWEBKIT_SKIP_AUTOMOC(WebKitLegacy)
 
-set(QtWebKit_FRAMEWORK_HEADERS_DIR "${CMAKE_BINARY_DIR}/include/QtWebKit")
-set(QtWebKitWidgets_FRAMEWORK_HEADERS_DIR "${CMAKE_BINARY_DIR}/include/QtWebKitWidgets")
-
 list(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}/include"
     "${WEBKITLEGACY_DIR}/qt/Api"

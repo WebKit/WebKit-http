@@ -27,8 +27,8 @@
 #ifndef JSStringRefQt_h
 #define JSStringRefQt_h
 
-#include "JSBase.h"
 #include "JSRetainPtr.h"
+#include <JavaScriptCore/JSBase.h>
 #include <QString>
 
 /* QString convenience methods */

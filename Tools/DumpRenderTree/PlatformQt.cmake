@@ -1,10 +1,7 @@
 list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
-    "${FORWARDING_HEADERS_DIR}/QtWebKit"
-    "${FORWARDING_HEADERS_DIR}/QtWebKitWidgets"
-    "${WEBCORE_DIR}/Modules/notifications"
-    "${WEBCORE_DIR}/platform/qt"
-    "${WEBKIT_DIR}/qt/WebCoreSupport"
-    "${WEBKIT_DIR}/qt/WidgetSupport"
+    "${QtWebKit_FRAMEWORK_HEADERS_DIR}"
+    "${QtWebKitWidgets_FRAMEWORK_HEADERS_DIR}"
+    "${WEBKITLEGACY_DIR}/qt/WidgetSupport"
     TestNetscapePlugIn
     TestNetscapePlugIn/ForwardingHeaders
     qt

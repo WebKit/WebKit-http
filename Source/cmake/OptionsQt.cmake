@@ -243,9 +243,8 @@ WEBKIT_OPTION_DEFINE(ENABLE_QT_WEBCHANNEL "Enable support for Qt WebChannel" PUB
 WEBKIT_OPTION_DEFINE(ENABLE_X11_TARGET "Whether to enable support for the X11 windowing target." PUBLIC OFF) # QTFIXME #${ENABLE_X11_TARGET_DEFAULT})
 
 option(GENERATE_DOCUMENTATION "Generate HTML and QCH documentation" OFF)
-# QTFIXME
-#cmake_dependent_option(ENABLE_TEST_SUPPORT "Build tools for running layout tests and related library code" ON
-#                                           "DEVELOPER_MODE" OFF)
+cmake_dependent_option(ENABLE_TEST_SUPPORT "Build tools for running layout tests and related library code" ON
+                                           "DEVELOPER_MODE" OFF)
 option(USE_STATIC_RUNTIME "Use static runtime (MSVC only)" OFF)
 
 # Private options specific to the Qt port. Changing these options is
@@ -934,3 +933,7 @@ set(WebInspectorUI_DERIVED_SOURCES_DIR ${CMAKE_BINARY_DIR}/WebInspectorUI/Derive
 # Override scripts directories
 set(WTF_SCRIPTS_DIR ${CMAKE_BINARY_DIR}/WTF/Scripts)
 set(JavaScriptCore_SCRIPTS_DIR ${CMAKE_BINARY_DIR}/JavaScriptCore/Scripts)
+
+# Public API
+set(QtWebKit_FRAMEWORK_HEADERS_DIR "${CMAKE_BINARY_DIR}/include/QtWebKit")
+set(QtWebKitWidgets_FRAMEWORK_HEADERS_DIR "${CMAKE_BINARY_DIR}/include/QtWebKitWidgets")

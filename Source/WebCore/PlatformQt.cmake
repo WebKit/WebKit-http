@@ -71,6 +71,8 @@ list(APPEND WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/qt/QWebPageClient.h
     platform/qt/ThirdPartyCookiesQt.h
     platform/qt/UserAgentQt.h
+
+    testing/js/WebCoreTestSupport.h
 )
 
 list(APPEND WebCore_SOURCES

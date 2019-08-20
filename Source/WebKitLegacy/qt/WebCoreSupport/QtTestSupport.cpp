@@ -26,12 +26,12 @@
 
 #include "QtTestSupport.h"
 
-#include "CrossOriginPreflightResultCache.h"
-#include "FontCache.h"
-#include "GCController.h"
-#include "MemoryCache.h"
-#include "PageCache.h"
 #include <QFontDatabase>
+#include <WebCore/CrossOriginPreflightResultCache.h>
+#include <WebCore/FontCache.h>
+#include <WebCore/GCController.h>
+#include <WebCore/MemoryCache.h>
+#include <WebCore/PageCache.h>
 
 #if HAVE(FONTCONFIG)
 #include <QByteArray>
@@ -58,7 +58,7 @@ void QtTestSupport::clearMemoryCaches()
 
     FontCache::singleton().invalidate();
 
-    WebCore::CrossOriginPreflightResultCache::singleton().empty();
+    WebCore::CrossOriginPreflightResultCache::singleton().clear();
 }
 
 void QtTestSupport::initializeTestFonts()

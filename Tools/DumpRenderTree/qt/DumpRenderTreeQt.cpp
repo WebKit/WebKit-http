@@ -38,7 +38,6 @@
 #include "GCController.h"
 #include "InitWebCoreQt.h"
 #include "InitWebKitQt.h"
-#include "JSStringRefQt.h"
 #include "QtTestSupport.h"
 #include "TestRunner.h"
 #include "TestRunnerQt.h"
@@ -46,6 +45,7 @@
 #include "testplugin.h"
 #include "WorkQueue.h"
 
+#include <JavaScriptCore/JSStringRefQt.h>
 #include <QApplication>
 #include <QBuffer>
 #include <QCryptographicHash>
@@ -575,8 +575,8 @@ void DumpRenderTree::resetToConsistentStateBeforeTesting(const QUrl& url)
         m_page->setNetworkAccessManager(m_networkAccessManager);
     }
 
-    WorkQueue::singleton().clear();
-    WorkQueue::singleton().setFrozen(false);
+    DRT::WorkQueue::singleton().clear();
+    DRT::WorkQueue::singleton().setFrozen(false);
 
     DumpRenderTreeSupportQt::resetOriginAccessWhiteLists();
 

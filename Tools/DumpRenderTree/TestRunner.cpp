@@ -2466,7 +2466,7 @@ void TestRunner::runUIScript(JSContextRef context, JSStringRef script, JSValueRe
     if (!m_UIScriptContext)
         m_UIScriptContext = std::make_unique<WTR::UIScriptContext>(*this);
 
-    String scriptString(JSStringGetCharactersPtr(script), JSStringGetLength(script));
+    String scriptString(reinterpret_cast<const UChar*>(JSStringGetCharactersPtr(script)), JSStringGetLength(script));
     m_UIScriptContext->runUIScript(scriptString, callbackID);
 }
 
