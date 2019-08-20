@@ -506,7 +506,7 @@ void Internals::resetToConsistentState(Page& page)
     PlatformMediaSessionManager::sharedManager().resetRestrictions();
     PlatformMediaSessionManager::sharedManager().setWillIgnoreSystemInterruptions(true);
 #endif
-    PlatformMediaSessionManager::sharedManager().setIsPlayingToAutomotiveHeadUnit(false);
+//    PlatformMediaSessionManager::sharedManager().setIsPlayingToAutomotiveHeadUnit(false);
 #if ENABLE(ACCESSIBILITY)
     AXObjectCache::setEnhancedUserInterfaceAccessibility(false);
     AXObjectCache::disableAccessibility();
@@ -5211,12 +5211,12 @@ void Internals::setAlwaysAllowLocalWebarchive(bool alwaysAllowLocalWebarchive)
 
 void Internals::processWillSuspend()
 {
-    PlatformMediaSessionManager::sharedManager().processWillSuspend();
+//    PlatformMediaSessionManager::sharedManager().processWillSuspend();
 }
 
 void Internals::processDidResume()
 {
-    PlatformMediaSessionManager::sharedManager().processDidResume();
+//    PlatformMediaSessionManager::sharedManager().processDidResume();
 }
 
 void Internals::testDictionaryLogging()
@@ -5246,7 +5246,7 @@ void Internals::setXHRMaximumIntervalForUserGestureForwarding(XMLHttpRequest& re
 
 void Internals::setIsPlayingToAutomotiveHeadUnit(bool isPlaying)
 {
-    PlatformMediaSessionManager::sharedManager().setIsPlayingToAutomotiveHeadUnit(isPlaying);
+//    PlatformMediaSessionManager::sharedManager().setIsPlayingToAutomotiveHeadUnit(isPlaying);
 }
     
 Internals::TextIndicatorInfo::TextIndicatorInfo()

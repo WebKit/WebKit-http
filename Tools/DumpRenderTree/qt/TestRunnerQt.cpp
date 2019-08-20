@@ -1175,5 +1175,43 @@ JSRetainPtr<JSStringRef> TestRunner::inspectorTestStubURL()
     return JSStringCreateWithUTF8CString("qrc:/webkit/inspector/UserInterface/TestStub.html");
 }
 
+void TestRunner::setNeedsStorageAccessFromFileURLsQuirk(bool needsQuirk)
+{
+}
+
+void TestRunner::setOnlyAcceptFirstPartyCookies(bool onlyAcceptFirstPartyCookies)
+{
+}
+
+void TestRunner::setIDBPerOriginQuota(uint64_t quota)
+{
+}
+
+void TestRunner::setViewSize(double width, double height)
+{
+}
+
+unsigned TestRunner::imageCountInGeneralPasteboard() const
+{
+    return 0;
+}
+
+void TestRunner::setSpellCheckerLoggingEnabled(bool enabled)
+{
+}
+
+void TestRunner::setSpellCheckerResults(JSContextRef, JSObjectRef)
+{
+}
+
+void TestRunner::forceImmediateCompletion()
+{
+}
+
+JSContextRef TestRunner::mainFrameJSContext()
+{
+    return nullptr;
+    //return DumpRenderTree::instance()->mainFrameAdapter()->frame->globalContext();
+}
 
 #include "moc_DumpRenderTreeQt.cpp"

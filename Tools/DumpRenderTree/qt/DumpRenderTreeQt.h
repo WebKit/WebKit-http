@@ -40,6 +40,7 @@
 #include <QSslError>
 #endif
 
+#include <JavaScriptCore/JSExportMacros.h>
 #include "DumpRenderTreeSupportQt.h"
 #include "TestRunner.h"
 #include <qgraphicsview.h>

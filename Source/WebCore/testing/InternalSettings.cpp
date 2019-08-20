@@ -102,7 +102,7 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_incompleteImageBorderEnabled(settings.incompleteImageBorderEnabled())
     , m_shouldDispatchSyntheticMouseEventsWhenModifyingSelection(settings.shouldDispatchSyntheticMouseEventsWhenModifyingSelection())
     , m_shouldDispatchSyntheticMouseOutAfterSyntheticClick(settings.shouldDispatchSyntheticMouseOutAfterSyntheticClick())
-    , m_shouldDeactivateAudioSession(PlatformMediaSessionManager::shouldDeactivateAudioSession())
+//    , m_shouldDeactivateAudioSession(PlatformMediaSessionManager::shouldDeactivateAudioSession())
     , m_userInterfaceDirectionPolicy(settings.userInterfaceDirectionPolicy())
     , m_systemLayoutDirection(settings.systemLayoutDirection())
     , m_pdfImageCachingPolicy(settings.pdfImageCachingPolicy())
@@ -211,7 +211,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setIncompleteImageBorderEnabled(m_incompleteImageBorderEnabled);
     settings.setShouldDispatchSyntheticMouseEventsWhenModifyingSelection(m_shouldDispatchSyntheticMouseEventsWhenModifyingSelection);
     settings.setShouldDispatchSyntheticMouseOutAfterSyntheticClick(m_shouldDispatchSyntheticMouseOutAfterSyntheticClick);
-    PlatformMediaSessionManager::setShouldDeactivateAudioSession(m_shouldDeactivateAudioSession);
+//    PlatformMediaSessionManager::setShouldDeactivateAudioSession(m_shouldDeactivateAudioSession);
 
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     RuntimeEnabledFeatures::sharedFeatures().setIndexedDBWorkersEnabled(m_indexedDBWorkersEnabled);
@@ -1013,7 +1013,7 @@ bool InternalSettings::webAnimationsCSSIntegrationEnabled()
 
 void InternalSettings::setShouldDeactivateAudioSession(bool should)
 {
-    PlatformMediaSessionManager::setShouldDeactivateAudioSession(should);
+//    PlatformMediaSessionManager::setShouldDeactivateAudioSession(should);
 }
 
 // If you add to this class, make sure that you update the Backup class for test reproducability!
