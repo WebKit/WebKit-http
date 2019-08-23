@@ -71,6 +71,7 @@ public:
     };
 
     void setHolePunchClient(std::unique_ptr<HolePunchClient>&& client) { m_holePunchClient = WTFMove(client); }
+    void notifyPositionToHolePunchClient(const FloatRect&, const TransformationMatrix&) final;
 
 private:
 

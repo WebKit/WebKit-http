@@ -500,6 +500,40 @@ void CoordinatedGraphicsScene::detach()
     m_client = nullptr;
 }
 
+void CoordinatedGraphicsScene::applyStateChangesAndNotifyVideoPosition(const Vector<WebCore::CoordinatedGraphicsState>& states)
+{
+    ensureRootLayer();
+
+    for (auto& state : states) {
+        m_nicosia = state.nicosia;
+
+        CommitScope commitScope;
+
+        createLayers(state.layersToCreate);
+        deleteLayers(state.layersToRemove);
+
+        if (state.rootCompositingLayer != m_rootLayerID)
+            setRootLayerID(state.rootCompositingLayer);
+
+        for (auto& layer : state.layersToUpdate)
+            setLayerState(layer.first, layer.second, commitScope);
+    }
+
+    TextureMapperLayer* currentRootLayer = rootLayer();
+    if (!currentRootLayer)
+        return;
+
+    for (auto& proxy : m_platformLayerProxies.values())
+        proxy->swapBuffer();
+
+    bool sceneHasRunningAnimations = currentRootLayer->applyAnimationsRecursively(MonotonicTime::now());
+
+    currentRootLayer->computeTransformsAndNotifyVideoPosition();
+
+    if (sceneHasRunningAnimations)
+        updateViewport();
+}
+
 } // namespace WebKit
 
 #endif // USE(COORDINATED_GRAPHICS)

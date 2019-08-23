@@ -91,6 +91,12 @@ void TextureMapperPlatformLayerBuffer::paintToTextureMapper(TextureMapper& textu
     texmapGL.drawTexture(m_textureID, m_extraFlags, m_size, targetRect, modelViewMatrix, opacity);
 }
 
+void TextureMapperPlatformLayerBuffer::notifyPositionToHolePunchClient(const FloatRect& targetRect, const TransformationMatrix& modelViewMatrix)
+{
+    if (m_holePunchClient)
+        m_holePunchClient->setVideoRectangle(enclosingIntRect(modelViewMatrix.mapRect(targetRect)));
+}
+
 } // namespace WebCore
 
 #endif // USE(COORDINATED_GRAPHICS_THREADED)

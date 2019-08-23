@@ -653,4 +653,21 @@ bool TextureMapperLayer::syncAnimations(MonotonicTime time)
     return applicationResults.hasRunningAnimations;
 }
 
+void TextureMapperLayer::computeTransformsAndNotifyVideoPosition()
+{
+    computeTransformsRecursive();
+
+    notifyVideoPositionRecursive();
+}
+
+void TextureMapperLayer::notifyVideoPositionRecursive()
+{
+    if (m_contentsLayer) {
+        m_contentsLayer->notifyPositionToHolePunchClient(m_state.contentsRect, m_layerTransforms.combined);
+    }
+
+    for (auto* child : m_children)
+        child->notifyVideoPositionRecursive();
+}
+
 }

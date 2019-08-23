@@ -98,6 +98,9 @@ public:
 
     void addChild(TextureMapperLayer*);
 
+    void computeTransformsAndNotifyVideoPosition();
+    void notifyVideoPositionRecursive();
+
 private:
     const TextureMapperLayer& rootLayer() const
     {

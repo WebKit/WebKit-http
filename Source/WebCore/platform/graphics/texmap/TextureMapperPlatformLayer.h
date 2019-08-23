@@ -44,6 +44,8 @@ public:
         textureMapper.drawBorder(color, borderWidth, targetRect, transform);
     }
 
+    virtual void notifyPositionToHolePunchClient(const FloatRect&, const TransformationMatrix&) { };
+
     void setClient(TextureMapperPlatformLayer::Client* client) { m_client = client; }
 
 protected:

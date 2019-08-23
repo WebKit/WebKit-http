@@ -86,6 +86,8 @@ public:
     void setViewBackgroundColor(const WebCore::Color& color) { m_viewBackgroundColor = color; }
     WebCore::Color viewBackgroundColor() const { return m_viewBackgroundColor; }
 
+    void applyStateChangesAndNotifyVideoPosition(const Vector<WebCore::CoordinatedGraphicsState>&);
+
 private:
     struct CommitScope {
         CommitScope() = default;

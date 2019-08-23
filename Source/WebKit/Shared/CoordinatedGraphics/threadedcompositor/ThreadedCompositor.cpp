@@ -202,6 +202,8 @@ void ThreadedCompositor::renderNonCompositedWebGL()
         m_attributes.clientRendersNextFrame = true;
     }
 
+    m_scene->applyStateChangesAndNotifyVideoPosition(states);
+
     m_client.didRenderFrame();
 }
 
