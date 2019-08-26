@@ -26,6 +26,7 @@
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
 #include "GStreamerEMEUtilities.h"
+#include "SharedBuffer.h"
 #include <CDMInstance.h>
 #include <wtf/Condition.h>
 #include <wtf/PrintStream.h>
@@ -42,6 +43,7 @@ struct _WebKitMediaCommonEncryptionDecryptPrivate {
     Condition m_condition;
     RefPtr<CDMInstance> m_cdmInstance;
     WTF::HashMap<String, WebCore::InitData> m_initDatas;
+    WTF::HashMap<WebCore::InitData, Ref<WebCore::SharedBuffer>> m_keyIds;
     Vector<GRefPtr<GstEvent>> m_protectionEvents;
     uint32_t m_currentEvent { 0 };
     bool m_isFlushing { false };
@@ -53,7 +55,7 @@ static void webKitMediaCommonEncryptionDecryptorFinalize(GObject*);
 static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform*, GstPadDirection, GstCaps*, GstCaps*);
 static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseTransform*, GstBuffer*);
 static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransform*, GstEvent*);
-static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMediaCommonEncryptionDecrypt*);
+static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMediaCommonEncryptionDecrypt*, Ref<WebCore::SharedBuffer>&&);
 static bool webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(WebKitMediaCommonEncryptionDecrypt*);
 
 GST_DEBUG_CATEGORY_STATIC(webkit_media_common_encryption_decrypt_debug_category);
@@ -82,8 +84,8 @@ static void webkit_media_common_encryption_decrypt_class_init(WebKitMediaCommonE
 
     klass->setupCipher = [](WebKitMediaCommonEncryptionDecrypt*, GstBuffer*) { return true; };
     klass->releaseCipher = [](WebKitMediaCommonEncryptionDecrypt*) { };
-    klass->handleInitData = [](WebKitMediaCommonEncryptionDecrypt*, const WebCore::InitData&) { return true; };
-    klass->attemptToDecryptWithLocalInstance = [](WebKitMediaCommonEncryptionDecrypt*, const WebCore::InitData&) { return false; };
+    klass->handleKeyId = [](WebKitMediaCommonEncryptionDecrypt*, const WebCore::SharedBuffer&) { return true; };
+    klass->attemptToDecryptWithLocalInstance = [](WebKitMediaCommonEncryptionDecrypt*, const WebCore::SharedBuffer&) { return false; };
 
     g_type_class_add_private(klass, sizeof(WebKitMediaCommonEncryptionDecryptPrivate));
 }
@@ -229,8 +231,25 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
         }
     }
 
-    if (!priv->m_protectionEvents.isEmpty())
-        webkitMediaCommonEncryptionDecryptProcessProtectionEvents(self);
+    const GValue* value;
+    value = gst_structure_get_value(protectionMeta->info, "kid");
+    GstBuffer* keyIDBuffer = nullptr;
+    if (!value) {
+        GST_ERROR_OBJECT(self, "No key ID available for encrypted sample");
+        return GST_FLOW_NOT_SUPPORTED;
+    }
+
+    keyIDBuffer = gst_value_get_buffer(value);
+
+    if (!priv->m_protectionEvents.isEmpty()) {
+        GstMappedBuffer mappedKeyID(keyIDBuffer, GST_MAP_READ);
+        if (!mappedKeyID) {
+            GST_ERROR_OBJECT(self, "Failed to map key ID buffer");
+            return GST_FLOW_NOT_SUPPORTED;
+        }
+        auto keyId = WebCore::SharedBuffer::create(mappedKeyID.data(), mappedKeyID.size());
+        webkitMediaCommonEncryptionDecryptProcessProtectionEvents(self, WTFMove(keyId));
+    }
 
     // The key might not have been received yet. Wait for it.
     if (!priv->m_keyReceived) {
@@ -278,7 +297,6 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
         return GST_FLOW_NOT_SUPPORTED;
     }
 
-    const GValue* value;
     GstBuffer* subSamplesBuffer = nullptr;
     if (subSampleCount) {
         value = gst_structure_get_value(protectionMeta->info, "subsamples");
@@ -290,14 +308,6 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
         subSamplesBuffer = gst_value_get_buffer(value);
     }
 
-    value = gst_structure_get_value(protectionMeta->info, "kid");
-    GstBuffer* keyIDBuffer = nullptr;
-    if (!value) {
-        GST_ERROR_OBJECT(self, "No key ID available for encrypted sample");
-        return GST_FLOW_NOT_SUPPORTED;
-    }
-
-    keyIDBuffer = gst_value_get_buffer(value);
 #ifndef GST_DISABLE_GST_DEBUG
     if (gst_debug_category_get_threshold(GST_CAT_DEFAULT) >= GST_LEVEL_MEMDUMP) {
         GstMappedBuffer mappedKeyID(keyIDBuffer, GST_MAP_READ);
@@ -365,7 +375,7 @@ static bool webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(WebKitMedia
     return priv->m_cdmInstance;
 }
 
-static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMediaCommonEncryptionDecrypt* self)
+static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMediaCommonEncryptionDecrypt* self, Ref<WebCore::SharedBuffer>&& kid)
 {
     WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
     WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
@@ -410,8 +420,10 @@ static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMedi
             GST_TRACE_OBJECT(self, "init data MD5 %s", WebCore::GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
             GST_MEMDUMP_OBJECT(self, "init data", mappedBuffer.data(), mappedBuffer.size());
             priv->m_initDatas.set(eventKeySystemUUID, initData);
+            GST_MEMDUMP_OBJECT(self, "key ID", reinterpret_cast<const uint8_t*>(kid->data()), kid->size());
+            priv->m_keyIds.set(initData, kid.copyRef());
 
-            priv->m_keyReceived = isCDMInstanceAvailable && !klass->handleInitData(self, initData);
+            priv->m_keyReceived = isCDMInstanceAvailable && !klass->handleKeyId(self, WTFMove(kid));
             if (!priv->m_keyReceived) {
                 if (isCDMInstanceAvailable) {
                     GST_DEBUG_OBJECT(self, "posting event and considering key not received");
@@ -478,7 +490,13 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
             result = TRUE;
             LockHolder locker(priv->m_mutex);
             RELEASE_ASSERT(webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self));
-            priv->m_keyReceived = klass->attemptToDecryptWithLocalInstance(self, priv->m_initDatas.get(WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem())));
+            auto initData = priv->m_initDatas.get(WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()));
+            auto keyId = !initData.isEmpty() ? priv->m_keyIds.get(initData) : nullptr;
+            GST_DEBUG_OBJECT(self, "attempting to decrypt with local instance %p, key id %p", priv->m_cdmInstance.get(), keyId);
+            if (keyId) {
+                GST_MEMDUMP_OBJECT(self, "key id", reinterpret_cast<const uint8_t*>(keyId->data()), keyId->size());
+                priv->m_keyReceived = klass->attemptToDecryptWithLocalInstance(self, *keyId);
+            }
             GST_DEBUG_OBJECT(self, "attempted to decrypt with local instance %p, key received %s", priv->m_cdmInstance.get(), WTF::boolForPrinting(priv->m_keyReceived));
             if (priv->m_keyReceived)
                 priv->m_condition.notifyOne();
