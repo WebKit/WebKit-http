@@ -64,6 +64,7 @@ std::unique_ptr<PlatformImage> PlatformImage::createFromDiffData(void* data, siz
 	BBitmap* surface = new BBitmap(BRect(0, 0, width - 1, height - 1), B_GRAY8);
 	void* dest = surface->Bits();
 	memcpy(dest, data, width * height);
+	free(data);
     return std::make_unique<PlatformImage>(surface);
 }
 
@@ -110,7 +111,6 @@ void PlatformImage::writeAsPNGToStdout()
 {
     BMallocIO imageData;
     BBitmapStream input(m_image);
-        // Will delete the image!
     if (BTranslatorRoster::Default()->Translate(&input, NULL, NULL,
         &imageData, B_PNG_FORMAT) == B_OK) {
         printf("Content-Length: %ld\n", imageData.BufferLength());
@@ -118,6 +118,10 @@ void PlatformImage::writeAsPNGToStdout()
 
         write(1, imageData.Buffer(), imageData.BufferLength());
     }
+	BBitmap* foo = NULL;
+	input.DetachBitmap(&foo);
+	if (foo != m_image)
+		delete foo;
 }
 
 } // namespace ImageDiff

@@ -40,6 +40,10 @@
 #include <windows.h>
 #endif
 
+#ifdef __HAIKU__
+#include <Application.h>
+#endif
+
 using namespace ImageDiff;
 
 #ifdef _WIN32
@@ -53,6 +57,10 @@ int main(int argc, const char* argv[])
 #ifdef _WIN32
     _setmode(0, _O_BINARY);
     _setmode(1, _O_BINARY);
+#endif
+
+#ifdef __HAIKU__
+	new BApplication("application/x-vnd.webkit-imagediff");
 #endif
 
     float tolerance = 0.0f;
