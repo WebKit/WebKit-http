@@ -98,22 +98,14 @@ class HaikuPort(Port):
         search_paths.append(self.port_name)
         return search_paths
 
-    def default_baseline_search_path(self):
+    def default_baseline_search_path(self, **kwargs):
         return map(self._webkit_baseline_path, self._search_paths())
 
-    def _port_specific_expectations_files(self):
-        # FIXME: We should be able to use the default algorithm here.
-        return list(reversed([self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in self._search_paths()]))
+    def _port_specific_expectations_files(self, **kwargs):
+        return [self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in reversed(self._search_paths())]
 
     def show_results_html_file(self, results_filename):
-        # FIXME: We should find a way to share this implmentation with Gtk,
-        # or teach run-launcher how to call run-safari and move this down to WebKitPort.
-        run_launcher_args = ["file://%s" % results_filename]
-        if self.get_option('webkit_test_runner'):
-            run_launcher_args.append('-2')
-        # FIXME: old-run-webkit-tests also added ["-graphicssystem", "raster", "-style", "windows"]
-        # FIXME: old-run-webkit-tests converted results_filename path for cygwin.
-        self._run_script("run-launcher", run_launcher_args)
+        self._run_script("run-minibrowser", [path.abspath_to_uri(self.host.platform, results_filename)])
 
     def _uses_apache(self):
         return False
