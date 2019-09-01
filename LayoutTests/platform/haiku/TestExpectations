@@ -140,7 +140,6 @@ accessibility/img-fallsback-to-title.html [ Pass ]
 #20180128 accessibility/image-map2.html [ Pass ]
 accessibility/label-element-press.html [ Pass ]
 #20180128 accessibility/lists.html [ Pass ]
-accessibility/mac/AOM-events-webarea-crash.html [ Pass ]
 accessibility/mac/unsupported-attribute-does-not-crash.html [ Pass ]
 accessibility/mac/search-predicate-crash.html [ Pass ]
 accessibility/mac/radio-button-no-name-crash.html [ Pass ]
@@ -151,7 +150,6 @@ accessibility/media-controls.html [ Pass ]
 accessibility/menu-list-sends-change-notification.html [ Pass ]
 accessibility/meter-element.html [ Pass ]
 #accessibility/multiselect-list-reports-active-option.html [ Pass ]
-#20151106 accessibility/negative-tabindex-does-not-expose-label.html [ Pass ]
 accessibility/non-native-image-crash.html [ Pass ]
 accessibility/platform-name.html [ Pass ]
 #20180128 accessibility/plugin.html [ Pass ]
@@ -1735,7 +1733,6 @@ fast/dom/location-new-window-no-crash.html [ Failure ]
 fast/dom/MutationObserver/database-callback-delivery.html [ Failure ]
 fast/dom/MutationObserver/end-of-task-delivery.html [ Failure ]
 fast/dom/MutationObserver/inline-event-listener.html [ Failure ]
-fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Failure ]
 #fast/dom/navigator-detached-no-crash.html [ Failure ]
 fast/dom/navigation-type-back-forward.html [ Failure ]
 fast/dom/navigation-type-navigate.html [ Failure ]
@@ -3064,12 +3061,6 @@ Bug(Haiku) scrollingcoordinator/non-fast-scrollable-region-scaled-iframe.html [ 
 
 security/autocomplete-cleared-on-back.html [ Failure ]
 
-
-#sputnik/Conformance/07_Lexical_Conventions/7.4_Comments/S7.4_A4_T4.html [ Failure ] #F?
-#sputnik/Conformance/07_Lexical_Conventions/7.8_Literals/7.8.5_Regular_Expression_Literals/S7.8.5_A1.4_T2.html [ Failure ] #F?
-sputnik/Conformance/08_Types/8.5_The_Number_Type/S8.5_A2.1.html [ Failure ]
-sputnik/Conformance/08_Types/8.5_The_Number_Type/S8.5_A2.2.html [ Failure ]
-
 storage/indexeddb/properties-disabled-at-runtime.html [ Pass ]
 
 # SVG
@@ -3176,8 +3167,6 @@ svg/custom/js-update-polygon-changes.svg [ Failure ]
 svg/custom/js-update-polygon-removal.svg [ Failure ]
 svg/custom/js-update-transform-addition.svg [ Failure ]
 svg/custom/js-update-transform-changes.svg [ Failure ]
-svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html [ Failure ]
-svg/custom/manually-parsed-svg-allowed-in-dashboard.html [ Failure ]
 svg/custom/marker-changes.svg [ Failure ]
 svg/custom/marker-child-changes-css.svg [ Failure ]
 svg/custom/marker-child-changes.svg [ Failure ]
