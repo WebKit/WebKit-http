@@ -31,6 +31,7 @@
 
 namespace WebCore {
 class CDMInstance;
+class SharedBuffer;
 };
 
 G_BEGIN_DECLS
@@ -62,8 +63,8 @@ struct _WebKitMediaCommonEncryptionDecryptClass {
     bool (*decrypt)(WebKitMediaCommonEncryptionDecrypt*, GstBuffer* keyIDBuffer, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSamplesCount, GstBuffer* subSamplesBuffer);
     void (*releaseCipher)(WebKitMediaCommonEncryptionDecrypt*);
     void (*receivedProtectionEvent)(WebKitMediaCommonEncryptionDecrypt*, unsigned);
-    bool (*handleInitData)(WebKitMediaCommonEncryptionDecrypt*, const WebCore::InitData&);
-    bool (*attemptToDecryptWithLocalInstance)(WebKitMediaCommonEncryptionDecrypt*, const WebCore::InitData&);
+    bool (*handleKeyId)(WebKitMediaCommonEncryptionDecrypt*, const WebCore::SharedBuffer&);
+    bool (*attemptToDecryptWithLocalInstance)(WebKitMediaCommonEncryptionDecrypt*, const WebCore::SharedBuffer&);
 };
 
 RefPtr<WebCore::CDMInstance> webKitMediaCommonEncryptionDecryptCDMInstance(WebKitMediaCommonEncryptionDecrypt*);

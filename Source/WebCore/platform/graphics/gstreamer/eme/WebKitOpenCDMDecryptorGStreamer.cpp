@@ -46,8 +46,8 @@ struct _WebKitOpenCDMDecryptPrivate {
 
 static void webKitMediaOpenCDMDecryptorFinalize(GObject*);
 static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer* keyIDBuffer, GstBuffer* iv, GstBuffer* sample, unsigned subSamplesCount, GstBuffer* subSamples);
-static bool webKitMediaOpenCDMDecryptorHandleInitData(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData& initData);
-static bool webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData&);
+static bool webKitMediaOpenCDMDecryptorHandleKeyId(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::SharedBuffer&);
+static bool webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::SharedBuffer&);
 
 static const char* supportedMediaTypes[] = { "video/webm", "video/mp4", "audio/webm", "audio/mp4", "video/x-h264", "audio/mpeg", nullptr };
 
@@ -119,7 +119,7 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* k
         "Metrological");
 
     WebKitMediaCommonEncryptionDecryptClass* cencClass = WEBKIT_MEDIA_CENC_DECRYPT_CLASS(klass);
-    cencClass->handleInitData = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorHandleInitData);
+    cencClass->handleKeyId = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorHandleKeyId);
     cencClass->decrypt = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorDecrypt);
     cencClass->attemptToDecryptWithLocalInstance = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance);
 
@@ -143,7 +143,7 @@ static void webKitMediaOpenCDMDecryptorFinalize(GObject* object)
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
-static SessionResult webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData& initData)
+static SessionResult webKitMediaOpenCDMDecryptorResetSessionFromKeyIdIfNeeded(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::SharedBuffer& keyId)
 {
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
 
@@ -153,8 +153,8 @@ static SessionResult webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded
     auto& cdmInstanceOpenCDM = downcast<WebCore::CDMInstanceOpenCDM>(*cdmInstance);
 
     SessionResult returnValue = InvalidSession;
-    String session = cdmInstanceOpenCDM.sessionIdByInitData(initData);
-    if (session.isEmpty() || !cdmInstanceOpenCDM.isSessionIdUsable(session)) {
+    String session = cdmInstanceOpenCDM.sessionIdByKeyId(keyId);
+    if (session.isEmpty() || !cdmInstanceOpenCDM.isKeyIdInSessionUsable(keyId, session)) {
         GST_DEBUG_OBJECT(self, "session %s is empty or unusable, resetting", session.utf8().data());
         priv->m_session = String();
         priv->m_openCdm = nullptr;
@@ -173,16 +173,14 @@ static SessionResult webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded
     return returnValue;
 }
 
-static bool webKitMediaOpenCDMDecryptorHandleInitData(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData& initData)
+static bool webKitMediaOpenCDMDecryptorHandleKeyId(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::SharedBuffer& keyId)
 {
-    GST_TRACE_OBJECT(self, "handling init data of size %u and MD5 %s", initData.sizeInBytes(), WebCore::GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
-    return webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded(self, initData) == InvalidSession;
+    return webKitMediaOpenCDMDecryptorResetSessionFromKeyIdIfNeeded(self, keyId) == InvalidSession;
 }
 
-static bool webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData& initData)
+static bool webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::SharedBuffer& keyId)
 {
-    GST_TRACE_OBJECT(self, "attempting to decrypt with local instance and init data of size %u and MD5 %s", initData.sizeInBytes(), WebCore::GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
-    return webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded(self, initData) != InvalidSession;
+    return webKitMediaOpenCDMDecryptorResetSessionFromKeyIdIfNeeded(self, keyId) != InvalidSession;
 }
 
 static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* keyIDBuffer, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSampleCount, GstBuffer* subSamplesBuffer)

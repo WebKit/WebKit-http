@@ -96,9 +96,13 @@ public:
     void removeSessionData(const String&, LicenseType, RemoveSessionDataCallback) final;
     void storeRecordOfKeyUsage(const String&) final { }
 
-    // FIXME: For now, the init data is the only way to find a proper session id.
-    String sessionIdByInitData(const InitData&) const;
-    bool isSessionIdUsable(const String&) const;
+    void setClient(CDMInstanceClient& client) override { m_client = &client; }
+    void clearClient() override { m_client = nullptr; }
+
+    String sessionIdByKeyId(const SharedBuffer&) const;
+    bool isKeyIdInSessionUsable(const SharedBuffer&, const String&) const;
+
+    CDMInstanceClient* client() const { return m_client; }
 
 private:
     bool addSession(const String& sessionId, RefPtr<Session>&& session);
@@ -113,6 +117,9 @@ private:
     // lookup values in this map.
     mutable Lock m_sessionMapMutex;
     HashMap<String, RefPtr<Session>> m_sessionsMap;
+    CDMInstanceClient* m_client { nullptr };
+    KeyStatusVector m_keyStatuses;
+    RefPtr<SharedBuffer> m_message;
 };
 
 } // namespace WebCore
