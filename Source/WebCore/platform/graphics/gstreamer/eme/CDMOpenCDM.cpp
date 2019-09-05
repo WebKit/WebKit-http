@@ -90,7 +90,7 @@ public:
     using ChallengeGeneratedCallback = Function<void(Session*)>;
     using SessionChangedCallback = Function<void(Session*, bool, RefPtr<SharedBuffer>&&, KeyStatusVector&)>;
 
-    static Ref<Session> create(CDMInstanceOpenCDM*, OpenCDMAccessor&, const String&, const char*, Ref<WebCore::SharedBuffer>&&, LicenseType, Ref<WebCore::SharedBuffer>&&);
+    static Ref<Session> create(CDMInstanceOpenCDM*, OpenCDMAccessor&, const String&, const AtomicString&, Ref<WebCore::SharedBuffer>&&, LicenseType, Ref<WebCore::SharedBuffer>&&);
     ~Session();
 
     bool isValid() const { return m_session.get() && m_message && !m_message->isEmpty(); }
@@ -102,7 +102,7 @@ public:
     void update(const uint8_t*, unsigned, SessionChangedCallback&&);
     void load(SessionChangedCallback&&);
     void remove(SessionChangedCallback&&);
-    bool close() { return !opencdm_session_close(m_session.get()); }
+    bool close() { return m_session.get() ? !opencdm_session_close(m_session.get()) : true; }
     OCDMKeyStatus status(const SharedBuffer& keyId) const
     {
         return m_session ? opencdm_session_status(m_session.get(), reinterpret_cast<const uint8_t*>(keyId.data()), keyId.size()) : StatusPending;
@@ -135,7 +135,7 @@ public:
 
 private:
     Session() = delete;
-    Session(CDMInstanceOpenCDM*, OpenCDMAccessor&, const String&, const char*, Ref<WebCore::SharedBuffer>&&, LicenseType, Ref<WebCore::SharedBuffer>&&);
+    Session(CDMInstanceOpenCDM*, OpenCDMAccessor&, const String&, const AtomicString&, Ref<WebCore::SharedBuffer>&&, LicenseType, Ref<WebCore::SharedBuffer>&&);
     void challengeGeneratedCallback(RefPtr<SharedBuffer>&&);
     void keyUpdatedCallback(RefPtr<SharedBuffer>&& = nullptr);
     // This doesn't need any params but it's made like this to fit the notification mechanism in place.
@@ -301,9 +301,9 @@ static RefPtr<SharedBuffer> parseResponseMessage(const SharedBuffer& buffer, std
 }
 
 
-Ref<CDMInstanceOpenCDM::Session> CDMInstanceOpenCDM::Session::create(CDMInstanceOpenCDM* parent, OpenCDMAccessor& source, const String& keySystem, const char* mimeType, Ref<WebCore::SharedBuffer>&& initData, LicenseType licenseType, Ref<WebCore::SharedBuffer>&& customData)
+Ref<CDMInstanceOpenCDM::Session> CDMInstanceOpenCDM::Session::create(CDMInstanceOpenCDM* parent, OpenCDMAccessor& source, const String& keySystem, const AtomicString& initDataType, Ref<WebCore::SharedBuffer>&& initData, LicenseType licenseType, Ref<WebCore::SharedBuffer>&& customData)
 {
-    return adoptRef(*new Session(parent, source, keySystem, mimeType, WTFMove(initData), licenseType, WTFMove(customData)));
+    return adoptRef(*new Session(parent, source, keySystem, initDataType, WTFMove(initData), licenseType, WTFMove(customData)));
 }
 
 void CDMInstanceOpenCDM::Session::openCDMNotification(const OpenCDMSession*, void* userData, Notification method, const char* name, const uint8_t message[], uint16_t messageLength)
@@ -326,7 +326,7 @@ void CDMInstanceOpenCDM::Session::openCDMNotification(const OpenCDMSession*, voi
     (session->*method)(WTFMove(sharedBuffer));
 }
 
-CDMInstanceOpenCDM::Session::Session(CDMInstanceOpenCDM* parent, OpenCDMAccessor& source, const String& keySystem, const char* mimeType, Ref<WebCore::SharedBuffer>&& initData, LicenseType licenseType, Ref<WebCore::SharedBuffer>&& customData)
+CDMInstanceOpenCDM::Session::Session(CDMInstanceOpenCDM* parent, OpenCDMAccessor& source, const String& keySystem, const AtomicString& initDataType, Ref<WebCore::SharedBuffer>&& initData, LicenseType licenseType, Ref<WebCore::SharedBuffer>&& customData)
     : m_initData(WTFMove(initData))
     , m_keySystem(keySystem)
     , m_ocdmAccessor(source)
@@ -346,7 +346,8 @@ CDMInstanceOpenCDM::Session::Session(CDMInstanceOpenCDM* parent, OpenCDMAccessor
         Session::openCDMNotification(session, userData, &Session::errorCallback, "error", reinterpret_cast<const uint8_t*>(message), strlen(message));
     };
 
-    opencdm_construct_session(&source, keySystem.utf8().data(), openCDMLicenseType(licenseType), mimeType, reinterpret_cast<const uint8_t*>(m_initData->data()), m_initData->size(),
+    GST_DEBUG("Creating session for '%s' keySystem and '%s' initDataType\n", keySystem.utf8().data(), initDataType.string().utf8().data());
+    opencdm_construct_session(&source, keySystem.utf8().data(), openCDMLicenseType(licenseType), initDataType.string().utf8().data(), reinterpret_cast<const uint8_t*>(m_initData->data()), m_initData->size(),
         !customData->isEmpty() ? reinterpret_cast<const uint8_t*>(customData->data()) : nullptr, customData->size(), &m_openCDMSessionCallbacks, this, &session);
     if (!session) {
         GST_ERROR("Could not create session");
@@ -359,6 +360,7 @@ CDMInstanceOpenCDM::Session::Session(CDMInstanceOpenCDM* parent, OpenCDMAccessor
 
 CDMInstanceOpenCDM::Session::~Session()
 {
+    close();
     Session::m_validSessions.remove(this);
 }
 
@@ -409,6 +411,10 @@ void CDMInstanceOpenCDM::Session::keysUpdateDoneCallback(RefPtr<SharedBuffer>&&)
 
 void CDMInstanceOpenCDM::Session::errorCallback(RefPtr<SharedBuffer>&& message)
 {
+    for (const auto& challengeCallback : m_challengeCallbacks)
+        challengeCallback(this);
+    m_challengeCallbacks.clear();
+
     for (auto& sessionChangedCallback : m_sessionChangedCallbacks)
         sessionChangedCallback(this, false, WTFMove(message), m_keyStatuses);
     m_sessionChangedCallbacks.clear();
@@ -456,7 +462,6 @@ void CDMInstanceOpenCDM::Session::remove(SessionChangedCallback&& callback)
 
 CDMInstanceOpenCDM::CDMInstanceOpenCDM(OpenCDMAccessor& accessor, const String& keySystem)
     : m_keySystem(keySystem)
-    , m_mimeType("video/x-h264")
     , m_openCDMAccessor(accessor)
 {
     MediaPlayerPrivateGStreamerBase::ensureWebKitGStreamerElements();
@@ -474,7 +479,7 @@ CDMInstance::SuccessValue CDMInstanceOpenCDM::setStorageDirectory(const String&)
     return WebCore::CDMInstance::SuccessValue::Succeeded;
 }
 
-void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicString&, Ref<SharedBuffer>&& rawInitData, Ref<SharedBuffer>&& rawCustomData, LicenseCallback callback)
+void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& rawInitData, Ref<SharedBuffer>&& rawCustomData, LicenseCallback callback)
 {
     InitData initData = InitData(reinterpret_cast<const uint8_t*>(rawInitData->data()), rawInitData->size());
 
@@ -499,7 +504,7 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
         callback(session->message(), sessionId, session->needsIndividualization(), Succeeded);
     };
 
-    Ref<Session> newSession = Session::create(this, m_openCDMAccessor, m_keySystem, m_mimeType, WTFMove(rawInitData), licenseType, WTFMove(rawCustomData));
+    Ref<Session> newSession = Session::create(this, m_openCDMAccessor, m_keySystem, initDataType, WTFMove(rawInitData), licenseType, WTFMove(rawCustomData));
     String sessionId = newSession->id();
     if (sessionId.isEmpty()) {
         generateChallenge(newSession.ptr());

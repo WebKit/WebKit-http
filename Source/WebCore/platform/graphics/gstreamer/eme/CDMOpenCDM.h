@@ -110,7 +110,6 @@ private:
     RefPtr<Session> lookupSession(const String& sessionId) const;
 
     String m_keySystem;
-    const char* m_mimeType;
     OpenCDMAccessor& m_openCDMAccessor;
     // Protects against concurrent access to m_sessionsMap. In addition to the main thread
     // the GStreamer decryptor elements running in the streaming threads have a need to
