@@ -395,10 +395,12 @@ static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMedi
         const char* eventKeySystemUUID = nullptr;
         const char* origin = nullptr;
         gst_event_parse_protection(event.get(), &eventKeySystemUUID, &buffer, &origin);
+        const char* eventKeySystem = WebCore::GStreamerEMEUtilities::uuidToKeySystem(eventKeySystemUUID);
 
-        GST_TRACE_OBJECT(self, "handling protection event %u for %s", GST_EVENT_SEQNUM(event.get()), eventKeySystemUUID);
+        GST_TRACE_OBJECT(self, "handling protection event %u for %s", GST_EVENT_SEQNUM(event.get()), eventKeySystem);
 
-        if (isCDMInstanceAvailable && g_strcmp0(eventKeySystemUUID, WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()))) {
+        bool isSameSystem = !g_strcmp0(eventKeySystem, priv->m_cdmInstance->keySystem().utf8().data());
+        if (isCDMInstanceAvailable && !isSameSystem) {
             GST_TRACE_OBJECT(self, "protection event for a different key system");
             continue;
         }
@@ -410,7 +412,7 @@ static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMedi
 
         WebCore::InitData initData;
         if (isCDMInstanceAvailable)
-            initData = priv->m_initDatas.get(WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()));
+            initData = priv->m_initDatas.get(priv->m_cdmInstance->keySystem());
 
         priv->m_currentEvent = GST_EVENT_SEQNUM(event.get());
 
@@ -437,8 +439,8 @@ static void webkitMediaCommonEncryptionDecryptProcessProtectionEvents(WebKitMedi
             initData = WebCore::InitData(data, dataSize);
             GST_DEBUG_OBJECT(self, "init data of size %u", dataSize);
             GST_TRACE_OBJECT(self, "init data MD5 %s", WebCore::GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
-            GST_MEMDUMP_OBJECT(self, "init data", data, dataSize);
-            priv->m_initDatas.set(eventKeySystemUUID, initData);
+            GST_MEMDUMP_OBJECT(self, "init data", mappedBuffer.data(), mappedBuffer.size());
+            priv->m_initDatas.set(priv->m_cdmInstance->keySystem(), initData);
             GST_MEMDUMP_OBJECT(self, "key ID", reinterpret_cast<const uint8_t*>(kid->data()), kid->size());
             priv->m_keyIds.set(initData, kid.copyRef());
 
@@ -509,7 +511,7 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
             result = TRUE;
             LockHolder locker(priv->m_mutex);
             RELEASE_ASSERT(webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self));
-            auto initData = priv->m_initDatas.get(WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()));
+            auto initData = priv->m_initDatas.get(priv->m_cdmInstance->keySystem());
             auto keyId = !initData.isEmpty() ? priv->m_keyIds.get(initData) : nullptr;
             GST_DEBUG_OBJECT(self, "attempting to decrypt with local instance %p, key id %p", priv->m_cdmInstance.get(), keyId);
             if (keyId) {

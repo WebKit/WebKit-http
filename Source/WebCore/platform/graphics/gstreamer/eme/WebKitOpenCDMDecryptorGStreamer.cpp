@@ -49,7 +49,8 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
 static bool webKitMediaOpenCDMDecryptorHandleKeyId(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::SharedBuffer&);
 static bool webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::SharedBuffer&);
 
-static const char* supportedMediaTypes[] = { "video/webm", "video/mp4", "audio/webm", "audio/mp4", "video/x-h264", "audio/mpeg", nullptr };
+static const char* cencEncryptionMediaTypes[] = { "video/mp4", "audio/mp4", "video/x-h264", "audio/mpeg", nullptr };
+static const char* webmEncryptionMediaTypes[] = { "video/webm", "audio/webm", "video/x-vp9", nullptr };
 
 static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
     GST_PAD_SRC,
@@ -60,7 +61,8 @@ static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
         "video/mp4; "
         "audio/mp4; "
         "audio/mpeg; "
-        "video/x-h264"));
+        "video/x-h264; "
+        "video/x-vp9; "));
 
 GST_DEBUG_CATEGORY(webkit_media_opencdm_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
@@ -77,8 +79,8 @@ enum SessionResult {
 static void addKeySystemToSinkPadCaps(GRefPtr<GstCaps>& caps, const char* uuid)
 {
     GST_INFO("adding sink pad template caps for %s", uuid);
-    for (int i = 0; supportedMediaTypes[i]; ++i)
-        gst_caps_append_structure(caps.get(), gst_structure_new("application/x-cenc", "original-media-type", G_TYPE_STRING, supportedMediaTypes[i], "protection-system", G_TYPE_STRING, uuid, nullptr));
+    for (int i = 0; cencEncryptionMediaTypes[i]; ++i)
+        gst_caps_append_structure(caps.get(), gst_structure_new("application/x-cenc", "original-media-type", G_TYPE_STRING, cencEncryptionMediaTypes[i], "protection-system", G_TYPE_STRING, uuid, nullptr));
 }
 
 static GRefPtr<GstCaps> createSinkPadTemplateCaps()
@@ -93,8 +95,12 @@ static GRefPtr<GstCaps> createSinkPadTemplateCaps()
     if (!opencdm_is_type_supported(openCDMAccessor.get(), WebCore::GStreamerEMEUtilities::s_PlayReadyKeySystems[0], emptyString.c_str()))
         addKeySystemToSinkPadCaps(caps, WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID);
 
-    if (!opencdm_is_type_supported(openCDMAccessor.get(), WebCore::GStreamerEMEUtilities::s_WidevineKeySystem, emptyString.c_str()))
+    if (!opencdm_is_type_supported(openCDMAccessor.get(), WebCore::GStreamerEMEUtilities::s_WidevineKeySystem, emptyString.c_str())) {
         addKeySystemToSinkPadCaps(caps, WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID);
+        // No key system UUID for webm. It's not set in caps for it.
+        for (int i = 0; webmEncryptionMediaTypes[i]; ++i)
+            gst_caps_append_structure(caps.get(), gst_structure_new("application/x-webm-enc", "original-media-type", G_TYPE_STRING, webmEncryptionMediaTypes[i], nullptr));
+    }
 
     return caps;
 }

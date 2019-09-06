@@ -89,8 +89,13 @@ public:
         if (isClearKeyKeySystem(keySystem))
             return s_ClearKeyUUID;
 
-        if (isUnspecifiedKeySystem(keySystem))
+        if (isUnspecifiedKeySystem(keySystem)) {
+#if USE(OPENCDM)
+            return s_WidevineUUID;
+#else
             return s_UnspecifiedUUID;
+#endif
+        }
 
 #if USE(OPENCDM)
         if (isPlayReadyKeySystem(keySystem))
@@ -110,7 +115,11 @@ public:
             return s_ClearKeyKeySystem;
 
         if (uuid == s_UnspecifiedUUID)
+#if USE(OPENCDM)
+            return s_WidevineKeySystem;
+#else
             return s_UnspecifiedKeySystem;
+#endif
 
 #if USE(OPENCDM)
         if (uuid == s_PlayReadyUUID)
