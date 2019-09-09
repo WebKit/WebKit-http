@@ -366,19 +366,26 @@ CDMInstanceOpenCDM::Session::~Session()
 
 void CDMInstanceOpenCDM::Session::challengeGeneratedCallback(RefPtr<SharedBuffer>&& buffer)
 {
+    std::optional<WebCore::MediaKeyMessageType> requestType;
+    auto message = buffer ? parseResponseMessage(*buffer, requestType) : nullptr;
+
     // This can be called as a result of e.g. requestLicense() but update() or remove() as well.
+    // This called not as a response to API call is also possible.
     if (!m_challengeCallbacks.isEmpty()) {
         std::optional<WebCore::MediaKeyMessageType> requestType;
-        m_message = buffer ? parseResponseMessage(*buffer, requestType) : nullptr;
+        m_message = WTFMove(message);
         m_needsIndividualization = requestType == CDMInstance::MessageType::IndividualizationRequest;
 
         for (const auto& challengeCallback : m_challengeCallbacks)
             challengeCallback(this);
         m_challengeCallbacks.clear();
-    } else {
+    } else if (!m_sessionChangedCallbacks.isEmpty()) {
         for (auto& sessionChangedCallback : m_sessionChangedCallbacks)
-            sessionChangedCallback(this, true, buffer.copyRef(), m_keyStatuses);
+            sessionChangedCallback(this, true, message.copyRef(), m_keyStatuses);
         m_sessionChangedCallbacks.clear();
+    } else {
+        if (m_parent->client() && requestType.has_value())
+            m_parent->client()->enqueueMessage(static_cast<CDMInstanceClient::MessageType>(requestType.value()), message.releaseNonNull());
     }
 }
 

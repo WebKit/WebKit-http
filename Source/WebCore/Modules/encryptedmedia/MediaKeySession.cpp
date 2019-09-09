@@ -619,6 +619,29 @@ void MediaKeySession::enqueueMessage(MediaKeyMessageType messageType, const Shar
     m_eventQueue.enqueueEvent(WTFMove(messageEvent));
 }
 
+void MediaKeySession::enqueueMessage(CDMInstanceClient::MessageType type, Ref<SharedBuffer>&& message)
+{
+    m_taskQueue.enqueueTask([this, type, message = WTFMove(message)] () mutable {
+        MediaKeyMessageType messageType;
+        switch (type) {
+        case CDMInstance::MessageType::LicenseRequest:
+            messageType = MediaKeyMessageType::LicenseRequest;
+            break;
+        case CDMInstance::MessageType::LicenseRenewal:
+            messageType = MediaKeyMessageType::LicenseRenewal;
+            break;
+        case CDMInstance::MessageType::LicenseRelease:
+            messageType = MediaKeyMessageType::LicenseRelease;
+            break;
+        case CDMInstance::MessageType::IndividualizationRequest:
+            messageType = MediaKeyMessageType::IndividualizationRequest;
+            break;
+        }
+
+        enqueueMessage(messageType, WTFMove(message));
+    });
+}
+
 void MediaKeySession::updateKeyStatuses(CDMInstanceClient::KeyStatusVector&& inputStatuses)
 {
     // https://w3c.github.io/encrypted-media/#update-key-statuses

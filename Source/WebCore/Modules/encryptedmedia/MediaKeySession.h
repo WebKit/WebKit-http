@@ -86,6 +86,7 @@ private:
 
     // CDMInstanceClient
     void updateKeyStatuses(CDMInstanceClient::KeyStatusVector&&) override;
+    void enqueueMessage(MessageType, Ref<SharedBuffer>&&) override;
 
     // EventTarget
     EventTargetInterface eventTargetInterface() const override { return MediaKeySessionEventTargetInterfaceType; }
