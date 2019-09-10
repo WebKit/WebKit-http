@@ -102,10 +102,10 @@ public:
     void update(const uint8_t*, unsigned, SessionChangedCallback&&);
     void load(SessionChangedCallback&&);
     void remove(SessionChangedCallback&&);
-    bool close() { return m_session.get() ? !opencdm_session_close(m_session.get()) : true; }
+    bool close() { return m_session && !id().isEmpty() ? !opencdm_session_close(m_session.get()) : true; }
     OCDMKeyStatus status(const SharedBuffer& keyId) const
     {
-        return m_session ? opencdm_session_status(m_session.get(), reinterpret_cast<const uint8_t*>(keyId.data()), keyId.size()) : StatusPending;
+        return m_session && !id().isEmpty() ? opencdm_session_status(m_session.get(), reinterpret_cast<const uint8_t*>(keyId.data()), keyId.size()) : StatusPending;
     }
 
     bool containsKeyId(const SharedBuffer& keyId) const
@@ -441,7 +441,7 @@ void CDMInstanceOpenCDM::Session::update(const uint8_t* data, const unsigned len
 {
     m_keyStatuses.clear();
     m_sessionChangedCallbacks.append(WTFMove(callback));
-    if (opencdm_session_update(m_session.get(), data, length))
+    if (!m_session || id().isEmpty() || opencdm_session_update(m_session.get(), data, length))
         updateFailure();
 
     // Assumption: should report back either with a message to be sent to the license server or key statuses updates.
@@ -451,7 +451,7 @@ void CDMInstanceOpenCDM::Session::load(SessionChangedCallback&& callback)
 {
     m_keyStatuses.clear();
     m_sessionChangedCallbacks.append(WTFMove(callback));
-    if (opencdm_session_load(m_session.get()))
+    if (!m_session || id().isEmpty() || opencdm_session_load(m_session.get()))
         loadFailure();
 
     // Assumption: should report back either with a message to be sent to the license server or key status updates.
@@ -461,7 +461,7 @@ void CDMInstanceOpenCDM::Session::remove(SessionChangedCallback&& callback)
 {
     // m_keyStatuses are not cleared here not to rely on CDM callbacks with Released status.
     m_sessionChangedCallbacks.append(WTFMove(callback));
-    if (opencdm_session_remove(m_session.get()))
+    if (!m_session || id().isEmpty() || opencdm_session_remove(m_session.get()))
         removeFailure();
 
     // Assumption: should report back either with a message to be sent to the license server or key updates with "KeyReleased" status.
