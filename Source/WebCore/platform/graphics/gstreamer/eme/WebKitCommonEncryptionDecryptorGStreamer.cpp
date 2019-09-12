@@ -169,15 +169,18 @@ static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform
                 }
             }
 
+            gst_structure_set(outgoingStructure.get(), "original-media-type", G_TYPE_STRING, gst_structure_get_name(incomingStructure), nullptr);
+
             WebKitMediaCommonEncryptionDecryptPrivate* priv = self->priv;
             LockHolder locker(priv->m_mutex);
 
-            gst_structure_set(outgoingStructure.get(), "original-media-type", G_TYPE_STRING, gst_structure_get_name(incomingStructure), nullptr);
-            gst_structure_set_name(outgoingStructure.get(),
-                WebCore::GStreamerEMEUtilities::isUnspecifiedKeySystem(priv->m_cdmInstance->keySystem()) ? "application/x-webm-enc" : "application/x-cenc");
-            if (webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self))
+            if (webkitMediaCommonEncryptionDecryptIsCDMInstanceAvailable(self)) {
+                gst_structure_set_name(outgoingStructure.get(),
+                    WebCore::GStreamerEMEUtilities::isUnspecifiedKeySystem(priv->m_cdmInstance->keySystem()) ? "application/x-webm-enc" : "application/x-cenc");
                 gst_structure_set(outgoingStructure.get(),
                     "protection-system", G_TYPE_STRING, WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()), nullptr);
+
+            }
         }
 
         bool duplicate = false;
