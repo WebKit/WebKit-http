@@ -51,7 +51,7 @@ public:
     using MessageType = CDMMessageType;
     using KeyStatusVector = Vector<std::pair<Ref<SharedBuffer>, KeyStatus>>;
     virtual void updateKeyStatuses(KeyStatusVector&&) = 0;
-    virtual void enqueueMessage(MessageType, Ref<SharedBuffer>&&) = 0;
+    virtual void issueMessage(MessageType, Ref<SharedBuffer>&&) = 0;
 };
 
 class CDMInstance : public RefCounted<CDMInstance> {

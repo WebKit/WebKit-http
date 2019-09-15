@@ -385,7 +385,7 @@ void CDMInstanceOpenCDM::Session::challengeGeneratedCallback(RefPtr<SharedBuffer
         m_sessionChangedCallbacks.clear();
     } else {
         if (m_parent->client() && requestType.has_value())
-            m_parent->client()->enqueueMessage(static_cast<CDMInstanceClient::MessageType>(requestType.value()), message.releaseNonNull());
+            m_parent->client()->issueMessage(static_cast<CDMInstanceClient::MessageType>(requestType.value()), message.releaseNonNull());
     }
 }
 
