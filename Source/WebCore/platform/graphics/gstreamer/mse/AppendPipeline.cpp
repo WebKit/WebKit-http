@@ -150,9 +150,10 @@ public:
                     m_sampleDuration = MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND) - m_lastPts;
                     GST_BUFFER_DURATION(buffer) = toGstClockTime(m_sampleDuration);
                 } else if (GST_BUFFER_PTS_IS_VALID(buffer)) {
-                    // Some containers like webm don't supply a duration. Let's assume 60fps and let the gap sample hack fill the gaps if the duration was actually longer.
-                    // The duration for the next samples will be computed using PTS differences.
-                    GST_BUFFER_DURATION(buffer) = toGstClockTime(MediaTime(1, 60));
+                    // Some containers like webm don't supply a duration so it has to be assumed. Let's assume it for 24 fps. It's safer
+                    // than e.g. for 60 fps becuase with the duration assumed for 60 fps the algorithm of samples processing may cause them to be dropped/erased.
+                    // On the other hand this does not do any harm for the next frames even if the duration is in fact shorter due to higher fps.
+                    GST_BUFFER_DURATION(buffer) = toGstClockTime(MediaTime(1, 24));
                 }
             }
 
