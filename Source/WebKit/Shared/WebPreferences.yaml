@@ -1132,7 +1132,7 @@ SpringTimingFunctionEnabled:
 
 ImageBitmapOffscreenCanvasEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  defaultValue: true
   humanReadableName: "ImageBitmap and OffscreenCanvas"
   humanReadableDescription: "Support for the ImageBitmap and OffscreenCanvas APIs"
   category: experimental
