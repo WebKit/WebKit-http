@@ -255,6 +255,7 @@ public:
     void reinitializeWebPage(WebPageCreationParameters&&);
 
     void close();
+    void syncClose();
 
     static WebPage* fromCorePage(WebCore::Page*);
 

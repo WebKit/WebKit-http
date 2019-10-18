@@ -917,7 +917,7 @@ void WebPageProxy::close()
 
     m_webProcessLifetimeTracker.pageWasInvalidated();
 
-    m_process->send(Messages::WebPage::Close(), m_pageID);
+    m_process->sendSync(Messages::WebPage::SyncClose(), Messages::WebPage::SyncClose::Reply(), m_pageID, 2_s);
     m_process->removeWebPage(*this, m_pageID);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
     m_process->processPool().supplement<WebNotificationManagerProxy>()->clearNotifications(this);
