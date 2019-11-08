@@ -3220,6 +3220,8 @@ JSWebGLActiveInfo.cpp
 JSWebGLBuffer.cpp
 JSWebGLCompressedTextureASTC.cpp
 JSWebGLCompressedTextureATC.cpp
+JSWebGLCompressedTextureETC.cpp
+JSWebGLCompressedTextureETC1.cpp
 JSWebGLCompressedTexturePVRTC.cpp
 JSWebGLCompressedTextureS3TC.cpp
 JSWebGLContextAttributes.cpp

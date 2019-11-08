@@ -53,6 +53,8 @@ public:
         WebGLDrawBuffersName,
         OESElementIndexUintName,
         WebGLCompressedTextureATCName,
+        WebGLCompressedTextureETCName,
+        WebGLCompressedTextureETC1Name,
         WebGLCompressedTexturePVRTCName,
         WebGLCompressedTextureASTCName,
         ANGLEInstancedArraysName,

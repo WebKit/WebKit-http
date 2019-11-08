@@ -342,7 +342,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attrs, HostWind
         return;
     }
 
-    m_isForWebGL2 = attrs.isWebGL2;
+    m_isForWebGL2 = m_attrs.isWebGL2;
 
     // Set the current context to the one given to us.
     CGLSetCurrentContext(m_contextObj);
