@@ -184,7 +184,7 @@ BMessenger BWebPage::sDownloadListener;
 
     ScriptController::initializeThreading();
     WTF::initializeMainThread();
-    WTF::AtomicString::init();
+    WTF::AtomString::init();
     WebCore::UTF8Encoding();
 
     WebVisitedLinkStore::setShouldTrackVisitedLinks(true);

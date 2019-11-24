@@ -39,7 +39,7 @@ font_family FontPlatformData::m_FallbackFixedFontFamily = "Noto Mono";
 font_family FontPlatformData::m_FallbackStandardFontFamily = "Noto Sans";
 
 void
-FontPlatformData::findMatchingFontFamily(const AtomicString& familyName, font_family& fontFamily)
+FontPlatformData::findMatchingFontFamily(const AtomString& familyName, font_family& fontFamily)
 {
     CString familyNameUTF8 = familyName.string().utf8();
     if (BFont().SetFamilyAndStyle(familyNameUTF8.data(), 0) == B_OK)
@@ -85,7 +85,7 @@ static void findMatchingFontStyle(const font_family& fontFamily, bool bold, bool
 
 // #pragma mark -
 
-FontPlatformData::FontPlatformData(const FontDescription& fontDescription, const AtomicString& familyName)
+FontPlatformData::FontPlatformData(const FontDescription& fontDescription, const AtomString& familyName)
 {
 	m_font = std::make_unique<BFont>();
     m_font->SetSize(fontDescription.computedSize());

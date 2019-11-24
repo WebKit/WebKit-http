@@ -445,7 +445,6 @@ Ref<MediaControlPanelMuteButtonElement> MediaControlPanelMuteButtonElement::crea
     Ref<MediaControlPanelMuteButtonElement> button = adoptRef(*new MediaControlPanelMuteButtonElement(document, controls));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-mute-button", AtomicString::ConstructFromLiteral));
     return button;
 }
 
@@ -470,7 +469,6 @@ Ref<MediaControlVolumeSliderMuteButtonElement> MediaControlVolumeSliderMuteButto
     Ref<MediaControlVolumeSliderMuteButtonElement> button = adoptRef(*new MediaControlVolumeSliderMuteButtonElement(document));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-volume-slider-mute-button", AtomicString::ConstructFromLiteral));
     return button;
 }
 
@@ -487,7 +485,6 @@ Ref<MediaControlPlayButtonElement> MediaControlPlayButtonElement::create(Documen
     Ref<MediaControlPlayButtonElement> button = adoptRef(*new MediaControlPlayButtonElement(document));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-play-button", AtomicString::ConstructFromLiteral));
     return button;
 }
 
@@ -522,7 +519,6 @@ Ref<MediaControlOverlayPlayButtonElement> MediaControlOverlayPlayButtonElement::
     Ref<MediaControlOverlayPlayButtonElement> button = adoptRef(*new MediaControlOverlayPlayButtonElement(document));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-overlay-play-button", AtomicString::ConstructFromLiteral));
     return button;
 }
 
@@ -557,7 +553,6 @@ Ref<MediaControlSeekForwardButtonElement> MediaControlSeekForwardButtonElement::
     Ref<MediaControlSeekForwardButtonElement> button = adoptRef(*new MediaControlSeekForwardButtonElement(document));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-seek-forward-button", AtomicString::ConstructFromLiteral));
     return button;
 }
 
@@ -574,7 +569,6 @@ Ref<MediaControlSeekBackButtonElement> MediaControlSeekBackButtonElement::create
     Ref<MediaControlSeekBackButtonElement> button = adoptRef(*new MediaControlSeekBackButtonElement(document));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-seek-back-button", AtomicString::ConstructFromLiteral));
     return button;
 }
 
@@ -591,7 +585,6 @@ Ref<MediaControlRewindButtonElement> MediaControlRewindButtonElement::create(Doc
     Ref<MediaControlRewindButtonElement> button = adoptRef(*new MediaControlRewindButtonElement(document));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-rewind-button", AtomicString::ConstructFromLiteral));
     return button;
 }
 
@@ -617,7 +610,6 @@ Ref<MediaControlReturnToRealtimeButtonElement> MediaControlReturnToRealtimeButto
     Ref<MediaControlReturnToRealtimeButtonElement> button = adoptRef(*new MediaControlReturnToRealtimeButtonElement(document));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-return-to-realtime-button", AtomicString::ConstructFromLiteral));
     button->hide();
     return button;
 }
@@ -652,7 +644,6 @@ Ref<MediaControlToggleClosedCaptionsButtonElement> MediaControlToggleClosedCapti
     Ref<MediaControlToggleClosedCaptionsButtonElement> button = adoptRef(*new MediaControlToggleClosedCaptionsButtonElement(document, controls));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-toggle-closed-captions-button", AtomicString::ConstructFromLiteral));
     button->hide();
     return button;
 }
@@ -975,7 +966,6 @@ Ref<MediaControlFullscreenButtonElement> MediaControlFullscreenButtonElement::cr
     Ref<MediaControlFullscreenButtonElement> button = adoptRef(*new MediaControlFullscreenButtonElement(document));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-fullscreen-button", AtomicString::ConstructFromLiteral));
     button->hide();
     return button;
 }
@@ -1020,7 +1010,6 @@ Ref<MediaControlFullscreenVolumeMinButtonElement> MediaControlFullscreenVolumeMi
     Ref<MediaControlFullscreenVolumeMinButtonElement> button = adoptRef(*new MediaControlFullscreenVolumeMinButtonElement(document));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-fullscreen-volume-min-button", AtomicString::ConstructFromLiteral));
     return button;
 }
 
@@ -1046,7 +1035,6 @@ Ref<MediaControlFullscreenVolumeMaxButtonElement> MediaControlFullscreenVolumeMa
     Ref<MediaControlFullscreenVolumeMaxButtonElement> button = adoptRef(*new MediaControlFullscreenVolumeMaxButtonElement(document));
     button->ensureUserAgentShadowRoot();
     button->setType("button");
-    button->setPseudo(AtomicString("-webkit-media-controls-fullscreen-volume-max-button", AtomicString::ConstructFromLiteral));
     return button;
 }
 

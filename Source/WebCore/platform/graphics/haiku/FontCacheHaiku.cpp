@@ -79,12 +79,12 @@ Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescripti
     font_family family;
     font_style style;
     be_plain_font->GetFamilyAndStyle(&family, &style);
-    AtomicString plainFontFamily(family);
+    AtomString plainFontFamily(family);
     return *fontForFamily(fontDescription, plainFontFamily);
 }
 
 std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(
-    const FontDescription& fontDescription, const AtomicString& family,
+    const FontDescription& fontDescription, const AtomString& family,
     const WebCore::FontFeatureSettings*, const WebCore::FontVariantSettings*,
     WebCore::FontSelectionSpecifiedCapabilities)
 {
@@ -92,7 +92,7 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(
 }
 
 
-Vector<FontSelectionCapabilities> FontCache::getFontSelectionCapabilitiesInFamily(const AtomicString& familyName, AllowUserInstalledFonts)
+Vector<FontSelectionCapabilities> FontCache::getFontSelectionCapabilitiesInFamily(const AtomString& familyName, AllowUserInstalledFonts)
 {
     Vector<FontSelectionCapabilities> result;
 
@@ -113,7 +113,7 @@ Vector<FontSelectionCapabilities> FontCache::getFontSelectionCapabilitiesInFamil
 }
 
 
-const AtomicString& FontCache::platformAlternateFamilyName(const AtomicString& familyName)
+const AtomString& FontCache::platformAlternateFamilyName(const AtomString& familyName)
 {
     return nullAtom();
 }

@@ -259,7 +259,7 @@ private:
     void buildScaledFont(cairo_font_face_t*);
 #endif
 #if PLATFORM(HAIKU)
-    static void findMatchingFontFamily(const AtomicString& familyName,
+    static void findMatchingFontFamily(const AtomString& familyName,
 		font_family& fontFamily);
 #endif
 

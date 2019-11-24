@@ -139,7 +139,7 @@ int RenderThemeHaiku::sliderTickOffsetFromTrackCenter() const
 
 #endif
 
-bool RenderThemeHaiku::supportsDataListUI(const AtomicString& type) const
+bool RenderThemeHaiku::supportsDataListUI(const AtomString& type) const
 {
 #if ENABLE(DATALIST_ELEMENT)
     // FIXME: We need to support other types.

@@ -65,7 +65,7 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard,
     }
 }
 
-static const AtomicString& elementURL(Element& element)
+static const AtomString& elementURL(Element& element)
 {
     if (is<HTMLImageElement>(element) || is<HTMLInputElement>(element))
         return element.attributeWithoutSynchronization(HTMLNames::srcAttr);

@@ -91,7 +91,7 @@ protected:
     int sliderTickOffsetFromTrackCenter() const override;
 #endif
 
-    bool supportsDataListUI(const AtomicString&) const override;
+    bool supportsDataListUI(const AtomString&) const override;
 
     bool paintSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&) override;
 

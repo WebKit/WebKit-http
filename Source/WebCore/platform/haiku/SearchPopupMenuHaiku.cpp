@@ -31,12 +31,12 @@ SearchPopupMenuHaiku::SearchPopupMenuHaiku(PopupMenuClient* client)
 {
 }
 
-void SearchPopupMenuHaiku::saveRecentSearches(const AtomicString& name, const Vector<RecentSearch>& searchItems)
+void SearchPopupMenuHaiku::saveRecentSearches(const AtomString& name, const Vector<RecentSearch>& searchItems)
 {
     notImplemented();
 }
 
-void SearchPopupMenuHaiku::loadRecentSearches(const AtomicString& name, Vector<RecentSearch>& searchItems)
+void SearchPopupMenuHaiku::loadRecentSearches(const AtomString& name, Vector<RecentSearch>& searchItems)
 {
     notImplemented();
 }
