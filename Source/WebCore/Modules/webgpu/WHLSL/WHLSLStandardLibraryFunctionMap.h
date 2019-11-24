@@ -27,39 +27,25 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WHLSLNode.h"
+#include <wtf/HashMap.h>
+#include <wtf/text/StringHash.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 namespace WHLSL {
 
-namespace AST {
-
-class Value : public Node {
-public:
-    Value(Lexer::Token&& origin)
-        : m_origin(WTFMove(origin))
-    {
-    }
-
-    virtual ~Value() = default;
-
-    explicit Value(const Value&) = default;
-    Value(Value&&) = default;
-
-    Value& operator=(const Value&) = default;
-    Value& operator=(Value&&) = default;
-
-    Lexer::Token origin() const { return m_origin; }
-
-protected:
-    Lexer::Token m_origin;
+struct SubstringLocation {
+    unsigned start;
+    unsigned end;
 };
 
-} // namespace AST
+HashMap<String, SubstringLocation> computeStandardLibraryFunctionMap();
 
-}
+unsigned firstFunctionOffsetInStandardLibrary();
 
-}
+} // namespace WHLSL
 
-#endif
+} // namespace WebCore
+
+#endif // ENABLE(WEBGPU)

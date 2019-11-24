@@ -1,3 +1,274 @@
+2019-07-05  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Respect pointer capture when dispatching mouse boundary events and updating :hover
+        https://bugs.webkit.org/show_bug.cgi?id=198999
+        <rdar://problem/51979477>
+
+        Reviewed by Dean Jackson.
+
+        Update some WK1-specific expectations.
+
+        * platform/mac-wk1/imported/w3c/web-platform-tests/pointerevents/pointerevent_boundary_events_at_implicit_release_hoverable_pointers-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/pointerevents/pointerevent_setpointercapture_relatedtarget-expected.txt:
+
+2019-07-04  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] didFinishTransition triggers a nested style recalc via isConsideredClickable
+        https://bugs.webkit.org/show_bug.cgi?id=199506
+        <rdar://problem/52656221>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/events/touch/ios/content-observation/animation-end-with-visiblity-change-and-recursive-update-style-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/animation-end-with-visiblity-change-and-recursive-update-style.html: Added.
+
+2019-07-04  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Limit mouseOut dispatching after synthetic click to YouTube.com
+        https://bugs.webkit.org/show_bug.cgi?id=199497
+        <rdar://problem/52361019>
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/events/touch/ios/content-observation/mouse-out-event-should-fire-on-click.html:
+        * fast/events/touch/ios/content-observation/mouse-out-event-should-not-fire-on-click-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/mouse-out-event-should-not-fire-on-click.html: Copied from LayoutTests/fast/events/touch/ios/content-observation/mouse-out-event-should-fire-on-click.html.
+
+2019-07-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Some layers inside overflow:scroll don't move back to correct positions when the contents are shrunk
+        https://bugs.webkit.org/show_bug.cgi?id=199464
+        rdar://problem/52613285
+
+        Reviewed by Sam Weinig.
+
+        * compositing/scrolling/async-overflow-scrolling/become-non-scrollable-with-child-expected.html: Added.
+        * compositing/scrolling/async-overflow-scrolling/become-non-scrollable-with-child.html: Added.
+
+2019-07-03  Justin Fan  <justin_fan@apple.com>
+
+        [WHLSL] Support float4x4 in test harness
+        https://bugs.webkit.org/show_bug.cgi?id=199484
+
+        Reviewed by Myles C. Maxfield.
+
+        Support WHLSL float4x4 parameters in the WHLSL test harness.
+
+        * webgpu/js/whlsl-test-harness.js:
+        (isScalar):
+        (convertTypeToArrayType):
+        (convertTypeToWHLSLType):
+        (Data):
+        (makeFloat4):
+        (makeFloat4x4):
+        (processArrays):
+        (async.callFloat4x4Function):
+        (isVectorType): Deleted. Replaced with isScalar.
+
+        Add some float4x4 sanity checks:
+        * webgpu/whlsl-test-harness-test-expected.txt:
+        * webgpu/whlsl-test-harness-test.html:
+
+2019-07-03  Simon Fraser  <simon.fraser@apple.com>
+
+        RELEASE_ASSERT in WebCore: WebCore::ScrollingStateTree::insertNode()
+        https://bugs.webkit.org/show_bug.cgi?id=199479
+        rdar://problem/52392556
+
+        Reviewed by Zalan Bujtas.
+
+        * scrollingcoordinator/scrolling-tree/scrolling-proxy-with-no-scrolling-layer-expected.txt: Added.
+        * scrollingcoordinator/scrolling-tree/scrolling-proxy-with-no-scrolling-layer.html: Added.
+
+2019-07-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Standard library is too big to directly include in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=198186
+        <rdar://problem/51288898>
+
+        Reviewed by Saam Barati.
+
+        The standard library doesn't include any matrix constructors that broadcast a single value
+        to every field in a matrix. https://bugs.webkit.org/show_bug.cgi?id=199333
+
+        * webgpu/whlsl-matrix.html:
+
+2019-07-03  Daniel Bates  <dabates@apple.com>
+
+        Skip the test added in r246810 as it requires the simulator to be preconfigured with a Pinyin keyboard
+        <rdar://problem/52608620>
+
+        We will remove this prerequisite in <https://bugs.webkit.org/show_bug.cgi?id=199472>.
+
+        * platform/ios/TestExpectations:
+
+2019-07-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (iOS 13): Tapping an element with a click event handler no longer clears the selection
+        https://bugs.webkit.org/show_bug.cgi?id=199430
+
+        Reviewed by Tim Horton.
+
+        Add and adjust layout tests to verify that calling preventDefault() on mousedown on iOS causes an existing
+        selection to not be cleared, and that tapping in an element with a click handler clears out the selection.
+
+        * editing/selection/ios/clear-selection-after-tapping-on-element-with-click-handler-expected.txt: Added.
+        * editing/selection/ios/clear-selection-after-tapping-on-element-with-click-handler.html: Added.
+        * editing/selection/ios/persist-selection-after-tapping-on-element-with-mousedown-handler-expected.txt: Renamed.
+        * editing/selection/ios/persist-selection-after-tapping-on-element-with-mousedown-handler.html:
+
+        Renamed from LayoutTests/editing/selection/ios/persist-selection-after-tapping-on-element-with-click-handler.html,
+        and adjusted to call preventDefault() on mousedown events instead of click events. Also, remove a bit of
+        trailing whitespace.
+
+2019-07-03  Russell Epstein  <russell_e@apple.com>
+
+        Rebaseline fast/events/ios/keydown-keyup-special-keys-in-non-editable-element.html
+        https://bugs.webkit.org/show_bug.cgi?id=199459
+
+        Unreviewed Test Gardening.
+
+        * fast/events/ios/keydown-keyup-special-keys-in-non-editable-element-expected.txt:
+
+2019-07-03  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r244356): Drop down menus collapse without user input - Ebay.com
+        https://bugs.webkit.org/show_bug.cgi?id=199457
+        <rdar://problem/52386563>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/content-observation/tap-on-input-type-button-element-with-async-clickable-change-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/tap-on-input-type-button-element-with-async-clickable-change.html: Copied from LayoutTests/fast/events/touch/ios/content-observation/tap-on-input-type-button-element.html.
+        * fast/events/touch/ios/content-observation/tap-on-input-type-button-element-with-clickable-change-expected.txt: Added.
+        * fast/events/touch/ios/content-observation/tap-on-input-type-button-element-with-clickable-change.html: Copied from LayoutTests/fast/events/touch/ios/content-observation/tap-on-input-type-button-element.html.
+        * fast/events/touch/ios/content-observation/tap-on-input-type-button-element.html:
+
+2019-07-03  Andres Gonzalez  <andresg_22@apple.com>
+
+        Safari hanging while loading pages - WebCore::AccessibilityRenderObject::visiblePositionRangeForLine.
+        https://bugs.webkit.org/show_bug.cgi?id=199434
+        <rdar://problem/52475140>
+
+        Reviewed by Chris Fleizach.
+
+        Disabled the tests that were passing for workaround. The workaround had
+        to be roll out cause it is hanging Safari.
+        * TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+
+2019-07-02  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        imported/blink/animations/display-inline-style-adjust.html isn't a valid ref test
+        https://bugs.webkit.org/show_bug.cgi?id=199311
+
+        Reviewed by Simon Fraser.
+
+        These tests are depending on platform font metrics. They were
+        created for a Blink bug, doesn't seem useful for WebKit. Just
+        removed them.
+
+        * imported/blink/animations/display-inline-style-adjust.html: Deleted.
+        * legacy-animation-engine/imported/blink/animations/display-inline-style-adjust.html: Deleted.
+        * platform/gtk/TestExpectations: Unmarked them.
+        * platform/ios/TestExpectations: Ditto.
+        * platform/wpe/TestExpectations: Ditto.
+
+2019-07-02  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Assertion fires when animating the 'class' attribute of an SVG element
+        https://bugs.webkit.org/show_bug.cgi?id=197372
+
+        Reviewed by Ryosuke Niwa.
+
+        * svg/animations/animated-bool-externalResourcesRequired-instances-expected.svg: Added.
+        * svg/animations/animated-bool-externalResourcesRequired-instances.svg: Added.
+        * svg/animations/animated-string-class-instances-expected.svg: Added.
+        * svg/animations/animated-string-class-instances.svg: Added.
+        * svg/animations/animated-string-href-expected.svg: Added.
+        * svg/animations/animated-string-href.svg: Added.
+
+2019-07-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [macOS WK2] REGRESSION (r242313): Layout Test scrollingcoordinator/mac/multiple-fixed.html is a flaky time out and image diff
+        https://bugs.webkit.org/show_bug.cgi?id=195635
+
+        Unreviewed test gardening.
+
+        Move test expectation entry to a more specific file.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2019-07-02  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Change whlsl-two-dimensional-array.html to not be flaky on AMD Radeon Pro GPUs
+        https://bugs.webkit.org/show_bug.cgi?id=199424
+
+        Reviewed by Myles C. Maxfield.
+
+        * webgpu/whlsl-two-dimensional-array.html:
+
+2019-07-02  Andres Gonzalez  <andresg_22@apple.com>
+
+        Enhance support of aria-haspopup per ARIA 1.1 specification.
+        https://bugs.webkit.org/show_bug.cgi?id=199216
+        <rdar://problem/46221342>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/button-with-aria-haspopup-role-expected.txt:
+        * accessibility/button-with-aria-haspopup-role.html:
+        * accessibility/ios-simulator/button-with-aria-haspopup-role-expected.txt:
+        * accessibility/ios-simulator/button-with-aria-haspopup-role.html:
+
+2019-07-02  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Import bitwise bool tests
+        https://bugs.webkit.org/show_bug.cgi?id=199093
+
+        Reviewed by Myles C. Maxfield.
+
+        This patch makes it so that we can mark bools as input and output types in the
+        WHLSL harness. Since bool is not something WHLSL itself allows as an entrypoint
+        input/output type (because we don't specify its bit pattern), we convert between
+        bool and int in the input and output of the function. For now,  we don't support
+        a buffer of bools for the input type as a simplification, so we don't have to worry
+        about dynamically converting an int buffer to a bool buffer. We could add this
+        in the future if we found it helpful, but we don't have a strong reason for supporting
+        it right now.
+        
+        This patch also starts the process of importing the WHLSL test suite by importing bool
+        bit op tests.
+
+        * webgpu/js/whlsl-test-harness.js:
+        (convertTypeToArrayType):
+        (whlslArgumentType):
+        (convertToWHLSLOutputType):
+        (convertToWHLSLInputType):
+        (Data):
+        (Harness.prototype.get isWHLSL):
+        (Harness.prototype.async.callTypedFunction):
+        (Harness.prototype._setUpArguments):
+        (callVoidFunction):
+        * webgpu/whlsl-bitwise-bool-ops-expected.txt: Added.
+        * webgpu/whlsl-bitwise-bool-ops.html: Added.
+        * webgpu/whlsl-test-harness-test-expected.txt:
+        * webgpu/whlsl-test-harness-test.html:
+
+2019-07-02  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Fix CookieJarCurl::getRawCookie.
+        https://bugs.webkit.org/show_bug.cgi?id=199300
+
+        Reviewed by Fujii Hironori.
+
+        * http/tests/inspector/page/get-cookies-expected.txt: Added.
+        * http/tests/inspector/page/get-cookies.html: Added.
+        * http/tests/inspector/page/resources/set-cookie.php: Added.
+        * platform/wincairo-wk1/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
 2019-07-02  Daniel Bates  <dabates@apple.com>
 
         [iOS] Cannot tab cycle through credit card fields on antonsvpatisserie.com checkout page

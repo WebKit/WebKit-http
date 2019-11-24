@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Igalia S.L.
+ * Copyright (C) 2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,19 +25,23 @@
 
 #pragma once
 
-#if OS(LINUX)
+#if ENABLE(WEBGPU)
 
-#include "ProcessLauncher.h"
+namespace WebCore {
 
-#include <wtf/glib/GRefPtr.h>
+namespace WHLSL {
 
-typedef struct _GSubprocess GSubprocess;
-typedef struct _GSubprocessLauncher GSubprocessLauncher;
+namespace AST {
 
-namespace WebKit {
+template <typename New, typename Old, typename ...Args>
+ALWAYS_INLINE New* replaceWith(Old& old, Args&&... args)
+{
+    static_assert(sizeof(New) <= sizeof(Old), "This is needed for the placement new below to not overwrite unowned memory.");
+    void* location = &old;
+    old.~Old();
+    return new (location) New(std::forward<Args>(args)...);
+}
 
-GRefPtr<GSubprocess> flatpakSpawn(GSubprocessLauncher*, const WebKit::ProcessLauncher::LaunchOptions&, char** argv, int childProcessSocket, GError**);
+} } } // namespace WebCore::WHLSL::AST
 
-};
-
-#endif
+#endif // ENABLE(WEBGPU)

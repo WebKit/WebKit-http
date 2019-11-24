@@ -238,6 +238,21 @@ bool Quirks::shouldDispatchSyntheticMouseEventsWhenModifyingSelection() const
     return false;
 }
 
+bool Quirks::needsYouTubeMouseOutQuirk() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (m_document->settings().shouldDispatchSyntheticMouseOutAfterSyntheticClick())
+        return true;
+
+    if (!needsQuirks())
+        return false;
+
+    return equalLettersIgnoringASCIICase(m_document->url().host(), "www.youtube.com");
+#else
+    return false;
+#endif
+}
+
 bool Quirks::shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() const
 {
     if (!needsQuirks())
@@ -284,18 +299,25 @@ bool Quirks::shouldDispatchSimulatedMouseEvents() const
     return false;
 }
 
-bool Quirks::shouldDispatchSimulatedMouseEventsOnTarget(EventTarget* target) const
+Optional<Event::IsCancelable> Quirks::simulatedMouseEventTypeForTarget(EventTarget* target) const
 {
     if (!needsQuirks() || !shouldDispatchSimulatedMouseEvents())
-        return false;
+        return { };
 
     // On Google Maps, we want to limit simulated mouse events to dragging the little man that allows entering into Street View.
     auto& url = m_document->topDocument().url();
     auto host = url.host();
-    if (equalLettersIgnoringASCIICase(host, "www.google.com") && url.path().startsWithIgnoringASCIICase("/maps/"))
-        return is<Element>(target) && downcast<Element>(target)->getAttribute("class") == "widget-expand-button-pegman-icon";
-    return true;
-}
+    if (equalLettersIgnoringASCIICase(host, "www.google.com") && url.path().startsWithIgnoringASCIICase("/maps/")) {
+        if (is<Element>(target) && downcast<Element>(target)->getAttribute("class") == "widget-expand-button-pegman-icon")
+            return Event::IsCancelable::Yes;
+        return { };
+    }
+
+    if (equalLettersIgnoringASCIICase(host, "desmos.com") || host.endsWithIgnoringASCIICase(".desmos.com"))
+        return Event::IsCancelable::No;
+
+    return Event::IsCancelable::Yes;
+}   
 #endif
 
 bool Quirks::shouldAvoidResizingWhenInputViewBoundsChange() const
@@ -391,6 +413,5 @@ bool Quirks::needsYouTubeOverflowScrollQuirk() const
     return false;
 #endif
 }
-
 
 }

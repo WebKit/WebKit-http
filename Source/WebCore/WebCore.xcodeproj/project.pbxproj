@@ -857,7 +857,7 @@
 		2E4346510F546A8200B0F1BA /* WorkerObjectProxy.h in Headers */ = {isa = PBXBuildFile; fileRef = 2E43463F0F546A8200B0F1BA /* WorkerObjectProxy.h */; };
 		2E4346530F546A8200B0F1BA /* WorkerRunLoop.h in Headers */ = {isa = PBXBuildFile; fileRef = 2E4346410F546A8200B0F1BA /* WorkerRunLoop.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		2E4346550F546A8200B0F1BA /* WorkerThread.h in Headers */ = {isa = PBXBuildFile; fileRef = 2E4346430F546A8200B0F1BA /* WorkerThread.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		2E75841E12779ADA0062628B /* FileReaderLoader.h in Headers */ = {isa = PBXBuildFile; fileRef = 2E75841B12779ADA0062628B /* FileReaderLoader.h */; settings = {ATTRIBUTES = (Private, ); };};
+		2E75841E12779ADA0062628B /* FileReaderLoader.h in Headers */ = {isa = PBXBuildFile; fileRef = 2E75841B12779ADA0062628B /* FileReaderLoader.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		2E75841F12779ADA0062628B /* FileReaderLoaderClient.h in Headers */ = {isa = PBXBuildFile; fileRef = 2E75841C12779ADA0062628B /* FileReaderLoaderClient.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		2E94F43C119207DA00B7F75D /* JSFileReader.h in Headers */ = {isa = PBXBuildFile; fileRef = 2E94F43A119207DA00B7F75D /* JSFileReader.h */; };
 		2E9B5D8F1B66A94E008C6A24 /* WheelEventDeltaFilterMac.h in Headers */ = {isa = PBXBuildFile; fileRef = 2E9B5D8E1B66A94E008C6A24 /* WheelEventDeltaFilterMac.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -6401,9 +6401,11 @@
 		1C3969CF1B74211E002BCFA7 /* FontCacheCoreText.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FontCacheCoreText.cpp; sourceTree = "<group>"; };
 		1C43DE6822AB4B8A001527D9 /* LocalCurrentTraitCollection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LocalCurrentTraitCollection.h; sourceTree = "<group>"; };
 		1C43DE6A22AB4B8A001527D9 /* LocalCurrentTraitCollection.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LocalCurrentTraitCollection.mm; sourceTree = "<group>"; };
+		1C50C49522C84F2400A6E4BE /* WHLSLStandardLibraryFunctionMap.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = WHLSLStandardLibraryFunctionMap.cpp; sourceTree = "<group>"; };
 		1C59B0182238687900853805 /* WHLSLScopedSetAdder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLScopedSetAdder.h; sourceTree = "<group>"; };
 		1C66260E1C6E7CA600AB527C /* FontFace.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FontFace.cpp; sourceTree = "<group>"; };
 		1C66260F1C6E7CA600AB527C /* FontFace.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FontFace.h; sourceTree = "<group>"; };
+		1C6B95DD22C858A400E6F14F /* WHLSLBuildStandardLibraryFunctionMap.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = WHLSLBuildStandardLibraryFunctionMap.py; sourceTree = "<group>"; };
 		1C81B9560E97330800266E07 /* InspectorController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InspectorController.h; sourceTree = "<group>"; };
 		1C81B9570E97330800266E07 /* InspectorController.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InspectorController.cpp; sourceTree = "<group>"; };
 		1C81B9580E97330800266E07 /* InspectorClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InspectorClient.h; sourceTree = "<group>"; };
@@ -6417,6 +6419,9 @@
 		1C86CA4C22AA19FF001BF961 /* WHLSLComputeDimensions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLComputeDimensions.h; sourceTree = "<group>"; };
 		1C86CA4E22AA23C9001BF961 /* GPUPipelineMetalConvertLayout.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = GPUPipelineMetalConvertLayout.cpp; sourceTree = "<group>"; };
 		1C86CA4F22AA23C9001BF961 /* GPUPipelineMetalConvertLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GPUPipelineMetalConvertLayout.h; sourceTree = "<group>"; };
+		1C8D26C922C0945300D125F3 /* WHLSLStandardLibraryUtilities.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLStandardLibraryUtilities.h; sourceTree = "<group>"; };
+		1C8D26CE22C0951300D125F3 /* WHLSLStandardLibraryUtilities.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = WHLSLStandardLibraryUtilities.cpp; sourceTree = "<group>"; };
+		1C8D26D022C09CDE00D125F3 /* libcompression.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcompression.tbd; path = usr/lib/libcompression.tbd; sourceTree = SDKROOT; };
 		1C904DF90BA9D2C80081E9D0 /* Version.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Version.xcconfig; sourceTree = "<group>"; };
 		1C9AE5CA21ED9DF50069D5F2 /* WHLSLHighZombieFinder.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = WHLSLHighZombieFinder.cpp; sourceTree = "<group>"; };
 		1C9AE5CB21ED9DF50069D5F2 /* WHLSLHighZombieFinder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLHighZombieFinder.h; sourceTree = "<group>"; };
@@ -6446,6 +6451,7 @@
 		1CB6B4FB217B83940093B9CD /* TextUnderlineOffset.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TextUnderlineOffset.h; sourceTree = "<group>"; };
 		1CCDF5BB1990332400BCEBAD /* SVGToOTFFontConversion.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SVGToOTFFontConversion.cpp; sourceTree = "<group>"; };
 		1CCDF5BC1990332400BCEBAD /* SVGToOTFFontConversion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVGToOTFFontConversion.h; sourceTree = "<group>"; };
+		1CDABD6B22C8479A00BD0A3A /* WHLSLStandardLibraryFunctionMap.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLStandardLibraryFunctionMap.h; sourceTree = "<group>"; };
 		1CDD45E40BA9C84600F90147 /* DebugRelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = DebugRelease.xcconfig; sourceTree = "<group>"; };
 		1CDD45E50BA9C84600F90147 /* WebCore.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = WebCore.xcconfig; sourceTree = "<group>"; };
 		1CDD45E60BA9C84600F90147 /* Base.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
@@ -7128,6 +7134,7 @@
 		33503C9F10179AD7003B47E1 /* JSNotification.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSNotification.cpp; sourceTree = "<group>"; };
 		33503CA010179AD7003B47E1 /* JSNotification.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSNotification.h; sourceTree = "<group>"; };
 		33503CC61017A1B1003B47E1 /* Notification.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Notification.cpp; sourceTree = "<group>"; };
+		3351F70B22CAD8DA0015B40D /* WHLSLReplaceWith.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLReplaceWith.h; sourceTree = "<group>"; };
 		35C74FD3228A1912000C21A0 /* CSSGridIntegerRepeatValue.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = CSSGridIntegerRepeatValue.cpp; sourceTree = "<group>"; };
 		35C74FD7228A19A6000C21A0 /* CSSGridIntegerRepeatValue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CSSGridIntegerRepeatValue.h; sourceTree = "<group>"; };
 		3662F984047CEDBE5DDDAFAA /* RenderMathMLMenclose.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RenderMathMLMenclose.cpp; sourceTree = "<group>"; };
@@ -8538,6 +8545,7 @@
 		53ED3FDD167A88E7006762E6 /* JSInternalSettingsGenerated.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSInternalSettingsGenerated.h; sourceTree = "<group>"; };
 		550A0BC7085F6039007353D6 /* QualifiedName.cpp */ = {isa = PBXFileReference; fileEncoding = 30; indentWidth = 4; lastKnownFileType = sourcecode.cpp.cpp; path = QualifiedName.cpp; sourceTree = "<group>"; tabWidth = 8; usesTabs = 0; };
 		550A0BC8085F6039007353D6 /* QualifiedName.h */ = {isa = PBXFileReference; fileEncoding = 30; indentWidth = 4; lastKnownFileType = sourcecode.c.h; path = QualifiedName.h; sourceTree = "<group>"; tabWidth = 8; usesTabs = 0; };
+		550F664522CA89BD000A3417 /* SVGSharedPrimitiveProperty.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SVGSharedPrimitiveProperty.h; sourceTree = "<group>"; };
 		55137B2C20379E550001004B /* SVGMarkerTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVGMarkerTypes.h; sourceTree = "<group>"; };
 		554675771FD1FC1A003B10B0 /* ImageSource.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ImageSource.cpp; sourceTree = "<group>"; };
 		554675781FD1FC1A003B10B0 /* ImageSource.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ImageSource.h; sourceTree = "<group>"; };
@@ -13288,7 +13296,6 @@
 		C21BF6F921CD89BD00227979 /* WHLSLSemantic.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLSemantic.h; sourceTree = "<group>"; };
 		C21BF6FA21CD89BE00227979 /* WHLSLBaseSemantic.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLBaseSemantic.h; sourceTree = "<group>"; };
 		C21BF6FB21CD89BE00227979 /* WHLSLDoWhileLoop.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLDoWhileLoop.h; sourceTree = "<group>"; };
-		C21BF6FC21CD89BF00227979 /* WHLSLValue.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLValue.h; sourceTree = "<group>"; };
 		C21BF6FD21CD89C000227979 /* WHLSLFunctionDeclaration.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLFunctionDeclaration.h; sourceTree = "<group>"; };
 		C21BF6FE21CD89C100227979 /* WHLSLStructureElement.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLStructureElement.h; sourceTree = "<group>"; };
 		C21BF6FF21CD89C200227979 /* WHLSLIfStatement.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLIfStatement.h; sourceTree = "<group>"; };
@@ -13326,7 +13333,6 @@
 		C21BF72121CD89DE00227979 /* WHLSLNumThreadsFunctionAttribute.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLNumThreadsFunctionAttribute.h; sourceTree = "<group>"; };
 		C21BF72221CD89DF00227979 /* WHLSLBuiltInSemantic.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLBuiltInSemantic.h; sourceTree = "<group>"; };
 		C21BF72321CD89E100227979 /* WHLSLNativeFunctionDeclaration.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLNativeFunctionDeclaration.h; sourceTree = "<group>"; };
-		C21BF72421CD89E100227979 /* WHLSLNode.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLNode.h; sourceTree = "<group>"; };
 		C21BF72521CD89E200227979 /* WHLSLArrayReferenceType.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLArrayReferenceType.h; sourceTree = "<group>"; };
 		C21BF72621CD89E300227979 /* WHLSLEnumerationMember.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLEnumerationMember.h; sourceTree = "<group>"; };
 		C21BF72721CD89E400227979 /* WHLSLStructureDefinition.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WHLSLStructureDefinition.h; sourceTree = "<group>"; };
@@ -16121,6 +16127,7 @@
 				55BE025C223B29C30032F08A /* SVGPropertyOwnerRegistry.h */,
 				55BE0257223B29C00032F08A /* SVGPropertyRegistry.h */,
 				088A0E03126EF1DB00978F7A /* SVGPropertyTraits.h */,
+				550F664522CA89BD000A3417 /* SVGSharedPrimitiveProperty.h */,
 				721443462240CAD200F12FF7 /* SVGValueProperty.h */,
 				72FB238622497AD5007E5AC7 /* SVGValuePropertyAnimator.h */,
 				72FB238422497AD4007E5AC7 /* SVGValuePropertyAnimatorImpl.h */,
@@ -16192,6 +16199,7 @@
 				A15E6BF01E212A6A0080AF34 /* Foundation.framework */,
 				1AB33DA412551E320024457A /* IOKit.framework */,
 				F8216299029F4FB501000131 /* JavaScriptCore.framework */,
+				1C8D26D022C09CDE00D125F3 /* libcompression.tbd */,
 				93F1D31A0558CC5C00821BC0 /* libicucore.dylib */,
 				1CFAE3220A6D6A3F0032593D /* libobjc.dylib */,
 				DD763BB10992C2C900740B8E /* libxml2.dylib */,
@@ -17130,7 +17138,6 @@
 				1C33277121CF0BE1000DC9F2 /* WHLSLNamedType.h */,
 				C21BF72321CD89E100227979 /* WHLSLNativeFunctionDeclaration.h */,
 				C21BF72A21CD89E700227979 /* WHLSLNativeTypeDeclaration.h */,
-				C21BF72421CD89E100227979 /* WHLSLNode.h */,
 				C21BF70721CD89C800227979 /* WHLSLNullLiteral.h */,
 				1CB69B3A21DF0403006E846A /* WHLSLNullLiteralType.cpp */,
 				1CB69B3621DED657006E846A /* WHLSLNullLiteralType.h */,
@@ -17140,6 +17147,7 @@
 				C21BF70B21CD89CC00227979 /* WHLSLQualifier.h */,
 				C21BF71B21CD89D900227979 /* WHLSLReadModifyWriteExpression.h */,
 				C21BF70D21CD89CD00227979 /* WHLSLReferenceType.h */,
+				3351F70B22CAD8DA0015B40D /* WHLSLReplaceWith.h */,
 				1CB69B3221DED40B006E846A /* WHLSLResolvableType.h */,
 				C2138A1521DDECE900F516BA /* WHLSLResourceSemantic.cpp */,
 				C21BF70821CD89C900227979 /* WHLSLResourceSemantic.h */,
@@ -17167,7 +17175,6 @@
 				C21BF72B21CD89E800227979 /* WHLSLUnsignedIntegerLiteral.h */,
 				1CB69B3B21DF041E006E846A /* WHLSLUnsignedIntegerLiteralType.cpp */,
 				1CB69B3721DED66B006E846A /* WHLSLUnsignedIntegerLiteralType.h */,
-				C21BF6FC21CD89BF00227979 /* WHLSLValue.h */,
 				C21BF71021CD89D000227979 /* WHLSLVariableDeclaration.h */,
 				C21BF71421CD89D300227979 /* WHLSLVariableDeclarationsStatement.h */,
 				C21BF71321CD89D200227979 /* WHLSLVariableReference.h */,
@@ -19890,6 +19897,7 @@
 				1A1414B313A0F0500019996C /* WebKitFontFamilyNames.cpp */,
 				1A1414B413A0F0500019996C /* WebKitFontFamilyNames.h */,
 				C21BF74221CD963B00227979 /* WHLSLStandardLibrary.h */,
+				1C50C49522C84F2400A6E4BE /* WHLSLStandardLibraryFunctionMap.cpp */,
 				51748FA21CC6EEEB00728D84 /* WorkerGlobalScopeConstructors.idl */,
 				9908B0F91BCAD07D00ED0F75 /* WritableStreamBuiltins.cpp */,
 				9B03D8061BB3110D00B764E8 /* WritableStreamBuiltins.h */,
@@ -25497,6 +25505,7 @@
 				C20F88AC22966B0F00D610FA /* WHLSLASTDumper.h */,
 				52B3434B22A0752300E49389 /* WHLSLAutoInitializeVariables.cpp */,
 				52B3434922A0752200E49389 /* WHLSLAutoInitializeVariables.h */,
+				1C6B95DD22C858A400E6F14F /* WHLSLBuildStandardLibraryFunctionMap.py */,
 				C234A9B221E92C1F003C984D /* WHLSLCheckDuplicateFunctions.cpp */,
 				C234A9AE21E92C1A003C984D /* WHLSLCheckDuplicateFunctions.h */,
 				1C840B9B21EC400900D0500D /* WHLSLChecker.cpp */,
@@ -25544,6 +25553,9 @@
 				C24A57B221FB8DDA004C6DD1 /* WHLSLSemanticMatcher.cpp */,
 				C24A57B321FB8DDA004C6DD1 /* WHLSLSemanticMatcher.h */,
 				C21BF74521CD969800227979 /* WHLSLStandardLibrary.txt */,
+				1CDABD6B22C8479A00BD0A3A /* WHLSLStandardLibraryFunctionMap.h */,
+				1C8D26CE22C0951300D125F3 /* WHLSLStandardLibraryUtilities.cpp */,
+				1C8D26C922C0945300D125F3 /* WHLSLStandardLibraryUtilities.h */,
 				1CECB3A921F2B67300F44542 /* WHLSLStatementBehaviorChecker.cpp */,
 				1CECB3A821F2B67300F44542 /* WHLSLStatementBehaviorChecker.h */,
 				C234A9A921E92C17003C984D /* WHLSLSynthesizeArrayOperatorLength.cpp */,

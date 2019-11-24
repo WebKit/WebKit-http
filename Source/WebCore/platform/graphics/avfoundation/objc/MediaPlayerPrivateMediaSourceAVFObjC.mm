@@ -296,8 +296,10 @@ void MediaPlayerPrivateMediaSourceAVFObjC::play()
 
 void MediaPlayerPrivateMediaSourceAVFObjC::playInternal()
 {
-    if (currentMediaTime() >= m_mediaSourcePrivate->duration())
+    if (currentMediaTime() >= m_mediaSourcePrivate->duration()) {
+        ALWAYS_LOG(LOGIDENTIFIER, "bailing, current time: ", currentMediaTime(), " greater than duration ", m_mediaSourcePrivate->duration());
         return;
+    }
 
     ALWAYS_LOG(LOGIDENTIFIER);
     m_playing = true;
@@ -721,6 +723,13 @@ void MediaPlayerPrivateMediaSourceAVFObjC::ensureLayer()
 #ifndef NDEBUG
     [m_sampleBufferDisplayLayer setName:@"MediaPlayerPrivateMediaSource AVSampleBufferDisplayLayer"];
 #endif
+
+    ASSERT(m_sampleBufferDisplayLayer);
+    if (!m_sampleBufferDisplayLayer) {
+        ERROR_LOG(LOGIDENTIFIER, "Failed to create AVSampleBufferDisplayLayer");
+        setNetworkState(MediaPlayer::DecodeError);
+        return;
+    }
 
     [m_synchronizer addRenderer:m_sampleBufferDisplayLayer.get()];
     if (m_mediaSourcePrivate)

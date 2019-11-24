@@ -1,3 +1,28 @@
+2019-07-05  Antoine Quint  <graouts@apple.com>
+
+        Remove Wincorrect WPT test pointerevents/pointerevent_mouse_pointercapture_inactivate_pointer.html
+        https://bugs.webkit.org/show_bug.cgi?id=199512
+
+        Unreviewed, just removing a test that was removed from the WPT repository (https://github.com/web-platform-tests/wpt/pull/17614).
+
+        * web-platform-tests/pointerevents/pointerevent_mouse_pointercapture_inactivate_pointer-expected.txt: Removed.
+        * web-platform-tests/pointerevents/pointerevent_mouse_pointercapture_inactivate_pointer.html: Removed.
+        * web-platform-tests/pointerevents/resources/pointerevent_mouse_pointercapture_inactivate_pointer-iframe.html: Removed.
+
+2019-07-05  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Respect pointer capture when dispatching mouse boundary events and updating :hover
+        https://bugs.webkit.org/show_bug.cgi?id=198999
+        <rdar://problem/51979477>
+
+        Reviewed by Dean Jackson.
+
+        Mark the progressions in 3 WPT tests.
+
+        * web-platform-tests/pointerevents/pointerevent_boundary_events_at_implicit_release_hoverable_pointers-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_mouse_capture_change_hover-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_relatedtarget-expected.txt:
+
 2019-07-01  Truitt Savell  <tsavell@apple.com>
 
         Unreviewed, rolling out r246844.

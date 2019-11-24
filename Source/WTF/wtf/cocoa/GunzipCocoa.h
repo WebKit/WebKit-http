@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,41 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebProcessLifetimeTracker_h
-#define WebProcessLifetimeTracker_h
+#pragma once
 
-#include <wtf/HashSet.h>
+#include <wtf/Vector.h>
+#include <wtf/text/LChar.h>
 
-namespace IPC {
-class Connection;
-}
+namespace WTF {
 
-namespace WebKit {
-
-class WebPageProxy;
-class WebProcessLifetimeObserver;
-class WebProcessProxy;
-
-class WebProcessLifetimeTracker {
-public:
-    explicit WebProcessLifetimeTracker(WebPageProxy&);
-    ~WebProcessLifetimeTracker();
-
-    void addObserver(WebProcessLifetimeObserver&);
-
-    void webPageEnteringWebProcess(WebProcessProxy&);
-    void webPageLeavingWebProcess(WebProcessProxy&);
-
-    void pageWasInvalidated();
-
-private:
-    static bool processIsRunning(WebProcessProxy&);
-
-    WebPageProxy& m_webPageProxy;
-
-    HashSet<WebProcessLifetimeObserver*> m_observers;
-};
+// This function is only suitable for zip files which are guaranteed to not have any flags set in their headers.
+// See https://tools.ietf.org/html/rfc1952 for more information.
+WTF_EXPORT Vector<LChar> gunzip(const unsigned char* data, size_t length);
 
 }
 
-#endif // WebProcessLifetimeTracker_h
+using WTF::gunzip;

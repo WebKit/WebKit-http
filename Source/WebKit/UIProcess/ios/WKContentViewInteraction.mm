@@ -2902,7 +2902,7 @@ WEBCORE_COMMAND_FOR_WEBVIEW(pasteAndMatchStyle);
         || action == @selector(_moveToEndOfDocument:withHistory:) || action == @selector(_moveToEndOfLine:withHistory:) || action == @selector(_moveToEndOfParagraph:withHistory:)
         || action == @selector(_moveToEndOfWord:withHistory:) || action == @selector(_moveToStartOfDocument:withHistory:) || action == @selector(_moveToStartOfLine:withHistory:)
         || action == @selector(_moveToStartOfParagraph:withHistory:) || action == @selector(_moveToStartOfWord:withHistory:) || action == @selector(_moveUp:withHistory:))
-        return YES;
+        return !editorState.selectionIsNone;
 
     if (action == @selector(_deleteByWord) || action == @selector(_deleteForwardAndNotify:) || action == @selector(_deleteToEndOfParagraph) || action == @selector(_deleteToStartOfLine)
         || action == @selector(_transpose))
@@ -7662,7 +7662,6 @@ static NSString *titleForMenu(bool isLink, bool showLinkPreviews, const URL& url
             previewViewController = [uiDelegate _webView:_webView previewViewControllerForURL:url];
         ALLOW_DEPRECATED_DECLARATIONS_END
 
-#if USE(DATA_DETECTORS_FOR_DEFAULT_PREVIEW)
         // Previously, UIPreviewItemController would detect the case where there was no previewViewController
         // and create one. We need to replicate this code for the new API.
         if (!previewViewController) {
@@ -7681,7 +7680,6 @@ static NSString *titleForMenu(bool isLink, bool showLinkPreviews, const URL& url
             }
             return;
         }
-#endif
 
         auto menuTitle = titleForMenu(true, _showLinkPreviews, url, _positionInformation.title);
         _contextMenuLegacyMenu = menuFromLegacyPreviewOrDefaultActions(previewViewController, defaultActionsFromAssistant, elementInfo, menuTitle);

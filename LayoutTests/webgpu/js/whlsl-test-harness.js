@@ -9,23 +9,27 @@ const Types = Object.freeze({
     UINT: Symbol("uint"),
     FLOAT: Symbol("float"),
     FLOAT4: Symbol("float4"),
-    MAX_SIZE: 16 // This needs to be big enough to hold any singular WHLSL type.
+    FLOAT4X4: Symbol("float4x4"),
+    MAX_SIZE: 64 // This needs to be big enough to hold any singular WHLSL type.
 });
 
-function isVectorType(type)
+function isScalar(type)
 {
     switch(type) {
         case Types.FLOAT4:
-            return true;
-        default: 
+        case Types.FLOAT4X4:
             return false;
+        default:
+            return true;
     }
 }
 
-function convertTypeToArrayType(type)
+function convertTypeToArrayType(isWHLSL, type)
 {
     switch(type) {
         case Types.BOOL:
+            if (isWHLSL)
+                return Int32Array;
             return Uint8Array;
         case Types.INT:
             return Int32Array;
@@ -35,6 +39,7 @@ function convertTypeToArrayType(type)
             return Uint32Array;
         case Types.FLOAT:
         case Types.FLOAT4:
+        case Types.FLOAT4X4:
             return Float32Array;
         default:
             throw new Error("Invalid TYPE provided!");
@@ -56,9 +61,32 @@ function convertTypeToWHLSLType(type)
             return "float";
         case Types.FLOAT4:
             return "float4";
+        case Types.FLOAT4X4:
+            return "float4x4";
         default:
             throw new Error("Invalid TYPE provided!");
     }
+}
+
+function whlslArgumentType(type)
+{
+    if (type === Types.BOOL)
+        return "int";
+    return convertTypeToWHLSLType(type);
+}
+
+function convertToWHLSLOutputType(code, type)
+{
+    if (type !== Types.BOOL)
+        return code;
+    return `int(${code})`;
+}
+
+function convertToWHLSLInputType(code, type)
+{
+    if (type !== Types.BOOL)
+        return code;
+    return `bool(${code})`;
 }
 
 /* Harness Classes */
@@ -84,21 +112,21 @@ class Data {
         // However, vector types are also created via an array of scalars.
         // This ensures that buffers of just one vector are usable in a test function.
         if (Array.isArray(values))
-            this._isBuffer = isVectorType(type) ? isBuffer : true;
+            this._isBuffer = isScalar(type) ? true : isBuffer;
         else {
             this._isBuffer = false;
             values = [values];
         }
 
         this._type = type;
-        this._byteLength = (convertTypeToArrayType(type)).BYTES_PER_ELEMENT * values.length;
+        this._byteLength = (convertTypeToArrayType(harness.isWHLSL, type)).BYTES_PER_ELEMENT * values.length;
 
         const [buffer, arrayBuffer] = harness.device.createBufferMapped({
             size: this._byteLength,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.MAP_READ
         });
 
-        const typedArray = new (convertTypeToArrayType(type))(arrayBuffer);
+        const typedArray = new (convertTypeToArrayType(harness.isWHLSL, type))(arrayBuffer);
         typedArray.set(values);
         buffer.unmap();
 
@@ -157,6 +185,11 @@ using namespace metal;
         `;
     }
 
+    get isWHLSL()
+    {
+        return this._isWHLSL;
+    }
+
     /**
      * Return the return value of a WHLSL function.
      * @param {Types} type - The return type of the WHLSL function.
@@ -196,12 +229,14 @@ using namespace metal;
 
         let entryPointCode;
         if (this._isWHLSL) {
-            argsDeclarations.unshift(`device ${convertTypeToWHLSLType(type)}[] result : register(u0)`);
+            argsDeclarations.unshift(`device ${whlslArgumentType(type)}[] result : register(u0)`);
+            let callCode = `${name}(${functionCallArgs.join(", ")})`;
+            callCode = convertToWHLSLOutputType(callCode, type);
             entryPointCode = `
 [numthreads(1, 1, 1)]
 compute void _compute_main(${argsDeclarations.join(", ")})
 {
-    result[0] = ${name}(${functionCallArgs.join(", ")});
+    result[0] = ${callCode};
 }
 `;
         } else {
@@ -225,7 +260,7 @@ kernel void _compute_main(device _compute_args& args [[buffer(0)]])
         } catch {
             throw new Error("Harness error: Unable to read results!");
         }
-        const array = new (convertTypeToArrayType(type))(result);
+        const array = new (convertTypeToArrayType(this._isWHLSL, type))(result);
         this._resultBuffer.unmap();
 
         return array;
@@ -301,8 +336,8 @@ kernel void _compute_main(device _compute_args& args [[buffer(0)]])
         for (let i = 1; i <= args.length; ++i) {
             const arg = args[i - 1];
             if (this._isWHLSL) {
-                argsDeclarations.push(`device ${convertTypeToWHLSLType(arg.type)}[] arg${i} : register(u${i})`);
-                functionCallArgs.push(`arg${i}` + (arg.isBuffer ? "" : "[0]"));
+                argsDeclarations.push(`device ${whlslArgumentType(arg.type)}[] arg${i} : register(u${i})`);
+                functionCallArgs.push(convertToWHLSLInputType(`arg${i}` + (arg.isBuffer ? "" : "[0]"), arg.type));
             } else {
                 argsDeclarations.push(`device ${convertTypeToWHLSLType(arg.type)}* arg${i} [[id(${i})]];`);
                 functionCallArgs.push((arg.isBuffer ? "" : "*") + `args.arg${i}`);
@@ -404,13 +439,33 @@ function makeFloat(values)
  */
 function makeFloat4(values)
 {
+    const results = processArrays(values, 4);
+    return new Data(harness, Types.FLOAT4, results.values, results.isBuffer);
+}
+
+/**
+ * @param {Array or Array[Array]} values - 1D or 2D array of float values.
+ * The total number of float values must be divisible by 16.
+ * A single 16-element array of floats will be treated as a single float4x4 argument in the shader.
+ * This should follow the glMatrix/OpenGL method of storing 4x4 matrices,
+ * where the x, y, z translation components are the 13th, 14th, and 15th elements respectively.
+ */
+function makeFloat4x4(values)
+{
+    const results = processArrays(values, 16);
+    return new Data(harness, Types.FLOAT4X4, results.values, results.isBuffer);
+}
+
+function processArrays(values, minimumLength)
+{
     const originalLength = values.length;
     // This works because float4 is tightly packed.
     // When implementing other vector types, add padding if needed.
     values = values.flat();
-    if (values.length % 4 != 0)
-        throw new Error("makeFloat4: Invalid number of elements!");
-    return new Data(harness, Types.FLOAT4, values, originalLength === 1 || values.length > 4);
+    if (values.length % minimumLength != 0)
+        throw new Error("Invalid number of elements in non-scalar type!");
+    
+    return { values: values, isBuffer: originalLength === 1 || values.length > minimumLength };
 }
 
 /**
@@ -447,6 +502,11 @@ async function callFloatFunction(functions, name, args)
 async function callFloat4Function(functions, name, args)
 {
     return (await harness.callTypedFunction(Types.FLOAT4, functions, name, args)).subarray(0, 4);
+}
+
+async function callFloat4x4Function(functions, name, args)
+{
+    return (await harness.callTypedFunction(Types.FLOAT4X4, functions, name, args)).subarray(0, 16);
 }
 
 /**

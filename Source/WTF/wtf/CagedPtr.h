@@ -39,6 +39,8 @@ template<Gigacage::Kind passedKind, typename T, bool shouldTag = false, typename
 class CagedPtr {
 public:
     static constexpr Gigacage::Kind kind = passedKind;
+    static constexpr unsigned numberOfPACBits = 25;
+    static constexpr uintptr_t nonPACBitsMask = (1ull << ((sizeof(T*) * CHAR_BIT) - numberOfPACBits)) - 1;
 
     CagedPtr() : CagedPtr(nullptr) { }
     CagedPtr(std::nullptr_t)
@@ -61,7 +63,9 @@ public:
     T* getMayBeNull(unsigned size) const
     {
         T* ptr = PtrTraits::unwrap(m_ptr);
-        T* cagedPtr = Gigacage::cagedMayBeNull(kind, ptr);
+        if (!removeArrayPtrTag(ptr))
+            return nullptr;
+        T* cagedPtr = Gigacage::caged(kind, ptr);
         T* untaggedPtr = shouldTag ? untagArrayPtr(mergePointers(ptr, cagedPtr), size) : cagedPtr;
         return untaggedPtr;
     }
@@ -128,9 +132,7 @@ protected:
     static inline T* mergePointers(T* sourcePtr, T* cagedPtr)
     {
 #if CPU(ARM64E)
-        constexpr unsigned numberOfPACBits = 25;
-        constexpr uintptr_t mask = (1ull << ((sizeof(T*) * CHAR_BIT) - numberOfPACBits)) - 1;
-        return reinterpret_cast<T*>((reinterpret_cast<uintptr_t>(sourcePtr) & ~mask) | (reinterpret_cast<uintptr_t>(cagedPtr) & mask));
+        return reinterpret_cast<T*>((reinterpret_cast<uintptr_t>(sourcePtr) & ~nonPACBitsMask) | (reinterpret_cast<uintptr_t>(cagedPtr) & nonPACBitsMask));
 #else
         UNUSED_PARAM(sourcePtr);
         return cagedPtr;

@@ -621,13 +621,7 @@ void StorageManager::deleteSessionStorageOrigins(Function<void()>&& completionHa
 
 void StorageManager::deleteSessionStorageEntriesForOrigins(const Vector<WebCore::SecurityOriginData>& origins, Function<void()>&& completionHandler)
 {
-    Vector<WebCore::SecurityOriginData> copiedOrigins;
-    copiedOrigins.reserveInitialCapacity(origins.size());
-
-    for (auto& origin : origins)
-        copiedOrigins.uncheckedAppend(origin.isolatedCopy());
-
-    m_queue->dispatch([this, protectedThis = makeRef(*this), copiedOrigins = WTFMove(copiedOrigins), completionHandler = WTFMove(completionHandler)]() mutable {
+    m_queue->dispatch([this, protectedThis = makeRef(*this), copiedOrigins = crossThreadCopy(origins), completionHandler = WTFMove(completionHandler)]() mutable {
         for (auto& origin : copiedOrigins) {
             for (auto& sessionStorageNamespace : m_sessionStorageNamespaces.values())
                 sessionStorageNamespace->clearStorageAreasMatchingOrigin(origin);
@@ -644,17 +638,17 @@ void StorageManager::getLocalStorageOrigins(Function<void(HashSet<WebCore::Secur
 
         if (m_localStorageDatabaseTracker) {
             for (auto& origin : m_localStorageDatabaseTracker->origins())
-                origins.add(origin);
+                origins.add(origin.isolatedCopy());
         } else {
             for (const auto& localStorageNameSpace : m_localStorageNamespaces.values()) {
                 for (auto& origin : localStorageNameSpace->ephemeralOrigins())
-                    origins.add(origin);
+                    origins.add(origin.isolatedCopy());
             }
         }
 
         for (auto& transientLocalStorageNamespace : m_transientLocalStorageNamespaces.values()) {
             for (auto& origin : transientLocalStorageNamespace->origins())
-                origins.add(origin);
+                origins.add(origin.isolatedCopy());
         }
 
         RunLoop::main().dispatch([origins = WTFMove(origins), completionHandler = WTFMove(completionHandler)]() mutable {
@@ -668,7 +662,7 @@ void StorageManager::getLocalStorageOriginDetails(Function<void(Vector<LocalStor
     m_queue->dispatch([this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)]() mutable {
         Vector<LocalStorageDatabaseTracker::OriginDetails> originDetails;
         if (m_localStorageDatabaseTracker)
-            originDetails = m_localStorageDatabaseTracker->originDetails();
+            originDetails = m_localStorageDatabaseTracker->originDetails().isolatedCopy();
 
         RunLoop::main().dispatch([originDetails = WTFMove(originDetails), completionHandler = WTFMove(completionHandler)]() mutable {
             completionHandler(WTFMove(originDetails));
@@ -716,13 +710,7 @@ void StorageManager::deleteLocalStorageOriginsModifiedSince(WallTime time, Funct
 
 void StorageManager::deleteLocalStorageEntriesForOrigins(const Vector<WebCore::SecurityOriginData>& origins, Function<void()>&& completionHandler)
 {
-    Vector<SecurityOriginData> copiedOrigins;
-    copiedOrigins.reserveInitialCapacity(origins.size());
-
-    for (auto& origin : origins)
-        copiedOrigins.uncheckedAppend(origin.isolatedCopy());
-
-    m_queue->dispatch([this, protectedThis = makeRef(*this), copiedOrigins = WTFMove(copiedOrigins), completionHandler = WTFMove(completionHandler)]() mutable {
+    m_queue->dispatch([this, protectedThis = makeRef(*this), copiedOrigins = crossThreadCopy(origins), completionHandler = WTFMove(completionHandler)]() mutable {
         for (auto& origin : copiedOrigins) {
             for (auto& localStorageNamespace : m_localStorageNamespaces.values())
                 localStorageNamespace->clearStorageAreasMatchingOrigin(origin);
@@ -936,6 +924,7 @@ void StorageManager::waitUntilWritesFinished()
 
 void StorageManager::suspend(CompletionHandler<void()>&& completionHandler)
 {
+    CompletionHandlerCallingScope completionHandlerCaller(WTFMove(completionHandler));
     if (!m_localStorageDatabaseTracker)
         return;
 
@@ -944,15 +933,18 @@ void StorageManager::suspend(CompletionHandler<void()>&& completionHandler)
         return;
     m_state = State::WillSuspend;
 
-    m_queue->dispatch([this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)] () mutable {
+    m_queue->dispatch([this, protectedThis = makeRef(*this), completionHandler = completionHandlerCaller.release()] () mutable {
         Locker<Lock> stateLocker(m_stateLock);
         ASSERT(m_state != State::Suspended);
 
-        completionHandler();
-
-        if (m_state != State::WillSuspend)
+        if (m_state != State::WillSuspend) {
+            RunLoop::main().dispatch(WTFMove(completionHandler));
             return;
+        }
+
         m_state = State::Suspended;
+        RunLoop::main().dispatch(WTFMove(completionHandler));
+        
         while (m_state == State::Suspended)
             m_stateChangeCondition.wait(m_stateLock);
         ASSERT(m_state == State::Running);

@@ -56,8 +56,7 @@ private:
 
     void visit(AST::CallExpression& callExpression) override
     {
-        ASSERT(callExpression.function());
-        Visitor::visit(*callExpression.function());
+        Visitor::visit(callExpression.function());
     }
 
     HashSet<AST::FunctionDefinition*> m_visitingSet;

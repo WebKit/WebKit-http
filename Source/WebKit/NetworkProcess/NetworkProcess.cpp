@@ -559,7 +559,9 @@ void NetworkProcess::forEachNetworkStorageSession(const Function<void(WebCore::N
 
 NetworkSession* NetworkProcess::networkSession(const PAL::SessionID& sessionID) const
 {
-    return m_networkSessions.get(sessionID);
+    ASSERT(RunLoop::isMain());
+    ASSERT(sessionID.isValid());
+    return sessionID.isValid() ? m_networkSessions.get(sessionID) : nullptr;
 }
 
 NetworkSession* NetworkProcess::networkSessionByConnection(IPC::Connection& connection) const
@@ -572,11 +574,17 @@ NetworkSession* NetworkProcess::networkSessionByConnection(IPC::Connection& conn
 
 void NetworkProcess::setSession(const PAL::SessionID& sessionID, Ref<NetworkSession>&& session)
 {
+    ASSERT(RunLoop::isMain());
+    ASSERT(sessionID.isValid());
+    if (!sessionID.isValid())
+        return;
+
     m_networkSessions.set(sessionID, WTFMove(session));
 }
 
 void NetworkProcess::destroySession(const PAL::SessionID& sessionID)
 {
+    ASSERT(RunLoop::isMain());
     ASSERT(sessionID.isValid());
     if (!sessionID.isValid())
         return;
@@ -1290,6 +1298,9 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
             for (auto& securityOrigin : securityOrigins)
                 callbackAggregator->m_websiteData.entries.append({ securityOrigin, WebsiteDataType::Credentials, 0 });
         }
+        auto securityOrigins = WebCore::CredentialStorage::originsWithSessionCredentials();
+        for (auto& securityOrigin : securityOrigins)
+            callbackAggregator->m_websiteData.entries.append({ securityOrigin, WebsiteDataType::Credentials, 0 });
     }
 
     if (websiteDataTypes.contains(WebsiteDataType::DOMCache)) {
@@ -1371,6 +1382,7 @@ void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<Websi
     if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
         if (auto* session = storageSession(sessionID))
             session->credentialStorage().clearCredentials();
+        WebCore::CredentialStorage::clearSessionCredentials();
     }
 
     auto clearTasksHandler = WTF::CallbackAggregator::create([this, callbackID] {
@@ -1508,6 +1520,7 @@ void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, Optio
             for (auto& originData : originDatas)
                 session->credentialStorage().removeCredentialsWithOrigin(originData);
         }
+        WebCore::CredentialStorage::removeSessionCredentialsWithOrigins(originDatas);
     }
 
     // FIXME: Implement storage quota clearing for these origins.
@@ -1652,14 +1665,18 @@ void NetworkProcess::deleteWebsiteDataForRegistrableDomains(PAL::SessionID sessi
     }
 #endif
 
-    /*
-    // FIXME: No API to delete credentials by origin
-    HashSet<String> originsWithCredentials;
     if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
-        if (storageSession(sessionID))
-            originsWithCredentials = storageSession(sessionID)->credentialStorage().originsWithCredentials();
+        if (auto* session = storageSession(sessionID)) {
+            auto origins = session->credentialStorage().originsWithCredentials();
+            auto originsToDelete = filterForRegistrableDomains(origins, domainsToDeleteAllButCookiesFor, callbackAggregator->m_domains);
+            for (auto& origin : originsToDelete)
+                session->credentialStorage().removeCredentialsWithOrigin(origin);
+        }
+
+        auto origins = WebCore::CredentialStorage::originsWithSessionCredentials();
+        auto originsToDelete = filterForRegistrableDomains(origins, domainsToDeleteAllButCookiesFor, callbackAggregator->m_domains);
+        WebCore::CredentialStorage::removeSessionCredentialsWithOrigins(originsToDelete);
     }
-    */
     
     if (websiteDataTypes.contains(WebsiteDataType::DOMCache)) {
         CacheStorage::Engine::fetchEntries(*this, sessionID, fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes), [this, domainsToDeleteAllButCookiesFor, sessionID, callbackAggregator = callbackAggregator.copyRef()](auto entries) mutable {
@@ -2021,16 +2038,6 @@ void NetworkProcess::processDidTransitionToBackground()
     platformProcessDidTransitionToBackground();
 }
 
-// FIXME: We can remove this one by adapting RefCounter.
-class TaskCounter : public RefCounted<TaskCounter> {
-public:
-    explicit TaskCounter(Function<void()>&& callback) : m_callback(WTFMove(callback)) { }
-    ~TaskCounter() { m_callback(); };
-
-private:
-    Function<void()> m_callback;
-};
-
 void NetworkProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shouldAcknowledgeWhenReadyToSuspend)
 {
 #if PLATFORM(IOS_FAMILY)
@@ -2039,30 +2046,30 @@ void NetworkProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend 
 
     lowMemoryHandler(Critical::Yes);
 
-    RefPtr<TaskCounter> delayedTaskCounter;
+    RefPtr<CallbackAggregator> callbackAggregator;
     if (shouldAcknowledgeWhenReadyToSuspend == ShouldAcknowledgeWhenReadyToSuspend::Yes) {
-        delayedTaskCounter = adoptRef(new TaskCounter([this] {
+        callbackAggregator = CallbackAggregator::create([this] {
             RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::notifyProcessReadyToSuspend() Sending ProcessReadyToSuspend IPC message", this);
             if (parentProcessConnection())
                 parentProcessConnection()->send(Messages::NetworkProcessProxy::ProcessReadyToSuspend(), 0);
-        }));
+        });
     }
 
-    platformPrepareToSuspend([delayedTaskCounter] { });
-    platformSyncAllCookies([delayedTaskCounter] { });
+    platformPrepareToSuspend([callbackAggregator] { });
+    platformSyncAllCookies([callbackAggregator] { });
 
     for (auto& connection : m_webProcessConnections)
-        connection->cleanupForSuspension([delayedTaskCounter] { });
+        connection->cleanupForSuspension([callbackAggregator] { });
 
 #if ENABLE(SERVICE_WORKER)
     for (auto& server : m_swServers.values()) {
         ASSERT(m_swServers.get(server->sessionID()) == server.get());
-        server->startSuspension([delayedTaskCounter] { });
+        server->startSuspension([callbackAggregator] { });
     }
 #endif
 
     for (auto& session : m_networkSessions)
-        session.value->storageManager().suspend([delayedTaskCounter] { });
+        session.value->storageManager().suspend([callbackAggregator] { });
 }
 
 void NetworkProcess::processWillSuspendImminently()
@@ -2565,16 +2572,6 @@ StorageQuotaManager& NetworkProcess::storageQuotaManager(PAL::SessionID sessionI
 }
 
 #if !PLATFORM(COCOA)
-void NetworkProcess::originsWithPersistentCredentials(CompletionHandler<void(Vector<WebCore::SecurityOriginData>)>&& completionHandler)
-{
-    completionHandler(Vector<WebCore::SecurityOriginData>());
-}
-
-void NetworkProcess::removeCredentialsWithOrigins(const Vector<WebCore::SecurityOriginData>&, CompletionHandler<void()>&& completionHandler)
-{
-    completionHandler();
-}
-
 void NetworkProcess::initializeProcess(const AuxiliaryProcessInitializationParameters&)
 {
 }
@@ -2646,13 +2643,13 @@ void NetworkProcess::markAdClickAttributionsAsExpiredForTesting(PAL::SessionID s
 
 void NetworkProcess::addKeptAliveLoad(Ref<NetworkResourceLoader>&& loader)
 {
-    if (auto session = m_networkSessions.get(loader->sessionID()))
+    if (auto* session = networkSession(loader->sessionID()))
         session->addKeptAliveLoad(WTFMove(loader));
 }
 
 void NetworkProcess::removeKeptAliveLoad(NetworkResourceLoader& loader)
 {
-    if (auto session = m_networkSessions.get(loader.sessionID()))
+    if (auto* session = networkSession(loader.sessionID()))
         session->removeKeptAliveLoad(loader);
 }
 
@@ -2705,10 +2702,8 @@ void NetworkProcess::webProcessWasDisconnected(IPC::Connection& connection)
         return;
 
     auto sessionID = m_sessionByConnection.take(connectionID);
-    if (!m_networkSessions.contains(sessionID))
-        return;
-
-    networkSession(sessionID)->storageManager().processDidCloseConnection(connection);
+    if (auto* session = networkSession(sessionID))
+        session->storageManager().processDidCloseConnection(connection);
 }
 
 void NetworkProcess::webProcessSessionChanged(IPC::Connection& connection, PAL::SessionID newSessionID, const Vector<PageIdentifier>& pageIDs)

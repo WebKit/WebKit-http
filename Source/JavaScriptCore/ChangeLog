@@ -1,3 +1,175 @@
+2019-07-03  Sam Weinig  <weinig@apple.com>
+
+        Adopt simple structured bindings in more places
+        https://bugs.webkit.org/show_bug.cgi?id=199247
+
+        Reviewed by Alex Christensen.
+
+        Replaces simple uses of std::tie() with structured bindings. Does not touch
+        uses of std::tie() that are not initial declarations, use std::ignore or in
+        case where the binding is captured by a lambda, as structured bindings don't
+        work for those cases yet.
+
+        * runtime/PromiseDeferredTimer.cpp:
+        (JSC::PromiseDeferredTimer::doWork):
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+        * wasm/js/JSWebAssemblyHelpers.h:
+        (JSC::createSourceBufferFromValue):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::webAssemblyValidateFunc):
+
+2019-07-03  Keith Miller  <keith_miller@apple.com>
+
+        PACCage should first cage leaving PAC bits intact then authenticate
+        https://bugs.webkit.org/show_bug.cgi?id=199372
+
+        Reviewed by Saam Barati.
+
+        This ordering prevents someone from taking a signed pointer from
+        outside the gigacage and using it in a struct that expects a caged
+        pointer. Previously, the PACCaging just double checked that the PAC
+        bits were valid for the original pointer.
+
+
+               +---------------------------+
+               |       |        |          |
+               | "PAC" | "base" | "offset" +----+
+               |       |        |          |    |
+               +---------------------------+    | Caging
+                |                               |
+                |                               |
+                |                               v
+                |                +---------------------------+
+                |                |       |        |          |
+                | Bit Merge      | 00000 |  base  | "offset" |
+                |                |       |        |          |
+                |                +---------------------------+
+                |                               |
+                |                               |
+                v                               |  Bit Merge
+          +---------------------------+         |
+          |       |        |          |         |
+          | "PAC" |  base  | "offset" +<--------+
+          |       |        |          |
+          +---------------------------+
+                      |
+                      |
+                      | Authenticate
+                      |
+                      v
+          +---------------------------+
+          |       |        |          |
+          | Auth  |  base  | "offset" |
+          |       |        |          |
+          +---------------------------+
+
+        The above ascii art graph shows how the PACCage system works. The
+        key take away is that even if someone passes in a valid, signed
+        pointer outside the cage it will still fail to authenticate as the
+        "base" bits will change before authentication.
+
+
+        * assembler/MacroAssemblerARM64E.h:
+        * assembler/testmasm.cpp:
+        (JSC::testCagePreservesPACFailureBit):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::caged):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::cageConditionally):
+        * llint/LowLevelInterpreter64.asm:
+
+2019-07-03  Paulo Matos  <pmatos@igalia.com>
+
+        Refactoring of architectural Register Information
+        https://bugs.webkit.org/show_bug.cgi?id=198604
+
+        Reviewed by Keith Miller.
+
+        The goal of this patch is to centralize the register information per platform
+        but access it in a platform independent way. The patch as been implemented for all
+        known platforms: ARM64, ARMv7, MIPS, X86 and X86_64. Register information has
+        been centralized in an architecture per-file: each file is called assembler/<arch>Registers.h.
+
+        RegisterInfo.h is used as a forwarding header to choose which register information to load.
+        assembler/<arch>Assembler.h and jit/RegisterSet.cpp use this information in a platform
+        independent way.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::gprName): Use register names from register info file.
+        (JSC::ARM64Assembler::sprName): likewise.
+        (JSC::ARM64Assembler::fprName): likewise.
+        * assembler/ARM64Registers.h: Added.
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::gprName): Use register names from register info file.
+        (JSC::ARMv7Assembler::sprName): likewise.
+        (JSC::ARMv7Assembler::fprName): likewise.
+        * assembler/ARMv7Registers.h: Added.
+        * assembler/MIPSAssembler.h:
+        (JSC::MIPSAssembler::gprName): Use register names from register info file.
+        (JSC::MIPSAssembler::sprName): likewise.
+        (JSC::MIPSAssembler::fprName): likewise.
+        * assembler/MIPSRegisters.h: Added.
+        * assembler/RegisterInfo.h: Added.
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::gprName): Use register names from register info file.
+        (JSC::X86Assembler::sprName): likewise.
+        (JSC::X86Assembler::fprName): likewise.
+        * assembler/X86Registers.h: Added.
+        * assembler/X86_64Registers.h: Added.
+        * jit/GPRInfo.h: Fix typo in comment (s/basline/baseline).
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::reservedHardwareRegisters): Use register properties from register info file.
+        (JSC::RegisterSet::calleeSaveRegisters): likewise.
+
+2019-07-02  Michael Saboff  <msaboff@apple.com>
+
+        Exception from For..of loop destructured assignment eliminates TDZ checks in subsequent code
+        https://bugs.webkit.org/show_bug.cgi?id=199395
+
+        Reviewed by Filip Pizlo.
+
+        For destructuring assignmests, the assignment might throw a reference error if
+        the RHS cannot be coerced.  The current bytecode generated for such assignments
+        optimizes out the TDZ check after the coercible check.
+
+        By saving the current state of the TDZ stack before processing the setting of 
+        target destructured values and then restoring afterwards, we won't optimize out
+        later TDZ check(s).
+
+        A similar change of saving / restoring the TDZ stack where exceptions might
+        happen was done for for..in loops in change set r232219.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ObjectPatternNode::bindValue const):
+
+2019-07-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247041.
+        https://bugs.webkit.org/show_bug.cgi?id=199425
+
+        broke some iOS arm64e tests (Requested by keith_miller on
+        #webkit).
+
+        Reverted changeset:
+
+        "PACCage should first cage leaving PAC bits intact then
+        authenticate"
+        https://bugs.webkit.org/show_bug.cgi?id=199372
+        https://trac.webkit.org/changeset/247041
+
+2019-07-02  Keith Miller  <keith_miller@apple.com>
+
+        Frozen Arrays length assignment should throw in strict mode
+        https://bugs.webkit.org/show_bug.cgi?id=199365
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::put):
+
 2019-07-02  Paulo Matos  <pmatos@linki.tools>
 
         Fix typo in if/else block and remove dead assignment

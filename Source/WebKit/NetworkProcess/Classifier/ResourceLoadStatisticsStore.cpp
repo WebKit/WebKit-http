@@ -205,13 +205,8 @@ void ResourceLoadStatisticsStore::removeDataRecords(CompletionHandler<void()>&& 
 
     setDataRecordsBeingRemoved(true);
 
-    RunLoop::main().dispatch([domainsToRemoveWebsiteDataFor = crossThreadCopy(domainsToRemoveWebsiteDataFor), completionHandler = WTFMove(completionHandler), weakThis = makeWeakPtr(*this), shouldNotifyPagesWhenDataRecordsWereScanned = m_parameters.shouldNotifyPagesWhenDataRecordsWereScanned, workQueue = m_workQueue.copyRef()] () mutable {
-        if (!weakThis) {
-            completionHandler();
-            return;
-        }
-
-        weakThis->m_store.deleteWebsiteDataForRegistrableDomains(WebResourceLoadStatisticsStore::monitoredDataTypes(), WTFMove(domainsToRemoveWebsiteDataFor), shouldNotifyPagesWhenDataRecordsWereScanned, [completionHandler = WTFMove(completionHandler), weakThis = WTFMove(weakThis), workQueue = workQueue.copyRef()](const HashSet<RegistrableDomain>& domainsWithDeletedWebsiteData) mutable {
+    RunLoop::main().dispatch([store = makeRef(m_store), domainsToRemoveWebsiteDataFor = crossThreadCopy(domainsToRemoveWebsiteDataFor), completionHandler = WTFMove(completionHandler), weakThis = makeWeakPtr(*this), shouldNotifyPagesWhenDataRecordsWereScanned = m_parameters.shouldNotifyPagesWhenDataRecordsWereScanned, workQueue = m_workQueue.copyRef()] () mutable {
+        store->deleteWebsiteDataForRegistrableDomains(WebResourceLoadStatisticsStore::monitoredDataTypes(), WTFMove(domainsToRemoveWebsiteDataFor), shouldNotifyPagesWhenDataRecordsWereScanned, [completionHandler = WTFMove(completionHandler), weakThis = WTFMove(weakThis), workQueue = workQueue.copyRef()](const HashSet<RegistrableDomain>& domainsWithDeletedWebsiteData) mutable {
             workQueue->dispatch([domainsWithDeletedWebsiteData = crossThreadCopy(domainsWithDeletedWebsiteData), completionHandler = WTFMove(completionHandler), weakThis = WTFMove(weakThis)] () mutable {
                 if (!weakThis) {
                     completionHandler();
@@ -219,8 +214,13 @@ void ResourceLoadStatisticsStore::removeDataRecords(CompletionHandler<void()>&& 
                 }
                 weakThis->incrementRecordsDeletedCountForDomains(WTFMove(domainsWithDeletedWebsiteData));
                 weakThis->setDataRecordsBeingRemoved(false);
-                weakThis->m_store.tryDumpResourceLoadStatistics();
+                
+                auto dataRecordRemovalCompletionHandlers = WTFMove(weakThis->m_dataRecordRemovalCompletionHandlers);
                 completionHandler();
+                
+                for (auto& dataRecordRemovalCompletionHandler : dataRecordRemovalCompletionHandlers)
+                    dataRecordRemovalCompletionHandler();
+
                 RELEASE_LOG_INFO_IF(weakThis->m_debugLoggingEnabled, ITPDebug, "Done removing data records.");
             });
         });
@@ -247,12 +247,8 @@ void ResourceLoadStatisticsStore::processStatisticsAndDataRecords()
         if (!m_parameters.shouldNotifyPagesWhenDataRecordsWereScanned)
             return;
 
-        RunLoop::main().dispatch([this, weakThis = WTFMove(weakThis)] {
-            ASSERT(RunLoop::isMain());
-            if (!weakThis)
-                return;
-
-            m_store.notifyResourceLoadStatisticsProcessed();
+        RunLoop::main().dispatch([store = makeRef(m_store)] {
+            store->notifyResourceLoadStatisticsProcessed();
         });
     });
 }

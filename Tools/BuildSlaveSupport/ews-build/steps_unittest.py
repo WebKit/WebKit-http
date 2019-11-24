@@ -37,7 +37,7 @@ from twisted.trial import unittest
 from steps import (AnalyzeAPITestsResults, AnalyzeCompileWebKitResults, ApplyPatch, ArchiveBuiltProduct, ArchiveTestResults,
                    CheckOutSource, CheckOutSpecificRevision, CheckPatchRelevance, CheckStyle, CleanBuild, CleanWorkingDirectory,
                    CompileJSCOnly, CompileJSCOnlyToT, CompileWebKit, CompileWebKitToT, ConfigureBuild,
-                   DownloadBuiltProduct, ExtractBuiltProduct, ExtractTestResults, KillOldProcesses,
+                   DownloadBuiltProduct, ExtractBuiltProduct, ExtractTestResults, InstallGtkDependencies, InstallWpeDependencies, KillOldProcesses,
                    PrintConfiguration, ReRunAPITests, ReRunJavaScriptCoreTests, RunAPITests, RunAPITestsWithoutPatch,
                    RunBindingsTests, RunJavaScriptCoreTests, RunJavaScriptCoreTestsToT, RunWebKit1Tests, RunWebKitPerlTests,
                    RunWebKitPyTests, RunWebKitTests, TestWithFailureCount, Trigger, TransferToS3, UnApplyPatchIfRequired,
@@ -302,6 +302,7 @@ class TestRunBindingsTests(BuildStepMixinAdditions, unittest.TestCase):
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         timeout=300,
+                        logEnviron=False,
                         command=['Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(self.jsonFileName)],
                         logfiles={'json': self.jsonFileName},
                         )
@@ -315,6 +316,7 @@ class TestRunBindingsTests(BuildStepMixinAdditions, unittest.TestCase):
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         timeout=300,
+                        logEnviron=False,
                         command=['Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(self.jsonFileName)],
                         logfiles={'json': self.jsonFileName},
                         )
@@ -337,6 +339,7 @@ class TestRunWebKitPerlTests(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(RunWebKitPerlTests())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['Tools/Scripts/test-webkitperl'],
                         timeout=120,
                         )
@@ -349,6 +352,7 @@ class TestRunWebKitPerlTests(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(RunWebKitPerlTests())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['Tools/Scripts/test-webkitperl'],
                         timeout=120,
                         )
@@ -375,6 +379,7 @@ class TestWebKitPyTests(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(RunWebKitPyTests())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['Tools/Scripts/test-webkitpy', '--json-output={0}'.format(self.jsonFileName)],
                         logfiles={'json': self.jsonFileName},
                         timeout=120,
@@ -388,6 +393,7 @@ class TestWebKitPyTests(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(RunWebKitPyTests())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['Tools/Scripts/test-webkitpy', '--json-output={0}'.format(self.jsonFileName)],
                         logfiles={'json': self.jsonFileName},
                         timeout=120,
@@ -472,6 +478,78 @@ class TestCleanBuild(BuildStepMixinAdditions, unittest.TestCase):
         return self.runStep()
 
 
+class TestInstallGtkDependencies(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(InstallGtkDependencies())
+        self.assertEqual(InstallGtkDependencies.haltOnFailure, False)
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/update-webkitgtk-libs'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Updated gtk dependencies')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(InstallGtkDependencies())
+        self.assertEqual(InstallGtkDependencies.haltOnFailure, False)
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/update-webkitgtk-libs'],
+                        )
+            + ExpectShell.log('stdio', stdout='Unexpected error.')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Updated gtk dependencies (failure)')
+        return self.runStep()
+
+
+class TestInstallWpeDependencies(BuildStepMixinAdditions, unittest.TestCase):
+    def setUp(self):
+        self.longMessage = True
+        return self.setUpBuildStep()
+
+    def tearDown(self):
+        return self.tearDownBuildStep()
+
+    def test_success(self):
+        self.setupStep(InstallWpeDependencies())
+        self.assertEqual(InstallWpeDependencies.haltOnFailure, False)
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/update-webkitwpe-libs'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Updated wpe dependencies')
+        return self.runStep()
+
+    def test_failure(self):
+        self.setupStep(InstallWpeDependencies())
+        self.assertEqual(InstallWpeDependencies.haltOnFailure, False)
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/update-webkitwpe-libs'],
+                        )
+            + ExpectShell.log('stdio', stdout='Unexpected error.')
+            + 2,
+        )
+        self.expectOutcome(result=FAILURE, state_string='Updated wpe dependencies (failure)')
+        return self.runStep()
+
+
 class TestCompileWebKit(BuildStepMixinAdditions, unittest.TestCase):
     def setUp(self):
         self.longMessage = True
@@ -486,7 +564,38 @@ class TestCompileWebKit(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'release')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-webkit', '--release'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Compiled WebKit')
+        return self.runStep()
+
+    def test_success_gtk(self):
+        self.setupStep(CompileWebKit())
+        self.setProperty('platform', 'gtk')
+        self.setProperty('fullPlatform', 'gtk')
+        self.setProperty('configuration', 'release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/build-webkit', '--release', '--gtk'],
+                        )
+            + 0,
+        )
+        self.expectOutcome(result=SUCCESS, state_string='Compiled WebKit')
+        return self.runStep()
+
+    def test_success_wpe(self):
+        self.setupStep(CompileWebKit())
+        self.setProperty('platform', 'wpe')
+        self.setProperty('fullPlatform', 'wpe')
+        self.setProperty('configuration', 'release')
+        self.expectRemoteCommands(
+            ExpectShell(workdir='wkdir',
+                        logEnviron=False,
+                        command=['perl', 'Tools/Scripts/build-webkit', '--release', '--wpe'],
                         )
             + 0,
         )
@@ -499,6 +608,7 @@ class TestCompileWebKit(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'debug')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-webkit', '--debug'],
                         )
             + ExpectShell.log('stdio', stdout='1 error generated.')
@@ -523,6 +633,7 @@ class TestCompileWebKitToT(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('patchFailedToBuild', True)
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-webkit', '--release'],
                         )
             + 0,
@@ -537,6 +648,7 @@ class TestCompileWebKitToT(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('patchFailedTests', True)
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-webkit', '--debug'],
                         )
             + ExpectShell.log('stdio', stdout='1 error generated.')
@@ -595,6 +707,7 @@ class TestCompileJSCOnly(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'release')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-jsc', '--release'],
                         )
             + 0,
@@ -608,6 +721,7 @@ class TestCompileJSCOnly(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'debug')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-jsc', '--debug'],
                         )
             + ExpectShell.log('stdio', stdout='1 error generated.')
@@ -632,6 +746,7 @@ class TestCompileJSCOnlyToT(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('patchFailedToBuild', 'True')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-jsc', '--release'],
                         )
             + 0,
@@ -646,6 +761,7 @@ class TestCompileJSCOnlyToT(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('patchFailedToBuild', 'True')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['perl', 'Tools/Scripts/build-jsc', '--debug'],
                         )
             + ExpectShell.log('stdio', stdout='1 error generated.')
@@ -887,6 +1003,7 @@ class TestCheckOutSpecificRevision(BuildStepMixinAdditions, unittest.TestCase):
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         timeout=1200,
+                        logEnviron=False,
                         command=['git', 'checkout', '1a3425cb92dbcbca12a10aa9514f1b77c76dc26'],
                         )
             + 0,
@@ -901,6 +1018,7 @@ class TestCheckOutSpecificRevision(BuildStepMixinAdditions, unittest.TestCase):
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
                         timeout=1200,
+                        logEnviron=False,
                         command=['git', 'checkout', '1a3425cb92dbcbca12a10aa9514f1b77c76dc26'],
                         )
             + ExpectShell.log('stdio', stdout='Unexpected failure')
@@ -928,6 +1046,7 @@ class TestCleanWorkingDirectory(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(CleanWorkingDirectory())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['Tools/Scripts/clean-webkit'],
                         )
             + 0,
@@ -939,6 +1058,7 @@ class TestCleanWorkingDirectory(BuildStepMixinAdditions, unittest.TestCase):
         self.setupStep(CleanWorkingDirectory())
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['Tools/Scripts/clean-webkit'],
                         )
             + ExpectShell.log('stdio', stdout='Unexpected failure.')
@@ -962,6 +1082,7 @@ class TestUnApplyPatchIfRequired(BuildStepMixinAdditions, unittest.TestCase):
         self.expectHidden(False)
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['Tools/Scripts/clean-webkit'],
                         )
             + 0,
@@ -975,6 +1096,7 @@ class TestUnApplyPatchIfRequired(BuildStepMixinAdditions, unittest.TestCase):
         self.expectHidden(False)
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['Tools/Scripts/clean-webkit'],
                         )
             + ExpectShell.log('stdio', stdout='Unexpected failure.')
@@ -1430,6 +1552,7 @@ class TestArchiveTestResults(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'release')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['python', 'Tools/BuildSlaveSupport/test-result-archive', '--platform=ios-simulator',  '--release', 'archive'],
                         )
             + 0,
@@ -1444,6 +1567,7 @@ class TestArchiveTestResults(BuildStepMixinAdditions, unittest.TestCase):
         self.setProperty('configuration', 'debug')
         self.expectRemoteCommands(
             ExpectShell(workdir='wkdir',
+                        logEnviron=False,
                         command=['python', 'Tools/BuildSlaveSupport/test-result-archive', '--platform=mac',  '--debug', 'archive'],
                         )
             + ExpectShell.log('stdio', stdout='Unexpected failure.')

@@ -1,7 +1,7 @@
 <!DOCTYPE html><!-- webkit-test-runner [ useFlexibleViewport=true ] -->
 <html>
 <head>
-<title>This tests that we fire mouseout on synthetic click</title>
+<title>This tests that we fire mouseout on synthetic click when the quirk is on.</title>
 <script src="../../../../../resources/basic-gestures.js"></script>
 <style>
 #tapthis {
@@ -20,8 +20,10 @@
 async function test() {
     if (!window.testRunner || !testRunner.runUIScript)
         return;
-    if (window.internals)
+    if (window.internals) {
         internals.settings.setContentChangeObserverEnabled(true);
+        internals.settings.setShouldDispatchSyntheticMouseOutAfterSyntheticClick(true);
+    }
 
     testRunner.waitUntilDone();
     testRunner.dumpAsText();

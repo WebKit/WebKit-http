@@ -1,3 +1,904 @@
+2019-07-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Inline runs should be relative to the line's top/left initially
+        https://bugs.webkit.org/show_bug.cgi?id=199157
+        <rdar://problem/52053415>
+
+        Reviewed by Antti Koivisto.
+
+        Let's construct the runs relative to the line's top/left and convert them relative to the formatting root's border box top/left
+        when the line is being closed. When the line moves (floats etc) we don't have to move each runs individually.
+
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::close):
+        (WebCore::Layout::Line::moveLogicalLeft):
+        (WebCore::Layout::Line::appendInlineContainerStart):
+        (WebCore::Layout::Line::appendTextContent):
+        (WebCore::Layout::Line::appendNonReplacedInlineBox):
+        (WebCore::Layout::Line::appendHardLineBreak):
+
+2019-07-05  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r244218): desmos.com: Cannot scroll formulas region when region is scrollable
+        https://bugs.webkit.org/show_bug.cgi?id=199508
+        <rdar://problem/50925173>
+
+        Reviewed by Zalan Bujtas.
+
+        The page invokes preventDefault on simulated mouse events which stops scrolling.
+        To fix, add a quirk that turns simulated mouse events non-cancelable.
+
+        * dom/MouseEvent.h:
+        * dom/ios/MouseEventIOS.cpp:
+        (WebCore::MouseEvent::create):
+        * page/Quirks.cpp:
+        (WebCore::Quirks::simulatedMouseEventTypeForTarget const):
+        (WebCore::Quirks::shouldDispatchSimulatedMouseEventsOnTarget const): Deleted.
+
+        To avoid adding more similar functions, and for future flexibility, make this one return the type too.
+
+        * page/Quirks.h:
+
+2019-07-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Empty text node should generate empty InlineTextItem
+        https://bugs.webkit.org/show_bug.cgi?id=199495
+        <rdar://problem/52643225>
+
+        Reviewed by Antti Koivisto.
+
+        Empty text nodes generate empty RenderText renderers but they don't generate inline boxes.
+        This patch aligns LFC with the current rendering code.
+
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::appendTextContent):
+        * layout/inlineformatting/InlineTextItem.cpp:
+        (WebCore::Layout::InlineTextItem::createAndAppendTextItems):
+
+2019-07-05  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [ATK] Do not use C linkage for functions using C++ features
+        https://bugs.webkit.org/show_bug.cgi?id=199510
+        <rdar://problem/52674702>
+
+        Reviewed by Carlos Garcia Campos.
+
+        No new tests needed.
+
+        * accessibility/atk/WebKitAccessible.h: Move function and type declarations involving
+        C++ features outside of the block delimited by the G_BEGIN_DECLS and G_END_DECLS macros,
+        which were setting the C linkage.
+
+2019-07-05  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Respect pointer capture when dispatching mouse boundary events and updating :hover
+        https://bugs.webkit.org/show_bug.cgi?id=198999
+        <rdar://problem/51979477>
+
+        Reviewed by Dean Jackson.
+
+        Up until now, we would not account for pointer capture (see ​https://w3c.github.io/pointerevents/#pointer-capture) when dispatching
+        mouse boundary events (mouseover, mouseout, mouseenter, mouseleave) and their counterpart pointer events. We would also not account
+        for it when updating :hover styles.
+
+        Now, when pointer capture changes for an element, we call setCapturingMouseEventsElement() on the EventHandler such that the element
+        that would naturally hit-test is overridden by the pointer capture element when identifying which target to use for the dispatch of
+        boundary mouse events. Additionally, when calling Document::prepareMouseEvent(), we also use the pointer capture element to
+        pass down to Document::updateHoverActiveState() such that :hover styles are applied to the correct element.
+
+        * dom/Document.cpp:
+        (WebCore::Document::prepareMouseEvent): When a new event is going to be dispatched, we must run the Process Pending Capture Element
+        steps as mandated by the Pointer Events spec. Calling this will dispatch the appropriate pointer capture change events and also
+        required boundary events since EventHandler::setCapturingMouseEventsElement() calls into EventHandler::updateMouseEventTargetNode().
+        Since this may update the capturing mouse events element, we ensure that we call updateHoverActiveState() with a flag that indicates that.
+        Finally, we use the capturing mouse events element instead of the hit-testing element to pass to updateHoverActiveState() to ensure
+        that is has :hover styles applied.
+        (WebCore::Document::updateHoverActiveState): Account for the new CaptureChange flag to force the invalidation of the :hover and :active
+        elements chain at all times when the capturing mouse events element changed.
+        * dom/Document.h:
+        * dom/PointerEvent.h: Update PointerEvent::createForPointerCapture() to take specific parameters rather than a single PointerEvent to
+        set the pointerId, isPrimary and pointerType properties of the generated event. This is required to call processPendingPointerCapture()
+        outside of PointerEvent dispatch logic since we now call it from Document::prepareMouseEvent() where we haven't yet generated such an
+        event.
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::pointerCaptureElementDidChange): When a new pointer capture element is set, call updateMouseEventTargetNode()
+        to ensure that boundary events are fired to indicate the pointer capture state change.
+        (WebCore::EventHandler::prepareMouseEvent): Keep track of the last PlatformMouseEvent used to prepare a mouse event so that we can use
+        it when setCapturingMouseEventsElement() is called.
+        * page/EventHandler.h:
+        * page/PointerCaptureController.cpp:
+        (WebCore::PointerCaptureController::pointerCaptureElement): Since Document::prepareMouseEvent() needs to know the current pointer capture
+        element, add a new public method that indicates the pointer capture element if that element is contained in the provided document. We need
+        to provide the document since PointerCaptureController is owned by the Page and may manage several documents.
+        (WebCore::PointerCaptureController::dispatchEvent): Only run the Process Pending Capture Element steps when dealing with a touch or pen
+        event since those steps are already ran for mouse events in Document::prepareMouseEvent(). Additionally, since the element target is already
+        set to be the pointer capture element with the changes made to processPendingPointerCapture(), and because on iOS pointer capture is always
+        active, we can remove the code that would retarget the event to the pointer capture element.
+        (WebCore::PointerCaptureController::pointerEventWasDispatched):
+        (WebCore::PointerCaptureController::cancelPointer):
+        (WebCore::PointerCaptureController::processPendingPointerCapture): We now call into EventHandler::setCapturingMouseEventsElement() when the
+        capture target element changes. We must be careful to call this method prior to dispatching the "gotpointercapture" event and after dispatching
+        the "lostpointercapture" event so that boundary events are fired at the right time.
+        * page/PointerCaptureController.h:
+
+2019-07-04  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] didFinishTransition triggers a nested style recalc via isConsideredClickable
+        https://bugs.webkit.org/show_bug.cgi?id=199506
+        <rdar://problem/52656221>
+
+        Reviewed by Ryosuke Niwa.
+
+        isConsideredClickable() may trigger style update through Node::computeEditability. Let's adjust the observer state in the next runloop. 
+
+        Test: fast/events/touch/ios/content-observation/animation-end-with-visiblity-change-and-recursive-update-style.html
+
+        * page/ios/ContentChangeObserver.cpp:
+        (WebCore::ContentChangeObserver::didFinishTransition):
+        * page/ios/ContentChangeObserver.h:
+
+2019-07-04  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Limit mouseOut dispatching after synthetic click to YouTube.com
+        https://bugs.webkit.org/show_bug.cgi?id=199497
+        <rdar://problem/52361019>
+
+        Reviewed by Wenson Hsieh.
+
+        r242798 introduced synthetic mouseOut dispatching soon after sythentic click to dismiss certain type of content (e.g. video control bar on YouTube).
+        However on many sites, it resulted in dismissing useful content, like menu panes and other, non-clickable but informative content.
+        This patch limits the mouseOut dispatching to YouTube.com.
+
+        Test: fast/events/touch/ios/content-observation/mouse-out-event-should-not-fire-on-click.html
+
+        * page/Quirks.cpp:
+        (WebCore::Quirks::needsYouTubeMouseOutQuirk const):
+        * page/Quirks.h:
+        * page/Settings.yaml:
+        * testing/InternalSettings.cpp:
+        (WebCore::InternalSettings::Backup::Backup):
+        (WebCore::InternalSettings::Backup::restoreTo):
+        (WebCore::InternalSettings::setShouldDispatchSyntheticMouseOutAfterSyntheticClick):
+        * testing/InternalSettings.h:
+        * testing/InternalSettings.idl:
+
+2019-07-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247127.
+
+        Broke the watchOS build.
+
+        Reverted changeset:
+
+        "[WHLSL] Remove the phase resolveCallsInFunctions"
+        https://bugs.webkit.org/show_bug.cgi?id=199474
+        https://trac.webkit.org/changeset/247127
+
+2019-07-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Some layers inside overflow:scroll don't move back to correct positions when the contents are shrunk
+        https://bugs.webkit.org/show_bug.cgi?id=199464
+        rdar://problem/52613285
+
+        Reviewed by Sam Weinig.
+        
+        When an overflow scroller's content shrink and it becomes non-scrollable, the 'boundsOrigin' in
+        the ancestor clipping stacks of related layers wouldn't get reset to zero, leaving layers in
+        the wrong place, so always set boundsOrigin to zero on the clipping layers of non-overflow entries
+        in the ancestor clipping stack.
+
+        Test: compositing/scrolling/async-overflow-scrolling/become-non-scrollable-with-child.html
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateGeometry):
+
+2019-07-04  Konstantin Tokarev  <annulen@yandex.ru>
+
+        HyphenationLibHyphen: Include GLib-related headers only for PLATFORM(GTK)
+        https://bugs.webkit.org/show_bug.cgi?id=199469
+
+        Reviewed by Michael Catanzaro.
+
+        Also added compile guard for a couple of functions used only in GTK port.
+
+        * platform/text/hyphen/HyphenationLibHyphen.cpp:
+
+2019-07-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MSE] Add more debug and error logging
+        https://bugs.webkit.org/show_bug.cgi?id=199473
+        <rdar://problem/52615882>
+
+        Reviewed by Jer Noble.
+
+        * Modules/mediasource/SourceBuffer.cpp:
+        (WebCore::SourceBuffer::provideMediaData): Log if we don't enqueue every buffer.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::playInternal): Log if we return
+        without starting playback.
+
+        * platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm:
+        (WebCore::SourceBufferPrivateAVFObjC::enqueueSample): Log if 
+        prerollDecodeWithCompletionHandler fails.
+
+2019-07-03  Simon Fraser  <simon.fraser@apple.com>
+
+        RELEASE_ASSERT in WebCore: WebCore::ScrollingStateTree::insertNode()
+        https://bugs.webkit.org/show_bug.cgi?id=199479
+        rdar://problem/52392556
+
+        Reviewed by Zalan Bujtas.
+        
+        Certain compositing tree updates could leave a layer with a ScrollingProxy role, but having an
+        AncestorClippingStack with no overflow scrolling layers - for example, a related scroller could become
+        scrollable, but we failed to mark the layer with the ancestor clippings stack as needing a geometry update.
+
+        When this happened updateScrollingNodeForScrollingProxyRole() would return 0, causing the next child to be
+        inserted with a parent of 0 (which should only happen for the root), and triggering a release assert in
+        ScrollingStateTree::insertNode().
+
+        Fix by ensuring that updateScrollingNodeForScrollingProxyRole() always returns the existing parentNodeID if we
+        don't have a new node to insert.
+
+        Test: scrollingcoordinator/scrolling-tree/scrolling-proxy-with-no-scrolling-layer.html
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateAncestorClippingStack):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::updateScrollingNodeForScrollingProxyRole):
+
+2019-07-03  Konstantin Tokarev  <annulen@yandex.ru>
+
+        RenderLayerCompositor.cpp should include RenderImage.h
+        https://bugs.webkit.org/show_bug.cgi?id=199478
+
+        Reviewed by Michael Catanzaro.
+
+        * rendering/RenderLayerCompositor.cpp:
+
+2019-07-03  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Remove the phase resolveCallsInFunctions
+        https://bugs.webkit.org/show_bug.cgi?id=199474
+
+        Reviewed by Myles C. Maxfield.
+
+        This pass only stores into each property access and call expression vectors of all the functions it might be calling, for use by the Checker afterwards.
+        But the checker is perfectly able to compute a pointer to these vectors by itself.
+        So by removing this pass, we gain the following:
+        - One less pass over the AST
+        - No need to copy these vectors (which can be large for heavily overloaded functions, of which there are quite a few in the stdlib)
+        - No need to have these vectors in the expressions, saving 24 bytes per CallExpression and 72 bytes per PropertyAccessExpression
+        - No need to allocate and then destroy these vectors.
+
+        No new tests as there is no intended functional change.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLCallExpression.h:
+        (WebCore::WHLSL::AST::CallExpression::castReturnType):
+        * Modules/webgpu/WHLSL/AST/WHLSLPropertyAccessExpression.h:
+        * Modules/webgpu/WHLSL/WHLSLAutoInitializeVariables.cpp:
+        (WebCore::WHLSL::AutoInitialize::visit):
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::resolveFunction):
+        (WebCore::WHLSL::Checker::finishVisiting):
+        (WebCore::WHLSL::Checker::visit):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.cpp:
+        (WebCore::WHLSL::NameResolver::NameResolver):
+        (WebCore::WHLSL::NameResolver::visit):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.h:
+        * Modules/webgpu/WHLSL/WHLSLPrepare.cpp:
+        (WebCore::WHLSL::prepareShared):
+
+2019-07-03  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Make the destructor of VariableDeclaration non-virtual
+        https://bugs.webkit.org/show_bug.cgi?id=199460
+
+        Reviewed by Myles C. Maxfield.
+
+        Three steps:
+        - Remove WHLSL::AST::Value, inlining it into its children (it is trivial, it just has one field m_origin with a getter and nothing else)
+        - Mark WHLSL::AST::VariableDeclaration final
+        - Now that it inherits from nothing and nothing can inherit from it, there is no reason for it to have any virtual method, including its destructor.
+
+        This not only saves 8 bytes from every variable declaration (for the virtual table pointer), it also should make destructing the AST at the end of compilation a bit faster by removing the virtual destructor call.
+
+        No new tests as there is no intended functional change.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLAST.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLExpression.h:
+        (WebCore::WHLSL::AST::Expression::Expression):
+        (WebCore::WHLSL::AST::Expression::origin const):
+        * Modules/webgpu/WHLSL/AST/WHLSLStatement.h:
+        (WebCore::WHLSL::AST::Statement::Statement):
+        (WebCore::WHLSL::AST::Statement::origin const):
+        * Modules/webgpu/WHLSL/AST/WHLSLValue.h: Removed.
+        * Modules/webgpu/WHLSL/AST/WHLSLVariableDeclaration.h:
+        * Modules/webgpu/WHLSL/WHLSLParser.h:
+        * WebCore.xcodeproj/project.pbxproj:
+
+2019-07-03  Sihui Liu  <sihui_liu@apple.com>
+
+        Only allow fetching and removing session credentials from WebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=199385
+
+        Reviewed by Alex Christensen.
+
+        Fetch and remove only session credentials from NSURLCredentialStorage.
+
+        Modified existing API tests: WKWebsiteDataStore.FetchPersistentCredentials
+
+        * platform/network/CredentialStorage.cpp:
+        (WebCore::CredentialStorage::originsWithCredentials const):
+        (WebCore::CredentialStorage::originsWithSessionCredentials):
+        (WebCore::CredentialStorage::removeSessionCredentialsWithOrigins):
+        (WebCore::CredentialStorage::clearSessionCredentials):
+        * platform/network/CredentialStorage.h:
+        * platform/network/mac/CredentialStorageMac.mm:
+        (WebCore::CredentialStorage::originsWithSessionCredentials):
+        (WebCore::CredentialStorage::removeSessionCredentialsWithOrigins):
+        (WebCore::CredentialStorage::clearSessionCredentials):
+        (WebCore::CredentialStorage::originsWithPersistentCredentials): Deleted.
+
+2019-07-03  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        The destructor of CSSAnimationControllerPrivate must explicitly clear the composite animations
+        https://bugs.webkit.org/show_bug.cgi?id=199415
+
+        Reviewed by Simon Fraser.
+
+        After the destructor of CSSAnimationControllerPrivate exists, the non
+        static members are deleted. When the HashMap m_compositeAnimations is
+        deleted, its entries are deleted. The destructor of CompositeAnimation
+        calls the method CSSAnimationControllerPrivate::animationWillBeRemoved()
+        back through its back reference m_animationController. The non static
+        members of CSSAnimationControllerPrivate are being deleted and it is
+        incorrect to try to use any of these members after exiting the destructor.
+
+        We need to explicitly clear the composite animations before exiting the 
+        destructor of CSSAnimationControllerPrivate.
+
+        * page/animation/CSSAnimationController.cpp:
+        (WebCore::CSSAnimationControllerPrivate::~CSSAnimationControllerPrivate):
+
+2019-07-03  Jer Noble  <jer.noble@apple.com>
+
+        HTMLMediaElement can hold onto display sleep assertion while process is suspended.
+        https://bugs.webkit.org/show_bug.cgi?id=199471
+        <rdar://problem/52124320>
+
+        If the WebContent process is suspended before HTMLMediaElement gets a callback telling it
+        that the MediaPlayer has stopped playing, the SleepDisabler may stay set (and hold a display
+        or system sleep assertion) for the entire duration the process is suspended, causing excess
+        power drain.
+
+        Add a PlatformMediaSessionClient method (and an implementation in HTMLMediaElement) which will
+        be called during the preperation for process suspension, and in this callback, clear the
+        SleepDisabler token.
+
+        Reviewed by Eric Carlson.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::shouldDisableSleep const):
+        (WebCore::HTMLMediaElement::processIsSuspendedChanged):
+        * html/HTMLMediaElement.h:
+        * platform/audio/PlatformMediaSession.h:
+        (WebCore::PlatformMediaSessionClient::processIsSuspendedChanged):
+        * platform/audio/PlatformMediaSessionManager.cpp:
+        (WebCore::PlatformMediaSessionManager::processWillSuspend):
+        (WebCore::PlatformMediaSessionManager::processDidResume):
+        * platform/audio/PlatformMediaSessionManager.h:
+        (WebCore::PlatformMediaSessionManager::processIsSuspended const):
+
+2019-07-03  Jonathan Bedard  <jbedard@apple.com>
+
+        [Catalina] Enable WebKit build
+        https://bugs.webkit.org/show_bug.cgi?id=199209
+
+        Reviewed by Darin Adler.
+
+        No new tests, Catalina test expectations will be migrated in the near future.
+
+        * WebCorePrefix.h: Exclude the header which declares SecTrustedApplicationCreateFromPath unavailable on Mac.
+        * crypto/mac/SerializedCryptoKeyWrapMac.mm: Ensure that we define SecTrustedApplicationCreateFromPath
+        before other headers declare it unavailable on Mac.
+
+2019-07-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Standard library is too big to directly include in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=198186
+        <rdar://problem/51288898>
+
+        Reviewed by Saam Barati.
+
+        This patch adds almost the entire remainder of the standard library. There are a few
+        pieces missing:
+        - step() because of https://bugs.webkit.org/show_bug.cgi?id=199289
+        - sign() also because of https://bugs.webkit.org/show_bug.cgi?id=199289
+        - faceforward() because it calls sign()
+        - Some of the more rarely-used texturing functions (e.g. Gather()) https://bugs.webkit.org/show_bug.cgi?id=195813
+        - RWTextures https://bugs.webkit.org/show_bug.cgi?id=198985
+
+        There were two problems with adding so many standard library functions:
+        - We didn't want to increase the WebCore binary size that much
+        - Compiling all the functions at runtime took 7 seconds, which is much too long
+
+        This patch addresses the first problem by gzipping the standard library before including it in the binary.
+        At runtime, we use libcompression to unzip it.
+
+        To address the second problem, we did some analysis and found that 14% of that 7 seconds was simply
+        destroying all the AST nodes. Even if we eliminated all processing of the AST, simply having the AST
+        of the entire standard library built and destroyed would still be too slow. Therefore, this patch limits
+        which parts of the standard library get parsed in the first place. All the functions in the standard library
+        file are sorted by name, and each group of functions with the same name are preceeded by a comment of the
+        form /* Functions named xyz */. At build time, a Python script looks for all these comments, and builds a
+        map from function name to character offset inside the file where those functions begin. At run time, we
+        parse the user program first, look for all function calls within it, and look up those function call names
+        in the map to see which part of the standard library holds those functions. We then parse just that part.
+        Because the standard library can call other functions in the standard library, we do this in a loop until
+        we have exhausted all the functions.
+
+        Covered by existing tests.
+
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make: gzip the standard library, and add a build step to generate the offset map.
+        * Modules/webgpu/WHLSL/AST/WHLSLCallExpression.h:
+        (WebCore::WHLSL::AST::CallExpression::setOverloads):
+        (WebCore::WHLSL::AST::CallExpression::function): Every caller of this ASSERT()s the result. Might as well
+        move the ASSERT() into the function.
+        (WebCore::WHLSL::AST::CallExpression::setFunction):
+        * Modules/webgpu/WHLSL/Cocoa/WHLSLStandardLibraryUtilities.cpp: Added.
+        (WebCore::WHLSL::decompressStandardLibrary): Use libcompression. This is why this file is in a Cocoa/
+        subfolder, and is listed in SourcesCocoa.txt instead of Sources.txt.
+        (WebCore::WHLSL::decompressAndDecodeStandardLibrary):
+        (WebCore::WHLSL::NameFinder::takeFunctionNames):
+        (WebCore::WHLSL::includeStandardLibrary): Include only the bits of the standard library which are relevant,
+        as described above.
+        * Modules/webgpu/WHLSL/Metal/WHLSLFunctionWriter.cpp: Only emit MSL code for functions which are actually
+        reached. The MSL compiler is a significant amount of our compile time, so reducing the size of the emitted
+        program can significantly improve compile times.
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::visit):
+        (WebCore::WHLSL::Metal::sharedMetalFunctions):
+        (WebCore::WHLSL::Metal::metalFunctions):
+        * Modules/webgpu/WHLSL/Metal/WHLSLNativeFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::writeNativeFunction):
+        - Change how load() and store() are written. We need explicit functions because we have explicit atomic
+          types, which HLSL doesn't have. load() and store() aren't present in HLSL.
+        - Delete f16tof32 because they're probably not important and are not obvious how to implement. We can re-add
+          them again later if necessary.
+        - Various fixes to make us generate the correct MSL code for each standard library function.
+        * Modules/webgpu/WHLSL/WHLSLBuildStandardLibraryFunctionMap.py: Added. Build the function map as described
+        above.
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::resolveByInstantiation): Previously, the standard library included an operator== for two
+        pointers. However, that function should be generated by the compiler instead. This fixes the bug in the
+        compiler which allows the compiler to correctly generate the right function. This also prompted me to file
+        https://bugs.webkit.org/show_bug.cgi?id=199335
+        (WebCore::WHLSL::checkOperatorOverload):
+        (WebCore::WHLSL::Checker::visit):
+        * Modules/webgpu/WHLSL/WHLSLFunctionStageChecker.cpp: Update to the new function() signature.
+        * Modules/webgpu/WHLSL/WHLSLLexer.h: Add a new position() method to the lexer. This isn't actually used
+        in this patch, but it's useful when doing some analysis during parsing. 
+        (WebCore::WHLSL::Lexer::Lexer):
+        (WebCore::WHLSL::Lexer::consumeToken):
+        (WebCore::WHLSL::Lexer::peek const):
+        (WebCore::WHLSL::Lexer::peekFurther const):
+        (WebCore::WHLSL::Lexer::position const):
+        (WebCore::WHLSL::Lexer::state const):
+        (WebCore::WHLSL::Lexer::setState):
+        (WebCore::WHLSL::Lexer::isFullyConsumed const): Fixes a bug where isFullyConsumed() might return true even
+        when there is a token in the ring buffer.
+        (WebCore::WHLSL::Lexer::peek): Deleted.
+        (WebCore::WHLSL::Lexer::peekFurther): Deleted.
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.cpp:
+        (WebCore::WHLSL::NameResolver::visit): Drive-by partial fix of https://bugs.webkit.org/show_bug.cgi?id=199347
+        * Modules/webgpu/WHLSL/WHLSLPrepare.cpp: Call includeStandardLibrary().
+        (WebCore::WHLSL::prepareShared):
+        * Modules/webgpu/WHLSL/WHLSLPreserveVariableLifetimes.cpp:
+        * Modules/webgpu/WHLSL/WHLSLRecursionChecker.cpp:
+        * Modules/webgpu/WHLSL/WHLSLStandardLibrary.txt:
+        * Modules/webgpu/WHLSL/WHLSLStandardLibraryFunctionMap.h: Copied from Source/WebCore/Modules/webgpu/WHLSL/WHLSLRecursionChecker.cpp.
+        * Modules/webgpu/WHLSL/WHLSLStandardLibraryUtilities.h: Copied from Source/WebCore/Modules/webgpu/WHLSL/WHLSLRecursionChecker.cpp.
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+
+2019-07-03  Jer Noble  <jer.noble@apple.com>
+
+        Exception thrown from -[AVSampleBufferRenderSynchronizer addRenderer:], not a valid renderer.
+        https://bugs.webkit.org/show_bug.cgi?id=199419
+        <rdar://problem/52141139>
+
+        Reviewed by Eric Carlson.
+
+        Sometimes, -[AVSampleBufferDisplayLayer init] will return nil. When that happens, passing a nil
+        pointer to -addRenderer: will throw an exception.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::ensureLayer):
+
+2019-07-03  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] "Semantic" should be held by a unique_ptr, not an Optional
+        https://bugs.webkit.org/show_bug.cgi?id=199462
+
+        Reviewed by Myles C. Maxfield.
+
+        Most StructureElement, FunctionDeclaration and (especially) VariableDeclaration don't have a 'Semantic' field.
+        Using an Optional<Semantic> to represent this is a major memory waste, as Semantic is 56 bytes, so Optional<Semantic> is 64 bytes!
+        Putting one level of indirection through a unique_ptr thus saves 56 bytes for each VariableDeclaration (and FunctionDeclaration and StructureElement) that does not have a Semantic,
+        at the low cost of one pointer dereference when accessing the field for those that have one.
+
+        This patch also reorders the fields of FunctionDefinition to save another 8 bytes.
+
+        No new tests as there is no intended functional change.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLFunctionDeclaration.h:
+        (WebCore::WHLSL::AST::FunctionDeclaration::FunctionDeclaration):
+        (WebCore::WHLSL::AST::FunctionDeclaration::semantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLReadModifyWriteExpression.h:
+        (WebCore::WHLSL::AST::ReadModifyWriteExpression::ReadModifyWriteExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLStructureElement.h:
+        (WebCore::WHLSL::AST::StructureElement::StructureElement):
+        (WebCore::WHLSL::AST::StructureElement::semantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLVariableDeclaration.h:
+        (WebCore::WHLSL::AST::VariableDeclaration::VariableDeclaration):
+        (WebCore::WHLSL::AST::VariableDeclaration::semantic):
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::resolveWithOperatorAnderIndexer):
+        (WebCore::WHLSL::resolveWithOperatorLength):
+        (WebCore::WHLSL::resolveWithReferenceComparator):
+        * Modules/webgpu/WHLSL/WHLSLGatherEntryPointItems.cpp:
+        (WebCore::WHLSL::Gatherer::visit):
+        (WebCore::WHLSL::gatherEntryPointItems):
+        * Modules/webgpu/WHLSL/WHLSLParser.cpp:
+        (WebCore::WHLSL::Parser::parseSemantic):
+        * Modules/webgpu/WHLSL/WHLSLParser.h:
+        * Modules/webgpu/WHLSL/WHLSLPreserveVariableLifetimes.cpp:
+        (WebCore::WHLSL::preserveVariableLifetimes):
+        * Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp:
+        (WebCore::WHLSL::wrapAnderCallArgument):
+        (WebCore::WHLSL::modify):
+        (WebCore::WHLSL::PropertyResolver::visit):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeArrayOperatorLength.cpp:
+        (WebCore::WHLSL::synthesizeArrayOperatorLength):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeConstructors.cpp:
+        (WebCore::WHLSL::synthesizeConstructors):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeEnumerationFunctions.cpp:
+        (WebCore::WHLSL::synthesizeEnumerationFunctions):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeStructureAccessors.cpp:
+        (WebCore::WHLSL::synthesizeStructureAccessors):
+
+2019-07-03  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] WHLSL::AST::Node is useless
+        https://bugs.webkit.org/show_bug.cgi?id=199391
+
+        Reviewed by Dean Jackson.
+
+        It has no member, no non-trivial method, and we never access an AST node completely generically.
+        So WHLSL::AST::Node can be removed, as a first step towards removing the virtual table pointer from most AST nodes (and avoiding a virtual destructor call at the end of the compiler).
+
+        No new test because there is no functional change.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLAST.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLBaseFunctionAttribute.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLBaseSemantic.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLEnumerationMember.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLFunctionDeclaration.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLNamedType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLReplaceWith.h: Renamed from Source/WebCore/Modules/webgpu/WHLSL/AST/WHLSLNode.h.
+        (WebCore::WHLSL::AST::replaceWith):
+        * Modules/webgpu/WHLSL/AST/WHLSLStructureElement.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLTypeDefinition.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLUnnamedType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLValue.h:
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.cpp:
+        * Modules/webgpu/WHLSL/WHLSLParser.h:
+        * Modules/webgpu/WHLSL/WHLSLPreserveVariableLifetimes.cpp:
+        * Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp:
+        * WebCore.xcodeproj/project.pbxproj:
+
+2019-07-03  Youenn Fablet  <youenn@apple.com>
+
+        Strengthen updating/removing of registrations from the database
+        https://bugs.webkit.org/show_bug.cgi?id=199450
+        rdar://problem/51891395
+
+        Reviewed by Chris Dumez.
+
+        SWServerWorker is ref counted and has a ref to its SWServer.
+        There is thus a possibility for SWServerWorker to live longer than its SWServer.
+        To mitigate this, have SWServerWorker use a WeakPtr<SWServer> and
+        check whether SWServer is null when receiving messages from WebProcess.
+        Make also sure that RegistrationStore updated registration map does not get corrupted by checking
+        the registration keys explicitly.
+
+        Covered by existing tests.
+
+        * workers/service/ServiceWorkerRegistrationKey.h:
+        (WebCore::ServiceWorkerRegistrationKey::operator!= const):
+        (WebCore::ServiceWorkerRegistrationKey::isEmpty const):
+        * workers/service/server/RegistrationStore.cpp:
+        (WebCore::RegistrationStore::updateRegistration):
+        (WebCore::RegistrationStore::removeRegistration):
+        (WebCore::RegistrationStore::addRegistrationFromDatabase):
+        * workers/service/server/RegistrationStore.h:
+        * workers/service/server/SWServer.cpp:
+        (WebCore::SWServer::workerByID const):
+        (WebCore::SWServer::removeRegistration):
+        * workers/service/server/SWServer.h:
+        * workers/service/server/SWServerWorker.cpp:
+        (WebCore::SWServerWorker::SWServerWorker):
+        (WebCore::m_scriptResourceMap):
+        (WebCore::SWServerWorker::contextData const):
+        (WebCore::SWServerWorker::terminate):
+        (WebCore::SWServerWorker::scriptContextFailedToStart):
+        (WebCore::SWServerWorker::scriptContextStarted):
+        (WebCore::SWServerWorker::didFinishInstall):
+        (WebCore::SWServerWorker::didFinishActivation):
+        (WebCore::SWServerWorker::contextTerminated):
+        (WebCore::SWServerWorker::findClientByIdentifier const):
+        (WebCore::SWServerWorker::matchAll):
+        (WebCore::SWServerWorker::userAgent const):
+        (WebCore::SWServerWorker::claim):
+        (WebCore::SWServerWorker::skipWaiting):
+        (WebCore::SWServerWorker::setHasPendingEvents):
+        (WebCore::SWServerWorker::setState):
+        * workers/service/server/SWServerWorker.h:
+        (WebCore::SWServerWorker::server):
+
+2019-07-03  Sam Weinig  <weinig@apple.com>
+
+        Adopt simple structured bindings in more places
+        https://bugs.webkit.org/show_bug.cgi?id=199247
+
+        Reviewed by Alex Christensen.
+
+        Replaces simple uses of std::tie() with structured bindings. Does not touch
+        uses of std::tie() that are not initial declarations, use std::ignore or in
+        case where the binding is captured by a lambda, as structured bindings don't
+        work for those cases yet.
+
+        * css/StyleResolver.cpp:
+        (WebCore::checkForOrientationChange):
+        * page/csp/ContentSecurityPolicy.cpp:
+        (WebCore::ContentSecurityPolicy::allowInlineScript const):
+        (WebCore::ContentSecurityPolicy::allowInlineStyle const):
+        * platform/graphics/ComplexTextController.cpp:
+        (WebCore::ComplexTextController::adjustGlyphsAndAdvances):
+        * platform/graphics/PathUtilities.cpp:
+        (WebCore::PathUtilities::pathWithShrinkWrappedRectsForOutline):
+        * platform/graphics/WidthIterator.cpp:
+        (WebCore::WidthIterator::advanceInternal):
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::FontCache::createFontPlatformData):
+        (WebCore::FontCache::systemFallbackForCharacters):
+        (WebCore::FontCache::lastResortFallbackFont):
+        * platform/graphics/cocoa/FontFamilySpecificationCoreText.cpp:
+        (WebCore::FontFamilySpecificationCoreText::fontRanges const):
+        * platform/network/SocketStreamHandleImpl.cpp:
+        (WebCore::cookieDataForHandshake):
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::selectionState):
+        (WebCore::createMarkedTextFromSelectionInBox):
+        * rendering/svg/SVGInlineTextBox.cpp:
+        (WebCore::SVGInlineTextBox::paintSelectionBackground):
+        * style/StyleResolveForDocument.cpp:
+        (WebCore::Style::resolveForDocument):
+        * svg/animation/SVGSMILElement.cpp:
+        (WebCore::SVGSMILElement::constructAttributeName const):
+
+2019-07-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (iOS 13): Tapping an element with a click event handler no longer clears the selection
+        https://bugs.webkit.org/show_bug.cgi?id=199430
+
+        Reviewed by Tim Horton.
+
+        After <trac.webkit.org/r245067>, we no longer immediately clear the text selection when recognizing a single tap
+        in WKContentView, and instead only clear it out in the case where the single tap didn't result in a click event
+        in the web process. This fixed an issue wherein the text selection would be prematurely cleared when tapping,
+        but also made it such that tapping on an element with a click event handler would not cause the selection to
+        change, even if preventDefault() is not called on mousedown. On web pages that add a click event listener to
+        `document.body`, it's nearly impossible to dismiss text selections by tapping elsewhere in the body.
+
+        On macOS, this works because EventHandler::handleMousePressEventSingleClick contains logic to modify the
+        selection when handling a mousedown, as a part of default behavior. However, there is platform-specific logic
+        added in <trac.webkit.org/r233311> that avoids changing the selection when handling a synthetic mousedown on
+        iOS; this is because we defer to the single tap text interaction gesture on iOS, which (among other things)
+        provides additional support for moving the selection to word boundaries, instead of the editing position
+        directly under the click.
+
+        However, no such platform-specific text interaction single tap gesture exists for non-editable text, so there's
+        no reason we need to bail in the case where the root editable element is null. We can fix this bug without
+        breaking the fix in r233311 by matching macOS behavior and not bailing via early return in the case where the
+        single tap would move selection into non-editable text.
+
+        Tests: editing/selection/ios/clear-selection-after-tapping-on-element-with-click-handler.html
+               editing/selection/ios/persist-selection-after-tapping-on-element-with-mousedown-handler.html
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::handleMousePressEventSingleClick):
+
+2019-07-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r246616.
+
+        Caused http/tests/inspector/network/har/har-page.html to fail
+        on Catalina.
+
+        Reverted changeset:
+
+        "Web Inspector: Network: replace CFNetwork SPI with new API
+        where able"
+        https://bugs.webkit.org/show_bug.cgi?id=198762
+        https://trac.webkit.org/changeset/246616
+
+2019-07-03  Andres Gonzalez  <andresg_22@apple.com>
+
+        Safari hanging while loading pages - WebCore::AccessibilityRenderObject::visiblePositionRangeForLine.
+        https://bugs.webkit.org/show_bug.cgi?id=199434
+        <rdar://problem/52475140>
+
+        Reviewed by Chris Fleizach.
+
+        Tests were disabled until underlying bug is fixed.
+
+        Rolling out a workaround for CharacterIterator::advance bug because it
+        seems to be causing a hang in Safari.
+        * editing/Editing.cpp:
+        (WebCore::visiblePositionForIndexUsingCharacterIterator):
+
+2019-07-02  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r246723): ScrollingTreeOverflowScrollProxyNode::m_overflowScrollingNodeID is uninitialized sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=199432
+
+        Reviewed by Antti Koivisto.
+        
+        I noticed while debugging rdar://problem/52291642 that m_overflowScrollingNodeID was uninitialized in
+        ScrollingTreeOverflowScrollProxyNode. This could lead to the wrong node being found by m_scrollingTree->nodeForID(),
+        which could result in type confusion bugs.
+        
+        This can happen with negative z-order layers when we fail to find their related scrolling tree node
+        on the first pass.
+
+        * page/scrolling/cocoa/ScrollingTreeOverflowScrollProxyNode.h:
+
+2019-07-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        FetchResponse::BodyLoader should not be movable
+        https://bugs.webkit.org/show_bug.cgi?id=199380
+
+        Reviewed by Youenn Fablet.
+
+        The FetchResponse::BodyLoader class has a FetchLoader member that is
+        initialized in the start() method with the reference of the owning
+        FetchResponse::BodyLoader object. This reference doesn't change when
+        the FetchResponse::BodyLoader object is moved into a different object
+        and the FetchLoader unique_ptr along with it, leading to problems when
+        that FetchLoader tries to invoke the FetchLoaderClient methods on the
+        FetchResponse::BodyLoader object that's been moved from and is possibly
+        already destroyed.
+
+        To avoid this, the FetchResponse::BodyLoader has the move constructor
+        removed and is now managed through std::unique_ptr instead of Optional,
+        ensuring the FetchResponse::BodyLoader object itself isn't moved around.
+
+        * Modules/fetch/FetchResponse.cpp:
+        (WebCore::FetchResponse::fetch):
+        (WebCore::FetchResponse::BodyLoader::didSucceed):
+        (WebCore::FetchResponse::BodyLoader::didFail):
+        * Modules/fetch/FetchResponse.h:
+
+2019-07-02  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Assertion fires when animating the 'class' attribute of an SVG element
+        https://bugs.webkit.org/show_bug.cgi?id=197372
+
+        Reviewed by Ryosuke Niwa.
+
+        All instances of SVG animated properties have to share a single animVal
+        such that once its value is progressed, all the instances will see the
+        change. This was not happening for SVGAnimatedPrimitiveProperty. To do
+        that we need to:
+
+        -- Introduce the new template class SVGSharedPrimitiveProperty which is
+           derived from SVGProperty. This class manages a single primitive value.
+        -- Change the type of SVGAnimatedPrimitiveProperty::m_animVal to
+           RefPtr<SVGSharedPrimitiveProperty<PropertyType>>. The master property
+           creates it and all the instances hold references to the same pointer.
+        -- Change the type of SVGAnimatedPrimitiveProperty::m_baseVal to
+           Ref<SVGSharedPrimitiveProperty<PropertyType>> for simplicity and get
+           rid of SVGAnimatedPrimitiveProperty::m_state.
+        -- Override the virtual methods instanceStartAnimation() and
+           instanceStopAnimation() of SVGAnimatedPrimitiveProperty.
+        -- SVGAnimatedStringAnimator should invalidate the style of the target
+           element if attribute name is 'class' and when its animVal changes.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * svg/properties/SVGAnimatedPrimitiveProperty.h:
+        (WebCore::SVGAnimatedPrimitiveProperty::setBaseVal):
+        (WebCore::SVGAnimatedPrimitiveProperty::setBaseValInternal):
+        (WebCore::SVGAnimatedPrimitiveProperty::baseVal const):
+        (WebCore::SVGAnimatedPrimitiveProperty::setAnimVal):
+        (WebCore::SVGAnimatedPrimitiveProperty::animVal const):
+        (WebCore::SVGAnimatedPrimitiveProperty::animVal):
+        (WebCore::SVGAnimatedPrimitiveProperty::currentValue const):
+        (WebCore::SVGAnimatedPrimitiveProperty::SVGAnimatedPrimitiveProperty):
+        (WebCore::SVGAnimatedPrimitiveProperty::ensureAnimVal):
+        * svg/properties/SVGAnimatedPropertyAnimatorImpl.h:
+        * svg/properties/SVGAttributeAnimator.cpp:
+        (WebCore::SVGAttributeAnimator::invalidateStyle):
+        (WebCore::SVGAttributeAnimator::applyAnimatedStylePropertyChange):
+        (WebCore::SVGAttributeAnimator::removeAnimatedStyleProperty):
+        * svg/properties/SVGAttributeAnimator.h:
+        * svg/properties/SVGSharedPrimitiveProperty.h: Added.
+        (WebCore::SVGSharedPrimitiveProperty::create):
+        (WebCore::SVGSharedPrimitiveProperty::value const):
+        (WebCore::SVGSharedPrimitiveProperty::value):
+        (WebCore::SVGSharedPrimitiveProperty::setValue):
+        (WebCore::SVGSharedPrimitiveProperty::SVGSharedPrimitiveProperty):
+
+2019-07-02  Andres Gonzalez  <andresg_22@apple.com>
+
+        Enhance support of aria-haspopup per ARIA 1.1 specification.
+        https://bugs.webkit.org/show_bug.cgi?id=199216
+        <rdar://problem/46221342>
+
+        Reviewed by Chris Fleizach.
+
+        Test button-with-aria-haspopup-role.html was expanded to cover testing
+        of new functionality.
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::popupValue const): replaces hasPopupValue.
+        (WebCore::AccessibilityObject::hasPopupValue const): Deleted.
+        * accessibility/AccessibilityObject.h:
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::hasPopup const): method rename.
+        * accessibility/atk/WebKitAccessible.cpp:
+        (webkitAccessibleGetAttributes): method rename.
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityPopupValue]):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityAttributeValue:]):
+
+2019-07-02  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Import bitwise bool tests
+        https://bugs.webkit.org/show_bug.cgi?id=199093
+
+        Reviewed by Myles C. Maxfield.
+
+        Add standard library functions for:
+        - bool bit ops
+        - converting from bool to number
+        - converting from number to bool
+
+        Test: webgpu/whlsl-bitwise-bool-ops.html
+
+        * Modules/webgpu/WHLSL/WHLSLStandardLibrary.txt:
+
+2019-07-02  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] Fix CookieJarCurl::getRawCookie.
+        https://bugs.webkit.org/show_bug.cgi?id=199300
+
+        Reviewed by Fujii Hironori.
+
+        On wincairo some cookie information was not displayed in WebInspector's storage tab as
+        CookieJarCurl::getRawCookies was calling CookieJarDB::searchCookies with wrong arguments.
+        This patch fixes it.
+
+        Test: http/tests/inspector/page/get-cookies.html
+
+        * platform/network/curl/CookieJarCurl.cpp:
+        (WebCore::CookieJarCurl::getRawCookies const):
+
 2019-07-02  Robin Morisset  <rmorisset@apple.com>
 
         [WHLSL] the initializer in VariableDeclaration should be a std::unique_ptr, not Optional<UniqueRef<..>>

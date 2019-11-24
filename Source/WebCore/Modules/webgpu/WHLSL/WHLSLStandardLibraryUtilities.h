@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,44 +23,23 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebProcessLifetimeObserver_h
-#define WebProcessLifetimeObserver_h
+#pragma once
 
-#include <wtf/HashCountedSet.h>
-#include <wtf/IteratorRange.h>
+#if ENABLE(WEBGPU)
 
-namespace IPC {
-class Connection;
-}
+#include <wtf/text/WTFString.h>
 
-namespace WebKit {
+namespace WebCore {
 
-class WebPageProxy;
-class WebProcessProxy;
+namespace WHLSL {
 
-class WebProcessLifetimeObserver {
-public:
-    WebProcessLifetimeObserver();
-    virtual ~WebProcessLifetimeObserver();
+class Parser;
+class Program;
 
-    void addWebPage(WebPageProxy&, WebProcessProxy&);
-    void removeWebPage(WebPageProxy&, WebProcessProxy&);
-
-    WTF::IteratorRange<HashCountedSet<WebProcessProxy*>::const_iterator::Keys> processes() const;
-
-    bool hasProcess(WebProcessProxy* process) const { return m_processes.contains(process); }
-
-private:
-    friend class WebProcessLifetimeTracker;
-
-    virtual void webProcessWillOpenConnection(WebProcessProxy&, IPC::Connection&) { }
-    virtual void webPageWillOpenConnection(WebPageProxy&, IPC::Connection&) { }
-    virtual void webPageDidCloseConnection(WebPageProxy&, IPC::Connection&) { }
-    virtual void webProcessDidCloseConnection(WebProcessProxy&, IPC::Connection&) { }
-
-    HashCountedSet<WebProcessProxy*> m_processes;
-};
+void includeStandardLibrary(Program&, Parser&);
 
 }
 
-#endif // WebProcessLifetimeObserver_h
+}
+
+#endif

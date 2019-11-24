@@ -32,7 +32,6 @@
 #include "WHLSLQualifier.h"
 #include "WHLSLSemantic.h"
 #include "WHLSLType.h"
-#include "WHLSLValue.h"
 #include <memory>
 #include <wtf/UniqueRef.h>
 #include <wtf/Vector.h>
@@ -44,11 +43,11 @@ namespace WHLSL {
 
 namespace AST {
 
-class VariableDeclaration : public Value {
-    using Base = Value;
+class VariableDeclaration final {
+// Final because we made the destructor non-virtual.
 public:
-    VariableDeclaration(Lexer::Token&& origin, Qualifiers&& qualifiers, Optional<UniqueRef<UnnamedType>>&& type, String&& name, Optional<Semantic>&& semantic, std::unique_ptr<Expression>&& initializer)
-        : Base(WTFMove(origin))
+    VariableDeclaration(Lexer::Token&& origin, Qualifiers&& qualifiers, Optional<UniqueRef<UnnamedType>>&& type, String&& name, std::unique_ptr<Semantic>&& semantic, std::unique_ptr<Expression>&& initializer)
+        : m_origin(WTFMove(origin))
         , m_qualifiers(WTFMove(qualifiers))
         , m_type(WTFMove(type))
         , m_name(WTFMove(name))
@@ -57,7 +56,7 @@ public:
     {
     }
 
-    virtual ~VariableDeclaration() = default;
+    ~VariableDeclaration() = default;
 
     VariableDeclaration(const VariableDeclaration&) = delete;
     VariableDeclaration(VariableDeclaration&&) = default;
@@ -74,7 +73,7 @@ public:
     }
     const Optional<UniqueRef<UnnamedType>>& type() const { return m_type; }
     UnnamedType* type() { return m_type ? &*m_type : nullptr; }
-    Optional<Semantic>& semantic() { return m_semantic; }
+    Semantic* semantic() { return m_semantic.get(); }
     Expression* initializer() { return m_initializer.get(); }
     bool isAnonymous() const { return m_name.isNull(); }
     std::unique_ptr<Expression> takeInitializer() { return WTFMove(m_initializer); }
@@ -84,12 +83,14 @@ public:
         ASSERT(expression);
         m_initializer = WTFMove(expression);
     }
+    Lexer::Token origin() const { return m_origin; }
 
 private:
+    Lexer::Token m_origin;
     Qualifiers m_qualifiers;
     Optional<UniqueRef<UnnamedType>> m_type;
     String m_name;
-    Optional<Semantic> m_semantic;
+    std::unique_ptr<Semantic> m_semantic;
     std::unique_ptr<Expression> m_initializer;
 };
 

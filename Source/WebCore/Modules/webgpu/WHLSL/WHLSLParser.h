@@ -63,7 +63,6 @@
 #include "WHLSLMakePointerExpression.h"
 #include "WHLSLNativeFunctionDeclaration.h"
 #include "WHLSLNativeTypeDeclaration.h"
-#include "WHLSLNode.h"
 #include "WHLSLNullLiteral.h"
 #include "WHLSLNumThreadsFunctionAttribute.h"
 #include "WHLSLPointerType.h"
@@ -89,7 +88,6 @@
 #include "WHLSLTypeDefinition.h"
 #include "WHLSLTypeReference.h"
 #include "WHLSLUnsignedIntegerLiteral.h"
-#include "WHLSLValue.h"
 #include "WHLSLVariableDeclaration.h"
 #include "WHLSLVariableDeclarationsStatement.h"
 #include "WHLSLVariableReference.h"
@@ -175,7 +173,7 @@ private:
     Expected<AST::ResourceSemantic, Error> parseResourceSemantic();
     Expected<AST::SpecializationConstantSemantic, Error> parseSpecializationConstantSemantic();
     Expected<AST::StageInOutSemantic, Error> parseStageInOutSemantic();
-    Expected<Optional<AST::Semantic>, Error> parseSemantic();
+    Expected<std::unique_ptr<AST::Semantic>, Error> parseSemantic();
     AST::Qualifiers parseQualifiers();
     Expected<AST::StructureElement, Error> parseStructureElement();
     Expected<AST::StructureDefinition, Error> parseStructureDefinition();

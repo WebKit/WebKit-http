@@ -114,6 +114,9 @@ class CheckOutSpecificRevision(shell.ShellCommand):
     flunkOnFailure = False
     haltOnFailure = False
 
+    def __init__(self, **kwargs):
+        super(CheckOutSpecificRevision, self).__init__(logEnviron=False, **kwargs)
+
     def doStepIf(self, step):
         return self.getProperty('ews_revision', False)
 
@@ -132,6 +135,9 @@ class CleanWorkingDirectory(shell.ShellCommand):
     flunkOnFailure = True
     haltOnFailure = True
     command = ['Tools/Scripts/clean-webkit']
+
+    def __init__(self, **kwargs):
+        super(CleanWorkingDirectory, self).__init__(logEnviron=False, **kwargs)
 
 
 class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
@@ -494,7 +500,7 @@ class RunBindingsTests(shell.ShellCommand):
     command = ['Tools/Scripts/run-bindings-tests', '--json-output={0}'.format(jsonFileName)]
 
     def __init__(self, **kwargs):
-        super(RunBindingsTests, self).__init__(timeout=5 * 60, **kwargs)
+        super(RunBindingsTests, self).__init__(timeout=5 * 60, logEnviron=False, **kwargs)
 
     def start(self):
         self.log_observer = logobserver.BufferLogObserver()
@@ -541,7 +547,7 @@ class RunWebKitPerlTests(shell.ShellCommand):
     command = ['Tools/Scripts/test-webkitperl']
 
     def __init__(self, **kwargs):
-        super(RunWebKitPerlTests, self).__init__(timeout=2 * 60, **kwargs)
+        super(RunWebKitPerlTests, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
 
 
 class RunWebKitPyTests(shell.ShellCommand):
@@ -554,7 +560,7 @@ class RunWebKitPyTests(shell.ShellCommand):
     command = ['Tools/Scripts/test-webkitpy', '--json-output={0}'.format(jsonFileName)]
 
     def __init__(self, **kwargs):
-        super(RunWebKitPyTests, self).__init__(timeout=2 * 60, **kwargs)
+        super(RunWebKitPyTests, self).__init__(timeout=2 * 60, logEnviron=False, **kwargs)
 
     def start(self):
         self.log_observer = logobserver.BufferLogObserver()
@@ -593,6 +599,28 @@ class RunWebKitPyTests(shell.ShellCommand):
         log.addStdout(message)
 
 
+class InstallGtkDependencies(shell.ShellCommand):
+    name = 'jhbuild'
+    description = ['updating gtk dependencies']
+    descriptionDone = ['Updated gtk dependencies']
+    command = ['perl', 'Tools/Scripts/update-webkitgtk-libs']
+    haltOnFailure = False
+
+    def __init__(self, **kwargs):
+        super(InstallGtkDependencies, self).__init__(logEnviron=False, **kwargs)
+
+
+class InstallWpeDependencies(shell.ShellCommand):
+    name = 'jhbuild'
+    description = ['updating wpe dependencies']
+    descriptionDone = ['Updated wpe dependencies']
+    command = ['perl', 'Tools/Scripts/update-webkitwpe-libs']
+    haltOnFailure = False
+
+    def __init__(self, **kwargs):
+        super(InstallWpeDependencies, self).__init__(logEnviron=False, **kwargs)
+
+
 def appendCustomBuildFlags(step, platform, fullPlatform):
     # FIXME: Make a common 'supported platforms' list.
     if platform not in ('gtk', 'wincairo', 'ios', 'jsc-only', 'wpe'):
@@ -612,6 +640,10 @@ class CompileWebKit(shell.Compile):
     warningPattern = '.*arning: .*'
     haltOnFailure = False
     command = ['perl', 'Tools/Scripts/build-webkit', WithProperties('--%(configuration)s')]
+
+    def __init__(self, skipUpload=False, **kwargs):
+        self.skipUpload = skipUpload
+        super(CompileWebKit, self).__init__(logEnviron=False, **kwargs)
 
     def start(self):
         platform = self.getProperty('platform')
@@ -639,9 +671,20 @@ class CompileWebKit(shell.Compile):
     def evaluateCommand(self, cmd):
         if cmd.didFail():
             self.setProperty('patchFailedToBuild', True)
-            self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(), CompileWebKitToT(), AnalyzeCompileWebKitResults()])
+            steps_to_add = [UnApplyPatchIfRequired()]
+            platform = self.getProperty('platform')
+            if platform == 'wpe':
+                steps_to_add.append(InstallWpeDependencies())
+            elif platform == 'gtk':
+                steps_to_add.append(InstallGtkDependencies())
+            steps_to_add.append(CompileWebKitToT())
+            steps_to_add.append(AnalyzeCompileWebKitResults())
+            # Using a single addStepsAfterCurrentStep because of https://github.com/buildbot/buildbot/issues/4874
+            self.build.addStepsAfterCurrentStep(steps_to_add)
         else:
-            self.build.addStepsAfterCurrentStep([ArchiveBuiltProduct(), UploadBuiltProduct(), TransferToS3()])
+            triggers = self.getProperty('triggers', None)
+            if triggers or not self.skipUpload:
+                self.build.addStepsAfterCurrentStep([ArchiveBuiltProduct(), UploadBuiltProduct(), TransferToS3()])
 
         return super(CompileWebKit, self).evaluateCommand(cmd)
 
@@ -1119,6 +1162,9 @@ class ArchiveTestResults(shell.ShellCommand):
     descriptionDone = ['Archived test results']
     haltOnFailure = True
 
+    def __init__(self, **kwargs):
+        super(ArchiveTestResults, self).__init__(logEnviron=False, **kwargs)
+
 
 class UploadTestResults(transfer.FileUpload):
     name = 'upload-test-results'
@@ -1190,7 +1236,7 @@ class PrintConfiguration(steps.ShellSequence):
 
     def run(self):
         command_list = list(self.command_list_generic)
-        platform = self.getProperty('platform')
+        platform = self.getProperty('platform', '*')
         platform = platform.split('-')[0]
         if platform in ('mac', 'ios', '*'):
             command_list.extend(self.command_list_apple)
