@@ -44,16 +44,13 @@ public:
 
     virtual ~NameResolver();
 
-    void visit(AST::FunctionDefinition&) override;
-
     void setCurrentFunctionDefinition(AST::FunctionDefinition* functionDefinition)
     {
         m_currentFunction = functionDefinition;
     }
 
-    void setIsResolvingCalls(bool isResolvingCalls) { m_isResolvingCalls = isResolvingCalls; }
-
 private:
+    void visit(AST::FunctionDefinition&) override;
     void visit(AST::NativeFunctionDeclaration&) override;
     void visit(AST::TypeReference&) override;
     void visit(AST::Block&) override;
@@ -73,12 +70,10 @@ private:
     HashSet<AST::TypeReference*> m_typeReferences;
     AST::FunctionDefinition* m_currentFunction { nullptr };
     NameResolver* m_parentNameResolver { nullptr };
-    bool m_isResolvingCalls { false };
 };
 
 bool resolveNamesInTypes(Program&, NameResolver&);
 bool resolveTypeNamesInFunctions(Program&, NameResolver&);
-bool resolveCallsInFunctions(Program&, NameResolver&);
 
 } // namespace WHLSL
 

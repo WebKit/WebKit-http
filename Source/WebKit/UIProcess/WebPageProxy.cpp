@@ -1058,8 +1058,9 @@ void WebPageProxy::maybeInitializeSandboxExtensionHandle(WebProcessProxy& proces
     // Inspector resources are in a directory with assumed access.
     ASSERT_WITH_SECURITY_IMPLICATION(!WebKit::isInspectorPage(*this));
 
-    if (SandboxExtension::createHandle("/", SandboxExtension::Type::ReadOnly, sandboxExtensionHandle))
-        willAcquireUniversalFileReadSandboxExtension(process);
+    // FIXME: universal file read access should be set if the sandbox extension is successfully created: rdar://problem/52357508.
+    SandboxExtension::createHandle("/", SandboxExtension::Type::ReadOnly, sandboxExtensionHandle);
+    willAcquireUniversalFileReadSandboxExtension(process);
 }
 
 #if !PLATFORM(COCOA)
@@ -1847,15 +1848,14 @@ void WebPageProxy::updateHiddenPageThrottlingAutoIncreases()
 
 void WebPageProxy::layerHostingModeDidChange()
 {
-    if (!hasRunningProcess())
-        return;
-
     LayerHostingMode layerHostingMode = pageClient().viewLayerHostingMode();
     if (m_layerHostingMode == layerHostingMode)
         return;
 
     m_layerHostingMode = layerHostingMode;
-    m_process->send(Messages::WebPage::SetLayerHostingMode(layerHostingMode), m_pageID);
+
+    if (hasRunningProcess())
+        m_process->send(Messages::WebPage::SetLayerHostingMode(layerHostingMode), m_pageID);
 }
 
 void WebPageProxy::waitForDidUpdateActivityState(ActivityStateChangeID activityStateChangeID)
@@ -2655,6 +2655,14 @@ void WebPageProxy::handleTouchEventSynchronously(NativeWebTouchEvent& event)
 
     if (event.allTouchPointsAreReleased())
         m_touchAndPointerEventTracking.reset();
+}
+
+void WebPageProxy::resetPotentialTapSecurityOrigin()
+{
+    if (!hasRunningProcess())
+        return;
+
+    m_process->send(Messages::WebPage::ResetPotentialTapSecurityOrigin(), m_pageID);
 }
 
 void WebPageProxy::handleTouchEventAsynchronously(const NativeWebTouchEvent& event)

@@ -1,3 +1,2373 @@
+2019-07-11  Chris Dumez  <cdumez@apple.com>
+
+        Disable RGB10 IOSurface pixel format for Mac Catalyst
+        https://bugs.webkit.org/show_bug.cgi?id=199712
+        <rdar://problem/52793584>
+
+        Reviewed by Beth Dakin.
+
+        Disable RGB10 IOSurface pixel format for Mac Catalyst. This format is not supported
+        on Mac Catalyst and causes us not to render anything.
+
+        * platform/graphics/cocoa/IOSurface.h:
+
+2019-07-11  Jonathan Bedard  <jbedard@apple.com>
+
+        [iOS 13] Enable WebKit build
+        https://bugs.webkit.org/show_bug.cgi?id=199481
+        <rdar://problem/52619048>
+
+        Reviewed by Tim Horton.
+
+        No new tests, iOS 13 test expectations will be migrated in the near future.
+
+        * platform/ios/LocalCurrentTraitCollection.mm:
+        (WebCore::LocalCurrentTraitCollection::LocalCurrentTraitCollection): Remove underscore from currentTraitCollection.
+        (WebCore::LocalCurrentTraitCollection::~LocalCurrentTraitCollection): Remove underscore from setCurrentTraitCollection.
+
+2019-07-11  Chris Dumez  <cdumez@apple.com>
+
+        Fix non thread-safe usage of makeWeakPtr() in MediaPlayerPrivateMediaFoundation
+        https://bugs.webkit.org/show_bug.cgi?id=199700
+
+        Reviewed by Eric Carlson.
+
+        The code was calling makeWeakPtr() on a main-thread object, from a background thread.
+        This is not thread safe. To address the issue, this patches creates the WeakPtr ahead
+        of time, on the main thread. 
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::MediaPlayerPrivateMediaFoundation):
+        (WebCore::MediaPlayerPrivateMediaFoundation::endCreatedMediaSource):
+        (WebCore::MediaPlayerPrivateMediaFoundation::endGetEvent):
+        (WebCore::MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::processInputNotify):
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.h:
+        (WebCore::MediaPlayerPrivateMediaFoundation::ThreadSafeWrapper::create):
+        (WebCore::MediaPlayerPrivateMediaFoundation::ThreadSafeWrapper::wrapped):
+        (WebCore::MediaPlayerPrivateMediaFoundation::ThreadSafeWrapper::ThreadSafeWrapper):
+
+2019-07-11  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Cleanup InlineFormattingContext::LineLayout class.
+        https://bugs.webkit.org/show_bug.cgi?id=199702
+        <rdar://problem/52931733>
+
+        Reviewed by Sam Weinig.
+
+        Move some structs to .cpp. They don't need to pollute the class declaration. 
+
+        * layout/inlineformatting/InlineFormattingContext.h:
+        (WebCore::Layout::InlineFormattingContext::LineLayout::layoutState const):
+        (): Deleted.
+        * layout/inlineformatting/InlineFormattingContextLineLayout.cpp:
+        (WebCore::Layout::LineInput::HorizontalConstraint::HorizontalConstraint):
+        (WebCore::Layout::LineInput::LineInput):
+        (WebCore::Layout::InlineFormattingContext::LineLayout::placeInlineItems const):
+        (WebCore::Layout::InlineFormattingContext::LineLayout::LineInput::HorizontalConstraint::HorizontalConstraint): Deleted.
+        (WebCore::Layout::InlineFormattingContext::LineLayout::LineInput::LineInput): Deleted.
+
+2019-07-11  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for ARIA roles insertion, deletion, subscript, superscript, and time
+        https://bugs.webkit.org/show_bug.cgi?id=199692
+
+        Reviewed by Chris Fleizach.
+
+        Create new AccessibilityRole types which correspond to the new ARIA roles and
+        update AccessibilityRenderObject::determineAccessibilityRole() to assign these
+        internal roles to the related HTML elements.
+
+        Update both ATK and Mac to recognize these new internal roles. In addition, update
+        the ATK mappings for the ins and del elements to ATK_ROLE_CONTENT_INSERTION and
+        ATK_ROLE_CONTENT_DELETION respectively. Also expose "insertion" and "deletion" via
+        the AtkObject xml-roles attribute so that this information is not completely absent
+        for GTK or WPE built against earlier versions of ATK.
+
+        Remove AccessibilityObject's isSubscriptStyleGroup() and isSuperscriptStyleGroup().
+        These two methods were only being used by ATK and are no longer needed for platform
+        role mapping.
+
+        No new tests. Instead add the roles to the existing role-exposure tests.
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::initializeRoleMap):
+        (WebCore::AccessibilityObject::isSubscriptStyleGroup const): Deleted.
+        (WebCore::AccessibilityObject::isSuperscriptStyleGroup const): Deleted.
+        * accessibility/AccessibilityObject.h:
+        * accessibility/AccessibilityObjectInterface.h:
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::determineAccessibilityRole):
+        * accessibility/atk/WebKitAccessible.cpp:
+        (webkitAccessibleGetAttributes):
+        (atkRole):
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityObjectWrapper determineIsAccessibilityElement]):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (createAccessibilityRoleMap):
+        (-[WebAccessibilityObjectWrapper subrole]):
+
+2019-07-11  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer][MediaStream] Use the new dispatchMediaSampleToObservers to dispatch new buffers
+        https://bugs.webkit.org/show_bug.cgi?id=199689
+
+        Reviewed by Philippe Normand.
+
+        We already have tests for this.
+
+        * platform/mediastream/gstreamer/GStreamerVideoCaptureSource.cpp:
+        (WebCore::GStreamerVideoCaptureSource::processNewFrame):
+        (WebCore::GStreamerVideoCaptureSource::newSampleCallback):
+        * platform/mediastream/gstreamer/GStreamerVideoCaptureSource.h:
+
+2019-07-10  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] With modal overlay and body overflow:hidden, can't access all the content
+        https://bugs.webkit.org/show_bug.cgi?id=199693
+        rdar://problem/51930364
+
+        Reviewed by Tim Horton.
+
+        A page with overflow:hidden on the root needs to be scrollable if:
+        * it's zoomed
+        * the visual viewport is smaller than the layout viewport (including visible keyboard)
+        * scrolling is required to hide MobileSafari's squishy bars
+
+        This patch does the last two, plumbing a "visual viewport is smaller than layout viewport"
+        bit up from WebCore via the scrolling tree (that way, when it changes we automatically trigger
+        a commit), and checking for squished bars in WKWebView.
+
+        Tested by new API tests.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::updateLayoutViewport):
+        (WebCore::FrameView::layoutOrVisualViewportChanged): Make this not iOS-specific. It's not yet called
+        in all the right places (doing so has risk because it's exposed via VisualViewport resize events).
+        (WebCore::FrameView::didUpdateViewportOverrideRects): Deleted.
+        * page/FrameView.h:
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::frameViewVisualViewportChanged):
+        (WebCore::AsyncScrollingCoordinator::setFrameScrollingNodeState):
+        * page/scrolling/AsyncScrollingCoordinator.h:
+        * page/scrolling/ScrollingCoordinator.h:
+        (WebCore::ScrollingCoordinator::frameViewVisualViewportChanged):
+        * page/scrolling/ScrollingStateFrameScrollingNode.cpp:
+        (WebCore::ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode):
+        (WebCore::ScrollingStateFrameScrollingNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStateFrameScrollingNode::setVisualViewportIsSmallerThanLayoutViewport):
+        (WebCore::ScrollingStateFrameScrollingNode::dumpProperties const):
+        * page/scrolling/ScrollingStateFrameScrollingNode.h:
+        * page/scrolling/ScrollingTreeFrameScrollingNode.cpp:
+        (WebCore::ScrollingTreeFrameScrollingNode::commitStateBeforeChildren):
+        (WebCore::ScrollingTreeFrameScrollingNode::dumpProperties const):
+        * page/scrolling/ScrollingTreeFrameScrollingNode.h:
+
+2019-07-10  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Optional<UniqueRef<T>> -> std::unique_ptr in Return/IfStatement/ForLoop
+        https://bugs.webkit.org/show_bug.cgi?id=199695
+
+        Reviewed by Dean Jackson.
+
+        Trivial patch that saves 8 bytes per Return/If, and 16 bytes per For loop.
+
+        No new tests as there is no intended functional change.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLForLoop.h:
+        (WebCore::WHLSL::AST::ForLoop::ForLoop):
+        (WebCore::WHLSL::AST::ForLoop::condition):
+        (WebCore::WHLSL::AST::ForLoop::increment):
+        * Modules/webgpu/WHLSL/AST/WHLSLIfStatement.h:
+        (WebCore::WHLSL::AST::IfStatement::IfStatement):
+        (WebCore::WHLSL::AST::IfStatement::elseBody):
+        * Modules/webgpu/WHLSL/AST/WHLSLReturn.h:
+        (WebCore::WHLSL::AST::Return::Return):
+        (WebCore::WHLSL::AST::Return::value):
+        * Modules/webgpu/WHLSL/WHLSLParser.cpp:
+        (WebCore::WHLSL::Parser::parseIfStatement):
+        (WebCore::WHLSL::Parser::parseForLoop):
+        (WebCore::WHLSL::Parser::parseStatement):
+
+2019-07-10  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] The recursion checker should not have quadratic complexity
+        https://bugs.webkit.org/show_bug.cgi?id=199688
+
+        Reviewed by Saam Barati.
+
+        I fix it by using two different hash sets, tracking which functions we have started visiting, and which we have finished visiting.
+        The difference are those that are currently "on the stack", and calling any of those is an error.
+        As a bonus, I also overrode visit(Program&), so that we only bother visiting function definitions.
+
+        On whlsl-compute.html ran 5 times, this patch reduces the time spent in the recursion checker from 26ms to 12ms.
+        It is likely to be a much bigger win on larger programs (since it took the complexity from quadratic to linear).
+
+        No new tests as there is no intended functional change.
+
+        * Modules/webgpu/WHLSL/WHLSLRecursionChecker.cpp:
+
+2019-07-10  Sihui Liu  <sihui_liu@apple.com>
+
+        Crash at WebCore::IDBServer::MemoryObjectStoreCursor::incrementReverseIterator
+        https://bugs.webkit.org/show_bug.cgi?id=199677
+        <rdar://problem/52334665>
+
+        Reviewed by Alex Christensen.
+
+        Add an early return in incrementReverseIterator when setFirstInRemainingRange fails to set m_iterator. This is 
+        in line with what we did in incrementForwardIterator.
+
+        * Modules/indexeddb/server/MemoryObjectStoreCursor.cpp:
+        (WebCore::IDBServer::MemoryObjectStoreCursor::incrementReverseIterator):
+
+2019-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Stop using GenericTaskQueue from multiple threads
+        https://bugs.webkit.org/show_bug.cgi?id=199652
+
+        Reviewed by Eric Carlson and Geoffrey Garen.
+
+        WebCoreAVFLoaderDelegate was calling GenericTaskQueue::enqueueTask() from a background thread,
+        which is not safe because the implementation of enqueueTask() calls makeWeakPtr() on the
+        GenericTaskQueue (a main thread object).
+
+        Update WebCoreAVFLoaderDelegate to make sure it is on the main thread before it calls
+        GenericTaskQueue::enqueueTask().
+
+        * platform/GenericTaskQueue.h:
+        Remove last template parameter which was used exclusively by WebCoreAVFLoaderDelegate to try and
+        make GenericTaskQueue thread-safe.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (-[WebCoreAVFMovieObserver metadataLoaded]):
+        (-[WebCoreAVFMovieObserver didEnd:]):
+        (-[WebCoreAVFMovieObserver observeValueForKeyPath:ofObject:change:context:]):
+        (-[WebCoreAVFMovieObserver legibleOutput:didOutputAttributedStrings:nativeSampleBuffers:forItemTime:]):
+        (-[WebCoreAVFMovieObserver outputSequenceWasFlushed:]):
+        (-[WebCoreAVFLoaderDelegate resourceLoader:shouldWaitForLoadingOfRequestedResource:]):
+        (-[WebCoreAVFLoaderDelegate resourceLoader:didCancelLoadingRequest:]):
+
+2019-07-10  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: VoiceOver ignored role="presentation" on <table> HTML elements
+        https://bugs.webkit.org/show_bug.cgi?id=199659
+
+        Reviewed by Zalan Bujtas.
+
+        Only include a table ancestor if it's a table we care about for accessibility.
+
+        Modified Test: accessibility/ios-simulator/tables-lists.html
+
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityObjectWrapper _accessibilityTableAncestor]):
+
+2019-07-10  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Track code locations correctly throughout the compiler to get good error messages
+        https://bugs.webkit.org/show_bug.cgi?id=199675
+
+        Reviewed by Myles Maxfield.
+
+        The basic idea is to go from having each AST node contain its own token to having each AST node contain a pair of offsets into the source,
+        the offset before its start and the offset after its end. This will let us get good error messages.
+        As a bonus, it saves a bit of memory as Tokens are larger (one extra word for their type).
+
+        The new CodeLocation class is put in Lexer.h, because it has a cyclic dependency on Token, which also has a cyclic dependency on Lexer.
+
+        No new tests as there is no intended functional change.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLArrayReferenceType.h:
+        (WebCore::WHLSL::AST::ArrayReferenceType::ArrayReferenceType):
+        * Modules/webgpu/WHLSL/AST/WHLSLArrayType.h:
+        (WebCore::WHLSL::AST::ArrayType::ArrayType):
+        * Modules/webgpu/WHLSL/AST/WHLSLAssignmentExpression.h:
+        (WebCore::WHLSL::AST::AssignmentExpression::AssignmentExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLBaseFunctionAttribute.h:
+        (WebCore::WHLSL::AST::BaseFunctionAttribute::BaseFunctionAttribute):
+        * Modules/webgpu/WHLSL/AST/WHLSLBaseSemantic.h:
+        (WebCore::WHLSL::AST::BaseSemantic::BaseSemantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLBlock.h:
+        (WebCore::WHLSL::AST::Block::Block):
+        * Modules/webgpu/WHLSL/AST/WHLSLBooleanLiteral.h:
+        (WebCore::WHLSL::AST::BooleanLiteral::BooleanLiteral):
+        (WebCore::WHLSL::AST::BooleanLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLBreak.h:
+        (WebCore::WHLSL::AST::Break::Break):
+        * Modules/webgpu/WHLSL/AST/WHLSLBuiltInSemantic.h:
+        (WebCore::WHLSL::AST::BuiltInSemantic::BuiltInSemantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLCallExpression.h:
+        (WebCore::WHLSL::AST::CallExpression::CallExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLCommaExpression.h:
+        (WebCore::WHLSL::AST::CommaExpression::CommaExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLContinue.h:
+        (WebCore::WHLSL::AST::Continue::Continue):
+        * Modules/webgpu/WHLSL/AST/WHLSLDereferenceExpression.h:
+        (WebCore::WHLSL::AST::DereferenceExpression::DereferenceExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLDoWhileLoop.h:
+        (WebCore::WHLSL::AST::DoWhileLoop::DoWhileLoop):
+        * Modules/webgpu/WHLSL/AST/WHLSLDotExpression.h:
+        (WebCore::WHLSL::AST::DotExpression::DotExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLEffectfulExpressionStatement.h:
+        (WebCore::WHLSL::AST::EffectfulExpressionStatement::EffectfulExpressionStatement):
+        * Modules/webgpu/WHLSL/AST/WHLSLEnumerationDefinition.h:
+        (WebCore::WHLSL::AST::EnumerationDefinition::EnumerationDefinition):
+        * Modules/webgpu/WHLSL/AST/WHLSLEnumerationMember.h:
+        (WebCore::WHLSL::AST::EnumerationMember::EnumerationMember):
+        (WebCore::WHLSL::AST::EnumerationMember::codeLocation const):
+        * Modules/webgpu/WHLSL/AST/WHLSLEnumerationMemberLiteral.h:
+        (WebCore::WHLSL::AST::EnumerationMemberLiteral::EnumerationMemberLiteral):
+        (WebCore::WHLSL::AST::EnumerationMemberLiteral::wrap):
+        (WebCore::WHLSL::AST::EnumerationMemberLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLExpression.h:
+        (WebCore::WHLSL::AST::Expression::Expression):
+        (WebCore::WHLSL::AST::Expression::codeLocation const):
+        (WebCore::WHLSL::AST::Expression::updateCodeLocation):
+        * Modules/webgpu/WHLSL/AST/WHLSLFallthrough.h:
+        (WebCore::WHLSL::AST::Fallthrough::Fallthrough):
+        * Modules/webgpu/WHLSL/AST/WHLSLFloatLiteral.h:
+        (WebCore::WHLSL::AST::FloatLiteral::FloatLiteral):
+        (WebCore::WHLSL::AST::FloatLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLFloatLiteralType.cpp:
+        (WebCore::WHLSL::AST::FloatLiteralType::FloatLiteralType):
+        (WebCore::WHLSL::AST::FloatLiteralType::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLFloatLiteralType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLForLoop.h:
+        (WebCore::WHLSL::AST::ForLoop::ForLoop):
+        * Modules/webgpu/WHLSL/AST/WHLSLFunctionDeclaration.h:
+        (WebCore::WHLSL::AST::FunctionDeclaration::FunctionDeclaration):
+        (WebCore::WHLSL::AST::FunctionDeclaration::codeLocation const):
+        * Modules/webgpu/WHLSL/AST/WHLSLGlobalVariableReference.h:
+        (WebCore::WHLSL::AST::GlobalVariableReference::GlobalVariableReference):
+        * Modules/webgpu/WHLSL/AST/WHLSLIfStatement.h:
+        (WebCore::WHLSL::AST::IfStatement::IfStatement):
+        * Modules/webgpu/WHLSL/AST/WHLSLIndexExpression.h:
+        (WebCore::WHLSL::AST::IndexExpression::IndexExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteral.h:
+        (WebCore::WHLSL::AST::IntegerLiteral::IntegerLiteral):
+        (WebCore::WHLSL::AST::IntegerLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteralType.cpp:
+        (WebCore::WHLSL::AST::IntegerLiteralType::IntegerLiteralType):
+        (WebCore::WHLSL::AST::IntegerLiteralType::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteralType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLLogicalExpression.h:
+        (WebCore::WHLSL::AST::LogicalExpression::LogicalExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLLogicalNotExpression.h:
+        (WebCore::WHLSL::AST::LogicalNotExpression::LogicalNotExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLMakeArrayReferenceExpression.h:
+        (WebCore::WHLSL::AST::MakeArrayReferenceExpression::MakeArrayReferenceExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLMakePointerExpression.h:
+        (WebCore::WHLSL::AST::MakePointerExpression::MakePointerExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLNamedType.h:
+        (WebCore::WHLSL::AST::NamedType::NamedType):
+        (WebCore::WHLSL::AST::NamedType::codeLocation const):
+        (WebCore::WHLSL::AST::NamedType::updateCodeLocation):
+        * Modules/webgpu/WHLSL/AST/WHLSLNativeTypeDeclaration.h:
+        (WebCore::WHLSL::AST::NativeTypeDeclaration::NativeTypeDeclaration):
+        * Modules/webgpu/WHLSL/AST/WHLSLNullLiteral.h:
+        (WebCore::WHLSL::AST::NullLiteral::NullLiteral):
+        (WebCore::WHLSL::AST::NullLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLNumThreadsFunctionAttribute.h:
+        (WebCore::WHLSL::AST::NumThreadsFunctionAttribute::NumThreadsFunctionAttribute):
+        * Modules/webgpu/WHLSL/AST/WHLSLPointerType.h:
+        (WebCore::WHLSL::AST::PointerType::PointerType):
+        * Modules/webgpu/WHLSL/AST/WHLSLPropertyAccessExpression.h:
+        (WebCore::WHLSL::AST::PropertyAccessExpression::PropertyAccessExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLReadModifyWriteExpression.h:
+        (WebCore::WHLSL::AST::ReadModifyWriteExpression::create):
+        (WebCore::WHLSL::AST::ReadModifyWriteExpression::ReadModifyWriteExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLReferenceType.h:
+        (WebCore::WHLSL::AST::ReferenceType::ReferenceType):
+        * Modules/webgpu/WHLSL/AST/WHLSLResourceSemantic.h:
+        (WebCore::WHLSL::AST::ResourceSemantic::ResourceSemantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLReturn.h:
+        (WebCore::WHLSL::AST::Return::Return):
+        * Modules/webgpu/WHLSL/AST/WHLSLSpecializationConstantSemantic.h:
+        (WebCore::WHLSL::AST::SpecializationConstantSemantic::SpecializationConstantSemantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLStageInOutSemantic.h:
+        (WebCore::WHLSL::AST::StageInOutSemantic::StageInOutSemantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLStatement.h:
+        (WebCore::WHLSL::AST::Statement::Statement):
+        (WebCore::WHLSL::AST::Statement::codeLocation const):
+        (WebCore::WHLSL::AST::Statement::updateCodeLocation):
+        * Modules/webgpu/WHLSL/AST/WHLSLStatementList.h:
+        (WebCore::WHLSL::AST::StatementList::StatementList):
+        * Modules/webgpu/WHLSL/AST/WHLSLStructureDefinition.h:
+        (WebCore::WHLSL::AST::StructureDefinition::StructureDefinition):
+        * Modules/webgpu/WHLSL/AST/WHLSLStructureElement.h:
+        (WebCore::WHLSL::AST::StructureElement::StructureElement):
+        (WebCore::WHLSL::AST::StructureElement::codeLocation const):
+        * Modules/webgpu/WHLSL/AST/WHLSLSwitchCase.h:
+        (WebCore::WHLSL::AST::SwitchCase::SwitchCase):
+        * Modules/webgpu/WHLSL/AST/WHLSLSwitchStatement.h:
+        (WebCore::WHLSL::AST::SwitchStatement::SwitchStatement):
+        * Modules/webgpu/WHLSL/AST/WHLSLTernaryExpression.h:
+        (WebCore::WHLSL::AST::TernaryExpression::TernaryExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLTrap.h:
+        (WebCore::WHLSL::AST::Trap::Trap):
+        * Modules/webgpu/WHLSL/AST/WHLSLTypeDefinition.h:
+        (WebCore::WHLSL::AST::TypeDefinition::TypeDefinition):
+        * Modules/webgpu/WHLSL/AST/WHLSLTypeReference.cpp:
+        (WebCore::WHLSL::AST::TypeReference::wrap):
+        * Modules/webgpu/WHLSL/AST/WHLSLTypeReference.h:
+        (WebCore::WHLSL::AST::TypeReference::TypeReference):
+        (WebCore::WHLSL::AST::TypeReference::cloneTypeReference const):
+        * Modules/webgpu/WHLSL/AST/WHLSLUnnamedType.h:
+        (WebCore::WHLSL::AST::UnnamedType::UnnamedType):
+        (WebCore::WHLSL::AST::UnnamedType::codeLocation const):
+        * Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteral.h:
+        (WebCore::WHLSL::AST::UnsignedIntegerLiteral::UnsignedIntegerLiteral):
+        (WebCore::WHLSL::AST::UnsignedIntegerLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteralType.cpp:
+        (WebCore::WHLSL::AST::UnsignedIntegerLiteralType::UnsignedIntegerLiteralType):
+        (WebCore::WHLSL::AST::UnsignedIntegerLiteralType::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteralType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLVariableDeclaration.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLVariableDeclarationsStatement.h:
+        (WebCore::WHLSL::AST::VariableDeclarationsStatement::VariableDeclarationsStatement):
+        * Modules/webgpu/WHLSL/AST/WHLSLVariableReference.h:
+        (WebCore::WHLSL::AST::VariableReference::VariableReference):
+        (WebCore::WHLSL::AST::VariableReference::wrap):
+        * Modules/webgpu/WHLSL/AST/WHLSLWhileLoop.h:
+        (WebCore::WHLSL::AST::WhileLoop::WhileLoop):
+        * Modules/webgpu/WHLSL/WHLSLAutoInitializeVariables.cpp:
+        (WebCore::WHLSL::AutoInitialize::visit):
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::resolveWithOperatorAnderIndexer):
+        (WebCore::WHLSL::resolveWithOperatorLength):
+        (WebCore::WHLSL::resolveWithReferenceComparator):
+        (WebCore::WHLSL::resolveByInstantiation):
+        (WebCore::WHLSL::resolveFunction):
+        (WebCore::WHLSL::Checker::visit):
+        (WebCore::WHLSL::argumentTypeForAndOverload):
+        (WebCore::WHLSL::Checker::finishVisiting):
+        * Modules/webgpu/WHLSL/WHLSLInferTypes.cpp:
+        (WebCore::WHLSL::matchAndCommit):
+        * Modules/webgpu/WHLSL/WHLSLLexer.cpp:
+        (WebCore::WHLSL::Token::typeName):
+        (WebCore::WHLSL::Lexer::consumeTokenFromStream):
+        * Modules/webgpu/WHLSL/WHLSLLexer.h:
+        (WebCore::WHLSL::AST::CodeLocation::CodeLocation):
+        (WebCore::WHLSL::AST::CodeLocation::startOffset const):
+        (WebCore::WHLSL::AST::CodeLocation::endOffset const):
+        (WebCore::WHLSL::Token::startOffset const):
+        (WebCore::WHLSL::Lexer::errorString):
+        (WebCore::WHLSL::Token::stringView const):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.cpp:
+        (WebCore::WHLSL::NameResolver::visit):
+        * Modules/webgpu/WHLSL/WHLSLParser.cpp:
+        (WebCore::WHLSL::Parser::parse):
+        (WebCore::WHLSL::Parser::peek):
+        (WebCore::WHLSL::Parser::peekFurther):
+        (WebCore::WHLSL::Types::includes):
+        (WebCore::WHLSL::Types::appendNameTo):
+        (WebCore::WHLSL::Types<t>::includes):
+        (WebCore::WHLSL::Types<t>::appendNameTo):
+        (WebCore::WHLSL::Parser::peekType):
+        (WebCore::WHLSL::Parser::tryType):
+        (WebCore::WHLSL::Parser::tryTypes):
+        (WebCore::WHLSL::Parser::consumeType):
+        (WebCore::WHLSL::Parser::consumeTypes):
+        (WebCore::WHLSL::Parser::consumeIntegralLiteral):
+        (WebCore::WHLSL::Parser::parseConstantExpression):
+        (WebCore::WHLSL::Parser::parseTypeArgument):
+        (WebCore::WHLSL::Parser::parseTypeArguments):
+        (WebCore::WHLSL::Parser::parseTypeSuffixAbbreviated):
+        (WebCore::WHLSL::Parser::parseTypeSuffixNonAbbreviated):
+        (WebCore::WHLSL::Parser::parseType):
+        (WebCore::WHLSL::Parser::parseTypeDefinition):
+        (WebCore::WHLSL::Parser::parseBuiltInSemantic):
+        (WebCore::WHLSL::Parser::parseResourceSemantic):
+        (WebCore::WHLSL::Parser::parseSpecializationConstantSemantic):
+        (WebCore::WHLSL::Parser::parseStageInOutSemantic):
+        (WebCore::WHLSL::Parser::parseSemantic):
+        (WebCore::WHLSL::Parser::parseQualifiers):
+        (WebCore::WHLSL::Parser::parseStructureElement):
+        (WebCore::WHLSL::Parser::parseStructureDefinition):
+        (WebCore::WHLSL::Parser::parseEnumerationDefinition):
+        (WebCore::WHLSL::Parser::parseEnumerationMember):
+        (WebCore::WHLSL::Parser::parseNativeTypeDeclaration):
+        (WebCore::WHLSL::Parser::parseNumThreadsFunctionAttribute):
+        (WebCore::WHLSL::Parser::parseAttributeBlock):
+        (WebCore::WHLSL::Parser::parseParameter):
+        (WebCore::WHLSL::Parser::parseParameters):
+        (WebCore::WHLSL::Parser::parseComputeFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseVertexOrFragmentFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseRegularFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseOperatorFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseBlock):
+        (WebCore::WHLSL::Parser::parseBlockBody):
+        (WebCore::WHLSL::Parser::parseIfStatement):
+        (WebCore::WHLSL::Parser::parseSwitchStatement):
+        (WebCore::WHLSL::Parser::parseSwitchCase):
+        (WebCore::WHLSL::Parser::parseForLoop):
+        (WebCore::WHLSL::Parser::parseWhileLoop):
+        (WebCore::WHLSL::Parser::parseDoWhileLoop):
+        (WebCore::WHLSL::Parser::parseVariableDeclaration):
+        (WebCore::WHLSL::Parser::parseVariableDeclarations):
+        (WebCore::WHLSL::Parser::parseStatement):
+        (WebCore::WHLSL::Parser::parseEffectfulExpression):
+        (WebCore::WHLSL::Parser::parseEffectfulAssignment):
+        (WebCore::WHLSL::Parser::parseLimitedSuffixOperator):
+        (WebCore::WHLSL::Parser::parseSuffixOperator):
+        (WebCore::WHLSL::Parser::parseExpression):
+        (WebCore::WHLSL::Parser::completeTernaryConditional):
+        (WebCore::WHLSL::Parser::completeAssignment):
+        (WebCore::WHLSL::Parser::parsePossibleTernaryConditional):
+        (WebCore::WHLSL::Parser::completePossibleLogicalBinaryOperation):
+        (WebCore::WHLSL::Parser::completePossibleRelationalBinaryOperation):
+        (WebCore::WHLSL::Parser::completePossibleShift):
+        (WebCore::WHLSL::Parser::completePossibleAdd):
+        (WebCore::WHLSL::Parser::completePossibleMultiply):
+        (WebCore::WHLSL::Parser::parsePossiblePrefix):
+        (WebCore::WHLSL::Parser::parsePossibleSuffix):
+        (WebCore::WHLSL::Parser::parseCallExpression):
+        (WebCore::WHLSL::Parser::parseTerm):
+        * Modules/webgpu/WHLSL/WHLSLParser.h:
+        * Modules/webgpu/WHLSL/WHLSLPreserveVariableLifetimes.cpp:
+        (WebCore::WHLSL::anonymousToken):
+        (WebCore::WHLSL::PreserveLifetimes::PreserveLifetimes):
+        (WebCore::WHLSL::PreserveLifetimes::assignVariableIntoStruct):
+        (WebCore::WHLSL::preserveVariableLifetimes):
+        * Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp:
+        (WebCore::WHLSL::PropertyResolver::visit):
+        (WebCore::WHLSL::wrapAnderCallArgument):
+        (WebCore::WHLSL::setterCall):
+        (WebCore::WHLSL::getterCall):
+        (WebCore::WHLSL::modify):
+        (WebCore::WHLSL::PropertyResolver::simplifyRightValue):
+        (WebCore::WHLSL::LeftValueSimplifier::finishVisiting):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeArrayOperatorLength.cpp:
+        (WebCore::WHLSL::synthesizeArrayOperatorLength):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeConstructors.cpp:
+        (WebCore::WHLSL::synthesizeConstructors):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeEnumerationFunctions.cpp:
+        (WebCore::WHLSL::synthesizeEnumerationFunctions):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeStructureAccessors.cpp:
+        (WebCore::WHLSL::synthesizeStructureAccessors):
+
+2019-07-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [iOS] REGRESSION(r244851): Revealing caret sometimes fails when content inset is used
+        https://bugs.webkit.org/show_bug.cgi?id=199662
+
+        Reviewed by Simon Fraser.
+
+        The bug was caused by ScrollableArea::maximumScrollPosition using ScrollableArea::visibleSize, which does not
+        take the content insets into account correctly, rather than FrameView::visualViewportRectExpandedByContentInsets,
+        which does, and is used for "viewRect" in RenderLayer::scrollRectToVisible.
+
+        Override the maximum scroll position using visualViewportRectExpandedByContentInsets in iOS to fix the issue.
+
+        Test: editing/selection/ios/autoscroll-with-top-content-inset-2.html
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::scrollRectToVisible): Fixed the bug.
+
+2019-07-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247316.
+
+        Broke Mojave build
+
+        Reverted changeset:
+
+        "[WHLSL] Track code locations correctly throughout the
+        compiler to get good error messages"
+        https://bugs.webkit.org/show_bug.cgi?id=199675
+        https://trac.webkit.org/changeset/247316
+
+2019-07-10  Alex Christensen  <achristensen@webkit.org>
+
+        Allow CMake to build WebCore on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=198979
+
+        Reviewed by Don Olmstead.
+
+        * Modules/websockets/ThreadableWebSocketChannel.cpp:
+        (WebCore::ThreadableWebSocketChannel::validateURL):
+        * PlatformMac.cmake:
+        * platform/cocoa/VideoFullscreenModelVideoElement.mm:
+        * platform/ios/WebItemProviderPasteboard.h:
+
+2019-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r247292.
+
+        Caused CloseWebViewDuringEnterFullscreen.VideoFullscreen API
+        test to time out on Mojave bots
+
+        Reverted changeset:
+
+        "Stop using GenericTaskQueue from multiple threads"
+        https://bugs.webkit.org/show_bug.cgi?id=199652
+        https://trac.webkit.org/changeset/247292
+
+2019-07-10  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Track code locations correctly throughout the compiler to get good error messages
+        https://bugs.webkit.org/show_bug.cgi?id=199675
+
+        Reviewed by Myles Maxfield.
+
+        The basic idea is to go from having each AST node contain its own token to having each AST node contain a pair of offsets into the source,
+        the offset before its start and the offset after its end. This will let us get good error messages.
+        As a bonus, it saves a bit of memory as Tokens are larger (one extra word for their type).
+
+        The new CodeLocation class is put in Lexer.h, because it has a cyclic dependency on Token, which also has a cyclic dependency on Lexer.
+
+        No new tests as there is no intended functional change.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLArrayReferenceType.h:
+        (WebCore::WHLSL::AST::ArrayReferenceType::ArrayReferenceType):
+        * Modules/webgpu/WHLSL/AST/WHLSLArrayType.h:
+        (WebCore::WHLSL::AST::ArrayType::ArrayType):
+        * Modules/webgpu/WHLSL/AST/WHLSLAssignmentExpression.h:
+        (WebCore::WHLSL::AST::AssignmentExpression::AssignmentExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLBaseFunctionAttribute.h:
+        (WebCore::WHLSL::AST::BaseFunctionAttribute::BaseFunctionAttribute):
+        * Modules/webgpu/WHLSL/AST/WHLSLBaseSemantic.h:
+        (WebCore::WHLSL::AST::BaseSemantic::BaseSemantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLBlock.h:
+        (WebCore::WHLSL::AST::Block::Block):
+        * Modules/webgpu/WHLSL/AST/WHLSLBooleanLiteral.h:
+        (WebCore::WHLSL::AST::BooleanLiteral::BooleanLiteral):
+        (WebCore::WHLSL::AST::BooleanLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLBreak.h:
+        (WebCore::WHLSL::AST::Break::Break):
+        * Modules/webgpu/WHLSL/AST/WHLSLBuiltInSemantic.h:
+        (WebCore::WHLSL::AST::BuiltInSemantic::BuiltInSemantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLCallExpression.h:
+        (WebCore::WHLSL::AST::CallExpression::CallExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLCommaExpression.h:
+        (WebCore::WHLSL::AST::CommaExpression::CommaExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLContinue.h:
+        (WebCore::WHLSL::AST::Continue::Continue):
+        * Modules/webgpu/WHLSL/AST/WHLSLDereferenceExpression.h:
+        (WebCore::WHLSL::AST::DereferenceExpression::DereferenceExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLDoWhileLoop.h:
+        (WebCore::WHLSL::AST::DoWhileLoop::DoWhileLoop):
+        * Modules/webgpu/WHLSL/AST/WHLSLDotExpression.h:
+        (WebCore::WHLSL::AST::DotExpression::DotExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLEffectfulExpressionStatement.h:
+        (WebCore::WHLSL::AST::EffectfulExpressionStatement::EffectfulExpressionStatement):
+        * Modules/webgpu/WHLSL/AST/WHLSLEnumerationDefinition.h:
+        (WebCore::WHLSL::AST::EnumerationDefinition::EnumerationDefinition):
+        * Modules/webgpu/WHLSL/AST/WHLSLEnumerationMember.h:
+        (WebCore::WHLSL::AST::EnumerationMember::EnumerationMember):
+        (WebCore::WHLSL::AST::EnumerationMember::codeLocation const):
+        * Modules/webgpu/WHLSL/AST/WHLSLEnumerationMemberLiteral.h:
+        (WebCore::WHLSL::AST::EnumerationMemberLiteral::EnumerationMemberLiteral):
+        (WebCore::WHLSL::AST::EnumerationMemberLiteral::wrap):
+        (WebCore::WHLSL::AST::EnumerationMemberLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLExpression.h:
+        (WebCore::WHLSL::AST::Expression::Expression):
+        (WebCore::WHLSL::AST::Expression::codeLocation const):
+        (WebCore::WHLSL::AST::Expression::updateCodeLocation):
+        * Modules/webgpu/WHLSL/AST/WHLSLFallthrough.h:
+        (WebCore::WHLSL::AST::Fallthrough::Fallthrough):
+        * Modules/webgpu/WHLSL/AST/WHLSLFloatLiteral.h:
+        (WebCore::WHLSL::AST::FloatLiteral::FloatLiteral):
+        (WebCore::WHLSL::AST::FloatLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLFloatLiteralType.cpp:
+        (WebCore::WHLSL::AST::FloatLiteralType::FloatLiteralType):
+        (WebCore::WHLSL::AST::FloatLiteralType::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLFloatLiteralType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLForLoop.h:
+        (WebCore::WHLSL::AST::ForLoop::ForLoop):
+        * Modules/webgpu/WHLSL/AST/WHLSLFunctionDeclaration.h:
+        (WebCore::WHLSL::AST::FunctionDeclaration::FunctionDeclaration):
+        (WebCore::WHLSL::AST::FunctionDeclaration::codeLocation const):
+        * Modules/webgpu/WHLSL/AST/WHLSLGlobalVariableReference.h:
+        (WebCore::WHLSL::AST::GlobalVariableReference::GlobalVariableReference):
+        * Modules/webgpu/WHLSL/AST/WHLSLIfStatement.h:
+        (WebCore::WHLSL::AST::IfStatement::IfStatement):
+        * Modules/webgpu/WHLSL/AST/WHLSLIndexExpression.h:
+        (WebCore::WHLSL::AST::IndexExpression::IndexExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteral.h:
+        (WebCore::WHLSL::AST::IntegerLiteral::IntegerLiteral):
+        (WebCore::WHLSL::AST::IntegerLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteralType.cpp:
+        (WebCore::WHLSL::AST::IntegerLiteralType::IntegerLiteralType):
+        (WebCore::WHLSL::AST::IntegerLiteralType::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteralType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLLogicalExpression.h:
+        (WebCore::WHLSL::AST::LogicalExpression::LogicalExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLLogicalNotExpression.h:
+        (WebCore::WHLSL::AST::LogicalNotExpression::LogicalNotExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLMakeArrayReferenceExpression.h:
+        (WebCore::WHLSL::AST::MakeArrayReferenceExpression::MakeArrayReferenceExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLMakePointerExpression.h:
+        (WebCore::WHLSL::AST::MakePointerExpression::MakePointerExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLNamedType.h:
+        (WebCore::WHLSL::AST::NamedType::NamedType):
+        (WebCore::WHLSL::AST::NamedType::codeLocation const):
+        (WebCore::WHLSL::AST::NamedType::updateCodeLocation):
+        * Modules/webgpu/WHLSL/AST/WHLSLNativeTypeDeclaration.h:
+        (WebCore::WHLSL::AST::NativeTypeDeclaration::NativeTypeDeclaration):
+        * Modules/webgpu/WHLSL/AST/WHLSLNullLiteral.h:
+        (WebCore::WHLSL::AST::NullLiteral::NullLiteral):
+        (WebCore::WHLSL::AST::NullLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLNumThreadsFunctionAttribute.h:
+        (WebCore::WHLSL::AST::NumThreadsFunctionAttribute::NumThreadsFunctionAttribute):
+        * Modules/webgpu/WHLSL/AST/WHLSLPointerType.h:
+        (WebCore::WHLSL::AST::PointerType::PointerType):
+        * Modules/webgpu/WHLSL/AST/WHLSLPropertyAccessExpression.h:
+        (WebCore::WHLSL::AST::PropertyAccessExpression::PropertyAccessExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLReadModifyWriteExpression.h:
+        (WebCore::WHLSL::AST::ReadModifyWriteExpression::create):
+        (WebCore::WHLSL::AST::ReadModifyWriteExpression::ReadModifyWriteExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLReferenceType.h:
+        (WebCore::WHLSL::AST::ReferenceType::ReferenceType):
+        * Modules/webgpu/WHLSL/AST/WHLSLResourceSemantic.h:
+        (WebCore::WHLSL::AST::ResourceSemantic::ResourceSemantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLReturn.h:
+        (WebCore::WHLSL::AST::Return::Return):
+        * Modules/webgpu/WHLSL/AST/WHLSLSpecializationConstantSemantic.h:
+        (WebCore::WHLSL::AST::SpecializationConstantSemantic::SpecializationConstantSemantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLStageInOutSemantic.h:
+        (WebCore::WHLSL::AST::StageInOutSemantic::StageInOutSemantic):
+        * Modules/webgpu/WHLSL/AST/WHLSLStatement.h:
+        (WebCore::WHLSL::AST::Statement::Statement):
+        (WebCore::WHLSL::AST::Statement::codeLocation const):
+        (WebCore::WHLSL::AST::Statement::updateCodeLocation):
+        * Modules/webgpu/WHLSL/AST/WHLSLStatementList.h:
+        (WebCore::WHLSL::AST::StatementList::StatementList):
+        * Modules/webgpu/WHLSL/AST/WHLSLStructureDefinition.h:
+        (WebCore::WHLSL::AST::StructureDefinition::StructureDefinition):
+        * Modules/webgpu/WHLSL/AST/WHLSLStructureElement.h:
+        (WebCore::WHLSL::AST::StructureElement::StructureElement):
+        (WebCore::WHLSL::AST::StructureElement::codeLocation const):
+        * Modules/webgpu/WHLSL/AST/WHLSLSwitchCase.h:
+        (WebCore::WHLSL::AST::SwitchCase::SwitchCase):
+        * Modules/webgpu/WHLSL/AST/WHLSLSwitchStatement.h:
+        (WebCore::WHLSL::AST::SwitchStatement::SwitchStatement):
+        * Modules/webgpu/WHLSL/AST/WHLSLTernaryExpression.h:
+        (WebCore::WHLSL::AST::TernaryExpression::TernaryExpression):
+        * Modules/webgpu/WHLSL/AST/WHLSLTrap.h:
+        (WebCore::WHLSL::AST::Trap::Trap):
+        * Modules/webgpu/WHLSL/AST/WHLSLTypeDefinition.h:
+        (WebCore::WHLSL::AST::TypeDefinition::TypeDefinition):
+        * Modules/webgpu/WHLSL/AST/WHLSLTypeReference.cpp:
+        (WebCore::WHLSL::AST::TypeReference::wrap):
+        * Modules/webgpu/WHLSL/AST/WHLSLTypeReference.h:
+        (WebCore::WHLSL::AST::TypeReference::TypeReference):
+        (WebCore::WHLSL::AST::TypeReference::cloneTypeReference const):
+        * Modules/webgpu/WHLSL/AST/WHLSLUnnamedType.h:
+        (WebCore::WHLSL::AST::UnnamedType::UnnamedType):
+        (WebCore::WHLSL::AST::UnnamedType::codeLocation const):
+        * Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteral.h:
+        (WebCore::WHLSL::AST::UnsignedIntegerLiteral::UnsignedIntegerLiteral):
+        (WebCore::WHLSL::AST::UnsignedIntegerLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteralType.cpp:
+        (WebCore::WHLSL::AST::UnsignedIntegerLiteralType::UnsignedIntegerLiteralType):
+        (WebCore::WHLSL::AST::UnsignedIntegerLiteralType::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteralType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLVariableDeclaration.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLVariableDeclarationsStatement.h:
+        (WebCore::WHLSL::AST::VariableDeclarationsStatement::VariableDeclarationsStatement):
+        * Modules/webgpu/WHLSL/AST/WHLSLVariableReference.h:
+        (WebCore::WHLSL::AST::VariableReference::VariableReference):
+        (WebCore::WHLSL::AST::VariableReference::wrap):
+        * Modules/webgpu/WHLSL/AST/WHLSLWhileLoop.h:
+        (WebCore::WHLSL::AST::WhileLoop::WhileLoop):
+        * Modules/webgpu/WHLSL/WHLSLAutoInitializeVariables.cpp:
+        (WebCore::WHLSL::AutoInitialize::visit):
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::resolveWithOperatorAnderIndexer):
+        (WebCore::WHLSL::resolveWithOperatorLength):
+        (WebCore::WHLSL::resolveWithReferenceComparator):
+        (WebCore::WHLSL::resolveByInstantiation):
+        (WebCore::WHLSL::resolveFunction):
+        (WebCore::WHLSL::Checker::visit):
+        (WebCore::WHLSL::argumentTypeForAndOverload):
+        (WebCore::WHLSL::Checker::finishVisiting):
+        * Modules/webgpu/WHLSL/WHLSLInferTypes.cpp:
+        (WebCore::WHLSL::matchAndCommit):
+        * Modules/webgpu/WHLSL/WHLSLLexer.cpp:
+        (WebCore::WHLSL::Token::typeName):
+        (WebCore::WHLSL::Lexer::consumeTokenFromStream):
+        * Modules/webgpu/WHLSL/WHLSLLexer.h:
+        (WebCore::WHLSL::AST::CodeLocation::CodeLocation):
+        (WebCore::WHLSL::AST::CodeLocation::startOffset const):
+        (WebCore::WHLSL::AST::CodeLocation::endOffset const):
+        (WebCore::WHLSL::Token::startOffset const):
+        (WebCore::WHLSL::Lexer::errorString):
+        (WebCore::WHLSL::Token::stringView const):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.cpp:
+        (WebCore::WHLSL::NameResolver::visit):
+        * Modules/webgpu/WHLSL/WHLSLParser.cpp:
+        (WebCore::WHLSL::Parser::parse):
+        (WebCore::WHLSL::Parser::peek):
+        (WebCore::WHLSL::Parser::peekFurther):
+        (WebCore::WHLSL::Types::includes):
+        (WebCore::WHLSL::Types::appendNameTo):
+        (WebCore::WHLSL::Types<t>::includes):
+        (WebCore::WHLSL::Types<t>::appendNameTo):
+        (WebCore::WHLSL::Parser::peekType):
+        (WebCore::WHLSL::Parser::tryType):
+        (WebCore::WHLSL::Parser::tryTypes):
+        (WebCore::WHLSL::Parser::consumeType):
+        (WebCore::WHLSL::Parser::consumeTypes):
+        (WebCore::WHLSL::Parser::consumeIntegralLiteral):
+        (WebCore::WHLSL::Parser::parseConstantExpression):
+        (WebCore::WHLSL::Parser::parseTypeArgument):
+        (WebCore::WHLSL::Parser::parseTypeArguments):
+        (WebCore::WHLSL::Parser::parseTypeSuffixAbbreviated):
+        (WebCore::WHLSL::Parser::parseTypeSuffixNonAbbreviated):
+        (WebCore::WHLSL::Parser::parseType):
+        (WebCore::WHLSL::Parser::parseTypeDefinition):
+        (WebCore::WHLSL::Parser::parseBuiltInSemantic):
+        (WebCore::WHLSL::Parser::parseResourceSemantic):
+        (WebCore::WHLSL::Parser::parseSpecializationConstantSemantic):
+        (WebCore::WHLSL::Parser::parseStageInOutSemantic):
+        (WebCore::WHLSL::Parser::parseSemantic):
+        (WebCore::WHLSL::Parser::parseQualifiers):
+        (WebCore::WHLSL::Parser::parseStructureElement):
+        (WebCore::WHLSL::Parser::parseStructureDefinition):
+        (WebCore::WHLSL::Parser::parseEnumerationDefinition):
+        (WebCore::WHLSL::Parser::parseEnumerationMember):
+        (WebCore::WHLSL::Parser::parseNativeTypeDeclaration):
+        (WebCore::WHLSL::Parser::parseNumThreadsFunctionAttribute):
+        (WebCore::WHLSL::Parser::parseAttributeBlock):
+        (WebCore::WHLSL::Parser::parseParameter):
+        (WebCore::WHLSL::Parser::parseParameters):
+        (WebCore::WHLSL::Parser::parseComputeFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseVertexOrFragmentFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseRegularFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseOperatorFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseBlock):
+        (WebCore::WHLSL::Parser::parseBlockBody):
+        (WebCore::WHLSL::Parser::parseIfStatement):
+        (WebCore::WHLSL::Parser::parseSwitchStatement):
+        (WebCore::WHLSL::Parser::parseSwitchCase):
+        (WebCore::WHLSL::Parser::parseForLoop):
+        (WebCore::WHLSL::Parser::parseWhileLoop):
+        (WebCore::WHLSL::Parser::parseDoWhileLoop):
+        (WebCore::WHLSL::Parser::parseVariableDeclaration):
+        (WebCore::WHLSL::Parser::parseVariableDeclarations):
+        (WebCore::WHLSL::Parser::parseStatement):
+        (WebCore::WHLSL::Parser::parseEffectfulExpression):
+        (WebCore::WHLSL::Parser::parseEffectfulAssignment):
+        (WebCore::WHLSL::Parser::parseLimitedSuffixOperator):
+        (WebCore::WHLSL::Parser::parseSuffixOperator):
+        (WebCore::WHLSL::Parser::parseExpression):
+        (WebCore::WHLSL::Parser::completeTernaryConditional):
+        (WebCore::WHLSL::Parser::completeAssignment):
+        (WebCore::WHLSL::Parser::parsePossibleTernaryConditional):
+        (WebCore::WHLSL::Parser::completePossibleLogicalBinaryOperation):
+        (WebCore::WHLSL::Parser::completePossibleRelationalBinaryOperation):
+        (WebCore::WHLSL::Parser::completePossibleShift):
+        (WebCore::WHLSL::Parser::completePossibleAdd):
+        (WebCore::WHLSL::Parser::completePossibleMultiply):
+        (WebCore::WHLSL::Parser::parsePossiblePrefix):
+        (WebCore::WHLSL::Parser::parsePossibleSuffix):
+        (WebCore::WHLSL::Parser::parseCallExpression):
+        (WebCore::WHLSL::Parser::parseTerm):
+        * Modules/webgpu/WHLSL/WHLSLParser.h:
+        * Modules/webgpu/WHLSL/WHLSLPreserveVariableLifetimes.cpp:
+        (WebCore::WHLSL::anonymousToken):
+        (WebCore::WHLSL::PreserveLifetimes::PreserveLifetimes):
+        (WebCore::WHLSL::PreserveLifetimes::assignVariableIntoStruct):
+        (WebCore::WHLSL::preserveVariableLifetimes):
+        * Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp:
+        (WebCore::WHLSL::PropertyResolver::visit):
+        (WebCore::WHLSL::wrapAnderCallArgument):
+        (WebCore::WHLSL::setterCall):
+        (WebCore::WHLSL::getterCall):
+        (WebCore::WHLSL::modify):
+        (WebCore::WHLSL::PropertyResolver::simplifyRightValue):
+        (WebCore::WHLSL::LeftValueSimplifier::finishVisiting):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeArrayOperatorLength.cpp:
+        (WebCore::WHLSL::synthesizeArrayOperatorLength):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeConstructors.cpp:
+        (WebCore::WHLSL::synthesizeConstructors):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeEnumerationFunctions.cpp:
+        (WebCore::WHLSL::synthesizeEnumerationFunctions):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeStructureAccessors.cpp:
+        (WebCore::WHLSL::synthesizeStructureAccessors):
+
+2019-07-10  Kenneth Russell  <kbr@chromium.org>
+
+        Hook up WebGL's back buffer in ANGLE backend on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=198982
+
+        Reviewed by Alex Christensen.
+
+        Fix a few places which were accidentally calling desktop OpenGL rather
+        than ANGLE. Fix some calls which were using ANGLE's OpenGL ES 3.0
+        entry points rather than the OpenGL ES 2.0 extension APIs, causing
+        them to generate errors in WebGL 1.0's backend. Change
+        Extensions3DANGLE to use ANGLE's requestable extension mechanism.
+
+        Fix framebuffer setup when using ANGLE for WebGL 1.0 contexts, for
+        both antialias:true and false.
+
+        Remove ANGLEWebKitBridge in ANGLE backend. It interfered with the
+        correct operation of ANGLE's internal shader compiler, and was
+        unnecessary given the use of ANGLE. Remove all manual shader name
+        hashing and mapping in ANGLE backend.
+
+        Tested with parts of the WebGL conformance suite and the San
+        Angeles demo, which now runs properly with WebKit's ANGLE backend
+        for WebGL.
+
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        (WebCore::WebGLRenderingContextBase::getProgramParameter):
+        (WebCore::WebGLRenderingContextBase::getUniformLocation):
+        (WebCore::WebGLRenderingContextBase::linkProgramWithoutInvalidatingAttribLocations):
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/angle/Extensions3DANGLE.cpp:
+        (WebCore::Extensions3DANGLE::Extensions3DANGLE):
+        (WebCore::Extensions3DANGLE::supports):
+        (WebCore::Extensions3DANGLE::ensureEnabled):
+        (WebCore::Extensions3DANGLE::isEnabled):
+        (WebCore::Extensions3DANGLE::getTranslatedShaderSourceANGLE):
+        (WebCore::Extensions3DANGLE::initializeAvailableExtensions):
+        (WebCore::Extensions3DANGLE::blitFramebuffer):
+        (WebCore::Extensions3DANGLE::renderbufferStorageMultisample):
+        (WebCore::Extensions3DANGLE::createVertexArrayOES):
+        (WebCore::Extensions3DANGLE::deleteVertexArrayOES):
+        (WebCore::Extensions3DANGLE::isVertexArrayOES):
+        (WebCore::Extensions3DANGLE::bindVertexArrayOES):
+        (WebCore::Extensions3DANGLE::supportsExtension):
+        (WebCore::Extensions3DANGLE::drawBuffersEXT):
+        (WebCore::Extensions3DANGLE::drawArraysInstanced):
+        (WebCore::Extensions3DANGLE::drawElementsInstanced):
+        (WebCore::Extensions3DANGLE::vertexAttribDivisor):
+        * platform/graphics/angle/Extensions3DANGLE.h:
+        * platform/graphics/angle/GraphicsContext3DANGLE.cpp:
+        (WebCore::GraphicsContext3D::validateAttributes):
+        (WebCore::GraphicsContext3D::reshapeFBOs):
+        (WebCore::GraphicsContext3D::attachDepthAndStencilBufferIfNeeded):
+        (WebCore::GraphicsContext3D::resolveMultisamplingIfNecessary):
+        (WebCore::GraphicsContext3D::validateDepthStencil):
+        (WebCore::GraphicsContext3D::prepareTexture):
+        (WebCore::GraphicsContext3D::attachShader):
+        (WebCore::GraphicsContext3D::bindAttribLocation):
+        (WebCore::GraphicsContext3D::compileShader):
+        (WebCore::GraphicsContext3D::compileShaderDirect):
+        (WebCore::GraphicsContext3D::detachShader):
+        (WebCore::GraphicsContext3D::getActiveAttribImpl):
+        (WebCore::GraphicsContext3D::getActiveAttrib):
+        (WebCore::GraphicsContext3D::getActiveUniformImpl):
+        (WebCore::GraphicsContext3D::getActiveUniform):
+        (WebCore::GraphicsContext3D::getAttribLocation):
+        (WebCore::GraphicsContext3D::getAttribLocationDirect):
+        (WebCore::GraphicsContext3D::moveErrorsToSyntheticErrorList):
+        (WebCore::GraphicsContext3D::linkProgram):
+        (WebCore::GraphicsContext3D::shaderSource):
+        (WebCore::GraphicsContext3D::getUnmangledInfoLog):
+        (WebCore::GraphicsContext3D::getShaderiv):
+        (WebCore::GraphicsContext3D::getShaderInfoLog):
+        (WebCore::GraphicsContext3D::getUniformLocation):
+        (WebCore::GraphicsContext3D::createBuffer):
+        (WebCore::GraphicsContext3D::createFramebuffer):
+        (WebCore::GraphicsContext3D::createProgram):
+        (WebCore::GraphicsContext3D::createRenderbuffer):
+        (WebCore::GraphicsContext3D::createShader):
+        (WebCore::GraphicsContext3D::createTexture):
+        (WebCore::GraphicsContext3D::deleteBuffer):
+        (WebCore::GraphicsContext3D::deleteFramebuffer):
+        (WebCore::GraphicsContext3D::deleteProgram):
+        (WebCore::GraphicsContext3D::deleteRenderbuffer):
+        (WebCore::GraphicsContext3D::deleteShader):
+        (WebCore::GraphicsContext3D::deleteTexture):
+        (WebCore::GraphicsContext3D::synthesizeGLError):
+        (): Deleted.
+        (WebCore::setCurrentNameHashMapForShader): Deleted.
+        (WebCore::nameHashForShader): Deleted.
+        (WebCore::GraphicsContext3D::checkVaryingsPacking const): Deleted.
+        (WebCore::GraphicsContext3D::precisionsMatch const): Deleted.
+        (WebCore::generateHashedName): Deleted.
+        (WebCore::GraphicsContext3D::mappedSymbolInShaderSourceMap): Deleted.
+        (WebCore::GraphicsContext3D::mappedSymbolName): Deleted.
+        (WebCore::GraphicsContext3D::originalSymbolInShaderSourceMap): Deleted.
+        (WebCore::GraphicsContext3D::originalSymbolName): Deleted.
+        (WebCore::GraphicsContext3D::getNonBuiltInActiveSymbolCount): Deleted.
+        (WebCore::GraphicsContext3D::getShaderSource): Deleted.
+        * platform/graphics/cocoa/GraphicsContext3DCocoa.mm:
+        (WebCore::GraphicsContext3D::GraphicsContext3D):
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+        (WebCore::GraphicsContext3D::makeContextCurrent):
+        (WebCore::GraphicsContext3D::checkGPUStatus):
+        (WebCore::GraphicsContext3D::allocateIOSurfaceBackingStore):
+        (WebCore::GraphicsContext3D::updateFramebufferTextureBackingStoreFromLayer):
+        * platform/graphics/cocoa/WebGLLayer.h:
+        * platform/graphics/cocoa/WebGLLayer.mm:
+        (-[WebGLLayer initWithGraphicsContext3D:]):
+        (-[WebGLLayer copyImageSnapshotWithColorSpace:]):
+        (-[WebGLLayer display]):
+        (-[WebGLLayer setEGLDisplay:andConfig:]):
+        (-[WebGLLayer dealloc]):
+        (-[WebGLLayer allocateIOSurfaceBackingStoreWithSize:usingAlpha:]):
+        (-[WebGLLayer bindFramebufferToNextAvailableSurface]):
+
+2019-07-10  Youenn Fablet  <youenn@apple.com>
+
+        openDatabase property should not be enumerable on DOMWindow
+        https://bugs.webkit.org/show_bug.cgi?id=199672
+        <rdar://problem/52809000>
+
+        Reviewed by Chris Dumez.
+
+        Test: storage/websql/openDatabase-deprecation.html
+
+        * Modules/webdatabase/DOMWindowWebDatabase.idl:
+
+2019-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Fix unsafe usage of makeWeakPtr() in CMTimebaseEffectiveRateChangedCallback()
+        https://bugs.webkit.org/show_bug.cgi?id=199656
+
+        Reviewed by Eric Carlson.
+
+        CMTimebaseEffectiveRateChangedCallback() is getting called on a background thread and would call
+        makeWeakPtr() on the MediaPlayerPrivateMediaSourceAVFObjC object, which is not safe because
+        MediaPlayerPrivateMediaSourceAVFObjC is a main thread object.
+
+        To address the issue, move the logic for listening to effective rate changes to its own
+        Listener class which is ThreadSafeRefCounted. Instead of using makeWeakPtr() on the background
+        thread, we now merely ref the thread-safe listener.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::EffectiveRateChangedListener::create):
+        (WebCore::EffectiveRateChangedListener::effectiveRateChanged):
+        (WebCore::CMTimebaseEffectiveRateChangedCallback):
+        (WebCore::EffectiveRateChangedListener::stop):
+        (WebCore::EffectiveRateChangedListener::EffectiveRateChangedListener):
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::MediaPlayerPrivateMediaSourceAVFObjC):
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::~MediaPlayerPrivateMediaSourceAVFObjC):
+
+2019-07-10  Antti Koivisto  <antti@apple.com>
+
+        Remove TouchActionData
+        https://bugs.webkit.org/show_bug.cgi?id=199668
+
+        Reviewed by Simon Fraser.
+
+        TouchActionData structure has been superseded by touch-action regions in EventRegion and is unused.
+        Remove it and the supporting code.
+
+        No functional changes.
+
+        * dom/Document.cpp:
+        (WebCore::Document::nodeWillBeRemoved):
+        (WebCore::Document::updateTouchActionElements): Deleted.
+        * dom/Document.h:
+        (WebCore::Document::mayHaveElementsWithNonAutoTouchAction const):
+        (WebCore::Document::setMayHaveElementsWithNonAutoTouchAction):
+
+        Replace touchActionElements set with a bit that covers the only remaining clients (optimizations).
+        Note that touchActionElements was not deleted when emptied, it had the same "may have" behavior (which
+        is currently needed).
+
+        (WebCore::Document::touchActionElements const): Deleted.
+        * dom/Element.cpp:
+        (WebCore::Element::computedTouchActions const): Deleted.
+        * dom/Element.h:
+        * page/scrolling/ScrollingCoordinator.cpp:
+        (WebCore::ScrollingCoordinator::absoluteEventTrackingRegionsForFrame const):
+        * page/scrolling/ScrollingTree.cpp:
+        (WebCore::ScrollingTree::touchActionDataAtPoint const): Deleted.
+        * page/scrolling/ScrollingTree.h:
+        * platform/EventTrackingRegions.cpp:
+        (WebCore::operator==):
+        * platform/EventTrackingRegions.h:
+        (): Deleted.
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::paintObject):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::calculateClipRects const):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateEventRegion):
+        * style/StyleTreeResolver.cpp:
+        (WebCore::Style::TreeResolver::resolveElement):
+
+2019-07-10  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Remove redundant InlineFormattingContext::LineLayout members.
+        https://bugs.webkit.org/show_bug.cgi?id=199654
+        <rdar://problem/52869206>
+
+        Reviewed by Antti Koivisto.
+
+        Some of the members are actually only needed in selected functions.
+
+        * layout/inlineformatting/InlineFormattingContext.cpp:
+        (WebCore::Layout::InlineFormattingContext::layout const):
+        (WebCore::Layout::InlineFormattingContext::computeIntrinsicWidthConstraints const):
+        * layout/inlineformatting/InlineFormattingContext.h:
+        (WebCore::Layout::InlineFormattingContext::LineLayout::layoutState const):
+        * layout/inlineformatting/InlineFormattingContextLineLayout.cpp:
+        (WebCore::Layout::InlineFormattingContext::LineLayout::LineLayout):
+        (WebCore::Layout::InlineFormattingContext::LineLayout::layout const):
+        (WebCore::Layout::InlineFormattingContext::LineLayout::computedIntrinsicWidth const):
+        (WebCore::Layout::InlineFormattingContext::LineLayout::createDisplayRuns const):
+        (WebCore::Layout::InlineFormattingContext::LineLayout::alignRuns const):
+        * layout/inlineformatting/InlineFormattingState.h:
+        (WebCore::Layout::InlineFormattingState::inlineItems):
+        (WebCore::Layout::InlineFormattingState::inlineRuns):
+        (WebCore::Layout::InlineFormattingState::lineBoxes):
+
+2019-07-10  Enrique Ocaña González  <eocanha@igalia.com>
+
+        [GStreamer] Protect against null samples and samples with null buffers
+        https://bugs.webkit.org/show_bug.cgi?id=199619
+
+        Reviewed by Philippe Normand.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::GstVideoFrameHolder::GstVideoFrameHolder): Assert to enforce non-null samples.
+        (WebCore::GstVideoFrameHolder::updateTexture): Protect against null m_buffer and improperly mapped video frame.
+
+2019-07-09  Andres Gonzalez  <andresg_22@apple.com>
+
+        AX: HTML datalist accessibility is not exposed by WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=196998
+        <rdar://problem/49962521>
+
+        Reviewed by Chris Fleizach.
+
+        Input fields with datalist are exposed as having a listbox popup.
+
+        Test: accessibility/datalist.html
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::popupValue const):
+        (WebCore::AccessibilityObject::hasDatalist const):
+        * accessibility/AccessibilityObject.h:
+
+2019-07-09  Justin Fan  <justin_fan@apple.com>
+
+        Replace old, broken WebGPU IDL spec link with the new one in IDL comments.
+
+        Rubber-stamped by Myles C. Maxfield.
+
+        No test changes or change in behavior.
+
+        * Modules/webgpu/GPUBindGroupLayoutBinding.idl:
+        * Modules/webgpu/GPUBindGroupLayoutDescriptor.idl:
+        * Modules/webgpu/GPUBlendDescriptor.idl:
+        * Modules/webgpu/GPUBufferDescriptor.idl:
+        * Modules/webgpu/GPUBufferUsage.idl:
+        * Modules/webgpu/GPUCanvasContext.idl:
+        * Modules/webgpu/GPUColor.idl:
+        * Modules/webgpu/GPUColorStateDescriptor.idl:
+        * Modules/webgpu/GPUColorWriteBits.idl:
+        * Modules/webgpu/GPUCompareFunction.idl:
+        * Modules/webgpu/GPUDepthStencilStateDescriptor.idl:
+        * Modules/webgpu/GPUExtent3D.idl:
+        * Modules/webgpu/GPULoadOp.idl:
+        * Modules/webgpu/GPUOrigin3D.idl:
+        * Modules/webgpu/GPURequestAdapterOptions.idl:
+        * Modules/webgpu/GPUSamplerDescriptor.idl:
+        * Modules/webgpu/GPUShaderStageBit.idl:
+        * Modules/webgpu/GPUStoreOp.idl:
+        * Modules/webgpu/GPUTextureDescriptor.idl:
+        * Modules/webgpu/GPUTextureUsage.idl:
+        * Modules/webgpu/GPUVertexAttributeDescriptor.idl:
+        * Modules/webgpu/GPUVertexBufferDescriptor.idl:
+        * Modules/webgpu/GPUVertexInputDescriptor.idl:
+        * Modules/webgpu/WebGPU.idl:
+        * Modules/webgpu/WebGPUAdapter.idl:
+        * Modules/webgpu/WebGPUBindGroup.idl:
+        * Modules/webgpu/WebGPUBindGroupBinding.idl:
+        * Modules/webgpu/WebGPUBindGroupDescriptor.idl:
+        * Modules/webgpu/WebGPUBindGroupLayout.idl:
+        * Modules/webgpu/WebGPUBuffer.idl:
+        * Modules/webgpu/WebGPUBufferBinding.idl:
+        * Modules/webgpu/WebGPUCommandBuffer.idl:
+        * Modules/webgpu/WebGPUCommandEncoder.idl:
+        * Modules/webgpu/WebGPUComputePassEncoder.idl:
+        * Modules/webgpu/WebGPUComputePipeline.idl:
+        * Modules/webgpu/WebGPUComputePipelineDescriptor.idl:
+        * Modules/webgpu/WebGPUDevice.idl:
+        * Modules/webgpu/WebGPUPipelineDescriptorBase.idl:
+        * Modules/webgpu/WebGPUPipelineLayout.idl:
+        * Modules/webgpu/WebGPUPipelineLayoutDescriptor.idl:
+        * Modules/webgpu/WebGPUPipelineStageDescriptor.idl:
+        * Modules/webgpu/WebGPUProgrammablePassEncoder.idl:
+        * Modules/webgpu/WebGPUQueue.idl:
+        * Modules/webgpu/WebGPURenderPassDescriptor.idl:
+        * Modules/webgpu/WebGPURenderPassEncoder.idl:
+        * Modules/webgpu/WebGPURenderPipeline.idl:
+        * Modules/webgpu/WebGPURenderPipelineDescriptor.idl:
+        * Modules/webgpu/WebGPUSampler.idl:
+        * Modules/webgpu/WebGPUShaderModule.idl:
+        * Modules/webgpu/WebGPUShaderModuleDescriptor.idl:
+        * Modules/webgpu/WebGPUSwapChain.idl:
+        * Modules/webgpu/WebGPUTexture.idl:
+        * Modules/webgpu/WebGPUTextureView.idl:
+
+2019-07-09  Chris Dumez  <cdumez@apple.com>
+
+        Stop using GenericTaskQueue from multiple threads
+        https://bugs.webkit.org/show_bug.cgi?id=199652
+
+        Reviewed by Geoffrey Garen.
+
+        WebCoreAVFLoaderDelegate was calling GenericTaskQueue::enqueueTask() from a background thread,
+        which is not safe because the implementation of enqueueTask() calls makeWeakPtr() on the
+        GenericTaskQueue (a main thread object).
+
+        Update WebCoreAVFLoaderDelegate to use callOnMainThread() instead.
+
+        * platform/GenericTaskQueue.h:
+        Stop last template parameter which was used exclusively by WebCoreAVFLoaderDelegate to try and
+        make GenericTaskQueue thread-safe.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (-[WebCoreAVFMovieObserver metadataLoaded]):
+        (-[WebCoreAVFMovieObserver didEnd:]):
+        (-[WebCoreAVFMovieObserver observeValueForKeyPath:ofObject:change:context:]):
+        (-[WebCoreAVFMovieObserver legibleOutput:didOutputAttributedStrings:nativeSampleBuffers:forItemTime:]):
+        (-[WebCoreAVFMovieObserver outputSequenceWasFlushed:]):
+        (-[WebCoreAVFLoaderDelegate resourceLoader:shouldWaitForLoadingOfRequestedResource:]):
+        (-[WebCoreAVFLoaderDelegate resourceLoader:didCancelLoadingRequest:]):
+
+2019-07-09  Tim Horton  <timothy_horton@apple.com>
+
+        Fixed elements appear in the middle of full page screenshots taken when scrolled
+        https://bugs.webkit.org/show_bug.cgi?id=199649
+        <rdar://problem/52476226>
+
+        Reviewed by Simon Fraser.
+
+        * page/FrameView.h:
+        Expose a getter for the layout viewport override rect.
+
+2019-07-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix build after r247279
+        https://bugs.webkit.org/show_bug.cgi?id=199640
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2019-07-09  Alex Christensen  <achristensen@webkit.org>
+
+        Move AutofillElements.{h,cpp} from editing/ios to editing/cocoa since they're used on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=199640
+
+        Reviewed by Chris Dumez.
+
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * editing/cocoa/AutofillElements.cpp: Copied from Source/WebCore/editing/ios/AutofillElements.cpp.
+        * editing/cocoa/AutofillElements.h: Copied from Source/WebCore/editing/ios/AutofillElements.h.
+        * editing/ios/AutofillElements.cpp: Removed.
+        * editing/ios/AutofillElements.h: Removed.
+
+2019-07-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: replace WTF::Vector with std::initializer_list in CallTracer to avoid dynamic allocations
+        https://bugs.webkit.org/show_bug.cgi?id=199611
+
+        Reviewed by Joseph Pecoraro.
+
+        The number of arguments for each member function is known at build time, so there's no need
+        to dynamically allocate a `WTF::Vector` when capturing the arguments. One downside to using
+        a `std::initializer_list` is that we can no longer "flatten" `WTF::Variant` arguments into
+        a `RecordCanvasActionVariant`, but this is acceptable because `WTF::Variant` supports having
+        yet another `WTF::Variant` as one of it's types, which the `InspectorCanvas` can then figure
+        out when it finally gets the data. The same applies to `nullptr`/`Optional` checks as well.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateAttributeSetterBodyDefinition):
+        (GenerateImplementationFunctionCall):
+        (GenerateCallTracer):
+        (GenerateCallTracerParameter): Deleted.
+        * bindings/scripts/test/JS/JSTestCallTracer.cpp:
+
+        * bindings/js/CallTracerTypes.h:
+        * bindings/js/CallTracer.h:
+        * bindings/js/CallTracer.cpp:
+        (WebCore::CallTracer::recordCanvasAction):
+
+        * inspector/InspectorInstrumentation.h:
+        (WebCore::InspectorInstrumentation::recordCanvasAction):
+        * inspector/InspectorInstrumentation.cpp:
+        (WebCore::InspectorInstrumentation::recordCanvasActionImpl):
+
+        * inspector/agents/InspectorCanvasAgent.h:
+        * inspector/agents/InspectorCanvasAgent.cpp:
+        (WebCore::InspectorCanvasAgent::recordCanvasAction):
+
+        * inspector/InspectorCanvas.h:
+        * inspector/InspectorCanvas.cpp:
+        (WebCore::InspectorCanvas::recordAction):
+        (WebCore::InspectorCanvas::buildAction):
+        Drive-by: handle the situation where a parameter is an array of deduplicated strings, which
+                  would otherwise be treated as an array of numbers.
+
+2019-07-09  Chris Dumez  <cdumez@apple.com>
+
+        Fix non thread-safe use of WeakPtr in DisplayRefreshMonitorMac::displayLinkFired()
+        https://bugs.webkit.org/show_bug.cgi?id=199626
+
+        Reviewed by Ryosuke Niwa.
+
+        Fix non thread-safe use of WeakPtr in DisplayRefreshMonitorMac::displayLinkFired().
+        DisplayRefreshMonitorMac gets constructed / destroyed on the main thread, it is
+        not thread-safe to call makeWeakPtr() on a DisplayRefreshMonitorMac object like it
+        was done before.
+
+        To address the issue, mark the object as ThreadSafeRefCounted and ref the object
+        in the lambda instead.
+
+        * platform/graphics/DisplayRefreshMonitor.h:
+        (WebCore::DisplayRefreshMonitor::stop):
+        * platform/graphics/DisplayRefreshMonitorManager.cpp:
+        (WebCore::DisplayRefreshMonitorManager::unregisterClient):
+        * platform/graphics/mac/DisplayRefreshMonitorMac.cpp:
+        (WebCore::DisplayRefreshMonitorMac::~DisplayRefreshMonitorMac):
+        (WebCore::DisplayRefreshMonitorMac::stop):
+        (WebCore::DisplayRefreshMonitorMac::displayLinkFired):
+        * platform/graphics/mac/DisplayRefreshMonitorMac.h:
+
+2019-07-09  Sihui Liu  <sihui_liu@apple.com>
+
+        Only allow fetching and removing session credentials from WebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=199385
+        <rdar://problem/52622080>
+
+        Reviewed by Alex Christensen.
+
+        Fetch and remove only session credentials from NSURLCredentialStorage.
+
+        Modified existing API tests: WKWebsiteDataStore.FetchPersistentCredentials
+
+        * platform/network/CredentialStorage.cpp:
+        (WebCore::CredentialStorage::originsWithCredentials const):
+        (WebCore::CredentialStorage::originsWithSessionCredentials):
+        (WebCore::CredentialStorage::removeSessionCredentialsWithOrigins):
+        (WebCore::CredentialStorage::clearSessionCredentials):
+        (WebCore::CredentialStorage::clearPermanentCredentialsForProtectionSpace):
+        * platform/network/CredentialStorage.h:
+        * platform/network/mac/CredentialStorageMac.mm:
+        (WebCore::CredentialStorage::originsWithSessionCredentials):
+        (WebCore::CredentialStorage::removeSessionCredentialsWithOrigins):
+        (WebCore::CredentialStorage::clearSessionCredentials):
+        (WebCore::CredentialStorage::clearPermanentCredentialsForProtectionSpace):
+        (WebCore::CredentialStorage::originsWithPersistentCredentials): Deleted.
+
+2019-07-09  Alex Christensen  <achristensen@webkit.org>
+
+        Null check HistoryItems given to loadDifferentDocumentItem
+        https://bugs.webkit.org/show_bug.cgi?id=199596
+        <rdar://problem/49884391>
+
+        Reviewed by Ryosuke Niwa.
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::retryAfterFailedCacheOnlyMainResourceLoad):
+        Under some rare and mysterious conditions we can have a null provisionalItem when loading from the cache.
+
+2019-07-09  Zalan Bujtas  <zalan@apple.com>
+
+        Fix LOG_DISABLED and TREE_DEBUGGING enabled build.
+        https://bugs.webkit.org/show_bug.cgi?id=199623
+        <rdar://problem/52837648>
+
+        Reviewed by Simon Fraser.
+
+        * rendering/RenderLayerCompositor.cpp:
+
+2019-07-09  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Remove InlineItem references from inline runs.
+        https://bugs.webkit.org/show_bug.cgi?id=199608
+        <rdar://problem/52812775>
+
+        Reviewed by Antti Koivisto.
+
+        Constructing the inline runs is where we stop using InlineItems in the process of processing the inline content.
+        InlineItems are redundant in the context of Display::Runs.
+        It also enables us to create temporary InlineItems to process split content.  
+
+        * layout/inlineformatting/InlineFormattingContextLineLayout.cpp:
+        (WebCore::Layout::InlineFormattingContext::LineLayout::createDisplayRuns const):
+        * layout/inlineformatting/InlineFormattingContextQuirks.cpp:
+        (WebCore::Layout::InlineFormattingContext::Quirks::lineDescentNeedsCollapsing):
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::Content::Run::Run):
+        (WebCore::Layout::Line::isVisuallyEmpty const):
+        (WebCore::Layout::Line::close):
+        (WebCore::Layout::Line::removeTrailingTrimmableContent):
+        (WebCore::Layout::Line::trailingTrimmableWidth const):
+        (WebCore::Layout::Line::appendNonBreakableSpace):
+        (WebCore::Layout::Line::appendTextContent):
+        (WebCore::Layout::Line::appendNonReplacedInlineBox):
+        (WebCore::Layout::Line::appendHardLineBreak):
+        * layout/inlineformatting/InlineLine.h:
+        (WebCore::Layout::Line::Content::Run::layoutBox const):
+        (WebCore::Layout::Line::Content::Run::logicalRect const):
+        (WebCore::Layout::Line::Content::Run::textContext const):
+        (WebCore::Layout::Line::Content::Run::type const):
+        (WebCore::Layout::Line::Content::Run::isText const):
+        (WebCore::Layout::Line::Content::Run::isBox const):
+        (WebCore::Layout::Line::Content::Run::isLineBreak const):
+        (WebCore::Layout::Line::Content::Run::isContainerStart const):
+        (WebCore::Layout::Line::Content::Run::isContainerEnd const):
+        (WebCore::Layout::Line::Content::Run::adjustLogicalTop):
+        (WebCore::Layout::Line::Content::Run::moveVertically):
+        (WebCore::Layout::Line::Content::Run::moveHorizontally):
+        (WebCore::Layout::Line::Content::Run::setTextIsCollapsed):
+
+2019-07-09  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r244906): Crash in WebCore::positionOffsetValue
+        https://bugs.webkit.org/show_bug.cgi?id=199613
+        <rdar://problem/51518172>
+
+        Reviewed by Zalan Bujtas.
+
+        Test: fast/css/getComputedStyle/sticky-scroll-container-crash.html
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::positionOffsetValue):
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::enclosingScrollportBox const): Deleted.
+
+        The client trivally hits nullptr when this is called for element without overflow scroll parent.
+
+        Fix by removing the whole function and using shared enclosingClippingBoxForStickyPosition instead.
+        It does the same ancestor walk more efficiently via layer tree.
+
+        * rendering/RenderBox.h:
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::enclosingClippingBoxForStickyPosition const):
+
+        Factor into function.
+
+        (WebCore::RenderBoxModelObject::computeStickyPositionConstraints const):
+        * rendering/RenderBoxModelObject.h:
+
+2019-07-09  Cathie Chen  <cathiechen@igalia.com>
+
+        Support writing-mode and direction for scrollIntoViewOptions.
+        https://bugs.webkit.org/show_bug.cgi?id=161611
+
+        Reviewed by Frédéric Wang and Simon Fraser.
+
+        To determine which physical side to align we need to transform ScrollIntoViewOptions to scrollAlignment.
+        We'll translate the inline and block direction separately. The writing-mode will affect the block scrollAlignment.
+        While both writing-mode and CSS direction will affect the inline scrollAlignment. The argument for scrollRectToVisible
+        should be physical, so if !isHorizontalWritingMode(), we need to switch alignX and alignY.
+
+        For direction: rtl and writing-mode: horizontal-tb box, WebKit puts the scrollbar on the left side. The visible rect
+        starts from the right side of the scroll bar, so localExposeRect should also start from the right side of
+        scroll bar.
+
+        * dom/Element.cpp:
+        (WebCore::toScrollAlignmentForInlineDirection):
+        (WebCore::toScrollAlignmentForBlockDirection):
+        (WebCore::Element::scrollIntoView):
+        (WebCore::toScrollAlignment): Deleted.
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::scrollRectToVisible):
+
+2019-07-08  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL Import 23 new JS reference spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=199604
+
+        Reviewed by Myles C. Maxfield.
+
+        This patch imports a bunch of JS reference spec tests on our way to
+        completing https://bugs.webkit.org/show_bug.cgi?id=199595
+        
+        It also fixes the recursion checker phase. That phase had two bugs:
+        1. We'd assert after visiting the function declaration that it was
+        still in the set. However, it will not be in the set when we actually
+        detect recursion.
+        2. We would not visit the arguments to a call, so if they contained other
+        calls which were recursive, we would not detect such recursive calls.
+
+        Tests: webgpu/whlsl-int-literal-compare.html
+               webgpu/whlsl-simple-tests.html
+               webgpu/whlsl-type-mismatch.html
+               webgpu/whlsl-uint-bitwise.html
+
+        * Modules/webgpu/WHLSL/WHLSLRecursionChecker.cpp:
+
+2019-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Make Document::postTask() safe to call from a background thread
+        https://bugs.webkit.org/show_bug.cgi?id=199585
+
+        Reviewed by Alex Christensen.
+
+        Make Document::postTask() safe to call from a background thread by not calling makeWeakPtr() on the Document.
+        Calling makeWeakPtr() on a document from a background thread is not safe since Document is a main thread
+        object. Instead, capture Document::identifier() in the lambda and lookup the document from its identifier
+        once we're on the main thread.
+
+        * dom/Document.cpp:
+        (WebCore::Document::postTask):
+
+2019-07-08  Youenn Fablet  <youenn@apple.com>
+
+        Hop explicitly to the main thread after generating a frame in ScreenDisplayCaptureSourceMac
+        https://bugs.webkit.org/show_bug.cgi?id=199581
+
+        Reviewed by Eric Carlson.
+
+        Instead of locking and setting the current frame from a background thread, hop to the main thread.
+        This also makes sure the weakThis check is done in the main thread.
+        Manually tested.
+
+        * platform/mediastream/mac/ScreenDisplayCaptureSourceMac.h:
+        (WebCore::ScreenDisplayCaptureSourceMac::DisplaySurface::DisplaySurface):
+        * platform/mediastream/mac/ScreenDisplayCaptureSourceMac.mm:
+        (WebCore::ScreenDisplayCaptureSourceMac::createDisplayStream):
+        (WebCore::ScreenDisplayCaptureSourceMac::generateFrame):
+        (WebCore::ScreenDisplayCaptureSourceMac::newFrame):
+        (WebCore::ScreenDisplayCaptureSourceMac::frameAvailable): Deleted.
+
+2019-07-08  Daniel Bates  <dabates@apple.com>
+
+        Command + . generates Escape with key identifier Period, should be Escape
+        https://bugs.webkit.org/show_bug.cgi?id=199393
+        <rdar://problem/52498001>
+
+        Reviewed by Wenson Hsieh.
+
+        Remap the key code for Command + . before we compute the Windows virtual key code.
+        Otherwise, the Windows virtual key code reveals the pre-mapped key code.
+
+        * platform/ios/WebEvent.mm:
+        (-[WebEvent initWithKeyEventType:timeStamp:characters:charactersIgnoringModifiers:modifiers:isRepeating:withFlags:withInputManagerHint:keyCode:isTabKey:]):
+
+2019-07-08  Alex Christensen  <achristensen@webkit.org>
+
+        Prevent null dereferencing in SubresourceLoader::init's lambda
+        https://bugs.webkit.org/show_bug.cgi?id=199580
+
+        Reviewed by Ryosuke Niwa.
+
+        Crash logs indicate that sometimes m_documentLoader is null.
+        This is similar to https://bugs.webkit.org/show_bug.cgi?id=187360
+
+        * loader/SubresourceLoader.cpp:
+        (WebCore::SubresourceLoader::init):
+
+2019-07-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unable to paste from Notes into Excel 365 spreadsheet
+        https://bugs.webkit.org/show_bug.cgi?id=199565
+        <rdar://problem/43615497>
+
+        Reviewed by Chris Dumez.
+
+        When pasting into Microsoft Excel 365, the copied data is all inserted into a single cell, even when copying a
+        table. To understand why this happens, we first need to understand how Excel's logic for handling paste works.
+        When tapping on the "Paste" button, Excel performs and expects the following:
+
+        1.  Before triggering programmatic paste, move focus into a hidden contenteditable area specifically intended to
+            capture pasted content.
+        2.  Run a promise that resolves immediately; the promise callback restores focus to the originally focused
+            element prior to (1).
+        3.  Invoke programmatic paste using `document.execCommand("Paste")`.
+        4.  The callback scheduled in step (2) then runs, restoring focus to the main editable element representing a
+            table cell.
+
+        However, what ends up happening is this:
+
+        Steps (1)-(3): same as before.
+        4.  We (WebKit) create a temporary Page for the purposes of sanitizing copied web content before exposing it to
+            the paste handler. This involves creating and loading a document; when this is finished, we call into
+            Document::finishedParsing which flushes the microtask queue.
+        5.  This causes us to immediately run the microtask enqueued in step (2), which restores focus to the previously
+            focused element (importantly, this is not the element that was focused in step (1)).
+        6.  The paste commences, and inserts the sanitized fragment into the originally focused element rather than the
+            content editable area intended to capture pasted content.
+
+        Excel's script then gets confused, and does not end up using their special paste logic to handle the paste. The
+        pasted content is instead just inserted as plain text in a cell. To address this, we simply prevent document
+        load in the Page for web content sanitization from triggering a microtask checkpoint; this allows any scheduled
+        main thread microtasks to be deferred until the next turn of the runloop.
+
+        Test: editing/pasteboard/paste-does-not-fire-promises-while-sanitizing-web-content.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::finishedParsing):
+
+        Don't immediately dispatch microtasks when we finish document parsing, in the case where the page is intended
+        only for web content sanitization, since this may end up executing script in the original document. As explained
+        above, this causes compatibility issues when pasting in Excel.
+
+        * editing/markup.cpp:
+        (WebCore::createPageForSanitizingWebContent):
+
+        When creating a page for sanitizing web content, mark it as such.
+
+        * page/Page.h:
+
+        Add a new flag to indicate that a Page is only intended for sanitizing web content.
+
+        (WebCore::Page::setIsForSanitizingWebContent):
+        (WebCore::Page::isForSanitizingWebContent const):
+
+2019-07-08  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove unused #include "ImageBufferData.h"
+        https://bugs.webkit.org/show_bug.cgi?id=199574
+
+        Reviewed by Michael Catanzaro.
+
+        * html/canvas/ImageBitmapRenderingContext.h:
+
+2019-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Fix thread safety issue in Database::scheduleTransactionCallback()
+        https://bugs.webkit.org/show_bug.cgi?id=199557
+
+        Reviewed by Alex Christensen.
+
+        I am working on adding threading assertions to WeakPtr and found a potentially
+        unsafe call to makeWeakPtr() on a Document from Database::scheduleTransactionCallback()
+        via Document::postTask(), on a background database thread. Document is a main thread
+        object and we should therefore not be interacting with it from a background thread.
+
+        For clarity, this patch also switches the webdatabase code to use Document instead
+        of ScriptExecution as type since it is only exposed to Window contexts, not workers.
+
+        * Modules/webdatabase/Database.cpp:
+        (WebCore::Database::Database):
+        (WebCore::Database::~Database):
+        (WebCore::Database::runTransaction):
+        (WebCore::Database::scheduleTransactionCallback):
+        (WebCore::Database::logErrorMessage):
+        (WebCore::Database::securityOrigin):
+        (WebCore::Database::didExceedQuota):
+        * Modules/webdatabase/Database.h:
+        (WebCore::Database::document):
+        * Modules/webdatabase/DatabaseContext.cpp:
+        (WebCore::DatabaseContext::DatabaseContext):
+        * Modules/webdatabase/DatabaseContext.h:
+        * Modules/webdatabase/DatabaseManager.cpp:
+        (WebCore::DatabaseManager::databaseContext):
+        (WebCore::logOpenDatabaseError):
+        (WebCore::DatabaseManager::openDatabaseBackend):
+        (WebCore::DatabaseManager::tryToOpenDatabaseBackend):
+        (WebCore::DatabaseManager::openDatabase):
+        (WebCore::DatabaseManager::hasOpenDatabases):
+        (WebCore::DatabaseManager::stopDatabases):
+        (WebCore::DatabaseManager::logErrorMessage):
+        * Modules/webdatabase/DatabaseManager.h:
+        * Modules/webdatabase/SQLStatement.cpp:
+        (WebCore::SQLStatement::SQLStatement):
+        * Modules/webdatabase/SQLTransaction.cpp:
+        (WebCore::SQLTransaction::SQLTransaction):
+        * inspector/InspectorInstrumentation.h:
+        (WebCore::InspectorInstrumentation::didOpenDatabase):
+        * inspector/agents/InspectorDatabaseAgent.cpp:
+        (WebCore::InspectorDatabaseAgent::executeSQL):
+
+2019-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Add threading assertion to WTF::CompletionHandler
+        https://bugs.webkit.org/show_bug.cgi?id=199516
+
+        Reviewed by Alex Christensen.
+
+        Update some MessagePort-related code to use WTF::Function instead of WTF::CompletionHandler
+        since the callback is always called on the main thread, even when it was created on a
+        worker thread. Ideally, this code would be refactored so that the callback gets called on
+        the worker thread directly.
+
+        * dom/messageports/MessagePortChannel.cpp:
+        (WebCore::MessagePortChannel::checkRemotePortForActivity):
+        * dom/messageports/MessagePortChannel.h:
+        * dom/messageports/MessagePortChannelProvider.h:
+        * dom/messageports/MessagePortChannelProviderImpl.cpp:
+        (WebCore::MessagePortChannelProviderImpl::checkRemotePortForActivity):
+        * dom/messageports/MessagePortChannelProviderImpl.h:
+        * dom/messageports/MessagePortChannelRegistry.cpp:
+        (WebCore::MessagePortChannelRegistry::checkRemotePortForActivity):
+        * dom/messageports/MessagePortChannelRegistry.h:
+
+2019-07-08  Charlie Turner  <cturner@igalia.com>
+
+        REGRESSION(r243197): [GStreamer] Web process hangs when scrolling twitter timeline which contains HLS videos
+        https://bugs.webkit.org/show_bug.cgi?id=197558
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Not covered, I have a test locally that would probably trigger the
+        deadlock if the network requests took a realistic amount of time,
+        but from a local webserver the window of time to hit this deadlock
+        is too narrow.
+
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (webkit_web_src_init): Make the websrc start asynchronously, this
+        allows the main thread to be free to complete resource loader
+        setup.
+        (webKitWebSrcCreate): Calling start() from the create() vfunc is a
+        recipe for deadlock, since BaseSrc holds the streaming lock during
+        seeks, and then calls create(). In these cases, we do not want to
+        notify async-completion, since we've already completed from the
+        necessarily preceeding start() vfunc, and calling it again would
+        require the stream-lock and deadlock us.
+        (webKitWebSrcStart): Refactor to use webKitWebSrcMakeRequest, but
+        ensuring that we do perform an async-complete notification.
+        (webKitWebSrcMakeRequest): What Start() used to be, but now can be
+        toggled when to notify of async-completion. Start() no longer
+        blocks, since the return value of initiating a resource loader is
+        of no interest to the callers.
+        (webKitWebSrcCloseSession): Similarly to Start(), we do not need
+        to wait for the completion of cancelled net requests.
+
+2019-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Unable to play videos on xfinity.com/stream on macOS Catalina
+        https://bugs.webkit.org/show_bug.cgi?id=199576
+        <rdar://problem/50101264>
+
+        Reviewed by Alex Christensen.
+
+        Enable invalidate Fetch signal quirk for all sites as the blacklist is getting too large and
+        we are finding too much breakage too late in the release cycle.
+
+        * Modules/fetch/FetchRequest.cpp:
+        (WebCore::processInvalidSignal):
+        * page/Quirks.cpp:
+        (WebCore::Quirks::shouldIgnoreInvalidSignal const):
+
+2019-07-08  Youenn Fablet  <youenn@apple.com>
+
+        MediaStreamTrackPrivate should always call readyStateChanged on the main thread
+        https://bugs.webkit.org/show_bug.cgi?id=199538
+        <rdar://problem/52709106>
+
+        Reviewed by Eric Carlson.
+
+        MediaStreamTrackPrivate is sometimes calling readyStateChanged in a
+        background thread inside its audioSamplesAvailable method.
+        Instead of doing that, we hop to the main thread to call readyStateChanged.
+        Once the call is made in the main thread, MediaStreamTrackPrivate will
+        send the audio samples to its observers.
+
+        To make mock audio source closer to real capture audio sources,
+        audioSamplesAvailable is called on a background thread.
+        RealtimeMediaSource is updated to always be destroyed in the main
+        run loop since it is WebKit2 only.
+
+        Covered by existing tests and making sure the mock audio source calls
+        the audioSamplesAvailable method on a background thread.
+
+        * platform/mediastream/MediaStreamTrackPrivate.cpp:
+        (WebCore::MediaStreamTrackPrivate::videoSampleAvailable):
+        (WebCore::MediaStreamTrackPrivate::audioSamplesAvailable):
+        * platform/mediastream/MediaStreamTrackPrivate.h:
+        * platform/mediastream/RealtimeMediaSource.cpp:
+        (WebCore::RealtimeMediaSource::scheduleDeferredTask):
+        scheduleDeferredTask may be called from a background thread.
+        It is thus safer to ref the source instead of creating a weak pointer.
+        * platform/mediastream/RealtimeMediaSource.h:
+        * platform/mediastream/mac/MockRealtimeAudioSourceMac.mm:
+        (WebCore::MockRealtimeAudioSourceMac::MockRealtimeAudioSourceMac):
+        (WebCore::MockRealtimeAudioSourceMac::emitSampleBuffers):
+        (WebCore::MockRealtimeAudioSourceMac::reconfigure):
+        (WebCore::MockRealtimeAudioSourceMac::render):
+        (WebCore::MockRealtimeAudioSourceMac::settingsDidChange):
+        * platform/mock/MockRealtimeAudioSource.cpp:
+        (WebCore::MockRealtimeAudioSource::MockRealtimeAudioSource):
+        (WebCore::MockRealtimeAudioSource::tick):
+        * platform/mock/MockRealtimeAudioSource.h:
+
+2019-07-08  Youenn Fablet  <youenn@apple.com>
+
+        Register a MediaStreamTrack as media producer only if it is a capture track
+        https://bugs.webkit.org/show_bug.cgi?id=199566
+
+        Reviewed by Eric Carlson.
+
+        MediaStreamTrack registration as a media producer is only useful for capture tracks.
+        Otherwise, the audio/video playing state is computed through HTMLMediaElement.
+        Do not register MediaStreamTrack as a media producer if it is not a capture track.
+
+        Set the muted state of the track before registering it as an audio
+        producer. Otherwise, it might create unnecessary small change of playing state.
+        Covered by existing tests.
+
+        * Modules/mediastream/MediaStreamTrack.cpp:
+        (WebCore::MediaStreamTrack::MediaStreamTrack):
+        (WebCore::MediaStreamTrack::~MediaStreamTrack):
+        * Modules/mediastream/MediaStreamTrack.h:
+
+2019-07-08  Simon Fraser  <simon.fraser@apple.com>
+
+        YouTube embedding iframes in WebView sometimes go blank when the video starts playing
+        https://bugs.webkit.org/show_bug.cgi?id=199600
+        rdar://problem/47806012
+
+        Reviewed by Tim Horton.
+
+        With some combinations of nested iframes that are being resized from empty, and toggling into
+        compositing mode, we'd fail to update compositing in the iframe's enclosing document, so never
+        host the iframes's layers.
+
+        Fix by moving some widget-resize-related code into RenderLayerCompositor::widgetDidChangeSize(),
+        and adding code to schedule a compositing update.
+
+        I was unable to come up with a layout test for this.
+
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::widgetDidChangeSize):
+        * rendering/RenderLayerCompositor.h:
+        * rendering/RenderWidget.cpp:
+        (WebCore::RenderWidget::setWidgetGeometry):
+
+2019-07-08  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Enable only on the most recent version of the supported iOS family
+        https://bugs.webkit.org/show_bug.cgi?id=199562
+        <rdar://problem/52766511>
+
+        Reviewed by Dean Jackson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2019-07-08  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] The CREATE_TRACK macro is messed up
+        https://bugs.webkit.org/show_bug.cgi?id=199356
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::updateTracks): Fix the
+        CREATE_TRACK macro for !VIDEO_TRACK builds.
+
+2019-07-07  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Difficult to control videos on iqiyi.com as the actions are mouse hover
+        https://bugs.webkit.org/show_bug.cgi?id=199542
+        <rdar://problem/51886813>
+
+        Reviewed by Simon Fraser.
+
+        Decouple isVisuallyHidden and isConsideredVisible. Just because an element is not visually hidden (1px wide content)
+        it is not necessarily qualified to be visible in the context of hover heuristic (e.g. iqiyi.com brings up a 1px wide
+        clickable element when hovering over the scrubber. This element is clearly not designed to be actionable.)
+
+        Tests: fast/events/touch/ios/content-observation/tap-on-1px-height-content.html
+               fast/events/touch/ios/content-observation/tap-on-1px-width-content.html
+
+        * dom/Node.cpp:
+        (WebCore::Node::defaultEventHandler):
+        * page/ios/ContentChangeObserver.cpp:
+        (WebCore::ContentChangeObserver::isVisuallyHidden):
+        (WebCore::ContentChangeObserver::isConsideredVisible):
+        (WebCore::ContentChangeObserver::didAddTransition):
+        (WebCore::ContentChangeObserver::didFinishTransition):
+        (WebCore::ContentChangeObserver::willDestroyRenderer):
+        (WebCore::ContentChangeObserver::StyleChangeScope::StyleChangeScope):
+        (WebCore::ContentChangeObserver::StyleChangeScope::~StyleChangeScope):
+        (WebCore::ContentChangeObserver::isConsideredHidden): Deleted.
+        * page/ios/ContentChangeObserver.h:
+
+2019-07-07  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Introduce splitPosition to LineLayout
+        https://bugs.webkit.org/show_bug.cgi?id=199558
+        <rdar://problem/52737649>
+
+        Reviewed by Antti Koivisto.
+
+        This is in preparation for breaking runs at line end.
+
+        * layout/inlineformatting/InlineFormattingContext.h:
+        * layout/inlineformatting/InlineFormattingContextLineLayout.cpp:
+        (WebCore::Layout::InlineFormattingContext::LineLayout::LineInput::LineInput):
+        (WebCore::Layout::InlineFormattingContext::LineLayout::placeInlineItems const):
+        (WebCore::Layout::InlineFormattingContext::LineLayout::layout const):
+        (WebCore::Layout::InlineFormattingContext::LineLayout::computedIntrinsicWidth const):
+
+2019-07-07  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Fix formatting context root for inflow positioned inline containers
+        https://bugs.webkit.org/show_bug.cgi?id=199551
+        <rdar://problem/52728868>
+
+        Reviewed by Antti Koivisto.
+
+        Relatively positioned (inflow) inline container lives in the formatting context where its parent lives unless
+        the parent establishes a formatting context. This is slightly different from the usual behavior which is containing block driven.
+
+        div id=outer style="position: absolute">><div id=inner><span style="position: relative">content</span></div></div>
+
+        While the relatively positioned inline container (span) is placed relative to its containing block "outer", it lives in the inline formatting context established by "inner".
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::layoutOutOfFlowDescendants const):
+        * layout/layouttree/LayoutBox.cpp:
+        (WebCore::Layout::Box::formattingContextRoot const):
+        * layout/layouttree/LayoutBox.h:
+        * layout/layouttree/LayoutInlineContainer.cpp:
+        (WebCore::Layout::InlineContainer::formattingContextRoot const):
+        * layout/layouttree/LayoutInlineContainer.h:
+
+2019-07-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Long hang when loading a cnn.com page on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=199556
+
+        Reviewed by Zalan Bujtas.
+        
+        Loading https://edition.cnn.com/travel/article/brussels-airlines-flight-to-nowhere/index.html in the iOS 13 sim
+        results in a long hang under OverlapMapContainer::append(). We were creating pathological clipping scopes with
+        thousands of entries, because OverlapMapContainer::mergeClippingScopesRecursive() had a logic error where
+        it added 'sourceScope' to the child instead of 'sourceChildScope'. Add a new assertion to detect that case.
+        
+        I wasn't able to create a testcase that caused a hang, but a number of existing tests would have
+        hit the assertion.
+
+        * rendering/LayerOverlapMap.cpp:
+        (WebCore::OverlapMapContainer::ClippingScope::addChild):
+        (WebCore::OverlapMapContainer::mergeClippingScopesRecursive):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::flushPendingLayerChanges): Drive-by fix: m_overflowControlsHostLayer is null on iOS, so use rootGraphicsLayer().
+
+2019-07-05  Youenn Fablet  <youenn@apple.com>
+
+        Carvana.com needs the fetch AbortSignal quirk
+        https://bugs.webkit.org/show_bug.cgi?id=199540
+
+        Reviewed by Chris Dumez.
+
+        Manually tested.
+
+        * page/Quirks.cpp:
+        (WebCore::Quirks::shouldIgnoreInvalidSignal const):
+
+2019-07-05  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] The checker does not need to keep a separate m_typeAnnotations map
+        https://bugs.webkit.org/show_bug.cgi?id=199537
+
+        Reviewed by Myles C. Maxfield.
+
+        Nothing is ever deleted from it, and all of its contents are eventually copied into the expressions.
+        We might as well put the type annotations directly into the expressions in the first place.
+        It is about a 5% speedup of the checker.
+
+        No new test as there is no inteded functional change.
+
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::Checker::assignTypes):
+        (WebCore::WHLSL::Checker::getInfo):
+        (WebCore::WHLSL::Checker::assignType):
+        (WebCore::WHLSL::Checker::forwardType):
+        (WebCore::WHLSL::Checker::visit):
+
+2019-07-05  Youenn Fablet  <youenn@apple.com> and Simon Fraser  <simon.fraser@apple.com>
+
+        Trigger a compositing update when video element is changing
+        https://bugs.webkit.org/show_bug.cgi?id=199522
+        <rdar://problem/47297159>
+
+        Reviewed by Simon Fraser.
+
+        Test: compositing/video/video-update-rendering.html
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::contentChanged):
+
+2019-07-05  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix -Wmisleading-indentation warning introduced in r246764
+        https://bugs.webkit.org/show_bug.cgi?id=199173
+        <rdar://problem/45968770>
+
+        * contentextensions/ContentExtensionsBackend.cpp:
+        (WebCore::ContentExtensions::ContentExtensionsBackend::processContentRuleListsForLoad):
+
+2019-07-05  Timothy Hatcher  <timothy@apple.com>
+
+        Mail's use of punchOutWhiteBackgroundsInDarkMode not working on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=199534
+        rdar://problem/52586836
+
+        Reviewed by Simon Fraser.
+
+        Tests: css3/color-filters/punch-out-white-backgrounds.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::compositeOperatorForBackgroundColor const): Added.
+        Use CompositeDestinationOut for transparent frames, otherwise CompositeDestinationIn.
+        * dom/Document.h:
+        * rendering/InlineFlowBox.cpp:
+        (WebCore::InlineFlowBox::paintBoxDecorations): Use compositeOperatorForBackgroundColor.
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::paintRootBoxFillLayers): Ditto.
+        (WebCore::RenderBox::paintBackground): Ditto.
+        * rendering/RenderTableCell.cpp:
+        (WebCore::RenderTableCell::paintBackgroundsBehindCell): Ditto.
+
+2019-07-05  Jer Noble  <jer.noble@apple.com>
+
+        Revert change to block playback when process is ostensibly "suspended".
+        https://bugs.webkit.org/show_bug.cgi?id=199530
+
+        Reviewed by Eric Carlson.
+
+        In r243958, a drive-by-fix was added that blocked playback when the WebProcess thought it
+        was susposed to be suspended. The intent was to keep the AVAudioSession for the process
+        from being activated just before the process was suspended, and thus avoid receiving an
+        "interruption" and having the AVAudioSession deactivated out from under us upon resuming.
+
+        Unfortunately, this caused problems when another process resumes the WebContent process
+        in order to start playback; namely the Now Playing UI's play button. Because we may receive
+        the play command long before whe notice that we've been resumed, the WebContent process
+        may refuse to honor the play command because it thinks its supposed to be suspended.
+
+        * platform/audio/PlatformMediaSessionManager.cpp:
+        (WebCore::PlatformMediaSessionManager::sessionWillBeginPlayback):
+
+2019-07-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [iOS] Crash in WebKit::WebPage::positionInformation via Range::startPosition
+        https://bugs.webkit.org/show_bug.cgi?id=199503
+
+        Reviewed by Wenson Hsieh.
+
+        * editing/Editor.cpp:
+        (WebCore::Editor::compositionRange const): Added a FIXME.
+
+2019-07-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Standard library is too big to directly include in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=198186
+        <rdar://problem/51288898>
+
+        Reviewed by Saam Barati.
+
+        This patch adds almost the entire remainder of the standard library. There are a few
+        pieces missing:
+        - step() because of https://bugs.webkit.org/show_bug.cgi?id=199289
+        - sign() also because of https://bugs.webkit.org/show_bug.cgi?id=199289
+        - faceforward() because it calls sign()
+        - Some of the more rarely-used texturing functions (e.g. Gather()) https://bugs.webkit.org/show_bug.cgi?id=195813
+        - RWTextures https://bugs.webkit.org/show_bug.cgi?id=198985
+
+        There were two problems with adding so many standard library functions:
+        - We didn't want to increase the WebCore binary size that much
+        - Compiling all the functions at runtime took 7 seconds, which is much too long
+
+        This patch addresses the first problem by gzipping the standard library before including it in the binary.
+        At runtime, we use libcompression to unzip it.
+
+        To address the second problem, we did some analysis and found that 14% of that 7 seconds was simply
+        destroying all the AST nodes. Even if we eliminated all processing of the AST, simply having the AST
+        of the entire standard library built and destroyed would still be too slow. Therefore, this patch limits
+        which parts of the standard library get parsed in the first place. All the functions in the standard library
+        file are sorted by name, and each group of functions with the same name are preceeded by a comment of the
+        form /* Functions named xyz */. At build time, a Python script looks for all these comments, and builds a
+        map from function name to character offset inside the file where those functions begin. At run time, we
+        parse the user program first, look for all function calls within it, and look up those function call names
+        in the map to see which part of the standard library holds those functions. We then parse just that part.
+        Because the standard library can call other functions in the standard library, we do this in a loop until
+        we have exhausted all the functions.
+
+        Covered by existing tests.
+
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make: gzip the standard library, and add a build step to generate the offset map.
+        * Modules/webgpu/WHLSL/AST/WHLSLCallExpression.h:
+        (WebCore::WHLSL::AST::CallExpression::setOverloads):
+        (WebCore::WHLSL::AST::CallExpression::function): Every caller of this ASSERT()s the result. Might as well
+        move the ASSERT() into the function.
+        (WebCore::WHLSL::AST::CallExpression::setFunction):
+        * Modules/webgpu/WHLSL/Cocoa/WHLSLStandardLibraryUtilities.cpp: Added.
+        (WebCore::WHLSL::decompressStandardLibrary): Use libcompression. This is why this file is in a Cocoa/
+        subfolder, and is listed in SourcesCocoa.txt instead of Sources.txt.
+        (WebCore::WHLSL::decompressAndDecodeStandardLibrary):
+        (WebCore::WHLSL::NameFinder::takeFunctionNames):
+        (WebCore::WHLSL::includeStandardLibrary): Include only the bits of the standard library which are relevant,
+        as described above.
+        * Modules/webgpu/WHLSL/Metal/WHLSLFunctionWriter.cpp: Only emit MSL code for functions which are actually
+        reached. The MSL compiler is a significant amount of our compile time, so reducing the size of the emitted
+        program can significantly improve compile times.
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::visit):
+        (WebCore::WHLSL::Metal::sharedMetalFunctions):
+        (WebCore::WHLSL::Metal::metalFunctions):
+        * Modules/webgpu/WHLSL/Metal/WHLSLNativeFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::writeNativeFunction):
+        - Change how load() and store() are written. We need explicit functions because we have explicit atomic
+          types, which HLSL doesn't have. load() and store() aren't present in HLSL.
+        - Delete f16tof32 because they're probably not important and are not obvious how to implement. We can re-add
+          them again later if necessary.
+        - Various fixes to make us generate the correct MSL code for each standard library function.
+        * Modules/webgpu/WHLSL/WHLSLBuildStandardLibraryFunctionMap.py: Added. Build the function map as described
+        above.
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::resolveByInstantiation): Previously, the standard library included an operator== for two
+        pointers. However, that function should be generated by the compiler instead. This fixes the bug in the
+        compiler which allows the compiler to correctly generate the right function. This also prompted me to file
+        https://bugs.webkit.org/show_bug.cgi?id=199335
+        (WebCore::WHLSL::checkOperatorOverload):
+        (WebCore::WHLSL::Checker::visit):
+        * Modules/webgpu/WHLSL/WHLSLFunctionStageChecker.cpp: Update to the new function() signature.
+        * Modules/webgpu/WHLSL/WHLSLLexer.h: Add a new position() method to the lexer. This isn't actually used
+        in this patch, but it's useful when doing some analysis during parsing. 
+        (WebCore::WHLSL::Lexer::Lexer):
+        (WebCore::WHLSL::Lexer::consumeToken):
+        (WebCore::WHLSL::Lexer::peek const):
+        (WebCore::WHLSL::Lexer::peekFurther const):
+        (WebCore::WHLSL::Lexer::position const):
+        (WebCore::WHLSL::Lexer::state const):
+        (WebCore::WHLSL::Lexer::setState):
+        (WebCore::WHLSL::Lexer::isFullyConsumed const): Fixes a bug where isFullyConsumed() might return true even
+        when there is a token in the ring buffer.
+        (WebCore::WHLSL::Lexer::peek): Deleted.
+        (WebCore::WHLSL::Lexer::peekFurther): Deleted.
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.cpp:
+        (WebCore::WHLSL::NameResolver::visit): Drive-by partial fix of https://bugs.webkit.org/show_bug.cgi?id=199347
+        * Modules/webgpu/WHLSL/WHLSLPrepare.cpp: Call includeStandardLibrary().
+        (WebCore::WHLSL::prepareShared):
+        * Modules/webgpu/WHLSL/WHLSLPreserveVariableLifetimes.cpp:
+        * Modules/webgpu/WHLSL/WHLSLRecursionChecker.cpp:
+        * Modules/webgpu/WHLSL/WHLSLStandardLibrary.txt:
+        * Modules/webgpu/WHLSL/WHLSLStandardLibraryFunctionMap.h: Copied from Source/WebCore/Modules/webgpu/WHLSL/WHLSLRecursionChecker.cpp.
+        * Modules/webgpu/WHLSL/WHLSLStandardLibraryUtilities.h: Copied from Source/WebCore/Modules/webgpu/WHLSL/WHLSLRecursionChecker.cpp.
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+
+2019-07-05  Youenn Fablet  <youenn@apple.com>
+
+        Add fetch quirk for www.bnz.co.nz
+        https://bugs.webkit.org/show_bug.cgi?id=199518
+        rdar://problem/52230914
+
+        Reviewed by Chris Dumez.
+
+        Use fetch quirk to make bnz main page load properly.
+        Manually tested.
+
+        * page/Quirks.cpp:
+        (WebCore::Quirks::shouldIgnoreInvalidSignal const):
+
+2019-07-05  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Optimize the lexer
+        https://bugs.webkit.org/show_bug.cgi?id=199520
+
+        Reviewed by Myles Maxfield.
+
+        This patch includes a number of small optimizations to the lexer:
+        - By creating two new types of Token (Invalid and EOF), we can avoid having to manipulate Optional<Token> everywhere
+        - By combining the lexing of identifiers, keywords and operator names, we can avoid re-reading them several times
+        - By storing mere offsets in the tokens instead of string views, we save space in the common case where the string view is unused (e.g. for keywords)
+        - By storing mere offsets in the tokens instead of line numbers, we can simplify the whitespace and comment lexing; and we can easily recompute the line number on demand
+        - By using templates we can avoid constructing and destructing vectors at runtime every time we call tryTypes, consumeTypes or peekTypes; as well as avoiding a call to find().
+        - I also hoisted the length check out of the loop in Lexer::string()
+        All of this combined brought the time spent in the parser when running LayoutTests/webgpu/whlsl-test-harness-test.html 5 times on my machine from 612ms to 462ms.
+
+        I also removed the 'anyCharacter' method since it was dead code.
+        I also removed Lexer::position(), but it is directly equivalent now to peek().startOffset.
+
+        No new tests as there is no intended functional change.
+
+        * Modules/webgpu/WHLSL/WHLSLLexer.cpp:
+        (WebCore::WHLSL::Lexer::Token::typeName):
+        (WebCore::WHLSL::Lexer::consumeTokenFromStream):
+        (WebCore::WHLSL::Lexer::lineNumberFromOffset):
+        (WebCore::WHLSL::isWhitespace):
+        (WebCore::WHLSL::isNewline):
+        (WebCore::WHLSL::Lexer::skipWhitespaceAndComments):
+        (WebCore::WHLSL::Lexer::digitStar const):
+        (WebCore::WHLSL::Lexer::completeOperatorName const):
+        * Modules/webgpu/WHLSL/WHLSLLexer.h:
+        (WebCore::WHLSL::Lexer::Lexer):
+        (WebCore::WHLSL::Lexer::Token::stringView):
+        (WebCore::WHLSL::Lexer::consumeToken):
+        (WebCore::WHLSL::Lexer::peek const):
+        (WebCore::WHLSL::Lexer::peekFurther const):
+        (WebCore::WHLSL::Lexer::state const):
+        (WebCore::WHLSL::Lexer::setState):
+        (WebCore::WHLSL::Lexer::isFullyConsumed const):
+        (WebCore::WHLSL::Lexer::errorString):
+        (WebCore::WHLSL::Lexer::string const):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.h:
+        * Modules/webgpu/WHLSL/WHLSLParser.cpp:
+        (WebCore::WHLSL::Parser::parse):
+        (WebCore::WHLSL::Parser::peek):
+        (WebCore::WHLSL::Parser::peekFurther):
+        (WebCore::WHLSL::Types::includes):
+        (WebCore::WHLSL::Types::appendNameTo):
+        (WebCore::WHLSL::Types<t>::includes):
+        (WebCore::WHLSL::Types<t>::appendNameTo):
+        (WebCore::WHLSL::Parser::peekTypes):
+        (WebCore::WHLSL::Parser::tryType):
+        (WebCore::WHLSL::Parser::tryTypes):
+        (WebCore::WHLSL::Parser::consumeType):
+        (WebCore::WHLSL::Parser::consumeTypes):
+        (WebCore::WHLSL::Parser::consumeIntegralLiteral):
+        (WebCore::WHLSL::Parser::parseConstantExpression):
+        (WebCore::WHLSL::Parser::parseTypeArgument):
+        (WebCore::WHLSL::Parser::parseTypeSuffixAbbreviated):
+        (WebCore::WHLSL::Parser::parseTypeSuffixNonAbbreviated):
+        (WebCore::WHLSL::Parser::parseType):
+        (WebCore::WHLSL::Parser::parseTypeDefinition):
+        (WebCore::WHLSL::Parser::parseBuiltInSemantic):
+        (WebCore::WHLSL::Parser::parseResourceSemantic):
+        (WebCore::WHLSL::Parser::parseQualifiers):
+        (WebCore::WHLSL::Parser::parseStructureElement):
+        (WebCore::WHLSL::Parser::parseStructureDefinition):
+        (WebCore::WHLSL::Parser::parseEnumerationDefinition):
+        (WebCore::WHLSL::Parser::parseEnumerationMember):
+        (WebCore::WHLSL::Parser::parseNativeTypeDeclaration):
+        (WebCore::WHLSL::Parser::parseParameter):
+        (WebCore::WHLSL::Parser::parseComputeFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseVertexOrFragmentFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseRegularFunctionDeclaration):
+        (WebCore::WHLSL::Parser::parseBlockBody):
+        (WebCore::WHLSL::Parser::parseSwitchCase):
+        (WebCore::WHLSL::Parser::parseVariableDeclaration):
+        (WebCore::WHLSL::Parser::parseStatement):
+        (WebCore::WHLSL::Parser::parseEffectfulAssignment):
+        (WebCore::WHLSL::Parser::parseLimitedSuffixOperator):
+        (WebCore::WHLSL::Parser::parseSuffixOperator):
+        (WebCore::WHLSL::Parser::completeAssignment):
+        (WebCore::WHLSL::Parser::parsePossibleTernaryConditional):
+        (WebCore::WHLSL::Parser::completePossibleLogicalBinaryOperation):
+        (WebCore::WHLSL::Parser::completePossibleRelationalBinaryOperation):
+        (WebCore::WHLSL::Parser::completePossibleShift):
+        (WebCore::WHLSL::Parser::completePossibleAdd):
+        (WebCore::WHLSL::Parser::completePossibleMultiply):
+        (WebCore::WHLSL::Parser::parsePossiblePrefix):
+        (WebCore::WHLSL::Parser::parseCallExpression):
+        (WebCore::WHLSL::Parser::parseTerm):
+        * Modules/webgpu/WHLSL/WHLSLParser.h:
+        * Modules/webgpu/WHLSL/WHLSLPreserveVariableLifetimes.cpp:
+        (WebCore::WHLSL::anonymousToken):
+
+2019-07-05  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Remove the phase resolveCallsInFunctions
+        https://bugs.webkit.org/show_bug.cgi?id=199474
+
+        Reviewed by Myles Maxfield.
+
+        This pass only stores into each property access and call expression vectors of all the functions it might be calling, for use by the Checker afterwards.
+        But the checker is perfectly able to compute a pointer to these vectors by itself.
+        So by removing this pass, we gain the following:
+        - One less pass over the AST
+        - No need to copy these vectors (which can be large for heavily overloaded functions, of which there are quite a few in the stdlib)
+        - No need to have these vectors in the expressions, saving 24 bytes per CallExpression and 72 bytes per PropertyAccessExpression
+        - No need to allocate and then destroy these vectors.
+
+        No new tests as there is no intended functional change.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLCallExpression.h:
+        (WebCore::WHLSL::AST::CallExpression::castReturnType):
+        * Modules/webgpu/WHLSL/AST/WHLSLPropertyAccessExpression.h:
+        * Modules/webgpu/WHLSL/WHLSLAutoInitializeVariables.cpp:
+        (WebCore::WHLSL::AutoInitialize::visit):
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::resolveFunction):
+        (WebCore::WHLSL::Checker::finishVisiting):
+        (WebCore::WHLSL::Checker::visit):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.cpp:
+        (WebCore::WHLSL::NameResolver::NameResolver):
+        (WebCore::WHLSL::NameResolver::visit):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.h:
+        * Modules/webgpu/WHLSL/WHLSLPrepare.cpp:
+        (WebCore::WHLSL::prepareShared):
+
+2019-07-05  Youenn Fablet  <youenn@apple.com>
+
+        [iOS] Local capture MediaStreamTrack does not render in portrait mode
+        https://bugs.webkit.org/show_bug.cgi?id=199519
+        <rdar://problem/52689720>
+
+        Reviewed by Eric Carlson.
+
+        RealtimeVideoSource was badly computing its size in case of rotation.
+        Whenever its underlying source is notifying of settings change,
+        compute the size and transpose it only in left/right case.
+
+        Update mock video source to cover that case.
+        Covered by updated test.
+
+        * platform/mediastream/RealtimeVideoSource.cpp:
+        (WebCore::RealtimeVideoSource::sourceSettingsChanged):
+        * platform/mediastream/mac/MockRealtimeVideoSourceMac.h:
+        * platform/mediastream/mac/MockRealtimeVideoSourceMac.mm:
+        (WebCore::MockRealtimeVideoSourceMac::updateSampleBuffer):
+        * platform/mock/MockRealtimeVideoSource.cpp:
+        (WebCore::MockRealtimeVideoSource::settings):
+        (WebCore::MockRealtimeVideoSource::orientationChanged):
+        (WebCore::MockRealtimeVideoSource::monitorOrientation):
+        * platform/mock/MockRealtimeVideoSource.h:
+
+2019-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247115.
+
+        Breaks lldbWebKitTester (and by extension, test-webkitpy)
+
+        Reverted changeset:
+
+        "[WHLSL] Standard library is too big to directly include in
+        WebCore"
+        https://bugs.webkit.org/show_bug.cgi?id=198186
+        https://trac.webkit.org/changeset/247115
+
+2019-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247159.
+
+        IndexedDB layout tests are failing the new assert.
+
+        Reverted changeset:
+
+        "ASSERT that a sessionID is valid when encoding it"
+        https://bugs.webkit.org/show_bug.cgi?id=199302
+        https://trac.webkit.org/changeset/247159
+
+2019-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247123.
+
+        Caused TestWebKitAPI.Challenge.BasicProposedCredential to
+        fail.
+
+        Reverted changeset:
+
+        "Only allow fetching and removing session credentials from
+        WebsiteDataStore"
+        https://bugs.webkit.org/show_bug.cgi?id=199385
+        https://trac.webkit.org/changeset/247123
+
+2019-07-05  Youenn Fablet  <youenn@apple.com>
+
+        ASSERT that a sessionID is valid when encoding it
+        https://bugs.webkit.org/show_bug.cgi?id=199302
+
+        Reviewed by Darin Adler.
+
+        For IDBValue, instead of encoding an invalid session ID, encode a boolean that tells there is no sessionID.
+        For IDBRequestData, keep track of whether there is an IDBDatabaseIdentifier
+        and encode/decode accordingly to not encode an invalid sessionID.
+        No observable change of behavior.
+
+        * Modules/indexeddb/IDBValue.h:
+        (WebCore::IDBValue::sessionID const):
+        (WebCore::IDBValue::encode const):
+        (WebCore::IDBValue::decode):
+        * Modules/indexeddb/shared/IDBRequestData.cpp:
+        (WebCore::IDBRequestData::isolatedCopy):
+        * Modules/indexeddb/shared/IDBRequestData.h:
+        (WebCore::IDBRequestData::databaseIdentifier const):
+        (WebCore::IDBRequestData::decode):
+
 2019-07-05  Zalan Bujtas  <zalan@apple.com>
 
         [LFC][IFC] Inline runs should be relative to the line's top/left initially

@@ -185,9 +185,13 @@ static void computeEditableRootHasContentAndPlainText(const VisibleSelection& se
     data.hasPlainText = data.hasContent && hasAnyPlainText(Range::create(root->document(), VisiblePosition { startInEditableRoot }, VisiblePosition { lastPositionInNode(root) }));
 }
 
-static bool enclosingLayerIsTransparentOrFullyClipped(const RenderObject& renderer)
+bool WebPage::isTransparentOrFullyClipped(const Element& element) const
 {
-    auto* enclosingLayer = renderer.enclosingLayer();
+    auto* renderer = element.renderer();
+    if (!renderer)
+        return false;
+
+    auto* enclosingLayer = renderer->enclosingLayer();
     return enclosingLayer && enclosingLayer->isTransparentOrFullyClippedRespectingParentFrames();
 }
 
@@ -264,9 +268,8 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
             postLayoutData.caretColor = renderer.style().caretColor();
         }
         if (result.isContentEditable) {
-            auto container = makeRefPtr(selection.rootEditableElement());
-            if (container && container->renderer())
-                postLayoutData.editableRootIsTransparentOrFullyClipped = enclosingLayerIsTransparentOrFullyClipped(*container->renderer());
+            if (auto container = makeRefPtr(selection.rootEditableElement()))
+                postLayoutData.editableRootIsTransparentOrFullyClipped = isTransparentOrFullyClipped(*container);
         }
         computeEditableRootHasContentAndPlainText(selection, postLayoutData);
     }
@@ -666,7 +669,7 @@ void WebPage::handleSyntheticClick(Node& nodeRespondingToClick, const WebCore::F
 
     auto& respondingDocument = nodeRespondingToClick.document();
     auto& contentChangeObserver = respondingDocument.contentChangeObserver();
-    auto targetNodeisConsideredHidden = contentChangeObserver.hiddenTouchTarget() == &nodeRespondingToClick || ContentChangeObserver::isConsideredHidden(nodeRespondingToClick);
+    auto targetNodeWentFromHiddenToVisible = contentChangeObserver.hiddenTouchTarget() == &nodeRespondingToClick && ContentChangeObserver::isConsideredVisible(nodeRespondingToClick);
     {
         LOG_WITH_STREAM(ContentObservation, stream << "handleSyntheticClick: node(" << &nodeRespondingToClick << ") " << location);
         ContentChangeObserver::MouseMovedScope observingScope(respondingDocument);
@@ -677,8 +680,8 @@ void WebPage::handleSyntheticClick(Node& nodeRespondingToClick, const WebCore::F
             return;
     }
 
-    if (targetNodeisConsideredHidden) {
-        LOG(ContentObservation, "handleSyntheticClick: target node is considered hidden -> hover.");
+    if (targetNodeWentFromHiddenToVisible) {
+        LOG(ContentObservation, "handleSyntheticClick: target node was hidden and now is visible -> hover.");
         return;
     }
 
@@ -1801,7 +1804,7 @@ void WebPage::requestEvasionRectsAboveSelection(CompletionHandler<void(const Vec
         return;
     }
 
-    if (!m_focusedElement || !m_focusedElement->renderer() || enclosingLayerIsTransparentOrFullyClipped(*m_focusedElement->renderer())) {
+    if (!m_focusedElement || !m_focusedElement->renderer() || isTransparentOrFullyClipped(*m_focusedElement)) {
         reply({ });
         return;
     }
@@ -2365,7 +2368,7 @@ bool WebPage::applyAutocorrectionInternal(const String& correction, const String
     frame.selection().setSelectedRange(range.get(), affinity, WebCore::FrameSelection::ShouldCloseTyping::Yes);
     if (correction.length())
         frame.editor().insertText(correction, 0, originalText.isEmpty() ? TextEventInputKeyboard : TextEventInputAutocompletion);
-    else
+    else if (originalText.length())
         frame.editor().deleteWithDirection(DirectionBackward, CharacterGranularity, false, true);
     return true;
 }
@@ -2505,6 +2508,9 @@ static void focusedElementPositionInformation(WebPage& page, Element& focusedEle
     VisiblePosition position = frame.visiblePositionForPoint(constrainedPoint);
 
     RefPtr<Range> compositionRange = frame.editor().compositionRange();
+    if (!compositionRange)
+        return;
+
     if (position < compositionRange->startPosition())
         position = compositionRange->startPosition();
     else if (position > compositionRange->endPosition())
@@ -2517,7 +2523,7 @@ static void focusedElementPositionInformation(WebPage& page, Element& focusedEle
     info.isNearMarkedText = !(deltaX > kHitAreaWidth || deltaYFromTheTop > kHitAreaHeight || deltaYFromTheBottom > kHitAreaHeight);
 }
 
-static void linkIndicatorPositionInformation(WebPage& page, Element& element, Element& linkElement, const InteractionInformationRequest& request, InteractionInformationAtPosition& info)
+static void linkIndicatorPositionInformation(WebPage& page, Element& linkElement, const InteractionInformationRequest& request, InteractionInformationAtPosition& info)
 {
     if (!request.includeLinkIndicator)
         return;
@@ -2629,7 +2635,7 @@ static void elementPositionInformation(WebPage& page, Element& element, const In
         info.isLink = true;
         info.url = linkElement->document().completeURL(stripLeadingAndTrailingHTMLSpaces(linkElement->getAttribute(HTMLNames::hrefAttr)));
 
-        linkIndicatorPositionInformation(page, element, *linkElement, request, info);
+        linkIndicatorPositionInformation(page, *linkElement, request, info);
 #if ENABLE(DATA_DETECTION)
         dataDetectorLinkPositionInformation(element, info);
 #endif
@@ -2656,8 +2662,9 @@ static void selectionPositionInformation(WebPage& page, const InteractionInforma
     // We don't want to select blocks that are larger than 97% of the visible area of the document.
     if (is<HTMLAttachmentElement>(*hitNode)) {
         info.isAttachment = true;
-        const HTMLAttachmentElement& attachment = downcast<HTMLAttachmentElement>(*hitNode);
+        HTMLAttachmentElement& attachment = downcast<HTMLAttachmentElement>(*hitNode);
         info.title = attachment.attachmentTitle();
+        linkIndicatorPositionInformation(page, attachment, request, info);
         if (attachment.file())
             info.url = URL::fileURLWithFileSystemPath(downcast<HTMLAttachmentElement>(*hitNode).file()->path());
     } else {
@@ -2719,14 +2726,8 @@ InteractionInformationAtPosition WebPage::positionInformation(const InteractionI
             info.image = shareableBitmapSnapshotForNode(element);
     }
 
-    if (!(info.isLink || info.isImage)) {
+    if (!(info.isLink || info.isImage))
         selectionPositionInformation(*this, request, info);
-
-        if (info.isAttachment && request.includeSnapshot) {
-            Element& element = downcast<Element>(*hitNode);
-            info.image = shareableBitmapSnapshotForNode(element);
-        }
-    }
 
     // Prevent the callout bar from showing when tapping on the datalist button.
 #if ENABLE(DATALIST_ELEMENT)
@@ -2991,7 +2992,7 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
         information.isReadOnly = false;
     }
 
-    if (m_focusedElement->document().quirks().shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() && m_focusedElement->renderer() && enclosingLayerIsTransparentOrFullyClipped(*m_focusedElement->renderer())) {
+    if (m_focusedElement->document().quirks().shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() && isTransparentOrFullyClipped(*m_focusedElement)) {
         information.autocapitalizeType = AutocapitalizeTypeNone;
         information.isAutocorrect = false;
     }
@@ -3242,6 +3243,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const W
     auto layoutViewportSize = FrameView::expandedLayoutViewportSize(frameView.baseLayoutViewportSize(), LayoutSize(documentRect.size()), settings.layoutViewportHeightExpansionFactor());
     LayoutRect layoutViewportRect = FrameView::computeUpdatedLayoutViewportRect(frameView.layoutViewportRect(), documentRect, LayoutSize(newUnobscuredContentRect.size()), LayoutRect(newUnobscuredContentRect), layoutViewportSize, frameView.minStableLayoutViewportOrigin(), frameView.maxStableLayoutViewportOrigin(), FrameView::LayoutViewportConstraint::ConstrainedToDocumentRect);
     frameView.setLayoutViewportOverrideRect(layoutViewportRect);
+    frameView.layoutOrVisualViewportChanged();
 
     frameView.setCustomSizeForResizeEvent(expandedIntSize(targetUnobscuredRectInScrollViewCoordinates.size()));
     setDeviceOrientation(deviceOrientation);
@@ -3639,7 +3641,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
             scheduleFullEditorStateUpdate();
         }
 
-        frameView.didUpdateViewportOverrideRects();
+        frameView.layoutOrVisualViewportChanged();
     }
 
     if (!visibleContentRectUpdateInfo.isChangingObscuredInsetsInteractively())
@@ -3681,7 +3683,14 @@ void WebPage::computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintI
         reply(1);
         IntSize snapshotSize { FloatSize { printInfo.availablePaperWidth, printInfo.availablePaperHeight } };
         IntRect snapshotRect { {0, 0}, snapshotSize };
+
+        auto& frameView = *m_page->mainFrame().view();
+        auto originalLayoutViewportOverrideRect = frameView.layoutViewportOverrideRect();
+        frameView.setLayoutViewportOverrideRect(LayoutRect(snapshotRect));
+
         auto pdfData = pdfSnapshotAtSize(snapshotRect, snapshotSize, 0);
+
+        frameView.setLayoutViewportOverrideRect(originalLayoutViewportOverrideRect);
         send(Messages::WebPageProxy::DrawToPDFCallback(IPC::DataReference(CFDataGetBytePtr(pdfData.get()), CFDataGetLength(pdfData.get())), callbackID));
         return;
     }

@@ -81,7 +81,11 @@ typedef NS_ENUM(NSInteger, _WKFocusDirection) {
 
 @protocol WKUIDelegatePrivate <WKUIDelegate>
 
+#ifdef FOUNDATION_HAS_DIRECTIONAL_GEOMETRY
+typedef NSEdgeInsets UIEdgeInsets;
+#else
 struct UIEdgeInsets;
+#endif
 
 @optional
 
@@ -186,6 +190,7 @@ struct UIEdgeInsets;
 - (void)_webView:(WKWebView *)webView didChangeSafeAreaShouldAffectObscuredInsets:(BOOL)safeAreaShouldAffectObscuredInsets WK_API_AVAILABLE(ios(11.0));
 - (void)_webView:(WKWebView *)webView didPresentFocusedElementViewController:(UIViewController *)controller WK_API_AVAILABLE(ios(12.0));
 - (void)_webView:(WKWebView *)webView didDismissFocusedElementViewController:(UIViewController *)controller WK_API_AVAILABLE(ios(12.0));
+- (BOOL)_webView:(WKWebView *)webView gestureRecognizerCouldPinch:(UIGestureRecognizer *)gestureRecognizer WK_API_AVAILABLE(ios(13.0));
 
 /*! @abstract Allows your app to determine whether or not the given security origin should have access to the device's orientation and motion.
  @param securityOrigin The security origin which requested access to the device's orientation and motion.

@@ -41,8 +41,8 @@ namespace AST {
 
 class Return : public Statement {
 public:
-    Return(Lexer::Token&& origin, Optional<UniqueRef<Expression>>&& value)
-        : Statement(WTFMove(origin))
+    Return(CodeLocation location, std::unique_ptr<Expression>&& value)
+        : Statement(location)
         , m_value(WTFMove(value))
     {
     }
@@ -54,13 +54,13 @@ public:
 
     bool isReturn() const override { return true; }
 
-    Expression* value() { return m_value ? &*m_value : nullptr; }
+    Expression* value() { return m_value.get(); }
 
     FunctionDefinition* function() { return m_function; }
     void setFunction(FunctionDefinition* functionDefinition) { m_function = functionDefinition; }
 
 private:
-    Optional<UniqueRef<Expression>> m_value;
+    std::unique_ptr<Expression> m_value;
     FunctionDefinition* m_function { nullptr };
 };
 

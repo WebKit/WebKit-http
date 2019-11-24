@@ -29,6 +29,7 @@
 #if PLATFORM(IOS_FAMILY)
 
 #import "GestureTypes.h"
+#import "Logging.h"
 #import "WKActionSheetAssistant.h"
 #import "WKContentViewInteraction.h"
 #import "_WKActivatedElementInfoInternal.h"
@@ -122,7 +123,11 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
     case _WKElementActionTypeCopy:
         title = WEB_UI_STRING_KEY("Copy", "Copy (ActionSheet)", "Title for Copy Link or Image action button");
         handler = ^(WKActionSheetAssistant *assistant, _WKActivatedElementInfo *actionInfo) {
+            if ([assistant.delegate respondsToSelector:@selector(actionSheetAssistant:willStartInteractionWithElement:)])
+                [assistant.delegate actionSheetAssistant:assistant willStartInteractionWithElement:actionInfo];
             [assistant.delegate actionSheetAssistant:assistant performAction:WebKit::SheetAction::Copy];
+            if ([assistant.delegate respondsToSelector:@selector(actionSheetAssistantDidStopInteraction:)])
+                [assistant.delegate actionSheetAssistantDidStopInteraction:assistant];
         };
         break;
     case _WKElementActionTypeOpen:
@@ -134,7 +139,11 @@ static void addToReadingList(NSURL *targetURL, NSString *title)
     case _WKElementActionTypeSaveImage:
         title = WEB_UI_STRING("Add to Photos", "Title for Add to Photos action button");
         handler = ^(WKActionSheetAssistant *assistant, _WKActivatedElementInfo *actionInfo) {
+            if ([assistant.delegate respondsToSelector:@selector(actionSheetAssistant:willStartInteractionWithElement:)])
+                [assistant.delegate actionSheetAssistant:assistant willStartInteractionWithElement:actionInfo];
             [assistant.delegate actionSheetAssistant:assistant performAction:WebKit::SheetAction::SaveImage];
+            if ([assistant.delegate respondsToSelector:@selector(actionSheetAssistantDidStopInteraction:)])
+                [assistant.delegate actionSheetAssistantDidStopInteraction:assistant];
         };
         break;
 #if HAVE(SAFARI_SERVICES_FRAMEWORK)
@@ -284,14 +293,10 @@ static _WKElementActionType uiActionIdentifierToElementActionType(UIActionIdenti
     UIImage *image = [_WKElementAction imageForElementActionType:self.type];
     UIActionIdentifier identifier = elementActionTypeToUIActionIdentifier(self.type);
 
-    return [UIAction actionWithTitle:self.title image:image identifier:identifier handler:[weakSelf = WeakObjCPtr<_WKElementAction>(self), weakElementInfo = WeakObjCPtr<_WKActivatedElementInfo>(elementInfo)] (UIAction *) {
-        auto strongSelf = weakSelf.get();
-        if (!strongSelf)
-            return;
-        auto strongElementInfo = weakElementInfo.get();
-        if (!strongElementInfo)
-            return;
-        [strongSelf runActionWithElementInfo:strongElementInfo.get()];
+    return [UIAction actionWithTitle:self.title image:image identifier:identifier handler:[retainedSelf = retainPtr(self), retainedInfo = retainPtr(elementInfo)] (UIAction *) {
+        auto elementAction = retainedSelf.get();
+        RELEASE_LOG(ContextMenu, "Executing action for type: %s", elementActionTypeToUIActionIdentifier([elementAction type]).UTF8String);
+        [elementAction runActionWithElementInfo:retainedInfo.get()];
     }];
 }
 #else

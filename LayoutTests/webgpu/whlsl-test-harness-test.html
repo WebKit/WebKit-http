@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- webkit-test-runner [ experimental:WebGPUEnabled=true ] -->
+<!DOCTYPE html>
 <html>
 <meta charset=utf-8>
 <meta name="timeout" content="long">
@@ -262,14 +262,5 @@ const appendScalarFunctionToSource = (src, type, body, argValues) => {
     
     return [src, name, values];
 };
-
-const webGPUPromiseTest = (testFunc, msg) => {
-    promise_test(async () => { 
-        return testFunc().catch(e => {
-        if (!(e instanceof WebGPUUnsupportedError))
-            throw e;
-        });
-    }, msg);
-}
 </script>
 </html>

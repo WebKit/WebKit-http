@@ -200,6 +200,10 @@ void CredentialStorage::removeSessionCredentialsWithOrigins(const Vector<Securit
 void CredentialStorage::clearSessionCredentials()
 {
 }
+
+void CredentialStorage::clearPermanentCredentialsForProtectionSpace(const ProtectionSpace&)
+{
+}
 #endif
 
 } // namespace WebCore

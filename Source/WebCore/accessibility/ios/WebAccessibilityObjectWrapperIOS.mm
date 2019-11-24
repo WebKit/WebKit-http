@@ -592,9 +592,8 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
 
 - (AccessibilityObjectWrapper*)_accessibilityTableAncestor
 {
-    
     if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, [] (const AccessibilityObject& object) {
-        return object.isTable();
+        return object.roleValue() == AccessibilityRole::Table;
     }))
         return parent->wrapper();
     return nil;
@@ -943,6 +942,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case AccessibilityRole::Column:
     case AccessibilityRole::ColumnHeader:
     case AccessibilityRole::Definition:
+    case AccessibilityRole::Deletion:
     case AccessibilityRole::DescriptionList:
     case AccessibilityRole::DescriptionListTerm:
     case AccessibilityRole::DescriptionListDetail:
@@ -968,6 +968,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case AccessibilityRole::HelpTag:
     case AccessibilityRole::Ignored:
     case AccessibilityRole::Inline:
+    case AccessibilityRole::Insertion:
     case AccessibilityRole::Label:
     case AccessibilityRole::LandmarkBanner:
     case AccessibilityRole::LandmarkComplementary:
@@ -1008,6 +1009,8 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case AccessibilityRole::SpinButtonPart:
     case AccessibilityRole::SplitGroup:
     case AccessibilityRole::Splitter:
+    case AccessibilityRole::Subscript:
+    case AccessibilityRole::Superscript:
     case AccessibilityRole::Summary:
     case AccessibilityRole::SystemWide:
     case AccessibilityRole::SVGRoot:

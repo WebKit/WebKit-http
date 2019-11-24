@@ -43,7 +43,6 @@ fast/history/ios [ Skip ]
 fast/scrolling/ios [ Skip ]
 fast/text/mac [ Skip ]
 scrollingcoordinator [ Skip ]
-fast/content-observation [ Skip ]
 media/mac [ Skip ]
 media/ios [ Skip ]
 fast/text-autosizing [ Skip ]
@@ -2339,7 +2338,6 @@ webkit.org/b/3652 fast/dom/HTMLLinkElement/prefetch-onerror.html [ Skip ]
 webkit.org/b/3652 fast/dom/HTMLLinkElement/prefetch-onload.html [ Skip ]
 webkit.org/b/3652 fast/dom/HTMLLinkElement/prefetch-too-many-clients.html [ Skip ]
 webkit.org/b/3652 fast/dom/HTMLLinkElement/subresource.html [ Skip ]
-webkit.org/b/3652 http/tests/misc/link-rel-prefetch-and-subresource.html [ Skip ]
 webkit.org/b/3652 http/tests/misc/prefetch-purpose.html [ Skip ]
 
 # First-party-only cookie policy only supported on Cocoa platforms.
@@ -3443,3 +3441,5 @@ fast/dom/linkify-phone-numbers.html [ ImageOnlyFailure ]
 webkit.org/b/199039 editing/deleting/smart-delete-paragraph-003.html [ Skip ]
 
 webkit.org/b/199028 webgpu/whlsl-test-harness-test.html [ Slow ]
+
+imported/w3c/web-platform-tests/css/cssom-view/offsetTopLeft-inline.html [ ImageOnlyFailure ]

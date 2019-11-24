@@ -39,6 +39,7 @@
 #include "FontSelectorClient.h"
 #include "FrameDestructionObserver.h"
 #include "GenericTaskQueue.h"
+#include "GraphicsTypes.h"
 #include "MediaProducer.h"
 #include "MutationObserver.h"
 #include "OrientationNotifier.h"
@@ -568,6 +569,7 @@ public:
     WEBCORE_EXPORT bool useDarkAppearance(const RenderStyle*) const;
 
     OptionSet<StyleColor::Options> styleColorOptions(const RenderStyle*) const;
+    CompositeOperator compositeOperatorForBackgroundColor(const Color&, const RenderObject&) const;
 
     WEBCORE_EXPORT Ref<Range> createRange();
 
@@ -1231,8 +1233,8 @@ public:
     bool touchEventTargetsContain(Node&) const { return false; }
 #endif
 #if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
-    void updateTouchActionElements(Element&, const RenderStyle&);
-    const HashSet<RefPtr<Element>>* touchActionElements() const { return m_touchActionElements.get(); }
+    bool mayHaveElementsWithNonAutoTouchAction() const { return m_mayHaveElementsWithNonAutoTouchAction; }
+    void setMayHaveElementsWithNonAutoTouchAction() { m_mayHaveElementsWithNonAutoTouchAction = true; }
 #endif
 
     void didAddTouchEventHandler(Node&);
@@ -1817,7 +1819,7 @@ private:
     std::unique_ptr<EventTargetSet> m_touchEventTargets;
 #endif
 #if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
-    std::unique_ptr<HashSet<RefPtr<Element>>> m_touchActionElements;
+    bool m_mayHaveElementsWithNonAutoTouchAction { false };
 #endif
     std::unique_ptr<EventTargetSet> m_wheelEventTargets;
 

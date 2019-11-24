@@ -1,3 +1,412 @@
+2019-07-11  Jonathan Bedard  <jbedard@apple.com>
+
+        [iOS 13] Enable WebKit build
+        https://bugs.webkit.org/show_bug.cgi?id=199481
+        <rdar://problem/52619048>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Configurations/TestWebKitAPI.xcconfig: Add iOS framework stubs.
+
+2019-07-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add test expectations and baselines for iOS 13
+        https://bugs.webkit.org/show_bug.cgi?id=199329
+
+        Reviewed by Jonathan Bedard.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort): Increment current version to 13.
+        * Scripts/webkitpy/port/ios_device_unittest.py: Update unit tests.
+        (IOSDeviceTest.test_layout_test_searchpath_with_apple_additions):
+        (IOSDeviceTest.test_layout_test_searchpath_without_apple_additions):
+        (IOSDeviceTest.test_layout_searchpath_wih_device_type):
+        * Scripts/webkitpy/port/ios_simulator_unittest.py: Ditto.
+        (IOSSimulatorTest.make_port):
+        (IOSSimulatorTest.test_layout_test_searchpath_with_apple_additions):
+        (IOSSimulatorTest.test_layout_test_searchpath_without_apple_additions):
+        (IOSSimulatorTest.test_layout_searchpath_wih_device_type):
+        * Scripts/webkitpy/port/ios_testcase.py: Ditto.
+        (IOSTest.make_port):
+
+2019-07-11  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for ARIA roles insertion, deletion, subscript, superscript, and time
+        https://bugs.webkit.org/show_bug.cgi?id=199692
+
+        Reviewed by Chris Fleizach.
+
+        Add support for output of AXDeletion and AXInsertion roles for tests.
+        Update GTK and WPE jhbuild modules to use version of ATK and AT-SPI2
+        which include ROLE_CONTENT_DELETION and ROLE_CONTENT_INSERTION.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        * gtk/jhbuild.modules:
+        * wpe/jhbuild.modules:
+
+2019-07-11  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [ews-build] Remove workers {ltilve,tanty}-gtk-wk2-ews from configuration
+        https://bugs.webkit.org/show_bug.cgi?id=199707
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/ews-build/config.json: Remove old unused workers.
+
+2019-07-10  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] With modal overlay and body overflow:hidden, can't access all the content
+        https://bugs.webkit.org/show_bug.cgi?id=199693
+        rdar://problem/51930364
+
+        Reviewed by Tim Horton.
+        
+        New API tests that test scrollability with various combinations of content, insets,
+        input accessory bars etc.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/ios/ScrollViewScrollabilityTests.mm: Added.
+        (TestWebKitAPI::webViewWithAutofocusedInput):
+        (TestWebKitAPI::TEST):
+
+2019-07-10  Tim Horton  <timothy_horton@apple.com>
+
+        Long pressing on attachments will crash the WebContent process
+        https://bugs.webkit.org/show_bug.cgi?id=199696
+        <rdar://problem/52920241>
+
+        Reviewed by Dean Jackson.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKRequestActivatedElementInfo.mm:
+        (TestWebKitAPI::TEST):
+        Add a test that previously crashed.
+
+2019-07-10  Dean Jackson  <dino@apple.com>
+
+        Support MacCatalyst in run-webkit-app
+        https://bugs.webkit.org/show_bug.cgi?id=199690
+
+        Reviewed by Tim Horton.
+
+        Add a --maccatalyst option to run-webkit-app that
+        can launch MacCatalyst applications with a built WebKit.
+
+        * Scripts/webkitdirs.pm:
+        (argumentsForConfiguration):
+        (determineXcodeSDK):
+        (xcodeSDKPlatformName):
+        (determineConfigurationProductDir):
+        (determinePortName):
+        (isCatalystWebKit):
+        (isAppleCocoaWebKit):
+        (willUseCatalystSDK):
+
+2019-07-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [MacOS] Filter VPA info logged to stdout
+        https://bugs.webkit.org/show_bug.cgi?id=199673
+
+        Reviewed by Eric Carlson.
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.logging_patterns_to_strip):
+
+2019-07-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247286.
+
+        Caused TestWTF.WTF.StringOperators to fail on debug bots
+
+        Reverted changeset:
+
+        "Add StringBuilder member function which allows makeString()
+        style variadic argument construction"
+        https://bugs.webkit.org/show_bug.cgi?id=198997
+        https://trac.webkit.org/changeset/247286
+
+2019-07-10  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Explicitly use perl or python while invoking scripts
+        https://bugs.webkit.org/show_bug.cgi?id=199669
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py: Explicitly added perl or python while invoking scripts.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Updated unit-tests accordingly.
+
+2019-07-10  Guillaume Emont  <guijemont@igalia.com>
+
+        Run tests on mips EWS
+        https://bugs.webkit.org/show_bug.cgi?id=196854
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitpy/common/config/ews.json:
+
+2019-07-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] GUniqueOutPtr::release should return a raw pointer
+        https://bugs.webkit.org/show_bug.cgi?id=199579
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WTF/glib/GUniquePtr.cpp:
+        (TestWebKitAPI::TEST):
+
+2019-07-09  Chris Dumez  <cdumez@apple.com>
+
+        Fix integer type encoding / decoding in WKRemoteObjectCoder
+        https://bugs.webkit.org/show_bug.cgi?id=199643
+        <rdar://problem/52732342>
+
+        Reviewed by Anders Carlsson.
+
+        Update API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/RemoteObjectRegistry.h:
+        * TestWebKitAPI/Tests/WebKitCocoa/RemoteObjectRegistry.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/RemoteObjectRegistryPlugIn.mm:
+        (-[RemoteObjectRegistryPlugIn takeUnsignedLongLong:completionHandler:]):
+        (-[RemoteObjectRegistryPlugIn takeLongLong:completionHandler:]):
+        (-[RemoteObjectRegistryPlugIn takeUnsignedLong:completionHandler:]):
+        (-[RemoteObjectRegistryPlugIn takeLong:completionHandler:]):
+
+2019-07-09  Sam Weinig  <weinig@apple.com>
+
+        Add StringBuilder member function which allows makeString() style variadic argument construction
+        https://bugs.webkit.org/show_bug.cgi?id=198997
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/StringBuilder.cpp:
+        Add basic test showing that StringBuilder::flexibleAppend can be used to 
+        append one or more string adaptable types. 
+
+2019-07-09  Sihui Liu  <sihui_liu@apple.com>
+
+        Only allow fetching and removing session credentials from WebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=199385
+        <rdar://problem/52622080>
+
+        Reviewed by Alex Christensen.
+
+        removeDataOfTypes will no longer remove persistent credentials. We should clear persistent credentials using
+        the new SPI after each test that creates persistent credentials, otherwise the later tests may use credentials
+        left by previous tests and didReceiveAuthenticationChallenge will not be invoked.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Challenge.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebsiteDatastore.mm:
+        (TestWebKitAPI::TEST):
+
+2019-07-09  Alex Christensen  <achristensen@webkit.org>
+
+        When parsing an IPv4 address, wait until after deciding it is indeed an IPv4 address before reporting syntax violations
+        https://bugs.webkit.org/show_bug.cgi?id=199628
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WTF/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2019-07-09  Alex Christensen  <achristensen@webkit.org>
+
+        Remove invalid assertion in URLParser::domainToASCII
+        https://bugs.webkit.org/show_bug.cgi?id=199624
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WTF/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2019-07-09  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser should reserialize IPv6 addresses that end with a colon
+        https://bugs.webkit.org/show_bug.cgi?id=199627
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WTF/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2019-07-08  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Do not run unix commands for windows in PrintConfiguration
+        https://bugs.webkit.org/show_bug.cgi?id=199605
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+
+2019-07-08  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        JSTestGlobalObject.cpp of bindings-generation-tests is failing for Windows Python
+        https://bugs.webkit.org/show_bug.cgi?id=199487
+
+        Reviewed by Ross Kirsling.
+
+        In Windows Python, preprocessor.pm is using cl.exe. cl.exe was
+        failing to open testglobalscope_constructors_file which was
+        created by using tempfile.mkstemp() because it keeps the file
+        open. Use tempfile.mkdtemp() to create temporary files in the
+        temporary directory instead of tempfile.mkstemp().
+
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.run_tests):
+        (BindingsTests.main):
+        (BindingsTests.close_and_remove): Deleted.
+
+2019-07-08  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add KillOldProcesses step before running API or Layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=199592
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/factories.py:
+
+2019-07-08  Jonathan Bedard  <jbedard@apple.com>
+
+        test-webkitpy: Explicitly use Python 2.7 lldb library
+        https://bugs.webkit.org/show_bug.cgi?id=199578
+        <rdar://problem/51853557>
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/common/system/systemhost.py:
+        (SystemHost.path_to_lldb_python_directory): Explicitly use Python 2.7 lldb libary.
+        * Scripts/webkitpy/test/main.py:
+        (_supports_building_and_running_lldb_tests): Run lldb tests on Catalina again.
+
+2019-07-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add test expectations and baselines for Catalina
+        https://bugs.webkit.org/show_bug.cgi?id=199328
+
+        Reviewed by Jonathan Bedard.
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort): Increment current version to 10.15 so that baseline search paths are correctly constructed for High Sierra.
+
+2019-07-08  Christopher Reid  <chris.reid@sony.com>
+
+        Implement MappedFileData for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=198269
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/PlatformWin.cmake:
+
+2019-07-08  Charlie Turner  <cturner@igalia.com>
+
+        REGRESSION(r243197): [GStreamer] Web process hangs when scrolling twitter timeline which contains HLS videos
+        https://bugs.webkit.org/show_bug.cgi?id=197558
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        On shutdown we can easily deadlock the web process if we don't
+        ensure all network operations are completed before comitting state
+        changes. In HLS, make sure the network operations are cancelled,
+        and also prevent hlsdemux's retry logic from scuppering our
+        efforts.
+
+        * gstreamer/jhbuild.modules: Include the patch.
+        * gstreamer/patches/gst-plugins-bad-do-not-retry-downloads-during-shutdown.patch: Added.
+
+2019-07-08  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Enable only on the most recent version of the supported iOS family
+        https://bugs.webkit.org/show_bug.cgi?id=199562
+        <rdar://problem/52766511>
+
+        Reviewed by Dean Jackson.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2019-07-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Long hang when loading a cnn.com page on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=199556
+
+        Reviewed by Zalan Bujtas.
+
+        Add code to load a page by default in MobileMiniBrowser so it's easy to hack it
+        to load a test page of your choice.
+
+        * MobileMiniBrowser/MobileMiniBrowserFramework/WebViewController.m:
+        (-[WebViewController viewDidLoad]):
+
+2019-07-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        [iOS] Crash in WebKit::WebPage::positionInformation via Range::startPosition
+        https://bugs.webkit.org/show_bug.cgi?id=199503
+
+        Reviewed by Wenson Hsieh.
+
+        Added UIScriptController.ensurePositionInformationIsUpToDateAt using the existing WKWebView SPI:
+        _requestActivatedElementAtPosition
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::ensurePositionInformationIsUpToDateAt):
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::ensurePositionInformationIsUpToDateAt):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::ensurePositionInformationIsUpToDateAt):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::ensurePositionInformationIsUpToDateAt):
+        * WebKitTestRunner/ios/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::ensurePositionInformationIsUpToDateAt):
+
+2019-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247115.
+
+        Breaks lldbWebKitTester (and by extension, test-webkitpy)
+
+        Reverted changeset:
+
+        "[WHLSL] Standard library is too big to directly include in
+        WebCore"
+        https://bugs.webkit.org/show_bug.cgi?id=198186
+        https://trac.webkit.org/changeset/247115
+
+2019-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247123.
+
+        Caused TestWebKitAPI.Challenge.BasicProposedCredential to
+        fail.
+
+        Reverted changeset:
+
+        "Only allow fetching and removing session credentials from
+        WebsiteDataStore"
+        https://bugs.webkit.org/show_bug.cgi?id=199385
+        https://trac.webkit.org/changeset/247123
+
+2019-07-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Touching media controls sometimes shows software keyboard
+        https://bugs.webkit.org/show_bug.cgi?id=199490
+        <rdar://problem/52076270>
+
+        Reviewed by Eric Carlson.
+
+        Adds plumbing for a new testing hook to check whether or not there is an active input session. See other
+        ChangeLog entries for more detail.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::hasInputSession const):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::hasInputSession const):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::hasInputSession const):
+
 2019-07-04  Aakash Jain  <aakash_jain@apple.com>
 
         [ews-build] Remove GTK and WPE queue from old EWS and dashboard

@@ -1534,7 +1534,7 @@ void RenderLayerBacking::updateEventRegion()
 
     bool hasTouchActionElements = false;
 #if ENABLE(POINTER_EVENTS)
-    hasTouchActionElements = !!renderer().document().touchActionElements();
+    hasTouchActionElements = renderer().document().mayHaveElementsWithNonAutoTouchAction();
 #endif
     if (m_owningLayer.isRenderViewLayer() && !hasTouchActionElements)
         return;
@@ -2451,6 +2451,11 @@ void RenderLayerBacking::contentChanged(ContentChangeType changeType)
     PaintedContentsInfo contentsInfo(*this);
     if ((changeType == ImageChanged) && contentsInfo.isDirectlyCompositedImage()) {
         updateImageContents(contentsInfo);
+        return;
+    }
+
+    if (changeType == VideoChanged) {
+        compositor().scheduleCompositingLayerUpdate();
         return;
     }
 

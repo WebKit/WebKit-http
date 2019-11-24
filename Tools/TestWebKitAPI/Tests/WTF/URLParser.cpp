@@ -345,6 +345,7 @@ TEST_F(WTF_URLParser, Basic)
     checkURL("http://127.0.0.1:/\tpath", {"http", "", "", "127.0.0.1", 0, "/path", "", "", "http://127.0.0.1/path"});
     checkURL("http://127.0.0.1:123", {"http", "", "", "127.0.0.1", 123, "/", "", "", "http://127.0.0.1:123/"});
     checkURL("http://127.0.0.1:", {"http", "", "", "127.0.0.1", 0, "/", "", "", "http://127.0.0.1/"});
+    checkURL("ws://08./", {"ws", "", "", "08.", 0, "/", "", "", "ws://08./"});
     checkURL("http://[0:f::f:f:0:0]:123/path", {"http", "", "", "[0:f::f:f:0:0]", 123, "/path", "", "", "http://[0:f::f:f:0:0]:123/path"});
     checkURL("http://[0:f::f:f:0:0]:123", {"http", "", "", "[0:f::f:f:0:0]", 123, "/", "", "", "http://[0:f::f:f:0:0]:123/"});
     checkURL("http://[0:f:0:0:f:\t:]:123", {"http", "", "", "[0:f:0:0:f::]", 123, "/", "", "", "http://[0:f:0:0:f::]:123/"});
@@ -353,6 +354,7 @@ TEST_F(WTF_URLParser, Basic)
     checkURL("http://[0:f:0:0:f::]:\t123", {"http", "", "", "[0:f:0:0:f::]", 123, "/", "", "", "http://[0:f:0:0:f::]:123/"});
     checkURL("http://[0:f:0:0:f::]:1\t23", {"http", "", "", "[0:f:0:0:f::]", 123, "/", "", "", "http://[0:f:0:0:f::]:123/"});
     checkURL("http://[0:f::f:f:0:0]:/path", {"http", "", "", "[0:f::f:f:0:0]", 0, "/path", "", "", "http://[0:f::f:f:0:0]/path"});
+    checkURL("a://[::2:]", {"a", "", "", "[::2]", 0, "", "", "", "a://[::2]"});
     checkURL("http://[0:f::f:f:0:0]:", {"http", "", "", "[0:f::f:f:0:0]", 0, "/", "", "", "http://[0:f::f:f:0:0]/"});
     checkURL("http://host:10100/path", {"http", "", "", "host", 10100, "/path", "", "", "http://host:10100/path"});
     checkURL("http://host:/path", {"http", "", "", "host", 0, "/path", "", "", "http://host/path"});
@@ -776,8 +778,11 @@ TEST_F(WTF_URLParser, ParserDifferences)
     checkURLDifferences("http://abcd%7Xefg",
         {"", "", "", "", 0, "", "", "", "http://abcd%7Xefg"},
         {"http", "", "", "abcd%7xefg", 0, "/", "", "", "http://abcd%7xefg/"});
+    checkURL("ws://äAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", {"ws", "", "", "xn--aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-rsb254a", 0, "/", "", "", "ws://xn--aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-rsb254a/"}, TestTabs::No);
+    shouldFail("ws://äAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    checkURL("ws://&äAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", {"ws", "", "", "xn--&aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-ssb254a", 0, "/", "", "", "ws://xn--&aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-ssb254a/"}, TestTabs::No);
+    shouldFail("ws://&äAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 
-    
     // URLParser matches Chrome and the spec, but not URL::parse or Firefox.
     checkURLDifferences(utf16String(u"http://０Ｘｃ０．０２５０．０１"),
         {"http", "", "", "192.168.0.1", 0, "/", "", "", "http://192.168.0.1/"},

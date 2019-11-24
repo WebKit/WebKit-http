@@ -101,6 +101,10 @@ void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef)
 {
 }
 
+void UIScriptController::ensurePositionInformationIsUpToDateAt(long x, long y, JSValueRef)
+{
+}
+
 void UIScriptController::doAfterVisibleContentRectUpdate(JSValueRef)
 {
 }
@@ -449,6 +453,11 @@ void UIScriptController::applyAutocorrection(JSStringRef, JSStringRef, JSValueRe
 }
 
 bool UIScriptController::isShowingKeyboard() const
+{
+    return false;
+}
+
+bool UIScriptController::hasInputSession() const
 {
     return false;
 }

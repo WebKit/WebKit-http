@@ -2294,7 +2294,7 @@ Expected<URLParser::IPv4Address, URLParser::IPv4ParsingError> URLParser::parseIP
         if (!iterator.atEnd() && *iterator == '.') {
             ++iterator;
             if (iterator.atEnd())
-                syntaxViolation(iteratorForSyntaxViolationPosition);
+                didSeeSyntaxViolation = true;
             else if (*iterator == '.')
                 return makeUnexpected(IPv4ParsingError::NotIPv4);
         }
@@ -2467,6 +2467,8 @@ Optional<URLParser::IPv6Address> URLParser::parseIPv6Host(CodePointIterator<Char
         if (piecePointer == 8 || *c != ':')
             return WTF::nullopt;
         advance(c, hostBegin);
+        if (c.atEnd())
+            syntaxViolation(hostBegin);
 
         immediatelyAfterCompress = false;
     }
@@ -2565,13 +2567,16 @@ template<typename CharacterType> Optional<URLParser::LCharBuffer> URLParser::dom
     UErrorCode error = U_ZERO_ERROR;
     UIDNAInfo processingDetails = UIDNA_INFO_INITIALIZER;
     int32_t numCharactersConverted = uidna_nameToASCII(&internationalDomainNameTranscoder(), StringView(domain).upconvertedCharacters(), domain.length(), hostnameBuffer, maxDomainLength, &processingDetails, &error);
-    ASSERT(numCharactersConverted <= static_cast<int32_t>(maxDomainLength));
 
     if (U_SUCCESS(error) && !processingDetails.errors) {
+#if ASSERT_DISABLED
+        UNUSED_PARAM(numCharactersConverted);
+#else
         for (int32_t i = 0; i < numCharactersConverted; ++i) {
             ASSERT(isASCII(hostnameBuffer[i]));
             ASSERT(!isASCIIUpper(hostnameBuffer[i]));
         }
+#endif
         ascii.append(hostnameBuffer, numCharactersConverted);
         if (domain != StringView(ascii.data(), ascii.size()))
             syntaxViolation(iteratorForSyntaxViolationPosition);

@@ -1320,6 +1320,7 @@ private:
 
 #if ENABLE(IOS_TOUCH_EVENTS)
     void touchEventSync(const WebTouchEvent&, CompletionHandler<void(bool)>&&);
+    void resetPotentialTapSecurityOrigin();
     void updatePotentialTapSecurityOrigin(const WebTouchEvent&, bool wasHandled);
 #elif ENABLE(TOUCH_EVENTS)
     void touchEvent(const WebTouchEvent&);
@@ -1448,6 +1449,7 @@ private:
 
 #if PLATFORM(IOS_FAMILY)
     void didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vector<String>&, const String& displayString, const IPC::DataReference& iconData);
+    bool isTransparentOrFullyClipped(const WebCore::Element&) const;
 #endif
 
 #if ENABLE(SANDBOX_EXTENSIONS)

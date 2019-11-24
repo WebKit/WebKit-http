@@ -4458,11 +4458,6 @@ void Document::nodeWillBeRemoved(Node& node)
 
     if (is<Text>(node))
         m_markers->removeMarkers(node);
-
-#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
-    if (m_touchActionElements && is<Element>(node))
-        m_touchActionElements->remove(&downcast<Element>(node));
-#endif
 }
 
 static Node* fallbackFocusNavigationStartingNodeAfterRemoval(Node& node)
@@ -5670,8 +5665,10 @@ void Document::finishedParsing()
     if (!m_documentTiming.domContentLoadedEventStart)
         m_documentTiming.domContentLoadedEventStart = MonotonicTime::now();
 
-    // FIXME: Schdule a task to fire DOMContentLoaded event instead. See webkit.org/b/82931
-    MicrotaskQueue::mainThreadQueue().performMicrotaskCheckpoint();
+    if (!page() || !page()->isForSanitizingWebContent()) {
+        // FIXME: Schedule a task to fire DOMContentLoaded event instead. See webkit.org/b/82931
+        MicrotaskQueue::mainThreadQueue().performMicrotaskCheckpoint();
+    }
 
     dispatchEvent(Event::create(eventNames().DOMContentLoadedEvent, Event::CanBubble::Yes, Event::IsCancelable::No));
 
@@ -6118,10 +6115,10 @@ void Document::addMessage(MessageSource source, MessageLevel level, const String
 
 void Document::postTask(Task&& task)
 {
-    callOnMainThread([documentReference = makeWeakPtr(*this), task = WTFMove(task)]() mutable {
+    callOnMainThread([documentID = identifier(), task = WTFMove(task)]() mutable {
         ASSERT(isMainThread());
 
-        Document* document = documentReference.get();
+        auto* document = allDocumentsMap().get(documentID);
         if (!document)
             return;
 
@@ -6975,6 +6972,20 @@ OptionSet<StyleColor::Options> Document::styleColorOptions(const RenderStyle* st
     if (useElevatedUserInterfaceLevel())
         options.add(StyleColor::Options::UseElevatedUserInterfaceLevel);
     return options;
+}
+
+CompositeOperator Document::compositeOperatorForBackgroundColor(const Color& color, const RenderObject& renderer) const
+{
+    if (LIKELY(!settings().punchOutWhiteBackgroundsInDarkMode() || !Color::isWhiteColor(color) || !renderer.useDarkAppearance()))
+        return CompositeSourceOver;
+
+    auto* frameView = view();
+    if (!frameView)
+        return CompositeSourceOver;
+
+    // Mail on macOS uses a transparent view, and on iOS it is an opaque view. We need to
+    // use different composite modes to get the right results in this case.
+    return frameView->isTransparent() ? CompositeDestinationOut : CompositeDestinationIn;
 }
 
 void Document::didAssociateFormControl(Element& element)
@@ -8171,32 +8182,6 @@ void Document::setPaintWorkletGlobalScopeForName(const String& name, Ref<PaintWo
 {
     auto addResult = m_paintWorkletGlobalScopes.add(name, WTFMove(scope));
     ASSERT_UNUSED(addResult, addResult);
-}
-#endif
-
-#if PLATFORM(IOS_FAMILY) && ENABLE(POINTER_EVENTS)
-void Document::updateTouchActionElements(Element& element, const RenderStyle& style)
-{
-    bool changed = false;
-
-    if (style.touchActions() != TouchAction::Auto) {
-        if (!m_touchActionElements)
-            m_touchActionElements = std::make_unique<HashSet<RefPtr<Element>>>();
-        changed |= m_touchActionElements->add(&element).isNewEntry;
-    } else if (m_touchActionElements)
-        changed |= m_touchActionElements->remove(&element);
-
-    if (!changed)
-        return;
-
-    Page* page = this->page();
-    if (!page)
-        return;
-
-    if (FrameView* frameView = view()) {
-        if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
-            scrollingCoordinator->frameViewEventTrackingRegionsChanged(*frameView);
-    }
 }
 #endif
 

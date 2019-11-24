@@ -1,3 +1,198 @@
+2019-07-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247286.
+
+        Caused TestWTF.WTF.StringOperators to fail on debug bots
+
+        Reverted changeset:
+
+        "Add StringBuilder member function which allows makeString()
+        style variadic argument construction"
+        https://bugs.webkit.org/show_bug.cgi?id=198997
+        https://trac.webkit.org/changeset/247286
+
+2019-07-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] GUniqueOutPtr::release should return a raw pointer
+        https://bugs.webkit.org/show_bug.cgi?id=199579
+
+        Reviewed by Carlos Garcia Campos.
+
+        GUniqueOutPtr::release should release to a raw pointer, rather than a GUniquePtr. If a
+        GUniquePtr is desired, it's trivial to construct one from the raw pointer, but all existing
+        callsites under Source/ would rather have a raw pointer. Currently they have to call
+        release().release() to get the raw pointer, which is annoying.
+
+        * wtf/glib/GUniquePtr.h:
+        (WTF::GUniqueOutPtr::release):
+
+2019-07-09  Sam Weinig  <weinig@apple.com>
+
+        Add StringBuilder member function which allows makeString() style variadic argument construction
+        https://bugs.webkit.org/show_bug.cgi?id=198997
+
+        Reviewed by Darin Adler.
+
+        Adds new StringBuilder::flexibleAppend(...) member function which allows passing one or more 
+        string-adaptable (in the sense that there is StringTypeAdapter specialization for the 
+        type) parameters. This re-ususes the variadic template infrastructure in StringConcatenate.h
+        that is used for makeString(...) allowing for improvements in one to benefit the other.
+
+        The advantage of StringBuilder::flexibleAppend(...) over calling StringBuilder::append(...)
+        multiple times (beyond the code sharing with makeString(...) is that it can avoid unnecessary
+        additional re-allocations when the StringBuilder needs to expand it's capacity. It does this
+        by computing the complete required length for all the passed arguments and then ensuring enough
+        capacity is available. It also reduces the allocation overhead versus the anti-pattern of
+        builder.append(makeString(...)).
+
+        Ideally, this member function should eventually just be called StringBuilder::append(...), but
+        the current overload set for StringBuilder::append(...) makes this complicated due to overloads
+        that take two arguments such as StringBuilder::append(const UChar*, unsigned). Going forward, we
+        should rename or remove those overloads and move to a standard interface. 
+
+        * wtf/posix/FileSystemPOSIX.cpp:
+        (WTF::FileSystemImpl::pathByAppendingComponents):
+        Adopt StringBuilder::flexibleAppend, using to combine the append of '/' and component.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::appendUninitialized):
+        (WTF::StringBuilder::appendUninitializedWithoutOverflowCheck):
+        Extract the part of appendUnitialized that doesn't do the overflow check
+        into it's own member function to allow callers that have already done the
+        overflow check to bypass it.
+
+        (WTF::StringBuilder::appendUninitializedWithoutOverflowCheckForUChar):
+        (WTF::StringBuilder::appendUninitializedWithoutOverflowCheckForLChar):
+        Added to allow template member function flexibleAppendFromAdapters to call
+        appendUninitializedWithoutOverflowCheck without moving it to the header.
+        
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::flexibleAppendFromAdapters):
+        (WTF::StringBuilder::flexibleAppend):
+        Modeled on tryMakeStringFromAdapters in StringConcatenate.h, these
+        eagerly compute the required length, expand the buffer and then use
+        the existing string type adaptor accumulation functions used by makeString. 
+
+        * wtf/text/StringConcatenate.h:
+        (WTF::stringTypeAdapterAccumulator):
+        (WTF::tryMakeStringFromAdapters):
+        (WTF::makeStringAccumulator): Deleted.
+        Renames makeStringAccumulator to stringTypeAdapterAccumulator now that it is used
+        by more than just makeString.
+
+2019-07-09  Alex Christensen  <achristensen@webkit.org>
+
+        When parsing an IPv4 address, wait until after deciding it is indeed an IPv4 address before reporting syntax violations
+        https://bugs.webkit.org/show_bug.cgi?id=199628
+
+        Reviewed by Brady Eidson.
+
+        Otherwise, we sometimes report syntax violations on things that are not IPv4 addresses and don't have syntax violations.
+        I added a unit test with one such URL that used to cause an assertion.
+
+        * wtf/URLParser.cpp:
+        (WTF::URLParser::parseIPv4Host):
+
+2019-07-09  Alex Christensen  <achristensen@webkit.org>
+
+        Remove invalid assertion in URLParser::domainToASCII
+        https://bugs.webkit.org/show_bug.cgi?id=199624
+
+        Reviewed by Brady Eidson.
+
+        When a non-ASCII domain's punycode encoding is longer than 63 characters,
+        the URL is supposed to fail to parse, according to https://www.unicode.org/reports/tr46/#ToASCII
+        We and all other browsers do this.  When uidna_nameToASCII tries to punycode encode such a domain,
+        it can return a number larger than 63.  In this case, processingDetails.errors is UIDNA_ERROR_LABEL_TOO_LONG
+        and we fail to parse as desired and uidna_nameToASCII did not write out of bounds, so it was just the assertion
+        that was wrong.  I added some unit tests that would have hit the assertion and verify that we fail at the correct length.
+
+        * wtf/URLParser.cpp:
+        (WTF::URLParser::domainToASCII):
+
+2019-07-09  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser should reserialize IPv6 addresses that end with a colon
+        https://bugs.webkit.org/show_bug.cgi?id=199627
+
+        Reviewed by Brady Eidson.
+
+        When an IPv6 address ends in a colon, the colon should be removed which means the
+        serialized output is different than the input, which the URLParser calls a syntax violation.
+        This matches the URL specification, and I added a unit test that used to assert.
+
+        * wtf/URLParser.cpp:
+        (WTF::URLParser::parseIPv6Host):
+
+2019-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Use WeakHashSet for WebUserContentControllerProxy::m_processes
+        https://bugs.webkit.org/show_bug.cgi?id=199591
+        <rdar://problem/52798721>
+
+        Reviewed by Youenn Fablet.
+
+        Update WeakHashSet::add() to return an AddResult type, similarly to our other containers.
+
+        * wtf/WeakHashSet.h:
+        (WTF::WeakHashSet::add):
+
+2019-07-08  Christopher Reid  <chris.reid@sony.com>
+
+        Implement MappedFileData for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=198269
+
+        Reviewed by Darin Adler.
+
+        Original patch by Fujii Hironori.
+
+        Add Windows implementations for MappedFileData constructor and destructor.
+
+        * wtf/FileSystem.cpp:
+        * wtf/FileSystem.h:
+        * wtf/win/FileSystemWin.cpp:
+
+2019-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Add threading assertion to WTF::CompletionHandler
+        https://bugs.webkit.org/show_bug.cgi?id=199516
+
+        Reviewed by Alex Christensen.
+
+        Add threading assertion to WTF::CompletionHandler to try and catch common cases
+        of unsafe usage (completion handler constructed on one thread but called on
+        another).
+
+        * wtf/CompletionHandler.h:
+        (WTF::CompletionHandler<Out):
+
+2019-07-08  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Enable only on the most recent version of the supported iOS family
+        https://bugs.webkit.org/show_bug.cgi?id=199562
+        <rdar://problem/52766511>
+
+        Reviewed by Dean Jackson.
+
+        We really don't need HAVE_UI_WEB_TOUCH_EVENTS_GESTURE_RECOGNIZER_WITH_ACTIVE_TOUCHES_BY_ID since the UIKit SPI
+        that was added in iOS 13 that it's checking for is really required for all parts of the implementation of Pointer
+        Events, including dispatch of the "pointercancel" event and support for the "touch-action" CSS property.
+
+        * wtf/Platform.h:
+
+2019-07-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247115.
+
+        Breaks lldbWebKitTester (and by extension, test-webkitpy)
+
+        Reverted changeset:
+
+        "[WHLSL] Standard library is too big to directly include in
+        WebCore"
+        https://bugs.webkit.org/show_bug.cgi?id=198186
+        https://trac.webkit.org/changeset/247115
+
 2019-07-03  Jonathan Bedard  <jbedard@apple.com>
 
         [Catalina] Enable WebKit build

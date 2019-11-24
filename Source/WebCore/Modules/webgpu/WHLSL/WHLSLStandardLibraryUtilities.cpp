@@ -35,7 +35,7 @@
 #include "WHLSLVisitor.h"
 #include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/cocoa/GunzipCocoa.h>
+#include <pal/Gunzip.h>
 
 namespace WebCore {
 

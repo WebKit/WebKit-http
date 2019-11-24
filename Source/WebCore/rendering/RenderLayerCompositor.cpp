@@ -275,7 +275,7 @@ void RenderLayerCompositor::BackingSharingState::updateAfterDescendantTraversal(
         layer.backing()->clearBackingSharingLayers();
 }
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(TREE_DEBUGGING)
 static inline bool compositingLogEnabled()
 {
     return LogCompositing.state == WTFLogChannelState::On;
@@ -523,7 +523,7 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
 #if ENABLE(TREE_DEBUGGING)
         if (layersLogEnabled()) {
             LOG(Layers, "RenderLayerCompositor::flushPendingLayerChanges");
-            showGraphicsLayerTree(m_overflowControlsHostLayer.get());
+            showGraphicsLayerTree(rootGraphicsLayer());
         }
 #endif
     }
@@ -1983,6 +1983,24 @@ void RenderLayerCompositor::frameViewDidChangeSize()
         }
 #endif
     }
+}
+
+void RenderLayerCompositor::widgetDidChangeSize(RenderWidget& widget)
+{
+    if (!widget.hasLayer())
+        return;
+
+    auto& layer = *widget.layer();
+
+    LOG_WITH_STREAM(Compositing, stream << "RenderLayerCompositor " << this << " widgetDidChangeSize (layer " << &layer << ")");
+
+    // Widget size affects answer to requiresCompositingForFrame() so we need to trigger
+    // a compositing update.
+    layer.setNeedsPostLayoutCompositingUpdate();
+    scheduleCompositingLayerUpdate();
+
+    if (layer.isComposited())
+        layer.backing()->updateAfterWidgetResize();
 }
 
 bool RenderLayerCompositor::hasCoordinatedScrolling() const

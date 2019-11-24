@@ -155,6 +155,14 @@ TEST(WKWebsiteDataStore, FetchPersistentCredentials)
         done = true;
     }];
     TestWebKitAPI::Util::run(&done);
+
+    // Clear persistent credentials created by this test.
+    NSURLProtectionSpace *protectionSpace = [[[NSURLProtectionSpace alloc] initWithHost:@"127.0.0.1" port:server.port() protocol:NSURLProtectionSpaceHTTP realm:@"testrealm" authenticationMethod:NSURLAuthenticationMethodHTTPBasic] autorelease];
+    __block bool removedCredential = false;
+    [[webView configuration].processPool _clearPermanentCredentialsForProtectionSpace:protectionSpace completionHandler:^{
+        removedCredential = true;
+    }];
+    Util::run(&removedCredential);
 }
 
 TEST(WKWebsiteDataStore, RemoveNonPersistentCredentials)

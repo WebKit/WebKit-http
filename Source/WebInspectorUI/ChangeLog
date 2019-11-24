@@ -1,3 +1,213 @@
+2019-07-11  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Layers: Uncaught Exception: Request with id = 2 failed. {"code":-32601,"message":"'Page' domain was not found","data":[{"code":-32601,"message":"'Page' domain was not found"}]}
+        https://bugs.webkit.org/show_bug.cgi?id=199555
+
+        Reviewed by Joseph Pecoraro.
+
+        Use modern inspected target support checking, and defer agent commands until a target is
+        available.
+
+        * UserInterface/Views/Layers3DContentView.js:
+        (WI.Layers3DContentView):
+        (WI.Layers3DContentView.prototype._showPaintRectsSettingChanged):
+        (WI.Layers3DContentView.prototype._updateCompositingBordersButtonState):
+        (WI.Layers3DContentView.prototype._toggleCompositingBorders):
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        (WI.DOMTreeContentView.prototype._toggleCompositingBorders):
+        (WI.DOMTreeContentView.prototype._updateCompositingBordersButtonToMatchPageSettings):
+        (WI.DOMTreeContentView.prototype._showPaintRectsSettingChanged):
+        (WI.DOMTreeContentView.prototype._showPrintStylesChanged):
+        (WI.DOMTreeContentView.prototype._showRulersChanged):
+        Drive-by: apply the same changes to the Elements tab for when the Layers tab isn't enabled.
+
+2019-07-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: replace WTF::Vector with std::initializer_list in CallTracer to avoid dynamic allocations
+        https://bugs.webkit.org/show_bug.cgi?id=199611
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording.prototype.async swizzle):
+        Drive-by: handle the situation where a parameter is an array of deduplicated strings, which
+                  would otherwise be treated as an array of numbers.
+
+2019-07-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add another Protocol Version (iOS 13.0)
+        https://bugs.webkit.org/show_bug.cgi?id=199631
+        <rdar://problem/47538193>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Protocol/Legacy/13.0/InspectorBackendCommands.js: Added.
+        * Versions/Inspector-iOS-13.0.json: Added.
+
+2019-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: special breakpoints and event targets should be sorted into separate "areas"
+        https://bugs.webkit.org/show_bug.cgi?id=199554
+
+        Reviewed by Joseph Pecoraro.
+
+        Move the special All Requests breakpoint down to be right above all other URL breakpoints.
+        Move the `window` object tree element below other DOM node tree elements.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._addTreeElement):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel.prototype._insertDebuggerTreeElement):
+
+2019-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM Debugger: there should be different icons for each type of DOM breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=199552
+
+        Reviewed by Joseph Pecoraro.
+
+        [S] for Subtree Modified
+        [A] for Attribute Modified
+        [R] for Node Removed
+
+        * UserInterface/Views/DOMBreakpointTreeElement.js:
+        (WI.DOMBreakpointTreeElement):
+        * UserInterface/Views/DOMBreakpointTreeElement.css: Added.
+        (.breakpoint.dom.breakpoint-for-subtree-modified:not(.breakpoint-paused-icon) .icon):
+        (.breakpoint.dom.breakpoint-for-attribute-modified:not(.breakpoint-paused-icon) .icon):
+        (.breakpoint.dom.breakpoint-for-node-removed:not(.breakpoint-paused-icon) .icon):
+
+        * UserInterface/Main.html:
+        * UserInterface/Images/DOMBreakpointAttributeModified.svg: Added.
+        * UserInterface/Images/DOMBreakpointNodeRemoved.svg: Added.
+        * UserInterface/Images/DOMBreakpointSubtreeModified.svg: Added.
+
+2019-07-08  Devin Rousso  <drousso@apple.com>
+
+        Uncaught Exception: Unexpected enum value: CPU
+        https://bugs.webkit.org/show_bug.cgi?id=199564
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype._updateAutoCaptureInstruments):
+        Filter the list of auto-capture instruments based on what's actually supported, instead of
+        directly using the saved list from the `WI.Setting`.
+
+2019-07-08  Devin Rousso  <drousso@apple.com>
+
+        Enabling the Layers tab hides the paint flashing button
+        https://bugs.webkit.org/show_bug.cgi?id=199549
+
+        Reviewed by Joseph Pecoraro.
+
+        Still show the Compositing Borders and Paint Flashing navigation items in the Elements tab
+        even when the Layers tab is enabled (just like the Layers details sidebar).
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView.prototype.get navigationItems):
+        (WI.DOMTreeContentView.prototype._updateCompositingBordersButtonToMatchPageSettings):
+
+2019-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: Elements: pasting in the Styles sidebar adds a text node to the DOM tree
+        https://bugs.webkit.org/show_bug.cgi?id=199588
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WI._paste):
+        Bail if `event.defaultPrevented`, as that means that something else has handled (and likely
+        overrode) this event.
+
+2019-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: the "x" in the Exception icon overlaps the border
+        https://bugs.webkit.org/show_bug.cgi?id=199553
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/Exception.svg:
+        * UserInterface/Images/Function.svg:
+        * UserInterface/Images/TailDeletedFunction.svg:
+
+2019-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: there should be a different icon for URL breakpoints
+        https://bugs.webkit.org/show_bug.cgi?id=199550
+
+        Reviewed by Joseph Pecoraro.
+
+        Use the same (down|up) arrow icon for the Network Tab and the Network timeline.
+
+        * UserInterface/Views/URLBreakpointTreeElement.js:
+        (WI.URLBreakpointTreeElement):
+        * UserInterface/Views/URLBreakpointTreeElement.css:
+        (.breakpoint.url:not(.breakpoint-paused-icon) .icon): Added.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._addBreakpoint):
+        * UserInterface/Views/SourcesNavigationSidebarPanel.js:
+        (WI.SourcesNavigationSidebarPanel.prototype._addBreakpoint):
+
+        * UserInterface/Images/URLBreakpoint.svg: Added.
+
+2019-07-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: CPU: the Duration string isn't localized
+        https://bugs.webkit.org/show_bug.cgi?id=199582
+        <rdar://problem/51698165>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.prototype._layoutEnergyChart):
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+2019-07-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: unbalanced quotes and parenthesis aren't displayed as property closed after editing values
+        https://bugs.webkit.org/show_bug.cgi?id=199090
+        <rdar://problem/51965431>
+
+        Reviewed by Devin Rousso.
+
+        `}` gets added by WI.tokenizeCSSValue (called by SpreadsheetStyleProperty.prototype._renderValue)
+        when it encounters unbalanced quotes. Fix unbalanced quotes by re-rendering the value from the model,
+        not the DOM content.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidCommit):
+        For consistency, render property name from the model as well.
+
+2019-07-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: current call frame indicator not visible in dark mode
+        https://bugs.webkit.org/show_bug.cgi?id=199047
+        <rdar://problem/51922895>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CallFrameTreeElement.css:
+        (.tree-outline .item.call-frame .status > .status-image):
+        (.tree-outline .item.call-frame.selected .status > .status-image):
+        Replace the CSS variables used for `fill` with their actual color value (in `light` mode),
+        as the semantic "name" of the variable doesn't really match its usage. As an example, the
+        current call frame shouldn't rely on the value of `--border-color`, as it's not a "border".
+
+2019-07-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Elements: use a CSS transition when showing/hiding DOM breakpoint gutter
+        https://bugs.webkit.org/show_bug.cgi?id=199411
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/DOMTreeContentView.css:
+        (.content-view.dom-tree .tree-outline.dom):
+
 2019-07-02  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Elements: allow nodes to be copied and pasted

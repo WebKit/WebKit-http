@@ -452,8 +452,6 @@ public:
     bool isSplitter() const { return roleValue() == AccessibilityRole::Splitter; }
     bool isToolbar() const { return roleValue() == AccessibilityRole::Toolbar; }
     bool isStyleFormatGroup() const;
-    bool isSubscriptStyleGroup() const;
-    bool isSuperscriptStyleGroup() const;
     bool isFigureElement() const;
     bool isKeyboardFocusable() const;
     bool isSummary() const { return roleValue() == AccessibilityRole::Summary; }
@@ -553,6 +551,7 @@ public:
 
     virtual bool hasPopup() const { return false; }
     String popupValue() const;
+    bool hasDatalist() const;
     bool supportsHasPopup() const;
     bool pressedIsPresent() const;
     bool ariaIsMultiline() const;

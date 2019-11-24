@@ -2896,7 +2896,7 @@ void WebPage::dispatchTouchEvent(const WebTouchEvent& touchEvent, bool& handled)
     if (handled && oldFocusedElement) {
         auto newFocusedFrame = makeRefPtr(m_page->focusController().focusedFrame());
         auto newFocusedElement = makeRefPtr(newFocusedFrame ? newFocusedFrame->document()->focusedElement() : nullptr);
-        if (oldFocusedElement == newFocusedElement)
+        if (oldFocusedElement == newFocusedElement && isTransparentOrFullyClipped(*newFocusedElement))
             elementDidRefocus(*newFocusedElement);
     }
 }
@@ -2914,6 +2914,11 @@ void WebPage::touchEventSync(const WebTouchEvent& touchEvent, CompletionHandler<
 
     if (auto reply = WTFMove(m_pendingSynchronousTouchEventReply))
         reply(handled);
+}
+
+void WebPage::resetPotentialTapSecurityOrigin()
+{
+    m_potentialTapSecurityOrigin = nullptr;
 }
 
 void WebPage::updatePotentialTapSecurityOrigin(const WebTouchEvent& touchEvent, bool wasHandled)
@@ -6579,17 +6584,20 @@ void WebPage::simulateDeviceOrientationChange(double alpha, double beta, double 
 #if ENABLE(SPEECH_SYNTHESIS)
 void WebPage::speakingErrorOccurred()
 {
-    corePage()->speechSynthesisClient()->observer()->speakingErrorOccurred();
+    if (auto observer = corePage()->speechSynthesisClient()->observer())
+        observer->speakingErrorOccurred();
 }
 
 void WebPage::boundaryEventOccurred(bool wordBoundary, unsigned charIndex)
 {
-    corePage()->speechSynthesisClient()->observer()->boundaryEventOccurred(wordBoundary, charIndex);
+    if (auto observer = corePage()->speechSynthesisClient()->observer())
+        observer->boundaryEventOccurred(wordBoundary, charIndex);
 }
 
 void WebPage::voicesDidChange()
 {
-    corePage()->speechSynthesisClient()->observer()->voicesChanged();
+    if (auto observer = corePage()->speechSynthesisClient()->observer())
+        observer->voicesChanged();
 }
 #endif
 

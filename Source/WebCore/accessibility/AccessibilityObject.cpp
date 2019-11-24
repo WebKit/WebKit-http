@@ -48,6 +48,7 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameSelection.h"
+#include "HTMLDataListElement.h"
 #include "HTMLDetailsElement.h"
 #include "HTMLFormControlElement.h"
 #include "HTMLInputElement.h"
@@ -2344,6 +2345,7 @@ static void initializeRoleMap()
         { "checkbox", AccessibilityRole::CheckBox },
         { "complementary", AccessibilityRole::LandmarkComplementary },
         { "contentinfo", AccessibilityRole::LandmarkContentInfo },
+        { "deletion", AccessibilityRole::Deletion },
         { "dialog", AccessibilityRole::ApplicationDialog },
         { "directory", AccessibilityRole::Directory },
         // The 'doc-*' roles are defined the ARIA DPUB mobile: https://www.w3.org/TR/dpub-aam-1.0/ 
@@ -2406,6 +2408,7 @@ static void initializeRoleMap()
         { "group", AccessibilityRole::ApplicationGroup },
         { "heading", AccessibilityRole::Heading },
         { "img", AccessibilityRole::Image },
+        { "insertion", AccessibilityRole::Insertion },
         { "link", AccessibilityRole::WebCoreLink },
         { "list", AccessibilityRole::List },
         { "listitem", AccessibilityRole::ListItem },
@@ -2439,6 +2442,8 @@ static void initializeRoleMap()
         { "slider", AccessibilityRole::Slider },
         { "spinbutton", AccessibilityRole::SpinButton },
         { "status", AccessibilityRole::ApplicationStatus },
+        { "subscript", AccessibilityRole::Subscript },
+        { "superscript", AccessibilityRole::Superscript },
         { "switch", AccessibilityRole::Switch },
         { "tab", AccessibilityRole::Tab },
         { "tablist", AccessibilityRole::TabList },
@@ -2446,6 +2451,7 @@ static void initializeRoleMap()
         { "text", AccessibilityRole::StaticText },
         { "textbox", AccessibilityRole::TextArea },
         { "term", AccessibilityRole::Term },
+        { "time", AccessibilityRole::Time },
         { "timer", AccessibilityRole::ApplicationTimer },
         { "toolbar", AccessibilityRole::Toolbar },
         { "tooltip", AccessibilityRole::UserInterfaceTooltip },
@@ -2767,7 +2773,7 @@ String AccessibilityObject::popupValue() const
     auto hasPopup = getAttribute(aria_haspopupAttr).convertToASCIILowercase();
     if (hasPopup.isNull() || hasPopup.isEmpty()) {
         // In ARIA 1.1, the implicit value for combobox became "listbox."
-        if (isComboBox())
+        if (isComboBox() || hasDatalist())
             return "listbox";
         return "false";
     }
@@ -2783,6 +2789,24 @@ String AccessibilityObject::popupValue() const
     // included in the list of allowed values, including an empty string, as if the value
     // false had been provided."
     return "false";
+}
+
+bool AccessibilityObject::hasDatalist() const
+{
+#if ENABLE(DATALIST_ELEMENT)
+    auto datalistId = getAttribute(listAttr);
+    if (datalistId.isNull() || datalistId.isEmpty())
+        return false;
+
+    auto element = this->element();
+    if (!element)
+        return false;
+
+    auto datalist = element->treeScope().getElementById(datalistId);
+    return is<HTMLDataListElement>(datalist);
+#else
+    return false;
+#endif
 }
 
 bool AccessibilityObject::supportsSetSize() const
@@ -3483,18 +3507,6 @@ bool AccessibilityObject::isStyleFormatGroup() const
     || node->hasTagName(varTag) || node->hasTagName(citeTag)
     || node->hasTagName(insTag) || node->hasTagName(delTag)
     || node->hasTagName(supTag) || node->hasTagName(subTag);
-}
-
-bool AccessibilityObject::isSubscriptStyleGroup() const
-{
-    Node* node = this->node();
-    return node && node->hasTagName(subTag);
-}
-
-bool AccessibilityObject::isSuperscriptStyleGroup() const
-{
-    Node* node = this->node();
-    return node && node->hasTagName(supTag);
 }
 
 bool AccessibilityObject::isFigureElement() const

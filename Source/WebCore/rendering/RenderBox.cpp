@@ -1257,12 +1257,8 @@ void RenderBox::paintRootBoxFillLayers(const PaintInfo& paintInfo)
         return;
 
     auto& style = rootBackgroundRenderer->style();
-
     auto color = style.visitedDependentColor(CSSPropertyBackgroundColor);
-
-    CompositeOperator compositeOp = CompositeSourceOver;
-    if (document().settings().punchOutWhiteBackgroundsInDarkMode() && Color::isWhiteColor(color) && useDarkAppearance())
-        compositeOp = CompositeDestinationOut;
+    auto compositeOp = document().compositeOperatorForBackgroundColor(color, *this);
 
     paintFillLayers(paintInfo, style.colorByApplyingColorFilter(color), style.backgroundLayers(), view().backgroundRect(), BackgroundBleedNone, compositeOp, rootBackgroundRenderer);
 }
@@ -1393,11 +1389,8 @@ void RenderBox::paintBackground(const PaintInfo& paintInfo, const LayoutRect& pa
     if (backgroundIsKnownToBeObscured(paintRect.location()) && !boxShadowShouldBeAppliedToBackground(paintRect.location(), bleedAvoidance))
         return;
 
-    Color backgroundColor = style().visitedDependentColor(CSSPropertyBackgroundColor);
-
-    CompositeOperator compositeOp = CompositeSourceOver;
-    if (document().settings().punchOutWhiteBackgroundsInDarkMode() && Color::isWhiteColor(backgroundColor) && useDarkAppearance())
-        compositeOp = CompositeDestinationOut;
+    auto backgroundColor = style().visitedDependentColor(CSSPropertyBackgroundColor);
+    auto compositeOp = document().compositeOperatorForBackgroundColor(backgroundColor, *this);
 
     paintFillLayers(paintInfo, style().colorByApplyingColorFilter(backgroundColor), style().backgroundLayers(), paintRect, bleedAvoidance, compositeOp);
 }
@@ -4731,17 +4724,6 @@ RenderLayer* RenderBox::enclosingFloatPaintingLayer() const
             return box.layer();
     }
     return nullptr;
-}
-
-const RenderBlock& RenderBox::enclosingScrollportBox() const
-{
-    const RenderBlock* ancestor = containingBlock();
-    for (; ancestor; ancestor = ancestor->containingBlock()) {
-        if (ancestor->hasOverflowClip())
-            return *ancestor;
-    }
-    ASSERT_NOT_REACHED();
-    return *ancestor;
 }
 
 LayoutRect RenderBox::logicalVisualOverflowRectForPropagation(const RenderStyle* parentStyle) const
