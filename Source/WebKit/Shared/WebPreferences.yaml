@@ -1126,6 +1126,10 @@ ShouldAllowUserInstalledFonts:
   type: bool
   defaultValue: true
 
+ShouldAllowDesignSystemUIFonts:
+  type: bool
+  defaultValue: false
+
 MediaCapabilitiesEnabled:
   type: bool
   defaultValue: true
@@ -1349,15 +1353,6 @@ CSSCustomPropertiesAndValuesEnabled:
   humanReadableDescription: "Enable CSS Custom Properties and Values API"
   webcoreBinding: RuntimeEnabledFeatures
   category: experimental
-
-DarkModeCSSEnabled:
-  type: bool
-  defaultValue: true
-  humanReadableName: "Dark Mode CSS Support"
-  humanReadableDescription: "Enable Dark Mode CSS Support"
-  webcoreBinding: RuntimeEnabledFeatures
-  category: experimental
-  condition: ENABLE(DARK_MODE_CSS)
 
 CSSPaintingAPIEnabled:
   type: bool

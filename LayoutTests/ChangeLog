@@ -1,3 +1,333 @@
+2019-07-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r247440.
+
+        Broke builds
+
+        Reverted changeset:
+
+        "[JSC] Improve wasm wpt test results by fixing miscellaneous
+        issues"
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+        https://trac.webkit.org/changeset/247440
+
+2019-07-15  Daniel Bates  <dabates@apple.com>
+
+        Typing into a cell in a Google Sheet lags behind by one character
+        https://bugs.webkit.org/show_bug.cgi?id=199587
+        <rdar://problem/51616845>
+
+        Reviewed by Brent Fulgham.
+
+        Add a test that enables the quirk and ensures that the DOM is up-to-date on expiration of a
+        zero timer scheduled from keydown, keypress, keyup, and input.
+
+        * fast/events/ios/dom-update-on-keydown-quirk-expected.txt: Added.
+        * fast/events/ios/dom-update-on-keydown-quirk.html: Added.
+
+2019-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247397, r247378, r247366.
+
+        Broke watchOS builds.
+
+        Reverted changesets:
+
+        "[WebGPU] Implement GPUError and error scopes"
+        https://bugs.webkit.org/show_bug.cgi?id=199655
+        https://trac.webkit.org/changeset/247366/webkit
+
+        "[WebGPU] Move error scopes out of GPUDevice for more portable error generation"
+        https://bugs.webkit.org/show_bug.cgi?id=199740
+        https://trac.webkit.org/changeset/247397/webkit
+
+2019-07-15  Rob Buis  <rbuis@igalia.com>
+
+        MathML WPT test for RadicalDegreeBottomRaisePercent fails
+        https://bugs.webkit.org/show_bug.cgi?id=183631
+
+        Reviewed by Frédéric Wang.
+
+        Adjust test expectations.
+
+        * platform/ios/mathml/presentation/roots-expected.txt:
+        * platform/mac/mathml/presentation/roots-expected.txt:
+        * platform/win/mathml/presentation/roots-expected.txt:
+
+2019-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve wasm wpt test results by fixing miscellaneous issues
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+
+        Reviewed by Mark Lam.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/win/TestExpectations:
+
+2019-07-15  Youenn Fablet  <youenn@apple.com>
+
+        Enable a debug WebRTC mode without any encryption
+        https://bugs.webkit.org/show_bug.cgi?id=199177
+        <rdar://problem/52074986>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/disable-encryption-expected.txt: Added.
+        * webrtc/disable-encryption.html: Added.
+
+2019-07-15  Youenn Fablet  <youenn@apple.com>
+
+        Filter SDP c lines
+        https://bugs.webkit.org/show_bug.cgi?id=199791
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/datachannel/filter-ice-candidate.html:
+
+2019-07-14  Dean Jackson  <dino@apple.com>
+
+        WebGL not supported on WKWebView on UIKit for Mac
+        https://bugs.webkit.org/show_bug.cgi?id=199785
+        <rdar://problem/52911449>
+
+        Reviewed by Antoine Quint.
+
+        Even though we don't yet run tests on UIKit for Mac, we
+        should have the most simple "is WebGL working?" ref test.
+
+        * webgl/smell-test-expected.html: Added.
+        * webgl/smell-test.html: Added.
+
+2019-07-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Text autosizing] [iPadOS] Further adjust our heuristics to determine text autosizing candidates
+        https://bugs.webkit.org/show_bug.cgi?id=199780
+        <rdar://problem/52289088>
+
+        Reviewed by Simon Fraser.
+
+        Rebaseline an existing idempotent text autosizing test, and add an additional test case.
+
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates-expected.txt:
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates.html:
+
+2019-07-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Don't do async overflow scrolling for visibility:hidden scrollers
+        https://bugs.webkit.org/show_bug.cgi?id=199779
+
+        Reviewed by Dean Jackson.
+
+        * compositing/scrolling/async-overflow-scrolling/visibility-hidden-scrollers-expected.txt: Added.
+        * compositing/scrolling/async-overflow-scrolling/visibility-hidden-scrollers.html: Added.
+        * platform/ios-wk2/compositing/scrolling/async-overflow-scrolling/visibility-hidden-scrollers-expected.txt: Added.
+
+2019-07-13  Zalan Bujtas  <zalan@apple.com>
+
+        Cannot bring up custom media controls at all on v.youku.com
+        https://bugs.webkit.org/show_bug.cgi?id=199699
+        <rdar://problem/51835327>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/visibility-hidden-iframe-click-expected.txt: Added.
+        * fast/events/touch/ios/visibility-hidden-iframe-click.html: Added.
+        * fast/events/touch/ios/visibility-hidden-nested-iframe-click-expected.txt: Added.
+        * fast/events/touch/ios/visibility-hidden-nested-iframe-click.html: Added.
+
+2019-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Stopping a cloned MediaStream video track should not stop any other video track
+        https://bugs.webkit.org/show_bug.cgi?id=199635
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/mediastreamtrack-video-clone-expected.txt:
+        * fast/mediastream/mediastreamtrack-video-clone.html:
+
+2019-07-12  Timothy Hatcher  <timothy@apple.com>
+
+        Drop DarkModeCSSEnabled as an experimental feature and always enable it.
+        https://bugs.webkit.org/show_bug.cgi?id=199725
+        rdar://problem/52970972
+
+        Reviewed by Megan Gardner.
+
+        Removed <!-- webkit-test-runner [ experimental:DarkModeCSSEnabled=true ] -->
+        from all dark mode tests.
+
+        * css-dark-mode/color-scheme-css-parse.html:
+        * css-dark-mode/color-scheme-css.html:
+        * css-dark-mode/color-scheme-meta.html:
+        * css-dark-mode/color-scheme-priority.html:
+        * css-dark-mode/color-scheme-scrollbar.html:
+        * css-dark-mode/default-colors.html:
+        * css-dark-mode/older-syntax/supported-color-schemes-css.html:
+        * css-dark-mode/older-syntax/supported-color-schemes-meta.html:
+        * css-dark-mode/older-systems/color-scheme-css.html:
+        * css-dark-mode/older-systems/color-scheme-meta.html:
+        * css-dark-mode/older-systems/prefers-color-scheme.html:
+        * css-dark-mode/prefers-color-scheme-picture-element.html:
+        * css-dark-mode/prefers-color-scheme.html:
+
+2019-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        New York font erroneously gets synthetic bold
+        https://bugs.webkit.org/show_bug.cgi?id=199653
+        <rdar://problem/51692592>
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+        * fast/text/design-system-ui-10-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-10.html: Added.
+        * fast/text/design-system-ui-11-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-11.html: Added.
+        * fast/text/design-system-ui-12-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-12.html: Added.
+        * fast/text/design-system-ui-13-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-13.html: Added.
+        * fast/text/design-system-ui-14-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-14.html: Added.
+        * fast/text/design-system-ui-15-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-15.html: Added.
+        * fast/text/design-system-ui-16-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-16.html: Added.
+        * fast/text/design-system-ui-2-expected.html: Added.
+        * fast/text/design-system-ui-2.html: Added.
+        * fast/text/design-system-ui-3-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-3.html: Added.
+        * fast/text/design-system-ui-4-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-4.html: Added.
+        * fast/text/design-system-ui-5-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-5.html: Added.
+        * fast/text/design-system-ui-6-expected.html: Added.
+        * fast/text/design-system-ui-6.html: Added.
+        * fast/text/design-system-ui-7-expected.html: Added.
+        * fast/text/design-system-ui-7.html: Added.
+        * fast/text/design-system-ui-8-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-8.html: Added.
+        * fast/text/design-system-ui-9-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-9.html: Added.
+        * fast/text/design-system-ui-expected.html: Added.
+        * fast/text/design-system-ui.html: Added.
+        * platform/mac/TestExpectations:
+
+2019-07-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] Rebaseline css3/blending tests with an empty homedir.
+
+        It seems this tests are sensible to some configuration of some
+        library as they produce different output (the layers with more left
+        margin) depending on that. The test pass on both cases, but the
+        check with the expected result fails, so it is flagged as failing.
+
+        This rebaselines the results to those that happen when running with
+        an empty/temporal homedir on Debian 10 to match what happens on the
+        bots. For more info see bugs 169916 and 199738.
+
+        Unreviewed gardening commit.
+
+        * platform/gtk/css3/blending/svg-blend-layer-blend-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-blend-expected.txt:
+        * platform/gtk/css3/blending/svg-blend-layer-clip-path-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-clip-path-expected.txt:
+        * platform/gtk/css3/blending/svg-blend-layer-filter-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-filter-expected.txt:
+        * platform/gtk/css3/blending/svg-blend-layer-mask-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-mask-expected.txt:
+        * platform/gtk/css3/blending/svg-blend-layer-opacity-expected.png:
+        * platform/gtk/css3/blending/svg-blend-layer-opacity-expected.txt:
+        * platform/wpe/TestExpectations: css3/blending/svg-isolation-isolated-group.html passes with an empty homedir.
+        * platform/wpe/css3/blending/svg-blend-layer-blend-expected.png:
+        * platform/wpe/css3/blending/svg-blend-layer-blend-expected.txt:
+        * platform/wpe/css3/blending/svg-blend-layer-clip-path-expected.png:
+        * platform/wpe/css3/blending/svg-blend-layer-clip-path-expected.txt:
+        * platform/wpe/css3/blending/svg-blend-layer-filter-expected.png:
+        * platform/wpe/css3/blending/svg-blend-layer-filter-expected.txt:
+        * platform/wpe/css3/blending/svg-blend-layer-mask-expected.png:
+        * platform/wpe/css3/blending/svg-blend-layer-mask-expected.txt:
+        * platform/wpe/css3/blending/svg-blend-layer-opacity-expected.png:
+        * platform/wpe/css3/blending/svg-blend-layer-opacity-expected.txt:
+
+2019-07-11  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] fast/events/ios/rotation/orientationchange-event-listener-on.body.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=199732
+        <rdar://problem/52693087>
+
+        Reviewed by Alex Christensen.
+
+        Stop logging in each event listener to not be reliant on the order in which listener are called.
+        Instead, simply make sure all event listeners that should be called were actually called.
+
+        * fast/events/ios/rotation/orientationchange-event-listener-on.body-expected.txt:
+        * fast/events/ios/rotation/orientationchange-event-listener-on.body.html:
+
+2019-07-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make the test added in r247327 more reliable.
+
+        * editing/selection/ios/autoscroll-with-top-content-inset-2.html:
+
+2019-07-11  Russell Epstein  <russell_e@apple.com>
+
+        Layout Test fast/viewport/ios/viewport-shrink-to-fit-on-new-navigation.html is Failing Consistently on iOS-WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=199731
+
+        Unreviewed Test Gardening
+
+        * platform/ios-wk2/TestExpectations:
+
+2019-07-11  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Implement GPUError and error scopes
+        https://bugs.webkit.org/show_bug.cgi?id=199655
+
+        Reviewed by Myles C. Maxfield.
+
+        Add a test to cover the cases outlined in the WebGPU error handling design doc.
+
+        * webgpu/error-scopes-test-expected.txt: Added.
+        * webgpu/error-scopes-test.html: Added.
+
+2019-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247314.
+        https://bugs.webkit.org/show_bug.cgi?id=199721
+
+        Caused performance regression. (Requested by deanj on
+        #webkit).
+
+        Reverted changeset:
+
+        "Disable speculative loading if cache is not to be used for
+        the load"
+        https://bugs.webkit.org/show_bug.cgi?id=199644
+        https://trac.webkit.org/changeset/247314
+
+2019-07-11  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Can't place caret or select in content that overflows a contenteditable element
+        https://bugs.webkit.org/show_bug.cgi?id=199741
+        rdar://problem/50545233
+
+        Reviewed by Wenson Hsieh.
+        
+        Re-enable editing/caret/ios, fixing the result of emoji.html which for some reason was
+        checked in as an html file (the test still fails).
+
+        * editing/caret/ios/caret-in-overflow-area-expected.txt: Added.
+        * editing/caret/ios/caret-in-overflow-area.html: Added.
+        * editing/caret/ios/emoji-expected.txt: Renamed from LayoutTests/editing/caret/ios/emoji-expected.html.
+        * editing/caret/ios/fixed-caret-position-after-scroll-expected.txt:
+        * editing/caret/ios/fixed-caret-position-after-scroll.html:
+        * editing/selection/ios/place-selection-in-overflow-area-expected.txt: Added.
+        * editing/selection/ios/place-selection-in-overflow-area.html: Added.
+        * editing/selection/ios/selection-extends-into-overflow-area-expected.txt: Added.
+        * editing/selection/ios/selection-extends-into-overflow-area.html: Added.
+        * platform/ios-wk2/TestExpectations:
+
 2019-07-11  Ryan Haddad  <ryanhaddad@apple.com>
 
         Add test expectations and baselines for iOS 13

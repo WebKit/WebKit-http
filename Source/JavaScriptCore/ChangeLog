@@ -1,3 +1,370 @@
+2019-07-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r247440.
+
+        Broke builds
+
+        Reverted changeset:
+
+        "[JSC] Improve wasm wpt test results by fixing miscellaneous
+        issues"
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+        https://trac.webkit.org/changeset/247440
+
+2019-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve wasm wpt test results by fixing miscellaneous issues
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+
+        Reviewed by Mark Lam.
+
+        This patch fixes miscellaneous issues in our Wasm JS API implementation to improve WPT score.
+        I picked trivial ones in this patch to make this easily reviewable.
+
+        1. Remove WebAssemblyPrototype. It does not exist in the spec. Merging WebAssemblyPrototype into JSWebAssembly.
+        2. Fix various attributes. It does not match to the usual JSC builtin's convention. But this change
+           is correct because they are changed to be matched against WebIDL definition, and WebAssembly implementation
+           follows WebIDL. In the future, we could move WebCore WebIDL things into WTF layer and even use (or leverage
+           some of utility functions) in our WebAssembly JS API implementation.
+        3. Fix how we interpret "present" in WebAssembly spec. This does not mean [[HasProperty]] result. It follows to
+           WebIDL spec, and it means that [[Get]] result is not undefined.
+        4. Add argument count check to Module.customSections, which is required because the method is defined in WebIDL.
+        5. Fix toNonWrappingUint32 to match it to WebIDL's conversion rule.
+
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * builtins/WebAssembly.js: Renamed from Source/JavaScriptCore/builtins/WebAssemblyPrototype.js.
+        * jit/Repatch.cpp:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::moduleLoaderParseModule):
+        * wasm/js/JSWebAssembly.cpp:
+        (JSC::JSWebAssembly::create):
+        (JSC::JSWebAssembly::finishCreation):
+        (JSC::reject):
+        (JSC::webAssemblyModuleValidateAsyncInternal):
+        (JSC::webAssemblyCompileFunc):
+        (JSC::resolve):
+        (JSC::JSWebAssembly::webAssemblyModuleValidateAsync):
+        (JSC::instantiate):
+        (JSC::compileAndInstantiate):
+        (JSC::JSWebAssembly::instantiate):
+        (JSC::webAssemblyModuleInstantinateAsyncInternal):
+        (JSC::JSWebAssembly::webAssemblyModuleInstantinateAsync):
+        (JSC::webAssemblyInstantiateFunc):
+        (JSC::webAssemblyValidateFunc):
+        (JSC::webAssemblyCompileStreamingInternal):
+        (JSC::webAssemblyInstantiateStreamingInternal):
+        * wasm/js/JSWebAssembly.h:
+        * wasm/js/JSWebAssemblyHelpers.h:
+        (JSC::toNonWrappingUint32):
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::WebAssemblyCompileErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::WebAssemblyInstanceConstructor::finishCreation):
+        * wasm/js/WebAssemblyInstancePrototype.cpp:
+        * wasm/js/WebAssemblyLinkErrorConstructor.cpp:
+        (JSC::WebAssemblyLinkErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        (JSC::WebAssemblyMemoryConstructor::finishCreation):
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::webAssemblyModuleCustomSections):
+        (JSC::WebAssemblyModuleConstructor::finishCreation):
+        * wasm/js/WebAssemblyPrototype.cpp: Removed.
+        * wasm/js/WebAssemblyPrototype.h: Removed.
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::WebAssemblyRuntimeErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::constructJSWebAssemblyTable):
+        (JSC::WebAssemblyTableConstructor::finishCreation):
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+
+2019-07-15  Youenn Fablet  <youenn@apple.com>
+
+        Enable a debug WebRTC mode without any encryption
+        https://bugs.webkit.org/show_bug.cgi?id=199177
+        <rdar://problem/52074986>
+
+        Reviewed by Eric Carlson.
+
+        * inspector/protocol/Page.json:
+
+2019-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, attempt to fix production builds after r247403.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2019-07-15  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Concurrent GC should not rely on current phase to determine if it's safe to steal conn
+        https://bugs.webkit.org/show_bug.cgi?id=199786
+        <rdar://problem/52505197>
+
+        Reviewed by Saam Barati.
+
+        In r246507, we fixed a race condition in the concurrent GC where the mutator might steal
+        the conn from the collector thread while it transitions from the End phase to NotRunning.
+        However, that fix was not sufficient. In the case that the mutator steals the conn, and the
+        execution interleaves long enough for the mutator to progress to a different collection phase,
+        the collector will resume in a phase other than NotRunning, and hence the check added to
+        NotRunning will not suffice. To fix that, we add a new variable to track whether the collector
+        thread is running (m_collectorThreadIsRunning) and use it to determine whether it's safe to
+        steal the conn, rather than relying on m_currentPhase.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::runNotRunningPhase):
+        (JSC::Heap::requestCollection):
+        * heap/Heap.h:
+
+2019-07-12  Keith Miller  <keith_miller@apple.com>
+
+        Add API to get all the dependencies of a given JSScript
+        https://bugs.webkit.org/show_bug.cgi?id=199746
+
+        Reviewed by Saam Barati.
+
+        The method only returns the dependencies if the module was
+        actually evaluated. Technically, we know what the dependencies are
+        at the satisfy phase but for API simplicity we only provide that
+        information if the module graph was complete enough to at least
+        run.
+
+        This patch also fixes an issue where we would allow import
+        specifiers that didn't start "./" or "/". For reference, We have
+        this restriction to be consistent with the web/node. The
+        restriction exists in order to preserve namespace for
+        builtin-modules.
+
+        Lastly, this patch makes it so that we copy all scripts in the
+        API/tests/testapiScripts directory so they don't have to be
+        individually added to the xcode project.
+
+        * API/JSAPIGlobalObject.mm:
+        (JSC::computeValidImportSpecifier):
+        (JSC::JSAPIGlobalObject::moduleLoaderResolve):
+        (JSC::JSAPIGlobalObject::moduleLoaderImportModule):
+        * API/JSContext.mm:
+        (-[JSContext dependencyIdentifiersForModuleJSScript:]):
+        * API/JSContextPrivate.h:
+        * API/JSScript.h:
+        * API/tests/testapi.mm:
+        (testFetchWithTwoCycle):
+        (testFetchWithThreeCycle):
+        (testModuleBytecodeCache):
+        (+[JSContextFileLoaderDelegate newContext]):
+        (-[JSContextFileLoaderDelegate fetchModuleScript:]):
+        (-[JSContextFileLoaderDelegate findScriptForKey:]):
+        (-[JSContextFileLoaderDelegate context:fetchModuleForIdentifier:withResolveHandler:andRejectHandler:]):
+        (testDependenciesArray):
+        (testDependenciesEvaluationError):
+        (testDependenciesSyntaxError):
+        (testDependenciesBadImportId):
+        (testDependenciesMissingImport):
+        (testObjectiveCAPI):
+        * API/tests/testapiScripts/dependencyListTests/badModuleImportId.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/bar.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/dependenciesEntry.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/foo.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/missingImport.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/referenceError.js: Added.
+        * API/tests/testapiScripts/dependencyListTests/syntaxError.js: Added.
+        * API/tests/testapiScripts/testapi-function-overrides.js: Renamed from Source/JavaScriptCore/API/tests/testapi-function-overrides.js.
+        * API/tests/testapiScripts/testapi.js: Renamed from Source/JavaScriptCore/API/tests/testapi.js.
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/ModuleLoader.js:
+        (dependencyKeysIfEvaluated):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::dependencyKeysIfEvaluated):
+        * runtime/JSModuleLoader.h:
+        * shell/CMakeLists.txt:
+
+2019-07-12  Justin Michaud  <justin_michaud@apple.com>
+
+        B3 should reduce (integer) Sub(Neg(x), y) to Neg(Add(x, y))
+        https://bugs.webkit.org/show_bug.cgi?id=196371
+
+        Reviewed by Keith Miller.
+
+        Adding these strength reductions gives 2x a (x86) and 3x (arm64) performance improvement
+        on the microbenchmark.
+
+        * b3/B3ReduceStrength.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::testSubSub):
+        (JSC::B3::testSubSub2):
+        (JSC::B3::testSubAdd):
+        (JSC::B3::testSubFirstNeg):
+        (JSC::B3::run):
+
+2019-07-12  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueBitLShift into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=192664
+
+        Reviewed by Saam Barati.
+
+        This patch is splitting the `BitLShift` into `ArithBitLShift` and
+        `ValueBitLShift` to handle BigInt speculation more efficiently during
+        DFG and FTL layers. Following the same approach of other `ValueBitOps`,
+        `ValueBitLShift` handles Untyped and BigInt speculations, while
+        `ArithBitLShift` handles number and boolean operands and always results into
+        Int32. 
+
+        * bytecode/BytecodeList.rb:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        * bytecode/Opcode.h:
+        * dfg/DFGAbstractInterpreter.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::handleConstantBinaryBitwiseOp):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+
+        We moved `BitLShift` constant fold rules to a new method
+        `handleConstantBinaryBitwiseOp` to be reused by `ArithBitLShift` and
+        `ValueBitLShift`. This also enables support of constant folding on other
+        bitwise operations like `ValueBitAnd`, `ValueBitOr` and `ValueBitXor`, when
+        their binary use kind is UntypedUse. Such cases can happen on those
+        nodes because fixup phase is conservative.
+
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::isWithinPowerOfTwo):
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicGetter):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+
+        We parse `op_lshift` as `ArithBitLShift` when its operands are numbers.
+        Otherwise, we fallback to `ValueBitLShift` and rely on fixup phase to
+        convert `ValueBitLShift` into `ArithBitLShift` when possible.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+
+        `ArithBitLShift` has the same clobberize rules as former `BitLShift`.
+        `ValueBitLShift` only clobberize world when it is UntypedUse.
+
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+
+        `ValueBitLShift` can GC when `BigIntUse` because it allocates new
+        JSBigInts to perform this operation. It also can GC on UntypedUse
+        because of observable user code.
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+
+        `ValueBitLShift` and `ArithBitLShift` has the same fixup rules of
+        other binary bitwise operations. In the case of `ValueBitLShift`
+        We check if we should speculate on BigInt or Untyped and fallback to
+        `ArithBitLShift` when both cheks fail.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+
+        We updated `operationValueBitLShift` to handle BigInt cases. Also, we
+        added `operationBitLShiftBigInt` that is used when we compile
+        `ValueBitLValueBitLShift(BigIntUse)`.
+
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+
+        `ValueBitLShift`'s prediction propagation rules differs from other
+        bitwise operations, because using only heap prediction for this node causes
+        significant performance regression on Octane's zlib and mandreel.
+        The reason is because of cases where a function is compiled but the
+        instruction `op_lshift` was never executed before. If we use
+        `getPrediction()` we will emit a `ForceOSRExit`, resulting in more OSR
+        than desired. To solve such issue, we are then using
+        `getPredictionWithoutOSR()` and falling back to `getHeapPrediction()`
+        only on cases where we can't rely on node's input types.
+
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueLShiftOp):
+        (JSC::DFG::SpeculativeJIT::compileShiftOp):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::shiftOp):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithBitLShift):
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueBitLShift):
+        (JSC::FTL::DFG::LowerDFGToB3::compileBitLShift): Deleted.
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+
+2019-07-12  Keith Miller  <keith_miller@apple.com>
+
+        getIndexQuickly should be const
+        https://bugs.webkit.org/show_bug.cgi?id=199747
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/Butterfly.h:
+        (JSC::Butterfly::indexingPayload const):
+        (JSC::Butterfly::arrayStorage const):
+        (JSC::Butterfly::contiguousInt32 const):
+        (JSC::Butterfly::contiguousDouble const):
+        (JSC::Butterfly::contiguous const):
+        * runtime/JSObject.h:
+        (JSC::JSObject::canGetIndexQuickly const):
+        (JSC::JSObject::getIndexQuickly const):
+        (JSC::JSObject::tryGetIndexQuickly const):
+        (JSC::JSObject::canGetIndexQuickly): Deleted.
+        (JSC::JSObject::getIndexQuickly): Deleted.
+
+2019-07-11  Justin Michaud  <justin_michaud@apple.com>
+
+        Add b3 macro lowering for CheckMul on arm64
+        https://bugs.webkit.org/show_bug.cgi?id=199251
+
+        Reviewed by Robin Morisset.
+
+        - Lower CheckMul for 32-bit arguments on arm64 into a mul and then an overflow check.
+        - Add a new opcode to air on arm64 for smull (multiplySignExtend32).
+        - Fuse sign extend 32 + mul into smull (taking two 32-bit arguments and producing 64 bits). 
+        - 1.25x speedup on power of two microbenchmark, 1.15x speedup on normal constant microbenchmark, 
+          and no change on the no-constant benchmark.
+        Also, skip some of the b3 tests that were failing before this patch so that the new tests can run
+        to completion.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::multiplySignExtend32):
+        * assembler/testmasm.cpp:
+        (JSC::testMul32SignExtend):
+        (JSC::run):
+        * b3/B3LowerMacros.cpp:
+        * b3/B3LowerToAir.cpp:
+        * b3/air/AirOpcode.opcodes:
+        * b3/testb3.cpp:
+        (JSC::B3::testMulArgs32SignExtend):
+        (JSC::B3::testMulImm32SignExtend):
+        (JSC::B3::testMemoryFence):
+        (JSC::B3::testStoreFence):
+        (JSC::B3::testLoadFence):
+        (JSC::B3::testPinRegisters):
+        (JSC::B3::run):
+
 2019-07-11  Yusuke Suzuki  <ysuzuki@apple.com>
 
         Unreviewed, revert r243617.

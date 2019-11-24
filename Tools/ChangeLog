@@ -1,3 +1,252 @@
+2019-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS 10.15] Cannot unbold selected text when the system font is used
+        https://bugs.webkit.org/show_bug.cgi?id=199788
+        <rdar://problem/52142570>
+
+        Reviewed by Tim Horton.
+
+        Add a new API test to verify that bolding and unbolding updates the
+        shared font manager's selected font.
+
+        * TestWebKitAPI/Tests/mac/FontManagerTests.mm:
+        (TestWebKitAPI::TEST):
+
+2019-07-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [iOS] SOAuthorizationSession should tell AppSSO whether the UIClient is capable of showing the extension UI
+        https://bugs.webkit.org/show_bug.cgi?id=199790
+        <rdar://problem/52790112>
+
+        Reviewed by Brent Fulgham.
+
+        Add tests to check SOAuthorization.enableEmbeddedAuthorizationViewController accordingly.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TestSOAuthorization.mm:
+        (-[TestSOAuthorizationDelegate _presentingViewControllerForWebView:]):
+        (configureSOAuthorizationWebView):
+        (TestWebKitAPI::TEST):
+        (-[TestSOAuthorizationNavigationDelegate init]): Deleted.
+        (-[TestSOAuthorizationNavigationDelegate webView:didFinishNavigation:]): Deleted.
+        (-[TestSOAuthorizationNavigationDelegate webView:decidePolicyForNavigationAction:decisionHandler:]): Deleted.
+        (-[TestSOAuthorizationNavigationDelegate webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]): Deleted.
+        (-[TestSOAuthorizationNavigationDelegate _webView:decidePolicyForSOAuthorizationLoadWithCurrentPolicy:forExtension:completionHandler:]): Deleted.
+
+2019-07-15  Sihui Liu  <sihui_liu@apple.com>
+
+        window.openDatabase is not writable
+        https://bugs.webkit.org/show_bug.cgi?id=199737
+        <rdar://problem/52551332>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebSQLBasics.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/opendatabase-always-exists.html:
+
+2019-07-15  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Parse and display layout test failures
+        https://bugs.webkit.org/show_bug.cgi?id=199709
+
+        Rubber-stamped by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunWebKitTests.start): Initialize log_observer.
+        (RunWebKitTests._strip_python_logging_prefix): Copied from similar code in build.webkit.org buildbot config.
+        (RunWebKitTests._parseRunWebKitTestsOutput): Ditto.
+        (RunWebKitTests.commandComplete): Gather and parse the stdout and stderr logs.
+        (RunWebKitTests.evaluateResult): Analyze the results and decide build status.
+        (RunWebKitTests.getResultSummary): Update build and step summary.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added and updated unit-tests.
+
+2019-07-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247393.
+        https://bugs.webkit.org/show_bug.cgi?id=199797
+
+        broke mips and arm EWS (Requested by guijemont on #webkit).
+
+        Reverted changeset:
+
+        "run-javascriptcore-tests won't report test results for
+        testmasm, testair, testb3, testdfg and test api"
+        https://bugs.webkit.org/show_bug.cgi?id=199489
+        https://trac.webkit.org/changeset/247393
+
+2019-07-12  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] -loadFileURL:allowingReadAccessToURL: should fully resolve file URLs
+        https://bugs.webkit.org/show_bug.cgi?id=199768
+        <rdar://problem/52002206>
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/LoadFileURL.mm:
+        (TEST):
+
+2019-07-12  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Remove wincairo queue from old EWS and dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=199776
+
+        Reviewed by Don Olmstead.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueServer.js:
+        * QueueStatusServer/config/queues.py:
+
+2019-07-12  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Enable wincairo queue on new EWS
+        https://bugs.webkit.org/show_bug.cgi?id=199593
+
+        Reviewed by Don Olmstead.
+
+        * BuildSlaveSupport/ews-build/config.json: Enabled the triggers for wincairo builder.
+        * BuildSlaveSupport/ews-build/factories.py: Added required build steps for wincairo factory.
+        * BuildSlaveSupport/ews-app/ews/views/statusbubble.py:
+        (StatusBubble): Enable wincairo status-bubble.
+
+2019-07-12  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-app] Enable logging for clicking SubmitToEWS button
+        https://bugs.webkit.org/show_bug.cgi?id=199757
+
+        Unreviewed minor infrastructure fix.
+
+        * BuildSlaveSupport/ews-app/ews/views/submittoews.py:
+        (SubmitToEWS.post): Change logging level from debug to info.
+
+2019-07-12  Alex Christensen  <achristensen@webkit.org>
+
+        Enable client certificate authentication unit test
+        https://bugs.webkit.org/show_bug.cgi?id=199735
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Challenge.mm:
+        (TEST):
+        I originally wrote this in https://bugs.webkit.org/show_bug.cgi?id=197800 but it was disabled because it crashed.
+        I found what was crashing.  I was reading out of bounds on my vector of 2 strings :(
+
+2019-07-12  Alex Christensen  <achristensen@webkit.org>
+
+        Begin unifying TestWebKitAPI build
+        https://bugs.webkit.org/show_bug.cgi?id=199728
+
+        Reviewed by Keith Miller.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Scripts/generate-unified-sources.sh: Added.
+        * TestWebKitAPI/Sources.txt: Added.
+        * TestWebKitAPI/SourcesCocoa.txt: Added.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+2019-07-12  Zhifei Fang  <zhifei_fang@apple.com>
+
+        run-javascriptcore-tests won't report test results for testmasm, testair, testb3, testdfg and test api
+        https://bugs.webkit.org/show_bug.cgi?id=199489
+        <rdar://problem/47891081>
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunJavaScriptCoreTests.countFailures):
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py:
+        * Scripts/run-javascriptcore-tests:
+        (runTest):
+        (reportTestFailures):
+        (runJSCStressTests):
+
+2019-07-12  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Make layout-tests' full_results.json accessible in Buildbot
+        https://bugs.webkit.org/show_bug.cgi?id=199743
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Updated unit-tests.
+
+2019-07-11  Aakash Jain  <aakash_jain@apple.com>
+
+        Unreviewed follow-up fix to r247364.
+        [ews-build] Add build step to clean up .git/index.lock file
+        https://bugs.webkit.org/show_bug.cgi?id=199722
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (CheckOutSource): CheckOutSource should not haltOnFailure since CleanUpGitIndexLock step needs
+        to be run after this step.
+
+2019-07-11  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Flaky API Test TestWTF.bmalloc.ScavengedMemoryShouldBeReused
+        https://bugs.webkit.org/show_bug.cgi?id=199524
+        <rdar://problem/52783816>
+
+        Reviewed by Saam Barati.
+
+        This test is white-box one and it has strong assumption how IsoHeap allocates pages.
+        But this test has several problems.
+
+        1. IsoPage::numObjects is not the exact number of how many we allocate objects. This
+           number is calculated by pageSize / sizeof(T), and this does not account the header
+           size of IsoPage. So, # of objects per IsoPage is less than numObjects. Since sizeof(double)
+           is very small, we can have many objects in one IsoPage. As a result, we need a large
+           bitmap in IsoPage. This reduces # of objects in IsoPage largely. So, `ptrs.size()` becomes
+           less than numObjects.
+
+        2. We now have lower tier of allocation in IsoHeap. It means that we allocate 8 objects in
+           shared page (page is shared, but memory is pinned for a specific type) before using IsoHeap's
+           page. This also makes the intention of this test wrong.
+
+        Due to (1), we access OoB of ptrs vector, passing a garbage to IsoHeap::deallocate, and crashing.
+
+        We make this test robust while we still keep this test white-box one to test the critical feature
+        of IsoHeap. We first exhaust lower tier of IsoHeap, and after that, start testing the memory. We
+        allocate many pointers, deallocate them, allocate one pointer while keeping pointers in the lower
+        tier live, and check whether the deallocated memory is reused.
+
+        * TestWebKitAPI/Tests/WTF/bmalloc/IsoHeap.cpp:
+        (TEST):
+
+2019-07-11  Pablo Saavedra  <psaavedra@igalia.com>
+
+        [WPE][GTK] Build failure with ENABLE_ACCESSIBILITY=OFF
+        https://bugs.webkit.org/show_bug.cgi?id=199625
+
+        Added ENABLE(ACCESSIBILITY) and replaced HAVE(ACCESSIBILITY)
+        with ENABLE(ACCESSIBILITY) in the code.
+
+        Additionally, the TestRunner code generator now honors the
+        Conditional IDL format.
+
+        Reviewed by Konstantin Tokarev.
+
+        * WebKitTestRunner/InjectedBundle/AccessibilityController.cpp:
+        * WebKitTestRunner/InjectedBundle/AccessibilityTextMarker.cpp:
+        * WebKitTestRunner/InjectedBundle/AccessibilityTextMarkerRange.cpp:
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityController.idl:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityTextMarker.idl:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityTextMarkerRange.idl:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/Bindings/CodeGeneratorTestRunner.pm:
+        (_generateImplementationFile):
+
+2019-07-11  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Add build step to clean up .git/index.lock file
+        https://bugs.webkit.org/show_bug.cgi?id=199722
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (CheckOutSource.getResultSummary): Run CleanUpGitIndexLock step when CheckOutSource fails.
+        (CleanUpGitIndexLock.__init__): Configure timeout and logEnviron.
+        (CleanUpGitIndexLock.evaluateCommand): Always RETRY the build after this step is run.
+        * BuildSlaveSupport/ews-build/steps_unittest.py: Added unit-tests.
+
 2019-07-11  Jonathan Bedard  <jbedard@apple.com>
 
         [iOS 13] Enable WebKit build

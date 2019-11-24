@@ -262,6 +262,7 @@
 #if PLATFORM(IOS_FAMILY)
 #include "ContentChangeObserver.h"
 #include "CSSFontSelector.h"
+#include "DOMTimerHoldingTank.h"
 #include "DeviceMotionClientIOS.h"
 #include "DeviceMotionController.h"
 #include "DeviceOrientationClientIOS.h"
@@ -2478,7 +2479,7 @@ void Document::prepareForDestruction()
 
     m_undoManager->removeAllItems();
 
-#if HAVE(ACCESSIBILITY)
+#if ENABLE(ACCESSIBILITY)
     if (this != &topDocument()) {
         // Let the ax cache know that this subframe goes out of scope.
         if (auto* cache = existingAXObjectCache())
@@ -8186,12 +8187,22 @@ void Document::setPaintWorkletGlobalScopeForName(const String& name, Ref<PaintWo
 #endif
 
 #if PLATFORM(IOS_FAMILY)
+
 ContentChangeObserver& Document::contentChangeObserver()
 {
     if (!m_contentChangeObserver)
         m_contentChangeObserver = std::make_unique<ContentChangeObserver>(*this);
     return *m_contentChangeObserver; 
 }
+
+DOMTimerHoldingTank& Document::domTimerHoldingTank()
+{
+    if (m_domTimerHoldingTank)
+        return *m_domTimerHoldingTank;
+    m_domTimerHoldingTank = std::make_unique<DOMTimerHoldingTank>();
+    return *m_domTimerHoldingTank;
+}
+
 #endif
 
 bool Document::hasEvaluatedUserAgentScripts() const

@@ -1,3 +1,414 @@
+2019-07-15  Daniel Bates  <dabates@apple.com>
+
+        Typing into a cell in a Google Sheet lags behind by one character
+        https://bugs.webkit.org/show_bug.cgi?id=199587
+        <rdar://problem/51616845>
+
+        Reviewed by Brent Fulgham.
+
+        Remove all timers from the holding tank on text insertion or deletion (represented as an
+        editing command). Timers that were in the holding tank never stopped ticking and will now
+        be able to execute their action.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::executeEditingCommand):
+        (WebKit::WebPage::insertTextAsync):
+        (WebKit::WebPage::setCompositionAsync):
+        (WebKit::WebPage::confirmCompositionAsync):
+        Call platformWillPerformEditingCommand().
+
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::platformWillPerformEditingCommand): Added.
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::platformWillPerformEditingCommand): Remove all the timers from the holding
+        tank if we have a holding tank.
+
+2019-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS 10.15] Cannot unbold selected text when the system font is used
+        https://bugs.webkit.org/show_bug.cgi?id=199788
+        <rdar://problem/52142570>
+
+        Reviewed by Tim Horton.
+
+        In macOS 10.15, +[NSFont fontWithName:size:] no longer recognizes system fonts (of name
+        ".SFNS-*") and returns nil instead. However, our existing implementation of
+        WebPageProxy::fontAtSelection works by grabbing the font name in the web process, and
+        sending it over to the UI process, where it is mapped to an NSFont. As a result, this always
+        results in a nil font in macOS 10.15, which causes us to never update NSFontManager's
+        selected font. In turn, this means that once selected text is bolded, it can't be unbolded
+        via NSFontManager, since NSFontManager thinks that the text is still not bold.
+
+        To fix this, we simply encode and send a platform FontInfo instead of sending the font name.
+        This allows the UI process to reconstruct NSFonts from font attribute dictionaries instead,
+        and update the font manager.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::updateFontManagerIfNeeded):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::fontAtSelection):
+
+        Refactor this to send a FontInfo (containing a font attribute dictionary) instead of a font
+        name.
+
+        (WebKit::WebPageProxy::fontAtSelectionCallback): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+        Change FontAtSelection to use sendWithAsyncReply instead of sending a callback ID. This also
+        allows us to remove FontAtSelectionCallback.
+
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::fontAtSelection):
+
+2019-07-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [iOS] SOAuthorizationSession should tell AppSSO whether the UIClient is capable of showing the extension UI
+        https://bugs.webkit.org/show_bug.cgi?id=199790
+        <rdar://problem/52790112>
+
+        Reviewed by Brent Fulgham.
+
+        On iOS, WebKit relies on a SPI -[WKUIDelegatePrivate _presentingViewControllerForWebView:] to present the
+        extension UI. However, third party clients often don't implement this SPI. Therefore, WebKit will not be
+        able to present the extension UI for them.
+
+        To be able to show the extension UI for third party WebKit clients, WebKit should unset SOAuthorization.enableEmbeddedAuthorizationViewController
+        whenever clients don't implement the above SPI such that AppSSO could show the UI in their UI process.
+
+        * UIProcess/Cocoa/SOAuthorization/SOAuthorizationSession.mm:
+        (WebKit::SOAuthorizationSession::start):
+
+2019-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION: Chase app crashes immediately after authentication
+        https://bugs.webkit.org/show_bug.cgi?id=199798
+        <rdar://problem/53106179>
+
+        Reviewed by Alex Christensen.
+
+        After r247411, we sometimes try to consult `_page` from WKWebView, before WKWebView's `_page` has been set. This
+        happens under a check for -[WKWebView _isEditable], from within -[WKContentView setupInteraction], which happens
+        if the host app is not linked on the iOS 12 SDK or earlier. To mitigate this, simply add a null check in
+        -_isEditable.
+
+        There's currently no great way to test this, since we don't have a mechanism for simulating linked-on checks.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _isEditable]):
+
+2019-07-13  Andres Gonzalez  <andresg_22@apple.com>
+
+        Add accessibility support to WKDataListSuggestionsView.
+        https://bugs.webkit.org/show_bug.cgi?id=199772
+        <rdar://problem/47095851>
+
+        Reviewed by Chris Fleizach.
+
+        Added accessibility announcement notifications to show, dismiss and selection change for the datalist suggestions view.
+        * UIProcess/mac/WebDataListSuggestionsDropdownMac.mm:
+        (-[WKDataListSuggestionsView notifyAccessibilityClients:]):
+        (-[WKDataListSuggestionsView moveSelectionByDirection:]):
+        (-[WKDataListSuggestionsView invalidate]):
+        (-[WKDataListSuggestionsView showSuggestionsDropdown:]):
+
+2019-07-13  Zalan Bujtas  <zalan@apple.com>
+
+        Cannot bring up custom media controls at all on v.youku.com
+        https://bugs.webkit.org/show_bug.cgi?id=199699
+        <rdar://problem/51835327>
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp:
+        (WebKit::InjectedBundleNavigationAction::InjectedBundleNavigationAction):
+        * WebProcess/WebPage/Cocoa/WebPageCocoa.mm:
+        (WebKit::WebPage::performDictionaryLookupAtLocation):
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::hitTest const):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::handleContextMenuEvent):
+        (WebKit::WebPage::characterIndexForPointAsync):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::handleStylusSingleTapAtPoint):
+        (WebKit::textInteractionPositionInformation):
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::shouldDelayWindowOrderingEvent):
+        (WebKit::WebPage::acceptsFirstMouse):
+        (WebKit::WebPage::performImmediateActionHitTestAtLocation):
+
+2019-07-12  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] -loadFileURL:allowingReadAccessToURL: should fully resolve file URLs
+        https://bugs.webkit.org/show_bug.cgi?id=199768
+        <rdar://problem/52002206>
+
+        Reviewed by Geoffrey Garen.
+
+        -loadFileURL:allowingReadAccessToURL: used -_web_originalDataAsWTFString from WKNSURLExtras
+        to convert the file and read access NSURLs to strings, which under the hood calls
+        CFURLGetBytes(). CFURLGetBytes() gets the URL's string without considering the base URL, so
+        if the client creates a URL like this:
+
+            NSURL *url = [NSURL fileURLWithPath:@"tmpfile.txt" relativeToURL:[NSURL fileURLWithPath:@"/tmp"]]
+
+        ... then -_web_originalDataAsWTFString will merely return the string "tmpfile.txt". When
+        that is later converted back to a URL in WebPageProxy::loadFile(), we lose track of the base
+        component and refuse to load something that no longer looks like a file: URL.
+
+        Fixed this by fully resolving the URLs passed to -loadFileURL:allowingReadAccessToURL: when
+        converting to strings by using -[NSURL absoluteString] instead of -_web_originalDataAsWTFString.
+
+        * Shared/Cocoa/WKNSURLExtras.mm:
+        (-[NSURL _web_originalDataAsWTFString]):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView loadFileURL:allowingReadAccessToURL:]):
+
+2019-07-12  Megan Gardner  <megan_gardner@apple.com>
+
+        Turn off two finger gestures for editable non-scaled content
+        https://bugs.webkit.org/show_bug.cgi?id=199739
+        <rdar://problem/52107190>
+
+        Reviewed by Tim Horton.
+
+        This gesture is blocking a selection gesture. Turn it off as it is not
+        even being used in editable content.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setupInteraction]):
+        (-[WKContentView _didChangeWebViewEditability]):
+
+2019-07-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        SOAuthorizationSession::presentViewController should check WebPageProxy::isClosed()
+        https://bugs.webkit.org/show_bug.cgi?id=199755
+        <rdar://problem/52323585>
+
+        Reviewed by Chris Dumez.
+
+        WebPageProxy::pageClient() is not guaranteed to be non null all the time. Therefore, we should check
+        WebPageProxy::isClosed() before using it.
+
+        * UIProcess/Cocoa/SOAuthorization/SOAuthorizationSession.mm:
+        (WebKit::SOAuthorizationSession::presentViewController):
+
+2019-07-12  Chris Dumez  <cdumez@apple.com>
+
+        Regression(macOS Catalina): Cannot quick look html documents in Mail
+        https://bugs.webkit.org/show_bug.cgi?id=199754
+        <rdar://problem/51304961>
+
+        Reviewed by Geoff Garen.
+
+        If the client asks us to load a file URL but does not provide a resource path, WebKit
+        would fallback to issuing a sandbox extension for /. This no longer works on mac OS
+        Catalina and it would thus fail to load the file.
+
+        To address the issue, if the attempt to create a sandbox extension for / fails, we now
+        fall back to issuing one for the file's baseURL (path of containing folder).
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::maybeInitializeSandboxExtensionHandle):
+
+2019-07-12  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        WebBackForwardListItem::setPageState should receive pageState by rvalue reference
+        https://bugs.webkit.org/show_bug.cgi?id=199535
+
+        Reviewed by Alex Christensen
+
+        Coverity is complaining here about copying PageState by value in the parameter list. It's
+        sort of a false positive, in that the PageState really does need to be copied here, so this
+        is the best we can do. But pass by value and then WTFMove() is a pretty strange way to write
+        it. Passing by rvalue reference would be better. This makes the copy more clear.
+
+        * Shared/WebBackForwardListItem.h:
+        (WebKit::WebBackForwardListItem::setPageState):
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::updateBackForwardItem):
+
+2019-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Add release logging for quota checks
+        https://bugs.webkit.org/show_bug.cgi?id=199697
+
+        Reviewed by Alex Christensen.
+
+        Log requests made to the page and the result from the application.
+
+        * Platform/Logging.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::requestStorageSpace):
+
+2019-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Remove unneeded variable in LocalStorageNamespace::getOrCreateStorageArea
+        https://bugs.webkit.org/show_bug.cgi?id=199477
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/WebStorage/StorageManager.cpp:
+        (WebKit::StorageManager::LocalStorageNamespace::getOrCreateStorageArea):
+
+2019-07-12  Pawel Stanek  <p.stanek@metrological.com>
+
+        Connection::waitForSyncReply() uses wall time clock for timeout
+        https://bugs.webkit.org/show_bug.cgi?id=198712
+        Due to a nature of the system time (it might not be set, jump, be off
+        by a lot) it is better to use monotonically increasing time which is
+        exactly what's used in a similar place i.e. Connection::waitForMessage()
+        
+        Reviewed by Alex Christensen.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::waitForSyncReply):
+
+2019-07-12  Timothy Hatcher  <timothy@apple.com>
+
+        Drop DarkModeCSSEnabled as an experimental feature and always enable it.
+        https://bugs.webkit.org/show_bug.cgi?id=199725
+        rdar://problem/52970972
+
+        Reviewed by Megan Gardner.
+
+        * Shared/WebPreferences.yaml: Removed DarkModeCSSEnabled.
+
+2019-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        New York font erroneously gets synthetic bold
+        https://bugs.webkit.org/show_bug.cgi?id=199653
+        <rdar://problem/51692592>
+
+        Reviewed by Simon Fraser.
+
+        Add the SPI to enable the new fonts.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetShouldAllowDesignSystemUIFonts):
+        (WKPreferencesGetShouldAllowDesignSystemUIFonts):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _shouldAllowDesignSystemUIFonts]):
+        (-[WKPreferences _setShouldAllowDesignSystemUIFonts:]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2019-07-11  Chris Dumez  <cdumez@apple.com>
+
+        ASSERTION FAILED: RunLoop::isMain() under IPC::Connection::sendWithAsyncReply()
+        https://bugs.webkit.org/show_bug.cgi?id=199734
+        <rdar://problem/52977439>
+
+        Reviewed by Geoffrey Garen.
+
+        It appears WKProcessTaskStateObserverDelegate's taskStateDidChange handler can get called
+        on a background thread so we need to make sure we go back to the main thread before we
+        go into WebKit and do IPC.
+
+        * Shared/Cocoa/ProcessTaskStateObserver.mm:
+        (-[WKProcessTaskStateObserverDelegate process:taskStateDidChange:]):
+
+2019-07-11  Sihui Liu  <sihui_liu@apple.com>
+
+        StorageArea should not be destructed on the main thread
+        https://bugs.webkit.org/show_bug.cgi?id=199713
+        <rdar://problem/52911900>
+
+        Reviewed by Alex Christensen.
+
+        After r246079, LocalStorageNameSpace could be destructed on the main thread and it may hold the last reference 
+        to StorageArea. Then we saw the crashes that StorageArea was wrongly destructed on the main thread.
+
+        * NetworkProcess/NetworkSession.cpp:
+        (WebKit::NetworkSession::~NetworkSession):
+        * NetworkProcess/WebStorage/StorageManager.cpp:
+        (WebKit::StorageManager::waitUntilTasksFinished):
+        (WebKit::StorageManager::waitUntilWritesFinished): Deleted.
+        * NetworkProcess/WebStorage/StorageManager.h:
+
+2019-07-11  Tim Horton  <timothy_horton@apple.com>
+
+        Null deref of Range under WebPage::startAutoscrollAtPosition
+        https://bugs.webkit.org/show_bug.cgi?id=199724
+        <rdar://problem/41127089>
+
+        Reviewed by Dean Jackson.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::startAutoscrollAtPosition):
+        Refactor this function to be early-return-y, and add one more
+        early return if the Range is null.
+
+2019-07-11  Pablo Saavedra  <psaavedra@igalia.com>
+
+        [WPE][GTK] Build failure with ENABLE_ACCESSIBILITY=OFF
+        https://bugs.webkit.org/show_bug.cgi?id=199625
+
+        Added ENABLE(ACCESSIBILITY) and replaced HAVE(ACCESSIBILITY)
+        with ENABLE(ACCESSIBILITY) in the code.
+
+        Additionally, the TestRunner code generator now honors the
+        Conditional IDL format.
+
+        Reviewed by Konstantin Tokarev.
+
+        * UIProcess/API/glib/WebKitWebViewAccessible.cpp:
+        * UIProcess/API/glib/WebKitWebViewAccessible.h:
+        * UIProcess/API/wpe/PageClientImpl.cpp:
+        * UIProcess/API/wpe/PageClientImpl.h:
+        * UIProcess/API/wpe/WPEView.cpp:
+        (WKWPE::m_backend):
+        (WKWPE::View::~View):
+        * UIProcess/API/wpe/WPEView.h:
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.cpp:
+        (WKAccessibilityRootObject):
+        (WKAccessibilityFocusedObject):
+        (WKAccessibilityEnableEnhancedAccessibility):
+        (WKAccessibilityEnhancedAccessibilityEnabled):
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/atk/WebKitWebPageAccessibilityObject.cpp:
+        * WebProcess/WebPage/atk/WebKitWebPageAccessibilityObject.h:
+        * WebProcess/WebPage/gtk/WebPageGtk.cpp:
+        (WebKit::WebPage::platformInitialize):
+        * WebProcess/WebPage/wpe/WebPageWPE.cpp:
+        (WebKit::WebPage::platformInitialize):
+        * WebProcess/wpe/WebProcessMainWPE.cpp:
+
+2019-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247314.
+        https://bugs.webkit.org/show_bug.cgi?id=199721
+
+        Caused performance regression. (Requested by deanj on
+        #webkit).
+
+        Reverted changeset:
+
+        "Disable speculative loading if cache is not to be used for
+        the load"
+        https://bugs.webkit.org/show_bug.cgi?id=199644
+        https://trac.webkit.org/changeset/247314
+
+2019-07-11  Dean Jackson  <dino@apple.com>
+
+        CrashTracer: Regression : MobileSafari at UIKit: -[CALayerAccessibility__UIKit__QuartzCore setBounds:]
+        https://bugs.webkit.org/show_bug.cgi?id=199720
+        <rdar://problem/51470469>
+
+        Reviewed by Tim Horton.
+
+        Speculative fix after confirming that this crash can occur when
+        a zero width/height view is used for a UITargetedPreview. We
+        already guarded against this in the default flow, but not in
+        the fallback path where we take a view snapshot.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (createFallbackTargetedPreview): Return early if rectangles are empty.
+
 2019-07-11  Alex Christensen  <achristensen@webkit.org>
 
         Use mobile UA on jsfiddle.net
@@ -11,6 +422,39 @@
 
         * UIProcess/ios/WebPageProxyIOS.mm:
         (WebKit::desktopClassBrowsingRecommendedForRequest):
+
+2019-07-11  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Can't place caret or select in content that overflows a contenteditable element
+        https://bugs.webkit.org/show_bug.cgi?id=199741
+        rdar://problem/50545233
+
+        Reviewed by Wenson Hsieh.
+
+        Various code paths for editing used renderer->absoluteBoundingBoxRect(), which is the border
+        box of the element (or a set of line boxes for inline elements) converted to absolute
+        coordinates. This excludes overflow content, but contenteditable needs to be able to
+        place the caret in overflow content, and allow selection rects to be in the overflow area
+        (if the element has visible overflow).
+
+        Try to clean this up by adding some static helpers on WebPage for accessing the relevant
+        rects, and use them in code call from visiblePositionInFocusedNodeForPoint(), and
+        code that is input to selectionClipRect.
+
+        This changes selectionClipRect to use the padding box (excluding borders), which is a progression.
+
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::platformEditorState const):
+        (WebKit::elementBoundsInFrame):
+        (WebKit::constrainPoint):
+        (WebKit::WebPage::rootViewBoundsForElement):
+        (WebKit::WebPage::absoluteInteractionBoundsForElement):
+        (WebKit::WebPage::rootViewInteractionBoundsForElement):
+        (WebKit::WebPage::dispatchSyntheticMouseEventsForSelectionGesture):
+        (WebKit::WebPage::getFocusedElementInformation):
+        (WebKit::innerFrameQuad): Deleted.
+        (WebKit::elementRectInRootViewCoordinates): Deleted.
 
 2019-07-11  Jonathan Bedard  <jbedard@apple.com>
 

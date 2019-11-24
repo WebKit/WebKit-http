@@ -356,10 +356,8 @@ StorageManager::LocalStorageNamespace::~LocalStorageNamespace()
 
 auto StorageManager::LocalStorageNamespace::getOrCreateStorageArea(SecurityOriginData&& securityOrigin, IsEphemeral isEphemeral) -> Ref<StorageArea>
 {
-    RefPtr<StorageArea> protectedStorageArea;
     return *m_storageAreaMap.ensure(securityOrigin, [&]() mutable {
-        protectedStorageArea = StorageArea::create(isEphemeral == IsEphemeral::Yes ? nullptr : this, WTFMove(securityOrigin), m_quotaInBytes);
-        return protectedStorageArea.get();
+        return StorageArea::create(isEphemeral == IsEphemeral::Yes ? nullptr : this, WTFMove(securityOrigin), m_quotaInBytes);
     }).iterator->value;
 }
 
@@ -907,7 +905,7 @@ void StorageManager::clear(IPC::Connection& connection, WebCore::SecurityOriginD
     });
 }
 
-void StorageManager::waitUntilWritesFinished()
+void StorageManager::waitUntilTasksFinished()
 {
     BinarySemaphore semaphore;
     m_queue->dispatch([this, &semaphore] {
@@ -919,6 +917,8 @@ void StorageManager::waitUntilWritesFinished()
 
         for (auto& connectionStorageAreaPair : connectionAndStorageMapIDPairsToRemove)
             m_storageAreasByConnection.remove(connectionStorageAreaPair);
+
+        m_localStorageNamespaces.clear();
 
         semaphore.signal();
     });

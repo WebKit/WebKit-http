@@ -290,8 +290,11 @@ bool Quirks::shouldDispatchSimulatedMouseEvents() const
         return true;
     if (equalLettersIgnoringASCIICase(host, "trailers.apple.com"))
         return true;
-    if (equalLettersIgnoringASCIICase(host, "naver.com") || host.endsWithIgnoringASCIICase(".naver.com"))
+    if (equalLettersIgnoringASCIICase(host, "naver.com"))
         return true;
+    // Disable the quirk for tv.naver.com subdomain to be able to simulate hover on videos.
+    if (host.endsWithIgnoringASCIICase(".naver.com"))
+        return !equalLettersIgnoringASCIICase(host, "tv.naver.com");
     return false;
 }
 
@@ -343,6 +346,22 @@ bool Quirks::shouldDisablePointerEventsQuirk() const
         return true;
 #endif
     return false;
+}
+
+bool Quirks::needsDeferKeyDownAndKeyPressTimersUntilNextEditingCommand() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (m_document->settings().needsDeferKeyDownAndKeyPressTimersUntilNextEditingCommandQuirk())
+        return true;
+
+    if (!needsQuirks())
+        return false;
+
+    auto& url = m_document->topDocument().url();
+    return equalLettersIgnoringASCIICase(url.host(), "docs.google.com") && url.path().startsWithIgnoringASCIICase("/spreadsheets/");
+#else
+    return false;
+#endif
 }
 
 // FIXME(<rdar://problem/50394969>): Remove after desmos.com adopts inputmode="none".

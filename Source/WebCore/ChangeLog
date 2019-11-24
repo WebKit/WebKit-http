@@ -1,3 +1,1073 @@
+2019-07-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r247440.
+
+        Broke builds
+
+        Reverted changeset:
+
+        "[JSC] Improve wasm wpt test results by fixing miscellaneous
+        issues"
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+        https://trac.webkit.org/changeset/247440
+
+2019-07-15  Daniel Bates  <dabates@apple.com>
+
+        Typing into a cell in a Google Sheet lags behind by one character
+        https://bugs.webkit.org/show_bug.cgi?id=199587
+        <rdar://problem/51616845>
+
+        Reviewed by Brent Fulgham.
+
+        Add a Google Sheets quirk. Put all DOM timers scheduled from keydown and keypress event listeners
+        into a holding tank. The timers continue to tick, but are barred from executing their action until
+        the next text insertion or deletion or 32 ms (on device) have elapsed, whichever is sooner. We only
+        allocate a holding tank once per document, only if the quirk is active, and this allocation is done
+        when the document schedules a timer on keydown or keypress. The holding tank lives for the lifetime
+        of the document.
+
+        The story behind the quirk:
+
+        On keypress Google Sheets schedules timers and expects that a DOM update will occur (i.e. text
+        will be inserted or deleted) within the same event loop iteration as the dispatched keypress. The
+        UI Events spec. [1] makes no such guarantee of when a DOM update must occur in relation to the keypress
+        event. It could happen in the same event loop iteration as the key press (as Google expects), the
+        next iteration, 500ms later, 2 minutes later, etc. What the spec does guarantee is that by the time
+        a DOM input event is dispatched that the DOM will be updated. And this is the solution to the problem
+        Google Sheets is trying to solve, but is doing so using pre-IE 9 technology (though similar
+        functionality was available via onpropertychange in IE < 9).
+
+        See also <https://github.com/w3c/uievents/issues/238>, which is tracking a spec. text update for
+        this quirk.
+
+        Test: fast/events/ios/dom-update-on-keydown-quirk.html
+
+        [1] <https://w3c.github.io/uievents/> (Editor's Draft, 14 October 2018)
+
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        Add some files to the project.
+
+        * dom/Document.cpp:
+        (WebCore::Document::domTimerHoldingTank): Added.
+        * dom/Document.h:
+        (WebCore::Document::domTimerHoldingTankIfExists): Added.
+
+        * page/DOMTimer.cpp:
+        (WebCore::DOMTimer::install): Put the newly instantiated timer into the holding tank.
+        (WebCore::DOMTimer::removeById): Remove the timer from the holding tank.
+        (WebCore::DOMTimer::fired): Check if the timer is in the holding tank. If it is and it is a one-
+        shot timer then schedule it for the next event loop iteration. If it's a repeating timer just
+        let it continue ticking. Otherwise, do what we no now and execute the timer's action. The reason
+        we do not suspend timers in the holding tank is because:
+            1. Far out timers (Google Sheets registers timers as far out as 5 minutes!) are not penalized.
+            Though smart supension logic could avoid this. See (3).
+
+            2. Empirical observations indicate that the keyboard will perform the insertion or deletion
+            reasonably quickly (not the same event loop iteration as the keydown, but within two iterations out).
+            So, the timers in the holding tank are short-lived.
+
+            3. Simplifies the code. There is no need to keep additional bookkeeping to track multiple timer
+            suspension reasons (timers currently can only have one suspension reason) or alternatively defer
+            scheduling a timer until a later time and computing a new "fair" firing time when scheduled.
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::internalKeyEvent): Place a token on the stack to put all DOM timers
+        scheduled on keydown and keypress into the holding tank if the quirk is enabled.
+        * page/Quirks.cpp:
+        (WebCore::Quirks::needsDeferKeyDownAndKeyPressTimersUntilNextEditingCommand const): Added.
+        * page/Quirks.h:
+        * page/Settings.yaml: Added setting so that this quirk can be enabled from a layout test. This setting
+        also lets us enable the quirk for all sites or for certain third-party apps if desired.
+        * page/ios/DOMTimerHoldingTank.cpp: Added.
+        (WebCore::DOMTimerHoldingTank::DOMTimerHoldingTank):
+        (WebCore::DOMTimerHoldingTank::add):
+        (WebCore::DOMTimerHoldingTank::remove):
+        (WebCore::DOMTimerHoldingTank::contains):
+        (WebCore::DOMTimerHoldingTank::removeAll):
+        (WebCore::DOMTimerHoldingTank::stopExceededMaximumHoldTimer):
+        * page/ios/DOMTimerHoldingTank.h: Added.
+        (WebCore::DeferDOMTimersForScope::DeferDOMTimersForScope):
+        (WebCore::DeferDOMTimersForScope::~DeferDOMTimersForScope):
+        (WebCore::DeferDOMTimersForScope::isDeferring):
+
+2019-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247397, r247378, r247366.
+
+        Broke watchOS builds.
+
+        Reverted changesets:
+
+        "[WebGPU] Implement GPUError and error scopes"
+        https://bugs.webkit.org/show_bug.cgi?id=199655
+        https://trac.webkit.org/changeset/247366/webkit
+
+        "[WebGPU] Move error scopes out of GPUDevice for more portable error generation"
+        https://bugs.webkit.org/show_bug.cgi?id=199740
+        https://trac.webkit.org/changeset/247397/webkit
+
+2019-07-15  Rob Buis  <rbuis@igalia.com>
+
+        MathML WPT test for RadicalDegreeBottomRaisePercent fails
+        https://bugs.webkit.org/show_bug.cgi?id=183631
+
+        Reviewed by Frédéric Wang.
+
+        When stretching the radical operator also take thickness
+        and radical gap into account:
+        https://mathml-refresh.github.io/mathml-core/#radicals-msqrt-mroot
+
+        Test: imported/w3c/web-platform-tests/mathml/presentation-markup/radicals/root-parameters-1.html
+
+        * rendering/mathml/RenderMathMLRoot.cpp:
+        (WebCore::RenderMathMLRoot::layoutBlock):
+
+2019-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve wasm wpt test results by fixing miscellaneous issues
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+
+        Reviewed by Mark Lam.
+
+        Remove WebAssemblyPrototype.
+
+        Tests: imported/w3c/web-platform-tests/wasm/jsapi/constructor/instantiate-bad-imports.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/constructor/instantiate-bad-imports.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/constructor.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/constructor.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/toString.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/toString.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/value-set.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/value-set.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/valueOf.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/valueOf.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/constructor-bad-imports.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/constructor-bad-imports.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/constructor.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/constructor.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/exports.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/exports.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/toString.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/toString.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/interface.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/interface.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/buffer.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/buffer.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/constructor.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/constructor.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/grow.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/grow.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/toString.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/toString.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/constructor.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/constructor.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/customSections.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/customSections.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/exports.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/exports.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/imports.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/imports.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/toString.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/toString.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/constructor.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/constructor.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/get-set.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/get-set.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/grow.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/grow.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/length.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/length.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/toString.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/toString.any.worker.html
+
+        * bindings/js/JSDOMWindowBase.cpp:
+        (WebCore::JSDOMWindowBase::compileStreaming):
+        (WebCore::JSDOMWindowBase::instantiateStreaming):
+
+2019-07-15  Youenn Fablet  <youenn@apple.com>
+
+        Enable a debug WebRTC mode without any encryption
+        https://bugs.webkit.org/show_bug.cgi?id=199177
+        <rdar://problem/52074986>
+
+        Reviewed by Eric Carlson.
+
+        For every RTCPeerConnection, first set whether to use encryption or not
+        based on page settings.
+        If encryption is disabled, log it.
+        Add internals API to toggle the switch from tests.
+        Test: webrtc/disable-encryption.html
+
+        * Modules/mediastream/RTCPeerConnection.cpp:
+        (WebCore::RTCPeerConnection::RTCPeerConnection):
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::createLibWebRTCPeerConnectionBackend):
+        * inspector/agents/InspectorPageAgent.cpp:
+        * page/Settings.yaml:
+        * platform/mediastream/libwebrtc/LibWebRTCProvider.cpp:
+        (WebCore::LibWebRTCProvider::setEnableWebRTCEncryption):
+        * platform/mediastream/libwebrtc/LibWebRTCProvider.h:
+        * testing/Internals.cpp:
+        (WebCore::Internals::resetToConsistentState):
+        (WebCore::Internals::setEnableWebRTCEncryption):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2019-07-15  Sihui Liu  <sihui_liu@apple.com>
+
+        window.openDatabase is not writable
+        https://bugs.webkit.org/show_bug.cgi?id=199737
+        <rdar://problem/52551332>
+
+        Reviewed by Chris Dumez.
+
+        In r246707 we made openDatabase an undetectable attribute of window, and it was set to be read-only. This broke 
+        some sites which replace window.openDatabase with their own implementation when window.openDatabase does not 
+        exists or WebSQL is not implemented. 
+
+        This patch removes the readonly property and adds a setter for openDatabase.
+
+        * Modules/webdatabase/DOMWindowWebDatabase.idl:
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::JSDOMWindow::setOpenDatabase):
+
+2019-07-15  Youenn Fablet  <youenn@apple.com>
+
+        Filter SDP c lines
+        https://bugs.webkit.org/show_bug.cgi?id=199791
+
+        Reviewed by Eric Carlson.
+
+        As discussed in https://github.com/rtcweb-wg/mdns-ice-candidates/issues/91,
+        use 0.0.0.0 for c lines when filtering the SDP.
+        Covered by updated test.
+
+        * Modules/mediastream/PeerConnectionBackend.cpp:
+        (WebCore::PeerConnectionBackend::filterSDP const):
+
+2019-07-15  Zalan Bujtas  <zalan@apple.com>
+
+        naver.com: Video stops when tapping on the video to use buttons
+        https://bugs.webkit.org/show_bug.cgi?id=199784
+        <rdar://problem/48068610>
+
+        Reviewed by Maciej Stachowiak.
+
+        Opt out of simulated mouse event sending for tv.naver.com.
+        When tv.naver.com receives the simulated mouseUp at touchEnd, it pauses the video right away and calls preventDefault()
+        which prevents us from running the hover heuristics.
+
+        * page/Quirks.cpp:
+        (WebCore::Quirks::shouldDispatchSimulatedMouseEvents const):
+
+2019-07-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] GitHub breaks on FreeBSD because of "unsupported browser"
+        https://bugs.webkit.org/show_bug.cgi?id=199745
+
+        Reviewed by Carlos Garcia Campos.
+
+        It's been a while since I last updated the fake version numbers in our user agent, both for
+        the user agent quirks for naughty websites and also the Safari version in our standard user
+        agent. Update them. This should fix github.com on FreeBSD at least. I also noticed some
+        wonkiness on Google Docs recently that I thought required this update, but I didn't do
+        anything about it at the time because I wasn't able to reproduce the issue when I tried
+        again later.
+
+        This could absolutely break websites, because the web is awful, but that's calculated risk.
+
+        * platform/UserAgentQuirks.cpp:
+        (WebCore::UserAgentQuirks::stringForQuirk):
+        * platform/glib/UserAgentGLib.cpp:
+        (WebCore::buildUserAgentString):
+
+2019-07-14  Chris Dumez  <cdumez@apple.com>
+
+        Add threading assertion to WeakPtrFactory::createWeakPtr()
+        https://bugs.webkit.org/show_bug.cgi?id=199639
+
+        Reviewed by Ryosuke Niwa.
+
+        * platform/ScrollableArea.cpp:
+        * rendering/RenderObject.cpp:
+
+2019-07-14  Dean Jackson  <dino@apple.com>
+
+        WebGL not supported on WKWebView on UIKit for Mac
+        https://bugs.webkit.org/show_bug.cgi?id=199785
+        <rdar://problem/52911449>
+
+        Reviewed by Antoine Quint.
+
+        UIKit for Mac was not creating a CGLPixelFormatObj because
+        it wasn't using the code hidden in PLATFORM(MAC). Instead
+        we should be guarding for USE(OPENGL).
+
+        There are still some inconsistencies: <rdar://53062794>
+
+        Test: webgl/smell-test.html
+
+        * platform/graphics/cocoa/GraphicsContext3DCocoa.mm:
+        (WebCore::GraphicsContext3D::GraphicsContext3D):
+        (WebCore::GraphicsContext3D::allowOfflineRenderers const): We have to return
+        true for this, since we don't have access to the Window Server.
+
+2019-07-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Text autosizing] [iPadOS] Further adjust our heuristics to determine text autosizing candidates
+        https://bugs.webkit.org/show_bug.cgi?id=199780
+        <rdar://problem/52289088>
+
+        Reviewed by Simon Fraser.
+
+        Our current idempotent text autosizing candidate heuristic makes the right judgment call most of the time, but
+        there is still a large batch of text autosizing bugs left unfixed by the first iteration of the heuristic added
+        in r246781. This patch attempts to address most of these bugs by adjusting the decision-tree-based heuristic
+        once again, mostly with improvements to the model generation pipeline.
+
+        During the first iteration, I placed emphasis on tuning the max tree depth and min leaf size hyperparameters
+        when coming up with my decision tree, and didn't consider the inclusion or exclusion of each feature as a
+        hyperparameters. As such, the trees generated using the pipeline tended to use too many features, and as a
+        result, tended to have cross-validation overall accuracy scores hovering around 73%.
+
+        In this revised model generation pipeline, I now consider the inclusion of each feature (along with max depth
+        and min leaf size, as before) as a hyperparameter. Since this increases the number of hyperparameters by many
+        orders of magnitude, a naive grid search (as described in the prior ChangeLog entry) is no longer a tractible
+        procedure for tuning hyperparameters to the training algorithm.
+
+        Instead, I now use a stochastic greedy algorithm to search for good sets of hyperparameters; this process begins
+        with seeding some number (usually 20-24) of "searchers" with completely randomized sets of hyperparameters (i.e.
+        random max depth, random leaf size, and random subsets of features). I then evaluate the average performance of
+        each set of hyperparameters by using them to generate 2000 decision trees over 90% of the training data, and
+        then cross-validating these trees against the remaining 10%. These cross-validation scores are aggregated into a
+        single confusion matrix, which is then passed into a loss function that computes a single value indicating how
+        well training with the set of hyperparameters generalized to cross-validation data. After experimenting with
+        various loss functions, I settled on the following:
+
+        `k(false positive rate)^2 + (false negative rate)^2`
+
+        ...where a constant k is chosen to penalize false positives (i.e. broken layout) more harshly than false
+        negatives (small text). Additionally, squaring the false negative and false positive rates seems to help avoid
+        converging on solutions that heavily favor reducing only false positives or false negatives, or vice versa.
+
+        The stochastic algorithm starts by computing a loss value for the randomly generated configuration. Then, for
+        an indefinite number of iterations, it randomly mutates the configuration (e.g. by adding or removing features,
+        or changing min leaf size or max tree depth) and computes a new loss value for the mutated configuration. If the
+        mutated configuration performs better (i.e. achieves lower loss) than the current configuration, I set the
+        current configuration to be the mutated configuration. Otherwise, I keep the current (non-mutated) configuration
+        as-is. The stochastic algorithm then proceeds, ad-infinitum, with this current configuration.
+
+        Of course, since each mutation is small, this strategy so far is prone to leaving each searcher stuck in local
+        optima. To mitigate this, for each searcher, I keep track of a side-table of configurations that have already
+        been tested; when random mutations would normally lead to testing a configuration that has already been tested,
+        each searcher instead increases the chance of applying additional mutations. This has the effect of searchers
+        initially exhausting similar configurations, and expanding to test more and more dissimilar configurations as
+        the local alternatives all turn out to be worse. This allows searchers to effectively jump out of local optima
+        after being stuck for a long time.
+
+        So, using these strategies, I simultaneously ran a handful of searchers until they all appeared to converge
+        (a process that takes 8-12 hours on my current dataset). Many of the searchers achieved configurations with
+        cross-validation scores of 81% and above, up from the 73% of the previous attempt. These additionally have the
+        added bonus of reducing the number of features, often making the final trees themselves shallower and simpler to
+        understand than before.
+
+        This patch introduces one such decision tree generated using a set of hyperparameters acquired via this
+        stochasic search algorithm; it appears to simultaneously use fewer features, and achieve better cross-validation
+        performance.
+
+        Test: fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates.html
+
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::adjustRenderStyleForTextAutosizing):
+
+        Adjust the early return to bail if either (1) the element is a candidate and the computed size is already equal
+        to the boosted size, or (2) the element is not a candidate and the computed size is already equal to the
+        specified size. Since the autosizing candidate heuristic depends on styles specified on the element itself (as
+        opposed to styles on any element in the ancestor chain), a parent may be an autosizing candidate, but a child of
+        it may not.
+
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::isIdempotentTextAutosizingCandidate const):
+
+        Revamp the idempotent text autosizing candidate heuristic. See the explanation above for more details.
+
+        * rendering/style/RenderStyle.h:
+
+        Remove some bits from RenderStyle's autosizeStatus, now that we care about fewer bits of information from the
+        inherited flags.
+
+        * rendering/style/TextSizeAdjustment.cpp:
+        (WebCore::AutosizeStatus::updateStatus):
+        * rendering/style/TextSizeAdjustment.h:
+
+2019-07-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Don't do async overflow scrolling for visibility:hidden scrollers
+        https://bugs.webkit.org/show_bug.cgi?id=199779
+
+        Reviewed by Dean Jackson.
+        
+        An overflow:scroll with visibility:hidden is not scrollable on macOS, even if it has visible
+        content. So disable async overflow:scroll when the scroller has non-visible visibility (this also
+        takes visibility on ancestors into account).
+        
+        visibility:hidden overflow:scroll can be common because some JS libraries use it
+        (https://github.com/wnr/element-resize-detector).
+
+        Test: compositing/scrolling/async-overflow-scrolling/visibility-hidden-scrollers.html
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::canUseCompositedScrolling const): Don't use hasVisibleContent() because
+        that's affected by  visible children.
+
+2019-07-13  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Return statements don't need to keep track of the function they're in
+        https://bugs.webkit.org/show_bug.cgi?id=199763
+
+        Reviewed by Myles C. Maxfield.
+
+        Return::m_function is only used in the Checker, and it can easily enough keep track of the current function.
+        This means we no longer need to keep track of the current function in the NameResolver, and we can save 8 bytes per Return
+
+        Since I was touching the NameResolver I also removed a few pointless overrides of Visitor::visit().
+
+        No new tests as there is no intended functional change.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLReturn.h:
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::Checker::visit):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.cpp:
+        (WebCore::WHLSL::NameResolver::NameResolver):
+        (WebCore::WHLSL::resolveTypeNamesInFunctions):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.h:
+
+2019-07-13  Andres Gonzalez  <andresg_22@apple.com>
+
+        Add accessibility support to WKDataListSuggestionsView.
+        https://bugs.webkit.org/show_bug.cgi?id=199772
+        <rdar://problem/47095851>
+
+        Reviewed by Chris Fleizach.
+
+        Localizable strings for accessibility announcements.
+
+        * en.lproj/Localizable.strings:
+
+2019-07-13  Chris Dumez  <cdumez@apple.com>
+
+        Drop non thread-safe usage of WeakPtr in VideoFullscreenInterfaceAVKit
+        https://bugs.webkit.org/show_bug.cgi?id=199775
+
+        Reviewed by Eric Carlson.
+
+        The VideoFullscreenInterfaceAVKit constructor was making a weakPtr on the UI Thread
+        of an WebThread object. The WeakPtr would then be used as a data member throughout
+        the class on the UIThread. This is not thread-safe.
+
+        This patch switches to using a raw pointer instead of a WeakPtr. This is a partial
+        rollout of r243298, which turned the raw pointer into a WeakPtr for hardening
+        purposes. For extra safety, this patch updates the VideoFullscreenControllerContext
+        so that it notifies its clients (i.e. PlaybackSessionInterfaceAVKit) that it is
+        getting destroyed, so that they can null-out their m_videoFullscreenModel &
+        m_fullscreenChangeObserver data members. This gives the sames guarantees as WeakPtr
+        but in a thread-safe way.
+
+        This is very similar to the fix that was done for PlaybackSessionInterfaceAVKit in
+        r247380.
+
+        * platform/cocoa/VideoFullscreenModel.h:
+        (WebCore::VideoFullscreenModelClient::modelDestroyed):
+        * platform/ios/VideoFullscreenInterfaceAVKit.h:
+        * platform/ios/VideoFullscreenInterfaceAVKit.mm:
+        (VideoFullscreenInterfaceAVKit::setVideoFullscreenModel):
+        (VideoFullscreenInterfaceAVKit::setVideoFullscreenChangeObserver):
+        (VideoFullscreenInterfaceAVKit::modelDestroyed):
+        * platform/ios/WebVideoFullscreenControllerAVKit.mm:
+        (VideoFullscreenControllerContext::~VideoFullscreenControllerContext):
+
+2019-07-13  Zalan Bujtas  <zalan@apple.com>
+
+        Cannot bring up custom media controls at all on v.youku.com
+        https://bugs.webkit.org/show_bug.cgi?id=199699
+        <rdar://problem/51835327>
+
+        Reviewed by Simon Fraser.
+
+        The "find the node under the finger" heuristic should only find nodes that are visible to hit-testing.
+
+        When the user taps on the screen, we run a "find the best node under the finger" heuristic and use the node's location
+        to dispatch the associated event (e.g. mousePressed).
+        Ideally the "best node under the finger" and the final target node for the associated event are the same.
+        However these two methods configure the hit-testing process differently which could lead to node mismatch.
+        The "best node" heuristic calls hit-testing with AllowChildFrameContent. This flag allows hit-testing to descend into
+        subframes even if the subframe is not visible to hit-testing (visibility: hidden).
+        While event dispatching never descends into subfames through hit-testing, but instead it forwards the dispatching to subframes that are visible to hit-testing.
+
+        This patch addresses the mismatching node issue by calling the descending version of hit-testing with a flag that enforces visiblity check before descending into a subframe.
+
+        Tests: fast/events/touch/ios/visibility-hidden-iframe-click.html
+               fast/events/touch/ios/visibility-hidden-nested-iframe-click.html
+
+        * page/ios/FrameIOS.mm:
+        (WebCore::Frame::hitTestResultAtViewportLocation):
+        * rendering/HitTestRequest.h:
+        (WebCore::HitTestRequest::skipsChildFrameContentInvisibleToHitTest const):
+        * rendering/RenderWidget.cpp:
+        (WebCore::RenderWidget::nodeAtPoint):
+
+2019-07-13  Chris Dumez  <cdumez@apple.com>
+
+        Fix non thread-safe usage of makeWeakPtr() in MediaPlayerPrivateAVFoundation
+        https://bugs.webkit.org/show_bug.cgi?id=199777
+
+        Reviewed by Eric Carlson.
+
+        The code was calling makeWeakPtr() on a main-thread object, from a background thread.
+        This is not thread safe. To address the issue, this patches creates the WeakPtr ahead
+        of time, on the main thread.
+
+        * platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.cpp:
+        (WebCore::MediaPlayerPrivateAVFoundation::MediaPlayerPrivateAVFoundation):
+        (WebCore::MediaPlayerPrivateAVFoundation::scheduleMainThreadNotification):
+        (WebCore::MediaPlayerPrivateAVFoundation::dispatchNotification):
+        * platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.h:
+
+2019-07-12  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer] Mock GStreamer realtime sources should keep a Ref of their mock realtime media sources
+        https://bugs.webkit.org/show_bug.cgi?id=194326
+
+        WrappedMockRealtimeVideoSource is a subclass of RealtimeMediaSource which is refcounted, we can't
+        use a unique_ptr on those.
+
+        Also changed m_wrappedSource type to its actual type so it is cleaner even if needed
+        to upcast it to RealtimeMediaSource so some method that are made private in the mock
+        can still be called.
+
+        Reviewed by Youenn Fablet.
+
+        This fixes MediaStream tests
+
+        * platform/mediastream/gstreamer/MockGStreamerAudioCaptureSource.cpp:
+        (WebCore::WrappedMockRealtimeAudioSource::create):
+        (WebCore::WrappedMockRealtimeAudioSource::asRealtimeMediaSource):
+        (WebCore::WrappedMockRealtimeAudioSource::WrappedMockRealtimeAudioSource):
+        (WebCore::m_wrappedSource):
+        (WebCore::MockGStreamerAudioCaptureSource::startProducingData):
+        (WebCore::MockGStreamerAudioCaptureSource::settings):
+        (WebCore::MockGStreamerAudioCaptureSource::capabilities):
+        * platform/mediastream/gstreamer/MockGStreamerAudioCaptureSource.h:
+        * platform/mediastream/gstreamer/MockGStreamerVideoCaptureSource.cpp:
+        (WebCore::WrappedMockRealtimeVideoSource::create):
+        (WebCore::WrappedMockRealtimeVideoSource::asRealtimeMediaSource):
+        (WebCore::WrappedMockRealtimeVideoSource::WrappedMockRealtimeVideoSource):
+        (WebCore::m_wrappedSource):
+        (WebCore::MockGStreamerVideoCaptureSource::settings):
+        (WebCore::MockGStreamerVideoCaptureSource::capabilities):
+        * platform/mediastream/gstreamer/MockGStreamerVideoCaptureSource.h:
+
+2019-07-12  Alex Christensen  <achristensen@webkit.org>
+
+        Change RELEASE_ASSERT in DocumentWriter::addData to ASSERT and early return
+        https://bugs.webkit.org/show_bug.cgi?id=199756
+        <rdar://problem/51554775>
+
+        Reviewed by Brady Eidson.
+
+        Attempts to reach this assertion were unsuccessful, but sometimes this assertion crashes.
+        Let's change it to an early return to prevent crashes.
+
+        * loader/DocumentWriter.cpp:
+        (WebCore::DocumentWriter::addData):
+
+2019-07-12  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Move error scopes out of GPUDevice for more portable error generation
+        https://bugs.webkit.org/show_bug.cgi?id=199740
+
+        Reviewed by Myles C. Maxfield.
+
+        Move error generation into a separate RefCounted class to allow GPU objects to generate 
+        errors independent of any GPUDevice.
+        Create GPUObjectBase to delegate error generation and refactor GPUBuffer to inherit from GPUObjectBase.
+
+        No behavior change or new tests. Error scopes covered by error-scopes-test.html.
+
+        * Modules/webgpu/WebGPUDevice.cpp:
+        (WebCore::WebGPUDevice::WebGPUDevice): Now creates a GPUErrorGenerator.
+        (WebCore::WebGPUDevice::createBuffer const): Pass the GPUErrorGenerator to any created GPUBuffer.
+        (WebCore::WebGPUDevice::createBufferMapped const): Ditto.
+        (WebCore::WebGPUDevice::popErrorScope): Shouldn't be const. Can just ask for the GPUError rather than passing a lambda.
+        (WebCore::WebGPUDevice::pushErrorScope const): Deleted.
+        (WebCore::WebGPUDevice::popErrorScope const): Deleted.
+        * Modules/webgpu/WebGPUDevice.h:
+        (WebCore::WebGPUDevice::pushErrorScope):
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/gpu/GPUBuffer.h: Now inherits from GPUObjectBase for error generation ease.
+        * platform/graphics/gpu/GPUDevice.cpp:
+        (WebCore::GPUDevice::tryCreateBuffer): Ensure GPUBuffers reference the GPUErrorGenerator.
+        (WebCore::GPUDevice::pushErrorScope): Deleted. No longer needed here.
+        (WebCore::GPUDevice::popErrorScope): Deleted.
+        (WebCore::GPUDevice::registerError): Deleted.
+        * platform/graphics/gpu/GPUDevice.h: Move error scope logic out.
+        * platform/graphics/gpu/GPUErrorGenerator.cpp: Added.
+        (WebCore::GPUErrorGenerator::pushErrorScope):
+        (WebCore::GPUErrorGenerator::popErrorScope):
+        (WebCore::GPUErrorGenerator::generateError):
+        * platform/graphics/gpu/GPUErrorGenerator.h: Added.
+        (WebCore::GPUErrorGenerator::create):
+        * platform/graphics/gpu/GPUObjectBase.h: Added.
+        (WebCore::GPUObjectBase::generateError):
+        (WebCore::GPUObjectBase::GPUObjectBase):
+        * platform/graphics/gpu/cocoa/GPUBufferMetal.mm: Use the GPUErrorGenerator directly during buffer creation.
+        (WebCore::GPUBuffer::validateBufferUsage):
+        (WebCore::GPUBuffer::tryCreate):
+        (WebCore::GPUBuffer::GPUBuffer):
+        * platform/graphics/gpu/cocoa/GPUQueueMetal.mm:
+        (WebCore::GPUQueue::submit): Prevent possible null dereference.
+
+2019-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Add release logging for quota checks
+        https://bugs.webkit.org/show_bug.cgi?id=199697
+
+        Reviewed by Alex Christensen.
+
+        Log whether a request to extend quota is made and the result of the request.
+        This logging should happen in the networking process.
+        No change of behavior.
+
+        * platform/Logging.h:
+        * storage/StorageQuotaManager.cpp:
+        (WebCore::StorageQuotaManager::askForMoreSpace):
+        (WebCore::StorageQuotaManager::processPendingRequests):
+
+2019-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Stopping a cloned MediaStream video track should not stop any other video track
+        https://bugs.webkit.org/show_bug.cgi?id=199635
+
+        Reviewed by Eric Carlson.
+
+        In case a track is requesting its source to end, the
+        RealtimeVideoSource should request its own source to end and not stop it directly.
+
+        Also, if a track is removing itself as an observer to a RealtimeVideoSource, we should
+        stop the underlying source only if this one does not have any other observer.
+        Covered by updated test.
+
+        * platform/mediastream/RealtimeMediaSource.cpp:
+        (WebCore::RealtimeMediaSource::removeObserver):
+        * platform/mediastream/RealtimeMediaSource.h:
+        * platform/mediastream/RealtimeVideoSource.cpp:
+        (WebCore::RealtimeVideoSource::requestToEnd):
+        (WebCore::RealtimeVideoSource::stopBeingObserved):
+        * platform/mediastream/RealtimeVideoSource.h:
+
+2019-07-12  Timothy Hatcher  <timothy@apple.com>
+
+        Drop DarkModeCSSEnabled as an experimental feature and always enable it.
+        https://bugs.webkit.org/show_bug.cgi?id=199725
+        rdar://problem/52970972
+
+        Reviewed by Megan Gardner.
+
+        Tests: css-dark-mode
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::ComputedStyleExtractor::valueForPropertyInStyle):
+        * css/MediaQueryEvaluator.cpp:
+        (WebCore::prefersColorSchemeEvaluate):
+        * css/MediaQueryExpression.cpp:
+        (WebCore::featureWithValidIdent):
+        (WebCore::isFeatureValidWithoutValue):
+        * css/parser/CSSPropertyParser.cpp:
+        (WebCore::CSSPropertyParser::parseSingleValue):
+        * html/HTMLMetaElement.cpp:
+        (WebCore::HTMLMetaElement::process):
+        * page/RuntimeEnabledFeatures.h:
+        (WebCore::RuntimeEnabledFeatures::setDarkModeCSSEnabled): Deleted.
+        (WebCore::RuntimeEnabledFeatures::darkModeCSSEnabled const): Deleted.
+
+2019-07-12  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Refactor ShadowBlur: remove some class variables and use function parameters instead.
+        https://bugs.webkit.org/show_bug.cgi?id=199511
+
+        Reviewed by Said Abou-Hallawa.
+
+        On the ShadowBlur class it is confusing to know if the status of the m_layerImage buffer or the
+        values calculated by calculateLayerBoundingRect() are valid between the different function calls.
+
+        To avoid this problem, pass this values as function parameters instead of storing them in the class.
+
+        No new tests, no intended behaviour change.
+
+        * platform/graphics/ShadowBlur.cpp:
+        (WebCore::ShadowBlur::ShadowBlur):
+        (WebCore::ShadowBlur::calculateLayerBoundingRect):
+        (WebCore::ShadowBlur::drawShadowBuffer):
+        (WebCore::ShadowBlur::drawRectShadow): Pass the parameters from the callback.
+        (WebCore::ShadowBlur::drawInsetShadow): Ditto.
+        (WebCore::ShadowBlur::drawRectShadowWithoutTiling):
+        (WebCore::ShadowBlur::drawInsetShadowWithoutTiling):
+        (WebCore::ShadowBlur::drawRectShadowWithTiling):
+        (WebCore::ShadowBlur::drawInsetShadowWithTiling):
+        (WebCore::ShadowBlur::drawLayerPieces):
+        (WebCore::ShadowBlur::drawLayerPiecesAndFillCenter):
+        (WebCore::ShadowBlur::blurShadowBuffer):
+        (WebCore::ShadowBlur::blurAndColorShadowBuffer):
+        (WebCore::ShadowBlur::drawShadowLayer):
+        * platform/graphics/ShadowBlur.h: Use a struct to pass the values calculated on calculateLayerBoundingRect().
+
+2019-07-12  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [ATK] Avoid unneeded call to to core(selection) in listObjectForSelection()
+        https://bugs.webkit.org/show_bug.cgi?id=199748
+        <rdar://problem/52995908>
+
+        Reviewed by Konstantin Tokarev.
+
+        No new tests needed.
+
+        * accessibility/atk/WebKitAccessibleInterfaceSelection.cpp:
+        (listObjectForCoreSelection): Renamed from listObjectForSelection() and remove the
+        unneeded call to core() now that coreSelection is passed directly to the function.
+        (optionFromList): Change to pass coreSelection directly to listObjectForCoreSelection().
+
+2019-07-11  Chris Dumez  <cdumez@apple.com>
+
+        Fix non-thread safe use of makeWeakPtr() under MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::processInputNotify()
+        https://bugs.webkit.org/show_bug.cgi?id=199727
+
+        Reviewed by Eric Carlson.
+
+        Stop calling makeWeakPtr() on a main thread object from a background thread.
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::processInputNotify):
+
+2019-07-11  Youenn Fablet  <youenn@apple.com>
+
+        Register a MediaStreamTrack as media producer only if it is a capture track
+        https://bugs.webkit.org/show_bug.cgi?id=199566
+        <rdar://problem/52761361>
+
+        Addressing post-landing comment to simplify setMuted call.
+        Unreviewed.
+
+        * Modules/mediastream/MediaStreamTrack.cpp:
+        (WebCore::MediaStreamTrack::MediaStreamTrack):
+
+2019-07-11  Youenn Fablet  <youenn@apple.com>
+
+        Protect CoreAudioSharedUnit::m_clients for accessing in different threads simultaneously
+        https://bugs.webkit.org/show_bug.cgi?id=199717
+
+        Reviewed by Eric Carlson.
+
+        Add a lock whenever accessing to m_clients.
+        Manual tests show that audio capture still works.
+
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioSharedUnit::addClient):
+        (WebCore::CoreAudioSharedUnit::removeClient):
+        (WebCore::CoreAudioSharedUnit::forEachClient const):
+        (WebCore::CoreAudioSharedUnit::processMicrophoneSamples):
+        (WebCore::CoreAudioSharedUnit::captureFailed):
+
+2019-07-11  Chris Dumez  <cdumez@apple.com>
+
+        Drop non thread-safe usage of WeakPtr in PlaybackSessionInterfaceAVKit
+        https://bugs.webkit.org/show_bug.cgi?id=199698
+
+        Reviewed by Eric Carlson.
+
+        The PlaybackSessionInterfaceAVKit constructor was making a weakPtr on the UI Thread
+        of an WebThread object. The WeakPtr would then be used as a data member throughout
+        the class on the UIThread. This is not thread-safe.
+
+        This patch switches to using a raw pointer instead of a WeakPtr. This is a partial
+        rollout of r243337, which turned the raw pointer into a WeakPtr for hardening
+        purposes. For extra safety, this patch updates the VideoFullscreenControllerContext
+        so that it notifies its clients (i.e. PlaybackSessionInterfaceAVKit) that it is
+        getting destroyed, so that they can null-out their m_playbackSessionModel data
+        member. This gives the sames guarantees than WeakPtr but in a thread-safe way.
+
+        * platform/cocoa/PlaybackSessionModel.h:
+        (WebCore::PlaybackSessionModelClient::modelDestroyed):
+        * platform/ios/PlaybackSessionInterfaceAVKit.h:
+        * platform/ios/PlaybackSessionInterfaceAVKit.mm:
+        (WebCore::PlaybackSessionInterfaceAVKit::PlaybackSessionInterfaceAVKit):
+        (WebCore::PlaybackSessionInterfaceAVKit::~PlaybackSessionInterfaceAVKit):
+        (WebCore::PlaybackSessionInterfaceAVKit::playbackSessionModel const):
+        (WebCore::PlaybackSessionInterfaceAVKit::modelDestroyed):
+        * platform/ios/WebVideoFullscreenControllerAVKit.mm:
+        (VideoFullscreenControllerContext::~VideoFullscreenControllerContext):
+        (VideoFullscreenControllerContext::addClient):
+        (VideoFullscreenControllerContext::removeClient):
+
+2019-07-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix builds where HAVE_DESIGN_SYSTEM_UI_FONTS is not defined.
+
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::fontWithFamilySpecialCase):
+
+2019-07-11  Justin Fan  <justin_fan@apple.com>
+
+        Unreviewed build fix.
+
+        * Modules/webgpu/WHLSL/WHLSLRecursionChecker.cpp: Missing include.
+
+2019-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        New York font erroneously gets synthetic bold
+        https://bugs.webkit.org/show_bug.cgi?id=199653
+        <rdar://problem/51692592>
+
+        Reviewed by Simon Fraser.
+
+        This patch adds support for -apple-system-ui-serif, -apple-system-ui-monospaced,
+        and -apple-system-ui-rounded, behind an SPI that is off-by-default. We don't want
+        to expose these fonts to the web because we don't a standardization story for them
+        yet, but we do want some apps to be able to use them.
+
+        WebKit clients who want to use these fonts can set
+        -[WKPreferences _shouldAllowDesignSystemUIFonts] = YES.
+
+        The patch generalizes our existing system-ui infrastructure to handle these three
+        additional fonts. It also explicitly disables the unsupported dot-prefixed names
+        so they don't leak out into Web content.
+
+        Tests: fast/text/design-system-ui-10.html
+               fast/text/design-system-ui-11.html
+               fast/text/design-system-ui-12.html
+               fast/text/design-system-ui-13.html
+               fast/text/design-system-ui-14.html
+               fast/text/design-system-ui-15.html
+               fast/text/design-system-ui-16.html
+               fast/text/design-system-ui-2.html
+               fast/text/design-system-ui-3.html
+               fast/text/design-system-ui-4.html
+               fast/text/design-system-ui-5.html
+               fast/text/design-system-ui-6.html
+               fast/text/design-system-ui-7.html
+               fast/text/design-system-ui-8.html
+               fast/text/design-system-ui-9.html
+               fast/text/design-system-ui.html
+
+        * css/CSSFontFace.cpp:
+        (WebCore::CSSFontFace::shouldAllowDesignSystemUIFonts const):
+        * css/CSSFontFace.h:
+        * css/CSSFontFaceSource.cpp:
+        (WebCore::CSSFontFaceSource::load):
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::initializeFontStyle):
+        * page/Settings.yaml:
+        * platform/graphics/FontDescription.cpp:
+        (WebCore::m_shouldAllowDesignSystemUIFonts):
+        (WebCore::m_shouldAllowUserInstalledFonts): Deleted.
+        * platform/graphics/FontDescription.h:
+        (WebCore::FontDescription::shouldAllowDesignSystemUIFonts const):
+        (WebCore::FontDescription::setShouldAllowDesignSystemUIFonts):
+        (WebCore::FontDescription::operator== const):
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::platformFontLookupWithFamily):
+        (WebCore::fontWithFamily):
+        * platform/graphics/cocoa/FontCacheCoreText.h:
+        * platform/graphics/cocoa/FontDescriptionCocoa.cpp:
+        (WebCore::systemFontUse):
+        (WebCore::systemFontCascadeList):
+        (WebCore::FontCascadeDescription::effectiveFamilyCount const):
+        (WebCore::FontCascadeDescription::effectiveFamilyAt const):
+        (WebCore::isSystemFontString): Deleted.
+        (WebCore::isUIFontTextStyle): Deleted.
+        * platform/graphics/cocoa/FontPlatformDataCocoa.mm:
+        (WebCore::FontPlatformData::ctFont const):
+        * platform/graphics/cocoa/SystemFontDatabaseCoreText.cpp:
+        (WebCore::SystemFontDatabaseCoreText::createSystemUI):
+        (WebCore::SystemFontDatabaseCoreText::createDesignSystemUI):
+        (WebCore::SystemFontDatabaseCoreText::createTextStyle):
+        (WebCore::SystemFontDatabaseCoreText::cascadeList):
+        (WebCore::SystemFontDatabaseCoreText::applyWeightItalicsAndFallbackBehavior):
+        (WebCore::SystemFontDatabaseCoreText::systemFontParameters):
+        * platform/graphics/cocoa/SystemFontDatabaseCoreText.h:
+        * platform/graphics/ios/FontCacheIOS.mm:
+        (WebCore::platformFontWithFamilySpecialCase):
+        * platform/graphics/mac/FontCacheMac.mm:
+        (WebCore::platformFontWithFamilySpecialCase):
+        * style/StyleResolveForDocument.cpp:
+        (WebCore::Style::resolveForDocument):
+        * svg/graphics/SVGImage.cpp:
+        (WebCore::SVGImage::dataChanged):
+        * testing/InternalSettings.cpp:
+        (WebCore::InternalSettings::Backup::Backup):
+        (WebCore::InternalSettings::Backup::restoreTo):
+        (WebCore::InternalSettings::setShouldAllowDesignSystemUIFonts):
+        * testing/InternalSettings.h:
+        * testing/InternalSettings.idl:
+
+2019-07-11  Pablo Saavedra  <psaavedra@igalia.com>
+
+        [WPE][GTK] Build failure with ENABLE_ACCESSIBILITY=OFF
+        https://bugs.webkit.org/show_bug.cgi?id=199625
+
+        Added ENABLE(ACCESSIBILITY) and replaced HAVE(ACCESSIBILITY)
+        with ENABLE(ACCESSIBILITY) in the code.
+
+        Additionally, the TestRunner code generator now honors the
+        Conditional IDL format.
+
+        No new tests as there is no intended functional change
+
+        Reviewed by Konstantin Tokarev.
+
+        * accessibility/AXObjectCache.cpp:
+        * accessibility/AXObjectCache.h:
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::detach):
+        (WebCore::AccessibilityObject::isDetached const):
+        * accessibility/AccessibilityObject.h:
+        * accessibility/atk/AXObjectCacheAtk.cpp:
+        * accessibility/atk/AccessibilityObjectAtk.cpp:
+        * accessibility/atk/WebKitAccessible.cpp:
+        * accessibility/atk/WebKitAccessible.h:
+        * accessibility/atk/WebKitAccessibleHyperlink.cpp:
+        * accessibility/atk/WebKitAccessibleHyperlink.h:
+        * accessibility/atk/WebKitAccessibleInterfaceAction.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceAction.h:
+        * accessibility/atk/WebKitAccessibleInterfaceComponent.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceComponent.h:
+        * accessibility/atk/WebKitAccessibleInterfaceDocument.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceDocument.h:
+        * accessibility/atk/WebKitAccessibleInterfaceEditableText.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceEditableText.h:
+        * accessibility/atk/WebKitAccessibleInterfaceHyperlinkImpl.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceHyperlinkImpl.h:
+        * accessibility/atk/WebKitAccessibleInterfaceHypertext.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceHypertext.h:
+        * accessibility/atk/WebKitAccessibleInterfaceImage.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceImage.h:
+        * accessibility/atk/WebKitAccessibleInterfaceSelection.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceSelection.h:
+        * accessibility/atk/WebKitAccessibleInterfaceTable.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceTable.h:
+        * accessibility/atk/WebKitAccessibleInterfaceTableCell.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceTableCell.h:
+        * accessibility/atk/WebKitAccessibleInterfaceText.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceText.h:
+        * accessibility/atk/WebKitAccessibleInterfaceValue.cpp:
+        * accessibility/atk/WebKitAccessibleInterfaceValue.h:
+        * accessibility/atk/WebKitAccessibleUtil.cpp:
+        * accessibility/atk/WebKitAccessibleUtil.h:
+        * accessibility/ios/AXObjectCacheIOS.mm:
+        * accessibility/ios/AccessibilityObjectIOS.mm:
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.h:
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        * accessibility/mac/AXObjectCacheMac.mm:
+        * accessibility/mac/AccessibilityObjectBase.mm:
+        * accessibility/mac/AccessibilityObjectMac.mm:
+        * accessibility/mac/WebAccessibilityObjectWrapperBase.mm:
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        * accessibility/win/AccessibilityObjectWin.cpp:
+        * accessibility/win/AccessibilityObjectWrapperWin.cpp:
+        * dom/Document.cpp:
+        (WebCore::Document::prepareForDestruction):
+        * editing/FrameSelection.h:
+        * editing/atk/FrameSelectionAtk.cpp:
+        * html/HTMLTextFormControlElement.cpp:
+        (WebCore::HTMLTextFormControlElement::setInnerTextValue):
+        * testing/Internals.cpp:
+        (WebCore::Internals::resetToConsistentState):
+
+2019-07-11  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Implement GPUError and error scopes
+        https://bugs.webkit.org/show_bug.cgi?id=199655
+
+        Reviewed by Myles C. Maxfield.
+
+        Add GPUErrorFilter, GPUError, and the ability to push and pop error scopes on a GPUDevice.
+        This will allow us to check for WebGPU errors from JavaScript.
+        Currently, only some GPUBuffer creation errors are reported for testing; more errors will follow in later patches.
+
+        Test: webgpu/error-scopes-test.html
+
+        * Modules/webgpu/GPUErrorFilter.idl: Added.
+        * Modules/webgpu/GPUOutOfMemoryError.idl: Added.
+        * Modules/webgpu/GPUValidationError.idl: Added.
+        * Modules/webgpu/WebGPUDevice.cpp:
+        (WebCore::WebGPUDevice::pushErrorScope):
+        (WebCore::WebGPUDevice::popErrorScope): Resolve the Promise here, since GPUDevice shouldn't worry about DOM layer.
+        * Modules/webgpu/WebGPUDevice.h:
+        * Modules/webgpu/WebGPUDeviceErrorScopes.cpp: Added.
+        (WebCore::WebGPUDeviceErrorScopes::pushErrorScope): Delegates to WebGPUDevice.
+        (WebCore::WebGPUDeviceErrorScopes::popErrorScope): Ditto.
+        * Modules/webgpu/WebGPUDeviceErrorScopes.h: Added.
+        * Modules/webgpu/WebGPUDeviceErrorScopes.idl: Added.
+        * platform/graphics/gpu/GPUBuffer.h:
+        * platform/graphics/gpu/GPUDevice.cpp: The actual error stack lives here.
+        (WebCore::GPUDevice::pushErrorScope):
+        (WebCore::GPUDevice::popErrorScope): Calls a callback with a GPUError, if any.
+        (WebCore::GPUDevice::registerError): Actually creates GPUErrors.
+        * platform/graphics/gpu/GPUDevice.h:
+        * platform/graphics/gpu/GPUError.cpp: Added.
+        (WebCore::createError): Factory function for various error types.
+        * platform/graphics/gpu/GPUError.h: Added.
+        * platform/graphics/gpu/GPUErrorFilter.h: Added.
+        * platform/graphics/gpu/GPUOutOfMemoryError.h: Added.
+        (WebCore::GPUOutOfMemoryError::create):
+        * platform/graphics/gpu/GPUValidationError.cpp: Added.
+        (WebCore::GPUValidationError::create):
+        (WebCore::GPUValidationError::GPUValidationError):
+        * platform/graphics/gpu/GPUValidationError.h: Added.
+        (WebCore::GPUValidationError::message const):
+        * platform/graphics/gpu/cocoa/GPUBufferMetal.mm:
+        (WebCore::GPUBuffer::validateBufferUsage): Create an actual GPUValidationError :)
+        (WebCore::GPUBuffer::tryCreate): Create GPUOutOfMemoryErrors where appropriate.
+
+        Add file/name references:
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/WebCoreBuiltinNames.h:
+
+        Missing includes:
+        * Modules/webgpu/WHLSL/WHLSLCheckTextureReferences.cpp:
+
+2019-07-11  Tim Horton  <timothy_horton@apple.com>
+
+        Null deref of RenderView under FrameView::setNeedsCompositingConfigurationUpdate
+        https://bugs.webkit.org/show_bug.cgi?id=199723
+        <rdar://problem/51554747>
+
+        Reviewed by Simon Fraser.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::setNeedsCompositingConfigurationUpdate):
+        Add a null-check; it looks like it is possible to get here by dismissing
+        the find overlay (or other page overlay) at an inopportune time.
+
+2019-07-11  Chris Dumez  <cdumez@apple.com>
+
+        Pages using Google Tag Manager Google's anti-flicker optimization may take ~5 seconds to do initial paint
+        https://bugs.webkit.org/show_bug.cgi?id=199704
+        <rdar://problem/52966461>
+
+        Reviewed by Geoffrey Garen.
+
+        Apply the same fix as r246764 for when "https://www.googletagmanager.com/gtm.js" load is blocked by a content
+        extension to avoid delaying initial paint by ~5 seconds. This was tested on https://www.formula1.com/en.html.
+
+        * contentextensions/ContentExtensionsBackend.cpp:
+        (WebCore::ContentExtensions::ContentExtensionsBackend::processContentRuleListsForLoad):
+
 2019-07-11  Chris Dumez  <cdumez@apple.com>
 
         Disable RGB10 IOSurface pixel format for Mac Catalyst
@@ -10,6 +1080,33 @@
         on Mac Catalyst and causes us not to render anything.
 
         * platform/graphics/cocoa/IOSurface.h:
+
+2019-07-11  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Can't place caret or select in content that overflows a contenteditable element
+        https://bugs.webkit.org/show_bug.cgi?id=199741
+        rdar://problem/50545233
+
+        Reviewed by Wenson Hsieh.
+
+        Various code paths for editing used renderer->absoluteBoundingBoxRect(), which is the border
+        box of the element (or a set of line boxes for inline elements) converted to absolute
+        coordinates. This excludes overflow content, but contenteditable needs to be able to
+        place the caret in overflow content, and allow selection rects to be in the overflow area
+        (if the element has visible overflow).
+
+        Try to clean this up by adding some static helpers on WebPage for accessing the relevant
+        rects, and use them in code call from visiblePositionInFocusedNodeForPoint(), and
+        code that is input to selectionClipRect.
+        
+        This changes selectionClipRect to use the padding box (excluding borders), which is a progression.
+
+        Tests: editing/caret/ios/caret-in-overflow-area.html
+               editing/selection/ios/place-selection-in-overflow-area.html
+               editing/selection/ios/selection-extends-into-overflow-area.html
+
+        * editing/FrameSelection.cpp:
+        (WebCore::DragCaretController::editableElementRectInRootViewCoordinates const):
 
 2019-07-11  Jonathan Bedard  <jbedard@apple.com>
 

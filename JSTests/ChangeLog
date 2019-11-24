@@ -1,3 +1,74 @@
+2019-07-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r247440.
+
+        Broke builds
+
+        Reverted changeset:
+
+        "[JSC] Improve wasm wpt test results by fixing miscellaneous
+        issues"
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+        https://trac.webkit.org/changeset/247440
+
+2019-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve wasm wpt test results by fixing miscellaneous issues
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+
+        Reviewed by Mark Lam.
+
+        Fix our spec tests.
+
+        * wasm/js-api/Module-compile.js:
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+        * wasm/js-api/validate.js:
+        * wasm/js-api/web-assembly-instantiate.js:
+        * wasm/spec-tests/jsapi.js:
+        (testJSAPI.get test):
+        (testJSAPI.set test):
+
+2019-07-12  Justin Michaud  <justin_michaud@apple.com>
+
+        B3 should reduce (integer) Sub(Neg(x), y) to Neg(Add(x, y))
+        https://bugs.webkit.org/show_bug.cgi?id=196371
+
+        Reviewed by Keith Miller.
+
+        * microbenchmarks/mul-immediate-sub.js: Added.
+        (doTest):
+
+2019-07-12  Caio Lima  <ticaiolima@gmail.com>
+
+        [BigInt] Add ValueBitLShift into DFG
+        https://bugs.webkit.org/show_bug.cgi?id=192664
+
+        Reviewed by Saam Barati.
+
+        We are adding tests to cover ValueBitwise operations AI changes.
+
+        * stress/big-int-left-shift-untyped.js: Added.
+        * stress/bit-op-with-object-returning-int32.js:
+        * stress/value-bit-and-ai-rule.js: Added.
+        * stress/value-bit-lshift-ai-rule.js: Added.
+        * stress/value-bit-or-ai-rule.js: Added.
+        * stress/value-bit-xor-ai-rule.js: Added.
+
+2019-07-11  Justin Michaud  <justin_michaud@apple.com>
+
+        Add b3 macro lowering for CheckMul on arm64
+        https://bugs.webkit.org/show_bug.cgi?id=199251
+
+        Reviewed by Robin Morisset.
+
+        * microbenchmarks/check-mul-constant.js: Added.
+        (doTest):
+        * microbenchmarks/check-mul-no-constant.js: Added.
+        (doTest):
+        * microbenchmarks/check-mul-power-of-two.js: Added.
+        (doTest):
+
 2019-07-10  Tadeu Zagallo  <tzagallo@apple.com>
 
         Optimize join of large empty arrays
