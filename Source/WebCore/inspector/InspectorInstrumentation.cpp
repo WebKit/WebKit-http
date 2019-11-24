@@ -851,13 +851,16 @@ void InspectorInstrumentation::addMessageToConsoleImpl(InstrumentingAgents& inst
     }
 }
 
-void InspectorInstrumentation::consoleCountImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* state, Ref<ScriptArguments>&& arguments)
+void InspectorInstrumentation::consoleCountImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* state, const String& label)
 {
-    if (!instrumentingAgents.inspectorEnvironment().developerExtrasEnabled())
-        return;
+    if (auto* consoleAgent = instrumentingAgents.webConsoleAgent())
+        consoleAgent->count(state, label);
+}
 
-    if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
-        consoleAgent->count(state, WTFMove(arguments));
+void InspectorInstrumentation::consoleCountResetImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* state, const String& label)
+{
+    if (auto* consoleAgent = instrumentingAgents.webConsoleAgent())
+        consoleAgent->countReset(state, label);
 }
 
 void InspectorInstrumentation::takeHeapSnapshotImpl(InstrumentingAgents& instrumentingAgents, const String& title)
@@ -866,44 +869,53 @@ void InspectorInstrumentation::takeHeapSnapshotImpl(InstrumentingAgents& instrum
         consoleAgent->takeHeapSnapshot(title);
 }
 
-void InspectorInstrumentation::startConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, const String& title)
+void InspectorInstrumentation::startConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, JSC::ExecState* exec, const String& label)
 {
     if (!instrumentingAgents.inspectorEnvironment().developerExtrasEnabled())
         return;
 
-    if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->time(frame, title);
-    if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
-        consoleAgent->startTiming(title);
+    if (auto* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
+        timelineAgent->time(frame, label);
+    if (auto* consoleAgent = instrumentingAgents.webConsoleAgent())
+        consoleAgent->startTiming(exec, label);
 }
 
-void InspectorInstrumentation::startConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, const String& title)
+void InspectorInstrumentation::startConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* exec, const String& label)
 {
     if (!instrumentingAgents.inspectorEnvironment().developerExtrasEnabled())
         return;
 
-    if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
-        consoleAgent->startTiming(title);
+    if (auto* consoleAgent = instrumentingAgents.webConsoleAgent())
+        consoleAgent->startTiming(exec, label);
 }
 
-void InspectorInstrumentation::stopConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, const String& title, Ref<ScriptCallStack>&& stack)
+void InspectorInstrumentation::logConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* exec, const String& label, Ref<Inspector::ScriptArguments>&& arguments)
 {
     if (!instrumentingAgents.inspectorEnvironment().developerExtrasEnabled())
         return;
 
-    if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
-        consoleAgent->stopTiming(title, WTFMove(stack));
-    if (InspectorTimelineAgent* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
-        timelineAgent->timeEnd(frame, title);
+    if (auto* consoleAgent = instrumentingAgents.webConsoleAgent())
+        consoleAgent->logTiming(exec, label, WTFMove(arguments));
 }
 
-void InspectorInstrumentation::stopConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, const String& title, Ref<ScriptCallStack>&& stack)
+void InspectorInstrumentation::stopConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, JSC::ExecState* exec, const String& label)
 {
     if (!instrumentingAgents.inspectorEnvironment().developerExtrasEnabled())
         return;
 
-    if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
-        consoleAgent->stopTiming(title, WTFMove(stack));
+    if (auto* consoleAgent = instrumentingAgents.webConsoleAgent())
+        consoleAgent->stopTiming(exec, label);
+    if (auto* timelineAgent = instrumentingAgents.inspectorTimelineAgent())
+        timelineAgent->timeEnd(frame, label);
+}
+
+void InspectorInstrumentation::stopConsoleTimingImpl(InstrumentingAgents& instrumentingAgents, JSC::ExecState* exec, const String& label)
+{
+    if (!instrumentingAgents.inspectorEnvironment().developerExtrasEnabled())
+        return;
+
+    if (auto* consoleAgent = instrumentingAgents.webConsoleAgent())
+        consoleAgent->stopTiming(exec, label);
 }
 
 void InspectorInstrumentation::consoleTimeStampImpl(InstrumentingAgents& instrumentingAgents, Frame& frame, Ref<ScriptArguments>&& arguments)

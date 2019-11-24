@@ -626,15 +626,14 @@ static inline bool shouldClearWindowName(const Frame& frame, const Document& new
     return !newDocument.securityOrigin().isSameOriginAs(frame.document()->securityOrigin());
 }
 
-void FrameLoader::clear(Document* newDocument, bool clearWindowProperties, bool clearScriptObjects, bool clearFrameView)
+void FrameLoader::clear(Document* newDocument, bool clearWindowProperties, bool clearScriptObjects, bool clearFrameView, WTF::Function<void()>&& handleDOMWindowCreation)
 {
     m_frame.editor().clear();
 
-    if (!m_needsClear)
-        return;
+    bool neededClear = m_needsClear;
     m_needsClear = false;
-    
-    if (m_frame.document()->pageCacheState() != Document::InPageCache) {
+
+    if (neededClear && m_frame.document()->pageCacheState() != Document::InPageCache) {
         m_frame.document()->cancelParsing();
         m_frame.document()->stopActiveDOMObjects();
         bool hadLivingRenderTree = m_frame.document()->hasLivingRenderTree();
@@ -643,6 +642,12 @@ void FrameLoader::clear(Document* newDocument, bool clearWindowProperties, bool 
             m_frame.document()->adjustFocusedNodeOnNodeRemoval(*m_frame.document());
     }
 
+    if (handleDOMWindowCreation)
+        handleDOMWindowCreation();
+
+    if (!neededClear)
+        return;
+    
     // Do this after detaching the document so that the unload event works.
     if (clearWindowProperties) {
         InspectorInstrumentation::frameWindowDiscarded(m_frame, m_frame.document()->domWindow());
@@ -2303,6 +2308,7 @@ void FrameLoader::open(CachedFrameBase& cachedFrame)
 
     clear(document, true, true, cachedFrame.isMainFrame());
 
+    document->attachToCachedFrame(cachedFrame);
     document->setPageCacheState(Document::NotInPageCache);
 
     m_needsClear = true;
@@ -2669,6 +2675,13 @@ void FrameLoader::detachChildren()
     // this event is being fired in its subframes:
     // https://html.spec.whatwg.org/multipage/browsers.html#unload-a-document
     IgnoreOpensDuringUnloadCountIncrementer ignoreOpensDuringUnloadCountIncrementer(m_frame.document());
+
+    // detachChildren() will fire the unload event in each subframe and the
+    // HTML specification states that navigations should be prevented during the prompt to unload algorithm:
+    // https://html.spec.whatwg.org/multipage/browsing-the-web.html#navigate
+    std::unique_ptr<NavigationDisabler> navigationDisabler;
+    if (m_frame.isMainFrame())
+        navigationDisabler = std::make_unique<NavigationDisabler>(&m_frame);
 
     // Any subframe inserted by unload event handlers executed in the loop below will not get unloaded
     // because we create a copy of the subframes list before looping. Therefore, it would be unsafe to
@@ -3468,7 +3481,7 @@ void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest& reque
 
     if (isBackForwardLoadType(type)) {
         auto& diagnosticLoggingClient = m_frame.page()->diagnosticLoggingClient();
-        if (history().provisionalItem()->isInPageCache()) {
+        if (history().provisionalItem() && history().provisionalItem()->isInPageCache()) {
             diagnosticLoggingClient.logDiagnosticMessageWithResult(DiagnosticLoggingKeys::pageCacheKey(), DiagnosticLoggingKeys::retrievalKey(), DiagnosticLoggingResultPass, ShouldSample::Yes);
             loadProvisionalItemFromCachedPage();
             RELEASE_LOG_IF_ALLOWED("continueLoadAfterNavigationPolicy: can't continue loading frame because it will be loaded from cache (frame = %p, main = %d)", &m_frame, m_frame.isMainFrame());

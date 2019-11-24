@@ -154,8 +154,11 @@ private:
     bool loadNextLocation();
     void mediaLocationChanged(GstMessage*);
 
-    virtual void setDownloadBuffering();
+    virtual void updateDownloadBufferingFlag();
     void processBufferingStats(GstMessage*);
+    void updateBufferingStatus(GstBufferingMode, double percentage);
+    void updateMaxTimeLoaded(double percentage);
+
 #if ENABLE(VIDEO_TRACK)
 #if USE(GSTREAMER_MPEGTS)
     void processMpegTsSection(GstMpegtsSection*);
@@ -182,10 +185,8 @@ private:
     void setPlaybinURL(const URL& urlString);
     void loadFull(const String& url, const String& pipelineName);
 
-#if GST_CHECK_VERSION(1, 10, 0)
     void updateTracks();
     void clearTracks();
-#endif
 
 protected:
     bool m_buffering;
@@ -260,13 +261,11 @@ private:
     bool m_preservesPitch;
     mutable Optional<Seconds> m_lastQueryTime;
     bool m_isLegacyPlaybin;
-#if GST_CHECK_VERSION(1, 10, 0)
     GRefPtr<GstStreamCollection> m_streamCollection;
     FloatSize naturalSize() const final;
 #if ENABLE(MEDIA_STREAM)
     RefPtr<MediaStreamPrivate> m_streamPrivate;
-#endif // ENABLE(MEDIA_STREAM)
-#endif // GST_CHECK_VERSION(1, 10, 0)
+#endif
     String m_currentAudioStreamId;
     String m_currentVideoStreamId;
     String m_currentTextStreamId;
@@ -284,7 +283,7 @@ private:
 #if USE(GSTREAMER_MPEGTS)
     HashMap<AtomString, RefPtr<InbandMetadataTextTrackPrivateGStreamer>> m_metadataTracks;
 #endif
-#endif
+#endif // ENABLE(VIDEO_TRACK)
     virtual bool isMediaSource() const { return false; }
 
     uint64_t m_httpResponseTotalSize { 0 };

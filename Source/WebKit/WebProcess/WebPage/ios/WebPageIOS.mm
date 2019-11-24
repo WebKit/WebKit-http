@@ -86,6 +86,7 @@
 #import <WebCore/HTMLElement.h>
 #import <WebCore/HTMLElementTypeHelpers.h>
 #import <WebCore/HTMLFormElement.h>
+#import <WebCore/HTMLIFrameElement.h>
 #import <WebCore/HTMLImageElement.h>
 #import <WebCore/HTMLInputElement.h>
 #import <WebCore/HTMLLabelElement.h>
@@ -214,7 +215,7 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
     // immediately so that the UIProcess can update UI, including the position of the caret.
     bool needsLayout = !frame.view() || frame.view()->needsLayout();
     bool requiresPostLayoutData = frame.editor().hasComposition();
-#if !PLATFORM(IOSMAC)
+#if !PLATFORM(MACCATALYST)
     requiresPostLayoutData |= m_keyboardIsAttached;
 #endif
     if ((shouldIncludePostLayoutData == IncludePostLayoutDataHint::No || needsLayout) && !requiresPostLayoutData) {
@@ -664,18 +665,23 @@ void WebPage::handleSyntheticClick(Node& nodeRespondingToClick, const WebCore::F
     }
 
     auto& respondingDocument = nodeRespondingToClick.document();
+    auto& contentChangeObserver = respondingDocument.contentChangeObserver();
+    auto targetNodeisConsideredHidden = contentChangeObserver.hiddenTouchTarget() == &nodeRespondingToClick || ContentChangeObserver::isConsideredHidden(nodeRespondingToClick);
     {
         LOG_WITH_STREAM(ContentObservation, stream << "handleSyntheticClick: node(" << &nodeRespondingToClick << ") " << location);
         ContentChangeObserver::MouseMovedScope observingScope(respondingDocument);
         auto& mainFrame = m_page->mainFrame();
         dispatchSyntheticMouseMove(mainFrame, location, modifiers, pointerId);
         mainFrame.document()->updateStyleIfNeeded();
+        if (m_isClosed)
+            return;
     }
 
-    if (m_isClosed)
+    if (targetNodeisConsideredHidden) {
+        LOG(ContentObservation, "handleSyntheticClick: target node is considered hidden -> hover.");
         return;
+    }
 
-    auto& contentChangeObserver = respondingDocument.contentChangeObserver();
     auto observedContentChange = contentChangeObserver.observedContentChange();
     auto targetNodeTriggersClick = nodeAlwaysTriggersClick(nodeRespondingToClick);
 
@@ -714,18 +720,24 @@ void WebPage::completePendingSyntheticClickForContentChangeObserver()
     if (!m_pendingSyntheticClickNode)
         return;
     auto observedContentChange = m_pendingSyntheticClickNode->document().contentChangeObserver().observedContentChange();
-    // Only dispatch the click if the document didn't get changed by any timers started by the move event.
-    if (observedContentChange == WKContentNoChange) {
-        LOG(ContentObservation, "No chage was observed -> click.");
-        completeSyntheticClick(*m_pendingSyntheticClickNode, m_pendingSyntheticClickLocation, m_pendingSyntheticClickModifiers, WebCore::OneFingerTap, m_pendingSyntheticClickPointerId);
-    } else {
-        // Ensure that the mouse is on the most recent content.
-        dispatchSyntheticMouseMove(m_page->mainFrame(), m_pendingSyntheticClickLocation, m_pendingSyntheticClickModifiers, m_pendingSyntheticClickPointerId);
-        LOG(ContentObservation, "Observed meaningful visible change -> hover.");
-    }
+    callOnMainThread([protectedThis = makeRefPtr(this), targetNode = Ref<Node>(*m_pendingSyntheticClickNode), originalDocument = makeWeakPtr(m_pendingSyntheticClickNode->document()), observedContentChange, location = m_pendingSyntheticClickLocation, modifiers = m_pendingSyntheticClickModifiers, pointerId = m_pendingSyntheticClickPointerId] {
+        if (protectedThis->m_isClosed || !protectedThis->corePage())
+            return;
+        if (!originalDocument || &targetNode->document() != originalDocument)
+            return;
 
+        // Only dispatch the click if the document didn't get changed by any timers started by the move event.
+        if (observedContentChange == WKContentNoChange) {
+            LOG(ContentObservation, "No chage was observed -> click.");
+            protectedThis->completeSyntheticClick(targetNode, location, modifiers, WebCore::OneFingerTap, pointerId);
+            return;
+        }
+        // Ensure that the mouse is on the most recent content.
+        LOG(ContentObservation, "Observed meaningful visible change -> hover.");
+        dispatchSyntheticMouseMove(protectedThis->corePage()->mainFrame(), location, modifiers, pointerId);
+    });
     m_pendingSyntheticClickNode = nullptr;
-    m_pendingSyntheticClickLocation = FloatPoint();
+    m_pendingSyntheticClickLocation = { };
     m_pendingSyntheticClickModifiers = { };
     m_pendingSyntheticClickPointerId = 0;
 }
@@ -1297,6 +1309,9 @@ static IntRect selectionBoxForRange(WebCore::Range* range)
 
 void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uint32_t gestureType, uint32_t gestureState, bool isInteractingWithFocusedElement, CallbackID callbackID)
 {
+    if (static_cast<GestureRecognizerState>(gestureState) == GestureRecognizerState::Began)
+        setFocusedFrameBeforeSelectingTextAtLocation(point);
+
     auto& frame = m_page->focusController().focusedOrMainFrame();
     VisiblePosition position = visiblePositionInFocusedNodeForPoint(frame, point, isInteractingWithFocusedElement);
 
@@ -1361,7 +1376,7 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
         if (position.rootEditableElement())
             range = Range::create(*frame.document(), position, position);
         else
-#if !PLATFORM(IOSMAC)
+#if !PLATFORM(MACCATALYST)
             range = wordRangeFromPosition(position);
 #else
             switch (wkGestureState) {
@@ -2016,8 +2031,18 @@ static inline bool rectIsTooBigForSelection(const IntRect& blockRect, const Fram
     return blockRect.height() > frame.view()->unobscuredContentRect().height() * factor;
 }
 
+void WebPage::setFocusedFrameBeforeSelectingTextAtLocation(const IntPoint& point)
+{
+    auto result = m_page->mainFrame().eventHandler().hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
+    auto* hitNode = result.innerNode();
+    if (hitNode && hitNode->renderer())
+        m_page->focusController().setFocusedFrame(result.innerNodeFrame());
+}
+
 void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, uint32_t granularity, bool isInteractingWithFocusedElement, CallbackID callbackID)
 {
+    setFocusedFrameBeforeSelectingTextAtLocation(point);
+
     auto& frame = m_page->focusController().focusedOrMainFrame();
     RefPtr<Range> range = rangeForGranularityAtPoint(frame, point, granularity, isInteractingWithFocusedElement);
     if (!isInteractingWithFocusedElement) {
@@ -2429,16 +2454,16 @@ static HTMLAnchorElement* containingLinkElement(Element* element)
     return nullptr;
 }
 
-static inline bool isAssistableElement(Element& node)
+static inline bool isAssistableElement(Element& element)
 {
-    if (is<HTMLSelectElement>(node))
+    if (is<HTMLSelectElement>(element))
         return true;
-    if (is<HTMLTextAreaElement>(node))
+    if (is<HTMLTextAreaElement>(element))
         return true;
-    if (is<HTMLImageElement>(node) && downcast<HTMLImageElement>(node).hasEditableImageAttribute())
+    if (is<HTMLImageElement>(element) && downcast<HTMLImageElement>(element).hasEditableImageAttribute())
         return true;
-    if (is<HTMLInputElement>(node)) {
-        HTMLInputElement& inputElement = downcast<HTMLInputElement>(node);
+    if (is<HTMLInputElement>(element)) {
+        HTMLInputElement& inputElement = downcast<HTMLInputElement>(element);
         // FIXME: This laundry list of types is not a good way to factor this. Need a suitable function on HTMLInputElement itself.
 #if ENABLE(INPUT_TYPE_COLOR)
         if (inputElement.isColorControl())
@@ -2446,7 +2471,9 @@ static inline bool isAssistableElement(Element& node)
 #endif
         return inputElement.isTextField() || inputElement.isDateField() || inputElement.isDateTimeLocalField() || inputElement.isMonthField() || inputElement.isTimeField();
     }
-    return node.isContentEditable();
+    if (is<HTMLIFrameElement>(element))
+        return false;
+    return element.isContentEditable();
 }
 
 void WebPage::getPositionInformation(const InteractionInformationRequest& request, CompletionHandler<void(InteractionInformationAtPosition&&)>&& reply)
@@ -2492,7 +2519,7 @@ static void linkIndicatorPositionInformation(WebPage& page, Element& element, El
 
     auto linkRange = rangeOfContents(linkElement);
     float deviceScaleFactor = page.corePage()->deviceScaleFactor();
-    const float marginInPoints = 4;
+    const float marginInPoints = request.linkIndicatorShouldHaveLegacyMargins ? 4 : 0;
 
     auto textIndicator = TextIndicator::createWithRange(linkRange.get(),
         TextIndicatorOptionTightlyFitContent | TextIndicatorOptionRespectTextColor | TextIndicatorOptionPaintBackgrounds |
@@ -2620,9 +2647,6 @@ static void selectionPositionInformation(WebPage& page, const InteractionInforma
         return;
 
     RenderObject* renderer = hitNode->renderer();
-    if (!request.readonly)
-        page.corePage()->focusController().setFocusedFrame(result.innerNodeFrame());
-
     info.bounds = renderer->absoluteBoundingBoxRect(true);
     // We don't want to select blocks that are larger than 97% of the visible area of the document.
     if (is<HTMLAttachmentElement>(*hitNode)) {
@@ -2637,7 +2661,7 @@ static void selectionPositionInformation(WebPage& page, const InteractionInforma
             info.isSelectable = !isAssistableElement(*downcast<Element>(hitNode)) && !rectIsTooBigForSelection(info.bounds, *result.innerNodeFrame());
     }
 
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     bool isInsideFixedPosition;
     VisiblePosition caretPosition(renderer->positionForPoint(request.point, nullptr));
     info.caretRect = caretPosition.absoluteCaretBounds(&isInsideFixedPosition);
@@ -2966,6 +2990,8 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
         information.autocapitalizeType = AutocapitalizeTypeNone;
         information.isAutocorrect = false;
     }
+
+    information.shouldAvoidResizingWhenInputViewBoundsChange = m_focusedElement->document().quirks().shouldAvoidResizingWhenInputViewBoundsChange();
 }
 
 void WebPage::autofillLoginCredentials(const String& username, const String& password)
@@ -3314,10 +3340,16 @@ bool WebPage::immediatelyShrinkToFitContent()
 
     static const int toleratedHorizontalScrollingDistance = 20;
     static const int maximumExpandedLayoutWidth = 1280;
+
+    auto scaledViewWidth = [&] () -> int {
+        return std::round(m_viewportConfiguration.viewLayoutSize().width() / m_viewportConfiguration.initialScale());
+    };
+
     int originalContentWidth = view->contentsWidth();
+    int originalViewWidth = scaledViewWidth();
     int originalLayoutWidth = m_viewportConfiguration.layoutWidth();
-    int originalHorizontalOverflowAmount = originalContentWidth - originalLayoutWidth;
-    if (originalHorizontalOverflowAmount <= toleratedHorizontalScrollingDistance || originalLayoutWidth >= maximumExpandedLayoutWidth || originalContentWidth <= m_viewportConfiguration.viewLayoutSize().width())
+    int originalHorizontalOverflowAmount = originalContentWidth - originalViewWidth;
+    if (originalHorizontalOverflowAmount <= toleratedHorizontalScrollingDistance || originalLayoutWidth >= maximumExpandedLayoutWidth || originalContentWidth <= originalViewWidth)
         return false;
 
     auto changeMinimumEffectiveDeviceWidth = [this, mainDocument] (int targetLayoutWidth) -> bool {
@@ -3331,7 +3363,7 @@ bool WebPage::immediatelyShrinkToFitContent()
 
     m_viewportConfiguration.setIsKnownToLayOutWiderThanViewport(true);
     double originalMinimumDeviceWidth = m_viewportConfiguration.minimumEffectiveDeviceWidth();
-    if (changeMinimumEffectiveDeviceWidth(std::min(maximumExpandedLayoutWidth, originalContentWidth)) && view->contentsWidth() - m_viewportConfiguration.layoutWidth() > originalHorizontalOverflowAmount) {
+    if (changeMinimumEffectiveDeviceWidth(std::min(maximumExpandedLayoutWidth, originalContentWidth)) && view->contentsWidth() - scaledViewWidth() > originalHorizontalOverflowAmount) {
         changeMinimumEffectiveDeviceWidth(originalMinimumDeviceWidth);
         m_viewportConfiguration.setIsKnownToLayOutWiderThanViewport(false);
     }

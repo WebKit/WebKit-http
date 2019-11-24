@@ -149,6 +149,7 @@ void NavigationState::setNavigationDelegate(id <WKNavigationDelegate> delegate)
     m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler = [delegate respondsToSelector:@selector(webView:decidePolicyForNavigationAction:preferences:decisionHandler:)];
     m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandlerWebsitePolicies = [delegate respondsToSelector:@selector(_webView:decidePolicyForNavigationAction:decisionHandler:)];
     m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionUserInfoDecisionHandlerWebsitePolicies = [delegate respondsToSelector:@selector(_webView:decidePolicyForNavigationAction:userInfo:decisionHandler:)];
+    m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesUserInfoDecisionHandler = [delegate respondsToSelector:@selector(_webView:decidePolicyForNavigationAction:preferences:userInfo:decisionHandler:)];
     m_navigationDelegateMethods.webViewDecidePolicyForNavigationResponseDecisionHandler = [delegate respondsToSelector:@selector(webView:decidePolicyForNavigationResponse:decisionHandler:)];
 
     m_navigationDelegateMethods.webViewDidStartProvisionalNavigation = [delegate respondsToSelector:@selector(webView:didStartProvisionalNavigation:)];
@@ -195,6 +196,9 @@ void NavigationState::setNavigationDelegate(id <WKNavigationDelegate> delegate)
     m_navigationDelegateMethods.webViewDidBlockInsecurePluginVersionWithInfo = [delegate respondsToSelector:@selector(_webView:didBlockInsecurePluginVersionWithInfo:)];
     m_navigationDelegateMethods.webViewBackForwardListItemAddedRemoved = [delegate respondsToSelector:@selector(_webView:backForwardListItemAdded:removed:)];
     m_navigationDelegateMethods.webViewDecidePolicyForPluginLoadWithCurrentPolicyPluginInfoCompletionHandler = [delegate respondsToSelector:@selector(_webView:decidePolicyForPluginLoadWithCurrentPolicy:pluginInfo:completionHandler:)];
+#endif
+#if HAVE(APP_SSO)
+    m_navigationDelegateMethods.webViewDecidePolicyForSOAuthorizationLoadWithCurrentPolicyForExtensionCompletionHandler = [delegate respondsToSelector:@selector(_webView:decidePolicyForSOAuthorizationLoadWithCurrentPolicy:forExtension:completionHandler:)];
 #endif
 }
 
@@ -519,6 +523,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
         defaultWebsitePolicies = policies->copy();
 
     if (!m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandler
+        && !m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesUserInfoDecisionHandler
         && !m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler
         && !m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandlerWebsitePolicies
         && !m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionUserInfoDecisionHandlerWebsitePolicies) {
@@ -558,12 +563,13 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
     if (!navigationDelegate)
         return;
 
-    bool delegateHasWebpagePreferences = m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler;
+    bool delegateHasWebpagePreferences = m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler
+        || m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesUserInfoDecisionHandler;
     bool delegateHasWebsitePolicies = m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandlerWebsitePolicies || m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionUserInfoDecisionHandlerWebsitePolicies;
 
     auto selectorForCompletionHandlerChecker = ([&] () -> SEL {
         if (delegateHasWebpagePreferences)
-            return @selector(webView:decidePolicyForNavigationAction:preferences:decisionHandler:);
+            return m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler ? @selector(webView:decidePolicyForNavigationAction:preferences:decisionHandler:) : @selector(_webView:decidePolicyForNavigationAction:preferences:userInfo:decisionHandler:);
         if (delegateHasWebsitePolicies)
             return @selector(_webView:decidePolicyForNavigationAction:decisionHandler:);
         return @selector(webView:decidePolicyForNavigationAction:decisionHandler:);
@@ -633,13 +639,18 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
         }
     };
 
-    if (delegateHasWebpagePreferences)
-        [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) preferences:wrapper(defaultWebsitePolicies) decisionHandler:makeBlockPtr(WTFMove(decisionHandlerWithPreferencesOrPolicies)).get()];
-    else if (delegateHasWebsitePolicies) {
+    if (delegateHasWebpagePreferences) {
+        if (m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler)
+            [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) preferences:wrapper(defaultWebsitePolicies) decisionHandler:makeBlockPtr(WTFMove(decisionHandlerWithPreferencesOrPolicies)).get()];
+        else
+            [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) preferences:wrapper(defaultWebsitePolicies) userInfo:userInfo ? static_cast<id<NSSecureCoding>>(userInfo->wrapper()) : nil decisionHandler:makeBlockPtr(WTFMove(decisionHandlerWithPreferencesOrPolicies)).get()];
+    } else if (delegateHasWebsitePolicies) {
         auto decisionHandler = makeBlockPtr(WTFMove(decisionHandlerWithPreferencesOrPolicies));
-        if (m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionUserInfoDecisionHandlerWebsitePolicies)
+        if (m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionUserInfoDecisionHandlerWebsitePolicies) {
+            ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) userInfo:userInfo ? static_cast<id <NSSecureCoding>>(userInfo->wrapper()) : nil decisionHandler:decisionHandler.get()];
-        else {
+            ALLOW_DEPRECATED_DECLARATIONS_END
+        } else {
             ALLOW_DEPRECATED_DECLARATIONS_BEGIN
             [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) decisionHandler:decisionHandler.get()];
             ALLOW_DEPRECATED_DECLARATIONS_END
@@ -944,7 +955,8 @@ void NavigationState::NavigationClient::renderingProgressDidChange(WebPageProxy&
 
 bool NavigationState::NavigationClient::shouldBypassContentModeSafeguards() const
 {
-    return m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler;
+    return m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler
+        || m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionWithPreferencesUserInfoDecisionHandler;
 }
 
 static AuthenticationChallengeDisposition toAuthenticationChallengeDisposition(NSURLSessionAuthChallengeDisposition disposition)
@@ -1098,6 +1110,54 @@ void NavigationState::NavigationClient::didFinishLoadForQuickLookDocumentInMainF
         return;
 
     [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) _webView:m_navigationState.m_webView didFinishLoadForQuickLookDocumentInMainFrame:(NSData *)data.decodedData()];
+}
+#endif
+
+#if HAVE(APP_SSO)
+static SOAuthorizationLoadPolicy soAuthorizationLoadPolicy(_WKSOAuthorizationLoadPolicy policy)
+{
+    switch (policy) {
+    case _WKSOAuthorizationLoadPolicyAllow:
+        return SOAuthorizationLoadPolicy::Allow;
+    case _WKSOAuthorizationLoadPolicyIgnore:
+        return SOAuthorizationLoadPolicy::Ignore;
+    }
+    ASSERT_NOT_REACHED();
+    return SOAuthorizationLoadPolicy::Allow;
+}
+
+static _WKSOAuthorizationLoadPolicy wkSOAuthorizationLoadPolicy(SOAuthorizationLoadPolicy policy)
+{
+    switch (policy) {
+    case SOAuthorizationLoadPolicy::Allow:
+        return _WKSOAuthorizationLoadPolicyAllow;
+    case SOAuthorizationLoadPolicy::Ignore:
+        return _WKSOAuthorizationLoadPolicyIgnore;
+    }
+    ASSERT_NOT_REACHED();
+    return _WKSOAuthorizationLoadPolicyAllow;
+}
+
+void NavigationState::NavigationClient::decidePolicyForSOAuthorizationLoad(WebPageProxy&, SOAuthorizationLoadPolicy currentSOAuthorizationLoadPolicy, const String& extension, CompletionHandler<void(SOAuthorizationLoadPolicy)>&& completionHandler)
+{
+    if (!m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForSOAuthorizationLoadWithCurrentPolicyForExtensionCompletionHandler) {
+        completionHandler(currentSOAuthorizationLoadPolicy);
+        return;
+    }
+
+    auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
+    if (!navigationDelegate) {
+        completionHandler(currentSOAuthorizationLoadPolicy);
+        return;
+    }
+
+    auto checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), @selector(_webView:decidePolicyForSOAuthorizationLoadWithCurrentPolicy:forExtension:completionHandler:));
+    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView decidePolicyForSOAuthorizationLoadWithCurrentPolicy:wkSOAuthorizationLoadPolicy(currentSOAuthorizationLoadPolicy) forExtension:extension completionHandler:makeBlockPtr([completionHandler = WTFMove(completionHandler), checker = WTFMove(checker)](_WKSOAuthorizationLoadPolicy policy) mutable {
+        if (checker->completionHandlerHasBeenCalled())
+            return;
+        checker->didCallCompletionHandler();
+        completionHandler(soAuthorizationLoadPolicy(policy));
+    }).get()];
 }
 #endif
 

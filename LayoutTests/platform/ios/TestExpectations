@@ -2705,6 +2705,7 @@ webkit.org/b/158420 http/tests/navigation/redirect-to-fragment2.html [ Failure ]
 
 # These tests are not supported on ios-simulator
 workers/wasm-hashset-many-2.html [ Skip ]
+workers/wasm-references.html [ Skip ]
 workers/wasm-hashset-many.html [ Skip ]
 workers/wasm-hashset.html [ Skip ]
 workers/wasm-long-compile-many.html [ Skip ]
@@ -3250,3 +3251,6 @@ webkit.org/b/197778 [ Debug ] webgl/2.0.0/conformance2/attribs/gl-vertexattribip
 
 # Was unskipped, but now has missing results in iOS . Skipping on iOS only.
 media/controls-after-reload.html [ Skip ]
+
+# FIXME: Unskip the following test once we have the fix for <rdar://problem/48322899>.
+editing/selection/ios/select-non-editable-text-using-keyboard.html [ Skip ]

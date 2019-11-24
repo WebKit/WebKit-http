@@ -83,7 +83,7 @@ class ConfigureBuild(buildstep.BuildStep):
     def getPatchURL(self, patch_id):
         if not patch_id:
             return None
-        return '{}attachment.cgi?id={}'.format(BUG_SERVER_URL, patch_id)
+        return '{}attachment.cgi?id={}&action=prettypatch'.format(BUG_SERVER_URL, patch_id)
 
 
 class CheckOutSource(git.Git):
@@ -96,6 +96,7 @@ class CheckOutSource(git.Git):
                                                 retry=self.CHECKOUT_DELAY_AND_MAX_RETRIES_PAIR,
                                                 timeout=2 * 60 * 60,
                                                 alwaysUseLatest=True,
+                                                logEnviron=False,
                                                 method='clean',
                                                 progress=True,
                                                 **kwargs)
@@ -105,6 +106,23 @@ class CheckOutSource(git.Git):
             return {u'step': u'Failed to updated working directory'}
         else:
             return {u'step': u'Cleaned and updated working directory'}
+
+
+class CheckOutSpecificRevision(shell.ShellCommand):
+    name = 'checkout-specific-revision'
+    descriptionDone = ['Checked out required revision']
+    flunkOnFailure = False
+    haltOnFailure = False
+
+    def doStepIf(self, step):
+        return self.getProperty('ews_revision', False)
+
+    def hideStepIf(self, results, step):
+        return not self.doStepIf(step)
+
+    def start(self):
+        self.setCommand(['git', 'checkout', self.getProperty('ews_revision')])
+        return shell.ShellCommand.start(self)
 
 
 class CleanWorkingDirectory(shell.ShellCommand):
@@ -123,6 +141,9 @@ class ApplyPatch(shell.ShellCommand, CompositeStepMixin):
     flunkOnFailure = True
     haltOnFailure = True
     command = ['Tools/Scripts/svn-apply', '--force', '.buildbot-diff']
+
+    def __init__(self, **kwargs):
+        super(ApplyPatch, self).__init__(timeout=5 * 60, logEnviron=False, **kwargs)
 
     def _get_patch(self):
         sourcestamp = self.build.getSourceStamp(self.getProperty('codebase', ''))
@@ -384,7 +405,7 @@ class UnApplyPatchIfRequired(CleanWorkingDirectory):
     descriptionDone = ['Unapplied patch']
 
     def doStepIf(self, step):
-        return self.getProperty('patchFailedToBuild') or self.getProperty('patchFailedJSCTests') or self.getProperty('patchFailedAPITests')
+        return self.getProperty('patchFailedToBuild') or self.getProperty('patchFailedTests')
 
     def hideStepIf(self, results, step):
         return not self.doStepIf(step)
@@ -404,6 +425,7 @@ class Trigger(trigger.Trigger):
             'fullPlatform': properties.Property('fullPlatform'),
             'architecture': properties.Property('architecture'),
             'owner': properties.Property('owner'),
+            'ews_revision': properties.Property('got_revision'),
         }
 
 
@@ -617,7 +639,7 @@ class CompileWebKit(shell.Compile):
     def evaluateCommand(self, cmd):
         if cmd.didFail():
             self.setProperty('patchFailedToBuild', True)
-            self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(), CompileWebKitToT()])
+            self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(), CompileWebKitToT(), AnalyzeCompileWebKitResults()])
         else:
             self.build.addStepsAfterCurrentStep([ArchiveBuiltProduct(), UploadBuiltProduct(), TransferToS3()])
 
@@ -626,16 +648,45 @@ class CompileWebKit(shell.Compile):
 
 class CompileWebKitToT(CompileWebKit):
     name = 'compile-webkit-tot'
-    haltOnFailure = True
+    haltOnFailure = False
 
     def doStepIf(self, step):
-        return self.getProperty('patchFailedToBuild') or self.getProperty('patchFailedAPITests')
+        return self.getProperty('patchFailedToBuild') or self.getProperty('patchFailedTests')
 
     def hideStepIf(self, results, step):
         return not self.doStepIf(step)
 
     def evaluateCommand(self, cmd):
         return shell.Compile.evaluateCommand(self, cmd)
+
+
+class AnalyzeCompileWebKitResults(buildstep.BuildStep):
+    name = 'analyze-compile-webkit-results'
+    description = ['analyze-compile-webkit-results']
+    descriptionDone = ['analyze-compile-webkit-results']
+
+    def start(self):
+        compile_webkit_tot_result = self.getStepResult(CompileWebKitToT.name)
+
+        if compile_webkit_tot_result == FAILURE:
+            self.finished(FAILURE)
+            message = 'Unable to build WebKit without patch, retrying build'
+            self.descriptionDone = message
+            self.build.buildFinished([message], RETRY)
+            return defer.succeed(None)
+
+        self.finished(FAILURE)
+        self.build.results = FAILURE
+        message = 'Patch does not build'
+        self.descriptionDone = message
+        self.build.buildFinished([message], FAILURE)
+
+        return defer.succeed(None)
+
+    def getStepResult(self, step_name):
+        for step in self.build.executedSteps:
+            if step.name == step_name:
+                return step.results
 
 
 class CompileJSCOnly(CompileWebKit):
@@ -669,7 +720,7 @@ class RunJavaScriptCoreTests(shell.Test):
 
     def evaluateCommand(self, cmd):
         if cmd.didFail():
-            self.setProperty('patchFailedJSCTests', True)
+            self.setProperty('patchFailedTests', True)
 
         return super(RunJavaScriptCoreTests, self).evaluateCommand(cmd)
 
@@ -678,13 +729,13 @@ class ReRunJavaScriptCoreTests(RunJavaScriptCoreTests):
     name = 'jscore-test-rerun'
 
     def doStepIf(self, step):
-        return self.getProperty('patchFailedJSCTests')
+        return self.getProperty('patchFailedTests')
 
     def hideStepIf(self, results, step):
         return not self.doStepIf(step)
 
     def evaluateCommand(self, cmd):
-        self.setProperty('patchFailedJSCTests', cmd.didFail())
+        self.setProperty('patchFailedTests', cmd.didFail())
         return super(RunJavaScriptCoreTests, self).evaluateCommand(cmd)
 
 
@@ -694,7 +745,7 @@ class RunJavaScriptCoreTestsToT(RunJavaScriptCoreTests):
     command = ['perl', 'Tools/Scripts/run-javascriptcore-tests', '--no-fail-fast', '--json-output={0}'.format(jsonFileName), WithProperties('--%(configuration)s')]
 
     def doStepIf(self, step):
-        return self.getProperty('patchFailedJSCTests')
+        return self.getProperty('patchFailedTests')
 
     def hideStepIf(self, results, step):
         return not self.doStepIf(step)
@@ -714,7 +765,7 @@ class KillOldProcesses(shell.Compile):
     command = ['python', 'Tools/BuildSlaveSupport/kill-old-processes', 'buildbot']
 
     def __init__(self, **kwargs):
-        super(KillOldProcesses, self).__init__(timeout=60, **kwargs)
+        super(KillOldProcesses, self).__init__(timeout=60, logEnviron=False, **kwargs)
 
 
 class RunWebKitTests(shell.Test):
@@ -742,6 +793,42 @@ class RunWebKitTests(shell.Test):
             self.setCommand(self.command + additionalArguments)
         return shell.Test.start(self)
 
+    def evaluateCommand(self, cmd):
+        rc = super(RunWebKitTests, self).evaluateCommand(cmd)
+        if rc == SUCCESS:
+            message = 'Passed layout tests'
+            self.descriptionDone = message
+            self.build.results = SUCCESS
+            self.build.buildFinished([message], SUCCESS)
+        else:
+            self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(), ExtractTestResults(), ReRunWebKitTests()])
+        return rc
+
+
+class ReRunWebKitTests(RunWebKitTests):
+    name = 're-run-layout-tests'
+
+    def evaluateCommand(self, cmd):
+        rc = shell.Test.evaluateCommand(self, cmd)
+        if rc == SUCCESS:
+            message = 'Passed layout tests'
+            self.descriptionDone = message
+            self.build.results = SUCCESS
+            self.build.buildFinished([message], SUCCESS)
+        else:
+            self.setProperty('patchFailedTests', True)
+            self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(identifier='rerun'), ExtractTestResults(identifier='rerun'), UnApplyPatchIfRequired(), CompileWebKitToT(), RunWebKitTestsWithoutPatch()])
+        return rc
+
+
+class RunWebKitTestsWithoutPatch(RunWebKitTests):
+    name = 'run-layout-tests-without-patch'
+
+    def evaluateCommand(self, cmd):
+        rc = shell.Test.evaluateCommand(self, cmd)
+        self.build.addStepsAfterCurrentStep([ArchiveTestResults(), UploadTestResults(identifier='clean-tree'), ExtractTestResults(identifier='clean-tree')])
+        return rc
+
 
 class RunWebKit1Tests(RunWebKitTests):
     def start(self):
@@ -757,6 +844,9 @@ class ArchiveBuiltProduct(shell.ShellCommand):
     description = ['archiving built product']
     descriptionDone = ['Archived built product']
     haltOnFailure = True
+
+    def __init__(self, **kwargs):
+        super(ArchiveBuiltProduct, self).__init__(logEnviron=False, **kwargs)
 
 
 class UploadBuiltProduct(transfer.FileUpload):
@@ -837,6 +927,9 @@ class DownloadBuiltProduct(shell.ShellCommand):
             return {u'step': u'Failed to download built product from S3'}
         return super(DownloadBuiltProduct, self).getResultSummary()
 
+    def __init__(self, **kwargs):
+        super(DownloadBuiltProduct, self).__init__(logEnviron=False, **kwargs)
+
 
 class ExtractBuiltProduct(shell.ShellCommand):
     command = ['python', 'Tools/BuildSlaveSupport/built-product-archive',
@@ -846,6 +939,9 @@ class ExtractBuiltProduct(shell.ShellCommand):
     descriptionDone = ['Extracted built product']
     haltOnFailure = True
     flunkOnFailure = True
+
+    def __init__(self, **kwargs):
+        super(ExtractBuiltProduct, self).__init__(logEnviron=False, **kwargs)
 
 
 class RunAPITests(TestWithFailureCount):
@@ -857,6 +953,9 @@ class RunAPITests(TestWithFailureCount):
     command = ['python', 'Tools/Scripts/run-api-tests', '--no-build',
                WithProperties('--%(configuration)s'), '--verbose', '--json-output={0}'.format(jsonFileName)]
     failedTestsFormatString = '%d api test%s failed or timed out'
+
+    def __init__(self, **kwargs):
+        super(RunAPITests, self).__init__(logEnviron=False, **kwargs)
 
     def start(self):
         appendCustomBuildFlags(self, self.getProperty('platform'), self.getProperty('fullPlatform'))
@@ -893,7 +992,7 @@ class ReRunAPITests(RunAPITests):
             self.build.results = SUCCESS
             self.build.buildFinished([message], SUCCESS)
         else:
-            self.setProperty('patchFailedAPITests', True)
+            self.setProperty('patchFailedTests', True)
             self.build.addStepsAfterCurrentStep([UnApplyPatchIfRequired(), CompileWebKitToT(), RunAPITestsWithoutPatch(), AnalyzeAPITestsResults()])
         return rc
 
@@ -1025,12 +1124,13 @@ class UploadTestResults(transfer.FileUpload):
     name = 'upload-test-results'
     descriptionDone = ['Uploaded test results']
     workersrc = 'layout-test-results.zip'
-    masterdest = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:patch_id)s-%(prop:buildnumber)s.zip')
     haltOnFailure = True
 
-    def __init__(self, **kwargs):
+    def __init__(self, identifier='', **kwargs):
+        if identifier and not identifier.startswith('-'):
+            identifier = '-{}'.format(identifier)
         kwargs['workersrc'] = self.workersrc
-        kwargs['masterdest'] = self.masterdest
+        kwargs['masterdest'] = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:patch_id)s-%(prop:buildnumber)s{}.zip'.format(identifier))
         kwargs['mode'] = 0644
         kwargs['blocksize'] = 1024 * 256
         transfer.FileUpload.__init__(self, **kwargs)
@@ -1038,21 +1138,30 @@ class UploadTestResults(transfer.FileUpload):
 
 class ExtractTestResults(master.MasterShellCommand):
     name = 'extract-test-results'
-    zipFile = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:patch_id)s-%(prop:buildnumber)s.zip')
-    resultDirectory = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:patch_id)s-%(prop:buildnumber)s')
-
     descriptionDone = ['Extracted test results']
-    command = ['unzip', zipFile, '-d', resultDirectory]
-    renderables = ['resultDirectory']
+    renderables = ['resultDirectory', 'zipFile']
+    haltOnFailure = False
+    flunkOnFailure = False
 
-    def __init__(self):
+    def __init__(self, identifier=''):
+        if identifier and not identifier.startswith('-'):
+            identifier = '-{}'.format(identifier)
+
+        self.zipFile = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:patch_id)s-%(prop:buildnumber)s{}.zip'.format(identifier))
+        self.resultDirectory = Interpolate('public_html/results/%(prop:buildername)s/r%(prop:patch_id)s-%(prop:buildnumber)s{}'.format(identifier))
+        self.command = ['unzip', self.zipFile, '-d', self.resultDirectory]
+
         super(ExtractTestResults, self).__init__(self.command)
 
     def resultDirectoryURL(self):
         return self.resultDirectory.replace('public_html/', '/') + '/'
 
+    def resultsDownloadURL(self):
+        return self.zipFile.replace('public_html/', '/')
+
     def addCustomURLs(self):
         self.addURL('view layout test results', self.resultDirectoryURL() + 'results.html')
+        self.addURL('download layout test results', self.resultsDownloadURL())
 
     def finished(self, result):
         self.addCustomURLs()
@@ -1066,20 +1175,33 @@ class PrintConfiguration(steps.ShellSequence):
     flunkOnFailure = False
     warnOnFailure = False
     logEnviron = False
-    command_list = [['hostname'],
+    command_list_generic = [['hostname'],
                     ['df', '-hl'],
-                    ['date'],
-                    ['sw_vers'],
-                    ['xcodebuild', '-sdk', '-version']]
+                    ['date']]
+    command_list_apple = [['sw_vers'], ['xcodebuild', '-sdk', '-version']]
+    command_list_linux = [['uname', '-a']]
+    command_list_win = [[]]  # TODO: add windows specific commands here
 
     def __init__(self, **kwargs):
         super(PrintConfiguration, self).__init__(timeout=60, **kwargs)
         self.commands = []
         self.log_observer = logobserver.BufferLogObserver(wantStderr=True)
         self.addLogObserver('stdio', self.log_observer)
-        # FIXME: Check platform before running platform specific commands.
-        for command in self.command_list:
+
+    def run(self):
+        command_list = list(self.command_list_generic)
+        platform = self.getProperty('platform')
+        platform = platform.split('-')[0]
+        if platform in ('mac', 'ios', '*'):
+            command_list.extend(self.command_list_apple)
+        elif platform in ('gtk', 'wpe'):
+            command_list.extend(self.command_list_linux)
+        elif platform in ('win', 'wincairo'):
+            command_list.extend(self.command_list_win)
+
+        for command in command_list:
             self.commands.append(util.ShellArg(command=command, logfile='stdio'))
+        return super(PrintConfiguration, self).run()
 
     def convert_build_to_os_name(self, build):
         if not build:
@@ -1108,7 +1230,7 @@ class PrintConfiguration(steps.ShellSequence):
         if self.results != SUCCESS:
             return {u'step': u'Failed to print configuration'}
         logText = self.log_observer.getStdout() + self.log_observer.getStderr()
-        configuration = u''
+        configuration = u'Printed configuration'
         match = re.search('ProductVersion:[ \t]*(.+?)\n', logText)
         if match:
             os_version = match.group(1).strip()

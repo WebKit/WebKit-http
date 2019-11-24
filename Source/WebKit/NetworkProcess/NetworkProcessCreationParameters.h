@@ -86,7 +86,7 @@ struct NetworkProcessCreationParameters {
     WebsiteDataStoreParameters defaultDataStoreParameters;
     
 #if USE(SOUP)
-    HTTPCookieAcceptPolicy cookieAcceptPolicy { HTTPCookieAcceptPolicyAlways };
+    HTTPCookieAcceptPolicy cookieAcceptPolicy { HTTPCookieAcceptPolicy::AlwaysAccept };
     bool ignoreTLSErrors { false };
     Vector<String> languages;
     WebCore::SoupNetworkProxySettings proxySettings;
@@ -107,7 +107,6 @@ struct NetworkProcessCreationParameters {
     bool shouldDisableServiceWorkerProcessTerminationDelay { false };
 #endif
     bool shouldEnableITPDatabase { false };
-    bool isITPFirstPartyWebsiteDataRemovalEnabled { true };
     uint32_t downloadMonitorSpeedMultiplier { 1 };
     bool enableAdClickAttributionDebugMode { false };
     String hstsStorageDirectory;

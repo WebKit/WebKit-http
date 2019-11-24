@@ -26,8 +26,6 @@
 #include "config.h"
 #include "GestureController.h"
 
-#if HAVE(GTK_GESTURES)
-
 #include <WebCore/Scrollbar.h>
 #include <gtk/gtk.h>
 
@@ -53,11 +51,7 @@ bool GestureController::handleEvent(GdkEvent* event)
     m_swipeGesture.handleEvent(event);
     m_zoomGesture.handleEvent(event);
     m_longpressGesture.handleEvent(event);
-#if GTK_CHECK_VERSION(3, 10, 0)
     touchEnd = (gdk_event_get_event_type(event) == GDK_TOUCH_END) || (gdk_event_get_event_type(event) == GDK_TOUCH_CANCEL);
-#else
-    touchEnd = (event->type == GDK_TOUCH_END) || (event->type == GDK_TOUCH_CANCEL);
-#endif
     return touchEnd ? wasProcessingGestures : isProcessingGestures();
 }
 
@@ -99,6 +93,12 @@ void GestureController::DragGesture::handleDrag(GdkEvent* event, double x, doubl
     ASSERT(m_inDrag);
     m_client.drag(reinterpret_cast<GdkEventTouch*>(event), m_start,
         FloatPoint::narrowPrecision((m_offset.x() - x) / Scrollbar::pixelsPerLineStep(), (m_offset.y() - y) / Scrollbar::pixelsPerLineStep()));
+}
+
+void GestureController::DragGesture::cancelDrag()
+{
+    ASSERT(m_inDrag);
+    m_client.cancelDrag();
 }
 
 void GestureController::DragGesture::handleTap(GdkEvent* event)
@@ -151,6 +151,12 @@ void GestureController::DragGesture::end(DragGesture* dragGesture, GdkEventSeque
     }
 }
 
+void GestureController::DragGesture::cancel(DragGesture* dragGesture, GdkEventSequence* sequence, GtkGesture* gesture)
+{
+    dragGesture->m_longPressTimeout.stop();
+    dragGesture->cancelDrag();
+}
+
 void GestureController::DragGesture::longPressFired()
 {
     m_inDrag = true;
@@ -164,6 +170,7 @@ GestureController::DragGesture::DragGesture(GtkWidget* widget, GestureController
     g_signal_connect_swapped(m_gesture.get(), "drag-begin", G_CALLBACK(begin), this);
     g_signal_connect_swapped(m_gesture.get(), "drag-update", G_CALLBACK(update), this);
     g_signal_connect_swapped(m_gesture.get(), "end", G_CALLBACK(end), this);
+    g_signal_connect_swapped(m_gesture.get(), "cancel", G_CALLBACK(cancel), this);
 }
 
 void GestureController::SwipeGesture::startMomentumScroll(GdkEvent* event, double velocityX, double velocityY)
@@ -263,5 +270,3 @@ GestureController::LongPressGesture::LongPressGesture(GtkWidget* widget, Gesture
 }
 
 } // namespace WebKit
-
-#endif // HAVE(GTK_GESTURES)

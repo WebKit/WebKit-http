@@ -55,22 +55,32 @@ namespace WHLSL {
 class EscapedVariableCollector : public Visitor {
     using Base = Visitor;
 public:
-    void visit(AST::MakePointerExpression& makePointerExpression) override
+
+    void escapeVariableUse(AST::Expression& expression)
     {
-        if (!is<AST::VariableReference>(makePointerExpression.leftValue())) {
+        if (!is<AST::VariableReference>(expression)) {
             // FIXME: Are we missing any interesting productions here?
             // https://bugs.webkit.org/show_bug.cgi?id=198311
-            Base::visit(makePointerExpression.leftValue());
+            Base::visit(expression);
             return;
         }
 
-        auto& variableReference = downcast<AST::VariableReference>(makePointerExpression.leftValue());
-        auto* variable = variableReference.variable();
+        auto* variable = downcast<AST::VariableReference>(expression).variable();
         ASSERT(variable);
         // FIXME: We could skip this if we mark all internal variables with a bit, since we
         // never make any internal variable escape the current scope it is defined in:
         // https://bugs.webkit.org/show_bug.cgi?id=198383
         m_escapedVariables.add(variable, makeString("_", variable->name(), "_", m_count++));
+    }
+
+    void visit(AST::MakePointerExpression& makePointerExpression) override
+    {
+        escapeVariableUse(makePointerExpression.leftValue());
+    }
+
+    void visit(AST::MakeArrayReferenceExpression& makeArrayReferenceExpression) override
+    {
+        escapeVariableUse(makeArrayReferenceExpression.leftValue());
     }
 
     HashMap<AST::VariableDeclaration*, String> takeEscapedVariables() { return WTFMove(m_escapedVariables); }
@@ -124,7 +134,7 @@ public:
         bool isEntryPoint = !!functionDefinition.entryPointType();
         if (isEntryPoint) {
             auto structVariableDeclaration = makeUniqueRef<AST::VariableDeclaration>(functionDefinition.origin(), AST::Qualifiers(),
-                m_structType->clone(), String(), WTF::nullopt, WTF::nullopt);
+                m_structType->clone(), String(), WTF::nullopt, nullptr);
 
             auto structVariableReference = makeUniqueRef<AST::VariableReference>(AST::VariableReference::wrap(structVariableDeclaration));
             structVariableReference->setType(m_structType->clone());
@@ -134,12 +144,12 @@ public:
             structVariableDeclarations.append(WTFMove(structVariableDeclaration));
             auto structDeclarationStatement = makeUniqueRef<AST::VariableDeclarationsStatement>(functionDefinition.origin(), WTFMove(structVariableDeclarations));
 
-            auto makePointerExpression = makeUniqueRef<AST::MakePointerExpression>(functionDefinition.origin(), WTFMove(structVariableReference));
+            auto makePointerExpression = std::make_unique<AST::MakePointerExpression>(functionDefinition.origin(), WTFMove(structVariableReference));
             makePointerExpression->setType(m_pointerToStructType->clone());
             makePointerExpression->setTypeAnnotation(AST::RightValue());
 
             auto pointerDeclaration = makeUniqueRef<AST::VariableDeclaration>(functionDefinition.origin(), AST::Qualifiers(),
-                m_pointerToStructType->clone(), "wrapper"_s, WTF::nullopt, Optional<UniqueRef<AST::Expression>>(WTFMove(makePointerExpression)));
+                m_pointerToStructType->clone(), "wrapper"_s, WTF::nullopt, WTFMove(makePointerExpression));
             m_structVariable = &pointerDeclaration;
 
             AST::VariableDeclarations pointerVariableDeclarations;
@@ -150,7 +160,7 @@ public:
             functionDefinition.block().statements().insert(1, WTFMove(pointerDeclarationStatement));
         } else {
             auto pointerDeclaration = makeUniqueRef<AST::VariableDeclaration>(functionDefinition.origin(), AST::Qualifiers(),
-                m_pointerToStructType->clone(), "wrapper"_s, WTF::nullopt, WTF::nullopt);
+                m_pointerToStructType->clone(), "wrapper"_s, WTF::nullopt, nullptr);
             m_structVariable = &pointerDeclaration;
             functionDefinition.parameters().append(WTFMove(pointerDeclaration));
         }

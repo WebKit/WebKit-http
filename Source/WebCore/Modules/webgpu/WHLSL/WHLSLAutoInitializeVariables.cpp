@@ -69,13 +69,16 @@ private:
 #else
         String functionName = "<zero-init>"_s;
 #endif
-        auto callExpression = makeUniqueRef<AST::CallExpression>(variableDeclaration.origin(), WTFMove(functionName), Vector<UniqueRef<AST::Expression>>());
+        auto callExpression = std::make_unique<AST::CallExpression>(variableDeclaration.origin(), WTFMove(functionName), Vector<UniqueRef<AST::Expression>>());
         callExpression->setType(type->clone());
         callExpression->setTypeAnnotation(AST::RightValue());
         callExpression->setOverloads(m_castFunctions);
         Vector<std::reference_wrapper<ResolvingType>> argumentTypes;
         auto* function = resolveFunctionOverload(*callExpression->overloads(), argumentTypes, type);
-        RELEASE_ASSERT(function);
+        if (!function) {
+            setError();
+            return;
+        }
         callExpression->setFunction(*function);
 
         variableDeclaration.setInitializer(WTFMove(callExpression));
@@ -85,10 +88,11 @@ private:
     Vector<std::reference_wrapper<AST::FunctionDeclaration>, 1>& m_castFunctions;
 };
 
-void autoInitializeVariables(Program& program)
+bool autoInitializeVariables(Program& program)
 {
     AutoInitialize autoInitialize(program.nameContext());
     autoInitialize.Visitor::visit(program);
+    return !autoInitialize.error();
 }
 
 } // namespace WHLSL

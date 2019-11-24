@@ -233,6 +233,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_DIR}"
     "${DERIVED_SOURCES_WPE_API_DIR}"
     "${WEBKIT_DIR}/NetworkProcess/CustomProtocols/soup"
+    "${WEBKIT_DIR}/NetworkProcess/glib"
     "${WEBKIT_DIR}/NetworkProcess/soup"
     "${WEBKIT_DIR}/NetworkProcess/unix"
     "${WEBKIT_DIR}/Platform/IPC/glib"
@@ -396,7 +397,6 @@ if (ENABLE_WPE_QT_API)
     set_target_properties(qtwpe PROPERTIES
         OUTPUT_NAME qtwpe
         AUTOMOC ON
-        CXX_STANDARD 17
     )
     target_compile_definitions(qtwpe PUBLIC QT_NO_KEYWORDS=1)
     target_link_libraries(qtwpe ${qtwpe_LIBRARIES})

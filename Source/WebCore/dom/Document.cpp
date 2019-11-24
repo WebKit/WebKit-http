@@ -5339,11 +5339,14 @@ bool Document::shouldCreateRenderers()
 
 static Editor::Command command(Document* document, const String& commandName, bool userInterface = false)
 {
-    RefPtr<Frame> frame = document->frame();
-    if (!frame || frame->document() != document)
-        return Editor::Command();
+    auto protectedDocument = makeRef(*document);
 
     document->updateStyleIfNeeded();
+
+    auto frame = makeRefPtr(document->frame());
+
+    if (!frame || frame->document() != document)
+        return Editor::Command();
 
     return frame->editor().command(commandName,
         userInterface ? CommandFromDOMWithUserInterface : CommandFromDOM);
@@ -6930,10 +6933,10 @@ bool Document::useDarkAppearance(const RenderStyle* style) const
     return false;
 }
 
-bool Document::useInactiveAppearance() const
+bool Document::useElevatedUserInterfaceLevel() const
 {
     if (auto* documentPage = page())
-        return documentPage->useInactiveAppearance();
+        return documentPage->useElevatedUserInterfaceLevel();
     return false;
 }
 
@@ -6944,8 +6947,8 @@ OptionSet<StyleColor::Options> Document::styleColorOptions(const RenderStyle* st
         options.add(StyleColor::Options::UseSystemAppearance);
     if (useDarkAppearance(style))
         options.add(StyleColor::Options::UseDarkAppearance);
-    if (useInactiveAppearance())
-        options.add(StyleColor::Options::UseInactiveAppearance);
+    if (useElevatedUserInterfaceLevel())
+        options.add(StyleColor::Options::UseElevatedUserInterfaceLevel);
     return options;
 }
 

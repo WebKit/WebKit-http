@@ -81,7 +81,6 @@ void ArrayPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
-    didBecomePrototype();
 
     putDirectWithoutTransition(vm, vm.propertyNames->toString, globalObject->arrayProtoToStringFunction(), static_cast<unsigned>(PropertyAttribute::DontEnum));
     putDirectWithoutTransition(vm, vm.propertyNames->builtinNames().valuesPublicName(), globalObject->arrayProtoValuesFunction(), static_cast<unsigned>(PropertyAttribute::DontEnum));
@@ -132,6 +131,8 @@ void ArrayPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
         &vm.propertyNames->builtinNames().fillPublicName(),
         &vm.propertyNames->builtinNames().findPublicName(),
         &vm.propertyNames->builtinNames().findIndexPublicName(),
+        &vm.propertyNames->builtinNames().flatPublicName(),
+        &vm.propertyNames->builtinNames().flatMapPublicName(),
         &vm.propertyNames->builtinNames().includesPublicName(),
         &vm.propertyNames->builtinNames().keysPublicName(),
         &vm.propertyNames->builtinNames().valuesPublicName()
@@ -1002,6 +1003,10 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSlice(ExecState* exec)
         result = constructEmptyArray(exec, nullptr, end - begin);
         RETURN_IF_EXCEPTION(scope, { });
     }
+
+    // Document that we need to keep the source array alive until after anything
+    // that can GC (e.g. allocating the result array).
+    thisObj->use();
 
     unsigned n = 0;
     for (unsigned k = begin; k < end; k++, n++) {

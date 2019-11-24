@@ -70,10 +70,12 @@ public:
 
     void addMessageToConsole(std::unique_ptr<ConsoleMessage>);
 
-    void startTiming(const String& title);
-    void stopTiming(const String& title, Ref<ScriptCallStack>&&);
+    void startTiming(JSC::ExecState*, const String& label);
+    void logTiming(JSC::ExecState*, const String& label, Ref<ScriptArguments>&&);
+    void stopTiming(JSC::ExecState*, const String& label);
     void takeHeapSnapshot(const String& title);
-    void count(JSC::ExecState*, Ref<ScriptArguments>&&);
+    void count(JSC::ExecState*, const String& label);
+    void countReset(JSC::ExecState*, const String& label);
 
     void getLoggingChannels(ErrorString&, RefPtr<JSON::ArrayOf<Protocol::Console::Channel>>&) override;
     void setLoggingChannelLevel(ErrorString&, const String& channel, const String& level) override;

@@ -54,6 +54,7 @@
 #import "UIDelegate.h"
 #import "UserMediaProcessManager.h"
 #import "VersionChecks.h"
+#import "VideoFullscreenManagerProxy.h"
 #import "ViewGestureController.h"
 #import "ViewSnapshotStore.h"
 #import "WKBackForwardListInternal.h"
@@ -479,10 +480,10 @@ static bool shouldAllowSettingAnyXHRHeaderFromFileURLs()
     return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
 }
 
-- (BOOL)_effectiveAppearanceIsInactive
+- (BOOL)_effectiveUserInterfaceLevelIsElevated
 {
 #if HAVE(OS_DARK_MODE_SUPPORT) && !PLATFORM(WATCHOS)
-    return self.traitCollection.userInterfaceLevel != UIUserInterfaceLevelElevated;
+    return self.traitCollection.userInterfaceLevel == UIUserInterfaceLevelElevated;
 #else
     return NO;
 #endif
@@ -982,6 +983,11 @@ static void validate(WKWebViewConfiguration *configuration)
     return [NSURL _web_URLWithWTFString:_page->pageLoadState().activeURL()];
 }
 
+- (NSURL *)_resourceDirectoryURL
+{
+    return _page->currentResourceDirectoryURL();
+}
+
 - (BOOL)isLoading
 {
     return _page->pageLoadState().isLoading();
@@ -1417,6 +1423,11 @@ static _WKSelectionAttributes selectionAttributes(const WebKit::EditorState& edi
 - (BOOL)_contentViewIsFirstResponder
 {
     return self._currentContentView.isFirstResponder;
+}
+
+- (BOOL)_shouldAvoidResizingWhenInputViewBoundsChange
+{
+    return [_contentView _shouldAvoidResizingWhenInputViewBoundsChange];
 }
 
 - (_WKDragInteractionPolicy)_dragInteractionPolicy
@@ -4730,6 +4741,20 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 #endif
 }
 
+- (void)_closeAllMediaPresentations
+{
+#if ENABLE(FULLSCREEN_API)
+    if (auto videoFullscreenManager = _page->videoFullscreenManager()) {
+        videoFullscreenManager->forEachSession([] (auto& model, auto& interface) {
+            model.requestFullscreenMode(WebCore::HTMLMediaElementEnums::VideoFullscreenModeNone);
+        });
+    }
+
+    if (auto fullScreenManager = _page->fullScreenManager(); fullScreenManager && fullScreenManager->isFullScreen())
+        fullScreenManager->close();
+#endif
+}
+
 - (void)_stopAllMediaPlayback
 {
     _page->stopAllMediaPlayback();
@@ -6350,13 +6375,13 @@ static WTF::Optional<WebCore::ViewportArguments> viewportArgumentsFromDictionary
 
 - (_WKWebViewPrintFormatter *)_webViewPrintFormatter
 {
-#if !PLATFORM(IOSMAC)
+#if !PLATFORM(MACCATALYST)
     UIViewPrintFormatter *viewPrintFormatter = self.viewPrintFormatter;
     ASSERT([viewPrintFormatter isKindOfClass:[_WKWebViewPrintFormatter class]]);
     return (_WKWebViewPrintFormatter *)viewPrintFormatter;
 #else
     return nil;
-#endif // PLATFORM(IOSMAC)
+#endif // PLATFORM(MACCATALYST)
 }
 
 static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISemanticContentAttribute contentAttribute)
@@ -6670,7 +6695,6 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 {
     auto infoRequest = WebKit::InteractionInformationRequest(WebCore::roundedIntPoint(position));
     infoRequest.includeSnapshot = true;
-    infoRequest.readonly = true;
 
     [_contentView doAfterPositionInformationUpdate:[capturedBlock = makeBlockPtr(block)] (WebKit::InteractionInformationAtPosition information) {
         capturedBlock([_WKActivatedElementInfo activatedElementInfoWithInteractionInformationAtPosition:information]);
@@ -7457,7 +7481,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 #endif // PLATFORM(MAC)
 
-#if PLATFORM(IOS_FAMILY) && !PLATFORM(IOSMAC)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(MACCATALYST)
 @implementation WKWebView (_WKWebViewPrintFormatter)
 
 - (Class)_printFormatterClass

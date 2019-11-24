@@ -27,6 +27,8 @@
 
 #if PLATFORM(COCOA) && HAVE(NSURLSESSION_WEBSOCKET)
 #include "WebSocketTaskCocoa.h"
+#elif USE(SOUP)
+#include "WebSocketTaskSoup.h"
 #else
 
 namespace WebKit {

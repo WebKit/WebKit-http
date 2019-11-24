@@ -43,6 +43,7 @@
 #import "GraphicsContext.h"
 #import "GraphicsContext3D.h"
 #import "GraphicsContextCG.h"
+#import "ImageRotationSessionVT.h"
 #import "InbandMetadataTextTrackPrivateAVF.h"
 #import "InbandTextTrackPrivateAVFObjC.h"
 #import "InbandTextTrackPrivateLegacyAVFObjC.h"
@@ -888,7 +889,7 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayer()
     }
 #endif
 
-#if PLATFORM(IOS_FAMILY) && !PLATFORM(IOS_FAMILY_SIMULATOR) && !PLATFORM(IOSMAC)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(IOS_FAMILY_SIMULATOR) && !PLATFORM(MACCATALYST)
     setShouldDisableSleep(player()->shouldDisableSleep());
 #endif
 
@@ -1863,6 +1864,29 @@ void MediaPlayerPrivateAVFoundationObjC::tracksChanged()
     setDelayCharacteristicsChangedNotification(false);
 }
 
+void MediaPlayerPrivateAVFoundationObjC::updateRotationSession()
+{
+    AffineTransform finalTransform = m_avAsset.get().preferredTransform;
+    FloatSize naturalSize;
+    if (auto* firstEnabledVideoTrack = firstEnabledTrack([m_avAsset.get() tracksWithMediaCharacteristic:AVMediaCharacteristicVisual])) {
+        naturalSize = FloatSize(firstEnabledVideoTrack.naturalSize);
+        finalTransform *= firstEnabledVideoTrack.preferredTransform;
+    }
+
+    if (finalTransform.isIdentity()) {
+        m_imageRotationSession = nullptr;
+        return;
+    }
+
+    if (m_imageRotationSession
+        && m_imageRotationSession->transform()
+        && m_imageRotationSession->transform().value() == finalTransform
+        && m_imageRotationSession->size() == naturalSize)
+        return;
+
+    m_imageRotationSession = std::make_unique<ImageRotationSessionVT>(WTFMove(finalTransform), naturalSize, kCVPixelFormatType_32BGRA, ImageRotationSessionVT::IsCGImageCompatible::Yes);
+}
+
 #if ENABLE(VIDEO_TRACK)
 
 template <typename RefT, typename PassRefT>
@@ -2053,6 +2077,7 @@ void MediaPlayerPrivateAVFoundationObjC::sizeChanged()
     if (!m_avAsset)
         return;
 
+    updateRotationSession();
     setNaturalSize(m_cachedPresentationSize);
 }
 
@@ -2140,6 +2165,10 @@ bool MediaPlayerPrivateAVFoundationObjC::updateLastPixelBuffer()
         return false;
 
     m_lastPixelBuffer = adoptCF([m_videoOutput.get() copyPixelBufferForItemTime:currentTime itemTimeForDisplay:nil]);
+
+    if (m_imageRotationSession)
+        m_lastPixelBuffer = m_imageRotationSession->rotate(m_lastPixelBuffer.get());
+
     m_lastImage = nullptr;
     return true;
 }
@@ -2206,13 +2235,8 @@ void MediaPlayerPrivateAVFoundationObjC::paintWithVideoOutput(GraphicsContext& c
 
     INFO_LOG(LOGIDENTIFIER);
 
-    GraphicsContextStateSaver stateSaver(context);
     FloatRect imageRect(0, 0, CGImageGetWidth(m_lastImage.get()), CGImageGetHeight(m_lastImage.get()));
-    AffineTransform videoTransform = [firstEnabledVideoTrack preferredTransform];
-    FloatRect transformedOutputRect = videoTransform.inverse().valueOr(AffineTransform()).mapRect(outputRect);
-
-    context.concatCTM(videoTransform);
-    context.drawNativeImage(m_lastImage.get(), imageRect.size(), transformedOutputRect, imageRect);
+    context.drawNativeImage(m_lastImage.get(), imageRect.size(), outputRect, imageRect);
 
     // If we have created an AVAssetImageGenerator in the past due to m_videoOutput not having an available
     // video frame, destroy it now that it is no longer needed.
@@ -3115,7 +3139,7 @@ void MediaPlayerPrivateAVFoundationObjC::canPlayFastReverseDidChange(bool newVal
 
 void MediaPlayerPrivateAVFoundationObjC::setShouldDisableSleep(bool flag)
 {
-#if PLATFORM(IOS_FAMILY) && !PLATFORM(IOS_FAMILY_SIMULATOR) && !PLATFORM(IOSMAC)
+#if PLATFORM(IOS_FAMILY) && !PLATFORM(IOS_FAMILY_SIMULATOR) && !PLATFORM(MACCATALYST)
     ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [m_avPlayer _setPreventsSleepDuringVideoPlayback:flag];
     ALLOW_DEPRECATED_DECLARATIONS_END

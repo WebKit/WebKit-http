@@ -176,6 +176,8 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 
 @property (nonatomic, readonly, getter=_isShowingNavigationGestureSnapshot) BOOL _showingNavigationGestureSnapshot;
 
+@property (nonatomic, readonly) NSURL *_resourceDirectoryURL WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
+
 - (void)_close;
 
 - (void)_updateWebsitePolicies:(_WKWebsitePolicies *)websitePolicies WK_API_AVAILABLE(macos(10.13), ios(11.0));
@@ -270,6 +272,7 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 @property (nonatomic, readonly) _WKWebViewPrintFormatter *_webViewPrintFormatter;
 
 @property (nonatomic, setter=_setDragInteractionPolicy:) _WKDragInteractionPolicy _dragInteractionPolicy WK_API_AVAILABLE(ios(11.0));
+@property (nonatomic, readonly) BOOL _shouldAvoidResizingWhenInputViewBoundsChange WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 - (void)_beginInteractiveObscuredInsetsChange;
 - (void)_endInteractiveObscuredInsetsChange;
@@ -421,13 +424,14 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 - (void)_stopAllMediaPlayback;
 - (void)_suspendAllMediaPlayback;
 - (void)_resumeAllMediaPlayback;
+- (void)_closeAllMediaPresentations;
 
 - (void)_requestTextInputContextsInRect:(CGRect)rect completionHandler:(void(^)(NSArray<_WKTextInputContext *> *))completionHandler WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 - (void)_focusTextInputContext:(_WKTextInputContext *)textInputElement completionHandler:(void(^)(BOOL))completionHandler WK_API_AVAILABLE(macos(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @end
 
-#if TARGET_OS_IOS || (defined(TARGET_OS_IOSMAC) && TARGET_OS_IOSMAC) || TARGET_OS_TV
+#if TARGET_OS_IPHONE && !TARGET_OS_WATCH
 @interface WKWebView (FullScreenAPI_Private)
 -(BOOL)hasFullScreenWindowController;
 -(void)closeFullScreenWindowController;

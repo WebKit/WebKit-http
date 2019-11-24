@@ -59,6 +59,10 @@
 #import <wtf/WeakObjCPtr.h>
 #import <wtf/text/WTFString.h>
 
+#if ENABLE(POINTER_EVENTS)
+#import <WebCore/PointerID.h>
+#endif
+
 namespace API {
 class OpenPanelParameters;
 }
@@ -95,6 +99,7 @@ struct WebAutocorrectionContext;
 @class _UIHighlightView;
 @class _UIWebHighlightLongPressGestureRecognizer;
 @class UIHoverGestureRecognizer;
+@class UITargetedPreview;
 @class WebEvent;
 @class WKActionSheetAssistant;
 @class WKContextMenuElementInfo;
@@ -215,7 +220,7 @@ struct WKAutoCorrectionData {
     RetainPtr<UITapGestureRecognizer> _stylusSingleTapGestureRecognizer;
     RetainPtr<WKInspectorNodeSearchGestureRecognizer> _inspectorNodeSearchGestureRecognizer;
 
-#if PLATFORM(IOSMAC)
+#if PLATFORM(MACCATALYST)
     RetainPtr<UIHoverGestureRecognizer> _hoverGestureRecognizer;
     RetainPtr<_UILookupGestureRecognizer> _lookupGestureRecognizer;
     CGPoint _lastHoverLocation;
@@ -249,9 +254,10 @@ struct WKAutoCorrectionData {
     RetainPtr<UIViewController> _contextMenuLegacyPreviewController;
     RetainPtr<UIMenu> _contextMenuLegacyMenu;
     BOOL _contextMenuHasRequestedLegacyData;
-#else
-    RetainPtr<UIPreviewItemController> _previewItemController;
+    BOOL _contextMenuActionProviderDelegateNeedsOverride;
+    RetainPtr<UITargetedPreview> _contextMenuInteractionTargetedPreview;
 #endif
+    RetainPtr<UIPreviewItemController> _previewItemController;
 #endif
 
     std::unique_ptr<WebKit::SmartMagnificationController> _smartMagnificationController;
@@ -318,6 +324,10 @@ struct WKAutoCorrectionData {
     BOOL _didAccessoryTabInitiateFocus;
     BOOL _isExpectingFastSingleTapCommit;
     BOOL _showDebugTapHighlightsForFastClicking;
+
+#if ENABLE(POINTER_EVENTS)
+    WebCore::PointerID m_commitPotentialTapPointerId;
+#endif
 
     BOOL _keyboardDidRequestDismissal;
 
@@ -515,6 +525,9 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 
 - (void)_didStartProvisionalLoadForMainFrame;
 
+@property (nonatomic, readonly) BOOL _shouldUseContextMenus;
+@property (nonatomic, readonly) BOOL _shouldAvoidResizingWhenInputViewBoundsChange;
+
 @end
 
 @interface WKContentView (WKTesting)
@@ -535,7 +548,7 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 
 #if HAVE(LINK_PREVIEW)
 #if USE(UICONTEXTMENU)
-@interface WKContentView (WKInteractionPreview) <UIContextMenuInteractionDelegate>
+@interface WKContentView (WKInteractionPreview) <UIContextMenuInteractionDelegate, UIPreviewItemDelegate>
 #else
 @interface WKContentView (WKInteractionPreview) <UIPreviewItemDelegate>
 #endif

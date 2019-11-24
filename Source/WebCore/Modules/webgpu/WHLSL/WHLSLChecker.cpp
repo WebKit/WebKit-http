@@ -122,8 +122,8 @@ static AST::NativeFunctionDeclaration resolveWithOperatorAnderIndexer(Lexer::Tok
     const bool isOperator = true;
     auto returnType = makeUniqueRef<AST::PointerType>(Lexer::Token(origin), firstArgument.addressSpace(), firstArgument.elementType().clone());
     AST::VariableDeclarations parameters;
-    parameters.append(makeUniqueRef<AST::VariableDeclaration>(Lexer::Token(origin), AST::Qualifiers(), firstArgument.clone(), String(), WTF::nullopt, WTF::nullopt));
-    parameters.append(makeUniqueRef<AST::VariableDeclaration>(Lexer::Token(origin), AST::Qualifiers(), UniqueRef<AST::UnnamedType>(AST::TypeReference::wrap(Lexer::Token(origin), intrinsics.uintType())), String(), WTF::nullopt, WTF::nullopt));
+    parameters.append(makeUniqueRef<AST::VariableDeclaration>(Lexer::Token(origin), AST::Qualifiers(), firstArgument.clone(), String(), WTF::nullopt, nullptr));
+    parameters.append(makeUniqueRef<AST::VariableDeclaration>(Lexer::Token(origin), AST::Qualifiers(), UniqueRef<AST::UnnamedType>(AST::TypeReference::wrap(Lexer::Token(origin), intrinsics.uintType())), String(), WTF::nullopt, nullptr));
     return AST::NativeFunctionDeclaration(AST::FunctionDeclaration(Lexer::Token(origin), AST::AttributeBlock(), WTF::nullopt, WTFMove(returnType), String("operator&[]", String::ConstructFromLiteral), WTFMove(parameters), WTF::nullopt, isOperator));
 }
 
@@ -132,7 +132,7 @@ static AST::NativeFunctionDeclaration resolveWithOperatorLength(Lexer::Token ori
     const bool isOperator = true;
     auto returnType = AST::TypeReference::wrap(Lexer::Token(origin), intrinsics.uintType());
     AST::VariableDeclarations parameters;
-    parameters.append(makeUniqueRef<AST::VariableDeclaration>(Lexer::Token(origin), AST::Qualifiers(), firstArgument.clone(), String(), WTF::nullopt, WTF::nullopt));
+    parameters.append(makeUniqueRef<AST::VariableDeclaration>(Lexer::Token(origin), AST::Qualifiers(), firstArgument.clone(), String(), WTF::nullopt, nullptr));
     return AST::NativeFunctionDeclaration(AST::FunctionDeclaration(Lexer::Token(origin), AST::AttributeBlock(), WTF::nullopt, WTFMove(returnType), String("operator.length", String::ConstructFromLiteral), WTFMove(parameters), WTF::nullopt, isOperator));
 }
 
@@ -153,8 +153,8 @@ static AST::NativeFunctionDeclaration resolveWithReferenceComparator(Lexer::Toke
         }));
     }));
     AST::VariableDeclarations parameters;
-    parameters.append(makeUniqueRef<AST::VariableDeclaration>(Lexer::Token(origin), AST::Qualifiers(), argumentType->clone(), String(), WTF::nullopt, WTF::nullopt));
-    parameters.append(makeUniqueRef<AST::VariableDeclaration>(Lexer::Token(origin), AST::Qualifiers(), UniqueRef<AST::UnnamedType>(WTFMove(argumentType)), String(), WTF::nullopt, WTF::nullopt));
+    parameters.append(makeUniqueRef<AST::VariableDeclaration>(Lexer::Token(origin), AST::Qualifiers(), argumentType->clone(), String(), WTF::nullopt, nullptr));
+    parameters.append(makeUniqueRef<AST::VariableDeclaration>(Lexer::Token(origin), AST::Qualifiers(), UniqueRef<AST::UnnamedType>(WTFMove(argumentType)), String(), WTF::nullopt, nullptr));
     return AST::NativeFunctionDeclaration(AST::FunctionDeclaration(Lexer::Token(origin), AST::AttributeBlock(), WTF::nullopt, WTFMove(returnType), String("operator==", String::ConstructFromLiteral), WTFMove(parameters), WTF::nullopt, isOperator));
 }
 
@@ -183,7 +183,7 @@ static Optional<AST::NativeFunctionDeclaration> resolveByInstantiation(const Str
             return resolveWithOperatorAnderIndexer(origin, *firstArgumentArrayRef, intrinsics);
     } else if (name == "operator.length" && types.size() == 1) {
         auto* firstArgumentReference = types[0].get().visit(WTF::makeVisitor([](UniqueRef<AST::UnnamedType>& unnamedType) -> AST::UnnamedType* {
-            if (is<AST::ArrayReferenceType>(static_cast<AST::UnnamedType&>(unnamedType)))
+            if (is<AST::ArrayReferenceType>(static_cast<AST::UnnamedType&>(unnamedType)) || is<AST::ArrayType>(static_cast<AST::UnnamedType&>(unnamedType)))
                 return &unnamedType;
             return nullptr;
         }, [](RefPtr<ResolvableTypeReference>&) -> AST::UnnamedType* {
@@ -452,7 +452,7 @@ public:
     {
     }
 
-    ~Checker() = default;
+    virtual ~Checker() = default;
 
     void visit(Program&) override;
 
@@ -463,7 +463,7 @@ private:
     bool isBoolType(ResolvingType&);
     struct RecurseInfo {
         ResolvingType& resolvingType;
-        AST::TypeAnnotation& typeAnnotation;
+        const AST::TypeAnnotation typeAnnotation;
     };
     Optional<RecurseInfo> recurseAndGetInfo(AST::Expression&, bool requiresLeftValue = false);
     Optional<RecurseInfo> getInfo(AST::Expression&, bool requiresLeftValue = false);
@@ -859,13 +859,15 @@ void Checker::visit(AST::ReadModifyWriteExpression& readModifyWriteExpression)
     if (!leftValueInfo)
         return;
 
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=198166 Figure out what to do with the ReadModifyWriteExpression's AnonymousVariables.
+    readModifyWriteExpression.oldValue().setType(leftValueInfo->resolvingType.getUnnamedType()->clone());
 
     auto newValueInfo = recurseAndGetInfo(readModifyWriteExpression.newValueExpression());
     if (!newValueInfo)
         return;
 
-    if (!matchAndCommit(leftValueInfo->resolvingType, newValueInfo->resolvingType)) {
+    if (Optional<UniqueRef<AST::UnnamedType>> matchedType = matchAndCommit(leftValueInfo->resolvingType, newValueInfo->resolvingType))
+        readModifyWriteExpression.newValue().setType(WTFMove(matchedType.value()));
+    else {
         setError();
         return;
     }
@@ -1130,10 +1132,7 @@ void Checker::visit(AST::VariableReference& variableReference)
     ASSERT(variableReference.variable());
     ASSERT(variableReference.variable()->type());
     
-    AST::TypeAnnotation typeAnnotation = AST::RightValue();
-    if (!variableReference.variable()->isAnonymous()) // FIXME: https://bugs.webkit.org/show_bug.cgi?id=198166 This doesn't seem right.
-        typeAnnotation = AST::LeftValue { AST::AddressSpace::Thread };
-    assignType(variableReference, variableReference.variable()->type()->clone(), WTFMove(typeAnnotation));
+    assignType(variableReference, variableReference.variable()->type()->clone(), AST::LeftValue { AST::AddressSpace::Thread });
 }
 
 void Checker::visit(AST::Return& returnStatement)

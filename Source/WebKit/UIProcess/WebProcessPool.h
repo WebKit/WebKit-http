@@ -43,6 +43,7 @@
 #include "VisitedLinkStore.h"
 #include "WebContextClient.h"
 #include "WebContextConnectionClient.h"
+#include "WebPreferencesStore.h"
 #include "WebProcessProxy.h"
 #include <WebCore/CrossSiteNavigationDataTransfer.h>
 #include <WebCore/ProcessIdentifier.h>
@@ -100,6 +101,7 @@ class HighPerformanceGraphicsUsageSampler;
 class UIGamepad;
 class PerActivityStateCPUUsageSampler;
 class ServiceWorkerProcessProxy;
+class SuspendedPageProxy;
 class WebAutomationSession;
 class WebContextSupplement;
 class WebPageGroup;
@@ -529,7 +531,7 @@ public:
 private:
     void platformInitialize();
 
-    void platformInitializeWebProcess(WebProcessCreationParameters&);
+    void platformInitializeWebProcess(const WebProcessProxy&, WebProcessCreationParameters&);
     void platformInvalidateContext();
 
     void processForNavigationInternal(WebPageProxy&, const API::Navigation&, Ref<WebProcessProxy>&& sourceProcess, const URL& sourceURL, ProcessSwapRequestedByClient, Ref<WebsiteDataStore>&&, CompletionHandler<void(Ref<WebProcessProxy>&&, SuspendedPageProxy*, const String&)>&&);
@@ -680,7 +682,7 @@ private:
     WebContextSupplementMap m_supplements;
 
 #if USE(SOUP)
-    HTTPCookieAcceptPolicy m_initialHTTPCookieAcceptPolicy { HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain };
+    HTTPCookieAcceptPolicy m_initialHTTPCookieAcceptPolicy { HTTPCookieAcceptPolicy::OnlyFromMainDocumentDomain };
     WebCore::SoupNetworkProxySettings m_networkProxySettings;
 #endif
     HashSet<String, ASCIICaseInsensitiveHash> m_urlSchemesRegisteredForCustomProtocols;

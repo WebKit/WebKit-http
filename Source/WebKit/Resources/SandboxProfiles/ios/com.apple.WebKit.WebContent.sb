@@ -288,6 +288,7 @@
     (iokit-property-regex #"(canvas-height|canvas-width)")
     (iokit-property "class-code")
     (iokit-property "color-accuracy-index")
+    (iokit-property "compatible") ;; <rdar://problem/47523516>
     (iokit-property "compatible-device-fallback") ;; <rdar://problem/49497720>
     (iokit-property "device-colors") ;; <rdar://problem/51322072>
     (iokit-property "device-id")
@@ -613,6 +614,7 @@
         (syscall-number SYS_fgetattrlist) ;; <rdar://problem/50266257>
         (syscall-number SYS_fsetxattr) ;; <rdar://problem/49795964>
         (syscall-number SYS_abort_with_payload) ;; <rdar://problem/50967271>
+        (syscall-number SYS_kqueue) ;; <rdar://problem/49609201>
         (syscall-number SYS_kqueue_workloop_ctl) ;; <rdar://problem/50999499>
         (syscall-number SYS_psynch_rw_rdlock) ;; <rdar://problem/51134351>
     )

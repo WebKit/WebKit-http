@@ -33,6 +33,7 @@
 #include "ScrollingStateFixedNode.h"
 #include "ScrollingStateFrameHostingNode.h"
 #include "ScrollingStateFrameScrollingNode.h"
+#include "ScrollingStateOverflowScrollProxyNode.h"
 #include "ScrollingStateOverflowScrollingNode.h"
 #include "ScrollingStatePositionedNode.h"
 #include "ScrollingStateStickyNode.h"
@@ -72,6 +73,8 @@ Ref<ScrollingStateNode> ScrollingStateTree::createNode(ScrollingNodeType nodeTyp
         return ScrollingStateFrameHostingNode::create(*this, nodeID);
     case ScrollingNodeType::Overflow:
         return ScrollingStateOverflowScrollingNode::create(*this, nodeID);
+    case ScrollingNodeType::OverflowProxy:
+        return ScrollingStateOverflowScrollProxyNode::create(*this, nodeID);
     case ScrollingNodeType::Fixed:
         return ScrollingStateFixedNode::create(*this, nodeID);
     case ScrollingNodeType::Sticky:
@@ -206,7 +209,7 @@ void ScrollingStateTree::unparentNode(ScrollingNodeID nodeID)
     LOG_WITH_STREAM(Scrolling, stream << "ScrollingStateTree " << this << " unparentNode " << nodeID);
 
     // The node may not be found if clear() was recently called.
-    RefPtr<ScrollingStateNode> protectedNode = m_stateNodeMap.get(nodeID);
+    auto protectedNode = m_stateNodeMap.get(nodeID);
     if (!protectedNode)
         return;
 
@@ -225,7 +228,7 @@ void ScrollingStateTree::unparentChildrenAndDestroyNode(ScrollingNodeID nodeID)
     LOG_WITH_STREAM(Scrolling, stream << "ScrollingStateTree " << this << " unparentChildrenAndDestroyNode " << nodeID);
 
     // The node may not be found if clear() was recently called.
-    RefPtr<ScrollingStateNode> protectedNode = m_stateNodeMap.take(nodeID);
+    auto protectedNode = m_stateNodeMap.take(nodeID);
     if (!protectedNode)
         return;
 
@@ -253,13 +256,13 @@ void ScrollingStateTree::detachAndDestroySubtree(ScrollingNodeID nodeID)
     LOG_WITH_STREAM(Scrolling, stream << "ScrollingStateTree " << this << " detachAndDestroySubtree " << nodeID);
 
     // The node may not be found if clear() was recently called.
-    auto* node = m_stateNodeMap.take(nodeID);
+    auto node = m_stateNodeMap.take(nodeID);
     if (!node)
         return;
 
     // If the node was unparented, remove it from m_unparentedNodes (keeping it alive until this function returns).
     auto unparentedNode = m_unparentedNodes.take(nodeID);
-    removeNodeAndAllDescendants(node);
+    removeNodeAndAllDescendants(node.get());
 }
 
 void ScrollingStateTree::clear()
@@ -362,7 +365,7 @@ ScrollingStateNode* ScrollingStateTree::stateNodeForID(ScrollingNodeID scrollLay
         return nullptr;
 
     ASSERT(it->value->scrollingNodeID() == scrollLayerID);
-    return it->value;
+    return it->value.get();
 }
 
 void ScrollingStateTree::reconcileLayerPositionsRecursive(ScrollingStateNode& currNode, const LayoutRect& layoutViewport, ScrollingLayerPositionAction action)

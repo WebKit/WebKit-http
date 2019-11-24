@@ -165,6 +165,7 @@ public:
     bool isSwipeGestureEnabled() { return m_swipeGestureEnabled; }
 
 #if PLATFORM(GTK)
+    void cancelSwipe();
     void draw(cairo_t*, cairo_pattern_t*);
 #endif
 
@@ -409,6 +410,8 @@ private:
     SwipeProgressTracker m_swipeProgressTracker;
 
     RefPtr<cairo_pattern_t> m_currentSwipeSnapshotPattern;
+
+    bool m_isSimulatedSwipe { false };
 #endif
 
     bool m_isConnectedToProcess { false };

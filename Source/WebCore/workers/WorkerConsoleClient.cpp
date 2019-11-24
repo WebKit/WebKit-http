@@ -50,19 +50,29 @@ void WorkerConsoleClient::messageWithTypeAndLevel(MessageType type, MessageLevel
     m_workerGlobalScope.addConsoleMessage(WTFMove(message));
 }
 
-void WorkerConsoleClient::count(JSC::ExecState* exec, Ref<ScriptArguments>&& arguments)
+void WorkerConsoleClient::count(JSC::ExecState* exec, const String& label)
 {
-    InspectorInstrumentation::consoleCount(m_workerGlobalScope, exec, WTFMove(arguments));
+    InspectorInstrumentation::consoleCount(m_workerGlobalScope, exec, label);
 }
 
-void WorkerConsoleClient::time(JSC::ExecState*, const String& title)
+void WorkerConsoleClient::countReset(JSC::ExecState* exec, const String& label)
 {
-    InspectorInstrumentation::startConsoleTiming(m_workerGlobalScope, title);
+    InspectorInstrumentation::consoleCountReset(m_workerGlobalScope, exec, label);
 }
 
-void WorkerConsoleClient::timeEnd(JSC::ExecState* exec, const String& title)
+void WorkerConsoleClient::time(JSC::ExecState* exec, const String& label)
 {
-    InspectorInstrumentation::stopConsoleTiming(m_workerGlobalScope, title, createScriptCallStackForConsole(exec, 1));
+    InspectorInstrumentation::startConsoleTiming(m_workerGlobalScope, exec, label);
+}
+
+void WorkerConsoleClient::timeLog(JSC::ExecState* exec, const String& label, Ref<ScriptArguments>&& arguments)
+{
+    InspectorInstrumentation::logConsoleTiming(m_workerGlobalScope, exec, label, WTFMove(arguments));
+}
+
+void WorkerConsoleClient::timeEnd(JSC::ExecState* exec, const String& label)
+{
+    InspectorInstrumentation::stopConsoleTiming(m_workerGlobalScope, exec, label);
 }
 
 // FIXME: <https://webkit.org/b/153499> Web Inspector: console.profile should use the new Sampling Profiler

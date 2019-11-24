@@ -80,14 +80,15 @@ void webkitWebViewBasePageClosed(WebKitWebViewBase*);
 WebKit::DragAndDropHandler& webkitWebViewBaseDragAndDropHandler(WebKitWebViewBase*);
 #endif
 
-#if HAVE(GTK_GESTURES)
 WebKit::GestureController& webkitWebViewBaseGestureController(WebKitWebViewBase*);
-#endif
 
 RefPtr<WebKit::ViewSnapshot> webkitWebViewBaseTakeViewSnapshot(WebKitWebViewBase*);
 
 void webkitWebViewBaseSetEnableBackForwardNavigationGesture(WebKitWebViewBase*, bool enabled);
 WebKit::ViewGestureController* webkitWebViewBaseViewGestureController(WebKitWebViewBase*);
+
+bool webkitWebViewBaseBeginBackSwipeForTesting(WebKitWebViewBase*);
+bool webkitWebViewBaseCompleteBackSwipeForTesting(WebKitWebViewBase*);
 
 void webkitWebViewBaseDidStartProvisionalLoadForMainFrame(WebKitWebViewBase*);
 void webkitWebViewBaseDidFirstVisuallyNonEmptyLayoutForMainFrame(WebKitWebViewBase*);

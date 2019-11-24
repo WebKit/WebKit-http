@@ -170,9 +170,14 @@ void PageConsoleClient::messageWithTypeAndLevel(MessageType type, MessageLevel l
         ConsoleClient::printConsoleMessageWithArguments(MessageSource::ConsoleAPI, type, level, exec, WTFMove(arguments));
 }
 
-void PageConsoleClient::count(JSC::ExecState* exec, Ref<ScriptArguments>&& arguments)
+void PageConsoleClient::count(JSC::ExecState* exec, const String& label)
 {
-    InspectorInstrumentation::consoleCount(m_page, exec, WTFMove(arguments));
+    InspectorInstrumentation::consoleCount(m_page, exec, label);
+}
+
+void PageConsoleClient::countReset(JSC::ExecState* exec, const String& label)
+{
+    InspectorInstrumentation::consoleCountReset(m_page, exec, label);
 }
 
 void PageConsoleClient::profile(JSC::ExecState* exec, const String& title)
@@ -192,14 +197,19 @@ void PageConsoleClient::takeHeapSnapshot(JSC::ExecState*, const String& title)
     InspectorInstrumentation::takeHeapSnapshot(m_page.mainFrame(), title);
 }
 
-void PageConsoleClient::time(JSC::ExecState*, const String& title)
+void PageConsoleClient::time(JSC::ExecState* exec, const String& label)
 {
-    InspectorInstrumentation::startConsoleTiming(m_page.mainFrame(), title);
+    InspectorInstrumentation::startConsoleTiming(m_page.mainFrame(), exec, label);
 }
 
-void PageConsoleClient::timeEnd(JSC::ExecState* exec, const String& title)
+void PageConsoleClient::timeLog(JSC::ExecState* exec, const String& label, Ref<ScriptArguments>&& arguments)
 {
-    InspectorInstrumentation::stopConsoleTiming(m_page.mainFrame(), title, createScriptCallStackForConsole(exec, 1));
+    InspectorInstrumentation::logConsoleTiming(m_page.mainFrame(), exec, label, WTFMove(arguments));
+}
+
+void PageConsoleClient::timeEnd(JSC::ExecState* exec, const String& label)
+{
+    InspectorInstrumentation::stopConsoleTiming(m_page.mainFrame(), exec, label);
 }
 
 void PageConsoleClient::timeStamp(JSC::ExecState*, Ref<ScriptArguments>&& arguments)

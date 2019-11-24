@@ -47,7 +47,7 @@ namespace AST {
 class VariableDeclaration : public Value {
     using Base = Value;
 public:
-    VariableDeclaration(Lexer::Token&& origin, Qualifiers&& qualifiers, Optional<UniqueRef<UnnamedType>>&& type, String&& name, Optional<Semantic>&& semantic, Optional<UniqueRef<Expression>>&& initializer)
+    VariableDeclaration(Lexer::Token&& origin, Qualifiers&& qualifiers, Optional<UniqueRef<UnnamedType>>&& type, String&& name, Optional<Semantic>&& semantic, std::unique_ptr<Expression>&& initializer)
         : Base(WTFMove(origin))
         , m_qualifiers(WTFMove(qualifiers))
         , m_type(WTFMove(type))
@@ -64,15 +64,24 @@ public:
 
     String& name() { return m_name; }
 
-    const Optional<UniqueRef<UnnamedType>>& type() const { return m_type; } // Anonymous variables inside ReadModifyWriteExpressions have their type set by the type checker.
+    // We use this for ReadModifyWrite expressions, since we don't know the type of their
+    // internal variables until the checker runs. All other variables should start life out
+    // with a type.
+    void setType(UniqueRef<UnnamedType> type)
+    {
+        ASSERT(!m_type);
+        m_type = WTFMove(type);
+    }
+    const Optional<UniqueRef<UnnamedType>>& type() const { return m_type; }
     UnnamedType* type() { return m_type ? &*m_type : nullptr; }
     Optional<Semantic>& semantic() { return m_semantic; }
-    Expression* initializer() { return m_initializer ? &*m_initializer : nullptr; }
+    Expression* initializer() { return m_initializer.get(); }
     bool isAnonymous() const { return m_name.isNull(); }
-    Optional<UniqueRef<Expression>> takeInitializer() { return WTFMove(m_initializer); }
-    void setInitializer(UniqueRef<Expression> expression)
+    std::unique_ptr<Expression> takeInitializer() { return WTFMove(m_initializer); }
+    void setInitializer(std::unique_ptr<Expression> expression)
     {
         ASSERT(!initializer());
+        ASSERT(expression);
         m_initializer = WTFMove(expression);
     }
 
@@ -81,7 +90,7 @@ private:
     Optional<UniqueRef<UnnamedType>> m_type;
     String m_name;
     Optional<Semantic> m_semantic;
-    Optional<UniqueRef<Expression>> m_initializer;
+    std::unique_ptr<Expression> m_initializer;
 };
 
 using VariableDeclarations = Vector<UniqueRef<VariableDeclaration>>;

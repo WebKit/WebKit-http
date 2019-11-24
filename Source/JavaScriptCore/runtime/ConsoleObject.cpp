@@ -34,6 +34,18 @@
 
 namespace JSC {
 
+static String valueOrDefaultLabelString(ExecState* exec)
+{
+    if (exec->argumentCount() < 1)
+        return "default"_s;
+
+    auto value = exec->argument(0);
+    if (value.isUndefined())
+        return "default"_s;
+
+    return value.toWTFString(exec);
+}
+
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(ConsoleObject);
 
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncDebug(ExecState*);
@@ -48,10 +60,12 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTable(ExecState*);
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTrace(ExecState*);
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncAssert(ExecState*);
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncCount(ExecState*);
+static EncodedJSValue JSC_HOST_CALL consoleProtoFuncCountReset(ExecState*);
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncProfile(ExecState*);
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncProfileEnd(ExecState*);
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTakeHeapSnapshot(ExecState*);
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTime(ExecState*);
+static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTimeLog(ExecState*);
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTimeEnd(ExecState*);
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTimeStamp(ExecState*);
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncGroup(ExecState*);
@@ -89,9 +103,11 @@ void ConsoleObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("trace", consoleProtoFuncTrace, static_cast<unsigned>(PropertyAttribute::None), 0);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("assert", consoleProtoFuncAssert, static_cast<unsigned>(PropertyAttribute::None), 0);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->count, consoleProtoFuncCount, static_cast<unsigned>(PropertyAttribute::None), 0);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("countReset", consoleProtoFuncCountReset, static_cast<unsigned>(PropertyAttribute::None), 0);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("profile", consoleProtoFuncProfile, static_cast<unsigned>(PropertyAttribute::None), 0);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("profileEnd", consoleProtoFuncProfileEnd, static_cast<unsigned>(PropertyAttribute::None), 0);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("time", consoleProtoFuncTime, static_cast<unsigned>(PropertyAttribute::None), 0);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("timeLog", consoleProtoFuncTimeLog, static_cast<unsigned>(PropertyAttribute::None), 0);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("timeEnd", consoleProtoFuncTimeEnd, static_cast<unsigned>(PropertyAttribute::None), 0);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("timeStamp", consoleProtoFuncTimeStamp, static_cast<unsigned>(PropertyAttribute::None), 0);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("takeHeapSnapshot", consoleProtoFuncTakeHeapSnapshot, static_cast<unsigned>(PropertyAttribute::None), 0);
@@ -215,11 +231,29 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncAssert(ExecState* exec)
 
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncCount(ExecState* exec)
 {
-    ConsoleClient* client = exec->lexicalGlobalObject()->consoleClient();
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    auto* client = exec->lexicalGlobalObject()->consoleClient();
     if (!client)
         return JSValue::encode(jsUndefined());
 
-    client->count(exec, Inspector::createScriptArguments(exec, 0));
+    auto label = valueOrDefaultLabelString(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+    client->count(exec, label);
+    return JSValue::encode(jsUndefined());
+}
+
+static EncodedJSValue JSC_HOST_CALL consoleProtoFuncCountReset(ExecState* exec)
+{
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    auto* client = exec->lexicalGlobalObject()->consoleClient();
+    if (!client)
+        return JSValue::encode(jsUndefined());
+
+    auto label = valueOrDefaultLabelString(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+    client->countReset(exec, label);
     return JSValue::encode(jsUndefined());
 }
 
@@ -286,50 +320,45 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTakeHeapSnapshot(ExecState* 
     return JSValue::encode(jsUndefined());
 }
 
-static String valueOrDefaultLabelString(ExecState* exec, JSValue value)
-{
-    if (value.isUndefined())
-        return "default"_s;
-    return value.toWTFString(exec);
-}
-
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTime(ExecState* exec)
 {
-    VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-    ConsoleClient* client = exec->lexicalGlobalObject()->consoleClient();
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    auto* client = exec->lexicalGlobalObject()->consoleClient();
     if (!client)
         return JSValue::encode(jsUndefined());
 
-    String title;
-    if (exec->argumentCount() < 1)
-        title = "default"_s;
-    else {
-        title = valueOrDefaultLabelString(exec, exec->argument(0));
-        RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    }
+    auto label = valueOrDefaultLabelString(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    client->time(exec, title);
+    client->time(exec, label);
+    return JSValue::encode(jsUndefined());
+}
+
+static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTimeLog(ExecState* exec)
+{
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    auto* client = exec->lexicalGlobalObject()->consoleClient();
+    if (!client)
+        return JSValue::encode(jsUndefined());
+
+    auto label = valueOrDefaultLabelString(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
+    client->timeLog(exec, label, Inspector::createScriptArguments(exec, 1));
     return JSValue::encode(jsUndefined());
 }
 
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTimeEnd(ExecState* exec)
 {
-    VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-    ConsoleClient* client = exec->lexicalGlobalObject()->consoleClient();
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+    auto* client = exec->lexicalGlobalObject()->consoleClient();
     if (!client)
         return JSValue::encode(jsUndefined());
 
-    String title;
-    if (exec->argumentCount() < 1)
-        title =  "default"_s;
-    else {
-        title = valueOrDefaultLabelString(exec, exec->argument(0));
-        RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    }
+    auto label = valueOrDefaultLabelString(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    client->timeEnd(exec, title);
+    client->timeEnd(exec, label);
     return JSValue::encode(jsUndefined());
 }
 

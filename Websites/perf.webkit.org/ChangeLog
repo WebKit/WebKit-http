@@ -1,3 +1,42 @@
+2019-06-26  Dewei Zhu  <dewei_zhu@apple.com>
+
+        commit api should not return 'AmbiguousRevisionPrefix' if there is an exact revision match
+        https://bugs.webkit.org/show_bug.cgi?id=199227
+
+        Reviewed by Ryosuke Niwa.
+
+        When prefix match is specified, api should check whether there is an exact match when multiple commits
+        match the prefix.
+
+        * public/include/commit-log-fetcher.php: Added the logic to check if there is an exact match when multiple matches are found.
+        * server-tests/api-commits-tests.js: Added an unit test.
+
+2019-06-24  Dean Johnson  <dean_johnson@apple.com>
+
+        [perf.webkit.org] Update summary page calculations to use mean instead of median
+        https://bugs.webkit.org/show_bug.cgi?id=199050
+
+        Reviewed by Dewei Zhu.
+
+        * public/v3/pages/summary-page.js:
+        (SummaryPageConfigurationGroup): Updated 'median' references to 'mean'.
+        (SummaryPageConfigurationGroup.set _startAndEndPointForTimeRange): Factored out logic for finding data
+        points in a timeSeries, within a specified timeRange.
+        (SummaryPageConfigurationGroup.set _meanForTimeRange): New. Returns the mean of a timeSeries across a
+        given timeRange.
+
+2019-06-20  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Fix a bug that 'test_metrics' and 'tests' tables are not joined correctly in CommitLogFetcher.fetch_latest_for_platform
+        https://bugs.webkit.org/show_bug.cgi?id=199062
+
+        Reviewed by Ryosuke Niwa.
+
+        'test_metrics' and 'tests' should be joined based on 'metric_test' and 'test_id'.
+
+        * public/include/commit-log-fetcher.php: Fix the typo in the query.
+        * server-tests/api-commits-tests.js: Added a unit test for this change.
+
 2019-06-17  Dewei Zhu  <dewei_zhu@apple.com>
 
         Customizable test group form should allow user to supply a revision prefix of a commit and revision starts with 'r'.

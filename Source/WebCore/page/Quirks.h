@@ -49,7 +49,6 @@ public:
     bool needsPerDocumentAutoplayBehavior() const;
     bool shouldAutoplayForArbitraryUserGesture() const;
     bool hasBrokenEncryptedMediaAPISupportQuirk() const;
-    bool hasWebSQLSupportQuirk() const;
 #if ENABLE(TOUCH_EVENTS)
     bool shouldDispatchSimulatedMouseEvents() const;
     bool shouldDispatchSimulatedMouseEventsOnTarget(EventTarget*) const;
@@ -61,6 +60,7 @@ public:
     WEBCORE_EXPORT bool shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() const;
     WEBCORE_EXPORT bool isTouchBarUpdateSupressedForHiddenContentEditable() const;
     WEBCORE_EXPORT bool isNeverRichlyEditableForTouchBar() const;
+    WEBCORE_EXPORT bool shouldAvoidResizingWhenInputViewBoundsChange() const;
 
     bool needsGMailOverflowScrollQuirk() const;
     bool needsYouTubeOverflowScrollQuirk() const;
@@ -71,7 +71,6 @@ private:
     WeakPtr<Document> m_document;
 
     mutable Optional<bool> m_hasBrokenEncryptedMediaAPISupportQuirk;
-    mutable Optional<bool> m_hasWebSQLSupportQuirk;
 #if PLATFORM(IOS_FAMILY)
     mutable Optional<bool> m_needsGMailOverflowScrollQuirk;
     mutable Optional<bool> m_needsYouTubeOverflowScrollQuirk;

@@ -32,11 +32,15 @@
 #include "NetworkSocketChannelMessages.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebProcess.h"
+#include <WebCore/Blob.h>
 #include <WebCore/Document.h>
+#include <WebCore/FileReaderLoader.h>
+#include <WebCore/FileReaderLoaderClient.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/WebSocketChannel.h>
 #include <WebCore/WebSocketChannelClient.h>
 #include <pal/SessionID.h>
+#include <wtf/CheckedArithmetic.h>
 
 namespace WebKit {
 
@@ -67,8 +71,7 @@ uint64_t WebSocketChannel::messageSenderDestinationID() const
 
 String WebSocketChannel::subprotocol()
 {
-    // FIXME: support subprotocol.
-    return emptyString();
+    return m_subprotocol.isNull() ? emptyString() : m_subprotocol;
 }
 
 String WebSocketChannel::extensions()
@@ -93,43 +96,195 @@ WebSocketChannel::ConnectStatus WebSocketChannel::connect(const URL& url, const 
     return ConnectStatus::OK;
 }
 
+bool WebSocketChannel::increaseBufferedAmount(size_t byteLength)
+{
+    if (!byteLength)
+        return true;
+
+    Checked<size_t, RecordOverflow> checkedNewBufferedAmount = m_bufferedAmount;
+    checkedNewBufferedAmount += byteLength;
+    if (UNLIKELY(checkedNewBufferedAmount.hasOverflowed())) {
+        fail("Failed to send WebSocket frame: buffer has no more space");
+        return false;
+    }
+
+    m_bufferedAmount = checkedNewBufferedAmount.unsafeGet();
+    if (m_client)
+        m_client->didUpdateBufferedAmount(m_bufferedAmount);
+    return true;
+}
+
+void WebSocketChannel::decreaseBufferedAmount(size_t byteLength)
+{
+    if (!byteLength)
+        return;
+
+    ASSERT(m_bufferedAmount >= byteLength);
+    m_bufferedAmount -= byteLength;
+    if (m_client)
+        m_client->didUpdateBufferedAmount(m_bufferedAmount);
+}
+
+template<typename T> void WebSocketChannel::sendMessage(T&& message, size_t byteLength)
+{
+    CompletionHandler<void()> completionHandler = [this, protectedThis = makeRef(*this), byteLength] {
+        decreaseBufferedAmount(byteLength);
+    };
+    sendWithAsyncReply(WTFMove(message), WTFMove(completionHandler));
+}
+
 WebSocketChannel::SendResult WebSocketChannel::send(const String& message)
 {
     auto byteLength = message.sizeInBytes();
-    m_bufferedAmount += byteLength;
-    if (m_client)
-        m_client->didUpdateBufferedAmount(m_bufferedAmount);
+    if (!increaseBufferedAmount(byteLength))
+        return SendFail;
 
-    CompletionHandler<void()> completionHandler = [this, protectedThis = makeRef(*this), byteLength] {
-        ASSERT(m_bufferedAmount >= byteLength);
-        m_bufferedAmount -= byteLength;
-        if (m_client)
-            m_client->didUpdateBufferedAmount(m_bufferedAmount);
-    };
-    sendWithAsyncReply(Messages::NetworkSocketChannel::SendString { message }, WTFMove(completionHandler));
+    if (m_pendingMessages.isEmpty())
+        sendMessage(Messages::NetworkSocketChannel::SendString { message }, byteLength);
+    else
+        m_pendingMessages.append(std::make_unique<PendingMessage>(message));
+
     return SendSuccess;
 }
 
 WebSocketChannel::SendResult WebSocketChannel::send(const JSC::ArrayBuffer& binaryData, unsigned byteOffset, unsigned byteLength)
 {
-    m_bufferedAmount += byteLength;
-    if (m_client)
-        m_client->didUpdateBufferedAmount(m_bufferedAmount);
+    if (!increaseBufferedAmount(byteLength))
+        return SendFail;
 
-    CompletionHandler<void()> completionHandler = [this, protectedThis = makeRef(*this), byteLength] {
-        ASSERT(m_bufferedAmount >= byteLength);
-        m_bufferedAmount -= byteLength;
-        if (m_client)
-            m_client->didUpdateBufferedAmount(m_bufferedAmount);
-    };
-    sendWithAsyncReply(Messages::NetworkSocketChannel::SendData { IPC::DataReference { static_cast<const uint8_t*>(binaryData.data()) + byteOffset, byteLength } }, WTFMove(completionHandler));
+    if (m_pendingMessages.isEmpty())
+        sendMessage(Messages::NetworkSocketChannel::SendData { IPC::DataReference { static_cast<const uint8_t*>(binaryData.data()) + byteOffset, byteLength } }, byteLength);
+    else
+        m_pendingMessages.append(std::make_unique<PendingMessage>(binaryData, byteOffset, byteLength));
+
     return SendSuccess;
 }
 
-WebSocketChannel::SendResult WebSocketChannel::send(WebCore::Blob&)
+class BlobLoader final : public WebCore::FileReaderLoaderClient {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    BlobLoader(WebCore::Document* document, Blob& blob, CompletionHandler<void()>&& completionHandler)
+        : m_loader(std::make_unique<FileReaderLoader>(FileReaderLoader::ReadAsArrayBuffer, this))
+        , m_completionHandler(WTFMove(completionHandler))
+    {
+        m_loader->start(document, blob);
+    }
+
+    ~BlobLoader()
+    {
+        if (m_loader)
+            m_loader->cancel();
+    }
+
+    bool isLoading() const { return !!m_loader; }
+    const RefPtr<JSC::ArrayBuffer>& result() const { return m_buffer; }
+    Optional<int> errorCode() const { return m_errorCode; }
+
+private:
+    void didStartLoading() final { }
+    void didReceiveData() final { }
+
+    void didFinishLoading() final
+    {
+        m_buffer = m_loader->arrayBufferResult();
+        complete();
+    }
+
+    void didFail(int errorCode) final
+    {
+        m_errorCode = errorCode;
+        complete();
+    }
+
+    void complete()
+    {
+        m_loader = nullptr;
+        m_completionHandler();
+    }
+
+    std::unique_ptr<WebCore::FileReaderLoader> m_loader;
+    RefPtr<JSC::ArrayBuffer> m_buffer;
+    Optional<int> m_errorCode;
+    CompletionHandler<void()> m_completionHandler;
+};
+
+class PendingMessage {
+    WTF_MAKE_FAST_ALLOCATED;
+public:
+    enum class Type { Text, Binary, Blob };
+
+    explicit PendingMessage(const String& message)
+        : m_type(Type::Text)
+        , m_textMessage(message)
+    {
+    }
+
+    PendingMessage(const JSC::ArrayBuffer& binaryData, unsigned byteOffset, unsigned byteLength)
+        : m_type(Type::Binary)
+        , m_binaryData(WebCore::SharedBuffer::create(static_cast<const uint8_t*>(binaryData.data()) + byteOffset, byteLength))
+    {
+    }
+
+    PendingMessage(WebCore::Document* document, Blob& blob, CompletionHandler<void()>&& completionHandler)
+        : m_type(Type::Blob)
+        , m_blobLoader(std::make_unique<BlobLoader>(document, blob, WTFMove(completionHandler)))
+    {
+    }
+
+    ~PendingMessage() = default;
+
+    Type type() const { return m_type; }
+    const String& textMessage() const { ASSERT(m_type == Type::Text); return m_textMessage; }
+    const WebCore::SharedBuffer& binaryData() const { ASSERT(m_type == Type::Binary); return *m_binaryData; }
+    const BlobLoader& blobLoader() const { ASSERT(m_type == Type::Blob); return *m_blobLoader; }
+
+private:
+    Type m_type;
+    String m_textMessage;
+    RefPtr<WebCore::SharedBuffer> m_binaryData;
+    std::unique_ptr<BlobLoader> m_blobLoader;
+};
+
+WebSocketChannel::SendResult WebSocketChannel::send(WebCore::Blob& blob)
 {
-    notImplemented();
-    return SendFail;
+    // Avoid the Blob queue and loading for empty blobs.
+    if (!blob.size())
+        return send(JSC::ArrayBuffer::create(blob.size(), 1), 0, 0);
+
+    m_pendingMessages.append(std::make_unique<PendingMessage>(m_document.get(), blob, [this] {
+        while (!m_pendingMessages.isEmpty()) {
+            auto& message = m_pendingMessages.first();
+
+            switch (message->type()) {
+            case PendingMessage::Type::Text:
+                sendMessage(Messages::NetworkSocketChannel::SendString { message->textMessage() }, message->textMessage().sizeInBytes());
+                break;
+            case PendingMessage::Type::Binary: {
+                const auto& binaryData = message->binaryData();
+                sendMessage(Messages::NetworkSocketChannel::SendData { IPC::DataReference { reinterpret_cast<const uint8_t*>(binaryData.data()), binaryData.size() } }, binaryData.size());
+                break;
+            }
+            case PendingMessage::Type::Blob: {
+                auto& loader = message->blobLoader();
+                if (loader.isLoading())
+                    return;
+
+                if (const auto& result = loader.result()) {
+                    auto byteLength = result->byteLength();
+                    if (increaseBufferedAmount(byteLength))
+                        sendMessage(Messages::NetworkSocketChannel::SendData { IPC::DataReference { reinterpret_cast<const uint8_t*>(result->data()), byteLength } }, byteLength);
+                } else if (auto errorCode = loader.errorCode())
+                    fail(makeString("Failed to load Blob: error code = ", errorCode.value()));
+                else
+                    ASSERT_NOT_REACHED();
+                break;
+            }
+            }
+
+            m_pendingMessages.removeFirst();
+        }
+    }));
+    return SendSuccess;
 }
 
 unsigned WebSocketChannel::bufferedAmount() const
@@ -150,7 +305,11 @@ void WebSocketChannel::close(int code, const String& reason)
 
 void WebSocketChannel::fail(const String& reason)
 {
-    MessageSender::send(Messages::NetworkSocketChannel::Close { 0, reason });
+    if (m_client)
+        m_client->didReceiveMessageError();
+
+    if (!m_isClosing)
+        MessageSender::send(Messages::NetworkSocketChannel::Close { 0, reason });
 }
 
 void WebSocketChannel::disconnect()
@@ -158,11 +317,12 @@ void WebSocketChannel::disconnect()
     m_client = nullptr;
     m_document = nullptr;
     m_pendingTasks.clear();
+    m_pendingMessages.clear();
 
     MessageSender::send(Messages::NetworkSocketChannel::Close { 0, { } });
 }
 
-void WebSocketChannel::didConnect()
+void WebSocketChannel::didConnect(String&& subprotocol)
 {
     if (m_isClosing)
         return;
@@ -171,16 +331,17 @@ void WebSocketChannel::didConnect()
         return;
 
     if (m_isSuspended) {
-        enqueueTask([this] {
-            didConnect();
+        enqueueTask([this, subprotocol = WTFMove(subprotocol)] () mutable {
+            didConnect(WTFMove(subprotocol));
         });
         return;
     }
 
+    m_subprotocol = WTFMove(subprotocol);
     m_client->didConnect();
 }
 
-void WebSocketChannel::didReceiveText(const String& message)
+void WebSocketChannel::didReceiveText(String&& message)
 {
     if (m_isClosing)
         return;
@@ -189,8 +350,8 @@ void WebSocketChannel::didReceiveText(const String& message)
         return;
 
     if (m_isSuspended) {
-        enqueueTask([this, message] {
-            didReceiveText(message);
+        enqueueTask([this, message = WTFMove(message)] () mutable {
+            didReceiveText(WTFMove(message));
         });
         return;
     }
@@ -198,7 +359,7 @@ void WebSocketChannel::didReceiveText(const String& message)
     m_client->didReceiveMessage(message);
 }
 
-void WebSocketChannel::didReceiveBinaryData(const IPC::DataReference& data)
+void WebSocketChannel::didReceiveBinaryData(IPC::DataReference&& data)
 {
     if (m_isClosing)
         return;
@@ -207,7 +368,7 @@ void WebSocketChannel::didReceiveBinaryData(const IPC::DataReference& data)
         return;
 
     if (m_isSuspended) {
-        enqueueTask([this, data = data.vector()]() mutable {
+        enqueueTask([this, data = data.vector()] () mutable {
             if (!m_isClosing && m_client)
                 m_client->didReceiveBinaryData(WTFMove(data));
         });
@@ -216,14 +377,14 @@ void WebSocketChannel::didReceiveBinaryData(const IPC::DataReference& data)
     m_client->didReceiveBinaryData(data.vector());
 }
 
-void WebSocketChannel::didClose(unsigned short code, const String& reason)
+void WebSocketChannel::didClose(unsigned short code, String&& reason)
 {
     if (!m_client)
         return;
 
     if (m_isSuspended) {
-        enqueueTask([this, code, reason] {
-            didClose(code, reason);
+        enqueueTask([this, code, reason = WTFMove(reason)] () mutable {
+            didClose(code, WTFMove(reason));
         });
         return;
     }
@@ -234,24 +395,25 @@ void WebSocketChannel::didClose(unsigned short code, const String& reason)
     m_client->didClose(m_bufferedAmount, (m_isClosing || code == WebCore::WebSocketChannel::CloseEventCodeNormalClosure) ? WebCore::WebSocketChannelClient::ClosingHandshakeComplete : WebCore::WebSocketChannelClient::ClosingHandshakeIncomplete, code, reason);
 }
 
-void WebSocketChannel::didFail()
+void WebSocketChannel::didReceiveMessageError(String&& errorMessage)
 {
     if (!m_client)
         return;
 
     if (m_isSuspended) {
-        enqueueTask([this] {
-            didFail();
+        enqueueTask([this, errorMessage = WTFMove(errorMessage)] () mutable {
+            didReceiveMessageError(WTFMove(errorMessage));
         });
         return;
     }
 
+    // FIXME: do something with errorMessage.
     m_client->didReceiveMessageError();
 }
 
 void WebSocketChannel::networkProcessCrashed()
 {
-    didFail();
+    didReceiveMessageError({ });
 }
 
 void WebSocketChannel::suspend()

@@ -30,6 +30,7 @@
 #include "IntRect.h"
 #include "ScrollSnapOffsetsInfo.h"
 #include "ScrollTypes.h"
+#include "ScrollableArea.h"
 #include "ScrollingCoordinator.h"
 #include "ScrollingTreeNode.h"
 
@@ -54,6 +55,7 @@ public:
     virtual ScrollingEventResult handleWheelEvent(const PlatformWheelEvent&);
 
     FloatPoint currentScrollPosition() const { return m_currentScrollPosition; }
+    FloatPoint currentScrollOffset() const { return ScrollableArea::scrollOffsetFromPosition(m_currentScrollPosition, toFloatSize(m_scrollOrigin)); }
     FloatPoint lastCommittedScrollPosition() const { return m_lastCommittedScrollPosition; }
     FloatSize scrollDeltaSinceLastCommit() const { return m_currentScrollPosition - m_lastCommittedScrollPosition; }
 
@@ -61,7 +63,7 @@ public:
     void scrollTo(const FloatPoint&, ScrollType = ScrollType::User, ScrollPositionClamp = ScrollPositionClamp::ToContentEdges);
     void scrollBy(const FloatSize&, ScrollPositionClamp = ScrollPositionClamp::ToContentEdges);
 
-    void wasScrolledByDelegatedScrolling(const FloatPoint& position, Optional<FloatRect> overrideLayoutViewport = { });
+    void wasScrolledByDelegatedScrolling(const FloatPoint& position, Optional<FloatRect> overrideLayoutViewport = { }, ScrollingLayerPositionAction = ScrollingLayerPositionAction::Sync);
     
     const FloatSize& scrollableAreaSize() const { return m_scrollableAreaSize; }
     const FloatSize& totalContentsSize() const { return m_totalContentsSize; }

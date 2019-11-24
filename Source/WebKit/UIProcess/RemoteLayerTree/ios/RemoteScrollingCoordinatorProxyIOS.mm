@@ -34,6 +34,7 @@
 #import "WebPageProxy.h"
 #import <UIKit/UIView.h>
 #import <WebCore/ScrollingStateFrameScrollingNode.h>
+#import <WebCore/ScrollingStateOverflowScrollProxyNode.h>
 #import <WebCore/ScrollingStateOverflowScrollingNode.h>
 #import <WebCore/ScrollingStatePositionedNode.h>
 #import <WebCore/ScrollingStateTree.h>
@@ -43,6 +44,7 @@
 #import <WebCore/ScrollSnapOffsetsInfo.h>
 #import <WebCore/ScrollTypes.h>
 #import <WebCore/ScrollingTreeFrameScrollingNode.h>
+#import <WebCore/ScrollingTreeOverflowScrollProxyNode.h>
 #import <WebCore/ScrollingTreeOverflowScrollingNode.h>
 #import <WebCore/ScrollingTreePositionedNode.h>
 #endif
@@ -88,6 +90,7 @@ void RemoteScrollingCoordinatorProxy::connectStateNodeLayers(ScrollingStateTree&
                 scrollingStateNode.setFooterLayer(layerTreeHost.layerForID(scrollingStateNode.footerLayer()));
             break;
         }
+        case ScrollingNodeType::OverflowProxy:
         case ScrollingNodeType::FrameHosting:
         case ScrollingNodeType::Fixed:
         case ScrollingNodeType::Sticky:
@@ -122,38 +125,40 @@ void RemoteScrollingCoordinatorProxy::scrollingTreeNodeDidEndScroll()
 void RemoteScrollingCoordinatorProxy::establishLayerTreeScrollingRelations(const RemoteLayerTreeHost& remoteLayerTreeHost)
 {
     for (auto layerID : m_layersWithScrollingRelations) {
-        if (auto* layerNode = remoteLayerTreeHost.nodeForID(layerID))
-            layerNode->setRelatedScrollContainerBehaviorAndIDs({ }, { });
+        if (auto* layerNode = remoteLayerTreeHost.nodeForID(layerID)) {
+            layerNode->setActingScrollContainerID(0);
+            layerNode->setStationaryScrollContainerIDs({ });
+        }
     }
     m_layersWithScrollingRelations.clear();
 
     // Usually a scroll view scrolls its descendant layers. In some positioning cases it also controls non-descendants, or doesn't control a descendant.
     // To do overlap hit testing correctly we tell layers about such relations.
-    for (auto positionedNodeID : m_scrollingTree->positionedNodesWithRelatedOverflow()) {
-        auto* positionedNode = downcast<ScrollingTreePositionedNode>(m_scrollingTree->nodeForID(positionedNodeID));
-        if (!positionedNode) {
-            ASSERT_NOT_REACHED();
-            continue;
-        }
-        Vector<GraphicsLayer::PlatformLayerID> scrollContainerLayerIDs;
+    
+    for (auto& positionedNode : m_scrollingTree->activePositionedNodes()) {
+        Vector<GraphicsLayer::PlatformLayerID> stationaryScrollContainerIDs;
 
         for (auto overflowNodeID : positionedNode->relatedOverflowScrollingNodes()) {
             auto* overflowNode = downcast<ScrollingTreeOverflowScrollingNode>(m_scrollingTree->nodeForID(overflowNodeID));
-            if (!overflowNode) {
-                ASSERT_NOT_REACHED();
+            if (!overflowNode)
                 continue;
-            }
-            scrollContainerLayerIDs.append(RemoteLayerTreeNode::layerID(overflowNode->scrollContainerLayer()));
+            stationaryScrollContainerIDs.append(RemoteLayerTreeNode::layerID(overflowNode->scrollContainerLayer()));
         }
 
-        auto* positionedLayerNode = RemoteLayerTreeNode::forCALayer(positionedNode->layer());
-        if (!positionedLayerNode) {
-            ASSERT_NOT_REACHED();
+        if (auto* layerNode = RemoteLayerTreeNode::forCALayer(positionedNode->layer())) {
+            layerNode->setStationaryScrollContainerIDs(WTFMove(stationaryScrollContainerIDs));
+            m_layersWithScrollingRelations.add(layerNode->layerID());
+        }
+    }
+
+    for (auto& scrollProxyNode : m_scrollingTree->activeOverflowScrollProxyNodes()) {
+        auto* overflowNode = downcast<ScrollingTreeOverflowScrollingNode>(m_scrollingTree->nodeForID(scrollProxyNode->overflowScrollingNodeID()));
+        if (!overflowNode)
             continue;
+        if (auto* layerNode = RemoteLayerTreeNode::forCALayer(scrollProxyNode->layer())) {
+            layerNode->setActingScrollContainerID(RemoteLayerTreeNode::layerID(overflowNode->scrollContainerLayer()));
+            m_layersWithScrollingRelations.add(layerNode->layerID());
         }
-        positionedLayerNode->setRelatedScrollContainerBehaviorAndIDs(positionedNode->scrollPositioningBehavior(), WTFMove(scrollContainerLayerIDs));
-
-        m_layersWithScrollingRelations.add(positionedLayerNode->layerID());
     }
 }
 

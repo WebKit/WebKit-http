@@ -139,6 +139,10 @@ private:
         void decidePolicyForNavigationAction(WebPageProxy&, Ref<API::NavigationAction>&&, Ref<WebFramePolicyListenerProxy>&&, API::Object* userData) override;
         void decidePolicyForNavigationResponse(WebPageProxy&, Ref<API::NavigationResponse>&&, Ref<WebFramePolicyListenerProxy>&&, API::Object* userData) override;
 
+#if HAVE(APP_SSO)
+        void decidePolicyForSOAuthorizationLoad(WebPageProxy&, SOAuthorizationLoadPolicy, const String&, CompletionHandler<void(SOAuthorizationLoadPolicy)>&&) override;
+#endif
+
         NavigationState& m_navigationState;
     };
     
@@ -189,6 +193,7 @@ private:
     struct {
         bool webViewDecidePolicyForNavigationActionDecisionHandler : 1;
         bool webViewDecidePolicyForNavigationActionWithPreferencesDecisionHandler : 1;
+        bool webViewDecidePolicyForNavigationActionWithPreferencesUserInfoDecisionHandler : 1;
         bool webViewDecidePolicyForNavigationActionDecisionHandlerWebsitePolicies : 1;
         bool webViewDecidePolicyForNavigationActionUserInfoDecisionHandlerWebsitePolicies : 1;
         bool webViewDecidePolicyForNavigationResponseDecisionHandler : 1;
@@ -237,6 +242,10 @@ private:
         bool webViewDidBlockInsecurePluginVersionWithInfo : 1;
         bool webViewWillGoToBackForwardListItemInPageCache : 1;
         bool webViewDecidePolicyForPluginLoadWithCurrentPolicyPluginInfoCompletionHandler : 1;
+#endif
+
+#if HAVE(APP_SSO)
+        bool webViewDecidePolicyForSOAuthorizationLoadWithCurrentPolicyForExtensionCompletionHandler : 1;
 #endif
     } m_navigationDelegateMethods;
 

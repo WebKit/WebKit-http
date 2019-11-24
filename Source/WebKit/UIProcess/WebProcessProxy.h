@@ -119,6 +119,7 @@ public:
     void incrementSuspendedPageCount();
     void decrementSuspendedPageCount();
 
+    WebProcessPool* processPoolIfExists() const;
     WebProcessPool& processPool() const;
 
     WebCore::RegistrableDomain registrableDomain() const { return m_registrableDomain.valueOr(WebCore::RegistrableDomain { }); }
@@ -251,7 +252,7 @@ public:
     void markIsNoLongerInPrewarmedPool();
 
 #if PLATFORM(COCOA)
-    Vector<String> mediaMIMETypes();
+    Vector<String> mediaMIMETypes() const;
     void cacheMediaMIMETypes(const Vector<String>&);
 #endif
 

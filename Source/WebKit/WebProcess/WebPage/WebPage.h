@@ -553,7 +553,7 @@ public:
     void setUseSystemAppearance(bool);
 #endif
 
-    void effectiveAppearanceDidChange(bool useDarkAppearance, bool useInactiveAppearance);
+    void effectiveAppearanceDidChange(bool useDarkAppearance, bool useElevatedUserInterfaceLevel);
 
     bool windowIsFocused() const;
     bool windowAndWebPageAreFocused() const;
@@ -768,9 +768,7 @@ public:
 
     void collapseSelectionInFrame(uint64_t frameID);
     void showEmojiPicker(WebCore::Frame&);
-#endif
 
-#if PLATFORM (GTK) && HAVE(GTK_GESTURES)
     void getCenterForZoomGesture(const WebCore::IntPoint& centerInViewCoordinates, CompletionHandler<void(WebCore::IntPoint&&)>&&);
 #endif
 
@@ -1247,6 +1245,7 @@ private:
     void resetIdempotentTextAutosizingIfNeeded(double previousInitialScale);
     WebCore::VisiblePosition visiblePositionInFocusedNodeForPoint(const WebCore::Frame&, const WebCore::IntPoint&, bool isInteractingWithFocusedElement);
     RefPtr<WebCore::Range> rangeForGranularityAtPoint(WebCore::Frame&, const WebCore::IntPoint&, uint32_t granularity, bool isInteractingWithFocusedElement);
+    void setFocusedFrameBeforeSelectingTextAtLocation(const WebCore::IntPoint&);
     void dispatchSyntheticMouseEventsForSelectionGesture(SelectionTouch, const WebCore::IntPoint&);
 
     void sendPositionInformation(InteractionInformationAtPosition&&);
@@ -1286,7 +1285,7 @@ private:
 
     String sourceForFrame(WebFrame*);
 
-    void loadDataImpl(uint64_t navigationID, bool shouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&&, Ref<WebCore::SharedBuffer>&&, const String& MIMEType, const String& encodingName, const URL& baseURL, const URL& failingURL, const UserData&);
+    void loadDataImpl(uint64_t navigationID, bool shouldTreatAsContinuingLoad, Optional<WebsitePoliciesData>&&, Ref<WebCore::SharedBuffer>&&, const String& MIMEType, const String& encodingName, const URL& baseURL, const URL& failingURL, const UserData&, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow);
 
     // Actions
     void tryClose();
@@ -1339,7 +1338,7 @@ private:
     static bool scroll(WebCore::Page*, WebCore::ScrollDirection, WebCore::ScrollGranularity);
     static bool logicalScroll(WebCore::Page*, WebCore::ScrollLogicalDirection, WebCore::ScrollGranularity);
 
-    void loadURLInFrame(URL&&, uint64_t frameID);
+    void loadURLInFrame(URL&&, const String& referrer, uint64_t frameID);
     void loadDataInFrame(IPC::DataReference&&, String&& MIMEType, String&& encodingName, URL&& baseURL, uint64_t frameID);
 
     enum class WasRestoredByAPIRequest { No, Yes };

@@ -5,6 +5,26 @@
       "platform": "*"
     },
     {
+      "name": "igalia1-gtk-wk2-ews",
+      "platform": "gtk"
+    },
+    {
+      "name": "igalia2-gtk-wk2-ews",
+      "platform": "gtk"
+    },
+    {
+      "name": "igalia3-gtk-wk2-ews",
+      "platform": "gtk"
+    },
+    {
+      "name": "igalia4-gtk-wk2-ews",
+      "platform": "gtk"
+    },
+    {
+      "name": "aperez-gtk-ews",
+      "platform": "gtk"
+    },
+    {
       "name": "tanty-gtk-wk2-ews",
       "platform": "gtk"
     },
@@ -17,11 +37,7 @@
       "platform": "wpe"
     },
     {
-      "name": "aperez-wpe-gcc5-ews",
-      "platform": "wpe"
-    },
-    {
-      "name": "aperez-wpe-gcc6-ews",
+      "name": "aperez-wpe-ews",
       "platform": "wpe"
     },
     {
@@ -283,7 +299,9 @@
       "shortname": "gtk",
       "factory": "GTKFactory",
       "platform": "gtk",
-      "workernames": ["tanty-gtk-wk2-ews", "ltilve-gtk-wk2-ews"]
+      "configuration": "release",
+      "architectures": ["x86_64"],
+      "workernames": ["igalia1-gtk-wk2-ews", "igalia2-gtk-wk2-ews", "igalia3-gtk-wk2-ews", "igalia4-gtk-wk2-ews", "aperez-gtk-ews", "tanty-gtk-wk2-ews", "ltilve-gtk-wk2-ews"]
     },
     {
       "name": "iOS-12-Build-EWS",
@@ -292,7 +310,7 @@
       "platform": "ios-12",
       "configuration": "release",
       "architectures": ["arm64"],
-      "workernames": ["ews108", "ews109"]
+      "workernames": ["ews152", "ews154", "ews108", "ews109"]
     },
     {
       "name": "iOS-12-Simulator-Build-EWS",
@@ -383,7 +401,9 @@
       "shortname": "wpe",
       "factory": "WPEFactory",
       "platform": "wpe",
-      "workernames": ["igalia-wpe-ews", "aperez-wpe-gcc5-ews", "aperez-wpe-gcc6-ews"]
+      "configuration": "release",
+      "architectures": ["x86_64"],
+      "workernames": ["igalia-wpe-ews", "aperez-wpe-ews"]
     },
     {
       "name": "JSC-Tests-EWS",
@@ -434,14 +454,14 @@
       "type": "Try_Userpass",
       "name": "try",
       "port": 5555,
-      "builderNames": ["Bindings-Tests-EWS", "macOS-High-Sierra-Release-Build-EWS",
-                       "iOS-12-Simulator-Build-EWS", "WebKitPerl-Tests-EWS", "WebKitPy-Tests-EWS"]
+      "builderNames": ["Bindings-Tests-EWS", "iOS-12-Build-EWS", "iOS-12-Simulator-Build-EWS",
+                       "macOS-High-Sierra-Release-Build-EWS", "WebKitPerl-Tests-EWS", "WebKitPy-Tests-EWS"]
     },
     {
       "type": "Try_Userpass",
       "name": "disabled",
       "port": 5556,
-      "builderNames": ["GTK-Webkit2-EWS", "iOS-12-Build-EWS", "JSC-Tests-EWS",
+      "builderNames": ["GTK-Webkit2-EWS", "JSC-Tests-EWS",
                        "iOS-12-Simulator-WK2-Tests-EWS", "macOS-High-Sierra-Release-WK2-Tests-EWS",  "macOS-High-Sierra-Release-WK1-Tests-EWS",
                        "macOS-High-Sierra-Debug-Build-EWS", "Style-EWS", "WinCairo-EWS", "Windows-EWS", "WPE-EWS"]
     },

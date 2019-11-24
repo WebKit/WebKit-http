@@ -1471,9 +1471,20 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
     SetForScope<bool> suspensionScope(m_isSuspending, true);
     m_processIsSuspended = true;
 
+#if PLATFORM(COCOA)
+    if (m_processType == ProcessType::PrewarmedWebContent) {
+        if (shouldAcknowledgeWhenReadyToSuspend == ShouldAcknowledgeWhenReadyToSuspend::Yes) {
+            RELEASE_LOG(ProcessSuspension, "%p - WebProcess::actualPrepareToSuspend() Sending ProcessReadyToSuspend IPC message", this);
+            parentProcessConnection()->send(Messages::WebProcessProxy::ProcessReadyToSuspend(), 0);
+        }
+        return;
+    }
+#endif
+
 #if ENABLE(VIDEO)
     suspendAllMediaBuffering();
-    PlatformMediaSessionManager::sharedManager().processWillSuspend();
+    if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
+        platformMediaSessionManager->processWillSuspend();
 #endif
 
     if (!m_suppressMemoryPressureHandler)
@@ -1526,6 +1537,11 @@ void WebProcess::cancelPrepareToSuspend()
 
     m_processIsSuspended = false;
 
+#if PLATFORM(COCOA)
+    if (m_processType == ProcessType::PrewarmedWebContent)
+        return;
+#endif
+
     unfreezeAllLayerTrees();
 
 #if PLATFORM(IOS_FAMILY)
@@ -1535,7 +1551,8 @@ void WebProcess::cancelPrepareToSuspend()
 #endif
 
 #if ENABLE(VIDEO)
-    PlatformMediaSessionManager::sharedManager().processDidResume();
+    if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
+        platformMediaSessionManager->processDidResume();
     resumeAllMediaBuffering();
 #endif
 
@@ -1601,6 +1618,11 @@ void WebProcess::processDidResume()
 
     m_processIsSuspended = false;
 
+#if PLATFORM(COCOA)
+    if (m_processType == ProcessType::PrewarmedWebContent)
+        return;
+#endif
+
     cancelMarkAllLayersVolatile();
     unfreezeAllLayerTrees();
     
@@ -1611,7 +1633,8 @@ void WebProcess::processDidResume()
 #endif
 
 #if ENABLE(VIDEO)
-    PlatformMediaSessionManager::sharedManager().processDidResume();
+    if (auto* platformMediaSessionManager = PlatformMediaSessionManager::sharedManagerIfExists())
+        platformMediaSessionManager->processDidResume();
     resumeAllMediaBuffering();
 #endif
 }

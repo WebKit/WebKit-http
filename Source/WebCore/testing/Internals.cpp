@@ -97,8 +97,6 @@
 #include "HistoryController.h"
 #include "HistoryItem.h"
 #include "HitTestResult.h"
-#include "IDBRequest.h"
-#include "IDBTransaction.h"
 #include "InspectorClient.h"
 #include "InspectorController.h"
 #include "InspectorFrontendClientLocal.h"
@@ -271,6 +269,11 @@
 
 #if ENABLE(POINTER_LOCK)
 #include "PointerLockController.h"
+#endif
+
+#if ENABLE(INDEXED_DATABASE)
+#include "IDBRequest.h"
+#include "IDBTransaction.h"
 #endif
 
 #if USE(QUICK_LOOK)
@@ -2409,10 +2412,12 @@ ExceptionOr<unsigned> Internals::countFindMatches(const String& text, const Vect
     return document->page()->countFindMatches(text, parsedOptions.releaseReturnValue(), 1000);
 }
 
+#if ENABLE(INDEXED_DATABASE)
 unsigned Internals::numberOfIDBTransactions() const
 {
     return IDBTransaction::numberOfIDBTransactions;
 }
+#endif
 
 unsigned Internals::numberOfLiveNodes() const
 {
@@ -2544,6 +2549,8 @@ static LayerTreeFlags toLayerTreeFlags(unsigned short flags)
         layerTreeFlags |= LayerTreeFlagsIncludeContentLayers;
     if (flags & Internals::LAYER_TREE_INCLUDES_ACCELERATES_DRAWING)
         layerTreeFlags |= LayerTreeFlagsIncludeAcceleratesDrawing;
+    if (flags & Internals::LAYER_TREE_INCLUDES_CLIPPING)
+        layerTreeFlags |= LayerTreeFlagsIncludeClipping;
     if (flags & Internals::LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED)
         layerTreeFlags |= LayerTreeFlagsIncludeBackingStoreAttached;
     if (flags & Internals::LAYER_TREE_INCLUDES_ROOT_LAYER_PROPERTIES)
@@ -5094,6 +5101,23 @@ void Internals::setXHRMaximumIntervalForUserGestureForwarding(XMLHttpRequest& re
 void Internals::setIsPlayingToAutomotiveHeadUnit(bool isPlaying)
 {
     PlatformMediaSessionManager::sharedManager().setIsPlayingToAutomotiveHeadUnit(isPlaying);
+}
+    
+Internals::TextIndicatorInfo::TextIndicatorInfo()
+{
+}
+
+Internals::TextIndicatorInfo::TextIndicatorInfo(const WebCore::TextIndicatorData& data)
+    : textBoundingRectInRootViewCoordinates(DOMRect::create(data.textBoundingRectInRootViewCoordinates))
+{
+}
+    
+Internals::TextIndicatorInfo::~TextIndicatorInfo() = default;
+
+Internals::TextIndicatorInfo Internals::textIndicatorForRange(const Range& range, TextIndicatorOptions options)
+{
+    auto indicator = TextIndicator::createWithRange(range, options.core(), TextIndicatorPresentationTransition::None);
+    return indicator->data();
 }
 
 } // namespace WebCore

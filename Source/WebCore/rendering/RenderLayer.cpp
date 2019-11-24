@@ -1788,8 +1788,10 @@ void RenderLayer::setBackingProviderLayer(RenderLayer* backingProvider)
     if (backingProvider == m_backingProviderLayer)
         return;
 
-    if (!renderer().renderTreeBeingDestroyed())
+    if (!renderer().renderTreeBeingDestroyed()) {
+        clearRepaintRects();
         clearClipRectsIncludingDescendants();
+    }
 
     m_backingProviderLayer = makeWeakPtr(backingProvider);
 }
@@ -4388,6 +4390,8 @@ void RenderLayer::paintLayerContents(GraphicsContext& context, const LayerPainti
 
     if (localPaintFlags & PaintLayerPaintingRootBackgroundOnly && !renderer().isRenderView() && !renderer().isDocumentElementRenderer())
         return;
+
+    GraphicsContextStateStackChecker checker(context);
 
     updateLayerListsIfNeeded();
 

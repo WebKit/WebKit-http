@@ -38,8 +38,18 @@ namespace Layout {
 class Line {
     WTF_MAKE_ISO_ALLOCATED(Line);
 public:
-    Line(const LayoutState&, const LayoutPoint& topLeft, LayoutUnit availableWidth, LayoutUnit minimumLineHeight, LayoutUnit baselineOffset);
-    Line(const LayoutState&, LayoutUnit logicalLeft, LayoutUnit availableWidth);
+    struct InitialConstraints {
+        LayoutPoint topLeft;
+        LayoutUnit availableWidth;
+        struct HeightAndBaseline {
+            LayoutUnit height;
+            LayoutUnit baselineOffset;
+            Optional<LineBox::Baseline> strut;
+        };
+        HeightAndBaseline heightAndBaseline;
+    };
+    enum class SkipVerticalAligment { No, Yes };
+    Line(const LayoutState&, const InitialConstraints&, SkipVerticalAligment);
 
     class Content {
     public:
@@ -105,10 +115,9 @@ private:
     LayoutUnit logicalRight() const { return logicalLeft() + logicalWidth(); }
 
     LayoutUnit logicalWidth() const { return m_lineLogicalWidth; }
-    LayoutUnit logicalHeight() const { return m_contentLogicalHeight; }
+    LayoutUnit logicalHeight() const { return m_lineLogicalHeight; }
 
     LayoutUnit contentLogicalWidth() const { return m_contentLogicalWidth; }
-    LayoutUnit baselineAlignedContentHeight() const { return m_baseline.ascent + m_baseline.descent; }
     LayoutUnit baselineOffset() const { return m_baseline.ascent + m_baselineTop; }
 
     void appendNonBreakableSpace(const InlineItem&, const Display::Rect& logicalRect);
@@ -135,7 +144,8 @@ private:
     LineBox::Baseline m_baseline;
     LayoutUnit m_baselineTop;
 
-    LayoutUnit m_contentLogicalHeight;
+    Optional<LineBox::Baseline> m_initialStrut;
+    LayoutUnit m_lineLogicalHeight;
     LayoutUnit m_lineLogicalWidth;
     bool m_skipVerticalAligment { false };
 };

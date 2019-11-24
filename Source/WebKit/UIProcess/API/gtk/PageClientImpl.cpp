@@ -376,14 +376,12 @@ void PageClientImpl::doneWithTouchEvent(const NativeWebTouchEvent& event, bool w
 {
     const GdkEvent* touchEvent = event.nativeEvent();
 
-#if HAVE(GTK_GESTURES)
     GestureController& gestureController = webkitWebViewBaseGestureController(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
     if (wasEventHandled) {
         gestureController.reset();
         return;
     }
     wasEventHandled = gestureController.handleEvent(const_cast<GdkEvent*>(event.nativeEvent()));
-#endif
 
     if (wasEventHandled)
         return;
@@ -536,6 +534,15 @@ bool PageClientImpl::decidePolicyForInstallMissingMediaPluginsPermissionRequest(
 void PageClientImpl::requestDOMPasteAccess(const IntRect&, const String&, CompletionHandler<void(WebCore::DOMPasteAccessResponse)>&& completionHandler)
 {
     completionHandler(WebCore::DOMPasteAccessResponse::DeniedForGesture);
+}
+
+UserInterfaceLayoutDirection PageClientImpl::userInterfaceLayoutDirection()
+{
+    GtkTextDirection direction = gtk_widget_get_direction(m_viewWidget);
+    if (direction == GTK_TEXT_DIR_RTL)
+        return UserInterfaceLayoutDirection::RTL;
+
+    return UserInterfaceLayoutDirection::LTR;
 }
 
 bool PageClientImpl::effectiveAppearanceIsDark() const

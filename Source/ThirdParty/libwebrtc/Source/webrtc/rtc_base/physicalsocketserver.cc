@@ -589,6 +589,10 @@ SocketDispatcher::~SocketDispatcher() {
 
 bool SocketDispatcher::Initialize() {
   RTC_DCHECK(s_ != INVALID_SOCKET);
+#if defined(WEBRTC_WEBKIT_BUILD)
+  if (s_ < 0 || s_ >= FD_SETSIZE)
+    return false;
+#endif
 // Must be a non-blocking
 #if defined(WEBRTC_WIN)
   u_long argp = 1;
@@ -1424,8 +1428,10 @@ bool PhysicalSocketServer::WaitSelect(int cmsWait, bool process_io) {
         // "select"ing a file descriptor that is equal to or larger than
         // FD_SETSIZE will result in undefined behavior.
         RTC_DCHECK_LT(fd, FD_SETSIZE);
+#if defined(WEBRTC_WEBKIT_BUILD)
         if (fd < 0 || fd >= FD_SETSIZE)
             continue;
+#endif
         if (fd > fdmax)
           fdmax = fd;
 
@@ -1462,7 +1468,10 @@ bool PhysicalSocketServer::WaitSelect(int cmsWait, bool process_io) {
       processing_dispatchers_ = true;
       for (Dispatcher* pdispatcher : dispatchers_) {
         int fd = pdispatcher->GetDescriptor();
-
+#if defined(WEBRTC_WEBKIT_BUILD)
+        if (fd < 0 || fd >= FD_SETSIZE)
+          continue;
+#endif
         bool readable = FD_ISSET(fd, &fdsRead);
         if (readable) {
           FD_CLR(fd, &fdsRead);

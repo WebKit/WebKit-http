@@ -106,7 +106,11 @@ void TreeBuilder::createSubTree(const RenderElement& rootRenderer, Container& ro
         std::unique_ptr<Box> box;
 
         if (is<RenderText>(child)) {
-            box = std::make_unique<InlineBox>(Optional<Box::ElementAttributes>(), RenderStyle::createAnonymousStyleWithDisplay(rootRenderer.style(), DisplayType::Inline));
+            // FIXME: Clearly there must be a helper function for this.
+            if (rootRenderer.style().display() == DisplayType::Inline)
+                box = std::make_unique<InlineBox>(Optional<Box::ElementAttributes>(), RenderStyle::clone(rootRenderer.style()));
+            else
+                box = std::make_unique<InlineBox>(Optional<Box::ElementAttributes>(), RenderStyle::createAnonymousStyleWithDisplay(rootRenderer.style(), DisplayType::Inline));
             downcast<InlineBox>(*box).setTextContent(downcast<RenderText>(child).originalText());
         } else if (is<RenderLineBreak>(child)) {
             auto& renderer = downcast<RenderLineBreak>(child);
@@ -296,7 +300,12 @@ void printLayoutTreeForLiveDocuments()
             fprintf(stderr, "----------------------main frame--------------------------\n");
         fprintf(stderr, "%s\n", document->url().string().utf8().data());
         // FIXME: Need to find a way to output geometry without layout context.
-        // Layout::TreeBuilder::showLayoutTree(*TreeBuilder::createLayoutTree(*document->renderView()));
+        auto& renderView = *document->renderView();
+        auto initialContainingBlock = TreeBuilder::createLayoutTree(renderView);
+        auto layoutState = std::make_unique<Layout::LayoutState>(*initialContainingBlock);
+        layoutState->setQuirksMode(renderView.document().inLimitedQuirksMode() ? LayoutState::QuirksMode::Limited : (renderView.document().inQuirksMode() ? LayoutState::QuirksMode::Yes : LayoutState::QuirksMode::No));
+        layoutState->updateLayout();
+        showLayoutTree(*initialContainingBlock, layoutState.get());
     }
 }
 #endif

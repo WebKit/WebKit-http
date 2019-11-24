@@ -269,6 +269,7 @@ WI.contentLoaded = function()
     // Register for global events.
     document.addEventListener("beforecopy", WI._beforecopy);
     document.addEventListener("copy", WI._copy);
+    document.addEventListener("paste", WI._paste);
 
     document.addEventListener("click", WI._mouseWasClicked);
     document.addEventListener("dragover", WI._handleDragOver);
@@ -290,14 +291,8 @@ WI.contentLoaded = function()
     if (WI.Platform.isNightlyBuild)
         document.body.classList.add("nightly-build");
 
-    if (WI.Platform.name === "mac") {
+    if (WI.Platform.name === "mac")
         document.body.classList.add(WI.Platform.version.name);
-
-        if (WI.Platform.version.release >= 11)
-            document.body.classList.add("latest-mac");
-        else
-            document.body.classList.add("legacy-mac");
-    }
 
     document.body.classList.add(WI.sharedApp.debuggableType);
     document.body.setAttribute("dir", WI.resolvedLayoutDirection());
@@ -2626,6 +2621,34 @@ WI._copy = function(event)
     event.preventDefault();
 };
 
+WI._paste = function(event)
+{
+    let selection = window.getSelection();
+
+    // If there is no selection, pass the paste event on to the focused element or focused ContentView.
+    if (!selection.isCollapsed || WI.isEventTargetAnEditableField(event))
+        return;
+
+    let focusedPasteHandler = WI.currentFocusElement && WI.currentFocusElement.pasteHandler;
+    if (focusedPasteHandler && focusedPasteHandler.handlePasteEvent) {
+        focusedPasteHandler.handlePasteEvent(event);
+        if (event.defaultPrevented)
+            return;
+    }
+
+    let focusedContentView = WI._focusedContentView();
+    if (focusedContentView && focusedContentView.handlePasteEvent) {
+        focusedContentView.handlePasteEvent(event);
+        return;
+    }
+
+    let tabContentView = WI.tabBrowser.selectedTabContentView;
+    if (tabContentView && tabContentView.handlePasteEvent) {
+        tabContentView.handlePasteEvent(event);
+        return;
+    }
+};
+
 WI._increaseZoom = function(event)
 {
     const epsilon = 0.0001;
@@ -2850,7 +2873,7 @@ WI.linkifyLocation = function(url, sourceCodePosition, options = {})
 {
     var sourceCode = WI.sourceCodeForURL(url);
     if (sourceCode)
-        return WI.linkifySourceCode(sourceCode);
+        return WI.linkifySourceCode(sourceCode, sourceCodePosition, options);
 
     var anchor = document.createElement("a");
     anchor.href = url;
@@ -3224,6 +3247,13 @@ Object.defineProperty(WI, "targets",
 WI.assumingMainTarget = function()
 {
     return WI.mainTarget;
+};
+
+WI.reset = async function()
+{
+    await WI.ObjectStore.reset();
+    WI.Setting.reset();
+    InspectorFrontendHost.reset();
 };
 
 WI.isEngineeringBuild = false;

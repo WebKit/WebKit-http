@@ -1042,6 +1042,7 @@
 		578DC2982155A0020074E815 /* LocalAuthenticationSoftLink.h in Headers */ = {isa = PBXBuildFile; fileRef = 578DC2972155A0010074E815 /* LocalAuthenticationSoftLink.h */; };
 		57AC8F50217FEED90055438C /* HidConnection.h in Headers */ = {isa = PBXBuildFile; fileRef = 57AC8F4E217FEED90055438C /* HidConnection.h */; };
 		57B4B46020B504AC00D4AD79 /* ClientCertificateAuthenticationXPCConstants.h in Headers */ = {isa = PBXBuildFile; fileRef = 57B4B45E20B504AB00D4AD79 /* ClientCertificateAuthenticationXPCConstants.h */; };
+		57BBEA6D22BC0BFE00273995 /* SOAuthorizationLoadPolicy.h in Headers */ = {isa = PBXBuildFile; fileRef = 57BBEA6C22BC0BFE00273995 /* SOAuthorizationLoadPolicy.h */; };
 		57DCED6E2142EE5E0016B847 /* WebAuthenticatorCoordinatorMessageReceiver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 57DCED6B2142EAE20016B847 /* WebAuthenticatorCoordinatorMessageReceiver.cpp */; };
 		57DCED6F2142EE630016B847 /* WebAuthenticatorCoordinatorMessages.h in Headers */ = {isa = PBXBuildFile; fileRef = 57DCED6A2142EAE20016B847 /* WebAuthenticatorCoordinatorMessages.h */; };
 		57DCED702142EE680016B847 /* WebAuthenticatorCoordinatorProxyMessageReceiver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 57DCED6C2142EAF90016B847 /* WebAuthenticatorCoordinatorProxyMessageReceiver.cpp */; };
@@ -1101,6 +1102,8 @@
 		5CA26D81217ABD5B00F97A35 /* WKSafeBrowsingWarning.h in Headers */ = {isa = PBXBuildFile; fileRef = 5CA26D80217ABBB600F97A35 /* WKSafeBrowsingWarning.h */; };
 		5CA26D83217AD1B800F97A35 /* WKSafeBrowsingWarning.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CA26D7F217ABBB600F97A35 /* WKSafeBrowsingWarning.mm */; };
 		5CA9854A210BEB640057EB6B /* SafeBrowsingWarning.h in Headers */ = {isa = PBXBuildFile; fileRef = 5CA98549210BEB5A0057EB6B /* SafeBrowsingWarning.h */; };
+		5CABDC8622C40FDE001EDE8E /* WKMessageListener.h in Headers */ = {isa = PBXBuildFile; fileRef = 5CABDC8522C40FCC001EDE8E /* WKMessageListener.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		5CABDC8722C40FED001EDE8E /* APIMessageListener.h in Headers */ = {isa = PBXBuildFile; fileRef = 5CABDC8322C40FA7001EDE8E /* APIMessageListener.h */; };
 		5CADDE05215046BD0067D309 /* WKWebProcess.h in Headers */ = {isa = PBXBuildFile; fileRef = 5C74300E21500492004BFA17 /* WKWebProcess.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		5CAFDE452130846300B1F7E1 /* _WKInspector.h in Headers */ = {isa = PBXBuildFile; fileRef = 5CAFDE422130843500B1F7E1 /* _WKInspector.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		5CAFDE472130846A00B1F7E1 /* _WKInspectorInternal.h in Headers */ = {isa = PBXBuildFile; fileRef = 5CAFDE442130843600B1F7E1 /* _WKInspectorInternal.h */; };
@@ -2971,8 +2974,8 @@
 		370F34A41829BEA3009027C8 /* WKNavigationDataInternal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKNavigationDataInternal.h; sourceTree = "<group>"; };
 		370F34A61829CFF3009027C8 /* WKBrowsingContextHistoryDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKBrowsingContextHistoryDelegate.h; sourceTree = "<group>"; };
 		37119A7C20CCB64E002C6DC9 /* WebKitTargetConditionals.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = WebKitTargetConditionals.xcconfig; sourceTree = "<group>"; };
-		37119A7D20CCB64E002C6DC9 /* Network-iOSMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Network-iOSMac.entitlements"; sourceTree = "<group>"; };
-		37119A7E20CCB64E002C6DC9 /* WebContent-iOSMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WebContent-iOSMac.entitlements"; sourceTree = "<group>"; };
+		37119A7D20CCB64E002C6DC9 /* Network-macCatalyst.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Network-macCatalyst.entitlements"; sourceTree = "<group>"; };
+		37119A7E20CCB64E002C6DC9 /* WebContent-macCatalyst.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WebContent-macCatalyst.entitlements"; sourceTree = "<group>"; };
 		37183D54182F4E700080C811 /* WKNSURLExtras.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKNSURLExtras.mm; sourceTree = "<group>"; };
 		37183D55182F4E700080C811 /* WKNSURLExtras.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKNSURLExtras.h; sourceTree = "<group>"; };
 		371A193F1824D29300F32A5E /* WKNSDictionary.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKNSDictionary.mm; sourceTree = "<group>"; };
@@ -3480,6 +3483,7 @@
 		57AC8F4F217FEED90055438C /* HidConnection.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = HidConnection.mm; sourceTree = "<group>"; };
 		57B4B45D20B504AB00D4AD79 /* AuthenticationManagerCocoa.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AuthenticationManagerCocoa.mm; sourceTree = "<group>"; };
 		57B4B45E20B504AB00D4AD79 /* ClientCertificateAuthenticationXPCConstants.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ClientCertificateAuthenticationXPCConstants.h; sourceTree = "<group>"; };
+		57BBEA6C22BC0BFE00273995 /* SOAuthorizationLoadPolicy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SOAuthorizationLoadPolicy.h; sourceTree = "<group>"; };
 		57DCED6A2142EAE20016B847 /* WebAuthenticatorCoordinatorMessages.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WebAuthenticatorCoordinatorMessages.h; path = DerivedSources/WebKit2/WebAuthenticatorCoordinatorMessages.h; sourceTree = BUILT_PRODUCTS_DIR; };
 		57DCED6B2142EAE20016B847 /* WebAuthenticatorCoordinatorMessageReceiver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = WebAuthenticatorCoordinatorMessageReceiver.cpp; path = DerivedSources/WebKit2/WebAuthenticatorCoordinatorMessageReceiver.cpp; sourceTree = BUILT_PRODUCTS_DIR; };
 		57DCED6C2142EAF90016B847 /* WebAuthenticatorCoordinatorProxyMessageReceiver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = WebAuthenticatorCoordinatorProxyMessageReceiver.cpp; path = DerivedSources/WebKit2/WebAuthenticatorCoordinatorProxyMessageReceiver.cpp; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -3602,6 +3606,9 @@
 		5CA46E7A21F1A23900CE86B4 /* APIHTTPCookieStoreCocoa.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = APIHTTPCookieStoreCocoa.mm; path = UIProcess/API/Cocoa/APIHTTPCookieStoreCocoa.mm; sourceTree = SOURCE_ROOT; };
 		5CA98549210BEB5A0057EB6B /* SafeBrowsingWarning.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SafeBrowsingWarning.h; sourceTree = "<group>"; };
 		5CA9854B210BEB730057EB6B /* SafeBrowsingWarningCocoa.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SafeBrowsingWarningCocoa.mm; sourceTree = "<group>"; };
+		5CABDC8322C40FA7001EDE8E /* APIMessageListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APIMessageListener.h; sourceTree = "<group>"; };
+		5CABDC8422C40FCC001EDE8E /* WKMessageListener.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WKMessageListener.cpp; sourceTree = "<group>"; };
+		5CABDC8522C40FCC001EDE8E /* WKMessageListener.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKMessageListener.h; sourceTree = "<group>"; };
 		5CADDE0D2151AA010067D309 /* AuthenticationChallengeDisposition.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AuthenticationChallengeDisposition.h; sourceTree = "<group>"; };
 		5CAFDE422130843500B1F7E1 /* _WKInspector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = _WKInspector.h; sourceTree = "<group>"; };
 		5CAFDE432130843600B1F7E1 /* _WKInspector.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = _WKInspector.mm; sourceTree = "<group>"; };
@@ -5000,7 +5007,7 @@
 				1A4F976B100E7B6600637A18 /* DebugRelease.xcconfig */,
 				1A4F976C100E7B6600637A18 /* FeatureDefines.xcconfig */,
 				7C0BB9A918DCDF5A0006C086 /* Network-iOS.entitlements */,
-				37119A7D20CCB64E002C6DC9 /* Network-iOSMac.entitlements */,
+				37119A7D20CCB64E002C6DC9 /* Network-macCatalyst.entitlements */,
 				BC8283AB16B4BEAD00A278FE /* NetworkService.xcconfig */,
 				A1EDD2DB1884B96400BBFE98 /* PluginProcessShim.xcconfig */,
 				BC8283F416B4FC5300A278FE /* PluginService.64.xcconfig */,
@@ -5011,7 +5018,7 @@
 				5183B3931379F85C00E8754E /* Shim.xcconfig */,
 				1A4F976E100E7B6600637A18 /* Version.xcconfig */,
 				7C0BB9A818DCDE890006C086 /* WebContent-iOS.entitlements */,
-				37119A7E20CCB64E002C6DC9 /* WebContent-iOSMac.entitlements */,
+				37119A7E20CCB64E002C6DC9 /* WebContent-macCatalyst.entitlements */,
 				372EBB4A2017E76000085064 /* WebContentService.Development.xcconfig */,
 				BCACC40E16B0B8A800B6E092 /* WebContentService.xcconfig */,
 				BCB86F4B116AAACD00CE20B7 /* WebKit.xcconfig */,
@@ -7040,6 +7047,7 @@
 				57FD317A22B3514A008D0E8B /* RedirectSOAuthorizationSession.mm */,
 				57FD317222B35148008D0E8B /* SOAuthorizationCoordinator.h */,
 				57FD317922B35149008D0E8B /* SOAuthorizationCoordinator.mm */,
+				57BBEA6C22BC0BFE00273995 /* SOAuthorizationLoadPolicy.h */,
 				57FD317322B35148008D0E8B /* SOAuthorizationNSURLExtras.h */,
 				57FD317622B35149008D0E8B /* SOAuthorizationNSURLExtras.mm */,
 				57FD317C22B3514A008D0E8B /* SOAuthorizationSession.h */,
@@ -7840,6 +7848,7 @@
 				31B3628E2141EA4D007BFA53 /* APIInternalDebugFeature.h */,
 				7CE4D2061A46775700C7F152 /* APILegacyContextHistoryClient.h */,
 				1A2464F21891E45100234C5B /* APILoaderClient.h */,
+				5CABDC8322C40FA7001EDE8E /* APIMessageListener.h */,
 				7CD3A4801A5D02FA009623B8 /* APINavigation.cpp */,
 				7CD3A4811A5D02FA009623B8 /* APINavigation.h */,
 				2DF9EEEA1A7836EE00B6CFBE /* APINavigationAction.h */,
@@ -7943,6 +7952,8 @@
 				C98C48A81B6FD5B500145103 /* WKMediaSessionFocusManager.h */,
 				C9CD43991B4B024200239E33 /* WKMediaSessionMetadata.cpp */,
 				C9CD439A1B4B024200239E33 /* WKMediaSessionMetadata.h */,
+				5CABDC8422C40FCC001EDE8E /* WKMessageListener.cpp */,
+				5CABDC8522C40FCC001EDE8E /* WKMessageListener.h */,
 				C11E1693212B87C500985FF6 /* WKMockDisplay.cpp */,
 				C11E1692212B87C500985FF6 /* WKMockDisplay.h */,
 				411A8DDA20DDB6050060D34F /* WKMockMediaDevice.cpp */,
@@ -9247,6 +9258,7 @@
 				31B3628F2141EA5D007BFA53 /* APIInternalDebugFeature.h in Headers */,
 				7CE4D2071A46776100C7F152 /* APILegacyContextHistoryClient.h in Headers */,
 				1A2464F31891E45100234C5B /* APILoaderClient.h in Headers */,
+				5CABDC8722C40FED001EDE8E /* APIMessageListener.h in Headers */,
 				7CD3A4831A5D02FA009623B8 /* APINavigation.h in Headers */,
 				2DF9EEEC1A7836EE00B6CFBE /* APINavigationAction.h in Headers */,
 				2DD9EB2D1A6F012500BB1267 /* APINavigationClient.h in Headers */,
@@ -9636,11 +9648,12 @@
 				83F9644E1FA0F76E00C47750 /* SharedStringHashTableReadOnly.h in Headers */,
 				1D67B339212E1F6100FAA786 /* ShareSheetCallbackID.h in Headers */,
 				7A41E9FB21F81DAD00B88CDB /* ShouldGrandfatherStatistics.h in Headers */,
-				576CA9D722B862180030143C /* SOAuthorizationNSURLExtras.h in Headers */,
 				995226D6207D184600F78420 /* SimulatedInputDispatcher.h in Headers */,
 				2DAF06D618BD1A470081CEB1 /* SmartMagnificationController.h in Headers */,
 				2DE6943E18BD2A68005C15E5 /* SmartMagnificationControllerMessages.h in Headers */,
 				57FD318322B35162008D0E8B /* SOAuthorizationCoordinator.h in Headers */,
+				57BBEA6D22BC0BFE00273995 /* SOAuthorizationLoadPolicy.h in Headers */,
+				576CA9D722B862180030143C /* SOAuthorizationNSURLExtras.h in Headers */,
 				57FD318522B35169008D0E8B /* SOAuthorizationSession.h in Headers */,
 				5272B28B1406985D0096A5D0 /* StatisticsData.h in Headers */,
 				514BDED316C98EDD00E4E25E /* StatisticsRequest.h in Headers */,
@@ -10095,6 +10108,7 @@
 				C98C48AA1B6FD5B500145103 /* WKMediaSessionFocusManager.h in Headers */,
 				C9CD439D1B4B024F00239E33 /* WKMediaSessionMetadata.h in Headers */,
 				1AB40EE61BF677E300BA81BE /* WKMenuItemIdentifiersPrivate.h in Headers */,
+				5CABDC8622C40FDE001EDE8E /* WKMessageListener.h in Headers */,
 				C11E1694212B87C500985FF6 /* WKMockDisplay.h in Headers */,
 				411A8DDB20DDD1AC0060D34F /* WKMockMediaDevice.h in Headers */,
 				BC4075FE124FF0270068F20A /* WKMutableArray.h in Headers */,
@@ -10719,15 +10733,15 @@
 			inputPaths = (
 				"$(SRCROOT)/Configurations/Network-iOS.entitlements",
 				"$(SRCROOT)/Configurations/WebContent-iOS.entitlements",
-				"$(SRCROOT)/Configurations/Network-iOSMac.entitlements",
-				"$(SRCROOT)/Configurations/WebContent-iOSMac.entitlements",
+				"$(SRCROOT)/Configurations/Network-macCatalyst.entitlements",
+				"$(SRCROOT)/Configurations/WebContent-macCatalyst.entitlements",
 			);
 			name = "Derive Entitlements for Manual Sandboxing";
 			outputPaths = (
 				"$(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit2/Network-iOS-no-sandbox.entitlements",
 				"$(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit2/WebContent-iOS-no-sandbox.entitlements",
-				"$(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit2/Network-iOSMac-no-sandbox.entitlements",
-				"$(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit2/WebContent-iOSMac-no-sandbox.entitlements",
+				"$(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit2/Network-macCatalyst-no-sandbox.entitlements",
+				"$(BUILT_PRODUCTS_DIR)/DerivedSources/WebKit2/WebContent-macCatalyst-no-sandbox.entitlements",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -10763,7 +10777,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [[ \"${WK_MANUAL_SANDBOXING_ENABLED}\" != \"YES\" || \"${WK_PLATFORM_NAME}\" == \"macosx\" || \"${WK_PLATFORM_NAME}\" == \"iosmac\" ]]; then\n    exit\nfi\n\nif [[ \"${ACTION}\" == \"build\" || \"${ACTION}\" == \"install\" ]]; then\n    for ((i = 0; i < ${SCRIPT_INPUT_FILE_COUNT}; ++i)); do\n        eval SANDBOX_PROFILE=\\${SCRIPT_INPUT_FILE_${i}}\n        ditto \"${SANDBOX_PROFILE}\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/${SANDBOX_PROFILE##*/}\"\n    done\nfi\n";
+			shellScript = "if [[ \"${WK_MANUAL_SANDBOXING_ENABLED}\" != \"YES\" || \"${WK_PLATFORM_NAME}\" == \"macosx\" || \"${WK_PLATFORM_NAME}\" == \"maccatalyst\" ]]; then\n    exit\nfi\n\nif [[ \"${ACTION}\" == \"build\" || \"${ACTION}\" == \"install\" ]]; then\n    for ((i = 0; i < ${SCRIPT_INPUT_FILE_COUNT}; ++i)); do\n        eval SANDBOX_PROFILE=\\${SCRIPT_INPUT_FILE_${i}}\n        ditto \"${SANDBOX_PROFILE}\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/${SANDBOX_PROFILE##*/}\"\n    done\nfi\n";
 		};
 		4157853721279CC600DD3800 /* Copy Custom WebContent Resources to Framework Private Headers */ = {
 			isa = PBXShellScriptBuildPhase;

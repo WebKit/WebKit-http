@@ -989,16 +989,8 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
 
     parameters.presentingApplicationPID = m_configuration->presentingApplicationPID();
 
-#if PLATFORM(COCOA)
-    parameters.mediaMIMETypes = process.mediaMIMETypes();
-#endif
-
-#if PLATFORM(WPE)
-    parameters.isServiceWorkerProcess = process.isServiceWorkerProcess();
-#endif
-
     // Add any platform specific parameters
-    platformInitializeWebProcess(parameters);
+    platformInitializeWebProcess(process, parameters);
 
     RefPtr<API::Object> injectedBundleInitializationUserData = m_injectedBundleClient->getInjectedBundleInitializationUserData(*this);
     if (!injectedBundleInitializationUserData)
@@ -1902,9 +1894,9 @@ void WebProcessPool::handleSynchronousMessage(IPC::Connection& connection, const
     if (!webProcessProxy)
         return completionHandler({ });
 
-    RefPtr<API::Object> returnData;
-    m_injectedBundleClient->didReceiveSynchronousMessageFromInjectedBundle(*this, messageName, webProcessProxy->transformHandlesToObjects(messageBody.object()).get(), returnData);
-    completionHandler(UserData(webProcessProxy->transformObjectsToHandles(returnData.get())));
+    m_injectedBundleClient->didReceiveSynchronousMessageFromInjectedBundle(*this, messageName, webProcessProxy->transformHandlesToObjects(messageBody.object()).get(), [webProcessProxy = makeRef(*webProcessProxy), completionHandler = WTFMove(completionHandler)] (RefPtr<API::Object>&& returnData) mutable {
+        completionHandler(UserData(webProcessProxy->transformObjectsToHandles(returnData.get())));
+    });
 }
 
 void WebProcessPool::didGetStatistics(const StatisticsData& statisticsData, uint64_t requestID)

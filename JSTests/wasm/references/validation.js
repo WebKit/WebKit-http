@@ -1,3 +1,4 @@
+//@ runWebAssemblySuite("--useWebAssemblyReferences=true")
 import * as assert from '../assert.js';
 import Builder from '../Builder.js';
 
@@ -73,14 +74,14 @@ import Builder from '../Builder.js';
     const builder = (new Builder())
       .Type().End()
       .Import()
-            .Table("imp", "tbl", {initial: 2, element: "funcref"})
+            .Table("imp", "tbl", {initial: 2, element: "anyref"})
       .End()
       .Function().End()
       .Export()
           .Function("j")
       .End()
       .Code()
-        .Function("j", { params: [], ret: "anyref" })
+        .Function("j", { params: [], ret: "funcref" })
             .I32Const(0)
             .TableGet(0)
         .End()
