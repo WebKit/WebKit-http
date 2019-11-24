@@ -29,7 +29,7 @@
 
 #include <String.h>
 
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
