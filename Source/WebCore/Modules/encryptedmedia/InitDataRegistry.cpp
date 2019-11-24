@@ -36,6 +36,11 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/Base64.h>
 
+#if HAVE(FAIRPLAYSTREAMING_CENC_INITDATA)
+#include "CDMFairPlayStreaming.h"
+#include "ISOFairPlayStreamingPsshBox.h"
+#endif
+
 
 namespace WebCore {
 
@@ -129,6 +134,23 @@ static Optional<Vector<Ref<SharedBuffer>>> extractKeyIDsCenc(const SharedBuffer&
         if (!psshBox.read(view, offset))
             return WTF::nullopt;
 
+#if HAVE(FAIRPLAYSTREAMING_CENC_INITDATA)
+        if (psshBox.systemID() == CDMPrivateFairPlayStreaming::fairPlaySystemID()) {
+            ISOFairPlayStreamingPsshBox fpsPssh;
+            offset -= psshBox.size();
+            if (!fpsPssh.read(view, offset))
+                return WTF::nullopt;
+
+            FourCC scheme = fpsPssh.initDataBox().info().scheme();
+            if (CDMPrivateFairPlayStreaming::validFairPlayStreamingSchemes().contains(scheme)) {
+                for (auto request : fpsPssh.initDataBox().requests()) {
+                    auto& keyID = request.requestInfo().keyID();
+                    keyIDs.append(SharedBuffer::create(keyID.data(), keyID.size()));
+                }
+            }
+        }
+#endif
+
         for (auto& value : psshBox.keyIDs())
             keyIDs.append(SharedBuffer::create(WTFMove(value)));
     }
@@ -184,7 +206,7 @@ InitDataRegistry::InitDataRegistry()
 
 InitDataRegistry::~InitDataRegistry() = default;
 
-RefPtr<SharedBuffer> InitDataRegistry::sanitizeInitData(const AtomicString& initDataType, const SharedBuffer& buffer)
+RefPtr<SharedBuffer> InitDataRegistry::sanitizeInitData(const AtomString& initDataType, const SharedBuffer& buffer)
 {
     auto iter = m_types.find(initDataType);
     if (iter == m_types.end() || !iter->value.sanitizeInitData)
@@ -192,7 +214,7 @@ RefPtr<SharedBuffer> InitDataRegistry::sanitizeInitData(const AtomicString& init
     return iter->value.sanitizeInitData(buffer);
 }
 
-Optional<Vector<Ref<SharedBuffer>>> InitDataRegistry::extractKeyIDs(const AtomicString& initDataType, const SharedBuffer& buffer)
+Optional<Vector<Ref<SharedBuffer>>> InitDataRegistry::extractKeyIDs(const AtomString& initDataType, const SharedBuffer& buffer)
 {
     auto iter = m_types.find(initDataType);
     if (iter == m_types.end() || !iter->value.sanitizeInitData)
@@ -200,7 +222,7 @@ Optional<Vector<Ref<SharedBuffer>>> InitDataRegistry::extractKeyIDs(const Atomic
     return iter->value.extractKeyIDs(buffer);
 }
 
-void InitDataRegistry::registerInitDataType(const AtomicString& initDataType, InitDataTypeCallbacks&& callbacks)
+void InitDataRegistry::registerInitDataType(const AtomString& initDataType, InitDataTypeCallbacks&& callbacks)
 {
     ASSERT(!m_types.contains(initDataType));
     m_types.set(initDataType, WTFMove(callbacks));

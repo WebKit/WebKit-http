@@ -1,3 +1,317 @@
+2019-06-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix build warnings in TestWebKitAPIInjectedBundle
+
+        System headers are being included without SYSTEM again here.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+
+2019-06-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] JSLock should be WebThread aware
+        https://bugs.webkit.org/show_bug.cgi?id=198911
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitLegacy/ios/JSLockTakesWebThreadLock.mm: Added.
+        (TestWebKitAPI::TEST):
+
+2019-06-18  Keith Miller  <keith_miller@apple.com>
+
+        webkit-patch should allow for a bugzilla url not just bugzilla id
+        https://bugs.webkit.org/show_bug.cgi?id=198972
+
+        Reviewed by Dewei Zhu.
+
+        When prompting for a bugzilla id or a new title we should also
+        allow for a bugzilla url.
+
+        * Scripts/webkitpy/tool/steps/promptforbugortitle.py:
+        (PromptForBugOrTitle.run):
+
+2019-06-18  David Quesada  <david_quesada@apple.com>
+
+        REGRESSION: _WKDownload.OriginatingWebView and _WKDownload.CrashAfterDownloadDidFinishWhenDownloadProxyHoldsTheLastRefOnWebProcessPool failing
+        https://bugs.webkit.org/show_bug.cgi?id=198954
+        rdar://problem/51711556
+
+        Reviewed by Alex Christensen.
+
+        For these tests, kill the web process after the download starts. This makes the deallocation
+        of the download-originating web views, which these tests depend on, more reliable.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+        (-[OriginatingWebViewDownloadDelegate _downloadDidStart:]):
+        (-[WaitUntilDownloadCanceledDelegate _downloadDidStart:]):
+
+2019-06-18  Dan Bernstein  <mitz@apple.com>
+
+        Revert workaround for bug 198904 from run-webkit-archive
+        https://bugs.webkit.org/show_bug.cgi?id=198931
+
+        Reviewed by Alexey Proskuryakov.
+
+        Reverted r245965, now that the load commands in the XPC service binaries make them correctly
+        pick up the built frameworks.
+
+        * WebKitArchiveSupport/run-webkit-archive:
+        (set_dyld_framework_path):
+
+2019-06-17  Sihui Liu  <sihui_liu@apple.com>
+
+        -[WKWebsiteDataStore removeDataOfTypes:modifiedSince:completionHandler:] doesn't delete _WKWebsiteDataTypeCredentials
+        https://bugs.webkit.org/show_bug.cgi?id=198854
+        <rdar://problem/51386058>
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebsiteDatastore.mm:
+        (TestWebKitAPI::TEST):
+
+2019-06-17  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [Flatpak][JHBuild] Update build environments to use WPEBackend-fdo 1.3.1
+        https://bugs.webkit.org/show_bug.cgi?id=198831
+
+        Reviewed by Žan Doberšek.
+
+        * flatpak/org.webkit.WPEModules.yaml: Bump versions of libwpe and WPEBackend-fdo to 1.3.1
+        * wpe/jhbuild.modules: Ditto.
+        * wpe/patches/wpebackend-fdo-Handle-the-case-of-new-target-created-for-the-same-v.patch: Removed.
+        * wpe/wpebackend-fdo-view-backend-exportable-private-don-t-double-free-ca.patch: Removed.
+
+2019-06-17  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Move SOAuthorization from WebKitAdditions to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=198874
+        <rdar://problem/47573431>
+
+        Reviewed by Brent Fulgham.
+
+        This patch moves all SOAuthorization tests from WebKitAdditions to WebKit.
+
+        * TestWebKitAPI/Configurations/TestWebKitAPI.xcconfig:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/TestSOAuthorization.mm: Added.
+        (-[TestSOAuthorizationNavigationDelegate init]):
+        (-[TestSOAuthorizationNavigationDelegate webView:didFinishNavigation:]):
+        (-[TestSOAuthorizationNavigationDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[TestSOAuthorizationNavigationDelegate webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+        (-[TestSOAuthorizationViewController viewDidAppear]):
+        (-[TestSOAuthorizationViewController viewDidDisappear]):
+        (overrideCanPerformAuthorizationWithURL):
+        (overrideSetDelegate):
+        (overrideBeginAuthorizationWithURL):
+        (overrideCancelAuthorization):
+        (overrideAddObserverForName):
+        (overrideIsURLFromAppleOwnedDomain):
+        (resetState):
+        (configureSOAuthorizationWebView):
+        (generateHtml):
+        (checkAuthorizationOptions):
+        (TestWebKitAPI::TEST):
+
+2019-06-17  Brent Fulgham  <bfulgham@apple.com>
+
+        Ensure ITP state is relayed to Network Process on restart
+        https://bugs.webkit.org/show_bug.cgi?id=198797
+        <rdar://problem/51646944>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ResourceLoadStatistics.mm:
+        (cleanupITPDatabase): Added.
+        (TEST:EnableDisableITP): Update to use cleanup method.
+        (TEST:NetworkProcessRestart): Added.
+
+2019-06-17  Aakash Jain  <aakash_jain@apple.com>
+
+        New EWS can't process patches larger than 640kb
+        https://bugs.webkit.org/show_bug.cgi?id=198851
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/master.cfg: Increase the patch size limit to 100 MB.
+
+2019-06-17  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Add macOS Catalina, iOS 13
+        https://bugs.webkit.org/show_bug.cgi?id=198492
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Catalina.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/Catalina@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS13.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS13@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS13Simulator.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS13Simulator@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        * BuildSlaveSupport/ews-build/steps.py:
+        * Scripts/webkitpy/common/version_name_map.py:
+        * Scripts/webkitpy/common/version_name_map_unittest.py:
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+
+2019-06-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. [GTK] Bump WPEBackend-fdo requirement to 1.3.1
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/wpebackend-fdo-Handle-the-case-of-new-target-created-for-the-same-v.patch: Removed.
+        * gtk/wpebackend-fdo-view-backend-exportable-private-don-t-double-free-ca.patch: Removed.
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Expand tests coverage (325 new tests -> 1198).
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2019-06-16  Darin Adler  <darin@apple.com>
+
+        Rename AtomicString to AtomString
+        https://bugs.webkit.org/show_bug.cgi?id=195276
+
+        Reviewed by Michael Catanzaro.
+
+        * many files: Let do-webcore-rename do the renaming.
+
+        * Scripts/do-webcore-rename: Updated with a list of all the identifiers
+        that mention "atomic string" and changed them to instead say "atom string".
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Unreviewed test gardening.
+
+        Unsupported alignments.
+
+        fast/inline/absolute-positioned-inline-in-centred-block.html -align: center
+        fast/borders/empty-outline-border-assert.html -vertical-align: super
+        css2.1/20110323/vertical-align-boxes-001.htm - vertical-align: middle
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2019-06-15  Youenn Fablet  <youenn@apple.com>
+
+        WPT test importer WTR option reader should not throw if the file is not proper UTF-8
+        https://bugs.webkit.org/show_bug.cgi?id=198780
+
+        Reviewed by Jonathan Bedard.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter._webkit_test_runner_options):
+        In case the test file cannot be read as text, consider that there is no WTR option.
+
+2019-06-14  Youenn Fablet  <youenn@apple.com>
+
+        WebResourceLoadStatisticsStore should not use its network session if invalidated
+        https://bugs.webkit.org/show_bug.cgi?id=198814
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ResourceLoadStatistics.mm:
+        (TEST):
+
+2019-06-14  Youenn Fablet  <youenn@apple.com>
+
+        import-w3c-tests should respect WEBKIT_OUTPUTDIR
+        https://bugs.webkit.org/show_bug.cgi?id=198682
+        <rdar://problem/51536931>
+
+        Reviewed by Jonathan Bedard.
+
+        Check for WEBKIT_OUTPUTDIR environment variable to compute the w3c-tests folder.
+        Made some refactoring to also teach WPTPaths users about WEBKIT_OUTPUTDIR.
+
+        * Scripts/webkitpy/common/webkit_finder.py:
+        (WebKitFinder.path_from_webkit_outputdir):
+        * Scripts/webkitpy/w3c/common.py:
+        (WPTPaths):
+        (WPTPaths.checkout_directory):
+        (WPTPaths.wpt_checkout_path):
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.__init__):
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (test_checkout_directory):
+
+2019-06-13  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION (r246103) [ Mojave+ WK1 ] Layout Test scrollbars/scrollbar-iframe-click-does-not-blur-content.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=198800
+        <rdar://problem/51679634>
+
+        Reviewed by Tim Horton.
+
+        We didn't detect an NSScroller in a sub-frame due to WebHTMLView's implementation of -[NSView hitTest:]. We now use a private method
+        which lets us use the default implementation and correctly returns an NSScroller in a sub-frame.
+
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (eventPressedMouseButtonsSwizzlerForViewAndEvent):
+        (-[EventSendingController mouseDown:withModifiers:]):
+        (-[EventSendingController mouseUp:withModifiers:]):
+        (-[EventSendingController mouseMoveToX:Y:]):
+
+2019-06-13  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo][WebKitTestRunner] pixel image dump outputs blank images
+        https://bugs.webkit.org/show_bug.cgi?id=198820
+
+        Reviewed by Ross Kirsling.
+
+        WebView window paints nothing because it is moved out of the
+        screen. Send WM_PRINT with memory DC instead of WM_PAINT as well
+        as DumpRenderTree does.
+
+        * WebKitTestRunner/win/PlatformWebViewWin.cpp:
+        (WTR::PlatformWebView::windowSnapshotImage): Send WM_PRINT instead of BitBlt.
+
+2019-06-13  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible for validate-committer-lists to dump a mailmap file
+        https://bugs.webkit.org/show_bug.cgi?id=198517
+
+        Reviewed by Simon Fraser.
+
+        Mailmaps wildly improve the output of various Git tools, including
+        `git shortlog -sne`, mapping committers to our canonical name/email pair.
+
+        * Scripts/validate-committer-lists:
+        (CommitterListFromGit):
+        (CommitterListBugzillaChecker.print_committers_with_invalid_bugzilla_emails):
+        Add some missing legacy username mappings.
+
+        (dump_mailmap):
+        (dump_mailmap.format_email):
+        (dump_mailmap.format_email_with_gitsvn_uuid):
+        (dump_mailmap.map_emails_to_legacy_username):
+        (main):
+        Add `validate-committer-lists --dump-mailmap`, which generates
+        one given committers.json and the existing mapping of legacy username
+        to email addresses that exists in validate-committer-lists.
+
+2019-06-12  Aakash Jain  <aakash_jain@apple.com>
+
+        Replace double-quotes with single quotes in loadConfig.py
+        https://bugs.webkit.org/show_bug.cgi?id=198792
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/loadConfig.py:
+        * BuildSlaveSupport/ews-build/steps_unittest.py:
+
+22019-06-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Add mechanism and test case to check if ITP is active
+        https://bugs.webkit.org/show_bug.cgi?id=198694
+        <rdar://problem/51557704>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ResourceLoadStatistics.mm:
+        (TEST):
+
 2019-06-12  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [WPE][GTK] Deprecate WebSQL APIs

@@ -32,6 +32,7 @@
 #include "WHLSLAutoInitializeVariables.h"
 #include "WHLSLCheckDuplicateFunctions.h"
 #include "WHLSLChecker.h"
+#include "WHLSLComputeDimensions.h"
 #include "WHLSLFunctionStageChecker.h"
 #include "WHLSLHighZombieFinder.h"
 #include "WHLSLLiteralTypeChecker.h"
@@ -124,8 +125,9 @@ static Optional<Program> prepareShared(String& whlslSource)
     RUN_PASS(synthesizeStructureAccessors, program);
     RUN_PASS(synthesizeEnumerationFunctions, program);
     RUN_PASS(synthesizeArrayOperatorLength, program);
+    RUN_PASS(resolveTypeNamesInFunctions, program, nameResolver);
     RUN_PASS(synthesizeConstructors, program);
-    RUN_PASS(resolveNamesInFunctions, program, nameResolver);
+    RUN_PASS(resolveCallsInFunctions, program, nameResolver);
     RUN_PASS(checkDuplicateFunctions, program);
 
     RUN_PASS(check, program);
@@ -170,12 +172,16 @@ Optional<ComputePrepareResult> prepare(String& whlslSource, ComputePipelineDescr
     auto matchedSemantics = matchSemantics(*program, computePipelineDescriptor);
     if (!matchedSemantics)
         return WTF::nullopt;
+    auto computeDimensions = WHLSL::computeDimensions(*program, *matchedSemantics->shader);
+    if (!computeDimensions)
+        return WTF::nullopt;
 
     auto generatedCode = Metal::generateMetalCode(*program, WTFMove(*matchedSemantics), computePipelineDescriptor.layout);
 
     ComputePrepareResult result;
     result.metalSource = WTFMove(generatedCode.metalSource);
     result.mangledEntryPointName = WTFMove(generatedCode.mangledEntryPointName);
+    result.computeDimensions = WTFMove(*computeDimensions);
     return result;
 }
 

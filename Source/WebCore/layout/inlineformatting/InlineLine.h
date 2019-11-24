@@ -51,8 +51,8 @@ public:
             Run(const InlineItem&, const Display::Rect&, TextContext, bool isCollapsed, bool canBeExtended);
 
             const InlineItem& inlineItem;
-            // Relative to the baseline.
             Display::Rect logicalRect;
+            LayoutUnit baseline;
             Optional<TextContext> textContext;
             bool isCollapsed { false };
             bool canBeExtended { false };
@@ -60,8 +60,6 @@ public:
         using Runs = Vector<std::unique_ptr<Run>>;
         const Runs& runs() const { return m_runs; }
         bool isEmpty() const { return m_runs.isEmpty(); }
-        // Not in painting sense though.
-        bool isVisuallyEmpty() const;
 
         LayoutUnit logicalTop() const { return m_logicalRect.top(); }
         LayoutUnit logicalLeft() const { return m_logicalRect.left(); }
@@ -70,28 +68,25 @@ public:
         LayoutUnit logicalWidth() const { return m_logicalRect.width(); }
         LayoutUnit logicalHeight() const { return m_logicalRect.height(); }
         LineBox::Baseline baseline() const { return m_baseline; }
+        LayoutUnit baselineOffset() const { return m_baselineOffset; }
 
     private:
         friend class Line;
 
         void setLogicalRect(const Display::Rect& logicalRect) { m_logicalRect = logicalRect; }
         void setBaseline(LineBox::Baseline baseline) { m_baseline = baseline; }
+        void setBaselineOffset(LayoutUnit baselineOffset) { m_baselineOffset = baselineOffset; }
         Runs& runs() { return m_runs; }
 
         Display::Rect m_logicalRect;
         LineBox::Baseline m_baseline;
+        LayoutUnit m_baselineOffset;
         Runs m_runs;
     };
     std::unique_ptr<Content> close();
 
-    void appendTextContent(const InlineTextItem&, LayoutUnit logicalWidth);
-    void appendNonReplacedInlineBox(const InlineItem&, LayoutUnit logicalWidth);
-    void appendReplacedInlineBox(const InlineItem&, LayoutUnit logicalWidth);
-    void appendInlineContainerStart(const InlineItem&, LayoutUnit logicalWidth);
-    void appendInlineContainerEnd(const InlineItem&, LayoutUnit logicalWidth);
-    void appendHardLineBreak(const InlineItem&);
-
-    bool hasContent() const { return !m_content->isVisuallyEmpty(); }
+    void append(const InlineItem&, LayoutUnit logicalWidth);
+    bool hasContent() const { return !isVisuallyEmpty(); }
 
     LayoutUnit trailingTrimmableWidth() const;
 
@@ -114,13 +109,21 @@ private:
 
     LayoutUnit contentLogicalWidth() const { return m_contentLogicalWidth; }
     LayoutUnit baselineAlignedContentHeight() const { return m_baseline.ascent + m_baseline.descent; }
-    LayoutUnit baselineOffset() const { return m_baseline.offset; }
+    LayoutUnit baselineOffset() const { return m_baseline.ascent + m_baselineTop; }
 
     void appendNonBreakableSpace(const InlineItem&, const Display::Rect& logicalRect);
+    void appendTextContent(const InlineTextItem&, LayoutUnit logicalWidth);
+    void appendNonReplacedInlineBox(const InlineItem&, LayoutUnit logicalWidth);
+    void appendReplacedInlineBox(const InlineItem&, LayoutUnit logicalWidth);
+    void appendInlineContainerStart(const InlineItem&, LayoutUnit logicalWidth);
+    void appendInlineContainerEnd(const InlineItem&, LayoutUnit logicalWidth);
+    void appendHardLineBreak(const InlineItem&);
+
     void removeTrailingTrimmableContent();
 
     void adjustBaselineAndLineHeight(const InlineItem&, LayoutUnit runHeight);
-    LayoutUnit inlineItemHeight(const InlineItem&) const;
+    LayoutUnit inlineItemContentHeight(const InlineItem&) const;
+    bool isVisuallyEmpty() const;
 
     const LayoutState& m_layoutState;
     std::unique_ptr<Content> m_content;
@@ -130,6 +133,8 @@ private:
     LayoutUnit m_contentLogicalWidth;
 
     LineBox::Baseline m_baseline;
+    LayoutUnit m_baselineTop;
+
     LayoutUnit m_contentLogicalHeight;
     LayoutUnit m_lineLogicalWidth;
     bool m_skipVerticalAligment { false };

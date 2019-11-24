@@ -63,21 +63,6 @@ static String mapFunctionName(String& functionName)
     return functionName;
 }
 
-static String convertAddressSpace(AST::AddressSpace addressSpace)
-{
-    switch (addressSpace) {
-    case AST::AddressSpace::Constant:
-        return "constant"_str;
-    case AST::AddressSpace::Device:
-        return "device"_str;
-    case AST::AddressSpace::Threadgroup:
-        return "threadgroup"_str;
-    default:
-        ASSERT(addressSpace == AST::AddressSpace::Thread);
-        return "thread"_str;
-    }
-}
-
 static String atomicName(String input)
 {
     if (input == "Add")
@@ -96,7 +81,7 @@ static String atomicName(String input)
         return "fetch_xor"_str;
 }
 
-String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclaration, String& outputFunctionName, Intrinsics& intrinsics, TypeNamer& typeNamer)
+String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclaration, String& outputFunctionName, Intrinsics& intrinsics, TypeNamer& typeNamer, const char* memsetZeroFunctionName)
 {
     StringBuilder stringBuilder;
     if (nativeFunctionDeclaration.isCast()) {
@@ -104,8 +89,7 @@ String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclara
         if (!nativeFunctionDeclaration.parameters().size()) {
             stringBuilder.append(makeString(metalReturnName, ' ', outputFunctionName, "() {\n"));
             stringBuilder.append(makeString("    ", metalReturnName, " x;\n"));
-            stringBuilder.append("    thread char* ptr = static_cast<thread char*>(static_cast<thread void*>(&x));\n");
-            stringBuilder.append(makeString("    for (size_t i = 0; i < sizeof(", metalReturnName, "); ++i) ptr[i] = 0;\n"));
+            stringBuilder.append(makeString("    ", memsetZeroFunctionName, "(x);\n"));
             stringBuilder.append("    return x;\n");
             stringBuilder.append("}\n");
             return stringBuilder.toString();
@@ -118,7 +102,7 @@ String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclara
             auto& parameterNamedType = downcast<AST::NamedType>(parameterType);
             if (is<AST::NativeTypeDeclaration>(parameterNamedType)) {
                 auto& parameterNativeTypeDeclaration = downcast<AST::NativeTypeDeclaration>(parameterNamedType);
-                if (parameterNativeTypeDeclaration.isAtomic()) {
+                if (parameterNativeTypeDeclaration.isAtom()) {
                     stringBuilder.append(makeString(metalReturnName, ' ', outputFunctionName, '(', metalParameterName, " x) {\n"));
                     stringBuilder.append("    return atomic_load_explicit(&x, memory_order_relaxed);\n");
                     stringBuilder.append("}\n");
@@ -149,7 +133,6 @@ String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclara
         ASSERT(nativeFunctionDeclaration.parameters().size() == 1);
         auto metalParameterName = typeNamer.mangledNameForType(*nativeFunctionDeclaration.parameters()[0]->type());
         auto& parameterType = nativeFunctionDeclaration.parameters()[0]->type()->unifyNode();
-        ASSERT(is<AST::UnnamedType>(parameterType));
         auto& unnamedParameterType = downcast<AST::UnnamedType>(parameterType);
         if (is<AST::ArrayType>(unnamedParameterType)) {
             auto& arrayParameterType = downcast<AST::ArrayType>(unnamedParameterType);
@@ -230,25 +213,34 @@ String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclara
         return stringBuilder.toString();
     }
 
+    if (nativeFunctionDeclaration.name() == "operator&[]") {
+        ASSERT(nativeFunctionDeclaration.parameters().size() == 2);
+        auto metalParameter1Name = typeNamer.mangledNameForType(*nativeFunctionDeclaration.parameters()[0]->type());
+        auto metalParameter2Name = typeNamer.mangledNameForType(*nativeFunctionDeclaration.parameters()[1]->type());
+        auto metalReturnName = typeNamer.mangledNameForType(nativeFunctionDeclaration.type());
+        stringBuilder.append(makeString(metalReturnName, ' ', outputFunctionName, '(', metalParameter1Name, " v, ", metalParameter2Name, " n) {\n"));
+        stringBuilder.append("    if (n < v.length) return &(v.pointer[n]);\n");
+        stringBuilder.append("    return nullptr;\n");
+        stringBuilder.append("}\n");
+        return stringBuilder.toString();
+    }
+
+    auto numberOfMatrixRows = [&] {
+        auto& typeReference = downcast<AST::TypeReference>(*nativeFunctionDeclaration.parameters()[0]->type());
+        auto& matrixType = downcast<AST::NativeTypeDeclaration>(downcast<AST::TypeReference>(downcast<AST::TypeDefinition>(typeReference.resolvedType()).type()).resolvedType());
+        ASSERT(matrixType.name() == "matrix");
+        ASSERT(matrixType.typeArguments().size() == 3);
+        return String::number(WTF::get<AST::ConstantExpression>(matrixType.typeArguments()[1]).integerLiteral().value());
+    };
+
     if (nativeFunctionDeclaration.name() == "operator[]") {
         ASSERT(nativeFunctionDeclaration.parameters().size() == 2);
         auto metalParameter1Name = typeNamer.mangledNameForType(*nativeFunctionDeclaration.parameters()[0]->type());
         auto metalParameter2Name = typeNamer.mangledNameForType(*nativeFunctionDeclaration.parameters()[1]->type());
         auto metalReturnName = typeNamer.mangledNameForType(nativeFunctionDeclaration.type());
         stringBuilder.append(makeString(metalReturnName, ' ', outputFunctionName, '(', metalParameter1Name, " m, ", metalParameter2Name, " i) {\n"));
-        stringBuilder.append(makeString("    return m[i];\n"));
-        stringBuilder.append("}\n");
-        return stringBuilder.toString();
-    }
-
-    if (nativeFunctionDeclaration.name() == "operator&[]") {
-        ASSERT(nativeFunctionDeclaration.parameters().size() == 2);
-        auto metalParameter1Name = typeNamer.mangledNameForType(*nativeFunctionDeclaration.parameters()[0]->type());
-        auto metalParameter2Name = typeNamer.mangledNameForType(*nativeFunctionDeclaration.parameters()[1]->type());
-        auto metalReturnName = typeNamer.mangledNameForType(nativeFunctionDeclaration.type());
-        auto fieldName = nativeFunctionDeclaration.name().substring("operator&[]."_str.length());
-        stringBuilder.append(makeString(metalReturnName, ' ', outputFunctionName, '(', metalParameter1Name, " v, ", metalParameter2Name, " n) {\n"));
-        stringBuilder.append(makeString("    return &(v.pointer[n]);\n"));
+        stringBuilder.append(makeString("    if (i < ", numberOfMatrixRows(), ") return m[i];\n"));
+        stringBuilder.append(makeString("    return ", metalReturnName, "(0);\n"));
         stringBuilder.append("}\n");
         return stringBuilder.toString();
     }
@@ -260,8 +252,8 @@ String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclara
         auto metalParameter3Name = typeNamer.mangledNameForType(*nativeFunctionDeclaration.parameters()[2]->type());
         auto metalReturnName = typeNamer.mangledNameForType(nativeFunctionDeclaration.type());
         stringBuilder.append(makeString(metalReturnName, ' ', outputFunctionName, '(', metalParameter1Name, " m, ", metalParameter2Name, " i, ", metalParameter3Name, " v) {\n"));
-        stringBuilder.append(makeString("    m[i] = v;\n"));
-        stringBuilder.append(makeString("    return m;\n"));
+        stringBuilder.append(makeString("    if (i < ", numberOfMatrixRows(), ") m[i] = v;\n"));
+        stringBuilder.append("    return m;\n");
         stringBuilder.append("}\n");
         return stringBuilder.toString();
     }
@@ -366,17 +358,15 @@ String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclara
     if (nativeFunctionDeclaration.name().startsWith("Interlocked"_str)) {
         if (nativeFunctionDeclaration.name() == "InterlockedCompareExchange") {
             ASSERT(nativeFunctionDeclaration.parameters().size() == 4);
-            ASSERT(is<AST::PointerType>(*nativeFunctionDeclaration.parameters()[0]->type()));
             auto& firstArgumentPointer = downcast<AST::PointerType>(*nativeFunctionDeclaration.parameters()[0]->type());
             auto firstArgumentAddressSpace = firstArgumentPointer.addressSpace();
             auto firstArgumentPointee = typeNamer.mangledNameForType(firstArgumentPointer.elementType());
             auto secondArgument = typeNamer.mangledNameForType(*nativeFunctionDeclaration.parameters()[1]->type());
             auto thirdArgument = typeNamer.mangledNameForType(*nativeFunctionDeclaration.parameters()[2]->type());
-            ASSERT(is<AST::PointerType>(*nativeFunctionDeclaration.parameters()[3]->type()));
             auto& fourthArgumentPointer = downcast<AST::PointerType>(*nativeFunctionDeclaration.parameters()[3]->type());
             auto fourthArgumentAddressSpace = fourthArgumentPointer.addressSpace();
             auto fourthArgumentPointee = typeNamer.mangledNameForType(fourthArgumentPointer.elementType());
-            stringBuilder.append(makeString("void ", outputFunctionName, '(', convertAddressSpace(firstArgumentAddressSpace), ' ', firstArgumentPointee, "* object, ", secondArgument, " compare, ", thirdArgument, " desired, ", convertAddressSpace(fourthArgumentAddressSpace), ' ', fourthArgumentPointee, "* out) {\n"));
+            stringBuilder.append(makeString("void ", outputFunctionName, '(', toString(firstArgumentAddressSpace), ' ', firstArgumentPointee, "* object, ", secondArgument, " compare, ", thirdArgument, " desired, ", toString(fourthArgumentAddressSpace), ' ', fourthArgumentPointee, "* out) {\n"));
             stringBuilder.append("    atomic_compare_exchange_weak_explicit(object, &compare, desired, memory_order_relaxed);\n");
             stringBuilder.append("    *out = compare;\n");
             stringBuilder.append("}\n");
@@ -384,17 +374,15 @@ String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclara
         }
 
         ASSERT(nativeFunctionDeclaration.parameters().size() == 3);
-        ASSERT(is<AST::PointerType>(*nativeFunctionDeclaration.parameters()[0]->type()));
         auto& firstArgumentPointer = downcast<AST::PointerType>(*nativeFunctionDeclaration.parameters()[0]->type());
         auto firstArgumentAddressSpace = firstArgumentPointer.addressSpace();
         auto firstArgumentPointee = typeNamer.mangledNameForType(firstArgumentPointer.elementType());
         auto secondArgument = typeNamer.mangledNameForType(*nativeFunctionDeclaration.parameters()[1]->type());
-        ASSERT(is<AST::PointerType>(*nativeFunctionDeclaration.parameters()[2]->type()));
         auto& thirdArgumentPointer = downcast<AST::PointerType>(*nativeFunctionDeclaration.parameters()[2]->type());
         auto thirdArgumentAddressSpace = thirdArgumentPointer.addressSpace();
         auto thirdArgumentPointee = typeNamer.mangledNameForType(thirdArgumentPointer.elementType());
         auto name = atomicName(nativeFunctionDeclaration.name().substring("Interlocked"_str.length()));
-        stringBuilder.append(makeString("void ", outputFunctionName, '(', convertAddressSpace(firstArgumentAddressSpace), ' ', firstArgumentPointee, "* object, ", secondArgument, " operand, ", convertAddressSpace(thirdArgumentAddressSpace), ' ', thirdArgumentPointee, "* out) {\n"));
+        stringBuilder.append(makeString("void ", outputFunctionName, '(', toString(firstArgumentAddressSpace), ' ', firstArgumentPointee, "* object, ", secondArgument, " operand, ", toString(thirdArgumentAddressSpace), ' ', thirdArgumentPointee, "* out) {\n"));
         stringBuilder.append(makeString("    *out = atomic_fetch_", name, "_explicit(object, operand, memory_order_relaxed);\n"));
         stringBuilder.append("}\n");
         return stringBuilder.toString();

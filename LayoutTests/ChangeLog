@@ -1,3 +1,895 @@
+2019-06-19  Russell Epstein  <russell_e@apple.com>
+
+        webgpu/blend-color-triangle-strip.html is a flakey failure since introduction.
+        https://bugs.webkit.org/show_bug.cgi?id=198921
+
+        Unreviewed Test Gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-06-19  Russell Epstein  <russell_e@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/websockets/Create-Secure-verify-url-set-non-default-port.any.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=199013
+
+        Unreviewed Test Gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2019-06-19  Antti Koivisto  <antti@apple.com>
+
+        RequestedScrollPosition shouldn't be applied after node reattach
+        https://bugs.webkit.org/show_bug.cgi?id=198994
+        <rdar://problem/51439685>
+
+        Reviewed by Simon Fraser.
+
+        * scrollingcoordinator/ios/scroll-position-after-reattach-expected.html: Added.
+        * scrollingcoordinator/ios/scroll-position-after-reattach.html: Added.
+
+2019-06-19  Truitt Savell  <tsavell@apple.com>
+
+        REGRESSION: ( r246394 ) webgpu/whlsl-buffer-fragment.html and webgpu/whlsl-buffer-vertex.html are failing
+        https://bugs.webkit.org/show_bug.cgi?id=199012
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-06-19  Cathie Chen  <cathiechen@igalia.com>
+
+        resize-observer/element-leak.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=198666
+
+        Reviewed by Frédéric Wang.
+
+        It takes a very long time to construct iframes which create and remove 1000 elements. This would cause timeout sometimes.
+        In order to make it more effective, reduce the number of elements to 200 and put them into a container first,
+        then attach the container to DOM tree.
+
+        * resize-observer/resources/element-leak-frame.html:
+
+2019-06-18  Megan Gardner  <megan_gardner@apple.com>
+
+        Text Selection gesture has changed behavior, change test to match new behavior
+        https://bugs.webkit.org/show_bug.cgi?id=198980
+        <rdar://problem/51713918>
+
+        Reviewed by Wenson Hsieh.
+
+        Long press and drag now starts a selection and entends the range, rather than changing
+        the start of the text selection. Update the test to match the new behavior. 
+
+        * fast/events/touch/ios/long-press-then-drag-to-select-text.html:
+
+2019-06-18  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Support matrices
+        https://bugs.webkit.org/show_bug.cgi?id=198876
+        <rdar://problem/51768882>
+
+        Reviewed by Dean Jackson and Myles Maxfield.
+
+        * webgpu/whlsl-matrix-2-expected.txt: Added.
+        * webgpu/whlsl-matrix-2.html: Added.
+        * webgpu/whlsl-matrix-expected.txt: Added.
+        * webgpu/whlsl-matrix.html: Added.
+
+2019-06-18  Russell Epstein  <russell_e@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/content-security-policy/reporting/report-only-in-meta.sub.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=198977
+
+        Unreviewed Test Gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2019-06-18  Russell Epstein  <russell_e@apple.com>
+
+        Layout test http/tests/websocket/tests/hybi/send-object-tostring-check.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=176030
+
+        Unreviewed Test Gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2019-06-18  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r240757): Cannot dismiss the keyboard on http://apple.com/apple-tv-plus
+        https://bugs.webkit.org/show_bug.cgi?id=198922
+        <rdar://problem/50300056>
+
+        Reviewed by Wenson Hsieh.
+
+        Add a test to ensure that pressing Done hides the keyboard after tapping outside the focused
+        element's frame.
+
+        * fast/events/ios/should-be-able-to-dismiss-form-accessory-after-tapping-outside-iframe-with-focused-field-expected.txt: Added.
+        * fast/events/ios/should-be-able-to-dismiss-form-accessory-after-tapping-outside-iframe-with-focused-field.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.dismissFormAccessoryView): Added.
+
+2019-06-18  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        [ESNExt] String.prototype.matchAll
+        https://bugs.webkit.org/show_bug.cgi?id=186694
+
+        Reviewed by Yusuke Suzuki.
+
+        Implement String.prototype.matchAll.
+        (https://tc39.es/ecma262/#sec-string.prototype.matchall)
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2019-06-18  Keith Miller  <keith_miller@apple.com>
+
+        Add support for WeakRef
+        https://bugs.webkit.org/show_bug.cgi?id=198710
+
+        Reviewed by Yusuke Suzuki.
+
+        Add an asyncTestStart that mirrors the asyncTestStart behavior in
+        the JSC cli.
+
+        * http/tests/resources/js-test-pre.js:
+        (asyncTestStart):
+        * js/script-tests/weakref-async-is-collected.js: Added.
+        (makeWeakRef):
+        (turnEventLoop):
+        (async.foo):
+        (async.test):
+        * js/script-tests/weakref-eventually-collects-values.js: Added.
+        (makeWeakRef):
+        (turnEventLoop):
+        (let.weakRefs.async.test):
+        * js/script-tests/weakref-microtasks-dont-collect.js: Added.
+        (asyncTestStart.1.makeWeakRef):
+        (turnEventLoop):
+        (async.foo):
+        (async.test):
+        * js/script-tests/weakref-weakset-consistency.js: Added.
+        (makeWeakRef):
+        (turnEventLoop):
+        (async.foo):
+        (async.test):
+        * js/weakref-async-is-collected-expected.txt: Added.
+        * js/weakref-async-is-collected.html: Added.
+        * js/weakref-eventually-collects-values-expected.txt: Added.
+        * js/weakref-eventually-collects-values.html: Added.
+        * js/weakref-microtasks-dont-collect-expected.txt: Added.
+        * js/weakref-microtasks-dont-collect.html: Added.
+        * js/weakref-weakset-consistency-expected.txt: Added.
+        * js/weakref-weakset-consistency.html: Added.
+        * resources/js-test-pre.js:
+        (asyncTestStart):
+
+2019-06-18  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Pressing key while holding Command should not insert character
+        https://bugs.webkit.org/show_bug.cgi?id=198925
+        <rdar://problem/51778811>
+
+        Reviewed by Brent Fulgham.
+
+        Add a test that Command + Shift + v does not insert a v as we don't expect it
+        to as of the time of writing. A more comprehensive test would be needed to
+        ensure that all unhandled key commands with Command modifiers do not insert
+        a character. For now, the added test seems good enough.
+
+        * fast/events/ios/command+shift+v-should-not-insert-v-expected.txt: Added.
+        * fast/events/ios/command+shift+v-should-not-insert-v.html: Added.
+
+2019-06-18  Russell Epstein  <russell_e@apple.com>
+
+        [iOS] Layout Test http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html is frequently failing or timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=198185.
+
+        Unreviewed Test Gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2019-06-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: parseQueryParameters fails to successfully parse query parameter values that contain "="
+        https://bugs.webkit.org/show_bug.cgi?id=198971
+        <rdar://problem/51852782>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/unit-tests/url-utilities.html:
+        * inspector/unit-tests/url-utilities-expected.txt:
+
+2019-06-18  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Do not generate duplicate constructors/copy constructors in synthesizeConstructors
+        https://bugs.webkit.org/show_bug.cgi?id=198580
+
+        Reviewed by Robin Morisset.
+
+        * webgpu/whlsl-duplicate-types-should-not-produce-duplicate-ctors-expected.txt: Added.
+        * webgpu/whlsl-duplicate-types-should-not-produce-duplicate-ctors.html: Added.
+
+2019-06-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Convert macOS to scroll by changing layer boundsOrigin
+        https://bugs.webkit.org/show_bug.cgi?id=198917
+
+        Reviewed by Antti Koivisto.
+
+        * compositing/iframes/scrolling-iframe-expected.txt:
+        * compositing/overflow/textarea-scroll-touch-expected.txt:
+        * compositing/repaint/iframes/compositing-iframe-scroll-repaint-expected.txt:
+        * compositing/repaint/iframes/compositing-iframe-with-fixed-background-doc-repaint-expected.txt:
+        * compositing/repaint/scroller-with-foreground-layer-repaints-expected.txt:
+        * compositing/rtl/rtl-scrolling-with-transformed-descendants-expected.txt:
+        * scrollingcoordinator/scrolling-tree/fixed-inside-frame-expected.txt:
+
+2019-06-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WebGL] Extensions3DOpenGLES::bindVertexArrayOES() should allow zero array object
+        https://bugs.webkit.org/show_bug.cgi?id=198929
+
+        Reviewed by Carlos Garcia Campos.
+
+        Enable the passing tests and update one baseline.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/webgl/2.0.0/conformance/extensions/oes-vertex-array-object-expected.txt:
+
+2019-06-17  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Make .length work
+        https://bugs.webkit.org/show_bug.cgi?id=198890
+
+        Reviewed by Myles Maxfield.
+
+        * TestExpectations:
+        * webgpu/whlsl-buffer-length-expected.txt: Added.
+        * webgpu/whlsl-buffer-length.html: Added.
+        * webgpu/whlsl-buffer-vertex.html:
+        * webgpu/whlsl-compute.html:
+        * webgpu/whlsl-null-dereference.html:
+        * webgpu/whlsl-oob-access.html:
+
+2019-06-17  Shawn Roberts  <sroberts@apple.com>
+
+        scrollingcoordinator/ios/sync-layer-positions-after-scroll.html is a flaky failure on iOS Simulator
+        https://bugs.webkit.org/show_bug.cgi?id=172001
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2019-06-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Add missing test result after r246471. EWS didn't show any failure when it was missing.
+
+        * compositing/overflow/composited-scrolling-paint-phases-expected.txt: Added.
+
+2019-06-16  Darin Adler  <darin@apple.com>
+
+        Convert some uses of fixed width and fixed precision floating point formatting to use shortest instead
+        https://bugs.webkit.org/show_bug.cgi?id=198896
+
+        Reviewed by Sam Weinig.
+
+        * fast/loader/stateobjects/pushstate-frequency-expected.txt:
+        * fast/loader/stateobjects/pushstate-frequency-iframe-expected.txt:
+        * fast/loader/stateobjects/replacestate-frequency-expected.txt:
+        * fast/loader/stateobjects/replacestate-frequency-iframe-expected.txt:
+        Updated to expect cleaner output without ".000000".
+
+2019-06-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Make layerTreeAsText() output a bit less verbose
+        https://bugs.webkit.org/show_bug.cgi?id=198870
+
+        Reviewed by Tim Horton.
+
+        * compositing/overflow/stacking-context-composited-scroller-with-foreground-paint-phases-expected.txt:
+        * platform/gtk/compositing/overflow/composited-scrolling-paint-phases-expected.txt:
+        * platform/ios-wk2/compositing/overflow/stacking-context-composited-scroller-with-foreground-paint-phases-expected.txt:
+        * platform/mac-wk1/compositing/overflow/stacking-context-composited-scroller-with-foreground-paint-phases-expected.txt:
+        * platform/mac/compositing/overflow/composited-scrolling-paint-phases-expected.txt: Removed.
+
+2019-06-15  Rob Buis  <rbuis@igalia.com>
+
+        Add tests for prefetch redirects
+        https://bugs.webkit.org/show_bug.cgi?id=197371
+
+        Reviewed by Youenn Fablet.
+
+        Add a test to verify prefetch redirections are cached in the prefetch
+        cache and reused when navigating.
+
+        * http/wpt/prefetch/link-prefetch-main-resource-redirect-expected.txt: Added.
+        * http/wpt/prefetch/link-prefetch-main-resource-redirect.html: Added.
+        * http/wpt/prefetch/resources/main-resource-redirect-no-prefetch.py: Added.
+        (main):
+        * http/wpt/prefetch/resources/navigate.html: Added.
+        * http/wpt/prefetch/resources/prefetched-main-resource-redirect.py: Added.
+        (main):
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2019-06-15  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Temporarily mark webgpu/whlsl-oob-access.html as flaky.
+
+        * TestExpectations:
+
+2019-06-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: rework http/tests/inspector/network/resource-sizes-network.html to print the actual values so other platforms don't FAIL
+        https://bugs.webkit.org/show_bug.cgi?id=198877
+        <rdar://problem/50381370>
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/inspector/network/resources/resource-size-test.js:
+        (TestPage.registerInitializer.window.addResourceSizeTest):
+
+        * http/tests/inspector/network/resource-sizes-disk-cache.html:
+        * http/tests/inspector/network/resource-sizes-disk-cache-expected.txt:
+
+        * http/tests/inspector/network/resource-sizes-memory-cache.html:
+        * http/tests/inspector/network/resource-sizes-memory-cache-expected.txt:
+        * platform/gtk/http/tests/inspector/network/resource-sizes-memory-cache-expected.txt:
+        * platform/mac/http/tests/inspector/network/resource-sizes-memory-cache-expected.txt:
+        * platform/mac-sierra/http/tests/inspector/network/resource-sizes-memory-cache-expected.txt:
+
+        * http/tests/inspector/network/resource-sizes-network.html:
+        * http/tests/inspector/network/resource-sizes-network-expected.txt:
+        * platform/gtk/http/tests/inspector/network/resource-sizes-network-expected.txt:
+        * platform/mac/http/tests/inspector/network/resource-sizes-network-expected.txt:
+        * platform/mac-sierra/http/tests/inspector/network/resource-sizes-network-expected.txt:
+
+2019-06-14  John Wilander  <wilander@apple.com>
+
+        Repeatedly check for IDB removal to address flakiness in http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html
+        https://bugs.webkit.org/show_bug.cgi?id=198185
+        <rdar://problem/51074251>
+
+        Unreviewed test gardening.
+
+        There's an asynchronosity in the removal of IDB entries so this test case
+        needs to check repeatedly until the removal has happened.
+
+        * http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html:
+        * platform/ios-simulator-wk2/TestExpectations:
+            Removed skip.
+
+2019-06-14  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Split up fast/events/ios/key-events-meta-alt-combinations.html and add more tests
+        https://bugs.webkit.org/show_bug.cgi?id=198834
+        <rdar://problem/50103348>
+
+        Reviewed by Brent Fulgham.
+
+        The test fast/events/ios/key-events-meta-alt-combinations.html frequently times out. Let's try
+        to break up this test into multiple files. Also add more modifier combination tests and group
+        all these combination tests under a new direcdtory: fast/events/ios/key-events-comprehensive.
+
+        * fast/events/ios/key-events-comprehensive/key-events-control-expected.txt: Renamed from LayoutTests/fast/events/ios/key-events-control-expected.txt.
+        * fast/events/ios/key-events-comprehensive/key-events-control-option-expected.txt: Added.
+        * fast/events/ios/key-events-comprehensive/key-events-control-option.html: Copied from LayoutTests/fast/events/ios/key-events-control.html.
+        * fast/events/ios/key-events-comprehensive/key-events-control-shift-expected.txt: Added.
+        * fast/events/ios/key-events-comprehensive/key-events-control-shift.html: Copied from LayoutTests/fast/events/ios/key-events-control.html.
+        * fast/events/ios/key-events-comprehensive/key-events-control.html: Renamed from LayoutTests/fast/events/ios/key-events-control.html.
+        * fast/events/ios/key-events-comprehensive/key-events-meta-control-expected.txt: Added.
+        * fast/events/ios/key-events-comprehensive/key-events-meta-control.html: Copied from LayoutTests/fast/events/ios/key-events-meta.html.
+        * fast/events/ios/key-events-comprehensive/key-events-meta-expected.txt: Renamed from LayoutTests/fast/events/ios/key-events-meta-expected.txt.
+        * fast/events/ios/key-events-comprehensive/key-events-meta-option-expected.txt: Added.
+        * fast/events/ios/key-events-comprehensive/key-events-meta-option.html: Renamed from LayoutTests/fast/events/ios/key-events-meta-alt-combinations.html.
+        * fast/events/ios/key-events-comprehensive/key-events-meta-shift-expected.txt: Added.
+        * fast/events/ios/key-events-comprehensive/key-events-meta-shift.html: Copied from LayoutTests/fast/events/ios/key-events-meta.html.
+        * fast/events/ios/key-events-comprehensive/key-events-meta.html: Renamed from LayoutTests/fast/events/ios/key-events-meta.html.
+        * fast/events/ios/key-events-comprehensive/key-events-option-expected.txt: Added.
+        * fast/events/ios/key-events-comprehensive/key-events-option-shift-expected.txt: Added.
+        * fast/events/ios/key-events-comprehensive/key-events-option-shift.html: Added.
+        * fast/events/ios/key-events-comprehensive/key-events-option.html: Added.
+        * fast/events/ios/key-events-comprehensive/key-events-shift-expected.txt: Added.
+        * fast/events/ios/key-events-comprehensive/key-events-shift.html: Added.
+        * fast/events/ios/key-events-meta-alt-combinations-expected.txt: Removed.
+
+2019-06-14  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] button property is -1 for pointerdown and pointerup
+        https://bugs.webkit.org/show_bug.cgi?id=198868
+        <rdar://problem/51758109>
+
+        Reviewed by Dean Jackson.
+
+        * pointerevents/mouse/pointer-button-and-buttons-expected.txt: Added.
+        * pointerevents/mouse/pointer-button-and-buttons.html: Added.
+        * pointerevents/utils.js:
+        (prototype._handlePointerEvent):
+
+2019-06-14  John Wilander  <wilander@apple.com>
+
+        Move http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html off of testRunner.setAlwaysAcceptCookies()
+        https://bugs.webkit.org/show_bug.cgi?id=198863
+        <rdar://problem/47854589>
+
+        Unreviewed test gardening.
+
+        testRunner.setAlwaysAcceptCookies() is not working right (tracked
+        in rdar://problem/51757107). Therefore, we need to change
+        http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html
+        to make it work properly.
+
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html:
+
+2019-06-14  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Implement out-of-bounds and nullptr behavior
+        https://bugs.webkit.org/show_bug.cgi?id=198600
+        <rdar://problem/51668853>
+
+        Reviewed by Robin Morisset.
+
+        * webgpu/whlsl-null-dereference-expected.txt: Added.
+        * webgpu/whlsl-null-dereference.html: Added.
+        * webgpu/whlsl-oob-access-expected.txt: Added.
+        * webgpu/whlsl-oob-access.html: Added.
+
+2019-06-14  Youenn Fablet  <youenn@apple.com>
+
+        Cloning a MediaStreamTrack does not clone the logger
+        https://bugs.webkit.org/show_bug.cgi?id=198844
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/MediaStreamTrack-clone-expected.txt:
+        * fast/mediastream/MediaStreamTrack-clone.html:
+
+2019-06-14  Shawn Roberts  <sroberts@apple.com>
+
+        webgpu/compute-squares.html test was deleted in https://trac.webkit.org/changeset/246427
+        https://bugs.webkit.org/show_bug.cgi?id=198841
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Removing expectation for deleted teest
+
+2019-06-14  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win10] Some tests are failing only on specific machines
+        https://bugs.webkit.org/show_bug.cgi?id=197509
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-06-13  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r246178): extra spaces added in at-rules when formatting CSS
+        https://bugs.webkit.org/show_bug.cgi?id=198806
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/formatting/resources/css-tests/keyframes.css:
+        * inspector/formatting/resources/css-tests/keyframes-expected.css:
+        * inspector/formatting/resources/css-tests/media-query.css:
+        * inspector/formatting/resources/css-tests/media-query-expected.css:
+        * inspector/formatting/resources/css-tests/selectors.css:
+        * inspector/formatting/resources/css-tests/selectors-expected.css:
+        * inspector/formatting/resources/css-tests/wrapping.css:
+        * inspector/formatting/resources/css-tests/wrapping-expected.css:
+
+2019-06-13  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION (r246103) [ Mojave+ WK1 ] Layout Test scrollbars/scrollbar-iframe-click-does-not-blur-content.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=198800
+        <rdar://problem/51679634>
+
+        Reviewed by Tim Horton.
+
+        This test now passes reliably on WK1.
+
+        * platform/mac-wk1/TestExpectations:
+
+2019-06-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Hook up compute
+        https://bugs.webkit.org/show_bug.cgi?id=198644
+
+        Reviewed by Saam Barati.
+
+        This doesn't thoroughly test compute, but it's at least enough to unblock the WHLSL testing effort.
+
+        * webgpu/compute-squares-expected.txt: Deleted. Covered by webgpu/whlsl-compute.html.
+        * webgpu/compute-squares.html: Deleted. Ditto.
+        * webgpu/whlsl-compute-expected.txt: Added.
+        * webgpu/whlsl-compute.html: Added.
+
+2019-06-13  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] LayoutTest/fast/content-observation/click-event-suppression-on-content-change.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=198848
+        <rdar://problem/51689630>
+
+        Reviewed by Dean Jackson.
+
+        1. Enable content observation for this test.
+        2. Add role attribute to trigger fast click-through -less flaky with the sleeps. 
+        3. Use UIHelper functions.
+
+        * fast/content-observation/click-event-suppression-on-content-change.html: Removed.
+        * fast/events/touch/ios/content-observation/click-event-suppression-on-content-change-expected.txt: Renamed from LayoutTests/fast/content-observation/click-event-suppression-on-content-change-expected.txt.
+        * fast/events/touch/ios/content-observation/click-event-suppression-on-content-change.html: Added.
+
+2019-06-13  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Normalize test result of fast/events/ios/keyboard-event-key-attribute.html to handle possible modifier dispatch
+        https://bugs.webkit.org/show_bug.cgi?id=198835
+        <rdar://problem/46082708>
+
+        Reviewed by Darin Adler.
+
+        WebKit now knows how to handle flag change events on iOS and dispatch DOM events just like Mac.
+        Until USE(UIKIT_KEYBOARD_ADDITIONS) is enabled by default WebKit does not expect to receive
+        modifier flag changes. But once this compile time flag is enabled it will and the test
+        fast/events/ios/keyboard-event-key-attribute.html will fail because it types '@' and only
+        expects to see a single keydown for '@' even though it actually requires two key downs to
+        generate an '@': Shift, and 2 (on a US keyboard layout). We have a bunch of other tests to
+        check that modifier key presses generate DOM events. So, let's just normalize the result of
+        this test to ignore Shift keydowns.
+
+        * fast/events/ios/keyboard-event-key-attribute.html:
+
+2019-06-13  Truitt Savell  <tsavell@apple.com>
+
+        Test gardening after r246406
+        https://bugs.webkit.org/show_bug.cgi?id=198774
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2019-06-13  Jonathan Bedard  <jbedard@apple.com>
+
+        run-webkit-tests: Correctly garden fast/events/ios, fast/forms/ios tests
+        https://bugs.webkit.org/show_bug.cgi?id=198798
+
+        Reviewed by Aakash Jain.
+
+        Any expectations for fast/events/ios and fast/forms/ios tests are overriden
+        in ios-wk2 expectations, remove them since they don't do anything.
+
+        * platform/ios-device/TestExpectations:
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/ipad/TestExpectations:
+
+2019-06-13  Shawn Roberts  <sroberts@apple.com>
+
+        webgpu/compute-squares.html is crashing on HighSierra
+        https://bugs.webkit.org/show_bug.cgi?id=198841
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Skipping on High Sierra
+
+2019-06-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r246396 and r246397.
+        https://bugs.webkit.org/show_bug.cgi?id=198837
+
+        Breaks internal builds (Requested by ShawnRoberts on #webkit).
+
+        Reverted changesets:
+
+        "[WHLSL] Hook up compute"
+        https://bugs.webkit.org/show_bug.cgi?id=198644
+        https://trac.webkit.org/changeset/246396
+
+        "[WHLSL] Hook up compute"
+        https://bugs.webkit.org/show_bug.cgi?id=198644
+        https://trac.webkit.org/changeset/246397
+
+2019-06-13  Antti Koivisto  <antti@apple.com>
+
+        twitch.tv: embedded video hovers down the screen when scrolling on iPad
+        https://bugs.webkit.org/show_bug.cgi?id=198832
+        <rdar://problem/51541439>
+
+        Reviewed by Simon Fraser.
+
+        * compositing/scrolling/async-overflow-scrolling/overflow-scroll-paint-order-sibling-expected.html: Added.
+        * compositing/scrolling/async-overflow-scrolling/overflow-scroll-paint-order-sibling.html: Added.
+
+2019-06-13  Youenn Fablet  <youenn@apple.com>
+
+        Import WPT websockets tests
+        https://bugs.webkit.org/show_bug.cgi?id=198774
+
+        Reviewed by Geoffrey Garen.
+
+        * platform/mac-wk1/TestExpectations:
+        * TestExpectations:
+        * tests-options.json:
+
+2019-06-13  Antoine Quint  <graouts@apple.com>
+
+        "display: contents" Content click does not trigger
+        https://bugs.webkit.org/show_bug.cgi?id=198559
+        <rdar://problem/51488524>
+
+        Reviewed by Antti Koivisto.
+
+        Add a new test that checks that tapping on an element with "display: contents" correctly gets a "click" event.
+
+        * fast/events/ios/click-event-and-display-contents-expected.txt: Added.
+        * fast/events/ios/click-event-and-display-contents.html: Added.
+
+2019-06-13  Youenn Fablet  <youenn@apple.com>
+
+        Update service worker test and expectation after revision 246363
+        https://bugs.webkit.org/show_bug.cgi?id=198808
+
+        Reviewed by Geoffrey Garen.
+
+        * TestExpectations:
+        Skip timing out test in Debug
+
+2019-06-13  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening. Update expectations after r246397.
+
+        * platform/gtk/TestExpectations:
+
+2019-06-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Hook up compute
+        https://bugs.webkit.org/show_bug.cgi?id=198644
+
+        Reviewed by Saam Barati.
+
+        This doesn't thoroughly test compute, but it's at least enough to unblock the WHLSL testing effort.
+
+        * webgpu/compute-squares-expected.txt: Deleted. Covered by webgpu/whlsl-compute.html.
+        * webgpu/compute-squares.html: Deleted. Ditto.
+        * webgpu/whlsl-compute-expected.txt: Added.
+        * webgpu/whlsl-compute.html: Added.
+
+2019-06-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Implement array references
+        https://bugs.webkit.org/show_bug.cgi?id=198163
+
+        Reviewed by Saam Barati.
+
+        * webgpu/buffer-resource-triangles-expected.html: Deleted. This test doens't make any sense and triggers
+        Metal to read out-of-bounds of a vertex buffer.
+        * webgpu/buffer-resource-triangles.html: Deleted.
+        * webgpu/whlsl-buffer-fragment-expected.html: Added.
+        * webgpu/whlsl-buffer-fragment.html: Added.
+        * webgpu/whlsl-buffer-vertex-expected.html: Added.
+        * webgpu/whlsl-buffer-vertex.html: Added.
+        * webgpu/whlsl-dont-crash-parsing-enum.html:
+        * webgpu/whlsl.html:
+
+2019-06-12  Justin Fan  <justin_fan@apple.com>
+
+        [WebGL] ANGLE Extension directive location incorrectly enforced for webgl 1.0
+        https://bugs.webkit.org/show_bug.cgi?id=198811
+
+        Reviewed by Dean Jackson.
+
+        ANGLE was updated so that this case should not be an error.
+
+        * webgl/webgl-extension-directive-location-no-error-expected.txt: Added.
+        * webgl/webgl-extension-directive-location-no-error.html: Added.
+
+2019-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [cairo][SVG] If clipPath has multiple elements, clip-path doesn't work with transform
+        https://bugs.webkit.org/show_bug.cgi?id=198746
+        <rdar://problem/51620347>
+
+        Reviewed by Don Olmstead.
+
+        * svg/clip-path/clip-hidpi-expected.svg: Added.
+        * svg/clip-path/clip-hidpi.svg: Added.
+        * svg/clip-path/clip-opacity-translate-expected.svg: Added.
+        * svg/clip-path/clip-opacity-translate.svg: Added.
+
+2019-06-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Educate the property resolver about IndexExpressions
+        https://bugs.webkit.org/show_bug.cgi?id=198399
+
+        Unreviewed test gardening.
+
+        Failing WebGPU tests should fail instead of time out.
+
+        * webgpu/blend-color-triangle-strip.html:
+        * webgpu/blend-triangle-strip.html:
+        * webgpu/blit-commands.html:
+        * webgpu/buffer-command-buffer-races.html:
+        * webgpu/buffer-resource-triangles.html:
+        * webgpu/color-write-mask-triangle-strip.html:
+        * webgpu/depth-enabled-triangle-strip.html:
+        * webgpu/draw-indexed-triangles.html:
+        * webgpu/propertyresolver/ander-abstract-lvalue.html:
+        * webgpu/propertyresolver/ander-lvalue-3-levels.html:
+        * webgpu/propertyresolver/ander-lvalue.html:
+        * webgpu/propertyresolver/ander.html:
+        * webgpu/propertyresolver/getter.html:
+        * webgpu/propertyresolver/indexer-ander-abstract-lvalue.html:
+        * webgpu/propertyresolver/indexer-ander-lvalue-3-levels.html:
+        * webgpu/propertyresolver/indexer-ander-lvalue.html:
+        * webgpu/propertyresolver/indexer-ander.html:
+        * webgpu/propertyresolver/indexer-getter.html:
+        * webgpu/propertyresolver/indexer-setter-abstract-lvalue-3-levels.html:
+        * webgpu/propertyresolver/indexer-setter-abstract-lvalue.html:
+        * webgpu/propertyresolver/indexer-setter-lvalue.html:
+        * webgpu/propertyresolver/indexer-setter.html:
+        * webgpu/propertyresolver/setter-abstract-lvalue-3-levels.html:
+        * webgpu/propertyresolver/setter-abstract-lvalue.html:
+        * webgpu/propertyresolver/setter-lvalue.html:
+        * webgpu/simple-triangle-strip.html:
+        * webgpu/texture-triangle-strip.html:
+        * webgpu/vertex-buffer-triangle-strip.html:
+        * webgpu/viewport-scissor-rect-triangle-strip.html:
+        * webgpu/whlsl-arbitrary-vertex-attribute-locations.html:
+        * webgpu/whlsl-dereference-pointer-should-type-check.html:
+        * webgpu/whlsl-do-while-loop-break.html:
+        * webgpu/whlsl-do-while-loop-continue.html:
+        * webgpu/whlsl-do-while-loop.html:
+        * webgpu/whlsl-dont-crash-parsing-enum.html:
+        * webgpu/whlsl-dot-expressions.html:
+        * webgpu/whlsl-ensure-proper-variable-lifetime-2.html:
+        * webgpu/whlsl-ensure-proper-variable-lifetime-3.html:
+        * webgpu/whlsl-ensure-proper-variable-lifetime.html:
+        * webgpu/whlsl-loops-break.html:
+        * webgpu/whlsl-loops-continue.html:
+        * webgpu/whlsl-loops.html:
+        * webgpu/whlsl-nested-dot-expression-rvalue.html:
+        * webgpu/whlsl-nested-loop.html:
+        * webgpu/whlsl-return-local-variable.html:
+        * webgpu/whlsl-store-to-property-updates-properly.html:
+        * webgpu/whlsl-while-loop-break.html:
+        * webgpu/whlsl-while-loop-continue.html:
+        * webgpu/whlsl-zero-initialize-values-2.html:
+        * webgpu/whlsl-zero-initialize-values.html:
+        * webgpu/whlsl.html:
+
+2019-06-12  Simon Fraser  <simon.fraser@apple.com>
+
+        paddingBoxRect() is wrong with RTL scrollbars on the left
+        https://bugs.webkit.org/show_bug.cgi?id=198816
+
+        Reviewed by Jon Lee.
+
+        * compositing/geometry/rtl-overflow-scroll-expected.html: Added.
+        * compositing/geometry/rtl-overflow-scroll.html: Added.
+
+2019-06-12  Eric Carlson  <eric.carlson@apple.com>
+
+        [High Sierra / Mojave Debug WK2] Layout Test media/video-restricted-invisible-autoplay-allowed-when-visible.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=190885
+        <rdar://problem/45590590>
+
+        Reviewed by Youenn Fablet.
+
+        * media/video-restricted-invisible-autoplay-allowed-when-visible.html: Increase the amount of
+         time it takes for the test to fail so it isn't flaky on slow machines.
+
+2019-06-12  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Adjust tests platform/ipad/fast/forms/{select-form-run-twice, unfocus-inside-fixed-hittest}.html following r243808
+        https://bugs.webkit.org/show_bug.cgi?id=198799
+        <rdar://problem/50181023>
+
+        Reviewed by Brent Fulgham.
+
+        Following r243808 we no longer defocus a <select> on iPad when its popover is dismissed as a
+        result of picking a value for it. This is to make the behavior of <select> on iPad like the Mac. 
+        However the tests platform/ipad/fast/forms/{select-form-run-twice, unfocus-inside-fixed-hittest}.html
+        depend on the old behavior. So, we need to update them to no longer expect a defocusing of the
+        <select>/the end of form control interaction.
+
+        * platform/ipad/fast/forms/select-form-run-twice.html:
+        * platform/ipad/fast/forms/unfocus-inside-fixed-hittest.html:
+
+2019-06-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Educate the property resolver about IndexExpressions
+        https://bugs.webkit.org/show_bug.cgi?id=198399
+
+        Reviewed by Saam Barati.
+
+        * webgpu/propertyresolver/ander-abstract-lvalue-expected.html: Added.
+        * webgpu/propertyresolver/ander-abstract-lvalue.html: Added.
+        * webgpu/propertyresolver/ander-expected.html: Added.
+        * webgpu/propertyresolver/ander-lvalue-3-levels-expected.html: Added.
+        * webgpu/propertyresolver/ander-lvalue-3-levels.html: Added.
+        * webgpu/propertyresolver/ander-lvalue-expected.html: Added.
+        * webgpu/propertyresolver/ander-lvalue.html: Added.
+        * webgpu/propertyresolver/ander.html: Added.
+        * webgpu/propertyresolver/getter-expected.html: Added.
+        * webgpu/propertyresolver/getter.html: Added.
+        * webgpu/propertyresolver/indexer-ander-abstract-lvalue-expected.html: Added.
+        * webgpu/propertyresolver/indexer-ander-abstract-lvalue.html: Added.
+        * webgpu/propertyresolver/indexer-ander-expected.html: Added.
+        * webgpu/propertyresolver/indexer-ander-lvalue-3-levels-expected.html: Added.
+        * webgpu/propertyresolver/indexer-ander-lvalue-3-levels.html: Added.
+        * webgpu/propertyresolver/indexer-ander-lvalue-expected.html: Added.
+        * webgpu/propertyresolver/indexer-ander-lvalue.html: Added.
+        * webgpu/propertyresolver/indexer-ander.html: Added.
+        * webgpu/propertyresolver/indexer-getter-expected.html: Added.
+        * webgpu/propertyresolver/indexer-getter.html: Added.
+        * webgpu/propertyresolver/indexer-setter-abstract-lvalue-3-levels-expected.html: Added.
+        * webgpu/propertyresolver/indexer-setter-abstract-lvalue-3-levels.html: Added.
+        * webgpu/propertyresolver/indexer-setter-abstract-lvalue-expected.html: Added.
+        * webgpu/propertyresolver/indexer-setter-abstract-lvalue.html: Added.
+        * webgpu/propertyresolver/indexer-setter-expected.html: Added.
+        * webgpu/propertyresolver/indexer-setter-lvalue-expected.html: Added.
+        * webgpu/propertyresolver/indexer-setter-lvalue.html: Added.
+        * webgpu/propertyresolver/indexer-setter.html: Added.
+        * webgpu/propertyresolver/setter-abstract-lvalue-3-levels-expected.html: Added.
+        * webgpu/propertyresolver/setter-abstract-lvalue-3-levels.html: Added.
+        * webgpu/propertyresolver/setter-abstract-lvalue-expected.html: Added.
+        * webgpu/propertyresolver/setter-abstract-lvalue.html: Added.
+        * webgpu/propertyresolver/setter-lvalue-expected.html: Added.
+        * webgpu/propertyresolver/setter-lvalue.html: Added.
+
+2019-06-12  Shawn Roberts  <sroberts@apple.com>
+
+        scrollbars/scrollbar-iframe-click-does-not-blur-content.html is timing out on WK1 testers
+        https://bugs.webkit.org/show_bug.cgi?id=198800
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations: Updating expecations for test
+
+2019-06-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        REGRESSION (r245043) [Mac WK2 Debug] ASSERTION FAILED: m_services.isEmpty() && transports.size() <= maxTransportNumber seen with two http/wpt/webauthn/public-key-credential-* tests
+        https://bugs.webkit.org/show_bug.cgi?id=197917
+        <rdar://problem/51524958>
+
+        Reviewed by Brent Fulgham.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-06-12  Antti Koivisto  <antti@apple.com>
+
+        (Async scrolling) Handle 'position:fixed' inside 'position:sticky' correctly.
+        https://bugs.webkit.org/show_bug.cgi?id=198788
+        <rdar://problem/51589759>
+
+        Reviewed by Simon Fraser.
+
+        * scrollingcoordinator/ios/fixed-inside-overflow-inside-fixed-expected.html: Added.
+        * scrollingcoordinator/ios/fixed-inside-overflow-inside-fixed.html: Added.
+        * scrollingcoordinator/ios/fixed-inside-sticky-frame-expected.html: Added.
+        * scrollingcoordinator/ios/fixed-inside-sticky-frame.html: Added.
+        * scrollingcoordinator/ios/fixed-inside-sticky-no-stacking-context-2-expected.html: Added.
+        * scrollingcoordinator/ios/fixed-inside-sticky-no-stacking-context-2.html: Added.
+        * scrollingcoordinator/ios/fixed-inside-sticky-no-stacking-context-expected.html: Added.
+        * scrollingcoordinator/ios/fixed-inside-sticky-no-stacking-context.html: Added.
+        * scrollingcoordinator/ios/fixed-inside-sticky-stacking-context-expected.html: Added.
+        * scrollingcoordinator/ios/fixed-inside-sticky-stacking-context.html: Added.
+
+2019-06-12  Youenn Fablet  <youenn@apple.com>
+
+        Update WPT service workers test up to 0df7c68
+        https://bugs.webkit.org/show_bug.cgi?id=198720
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations:
+        * tests-options.json:
+
 2019-06-12  Truitt Savell  <tsavell@apple.com>
 
         Unreviewed, rolling out r246350.
@@ -7,16 +899,15 @@
 
         Reverted changeset:
 
-        "[cairo][SVG] Putting multiple path elements in clippath
-        causes rendering artifacts"
-        https://bugs.webkit.org/show_bug.cgi?id=198701
+        "[cairo][SVG] If clipPath has multiple elements, clip-path doesn't work with transform"
+        https://bugs.webkit.org/show_bug.cgi?id=198746
         https://trac.webkit.org/changeset/246350
 
 2019-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
 
-        [cairo][SVG] Putting multiple path elements in clippath causes rendering artifacts
-        https://bugs.webkit.org/show_bug.cgi?id=198701
-        <rdar://problem/51620347>
+        [cairo][SVG] If clipPath has multiple elements, clip-path doesn't work with transform
+        https://bugs.webkit.org/show_bug.cgi?id=198746
+        <rdar://problem/51665805>
 
         Reviewed by Don Olmstead.
 

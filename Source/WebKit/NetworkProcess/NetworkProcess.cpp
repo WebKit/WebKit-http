@@ -85,7 +85,7 @@
 #include <wtf/OptionSet.h>
 #include <wtf/ProcessPrivilege.h>
 #include <wtf/RunLoop.h>
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>
 
 #if ENABLE(SEC_ITEM_SHIM)
 #include "SecItemShim.h"
@@ -288,7 +288,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     platformInitializeNetworkProcess(parameters);
 
     WTF::Thread::setCurrentThreadIsUserInitiated();
-    AtomicString::init();
+    AtomString::init();
 
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
     if (!m_suppressMemoryPressureHandler) {
@@ -335,8 +335,9 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     initializeStorageQuota(parameters.defaultDataStoreParameters);
 
     auto* defaultSession = networkSession(PAL::SessionID::defaultSessionID());
+    auto* defaultStorageSession = defaultSession->networkStorageSession();
     for (const auto& cookie : parameters.defaultDataStoreParameters.pendingCookies)
-        defaultSession->networkStorageSession().setCookie(cookie);
+        defaultStorageSession->setCookie(cookie);
 
     for (auto& supplement : m_supplements.values())
         supplement->initialize(parameters);
@@ -1282,6 +1283,11 @@ void NetworkProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
             for (auto& securityOrigin : securityOrigins)
                 callbackAggregator->m_websiteData.entries.append({ securityOrigin, WebsiteDataType::Credentials, 0 });
         }
+        if (!sessionID.isEphemeral()) {
+            auto securityOrigins = WebCore::CredentialStorage::originsWithPersistentCredentials();
+            for (auto& securityOrigin : securityOrigins)
+                callbackAggregator->m_websiteData.entries.append({ securityOrigin, WebsiteDataType::Credentials, 0 });
+        }
     }
 
     if (websiteDataTypes.contains(WebsiteDataType::DOMCache)) {
@@ -1359,6 +1365,8 @@ void NetworkProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<Websi
     if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
         if (auto* session = storageSession(sessionID))
             session->credentialStorage().clearCredentials();
+        if (!sessionID.isEphemeral())
+            WebCore::CredentialStorage::clearPersistentCredentials();
     }
 
     auto clearTasksHandler = WTF::CallbackAggregator::create([this, callbackID] {
@@ -1496,6 +1504,8 @@ void NetworkProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, Optio
             for (auto& originData : originDatas)
                 session->credentialStorage().removeCredentialsWithOrigin(originData);
         }
+        if (!sessionID.isEphemeral())
+            WebCore::CredentialStorage::removePersistentCredentialsWithOrigins(originDatas);
     }
 
     // FIXME: Implement storage quota clearing for these origins.
@@ -2541,16 +2551,6 @@ StorageQuotaManager& NetworkProcess::storageQuotaManager(PAL::SessionID sessionI
 }
 
 #if !PLATFORM(COCOA)
-void NetworkProcess::originsWithPersistentCredentials(CompletionHandler<void(Vector<WebCore::SecurityOriginData>)>&& completionHandler)
-{
-    completionHandler(Vector<WebCore::SecurityOriginData>());
-}
-
-void NetworkProcess::removeCredentialsWithOrigins(const Vector<WebCore::SecurityOriginData>&, CompletionHandler<void()>&& completionHandler)
-{
-    completionHandler();
-}
-
 void NetworkProcess::initializeProcess(const AuxiliaryProcessInitializationParameters&)
 {
 }

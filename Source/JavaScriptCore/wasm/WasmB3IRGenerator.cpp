@@ -47,6 +47,7 @@
 #include "B3VariableValue.h"
 #include "B3WasmAddressValue.h"
 #include "B3WasmBoundsCheckValue.h"
+#include "DisallowMacroScratchRegisterUsage.h"
 #include "JSCInlines.h"
 #include "JSWebAssemblyInstance.h"
 #include "ScratchRegisterAllocator.h"
@@ -186,11 +187,14 @@ public:
 
     // References
     PartialResult WARN_UNUSED_RETURN addRefIsNull(ExpressionType& value, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addRefFunc(uint32_t index, ExpressionType& result);
 
     // Tables
-    PartialResult WARN_UNUSED_RETURN addTableGet(ExpressionType& idx, ExpressionType& result);
-    PartialResult WARN_UNUSED_RETURN addTableSet(ExpressionType& idx, ExpressionType& value);
-
+    PartialResult WARN_UNUSED_RETURN addTableGet(unsigned, ExpressionType& index, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addTableSet(unsigned, ExpressionType& index, ExpressionType& value);
+    PartialResult WARN_UNUSED_RETURN addTableSize(unsigned, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addTableGrow(unsigned, ExpressionType& fill, ExpressionType& delta, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addTableFill(unsigned, ExpressionType& offset, ExpressionType& fill, ExpressionType& count);
     // Locals
     PartialResult WARN_UNUSED_RETURN getLocal(uint32_t index, ExpressionType& result);
     PartialResult WARN_UNUSED_RETURN setLocal(uint32_t index, ExpressionType value);
@@ -228,7 +232,7 @@ public:
 
     // Calls
     PartialResult WARN_UNUSED_RETURN addCall(uint32_t calleeIndex, const Signature&, Vector<ExpressionType>& args, ExpressionType& result);
-    PartialResult WARN_UNUSED_RETURN addCallIndirect(const Signature&, Vector<ExpressionType>& args, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addCallIndirect(unsigned tableIndex, const Signature&, Vector<ExpressionType>& args, ExpressionType& result);
     PartialResult WARN_UNUSED_RETURN addUnreachable();
 
     void dump(const Vector<ControlEntry>& controlStack, const ExpressionList* expressionStack);
@@ -290,6 +294,7 @@ private:
     }
 
     uint32_t m_maxNumJSCallArguments { 0 };
+    unsigned m_numImportFunctions;
 };
 
 // Memory accesses in WebAssembly have unsigned 32-bit offsets, whereas they have signed 32-bit offsets in B3.
@@ -341,6 +346,7 @@ B3IRGenerator::B3IRGenerator(const ModuleInformation& info, Procedure& procedure
     , m_proc(procedure)
     , m_unlinkedWasmToWasmCalls(unlinkedWasmToWasmCalls)
     , m_constantInsertionValues(m_proc)
+    , m_numImportFunctions(info.importFunctionCount())
 {
     m_currentBlock = m_proc.addBlock();
 
@@ -477,6 +483,8 @@ void B3IRGenerator::restoreWebAssemblyGlobalState(RestoreCachedStackLimit restor
         RegisterSet clobbers;
         clobbers.set(pinnedRegs->baseMemoryPointer);
         clobbers.set(pinnedRegs->sizeRegister);
+        if (!isARM64())
+            clobbers.set(RegisterSet::macroScratchRegisters());
 
         B3::PatchpointValue* patchpoint = block->appendNew<B3::PatchpointValue>(proc, B3::Void, origin());
         Effects effects = Effects::none();
@@ -484,13 +492,18 @@ void B3IRGenerator::restoreWebAssemblyGlobalState(RestoreCachedStackLimit restor
         effects.reads = B3::HeapRange::top();
         patchpoint->effects = effects;
         patchpoint->clobber(clobbers);
+        patchpoint->numGPScratchRegisters = Gigacage::isEnabled(Gigacage::Primitive) ? 1 : 0;
 
         patchpoint->append(instance, ValueRep::SomeRegister);
-
         patchpoint->setGenerator([pinnedRegs] (CCallHelpers& jit, const B3::StackmapGenerationParams& params) {
+            AllowMacroScratchRegisterUsage allowScratch(jit);
             GPRReg baseMemory = pinnedRegs->baseMemoryPointer;
+            GPRReg scratchOrSize = Gigacage::isEnabled(Gigacage::Primitive) ? params.gpScratch(0) : pinnedRegs->sizeRegister;
+
             jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemorySize()), pinnedRegs->sizeRegister);
             jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemory()), baseMemory);
+
+            jit.cageConditionally(Gigacage::Primitive, baseMemory, pinnedRegs->sizeRegister, scratchOrSize);
         });
     }
 }
@@ -530,7 +543,7 @@ auto B3IRGenerator::addLocal(Type type, uint32_t count) -> PartialResult
     for (uint32_t i = 0; i < count; ++i) {
         Variable* local = m_proc.addVariable(toB3Type(type));
         m_locals.uncheckedAppend(local);
-        auto val = type == Anyref ? JSValue::encode(jsNull()) : 0;
+        auto val = isSubtype(type, Anyref) ? JSValue::encode(jsNull()) : 0;
         m_currentBlock->appendNew<VariableValue>(m_proc, Set, Origin(), local, constant(toB3Type(type), val, Origin()));
     }
     return { };
@@ -557,32 +570,92 @@ auto B3IRGenerator::addRefIsNull(ExpressionType& value, ExpressionType& result) 
     return { };
 }
 
-auto B3IRGenerator::addTableGet(ExpressionType& idx, ExpressionType& result) -> PartialResult
+auto B3IRGenerator::addTableGet(unsigned tableIndex, ExpressionType& index, ExpressionType& result) -> PartialResult
 {
     // FIXME: Emit this inline <https://bugs.webkit.org/show_bug.cgi?id=198506>.
-    uint64_t (*doGet)(Instance*, int32_t) = [] (Instance* instance, int32_t idx) -> uint64_t {
-        return JSValue::encode(instance->table()->get(idx));
-    };
-
     result = m_currentBlock->appendNew<CCallValue>(m_proc, toB3Type(Anyref), origin(),
-        m_currentBlock->appendNew<ConstPtrValue>(m_proc, origin(), tagCFunctionPtr<void*>(doGet, B3CCallPtrTag)),
-        instanceValue(), idx);
+        m_currentBlock->appendNew<ConstPtrValue>(m_proc, origin(), tagCFunctionPtr<void*>(&getWasmTableElement, B3CCallPtrTag)),
+        instanceValue(), m_currentBlock->appendNew<Const32Value>(m_proc, origin(), tableIndex), index);
+
+    {
+        CheckValue* check = m_currentBlock->appendNew<CheckValue>(m_proc, Check, origin(),
+            m_currentBlock->appendNew<Value>(m_proc, Equal, origin(), result, m_currentBlock->appendNew<Const64Value>(m_proc, origin(), 0)));
+
+        check->setGenerator([=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
+            this->emitExceptionCheck(jit, ExceptionType::OutOfBoundsTableAccess);
+        });
+    }
 
     return { };
 }
 
-auto B3IRGenerator::addTableSet(ExpressionType& idx, ExpressionType& value) -> PartialResult
+auto B3IRGenerator::addTableSet(unsigned tableIndex, ExpressionType& index, ExpressionType& value) -> PartialResult
 {
     // FIXME: Emit this inline <https://bugs.webkit.org/show_bug.cgi?id=198506>.
-    void (*doSet)(Instance*, int32_t, uint64_t value) = [] (Instance* instance, int32_t idx, uint64_t value) -> void {
-        // FIXME: We need to box wasm Funcrefs once they are supported here.
-        // <https://bugs.webkit.org/show_bug.cgi?id=198157>
-        instance->table()->set(idx, JSValue::decode(value));
+    auto shouldThrow = m_currentBlock->appendNew<CCallValue>(m_proc, B3::Int32, origin(),
+        m_currentBlock->appendNew<ConstPtrValue>(m_proc, origin(), tagCFunctionPtr<void*>(&setWasmTableElement, B3CCallPtrTag)),
+        instanceValue(), m_currentBlock->appendNew<Const32Value>(m_proc, origin(), tableIndex), index, value);
+
+    {
+        CheckValue* check = m_currentBlock->appendNew<CheckValue>(m_proc, Check, origin(),
+            m_currentBlock->appendNew<Value>(m_proc, Equal, origin(), shouldThrow, m_currentBlock->appendNew<Const32Value>(m_proc, origin(), 0)));
+
+        check->setGenerator([=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
+            this->emitExceptionCheck(jit, ExceptionType::OutOfBoundsTableAccess);
+        });
+    }
+
+    return { };
+}
+
+auto B3IRGenerator::addRefFunc(uint32_t index, ExpressionType& result) -> PartialResult
+{
+    // FIXME: Emit this inline <https://bugs.webkit.org/show_bug.cgi?id=198506>.
+
+    result = m_currentBlock->appendNew<CCallValue>(m_proc, B3::Int64, origin(),
+        m_currentBlock->appendNew<ConstPtrValue>(m_proc, origin(), tagCFunctionPtr<void*>(&doWasmRefFunc, B3CCallPtrTag)),
+        instanceValue(), addConstant(Type::I32, index));
+
+    return { };
+}
+
+auto B3IRGenerator::addTableSize(unsigned tableIndex, ExpressionType& result) -> PartialResult
+{
+    // FIXME: Emit this inline <https://bugs.webkit.org/show_bug.cgi?id=198506>.
+    uint32_t (*doSize)(Instance*, unsigned) = [] (Instance* instance, unsigned tableIndex) -> uint32_t {
+        return instance->table(tableIndex)->length();
     };
 
-    m_currentBlock->appendNew<CCallValue>(m_proc, B3::Void, origin(),
-        m_currentBlock->appendNew<ConstPtrValue>(m_proc, origin(), tagCFunctionPtr<void*>(doSet, B3CCallPtrTag)),
-        instanceValue(), idx, value);
+    result = m_currentBlock->appendNew<CCallValue>(m_proc, toB3Type(I32), origin(),
+        m_currentBlock->appendNew<ConstPtrValue>(m_proc, origin(), tagCFunctionPtr<void*>(doSize, B3CCallPtrTag)),
+        instanceValue(), m_currentBlock->appendNew<Const32Value>(m_proc, origin(), tableIndex));
+
+    return { };
+}
+
+auto B3IRGenerator::addTableGrow(unsigned tableIndex, ExpressionType& fill, ExpressionType& delta, ExpressionType& result) -> PartialResult
+{
+    result = m_currentBlock->appendNew<CCallValue>(m_proc, toB3Type(I32), origin(),
+        m_currentBlock->appendNew<ConstPtrValue>(m_proc, origin(), tagCFunctionPtr<void*>(&doWasmTableGrow, B3CCallPtrTag)),
+        instanceValue(), m_currentBlock->appendNew<Const32Value>(m_proc, origin(), tableIndex), fill, delta);
+
+    return { };
+}
+
+auto B3IRGenerator::addTableFill(unsigned tableIndex, ExpressionType& offset, ExpressionType& fill, ExpressionType& count) -> PartialResult
+{
+    auto result = m_currentBlock->appendNew<CCallValue>(m_proc, toB3Type(I32), origin(),
+        m_currentBlock->appendNew<ConstPtrValue>(m_proc, origin(), tagCFunctionPtr<void*>(&doWasmTableFill, B3CCallPtrTag)),
+        instanceValue(), m_currentBlock->appendNew<Const32Value>(m_proc, origin(), tableIndex), offset, fill, count);
+
+    {
+        CheckValue* check = m_currentBlock->appendNew<CheckValue>(m_proc, Check, origin(),
+            m_currentBlock->appendNew<Value>(m_proc, Equal, origin(), result, m_currentBlock->appendNew<Const32Value>(m_proc, origin(), 0)));
+
+        check->setGenerator([=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
+            this->emitExceptionCheck(jit, ExceptionType::OutOfBoundsTableAccess);
+        });
+    }
 
     return { };
 }
@@ -671,7 +744,7 @@ auto B3IRGenerator::setGlobal(uint32_t index, ExpressionType value) -> PartialRe
     Value* globalsArray = m_currentBlock->appendNew<MemoryValue>(m_proc, Load, pointerType(), origin(), instanceValue(), safeCast<int32_t>(Instance::offsetOfGlobals()));
     m_currentBlock->appendNew<MemoryValue>(m_proc, Store, origin(), value, globalsArray, safeCast<int32_t>(index * sizeof(Register)));
 
-    if (m_info.globals[index].type == Anyref)
+    if (isSubtype(m_info.globals[index].type, Anyref))
         emitWriteBarrierForJSWrapper();
 
     return { };
@@ -1270,7 +1343,7 @@ auto B3IRGenerator::addCall(uint32_t functionIndex, const Signature& signature, 
     return { };
 }
 
-auto B3IRGenerator::addCallIndirect(const Signature& signature, Vector<ExpressionType>& args, ExpressionType& result) -> PartialResult
+auto B3IRGenerator::addCallIndirect(unsigned tableIndex, const Signature& signature, Vector<ExpressionType>& args, ExpressionType& result) -> PartialResult
 {
     ExpressionType calleeIndex = args.takeLast();
     ASSERT(signature.argumentCount() == args.size());
@@ -1287,7 +1360,7 @@ auto B3IRGenerator::addCallIndirect(const Signature& signature, Vector<Expressio
     ExpressionType mask;
     {
         ExpressionType table = m_currentBlock->appendNew<MemoryValue>(m_proc, Load, pointerType(), origin(),
-            instanceValue(), safeCast<int32_t>(Instance::offsetOfTable()));
+            instanceValue(), safeCast<int32_t>(Instance::offsetOfTablePtr(m_numImportFunctions, tableIndex)));
         callableFunctionBuffer = m_currentBlock->appendNew<MemoryValue>(m_proc, Load, pointerType(), origin(),
             table, safeCast<int32_t>(FuncRefTable::offsetOfFunctions()));
         instancesBuffer = m_currentBlock->appendNew<MemoryValue>(m_proc, Load, pointerType(), origin(),
@@ -1371,6 +1444,8 @@ auto B3IRGenerator::addCallIndirect(const Signature& signature, Vector<Expressio
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
         patchpoint->append(newContextInstance, ValueRep::SomeRegister);
         patchpoint->append(instanceValue(), ValueRep::SomeRegister);
+        patchpoint->numGPScratchRegisters = Gigacage::isEnabled(Gigacage::Primitive) ? 1 : 0;
+
         patchpoint->setGenerator([=] (CCallHelpers& jit, const B3::StackmapGenerationParams& params) {
             AllowMacroScratchRegisterUsage allowScratch(jit);
             GPRReg newContextInstance = params[0].gpr();
@@ -1385,8 +1460,12 @@ auto B3IRGenerator::addCallIndirect(const Signature& signature, Vector<Expressio
             // FIXME: We should support more than one memory size register
             //   see: https://bugs.webkit.org/show_bug.cgi?id=162952
             ASSERT(pinnedRegs.sizeRegister != newContextInstance);
+            GPRReg scratchOrSize = Gigacage::isEnabled(Gigacage::Primitive) ? params.gpScratch(0) : pinnedRegs.sizeRegister;
+
             jit.loadPtr(CCallHelpers::Address(newContextInstance, Instance::offsetOfCachedMemorySize()), pinnedRegs.sizeRegister); // Memory size.
             jit.loadPtr(CCallHelpers::Address(newContextInstance, Instance::offsetOfCachedMemory()), baseMemory); // Memory::void*.
+
+            jit.cageConditionally(Gigacage::Primitive, baseMemory, pinnedRegs.sizeRegister, scratchOrSize);
         });
         doContextSwitch->appendNewControlValue(m_proc, Jump, origin(), continuation);
 

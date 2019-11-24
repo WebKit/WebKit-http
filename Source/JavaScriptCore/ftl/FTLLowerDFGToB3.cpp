@@ -3883,7 +3883,7 @@ private:
 
         DFG_ASSERT(m_graph, m_node, isTypedView(m_node->arrayMode().typedArrayType()), m_node->arrayMode().typedArrayType());
         LValue vector = m_out.loadPtr(cell, m_heaps.JSArrayBufferView_vector);
-        setStorage(caged(Gigacage::Primitive, vector));
+        setStorage(caged(Gigacage::Primitive, vector, cell));
     }
     
     void compileCheckArray()
@@ -3927,14 +3927,15 @@ private:
 
         m_out.appendTo(notNull, continuation);
 
-        LValue butterflyPtr = caged(Gigacage::JSValue, m_out.loadPtr(basePtr, m_heaps.JSObject_butterfly));
+        LValue butterflyPtr = caged(Gigacage::JSValue, m_out.loadPtr(basePtr, m_heaps.JSObject_butterfly), basePtr);
         LValue arrayBufferPtr = m_out.loadPtr(butterflyPtr, m_heaps.Butterfly_arrayBuffer);
 
-        LValue vectorPtr = caged(Gigacage::Primitive, vector);
+        LValue vectorPtr = caged(Gigacage::Primitive, vector, basePtr);
 
         // FIXME: This needs caging.
         // https://bugs.webkit.org/show_bug.cgi?id=175515
         LValue dataPtr = m_out.loadPtr(arrayBufferPtr, m_heaps.ArrayBuffer_data);
+        dataPtr = removeArrayPtrTag(dataPtr);
 
         ValueFromBlock wastefulOut = m_out.anchor(m_out.sub(vectorPtr, dataPtr));
 
@@ -5546,8 +5547,25 @@ private:
         m_out.storePtr(weakPointer(executable), fastObject, m_heaps.JSFunction_executable);
         m_out.storePtr(m_out.intPtrZero, fastObject, m_heaps.JSFunction_rareData);
         
-        mutatorFence();
-        
+        VM& vm = this->vm();
+        if (executable->isAnonymousBuiltinFunction()) {
+            mutatorFence();
+            Allocator allocator = allocatorForNonVirtualConcurrently<FunctionRareData>(vm, sizeof(FunctionRareData), AllocatorForMode::AllocatorIfExists);
+            LValue rareData = allocateCell(m_out.constIntPtr(allocator.localAllocator()), vm.functionRareDataStructure.get(), slowPath);
+            m_out.storePtr(m_out.intPtrZero, rareData, m_heaps.FunctionRareData_allocator);
+            m_out.storePtr(m_out.intPtrZero, rareData, m_heaps.FunctionRareData_structure);
+            m_out.storePtr(m_out.intPtrZero, rareData, m_heaps.FunctionRareData_prototype);
+            m_out.storePtr(m_out.intPtrOne, rareData, m_heaps.FunctionRareData_objectAllocationProfileWatchpoint);
+            m_out.storePtr(m_out.intPtrZero, rareData, m_heaps.FunctionRareData_internalFunctionAllocationProfile_structure);
+            m_out.storePtr(m_out.intPtrZero, rareData, m_heaps.FunctionRareData_boundFunctionStructure);
+            m_out.storePtr(m_out.intPtrZero, rareData, m_heaps.FunctionRareData_allocationProfileClearingWatchpoint);
+            m_out.store32As8(m_out.int32One, rareData, m_heaps.FunctionRareData_hasReifiedName);
+            m_out.store32As8(m_out.int32Zero, rareData, m_heaps.FunctionRareData_hasReifiedLength);
+            mutatorFence();
+            m_out.storePtr(rareData, fastObject, m_heaps.JSFunction_rareData);
+        } else
+            mutatorFence();
+
         ValueFromBlock fastResult = m_out.anchor(fastObject);
         m_out.jump(continuation);
         
@@ -5555,7 +5573,6 @@ private:
 
         Vector<LValue> slowPathArguments;
         slowPathArguments.append(scope);
-        VM& vm = this->vm();
         LValue callResult = lazySlowPath(
             [=, &vm] (const Vector<Location>& locations) -> RefPtr<LazySlowPath::Generator> {
                 auto* operation = operationNewFunctionWithInvalidatedReallocationWatchpoint;
@@ -6483,6 +6500,20 @@ private:
                 m_out.castToInt32(m_out.lShr(byteSize, m_out.constIntPtr(3))),
                 m_out.int64Zero,
                 m_heaps.typedArrayProperties);
+
+#if CPU(ARM64E)
+            {
+                LValue sizePtr = m_out.zeroExtPtr(size);
+                PatchpointValue* authenticate = m_out.patchpoint(pointerType());
+                authenticate->appendSomeRegister(storage);
+                authenticate->append(sizePtr, B3::ValueRep(B3::ValueRep::SomeLateRegister));
+                authenticate->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                    jit.move(params[1].gpr(), params[0].gpr());
+                    jit.tagArrayPtr(params[2].gpr(), params[0].gpr());
+                });
+                storage = authenticate;
+            }
+#endif
 
             ValueFromBlock haveStorage = m_out.anchor(storage);
 
@@ -10425,17 +10456,17 @@ private:
         switch (m_node->child2().useKind()) {
         case StringUse: {
             LBasicBlock isNonEmptyString = m_out.newBlock();
-            LBasicBlock isAtomicString = m_out.newBlock();
+            LBasicBlock isAtomString = m_out.newBlock();
 
             keyAsValue = lowString(m_node->child2());
             m_out.branch(isNotRopeString(keyAsValue, m_node->child2()), usually(isNonEmptyString), rarely(slowCase));
 
-            lastNext = m_out.appendTo(isNonEmptyString, isAtomicString);
+            lastNext = m_out.appendTo(isNonEmptyString, isAtomString);
             uniquedStringImpl = m_out.loadPtr(keyAsValue, m_heaps.JSString_value);
             LValue isNotAtomic = m_out.testIsZero32(m_out.load32(uniquedStringImpl, m_heaps.StringImpl_hashAndFlags), m_out.constInt32(StringImpl::flagIsAtomic()));
-            m_out.branch(isNotAtomic, rarely(slowCase), usually(isAtomicString));
+            m_out.branch(isNotAtomic, rarely(slowCase), usually(isAtomString));
 
-            m_out.appendTo(isAtomicString, slowCase);
+            m_out.appendTo(isAtomString, slowCase);
             break;
         }
         case SymbolUse: {
@@ -10484,7 +10515,7 @@ private:
 
         ASSERT(keyAsValue);
 
-        // Note that we don't test if the hash is zero here. AtomicStringImpl's can't have a zero
+        // Note that we don't test if the hash is zero here. AtomStringImpl's can't have a zero
         // hash, however, a SymbolImpl may. But, because this is a cache, we don't care. We only
         // ever load the result from the cache if the cache entry matches what we are querying for.
         // So we either get super lucky and use zero for the hash and somehow collide with the entity
@@ -12702,7 +12733,7 @@ private:
             indexToCheck = m_out.add(indexToCheck, m_out.constInt64(data.byteSize - 1));
         speculate(OutOfBounds, noValue(), nullptr, m_out.aboveOrEqual(indexToCheck, length));
 
-        LValue vector = caged(Gigacage::Primitive, m_out.loadPtr(dataView, m_heaps.JSArrayBufferView_vector));
+        LValue vector = caged(Gigacage::Primitive, m_out.loadPtr(dataView, m_heaps.JSArrayBufferView_vector), dataView);
 
         TypedPointer pointer(m_heaps.typedArrayProperties, m_out.add(vector, m_out.zeroExtPtr(index)));
 
@@ -12861,7 +12892,7 @@ private:
             RELEASE_ASSERT_NOT_REACHED();
         }
 
-        LValue vector = caged(Gigacage::Primitive, m_out.loadPtr(dataView, m_heaps.JSArrayBufferView_vector));
+        LValue vector = caged(Gigacage::Primitive, m_out.loadPtr(dataView, m_heaps.JSArrayBufferView_vector), dataView);
         TypedPointer pointer(m_heaps.typedArrayProperties, m_out.add(vector, m_out.zeroExtPtr(index)));
 
         if (data.isFloatingPoint) {
@@ -14108,10 +14139,52 @@ private:
             m_out.appendTo(performStore, lastNext);
         }
     }
-    
-    LValue caged(Gigacage::Kind kind, LValue ptr)
+
+    LValue untagArrayPtr(LValue ptr, LValue size)
     {
+#if CPU(ARM64E)
+        PatchpointValue* authenticate = m_out.patchpoint(pointerType());
+        authenticate->appendSomeRegister(ptr);
+        authenticate->append(size, B3::ValueRep(B3::ValueRep::SomeLateRegister));
+        authenticate->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            jit.move(params[1].gpr(), params[0].gpr());
+            jit.untagArrayPtr(params[2].gpr(), params[0].gpr());
+        });
+        return authenticate;
+#else
+        UNUSED_PARAM(size);
+        return ptr;
+#endif
+    }
+
+    LValue removeArrayPtrTag(LValue ptr)
+    {
+#if CPU(ARM64E)
+        PatchpointValue* authenticate = m_out.patchpoint(pointerType());
+        authenticate->appendSomeRegister(ptr);
+        authenticate->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            jit.move(params[1].gpr(), params[0].gpr());
+            jit.removeArrayPtrTag(params[0].gpr());
+        });
+        return authenticate;
+#endif
+        return ptr;
+    }
+
+    LValue caged(Gigacage::Kind kind, LValue ptr, LValue base)
+    {
+#if CPU(ARM64E)
+        if (kind == Gigacage::Primitive) {
+            LValue size = m_out.load32(base, m_heaps.JSArrayBufferView_length);
+            ptr = untagArrayPtr(ptr, size);
+        }
+#else
+        UNUSED_PARAM(kind);
+        UNUSED_PARAM(base);
+#endif
+
 #if GIGACAGE_ENABLED
+        UNUSED_PARAM(base);
         if (!Gigacage::isEnabled(kind))
             return ptr;
         
@@ -14128,6 +14201,18 @@ private:
         LValue masked = m_out.bitAnd(ptr, mask);
         LValue result = m_out.add(masked, basePtr);
 
+#if CPU(ARM64E)
+        {
+            PatchpointValue* merge = m_out.patchpoint(pointerType());
+            merge->append(result, B3::ValueRep(B3::ValueRep::SomeLateRegister));
+            merge->appendSomeRegister(ptr);
+            merge->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                jit.move(params[2].gpr(), params[0].gpr());
+                jit.bitFieldInsert64(params[1].gpr(), 0, 64 - MacroAssembler::numberOfPACBits, params[0].gpr());
+            });
+            result = merge;
+        }
+#endif
         // Make sure that B3 doesn't try to do smart reassociation of these pointer bits.
         // FIXME: In an ideal world, B3 would not do harmful reassociations, and if it did, it would be able
         // to undo them during constant hoisting and regalloc. As it stands, if you remove this then Octane
@@ -14140,10 +14225,8 @@ private:
         // and possibly other smart things if we want to be able to remove this opaque.
         // https://bugs.webkit.org/show_bug.cgi?id=175493
         return m_out.opaque(result);
-#else
-        UNUSED_PARAM(kind);
-        return ptr;
 #endif
+        return ptr;
     }
     
     void buildSwitch(SwitchData* data, LType type, LValue switchValue)
@@ -16555,6 +16638,9 @@ private:
 
         LBasicBlock lastNext = m_out.appendTo(isWasteful, continuation);
         LValue vector = m_out.loadPtr(base, m_heaps.JSArrayBufferView_vector);
+        // FIXME: We could probably make this a mask.
+        // https://bugs.webkit.org/show_bug.cgi?id=197701
+        vector = removeArrayPtrTag(vector);
         speculate(Uncountable, jsValueValue(vector), m_node, m_out.isZero64(vector));
         m_out.jump(continuation);
 

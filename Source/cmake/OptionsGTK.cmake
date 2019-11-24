@@ -1,11 +1,11 @@
 include(GNUInstallDirs)
 include(VersioningUtils)
 
-SET_PROJECT_VERSION(2 25 1)
+SET_PROJECT_VERSION(2 25 2)
 set(WEBKITGTK_API_VERSION 4.0)
 
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 75 0 38)
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 32 0 14)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 75 1 38)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 32 1 14)
 
 # These are shared variables, but we special case their definition so that we can use the
 # CMAKE_INSTALL_* variables that are populated by the GNUInstallDirs macro.
@@ -207,7 +207,7 @@ if (USE_WPE_RENDERER)
         message(FATAL_ERROR "libwpe is required for USE_WPE_RENDERER")
     endif ()
 
-    find_package(WPEBackend-fdo 1.3.0)
+    find_package(WPEBackend-fdo 1.3.1)
     if (NOT WPEBACKEND_FDO_FOUND)
         message(FATAL_ERROR "WPEBackend-fdo is required for USE_WPE_RENDERER")
     endif ()

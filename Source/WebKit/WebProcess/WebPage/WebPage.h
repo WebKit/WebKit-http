@@ -1251,6 +1251,7 @@ private:
 
     void sendPositionInformation(InteractionInformationAtPosition&&);
     InteractionInformationAtPosition positionInformation(const InteractionInformationRequest&);
+    RefPtr<ShareableBitmap> shareableBitmapSnapshotForNode(WebCore::Element&);
     WebAutocorrectionContext autocorrectionContext();
     bool applyAutocorrectionInternal(const String& correction, const String& originalText);
     bool shouldIgnoreMetaViewport() const;
@@ -1939,6 +1940,9 @@ private:
     WebCore::IntSize m_lastSentIntrinsicContentSize;
 #if ENABLE(VIEWPORT_RESIZING)
     WebCore::DeferrableOneShotTimer m_shrinkToFitContentTimer;
+#endif
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+    std::unique_ptr<LayerHostingContext> m_contextForVisibilityPropagation;
 #endif
 };
 

@@ -67,6 +67,7 @@
 #import <algorithm>
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <pal/spi/cf/CFUtilitiesSPI.h>
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/LaunchServicesSPI.h>
@@ -173,12 +174,6 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters& para
 #endif
 
     m_compositingRenderServerPort = WTFMove(parameters.acceleratedCompositingPort);
-
-#if HAVE(VISIBILITY_PROPAGATION_VIEW)
-    m_contextForVisibilityPropagation = LayerHostingContext::createForExternalHostingProcess();
-    RELEASE_LOG(Process, "Created context with ID %d for visibility propagation from UIProcess", m_contextForVisibilityPropagation->contextID());
-    parentProcessConnection()->send(Messages::WebProcessProxy::DidCreateContextForVisibilityPropagation(m_contextForVisibilityPropagation->contextID()), 0);
-#endif
 
     WebCore::registerMemoryReleaseNotifyCallbacks();
     MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
@@ -460,6 +455,10 @@ void WebProcess::platformInitializeProcess(const AuxiliaryProcessInitializationP
 
 #if USE(OS_STATE)
     registerWithStateDumper();
+#endif
+
+#if HAVE(APP_SSO)
+    [NSURLSession _disableAppSSO];
 #endif
 }
 

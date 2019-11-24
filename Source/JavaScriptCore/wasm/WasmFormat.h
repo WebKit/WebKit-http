@@ -68,11 +68,19 @@ inline bool isValueType(Type type)
     case F64:
         return true;
     case Anyref:
+    case Funcref:
         return Options::useWebAssemblyReferences();
     default:
         break;
     }
     return false;
+}
+
+inline bool isSubtype(Type sub, Type parent)
+{
+    if (sub == parent)
+        return true;
+    return sub == Funcref && parent == Anyref;
 }
     
 enum class ExternalKind : uint8_t {
@@ -138,6 +146,7 @@ struct Global {
     enum InitializationType {
         IsImport,
         FromGlobalImport,
+        FromRefFunc,
         FromExpression
     };
 
@@ -204,10 +213,12 @@ struct Segment {
 };
 
 struct Element {
-    Element(I32InitExpr offset)
-        : offset(offset)
+    Element(uint32_t tableIndex, I32InitExpr offset)
+        : tableIndex(tableIndex)
+        , offset(offset)
     { }
 
+    uint32_t tableIndex;
     I32InitExpr offset;
     Vector<uint32_t> functionIndices;
 };
@@ -234,6 +245,7 @@ public:
     uint32_t initial() const { return m_initial; }
     Optional<uint32_t> maximum() const { return m_maximum; }
     TableElementType type() const { return m_type; }
+    Wasm::Type wasmType() const { return m_type == TableElementType::Funcref ? Type::Funcref : Type::Anyref; }
 
 private:
     uint32_t m_initial;

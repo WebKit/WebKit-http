@@ -29,6 +29,7 @@
 
 #include "WasmFormat.h"
 
+#include <wtf/BitVector.h>
 #include <wtf/Optional.h>
 
 namespace JSC { namespace Wasm {
@@ -64,7 +65,10 @@ struct ModuleInformation : public ThreadSafeRefCounted<ModuleInformation> {
     // Currently, our wasm implementation allows only one memory and table.
     // If we need to remove this limitation, we would have MemoryInformation and TableInformation in the Vectors.
     uint32_t memoryCount() const { return memory ? 1 : 0; }
-    uint32_t tableCount() const { return tableInformation ? 1 : 0; }
+    uint32_t tableCount() const { return tables.size(); }
+
+    const BitVector& referencedFunctions() const { return m_referencedFunctions; }
+    void addReferencedFunction(unsigned index) const { m_referencedFunctions.set(index); }
 
     Vector<Import> imports;
     Vector<SignatureIndex> importFunctionSignatureIndices;
@@ -79,11 +83,13 @@ struct ModuleInformation : public ThreadSafeRefCounted<ModuleInformation> {
     Optional<uint32_t> startFunctionIndexSpace;
     Vector<Segment::Ptr> data;
     Vector<Element> elements;
-    TableInformation tableInformation;
+    Vector<TableInformation> tables;
     Vector<Global> globals;
     unsigned firstInternalGlobal { 0 };
     Vector<CustomSection> customSections;
     Ref<NameSection> nameSection;
+    
+    mutable BitVector m_referencedFunctions;
 };
 
     

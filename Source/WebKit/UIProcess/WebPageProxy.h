@@ -141,10 +141,6 @@ OBJC_CLASS _WKRemoteObjectRegistry;
 #include <WebCore/WebMediaSessionManagerClient.h>
 #endif
 
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/WebPageProxyAdditions.h>
-#endif
-
 #if ENABLE(MEDIA_SESSION)
 namespace WebCore {
 class MediaSessionMetadata;
@@ -302,6 +298,7 @@ enum class WebContentMode : uint8_t;
 class QuickLookDocumentData;
 #endif
 
+typedef GenericCallback<API::Data*> DataCallback;
 typedef GenericCallback<uint64_t> UnsignedCallback;
 typedef GenericCallback<EditingRange> EditingRangeCallback;
 typedef GenericCallback<const String&> StringCallback;
@@ -1078,6 +1075,7 @@ public:
 
 #if HAVE(VISIBILITY_PROPAGATION_VIEW)
     void didCreateContextForVisibilityPropagation(LayerHostingContextID);
+    LayerHostingContextID contextIDForVisibilityPropagation() const { return m_contextIDForVisibilityPropagation; }
 #endif
 
     virtual void enterAcceleratedCompositingMode(const LayerTreeContext&);
@@ -1548,8 +1546,9 @@ public:
     void removeObserver(WebViewDidMoveToWindowObserver&);
     void webViewDidMoveToWindow();
 
-#if HAVE(LOAD_OPTIMIZER)
-WEBPAGEPROXY_LOADOPTIMIZER_ADDITIONS_1
+#if HAVE(APP_SSO)
+    void setShouldSuppressSOAuthorizationInAllNavigationPolicyDecision() { m_shouldSuppressSOAuthorizationInAllNavigationPolicyDecision = true; }
+    void setShouldSuppressSOAuthorizationInNextNavigationPolicyDecision() { m_shouldSuppressSOAuthorizationInNextNavigationPolicyDecision = true; }
 #endif
 
     Logger& logger();
@@ -1785,7 +1784,7 @@ private:
 #endif
 
 #if PLATFORM(GTK)
-    void getEditorCommandsForKeyEvent(const AtomicString&, Vector<String>&);
+    void getEditorCommandsForKeyEvent(const AtomString&, Vector<String>&);
 #endif
 
 #if USE(ATK)
@@ -2287,8 +2286,9 @@ private:
     WebCore::ResourceRequest m_decidePolicyForResponseRequest;
     bool m_shouldSuppressAppLinksInNextNavigationPolicyDecision { false };
 
-#if HAVE(LOAD_OPTIMIZER)
-WEBPAGEPROXY_LOADOPTIMIZER_ADDITIONS_2
+#if HAVE(APP_SSO)
+    bool m_shouldSuppressSOAuthorizationInNextNavigationPolicyDecision { false };
+    bool m_shouldSuppressSOAuthorizationInAllNavigationPolicyDecision { false };
 #endif
 
     Deque<NativeWebMouseEvent> m_mouseEventQueue;
@@ -2516,6 +2516,10 @@ WEBPAGEPROXY_LOADOPTIMIZER_ADDITIONS_2
 
 #if HAVE(PENCILKIT)
     std::unique_ptr<EditableImageController> m_editableImageController;
+#endif
+
+#if HAVE(VISIBILITY_PROPAGATION_VIEW)
+    LayerHostingContextID m_contextIDForVisibilityPropagation { 0 };
 #endif
 
     HashMap<WebViewDidMoveToWindowObserver*, WeakPtr<WebViewDidMoveToWindowObserver>> m_webViewDidMoveToWindowObservers;

@@ -57,6 +57,7 @@ public:
     static uint32_t allocatedLength(uint32_t length);
     uint32_t mask() const { return m_mask; }
 
+    template<typename T> T* owner() const { return reinterpret_cast<T*>(m_owner); }
     void setOwner(JSObject* owner)
     {
         ASSERT(!m_owner);
@@ -76,7 +77,7 @@ public:
 
     Optional<uint32_t> grow(uint32_t delta);
 
-    void visitChildren(SlotVisitor&);
+    void visitAggregate(SlotVisitor&);
 
 protected:
     Table(uint32_t initial, Optional<uint32_t> maximum, TableElementType = TableElementType::Anyref);

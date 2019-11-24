@@ -35,18 +35,6 @@ namespace Layout {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(Line);
 
-bool Line::Content::isVisuallyEmpty() const
-{
-    // Return true for empty inline containers like <span></span>.
-    for (auto& run : m_runs) {
-        if (run->inlineItem.isContainerStart() || run->inlineItem.isContainerEnd())
-            continue;
-        if (!run->isCollapsed)
-            return false;
-    }
-    return true;
-}
-
 Line::Content::Run::Run(const InlineItem& inlineItem, const Display::Rect& logicalRect, TextContext textContext, bool isCollapsed, bool canBeExtended)
     : inlineItem(inlineItem)
     , logicalRect(logicalRect)
@@ -69,24 +57,95 @@ Line::Line(const LayoutState& layoutState, const LayoutPoint& topLeft, LayoutUni
     : m_layoutState(layoutState)
     , m_content(std::make_unique<Line::Content>())
     , m_logicalTopLeft(topLeft)
-    , m_baseline({ baselineOffset, minimumHeight - baselineOffset, { } })
+    , m_baseline({ baselineOffset, minimumHeight - baselineOffset })
     , m_contentLogicalHeight(minimumHeight)
     , m_lineLogicalWidth(availableWidth)
 {
+}
+
+bool Line::isVisuallyEmpty() const
+{
+    // FIXME: This should be cached instead -as the inline items are being added.
+    // Return true for empty inline containers like <span></span>.
+    for (auto& run : m_content->runs()) {
+        if (run->inlineItem.isContainerStart()) {
+            auto& displayBox = m_layoutState.displayBoxForLayoutBox(run->inlineItem.layoutBox());
+            if (displayBox.horizontalBorder() || (displayBox.horizontalPadding() && displayBox.horizontalPadding().value()))
+                return false;
+            continue;
+        }
+        if (run->inlineItem.isContainerEnd())
+            continue;
+        if (run->inlineItem.layoutBox().establishesFormattingContext()) {
+            ASSERT(run->inlineItem.layoutBox().isInlineBlockBox());
+            auto& displayBox = m_layoutState.displayBoxForLayoutBox(run->inlineItem.layoutBox());
+            if (!displayBox.width())
+                continue;
+            if (m_skipVerticalAligment || displayBox.height())
+                return false;
+            continue;
+        }
+        if (!run->isCollapsed)
+            return false;
+    }
+    return true;
 }
 
 std::unique_ptr<Line::Content> Line::close()
 {
     removeTrailingTrimmableContent();
     if (!m_skipVerticalAligment) {
-        // Convert inline run geometry from relative to the baseline to relative to logical top.
+        if (isVisuallyEmpty()) {
+            m_baseline = { };
+            m_baselineTop = { };
+            m_contentLogicalHeight = { };
+        }
+
+        // Remove descent when all content is baseline aligned but none of them have descent.
+        if (InlineFormattingContext::Quirks::lineDescentNeedsCollapsing(m_layoutState, *m_content)) {
+            m_contentLogicalHeight -= m_baseline.descent;
+            m_baseline.descent = { };
+        }
+
         for (auto& run : m_content->runs()) {
-            auto adjustedLogicalTop = run->logicalRect.top() + baselineOffset();
-            run->logicalRect.setTop(adjustedLogicalTop);
+            LayoutUnit logicalTop;
+            auto& inlineItem = run->inlineItem;
+            auto& layoutBox = inlineItem.layoutBox();
+            auto verticalAlign = inlineItem.style().verticalAlign();
+            auto ascent = inlineItem.style().fontMetrics().ascent();
+
+            switch (verticalAlign) {
+            case VerticalAlign::Baseline:
+                if (inlineItem.isLineBreak() || inlineItem.isText())
+                    logicalTop = baselineOffset() - ascent;
+                else if (inlineItem.isContainerStart()) {
+                    auto& displayBox = m_layoutState.displayBoxForLayoutBox(layoutBox);
+                    logicalTop = baselineOffset() - ascent - displayBox.borderTop() - displayBox.paddingTop().valueOr(0);
+                } else if (layoutBox.isInlineBlockBox() && layoutBox.establishesInlineFormattingContext()) {
+                    auto& formattingState = downcast<InlineFormattingState>(m_layoutState.establishedFormattingState(layoutBox));
+                    // Spec makes us generate at least one line -even if it is empty.
+                    ASSERT(!formattingState.lineBoxes().isEmpty());
+                    auto inlineBlockBaseline = formattingState.lineBoxes().last().baseline();
+                    logicalTop = baselineOffset() - inlineBlockBaseline.ascent;
+                } else
+                    logicalTop = baselineOffset() - run->logicalRect.height();
+                break;
+            case VerticalAlign::Top:
+                logicalTop = { };
+                break;
+            case VerticalAlign::Bottom:
+                logicalTop = logicalBottom() - run->logicalRect.height();
+                break;
+            default:
+                ASSERT_NOT_IMPLEMENTED_YET();
+                break;
+            }
+            run->logicalRect.setTop(logicalTop);
         }
     }
     m_content->setLogicalRect({ logicalTop(), logicalLeft(), contentLogicalWidth(), logicalHeight() });
     m_content->setBaseline(m_baseline);
+    m_content->setBaselineOffset(baselineOffset());
     return WTFMove(m_content);
 }
 
@@ -122,9 +181,26 @@ void Line::moveLogicalRight(LayoutUnit delta)
 LayoutUnit Line::trailingTrimmableWidth() const
 {
     LayoutUnit trimmableWidth;
-    for (auto* trimmableRun : m_trimmableContent)
+    for (auto* trimmableRun : m_trimmableContent) {
+        ASSERT(!trimmableRun->isCollapsed);
         trimmableWidth += trimmableRun->logicalRect.width();
+    }
     return trimmableWidth;
+}
+
+void Line::append(const InlineItem& inlineItem, LayoutUnit logicalWidth)
+{
+    if (inlineItem.isHardLineBreak())
+        return appendHardLineBreak(inlineItem);
+    if (is<InlineTextItem>(inlineItem))
+        return appendTextContent(downcast<InlineTextItem>(inlineItem), logicalWidth);
+    if (inlineItem.isContainerStart())
+        return appendInlineContainerStart(inlineItem, logicalWidth);
+    if (inlineItem.isContainerEnd())
+        return appendInlineContainerEnd(inlineItem, logicalWidth);
+    if (inlineItem.layoutBox().isReplaced())
+        return appendReplacedInlineBox(inlineItem, logicalWidth);
+    appendNonReplacedInlineBox(inlineItem, logicalWidth);
 }
 
 void Line::appendNonBreakableSpace(const InlineItem& inlineItem, const Display::Rect& logicalRect)
@@ -140,12 +216,8 @@ void Line::appendInlineContainerStart(const InlineItem& inlineItem, LayoutUnit l
     logicalRect.setWidth(logicalWidth);
 
     if (!m_skipVerticalAligment) {
-        auto logicalHeight = inlineItemHeight(inlineItem);
+        auto logicalHeight = inlineItemContentHeight(inlineItem);
         adjustBaselineAndLineHeight(inlineItem, logicalHeight);
-
-        auto& displayBox = m_layoutState.displayBoxForLayoutBox(inlineItem.layoutBox());
-        auto logicalTop = -inlineItem.style().fontMetrics().ascent() - displayBox.borderTop() - displayBox.paddingTop().valueOr(0);
-        logicalRect.setTop(logicalTop);
         logicalRect.setHeight(logicalHeight);
     }
     appendNonBreakableSpace(inlineItem, logicalRect);
@@ -190,14 +262,12 @@ void Line::appendTextContent(const InlineTextItem& inlineItem, LayoutUnit logica
     auto logicalRect = Display::Rect { };
     logicalRect.setLeft(contentLogicalRight());
     logicalRect.setWidth(logicalWidth);
-    if (!m_skipVerticalAligment) {
-        logicalRect.setTop(-inlineItem.style().fontMetrics().ascent());
-        logicalRect.setHeight(inlineItemHeight(inlineItem));
-    }
+    if (!m_skipVerticalAligment)
+        logicalRect.setHeight(inlineItemContentHeight(inlineItem));
 
     auto textContext = Content::Run::TextContext { inlineItem.start(), inlineItem.isCollapsed() ? 1 : inlineItem.length() };
     auto lineItem = std::make_unique<Content::Run>(inlineItem, logicalRect, textContext, isCompletelyCollapsed, canBeExtended);
-    if (isTrimmable)
+    if (isTrimmable && !isCompletelyCollapsed)
         m_trimmableContent.add(lineItem.get());
 
     m_content->runs().append(WTFMove(lineItem));
@@ -213,11 +283,8 @@ void Line::appendNonReplacedInlineBox(const InlineItem& inlineItem, LayoutUnit l
     logicalRect.setLeft(contentLogicalRight() + horizontalMargin.start);
     logicalRect.setWidth(logicalWidth);
     if (!m_skipVerticalAligment) {
-        auto logicalHeight = inlineItemHeight(inlineItem);
-        adjustBaselineAndLineHeight(inlineItem, logicalHeight);
-
-        logicalRect.setTop(-logicalHeight);
-        logicalRect.setHeight(logicalHeight);
+        adjustBaselineAndLineHeight(inlineItem, displayBox.marginBoxHeight());
+        logicalRect.setHeight(inlineItemContentHeight(inlineItem));
     }
 
     m_content->runs().append(std::make_unique<Content::Run>(inlineItem, logicalRect, Content::Run::TextContext { }, false, false));
@@ -233,8 +300,11 @@ void Line::appendReplacedInlineBox(const InlineItem& inlineItem, LayoutUnit logi
 
 void Line::appendHardLineBreak(const InlineItem& inlineItem)
 {
-    auto ascent = inlineItem.layoutBox().style().fontMetrics().ascent();
-    auto logicalRect = Display::Rect { -ascent, contentLogicalRight(), { }, logicalHeight() };
+    auto logicalRect = Display::Rect { };
+    logicalRect.setLeft(contentLogicalRight());
+    logicalRect.setWidth({ });
+    if (!m_skipVerticalAligment)
+        logicalRect.setHeight(logicalHeight());
     m_content->runs().append(std::make_unique<Content::Run>(inlineItem, logicalRect, Content::Run::TextContext { }, false, false));
 }
 
@@ -255,23 +325,40 @@ void Line::adjustBaselineAndLineHeight(const InlineItem& inlineItem, LayoutUnit 
         return;
     }
     // Replaced and non-replaced inline level box.
-    // FIXME: We need to look inside the inline-block's formatting context and check the lineboxes (if any) to be able to baseline align.
-    if (layoutBox.establishesInlineFormattingContext()) {
-        if (runHeight == logicalHeight())
-            return;
-        // FIXME: This fails when the line height difference comes from font-size diff.
+    switch (inlineItem.style().verticalAlign()) {
+    case VerticalAlign::Baseline:
+        if (layoutBox.isInlineBlockBox() && layoutBox.establishesInlineFormattingContext()) {
+            // Inline-blocks with inline content always have baselines.
+            auto& formattingState = downcast<InlineFormattingState>(m_layoutState.establishedFormattingState(layoutBox));
+            // Spec makes us generate at least one line -even if it is empty.
+            ASSERT(!formattingState.lineBoxes().isEmpty());
+            auto inlineBlockBaseline = formattingState.lineBoxes().last().baseline();
+            m_baseline.descent = std::max(inlineBlockBaseline.descent, m_baseline.descent);
+            m_baseline.ascent = std::max(inlineBlockBaseline.ascent, m_baseline.ascent);
+            m_contentLogicalHeight = std::max(std::max(m_contentLogicalHeight, runHeight), baselineAlignedContentHeight());
+            break;
+        }
         m_baseline.descent = std::max<LayoutUnit>(0, m_baseline.descent);
         m_baseline.ascent = std::max(runHeight, m_baseline.ascent);
         m_contentLogicalHeight = std::max(m_contentLogicalHeight, baselineAlignedContentHeight());
-        return;
+        break;
+    case VerticalAlign::Top:
+        // Top align content never changes the baseline offset, it only pushes the bottom of the line further down.
+        m_contentLogicalHeight = std::max(runHeight, m_contentLogicalHeight);
+        break;
+    case VerticalAlign::Bottom:
+        if (m_contentLogicalHeight < runHeight) {
+            m_baselineTop += runHeight - m_contentLogicalHeight;
+            m_contentLogicalHeight = runHeight;
+        }
+        break;
+    default:
+        ASSERT_NOT_IMPLEMENTED_YET();
+        break;
     }
-    // 0 descent -> baseline aligment for now.
-    m_baseline.descent = std::max<LayoutUnit>(0, m_baseline.descent);
-    m_baseline.ascent = std::max(runHeight, m_baseline.ascent);
-    m_contentLogicalHeight = std::max(m_contentLogicalHeight, baselineAlignedContentHeight());
 }
 
-LayoutUnit Line::inlineItemHeight(const InlineItem& inlineItem) const
+LayoutUnit Line::inlineItemContentHeight(const InlineItem& inlineItem) const
 {
     ASSERT(!m_skipVerticalAligment);
     auto& fontMetrics = inlineItem.style().fontMetrics();
@@ -283,16 +370,16 @@ LayoutUnit Line::inlineItemHeight(const InlineItem& inlineItem) const
     auto& displayBox = m_layoutState.displayBoxForLayoutBox(layoutBox);
 
     if (layoutBox.isFloatingPositioned())
-        return displayBox.marginBox().height();
+        return displayBox.borderBoxHeight();
 
     if (layoutBox.isReplaced())
-        return displayBox.height();
+        return displayBox.borderBoxHeight();
 
     if (inlineItem.isContainerStart() || inlineItem.isContainerEnd())
         return fontMetrics.height() + displayBox.verticalBorder() + displayBox.verticalPadding().valueOr(0);
 
     // Non-replaced inline box (e.g. inline-block)
-    return displayBox.height();
+    return displayBox.borderBoxHeight();
 }
 
 LineBox::Baseline Line::halfLeadingMetrics(const FontMetrics& fontMetrics, LayoutUnit lineLogicalHeight)
@@ -304,7 +391,7 @@ LineBox::Baseline Line::halfLeadingMetrics(const FontMetrics& fontMetrics, Layou
     // Inline tree is all integer based.
     auto adjustedAscent = std::max((ascent + leading / 2).floor(), 0);
     auto adjustedDescent = std::max((descent + leading / 2).ceil(), 0);
-    return { adjustedAscent, adjustedDescent, adjustedAscent };
+    return { adjustedAscent, adjustedDescent };
 }
 
 }

@@ -1,3 +1,48 @@
+2019-06-14  Ali Juma  <ajuma@chromium.org>
+
+        IntersectionObserver rootMargin detection fails when `root` is an element
+        https://bugs.webkit.org/show_bug.cgi?id=198784
+
+        Reviewed by Simon Fraser.
+
+        Import https://github.com/web-platform-tests/wpt/pull/17323.
+
+        * web-platform-tests/intersection-observer/root-margin-root-element-expected.txt: Added.
+        * web-platform-tests/intersection-observer/root-margin-root-element.html: Added.
+
+2019-06-13  Youenn Fablet  <youenn@apple.com>
+
+        Import WPT websockets tests
+        https://bugs.webkit.org/show_bug.cgi?id=198774
+
+        Reviewed by Geoffrey Garen.
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/abort.sub.window-expected.txt:
+        Rebasing since we now have some websockets specific handlers.
+        * web-platform-tests/websockets: Added.
+
+2019-06-13  Youenn Fablet  <youenn@apple.com>
+
+        Update service worker test and expectation after revision 246363
+        https://bugs.webkit.org/show_bug.cgi?id=198808
+
+        Reviewed by Geoffrey Garen.
+
+        * web-platform-tests/service-workers/service-worker/fetch-event-async-respond-with.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-async-respond-with.https.html:
+        Make sure the fetch load finishes so that removing the frame does not cancel the fetch.
+
+2019-06-12  Youenn Fablet  <youenn@apple.com>
+
+        Update WPT service workers test up to 0df7c68
+        https://bugs.webkit.org/show_bug.cgi?id=198720
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/service-workers: Resynced.
+
 2019-06-11  Devin Rousso  <drousso@apple.com>
 
         Sort the computed styles list

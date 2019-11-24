@@ -90,4 +90,4 @@ webkit.org/b/182849 imported/w3c/web-platform-tests/xhr/event-upload-progress-cr
 
 imported/w3c/web-platform-tests/IndexedDB/keypath-special-identifiers.htm [ Slow ]
 
-webkit.org/b/198185 http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html [ Skip ]
+webkit.org/b/172001 scrollingcoordinator/ios/sync-layer-positions-after-scroll.html [ Pass Failure ]

@@ -79,6 +79,7 @@ private:
             SkipVerticalAligment skipVerticalAligment;
             unsigned firstInlineItemIndex { 0 };
             const InlineItems& inlineItems;
+            Optional<LayoutUnit> floatMinimumLogicalBottom;
         };
         LineContent placeInlineItems(const LineInput&) const;
         void createDisplayRuns(const Line::Content&, const Vector<WeakPtr<InlineItem>>& floats, LayoutUnit widthConstraint) const;
@@ -92,6 +93,11 @@ private:
         InlineFormattingState& m_formattingState;
         FloatingState& m_floatingState;
         const Container& m_formattingRoot;
+    };
+
+    class Quirks {
+    public:
+        static bool lineDescentNeedsCollapsing(const LayoutState&, const Line::Content&);
     };
 
     class Geometry : public FormattingContext::Geometry {
@@ -113,6 +119,8 @@ private:
     void collectInlineContent() const;
 
     InlineFormattingState& formattingState() const { return downcast<InlineFormattingState>(FormattingContext::formattingState()); }
+    // FIXME: Come up with a structure that requires no friending.
+    friend class Line;
 };
 
 }

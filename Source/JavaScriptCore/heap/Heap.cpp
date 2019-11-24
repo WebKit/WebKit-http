@@ -53,6 +53,7 @@
 #include "JSLock.h"
 #include "JSVirtualMachineInternal.h"
 #include "JSWeakMap.h"
+#include "JSWeakObjectRef.h"
 #include "JSWeakSet.h"
 #include "JSWebAssemblyCodeBlock.h"
 #include "MachineStackMarker.h"
@@ -150,7 +151,7 @@ bool isValidSharedInstanceThreadState(VM* vm)
 
 bool isValidThreadState(VM* vm)
 {
-    if (vm->atomicStringTable() != Thread::current().atomicStringTable())
+    if (vm->atomStringTable() != Thread::current().atomStringTable())
         return false;
 
     if (vm->isSharedInstance() && !isValidSharedInstanceThreadState(vm))
@@ -611,6 +612,8 @@ void Heap::finalizeUnconditionalFinalizers()
         finalizeMarkedUnconditionalFinalizers<JSWeakSet>(*vm()->m_weakSetSpace);
     if (vm()->m_weakMapSpace)
         finalizeMarkedUnconditionalFinalizers<JSWeakMap>(*vm()->m_weakMapSpace);
+    if (vm()->m_weakObjectRefSpace)
+        finalizeMarkedUnconditionalFinalizers<JSWeakObjectRef>(*vm()->m_weakObjectRefSpace);
     if (vm()->m_errorInstanceSpace)
         finalizeMarkedUnconditionalFinalizers<ErrorInstance>(*vm()->m_errorInstanceSpace);
 
@@ -1233,6 +1236,9 @@ NEVER_INLINE bool Heap::runNotRunningPhase(GCConductor conn)
     {
         auto locker = holdLock(*m_threadLock);
         if (m_requests.isEmpty())
+            return false;
+        // Check if the mutator has stolen the conn while the collector transitioned from End to NotRunning
+        if (conn == GCConductor::Collector && !!(m_worldState.load() & mutatorHasConnBit))
             return false;
     }
     
@@ -2105,7 +2111,7 @@ Heap::Ticket Heap::requestCollection(GCRequest request)
     stopIfNecessary();
     
     ASSERT(vm()->currentThreadIsHoldingAPILock());
-    RELEASE_ASSERT(vm()->atomicStringTable() == Thread::current().atomicStringTable());
+    RELEASE_ASSERT(vm()->atomStringTable() == Thread::current().atomStringTable());
     
     LockHolder locker(*m_threadLock);
     // We may be able to steal the conn. That only works if the collector is definitely not running

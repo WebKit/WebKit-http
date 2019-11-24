@@ -158,6 +158,9 @@ bool BlockFormattingContext::MarginCollapse::marginBeforeCollapsesWithPreviousSi
         return false;
 
     auto& previousInFlowSibling = *layoutBox.previousInFlowSibling();
+    if (previousInFlowSibling.isAnonymous())
+        return false;
+
     // Margins between a floated box and any other box do not collapse.
     if (layoutBox.isFloatingPositioned() || previousInFlowSibling.isFloatingPositioned())
         return false;
@@ -207,14 +210,6 @@ bool BlockFormattingContext::MarginCollapse::marginBeforeCollapsesWithFirstInFlo
 
     // ...and the child has no clearance.
     if (hasClearance(layoutState, firstInFlowChild))
-        return false;
-
-    // Margins between a floated box and any other box do not collapse.
-    if (firstInFlowChild.isFloatingPositioned())
-        return false;
-
-    // Margins of absolutely positioned boxes do not collapse.
-    if (firstInFlowChild.isOutOfFlowPositioned())
         return false;
 
     // Margins of inline-block boxes do not collapse.
@@ -347,14 +342,6 @@ bool BlockFormattingContext::MarginCollapse::marginAfterCollapsesWithLastInFlowC
         && (marginAfterCollapsesWithParentMarginBefore(layoutState, lastInFlowChild) || hasClearance(layoutState, lastInFlowChild)))
         return false;
 
-    // Margins between a floated box and any other box do not collapse.
-    if (lastInFlowChild.isFloatingPositioned())
-        return false;
-
-    // Margins of absolutely positioned boxes do not collapse.
-    if (lastInFlowChild.isOutOfFlowPositioned())
-        return false;
-
     // Margins of inline-block boxes do not collapse.
     if (lastInFlowChild.isInlineBlockBox())
         return false;
@@ -384,12 +371,13 @@ bool BlockFormattingContext::MarginCollapse::marginsCollapseThrough(const Layout
     if (hasPaddingBefore(layoutBox) || hasPaddingAfter(layoutBox))
         return false;
 
-    // FIXME: Check for computed 0 height.
-    if (!layoutBox.style().height().isAuto())
+    auto& style = layoutBox.style();
+    auto computedHeightValueIsZero = style.height().isFixed() && !style.height().value();
+    if (!(style.height().isAuto() || computedHeightValueIsZero))
         return false;
 
     // FIXME: Check for computed 0 height.
-    if (!layoutBox.style().minHeight().isAuto())
+    if (!style.minHeight().isAuto())
         return false;
 
     // FIXME: Block replaced boxes clearly don't collapse through their margins, but I couldn't find it in the spec yet (and no, it's not a quirk).
@@ -447,7 +435,7 @@ static PositiveAndNegativeVerticalMargin::Values computedPositiveAndNegativeMarg
         computedValues.negative = a.negative ? a.negative : b.negative;
 
     if (a.isNonZero() && b.isNonZero())
-        computedValues.isQuirk = a.isQuirk && b.isQuirk;
+        computedValues.isQuirk = a.isQuirk || b.isQuirk;
     else if (a.isNonZero())
         computedValues.isQuirk = a.isQuirk;
     else

@@ -658,6 +658,16 @@ RoundedRect::Radii RenderBox::borderRadii() const
     return style.getRoundedBorderFor(bounds).radii();
 }
 
+LayoutRect RenderBox::paddingBoxRect() const
+{
+    auto verticalScrollbarWidth = this->verticalScrollbarWidth();
+    LayoutUnit offsetForScrollbar = shouldPlaceBlockDirectionScrollbarOnLeft() ? verticalScrollbarWidth : 0;
+
+    return LayoutRect(borderLeft() + offsetForScrollbar, borderTop(),
+        width() - borderLeft() - borderRight() - verticalScrollbarWidth,
+        height() - borderTop() - borderBottom() - horizontalScrollbarHeight());
+}
+
 LayoutRect RenderBox::contentBoxRect() const
 {
     return { contentBoxLocation(), contentSize() };
@@ -983,7 +993,8 @@ bool RenderBox::applyCachedClipAndScrollPosition(LayoutRect& rect, const RenderL
         rect.moveBy(-scrollPosition()); // For overflow:auto/scroll/hidden.
 
     // Do not clip scroll layer contents to reduce the number of repaints while scrolling.
-    if (!context.m_options.contains(VisibleRectContextOption::ApplyCompositedClips) && usesCompositedScrolling()) {
+    if ((!context.m_options.contains(VisibleRectContextOption::ApplyCompositedClips) && usesCompositedScrolling())
+        || (!context.m_options.contains(VisibleRectContextOption::ApplyContainerClip) && this == container)) {
         flipForWritingMode(rect);
         return true;
     }

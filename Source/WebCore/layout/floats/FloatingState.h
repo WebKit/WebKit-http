@@ -60,8 +60,8 @@ public:
     Optional<PositionInContextRoot> bottom(const Box& formattingContextRoot) const;
 
     struct Constraints {
-        Optional<PositionInContextRoot> left;
-        Optional<PositionInContextRoot> right;
+        Optional<PointInContextRoot> left;
+        Optional<PointInContextRoot> right;
     };
     Constraints constraints(PositionInContextRoot verticalPosition, const Box& formattingContextRoot) const;
 
@@ -121,7 +121,7 @@ inline bool FloatingState::FloatItem::isDescendantOfFormattingRoot(const Box& fo
     ASSERT(formattingContextRoot.establishesFormattingContext());
     if (!is<Container>(formattingContextRoot))
         return false;
-    return m_layoutBox->isDescendantOf(downcast<Container>(formattingContextRoot));
+    return m_layoutBox->isContainingBlockDescendantOf(downcast<Container>(formattingContextRoot));
 }
 
 }

@@ -306,6 +306,7 @@ Modules/websockets/WorkerThreadableWebSocketChannel.cpp
 
 Modules/webgpu/GPUCanvasContext.cpp
 Modules/webgpu/NavigatorGPU.cpp
+Modules/webgpu/WHLSL/WHLSLComputeDimensions.cpp
 Modules/webgpu/WHLSL/WHLSLASTDumper.cpp
 Modules/webgpu/WHLSL/WHLSLAutoInitializeVariables.cpp
 Modules/webgpu/WHLSL/WHLSLInferTypes.cpp
@@ -1350,6 +1351,7 @@ layout/floats/FloatingState.cpp
 layout/inlineformatting/InlineFormattingContext.cpp
 layout/inlineformatting/InlineFormattingContextGeometry.cpp
 layout/inlineformatting/InlineFormattingContextLineLayout.cpp
+layout/inlineformatting/InlineFormattingContextQuirks.cpp
 layout/inlineformatting/InlineFormattingState.cpp
 layout/inlineformatting/InlineInvalidation.cpp
 layout/inlineformatting/InlineLine.cpp

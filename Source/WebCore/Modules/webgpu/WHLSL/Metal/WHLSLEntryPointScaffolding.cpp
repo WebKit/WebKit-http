@@ -32,6 +32,7 @@
 #include "WHLSLFunctionDefinition.h"
 #include "WHLSLGatherEntryPointItems.h"
 #include "WHLSLPipelineDescriptor.h"
+#include "WHLSLReferenceType.h"
 #include "WHLSLResourceSemantic.h"
 #include "WHLSLStageInOutSemantic.h"
 #include "WHLSLStructureDefinition.h"
@@ -108,7 +109,16 @@ EntryPointScaffolding::EntryPointScaffolding(AST::FunctionDefinition& functionDe
         for (size_t j = 0; j < m_layout[i].bindings.size(); ++j) {
             NamedBinding namedBinding;
             namedBinding.elementName = m_typeNamer.generateNextStructureElementName();
-            namedBinding.index = m_layout[i].bindings[j].name; // GPUBindGroupLayout::tryCreate() makes sure these don't collide.
+            namedBinding.index = m_layout[i].bindings[j].internalName;
+            WTF::visit(WTF::makeVisitor([&](UniformBufferBinding& uniformBufferBinding) {
+                LengthInformation lengthInformation { m_typeNamer.generateNextStructureElementName(), m_generateNextVariableName(), uniformBufferBinding.lengthName };
+                namedBinding.lengthInformation = lengthInformation;
+            }, [&](SamplerBinding&) {
+            }, [&](TextureBinding&) {
+            }, [&](StorageBufferBinding& storageBufferBinding) {
+                LengthInformation lengthInformation { m_typeNamer.generateNextStructureElementName(), m_generateNextVariableName(), storageBufferBinding.lengthName };
+                namedBinding.lengthInformation = lengthInformation;
+            }), m_layout[i].bindings[j].binding);
             namedBindGroup.namedBindings.uncheckedAppend(WTFMove(namedBinding));
         }
         m_namedBindGroups.uncheckedAppend(WTFMove(namedBindGroup));
@@ -137,10 +147,15 @@ String EntryPointScaffolding::resourceHelperTypes()
             auto iterator = m_resourceMap.find(&m_layout[i].bindings[j]);
             if (iterator == m_resourceMap.end())
                 continue;
-            auto mangledTypeName = m_typeNamer.mangledNameForType(*m_entryPointItems.inputs[iterator->value].unnamedType);
+            auto& unnamedType = *m_entryPointItems.inputs[iterator->value].unnamedType;
+            auto& referenceType = downcast<AST::ReferenceType>(unnamedType);
+            auto mangledTypeName = m_typeNamer.mangledNameForType(referenceType.elementType());
+            auto addressSpace = toString(referenceType.addressSpace());
             auto elementName = m_namedBindGroups[i].namedBindings[j].elementName;
             auto index = m_namedBindGroups[i].namedBindings[j].index;
-            stringBuilder.append(makeString("    ", mangledTypeName, ' ', elementName, " [[id(", index, ")]];\n"));
+            stringBuilder.append(makeString("    ", addressSpace, " ", mangledTypeName, "* ", elementName, " [[id(", index, ")]];\n"));
+            if (auto lengthInformation = m_namedBindGroups[i].namedBindings[j].lengthInformation)
+                stringBuilder.append(makeString("    uint2 ", lengthInformation->elementName, " [[id(", lengthInformation->index, ")]];\n"));
         }
         stringBuilder.append("};\n\n");
     }
@@ -162,6 +177,41 @@ Optional<String> EntryPointScaffolding::resourceSignature()
     return stringBuilder.toString();
 }
 
+static String internalTypeForSemantic(const AST::BuiltInSemantic& builtInSemantic)
+{
+    switch (builtInSemantic.variable()) {
+    case AST::BuiltInSemantic::Variable::SVInstanceID:
+        return "uint"_str;
+    case AST::BuiltInSemantic::Variable::SVVertexID:
+        return "uint"_str;
+    case AST::BuiltInSemantic::Variable::PSize:
+        return "float"_str;
+    case AST::BuiltInSemantic::Variable::SVPosition:
+        return "float4"_str;
+    case AST::BuiltInSemantic::Variable::SVIsFrontFace:
+        return "bool"_str;
+    case AST::BuiltInSemantic::Variable::SVSampleIndex:
+        return "uint"_str;
+    case AST::BuiltInSemantic::Variable::SVInnerCoverage:
+        return "uint"_str;
+    case AST::BuiltInSemantic::Variable::SVTarget:
+        return String();
+    case AST::BuiltInSemantic::Variable::SVDepth:
+        return "float"_str;
+    case AST::BuiltInSemantic::Variable::SVCoverage:
+        return "uint"_str;
+    case AST::BuiltInSemantic::Variable::SVDispatchThreadID:
+        return "uint3"_str;
+    case AST::BuiltInSemantic::Variable::SVGroupID:
+        return "uint3"_str;
+    case AST::BuiltInSemantic::Variable::SVGroupIndex:
+        return "uint"_str;
+    default:
+        ASSERT(builtInSemantic.variable() == AST::BuiltInSemantic::Variable::SVGroupThreadID);
+        return "uint3"_str;
+    }
+}
+
 Optional<String> EntryPointScaffolding::builtInsSignature()
 {
     if (!m_namedBuiltIns.size())
@@ -174,9 +224,11 @@ Optional<String> EntryPointScaffolding::builtInsSignature()
         auto& namedBuiltIn = m_namedBuiltIns[i];
         auto& item = m_entryPointItems.inputs[namedBuiltIn.indexInEntryPointItems];
         auto& builtInSemantic = WTF::get<AST::BuiltInSemantic>(*item.semantic);
-        auto mangledTypeName = m_typeNamer.mangledNameForType(*item.unnamedType);
+        auto internalType = internalTypeForSemantic(builtInSemantic);
+        if (internalType.isNull())
+            internalType = m_typeNamer.mangledNameForType(*item.unnamedType);
         auto variableName = namedBuiltIn.variableName;
-        stringBuilder.append(makeString(mangledTypeName, ' ', variableName, ' ', attributeForSemantic(builtInSemantic)));
+        stringBuilder.append(makeString(internalType, ' ', variableName, ' ', attributeForSemantic(builtInSemantic)));
     }
     return stringBuilder.toString();
 }
@@ -224,10 +276,7 @@ String EntryPointScaffolding::mangledOutputPath(Vector<String>& path)
 
     AST::StructureDefinition* structureDefinition = nullptr;
     auto& unifyNode = m_functionDefinition.type().unifyNode();
-    ASSERT(is<AST::NamedType>(unifyNode));
-    auto& namedType = downcast<AST::NamedType>(unifyNode);
-    ASSERT(is<AST::StructureDefinition>(namedType));
-    structureDefinition = &downcast<AST::StructureDefinition>(namedType);
+    structureDefinition = &downcast<AST::StructureDefinition>(downcast<AST::NamedType>(unifyNode));
     for (auto& component : path) {
         ASSERT(structureDefinition);
         auto* next = structureDefinition->find(component);
@@ -257,16 +306,35 @@ String EntryPointScaffolding::unpackResourcesAndNamedBuiltIns()
             auto iterator = m_resourceMap.find(&m_layout[i].bindings[j]);
             if (iterator == m_resourceMap.end())
                 continue;
-            auto& path = m_entryPointItems.inputs[iterator->value].path;
-            auto elementName = m_namedBindGroups[i].namedBindings[j].elementName;
-            stringBuilder.append(makeString(mangledInputPath(path), " = ", variableName, '.', elementName, ";\n"));
+            if (m_namedBindGroups[i].namedBindings[j].lengthInformation) {
+                auto& path = m_entryPointItems.inputs[iterator->value].path;
+                auto elementName = m_namedBindGroups[i].namedBindings[j].elementName;
+                auto lengthElementName = m_namedBindGroups[i].namedBindings[j].lengthInformation->elementName;
+                auto lengthTemporaryName = m_namedBindGroups[i].namedBindings[j].lengthInformation->temporaryName;
+
+                auto& unnamedType = *m_entryPointItems.inputs[iterator->value].unnamedType;
+                auto mangledTypeName = m_typeNamer.mangledNameForType(downcast<AST::ReferenceType>(unnamedType).elementType());
+
+                stringBuilder.append(makeString("size_t ", lengthTemporaryName, " = ", variableName, '.', lengthElementName, ".y;\n"));
+                stringBuilder.append(makeString(lengthTemporaryName, " = ", lengthTemporaryName, " << 32;\n"));
+                stringBuilder.append(makeString(lengthTemporaryName, " = ", lengthTemporaryName, " | ", variableName, '.', lengthElementName, ".x;\n"));
+                stringBuilder.append(makeString(lengthTemporaryName, " = ", lengthTemporaryName, " / sizeof(", mangledTypeName, ");\n"));
+                stringBuilder.append(makeString("if (", lengthTemporaryName, " > 0xFFFFFFFF) ", lengthTemporaryName, " = 0xFFFFFFFF;\n"));
+                stringBuilder.append(makeString(mangledInputPath(path), " = { ", variableName, '.', elementName, ", static_cast<uint32_t>(", lengthTemporaryName, ") };\n"));
+            } else {
+                auto& path = m_entryPointItems.inputs[iterator->value].path;
+                auto elementName = m_namedBindGroups[i].namedBindings[j].elementName;
+                stringBuilder.append(makeString(mangledInputPath(path), " = ", variableName, '.', elementName, ";\n"));
+            }
         }
     }
 
     for (auto& namedBuiltIn : m_namedBuiltIns) {
-        auto& path = m_entryPointItems.inputs[namedBuiltIn.indexInEntryPointItems].path;
+        auto& item = m_entryPointItems.inputs[namedBuiltIn.indexInEntryPointItems];
+        auto& path = item.path;
         auto& variableName = namedBuiltIn.variableName;
-        stringBuilder.append(makeString(mangledInputPath(path), " = ", variableName, ";\n"));
+        auto mangledTypeName = m_typeNamer.mangledNameForType(*item.unnamedType);
+        stringBuilder.append(makeString(mangledInputPath(path), " = ", mangledTypeName, '(', variableName, ");\n"));
     }
     return stringBuilder.toString();
 }
@@ -289,8 +357,13 @@ VertexEntryPointScaffolding::VertexEntryPointScaffolding(AST::FunctionDefinition
 
     m_namedOutputs.reserveInitialCapacity(m_entryPointItems.outputs.size());
     for (size_t i = 0; i < m_entryPointItems.outputs.size(); ++i) {
+        auto& outputItem = m_entryPointItems.outputs[i];
         NamedOutput namedOutput;
         namedOutput.elementName = m_typeNamer.generateNextStructureElementName();
+        if (WTF::holds_alternative<AST::BuiltInSemantic>(*outputItem.semantic))
+            namedOutput.internalTypeName = internalTypeForSemantic(WTF::get<AST::BuiltInSemantic>(*outputItem.semantic));
+        if (namedOutput.internalTypeName.isNull())
+            namedOutput.internalTypeName = m_typeNamer.mangledNameForType(*outputItem.unnamedType);
         m_namedOutputs.uncheckedAppend(WTFMove(namedOutput));
     }
 }
@@ -311,10 +384,10 @@ String VertexEntryPointScaffolding::helperTypes()
     stringBuilder.append(makeString("struct ", m_returnStructName, " {\n"));
     for (size_t i = 0; i < m_entryPointItems.outputs.size(); ++i) {
         auto& outputItem = m_entryPointItems.outputs[i];
-        auto mangledTypeName = m_typeNamer.mangledNameForType(*outputItem.unnamedType);
+        auto& internalTypeName = m_namedOutputs[i].internalTypeName;
         auto elementName = m_namedOutputs[i].elementName;
         auto attribute = attributeForSemantic(*outputItem.semantic);
-        stringBuilder.append(makeString("    ", mangledTypeName, ' ', elementName, ' ', attribute, ";\n"));
+        stringBuilder.append(makeString("    ", internalTypeName, ' ', elementName, ' ', attribute, ";\n"));
     }
     stringBuilder.append("};\n\n");
 
@@ -363,8 +436,9 @@ String VertexEntryPointScaffolding::pack(const String& inputVariableName, const 
     }
     for (size_t i = 0; i < m_entryPointItems.outputs.size(); ++i) {
         auto& elementName = m_namedOutputs[i].elementName;
+        auto& internalTypeName = m_namedOutputs[i].internalTypeName;
         auto& path = m_entryPointItems.outputs[i].path;
-        stringBuilder.append(makeString(outputVariableName, '.', elementName, " = ", inputVariableName, mangledOutputPath(path), ";\n"));
+        stringBuilder.append(makeString(outputVariableName, '.', elementName, " = ", internalTypeName, '(', inputVariableName, mangledOutputPath(path), ");\n"));
     }
     return stringBuilder.toString();
 }
@@ -389,8 +463,13 @@ FragmentEntryPointScaffolding::FragmentEntryPointScaffolding(AST::FunctionDefini
 
     m_namedOutputs.reserveInitialCapacity(m_entryPointItems.outputs.size());
     for (size_t i = 0; i < m_entryPointItems.outputs.size(); ++i) {
+        auto& outputItem = m_entryPointItems.outputs[i];
         NamedOutput namedOutput;
         namedOutput.elementName = m_typeNamer.generateNextStructureElementName();
+        if (WTF::holds_alternative<AST::BuiltInSemantic>(*outputItem.semantic))
+            namedOutput.internalTypeName = internalTypeForSemantic(WTF::get<AST::BuiltInSemantic>(*outputItem.semantic));
+        if (namedOutput.internalTypeName.isNull())
+            namedOutput.internalTypeName = m_typeNamer.mangledNameForType(*outputItem.unnamedType);
         m_namedOutputs.uncheckedAppend(WTFMove(namedOutput));
     }
 }
@@ -411,10 +490,10 @@ String FragmentEntryPointScaffolding::helperTypes()
     stringBuilder.append(makeString("struct ", m_returnStructName, " {\n"));
     for (size_t i = 0; i < m_entryPointItems.outputs.size(); ++i) {
         auto& outputItem = m_entryPointItems.outputs[i];
-        auto mangledTypeName = m_typeNamer.mangledNameForType(*outputItem.unnamedType);
+        auto& internalTypeName = m_namedOutputs[i].internalTypeName;
         auto elementName = m_namedOutputs[i].elementName;
         auto attribute = attributeForSemantic(*outputItem.semantic);
-        stringBuilder.append(makeString("    ", mangledTypeName, ' ', elementName, ' ', attribute, ";\n"));
+        stringBuilder.append(makeString("    ", internalTypeName, ' ', elementName, ' ', attribute, ";\n"));
     }
     stringBuilder.append("};\n\n");
 
@@ -463,8 +542,9 @@ String FragmentEntryPointScaffolding::pack(const String& inputVariableName, cons
     }
     for (size_t i = 0; i < m_entryPointItems.outputs.size(); ++i) {
         auto& elementName = m_namedOutputs[i].elementName;
+        auto& internalTypeName = m_namedOutputs[i].internalTypeName;
         auto& path = m_entryPointItems.outputs[i].path;
-        stringBuilder.append(makeString(outputVariableName, '.', elementName, " = ", inputVariableName, mangledOutputPath(path), ";\n"));
+        stringBuilder.append(makeString(outputVariableName, '.', elementName, " = ", internalTypeName, '(', inputVariableName, mangledOutputPath(path), ");\n"));
     }
     return stringBuilder.toString();
 }
@@ -483,7 +563,7 @@ String ComputeEntryPointScaffolding::signature(String& functionName)
 {
     StringBuilder stringBuilder;
 
-    stringBuilder.append(makeString("compute void ", functionName, '('));
+    stringBuilder.append(makeString("kernel void ", functionName, '('));
     bool empty = true;
     if (auto resourceSignature = this->resourceSignature()) {
         empty = false;

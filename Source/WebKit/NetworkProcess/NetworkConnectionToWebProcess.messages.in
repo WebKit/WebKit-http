@@ -52,6 +52,7 @@ messages -> NetworkConnectionToWebProcess LegacyReceiver {
     SetCaptureExtraNetworkLoadMetricsEnabled(bool enabled)
 
     CreateSocketStream(URL url, PAL::SessionID sessionID, String cachePartition, uint64_t identifier)
+    CreateSocketChannel(PAL::SessionID sessionID, WebCore::ResourceRequest request, String protocol, uint64_t identifier)
 
     EnsureLegacyPrivateBrowsingSession()
 
@@ -84,8 +85,6 @@ messages -> NetworkConnectionToWebProcess LegacyReceiver {
 #if ENABLE(SERVICE_WORKER)
     EstablishSWServerConnection(PAL::SessionID sessionID) -> (WebCore::SWServerConnectionIdentifier serverConnectionIdentifier) Synchronous
 #endif
-
-    SetWebProcessIdentifier(WebCore::ProcessIdentifier processIdentifier)
 
     WebPageWasAdded(PAL::SessionID sessionID, WebCore::PageIdentifier pageID, WebCore::PageIdentifier oldPageID)
     WebPageWasRemoved(PAL::SessionID sessionID, WebCore::PageIdentifier pageID)

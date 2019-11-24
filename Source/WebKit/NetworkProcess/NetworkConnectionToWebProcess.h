@@ -60,6 +60,7 @@ namespace WebKit {
 
 class NetworkProcess;
 class NetworkResourceLoader;
+class NetworkSocketChannel;
 class NetworkSocketStream;
 class WebIDBConnectionToClient;
 class WebSWServerConnection;
@@ -141,13 +142,11 @@ public:
     Vector<RefPtr<WebCore::BlobDataFileReference>> filesInBlob(const URL&);
     Vector<RefPtr<WebCore::BlobDataFileReference>> resolveBlobReferences(const NetworkResourceLoadParameters&);
 
-    void setWebProcessIdentifier(WebCore::ProcessIdentifier);
-    void setConnectionHasUploads();
-    void clearConnectionHasUploads();
-
     void webPageWasAdded(PAL::SessionID, WebCore::PageIdentifier, WebCore::PageIdentifier oldPageID);
     void webPageWasRemoved(PAL::SessionID, WebCore::PageIdentifier);
     void webProcessSessionChanged(PAL::SessionID newSessionID, const Vector<WebCore::PageIdentifier>& pages);
+
+    void removeSocketChannel(uint64_t identifier);
 
 private:
     NetworkConnectionToWebProcess(NetworkProcess&, IPC::Connection::Identifier);
@@ -195,8 +194,9 @@ private:
     void setCaptureExtraNetworkLoadMetricsEnabled(bool);
 
     void createSocketStream(URL&&, PAL::SessionID, String cachePartition, uint64_t);
-    void destroySocketStream(uint64_t);
-    
+
+    void createSocketChannel(PAL::SessionID, const WebCore::ResourceRequest&, const String& protocol, uint64_t identifier);
+
     void ensureLegacyPrivateBrowsingSession();
 
 #if ENABLE(INDEXED_DATABASE)
@@ -284,6 +284,7 @@ private:
     Ref<NetworkProcess> m_networkProcess;
 
     HashMap<uint64_t, RefPtr<NetworkSocketStream>> m_networkSocketStreams;
+    HashMap<uint64_t, std::unique_ptr<NetworkSocketChannel>> m_networkSocketChannels;
     NetworkResourceLoadMap m_networkResourceLoaders;
     HashMap<String, RefPtr<WebCore::BlobDataFileReference>> m_blobDataFileReferences;
     Vector<ResourceNetworkActivityTracker> m_networkActivityTrackers;
@@ -313,9 +314,6 @@ private:
 #if ENABLE(APPLE_PAY_REMOTE_UI)
     std::unique_ptr<WebPaymentCoordinatorProxy> m_paymentCoordinator;
 #endif
-
-    WebCore::ProcessIdentifier m_webProcessIdentifier;
-    bool m_connectionHasUploads { false };
 };
 
 } // namespace WebKit

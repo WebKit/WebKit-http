@@ -99,6 +99,7 @@
 #include "JSStringHeapCellType.h"
 #include "JSTemplateObjectDescriptor.h"
 #include "JSWeakMap.h"
+#include "JSWeakObjectRef.h"
 #include "JSWeakSet.h"
 #include "JSWebAssembly.h"
 #include "JSWebAssemblyCodeBlock.h"
@@ -155,7 +156,7 @@
 #include <wtf/SimpleStats.h>
 #include <wtf/StringPrintStream.h>
 #include <wtf/Threading.h>
-#include <wtf/text/AtomicStringTable.h>
+#include <wtf/text/AtomStringTable.h>
 #include <wtf/text/SymbolRegistry.h>
 
 #if ENABLE(C_LOOP)
@@ -292,7 +293,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , topEntryFrame(nullptr)
     , topCallFrame(CallFrame::noCaller())
     , promiseDeferredTimer(std::make_unique<PromiseDeferredTimer>(*this))
-    , m_atomicStringTable(vmType == Default ? Thread::current().atomicStringTable() : new AtomicStringTable)
+    , m_atomStringTable(vmType == Default ? Thread::current().atomStringTable() : new AtomStringTable)
     , propertyNames(nullptr)
     , emptyList(new ArgList)
     , machineCodeBytesPerBytecodeWordForBaselineJIT(std::make_unique<SimpleStats>())
@@ -329,7 +330,7 @@ VM::VM(VMType vmType, HeapType heapType)
 
     // Need to be careful to keep everything consistent here
     JSLockHolder lock(this);
-    AtomicStringTable* existingEntryAtomicStringTable = Thread::current().setCurrentAtomicStringTable(m_atomicStringTable);
+    AtomStringTable* existingEntryAtomStringTable = Thread::current().setCurrentAtomStringTable(m_atomStringTable);
     structureStructure.set(*this, Structure::createStructure(*this));
     structureRareDataStructure.set(*this, StructureRareData::createStructure(*this, 0, jsNull()));
     stringStructure.set(*this, JSString::createStructure(*this, 0, jsNull()));
@@ -393,7 +394,7 @@ VM::VM(VMType vmType, HeapType heapType)
         sentinelSetBucket();
     }
 
-    Thread::current().setCurrentAtomicStringTable(existingEntryAtomicStringTable);
+    Thread::current().setCurrentAtomStringTable(existingEntryAtomStringTable);
     
 #if !ENABLE(C_LOOP)
     initializeHostCallReturnValue(); // This is needed to convince the linker not to drop host call return support.
@@ -541,7 +542,7 @@ VM::~VM()
 
     delete propertyNames;
     if (vmType != Default)
-        delete m_atomicStringTable;
+        delete m_atomStringTable;
 
     delete clientData;
     delete m_regExpCache;
@@ -1095,6 +1096,7 @@ void VM::drainMicrotasks()
         if (m_onEachMicrotaskTick)
             m_onEachMicrotaskTick(*this);
     }
+    finalizeSynchronousJSExecution();
 }
 
 void QueuedTask::run()
@@ -1249,6 +1251,7 @@ DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(nativeStdFunctionSpace, cellHeapCellType
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(proxyRevokeSpace, destructibleObjectHeapCellType.get(), ProxyRevoke)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(weakMapSpace, destructibleObjectHeapCellType.get(), JSWeakMap)
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(weakSetSpace, destructibleObjectHeapCellType.get(), JSWeakSet)
+DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(weakObjectRefSpace, cellHeapCellType.get(), JSWeakObjectRef)
 #if JSC_OBJC_API_ENABLED
 DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER_SLOW(objCCallbackFunctionSpace, destructibleObjectHeapCellType.get(), ObjCCallbackFunction)
 #endif

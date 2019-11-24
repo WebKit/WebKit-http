@@ -94,8 +94,8 @@ WTF_MAKE_ISO_ALLOCATED_IMPL(MediaControlTextTrackContainerElement);
 
 using namespace HTMLNames;
 
-static const AtomicString& getMediaControlCurrentTimeDisplayElementShadowPseudoId();
-static const AtomicString& getMediaControlTimeRemainingDisplayElementShadowPseudoId();
+static const AtomString& getMediaControlCurrentTimeDisplayElementShadowPseudoId();
+static const AtomString& getMediaControlTimeRemainingDisplayElementShadowPseudoId();
 
 MediaControlPanelElement::MediaControlPanelElement(Document& document)
     : MediaControlDivElement(document, MediaControlsPanel)
@@ -105,7 +105,7 @@ MediaControlPanelElement::MediaControlPanelElement(Document& document)
     , m_opaque(true)
     , m_transitionTimer(*this, &MediaControlPanelElement::transitionTimerFired)
 {
-    setPseudo(AtomicString("-webkit-media-controls-panel", AtomicString::ConstructFromLiteral));
+    setPseudo(AtomString("-webkit-media-controls-panel", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlPanelElement> MediaControlPanelElement::create(Document& document)
@@ -287,7 +287,7 @@ MediaControlPanelEnclosureElement::MediaControlPanelEnclosureElement(Document& d
     // Mapping onto same MediaControlElementType as panel element, since it has similar properties.
     : MediaControlDivElement(document, MediaControlsPanel)
 {
-    setPseudo(AtomicString("-webkit-media-controls-enclosure", AtomicString::ConstructFromLiteral));
+    setPseudo(AtomString("-webkit-media-controls-enclosure", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlPanelEnclosureElement> MediaControlPanelEnclosureElement::create(Document& document)
@@ -301,7 +301,7 @@ MediaControlOverlayEnclosureElement::MediaControlOverlayEnclosureElement(Documen
     // Mapping onto same MediaControlElementType as panel element, since it has similar properties.
     : MediaControlDivElement(document, MediaControlsPanel)
 {
-    setPseudo(AtomicString("-webkit-media-controls-overlay-enclosure", AtomicString::ConstructFromLiteral));
+    setPseudo(AtomString("-webkit-media-controls-overlay-enclosure", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlOverlayEnclosureElement> MediaControlOverlayEnclosureElement::create(Document& document)
@@ -314,7 +314,7 @@ Ref<MediaControlOverlayEnclosureElement> MediaControlOverlayEnclosureElement::cr
 MediaControlTimelineContainerElement::MediaControlTimelineContainerElement(Document& document)
     : MediaControlDivElement(document, MediaTimelineContainer)
 {
-    setPseudo(AtomicString("-webkit-media-controls-timeline-container", AtomicString::ConstructFromLiteral));
+    setPseudo(AtomString("-webkit-media-controls-timeline-container", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlTimelineContainerElement> MediaControlTimelineContainerElement::create(Document& document)
@@ -349,7 +349,7 @@ RenderPtr<RenderElement> MediaControlTimelineContainerElement::createElementRend
 MediaControlVolumeSliderContainerElement::MediaControlVolumeSliderContainerElement(Document& document)
     : MediaControlDivElement(document, MediaVolumeSliderContainer)
 {
-    setPseudo(AtomicString("-webkit-media-controls-volume-slider-container", AtomicString::ConstructFromLiteral));
+    setPseudo(AtomString("-webkit-media-controls-volume-slider-container", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlVolumeSliderContainerElement> MediaControlVolumeSliderContainerElement::create(Document& document)
@@ -386,7 +386,7 @@ MediaControlStatusDisplayElement::MediaControlStatusDisplayElement(Document& doc
     : MediaControlDivElement(document, MediaStatusDisplay)
     , m_stateBeingDisplayed(Nothing)
 {
-    setPseudo(AtomicString("-webkit-media-controls-status-display", AtomicString::ConstructFromLiteral));
+    setPseudo(AtomString("-webkit-media-controls-status-display", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlStatusDisplayElement> MediaControlStatusDisplayElement::create(Document& document)
@@ -435,6 +435,7 @@ MediaControlPanelMuteButtonElement::MediaControlPanelMuteButtonElement(Document&
     : MediaControlMuteButtonElement(document, MediaMuteButton)
     , m_controls(controls)
 {
+    setPseudo(AtomString("-webkit-media-controls-mute-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlPanelMuteButtonElement> MediaControlPanelMuteButtonElement::create(Document& document, MediaControls* controls)
@@ -461,6 +462,7 @@ void MediaControlPanelMuteButtonElement::defaultEventHandler(Event& event)
 MediaControlVolumeSliderMuteButtonElement::MediaControlVolumeSliderMuteButtonElement(Document& document)
     : MediaControlMuteButtonElement(document, MediaMuteButton)
 {
+    setPseudo(AtomString("-webkit-media-controls-volume-slider-mute-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlVolumeSliderMuteButtonElement> MediaControlVolumeSliderMuteButtonElement::create(Document& document)
@@ -477,6 +479,7 @@ Ref<MediaControlVolumeSliderMuteButtonElement> MediaControlVolumeSliderMuteButto
 MediaControlPlayButtonElement::MediaControlPlayButtonElement(Document& document)
     : MediaControlInputElement(document, MediaPlayButton)
 {
+    setPseudo(AtomString("-webkit-media-controls-play-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlPlayButtonElement> MediaControlPlayButtonElement::create(Document& document)
@@ -511,6 +514,7 @@ void MediaControlPlayButtonElement::updateDisplayType()
 MediaControlOverlayPlayButtonElement::MediaControlOverlayPlayButtonElement(Document& document)
     : MediaControlInputElement(document, MediaOverlayPlayButton)
 {
+    setPseudo(AtomString("-webkit-media-controls-overlay-play-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlOverlayPlayButtonElement> MediaControlOverlayPlayButtonElement::create(Document& document)
@@ -545,6 +549,7 @@ void MediaControlOverlayPlayButtonElement::updateDisplayType()
 MediaControlSeekForwardButtonElement::MediaControlSeekForwardButtonElement(Document& document)
     : MediaControlSeekButtonElement(document, MediaSeekForwardButton)
 {
+    setPseudo(AtomString("-webkit-media-controls-seek-forward-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlSeekForwardButtonElement> MediaControlSeekForwardButtonElement::create(Document& document)
@@ -561,6 +566,7 @@ Ref<MediaControlSeekForwardButtonElement> MediaControlSeekForwardButtonElement::
 MediaControlSeekBackButtonElement::MediaControlSeekBackButtonElement(Document& document)
     : MediaControlSeekButtonElement(document, MediaSeekBackButton)
 {
+    setPseudo(AtomString("-webkit-media-controls-seek-back-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlSeekBackButtonElement> MediaControlSeekBackButtonElement::create(Document& document)
@@ -577,6 +583,7 @@ Ref<MediaControlSeekBackButtonElement> MediaControlSeekBackButtonElement::create
 MediaControlRewindButtonElement::MediaControlRewindButtonElement(Document& document)
     : MediaControlInputElement(document, MediaRewindButton)
 {
+    setPseudo(AtomString("-webkit-media-controls-rewind-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlRewindButtonElement> MediaControlRewindButtonElement::create(Document& document)
@@ -602,6 +609,7 @@ void MediaControlRewindButtonElement::defaultEventHandler(Event& event)
 MediaControlReturnToRealtimeButtonElement::MediaControlReturnToRealtimeButtonElement(Document& document)
     : MediaControlInputElement(document, MediaReturnToRealtimeButton)
 {
+    setPseudo(AtomString("-webkit-media-controls-return-to-realtime-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlReturnToRealtimeButtonElement> MediaControlReturnToRealtimeButtonElement::create(Document& document)
@@ -634,6 +642,7 @@ MediaControlToggleClosedCaptionsButtonElement::MediaControlToggleClosedCaptionsB
 #if !PLATFORM(COCOA) && !PLATFORM(WIN) || !PLATFORM(GTK)
     UNUSED_PARAM(controls);
 #endif
+    setPseudo(AtomString("-webkit-media-controls-toggle-closed-captions-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlToggleClosedCaptionsButtonElement> MediaControlToggleClosedCaptionsButtonElement::create(Document& document, MediaControls* controls)
@@ -680,13 +689,13 @@ void MediaControlToggleClosedCaptionsButtonElement::defaultEventHandler(Event& e
 MediaControlClosedCaptionsContainerElement::MediaControlClosedCaptionsContainerElement(Document& document)
     : MediaControlDivElement(document, MediaClosedCaptionsContainer)
 {
-    setPseudo(AtomicString("-webkit-media-controls-closed-captions-container", AtomicString::ConstructFromLiteral));
+    setPseudo(AtomString("-webkit-media-controls-closed-captions-container", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlClosedCaptionsContainerElement> MediaControlClosedCaptionsContainerElement::create(Document& document)
 {
     Ref<MediaControlClosedCaptionsContainerElement> element = adoptRef(*new MediaControlClosedCaptionsContainerElement(document));
-    element->setAttributeWithoutSynchronization(dirAttr, AtomicString("auto", AtomicString::ConstructFromLiteral));
+    element->setAttributeWithoutSynchronization(dirAttr, AtomString("auto", AtomString::ConstructFromLiteral));
     element->hide();
     return element;
 }
@@ -702,7 +711,7 @@ MediaControlClosedCaptionsTrackListElement::MediaControlClosedCaptionsTrackListE
 #if !ENABLE(VIDEO_TRACK)
     UNUSED_PARAM(controls);
 #endif
-    setPseudo(AtomicString("-webkit-media-controls-closed-captions-track-list", AtomicString::ConstructFromLiteral));
+    setPseudo(AtomString("-webkit-media-controls-closed-captions-track-list", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlClosedCaptionsTrackListElement> MediaControlClosedCaptionsTrackListElement::create(Document& document, MediaControls* controls)
@@ -748,7 +757,7 @@ void MediaControlClosedCaptionsTrackListElement::defaultEventHandler(Event& even
 void MediaControlClosedCaptionsTrackListElement::updateDisplay()
 {
 #if ENABLE(VIDEO_TRACK)
-    static NeverDestroyed<AtomicString> selectedClassValue("selected", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<AtomString> selectedClassValue("selected", AtomString::ConstructFromLiteral);
 
     if (!mediaController()->hasClosedCaptions())
         return;
@@ -854,6 +863,7 @@ MediaControlTimelineElement::MediaControlTimelineElement(Document& document, Med
     : MediaControlInputElement(document, MediaSlider)
     , m_controls(controls)
 {
+    setPseudo(AtomString("-webkit-media-controls-timeline", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlTimelineElement> MediaControlTimelineElement::create(Document& document, MediaControls* controls)
@@ -863,7 +873,7 @@ Ref<MediaControlTimelineElement> MediaControlTimelineElement::create(Document& d
     Ref<MediaControlTimelineElement> timeline = adoptRef(*new MediaControlTimelineElement(document, controls));
     timeline->ensureUserAgentShadowRoot();
     timeline->setType("range");
-    timeline->setAttributeWithoutSynchronization(precisionAttr, AtomicString("float", AtomicString::ConstructFromLiteral));
+    timeline->setAttributeWithoutSynchronization(precisionAttr, AtomString("float", AtomString::ConstructFromLiteral));
     return timeline;
 }
 
@@ -913,7 +923,7 @@ void MediaControlTimelineElement::setPosition(double currentTime)
 
 void MediaControlTimelineElement::setDuration(double duration)
 {
-    setAttribute(maxAttr, AtomicString::number(duration));
+    setAttribute(maxAttr, AtomString::number(duration));
 }
 
 // ----------------------------
@@ -921,6 +931,7 @@ void MediaControlTimelineElement::setDuration(double duration)
 MediaControlPanelVolumeSliderElement::MediaControlPanelVolumeSliderElement(Document& document)
     : MediaControlVolumeSliderElement(document)
 {
+    setPseudo(AtomString("-webkit-media-controls-volume-slider", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlPanelVolumeSliderElement> MediaControlPanelVolumeSliderElement::create(Document& document)
@@ -928,8 +939,8 @@ Ref<MediaControlPanelVolumeSliderElement> MediaControlPanelVolumeSliderElement::
     Ref<MediaControlPanelVolumeSliderElement> slider = adoptRef(*new MediaControlPanelVolumeSliderElement(document));
     slider->ensureUserAgentShadowRoot();
     slider->setType("range");
-    slider->setAttributeWithoutSynchronization(precisionAttr, AtomicString("float", AtomicString::ConstructFromLiteral));
-    slider->setAttributeWithoutSynchronization(maxAttr, AtomicString("1", AtomicString::ConstructFromLiteral));
+    slider->setAttributeWithoutSynchronization(precisionAttr, AtomString("float", AtomString::ConstructFromLiteral));
+    slider->setAttributeWithoutSynchronization(maxAttr, AtomString("1", AtomString::ConstructFromLiteral));
     return slider;
 }
 
@@ -938,6 +949,7 @@ Ref<MediaControlPanelVolumeSliderElement> MediaControlPanelVolumeSliderElement::
 MediaControlFullscreenVolumeSliderElement::MediaControlFullscreenVolumeSliderElement(Document& document)
     : MediaControlVolumeSliderElement(document)
 {
+    setPseudo(AtomString("-webkit-media-controls-fullscreen-volume-slider", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlFullscreenVolumeSliderElement> MediaControlFullscreenVolumeSliderElement::create(Document& document)
@@ -945,8 +957,8 @@ Ref<MediaControlFullscreenVolumeSliderElement> MediaControlFullscreenVolumeSlide
     Ref<MediaControlFullscreenVolumeSliderElement> slider = adoptRef(*new MediaControlFullscreenVolumeSliderElement(document));
     slider->ensureUserAgentShadowRoot();
     slider->setType("range");
-    slider->setAttributeWithoutSynchronization(precisionAttr, AtomicString("float", AtomicString::ConstructFromLiteral));
-    slider->setAttributeWithoutSynchronization(maxAttr, AtomicString("1", AtomicString::ConstructFromLiteral));
+    slider->setAttributeWithoutSynchronization(precisionAttr, AtomString("float", AtomString::ConstructFromLiteral));
+    slider->setAttributeWithoutSynchronization(maxAttr, AtomString("1", AtomString::ConstructFromLiteral));
     return slider;
 }
 
@@ -955,6 +967,7 @@ Ref<MediaControlFullscreenVolumeSliderElement> MediaControlFullscreenVolumeSlide
 MediaControlFullscreenButtonElement::MediaControlFullscreenButtonElement(Document& document)
     : MediaControlInputElement(document, MediaEnterFullscreenButton)
 {
+    setPseudo(AtomString("-webkit-media-controls-fullscreen-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlFullscreenButtonElement> MediaControlFullscreenButtonElement::create(Document& document)
@@ -999,6 +1012,7 @@ void MediaControlFullscreenButtonElement::setIsFullscreen(bool isFullscreen)
 MediaControlFullscreenVolumeMinButtonElement::MediaControlFullscreenVolumeMinButtonElement(Document& document)
     : MediaControlInputElement(document, MediaUnMuteButton)
 {
+    setPseudo(AtomString("-webkit-media-controls-fullscreen-volume-min-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlFullscreenVolumeMinButtonElement> MediaControlFullscreenVolumeMinButtonElement::create(Document& document)
@@ -1024,6 +1038,7 @@ void MediaControlFullscreenVolumeMinButtonElement::defaultEventHandler(Event& ev
 MediaControlFullscreenVolumeMaxButtonElement::MediaControlFullscreenVolumeMaxButtonElement(Document& document)
 : MediaControlInputElement(document, MediaMuteButton)
 {
+    setPseudo(AtomString("-webkit-media-controls-fullscreen-volume-max-button", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlFullscreenVolumeMaxButtonElement> MediaControlFullscreenVolumeMaxButtonElement::create(Document& document)
@@ -1057,9 +1072,9 @@ Ref<MediaControlTimeRemainingDisplayElement> MediaControlTimeRemainingDisplayEle
     return adoptRef(*new MediaControlTimeRemainingDisplayElement(document));
 }
 
-static const AtomicString& getMediaControlTimeRemainingDisplayElementShadowPseudoId()
+static const AtomString& getMediaControlTimeRemainingDisplayElementShadowPseudoId()
 {
-    static NeverDestroyed<AtomicString> id("-webkit-media-controls-time-remaining-display", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<AtomString> id("-webkit-media-controls-time-remaining-display", AtomString::ConstructFromLiteral);
     return id;
 }
 
@@ -1076,9 +1091,9 @@ Ref<MediaControlCurrentTimeDisplayElement> MediaControlCurrentTimeDisplayElement
     return adoptRef(*new MediaControlCurrentTimeDisplayElement(document));
 }
 
-static const AtomicString& getMediaControlCurrentTimeDisplayElementShadowPseudoId()
+static const AtomString& getMediaControlCurrentTimeDisplayElementShadowPseudoId()
 {
-    static NeverDestroyed<AtomicString> id("-webkit-media-controls-current-time-display", AtomicString::ConstructFromLiteral);
+    static NeverDestroyed<AtomString> id("-webkit-media-controls-current-time-display", AtomString::ConstructFromLiteral);
     return id;
 }
 
@@ -1093,7 +1108,7 @@ MediaControlTextTrackContainerElement::MediaControlTextTrackContainerElement(Doc
     , m_fontSizeIsImportant(false)
     , m_updateTextTrackRepresentationStyle(false)
 {
-    setPseudo(AtomicString("-webkit-media-text-track-container", AtomicString::ConstructFromLiteral));
+    setPseudo(AtomString("-webkit-media-text-track-container", AtomString::ConstructFromLiteral));
 }
 
 Ref<MediaControlTextTrackContainerElement> MediaControlTextTrackContainerElement::create(Document& document)

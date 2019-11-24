@@ -53,7 +53,9 @@ class NetworkDataTask;
 class NetworkProcess;
 class NetworkResourceLoader;
 class StorageManager;
+class NetworkSocketChannel;
 class WebResourceLoadStatisticsStore;
+class WebSocketTask;
 struct NetworkSessionCreationParameters;
 
 enum class WebsiteDataType;
@@ -70,7 +72,7 @@ public:
 
     PAL::SessionID sessionID() const { return m_sessionID; }
     NetworkProcess& networkProcess() { return m_networkProcess; }
-    WebCore::NetworkStorageSession& networkStorageSession() const;
+    WebCore::NetworkStorageSession* networkStorageSession() const;
 
     void registerNetworkDataTask(NetworkDataTask& task) { m_dataTaskSet.add(&task); }
     void unregisterNetworkDataTask(NetworkDataTask& task) { m_dataTaskSet.remove(&task); }
@@ -101,6 +103,10 @@ public:
     PrefetchCache& prefetchCache() { return m_prefetchCache; }
     void clearPrefetchCache() { m_prefetchCache.clear(); }
 
+    virtual std::unique_ptr<WebSocketTask> createWebSocketTask(NetworkSocketChannel&, const WebCore::ResourceRequest&, const String& protocol);
+    virtual void removeWebSocketTask(WebSocketTask&) { }
+    virtual void addWebSocketTask(WebSocketTask&) { }
+
 protected:
     NetworkSession(NetworkProcess&, PAL::SessionID, const String& localStorageDirectory, SandboxExtension::Handle&);
 
@@ -121,6 +127,9 @@ protected:
     PrefetchCache m_prefetchCache;
 
     Ref<StorageManager> m_storageManager;
+#if !ASSERT_DISABLED
+    bool m_isInvalidated { false };
+#endif
 };
 
 } // namespace WebKit

@@ -53,6 +53,7 @@ JSWebAssemblyInstance::JSWebAssemblyInstance(VM& vm, Structure* structure, Ref<W
     : Base(vm, structure)
     , m_instance(WTFMove(instance))
     , m_vm(&vm)
+    , m_tables(m_instance->module().moduleInformation().tableCount())
 {
     for (unsigned i = 0; i < this->instance().numImportFunctions(); ++i)
         new (this->instance().importFunction<WriteBarrier<JSObject>>(i)) WriteBarrier<JSObject>();
@@ -85,17 +86,19 @@ void JSWebAssemblyInstance::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(thisObject->m_codeBlock);
     visitor.append(thisObject->m_moduleNamespaceObject);
     visitor.append(thisObject->m_memory);
-    visitor.append(thisObject->m_table);
+    for (unsigned i = 0; i < thisObject->instance().module().moduleInformation().tableCount(); ++i)
+        visitor.append(thisObject->m_tables[i]);
     visitor.append(thisObject->m_callee);
     visitor.reportExtraMemoryVisited(thisObject->m_instance->extraMemoryAllocated());
     for (unsigned i = 0; i < thisObject->instance().numImportFunctions(); ++i)
         visitor.append(*thisObject->instance().importFunction<WriteBarrier<JSObject>>(i)); // This also keeps the functions' JSWebAssemblyInstance alive.
 
-    for (size_t i : thisObject->instance().globalsToMark()) {
-        // FIXME: We need to box wasm Funcrefs once they are supported here.
-        // <https://bugs.webkit.org/show_bug.cgi?id=198157>
+    for (size_t i : thisObject->instance().globalsToMark())
         visitor.appendUnbarriered(JSValue::decode(thisObject->instance().loadI64Global(i)));
-    }
+
+    auto locker = holdLock(cell->cellLock());
+    for (auto& wrapper : thisObject->instance().functionWrappers())
+        visitor.appendUnbarriered(wrapper.get());
 }
 
 void JSWebAssemblyInstance::finalizeCreation(VM& vm, ExecState* exec, Ref<Wasm::CodeBlock>&& wasmCodeBlock, JSObject* importObject, Wasm::CreationMode creationMode)

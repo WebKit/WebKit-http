@@ -657,7 +657,7 @@ void RenderObject::addPDFURLRect(PaintInfo& paintInfo, const LayoutPoint& paintO
     if (!is<Element>(node) || !node->isLink())
         return;
     Element& element = downcast<Element>(*node);
-    const AtomicString& href = element.getAttribute(hrefAttr);
+    const AtomString& href = element.getAttribute(hrefAttr);
     if (href.isNull())
         return;
 
@@ -986,7 +986,7 @@ bool RenderObject::shouldApplyCompositedContainerScrollsForRepaint()
 
 RenderObject::VisibleRectContext RenderObject::visibleRectContextForRepaint()
 {
-    VisibleRectContext context;
+    VisibleRectContext context(false, false, { VisibleRectContextOption::ApplyContainerClip });
     if (shouldApplyCompositedContainerScrollsForRepaint())
         context.m_options.add(VisibleRectContextOption::ApplyCompositedContainerScrolls);
     return context;

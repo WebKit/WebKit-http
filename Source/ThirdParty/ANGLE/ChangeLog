@@ -1,3 +1,62 @@
+2019-06-18  Kenneth Russell  <kbr@chromium.org>
+
+        Add preliminary ANGLE backend to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=197755
+
+        Reviewed by Dean Jackson.
+
+        Add a build step which processes ANGLE's copied public headers so they
+        can all be referred to under the <ANGLE/xyz.h> prefix. This avoids
+        touching ANGLE's headers and allows WebCore to include them with no
+        additional include path modifications.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * adjust-angle-include-paths.sh: Added.
+
+2019-06-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r246501.
+
+        Breaks Apple internal builds.
+
+        Reverted changeset:
+
+        "Support using ANGLE as the backend for the WebGL
+        implementation"
+        https://bugs.webkit.org/show_bug.cgi?id=197755
+        https://trac.webkit.org/changeset/246501
+
+2019-06-17  Kenneth Russell  <kbr@chromium.org>
+
+        Support using ANGLE as the backend for the WebGL implementation
+        https://bugs.webkit.org/show_bug.cgi?id=197755
+
+        Reviewed by Dean Jackson.
+
+        Add a build step which processes ANGLE's copied public headers so they
+        can all be referred to under the <ANGLE/xyz.h> prefix. This avoids
+        touching ANGLE's headers and allows WebCore to include them with no
+        additional include path modifications.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * adjust-angle-include-paths.sh: Added.
+
+2019-06-12  Justin Fan  <justin_fan@apple.com>
+
+        [WebGL] ANGLE Extension directive location incorrectly enforced for webgl 1.0
+        https://bugs.webkit.org/show_bug.cgi?id=198811
+
+        Reviewed by Dean Jackson.
+
+        Apply ANGLE change from https://chromium-review.googlesource.com/c/angle/angle/+/1648661 to
+        prevent enforcing ESSL late extension rule on WebGL 1.0 shaders.
+
+        * src/compiler/preprocessor/DiagnosticsBase.cpp:
+        (angle::pp::Diagnostics::message):
+        * src/compiler/preprocessor/DiagnosticsBase.h:
+        * src/compiler/preprocessor/DirectiveParser.cpp:
+        (angle::pp::DirectiveParser::parseExtension):
+
 2019-05-23  Don Olmstead  <don.olmstead@sony.com>
 
         [CMake] Use target oriented design for bmalloc

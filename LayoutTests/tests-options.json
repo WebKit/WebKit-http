@@ -1700,7 +1700,19 @@
     "imported/w3c/web-platform-tests/service-workers/service-worker/clients-matchall-order.https.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/extendable-event-async-waituntil.https.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-video-cache.https.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-video.https.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-redirect.https.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-respond-with-body-loaded-in-chunk.https.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event.https.html": [
@@ -1724,6 +1736,9 @@
     "imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/interfaces-window.https.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/service-workers/service-worker/local-url-inherit-controller.https.html": [
         "slow"
     ],
@@ -1733,10 +1748,25 @@
     "imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/registration-mime-types.https.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/service-workers/service-worker/registration-updateviacache.https.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/skip-waiting-using-registration.https.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/skip-waiting-without-using-registration.https.html": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/service-workers/service-worker/update-after-navigation-fetch-event.https.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/update-after-navigation-redirect.https.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/service-workers/service-worker/update-bytecheck.https.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/webrtc/RTCDTMFSender-ontonechange-long.html": [
@@ -1758,6 +1788,60 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/webrtc/RTCRtpSender-transport.https.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/binary/002.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/binary/004.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/constructor/013.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/constructor/014.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/cookies/005.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/cookies/007.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/extended-payload-length.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/bufferedAmount/bufferedAmount-large.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/close/close-connecting.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/events/016.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/send/005.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/interfaces/WebSocket/send/010.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/keeping-connection-open/001.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/opening-handshake/002.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/opening-handshake/003.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/unload-a-document/002.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/unload-a-document/004.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/websockets/unload-a-document/005.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/xhr/progress-events-response-data-gzip.htm": [

@@ -234,10 +234,14 @@ public:
 
     // References
     PartialResult WARN_UNUSED_RETURN addRefIsNull(ExpressionType& value, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addRefFunc(uint32_t index, ExpressionType& result);
 
     // Tables
-    PartialResult WARN_UNUSED_RETURN addTableGet(ExpressionType& idx, ExpressionType& result);
-    PartialResult WARN_UNUSED_RETURN addTableSet(ExpressionType& idx, ExpressionType& value);
+    PartialResult WARN_UNUSED_RETURN addTableGet(unsigned, ExpressionType& index, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addTableSet(unsigned, ExpressionType& index, ExpressionType& value);
+    PartialResult WARN_UNUSED_RETURN addTableSize(unsigned, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addTableGrow(unsigned, ExpressionType& fill, ExpressionType& delta, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addTableFill(unsigned, ExpressionType& offset, ExpressionType& fill, ExpressionType& count);
 
     // Locals
     PartialResult WARN_UNUSED_RETURN getLocal(uint32_t index, ExpressionType& result);
@@ -276,7 +280,7 @@ public:
 
     // Calls
     PartialResult WARN_UNUSED_RETURN addCall(uint32_t calleeIndex, const Signature&, Vector<ExpressionType>& args, ExpressionType& result);
-    PartialResult WARN_UNUSED_RETURN addCallIndirect(const Signature&, Vector<ExpressionType>& args, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addCallIndirect(unsigned tableIndex, const Signature&, Vector<ExpressionType>& args, ExpressionType& result);
     PartialResult WARN_UNUSED_RETURN addUnreachable();
 
     PartialResult addShift(Type, B3::Air::Opcode, ExpressionType value, ExpressionType shift, ExpressionType& result);
@@ -360,6 +364,8 @@ private:
 
     TypedTmp g32() { return { newTmp(B3::GP), Type::I32 }; }
     TypedTmp g64() { return { newTmp(B3::GP), Type::I64 }; }
+    TypedTmp gAnyref() { return { newTmp(B3::GP), Type::Anyref }; }
+    TypedTmp gFuncref() { return { newTmp(B3::GP), Type::Funcref }; }
     TypedTmp f32() { return { newTmp(B3::FP), Type::F32 }; }
     TypedTmp f64() { return { newTmp(B3::FP), Type::F64 }; }
 
@@ -369,8 +375,11 @@ private:
         case Type::I32:
             return g32();
         case Type::I64:
-        case Type::Anyref:
             return g64();
+        case Type::Funcref:
+            return gFuncref();
+        case Type::Anyref:
+            return gAnyref();
         case Type::F32:
             return f32();
         case Type::F64:
@@ -506,6 +515,8 @@ private:
                 resultType = B3::Int32;
                 break;
             case Type::I64:
+            case Type::Anyref:
+            case Type::Funcref:
                 resultType = B3::Int64;
                 break;
             case Type::F32:
@@ -554,6 +565,7 @@ private:
             return Move32;
         case Type::I64:
         case Type::Anyref:
+        case Type::Funcref:
             return Move;
         case Type::F32:
             return MoveFloat;
@@ -623,6 +635,7 @@ private:
     }
 
     uint32_t m_maxNumJSCallArguments { 0 };
+    unsigned m_numImportFunctions;
 
     B3::PatchpointSpecial* m_patchpointSpecial { nullptr };
 };
@@ -678,6 +691,7 @@ AirIRGenerator::AirIRGenerator(const ModuleInformation& info, B3::Procedure& pro
     , m_proc(procedure)
     , m_code(m_proc.code())
     , m_unlinkedWasmToWasmCalls(unlinkedWasmToWasmCalls)
+    , m_numImportFunctions(info.importFunctionCount())
 {
     m_currentBlock = m_code.addBlock();
     m_rootBlock = m_currentBlock;
@@ -799,6 +813,7 @@ AirIRGenerator::AirIRGenerator(const ModuleInformation& info, B3::Procedure& pro
             break;
         case Type::I64:
         case Type::Anyref:
+        case Type::Funcref:
             append(Move, arg, m_locals[i]);
             break;
         case Type::F32:
@@ -836,6 +851,8 @@ void AirIRGenerator::restoreWebAssemblyGlobalState(RestoreCachedStackLimit resto
         RegisterSet clobbers;
         clobbers.set(pinnedRegs->baseMemoryPointer);
         clobbers.set(pinnedRegs->sizeRegister);
+        if (!isARM64())
+            clobbers.set(RegisterSet::macroScratchRegisters());
 
         auto* patchpoint = addPatchpoint(B3::Void);
         B3::Effects effects = B3::Effects::none();
@@ -843,10 +860,17 @@ void AirIRGenerator::restoreWebAssemblyGlobalState(RestoreCachedStackLimit resto
         effects.reads = B3::HeapRange::top();
         patchpoint->effects = effects;
         patchpoint->clobber(clobbers);
+        patchpoint->numGPScratchRegisters = Gigacage::isEnabled(Gigacage::Primitive) ? 1 : 0;
 
         patchpoint->setGenerator([pinnedRegs] (CCallHelpers& jit, const B3::StackmapGenerationParams& params) {
+            AllowMacroScratchRegisterUsage allowScratch(jit);
+            GPRReg baseMemory = pinnedRegs->baseMemoryPointer;
+            GPRReg scratchOrSize = Gigacage::isEnabled(Gigacage::Primitive) ? params.gpScratch(0) : pinnedRegs->sizeRegister;
+
             jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemorySize()), pinnedRegs->sizeRegister);
-            jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemory()), pinnedRegs->baseMemoryPointer);
+            jit.loadPtr(CCallHelpers::Address(params[0].gpr(), Instance::offsetOfCachedMemory()), baseMemory);
+
+            jit.cageConditionally(Gigacage::Primitive, baseMemory, pinnedRegs->sizeRegister, scratchOrSize);
         });
 
         emitPatchpoint(block, patchpoint, Tmp(), instance);
@@ -875,6 +899,7 @@ auto AirIRGenerator::addLocal(Type type, uint32_t count) -> PartialResult
         m_locals.uncheckedAppend(local);
         switch (type) {
         case Type::Anyref:
+        case Type::Funcref:
             append(Move, Arg::imm(JSValue::encode(jsNull())), local);
             break;
         case Type::I32:
@@ -909,6 +934,7 @@ auto AirIRGenerator::addConstant(BasicBlock* block, Type type, uint64_t value) -
     case Type::I32:
     case Type::I64:
     case Type::Anyref:
+    case Type::Funcref:
         append(block, Move, Arg::bigImm(value), result);
         break;
     case Type::F32:
@@ -944,36 +970,95 @@ auto AirIRGenerator::addRefIsNull(ExpressionType& value, ExpressionType& result)
     return { };
 }
 
-auto AirIRGenerator::addTableGet(ExpressionType& idx, ExpressionType& result) -> PartialResult
+auto AirIRGenerator::addRefFunc(uint32_t index, ExpressionType& result) -> PartialResult
 {
     // FIXME: Emit this inline <https://bugs.webkit.org/show_bug.cgi?id=198506>.
-    ASSERT(idx.tmp());
-    ASSERT(idx.type() == Type::I32);
-    result = tmpForType(Type::Anyref);
-
-    uint64_t (*doGet)(Instance*, int32_t) = [] (Instance* instance, int32_t idx) -> uint64_t {
-        return JSValue::encode(instance->table()->get(idx));
-    };
-
-    emitCCall(doGet, result, instanceValue(), idx);
+    result = tmpForType(Type::Funcref);
+    emitCCall(&doWasmRefFunc, result, instanceValue(), addConstant(Type::I32, index));
 
     return { };
 }
 
-auto AirIRGenerator::addTableSet(ExpressionType& idx, ExpressionType& value) -> PartialResult
+auto AirIRGenerator::addTableGet(unsigned tableIndex, ExpressionType& index, ExpressionType& result) -> PartialResult
 {
     // FIXME: Emit this inline <https://bugs.webkit.org/show_bug.cgi?id=198506>.
-    ASSERT(idx.tmp());
-    ASSERT(idx.type() == Type::I32);
+    ASSERT(index.tmp());
+    ASSERT(index.type() == Type::I32);
+    result = tmpForType(m_info.tables[tableIndex].wasmType());
+
+    emitCCall(&getWasmTableElement, result, instanceValue(), addConstant(Type::I32, tableIndex), index);
+    emitCheck([&] {
+        return Inst(BranchTest32, nullptr, Arg::resCond(MacroAssembler::Zero), result, result);
+    }, [=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
+        this->emitThrowException(jit, ExceptionType::OutOfBoundsTableAccess);
+    });
+
+    return { };
+}
+
+auto AirIRGenerator::addTableSet(unsigned tableIndex, ExpressionType& index, ExpressionType& value) -> PartialResult
+{
+    // FIXME: Emit this inline <https://bugs.webkit.org/show_bug.cgi?id=198506>.
+    ASSERT(index.tmp());
+    ASSERT(index.type() == Type::I32);
     ASSERT(value.tmp());
 
-    void (*doSet)(Instance*, int32_t, uint64_t value) = [] (Instance* instance, int32_t idx, uint64_t value) -> void {
-        // FIXME: We need to box wasm Funcrefs once they are supported here.
-        // <https://bugs.webkit.org/show_bug.cgi?id=198157>
-        instance->table()->set(idx, JSValue::decode(value));
+    auto shouldThrow = g32();
+    emitCCall(&setWasmTableElement, shouldThrow, instanceValue(), addConstant(Type::I32, tableIndex), index, value);
+
+    emitCheck([&] {
+        return Inst(BranchTest32, nullptr, Arg::resCond(MacroAssembler::Zero), shouldThrow, shouldThrow);
+    }, [=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
+        this->emitThrowException(jit, ExceptionType::OutOfBoundsTableAccess);
+    });
+
+    return { };
+}
+
+auto AirIRGenerator::addTableSize(unsigned tableIndex, ExpressionType& result) -> PartialResult
+{
+    // FIXME: Emit this inline <https://bugs.webkit.org/show_bug.cgi?id=198506>.
+    result = tmpForType(Type::I32);
+
+    int32_t (*doSize)(Instance*, unsigned) = [] (Instance* instance, unsigned tableIndex) -> int32_t {
+        return instance->table(tableIndex)->length();
     };
 
-    emitCCall(doSet, TypedTmp(), instanceValue(), idx, value);
+    emitCCall(doSize, result, instanceValue(), addConstant(Type::I32, tableIndex));
+
+    return { };
+}
+
+auto AirIRGenerator::addTableGrow(unsigned tableIndex, ExpressionType& fill, ExpressionType& delta, ExpressionType& result) -> PartialResult
+{
+    ASSERT(fill.tmp());
+    ASSERT(isSubtype(fill.type(), m_info.tables[tableIndex].wasmType()));
+    ASSERT(delta.tmp());
+    ASSERT(delta.type() == Type::I32);
+    result = tmpForType(Type::I32);
+
+    emitCCall(&doWasmTableGrow, result, instanceValue(), addConstant(Type::I32, tableIndex), fill, delta);
+
+    return { };
+}
+
+auto AirIRGenerator::addTableFill(unsigned tableIndex, ExpressionType& offset, ExpressionType& fill, ExpressionType& count) -> PartialResult
+{
+    ASSERT(fill.tmp());
+    ASSERT(isSubtype(fill.type(), m_info.tables[tableIndex].wasmType()));
+    ASSERT(offset.tmp());
+    ASSERT(offset.type() == Type::I32);
+    ASSERT(count.tmp());
+    ASSERT(count.type() == Type::I32);
+
+    auto result = tmpForType(Type::I32);
+    emitCCall(&doWasmTableFill, result, instanceValue(), addConstant(Type::I32, tableIndex), offset, fill, count);
+
+    emitCheck([&] {
+        return Inst(BranchTest32, nullptr, Arg::resCond(MacroAssembler::Zero), result, result);
+    }, [=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
+        this->emitThrowException(jit, ExceptionType::OutOfBoundsTableAccess);
+    });
 
     return { };
 }
@@ -1094,7 +1179,7 @@ auto AirIRGenerator::setGlobal(uint32_t index, ExpressionType value) -> PartialR
         append(moveOpForValueType(type), value, Arg::addr(temp));
     }
 
-    if (type == Anyref)
+    if (isSubtype(type, Anyref))
         emitWriteBarrierForJSWrapper();
 
     return { };
@@ -1614,6 +1699,7 @@ auto AirIRGenerator::addReturn(const ControlData& data, const ExpressionList& re
             break;
         case Type::I64:
         case Type::Anyref:
+        case Type::Funcref:
             append(Move, returnValues[0], returnValueGPR);
             append(Ret64, returnValueGPR);
             break;
@@ -1866,11 +1952,12 @@ auto AirIRGenerator::addCall(uint32_t functionIndex, const Signature& signature,
     return { };
 }
 
-auto AirIRGenerator::addCallIndirect(const Signature& signature, Vector<ExpressionType>& args, ExpressionType& result) -> PartialResult
+auto AirIRGenerator::addCallIndirect(unsigned tableIndex, const Signature& signature, Vector<ExpressionType>& args, ExpressionType& result) -> PartialResult
 {
     ExpressionType calleeIndex = args.takeLast();
     ASSERT(signature.argumentCount() == args.size());
-    ASSERT(m_info.tableInformation.type() == TableElementType::Funcref);
+    ASSERT(m_info.tableCount() > tableIndex);
+    ASSERT(m_info.tables[tableIndex].type() == TableElementType::Funcref);
 
     m_makesCalls = true;
     // Note: call indirect can call either WebAssemblyFunction or WebAssemblyWrapperFunction. Because
@@ -1885,12 +1972,16 @@ auto AirIRGenerator::addCallIndirect(const Signature& signature, Vector<Expressi
     ExpressionType instancesBuffer = g64();
     ExpressionType callableFunctionBufferLength = g64();
     {
-        RELEASE_ASSERT(Arg::isValidAddrForm(Instance::offsetOfTable(), B3::Width64));
         RELEASE_ASSERT(Arg::isValidAddrForm(FuncRefTable::offsetOfFunctions(), B3::Width64));
         RELEASE_ASSERT(Arg::isValidAddrForm(FuncRefTable::offsetOfInstances(), B3::Width64));
         RELEASE_ASSERT(Arg::isValidAddrForm(FuncRefTable::offsetOfLength(), B3::Width64));
 
-        append(Move, Arg::addr(instanceValue(), Instance::offsetOfTable()), callableFunctionBufferLength);
+        if (UNLIKELY(!Arg::isValidAddrForm(Instance::offsetOfTablePtr(m_numImportFunctions, tableIndex), B3::Width64))) {
+            append(Move, Arg::bigImm(Instance::offsetOfTablePtr(m_numImportFunctions, tableIndex)), callableFunctionBufferLength);
+            append(Add64, instanceValue(), callableFunctionBufferLength);
+            append(Move, Arg::addr(callableFunctionBufferLength), callableFunctionBufferLength);
+        } else
+            append(Move, Arg::addr(instanceValue(), Instance::offsetOfTablePtr(m_numImportFunctions, tableIndex)), callableFunctionBufferLength);
         append(Move, Arg::addr(callableFunctionBufferLength, FuncRefTable::offsetOfFunctions()), callableFunctionBuffer);
         append(Move, Arg::addr(callableFunctionBufferLength, FuncRefTable::offsetOfInstances()), instancesBuffer);
         append(Move32, Arg::addr(callableFunctionBufferLength, Table::offsetOfLength()), callableFunctionBufferLength);
@@ -1958,6 +2049,8 @@ auto AirIRGenerator::addCallIndirect(const Signature& signature, Vector<Expressi
         // FIXME: We shouldn't have to do this: https://bugs.webkit.org/show_bug.cgi?id=172181
         patchpoint->clobber(PinnedRegisterInfo::get().toSave(MemoryMode::BoundsChecking));
         patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        patchpoint->numGPScratchRegisters = Gigacage::isEnabled(Gigacage::Primitive) ? 1 : 0;
+
         patchpoint->setGenerator([=] (CCallHelpers& jit, const B3::StackmapGenerationParams& params) {
             AllowMacroScratchRegisterUsage allowScratch(jit);
             GPRReg newContextInstance = params[0].gpr();
@@ -1971,8 +2064,12 @@ auto AirIRGenerator::addCallIndirect(const Signature& signature, Vector<Expressi
             // FIXME: We should support more than one memory size register
             //   see: https://bugs.webkit.org/show_bug.cgi?id=162952
             ASSERT(pinnedRegs.sizeRegister != newContextInstance);
+            GPRReg scratchOrSize = Gigacage::isEnabled(Gigacage::Primitive) ? params.gpScratch(0) : pinnedRegs.sizeRegister;
+
             jit.loadPtr(CCallHelpers::Address(newContextInstance, Instance::offsetOfCachedMemorySize()), pinnedRegs.sizeRegister); // Memory size.
             jit.loadPtr(CCallHelpers::Address(newContextInstance, Instance::offsetOfCachedMemory()), baseMemory); // Memory::void*.
+
+            jit.cageConditionally(Gigacage::Primitive, baseMemory, pinnedRegs.sizeRegister, scratchOrSize);
         });
 
         emitPatchpoint(doContextSwitch, patchpoint, Tmp(), newContextInstance, instanceValue());

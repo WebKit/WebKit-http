@@ -1058,7 +1058,13 @@ void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64
         m_lastCommittedTapLocation = currentPotentialTapLocation;
     };
 
-    auto invalidTargetForSingleClick = !m_potentialTapNode || (!m_potentialTapNode->renderer() && !is<HTMLAreaElement>(m_potentialTapNode.get()));
+    auto invalidTargetForSingleClick = !m_potentialTapNode;
+    if (!invalidTargetForSingleClick) {
+        bool targetRenders = m_potentialTapNode->renderer();
+        if (!targetRenders && is<Element>(m_potentialTapNode.get()))
+            targetRenders = downcast<Element>(*m_potentialTapNode).renderOrDisplayContentsStyle();
+        invalidTargetForSingleClick = !targetRenders && !is<HTMLAreaElement>(m_potentialTapNode.get());
+    }
     if (invalidTargetForSingleClick) {
         // When the node has no click eventlistener, but it may have a dblclick one.
         handlePotentialDoubleTapForDoubleClickAtPoint(modifiers, lastLayerTreeTransactionId);
@@ -2650,6 +2656,14 @@ static void textInteractionPositionInformation(WebPage& page, const HTMLInputEle
 }
 #endif
 
+RefPtr<ShareableBitmap> WebPage::shareableBitmapSnapshotForNode(Element& element)
+{
+    // Ensure that the image contains at most 600K pixels, so that it is not too big.
+    if (RefPtr<WebImage> snapshot = snapshotNode(element, SnapshotOptionsShareable, 600 * 1024))
+        return &snapshot->bitmap();
+    return nullptr;
+}
+
 InteractionInformationAtPosition WebPage::positionInformation(const InteractionInformationRequest& request)
 {
     InteractionInformationAtPosition info;
@@ -2672,15 +2686,18 @@ InteractionInformationAtPosition WebPage::positionInformation(const InteractionI
         Element& element = downcast<Element>(*hitNode);
         elementPositionInformation(*this, element, request, info);
 
-        if (info.isLink && !info.isImage && request.includeSnapshot) {
-            // Ensure that the image contains at most 600K pixels, so that it is not too big.
-            if (RefPtr<WebImage> snapshot = snapshotNode(element, SnapshotOptionsShareable, 600 * 1024))
-                info.image = &snapshot->bitmap();
-        }
+        if (info.isLink && !info.isImage && request.includeSnapshot)
+            info.image = shareableBitmapSnapshotForNode(element);
     }
 
-    if (!(info.isLink || info.isImage))
+    if (!(info.isLink || info.isImage)) {
         selectionPositionInformation(*this, request, info);
+
+        if (info.isAttachment && request.includeSnapshot) {
+            Element& element = downcast<Element>(*hitNode);
+            info.image = shareableBitmapSnapshotForNode(element);
+        }
+    }
 
     // Prevent the callout bar from showing when tapping on the datalist button.
 #if ENABLE(DATALIST_ELEMENT)
@@ -2900,7 +2917,7 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
         else if (element.isURLField())
             information.elementType = InputType::URL;
         else if (element.isText()) {
-            const AtomicString& pattern = element.attributeWithoutSynchronization(HTMLNames::patternAttr);
+            const AtomString& pattern = element.attributeWithoutSynchronization(HTMLNames::patternAttr);
             if (pattern == "\\d*" || pattern == "[0-9]*")
                 information.elementType = InputType::NumberPad;
             else {
@@ -2937,7 +2954,7 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
             information.isAutocorrect = focusedElement.shouldAutocorrect();
             information.autocapitalizeType = focusedElement.autocapitalizeType();
             information.inputMode = focusedElement.canonicalInputMode();
-            information.shouldSynthesizeKeyEventsForEditing = focusedElement.document().quirks().shouldEmulateEditingButtonsAndGesturesInHiddenEditableAreas();
+            information.shouldSynthesizeKeyEventsForEditing = focusedElement.document().settings().syntheticEditingCommandsEnabled();
         } else {
             information.isAutocorrect = true;
             information.autocapitalizeType = AutocapitalizeTypeDefault;
@@ -3267,6 +3284,9 @@ bool WebPage::immediatelyShrinkToFitContent()
         return false;
 
     if (!m_page->settings().allowViewportShrinkToFitContent())
+        return false;
+
+    if (m_useTestingViewportConfiguration)
         return false;
 
     if (!shouldIgnoreMetaViewport())

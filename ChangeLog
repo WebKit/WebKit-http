@@ -1,3 +1,31 @@
+2019-06-18  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for the 2.25.1 release
+
+        * Source/cmake/OptionsWPE.cmake: Bump version numbers.
+
+2019-06-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.25.2 release
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers
+
+2019-06-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. [GTK] Bump WPEBackend-fdo requirement to 1.3.1
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2019-06-13  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible for validate-committer-lists to dump a mailmap file
+        https://bugs.webkit.org/show_bug.cgi?id=198517
+
+        Reviewed by Simon Fraser.
+
+        * .gitignore:
+        Ignore .mailmap files.
+
 2019-06-11  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Remove option REDIRECTED_XCOMPOSITE_WINDOW

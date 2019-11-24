@@ -403,6 +403,7 @@ public:
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(errorInstanceSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(nativeStdFunctionSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(proxyRevokeSpace)
+    DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakObjectRefSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakSetSpace)
     DYNAMIC_ISO_SUBSPACE_DEFINE_MEMBER(weakMapSpace)
 #if ENABLE(WEBASSEMBLY)
@@ -554,7 +555,7 @@ public:
     JSCell* currentlyDestructingCallbackObject;
     const ClassInfo* currentlyDestructingCallbackObjectClassInfo { nullptr };
 
-    AtomicStringTable* m_atomicStringTable;
+    AtomStringTable* m_atomStringTable;
     WTF::SymbolRegistry m_symbolRegistry;
     CommonIdentifiers* propertyNames;
     const ArgList* emptyList;
@@ -566,7 +567,7 @@ public:
     WeakGCMap<StringImpl*, JSString, PtrHash<StringImpl*>> stringCache;
     Strong<JSString> lastCachedString;
 
-    AtomicStringTable* atomicStringTable() const { return m_atomicStringTable; }
+    AtomStringTable* atomStringTable() const { return m_atomStringTable; }
     WTF::SymbolRegistry& symbolRegistry() { return m_symbolRegistry; }
 
     Structure* setIteratorStructure()
@@ -866,7 +867,7 @@ public:
     WatchpointSet* ensureWatchpointSetForImpureProperty(const Identifier&);
     void registerWatchpointForImpureProperty(const Identifier&, Watchpoint*);
     
-    // FIXME: Use AtomicString once it got merged with Identifier.
+    // FIXME: Use AtomString once it got merged with Identifier.
     JS_EXPORT_PRIVATE void addImpureProperty(const String&);
     
     InlineWatchpointSet& primitiveGigacageEnabled() { return m_primitiveGigacageEnabled; }
@@ -887,7 +888,10 @@ public:
 
     void queueMicrotask(JSGlobalObject&, Ref<Microtask>&&);
     JS_EXPORT_PRIVATE void drainMicrotasks();
-    ALWAYS_INLINE void setOnEachMicrotaskTick(WTF::Function<void(VM&)>&& func) { m_onEachMicrotaskTick = WTFMove(func); }
+    void setOnEachMicrotaskTick(WTF::Function<void(VM&)>&& func) { m_onEachMicrotaskTick = WTFMove(func); }
+    void finalizeSynchronousJSExecution() { ASSERT(currentThreadIsHoldingAPILock()); m_currentWeakRefVersion++; }
+    uintptr_t currentWeakRefVersion() const { return m_currentWeakRefVersion; }
+
     void setGlobalConstRedeclarationShouldThrow(bool globalConstRedeclarationThrow) { m_globalConstRedeclarationShouldThrow = globalConstRedeclarationThrow; }
     ALWAYS_INLINE bool globalConstRedeclarationShouldThrow() const { return m_globalConstRedeclarationShouldThrow; }
 
@@ -1057,6 +1061,7 @@ private:
     std::unique_ptr<BytecodeIntrinsicRegistry> m_bytecodeIntrinsicRegistry;
 
     WTF::Function<void(VM&)> m_onEachMicrotaskTick;
+    uintptr_t m_currentWeakRefVersion { 0 };
 
 #if ENABLE(JIT)
 #if !ASSERT_DISABLED

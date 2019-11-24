@@ -4490,7 +4490,7 @@ void SpeculativeJIT::compile(Node* node)
             RELEASE_ASSERT_NOT_REACHED();
         }
 
-        // Note that we don't test if the hash is zero here. AtomicStringImpl's can't have a zero
+        // Note that we don't test if the hash is zero here. AtomStringImpl's can't have a zero
         // hash, however, a SymbolImpl may. But, because this is a cache, we don't care. We only
         // ever load the result from the cache if the cache entry matches what we are querying for.
         // So we either get super lucky and use zero for the hash and somehow collide with the entity
@@ -4682,7 +4682,7 @@ void SpeculativeJIT::compile(Node* node)
             m_jit.branch64(MacroAssembler::AboveOrEqual, t2, t1));
 
         m_jit.loadPtr(JITCompiler::Address(dataViewGPR, JSArrayBufferView::offsetOfVector()), t2);
-        cageTypedArrayStorage(t2);
+        cageTypedArrayStorage(dataViewGPR, t2);
 
         m_jit.zeroExtend32ToPtr(indexGPR, t1);
         auto baseIndex = JITCompiler::BaseIndex(t2, t1, MacroAssembler::TimesOne);
@@ -4878,7 +4878,7 @@ void SpeculativeJIT::compile(Node* node)
             m_jit.branch64(MacroAssembler::AboveOrEqual, t2, t1));
 
         m_jit.loadPtr(JITCompiler::Address(dataViewGPR, JSArrayBufferView::offsetOfVector()), t2);
-        cageTypedArrayStorage(t2);
+        cageTypedArrayStorage(dataViewGPR, t2);
 
         m_jit.zeroExtend32ToPtr(indexGPR, t1);
         auto baseIndex = JITCompiler::BaseIndex(t2, t1, MacroAssembler::TimesOne);

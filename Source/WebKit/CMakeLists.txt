@@ -115,6 +115,7 @@ set(WebKit_MESSAGES_IN_FILES
     NetworkProcess/NetworkContentRuleListManager.messages.in
     NetworkProcess/NetworkProcess.messages.in
     NetworkProcess/NetworkResourceLoader.messages.in
+    NetworkProcess/NetworkSocketChannel.messages.in
     NetworkProcess/NetworkSocketStream.messages.in
 
     NetworkProcess/ServiceWorker/ServiceWorkerFetchTask.messages.in
@@ -180,6 +181,7 @@ set(WebKit_MESSAGES_IN_FILES
 
     WebProcess/Network/NetworkProcessConnection.messages.in
     WebProcess/Network/WebResourceLoader.messages.in
+    WebProcess/Network/WebSocketChannel.messages.in
     WebProcess/Network/WebSocketStream.messages.in
 
     WebProcess/Notifications/WebNotificationManager.messages.in

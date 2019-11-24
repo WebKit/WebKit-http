@@ -121,7 +121,7 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     RefPtr<MediaSample> toMediaSample();
-    ExceptionOr<Ref<MediaStream>> captureStream(ScriptExecutionContext&, Optional<double>&& frameRequestRate);
+    ExceptionOr<Ref<MediaStream>> captureStream(Document&, Optional<double>&& frameRequestRate);
 #endif
 
     ImageBuffer* buffer() const;
@@ -157,7 +157,7 @@ private:
 
     bool isHTMLCanvasElement() const final { return true; }
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
     bool canContainRangeEndPoint() const final;

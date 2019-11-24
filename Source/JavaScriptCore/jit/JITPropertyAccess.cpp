@@ -1589,7 +1589,7 @@ JIT::JumpList JIT::emitDirectArgumentsGetByVal(const Instruction*, PatchableJump
     load32(Address(base, DirectArguments::offsetOfLength()), scratch2);
     slowCases.append(branch32(AboveOrEqual, property, scratch2));
     slowCases.append(branchTestPtr(NonZero, Address(base, DirectArguments::offsetOfMappedArguments())));
-    
+
     loadValue(BaseIndex(base, property, TimesEight, DirectArguments::storageOffset()), result);
     
     return slowCases;
@@ -1669,9 +1669,10 @@ JIT::JumpList JIT::emitIntTypedArrayGetByVal(const Instruction*, PatchableJump& 
     
     load8(Address(base, JSCell::typeInfoTypeOffset()), scratch);
     badType = patchableBranch32(NotEqual, scratch, TrustedImm32(typeForTypedArrayType(type)));
-    slowCases.append(branch32(AboveOrEqual, property, Address(base, JSArrayBufferView::offsetOfLength())));
+    load32(Address(base, JSArrayBufferView::offsetOfLength()), scratch2);
+    slowCases.append(branch32(AboveOrEqual, property, scratch2));
     loadPtr(Address(base, JSArrayBufferView::offsetOfVector()), scratch);
-    cageConditionally(Gigacage::Primitive, scratch, scratch2);
+    cageConditionally(Gigacage::Primitive, scratch, scratch2, scratch2);
 
     switch (elementSize(type)) {
     case 1:
@@ -1732,9 +1733,10 @@ JIT::JumpList JIT::emitFloatTypedArrayGetByVal(const Instruction*, PatchableJump
 
     load8(Address(base, JSCell::typeInfoTypeOffset()), scratch);
     badType = patchableBranch32(NotEqual, scratch, TrustedImm32(typeForTypedArrayType(type)));
-    slowCases.append(branch32(AboveOrEqual, property, Address(base, JSArrayBufferView::offsetOfLength())));
+    load32(Address(base, JSArrayBufferView::offsetOfLength()), scratch2);
+    slowCases.append(branch32(AboveOrEqual, property, scratch2));
     loadPtr(Address(base, JSArrayBufferView::offsetOfVector()), scratch);
-    cageConditionally(Gigacage::Primitive, scratch, scratch2);
+    cageConditionally(Gigacage::Primitive, scratch, scratch2, scratch2);
     
     switch (elementSize(type)) {
     case 4:
@@ -1782,7 +1784,8 @@ JIT::JumpList JIT::emitIntTypedArrayPutByVal(Op bytecode, PatchableJump& badType
     
     load8(Address(base, JSCell::typeInfoTypeOffset()), earlyScratch);
     badType = patchableBranch32(NotEqual, earlyScratch, TrustedImm32(typeForTypedArrayType(type)));
-    Jump inBounds = branch32(Below, property, Address(base, JSArrayBufferView::offsetOfLength()));
+    load32(Address(base, JSArrayBufferView::offsetOfLength()), lateScratch2);
+    Jump inBounds = branch32(Below, property, lateScratch2);
     emitArrayProfileOutOfBoundsSpecialCase(profile);
     slowCases.append(jump());
     inBounds.link(this);
@@ -1798,7 +1801,7 @@ JIT::JumpList JIT::emitIntTypedArrayPutByVal(Op bytecode, PatchableJump& badType
     // We would be loading this into base as in get_by_val, except that the slow
     // path expects the base to be unclobbered.
     loadPtr(Address(base, JSArrayBufferView::offsetOfVector()), lateScratch);
-    cageConditionally(Gigacage::Primitive, lateScratch, lateScratch2);
+    cageConditionally(Gigacage::Primitive, lateScratch, lateScratch2, lateScratch2);
     
     if (isClamped(type)) {
         ASSERT(elementSize(type) == 1);
@@ -1857,7 +1860,8 @@ JIT::JumpList JIT::emitFloatTypedArrayPutByVal(Op bytecode, PatchableJump& badTy
     
     load8(Address(base, JSCell::typeInfoTypeOffset()), earlyScratch);
     badType = patchableBranch32(NotEqual, earlyScratch, TrustedImm32(typeForTypedArrayType(type)));
-    Jump inBounds = branch32(Below, property, Address(base, JSArrayBufferView::offsetOfLength()));
+    load32(Address(base, JSArrayBufferView::offsetOfLength()), lateScratch2);
+    Jump inBounds = branch32(Below, property, lateScratch2);
     emitArrayProfileOutOfBoundsSpecialCase(profile);
     slowCases.append(jump());
     inBounds.link(this);
@@ -1886,7 +1890,7 @@ JIT::JumpList JIT::emitFloatTypedArrayPutByVal(Op bytecode, PatchableJump& badTy
     // We would be loading this into base as in get_by_val, except that the slow
     // path expects the base to be unclobbered.
     loadPtr(Address(base, JSArrayBufferView::offsetOfVector()), lateScratch);
-    cageConditionally(Gigacage::Primitive, lateScratch, lateScratch2);
+    cageConditionally(Gigacage::Primitive, lateScratch, lateScratch2, lateScratch2);
     
     switch (elementSize(type)) {
     case 4:

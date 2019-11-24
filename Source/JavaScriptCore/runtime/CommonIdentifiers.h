@@ -88,6 +88,7 @@
     macro(counters) \
     macro(day) \
     macro(defineProperty) \
+    macro(deref) \
     macro(description) \
     macro(descriptions) \
     macro(detail) \
@@ -254,6 +255,7 @@
     macro(asyncIterator) \
     macro(iterator) \
     macro(match) \
+    macro(matchAll) \
     macro(replace) \
     macro(search) \
     macro(species) \

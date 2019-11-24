@@ -220,6 +220,12 @@ platform/gamepad/mac/HIDGamepadProvider.cpp
 
 platform/graphics/MediaPlaybackTargetPicker.cpp
 
+// These sources can't be unified with others in case they are merged
+// with files that use the system OpenGL.
+platform/graphics/angle/Extensions3DANGLE.cpp @no-unify
+platform/graphics/angle/GraphicsContext3DANGLE.cpp @no-unify
+platform/graphics/angle/TemporaryANGLESetting.cpp @no-unify
+
 platform/graphics/avfoundation/AVTrackPrivateAVFObjCImpl.mm @no-unify
 platform/graphics/avfoundation/AudioSourceProviderAVFObjC.mm @no-unify
 platform/graphics/avfoundation/CDMPrivateMediaSourceAVFObjC.mm @no-unify
@@ -326,6 +332,7 @@ platform/graphics/gpu/cocoa/GPUCommandBufferMetal.mm
 platform/graphics/gpu/cocoa/GPUComputePassEncoderMetal.mm
 platform/graphics/gpu/cocoa/GPUComputePipelineMetal.mm
 platform/graphics/gpu/cocoa/GPUDeviceMetal.mm
+platform/graphics/gpu/cocoa/GPUPipelineMetalConvertLayout.cpp
 platform/graphics/gpu/cocoa/GPUProgrammablePassEncoderMetal.mm
 platform/graphics/gpu/cocoa/GPUQueueMetal.mm
 platform/graphics/gpu/cocoa/GPURenderPassEncoderMetal.mm

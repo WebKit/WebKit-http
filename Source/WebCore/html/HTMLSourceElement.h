@@ -58,7 +58,7 @@ private:
     void resume() final;
     void stop() final;
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    void parseAttribute(const QualifiedName&, const AtomString&) final;
 
     void errorEventTimerFired();
 

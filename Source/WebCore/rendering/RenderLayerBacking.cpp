@@ -1216,26 +1216,23 @@ void RenderLayerBacking::updateGeometry()
     if (m_scrollContainerLayer) {
         ASSERT(m_scrolledContentsLayer);
         auto& renderBox = downcast<RenderBox>(renderer());
-        LayoutRect paddingBoxIncludingScrollbar = renderBox.paddingBoxRectIncludingScrollbar();
+        LayoutRect paddingBox = renderBox.paddingBoxRect();
         LayoutRect parentLayerBounds = clippingLayer() ? clippingBox : compositedBounds();
 
         // FIXME: need to do some pixel snapping here.
-        m_scrollContainerLayer->setPosition(FloatPoint(paddingBoxIncludingScrollbar.location() - parentLayerBounds.location()));
+        m_scrollContainerLayer->setPosition(FloatPoint(paddingBox.location() - parentLayerBounds.location()));
         m_scrollContainerLayer->setSize(roundedIntSize(LayoutSize(renderBox.paddingBoxWidth(), renderBox.paddingBoxHeight())));
 
         ScrollOffset scrollOffset = m_owningLayer.scrollOffset();
         updateScrollOffset(scrollOffset);
-#if PLATFORM(IOS_FAMILY)
-        m_scrolledContentsLayer->setPosition({ }); // FIXME: necessary?
-#endif
 
         FloatSize oldScrollingLayerOffset = m_scrollContainerLayer->offsetFromRenderer();
-        m_scrollContainerLayer->setOffsetFromRenderer(toFloatSize(paddingBoxIncludingScrollbar.location()));
+        m_scrollContainerLayer->setOffsetFromRenderer(toFloatSize(paddingBox.location()));
 
         if (m_childClippingMaskLayer) {
             m_childClippingMaskLayer->setPosition(m_scrollContainerLayer->position());
             m_childClippingMaskLayer->setSize(m_scrollContainerLayer->size());
-            m_childClippingMaskLayer->setOffsetFromRenderer(toFloatSize(paddingBoxIncludingScrollbar.location()));
+            m_childClippingMaskLayer->setOffsetFromRenderer(toFloatSize(paddingBox.location()));
         }
 
         bool paddingBoxOffsetChanged = oldScrollingLayerOffset != m_scrollContainerLayer->offsetFromRenderer();
@@ -1246,7 +1243,7 @@ void RenderLayerBacking::updateGeometry()
 
         m_scrolledContentsLayer->setSize(scrollSize);
         m_scrolledContentsLayer->setScrollOffset(scrollOffset, GraphicsLayer::DontSetNeedsDisplay);
-        m_scrolledContentsLayer->setOffsetFromRenderer(toLayoutSize(paddingBoxIncludingScrollbar.location()), GraphicsLayer::DontSetNeedsDisplay);
+        m_scrolledContentsLayer->setOffsetFromRenderer(toLayoutSize(paddingBox.location()), GraphicsLayer::DontSetNeedsDisplay);
         
         adjustTiledBackingCoverage();
     }
@@ -1306,17 +1303,10 @@ void RenderLayerBacking::updateGeometry()
 
 void RenderLayerBacking::setLocationOfScrolledContents(ScrollOffset scrollOffset, ScrollingLayerPositionAction setOrSync)
 {
-#if PLATFORM(IOS_FAMILY)
     if (setOrSync == ScrollingLayerPositionAction::Sync)
         m_scrollContainerLayer->syncBoundsOrigin(scrollOffset);
     else
         m_scrollContainerLayer->setBoundsOrigin(scrollOffset);
-#else
-    if (setOrSync == ScrollingLayerPositionAction::Sync)
-        m_scrolledContentsLayer->syncPosition(-scrollOffset);
-    else
-        m_scrolledContentsLayer->setPosition(-scrollOffset);
-#endif
 }
 
 void RenderLayerBacking::updateScrollOffset(ScrollOffset scrollOffset)
@@ -1330,6 +1320,8 @@ void RenderLayerBacking::updateScrollOffset(ScrollOffset scrollOffset)
         setLocationOfScrolledContents(scrollOffset, ScrollingLayerPositionAction::Set);
         m_owningLayer.setRequiresScrollPositionReconciliation(false);
     }
+
+    ASSERT(m_scrolledContentsLayer->position().isZero());
 }
 
 void RenderLayerBacking::updateAfterDescendants()

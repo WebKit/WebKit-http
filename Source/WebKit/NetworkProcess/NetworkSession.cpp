@@ -36,6 +36,8 @@
 #include "WebPageProxy.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcessProxy.h"
+#include "WebSocketTask.h"
+#include <WebCore/AdClickAttribution.h>
 #include <WebCore/CookieJar.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/ResourceRequest.h>
@@ -66,11 +68,13 @@ Ref<NetworkSession> NetworkSession::create(NetworkProcess& networkProcess, Netwo
 #endif
 }
 
-NetworkStorageSession& NetworkSession::networkStorageSession() const
+NetworkStorageSession* NetworkSession::networkStorageSession() const
 {
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=194926 NetworkSession should own NetworkStorageSession
+    // instead of having separate maps with the same key and different management.
     auto* storageSession = m_networkProcess->storageSession(m_sessionID);
-    RELEASE_ASSERT(storageSession);
-    return *storageSession;
+    ASSERT(storageSession);
+    return storageSession;
 }
 
 NetworkSession::NetworkSession(NetworkProcess& networkProcess, PAL::SessionID sessionID, const String& localStorageDirectory, SandboxExtension::Handle& handle)
@@ -98,11 +102,19 @@ void NetworkSession::invalidateAndCancel()
 {
     for (auto* task : m_dataTaskSet)
         task->invalidateAndCancel();
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    if (m_resourceLoadStatistics)
+        m_resourceLoadStatistics->invalidateAndCancel();
+#endif
+#if !ASSERT_DISABLED
+    m_isInvalidated = true;
+#endif
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
 void NetworkSession::setResourceLoadStatisticsEnabled(bool enable)
 {
+    ASSERT(!m_isInvalidated);
     if (!enable) {
         m_resourceLoadStatistics = nullptr;
         return;
@@ -202,6 +214,11 @@ void NetworkSession::removeKeptAliveLoad(NetworkResourceLoader& loader)
     ASSERT(m_sessionID == loader.sessionID());
     ASSERT(m_keptAliveLoads.contains(loader));
     m_keptAliveLoads.remove(loader);
+}
+
+std::unique_ptr<WebSocketTask> NetworkSession::createWebSocketTask(NetworkSocketChannel&, const WebCore::ResourceRequest&, const String& protocol)
+{
+    return nullptr;
 }
 
 } // namespace WebKit

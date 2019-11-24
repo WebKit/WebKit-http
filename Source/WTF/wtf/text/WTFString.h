@@ -118,8 +118,8 @@ public:
     String(Ref<StringImpl>&&);
     String(RefPtr<StringImpl>&&);
 
-    String(Ref<AtomicStringImpl>&&);
-    String(RefPtr<AtomicStringImpl>&&);
+    String(Ref<AtomStringImpl>&&);
+    String(RefPtr<AtomStringImpl>&&);
 
     String(StaticStringImpl&);
     String(StaticStringImpl*);
@@ -254,8 +254,8 @@ public:
     WTF_EXPORT_PRIVATE String convertToLowercaseWithoutLocale() const;
     WTF_EXPORT_PRIVATE String convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(unsigned) const;
     WTF_EXPORT_PRIVATE String convertToUppercaseWithoutLocale() const;
-    WTF_EXPORT_PRIVATE String convertToLowercaseWithLocale(const AtomicString& localeIdentifier) const;
-    WTF_EXPORT_PRIVATE String convertToUppercaseWithLocale(const AtomicString& localeIdentifier) const;
+    WTF_EXPORT_PRIVATE String convertToLowercaseWithLocale(const AtomString& localeIdentifier) const;
+    WTF_EXPORT_PRIVATE String convertToUppercaseWithLocale(const AtomString& localeIdentifier) const;
 
     WTF_EXPORT_PRIVATE String stripWhiteSpace() const;
     WTF_EXPORT_PRIVATE String simplifyWhiteSpace() const;
@@ -484,12 +484,12 @@ inline String::String(RefPtr<StringImpl>&& string)
 {
 }
 
-inline String::String(Ref<AtomicStringImpl>&& string)
+inline String::String(Ref<AtomStringImpl>&& string)
     : m_impl(WTFMove(string))
 {
 }
 
-inline String::String(RefPtr<AtomicStringImpl>&& string)
+inline String::String(RefPtr<AtomStringImpl>&& string)
     : m_impl(WTFMove(string))
 {
 }
@@ -688,4 +688,4 @@ using WTF::isAllSpecialCharacters;
 using WTF::isSpaceOrNewline;
 using WTF::reverseFind;
 
-#include <wtf/text/AtomicString.h>
+#include <wtf/text/AtomString.h>

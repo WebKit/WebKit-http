@@ -1,3 +1,2681 @@
+2019-06-19  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE][GTK] Fix build with unified sources disabled
+        https://bugs.webkit.org/show_bug.cgi?id=198752
+
+        Reviewed by Michael Catanzaro.
+
+        No new tests needed.
+
+        * Modules/indexeddb/server/UniqueIDBDatabase.h: Add missing forward declaration for IDBGetRecordData,
+        replace inclusion of UniqueIDBDatabaseConnection.h with a forward declaration.
+        * Modules/indexeddb/server/UniqueIDBDatabaseConnection.h: Remove unneeded inclusion of
+        UniqueIDBDatabaseTransaction.h, add missing inclusion of UniqueIDBDatabase.h
+        * Modules/indexeddb/server/UniqueIDBDatabaseTransaction.h: Remove unneeded inclusion of
+        UniqueIDBDatabaseConnection.h inclusion.
+        * bridge/c/c_class.cpp: Add inclusion of JSCJSValueInlines.h to avoid linker errors due
+        to missing JSValue inline functions.
+        * dom/DocumentParser.h: Replace forward declaration of Document with inclusion of Document.h,
+        to avoid error due to usage of incomplete type in template expansion.
+        * dom/Microtasks.h: Add missing forward declaration of JSC::VM
+        * editing/markup.cpp: Add missing inclusion of PasteboardItemInfo.h
+        * page/Quirks.h: Add missing forward declaration of WebCore::EventTarget
+        * page/RuntimeEnabledFeatures.h: Add missing inclusion of wtf/Optional.h to avoid error due to
+        expansion of undefined template.
+        * page/SocketProvider.h: Add missing forward declaration for Document.
+        * platform/graphics/GraphicsLayerClient.h: Add missing inclusion of wtf/OptionSet.h to avoid
+        error due to expansion of undefined template.
+        * rendering/RenderMultiColumnSpannerPlaceholder.h: Replace forward declaration of RenderMultiColumnFlow
+        with inclusion of RenderMultiColumnFlow.h to avoid error due to usage of undefined class.
+
+2019-06-19  Antti Koivisto  <antti@apple.com>
+
+        RequestedScrollPosition shouldn't be applied after node reattach
+        https://bugs.webkit.org/show_bug.cgi?id=198994
+        <rdar://problem/51439685>
+
+        Reviewed by Simon Fraser.
+
+        Test: scrollingcoordinator/ios/scroll-position-after-reattach.html
+
+        If a scrolling node gets reattached, its scroll position resets to (0,0) or whatever the previous
+        requestedScrollPosition was, and the current position is lost.
+
+        * page/scrolling/ScrollingStateFixedNode.cpp:
+        (WebCore::ScrollingStateFixedNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStateFixedNode::setAllPropertiesChanged): Deleted.
+
+        Rename to better reflect what this is for.
+
+        * page/scrolling/ScrollingStateFixedNode.h:
+        * page/scrolling/ScrollingStateFrameHostingNode.cpp:
+        (WebCore::ScrollingStateFrameHostingNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStateFrameHostingNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStateFrameHostingNode.h:
+        * page/scrolling/ScrollingStateFrameScrollingNode.cpp:
+        (WebCore::ScrollingStateFrameScrollingNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStateFrameScrollingNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStateFrameScrollingNode.h:
+        * page/scrolling/ScrollingStateNode.cpp:
+        (WebCore::ScrollingStateNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStateNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStateNode.h:
+        * page/scrolling/ScrollingStatePositionedNode.cpp:
+        (WebCore::ScrollingStatePositionedNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStatePositionedNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStatePositionedNode.h:
+        * page/scrolling/ScrollingStateScrollingNode.cpp:
+        (WebCore::ScrollingStateScrollingNode::setPropertyChangedBitsAfterReattach):
+
+        Don't set RequestedScrollPosition. It is a special property that is applied only once on request
+        and shouldn't get reapplied. Nodes should keep their existing scroll position on reattach.
+
+        (WebCore::ScrollingStateScrollingNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStateScrollingNode.h:
+        * page/scrolling/ScrollingStateStickyNode.cpp:
+        (WebCore::ScrollingStateStickyNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStateStickyNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStateStickyNode.h:
+        * page/scrolling/ScrollingStateTree.cpp:
+        (WebCore::ScrollingStateTree::nodeWasReattachedRecursive):
+
+2019-06-18  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Support matrices
+        https://bugs.webkit.org/show_bug.cgi?id=198876
+        <rdar://problem/51768882>
+
+        Reviewed by Dean Jackson and Myles Maxfield.
+
+        This patch adds in support for matrices to WHLSL. Most matrix related code
+        is defined by the standard library. This patch just needed to add support
+        for the native functions operator[] and operator[]= on matrix types. The only
+        native functions that are named operator[] and operator[]= are for matrix
+        operations, so we strongly assume when generating code for native operator[] and
+        operator[]= that we're dealing with matrix types.
+        
+        operator[]= ignores the write if the index is out of bounds. operator[]
+        returns a zeroed vector if the index is out of bounds.  
+        
+        This patch also incorporates two bug fixes:
+        1. This patch takes Robin's patch in https://bugs.webkit.org/show_bug.cgi?id=198313 to ensure
+        we don't have pointers to values in a hash map. This was needed in this patch
+        otherwise we'd crash parsing the standard library.
+        
+        2. This patch fixes how we handle "break" in metal codegen. When I first
+        implemented break, I strongly assumed we were in a loop. However, break
+        can be either from a loop or from switch. This patch teaches the metal code
+        generator to track which context we're in and to emit code accordingly.
+
+        Tests: webgpu/whlsl-matrix-2.html
+               webgpu/whlsl-matrix.html
+
+        * Modules/webgpu/WHLSL/Metal/WHLSLFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::visit):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::emitLoop):
+        * Modules/webgpu/WHLSL/Metal/WHLSLMetalCodeGenerator.cpp:
+        (WebCore::WHLSL::Metal::generateMetalCodeShared):
+        * Modules/webgpu/WHLSL/Metal/WHLSLNativeFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::writeNativeFunction):
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::Checker::assignTypes):
+        (WebCore::WHLSL::Checker::getInfo):
+        (WebCore::WHLSL::Checker::assignType):
+        (WebCore::WHLSL::Checker::forwardType):
+        * Modules/webgpu/WHLSL/WHLSLStandardLibrary.txt:
+
+2019-06-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] JSLock should be WebThread aware
+        https://bugs.webkit.org/show_bug.cgi?id=198911
+
+        Reviewed by Geoffrey Garen.
+
+        * bindings/js/CommonVM.cpp:
+        (WebCore::commonVMSlow):
+
+2019-06-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        WebSocketDeflater uses an unnecessarily constrained compression memory level
+        https://bugs.webkit.org/show_bug.cgi?id=198973
+
+        Reviewed by Alex Christensen.
+
+        * Modules/websockets/WebSocketDeflater.cpp:
+        Set the memLevel to the deflateInit2 default value, not a minimum value.
+
+2019-06-18  Keith Miller  <keith_miller@apple.com>
+
+        Add support for WeakRef
+        https://bugs.webkit.org/show_bug.cgi?id=198710
+
+        Reviewed by Yusuke Suzuki.
+
+        We need to make sure the Web MicrotaskQueue notifies the JSC VM
+        that it has finished performing a microtask checkpoint. This lets
+        the JSC VM know it is safe to collect referenced WeakRefs. Since
+        there was no way to get the VM from the MicrotaskQueue I have
+        added a RefPtr to the queue's VM. For the main thread the VM lives
+        forever so is fine. For workers the queue and the VM share an
+        owner so this shouldn't matter either.
+
+        Tests: js/weakref-async-is-collected.html
+               js/weakref-eventually-collects-values.html
+               js/weakref-microtasks-dont-collect.html
+               js/weakref-weakset-consistency.html
+
+        * dom/Microtasks.cpp:
+        (WebCore::MicrotaskQueue::MicrotaskQueue):
+        (WebCore::MicrotaskQueue::mainThreadQueue):
+        (WebCore::MicrotaskQueue::performMicrotaskCheckpoint):
+        * dom/Microtasks.h:
+        (WebCore::MicrotaskQueue::vm const):
+        * workers/WorkerGlobalScope.cpp:
+        (WebCore::WorkerGlobalScope::WorkerGlobalScope):
+
+2019-06-18  Kenneth Russell  <kbr@chromium.org>
+
+        Add preliminary ANGLE backend to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=197755
+
+        Reviewed by Dean Jackson.
+
+        Add new files supplying an ANGLE version of GraphicsContext3D and
+        Extensions3D, conditionalized under USE_ANGLE. Update Xcode project to
+        build these files. This option compiles and links successfully.
+
+        FIXMEs remain in several common files which will be addressed in
+        subsequent patches.
+
+        This work will be tested with the preexisting WebGL conformance
+        suite.
+
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/ANGLEWebKitBridge.h:
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/GraphicsContext3DManager.cpp:
+        (WebCore::GraphicsContext3DManager::updateAllContexts):
+        (WebCore::GraphicsContext3DManager::updateHighPerformanceState):
+        (WebCore::GraphicsContext3DManager::disableHighPerformanceGPUTimerFired):
+        * platform/graphics/angle/Extensions3DANGLE.cpp: Copied from Source/WebCore/platform/graphics/opengl/Extensions3DOpenGLCommon.cpp.
+        (WebCore::Extensions3DANGLE::Extensions3DANGLE):
+        (WebCore::Extensions3DANGLE::supports):
+        (WebCore::Extensions3DANGLE::ensureEnabled):
+        (WebCore::Extensions3DANGLE::isEnabled):
+        (WebCore::Extensions3DANGLE::getGraphicsResetStatusARB):
+        (WebCore::Extensions3DANGLE::getTranslatedShaderSourceANGLE):
+        (WebCore::Extensions3DANGLE::initializeAvailableExtensions):
+        (WebCore::Extensions3DANGLE::readnPixelsEXT):
+        (WebCore::Extensions3DANGLE::getnUniformfvEXT):
+        (WebCore::Extensions3DANGLE::getnUniformivEXT):
+        (WebCore::Extensions3DANGLE::blitFramebuffer):
+        (WebCore::Extensions3DANGLE::renderbufferStorageMultisample):
+        (WebCore::Extensions3DANGLE::createVertexArrayOES):
+        (WebCore::Extensions3DANGLE::deleteVertexArrayOES):
+        (WebCore::Extensions3DANGLE::isVertexArrayOES):
+        (WebCore::Extensions3DANGLE::bindVertexArrayOES):
+        (WebCore::Extensions3DANGLE::insertEventMarkerEXT):
+        (WebCore::Extensions3DANGLE::pushGroupMarkerEXT):
+        (WebCore::Extensions3DANGLE::popGroupMarkerEXT):
+        (WebCore::Extensions3DANGLE::supportsExtension):
+        (WebCore::Extensions3DANGLE::drawBuffersEXT):
+        (WebCore::Extensions3DANGLE::drawArraysInstanced):
+        (WebCore::Extensions3DANGLE::drawElementsInstanced):
+        (WebCore::Extensions3DANGLE::vertexAttribDivisor):
+        (WebCore::Extensions3DANGLE::getExtensions):
+        * platform/graphics/angle/Extensions3DANGLE.h: Added.
+        * platform/graphics/angle/GraphicsContext3DANGLE.cpp: Copied from Source/WebCore/platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp.
+        (WebCore::GraphicsContext3D::releaseShaderCompiler):
+        (WebCore::wipeAlphaChannelFromPixels):
+        (WebCore::GraphicsContext3D::readPixelsAndConvertToBGRAIfNecessary):
+        (WebCore::GraphicsContext3D::validateAttributes):
+        (WebCore::GraphicsContext3D::reshapeFBOs):
+        (WebCore::GraphicsContext3D::attachDepthAndStencilBufferIfNeeded):
+        (WebCore::GraphicsContext3D::resolveMultisamplingIfNecessary):
+        (WebCore::GraphicsContext3D::renderbufferStorage):
+        (WebCore::GraphicsContext3D::getIntegerv):
+        (WebCore::GraphicsContext3D::getShaderPrecisionFormat):
+        (WebCore::GraphicsContext3D::texImage2D):
+        (WebCore::GraphicsContext3D::depthRange):
+        (WebCore::GraphicsContext3D::clearDepth):
+        (WebCore::GraphicsContext3D::getExtensions):
+        (WebCore::GraphicsContext3D::readPixels):
+        (WebCore::setCurrentNameHashMapForShader):
+        (WebCore::nameHashForShader):
+        (WebCore::GraphicsContext3D::validateDepthStencil):
+        (WebCore::GraphicsContext3D::paintRenderingResultsToCanvas):
+        (WebCore::GraphicsContext3D::paintCompositedResultsToCanvas):
+        (WebCore::GraphicsContext3D::paintRenderingResultsToImageData):
+        (WebCore::GraphicsContext3D::prepareTexture):
+        (WebCore::GraphicsContext3D::readRenderingResults):
+        (WebCore::GraphicsContext3D::reshape):
+        (WebCore::GraphicsContext3D::checkVaryingsPacking const):
+        (WebCore::GraphicsContext3D::precisionsMatch const):
+        (WebCore::GraphicsContext3D::getInternalFramebufferSize const):
+        (WebCore::GraphicsContext3D::activeTexture):
+        (WebCore::GraphicsContext3D::attachShader):
+        (WebCore::GraphicsContext3D::bindAttribLocation):
+        (WebCore::GraphicsContext3D::bindBuffer):
+        (WebCore::GraphicsContext3D::bindFramebuffer):
+        (WebCore::GraphicsContext3D::bindRenderbuffer):
+        (WebCore::GraphicsContext3D::bindTexture):
+        (WebCore::GraphicsContext3D::blendColor):
+        (WebCore::GraphicsContext3D::blendEquation):
+        (WebCore::GraphicsContext3D::blendEquationSeparate):
+        (WebCore::GraphicsContext3D::blendFunc):
+        (WebCore::GraphicsContext3D::blendFuncSeparate):
+        (WebCore::GraphicsContext3D::bufferData):
+        (WebCore::GraphicsContext3D::bufferSubData):
+        (WebCore::GraphicsContext3D::mapBufferRange):
+        (WebCore::GraphicsContext3D::unmapBuffer):
+        (WebCore::GraphicsContext3D::copyBufferSubData):
+        (WebCore::GraphicsContext3D::getInternalformativ):
+        (WebCore::GraphicsContext3D::renderbufferStorageMultisample):
+        (WebCore::GraphicsContext3D::texStorage2D):
+        (WebCore::GraphicsContext3D::texStorage3D):
+        (WebCore::GraphicsContext3D::getActiveUniforms):
+        (WebCore::GraphicsContext3D::checkFramebufferStatus):
+        (WebCore::GraphicsContext3D::clearColor):
+        (WebCore::GraphicsContext3D::clear):
+        (WebCore::GraphicsContext3D::clearStencil):
+        (WebCore::GraphicsContext3D::colorMask):
+        (WebCore::GraphicsContext3D::compileShader):
+        (WebCore::GraphicsContext3D::compileShaderDirect):
+        (WebCore::GraphicsContext3D::copyTexImage2D):
+        (WebCore::GraphicsContext3D::copyTexSubImage2D):
+        (WebCore::GraphicsContext3D::cullFace):
+        (WebCore::GraphicsContext3D::depthFunc):
+        (WebCore::GraphicsContext3D::depthMask):
+        (WebCore::GraphicsContext3D::detachShader):
+        (WebCore::GraphicsContext3D::disable):
+        (WebCore::GraphicsContext3D::disableVertexAttribArray):
+        (WebCore::GraphicsContext3D::drawArrays):
+        (WebCore::GraphicsContext3D::drawElements):
+        (WebCore::GraphicsContext3D::enable):
+        (WebCore::GraphicsContext3D::enableVertexAttribArray):
+        (WebCore::GraphicsContext3D::finish):
+        (WebCore::GraphicsContext3D::flush):
+        (WebCore::GraphicsContext3D::framebufferRenderbuffer):
+        (WebCore::GraphicsContext3D::framebufferTexture2D):
+        (WebCore::GraphicsContext3D::frontFace):
+        (WebCore::GraphicsContext3D::generateMipmap):
+        (WebCore::GraphicsContext3D::getActiveAttribImpl):
+        (WebCore::GraphicsContext3D::getActiveAttrib):
+        (WebCore::GraphicsContext3D::getActiveUniformImpl):
+        (WebCore::GraphicsContext3D::getActiveUniform):
+        (WebCore::GraphicsContext3D::getAttachedShaders):
+        (WebCore::generateHashedName):
+        (WebCore::GraphicsContext3D::mappedSymbolInShaderSourceMap):
+        (WebCore::GraphicsContext3D::mappedSymbolName):
+        (WebCore::GraphicsContext3D::originalSymbolInShaderSourceMap):
+        (WebCore::GraphicsContext3D::originalSymbolName):
+        (WebCore::GraphicsContext3D::getAttribLocation):
+        (WebCore::GraphicsContext3D::getAttribLocationDirect):
+        (WebCore::GraphicsContext3D::getContextAttributes):
+        (WebCore::GraphicsContext3D::moveErrorsToSyntheticErrorList):
+        (WebCore::GraphicsContext3D::getError):
+        (WebCore::GraphicsContext3D::getString):
+        (WebCore::GraphicsContext3D::hint):
+        (WebCore::GraphicsContext3D::isBuffer):
+        (WebCore::GraphicsContext3D::isEnabled):
+        (WebCore::GraphicsContext3D::isFramebuffer):
+        (WebCore::GraphicsContext3D::isProgram):
+        (WebCore::GraphicsContext3D::isRenderbuffer):
+        (WebCore::GraphicsContext3D::isShader):
+        (WebCore::GraphicsContext3D::isTexture):
+        (WebCore::GraphicsContext3D::lineWidth):
+        (WebCore::GraphicsContext3D::linkProgram):
+        (WebCore::GraphicsContext3D::pixelStorei):
+        (WebCore::GraphicsContext3D::polygonOffset):
+        (WebCore::GraphicsContext3D::sampleCoverage):
+        (WebCore::GraphicsContext3D::scissor):
+        (WebCore::GraphicsContext3D::shaderSource):
+        (WebCore::GraphicsContext3D::stencilFunc):
+        (WebCore::GraphicsContext3D::stencilFuncSeparate):
+        (WebCore::GraphicsContext3D::stencilMask):
+        (WebCore::GraphicsContext3D::stencilMaskSeparate):
+        (WebCore::GraphicsContext3D::stencilOp):
+        (WebCore::GraphicsContext3D::stencilOpSeparate):
+        (WebCore::GraphicsContext3D::texParameterf):
+        (WebCore::GraphicsContext3D::texParameteri):
+        (WebCore::GraphicsContext3D::uniform1f):
+        (WebCore::GraphicsContext3D::uniform1fv):
+        (WebCore::GraphicsContext3D::uniform2f):
+        (WebCore::GraphicsContext3D::uniform2fv):
+        (WebCore::GraphicsContext3D::uniform3f):
+        (WebCore::GraphicsContext3D::uniform3fv):
+        (WebCore::GraphicsContext3D::uniform4f):
+        (WebCore::GraphicsContext3D::uniform4fv):
+        (WebCore::GraphicsContext3D::uniform1i):
+        (WebCore::GraphicsContext3D::uniform1iv):
+        (WebCore::GraphicsContext3D::uniform2i):
+        (WebCore::GraphicsContext3D::uniform2iv):
+        (WebCore::GraphicsContext3D::uniform3i):
+        (WebCore::GraphicsContext3D::uniform3iv):
+        (WebCore::GraphicsContext3D::uniform4i):
+        (WebCore::GraphicsContext3D::uniform4iv):
+        (WebCore::GraphicsContext3D::uniformMatrix2fv):
+        (WebCore::GraphicsContext3D::uniformMatrix3fv):
+        (WebCore::GraphicsContext3D::uniformMatrix4fv):
+        (WebCore::GraphicsContext3D::useProgram):
+        (WebCore::GraphicsContext3D::validateProgram):
+        (WebCore::GraphicsContext3D::vertexAttrib1f):
+        (WebCore::GraphicsContext3D::vertexAttrib1fv):
+        (WebCore::GraphicsContext3D::vertexAttrib2f):
+        (WebCore::GraphicsContext3D::vertexAttrib2fv):
+        (WebCore::GraphicsContext3D::vertexAttrib3f):
+        (WebCore::GraphicsContext3D::vertexAttrib3fv):
+        (WebCore::GraphicsContext3D::vertexAttrib4f):
+        (WebCore::GraphicsContext3D::vertexAttrib4fv):
+        (WebCore::GraphicsContext3D::vertexAttribPointer):
+        (WebCore::GraphicsContext3D::viewport):
+        (WebCore::GraphicsContext3D::createVertexArray):
+        (WebCore::GraphicsContext3D::deleteVertexArray):
+        (WebCore::GraphicsContext3D::isVertexArray):
+        (WebCore::GraphicsContext3D::bindVertexArray):
+        (WebCore::GraphicsContext3D::getBooleanv):
+        (WebCore::GraphicsContext3D::getBufferParameteriv):
+        (WebCore::GraphicsContext3D::getFloatv):
+        (WebCore::GraphicsContext3D::getInteger64v):
+        (WebCore::GraphicsContext3D::getFramebufferAttachmentParameteriv):
+        (WebCore::GraphicsContext3D::getProgramiv):
+        (WebCore::GraphicsContext3D::getNonBuiltInActiveSymbolCount):
+        (WebCore::GraphicsContext3D::getUnmangledInfoLog):
+        (WebCore::GraphicsContext3D::getProgramInfoLog):
+        (WebCore::GraphicsContext3D::getRenderbufferParameteriv):
+        (WebCore::GraphicsContext3D::getShaderiv):
+        (WebCore::GraphicsContext3D::getShaderInfoLog):
+        (WebCore::GraphicsContext3D::getShaderSource):
+        (WebCore::GraphicsContext3D::getTexParameterfv):
+        (WebCore::GraphicsContext3D::getTexParameteriv):
+        (WebCore::GraphicsContext3D::getUniformfv):
+        (WebCore::GraphicsContext3D::getUniformiv):
+        (WebCore::GraphicsContext3D::getUniformLocation):
+        (WebCore::GraphicsContext3D::getVertexAttribfv):
+        (WebCore::GraphicsContext3D::getVertexAttribiv):
+        (WebCore::GraphicsContext3D::getVertexAttribOffset):
+        (WebCore::GraphicsContext3D::texSubImage2D):
+        (WebCore::GraphicsContext3D::compressedTexImage2D):
+        (WebCore::GraphicsContext3D::compressedTexSubImage2D):
+        (WebCore::GraphicsContext3D::createBuffer):
+        (WebCore::GraphicsContext3D::createFramebuffer):
+        (WebCore::GraphicsContext3D::createProgram):
+        (WebCore::GraphicsContext3D::createRenderbuffer):
+        (WebCore::GraphicsContext3D::createShader):
+        (WebCore::GraphicsContext3D::createTexture):
+        (WebCore::GraphicsContext3D::deleteBuffer):
+        (WebCore::GraphicsContext3D::deleteFramebuffer):
+        (WebCore::GraphicsContext3D::deleteProgram):
+        (WebCore::GraphicsContext3D::deleteRenderbuffer):
+        (WebCore::GraphicsContext3D::deleteShader):
+        (WebCore::GraphicsContext3D::deleteTexture):
+        (WebCore::GraphicsContext3D::synthesizeGLError):
+        (WebCore::GraphicsContext3D::markContextChanged):
+        (WebCore::GraphicsContext3D::markLayerComposited):
+        (WebCore::GraphicsContext3D::layerComposited const):
+        (WebCore::GraphicsContext3D::forceContextLost):
+        (WebCore::GraphicsContext3D::recycleContext):
+        (WebCore::GraphicsContext3D::dispatchContextChangedNotification):
+        (WebCore::GraphicsContext3D::texImage2DDirect):
+        (WebCore::GraphicsContext3D::drawArraysInstanced):
+        (WebCore::GraphicsContext3D::drawElementsInstanced):
+        (WebCore::GraphicsContext3D::vertexAttribDivisor):
+        * platform/graphics/angle/TemporaryANGLESetting.cpp: Added.
+        (WebCore::TemporaryANGLESetting::TemporaryANGLESetting):
+        (WebCore::TemporaryANGLESetting::~TemporaryANGLESetting):
+        * platform/graphics/angle/TemporaryANGLESetting.h: Added.
+        * platform/graphics/cocoa/GraphicsContext3DCocoa.mm:
+        (WebCore::GraphicsContext3D::GraphicsContext3D):
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+        (WebCore::GraphicsContext3D::makeContextCurrent):
+        (WebCore::GraphicsContext3D::checkGPUStatus):
+        (WebCore::GraphicsContext3D::screenDidChange):
+        * platform/graphics/cocoa/WebGLLayer.h:
+        * platform/graphics/cocoa/WebGLLayer.mm:
+        (-[WebGLLayer display]):
+        * platform/graphics/cv/TextureCacheCV.mm:
+        (WebCore::TextureCacheCV::create):
+        (WebCore::TextureCacheCV::textureFromImage):
+        * platform/graphics/cv/VideoTextureCopierCV.cpp:
+        (WebCore::enumToStringMap):
+        (WebCore::VideoTextureCopierCV::initializeContextObjects):
+        (WebCore::VideoTextureCopierCV::initializeUVContextObjects):
+        (WebCore::VideoTextureCopierCV::copyImageToPlatformTexture):
+        (WebCore::VideoTextureCopierCV::copyVideoTextureToPlatformTexture):
+        * platform/graphics/opengl/Extensions3DOpenGL.cpp:
+        * platform/graphics/opengl/Extensions3DOpenGLCommon.cpp:
+        * platform/graphics/opengl/GraphicsContext3DOpenGL.cpp:
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        * platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp:
+
+2019-06-18  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Do not generate duplicate constructors/copy constructors in synthesizeConstructors
+        https://bugs.webkit.org/show_bug.cgi?id=198580
+
+        Reviewed by Robin Morisset.
+
+        Prior to this patch, we were generating duplicate constructors 
+        for unnamed types. This is bad for two reasons:
+        1. It's inefficient, since we'd generate a constructor for every place in
+        the AST where we'd visit this unnamed type.
+        2. It made it impossible to resolve function overloads to call
+        the default constructor. This made it so that the autoInitializeVariables
+        pass would crash if we ever generated more than one of these functions
+        for the same type.
+        
+        To make this work, this patch splits up what used to be the resolveNamesInFunctions
+        pass. Previously, this pass would both resolve calls and resolve type names.
+        Synthesize constructors would run before this, since resolving calls meant we
+        may resolve a call to one of these synthesized constructors. However, synthesize
+        constructors now needs to test for the equality unnamed types, so it now requires
+        running the type resolution part of resolveNamesInFunctions before it runs.
+        
+        This patch splits resolveNamesInFunctions into two parts:
+        resolveTypeNamesInFunctions and resolveCallsInFunctions.
+        
+        So we used to run:
+        synthesizeConstructors
+        resolveNamesInFunctions
+        
+        And now we run:
+        resolveTypeNamesInFunctions 
+        synthesizeConstructors
+        resolveCallsInFunctions
+
+        Test: webgpu/whlsl-duplicate-types-should-not-produce-duplicate-ctors.html
+
+        * Modules/webgpu/WHLSL/AST/WHLSLArrayReferenceType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLArrayType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLBooleanLiteral.h:
+        (WebCore::WHLSL::AST::BooleanLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLEnumerationMemberLiteral.h:
+        (WebCore::WHLSL::AST::EnumerationMemberLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLExpression.h:
+        (WebCore::WHLSL::AST::Expression::copyTypeTo const):
+        * Modules/webgpu/WHLSL/AST/WHLSLFloatLiteral.h:
+        (WebCore::WHLSL::AST::FloatLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLFloatLiteralType.cpp:
+        (WebCore::WHLSL::AST::FloatLiteralType::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLFloatLiteralType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteral.h:
+        (WebCore::WHLSL::AST::IntegerLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteralType.cpp:
+        (WebCore::WHLSL::AST::IntegerLiteralType::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteralType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLNullLiteral.h:
+        (WebCore::WHLSL::AST::NullLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLPointerType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLTypeReference.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLUnnamedType.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteral.h:
+        (WebCore::WHLSL::AST::UnsignedIntegerLiteral::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteralType.cpp:
+        (WebCore::WHLSL::AST::UnsignedIntegerLiteralType::clone const):
+        * Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteralType.h:
+        * Modules/webgpu/WHLSL/WHLSLASTDumper.h:
+        * Modules/webgpu/WHLSL/WHLSLInferTypes.cpp:
+        (WebCore::WHLSL::matches):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.cpp:
+        (WebCore::WHLSL::NameResolver::NameResolver):
+        (WebCore::WHLSL::NameResolver::visit):
+        (WebCore::WHLSL::resolveTypeNamesInFunctions):
+        (WebCore::WHLSL::resolveCallsInFunctions):
+        (WebCore::WHLSL::resolveNamesInFunctions): Deleted.
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.h:
+        (WebCore::WHLSL::NameResolver::setIsResolvingCalls):
+        * Modules/webgpu/WHLSL/WHLSLPrepare.cpp:
+        (WebCore::WHLSL::prepareShared):
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeConstructors.cpp:
+        (WebCore::WHLSL::UnnamedTypeKey::UnnamedTypeKey):
+        (WebCore::WHLSL::UnnamedTypeKey::isEmptyValue const):
+        (WebCore::WHLSL::UnnamedTypeKey::isHashTableDeletedValue const):
+        (WebCore::WHLSL::UnnamedTypeKey::hash const):
+        (WebCore::WHLSL::UnnamedTypeKey::operator== const):
+        (WebCore::WHLSL::UnnamedTypeKey::unnamedType const):
+        (WebCore::WHLSL::UnnamedTypeKey::Hash::hash):
+        (WebCore::WHLSL::UnnamedTypeKey::Hash::equal):
+        (WebCore::WHLSL::UnnamedTypeKey::Traits::isEmptyValue):
+        (WebCore::WHLSL::FindAllTypes::takeUnnamedTypes):
+        (WebCore::WHLSL::FindAllTypes::appendNamedType):
+        (WebCore::WHLSL::synthesizeConstructors):
+
+2019-06-18  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r246524.
+
+        Caused 45 webgpu/ crashes.
+
+        Reverted changeset:
+
+        "[WHLSL] The name resolver does not deal with
+        nativeFunctionDeclaration"
+        https://bugs.webkit.org/show_bug.cgi?id=198306
+        https://trac.webkit.org/changeset/246524
+
+2019-06-18  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Inline quirks should have their dedicated class.
+        https://bugs.webkit.org/show_bug.cgi?id=198962
+        <rdar://problem/51848170>
+
+        Reviewed by Antti Koivisto.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * layout/LayoutState.h:
+        * layout/inlineformatting/InlineFormattingContext.h:
+        * layout/inlineformatting/InlineFormattingContextLineLayout.cpp:
+        (WebCore::Layout::InlineFormattingContext::LineLayout::createDisplayRuns const):
+        * layout/inlineformatting/InlineFormattingContextQuirks.cpp: Added.
+        (WebCore::Layout::InlineFormattingContext::Quirks::collapseLineDescent):
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::close):
+        * layout/inlineformatting/InlineLineBreaker.cpp:
+        * layout/inlineformatting/InlineLineBreaker.h:
+
+2019-06-18  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Line::append() should take care of all the inline types.
+        https://bugs.webkit.org/show_bug.cgi?id=198961
+        <rdar://problem/51847712>
+
+        Reviewed by Antti Koivisto.
+
+        Make all the existing Line::append* functions private.
+
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::staticHorizontalPositionForOutOfFlowPositioned): fix a typo.
+        * layout/inlineformatting/InlineFormattingContextLineLayout.cpp:
+        (WebCore::Layout::InlineFormattingContext::LineLayout::placeInlineItems const):
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::append):
+        * layout/inlineformatting/InlineLine.h:
+
+2019-06-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Convert macOS to scroll by changing layer boundsOrigin
+        https://bugs.webkit.org/show_bug.cgi?id=198917
+
+        Reviewed by Antti Koivisto.
+
+        macOS did frame and overflow scrolling by changing the position of the scrolled
+        contents layer. iOS scrolls by changing the boundsOrigin of the scrollContainer layer
+        (which it has to, to match how UIScrollView works).
+
+        The iOS approach removes the need for an extra layer whose only role is for
+        scroll positioning, so migrate macOS to the same approach. A later patch can remove
+        m_scrolledContentsLayer.
+        
+        We can remove RenderLayerCompositor::m_clipLayer since m_scrollContainerLayer has exactly
+        the same role now.
+
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::reconcileScrollPosition):
+        * page/scrolling/ScrollingCoordinator.cpp:
+        (WebCore::ScrollingCoordinator::insetClipLayerForFrameView):
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::repositionScrollingLayers):
+        * page/scrolling/mac/ScrollingTreeOverflowScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeOverflowScrollingNodeMac::repositionScrollingLayers):
+        * platform/graphics/cocoa/WebCoreCALayerExtras.h:
+        * platform/graphics/cocoa/WebCoreCALayerExtras.mm:
+        (-[CALayer _web_setLayerBoundsOrigin:]):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateGeometry):
+        (WebCore::RenderLayerBacking::setLocationOfScrolledContents):
+        (WebCore::RenderLayerBacking::updateScrollOffset):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::~RenderLayerCompositor):
+        (WebCore::RenderLayerCompositor::flushPendingLayerChanges):
+        (WebCore::RenderLayerCompositor::frameViewDidChangeSize):
+        (WebCore::RenderLayerCompositor::updateLayersForScrollPosition):
+        (WebCore::RenderLayerCompositor::updateScrollContainerGeometry):
+        (WebCore::RenderLayerCompositor::frameViewDidScroll):
+        (WebCore::RenderLayerCompositor::updateRootLayerPosition):
+        (WebCore::RenderLayerCompositor::updateOverflowControlsLayers):
+        (WebCore::RenderLayerCompositor::ensureRootLayer):
+        (WebCore::RenderLayerCompositor::destroyRootLayer):
+        (WebCore::RenderLayerCompositor::updateScrollingNodeLayers):
+        (WebCore::RenderLayerCompositor::updateScrollLayerPosition): Deleted.
+        (WebCore::RenderLayerCompositor::updateScrollLayerClipping): Deleted.
+        * rendering/RenderLayerCompositor.h:
+
+2019-06-18  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Identify elements with monotonically increasing counters
+        https://bugs.webkit.org/show_bug.cgi?id=198916
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Those ids tend to be shorter, easier to read for humans and for
+        diff tools :) Underscores were also replaced by dashes, for
+        consistency with the usual GStreamer element naming untold
+        conventions.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::load):
+        (WebCore::MediaPlayerPrivateGStreamer::createGSTPlayBin):
+        * platform/mediastream/libwebrtc/GStreamerVideoEncoderFactory.cpp:
+        (WebCore::GStreamerVideoEncoder::makeElement):
+        (WebCore::GStreamerVideoEncoder::InitEncode):
+
+2019-06-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WebGL] Extensions3DOpenGLES::bindVertexArrayOES() should allow zero array object
+        https://bugs.webkit.org/show_bug.cgi?id=198929
+
+        Reviewed by Carlos Garcia Campos.
+
+        A 0 object parameter for the glBindVertexArrayOES() call is a valid
+        value since it binds the default vertex array object for any updates and
+        draws. As such the Extensions3DOpenGLES implementation shouldn't return
+        early if the object value is 0.
+
+        No new tests -- covered by existing tests.
+
+        * platform/graphics/opengl/Extensions3DOpenGLES.cpp:
+        (WebCore::Extensions3DOpenGLES::bindVertexArrayOES):
+
+2019-06-17  Sihui Liu  <sihui_liu@apple.com>
+
+        -[WKWebsiteDataStore removeDataOfTypes:modifiedSince:completionHandler:] doesn't delete _WKWebsiteDataTypeCredentials
+        https://bugs.webkit.org/show_bug.cgi?id=198854
+        <rdar://problem/51386058>
+
+        Reviewed by Geoffrey Garen.
+
+        Add option NSURLCredentialStorageRemoveSynchronizableCredentials when removing persistent credential so 
+        credentials from same account will be removed from all devices.
+
+        Test: WKWebsiteDataStore.RemoveAllPersistentCredentials
+
+        * platform/network/CredentialStorage.cpp:
+        (WebCore::CredentialStorage::originsWithPersistentCredentials):
+        (WebCore::CredentialStorage::removePersistentCredentialsWithOrigins):
+        (WebCore::CredentialStorage::clearPersistentCredentials):
+        * platform/network/CredentialStorage.h:
+        * platform/network/mac/CredentialStorageMac.mm:
+        (WebCore::CredentialStorage::originsWithPersistentCredentials):
+        (WebCore::CredentialStorage::removePersistentCredentialsWithOrigins):
+        (WebCore::CredentialStorage::clearPersistentCredentials):
+
+2019-06-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        m_disconnectedFrame can be null in DOMWindowExtension::willDestroyGlobalObjectInCachedFrame()
+        https://bugs.webkit.org/show_bug.cgi?id=198943
+
+        Reviewed by Brady Eidson.
+
+        Apparently it's possible for m_disconnectedFrame to be null in this function even though this should never happen.
+
+        We've been trying to diagnose a class of issues in this area (e.g. r246187, r244971, r242797, r242677, r242676, r241848)
+        but at some point, we need to stop crashing for the sake of user.
+
+        Worked around the bug by adding a null pointer check here.
+
+        * page/DOMWindowExtension.cpp:
+        (WebCore::DOMWindowExtension::willDestroyGlobalObjectInCachedFrame):
+
+2019-06-17  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS crash when starting loads with no active DocumentLoader
+        https://bugs.webkit.org/show_bug.cgi?id=187360
+        <rdar://problem/29389084>
+
+        Reviewed by Geoff Garen.
+
+        When FrameLoader::activeDocumentLoader returns null in the ResourceLoader constructor,
+        on iOS we will dereference it to ask if it has a frame in an early return in init.
+        Let's not.  If we don't have a DocumentLoader, we don't have a frame and should fail.
+
+        Crash reports indicate this crash is related to Beacon and other uses of LoaderStrategy::startPingLoad,
+        but attempts to make a unit test to reproduce the crash were unsuccessful.
+
+        * loader/ResourceLoader.cpp:
+        (WebCore::ResourceLoader::init):
+
+2019-06-17  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] The name resolver does not deal with nativeFunctionDeclaration
+        https://bugs.webkit.org/show_bug.cgi?id=198306
+
+        Reviewed by Saam Barati.
+
+        We currently have a crash in the nameResolver when trying to use the full standard library.
+        What is happening is that because we don't specify anything to do to nativeFunctionDeclarations, names in their parameters
+        are added to the global environment. And so as soon as we have two such parameters with the same name, the name resolver fails.
+
+        Tested by adding two native functions that share a parameter name to the standard library.
+
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.cpp:
+        (WebCore::WHLSL::NameResolver::visit):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.h:
+
+2019-06-17  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Remove backtracking from parseAttributeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=198934
+
+        Reviewed by Myles C. Maxfield.
+
+        No functional change intended.
+
+        Tested by running LayoutTests/webgpu/whlsl-compute.html
+
+        * Modules/webgpu/WHLSL/WHLSLParser.cpp:
+        (WebCore::WHLSL::Parser::parseAttributeBlock):
+
+2019-06-17  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Make .length work
+        https://bugs.webkit.org/show_bug.cgi?id=198890
+
+        Reviewed by Myles Maxfield.
+
+        This patch makes accessing .length on buffers work. To make this work as
+        expected, I've fixed a handful of small bugs:
+        
+        - The checker was not calling resolveByInstantiation for getters. This patch
+          modifies the checker to do that, so we can now resolve a getter to
+          "operator.length". I also refactored the checker to have a helper method
+          that both does overload resolution and resolveByInstantiation to make it
+          difficult to forget to call resolveByInstantiation.
+        - The property resolver had a bug where it would return a non-null value
+          in anderCallArgument for array references even when there was no ander and
+          no thread ander function. This patch makes it now return null if there is
+          neither an ander nor a thread ander.
+        - The metal codegen incorrectly unpacked the length of buffers. It swapped the
+          bottom four bytes and the top four bytes of the size_t value. This patch
+          corrects that. This was also a cause of flakiness in various tests since
+          we ended up with a length much larger than expected, leading to bounds
+          checks always passing in our tests.
+        - This patch also fixes our tests to specify the output buffer length
+          properly for various programs.
+
+        Test: webgpu/whlsl-buffer-length.html
+
+        * Modules/webgpu/WHLSL/Metal/WHLSLEntryPointScaffolding.cpp:
+        (WebCore::WHLSL::Metal::EntryPointScaffolding::unpackResourcesAndNamedBuiltIns):
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::resolveFunction):
+        (WebCore::WHLSL::Checker::finishVisiting):
+        (WebCore::WHLSL::Checker::visit):
+        * Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp:
+        (WebCore::WHLSL::anderCallArgument):
+
+2019-06-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r246501.
+
+        Breaks Apple internal builds.
+
+        Reverted changeset:
+
+        "Support using ANGLE as the backend for the WebGL
+        implementation"
+        https://bugs.webkit.org/show_bug.cgi?id=197755
+        https://trac.webkit.org/changeset/246501
+
+2019-06-17  Kenneth Russell  <kbr@chromium.org>
+
+        Support using ANGLE as the backend for the WebGL implementation
+        https://bugs.webkit.org/show_bug.cgi?id=197755
+
+        Reviewed by Dean Jackson.
+
+        Add new files supplying an ANGLE version of GraphicsContext3D and
+        Extensions3D, conditionalized under USE_ANGLE. Update Xcode project to
+        build these files. This option compiles and links successfully.
+
+        FIXMEs remain in several common files which will be addressed in
+        subsequent patches.
+
+        This work will be tested with the preexisting WebGL conformance
+        suite.
+
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/ANGLEWebKitBridge.h:
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/GraphicsContext3DManager.cpp:
+        (WebCore::GraphicsContext3DManager::updateAllContexts):
+        (WebCore::GraphicsContext3DManager::updateHighPerformanceState):
+        (WebCore::GraphicsContext3DManager::disableHighPerformanceGPUTimerFired):
+        * platform/graphics/angle/Extensions3DANGLE.cpp: Copied from Source/WebCore/platform/graphics/opengl/Extensions3DOpenGLCommon.cpp.
+        (WebCore::Extensions3DANGLE::Extensions3DANGLE):
+        (WebCore::Extensions3DANGLE::supports):
+        (WebCore::Extensions3DANGLE::ensureEnabled):
+        (WebCore::Extensions3DANGLE::isEnabled):
+        (WebCore::Extensions3DANGLE::getGraphicsResetStatusARB):
+        (WebCore::Extensions3DANGLE::getTranslatedShaderSourceANGLE):
+        (WebCore::Extensions3DANGLE::initializeAvailableExtensions):
+        (WebCore::Extensions3DANGLE::readnPixelsEXT):
+        (WebCore::Extensions3DANGLE::getnUniformfvEXT):
+        (WebCore::Extensions3DANGLE::getnUniformivEXT):
+        (WebCore::Extensions3DANGLE::blitFramebuffer):
+        (WebCore::Extensions3DANGLE::renderbufferStorageMultisample):
+        (WebCore::Extensions3DANGLE::createVertexArrayOES):
+        (WebCore::Extensions3DANGLE::deleteVertexArrayOES):
+        (WebCore::Extensions3DANGLE::isVertexArrayOES):
+        (WebCore::Extensions3DANGLE::bindVertexArrayOES):
+        (WebCore::Extensions3DANGLE::insertEventMarkerEXT):
+        (WebCore::Extensions3DANGLE::pushGroupMarkerEXT):
+        (WebCore::Extensions3DANGLE::popGroupMarkerEXT):
+        (WebCore::Extensions3DANGLE::supportsExtension):
+        (WebCore::Extensions3DANGLE::drawBuffersEXT):
+        (WebCore::Extensions3DANGLE::drawArraysInstanced):
+        (WebCore::Extensions3DANGLE::drawElementsInstanced):
+        (WebCore::Extensions3DANGLE::vertexAttribDivisor):
+        (WebCore::Extensions3DANGLE::getExtensions):
+        * platform/graphics/angle/Extensions3DANGLE.h: Added.
+        * platform/graphics/angle/GraphicsContext3DANGLE.cpp: Copied from Source/WebCore/platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp.
+        (WebCore::GraphicsContext3D::releaseShaderCompiler):
+        (WebCore::wipeAlphaChannelFromPixels):
+        (WebCore::GraphicsContext3D::readPixelsAndConvertToBGRAIfNecessary):
+        (WebCore::GraphicsContext3D::validateAttributes):
+        (WebCore::GraphicsContext3D::reshapeFBOs):
+        (WebCore::GraphicsContext3D::attachDepthAndStencilBufferIfNeeded):
+        (WebCore::GraphicsContext3D::resolveMultisamplingIfNecessary):
+        (WebCore::GraphicsContext3D::renderbufferStorage):
+        (WebCore::GraphicsContext3D::getIntegerv):
+        (WebCore::GraphicsContext3D::getShaderPrecisionFormat):
+        (WebCore::GraphicsContext3D::texImage2D):
+        (WebCore::GraphicsContext3D::depthRange):
+        (WebCore::GraphicsContext3D::clearDepth):
+        (WebCore::GraphicsContext3D::getExtensions):
+        (WebCore::GraphicsContext3D::readPixels):
+        (WebCore::setCurrentNameHashMapForShader):
+        (WebCore::nameHashForShader):
+        (WebCore::GraphicsContext3D::validateDepthStencil):
+        (WebCore::GraphicsContext3D::paintRenderingResultsToCanvas):
+        (WebCore::GraphicsContext3D::paintCompositedResultsToCanvas):
+        (WebCore::GraphicsContext3D::paintRenderingResultsToImageData):
+        (WebCore::GraphicsContext3D::prepareTexture):
+        (WebCore::GraphicsContext3D::readRenderingResults):
+        (WebCore::GraphicsContext3D::reshape):
+        (WebCore::GraphicsContext3D::checkVaryingsPacking const):
+        (WebCore::GraphicsContext3D::precisionsMatch const):
+        (WebCore::GraphicsContext3D::getInternalFramebufferSize const):
+        (WebCore::GraphicsContext3D::activeTexture):
+        (WebCore::GraphicsContext3D::attachShader):
+        (WebCore::GraphicsContext3D::bindAttribLocation):
+        (WebCore::GraphicsContext3D::bindBuffer):
+        (WebCore::GraphicsContext3D::bindFramebuffer):
+        (WebCore::GraphicsContext3D::bindRenderbuffer):
+        (WebCore::GraphicsContext3D::bindTexture):
+        (WebCore::GraphicsContext3D::blendColor):
+        (WebCore::GraphicsContext3D::blendEquation):
+        (WebCore::GraphicsContext3D::blendEquationSeparate):
+        (WebCore::GraphicsContext3D::blendFunc):
+        (WebCore::GraphicsContext3D::blendFuncSeparate):
+        (WebCore::GraphicsContext3D::bufferData):
+        (WebCore::GraphicsContext3D::bufferSubData):
+        (WebCore::GraphicsContext3D::mapBufferRange):
+        (WebCore::GraphicsContext3D::unmapBuffer):
+        (WebCore::GraphicsContext3D::copyBufferSubData):
+        (WebCore::GraphicsContext3D::getInternalformativ):
+        (WebCore::GraphicsContext3D::renderbufferStorageMultisample):
+        (WebCore::GraphicsContext3D::texStorage2D):
+        (WebCore::GraphicsContext3D::texStorage3D):
+        (WebCore::GraphicsContext3D::getActiveUniforms):
+        (WebCore::GraphicsContext3D::checkFramebufferStatus):
+        (WebCore::GraphicsContext3D::clearColor):
+        (WebCore::GraphicsContext3D::clear):
+        (WebCore::GraphicsContext3D::clearStencil):
+        (WebCore::GraphicsContext3D::colorMask):
+        (WebCore::GraphicsContext3D::compileShader):
+        (WebCore::GraphicsContext3D::compileShaderDirect):
+        (WebCore::GraphicsContext3D::copyTexImage2D):
+        (WebCore::GraphicsContext3D::copyTexSubImage2D):
+        (WebCore::GraphicsContext3D::cullFace):
+        (WebCore::GraphicsContext3D::depthFunc):
+        (WebCore::GraphicsContext3D::depthMask):
+        (WebCore::GraphicsContext3D::detachShader):
+        (WebCore::GraphicsContext3D::disable):
+        (WebCore::GraphicsContext3D::disableVertexAttribArray):
+        (WebCore::GraphicsContext3D::drawArrays):
+        (WebCore::GraphicsContext3D::drawElements):
+        (WebCore::GraphicsContext3D::enable):
+        (WebCore::GraphicsContext3D::enableVertexAttribArray):
+        (WebCore::GraphicsContext3D::finish):
+        (WebCore::GraphicsContext3D::flush):
+        (WebCore::GraphicsContext3D::framebufferRenderbuffer):
+        (WebCore::GraphicsContext3D::framebufferTexture2D):
+        (WebCore::GraphicsContext3D::frontFace):
+        (WebCore::GraphicsContext3D::generateMipmap):
+        (WebCore::GraphicsContext3D::getActiveAttribImpl):
+        (WebCore::GraphicsContext3D::getActiveAttrib):
+        (WebCore::GraphicsContext3D::getActiveUniformImpl):
+        (WebCore::GraphicsContext3D::getActiveUniform):
+        (WebCore::GraphicsContext3D::getAttachedShaders):
+        (WebCore::generateHashedName):
+        (WebCore::GraphicsContext3D::mappedSymbolInShaderSourceMap):
+        (WebCore::GraphicsContext3D::mappedSymbolName):
+        (WebCore::GraphicsContext3D::originalSymbolInShaderSourceMap):
+        (WebCore::GraphicsContext3D::originalSymbolName):
+        (WebCore::GraphicsContext3D::getAttribLocation):
+        (WebCore::GraphicsContext3D::getAttribLocationDirect):
+        (WebCore::GraphicsContext3D::getContextAttributes):
+        (WebCore::GraphicsContext3D::moveErrorsToSyntheticErrorList):
+        (WebCore::GraphicsContext3D::getError):
+        (WebCore::GraphicsContext3D::getString):
+        (WebCore::GraphicsContext3D::hint):
+        (WebCore::GraphicsContext3D::isBuffer):
+        (WebCore::GraphicsContext3D::isEnabled):
+        (WebCore::GraphicsContext3D::isFramebuffer):
+        (WebCore::GraphicsContext3D::isProgram):
+        (WebCore::GraphicsContext3D::isRenderbuffer):
+        (WebCore::GraphicsContext3D::isShader):
+        (WebCore::GraphicsContext3D::isTexture):
+        (WebCore::GraphicsContext3D::lineWidth):
+        (WebCore::GraphicsContext3D::linkProgram):
+        (WebCore::GraphicsContext3D::pixelStorei):
+        (WebCore::GraphicsContext3D::polygonOffset):
+        (WebCore::GraphicsContext3D::sampleCoverage):
+        (WebCore::GraphicsContext3D::scissor):
+        (WebCore::GraphicsContext3D::shaderSource):
+        (WebCore::GraphicsContext3D::stencilFunc):
+        (WebCore::GraphicsContext3D::stencilFuncSeparate):
+        (WebCore::GraphicsContext3D::stencilMask):
+        (WebCore::GraphicsContext3D::stencilMaskSeparate):
+        (WebCore::GraphicsContext3D::stencilOp):
+        (WebCore::GraphicsContext3D::stencilOpSeparate):
+        (WebCore::GraphicsContext3D::texParameterf):
+        (WebCore::GraphicsContext3D::texParameteri):
+        (WebCore::GraphicsContext3D::uniform1f):
+        (WebCore::GraphicsContext3D::uniform1fv):
+        (WebCore::GraphicsContext3D::uniform2f):
+        (WebCore::GraphicsContext3D::uniform2fv):
+        (WebCore::GraphicsContext3D::uniform3f):
+        (WebCore::GraphicsContext3D::uniform3fv):
+        (WebCore::GraphicsContext3D::uniform4f):
+        (WebCore::GraphicsContext3D::uniform4fv):
+        (WebCore::GraphicsContext3D::uniform1i):
+        (WebCore::GraphicsContext3D::uniform1iv):
+        (WebCore::GraphicsContext3D::uniform2i):
+        (WebCore::GraphicsContext3D::uniform2iv):
+        (WebCore::GraphicsContext3D::uniform3i):
+        (WebCore::GraphicsContext3D::uniform3iv):
+        (WebCore::GraphicsContext3D::uniform4i):
+        (WebCore::GraphicsContext3D::uniform4iv):
+        (WebCore::GraphicsContext3D::uniformMatrix2fv):
+        (WebCore::GraphicsContext3D::uniformMatrix3fv):
+        (WebCore::GraphicsContext3D::uniformMatrix4fv):
+        (WebCore::GraphicsContext3D::useProgram):
+        (WebCore::GraphicsContext3D::validateProgram):
+        (WebCore::GraphicsContext3D::vertexAttrib1f):
+        (WebCore::GraphicsContext3D::vertexAttrib1fv):
+        (WebCore::GraphicsContext3D::vertexAttrib2f):
+        (WebCore::GraphicsContext3D::vertexAttrib2fv):
+        (WebCore::GraphicsContext3D::vertexAttrib3f):
+        (WebCore::GraphicsContext3D::vertexAttrib3fv):
+        (WebCore::GraphicsContext3D::vertexAttrib4f):
+        (WebCore::GraphicsContext3D::vertexAttrib4fv):
+        (WebCore::GraphicsContext3D::vertexAttribPointer):
+        (WebCore::GraphicsContext3D::viewport):
+        (WebCore::GraphicsContext3D::createVertexArray):
+        (WebCore::GraphicsContext3D::deleteVertexArray):
+        (WebCore::GraphicsContext3D::isVertexArray):
+        (WebCore::GraphicsContext3D::bindVertexArray):
+        (WebCore::GraphicsContext3D::getBooleanv):
+        (WebCore::GraphicsContext3D::getBufferParameteriv):
+        (WebCore::GraphicsContext3D::getFloatv):
+        (WebCore::GraphicsContext3D::getInteger64v):
+        (WebCore::GraphicsContext3D::getFramebufferAttachmentParameteriv):
+        (WebCore::GraphicsContext3D::getProgramiv):
+        (WebCore::GraphicsContext3D::getNonBuiltInActiveSymbolCount):
+        (WebCore::GraphicsContext3D::getUnmangledInfoLog):
+        (WebCore::GraphicsContext3D::getProgramInfoLog):
+        (WebCore::GraphicsContext3D::getRenderbufferParameteriv):
+        (WebCore::GraphicsContext3D::getShaderiv):
+        (WebCore::GraphicsContext3D::getShaderInfoLog):
+        (WebCore::GraphicsContext3D::getShaderSource):
+        (WebCore::GraphicsContext3D::getTexParameterfv):
+        (WebCore::GraphicsContext3D::getTexParameteriv):
+        (WebCore::GraphicsContext3D::getUniformfv):
+        (WebCore::GraphicsContext3D::getUniformiv):
+        (WebCore::GraphicsContext3D::getUniformLocation):
+        (WebCore::GraphicsContext3D::getVertexAttribfv):
+        (WebCore::GraphicsContext3D::getVertexAttribiv):
+        (WebCore::GraphicsContext3D::getVertexAttribOffset):
+        (WebCore::GraphicsContext3D::texSubImage2D):
+        (WebCore::GraphicsContext3D::compressedTexImage2D):
+        (WebCore::GraphicsContext3D::compressedTexSubImage2D):
+        (WebCore::GraphicsContext3D::createBuffer):
+        (WebCore::GraphicsContext3D::createFramebuffer):
+        (WebCore::GraphicsContext3D::createProgram):
+        (WebCore::GraphicsContext3D::createRenderbuffer):
+        (WebCore::GraphicsContext3D::createShader):
+        (WebCore::GraphicsContext3D::createTexture):
+        (WebCore::GraphicsContext3D::deleteBuffer):
+        (WebCore::GraphicsContext3D::deleteFramebuffer):
+        (WebCore::GraphicsContext3D::deleteProgram):
+        (WebCore::GraphicsContext3D::deleteRenderbuffer):
+        (WebCore::GraphicsContext3D::deleteShader):
+        (WebCore::GraphicsContext3D::deleteTexture):
+        (WebCore::GraphicsContext3D::synthesizeGLError):
+        (WebCore::GraphicsContext3D::markContextChanged):
+        (WebCore::GraphicsContext3D::markLayerComposited):
+        (WebCore::GraphicsContext3D::layerComposited const):
+        (WebCore::GraphicsContext3D::forceContextLost):
+        (WebCore::GraphicsContext3D::recycleContext):
+        (WebCore::GraphicsContext3D::dispatchContextChangedNotification):
+        (WebCore::GraphicsContext3D::texImage2DDirect):
+        (WebCore::GraphicsContext3D::drawArraysInstanced):
+        (WebCore::GraphicsContext3D::drawElementsInstanced):
+        (WebCore::GraphicsContext3D::vertexAttribDivisor):
+        * platform/graphics/angle/TemporaryANGLESetting.cpp: Added.
+        (WebCore::TemporaryANGLESetting::TemporaryANGLESetting):
+        (WebCore::TemporaryANGLESetting::~TemporaryANGLESetting):
+        * platform/graphics/angle/TemporaryANGLESetting.h: Added.
+        * platform/graphics/cocoa/GraphicsContext3DCocoa.mm:
+        (WebCore::GraphicsContext3D::GraphicsContext3D):
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+        (WebCore::GraphicsContext3D::makeContextCurrent):
+        (WebCore::GraphicsContext3D::checkGPUStatus):
+        (WebCore::GraphicsContext3D::screenDidChange):
+        * platform/graphics/cocoa/WebGLLayer.h:
+        * platform/graphics/cocoa/WebGLLayer.mm:
+        (-[WebGLLayer display]):
+        * platform/graphics/cv/TextureCacheCV.mm:
+        (WebCore::TextureCacheCV::create):
+        (WebCore::TextureCacheCV::textureFromImage):
+        * platform/graphics/cv/VideoTextureCopierCV.cpp:
+        (WebCore::enumToStringMap):
+        (WebCore::VideoTextureCopierCV::initializeContextObjects):
+        (WebCore::VideoTextureCopierCV::initializeUVContextObjects):
+        (WebCore::VideoTextureCopierCV::copyImageToPlatformTexture):
+        (WebCore::VideoTextureCopierCV::copyVideoTextureToPlatformTexture):
+        * platform/graphics/opengl/Extensions3DOpenGL.cpp:
+        * platform/graphics/opengl/Extensions3DOpenGLCommon.cpp:
+        * platform/graphics/opengl/GraphicsContext3DOpenGL.cpp:
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        * platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp:
+
+2019-06-17  Ludovico de Nittis  <ludovico.denittis@collabora.com>
+
+        [GTK] Stop accessing GdkEvent fields when possible
+        https://bugs.webkit.org/show_bug.cgi?id=198829
+
+        Reviewed by Michael Catanzaro.
+
+        Direct access to GdkEvent structs is no longer possible in GTK 4.
+
+        No behaviour changes.
+
+        * platform/gtk/PlatformKeyboardEventGtk.cpp:
+        (WebCore::eventTypeForGdkKeyEvent):
+        (WebCore::modifiersForGdkKeyEvent):
+        (WebCore::PlatformKeyboardEvent::PlatformKeyboardEvent):
+        * platform/gtk/PlatformMouseEventGtk.cpp:
+        (WebCore::PlatformMouseEvent::PlatformMouseEvent):
+        * platform/gtk/PlatformWheelEventGtk.cpp:
+        (WebCore::PlatformWheelEvent::PlatformWheelEvent):
+
+2019-06-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed, rolling out r246467.
+
+        It broke scrolling with mouse wheel
+
+        Reverted changeset:
+
+        "[GTK] Stop accessing GdkEvent fields when possible"
+        https://bugs.webkit.org/show_bug.cgi?id=198829
+        https://trac.webkit.org/changeset/246467
+
+2019-06-16  Darin Adler  <darin@apple.com>
+
+        Convert some uses of fixed width and fixed precision floating point formatting to use shortest instead
+        https://bugs.webkit.org/show_bug.cgi?id=198896
+
+        Reviewed by Sam Weinig.
+
+        * Modules/indexeddb/IDBKeyData.cpp:
+        (WebCore::IDBKeyData::loggingString const): Removed unneeded use of
+        FormattedNumber::fixedWidth to override the default shortest-form formatting.
+        * page/History.cpp:
+        (WebCore::History::stateObjectAdded): Ditto.
+
+        * page/PrintContext.cpp:
+        (WebCore::PrintContext::pageProperty): Use String::number instead of
+        String::numberToStringFixedPrecision. Also removed some uses of
+        FormattedNumber::fixedPrecision.
+        * platform/graphics/FloatPolygon.cpp:
+        (WebCore::FloatPolygonEdge::debugString const): Ditto.
+
+2019-06-16  Darin Adler  <darin@apple.com>
+
+        Rename AtomicString to AtomString
+        https://bugs.webkit.org/show_bug.cgi?id=195276
+
+        Reviewed by Michael Catanzaro.
+
+        * many files: Let do-webcore-rename do the renaming.
+
+2019-06-16  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Avoid roundoff error when setting AVCapture min/max frame rate
+        https://bugs.webkit.org/show_bug.cgi?id=198875
+        <rdar://problem/51768374>
+
+        Reviewed by Youenn Fablet.
+
+        * platform/graphics/MediaPlayer.h:
+        (WTF::LogArgument<MediaTime>::toString): Deleted, moved to MediaTime.h.
+        (WTF::LogArgument<MediaTimeRange>::toString): Deleted, moved to MediaTime.h.
+
+        * platform/mediastream/mac/AVVideoCaptureSource.mm:
+        (WebCore::AVVideoCaptureSource::setSessionSizeAndFrameRate): Avoid roundoff error.
+
+2019-06-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement ScrollableArea::scrollOffset()
+        https://bugs.webkit.org/show_bug.cgi?id=198895
+
+        Reviewed by Antti Koivisto.
+
+        Remove from ScrollableArea the following:
+            virtual int scrollSize(ScrollbarOrientation) const = 0;
+            virtual int scrollOffset(ScrollbarOrientation) const = 0;
+        and instead implement ScrollOffset scrollOffset() const.
+
+        Also make scrollPosition() pure virtual, avoiding the reverse dependency where
+        this base class implementation got values from scrollbars.
+        
+        scrollSize(ScrollbarOrientation) was only used by ScrollAnimatorIOS and we can
+        do the same computation via min/max scroll positions.
+        
+        RenderListBox and PopupMenuWin need implementations of scrollPosition().
+        
+        Remove some PLATFORM(IOS_FAMILY) #ifdefs from ScrollableArea for code that compiles
+        on all platforms.
+
+        * page/FrameView.h:
+        * platform/ScrollView.cpp:
+        (WebCore::ScrollView::overhangAmount const):
+        (WebCore::ScrollView::scrollSize const): Deleted.
+        (WebCore::ScrollView::scrollOffset const): Deleted.
+        * platform/ScrollView.h:
+        * platform/ScrollableArea.cpp:
+        (WebCore::ScrollableArea::isPinnedVerticallyInDirection const):
+        (WebCore::ScrollableArea::scrollOffset const):
+        (WebCore::ScrollableArea::scrollPosition const): Deleted.
+        * platform/ScrollableArea.h:
+        (WebCore::offsetForOrientation):
+        (WebCore::ScrollableArea::isHorizontalScrollerPinnedToMinimumPosition const):
+        (WebCore::ScrollableArea::isHorizontalScrollerPinnedToMaximumPosition const):
+        (WebCore::ScrollableArea::isVerticalScrollerPinnedToMinimumPosition const):
+        (WebCore::ScrollableArea::isVerticalScrollerPinnedToMaximumPosition const):
+        (WebCore::ScrollableArea::tiledBacking const): Deleted.
+        * platform/Scrollbar.cpp:
+        (WebCore::Scrollbar::Scrollbar):
+        (WebCore::Scrollbar::offsetDidChange):
+        * platform/ios/ScrollAnimatorIOS.mm:
+        (WebCore::ScrollAnimatorIOS::handleTouchEvent):
+        * platform/win/PopupMenuWin.cpp:
+        (WebCore::PopupMenuWin::scrollPosition const):
+        (WebCore::PopupMenuWin::wndProc):
+        (WebCore::PopupMenuWin::scrollSize const): Deleted.
+        (WebCore::PopupMenuWin::scrollOffset const): Deleted.
+        * platform/win/PopupMenuWin.h:
+        (WebCore::PopupMenuWin::scrollOffset const): Deleted.
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::scrollSize const): Deleted.
+        (WebCore::RenderLayer::scrollOffset const): Deleted.
+        * rendering/RenderLayer.h:
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::scrollPosition const):
+        (WebCore::RenderListBox::scrollSize const): Deleted.
+        (WebCore::RenderListBox::scrollOffset const): Deleted.
+        * rendering/RenderListBox.h:
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        Address Sam's post-landing review of r246234.
+
+        * layout/inlineformatting/InlineFormattingContextLineLayout.cpp:
+        (WebCore::Layout::InlineFormattingContext::LineLayout::createDisplayRuns const):
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Decouple baseline ascent/descent and baseline offset.
+        https://bugs.webkit.org/show_bug.cgi?id=198901
+        <rdar://problem/51782393>
+
+        Reviewed by Antti Koivisto.
+
+        Baseline offset is the baseline's distance from the line's logical top -and it is not necessarily the same as the baseline's ascent.
+        It's easier to track the baseline and its top separately since certain properties only change one or the other.
+
+        * layout/inlineformatting/InlineFormattingContextLineLayout.cpp:
+        (WebCore::Layout::InlineFormattingContext::LineLayout::placeInlineItems const):
+        (WebCore::Layout::InlineFormattingContext::LineLayout::createDisplayRuns const):
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::Line):
+        (WebCore::Layout::Line::close):
+        (WebCore::Layout::Line::adjustBaselineAndLineHeight):
+        (WebCore::Layout::Line::halfLeadingMetrics):
+        * layout/inlineformatting/InlineLine.h:
+        (WebCore::Layout::Line::Content::baselineOffset const):
+        (WebCore::Layout::Line::Content::setBaselineOffset):
+        (WebCore::Layout::Line::baselineOffset const):
+        * layout/inlineformatting/InlineLineBox.h:
+        (WebCore::Layout::LineBox::baselineOffset const):
+        (WebCore::Layout::LineBox::LineBox):
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Intruding float may prevent adding any inline box
+        https://bugs.webkit.org/show_bug.cgi?id=198891
+        <rdar://problem/51779956>
+
+        Reviewed by Antti Koivisto.
+
+        Take the intruding left/right float pair and find the vertical position where the next line might go
+        if these floats prevent us from adding even one inline box to the current line.
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::mapPointToAncestor):
+        (WebCore::Layout::FormattingContext::mapPointToDescendent):
+        * layout/FormattingContext.h:
+        * layout/LayoutUnits.h:
+        (WebCore::Layout::Point::max):
+        * layout/inlineformatting/InlineFormattingContext.h:
+        * layout/inlineformatting/InlineFormattingContextLineLayout.cpp:
+        (WebCore::Layout::InlineFormattingContext::LineLayout::placeInlineItems const):
+        (WebCore::Layout::InlineFormattingContext::LineLayout::layout const):
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floats] Add bottom value to FloatingState::Constraints
+        https://bugs.webkit.org/show_bug.cgi?id=198889
+        <rdar://problem/51776730>
+
+        Reviewed by Antti Koivisto.
+
+        Constraints::left/right->y indicates where this particular constrain ends. This is going to be used by inline layout to figure where
+        the next line should go (vertical position).
+
+        * layout/floats/FloatingState.cpp:
+        (WebCore::Layout::FloatingState::constraints const):
+        * layout/floats/FloatingState.h:
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Ignore descent when in limited/full quirks mode
+        https://bugs.webkit.org/show_bug.cgi?id=198893
+        <rdar://problem/51780634>
+
+        Reviewed by Antti Koivisto.
+
+        In limited/full quirks mode, line's descent should be ignored when computing the final line height when
+        1. the line has baseline aligned content only and
+        2. these baseline aligned boxes don't have descent.
+
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::isVisuallyEmpty const):
+        (WebCore::Layout::Line::close):
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Line::isVisuallyEmpty should check inline-block boxes.
+        https://bugs.webkit.org/show_bug.cgi?id=198894
+        <rdar://problem/51780886>
+
+        Reviewed by Antti Koivisto.
+
+        Non-zero width/height inline-block boxes make the line visually non-empty.
+
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::isVisuallyEmpty const):
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Add Layout::Box::isContainingBlockDescendantOf
+        https://bugs.webkit.org/show_bug.cgi?id=198888
+        <rdar://problem/51776466>
+
+        Reviewed by Antti Koivisto.
+
+        Box::isDescendantOf indicates simple ancestor - descendant relationship, while
+        isContainingBlockDescendantOf checks the containing block chain.
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::mapHorizontalPositionToAncestor):
+        (WebCore::Layout::FormattingContext::mapBoxToAncestor):
+        (WebCore::Layout::FormattingContext::mapTopToAncestor):
+        (WebCore::Layout::FormattingContext::mapPointToAncestor):
+        * layout/floats/FloatingState.h:
+        (WebCore::Layout::FloatingState::FloatItem::isDescendantOfFormattingRoot const):
+        * layout/layouttree/LayoutBox.cpp:
+        (WebCore::Layout::Box::isDescendantOf const):
+        (WebCore::Layout::Box::isContainingBlockDescendantOf const):
+        * layout/layouttree/LayoutBox.h:
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Remove Line::Content::isVisuallyEmpty
+        https://bugs.webkit.org/show_bug.cgi?id=198892
+        <rdar://problem/51780345>
+
+        Reviewed by Antti Koivisto.
+
+        Instead of setting the isVisuallyEmpty flag, reset the line height to 0. 
+
+        * layout/inlineformatting/InlineFormattingContextLineLayout.cpp:
+        (WebCore::Layout::InlineFormattingContext::LineLayout::createDisplayRuns const):
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::close):
+        * layout/inlineformatting/InlineLine.h:
+        (WebCore::Layout::Line::Content::isEmpty const):
+        (WebCore::Layout::Line::Content::setBaseline):
+        (WebCore::Layout::Line::Content::isVisuallyEmpty const): Deleted.
+        (WebCore::Layout::Line::Content::setIsVisuallyEmpty): Deleted.
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Add limited quirks mode to LayoutState.
+        https://bugs.webkit.org/show_bug.cgi?id=198881
+        <rdar://problem/51773229>
+
+        Reviewed by Antti Koivisto.
+
+        This is in preparation for introducing limited quirks mode to inline layout.
+
+        * layout/LayoutState.h:
+        (WebCore::Layout::LayoutState::setQuirksMode):
+        (WebCore::Layout::LayoutState::inQuirksMode const):
+        (WebCore::Layout::LayoutState::inLimitedQuirksMode const):
+        (WebCore::Layout::LayoutState::inNoQuirksMode const):
+        (WebCore::Layout::LayoutState::setInQuirksMode): Deleted.
+        * page/FrameViewLayoutContext.cpp:
+        (WebCore::layoutUsingFormattingContext):
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Completely collapsed runs should not go to the trimmable run list.
+        https://bugs.webkit.org/show_bug.cgi?id=198900
+        <rdar://problem/51782156>
+
+        Reviewed by Antti Koivisto.
+
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::trailingTrimmableWidth const):
+        (WebCore::Layout::Line::appendTextContent):
+
+2019-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Use the borderBox rect consistently to size the inline box.
+        https://bugs.webkit.org/show_bug.cgi?id=198899
+
+        Reviewed by Antti Koivisto.
+        <rdar://problem/51781969>
+
+        Use the margin box height (when applicable) to adjust the line height and use the borderBox rect (or font size) height to size the inline box.
+
+        * layout/displaytree/DisplayBox.h:
+        (WebCore::Display::Box::borderBoxHeight const):
+        (WebCore::Display::Box::marginBoxHeight const):
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::appendInlineContainerStart):
+        (WebCore::Layout::Line::appendTextContent):
+        (WebCore::Layout::Line::appendNonReplacedInlineBox):
+        (WebCore::Layout::Line::inlineItemContentHeight const):
+        (WebCore::Layout::Line::inlineItemHeight const): Deleted.
+        * layout/inlineformatting/InlineLine.h:
+
+2019-06-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Make layerTreeAsText() output a bit less verbose
+        https://bugs.webkit.org/show_bug.cgi?id=198870
+
+        Reviewed by Tim Horton.
+
+        "accelerates drawing" was getting dumped twice for debug dumps.
+        Only dump the non-default state for "uses display-list drawing".
+        Use the new OptionSet<> dumping for GraphicsLayerPaintingPhases.
+
+        * platform/graphics/GraphicsLayer.cpp:
+        (WebCore::GraphicsLayer::dumpProperties const):
+        (WebCore::operator<<):
+        * platform/graphics/GraphicsLayer.h:
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::createTransformAnimationsFromKeyframes):
+
+2019-06-15  Youenn Fablet  <youenn@apple.com>
+
+        Make MediaStream constructor take a Document instead of a ScriptExecutionContext
+        https://bugs.webkit.org/show_bug.cgi?id=198873
+
+        Reviewed by Darin Adler.
+
+        Update MediaStream constructors and call site to take a Document&.
+        Make the same for creation of CanvasCaptureMediaStreamTrack.
+        No observable change of behavior.
+
+        * Modules/mediastream/CanvasCaptureMediaStreamTrack.cpp:
+        (WebCore::CanvasCaptureMediaStreamTrack::create):
+        (WebCore::CanvasCaptureMediaStreamTrack::CanvasCaptureMediaStreamTrack):
+        (WebCore::loggerFromContext): Deleted.
+        * Modules/mediastream/CanvasCaptureMediaStreamTrack.h:
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::create):
+        (WebCore::MediaStream::MediaStream):
+        (WebCore::MediaStream::clone):
+        (WebCore::loggerFromContext): Deleted.
+        * Modules/mediastream/MediaStream.h:
+        * Modules/mediastream/MediaStream.idl:
+        * Modules/mediastream/UserMediaRequest.cpp:
+        (WebCore::UserMediaRequest::allow):
+        * html/HTMLCanvasElement.cpp:
+        (WebCore::HTMLCanvasElement::captureStream):
+        * html/HTMLCanvasElement.h:
+        * html/HTMLCanvasElement.idl:
+
+2019-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Fix available width for non-floating positioned float avoiders.
+        https://bugs.webkit.org/show_bug.cgi?id=198886
+        <rdar://problem/51773643>
+
+        Reviewed by Antti Koivisto.
+
+        Normally the available width for an in-flow block level box is the width of the containing block's content box.
+        However a non-floating positioned float avoider box might be constrained by existing floats.
+        The idea here is that we pre-compute(estimate) the vertical position and check the current floating context for
+        left and right floats. These floats contrain the available width and this computed value should be used instead of the containing block's
+        content box's width whe calculating the used width for width: auto.
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::mapHorizontalPositionToAncestor):
+        (WebCore::Layout::FormattingContext::mapLeftToAncestor):
+        (WebCore::Layout::FormattingContext::mapRightToAncestor):
+        (WebCore::Layout::FormattingContext::mapPointToAncestor):
+        (WebCore::Layout::FormattingContext::mapCoordinateToAncestor): Deleted.
+        * layout/FormattingContext.h:
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::usedAvailableWidthForFloatAvoider const):
+        (WebCore::Layout::BlockFormattingContext::layoutFormattingContextRoot const):
+        (WebCore::Layout::BlockFormattingContext::computeStaticVerticalPosition const):
+        (WebCore::Layout::BlockFormattingContext::computeStaticHorizontalPosition const):
+        (WebCore::Layout::BlockFormattingContext::computeStaticPosition const):
+        (WebCore::Layout::BlockFormattingContext::computeEstimatedVerticalPositionForFormattingRoot const):
+        (WebCore::Layout::BlockFormattingContext::computeWidthAndMargin const):
+        * layout/blockformatting/BlockFormattingContext.h:
+        (WebCore::Layout::BlockFormattingContext::computeWidthAndMargin):
+        * layout/blockformatting/BlockFormattingContextGeometry.cpp:
+        (WebCore::Layout::BlockFormattingContext::Geometry::staticVerticalPosition):
+        (WebCore::Layout::BlockFormattingContext::Geometry::staticHorizontalPosition):
+        (WebCore::Layout::BlockFormattingContext::Geometry::staticPosition):
+        * layout/floats/FloatingState.cpp:
+        (WebCore::Layout::FloatingState::constraints const):
+        * layout/layouttree/LayoutBlockContainer.cpp:
+        (WebCore::Layout::BlockContainer::establishesInlineFormattingContextOnly const):
+        * layout/layouttree/LayoutBlockContainer.h:
+        * layout/layouttree/LayoutBox.cpp:
+        (WebCore::Layout::Box::isFloatAvoider const):
+        * layout/layouttree/LayoutBox.h:
+        (WebCore::Layout::Box::establishesInlineFormattingContextOnly const):
+
+2019-06-15  Ludovico de Nittis  <ludovico.denittis@collabora.com>
+
+        [GTK] Stop accessing GdkEvent fields when possible
+        https://bugs.webkit.org/show_bug.cgi?id=198829
+
+        Reviewed by Michael Catanzaro.
+
+        Direct access to GdkEvent structs is no longer possible in GTK 4.
+
+        No behaviour changes.
+
+        * platform/gtk/PlatformKeyboardEventGtk.cpp:
+        (WebCore::eventTypeForGdkKeyEvent):
+        (WebCore::modifiersForGdkKeyEvent):
+        (WebCore::PlatformKeyboardEvent::PlatformKeyboardEvent):
+        * platform/gtk/PlatformMouseEventGtk.cpp:
+        (WebCore::PlatformMouseEvent::PlatformMouseEvent):
+        * platform/gtk/PlatformWheelEventGtk.cpp:
+        (WebCore::PlatformWheelEvent::PlatformWheelEvent):
+
+2019-06-15  Rob Buis  <rbuis@igalia.com>
+
+        Add tests for prefetch redirects
+        https://bugs.webkit.org/show_bug.cgi?id=197371
+
+        Reviewed by Youenn Fablet.
+
+        Test: http/wpt/prefetch/link-prefetch-main-resource-redirect.html
+
+        Allow clearing of the Purpose request header field.
+
+        * platform/network/ResourceRequestBase.cpp:
+        (WebCore::ResourceRequestBase::clearPurpose):
+        * platform/network/ResourceRequestBase.h:
+
+2019-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][MarginCollapsing] Remove redundant checks in MarginCollapse::marginBefore/AfterCollapsesWith*
+        https://bugs.webkit.org/show_bug.cgi?id=198882
+        <rdar://problem/51773334>
+
+        Reviewed by Antti Koivisto.
+
+        In-flow child can neither be floating nor out-of-flow positioned.
+
+        * layout/blockformatting/BlockMarginCollapse.cpp:
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginBeforeCollapsesWithFirstInFlowChildMarginBefore):
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginAfterCollapsesWithLastInFlowChildMarginAfter):
+
+2019-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][MarginCollapsing] Collapsed through margin values preserve quirk state.
+        https://bugs.webkit.org/show_bug.cgi?id=198885
+        <rdar://problem/51773568>
+
+        Reviewed by Antti Koivisto.
+
+        The collapsed through margin becomes a quirk margin if either of the vertical(before/after) margins have quirk value.
+
+        * layout/blockformatting/BlockMarginCollapse.cpp:
+        (WebCore::Layout::computedPositiveAndNegativeMargin):
+
+2019-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC[MarginCollapsing] Anonymous boxes never collapse their margins with siblings.
+        https://bugs.webkit.org/show_bug.cgi?id=198884
+        <rdar://problem/51773509>
+
+        Reviewed by Antti Koivisto.
+
+        * layout/blockformatting/BlockMarginCollapse.cpp:
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginBeforeCollapsesWithPreviousSiblingMarginAfter):
+
+2019-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][MarginCollapsing] Add check for computed height value in MarginCollapse::marginsCollapseThrough
+        https://bugs.webkit.org/show_bug.cgi?id=198883
+        <rdar://problem/51773395>
+
+        Reviewed by Antti Koivisto.
+
+        "A box's own margins collapse if... ...and it has a 'height' of either 0 or 'auto"
+        https://www.w3.org/TR/CSS22/box.html#collapsing-margins
+
+        * layout/blockformatting/BlockMarginCollapse.cpp:
+        (WebCore::Layout::BlockFormattingContext::MarginCollapse::marginsCollapseThrough):
+
+2019-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Fix available width for shrink-to-fit (for out-of-flow non-replaced box)
+        https://bugs.webkit.org/show_bug.cgi?id=198880
+        <rdar://problem/51773118>
+
+        Reviewed by Antti Koivisto.
+
+        This patch fixes the cases when the available width for the out-of-flow positioned box is not the same as the containing block's (padding)width.  
+
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+
+2019-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Fix over-constrained logic for out-of-flow non-replaced horizontal geometry.
+        https://bugs.webkit.org/show_bug.cgi?id=198879
+        <rdar://problem/51772995>
+
+        Reviewed by Antti Koivisto.
+
+        The over-constrained logic applies to the case when all the horizontal properties are set.
+
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+
+2019-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Convert both the absolutely and statically positioned out-of-flow block level boxes positions relative to the containing block's padding box
+        https://bugs.webkit.org/show_bug.cgi?id=198878
+        <rdar://problem/51772882>
+
+        Reviewed by Antti Koivisto.
+
+        This patch ensures that while we compute the vertical/horizontal geometry for an out-of-flow block level box,
+        the static and the absolute positioned values are in the same coordinate system (relative to the containing block's padding box).
+
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::staticVerticalPositionForOutOfFlowPositioned):
+        (WebCore::Layout::staticHorizontalPositionForOutOfFlowPositioned):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry):
+
+2019-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][IFC] Add support for vertical-align: top and bottom
+        https://bugs.webkit.org/show_bug.cgi?id=198697
+        <rdar://problem/51556188>
+
+        Reviewed by Antti Koivisto.
+
+        Use the layout box's vertical alignment to adjust line baseline and height and set the run's logical top when the line is being closed.
+
+        * layout/inlineformatting/InlineLine.cpp:
+        (WebCore::Layout::Line::isVisuallyEmpty const):
+        (WebCore::Layout::Line::close):
+        (WebCore::Layout::Line::appendInlineContainerStart):
+        (WebCore::Layout::Line::appendTextContent):
+        (WebCore::Layout::Line::appendNonReplacedInlineBox):
+        (WebCore::Layout::Line::appendHardLineBreak):
+        (WebCore::Layout::Line::adjustBaselineAndLineHeight):
+        (WebCore::Layout::Line::inlineItemHeight const):
+        (WebCore::Layout::Line::Content::isVisuallyEmpty const): Deleted.
+        * layout/inlineformatting/InlineLine.h:
+        (WebCore::Layout::Line::Content::isVisuallyEmpty const):
+        (WebCore::Layout::Line::Content::setIsVisuallyEmpty):
+        (WebCore::Layout::Line::hasContent const):
+
+2019-06-14  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] button property is -1 for pointerdown and pointerup
+        https://bugs.webkit.org/show_bug.cgi?id=198868
+        <rdar://problem/51758109>
+
+        Reviewed by Dean Jackson.
+
+        A value of -1 for "button", which means there was no change of pressed button since the last event, should only ever be used for "pointermove" events.
+
+        Test: pointerevents/mouse/pointer-button-and-buttons.html
+
+        * page/PointerCaptureController.cpp:
+        (WebCore::PointerCaptureController::pointerEventForMouseEvent):
+
+2019-06-14  Megan Gardner  <megan_gardner@apple.com>
+
+        Move Synthetic Editing Commands to behind an experimental feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=198842
+        <rdar://problem/50594700>
+
+        Reviewed by Simon Fraser.
+
+        Moving from a quirk to a feature flag.
+
+        * page/Quirks.cpp:
+        (WebCore::shouldEmulateEditingButtonsAndGesturesInHiddenEditableAreasForHost): Deleted.
+        (WebCore::Quirks::shouldEmulateEditingButtonsAndGesturesInHiddenEditableAreas const): Deleted.
+        * page/Quirks.h:
+        * page/RuntimeEnabledFeatures.h:
+        (WebCore::RuntimeEnabledFeatures::setSyntheticEditingCommandsEnabled):
+        (WebCore::RuntimeEnabledFeatures::syntheticEditingCommandsEnabled const):
+
+2019-06-14  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION(244439): platform/mac/media/encrypted-media/fps-* tests are crashing
+        https://bugs.webkit.org/show_bug.cgi?id=198612
+        <rdar://problem/51078978>
+
+        Reviewed by Eric Carlson.
+
+        There are two implementations of a 'cenc' initialiation data factory; an ASSERT fires when
+        the second one is added to the registry. Unify them.
+
+        * Modules/encryptedmedia/InitDataRegistry.cpp:
+        (WebCore::extractKeyIDsCenc):
+        * platform/graphics/avfoundation/CDMFairPlayStreaming.cpp:
+        (WebCore::CDMPrivateFairPlayStreaming::validFairPlayStreamingSchemes):
+        (WebCore::CDMPrivateFairPlayStreaming::fairPlaySystemID):
+        (WebCore::validInitDataTypes):
+        (WebCore::CDMFactory::platformRegisterFactories):
+        (WebCore::validFairPlayStreamingSchemes): Deleted.
+        (WebCore::CDMPrivateFairPlayStreaming::cencName): Deleted.
+        (WebCore::fairPlaySystemID): Deleted.
+        (WebCore::extractSchemeAndKeyIdFromCenc): Deleted.
+        (WebCore::CDMPrivateFairPlayStreaming::extractKeyIDsCenc): Deleted.
+        (WebCore::CDMPrivateFairPlayStreaming::sanitizeCenc): Deleted.
+        * platform/graphics/avfoundation/CDMFairPlayStreaming.h:
+
+2019-06-14  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Follow up to r246438. This removes a debug assert until
+        we do further compiler work in: https://bugs.webkit.org/show_bug.cgi?id=198861
+
+        * Modules/webgpu/WHLSL/WHLSLCheckDuplicateFunctions.cpp:
+        (WebCore::WHLSL::checkDuplicateFunctions):
+        * Modules/webgpu/WHLSL/WHLSLStandardLibrary.txt:
+
+2019-06-14  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Implement out-of-bounds and nullptr behavior
+        https://bugs.webkit.org/show_bug.cgi?id=198600
+        <rdar://problem/51668853>
+
+        Reviewed by Robin Morisset.
+
+        The behavior we're implementing is:
+        - OOB writes are ignored.
+        - OOB reads return zero.
+        - Writes to null are ignored.
+        - Reads from null return zero.
+        - &*x == x, including &*null == null.
+        
+        We implement this like so:
+        - The value stack in FunctionWriter turns into a stack of pairs: rvalues and lvalues.
+          rvalues are represented the same as before. Lvalues are always pointers.
+        - Anything that produces an lvalue must push a pointer to the stack. Not
+          all things produce lvalues, so that entry in the stack may be empty.
+          However, all things that produce lvalues also produce rvalues. So, "*x = 42" works,
+          and so does "foo(*x)". Nodes that produce lvalues are responsible for also producing
+          an rvalue, which should be the value as if the lvalue was dereferenced at that point
+          in program execution. So the "*x" in "thread int* x = null; *x" produces the int zero
+          for its rvalue, and null for its lvalue.
+        - Dereference just works, as dereference produces both an lvalue and rvalue. Dereference
+          node's child must also be an lvalue. So we just forward that value along on
+          the stack. For the rvalue, if we try to dereference nullptr, we just fill in
+          zero bytes instead. Otherwise, the rvalue is the result of dereferencing the
+          non-null pointer.
+        - Assignment expressions check if the incoming lvalue is null. If it is, it
+          skips the assignment.
+        - operator&[] returns nullptr on an OOB access. Then, based on the above
+          behavior, we get the desired OOB reads return zero, and OOB writes are
+          ignored.
+        - MakePointerExpression just takes the last lvalue off the stack (which must
+          be a pointer) and returns it as an rvalue.
+        - VariableReference will push both the variable value and a pointer to the variable
+          onto the stack.
+
+        This patch also fixes a few bugs where we weren't giving certain AST nodes the
+        proper address space values.
+
+        This patch also removes code to generate native functions for operators
+        "operator[]" and "operator[]=" as we should never be generating these
+        ourselves. We should only be generating the "operator&[]" ander.
+
+        Tests: webgpu/whlsl-null-dereference.html
+               webgpu/whlsl-oob-access.html
+
+        * Modules/webgpu/WHLSL/Metal/WHLSLFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::FunctionDefinitionWriter):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::appendRightValue):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::appendLeftValue):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::takeLastValue):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::takeLastLeftValue):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::visit):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::emitLoop):
+        * Modules/webgpu/WHLSL/Metal/WHLSLNativeFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::writeNativeFunction):
+        * Modules/webgpu/WHLSL/Metal/WHLSLNativeFunctionWriter.h:
+        * Modules/webgpu/WHLSL/Metal/WHLSLTypeNamer.cpp:
+        (WebCore::WHLSL::Metal::TypeNamer::emitUnnamedTypeDefinition):
+        * Modules/webgpu/WHLSL/WHLSLPreserveVariableLifetimes.cpp:
+        (WebCore::WHLSL::PreserveLifetimes::assignVariableIntoStruct):
+        * Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp:
+        (WebCore::WHLSL::PropertyResolver::visit):
+        * Modules/webgpu/WHLSL/WHLSLStandardLibrary.txt:
+        * platform/graphics/gpu/cocoa/GPUComputePipelineMetal.mm:
+        (WebCore::trySetFunctions):
+        * platform/graphics/gpu/cocoa/GPURenderPipelineMetal.mm:
+        (WebCore::trySetFunctions):
+
+2019-06-14  Jer Noble  <jer.noble@apple.com>
+
+        CRASH(nullptr) in WebCore::jsAudioContextCurrentTime()
+        https://bugs.webkit.org/show_bug.cgi?id=198859
+        <rdar://problem/27986991>
+
+        Reviewed by Eric Carlson.
+
+        AudioContext's m_destinationNode can become null during iframe teardown,
+        but can AudioContext methods can still be called by JavaScript. Add null-checks
+        to all (remaing) unprotected dereferences of m_destinationNode.
+
+        * Modules/webaudio/AudioContext.cpp:
+        (WebCore::AudioContext::uninitialize):
+        (WebCore::AudioContext::createBufferSource):
+        (WebCore::AudioContext::createScriptProcessor):
+        (WebCore::AudioContext::createBiquadFilter):
+        (WebCore::AudioContext::createPanner):
+        (WebCore::AudioContext::createConvolver):
+        (WebCore::AudioContext::createDynamicsCompressor):
+        (WebCore::AudioContext::createAnalyser):
+        (WebCore::AudioContext::createGain):
+        (WebCore::AudioContext::createDelay):
+        (WebCore::AudioContext::createChannelSplitter):
+        (WebCore::AudioContext::createChannelMerger):
+        (WebCore::AudioContext::createOscillator):
+        * Modules/webaudio/AudioContext.h:
+        (WebCore::AudioContext::currentSampleFrame const):
+        (WebCore::AudioContext::currentTime const):
+        (WebCore::AudioContext::sampleRate const):
+
+2019-06-14  Youenn Fablet  <youenn@apple.com>
+
+        Cloning a MediaStreamTrack does not clone the logger
+        https://bugs.webkit.org/show_bug.cgi?id=198844
+
+        Reviewed by Eric Carlson.
+
+        Make MediaStream and MediaStreamTrack rely on their private versions for logging.
+        Move from a RefPtr version to a Ref so as to forbid nullptr crashes.
+        Make sure that RealtimeIncomingAudioSource and RealtimeIncomingVideoSource check for their logger before logging.
+        Covered by existing tests and updated test.
+
+        * Modules/mediastream/CanvasCaptureMediaStreamTrack.cpp:
+        (WebCore::loggerFromContext):
+        (WebCore::CanvasCaptureMediaStreamTrack::CanvasCaptureMediaStreamTrack):
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::loggerFromContext):
+        (WebCore::MediaStream::create):
+        (WebCore::MediaStream::MediaStream):
+        * Modules/mediastream/MediaStream.h:
+        * Modules/mediastream/MediaStreamTrack.cpp:
+        (WebCore::MediaStreamTrack::MediaStreamTrack):
+        * Modules/mediastream/MediaStreamTrack.h:
+        * Modules/mediastream/UserMediaRequest.cpp:
+        (WebCore::UserMediaRequest::allow):
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::mediaStreamFromRTCStream):
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::LibWebRTCPeerConnectionBackend::createReceiverForSource):
+        * Modules/webaudio/MediaStreamAudioDestinationNode.cpp:
+        (WebCore::MediaStreamAudioDestinationNode::MediaStreamAudioDestinationNode):
+        * platform/mediastream/MediaStreamPrivate.cpp:
+        (WebCore::MediaStreamPrivate::create):
+        (WebCore::MediaStreamPrivate::MediaStreamPrivate):
+        (WebCore::MediaStreamPrivate::setLogger): Deleted.
+        * platform/mediastream/MediaStreamPrivate.h:
+        * platform/mediastream/MediaStreamTrackPrivate.cpp:
+        (WebCore::MediaStreamTrackPrivate::create):
+        (WebCore::MediaStreamTrackPrivate::MediaStreamTrackPrivate):
+        (WebCore::MediaStreamTrackPrivate::clone):
+        (WebCore::MediaStreamTrackPrivate::setLogger): Deleted.
+        * platform/mediastream/MediaStreamTrackPrivate.h:
+        * platform/mediastream/RealtimeMediaSourceCenter.cpp:
+        (WebCore::RealtimeMediaSourceCenter::createMediaStream):
+        * platform/mediastream/RealtimeMediaSourceCenter.h:
+        * platform/mediastream/mac/RealtimeIncomingAudioSourceCocoa.cpp:
+        (WebCore::RealtimeIncomingAudioSourceCocoa::OnData):
+        * platform/mediastream/mac/RealtimeIncomingVideoSourceCocoa.mm:
+        (WebCore::RealtimeIncomingVideoSourceCocoa::pixelBufferPool):
+        (WebCore::RealtimeIncomingVideoSourceCocoa::pixelBufferFromVideoFrame):
+        (WebCore::RealtimeIncomingVideoSourceCocoa::OnFrame):
+
+2019-06-14  Ali Juma  <ajuma@chromium.org>
+
+        IntersectionObserver rootMargin detection fails when `root` is an element
+        https://bugs.webkit.org/show_bug.cgi?id=198784
+
+        Reviewed by Simon Fraser.
+
+        When computing a target's bounds in root space, we were applying the root's
+        clip rect (if any), and then intersecting with the root rect expanded by the
+        root margin. This meant that if a target did not intersect the non-expanded root
+        rect, we would get an empty intersection even if the target did intersect the
+        expanded root rect. Fix this by not applying the root's clip rect when computing
+        a target's bounds in root space. Add a new VisibleRectContextOption::ApplyContainerClip
+        that determines whether RenderObject::computeVisibleRectInContainer should apply
+        the container's clip.
+
+        Test: imported/w3c/web-platform-tests/intersection-observer/root-margin-root-element.html
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::applyCachedClipAndScrollPosition const):
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::visibleRectContextForRepaint):
+        * rendering/RenderObject.h:
+
+2019-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [cairo] Entering text into forms on github.com creates a trapezoid artifact
+        https://bugs.webkit.org/show_bug.cgi?id=126124
+
+        Reviewed by Michael Catanzaro.
+
+        Mixing antialiasing modes in the same clip is not actually supported by cairo. In the case of rectangle clips we
+        are already ignoring the current antialiasing to not do any antialiasing. We could do the opposite for clips
+        receiving a path, we want to enforce antialiasing in that case since the paths might contain curves. Doing that
+        we ensure all calls to clip with a path use the same antialiasing, which is the case of the github bug.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::doClipWithAntialias): Helper to call cairo_clip() with the given antialising mode.
+        (WebCore::Cairo::clip): Use doClipWithAntialias().
+        (WebCore::Cairo::clipOut): Ditto.
+        (WebCore::Cairo::clipPath): Ditto.
+
+2019-06-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Remove unnecessary ASSERT()s and clean up visitor lambdas
+        https://bugs.webkit.org/show_bug.cgi?id=198706
+
+        Reviewed by Dean Jackson, Saam Barati, and Robin Morisset.
+
+        Some minor refactoring.
+
+        If the code is going to unconditionally downcast<Foo>(bar), there's no need
+        to guard that with an ASSERT(is<Foo>(bar)) because the downcast() call will
+        do that automatically.
+
+        No new tests because there is no behavior change.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLConstantExpression.h:
+        (WebCore::WHLSL::AST::ConstantExpression::visit):
+        (WebCore::WHLSL::AST::ConstantExpression::visit const):
+        * Modules/webgpu/WHLSL/Metal/WHLSLEntryPointScaffolding.cpp:
+        (WebCore::WHLSL::Metal::EntryPointScaffolding::resourceHelperTypes):
+        (WebCore::WHLSL::Metal::EntryPointScaffolding::mangledOutputPath):
+        (WebCore::WHLSL::Metal::EntryPointScaffolding::unpackResourcesAndNamedBuiltIns):
+        * Modules/webgpu/WHLSL/Metal/WHLSLFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::visit):
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::constantExpressionString):
+        * Modules/webgpu/WHLSL/Metal/WHLSLNativeFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::writeNativeFunction):
+        * Modules/webgpu/WHLSL/Metal/WHLSLNativeTypeWriter.cpp:
+        (WebCore::WHLSL::Metal::writeNativeType):
+        * Modules/webgpu/WHLSL/Metal/WHLSLTypeNamer.cpp:
+        (WebCore::WHLSL::Metal::find):
+        (WebCore::WHLSL::Metal::TypeNamer::createNameNode):
+        (WebCore::WHLSL::Metal::TypeNamer::insert):
+        (WebCore::WHLSL::Metal::TypeNamer::emitUnnamedTypeDefinition):
+        (WebCore::WHLSL::Metal::TypeNamer::emitNamedTypeDefinition):
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::Checker::visit):
+        (WebCore::WHLSL::argumentTypeForAndOverload):
+        * Modules/webgpu/WHLSL/WHLSLInferTypes.cpp:
+        (WebCore::WHLSL::inferTypesForTypeArguments):
+        * Modules/webgpu/WHLSL/WHLSLIntrinsics.cpp:
+        (WebCore::WHLSL::Intrinsics::addFullTexture):
+        (WebCore::WHLSL::Intrinsics::addDepthTexture):
+        * Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp:
+        (WebCore::WHLSL::modify):
+        (WebCore::WHLSL::PropertyResolver::visit):
+        * Modules/webgpu/WHLSL/WHLSLVisitor.cpp:
+        (WebCore::WHLSL::Visitor::visit):
+
+2019-06-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Hook up compute
+        https://bugs.webkit.org/show_bug.cgi?id=198644
+
+        Reviewed by Saam Barati.
+
+        This patch hooks up compute shaders in exactly the same way that vertex and fragment shaders
+        are hooked up. I've modified the two patchs (compute and rendering) to be almost exactly the
+        same code.
+
+        This patch also adds support for the WHLSL compiler to determine what the numthreads()
+        attribute in the shader says so that it can be hooked up to Metal's threads-per-threadgroup
+        argument in the dispatch call. There is some logic to make sure that there aren't two
+        numthreads() attributes on the same compute shader.
+
+        It also adds a little bit of type renaming. For built-in variables, sometimes Metal's type
+        doesn't always match WHLSL's (and HLSL's type). For example, in WHLSL and HLSL,        SV_DispatchThreadID variables have to be a float3, but in Metal, they are a uint3.
+        Therefore, I've added a little bit of code during each entry point's pack and unpack stages
+        to handle this type conversion.
+
+        Test: webgpu/whlsl-compute.html
+
+        * Modules/webgpu/WHLSL/Metal/WHLSLEntryPointScaffolding.cpp:
+        (WebCore::WHLSL::Metal::internalTypeForSemantic): Determine which Metal type corresponds to
+        each built-in variable.
+        (WebCore::WHLSL::Metal::EntryPointScaffolding::builtInsSignature): Perform the type
+        conversion.
+        (WebCore::WHLSL::Metal::EntryPointScaffolding::unpackResourcesAndNamedBuiltIns): Ditto.
+        (WebCore::WHLSL::Metal::VertexEntryPointScaffolding::VertexEntryPointScaffolding): Ditto.
+        (WebCore::WHLSL::Metal::VertexEntryPointScaffolding::helperTypes): Ditto.
+        (WebCore::WHLSL::Metal::VertexEntryPointScaffolding::pack): Ditto.
+        (WebCore::WHLSL::Metal::FragmentEntryPointScaffolding::FragmentEntryPointScaffolding): Ditto.
+        (WebCore::WHLSL::Metal::FragmentEntryPointScaffolding::helperTypes): Ditto.
+        (WebCore::WHLSL::Metal::FragmentEntryPointScaffolding::pack): Ditto.
+        (WebCore::WHLSL::Metal::ComputeEntryPointScaffolding::signature): Ditto.
+        * Modules/webgpu/WHLSL/Metal/WHLSLEntryPointScaffolding.h:
+        * Modules/webgpu/WHLSL/WHLSLComputeDimensions.cpp: Added. Add a pass to determine whether
+        or not any entry point has duplicate numthreads() attribute, and to determine what the
+        appropriate numthreads() values should be for the current entry point.
+        (WebCore::WHLSL::ComputeDimensionsVisitor::ComputeDimensionsVisitor):
+        (WebCore::WHLSL::ComputeDimensionsVisitor::computeDimensions const):
+        (WebCore::WHLSL::computeDimensions):
+        * Modules/webgpu/WHLSL/WHLSLComputeDimensions.h: Copied from Source/WebCore/Modules/webgpu/WHLSL/WHLSLPrepare.h.
+        * Modules/webgpu/WHLSL/WHLSLGatherEntryPointItems.cpp:
+        (WebCore::WHLSL::gatherEntryPointItems): Compute shaders don't need to have a semantic for their return type.
+        * Modules/webgpu/WHLSL/WHLSLPrepare.cpp:
+        (WebCore::WHLSL::prepare): Run the computeDimensions() pass.
+        * Modules/webgpu/WHLSL/WHLSLPrepare.h:
+        * Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp: In a left-value propertyAccessExpression,
+        the index expression can be a right-value. Treat it as such.
+        (WebCore::WHLSL::LeftValueSimplifier::finishVisiting):
+        (WebCore::WHLSL::LeftValueSimplifier::visit):
+        * Modules/webgpu/WHLSL/WHLSLStandardLibrary.txt: We need support for multiplication (for a
+        test) and float3 for SV_DispatchThreadID.
+        * Sources.txt:
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/gpu/GPUComputePipeline.h: Associate a compute dimensions with a particular
+        compute pipeline. This is how Metal knows what values to use for a dispatch.
+        (WebCore::GPUComputePipeline::computeDimensions const):
+        * platform/graphics/gpu/cocoa/GPUComputePassEncoderMetal.mm: Use the saved compute dimensions.
+        (WebCore::GPUComputePassEncoder::dispatch):
+        * platform/graphics/gpu/cocoa/GPUComputePipelineMetal.mm: Make the code match GPURenderPipelineMetal.
+        (WebCore::trySetMetalFunctions):
+        (WebCore::trySetFunctions):
+        (WebCore::convertComputePipelineDescriptor):
+        (WebCore::tryCreateMTLComputePipelineState):
+        (WebCore::GPUComputePipeline::tryCreate):
+        (WebCore::GPUComputePipeline::GPUComputePipeline):
+        (WebCore::tryCreateMtlComputeFunction): Deleted.
+        * platform/graphics/gpu/cocoa/GPUPipelineMetalConvertLayout.cpp: Added. Moved shared helper
+        functions to a file where they can be accessed by multiple places.
+        (WebCore::convertShaderStageFlags):
+        (WebCore::convertBindingType):
+        (WebCore::convertLayout):
+        * platform/graphics/gpu/cocoa/GPUPipelineMetalConvertLayout.h: Copied from Source/WebCore/Modules/webgpu/WHLSL/WHLSLPrepare.h.
+        * platform/graphics/gpu/cocoa/GPURenderPipelineMetal.mm: Delete the functions that were moved to GPUPipelineMetalConvertLayout.
+        (WebCore::trySetFunctions):
+        (WebCore::tryCreateMtlRenderPipelineState):
+        (WebCore::convertShaderStageFlags): Deleted.
+        (WebCore::convertBindingType): Deleted.
+        (WebCore::convertLayout): Deleted.
+
+2019-06-13  Jer Noble  <jer.noble@apple.com>
+
+        AVKit play button bypasses MediaElementSession playbackPermitted() checks.
+        https://bugs.webkit.org/show_bug.cgi?id=198813
+
+        Reviewed by Eric Carlson.
+
+        HTMLMediaElement::togglePlayState() is an internal-only method that doesn't
+        run playbackPermitted() checks. For our imitation AVPlayerController, translate
+        requests to -togglePlayback: into calls to play() and pause() depending on
+        playback state.
+
+        * platform/ios/WebAVPlayerController.mm:
+        (-[WebAVPlayerController togglePlayback:]):
+
+2019-06-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r246396 and r246397.
+        https://bugs.webkit.org/show_bug.cgi?id=198837
+
+        Breaks internal builds (Requested by ShawnRoberts on #webkit).
+
+        Reverted changesets:
+
+        "[WHLSL] Hook up compute"
+        https://bugs.webkit.org/show_bug.cgi?id=198644
+        https://trac.webkit.org/changeset/246396
+
+        "[WHLSL] Hook up compute"
+        https://bugs.webkit.org/show_bug.cgi?id=198644
+        https://trac.webkit.org/changeset/246397
+
+2019-06-13  Antti Koivisto  <antti@apple.com>
+
+        twitch.tv: embedded video hovers down the screen when scrolling on iPad
+        https://bugs.webkit.org/show_bug.cgi?id=198832
+        <rdar://problem/51541439>
+
+        Reviewed by Simon Fraser.
+
+        Test: compositing/scrolling/async-overflow-scrolling/overflow-scroll-paint-order-sibling.html
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::scrollTo):
+
+        Overflow scroll layer may have composited descendants that are its paint order siblings. We need to invalidate
+        the tree of the paint order parent for compositing update (instead of just the tree of the overflow scroll layer).
+
+        This matches what RenderLayer::updateLayerPosition() does.
+
+2019-06-13  Youenn Fablet  <youenn@apple.com>
+
+        SocketStreamHandle should not be destroyed in a background thread
+        https://bugs.webkit.org/show_bug.cgi?id=198781
+
+        Reviewed by Geoffrey Garen.
+
+        Make sure to destroy SocketStreamHandle on the main thread since it owns an URL created on the main thread.
+        Covered by WPT websocket tests from https://bugs.webkit.org/show_bug.cgi?id=198774.
+
+        * platform/network/SocketStreamHandle.cpp:
+        (WebCore::SocketStreamHandle::SocketStreamHandle):
+        * platform/network/SocketStreamHandle.h:
+
+2019-06-13  Antoine Quint  <graouts@apple.com>
+
+        "display: contents" Content click does not trigger
+        https://bugs.webkit.org/show_bug.cgi?id=198559
+        <rdar://problem/51488524>
+
+        Reviewed by Antti Koivisto.
+
+        Test: fast/events/ios/click-event-and-display-contents.html
+
+        * dom/Element.h:
+
+2019-06-13  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [curl] Remove member objects of CurlRequest not to share by different threads.
+        https://bugs.webkit.org/show_bug.cgi?id=198747
+
+        Reviewed by Fujii Hironori.
+
+        Removed m_certificateInfo and m_networkLoadMetrics.
+        Before patch those objects were updated by different threads.
+
+        No tests needed, no functionality changes.
+
+        * platform/network/curl/CurlDownload.cpp:
+        (WebCore::CurlDownload::curlDidReceiveResponse):
+        (WebCore::CurlDownload::curlDidReceiveBuffer):
+        (WebCore::CurlDownload::curlDidComplete):
+        (WebCore::CurlDownload::curlDidFailWithError):
+        * platform/network/curl/CurlDownload.h:
+        * platform/network/curl/CurlRequest.cpp:
+        (WebCore::CurlRequest::start):
+        (WebCore::CurlRequest::didReceiveHeader):
+        (WebCore::CurlRequest::didCompleteTransfer):
+        (WebCore::CurlRequest::invokeDidReceiveResponse):
+        (WebCore::CurlRequest::networkLoadMetrics):
+        (WebCore::CurlRequest::updateNetworkLoadMetrics): Deleted.
+        * platform/network/curl/CurlRequest.h:
+        (WebCore::CurlRequest::setStartTime):
+        (WebCore::CurlRequest::certificateInfo const): Deleted.
+        (WebCore::CurlRequest::networkLoadMetrics const): Deleted.
+        * platform/network/curl/CurlRequestClient.h:
+        * platform/network/curl/CurlResourceHandleDelegate.cpp:
+        (WebCore::CurlResourceHandleDelegate::curlDidSendData):
+        (WebCore::CurlResourceHandleDelegate::curlDidReceiveResponse):
+        (WebCore::CurlResourceHandleDelegate::curlDidReceiveBuffer):
+        (WebCore::CurlResourceHandleDelegate::curlDidComplete):
+        (WebCore::CurlResourceHandleDelegate::curlDidFailWithError):
+        * platform/network/curl/CurlResourceHandleDelegate.h:
+        * platform/network/curl/CurlResponse.h:
+        (WebCore::CurlResponse::isolatedCopy const):
+        * platform/network/curl/ResourceResponseCurl.cpp:
+        (WebCore::ResourceResponse::ResourceResponse):
+
+2019-06-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Nicosia] Add SceneIntegration
+        https://bugs.webkit.org/show_bug.cgi?id=198791
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add the SceneIntegration class to the Nicosia namespace, primarily for
+        the purpose of being able to conveniently trigger scene updates whenever
+        changes are done to the state of layers that are included in that scene.
+        Initially this would be used for layer changes done on a
+        scrolling-dedicated thread.
+
+        Each Nicosia::PlatformLayer can have a SceneIntegration object reference
+        associated. Helper createUpdateScope() method returns a
+        SceneIntegration::UpdateScope instance that triggers an update for the
+        scene when that instance is destroyed (normally when it goes out of the
+        scope).
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/nicosia/NicosiaPlatformLayer.h:
+        (Nicosia::PlatformLayer::setSceneIntegration):
+        (Nicosia::PlatformLayer::createUpdateScope):
+        * platform/graphics/nicosia/NicosiaSceneIntegration.cpp: Added.
+        (Nicosia::SceneIntegration::SceneIntegration):
+        (Nicosia::SceneIntegration::~SceneIntegration):
+        (Nicosia::SceneIntegration::setClient):
+        (Nicosia::SceneIntegration::invalidate):
+        (Nicosia::SceneIntegration::requestUpdate):
+        (Nicosia::SceneIntegration::createUpdateScope):
+        (Nicosia::SceneIntegration::UpdateScope::UpdateScope):
+        (Nicosia::SceneIntegration::UpdateScope::~UpdateScope):
+        * platform/graphics/nicosia/NicosiaSceneIntegration.h: Added.
+
+2019-06-13  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] HLS stream slow start
+        https://bugs.webkit.org/show_bug.cgi?id=198377
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (webKitWebSrcCreate): Cut down the adapter condition to 200 ms to
+        improve start-up times for HLS playback.
+
+2019-06-13  Ludovico de Nittis  <ludovico.denittis@collabora.com>
+
+        [GTK] gdk_display_get_device_manager and gdk_screen_get_width/height are deprecated
+        https://bugs.webkit.org/show_bug.cgi?id=198822
+
+        Reviewed by Carlos Garcia Campos.
+
+        GdkSeat and GdkRectangle should be used, respectively.
+
+        No behaviour changes.
+
+        * platform/gtk/GtkVersioning.c:
+        (getDefaultGDKPointerDevice):
+        (getScreenWorkArea):
+
+2019-06-12  Antoine Quint  <graouts@apple.com>
+
+        [WHLSL] Hook up compute
+        https://bugs.webkit.org/show_bug.cgi?id=198644
+
+        Unreviewed build fix. Release iOS build would complain that pipelineState was unused.
+
+        * platform/graphics/gpu/cocoa/GPUComputePassEncoderMetal.mm:
+        (WebCore::GPUComputePassEncoder::dispatch):
+
+2019-06-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Hook up compute
+        https://bugs.webkit.org/show_bug.cgi?id=198644
+
+        Reviewed by Saam Barati.
+
+        This patch hooks up compute shaders in exactly the same way that vertex and fragment shaders
+        are hooked up. I've modified the two patchs (compute and rendering) to be almost exactly the
+        same code.
+
+        This patch also adds support for the WHLSL compiler to determine what the numthreads()
+        attribute in the shader says so that it can be hooked up to Metal's threads-per-threadgroup
+        argument in the dispatch call. There is some logic to make sure that there aren't two
+        numthreads() attributes on the same compute shader.
+
+        It also adds a little bit of type renaming. For built-in variables, sometimes Metal's type
+        doesn't always match WHLSL's (and HLSL's type). For example, in WHLSL and HLSL,        SV_DispatchThreadID variables have to be a float3, but in Metal, they are a uint3.
+        Therefore, I've added a little bit of code during each entry point's pack and unpack stages
+        to handle this type conversion.
+
+        Test: webgpu/whlsl-compute.html
+
+        * Modules/webgpu/WHLSL/Metal/WHLSLEntryPointScaffolding.cpp:
+        (WebCore::WHLSL::Metal::internalTypeForSemantic): Determine which Metal type corresponds to
+        each built-in variable.
+        (WebCore::WHLSL::Metal::EntryPointScaffolding::builtInsSignature): Perform the type
+        conversion.
+        (WebCore::WHLSL::Metal::EntryPointScaffolding::unpackResourcesAndNamedBuiltIns): Ditto.
+        (WebCore::WHLSL::Metal::VertexEntryPointScaffolding::VertexEntryPointScaffolding): Ditto.
+        (WebCore::WHLSL::Metal::VertexEntryPointScaffolding::helperTypes): Ditto.
+        (WebCore::WHLSL::Metal::VertexEntryPointScaffolding::pack): Ditto.
+        (WebCore::WHLSL::Metal::FragmentEntryPointScaffolding::FragmentEntryPointScaffolding): Ditto.
+        (WebCore::WHLSL::Metal::FragmentEntryPointScaffolding::helperTypes): Ditto.
+        (WebCore::WHLSL::Metal::FragmentEntryPointScaffolding::pack): Ditto.
+        (WebCore::WHLSL::Metal::ComputeEntryPointScaffolding::signature): Ditto.
+        * Modules/webgpu/WHLSL/Metal/WHLSLEntryPointScaffolding.h:
+        * Modules/webgpu/WHLSL/WHLSLComputeDimensions.cpp: Added. Add a pass to determine whether
+        or not any entry point has duplicate numthreads() attribute, and to determine what the
+        appropriate numthreads() values should be for the current entry point.
+        (WebCore::WHLSL::ComputeDimensionsVisitor::ComputeDimensionsVisitor):
+        (WebCore::WHLSL::ComputeDimensionsVisitor::computeDimensions const):
+        (WebCore::WHLSL::computeDimensions):
+        * Modules/webgpu/WHLSL/WHLSLComputeDimensions.h: Copied from Source/WebCore/Modules/webgpu/WHLSL/WHLSLPrepare.h.
+        * Modules/webgpu/WHLSL/WHLSLGatherEntryPointItems.cpp:
+        (WebCore::WHLSL::gatherEntryPointItems): Compute shaders don't need to have a semantic for their return type.
+        * Modules/webgpu/WHLSL/WHLSLPrepare.cpp:
+        (WebCore::WHLSL::prepare): Run the computeDimensions() pass.
+        * Modules/webgpu/WHLSL/WHLSLPrepare.h:
+        * Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp: In a left-value propertyAccessExpression,
+        the index expression can be a right-value. Treat it as such.
+        (WebCore::WHLSL::LeftValueSimplifier::finishVisiting):
+        (WebCore::WHLSL::LeftValueSimplifier::visit):
+        * Modules/webgpu/WHLSL/WHLSLStandardLibrary.txt: We need support for multiplication (for a
+        test) and float3 for SV_DispatchThreadID.
+        * Sources.txt:
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/gpu/GPUComputePipeline.h: Associate a compute dimensions with a particular
+        compute pipeline. This is how Metal knows what values to use for a dispatch.
+        (WebCore::GPUComputePipeline::computeDimensions const):
+        * platform/graphics/gpu/cocoa/GPUComputePassEncoderMetal.mm: Use the saved compute dimensions.
+        (WebCore::GPUComputePassEncoder::dispatch):
+        * platform/graphics/gpu/cocoa/GPUComputePipelineMetal.mm: Make the code match GPURenderPipelineMetal.
+        (WebCore::trySetMetalFunctions):
+        (WebCore::trySetFunctions):
+        (WebCore::convertComputePipelineDescriptor):
+        (WebCore::tryCreateMTLComputePipelineState):
+        (WebCore::GPUComputePipeline::tryCreate):
+        (WebCore::GPUComputePipeline::GPUComputePipeline):
+        (WebCore::tryCreateMtlComputeFunction): Deleted.
+        * platform/graphics/gpu/cocoa/GPUPipelineMetalConvertLayout.cpp: Added. Moved shared helper
+        functions to a file where they can be accessed by multiple places.
+        (WebCore::convertShaderStageFlags):
+        (WebCore::convertBindingType):
+        (WebCore::convertLayout):
+        * platform/graphics/gpu/cocoa/GPUPipelineMetalConvertLayout.h: Copied from Source/WebCore/Modules/webgpu/WHLSL/WHLSLPrepare.h.
+        * platform/graphics/gpu/cocoa/GPURenderPipelineMetal.mm: Delete the functions that were moved to GPUPipelineMetalConvertLayout.
+        (WebCore::trySetFunctions):
+        (WebCore::tryCreateMtlRenderPipelineState):
+        (WebCore::convertShaderStageFlags): Deleted.
+        (WebCore::convertBindingType): Deleted.
+        (WebCore::convertLayout): Deleted.
+
+2019-06-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Implement array references
+        https://bugs.webkit.org/show_bug.cgi?id=198163
+
+        Reviewed by Saam Barati.
+
+        The compiler automatically generates anders for every array reference. Luckily, the infrastructure
+        to generate those anders and emit Metal code to represent them already exists in the compiler.
+        There are two pieces remaining (which this patch implements):
+
+        1. The JavaScript compiler has a behavior where anders that are called with an array reference
+           as an argument don't wrap the argument in a MakePointerExpression. This is because the array
+           reference is already a reference type, so it's silly to operate on a pointer to a reference.
+           This patch implements this by teaching the type checker about which types should be passed
+           to the ander call, and by actually constructing those types in the property resolver.
+           The property resolver does this by placing the logic to construct an ander argument in a
+           single function which also has logic to save the argument in a temporary if the thread ander
+           will be called. The semantics about which functions are called in which situations are not
+           changed; instead, we just simply don't wrap array references with MakePointerExpressions.
+
+        2. Creating a bind group from the WebGPU API has to retain information about buffer lengths for
+           each buffer so the shader can properly perform bounds checks. This can be broken down into a
+           few pieces:
+           - Creating a bind group layout has to assign extra id indexes for each buffer which will be
+             filled in to represent the buffer's length
+           - Creating the bind group itself needs to fill in the buffer length into the Metal argument
+             buffer
+           - The shader compiler needs to emit code at the beginning of entry point to find the buffer
+             lengths and pack them together into the array reference (array references correspond to
+             a Metal struct with two fields: a pointer and a length).
+
+        This patch doesn't actually implement bounds checks themselves; it just hooks up the buffer
+        lengths so https://bugs.webkit.org/show_bug.cgi?id=198600 can implement it.
+
+        The shader compiler's API is modified to allow for this extra buffer length information to be
+        passed in from the WebGPU implementation.
+
+        Unfortunately, I don't think I could split this patch up into two pieces because both are
+        required to test the compiler with buffers.
+
+        Tests: webgpu/whlsl-buffer-fragment.html
+               webgpu/whlsl-buffer-vertex.html
+
+        * Modules/webgpu/WHLSL/AST/WHLSLPropertyAccessExpression.h:
+        (WebCore::WHLSL::AST::PropertyAccessExpression::baseReference):
+        * Modules/webgpu/WHLSL/AST/WHLSLResourceSemantic.cpp:
+        (WebCore::WHLSL::AST::ResourceSemantic::isAcceptableType const): Arrays can't be resources
+        because the compiler has no way of guaranteeing if the resource is long enough to hold the
+        array at compile time.
+        * Modules/webgpu/WHLSL/Metal/WHLSLEntryPointScaffolding.cpp:
+        (WebCore::WHLSL::Metal::EntryPointScaffolding::EntryPointScaffolding): Generate an extra
+        variable name to represent the buffer length. Only do it for resources which have lengths.
+        (WebCore::WHLSL::Metal::EntryPointScaffolding::resourceHelperTypes):
+        (WebCore::WHLSL::Metal::EntryPointScaffolding::unpackResourcesAndNamedBuiltIns): Perform
+        the appropriate math to turn byte lengths into element counts and store the element count
+        in the array reference.
+        * Modules/webgpu/WHLSL/Metal/WHLSLEntryPointScaffolding.h:
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::resolveWithOperatorAnderIndexer): Refactor.
+        (WebCore::WHLSL::resolveWithOperatorLength): Ditto.
+        (WebCore::WHLSL::resolveWithReferenceComparator): Ditto.
+        (WebCore::WHLSL::resolveByInstantiation): Ditto.
+        (WebCore::WHLSL::argumentTypeForAndOverload): Given an ander, what should the type of the
+        argument be?
+        (WebCore::WHLSL::Checker::finishVisiting): Call argumentTypeForAndOverload(). Also, if
+        we couldn't find an ander, try automatically generating it, the same way that function
+        calls do. (This is how array references get their anders.)
+        (WebCore::WHLSL::Checker::visit):
+        * Modules/webgpu/WHLSL/WHLSLPipelineDescriptor.h: New WHLSL API to provide the length
+        information.
+        * Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp:
+        (WebCore::WHLSL::PropertyResolver::visit): SimplifyRightValue() can't fail any more.
+        (WebCore::WHLSL::wrapAnderCallArgument): If the ander argument should be wrapped in a
+        MakePointer or a MakeArrayReference, do that. Also, if the ander is a thread ander, save
+        the argument in a local variable and use that.
+        (WebCore::WHLSL::anderCallArgument): The equivalent of argumentTypeForAndOverload().
+        (WebCore::WHLSL::setterCall): Call anderCallArgument().
+        (WebCore::WHLSL::getterCall): Ditto.
+        (WebCore::WHLSL::modify): We used to have special-case code for handling pointer-to-argument
+        values as distinct from just the argument values themselves. However, emitting
+        chains of &* operators is valid and won't even make it through the Metal code generator
+        after https://bugs.webkit.org/show_bug.cgi?id=198600 is fixed. So, in order to simplify
+        wrapAnderCallArgument(), don't special case these values and just create &* chains instead.
+        (WebCore::WHLSL::PropertyResolver::simplifyRightValue):
+        (WebCore::WHLSL::LeftValueSimplifier::finishVisiting): Call anderCallArgument().
+        * Modules/webgpu/WHLSL/WHLSLSemanticMatcher.cpp: Update to support the new compiler API.
+        (WebCore::WHLSL::matchMode):
+        (WebCore::WHLSL::matchResources):
+        * Modules/webgpu/WebGPUBindGroupDescriptor.cpp: Ditto.
+        (WebCore::WebGPUBindGroupDescriptor::tryCreateGPUBindGroupDescriptor const):
+        * platform/graphics/gpu/GPUBindGroupLayout.h: Add some internal implementation data inside
+        the bindings object. Use a Variant to differentiate between the various bindings types, and
+        put the extra length field on just those members of the variant that represent buffers.
+        * platform/graphics/gpu/cocoa/GPUBindGroupLayoutMetal.mm: Update to support the new compiler API.
+        (WebCore::argumentDescriptor):
+        (WebCore::GPUBindGroupLayout::tryCreate):
+        * platform/graphics/gpu/cocoa/GPUBindGroupMetal.mm: Ditto.
+        (WebCore::setBufferOnEncoder):
+        (WebCore::GPUBindGroup::tryCreate):
+        * platform/graphics/gpu/cocoa/GPURenderPipelineMetal.mm: Ditto.
+        (WebCore::convertBindingType):
+        (WebCore::convertLayout):
+
+2019-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [cairo][SVG] If clipPath has multiple elements, clip-path doesn't work with transform
+        https://bugs.webkit.org/show_bug.cgi?id=198746
+
+        Reviewed by Don Olmstead.
+
+        We need to save the current transformation matrix at the moment the image mask is set and set it again on
+        restore right before applying the mask. This patch also creates a pattern for the image mask surface and set its
+        transformation matrix according to the mask position, so that we don't need to save the mask rectangle too.
+
+        Tests: svg/clip-path/clip-hidpi-expected.svg
+               svg/clip-path/clip-hidpi.svg
+               svg/clip-path/clip-opacity-translate-expected.svg
+               svg/clip-path/clip-opacity-translate.svg
+
+        * platform/graphics/cairo/PlatformContextCairo.cpp:
+        (WebCore::PlatformContextCairo::restore):
+        (WebCore::PlatformContextCairo::pushImageMask):
+
+2019-06-12  Simon Fraser  <simon.fraser@apple.com>
+
+        paddingBoxRect() is wrong with RTL scrollbars on the left
+        https://bugs.webkit.org/show_bug.cgi?id=198816
+
+        Reviewed by Jon Lee.
+
+        RenderBox::paddingBoxRect() needs to offset the left side of the box for the
+        vertical scrollbar, if it's placed on the left.
+
+        Test: compositing/geometry/rtl-overflow-scroll.html
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::paddingBoxRect const):
+        * rendering/RenderBox.h:
+        (WebCore::RenderBox::paddingBoxRect const): Deleted.
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateGeometry):
+        * rendering/RenderListBox.cpp:
+        (WebCore::RenderListBox::controlClipRect const):
+
+2019-06-12  Youenn Fablet  <youenn@apple.com>
+
+        Use NSURLSession for WebSocket
+        https://bugs.webkit.org/show_bug.cgi?id=198568
+
+        Reviewed by Geoffrey Garen.
+
+        Add a runtime flag to either choose the new WebSocket code path or the previously existing one.
+        The switch is done at WebSocket channel API level which offers the necessary high level API to abstract the two code paths.
+        By default, we continue using the current WebSocket implementation.
+        Covered by manual testing on current WebSocket tests.
+
+        * Modules/websockets/ThreadableWebSocketChannel.cpp:
+        (WebCore::ThreadableWebSocketChannel::create):
+        * Modules/websockets/WebSocketChannel.cpp:
+        (WebCore::WebSocketChannel::document):
+        * Modules/websockets/WebSocketChannel.h:
+        * WebCore.xcodeproj/project.pbxproj:
+        * page/RuntimeEnabledFeatures.h:
+        (WebCore::RuntimeEnabledFeatures::isNSURLSessionWebSocketEnabled const):
+        (WebCore::RuntimeEnabledFeatures::setIsNSURLSessionWebSocketEnabled):
+        * page/SocketProvider.cpp:
+        (WebCore::SocketProvider::createWebSocketChannel):
+        * page/SocketProvider.h:
+
+2019-06-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Educate the property resolver about IndexExpressions
+        https://bugs.webkit.org/show_bug.cgi?id=198399
+
+        Reviewed by Saam Barati.
+
+        This is part one of two patches which will allow buffers to work. This patch
+        adds support in the property resolver for index expressions. Index expressions
+        get turned into calls to "getter indexers", "setter indexers", or "ander
+        indexers". They work almost identically to dot expressions, except there is an
+        extra "index" expression which gets turned into an extra argument to those
+        functions.
+
+        There's actually a bit of a trick here. Let's say we need to run a getter and
+        a setter separately (e.g. "foo[3]++;"). The index expression can't be duplicated
+        for both the getter and the setter (e.g. the functions are
+        int operator[](Foo, uint) and Foo operator[]=(Foo, uint, int), and we aren't
+        allowed to execute the index expression multiple times. Consider if that "3"
+        in the example is actually "bar()" with some side effect. So, we have to run
+        the index expression once at the correct time, and save its result to a temporary
+        variable, and then pass in the temporary variable into the getter and setter.
+
+        So, if the code says "foo[bar()][baz()] = quux();" the following sequence of
+        functions get run:
+
+        - bar()
+        - operator[](Foo, uint)
+        - baz()
+        - quux()
+        - operator[]=(OtherType, uint, OtherOtherType)
+        - operator[]=(Foo, uint, OtherType)
+
+        The next patch will modify the WebGPU JavaScript implementation to send buffer
+        lengths to the shader, and for the shader compiler to correctly unpack this
+        information and place it inside the array references. That should be everything
+        that's needed to get buffers to work. After that, hooking up compute should be
+        fairly trivial.
+
+        Tests: webgpu/propertyresolver/ander-abstract-lvalue.html
+               webgpu/propertyresolver/ander-lvalue-3-levels.html
+               webgpu/propertyresolver/ander-lvalue.html
+               webgpu/propertyresolver/ander.html
+               webgpu/propertyresolver/getter.html
+               webgpu/propertyresolver/indexer-ander-abstract-lvalue.html
+               webgpu/propertyresolver/indexer-ander-lvalue-3-levels.html
+               webgpu/propertyresolver/indexer-ander-lvalue.html
+               webgpu/propertyresolver/indexer-ander.html
+               webgpu/propertyresolver/indexer-getter.html
+               webgpu/propertyresolver/indexer-setter-abstract-lvalue-3-levels.html
+               webgpu/propertyresolver/indexer-setter-abstract-lvalue.html
+               webgpu/propertyresolver/indexer-setter-lvalue.html
+               webgpu/propertyresolver/indexer-setter.html
+               webgpu/propertyresolver/setter-abstract-lvalue-3-levels.html
+               webgpu/propertyresolver/setter-abstract-lvalue.html
+               webgpu/propertyresolver/setter-lvalue.html
+
+        * Modules/webgpu/WHLSL/AST/WHLSLAddressSpace.h:
+        (WebCore::WHLSL::AST::toString):
+        * Modules/webgpu/WHLSL/AST/WHLSLEntryPointType.h:
+        (WebCore::WHLSL::AST::toString):
+        * Modules/webgpu/WHLSL/AST/WHLSLIndexExpression.h:
+        (WebCore::WHLSL::AST::IndexExpression::takeIndex):
+        * Modules/webgpu/WHLSL/AST/WHLSLReferenceType.h:
+        * Modules/webgpu/WHLSL/Metal/WHLSLNativeFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::writeNativeFunction):
+        (WebCore::WHLSL::Metal::convertAddressSpace): Deleted.
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::checkOperatorOverload):
+        (WebCore::WHLSL::Checker::finishVisiting):
+        (WebCore::WHLSL::Checker::visit):
+        * Modules/webgpu/WHLSL/WHLSLInferTypes.h:
+        * Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp:
+        (WebCore::WHLSL::PropertyResolver::visit):
+        (WebCore::WHLSL::setterCall):
+        (WebCore::WHLSL::getterCall):
+        (WebCore::WHLSL::modify):
+        (WebCore::WHLSL::PropertyResolver::simplifyRightValue):
+        (WebCore::WHLSL::LeftValueSimplifier::finishVisiting):
+        (WebCore::WHLSL::LeftValueSimplifier::visit):
+        * Modules/webgpu/WHLSL/WHLSLStandardLibrary.txt:
+        * Modules/webgpu/WHLSL/WHLSLSynthesizeStructureAccessors.cpp:
+        (WebCore::WHLSL::synthesizeStructureAccessors):
+
+2019-06-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: artificial context menus don't work when Web Inspector is zoomed
+        https://bugs.webkit.org/show_bug.cgi?id=198801
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/InspectorFrontendHost.cpp:
+        (WebCore::InspectorFrontendHost::dispatchEventAsContextMenuEvent):
+        Use the `absoluteLocation` of the `MouseEvent`, which takes into account zoom and scale.
+
+2019-06-12  Sam Weinig  <weinig@apple.com>
+
+        Remove dead code in user agent construction
+        https://bugs.webkit.org/show_bug.cgi?id=198802
+
+        Reviewed by Anders Carlsson.
+
+        * page/NavigatorBase.cpp:
+        (WebCore::NavigatorBase::platform const):
+        Drop dead architures.
+
+2019-06-12  Ludovico de Nittis  <ludovico.denittis@collabora.com>
+
+        [GTK] GTK_STOCK_* types have been deprecated since GTK 3.10
+        https://bugs.webkit.org/show_bug.cgi?id=198787
+
+        Reviewed by Michael Catanzaro.
+
+        No behaviour changes.
+
+        * platform/graphics/gtk/IconGtk.cpp:
+        (WebCore::lookupIconName):
+        * platform/graphics/gtk/ImageGtk.cpp:
+        (WebCore::loadMissingImageIconFromTheme):
+
+2019-06-12  Antti Koivisto  <antti@apple.com>
+
+        (Async scrolling) Handle 'position:fixed' inside 'position:sticky' correctly.
+        https://bugs.webkit.org/show_bug.cgi?id=198788
+        <rdar://problem/51589759>
+
+        Reviewed by Simon Fraser.
+
+        Handle 'position:fixed' inside 'position:sticky' correctly.
+
+        Also fix nested 'position:fixed' in case where there is an overflow scroller between them.
+
+        Tests: scrollingcoordinator/ios/fixed-inside-overflow-inside-fixed.html
+               scrollingcoordinator/ios/fixed-inside-sticky-frame.html
+               scrollingcoordinator/ios/fixed-inside-sticky-no-stacking-context-2.html
+               scrollingcoordinator/ios/fixed-inside-sticky-no-stacking-context.html
+               scrollingcoordinator/ios/fixed-inside-sticky-stacking-context.html
+
+        * page/scrolling/cocoa/ScrollingTreeFixedNode.mm:
+        (WebCore::ScrollingTreeFixedNode::applyLayerPositions):
+
+        Take offsets from sticky nodes into account.
+
+        * page/scrolling/cocoa/ScrollingTreeStickyNode.h:
+        (WebCore::ScrollingTreeStickyNode::layer):
+        * page/scrolling/cocoa/ScrollingTreeStickyNode.mm:
+        (WebCore::ScrollingTreeStickyNode::computeLayerPosition const):
+
+        Factor into a function.
+
+        (WebCore::ScrollingTreeStickyNode::applyLayerPositions):
+        (WebCore::ScrollingTreeStickyNode::scrollDeltaSinceLastCommit const):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::isViewportConstrainedFixedOrStickyLayer const):
+
+        We need to generate a scrolling tree node for position:fixed in nested case if there is an overflow scroller
+        between the layers.
+
 2019-06-12  Truitt Savell  <tsavell@apple.com>
 
         Unreviewed, rolling out r246350.
@@ -7,16 +2685,15 @@
 
         Reverted changeset:
 
-        "[cairo][SVG] Putting multiple path elements in clippath
-        causes rendering artifacts"
-        https://bugs.webkit.org/show_bug.cgi?id=198701
+        "[cairo][SVG] If clipPath has multiple elements, clip-path doesn't work with transform"
+        https://bugs.webkit.org/show_bug.cgi?id=198746
         https://trac.webkit.org/changeset/246350
 
 2019-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
 
-        [cairo][SVG] Putting multiple path elements in clippath causes rendering artifacts
-        https://bugs.webkit.org/show_bug.cgi?id=198701
-        <rdar://problem/51620347>
+        [cairo][SVG] If clipPath has multiple elements, clip-path doesn't work with transform
+        https://bugs.webkit.org/show_bug.cgi?id=198746
+        <rdar://problem/51665805>
 
         Reviewed by Don Olmstead.
 

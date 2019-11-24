@@ -22,12 +22,12 @@ import Builder from '../Builder.js';
             .Function("set_tbl", { params: ["anyref"], ret: "void" })
               .I32Const(0)
               .GetLocal(0)
-              .TableSet()
+              .TableSet(0)
             .End()
 
             .Function("get_tbl", { params: [], ret: "anyref" })
               .I32Const(0)
-              .TableGet()
+              .TableGet(0)
             .End()
 
             .Function("tbl_is_null", { params: [], ret: "i32" })
@@ -88,12 +88,12 @@ import Builder from '../Builder.js';
             .Function("set_tbl", { params: ["anyref"], ret: "void" })
               .I32Const(0)
               .GetLocal(0)
-              .TableSet()
+              .TableSet(0)
             .End()
 
             .Function("get_tbl", { params: [], ret: "anyref" })
               .I32Const(0)
-              .TableGet()
+              .TableGet(0)
             .End()
 
             .Function("tbl_is_null", { params: [], ret: "i32" })
@@ -127,12 +127,12 @@ import Builder from '../Builder.js';
             .Function("set_tbl", { params: ["anyref"], ret: "void" })
               .I32Const(0)
               .GetLocal(0)
-              .TableSet()
+              .TableSet(0)
             .End()
 
             .Function("get_tbl", { params: [], ret: "anyref" })
               .I32Const(0)
-              .TableGet()
+              .TableGet(0)
             .End()
 
             .Function("tbl_is_null", { params: [], ret: "i32" })
@@ -210,7 +210,24 @@ import Builder from '../Builder.js';
 }
 
 {
-    const tbl = new WebAssembly.Table({initial:2, element:"anyfunc"});
+    const tbl = new WebAssembly.Table({initial:2, element:"funcref"});
+
+    const mod = new WebAssembly.Module((new Builder())
+      .Type().End()
+      .Import()
+            .Table("imp", "tbl", {initial: 2, element: "anyref"})
+      .End()
+      .Function().End()
+      .Export()
+      .End()
+      .Code()
+      .End().WebAssembly().get())
+
+    assert.throws(() => new WebAssembly.Instance(mod, { imp: { tbl }}), Error, "Table import imp:tbl provided a 'type' that is wrong (evaluating 'new WebAssembly.Instance(mod, { imp: { tbl }})')");
+}
+
+{
+    const tbl = new WebAssembly.Table({initial:2, element:"funcref"});
 
     const mod = new WebAssembly.Module((new Builder())
       .Type().End()

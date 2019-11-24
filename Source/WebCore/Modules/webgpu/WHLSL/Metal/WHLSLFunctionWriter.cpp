@@ -88,7 +88,17 @@ public:
         , m_functionMapping(functionMapping)
         , m_layout(layout)
     {
+        m_stringBuilder.append(makeString(
+            "template <typename T>\n"
+            "inline void ", memsetZeroFunctionName, "(thread T& value)\n"
+            "{\n"
+            "    thread char* ptr = static_cast<thread char*>(static_cast<thread void*>(&value));\n"
+            "    for (size_t i = 0; i < sizeof(T); ++i)\n"
+            "        ptr[i] = 0;\n"
+            "}\n"));
     }
+
+    static constexpr const char* memsetZeroFunctionName = "memsetZero";
 
     virtual ~FunctionDefinitionWriter() = default;
 
@@ -153,12 +163,48 @@ protected:
         return makeString("variable", m_variableCount++);
     }
 
+    struct StackItem {
+        String value;
+        String leftValue;
+    };
+
+    void appendRightValue(AST::Expression&, String value)
+    {
+        m_stack.append({ WTFMove(value), String() });
+    }
+
+    void appendLeftValue(AST::Expression& expression, String value, String leftValue)
+    {
+        ASSERT_UNUSED(expression, expression.typeAnnotation().leftAddressSpace());
+        m_stack.append({ WTFMove(value), WTFMove(leftValue) });
+    }
+
+    String takeLastValue()
+    {
+        ASSERT(m_stack.last().value);
+        return m_stack.takeLast().value;
+    }
+
+    String takeLastLeftValue()
+    {
+        ASSERT(m_stack.last().leftValue);
+        return m_stack.takeLast().leftValue;
+    }
+
+    enum class BreakContext {
+        Loop,
+        Switch
+    };
+
+    Optional<BreakContext> m_currentBreakContext;
+
     Intrinsics& m_intrinsics;
     TypeNamer& m_typeNamer;
     HashMap<AST::FunctionDeclaration*, String>& m_functionMapping;
     HashMap<AST::VariableDeclaration*, String> m_variableMapping;
     StringBuilder m_stringBuilder;
-    Vector<String> m_stack;
+
+    Vector<StackItem> m_stack;
     std::unique_ptr<EntryPointScaffolding> m_entryPointScaffolding;
     Layout& m_layout;
     unsigned m_variableCount { 0 };
@@ -169,7 +215,7 @@ void FunctionDefinitionWriter::visit(AST::NativeFunctionDeclaration& nativeFunct
 {
     auto iterator = m_functionMapping.find(&nativeFunctionDeclaration);
     ASSERT(iterator != m_functionMapping.end());
-    m_stringBuilder.append(writeNativeFunction(nativeFunctionDeclaration, iterator->value, m_intrinsics, m_typeNamer));
+    m_stringBuilder.append(writeNativeFunction(nativeFunctionDeclaration, iterator->value, m_intrinsics, m_typeNamer, memsetZeroFunctionName));
 }
 
 void FunctionDefinitionWriter::visit(AST::FunctionDefinition& functionDefinition)
@@ -232,9 +278,17 @@ void FunctionDefinitionWriter::visit(AST::Block& block)
 
 void FunctionDefinitionWriter::visit(AST::Break&)
 {
-    ASSERT(m_breakOutOfCurrentLoopEarlyVariable.length());
-    m_stringBuilder.append(makeString(m_breakOutOfCurrentLoopEarlyVariable, " = true;\n"));
-    m_stringBuilder.append("break;\n");
+    ASSERT(m_currentBreakContext);
+    switch (*m_currentBreakContext) {
+    case BreakContext::Switch:
+        m_stringBuilder.append("break;\n");
+        break;
+    case BreakContext::Loop:
+        ASSERT(m_breakOutOfCurrentLoopEarlyVariable.length());
+        m_stringBuilder.append(makeString(m_breakOutOfCurrentLoopEarlyVariable, " = true;\n"));
+        m_stringBuilder.append("break;\n");
+        break;
+    }
 }
 
 void FunctionDefinitionWriter::visit(AST::Continue&)
@@ -246,7 +300,7 @@ void FunctionDefinitionWriter::visit(AST::Continue&)
 void FunctionDefinitionWriter::visit(AST::EffectfulExpressionStatement& effectfulExpressionStatement)
 {
     checkErrorAndVisit(effectfulExpressionStatement.effectfulExpression());
-    m_stack.takeLast(); // The statement is already effectful, so we don't need to do anything with the result.
+    takeLastValue(); // The statement is already effectful, so we don't need to do anything with the result.
 }
 
 void FunctionDefinitionWriter::visit(AST::Fallthrough&)
@@ -264,10 +318,11 @@ void FunctionDefinitionWriter::emitLoop(LoopConditionLocation loopConditionLocat
 
     if (loopConditionLocation == LoopConditionLocation::BeforeBody && conditionExpression) {
         checkErrorAndVisit(*conditionExpression);
-        m_stringBuilder.append(makeString("if (!", m_stack.takeLast(), ") break;\n"));
+        m_stringBuilder.append(makeString("if (!", takeLastValue(), ") break;\n"));
     }
 
     m_stringBuilder.append("do {\n");
+    SetForScope<Optional<BreakContext>> breakContext(m_currentBreakContext, BreakContext::Loop);
     checkErrorAndVisit(body);
     m_stringBuilder.append("} while(false); \n");
     m_stringBuilder.append(makeString("if (", m_breakOutOfCurrentLoopEarlyVariable, ") break;\n"));
@@ -276,12 +331,12 @@ void FunctionDefinitionWriter::emitLoop(LoopConditionLocation loopConditionLocat
         checkErrorAndVisit(*increment);
         // Expression results get pushed to m_stack. We don't use the result
         // of increment, so we dispense of that now.
-        m_stack.takeLast();
+        takeLastValue();
     }
 
     if (loopConditionLocation == LoopConditionLocation::AfterBody && conditionExpression) {
         checkErrorAndVisit(*conditionExpression);
-        m_stringBuilder.append(makeString("if (!", m_stack.takeLast(), ") break;\n"));
+        m_stringBuilder.append(makeString("if (!", takeLastValue(), ") break;\n"));
     }
 
     m_stringBuilder.append("} \n");
@@ -305,7 +360,7 @@ void FunctionDefinitionWriter::visit(AST::ForLoop& forLoop)
         checkErrorAndVisit(statement);
     }, [&](UniqueRef<AST::Expression>& expression) {
         checkErrorAndVisit(expression);
-        m_stack.takeLast(); // We don't need to do anything with the result.
+        takeLastValue(); // We don't need to do anything with the result.
     }), forLoop.initialization());
 
     emitLoop(LoopConditionLocation::BeforeBody, forLoop.condition(), forLoop.increment(), forLoop.body());
@@ -315,7 +370,7 @@ void FunctionDefinitionWriter::visit(AST::ForLoop& forLoop)
 void FunctionDefinitionWriter::visit(AST::IfStatement& ifStatement)
 {
     checkErrorAndVisit(ifStatement.conditional());
-    m_stringBuilder.append(makeString("if (", m_stack.takeLast(), ") {\n"));
+    m_stringBuilder.append(makeString("if (", takeLastValue(), ") {\n"));
     checkErrorAndVisit(ifStatement.body());
     if (ifStatement.elseBody()) {
         m_stringBuilder.append("} else {\n");
@@ -330,10 +385,10 @@ void FunctionDefinitionWriter::visit(AST::Return& returnStatement)
         checkErrorAndVisit(*returnStatement.value());
         if (m_entryPointScaffolding) {
             auto variableName = generateNextVariableName();
-            m_stringBuilder.append(m_entryPointScaffolding->pack(m_stack.takeLast(), variableName));
+            m_stringBuilder.append(m_entryPointScaffolding->pack(takeLastValue(), variableName));
             m_stringBuilder.append(makeString("return ", variableName, ";\n"));
         } else
-            m_stringBuilder.append(makeString("return ", m_stack.takeLast(), ";\n"));
+            m_stringBuilder.append(makeString("return ", takeLastValue(), ";\n"));
     } else
         m_stringBuilder.append("return;\n");
 }
@@ -342,7 +397,7 @@ void FunctionDefinitionWriter::visit(AST::SwitchStatement& switchStatement)
 {
     checkErrorAndVisit(switchStatement.value());
 
-    m_stringBuilder.append(makeString("switch (", m_stack.takeLast(), ") {"));
+    m_stringBuilder.append(makeString("switch (", takeLastValue(), ") {"));
     for (auto& switchCase : switchStatement.switchCases())
         checkErrorAndVisit(switchCase);
     m_stringBuilder.append("}\n");
@@ -354,9 +409,9 @@ void FunctionDefinitionWriter::visit(AST::SwitchCase& switchCase)
         m_stringBuilder.append(makeString("case ", constantExpressionString(*switchCase.value()), ":\n"));
     else
         m_stringBuilder.append("default:\n");
+    SetForScope<Optional<BreakContext>> breakContext(m_currentBreakContext, BreakContext::Switch);
     checkErrorAndVisit(switchCase.block());
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=195812 Figure out whether we need to break or fallthrough.
-    notImplemented();
 }
 
 void FunctionDefinitionWriter::visit(AST::Trap&)
@@ -375,7 +430,7 @@ void FunctionDefinitionWriter::visit(AST::IntegerLiteral& integerLiteral)
     auto variableName = generateNextVariableName();
     auto mangledTypeName = m_typeNamer.mangledNameForType(integerLiteral.resolvedType());
     m_stringBuilder.append(makeString(mangledTypeName, ' ', variableName, " = static_cast<", mangledTypeName, ">(", integerLiteral.value(), ");\n"));
-    m_stack.append(variableName);
+    appendRightValue(integerLiteral, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::UnsignedIntegerLiteral& unsignedIntegerLiteral)
@@ -383,7 +438,7 @@ void FunctionDefinitionWriter::visit(AST::UnsignedIntegerLiteral& unsignedIntege
     auto variableName = generateNextVariableName();
     auto mangledTypeName = m_typeNamer.mangledNameForType(unsignedIntegerLiteral.resolvedType());
     m_stringBuilder.append(makeString(mangledTypeName, ' ', variableName, " = static_cast<", mangledTypeName, ">(", unsignedIntegerLiteral.value(), ");\n"));
-    m_stack.append(variableName);
+    appendRightValue(unsignedIntegerLiteral, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::FloatLiteral& floatLiteral)
@@ -391,13 +446,12 @@ void FunctionDefinitionWriter::visit(AST::FloatLiteral& floatLiteral)
     auto variableName = generateNextVariableName();
     auto mangledTypeName = m_typeNamer.mangledNameForType(floatLiteral.resolvedType());
     m_stringBuilder.append(makeString(mangledTypeName, ' ', variableName, " = static_cast<", mangledTypeName, ">(", floatLiteral.value(), ");\n"));
-    m_stack.append(variableName);
+    appendRightValue(floatLiteral, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::NullLiteral& nullLiteral)
 {
     auto& unifyNode = nullLiteral.resolvedType().unifyNode();
-    ASSERT(is<AST::UnnamedType>(unifyNode));
     auto& unnamedType = downcast<AST::UnnamedType>(unifyNode);
     bool isArrayReferenceType = is<AST::ArrayReferenceType>(unnamedType);
 
@@ -408,7 +462,7 @@ void FunctionDefinitionWriter::visit(AST::NullLiteral& nullLiteral)
     else
         m_stringBuilder.append("nullptr");
     m_stringBuilder.append(";\n");
-    m_stack.append(variableName);
+    appendRightValue(nullLiteral, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::BooleanLiteral& booleanLiteral)
@@ -416,7 +470,7 @@ void FunctionDefinitionWriter::visit(AST::BooleanLiteral& booleanLiteral)
     auto variableName = generateNextVariableName();
     auto mangledTypeName = m_typeNamer.mangledNameForType(booleanLiteral.resolvedType());
     m_stringBuilder.append(makeString(mangledTypeName, ' ', variableName, " = static_cast<", mangledTypeName, ">(", booleanLiteral.value() ? "true" : "false", ");\n"));
-    m_stack.append(variableName);
+    appendRightValue(booleanLiteral, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::EnumerationMemberLiteral& enumerationMemberLiteral)
@@ -426,7 +480,7 @@ void FunctionDefinitionWriter::visit(AST::EnumerationMemberLiteral& enumerationM
     auto variableName = generateNextVariableName();
     auto mangledTypeName = m_typeNamer.mangledNameForType(enumerationMemberLiteral.resolvedType());
     m_stringBuilder.append(makeString(mangledTypeName, ' ', variableName, " = ", mangledTypeName, '.', m_typeNamer.mangledNameForEnumerationMember(*enumerationMemberLiteral.enumerationMember()), ";\n"));
-    m_stack.append(variableName);
+    appendRightValue(enumerationMemberLiteral, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::Expression& expression)
@@ -434,37 +488,39 @@ void FunctionDefinitionWriter::visit(AST::Expression& expression)
     Visitor::visit(expression);
 }
 
-void FunctionDefinitionWriter::visit(AST::DotExpression&)
+void FunctionDefinitionWriter::visit(AST::DotExpression& dotExpression)
 {
     // This should be lowered already.
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=195788 Replace this with ASSERT_NOT_REACHED().
     notImplemented();
-    m_stack.append("dummy");
+    appendRightValue(dotExpression, "dummy");
 }
 
 void FunctionDefinitionWriter::visit(AST::GlobalVariableReference& globalVariableReference)
 {
-    auto variableName = generateNextVariableName();
+    auto valueName = generateNextVariableName();
+    auto pointerName = generateNextVariableName();
     auto mangledTypeName = m_typeNamer.mangledNameForType(globalVariableReference.resolvedType());
     checkErrorAndVisit(globalVariableReference.base());
-    m_stringBuilder.append(makeString("thread ", mangledTypeName, "& ", variableName, " = ", m_stack.takeLast(), "->", m_typeNamer.mangledNameForStructureElement(globalVariableReference.structField()), ";\n"));
-    m_stack.append(variableName);
+    m_stringBuilder.append(makeString("thread ", mangledTypeName, "* ", pointerName, " = &", takeLastValue(), "->", m_typeNamer.mangledNameForStructureElement(globalVariableReference.structField()), ";\n"));
+    m_stringBuilder.append(makeString(mangledTypeName, ' ', valueName, " = ", "*", pointerName, ";\n"));
+    appendLeftValue(globalVariableReference, valueName, pointerName);
 }
 
-void FunctionDefinitionWriter::visit(AST::IndexExpression&)
+void FunctionDefinitionWriter::visit(AST::IndexExpression& indexExpression)
 {
     // This should be lowered already.
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=195788 Replace this with ASSERT_NOT_REACHED().
     notImplemented();
-    m_stack.append("dummy");
+    appendRightValue(indexExpression, "dummy");
 }
 
-void FunctionDefinitionWriter::visit(AST::PropertyAccessExpression&)
+void FunctionDefinitionWriter::visit(AST::PropertyAccessExpression& propertyAccessExpression)
 {
     // This should be lowered already.
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=195788 Replace this with ASSERT_NOT_REACHED().
     notImplemented();
-    m_stack.append("dummy");
+    appendRightValue(propertyAccessExpression, "dummy");
 }
 
 void FunctionDefinitionWriter::visit(AST::VariableDeclaration& variableDeclaration)
@@ -476,7 +532,7 @@ void FunctionDefinitionWriter::visit(AST::VariableDeclaration& variableDeclarati
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=198160 Implement qualifiers.
     if (variableDeclaration.initializer()) {
         checkErrorAndVisit(*variableDeclaration.initializer());
-        m_stringBuilder.append(makeString(m_typeNamer.mangledNameForType(*variableDeclaration.type()), ' ', variableName, " = ", m_stack.takeLast(), ";\n"));
+        m_stringBuilder.append(makeString(m_typeNamer.mangledNameForType(*variableDeclaration.type()), ' ', variableName, " = ", takeLastValue(), ";\n"));
     } else
         m_stringBuilder.append(makeString(m_typeNamer.mangledNameForType(*variableDeclaration.type()), ' ', variableName, ";\n"));
 }
@@ -484,11 +540,11 @@ void FunctionDefinitionWriter::visit(AST::VariableDeclaration& variableDeclarati
 void FunctionDefinitionWriter::visit(AST::AssignmentExpression& assignmentExpression)
 {
     checkErrorAndVisit(assignmentExpression.left());
-    auto leftName = m_stack.takeLast();
+    auto pointerName = takeLastLeftValue();
     checkErrorAndVisit(assignmentExpression.right());
-    auto rightName = m_stack.takeLast();
-    m_stringBuilder.append(makeString(leftName, " = ", rightName, ";\n"));
-    m_stack.append(rightName);
+    auto rightName = takeLastValue();
+    m_stringBuilder.append(makeString("if (", pointerName, ") *", pointerName, " = ", rightName, ";\n"));
+    appendRightValue(assignmentExpression, rightName);
 }
 
 void FunctionDefinitionWriter::visit(AST::CallExpression& callExpression)
@@ -496,7 +552,7 @@ void FunctionDefinitionWriter::visit(AST::CallExpression& callExpression)
     Vector<String> argumentNames;
     for (auto& argument : callExpression.arguments()) {
         checkErrorAndVisit(argument);
-        argumentNames.append(m_stack.takeLast());
+        argumentNames.append(takeLastValue());
     }
     ASSERT(callExpression.function());
     auto iterator = m_functionMapping.find(callExpression.function());
@@ -509,7 +565,7 @@ void FunctionDefinitionWriter::visit(AST::CallExpression& callExpression)
         m_stringBuilder.append(argumentNames[i]);
     }
     m_stringBuilder.append(");\n");
-    m_stack.append(variableName);
+    appendRightValue(callExpression, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::CommaExpression& commaExpression)
@@ -517,26 +573,30 @@ void FunctionDefinitionWriter::visit(AST::CommaExpression& commaExpression)
     String result;
     for (auto& expression : commaExpression.list()) {
         checkErrorAndVisit(expression);
-        result = m_stack.takeLast();
+        result = takeLastValue();
     }
-    m_stack.append(result);
+    appendRightValue(commaExpression, result);
 }
 
 void FunctionDefinitionWriter::visit(AST::DereferenceExpression& dereferenceExpression)
 {
     checkErrorAndVisit(dereferenceExpression.pointer());
-    auto right = m_stack.takeLast();
+    auto right = takeLastValue();
     auto variableName = generateNextVariableName();
-    m_stringBuilder.append(makeString(AST::toString(*dereferenceExpression.typeAnnotation().leftAddressSpace()), ' ', m_typeNamer.mangledNameForType(dereferenceExpression.resolvedType()), "& ", variableName, " = *", right, ";\n"));
-    m_stack.append(variableName);
+    auto pointerName = generateNextVariableName();
+    m_stringBuilder.append(makeString(m_typeNamer.mangledNameForType(dereferenceExpression.pointer().resolvedType()), ' ', pointerName, " = ", right, ";\n"));
+    m_stringBuilder.append(makeString(m_typeNamer.mangledNameForType(dereferenceExpression.resolvedType()), ' ', variableName, ";\n"));
+    m_stringBuilder.append(makeString("if (", pointerName, ") ", variableName, " = *", right, ";\n"));
+    m_stringBuilder.append(makeString("else ", memsetZeroFunctionName, '(', variableName, ");\n"));
+    appendLeftValue(dereferenceExpression, variableName, pointerName);
 }
 
 void FunctionDefinitionWriter::visit(AST::LogicalExpression& logicalExpression)
 {
     checkErrorAndVisit(logicalExpression.left());
-    auto left = m_stack.takeLast();
+    auto left = takeLastValue();
     checkErrorAndVisit(logicalExpression.right());
-    auto right = m_stack.takeLast();
+    auto right = takeLastValue();
     auto variableName = generateNextVariableName();
     m_stringBuilder.append(makeString(m_typeNamer.mangledNameForType(logicalExpression.resolvedType()), ' ', variableName, " = ", left));
     switch (logicalExpression.type()) {
@@ -549,22 +609,24 @@ void FunctionDefinitionWriter::visit(AST::LogicalExpression& logicalExpression)
         break;
     }
     m_stringBuilder.append(makeString(right, ";\n"));
-    m_stack.append(variableName);
+    appendRightValue(logicalExpression, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::LogicalNotExpression& logicalNotExpression)
 {
     checkErrorAndVisit(logicalNotExpression.operand());
-    auto operand = m_stack.takeLast();
+    auto operand = takeLastValue();
     auto variableName = generateNextVariableName();
     m_stringBuilder.append(makeString(m_typeNamer.mangledNameForType(logicalNotExpression.resolvedType()), ' ', variableName, " = !", operand, ";\n"));
-    m_stack.append(variableName);
+    appendRightValue(logicalNotExpression, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::MakeArrayReferenceExpression& makeArrayReferenceExpression)
 {
     checkErrorAndVisit(makeArrayReferenceExpression.leftValue());
-    auto lValue = m_stack.takeLast();
+    // FIXME: This needs to be made to work. It probably should be using the last leftValue too.
+    // https://bugs.webkit.org/show_bug.cgi?id=198838
+    auto lValue = takeLastValue();
     auto variableName = generateNextVariableName();
     auto mangledTypeName = m_typeNamer.mangledNameForType(makeArrayReferenceExpression.resolvedType());
     if (is<AST::PointerType>(makeArrayReferenceExpression.resolvedType()))
@@ -574,16 +636,16 @@ void FunctionDefinitionWriter::visit(AST::MakeArrayReferenceExpression& makeArra
         m_stringBuilder.append(makeString(mangledTypeName, ' ', variableName, " = { &(", lValue, "[0]), ", arrayType.numElements(), " };\n"));
     } else
         m_stringBuilder.append(makeString(mangledTypeName, ' ', variableName, " = { &", lValue, ", 1 };\n"));
-    m_stack.append(variableName);
+    appendRightValue(makeArrayReferenceExpression, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::MakePointerExpression& makePointerExpression)
 {
     checkErrorAndVisit(makePointerExpression.leftValue());
-    auto lValue = m_stack.takeLast();
+    auto pointer = takeLastLeftValue();
     auto variableName = generateNextVariableName();
-    m_stringBuilder.append(makeString(m_typeNamer.mangledNameForType(makePointerExpression.resolvedType()), ' ', variableName, " = &", lValue, ";\n"));
-    m_stack.append(variableName);
+    m_stringBuilder.append(makeString(m_typeNamer.mangledNameForType(makePointerExpression.resolvedType()), ' ', variableName, " = ", pointer, ";\n"));
+    appendRightValue(makePointerExpression, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::ReadModifyWriteExpression&)
@@ -595,19 +657,19 @@ void FunctionDefinitionWriter::visit(AST::ReadModifyWriteExpression&)
 void FunctionDefinitionWriter::visit(AST::TernaryExpression& ternaryExpression)
 {
     checkErrorAndVisit(ternaryExpression.predicate());
-    auto check = m_stack.takeLast();
+    auto check = takeLastValue();
 
     auto variableName = generateNextVariableName();
     m_stringBuilder.append(makeString(m_typeNamer.mangledNameForType(ternaryExpression.resolvedType()), ' ', variableName, ";\n"));
 
     m_stringBuilder.append(makeString("if (", check, ") {\n"));
     checkErrorAndVisit(ternaryExpression.bodyExpression());
-    m_stringBuilder.append(makeString(variableName, " = ", m_stack.takeLast(), ";\n"));
+    m_stringBuilder.append(makeString(variableName, " = ", takeLastValue(), ";\n"));
     m_stringBuilder.append("} else {\n");
     checkErrorAndVisit(ternaryExpression.elseExpression());
-    m_stringBuilder.append(makeString(variableName, " = ", m_stack.takeLast(), ";\n"));
+    m_stringBuilder.append(makeString(variableName, " = ", takeLastValue(), ";\n"));
     m_stringBuilder.append("}\n");
-    m_stack.append(variableName);
+    appendRightValue(ternaryExpression, variableName);
 }
 
 void FunctionDefinitionWriter::visit(AST::VariableReference& variableReference)
@@ -615,28 +677,28 @@ void FunctionDefinitionWriter::visit(AST::VariableReference& variableReference)
     ASSERT(variableReference.variable());
     auto iterator = m_variableMapping.find(variableReference.variable());
     ASSERT(iterator != m_variableMapping.end());
-    m_stack.append(iterator->value);
+    auto pointerName = generateNextVariableName();
+    m_stringBuilder.append(makeString("thread ", m_typeNamer.mangledNameForType(variableReference.resolvedType()), "* ", pointerName, " = &", iterator->value, ";\n"));
+    appendLeftValue(variableReference, iterator->value, pointerName);
 }
 
 String FunctionDefinitionWriter::constantExpressionString(AST::ConstantExpression& constantExpression)
 {
-    String result;
-    constantExpression.visit(WTF::makeVisitor([&](AST::IntegerLiteral& integerLiteral) {
-        result = makeString("", integerLiteral.value());
-    }, [&](AST::UnsignedIntegerLiteral& unsignedIntegerLiteral) {
-        result = makeString("", unsignedIntegerLiteral.value());
-    }, [&](AST::FloatLiteral& floatLiteral) {
-        result = makeString("", floatLiteral.value());
-    }, [&](AST::NullLiteral&) {
-        result = "nullptr"_str;
-    }, [&](AST::BooleanLiteral& booleanLiteral) {
-        result = booleanLiteral.value() ? "true"_str : "false"_str;
-    }, [&](AST::EnumerationMemberLiteral& enumerationMemberLiteral) {
+    return constantExpression.visit(WTF::makeVisitor([&](AST::IntegerLiteral& integerLiteral) -> String {
+        return makeString("", integerLiteral.value());
+    }, [&](AST::UnsignedIntegerLiteral& unsignedIntegerLiteral) -> String {
+        return makeString("", unsignedIntegerLiteral.value());
+    }, [&](AST::FloatLiteral& floatLiteral) -> String {
+        return makeString("", floatLiteral.value());
+    }, [&](AST::NullLiteral&) -> String {
+        return "nullptr"_str;
+    }, [&](AST::BooleanLiteral& booleanLiteral) -> String {
+        return booleanLiteral.value() ? "true"_str : "false"_str;
+    }, [&](AST::EnumerationMemberLiteral& enumerationMemberLiteral) -> String {
         ASSERT(enumerationMemberLiteral.enumerationDefinition());
         ASSERT(enumerationMemberLiteral.enumerationDefinition());
-        result = makeString(m_typeNamer.mangledNameForType(*enumerationMemberLiteral.enumerationDefinition()), '.', m_typeNamer.mangledNameForEnumerationMember(*enumerationMemberLiteral.enumerationMember()));
+        return makeString(m_typeNamer.mangledNameForType(*enumerationMemberLiteral.enumerationDefinition()), '.', m_typeNamer.mangledNameForEnumerationMember(*enumerationMemberLiteral.enumerationMember()));
     }));
-    return result;
 }
 
 class RenderFunctionDefinitionWriter : public FunctionDefinitionWriter {

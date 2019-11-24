@@ -582,7 +582,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
 
     SandboxExtension::createHandleForReadWriteDirectory(parameters.defaultDataStoreParameters.networkSessionParameters.resourceLoadStatisticsDirectory, parameters.defaultDataStoreParameters.networkSessionParameters.resourceLoadStatisticsDirectoryExtensionHandle);
 
-    bool enableResourceLoadStatistics = false;
+    bool enableResourceLoadStatistics = m_shouldEnableITPForDefaultSessions;
     bool shouldIncludeLocalhost = true;
     bool enableResourceLoadStatisticsDebugMode = false;
     WebCore::RegistrableDomain manualPrevalentResource { };
@@ -1487,6 +1487,7 @@ void WebProcessPool::setShouldUseFontSmoothing(bool useFontSmoothing)
 
 void WebProcessPool::setResourceLoadStatisticsEnabled(bool enabled)
 {
+    m_shouldEnableITPForDefaultSessions = enabled;
     sendToAllProcesses(Messages::WebProcess::SetResourceLoadStatisticsEnabled(enabled));
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     sendToNetworkingProcess(Messages::NetworkProcess::SetResourceLoadStatisticsEnabled(enabled));
@@ -2531,8 +2532,12 @@ void WebProcessPool::didCommitCrossSiteLoadWithDataTransfer(PAL::SessionID sessi
 
 void WebProcessPool::setWebProcessHasUploads(ProcessIdentifier processID)
 {
+    ASSERT(processID);
     auto* process = WebProcessProxy::processForIdentifier(processID);
     ASSERT(process);
+
+    if (!process)
+        return;
 
     RELEASE_LOG(ProcessSuspension, "Web process pid %u now has uploads in progress", (unsigned)process->processIdentifier());
 
@@ -2553,8 +2558,10 @@ void WebProcessPool::setWebProcessHasUploads(ProcessIdentifier processID)
 
 void WebProcessPool::clearWebProcessHasUploads(ProcessIdentifier processID)
 {
+    ASSERT(processID);
     auto result = m_processesWithUploads.take(processID);
-    ASSERT_UNUSED(result, result);
+    if (!result)
+        return;
 
     auto* process = WebProcessProxy::processForIdentifier(processID);
     ASSERT_UNUSED(process, process);

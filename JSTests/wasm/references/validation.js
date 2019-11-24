@@ -24,6 +24,9 @@ import Builder from '../Builder.js';
 {
     const builder = (new Builder())
       .Type().End()
+      .Import()
+            .Table("imp", "tbl", {initial: 2, element: "funcref"})
+      .End()
       .Function().End()
       .Export()
           .Function("j")
@@ -32,21 +35,21 @@ import Builder from '../Builder.js';
         .Function("j", { params: [], ret: "void" })
             .I32Const(0)
             .I32Const(0)
-            .TableSet()
+            .TableSet(0)
         .End()
       .End();
 
     const bin = builder.WebAssembly();
     bin.trim();
 
-    assert.throws(() => new WebAssembly.Module(bin.get()), WebAssembly.CompileError, "WebAssembly.Module doesn't validate: table.set value to type I32 expected Anyref, in function at index 0 (evaluating 'new WebAssembly.Module(bin.get())')");
+    assert.throws(() => new WebAssembly.Module(bin.get()), WebAssembly.CompileError, "WebAssembly.Module doesn't validate: table.set value to type I32 expected Funcref, in function at index 0 (evaluating 'new WebAssembly.Module(bin.get())')");
 }
 
 {
     const builder = (new Builder())
       .Type().End()
       .Import()
-            .Table("imp", "tbl", {initial: 2, element: "anyfunc"})
+            .Table("imp", "tbl", {initial: 2, element: "funcref"})
       .End()
       .Function().End()
       .Export()
@@ -56,21 +59,21 @@ import Builder from '../Builder.js';
         .Function("j", { params: ["anyref"], ret: "void" })
             .I32Const(0)
             .GetLocal(0)
-            .TableSet()
+            .TableSet(0)
         .End()
       .End();
 
     const bin = builder.WebAssembly();
     bin.trim();
 
-    assert.throws(() => new WebAssembly.Module(bin.get()), WebAssembly.CompileError, "WebAssembly.Module doesn't validate: table.set expects the table to have type Anyref, in function at index 0 (evaluating 'new WebAssembly.Module(bin.get())')");
+    assert.throws(() => new WebAssembly.Module(bin.get()), WebAssembly.CompileError, "WebAssembly.Module doesn't validate: table.set value to type Anyref expected Funcref, in function at index 0 (evaluating 'new WebAssembly.Module(bin.get())')");
 }
 
 {
     const builder = (new Builder())
       .Type().End()
       .Import()
-            .Table("imp", "tbl", {initial: 2, element: "anyfunc"})
+            .Table("imp", "tbl", {initial: 2, element: "funcref"})
       .End()
       .Function().End()
       .Export()
@@ -79,16 +82,16 @@ import Builder from '../Builder.js';
       .Code()
         .Function("j", { params: [], ret: "anyref" })
             .I32Const(0)
-            .TableGet()
+            .TableGet(0)
         .End()
       .End();
 
     const bin = builder.WebAssembly();
     bin.trim();
 
-    assert.throws(() => new WebAssembly.Module(bin.get()), WebAssembly.CompileError, "WebAssembly.Module doesn't validate: table.get expects the table to have type Anyref, in function at index 0 (evaluating 'new WebAssembly.Module(bin.get())')");
+    assert.throws(() => new WebAssembly.Module(bin.get()), WebAssembly.CompileError, "WebAssembly.Module doesn't validate: control flow returns with unexpected type, in function at index 0 (evaluating 'new WebAssembly.Module(bin.get())')");
 }
 
 {
-    assert.throws(() => new WebAssembly.Table({initial:2, element:"i32"}), TypeError, "WebAssembly.Table expects its 'element' field to be the string 'anyfunc' or 'anyref'");
+    assert.throws(() => new WebAssembly.Table({initial:2, element:"i32"}), TypeError, "WebAssembly.Table expects its 'element' field to be the string 'funcref' or 'anyref'");
 }

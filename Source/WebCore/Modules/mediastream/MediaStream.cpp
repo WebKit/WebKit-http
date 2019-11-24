@@ -48,24 +48,24 @@ namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(MediaStream);
 
-Ref<MediaStream> MediaStream::create(ScriptExecutionContext& context)
+Ref<MediaStream> MediaStream::create(Document& document)
 {
-    return MediaStream::create(context, MediaStreamPrivate::create({ }));
+    return MediaStream::create(document, MediaStreamPrivate::create(document.logger(), { }));
 }
 
-Ref<MediaStream> MediaStream::create(ScriptExecutionContext& context, MediaStream& stream)
+Ref<MediaStream> MediaStream::create(Document& document, MediaStream& stream)
 {
-    return adoptRef(*new MediaStream(context, stream.getTracks()));
+    return adoptRef(*new MediaStream(document, stream.getTracks()));
 }
 
-Ref<MediaStream> MediaStream::create(ScriptExecutionContext& context, const MediaStreamTrackVector& tracks)
+Ref<MediaStream> MediaStream::create(Document& document, const MediaStreamTrackVector& tracks)
 {
-    return adoptRef(*new MediaStream(context, tracks));
+    return adoptRef(*new MediaStream(document, tracks));
 }
 
-Ref<MediaStream> MediaStream::create(ScriptExecutionContext& context, Ref<MediaStreamPrivate>&& streamPrivate)
+Ref<MediaStream> MediaStream::create(Document& document, Ref<MediaStreamPrivate>&& streamPrivate)
 {
-    return adoptRef(*new MediaStream(context, WTFMove(streamPrivate)));
+    return adoptRef(*new MediaStream(document, WTFMove(streamPrivate)));
 }
 
 static inline MediaStreamTrackPrivateVector createTrackPrivateVector(const MediaStreamTrackVector& tracks)
@@ -77,22 +77,13 @@ static inline MediaStreamTrackPrivateVector createTrackPrivateVector(const Media
     return trackPrivates;
 }
 
-MediaStream::MediaStream(ScriptExecutionContext& context, const MediaStreamTrackVector& tracks)
-    : ActiveDOMObject(&context)
-    , m_private(MediaStreamPrivate::create(createTrackPrivateVector(tracks)))
+MediaStream::MediaStream(Document& document, const MediaStreamTrackVector& tracks)
+    : ActiveDOMObject(document)
+    , m_private(MediaStreamPrivate::create(document.logger(), createTrackPrivateVector(tracks)))
     , m_mediaSession(PlatformMediaSession::create(*this))
-#if !RELEASE_LOG_DISABLED
-    , m_logger(document()->logger())
-    , m_logIdentifier(uniqueLogIdentifier())
-#endif
 {
     // This constructor preserves MediaStreamTrack instances and must be used by calls originating
     // from the JavaScript MediaStream constructor.
-
-#if !RELEASE_LOG_DISABLED
-    ALWAYS_LOG(LOGIDENTIFIER);
-    m_private->setLogger(logger(), logIdentifier());
-#endif
 
     for (auto& track : tracks) {
         track->addObserver(*this);
@@ -105,25 +96,19 @@ MediaStream::MediaStream(ScriptExecutionContext& context, const MediaStreamTrack
     suspendIfNeeded();
 }
 
-MediaStream::MediaStream(ScriptExecutionContext& context, Ref<MediaStreamPrivate>&& streamPrivate)
-    : ActiveDOMObject(&context)
+MediaStream::MediaStream(Document& document, Ref<MediaStreamPrivate>&& streamPrivate)
+    : ActiveDOMObject(document)
     , m_private(WTFMove(streamPrivate))
     , m_mediaSession(PlatformMediaSession::create(*this))
-#if !RELEASE_LOG_DISABLED
-    , m_logger(document()->logger())
-    , m_logIdentifier(uniqueLogIdentifier())
-#endif
 {
-#if !RELEASE_LOG_DISABLED
     ALWAYS_LOG(LOGIDENTIFIER);
-    m_private->setLogger(logger(), logIdentifier());
-#endif
+
     setIsActive(m_private->active());
     m_private->addObserver(*this);
     MediaStreamRegistry::shared().registerStream(*this);
 
     for (auto& trackPrivate : m_private->tracks()) {
-        auto track = MediaStreamTrack::create(context, *trackPrivate);
+        auto track = MediaStreamTrack::create(document, *trackPrivate);
         track->addObserver(*this);
         m_trackSet.add(track->id(), WTFMove(track));
     }
@@ -155,7 +140,7 @@ RefPtr<MediaStream> MediaStream::clone()
     for (auto& track : m_trackSet.values())
         clonedTracks.uncheckedAppend(track->clone());
 
-    return MediaStream::create(*scriptExecutionContext(), clonedTracks);
+    return MediaStream::create(*document(), clonedTracks);
 }
 
 void MediaStream::addTrack(MediaStreamTrack& track)

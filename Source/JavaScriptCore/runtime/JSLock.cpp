@@ -35,6 +35,10 @@
 #include <wtf/Threading.h>
 #include <wtf/threads/Signals.h>
 
+#if USE(WEB_THREAD)
+#include <wtf/ios/WebCoreThread.h>
+#endif
+
 namespace JSC {
 
 Lock GlobalJSLock::s_sharedInstanceMutex;
@@ -50,24 +54,17 @@ GlobalJSLock::~GlobalJSLock()
 }
 
 JSLockHolder::JSLockHolder(ExecState* exec)
-    : m_vm(&exec->vm())
+    : JSLockHolder(exec->vm())
 {
-    init();
 }
 
 JSLockHolder::JSLockHolder(VM* vm)
-    : m_vm(vm)
+    : JSLockHolder(*vm)
 {
-    init();
 }
 
 JSLockHolder::JSLockHolder(VM& vm)
     : m_vm(&vm)
-{
-    init();
-}
-
-void JSLockHolder::init()
 {
     m_vm->apiLock().lock();
 }
@@ -83,7 +80,7 @@ JSLock::JSLock(VM* vm)
     : m_lockCount(0)
     , m_lockDropDepth(0)
     , m_vm(vm)
-    , m_entryAtomicStringTable(nullptr)
+    , m_entryAtomStringTable(nullptr)
 {
 }
 
@@ -105,6 +102,13 @@ void JSLock::lock()
 void JSLock::lock(intptr_t lockCount)
 {
     ASSERT(lockCount > 0);
+#if USE(WEB_THREAD)
+    if (m_isWebThreadAware) {
+        ASSERT(WebCoreWebThreadIsEnabled && WebCoreWebThreadIsEnabled());
+        WebCoreWebThreadLock();
+    }
+#endif
+
     bool success = m_lock.tryLock();
     if (UNLIKELY(!success)) {
         if (currentThreadIsHoldingLock()) {
@@ -130,9 +134,9 @@ void JSLock::didAcquireLock()
         return;
     
     Thread& thread = Thread::current();
-    ASSERT(!m_entryAtomicStringTable);
-    m_entryAtomicStringTable = thread.setCurrentAtomicStringTable(m_vm->atomicStringTable());
-    ASSERT(m_entryAtomicStringTable);
+    ASSERT(!m_entryAtomStringTable);
+    m_entryAtomStringTable = thread.setCurrentAtomStringTable(m_vm->atomStringTable());
+    ASSERT(m_entryAtomStringTable);
 
     m_vm->setLastStackTop(thread.savedLastStackTop());
     ASSERT(thread.stack().contains(m_vm->lastStackTop()));
@@ -212,9 +216,9 @@ void JSLock::willReleaseLock()
             vm->heap.releaseAccess();
     }
 
-    if (m_entryAtomicStringTable) {
-        Thread::current().setCurrentAtomicStringTable(m_entryAtomicStringTable);
-        m_entryAtomicStringTable = nullptr;
+    if (m_entryAtomStringTable) {
+        Thread::current().setCurrentAtomStringTable(m_entryAtomStringTable);
+        m_entryAtomStringTable = nullptr;
     }
 }
 

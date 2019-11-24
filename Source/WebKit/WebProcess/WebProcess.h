@@ -38,6 +38,7 @@
 #include "WebInspectorInterruptDispatcher.h"
 #include "WebProcessCreationParameters.h"
 #include "WebSQLiteDatabaseTracker.h"
+#include "WebSocketChannelManager.h"
 #include <WebCore/ActivityState.h>
 #include <WebCore/PageIdentifier.h>
 #include <WebCore/RegistrableDomain.h>
@@ -51,8 +52,8 @@
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/RefCounter.h>
-#include <wtf/text/AtomicString.h>
-#include <wtf/text/AtomicStringHash.h>
+#include <wtf/text/AtomString.h>
+#include <wtf/text/AtomStringHash.h>
 
 #if PLATFORM(COCOA)
 #include <dispatch/dispatch.h>
@@ -266,6 +267,7 @@ public:
     WebAutomationSessionProxy* automationSessionProxy() { return m_automationSessionProxy.get(); }
 
     WebCacheStorageProvider& cacheStorageProvider() { return m_cacheStorageProvider.get(); }
+    WebSocketChannelManager& webSocketChannelManager() { return m_webSocketChannelManager; }
 
 #if PLATFORM(IOS_FAMILY)
     void accessibilityProcessSuspendedNotification(bool);
@@ -499,6 +501,7 @@ private:
     WebLoaderStrategy& m_webLoaderStrategy;
 
     Ref<WebCacheStorageProvider> m_cacheStorageProvider;
+    WebSocketChannelManager m_webSocketChannelManager;
 
     std::unique_ptr<LibWebRTCNetwork> m_libWebRTCNetwork;
 
@@ -527,9 +530,6 @@ private:
 #if PLATFORM(IOS_FAMILY)
     WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
     ProcessTaskStateObserver m_taskStateObserver { *this };
-#endif
-#if HAVE(VISIBILITY_PROPAGATION_VIEW)
-    std::unique_ptr<LayerHostingContext> m_contextForVisibilityPropagation;
 #endif
 
     enum PageMarkingLayersAsVolatileCounterType { };
