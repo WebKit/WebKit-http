@@ -29,6 +29,7 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "LayoutContainer.h"
+#include "LayoutPhase.h"
 #include "RenderStyle.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -41,9 +42,10 @@ Box::Box(Optional<ElementAttributes> attributes, RenderStyle&& style, BaseTypeFl
     : m_style(WTFMove(style))
     , m_elementAttributes(attributes)
     , m_baseTypeFlags(baseTypeFlags)
+    , m_hasRareData(false)
 {
     if (isReplaced())
-        m_replaced = std::make_unique<Replaced>(*this);
+        ensureRareData().replaced = std::make_unique<Replaced>(*this);
 }
 
 Box::Box(Optional<ElementAttributes> attributes, RenderStyle&& style)
@@ -51,12 +53,21 @@ Box::Box(Optional<ElementAttributes> attributes, RenderStyle&& style)
 {
 }
 
+Box::Box(String textContent, RenderStyle&& style)
+    : Box({ }, WTFMove(style), BaseTypeFlag::BoxFlag)
+{
+    setTextContent(textContent);
+}
+
 Box::~Box()
 {
+    removeRareData();
 }
 
 bool Box::establishesFormattingContext() const
 {
+    // We need the final tree structure to tell whether a box establishes a certain formatting context. 
+    ASSERT(!Phase::isInTreeBuilding());
     return establishesBlockFormattingContext() || establishesInlineFormattingContext() || establishesTableFormattingContext();
 }
 
@@ -80,6 +91,29 @@ bool Box::establishesBlockFormattingContext() const
         return true;
 
     return false;
+}
+
+bool Box::establishesInlineFormattingContext() const
+{
+    // 9.4.2 Inline formatting contexts
+    // An inline formatting context is established by a block container box that contains no block-level boxes.
+    if (!isBlockContainerBox())
+        return false;
+
+    if (!isContainer())
+        return false;
+
+    // FIXME ???
+    if (!downcast<Container>(*this).firstInFlowChild())
+        return false;
+
+    // It's enough to check the first in-flow child since we can't have both block and inline level sibling boxes.
+    return downcast<Container>(*this).firstInFlowChild()->isInlineLevelBox();
+}
+
+bool Box::establishesInlineFormattingContextOnly() const
+{
+    return establishesInlineFormattingContext() && !establishesBlockFormattingContext();
 }
 
 bool Box::establishesTableFormattingContext() const
@@ -146,6 +180,8 @@ bool Box::isFloatAvoider() const
 
 const Container* Box::containingBlock() const
 {
+    // Finding the containing block by traversing the tree during tree construction could provide incorrect result.
+    ASSERT(!Phase::isInTreeBuilding());
     // The containing block in which the root element lives is a rectangle called the initial containing block.
     // For other elements, if the element's position is 'relative' or 'static', the containing block is formed by the
     // content edge of the nearest block container ancestor box.
@@ -179,13 +215,26 @@ const Container* Box::containingBlock() const
 
 const Container& Box::formattingContextRoot() const
 {
+    // Finding the context root by traversing the tree during tree construction could provide incorrect result.
+    ASSERT(!Phase::isInTreeBuilding());
     // We should never need to ask this question on the ICB.
     ASSERT(!isInitialContainingBlock());
     // A box lives in the same formatting context as its containing block unless the containing block establishes a formatting context.
-    auto& containingBlock = *this->containingBlock();
-    if (containingBlock.establishesFormattingContext())
-        return containingBlock;
-    return containingBlock.formattingContextRoot();
+    // However relatively positioned (inflow) inline container lives in the formatting context where its parent lives unless
+    // the parent establishes a formatting context.
+    //
+    // <div id=outer style="position: absolute"><div id=inner><span style="position: relative">content</span></div></div>
+    // While the relatively positioned inline container (span) is placed relative to its containing block "outer", it lives in the inline
+    // formatting context established by "inner".
+    const Container* ancestor = nullptr;
+    if (isInlineLevelBox() && isInFlowPositioned())
+        ancestor = parent();
+    else
+        ancestor = containingBlock();
+    ASSERT(ancestor);
+    if (ancestor->establishesFormattingContext())
+        return *ancestor;
+    return ancestor->formattingContextRoot();
 }
 
 const Container& Box::initialContainingBlock() const
@@ -323,6 +372,88 @@ bool Box::isPaddingApplicable() const
         && elementType != ElementType::TableRow
         && elementType != ElementType::TableColumnGroup
         && elementType != ElementType::TableColumn;
+}
+
+void Box::setTextContent(String textContent)
+{
+    ASSERT(isInlineLevelBox());
+    ensureRareData().textContent = textContent;
+}
+
+bool Box::hasTextContent() const
+{
+    ASSERT(isInlineLevelBox());
+    return hasRareData() && !rareData().textContent.isNull();
+}
+
+String Box::textContent() const
+{
+    ASSERT(hasRareData());
+    ASSERT(isInlineLevelBox());
+    return rareData().textContent;
+}
+
+const Replaced* Box::replaced() const
+{
+    return const_cast<Box*>(this)->replaced();
+}
+
+Replaced* Box::replaced()
+{
+    if (!isReplaced()) {
+        ASSERT(!hasRareData() || !rareData().replaced.get());
+        return nullptr;
+    }
+    ASSERT(hasRareData() && rareData().replaced.get());
+    return rareData().replaced.get();
+}
+
+void Box::setRowSpan(unsigned rowSpan)
+{
+    ensureRareData().rowSpan = rowSpan;
+}
+
+void Box::setColumnSpan(unsigned columnSpan)
+{
+    ensureRareData().columnSpan = columnSpan;
+}
+
+unsigned Box::rowSpan() const
+{
+    if (!hasRareData())
+        return 1;
+    return rareData().rowSpan;
+}
+
+unsigned Box::columnSpan() const
+{
+    if (!hasRareData())
+        return 1;
+    return rareData().columnSpan;
+}
+
+Box::RareDataMap& Box::rareDataMap()
+{
+    static NeverDestroyed<RareDataMap> map;
+    return map;
+}
+
+const Box::BoxRareData& Box::rareData() const
+{
+    ASSERT(hasRareData());
+    return *rareDataMap().get(this);
+}
+
+Box::BoxRareData& Box::ensureRareData()
+{
+    setHasRareData(true);
+    return *rareDataMap().ensure(this, [] { return std::make_unique<BoxRareData>(); }).iterator->value;
+}
+
+void Box::removeRareData()
+{
+    rareDataMap().remove(this);
+    setHasRareData(false);
 }
 
 }

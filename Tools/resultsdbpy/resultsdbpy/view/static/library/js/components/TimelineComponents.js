@@ -25,7 +25,7 @@ import {
 }
 from '../Ref.js';
 
-import {isDarkMode} from '../Utils.js';
+import {isDarkMode, createInsertionObservers} from '../Utils.js';
 import {ListComponent, ListProvider, ListProviderReceiver} from './BaseComponents.js'
 
 function pointCircleCollisionDetact(point, circle) {
@@ -36,6 +36,39 @@ function pointRectCollisionDetect(point, rect) {
     const diffX = point.x - rect.topLeftX;
     const diffY = point.y - rect.topLeftY;
     return diffX <= rect.width && diffY <= rect.height && diffX >= 0 && diffY >= 0;
+}
+
+function pointPolygonCollisionDetect(point, polygon) {
+    let res = false;
+    for (let i = 0, j = 1; i < polygon.length; i++, j = i + 1) {
+        if (j === polygon.length )
+            j = 0;
+        if (pointRightRayLineSegmentCollisionDetect(point, polygon[i], polygon[j]))
+            res = !res;
+    }
+    return res;
+}
+
+/*
+* Detact if point right ray have a collision with a line segment
+*                *
+*               /
+*        *---> /
+*             /
+*            *
+*/
+function pointRightRayLineSegmentCollisionDetect(point, lineStart, lineEnd) {
+    const maxX = Math.max(lineStart.x, lineEnd.x);
+    const minX = Math.min(lineStart.x, lineEnd.x);
+    const maxY = Math.max(lineStart.y, lineEnd.y);
+    const minY = Math.min(lineStart.y, lineEnd.y);
+    if ((point.x <= maxX && point.x >= minX || point.x < minX) &&
+        point.y < maxY && point.y > minY &&
+        lineStart.y !== lineEnd.y) {
+        const tanTopAngle = (lineEnd.x - lineStart.x) / (lineEnd.y - lineStart.y);
+        return point.x < lineEnd.x - tanTopAngle * (lineEnd.y - point.y);
+    }
+    return false;
 }
 
 function getMousePosInCanvas(event, canvas) {
@@ -92,23 +125,17 @@ function XScrollableCanvasProvider(exporter, ...childrenFunctions) {
             resizeEventStream.add(element.offsetWidth);
         },
         onStateUpdate: (element, stateDiff, state) => {
-            if (typeof stateDiff.scrollLeft === 'number')
-                element.style.transform = `translate(${stateDiff.scrollLeft}px, 0)`;
             if (stateDiff.resize) {
                 element.style.width = `${element.parentElement.parentElement.offsetWidth}px`;
                 resizeEventStream.add(element.offsetWidth);
             }
         }
     });
-    scrollEventStream.action((e) => {
-        // Provide the logic scrollLeft
-        presenterRef.setState({scrollLeft: e.target.scrollLeft});
-    });
     // Provide parent functions/event to children to use
 
     return `<div class="content" ref="${scrollRef}">
-        <div ref="${containerRef}">
-            <div ref="${presenterRef}">${
+        <div ref="${containerRef}" style="position: relative">
+            <div ref="${presenterRef}" style="position: -webkit-sticky; position:sticky; top:0; left: 0">${
                 ListProvider((updateChildrenFunctions) => {
                     if (exporter) {
                         exporter((children) => {
@@ -124,55 +151,54 @@ function XScrollableCanvasProvider(exporter, ...childrenFunctions) {
     </div>`;
 }
 
-function offscreenCachedRenderFactory(padding, height) {
-    let cachedScrollLeft = 0;
-    let offscreenCanvas = document.createElement('canvas');
+class ColorBatchRender {
+    constructor() {
+        this.colorSeqsMap = {};
+    }
 
-    // This function will call redrawCache to render a offscreen cache
-    // and copy the viewport area from of it
-    // It will trigger redrawCache when cache don't have enough space
-    return (redrawCache, element, stateDiff, state) => {
+    lazyCreateColorSeqs(color, startAction, finalAction) {
+        if (false === color in this.colorSeqsMap)
+            this.colorSeqsMap[color] = [startAction, finalAction];
+    }
+
+    addSeq(color, seqAction) {
+        this.colorSeqsMap[color].push(seqAction);
+    }
+
+    batchRender(context) {
+        for (let color of Object.keys(this.colorSeqsMap)) {
+            const seqs = this.colorSeqsMap[color];
+            seqs[0](context, color);
+            for(let i = 2; i < seqs.length; i++)
+                seqs[i](context, color);
+            seqs[1](context, color);
+        }
+    }
+    clear() {
+        this.colorSeqsMap = new Map();
+    }
+}
+
+function xScrollStreamRenderFactory(height) {
+    return (redraw, element, stateDiff, state) => {
         const width = typeof stateDiff.width === 'number' ? stateDiff.width : state.width;
         if (width <= 0)
             // Nothing to render
             return;
-
-        const totalWidth = width + 2 * padding;
-        const scrollLeft = typeof stateDiff.scrollLeft === 'number' ? stateDiff.scrollLeft : state.scrollLeft;
-        const context = element.getContext('2d');
-        let cachePosLeft = scrollLeft - cachedScrollLeft;
-
-        if (element.logicWidth != width) {
-            // Setup the dpr in case of blur
-            setupCanvasWidthWithDpr(element, width);
-
-            // We draw everything on cache
-            redrawCache(offscreenCanvas, element, stateDiff, state, () => {
-                cachedScrollLeft = scrollLeft < padding ? scrollLeft : scrollLeft - padding;
-                cachePosLeft = scrollLeft - cachedScrollLeft;
-                if (cachePosLeft < 0)
-                    cachePosLeft = 0;
-                context.clearRect(0, 0, element.width, element.height);
-                context.drawImage(offscreenCanvas, cachePosLeft * getDevicePixelRatio(), 0,    element.width, element.height, 0, 0, width * getDevicePixelRatio(), element.height);
-            });
-
-        } else if (cachePosLeft < 0 || cachePosLeft + width > totalWidth) {
-            if (scrollLeft < 0 )
-                return;
-            redrawCache(offscreenCanvas, element, stateDiff, state,    () => {
-                cachedScrollLeft = scrollLeft < padding ? scrollLeft : scrollLeft - padding;
-                cachePosLeft = scrollLeft - cachedScrollLeft;
-                if (cachePosLeft < 0)
-                    cachePosLeft = 0;
-                context.clearRect(0, 0, element.width, element.height);
-                context.drawImage(offscreenCanvas, cachePosLeft * getDevicePixelRatio(), 0,    element.width, element.height, 0, 0, width * getDevicePixelRatio(), element.height);
-            });
-        } else {
-            if (cachePosLeft < 0)
-                cachePosLeft = 0;
-            context.clearRect(0, 0, element.width, element.height);
-            context.drawImage(offscreenCanvas, cachePosLeft * getDevicePixelRatio(), 0,    element.width, element.height, 0, 0, width * getDevicePixelRatio(), element.height);
-        }
+        let startX = 0;
+        let renderWidth = width;
+        requestAnimationFrame(() => {
+            if (element.logicWidth !== width) {
+                setupCanvasWidthWithDpr(element, width);
+                setupCanvasContextScale(element);
+            }
+            if (element.logicHeight !== height) {
+                setupCanvasHeightWithDpr(element, height);
+                setupCanvasContextScale(element);
+            }
+            element.getContext("2d", {alpha: false}).clearRect(startX, 0, renderWidth, element.logicHeight);
+            redraw(startX, renderWidth, element, stateDiff, state);
+        });
     }
 }
 
@@ -200,32 +226,47 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
     const onDotHover = typeof option.onDotHover === "function" ? option.onDotHover : null;
     const tagHeight = defaultFontSize;
     const height = option.height ? option.height : 2 * radius + tagHeight;
-
+    const colorBatchRender = new ColorBatchRender();
 
     // Draw dot api can be used in user defined render function
     const drawDot = (context, x, y, isEmpty, tag = null, useRadius, color, emptylineColor) => {
         useRadius = useRadius ? useRadius : radius;
         color = color ? color : defaultDotColor;
         emptylineColor = emptylineColor ? emptylineColor : defaultEmptyLineColor;
-            if (!isEmpty) {
-                //Draw the dot
+        if (!isEmpty) {
+            // Draw the dot
+            colorBatchRender.lazyCreateColorSeqs(color, (context) => {
                 context.beginPath();
-                context.arc(x + dotMargin + radius, y, radius, 0, 2 * Math.PI);
+            }, (context, color) => {
                 context.fillStyle = color;
                 context.fill();
-                if (typeof tag === "number" || typeof tag === "string") {
-                    context.font = `${fontFamily} ${defaultFontSize}px`;
-                    const tagSize = context.measureText(tag);
-                    context.fillText(tag, x + dotMargin + radius - tagSize.width / 2, radius * 2 + tagSize.emHeightAscent);
-                }
-            } else {
+            });
+            colorBatchRender.addSeq(color, (context, color) => {
+                context.arc(x + dotMargin + radius, y, radius, 0, 2 * Math.PI);
+            });
+
+        } else {
+            // Draw the empty
+            colorBatchRender.lazyCreateColorSeqs(emptylineColor, (context) => {
                 context.beginPath();
+            }, (context, color) => {
+                context.strokeStyle = color;
+                context.stroke();
+            });
+            colorBatchRender.addSeq(emptylineColor, (context) => {
                 context.moveTo(x + dotMargin, y);
                 context.lineTo(x + dotMargin + 2 * radius, y);
                 context.lineWidth = 1;
-                context.strokeStyle = defaultEmptyLineColor;
-                context.stroke();
-            }
+            });
+        }
+
+        // Draw the tag
+        if (typeof tag === "number" || typeof tag === "string") {
+            context.font = `${fontFamily} ${defaultFontSize}px`;
+            context.fillStyle = color;
+            const tagSize = context.measureText(tag);
+            context.fillText(tag, x + dotMargin + radius - tagSize.width / 2, radius * 2 + tagSize.emHeightAscent);
+        }
     };
     const render = typeof option.renderFactory === "function" ? option.renderFactory(drawDot) : (dot, context, x, y) => drawDot(context, x, y, !dot);
     const sortData = option.sortData === true ? option.sortData : false;
@@ -251,49 +292,37 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
 
     const dotWidth = 2 * (radius + dotMargin);
     const padding = 100 * dotWidth / getDevicePixelRatio();
-    const offscreenCachedRender = offscreenCachedRenderFactory(padding, height);
+    const xScrollStreamRender = xScrollStreamRenderFactory(height);
 
-    // Generate the dot cache
-    const redrawCache = (offscreenCanvas, element, stateDiff, state, notifyToRender) => {
+    const redraw = (startX, renderWidth, element, stateDiff, state) => {
         const scrollLeft = typeof stateDiff.scrollLeft === 'number' ? stateDiff.scrollLeft : state.scrollLeft;
-        const width = typeof stateDiff.width === 'number' ? stateDiff.width : state.width;
-        const totalWidth = width + 2 * padding;
         const scales = stateDiff.scales ? stateDiff.scales : state.scales;
         const dots = stateDiff.dots ? stateDiff.dots : state.dots;
         // This color maybe change when switch dark/light mode
         const defaultLineColor = getComputedStyle(document.body).getPropertyValue('--borderColorInlineElement');
-        if (offscreenCanvas.logicWidth !== totalWidth) {
-            setupCanvasWidthWithDpr(offscreenCanvas, totalWidth);
-            setupCanvasContextScale(offscreenCanvas);
-        }
-        if (offscreenCanvas.logicHeight !== element.logicHeight) {
-            setupCanvasHeightWithDpr(offscreenCanvas, element.logicHeight);
-            setupCanvasContextScale(offscreenCanvas);
-        }
 
-        const context = offscreenCanvas.getContext("2d");
-        // Clear the cache
-        context.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+        const context = element.getContext("2d", { alpha: false });
+        // Clear pervious batchRender
+        colorBatchRender.clear();
         // Draw the time line
-        context.beginPath();
-        context.moveTo(0, radius);
-        context.lineWidth = 1;
-        context.strokeStyle = defaultLineColor;
-        context.lineTo(totalWidth, radius);
-        context.stroke();
+        colorBatchRender.lazyCreateColorSeqs(defaultLineColor, (context) => {
+            context.beginPath();
+        }, (context, color) => {
+            context.lineWidth = 1;
+            context.strokeStyle = color;
+            context.stroke();
+        });
+        colorBatchRender.addSeq(defaultLineColor, (context) => {
+            context.moveTo(startX, radius);
+            context.lineTo(startX + renderWidth, radius);
+        });
 
         // Draw the dots
         // First, Calculate the render range:
-        let startScalesIndex = Math.floor((scrollLeft - padding) / dotWidth);
+        let startScalesIndex = Math.floor((scrollLeft + startX) / dotWidth);
         if (startScalesIndex < 0)
             startScalesIndex = 0;
-        let viewportStartScaleIndex = Math.floor((scrollLeft) / dotWidth);
-        if (viewportStartScaleIndex < 0)
-            viewportStartScaleIndex = 0;
-        let viewportEndScaleIndex = viewportStartScaleIndex + Math.floor((width) / dotWidth);
-        if (viewportEndScaleIndex >= scales.length)
-            viewportEndScaleIndex = scales.length - 1;
-        let endScalesIndex = startScalesIndex + Math.ceil((totalWidth) / dotWidth);
+        let endScalesIndex = startScalesIndex + Math.ceil((renderWidth) / dotWidth);
         if (endScalesIndex >= scales.length)
             endScalesIndex = scales.length - 1;
         let currentDotIndex = startScalesIndex - (scales.length - dots.length);
@@ -316,65 +345,83 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
 
         // Use this to decrease colision search scope
         inCacheDots = [];
-
-        // Draw the dots on cache
         for (let i = startScalesIndex; i <= endScalesIndex; i++) {
-            let x = i * dotWidth - (scrollLeft < padding ? scrollLeft : scrollLeft - padding);
+            let x = i * dotWidth - scrollLeft;
             if (currentDotIndex < dots.length && comp(scales[i], getScale(dots[currentDotIndex])) === 0) {
                 render(dots[currentDotIndex], context, x, radius);
-                dots[currentDotIndex]._dotCenter = {x: x + 3 * radius, y: radius};
-                dots[currentDotIndex]._cachedScrollLeft = scrollLeft < padding ? scrollLeft : scrollLeft - padding;
+                dots[currentDotIndex]._dotCenter = {x: x + dotMargin + radius, y: radius};
+                dots[currentDotIndex]._cachedScrollLeft = scrollLeft;
                 inCacheDots.push(dots[currentDotIndex]);
                 currentDotIndex += 1;
             } else
                 render(null, context, x, radius);
-            // We already drawed viewport needed, call notifyToRender to bring them to screen now
-            // this will help to elemate blink
-            if (i === viewportEndScaleIndex)
-                notifyToRender();
         }
+        colorBatchRender.batchRender(context);
     };
 
-    const canvasRef = REF.createRef({
-        state: {
-            dots: initDots,
-            scales: initScales,
-            scrollLeft: 0,
-            width: 0,
-        },
-        onElementMount: (element) => {
-            setupCanvasHeightWithDpr(element, height);
-            setupCanvasContextScale(element);
-            if (onDotClick) {
-                element.addEventListener('click', (e) => {
-                    let dots = getMouseEventTirggerDots(e, canvasRef.state.scrollLeft, element);
-                    if (dots.length)
-                        onDotClick(dots[0], e);
-                });
-            }
-
-            if (onDotClick || onDotHover) {
-                element.addEventListener('mousemove', (e) => {
-                    let dots = getMouseEventTirggerDots(e, canvasRef.state.scrollLeft, element);
-                    if (dots.length) {
-                        if (onDotHover)
-                            onDotHover(dots[0], e);
-                        element.style.cursor = "pointer";
-                    } else
-                        element.style.cursor = "default";
-                });
-            }
-        },
-        onStateUpdate: (element, stateDiff, state) => {
-            const context = element.getContext("2d");
-            if (stateDiff.scales || stateDiff.dots || typeof stateDiff.scrollLeft === 'number' || typeof stateDiff.width === 'number') {
-                console.assert(dots.length <= scales.length);
-                requestAnimationFrame(() => offscreenCachedRender(redrawCache, element, stateDiff, state));
-            }
-        }
-    });
-
     return ListProviderReceiver((updateContainerWidth, onContainerScroll, onResize) => {
+        const onScrollAction = (e) => {
+            canvasRef.setState({scrollLeft: e.target.scrollLeft / getDevicePixelRatio()});
+        };
+        const onResizeAction = (width) => {
+            canvasRef.setState({width: width});
+        };
+
+        const canvasRef = REF.createRef({
+            state: {
+                dots: initDots,
+                scales: initScales,
+                scrollLeft: 0,
+                width: 0,
+                onScreen: false,
+            },
+            onElementMount: (element) => {
+                setupCanvasHeightWithDpr(element, height);
+                setupCanvasContextScale(element);
+                if (onDotClick) {
+                    element.addEventListener('click', (e) => {
+                        let dots = getMouseEventTirggerDots(e, canvasRef.state.scrollLeft, element);
+                        if (dots.length)
+                            onDotClick(dots[0], e);
+                    });
+                }
+
+                if (onDotClick || onDotHover) {
+                    element.addEventListener('mousemove', (e) => {
+                        let dots = getMouseEventTirggerDots(e, canvasRef.state.scrollLeft, element);
+                        if (dots.length) {
+                            if (onDotHover)
+                                onDotHover(dots[0], e);
+                            element.style.cursor = "pointer";
+                        } else
+                            element.style.cursor = "default";
+                    });
+                }
+
+                createInsertionObservers(element, (entries) => {
+                    canvasRef.setState({onScreen: entries[0].isIntersecting});
+                }, 0, 0.01, 0.01);
+            },
+            onElementUnmount: (element) => {
+                onContainerScroll.stopAction(onScrollAction);
+                onResize.stopAction(onResizeAction);
+                // Clean the canvas, free its memory
+                element.width = 0;
+                element.height = 0;
+            },
+            onStateUpdate: (element, stateDiff, state) => {
+                if (!state.onScreen && !stateDiff.onScreen)
+                    return;
+                if (stateDiff.scales || stateDiff.dots || typeof stateDiff.scrollLeft === 'number' || typeof stateDiff.width === 'number' || stateDiff.onScreen) {
+                    if (stateDiff.scales)
+                        stateDiff.scales = stateDiff.scales.map(x => x);
+                    if (stateDiff.dots)
+                        stateDiff.dots = stateDiff.dots.map(x => x);
+                    xScrollStreamRender(redraw, element, stateDiff, state);
+                }
+            }
+        });
+
         updateContainerWidth(scales.length * dotWidth * getDevicePixelRatio());
         const updateData = (dots, scales) => {
             updateContainerWidth(scales.length * dotWidth * getDevicePixelRatio());
@@ -385,14 +432,10 @@ Timeline.CanvasSeriesComponent = (dots, scales, option = {}) => {
         };
         if (typeof option.exporter === "function")
             option.exporter(updateData);
-        onContainerScroll.action((e) => {
-            canvasRef.setState({scrollLeft: e.target.scrollLeft / getDevicePixelRatio()});
-        });
-        onResize.action((width) => {
-            canvasRef.setState({width: width});
-        });
+        onContainerScroll.action(onScrollAction);
+        onResize.action(onResizeAction);
         return `<div class="series">
-            <canvas ref="${canvasRef}">
+            <canvas ref="${canvasRef}" width="0" height="0">
         </div>`;
     });
 }
@@ -509,8 +552,9 @@ Timeline.CanvasXAxisComponent = (scales, option = {}) => {
     const scaleTagLinePadding = 10;
     const scaleBroadLineHeight = parseInt(computedStyle.getPropertyValue('--tinySize')) / 2;
     const maxinumTextHeight = scaleWidth * 4.5;
-    const canvasHeight = parseInt(computedStyle.getPropertyValue('--smallSize')) * 4;
+    const canvasHeight = typeof option.height === "number" ? option.height : parseInt(computedStyle.getPropertyValue('--smallSize')) * 5;
     const sqrt3 = Math.sqrt(3);
+    const colorBatchRender = new ColorBatchRender();
 
     const drawScale = (scaleLabel, group, context, x, y, isHoverable, lineColor, groupColor) => {
         const computedStyle = getComputedStyle(document.body);
@@ -518,137 +562,136 @@ Timeline.CanvasXAxisComponent = (scales, option = {}) => {
         const usedGroupColor = groupColor ? groupColor : isDarkMode() ? computedStyle.getPropertyValue('--white') : computedStyle.getPropertyValue('--black');
         const totalWidth = group * scaleWidth;
         const baseLineY = isTop ? y + canvasHeight - scaleBroadLineHeight : y + scaleBroadLineHeight;
-        if (group > 1) {
-            // Draw group label
-            context.beginPath();
-            context.lineWidth = 1;
-            context.strokeStyle = usedGroupColor;
-            context.moveTo(x + context.lineWidth, isTop ? canvasHeight : y);
-            context.lineTo(x + context.lineWidth, baseLineY);
-            context.stroke();
-        }
-
-        // Draw tag line
         const middlePointX = x + totalWidth / 2;
-        context.beginPath();
-        context.moveTo(middlePointX, baseLineY);
-        if (!isTop)
-            context.lineTo(middlePointX, baseLineY + scaleTagLineHeight - scaleTagLinePadding);
-        else
-            context.lineTo(middlePointX, baseLineY - scaleTagLineHeight + scaleTagLinePadding);
-        if (group > 1)
-            context.strokeStyle = usedGroupColor;
-        else
-            context.strokeStyle = usedLineColor;
-        context.stroke();
-
         if (group > 1) {
-                // Draw the group line
+            colorBatchRender.lazyCreateColorSeqs(usedGroupColor, (context) => {
                 context.beginPath();
+            }, (context, color) => {
+                context.lineWidth = 1;
+                context.strokeStyle = color;
+                context.stroke();
+            });
+            colorBatchRender.addSeq(usedGroupColor, (context) => {
+                context.moveTo(x + context.lineWidth, isTop ? canvasHeight : y);
+                context.lineTo(x + context.lineWidth, baseLineY);
                 context.moveTo(x, baseLineY);
                 context.lineTo(x + totalWidth, baseLineY);
-                context.strokeStyle = usedGroupColor;
+                context.moveTo(x + totalWidth, isTop ? canvasHeight : y);
+                context.lineTo(x + totalWidth, baseLineY);
+                context.moveTo(middlePointX, baseLineY);
+                if (!isTop)
+                    context.lineTo(middlePointX, baseLineY + scaleTagLineHeight - scaleTagLinePadding);
+                else
+                    context.lineTo(middlePointX, baseLineY - scaleTagLineHeight + scaleTagLinePadding);
+            });
+        } else {
+            colorBatchRender.lazyCreateColorSeqs(usedLineColor, (context) => {
+                context.beginPath();
+            }, (context, color) => {
+                context.lineWidth = 1;
+                context.strokeStyle = color;
                 context.stroke();
+            });
+            colorBatchRender.addSeq(usedLineColor, (context) => {
+                context.moveTo(middlePointX, baseLineY);
+                if (!isTop)
+                    context.lineTo(middlePointX, baseLineY + scaleTagLineHeight - scaleTagLinePadding);
+                else
+                    context.lineTo(middlePointX, baseLineY - scaleTagLineHeight + scaleTagLinePadding);
+            });
         }
-
-        // Draw tag
-        if (!isTop)
-            context.moveTo(middlePointX, baseLineY + scaleTagLineHeight);
-        else
-            context.moveTo(middlePointX, baseLineY - scaleTagLineHeight);
+        // Draw Tag
         context.font = `${fontSize} ${fontFamily}`;
         context.fillStyle = fontColor;
         context.save();
         if (!isTop) {
+            context.translate(middlePointX, baseLineY + scaleTagLineHeight);
             context.rotate(fontRotate);
-            context.fillText(getLabel(scaleLabel), middlePointX / 2 + sqrt3 * scaleTagLineHeight / 2, baseLineY - sqrt3 * (middlePointX / 2) + scaleTagLineHeight / 2);
+            context.translate(0 - middlePointX, 0 - baseLineY - scaleTagLineHeight);
+            context.fillText(getLabel(scaleLabel), middlePointX, baseLineY + scaleTagLineHeight);
         } else {
+            context.translate(middlePointX, baseLineY - scaleTagLineHeight);
             context.rotate(fontTopRotate);
-            context.fillText(getLabel(scaleLabel), middlePointX / 2 - sqrt3 * scaleTagLineHeight - fontSizeNumber, baseLineY + sqrt3 * (middlePointX / 2) -    3 * scaleTagLineHeight / 2 - fontSizeNumber);
+            context.translate(0 - middlePointX, 0 - baseLineY + scaleTagLineHeight);
+            context.fillText(getLabel(scaleLabel), middlePointX, baseLineY - scaleTagLineHeight);
         }
         context.restore();
-
-        if (group > 1) {
-            // Draw group label
-            context.beginPath();
-            context.lineWidth = 1;
-            context.strokeStyle = usedGroupColor;
-            context.moveTo(x + totalWidth, isTop ? canvasHeight : y);
-            context.lineTo(x + totalWidth, baseLineY);
-            context.stroke();
-        }
     };
     const render = typeof option.renderFactory === "function" ? option.renderFactory(drawScale) : (scaleLabel, scaleGroup, context, x, y) => drawScale(scaleLabel, scaleGroup, context, x, y);
 
     const padding = 100 * scaleWidth / getDevicePixelRatio();
-    const offscreenCachedRender = offscreenCachedRenderFactory(padding, canvasHeight);
-    let inCacheScales = [];
+    const xScrollStreamRender = xScrollStreamRenderFactory(canvasHeight);
+    let onScreenScales = [];
 
     const getMouseEventTirggerScales = (e, scrollLeft, element) => {
         const {x, y} = getMousePosInCanvas(e, element);
-        return inCacheScales.filter(scale => {
-            const detactBoxTopX = scale._tagTop.x - scrollLeft - fontSizeNumber * sqrt3 / 2;
-            if (detactBoxTopX < 0) return false;
-            const detactBoxTopY = scale._tagTop.y;
-            const detactBoxWidth = fontSizeNumber * sqrt3 / 2 + scale.label.toString().length * fontSizeNumber / 2;
-            const detactBoxHeight = fontSizeNumber / 2 + scale.label.toString().length * fontSizeNumber / 2 * sqrt3;
-            return pointRectCollisionDetect({x, y}, {
-                    topLeftX: detactBoxTopX,
-                    topLeftY: isTop ? detactBoxTopY - detactBoxHeight : detactBoxTopY,
-                    width: detactBoxWidth,
-                    height: detactBoxHeight
-                });
+        return onScreenScales.filter(scale => {
+            const width = scale.label.toString().length * fontSizeNumber / 2;
+            const height = scale.label.toString().length * fontSizeNumber / 2 * sqrt3;
+            const point1 = {
+                x: scale._tagTop.x - scrollLeft - (isTop ? fontSizeNumber / 2 * sqrt3 : 0),
+                y: scale._tagTop.y + (fontSizeNumber / 2 + scaleTagLineHeight) * (isTop ? -1 : 1),
+            };
+            const point2 = {
+                x: point1.x + fontSizeNumber / 2 * sqrt3,
+                y: scale._tagTop.y + scaleTagLineHeight  * (isTop ? -1 : 1)
+            };
+            const point3 = {
+                x: point2.x + width,
+                y: point2.y + height * (isTop ? -1 : 1),
+            };
+            const point4 = {
+                x: point1.x + width,
+                y: point1.y + height * (isTop ? -1 : 1),
+            };
+            return pointPolygonCollisionDetect({x, y}, [point1, point2, point3, point4]);
         });
     };
-    const redrawCache = (offscreenCanvas, element, stateDiff, state, notifyToRender) => {
+    const redraw = (startX, renderWidth, element, stateDiff, state) => {
         const scrollLeft = typeof stateDiff.scrollLeft === 'number' ? stateDiff.scrollLeft : state.scrollLeft;
         const scales = stateDiff.scales ? stateDiff.scales : state.scales;
         const scalesMapLinkList = stateDiff.scalesMapLinkList ? stateDiff.scalesMapLinkList : state.scalesMapLinkList;
         const width = typeof stateDiff.width === 'number' ? stateDiff.width : state.width;
         const usedLineColor = computedStyle.getPropertyValue('--borderColorInlineElement');
-        const totalWidth = 2 * padding + width;
         const baseLineY = isTop ? canvasHeight - scaleBroadLineHeight : scaleBroadLineHeight;
-        if (offscreenCanvas.logicWidth !== totalWidth) {
-            setupCanvasWidthWithDpr(offscreenCanvas, totalWidth);
-            setupCanvasContextScale(offscreenCanvas);
-        }
-        if (offscreenCanvas.logicHeight !== element.logicHeight) {
-            setupCanvasHeightWithDpr(offscreenCanvas, element.logicHeight);
-            setupCanvasContextScale(offscreenCanvas);
-        }
-        const context = offscreenCanvas.getContext("2d");
-        const realScrollLeft = scrollLeft > padding ? scrollLeft - padding : scrollLeft;
-        const currentStartScaleIndex = Math.floor(realScrollLeft / scaleWidth);
+        const context = element.getContext("2d", { alpha: false });
+        let currentStartScaleIndex = Math.floor(scrollLeft / scaleWidth);
+        if (currentStartScaleIndex < 0)
+            currentStartScaleIndex = 0;
         const currentStartScaleKey = getScaleKey(scales[currentStartScaleIndex]);
-        let currentEndScaleIndex = Math.ceil((realScrollLeft + totalWidth) / scaleWidth);
-        currentEndScaleIndex = currentEndScaleIndex > scales.length ? scales.length - 1 : currentEndScaleIndex;
+        let currentEndScaleIndex = Math.ceil((scrollLeft + renderWidth) / scaleWidth);
+        currentEndScaleIndex = currentEndScaleIndex >= scales.length ? scales.length - 1 : currentEndScaleIndex;
         const currentEndScaleKey = getScaleKey(scales[currentEndScaleIndex]);
-        let viewPortEndScaleIndex = Math.ceil((realScrollLeft + width) / scaleWidth);
-        viewPortEndScaleIndex = viewPortEndScaleIndex > scales.length ? scales.length - 1 : viewPortEndScaleIndex;
-        const viewPortEndScaleKey = getScaleKey(scales[viewPortEndScaleIndex]);
         const currentStartNode = scalesMapLinkList.map.get(currentStartScaleKey);
         const currentEndNode = scalesMapLinkList.map.get(currentEndScaleKey);
-        const viewPortEndNode = scalesMapLinkList.map.get(viewPortEndScaleKey);
+        if (!currentEndNode) {
+            console.error(currentEndScaleKey);
+        }
         let now = currentStartNode;
-        // Clear the cache
-        context.clearRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
-        context.moveTo(0, baseLineY);
-        context.lineWidth = 1;
-        context.strokeStyle = usedLineColor;
-        context.lineTo(offscreenCanvas.logicWidth, baseLineY);
-        context.stroke();
+        // Clear pervious batch render
+        colorBatchRender.clear();
+        colorBatchRender.lazyCreateColorSeqs(usedLineColor, (context) => {
+            context.beginPath();
+        }, (context, color) => {
+            context.lineWidth = 1;
+            context.strokeStyle = color;
+            context.stroke();
+        });
+        colorBatchRender.addSeq(usedLineColor, (context) => {
+            context.moveTo(0, baseLineY);
+            context.lineTo(element.logicWidth, baseLineY);
+        });
 
-        inCacheScales = [];
+        onScreenScales = [];
         while (now != currentEndNode.next) {
             const label = now.label;
             const group = now.group;
-            render(label, group, context, now.x - realScrollLeft, 0);
-            if (now === viewPortEndNode)
-                notifyToRender();
+            render(label, group, context, now.x - scrollLeft, 0);
             now._tagTop = {x: now.x + group * scaleWidth / 2, y: isTop ? canvasHeight - scaleBroadLineHeight : scaleBroadLineHeight};
-            inCacheScales.push(now);
+            onScreenScales.push(now);
             now = now.next;
         }
+        colorBatchRender.batchRender(context);
     };
 
     // Initialize
@@ -679,65 +722,84 @@ Timeline.CanvasXAxisComponent = (scales, option = {}) => {
     };
     const initScaleGroupMapLinkList = getScalesMapLinkList(initScales);
 
-    const canvasRef = REF.createRef({
-        state: {
-            scrollLeft: 0,
-            width: 0,
-            scales: initScales,
-            scalesMapLinkList: initScaleGroupMapLinkList
-        },
-        onElementMount: (element) => {
-            setupCanvasHeightWithDpr(element, canvasHeight);
-            setupCanvasContextScale(element);
-            if (onScaleClick) {
-                element.addEventListener('click', (e) => {
-                    let scales = getMouseEventTirggerScales(e, canvasRef.state.scrollLeft, element);
-                    if (scales.length)
-                        onScaleClick(scales[0], e);
-                });
-            }
-
-            if (onScaleClick || onScaleHover) {
-                element.addEventListener('mousemove', (e) => {
-                    let scales = getMouseEventTirggerScales(e, canvasRef.state.scrollLeft, element);
-                    if (scales.length) {
-                        if (onScaleHover)
-                            onScaleHover(scales[0], e);
-                        element.style.cursor = "pointer";
-                    } else {
-                        element.style.cursor = "default";
-                    }
-                });
-            }
-        },
-        onStateUpdate: (element, stateDiff, state) => {
-            if (stateDiff.scales || typeof stateDiff.scrollLeft === 'number' || typeof stateDiff.width === 'number') {
-                if (stateDiff.scales)
-                    state.scalesMapLinkList = getScalesMapLinkList(stateDiff.scales);
-                requestAnimationFrame(() => offscreenCachedRender(redrawCache, element, stateDiff, state));
-            }
-        }
-    });
 
     return {
         series: ListProviderReceiver((updateContainerWidth, onContainerScroll, onResize) => {
-            updateContainerWidth(scales.length * scaleWidth * getDevicePixelRatio());
-            onContainerScroll.action((e) => {
+            const onScrollAction = (e) => {
                 canvasRef.setState({scrollLeft: e.target.scrollLeft / getDevicePixelRatio()});
-            });
-            onResize.action((width) => {
+            };
+            const onResizeAction = (width) => {
                 canvasRef.setState({width: width});
+            };
+
+            const canvasRef = REF.createRef({
+                state: {
+                    scrollLeft: 0,
+                    width: 0,
+                    scales: initScales,
+                    scalesMapLinkList: initScaleGroupMapLinkList
+                },
+                onElementMount: (element) => {
+                    setupCanvasHeightWithDpr(element, canvasHeight);
+                    setupCanvasContextScale(element);
+                    if (onScaleClick) {
+                        element.addEventListener('click', (e) => {
+                            let scales = getMouseEventTirggerScales(e, canvasRef.state.scrollLeft, element);
+                            if (scales.length)
+                                onScaleClick(scales[0], e);
+                        });
+                    }
+
+                    if (onScaleClick || onScaleHover) {
+                        element.addEventListener('mousemove', (e) => {
+                            let scales = getMouseEventTirggerScales(e, canvasRef.state.scrollLeft, element);
+                            if (scales.length) {
+                                if (onScaleHover)
+                                    onScaleHover(scales[0], e);
+                                element.style.cursor = "pointer";
+                            } else {
+                                element.style.cursor = "default";
+                            }
+                        });
+                    }
+                },
+                onElementUnmount: (element) => {
+                    onContainerScroll.stopAction(onScrollAction);
+                    onResize.stopAction(onResizeAction);
+                },
+                onStateUpdate: (element, stateDiff, state) => {
+                    if (stateDiff.scales || typeof stateDiff.scrollLeft === 'number' || typeof stateDiff.width === 'number') {
+                        xScrollStreamRender(redraw, element, stateDiff, state);
+                    }
+                }
             });
+
+            updateContainerWidth(scales.length * scaleWidth * getDevicePixelRatio());
+            const updateData = (scales) => {
+                // In case of modification while rendering
+                const scalesCopy = scales.map(x => x);
+                updateContainerWidth(scalesCopy.length * scaleWidth * getDevicePixelRatio());
+                canvasRef.setState({
+                    scales: scalesCopy,
+                    scalesMapLinkList: getScalesMapLinkList(scalesCopy)
+                });
+            }
+            if (typeof option.exporter === "function")
+                option.exporter(updateData);
+            onContainerScroll.action(onScrollAction);
+            onResize.action(onResizeAction);
             return `<div class="x-axis">
                 <canvas ref="${canvasRef}">
             </div>`;
         }),
-        isAxis: true // Mark self as an axis
+        isAxis: true, // Mark self as an axis,
+        height: canvasHeight, // Expose Height to parent
     };
 }
 
 Timeline.CanvasContainer = (exporter, ...children) => {
-    const hasTopXAxis = children[0].isAxis;
+    let headerAxisPlaceHolderHeight = 0;
+    let topAxis = true;
     const upackChildren = (children) => {
         const headers = [];
         const serieses = [];
@@ -749,6 +811,10 @@ Timeline.CanvasContainer = (exporter, ...children) => {
             if (child.header)
                 headers.push(child.header);
             serieses.push(child.series);
+            if (child.isAxis && topAxis)
+                headerAxisPlaceHolderHeight += child.height;
+            else if (topAxis)
+                topAxis = false;
         });
         return {headers, serieses};
     };
@@ -763,7 +829,7 @@ Timeline.CanvasContainer = (exporter, ...children) => {
     }));
     return (
         `<div class="timeline">
-            <div class="header ${hasTopXAxis ? "with-top-x-axis" : ""}">
+            <div class="header" style="padding-top:${headerAxisPlaceHolderHeight}px">
                 ${ListComponent(composer, ...headers)}
             </div>
             ${XScrollableCanvasProvider(composer, ...serieses)}

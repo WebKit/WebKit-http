@@ -60,7 +60,7 @@ public:
 
     enum ResourceType {
         DocumentResource,
-        StylesheetResource,
+        StyleSheetResource,
         ImageResource,
         FontResource,
         ScriptResource,
@@ -87,9 +87,7 @@ public:
     static Frame* findFrameWithSecurityOrigin(Page&, const String& originRawString);
     static DocumentLoader* assertDocumentLoader(ErrorString&, Frame*);
 
-    // Page API for InspectorFrontend
-    void enable(ErrorString&) final;
-    void disable(ErrorString&) final;
+    // PageBackendDispatcherHandler
     void reload(ErrorString&, const bool* optionalReloadFromOrigin, const bool* optionalRevalidateAllResources) final;
     void navigate(ErrorString&, const String& url) final;
     void overrideUserAgent(ErrorString&, const String* value) final;

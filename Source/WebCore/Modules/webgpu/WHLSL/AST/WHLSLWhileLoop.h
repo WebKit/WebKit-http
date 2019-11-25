@@ -38,22 +38,20 @@ namespace WHLSL {
 
 namespace AST {
 
-class WhileLoop : public Statement {
+class WhileLoop final : public Statement {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     WhileLoop(CodeLocation location, UniqueRef<Expression>&& conditional, UniqueRef<Statement>&& body)
-        : Statement(location)
+        : Statement(location, Kind::WhileLoop)
         , m_conditional(WTFMove(conditional))
         , m_body(WTFMove(body))
     {
     }
 
-    virtual ~WhileLoop() = default;
+    ~WhileLoop() = default;
 
     WhileLoop(const WhileLoop&) = delete;
     WhileLoop(WhileLoop&&) = default;
-
-    bool isWhileLoop() const override { return true; }
 
     Expression& conditional() { return m_conditional; }
     Statement& body() { return m_body; }
@@ -68,6 +66,8 @@ private:
 }
 
 }
+
+DEFINE_DEFAULT_DELETE(WhileLoop)
 
 SPECIALIZE_TYPE_TRAITS_WHLSL_STATEMENT(WhileLoop, isWhileLoop())
 

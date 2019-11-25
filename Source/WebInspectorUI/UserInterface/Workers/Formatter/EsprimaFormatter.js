@@ -189,6 +189,23 @@ EsprimaFormatter = class EsprimaFormatter
         return (parent.type === "ForStatement" || parent.type === "ForInStatement" || parent.type === "ForOfStatement") && node !== parent.body;
     }
 
+    _isLikelyToHaveNewline(node)
+    {
+        let nodeType = node.type;
+        return nodeType === "IfStatement"
+            || nodeType === "ForStatement"
+            || nodeType === "ForOfStatement"
+            || nodeType === "ForInStatement"
+            || nodeType === "WhileStatement"
+            || nodeType === "DoWhileStatement"
+            || nodeType === "SwitchStatement"
+            || nodeType === "TryStatement"
+            || nodeType === "FunctionDeclaration"
+            || nodeType === "ClassDeclaration"
+            || nodeType === "BlockStatement"
+            || nodeType === "WithStatement";
+    }
+
     _isRangeWhitespace(from, to)
     {
         let substring = this._sourceText.substring(from, to);
@@ -287,7 +304,7 @@ EsprimaFormatter = class EsprimaFormatter
         }
 
         if (nodeType === "BlockStatement") {
-            let isSingleStatementArrowFunction = node.parent.type === "ArrowFunctionExpression" && node.body.length === 1;
+            let isSingleStatementArrowFunctionWithUnlikelyMultilineContent = node.parent.type === "ArrowFunctionExpression" && node.body.length === 1 && !this._isLikelyToHaveNewline(node.body[0]);
             if (tokenValue === "{") {
                 // Class methods we put the opening brace on its own line.
                 if (node.parent && node.parent.parent && node.parent.parent.type === "MethodDefinition" && node.body.length) {
@@ -298,13 +315,13 @@ EsprimaFormatter = class EsprimaFormatter
                     return;
                 }
                 builder.appendToken(tokenValue, tokenOffset);
-                if (node.body.length && !isSingleStatementArrowFunction)
+                if (node.body.length && !isSingleStatementArrowFunctionWithUnlikelyMultilineContent)
                     builder.appendNewline();
                 builder.indent();
                 return;
             }
             if (tokenValue === "}") {
-                if (node.body.length && !isSingleStatementArrowFunction)
+                if (node.body.length && !isSingleStatementArrowFunctionWithUnlikelyMultilineContent)
                     builder.appendNewline();
                 builder.dedent();
                 builder.appendToken(tokenValue, tokenOffset);
@@ -471,7 +488,7 @@ EsprimaFormatter = class EsprimaFormatter
         }
 
         if (nodeType === "ForStatement" || nodeType === "ForOfStatement" || nodeType === "ForInStatement") {
-            if (tokenValue === "for") {
+            if (tokenValue === "for" || tokenValue === "await") {
                 builder.appendToken(tokenValue, tokenOffset);
                 builder.appendSpace();
                 return;
@@ -828,12 +845,10 @@ EsprimaFormatter = class EsprimaFormatter
         // Include these here so we get only get warnings about unhandled nodes.
         if (nodeType === "ExpressionStatement"
             || nodeType === "SpreadElement"
-            || nodeType === "SpreadProperty"
             || nodeType === "Super"
             || nodeType === "Import"
             || nodeType === "MetaProperty"
             || nodeType === "RestElement"
-            || nodeType === "RestProperty"
             || nodeType === "TemplateElement"
             || nodeType === "TemplateLiteral"
             || nodeType === "DebuggerStatement"

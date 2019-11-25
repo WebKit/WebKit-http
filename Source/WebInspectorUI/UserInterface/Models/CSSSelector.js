@@ -40,8 +40,8 @@ WI.CSSSelector = class CSSSelector
     get specificity() { return this._specificity; }
     get dynamic() { return this._dynamic; }
 
-    isPseudoElementSelector()
+    isPseudoSelector()
     {
-        return WI.CSSManager.PseudoElementNames.some((name) => this._text.includes(`:${name}`));
+        return Object.values(WI.CSSManager.PseudoSelectorNames).some((pseudoId) => (new RegExp("(?:\\b|^):{1,2}(?:-webkit-)?" + pseudoId + "(?:\\b|$)")).test(this._text));
     }
 };

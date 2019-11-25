@@ -173,6 +173,8 @@ ExceptionOr<Document*> XMLHttpRequest::responseXML()
         return nullptr;
 
     if (!m_createdDocument) {
+        auto& context = *scriptExecutionContext();
+
         String mimeType = responseMIMEType();
         bool isHTML = equalLettersIgnoringASCIICase(mimeType, "text/html");
 
@@ -183,13 +185,13 @@ ExceptionOr<Document*> XMLHttpRequest::responseXML()
             m_responseDocument = nullptr;
         } else {
             if (isHTML)
-                m_responseDocument = HTMLDocument::create(nullptr, m_url);
+                m_responseDocument = HTMLDocument::create(context.sessionID(), nullptr, m_url);
             else
-                m_responseDocument = XMLDocument::create(nullptr, m_url);
+                m_responseDocument = XMLDocument::create(context.sessionID(), nullptr, m_url);
             m_responseDocument->overrideLastModified(m_response.lastModified());
             m_responseDocument->setContent(m_responseBuilder.toStringPreserveCapacity());
-            m_responseDocument->setContextDocument(downcast<Document>(*scriptExecutionContext()));
-            m_responseDocument->setSecurityOriginPolicy(scriptExecutionContext()->securityOriginPolicy());
+            m_responseDocument->setContextDocument(downcast<Document>(context));
+            m_responseDocument->setSecurityOriginPolicy(context.securityOriginPolicy());
             m_responseDocument->overrideMIMEType(mimeType);
 
             if (!m_responseDocument->wellFormed())
@@ -212,7 +214,7 @@ Ref<Blob> XMLHttpRequest::createResponseBlob()
         data.append(m_binaryResponseBuilder->data(), m_binaryResponseBuilder->size());
     m_binaryResponseBuilder = nullptr;
     String normalizedContentType = Blob::normalizedContentType(responseMIMEType()); // responseMIMEType defaults to text/xml which may be incorrect.
-    return Blob::create(WTFMove(data), normalizedContentType);
+    return Blob::create(scriptExecutionContext()->sessionID(), WTFMove(data), normalizedContentType);
 }
 
 RefPtr<ArrayBuffer> XMLHttpRequest::createResponseArrayBuffer()
@@ -533,8 +535,7 @@ ExceptionOr<void> XMLHttpRequest::send(DOMFormData& body)
         return WTFMove(result.value());
 
     if (m_method != "GET" && m_method != "HEAD") {
-        m_requestEntityBody = FormData::createMultiPart(body, document());
-        m_requestEntityBody->generateFiles(document());
+        m_requestEntityBody = FormData::createMultiPart(body);
         if (!m_requestHeaders.contains(HTTPHeaderName::ContentType))
             m_requestHeaders.set(HTTPHeaderName::ContentType, makeString("multipart/form-data; boundary=", m_requestEntityBody->boundary().data()));
     }
@@ -622,7 +623,7 @@ ExceptionOr<void> XMLHttpRequest::createRequest()
     if (m_async) {
         m_progressEventThrottle.dispatchProgressEvent(eventNames().loadstartEvent);
         if (!m_uploadComplete && m_uploadListenerFlag)
-            m_upload->dispatchProgressEvent(eventNames().loadstartEvent, 0, request.httpBody()->lengthInBytes());
+            m_upload->dispatchProgressEvent(eventNames().loadstartEvent, 0, request.httpBody()->lengthInBytes(scriptExecutionContext()->sessionID()));
 
         if (readyState() != OPENED || !m_sendFlag || m_loader)
             return { };

@@ -159,6 +159,7 @@ public:
     void clearAllDatabases();
     void setDatabaseQuota(uint64_t);
     JSRetainPtr<JSStringRef> pathToLocalResource(JSStringRef);
+    void syncLocalStorage();
 
     // Application Cache
     void clearAllApplicationCaches();
@@ -434,6 +435,7 @@ public:
     void statisticsCallClearThroughWebsiteDataRemovalCallback();
     bool isStatisticsHasLocalStorage(JSStringRef hostName);
     void setStatisticsCacheMaxAgeCap(double seconds);
+    bool hasStatisticsIsolatedSession(JSStringRef hostName);
     void statisticsResetToConsistentState(JSValueRef completionHandler);
     void statisticsCallDidResetToConsistentStateCallback();
 

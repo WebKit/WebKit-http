@@ -36,12 +36,14 @@ namespace WHLSL {
 
 namespace AST {
 
-class NullLiteralType : public ResolvableType {
+class NullLiteralType final : public ResolvableType {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    NullLiteralType() = default;
+    NullLiteralType()
+        : ResolvableType(Kind::NullLiteral)
+    { }
 
-    virtual ~NullLiteralType() = default;
+    ~NullLiteralType() = default;
 
     NullLiteralType(const NullLiteralType&) = delete;
     NullLiteralType(NullLiteralType&&) = default;
@@ -49,10 +51,8 @@ public:
     NullLiteralType& operator=(const NullLiteralType&) = delete;
     NullLiteralType& operator=(NullLiteralType&&) = default;
 
-    bool isNullLiteralType() const override { return true; }
-
-    bool canResolve(const Type&) const override;
-    unsigned conversionCost(const UnnamedType&) const override;
+    bool canResolve(const Type&) const;
+    unsigned conversionCost(const UnnamedType&) const;
 
 private:
 };
@@ -63,6 +63,8 @@ private:
 
 }
 
-SPECIALIZE_TYPE_TRAITS_WHLSL_RESOLVABLE_TYPE(NullLiteralType, isNullLiteralType())
+DEFINE_DEFAULT_DELETE(NullLiteralType)
+
+SPECIALIZE_TYPE_TRAITS_WHLSL_TYPE(NullLiteralType, isNullLiteralType())
 
 #endif

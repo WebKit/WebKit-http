@@ -45,31 +45,22 @@ class UnnamedType : public Type, public RefCounted<UnnamedType> {
     WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(UnnamedType);
 public:
-    UnnamedType(CodeLocation location)
-        : m_codeLocation(location)
+    UnnamedType(CodeLocation location, Kind kind)
+        : Type(kind)
+        , m_codeLocation(location)
     {
     }
 
-    virtual ~UnnamedType() = default;
+    unsigned hash() const;
+    bool operator==(const UnnamedType&) const;
 
-    bool isUnnamedType() const override { return true; }
-    virtual bool isTypeReference() const { return false; }
-    virtual bool isPointerType() const { return false; }
-    virtual bool isArrayReferenceType() const { return false; }
-    virtual bool isArrayType() const { return false; }
-    virtual bool isReferenceType() const { return false; }
+    String toString() const;
 
-    virtual const Type& unifyNode() const { return *this; }
-    virtual Type& unifyNode() { return *this; }
-
-    virtual unsigned hash() const = 0;
-    virtual bool operator==(const UnnamedType&) const = 0;
-
-    virtual String toString() const = 0;
-
-    const CodeLocation& codeLocation() const { return m_codeLocation; }
+    CodeLocation codeLocation() const { return m_codeLocation; }
 
 private:
+    friend class Type;
+    Type& unifyNodeImpl() { return *this; }
     CodeLocation m_codeLocation;
 };
 
@@ -79,10 +70,7 @@ private:
 
 }
 
-#define SPECIALIZE_TYPE_TRAITS_WHLSL_UNNAMED_TYPE(ToValueTypeName, predicate) \
-SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::WHLSL::AST::ToValueTypeName) \
-    static bool isType(const WebCore::WHLSL::AST::UnnamedType& type) { return type.predicate; } \
-SPECIALIZE_TYPE_TRAITS_END()
+DEFINE_DEFAULT_DELETE(UnnamedType)
 
 SPECIALIZE_TYPE_TRAITS_WHLSL_TYPE(UnnamedType, isUnnamedType())
 

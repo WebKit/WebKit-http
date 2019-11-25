@@ -44,10 +44,12 @@ class DOMTimer;
 class Element;
 
 class ContentChangeObserver : public CanMakeWeakPtr<ContentChangeObserver> {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     ContentChangeObserver(Document&);
 
     WEBCORE_EXPORT void startContentObservationForDuration(Seconds duration);
+    WEBCORE_EXPORT void stopContentObservation();
     WKContentChange observedContentChange() const { return m_observedContentState; }
     WEBCORE_EXPORT static bool isConsideredVisible(const Node&);
     static bool isVisuallyHidden(const Node&);
@@ -66,7 +68,7 @@ public:
     void didSuspendActiveDOMObjects();
     void willDetachPage();
 
-    void willDestroyRenderer(const Element&);
+    void rendererWillBeDestroyed(const Element&);
     void willNotProceedWithClick();
 
     void setHiddenTouchTarget(Element& targetElement) { m_hiddenTouchTargetElement = makeWeakPtr(targetElement); }
@@ -81,7 +83,7 @@ public:
     private:
         ContentChangeObserver& m_contentChangeObserver;
         const Element& m_element;
-        bool m_wasHidden { false };
+        Optional<bool> m_wasHidden;
         bool m_hadRenderer { false };
     };
 
@@ -97,14 +99,6 @@ public:
     public:
         WEBCORE_EXPORT MouseMovedScope(Document&);
         WEBCORE_EXPORT ~MouseMovedScope();
-    private:
-        ContentChangeObserver& m_contentChangeObserver;
-    };
-
-    class RenderTreeUpdateScope {
-    public:
-        RenderTreeUpdateScope(Document&);
-        ~RenderTreeUpdateScope();
     private:
         ContentChangeObserver& m_contentChangeObserver;
     };
@@ -135,11 +129,11 @@ private:
 
     void didRecognizeLongPress();
 
-    void contentVisibilityDidChange();
+    void elementDidBecomeVisible(const Element&);
+    void elementDidBecomeHidden(const Element&);
 
-    void setShouldObserveDOMTimerScheduling(bool observe) { m_isObservingDOMTimerScheduling = observe; }
+    void setShouldObserveDOMTimerSchedulingAndTransitions(bool);
     bool isObservingDOMTimerScheduling() const { return m_isObservingDOMTimerScheduling; }
-    void setShouldObserveTransitions(bool observe) { m_isObservingTransitions = observe; }
     bool isObservingTransitions() const { return m_isObservingTransitions; }
     bool isObservedPropertyForTransition(CSSPropertyID propertyId) const { return propertyId == CSSPropertyLeft || propertyId == CSSPropertyOpacity; }
     void domTimerExecuteDidStart(const DOMTimer&);
@@ -167,18 +161,21 @@ private:
     bool hasVisibleChangeState() const { return observedContentChange() == WKContentVisibilityChange; }
     bool hasObservedDOMTimer() const { return !m_DOMTimerList.isEmpty(); }
     bool hasObservedTransition() const { return !m_elementsWithTransition.isEmpty(); }
-    bool hasDeterminateState() const;
 
     void setIsBetweenTouchEndAndMouseMoved(bool isBetween) { m_isBetweenTouchEndAndMouseMoved = isBetween; }
     bool isBetweenTouchEndAndMouseMoved() const { return m_isBetweenTouchEndAndMouseMoved; }
+
+    void setTouchEventIsBeingDispatched(bool dispatching) { m_touchEventIsBeingDispatched = dispatching; }
+    bool isTouchEventBeingDispatched() const { return m_touchEventIsBeingDispatched; }
+
+    void setMouseMovedEventIsBeingDispatched(bool dispatching) { m_mouseMovedEventIsBeingDispatched = dispatching; }
+    bool isMouseMovedEventBeingDispatched() const { return m_mouseMovedEventIsBeingDispatched; }
 
     bool hasPendingActivity() const { return hasObservedDOMTimer() || hasObservedTransition() || m_isWaitingForStyleRecalc || isObservationTimeWindowActive(); }
     bool isObservationTimeWindowActive() const { return m_contentObservationTimer.isActive(); }
 
     void completeDurationBasedContentObservation();
 
-    void renderTreeUpdateDidStart();
-    void renderTreeUpdateDidFinish();
     bool visibleRendererWasDestroyed(const Element& element) const { return m_elementsWithDestroyedVisibleRenderer.contains(&element); }
     bool shouldObserveVisibilityChangeForElement(const Element&);
 
@@ -196,12 +193,11 @@ private:
         EndedStyleRecalc,
         AddedTransition,
         EndedTransitionButFinalStyleIsNotDefiniteYet,
-        CompletedTransitionWithClickableContent,
-        CompletedTransitionWithoutClickableContent,
+        CompletedTransition,
         CanceledTransition,
         StartedFixedObservationTimeWindow,
         EndedFixedObservationTimeWindow,
-        ContentVisibilityChanged
+        ElementDidBecomeVisible
     };
     void adjustObservedState(Event);
 
@@ -213,6 +209,7 @@ private:
     HashSet<const Element*> m_elementsWithDestroyedVisibleRenderer;
     WKContentChange m_observedContentState { WKContentNoChange };
     WeakPtr<Element> m_hiddenTouchTargetElement;
+    WeakHashSet<Element> m_visibilityCandidateList;
     bool m_touchEventIsBeingDispatched { false };
     bool m_isWaitingForStyleRecalc { false };
     bool m_isInObservedStyleRecalc { false };
@@ -221,18 +218,23 @@ private:
     bool m_mouseMovedEventIsBeingDispatched { false };
     bool m_isBetweenTouchEndAndMouseMoved { false };
     bool m_isObservingTransitions { false };
-    bool m_isInObservedRenderTreeUpdate { false };
 };
 
 inline bool ContentChangeObserver::isObservingContentChanges() const
 {
-    return m_touchEventIsBeingDispatched
-        || m_isBetweenTouchEndAndMouseMoved
-        || m_mouseMovedEventIsBeingDispatched
+    return isTouchEventBeingDispatched()
+        || isBetweenTouchEndAndMouseMoved()
+        || isMouseMovedEventBeingDispatched()
         || m_observedDomTimerIsBeingExecuted
         || m_isInObservedStyleRecalc
-        || m_contentObservationTimer.isActive();
-    }
+        || isObservationTimeWindowActive();
 }
 
+inline void ContentChangeObserver::setShouldObserveDOMTimerSchedulingAndTransitions(bool observe)
+{
+    m_isObservingDOMTimerScheduling = observe;
+    m_isObservingTransitions = observe;
+}
+
+}
 #endif

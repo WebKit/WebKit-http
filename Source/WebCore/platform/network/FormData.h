@@ -20,6 +20,7 @@
 #pragma once
 
 #include "BlobData.h"
+#include <pal/SessionID.h>
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
 #include <wtf/URL.h>
@@ -29,9 +30,8 @@
 
 namespace WebCore {
 
-class BlobRegistry;
+class BlobRegistryImpl;
 class DOMFormData;
-class Document;
 class File;
 class SharedBuffer;
 class TextEncoding;
@@ -46,12 +46,13 @@ struct FormDataElement {
         : data(WTFMove(data)) { }
     explicit FormDataElement(Vector<char>&& array)
         : data(WTFMove(array)) { }
-    FormDataElement(const String& filename, int64_t fileStart, int64_t fileLength, Optional<WallTime> expectedFileModificationTime, bool shouldGenerateFile)
-        : data(EncodedFileData { filename, fileStart, fileLength, expectedFileModificationTime, { }, shouldGenerateFile, false }) { }
+    FormDataElement(const String& filename, int64_t fileStart, int64_t fileLength, Optional<WallTime> expectedFileModificationTime)
+        : data(EncodedFileData { filename, fileStart, fileLength, expectedFileModificationTime }) { }
     explicit FormDataElement(const URL& blobURL)
         : data(EncodedBlobData { blobURL }) { }
 
-    uint64_t lengthInBytes() const;
+    uint64_t lengthInBytes(BlobRegistryImpl*) const;
+    uint64_t lengthInBytes(PAL::SessionID) const;
 
     FormDataElement isolatedCopy() const;
 
@@ -73,17 +74,12 @@ struct FormDataElement {
         int64_t fileStart { 0 };
         int64_t fileLength { 0 };
         Optional<WallTime> expectedFileModificationTime;
-        String generatedFilename;
-        bool shouldGenerateFile { false };
-        bool ownsGeneratedFile { false };
 
-        // FIXME: Generated file support in FormData is almost identical to Blob, they should be merged.
-        // We can't just switch to using Blobs for all files because EncodedFile form data elements do not
-        // have a valid expectedFileModificationTime, meaning we always upload the latest content from disk.
+        bool fileModificationTimeMatchesExpectation() const;
 
         EncodedFileData isolatedCopy() const
         {
-            return { filename.isolatedCopy(), fileStart, fileLength, expectedFileModificationTime, generatedFilename.isolatedCopy(), shouldGenerateFile, ownsGeneratedFile };
+            return { filename.isolatedCopy(), fileStart, fileLength, expectedFileModificationTime };
         }
         
         bool operator==(const EncodedFileData& other) const
@@ -91,14 +87,11 @@ struct FormDataElement {
             return filename == other.filename
                 && fileStart == other.fileStart
                 && fileLength == other.fileLength
-                && expectedFileModificationTime == other.expectedFileModificationTime
-                && generatedFilename == other.generatedFilename
-                && shouldGenerateFile == other.shouldGenerateFile
-                && ownsGeneratedFile == other.ownsGeneratedFile;
+                && expectedFileModificationTime == other.expectedFileModificationTime;
         }
         template<typename Encoder> void encode(Encoder& encoder) const
         {
-            encoder << filename << fileStart << fileLength << expectedFileModificationTime << generatedFilename << shouldGenerateFile;
+            encoder << filename << fileStart << fileLength << expectedFileModificationTime;
         }
         template<typename Decoder> static Optional<EncodedFileData> decode(Decoder& decoder)
         {
@@ -121,27 +114,12 @@ struct FormDataElement {
             decoder >> expectedFileModificationTime;
             if (!expectedFileModificationTime)
                 return WTF::nullopt;
-            
-            Optional<String> generatedFilename;
-            decoder >> generatedFilename;
-            if (!generatedFilename)
-                return WTF::nullopt;
 
-            Optional<bool> shouldGenerateFile;
-            decoder >> shouldGenerateFile;
-            if (!shouldGenerateFile)
-                return WTF::nullopt;
-
-            bool ownsGeneratedFile = false;
-            
             return {{
                 WTFMove(*filename),
                 WTFMove(*fileStart),
                 WTFMove(*fileLength),
-                WTFMove(*expectedFileModificationTime),
-                WTFMove(*generatedFilename),
-                WTFMove(*shouldGenerateFile),
-                WTFMove(ownsGeneratedFile)
+                WTFMove(*expectedFileModificationTime)
             }};
         }
 
@@ -189,6 +167,22 @@ struct FormDataElement {
     Data data;
 };
 
+class FormData;
+
+struct FormDataForUpload {
+public:
+    FormDataForUpload(FormDataForUpload&&) = default;
+    ~FormDataForUpload();
+
+    FormData& data() { return m_data.get(); }
+private:
+    friend class FormData;
+    FormDataForUpload(FormData&, Vector<String>&&);
+    
+    Ref<FormData> m_data;
+    Vector<String> m_temporaryZipFiles;
+};
+
 class FormData : public RefCounted<FormData> {
 public:
     enum EncodingType {
@@ -204,7 +198,7 @@ public:
     static Ref<FormData> create(const Vector<char>&);
     static Ref<FormData> create(const Vector<uint8_t>&);
     static Ref<FormData> create(const DOMFormData&, EncodingType = FormURLEncoded);
-    static Ref<FormData> createMultiPart(const DOMFormData&, Document*);
+    static Ref<FormData> createMultiPart(const DOMFormData&);
     WEBCORE_EXPORT ~FormData();
 
     // FIXME: Both these functions perform a deep copy of m_elements, but differ in handling of other data members.
@@ -218,8 +212,8 @@ public:
     static RefPtr<FormData> decode(Decoder&);
 
     WEBCORE_EXPORT void appendData(const void* data, size_t);
-    void appendFile(const String& filePath, bool shouldGenerateFile = false);
-    WEBCORE_EXPORT void appendFileRange(const String& filename, long long start, long long length, Optional<WallTime> expectedModificationTime, bool shouldGenerateFile = false);
+    void appendFile(const String& filePath);
+    WEBCORE_EXPORT void appendFileRange(const String& filename, long long start, long long length, Optional<WallTime> expectedModificationTime);
     WEBCORE_EXPORT void appendBlob(const URL& blobURL);
 
     WEBCORE_EXPORT Vector<char> flatten() const; // omits files
@@ -227,16 +221,15 @@ public:
 
     // Resolve all blob references so we only have file and data.
     // If the FormData has no blob references to resolve, this is returned.
-    WEBCORE_EXPORT Ref<FormData> resolveBlobReferences(BlobRegistry&);
+    WEBCORE_EXPORT Ref<FormData> resolveBlobReferences(BlobRegistryImpl*);
+
+    WEBCORE_EXPORT FormDataForUpload prepareForUpload();
 
     bool isEmpty() const { return m_elements.isEmpty(); }
     const Vector<FormDataElement>& elements() const { return m_elements; }
     const Vector<char>& boundary() const { return m_boundary; }
 
     RefPtr<SharedBuffer> asSharedBuffer() const;
-
-    void generateFiles(Document*);
-    void removeGeneratedFilesIfNeeded();
 
     bool alwaysStream() const { return m_alwaysStream; }
     void setAlwaysStream(bool alwaysStream) { m_alwaysStream = alwaysStream; }
@@ -258,7 +251,7 @@ public:
         return FormURLEncoded;
     }
 
-    uint64_t lengthInBytes() const;
+    uint64_t lengthInBytes(PAL::SessionID) const;
 
     WEBCORE_EXPORT URL asBlobURL() const;
 
@@ -266,13 +259,10 @@ private:
     FormData();
     FormData(const FormData&);
 
-    void appendMultiPartFileValue(const File&, Vector<char>& header, TextEncoding&, Document*);
+    void appendMultiPartFileValue(const File&, Vector<char>& header, TextEncoding&);
     void appendMultiPartStringValue(const String&, Vector<char>& header, TextEncoding&);
-    void appendMultiPartKeyValuePairItems(const DOMFormData&, Document*);
+    void appendMultiPartKeyValuePairItems(const DOMFormData&);
     void appendNonMultiPartKeyValuePairItems(const DOMFormData&, EncodingType);
-
-    bool hasGeneratedFiles() const;
-    bool hasOwnedGeneratedFiles() const;
 
     Vector<FormDataElement> m_elements;
 

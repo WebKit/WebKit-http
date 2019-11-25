@@ -36,6 +36,7 @@
 #include "Logging.h"
 #include "NodeRenderStyle.h"
 #include "Page.h"
+#include "Quirks.h"
 #include "RenderDescendantIterator.h"
 #include "Settings.h"
 
@@ -213,6 +214,8 @@ void ContentChangeObserver::didAddTransition(const Element& element, const Anima
         return;
     if (hasVisibleChangeState())
         return;
+    if (!isObservingContentChanges())
+        return;
     if (!isObservingTransitions())
         return;
     if (!transition.isDurationSet() || !transition.isPropertySet())
@@ -249,7 +252,9 @@ void ContentChangeObserver::didFinishTransition(const Element& element, CSSPrope
             weakThis->adjustObservedState(Event::EndedTransitionButFinalStyleIsNotDefiniteYet);
             return;
         }
-        weakThis->adjustObservedState(isConsideredClickable(*targetElement, ElementHadRenderer::Yes) ? Event::CompletedTransitionWithClickableContent : Event::CompletedTransitionWithoutClickableContent);
+        if (isConsideredClickable(*targetElement, ElementHadRenderer::Yes))
+            weakThis->elementDidBecomeVisible(*targetElement);
+        weakThis->adjustObservedState(Event::CompletedTransition);
     });
 }
 
@@ -268,13 +273,15 @@ void ContentChangeObserver::didInstallDOMTimer(const DOMTimer& timer, Seconds ti
 {
     if (!m_document.settings().contentChangeObserverEnabled())
         return;
-    if (m_document.activeDOMObjectsAreSuspended())
-        return;
-    if (timeout > maximumDelayForTimers || !singleShot)
+    if (!isObservingContentChanges())
         return;
     if (!isObservingDOMTimerScheduling())
         return;
     if (hasVisibleChangeState())
+        return;
+    if (m_document.activeDOMObjectsAreSuspended())
+        return;
+    if (timeout > maximumDelayForTimers || !singleShot)
         return;
     LOG_WITH_STREAM(ContentObservation, stream << "didInstallDOMTimer: register this timer: (" << &timer << ") and observe when it fires.");
 
@@ -339,48 +346,32 @@ void ContentChangeObserver::styleRecalcDidFinish()
     adjustObservedState(Event::EndedStyleRecalc);
 }
 
-void ContentChangeObserver::renderTreeUpdateDidStart()
-{
-    if (!m_document.settings().contentChangeObserverEnabled())
-        return;
-    if (!isObservingContentChanges())
-        return;
-
-    LOG(ContentObservation, "renderTreeUpdateDidStart: RenderTree update started");
-    m_isInObservedRenderTreeUpdate = true;
-    m_elementsWithDestroyedVisibleRenderer.clear();
-}
-
-void ContentChangeObserver::renderTreeUpdateDidFinish()
-{
-    if (!m_isInObservedRenderTreeUpdate)
-        return;
-
-    LOG(ContentObservation, "renderTreeUpdateDidStart: RenderTree update finished");
-    m_isInObservedRenderTreeUpdate = false;
-    m_elementsWithDestroyedVisibleRenderer.clear();
-}
-
 void ContentChangeObserver::stopObservingPendingActivities()
 {
     setShouldObserveNextStyleRecalc(false);
-    setShouldObserveDOMTimerScheduling(false);
-    setShouldObserveTransitions(false);
+    setShouldObserveDOMTimerSchedulingAndTransitions(false);
     clearObservedDOMTimers();
     clearObservedTransitions();
+}
+
+void ContentChangeObserver::stopContentObservation()
+{
+    reset();
 }
 
 void ContentChangeObserver::reset()
 {
     stopObservingPendingActivities();
     setHasNoChangeState();
-    setIsBetweenTouchEndAndMouseMoved(false);
 
-    m_touchEventIsBeingDispatched = false;
+    setTouchEventIsBeingDispatched(false);
+    setIsBetweenTouchEndAndMouseMoved(false);
+    setMouseMovedEventIsBeingDispatched(false);
+
     m_isInObservedStyleRecalc = false;
-    m_isInObservedRenderTreeUpdate = false;
     m_observedDomTimerIsBeingExecuted = false;
-    m_mouseMovedEventIsBeingDispatched = false;
+
+    m_visibilityCandidateList.clear();
 
     m_contentObservationTimer.stop();
     m_elementsWithDestroyedVisibleRenderer.clear();
@@ -399,35 +390,46 @@ void ContentChangeObserver::willDetachPage()
     reset();
 }
 
-void ContentChangeObserver::willDestroyRenderer(const Element& element)
+void ContentChangeObserver::rendererWillBeDestroyed(const Element& element)
 { 
     if (!m_document.settings().contentChangeObserverEnabled())
         return;
-    if (!m_isInObservedRenderTreeUpdate)
+    if (!isObservingContentChanges())
         return;
-    if (hasVisibleChangeState())
-        return;
-    LOG_WITH_STREAM(ContentObservation, stream << "willDestroyRenderer element: " << &element);
+    LOG_WITH_STREAM(ContentObservation, stream << "rendererWillBeDestroyed element: " << &element);
 
     if (!isVisuallyHidden(element))
         m_elementsWithDestroyedVisibleRenderer.add(&element);
+    elementDidBecomeHidden(element);
 }
 
-void ContentChangeObserver::contentVisibilityDidChange()
+void ContentChangeObserver::elementDidBecomeVisible(const Element& element)
 {
-    LOG(ContentObservation, "contentVisibilityDidChange: visible content change did happen.");
-    adjustObservedState(Event::ContentVisibilityChanged);
+    LOG_WITH_STREAM(ContentObservation, stream << "elementDidBecomeVisible: element went from hidden to visible: " << &element);
+    m_visibilityCandidateList.add(element);
+    adjustObservedState(Event::ElementDidBecomeVisible);
+}
+
+void ContentChangeObserver::elementDidBecomeHidden(const Element& element)
+{
+    LOG_WITH_STREAM(ContentObservation, stream << "elementDidBecomeHidden: element went from visible to hidden: " << &element);
+    // Candidate element is no longer visible.
+    if (!m_visibilityCandidateList.remove(element))
+        return;
+    ASSERT(hasVisibleChangeState());
+    if (m_visibilityCandidateList.computesEmpty())
+        setHasIndeterminateState();
 }
 
 void ContentChangeObserver::touchEventDidStart(PlatformEvent::Type eventType)
 {
 #if ENABLE(TOUCH_EVENTS)
-    if (!m_document.settings().contentChangeObserverEnabled())
+    if (!m_document.settings().contentChangeObserverEnabled() || m_document.quirks().shouldDisableContentChangeObserverTouchEventAdjustment())
         return;
     if (eventType != PlatformEvent::Type::TouchStart)
         return;
     LOG(ContentObservation, "touchEventDidStart: touch start event started.");
-    m_touchEventIsBeingDispatched = true;
+    setTouchEventIsBeingDispatched(true);
     adjustObservedState(Event::StartedTouchStartEventDispatching);
 #else
     UNUSED_PARAM(eventType);
@@ -437,11 +439,11 @@ void ContentChangeObserver::touchEventDidStart(PlatformEvent::Type eventType)
 void ContentChangeObserver::touchEventDidFinish()
 {
 #if ENABLE(TOUCH_EVENTS)
-    if (!m_touchEventIsBeingDispatched)
+    if (!isTouchEventBeingDispatched())
         return;
     ASSERT(m_document.settings().contentChangeObserverEnabled());
     LOG(ContentObservation, "touchEventDidFinish: touch start event finished.");
-    m_touchEventIsBeingDispatched = false;
+    setTouchEventIsBeingDispatched(false);
     adjustObservedState(Event::EndedTouchStartEventDispatching);
 #endif
 }
@@ -451,18 +453,18 @@ void ContentChangeObserver::mouseMovedDidStart()
     if (!m_document.settings().contentChangeObserverEnabled())
         return;
     LOG(ContentObservation, "mouseMovedDidStart: mouseMoved started.");
-    m_mouseMovedEventIsBeingDispatched = true;
+    setMouseMovedEventIsBeingDispatched(true);
     adjustObservedState(Event::StartedMouseMovedEventDispatching);
 }
 
 void ContentChangeObserver::mouseMovedDidFinish()
 {
-    if (!m_mouseMovedEventIsBeingDispatched)
+    if (!isMouseMovedEventBeingDispatched())
         return;
     ASSERT(m_document.settings().contentChangeObserverEnabled());
     LOG(ContentObservation, "mouseMovedDidFinish: mouseMoved finished.");
     adjustObservedState(Event::EndedMouseMovedEventDispatching);
-    m_mouseMovedEventIsBeingDispatched = false;
+    setMouseMovedEventIsBeingDispatched(false);
 }
 
 void ContentChangeObserver::setShouldObserveNextStyleRecalc(bool shouldObserve)
@@ -470,13 +472,6 @@ void ContentChangeObserver::setShouldObserveNextStyleRecalc(bool shouldObserve)
     if (shouldObserve)
         LOG(ContentObservation, "Wait until next style recalc fires.");
     m_isWaitingForStyleRecalc = shouldObserve;
-}
-
-bool ContentChangeObserver::hasDeterminateState() const
-{
-    if (hasVisibleChangeState())
-        return true;
-    return observedContentChange() == WKContentNoChange && !hasPendingActivity();
 }
 
 void ContentChangeObserver::adjustObservedState(Event event)
@@ -487,116 +482,152 @@ void ContentChangeObserver::adjustObservedState(Event event)
         clearObservedTransitions();
         setIsBetweenTouchEndAndMouseMoved(false);
         setShouldObserveNextStyleRecalc(false);
-        setShouldObserveDOMTimerScheduling(false);
-        setShouldObserveTransitions(false);
+        setShouldObserveDOMTimerSchedulingAndTransitions(false);
         ASSERT(!m_isInObservedStyleRecalc);
         ASSERT(!m_observedDomTimerIsBeingExecuted);
     };
 
-    auto adjustStateAndNotifyContentChangeIfNeeded = [&] {
-        // Demote to "no change" when there's no pending activity anymore.
-        if (observedContentChange() == WKContentIndeterminateChange && !hasPendingActivity())
-            setHasNoChangeState();
-
-        // Do not notify the client unless we couldn't make the decision synchronously.
-        if (m_mouseMovedEventIsBeingDispatched) {
-            LOG(ContentObservation, "adjustStateAndNotifyContentChangeIfNeeded: in mouseMoved call. No need to notify the client.");
+    auto notifyClientIfNeeded = [&] {
+        if (isTouchEventBeingDispatched()) {
+            LOG(ContentObservation, "notifyClientIfNeeded: Touch event is being dispatched. No need to notify the client.");
             return;
         }
         if (isBetweenTouchEndAndMouseMoved()) {
-            LOG(ContentObservation, "adjustStateAndNotifyContentChangeIfNeeded: Not reached mouseMoved yet. No need to notify the client.");
+            LOG(ContentObservation, "notifyClientIfNeeded: Not reached mouseMoved yet. No need to notify the client.");
             return;
         }
-        if (!hasDeterminateState()) {
-            LOG(ContentObservation, "adjustStateAndNotifyContentChangeIfNeeded: not in a determined state yet.");
+        if (isMouseMovedEventBeingDispatched()) {
+            LOG(ContentObservation, "notifyClientIfNeeded: in mouseMoved call. No need to notify the client.");
             return;
         }
-        LOG_WITH_STREAM(ContentObservation, stream << "adjustStateAndNotifyContentChangeIfNeeded: sending observedContentChange ->" << observedContentChange());
+        if (isObservationTimeWindowActive()) {
+            LOG(ContentObservation, "notifyClientIfNeeded: Inside the fixed window observation. No need to notify the client.");
+            return;
+        }
+
+        // The fixed observation window (which is the final step in content observation) is closed and now we check if are still waiting for timers or animations to finish.
+        if (hasPendingActivity()) {
+            LOG(ContentObservation, "notifyClientIfNeeded: We are still waiting on some events.");
+            return;
+        }
+
+        // First demote to "no change" because we've got no pending activity anymore.
+        if (observedContentChange() == WKContentIndeterminateChange)
+            setHasNoChangeState();
+
+        LOG_WITH_STREAM(ContentObservation, stream << "notifyClientIfNeeded: sending observedContentChange ->" << observedContentChange());
         ASSERT(m_document.page());
         ASSERT(m_document.frame());
         m_document.page()->chrome().client().didFinishContentChangeObserving(*m_document.frame(), observedContentChange());
+        stopContentObservation();
     };
 
-    switch (event) {
-    case Event::StartedTouchStartEventDispatching:
-        resetToStartObserving();
-        setShouldObserveDOMTimerScheduling(true);
-        setShouldObserveTransitions(true);
-        break;
-    case Event::EndedTouchStartEventDispatching:
-        setShouldObserveDOMTimerScheduling(false);
-        setShouldObserveTransitions(false);
-        setIsBetweenTouchEndAndMouseMoved(true);
-        break;
-    case Event::WillNotProceedWithClick:
-        reset();
-        break;
-    case Event::StartedMouseMovedEventDispatching:
-        ASSERT(!m_document.hasPendingStyleRecalc());
-        if (!isBetweenTouchEndAndMouseMoved())
+    // These user initiated events trigger content observation (touchStart and mouseMove). 
+    {
+        if (event == Event::StartedTouchStartEventDispatching) {
             resetToStartObserving();
-        setIsBetweenTouchEndAndMouseMoved(false);
-        setShouldObserveDOMTimerScheduling(!hasVisibleChangeState());
-        setShouldObserveTransitions(!hasVisibleChangeState());
-        break;
-    case Event::EndedMouseMovedEventDispatching:
-        setShouldObserveDOMTimerScheduling(false);
-        setShouldObserveTransitions(false);
-        break;
-    case Event::StartedStyleRecalc:
-        setShouldObserveNextStyleRecalc(false);
-        FALLTHROUGH;
-    case Event::StartedDOMTimerExecution:
-        ASSERT(isObservationTimeWindowActive() || observedContentChange() == WKContentIndeterminateChange);
-        break;
-    case Event::InstalledDOMTimer:
-    case Event::StartedFixedObservationTimeWindow:
-    case Event::AddedTransition:
-        ASSERT(!hasVisibleChangeState());
-        setHasIndeterminateState();
-        break;
-    case Event::EndedDOMTimerExecution:
-        setShouldObserveNextStyleRecalc(m_document.hasPendingStyleRecalc());
-        FALLTHROUGH;
-    case Event::EndedStyleRecalc:
-    case Event::RemovedDOMTimer:
-    case Event::CanceledTransition:
-        if (!isObservationTimeWindowActive())
-            adjustStateAndNotifyContentChangeIfNeeded();
-        break;
-    case Event::EndedTransitionButFinalStyleIsNotDefiniteYet:
-        // onAnimationEnd can be called while in the middle of resolving the document (synchronously) or
-        // asynchronously right before the style update is issued. It also means we don't know whether this animation ends up producing visible content yet. 
-        if (m_document.inStyleRecalc()) {
-            // We need to start observing this style change synchronously.
-            m_isInObservedStyleRecalc = true;
-        } else
+            setShouldObserveDOMTimerSchedulingAndTransitions(true);
+            return;
+        }
+        if (event == Event::EndedTouchStartEventDispatching) {
+            setShouldObserveDOMTimerSchedulingAndTransitions(false);
+            setIsBetweenTouchEndAndMouseMoved(true);
+            return;
+        }
+        if (event == Event::StartedMouseMovedEventDispatching) {
+            ASSERT(!m_document.hasPendingStyleRecalc());
+            if (!isBetweenTouchEndAndMouseMoved())
+                resetToStartObserving();
+            setIsBetweenTouchEndAndMouseMoved(false);
+            setShouldObserveDOMTimerSchedulingAndTransitions(!hasVisibleChangeState());
+            return;
+        }
+        if (event == Event::EndedMouseMovedEventDispatching) {
+            setShouldObserveDOMTimerSchedulingAndTransitions(false);
+            return;
+        }
+    }
+    // Fixed window observation starts soon after mouseMove when we don't have a definite answer to whether we should proceed with hover or click.
+    {
+        if (event == Event::StartedFixedObservationTimeWindow) {
+            ASSERT(!hasVisibleChangeState());
+            setHasIndeterminateState();
+            return;
+        }
+        if (event == Event::EndedFixedObservationTimeWindow) {
+            notifyClientIfNeeded();
+            return;
+        }
+    }
+    // These events (DOM timer, transition and style recalc) could trigger style changes that are candidates to visibility checking.
+    {
+        if (event == Event::InstalledDOMTimer || event == Event::AddedTransition) {
+            ASSERT(!hasVisibleChangeState());
+            setHasIndeterminateState();
+            return;
+        }
+        if (event == Event::RemovedDOMTimer || event == Event::CanceledTransition) {
+            notifyClientIfNeeded();
+            return;
+        }
+        if (event == Event::StartedDOMTimerExecution) {
+            ASSERT(isObservationTimeWindowActive() || observedContentChange() == WKContentIndeterminateChange);
+            return;
+        }
+        if (event == Event::EndedDOMTimerExecution) {
+            if (m_document.hasPendingStyleRecalc()) {
+                setShouldObserveNextStyleRecalc(true);
+                return;
+            }
+            notifyClientIfNeeded();
+            return;
+        }
+        if (event == Event::EndedTransitionButFinalStyleIsNotDefiniteYet) {
+            // onAnimationEnd can be called while in the middle of resolving the document (synchronously) or
+            // asynchronously right before the style update is issued. It also means we don't know whether this animation ends up producing visible content yet. 
+            if (m_document.inStyleRecalc()) {
+                // We need to start observing this style change synchronously.
+                m_isInObservedStyleRecalc = true;
+                return;
+            }
             setShouldObserveNextStyleRecalc(true);
-        break;
-    case Event::CompletedTransitionWithClickableContent:
-        // Set visibility flag on and report visible change synchronously or asynchronously depending whether we are in the middle of style recalc.
-        contentVisibilityDidChange();
-        FALLTHROUGH;
-    case Event::CompletedTransitionWithoutClickableContent:
-        if (m_document.inStyleRecalc())
-            m_isInObservedStyleRecalc = true;
-        else if (!isObservationTimeWindowActive())
-            adjustStateAndNotifyContentChangeIfNeeded();
-        break;
-    case Event::EndedFixedObservationTimeWindow:
-        adjustStateAndNotifyContentChangeIfNeeded();
-        break;
-    case Event::ContentVisibilityChanged:
+            return;
+        }
+        if (event == Event::CompletedTransition) {
+            if (m_document.inStyleRecalc()) {
+                m_isInObservedStyleRecalc = true;
+                return;
+            }
+            notifyClientIfNeeded();
+            return;
+        }
+        if (event == Event::StartedStyleRecalc) {
+            setShouldObserveNextStyleRecalc(false);
+            ASSERT(isObservationTimeWindowActive() || observedContentChange() == WKContentIndeterminateChange);
+            return;
+        }
+        if (event == Event::EndedStyleRecalc) {
+            notifyClientIfNeeded();
+            return;
+        }
+    }
+    // Either the page decided to call preventDefault on the touch action or the tap gesture evolved to some other gesture (long press, double tap). 
+    if (event == Event::WillNotProceedWithClick) {
+        stopContentObservation();
+        return;
+    }
+    // The page produced an visible change on an actionable content.
+    if (event == Event::ElementDidBecomeVisible) {
         setHasVisibleChangeState();
         // Stop pending activities. We don't need to observe them anymore.
         stopObservingPendingActivities();
-        break;
+        return;
     }
 }
 
 bool ContentChangeObserver::shouldObserveVisibilityChangeForElement(const Element& element)
 {
-    return isObservingContentChanges() && !hasVisibleChangeState() && !visibleRendererWasDestroyed(element);
+    return isObservingContentChanges() && !visibleRendererWasDestroyed(element) && !element.document().quirks().shouldIgnoreContentChange(element);
 }
 
 ContentChangeObserver::StyleChangeScope::StyleChangeScope(Document& document, const Element& element)
@@ -610,12 +641,19 @@ ContentChangeObserver::StyleChangeScope::StyleChangeScope(Document& document, co
 
 ContentChangeObserver::StyleChangeScope::~StyleChangeScope()
 {
-    auto changedFromHiddenToVisible = [&] {
-        return m_wasHidden && isConsideredVisible(m_element);
-    };
+    // Do we track this element?
+    if (!m_wasHidden.hasValue())
+        return;
 
-    if (changedFromHiddenToVisible() && isConsideredClickable(m_element, m_hadRenderer ? ElementHadRenderer::Yes : ElementHadRenderer::No))
-        m_contentChangeObserver.contentVisibilityDidChange();
+    if (!isConsideredClickable(m_element, m_hadRenderer ? ElementHadRenderer::Yes : ElementHadRenderer::No))
+        return;
+
+    auto wasVisible = !m_wasHidden.value();
+    auto isVisible = isConsideredVisible(m_element);
+    if (!wasVisible && isVisible)
+        m_contentChangeObserver.elementDidBecomeVisible(m_element);
+    else if (wasVisible && !isVisible)
+        m_contentChangeObserver.elementDidBecomeHidden(m_element);
 }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -666,17 +704,6 @@ ContentChangeObserver::DOMTimerScope::~DOMTimerScope()
 {
     if (m_contentChangeObserver)
         m_contentChangeObserver->domTimerExecuteDidFinish(m_domTimer);
-}
-
-ContentChangeObserver::RenderTreeUpdateScope::RenderTreeUpdateScope(Document& document)
-    : m_contentChangeObserver(document.contentChangeObserver())
-{
-    m_contentChangeObserver.renderTreeUpdateDidStart();
-}
-
-ContentChangeObserver::RenderTreeUpdateScope::~RenderTreeUpdateScope()
-{
-    m_contentChangeObserver.renderTreeUpdateDidFinish();
 }
 
 }

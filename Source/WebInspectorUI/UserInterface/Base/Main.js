@@ -307,11 +307,11 @@ WI.contentLoaded = function()
     WI.settings.tabSize.addEventListener(WI.Setting.Event.Changed, setTabSize);
     setTabSize();
 
-    function setInvalidCharacterClassName() {
-        document.body.classList.toggle("show-invalid-characters", WI.settings.showInvalidCharacters.value);
+    function setInvisibleCharacterClassName() {
+        document.body.classList.toggle("show-invisible-characters", WI.settings.showInvisibleCharacters.value);
     }
-    WI.settings.showInvalidCharacters.addEventListener(WI.Setting.Event.Changed, setInvalidCharacterClassName);
-    setInvalidCharacterClassName();
+    WI.settings.showInvisibleCharacters.addEventListener(WI.Setting.Event.Changed, setInvisibleCharacterClassName);
+    setInvisibleCharacterClassName();
 
     function setWhitespaceCharacterClassName() {
         document.body.classList.toggle("show-whitespace-characters", WI.settings.showWhitespaceCharacters.value);
@@ -572,6 +572,12 @@ WI.contentLoaded = function()
     WI.tabBar.addEventListener(WI.TabBar.Event.TabBarItemAdded, WI._rememberOpenTabs);
     WI.tabBar.addEventListener(WI.TabBar.Event.TabBarItemRemoved, WI._rememberOpenTabs);
     WI.tabBar.addEventListener(WI.TabBar.Event.TabBarItemsReordered, WI._rememberOpenTabs);
+
+    function updateConsoleSavedResultPrefixCSSVariable() {
+        document.body.style.setProperty("--console-saved-result-prefix", "\"" + WI.RuntimeManager.preferredSavedResultPrefix() + "\"");
+    }
+    WI.settings.consoleSavedResultAlias.addEventListener(WI.Setting.Event.Changed, updateConsoleSavedResultPrefixCSSVariable);
+    updateConsoleSavedResultPrefixCSSVariable();
 
     // Signal that the frontend is now ready to receive messages.
     WI.whenTargetsAvailable().then(() => {
@@ -1399,7 +1405,7 @@ WI.showOriginalOrFormattedSourceCodeTextRange = function(sourceCodeTextRange, op
 
 WI.showResourceRequest = function(resource, options = {})
 {
-    WI.showRepresentedObject(resource, {[WI.ResourceClusterContentView.ContentViewIdentifierCookieKey]: WI.ResourceClusterContentView.RequestIdentifier}, options);
+    WI.showRepresentedObject(resource, {[WI.ResourceClusterContentView.ContentViewIdentifierCookieKey]: WI.ResourceClusterContentView.CustomRequestIdentifier}, options);
 };
 
 WI.debuggerToggleBreakpoints = function(event)
@@ -2486,6 +2492,12 @@ WI._beforecopy = function(event)
 
 WI._find = function(event)
 {
+    let tabContentView = WI.tabBrowser.selectedTabContentView;
+    if (tabContentView && tabContentView.canHandleFindEvent) {
+        tabContentView.handleFindEvent(event);
+        return;
+    }
+
     let contentBrowser = WI._focusedOrVisibleContentBrowser();
     if (!contentBrowser)
         return;
@@ -2691,22 +2703,23 @@ WI.setZoomFactor = function(factor)
 
 WI.resolvedLayoutDirection = function()
 {
-    let layoutDirection = WI.settings.layoutDirection.value;
-    if (layoutDirection === WI.LayoutDirection.System)
+    let layoutDirection = WI.settings.debugLayoutDirection.value;
+    if (!WI.isDebugUIEnabled() || layoutDirection === WI.LayoutDirection.System)
         layoutDirection = InspectorFrontendHost.userInterfaceLayoutDirection();
-
     return layoutDirection;
 };
 
 WI.setLayoutDirection = function(value)
 {
+    console.assert(WI.isDebugUIEnabled());
+
     if (!Object.values(WI.LayoutDirection).includes(value))
         WI.reportInternalError("Unknown layout direction requested: " + value);
 
-    if (value === WI.settings.layoutDirection.value)
+    if (value === WI.settings.debugLayoutDirection.value)
         return;
 
-    WI.settings.layoutDirection.value = value;
+    WI.settings.debugLayoutDirection.value = value;
 
     if (WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL && WI._dockConfiguration === WI.DockConfiguration.Right)
         WI._dockLeft();

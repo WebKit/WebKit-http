@@ -50,7 +50,9 @@
 
 using namespace WebCore;
 
+#if USE(CF)
 static CFStringRef WebDatabaseDirectoryDefaultsKey = CFSTR("WebDatabaseDirectory");
+#endif
 
 static inline bool isEqual(LPCWSTR s1, LPCWSTR s2)
 {
@@ -353,6 +355,7 @@ HRESULT WebDatabaseManager::setIDBPerOriginQuota(unsigned long long quota)
 }
 
 class DidModifyOriginData {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(DidModifyOriginData);
 public:
     static void dispatchToMainThread(WebDatabaseManager* databaseManager, const SecurityOriginData& origin)

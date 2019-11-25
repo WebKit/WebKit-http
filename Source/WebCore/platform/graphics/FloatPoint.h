@@ -67,6 +67,7 @@ class IntPoint;
 class IntSize;
 
 class FloatPoint {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     FloatPoint() { }
     FloatPoint(float x, float y) : m_x(x), m_y(y) { }

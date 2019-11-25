@@ -40,6 +40,7 @@
 #include "WebSQLiteDatabaseTracker.h"
 #include "WebSocketChannelManager.h"
 #include <WebCore/ActivityState.h>
+#include <WebCore/FrameIdentifier.h>
 #include <WebCore/PageIdentifier.h>
 #include <WebCore/RegistrableDomain.h>
 #if PLATFORM(MAC)
@@ -133,6 +134,7 @@ class WebProcess
     , ProcessTaskStateObserver::Client
 #endif
 {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static WebProcess& singleton();
     static constexpr ProcessType processType = ProcessType::WebContent;
@@ -172,9 +174,9 @@ public:
 
     bool fullKeyboardAccessEnabled() const { return m_fullKeyboardAccessEnabled; }
 
-    WebFrame* webFrame(uint64_t) const;
-    void addWebFrame(uint64_t, WebFrame*);
-    void removeWebFrame(uint64_t);
+    WebFrame* webFrame(WebCore::FrameIdentifier) const;
+    void addWebFrame(WebCore::FrameIdentifier, WebFrame*);
+    void removeWebFrame(WebCore::FrameIdentifier);
 
     WebPageGroupProxy* webPageGroup(WebCore::PageGroup*);
     WebPageGroupProxy* webPageGroup(uint64_t pageGroupID);
@@ -213,8 +215,6 @@ public:
     void registerStorageAreaMap(StorageAreaMap&);
     void unregisterStorageAreaMap(StorageAreaMap&);
     StorageAreaMap* storageAreaMap(uint64_t identifier) const;
-
-    void enablePrivateBrowsingForTesting(bool);
 
 #if PLATFORM(COCOA)
     RetainPtr<CFDataRef> sourceApplicationAuditData() const;
@@ -489,7 +489,7 @@ private:
 
     bool m_fullKeyboardAccessEnabled { false };
 
-    HashMap<uint64_t, WebFrame*> m_frameMap;
+    HashMap<WebCore::FrameIdentifier, WebFrame*> m_frameMap;
 
     typedef HashMap<const char*, std::unique_ptr<WebProcessSupplement>, PtrHash<const char*>> WebProcessSupplementMap;
     WebProcessSupplementMap m_supplements;

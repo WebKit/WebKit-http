@@ -201,6 +201,12 @@ WebProcessProxy::~WebProcessProxy()
 
 void WebProcessProxy::setIsInProcessCache(bool value)
 {
+    if (value) {
+        RELEASE_ASSERT(m_pageMap.isEmpty());
+        RELEASE_ASSERT(!m_suspendedPageCount);
+        RELEASE_ASSERT(m_provisionalPages.isEmpty());
+    }
+
     ASSERT(m_isInProcessCache != value);
     m_isInProcessCache = value;
 
@@ -395,7 +401,7 @@ void WebProcessProxy::addExistingWebPage(WebPageProxy& webPage, BeginsUsingDataS
 {
     ASSERT(!m_pageMap.contains(webPage.pageID()));
     ASSERT(!globalPageMap().contains(webPage.pageID()));
-    ASSERT(!m_isInProcessCache);
+    RELEASE_ASSERT(!m_isInProcessCache);
     ASSERT(!m_websiteDataStore || m_websiteDataStore == &webPage.websiteDataStore());
 
     if (beginsUsingDataStore == BeginsUsingDataStore::Yes)
@@ -821,25 +827,25 @@ void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connect
 #endif
 }
 
-WebFrameProxy* WebProcessProxy::webFrame(uint64_t frameID) const
+WebFrameProxy* WebProcessProxy::webFrame(FrameIdentifier frameID) const
 {
     if (!WebFrameProxyMap::isValidKey(frameID))
-        return 0;
+        return nullptr;
 
     return m_frameMap.get(frameID);
 }
 
-bool WebProcessProxy::canCreateFrame(uint64_t frameID) const
+bool WebProcessProxy::canCreateFrame(FrameIdentifier frameID) const
 {
     return WebFrameProxyMap::isValidKey(frameID) && !m_frameMap.contains(frameID);
 }
 
-void WebProcessProxy::frameCreated(uint64_t frameID, WebFrameProxy& frameProxy)
+void WebProcessProxy::frameCreated(FrameIdentifier frameID, WebFrameProxy& frameProxy)
 {
     m_frameMap.set(frameID, &frameProxy);
 }
 
-void WebProcessProxy::didDestroyFrame(uint64_t frameID)
+void WebProcessProxy::didDestroyFrame(FrameIdentifier frameID)
 {
     // If the page is closed before it has had the chance to send the DidCreateMainFrame message
     // back to the UIProcess, then the frameDestroyed message will still be received because it
@@ -1027,12 +1033,18 @@ void WebProcessProxy::requestTermination(ProcessTerminationReason reason)
     if (webConnection())
         webConnection()->didClose();
 
+    auto provisionalPages = WTF::map(m_provisionalPages, [](auto* provisionalPage) { return makeWeakPtr(provisionalPage); });
     auto pages = copyToVectorOf<RefPtr<WebPageProxy>>(m_pageMap.values());
 
     shutDown();
 
     for (auto& page : pages)
         page->processDidTerminate(reason);
+        
+    for (auto& provisionalPage : provisionalPages) {
+        if (provisionalPage)
+            provisionalPage->processDidTerminate();
+    }
 }
 
 bool WebProcessProxy::isReleaseLoggingAllowed() const

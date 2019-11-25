@@ -1588,7 +1588,7 @@ void RenderLayerBacking::updateEventRegion()
 #if ENABLE(POINTER_EVENTS)
     hasTouchActionElements = renderer().document().mayHaveElementsWithNonAutoTouchAction();
 #endif
-    if (m_owningLayer.isRenderViewLayer() && !hasTouchActionElements)
+    if (m_isMainFrameRenderViewLayer && !hasTouchActionElements)
         return;
 
     GraphicsContext nullContext(nullptr);
@@ -2476,7 +2476,7 @@ bool RenderLayerBacking::isDirectlyCompositedImage() const
         if (!is<BitmapImage>(image))
             return false;
 
-        if (downcast<BitmapImage>(*image).orientationForCurrentFrame() != DefaultImageOrientation)
+        if (downcast<BitmapImage>(*image).orientationForCurrentFrame() != ImageOrientation::None)
             return false;
 
 #if (PLATFORM(GTK) || PLATFORM(WPE))

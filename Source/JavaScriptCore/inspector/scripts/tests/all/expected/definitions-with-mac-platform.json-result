@@ -468,8 +468,9 @@ public:
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
             COMPILE_ASSERT(sizeof(NetworkError) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<JSON::Object> result = m_result.releaseNonNull();
-            return WTFMove(*reinterpret_cast<Ref<NetworkError>*>(&result));
+            Ref<JSON::Object> jsonResult = m_result.releaseNonNull();
+            auto result = WTFMove(*reinterpret_cast<Ref<NetworkError>*>(&jsonResult));
+            return result;
         }
     };
 
@@ -584,6 +585,7 @@ namespace Inspector {
 
 
 class ObjCInspectorNetworkBackendDispatcher final : public AlternateNetworkBackendDispatcher {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     ObjCInspectorNetworkBackendDispatcher(id<TestProtocolNetworkDomainHandler> handler) { m_delegate = handler; }
     virtual void loadResource(long requestId) override;
@@ -835,7 +837,7 @@ using namespace Inspector;
     AugmentableInspectorController* _controller;
 }
 
-- (instancetype)initWithController:(AugmentableInspectorController*)controller;
+- (instancetype)initWithController:(AugmentableInspectorController*)controller
 {
     self = [super init];
     if (!self)
@@ -926,6 +928,8 @@ __attribute__((visibility ("default")))
 - (void)resourceLoaded;
 @end
 
+
+#import <WebInspector/RWIProtocolBuildCompatibilityObjects.h>
 
 ### End File: TestProtocol.h
 

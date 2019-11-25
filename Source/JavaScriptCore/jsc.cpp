@@ -137,13 +137,19 @@
 #include <arm/arch.h>
 #endif
 
-#if __has_include(<WebKitAdditions/MemoryFootprint.h>)
-#include <WebKitAdditions/MemoryFootprint.h>
+#if OS(DARWIN)
+#include <wtf/spi/darwin/ProcessMemoryFootprint.h>
+struct MemoryFootprint : ProcessMemoryFootprint {
+    MemoryFootprint(const ProcessMemoryFootprint& src)
+        : ProcessMemoryFootprint(src)
+    {
+    }
+};
 #else
 struct MemoryFootprint {
     uint64_t current;
     uint64_t peak;
-    
+
     static MemoryFootprint now()
     {
         return { 0L, 0L };
@@ -3050,6 +3056,8 @@ int jscmain(int argc, char** argv)
     // Need to override and enable restricted options before we start parsing options below.
     Options::enableRestrictedOptions(true);
 
+    WTF::initializeMainThread();
+
     // Note that the options parsing can affect VM creation, and thus
     // comes first.
     CommandLine options(argc, argv);
@@ -3057,7 +3065,6 @@ int jscmain(int argc, char** argv)
     processConfigFile(Options::configFile(), "jsc");
 
     // Initialize JSC before getting VM.
-    WTF::initializeMainThread();
     JSC::initializeThreading();
     startTimeoutThreadIfNeeded();
 #if ENABLE(WEBASSEMBLY)

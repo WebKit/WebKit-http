@@ -1411,11 +1411,11 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         gst_message_parse_tag(message, &tags);
         if (gst_tag_list_get_string(tags, GST_TAG_IMAGE_ORIENTATION, &tag.outPtr())) {
             if (!g_strcmp0(tag.get(), "rotate-90"))
-                setVideoSourceOrientation(ImageOrientation(OriginRightTop));
+                setVideoSourceOrientation(ImageOrientation::OriginRightTop);
             else if (!g_strcmp0(tag.get(), "rotate-180"))
-                setVideoSourceOrientation(ImageOrientation(OriginBottomRight));
+                setVideoSourceOrientation(ImageOrientation::OriginBottomRight);
             else if (!g_strcmp0(tag.get(), "rotate-270"))
-                setVideoSourceOrientation(ImageOrientation(OriginLeftBottom));
+                setVideoSourceOrientation(ImageOrientation::OriginLeftBottom);
         }
         gst_tag_list_unref(tags);
         break;
@@ -1647,6 +1647,12 @@ void MediaPlayerPrivateGStreamer::purgeInvalidTextTracks(Vector<String> validTra
 
 void MediaPlayerPrivateGStreamer::fillTimerFired()
 {
+    if (m_errorOccured) {
+        GST_DEBUG_OBJECT(pipeline(), "[Buffering] An error occurred, disabling the fill timer");
+        m_fillTimer.stop();
+        return;
+    }
+
     GRefPtr<GstQuery> query = adoptGRef(gst_query_new_buffering(GST_FORMAT_PERCENT));
     double fillStatus = 100.0;
     GstBufferingMode mode = GST_BUFFERING_DOWNLOAD;
@@ -2429,8 +2435,6 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin(const URL& url, const String&
         GUniquePtr<char> elementName(gst_element_get_name(element));
         if (g_str_has_prefix(elementName.get(), "v4l2"))
             player->m_videoDecoderPlatform = WebKitGstVideoDecoderPlatform::Video4Linux;
-        else if (g_str_has_prefix(elementName.get(), "imxvpudecoder"))
-            player->m_videoDecoderPlatform = WebKitGstVideoDecoderPlatform::ImxVPU;
 
 #if USE(TEXTURE_MAPPER_GL)
         player->updateTextureMapperFlags();

@@ -107,6 +107,7 @@ static constexpr OptionSet<ScrollCoordinationRole> allScrollCoordinationRoles()
 
 #if PLATFORM(IOS_FAMILY)
 class LegacyWebKitScrollingLayerCoordinator {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     LegacyWebKitScrollingLayerCoordinator(ChromeClient& chromeClient, bool coordinateViewportConstrainedLayers)
         : m_chromeClient(chromeClient)
@@ -213,6 +214,10 @@ public:
     bool clippedByAncestor(RenderLayer&, const RenderLayer* compositingAncestor) const;
 
     bool updateAncestorClippingStack(const RenderLayer&, const RenderLayer* compositingAncestor) const;
+
+    // Returns the ScrollingNodeID for the containing async-scrollable layer that scrolls this renderer's border box.
+    // May return 0 for position-fixed content.
+    static ScrollingNodeID asyncScrollableContainerNodeID(const RenderObject&);
 
     // Whether layer's backing needs a graphics layer to clip z-order children of the given layer.
     static bool clipsCompositingDescendants(const RenderLayer&);

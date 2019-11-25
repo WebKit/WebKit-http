@@ -45,6 +45,7 @@ struct ShadowState;
 }
 
 class PlatformContextDirect2D {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(PlatformContextDirect2D);
 public:
     PlatformContextDirect2D(ID2D1RenderTarget*);
@@ -67,6 +68,9 @@ public:
     void restore();
 
     bool hasSavedState() const { return !m_renderStates.isEmpty(); }
+
+    void beginDraw();
+    void endDraw();
 
     enum Direct2DLayerType { AxisAlignedClip, LayerClip };
     void pushRenderClip(Direct2DLayerType);
@@ -128,6 +132,8 @@ private:
     StrokeStyle m_strokeStyle { SolidStroke };
     DashArray m_dashes;
 
+    unsigned beginDrawCount { 0 };
+
     float m_miterLimit { 10.0f };
     float m_dashOffset { 0 };
     float m_patternWidth { 1.0f };
@@ -142,6 +148,46 @@ private:
 
     friend class GraphicsContext;
     friend class GraphicsContextPlatformPrivate;
+};
+
+class PlatformContextStateSaver {
+public:
+    PlatformContextStateSaver(PlatformContextDirect2D& context, bool saveAndRestore = true)
+        : m_context(context)
+        , m_saveAndRestore(saveAndRestore)
+    {
+        if (m_saveAndRestore)
+            m_context.save();
+    }
+
+    ~PlatformContextStateSaver()
+    {
+        if (m_saveAndRestore)
+            m_context.restore();
+    }
+
+    void save()
+    {
+        ASSERT(!m_saveAndRestore);
+        m_context.save();
+        m_saveAndRestore = true;
+    }
+
+    void restore()
+    {
+        ASSERT(m_saveAndRestore);
+        m_context.restore();
+        m_saveAndRestore = false;
+    }
+
+    bool didSave() const
+    {
+        return m_saveAndRestore;
+    }
+
+private:
+    PlatformContextDirect2D& m_context;
+    bool m_saveAndRestore { false };
 };
 
 } // namespace WebCore

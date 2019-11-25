@@ -88,7 +88,6 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
             this._style.updatePropertiesModifiedState();
 
         let properties = this.propertiesToRender;
-        this.element.classList.toggle("no-properties", !properties.length);
 
         // FIXME: Only re-layout properties that have been modified and preserve focus whenever possible.
         this._propertyViews = [];
@@ -362,7 +361,7 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
 
     deselectProperties()
     {
-        for (let propertyView  of this._propertyViews)
+        for (let propertyView of this._propertyViews)
             propertyView.selected = false;
 
         this._focused = false;
@@ -677,7 +676,7 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
 
     _updateDebugLockStatus()
     {
-        if (!this._style || !WI.settings.enableStyleEditingDebugMode.value)
+        if (!this._style || !WI.isDebugUIEnabled() || !WI.settings.debugEnableStyleEditingDebugMode.value)
             return;
 
         this.element.classList.toggle("debug-style-locked", this._style.locked);

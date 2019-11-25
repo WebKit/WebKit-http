@@ -1,3 +1,1178 @@
+2019-08-15  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Keep track of all the visibility candidates.
+        https://bugs.webkit.org/show_bug.cgi?id=200777
+        <rdar://problem/54356331>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/WeakHashSet.h:
+
+2019-08-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [FTW] Enable CoreFoundation use if building for Apple target
+        https://bugs.webkit.org/show_bug.cgi?id=200799
+
+        Reviewed by Alex Christensen.
+
+        * wtf/PlatformFTW.cmake: Add missing files.
+
+2019-08-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r248440.
+        https://bugs.webkit.org/show_bug.cgi?id=200772
+
+        Introduced regressions related to loading of local files.
+        (Requested by perarne on #webkit).
+
+        Reverted changeset:
+
+        "[Mac] Use the PID of the WebContent process when issuing
+        local file read sandbox extensions"
+        https://bugs.webkit.org/show_bug.cgi?id=200543
+        https://trac.webkit.org/changeset/248440
+
+2019-08-14  Kate Cheney  <katherine_cheney@apple.com>
+
+        FileSystem::deleteFile should log error status (178347)
+        https://bugs.webkit.org/show_bug.cgi?id=178347
+
+        Reviewed by Brent Fulgham.
+
+        I added logging to the FileSystem::deleteFile function so that the debugger will
+        be able to see the associated errno string and better understand the reason for an
+        unlink failure or will know if the fileSystemRepresentation call was not
+        successful (or returned null).
+
+        * wtf/posix/FileSystemPOSIX.cpp:
+        (WTF::FileSystemImpl::deleteFile):
+
+2019-08-14  Keith Rollin  <krollin@apple.com>
+
+        Remove support for macOS < 10.13
+        https://bugs.webkit.org/show_bug.cgi?id=200694
+        <rdar://problem/54278851>
+
+        Reviewed by Youenn Fablet.
+
+        Update conditionals that reference __MAC_OS_X_VERSION_MIN_REQUIRED and
+        __MAC_OS_X_VERSION_MAX_ALLOWED, assuming that they both have values >=
+        101300. This means that expressions like
+        "__MAC_OS_X_VERSION_MIN_REQUIRED < 101300" are always False and
+        "__MAC_OS_X_VERSION_MIN_REQUIRED >= 101300" are always True.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+        * wtf/spi/darwin/SandboxSPI.h:
+
+2019-08-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Less contended MetaAllocator
+        https://bugs.webkit.org/show_bug.cgi?id=200278
+
+        Reviewed by Mark Lam.
+
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::incrementPageOccupancy):
+        (WTF::MetaAllocator::decrementPageOccupancy):
+        * wtf/MetaAllocator.h:
+
+2019-08-14  Samuel Groß  <saelo@google.com>
+
+        [JSCOnly] JSCOnly port doesn't build on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=200667
+
+        spi/darwin/ProcessMemoryFootprint.h is required by jsc.cpp so we add it to the WTF_PUBLIC_HEADERS.
+
+        Reviewed by Alex Christensen.
+
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/PlatformMac.cmake:
+
+2019-08-13  Sam Weinig  <weinig@apple.com>
+
+        Rename StringBuilder::append(UChar32) to StringBuilder::appendCharacter(UChar32) to avoid accidental change in behavior when replacing append with flexibleAppend
+        https://bugs.webkit.org/show_bug.cgi?id=200675
+
+        Reviewed by Darin Adler.
+
+        When we switch StringBuilder::append(...) to be based on the StringConcatenate/makeString flexibleAppend 
+        implementation, if we don't change anything, the behavior of StringBuilder::append(UChar32) will go from 
+        appending a character to appending a stringified number.
+
+        To work around this, we can rename StringBuilder::append(UChar32) to StringBuilder::appendCharacter(UChar32) 
+        and update all the call sites.
+
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::appendCharacter):
+        Renamed StringBuilder::append(UChar32) to StringBuilder::appendCharacter(UChar32).
+
+        * wtf/FileSystem.cpp:
+        (WTF::FileSystemImpl::decodeFromFilename):
+        Update for new name.
+
+2019-08-13  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, build fix for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=200611
+
+        * wtf/win/GDIObject.h:
+
+2019-08-12  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [WTF] Thread::removeFromThreadGroup leaks weak pointers.
+        https://bugs.webkit.org/show_bug.cgi?id=199857
+
+        Reviewed by Yusuke Suzuki.
+
+        Fix leaking of ThreadGroup's weak pointers.
+
+        Tests: WTF.ThreadGroupRemove API tests
+
+        * wtf/Threading.cpp:
+        (WTF::Thread::didExit):
+        (WTF::Thread::addToThreadGroup):
+        (WTF::Thread::removeFromThreadGroup):
+        (WTF::Thread::numberOfThreadGroups):
+        * wtf/Threading.h:
+
+2019-08-12  Sam Weinig  <weinig@apple.com>
+
+        Replace multiparameter overloads of append() in StringBuilder as a first step toward standardizinging on the flexibleAppend() implementation
+        https://bugs.webkit.org/show_bug.cgi?id=200614
+
+        Reviewed by Darin Adler.
+
+        Renames StringBuilder::append(const LChar*, unsigned), StringBuilder::append(const UChar*, unsigned) and 
+        StringBuilder::append(const char*, unsigned) to StringBuilder::appendCharacters(...).
+        
+        Renames StringBuilder::append(const String& string, unsigned offset, unsigned length) to 
+        StringBuilder::appendSubstring(...).
+
+        * wtf/HexNumber.h:
+        (WTF::appendUnsignedAsHexFixedSize):
+        Add overload that explicitly takes a StringBuilder to work around rename from append to appendCharacters.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::appendCharacters):
+        (WTF::StringBuilder::append):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::appendCharacters):
+        (WTF::StringBuilder::append):
+        (WTF::StringBuilder::appendSubstring):
+        (WTF::StringBuilder::appendLiteral):
+        (WTF::IntegerToStringConversionTrait<StringBuilder>::flush):
+        Update for renames.
+
+2019-08-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF][JSC] Make JSC and WTF aggressively-fast-malloced
+        https://bugs.webkit.org/show_bug.cgi?id=200611
+
+        Reviewed by Saam Barati.
+
+        WTF has many data structures, in particular, containers. And these containers can be allocated like `std::make_unique<Container>()`.
+        Without WTF_MAKE_FAST_ALLOCATED, this container itself is allocated from the system malloc. This patch attaches WTF_MAKE_FAST_ALLOCATED
+        more aggressively not to allocate them from the system malloc. And we add some `final` to containers and classes that would be never inherited.
+
+        * wtf/Assertions.cpp:
+        * wtf/Atomics.h:
+        * wtf/AutodrainedPool.h:
+        * wtf/Bag.h:
+        (WTF::Bag::Bag): Deleted.
+        (WTF::Bag::~Bag): Deleted.
+        (WTF::Bag::clear): Deleted.
+        (WTF::Bag::add): Deleted.
+        (WTF::Bag::iterator::iterator): Deleted.
+        (WTF::Bag::iterator::operator! const): Deleted.
+        (WTF::Bag::iterator::operator* const): Deleted.
+        (WTF::Bag::iterator::operator++): Deleted.
+        (WTF::Bag::iterator::operator== const): Deleted.
+        (WTF::Bag::iterator::operator!= const): Deleted.
+        (WTF::Bag::begin): Deleted.
+        (WTF::Bag::begin const): Deleted.
+        (WTF::Bag::end const): Deleted.
+        (WTF::Bag::isEmpty const): Deleted.
+        (WTF::Bag::unwrappedHead const): Deleted.
+        * wtf/BitVector.h:
+        (WTF::BitVector::BitVector): Deleted.
+        (WTF::BitVector::~BitVector): Deleted.
+        (WTF::BitVector::operator=): Deleted.
+        (WTF::BitVector::size const): Deleted.
+        (WTF::BitVector::ensureSize): Deleted.
+        (WTF::BitVector::quickGet const): Deleted.
+        (WTF::BitVector::quickSet): Deleted.
+        (WTF::BitVector::quickClear): Deleted.
+        (WTF::BitVector::get const): Deleted.
+        (WTF::BitVector::contains const): Deleted.
+        (WTF::BitVector::set): Deleted.
+        (WTF::BitVector::add): Deleted.
+        (WTF::BitVector::ensureSizeAndSet): Deleted.
+        (WTF::BitVector::clear): Deleted.
+        (WTF::BitVector::remove): Deleted.
+        (WTF::BitVector::merge): Deleted.
+        (WTF::BitVector::filter): Deleted.
+        (WTF::BitVector::exclude): Deleted.
+        (WTF::BitVector::bitCount const): Deleted.
+        (WTF::BitVector::isEmpty const): Deleted.
+        (WTF::BitVector::findBit const): Deleted.
+        (WTF::BitVector::isEmptyValue const): Deleted.
+        (WTF::BitVector::isDeletedValue const): Deleted.
+        (WTF::BitVector::isEmptyOrDeletedValue const): Deleted.
+        (WTF::BitVector::operator== const): Deleted.
+        (WTF::BitVector::hash const): Deleted.
+        (WTF::BitVector::iterator::iterator): Deleted.
+        (WTF::BitVector::iterator::operator* const): Deleted.
+        (WTF::BitVector::iterator::operator++): Deleted.
+        (WTF::BitVector::iterator::isAtEnd const): Deleted.
+        (WTF::BitVector::iterator::operator== const): Deleted.
+        (WTF::BitVector::iterator::operator!= const): Deleted.
+        (WTF::BitVector::begin const): Deleted.
+        (WTF::BitVector::end const): Deleted.
+        (WTF::BitVector::bitsInPointer): Deleted.
+        (WTF::BitVector::maxInlineBits): Deleted.
+        (WTF::BitVector::byteCount): Deleted.
+        (WTF::BitVector::makeInlineBits): Deleted.
+        (WTF::BitVector::cleanseInlineBits): Deleted.
+        (WTF::BitVector::bitCount): Deleted.
+        (WTF::BitVector::findBitFast const): Deleted.
+        (WTF::BitVector::findBitSimple const): Deleted.
+        (WTF::BitVector::OutOfLineBits::numBits const): Deleted.
+        (WTF::BitVector::OutOfLineBits::numWords const): Deleted.
+        (WTF::BitVector::OutOfLineBits::bits): Deleted.
+        (WTF::BitVector::OutOfLineBits::bits const): Deleted.
+        (WTF::BitVector::OutOfLineBits::OutOfLineBits): Deleted.
+        (WTF::BitVector::isInline const): Deleted.
+        (WTF::BitVector::outOfLineBits const): Deleted.
+        (WTF::BitVector::outOfLineBits): Deleted.
+        (WTF::BitVector::bits): Deleted.
+        (WTF::BitVector::bits const): Deleted.
+        * wtf/Bitmap.h:
+        (WTF::Bitmap::size): Deleted.
+        (WTF::Bitmap::iterator::iterator): Deleted.
+        (WTF::Bitmap::iterator::operator* const): Deleted.
+        (WTF::Bitmap::iterator::operator++): Deleted.
+        (WTF::Bitmap::iterator::operator== const): Deleted.
+        (WTF::Bitmap::iterator::operator!= const): Deleted.
+        (WTF::Bitmap::begin const): Deleted.
+        (WTF::Bitmap::end const): Deleted.
+        * wtf/Box.h:
+        * wtf/BumpPointerAllocator.h:
+        * wtf/CPUTime.h:
+        * wtf/CheckedBoolean.h:
+        * wtf/CommaPrinter.h:
+        (WTF::CommaPrinter::CommaPrinter): Deleted.
+        (WTF::CommaPrinter::dump const): Deleted.
+        (WTF::CommaPrinter::didPrint const): Deleted.
+        * wtf/CompactPointerTuple.h:
+        (WTF::CompactPointerTuple::encodeType): Deleted.
+        (WTF::CompactPointerTuple::decodeType): Deleted.
+        (WTF::CompactPointerTuple::CompactPointerTuple): Deleted.
+        (WTF::CompactPointerTuple::pointer const): Deleted.
+        (WTF::CompactPointerTuple::setPointer): Deleted.
+        (WTF::CompactPointerTuple::type const): Deleted.
+        (WTF::CompactPointerTuple::setType): Deleted.
+        * wtf/CompilationThread.h:
+        (WTF::CompilationScope::CompilationScope): Deleted.
+        (WTF::CompilationScope::~CompilationScope): Deleted.
+        (WTF::CompilationScope::leaveEarly): Deleted.
+        * wtf/CompletionHandler.h:
+        (WTF::CompletionHandler<Out):
+        (WTF::Detail::CallableWrapper<CompletionHandler<Out):
+        (WTF::CompletionHandlerCallingScope::CompletionHandlerCallingScope): Deleted.
+        (WTF::CompletionHandlerCallingScope::~CompletionHandlerCallingScope): Deleted.
+        (WTF::CompletionHandlerCallingScope::CompletionHandler<void): Deleted.
+        * wtf/ConcurrentBuffer.h:
+        (WTF::ConcurrentBuffer::ConcurrentBuffer): Deleted.
+        (WTF::ConcurrentBuffer::~ConcurrentBuffer): Deleted.
+        (WTF::ConcurrentBuffer::growExact): Deleted.
+        (WTF::ConcurrentBuffer::grow): Deleted.
+        (WTF::ConcurrentBuffer::array const): Deleted.
+        (WTF::ConcurrentBuffer::operator[]): Deleted.
+        (WTF::ConcurrentBuffer::operator[] const): Deleted.
+        (WTF::ConcurrentBuffer::createArray): Deleted.
+        * wtf/ConcurrentPtrHashSet.h:
+        (WTF::ConcurrentPtrHashSet::contains): Deleted.
+        (WTF::ConcurrentPtrHashSet::add): Deleted.
+        (WTF::ConcurrentPtrHashSet::size const): Deleted.
+        (WTF::ConcurrentPtrHashSet::Table::maxLoad const): Deleted.
+        (WTF::ConcurrentPtrHashSet::hash): Deleted.
+        (WTF::ConcurrentPtrHashSet::cast): Deleted.
+        (WTF::ConcurrentPtrHashSet::containsImpl const): Deleted.
+        (WTF::ConcurrentPtrHashSet::addImpl): Deleted.
+        * wtf/ConcurrentVector.h:
+        (WTF::ConcurrentVector::~ConcurrentVector): Deleted.
+        (WTF::ConcurrentVector::size const): Deleted.
+        (WTF::ConcurrentVector::isEmpty const): Deleted.
+        (WTF::ConcurrentVector::at): Deleted.
+        (WTF::ConcurrentVector::at const): Deleted.
+        (WTF::ConcurrentVector::operator[]): Deleted.
+        (WTF::ConcurrentVector::operator[] const): Deleted.
+        (WTF::ConcurrentVector::first): Deleted.
+        (WTF::ConcurrentVector::first const): Deleted.
+        (WTF::ConcurrentVector::last): Deleted.
+        (WTF::ConcurrentVector::last const): Deleted.
+        (WTF::ConcurrentVector::takeLast): Deleted.
+        (WTF::ConcurrentVector::append): Deleted.
+        (WTF::ConcurrentVector::alloc): Deleted.
+        (WTF::ConcurrentVector::removeLast): Deleted.
+        (WTF::ConcurrentVector::grow): Deleted.
+        (WTF::ConcurrentVector::begin): Deleted.
+        (WTF::ConcurrentVector::end): Deleted.
+        (WTF::ConcurrentVector::segmentExistsFor): Deleted.
+        (WTF::ConcurrentVector::segmentFor): Deleted.
+        (WTF::ConcurrentVector::subscriptFor): Deleted.
+        (WTF::ConcurrentVector::ensureSegmentsFor): Deleted.
+        (WTF::ConcurrentVector::ensureSegment): Deleted.
+        (WTF::ConcurrentVector::allocateSegment): Deleted.
+        * wtf/Condition.h:
+        (WTF::Condition::waitUntil): Deleted.
+        (WTF::Condition::waitFor): Deleted.
+        (WTF::Condition::wait): Deleted.
+        (WTF::Condition::notifyOne): Deleted.
+        (WTF::Condition::notifyAll): Deleted.
+        * wtf/CountingLock.h:
+        (WTF::CountingLock::LockHooks::lockHook): Deleted.
+        (WTF::CountingLock::LockHooks::unlockHook): Deleted.
+        (WTF::CountingLock::LockHooks::parkHook): Deleted.
+        (WTF::CountingLock::LockHooks::handoffHook): Deleted.
+        (WTF::CountingLock::tryLock): Deleted.
+        (WTF::CountingLock::lock): Deleted.
+        (WTF::CountingLock::unlock): Deleted.
+        (WTF::CountingLock::isHeld const): Deleted.
+        (WTF::CountingLock::isLocked const): Deleted.
+        (WTF::CountingLock::Count::operator bool const): Deleted.
+        (WTF::CountingLock::Count::operator== const): Deleted.
+        (WTF::CountingLock::Count::operator!= const): Deleted.
+        (WTF::CountingLock::tryOptimisticRead): Deleted.
+        (WTF::CountingLock::validate): Deleted.
+        (WTF::CountingLock::doOptimizedRead): Deleted.
+        (WTF::CountingLock::tryOptimisticFencelessRead): Deleted.
+        (WTF::CountingLock::fencelessValidate): Deleted.
+        (WTF::CountingLock::doOptimizedFencelessRead): Deleted.
+        (WTF::CountingLock::getCount): Deleted.
+        * wtf/CrossThreadQueue.h:
+        * wtf/CrossThreadTask.h:
+        * wtf/CryptographicallyRandomNumber.cpp:
+        * wtf/DataMutex.h:
+        * wtf/DateMath.h:
+        * wtf/Deque.h:
+        (WTF::Deque::size const): Deleted.
+        (WTF::Deque::isEmpty const): Deleted.
+        (WTF::Deque::begin): Deleted.
+        (WTF::Deque::end): Deleted.
+        (WTF::Deque::begin const): Deleted.
+        (WTF::Deque::end const): Deleted.
+        (WTF::Deque::rbegin): Deleted.
+        (WTF::Deque::rend): Deleted.
+        (WTF::Deque::rbegin const): Deleted.
+        (WTF::Deque::rend const): Deleted.
+        (WTF::Deque::first): Deleted.
+        (WTF::Deque::first const): Deleted.
+        (WTF::Deque::last): Deleted.
+        (WTF::Deque::last const): Deleted.
+        (WTF::Deque::append): Deleted.
+        * wtf/Dominators.h:
+        * wtf/DoublyLinkedList.h:
+        * wtf/Expected.h:
+        * wtf/FastBitVector.h:
+        * wtf/FileMetadata.h:
+        * wtf/FileSystem.h:
+        * wtf/GraphNodeWorklist.h:
+        * wtf/GregorianDateTime.h:
+        (WTF::GregorianDateTime::GregorianDateTime): Deleted.
+        (WTF::GregorianDateTime::year const): Deleted.
+        (WTF::GregorianDateTime::month const): Deleted.
+        (WTF::GregorianDateTime::yearDay const): Deleted.
+        (WTF::GregorianDateTime::monthDay const): Deleted.
+        (WTF::GregorianDateTime::weekDay const): Deleted.
+        (WTF::GregorianDateTime::hour const): Deleted.
+        (WTF::GregorianDateTime::minute const): Deleted.
+        (WTF::GregorianDateTime::second const): Deleted.
+        (WTF::GregorianDateTime::utcOffset const): Deleted.
+        (WTF::GregorianDateTime::isDST const): Deleted.
+        (WTF::GregorianDateTime::setYear): Deleted.
+        (WTF::GregorianDateTime::setMonth): Deleted.
+        (WTF::GregorianDateTime::setYearDay): Deleted.
+        (WTF::GregorianDateTime::setMonthDay): Deleted.
+        (WTF::GregorianDateTime::setWeekDay): Deleted.
+        (WTF::GregorianDateTime::setHour): Deleted.
+        (WTF::GregorianDateTime::setMinute): Deleted.
+        (WTF::GregorianDateTime::setSecond): Deleted.
+        (WTF::GregorianDateTime::setUtcOffset): Deleted.
+        (WTF::GregorianDateTime::setIsDST): Deleted.
+        (WTF::GregorianDateTime::operator tm const): Deleted.
+        (WTF::GregorianDateTime::copyFrom): Deleted.
+        * wtf/HashTable.h:
+        * wtf/Hasher.h:
+        * wtf/HexNumber.h:
+        * wtf/Indenter.h:
+        * wtf/IndexMap.h:
+        * wtf/IndexSet.h:
+        * wtf/IndexSparseSet.h:
+        * wtf/IndexedContainerIterator.h:
+        * wtf/Insertion.h:
+        * wtf/IteratorAdaptors.h:
+        * wtf/IteratorRange.h:
+        * wtf/KeyValuePair.h:
+        * wtf/ListHashSet.h:
+        (WTF::ListHashSet::begin): Deleted.
+        (WTF::ListHashSet::end): Deleted.
+        (WTF::ListHashSet::begin const): Deleted.
+        (WTF::ListHashSet::end const): Deleted.
+        (WTF::ListHashSet::random): Deleted.
+        (WTF::ListHashSet::random const): Deleted.
+        (WTF::ListHashSet::rbegin): Deleted.
+        (WTF::ListHashSet::rend): Deleted.
+        (WTF::ListHashSet::rbegin const): Deleted.
+        (WTF::ListHashSet::rend const): Deleted.
+        * wtf/Liveness.h:
+        * wtf/LocklessBag.h:
+        (WTF::LocklessBag::LocklessBag): Deleted.
+        (WTF::LocklessBag::add): Deleted.
+        (WTF::LocklessBag::iterate): Deleted.
+        (WTF::LocklessBag::consumeAll): Deleted.
+        (WTF::LocklessBag::consumeAllWithNode): Deleted.
+        (WTF::LocklessBag::~LocklessBag): Deleted.
+        * wtf/LoggingHashID.h:
+        * wtf/MD5.h:
+        * wtf/MachSendRight.h:
+        * wtf/MainThreadData.h:
+        * wtf/Markable.h:
+        * wtf/MediaTime.h:
+        * wtf/MemoryPressureHandler.h:
+        * wtf/MessageQueue.h:
+        (WTF::MessageQueue::MessageQueue): Deleted.
+        * wtf/MetaAllocator.h:
+        * wtf/MonotonicTime.h:
+        (WTF::MonotonicTime::MonotonicTime): Deleted.
+        (WTF::MonotonicTime::fromRawSeconds): Deleted.
+        (WTF::MonotonicTime::infinity): Deleted.
+        (WTF::MonotonicTime::nan): Deleted.
+        (WTF::MonotonicTime::secondsSinceEpoch const): Deleted.
+        (WTF::MonotonicTime::approximateMonotonicTime const): Deleted.
+        (WTF::MonotonicTime::operator bool const): Deleted.
+        (WTF::MonotonicTime::operator+ const): Deleted.
+        (WTF::MonotonicTime::operator- const): Deleted.
+        (WTF::MonotonicTime::operator% const): Deleted.
+        (WTF::MonotonicTime::operator+=): Deleted.
+        (WTF::MonotonicTime::operator-=): Deleted.
+        (WTF::MonotonicTime::operator== const): Deleted.
+        (WTF::MonotonicTime::operator!= const): Deleted.
+        (WTF::MonotonicTime::operator< const): Deleted.
+        (WTF::MonotonicTime::operator> const): Deleted.
+        (WTF::MonotonicTime::operator<= const): Deleted.
+        (WTF::MonotonicTime::operator>= const): Deleted.
+        (WTF::MonotonicTime::isolatedCopy const): Deleted.
+        (WTF::MonotonicTime::encode const): Deleted.
+        (WTF::MonotonicTime::decode): Deleted.
+        * wtf/NaturalLoops.h:
+        * wtf/NoLock.h:
+        * wtf/OSAllocator.h:
+        * wtf/OptionSet.h:
+        * wtf/Optional.h:
+        * wtf/OrderMaker.h:
+        * wtf/Packed.h:
+        (WTF::alignof):
+        * wtf/PackedIntVector.h:
+        (WTF::PackedIntVector::PackedIntVector): Deleted.
+        (WTF::PackedIntVector::operator=): Deleted.
+        (WTF::PackedIntVector::size const): Deleted.
+        (WTF::PackedIntVector::ensureSize): Deleted.
+        (WTF::PackedIntVector::resize): Deleted.
+        (WTF::PackedIntVector::clearAll): Deleted.
+        (WTF::PackedIntVector::get const): Deleted.
+        (WTF::PackedIntVector::set): Deleted.
+        (WTF::PackedIntVector::mask): Deleted.
+        * wtf/PageBlock.h:
+        * wtf/ParallelJobsOpenMP.h:
+        * wtf/ParkingLot.h:
+        * wtf/PriorityQueue.h:
+        (WTF::PriorityQueue::size const): Deleted.
+        (WTF::PriorityQueue::isEmpty const): Deleted.
+        (WTF::PriorityQueue::enqueue): Deleted.
+        (WTF::PriorityQueue::peek const): Deleted.
+        (WTF::PriorityQueue::dequeue): Deleted.
+        (WTF::PriorityQueue::decreaseKey): Deleted.
+        (WTF::PriorityQueue::increaseKey): Deleted.
+        (WTF::PriorityQueue::begin const): Deleted.
+        (WTF::PriorityQueue::end const): Deleted.
+        (WTF::PriorityQueue::isValidHeap const): Deleted.
+        (WTF::PriorityQueue::parentOf): Deleted.
+        (WTF::PriorityQueue::leftChildOf): Deleted.
+        (WTF::PriorityQueue::rightChildOf): Deleted.
+        (WTF::PriorityQueue::siftUp): Deleted.
+        (WTF::PriorityQueue::siftDown): Deleted.
+        * wtf/RandomDevice.h:
+        * wtf/Range.h:
+        * wtf/RangeSet.h:
+        (WTF::RangeSet::RangeSet): Deleted.
+        (WTF::RangeSet::~RangeSet): Deleted.
+        (WTF::RangeSet::add): Deleted.
+        (WTF::RangeSet::contains const): Deleted.
+        (WTF::RangeSet::overlaps const): Deleted.
+        (WTF::RangeSet::clear): Deleted.
+        (WTF::RangeSet::dump const): Deleted.
+        (WTF::RangeSet::dumpRaw const): Deleted.
+        (WTF::RangeSet::begin const): Deleted.
+        (WTF::RangeSet::end const): Deleted.
+        (WTF::RangeSet::addAll): Deleted.
+        (WTF::RangeSet::compact): Deleted.
+        (WTF::RangeSet::overlapsNonEmpty): Deleted.
+        (WTF::RangeSet::subsumesNonEmpty): Deleted.
+        (WTF::RangeSet::findRange const): Deleted.
+        * wtf/RecursableLambda.h:
+        * wtf/RedBlackTree.h:
+        (WTF::RedBlackTree::Node::successor const): Deleted.
+        (WTF::RedBlackTree::Node::predecessor const): Deleted.
+        (WTF::RedBlackTree::Node::successor): Deleted.
+        (WTF::RedBlackTree::Node::predecessor): Deleted.
+        (WTF::RedBlackTree::Node::reset): Deleted.
+        (WTF::RedBlackTree::Node::parent const): Deleted.
+        (WTF::RedBlackTree::Node::setParent): Deleted.
+        (WTF::RedBlackTree::Node::left const): Deleted.
+        (WTF::RedBlackTree::Node::setLeft): Deleted.
+        (WTF::RedBlackTree::Node::right const): Deleted.
+        (WTF::RedBlackTree::Node::setRight): Deleted.
+        (WTF::RedBlackTree::Node::color const): Deleted.
+        (WTF::RedBlackTree::Node::setColor): Deleted.
+        (WTF::RedBlackTree::RedBlackTree): Deleted.
+        (WTF::RedBlackTree::insert): Deleted.
+        (WTF::RedBlackTree::remove): Deleted.
+        (WTF::RedBlackTree::findExact const): Deleted.
+        (WTF::RedBlackTree::findLeastGreaterThanOrEqual const): Deleted.
+        (WTF::RedBlackTree::findGreatestLessThanOrEqual const): Deleted.
+        (WTF::RedBlackTree::first const): Deleted.
+        (WTF::RedBlackTree::last const): Deleted.
+        (WTF::RedBlackTree::size): Deleted.
+        (WTF::RedBlackTree::isEmpty): Deleted.
+        (WTF::RedBlackTree::treeMinimum): Deleted.
+        (WTF::RedBlackTree::treeMaximum): Deleted.
+        (WTF::RedBlackTree::treeInsert): Deleted.
+        (WTF::RedBlackTree::leftRotate): Deleted.
+        (WTF::RedBlackTree::rightRotate): Deleted.
+        (WTF::RedBlackTree::removeFixup): Deleted.
+        * wtf/ResourceUsage.h:
+        * wtf/RunLoop.cpp:
+        * wtf/RunLoopTimer.h:
+        * wtf/SHA1.h:
+        * wtf/Seconds.h:
+        (WTF::Seconds::Seconds): Deleted.
+        (WTF::Seconds::value const): Deleted.
+        (WTF::Seconds::minutes const): Deleted.
+        (WTF::Seconds::seconds const): Deleted.
+        (WTF::Seconds::milliseconds const): Deleted.
+        (WTF::Seconds::microseconds const): Deleted.
+        (WTF::Seconds::nanoseconds const): Deleted.
+        (WTF::Seconds::minutesAs const): Deleted.
+        (WTF::Seconds::secondsAs const): Deleted.
+        (WTF::Seconds::millisecondsAs const): Deleted.
+        (WTF::Seconds::microsecondsAs const): Deleted.
+        (WTF::Seconds::nanosecondsAs const): Deleted.
+        (WTF::Seconds::fromMinutes): Deleted.
+        (WTF::Seconds::fromHours): Deleted.
+        (WTF::Seconds::fromMilliseconds): Deleted.
+        (WTF::Seconds::fromMicroseconds): Deleted.
+        (WTF::Seconds::fromNanoseconds): Deleted.
+        (WTF::Seconds::infinity): Deleted.
+        (WTF::Seconds::nan): Deleted.
+        (WTF::Seconds::operator bool const): Deleted.
+        (WTF::Seconds::operator+ const): Deleted.
+        (WTF::Seconds::operator- const): Deleted.
+        (WTF::Seconds::operator* const): Deleted.
+        (WTF::Seconds::operator/ const): Deleted.
+        (WTF::Seconds::operator% const): Deleted.
+        (WTF::Seconds::operator+=): Deleted.
+        (WTF::Seconds::operator-=): Deleted.
+        (WTF::Seconds::operator*=): Deleted.
+        (WTF::Seconds::operator/=): Deleted.
+        (WTF::Seconds::operator%=): Deleted.
+        (WTF::Seconds::operator== const): Deleted.
+        (WTF::Seconds::operator!= const): Deleted.
+        (WTF::Seconds::operator< const): Deleted.
+        (WTF::Seconds::operator> const): Deleted.
+        (WTF::Seconds::operator<= const): Deleted.
+        (WTF::Seconds::operator>= const): Deleted.
+        (WTF::Seconds::isolatedCopy const): Deleted.
+        (WTF::Seconds::encode const): Deleted.
+        (WTF::Seconds::decode): Deleted.
+        * wtf/SegmentedVector.h:
+        (WTF::SegmentedVector::~SegmentedVector): Deleted.
+        (WTF::SegmentedVector::size const): Deleted.
+        (WTF::SegmentedVector::isEmpty const): Deleted.
+        (WTF::SegmentedVector::at): Deleted.
+        (WTF::SegmentedVector::at const): Deleted.
+        (WTF::SegmentedVector::operator[]): Deleted.
+        (WTF::SegmentedVector::operator[] const): Deleted.
+        (WTF::SegmentedVector::first): Deleted.
+        (WTF::SegmentedVector::first const): Deleted.
+        (WTF::SegmentedVector::last): Deleted.
+        (WTF::SegmentedVector::last const): Deleted.
+        (WTF::SegmentedVector::takeLast): Deleted.
+        (WTF::SegmentedVector::append): Deleted.
+        (WTF::SegmentedVector::alloc): Deleted.
+        (WTF::SegmentedVector::removeLast): Deleted.
+        (WTF::SegmentedVector::grow): Deleted.
+        (WTF::SegmentedVector::clear): Deleted.
+        (WTF::SegmentedVector::begin): Deleted.
+        (WTF::SegmentedVector::end): Deleted.
+        (WTF::SegmentedVector::shrinkToFit): Deleted.
+        (WTF::SegmentedVector::deleteAllSegments): Deleted.
+        (WTF::SegmentedVector::segmentExistsFor): Deleted.
+        (WTF::SegmentedVector::segmentFor): Deleted.
+        (WTF::SegmentedVector::subscriptFor): Deleted.
+        (WTF::SegmentedVector::ensureSegmentsFor): Deleted.
+        (WTF::SegmentedVector::ensureSegment): Deleted.
+        (WTF::SegmentedVector::allocateSegment): Deleted.
+        * wtf/SetForScope.h:
+        * wtf/SingleRootGraph.h:
+        * wtf/SinglyLinkedList.h:
+        * wtf/SmallPtrSet.h:
+        * wtf/SpanningTree.h:
+        * wtf/Spectrum.h:
+        * wtf/StackBounds.h:
+        * wtf/StackShot.h:
+        * wtf/StackShotProfiler.h:
+        * wtf/StackStats.h:
+        * wtf/StackTrace.h:
+        * wtf/StreamBuffer.h:
+        * wtf/SynchronizedFixedQueue.h:
+        (WTF::SynchronizedFixedQueue::create): Deleted.
+        (WTF::SynchronizedFixedQueue::open): Deleted.
+        (WTF::SynchronizedFixedQueue::close): Deleted.
+        (WTF::SynchronizedFixedQueue::isOpen): Deleted.
+        (WTF::SynchronizedFixedQueue::enqueue): Deleted.
+        (WTF::SynchronizedFixedQueue::dequeue): Deleted.
+        (WTF::SynchronizedFixedQueue::SynchronizedFixedQueue): Deleted.
+        * wtf/SystemTracing.h:
+        * wtf/ThreadGroup.h:
+        (WTF::ThreadGroup::create): Deleted.
+        (WTF::ThreadGroup::threads const): Deleted.
+        (WTF::ThreadGroup::getLock): Deleted.
+        (WTF::ThreadGroup::weakFromThis): Deleted.
+        * wtf/ThreadSpecific.h:
+        * wtf/ThreadingPrimitives.h:
+        (WTF::Mutex::impl): Deleted.
+        * wtf/TimeWithDynamicClockType.h:
+        (WTF::TimeWithDynamicClockType::TimeWithDynamicClockType): Deleted.
+        (WTF::TimeWithDynamicClockType::fromRawSeconds): Deleted.
+        (WTF::TimeWithDynamicClockType::secondsSinceEpoch const): Deleted.
+        (WTF::TimeWithDynamicClockType::clockType const): Deleted.
+        (WTF::TimeWithDynamicClockType::withSameClockAndRawSeconds const): Deleted.
+        (WTF::TimeWithDynamicClockType::operator bool const): Deleted.
+        (WTF::TimeWithDynamicClockType::operator+ const): Deleted.
+        (WTF::TimeWithDynamicClockType::operator- const): Deleted.
+        (WTF::TimeWithDynamicClockType::operator+=): Deleted.
+        (WTF::TimeWithDynamicClockType::operator-=): Deleted.
+        (WTF::TimeWithDynamicClockType::operator== const): Deleted.
+        (WTF::TimeWithDynamicClockType::operator!= const): Deleted.
+        * wtf/TimingScope.h:
+        * wtf/TinyLRUCache.h:
+        * wtf/TinyPtrSet.h:
+        * wtf/URLParser.cpp:
+        * wtf/URLParser.h:
+        * wtf/Unexpected.h:
+        * wtf/Variant.h:
+        * wtf/WTFSemaphore.h:
+        (WTF::Semaphore::Semaphore): Deleted.
+        (WTF::Semaphore::signal): Deleted.
+        (WTF::Semaphore::waitUntil): Deleted.
+        (WTF::Semaphore::waitFor): Deleted.
+        (WTF::Semaphore::wait): Deleted.
+        * wtf/WallTime.h:
+        (WTF::WallTime::WallTime): Deleted.
+        (WTF::WallTime::fromRawSeconds): Deleted.
+        (WTF::WallTime::infinity): Deleted.
+        (WTF::WallTime::nan): Deleted.
+        (WTF::WallTime::secondsSinceEpoch const): Deleted.
+        (WTF::WallTime::approximateWallTime const): Deleted.
+        (WTF::WallTime::operator bool const): Deleted.
+        (WTF::WallTime::operator+ const): Deleted.
+        (WTF::WallTime::operator- const): Deleted.
+        (WTF::WallTime::operator+=): Deleted.
+        (WTF::WallTime::operator-=): Deleted.
+        (WTF::WallTime::operator== const): Deleted.
+        (WTF::WallTime::operator!= const): Deleted.
+        (WTF::WallTime::operator< const): Deleted.
+        (WTF::WallTime::operator> const): Deleted.
+        (WTF::WallTime::operator<= const): Deleted.
+        (WTF::WallTime::operator>= const): Deleted.
+        (WTF::WallTime::isolatedCopy const): Deleted.
+        * wtf/WeakHashSet.h:
+        (WTF::WeakHashSet::WeakHashSetConstIterator::WeakHashSetConstIterator): Deleted.
+        (WTF::WeakHashSet::WeakHashSetConstIterator::get const): Deleted.
+        (WTF::WeakHashSet::WeakHashSetConstIterator::operator* const): Deleted.
+        (WTF::WeakHashSet::WeakHashSetConstIterator::operator-> const): Deleted.
+        (WTF::WeakHashSet::WeakHashSetConstIterator::operator++): Deleted.
+        (WTF::WeakHashSet::WeakHashSetConstIterator::skipEmptyBuckets): Deleted.
+        (WTF::WeakHashSet::WeakHashSetConstIterator::operator== const): Deleted.
+        (WTF::WeakHashSet::WeakHashSetConstIterator::operator!= const): Deleted.
+        (WTF::WeakHashSet::WeakHashSet): Deleted.
+        (WTF::WeakHashSet::begin const): Deleted.
+        (WTF::WeakHashSet::end const): Deleted.
+        (WTF::WeakHashSet::add): Deleted.
+        (WTF::WeakHashSet::remove): Deleted.
+        (WTF::WeakHashSet::contains const): Deleted.
+        (WTF::WeakHashSet::capacity const): Deleted.
+        (WTF::WeakHashSet::computesEmpty const): Deleted.
+        (WTF::WeakHashSet::hasNullReferences const): Deleted.
+        (WTF::WeakHashSet::computeSize const): Deleted.
+        (WTF::WeakHashSet::checkConsistency const): Deleted.
+        * wtf/WeakRandom.h:
+        (WTF::WeakRandom::WeakRandom): Deleted.
+        (WTF::WeakRandom::setSeed): Deleted.
+        (WTF::WeakRandom::seed const): Deleted.
+        (WTF::WeakRandom::get): Deleted.
+        (WTF::WeakRandom::getUint32): Deleted.
+        (WTF::WeakRandom::lowOffset): Deleted.
+        (WTF::WeakRandom::highOffset): Deleted.
+        (WTF::WeakRandom::nextState): Deleted.
+        (WTF::WeakRandom::generate): Deleted.
+        (WTF::WeakRandom::advance): Deleted.
+        * wtf/WordLock.h:
+        (WTF::WordLock::lock): Deleted.
+        (WTF::WordLock::unlock): Deleted.
+        (WTF::WordLock::isHeld const): Deleted.
+        (WTF::WordLock::isLocked const): Deleted.
+        (WTF::WordLock::isFullyReset const): Deleted.
+        * wtf/generic/MainThreadGeneric.cpp:
+        * wtf/glib/GMutexLocker.h:
+        * wtf/linux/CurrentProcessMemoryStatus.h:
+        * wtf/posix/ThreadingPOSIX.cpp:
+        (WTF::Semaphore::Semaphore): Deleted.
+        (WTF::Semaphore::~Semaphore): Deleted.
+        (WTF::Semaphore::wait): Deleted.
+        (WTF::Semaphore::post): Deleted.
+        * wtf/text/ASCIILiteral.h:
+        (WTF::ASCIILiteral::operator const char* const): Deleted.
+        (WTF::ASCIILiteral::fromLiteralUnsafe): Deleted.
+        (WTF::ASCIILiteral::null): Deleted.
+        (WTF::ASCIILiteral::characters const): Deleted.
+        (WTF::ASCIILiteral::ASCIILiteral): Deleted.
+        * wtf/text/AtomString.h:
+        (WTF::AtomString::operator=): Deleted.
+        (WTF::AtomString::isHashTableDeletedValue const): Deleted.
+        (WTF::AtomString::existingHash const): Deleted.
+        (WTF::AtomString::operator const String& const): Deleted.
+        (WTF::AtomString::string const): Deleted.
+        (WTF::AtomString::impl const): Deleted.
+        (WTF::AtomString::is8Bit const): Deleted.
+        (WTF::AtomString::characters8 const): Deleted.
+        (WTF::AtomString::characters16 const): Deleted.
+        (WTF::AtomString::length const): Deleted.
+        (WTF::AtomString::operator[] const): Deleted.
+        (WTF::AtomString::contains const): Deleted.
+        (WTF::AtomString::containsIgnoringASCIICase const): Deleted.
+        (WTF::AtomString::find const): Deleted.
+        (WTF::AtomString::findIgnoringASCIICase const): Deleted.
+        (WTF::AtomString::startsWith const): Deleted.
+        (WTF::AtomString::startsWithIgnoringASCIICase const): Deleted.
+        (WTF::AtomString::endsWith const): Deleted.
+        (WTF::AtomString::endsWithIgnoringASCIICase const): Deleted.
+        (WTF::AtomString::toInt const): Deleted.
+        (WTF::AtomString::toDouble const): Deleted.
+        (WTF::AtomString::toFloat const): Deleted.
+        (WTF::AtomString::percentage const): Deleted.
+        (WTF::AtomString::isNull const): Deleted.
+        (WTF::AtomString::isEmpty const): Deleted.
+        (WTF::AtomString::operator NSString * const): Deleted.
+        * wtf/text/AtomStringImpl.h:
+        (WTF::AtomStringImpl::lookUp): Deleted.
+        (WTF::AtomStringImpl::add): Deleted.
+        (WTF::AtomStringImpl::addWithStringTableProvider): Deleted.
+        * wtf/text/CString.h:
+        (WTF::CStringBuffer::data): Deleted.
+        (WTF::CStringBuffer::length const): Deleted.
+        (WTF::CStringBuffer::CStringBuffer): Deleted.
+        (WTF::CStringBuffer::mutableData): Deleted.
+        (WTF::CString::CString): Deleted.
+        (WTF::CString::data const): Deleted.
+        (WTF::CString::length const): Deleted.
+        (WTF::CString::isNull const): Deleted.
+        (WTF::CString::buffer const): Deleted.
+        (WTF::CString::isHashTableDeletedValue const): Deleted.
+        * wtf/text/ExternalStringImpl.h:
+        (WTF::ExternalStringImpl::freeExternalBuffer): Deleted.
+        * wtf/text/LineBreakIteratorPoolICU.h:
+        * wtf/text/NullTextBreakIterator.h:
+        * wtf/text/OrdinalNumber.h:
+        * wtf/text/StringBuffer.h:
+        * wtf/text/StringBuilder.h:
+        * wtf/text/StringConcatenateNumbers.h:
+        * wtf/text/StringHasher.h:
+        * wtf/text/StringImpl.h:
+        * wtf/text/StringView.cpp:
+        * wtf/text/StringView.h:
+        (WTF::StringView::left const): Deleted.
+        (WTF::StringView::right const): Deleted.
+        (WTF::StringView::underlyingStringIsValid const): Deleted.
+        (WTF::StringView::setUnderlyingString): Deleted.
+        * wtf/text/SymbolImpl.h:
+        (WTF::SymbolImpl::StaticSymbolImpl::StaticSymbolImpl): Deleted.
+        (WTF::SymbolImpl::StaticSymbolImpl::operator SymbolImpl&): Deleted.
+        (WTF::PrivateSymbolImpl::PrivateSymbolImpl): Deleted.
+        (WTF::RegisteredSymbolImpl::symbolRegistry const): Deleted.
+        (WTF::RegisteredSymbolImpl::clearSymbolRegistry): Deleted.
+        (WTF::RegisteredSymbolImpl::RegisteredSymbolImpl): Deleted.
+        * wtf/text/SymbolRegistry.h:
+        * wtf/text/TextBreakIterator.h:
+        * wtf/text/TextPosition.h:
+        * wtf/text/TextStream.h:
+        * wtf/text/WTFString.h:
+        (WTF::String::swap): Deleted.
+        (WTF::String::adopt): Deleted.
+        (WTF::String::isNull const): Deleted.
+        (WTF::String::isEmpty const): Deleted.
+        (WTF::String::impl const): Deleted.
+        (WTF::String::releaseImpl): Deleted.
+        (WTF::String::length const): Deleted.
+        (WTF::String::characters8 const): Deleted.
+        (WTF::String::characters16 const): Deleted.
+        (WTF::String::is8Bit const): Deleted.
+        (WTF::String::sizeInBytes const): Deleted.
+        (WTF::String::operator[] const): Deleted.
+        (WTF::String::find const): Deleted.
+        (WTF::String::findIgnoringASCIICase const): Deleted.
+        (WTF::String::reverseFind const): Deleted.
+        (WTF::String::contains const): Deleted.
+        (WTF::String::containsIgnoringASCIICase const): Deleted.
+        (WTF::String::startsWith const): Deleted.
+        (WTF::String::startsWithIgnoringASCIICase const): Deleted.
+        (WTF::String::hasInfixStartingAt const): Deleted.
+        (WTF::String::endsWith const): Deleted.
+        (WTF::String::endsWithIgnoringASCIICase const): Deleted.
+        (WTF::String::hasInfixEndingAt const): Deleted.
+        (WTF::String::append): Deleted.
+        (WTF::String::left const): Deleted.
+        (WTF::String::right const): Deleted.
+        (WTF::String::createUninitialized): Deleted.
+        (WTF::String::fromUTF8WithLatin1Fallback): Deleted.
+        (WTF::String::isAllASCII const): Deleted.
+        (WTF::String::isAllLatin1 const): Deleted.
+        (WTF::String::isSpecialCharacter const): Deleted.
+        (WTF::String::isHashTableDeletedValue const): Deleted.
+        (WTF::String::hash const): Deleted.
+        (WTF::String::existingHash const): Deleted.
+        * wtf/text/cf/TextBreakIteratorCF.h:
+        * wtf/text/icu/TextBreakIteratorICU.h:
+        * wtf/text/icu/UTextProviderLatin1.h:
+        * wtf/threads/BinarySemaphore.h:
+        (WTF::BinarySemaphore::waitFor): Deleted.
+        (WTF::BinarySemaphore::wait): Deleted.
+        * wtf/unicode/Collator.h:
+        * wtf/win/GDIObject.h:
+        * wtf/win/PathWalker.h:
+        * wtf/win/Win32Handle.h:
+
+2019-08-12  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix post landing review comments for r248533 from Darin.
+
+        * wtf/RefCounted.h:
+        (WTF::RefCountedBase::ref const):
+        (WTF::RefCountedBase::applyRefDerefThreadingCheck const):
+        (WTF::RefCountedBase::derefBase const):
+        (WTF::RefCountedBase::areThreadingCheckedEnabled const): Deleted.
+
+2019-08-12  Chris Dumez  <cdumez@apple.com>
+
+        Add threading assertions to RefCounted
+        https://bugs.webkit.org/show_bug.cgi?id=200507
+
+        Reviewed by Ryosuke Niwa.
+
+        Add threading assertions to RefCounted to try and catch unsafe concurrent ref'ing / derefing of
+        RefCounted objects from several threads. If you hit these new assertions, it likely means you either
+        need to:
+        1. Have your class subclass ThreadSafeRefCounted instead of RefCounted
+        or
+        2. Make sure your objects always gets ref'd / deref'd from the same thread.
+
+        These assertions already found several thread safety bugs in our code base, which I fixed via
+        dependency bugs.
+
+        These assertions are currently enabled in WebKit (UIProcess, child processes and
+        WebKitLegacy), they do not apply other JavascriptCore API clients.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/RefCounted.cpp: Added.
+        * wtf/RefCounted.h:
+        (WTF::RefCountedBase::ref const):
+        (WTF::RefCountedBase::disableThreadingChecks):
+        (WTF::RefCountedBase::enableThreadingChecksGlobally):
+        (WTF::RefCountedBase::RefCountedBase):
+        (WTF::RefCountedBase::areThreadingCheckedEnabled const):
+        (WTF::RefCountedBase::derefBase const):
+        * wtf/SizeLimits.cpp:
+
+2019-08-12  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r248525.
+
+        Revert new threading assertions while I work on fixing the
+        issues they exposed
+
+        Reverted changeset:
+
+        "Add threading assertions to RefCounted"
+        https://bugs.webkit.org/show_bug.cgi?id=200507
+        https://trac.webkit.org/changeset/248525
+
+2019-08-11  Chris Dumez  <cdumez@apple.com>
+
+        Add threading assertions to RefCounted
+        https://bugs.webkit.org/show_bug.cgi?id=200507
+
+        Reviewed by Ryosuke Niwa.
+
+        Add threading assertions to RefCounted to try and catch unsafe concurrent ref'ing / derefing of
+        RefCounted objects from several threads. If you hit these new assertions, it likely means you either
+        need to:
+        1. Have your class subclass ThreadSafeRefCounted instead of RefCounted
+        or
+        2. Make sure your objects always gets ref'd / deref'd from the same thread.
+
+        These assertions already found several thread safety bugs in our code base, which I fixed via
+        dependency bugs.
+
+        These assertions are currently enabled in WebKit (UIProcess, child processes and
+        WebKitLegacy), they do not apply other JavascriptCore API clients.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/RefCounted.cpp: Added.
+        * wtf/RefCounted.h:
+        (WTF::RefCountedBase::ref const):
+        (WTF::RefCountedBase::disableThreadingChecks):
+        (WTF::RefCountedBase::enableThreadingChecksGlobally):
+        (WTF::RefCountedBase::RefCountedBase):
+        (WTF::RefCountedBase::areThreadingCheckedEnabled const):
+        (WTF::RefCountedBase::derefBase const):
+        * wtf/SizeLimits.cpp:
+
+2019-08-09  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Devirtualize the AST
+        https://bugs.webkit.org/show_bug.cgi?id=200522
+
+        Reviewed by Robin Morisset.
+
+        Make RefCounted use std::default_delete instead of explicitly calling delete.
+        This allows uses of RefCounted to define their own custom deleter.
+
+        * wtf/RefCounted.h:
+        (WTF::RefCounted::deref const):
+        * wtf/UniqueRef.h:
+        (WTF::UniqueRef::UniqueRef):
+
+2019-08-08  Chris Dumez  <cdumez@apple.com>
+
+        Fix thread safety issue in AudioSampleDataSource() constructor
+        https://bugs.webkit.org/show_bug.cgi?id=200547
+
+        Reviewed by Alex Christensen.
+
+        Make Logger ThreadSafeRefCounted as it is ref'd / deref'd from various
+        threads (including the main thread and the WebKitWebRTCAudioModule thread).
+
+        * wtf/Logger.h:
+
+2019-08-08  Michael Saboff  <msaboff@apple.com>
+
+        OpenSource MemoryFootprint API for JSC command line tool
+        https://bugs.webkit.org/show_bug.cgi?id=200541
+
+        Reviewed by Saam Barati.
+
+        OpenSource version of WebKitAdditions/MemoryFootprint.h.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/spi/darwin/ProcessMemoryFootprint.h: Added.
+        (ProcessMemoryFootprint::now):
+        (ProcessMemoryFootprint::resetPeak):
+
+2019-08-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Mac] Use the PID of the WebContent process when issuing local file read sandbox extensions
+        https://bugs.webkit.org/show_bug.cgi?id=200543
+        <rdar://problem/49394015>
+
+        Reviewed by Brent Fulgham.
+
+        Add new SPI.
+
+        * wtf/Platform.h:
+        * wtf/spi/darwin/SandboxSPI.h:
+
+2019-08-07  Chris Dumez  <cdumez@apple.com>
+
+        Tighten WeakPtr threading assertions for GC threads
+        https://bugs.webkit.org/show_bug.cgi?id=200451
+
+        Reviewed by Youenn Fablet.
+
+        Make sure our GC threads do not dereference WeakPtr for main thread
+        objects by tightening our threading assertions in WeakPtr. They are
+        still allowed to call WeakPtr::get() for now though.
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtrImpl::get):
+        (WTF::WeakPtrImpl::wasConstructedOnMainThread const):
+        (WTF::WeakPtr::get const):
+        (WTF::WeakPtr::operator-> const):
+        (WTF::WeakPtr::operator* const):
+
+2019-08-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, a build fix after r248308
+
+        Use kSecUseDataProtectionKeychain for iOS 13 and macOS Catalina or newer.
+
+        * wtf/Platform.h:
+
+2019-08-06  Chris Dumez  <cdumez@apple.com>
+
+        Fix inefficiency in HTTPHeaderMap::set(CFStringRef, const String&)
+        https://bugs.webkit.org/show_bug.cgi?id=200475
+
+        Reviewed by Darin Adler.
+
+        Add convenience constuctor to StringView which takes in a const char*
+        and an unsigned length, similarly to what we already have for String.
+
+        * wtf/URL.cpp:
+        (WTF::URL::protocolIs const):
+        (WTF::protocolIsInternal):
+        * wtf/text/StringView.h:
+        (WTF::StringView::StringView):
+        (WTF::StringView::empty):
+
+2019-08-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Enable LocalAuthenticator for macOS
+        https://bugs.webkit.org/show_bug.cgi?id=182772
+        <rdar://problem/43347920>
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Platform.h:
+        Adds HAVE_DEVICE_IDENTITY.
+        * wtf/spi/cocoa/SecuritySPI.h:
+        Adds a SPI for telling macOS keychain to use the modern one.
+
+2019-08-06  Claudio Saavedra  <csaavedra@igalia.com>
+
+        FileSystem: silent build warning
+
+        Unreviewed compilation warning fix.
+
+        Remove unused parameter in empty method
+        * wtf/FileSystem.cpp:
+        (WTF::FileSystemImpl::createTemporaryZipArchive):
+
+2019-08-05  Youenn Fablet  <youenn@apple.com>
+
+        Make Logger::log thread safe so that it can be used from background threads
+        https://bugs.webkit.org/show_bug.cgi?id=200448
+
+        Reviewed by Eric Carlson.
+
+        Add a lock to ensure calling log is thread-safe.
+
+        * wtf/Logger.h:
+        (WTF::Logger::addObserver):
+        (WTF::Logger::removeObserver):
+        (WTF::Logger::log):
+        (WTF::Logger::observerLock):
+
+2019-08-05  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] implement CertificateInfo::summaryInfo
+        https://bugs.webkit.org/show_bug.cgi?id=191498
+
+        Reviewed by Alex Christensen.
+
+        Fixed function template for encoding vector.
+
+        * wtf/persistence/PersistentCoders.h:
+
+2019-08-02  Mark Lam  <mark.lam@apple.com>
+
+        [ARM64E] Harden the diversity of the DOMJIT::Signature::unsafeFunction pointer.
+        https://bugs.webkit.org/show_bug.cgi?id=200292
+        <rdar://problem/53706881>
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/PtrTag.h:
+        - Introducing WTF_VTBL_FUNCPTR_PTRAUTH and WTF_VTBL_FUNCPTR_PTRAUTH_STR macros for
+          defining vtbl function pointer style pointer signing modifier.
+
+2019-08-02  Eric Carlson  <eric.carlson@apple.com>
+
+        uniqueLogIdentifier() should generate a 64-bit identifier
+        https://bugs.webkit.org/show_bug.cgi?id=200403
+        <rdar://problem/53878447>
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/LoggerHelper.h:
+        (WTF::LoggerHelper::childLogIdentifier const): Use uint64_t masks.
+        (WTF::LoggerHelper::uniqueLogIdentifier): cryptographicallyRandomNumber returns a
+        uint32_t so use two to generate a 64-bit identifier.
+
+2019-08-02  Alex Christensen  <achristensen@webkit.org>
+
+        Fix an internal build after r248139
+        https://bugs.webkit.org/show_bug.cgi?id=200102
+
+        * wtf/cocoa/FileSystemCocoa.mm:
+        Some internal builds couldn't find BOM framework headers.
+        No problem.  They're not needed.  Just remove references to them.
+
+2019-08-01  Alex Christensen  <achristensen@webkit.org>
+
+        Move FormData zip file generation to NetworkProcess and enable it for all WebKit clients for uploading directories
+        https://bugs.webkit.org/show_bug.cgi?id=200102
+        <rdar://problem/53275114>
+
+        Reviewed by Darin Adler.
+
+        Move code from BlobDataFileReference::generateReplacementFile to FileSystem::createZipArchive.
+
+        * wtf/FileSystem.cpp:
+        (WTF::FileSystemImpl::createZipArchive):
+        * wtf/FileSystem.h:
+        * wtf/cocoa/FileSystemCocoa.mm:
+        (WTF::FileSystemImpl::createZipArchive):
+
+2019-08-01  Per Arne Vollan  <pvollan@apple.com>
+
+        Initialize memory pressure flag in MemoryPressureHandler
+        https://bugs.webkit.org/show_bug.cgi?id=200353
+
+        Reviewed by Geoffrey Garen.
+
+        The flag 'm_underMemoryPressure' in MemoryPressureHandler should be initialized to 'false'.
+
+        * wtf/MemoryPressureHandler.h:
+
+2019-08-01  Chris Dumez  <cdumez@apple.com>
+
+        Add threading assertion to WeakPtr's operator->()
+        https://bugs.webkit.org/show_bug.cgi?id=199922
+
+        Reviewed by Ryosuke Niwa.
+
+        Add threading assertion to WeakPtr's operator->() to make sure that the WeakPtr
+        always gets dereferenced on the same thread it was constructed on.
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtrImpl::get):
+        (WTF::WeakPtrImpl::WeakPtrImpl):
+
 2019-07-31  Youenn Fablet  <youenn@apple.com>
 
         Use CTFontCreateForCharactersWithLanguageAndOption if available instead of CTFontCreateForCharactersWithLanguage

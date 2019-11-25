@@ -64,6 +64,7 @@
 #include "Settings.h"
 #include <JavaScriptCore/ConsoleMessage.h>
 #include <JavaScriptCore/JSCInlines.h>
+#include <JavaScriptCore/RegularExpression.h>
 #include <JavaScriptCore/ScriptArguments.h>
 #include <JavaScriptCore/ScriptCallStack.h>
 #include <JavaScriptCore/ScriptCallStackFactory.h>
@@ -280,6 +281,26 @@ void PageConsoleClient::recordEnd(JSC::ExecState* state, Ref<ScriptArguments>&& 
     }
 }
 
+static Optional<String> snapshotCanvas(HTMLCanvasElement& canvasElement, CanvasRenderingContext& canvasRenderingContext)
+{
+#if ENABLE(WEBGL)
+    if (is<WebGLRenderingContextBase>(canvasRenderingContext))
+        downcast<WebGLRenderingContextBase>(canvasRenderingContext).setPreventBufferClearForInspector(true);
+#endif
+
+    auto result = canvasElement.toDataURL("image/png"_s);
+
+#if ENABLE(WEBGL)
+    if (is<WebGLRenderingContextBase>(canvasRenderingContext))
+        downcast<WebGLRenderingContextBase>(canvasRenderingContext).setPreventBufferClearForInspector(false);
+#endif
+
+    if (!result.hasException())
+        return result.releaseReturnValue().string;
+
+    return WTF::nullopt;
+}
+
 void PageConsoleClient::screenshot(JSC::ExecState* state, Ref<ScriptArguments>&& arguments)
 {
     String dataURL;
@@ -310,20 +331,32 @@ void PageConsoleClient::screenshot(JSC::ExecState* state, Ref<ScriptArguments>&&
                     else if (is<HTMLPictureElement>(node)) {
                         if (auto* firstImage = childrenOfType<HTMLImageElement>(downcast<HTMLPictureElement>(*node)).first())
                             snapshotImageElement(*firstImage);
-                    } else if (is<HTMLVideoElement>(node)) {
+                    }
+#if ENABLE(VIDEO)
+                    else if (is<HTMLVideoElement>(node)) {
                         auto& videoElement = downcast<HTMLVideoElement>(*node);
                         unsigned videoWidth = videoElement.videoWidth();
                         unsigned videoHeight = videoElement.videoHeight();
                         snapshot = ImageBuffer::create(FloatSize(videoWidth, videoHeight), RenderingMode::Unaccelerated);
                         videoElement.paintCurrentFrameInContext(snapshot->context(), FloatRect(0, 0, videoWidth, videoHeight));
                     }
+#endif
+                    else if (is<HTMLCanvasElement>(node)) {
+                        auto& canvasElement = downcast<HTMLCanvasElement>(*node);
+                        if (auto* canvasRenderingContext = canvasElement.renderingContext()) {
+                            if (auto result = snapshotCanvas(canvasElement, *canvasRenderingContext))
+                                dataURL = result.value();
+                        }
+                    }
                 }
 
-                if (!snapshot)
-                    snapshot = WebCore::snapshotNode(m_page.mainFrame(), *node);
+                if (dataURL.isEmpty()) {
+                    if (!snapshot)
+                        snapshot = WebCore::snapshotNode(m_page.mainFrame(), *node);
 
-                if (snapshot)
-                    dataURL = snapshot->toDataURL("image/png"_s, WTF::nullopt, PreserveResolution::Yes);
+                    if (snapshot)
+                        dataURL = snapshot->toDataURL("image/png"_s, WTF::nullopt, PreserveResolution::Yes);
+                }
             }
         } else if (auto* imageData = JSImageData::toWrapped(state->vm(), possibleTarget)) {
             target = possibleTarget;
@@ -346,24 +379,21 @@ void PageConsoleClient::screenshot(JSC::ExecState* state, Ref<ScriptArguments>&&
             if (is<HTMLCanvasElement>(canvas)) {
                 target = possibleTarget;
                 if (UNLIKELY(InspectorInstrumentation::hasFrontends())) {
-#if ENABLE(WEBGL)
-                    if (is<WebGLRenderingContextBase>(context))
-                        downcast<WebGLRenderingContextBase>(context)->setPreventBufferClearForInspector(true);
-#endif
-
-                    auto result = downcast<HTMLCanvasElement>(canvas).toDataURL("image/png"_s);
-
-#if ENABLE(WEBGL)
-                    if (is<WebGLRenderingContextBase>(context))
-                        downcast<WebGLRenderingContextBase>(context)->setPreventBufferClearForInspector(false);
-#endif
-
-                    if (!result.hasException())
-                        dataURL = result.releaseReturnValue().string;
+                    if (auto result = snapshotCanvas(downcast<HTMLCanvasElement>(canvas), *context))
+                        dataURL = result.value();
                 }
             }
 
             // FIXME: <https://webkit.org/b/180833> Web Inspector: support OffscreenCanvas for Canvas related operations
+        } else {
+            String base64;
+            if (possibleTarget.getString(state, base64)) {
+                JSC::Yarr::RegularExpression regex("^data:image/(?:[^;]+;)+base64,.+$"_s, JSC::Yarr::TextCaseSensitivity::TextCaseInsensitive);
+                if (regex.match(base64) != -1) {
+                    target = possibleTarget;
+                    dataURL = base64;
+                }
+            }
         }
     }
 

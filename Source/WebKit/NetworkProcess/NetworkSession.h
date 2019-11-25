@@ -29,6 +29,7 @@
 #include "SandboxExtension.h"
 #include "WebResourceLoadStatisticsStore.h"
 #include <WebCore/AdClickAttribution.h>
+#include <WebCore/BlobRegistryImpl.h>
 #include <WebCore/RegistrableDomain.h>
 #include <pal/SessionID.h>
 #include <wtf/HashSet.h>
@@ -51,7 +52,6 @@ class AdClickAttributionManager;
 class NetworkDataTask;
 class NetworkProcess;
 class NetworkResourceLoader;
-class StorageManager;
 class NetworkSocketChannel;
 class WebResourceLoadStatisticsStore;
 class WebSocketTask;
@@ -64,6 +64,7 @@ class Cache;
 }
 
 class NetworkSession : public CanMakeWeakPtr<NetworkSession> {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static std::unique_ptr<NetworkSession> create(NetworkProcess&, NetworkSessionCreationParameters&&);
     virtual ~NetworkSession();
@@ -80,8 +81,6 @@ public:
     void registerNetworkDataTask(NetworkDataTask& task) { m_dataTaskSet.add(&task); }
     void unregisterNetworkDataTask(NetworkDataTask& task) { m_dataTaskSet.remove(&task); }
 
-    StorageManager& storageManager() { return m_storageManager.get(); }
-
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     WebResourceLoadStatisticsStore* resourceLoadStatistics() const { return m_resourceLoadStatistics.get(); }
     void setResourceLoadStatisticsEnabled(bool);
@@ -90,6 +89,11 @@ public:
     void registrableDomainsWithWebsiteData(OptionSet<WebsiteDataType>, bool shouldNotifyPage, CompletionHandler<void(HashSet<WebCore::RegistrableDomain>&&)>&&);
     void logDiagnosticMessageWithValue(const String& message, const String& description, unsigned value, unsigned significantFigures, WebCore::ShouldSample);
     void notifyPageStatisticsTelemetryFinished(unsigned totalPrevalentResources, unsigned totalPrevalentResourcesWithUserInteraction, unsigned top3SubframeUnderTopFrameOrigins);
+    bool enableResourceLoadStatisticsLogTestingEvent() const { return m_enableResourceLoadStatisticsLogTestingEvent; }
+    void setResourceLoadStatisticsLogTestingEvent(bool log) { m_enableResourceLoadStatisticsLogTestingEvent = log; }
+    bool shouldIsolateSessionsForPrevalentTopFrames() const { return m_enableResourceLoadStatisticsNSURLSessionSwitching == EnableResourceLoadStatisticsNSURLSessionSwitching::Yes; }
+    virtual bool hasIsolatedSession(const WebCore::RegistrableDomain) const { return false; }
+    virtual void clearIsolatedSessions() { }
 #endif
     void storeAdClickAttribution(WebCore::AdClickAttribution&&);
     void handleAdClickAttributionConversion(WebCore::AdClickAttribution::Conversion&&, const URL& requestURL, const WebCore::ResourceRequest& redirectRequest);
@@ -112,6 +116,8 @@ public:
     virtual void removeWebSocketTask(WebSocketTask&) { }
     virtual void addWebSocketTask(WebSocketTask&) { }
 
+    WebCore::BlobRegistryImpl& blobRegistry() { return m_blobRegistry; }
+
 protected:
     NetworkSession(NetworkProcess&, const NetworkSessionCreationParameters&);
 
@@ -128,6 +134,8 @@ protected:
     ShouldIncludeLocalhost m_shouldIncludeLocalhostInResourceLoadStatistics { ShouldIncludeLocalhost::Yes };
     EnableResourceLoadStatisticsDebugMode m_enableResourceLoadStatisticsDebugMode { EnableResourceLoadStatisticsDebugMode::No };
     WebCore::RegistrableDomain m_resourceLoadStatisticsManualPrevalentResource;
+    EnableResourceLoadStatisticsNSURLSessionSwitching m_enableResourceLoadStatisticsNSURLSessionSwitching { EnableResourceLoadStatisticsNSURLSessionSwitching::No };
+    bool m_enableResourceLoadStatisticsLogTestingEvent;
 #endif
     UniqueRef<AdClickAttributionManager> m_adClickAttribution;
 
@@ -135,11 +143,11 @@ protected:
 
     PrefetchCache m_prefetchCache;
 
-    Ref<StorageManager> m_storageManager;
 #if !ASSERT_DISABLED
     bool m_isInvalidated { false };
 #endif
     RefPtr<NetworkCache::Cache> m_cache;
+    WebCore::BlobRegistryImpl m_blobRegistry;
 };
 
 } // namespace WebKit

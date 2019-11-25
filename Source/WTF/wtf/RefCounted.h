@@ -22,6 +22,7 @@
 
 #include <wtf/Assertions.h>
 #include <wtf/FastMalloc.h>
+#include <wtf/MainThread.h>
 #include <wtf/Noncopyable.h>
 
 namespace WTF {
@@ -39,6 +40,8 @@ class RefCountedBase {
 public:
     void ref() const
     {
+        applyRefDerefThreadingCheck();
+
 #if CHECK_REF_COUNTED_LIFECYCLE
         ASSERT_WITH_SECURITY_IMPLICATION(!m_deletionHasBegun);
         ASSERT(!m_adoptionIsRequired);
@@ -68,14 +71,49 @@ public:
 #endif
     }
 
+    // Please only call this method if you really know that what you're doing is safe (e.g.
+    // locking at call sites).
+    void disableThreadingChecks()
+    {
+#if !ASSERT_DISABLED
+        m_areThreadingChecksEnabled = false;
+#endif
+    }
+
+    static void enableThreadingChecksGlobally()
+    {
+#if !ASSERT_DISABLED
+        areThreadingChecksEnabledGlobally = true;
+#endif
+    }
+
 protected:
     RefCountedBase()
         : m_refCount(1)
+#if !ASSERT_DISABLED
+        , m_isOwnedByMainThread(isMainThread())
+#endif
 #if CHECK_REF_COUNTED_LIFECYCLE
         , m_deletionHasBegun(false)
         , m_adoptionIsRequired(true)
 #endif
     {
+    }
+
+    void applyRefDerefThreadingCheck() const
+    {
+#if !ASSERT_DISABLED
+        if (hasOneRef()) {
+            // Likely an ownership transfer across threads that may be safe.
+            m_isOwnedByMainThread = isMainThread();
+        } else if (areThreadingChecksEnabledGlobally && m_areThreadingChecksEnabled) {
+            // If you hit this assertion, it means that the RefCounted object was ref/deref'd
+            // from both the main thread and another in a way that is likely concurrent and unsafe.
+            // Derive from ThreadSafeRefCounted and make sure the destructor is safe on threads
+            // that call deref, or ref/deref from a single thread.
+            ASSERT_WITH_MESSAGE(m_isOwnedByMainThread == isMainThread(), "Unsafe to ref/deref from different threads");
+        }
+#endif
     }
 
     ~RefCountedBase()
@@ -89,6 +127,8 @@ protected:
     // Returns whether the pointer should be freed or not.
     bool derefBase() const
     {
+        applyRefDerefThreadingCheck();
+
 #if CHECK_REF_COUNTED_LIFECYCLE
         ASSERT_WITH_SECURITY_IMPLICATION(!m_deletionHasBegun);
         ASSERT(!m_adoptionIsRequired);
@@ -120,6 +160,11 @@ private:
 #endif
 
     mutable unsigned m_refCount;
+#if !ASSERT_DISABLED
+    mutable bool m_isOwnedByMainThread;
+    bool m_areThreadingChecksEnabled { true };
+    WTF_EXPORT_PRIVATE static bool areThreadingChecksEnabledGlobally;
+#endif
 #if CHECK_REF_COUNTED_LIFECYCLE
     mutable bool m_deletionHasBegun;
     mutable bool m_adoptionIsRequired;
@@ -136,13 +181,13 @@ inline void adopted(RefCountedBase* object)
 }
 #endif
 
-template<typename T> class RefCounted : public RefCountedBase {
+template<typename T, typename Deleter = std::default_delete<T>> class RefCounted : public RefCountedBase {
     WTF_MAKE_NONCOPYABLE(RefCounted); WTF_MAKE_FAST_ALLOCATED;
 public:
     void deref() const
     {
         if (derefBase())
-            delete static_cast<const T*>(this);
+            Deleter()(const_cast<T*>(static_cast<const T*>(this)));
     }
 
 protected:

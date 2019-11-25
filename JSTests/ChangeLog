@@ -1,3 +1,182 @@
+2019-08-16  Justin Michaud  <justin_michaud@apple.com>
+
+        Fix InBounds speculation of typed array PutByVal and add extra step to integer range optimization to search for equality relationships on the RHS value
+        https://bugs.webkit.org/show_bug.cgi?id=200782
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/int8-out-of-bounds.js: Added.
+        (foo):
+        * microbenchmarks/memcpy-typed-loop.js: Added.
+        (doTest):
+        (let.arr1.new.Int32Array.1000.let.arr2.new.Int32Array.1000):
+        (arr2):
+        * stress/int8-repeat-in-then-out-of-bounds.js: Added.
+        (foo):
+
+2019-08-16  Mark Lam  <mark.lam@apple.com>
+
+        [Re-land] ProxyObject should not be allow to access its target's private properties.
+        https://bugs.webkit.org/show_bug.cgi?id=200739
+        <rdar://problem/53972768>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/proxy-should-not-be-allowed-to-access-private-properties-of-target.js: Copied from JSTests/stress/proxy-should-not-be-allowed-to-access-private-properties-of-target.js.
+        * stress/proxy-with-private-symbols.js:
+
+2019-08-16  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Promise.prototype.finally should accept non-promise objects
+        https://bugs.webkit.org/show_bug.cgi?id=200829
+
+        Reviewed by Mark Lam.
+
+        * stress/promise-finally-should-accept-non-promise-objects.js: Added.
+        (shouldBe):
+        (Thenable):
+        (Thenable.prototype.then):
+
+2019-08-16  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Promise constructor should check argument before [[Construct]]
+        https://bugs.webkit.org/show_bug.cgi?id=198976
+
+        Reviewed by Ross Kirsling.
+
+        * stress/create-subclass-structure-may-throw-exception-when-getting-prototype.js: Fix test.
+        * stress/create-subclass-structure-might-throw.js: Fix test.
+        * test262/expectations.yaml: Mark 2 test cases as passing.
+
+2019-08-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r248709.
+
+        Caused test/built-ins/Promise/prototype/finally/this-value-
+        non-promise.js to fail on test262 bot
+
+        Reverted changeset:
+
+        "ProxyObject should not be allow to access its target's
+        private properties."
+        https://bugs.webkit.org/show_bug.cgi?id=200739
+        https://trac.webkit.org/changeset/248709
+
+2019-08-15  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        DateConversion::formatDateTime incorrectly formats negative years
+        https://bugs.webkit.org/show_bug.cgi?id=199964
+
+        Reviewed by Ross Kirsling.
+
+        * test262/expectations.yaml: Mark 6 test cases as passing.
+
+2019-08-15  Mark Lam  <mark.lam@apple.com>
+
+        More missing exception checks in String.prototype.
+        https://bugs.webkit.org/show_bug.cgi?id=200762
+        <rdar://problem/54333896>
+
+        Reviewed by Michael Saboff.
+
+        * stress/missing-exception-check-in-string-lastIndexOf.js: Added.
+        * stress/missing-exception-check-in-string-toLower.js: Added.
+        * stress/missing-exception-check-in-string-toUpper.js: Added.
+
+2019-08-14  Mark Lam  <mark.lam@apple.com>
+
+        ProxyObject should not be allow to access its target's private properties.
+        https://bugs.webkit.org/show_bug.cgi?id=200739
+        <rdar://problem/53972768>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/proxy-should-not-be-allowed-to-access-private-properties-of-target.js: Added.
+        * stress/proxy-with-private-symbols.js: Rebased.
+
+2019-08-14  Mark Lam  <mark.lam@apple.com>
+
+        Missing exception check in string compare.
+        https://bugs.webkit.org/show_bug.cgi?id=200743
+        <rdar://problem/53975356>
+
+        Reviewed by Michael Saboff.
+
+        * stress/missing-exception-check-in-string-compare.js: Added.
+
+2019-08-08  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] Add "jump if (not) undefined or null" bytecode ops
+        https://bugs.webkit.org/show_bug.cgi?id=200480
+
+        Reviewed by Saam Barati.
+
+        * stress/destructuring-assignment-require-object-coercible.js:
+        * stress/nullish-coalescing.js:
+
+2019-08-05  Michael Saboff  <msaboff@apple.com>
+
+        JSC: assertion failure in SpeculativeJIT::compileGetByValOnIntTypedArray
+        https://bugs.webkit.org/show_bug.cgi?id=199997
+
+        Reviewed by Saam Barati.
+
+        New test.
+
+        * stress/typedarray-no-alreadyChecked-assert.js: Added.
+        (checkIntArray):
+        (checkFloatArray):
+
+2019-08-02  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Support WebAssembly in SamplingProfiler
+        https://bugs.webkit.org/show_bug.cgi?id=200329
+
+        Reviewed by Saam Barati.
+
+        * stress/sampling-profiler-wasm-name-section.js: Added.
+        (const.compile):
+        (platformSupportsSamplingProfiler.vm.isWasmSupported.wasmEntry):
+        (platformSupportsSamplingProfiler.vm.isWasmSupported):
+        * stress/sampling-profiler-wasm.js: Added.
+        (platformSupportsSamplingProfiler.vm.isWasmSupported.wasmEntry):
+        (platformSupportsSamplingProfiler.vm.isWasmSupported):
+        * stress/sampling-profiler/loop.wasm: Added.
+        * stress/sampling-profiler/loop.wast: Added.
+        * stress/sampling-profiler/nameSection.wasm: Added.
+
+2019-08-02  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] LazyJSValue should be robust for empty JSValue
+        https://bugs.webkit.org/show_bug.cgi?id=200388
+
+        Reviewed by Saam Barati.
+
+        * stress/switch-constant-child-becomes-empty.js: Added.
+        (foo):
+
+2019-08-01  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        GetterSetter type confusion during DFG compilation
+        https://bugs.webkit.org/show_bug.cgi?id=199903
+
+        Reviewed by Mark Lam.
+
+        * stress/cse-propagated-constant-may-not-follow-structure-restrictions.js: Added.
+
+2019-08-01  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Update Test262 (2019.08.01)
+        https://bugs.webkit.org/show_bug.cgi?id=200351
+
+        Reviewed by Keith Miller.
+
+        * test262/expectations.yaml:
+        * test262/harness/testIntl.js:
+        * test262/latest-changes-summary.txt:
+        * test262/test/:
+        * test262/test262-Revision.txt:
+
 2019-07-30  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [JSC] Make StructureChain less-tricky by using Auxiliary Buffer

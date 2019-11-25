@@ -40,21 +40,19 @@ namespace WHLSL {
 
 namespace AST {
 
-class NativeTypeDeclaration : public NamedType {
+class NativeTypeDeclaration final : public NamedType {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     NativeTypeDeclaration(CodeLocation location, String&& name, TypeArguments&& typeArguments)
-        : NamedType(location, WTFMove(name))
+        : NamedType(Kind::NativeTypeDeclaration, location, WTFMove(name))
         , m_typeArguments(WTFMove(typeArguments))
     {
     }
 
-    virtual ~NativeTypeDeclaration() = default;
+    ~NativeTypeDeclaration() = default;
 
     NativeTypeDeclaration(const NativeTypeDeclaration&) = delete;
     NativeTypeDeclaration(NativeTypeDeclaration&&) = default;
-
-    bool isNativeTypeDeclaration() const override { return true; }
 
     TypeArguments& typeArguments() { return m_typeArguments; }
 
@@ -130,6 +128,6 @@ private:
 
 }
 
-SPECIALIZE_TYPE_TRAITS_WHLSL_NAMED_TYPE(NativeTypeDeclaration, isNativeTypeDeclaration())
+SPECIALIZE_TYPE_TRAITS_WHLSL_TYPE(NativeTypeDeclaration, isNativeTypeDeclaration())
 
 #endif

@@ -64,9 +64,15 @@ class Encoder;
 namespace WebKit {
 
 struct WebPageCreationParameters {
+    explicit WebPageCreationParameters(PAL::SessionID sessionID)
+        : sessionID(sessionID)
+    {
+    }
+
     void encode(IPC::Encoder&) const;
     static Optional<WebPageCreationParameters> decode(IPC::Decoder&);
 
+    PAL::SessionID sessionID;
     WebCore::IntSize viewSize;
 
     OptionSet<WebCore::ActivityState::Flag> activityState;
@@ -97,7 +103,6 @@ struct WebPageCreationParameters {
     String userAgent;
 
     Vector<BackForwardListItemState> itemStates;
-    PAL::SessionID sessionID;
 
     UserContentControllerIdentifier userContentControllerID;
     uint64_t visitedLinkTableID;
@@ -118,7 +123,7 @@ struct WebPageCreationParameters {
     bool mayStartMediaWhenInWindow;
     bool mediaPlaybackIsSuspended { false };
 
-    WebCore::IntSize viewLayoutSize;
+    WebCore::IntSize minimumSizeForAutoLayout;
     bool autoSizingShouldExpandToViewHeight;
     Optional<WebCore::IntSize> viewportSizeForCSSViewportUnits;
     

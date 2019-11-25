@@ -25,42 +25,37 @@
 
 #pragma once
 
-#if ENABLE(FULLSCREEN_API) && PLATFORM(IOS_FAMILY)
-
-#include <wtf/Seconds.h>
+#include "FullscreenTouchSecheuristicParameters.h"
 
 namespace WebKit {
 
 class FullscreenTouchSecheuristic {
 public:
-    double scoreOfNextTouch(CGPoint location);
-    void reset();
+    WK_EXPORT double scoreOfNextTouch(CGPoint location);
+    WK_EXPORT double scoreOfNextTouch(CGPoint location, const Seconds& deltaTime);
+    WK_EXPORT void reset();
 
-    void setRampUpSpeed(Seconds speed) { m_rampUpSpeed = speed; }
-    void setRampDownSpeed(Seconds speed) { m_rampDownSpeed = speed; }
-    void setXWeight(double weight) { m_xWeight = weight; }
-    void setYWeight(double weight) { m_yWeight = weight; }
+    void setParameters(const FullscreenTouchSecheuristicParameters& parameters) { m_parameters = parameters; }
+    double requiredScore() const { return m_parameters.requiredScore; }
+
+    void setRampUpSpeed(Seconds speed) { m_parameters.rampUpSpeed = speed; }
+    void setRampDownSpeed(Seconds speed) { m_parameters.rampDownSpeed = speed; }
+    void setXWeight(double weight) { m_parameters.xWeight = weight; }
+    void setYWeight(double weight) { m_parameters.yWeight = weight; }
     void setSize(CGSize size) { m_size = size; }
-    void setGamma(double gamma) { m_gamma = gamma; }
-    void setGammaCutoff(double cutoff) { m_cutoff = cutoff; }
+    void setGamma(double gamma) { m_parameters.gamma = gamma; }
+    void setGammaCutoff(double cutoff) { m_parameters.gammaCutoff = cutoff; }
 
 private:
-    double distanceScore(const CGPoint& nextLocation, const CGPoint& lastLocation, const Seconds& deltaTime);
-    double attenuationFactor(Seconds delta);
+    WK_EXPORT double distanceScore(const CGPoint& nextLocation, const CGPoint& lastLocation, const Seconds& deltaTime);
+    WK_EXPORT double attenuationFactor(Seconds delta);
 
     double m_weight { 0.1 };
-    Seconds m_rampUpSpeed { 1 };
-    Seconds m_rampDownSpeed { 1 };
-    double m_xWeight { 1 };
-    double m_yWeight { 1 };
-    double m_gamma { 1 };
-    double m_cutoff { 1 };
+    FullscreenTouchSecheuristicParameters m_parameters;
     CGSize m_size { };
     Seconds m_lastTouchTime { 0 };
-    CGPoint m_lastTouchLocation { };
+    CGPoint m_lastTouchLocation { -1, -1 };
     double m_lastScore { 0 };
 };
 
 }
-
-#endif // ENABLE(FULLSCREEN_API) && PLATFORM(IOS_FAMILY)

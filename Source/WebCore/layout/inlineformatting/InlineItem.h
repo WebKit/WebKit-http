@@ -28,14 +28,13 @@
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
 #include "LayoutBox.h"
-#include "LayoutInlineBox.h"
-#include "LayoutLineBreakBox.h"
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
 namespace Layout {
 
 class InlineItem : public CanMakeWeakPtr<InlineItem> {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     enum class Type { Text, HardLineBreak, Box, Float, ContainerStart, ContainerEnd };
     InlineItem(const Box& layoutBox, Type);

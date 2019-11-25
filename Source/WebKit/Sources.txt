@@ -57,8 +57,6 @@ NetworkProcess/Downloads/DownloadMap.cpp
 NetworkProcess/Downloads/DownloadMonitor.cpp
 NetworkProcess/Downloads/PendingDownload.cpp
 
-NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
-
 NetworkProcess/IndexedDB/WebIDBConnectionToClient.cpp
 
 NetworkProcess/ServiceWorker/ServiceWorkerFetchTask.cpp @no-unify
@@ -68,7 +66,12 @@ NetworkProcess/ServiceWorker/WebSWServerToContextConnection.cpp @no-unify
 
 NetworkProcess/WebStorage/LocalStorageDatabase.cpp
 NetworkProcess/WebStorage/LocalStorageDatabaseTracker.cpp
+NetworkProcess/WebStorage/LocalStorageNamespace.cpp
+NetworkProcess/WebStorage/SessionStorageNamespace.cpp
+NetworkProcess/WebStorage/StorageArea.cpp
 NetworkProcess/WebStorage/StorageManager.cpp
+NetworkProcess/WebStorage/StorageManagerSet.cpp
+NetworkProcess/WebStorage/TransientLocalStorageNamespace.cpp
 
 NetworkProcess/cache/CacheStorageEngine.cpp
 NetworkProcess/cache/CacheStorageEngineCache.cpp
@@ -403,9 +406,9 @@ UIProcess/Plugins/PluginProcessProxy.cpp
 UIProcess/UserContent/WebScriptMessageHandler.cpp
 UIProcess/UserContent/WebUserContentControllerProxy.cpp
 
-UIProcess/WebAuthentication/fido/CtapHidAuthenticator.cpp
+UIProcess/WebAuthentication/fido/CtapAuthenticator.cpp
 UIProcess/WebAuthentication/fido/CtapHidDriver.cpp
-UIProcess/WebAuthentication/fido/U2fHidAuthenticator.cpp
+UIProcess/WebAuthentication/fido/U2fAuthenticator.cpp
 
 UIProcess/WebAuthentication/Mock/MockAuthenticatorManager.cpp
 UIProcess/WebAuthentication/Mock/MockHidConnection.cpp

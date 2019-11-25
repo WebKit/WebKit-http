@@ -27,17 +27,14 @@
 #pragma once
 
 #include "CertificateInfo.h"
+#include "OpenSSLHelper.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
 
-struct x509_store_ctx_st;
-typedef struct x509_store_ctx_st X509StoreCTX;
-
 namespace WebCore {
 
-class CurlHandle;
-
 class CurlSSLVerifier {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(CurlSSLVerifier);
 public:
     enum class SSLCertificateFlags {
@@ -56,12 +53,11 @@ public:
     const CertificateInfo& certificateInfo() const { return m_certificateInfo; }
 
 private:
-    static int verifyCallback(int, X509StoreCTX*);
+    static int verifyCallback(int, X509_STORE_CTX*);
+    void collectInfo(X509_STORE_CTX*);
 
     int m_sslErrors { 0 };
     CertificateInfo m_certificateInfo;
-
-    void collectInfo(X509StoreCTX*);
 };
 
 } // namespace WebCore

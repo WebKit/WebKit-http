@@ -37,7 +37,14 @@ PatchpointValue::~PatchpointValue()
 void PatchpointValue::dumpMeta(CommaPrinter& comma, PrintStream& out) const
 {
     Base::dumpMeta(comma, out);
-    out.print(comma, "resultConstraint = ", resultConstraint);
+    out.print(comma, "resultConstraints = ");
+    out.print(resultConstraints.size() > 1 ? "[" : "");
+
+    CommaPrinter constraintComma;
+    for (const auto& constraint : resultConstraints)
+        out.print(constraintComma, constraint);
+    out.print(resultConstraints.size() > 1 ? "]" : "");
+
     if (numGPScratchRegisters)
         out.print(comma, "numGPScratchRegisters = ", numGPScratchRegisters);
     if (numFPScratchRegisters)
@@ -47,8 +54,9 @@ void PatchpointValue::dumpMeta(CommaPrinter& comma, PrintStream& out) const
 PatchpointValue::PatchpointValue(Type type, Origin origin)
     : Base(CheckedOpcode, Patchpoint, type, origin)
     , effects(Effects::forCall())
-    , resultConstraint(type == Void ? ValueRep::WarmAny : ValueRep::SomeRegister)
 {
+    if (!type.isTuple())
+        resultConstraints.append(type == Void ? ValueRep::WarmAny : ValueRep::SomeRegister);
 }
 
 } } // namespace JSC::B3

@@ -28,6 +28,7 @@
 #include "APIObject.h"
 #include "Connection.h"
 #include "MessageReceiver.h"
+#include <WebCore/FrameIdentifier.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
 
@@ -59,9 +60,8 @@ public:
 
     void showConsole();
     void showResources();
-    void showTimelines();
 
-    void showMainResourceForFrame(uint64_t frameIdentifier);
+    void showMainResourceForFrame(WebCore::FrameIdentifier);
 
     void setAttached(bool attached) { m_attached = attached; }
 
@@ -73,6 +73,7 @@ public:
     void startElementSelection();
     void stopElementSelection();
     void elementSelectionChanged(bool);
+    void timelineRecordingChanged(bool);
     void setMockCaptureDevicesEnabledOverride(Optional<bool>);
 
     void setFrontendConnection(IPC::Attachment);

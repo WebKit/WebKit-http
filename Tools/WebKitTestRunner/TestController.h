@@ -244,6 +244,7 @@ public:
     void statisticsDeleteCookiesForHost(WKStringRef host, bool includeHttpOnlyCookies);
     bool isStatisticsHasLocalStorage(WKStringRef hostName);
     void setStatisticsCacheMaxAgeCap(double seconds);
+    bool hasStatisticsIsolatedSession(WKStringRef hostName);
     void statisticsResetToConsistentState();
 
     void getAllStorageAccessEntries();
@@ -261,7 +262,9 @@ public:
 
     void removeAllSessionCredentials();
 
-    void ClearIndexedDatabases();
+    void clearIndexedDatabases();
+    void clearLocalStorage();
+    void syncLocalStorage();
 
     void clearServiceWorkerRegistrations();
 

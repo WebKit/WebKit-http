@@ -50,6 +50,7 @@ class InspectorFrontendClientLocal : public InspectorFrontendClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     class WEBCORE_EXPORT Settings {
+        WTF_MAKE_FAST_ALLOCATED;
     public:
         Settings() = default;
         virtual ~Settings() = default;
@@ -116,6 +117,11 @@ public:
 
     WEBCORE_EXPORT Page* inspectedPage() const;
     Page* frontendPage() const { return m_frontendPage; }
+
+    WEBCORE_EXPORT void dispatch(const String& signature);
+    WEBCORE_EXPORT void dispatchMessage(const String& messageObject);
+    WEBCORE_EXPORT void dispatchMessageAsync(const String& messageObject);
+
 protected:
     virtual void setAttachedWindowHeight(unsigned) = 0;
     virtual void setAttachedWindowWidth(unsigned) = 0;

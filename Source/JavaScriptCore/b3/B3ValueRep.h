@@ -94,7 +94,7 @@ public:
         Stack,
 
         // As an input representation, this forces the value to end up in the argument area at some
-        // offset.
+        // offset. As an output representation this tells us what offset from SP B3 picked.
         StackArgument,
 
         // As an output representation, this tells us that B3 constant-folded the value.
@@ -157,6 +157,11 @@ public:
     static ValueRep constantDouble(double value)
     {
         return ValueRep::constant(bitwise_cast<int64_t>(value));
+    }
+
+    static ValueRep constantFloat(float value)
+    {
+        return ValueRep::constant(static_cast<uint64_t>(bitwise_cast<uint32_t>(value)));
     }
 
     Kind kind() const { return m_kind; }
@@ -230,6 +235,11 @@ public:
     double doubleValue() const
     {
         return bitwise_cast<double>(value());
+    }
+
+    float floatValue() const
+    {
+        return bitwise_cast<float>(static_cast<uint32_t>(static_cast<uint64_t>(value())));
     }
 
     ValueRep withOffset(intptr_t offset) const

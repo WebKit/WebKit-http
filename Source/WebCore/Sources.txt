@@ -102,6 +102,7 @@ Modules/indexeddb/client/TransactionOperation.cpp
 
 Modules/indexeddb/server/IDBConnectionToClient.cpp
 Modules/indexeddb/server/IDBSerialization.cpp
+Modules/indexeddb/server/IDBSerializationContext.cpp
 Modules/indexeddb/server/IDBServer.cpp
 Modules/indexeddb/server/IndexValueEntry.cpp
 Modules/indexeddb/server/IndexValueStore.cpp
@@ -162,7 +163,6 @@ Modules/mediastream/MediaDevices.cpp
 Modules/mediastream/MediaDevicesEnumerationRequest.cpp
 Modules/mediastream/MediaDevicesRequest.cpp
 Modules/mediastream/MediaStream.cpp
-Modules/mediastream/MediaStreamRegistry.cpp
 Modules/mediastream/MediaStreamTrack.cpp
 Modules/mediastream/MediaStreamTrackEvent.cpp
 Modules/mediastream/MediaTrackConstraints.cpp
@@ -309,10 +309,10 @@ Modules/webgpu/NavigatorGPU.cpp
 Modules/webgpu/WHLSL/WHLSLComputeDimensions.cpp
 Modules/webgpu/WHLSL/WHLSLStandardLibraryUtilities.cpp
 Modules/webgpu/WHLSL/WHLSLASTDumper.cpp
-Modules/webgpu/WHLSL/WHLSLAutoInitializeVariables.cpp
 Modules/webgpu/WHLSL/WHLSLInferTypes.cpp
 Modules/webgpu/WHLSL/WHLSLLexer.cpp
 Modules/webgpu/WHLSL/WHLSLParser.cpp
+Modules/webgpu/WHLSL/WHLSLPruneUnreachableStandardLibraryFunctions.cpp
 Modules/webgpu/WHLSL/WHLSLCheckTextureReferences.cpp
 Modules/webgpu/WHLSL/WHLSLChecker.cpp
 Modules/webgpu/WHLSL/WHLSLGatherEntryPointItems.cpp
@@ -342,6 +342,7 @@ Modules/webgpu/WHLSL/Metal/WHLSLNativeTypeWriter.cpp
 Modules/webgpu/WHLSL/Metal/WHLSLVertexBufferIndexCalculator.cpp
 Modules/webgpu/WHLSL/WHLSLFunctionStageChecker.cpp
 Modules/webgpu/WHLSL/AST/WHLSLTypeArgument.cpp
+Modules/webgpu/WHLSL/AST/WHLSLExpression.cpp
 Modules/webgpu/WHLSL/AST/WHLSLBuiltInSemantic.cpp
 Modules/webgpu/WHLSL/AST/WHLSLResourceSemantic.cpp
 Modules/webgpu/WHLSL/AST/WHLSLSpecializationConstantSemantic.cpp
@@ -350,9 +351,12 @@ Modules/webgpu/WHLSL/AST/WHLSLFloatLiteralType.cpp
 Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteralType.cpp
 Modules/webgpu/WHLSL/AST/WHLSLNullLiteralType.cpp
 Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteralType.cpp
+Modules/webgpu/WHLSL/AST/WHLSLStatement.cpp
+Modules/webgpu/WHLSL/AST/WHLSLType.cpp
 Modules/webgpu/WHLSL/AST/WHLSLTypeReference.cpp
 Modules/webgpu/WHLSL/AST/WHLSLIntegerLiteral.cpp
 Modules/webgpu/WHLSL/AST/WHLSLUnsignedIntegerLiteral.cpp
+Modules/webgpu/WHLSL/AST/WHLSLUnnamedType.cpp
 Modules/webgpu/WHLSL/WHLSLPrepare.cpp
 Modules/webgpu/WHLSL/WHLSLPropertyResolver.cpp
 Modules/webgpu/WebGPU.cpp
@@ -1328,7 +1332,6 @@ inspector/InspectorAuditAccessibilityObject.cpp
 inspector/InspectorAuditDOMObject.cpp
 inspector/InspectorAuditResourcesObject.cpp
 inspector/InspectorCanvas.cpp
-inspector/InspectorClient.cpp
 inspector/InspectorController.cpp
 inspector/InspectorDatabaseResource.cpp
 inspector/InspectorFrontendClientLocal.cpp
@@ -1386,6 +1389,7 @@ layout/FormattingContext.cpp
 layout/FormattingContextGeometry.cpp
 layout/FormattingContextQuirks.cpp
 layout/FormattingState.cpp
+layout/LayoutPhase.cpp
 layout/LayoutState.cpp
 layout/Verification.cpp
 layout/blockformatting/BlockFormattingContext.cpp
@@ -1409,16 +1413,13 @@ layout/inlineformatting/InlineLine.cpp
 layout/inlineformatting/InlineLineBreaker.cpp
 layout/inlineformatting/InlineTextItem.cpp
 layout/inlineformatting/text/TextUtil.cpp
-layout/layouttree/LayoutBlockContainer.cpp
 layout/layouttree/LayoutBox.cpp
 layout/layouttree/LayoutContainer.cpp
-layout/layouttree/LayoutInlineBox.cpp
-layout/layouttree/LayoutInlineContainer.cpp
-layout/layouttree/LayoutLineBreakBox.cpp
 layout/layouttree/LayoutReplaced.cpp
 layout/layouttree/LayoutTreeBuilder.cpp
 layout/tableformatting/TableFormattingContext.cpp
 layout/tableformatting/TableFormattingState.cpp
+layout/tableformatting/TableGrid.cpp
 layout/tableformatting/TableInvalidation.cpp
 
 loader/AdClickAttribution.cpp
@@ -1820,7 +1821,6 @@ platform/graphics/Image.cpp
 platform/graphics/ImageBuffer.cpp
 platform/graphics/ImageDecoder.cpp
 platform/graphics/ImageFrame.cpp
-platform/graphics/ImageOrientation.cpp
 platform/graphics/ImageSource.cpp
 platform/graphics/IntPoint.cpp
 platform/graphics/IntRect.cpp
@@ -1935,6 +1935,7 @@ platform/mediastream/RealtimeVideoCaptureSource.cpp
 platform/mediastream/RealtimeVideoSource.cpp
 
 platform/mediastream/libwebrtc/LibWebRTCProvider.cpp
+platform/mediastream/libwebrtc/LibWebRTCDTMFSenderBackend.cpp
 
 platform/mock/DeviceOrientationClientMock.cpp
 platform/mock/GeolocationClientMock.cpp
@@ -2025,6 +2026,7 @@ rendering/BorderEdge.cpp
 rendering/BreakLines.cpp
 rendering/CSSFilter.cpp
 rendering/ClipRect.cpp
+rendering/ComplexLineLayout.cpp
 rendering/CounterNode.cpp
 rendering/EllipsisBox.cpp
 rendering/EventRegion.cpp
@@ -2054,7 +2056,6 @@ rendering/PointerEventsHitRules.cpp
 rendering/RenderAttachment.cpp
 rendering/RenderBlock.cpp
 rendering/RenderBlockFlow.cpp
-rendering/RenderBlockLineLayout.cpp
 rendering/RenderBox.cpp
 rendering/RenderBoxModelObject.cpp
 rendering/RenderButton.cpp

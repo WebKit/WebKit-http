@@ -50,7 +50,7 @@ NetworkSessionCreationParameters NetworkSessionCreationParameters::privateSessio
 #if USE(CURL)
         , { }, { }
 #endif
-        , { }, { }, false, { }, { }, { }, { }, { }, { }, { }, { }, { }
+        , { }, { }, false, false, { }, { }, { }, { }, { }, { }, { }, { }
     };
 }
 
@@ -80,11 +80,12 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << resourceLoadStatisticsDirectory;
     encoder << resourceLoadStatisticsDirectoryExtensionHandle;
     encoder << enableResourceLoadStatistics;
+    encoder << enableResourceLoadStatisticsLogTestingEvent;
     encoder << shouldIncludeLocalhostInResourceLoadStatistics;
     encoder << enableResourceLoadStatisticsDebugMode;
     encoder << resourceLoadStatisticsManualPrevalentResource;
+    encoder << enableResourceLoadStatisticsNSURLSessionSwitching;
 
-    encoder << localStorageDirectory << localStorageDirectoryExtensionHandle;
     encoder << networkCacheDirectory << networkCacheDirectoryExtensionHandle;
 
     encoder << deviceManagementRestrictionsEnabled;
@@ -93,8 +94,9 @@ void NetworkSessionCreationParameters::encode(IPC::Encoder& encoder) const
 
 Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::decode(IPC::Decoder& decoder)
 {
-    PAL::SessionID sessionID;
-    if (!decoder.decode(sessionID))
+    Optional<PAL::SessionID> sessionID;
+    decoder >> sessionID;
+    if (!sessionID)
         return WTF::nullopt;
     
     Optional<String> boundInterfaceIdentifier;
@@ -187,6 +189,11 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
     if (!enableResourceLoadStatistics)
         return WTF::nullopt;
 
+    Optional<bool> enableResourceLoadStatisticsLogTestingEvent;
+    decoder >> enableResourceLoadStatisticsLogTestingEvent;
+    if (!enableResourceLoadStatisticsLogTestingEvent)
+        return WTF::nullopt;
+
     Optional<bool> shouldIncludeLocalhostInResourceLoadStatistics;
     decoder >> shouldIncludeLocalhostInResourceLoadStatistics;
     if (!shouldIncludeLocalhostInResourceLoadStatistics)
@@ -202,14 +209,9 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
     if (!resourceLoadStatisticsManualPrevalentResource)
         return WTF::nullopt;
 
-    Optional<String> localStorageDirectory;
-    decoder >> localStorageDirectory;
-    if (!localStorageDirectory)
-        return WTF::nullopt;
-
-    Optional<SandboxExtension::Handle> localStorageDirectoryExtensionHandle;
-    decoder >> localStorageDirectoryExtensionHandle;
-    if (!localStorageDirectoryExtensionHandle)
+    Optional<bool> enableResourceLoadStatisticsNSURLSessionSwitching;
+    decoder >> enableResourceLoadStatisticsNSURLSessionSwitching;
+    if (!enableResourceLoadStatisticsNSURLSessionSwitching)
         return WTF::nullopt;
 
     Optional<String> networkCacheDirectory;
@@ -233,7 +235,7 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         return WTF::nullopt;
 
     return {{
-        sessionID
+        *sessionID
         , WTFMove(*boundInterfaceIdentifier)
         , WTFMove(*allowsCellularAccess)
 #if PLATFORM(COCOA)
@@ -257,13 +259,13 @@ Optional<NetworkSessionCreationParameters> NetworkSessionCreationParameters::dec
         , WTFMove(*resourceLoadStatisticsDirectory)
         , WTFMove(*resourceLoadStatisticsDirectoryExtensionHandle)
         , WTFMove(*enableResourceLoadStatistics)
+        , WTFMove(*enableResourceLoadStatisticsLogTestingEvent)
         , WTFMove(*shouldIncludeLocalhostInResourceLoadStatistics)
         , WTFMove(*enableResourceLoadStatisticsDebugMode)
+        , WTFMove(*enableResourceLoadStatisticsNSURLSessionSwitching)
         , WTFMove(*deviceManagementRestrictionsEnabled)
         , WTFMove(*allLoadsBlockedByDeviceManagementRestrictionsForTesting)
         , WTFMove(*resourceLoadStatisticsManualPrevalentResource)
-        , WTFMove(*localStorageDirectory)
-        , WTFMove(*localStorageDirectoryExtensionHandle)
         , WTFMove(*networkCacheDirectory)
         , WTFMove(*networkCacheDirectoryExtensionHandle)
     }};

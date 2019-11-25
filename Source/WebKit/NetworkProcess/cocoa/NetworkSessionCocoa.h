@@ -38,7 +38,9 @@ OBJC_CLASS WKNetworkSessionWebSocketDelegate;
 #include "NetworkSession.h"
 #include "WebSocketTask.h"
 #include <WebCore/NetworkLoadMetrics.h>
+#include <WebCore/RegistrableDomain.h>
 #include <wtf/HashMap.h>
+#include <wtf/Seconds.h>
 
 namespace WebKit {
 
@@ -81,6 +83,13 @@ public:
     bool allLoadsBlockedByDeviceManagementRestrictionsForTesting() const { return m_allLoadsBlockedByDeviceManagementRestrictionsForTesting; }
     DMFWebsitePolicyMonitor *deviceManagementPolicyMonitor();
 
+    CFDictionaryRef proxyConfiguration() const { return m_proxyConfiguration.get(); }
+
+    NSURLSession* session(WebCore::StoredCredentialsPolicy);
+    NSURLSession* isolatedSession(WebCore::StoredCredentialsPolicy, const WebCore::RegistrableDomain);
+    bool hasIsolatedSession(const WebCore::RegistrableDomain) const override;
+    void clearIsolatedSessions() override;
+
 private:
     void invalidateAndCancel() override;
     void clearCredentials() override;
@@ -100,6 +109,16 @@ private:
 #if HAVE(NSURLSESSION_WEBSOCKET)
     HashMap<NetworkDataTaskCocoa::TaskIdentifier, WebSocketTask*> m_webSocketDataTaskMap;
 #endif
+
+    struct IsolatedSession {
+        RetainPtr<NSURLSession> sessionWithCredentialStorage;
+        RetainPtr<WKNetworkSessionDelegate> sessionWithCredentialStorageDelegate;
+        RetainPtr<NSURLSession> statelessSession;
+        RetainPtr<WKNetworkSessionDelegate> statelessSessionDelegate;
+        WallTime lastUsed;
+    };
+
+    HashMap<WebCore::RegistrableDomain, IsolatedSession> m_isolatedSessions;
 
     RetainPtr<NSURLSession> m_sessionWithCredentialStorage;
     RetainPtr<WKNetworkSessionDelegate> m_sessionWithCredentialStorageDelegate;

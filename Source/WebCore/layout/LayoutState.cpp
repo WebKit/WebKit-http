@@ -38,6 +38,11 @@
 #include "Invalidation.h"
 #include "LayoutBox.h"
 #include "LayoutContainer.h"
+#include "LayoutPhase.h"
+#include "LayoutTreeBuilder.h"
+#include "RenderView.h"
+#include "TableFormattingContext.h"
+#include "TableFormattingState.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -67,6 +72,8 @@ LayoutState::LayoutState(const Container& initialContainingBlock)
 
 void LayoutState::updateLayout()
 {
+    PhaseScope scope(Phase::Type::Layout);
+
     ASSERT(!m_formattingContextRootListForLayout.isEmpty());
     for (auto* layoutRoot : m_formattingContextRootListForLayout)
         layoutFormattingContextSubtree(*layoutRoot);
@@ -78,7 +85,7 @@ void LayoutState::layoutFormattingContextSubtree(const Box& layoutRoot)
     RELEASE_ASSERT(layoutRoot.establishesFormattingContext());
     auto formattingContext = createFormattingContext(layoutRoot);
     formattingContext->layout();
-    formattingContext->layoutOutOfFlowDescendants(layoutRoot);
+    formattingContext->layoutOutOfFlowContent();
 }
 
 Display::Box& LayoutState::displayBoxForLayoutBox(const Box& layoutBox) const
@@ -90,6 +97,8 @@ Display::Box& LayoutState::displayBoxForLayoutBox(const Box& layoutBox) const
 
 void LayoutState::styleChanged(const Box& layoutBox, StyleDiff styleDiff)
 {
+    PhaseScope scope(Phase::Type::Invalidation);
+
     auto& formattingState = formattingStateForBox(layoutBox);
     const Container* invalidationRoot = nullptr;
     if (is<BlockFormattingState>(formattingState))
@@ -135,7 +144,9 @@ FormattingState& LayoutState::createFormattingStateForFormattingRootIfNeeded(con
 
             // Otherwise, the formatting context inherits the floats from the parent formatting context.
             // Find the formatting state in which this formatting root lives, not the one it creates and use its floating state.
-            return std::make_unique<InlineFormattingState>(formattingStateForBox(formattingRoot).floatingState(), *this);
+            auto& parentFormattingState = createFormattingStateForFormattingRootIfNeeded(formattingRoot.formattingContextRoot()); 
+            auto& parentFloatingState = parentFormattingState.floatingState();
+            return std::make_unique<InlineFormattingState>(parentFloatingState, *this);
         }).iterator->value;
     }
 
@@ -144,6 +155,14 @@ FormattingState& LayoutState::createFormattingStateForFormattingRootIfNeeded(con
 
             // Block formatting context always establishes a new floating state.
             return std::make_unique<BlockFormattingState>(FloatingState::create(*this, formattingRoot), *this);
+        }).iterator->value;
+    }
+
+    if (formattingRoot.establishesTableFormattingContext()) {
+        return *m_formattingStates.ensure(&formattingRoot, [&] {
+
+            // Table formatting context always establishes a new floating state -and it stays empty.
+            return std::make_unique<TableFormattingState>(FloatingState::create(*this, formattingRoot), *this);
         }).iterator->value;
     }
 
@@ -164,7 +183,37 @@ std::unique_ptr<FormattingContext> LayoutState::createFormattingContext(const Bo
         return std::make_unique<BlockFormattingContext>(formattingContextRoot, blockFormattingState);
     }
 
+    if (formattingContextRoot.establishesTableFormattingContext()) {
+        auto& tableFormattingState = downcast<TableFormattingState>(createFormattingStateForFormattingRootIfNeeded(formattingContextRoot));
+        return std::make_unique<TableFormattingContext>(formattingContextRoot, tableFormattingState);
+    }
+
     CRASH();
+}
+
+void LayoutState::run(const RenderView& renderView)
+{
+    auto initialContainingBlock = TreeBuilder::createLayoutTree(renderView);
+    auto layoutState = LayoutState(*initialContainingBlock);
+    // Not efficient, but this is temporary anyway.
+    // Collect the out-of-flow descendants at the formatting root level (as opposed to at the containing block level, though they might be the same).
+    for (auto& descendant : descendantsOfType<Box>(*initialContainingBlock)) {
+        if (!descendant.isOutOfFlowPositioned())
+            continue;
+        auto& formattingState = layoutState.createFormattingStateForFormattingRootIfNeeded(descendant.formattingContextRoot());
+        formattingState.addOutOfFlowBox(descendant);
+    }
+    auto quirksMode = [&] {
+        auto& document = renderView.document();
+        if (document.inLimitedQuirksMode())
+            return QuirksMode::Limited;
+        if (document.inQuirksMode())
+            return QuirksMode::Yes;
+        return QuirksMode::No;
+    };
+    layoutState.setQuirksMode(quirksMode());
+    layoutState.updateLayout();
+    layoutState.verifyAndOutputMismatchingLayoutTree(renderView);
 }
 
 }

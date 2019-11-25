@@ -189,8 +189,6 @@ Page* Chrome::createWindow(Frame& frame, const FrameLoadRequest& request, const 
 
     if (auto* oldSessionStorage = m_page.sessionStorage(false))
         newPage->setSessionStorage(oldSessionStorage->copy(newPage));
-    if (auto* oldEphemeralLocalStorage = m_page.ephemeralLocalStorage(false))
-        newPage->setEphemeralLocalStorage(oldEphemeralLocalStorage->copy(newPage));
 
     return newPage;
 }
@@ -523,17 +521,6 @@ void Chrome::windowScreenDidChange(PlatformDisplayID displayID)
 #if PLATFORM(MAC) && ENABLE(GRAPHICS_CONTEXT_3D)
     GraphicsContext3DManager::sharedManager().screenDidChange(displayID, this);
 #endif
-}
-
-bool ChromeClient::shouldReplaceWithGeneratedFileForUpload(const String&, String&)
-{
-    return false;
-}
-
-String ChromeClient::generateReplacementFile(const String&)
-{
-    ASSERT_NOT_REACHED();
-    return String();
 }
 
 bool Chrome::selectItemWritingDirectionIsNatural()

@@ -41,7 +41,8 @@ template<> struct HashTraits<Ref<WeakPtrImpl>> : RefHashTraits<WeakPtrImpl> {
 };
 
 template <typename T>
-class WeakHashSet {
+class WeakHashSet final {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     typedef HashSet<Ref<WeakPtrImpl>> WeakPtrImplSet;
     typedef typename WeakPtrImplSet::AddResult AddResult;
@@ -110,6 +111,8 @@ public:
             return false;
         return m_set.remove(*weakPtrImpl);
     }
+
+    void clear() { m_set.clear(); }
 
     template <typename U>
     bool contains(const U& value) const

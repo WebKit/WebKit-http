@@ -30,6 +30,7 @@
 #pragma once
 
 #include "CertificateInfo.h"
+#include "FrameIdentifier.h"
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestone.h"
 #include "LinkIcon.h"
@@ -129,7 +130,7 @@ public:
     virtual void makeRepresentation(DocumentLoader*) = 0;
 
     virtual Optional<PageIdentifier> pageID() const = 0;
-    virtual Optional<uint64_t> frameID() const = 0;
+    virtual Optional<FrameIdentifier> frameID() const = 0;
     virtual PAL::SessionID sessionID() const = 0;
 
 #if PLATFORM(IOS_FAMILY)

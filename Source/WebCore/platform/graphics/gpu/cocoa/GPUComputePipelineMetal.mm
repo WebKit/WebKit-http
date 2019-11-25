@@ -34,6 +34,8 @@
 #import "WHLSLPrepare.h"
 #import <Metal/Metal.h>
 #import <wtf/BlockObjCExceptions.h>
+#import <wtf/DataLog.h>
+#import <wtf/MonotonicTime.h>
 #import <wtf/text/StringConcatenate.h>
 
 namespace WebCore {
@@ -85,7 +87,13 @@ static Optional<WHLSL::ComputeDimensions> trySetFunctions(const GPUPipelineStage
         NSError *error = nil;
 
         BEGIN_BLOCK_OBJC_EXCEPTIONS;
-        computeLibrary = adoptNS([device.platformDevice() newLibraryWithSource:whlslCompileResult->metalSource options:nil error:&error]);
+        MonotonicTime startTime;
+        if (WHLSL::dumpMetalCompileTimes)
+            startTime = MonotonicTime::now();
+        // FIXME: https://webkit.org/b/200474 Add direct StringBuilder -> NSString conversion to avoid extra copy into a WTF::String
+        computeLibrary = adoptNS([device.platformDevice() newLibraryWithSource:whlslCompileResult->metalSource.toString() options:nil error:&error]);
+        if (WHLSL::dumpMetalCompileTimes)
+            dataLogLn("Metal compile times: ", (MonotonicTime::now() - startTime).milliseconds(), " ms");
         END_BLOCK_OBJC_EXCEPTIONS;
 #ifndef NDEBUG
         if (!computeLibrary)
@@ -94,7 +102,7 @@ static Optional<WHLSL::ComputeDimensions> trySetFunctions(const GPUPipelineStage
         ASSERT(computeLibrary);
         // FIXME: https://bugs.webkit.org/show_bug.cgi?id=195771 Once we zero-fill variables, there should be no warnings, so we should be able to ASSERT(!error) here.
 
-        computeEntryPoint = whlslCompileResult->mangledEntryPointName;
+        computeEntryPoint = whlslCompileResult->mangledEntryPointName.toString();
     } else {
         computeLibrary = computeStage.module->platformShaderModule();
         computeEntryPoint = computeStage.entryPoint;

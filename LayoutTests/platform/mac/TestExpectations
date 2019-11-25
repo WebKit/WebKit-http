@@ -1086,7 +1086,6 @@ webkit.org/b/181832 inspector/unit-tests/throttler.html [ Pass Failure ]
 webkit.org/b/161361 inspector/unit-tests/yieldable-task.html [ Pass Failure ]
 webkit.org/b/169228 inspector/worker/console-basic.html [ Pass Timeout ]
 webkit.org/b/164872 inspector/worker/debugger-multiple-targets-pause.html [ Pass Failure Timeout ]
-webkit.org/b/165582 inspector/worker/debugger-scripts.html [ Pass Failure ]
 webkit.org/b/167203 inspector/worker/debugger-shared-breakpoint.html [ Pass Failure Timeout ]
 webkit.org/b/155607 inspector/heap/imported-snapshot.html [ Pass Failure ]
 webkit.org/b/155607 inspector/heap/snapshot.html [ Pass Failure ]
@@ -1097,8 +1096,6 @@ webkit.org/b/183880 [ Debug ] inspector/console/messageAdded-from-named-evaluati
 webkit.org/b/156634 inspector/formatting/formatting-javascript.html [ Pass Timeout ]
 webkit.org/b/158948 inspector/timeline [ Pass Timeout ]
 webkit.org/b/191539 http/tests/inspector/network/resource-security-connection.html [ Skip ]
-
-webkit.org/b/187622 [ Debug ] inspector/view/asynchronous-layout.html [ Pass Timeout ]
 
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
@@ -1387,7 +1384,6 @@ media/modern-media-controls/scrubber-support/ipad [ Skip ]
 webkit.org/b/169876 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html [ Pass Timeout ]
 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Pass Failure ]
 media/modern-media-controls/media-controller/media-controller-auto-hide-pause.html [ Pass Failure ]
-webkit.org/b/187420 media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Pass Timeout ]
 media/modern-media-controls/media-controller/media-controller-auto-hide.html [ Pass Failure ]
 
 webkit.org/b/178126 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html [ Skip ]
@@ -1986,3 +1982,11 @@ webkit.org/b/195635 scrollingcoordinator/mac/multiple-fixed.html [ Pass Timeout 
 [ Catalina+ ] fast/text/design-system-ui-16.html [ Pass ]
 
 webkit.org/b/200258 [ Debug ] imported/w3c/web-platform-tests/wasm/jsapi/interface.any.worker.html [ Pass Failure ]
+
+# rdar://52594556 (Layout test fast/text/international/system-language/han-quotes.html is failing)
+[ Catalina+ ] fast/text/international/system-language/han-quotes.html [ ImageOnlyFailure ]
+
+# rdar://52557916 (REGRESSION: fast/css/paint-order.html and fast/css/paint-order-shadow.html are failing)
+[ Catalina+ ] fast/css/paint-order.html [ ImageOnlyFailure ]
+[ Catalina+ ] fast/css/paint-order-shadow.html [ ImageOnlyFailure ]
+

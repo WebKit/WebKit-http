@@ -42,7 +42,7 @@
 
 .computed-style-section .computed-property-item.expanded {
     padding-bottom: 2px;
-    background-color: var(--background-color-code);
+    background-color: hsl(0, 0%, 97%);
     border-top-color: var(--text-color-quaternary);
 }
 
@@ -62,10 +62,6 @@
     background-position: center;
     background-size: 13px 13px;
     -webkit-appearance: none;
-}
-
-body[dir=rtl] .computed-style-section .computed-property-item .disclosure-button {
-    transform: scaleX(-1);
 }
 
 .computed-style-section .computed-property-item .property-traces {

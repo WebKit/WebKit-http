@@ -800,7 +800,6 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
 #if ENABLE(FULLSCREEN_API)
     WKPreferencesSetFullScreenEnabled(preferences, true);
 #endif
-    WKPreferencesSetPageCacheEnabled(preferences, false);
     WKPreferencesSetAsynchronousPluginInitializationEnabled(preferences, false);
     WKPreferencesSetAsynchronousPluginInitializationEnabledForAllPlugins(preferences, false);
     WKPreferencesSetArtificialPluginInitializationDelayEnabled(preferences, false);
@@ -821,6 +820,8 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetAllowCrossOriginSubresourcesToAskForCredentials(preferences, options.allowCrossOriginSubresourcesToAskForCredentials);
     WKPreferencesSetColorFilterEnabled(preferences, options.enableColorFilter);
     WKPreferencesSetPunchOutWhiteBackgroundsInDarkMode(preferences, options.punchOutWhiteBackgroundsInDarkMode);
+    WKPreferencesSetPageCacheEnabled(preferences, options.enablePageCache);
+    WKPreferencesSetLazyImageLoadingEnabled(preferences, options.enableLazyImageLoading);
 
     static WKStringRef defaultTextEncoding = WKStringCreateWithUTF8CString("ISO-8859-1");
     WKPreferencesSetDefaultTextEncodingName(preferences, defaultTextEncoding);
@@ -938,8 +939,10 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options, Re
     auto websiteDataStore = WKContextGetWebsiteDataStore(TestController::singleton().context());
     WKWebsiteDataStoreClearAllDeviceOrientationPermissions(websiteDataStore);
 
-    ClearIndexedDatabases();
     setIDBPerOriginQuota(50 * MB);
+
+    clearIndexedDatabases();
+    clearLocalStorage();
 
     clearServiceWorkerRegistrations();
     clearDOMCaches();
@@ -1399,6 +1402,10 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.contentMode = { value.c_str() };
         else if (key == "enableAppNap")
             testOptions.enableAppNap = parseBooleanTestHeaderValue(value);
+        else if (key == "enablePageCache")
+            testOptions.enablePageCache = parseBooleanTestHeaderValue(value);
+        else if (key == "enableLazyImageLoading")
+            testOptions.enableLazyImageLoading = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -3064,8 +3071,8 @@ void TestController::setIDBPerOriginQuota(uint64_t quota)
     WKContextSetIDBPerOriginQuota(platformContext(), quota);
 }
 
-struct RemoveAllIndexedDatabasesCallbackContext {
-    explicit RemoveAllIndexedDatabasesCallbackContext(TestController& controller)
+struct StorageVoidCallbackContext {
+    explicit StorageVoidCallbackContext(TestController& controller)
         : testController(controller)
     {
     }
@@ -3074,18 +3081,37 @@ struct RemoveAllIndexedDatabasesCallbackContext {
     bool done { false };
 };
 
-static void RemoveAllIndexedDatabasesCallback(void* userData)
+static void StorageVoidCallback(void* userData)
 {
-    auto* context = static_cast<RemoveAllIndexedDatabasesCallbackContext*>(userData);
+    auto* context = static_cast<StorageVoidCallbackContext*>(userData);
     context->done = true;
     context->testController.notifyDone();
 }
 
-void TestController::ClearIndexedDatabases()
+void TestController::clearIndexedDatabases()
 {
     auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
-    RemoveAllIndexedDatabasesCallbackContext context(*this);
-    WKWebsiteDataStoreRemoveAllIndexedDatabases(websiteDataStore, &context, RemoveAllIndexedDatabasesCallback);
+    StorageVoidCallbackContext context(*this);
+    WKWebsiteDataStoreRemoveAllIndexedDatabases(websiteDataStore, &context, StorageVoidCallback);
+    runUntil(context.done, noTimeout);
+}
+
+void TestController::clearLocalStorage()
+{
+    auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
+    StorageVoidCallbackContext context(*this);
+    WKWebsiteDataStoreRemoveLocalStorage(websiteDataStore, &context, StorageVoidCallback);
+    runUntil(context.done, noTimeout);
+
+    StorageVoidCallbackContext legacyContext(*this);
+    WKContextClearLegacyPrivateBrowsingLocalStorage(platformContext(), &legacyContext, StorageVoidCallback);
+    runUntil(legacyContext.done, noTimeout);
+}
+
+void TestController::syncLocalStorage()
+{
+    StorageVoidCallbackContext context(*this);
+    WKContextSyncLocalStorage(platformContext(), &context, StorageVoidCallback);
     runUntil(context.done, noTimeout);
 }
 
@@ -3510,6 +3536,15 @@ void TestController::setStatisticsCacheMaxAgeCap(double seconds)
     ResourceStatisticsCallbackContext context(*this);
     WKWebsiteDataStoreSetStatisticsCacheMaxAgeCap(dataStore, seconds, &context, resourceStatisticsVoidResultCallback);
     runUntil(context.done, noTimeout);
+}
+
+bool TestController::hasStatisticsIsolatedSession(WKStringRef host)
+{
+    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
+    ResourceStatisticsCallbackContext context(*this);
+    WKWebsiteDataStoreStatisticsHasIsolatedSession(dataStore, host, &context, resourceStatisticsBooleanResultCallback);
+    runUntil(context.done, noTimeout);
+    return context.result;
 }
 
 void TestController::statisticsResetToConsistentState()

@@ -80,6 +80,7 @@ public:
         : m_kind(kind)
         , m_type(type)
     {
+        // This means that upper 32bit of u.value is 0.
         u.floatValue = value;
     }
 
@@ -92,7 +93,7 @@ public:
     Value* child(Procedure&, unsigned index) const;
     int64_t value() const { return u.value; }
     double doubleValue() const { return u.doubleValue; }
-    double floatValue() const { return u.floatValue; }
+    float floatValue() const { return u.floatValue; }
 
     bool operator==(const ValueKey& other) const
     {
@@ -108,7 +109,7 @@ public:
 
     unsigned hash() const
     {
-        return m_kind.hash() + m_type + WTF::IntHash<int32_t>::hash(u.indices[0]) + u.indices[1] + u.indices[2];
+        return m_kind.hash() + m_type.hash() + WTF::IntHash<int32_t>::hash(u.indices[0]) + u.indices[1] + u.indices[2];
     }
 
     explicit operator bool() const { return *this != ValueKey(); }

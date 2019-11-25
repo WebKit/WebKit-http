@@ -62,14 +62,13 @@ public:
     virtual void showPaintRect(const FloatRect&) { }
     virtual void didSetSearchingForNode(bool) { }
     virtual void elementSelectionChanged(bool) { }
+    virtual void timelineRecordingChanged(bool) { }
 
     virtual void setMockCaptureDevicesEnabledOverride(Optional<bool>) { }
 
 #if ENABLE(REMOTE_INSPECTOR)
     virtual bool allowRemoteInspectionToPageDirectly() const { return false; }
 #endif
-
-    WEBCORE_EXPORT static void doDispatchMessageOnFrontendPage(Page* frontendPage, const String& message);
 };
 
 } // namespace WebCore

@@ -243,14 +243,21 @@ void Element::setTabIndexExplicitly(int tabIndex)
     ensureElementRareData().setTabIndexExplicitly(tabIndex);
 }
 
-bool Element::tabIndexSetExplicitly() const
+Optional<int> Element::tabIndexSetExplicitly() const
 {
-    return hasRareData() && elementRareData()->tabIndexSetExplicitly();
+    if (!hasRareData())
+        return WTF::nullopt;
+    return elementRareData()->tabIndex();
+}
+
+int Element::defaultTabIndex() const
+{
+    return -1;
 }
 
 bool Element::supportsFocus() const
 {
-    return tabIndexSetExplicitly();
+    return !!tabIndexSetExplicitly();
 }
 
 RefPtr<Element> Element::focusDelegate()
@@ -258,19 +265,24 @@ RefPtr<Element> Element::focusDelegate()
     return this;
 }
 
-int Element::tabIndex() const
+int Element::tabIndexForBindings() const
 {
-    return hasRareData() ? elementRareData()->tabIndex() : 0;
+    auto defaultIndex = defaultTabIndex();
+    ASSERT(!defaultIndex || defaultIndex == -1);
+    // FIXME: supportsFocus() check shouldn't be here.
+    if (!defaultIndex || supportsFocus())
+        return tabIndexSetExplicitly().valueOr(0);
+    return defaultIndex;
 }
 
-void Element::setTabIndex(int value)
+void Element::setTabIndexForBindings(int value)
 {
     setIntegralAttribute(tabindexAttr, value);
 }
 
 bool Element::isKeyboardFocusable(KeyboardEvent*) const
 {
-    return isFocusable() && tabIndex() >= 0;
+    return isFocusable() && !shouldBeIgnoredInSequentialFocusNavigation() && tabIndexSetExplicitly().valueOr(0) >= 0;
 }
 
 bool Element::isMouseFocusable() const
@@ -2841,6 +2853,10 @@ void Element::focus(bool restorePreviousSelection, FocusDirection direction)
 
     RefPtr<Node> protect;
     if (Page* page = document().page()) {
+        auto& frame = *document().frame();
+        if (!frame.hasHadUserInteraction() && !frame.isMainFrame() && !document().topDocument().securityOrigin().canAccess(document().securityOrigin()))
+            return;
+
         // Focus and change event handlers can cause us to lose our last ref.
         // If a focus event handler changes the focus to a different node it
         // does not make sense to continue and update appearence.
@@ -4323,26 +4339,6 @@ void Element::setAttributeStyleMap(Ref<StylePropertyMap>&& map)
 {
     ensureElementRareData().setAttributeStyleMap(WTFMove(map));
 }
-#endif
-
-#if ENABLE(POINTER_EVENTS)
-#if ENABLE(OVERFLOW_SCROLLING_TOUCH)
-ScrollingNodeID Element::nearestScrollingNodeIDUsingTouchOverflowScrolling() const
-{
-    if (!renderer())
-        return 0;
-
-    // We are not interested in the root, so check that we also have a valid parent.
-    for (auto* layer = renderer()->enclosingLayer(); layer && layer->parent(); layer = layer->parent()) {
-        if (layer->isComposited()) {
-            if (auto scrollingNodeID = layer->backing()->scrollingNodeIDForRole(ScrollCoordinationRole::Scrolling))
-                return scrollingNodeID;
-        }
-    }
-
-    return 0;
-}
-#endif
 #endif
 
 } // namespace WebCore

@@ -79,7 +79,7 @@ Thread::~Thread()
 }
 
 #if !OS(DARWIN)
-class Semaphore {
+class Semaphore final {
     WTF_MAKE_NONCOPYABLE(Semaphore);
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -381,6 +381,7 @@ void Thread::resume()
 
 #if OS(DARWIN)
 struct ThreadStateMetadata {
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
     unsigned userCount;
     thread_state_flavor_t flavor;
 };

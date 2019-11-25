@@ -61,10 +61,12 @@ LocalStorageDatabase::LocalStorageDatabase(Ref<WorkQueue>&& queue, Ref<LocalStor
     , m_didScheduleDatabaseUpdate(false)
     , m_shouldClearItems(false)
 {
+    ASSERT(!RunLoop::isMain());
 }
 
 LocalStorageDatabase::~LocalStorageDatabase()
 {
+    ASSERT(!RunLoop::isMain());
     ASSERT(m_isClosed);
 }
 
@@ -259,7 +261,6 @@ void LocalStorageDatabase::updateDatabase()
     if (m_isClosed)
         return;
 
-    ASSERT(m_didScheduleDatabaseUpdate);
     m_didScheduleDatabaseUpdate = false;
 
     HashMap<String, String> changedItems;

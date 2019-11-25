@@ -48,6 +48,7 @@ class NetworkProcess;
 class NetworkSession;
 
 class NetworkSocketChannel : public IPC::MessageSender, public IPC::MessageReceiver {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static std::unique_ptr<NetworkSocketChannel> create(NetworkConnectionToWebProcess&, PAL::SessionID, const WebCore::ResourceRequest&, const String& protocol, uint64_t identifier);
 
@@ -59,7 +60,7 @@ public:
     friend class WebSocketTask;
 
 private:
-    void didConnect(const String& subprotocol);
+    void didConnect(const String& subprotocol, const String& extensions);
     void didReceiveText(const String&);
     void didReceiveBinaryData(const uint8_t* data, size_t length);
     void didClose(unsigned short code, const String& reason);

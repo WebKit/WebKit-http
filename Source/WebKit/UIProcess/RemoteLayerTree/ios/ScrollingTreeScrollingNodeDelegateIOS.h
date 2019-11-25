@@ -48,6 +48,7 @@ class ScrollingTreeScrollingNode;
 namespace WebKit {
 
 class ScrollingTreeScrollingNodeDelegateIOS : public WebCore::ScrollingTreeScrollingNodeDelegate {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit ScrollingTreeScrollingNodeDelegateIOS(WebCore::ScrollingTreeScrollingNode&);
     ~ScrollingTreeScrollingNodeDelegateIOS() final;
@@ -74,10 +75,9 @@ public:
 #endif
 
     UIScrollView *findActingScrollParent(UIScrollView *);
-
-private:
     UIScrollView *scrollView() const;
 
+private:
     RetainPtr<CALayer> m_scrollLayer;
     RetainPtr<CALayer> m_scrolledContentsLayer;
     RetainPtr<WKScrollingNodeScrollViewDelegate> m_scrollViewDelegate;

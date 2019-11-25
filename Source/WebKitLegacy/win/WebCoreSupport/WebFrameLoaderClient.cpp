@@ -93,6 +93,7 @@ static WebDataSource* getWebDataSource(DocumentLoader* loader)
 }
 
 class WebFrameLoaderClient::WebFramePolicyListenerPrivate {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     WebFramePolicyListenerPrivate() 
         : m_policyFunction(nullptr)
@@ -127,15 +128,15 @@ Optional<WebCore::PageIdentifier> WebFrameLoaderClient::pageID() const
     return WTF::nullopt;
 }
 
-Optional<uint64_t> WebFrameLoaderClient::frameID() const
+Optional<WebCore::FrameIdentifier> WebFrameLoaderClient::frameID() const
 {
     return WTF::nullopt;
 }
 
 PAL::SessionID WebFrameLoaderClient::sessionID() const
 {
-    RELEASE_ASSERT_NOT_REACHED();
-    return PAL::SessionID::defaultSessionID();
+    auto* coreFrame = core(m_webFrame);
+    return coreFrame && coreFrame->page() ? coreFrame->page()->sessionID() : PAL::SessionID::defaultSessionID();
 }
 
 bool WebFrameLoaderClient::hasWebView() const
@@ -359,8 +360,14 @@ void WebFrameLoaderClient::dispatchWillPerformClientRedirect(const URL& url, dou
 {
     WebView* webView = m_webFrame->webView();
     COMPtr<IWebFrameLoadDelegate> frameLoadDelegate;
-    if (SUCCEEDED(webView->frameLoadDelegate(&frameLoadDelegate)))
-        frameLoadDelegate->willPerformClientRedirectToURL(webView, BString(url.string()), delay, MarshallingHelpers::CFAbsoluteTimeToDATE(fireDate.secondsSinceEpoch().seconds()), m_webFrame);
+    if (SUCCEEDED(webView->frameLoadDelegate(&frameLoadDelegate))) {
+#if USE(CF)
+        DATE date = MarshallingHelpers::CFAbsoluteTimeToDATE(fireDate.secondsSinceEpoch().seconds());
+#else
+        DATE date = MarshallingHelpers::absoluteTimeToDATE(fireDate.secondsSinceEpoch().seconds());
+#endif
+        frameLoadDelegate->willPerformClientRedirectToURL(webView, BString(url.string()), delay, date, m_webFrame);
+    }
 }
 
 void WebFrameLoaderClient::dispatchDidChangeLocationWithinPage()
@@ -1064,6 +1071,7 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
 
 void WebFrameLoaderClient::dispatchDidFailToStartPlugin(const PluginView& pluginView) const
 {
+#if USE(CF)
     WebView* webView = m_webFrame->webView();
 
     COMPtr<IWebResourceLoadDelegate> resourceLoadDelegate;
@@ -1118,6 +1126,9 @@ void WebFrameLoaderClient::dispatchDidFailToStartPlugin(const PluginView& plugin
     COMPtr<IWebError> error(AdoptCOM, WebError::createInstance(resourceError, userInfoBag.get()));
      
     resourceLoadDelegate->plugInFailedWithError(webView, error.get(), getWebDataSource(frame->loader().documentLoader()));
+#else
+    ASSERT(0);
+#endif
 }
 
 RefPtr<Widget> WebFrameLoaderClient::createPlugin(const IntSize& pluginSize, HTMLPlugInElement& element, const URL& url, const Vector<String>& paramNames, const Vector<String>& paramValues, const String& mimeType, bool loadManually)

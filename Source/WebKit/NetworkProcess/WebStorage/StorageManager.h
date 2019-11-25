@@ -30,7 +30,6 @@
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/StorageMap.h>
 #include <wtf/Forward.h>
-#include <wtf/Function.h>
 #include <wtf/HashSet.h>
 #include <wtf/text/StringHash.h>
 
@@ -41,87 +40,56 @@ class SecurityOrigin;
 namespace WebKit {
 
 class LocalStorageDatabaseTracker;
+class LocalStorageNamespace;
+class SessionStorageNamespace;
+class StorageArea;
+class TransientLocalStorageNamespace;
 class WebProcessProxy;
 
 using GetValuesCallback = CompletionHandler<void(const HashMap<String, String>&)>;
 
-class StorageManager : public IPC::Connection::WorkQueueMessageReceiver {
+class StorageManager {
+    WTF_MAKE_NONCOPYABLE(StorageManager);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<StorageManager> create(String&& localStorageDirectory);
+    explicit StorageManager(String&& localStorageDirectory);
     ~StorageManager();
 
     void createSessionStorageNamespace(uint64_t storageNamespaceID, unsigned quotaInBytes);
     void destroySessionStorageNamespace(uint64_t storageNamespaceID);
-    void addAllowedSessionStorageNamespaceConnection(uint64_t storageNamespaceID, IPC::Connection&);
-    void removeAllowedSessionStorageNamespaceConnection(uint64_t storageNamespaceID, IPC::Connection&);
     void cloneSessionStorageNamespace(uint64_t storageNamespaceID, uint64_t newStorageNamespaceID);
 
-    void processDidCloseConnection(IPC::Connection&);
-    void waitUntilTasksFinished();
-    void suspend(CompletionHandler<void()>&&);
-    void resume();
+    HashSet<WebCore::SecurityOriginData> getSessionStorageOriginsCrossThreadCopy() const;
+    void deleteSessionStorageOrigins();
+    void deleteSessionStorageEntriesForOrigins(const Vector<WebCore::SecurityOriginData>&);
 
-    void getSessionStorageOrigins(Function<void(HashSet<WebCore::SecurityOriginData>&&)>&& completionHandler);
-    void deleteSessionStorageOrigins(Function<void()>&& completionHandler);
-    void deleteSessionStorageEntriesForOrigins(const Vector<WebCore::SecurityOriginData>&, Function<void()>&& completionHandler);
+    HashSet<WebCore::SecurityOriginData> getLocalStorageOriginsCrossThreadCopy() const;
+    void deleteLocalStorageOriginsModifiedSince(WallTime);
+    void deleteLocalStorageEntriesForOrigins(const Vector<WebCore::SecurityOriginData>&);
+    Vector<LocalStorageDatabaseTracker::OriginDetails> getLocalStorageOriginDetailsCrossThreadCopy() const;
 
-    void getLocalStorageOrigins(Function<void(HashSet<WebCore::SecurityOriginData>&&)>&& completionHandler);
-    void deleteLocalStorageEntriesForOrigin(const WebCore::SecurityOriginData&);
-
-    void deleteLocalStorageOriginsModifiedSince(WallTime, Function<void()>&& completionHandler);
-    void deleteLocalStorageEntriesForOrigins(const Vector<WebCore::SecurityOriginData>&, Function<void()>&& completionHandler);
-
-    void getLocalStorageOriginDetails(Function<void(Vector<LocalStorageDatabaseTracker::OriginDetails>&&)>&& completionHandler);
+    void clearStorageNamespaces();
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
     void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>& replyEncoder);
+    
+    LocalStorageDatabaseTracker* localStorageDatabaseTracker() const { return m_localStorageDatabaseTracker.get(); }
+    
+    static const unsigned localStorageDatabaseQuotaInBytes;
+
+    StorageArea* createLocalStorageArea(uint64_t storageNamespaceID, WebCore::SecurityOriginData&&);
+    StorageArea* createTransientLocalStorageArea(uint64_t storageNamespaceID, WebCore::SecurityOriginData&&, WebCore::SecurityOriginData&&);
+    StorageArea* createSessionStorageArea(uint64_t storageNamespaceID, WebCore::SecurityOriginData&&);
 
 private:
-    explicit StorageManager(String&& localStorageDirectory);
-
-    // Message handlers.
-    void createLocalStorageMap(IPC::Connection&, uint64_t storageMapID, uint64_t storageNamespaceID, WebCore::SecurityOriginData&&);
-    void createTransientLocalStorageMap(IPC::Connection&, uint64_t storageMapID, uint64_t storageNamespaceID, WebCore::SecurityOriginData&& topLevelOriginData, WebCore::SecurityOriginData&&);
-    void createSessionStorageMap(IPC::Connection&, uint64_t storageMapID, uint64_t storageNamespaceID, WebCore::SecurityOriginData&&);
-    void destroyStorageMap(IPC::Connection&, uint64_t storageMapID);
-
-    void getValues(IPC::Connection&, uint64_t storageMapID, uint64_t storageMapSeed, GetValuesCallback&&);
-    void prewarm(IPC::Connection&, uint64_t storageMapID);
-    void setItem(IPC::Connection&, WebCore::SecurityOriginData&&, uint64_t storageMapID, uint64_t sourceStorageAreaID, uint64_t storageMapSeed, const String& key, const String& value, const String& urlString);
-    void setItems(IPC::Connection&, uint64_t storageMapID, const HashMap<String, String>& items);
-    void removeItem(IPC::Connection&, WebCore::SecurityOriginData&&, uint64_t storageMapID, uint64_t sourceStorageAreaID, uint64_t storageMapSeed, const String& key, const String& urlString);
-    void clear(IPC::Connection&, WebCore::SecurityOriginData&&, uint64_t storageMapID, uint64_t sourceStorageAreaID, uint64_t storageMapSeed, const String& urlString);
-
-    class StorageArea;
-    StorageArea* findStorageArea(IPC::Connection&, uint64_t) const;
-
-    class LocalStorageNamespace;
     LocalStorageNamespace* getOrCreateLocalStorageNamespace(uint64_t storageNamespaceID);
-
-    class TransientLocalStorageNamespace;
     TransientLocalStorageNamespace* getOrCreateTransientLocalStorageNamespace(uint64_t storageNamespaceID, WebCore::SecurityOriginData&& topLevelOrigin);
-
-    Ref<WorkQueue> m_queue;
+    SessionStorageNamespace* getOrCreateSessionStorageNamespace(uint64_t storageNamespaceID);
 
     RefPtr<LocalStorageDatabaseTracker> m_localStorageDatabaseTracker;
-    HashMap<uint64_t, RefPtr<LocalStorageNamespace>> m_localStorageNamespaces;
-
-    HashMap<std::pair<uint64_t, WebCore::SecurityOriginData>, RefPtr<TransientLocalStorageNamespace>> m_transientLocalStorageNamespaces;
-
-    class SessionStorageNamespace;
-    HashMap<uint64_t, RefPtr<SessionStorageNamespace>> m_sessionStorageNamespaces;
-
-    HashMap<std::pair<IPC::Connection::UniqueID, uint64_t>, RefPtr<StorageArea>> m_storageAreasByConnection;
-    HashSet<IPC::Connection::UniqueID> m_connections;
-
-    enum class State {
-        Running,
-        WillSuspend,
-        Suspended
-    };
-    State m_state { State::Running };
-    Lock m_stateLock;
-    Condition m_stateChangeCondition;
+    HashMap<uint64_t, std::unique_ptr<LocalStorageNamespace>> m_localStorageNamespaces;
+    HashMap<std::pair<uint64_t, WebCore::SecurityOriginData>, std::unique_ptr<TransientLocalStorageNamespace>> m_transientLocalStorageNamespaces;
+    HashMap<uint64_t, std::unique_ptr<SessionStorageNamespace>> m_sessionStorageNamespaces;
 };
 
 } // namespace WebKit

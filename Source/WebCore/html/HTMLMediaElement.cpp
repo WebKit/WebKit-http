@@ -144,7 +144,6 @@
 #if ENABLE(MEDIA_STREAM)
 #include "DOMURL.h"
 #include "MediaStream.h"
-#include "MediaStreamRegistry.h"
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -1583,7 +1582,7 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
 
     if (m_mediaSource) {
         loadAttempted = true;
-        
+
         ALWAYS_LOG(LOGIDENTIFIER, "loading MSE blob");
         if (!m_mediaSource->attachToElement(*this) || !m_player->load(url, contentType, m_mediaSource.get())) {
             // Forget our reference to the MediaSource, so we leave it alone
@@ -1593,18 +1592,12 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
         }
     }
 #endif
-
 #if ENABLE(MEDIA_STREAM)
-    if (!loadAttempted) {
-        if (!m_mediaStreamSrcObject && url.protocolIs(mediaStreamBlobProtocol))
-            m_mediaStreamSrcObject = MediaStreamRegistry::shared().lookUp(url);
-
-        if (m_mediaStreamSrcObject) {
-            loadAttempted = true;
-            ALWAYS_LOG(LOGIDENTIFIER, "loading media stream blob");
-            if (!m_player->load(m_mediaStreamSrcObject->privateStream()))
-                mediaLoadingFailed(MediaPlayer::FormatError);
-        }
+    if (!loadAttempted && m_mediaStreamSrcObject) {
+        loadAttempted = true;
+        ALWAYS_LOG(LOGIDENTIFIER, "loading media stream blob");
+        if (!m_player->load(m_mediaStreamSrcObject->privateStream()))
+            mediaLoadingFailed(MediaPlayer::FormatError);
     }
 #endif
 
@@ -6443,13 +6436,12 @@ void HTMLMediaElement::resetMediaEngines()
     MediaPlayer::resetMediaEngines();
 }
 
-void HTMLMediaElement::privateBrowsingStateDidChange()
+void HTMLMediaElement::privateBrowsingStateDidChange(PAL::SessionID sessionID)
 {
     if (!m_player)
         return;
 
-    bool privateMode = document().page() && document().page()->usesEphemeralSession();
-    m_player->setPrivateBrowsingMode(privateMode);
+    m_player->setPrivateBrowsingMode(sessionID.isEphemeral());
 }
 
 MediaControls* HTMLMediaElement::mediaControls() const
@@ -6913,7 +6905,7 @@ HTMLMediaElement::SleepType HTMLMediaElement::shouldDisableSleep() const
     if (PlatformMediaSessionManager::sharedManager().processIsSuspended())
         return SleepType::None;
 
-    bool shouldBeAbleToSleep = !hasVideo() || !hasAudio();
+    bool shouldBeAbleToSleep = mediaType() != PlatformMediaSession::VideoAudio;
 #if ENABLE(MEDIA_STREAM)
     // Remote media stream video tracks may have their corresponding audio tracks being played outside of the media element. Let's ensure to not IDLE the screen in that case.
     // FIXME: We should check that audio is being/to be played. Ideally, we would come up with a media stream agnostic heuristisc.

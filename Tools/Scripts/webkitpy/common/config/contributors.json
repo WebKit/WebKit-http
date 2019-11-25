@@ -1060,7 +1060,7 @@
       "nicks" : [
          "clopez"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Carlos Eduardo Ramalho" : {
       "emails" : [
@@ -5753,6 +5753,16 @@
       "nicks" : [
          "zhenyao"
       ]
+   },
+   "Zhifei Fang" : {
+     "emails" : [
+         "zhifei_fang@apple.com"
+     ],
+     "nicks" : [
+         "zhifei_fang",
+         "z.f"
+     ],
+     "status" : "committer"
    },
    "Zoltan Arvai" : {
       "emails" : [

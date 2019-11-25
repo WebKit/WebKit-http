@@ -31,6 +31,7 @@
 namespace WebCore {
 
 class MediaStreamTrack;
+class RTCDTMFSenderBackend;
 class RTCRtpSender;
 struct RTCRtpSendParameters;
 class ScriptExecutionContext;
@@ -40,6 +41,7 @@ public:
     virtual void replaceTrack(ScriptExecutionContext&, RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&) = 0;
     virtual RTCRtpSendParameters getParameters() const = 0;
     virtual void setParameters(const RTCRtpSendParameters&, DOMPromiseDeferred<void>&&) = 0;
+    virtual std::unique_ptr<RTCDTMFSenderBackend> createDTMFBackend() = 0;
     virtual ~RTCRtpSenderBackend() = default;
 };
 

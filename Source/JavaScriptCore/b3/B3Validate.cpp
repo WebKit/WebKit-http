@@ -72,6 +72,13 @@ public:
         HashMap<Value*, unsigned> valueInBlock;
         HashMap<Value*, BasicBlock*> valueOwner;
         HashMap<Value*, unsigned> valueIndex;
+        HashMap<Value*, Vector<Optional<Type>>> extractions;
+
+        for (unsigned tuple = 0; tuple < m_procedure.tuples().size(); ++tuple) {
+            VALIDATE(m_procedure.tuples()[tuple].size(), ("In tuple ", tuple));
+            for (unsigned i = 0; i < m_procedure.tuples()[tuple].size(); ++i)
+                VALIDATE(m_procedure.tuples()[tuple][i].isNumeric(), ("In tuple ", tuple, " at index", i));
+        }
 
         for (BasicBlock* block : m_procedure) {
             blocks.add(block);
@@ -204,7 +211,7 @@ public:
                 case Mod:
                     if (value->isChill()) {
                         VALIDATE(value->opcode() == Div || value->opcode() == Mod, ("At ", *value));
-                        VALIDATE(isInt(value->type()), ("At ", *value));
+                        VALIDATE(value->type().isInt(), ("At ", *value));
                     }
                     break;
                 default:
@@ -214,13 +221,13 @@ public:
                 VALIDATE(value->numChildren() == 2, ("At ", *value));
                 VALIDATE(value->type() == value->child(0)->type(), ("At ", *value));
                 VALIDATE(value->type() == value->child(1)->type(), ("At ", *value));
-                VALIDATE(value->type() != Void, ("At ", *value));
+                VALIDATE(value->type().isNumeric(), ("At ", *value));
                 break;
             case Neg:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
                 VALIDATE(value->type() == value->child(0)->type(), ("At ", *value));
-                VALIDATE(value->type() != Void, ("At ", *value));
+                VALIDATE(value->type().isNumeric(), ("At ", *value));
                 break;
             case Shl:
             case SShr:
@@ -231,7 +238,7 @@ public:
                 VALIDATE(value->numChildren() == 2, ("At ", *value));
                 VALIDATE(value->type() == value->child(0)->type(), ("At ", *value));
                 VALIDATE(value->child(1)->type() == Int32, ("At ", *value));
-                VALIDATE(isInt(value->type()), ("At ", *value));
+                VALIDATE(value->type().isInt(), ("At ", *value));
                 break;
             case BitwiseCast:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
@@ -261,8 +268,8 @@ public:
             case Clz:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
-                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
-                VALIDATE(isInt(value->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isInt(), ("At ", *value));
+                VALIDATE(value->type().isInt(), ("At ", *value));
                 break;
             case Trunc:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
@@ -278,19 +285,19 @@ public:
             case Sqrt:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
-                VALIDATE(isFloat(value->child(0)->type()), ("At ", *value));
-                VALIDATE(isFloat(value->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isFloat(), ("At ", *value));
+                VALIDATE(value->type().isFloat(), ("At ", *value));
                 break;
             case IToD:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
-                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isInt(), ("At ", *value));
                 VALIDATE(value->type() == Double, ("At ", *value));
                 break;
             case IToF:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
-                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isInt(), ("At ", *value));
                 VALIDATE(value->type() == Float, ("At ", *value));
                 break;
             case FloatToDouble:
@@ -323,20 +330,20 @@ public:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 2, ("At ", *value));
                 VALIDATE(value->child(0)->type() == value->child(1)->type(), ("At ", *value));
-                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isInt(), ("At ", *value));
                 VALIDATE(value->type() == Int32, ("At ", *value));
                 break;
             case EqualOrUnordered:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 2, ("At ", *value));
                 VALIDATE(value->child(0)->type() == value->child(1)->type(), ("At ", *value));
-                VALIDATE(isFloat(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isFloat(), ("At ", *value));
                 VALIDATE(value->type() == Int32, ("At ", *value));
                 break;
             case Select:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 3, ("At ", *value));
-                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isInt(), ("At ", *value));
                 VALIDATE(value->type() == value->child(1)->type(), ("At ", *value));
                 VALIDATE(value->type() == value->child(2)->type(), ("At ", *value));
                 break;
@@ -355,7 +362,7 @@ public:
                 VALIDATE(!value->kind().isChill(), ("At ", *value));
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
                 VALIDATE(value->child(0)->type() == pointerType(), ("At ", *value));
-                VALIDATE(value->type() != Void, ("At ", *value));
+                VALIDATE(value->type().isNumeric(), ("At ", *value));
                 validateFence(value);
                 validateStackAccess(value);
                 break;
@@ -382,7 +389,7 @@ public:
                 VALIDATE(value->numChildren() == 3, ("At ", *value));
                 VALIDATE(value->type() == Int32, ("At ", *value));
                 VALIDATE(value->child(0)->type() == value->child(1)->type(), ("At ", *value));
-                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isInt(), ("At ", *value));
                 VALIDATE(value->child(2)->type() == pointerType(), ("At ", *value));
                 validateAtomic(value);
                 validateStackAccess(value);
@@ -392,7 +399,7 @@ public:
                 VALIDATE(value->numChildren() == 3, ("At ", *value));
                 VALIDATE(value->type() == value->child(0)->type(), ("At ", *value));
                 VALIDATE(value->type() == value->child(1)->type(), ("At ", *value));
-                VALIDATE(isInt(value->type()), ("At ", *value));
+                VALIDATE(value->type().isInt(), ("At ", *value));
                 VALIDATE(value->child(2)->type() == pointerType(), ("At ", *value));
                 validateAtomic(value);
                 validateStackAccess(value);
@@ -406,7 +413,7 @@ public:
                 VALIDATE(!value->kind().isChill(), ("At ", *value));
                 VALIDATE(value->numChildren() == 2, ("At ", *value));
                 VALIDATE(value->type() == value->child(0)->type(), ("At ", *value));
-                VALIDATE(isInt(value->type()), ("At ", *value));
+                VALIDATE(value->type().isInt(), ("At ", *value));
                 VALIDATE(value->child(1)->type() == pointerType(), ("At ", *value));
                 validateAtomic(value);
                 validateStackAccess(value);
@@ -415,7 +422,7 @@ public:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
                 VALIDATE(value->type() == value->child(0)->type(), ("At ", *value));
-                VALIDATE(isInt(value->type()), ("At ", *value));
+                VALIDATE(value->type().isInt(), ("At ", *value));
                 break;
             case WasmAddress:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
@@ -430,19 +437,35 @@ public:
                 break;
             case Patchpoint:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
-                if (value->type() == Void)
-                    VALIDATE(value->as<PatchpointValue>()->resultConstraint == ValueRep::WarmAny, ("At ", *value));
-                else
-                    validateStackmapConstraint(value, ConstrainedValue(value, value->as<PatchpointValue>()->resultConstraint), ConstraintRole::Def);
+                if (value->type() == Void) {
+                    VALIDATE(value->as<PatchpointValue>()->resultConstraints.size() == 1, ("At ", *value));
+                    VALIDATE(value->as<PatchpointValue>()->resultConstraints[0] == ValueRep::WarmAny, ("At ", *value));
+                } else {
+                    if (value->type().isNumeric()) {
+                        VALIDATE(value->as<PatchpointValue>()->resultConstraints.size() == 1, ("At ", *value));
+                        validateStackmapConstraint(value, ConstrainedValue(value, value->as<PatchpointValue>()->resultConstraints[0]), ConstraintRole::Def);
+                    } else {
+                        VALIDATE(m_procedure.isValidTuple(value->type()), ("At ", *value));
+                        VALIDATE(value->as<PatchpointValue>()->resultConstraints.size() == m_procedure.tupleForType(value->type()).size(), ("At ", *value));
+                        for (unsigned i = 0; i < value->as<PatchpointValue>()->resultConstraints.size(); ++i)
+                            validateStackmapConstraint(value, ConstrainedValue(value, value->as<PatchpointValue>()->resultConstraints[i]), ConstraintRole::Def, i);
+                    }
+                }
                 validateStackmap(value);
                 break;
+            case Extract: {
+                VALIDATE(value->numChildren() == 1, ("At ", *value));
+                VALIDATE(value->child(0)->type() == Tuple, ("At ", *value));
+                VALIDATE(value->type().isNumeric(), ("At ", *value));
+                break;
+            }
             case CheckAdd:
             case CheckSub:
             case CheckMul:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() >= 2, ("At ", *value));
-                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
-                VALIDATE(isInt(value->child(1)->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isInt(), ("At ", *value));
+                VALIDATE(value->child(1)->type().isInt(), ("At ", *value));
                 VALIDATE(value->as<StackmapValue>()->constrainedChild(0).rep() == ValueRep::WarmAny, ("At ", *value));
                 VALIDATE(value->as<StackmapValue>()->constrainedChild(1).rep() == ValueRep::WarmAny, ("At ", *value));
                 validateStackmap(value);
@@ -450,7 +473,7 @@ public:
             case Check:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() >= 1, ("At ", *value));
-                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isInt(), ("At ", *value));
                 VALIDATE(value->as<StackmapValue>()->constrainedChild(0).rep() == ValueRep::WarmAny, ("At ", *value));
                 validateStackmap(value);
                 break;
@@ -472,6 +495,7 @@ public:
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
                 VALIDATE(value->as<UpsilonValue>()->phi(), ("At ", *value));
                 VALIDATE(value->as<UpsilonValue>()->phi()->opcode() == Phi, ("At ", *value));
+                VALIDATE(value->child(0)->type() != Void, ("At ", *value));
                 VALIDATE(value->child(0)->type() == value->as<UpsilonValue>()->phi()->type(), ("At ", *value));
                 VALIDATE(valueInProc.contains(value->as<UpsilonValue>()->phi()), ("At ", *value));
                 break;
@@ -501,14 +525,14 @@ public:
             case Branch:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
-                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isInt(), ("At ", *value));
                 VALIDATE(value->type() == Void, ("At ", *value));
                 VALIDATE(valueOwner.get(value)->numSuccessors() == 2, ("At ", *value));
                 break;
             case Switch: {
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
-                VALIDATE(isInt(value->child(0)->type()), ("At ", *value));
+                VALIDATE(value->child(0)->type().isInt(), ("At ", *value));
                 VALIDATE(value->type() == Void, ("At ", *value));
                 VALIDATE(value->as<SwitchValue>()->hasFallThrough(valueOwner.get(value)), ("At ", *value));
                 // This validates the same thing as hasFallThrough, but more explicitly. We want to
@@ -560,7 +584,7 @@ private:
         Use,
         Def
     };
-    void validateStackmapConstraint(Value* context, const ConstrainedValue& value, ConstraintRole role = ConstraintRole::Use)
+    void validateStackmapConstraint(Value* context, const ConstrainedValue& value, ConstraintRole role = ConstraintRole::Use, unsigned tupleIndex = 0)
     {
         switch (value.rep().kind()) {
         case ValueRep::WarmAny:
@@ -583,10 +607,17 @@ private:
         case ValueRep::SomeLateRegister:
             if (value.rep().kind() == ValueRep::LateRegister)
                 VALIDATE(role == ConstraintRole::Use, ("At ", *context, ": ", value));
-            if (value.rep().reg().isGPR())
-                VALIDATE(isInt(value.value()->type()), ("At ", *context, ": ", value));
-            else
-                VALIDATE(isFloat(value.value()->type()), ("At ", *context, ": ", value));
+            if (value.rep().reg().isGPR()) {
+                if (value.value()->type().isTuple())
+                    VALIDATE(m_procedure.extractFromTuple(value.value()->type(), tupleIndex).isInt(), ("At ", *context, ": ", value));
+                else
+                    VALIDATE(value.value()->type().isInt(), ("At ", *context, ": ", value));
+            } else {
+                if (value.value()->type().isTuple())
+                    VALIDATE(m_procedure.extractFromTuple(value.value()->type(), tupleIndex).isFloat(), ("At ", *context, ": ", value));
+                else
+                    VALIDATE(value.value()->type().isFloat(), ("At ", *context, ": ", value));
+            }
             break;
         default:
             VALIDATE(false, ("At ", *context, ": ", value));

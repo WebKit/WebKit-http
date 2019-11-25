@@ -791,7 +791,7 @@ webkit.org/b/185994 fast/text/user-installed-fonts/shadow-postscript-family.html
 [ HighSierra+ ] http/tests/resourceLoadStatistics/cookie-deletion.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/add-blocking-to-redirect.html [ Pass ]
-[ HighSierra+ ] http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html [ Pass ]
+[ HighSierra+ ] http/tests/resourceLoadStatistics/do-not-remove-blocking-in-redirect.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/grandfathering.html [ Pass ]
@@ -829,10 +829,8 @@ webkit.org/b/173742 security/contentSecurityPolicy/plugins-types-allows-youtube-
 
 webkit.org/b/181167 imported/w3c/web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/update.https.html [ Pass Failure ]
 
-http/wpt/cache-storage/cache-put-stream.https.any.html [ Slow ]
 http/wpt/cache-storage/cache-put-keys.https.any.html [ Slow ]
 http/wpt/cache-storage/a-cache-open.https.html [ Slow ]
-http/wpt/cache-storage/cache-put-stream.https.any.worker.html [ Slow ]
 http/wpt/cache-storage/cache-quota.any.html [ Slow ]
 http/wpt/cache-storage/cache-put-keys.https.any.worker.html [ Slow ]
 http/wpt/cache-storage/cache-remove-twice.html [ Slow ]
@@ -905,12 +903,14 @@ imported/w3c/web-platform-tests/payment-request/user-accepts-payment-request-alg
 
 webkit.org/b/189598 compositing/backing/backing-store-attachment-fill-forwards-animation.html [ Pass Failure ]
 
-# Skip local authenticator tests for mac now.
+# Local authenticator tests require restricted keychain entitlement, which cannot be signed with ad hoc signing.
+# Therefore, tests fail on OpenSource bots. They will be covered by Internal bots.
 http/wpt/webauthn/public-key-credential-create-failure-local.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-create-failure-local-silent.https.html [ Skip ]
 http/wpt/webauthn/public-key-credential-create-success-local.https.html [ Skip ]
 http/wpt/webauthn/public-key-credential-get-failure-local.https.html [ Skip ]
+http/wpt/webauthn/public-key-credential-get-failure-local-silent.https.html [ Skip ]
 http/wpt/webauthn/public-key-credential-get-success-local.https.html [ Skip ]
-# The following tests require PublicKeyCredential objects. We can only produce them via local authenticators now.
 http/wpt/credential-management/credentialscontainer-store-basics.https.html [ Skip ]
 http/wpt/webauthn/idl.https.html [ Skip ]
 
@@ -922,7 +922,7 @@ webkit.org/b/194826 http/tests/resourceLoadStatistics/do-not-block-top-level-nav
 
 webkit.org/b/194916 fast/mediastream/MediaStream-video-element.html [ Pass Failure ]
 
-webkit.org/b/196376 storage/domstorage/localstorage/private-browsing-affects-storage.html [ Pass Failure ]
+webkit.org/b/196376 storage/domstorage/localstorage/private-browsing-affects-storage.html [ Pass ]
 
 webkit.org/b/196400 fast/mediastream/MediaStreamTrack-getSettings.html [ Pass Failure ]
 

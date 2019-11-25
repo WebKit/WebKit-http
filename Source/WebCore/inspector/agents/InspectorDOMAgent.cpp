@@ -1224,13 +1224,7 @@ void InspectorDOMAgent::highlightSelector(ErrorString& errorString, const JSON::
     RefPtr<Document> document;
 
     if (frameId) {
-        auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
-        if (!pageAgent) {
-            errorString = "Missing Page agent"_s;
-            return;
-        }
-
-        Frame* frame = pageAgent->frameForId(*frameId);
+        Frame* frame = m_instrumentingAgents.inspectorPageAgent()->frameForId(*frameId);
         if (!frame) {
             errorString = "No frame for given id found"_s;
             return;
@@ -1317,13 +1311,7 @@ void InspectorDOMAgent::highlightNodeList(ErrorString& errorString, const JSON::
 
 void InspectorDOMAgent::highlightFrame(ErrorString& errorString, const String& frameId, const JSON::Object* color, const JSON::Object* outlineColor)
 {
-    auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
-    if (!pageAgent) {
-        errorString = "Missing Page agent"_s;
-        return;
-    }
-
-    Frame* frame = pageAgent->assertFrame(errorString, frameId);
+    Frame* frame = m_instrumentingAgents.inspectorPageAgent()->assertFrame(errorString, frameId);
     if (!frame)
         return;
 
@@ -1563,11 +1551,8 @@ Ref<Inspector::Protocol::DOM::Node> InspectorDOMAgent::buildObjectForNode(Node* 
             value->setChildren(WTFMove(children));
     }
 
-    auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
-    if (pageAgent) {
-        if (auto* frameView = node->document().view())
-            value->setFrameId(pageAgent->frameId(&frameView->frame()));
-    }
+    if (auto* frameView = node->document().view())
+        value->setFrameId(m_instrumentingAgents.inspectorPageAgent()->frameId(&frameView->frame()));
 
     if (is<Element>(*node)) {
         Element& element = downcast<Element>(*node);
@@ -1603,8 +1588,7 @@ Ref<Inspector::Protocol::DOM::Node> InspectorDOMAgent::buildObjectForNode(Node* 
         }
     } else if (is<Document>(*node)) {
         Document& document = downcast<Document>(*node);
-        if (pageAgent)
-            value->setFrameId(pageAgent->frameId(document.frame()));
+        value->setFrameId(m_instrumentingAgents.inspectorPageAgent()->frameId(document.frame()));
         value->setDocumentURL(documentURLString(&document));
         value->setBaseURL(documentBaseURLString(&document));
         value->setXmlVersion(document.xmlVersion());
@@ -2594,7 +2578,10 @@ void InspectorDOMAgent::pushNodeByPathToFrontend(ErrorString& errorString, const
 
 RefPtr<Inspector::Protocol::Runtime::RemoteObject> InspectorDOMAgent::resolveNode(Node* node, const String& objectGroup)
 {
-    auto* frame = node->document().frame();
+    Document* document = &node->document();
+    if (auto* templateHost = document->templateDocumentHost())
+        document = templateHost;
+    auto* frame =  document->frame();
     if (!frame)
         return nullptr;
 

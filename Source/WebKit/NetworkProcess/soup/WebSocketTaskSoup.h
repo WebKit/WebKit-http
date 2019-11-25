@@ -36,6 +36,7 @@ namespace WebKit {
 class NetworkSocketChannel;
 
 class WebSocketTask {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     WebSocketTask(NetworkSocketChannel&, SoupSession*, SoupMessage*, const String& protocol);
     ~WebSocketTask();
@@ -51,6 +52,8 @@ private:
     void didConnect(GRefPtr<SoupWebsocketConnection>&&);
     void didFail(const String&);
     void didClose(unsigned short code, const String& reason);
+
+    String acceptedExtensions() const;
 
     static void didReceiveMessageCallback(WebSocketTask*, SoupWebsocketDataType, GBytes*);
     static void didReceiveErrorCallback(WebSocketTask*, GError*);

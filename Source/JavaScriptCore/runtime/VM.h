@@ -185,7 +185,6 @@ struct LocalTimeOffsetCache {
         : start(0.0)
         , end(-1.0)
         , increment(0.0)
-        , timeType(WTF::UTCTime)
     {
     }
 
@@ -195,14 +194,12 @@ struct LocalTimeOffsetCache {
         start = 0.0;
         end = -1.0;
         increment = 0.0;
-        timeType = WTF::UTCTime;
     }
 
     LocalTimeOffset offset;
     double start;
     double end;
     double increment;
-    WTF::TimeType timeType;
 };
 
 class QueuedTask {
@@ -551,7 +548,7 @@ public:
     Strong<JSCell> m_sentinelSetBucket;
     Strong<JSCell> m_sentinelMapBucket;
 
-    std::unique_ptr<PromiseDeferredTimer> promiseDeferredTimer;
+    Ref<PromiseDeferredTimer> promiseDeferredTimer;
     
     JSCell* currentlyDestructingCallbackObject;
     const ClassInfo* currentlyDestructingCallbackObjectClassInfo { nullptr };
@@ -809,6 +806,7 @@ public:
     JSObject* stringRecursionCheckFirstObject { nullptr };
     HashSet<JSObject*> stringRecursionCheckVisitedObjects;
     
+    LocalTimeOffsetCache utcTimeOffsetCache;
     LocalTimeOffsetCache localTimeOffsetCache;
 
     String cachedDateString;

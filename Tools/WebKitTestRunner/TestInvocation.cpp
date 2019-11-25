@@ -83,7 +83,7 @@ TestInvocation::TestInvocation(WKURLRef url, const TestOptions& options)
     m_urlString = String(urlVector.data(), stringLength);
 
     // FIXME: Avoid mutating the setting via a test directory like this.
-    m_dumpFrameLoadCallbacks = urlContains("loading/");
+    m_dumpFrameLoadCallbacks = urlContains("loading/") && !urlContains("://localhost");
 }
 
 TestInvocation::~TestInvocation()
@@ -1462,6 +1462,15 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
         return nullptr;
     }
 
+    if (WKStringIsEqualToUTF8CString(messageName, "HasStatisticsIsolatedSession")) {
+        ASSERT(WKGetTypeID(messageBody) == WKStringGetTypeID());
+        
+        WKStringRef hostName = static_cast<WKStringRef>(messageBody);
+        bool hasIsolatedSession = TestController::singleton().hasStatisticsIsolatedSession(hostName);
+        auto result = adoptWK(WKBooleanCreate(hasIsolatedSession));
+        return result;
+    }
+    
     if (WKStringIsEqualToUTF8CString(messageName, "RemoveAllSessionCredentials")) {
         TestController::singleton().removeAllSessionCredentials();
         return nullptr;
@@ -1654,6 +1663,11 @@ WKRetainPtr<WKTypeRef> TestInvocation::didReceiveSynchronousMessageFromInjectedB
 
     if (WKStringIsEqualToUTF8CString(messageName, "MarkAdClickAttributionsAsExpiredForTesting")) {
         TestController::singleton().markAdClickAttributionsAsExpiredForTesting();
+        return nullptr;
+    }
+
+    if (WKStringIsEqualToUTF8CString(messageName, "SyncLocalStorage")) {
+        TestController::singleton().syncLocalStorage();
         return nullptr;
     }
 

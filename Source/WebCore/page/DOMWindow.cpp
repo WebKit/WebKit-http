@@ -442,8 +442,7 @@ void DOMWindow::prewarmLocalStorageIfNecessary()
     if (!localStorage)
         return;
 
-    if (localStorage->prewarm())
-        page->mainFrame().didPrewarmLocalStorage();
+    page->mainFrame().didPrewarmLocalStorage();
 }
 
 DOMWindow::~DOMWindow()
@@ -998,6 +997,9 @@ void DOMWindow::focus(bool allowFocus)
     if (!frame())
         return;
 
+    if (!frame()->hasHadUserInteraction() && !isSameSecurityOriginAsMainFrame())
+        return;
+
     // Clear the current frame's focused node if a new frame is about to be focused.
     Frame* focusedFrame = page->focusController().focusedFrame();
     if (focusedFrame && focusedFrame != frame())
@@ -1256,14 +1258,14 @@ int DOMWindow::innerHeight() const
         return 0;
     
     // Force enough layout in the parent document to ensure that the FrameView has been resized.
-    if (auto* frameElement = this->frameElement())
-        frameElement->document().updateLayoutIfDimensionsOutOfDate(*frameElement, HeightDimensionsCheck);
+    if (auto ownerElement = makeRefPtr(frameElement()))
+        ownerElement->document().updateLayoutIfDimensionsOutOfDate(*ownerElement, HeightDimensionsCheck);
 
-    auto* frame = this->frame();
+    auto frame = makeRefPtr(this->frame());
     if (!frame)
         return 0;
     
-    FrameView* view = frame->view();
+    auto view = makeRefPtr(frame->view());
     if (!view)
         return 0;
 
@@ -1276,14 +1278,14 @@ int DOMWindow::innerWidth() const
         return 0;
 
     // Force enough layout in the parent document to ensure that the FrameView has been resized.
-    if (auto* frameElement = this->frameElement())
-        frameElement->document().updateLayoutIfDimensionsOutOfDate(*frameElement, WidthDimensionsCheck);
+    if (auto ownerElement = makeRefPtr(frameElement()))
+        ownerElement->document().updateLayoutIfDimensionsOutOfDate(*ownerElement, WidthDimensionsCheck);
 
-    auto* frame = this->frame();
+    auto frame = makeRefPtr(this->frame());
     if (!frame)
         return 0;
 
-    FrameView* view = frame->view();
+    auto view = makeRefPtr(frame->view());
     if (!view)
         return 0;
 
@@ -1292,7 +1294,7 @@ int DOMWindow::innerWidth() const
 
 int DOMWindow::screenX() const
 {
-    auto* frame = this->frame();
+    auto frame = makeRefPtr(this->frame());
     if (!frame)
         return 0;
 
@@ -1305,7 +1307,7 @@ int DOMWindow::screenX() const
 
 int DOMWindow::screenY() const
 {
-    auto* frame = this->frame();
+    auto frame = makeRefPtr(this->frame());
     if (!frame)
         return 0;
 
@@ -1318,11 +1320,11 @@ int DOMWindow::screenY() const
 
 int DOMWindow::scrollX() const
 {
-    auto* frame = this->frame();
+    auto frame = makeRefPtr(this->frame());
     if (!frame)
         return 0;
 
-    FrameView* view = frame->view();
+    auto view = makeRefPtr(frame->view());
     if (!view)
         return 0;
 
@@ -1333,11 +1335,11 @@ int DOMWindow::scrollX() const
     frame->document()->updateLayoutIgnorePendingStylesheets();
 
     // Layout may have affected the current frame:
-    auto* frameAfterLayout = this->frame();
+    auto frameAfterLayout = makeRefPtr(this->frame());
     if (!frameAfterLayout)
         return 0;
-    
-    FrameView* viewAfterLayout = frameAfterLayout->view();
+
+    auto viewAfterLayout = makeRefPtr(frameAfterLayout->view());
     if (!viewAfterLayout)
         return 0;
 
@@ -1346,11 +1348,11 @@ int DOMWindow::scrollX() const
 
 int DOMWindow::scrollY() const
 {
-    auto* frame = this->frame();
+    auto frame = makeRefPtr(this->frame());
     if (!frame)
         return 0;
 
-    FrameView* view = frame->view();
+    auto view = makeRefPtr(frame->view());
     if (!view)
         return 0;
 
@@ -1361,14 +1363,14 @@ int DOMWindow::scrollY() const
     frame->document()->updateLayoutIgnorePendingStylesheets();
 
     // Layout may have affected the current frame:
-    auto* frameAfterLayout = this->frame();
+    auto frameAfterLayout = makeRefPtr(this->frame());
     if (!frameAfterLayout)
         return 0;
-    
-    FrameView* viewAfterLayout = frameAfterLayout->view();
+
+    auto viewAfterLayout = makeRefPtr(frameAfterLayout->view());
     if (!viewAfterLayout)
         return 0;
-    
+
     return viewAfterLayout->mapFromLayoutToCSSUnits(viewAfterLayout->contentsScrollPosition().y());
 }
 
@@ -2050,7 +2052,7 @@ void DOMWindow::resetAllGeolocationPermission()
     // FIXME: Can we remove the PLATFORM(IOS_FAMILY)-guard?
 #if ENABLE(GEOLOCATION) && PLATFORM(IOS_FAMILY)
     if (m_navigator)
-        NavigatorGeolocation::from(m_navigator.get())->resetAllGeolocationPermission();
+        NavigatorGeolocation::from(*m_navigator)->resetAllGeolocationPermission();
 #endif
 }
 

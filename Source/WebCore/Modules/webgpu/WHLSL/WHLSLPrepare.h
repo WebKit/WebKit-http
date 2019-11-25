@@ -28,17 +28,21 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLError.h"
+#include "WHLSLMangledNames.h"
 #include "WHLSLPipelineDescriptor.h"
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 namespace WHLSL {
 
+constexpr bool dumpMetalCompileTimes = false;
+
 struct RenderPrepareResult {
-    String metalSource;
-    String mangledVertexEntryPointName;
-    String mangledFragmentEntryPointName;
+    StringBuilder metalSource;
+    Metal::MangledFunctionName mangledVertexEntryPointName;
+    Metal::MangledFunctionName mangledFragmentEntryPointName;
 };
 Expected<RenderPrepareResult, String> prepare(String& whlslSource, RenderPipelineDescriptor&);
 
@@ -49,8 +53,8 @@ struct ComputeDimensions {
 };
 
 struct ComputePrepareResult {
-    String metalSource;
-    String mangledEntryPointName;
+    StringBuilder metalSource;
+    Metal::MangledFunctionName mangledEntryPointName;
     ComputeDimensions computeDimensions;
 };
 Expected<ComputePrepareResult, String> prepare(String& whlslSource, ComputePipelineDescriptor&);

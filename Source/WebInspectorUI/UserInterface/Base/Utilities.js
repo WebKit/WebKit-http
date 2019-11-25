@@ -734,6 +734,18 @@ Object.defineProperty(String.prototype, "isUpperCase",
     }
 });
 
+Object.defineProperty(String.prototype, "isJSON",
+{
+    value(predicate)
+    {
+        try {
+            let json = JSON.parse(this);
+            return !predicate || predicate(json);
+        } catch { }
+        return false;
+    }
+});
+
 Object.defineProperty(String.prototype, "truncateStart",
 {
     value(maxLength)
@@ -1639,7 +1651,7 @@ function isTextLikelyMinified(content)
     if (startRatio < autoFormatWhitespaceRatio)
         return true;
 
-    let endRatio = whitespaceRatio(content, content.length - autoFormatMaxCharactersToCheck, content.length)
+    let endRatio = whitespaceRatio(content, content.length - autoFormatMaxCharactersToCheck, content.length);
     if (endRatio < autoFormatWhitespaceRatio)
         return true;
 

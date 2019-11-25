@@ -35,6 +35,7 @@
 #import <UIKit/UIKeyboardImpl.h>
 #import <UIKit/UIKeyboard_Private.h>
 #import <UIKit/UIResponder_Private.h>
+#import <UIKit/UIScreen_Private.h>
 #import <UIKit/UITextInputMultiDocument.h>
 #import <UIKit/UITextInputTraits_Private.h>
 #import <UIKit/UITextInput_Private.h>
@@ -175,6 +176,10 @@ IGNORE_WARNINGS_BEGIN("deprecated-implementations")
 
 IGNORE_WARNINGS_END
 
+@interface UIScreen ()
+@property (nonatomic, readonly) CGRect _referenceBounds;
+@end
+
 #endif
 
 #if __has_include(<UIKit/UITextAutofillSuggestion.h>)
@@ -210,6 +215,10 @@ IGNORE_WARNINGS_END
 
 @protocol UIWKInteractionViewProtocol_Staging_49236384 <UIWKInteractionViewProtocol>
 - (void)pasteWithCompletionHandler:(void (^)(void))completionHandler;
+@end
+
+@protocol UITextInputPrivate_Staging_54140418 <UITextInputPrivate>
+@property (nonatomic, readonly) BOOL supportsImagePaste;
 @end
 
 @interface UIWebFormAccessory (Staging_49666643)

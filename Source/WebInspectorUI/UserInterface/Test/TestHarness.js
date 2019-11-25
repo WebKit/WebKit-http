@@ -97,6 +97,11 @@ TestHarness = class TestHarness extends WI.Object
             this.addResult(message);
     }
 
+    newline()
+    {
+        this.log("");
+    }
+
     json(object, filter)
     {
         this.log(JSON.stringify(object, filter || null, 2));
@@ -194,6 +199,14 @@ TestHarness = class TestHarness extends WI.Object
     {
         let stringifiedMessage = TestHarness.messageAsString(message);
         this.log("FAIL: " + stringifiedMessage);
+    }
+
+    passOrFail(condition, message)
+    {
+        if (condition)
+            this.pass(message);
+        else
+            this.fail(message);
     }
 
     // Use this to expect an exception. To further examine the exception,

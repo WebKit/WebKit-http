@@ -59,7 +59,7 @@ namespace WHLSL {
         return Unexpected<Error>(name.error());
 
 // FIXME: https://bugs.webkit.org/show_bug.cgi?id=195682 Return a better error code from this, and report it to JavaScript.
-auto Parser::parse(Program& program, StringView stringView, Mode mode) -> Expected<void, Error>
+auto Parser::parse(Program& program, StringView stringView, ParsingMode mode) -> Expected<void, Error>
 {
     m_lexer = Lexer(stringView);
     m_mode = mode;
@@ -94,7 +94,7 @@ auto Parser::parse(Program& program, StringView stringView, Mode mode) -> Expect
             continue;
         }
         case Token::Type::Native: {
-            ASSERT(m_mode == Mode::StandardLibrary);
+            ASSERT(m_mode == ParsingMode::StandardLibrary);
             auto furtherToken = peekFurther();
             if (!furtherToken)
                 return { };
@@ -695,8 +695,8 @@ auto Parser::parseResourceSemantic() -> Expected<AST::ResourceSemantic, Error>
     if (tryType(Token::Type::Comma)) {
         CONSUME_TYPE(spaceToken, Identifier);
         auto spaceTokenStringView = spaceToken->stringView(m_lexer);
-        auto prefix = "space"_str;
-        if (!spaceTokenStringView.startsWith(StringView(prefix)))
+        StringView prefix { "space" };
+        if (!spaceTokenStringView.startsWith(prefix))
             return Unexpected<Error>(Error(makeString("Second argument to resource semantic ", spaceTokenStringView, " needs be of the form 'space0'")));
         if (spaceTokenStringView.length() <= prefix.length())
             return Unexpected<Error>(Error(makeString("Second argument to resource semantic ", spaceTokenStringView, " needs be of the form 'space0'")));
@@ -986,7 +986,7 @@ auto Parser::parseComputeFunctionDeclaration() -> Expected<AST::FunctionDeclarat
     auto endOffset = m_lexer.peek().startOffset();
 
     bool isOperator = false;
-    return AST::FunctionDeclaration({ origin->startOffset(), endOffset }, WTFMove(*attributeBlock), AST::EntryPointType::Compute, WTFMove(*type), name->stringView(m_lexer).toString(), WTFMove(*parameters), WTFMove(*semantic), isOperator);
+    return AST::FunctionDeclaration({ origin->startOffset(), endOffset }, WTFMove(*attributeBlock), AST::EntryPointType::Compute, WTFMove(*type), name->stringView(m_lexer).toString(), WTFMove(*parameters), WTFMove(*semantic), isOperator, m_mode);
 }
 
 auto Parser::parseVertexOrFragmentFunctionDeclaration() -> Expected<AST::FunctionDeclaration, Error>
@@ -1004,7 +1004,7 @@ auto Parser::parseVertexOrFragmentFunctionDeclaration() -> Expected<AST::Functio
     auto endOffset = m_lexer.peek().startOffset();
 
     bool isOperator = false;
-    return AST::FunctionDeclaration({ entryPoint->startOffset(), endOffset }, { }, entryPointType, WTFMove(*type), name->stringView(m_lexer).toString(), WTFMove(*parameters), WTFMove(*semantic), isOperator);
+    return AST::FunctionDeclaration({ entryPoint->startOffset(), endOffset }, { }, entryPointType, WTFMove(*type), name->stringView(m_lexer).toString(), WTFMove(*parameters), WTFMove(*semantic), isOperator, m_mode);
 }
 
 auto Parser::parseRegularFunctionDeclaration() -> Expected<AST::FunctionDeclaration, Error>
@@ -1023,7 +1023,7 @@ auto Parser::parseRegularFunctionDeclaration() -> Expected<AST::FunctionDeclarat
 
     auto endOffset = m_lexer.peek().startOffset();
 
-    return AST::FunctionDeclaration({ origin->startOffset(), endOffset }, { }, WTF::nullopt, WTFMove(*type), name->stringView(m_lexer).toString(), WTFMove(*parameters), WTFMove(*semantic), isOperator);
+    return AST::FunctionDeclaration({ origin->startOffset(), endOffset }, { }, WTF::nullopt, WTFMove(*type), name->stringView(m_lexer).toString(), WTFMove(*parameters), WTFMove(*semantic), isOperator, m_mode);
 }
 
 auto Parser::parseOperatorFunctionDeclaration() -> Expected<AST::FunctionDeclaration, Error>
@@ -1036,7 +1036,7 @@ auto Parser::parseOperatorFunctionDeclaration() -> Expected<AST::FunctionDeclara
     auto endOffset = m_lexer.peek().startOffset();
 
     bool isOperator = true;
-    return AST::FunctionDeclaration({ origin->startOffset(), endOffset }, { }, WTF::nullopt, WTFMove(*type), "operator cast"_str, WTFMove(*parameters), WTFMove(*semantic), isOperator);
+    return AST::FunctionDeclaration({ origin->startOffset(), endOffset }, { }, WTF::nullopt, WTFMove(*type), "operator cast"_str, WTFMove(*parameters), WTFMove(*semantic), isOperator, m_mode);
 }
 
 auto Parser::parseFunctionDeclaration() -> Expected<AST::FunctionDeclaration, Error>
@@ -1163,7 +1163,7 @@ auto Parser::parseForLoop() -> Expected<AST::ForLoop, Error>
     CONSUME_TYPE(origin, For);
     CONSUME_TYPE(leftParenthesis, LeftParenthesis);
 
-    auto parseRemainder = [&](Variant<UniqueRef<AST::Statement>, UniqueRef<AST::Expression>>&& initialization) -> Expected<AST::ForLoop, Error> {
+    auto parseRemainder = [&](UniqueRef<AST::Statement>&& initialization) -> Expected<AST::ForLoop, Error> {
         CONSUME_TYPE(semicolon, Semicolon);
 
         std::unique_ptr<AST::Expression> condition(nullptr);
@@ -1356,13 +1356,13 @@ auto Parser::parseStatement() -> Expected<UniqueRef<AST::Statement>, Error>
     }
 
     {
-        auto effectfulExpression = backtrackingScope<Expected<UniqueRef<AST::Expression>, Error>>([&]() -> Expected<UniqueRef<AST::Expression>, Error> {
+        auto effectfulExpression = backtrackingScope<Expected<UniqueRef<AST::Statement>, Error>>([&]() -> Expected<UniqueRef<AST::Statement>, Error> {
             PARSE(result, EffectfulExpression);
             CONSUME_TYPE(semicolon, Semicolon);
             return result;
         });
         if (effectfulExpression)
-            return { makeUniqueRef<AST::EffectfulExpressionStatement>(WTFMove(*effectfulExpression)) };
+            return WTFMove(*effectfulExpression);
     }
 
     PARSE(variableDeclarations, VariableDeclarations);
@@ -1370,13 +1370,13 @@ auto Parser::parseStatement() -> Expected<UniqueRef<AST::Statement>, Error>
     return { makeUniqueRef<AST::VariableDeclarationsStatement>(WTFMove(*variableDeclarations)) };
 }
 
-auto Parser::parseEffectfulExpression() -> Expected<UniqueRef<AST::Expression>, Error>
+auto Parser::parseEffectfulExpression() -> Expected<UniqueRef<AST::Statement>, Error>
 {
     PEEK(origin);
-    Vector<UniqueRef<AST::Expression>> expressions;
     if (origin->type == Token::Type::Semicolon)
-        return { makeUniqueRef<AST::CommaExpression>(*origin, WTFMove(expressions)) };
+        return { makeUniqueRef<AST::Block>(*origin, Vector<UniqueRef<AST::Statement>>()) };
 
+    Vector<UniqueRef<AST::Expression>> expressions;
     PARSE(effectfulExpression, EffectfulAssignment);
     expressions.append(WTFMove(*effectfulExpression));
 
@@ -1386,10 +1386,11 @@ auto Parser::parseEffectfulExpression() -> Expected<UniqueRef<AST::Expression>, 
     }
 
     if (expressions.size() == 1)
-        return WTFMove(expressions[0]);
+        return { makeUniqueRef<AST::EffectfulExpressionStatement>(WTFMove(expressions[0])) };
     unsigned endOffset = m_lexer.peek().startOffset();
     CodeLocation location(origin->startOffset(), endOffset);
-    return { makeUniqueRef<AST::CommaExpression>(location, WTFMove(expressions)) };
+    auto commaExpression = makeUniqueRef<AST::CommaExpression>(location, WTFMove(expressions));
+    return { makeUniqueRef<AST::EffectfulExpressionStatement>(WTFMove(commaExpression)) };
 }
 
 auto Parser::parseEffectfulAssignment() -> Expected<UniqueRef<AST::Expression>, Error>
@@ -1494,7 +1495,7 @@ auto Parser::parseSuffixOperator(UniqueRef<AST::Expression>&& previous) -> Suffi
     }
     case Token::Type::PlusPlus: {
         CodeLocation location(previous->codeLocation(), *suffix);
-        auto result = AST::ReadModifyWriteExpression::create(location, WTFMove(previous));
+        auto result = makeUniqueRef<AST::ReadModifyWriteExpression>(location, WTFMove(previous));
         Vector<UniqueRef<AST::Expression>> callArguments;
         callArguments.append(result->oldVariableReference());
         result->setNewValueExpression(makeUniqueRef<AST::CallExpression>(location, "operator++"_str, WTFMove(callArguments)));
@@ -1504,7 +1505,7 @@ auto Parser::parseSuffixOperator(UniqueRef<AST::Expression>&& previous) -> Suffi
     default: {
         ASSERT(suffix->type == Token::Type::MinusMinus);
         CodeLocation location(previous->codeLocation(), *suffix);
-        auto result = AST::ReadModifyWriteExpression::create(location, WTFMove(previous));
+        auto result = makeUniqueRef<AST::ReadModifyWriteExpression>(location, WTFMove(previous));
         Vector<UniqueRef<AST::Expression>> callArguments;
         callArguments.append(result->oldVariableReference());
         result->setNewValueExpression(makeUniqueRef<AST::CallExpression>(location, "operator--"_str, WTFMove(callArguments)));
@@ -1606,7 +1607,7 @@ auto Parser::completeAssignment(UniqueRef<AST::Expression>&& left) -> Expected<U
         break;
     }
 
-    auto result = AST::ReadModifyWriteExpression::create(location, WTFMove(left));
+    auto result = makeUniqueRef<AST::ReadModifyWriteExpression>(location, WTFMove(left));
     Vector<UniqueRef<AST::Expression>> callArguments;
     callArguments.append(result->oldVariableReference());
     callArguments.append(WTFMove(*right));
@@ -1898,7 +1899,7 @@ auto Parser::parsePossiblePrefix(bool *isEffectful) -> Expected<UniqueRef<AST::E
         case Token::Type::PlusPlus: {
             if (isEffectful)
                 *isEffectful = true;
-            auto result = AST::ReadModifyWriteExpression::create(location, WTFMove(*next));
+            auto result = makeUniqueRef<AST::ReadModifyWriteExpression>(location, WTFMove(*next));
             Vector<UniqueRef<AST::Expression>> callArguments;
             callArguments.append(result->oldVariableReference());
             result->setNewValueExpression(makeUniqueRef<AST::CallExpression>(location, "operator++"_str, WTFMove(callArguments)));
@@ -1908,7 +1909,7 @@ auto Parser::parsePossiblePrefix(bool *isEffectful) -> Expected<UniqueRef<AST::E
         case Token::Type::MinusMinus: {
             if (isEffectful)
                 *isEffectful = true;
-            auto result = AST::ReadModifyWriteExpression::create(location, WTFMove(*next));
+            auto result = makeUniqueRef<AST::ReadModifyWriteExpression>(location, WTFMove(*next));
             Vector<UniqueRef<AST::Expression>> callArguments;
             callArguments.append(result->oldVariableReference());
             result->setNewValueExpression(makeUniqueRef<AST::CallExpression>(location, "operator--"_str, WTFMove(callArguments)));
@@ -1937,9 +1938,9 @@ auto Parser::parsePossiblePrefix(bool *isEffectful) -> Expected<UniqueRef<AST::E
             return { makeUniqueRef<AST::LogicalNotExpression>(location, WTFMove(boolCast)) };
         }
         case Token::Type::And:
-            return { makeUniqueRef<AST::MakePointerExpression>(location, WTFMove(*next)) };
+            return { makeUniqueRef<AST::MakePointerExpression>(location, WTFMove(*next), AST::AddressEscapeMode::Escapes) };
         case Token::Type::At:
-            return { makeUniqueRef<AST::MakeArrayReferenceExpression>(location, WTFMove(*next)) };
+            return { makeUniqueRef<AST::MakeArrayReferenceExpression>(location, WTFMove(*next), AST::AddressEscapeMode::Escapes) };
         default:
             ASSERT(prefix->type == Token::Type::Star);
             return { makeUniqueRef<AST::DereferenceExpression>(location, WTFMove(*next)) };

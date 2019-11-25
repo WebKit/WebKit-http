@@ -124,6 +124,7 @@ WTF_EXPORT_PRIVATE String directoryName(const String&);
 WTF_EXPORT_PRIVATE bool getVolumeFreeSpace(const String&, uint64_t&);
 WTF_EXPORT_PRIVATE Optional<int32_t> getFileDeviceId(const CString&);
 WTF_EXPORT_PRIVATE bool createSymbolicLink(const String& targetPath, const String& symbolicLinkPath);
+WTF_EXPORT_PRIVATE String createTemporaryZipArchive(const String& directory);
 
 WTF_EXPORT_PRIVATE void setMetadataURL(const String& path, const String& urlString, const String& referrer = { });
 
@@ -199,6 +200,7 @@ WTF_EXPORT_PRIVATE void makeSafeToUseMemoryMapForPath(const String&);
 WTF_EXPORT_PRIVATE bool unmapViewOfFile(void* buffer, size_t);
 
 class MappedFileData {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     MappedFileData() { }
     MappedFileData(MappedFileData&&);

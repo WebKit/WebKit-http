@@ -147,6 +147,9 @@ public:
     void setIsITPDatabaseEnabled(bool isEnabled) { m_isITPDatabaseEnabled = isEnabled; }
     bool isITPDatabaseEnabled() const { return m_isITPDatabaseEnabled; }
 
+    void setIsITPSessionSwitchingEnabled(bool isEnabled) { m_isITPSessionSwitchingEnabled = isEnabled; }
+    bool isITPSessionSwitchingEnabled() const { return m_isITPSessionSwitchingEnabled; }
+
     void setRestrictedHTTPResponseAccess(bool isEnabled) { m_isRestrictedHTTPResponseAccess = isEnabled; }
     bool restrictedHTTPResponseAccess() const { return m_isRestrictedHTTPResponseAccess; }
 
@@ -223,6 +226,8 @@ public:
 #endif
 
 #if ENABLE(WEB_RTC)
+    bool webRTCDTMFEnabled() const { return m_isWebRTCDTMFEnabled; }
+    void setWebRTCDTMFEnabled(bool isEnabled) { m_isWebRTCDTMFEnabled = isEnabled; }
     bool webRTCVP8CodecEnabled() const { return m_isWebRTCVP8CodecEnabled; }
     void setWebRTCVP8CodecEnabled(bool isEnabled) { m_isWebRTCVP8CodecEnabled = isEnabled; }
     bool webRTCUnifiedPlanEnabled() const { return m_isWebRTCUnifiedPlanEnabled; }
@@ -362,6 +367,9 @@ public:
     bool linkPreloadResponsiveImagesEnabled() const { return m_linkPreloadResponsiveImagesEnabled; }
     void setLinkPreloadResponsiveImagesEnabled(bool isEnabled) { m_linkPreloadResponsiveImagesEnabled = isEnabled; }
 
+    void setLazyImageLoadingEnabled(bool areEnabled) { m_lazyImageLoadingEnabled = areEnabled; }
+    bool lazyImageLoadingEnabled() const { return m_lazyImageLoadingEnabled; }
+
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
 #if HAVE(NSURLSESSION_WEBSOCKET)
@@ -405,6 +413,7 @@ private:
     bool m_accessibilityObjectModelEnabled { false };
     bool m_ariaReflectionEnabled { true };
     bool m_itpDebugMode { false };
+    bool m_isITPSessionSwitchingEnabled { true };
     bool m_isRestrictedHTTPResponseAccess { true };
     bool m_crossOriginResourcePolicyEnabled { true };
     bool m_isWebGLCompressedTextureASTCSupportEnabled { false };
@@ -448,6 +457,7 @@ private:
 #endif
 
 #if ENABLE(WEB_RTC)
+    bool m_isWebRTCDTMFEnabled { true };
     bool m_isWebRTCVP8CodecEnabled { true };
     bool m_isWebRTCUnifiedPlanEnabled { true };
     bool m_isPeerConnectionEnabled { true };
@@ -554,6 +564,8 @@ private:
 #if HAVE(NSURLSESSION_WEBSOCKET)
     bool m_isNSURLSessionWebSocketEnabled { false };
 #endif
+
+    bool m_lazyImageLoadingEnabled { false };
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };

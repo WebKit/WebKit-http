@@ -325,7 +325,8 @@ TEST(KeyboardInputTests, CanHandleKeyEventInCompletionHandler)
 
 TEST(KeyboardInputTests, CaretSelectionRectAfterRestoringFirstResponderWithRetainActiveFocusedState)
 {
-    auto expectedCaretRect = CGRectMake(16, 13, 2, 15);
+    // This difference in caret width is due to the fact that we don't zoom in to the input field on iPad, but do on iPhone.
+    auto expectedCaretRect = CGRectMake(16, 13, UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad ? 3 : 2, 15);
     auto webView = webViewWithAutofocusedInput();
     EXPECT_WK_STREQ("INPUT", [webView stringByEvaluatingJavaScript:@"document.activeElement.tagName"]);
     [webView waitForCaretViewFrameToBecome:expectedCaretRect];
@@ -360,7 +361,8 @@ TEST(KeyboardInputTests, RangedSelectionRectAfterRestoringFirstResponderWithReta
 
 TEST(KeyboardInputTests, CaretSelectionRectAfterRestoringFirstResponder)
 {
-    auto expectedCaretRect = CGRectMake(16, 13, 2, 15);
+    // This difference in caret width is due to the fact that we don't zoom in to the input field on iPad, but do on iPhone.
+    auto expectedCaretRect = CGRectMake(16, 13, UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad ? 3 : 2, 15);
     auto webView = webViewWithAutofocusedInput();
     EXPECT_WK_STREQ("INPUT", [webView stringByEvaluatingJavaScript:@"document.activeElement.tagName"]);
     [webView waitForCaretViewFrameToBecome:expectedCaretRect];
@@ -553,6 +555,38 @@ TEST(KeyboardInputTests, TestWebViewAdditionalContextForStrongPasswordAssistance
 
     NSDictionary *actual = [[webView textInputContentView] _autofillContext];
     EXPECT_TRUE([[actual allValues] containsObject:expected]);
+}
+
+TEST(KeyboardInputTests, SupportsImagePaste)
+{
+    auto inputDelegate = adoptNS([[TestInputDelegate alloc] init]);
+    [inputDelegate setFocusStartsInputSessionPolicyHandler:[&] (WKWebView *, id <_WKFocusedElementInfo>) -> _WKFocusStartsInputSessionPolicy {
+        return _WKFocusStartsInputSessionPolicyAllow;
+    }];
+
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 568)]);
+    auto contentView = (id <UITextInputPrivate_Staging_54140418>)[webView textInputContentView];
+    [webView synchronouslyLoadHTMLString:@"<input id='input'></input><div contenteditable id='editor'></div><textarea id='textarea'></textarea>"];
+    [webView _setInputDelegate:inputDelegate.get()];
+
+    [webView stringByEvaluatingJavaScript:@"input.focus()"];
+    EXPECT_TRUE(contentView.supportsImagePaste);
+
+    [webView stringByEvaluatingJavaScript:@"document.activeElement.blur(); input.type = 'date'"];
+    [webView waitForNextPresentationUpdate];
+    [webView stringByEvaluatingJavaScript:@"input.focus()"];
+    EXPECT_FALSE(contentView.supportsImagePaste);
+
+    [webView stringByEvaluatingJavaScript:@"editor.focus()"];
+    EXPECT_TRUE(contentView.supportsImagePaste);
+
+    [webView stringByEvaluatingJavaScript:@"document.activeElement.blur(); input.type = 'color'"];
+    [webView waitForNextPresentationUpdate];
+    [webView stringByEvaluatingJavaScript:@"input.focus()"];
+    EXPECT_FALSE(contentView.supportsImagePaste);
+
+    [webView stringByEvaluatingJavaScript:@"textarea.focus()"];
+    EXPECT_TRUE(contentView.supportsImagePaste);
 }
 
 } // namespace TestWebKitAPI

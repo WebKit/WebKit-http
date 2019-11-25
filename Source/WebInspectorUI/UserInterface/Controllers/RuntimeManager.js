@@ -31,6 +31,14 @@ WI.RuntimeManager = class RuntimeManager extends WI.Object
 
         this._activeExecutionContext = null;
 
+        WI.settings.consoleSavedResultAlias.addEventListener(WI.Setting.Event.Changed, (event) => {
+            for (let target of WI.targets) {
+                // COMPATIBILITY (iOS 12.2): Runtime.setSavedResultAlias did not exist.
+                if (target.RuntimeAgent.setSavedResultAlias)
+                    target.RuntimeAgent.setSavedResultAlias(WI.settings.consoleSavedResultAlias.value);
+            }
+        });
+
         WI.Frame.addEventListener(WI.Frame.Event.ExecutionContextsCleared, this._frameExecutionContextsCleared, this);
     }
 
@@ -40,6 +48,14 @@ WI.RuntimeManager = class RuntimeManager extends WI.Object
     {
         // COMPATIBILITY (iOS 12): Runtime.awaitPromise did not exist
         return !!InspectorBackend.domains.Runtime.awaitPromise;
+    }
+
+    static preferredSavedResultPrefix()
+    {
+        // COMPATIBILITY (iOS 12.2): Runtime.setSavedResultAlias did not exist.
+        if (!InspectorBackend.domains.Runtime.setSavedResultAlias)
+            return "$";
+        return WI.settings.consoleSavedResultAlias.value || "$";
     }
 
     // Target
@@ -52,9 +68,13 @@ WI.RuntimeManager = class RuntimeManager extends WI.Object
         if (target.RuntimeAgent.enableTypeProfiler && WI.settings.showJavaScriptTypeInformation.value)
             target.RuntimeAgent.enableTypeProfiler();
 
-        // COMPATIBILITY (iOS 10): Runtime.enableControlFlowProfiler did not exist
+        // COMPATIBILITY (iOS 10): Runtime.enableControlFlowProfiler did not exist.
         if (target.RuntimeAgent.enableControlFlowProfiler && WI.settings.enableControlFlowProfiler.value)
             target.RuntimeAgent.enableControlFlowProfiler();
+
+        // COMPATIBILITY (iOS 12.2): Runtime.setSavedResultAlias did not exist.
+        if (target.RuntimeAgent.setSavedResultAlias && WI.settings.consoleSavedResultAlias.value)
+            target.RuntimeAgent.setSavedResultAlias(WI.settings.consoleSavedResultAlias.value);
     }
 
     // Public
@@ -133,7 +153,8 @@ WI.RuntimeManager = class RuntimeManager extends WI.Object
 
         if (WI.debuggerManager.activeCallFrame) {
             // COMPATIBILITY (iOS 8): "saveResult" did not exist.
-            target.DebuggerAgent.evaluateOnCallFrame.invoke({callFrameId: WI.debuggerManager.activeCallFrame.id, expression, objectGroup, includeCommandLineAPI, doNotPauseOnExceptionsAndMuteConsole, returnByValue, generatePreview, saveResult}, evalCallback.bind(this), target.DebuggerAgent);
+            // COMPATIBILITY (iOS 13): "emulateUserGesture" did not exist.
+            target.DebuggerAgent.evaluateOnCallFrame.invoke({callFrameId: WI.debuggerManager.activeCallFrame.id, expression, objectGroup, includeCommandLineAPI, doNotPauseOnExceptionsAndMuteConsole, returnByValue, generatePreview, saveResult, emulateUserGesture}, evalCallback.bind(this), target.DebuggerAgent);
             return;
         }
 

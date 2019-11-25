@@ -26,8 +26,9 @@
 
 #include "config.h"
 #include "PublicURLManager.h"
-#include <wtf/URL.h>
+
 #include "URLRegistry.h"
+#include <wtf/URL.h>
 #include <wtf/text/StringHash.h>
 
 namespace WebCore {
@@ -45,13 +46,13 @@ PublicURLManager::PublicURLManager(ScriptExecutionContext* context)
 {
 }
 
-void PublicURLManager::registerURL(SecurityOrigin* origin, const URL& url, URLRegistrable& registrable)
+void PublicURLManager::registerURL(const URL& url, URLRegistrable& registrable)
 {
     if (m_isStopped)
         return;
 
     RegistryURLMap::iterator found = m_registryToURL.add(&registrable.registry(), URLSet()).iterator;
-    found->key->registerURL(origin, url, registrable);
+    found->key->registerURL(*scriptExecutionContext(), url, registrable);
     found->value.add(url.string());
 }
 
@@ -59,7 +60,7 @@ void PublicURLManager::revoke(const URL& url)
 {
     for (auto& registry : m_registryToURL) {
         if (registry.value.contains(url.string())) {
-            registry.key->unregisterURL(url);
+            registry.key->unregisterURL(*scriptExecutionContext(), url);
             registry.value.remove(url.string());
             break;
         }
@@ -74,7 +75,7 @@ void PublicURLManager::stop()
     m_isStopped = true;
     for (auto& registry : m_registryToURL) {
         for (auto& url : registry.value)
-            registry.key->unregisterURL(URL({ }, url));
+            registry.key->unregisterURL(*scriptExecutionContext(), URL({ }, url));
     }
 
     m_registryToURL.clear();

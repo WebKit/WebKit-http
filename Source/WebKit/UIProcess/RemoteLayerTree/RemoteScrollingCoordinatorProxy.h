@@ -34,6 +34,8 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
 
+OBJC_CLASS UIScrollView;
+
 namespace WebCore {
 class FloatPoint;
 class PlatformWheelEvent;
@@ -47,6 +49,7 @@ class RemoteScrollingTree;
 class WebPageProxy;
 
 class RemoteScrollingCoordinatorProxy {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(RemoteScrollingCoordinatorProxy);
 public:
     explicit RemoteScrollingCoordinatorProxy(WebPageProxy&);
@@ -87,6 +90,8 @@ public:
     bool hasScrollableMainFrame() const;
 
 #if PLATFORM(IOS_FAMILY)
+    UIScrollView *scrollViewForScrollingNodeID(WebCore::ScrollingNodeID) const;
+
     WebCore::FloatRect currentLayoutViewport() const;
     void scrollingTreeNodeWillStartPanGesture();
     void scrollingTreeNodeWillStartScroll();

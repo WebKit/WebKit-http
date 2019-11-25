@@ -30,7 +30,6 @@
 
 #import "GPURequestAdapterOptions.h"
 #import "Logging.h"
-
 #import <Metal/Metal.h>
 #import <pal/spi/cocoa/MetalSPI.h>
 #import <wtf/BlockObjCExceptions.h>
@@ -39,17 +38,8 @@ namespace WebCore {
 
 static bool isAcceptableDevice(id <MTLDevice> device)
 {
-#if USE(INTEL_METAL_WORKAROUND)
-    BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    if ([[static_cast<id <MTLDeviceSPI>>(device) vendorName] isEqualToString:@"Intel(R)"] && [[static_cast<id <MTLDeviceSPI>>(device) familyName] isEqualToString:@"Iris(TM) Graphics"])
-        return false;
-    return true;
-    END_BLOCK_OBJC_EXCEPTIONS;
-    return false;
-#else
     UNUSED_PARAM(device);
     return true;
-#endif
 }
 
 RefPtr<GPUDevice> GPUDevice::tryCreate(const Optional<GPURequestAdapterOptions>& options)
@@ -59,7 +49,7 @@ RefPtr<GPUDevice> GPUDevice::tryCreate(const Optional<GPURequestAdapterOptions>&
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     
 #if PLATFORM(MAC)
-    if (options && options->powerPreference == GPUPowerPreference::LowPower) {
+    if (!options || !options->powerPreference || options->powerPreference == GPUPowerPreference::LowPower) {
         auto devices = adoptNS(MTLCopyAllDevices());
         
         for (id <MTLDevice> device : devices.get()) {

@@ -26,6 +26,7 @@
 #pragma once
 
 #include "NetworkDataTask.h"
+#include <WebCore/FrameIdentifier.h>
 #include <WebCore/NetworkLoadInformation.h>
 #include <WebCore/PageIdentifier.h>
 #include <WebCore/StoredCredentialsPolicy.h>
@@ -51,7 +52,7 @@ public:
         String userAgent;
         PAL::SessionID sessionID;
         WebCore::PageIdentifier pageID;
-        uint64_t frameID;
+        WebCore::FrameIdentifier frameID;
         WebCore::StoredCredentialsPolicy storedCredentialsPolicy;
     };
     using CompletionCallback = CompletionHandler<void(WebCore::ResourceError&&)>;

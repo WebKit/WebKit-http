@@ -55,6 +55,7 @@ namespace WebKit {
 using namespace WebCore;
 
 class TextFinderFindClient : public API::FindMatchesClient, public API::FindClient {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit TextFinderFindClient(WKTextFinderClient *textFinderClient)
         : m_textFinderClient(textFinderClient)
@@ -81,7 +82,9 @@ private:
             // The rest will remain empty, but it's important to NSTextFinder
             // that they at least exist.
             allMatches.resize(matchCount);
-            allMatches[matchIndex].appendVector(matchRects);
+            // FIXME: Clean this up and figure out why we are getting a -1 index
+            if (matchIndex >= 0 && static_cast<uint32_t>(matchIndex) < matchCount)
+                allMatches[matchIndex].appendVector(matchRects);
         }
 
         [m_textFinderClient didFindStringMatchesWithRects:allMatches didWrapAround:didWrapAround];

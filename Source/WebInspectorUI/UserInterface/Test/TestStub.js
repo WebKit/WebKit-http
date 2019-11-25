@@ -25,9 +25,14 @@
  */
 
 InspectorFrontendAPI = {};
+InspectorFrontendAPI.dispatch = function () { };
 InspectorFrontendAPI.dispatchMessageAsync = InspectorProtocol.dispatchMessageFromBackend;
 
 window.ProtocolTest = new ProtocolTestHarness();
+
+document.addEventListener("DOMContentLoaded", (event) => {
+    InspectorFrontendHost.loaded();
+});
 
 window.addEventListener("message", (event) => {
     try {

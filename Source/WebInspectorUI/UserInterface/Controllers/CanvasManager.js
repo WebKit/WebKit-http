@@ -39,6 +39,18 @@ WI.CanvasManager = class CanvasManager extends WI.Object
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
     }
 
+    // Agent
+
+    get domains() { return ["Canvas"]; }
+
+    activateExtraDomain(domain)
+    {
+        console.assert(domain === "Canvas");
+
+        for (let target of WI.targets)
+            this.initializeTarget(target);
+    }
+
     // Target
 
     initializeTarget(target)
@@ -140,10 +152,10 @@ WI.CanvasManager = class CanvasManager extends WI.Object
         WI.settings.canvasRecordingAutoCaptureFrameCount.value = count;
     }
 
+    // CanvasObserver
+
     canvasAdded(canvasPayload)
     {
-        // Called from WI.CanvasObserver.
-
         console.assert(!this._canvasIdentifierMap.has(canvasPayload.canvasId), `Canvas already exists with id ${canvasPayload.canvasId}.`);
 
         let canvas = WI.Canvas.fromPayload(canvasPayload);
@@ -154,8 +166,6 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
     canvasRemoved(canvasIdentifier)
     {
-        // Called from WI.CanvasObserver.
-
         let canvas = this._canvasIdentifierMap.take(canvasIdentifier);
         console.assert(canvas);
         if (!canvas)
@@ -166,8 +176,6 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
     canvasMemoryChanged(canvasIdentifier, memoryCost)
     {
-        // Called from WI.CanvasObserver.
-
         let canvas = this._canvasIdentifierMap.get(canvasIdentifier);
         console.assert(canvas);
         if (!canvas)
@@ -178,8 +186,6 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
     cssCanvasClientNodesChanged(canvasIdentifier)
     {
-        // Called from WI.CanvasObserver.
-
         let canvas = this._canvasIdentifierMap.get(canvasIdentifier);
         console.assert(canvas);
         if (!canvas)
@@ -190,8 +196,6 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
     recordingStarted(canvasIdentifier, initiator)
     {
-        // Called from WI.CanvasObserver.
-
         let canvas = this._canvasIdentifierMap.get(canvasIdentifier);
         console.assert(canvas);
         if (!canvas)
@@ -202,8 +206,6 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
     recordingProgress(canvasIdentifier, framesPayload, bufferUsed)
     {
-        // Called from WI.CanvasObserver.
-
         let canvas = this._canvasIdentifierMap.get(canvasIdentifier);
         console.assert(canvas);
         if (!canvas)
@@ -214,8 +216,6 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
     recordingFinished(canvasIdentifier, recordingPayload)
     {
-        // Called from WI.CanvasObserver.
-
         let canvas = this._canvasIdentifierMap.get(canvasIdentifier);
         console.assert(canvas);
         if (!canvas)
@@ -226,8 +226,6 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
     extensionEnabled(canvasIdentifier, extension)
     {
-        // Called from WI.CanvasObserver.
-
         let canvas = this._canvasIdentifierMap.get(canvasIdentifier);
         console.assert(canvas);
         if (!canvas)
@@ -238,8 +236,6 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
     programCreated(canvasIdentifier, programIdentifier)
     {
-        // Called from WI.CanvasObserver.
-
         let canvas = this._canvasIdentifierMap.get(canvasIdentifier);
         console.assert(canvas);
         if (!canvas)
@@ -255,8 +251,6 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
     programDeleted(programIdentifier)
     {
-        // Called from WI.CanvasObserver.
-
         let program = this._shaderProgramIdentifierMap.take(programIdentifier);
         console.assert(program);
         if (!program)

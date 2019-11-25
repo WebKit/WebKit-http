@@ -601,8 +601,9 @@ public:
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
             COMPILE_ASSERT(sizeof(Error) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<JSON::Object> result = m_result.releaseNonNull();
-            return WTFMove(*reinterpret_cast<Ref<Error>*>(&result));
+            Ref<JSON::Object> jsonResult = m_result.releaseNonNull();
+            auto result = WTFMove(*reinterpret_cast<Ref<Error>*>(&jsonResult));
+            return result;
         }
     };
 
@@ -775,6 +776,7 @@ namespace Inspector {
 
 
 class ObjCInspectorDatabaseBackendDispatcher final : public AlternateDatabaseBackendDispatcher {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     ObjCInspectorDatabaseBackendDispatcher(id<TestProtocolDatabaseDomainHandler> handler) { m_delegate = handler; }
     virtual void executeAllOptionalParameters(long requestId, const JSON::Array* in_columnNames, const String* in_notes, const double* in_timestamp, const JSON::Object* in_values, const JSON::Value* in_payload, const int* in_databaseId, const JSON::Object* in_sqlError, const String* in_screenColor, const JSON::Array* in_alternateColors, const String* in_printColor) override;
@@ -1221,6 +1223,8 @@ __attribute__((visibility ("default")))
 
 
 
+
+#import <WebInspector/RWIProtocolBuildCompatibilityObjects.h>
 
 ### End File: TestProtocol.h
 

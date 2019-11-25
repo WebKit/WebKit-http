@@ -91,6 +91,10 @@ WI.TimelineTabContentView = class TimelineTabContentView extends WI.ContentBrows
 
         // Explicitly update the path for the navigation bar to prevent it from showing up as blank.
         this.contentBrowser.updateHierarchicalPathForCurrentContentView();
+
+        WI.heapManager.enable();
+        WI.memoryManager.enable();
+        WI.timelineManager.enable();
     }
 
     // Static
@@ -327,18 +331,34 @@ WI.TimelineTabContentView = class TimelineTabContentView extends WI.ContentBrows
 
     closed()
     {
-        super.closed();
+        WI.timelineManager.disable();
+        WI.memoryManager.disable();
+        WI.heapManager.disable();
 
         if (WI.FPSInstrument.supported())
             this.contentBrowser.navigationBar.removeEventListener(null, null, this);
 
         WI.timelineManager.removeEventListener(null, null, this);
         WI.notifications.removeEventListener(null, null, this);
+
+        super.closed();
     }
 
     canShowRepresentedObject(representedObject)
     {
         return representedObject instanceof WI.TimelineRecording;
+    }
+
+    get canHandleFindEvent()
+    {
+        console.assert(this._displayedContentView);
+        return this._displayedContentView.canFocusFilterBar;
+    }
+
+    handleFindEvent(event)
+    {
+        console.assert(this._displayedContentView);
+        this._displayedContentView.focusFilterBar();
     }
 
     async handleFileDrop(files)

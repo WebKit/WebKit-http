@@ -1684,6 +1684,18 @@ void WebsiteDataStore::hasLocalStorageForTesting(const URL& url, CompletionHandl
     }
     ASSERT(!completionHandler);
 }
+
+void WebsiteDataStore::hasIsolatedSessionForTesting(const URL& url, CompletionHandler<void(bool)>&& completionHandler) const
+{
+    for (auto& processPool : processPools()) {
+        if (auto* networkProcess = processPool->networkProcess()) {
+            networkProcess->hasIsolatedSession(m_sessionID, WebCore::RegistrableDomain { url }, WTFMove(completionHandler));
+            ASSERT(processPools().size() == 1);
+            break;
+        }
+    }
+    ASSERT(!completionHandler);
+}
 #endif // ENABLE(RESOURCE_LOAD_STATISTICS)
 
 void WebsiteDataStore::setCacheMaxAgeCapForPrevalentResources(Seconds seconds, CompletionHandler<void()>&& completionHandler)
@@ -1845,7 +1857,14 @@ void WebsiteDataStore::setResourceLoadStatisticsEnabled(bool enabled)
         return;
 
     if (enabled) {
-        enableResourceLoadStatisticsAndSetTestingCallback(nullptr);
+        m_resourceLoadStatisticsEnabled = true;
+        
+        resolveDirectoriesIfNecessary();
+        
+        for (auto& processPool : processPools(std::numeric_limits<size_t>::max(), false)) {
+            processPool->setResourceLoadStatisticsEnabled(true);
+            processPool->sendToNetworkingProcess(Messages::NetworkProcess::SetResourceLoadStatisticsEnabled(true));
+        }
         return;
     }
 
@@ -1859,6 +1878,18 @@ void WebsiteDataStore::setResourceLoadStatisticsEnabled(bool enabled)
     UNUSED_PARAM(enabled);
 #endif
 }
+
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+void WebsiteDataStore::setStatisticsTestingCallback(Function<void(const String&)>&& callback)
+{
+    if (callback) {
+        for (auto& processPool : processPools(std::numeric_limits<size_t>::max(), false))
+            processPool->sendToNetworkingProcess(Messages::NetworkProcess::SetResourceLoadStatisticsLogTestingEvent(true));
+    }
+    
+    m_statisticsTestingCallback = WTFMove(callback);
+}
+#endif
 
 void WebsiteDataStore::setResourceLoadStatisticsDebugMode(bool enabled)
 {
@@ -1881,21 +1912,6 @@ void WebsiteDataStore::setResourceLoadStatisticsDebugMode(bool enabled, Completi
 }
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-void WebsiteDataStore::enableResourceLoadStatisticsAndSetTestingCallback(Function<void (const String&)>&& callback)
-{
-    ASSERT(!m_sessionID.isEphemeral());
-
-    m_resourceLoadStatisticsEnabled = true;
-    setStatisticsTestingCallback(WTFMove(callback));
-
-    resolveDirectoriesIfNecessary();
-
-    for (auto& processPool : processPools(std::numeric_limits<size_t>::max(), false)) {
-        processPool->setResourceLoadStatisticsEnabled(true);
-        processPool->sendToNetworkingProcess(Messages::NetworkProcess::SetResourceLoadStatisticsEnabled(true));
-    }
-}
-
 void WebsiteDataStore::logTestingEvent(const String& event)
 {
     ASSERT(RunLoop::isMain());
@@ -1953,8 +1969,8 @@ WebsiteDataStoreParameters WebsiteDataStore::parameters()
 
     auto localStorageDirectory = resolvedLocalStorageDirectory();
     if (!localStorageDirectory.isEmpty()) {
-        parameters.networkSessionParameters.localStorageDirectory = localStorageDirectory;
-        SandboxExtension::createHandleForReadWriteDirectory(localStorageDirectory, parameters.networkSessionParameters.localStorageDirectoryExtensionHandle);
+        parameters.localStorageDirectory = localStorageDirectory;
+        SandboxExtension::createHandleForReadWriteDirectory(localStorageDirectory, parameters.localStorageDirectoryExtensionHandle);
     }
 
 #if ENABLE(INDEXED_DATABASE)

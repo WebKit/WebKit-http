@@ -124,7 +124,7 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
         //                                  ^
         //                                  update only happens here
         if (this._updatesInProgressCount > 0 && !options.forceUpdate) {
-            if (WI.settings.enableStyleEditingDebugMode.value && text !== this._text)
+            if (WI.isDebugUIEnabled() && WI.settings.debugEnableStyleEditingDebugMode.value && text !== this._text)
                 console.warn("Style modified while editing:", text);
 
             return;
@@ -287,10 +287,10 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
         return this._styleSheetTextRange;
     }
 
-    get mediaList()
+    get groupings()
     {
         if (this._ownerRule)
-            return this._ownerRule.mediaList;
+            return this._ownerRule.groupings;
         return [];
     }
 
@@ -346,6 +346,62 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
         this._pendingProperties.push(newProperty);
 
         return newProperty;
+    }
+
+    resolveVariableValue(text)
+    {
+        const invalid = Symbol("invalid");
+
+        let checkTokens = (tokens) => {
+            let startIndex = NaN;
+            let openParenthesis = 0;
+            for (let i = 0; i < tokens.length; i++) {
+                let token = tokens[i];
+                if (token.value === "var" && token.type && token.type.includes("atom")) {
+                    if (isNaN(startIndex)) {
+                        startIndex = i;
+                        openParenthesis = 0;
+                    }
+                    continue;
+                }
+
+                if (isNaN(startIndex))
+                    continue;
+
+                if (token.value === "(") {
+                    ++openParenthesis;
+                    continue;
+                }
+
+                if (token.value === ")") {
+                    --openParenthesis;
+                    if (openParenthesis > 0)
+                        continue;
+
+                    let variableTokens = tokens.slice(startIndex, i + 1);
+                    startIndex = NaN;
+
+                    let variableNameIndex = variableTokens.findIndex((token) => token.value.startsWith("--") && /\bvariable-2\b/.test(token.type));
+                    if (variableNameIndex === -1)
+                        continue;
+
+                    let variableProperty = this.propertyForName(variableTokens[variableNameIndex].value, true);
+                    if (variableProperty)
+                        return variableProperty.value.trim();
+
+                    let fallbackStartIndex = variableTokens.findIndex((value, j) => j > variableNameIndex + 1 && /\bm-css\b/.test(value.type));
+                    if (fallbackStartIndex === -1)
+                        return invalid;
+
+                    let fallbackTokens = variableTokens.slice(fallbackStartIndex, i);
+                    return checkTokens(fallbackTokens) || fallbackTokens.reduce((accumulator, token) => accumulator + token.value, "").trim();
+                }
+            }
+            return null;
+        };
+
+        let resolved = checkTokens(WI.tokenizeCSSValue(text));
+        return resolved === invalid ? null : resolved;
     }
 
     newBlankProperty(propertyIndex)
@@ -449,6 +505,28 @@ WI.CSSStyleDeclaration = class CSSStyleDeclaration extends WI.Object
 
         if (!hasModified)
             WI.cssManager.removeModifiedStyle(this);
+    }
+
+    generateCSSRuleString()
+    {
+        let indentString = WI.indentString();
+        let styleText = "";
+        let groupings = this.groupings.filter((grouping) => grouping.text !== "all");
+        let groupingsCount = groupings.length;
+        for (let i = groupingsCount - 1; i >= 0; --i)
+            styleText += indentString.repeat(groupingsCount - i - 1) + groupings[i].prefix + " " + groupings[i].text + " {\n";
+
+        styleText += indentString.repeat(groupingsCount) + this.selectorText + " {\n";
+
+        for (let property of (this._styleSheetTextRange ? this.visibleProperties : this._properties))
+            styleText += indentString.repeat(groupingsCount + 1) + property.formattedText + "\n";
+
+        for (let i = groupingsCount; i > 0; --i)
+            styleText += indentString.repeat(i) + "}\n";
+
+        styleText += "}";
+
+        return styleText;
     }
 
     // Protected

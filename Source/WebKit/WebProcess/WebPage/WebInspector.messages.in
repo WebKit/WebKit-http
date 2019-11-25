@@ -28,9 +28,8 @@ messages -> WebInspector {
 
     ShowConsole()
     ShowResources()
-    ShowTimelines()
 
-    ShowMainResourceForFrame(uint64_t frameIdentifier)
+    ShowMainResourceForFrame(WebCore::FrameIdentifier frameIdentifier)
 
     OpenInNewTab(String url)
 

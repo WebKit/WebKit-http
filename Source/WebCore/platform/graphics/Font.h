@@ -51,7 +51,7 @@
 #endif
 
 #if USE(DIRECT2D)
-interface IDWriteFactory;
+interface IDWriteFactory5;
 interface IDWriteGdiInterop;
 #endif
 
@@ -219,11 +219,6 @@ public:
     static float ascentConsideringMacAscentHack(const WCHAR*, float ascent, float descent);
 #endif
 
-#if USE(DIRECT2D)
-    WEBCORE_EXPORT static IDWriteFactory* systemDWriteFactory();
-    WEBCORE_EXPORT static IDWriteGdiInterop* systemDWriteGdiInterop();
-#endif
-
 private:
     Font(const FontPlatformData&, Origin, Interstitial, Visibility, OrientationFallback);
 
@@ -269,9 +264,7 @@ private:
 #endif
 
     struct DerivedFonts {
-#if !COMPILER(MSVC)
-        WTF_MAKE_FAST_ALLOCATED;
-#endif
+        WTF_MAKE_STRUCT_FAST_ALLOCATED;
     public:
 
         RefPtr<Font> smallCapsFont;

@@ -37,7 +37,9 @@
 #import <Metal/Metal.h>
 #import <wtf/BlockObjCExceptions.h>
 #import <wtf/CheckedArithmetic.h>
+#import <wtf/DataLog.h>
 #import <wtf/HashSet.h>
+#import <wtf/MonotonicTime.h>
 #import <wtf/OptionSet.h>
 #import <wtf/Optional.h>
 #import <wtf/text/StringConcatenate.h>
@@ -397,7 +399,13 @@ static bool trySetFunctions(const GPUPipelineStageDescriptor& vertexStage, const
         NSError *error = nil;
 
         BEGIN_BLOCK_OBJC_EXCEPTIONS;
-        vertexLibrary = adoptNS([device.platformDevice() newLibraryWithSource:whlslCompileResult->metalSource options:nil error:&error]);
+        MonotonicTime startTime;
+        if (WHLSL::dumpMetalCompileTimes)
+            startTime = MonotonicTime::now();
+        // FIXME: https://webkit.org/b/200474 Add direct StringBuilder -> NSString conversion to avoid extra copy into a WTF::String
+        vertexLibrary = adoptNS([device.platformDevice() newLibraryWithSource:whlslCompileResult->metalSource.toString() options:nil error:&error]);
+        if (WHLSL::dumpMetalCompileTimes)
+            dataLogLn("Metal compile times: ", (MonotonicTime::now() - startTime).milliseconds(), " ms");
         END_BLOCK_OBJC_EXCEPTIONS;
 
         if (!vertexLibrary && error) {
@@ -411,8 +419,8 @@ static bool trySetFunctions(const GPUPipelineStageDescriptor& vertexStage, const
         // FIXME: https://bugs.webkit.org/show_bug.cgi?id=195771 Once we zero-fill variables, there should be no warnings, so we should be able to ASSERT(!error) here.
 
         fragmentLibrary = vertexLibrary;
-        vertexEntryPoint = whlslCompileResult->mangledVertexEntryPointName;
-        fragmentEntryPoint = whlslCompileResult->mangledFragmentEntryPointName;
+        vertexEntryPoint = whlslCompileResult->mangledVertexEntryPointName.toString();
+        fragmentEntryPoint = whlslCompileResult->mangledFragmentEntryPointName.toString();
     } else {
         vertexLibrary = vertexStage.module->platformShaderModule();
         vertexEntryPoint = vertexStage.entryPoint;

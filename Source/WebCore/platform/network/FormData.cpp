@@ -27,7 +27,6 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "DOMFormData.h"
-#include "Document.h"
 #include "File.h"
 #include "FormDataBuilder.h"
 #include "Page.h"
@@ -50,22 +49,10 @@ inline FormData::FormData(const FormData& data)
     , m_alwaysStream(false)
     , m_containsPasswordData(data.m_containsPasswordData)
 {
-    // We shouldn't be copying FormData that hasn't already removed its generated files
-    // but just in case, make sure the new FormData is ready to generate its own files.
-    for (auto& element : m_elements) {
-        if (auto* fileData = WTF::get_if<FormDataElement::EncodedFileData>(element.data)) {
-            fileData->generatedFilename = { };
-            fileData->ownsGeneratedFile = false;
-        }
-    }
 }
 
 FormData::~FormData()
 {
-    // This cleanup should've happened when the form submission finished.
-    // Just in case, let's assert, and do the cleanup anyway in release builds.
-    ASSERT(!hasOwnedGeneratedFiles());
-    removeGeneratedFilesIfNeeded();
 }
 
 Ref<FormData> FormData::create()
@@ -109,10 +96,10 @@ Ref<FormData> FormData::create(const DOMFormData& formData, EncodingType encodin
     return result;
 }
 
-Ref<FormData> FormData::createMultiPart(const DOMFormData& formData, Document* document)
+Ref<FormData> FormData::createMultiPart(const DOMFormData& formData)
 {
     auto result = create();
-    result->appendMultiPartKeyValuePairItems(formData, document);
+    result->appendMultiPartKeyValuePairItems(formData);
     return result;
 }
 
@@ -137,22 +124,36 @@ Ref<FormData> FormData::isolatedCopy() const
     return formData;
 }
 
-uint64_t FormDataElement::lengthInBytes() const
+static inline uint64_t computeLengthInBytes(const FormDataElement& element, const Function<uint64_t(const URL&)>& blobSize)
 {
-    return switchOn(data,
+    return switchOn(element.data,
         [] (const Vector<char>& bytes) {
             return static_cast<uint64_t>(bytes.size());
         }, [] (const FormDataElement::EncodedFileData& fileData) {
             if (fileData.fileLength != BlobDataItem::toEndOfFile)
                 return static_cast<uint64_t>(fileData.fileLength);
             long long fileSize;
-            if (FileSystem::getFileSize(fileData.shouldGenerateFile ? fileData.generatedFilename : fileData.filename, fileSize))
+            if (FileSystem::getFileSize(fileData.filename, fileSize))
                 return static_cast<uint64_t>(fileSize);
             return static_cast<uint64_t>(0);
-        }, [] (const FormDataElement::EncodedBlobData& blobData) {
-            return ThreadableBlobRegistry::blobSize(blobData.url);
+        }, [&blobSize] (const FormDataElement::EncodedBlobData& blobData) {
+            return blobSize(blobData.url);
         }
     );
+}
+
+uint64_t FormDataElement::lengthInBytes(BlobRegistryImpl* blobRegistry) const
+{
+    return computeLengthInBytes(*this, [&](auto& url) {
+        return blobRegistry ? blobRegistry->blobSize(url) : 0;
+    });
+}
+
+uint64_t FormDataElement::lengthInBytes(PAL::SessionID sessionID) const
+{
+    return computeLengthInBytes(*this, [&](auto& url) {
+        return blobRegistry().blobSize(sessionID, url);
+    });
 }
 
 FormDataElement FormDataElement::isolatedCopy() const
@@ -184,15 +185,15 @@ void FormData::appendData(const void* data, size_t size)
     m_elements.append(WTFMove(vector));
 }
 
-void FormData::appendFile(const String& filename, bool shouldGenerateFile)
+void FormData::appendFile(const String& filename)
 {
-    m_elements.append(FormDataElement(filename, 0, BlobDataItem::toEndOfFile, WTF::nullopt, shouldGenerateFile));
+    m_elements.append(FormDataElement(filename, 0, BlobDataItem::toEndOfFile, WTF::nullopt));
     m_lengthInBytes = WTF::nullopt;
 }
 
-void FormData::appendFileRange(const String& filename, long long start, long long length, Optional<WallTime> expectedModificationTime, bool shouldGenerateFile)
+void FormData::appendFileRange(const String& filename, long long start, long long length, Optional<WallTime> expectedModificationTime)
 {
-    m_elements.append(FormDataElement(filename, start, length, expectedModificationTime, shouldGenerateFile));
+    m_elements.append(FormDataElement(filename, start, length, expectedModificationTime));
     m_lengthInBytes = WTF::nullopt;
 }
 
@@ -207,21 +208,9 @@ static Vector<uint8_t> normalizeStringData(TextEncoding& encoding, const String&
     return normalizeLineEndingsToCRLF(encoding.encode(value, UnencodableHandling::Entities));
 }
 
-void FormData::appendMultiPartFileValue(const File& file, Vector<char>& header, TextEncoding& encoding, Document* document)
+void FormData::appendMultiPartFileValue(const File& file, Vector<char>& header, TextEncoding& encoding)
 {
     auto name = file.name();
-
-    // Let the application specify a filename if it's going to generate a replacement file for the upload.
-    bool shouldGenerateFile = false;
-    auto& path = file.path();
-    if (!path.isEmpty()) {
-        if (Page* page = document->page()) {
-            String generatedFileName;
-            shouldGenerateFile = page->chrome().client().shouldReplaceWithGeneratedFileForUpload(path, generatedFileName);
-            if (shouldGenerateFile)
-                name = generatedFileName;
-        }
-    }
 
     // We have to include the filename=".." part in the header, even if the filename is empty
     FormDataBuilder::addFilenameToMultiPartHeader(header, encoding, name);
@@ -238,7 +227,7 @@ void FormData::appendMultiPartFileValue(const File& file, Vector<char>& header, 
     appendData(header.data(), header.size());
 
     if (!file.path().isEmpty())
-        appendFile(file.path(), shouldGenerateFile);
+        appendFile(file.path());
     else if (file.size())
         appendBlob(file.url());
 }
@@ -252,7 +241,7 @@ void FormData::appendMultiPartStringValue(const String& string, Vector<char>& he
     appendData(normalizedStringData.data(), normalizedStringData.size());
 }
 
-void FormData::appendMultiPartKeyValuePairItems(const DOMFormData& formData, Document* document)
+void FormData::appendMultiPartKeyValuePairItems(const DOMFormData& formData)
 {
     m_boundary = FormDataBuilder::generateUniqueBoundaryString();
 
@@ -266,7 +255,7 @@ void FormData::appendMultiPartKeyValuePairItems(const DOMFormData& formData, Doc
         FormDataBuilder::beginMultiPartHeader(header, m_boundary.data(), normalizedName);
 
         if (WTF::holds_alternative<RefPtr<File>>(item.data))
-            appendMultiPartFileValue(*WTF::get<RefPtr<File>>(item.data), header, encoding, document);
+            appendMultiPartFileValue(*WTF::get<RefPtr<File>>(item.data), header, encoding);
         else
             appendMultiPartStringValue(WTF::get<String>(item.data), header, encoding);
 
@@ -311,14 +300,14 @@ String FormData::flattenToString() const
     return Latin1Encoding().decode(reinterpret_cast<const char*>(bytes.data()), bytes.size());
 }
 
-static void appendBlobResolved(BlobRegistry& blobRegistry, FormData& formData, const URL& url)
+static void appendBlobResolved(BlobRegistryImpl* blobRegistry, FormData& formData, const URL& url)
 {
-    if (!blobRegistry.isBlobRegistryImpl()) {
+    if (!blobRegistry) {
         LOG_ERROR("Tried to resolve a blob without a usable registry");
         return;
     }
 
-    auto* blobData = static_cast<BlobRegistryImpl&>(blobRegistry).getBlobDataFromURL(url);
+    auto* blobData = blobRegistry->getBlobDataFromURL(url);
     if (!blobData) {
         LOG_ERROR("Could not get blob data from a registry");
         return;
@@ -335,7 +324,7 @@ static void appendBlobResolved(BlobRegistry& blobRegistry, FormData& formData, c
     }
 }
 
-Ref<FormData> FormData::resolveBlobReferences(BlobRegistry& blobRegistry)
+Ref<FormData> FormData::resolveBlobReferences(BlobRegistryImpl* blobRegistry)
 {
     // First check if any blobs needs to be resolved, or we can take the fast path.
     bool hasBlob = false;
@@ -359,7 +348,7 @@ Ref<FormData> FormData::resolveBlobReferences(BlobRegistry& blobRegistry)
             [&] (const Vector<char>& bytes) {
                 newFormData->appendData(bytes.data(), bytes.size());
             }, [&] (const FormDataElement::EncodedFileData& fileData) {
-                newFormData->appendFileRange(fileData.filename, fileData.fileStart, fileData.fileLength, fileData.expectedFileModificationTime, fileData.shouldGenerateFile);
+                newFormData->appendFileRange(fileData.filename, fileData.fileStart, fileData.fileLength, fileData.expectedFileModificationTime);
             }, [&] (const FormDataElement::EncodedBlobData& blobData) {
                 appendBlobResolved(blobRegistry, newFormData.get(), blobData.url);
             }
@@ -368,74 +357,49 @@ Ref<FormData> FormData::resolveBlobReferences(BlobRegistry& blobRegistry)
     return newFormData;
 }
 
-void FormData::generateFiles(Document* document)
+FormDataForUpload FormData::prepareForUpload()
 {
-    Page* page = document->page();
-    if (!page)
-        return;
-
+    Vector<String> generatedFiles;
     for (auto& element : m_elements) {
-        if (auto* fileData = WTF::get_if<FormDataElement::EncodedFileData>(element.data)) {
-            if (fileData->shouldGenerateFile) {
-                ASSERT(!fileData->ownsGeneratedFile);
-                ASSERT(fileData->generatedFilename.isEmpty());
-                if (!fileData->generatedFilename.isEmpty())
-                    continue;
-                fileData->generatedFilename = page->chrome().client().generateReplacementFile(fileData->filename);
-                if (!fileData->generatedFilename.isEmpty())
-                    fileData->ownsGeneratedFile = true;
-            }
-        }
+        auto* fileData = WTF::get_if<FormDataElement::EncodedFileData>(element.data);
+        if (!fileData)
+            continue;
+        if (!FileSystem::fileIsDirectory(fileData->filename, FileSystem::ShouldFollowSymbolicLinks::Yes))
+            continue;
+        if (fileData->fileStart || fileData->fileLength != BlobDataItem::toEndOfFile)
+            continue;
+        if (!fileData->fileModificationTimeMatchesExpectation())
+            continue;
+
+        auto generatedFilename = FileSystem::createTemporaryZipArchive(fileData->filename);
+        if (!generatedFilename)
+            continue;
+        fileData->filename = generatedFilename;
+        generatedFiles.append(WTFMove(generatedFilename));
     }
+    
+    return { *this, WTFMove(generatedFiles) };
 }
 
-bool FormData::hasGeneratedFiles() const
+FormDataForUpload::FormDataForUpload(FormData& data, Vector<String>&& temporaryZipFiles)
+    : m_data(data)
+    , m_temporaryZipFiles(WTFMove(temporaryZipFiles))
 {
-    for (auto& element : m_elements) {
-        if (auto* fileData = WTF::get_if<FormDataElement::EncodedFileData>(element.data)) {
-            if (!fileData->generatedFilename.isEmpty())
-                return true;
-        }
-    }
-    return false;
 }
 
-bool FormData::hasOwnedGeneratedFiles() const
+FormDataForUpload::~FormDataForUpload()
 {
-    for (auto& element : m_elements) {
-        if (auto* fileData = WTF::get_if<FormDataElement::EncodedFileData>(element.data)) {
-            if (fileData->ownsGeneratedFile) {
-                ASSERT(!fileData->generatedFilename.isEmpty());
-                return true;
-            }
-        }
-    }
-    return false;
+    ASSERT(isMainThread());
+    for (auto& file : m_temporaryZipFiles)
+        FileSystem::deleteFile(file);
 }
 
-void FormData::removeGeneratedFilesIfNeeded()
-{
-    for (auto& element : m_elements) {
-        if (auto* fileData = WTF::get_if<FormDataElement::EncodedFileData>(element.data)) {
-            if (fileData->ownsGeneratedFile) {
-                ASSERT(!fileData->generatedFilename.isEmpty());
-                ASSERT(fileData->shouldGenerateFile);
-                String directory = FileSystem::directoryName(fileData->generatedFilename);
-                FileSystem::deleteFile(fileData->generatedFilename);
-                FileSystem::deleteEmptyDirectory(directory);
-                fileData->generatedFilename = String();
-                fileData->ownsGeneratedFile = false;
-            }
-        }
-    }
-}
-
-uint64_t FormData::lengthInBytes() const
+uint64_t FormData::lengthInBytes(PAL::SessionID sessionID) const
 {
     if (!m_lengthInBytes) {
         uint64_t length = 0;
         for (auto& element : m_elements)
-            length += element.lengthInBytes();
+            length += element.lengthInBytes(sessionID);
         m_lengthInBytes = length;
     }
     return *m_lengthInBytes;
@@ -458,6 +422,21 @@ URL FormData::asBlobURL() const
     if (auto* blobData = WTF::get_if<FormDataElement::EncodedBlobData>(m_elements.first().data))
         return blobData->url;
     return { };
+}
+
+bool FormDataElement::EncodedFileData::fileModificationTimeMatchesExpectation() const
+{
+    if (!expectedFileModificationTime)
+        return true;
+
+    auto fileModificationTime = FileSystem::getFileModificationTime(filename);
+    if (!fileModificationTime)
+        return false;
+
+    if (fileModificationTime->secondsSinceEpoch().secondsAs<time_t>() != expectedFileModificationTime->secondsSinceEpoch().secondsAs<time_t>())
+        return false;
+
+    return true;
 }
 
 } // namespace WebCore

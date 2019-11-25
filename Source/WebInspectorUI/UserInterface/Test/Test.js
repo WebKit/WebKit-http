@@ -36,9 +36,11 @@ WI.loaded = function()
     InspectorBackend.registerDebuggerDispatcher(new WI.DebuggerObserver);
     InspectorBackend.registerHeapDispatcher(new WI.HeapObserver);
     InspectorBackend.registerMemoryDispatcher(new WI.MemoryObserver);
+    InspectorBackend.registerDatabaseDispatcher(new WI.DatabaseObserver);
     InspectorBackend.registerDOMStorageDispatcher(new WI.DOMStorageObserver);
-    InspectorBackend.registerScriptProfilerDispatcher(new WI.ScriptProfilerObserver);
+    InspectorBackend.registerApplicationCacheDispatcher(new WI.ApplicationCacheObserver);
     InspectorBackend.registerCPUProfilerDispatcher(new WI.CPUProfilerObserver);
+    InspectorBackend.registerScriptProfilerDispatcher(new WI.ScriptProfilerObserver);
     InspectorBackend.registerTimelineDispatcher(new WI.TimelineObserver);
     InspectorBackend.registerCSSDispatcher(new WI.CSSObserver);
     InspectorBackend.registerLayerTreeDispatcher(new WI.LayerTreeObserver);
@@ -51,12 +53,15 @@ WI.loaded = function()
         WI.targetManager = new WI.TargetManager,
         WI.networkManager = new WI.NetworkManager,
         WI.domStorageManager = new WI.DOMStorageManager,
+        WI.databaseManager = new WI.DatabaseManager,
+        WI.indexedDBManager = new WI.IndexedDBManager,
         WI.domManager = new WI.DOMManager,
         WI.cssManager = new WI.CSSManager,
         WI.consoleManager = new WI.ConsoleManager,
         WI.runtimeManager = new WI.RuntimeManager,
         WI.heapManager = new WI.HeapManager,
         WI.memoryManager = new WI.MemoryManager,
+        WI.applicationCacheManager = new WI.ApplicationCacheManager,
         WI.timelineManager = new WI.TimelineManager,
         WI.auditManager = new WI.AuditManager,
         WI.debuggerManager = new WI.DebuggerManager,
@@ -72,6 +77,7 @@ WI.loaded = function()
     // Targets.
     WI.backendTarget = null;
     WI.pageTarget = null;
+    WI._targetsAvailablePromise = new WI.WrappedPromise;
 
     // FIXME: Eliminate `TargetAgent.exists`.
     TargetAgent.exists((error) => {
@@ -85,6 +91,8 @@ WI.initializeBackendTarget = function(target)
     WI.backendTarget = target;
 
     WI.resetMainExecutionContext();
+
+    WI._targetsAvailablePromise.resolve();
 };
 
 WI.initializePageTarget = function(target)
@@ -127,10 +135,19 @@ WI.redirectGlobalAgentsToConnection = function(connection)
 WI.contentLoaded = function()
 {
     // Things that would normally get called by the UI, that we still want to do in tests.
+    WI.applicationCacheManager.enable();
     WI.canvasManager.enable();
+    WI.databaseManager.enable();
+    WI.domStorageManager.enable();
+    WI.heapManager.enable();
+    WI.indexedDBManager.enable();
+    WI.memoryManager.enable();
+    WI.timelineManager.enable();
 
     // Signal that the frontend is now ready to receive messages.
-    InspectorFrontendAPI.loadCompleted();
+    WI.whenTargetsAvailable().then(() => {
+        InspectorFrontendAPI.loadCompleted();
+    });
 
     // Tell the InspectorFrontendHost we loaded, which causes the window to display
     // and pending InspectorFrontendAPI commands to be sent.
@@ -153,6 +170,16 @@ WI.performOneTimeFrontendInitializationsUsingTarget = function(target)
 
 WI.initializeTarget = function(target)
 {
+};
+
+WI.targetsAvailable = function()
+{
+    return WI._targetsAvailablePromise.settled;
+};
+
+WI.whenTargetsAvailable = function()
+{
+    return WI._targetsAvailablePromise.promise;
 };
 
 Object.defineProperty(WI, "mainTarget",
@@ -180,7 +207,7 @@ WI.LayoutDirection = {
     RTL: "rtl",
 };
 
-WI.resolvedLayoutDirection = () => { return InspectorFrontendHost.userInterfaceLayoutDirection(); }
+WI.resolvedLayoutDirection = () => { return InspectorFrontendHost.userInterfaceLayoutDirection(); };
 
 // Add stubs that are called by the frontend API.
 WI.updateDockedState = () => {};

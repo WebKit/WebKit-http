@@ -221,7 +221,7 @@ WI.JavaScriptRuntimeCompletionProvider = class JavaScriptRuntimeCompletionProvid
                 let commandLineAPI = WI.JavaScriptRuntimeCompletionProvider._commandLineAPI.slice(0);
                 if (WI.debuggerManager.paused) {
                     let targetData = WI.debuggerManager.dataForTarget(WI.runtimeManager.activeExecutionContext.target);
-                    if (targetData.pauseReason === WI.DebuggerManager.PauseReason.EventListener)
+                    if (targetData.pauseReason === WI.DebuggerManager.PauseReason.Listener || targetData.pauseReason === WI.DebuggerManager.PauseReason.EventListener)
                         commandLineAPI.push("$event");
                     else if (targetData.pauseReason === WI.DebuggerManager.PauseReason.Exception)
                         commandLineAPI.push("$exception");
@@ -229,9 +229,19 @@ WI.JavaScriptRuntimeCompletionProvider = class JavaScriptRuntimeCompletionProvid
                 for (let name of commandLineAPI)
                     propertyNames[name] = true;
 
+                let savedResultAlias = WI.settings.consoleSavedResultAlias.value;
+                if (savedResultAlias) {
+                    propertyNames[savedResultAlias + "0"] = true;
+                    propertyNames[savedResultAlias + "_"] = true;
+                }
+
                 // FIXME: Due to caching, sometimes old $n values show up as completion results even though they are not available. We should clear that proactively.
-                for (var i = 1; i <= WI.ConsoleCommandResultMessage.maximumSavedResultIndex; ++i)
+                for (var i = 1; i <= WI.ConsoleCommandResultMessage.maximumSavedResultIndex; ++i) {
                     propertyNames["$" + i] = true;
+
+                    if (savedResultAlias)
+                        propertyNames[savedResultAlias + i] = true;
+                }
             }
 
             propertyNames = Object.keys(propertyNames);
@@ -320,6 +330,7 @@ WI.JavaScriptRuntimeCompletionProvider._commandLineAPI = [
     "monitorEvents",
     "profile",
     "profileEnd",
+    "queryInstances",
     "queryObjects",
     "screenshot",
     "table",

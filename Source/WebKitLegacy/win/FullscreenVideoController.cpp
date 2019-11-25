@@ -176,6 +176,7 @@ void HUDSlider::drag(const IntPoint& point, bool start)
 
 #if USE(CA)
 class FullscreenVideoController::LayerClient : public WebCore::PlatformCALayerClient {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     LayerClient(FullscreenVideoController* parent) : m_parent(parent) { }
 
@@ -249,7 +250,9 @@ FullscreenVideoController::FullscreenVideoController()
     , m_layerClient(std::make_unique<LayerClient>(this))
     , m_rootChild(PlatformCALayerWin::create(PlatformCALayer::LayerTypeLayer, m_layerClient.get()))
 #endif
+#if ENABLE(FULLSCREEN_API)
     , m_fullscreenWindow(std::make_unique<MediaPlayerPrivateFullscreenWindow>(static_cast<MediaPlayerPrivateFullscreenClient*>(this)))
+#endif
 {
 }
 
@@ -274,6 +277,7 @@ void FullscreenVideoController::setVideoElement(HTMLVideoElement* videoElement)
 
 void FullscreenVideoController::enterFullscreen()
 {
+#if ENABLE(FULLSCREEN_API)
     if (!m_videoElement)
         return;
 
@@ -299,13 +303,16 @@ void FullscreenVideoController::enterFullscreen()
     m_fullscreenSize.setHeight(windowRect.bottom - windowRect.top);
 
     createHUDWindow();
+#endif
 }
 
 void FullscreenVideoController::exitFullscreen()
 {
     SetWindowLongPtr(m_hudWindow, 0, 0);
 
+#if ENABLE(FULLSCREEN_API)
     m_fullscreenWindow = nullptr;
+#endif
 
     ASSERT(!IsWindow(m_hudWindow));
     m_hudWindow = 0;
@@ -432,6 +439,7 @@ void FullscreenVideoController::registerHUDWindowClass()
 
 void FullscreenVideoController::createHUDWindow()
 {
+#if ENABLE(FULLSCREEN_API)
     m_hudPosition.setX((m_fullscreenSize.width() - windowWidth) / 2);
     m_hudPosition.setY(m_fullscreenSize.height() * initialHUDPositionY - windowHeight / 2);
 
@@ -461,6 +469,7 @@ void FullscreenVideoController::createHUDWindow()
     SetWindowLongPtr(m_hudWindow, 0, reinterpret_cast<LONG_PTR>(this));
 
     draw();
+#endif
 }
 
 static String timeToString(float time)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Sony Interactive Entertainment Inc.
+ * Copyright (C) 2019 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #include "config.h"
 #include "CertificateInfo.h"
 
+#include "OpenSSLHelper.h"
 #include <wtf/CrossThreadCopier.h>
 
 #if USE(CURL)
@@ -48,6 +49,14 @@ CertificateInfo::Certificate CertificateInfo::makeCertificate(const uint8_t* buf
     Certificate certificate;
     certificate.append(buffer, size);
     return certificate;
+}
+
+Optional<CertificateInfo::SummaryInfo> CertificateInfo::summaryInfo() const
+{
+    if (!m_certificateChain.size())
+        return WTF::nullopt;
+
+    return OpenSSL::createSummaryInfo(m_certificateChain.at(0));
 }
 
 }

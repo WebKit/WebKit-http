@@ -33,7 +33,7 @@ WI.QuickConsole = class QuickConsole extends WI.View
         this._toggleOrFocusKeyboardShortcut.implicitlyPreventsDefault = false;
 
         this._automaticExecutionContextPathComponent = this._createExecutionContextPathComponent(null, WI.UIString("Auto"));
-        this._automaticExecutionContextPathComponent.tooltip = WI.UIString("Execution context for $0");
+        this._updateAutomaticExecutionContextPathComponentTooltip();
 
         this._mainExecutionContextPathComponent = null;
         this._otherExecutionContextPathComponents = [];
@@ -71,6 +71,8 @@ WI.QuickConsole = class QuickConsole extends WI.View
 
         this.initializeMainExecutionContextPathComponent();
 
+        WI.settings.consoleSavedResultAlias.addEventListener(WI.Setting.Event.Changed, this._updateAutomaticExecutionContextPathComponentTooltip, this);
+
         WI.consoleDrawer.toggleButtonShortcutTooltip(this._toggleOrFocusKeyboardShortcut);
         WI.consoleDrawer.addEventListener(WI.ConsoleDrawer.Event.CollapsedStateChanged, this._updateStyles, this);
 
@@ -98,6 +100,7 @@ WI.QuickConsole = class QuickConsole extends WI.View
 
     closed()
     {
+        WI.settings.consoleSavedResultAlias.removeEventListener(null, null, this);
         WI.Frame.removeEventListener(null, null, this);
         WI.debuggerManager.removeEventListener(null, null, this);
         WI.runtimeManager.removeEventListener(null, null, this);
@@ -159,9 +162,17 @@ WI.QuickConsole = class QuickConsole extends WI.View
         if (!executionContext)
             executionContext = WI.mainTarget.executionContext;
 
-        WI.runtimeManager.activeExecutionContext = executionContext;
-
         this._automaticExecutionContextPathComponent.displayName = WI.UIString("Auto - %s").format(preferredName || executionContext.name);
+
+        let changed = WI.runtimeManager.activeExecutionContext !== executionContext;
+        if (changed)
+            WI.runtimeManager.activeExecutionContext = executionContext;
+        return changed;
+    }
+
+    _updateAutomaticExecutionContextPathComponentTooltip()
+    {
+        this._automaticExecutionContextPathComponent.tooltip = WI.UIString("Execution context for %s").format(WI.RuntimeManager.preferredSavedResultPrefix() + "0");
     }
 
     _handleMouseDown(event)
@@ -405,7 +416,11 @@ WI.QuickConsole = class QuickConsole extends WI.View
     _pathComponentSelected(event)
     {
         this._shouldAutomaticallySelectExecutionContext = event.data.pathComponent === this._automaticExecutionContextPathComponent;
-        this._selectExecutionContext(event.data.pathComponent.representedObject);
+
+        // Only manually rebuild the execution context path components if the newly selected
+        // execution context matches the previously selected one.
+        if (!this._selectExecutionContext(event.data.pathComponent.representedObject))
+            this._rebuildExecutionContextPathComponents();
     }
 
     _pathComponentClicked(event)

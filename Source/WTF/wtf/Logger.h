@@ -25,6 +25,8 @@
 
 #pragma once
 
+#include <wtf/Lock.h>
+#include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WTF {
@@ -105,13 +107,14 @@ struct ConsoleLogValue<Argument, false> {
     }
 };
 
-class Logger : public RefCounted<Logger> {
+class Logger : public ThreadSafeRefCounted<Logger> {
     WTF_MAKE_NONCOPYABLE(Logger);
 public:
 
     class Observer {
     public:
         virtual ~Observer() = default;
+        // Can be called on any thread.
         virtual void didLogMessage(const WTFLogChannel&, WTFLogLevel, Vector<JSONLogValue>&&) = 0;
     };
 
@@ -216,10 +219,12 @@ public:
 
     static inline void addObserver(Observer& observer)
     {
+        auto lock = holdLock(observerLock());
         observers().append(observer);
     }
     static inline void removeObserver(Observer& observer)
     {
+        auto lock = holdLock(observerLock());
         observers().removeFirstMatching([&observer](auto anObserver) {
             return &anObserver.get() == &observer;
         });
@@ -247,6 +252,10 @@ private:
         if (channel.state == WTFLogChannelState::Off || level > channel.level)
             return;
 
+        auto lock = tryHoldLock(observerLock());
+        if (!lock)
+            return;
+
         for (Observer& observer : observers())
             observer.didLogMessage(channel, level, { ConsoleLogValue<Argument>::toValue(arguments)... });
     }
@@ -256,6 +265,13 @@ private:
         static NeverDestroyed<Vector<std::reference_wrapper<Observer>>> observers;
         return observers;
     }
+
+    static Lock& observerLock()
+    {
+        static NeverDestroyed<Lock> observerLock;
+        return observerLock;
+    }
+
 
     bool m_enabled { true };
     const void* m_owner;

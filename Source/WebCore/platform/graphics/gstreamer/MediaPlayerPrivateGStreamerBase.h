@@ -97,7 +97,7 @@ class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface, publ
 #endif
 #endif
 {
-
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     static void initializeDebugCategory();
 
@@ -185,7 +185,7 @@ public:
     NativeImagePtr nativeImageForCurrentTime() override;
 #endif
 
-    void setVideoSourceOrientation(const ImageOrientation&);
+    void setVideoSourceOrientation(ImageOrientation);
     GstElement* pipeline() const { return m_pipeline.get(); }
 
     virtual bool handleSyncMessage(GstMessage*);
@@ -307,7 +307,7 @@ protected:
     bool m_waitingForKey { false };
 #endif
 
-    enum class WebKitGstVideoDecoderPlatform { ImxVPU, Video4Linux };
+    enum class WebKitGstVideoDecoderPlatform { Video4Linux };
     Optional<WebKitGstVideoDecoderPlatform> m_videoDecoderPlatform;
 };
 

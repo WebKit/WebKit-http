@@ -145,10 +145,10 @@ WI.DOMManager = class DOMManager extends WI.Object
         this._dispatchWhenDocumentAvailable(DOMAgent.pushNodeByPathToFrontend.bind(DOMAgent, path), callback);
     }
 
+    // DOMObserver
+
     didAddEventListener(nodeId)
     {
-        // Called from WI.DOMObserver.
-
         let node = this._idToDOMNode[nodeId];
         if (!node)
             return;
@@ -158,8 +158,6 @@ WI.DOMManager = class DOMManager extends WI.Object
 
     willRemoveEventListener(nodeId)
     {
-        // Called from WI.DOMObserver.
-
         let node = this._idToDOMNode[nodeId];
         if (!node)
             return;
@@ -169,8 +167,6 @@ WI.DOMManager = class DOMManager extends WI.Object
 
     didFireEvent(nodeId, eventName, timestamp, data)
     {
-        // Called from WI.DOMObserver.
-
         let node = this._idToDOMNode[nodeId];
         if (!node)
             return;
@@ -180,8 +176,6 @@ WI.DOMManager = class DOMManager extends WI.Object
 
     powerEfficientPlaybackStateChanged(nodeId, timestamp, isPowerEfficient)
     {
-        // Called from WI.DOMObserver.
-
         let node = this._idToDOMNode[nodeId];
         if (!node)
             return;
@@ -618,7 +612,7 @@ WI.DOMManager = class DOMManager extends WI.Object
             return;
         }
 
-        breakpoint = new WI.EventBreakpoint(WI.EventBreakpoint.Type.Listener, eventListener.type, {eventListener});
+        breakpoint = new WI.EventBreakpoint(WI.EventBreakpoint.Type.Listener, {eventName: eventListener.type, eventListener});
         console.assert(!breakpoint.disabled);
 
         this._breakpointsForEventListeners.set(eventListener.eventListenerId, breakpoint);

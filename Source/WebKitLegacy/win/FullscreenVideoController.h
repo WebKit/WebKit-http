@@ -42,6 +42,7 @@ class PlatformCALayer;
 }
 
 class HUDWidget {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     HUDWidget(const WebCore::IntRect& rect) : m_rect(rect) { }
     
@@ -101,6 +102,7 @@ private:
 };
 
 class FullscreenVideoController : WebCore::MediaPlayerPrivateFullscreenClient {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(FullscreenVideoController);
 public:
     FullscreenVideoController();
@@ -154,7 +156,9 @@ private:
     GDIObject<HBITMAP> m_bitmap;
     WebCore::IntSize m_fullscreenSize;
     WebCore::IntPoint m_hudPosition;
+#if ENABLE(FULLSCREEN_API)
     std::unique_ptr<WebCore::MediaPlayerPrivateFullscreenWindow> m_fullscreenWindow;
+#endif
 
 #if USE(CA)
     class LayerClient;

@@ -60,7 +60,7 @@
 #import <rootless.h>
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+#if PLATFORM(MAC)
 #define USE_CACHE_COMPILED_SANDBOX 1
 #else
 #define USE_CACHE_COMPILED_SANDBOX 0
@@ -234,16 +234,16 @@ static Optional<CString> setAndSerializeSandboxParameters(const SandboxInitializ
             WTFLogAlways("%s: Could not set sandbox parameter: %s\n", getprogname(), strerror(errno));
             CRASH();
         }
-        builder.append(name, strlen(name));
+        builder.append(name);
         builder.append(':');
-        builder.append(value, strlen(value));
+        builder.append(value);
         builder.append(':');
     }
     if (isProfilePath) {
         auto contents = fileContents(profileOrProfilePath);
         if (!contents)
             return WTF::nullopt;
-        builder.append(contents->data(), contents->size());
+        builder.appendCharacters(contents->data(), contents->size());
     } else
         builder.append(profileOrProfilePath);
     return builder.toString().ascii();

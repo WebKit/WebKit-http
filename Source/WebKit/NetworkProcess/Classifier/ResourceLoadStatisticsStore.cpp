@@ -413,7 +413,7 @@ void ResourceLoadStatisticsStore::setDataRecordsBeingRemoved(bool value)
         m_lastTimeDataRecordsWereRemoved = MonotonicTime::now();
 }
 
-void ResourceLoadStatisticsStore::updateCookieBlockingForDomains(const Vector<RegistrableDomain>& domainsToBlock, CompletionHandler<void()>&& completionHandler)
+void ResourceLoadStatisticsStore::updateCookieBlockingForDomains(const RegistrableDomainsToBlockCookiesFor& domainsToBlock, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(!RunLoop::isMain());
     
@@ -445,6 +445,8 @@ void ResourceLoadStatisticsStore::clearBlockingStateForDomains(const Vector<Regi
 
 Optional<Seconds> ResourceLoadStatisticsStore::statisticsEpirationTime() const
 {
+    ASSERT(!RunLoop::isMain());
+
     if (m_parameters.timeToLiveUserInteraction)
         return WallTime::now().secondsSinceEpoch() - m_parameters.timeToLiveUserInteraction.value();
     
@@ -475,6 +477,8 @@ Vector<OperatingDate> ResourceLoadStatisticsStore::mergeOperatingDates(const Vec
 
 void ResourceLoadStatisticsStore::mergeOperatingDates(Vector<OperatingDate>&& newDates)
 {
+    ASSERT(!RunLoop::isMain());
+
     m_operatingDates = mergeOperatingDates(m_operatingDates, WTFMove(newDates));
 }
 
@@ -567,8 +571,11 @@ void ResourceLoadStatisticsStore::didCreateNetworkProcess()
     updateClientSideCookiesAgeCap();
 }
 
-void ResourceLoadStatisticsStore::debugLogDomainsInBatches(const char* action, const Vector<RegistrableDomain>& domains)
+void ResourceLoadStatisticsStore::debugLogDomainsInBatches(const char* action, const RegistrableDomainsToBlockCookiesFor& domainsToBlock)
 {
+    Vector<RegistrableDomain> domains;
+    domains.appendVector(domainsToBlock.domainsToBlockAndDeleteCookiesFor);
+    domains.appendVector(domainsToBlock.domainsToBlockButKeepCookiesFor);
     static const auto maxNumberOfDomainsInOneLogStatement = 50;
     if (domains.isEmpty())
         return;

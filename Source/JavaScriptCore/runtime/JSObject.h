@@ -168,6 +168,7 @@ public:
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     JS_EXPORT_PRIVATE static bool getOwnPropertySlotByIndex(JSObject*, ExecState*, unsigned propertyName, PropertySlot&);
     bool getOwnPropertySlotInline(ExecState*, PropertyName, PropertySlot&);
+    static void doPutPropertySecurityCheck(JSObject*, ExecState*, PropertyName, PutPropertySlot&);
 
     // The key difference between this and getOwnPropertySlot is that getOwnPropertySlot
     // currently returns incorrect results for the DOM window (with non-own properties)
@@ -197,7 +198,7 @@ public:
     // This performs the ECMAScript Set() operation.
     ALWAYS_INLINE bool putByIndexInline(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
     {
-        if (canSetIndexQuickly(propertyName)) {
+        if (canSetIndexQuickly(propertyName, value)) {
             setIndexQuickly(exec->vm(), propertyName, value);
             return true;
         }
@@ -255,12 +256,16 @@ public:
     {
         return structure(vm)->hasIndexingHeader(this);
     }
+
+    bool canGetIndexQuicklyForTypedArray(unsigned) const;
+    JSValue getIndexQuicklyForTypedArray(unsigned) const;
     
     bool canGetIndexQuickly(unsigned i) const
     {
         const Butterfly* butterfly = this->butterfly();
         switch (indexingType()) {
         case ALL_BLANK_INDEXING_TYPES:
+            return canGetIndexQuicklyForTypedArray(i);
         case ALL_UNDECIDED_INDEXING_TYPES:
             return false;
         case ALL_INT32_INDEXING_TYPES:
@@ -294,6 +299,8 @@ public:
             return JSValue(JSValue::EncodeAsDouble, butterfly->contiguousDouble().at(this, i));
         case ALL_ARRAY_STORAGE_INDEXING_TYPES:
             return butterfly->arrayStorage()->m_vector[i].get();
+        case ALL_BLANK_INDEXING_TYPES:
+            return getIndexQuicklyForTypedArray(i);
         default:
             RELEASE_ASSERT_NOT_REACHED();
             return JSValue();
@@ -305,6 +312,9 @@ public:
         const Butterfly* butterfly = this->butterfly();
         switch (indexingType()) {
         case ALL_BLANK_INDEXING_TYPES:
+            if (canGetIndexQuicklyForTypedArray(i))
+                return getIndexQuicklyForTypedArray(i);
+            break;
         case ALL_UNDECIDED_INDEXING_TYPES:
             break;
         case ALL_INT32_INDEXING_TYPES:
@@ -353,12 +363,16 @@ public:
             return result;
         return get(exec, i);
     }
+
+    bool canSetIndexQuicklyForTypedArray(unsigned, JSValue) const;
+    void setIndexQuicklyForTypedArray(unsigned, JSValue);
         
-    bool canSetIndexQuickly(unsigned i)
+    bool canSetIndexQuickly(unsigned i, JSValue value)
     {
         Butterfly* butterfly = this->butterfly();
         switch (indexingMode()) {
         case ALL_BLANK_INDEXING_TYPES:
+            return canSetIndexQuicklyForTypedArray(i, value);
         case ALL_UNDECIDED_INDEXING_TYPES:
             return false;
         case ALL_WRITABLE_INT32_INDEXING_TYPES:
@@ -427,6 +441,9 @@ public:
             }
             break;
         }
+        case ALL_BLANK_INDEXING_TYPES:
+            setIndexQuicklyForTypedArray(i, v);
+            break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
         }
@@ -1402,6 +1419,10 @@ ALWAYS_INLINE bool JSObject::getOwnPropertySlot(JSObject* object, ExecState* exe
     if (Optional<uint32_t> index = parseIndex(propertyName))
         return getOwnPropertySlotByIndex(object, exec, index.value(), slot);
     return false;
+}
+
+ALWAYS_INLINE void JSObject::doPutPropertySecurityCheck(JSObject*, ExecState*, PropertyName, PutPropertySlot&)
+{
 }
 
 // It may seem crazy to inline a function this large but it makes a big difference

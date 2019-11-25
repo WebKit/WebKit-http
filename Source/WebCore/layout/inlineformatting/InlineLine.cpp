@@ -28,6 +28,8 @@
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
 
+#include "InlineFormattingContext.h"
+#include "TextUtil.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -204,7 +206,7 @@ void Line::append(const InlineItem& inlineItem, LayoutUnit logicalWidth)
         return appendInlineContainerStart(inlineItem, logicalWidth);
     if (inlineItem.isContainerEnd())
         return appendInlineContainerEnd(inlineItem, logicalWidth);
-    if (inlineItem.layoutBox().isReplaced())
+    if (inlineItem.layoutBox().replaced())
         return appendReplacedInlineBox(inlineItem, logicalWidth);
     appendNonReplacedInlineBox(inlineItem, logicalWidth);
 }
@@ -279,7 +281,7 @@ void Line::appendTextContent(const InlineTextItem& inlineItem, LayoutUnit logica
         adjustBaselineAndLineHeight(inlineItem, runHeight);
     }
 
-    auto textContext = Content::Run::TextContext { inlineItem.start(), inlineItem.isCollapsed() ? 1 : inlineItem.length(), isCompletelyCollapsed, canBeExtended, inlineItem.isWhitespace() };
+    auto textContext = Content::Run::TextContext { inlineItem.start(), inlineItem.isCollapsed() ? 1 : inlineItem.length(), isCompletelyCollapsed, inlineItem.isWhitespace(), canBeExtended };
     auto lineItem = std::make_unique<Content::Run>(inlineItem, textContext, logicalRect);
     if (isTrimmable && !isCompletelyCollapsed)
         m_trimmableContent.add(lineItem.get());
@@ -415,7 +417,7 @@ LayoutUnit Line::inlineItemContentHeight(const InlineItem& inlineItem) const
     if (layoutBox.isFloatingPositioned())
         return displayBox.borderBoxHeight();
 
-    if (layoutBox.isReplaced())
+    if (layoutBox.replaced())
         return displayBox.borderBoxHeight();
 
     if (inlineItem.isContainerStart() || inlineItem.isContainerEnd())

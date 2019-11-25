@@ -39,35 +39,34 @@ namespace WebCore {
 
 WTF_MAKE_ISO_ALLOCATED_IMPL(File);
 
-Ref<File> File::createWithRelativePath(const String& path, const String& relativePath)
+Ref<File> File::createWithRelativePath(PAL::SessionID sessionID, const String& path, const String& relativePath)
 {
-    auto file = File::create(path);
+    auto file = File::create(sessionID, path);
     file->setRelativePath(relativePath);
     return file;
 }
 
-File::File(const String& path)
-    : Blob(uninitializedContructor)
-    , m_path(path)
+Ref<File> File::create(PAL::SessionID sessionID, const String& path, const String& nameOverride)
 {
-    m_internalURL = BlobURL::createInternalURL();
-    m_size = -1;
-    computeNameAndContentType(m_path, String(), m_name, m_type);
-    ThreadableBlobRegistry::registerFileBlobURL(m_internalURL, path, m_type);
+    String name;
+    String type;
+    computeNameAndContentType(path, nameOverride, name, type);
+
+    auto internalURL = BlobURL::createInternalURL();
+    ThreadableBlobRegistry::registerFileBlobURL(sessionID, internalURL, path, type);
+
+    return adoptRef(*new File(sessionID, WTFMove(internalURL), WTFMove(type), String { path }, WTFMove(name)));
 }
 
-File::File(const String& path, const String& nameOverride)
-    : Blob(uninitializedContructor)
-    , m_path(path)
+File::File(PAL::SessionID sessionID, URL&& url, String&& type, String&& path, String&& name)
+    : Blob(uninitializedContructor, sessionID, WTFMove(url), WTFMove(type))
+    , m_path(WTFMove(path))
+    , m_name(WTFMove(name))
 {
-    m_internalURL = BlobURL::createInternalURL();
-    m_size = -1;
-    computeNameAndContentType(m_path, nameOverride, m_name, m_type);
-    ThreadableBlobRegistry::registerFileBlobURL(m_internalURL, path, m_type);
 }
 
-File::File(DeserializationContructor, const String& path, const URL& url, const String& type, const String& name, const Optional<int64_t>& lastModified)
-    : Blob(deserializationContructor, url, type, -1, path)
+File::File(DeserializationContructor, PAL::SessionID sessionID, const String& path, const URL& url, const String& type, const String& name, const Optional<int64_t>& lastModified)
+    : Blob(deserializationContructor, sessionID, url, type, { }, path)
     , m_path(path)
     , m_name(name)
     , m_lastModifiedDateOverride(lastModified)
@@ -81,8 +80,8 @@ static BlobPropertyBag convertPropertyBag(const File::PropertyBag& initialBag)
     return bag;
 }
 
-File::File(Vector<BlobPartVariant>&& blobPartVariants, const String& filename, const PropertyBag& propertyBag)
-    : Blob(WTFMove(blobPartVariants), convertPropertyBag(propertyBag))
+File::File(ScriptExecutionContext& context, Vector<BlobPartVariant>&& blobPartVariants, const String& filename, const PropertyBag& propertyBag)
+    : Blob(context.sessionID(), WTFMove(blobPartVariants), convertPropertyBag(propertyBag))
     , m_name(filename)
     , m_lastModifiedDateOverride(propertyBag.lastModified.valueOr(WallTime::now().secondsSinceEpoch().milliseconds()))
 {
@@ -132,7 +131,7 @@ void File::computeNameAndContentType(const String& path, const String& nameOverr
         return;
     }
 #endif
-    effectiveName = nameOverride.isNull() ? FileSystem::pathGetFileName(path) : nameOverride;
+    effectiveName = nameOverride.isEmpty() ? FileSystem::pathGetFileName(path) : nameOverride;
     size_t index = effectiveName.reverseFind('.');
     if (index != notFound)
         effectiveContentType = MIMETypeRegistry::getMIMETypeForExtension(effectiveName.substring(index + 1));

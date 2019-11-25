@@ -32,6 +32,7 @@
 #include "WebNetscapePluginEventHandler.h"
 
 class WebNetscapePluginEventHandlerCocoa : public WebNetscapePluginEventHandler {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     WebNetscapePluginEventHandlerCocoa(WebNetscapePluginView*); 
 
@@ -59,19 +60,6 @@ private:
     bool sendMouseEvent(NSEvent*, NPCocoaEventType);
     bool sendKeyEvent(NSEvent*, NPCocoaEventType);
     bool sendEvent(NPCocoaEvent*);
-    
-#ifndef __LP64__
-    void installKeyEventHandler();
-    void removeKeyEventHandler();
-    
-    static OSStatus TSMEventHandler(EventHandlerCallRef, EventRef, void *eventHandler);
-    OSStatus handleTSMEvent(EventRef);
-
-    EventHandlerRef m_keyEventHandler;
-#else
-    inline void installKeyEventHandler() { }
-    void removeKeyEventHandler() { }
-#endif
 };
 
 #endif //WebNetscapePluginEventHandlerCocoa_h

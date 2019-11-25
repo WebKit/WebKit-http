@@ -123,6 +123,7 @@
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIterator.h>
+#import <WebCore/UserAgent.h>
 #import <WebCore/VisibleUnits.h>
 #import <WebCore/WebEvent.h>
 #import <wtf/MathExtras.h>
@@ -550,7 +551,7 @@ void WebPage::acceptsFirstMouse(int, const WebKit::WebMouseEvent&, CompletionHan
     completionHandler(false);
 }
 
-void WebPage::computePagesForPrintingPDFDocument(uint64_t, const PrintInfo&, Vector<IntRect>&)
+void WebPage::computePagesForPrintingPDFDocument(WebCore::FrameIdentifier, const PrintInfo&, Vector<IntRect>&)
 {
     notImplemented();
 }
@@ -715,7 +716,7 @@ void WebPage::handleSyntheticClick(Node& nodeRespondingToClick, const WebCore::F
         m_pendingSyntheticClickPointerId = pointerId;
         return;
     }
-
+    contentChangeObserver.stopContentObservation();
     callOnMainThread([protectedThis = makeRefPtr(this), targetNode = Ref<Node>(nodeRespondingToClick), location, modifiers, observedContentChange, pointerId] {
         if (protectedThis->m_isClosed || !protectedThis->corePage())
             return;
@@ -1272,26 +1273,6 @@ static IntPoint constrainPoint(const IntPoint& point, const Frame& frame, const 
         constrainedPoint.setY(maxY);
                     
     return constrainedPoint;
-}
-
-static IntRect selectionBoxForRange(WebCore::Range* range)
-{
-    if (!range)
-        return IntRect();
-    
-    IntRect boundingRect;
-    Vector<SelectionRect> selectionRects;
-    range->collectSelectionRects(selectionRects);
-    unsigned size = selectionRects.size();
-    
-    for (unsigned i = 0; i < size; ++i) {
-        const IntRect &coreRect = selectionRects[i].rect();
-        if (!i)
-            boundingRect = coreRect;
-        else
-            boundingRect.unite(coreRect);
-    }
-    return boundingRect;
 }
 
 void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uint32_t gestureType, uint32_t gestureState, bool isInteractingWithFocusedElement, CallbackID callbackID)
@@ -2084,21 +2065,7 @@ void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, u
     setFocusedFrameBeforeSelectingTextAtLocation(point);
 
     auto& frame = m_page->focusController().focusedOrMainFrame();
-    RefPtr<Range> range = rangeForGranularityAtPoint(frame, point, granularity, isInteractingWithFocusedElement);
-    if (!isInteractingWithFocusedElement) {
-        auto* renderer = range ? range->startContainer().renderer() : nullptr;
-        if (renderer && renderer->style().preserveNewline())
-            m_blockRectForTextSelection = renderer->absoluteBoundingBoxRect(true);
-        else {
-            auto paragraphRange = enclosingTextUnitOfGranularity(visiblePositionInFocusedNodeForPoint(frame, point, isInteractingWithFocusedElement), ParagraphGranularity, DirectionForward);
-            if (paragraphRange && !paragraphRange->collapsed())
-                m_blockRectForTextSelection = selectionBoxForRange(paragraphRange.get());
-        }
-        
-        if (rectIsTooBigForSelection(m_blockRectForTextSelection, frame))
-            m_blockRectForTextSelection.setHeight(0);
-    }
-
+    auto range = rangeForGranularityAtPoint(frame, point, granularity, isInteractingWithFocusedElement);
     if (range)
         frame.selection().setSelectedRange(range.get(), UPSTREAM, WebCore::FrameSelection::ShouldCloseTyping::Yes, UserTriggered);
     m_initialSelection = range;
@@ -2620,9 +2587,12 @@ static void imagePositionInformation(WebPage& page, Element& element, const Inte
         return;
 
     FloatSize screenSizeInPixels = screenSize();
+    FloatSize imageSize = renderImage.cachedImage()->imageSizeForRenderer(&renderImage);
+    
     screenSizeInPixels.scale(page.corePage()->deviceScaleFactor());
-    FloatSize scaledSize = largestRectWithAspectRatioInsideRect(image->size().width() / image->size().height(), FloatRect(0, 0, screenSizeInPixels.width(), screenSizeInPixels.height())).size();
-    FloatSize bitmapSize = scaledSize.width() < image->size().width() ? scaledSize : image->size();
+    FloatSize scaledSize = largestRectWithAspectRatioInsideRect(imageSize.width() / imageSize.height(), FloatRect(0, 0, screenSizeInPixels.width(), screenSizeInPixels.height())).size();
+    FloatSize bitmapSize = scaledSize.width() < imageSize.width() ? scaledSize : imageSize;
+    
     // FIXME: Only select ExtendedColor on images known to need wide gamut
     ShareableBitmap::Configuration bitmapConfiguration;
     bitmapConfiguration.colorSpace.cgColorSpace = screenColorSpace(page.corePage()->mainFrame().view());
@@ -2635,7 +2605,7 @@ static void imagePositionInformation(WebPage& page, Element& element, const Inte
     if (!graphicsContext)
         return;
 
-    graphicsContext->drawImage(*image, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()));
+    graphicsContext->drawImage(*image, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()), renderImage.imageOrientation());
     info.image = sharedBitmap;
 }
 
@@ -2676,6 +2646,14 @@ static void elementPositionInformation(WebPage& page, Element& element, const In
         linkIndicatorPositionInformation(page, *linkElement, request, info);
 #if ENABLE(DATA_DETECTION)
         dataDetectorLinkPositionInformation(element, info);
+#endif
+    }
+
+    auto* elementForScrollTesting = linkElement ? linkElement : &element;
+    if (auto* renderer = elementForScrollTesting->renderer()) {
+#if ENABLE(ASYNC_SCROLLING)
+        if (auto* scrollingCoordinator = page.scrollingCoordinator())
+            info.containerScrollingNodeID = scrollingCoordinator->scrollableContainerNodeID(*renderer);
 #endif
     }
 
@@ -3727,7 +3705,7 @@ void WebPage::dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& qu
 }
 #endif
 
-void WebPage::computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintInfo& printInfo, CallbackID callbackID, Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply&& reply)
+void WebPage::computePagesForPrintingAndDrawToPDF(WebCore::FrameIdentifier frameID, const PrintInfo& printInfo, CallbackID callbackID, Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply&& reply)
 {
     if (printInfo.snapshotFirstPage) {
         reply(1);
@@ -3770,6 +3748,16 @@ void WebPage::contentSizeCategoryDidChange(const String& contentSizeCategory)
 
 String WebPage::platformUserAgent(const URL&) const
 {
+    if (!m_page->settings().needsSiteSpecificQuirks())
+        return String();
+
+    auto document = m_mainFrame->coreFrame()->document();
+    if (!document)
+        return String();
+
+    if (document->quirks().shouldAvoidUsingIOS13ForGmail() && osNameForUserAgent() == "iPhone OS" && systemMarketingVersionForUserAgentString() == "13_1")
+        return standardUserAgentWithApplicationName({ }, "12_1_3");
+
     return String();
 }
 

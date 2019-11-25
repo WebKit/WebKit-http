@@ -561,7 +561,7 @@ WebRTCUnifiedPlanEnabled:
   condition: ENABLE(WEB_RTC)
   humanReadableName: "WebRTC Unified Plan"
   humanReadableDescription: "Use WebRTC Unified Plan"
-  category: experimental
+  category: internal
 
 WebRTCVP8CodecEnabled:
   type: bool
@@ -570,6 +570,15 @@ WebRTCVP8CodecEnabled:
   condition: ENABLE(WEB_RTC)
   humanReadableName: "WebRTC VP8 codec"
   humanReadableDescription: "Enable WebRTC VP8 codec"
+  category: internal
+
+WebRTCDTMFEnabled:
+  type: bool
+  defaultValue: true
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(WEB_RTC)
+  humanReadableName: "WebRTC DTMF"
+  humanReadableDescription: "Enable WebRTC DTMF"
   category: experimental
 
 WebRTCH264SimulcastEnabled:
@@ -579,7 +588,7 @@ WebRTCH264SimulcastEnabled:
   condition: ENABLE(WEB_RTC)
   humanReadableName: "WebRTC H264 Simulcast"
   humanReadableDescription: "Enable WebRTC H264 Simulcast"
-  category: experimental
+  category: internal
 
 WebRTCMDNSICECandidatesEnabled:
   type: bool
@@ -1275,7 +1284,7 @@ SyntheticEditingCommandsEnabled:
 
 CSSOMViewScrollingAPIEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: defaultCSSOMViewScrollingAPIEnabled()
   humanReadableName: "CSSOM View Scrolling API"
   humanReadableDescription: "Implement standard behavior for scrollLeft, scrollTop, scrollWidth, scrollHeight, scrollTo, scrollBy and scrollingElement."
   category: internal
@@ -1705,6 +1714,22 @@ IsNSURLSessionWebSocketEnabled:
   category: internal
   webcoreBinding: RuntimeEnabledFeatures
   condition: HAVE(NSURLSESSION_WEBSOCKET)
+
+LazyImageLoadingEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Lazy Image Loading"
+  humanReadableDescription: "Enable Lazy Image Loading support"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+
+IsITPSessionSwitchingEnabled:
+  type: bool
+  defaultValue: true
+  humanReadableName: "ITP Session Switching"
+  humanReadableDescription: "Enable session switching for domains classified by ITP"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: internal
 
 # Deprecated
 

@@ -350,7 +350,7 @@ class Document
     , public Logger::Observer {
     WTF_MAKE_ISO_ALLOCATED(Document);
 public:
-    static Ref<Document> create(const URL&);
+    static Ref<Document> create(PAL::SessionID, const URL&);
     static Ref<Document> createNonRenderedPlaceholder(Frame&, const URL&);
     static Ref<Document> create(Document&);
 
@@ -1033,7 +1033,7 @@ public:
     void incDOMTreeVersion() { m_domTreeVersion = ++s_globalTreeVersion; }
     uint64_t domTreeVersion() const { return m_domTreeVersion; }
 
-    WEBCORE_EXPORT String originIdentifierForPasteboard();
+    WEBCORE_EXPORT String originIdentifierForPasteboard() const;
 
     // XPathEvaluator methods
     WEBCORE_EXPORT ExceptionOr<Ref<XPathExpression>> createExpression(const String& expression, RefPtr<XPathNSResolver>&&);
@@ -1092,7 +1092,7 @@ public:
     void registerForPrivateBrowsingStateChangedCallbacks(Element&);
     void unregisterForPrivateBrowsingStateChangedCallbacks(Element&);
     void storageBlockingStateDidChange();
-    void privateBrowsingStateDidChange();
+    void privateBrowsingStateDidChange(PAL::SessionID);
 
 #if ENABLE(VIDEO_TRACK)
     void registerForCaptionPreferencesChangedCallbacks(Element&);
@@ -1531,7 +1531,7 @@ public:
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
-    Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
+    Document(PAL::SessionID, Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
 
     void clearXMLVersion() { m_xmlVersion = String(); }
 
@@ -1688,7 +1688,7 @@ private:
     uint64_t m_domTreeVersion;
     static uint64_t s_globalTreeVersion;
 
-    String m_uniqueIdentifier;
+    mutable String m_uniqueIdentifier;
 
     HashSet<NodeIterator*> m_nodeIterators;
     HashSet<Range*> m_ranges;
@@ -2075,14 +2075,9 @@ inline AXObjectCache* Document::existingAXObjectCache() const
     return existingAXObjectCacheSlow();
 }
 
-inline Ref<Document> Document::create(const URL& url)
+inline Ref<Document> Document::create(PAL::SessionID sessionID, const URL& url)
 {
-    return adoptRef(*new Document(nullptr, url));
-}
-
-inline Ref<Document> Document::createNonRenderedPlaceholder(Frame& frame, const URL& url)
-{
-    return adoptRef(*new Document(&frame, url, DefaultDocumentClass, NonRenderedPlaceholder));
+    return adoptRef(*new Document(sessionID, nullptr, url));
 }
 
 inline void Document::invalidateAccessKeyCache()

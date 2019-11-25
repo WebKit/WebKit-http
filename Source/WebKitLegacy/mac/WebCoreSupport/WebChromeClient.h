@@ -41,6 +41,7 @@ class HTMLImageElement;
 // base class of the concrete class, WebChromeClientIOS. Because of that, this class and
 // many of its functions are not marked final. That is messy way to organize things.
 class WebChromeClient : public WebCore::ChromeClient {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     WebChromeClient(WebView*);
 
@@ -157,9 +158,6 @@ private:
 
     void enableSuddenTermination() final;
     void disableSuddenTermination() final;
-
-    bool shouldReplaceWithGeneratedFileForUpload(const String& path, String &generatedFilename) final;
-    String generateReplacementFile(const String& path) final;
 
 #if !PLATFORM(IOS_FAMILY)
     void elementDidFocus(WebCore::Element&) override;

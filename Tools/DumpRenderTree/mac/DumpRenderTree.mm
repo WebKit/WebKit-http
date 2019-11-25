@@ -877,8 +877,8 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setCSSOMViewScrollingAPIEnabled:YES];
     [preferences setMediaRecorderEnabled:YES];
     [preferences setReferrerPolicyAttributeEnabled:YES];
-    [preferences setReferrerPolicyAttributeEnabled:YES];
     [preferences setLinkPreloadResponsiveImagesEnabled:YES];
+    [preferences setLazyImageLoadingEnabled:YES];
 }
 
 // Called before each test.
@@ -1025,6 +1025,7 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     preferences.adClickAttributionEnabled = options.adClickAttributionEnabled;
     preferences.resizeObserverEnabled = options.enableResizeObserver;
     preferences.coreMathMLEnabled = options.enableCoreMathML;
+    preferences.lazyImageLoadingEnabled = options.enableLazyImageLoading;
 }
 
 // Called once on DumpRenderTree startup.
@@ -1802,7 +1803,7 @@ void dump()
 
 static bool shouldLogFrameLoadDelegates(const char* pathOrURL)
 {
-    return strstr(pathOrURL, "loading/");
+    return strstr(pathOrURL, "loading/") && !strstr(pathOrURL, "://localhost");
 }
 
 static bool shouldLogHistoryDelegates(const char* pathOrURL)

@@ -36,6 +36,7 @@
 #include "LayoutUnit.h"
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
+#include "UserAgent.h"
 
 namespace WebCore {
 
@@ -138,6 +139,20 @@ bool Quirks::hasBrokenEncryptedMediaAPISupportQuirk() const
     return m_hasBrokenEncryptedMediaAPISupportQuirk.value();
 }
 
+bool Quirks::shouldDisableContentChangeObserverTouchEventAdjustment() const
+{
+    if (!needsQuirks())
+        return false;
+
+    auto& topDocument = m_document->topDocument();
+    auto* topDocumentLoader = topDocument.loader();
+    if (!topDocumentLoader || !topDocumentLoader->allowContentChangeObserverQuirk())
+        return false;
+
+    auto host = m_document->topDocument().url().host();
+    return host.endsWith(".youtube.com") || host == "youtube.com";
+}
+
 bool Quirks::shouldStripQuotationMarkInFontFaceSetFamily() const
 {
     if (!needsQuirks())
@@ -231,6 +246,19 @@ bool Quirks::needsYouTubeMouseOutQuirk() const
 #endif
 }
 
+bool Quirks::shouldAvoidUsingIOS13ForGmail() const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (!needsQuirks())
+        return false;
+
+    auto& url = m_document->topDocument().url();
+    return equalLettersIgnoringASCIICase(url.host(), "mail.google.com");
+#else
+    return false;
+#endif
+}
+
 bool Quirks::shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() const
 {
     if (!needsQuirks())
@@ -295,9 +323,16 @@ bool Quirks::shouldDispatchSimulatedMouseEvents() const
         return true;
     if (equalLettersIgnoringASCIICase(host, "naver.com"))
         return true;
-    // Disable the quirk for tv.naver.com subdomain to be able to simulate hover on videos.
-    if (host.endsWithIgnoringASCIICase(".naver.com"))
-        return !equalLettersIgnoringASCIICase(host, "tv.naver.com");
+    if (host.endsWithIgnoringASCIICase(".naver.com")) {
+        // Disable the quirk for tv.naver.com subdomain to be able to simulate hover on videos.
+        if (equalLettersIgnoringASCIICase(host, "tv.naver.com"))
+            return false;
+        // Disable the quirk on the mobile site.
+        // FIXME: Maybe this quirk should be disabled for "m." subdomains on all sites? These are generally mobile sites that don't need mouse events.
+        if (equalLettersIgnoringASCIICase(host, "m.naver.com"))
+            return false;
+        return true;
+    }
     return false;
 }
 
@@ -339,6 +374,26 @@ Optional<Event::IsCancelable> Quirks::simulatedMouseEventTypeForTarget(EventTarg
         return Event::IsCancelable::No;
 
     return Event::IsCancelable::Yes;
+}
+
+bool Quirks::shouldMakeTouchEventNonCancelableForTarget(EventTarget* target) const
+{
+    if (!needsQuirks())
+        return false;
+
+    auto host = m_document->topDocument().url().host();
+
+    if (equalLettersIgnoringASCIICase(host, "www.youtube.com")) {
+        if (is<Element>(target)) {
+            unsigned depth = 3;
+            for (auto* element = downcast<Element>(target); element && depth; element = element->parentElement(), --depth) {
+                if (element->localName() == "paper-item" && element->classList().contains("yt-dropdown-menu"))
+                    return true;
+            }
+        }
+    }
+
+    return false;
 }
 #endif
 
@@ -399,6 +454,30 @@ bool Quirks::shouldLightenJapaneseBoldSansSerif() const
     auto host = m_document->topDocument().url().host();
     return equalLettersIgnoringASCIICase(host, "m.yahoo.co.jp");
 #else
+    return false;
+#endif
+}
+
+bool Quirks::shouldIgnoreContentChange(const Element& element) const
+{
+#if PLATFORM(IOS_FAMILY)
+    if (!needsQuirks())
+        return false;
+
+    auto* parentElement = element.parentElement();
+    if (!parentElement || !parentElement->hasClass())
+        return false;
+
+    DOMTokenList& classList = parentElement->classList();
+    if (!classList.contains("feedback") || !classList.contains("feedback-mid"))
+        return false;
+
+    if (!equalLettersIgnoringASCIICase(topPrivatelyControlledDomain(m_document->url().host().toString()), "united.com"))
+        return false;
+
+    return true;
+#else
+    UNUSED_PARAM(element);
     return false;
 #endif
 }

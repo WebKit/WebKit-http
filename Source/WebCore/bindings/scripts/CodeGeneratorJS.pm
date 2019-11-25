@@ -2332,6 +2332,12 @@ sub GenerateDictionaryImplementationContent
             my $type = $member->type;
             AddToImplIncludesForIDLType($type);
 
+            my $conditional = $member->extendedAttributes->{Conditional};
+            if ($conditional) {
+                my $conditionalString = $codeGenerator->GenerateConditionalStringFromAttributeValue($conditional);
+                $result .= "#if ${conditionalString}\n";
+            }
+
             # 4.1. Let key be the identifier of member.
             my $key = $member->name;
             my $implementedAsKey = $member->extendedAttributes->{ImplementedAs} || $key;
@@ -2368,6 +2374,8 @@ sub GenerateDictionaryImplementationContent
             } else {
                 $result .= "    }\n";
             }
+
+            $result .= "#endif\n" if $conditional;
         }
     }
 
@@ -2398,6 +2406,12 @@ sub GenerateDictionaryImplementationContent
                 my $key = $member->name;
                 my $implementedAsKey = $member->extendedAttributes->{ImplementedAs} || $key;
                 my $valueExpression = "dictionary.${implementedAsKey}";
+
+                my $conditional = $member->extendedAttributes->{Conditional};
+                if ($conditional) {
+                    my $conditionalString = $codeGenerator->GenerateConditionalStringFromAttributeValue($conditional);
+                    $result .= "#if ${conditionalString}\n";
+                }
 
                 # 1. Let key be the identifier of member.
                 # 2. If the dictionary member named key is present in V, then:
@@ -2430,6 +2444,8 @@ sub GenerateDictionaryImplementationContent
                 if ($needsRuntimeCheck) {
                     $result .= "    }\n";
                 }
+
+                $result .= "#endif\n" if $conditional;
             }
         }
 
@@ -2638,6 +2654,11 @@ sub GenerateHeader
         $structureFlags{"JSC::OverridesGetOwnPropertySlot"} = 1;
         push(@headerContent, "    static bool getOwnPropertySlotByIndex(JSC::JSObject*, JSC::ExecState*, unsigned propertyName, JSC::PropertySlot&);\n");
         $structureFlags{"JSC::InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero"} = 1;
+    }
+
+    if ($interface->extendedAttributes->{CheckSecurity}) {
+        push(@headerContent, "    static void doPutPropertySecurityCheck(JSC::JSObject*, JSC::ExecState*, JSC::PropertyName, JSC::PutPropertySlot&);\n");
+        $structureFlags{"JSC::HasPutPropertySecurityCheck"} = 1;
     }
     
     if (InstanceOverridesGetOwnPropertyNames($interface)) {
@@ -3818,7 +3839,7 @@ sub addUnscopableProperties
     push(@implContent, "    putDirectWithoutTransition(vm, vm.propertyNames->unscopablesSymbol, &unscopables, JSC::PropertyAttribute::DontEnum | JSC::PropertyAttribute::ReadOnly);\n");
 }
 
-sub GetUnsafeArgumentType
+sub GetArgumentTypeForFunctionWithoutTypeCheck
 {
     my ($interface, $type) = @_;
 
@@ -3942,11 +3963,11 @@ sub GenerateImplementation
             push(@implContent, "JSC::EncodedJSValue JSC_HOST_CALL ${functionName}(JSC::ExecState*);\n");
             if ($operation->extendedAttributes->{DOMJIT}) {
                 $implIncludes{"DOMJITIDLType.h"} = 1;
-                my $unsafeFunctionName = "unsafe" . $codeGenerator->WK_ucfirst($functionName);
-                my $functionSignature = "JSC::EncodedJSValue JIT_OPERATION ${unsafeFunctionName}(JSC::ExecState*, $className*";
+                my $nameOfFunctionWithoutTypeCheck = $codeGenerator->WK_lcfirst($functionName) . "WithoutTypeCheck";
+                my $functionSignature = "JSC::EncodedJSValue JIT_OPERATION ${nameOfFunctionWithoutTypeCheck}(JSC::ExecState*, $className*";
                 foreach my $argument (@{$operation->arguments}) {
                     my $type = $argument->type;
-                    my $argumentType = GetUnsafeArgumentType($interface, $type);
+                    my $argumentType = GetArgumentTypeForFunctionWithoutTypeCheck($interface, $type);
                     $functionSignature .= ", ${argumentType}";
                 }
                 push(@implContent, $functionSignature . ");\n");
@@ -4005,11 +4026,11 @@ sub GenerateImplementation
 
             my $interfaceName = $interface->type->name;
             my $functionName = GetFunctionName($interface, $className, $operation);
-            my $unsafeFunctionName = "unsafe" . $codeGenerator->WK_ucfirst($functionName);
+            my $nameOfFunctionWithoutTypeCheck = $codeGenerator->WK_lcfirst($functionName) . "WithoutTypeCheck";
             my $domJITSignatureName = "DOMJITSignatureFor" . $interface->type->name . $codeGenerator->WK_ucfirst($operation->name);
             my $classInfo = "JS" . $interface->type->name . "::info()";
             my $resultType = GetResultTypeFilter($interface, $operation->type);
-            my $domJITSignatureHeader = "static const JSC::DOMJIT::Signature ${domJITSignatureName}((uintptr_t)${unsafeFunctionName},";
+            my $domJITSignatureHeader = "static const JSC::DOMJIT::Signature ${domJITSignatureName}(${nameOfFunctionWithoutTypeCheck},";
             my $domJITSignatureFooter = "$classInfo, JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), ${resultType}";
             foreach my $argument (@{$operation->arguments}) {
                 my $type = $argument->type;
@@ -4674,12 +4695,20 @@ sub GenerateImplementation
                 $rootString  = "    WebGLRenderingContextBase* root = WTF::getPtr(js${interfaceName}->wrapped().context());\n";
                 $rootString .= "    if (UNLIKELY(reason))\n";
                 $rootString .= "        *reason = \"Reachable from ${interfaceName}\";\n";
-            } elsif (GetGenerateIsReachable($interface) eq "ImplFrame") {
-                $rootString  = "    Frame* root = WTF::getPtr(js${interfaceName}->wrapped().frame());\n";
+            } elsif (GetGenerateIsReachable($interface) eq "ReachableFromDOMWindow") {
+                $rootString  = "    auto* root = WTF::getPtr(js${interfaceName}->wrapped().window());\n";
                 $rootString .= "    if (!root)\n";
                 $rootString .= "        return false;\n";
                 $rootString .= "    if (UNLIKELY(reason))\n";
-                $rootString .= "        *reason = \"Reachable from Frame\";\n";
+                $rootString .= "        *reason = \"Reachable from Window\";\n";
+            } elsif (GetGenerateIsReachable($interface) eq "ReachableFromNavigator") {
+                $implIncludes{"Navigator.h"} = 1;
+                $implIncludes{"WorkerNavigator.h"} = 1;
+                $rootString  = "    NavigatorBase* root = WTF::getPtr(js${interfaceName}->wrapped().navigator());\n";
+                $rootString .= "    if (!root)\n";
+                $rootString .= "        return false;\n";
+                $rootString .= "    if (UNLIKELY(reason))\n";
+                $rootString .= "        *reason = \"Reachable from Navigator\";\n";
             } elsif (GetGenerateIsReachable($interface) eq "ImplDocument") {
                 $rootString  = "    Document* root = WTF::getPtr(js${interfaceName}->wrapped().document());\n";
                 $rootString .= "    if (!root)\n";
@@ -5290,11 +5319,11 @@ sub GenerateOperationDefinition
         }
 
         AddToImplIncludes("<JavaScriptCore/FrameTracers.h>", $conditional);
-        my $unsafeFunctionName = "unsafe" . $codeGenerator->WK_ucfirst($functionName);
-        push(@$outputArray, "JSC::EncodedJSValue JIT_OPERATION ${unsafeFunctionName}(JSC::ExecState* state, $className* castedThis");
+        my $nameOfFunctionWithoutTypeCheck = $codeGenerator->WK_lcfirst($functionName) . "WithoutTypeCheck";
+        push(@$outputArray, "JSC::EncodedJSValue JIT_OPERATION ${nameOfFunctionWithoutTypeCheck}(JSC::ExecState* state, $className* castedThis");
         foreach my $argument (@{$operation->arguments}) {
             my $type = $argument->type;
-            my $argumentType = GetUnsafeArgumentType($interface, $type);
+            my $argumentType = GetArgumentTypeForFunctionWithoutTypeCheck($interface, $type);
             my $name = $argument->name;
             my $encodedName = "encoded" . $codeGenerator->WK_ucfirst($name);
             push(@$outputArray, ", ${argumentType} ${encodedName}");
@@ -5320,7 +5349,7 @@ sub GenerateOperationDefinition
             my $encodedName = "encoded" . $codeGenerator->WK_ucfirst($name);
             my $shouldPassByReference = ShouldPassArgumentByReference($argument);
 
-            my ($nativeValue, $mayThrowException) = UnsafeToNative($interface, $argument, $encodedName, $operation->extendedAttributes->{Conditional});
+            my ($nativeValue, $mayThrowException) = ToNativeForFunctionWithoutTypeCheck($interface, $argument, $encodedName, $operation->extendedAttributes->{Conditional});
             push(@$outputArray, "    auto $name = ${nativeValue};\n");
             push(@$outputArray, "    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());\n") if $mayThrowException;
             $value = "WTFMove($name)";
@@ -6609,7 +6638,7 @@ sub JSValueToNative
     return "convert<$IDLType>(" . join(", ", @conversionArguments) . ")";
 }
 
-sub UnsafeToNative
+sub ToNativeForFunctionWithoutTypeCheck
 {
     my ($interface, $context, $value, $conditional, $statePointer, $stateReference, $thisObjectReference) = @_;
 

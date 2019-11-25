@@ -39,16 +39,22 @@ import ews.config as config
 class StatusBubble(View):
     # These queue names are from shortname in https://trac.webkit.org/browser/webkit/trunk/Tools/BuildSlaveSupport/ews-build/config.json
     # FIXME: Auto-generate this list https://bugs.webkit.org/show_bug.cgi?id=195640
-    ALL_QUEUES = ['ios', 'ios-sim', 'gtk', 'wpe', 'wincairo', 'ios-wk2', 'api-ios', 'api-mac', 'bindings', 'jsc', 'mac', 'mac-32bit', 'mac-32bit-wk2',
-                    'mac-debug', 'mac-debug-wk1', 'mac-wk1', 'mac-wk2', 'style', 'webkitperl', 'webkitpy', 'win', 'services']
-    ENABLED_QUEUES = ['ios', 'ios-sim', 'gtk', 'wpe', 'wincairo', 'ios-wk2', 'api-ios', 'api-mac', 'bindings', 'webkitperl', 'webkitpy', 'services']
+    ALL_QUEUES = ['ios', 'ios-sim', 'mac', 'mac-debug', 'gtk', 'wpe', 'wincairo',
+                  'ios-wk2', 'mac-wk1', 'mac-wk2', 'mac-debug-wk1', 'api-ios', 'api-mac', 'bindings', 'jsc', 'style', 'webkitperl', 'webkitpy', 'win', 'services']
+    ENABLED_QUEUES = ['ios', 'ios-sim', 'mac', 'mac-debug', 'gtk', 'wpe', 'wincairo',
+                      'ios-wk2', 'mac-wk1', 'mac-wk2', 'mac-debug-wk1', 'api-ios', 'api-mac', 'bindings', 'webkitperl', 'webkitpy', 'services']
     # FIXME: Auto-generate the queue's trigger relationship
     QUEUE_TRIGGERS = {
         'api-ios': 'ios-sim',
+        'ios-wk2': 'ios-sim',
         'api-mac': 'mac',
+        'mac-wk1': 'mac',
+        'mac-wk2': 'mac',
+        'mac-debug-wk1': 'mac-debug',
     }
 
     STEPS_TO_HIDE = ['Killed old processes', 'Configured build', '^OS:.*Xcode:', '(skipped)']
+    DAYS_TO_CHECK = 3
 
     def _build_bubble(self, patch, queue):
         bubble = {
@@ -78,6 +84,11 @@ class StatusBubble(View):
             bubble['details_message'] = 'Build is in-progress. Recent messages:\n\n' + self._steps_messages(build)
         elif build.result == Buildbot.SUCCESS:
             if is_parent_build:
+                if patch.modified < (timezone.now() - datetime.timedelta(days=StatusBubble.DAYS_TO_CHECK)):
+                    # Do not display bubble for old patch for which no build has been reported on given queue.
+                    # Most likely the patch would never be processed on this queue, since either the queue was
+                    # added after the patch was submitted, or build request for that patch was cancelled.
+                    return None
                 bubble['state'] = 'started'
                 bubble['details_message'] = 'Build is in-progress. Recent messages:\n\n' + self._steps_messages(build) + '\n\nWaiting to run tests.'
             else:
@@ -189,8 +200,7 @@ class StatusBubble(View):
 
     def _queue_position(self, patch, queue, parent_queue=None):
         # FIXME: Handle retried builds and cancelled build-requests as well.
-        DAYS_TO_CHECK = 3
-        from_timestamp = timezone.now() - datetime.timedelta(days=DAYS_TO_CHECK)
+        from_timestamp = timezone.now() - datetime.timedelta(days=StatusBubble.DAYS_TO_CHECK)
 
         if patch.modified < from_timestamp:
             # Do not display bubble for old patch for which no build has been reported on given queue.

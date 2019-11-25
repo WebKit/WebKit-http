@@ -233,8 +233,8 @@ Inspector::Protocol::Page::ResourceType InspectorPageAgent::resourceTypeJSON(Ins
         return Inspector::Protocol::Page::ResourceType::Image;
     case FontResource:
         return Inspector::Protocol::Page::ResourceType::Font;
-    case StylesheetResource:
-        return Inspector::Protocol::Page::ResourceType::Stylesheet;
+    case StyleSheetResource:
+        return Inspector::Protocol::Page::ResourceType::StyleSheet;
     case ScriptResource:
         return Inspector::Protocol::Page::ResourceType::Script;
     case XHRResource:
@@ -271,7 +271,7 @@ InspectorPageAgent::ResourceType InspectorPageAgent::inspectorResourceType(Cache
     case CachedResource::Type::XSLStyleSheet:
 #endif
     case CachedResource::Type::CSSStyleSheet:
-        return InspectorPageAgent::StylesheetResource;
+        return InspectorPageAgent::StyleSheetResource;
     case CachedResource::Type::Script:
         return InspectorPageAgent::ScriptResource;
     case CachedResource::Type::MainResource:
@@ -343,24 +343,6 @@ InspectorPageAgent::InspectorPageAgent(PageAgentContext& context, InspectorClien
 
 void InspectorPageAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-}
-
-void InspectorPageAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
-{
-    ErrorString unused;
-    disable(unused);
-}
-
-double InspectorPageAgent::timestamp()
-{
-    return m_environment.executionStopwatch()->elapsedTime().seconds();
-}
-
-void InspectorPageAgent::enable(ErrorString&)
-{
-    if (m_instrumentingAgents.inspectorPageAgent() == this)
-        return;
-
     m_instrumentingAgents.setInspectorPageAgent(this);
 
     auto stopwatch = m_environment.executionStopwatch();
@@ -372,7 +354,7 @@ void InspectorPageAgent::enable(ErrorString&)
 #endif
 }
 
-void InspectorPageAgent::disable(ErrorString&)
+void InspectorPageAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
     ErrorString unused;
     setShowPaintRects(unused, false);
@@ -391,6 +373,11 @@ void InspectorPageAgent::disable(ErrorString&)
     m_client->setMockCaptureDevicesEnabledOverride(WTF::nullopt);
 
     m_instrumentingAgents.setInspectorPageAgent(nullptr);
+}
+
+double InspectorPageAgent::timestamp()
+{
+    return m_environment.executionStopwatch()->elapsedTime().seconds();
 }
 
 void InspectorPageAgent::reload(ErrorString&, const bool* optionalReloadFromOrigin, const bool* optionalRevalidateAllResources)

@@ -31,6 +31,8 @@ WI.TimelineManager = class TimelineManager extends WI.Object
     {
         super();
 
+        this._enabled = false;
+
         WI.Frame.addEventListener(WI.Frame.Event.ProvisionalLoadStarted, this._provisionalLoadStarted, this);
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
 
@@ -61,11 +63,30 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         this.reset();
     }
 
+    // Agent
+
+    get domains() { return ["Timeline"]; }
+
+    activateExtraDomain(domain)
+    {
+        console.assert(domain === "Timeline");
+
+        for (let target of WI.targets)
+            this.initializeTarget(target);
+    }
+
     // Target
 
     initializeTarget(target)
     {
+        if (!this._enabled)
+            return;
+
         if (target.TimelineAgent) {
+            // COMPATIBILITY (iOS 13): Timeline.enable did not exist yet.
+            if (target.TimelineAgent.enable)
+                target.TimelineAgent.enable();
+
             this._updateAutoCaptureInstruments([target]);
 
             // COMPATIBILITY (iOS 9): Timeline.setAutoCaptureEnabled did not exist.
@@ -154,7 +175,7 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     reset()
     {
-        if (this.isCapturing())
+        if (this._capturingState === TimelineManager.CapturingState.Starting || this._capturingState === TimelineManager.CapturingState.Active)
             this.stopCapturing();
 
         this._recordings = [];
@@ -183,6 +204,8 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     set autoCaptureOnPageLoad(autoCapture)
     {
+        console.assert(this._enabled);
+
         autoCapture = !!autoCapture;
 
         if (this._autoCaptureOnPageLoad === autoCapture)
@@ -237,8 +260,39 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         }
     }
 
+    enable()
+    {
+        if (this._enabled)
+            return;
+
+        this._enabled = true;
+
+        this.reset();
+
+        for (let target of WI.targets)
+            this.initializeTarget(target);
+    }
+
+    disable()
+    {
+        if (!this._enabled)
+            return;
+
+        this.reset();
+
+        for (let target of WI.targets) {
+            // COMPATIBILITY (iOS 13): Timeline.disable did not exist yet.
+            if (target.TimelineAgent && target.TimelineAgent.disable)
+                target.TimelineAgent.disable();
+        }
+
+        this._enabled = false;
+    }
+
     startCapturing(shouldCreateRecording)
     {
+        console.assert(this._enabled);
+
         console.assert(this._capturingState === TimelineManager.CapturingState.Stopping || this._capturingState === TimelineManager.CapturingState.Inactive, "TimelineManager is already capturing.");
         if (this._capturingState !== TimelineManager.CapturingState.Stopping && this._capturingState !== TimelineManager.CapturingState.Inactive)
             return;
@@ -254,6 +308,8 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     stopCapturing()
     {
+        console.assert(this._enabled);
+
         console.assert(this._capturingState === TimelineManager.CapturingState.Starting || this._capturingState === TimelineManager.CapturingState.Active, "TimelineManager is not capturing.");
         if (this._capturingState !== TimelineManager.CapturingState.Starting && this._capturingState !== TimelineManager.CapturingState.Active)
             return;
@@ -276,7 +332,7 @@ WI.TimelineManager = class TimelineManager extends WI.Object
             return;
         }
 
-        if (!json.recording  || typeof json.recording !== "object" || !json.overview || typeof json.overview !== "object" || typeof json.version !== "number") {
+        if (!json.recording || typeof json.recording !== "object" || !json.overview || typeof json.overview !== "object" || typeof json.version !== "number") {
             WI.TimelineManager.synthesizeImportError(WI.UIString("invalid JSON"));
             return;
         }
@@ -295,7 +351,7 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
         this.dispatchEventToListeners(WI.TimelineManager.Event.RecordingCreated, {recording: newRecording});
 
-        if (this.isCapturing())
+        if (this._capturingState === TimelineManager.CapturingState.Starting || this._capturingState === TimelineManager.CapturingState.Active)
             this.stopCapturing();
 
         let oldRecording = this._activeRecording;
@@ -323,12 +379,20 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         return this._scriptProfilerRecords !== null;
     }
 
-    // Protected
+    // ConsoleObserver
+
+    heapSnapshotAdded(timestamp, snapshot)
+    {
+        if (!this._enabled)
+            return;
+
+        this._addRecord(new WI.HeapAllocationsTimelineRecord(timestamp, snapshot));
+    }
+
+    // TimelineObserver
 
     capturingStarted(startTime)
     {
-        // Called from WI.TimelineObserver.
-
         // The frontend didn't start capturing, so this was a programmatic start.
         if (this._capturingState === TimelineManager.CapturingState.Inactive) {
             this._initiatedByBackendStart = true;
@@ -374,8 +438,6 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     capturingStopped(endTime)
     {
-        // Called from WI.TimelineObserver.
-
         // The frontend didn't stop capturing, so this was a programmatic stop.
         if (this._capturingState === TimelineManager.CapturingState.Active) {
             this._initiatedByBackendStop = true;
@@ -417,11 +479,11 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     autoCaptureStarted()
     {
-        // Called from WI.TimelineObserver.
+        console.assert(this._enabled);
 
         let waitingForCapturingStartedEvent = this._capturingState === TimelineManager.CapturingState.Starting;
 
-        if (this.isCapturing())
+        if (this._capturingState === TimelineManager.CapturingState.Starting || this._capturingState === TimelineManager.CapturingState.Active)
             this.stopCapturing();
 
         this._initiatedByBackendStart = true;
@@ -439,7 +501,8 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     eventRecorded(recordPayload)
     {
-        // Called from WI.TimelineObserver.
+        if (!this._enabled)
+            return;
 
         console.assert(this.isCapturing());
         if (!this.isCapturing())
@@ -482,16 +545,19 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         }
     }
 
+    // PageObserver
+
     pageDOMContentLoadedEventFired(timestamp)
     {
-        // Called from WI.PageObserver.
+        if (!this._enabled)
+            return;
 
         console.assert(this._activeRecording);
-        console.assert(isNaN(WI.networkManager.mainFrame.domContentReadyEventTimestamp));
 
         let computedTimestamp = this._activeRecording.computeElapsedTime(timestamp);
 
-        WI.networkManager.mainFrame.markDOMContentReadyEvent(computedTimestamp);
+        if (WI.networkManager.mainFrame)
+            WI.networkManager.mainFrame.markDOMContentReadyEvent(computedTimestamp);
 
         let eventMarker = new WI.TimelineMarker(computedTimestamp, WI.TimelineMarker.Type.DOMContentEvent);
         this._activeRecording.addEventMarker(eventMarker);
@@ -499,14 +565,15 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     pageLoadEventFired(timestamp)
     {
-        // Called from WI.PageObserver.
+        if (!this._enabled)
+            return;
 
         console.assert(this._activeRecording);
-        console.assert(isNaN(WI.networkManager.mainFrame.loadEventTimestamp));
 
         let computedTimestamp = this._activeRecording.computeElapsedTime(timestamp);
 
-        WI.networkManager.mainFrame.markLoadEvent(computedTimestamp);
+        if (WI.networkManager.mainFrame)
+            WI.networkManager.mainFrame.markLoadEvent(computedTimestamp);
 
         let eventMarker = new WI.TimelineMarker(computedTimestamp, WI.TimelineMarker.Type.LoadEvent);
         this._activeRecording.addEventMarker(eventMarker);
@@ -514,16 +581,17 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         this._stopAutoRecordingSoon();
     }
 
+    // CPUProfilerObserver
+
     cpuProfilerTrackingStarted(timestamp)
     {
-        // Called from WI.CPUProfilerObserver.
-
         this.capturingStarted(timestamp);
     }
 
     cpuProfilerTrackingUpdated(event)
     {
-        // Called from WI.CPUProfilerObserver.
+        if (!this._enabled)
+            return;
 
         console.assert(this.isCapturing());
         if (!this.isCapturing())
@@ -534,21 +602,116 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     cpuProfilerTrackingCompleted(timestamp)
     {
-        // Called from WI.CPUProfilerObserver.
+        this.capturingStopped(timestamp);
+    }
+
+    // ScriptProfilerObserver
+
+    scriptProfilerTrackingStarted(timestamp)
+    {
+        this._scriptProfilerRecords = [];
+
+        this.capturingStarted(timestamp);
+    }
+
+    scriptProfilerTrackingUpdated(event)
+    {
+        if (!this._enabled)
+            return;
+
+        let {startTime, endTime, type} = event;
+        let scriptRecordType = this._scriptProfilerTypeToScriptTimelineRecordType(type);
+        let record = new WI.ScriptTimelineRecord(scriptRecordType, startTime, endTime, null, null, null, null);
+        record.__scriptProfilerType = type;
+        this._scriptProfilerRecords.push(record);
+
+        // "Other" events, generated by Web content, will have wrapping Timeline records
+        // and need to be merged. Non-Other events, generated purely by the JavaScript
+        // engine or outside of the page via APIs, will not have wrapping Timeline
+        // records, so these records can just be added right now.
+        if (type !== ScriptProfilerAgent.EventType.Other)
+            this._addRecord(record);
+    }
+
+    scriptProfilerTrackingCompleted(timestamp, samples)
+    {
+        if (this._enabled) {
+            console.assert(!this._webTimelineScriptRecordsExpectingScriptProfilerEvents || this._scriptProfilerRecords.length >= this._webTimelineScriptRecordsExpectingScriptProfilerEvents.length);
+
+            if (samples) {
+                let {stackTraces} = samples;
+                let topDownCallingContextTree = this._activeRecording.topDownCallingContextTree;
+
+                // Calculate a per-sample duration.
+                let timestampIndex = 0;
+                let timestampCount = stackTraces.length;
+                let sampleDurations = new Array(timestampCount);
+                let sampleDurationIndex = 0;
+                const defaultDuration = 1 / 1000; // 1ms.
+                for (let i = 0; i < this._scriptProfilerRecords.length; ++i) {
+                    let record = this._scriptProfilerRecords[i];
+
+                    // Use a default duration for timestamps recorded outside of ScriptProfiler events.
+                    while (timestampIndex < timestampCount && stackTraces[timestampIndex].timestamp < record.startTime) {
+                        sampleDurations[sampleDurationIndex++] = defaultDuration;
+                        timestampIndex++;
+                    }
+
+                    // Average the duration per sample across all samples during the record.
+                    let samplesInRecord = 0;
+                    while (timestampIndex < timestampCount && stackTraces[timestampIndex].timestamp < record.endTime) {
+                        timestampIndex++;
+                        samplesInRecord++;
+                    }
+                    if (samplesInRecord) {
+                        let averageDuration = (record.endTime - record.startTime) / samplesInRecord;
+                        sampleDurations.fill(averageDuration, sampleDurationIndex, sampleDurationIndex + samplesInRecord);
+                        sampleDurationIndex += samplesInRecord;
+                    }
+                }
+
+                // Use a default duration for timestamps recorded outside of ScriptProfiler events.
+                if (timestampIndex < timestampCount)
+                    sampleDurations.fill(defaultDuration, sampleDurationIndex);
+
+                this._activeRecording.initializeCallingContextTrees(stackTraces, sampleDurations);
+
+                // FIXME: This transformation should not be needed after introducing ProfileView.
+                // Once we eliminate ProfileNodeTreeElements and ProfileNodeDataGridNodes.
+                // <https://webkit.org/b/154973> Web Inspector: Timelines UI redesign: Remove TimelineSidebarPanel
+                for (let i = 0; i < this._scriptProfilerRecords.length; ++i) {
+                    let record = this._scriptProfilerRecords[i];
+                    record.profilePayload = topDownCallingContextTree.toCPUProfilePayload(record.startTime, record.endTime);
+                }
+            }
+
+            // Associate the ScriptProfiler created records with Web Timeline records.
+            // Filter out the already added ScriptProfiler events which should not have been wrapped.
+            if (WI.sharedApp.debuggableType !== WI.DebuggableType.JavaScript) {
+                this._scriptProfilerRecords = this._scriptProfilerRecords.filter((x) => x.__scriptProfilerType === ScriptProfilerAgent.EventType.Other);
+                this._mergeScriptProfileRecords();
+            }
+
+            this._scriptProfilerRecords = null;
+
+            let timeline = this._activeRecording.timelineForRecordType(WI.TimelineRecord.Type.Script);
+            timeline.refresh();
+        }
 
         this.capturingStopped(timestamp);
     }
 
+    // MemoryObserver
+
     memoryTrackingStarted(timestamp)
     {
-        // Called from WI.MemoryObserver.
-
         this.capturingStarted(timestamp);
     }
 
     memoryTrackingUpdated(event)
     {
-        // Called from WI.MemoryObserver.
+        if (!this._enabled)
+            return;
 
         console.assert(this.isCapturing());
         if (!this.isCapturing())
@@ -559,34 +722,25 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     memoryTrackingCompleted(timestamp)
     {
-        // Called from WI.MemoryObserver.
-
         this.capturingStopped(timestamp);
     }
 
+    // HeapObserver
+
     heapTrackingStarted(timestamp, snapshot)
     {
-        // Called from WI.HeapObserver.
-
         this.capturingStarted(timestamp);
 
-        this._addRecord(new WI.HeapAllocationsTimelineRecord(timestamp, snapshot));
+        if (this._enabled)
+            this._addRecord(new WI.HeapAllocationsTimelineRecord(timestamp, snapshot));
     }
 
     heapTrackingCompleted(timestamp, snapshot)
     {
-        // Called from WI.HeapObserver.
-
-        this._addRecord(new WI.HeapAllocationsTimelineRecord(timestamp, snapshot));
+        if (this._enabled)
+            this._addRecord(new WI.HeapAllocationsTimelineRecord(timestamp, snapshot));
 
         this.capturingStopped();
-    }
-
-    heapSnapshotAdded(timestamp, snapshot)
-    {
-        // Called from WI.HeapAllocationsInstrument.
-
-        this._addRecord(new WI.HeapAllocationsTimelineRecord(timestamp, snapshot));
     }
 
     // Private
@@ -827,7 +981,7 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         this._recordings.push(newRecording);
         this.dispatchEventToListeners(WI.TimelineManager.Event.RecordingCreated, {recording: newRecording});
 
-        if (this.isCapturing())
+        if (this._capturingState === TimelineManager.CapturingState.Starting || this._capturingState === TimelineManager.CapturingState.Active)
             this.stopCapturing();
 
         var oldRecording = this._activeRecording;
@@ -917,7 +1071,7 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         let oldMainResource = frame.mainResource || null;
         this._isCapturingPageReload = oldMainResource !== null && oldMainResource.url === mainResource.url;
 
-        if (this.isCapturing())
+        if (this._capturingState === TimelineManager.CapturingState.Starting || this._capturingState === TimelineManager.CapturingState.Active)
             this.stopCapturing();
 
         this._mainResourceForAutoCapturing = mainResource;
@@ -979,11 +1133,17 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     _provisionalLoadStarted(event)
     {
+        if (!this._enabled)
+            return;
+
         this._attemptAutoCapturingForFrame(event.target);
     }
 
     _mainResourceDidChange(event)
     {
+        if (!this._enabled)
+            return;
+
         // Ignore resource events when there isn't a main frame yet. Those events are triggered by
         // loading the cached resources when the inspector opens, and they do not have timing information.
         if (!WI.networkManager.mainFrame)
@@ -1016,6 +1176,9 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     _resourceWasAdded(event)
     {
+        if (!this._enabled)
+            return;
+
         // Ignore resource events when there isn't a main frame yet. Those events are triggered by
         // loading the cached resources when the inspector opens, and they do not have timing information.
         if (!WI.networkManager.mainFrame)
@@ -1026,12 +1189,18 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     _garbageCollected(event)
     {
+        if (!this._enabled)
+            return;
+
         let {collection} = event.data;
         this._addRecord(new WI.ScriptTimelineRecord(WI.ScriptTimelineRecord.EventType.GarbageCollected, collection.startTime, collection.endTime, null, null, collection));
     }
 
     _memoryPressure(event)
     {
+        if (!this._enabled)
+            return;
+
         this._activeRecording.addMemoryPressureEvent(event.data.memoryPressureEvent);
     }
 
@@ -1057,95 +1226,6 @@ WI.TimelineManager = class TimelineManager extends WI.Object
         case ScriptProfilerAgent.EventType.Other:
             return WI.ScriptTimelineRecord.EventType.ScriptEvaluated;
         }
-    }
-
-    scriptProfilerTrackingStarted(timestamp)
-    {
-        this._scriptProfilerRecords = [];
-
-        this.capturingStarted(timestamp);
-    }
-
-    scriptProfilerTrackingUpdated(event)
-    {
-        let {startTime, endTime, type} = event;
-        let scriptRecordType = this._scriptProfilerTypeToScriptTimelineRecordType(type);
-        let record = new WI.ScriptTimelineRecord(scriptRecordType, startTime, endTime, null, null, null, null);
-        record.__scriptProfilerType = type;
-        this._scriptProfilerRecords.push(record);
-
-        // "Other" events, generated by Web content, will have wrapping Timeline records
-        // and need to be merged. Non-Other events, generated purely by the JavaScript
-        // engine or outside of the page via APIs, will not have wrapping Timeline
-        // records, so these records can just be added right now.
-        if (type !== ScriptProfilerAgent.EventType.Other)
-            this._addRecord(record);
-    }
-
-    scriptProfilerTrackingCompleted(timestamp, samples)
-    {
-        console.assert(!this._webTimelineScriptRecordsExpectingScriptProfilerEvents || this._scriptProfilerRecords.length >= this._webTimelineScriptRecordsExpectingScriptProfilerEvents.length);
-
-        if (samples) {
-            let {stackTraces} = samples;
-            let topDownCallingContextTree = this._activeRecording.topDownCallingContextTree;
-
-            // Calculate a per-sample duration.
-            let timestampIndex = 0;
-            let timestampCount = stackTraces.length;
-            let sampleDurations = new Array(timestampCount);
-            let sampleDurationIndex = 0;
-            const defaultDuration = 1 / 1000; // 1ms.
-            for (let i = 0; i < this._scriptProfilerRecords.length; ++i) {
-                let record = this._scriptProfilerRecords[i];
-
-                // Use a default duration for timestamps recorded outside of ScriptProfiler events.
-                while (timestampIndex < timestampCount && stackTraces[timestampIndex].timestamp < record.startTime) {
-                    sampleDurations[sampleDurationIndex++] = defaultDuration;
-                    timestampIndex++;
-                }
-
-                // Average the duration per sample across all samples during the record.
-                let samplesInRecord = 0;
-                while (timestampIndex < timestampCount && stackTraces[timestampIndex].timestamp < record.endTime) {
-                    timestampIndex++;
-                    samplesInRecord++;
-                }
-                if (samplesInRecord) {
-                    let averageDuration = (record.endTime - record.startTime) / samplesInRecord;
-                    sampleDurations.fill(averageDuration, sampleDurationIndex, sampleDurationIndex + samplesInRecord);
-                    sampleDurationIndex += samplesInRecord;
-                }
-            }
-
-            // Use a default duration for timestamps recorded outside of ScriptProfiler events.
-            if (timestampIndex < timestampCount)
-                sampleDurations.fill(defaultDuration, sampleDurationIndex);
-
-            this._activeRecording.initializeCallingContextTrees(stackTraces, sampleDurations);
-
-            // FIXME: This transformation should not be needed after introducing ProfileView.
-            // Once we eliminate ProfileNodeTreeElements and ProfileNodeDataGridNodes.
-            // <https://webkit.org/b/154973> Web Inspector: Timelines UI redesign: Remove TimelineSidebarPanel
-            for (let i = 0; i < this._scriptProfilerRecords.length; ++i) {
-                let record = this._scriptProfilerRecords[i];
-                record.profilePayload = topDownCallingContextTree.toCPUProfilePayload(record.startTime, record.endTime);
-            }
-        }
-
-        // Associate the ScriptProfiler created records with Web Timeline records.
-        // Filter out the already added ScriptProfiler events which should not have been wrapped.
-        if (WI.sharedApp.debuggableType !== WI.DebuggableType.JavaScript) {
-            this._scriptProfilerRecords = this._scriptProfilerRecords.filter((x) => x.__scriptProfilerType === ScriptProfilerAgent.EventType.Other);
-            this._mergeScriptProfileRecords();
-        }
-
-        this._scriptProfilerRecords = null;
-
-        let timeline = this._activeRecording.timelineForRecordType(WI.TimelineRecord.Type.Script);
-        timeline.refresh();
-
-        this.capturingStopped(timestamp);
     }
 
     _mergeScriptProfileRecords()
@@ -1206,6 +1286,8 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     _updateAutoCaptureInstruments(targets)
     {
+        console.assert(this._enabled);
+
         let enabledTimelineTypes = this.enabledTimelineTypes;
 
         for (let target of targets) {
@@ -1244,6 +1326,9 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     _handleDOMNodeDidFireEvent(event)
     {
+        if (!this._enabled)
+            return;
+
         let {domEvent} = event.data;
 
         this._addRecord(new WI.MediaTimelineRecord(WI.MediaTimelineRecord.EventType.DOMEvent, domEvent.timestamp, {
@@ -1254,6 +1339,9 @@ WI.TimelineManager = class TimelineManager extends WI.Object
 
     _handleDOMNodePowerEfficientPlaybackStateChanged(event)
     {
+        if (!this._enabled)
+            return;
+
         let {timestamp, isPowerEfficient} = event.data;
 
         this._addRecord(new WI.MediaTimelineRecord(WI.MediaTimelineRecord.EventType.PowerEfficientPlaybackStateChanged, timestamp, {

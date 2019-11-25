@@ -31,6 +31,7 @@
 #include "B3Compilation.h"
 #include "B3OpaqueByproducts.h"
 #include "CCallHelpers.h"
+#include "WasmCompilationMode.h"
 #include "WasmEmbedder.h"
 #include "WasmMemory.h"
 #include "WasmModuleInformation.h"
@@ -42,11 +43,6 @@ extern "C" void dumpProcedure(void*);
 namespace JSC { namespace Wasm {
 
 class MemoryInformation;
-
-enum class CompilationMode {
-    BBQMode,
-    OMGMode,
-};
 
 struct CompilationContext {
     std::unique_ptr<CCallHelpers> embedderEntrypointJIT;

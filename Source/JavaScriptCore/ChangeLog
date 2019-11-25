@@ -1,3 +1,2486 @@
+2019-08-16  Justin Michaud  <justin_michaud@apple.com>
+
+        Fix InBounds speculation of typed array PutByVal and add extra step to integer range optimization to search for equality relationships on the RHS value
+        https://bugs.webkit.org/show_bug.cgi?id=200782
+
+        Reviewed by Saam Barati.
+
+        Speculate that putByVals on typed arrays are in bounds initially, and add an extra rule to integer range optimization to 
+        remove CheckInBounds when we are looping over two arrays. We do this by fixing a bug in the llint slow paths that marked 
+        typed array accesses as out of bounds, and we also add an extra step to integer range optimization to search for equality
+        relationships on the RHS value.
+
+        Microbenchmarks give a 40% improvement on the memcpy loop test, and neutral on the out-of-bounds typed array test.
+
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::putByVal):
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * runtime/JSGenericTypedArrayView.h:
+        * runtime/JSObject.h:
+        (JSC::JSObject::putByIndexInline):
+        (JSC::JSObject::canGetIndexQuickly const):
+        (JSC::JSObject::getIndexQuickly const):
+        (JSC::JSObject::tryGetIndexQuickly const):
+        (JSC::JSObject::canSetIndexQuickly):
+        (JSC::JSObject::setIndexQuickly):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::canGetIndexQuicklyForTypedArray const):
+        (JSC::JSObject::canSetIndexQuicklyForTypedArray const):
+        (JSC::JSObject::getIndexQuicklyForTypedArray const):
+        (JSC::JSObject::setIndexQuicklyForTypedArray):
+
+2019-08-16  Mark Lam  <mark.lam@apple.com>
+
+        [Re-land] ProxyObject should not be allow to access its target's private properties.
+        https://bugs.webkit.org/show_bug.cgi?id=200739
+        <rdar://problem/53972768>
+
+        Reviewed by Yusuke Suzuki.
+
+        Re-landing this after r200829 which resolves the test262 failure uncovered by this patch.
+
+        * runtime/ProxyObject.cpp:
+        (JSC::performProxyGet):
+        (JSC::ProxyObject::performInternalMethodGetOwnProperty):
+        (JSC::ProxyObject::performHasProperty):
+        (JSC::ProxyObject::performPut):
+        (JSC::ProxyObject::performDelete):
+        (JSC::ProxyObject::performDefineOwnProperty):
+
+2019-08-16  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Promise.prototype.finally should accept non-promise objects
+        https://bugs.webkit.org/show_bug.cgi?id=200829
+
+        Reviewed by Mark Lam.
+
+        According to the Promise.prototype.finally spec step 2[1], we should check @isObject instead of @isPromise,
+        since Promise.prototype.finally should accept thenable objects that are defined by user libraries (like, bluebird for example).
+        This patch changes this check to the specified one.
+
+        [1]: https://tc39.es/proposal-promise-finally/
+
+        * builtins/PromisePrototype.js:
+        (finally):
+
+2019-08-16  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Promise constructor should check argument before [[Construct]]
+        https://bugs.webkit.org/show_bug.cgi?id=198976
+
+        Reviewed by Ross Kirsling.
+
+        Check if argument is a function before invoking `createSubclassStructure`.
+        (step 2 of https://tc39.es/ecma262/#sec-promise-executor)
+
+        * builtins/PromiseOperations.js:
+        (globalPrivate.initializePromise): Remove typeof check.
+        * runtime/JSPromiseConstructor.cpp:
+        (JSC::constructPromise): Add isFunction check.
+
+2019-08-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r248709.
+
+        Caused test/built-ins/Promise/prototype/finally/this-value-
+        non-promise.js to fail on test262 bot
+
+        Reverted changeset:
+
+        "ProxyObject should not be allow to access its target's
+        private properties."
+        https://bugs.webkit.org/show_bug.cgi?id=200739
+        https://trac.webkit.org/changeset/248709
+
+2019-08-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF] Add makeUnique<T>, which ensures T is fast-allocated, WTF_MAKE_FAST_ALLOCATED annotation part
+        https://bugs.webkit.org/show_bug.cgi?id=200620
+
+        Reviewed by Geoffrey Garen.
+
+        Three patches including this one were originally one patch. I split it into three pieces to make roll-out easy.
+        This part, we annotate classes / structs with WTF_MAKE_FAST_ALLOCATED and WTF_MAKE_STRUCT_FAST_ALLOCATED if
+        they are allocated from std::make_unique. The second patch will switch `std::make_unique` to `WTF::makeUnique` and
+        the third patch will insert a static_assert that makeUnique-allocated class T is FastMalloc-ed.
+        One insight from this patch is that we tend to forget adding WTF_MAKE_STRUCT_FAST_ALLOCATED if it is just a data struct.
+
+        * debugger/Debugger.h:
+        * inspector/scripts/codegen/objc_generator_templates.py:
+        * inspector/scripts/tests/all/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/domain-availability.json-result:
+        * inspector/scripts/tests/generic/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/generic/expected/enum-values.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/generic/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/generic/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/generic/expected/should-strip-comments.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-requiring-runtime-casts.json-result:
+        * inspector/scripts/tests/generic/expected/type-with-open-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/version.json-result:
+        * inspector/scripts/tests/ios/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/mac/expected/definitions-with-mac-platform.json-result:
+
+2019-08-15  Brent Fulgham  <bfulgham@apple.com>
+
+        [FTW] Enable CoreFoundation use if building for Apple target
+        https://bugs.webkit.org/show_bug.cgi?id=200799
+
+        Reviewed by Alex Christensen.
+
+        * PlatformFTW.cmake: Add missing files.
+
+2019-08-15  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        DateConversion::formatDateTime incorrectly formats negative years
+        https://bugs.webkit.org/show_bug.cgi?id=199964
+
+        Reviewed by Ross Kirsling.
+
+        Currently, year is always padded to max length of 4, including the minus sign "-".
+        With this change, only absolute value of year is padded to max length of 4 and
+        preceded by minus sign "-" if the year is negative.
+        (steps 6-10 of https://tc39.es/ecma262/#sec-datestring)
+
+        * runtime/DateConversion.cpp:
+        (JSC::appendNumber):
+
+2019-08-15  Mark Lam  <mark.lam@apple.com>
+
+        More missing exception checks in String.prototype.
+        https://bugs.webkit.org/show_bug.cgi?id=200762
+        <rdar://problem/54333896>
+
+        Reviewed by Michael Saboff.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::replaceUsingRegExpSearch):
+        (JSC::operationStringProtoFuncReplaceRegExpString):
+        (JSC::stringProtoFuncLastIndexOf):
+        (JSC::stringProtoFuncToLowerCase):
+        (JSC::stringProtoFuncToUpperCase):
+
+2019-08-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        for-await-of has bad error message if used in non-async function
+        https://bugs.webkit.org/show_bug.cgi?id=200758
+
+        Reviewed by Ross Kirsling.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseForStatement):
+        Improve error message.
+
+2019-08-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Air does not appropriately propagate ConstFloatValue to stackmap
+        https://bugs.webkit.org/show_bug.cgi?id=200759
+
+        Reviewed by Saam Barati.
+
+        In B3MoveConstant phase, we convert ConstFloatValue and ConstDoubleValue to memory access to the table
+        to avoid large immediates *except for* stackmap argument case. This is because materializing constant doubles
+        and floats as memory-access before passing it to stackmap is wasteful: the stackmap may not use it actually, or
+        stackmap can do better job if it knows the parameter is constant.
+
+        Based on the above operation, B3LowerToAir phase strongly assumes that all ConstFloatValue and ConstDoubleValue
+        are removed except for the case used for parameter of stackmap. With r192377, B3LowerToAir catch this case, and
+        propagate constant double value as ValueRep in stackmap. While B3LowerToAir does this correctly for ConstDoubleValue,
+        we missed adding this support for ConstFloatValue.
+
+        This patch adds r192377's support for ConstFloatValue to propagate ConstFloatValue correctly to the stackmap.
+        This issue starts appearing since Wasm BBQ-B3 OSR starts putting ConstFloatValue to OSR-tier-up patchpoint.
+
+        * b3/B3LowerToAir.cpp:
+        * b3/B3ValueKey.h:
+        (JSC::B3::ValueKey::ValueKey):
+        (JSC::B3::ValueKey::floatValue const):
+        * b3/B3ValueRep.h:
+        (JSC::B3::ValueRep::constantFloat):
+        (JSC::B3::ValueRep::floatValue const):
+        * b3/testb3.h:
+        * b3/testb3_1.cpp:
+        (run):
+        * b3/testb3_5.cpp:
+        (testPatchpointManyWarmAnyImms):
+        (testPatchpointManyColdAnyImms):
+        (testPatchpointManyImms): Deleted.
+
+2019-08-14  Keith Rollin  <krollin@apple.com>
+
+        Remove support for macOS < 10.13
+        https://bugs.webkit.org/show_bug.cgi?id=200694
+        <rdar://problem/54278851>
+
+        Reviewed by Youenn Fablet.
+
+        Update conditionals that reference __MAC_OS_X_VERSION_MIN_REQUIRED and
+        __MAC_OS_X_VERSION_MAX_ALLOWED, assuming that they both have values >=
+        101300. This means that expressions like
+        "__MAC_OS_X_VERSION_MIN_REQUIRED < 101300" are always False and
+        "__MAC_OS_X_VERSION_MIN_REQUIRED >= 101300" are always True.
+
+        * API/WebKitAvailability.h:
+
+2019-08-14  Mark Lam  <mark.lam@apple.com>
+
+        ProxyObject should not be allow to access its target's private properties.
+        https://bugs.webkit.org/show_bug.cgi?id=200739
+        <rdar://problem/53972768>
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/ProxyObject.cpp:
+        (JSC::performProxyGet):
+        (JSC::ProxyObject::performInternalMethodGetOwnProperty):
+        (JSC::ProxyObject::performHasProperty):
+        (JSC::ProxyObject::performPut):
+        (JSC::ProxyObject::performDelete):
+        (JSC::ProxyObject::performDefineOwnProperty):
+
+2019-08-14  Mark Lam  <mark.lam@apple.com>
+
+        Missing exception check in string compare.
+        https://bugs.webkit.org/show_bug.cgi?id=200743
+        <rdar://problem/53975356>
+
+        Reviewed by Michael Saboff.
+
+        * runtime/JSString.cpp:
+        (JSC::JSString::equalSlowCase const):
+
+2019-08-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, build fix for MacroAssemblerARM64E change
+        https://bugs.webkit.org/show_bug.cgi?id=200703
+
+        * assembler/MacroAssemblerARM64E.h:
+        (JSC::MacroAssemblerARM64E::farJump):
+
+2019-08-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Less contended MetaAllocator
+        https://bugs.webkit.org/show_bug.cgi?id=200278
+
+        Reviewed by Mark Lam.
+
+        The profiler result of JetStream2/bomb-workers shows that we are having contention under MetaAllocator::currentStatistics.
+        This function is called in ExecutableAllocator::memoryPressureMultiplier, and it is called from ExecutableCounter's threshold
+        calculation. But MetaAllocator::currentStatistics takes a global lock inside MetaAllocator and causes contention. However,
+        we do not need to have a lock actually: clients of MetaAllocator::currentStatistics typically use bytesReserved and bytesAllocated
+        information. However, since our executable allocator is fixed-sized, bytesReserved is always the fixed size. So just reading bytesAllocated
+        racily is enough.
+
+        This patch attempts to reduce the contention by the following two things.
+
+        1. Read bytesAllocated racily instead of calling MetaAllocator::currentStatistics. Then ExecutableCounter does not need to take a lock.
+        2. page lifetime management APIs of MetaAllocator should take a second `count` parameter to batch the system calls.
+
+        * jit/ExecutableAllocator.cpp:
+        (JSC::ExecutableAllocator::underMemoryPressure):
+        (JSC::ExecutableAllocator::memoryPressureMultiplier):
+        (JSC::ExecutableAllocator::allocate):
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator): Deleted.
+        (JSC::FixedVMPoolExecutableAllocator::memoryStart): Deleted.
+        (JSC::FixedVMPoolExecutableAllocator::memoryEnd): Deleted.
+        (JSC::FixedVMPoolExecutableAllocator::isJITPC): Deleted.
+        (JSC::FixedVMPoolExecutableAllocator::initializeSeparatedWXHeaps): Deleted.
+        (JSC::FixedVMPoolExecutableAllocator::jitWriteThunkGenerator): Deleted.
+        (JSC::FixedVMPoolExecutableAllocator::genericWriteToJITRegion): Deleted.
+
+2019-08-14  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Make PAC jump and return more explicit
+        https://bugs.webkit.org/show_bug.cgi?id=200703
+
+        Reviewed by Mark Lam.
+
+        This patch refactors our macro assembler, mainly related to PAC.
+
+        1. Make far-jump explicit by renaming `jump` to `farJump`.
+        2. Remove unused makeTailRecursiveCall and tailRecursiveCall.
+        3. Do not make `ARM64EAssembler::ret` as `retab`. MacroAssemblerARM64E should call `retab` explicitly instead.
+
+        * assembler/ARM64EAssembler.h:
+        (JSC::ARM64EAssembler::ret): Deleted.
+        * assembler/MacroAssembler.h:
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::farJump):
+        (JSC::MacroAssemblerARM64::makeTailRecursiveCall): Deleted.
+        (JSC::MacroAssemblerARM64::tailRecursiveCall): Deleted.
+        * assembler/MacroAssemblerARM64E.h:
+        (JSC::MacroAssemblerARM64E::farJump):
+        (JSC::MacroAssemblerARM64E::ret):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::farJump):
+        (JSC::MacroAssemblerARMv7::relativeTableJump):
+        (JSC::MacroAssemblerARMv7::tailRecursiveCall): Deleted.
+        (JSC::MacroAssemblerARMv7::makeTailRecursiveCall): Deleted.
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::farJump):
+        (JSC::MacroAssemblerMIPS::tailRecursiveCall): Deleted.
+        (JSC::MacroAssemblerMIPS::makeTailRecursiveCall): Deleted.
+        * assembler/MacroAssemblerX86.h:
+        (JSC::MacroAssemblerX86::farJump):
+        (JSC::MacroAssemblerX86::jump): Deleted.
+        (JSC::MacroAssemblerX86::tailRecursiveCall): Deleted.
+        (JSC::MacroAssemblerX86::makeTailRecursiveCall): Deleted.
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::farJump):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::farJump):
+        (JSC::MacroAssemblerX86_64::jump): Deleted.
+        (JSC::MacroAssemblerX86_64::tailRecursiveCall): Deleted.
+        (JSC::MacroAssemblerX86_64::makeTailRecursiveCall): Deleted.
+        * b3/B3LowerMacros.cpp:
+        * b3/testb3_6.cpp:
+        (testInterpreter):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::adjustAndJumpToTarget):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitSwitchIntJump):
+        (JSC::DFG::SpeculativeJIT::emitSwitchImm):
+        (JSC::DFG::SpeculativeJIT::emitSwitchStringOnString):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrExitGenerationThunkGenerator):
+        (JSC::DFG::osrEntryThunkGenerator):
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::jumpToExceptionHandler):
+        * jit/JIT.cpp:
+        (JSC::JIT::emitEnterOptimizationCheck):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_catch):
+        (JSC::JIT::emit_op_switch_imm):
+        (JSC::JIT::emit_op_switch_char):
+        (JSC::JIT::emit_op_switch_string):
+        (JSC::JIT::emitSlow_op_loop_hint):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_catch):
+        (JSC::JIT::emit_op_switch_imm):
+        (JSC::JIT::emit_op_switch_char):
+        (JSC::JIT::emit_op_switch_string):
+        * jit/ThunkGenerators.cpp:
+        (JSC::slowPathFor):
+        (JSC::virtualThunkFor):
+        * llint/LLIntThunks.cpp:
+        (JSC::LLInt::generateThunkWithJumpTo):
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::wasmToWasm):
+        * wasm/WasmThunks.cpp:
+        (JSC::Wasm::throwExceptionFromWasmThunkGenerator):
+        * wasm/js/WasmToJS.cpp:
+        (JSC::Wasm::emitThrowWasmToJSException):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::loadFromFrameAndJump):
+
+2019-08-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove bad semicolon in generation of ObjC methods
+        https://bugs.webkit.org/show_bug.cgi?id=200655
+
+        Reviewed by Devin Rousso.
+
+        * inspector/scripts/codegen/generate_objc_frontend_dispatcher_implementation.py:
+        (ObjCFrontendDispatcherImplementationGenerator._generate_event_dispatcher_implementations):
+        Do not include a semicolon in the method implementation.
+
+        * inspector/scripts/tests/all/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/enum-values.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/mac/expected/definitions-with-mac-platform.json-result:
+        Updated results.
+
+2019-08-13  Saam Barati  <sbarati@apple.com>
+
+        Add a way to opt out of kern TCSM for layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=200649
+        <rdar://problem/51304923>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * assembler/CPU.cpp:
+        (JSC::isKernTCSMAvailable):
+        * runtime/Options.h:
+
+2019-08-13  Sam Weinig  <weinig@apple.com>
+
+        Rename StringBuilder::append(UChar32) to StringBuilder::appendCharacter(UChar32) to avoid accidental change in behavior when replacing append with flexibleAppend
+        https://bugs.webkit.org/show_bug.cgi?id=200675
+
+        Reviewed by Darin Adler.
+
+        * yarr/YarrParser.h:
+        (JSC::Yarr::Parser::tryConsumeGroupName):
+        (JSC::Yarr::Parser::tryConsumeUnicodePropertyExpression):
+        Update for rename from StringBuilder::append(UChar32) to StringBuilder::appendCharacter(UChar32).
+
+2019-08-13  Mark Lam  <mark.lam@apple.com>
+
+        Add phase, block, and node numbers to left margin of DFG graph dumps.
+        https://bugs.webkit.org/show_bug.cgi?id=200693
+
+        Reviewed by Saam Barati.
+
+        When scrolling through the DFG graph dumps, it's easy to get lost as to which phase
+        or block one is looking at, especially if the blocks are long.  This patch adds
+        node index, block number, and phase number on the left margin of the dumps.
+        Here's a sample:
+
+               53:     %Bd:Function                   = 0x1079fd960:[Function, {}, NonArray, Proto:0x1079d8000, Leaf]
+               53:     %Bf:Function                   = 0x1079b0700:[Function, {name:100, prototype:101, length:102, stackTraceLimit:103}, NonArray, Proto:0x1079d8000, Leaf]
+               53:     %Bj:Function                   = 0x1079fd5e0:[Function, {name:100, length:101, toString:102, apply:103, call:104, bind:105, Symbol.hasInstance:106, caller:107, arguments:108, constructor:109}, NonArray, Proto:0x1079c0000, Leaf]
+               53:     %CV:JSGlobalLexicalEnvironment = 0x1079fd6c0:[JSGlobalLexicalEnvironment, {}, NonArray, Leaf]
+
+               53: Phase liveness analysis changed the IR.
+
+               54: Beginning DFG phase OSR availability analysis.
+               54: Before OSR availability analysis:
+
+               54: DFG for foo#DXMNag:[0x1079a4850->0x1079a4130->0x1079c7600, DFGFunctionCall, 204 (NeverInline)]:
+               54:   Fixpoint state: FixpointConverged; Form: SSA; Unification state: GloballyUnified; Ref count state: ExactRefCount
+               54:   Argument formats for entrypoint index: 0 : FlushedJSValue, FlushedCell, FlushedJSValue
+
+             0 54: Block #0 (bc#0): (OSR target)
+             0 54:   Execution count: 1.000000
+             0 54:   Predecessors:
+             0 54:   Successors:
+             0 54:   Dominated by: #0
+             0 54:   Dominates: #0
+             0 54:   Dominance Frontier: 
+             0 54:   Iterated Dominance Frontier: 
+             0 54:   Backwards dominates by: #root #0
+             0 54:   Backwards dominates: #0
+             0 54:   Control equivalent to: #0
+             0 54:   States: StructuresAreWatched
+             0 54:   Live:
+             0 54:   Values 
+          0  0 54:   53:< 1:-> JSConstant(JS|UseAsOther, Other, Null, bc#0, ExitValid)
+          1  0 54:   64:< 2:-> JSConstant(JS|UseAsOther, NonBoolInt32, Int32: 10, bc#0, ExitValid)
+          2  0 54:    3:< 5:-> JSConstant(JS|PureInt, Other, Undefined, bc#0, ExitValid)
+          3  0 54:   32:< 1:-> JSConstant(JS|UseAsOther, Bool, False, bc#0, ExitValid)
+          4  0 54:   19:< 2:-> JSConstant(JS|UseAsOther, OtherObj, Weak:Object: 0x1079d4000 with butterfly 0x0 (Structure %CV:JSGlobalLexicalEnvironment), StructureID: 31423, bc#0, ExitValid)
+
+        The numbers in the left margin before the ':' are node index (i.e. the index of the
+        node in the block, not to be confused with node->index() which is the node ID), block
+        number, and phase number respectively.  Now, we can scroll thru the dumps quickly
+        and tell at a glance when we've scrolled passed the end of a phase, or block.
+        These sets of numbers can also serve as a positional marker that we can search for
+        to return to a node in the dump after scrolling away.
+
+        Currently, these numbers are only added to the DFG part.  The FTL (from lowering
+        to B3 onwards) does not have this feature yet.
+
+        * dfg/DFGDesiredWatchpoints.cpp:
+        (JSC::DFG::DesiredWatchpoints::dumpInContext const):
+        * dfg/DFGDesiredWatchpoints.h:
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dumpCodeOrigin):
+        (JSC::DFG::Graph::dump):
+        (JSC::DFG::Graph::dumpBlockHeader):
+        (JSC::DFG::Prefix::dump const):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Prefix::Prefix):
+        (JSC::DFG::Prefix::clearBlockIndex):
+        (JSC::DFG::Prefix::clearNodeIndex):
+        (JSC::DFG::Prefix::enable):
+        (JSC::DFG::Prefix::disable):
+        (JSC::DFG::Graph::prefix):
+        (JSC::DFG::Graph::nextPhase):
+        * dfg/DFGPhase.cpp:
+        (JSC::DFG::Phase::beginPhase):
+        * dfg/DFGPhase.h:
+        (JSC::DFG::runAndLog):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGValueRepReductionPhase.cpp:
+        (JSC::DFG::ValueRepReductionPhase::convertValueRepsToDouble):
+
+2019-08-13  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r248533): JSC Command - Need to initializeMainThread() before processing config file
+        https://bugs.webkit.org/show_bug.cgi?id=200677
+
+        Reviewed by Mark Lam.
+
+        We need to initialize the main thread before calling processConfigFile() since it uses RefCounted objects
+        which have "is main thread" ASSERTS.
+
+        * jsc.cpp:
+        (jscmain):
+
+2019-08-13  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Styles: show @supports CSS groupings
+        https://bugs.webkit.org/show_bug.cgi?id=200419
+        <rdar://problem/53971948>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/CSS.json:
+        Rename `CSSMedia` to `Grouping` and remove the `sourceLine` value, as it was never populated
+        and wasn't used by Web Inspector.
+
+        * inspector/scripts/codegen/objc_generator_templates.py:
+        * inspector/scripts/codegen/generate_objc_header.py:
+        (ObjCHeaderGenerator.generate_output):
+        Add support for including files at the end of <WebInspector/RWIProtocol.h> for compatibility
+        statements so that changes to the Web Inspector protocol don't break other clients.
+
+2019-08-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Basic CommandLineAPI doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=200659
+        <rdar://problem/54245476>
+
+        Reviewed by Brian Burg.
+
+        * inspector/InjectedScriptSource.js:
+        (BasicCommandLineAPI):
+        Use `method` directly since it already has been setup nicely and doesn't
+        need to be bound. Technically this allows someone to add properties to
+        the CommandLineAPI methods in basic mode (`dir.property = 1`) but that
+        seems harmless.
+
+2019-08-12  Sam Weinig  <weinig@apple.com>
+
+        Replace multiparameter overloads of append() in StringBuilder as a first step toward standardizinging on the flexibleAppend() implementation
+        https://bugs.webkit.org/show_bug.cgi?id=200614
+
+        Reviewed by Darin Adler.
+
+        Renames StringBuilder::append(const LChar*, unsigned), StringBuilder::append(const UChar*, unsigned) and 
+        StringBuilder::append(const char*, unsigned) to StringBuilder::appendCharacters(...).
+        
+        Renames StringBuilder::append(const String& string, unsigned offset, unsigned length) to 
+        StringBuilder::appendSubstring(...).
+
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * runtime/ConfigFile.cpp:
+        (JSC::ConfigFile::parse):
+        * runtime/LiteralParser.cpp:
+        (JSC::LiteralParser<CharType>::Lexer::lexStringSlow):
+        * tools/FunctionOverrides.cpp:
+        (JSC::parseClause):
+        Update for renames.
+
+2019-08-12  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE][GTK] Fix building without unified sources
+        https://bugs.webkit.org/show_bug.cgi?id=200641
+
+        Reviewed by Žan Doberšek.
+
+        * b3/B3PatchpointSpecial.cpp: Add missing inclusion of the B3ProcedureInlines.h header.
+        * heap/SlotVisitor.cpp: Add missing inclusion of the BlockDirectoryInlines.h header.
+
+2019-08-12  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [WTF][JSC] Make JSC and WTF aggressively-fast-malloced
+        https://bugs.webkit.org/show_bug.cgi?id=200611
+
+        Reviewed by Saam Barati.
+
+        This patch aggressively puts many classes into FastMalloc. In JSC side, we grep `std::make_unique` etc. to find potentially system-malloc-allocated classes.
+        After this patch, all the JSC related allocations in JetStream2 cli is done from bmalloc. In the future, it would be nice that we add `WTF::makeUnique<T>` helper
+        function and throw a compile error if `T` is not FastMalloc annotated[1].
+
+        Putting WebKit classes in FastMalloc has many benefits.
+
+        1. Simply, it is fast.
+        2. vmmap can tell the amount of memory used for WebKit.
+        3. bmalloc can isolate WebKit memory allocation from the rest of the world. This is useful since we can know more about what component is corrupting the memory
+           from the memory corruption crash.
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=200620
+
+        * API/ObjCCallbackFunction.mm:
+        * assembler/AbstractMacroAssembler.h:
+        * b3/B3PhiChildren.h:
+        * b3/air/AirAllocateRegistersAndStackAndGenerateCode.h:
+        * b3/air/AirDisassembler.h:
+        * bytecode/AccessCaseSnippetParams.h:
+        * bytecode/CallVariant.h:
+        * bytecode/DeferredSourceDump.h:
+        * bytecode/ExecutionCounter.h:
+        * bytecode/GetByIdStatus.h:
+        * bytecode/GetByIdVariant.h:
+        * bytecode/InByIdStatus.h:
+        * bytecode/InByIdVariant.h:
+        * bytecode/InstanceOfStatus.h:
+        * bytecode/InstanceOfVariant.h:
+        * bytecode/PutByIdStatus.h:
+        * bytecode/PutByIdVariant.h:
+        * bytecode/ValueProfile.h:
+        * dfg/DFGAbstractInterpreter.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::newVariableAccessData):
+        * dfg/DFGFlowIndexing.h:
+        * dfg/DFGFlowMap.h:
+        * dfg/DFGLiveCatchVariablePreservationPhase.cpp:
+        (JSC::DFG::LiveCatchVariablePreservationPhase::newVariableAccessData):
+        * dfg/DFGMaximalFlushInsertionPhase.cpp:
+        (JSC::DFG::MaximalFlushInsertionPhase::newVariableAccessData):
+        * dfg/DFGOSRExit.h:
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGVariableAccessData.h:
+        * disassembler/ARM64/A64DOpcode.h:
+        * inspector/remote/socket/RemoteInspectorMessageParser.h:
+        * inspector/remote/socket/RemoteInspectorSocket.h:
+        * inspector/remote/socket/RemoteInspectorSocketEndpoint.h:
+        * jit/PCToCodeOriginMap.h:
+        * runtime/BasicBlockLocation.h:
+        * runtime/DoublePredictionFuzzerAgent.h:
+        * runtime/JSRunLoopTimer.h:
+        * runtime/PromiseDeferredTimer.h:
+        (JSC::PromiseDeferredTimer::create): PromiseDeferredTimer should be allocated as `Ref<>` instead of `std::unique_ptr` since it is inheriting ThreadSafeRefCounted<>.
+        Holding such a class with std::unique_ptr could lead to potentially dangerous operations (like, someone holds it with Ref<> while it is deleted by std::unique_ptr<>).
+        * runtime/RandomizingFuzzerAgent.h:
+        * runtime/SymbolTable.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * tools/JSDollarVM.cpp:
+        * tools/SigillCrashAnalyzer.cpp:
+        * wasm/WasmFormat.h:
+        * wasm/WasmMemory.cpp:
+        * wasm/WasmSignature.h:
+        * yarr/YarrJIT.h:
+
+2019-08-12  Chris Dumez  <cdumez@apple.com>
+
+        Add threading assertions to RefCounted
+        https://bugs.webkit.org/show_bug.cgi?id=200507
+
+        Reviewed by Ryosuke Niwa.
+
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::Plan):
+        Disable threading assertions for DFG::Plan::m_inlineCallFrames while the JSC team
+        investigates.
+
+2019-08-12  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r248525.
+
+        Revert new threading assertions while I work on fixing the
+        issues they exposed
+
+        Reverted changeset:
+
+        "Add threading assertions to RefCounted"
+        https://bugs.webkit.org/show_bug.cgi?id=200507
+        https://trac.webkit.org/changeset/248525
+
+2019-08-11  Chris Dumez  <cdumez@apple.com>
+
+        Add threading assertions to RefCounted
+        https://bugs.webkit.org/show_bug.cgi?id=200507
+
+        Reviewed by Ryosuke Niwa.
+
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::Plan):
+        Disable threading assertions for DFG::Plan::m_inlineCallFrames while the JSC team
+        investigates.
+
+2019-08-09  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Universal XSS in JSObject::putInlineSlow and JSValue::putToPrimitive
+        https://bugs.webkit.org/show_bug.cgi?id=199864
+
+        Reviewed by Saam Barati.
+
+        Our JSObject::put implementation is not correct in term of the spec. Our [[Put]] implementation is something like this.
+
+            JSObject::put(object):
+                if (can-do-fast-path(object))
+                    return fast-path(object);
+                // slow-path
+                do {
+                    object-put-check-and-setter-calls(object); // (1)
+                    object = object->prototype;
+                } while (is-object(object));
+                return do-put(object);
+
+        Since JSObject::put is registered in the methodTable, the derived classes can override it. Some of classes are adding
+        extra checks to this put.
+
+            Derived::put(object):
+                if (do-extra-check(object))
+                    fail
+                return JSObject::put(object)
+
+        The problem is that Derived::put is only called when the |this| object is the Derived class. When traversing [[Prototype]] in
+        JSObject::put, at (1), we do not perform the extra checks added in Derived::put even if `object` is Derived one. This means that
+        we skip the check.
+
+        Currently, JSObject::put and WebCore checking mechanism are broken. JSObject::put should call getOwnPropertySlot at (1) to
+        perform the additional checks. This behavior is matching against the spec. However, currently, our JSObject::getOwnPropertySlot
+        does not propagate setter information. This is required to cache cacheable [[Put]] at (1) for CustomValue, CustomAccessor, and
+        Accessors. We also need to reconsider how to integrate static property setters to this mechanism. So, basically, this involves
+        large refactoring to renew our JSObject::put and JSObject::getOwnPropertySlot.
+
+        To work-around for now, we add a new TypeInfo flag, HasPutPropertySecurityCheck . And adding this flag to DOM objects
+        that implements the addition checks. We also add doPutPropertySecurityCheck method hook to perform the check in JSObject.
+        When we found this flag at (1), we perform doPutPropertySecurityCheck to properly perform the checks.
+
+        Since our JSObject::put code is old and it does not match against the spec now, we should refactor it largely. This is tracked separately in [1].
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=200562
+
+        * runtime/ClassInfo.h:
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::doPutPropertySecurityCheck):
+        * runtime/JSCell.h:
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putInlineSlow):
+        (JSC::JSObject::getOwnPropertyDescriptor):
+        * runtime/JSObject.h:
+        (JSC::JSObject::doPutPropertySecurityCheck):
+        * runtime/JSTypeInfo.h:
+        (JSC::TypeInfo::hasPutPropertySecurityCheck const):
+
+2019-08-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix internal build
+        https://bugs.webkit.org/show_bug.cgi?id=200519
+
+        Reviewed by Alex Christensen.
+
+        The script 'generate-js-builtins.py' cannot be found when building WebCore. Copy the JavaScriptCore Scripts
+        folder after building JSC.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.proj:
+
+2019-08-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Page: don't allow the domain to be disabled
+        https://bugs.webkit.org/show_bug.cgi?id=200109
+
+        Reviewed by Brian Burg.
+
+        The `PageAgent` is relied on by many of the other agents, so much so that it doesn't make
+        sense to support the ability to "disable" (as well as "enable") the agent.
+
+        When the first frontend connects, we should treat the `PageAgent` as active and available.
+
+        * inspector/protocol/Page.json:
+        Remove `enable`/`disable`.
+
+2019-08-08  Michael Saboff  <msaboff@apple.com>
+
+        OpenSource MemoryFootprint API for JSC command line tool
+        https://bugs.webkit.org/show_bug.cgi?id=200541
+
+        Reviewed by Saam Barati.
+
+        Use wtf/spi/darwin/ProcessMemoryFootprint.h instead of WebKitAdditions/MemoryFootprint.h
+        for process memory stats.
+
+        * jsc.cpp:
+        (MemoryFootprint::MemoryFootprint):
+
+2019-08-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: rename `queryObjects` to `queryInstances` for clarity
+        https://bugs.webkit.org/show_bug.cgi?id=200520
+
+        Reviewed by Brian Burg.
+
+        * inspector/InjectedScriptSource.js:
+        (queryInstances): Added.
+        (queryObjects):
+        * inspector/JSInjectedScriptHost.h:
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::queryInstances): Added.
+        (Inspector::JSInjectedScriptHost::queryObjects): Deleted.
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        (Inspector::JSInjectedScriptHostPrototype::finishCreation):
+        (Inspector::jsInjectedScriptHostPrototypeFunctionQueryInstances): Added.
+        (Inspector::jsInjectedScriptHostPrototypeFunctionQueryObjects): Deleted.
+
+2019-08-08  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSC] Add "jump if (not) undefined or null" bytecode ops
+        https://bugs.webkit.org/show_bug.cgi?id=200480
+
+        Reviewed by Saam Barati.
+
+        This patch introduces fused jumps for op_is_undefined_or_null, which ignores "masquerade as undefined" behavior.
+
+        This lets us fix a edge-case bug in RequireObjectCoercible (where `({ length } = document.all)` was a TypeError)
+        and moreover provides a very useful optimization for the new ?. and ?? operators, which have semantics centered
+        around op_jundefined_or_null and op_jnundefined_or_null, respectively.
+
+        * bytecode/BytecodeList.rb:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/Opcode.h:
+        (JSC::isBranch):
+        * bytecode/PreciseJumpTargetsInlines.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::Label::setLocation):
+        (JSC::BytecodeGenerator::emitJumpIfTrue):
+        (JSC::BytecodeGenerator::emitJumpIfFalse):
+        (JSC::BytecodeGenerator::emitRequireObjectCoercible):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_jundefined_or_null): Added.
+        (JSC::JIT::emit_op_jnundefined_or_null): Added.
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_jundefined_or_null): Added.
+        (JSC::JIT::emit_op_jnundefined_or_null): Added.
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2019-08-07  Devin Rousso  <drousso@apple.com>
+
+        Rebase inspector generator tests.
+
+        Rubber-stamped by Brian Burg.
+
+        * inspector/scripts/tests/all/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/generic/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-requiring-runtime-casts.json-result:
+        * inspector/scripts/tests/generic/expected/type-with-open-parameters.json-result:
+        * inspector/scripts/tests/mac/expected/definitions-with-mac-platform.json-result:
+
+2019-08-07  Caio Lima  <ticaiolima@gmail.com>
+
+        High number of cache miss on localTimeOffset
+        https://bugs.webkit.org/show_bug.cgi?id=200444
+
+        Reviewed by Darin Adler.
+
+        This patch is separating the `LocalTimeOffsetCache` for each
+        `WTF::TimeType` to avoid constant cache miss on pathological cases
+        where `gregorianDateTimeToMS` and `msToGregorianDateTime` are
+        intercaleted with `inputTimeType ==  WTF::LocalTime`. Such case
+        happens during execution of Facebook Messenger
+        (https://www.messenger.com).
+
+        * runtime/JSDateMath.cpp:
+        (JSC::localTimeOffset):
+        (JSC::gregorianDateTimeToMS):
+        * runtime/VM.cpp:
+        (JSC::VM::resetDateCache):
+        * runtime/VM.h:
+        (JSC::LocalTimeOffsetCache::LocalTimeOffsetCache):
+        (JSC::LocalTimeOffsetCache::reset):
+
+2019-08-06  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] sampling-profiler can see garbage Wasm::Callee* pointer which is HashTable deleted / empty values
+        https://bugs.webkit.org/show_bug.cgi?id=200494
+
+        Reviewed by Saam Barati.
+
+        The sampling-profiler can see a garbage pointer which is like Wasm::Callee*. This can be filtered by HashSet<Callee*>.
+        But this is safe only when the garbage pointer is not deleted / empty values. We saw occasional crash with JetStream2/tsf-wasm.
+        This patch filters out these values with `HashSet<Callee*>::isValidValue`.
+
+        * wasm/WasmCalleeRegistry.h:
+        (JSC::Wasm::CalleeRegistry::isValidCallee):
+
+2019-08-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r248289.
+        https://bugs.webkit.org/show_bug.cgi?id=200488
+
+        Broke internal builds (Requested by drousso on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Styles: show @supports CSS groupings"
+        https://bugs.webkit.org/show_bug.cgi?id=200419
+        https://trac.webkit.org/changeset/248289
+
+2019-08-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: allow comments in protocol JSON
+        https://bugs.webkit.org/show_bug.cgi?id=200104
+
+        Reviewed by Brian Burg.
+
+        * inspector/scripts/generate-inspector-protocol-bindings.py:
+        (generate_from_specification.load_specification):
+
+        * inspector/scripts/tests/generic/should-strip-comments.json: Added.
+        * inspector/scripts/tests/generic/expected/should-strip-comments.json-result: Added.
+
+2019-08-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix AppleWin build
+        https://bugs.webkit.org/show_bug.cgi?id=200455
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+        * shell/CMakeLists.txt:
+
+2019-08-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Styles: show @supports CSS groupings
+        https://bugs.webkit.org/show_bug.cgi?id=200419
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/CSS.json:
+        Rename `CSSMedia` to `Grouping` and remove the `sourceLine` value, as it was never populated
+        and wasn't used by Web Inspector.
+
+2019-08-05  Devin Rousso  <drousso@apple.com>
+
+        Can't use $0, $1 etc when inspecting Google Docs pages because the content uses these for function names
+        https://bugs.webkit.org/show_bug.cgi?id=195834
+
+        Reviewed by Joseph Pecoraro.
+
+        Allow the user to alias saved results by providing a different prefix (e.g. "$") from within
+        Web Inspector. When changing the alias, all existing saved results will update to be
+        reference-able from the new alias.
+
+        * inspector/protocol/Runtime.json:
+        Add `setSavedResultAlias` command.
+
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::setSavedResultAlias): Added.
+
+        * inspector/InjectedScriptHost.h:
+        (Inspector::InjectedScriptHost::setSavedResultAlias): Added.
+        (Inspector::InjectedScriptHost::savedResultAlias const): Added.
+        * inspector/JSInjectedScriptHost.h:
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::savedResultAlias const): Added.
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        (Inspector::JSInjectedScriptHostPrototype::finishCreation):
+        (Inspector::jsInjectedScriptHostPrototypeAttributeSavedResultAlias): Added.
+        Store the saved result alias on the `InjectedScriptHost` since it is a shared object among
+        all `InjectedScript`.
+
+        * inspector/InjectedScriptSource.js:
+        (BasicCommandLineAPI):
+
+2019-08-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: disable related agents when the tab is closed
+        https://bugs.webkit.org/show_bug.cgi?id=200118
+
+        Reviewed by Joseph Pecoraro.
+
+        Rework how `enable`/`disable` is used for timeline-related agents so that events are not sent
+        and data isn't kept alive when the Timelines tab isn't enabled.
+
+        * inspector/protocol/Timeline.json:
+        Add `enable`/`disable` commands.
+
+        * inspector/agents/InspectorHeapAgent.cpp:
+        (Inspector::InspectorHeapAgent::willDestroyFrontendAndBackend):
+        (Inspector::InspectorHeapAgent::enable):
+        (Inspector::InspectorHeapAgent::disable):
+
+2019-08-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: rename "Stylesheet" to "Style Sheet" to match spec text
+        https://bugs.webkit.org/show_bug.cgi?id=200422
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Page.json:
+
+2019-08-05  Michael Saboff  <msaboff@apple.com>
+
+        JSC: assertion failure in SpeculativeJIT::compileGetByValOnIntTypedArray
+        https://bugs.webkit.org/show_bug.cgi?id=199997
+
+        Reviewed by Saam Barati.
+
+        No need to ASSERT(node->arrayMode().alreadyChecked(...)) in SpeculativeJIT::compileGetByValOnIntTypedArray()
+        and compileGetByValOnFloatTypedArray() as the abstract interpreter is conservative and can insert a
+        CheckStructureOrEmpty which will fail the ASSERT as it checks for the SpecType of the array
+        and not for SpecEmpty.  If we added a check for the SpecEmpty in the ASSERT, there are cases where
+        it won't be set.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnIntTypedArray):
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnFloatTypedArray):
+
+2019-08-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: DOM: add a special breakpoint for "All Events"
+        https://bugs.webkit.org/show_bug.cgi?id=200285
+
+        Reviewed by Joseph Pecoraro.
+
+        Similar to the existing "All Requests" breakpoint, there should be a way to set a breakpoint
+        that would pause for any DOM event, regardless of the event's name. This is useful for
+        situations where the event name isn't known, or where one simply wants to pause on the next
+        entry to the event loop.
+
+        Along these lines, make the "requestAnimationFrame", "setTimeout", and "setInterval"
+        event breakpoints into special breakpoints that can be added/removed via the create
+        breakpoint context menu. This simplifies the process for setting these breakpoints, and also
+        makes them more discoverable (most people wouldn't consider them to be "events").
+
+        * inspector/protocol/Debugger.json:
+         - Rename the `EventListener` pause reason to `Listener`.
+         - Split the `Timer` pause reason into `Interval` and `Timeout`.
+
+        * inspector/protocol/DOMDebugger.json:
+         - Split the `timer` type into `interval` and `timeout`.
+         - Make `eventName` optional for `addEventBreakpoint`/`removeEventBreakpoint`. When omitted,
+           the corresponding breakpoint that is added/removed is treated as a global breakpoint that
+           applies to all events of that type (e.g. a global `listener` breakpoint would pause for
+           any event that is fired).
+
+2019-08-02  Keith Miller  <keith_miller@apple.com>
+
+        Address comments on r248178
+        https://bugs.webkit.org/show_bug.cgi?id=200411
+
+        Reviewed by Saam Barati.
+
+        * b3/B3Opcode.h:
+        * b3/B3Procedure.h:
+        (JSC::B3::Procedure::tuples const):
+        * b3/B3Validate.cpp:
+        * b3/testb3_1.cpp:
+        (main):
+
+2019-08-02  Mark Lam  <mark.lam@apple.com>
+
+        [ARM64E] Harden the diversity of the DOMJIT::Signature::unsafeFunction pointer.
+        https://bugs.webkit.org/show_bug.cgi?id=200292
+        <rdar://problem/53706881>
+
+        Reviewed by Geoffrey Garen.
+
+        Previously, DOMJIT::Signature::functionWithoutTypeCheck was signed as a C function
+        pointer.  We can do better by signing it like a vtbl function pointer.
+
+        No new tests needed.  The DOMJIT mechanism is covered by existing tests.
+
+        I also manually confirmed that DOMJIT::Signature::functionWithoutTypeCheck is signed
+        exactly as expected by reading its bits out of memory (not letting Clang have a
+        chance to resign it into a C function pointer) and comparing it against manually
+        signed bits with the expected diversifier.
+
+        * assembler/MacroAssemblerCodeRef.h:
+        (JSC::CFunctionPtr::CFunctionPtr):
+        (JSC::CFunctionPtr::get const):
+        (JSC::CFunctionPtr::address const):
+        (JSC::CFunctionPtr::operator bool const):
+        (JSC::CFunctionPtr::operator! const):
+        (JSC::CFunctionPtr::operator== const):
+        (JSC::CFunctionPtr::operator!= const):
+
+        - Introduce a CFunctionPtr abstraction that is used to hold pointers to C functions.
+          It can instantiated in 4 ways:
+
+          1. The default constructor.
+          2. A constructor that takes a nullptr_t.
+
+             These 2 forms will instantiate a CFunctionPtr with a nullptr.
+
+          3. A constructor that takes the name of a function.
+          4. A constructor that takes a function pointer.
+
+              Form 3 already knows that we're initializing with a real function, and
+              that Clang will give it to use signed as a C function pointer.  So, it
+              doesn't do any assertions.  This form is useful for initializing CFunctionPtrs
+              embedded in const data structures.
+
+              Form 4 is an explicit constructor that takes an arbitrary function
+              pointer, but does not know if that pointer is already signed as a C function
+              pointer.  Hence, this form will do a RELEASE_ASSERT that the given function
+              pointer is actually signed as a C function pointer.
+
+          Once instantiated, we are guaranteed that a C function pointer is either null
+          or contains a signed C function pointer.
+
+        * domjit/DOMJITSignature.h:
+        (JSC::DOMJIT::Signature::Signature):
+        - Sign functionWithoutTypeCheck as WTF_VTBL_FUNCPTR_PTRAUTH(DOMJITFunctionPtrTag).
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCallDOM):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallDOM):
+        - Use the new CFunctionPtr to document that the retrieved signature->functionWithoutTypeCheck
+          is signed as a C function pointer.
+
+        * runtime/ClassInfo.h:
+        - Update MethodTable to sign its function pointers using the new WTF_VTBL_FUNCPTR_PTRAUTH_STR
+          to be consistent.  No longer need to roll its own PTRAUTH macro.
+
+        * runtime/JSCPtrTag.h:
+        - Add DOMJITFunctionPtrTag.
+
+        * tools/JSDollarVM.cpp:
+        - Update to work with the new DOMJIT::Signature constructor.
+
+2019-08-02  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Support WebAssembly in SamplingProfiler
+        https://bugs.webkit.org/show_bug.cgi?id=200329
+
+        Reviewed by Saam Barati.
+
+        The sampling profiler support is critical to investigate what is actually time-consuming. This patch adds the sampling profiler support for Wasm functions
+        to list up hot Wasm functions with compilation mode (BBQ or OMG). This allows us to investigate the hot functions in JetStream2 wasm tests.
+
+        In order to retrieve wasm function information from the sampling profiler safely, we need to know whether the given Wasm CalleeBits is valid in the call frame.
+        To achieve this, we start collecting valid Wasm::Callee pointers in a global hash set. Previously, each Wasm::Callee registered its code region to a hash set
+        for wasm fault signal handler to know whether the faulted program-counter is in wasm region. We reuse and change this mechanism. Instead of registering code region,
+        we register Wasm::Callee* to a hash set. The sampling profiler reuses this hash set to determine whether the given bits is a valid Wasm::Callee.
+
+        The sampling profiler retrieves the information safely from valid Wasm::Callee* pointer. It is possible that this Wasm::Callee is about to be dead: ref-count is 0,
+        now in the middle of the destructor of Wasm::Callee. Even in that case, fields of Wasm::Callee are still valid and can be accessed since destroying these fields happens
+        after we unregister Wasm::Callee from the global hash set.
+
+        We retrieve Wasm::IndexOrName and Wasm::CompilationMode. Copying them does not involve any allocations, locking etc. So we can safely copy them while some of threads are suspended.
+
+        This patch also fixes the issue that we never called `unregisterCode` while every Wasm::Calllee registers its code region through `registerCode`.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::FrameWalker::FrameWalker):
+        (JSC::FrameWalker::recordJSFrame):
+        (JSC::CFrameWalker::CFrameWalker):
+        (JSC::SamplingProfiler::takeSample):
+        (JSC::SamplingProfiler::processUnverifiedStackTraces):
+        (JSC::SamplingProfiler::StackFrame::displayName):
+        (JSC::SamplingProfiler::StackFrame::displayNameForJSONTests):
+        (JSC::SamplingProfiler::StackFrame::functionStartLine):
+        (JSC::SamplingProfiler::StackFrame::functionStartColumn):
+        (JSC::SamplingProfiler::StackFrame::sourceID):
+        (JSC::SamplingProfiler::StackFrame::url):
+        (JSC::SamplingProfiler::reportTopBytecodes):
+        (WTF::printInternal):
+        * runtime/SamplingProfiler.h:
+        * tools/JSDollarVM.cpp:
+        (JSC::functionIsWasmSupported):
+        (JSC::JSDollarVM::finishCreation):
+        * wasm/WasmB3IRGenerator.h:
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::complete):
+        * wasm/WasmBBQPlanInlines.h:
+        (JSC::Wasm::BBQPlan::initializeCallees):
+        * wasm/WasmCallee.cpp:
+        (JSC::Wasm::Callee::Callee):
+        (JSC::Wasm::Callee::~Callee):
+        * wasm/WasmCallee.h:
+        (JSC::Wasm::Callee::create): Deleted.
+        (JSC::Wasm::Callee::entrypoint const): Deleted.
+        (JSC::Wasm::Callee::calleeSaveRegisters): Deleted.
+        (JSC::Wasm::Callee::indexOrName const): Deleted.
+        * wasm/WasmCalleeRegistry.cpp: Copied from Source/JavaScriptCore/wasm/WasmFaultSignalHandler.h.
+        (JSC::Wasm::CalleeRegistry::initialize):
+        (JSC::Wasm::CalleeRegistry::singleton):
+        * wasm/WasmCalleeRegistry.h: Copied from Source/JavaScriptCore/wasm/WasmCallee.cpp.
+        (JSC::Wasm::CalleeRegistry::getLock):
+        (JSC::Wasm::CalleeRegistry::registerCallee):
+        (JSC::Wasm::CalleeRegistry::unregisterCallee):
+        (JSC::Wasm::CalleeRegistry::isValidCallee):
+        * wasm/WasmCompilationMode.cpp: Copied from Source/JavaScriptCore/wasm/WasmFaultSignalHandler.h.
+        (JSC::Wasm::makeString):
+        * wasm/WasmCompilationMode.h: Copied from Source/JavaScriptCore/wasm/WasmFaultSignalHandler.h.
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+        (JSC::Wasm::enableFastMemory):
+        (JSC::Wasm::registerCode): Deleted.
+        (JSC::Wasm::unregisterCode): Deleted.
+        * wasm/WasmFaultSignalHandler.h:
+        * wasm/WasmIndexOrName.h:
+        * wasm/WasmOMGPlan.cpp:
+        (JSC::Wasm::OMGPlan::work):
+
+2019-08-02  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] LazyJSValue should be robust for empty JSValue
+        https://bugs.webkit.org/show_bug.cgi?id=200388
+
+        Reviewed by Saam Barati.
+
+        If the Switch DFG node is preceded by ForceOSRExit or something that invalidates the basic block,
+        it can take a FrozenValue as a child which includes empty value instead of string, number etc.
+        If this Switch node is kept and we reached to DFGCFGSimplificationPhase, it will use this FrozenValue.
+        However, LazyJSValue using this FrozenValue strongly assumes that FrozenValue is never holding empty value.
+        But this assumption is wrong. This patch makes LazyJSValue robust for empty value.
+
+        * dfg/DFGLazyJSValue.cpp:
+        (JSC::DFG::LazyJSValue::tryGetStringImpl const):
+        (JSC::DFG::LazyJSValue::tryGetString const):
+        (JSC::DFG::LazyJSValue::strictEqual const):
+        (JSC::DFG::LazyJSValue::switchLookupValue const):
+
+2019-08-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Storage: disable related agents when the tab is closed
+        https://bugs.webkit.org/show_bug.cgi?id=200117
+
+        Reviewed by Joseph Pecoraro.
+
+        Rework how `enable`/`disable` is used for storage-related agents so that events are not sent
+        and data isn't kept alive when the Storage tab isn't enabled.
+
+        * inspector/protocol/ApplicationCache.json:
+        Add `disable` command.
+
+2019-08-01  Keith Miller  <keith_miller@apple.com>
+
+        B3 should support tuple types
+        https://bugs.webkit.org/show_bug.cgi?id=200327
+
+        Reviewed by Filip Pizlo.
+
+        As part of the Wasm multi-value proposal, we need to teach B3 that
+        patchpoints can return more than one value.  This is done by
+        adding a new B3::Type called Tuple. Unlike, other B3 types Tuple
+        is actually an encoded index into a numeric B3::Type vector on the
+        procedure. This lets us distinguish any two tuples from each
+        other, moreover, it's possible to get the vector of types with
+        just the B3::Tuple type and the procedure.
+
+        Since most B3 operations only expect to see a single numeric child
+        there is a new Opcode, Extract, that takes yields the some, fixed,
+        entry from a tuple value. Extract would be the only other change
+        needed to make tuples work in B3 except that some optimizations
+        expect to be able to take any non-Void value and stick it into a
+        Variable of the same type. This means both Get/Set from a variable
+        have to support Tuples as well. For simplicity and consistency,
+        the ability to accept tuples is also applied to Phi and Upsilon.
+
+        In order to lower a Tuple, B3Lowering needs to have a Tmp for each
+        nested type in a Tuple. While we could reuse the existing
+        IndexedTables to hold the extra information we need to lower
+        Tuples, we instead use a two new HashTables for Value->Tmp(s) and
+        Phi->Tmp(s). It's expected that Tuples will be sufficiently
+        uncommon the overhead of tracking everything together would be
+        prohibitive. On the other hand, we don't worry about this for
+        Variables because we don't expect those to make it to lowering.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * b3/B3Bank.h:
+        (JSC::B3::bankForType):
+        * b3/B3CheckValue.cpp:
+        (JSC::B3::CheckValue::CheckValue):
+        * b3/B3ExtractValue.cpp: Copied from Source/JavaScriptCore/b3/B3ProcedureInlines.h.
+        (JSC::B3::ExtractValue::~ExtractValue):
+        (JSC::B3::ExtractValue::dumpMeta const):
+        * b3/B3ExtractValue.h: Copied from Source/JavaScriptCore/b3/B3FixSSA.h.
+        * b3/B3FixSSA.h:
+        * b3/B3LowerMacros.cpp:
+        * b3/B3LowerMacrosAfterOptimizations.cpp:
+        * b3/B3LowerToAir.cpp:
+        * b3/B3NativeTraits.h:
+        * b3/B3Opcode.cpp:
+        (JSC::B3::invertedCompare):
+        (WTF::printInternal):
+        * b3/B3Opcode.h:
+        (JSC::B3::opcodeForConstant):
+        * b3/B3PatchpointSpecial.cpp:
+        (JSC::B3::PatchpointSpecial::forEachArg):
+        (JSC::B3::PatchpointSpecial::isValid):
+        (JSC::B3::PatchpointSpecial::admitsStack):
+        (JSC::B3::PatchpointSpecial::generate):
+        * b3/B3PatchpointValue.cpp:
+        (JSC::B3::PatchpointValue::dumpMeta const):
+        (JSC::B3::PatchpointValue::PatchpointValue):
+        * b3/B3PatchpointValue.h:
+        * b3/B3Procedure.cpp:
+        (JSC::B3::Procedure::addTuple):
+        (JSC::B3::Procedure::isValidTuple const):
+        (JSC::B3::Procedure::tupleForType const):
+        (JSC::B3::Procedure::addIntConstant):
+        (JSC::B3::Procedure::addConstant):
+        * b3/B3Procedure.h:
+        (JSC::B3::Procedure::returnCount const):
+        * b3/B3ProcedureInlines.h:
+        (JSC::B3::Procedure::extractFromTuple const):
+        * b3/B3ReduceStrength.cpp:
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::isValidImpl):
+        (JSC::B3::StackmapSpecial::isArgValidForType):
+        (JSC::B3::StackmapSpecial::isArgValidForRep):
+        (JSC::B3::StackmapSpecial::isArgValidForValue): Deleted.
+        * b3/B3StackmapSpecial.h:
+        * b3/B3StackmapValue.h:
+        * b3/B3Type.cpp:
+        (WTF::printInternal):
+        * b3/B3Type.h:
+        (JSC::B3::Type::Type):
+        (JSC::B3::Type::tupleFromIndex):
+        (JSC::B3::Type::kind const):
+        (JSC::B3::Type::tupleIndex const):
+        (JSC::B3::Type::hash const):
+        (JSC::B3::Type::operator== const):
+        (JSC::B3::Type::operator!= const):
+        (JSC::B3::Type::isInt const):
+        (JSC::B3::Type::isFloat const):
+        (JSC::B3::Type::isNumeric const):
+        (JSC::B3::Type::isTuple const):
+        (JSC::B3::sizeofType):
+        (JSC::B3::isInt): Deleted.
+        (JSC::B3::isFloat): Deleted.
+        * b3/B3TypeMap.h:
+        (JSC::B3::TypeMap::at):
+        * b3/B3Validate.cpp:
+        * b3/B3Value.cpp:
+        (JSC::B3::Value::isRounded const):
+        (JSC::B3::Value::effects const):
+        (JSC::B3::Value::typeFor):
+        * b3/B3Value.h:
+        * b3/B3ValueInlines.h:
+        * b3/B3ValueKey.cpp:
+        (JSC::B3::ValueKey::intConstant):
+        * b3/B3ValueKey.h:
+        (JSC::B3::ValueKey::hash const):
+        * b3/B3ValueRep.h:
+        * b3/B3Width.h:
+        (JSC::B3::widthForType):
+        * b3/air/AirArg.cpp:
+        (JSC::B3::Air::Arg::canRepresent const):
+        * b3/air/AirArg.h:
+        * b3/air/AirCCallingConvention.cpp:
+        (JSC::B3::Air::cCallResult):
+        * b3/air/AirLowerMacros.cpp:
+        (JSC::B3::Air::lowerMacros):
+        * b3/testb3.h:
+        (populateWithInterestingValues):
+        * b3/testb3_1.cpp:
+        (run):
+        * b3/testb3_3.cpp:
+        (testStorePartial8BitRegisterOnX86):
+        * b3/testb3_5.cpp:
+        (testPatchpointWithRegisterResult):
+        (testPatchpointWithStackArgumentResult):
+        (testPatchpointWithAnyResult):
+        * b3/testb3_6.cpp:
+        (testPatchpointDoubleRegs):
+        (testSomeEarlyRegister):
+        * b3/testb3_7.cpp:
+        (testShuffleDoesntTrashCalleeSaves):
+        (testReportUsedRegistersLateUseFollowedByEarlyDefDoesNotMarkUseAsDead):
+        (testSimpleTuplePair):
+        (testSimpleTuplePairUnused):
+        (testSimpleTuplePairStack):
+        (tailDupedTuplePair):
+        (tuplePairVariableLoop):
+        (tupleNestedLoop):
+        (addTupleTests):
+        * b3/testb3_8.cpp:
+        (testLoad):
+        (addLoadTests):
+        * ftl/FTLAbbreviatedTypes.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstruct):
+        (JSC::FTL::DFG::LowerDFGToB3::compileDirectCallOrConstruct):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstructVarargsSpread):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstructVarargs):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallEval):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCPUIntrinsic):
+        (JSC::FTL::DFG::LowerDFGToB3::compileInstanceOf):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallDOMGetter):
+        (JSC::FTL::DFG::LowerDFGToB3::emitBinarySnippet):
+        (JSC::FTL::DFG::LowerDFGToB3::emitBinaryBitOpSnippet):
+        (JSC::FTL::DFG::LowerDFGToB3::emitRightShiftSnippet):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateHeapCell):
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::emitPatchpoint):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        * wasm/WasmCallingConvention.h:
+        (JSC::Wasm::CallingConvention::marshallArgument const):
+        (JSC::Wasm::CallingConvention::setupFrameInPrologue const):
+        (JSC::Wasm::CallingConvention::setupCall const):
+        (JSC::Wasm::CallingConventionAir::setupCall const):
+
+2019-08-02  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Use "destroy" function directly for JSWebAssemblyCodeBlock and WebAssemblyFunction
+        https://bugs.webkit.org/show_bug.cgi?id=200385
+
+        Reviewed by Mark Lam.
+
+        These CellTypes are not using classInfo stored in the cells, so we can just call JSWebAssemblyCodeBlock::destroy
+        and WebAssemblyFunction::destroy directly.
+
+        * wasm/js/JSWebAssemblyCodeBlockHeapCellType.cpp:
+        (JSC::JSWebAssemblyCodeBlockDestroyFunc::operator() const):
+        * wasm/js/WebAssemblyFunctionHeapCellType.cpp:
+        (JSC::WebAssemblyFunctionDestroyFunc::operator() const):
+
+2019-08-02  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: build fix.
+        https://bugs.webkit.org/show_bug.cgi?id=200149
+        <rdar://problem/53570112>
+
+        Not reviewed.
+
+        * assembler/CPU.cpp:
+        (JSC::hwPhysicalCPUMax):
+
+2019-08-01  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        GetterSetter type confusion during DFG compilation
+        https://bugs.webkit.org/show_bug.cgi?id=199903
+
+        Reviewed by Mark Lam.
+
+        In AI, we are strongly assuming that GetGetter's child constant value should be GetterSetter if it exists.
+        However, this can be wrong since nobody ensures that. AI assumed so because the control-flow and preceding
+        CheckStructure ensures that. But this preceding check can be eliminated if the node becomes (at runtime) unreachable.
+
+        Let's consider the following graph.
+
+            129:<!0:->     PutByOffset(KnownCell:@115, KnownCell:@115, Check:Untyped:@124, MustGen, id5{length}, 0, W:NamedProperties(5), ClobbersExit, bc#154, ExitValid)
+            130:<!0:->     PutStructure(KnownCell:@115, MustGen, %C8:Object -> %C3:Object, ID:7726, R:JSObject_butterfly, W:JSCell_indexingType,JSCell_structureID,JSCell_typeInfoFlags,JSCell_typeInfoType, ClobbersExit, bc#154, ExitInvalid)
+            ...
+            158:<!0:->     GetLocal(Check:Untyped:@197, JS|MustGen|UseAsOther, Final, loc7(R<Final>/FlushedCell), R:Stack(-8), bc#187, ExitValid)  predicting Final
+            210:< 1:->     DoubleRep(Check:NotCell:@158, Double|PureInt, BytecodeDouble, Exits, bc#187, ExitValid)
+            ...
+            162:<!0:->     CheckStructure(Cell:@158, MustGen, [%Ad:Object], R:JSCell_structureID, Exits, bc#192, ExitValid)
+            163:< 1:->     GetGetterSetterByOffset(KnownCell:@158, KnownCell:@158, JS|UseAsOther, OtherCell, id5{length}, 0, R:NamedProperties(5), Exits, bc#192, ExitValid)
+            164:< 1:->     GetGetter(KnownCell:@163, JS|UseAsOther, Function, R:GetterSetter_getter, Exits, bc#192, ExitValid)
+
+        At @163 and @164, AI proves that @158's AbstractValue is None because @210's edge filters out Cells @158 is a cell. But we do not invalidate graph status as "Invalid" even if edge filters out all possible value.
+        This is because the result of edge can be None in a valid program. For example, we can put a dependency edge between a consuming node and a producing node, where the producing node is just like a check and it
+        does not produce a value actually. So, @163 and @164 are not invalidated. This is totally fine in our compiler pipeline right now.
+
+        But after that, global CSE phase found that @115 and @158 are same and @129 dominates @158. As a result, we can replace GetGetter child's @163 with @124. Since CheckStructure is already removed (and now, at runtime,
+        @163 and @164 are never executed), we do not have any structure guarantee on @158 and the result of @163. This means that @163's CSE result can be non-GetterSetter value.
+
+            124:< 2:->     JSConstant(JS|UseAsOther, Final, Weak:Object: 0x1199e82a0 with butterfly 0x0 (Structure %B4:Object), StructureID: 49116, bc#0, ExitValid)
+            ...
+            126:< 2:->     GetGetter(KnownCell:Kill:@124, JS|UseAsOther, Function, R:GetterSetter_getter, Exits, bc#192, ExitValid)
+
+        AI filters out @124's non-cell values. But @126 can get non-GetterSetter cell at AI phase. But our AI code is like the following.
+
+
+            JSValue base = forNode(node->child1()).m_value;
+            if (base) {
+                GetterSetter* getterSetter = jsCast<GetterSetter*>(base);
+                ...
+
+        Then, jsCast casts the above object with GetterSetter accidentally.
+
+        In general, DFG AI can get a proven constant value, which could not be shown at runtime. This happens if the processing node is unreachable at runtime while the graph is not invalid yet, because preceding edge
+        filters already filter out all the possible execution. DFG AI already considered about this possibility, and it attempts to fold a node into a constant only when the constant input matches against the expected one.
+        But several DFG nodes are not handling this correctly: GetGetter, GetSetter, and SkipScope.
+
+        In this patch, we use `jsDynamicCast` to ensure that the constant input matches against the expected (foldable) one, and fold it only when the expectation is met.
+        We also remove DFG::Node::castConstant and its use. We should not rely on the constant folded value based on graph's control-flow.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::castConstant): Deleted.
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileMaterializeCreateActivation):
+
+2019-08-01  Mark Lam  <mark.lam@apple.com>
+
+        Add crash diagnostics for debugging unexpected zapped cells.
+        https://bugs.webkit.org/show_bug.cgi?id=200149
+        <rdar://problem/53570112>
+
+        Reviewed by Yusuke Suzuki.
+
+        Add a check for zapped cells in SlotVisitor::appendToMarkStack() and
+        SlotVisitor::visitChildren().  If a zapped cell is detected, we will crash with
+        some diagnostic info.
+
+        To facilitate this, we've made the following changes:
+        1. Changed FreeCell to preserve the 1st 8 bytes.  This is fine to do because all
+           cells are at least 16 bytes long.
+        2. Changed HeapCell::zap() to only zap the structureID.  Leave the rest of the
+           cell header info intact (including the cell JSType).
+        3. Changed HeapCell::zap() to record the reason for zapping the cell.  We stash
+           the reason immediately after the first 8 bytes.  This is the same location as
+           FreeCell::scrambledNext.  However, since a cell is not expected to be zapped
+           and on the free list at the same time, it is also fine to do this.
+        4. Added a few utility functions to MarkedBlock for checking if a cell points
+           into the block.
+        5. Added VMInspector and JSDollarVM utilities to dump in-use subspace hashes.
+        6. Added some comments to document the hashes of known subspaces.
+        7. Added Options::dumpZappedCellCrashData() to make this check conditional.
+           We use this option to disable this check for slower machines so that their
+           PLT5 performance is not impacted.
+
+        * assembler/CPU.cpp:
+        (JSC::hwL3CacheSize):
+        (JSC::hwPhysicalCPUMax):
+        * assembler/CPU.h:
+        (JSC::hwL3CacheSize):
+        (JSC::hwPhysicalCPUMax):
+        * heap/FreeList.h:
+        (JSC::FreeCell::offsetOfScrambledNext):
+        * heap/HeapCell.h:
+        (JSC::HeapCell::zap):
+        (JSC::HeapCell::isZapped const):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::stopAllocating):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::Handle::start const):
+        (JSC::MarkedBlock::Handle::end const):
+        (JSC::MarkedBlock::Handle::contains const):
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::Handle::specializedSweep):
+        * heap/MarkedSpace.h:
+        (JSC::MarkedSpace::forEachSubspace):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::appendToMarkStack):
+        (JSC::SlotVisitor::visitChildren):
+        (JSC::SlotVisitor::reportZappedCellAndCrash):
+        * heap/SlotVisitor.h:
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitAllocateWithNonNullAllocator):
+        * runtime/Options.cpp:
+        (JSC::Options::initialize):
+        * runtime/Options.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * tools/JSDollarVM.cpp:
+        (JSC::functionDumpSubspaceHashes):
+        (JSC::JSDollarVM::finishCreation):
+        * tools/VMInspector.cpp:
+        (JSC::VMInspector::dumpSubspaceHashes):
+        * tools/VMInspector.h:
+
+2019-08-01  Keith Miller  <keith_miller@apple.com>
+
+        Fix bug in testMulImm32SignExtend
+        https://bugs.webkit.org/show_bug.cgi?id=200358
+
+        Reviewed by Mark Lam.
+
+        Also, have it run in more configurations.
+
+        * b3/testb3_2.cpp:
+        (testMulImm32SignExtend):
+        * b3/testb3_3.cpp:
+        (addArgTests):
+
+2019-07-31  Mark Lam  <mark.lam@apple.com>
+
+        Rename DOMJIT safe/unsafeFunction to functionWithTypeChecks and functionWithoutTypeChecks.
+        https://bugs.webkit.org/show_bug.cgi?id=200323
+
+        Reviewed by Yusuke Suzuki.
+
+        The DOMJIT has a notion of a safeFunction and an unsafeFunction.  The safeFunction
+        is effectively the same as the unsafeFunction with added type check.  The DFG/FTL
+        will emit code to call the unsafeFunction if it has already emitted the needed
+        type check or proven that it isn't needed.  Otherwise, the DFG/FTL will emit
+        code to call the safeFunction (which does its own type check) instead.
+
+        This patch renames these functions to better describe their difference.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCallDOM):
+        * domjit/DOMJITSignature.h:
+        (JSC::DOMJIT::Signature::Signature):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallDOM):
+        * tools/JSDollarVM.cpp:
+        (JSC::DOMJITFunctionObject::functionWithTypeCheck):
+        (JSC::DOMJITFunctionObject::functionWithoutTypeCheck):
+        (JSC::DOMJITFunctionObject::finishCreation):
+        (JSC::DOMJITCheckSubClassObject::functionWithTypeCheck):
+        (JSC::DOMJITCheckSubClassObject::functionWithoutTypeCheck):
+        (JSC::DOMJITCheckSubClassObject::finishCreation):
+        (JSC::DOMJITFunctionObject::safeFunction): Deleted.
+        (JSC::DOMJITFunctionObject::unsafeFunction): Deleted.
+        (JSC::DOMJITCheckSubClassObject::safeFunction): Deleted.
+        (JSC::DOMJITCheckSubClassObject::unsafeFunction): Deleted.
+
+2019-07-31  Alex Christensen  <achristensen@webkit.org>
+
+        Begin organizing b3 tests
+        https://bugs.webkit.org/show_bug.cgi?id=200330
+
+        Reviewed by Keith Miller.
+
+        * b3/testb3.h:
+        * b3/testb3_1.cpp:
+        (run):
+        (zero): Deleted.
+        (negativeZero): Deleted.
+        * b3/testb3_2.cpp:
+        (testBitXorTreeArgs):
+        (testBitXorTreeArgsEven):
+        (testBitXorTreeArgImm):
+        (testBitAndTreeArg32):
+        (testBitOrTreeArg32):
+        (testBitAndArgs):
+        (testBitAndSameArg):
+        (testBitAndNotNot):
+        (testBitAndNotImm):
+        (testBitAndImms):
+        (testBitAndArgImm):
+        (testBitAndImmArg):
+        (testBitAndBitAndArgImmImm):
+        (testBitAndImmBitAndArgImm):
+        (testBitAndArgs32):
+        (testBitAndSameArg32):
+        (testBitAndImms32):
+        (testBitAndArgImm32):
+        (testBitAndImmArg32):
+        (testBitAndBitAndArgImmImm32):
+        (testBitAndImmBitAndArgImm32):
+        (testBitAndWithMaskReturnsBooleans):
+        (testBitAndArgDouble):
+        (testBitAndArgsDouble):
+        (testBitAndArgImmDouble):
+        (testBitAndImmsDouble):
+        (testBitAndArgFloat):
+        (testBitAndArgsFloat):
+        (testBitAndArgImmFloat):
+        (testBitAndImmsFloat):
+        (testBitAndArgsFloatWithUselessDoubleConversion):
+        (testBitOrArgs):
+        (testBitOrSameArg):
+        (testBitOrAndAndArgs):
+        (testBitOrAndSameArgs):
+        (testBitOrNotNot):
+        (testBitOrNotImm):
+        (testBitOrImms):
+        (testBitOrArgImm):
+        (testBitOrImmArg):
+        (testBitOrBitOrArgImmImm):
+        (testBitOrImmBitOrArgImm):
+        (testBitOrArgs32):
+        (testBitOrSameArg32):
+        (testBitOrImms32):
+        (testBitOrArgImm32):
+        (testBitOrImmArg32):
+        (addBitTests):
+        * b3/testb3_3.cpp:
+        (testSShrArgs):
+        (testSShrImms):
+        (testSShrArgImm):
+        (testSShrArg32):
+        (testSShrArgs32):
+        (testSShrImms32):
+        (testSShrArgImm32):
+        (testZShrArgs):
+        (testZShrImms):
+        (testZShrArgImm):
+        (testZShrArg32):
+        (testZShrArgs32):
+        (testZShrImms32):
+        (testZShrArgImm32):
+        (zero):
+        (negativeZero):
+        (addArgTests):
+        (addCallTests):
+        (addShrTests):
+        * b3/testb3_4.cpp:
+        (addSExtTests):
+        * b3/testb3_6.cpp:
+        (testSShrShl32):
+        (testSShrShl64):
+        (addSShrShTests):
+
+2019-07-31  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Debugger: support emulateUserGesture parameter in Debugger.evaluateOnCallFrame
+        https://bugs.webkit.org/show_bug.cgi?id=200272
+
+        Reviewed by Joseph Pecoraro.
+
+        When paused, evaluating in the console should still respect the "Emulate User Gesture" checkbox.
+
+        * inspector/protocol/Debugger.json:
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::evaluateOnCallFrame):
+
+2019-07-31  Alex Christensen  <achristensen@webkit.org>
+
+        Split testb3 into multiple files
+        https://bugs.webkit.org/show_bug.cgi?id=200326
+
+        Reviewed by Keith Miller.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/testb3.cpp: Removed.
+        * b3/testb3.h: Added.
+        (hiddenTruthBecauseNoReturnIsStupid):
+        (usage):
+        (shouldBeVerbose):
+        (compileProc):
+        (invoke):
+        (compileAndRun):
+        (lowerToAirForTesting):
+        (checkDisassembly):
+        (checkUsesInstruction):
+        (checkDoesNotUseInstruction):
+        (populateWithInterestingValues):
+        (floatingPointOperands):
+        (int64Operands):
+        (int32Operands):
+        (add32):
+        (modelLoad):
+        (float>):
+        (double>):
+        * b3/testb3_1.cpp: Added.
+        (zero):
+        (negativeZero):
+        (shouldRun):
+        (testRotR):
+        (testRotL):
+        (testRotRWithImmShift):
+        (testRotLWithImmShift):
+        (testComputeDivisionMagic):
+        (run):
+        (main):
+        (dllLauncherEntryPoint):
+        * b3/testb3_2.cpp: Added.
+        (test42):
+        (testLoad42):
+        (testLoadAcq42):
+        (testLoadWithOffsetImpl):
+        (testLoadOffsetImm9Max):
+        (testLoadOffsetImm9MaxPlusOne):
+        (testLoadOffsetImm9MaxPlusTwo):
+        (testLoadOffsetImm9Min):
+        (testLoadOffsetImm9MinMinusOne):
+        (testLoadOffsetScaledUnsignedImm12Max):
+        (testLoadOffsetScaledUnsignedOverImm12Max):
+        (testBitXorTreeArgs):
+        (testBitXorTreeArgsEven):
+        (testBitXorTreeArgImm):
+        (testAddTreeArg32):
+        (testMulTreeArg32):
+        (testBitAndTreeArg32):
+        (testBitOrTreeArg32):
+        (testArg):
+        (testReturnConst64):
+        (testReturnVoid):
+        (testAddArg):
+        (testAddArgs):
+        (testAddArgImm):
+        (testAddImmArg):
+        (testAddArgMem):
+        (testAddMemArg):
+        (testAddImmMem):
+        (testAddArg32):
+        (testAddArgs32):
+        (testAddArgMem32):
+        (testAddMemArg32):
+        (testAddImmMem32):
+        (testAddNeg1):
+        (testAddNeg2):
+        (testAddArgZeroImmZDef):
+        (testAddLoadTwice):
+        (testAddArgDouble):
+        (testAddArgsDouble):
+        (testAddArgImmDouble):
+        (testAddImmArgDouble):
+        (testAddImmsDouble):
+        (testAddArgFloat):
+        (testAddArgsFloat):
+        (testAddFPRArgsFloat):
+        (testAddArgImmFloat):
+        (testAddImmArgFloat):
+        (testAddImmsFloat):
+        (testAddArgFloatWithUselessDoubleConversion):
+        (testAddArgsFloatWithUselessDoubleConversion):
+        (testAddArgsFloatWithEffectfulDoubleConversion):
+        (testAddMulMulArgs):
+        (testMulArg):
+        (testMulArgStore):
+        (testMulAddArg):
+        (testMulArgs):
+        (testMulArgNegArg):
+        (testMulNegArgArg):
+        (testMulArgImm):
+        (testMulImmArg):
+        (testMulArgs32):
+        (testMulArgs32SignExtend):
+        (testMulImm32SignExtend):
+        (testMulLoadTwice):
+        (testMulAddArgsLeft):
+        (testMulAddArgsRight):
+        (testMulAddArgsLeft32):
+        (testMulAddArgsRight32):
+        (testMulSubArgsLeft):
+        (testMulSubArgsRight):
+        (testMulSubArgsLeft32):
+        (testMulSubArgsRight32):
+        (testMulNegArgs):
+        (testMulNegArgs32):
+        (testMulArgDouble):
+        (testMulArgsDouble):
+        (testMulArgImmDouble):
+        (testMulImmArgDouble):
+        (testMulImmsDouble):
+        (testMulArgFloat):
+        (testMulArgsFloat):
+        (testMulArgImmFloat):
+        (testMulImmArgFloat):
+        (testMulImmsFloat):
+        (testMulArgFloatWithUselessDoubleConversion):
+        (testMulArgsFloatWithUselessDoubleConversion):
+        (testMulArgsFloatWithEffectfulDoubleConversion):
+        (testDivArgDouble):
+        (testDivArgsDouble):
+        (testDivArgImmDouble):
+        (testDivImmArgDouble):
+        (testDivImmsDouble):
+        (testDivArgFloat):
+        (testDivArgsFloat):
+        (testDivArgImmFloat):
+        (testDivImmArgFloat):
+        (testDivImmsFloat):
+        (testModArgDouble):
+        (testModArgsDouble):
+        (testModArgImmDouble):
+        (testModImmArgDouble):
+        (testModImmsDouble):
+        (testModArgFloat):
+        (testModArgsFloat):
+        (testModArgImmFloat):
+        (testModImmArgFloat):
+        (testModImmsFloat):
+        (testDivArgFloatWithUselessDoubleConversion):
+        (testDivArgsFloatWithUselessDoubleConversion):
+        (testDivArgsFloatWithEffectfulDoubleConversion):
+        (testUDivArgsInt32):
+        (testUDivArgsInt64):
+        (testUModArgsInt32):
+        (testUModArgsInt64):
+        (testSubArg):
+        (testSubArgs):
+        (testSubArgImm):
+        (testSubNeg):
+        (testNegSub):
+        (testNegValueSubOne):
+        (testSubSub):
+        (testSubSub2):
+        (testSubAdd):
+        (testSubFirstNeg):
+        (testSubImmArg):
+        (testSubArgMem):
+        (testSubMemArg):
+        (testSubImmMem):
+        (testSubMemImm):
+        (testSubArgs32):
+        (testSubArgImm32):
+        (testSubImmArg32):
+        (testSubMemArg32):
+        (testSubArgMem32):
+        (testSubImmMem32):
+        (testSubMemImm32):
+        (testNegValueSubOne32):
+        (testNegMulArgImm):
+        (testSubMulMulArgs):
+        (testSubArgDouble):
+        (testSubArgsDouble):
+        (testSubArgImmDouble):
+        (testSubImmArgDouble):
+        (testSubImmsDouble):
+        (testSubArgFloat):
+        (testSubArgsFloat):
+        (testSubArgImmFloat):
+        (testSubImmArgFloat):
+        (testSubImmsFloat):
+        (testSubArgFloatWithUselessDoubleConversion):
+        (testSubArgsFloatWithUselessDoubleConversion):
+        (testSubArgsFloatWithEffectfulDoubleConversion):
+        (testTernarySubInstructionSelection):
+        (testNegDouble):
+        (testNegFloat):
+        (testNegFloatWithUselessDoubleConversion):
+        (testBitAndArgs):
+        (testBitAndSameArg):
+        (testBitAndNotNot):
+        (testBitAndNotImm):
+        (testBitAndImms):
+        (testBitAndArgImm):
+        (testBitAndImmArg):
+        (testBitAndBitAndArgImmImm):
+        (testBitAndImmBitAndArgImm):
+        (testBitAndArgs32):
+        (testBitAndSameArg32):
+        (testBitAndImms32):
+        (testBitAndArgImm32):
+        (testBitAndImmArg32):
+        (testBitAndBitAndArgImmImm32):
+        (testBitAndImmBitAndArgImm32):
+        (testBitAndWithMaskReturnsBooleans):
+        (bitAndDouble):
+        (testBitAndArgDouble):
+        (testBitAndArgsDouble):
+        (testBitAndArgImmDouble):
+        (testBitAndImmsDouble):
+        (bitAndFloat):
+        (testBitAndArgFloat):
+        (testBitAndArgsFloat):
+        (testBitAndArgImmFloat):
+        (testBitAndImmsFloat):
+        (testBitAndArgsFloatWithUselessDoubleConversion):
+        (testBitOrArgs):
+        (testBitOrSameArg):
+        (testBitOrAndAndArgs):
+        (testBitOrAndSameArgs):
+        (testBitOrNotNot):
+        (testBitOrNotImm):
+        (testBitOrImms):
+        (testBitOrArgImm):
+        (testBitOrImmArg):
+        (testBitOrBitOrArgImmImm):
+        (testBitOrImmBitOrArgImm):
+        (testBitOrArgs32):
+        (testBitOrSameArg32):
+        (testBitOrImms32):
+        (testBitOrArgImm32):
+        (testBitOrImmArg32):
+        * b3/testb3_3.cpp: Added.
+        (testBitOrBitOrArgImmImm32):
+        (testBitOrImmBitOrArgImm32):
+        (bitOrDouble):
+        (testBitOrArgDouble):
+        (testBitOrArgsDouble):
+        (testBitOrArgImmDouble):
+        (testBitOrImmsDouble):
+        (bitOrFloat):
+        (testBitOrArgFloat):
+        (testBitOrArgsFloat):
+        (testBitOrArgImmFloat):
+        (testBitOrImmsFloat):
+        (testBitOrArgsFloatWithUselessDoubleConversion):
+        (testBitXorArgs):
+        (testBitXorSameArg):
+        (testBitXorAndAndArgs):
+        (testBitXorAndSameArgs):
+        (testBitXorImms):
+        (testBitXorArgImm):
+        (testBitXorImmArg):
+        (testBitXorBitXorArgImmImm):
+        (testBitXorImmBitXorArgImm):
+        (testBitXorArgs32):
+        (testBitXorSameArg32):
+        (testBitXorImms32):
+        (testBitXorArgImm32):
+        (testBitXorImmArg32):
+        (testBitXorBitXorArgImmImm32):
+        (testBitXorImmBitXorArgImm32):
+        (testBitNotArg):
+        (testBitNotImm):
+        (testBitNotMem):
+        (testBitNotArg32):
+        (testBitNotImm32):
+        (testBitNotMem32):
+        (testNotOnBooleanAndBranch32):
+        (testBitNotOnBooleanAndBranch32):
+        (testShlArgs):
+        (testShlImms):
+        (testShlArgImm):
+        (testShlSShrArgImm):
+        (testShlArg32):
+        (testShlArgs32):
+        (testShlImms32):
+        (testShlArgImm32):
+        (testShlZShrArgImm32):
+        (testSShrArgs):
+        (testSShrImms):
+        (testSShrArgImm):
+        (testSShrArg32):
+        (testSShrArgs32):
+        (testSShrImms32):
+        (testSShrArgImm32):
+        (testZShrArgs):
+        (testZShrImms):
+        (testZShrArgImm):
+        (testZShrArg32):
+        (testZShrArgs32):
+        (testZShrImms32):
+        (testZShrArgImm32):
+        (countLeadingZero):
+        (testClzArg64):
+        (testClzMem64):
+        (testClzArg32):
+        (testClzMem32):
+        (testAbsArg):
+        (testAbsImm):
+        (testAbsMem):
+        (testAbsAbsArg):
+        (testAbsNegArg):
+        (testAbsBitwiseCastArg):
+        (testBitwiseCastAbsBitwiseCastArg):
+        (testAbsArgWithUselessDoubleConversion):
+        (testAbsArgWithEffectfulDoubleConversion):
+        (testCeilArg):
+        (testCeilImm):
+        (testCeilMem):
+        (testCeilCeilArg):
+        (testFloorCeilArg):
+        (testCeilIToD64):
+        (testCeilIToD32):
+        (testCeilArgWithUselessDoubleConversion):
+        (testCeilArgWithEffectfulDoubleConversion):
+        (testFloorArg):
+        (testFloorImm):
+        (testFloorMem):
+        (testFloorFloorArg):
+        (testCeilFloorArg):
+        (testFloorIToD64):
+        (testFloorIToD32):
+        (testFloorArgWithUselessDoubleConversion):
+        (testFloorArgWithEffectfulDoubleConversion):
+        (correctSqrt):
+        (testSqrtArg):
+        (testSqrtImm):
+        (testSqrtMem):
+        (testSqrtArgWithUselessDoubleConversion):
+        (testSqrtArgWithEffectfulDoubleConversion):
+        (testCompareTwoFloatToDouble):
+        (testCompareOneFloatToDouble):
+        (testCompareFloatToDoubleThroughPhi):
+        (testDoubleToFloatThroughPhi):
+        (testReduceFloatToDoubleValidates):
+        (testDoubleProducerPhiToFloatConversion):
+        (testDoubleProducerPhiToFloatConversionWithDoubleConsumer):
+        (testDoubleProducerPhiWithNonFloatConst):
+        (testDoubleArgToInt64BitwiseCast):
+        (testDoubleImmToInt64BitwiseCast):
+        (testTwoBitwiseCastOnDouble):
+        (testBitwiseCastOnDoubleInMemory):
+        (testBitwiseCastOnDoubleInMemoryIndexed):
+        (testInt64BArgToDoubleBitwiseCast):
+        (testInt64BImmToDoubleBitwiseCast):
+        (testTwoBitwiseCastOnInt64):
+        (testBitwiseCastOnInt64InMemory):
+        (testBitwiseCastOnInt64InMemoryIndexed):
+        (testFloatImmToInt32BitwiseCast):
+        (testBitwiseCastOnFloatInMemory):
+        (testInt32BArgToFloatBitwiseCast):
+        (testInt32BImmToFloatBitwiseCast):
+        (testTwoBitwiseCastOnInt32):
+        (testBitwiseCastOnInt32InMemory):
+        (testConvertDoubleToFloatArg):
+        (testConvertDoubleToFloatImm):
+        (testConvertDoubleToFloatMem):
+        (testConvertFloatToDoubleArg):
+        (testConvertFloatToDoubleImm):
+        (testConvertFloatToDoubleMem):
+        (testConvertDoubleToFloatToDoubleToFloat):
+        (testLoadFloatConvertDoubleConvertFloatStoreFloat):
+        (testFroundArg):
+        (testFroundMem):
+        (testIToD64Arg):
+        (testIToF64Arg):
+        (testIToD32Arg):
+        (testIToF32Arg):
+        (testIToD64Mem):
+        (testIToF64Mem):
+        (testIToD32Mem):
+        (testIToF32Mem):
+        (testIToD64Imm):
+        (testIToF64Imm):
+        (testIToD32Imm):
+        (testIToF32Imm):
+        (testIToDReducedToIToF64Arg):
+        (testIToDReducedToIToF32Arg):
+        (testStore32):
+        (testStoreConstant):
+        (testStoreConstantPtr):
+        (testStore8Arg):
+        (testStore8Imm):
+        (testStorePartial8BitRegisterOnX86):
+        (testStore16Arg):
+        (testStore16Imm):
+        (testTrunc):
+        (testAdd1):
+        (testAdd1Ptr):
+        (testNeg32):
+        (testNegPtr):
+        (testStoreAddLoad32):
+        * b3/testb3_4.cpp: Added.
+        (testStoreRelAddLoadAcq32):
+        (testStoreAddLoadImm32):
+        (testStoreAddLoad8):
+        (testStoreRelAddLoadAcq8):
+        (testStoreRelAddFenceLoadAcq8):
+        (testStoreAddLoadImm8):
+        (testStoreAddLoad16):
+        (testStoreRelAddLoadAcq16):
+        (testStoreAddLoadImm16):
+        (testStoreAddLoad64):
+        (testStoreRelAddLoadAcq64):
+        (testStoreAddLoadImm64):
+        (testStoreAddLoad32Index):
+        (testStoreAddLoadImm32Index):
+        (testStoreAddLoad8Index):
+        (testStoreAddLoadImm8Index):
+        (testStoreAddLoad16Index):
+        (testStoreAddLoadImm16Index):
+        (testStoreAddLoad64Index):
+        (testStoreAddLoadImm64Index):
+        (testStoreSubLoad):
+        (testStoreAddLoadInterference):
+        (testStoreAddAndLoad):
+        (testStoreNegLoad32):
+        (testStoreNegLoadPtr):
+        (testAdd1Uncommuted):
+        (testLoadOffset):
+        (testLoadOffsetNotConstant):
+        (testLoadOffsetUsingAdd):
+        (testLoadOffsetUsingAddInterference):
+        (testLoadOffsetUsingAddNotConstant):
+        (testLoadAddrShift):
+        (testFramePointer):
+        (testOverrideFramePointer):
+        (testStackSlot):
+        (testLoadFromFramePointer):
+        (testStoreLoadStackSlot):
+        (testStoreFloat):
+        (testStoreDoubleConstantAsFloat):
+        (testSpillGP):
+        (testSpillFP):
+        (testInt32ToDoublePartialRegisterStall):
+        (testInt32ToDoublePartialRegisterWithoutStall):
+        (testBranch):
+        (testBranchPtr):
+        (testDiamond):
+        (testBranchNotEqual):
+        (testBranchNotEqualCommute):
+        (testBranchNotEqualNotEqual):
+        (testBranchEqual):
+        (testBranchEqualEqual):
+        (testBranchEqualCommute):
+        (testBranchEqualEqual1):
+        (testBranchEqualOrUnorderedArgs):
+        (testBranchNotEqualAndOrderedArgs):
+        (testBranchEqualOrUnorderedDoubleArgImm):
+        (testBranchEqualOrUnorderedFloatArgImm):
+        (testBranchEqualOrUnorderedDoubleImms):
+        (testBranchEqualOrUnorderedFloatImms):
+        (testBranchEqualOrUnorderedFloatWithUselessDoubleConversion):
+        (testBranchFold):
+        (testDiamondFold):
+        (testBranchNotEqualFoldPtr):
+        (testBranchEqualFoldPtr):
+        (testBranchLoadPtr):
+        (testBranchLoad32):
+        (testBranchLoad8S):
+        (testBranchLoad8Z):
+        (testBranchLoad16S):
+        (testBranchLoad16Z):
+        (testBranch8WithLoad8ZIndex):
+        (testComplex):
+        (testBranchBitTest32TmpImm):
+        (testBranchBitTest32AddrImm):
+        (testBranchBitTest32TmpTmp):
+        (testBranchBitTest64TmpTmp):
+        (testBranchBitTest64AddrTmp):
+        (testBranchBitTestNegation):
+        (testBranchBitTestNegation2):
+        (testSimplePatchpoint):
+        (testSimplePatchpointWithoutOuputClobbersGPArgs):
+        (testSimplePatchpointWithOuputClobbersGPArgs):
+        (testSimplePatchpointWithoutOuputClobbersFPArgs):
+        (testSimplePatchpointWithOuputClobbersFPArgs):
+        (testPatchpointWithEarlyClobber):
+        (testPatchpointCallArg):
+        (testPatchpointFixedRegister):
+        (testPatchpointAny):
+        (testPatchpointGPScratch):
+        (testPatchpointFPScratch):
+        (testPatchpointLotsOfLateAnys):
+        (testPatchpointAnyImm):
+        * b3/testb3_5.cpp: Added.
+        (testPatchpointManyImms):
+        (testPatchpointWithRegisterResult):
+        (testPatchpointWithStackArgumentResult):
+        (testPatchpointWithAnyResult):
+        (testSimpleCheck):
+        (testCheckFalse):
+        (testCheckTrue):
+        (testCheckLessThan):
+        (testCheckMegaCombo):
+        (testCheckTrickyMegaCombo):
+        (testCheckTwoMegaCombos):
+        (testCheckTwoNonRedundantMegaCombos):
+        (testCheckAddImm):
+        (testCheckAddImmCommute):
+        (testCheckAddImmSomeRegister):
+        (testCheckAdd):
+        (testCheckAdd64):
+        (testCheckAddFold):
+        (testCheckAddFoldFail):
+        (testCheckAddArgumentAliasing64):
+        (testCheckAddArgumentAliasing32):
+        (testCheckAddSelfOverflow64):
+        (testCheckAddSelfOverflow32):
+        (testCheckSubImm):
+        (testCheckSubBadImm):
+        (testCheckSub):
+        (doubleSub):
+        (testCheckSub64):
+        (testCheckSubFold):
+        (testCheckSubFoldFail):
+        (testCheckNeg):
+        (testCheckNeg64):
+        (testCheckMul):
+        (testCheckMulMemory):
+        (testCheckMul2):
+        (testCheckMul64):
+        (testCheckMulFold):
+        (testCheckMulFoldFail):
+        (testCheckMulArgumentAliasing64):
+        (testCheckMulArgumentAliasing32):
+        (testCheckMul64SShr):
+        (genericTestCompare):
+        (modelCompare):
+        (testCompareLoad):
+        (testCompareImpl):
+        (testCompare):
+        (testEqualDouble):
+        (simpleFunction):
+        (testCallSimple):
+        (testCallRare):
+        (testCallRareLive):
+        (testCallSimplePure):
+        (functionWithHellaArguments):
+        (testCallFunctionWithHellaArguments):
+        (functionWithHellaArguments2):
+        (testCallFunctionWithHellaArguments2):
+        (functionWithHellaArguments3):
+        (testCallFunctionWithHellaArguments3):
+        (testReturnDouble):
+        (testReturnFloat):
+        (simpleFunctionDouble):
+        (testCallSimpleDouble):
+        (simpleFunctionFloat):
+        (testCallSimpleFloat):
+        (functionWithHellaDoubleArguments):
+        (testCallFunctionWithHellaDoubleArguments):
+        (functionWithHellaFloatArguments):
+        (testCallFunctionWithHellaFloatArguments):
+        (testLinearScanWithCalleeOnStack):
+        (testChillDiv):
+        (testChillDivTwice):
+        (testChillDiv64):
+        (testModArg):
+        (testModArgs):
+        (testModImms):
+        (testModArg32):
+        (testModArgs32):
+        (testModImms32):
+        (testChillModArg):
+        (testChillModArgs):
+        (testChillModImms):
+        (testChillModArg32):
+        (testChillModArgs32):
+        (testChillModImms32):
+        (testLoopWithMultipleHeaderEdges):
+        (testSwitch):
+        (testSwitchSameCaseAsDefault):
+        (testSwitchChillDiv):
+        (testSwitchTargettingSameBlock):
+        (testSwitchTargettingSameBlockFoldPathConstant):
+        (testTruncFold):
+        (testZExt32):
+        (testZExt32Fold):
+        (testSExt32):
+        (testSExt32Fold):
+        (testTruncZExt32):
+        (testTruncSExt32):
+        (testSExt8):
+        (testSExt8Fold):
+        (testSExt8SExt8):
+        (testSExt8SExt16):
+        (testSExt8BitAnd):
+        (testBitAndSExt8):
+        (testSExt16):
+        (testSExt16Fold):
+        (testSExt16SExt16):
+        (testSExt16SExt8):
+        (testSExt16BitAnd):
+        (testBitAndSExt16):
+        (testSExt32BitAnd):
+        * b3/testb3_6.cpp: Added.
+        (testBitAndSExt32):
+        (testBasicSelect):
+        (testSelectTest):
+        (testSelectCompareDouble):
+        (testSelectCompareFloat):
+        (testSelectCompareFloatToDouble):
+        (testSelectDouble):
+        (testSelectDoubleTest):
+        (testSelectDoubleCompareDouble):
+        (testSelectDoubleCompareFloat):
+        (testSelectFloatCompareFloat):
+        (testSelectDoubleCompareDoubleWithAliasing):
+        (testSelectFloatCompareFloatWithAliasing):
+        (testSelectFold):
+        (testSelectInvert):
+        (testCheckSelect):
+        (testCheckSelectCheckSelect):
+        (testCheckSelectAndCSE):
+        (b3Pow):
+        (testPowDoubleByIntegerLoop):
+        (testTruncOrHigh):
+        (testTruncOrLow):
+        (testBitAndOrHigh):
+        (testBitAndOrLow):
+        (testBranch64Equal):
+        (testBranch64EqualImm):
+        (testBranch64EqualMem):
+        (testBranch64EqualMemImm):
+        (testStore8Load8Z):
+        (testStore16Load16Z):
+        (testSShrShl32):
+        (testSShrShl64):
+        (testTrivialInfiniteLoop):
+        (testFoldPathEqual):
+        (testLShiftSelf32):
+        (testRShiftSelf32):
+        (testURShiftSelf32):
+        (testLShiftSelf64):
+        (testRShiftSelf64):
+        (testURShiftSelf64):
+        (testPatchpointDoubleRegs):
+        (testSpillDefSmallerThanUse):
+        (testSpillUseLargerThanDef):
+        (testLateRegister):
+        (interpreterPrint):
+        (testInterpreter):
+        (testReduceStrengthCheckBottomUseInAnotherBlock):
+        (testResetReachabilityDanglingReference):
+        (testEntrySwitchSimple):
+        (testEntrySwitchNoEntrySwitch):
+        (testEntrySwitchWithCommonPaths):
+        (testEntrySwitchWithCommonPathsAndNonTrivialEntrypoint):
+        (testEntrySwitchLoop):
+        (testSomeEarlyRegister):
+        (testBranchBitAndImmFusion):
+        (testTerminalPatchpointThatNeedsToBeSpilled):
+        (testTerminalPatchpointThatNeedsToBeSpilled2):
+        (testPatchpointTerminalReturnValue):
+        (testMemoryFence):
+        (testStoreFence):
+        (testLoadFence):
+        (testTrappingLoad):
+        (testTrappingStore):
+        (testTrappingLoadAddStore):
+        (testTrappingLoadDCE):
+        (testTrappingStoreElimination):
+        (testMoveConstants):
+        (testPCOriginMapDoesntInsertNops):
+        * b3/testb3_7.cpp: Added.
+        (testPinRegisters):
+        (testX86LeaAddAddShlLeft):
+        (testX86LeaAddAddShlRight):
+        (testX86LeaAddAdd):
+        (testX86LeaAddShlRight):
+        (testX86LeaAddShlLeftScale1):
+        (testX86LeaAddShlLeftScale2):
+        (testX86LeaAddShlLeftScale4):
+        (testX86LeaAddShlLeftScale8):
+        (testAddShl32):
+        (testAddShl64):
+        (testAddShl65):
+        (testReduceStrengthReassociation):
+        (testLoadBaseIndexShift2):
+        (testLoadBaseIndexShift32):
+        (testOptimizeMaterialization):
+        (generateLoop):
+        (makeArrayForLoops):
+        (generateLoopNotBackwardsDominant):
+        (oneFunction):
+        (noOpFunction):
+        (testLICMPure):
+        (testLICMPureSideExits):
+        (testLICMPureWritesPinned):
+        (testLICMPureWrites):
+        (testLICMReadsLocalState):
+        (testLICMReadsPinned):
+        (testLICMReads):
+        (testLICMPureNotBackwardsDominant):
+        (testLICMPureFoiledByChild):
+        (testLICMPureNotBackwardsDominantFoiledByChild):
+        (testLICMExitsSideways):
+        (testLICMWritesLocalState):
+        (testLICMWrites):
+        (testLICMFence):
+        (testLICMWritesPinned):
+        (testLICMControlDependent):
+        (testLICMControlDependentNotBackwardsDominant):
+        (testLICMControlDependentSideExits):
+        (testLICMReadsPinnedWritesPinned):
+        (testLICMReadsWritesDifferentHeaps):
+        (testLICMReadsWritesOverlappingHeaps):
+        (testLICMDefaultCall):
+        (testDepend32):
+        (testDepend64):
+        (testWasmBoundsCheck):
+        (testWasmAddress):
+        (testFastTLSLoad):
+        (testFastTLSStore):
+        (doubleEq):
+        (doubleNeq):
+        (doubleGt):
+        (doubleGte):
+        (doubleLt):
+        (doubleLte):
+        (testDoubleLiteralComparison):
+        (testFloatEqualOrUnorderedFolding):
+        (testFloatEqualOrUnorderedFoldingNaN):
+        (testFloatEqualOrUnorderedDontFold):
+        (functionNineArgs):
+        (testShuffleDoesntTrashCalleeSaves):
+        (testDemotePatchpointTerminal):
+        (testReportUsedRegistersLateUseFollowedByEarlyDefDoesNotMarkUseAsDead):
+        (testInfiniteLoopDoesntCauseBadHoisting):
+        * b3/testb3_8.cpp: Added.
+        (testAtomicWeakCAS):
+        (testAtomicStrongCAS):
+        (testAtomicXchg):
+        (addAtomicTests):
+        (testLoad):
+        (addLoadTests):
+
 2019-07-30  Yusuke Suzuki  <ysuzuki@apple.com>
 
         [JSC] Emit write barrier after storing instead of before storing

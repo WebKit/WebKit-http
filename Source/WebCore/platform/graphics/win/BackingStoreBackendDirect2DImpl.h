@@ -28,12 +28,13 @@
 #if USE(DIRECT2D)
 
 #include "BackingStoreBackendDirect2D.h"
-#include "COMPtr.h"
 #include <pal/HysteresisActivity.h>
 
 interface IWICBitmap;
 
 namespace WebCore {
+
+class IntSize;
 
 class BackingStoreBackendDirect2DImpl final : public BackingStoreBackendDirect2D {
 public:
@@ -43,8 +44,7 @@ public:
 private:
     void scroll(const IntRect&, const IntSize&) override;
 
-    COMPtr<IWICBitmap> m_scrollSurface;
-    void* m_scrollSurfaceBackingData { nullptr };
+    COMPtr<ID2D1Bitmap> m_scrollSurface;
 
     PAL::HysteresisActivity m_scrolledHysteresis;
 };

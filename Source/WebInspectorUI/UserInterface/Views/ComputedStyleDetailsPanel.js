@@ -82,6 +82,13 @@ WI.ComputedStyleDetailsPanel = class ComputedStyleDetailsPanel extends WI.StyleD
 
     initialLayout()
     {
+        this._boxModelDiagramRow = new WI.BoxModelDetailsSectionRow;
+
+        let boxModelGroup = new WI.DetailsSectionGroup([this._boxModelDiagramRow]);
+        let boxModelSection = new WI.DetailsSection("computed-style-box-model", WI.UIString("Box Model"), [boxModelGroup]);
+
+        this.element.appendChild(boxModelSection.element);
+
         let computedStyleShowAllLabel = document.createElement("label");
         computedStyleShowAllLabel.textContent = WI.UIString("Show All");
 
@@ -112,10 +119,11 @@ WI.ComputedStyleDetailsPanel = class ComputedStyleDetailsPanel extends WI.StyleD
         this._variablesTextEditor.hideFilterNonMatchingProperties = true;
         this._variablesTextEditor.sortPropertiesByName = true;
         this._variablesTextEditor.addEventListener(WI.SpreadsheetCSSStyleDeclarationEditor.Event.FilterApplied, this._handleEditorFilterApplied, this);
+        this._variablesTextEditor.element.dir = "ltr";
 
         let variablesRow = new WI.DetailsSectionRow;
         let variablesGroup = new WI.DetailsSectionGroup([variablesRow]);
-        this._variablesSection = new WI.DetailsSection("computed-style-properties", WI.UIString("Variables"), [variablesGroup]);
+        this._variablesSection = new WI.DetailsSection("computed-style-variables", WI.UIString("Variables"), [variablesGroup]);
         this._variablesSection.addEventListener(WI.DetailsSection.Event.CollapsedStateChanged, this._handleVariablesSectionCollapsedStateChanged, this);
 
         this.addSubview(this._variablesTextEditor);
@@ -124,13 +132,6 @@ WI.ComputedStyleDetailsPanel = class ComputedStyleDetailsPanel extends WI.StyleD
 
         this.element.appendChild(this._propertiesSection.element);
         this.element.appendChild(this._variablesSection.element);
-
-        this._boxModelDiagramRow = new WI.BoxModelDetailsSectionRow;
-
-        let boxModelGroup = new WI.DetailsSectionGroup([this._boxModelDiagramRow]);
-        let boxModelSection = new WI.DetailsSection("computed-style-box-model", WI.UIString("Box Model"), [boxModelGroup]);
-
-        this.element.appendChild(boxModelSection.element);
     }
 
     filterDidChange(filterBar)

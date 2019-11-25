@@ -32,6 +32,7 @@
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/UniqueRef.h>
+#include <wtf/text/StringConcatenate.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -46,40 +47,33 @@ class PointerType final : public ReferenceType {
     using Base = ReferenceType;
 
     PointerType(CodeLocation location, AddressSpace addressSpace, Ref<UnnamedType> elementType)
-        : Base(location, addressSpace, WTFMove(elementType))
+        : Base(location, addressSpace, WTFMove(elementType), Kind::Pointer)
     {
     }
-public:
 
+public:
     static Ref<PointerType> create(CodeLocation location, AddressSpace addressSpace, Ref<UnnamedType> elementType)
     {
-        return adoptRef(*new PointerType(location, addressSpace, WTFMove(elementType)));
+        auto result = adoptRef(*new PointerType(location, addressSpace, WTFMove(elementType)));
+        return result;
     }
 
-    virtual ~PointerType() = default;
+    ~PointerType() = default;
 
-    bool isPointerType() const override { return true; }
-
-    unsigned hash() const override
+    unsigned hash() const
     {
         return this->Base::hash() ^ StringHasher::computeLiteralHash("pointer");
     }
 
-    bool operator==(const UnnamedType& other) const override
+    bool operator==(const PointerType& other) const
     {
-        if (!is<PointerType>(other))
-            return false;
-
-        return addressSpace() == downcast<PointerType>(other).addressSpace()
-            && elementType() == downcast<PointerType>(other).elementType();
+        return addressSpace() == other.addressSpace() && elementType() == other.elementType();
     }
 
-    String toString() const override
+    String toString() const
     {
         return makeString(elementType().toString(), '*');
     }
-
-private:
 };
 
 } // namespace AST
@@ -88,6 +82,8 @@ private:
 
 }
 
-SPECIALIZE_TYPE_TRAITS_WHLSL_UNNAMED_TYPE(PointerType, isPointerType())
+DEFINE_DEFAULT_DELETE(PointerType)
+
+SPECIALIZE_TYPE_TRAITS_WHLSL_TYPE(PointerType, isPointerType())
 
 #endif

@@ -27,6 +27,7 @@
 
 #if ENABLE(WEBGPU)
 
+#include "WHLSLAddressEscapeMode.h"
 #include "WHLSLExpression.h"
 #include <wtf/FastMalloc.h>
 #include <wtf/UniqueRef.h>
@@ -37,26 +38,28 @@ namespace WHLSL {
 
 namespace AST {
 
-class MakeArrayReferenceExpression : public Expression {
+class MakeArrayReferenceExpression final : public Expression {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    MakeArrayReferenceExpression(CodeLocation location, UniqueRef<Expression>&& leftValue)
-        : Expression(location)
+    MakeArrayReferenceExpression(CodeLocation location, UniqueRef<Expression>&& leftValue, AddressEscapeMode addressEscapeMode)
+        : Expression(location, Kind::MakeArrayReference)
         , m_leftValue(WTFMove(leftValue))
+        , m_addressEscapeMode(addressEscapeMode)
     {
     }
 
-    virtual ~MakeArrayReferenceExpression() = default;
+    ~MakeArrayReferenceExpression() = default;
 
     MakeArrayReferenceExpression(const MakeArrayReferenceExpression&) = delete;
     MakeArrayReferenceExpression(MakeArrayReferenceExpression&&) = default;
 
-    bool isMakeArrayReferenceExpression() const override { return true; }
-
     Expression& leftValue() { return m_leftValue; }
+
+    bool mightEscape() const { return m_addressEscapeMode == AddressEscapeMode::Escapes; }
 
 private:
     UniqueRef<Expression> m_leftValue;
+    AddressEscapeMode m_addressEscapeMode;
 };
 
 } // namespace AST
@@ -64,6 +67,8 @@ private:
 }
 
 }
+
+DEFINE_DEFAULT_DELETE(MakeArrayReferenceExpression)
 
 SPECIALIZE_TYPE_TRAITS_WHLSL_EXPRESSION(MakeArrayReferenceExpression, isMakeArrayReferenceExpression())
 

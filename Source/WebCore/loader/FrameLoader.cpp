@@ -118,6 +118,7 @@
 #include "SerializedScriptValue.h"
 #include "Settings.h"
 #include "ShouldTreatAsContinuingLoad.h"
+#include "StyleTreeResolver.h"
 #include "SubframeLoader.h"
 #include "SubresourceLoader.h"
 #include "TextResourceDecoder.h"
@@ -473,7 +474,6 @@ void FrameLoader::submitForm(Ref<FormSubmission>&& submission)
         m_submittedFormURL = submission->requestURL();
     }
 
-    submission->data().generateFiles(m_frame.document());
     submission->setReferrer(outgoingReferrer());
     submission->setOrigin(outgoingOrigin());
 
@@ -1325,7 +1325,7 @@ static void applyShouldOpenExternalURLsPolicyToNewDocumentLoader(Frame& frame, D
 
 bool FrameLoader::isNavigationAllowed() const
 {
-    return m_pageDismissalEventBeingDispatched == PageDismissalType::None && NavigationDisabler::isNavigationAllowed(m_frame);
+    return m_pageDismissalEventBeingDispatched == PageDismissalType::None && !m_frame.script().willReplaceWithResultOfExecutingJavascriptURL() && NavigationDisabler::isNavigationAllowed(m_frame);
 }
 
 bool FrameLoader::isStopLoadingAllowed() const
@@ -2298,11 +2298,10 @@ void FrameLoader::open(CachedFrameBase& cachedFrame)
         url.setPath("/");
 
     started();
-    Document* document = cachedFrame.document();
-    ASSERT(document);
+    auto document = makeRef(*cachedFrame.document());
     ASSERT(document->domWindow());
 
-    clear(document, true, true, cachedFrame.isMainFrame());
+    clear(document.ptr(), true, true, cachedFrame.isMainFrame());
 
     document->attachToCachedFrame(cachedFrame);
     document->setPageCacheState(Document::NotInPageCache);
@@ -2325,13 +2324,15 @@ void FrameLoader::open(CachedFrameBase& cachedFrame)
     if (previousViewFrameRect)
         view->setFrameRect(previousViewFrameRect.value());
 
-    {
-        // Setting the document builds the render tree and runs post style resolution callbacks that can do anything,
-        // including loading a child frame before its been re-attached to the frame tree as part of this restore.
-        // For example, the HTML object element may load its content into a frame in a post style resolution callback.
-        NavigationDisabler disableNavigation { &m_frame };
-        m_frame.setDocument(document);
-    }
+
+    // Setting the document builds the render tree and runs post style resolution callbacks that can do anything,
+    // including loading a child frame before its been re-attached to the frame tree as part of this restore.
+    // For example, the HTML object element may load its content into a frame in a post style resolution callback.
+    Style::PostResolutionCallbackDisabler disabler(document.get());
+    WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
+    NavigationDisabler disableNavigation { &m_frame };
+    
+    m_frame.setDocument(document.copyRef());
 
     document->domWindow()->resumeFromPageCache();
 
@@ -3773,8 +3774,6 @@ void FrameLoader::loadDifferentDocumentItem(HistoryItem& item, HistoryItem* from
     // If this was a repost that failed the page cache, we might try to repost the form.
     NavigationAction action;
     if (formData) {
-        formData->generateFiles(m_frame.document());
-
         request.setHTTPMethod("POST");
         request.setHTTPBody(WTFMove(formData));
         request.setHTTPContentType(item.formContentType());

@@ -316,7 +316,8 @@ public:
     virtual void setFocus(bool flag);
     void setHasFocusWithin(bool flag);
 
-    bool tabIndexSetExplicitly() const;
+    Optional<int> tabIndexSetExplicitly() const;
+    bool shouldBeIgnoredInSequentialFocusNavigation() const { return defaultTabIndex() < 0 && !supportsFocus(); }
     virtual bool supportsFocus() const;
     virtual bool isFocusable() const;
     virtual bool isKeyboardFocusable(KeyboardEvent*) const;
@@ -324,8 +325,8 @@ public:
 
     virtual bool shouldUseInputMethod();
 
-    virtual int tabIndex() const;
-    WEBCORE_EXPORT void setTabIndex(int);
+    virtual int tabIndexForBindings() const;
+    WEBCORE_EXPORT void setTabIndexForBindings(int);
     virtual RefPtr<Element> focusDelegate();
 
     ExceptionOr<void> insertAdjacentHTML(const String& where, const String& html, NodeVector* addedNodes);
@@ -419,7 +420,7 @@ public:
     virtual void mediaVolumeDidChange() { }
 
     // Use Document::registerForPrivateBrowsingStateChangedCallbacks() to subscribe to this.
-    virtual void privateBrowsingStateDidChange() { }
+    virtual void privateBrowsingStateDidChange(PAL::SessionID) { }
 
     virtual void willBecomeFullscreenElement();
     virtual void ancestorWillEnterFullscreen() { }
@@ -600,12 +601,6 @@ public:
 
     ElementIdentifier createElementIdentifier();
 
-#if ENABLE(POINTER_EVENTS)
-#if ENABLE(OVERFLOW_SCROLLING_TOUCH)
-    ScrollingNodeID nearestScrollingNodeIDUsingTouchOverflowScrolling() const;
-#endif
-#endif
-
 protected:
     Element(const QualifiedName&, Document&, ConstructionType);
 
@@ -719,6 +714,8 @@ private:
 
     ElementRareData* elementRareData() const;
     ElementRareData& ensureElementRareData();
+
+    virtual int defaultTabIndex() const;
 
     void detachAllAttrNodesFromElement();
     void detachAttrNodeFromElementWithValue(Attr*, const AtomString& value);

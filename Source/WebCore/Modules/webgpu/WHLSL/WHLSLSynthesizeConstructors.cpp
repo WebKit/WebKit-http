@@ -38,47 +38,13 @@
 #include "WHLSLProgram.h"
 #include "WHLSLStructureDefinition.h"
 #include "WHLSLTypeReference.h"
+#include "WHLSLUnnamedTypeHash.h"
 #include "WHLSLVariableDeclaration.h"
 #include "WHLSLVisitor.h"
 
 namespace WebCore {
 
 namespace WHLSL {
-
-class UnnamedTypeKey {
-public:
-    UnnamedTypeKey() = default;
-    UnnamedTypeKey(WTF::HashTableDeletedValueType)
-    {
-        m_type = bitwise_cast<AST::UnnamedType*>(static_cast<uintptr_t>(1));
-    }
-
-    UnnamedTypeKey(AST::UnnamedType& type)
-        : m_type(&type)
-    { }
-
-    bool isEmptyValue() const { return !m_type; }
-    bool isHashTableDeletedValue() const { return m_type == bitwise_cast<AST::UnnamedType*>(static_cast<uintptr_t>(1)); }
-
-    unsigned hash() const { return m_type->hash(); }
-    bool operator==(const UnnamedTypeKey& other) const { return *m_type == *other.m_type; }
-    AST::UnnamedType& unnamedType() const { return *m_type; }
-
-    struct Hash {
-        static unsigned hash(const UnnamedTypeKey& key) { return key.hash(); }
-        static bool equal(const UnnamedTypeKey& a, const UnnamedTypeKey& b) { return a == b; }
-        static const bool safeToCompareToEmptyOrDeleted = false;
-        static const bool emptyValueIsZero = true;
-    };
-
-    struct Traits : public WTF::SimpleClassHashTraits<UnnamedTypeKey> {
-        static const bool hasIsEmptyValueFunction = true;
-        static bool isEmptyValue(const UnnamedTypeKey& key) { return key.isEmptyValue(); }
-    };
-
-private:
-    AST::UnnamedType* m_type { nullptr };
-};
 
 class FindAllTypes : public Visitor {
 public:
@@ -162,11 +128,11 @@ Expected<void, Error> synthesizeConstructors(Program& program)
             auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), &unnamedType, String(), nullptr, nullptr);
             AST::VariableDeclarations parameters;
             parameters.append(WTFMove(variableDeclaration));
-            AST::NativeFunctionDeclaration copyConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, unnamedType, "operator cast"_str, WTFMove(parameters), nullptr, isOperator));
+            AST::NativeFunctionDeclaration copyConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, unnamedType, "operator cast"_str, WTFMove(parameters), nullptr, isOperator, ParsingMode::StandardLibrary));
             program.append(WTFMove(copyConstructor));
         }
 
-        AST::NativeFunctionDeclaration defaultConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, unnamedType, "operator cast"_str, AST::VariableDeclarations(), nullptr, isOperator));
+        AST::NativeFunctionDeclaration defaultConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, unnamedType, "operator cast"_str, AST::VariableDeclarations(), nullptr, isOperator, ParsingMode::StandardLibrary));
         if (!program.append(WTFMove(defaultConstructor)))
             return makeUnexpected(Error("Could not synthesize default constructor"));
     }
@@ -182,7 +148,7 @@ Expected<void, Error> synthesizeConstructors(Program& program)
         auto variableDeclaration = makeUniqueRef<AST::VariableDeclaration>(location, AST::Qualifiers(), AST::TypeReference::wrap(location, namedType.get()), String(), nullptr, nullptr);
         AST::VariableDeclarations parameters;
         parameters.append(WTFMove(variableDeclaration));
-        AST::NativeFunctionDeclaration copyConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, AST::TypeReference::wrap(location, namedType.get()), "operator cast"_str, WTFMove(parameters), nullptr, isOperator));
+        AST::NativeFunctionDeclaration copyConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, AST::TypeReference::wrap(location, namedType.get()), "operator cast"_str, WTFMove(parameters), nullptr, isOperator, ParsingMode::StandardLibrary));
         program.append(WTFMove(copyConstructor));
 
         if (is<AST::NativeTypeDeclaration>(static_cast<AST::NamedType&>(namedType))) {
@@ -190,7 +156,7 @@ Expected<void, Error> synthesizeConstructors(Program& program)
             if (nativeTypeDeclaration.isOpaqueType())
                 continue;
         }
-        AST::NativeFunctionDeclaration defaultConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, AST::TypeReference::wrap(location, namedType.get()), "operator cast"_str, AST::VariableDeclarations(), nullptr, isOperator));
+        AST::NativeFunctionDeclaration defaultConstructor(AST::FunctionDeclaration(location, AST::AttributeBlock(), WTF::nullopt, AST::TypeReference::wrap(location, namedType.get()), "operator cast"_str, AST::VariableDeclarations(), nullptr, isOperator, ParsingMode::StandardLibrary));
         if (!program.append(WTFMove(defaultConstructor)))
             return makeUnexpected(Error("Could not synthesize default constructor"));
     }

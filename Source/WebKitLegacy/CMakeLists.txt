@@ -42,7 +42,9 @@ endif ()
 
 WEBKIT_FRAMEWORK(WebKitLegacy)
 
-add_dependencies(WebKitLegacy WebCore WebCorePrivateFrameworkHeaders)
+if (NOT INTERNAL_BUILD)
+    add_dependencies(WebKitLegacy WebCore WebCorePrivateFrameworkHeaders)
+endif ()
 if (TARGET WebKitLegacyGUID)
     add_dependencies(WebKitLegacy WebKitLegacyGUID)
 endif ()
@@ -64,7 +66,7 @@ if (MSVC)
         COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/version-stamp.pl ${WebKitLegacy_DERIVED_SOURCES_DIR} $<TARGET_FILE:WebKitLegacy>
         VERBATIM)
 
-     if (NOT WTF_PLATFORM_WIN_CAIRO)
+     if (APPLE)
          add_subdirectory(win/WebKitQuartzCoreAdditions)
      endif ()
 endif ()

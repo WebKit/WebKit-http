@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "LineInfo.h"
 #include "RenderLayer.h"
 
 namespace WebCore {

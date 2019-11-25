@@ -29,8 +29,7 @@
 #include <WebCore/SecurityOriginData.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
-#include <wtf/RefPtr.h>
-#include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/RefCounted.h>
 #include <wtf/WorkQueue.h>
 
 namespace WebCore {
@@ -43,7 +42,7 @@ namespace WebKit {
 
 class LocalStorageDatabaseTracker;
 
-class LocalStorageDatabase : public ThreadSafeRefCounted<LocalStorageDatabase> {
+class LocalStorageDatabase : public RefCounted<LocalStorageDatabase> {
 public:
     static Ref<LocalStorageDatabase> create(Ref<WorkQueue>&&, Ref<LocalStorageDatabaseTracker>&&, const WebCore::SecurityOriginData&);
     ~LocalStorageDatabase();
@@ -54,6 +53,8 @@ public:
     void setItem(const String& key, const String& value);
     void removeItem(const String& key);
     void clear();
+
+    void updateDatabase();
 
     // Will block until all pending changes have been written to disk.
     void close();
@@ -73,7 +74,6 @@ private:
     void itemDidChange(const String& key, const String& value);
 
     void scheduleDatabaseUpdate();
-    void updateDatabase();
     void updateDatabaseWithChangedItems(const HashMap<String, String>&);
 
     bool databaseIsEmpty();

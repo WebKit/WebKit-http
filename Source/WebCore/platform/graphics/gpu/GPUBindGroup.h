@@ -27,38 +27,46 @@
 
 #if ENABLE(WEBGPU)
 
+#include "GPUBindGroupAllocator.h"
 #include "GPUBuffer.h"
 #include "GPUTexture.h"
+#include <objc/NSObjCRuntime.h>
+#include <utility>
 #include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
 
+#if USE(METAL)
 OBJC_PROTOCOL(MTLBuffer);
+#endif
 
 namespace WebCore {
 
 struct GPUBindGroupDescriptor;
 
+#if USE(METAL)
+using ArgumentBuffer = std::pair<const MTLBuffer *, const GPUBindGroupAllocator::ArgumentBufferOffsets&>;
+#endif
+
 class GPUBindGroup : public RefCounted<GPUBindGroup> {
 public:
-    static RefPtr<GPUBindGroup> tryCreate(const GPUBindGroupDescriptor&);
+    static RefPtr<GPUBindGroup> tryCreate(const GPUBindGroupDescriptor&, GPUBindGroupAllocator&);
+
+    ~GPUBindGroup();
     
 #if USE(METAL)
-    const MTLBuffer *vertexArgsBuffer() const { return m_vertexArgsBuffer.get(); }
-    const MTLBuffer *fragmentArgsBuffer() const { return m_fragmentArgsBuffer.get(); }
-    const MTLBuffer *computeArgsBuffer() const { return m_computeArgsBuffer.get(); }
+    const ArgumentBuffer argumentBuffer() const { return { m_allocator->argumentBuffer(), m_argumentBufferOffsets }; }
 #endif
     const HashSet<Ref<GPUBuffer>>& boundBuffers() const { return m_boundBuffers; }
     const HashSet<Ref<GPUTexture>>& boundTextures() const { return m_boundTextures; }
 
 private:
 #if USE(METAL)
-    GPUBindGroup(RetainPtr<MTLBuffer>&& vertexBuffer, RetainPtr<MTLBuffer>&& fragmentBuffer, RetainPtr<MTLBuffer>&& computeArgsBuffer, HashSet<Ref<GPUBuffer>>&&, HashSet<Ref<GPUTexture>>&&);
+    GPUBindGroup(GPUBindGroupAllocator::ArgumentBufferOffsets&&, GPUBindGroupAllocator&, HashSet<Ref<GPUBuffer>>&&, HashSet<Ref<GPUTexture>>&&);
     
-    RetainPtr<MTLBuffer> m_vertexArgsBuffer;
-    RetainPtr<MTLBuffer> m_fragmentArgsBuffer;
-    RetainPtr<MTLBuffer> m_computeArgsBuffer;
+    GPUBindGroupAllocator::ArgumentBufferOffsets m_argumentBufferOffsets;
+    Ref<GPUBindGroupAllocator> m_allocator;
 #endif
     HashSet<Ref<GPUBuffer>> m_boundBuffers;
     HashSet<Ref<GPUTexture>> m_boundTextures;

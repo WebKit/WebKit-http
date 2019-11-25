@@ -39,12 +39,18 @@
     -webkit-user-select: none;
 }
 
-.spreadsheet-css-declaration :matches(.header, .header-media) {
+.spreadsheet-css-declaration :matches(.header, .header-groupings) {
     padding: 0 var(--css-declaration-horizontal-padding);
 }
 
-.spreadsheet-css-declaration :matches(.header, .header-media):first-child {
+.spreadsheet-css-declaration :matches(.header, .header-groupings):first-child {
     padding-top: var(--css-declaration-vertical-padding);
+}
+
+.spreadsheet-css-declaration .header:not(:first-child),
+.spreadsheet-css-declaration .header:not(.editing-selector) .selector,
+.spreadsheet-css-declaration.has-icon .header.editing-selector .selector {
+    margin-top: 1px;
 }
 
 .spreadsheet-css-declaration .header.editing-selector .origin {
@@ -52,7 +58,7 @@
     right: var(--css-declaration-horizontal-padding);
 }
 
-.spreadsheet-css-declaration .media-label {
+.spreadsheet-css-declaration .header-groupings > .grouping {
     color: var(--text-color);
 }
 
@@ -99,8 +105,25 @@
     -webkit-user-modify: read-only;
 }
 
+.spreadsheet-css-declaration .selector > .icon {
+    width: 16px;
+    height: 16px;
+    margin-top: -1px;
+    -webkit-margin-start: -2px;
+    vertical-align: -3.5px;
+    -webkit-user-select: none;
+}
+
+.spreadsheet-css-declaration .selector > .icon + * {
+    -webkit-padding-start: 2px;
+}
+
 .spreadsheet-css-declaration .selector > span {
     color: var(--text-color-secondary);
+}
+
+.spreadsheet-css-declaration .selector.style-attribute > span {
+    -webkit-margin-start: 0.5px;
 }
 
 .spreadsheet-css-declaration .selector.editing:focus,
@@ -151,3 +174,4 @@
         color: var(--text-color-secondary);
     }
 }
+

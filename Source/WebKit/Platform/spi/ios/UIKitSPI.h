@@ -90,6 +90,7 @@
 #import <UIKit/UIPreviewAction_Private.h>
 #import <UIKit/UIPreviewItemController.h>
 #if USE(UICONTEXTMENU)
+#import <UIKit/UIContextMenuInteraction_ForSpringBoardOnly.h>
 #import <UIKit/UIContextMenuInteraction_ForWebKitOnly.h>
 #endif
 #endif
@@ -110,6 +111,10 @@
 #import <UIKit/UIPreviewInteraction.h>
 #import <UIKit/UIURLDragPreviewView.h>
 #import <UIKit/_UITextDragCaretView.h>
+#endif
+
+#if __has_include(<UIKit/UITargetedPreview_Private.h>)
+#import <UIKit/UITargetedPreview_Private.h>
 #endif
 
 #else // USE(APPLE_INTERNAL_SDK)
@@ -1077,6 +1082,9 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 @property (nonatomic, strong) UIImage *image;
 @end
 
+@interface _UIContextMenuStyle : NSObject <NSCopying>
+@end
+
 #endif // USE(APPLE_INTERNAL_SDK)
 
 @interface UIGestureRecognizer (Staging_45970040)
@@ -1156,6 +1164,12 @@ typedef NS_OPTIONS(NSInteger, UIWKDocumentRequestFlags) {
 - (void)_preserveFocusWithToken:(id <NSCopying, NSSecureCoding>)token destructively:(BOOL)destructively;
 @end
 #endif
+
+#if USE(UICONTEXTMENU)
+@interface UITargetedPreview (Radar54086338)
+@property (nonatomic, strong, setter=_setOverridePositionTrackingView:) UIView *overridePositionTrackingView;
+@end
+#endif // USE(UICONTEXTMENU)
 
 @interface UIResponder ()
 - (UIResponder *)firstResponder;

@@ -87,6 +87,8 @@ public:
 
     bool isAlwaysOnLoggingAllowed() const;
 
+    NavigatorBase* navigator() { return &m_navigator; }
+
 private:
     void scheduleJob(std::unique_ptr<ServiceWorkerJob>&&);
 
@@ -137,6 +139,7 @@ private:
 #endif
 
     struct PendingPromise {
+        WTF_MAKE_STRUCT_FAST_ALLOCATED;
         PendingPromise(Ref<DeferredPromise>&& promise, Ref<PendingActivity<ServiceWorkerContainer>>&& pendingActivity)
             : promise(WTFMove(promise))
             , pendingActivity(WTFMove(pendingActivity))

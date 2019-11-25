@@ -54,7 +54,7 @@ namespace WHLSL {
 //   "x". If "x" is a function parameter, we store to "struct->x" as the first
 //   thing we do in the function body.
 
-class EscapedVariableCollector : public Visitor {
+class EscapedVariableCollector final : public Visitor {
     using Base = Visitor;
 public:
 
@@ -77,12 +77,20 @@ public:
 
     void visit(AST::MakePointerExpression& makePointerExpression) override
     {
-        escapeVariableUse(makePointerExpression.leftValue());
+        if (makePointerExpression.mightEscape())
+            escapeVariableUse(makePointerExpression.leftValue());
     }
 
     void visit(AST::MakeArrayReferenceExpression& makeArrayReferenceExpression) override
     {
-        escapeVariableUse(makeArrayReferenceExpression.leftValue());
+        if (makeArrayReferenceExpression.mightEscape())
+            escapeVariableUse(makeArrayReferenceExpression.leftValue());
+    }
+
+    void visit(AST::FunctionDefinition& functionDefinition) override
+    {
+        if (functionDefinition.parsingMode() != ParsingMode::StandardLibrary)
+            Base::visit(functionDefinition);
     }
 
     HashMap<AST::VariableDeclaration*, String> takeEscapedVariables() { return WTFMove(m_escapedVariables); }
@@ -133,6 +141,9 @@ public:
 
     void visit(AST::FunctionDefinition& functionDefinition) override
     {
+        if (functionDefinition.parsingMode() == ParsingMode::StandardLibrary)
+            return;
+
         bool isEntryPoint = !!functionDefinition.entryPointType();
         if (isEntryPoint) {
             auto structVariableDeclaration = makeUniqueRef<AST::VariableDeclaration>(functionDefinition.codeLocation(), AST::Qualifiers(),
@@ -146,7 +157,7 @@ public:
             structVariableDeclarations.append(WTFMove(structVariableDeclaration));
             auto structDeclarationStatement = makeUniqueRef<AST::VariableDeclarationsStatement>(functionDefinition.codeLocation(), WTFMove(structVariableDeclarations));
 
-            auto makePointerExpression = std::make_unique<AST::MakePointerExpression>(functionDefinition.codeLocation(), WTFMove(structVariableReference));
+            std::unique_ptr<AST::Expression> makePointerExpression(new AST::MakePointerExpression(functionDefinition.codeLocation(), WTFMove(structVariableReference), AST::AddressEscapeMode::DoesNotEscape));
             makePointerExpression->setType(m_pointerToStructType.copyRef());
             makePointerExpression->setTypeAnnotation(AST::RightValue());
 
@@ -190,7 +201,7 @@ public:
 
         // This works because it's illegal to call an entrypoint. Therefore, we can only
         // call functions where we've already appended this struct as its final parameter.
-        if (!callExpression.function().isNativeFunctionDeclaration())
+        if (!callExpression.function().isNativeFunctionDeclaration() && callExpression.function().parsingMode() != ParsingMode::StandardLibrary)
             callExpression.arguments().append(makeStructVariableReference());
     }
 
@@ -248,7 +259,8 @@ void preserveVariableLifetimes(Program& program)
     HashMap<AST::VariableDeclaration*, String> escapedVariables;
     {
         EscapedVariableCollector collector;
-        collector.Visitor::visit(program);
+        for (size_t i = 0; i < program.functionDefinitions().size(); ++i)
+            collector.visit(program.functionDefinitions()[i]);
         escapedVariables = collector.takeEscapedVariables();
     }
 

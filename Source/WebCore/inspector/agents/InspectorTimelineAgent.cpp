@@ -37,6 +37,8 @@
 #include "Event.h"
 #include "Frame.h"
 #include "InspectorCPUProfilerAgent.h"
+#include "InspectorClient.h"
+#include "InspectorController.h"
 #include "InspectorMemoryAgent.h"
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
@@ -83,10 +85,11 @@ static CFRunLoopRef currentRunLoop()
 }
 #endif
 
-InspectorTimelineAgent::InspectorTimelineAgent(WebAgentContext& context)
+InspectorTimelineAgent::InspectorTimelineAgent(PageAgentContext& context)
     : InspectorAgentBase("Timeline"_s, context)
     , m_frontendDispatcher(std::make_unique<Inspector::TimelineFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(Inspector::TimelineBackendDispatcher::create(context.backendDispatcher, this))
+    , m_inspectedPage(context.inspectedPage)
 {
 }
 
@@ -94,12 +97,32 @@ InspectorTimelineAgent::~InspectorTimelineAgent() = default;
 
 void InspectorTimelineAgent::didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*)
 {
-    m_instrumentingAgents.setPersistentInspectorTimelineAgent(this);
 }
 
 void InspectorTimelineAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReason)
 {
-    m_instrumentingAgents.setPersistentInspectorTimelineAgent(nullptr);
+    ErrorString ignored;
+    disable(ignored);
+}
+
+void InspectorTimelineAgent::enable(ErrorString& errorString)
+{
+    if (m_instrumentingAgents.inspectorTimelineAgent() == this) {
+        errorString = "TimelineAgent already enabled"_s;
+        return;
+    }
+
+    m_instrumentingAgents.setInspectorTimelineAgent(this);
+}
+
+void InspectorTimelineAgent::disable(ErrorString& errorString)
+{
+    if (m_instrumentingAgents.inspectorTimelineAgent() != this) {
+        errorString = "TimelineAgent already disabled"_s;
+        return;
+    }
+
+    m_instrumentingAgents.setInspectorTimelineAgent(nullptr);
 
     ErrorString unused;
     stop(unused);
@@ -110,7 +133,7 @@ void InspectorTimelineAgent::willDestroyFrontendAndBackend(Inspector::Disconnect
 
 void InspectorTimelineAgent::start(ErrorString&, const int* maxCallStackDepth)
 {
-    m_enabledFromFrontend = true;
+    m_trackingFromFrontend = true;
 
     internalStart(maxCallStackDepth);
 }
@@ -119,7 +142,7 @@ void InspectorTimelineAgent::stop(ErrorString&)
 {
     internalStop();
 
-    m_enabledFromFrontend = false;
+    m_trackingFromFrontend = false;
 }
 
 void InspectorTimelineAgent::setAutoCaptureEnabled(ErrorString&, bool enabled)
@@ -153,7 +176,7 @@ void InspectorTimelineAgent::setInstruments(ErrorString& errorString, const JSON
 
 void InspectorTimelineAgent::internalStart(const int* maxCallStackDepth)
 {
-    if (m_enabled)
+    if (m_tracking)
         return;
 
     if (maxCallStackDepth && *maxCallStackDepth > 0)
@@ -161,17 +184,17 @@ void InspectorTimelineAgent::internalStart(const int* maxCallStackDepth)
     else
         m_maxCallStackDepth = 5;
 
-    m_instrumentingAgents.setInspectorTimelineAgent(this);
+    m_instrumentingAgents.setTrackingInspectorTimelineAgent(this);
 
     m_environment.scriptDebugServer().addListener(this);
 
-    m_enabled = true;
+    m_tracking = true;
 
     // FIXME: Abstract away platform-specific code once https://bugs.webkit.org/show_bug.cgi?id=142748 is fixed.
 
 #if PLATFORM(COCOA)
     m_frameStartObserver = std::make_unique<RunLoopObserver>(static_cast<CFIndex>(RunLoopObserver::WellKnownRunLoopOrders::InspectorFrameBegin), [this]() {
-        if (!m_enabled || m_environment.scriptDebugServer().isPaused())
+        if (!m_tracking || m_environment.scriptDebugServer().isPaused())
             return;
 
         if (!m_runLoopNestingLevel)
@@ -180,7 +203,7 @@ void InspectorTimelineAgent::internalStart(const int* maxCallStackDepth)
     });
 
     m_frameStopObserver = std::make_unique<RunLoopObserver>(static_cast<CFIndex>(RunLoopObserver::WellKnownRunLoopOrders::InspectorFrameEnd), [this]() {
-        if (!m_enabled || m_environment.scriptDebugServer().isPaused())
+        if (!m_tracking || m_environment.scriptDebugServer().isPaused())
             return;
 
         ASSERT(m_runLoopNestingLevel > 0);
@@ -205,14 +228,17 @@ void InspectorTimelineAgent::internalStart(const int* maxCallStackDepth)
 #endif
 
     m_frontendDispatcher->recordingStarted(timestamp());
+
+    if (auto* client = m_inspectedPage.inspectorController().inspectorClient())
+        client->timelineRecordingChanged(true);
 }
 
 void InspectorTimelineAgent::internalStop()
 {
-    if (!m_enabled)
+    if (!m_tracking)
         return;
 
-    m_instrumentingAgents.setInspectorTimelineAgent(nullptr);
+    m_instrumentingAgents.setTrackingInspectorTimelineAgent(nullptr);
 
     m_environment.scriptDebugServer().removeListener(this, true);
 
@@ -228,11 +254,14 @@ void InspectorTimelineAgent::internalStop()
 
     clearRecordStack();
 
-    m_enabled = false;
+    m_tracking = false;
     m_startedComposite = false;
     m_autoCapturePhase = AutoCapturePhase::None;
 
     m_frontendDispatcher->recordingStopped(timestamp());
+
+    if (auto* client = m_inspectedPage.inspectorController().inspectorClient())
+        client->timelineRecordingChanged(false);
 }
 
 double InspectorTimelineAgent::timestamp()
@@ -258,7 +287,7 @@ void InspectorTimelineAgent::startFromConsole(JSC::ExecState* exec, const String
         }
     }
 
-    if (!m_enabled && m_pendingConsoleProfileRecords.isEmpty())
+    if (!m_tracking && m_pendingConsoleProfileRecords.isEmpty())
         startProgrammaticCapture();
 
     m_pendingConsoleProfileRecords.append(createRecordEntry(TimelineRecordFactory::createConsoleProfileData(title), TimelineRecordType::ConsoleProfile, true, frameFromExecState(exec)));
@@ -277,7 +306,7 @@ void InspectorTimelineAgent::stopFromConsole(JSC::ExecState*, const String& titl
             didCompleteRecordEntry(record);
             m_pendingConsoleProfileRecords.remove(i);
 
-            if (!m_enabledFromFrontend && m_pendingConsoleProfileRecords.isEmpty())
+            if (!m_trackingFromFrontend && m_pendingConsoleProfileRecords.isEmpty())
                 stopProgrammaticCapture();
 
             return;
@@ -431,7 +460,7 @@ void InspectorTimelineAgent::timeEnd(Frame& frame, const String& message)
 
 void InspectorTimelineAgent::mainFrameStartedLoading()
 {
-    if (m_enabled)
+    if (m_tracking)
         return;
 
     if (!m_autoCaptureEnabled)
@@ -465,7 +494,7 @@ void InspectorTimelineAgent::mainFrameNavigated()
 
 void InspectorTimelineAgent::startProgrammaticCapture()
 {
-    ASSERT(!m_enabled);
+    ASSERT(!m_tracking);
 
     // Disable breakpoints during programmatic capture.
     if (InspectorDebuggerAgent* debuggerAgent = m_instrumentingAgents.inspectorDebuggerAgent()) {
@@ -484,8 +513,8 @@ void InspectorTimelineAgent::startProgrammaticCapture()
 
 void InspectorTimelineAgent::stopProgrammaticCapture()
 {
-    ASSERT(m_enabled);
-    ASSERT(!m_enabledFromFrontend);
+    ASSERT(m_tracking);
+    ASSERT(!m_trackingFromFrontend);
 
     toggleInstruments(InstrumentState::Stop);
     toggleTimelineInstrument(InstrumentState::Stop);
@@ -712,11 +741,7 @@ void InspectorTimelineAgent::setFrameIdentifier(JSON::Object* record, Frame* fra
     if (!frame)
         return;
 
-    auto* pageAgent = m_instrumentingAgents.inspectorPageAgent();
-    if (!pageAgent)
-        return;
-
-    record->setString("frameId"_s, pageAgent->frameId(frame));
+    record->setString("frameId"_s, m_instrumentingAgents.inspectorPageAgent()->frameId(frame));
 }
 
 void InspectorTimelineAgent::didCompleteRecordEntry(const TimelineRecordEntry& entry)

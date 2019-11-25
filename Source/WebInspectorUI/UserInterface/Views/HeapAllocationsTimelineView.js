@@ -183,9 +183,6 @@ WI.HeapAllocationsTimelineView = class HeapAllocationsTimelineView extends WI.Ti
 
     // Protected
 
-    // FIXME: <https://webkit.org/b/157582> Web Inspector: Heap Snapshot Views should be searchable
-    get showsFilterBar() { return this._showingSnapshotList; }
-
     get navigationItems()
     {
         if (this._showingSnapshotList) {
@@ -298,7 +295,13 @@ WI.HeapAllocationsTimelineView = class HeapAllocationsTimelineView extends WI.Ti
 
     updateFilter(filters)
     {
-        this._dataGrid.filterText = filters ? filters.text : "";
+        if (this._showingSnapshotList) {
+            this._dataGrid.filterText = filters ? filters.text : "";
+            return;
+        }
+
+        console.assert(this._contentViewContainer.currentContentView);
+        this._contentViewContainer.currentContentView.updateFilter(filters);
     }
 
     // Private
@@ -405,7 +408,7 @@ WI.HeapAllocationsTimelineView = class HeapAllocationsTimelineView extends WI.Ti
 
     _takeHeapSnapshotClicked()
     {
-        HeapAgent.snapshot((error, timestamp, snapshotStringData) => {
+        WI.heapManager.snapshot((error, timestamp, snapshotStringData) => {
             let workerProxy = WI.HeapSnapshotWorkerProxy.singleton();
             workerProxy.createSnapshot(snapshotStringData, ({objectId, snapshot: serializedSnapshot}) => {
                 let snapshot = WI.HeapSnapshotProxy.deserialize(objectId, serializedSnapshot);

@@ -26,6 +26,9 @@
 #include "RenderElement.h"
 
 #include "AXObjectCache.h"
+#if PLATFORM(IOS_FAMILY)
+#include "ContentChangeObserver.h"
+#endif
 #include "ContentData.h"
 #include "CursorList.h"
 #include "ElementChildIterator.h"
@@ -919,6 +922,10 @@ inline void RenderElement::clearSubtreeLayoutRootIfNeeded() const
 
 void RenderElement::willBeDestroyed()
 {
+#if PLATFORM(IOS_FAMILY)
+    if (!renderTreeBeingDestroyed() && element())
+        document().contentChangeObserver().rendererWillBeDestroyed(*element());
+#endif
     if (m_style.hasFixedBackgroundImage() && !settings().fixedBackgroundsPaintRelativeToDocument())
         view().frameView().removeSlowRepaintObject(*this);
 
@@ -2030,16 +2037,18 @@ bool RenderElement::checkForRepaintDuringLayout() const
     return !settings().repaintOutsideLayoutEnabled();
 }
 
-RespectImageOrientationEnum RenderElement::shouldRespectImageOrientation() const
+ImageOrientation RenderElement::imageOrientation() const
 {
 #if USE(CG) || USE(CAIRO) || USE(DIRECT2D)
     // This can only be enabled for ports which honor the orientation flag in their drawing code.
     if (document().isImageDocument())
-        return RespectImageOrientation;
+        return ImageOrientation::FromImage;
 #endif
     // Respect the image's orientation if it's being used as a full-page image or it's
     // an <img> and the setting to respect it everywhere is set.
-    return settings().shouldRespectImageOrientation() && is<HTMLImageElement>(element()) ? RespectImageOrientation : DoNotRespectImageOrientation;
+    if (settings().shouldRespectImageOrientation() && is<HTMLImageElement>(element()))
+        return ImageOrientation::FromImage;
+    return style().imageOrientation();
 }
 
 void RenderElement::adjustFragmentedFlowStateOnContainingBlockChangeIfNeeded()

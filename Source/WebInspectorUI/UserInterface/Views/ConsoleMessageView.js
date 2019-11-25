@@ -51,6 +51,7 @@ WI.ConsoleMessageView = class ConsoleMessageView extends WI.Object
     {
         this._element = document.createElement("div");
         this._element.classList.add("console-message");
+        this._element.dir = "ltr";
 
         // FIXME: <https://webkit.org/b/143545> Web Inspector: LogContentView should use higher level objects
         this._element.__message = this._message;
@@ -203,7 +204,7 @@ WI.ConsoleMessageView = class ConsoleMessageView extends WI.Object
     {
         let clipboardString = this._messageBodyElement.innerText.removeWordBreakCharacters();
         if (this._message.savedResultIndex)
-            clipboardString = clipboardString.replace(/\s*=\s*(\$\d+)$/, "");
+            clipboardString = clipboardString.replace(new RegExp(`\\s*=\\s*(${WI.RuntimeManager.preferredSavedResultPrefix()}\\d+)$`), "");
 
         let hasStackTrace = this._shouldShowStackTrace();
         if (!hasStackTrace) {
@@ -238,6 +239,12 @@ WI.ConsoleMessageView = class ConsoleMessageView extends WI.Object
         if (!isPrefixOptional || this._enforcesClipboardPrefixString())
             return this._clipboardPrefixString() + clipboardString;
         return clipboardString;
+    }
+
+    removeEventListeners()
+    {
+        // FIXME: <https://webkit.org/b/196956> Web Inspector: use weak collections for holding event listeners
+        WI.settings.consoleSavedResultAlias.removeEventListener(null, null, this);
     }
 
     // Private
@@ -346,7 +353,8 @@ WI.ConsoleMessageView = class ConsoleMessageView extends WI.Object
 
     _appendSavedResultIndex(element)
     {
-        if (!this._message.savedResultIndex)
+        let savedResultIndex = this._message.savedResultIndex;
+        if (!savedResultIndex)
             return;
 
         console.assert(this._message instanceof WI.ConsoleCommandResultMessage);
@@ -354,7 +362,13 @@ WI.ConsoleMessageView = class ConsoleMessageView extends WI.Object
 
         var savedVariableElement = document.createElement("span");
         savedVariableElement.classList.add("console-saved-variable");
-        savedVariableElement.textContent = " = $" + this._message.savedResultIndex;
+
+        // FIXME: <https://webkit.org/b/196956> Web Inspector: use weak collections for holding event listeners
+        function updateSavedVariableText() {
+            savedVariableElement.textContent = " = " + WI.RuntimeManager.preferredSavedResultPrefix() + savedResultIndex;
+        }
+        WI.settings.consoleSavedResultAlias.addEventListener(WI.Setting.Event.Changed, updateSavedVariableText, this);
+        updateSavedVariableText();
 
         if (this._objectTree)
             this._objectTree.appendTitleSuffix(savedVariableElement);
@@ -389,7 +403,7 @@ WI.ConsoleMessageView = class ConsoleMessageView extends WI.Object
             });
         }
 
-        if (callFrame && (!callFrame.isConsoleEvaluation || WI.isDebugUIEnabled())) {
+        if (callFrame && (!callFrame.isConsoleEvaluation || (WI.isDebugUIEnabled() && WI.settings.debugShowConsoleEvaluations.value))) {
             const showFunctionName = !!callFrame.functionName;
             var locationElement = new WI.CallFrameView(callFrame, showFunctionName);
             locationElement.classList.add("console-message-location");
@@ -692,10 +706,22 @@ WI.ConsoleMessageView = class ConsoleMessageView extends WI.Object
 
     _rootPropertyPathForObject(object)
     {
-        if (!this._message.savedResultIndex)
+        let savedResultIndex = this._message.savedResultIndex;
+        if (!savedResultIndex)
             return null;
 
-        return new WI.PropertyPath(object, "$" + this._message.savedResultIndex);
+        function prefixSavedResultIndex() {
+            return WI.RuntimeManager.preferredSavedResultPrefix() + savedResultIndex;
+        }
+
+        let propertyPath = new WI.PropertyPath(object, prefixSavedResultIndex());
+
+        // FIXME: <https://webkit.org/b/196956> Web Inspector: use weak collections for holding event listeners
+        WI.settings.consoleSavedResultAlias.addEventListener(WI.Setting.Event.Changed, (event) => {
+            propertyPath.pathComponent = prefixSavedResultIndex();
+        }, this);
+
+        return propertyPath;
     }
 
     _formatWithSubstitutionString(parameters, formattedResult)

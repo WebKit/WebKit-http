@@ -52,6 +52,7 @@ class WebPageProxy;
 class WebProcessProxy;
 
 class DrawingAreaProxy : public IPC::MessageReceiver, protected IPC::MessageSender {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(DrawingAreaProxy);
 
 public:
@@ -74,7 +75,7 @@ public:
     static constexpr Seconds didUpdateBackingStoreStateTimeout() { return Seconds::fromMilliseconds(500); }
 
     virtual void colorSpaceDidChange() { }
-    virtual void viewLayoutSizeDidChange() { }
+    virtual void minimumSizeForAutoLayoutDidChange() { }
 
     virtual void adjustTransientZoom(double, WebCore::FloatPoint) { }
     virtual void commitTransientZoom(double, WebCore::FloatPoint) { }

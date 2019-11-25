@@ -41,6 +41,18 @@ class TableFormattingContext : public FormattingContext {
 public:
     TableFormattingContext(const Box& formattingContextRoot, TableFormattingState&);
     void layout() const override;
+
+private:
+    IntrinsicWidthConstraints computedIntrinsicWidthConstraints() const override;
+
+    void ensureTableGrid() const;
+    void computePreferredWidthForColumns() const;
+    void computeTableWidth() const;
+    void distributeAvailabeWidth() const;
+    void computeTableHeight() const;
+    void distributeAvailableHeight() const;
+
+    TableFormattingState& formattingState() const { return downcast<TableFormattingState>(FormattingContext::formattingState()); }
 };
 
 }

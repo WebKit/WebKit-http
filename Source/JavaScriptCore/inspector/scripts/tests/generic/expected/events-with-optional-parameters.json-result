@@ -442,8 +442,9 @@ public:
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
             COMPILE_ASSERT(sizeof(Error) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<JSON::Object> result = m_result.releaseNonNull();
-            return WTFMove(*reinterpret_cast<Ref<Error>*>(&result));
+            Ref<JSON::Object> jsonResult = m_result.releaseNonNull();
+            auto result = WTFMove(*reinterpret_cast<Ref<Error>*>(&jsonResult));
+            return result;
         }
     };
 
@@ -765,7 +766,7 @@ using namespace Inspector;
     AugmentableInspectorController* _controller;
 }
 
-- (instancetype)initWithController:(AugmentableInspectorController*)controller;
+- (instancetype)initWithController:(AugmentableInspectorController*)controller
 {
     self = [super init];
     if (!self)
@@ -912,6 +913,8 @@ __attribute__((visibility ("default")))
 - (void)didExecuteNoOptionalParametersWithColumnNames:(NSArray/*<NSString>*/ *)columnNames notes:(NSString *)notes timestamp:(double)timestamp values:(RWIProtocolJSONObject *)values payload:(RWIProtocolJSONObject *)payload sqlError:(TestProtocolDatabaseError *)sqlError screenColor:(NSString *)screenColor alternateColors:(NSArray/*<NSString>*/ *)alternateColors printColor:(NSString *)printColor;
 @end
 
+
+#import <WebInspector/RWIProtocolBuildCompatibilityObjects.h>
 
 ### End File: TestProtocol.h
 

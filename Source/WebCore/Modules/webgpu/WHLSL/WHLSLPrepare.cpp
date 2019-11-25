@@ -29,7 +29,6 @@
 #if ENABLE(WEBGPU)
 
 #include "WHLSLASTDumper.h"
-#include "WHLSLAutoInitializeVariables.h"
 #include "WHLSLCheckDuplicateFunctions.h"
 #include "WHLSLCheckTextureReferences.h"
 #include "WHLSLChecker.h"
@@ -43,6 +42,7 @@
 #include "WHLSLPreserveVariableLifetimes.h"
 #include "WHLSLProgram.h"
 #include "WHLSLPropertyResolver.h"
+#include "WHLSLPruneUnreachableStandardLibraryFunctions.h"
 #include "WHLSLRecursionChecker.h"
 #include "WHLSLRecursiveTypeChecker.h"
 #include "WHLSLSemanticMatcher.h"
@@ -157,7 +157,7 @@ static Expected<Program, String> prepareShared(PhaseTimes& phaseTimes, String& w
 
     {
         PhaseTimer phaseTimer("parse", phaseTimes);
-        auto parseResult = parser.parse(program, whlslSource, Parser::Mode::User);
+        auto parseResult = parser.parse(program, whlslSource, ParsingMode::User);
         if (!parseResult) {
             if (dumpPassFailure)
                 dataLogLn("failed to parse the program: ", Lexer::errorString(whlslSource, parseResult.error()));
@@ -184,10 +184,10 @@ static Expected<Program, String> prepareShared(PhaseTimes& phaseTimes, String& w
     CHECK_PASS(checkDuplicateFunctions, program);
 
     CHECK_PASS(check, program);
+    RUN_PASS(pruneUnreachableStandardLibraryFunctions, program);
 
     RUN_PASS(checkLiteralTypes, program);
     CHECK_PASS(checkTextureReferences, program);
-    CHECK_PASS(autoInitializeVariables, program);
     RUN_PASS(resolveProperties, program);
     RUN_PASS(findHighZombies, program);
     CHECK_PASS(checkStatementBehavior, program);
