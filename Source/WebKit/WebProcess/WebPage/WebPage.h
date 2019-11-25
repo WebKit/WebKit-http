@@ -811,7 +811,7 @@ public:
 #if PLATFORM(MAC)
     void insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<WebCore::DictationAlternative>& dictationAlternativeLocations, bool registerUndoGroup = false);
     void attributedSubstringForCharacterRangeAsync(const EditingRange&, CallbackID);
-    void fontAtSelection(CompletionHandler<void(const FontInfo&, double, bool)>&&);
+    void fontAtSelection(CallbackID);
 #endif
 
 #if PLATFORM(COCOA) && ENABLE(SERVICE_CONTROLS)
@@ -1225,7 +1225,6 @@ private:
     void platformReinitialize();
     void platformDetach();
     void platformEditorState(WebCore::Frame&, EditorState& result, IncludePostLayoutDataHint) const;
-    void platformWillPerformEditingCommand();
     void sendEditorStateUpdate();
 
 #if PLATFORM(COCOA)
@@ -1238,7 +1237,6 @@ private:
     void didReceiveSyncWebPageMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
 #if PLATFORM(IOS_FAMILY)
-    WebCore::FloatSize viewLayoutSizeAdjustedForQuirks(const WebCore::FloatSize&);
     void resetViewportDefaultConfiguration(WebFrame* mainFrame, bool hasMobileDocType = false);
     enum class ZoomToInitialScale { No, Yes };
     void viewportConfigurationChanged(ZoomToInitialScale = ZoomToInitialScale::No);
@@ -1440,6 +1438,7 @@ private:
     void findStringMatches(const String&, uint32_t findOptions, uint32_t maxMatchCount);
     void getImageForFindMatch(uint32_t matchIndex);
     void selectFindMatch(uint32_t matchIndex);
+    void indicateFindMatch(uint32_t matchIndex);
     void hideFindUI();
     void countStringMatches(const String&, uint32_t findOptions, uint32_t maxMatchCount);
     void replaceMatches(const Vector<uint32_t>& matchIndices, const String& replacementText, bool selectionOnly, CallbackID);
@@ -1957,10 +1956,6 @@ private:
     std::unique_ptr<LayerHostingContext> m_contextForVisibilityPropagation;
 #endif
 };
-
-#if !PLATFORM(IOS_FAMILY)
-inline void WebPage::platformWillPerformEditingCommand() { }
-#endif
 
 } // namespace WebKit
 

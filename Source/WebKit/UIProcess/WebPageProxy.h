@@ -338,6 +338,7 @@ typedef GenericCallback<const Optional<WebCore::ApplicationManifest>&> Applicati
 
 #if PLATFORM(MAC)
 typedef GenericCallback<const AttributedString&, const EditingRange&> AttributedStringForCharacterRangeCallback;
+typedef GenericCallback<const FontInfo&, double, bool> FontAtSelectionCallback;
 #endif
 
 #if PLATFORM(IOS_FAMILY)
@@ -788,7 +789,7 @@ public:
 #if PLATFORM(MAC)
     void insertDictatedTextAsync(const String& text, const EditingRange& replacementRange, const Vector<WebCore::TextAlternativeWithRange>& dictationAlternatives, bool registerUndoGroup);
     void attributedSubstringForCharacterRangeAsync(const EditingRange&, WTF::Function<void (const AttributedString&, const EditingRange&, CallbackBase::Error)>&&);
-    void fontAtSelection(Function<void(const FontInfo&, double, bool)>&&);
+    void fontAtSelection(Function<void(const FontInfo&, double, bool, CallbackBase::Error)>&&);
 
     void startWindowDrag();
     NSWindow *platformWindow();
@@ -982,6 +983,7 @@ public:
     void findStringMatches(const String&, FindOptions, unsigned maxMatchCount);
     void getImageForFindMatch(int32_t matchIndex);
     void selectFindMatch(int32_t matchIndex);
+    void indicateFindMatch(int32_t matchIndex);
     void didGetImageForFindMatch(const ShareableBitmap::Handle& contentImageHandle, uint32_t matchIndex);
     void hideFindUI();
     void countStringMatches(const String&, FindOptions, unsigned maxMatchCount);
@@ -1869,6 +1871,7 @@ private:
     void rectForCharacterRangeCallback(const WebCore::IntRect&, const EditingRange&, CallbackID);
 #if PLATFORM(MAC)
     void attributedStringForCharacterRangeCallback(const AttributedString&, const EditingRange&, CallbackID);
+    void fontAtSelectionCallback(const FontInfo&, double, bool, CallbackID);
 #endif
 #if PLATFORM(IOS_FAMILY)
     void gestureCallback(const WebCore::IntPoint&, uint32_t gestureType, uint32_t gestureState, uint32_t flags, CallbackID);

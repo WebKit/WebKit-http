@@ -1,3 +1,391 @@
+2019-07-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK and WPE debug build after r247508
+
+        * UIProcess/API/glib/WebKitWebResource.cpp:
+        (webkitWebResourceCreate): Remove invalid assert.
+
+2019-07-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE][GTK] UI process crash due to NULL dereference in webkitWebViewResourceLoadStarted()
+        https://bugs.webkit.org/show_bug.cgi?id=199621
+
+        Reviewed by Michael Catanzaro.
+
+        Null-check frame received in injected bundle message to ensure the frame hasn't been destroyed.
+
+        * UIProcess/API/glib/WebKitInjectedBundleClient.cpp:
+        * UIProcess/API/glib/WebKitWebResource.cpp:
+        (webkitWebResourceCreate): Receive a reference to the frame instead of a pointer.
+        * UIProcess/API/glib/WebKitWebResourcePrivate.h:
+        * UIProcess/API/glib/WebKitWebView.cpp:
+        (webkitWebViewResourceLoadStarted): Ditto.
+        * UIProcess/API/glib/WebKitWebViewPrivate.h:
+
+2019-07-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Do not assert when receiving invalid data in injected bundle messages
+        https://bugs.webkit.org/show_bug.cgi?id=199830
+
+        Reviewed by Michael Catanzaro.
+
+        Just silently ignore them to avoid UI process crashes.
+
+        * UIProcess/API/glib/WebKitInjectedBundleClient.cpp:
+
+2019-07-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] No web view updates after swapping web process if AC mode is forced
+        https://bugs.webkit.org/show_bug.cgi?id=199826
+
+        Reviewed by Michael Catanzaro.
+
+        This is because when AC mode is forced the provisional page creates a drawing area that is always in AC
+        mode. When swapping processes, the current drawing area is destroyed (which exists AC mode) and the provisional
+        one is set. From that point the web process is in AC mode but the UI process isn't. We need to update the
+        compositing mode when swapping processes.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseDidExitWebProcess):
+        * UIProcess/CoordinatedGraphics/DrawingAreaProxyCoordinatedGraphics.h:
+
+2019-07-16  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: fast/events/watchos/double-tap-to-zoom* tests crashing in com.apple.WebKit: -[WKContentView(WKInteraction) _singleTapDidReset:]
+        https://bugs.webkit.org/show_bug.cgi?id=199840
+        <rdar://problem/52856531>
+
+        Reviewed by Wenson Hsieh.
+
+        We need to ensure the NSNumber used for -[WKSyntheticTapGestureRecognizer lastActiveTouchIdentifier] is retained. This innocent change required
+        the use of RetainPtr<>, which required the move to an Objective-C++ file, which lead to a change in the order files are unified, which lead to
+        build errors, which leads to a much bigger patch than just the source change necessary to fix the crash.
+
+        * SourcesCocoa.txt:
+        * UIProcess/ios/WKSyntheticTapGestureRecognizer.mm: Renamed from Source/WebKit/UIProcess/ios/WKSyntheticTapGestureRecognizer.m.
+        * UIProcess/ios/forms/WKFormPeripheralBase.h:
+        * UIProcess/ios/forms/WKFormPeripheralBase.mm:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2019-07-16  Brent Fulgham  <bfulgham@apple.com>
+
+        Update WebContent Process sandbox based on user seed data
+        https://bugs.webkit.org/show_bug.cgi?id=199799
+        <rdar://problem/52903477>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2019-07-16  Andy Estes  <aestes@apple.com>
+
+        [macCatalyst] Do not include WebKitLegacy.h in WebKit.h
+        https://bugs.webkit.org/show_bug.cgi?id=199833
+        <rdar://problem/53036744>
+
+        Reviewed by Tim Horton.
+
+        * Shared/API/Cocoa/WebKit.h:
+
+2019-07-16  Frederic Wang  <fwang@igalia.com>
+
+        Fix build warning because of missing super_class initializer
+        https://bugs.webkit.org/show_bug.cgi?id=199825
+
+        Reviewed by Jonathan Bedard.
+
+        * UIProcess/ios/WKContentView.mm:
+        (keyCommandsPlaceholderHackForEvernote):
+
+2019-07-16  Tim Horton  <timothy_horton@apple.com>
+
+        NSTextFinder holes don't scroll with the page
+        https://bugs.webkit.org/show_bug.cgi?id=199815
+        <rdar://problem/52280514>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _usePlatformFindUI]):
+        (-[WKWebView _setUsePlatformFindUI:]):
+        (-[WKWebView _ensureTextFinderClient]):
+        Add a bit so that clients can choose whether they want our find UI,
+        which respects scrolling, or the system find UI, which works when
+        doing multi-document searches. Right now you can't have both.
+
+        (-[WKWebView scrollFindMatchToVisible:]):
+        Implement and plumb scrollFindMatchToVisible.
+
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::indicateFindMatch):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::indicateFindMatch):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        Plumb indicateFindMatch to FindController.
+
+        * UIProcess/mac/WKTextFinderClient.h:
+        * UIProcess/mac/WKTextFinderClient.mm:
+        (-[WKTextFinderClient initWithPage:view:usePlatformFindUI:]):
+        Store whether or not we are using the platform find UI.
+
+        (-[WKTextFinderClient findMatchesForString:relativeToMatch:findOptions:maxResults:resultCollector:]):
+        If using WebKit find UI, turn on our UI in the options passed to findString[Matches].
+
+        (-[WKTextFinderClient scrollFindMatchToVisible:]):
+        If using WebKit find UI, when the platform tells us to reveal a find match, indicate it.
+
+        (-[WKTextFinderClient didFindStringMatchesWithRects:didWrapAround:]):
+        If using WebKit find UI, lie to the platform and return no rects so that it doesn't paint a yellow rectangle.
+
+        (-[WKTextFinderClient getImageForMatchResult:completionHandler:]):
+        If using WebKit find UI, lie to the platform and return no image so that it doesn't paint a yellow rectangle.
+
+        (-[WKTextFinderClient initWithPage:view:]): Deleted.
+
+        * WebProcess/WebPage/FindController.cpp:
+        (WebKit::FindController::updateFindUIAfterPageScroll):
+        Make it possible to use our find UI with 'findStringMatches'; since the platform
+        find infrastrucutre depends on knowing about all matches up front, we need
+        to use 'findStringMatches' instead of 'findString', but we had never combined
+        that with our UI. Don't throw away the other matches when we indicate one, and
+        don't send DidFindString in the case we are coming from 'findStringMatches'.
+        This all needs a bit of cleanup in the future.
+
+        (WebKit::FindController::findString):
+        Tell updateFindUIAfterPageScroll that we are 'findString' so that it uses its normal behavior.
+
+        (WebKit::FindController::findStringMatches):
+        Tell updateFindUIAfterPageScroll that we are 'findStringMatches' so that it uses the adjusted behavior.
+
+        (WebKit::FindController::indicateFindMatch):
+        Add 'indicateFindMatch', which both selects the match and moves the indicator there.
+
+        * WebProcess/WebPage/FindController.h:
+
+2019-07-16  Chris Dumez  <cdumez@apple.com>
+
+        Speed up StorageManager::getValues()
+        https://bugs.webkit.org/show_bug.cgi?id=199812
+
+        Reviewed by Alex Christensen.
+
+        Made the following performance improvements:
+        - Made StorageManager a WorkQueueMessageReceiver again (like it was before it
+          got moved from the UIProcess to the Network process). This avoids a lot of
+          thread hopping (IPC thread -> Main thread -> StorageManagerThread -> Main Thread)
+          and a lot of isolatedCopying of the strings.
+        - Move values around when possible to avoid copying.
+        - Add fast path to StorageMap::importItems() for when the StorageMap is
+          empty when importing (15ms -> 2.5ms).
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::didReceiveMessage):
+        (WebKit::NetworkConnectionToWebProcess::didReceiveSyncMessage):
+        * NetworkProcess/WebStorage/LocalStorageDatabase.cpp:
+        (WebKit::LocalStorageDatabase::importItems):
+        * NetworkProcess/WebStorage/StorageManager.cpp:
+        (WebKit::StorageManager::addAllowedSessionStorageNamespaceConnection):
+        (WebKit::StorageManager::removeAllowedSessionStorageNamespaceConnection):
+        (WebKit::StorageManager::processDidCloseConnection):
+        (WebKit::StorageManager::createLocalStorageMap):
+        (WebKit::StorageManager::createTransientLocalStorageMap):
+        (WebKit::StorageManager::createSessionStorageMap):
+        (WebKit::StorageManager::destroyStorageMap):
+        (WebKit::StorageManager::getValues):
+        (WebKit::StorageManager::setItem):
+        (WebKit::StorageManager::setItems):
+        (WebKit::StorageManager::removeItem):
+        (WebKit::StorageManager::clear):
+        * NetworkProcess/WebStorage/StorageManager.h:
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::addWorkQueueMessageReceiver):
+        (IPC::Connection::removeWorkQueueMessageReceiver):
+        (IPC::Connection::processIncomingMessage):
+        (IPC::Connection::dispatchMessage):
+        (IPC::Connection::dispatchMessageToWorkQueueReceiver):
+        * Platform/IPC/Connection.h:
+        * WebProcess/WebStorage/StorageAreaMap.cpp:
+        (WebKit::StorageAreaMap::loadValuesIfNeeded):
+        Messages to WorkQueueMessageReceivers are normally dispatched from the IPC WorkQueue. However, there is a race if
+        a client (here StorageManager) adds itself as a WorkQueueMessageReceiver as a result of receiving an IPC message
+        on the main thread (here NetworkConnectionToWebProcess::WebPageWasAdded).
+        The message might have already been dispatched from the IPC WorkQueue to the main thread by the time the
+        client registers itself as a WorkQueueMessageReceiver. To address this, we check again for messages receivers
+        once the message arrives on the main thread.
+
+2019-07-16  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Cancel ongoing content observation when tap is failed/cancelled
+        https://bugs.webkit.org/show_bug.cgi?id=199828
+        <rdar://problem/53152696>
+
+        Reviewed by Wenson Hsieh.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::commitPotentialTapFailed):
+        (WebKit::WebPage::cancelPotentialTap):
+
+2019-07-15  Alex Christensen  <achristensen@webkit.org>
+
+        Remove redundant WebsiteDataStoreConfiguration member
+        https://bugs.webkit.org/show_bug.cgi?id=199820
+
+        Reviewed by Geoffrey Garen.
+
+        m_webStorageDirectory was only used for _WKWebsiteDataStoreConfiguration._webStorageDirectory's backing,
+        which was copied over to m_localStorageDirectory of a new object in WKWebsiteDataStore's _initWithConfiguration.
+        This is a baby step towards cleaning up this mess with no behavior change.  I see no reason to rename the SPI.
+
+        * UIProcess/API/Cocoa/_WKWebsiteDataStoreConfiguration.mm:
+        (-[_WKWebsiteDataStoreConfiguration _webStorageDirectory]):
+        (-[_WKWebsiteDataStoreConfiguration _setWebStorageDirectory:]):
+        * UIProcess/WebsiteData/WebsiteDataStoreConfiguration.cpp:
+        (WebKit::WebsiteDataStoreConfiguration::copy):
+        * UIProcess/WebsiteData/WebsiteDataStoreConfiguration.h:
+        (WebKit::WebsiteDataStoreConfiguration::webStorageDirectory const): Deleted.
+        (WebKit::WebsiteDataStoreConfiguration::setWebStorageDirectory): Deleted.
+
+2019-07-15  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Make WKURLSchemeTask thread safe
+        https://bugs.webkit.org/show_bug.cgi?id=199764
+
+        Unreviewed build fix for WinCairo port.
+
+        Source\WebKit\UIProcess\socket\RemoteInspectorProtocolHandler.cpp(82): error C2039: 'request': is not a member of 'WebKit::WebURLSchemeTask'
+
+        * UIProcess/WebURLSchemeTask.h:
+        (WebKit::WebURLSchemeTask::request const): Restored WebURLSchemeTask::request with a threading assertion.
+
+2019-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247444.
+
+        Caused two scrolling tests to fail on iOS Simulator
+
+        Reverted changeset:
+
+        "Typing into a cell in a Google Sheet lags behind by one
+        character"
+        https://bugs.webkit.org/show_bug.cgi?id=199587
+        https://trac.webkit.org/changeset/247444
+
+2019-07-15  Zalan Bujtas  <zalan@apple.com>
+
+        outlook.live.com has odd viewport with edge gap
+        https://bugs.webkit.org/show_bug.cgi?id=199822
+        <rdar://problem/53029072>
+
+        Reviewed by Wenson Hsieh.
+
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::setViewportConfigurationViewLayoutSize):
+        (WebKit::WebPage::dynamicViewportSizeUpdate):
+        (WebKit::WebPage::resetViewportDefaultConfiguration):
+        (WebKit::WebPage::immediatelyShrinkToFitContent):
+        (WebKit::WebPage::viewLayoutSizeAdjustedForQuirks): Deleted.
+
+2019-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        New York font erroneously gets synthetic bold
+        https://bugs.webkit.org/show_bug.cgi?id=199653
+        <rdar://problem/51692592>
+
+        Reviewed by Simon Fraser.
+
+        Add the SPI to enable the new fonts.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetShouldAllowDesignSystemUIFonts):
+        (WKPreferencesGetShouldAllowDesignSystemUIFonts):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _shouldAllowDesignSystemUIFonts]):
+        (-[WKPreferences _setShouldAllowDesignSystemUIFonts:]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2019-07-15  Brady Eidson  <beidson@apple.com>
+
+        Make WKURLSchemeTask thread safe.
+        <rdar://problem/50471863> and https://bugs.webkit.org/show_bug.cgi?id=199764
+
+        Reviewed by Alex Christensen.
+
+        Punt most of the WKURLSchemeTask operations back to the main thread.
+        Make accessing the NSURLRequest be thread safe with lock protection.
+
+        * UIProcess/API/Cocoa/WKURLSchemeTask.mm:
+        (getExceptionTypeFromMainRunLoop):
+        (-[WKURLSchemeTaskImpl dealloc]):
+        (-[WKURLSchemeTaskImpl request]):
+        (-[WKURLSchemeTaskImpl _requestOnlyIfCached]):
+        (-[WKURLSchemeTaskImpl didReceiveResponse:]):
+        (-[WKURLSchemeTaskImpl didReceiveData:]):
+        (-[WKURLSchemeTaskImpl didFinish]):
+        (-[WKURLSchemeTaskImpl didFailWithError:]):
+        (-[WKURLSchemeTaskImpl _didPerformRedirection:newRequest:]):
+
+        * UIProcess/WebURLSchemeTask.cpp:
+        (WebKit::WebURLSchemeTask::WebURLSchemeTask):
+        (WebKit::WebURLSchemeTask::~WebURLSchemeTask):
+        (WebKit::WebURLSchemeTask::didPerformRedirection):
+        (WebKit::WebURLSchemeTask::didReceiveResponse):
+        (WebKit::WebURLSchemeTask::didReceiveData):
+        (WebKit::WebURLSchemeTask::didComplete):
+        (WebKit::WebURLSchemeTask::pageDestroyed):
+        (WebKit::WebURLSchemeTask::stop):
+        (WebKit::WebURLSchemeTask::nsRequest const):
+
+        * UIProcess/WebURLSchemeTask.h:
+        (WebKit::WebURLSchemeTask::identifier const):
+        (WebKit::WebURLSchemeTask::pageID const):
+        (WebKit::WebURLSchemeTask::process):
+        (WebKit::WebURLSchemeTask::process const): Deleted.
+        (WebKit::WebURLSchemeTask::request const): Deleted.
+
+2019-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Followup to r247439
+        https://bugs.webkit.org/show_bug.cgi?id=199788
+        <rdar://problem/52142570>
+
+        Reviewed by Tim Horton.
+
+        As it turns out, sending modern async completion-handler based IPC messages while processing incoming sync
+        messages results in a debug assertion. Instead of migrating FontAtSelection to the new async IPC mechanism,
+        restore the older CallbackID-based async IPC.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::fontAtSelection):
+        (WebKit::WebPageProxy::fontAtSelectionCallback):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::fontAtSelection):
+
+2019-07-15  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Remove software rendering and simplify context creation on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=199789
+
+        Reviewed by Sam Weinig.
+
+        Remove force software WebGL setting.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetForceSoftwareWebGLRendering): Deleted.
+        (WKPreferencesGetForceSoftwareWebGLRendering): Deleted.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+
 2019-07-15  Daniel Bates  <dabates@apple.com>
 
         Typing into a cell in a Google Sheet lags behind by one character

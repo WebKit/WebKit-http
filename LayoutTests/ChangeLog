@@ -1,3 +1,528 @@
+2019-07-17  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r247501.
+
+        Introduced 100 failures on Mojave WK2.
+
+        Reverted changeset:
+
+        "[WHLSL] Move WHLSL tests to their own folder"
+        https://bugs.webkit.org/show_bug.cgi?id=199838
+        https://trac.webkit.org/changeset/247501
+
+2019-07-17  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Unreviewed test gardening for WinCairo port
+
+        * platform/wincairo-wk1/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2019-07-17  Rob Buis  <rbuis@igalia.com>
+
+        Add referrerpolicy attribute support for <script> elements
+        https://bugs.webkit.org/show_bug.cgi?id=185550
+
+        Reviewed by Youenn Fablet.
+
+        Add tests for scripts with various referrerpolicy attribute values.
+
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer-when-downgrade/same-origin.html: Added.
+        * http/tests/referrer-policy-script/no-referrer/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/no-referrer/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/no-referrer/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/no-referrer/same-origin.html: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin-when-cross-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-script/origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/origin/same-origin.html: Added.
+        * http/tests/referrer-policy-script/same-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/same-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/same-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/same-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/same-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/same-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin-when-cross-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-script/strict-origin/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/strict-origin/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/strict-origin/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/strict-origin/same-origin.html: Added.
+        * http/tests/referrer-policy-script/unsafe-url/cross-origin-http-http-expected.txt: Added.
+        * http/tests/referrer-policy-script/unsafe-url/cross-origin-http-http.html: Added.
+        * http/tests/referrer-policy-script/unsafe-url/cross-origin-http.https-expected.txt: Added.
+        * http/tests/referrer-policy-script/unsafe-url/cross-origin-http.https.html: Added.
+        * http/tests/referrer-policy-script/unsafe-url/same-origin-expected.txt: Added.
+        * http/tests/referrer-policy-script/unsafe-url/same-origin.html: Added.
+        * http/tests/referrer-policy/resources/script.php: Added.
+        * platform/win/TestExpectations:
+
+2019-07-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Move WHLSL tests to their own folder
+        https://bugs.webkit.org/show_bug.cgi?id=199838
+
+        Reviewed by Robin Morisset.
+
+        webgpu/whlsl-foo.html => webgpu/whlsl/foo.html
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * webgpu/whlsl/arbitrary-vertex-attribute-locations-expected.html: Renamed from LayoutTests/webgpu/whlsl-while-loop-continue-expected.html.
+        * webgpu/whlsl/arbitrary-vertex-attribute-locations.html: Renamed from LayoutTests/webgpu/whlsl-arbitrary-vertex-attribute-locations.html.
+        * webgpu/whlsl/argument-evaluation-order-expected.txt: Renamed from LayoutTests/webgpu/whlsl-argument-evaluation-order-expected.txt.
+        * webgpu/whlsl/argument-evaluation-order.html: Renamed from LayoutTests/webgpu/whlsl-argument-evaluation-order.html.
+        * webgpu/whlsl/array-length-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-array-length-spec-tests-expected.txt.
+        * webgpu/whlsl/array-length-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-array-length-spec-tests.html.
+        * webgpu/whlsl/array-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-array-spec-tests-expected.txt.
+        * webgpu/whlsl/array-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-array-spec-tests.html.
+        * webgpu/whlsl/bad-add-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bad-add-expected.txt.
+        * webgpu/whlsl/bad-add.html: Renamed from LayoutTests/webgpu/whlsl-bad-add.html.
+        * webgpu/whlsl/bad-ander-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bad-ander-expected.txt.
+        * webgpu/whlsl/bad-ander.html: Renamed from LayoutTests/webgpu/whlsl-bad-ander.html.
+        * webgpu/whlsl/bad-literals-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bad-literals-expected.txt.
+        * webgpu/whlsl/bad-literals.html: Renamed from LayoutTests/webgpu/whlsl-bad-literals.html.
+        * webgpu/whlsl/bitwise-bool-ops-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bitwise-bool-ops-expected.txt.
+        * webgpu/whlsl/bitwise-bool-ops.html: Renamed from LayoutTests/webgpu/whlsl-bitwise-bool-ops.html.
+        * webgpu/whlsl/bools-expected.txt: Renamed from LayoutTests/webgpu/whlsl-bools-expected.txt.
+        * webgpu/whlsl/bools.html: Renamed from LayoutTests/webgpu/whlsl-bools.html.
+        * webgpu/whlsl/buffer-fragment-expected.html: Renamed from LayoutTests/webgpu/whlsl-textures-sample-expected.html.
+        * webgpu/whlsl/buffer-fragment.html: Renamed from LayoutTests/webgpu/whlsl-buffer-fragment.html.
+        * webgpu/whlsl/buffer-length-expected.txt: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable-expected.txt.
+        * webgpu/whlsl/buffer-length.html: Renamed from LayoutTests/webgpu/whlsl-buffer-length.html.
+        * webgpu/whlsl/buffer-vertex-expected.html: Renamed from LayoutTests/webgpu/whlsl-textures-load-expected.html.
+        * webgpu/whlsl/buffer-vertex.html: Renamed from LayoutTests/webgpu/whlsl-buffer-vertex.html.
+        * webgpu/whlsl/builtin-vectors-2-expected.txt: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors-2-expected.txt.
+        * webgpu/whlsl/builtin-vectors-2.html: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors-2.html.
+        * webgpu/whlsl/builtin-vectors-expected.txt: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors-expected.txt.
+        * webgpu/whlsl/builtin-vectors.html: Renamed from LayoutTests/webgpu/whlsl-builtin-vectors.html.
+        * webgpu/whlsl/casts-expected.txt: Renamed from LayoutTests/webgpu/whlsl-casts-expected.txt.
+        * webgpu/whlsl/casts.html: Renamed from LayoutTests/webgpu/whlsl-casts.html.
+        * webgpu/whlsl/checker-should-set-type-of-read-modify-write-variables-expected.txt: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable-2-expected.txt.
+        * webgpu/whlsl/checker-should-set-type-of-read-modify-write-variables.html: Renamed from LayoutTests/webgpu/whlsl-checker-should-set-type-of-read-modify-write-variables.html.
+        * webgpu/whlsl/comment-parsing-expected.txt: Renamed from LayoutTests/webgpu/whlsl-comment-parsing-expected.txt.
+        * webgpu/whlsl/comment-parsing.html: Renamed from LayoutTests/webgpu/whlsl-comment-parsing.html.
+        * webgpu/whlsl/compute-expected.txt: Renamed from LayoutTests/webgpu/whlsl-two-dimensional-array-expected.txt.
+        * webgpu/whlsl/compute.html: Renamed from LayoutTests/webgpu/whlsl-compute.html.
+        * webgpu/whlsl/copy-expected.txt: Renamed from LayoutTests/webgpu/whlsl-copy-expected.txt.
+        * webgpu/whlsl/copy.html: Renamed from LayoutTests/webgpu/whlsl-copy.html.
+        * webgpu/whlsl/dereference-ordering-expected.txt: Renamed from LayoutTests/webgpu/whlsl-dereference-ordering-expected.txt.
+        * webgpu/whlsl/dereference-ordering.html: Renamed from LayoutTests/webgpu/whlsl-dereference-ordering.html.
+        * webgpu/whlsl/dereference-pointer-should-type-check-expected.html: Renamed from LayoutTests/webgpu/whlsl-store-to-property-updates-properly-expected.html.
+        * webgpu/whlsl/dereference-pointer-should-type-check.html: Renamed from LayoutTests/webgpu/whlsl-dereference-pointer-should-type-check.html.
+        * webgpu/whlsl/do-while-loop-break-expected.html: Renamed from LayoutTests/webgpu/whlsl-zero-initialize-values-expected.html.
+        * webgpu/whlsl/do-while-loop-break.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-break.html.
+        * webgpu/whlsl/do-while-loop-continue-expected.html: Renamed from LayoutTests/webgpu/whlsl-return-local-variable-expected.html.
+        * webgpu/whlsl/do-while-loop-continue.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-continue.html.
+        * webgpu/whlsl/do-while-loop-expected.html: Renamed from LayoutTests/webgpu/whlsl-nested-dot-expression-rvalue-expected.html.
+        * webgpu/whlsl/do-while-loop.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop.html.
+        * webgpu/whlsl/dont-crash-parsing-enum-expected.html: Renamed from LayoutTests/webgpu/whlsl-loops-expected.html.
+        * webgpu/whlsl/dont-crash-parsing-enum.html: Renamed from LayoutTests/webgpu/whlsl-dont-crash-parsing-enum.html.
+        * webgpu/whlsl/dot-expressions-expected.html: Renamed from LayoutTests/webgpu/whlsl-expected.html.
+        * webgpu/whlsl/dot-expressions.html: Renamed from LayoutTests/webgpu/whlsl-dot-expressions.html.
+        * webgpu/whlsl/double-not-expected.txt: Renamed from LayoutTests/webgpu/whlsl-double-not-expected.txt.
+        * webgpu/whlsl/double-not.html: Renamed from LayoutTests/webgpu/whlsl-double-not.html.
+        * webgpu/whlsl/duplicate-types-should-not-produce-duplicate-ctors-expected.txt: Renamed from LayoutTests/webgpu/whlsl-textures-getdimensions-expected.txt.
+        * webgpu/whlsl/duplicate-types-should-not-produce-duplicate-ctors.html: Renamed from LayoutTests/webgpu/whlsl-duplicate-types-should-not-produce-duplicate-ctors.html.
+        * webgpu/whlsl/duplicates-expected.txt: Renamed from LayoutTests/webgpu/whlsl-duplicates-expected.txt.
+        * webgpu/whlsl/duplicates.html: Renamed from LayoutTests/webgpu/whlsl-duplicates.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-2-expected.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-expected.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-2.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-2.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-3-expected.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-3-expected.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-3.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-3.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime-expected.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime-2-expected.html.
+        * webgpu/whlsl/ensure-proper-variable-lifetime.html: Renamed from LayoutTests/webgpu/whlsl-ensure-proper-variable-lifetime.html.
+        * webgpu/whlsl/enum-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-enum-spec-tests-expected.txt.
+        * webgpu/whlsl/enum-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-enum-spec-tests.html.
+        * webgpu/whlsl/equality-expected.txt: Renamed from LayoutTests/webgpu/whlsl-equality-expected.txt.
+        * webgpu/whlsl/equality.html: Renamed from LayoutTests/webgpu/whlsl-equality.html.
+        * webgpu/whlsl/expected.html: Renamed from LayoutTests/webgpu/whlsl-dot-expressions-expected.html.
+        * webgpu/whlsl/float-math-expected.txt: Renamed from LayoutTests/webgpu/whlsl-float-math-expected.txt.
+        * webgpu/whlsl/float-math.html: Renamed from LayoutTests/webgpu/whlsl-float-math.html.
+        * webgpu/whlsl/getter-setter-type-expected.txt: Renamed from LayoutTests/webgpu/whlsl-getter-setter-type-expected.txt.
+        * webgpu/whlsl/getter-setter-type.html: Renamed from LayoutTests/webgpu/whlsl-getter-setter-type.html.
+        * webgpu/whlsl/huge-array-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-arrays-expected.txt.
+        * webgpu/whlsl/huge-array.html: Renamed from LayoutTests/webgpu/whlsl-huge-array.html.
+        * webgpu/whlsl/if-statement-expected.txt: Renamed from LayoutTests/webgpu/whlsl-if-statement-expected.txt.
+        * webgpu/whlsl/if-statement.html: Renamed from LayoutTests/webgpu/whlsl-if-statement.html.
+        * webgpu/whlsl/increment-decrement-expected.txt: Renamed from LayoutTests/webgpu/whlsl-increment-decrement-expected.txt.
+        * webgpu/whlsl/increment-decrement.html: Renamed from LayoutTests/webgpu/whlsl-increment-decrement.html.
+        * webgpu/whlsl/index-ander-expected.txt: Renamed from LayoutTests/webgpu/whlsl-index-ander-expected.txt.
+        * webgpu/whlsl/index-ander.html: Renamed from LayoutTests/webgpu/whlsl-index-ander.html.
+        * webgpu/whlsl/index-getter-setter-expected.txt: Renamed from LayoutTests/webgpu/whlsl-index-getter-setter-expected.txt.
+        * webgpu/whlsl/index-getter-setter.html: Renamed from LayoutTests/webgpu/whlsl-index-getter-setter.html.
+        * webgpu/whlsl/index-setter-getter-expected.txt: Renamed from LayoutTests/webgpu/whlsl-index-setter-getter-expected.txt.
+        * webgpu/whlsl/index-setter-getter.html: Renamed from LayoutTests/webgpu/whlsl-index-setter-getter.html.
+        * webgpu/whlsl/int-bit-math-expected.txt: Renamed from LayoutTests/webgpu/whlsl-int-bit-math-expected.txt.
+        * webgpu/whlsl/int-bit-math.html: Renamed from LayoutTests/webgpu/whlsl-int-bit-math.html.
+        * webgpu/whlsl/int-literal-compare-expected.txt: Renamed from LayoutTests/webgpu/whlsl-int-literal-compare-expected.txt.
+        * webgpu/whlsl/int-literal-compare.html: Renamed from LayoutTests/webgpu/whlsl-int-literal-compare.html.
+        * webgpu/whlsl/logical-negation-expected.txt: Renamed from LayoutTests/webgpu/whlsl-logical-negation-expected.txt.
+        * webgpu/whlsl/logical-negation.html: Renamed from LayoutTests/webgpu/whlsl-logical-negation.html.
+        * webgpu/whlsl/loops-break-expected.html: Renamed from LayoutTests/webgpu/whlsl-zero-initialize-values-2-expected.html.
+        * webgpu/whlsl/loops-break.html: Renamed from LayoutTests/webgpu/whlsl-loops-break.html.
+        * webgpu/whlsl/loops-continue-expected.html: Renamed from LayoutTests/webgpu/whlsl-while-loop-break-expected.html.
+        * webgpu/whlsl/loops-continue.html: Renamed from LayoutTests/webgpu/whlsl-loops-continue.html.
+        * webgpu/whlsl/loops-expected.html: Renamed from LayoutTests/webgpu/whlsl-dont-crash-parsing-enum-expected.html.
+        * webgpu/whlsl/loops-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-loops-spec-tests-expected.txt.
+        * webgpu/whlsl/loops-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-loops-spec-tests.html.
+        * webgpu/whlsl/loops.html: Renamed from LayoutTests/webgpu/whlsl-loops.html.
+        * webgpu/whlsl/lots-of-local-variables-expected.txt: Renamed from LayoutTests/webgpu/whlsl-lots-of-local-variables-expected.txt.
+        * webgpu/whlsl/lots-of-local-variables.html: Renamed from LayoutTests/webgpu/whlsl-lots-of-local-variables.html.
+        * webgpu/whlsl/lvalues-expected.txt: Renamed from LayoutTests/webgpu/whlsl-lvalues-expected.txt.
+        * webgpu/whlsl/lvalues.html: Renamed from LayoutTests/webgpu/whlsl-lvalues.html.
+        * webgpu/whlsl/make-array-ref-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-make-array-ref-spec-tests-expected.txt.
+        * webgpu/whlsl/make-array-ref-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-make-array-ref-spec-tests.html.
+        * webgpu/whlsl/make-array-reference-expected.txt: Renamed from LayoutTests/webgpu/whlsl-read-modify-write-high-zombies-expected.txt.
+        * webgpu/whlsl/make-array-reference.html: Renamed from LayoutTests/webgpu/whlsl-make-array-reference.html.
+        * webgpu/whlsl/matrices-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrices-spec-tests-expected.txt.
+        * webgpu/whlsl/matrices-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-matrices-spec-tests.html.
+        * webgpu/whlsl/matrix-2-expected.txt: Renamed from LayoutTests/webgpu/whlsl-read-modify-write-expected.txt.
+        * webgpu/whlsl/matrix-2.html: Renamed from LayoutTests/webgpu/whlsl-matrix-2.html.
+        * webgpu/whlsl/matrix-expected.txt: Renamed from LayoutTests/webgpu/whlsl-oob-access-expected.txt.
+        * webgpu/whlsl/matrix-memory-layout-expected.txt: Renamed from LayoutTests/webgpu/whlsl-null-dereference-expected.txt.
+        * webgpu/whlsl/matrix-memory-layout.html: Renamed from LayoutTests/webgpu/whlsl-matrix-memory-layout.html.
+        * webgpu/whlsl/matrix.html: Renamed from LayoutTests/webgpu/whlsl-matrix.html.
+        * webgpu/whlsl/nested-dot-expression-rvalue-expected.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-expected.html.
+        * webgpu/whlsl/nested-dot-expression-rvalue.html: Renamed from LayoutTests/webgpu/whlsl-nested-dot-expression-rvalue.html.
+        * webgpu/whlsl/nested-loop-expected.html: Renamed from LayoutTests/webgpu/whlsl-nested-loop-expected.html.
+        * webgpu/whlsl/nested-loop.html: Renamed from LayoutTests/webgpu/whlsl-nested-loop.html.
+        * webgpu/whlsl/null-arg-expected.txt: Renamed from LayoutTests/webgpu/whlsl-null-arg-expected.txt.
+        * webgpu/whlsl/null-arg.html: Renamed from LayoutTests/webgpu/whlsl-null-arg.html.
+        * webgpu/whlsl/null-array-ref.html: Renamed from LayoutTests/webgpu/whlsl-null-array-ref.html.
+        * webgpu/whlsl/null-dereference-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrix-memory-layout-expected.txt.
+        * webgpu/whlsl/null-dereference.html: Renamed from LayoutTests/webgpu/whlsl-null-dereference.html.
+        * webgpu/whlsl/oob-access-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrix-expected.txt.
+        * webgpu/whlsl/oob-access.html: Renamed from LayoutTests/webgpu/whlsl-oob-access.html.
+        * webgpu/whlsl/operator-overload-expected.txt: Renamed from LayoutTests/webgpu/whlsl-operator-overload-expected.txt.
+        * webgpu/whlsl/operator-overload.html: Renamed from LayoutTests/webgpu/whlsl-operator-overload.html.
+        * webgpu/whlsl/overload-expected.txt: Renamed from LayoutTests/webgpu/whlsl-overload-expected.txt.
+        * webgpu/whlsl/overload.html: Renamed from LayoutTests/webgpu/whlsl-overload.html.
+        * webgpu/whlsl/override-subscript-expected.txt: Renamed from LayoutTests/webgpu/whlsl-override-subscript-expected.txt.
+        * webgpu/whlsl/override-subscript.html: Renamed from LayoutTests/webgpu/whlsl-override-subscript.html.
+        * webgpu/whlsl/plus-equals-expected.txt: Renamed from LayoutTests/webgpu/whlsl-plus-equals-expected.txt.
+        * webgpu/whlsl/plus-equals.html: Renamed from LayoutTests/webgpu/whlsl-plus-equals.html.
+        * webgpu/whlsl/pointer-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-pointer-spec-tests-expected.txt.
+        * webgpu/whlsl/pointer-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-pointer-spec-tests.html.
+        * webgpu/whlsl/postfix-prefix-expected.txt: Renamed from LayoutTests/webgpu/whlsl-postfix-prefix-expected.txt.
+        * webgpu/whlsl/postfix-prefix.html: Renamed from LayoutTests/webgpu/whlsl-postfix-prefix.html.
+        * webgpu/whlsl/read-modify-write-expected.txt: Renamed from LayoutTests/webgpu/whlsl-matrix-2-expected.txt.
+        * webgpu/whlsl/read-modify-write-high-zombies-expected.txt: Renamed from LayoutTests/webgpu/whlsl-make-array-reference-expected.txt.
+        * webgpu/whlsl/read-modify-write-high-zombies.html: Renamed from LayoutTests/webgpu/whlsl-read-modify-write-high-zombies.html.
+        * webgpu/whlsl/read-modify-write.html: Renamed from LayoutTests/webgpu/whlsl-read-modify-write.html.
+        * webgpu/whlsl/recursive-structs-expected.txt: Renamed from LayoutTests/webgpu/whlsl-recursive-structs-expected.txt.
+        * webgpu/whlsl/recursive-structs.html: Renamed from LayoutTests/webgpu/whlsl-recursive-structs.html.
+        * webgpu/whlsl/return-local-variable-expected.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-continue-expected.html.
+        * webgpu/whlsl/return-local-variable.html: Renamed from LayoutTests/webgpu/whlsl-return-local-variable.html.
+        * webgpu/whlsl/return-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-return-spec-tests-expected.txt.
+        * webgpu/whlsl/return-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-return-spec-tests.html.
+        * webgpu/whlsl/setter-spec-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-setter-spec-tests-expected.txt.
+        * webgpu/whlsl/setter-spec-tests.html: Renamed from LayoutTests/webgpu/whlsl-setter-spec-tests.html.
+        * webgpu/whlsl/simple-arrays-expected.txt: Renamed from LayoutTests/webgpu/whlsl-huge-array-expected.txt.
+        * webgpu/whlsl/simple-arrays.html: Renamed from LayoutTests/webgpu/whlsl-simple-arrays.html.
+        * webgpu/whlsl/simple-getter-setter-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-getter-setter-expected.txt.
+        * webgpu/whlsl/simple-getter-setter.html: Renamed from LayoutTests/webgpu/whlsl-simple-getter-setter.html.
+        * webgpu/whlsl/simple-tests-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-tests-expected.txt.
+        * webgpu/whlsl/simple-tests.html: Renamed from LayoutTests/webgpu/whlsl-simple-tests.html.
+        * webgpu/whlsl/simple-while-loop-expected.txt: Renamed from LayoutTests/webgpu/whlsl-simple-while-loop-expected.txt.
+        * webgpu/whlsl/simple-while-loop.html: Renamed from LayoutTests/webgpu/whlsl-simple-while-loop.html.
+        * webgpu/whlsl/store-null-expected.txt: Renamed from LayoutTests/webgpu/whlsl-store-null-expected.txt.
+        * webgpu/whlsl/store-null.html: Renamed from LayoutTests/webgpu/whlsl-store-null.html.
+        * webgpu/whlsl/store-to-property-updates-properly-expected.html: Renamed from LayoutTests/webgpu/whlsl-dereference-pointer-should-type-check-expected.html.
+        * webgpu/whlsl/store-to-property-updates-properly.html: Renamed from LayoutTests/webgpu/whlsl-store-to-property-updates-properly.html.
+        * webgpu/whlsl/struct-expected.txt: Renamed from LayoutTests/webgpu/whlsl-struct-expected.txt.
+        * webgpu/whlsl/struct.html: Renamed from LayoutTests/webgpu/whlsl-struct.html.
+        * webgpu/whlsl/switch-expected.txt: Renamed from LayoutTests/webgpu/whlsl-switch-expected.txt.
+        * webgpu/whlsl/switch.html: Renamed from LayoutTests/webgpu/whlsl-switch.html.
+        * webgpu/whlsl/ternary-spec-test-expected.txt: Renamed from LayoutTests/webgpu/whlsl-ternary-spec-test-expected.txt.
+        * webgpu/whlsl/ternary-spec-test.html: Renamed from LayoutTests/webgpu/whlsl-ternary-spec-test.html.
+        * webgpu/whlsl/test-harness-test-expected.txt: Renamed from LayoutTests/webgpu/whlsl-test-harness-test-expected.txt.
+        * webgpu/whlsl/test-harness-test.html: Renamed from LayoutTests/webgpu/whlsl-test-harness-test.html.
+        * webgpu/whlsl/textures-getdimensions-expected.txt: Renamed from LayoutTests/webgpu/whlsl-duplicate-types-should-not-produce-duplicate-ctors-expected.txt.
+        * webgpu/whlsl/textures-getdimensions.html: Renamed from LayoutTests/webgpu/whlsl-textures-getdimensions.html.
+        * webgpu/whlsl/textures-load-expected.html: Renamed from LayoutTests/webgpu/whlsl-buffer-vertex-expected.html.
+        * webgpu/whlsl/textures-load.html: Renamed from LayoutTests/webgpu/whlsl-textures-load.html.
+        * webgpu/whlsl/textures-sample-expected.html: Renamed from LayoutTests/webgpu/whlsl-buffer-fragment-expected.html.
+        * webgpu/whlsl/textures-sample.html: Renamed from LayoutTests/webgpu/whlsl-textures-sample.html.
+        * webgpu/whlsl/two-dimensional-array-expected.txt: Renamed from LayoutTests/webgpu/whlsl-compute-expected.txt.
+        * webgpu/whlsl/two-dimensional-array.html: Renamed from LayoutTests/webgpu/whlsl-two-dimensional-array.html.
+        * webgpu/whlsl/type-mismatch-expected.txt: Renamed from LayoutTests/webgpu/whlsl-type-mismatch-expected.txt.
+        * webgpu/whlsl/type-mismatch.html: Renamed from LayoutTests/webgpu/whlsl-type-mismatch.html.
+        * webgpu/whlsl/uint-bitwise-expected.txt: Renamed from LayoutTests/webgpu/whlsl-uint-bitwise-expected.txt.
+        * webgpu/whlsl/uint-bitwise.html: Renamed from LayoutTests/webgpu/whlsl-uint-bitwise.html.
+        * webgpu/whlsl/use-undefined-variable-2-expected.txt: Renamed from LayoutTests/webgpu/whlsl-checker-should-set-type-of-read-modify-write-variables-expected.txt.
+        * webgpu/whlsl/use-undefined-variable-2.html: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable-2.html.
+        * webgpu/whlsl/use-undefined-variable-expected.txt: Renamed from LayoutTests/webgpu/whlsl-buffer-length-expected.txt.
+        * webgpu/whlsl/use-undefined-variable.html: Renamed from LayoutTests/webgpu/whlsl-use-undefined-variable.html.
+        * webgpu/whlsl/variable-shadowing-expected.txt: Renamed from LayoutTests/webgpu/whlsl-variable-shadowing-expected.txt.
+        * webgpu/whlsl/variable-shadowing.html: Renamed from LayoutTests/webgpu/whlsl-variable-shadowing.html.
+        * webgpu/whlsl/vector-syntax-expected.txt: Renamed from LayoutTests/webgpu/whlsl-vector-syntax-expected.txt.
+        * webgpu/whlsl/vector-syntax.html: Renamed from LayoutTests/webgpu/whlsl-vector-syntax.html.
+        * webgpu/whlsl/while-loop-break-expected.html: Renamed from LayoutTests/webgpu/whlsl-loops-continue-expected.html.
+        * webgpu/whlsl/while-loop-break.html: Renamed from LayoutTests/webgpu/whlsl-while-loop-break.html.
+        * webgpu/whlsl/while-loop-continue-expected.html: Renamed from LayoutTests/webgpu/whlsl-arbitrary-vertex-attribute-locations-expected.html.
+        * webgpu/whlsl/while-loop-continue.html: Renamed from LayoutTests/webgpu/whlsl-while-loop-continue.html.
+        * webgpu/whlsl/whlsl.html: Renamed from LayoutTests/webgpu/whlsl.html.
+        * webgpu/whlsl/wrong-argument-length-expected.txt: Renamed from LayoutTests/webgpu/whlsl-wrong-argument-length-expected.txt.
+        * webgpu/whlsl/wrong-argument-length.html: Renamed from LayoutTests/webgpu/whlsl-wrong-argument-length.html.
+        * webgpu/whlsl/wrong-types-expected.txt: Renamed from LayoutTests/webgpu/whlsl-wrong-types-expected.txt.
+        * webgpu/whlsl/wrong-types.html: Renamed from LayoutTests/webgpu/whlsl-wrong-types.html.
+        * webgpu/whlsl/zero-initialize-values-2-expected.html: Renamed from LayoutTests/webgpu/whlsl-loops-break-expected.html.
+        * webgpu/whlsl/zero-initialize-values-2.html: Renamed from LayoutTests/webgpu/whlsl-zero-initialize-values-2.html.
+        * webgpu/whlsl/zero-initialize-values-expected.html: Renamed from LayoutTests/webgpu/whlsl-do-while-loop-break-expected.html.
+        * webgpu/whlsl/zero-initialize-values.html: Renamed from LayoutTests/webgpu/whlsl-zero-initialize-values.html.
+
+2019-07-16  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Convert GPUComputePipeline LOG statements to generate GPUErrors
+        https://bugs.webkit.org/show_bug.cgi?id=199773
+
+        Reviewed by Myles C. Maxfield.
+
+        Add a test to ensure GPUComputePipeline errors generate correctly.
+        Rework checkFail in the WHLSL test harness to check for GPUError.
+
+        * webgpu/compute-pipeline-errors-expected.txt: Added.
+        * webgpu/compute-pipeline-errors.html: Added.
+        * webgpu/error-scopes-test.html:
+        * webgpu/js/webgpu-functions.js:
+        (runTestsWithDevice): Runs tests in an object all with the same device.
+        * webgpu/js/whlsl-test-harness.js: Add shader compilation error checking.
+        (Harness.prototype.async.callTypedFunction):
+        (Harness.prototype.async.checkCompileFail):
+        (Harness.prototype.async._callFunction):
+        (Harness):
+        (async.checkFail):
+        (Harness.prototype._callFunction): Deleted.
+        * webgpu/whlsl-recursive-structs-expected.txt: Remove a WHLSL compiler buggy test.
+        * webgpu/whlsl-recursive-structs.html:
+        * webgpu/whlsl-test-harness-test-expected.txt:
+        * webgpu/whlsl-test-harness-test.html:
+
+2019-07-10  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Implement GPUError and error scopes
+        https://bugs.webkit.org/show_bug.cgi?id=199655
+
+        Reviewed by Myles C. Maxfield.
+
+        Add a test to cover the cases outlined in the WebGPU error handling design doc.
+
+        * webgpu/error-scopes-test-expected.txt: Added.
+        * webgpu/error-scopes-test.html: Added.
+
+2019-07-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247493.
+        https://bugs.webkit.org/show_bug.cgi?id=199841
+
+        "The new whlsl-for-loop.html test is failing on the bots"
+        (Requested by rmorisset on #webkit).
+
+        Reverted changeset:
+
+        "[WHLSL] Desugar for loops and while loops"
+        https://bugs.webkit.org/show_bug.cgi?id=199726
+        https://trac.webkit.org/changeset/247493
+
+2019-07-16  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Desugar for loops and while loops
+        https://bugs.webkit.org/show_bug.cgi?id=199726
+
+        Reviewed by Myles C. Maxfield.
+
+        I added the for-loop tests from Test.mjs (with help from Saam).
+        I did not add the foo9 and foo10 tests, as they are forbidden by the behavior checker in the C++ implementation (and by the spec).
+
+        I also changed one test from whlsl-return-spec-tests.html to assert_fail, because it relied on a lone variable declaration in an if, which is forbidden by the spec.
+
+        * webgpu/whlsl-for-loop-expected.txt: Added.
+        * webgpu/whlsl-for-loop.html: Added.
+        * webgpu/whlsl-return-spec-tests.html:
+
+2019-07-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Text autosizing] [iPadOS] Paragraph text on the front page of LinkedIn.com is not boosted
+        https://bugs.webkit.org/show_bug.cgi?id=199827
+        <rdar://problem/53152660>
+
+        Reviewed by Zalan Bujtas.
+
+        Add a new test case, inspired by paragraph text in a post on linkedin.com. This text should get autosized.
+
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates-expected.txt:
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates.html:
+
+2019-07-16  Rob Buis  <rbuis@igalia.com>
+
+        Remove support for beforeload on link=prefetch
+        https://bugs.webkit.org/show_bug.cgi?id=199632
+
+        Reviewed by Youenn Fablet.
+
+        Add tests to verify that beforeload event is not called for link
+        rel=prefetch.
+
+
+        * TestExpectations:
+        * fast/dom/HTMLLinkElement/prefetch-beforeload-expected.txt: Removed.
+        * fast/dom/HTMLLinkElement/prefetch-beforeload.html: Removed.
+        * http/wpt/prefetch/beforeload-dynamic-expected.txt: Added.
+        * http/wpt/prefetch/beforeload-dynamic.html: Added.
+        * http/wpt/prefetch/beforeload-expected.txt: Added.
+        * http/wpt/prefetch/beforeload.html: Added.
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2019-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [macOS WK2] Layout Test http/tests/storageAccess/request-and-grant-access-then-navigate-cross-site-should-not-have-access.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=198670
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Mark test as flaky.
+
+2019-07-15  Keith Miller  <keith_miller@apple.com>
+
+        JSGlobalObject type macros should support feature flags and WeakRef should have one
+        https://bugs.webkit.org/show_bug.cgi?id=199601
+
+        Reviewed by Mark Lam.
+
+        Add JSC option requirements for WeakRef tests.
+
+        * js/script-tests/weakref-async-is-collected.js:
+        * js/script-tests/weakref-eventually-collects-values.js:
+        * js/script-tests/weakref-microtasks-dont-collect.js:
+        * js/script-tests/weakref-weakset-consistency.js:
+        * js/weakref-async-is-collected.html:
+        * js/weakref-eventually-collects-values.html:
+        * js/weakref-microtasks-dont-collect.html:
+        * js/weakref-weakset-consistency.html:
+
+2019-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247444.
+
+        Caused two scrolling tests to fail on iOS Simulator
+
+        Reverted changeset:
+
+        "Typing into a cell in a Google Sheet lags behind by one
+        character"
+        https://bugs.webkit.org/show_bug.cgi?id=199587
+        https://trac.webkit.org/changeset/247444
+
+2019-07-15  Keith Miller  <keith_miller@apple.com>
+
+        A Possible Issue of Object.create method
+        https://bugs.webkit.org/show_bug.cgi?id=199744
+
+        Reviewed by Yusuke Suzuki.
+
+        Rebaseline error message due to change of error point.
+
+        * js/Object-create-expected.txt:
+
+2019-07-15  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Matrix memory layout should match HLSL by laying out columns linearly
+        https://bugs.webkit.org/show_bug.cgi?id=199215
+
+        Reviewed by Myles C. Maxfield.
+
+        * webgpu/whlsl-matrix-memory-layout-expected.txt: Added.
+        * webgpu/whlsl-matrix-memory-layout.html: Added.
+        * webgpu/whlsl-test-harness-test.html:
+
+2019-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Text autosizing] [iPadOS] Product label text is clipped in portrait mode on the front page of sephora.com
+        https://bugs.webkit.org/show_bug.cgi?id=199806
+        <rdar://problem/52902482>
+
+        Reviewed by Zalan Bujtas.
+
+        Add a new test case to an existing layout test, which mimics the product label text on sephora.com's front page.
+
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates-expected.txt:
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates.html:
+
+2019-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        New York font erroneously gets synthetic bold
+        https://bugs.webkit.org/show_bug.cgi?id=199653
+        <rdar://problem/51692592>
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+        * fast/text/design-system-ui-10-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-10.html: Added.
+        * fast/text/design-system-ui-11-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-11.html: Added.
+        * fast/text/design-system-ui-12-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-12.html: Added.
+        * fast/text/design-system-ui-13-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-13.html: Added.
+        * fast/text/design-system-ui-14-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-14.html: Added.
+        * fast/text/design-system-ui-15-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-15.html: Added.
+        * fast/text/design-system-ui-16-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-16.html: Added.
+        * fast/text/design-system-ui-2-expected.html: Added.
+        * fast/text/design-system-ui-2.html: Added.
+        * fast/text/design-system-ui-3-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-3.html: Added.
+        * fast/text/design-system-ui-4-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-4.html: Added.
+        * fast/text/design-system-ui-5-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-5.html: Added.
+        * fast/text/design-system-ui-6-expected.html: Added.
+        * fast/text/design-system-ui-6.html: Added.
+        * fast/text/design-system-ui-7-expected.html: Added.
+        * fast/text/design-system-ui-7.html: Added.
+        * fast/text/design-system-ui-8-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-8.html: Added.
+        * fast/text/design-system-ui-9-expected-mismatch.html: Added.
+        * fast/text/design-system-ui-9.html: Added.
+        * fast/text/design-system-ui-expected.html: Added.
+        * fast/text/design-system-ui.html: Added.
+        * platform/mac/TestExpectations:
+
+2019-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve wasm wpt test results by fixing miscellaneous issues
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+
+        Reviewed by Mark Lam.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/win/TestExpectations:
+
 2019-07-15  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         Unreviewed, rolling out r247440.

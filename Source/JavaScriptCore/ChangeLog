@@ -1,3 +1,164 @@
+2019-07-16  Christopher Reid  <chris.reid@sony.com>
+
+        Bytecode cache should use FileSystem
+        https://bugs.webkit.org/show_bug.cgi?id=199759
+
+        Reviewed by Yusuke Suzuki.
+
+        Update bytecode cache to use platform generic FileSystem calls.
+
+        * API/JSScript.mm:
+        * CMakeLists.txt:
+        * jsc.cpp:
+        * runtime/CachePayload.cpp:
+        * runtime/CachePayload.h:
+        * runtime/CachedBytecode.h:
+        * runtime/CachedTypes.cpp:
+        * runtime/CachedTypes.h:
+        * runtime/CodeCache.cpp:
+        * runtime/CodeCache.h:
+        * runtime/Completion.cpp:
+        * runtime/Completion.h:
+
+2019-07-16  Joonghun Park  <pjh0718@gmail.com>
+
+        [GTK] Fix a build warning in JavaScriptCore/API/tests/testapi.c
+        https://bugs.webkit.org/show_bug.cgi?id=199824
+
+        Reviewed by Alex Christensen.
+
+        * API/tests/testapi.c:
+        (main):
+
+2019-07-15  Keith Miller  <keith_miller@apple.com>
+
+        JSGlobalObject type macros should support feature flags and WeakRef should have one
+        https://bugs.webkit.org/show_bug.cgi?id=199601
+
+        Reviewed by Mark Lam.
+
+        This patch refactors the various builtin type macros to have a
+        parameter, which is the feature flag enabling it.  Since most
+        builtin types are enabled by default this patch adds a new global
+        bool typeExposedByDefault for clarity. Note, because static hash
+        tables have no concept of feature flags we can't use feature flags
+        with lazy properties. This is probably not a big deal as features
+        that are off by default won't be allocated anywhere we care about
+        memory usage anyway.
+
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::stringObjectStructure const):
+        (JSC::JSGlobalObject::bigIntObjectStructure const): Deleted.
+        * runtime/Options.h:
+        * wasm/js/JSWebAssembly.cpp:
+
+2019-07-15  Keith Miller  <keith_miller@apple.com>
+
+        A Possible Issue of Object.create method
+        https://bugs.webkit.org/show_bug.cgi?id=199744
+
+        Reviewed by Yusuke Suzuki.
+
+        We should call toObject on the properties argument if it was not undefined.
+        See: https://tc39.es/ecma262/#sec-object.create
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorCreate):
+
+2019-07-15  Saagar Jha  <saagarjha@apple.com>
+
+        Keyword lookup can use memcmp to get around unaligned load undefined behavior
+        https://bugs.webkit.org/show_bug.cgi?id=199650
+
+        Reviewed by Yusuke Suzuki.
+
+        Replace KeywordLookup's hand-rolled "memcmp" with the standard version, which reduces the need to deal with
+        endianness and unaligned loads.
+
+        * KeywordLookupGenerator.py:
+        (Trie.printSubTreeAsC): Use memcmp instead of macros to test for matches.
+        (Trie.printAsC): Unspecialize Lexer::parseKeyword as templating over the character type reduces the amount of
+        code we need to generate and moves this task out of the Python script and into the C++ compiler.
+
+2019-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve wasm wpt test results by fixing miscellaneous issues
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+
+        Reviewed by Mark Lam.
+
+        This patch fixes miscellaneous issues in our Wasm JS API implementation to improve WPT score.
+        I picked trivial ones in this patch to make this easily reviewable.
+
+        1. Remove WebAssemblyPrototype. It does not exist in the spec. Merging WebAssemblyPrototype into JSWebAssembly.
+        2. Fix various attributes. It does not match to the usual JSC builtin's convention. But this change
+           is correct because they are changed to be matched against WebIDL definition, and WebAssembly implementation
+           follows WebIDL. In the future, we could move WebCore WebIDL things into WTF layer and even use (or leverage
+           some of utility functions) in our WebAssembly JS API implementation.
+        3. Fix how we interpret "present" in WebAssembly spec. This does not mean [[HasProperty]] result. It follows to
+           WebIDL spec, and it means that [[Get]] result is not undefined.
+        4. Add argument count check to Module.customSections, which is required because the method is defined in WebIDL.
+        5. Fix toNonWrappingUint32 to match it to WebIDL's conversion rule.
+
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * builtins/WebAssembly.js: Renamed from Source/JavaScriptCore/builtins/WebAssemblyPrototype.js.
+        * jit/Repatch.cpp:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::moduleLoaderParseModule):
+        * wasm/js/JSWebAssembly.cpp:
+        (JSC::JSWebAssembly::create):
+        (JSC::JSWebAssembly::finishCreation):
+        (JSC::reject):
+        (JSC::webAssemblyModuleValidateAsyncInternal):
+        (JSC::webAssemblyCompileFunc):
+        (JSC::resolve):
+        (JSC::JSWebAssembly::webAssemblyModuleValidateAsync):
+        (JSC::instantiate):
+        (JSC::compileAndInstantiate):
+        (JSC::JSWebAssembly::instantiate):
+        (JSC::webAssemblyModuleInstantinateAsyncInternal):
+        (JSC::JSWebAssembly::webAssemblyModuleInstantinateAsync):
+        (JSC::webAssemblyInstantiateFunc):
+        (JSC::webAssemblyValidateFunc):
+        (JSC::webAssemblyCompileStreamingInternal):
+        (JSC::webAssemblyInstantiateStreamingInternal):
+        * wasm/js/JSWebAssembly.h:
+        * wasm/js/JSWebAssemblyHelpers.h:
+        (JSC::toNonWrappingUint32):
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::WebAssemblyCompileErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::WebAssemblyInstanceConstructor::finishCreation):
+        * wasm/js/WebAssemblyInstancePrototype.cpp:
+        * wasm/js/WebAssemblyLinkErrorConstructor.cpp:
+        (JSC::WebAssemblyLinkErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        (JSC::WebAssemblyMemoryConstructor::finishCreation):
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::webAssemblyModuleCustomSections):
+        (JSC::WebAssemblyModuleConstructor::finishCreation):
+        * wasm/js/WebAssemblyPrototype.cpp: Removed.
+        * wasm/js/WebAssemblyPrototype.h: Removed.
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::WebAssemblyRuntimeErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::constructJSWebAssemblyTable):
+        (JSC::WebAssemblyTableConstructor::finishCreation):
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+
 2019-07-15  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         Unreviewed, rolling out r247440.

@@ -63,7 +63,6 @@
 #import <WebCore/AutofillElements.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/ContentChangeObserver.h>
-#import <WebCore/DOMTimerHoldingTank.h>
 #import <WebCore/DataDetection.h>
 #import <WebCore/DiagnosticLoggingClient.h>
 #import <WebCore/DiagnosticLoggingKeys.h>
@@ -273,15 +272,6 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
                 postLayoutData.editableRootIsTransparentOrFullyClipped = isTransparentOrFullyClipped(*container);
         }
         computeEditableRootHasContentAndPlainText(selection, postLayoutData);
-    }
-}
-
-void WebPage::platformWillPerformEditingCommand()
-{
-    auto& frame = m_page->focusController().focusedOrMainFrame();
-    if (auto* document = frame.document()) {
-        if (auto* holdingTank = document->domTimerHoldingTankIfExists())
-            holdingTank->removeAll();
     }
 }
 
@@ -1136,6 +1126,7 @@ void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64
 
 void WebPage::commitPotentialTapFailed()
 {
+    ContentChangeObserver::didCancelPotentialTap(m_page->mainFrame());
     if (!m_page->focusController().focusedOrMainFrame().selection().selection().isContentEditable())
         clearSelection();
 
@@ -1145,8 +1136,7 @@ void WebPage::commitPotentialTapFailed()
 
 void WebPage::cancelPotentialTap()
 {
-    if (m_potentialTapNode)
-        m_potentialTapNode->document().contentChangeObserver().willNotProceedWithClick();
+    ContentChangeObserver::didCancelPotentialTap(m_page->mainFrame());
     cancelPotentialTapInFrame(*m_mainFrame);
 }
 
@@ -3068,23 +3058,13 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     return WTF::areEssentiallyEqual(a, b);
 }
 
-FloatSize WebPage::viewLayoutSizeAdjustedForQuirks(const FloatSize& size)
-{
-    if (auto* document = m_page->mainFrame().document()) {
-        LayoutUnit width { size.width() };
-        return { document->quirks().overriddenViewLayoutWidth(width).valueOr(width), size.height() };
-    }
-
-    return size;
-}
-
 void WebPage::setViewportConfigurationViewLayoutSize(const FloatSize& size, double scaleFactor, double minimumEffectiveDeviceWidth)
 {
     LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " setViewportConfigurationViewLayoutSize " << size << " scaleFactor " << scaleFactor << " minimumEffectiveDeviceWidth " << minimumEffectiveDeviceWidth);
 
     auto previousLayoutSizeScaleFactor = m_viewportConfiguration.layoutSizeScaleFactor();
     auto clampedMinimumEffectiveDevice = m_viewportConfiguration.isKnownToLayOutWiderThanViewport() ? WTF::nullopt : Optional<double>(minimumEffectiveDeviceWidth);
-    if (!m_viewportConfiguration.setViewLayoutSize(viewLayoutSizeAdjustedForQuirks(size), scaleFactor, WTFMove(clampedMinimumEffectiveDevice)))
+    if (!m_viewportConfiguration.setViewLayoutSize(size, scaleFactor, WTFMove(clampedMinimumEffectiveDevice)))
         return;
 
     auto zoomToInitialScale = ZoomToInitialScale::No;
@@ -3166,7 +3146,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const W
 
     LOG_WITH_STREAM(VisibleRects, stream << "WebPage::dynamicViewportSizeUpdate setting view layout size to " << viewLayoutSize);
     bool viewportChanged = m_viewportConfiguration.setIsKnownToLayOutWiderThanViewport(false);
-    viewportChanged |= m_viewportConfiguration.setViewLayoutSize(viewLayoutSizeAdjustedForQuirks(viewLayoutSize));
+    viewportChanged |= m_viewportConfiguration.setViewLayoutSize(viewLayoutSize);
     if (viewportChanged)
         viewportConfigurationChanged();
 
@@ -3343,9 +3323,6 @@ void WebPage::resetViewportDefaultConfiguration(WebFrame* frame, bool hasMobileD
         m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::textDocumentParameters());
     else
         m_viewportConfiguration.setDefaultConfiguration(parametersForStandardFrame());
-
-    if (auto overriddenViewLayoutWidth = document->quirks().overriddenViewLayoutWidth(m_viewportConfiguration.layoutWidth()))
-        m_viewportConfiguration.setViewLayoutSize(FloatSize(*overriddenViewLayoutWidth, m_viewportConfiguration.layoutHeight()));
 }
 
 #if ENABLE(VIEWPORT_RESIZING)
@@ -3391,9 +3368,6 @@ bool WebPage::immediatelyShrinkToFitContent()
     auto view = makeRefPtr(mainFrame->view());
     auto mainDocument = makeRefPtr(mainFrame->document());
     if (!view || !mainDocument)
-        return false;
-
-    if (mainDocument->quirks().shouldIgnoreShrinkToFitContent())
         return false;
 
     mainDocument->updateLayout();

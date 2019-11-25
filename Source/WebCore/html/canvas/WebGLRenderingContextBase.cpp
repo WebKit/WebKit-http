@@ -117,11 +117,6 @@ static const Seconds checkContextLossHandlingDelay { 3_s };
 
 namespace {
     
-    Platform3DObject objectOrZero(WebGLObject* object)
-    {
-        return object ? object->object() : 0;
-    }
-
     GC3Dint clamp(GC3Dint value, GC3Dint min, GC3Dint max)
     {
         if (value < min)
@@ -566,9 +561,6 @@ std::unique_ptr<WebGLRenderingContextBase> WebGLRenderingContextBase::create(Can
                 isPendingPolicyResolution = true;
             }
         }
-
-        if (frame->settings().forceSoftwareWebGLRendering())
-            attributes.forceSoftwareRenderer = true;
 
         if (frame->settings().forceWebGLUsesLowPower()) {
             if (attributes.powerPreference == GraphicsContext3DPowerPreference::HighPerformance)

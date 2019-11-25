@@ -1,3 +1,838 @@
+2019-07-17  Rob Buis  <rbuis@igalia.com>
+
+        Add referrerpolicy attribute support for <script> elements
+        https://bugs.webkit.org/show_bug.cgi?id=185550
+
+        Reviewed by Youenn Fablet.
+
+        This patch adds 'referrerpolicy' attribute support for script elements.
+        If set, the value is restricted to the ReferrerPolicy enum, and
+        if valid it is used for the script fetch.
+        If not set or invalid, the current behavior is kept.
+
+        Tests: http/tests/referrer-policy-script/no-referrer-when-downgrade/cross-origin-http-http.html
+               http/tests/referrer-policy-script/no-referrer-when-downgrade/cross-origin-http.https.html
+               http/tests/referrer-policy-script/no-referrer-when-downgrade/same-origin.html
+               http/tests/referrer-policy-script/no-referrer/cross-origin-http-http.html
+               http/tests/referrer-policy-script/no-referrer/cross-origin-http.https.html
+               http/tests/referrer-policy-script/no-referrer/same-origin.html
+               http/tests/referrer-policy-script/origin-when-cross-origin/cross-origin-http-http.html
+               http/tests/referrer-policy-script/origin-when-cross-origin/cross-origin-http.https.html
+               http/tests/referrer-policy-script/origin-when-cross-origin/same-origin.html
+               http/tests/referrer-policy-script/origin/cross-origin-http-http.html
+               http/tests/referrer-policy-script/origin/cross-origin-http.https.html
+               http/tests/referrer-policy-script/origin/same-origin.html
+               http/tests/referrer-policy-script/same-origin/cross-origin-http-http.html
+               http/tests/referrer-policy-script/same-origin/cross-origin-http.https.html
+               http/tests/referrer-policy-script/same-origin/same-origin.html
+               http/tests/referrer-policy-script/strict-origin-when-cross-origin/cross-origin-http-http.html
+               http/tests/referrer-policy-script/strict-origin-when-cross-origin/cross-origin-http.https.html
+               http/tests/referrer-policy-script/strict-origin-when-cross-origin/same-origin.html
+               http/tests/referrer-policy-script/strict-origin/cross-origin-http-http.html
+               http/tests/referrer-policy-script/strict-origin/cross-origin-http.https.html
+               http/tests/referrer-policy-script/strict-origin/same-origin.html
+               http/tests/referrer-policy-script/unsafe-url/cross-origin-http-http.html
+               http/tests/referrer-policy-script/unsafe-url/cross-origin-http.https.html
+               http/tests/referrer-policy-script/unsafe-url/same-origin.html
+
+        * bindings/js/CachedScriptFetcher.cpp:
+        (WebCore::CachedScriptFetcher::requestScriptWithCache const):
+        * bindings/js/CachedScriptFetcher.h:
+        (WebCore::CachedScriptFetcher::CachedScriptFetcher):
+        * dom/InlineClassicScript.h:
+        * dom/LoadableClassicScript.cpp:
+        (WebCore::LoadableClassicScript::create):
+        * dom/LoadableClassicScript.h:
+        * dom/LoadableModuleScript.cpp:
+        (WebCore::LoadableModuleScript::create):
+        (WebCore::LoadableModuleScript::LoadableModuleScript):
+        * dom/LoadableModuleScript.h:
+        * dom/LoadableScript.h:
+        (WebCore::LoadableScript::LoadableScript):
+        * dom/ScriptElement.cpp:
+        (WebCore::ScriptElement::requestClassicScript):
+        (WebCore::ScriptElement::requestModuleScript):
+        * dom/ScriptElement.h:
+        * dom/ScriptElementCachedScriptFetcher.h:
+        (WebCore::ScriptElementCachedScriptFetcher::ScriptElementCachedScriptFetcher):
+        * html/HTMLIFrameElement.cpp:
+        (WebCore::HTMLIFrameElement::referrerPolicyForBindings const):
+        * html/HTMLScriptElement.cpp:
+        (WebCore::HTMLScriptElement::setReferrerPolicyForBindings):
+        (WebCore::HTMLScriptElement::referrerPolicyForBindings const):
+        (WebCore::HTMLScriptElement::referrerPolicy const):
+        * html/HTMLScriptElement.h:
+        * html/HTMLScriptElement.idl:
+        * html/parser/CSSPreloadScanner.cpp:
+        (WebCore::CSSPreloadScanner::emitRule):
+        * html/parser/HTMLPreloadScanner.cpp:
+        (WebCore::TokenPreloadScanner::StartTagScanner::createPreloadRequest):
+        (WebCore::TokenPreloadScanner::StartTagScanner::processAttribute):
+        * html/parser/HTMLResourcePreloader.cpp:
+        (WebCore::PreloadRequest::resourceRequest):
+        * html/parser/HTMLResourcePreloader.h:
+        (WebCore::PreloadRequest::PreloadRequest):
+        * platform/ReferrerPolicy.cpp:
+        (WebCore::referrerPolicyToString):
+        * platform/ReferrerPolicy.h:
+        * svg/SVGScriptElement.h:
+
+2019-07-16  Christopher Reid  <chris.reid@sony.com>
+
+        Bytecode cache should use FileSystem
+        https://bugs.webkit.org/show_bug.cgi?id=199759
+
+        Reviewed by Yusuke Suzuki.
+
+        * platform/SharedBuffer.cpp:
+
+2019-07-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix includes and make a constructor explicit to avoid unified-sources-triggered test failures
+        https://bugs.webkit.org/show_bug.cgi?id=199849
+
+        Reviewed by Wenson Hsieh.
+        
+        webkit.org/b/199587 triggered some unexpected test failures because of unified sources include
+        order. The TextStream operator in ScrollingTreeOverflowScrollingNode::dumpProperties() was invoking
+        the implicit constructor of TransformOperations.
+
+        * page/scrolling/ScrollingTreeOverflowScrollingNode.cpp: Include TextStream.h
+        * platform/graphics/transforms/TransformOperations.h: Make ctor explicit.
+
+2019-07-16  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: fast/events/watchos/double-tap-to-zoom* tests crashing in com.apple.WebKit: -[WKContentView(WKInteraction) _singleTapDidReset:]
+        https://bugs.webkit.org/show_bug.cgi?id=199840
+        <rdar://problem/52856531>
+
+        Reviewed by Wenson Hsieh.
+
+        Fix a build error that occured when building for the watchOS Simulator in the debug configuration.
+
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::updateScrollingNodeForScrollingProxyRole):
+
+2019-07-16  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Convert GPUComputePipeline LOG statements to generate GPUErrors
+        https://bugs.webkit.org/show_bug.cgi?id=199773
+
+        Reviewed by Myles C. Maxfield.
+
+        Generate a GPUError if GPUComputePipeline creation fails.
+        Rework the WHLSL test harness to take advantage of this.
+
+        Test: webgpu/compute-pipeline-errors.html
+
+        * Modules/webgpu/WebGPUComputePipelineDescriptor.cpp:
+        (WebCore::WebGPUComputePipelineDescriptor::tryCreateGPUComputePipelineDescriptor const):
+        * Modules/webgpu/WebGPUComputePipelineDescriptor.h:
+        * Modules/webgpu/WebGPUDevice.cpp:
+        (WebCore::WebGPUDevice::createComputePipeline const):
+        * platform/graphics/gpu/GPUBuffer.h:
+        * platform/graphics/gpu/GPUComputePipeline.h: 
+                Now inherits from GPUObjectBase, though this isn't super useful yet
+                since GPUComputePipeline itself does not expose any operations that can error. 
+        * platform/graphics/gpu/GPUDevice.cpp:
+        (WebCore::GPUDevice::tryCreateComputePipeline const):
+        * platform/graphics/gpu/GPUDevice.h:
+        * platform/graphics/gpu/cocoa/GPUBufferMetal.mm:
+        (WebCore::GPUBuffer::validateBufferUsage):
+        * platform/graphics/gpu/cocoa/GPUComputePipelineMetal.mm:
+        (WebCore::trySetMetalFunctions):
+        (WebCore::trySetFunctions):
+        (WebCore::convertComputePipelineDescriptor):
+        (WebCore::tryCreateMTLComputePipelineState):
+        (WebCore::GPUComputePipeline::tryCreate):
+        (WebCore::GPUComputePipeline::GPUComputePipeline):
+
+2019-07-11  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Move error scopes out of GPUDevice for more portable error generation
+        https://bugs.webkit.org/show_bug.cgi?id=199740
+
+        Reviewed by Myles C. Maxfield.
+
+        Move error generation into a separate RefCounted class to allow GPU objects to generate 
+        errors independent of any GPUDevice.
+        Create GPUObjectBase to delegate error generation and refactor GPUBuffer to inherit from GPUObjectBase.
+
+        No behavior change or new tests. Error scopes covered by error-scopes-test.html.
+
+        * Modules/webgpu/WebGPUDevice.cpp:
+        (WebCore::WebGPUDevice::WebGPUDevice): Now creates a GPUErrorGenerator.
+        (WebCore::WebGPUDevice::createBuffer const): Pass the GPUErrorGenerator to any created GPUBuffer.
+        (WebCore::WebGPUDevice::createBufferMapped const): Ditto.
+        (WebCore::WebGPUDevice::popErrorScope): Shouldn't be const. Can just ask for the GPUError rather than passing a lambda.
+        (WebCore::WebGPUDevice::pushErrorScope const): Deleted.
+        (WebCore::WebGPUDevice::popErrorScope const): Deleted.
+        * Modules/webgpu/WebGPUDevice.h:
+        (WebCore::WebGPUDevice::pushErrorScope):
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/gpu/GPUBuffer.h: Now inherits from GPUObjectBase for error generation ease.
+        * platform/graphics/gpu/GPUDevice.cpp:
+        (WebCore::GPUDevice::tryCreateBuffer): Ensure GPUBuffers reference the GPUErrorGenerator.
+        (WebCore::GPUDevice::pushErrorScope): Deleted. No longer needed here.
+        (WebCore::GPUDevice::popErrorScope): Deleted.
+        (WebCore::GPUDevice::registerError): Deleted.
+        * platform/graphics/gpu/GPUDevice.h: Move error scope logic out.
+        * platform/graphics/gpu/GPUErrorGenerator.cpp: Added.
+        (WebCore::GPUErrorGenerator::pushErrorScope):
+        (WebCore::GPUErrorGenerator::popErrorScope):
+        (WebCore::GPUErrorGenerator::generateError):
+        * platform/graphics/gpu/GPUErrorGenerator.h: Added.
+        (WebCore::GPUErrorGenerator::create):
+        * platform/graphics/gpu/GPUObjectBase.h: Added.
+        (WebCore::GPUObjectBase::generateError):
+        (WebCore::GPUObjectBase::GPUObjectBase):
+        * platform/graphics/gpu/cocoa/GPUBufferMetal.mm: Use the GPUErrorGenerator directly during buffer creation.
+        (WebCore::GPUBuffer::validateBufferUsage):
+        (WebCore::GPUBuffer::tryCreate):
+        (WebCore::GPUBuffer::GPUBuffer):
+        * platform/graphics/gpu/cocoa/GPUQueueMetal.mm:
+        (WebCore::GPUQueue::submit): Prevent possible null dereference.
+
+2019-07-10  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Implement GPUError and error scopes
+        https://bugs.webkit.org/show_bug.cgi?id=199655
+
+        Reviewed by Myles C. Maxfield.
+
+        Add GPUErrorFilter, GPUError, and the ability to push and pop error scopes on a GPUDevice.
+        This will allow us to check for WebGPU errors from JavaScript.
+        Currently, only some GPUBuffer creation errors are reported for testing; more errors will follow in later patches.
+
+        Test: webgpu/error-scopes-test.html
+
+        * Modules/webgpu/GPUErrorFilter.idl: Added.
+        * Modules/webgpu/GPUOutOfMemoryError.idl: Added.
+        * Modules/webgpu/GPUValidationError.idl: Added.
+        * Modules/webgpu/WebGPUDevice.cpp:
+        (WebCore::WebGPUDevice::pushErrorScope):
+        (WebCore::WebGPUDevice::popErrorScope): Resolve the Promise here, since GPUDevice shouldn't worry about DOM layer.
+        * Modules/webgpu/WebGPUDevice.h:
+        * Modules/webgpu/WebGPUDeviceErrorScopes.cpp: Added.
+        (WebCore::WebGPUDeviceErrorScopes::pushErrorScope): Delegates to WebGPUDevice.
+        (WebCore::WebGPUDeviceErrorScopes::popErrorScope): Ditto.
+        * Modules/webgpu/WebGPUDeviceErrorScopes.h: Added.
+        * Modules/webgpu/WebGPUDeviceErrorScopes.idl: Added.
+        * platform/graphics/gpu/GPUBuffer.h:
+        * platform/graphics/gpu/GPUDevice.cpp: The actual error stack lives here.
+        (WebCore::GPUDevice::pushErrorScope):
+        (WebCore::GPUDevice::popErrorScope): Calls a callback with a GPUError, if any.
+        (WebCore::GPUDevice::registerError): Actually creates GPUErrors.
+        * platform/graphics/gpu/GPUDevice.h:
+        * platform/graphics/gpu/GPUError.cpp: Added.
+        (WebCore::createError): Factory function for various error types.
+        * platform/graphics/gpu/GPUError.h: Added.
+        * platform/graphics/gpu/GPUErrorFilter.h: Added.
+        * platform/graphics/gpu/GPUOutOfMemoryError.h: Added.
+        (WebCore::GPUOutOfMemoryError::create):
+        * platform/graphics/gpu/GPUValidationError.cpp: Added.
+        (WebCore::GPUValidationError::create):
+        (WebCore::GPUValidationError::GPUValidationError):
+        * platform/graphics/gpu/GPUValidationError.h: Added.
+        (WebCore::GPUValidationError::message const):
+        * platform/graphics/gpu/cocoa/GPUBufferMetal.mm:
+        (WebCore::GPUBuffer::validateBufferUsage): Create an actual GPUValidationError :)
+        (WebCore::GPUBuffer::tryCreate): Create GPUOutOfMemoryErrors where appropriate.
+
+        Add file/name references:
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources-output.xcfilelist:
+        * DerivedSources.make:
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/WebCoreBuiltinNames.h:
+
+        Missing includes:
+        * Modules/webgpu/WHLSL/WHLSLCheckTextureReferences.cpp:
+
+2019-07-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247493.
+        https://bugs.webkit.org/show_bug.cgi?id=199841
+
+        "The new whlsl-for-loop.html test is failing on the bots"
+        (Requested by rmorisset on #webkit).
+
+        Reverted changeset:
+
+        "[WHLSL] Desugar for loops and while loops"
+        https://bugs.webkit.org/show_bug.cgi?id=199726
+        https://trac.webkit.org/changeset/247493
+
+2019-07-16  Per Arne Vollan  <pvollan@apple.com>
+
+        Prewarm font cache with more fonts
+        https://bugs.webkit.org/show_bug.cgi?id=199283
+
+        Reviewed by Myles C. Maxfield.
+
+        Use the existing prewarm method in FontCache to prewarm the cache with a set of font family names.
+        The font list consists of some of the fonts used by the 10 most popular sites on Alexa top sites.
+        This is a confirmed improvement in page load time.
+
+        No new tests, covered by existing tests.
+
+        * page/ProcessWarming.cpp:
+        (WebCore::ProcessWarming::prewarmGlobally):
+        * platform/graphics/FontCache.cpp:
+        (WebCore::FontCache::prewarmGlobally):
+        * platform/graphics/FontCache.h:
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::FontCache::prewarmGlobally):
+
+2019-07-16  Robin Morisset  <rmorisset@apple.com>
+
+        [WHLSL] Desugar for loops and while loops
+        https://bugs.webkit.org/show_bug.cgi?id=199726
+
+        Reviewed by Myles C. Maxfield.
+
+        This patch makes loops behave a lot more similarly to the spec.
+        In particular, while loops are just degenerate for loops, so they can be desugared in the parser.
+        And for loops can themselves be heavily desugared, into having no initializer, one condition and one increment
+        by putting any initializer in a block around the loop, putting true in the condition if there is none, and putting any litteral in the increment if there is none.
+
+        Debugging this patch revealed an unrelated bug where the parser would generate an empty comma expression on ";", which the checker would then choke on.
+        The parser now generates an empty block in that case (as specified in the spec), which fixes the problem.
+
+        Finally, while updating the NameResolver for the new structure of loops I realized that it was needlessly generating extra NameContext.
+        They are not expected by the spec, that forbids naked variable declarations outside of blocks anyway.
+        So I removed this unnecessary work, and fixed the parser to correctly forbid such naked variable declarations.
+
+        * Modules/webgpu/WHLSL/AST/WHLSLAST.h:
+        * Modules/webgpu/WHLSL/AST/WHLSLForLoop.h:
+        (WebCore::WHLSL::AST::ForLoop::ForLoop):
+        (WebCore::WHLSL::AST::ForLoop::condition):
+        (WebCore::WHLSL::AST::ForLoop::increment):
+        * Modules/webgpu/WHLSL/AST/WHLSLStatement.h:
+        (WebCore::WHLSL::AST::Statement::isVariableDeclarationsStatement const):
+        * Modules/webgpu/WHLSL/AST/WHLSLWhileLoop.h: Removed.
+        * Modules/webgpu/WHLSL/Metal/WHLSLFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::FunctionDefinitionWriter::visit):
+        * Modules/webgpu/WHLSL/WHLSLASTDumper.cpp:
+        (WebCore::WHLSL::ASTDumper::visit):
+        * Modules/webgpu/WHLSL/WHLSLASTDumper.h:
+        * Modules/webgpu/WHLSL/WHLSLChecker.cpp:
+        (WebCore::WHLSL::Checker::visit):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.cpp:
+        (WebCore::WHLSL::NameResolver::visit):
+        * Modules/webgpu/WHLSL/WHLSLNameResolver.h:
+        * Modules/webgpu/WHLSL/WHLSLParser.cpp:
+        (WebCore::WHLSL::Parser::parseBlockBody):
+        (WebCore::WHLSL::Parser::parseForLoop):
+        (WebCore::WHLSL::Parser::parseWhileLoop):
+        (WebCore::WHLSL::Parser::parseStatement):
+        (WebCore::WHLSL::Parser::parseEffectfulExpression):
+        * Modules/webgpu/WHLSL/WHLSLParser.h:
+        * Modules/webgpu/WHLSL/WHLSLStatementBehaviorChecker.cpp:
+        * Modules/webgpu/WHLSL/WHLSLVisitor.cpp:
+        (WebCore::WHLSL::Visitor::visit):
+        * Modules/webgpu/WHLSL/WHLSLVisitor.h:
+        * WebCore.xcodeproj/project.pbxproj:
+
+2019-07-16  Tim Horton  <timothy_horton@apple.com>
+
+        NSTextFinder holes don't scroll with the page
+        https://bugs.webkit.org/show_bug.cgi?id=199815
+        <rdar://problem/52280514>
+
+        Reviewed by Simon Fraser.
+
+        * rendering/ScrollAlignment.h:
+
+2019-07-16  Youenn Fablet  <youenn@apple.com>
+
+        [iOS] Make sure the first camera device in the list is the front camera
+        https://bugs.webkit.org/show_bug.cgi?id=199811
+        <rdar://problem/53125157>
+
+        Reviewed by Jer Noble.
+
+        Some websites call getUserMedia with a deviceId constraint and theey pick the
+        first deviceId in the list provided by enumerateDevices.
+        On iOS, this is the back camera which is often not what is expected by WebRTC applications.
+        Instead, make sure the first camera device is the front camera.
+
+        Manually tested.
+
+        * platform/mediastream/mac/AVCaptureDeviceManager.mm:
+
+2019-07-16  Chris Dumez  <cdumez@apple.com>
+
+        Speed up StorageManager::getValues()
+        https://bugs.webkit.org/show_bug.cgi?id=199812
+
+        Reviewed by Alex Christensen.
+
+        * storage/StorageMap.cpp:
+        (WebCore::StorageMap::importItems):
+        * storage/StorageMap.h:
+
+2019-07-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove "GraphicsContext 0x7ffd8765f6b0 stack changed by" logging
+        https://bugs.webkit.org/show_bug.cgi?id=199834
+
+        Reviewed by Dean Jackson.
+
+        I inadvertently left in a couple of GraphicsContextStateStackChecker (used to detect mismatched
+        GraphicsContext save/restore) in r246725, so remove them.
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::paintLayerContents):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::paintIntoLayer):
+
+2019-07-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Text autosizing] [iPadOS] Paragraph text on the front page of LinkedIn.com is not boosted
+        https://bugs.webkit.org/show_bug.cgi?id=199827
+        <rdar://problem/53152660>
+
+        Reviewed by Zalan Bujtas.
+
+        After r247467, we try to avoid boosting some text that might cause vertical overflow due to line height
+        increasing inside a container that expects a fixed integer number of lines. However, in the case of
+        linkedin.com, the line height specified is a fixed value of 26px, which greatly exceeds the specified font size
+        of 14px. In this case, it's safe to boost font size, since doing so would not affect the line height at all.
+
+        To handle this case, don't avoid text autosizing due to the "fixed number of lines" heuristic if the line height
+        is fixed, and is much larger than the font size.
+
+        Test: fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates.html
+
+        * rendering/style/TextSizeAdjustment.cpp:
+        (WebCore::AutosizeStatus::updateStatus):
+
+2019-07-16  Zalan Bujtas  <zalan@apple.com>
+
+        [ContentChangeObserver] Cancel ongoing content observation when tap is failed/cancelled
+        https://bugs.webkit.org/show_bug.cgi?id=199828
+        <rdar://problem/53152696>
+
+        Reviewed by Wenson Hsieh.
+
+        This patch ensures that we stop the content observation (initiated by touch start) when the tap
+        is cancelled/failed.
+
+        Not testable.
+
+        * page/ios/ContentChangeObserver.cpp:
+        (WebCore::ContentChangeObserver::didCancelPotentialTap):
+        * page/ios/ContentChangeObserver.h:
+
+2019-07-16  Rob Buis  <rbuis@igalia.com>
+
+        Remove support for beforeload on link=prefetch
+        https://bugs.webkit.org/show_bug.cgi?id=199632
+
+        Reviewed by Youenn Fablet.
+
+        Remove support for beforeload on link=prefetch
+        by not calling shouldLoadLink for prefetch.
+        Also make loadLink return void since it always
+        succeeds.
+
+        Tests: http/wpt/prefetch/beforeload-dynamic.html
+               http/wpt/prefetch/beforeload.html
+
+        * html/HTMLLinkElement.cpp:
+        (WebCore::HTMLLinkElement::process):
+        * loader/LinkLoader.cpp:
+        (WebCore::LinkLoader::prefetchIfNeeded):
+        (WebCore::LinkLoader::loadLink):
+        * loader/LinkLoader.h:
+
+2019-07-16  Youenn Fablet  <youenn@apple.com>
+
+        Hop to main thread for release logging in RealtimeIncomingAudioSource
+        https://bugs.webkit.org/show_bug.cgi?id=199813
+
+        Reviewed by Eric Carlson.
+
+        LoggerHelper routines allow logging messages in system console and inspector console.
+        These routines iterate through a Vector of log observers which is not thread safe.
+        Document, the main log observer, also expects to be called on the main thread.
+        Manually tested (writing a layout test for this would require more than 2 seconds).
+
+        * platform/mediastream/mac/RealtimeIncomingAudioSourceCocoa.cpp:
+        (WebCore::RealtimeIncomingAudioSourceCocoa::OnData):
+
+2019-07-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r247444.
+
+        Caused two scrolling tests to fail on iOS Simulator
+
+        Reverted changeset:
+
+        "Typing into a cell in a Google Sheet lags behind by one
+        character"
+        https://bugs.webkit.org/show_bug.cgi?id=199587
+        https://trac.webkit.org/changeset/247444
+
+2019-07-15  Zalan Bujtas  <zalan@apple.com>
+
+        outlook.live.com has odd viewport with edge gap
+        https://bugs.webkit.org/show_bug.cgi?id=199822
+        <rdar://problem/53029072>
+
+        Reviewed by Wenson Hsieh.
+
+        r244944 introduced a viewport width quirk because at certain screen size outlook.live.com's flex setup produced a slighly broken layout.
+        We don't seem to need this quirk anymore (composed column's min-width is removed.)
+
+        * page/Quirks.cpp:
+        (WebCore::Quirks::shouldIgnoreShrinkToFitContent const): Deleted.
+        (WebCore::Quirks::overriddenViewLayoutWidth const): Deleted.
+        * page/Quirks.h:
+
+2019-07-15  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Matrix memory layout should match HLSL by laying out columns linearly
+        https://bugs.webkit.org/show_bug.cgi?id=199215
+
+        Reviewed by Myles C. Maxfield.
+
+        This patch makes it so that we lay out matrices in memory in the same
+        way HLSL does. This is by laying out columns linearly in memory. So a float4x4
+        composed by this series of floats in memory:
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        
+        composes this logical matrix:
+        [[ 0,  4,  8, 12]
+         [ 1,  5,  9, 13]
+         [ 2,  6, 10, 14]
+         [ 3,  7, 11, 15]]
+        
+        To implement this, we switch to using an array to represent the memory
+        contents linear memory layout of a matrix. So the matrix float4x3 will now
+        be an array<float, 12> in metal. Then, we change the indexed getter and
+        setter methods for matrices to load and store from and to the correct
+        memory locations. The memory layout of matrices is observable to WHLSL
+        when using a matrix as an input/output to a shader.
+
+        Test: webgpu/whlsl-matrix-memory-layout.html
+
+        * Modules/webgpu/WHLSL/Metal/WHLSLNativeFunctionWriter.cpp:
+        (WebCore::WHLSL::Metal::writeNativeFunction):
+        * Modules/webgpu/WHLSL/Metal/WHLSLNativeTypeWriter.cpp:
+        (WebCore::WHLSL::Metal::writeNativeType):
+
+2019-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Text autosizing] [iPadOS] Product label text is clipped in portrait mode on the front page of sephora.com
+        https://bugs.webkit.org/show_bug.cgi?id=199806
+        <rdar://problem/52902482>
+
+        Reviewed by Zalan Bujtas.
+
+        On sephora.com, some product label text is currently boosted by idempotent text autosizing, which causes the
+        labels be vertically clipped. This patch augments the idempotent text autosizing heuristic to avoid this case by
+        checking if the element to be boosted has a fixed height or max height, whose value is very close to a small
+        integer multiple of the line height. In this case, it's likely that the website expects the text to be no more
+        than a few lines' worth of height, so boosting the text is likely to break the page.
+
+        Test: fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-candidates.html
+
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::isIdempotentTextAutosizingCandidate const):
+        * rendering/style/TextSizeAdjustment.cpp:
+        (WebCore::AutosizeStatus::updateStatus):
+        * rendering/style/TextSizeAdjustment.h:
+
+        Rename Fields::DisplayNone to Fields::AvoidSubtree to avoid introducing another bit in RenderStyle's inherited
+        flags.
+
+2019-07-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        New York font erroneously gets synthetic bold
+        https://bugs.webkit.org/show_bug.cgi?id=199653
+
+        Unreviewed watchOS build fix.
+
+        * page/ProcessWarming.cpp:
+        (WebCore::ProcessWarming::prewarmGlobally):
+        * page/cocoa/MemoryReleaseCocoa.mm:
+        (WebCore::platformReleaseMemory):
+        * platform/graphics/FontCascadeDescription.cpp:
+        * platform/graphics/FontDescription.h:
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::invalidateFontCache):
+        (WebCore::lookupFallbackFont):
+        * platform/graphics/cocoa/FontDescriptionCocoa.cpp:
+        (WebCore::FontCascadeDescription::effectiveFamilyAt const):
+        * platform/graphics/cocoa/FontFamilySpecificationCoreText.cpp:
+        (WebCore::FontFamilySpecificationCoreText::fontRanges const):
+        * platform/graphics/cocoa/SystemFontDatabaseCoreText.cpp:
+
+2019-07-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r247462.
+        https://bugs.webkit.org/show_bug.cgi?id=199816
+
+        completely messed up the patch (Requested by litherum on
+        #webkit).
+
+        Reverted changeset:
+
+        "New York font erroneously gets synthetic bold"
+        https://bugs.webkit.org/show_bug.cgi?id=199653
+        https://trac.webkit.org/changeset/247462
+
+2019-07-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix builds where HAVE_DESIGN_SYSTEM_UI_FONTS is not defined.
+
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::fontWithFamilySpecialCase):
+
+2019-07-11  Justin Fan  <justin_fan@apple.com>
+
+        Unreviewed build fix.
+
+        * Modules/webgpu/WHLSL/WHLSLRecursionChecker.cpp: Missing include.
+
+2019-07-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        New York font erroneously gets synthetic bold
+        https://bugs.webkit.org/show_bug.cgi?id=199653
+        <rdar://problem/51692592>
+
+        Reviewed by Simon Fraser.
+
+        This patch adds support for -apple-system-ui-serif, -apple-system-ui-monospaced,
+        and -apple-system-ui-rounded, behind an SPI that is off-by-default. We don't want
+        to expose these fonts to the web because we don't a standardization story for them
+        yet, but we do want some apps to be able to use them.
+
+        WebKit clients who want to use these fonts can set
+        -[WKPreferences _shouldAllowDesignSystemUIFonts] = YES.
+
+        The patch generalizes our existing system-ui infrastructure to handle these three
+        additional fonts. It also explicitly disables the unsupported dot-prefixed names
+        so they don't leak out into Web content.
+
+        Tests: fast/text/design-system-ui-10.html
+               fast/text/design-system-ui-11.html
+               fast/text/design-system-ui-12.html
+               fast/text/design-system-ui-13.html
+               fast/text/design-system-ui-14.html
+               fast/text/design-system-ui-15.html
+               fast/text/design-system-ui-16.html
+               fast/text/design-system-ui-2.html
+               fast/text/design-system-ui-3.html
+               fast/text/design-system-ui-4.html
+               fast/text/design-system-ui-5.html
+               fast/text/design-system-ui-6.html
+               fast/text/design-system-ui-7.html
+               fast/text/design-system-ui-8.html
+               fast/text/design-system-ui-9.html
+               fast/text/design-system-ui.html
+
+        * css/CSSFontFace.cpp:
+        (WebCore::CSSFontFace::shouldAllowDesignSystemUIFonts const):
+        * css/CSSFontFace.h:
+        * css/CSSFontFaceSource.cpp:
+        (WebCore::CSSFontFaceSource::load):
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::initializeFontStyle):
+        * page/Settings.yaml:
+        * platform/graphics/FontDescription.cpp:
+        (WebCore::m_shouldAllowDesignSystemUIFonts):
+        (WebCore::m_shouldAllowUserInstalledFonts): Deleted.
+        * platform/graphics/FontDescription.h:
+        (WebCore::FontDescription::shouldAllowDesignSystemUIFonts const):
+        (WebCore::FontDescription::setShouldAllowDesignSystemUIFonts):
+        (WebCore::FontDescription::operator== const):
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::platformFontLookupWithFamily):
+        (WebCore::fontWithFamily):
+        * platform/graphics/cocoa/FontCacheCoreText.h:
+        * platform/graphics/cocoa/FontDescriptionCocoa.cpp:
+        (WebCore::systemFontUse):
+        (WebCore::systemFontCascadeList):
+        (WebCore::FontCascadeDescription::effectiveFamilyCount const):
+        (WebCore::FontCascadeDescription::effectiveFamilyAt const):
+        (WebCore::isSystemFontString): Deleted.
+        (WebCore::isUIFontTextStyle): Deleted.
+        * platform/graphics/cocoa/FontPlatformDataCocoa.mm:
+        (WebCore::FontPlatformData::ctFont const):
+        * platform/graphics/cocoa/SystemFontDatabaseCoreText.cpp:
+        (WebCore::SystemFontDatabaseCoreText::createSystemUI):
+        (WebCore::SystemFontDatabaseCoreText::createDesignSystemUI):
+        (WebCore::SystemFontDatabaseCoreText::createTextStyle):
+        (WebCore::SystemFontDatabaseCoreText::cascadeList):
+        (WebCore::SystemFontDatabaseCoreText::applyWeightItalicsAndFallbackBehavior):
+        (WebCore::SystemFontDatabaseCoreText::systemFontParameters):
+        * platform/graphics/cocoa/SystemFontDatabaseCoreText.h:
+        * platform/graphics/ios/FontCacheIOS.mm:
+        (WebCore::platformFontWithFamilySpecialCase):
+        * platform/graphics/mac/FontCacheMac.mm:
+        (WebCore::platformFontWithFamilySpecialCase):
+        * style/StyleResolveForDocument.cpp:
+        (WebCore::Style::resolveForDocument):
+        * svg/graphics/SVGImage.cpp:
+        (WebCore::SVGImage::dataChanged):
+        * testing/InternalSettings.cpp:
+        (WebCore::InternalSettings::Backup::Backup):
+        (WebCore::InternalSettings::Backup::restoreTo):
+        (WebCore::InternalSettings::setShouldAllowDesignSystemUIFonts):
+        * testing/InternalSettings.h:
+        * testing/InternalSettings.idl:
+
+2019-07-15  Chris Dumez  <cdumez@apple.com>
+
+        Crash under DisplayRefreshMonitorManager::displayWasUpdated()
+        https://bugs.webkit.org/show_bug.cgi?id=199808
+        <rdar://problem/53070144>
+
+        Reviewed by Geoffrey Garen.
+
+        Copy m_monitors before iterating over it because the calling displayLinkFired() on the
+        monitor may end up calling DisplayRefreshMonitorManager::displayDidRefresh() synchronously,
+        which removes the monitor from m_monitors.
+
+        * platform/graphics/DisplayRefreshMonitorManager.cpp:
+        (WebCore::DisplayRefreshMonitorManager::displayWasUpdated):
+
+2019-07-15  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Improve wasm wpt test results by fixing miscellaneous issues
+        https://bugs.webkit.org/show_bug.cgi?id=199783
+
+        Reviewed by Mark Lam.
+
+        Remove WebAssemblyPrototype.
+
+        Tests: imported/w3c/web-platform-tests/wasm/jsapi/constructor/instantiate-bad-imports.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/constructor/instantiate-bad-imports.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/constructor.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/constructor.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/toString.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/toString.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/value-set.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/value-set.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/valueOf.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/global/valueOf.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/constructor-bad-imports.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/constructor-bad-imports.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/constructor.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/constructor.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/exports.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/exports.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/toString.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/instance/toString.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/interface.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/interface.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/buffer.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/buffer.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/constructor.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/constructor.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/grow.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/grow.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/toString.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/memory/toString.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/constructor.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/constructor.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/customSections.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/customSections.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/exports.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/exports.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/imports.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/imports.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/toString.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/module/toString.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/constructor.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/constructor.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/get-set.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/get-set.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/grow.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/grow.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/length.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/length.any.worker.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/toString.any.html
+               imported/w3c/web-platform-tests/wasm/jsapi/table/toString.any.worker.html
+
+        * bindings/js/JSDOMWindowBase.cpp:
+        (WebCore::JSDOMWindowBase::compileStreaming):
+        (WebCore::JSDOMWindowBase::instantiateStreaming):
+
+2019-07-15  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Remove software rendering and simplify context creation on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=199789
+
+        Reviewed by Sam Weinig.
+
+        We don't ever want to fall-back to the software renderer. We'd be better
+        off failing to create the context completely.
+
+        Also, the number of fall-back attempts we were making before hitting
+        the software renderer was overkill. All hardware we support should
+        handle a 32bpp buffer.
+
+        Lastly, we don't want to support supersampling - multisampling only.
+
+        I lied… there is one more thing - failing to create the context
+        was causing an ASSERT trying to remove the GC3D from the global list.
+
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        (WebCore::WebGLRenderingContextBase::create):
+        * page/Settings.yaml: Remove forceSoftwareWebGL setting.
+        * platform/graphics/GraphicsContext3DAttributes.h:
+        * platform/graphics/GraphicsContext3DManager.cpp:
+        (WebCore::GraphicsContext3DManager::addContext):
+        (WebCore::GraphicsContext3DManager::removeContext):
+        (WebCore::GraphicsContext3DManager::removeContextRequiringHighPerformance):
+        * platform/graphics/cocoa/GraphicsContext3DCocoa.mm:
+        (WebCore::GraphicsContext3D::GraphicsContext3D):
+        (WebCore::setPixelFormat): Deleted.
+
+2019-07-14  Dean Jackson  <dino@apple.com>
+
+        Move more WebGL things into unified builds
+        https://bugs.webkit.org/show_bug.cgi?id=199787
+
+        Reviewed by Wenson Hsieh.
+
+        Unify as many WebGL files as possible.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * html/canvas/WebGLFramebuffer.cpp:
+        * html/canvas/WebGLObject.h: Move a helper function into an inline.
+        (WebCore::objectOrZero):
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        * platform/mediastream/MediaStreamTrackPrivate.cpp:
+
+2019-07-15  Keith Rollin  <krollin@apple.com>
+
+        Add missing webgpu includes
+        https://bugs.webkit.org/show_bug.cgi?id=199802
+        <rdar://problem/53119120>
+
+        Reviewed by Myles C. Maxfield.
+
+        WHLSLFunctionWriter.cpp fails to compile on tvOS and watchOS due to
+        missing includes. This file likely compiles on other platforms due to
+        the Unified Sources facility that clumps several implementation files
+        together, exposing those implementation files to the others' includes.
+        It fails on tvOS and watchOS due to the different ways these
+        implementation files can get clumped together on different platforms.
+
+        No new tests as there is no functional change.
+
+        * Modules/webgpu/WHLSL/Metal/WHLSLFunctionWriter.cpp:
+
 2019-07-15  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         Unreviewed, rolling out r247440.

@@ -27,6 +27,7 @@
 #include "FontCache.h"
 
 #include "Font.h"
+#include "FontCascadeDescription.h"
 #include "FontFamilySpecificationCoreText.h"
 #include "SystemFontDatabaseCoreText.h"
 #include <pal/spi/cocoa/CoreTextSPI.h>
@@ -35,6 +36,7 @@
 
 #include <wtf/HashSet.h>
 #include <wtf/MainThread.h>
+#include <wtf/MemoryPressureHandler.h>
 #include <wtf/NeverDestroyed.h>
 
 #define HAS_CORE_TEXT_WIDTH_ATTRIBUTE ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS_FAMILY) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000))
@@ -1236,7 +1238,7 @@ static void invalidateFontCache()
         return;
     }
 
-#if USE_PLATFORM_SYSTEM_FALLBACK_LIST
+#if USE(PLATFORM_SYSTEM_FALLBACK_LIST)
     SystemFontDatabaseCoreText::singleton().clear();
 #endif
     clearFontFamilySpecificationCoreTextCache();
@@ -1392,7 +1394,7 @@ static RetainPtr<CTFontRef> lookupFallbackFont(CTFontRef font, FontSelectionValu
 
     CFIndex coveredLength = 0;
     RetainPtr<CTFontRef> result;
-#if !USE_PLATFORM_SYSTEM_FALLBACK_LIST && (PLATFORM(MAC) || (PLATFORM(IOS_FAMILY) && TARGET_OS_IOS))
+#if !USE(PLATFORM_SYSTEM_FALLBACK_LIST) && (PLATFORM(MAC) || (PLATFORM(IOS_FAMILY) && TARGET_OS_IOS))
     result = adoptCF(CTFontCreatePhysicalFontForCharactersWithLanguage(font, characters, length, localeString.get(), &coveredLength));
 #else
     result = adoptCF(CTFontCreateForCharactersWithLanguage(font, characters, length, localeString.get(), &coveredLength));
@@ -1618,6 +1620,25 @@ void FontCache::prewarm(const PrewarmInformation& prewarmInformation)
             }
         }
     });
+}
+
+void FontCache::prewarmGlobally()
+{
+    if (MemoryPressureHandler::singleton().isUnderMemoryPressure())
+        return;
+
+    Vector<String> families = std::initializer_list<String> {
+        "Arial"_s,
+        "Helvetica"_s,
+        "Helvetica Neue"_s,
+        "SF Pro Text"_s,
+        "Times"_s,
+        "Times New Roman"_s,
+    };
+
+    FontCache::PrewarmInformation prewarmInfo;
+    prewarmInfo.seenFamilies = WTFMove(families);
+    FontCache::singleton().prewarm(prewarmInfo);
 }
 
 }

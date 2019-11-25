@@ -1,3 +1,162 @@
+2019-07-17  Russell Epstein  <russell_e@apple.com>
+
+        Adding self to contributors.json
+
+        Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-07-17  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Parse full_results.json for layout-tests
+        https://bugs.webkit.org/show_bug.cgi?id=199804
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/steps.py:
+        (RunWebKitTests.start): Monitor json output.
+        (RunWebKitTests.commandComplete): Read json output, parse the results and set Buildbot properties accordingly. These
+        properties would be used in subsequent AnalyzeLayoutTests build step to determine whether the failures are introduced
+        by the patch or are pre-existing.
+        (ReRunWebKitTests.commandComplete): Ditto.
+        (RunWebKitTestsWithoutPatch.commandComplete): Ditto.
+        * BuildSlaveSupport/ews-build/steps_unittest.py:
+        (BuildStepMixinAdditions.getProperty): Added.
+        (TestRunWebKitTests.test_parse_results_json): Added unit-tests.
+        * BuildSlaveSupport/ews-build/layout_test_failures.py: Parse full_results.json and generate list of failing tests.
+
+2019-07-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r247512.
+
+        Broke API test runners
+
+        Reverted changeset:
+
+        "[GTK][WPE][webkitpy] Refactor drivers to use the base driver
+        for setting up the environment and start the drivers."
+        https://bugs.webkit.org/show_bug.cgi?id=199855
+        https://trac.webkit.org/changeset/247512
+
+2019-07-17  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE][webkitpy] Refactor drivers to use the base driver for setting up the environment and start the drivers.
+        https://bugs.webkit.org/show_bug.cgi?id=199855
+
+        Reviewed by Carlos Garcia Campos.
+
+        The webkitpy drivers for GTK and WPE use their own versions for setting
+        up the environment and starting/stopping the drivers.
+        This refactors those drivers to use the base class driver functions.
+        As a benefit we get some fixes like support for setting the profiler
+        environment variables, and a simpler code.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._setup_environ_for_driver): This already correctly setups LOCAL_RESOURCE_ROOT and DUMPRENDERTREE_TEMP.
+        Add the remaining environment variable XDG_CACHE_HOME that is needed for Linux.
+        * Scripts/webkitpy/port/headlessdriver.py:
+        (HeadlessDriver._setup_environ_for_test):
+        * Scripts/webkitpy/port/waylanddriver.py:
+        (WaylandDriver._setup_environ_for_test):
+        * Scripts/webkitpy/port/westondriver.py:
+        (WestonDriver._setup_environ_for_test):
+        (WestonDriver.stop):
+        * Scripts/webkitpy/port/westondriver_unittest.py: now mock _test_runner_process_constructor as base driver does.
+        (WestonDriverTest.make_driver):
+        * Scripts/webkitpy/port/xorgdriver.py:
+        (XorgDriver._setup_environ_for_test):
+        * Scripts/webkitpy/port/xvfbdriver.py: the xvfb binary is started with the port server env
+        (XvfbDriver._setup_environ_for_test):
+        * Scripts/webkitpy/port/xvfbdriver_unittest.py: rename the variable to make clearer that it uses the port server env.
+        (XvfbDriverTest.make_driver):
+        (XvfbDriverTest.test_start):
+        (XvfbDriverTest.test_start_arbitrary_worker_number):
+
+2019-07-16  Christopher Reid  <chris.reid@sony.com>
+
+        Bytecode cache should use FileSystem
+        https://bugs.webkit.org/show_bug.cgi?id=199759
+
+        Reviewed by Yusuke Suzuki.
+
+        * TestWebKitAPI/Tests/WTF/FileSystem.cpp:
+
+2019-07-16  Jonathan Bedard  <jbedard@apple.com>
+
+        svn-create-patch duplicates diffs when adding directories
+        https://bugs.webkit.org/show_bug.cgi?id=199842
+
+        Reviewed by Dewei Zhu.
+
+        * Scripts/svn-create-patch:
+        (findKind): Add function which returns what 'kind' of file the provided path is.
+        (generateFileList): If the path is a directory and being added, don't add it.
+        Instead, rely on the fact that its children will be added.
+
+2019-07-16  Tim Horton  <timothy_horton@apple.com>
+
+        NSTextFinder holes don't scroll with the page
+        https://bugs.webkit.org/show_bug.cgi?id=199815
+        <rdar://problem/52280514>
+
+        Reviewed by Simon Fraser.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[MiniBrowserNSTextFinder performAction:]):
+        (-[WK2BrowserWindowController awakeFromNib]):
+        Adopt the WebKit UI in MiniBrowser. Also, override NSTextFinder's
+        -performAction: so that we can intercept the close action and
+        hide our own find UI, since there is no delegate for that action yet.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/FindInPage.mm:
+        (TEST):
+
+2019-07-15  Keith Miller  <keith_miller@apple.com>
+
+        JSGlobalObject type macros should support feature flags and WeakRef should have one
+        https://bugs.webkit.org/show_bug.cgi?id=199601
+
+        Reviewed by Mark Lam.
+
+        JSC options need to be set before the window is created for the test.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (setJSCOptions):
+        (resetWebViewToConsistentStateBeforeTesting):
+
+2019-07-15  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [ Mojave WK1 ] Some Image tests are flakey failures and are failing in tandem with zoomed in or blank image results
+        https://bugs.webkit.org/show_bug.cgi?id=193108
+
+        Reviewed by Simon Fraser.
+
+        Add a workaround for <rdar://problem/17084993> in createBitmapContextFromWebView().
+        Re-request the snapshot at kCGWindowImageNominalResolution if it was captured
+        at the wrong scale.
+
+        * DumpRenderTree/mac/PixelDumpSupportMac.mm:
+        (takeWindowSnapshot):
+        (createBitmapContextFromWebView):
+
+2019-07-15  Brady Eidson  <beidson@apple.com>
+
+        Make WKURLSchemeTask thread safe.
+        <rdar://problem/50471863> and https://bugs.webkit.org/show_bug.cgi?id=199764
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKURLSchemeHandler-1.mm:
+
+2019-07-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, a build fix after r247437
+
+        * TestWebKitAPI/Tests/WebKitCocoa/TestSOAuthorization.mm:
+        Added platform guard towards -[WKUIDelegate _presentingViewControllerForWebView:].
+
 2019-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [macOS 10.15] Cannot unbold selected text when the system font is used
