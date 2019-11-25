@@ -203,6 +203,7 @@ messages -> WebPage LegacyReceiver {
 
     Close()
     TryClose()
+    SyncClose() -> ()
 
     SetEditable(bool editable)
     ValidateCommand(String name, WebKit::CallbackID callbackID)

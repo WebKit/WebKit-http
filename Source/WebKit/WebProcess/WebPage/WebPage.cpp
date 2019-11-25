@@ -1136,6 +1136,11 @@ void WebPage::exitAcceleratedCompositingMode()
     m_drawingArea->setRootCompositingLayer(0);
 }
 
+void WebPage::syncClose()
+{
+    close();
+}
+
 void WebPage::close()
 {
     if (m_isClosed)
