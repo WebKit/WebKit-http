@@ -74,6 +74,11 @@ Vector<String> FontCache::systemFontFamilies()
     return fontFamilies;
 }
 
+bool FontCache::isSystemFontForbiddenForEditing(const String&)
+{
+    return false;
+}
+
 Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
 {
     font_family family;
